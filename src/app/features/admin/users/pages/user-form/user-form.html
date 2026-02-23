@@ -1,0 +1,122 @@
+<div class="container-fluid py-3">
+  <div class="d-flex align-items-center gap-2 mb-4">
+    <a routerLink="/admin/users" class="btn btn-sm btn-outline-secondary waves-effect">
+      <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+    </a>
+    <h4 class="mb-0">{{ isEdit ? '編輯員工' : '新增員工' }}</h4>
+  </div>
+
+  <div class="row">
+    <div class="col-12 col-xl-8">
+      <form [formGroup]="form" (ngSubmit)="submit()">
+
+        <!-- 基本資料 -->
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-transparent fw-500">基本資料</div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">姓名 <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" formControlName="name" placeholder="請輸入姓名">
+                @if (form.get('name')?.invalid && form.get('name')?.touched) {
+                  <div class="text-danger small mt-1">請輸入姓名。</div>
+                }
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">Email <span class="text-danger">*</span></label>
+                <input type="email" class="form-control" formControlName="email" placeholder="user@example.com">
+                @if (form.get('email')?.invalid && form.get('email')?.touched) {
+                  <div class="text-danger small mt-1">請輸入有效的電子郵件。</div>
+                }
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">狀態</label>
+                <select class="form-select" formControlName="status">
+                  <option value="active">在職</option>
+                  <option value="inactive">離職</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">角色 <span class="text-danger">*</span></label>
+                <div class="d-flex flex-wrap gap-3 mt-1">
+                  @for (role of roles; track role.id) {
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio"
+                             name="roleId"
+                             [id]="'role-' + role.id"
+                             [value]="role.id"
+                             formControlName="roleId">
+                      <label class="form-check-label" [for]="'role-' + role.id">{{ role.name }}</label>
+                    </div>
+                  }
+                </div>
+                @if (form.get('roleId')?.invalid && form.get('roleId')?.touched) {
+                  <div class="text-danger small mt-1">請選擇角色。</div>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 員工資訊 -->
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-transparent fw-500">員工資訊</div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">部門</label>
+                <select class="form-select" formControlName="departmentId">
+                  <option [ngValue]="null">— 未指定 —</option>
+                  @for (dept of departments; track dept.id) {
+                    <option [ngValue]="dept.id">{{ dept.name }}</option>
+                  }
+                </select>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">職稱</label>
+                <select class="form-select" formControlName="jobTitleId">
+                  <option [ngValue]="null">— 未指定 —</option>
+                  @for (jt of jobTitles; track jt.id) {
+                    <option [ngValue]="jt.id">{{ jt.name }}（L{{ jt.level }}）</option>
+                  }
+                </select>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">入職日</label>
+                <input type="date" class="form-control" formControlName="hireDate">
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">離職日</label>
+                <input type="date" class="form-control" formControlName="resignDate">
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">底薪</label>
+                <div class="input-group">
+                  <span class="input-group-text">NT$</span>
+                  <input type="number" class="form-control" formControlName="baseSalary" placeholder="例如：50000" min="0">
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">職務代理人</label>
+                <select class="form-select" formControlName="agentUserId">
+                  <option value="">— 無代理人 —</option>
+                  @for (u of getAvailableAgents(); track u.id) {
+                    <option [value]="u.id">{{ u.name }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary waves-effect waves-light" [disabled]="form.invalid">
+            {{ isEdit ? '更新' : '建立' }}
+          </button>
+          <a routerLink="/admin/users" class="btn btn-outline-secondary waves-effect">取消</a>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</div>

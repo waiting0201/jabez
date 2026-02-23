@@ -1,0 +1,221 @@
+<div class="container-fluid py-3">
+  <div class="d-flex align-items-center gap-2 mb-4">
+    <a routerLink="/admin/payment-requests" class="btn btn-sm btn-outline-secondary waves-effect">
+      <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+    </a>
+    <h4 class="mb-0">{{ isReturned ? '修改請款申請（退回）' : isEdit ? '編輯請款申請' : '新增請款申請' }}</h4>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <div class="row g-4">
+      <div class="col-12 col-lg-10 col-xl-8">
+
+        <!-- 基本資訊 -->
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#dollar-sign"></use>
+            </svg>
+            基本資訊
+          </div>
+          <div class="card-body">
+
+            <div class="mb-3">
+              <label class="form-label fw-500">請款類型 <span class="text-danger">*</span></label>
+              <div class="d-flex flex-wrap gap-3 mt-1">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" formControlName="type" value="vendor" id="typeVendor">
+                  <label class="form-check-label" for="typeVendor">廠商請款</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" formControlName="type" value="travel" id="typeTravel">
+                  <label class="form-check-label" for="typeTravel">員工差旅</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" formControlName="type" value="advance" id="typeAdvance">
+                  <label class="form-check-label" for="typeAdvance">員工預支</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-500">專案 <span class="text-danger">*</span></label>
+              <select class="form-select" formControlName="projectId">
+                <option [ngValue]="null">— 請選擇專案 —</option>
+                @for (p of projects; track p.id) {
+                  <option [ngValue]="p.id">{{ p.code }}{{ p.departmentName ? '（' + p.departmentName + '）' : '' }}</option>
+                }
+              </select>
+              @if (form.get('projectId')?.invalid && form.get('projectId')?.touched) {
+                <div class="text-danger small mt-1">請選擇專案。</div>
+              }
+            </div>
+
+            @if (isEdit) {
+              <div class="mb-0">
+                <label class="form-label fw-500">簽核狀態</label>
+                <div>
+                  <span class="badge rounded-pill px-3 py-2" [class]="statusClass[approvalStatus]">
+                    {{ statusLabel[approvalStatus] }}
+                  </span>
+                </div>
+              </div>
+            }
+
+          </div>
+        </div>
+
+        <!-- 發票 -->
+        <div class="card border-0 shadow-sm mt-4">
+          <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#file-text"></use>
+            </svg>
+            發票
+          </div>
+          <div class="card-body">
+
+            <!-- Upload area -->
+            <label class="d-flex flex-column align-items-center justify-content-center rounded-3 py-4 px-3 mb-3 text-center"
+                   style="cursor:pointer; border: 2px dashed var(--bs-border-color);">
+              <svg class="sa-icon sa-icon-2x text-muted mb-2" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#upload"></use>
+              </svg>
+              <span class="fw-500">點擊上傳發票圖檔</span>
+              <span class="text-muted small mt-1">支援 JPG、PNG、PDF，可多選</span>
+              <input type="file" class="d-none" multiple accept="image/*,application/pdf"
+                     (change)="onFilesSelected($event)">
+            </label>
+
+            @if (showInvoiceError) {
+              <div class="alert alert-warning py-2 small mb-3">請至少上傳一張發票。</div>
+            }
+
+            <!-- Invoice table -->
+            <div class="table-responsive">
+              <table class="table table-sm mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>檔案名稱</th>
+                    <th style="min-width:160px">發票號碼</th>
+                    <th style="min-width:120px">金額</th>
+                    <th style="width:48px"></th>
+                  </tr>
+                </thead>
+                <tbody formArrayName="invoices">
+                  @for (ctrl of invoiceControls; track ctrl.get('id')?.value; let i = $index) {
+                    @let isOcr = ocrLoadingIds.has(ctrl.get('id')?.value);
+                    <tr [formGroupName]="i">
+                      <td class="align-middle small"
+                          style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                        @if (ctrl.get('previewUrl')?.value) {
+                          <button type="button"
+                                  class="btn btn-link p-0 text-muted small d-inline-flex align-items-center gap-1"
+                                  style="text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis"
+                                  (click)="openPreview(ctrl.get('fileName')?.value, ctrl.get('previewUrl')?.value)">
+                            <svg class="sa-icon flex-shrink-0" style="width:14px;height:14px;stroke:currentColor">
+                              <use href="/assets/icons/sprite.svg#file-text"></use>
+                            </svg>
+                            {{ ctrl.get('fileName')?.value }}
+                          </button>
+                        } @else {
+                          <span class="text-muted d-inline-flex align-items-center gap-1">
+                            <svg class="sa-icon flex-shrink-0" style="width:14px;height:14px;stroke:currentColor">
+                              <use href="/assets/icons/sprite.svg#file-text"></use>
+                            </svg>
+                            {{ ctrl.get('fileName')?.value }}
+                          </span>
+                        }
+                      </td>
+                      <td>
+                        @if (isOcr) {
+                          <div class="d-flex align-items-center gap-2 text-muted small py-1">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            識別中…
+                          </div>
+                        } @else {
+                          <input class="form-control form-control-sm font-monospace"
+                                 formControlName="invoiceNo" placeholder="AB12345678">
+                        }
+                      </td>
+                      <td>
+                        @if (isOcr) {
+                          <div class="py-1">—</div>
+                        } @else {
+                          <input type="number" class="form-control form-control-sm"
+                                 formControlName="amount" min="0" placeholder="0">
+                        }
+                      </td>
+                      <td class="text-end align-middle">
+                        <button type="button"
+                                class="btn btn-sm btn-ghost-danger d-inline-flex align-items-center waves-effect"
+                                [disabled]="isOcr"
+                                (click)="removeInvoice(i)">
+                          <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                        </button>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="4" class="text-center text-muted py-3 small">尚未新增發票</td>
+                    </tr>
+                  }
+                </tbody>
+                @if (invoiceControls.length > 0) {
+                  <tfoot>
+                    <tr class="table-light">
+                      <td colspan="2" class="text-end fw-500 small">合計</td>
+                      <td class="fw-600">{{ totalAmount | number:'1.0-0' }}</td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                }
+              </table>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="mt-4 d-flex gap-2">
+          <button type="submit" class="btn btn-primary waves-effect waves-light" [disabled]="form.invalid || isAnyOcrPending">
+            @if (isAnyOcrPending) {
+              <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+            }
+            {{ isReturned ? '修改並重送' : isEdit ? '更新' : '建立' }}
+          </button>
+          <a routerLink="/admin/payment-requests" class="btn btn-outline-secondary waves-effect">取消</a>
+        </div>
+
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- File Preview Modal -->
+@if (previewFile) {
+  <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.6)" (click)="closePreview()">
+    <div class="modal-dialog modal-lg modal-dialog-centered" (click)="$event.stopPropagation()">
+      <div class="modal-content">
+        <div class="modal-header py-2">
+          <h6 class="modal-title mb-0 text-truncate">{{ previewFile.name }}</h6>
+          <button type="button" class="btn-close" (click)="closePreview()"></button>
+        </div>
+        <div class="modal-body p-0 text-center bg-body-secondary">
+          @if (isImageFile(previewFile.name)) {
+            <img [src]="previewFile.url" class="img-fluid" style="max-height:75vh;object-fit:contain">
+          } @else if (isPdfFile(previewFile.name)) {
+            <iframe [src]="previewFile.safeUrl" style="width:100%;height:75vh;border:0"></iframe>
+          } @else {
+            <div class="p-5">
+              <a [href]="previewFile.url" [download]="previewFile.name" class="btn btn-primary">
+                <svg class="sa-icon me-1" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#download"></use></svg>
+                下載檔案
+              </a>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}

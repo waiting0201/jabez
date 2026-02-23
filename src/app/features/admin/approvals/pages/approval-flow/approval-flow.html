@@ -1,0 +1,139 @@
+<div class="container-fluid py-3">
+  @if (item$ | async; as item) {
+    <!-- Page Header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
+      <div class="d-flex align-items-center gap-2">
+        <a routerLink="/admin/approvals" class="btn btn-sm btn-outline-secondary waves-effect">
+          <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+        </a>
+        <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+          <use href="/assets/icons/sprite.svg#git-merge"></use>
+        </svg>
+        <h4 class="mb-0">{{ item.name }}｜簽核流程</h4>
+        <span [class]="'badge ' + (item.isActive ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary')">
+          {{ item.isActive ? '啟用' : '停用' }}
+        </span>
+      </div>
+    </div>
+    @if (item.description) {
+      <p class="text-muted small mb-4">{{ item.description }}</p>
+    }
+
+    <!-- Steps Timeline -->
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h6 class="mb-0 text-muted">簽核步驟（共 {{ item.steps.length }} 步）</h6>
+      <button class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1 waves-effect" (click)="openAddStep()">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+        新增步驟
+      </button>
+    </div>
+
+    <!-- Step Form -->
+    @if (showStepForm) {
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent fw-500">
+          {{ editStep ? '編輯步驟' : '新增步驟' }}
+        </div>
+        <div class="card-body">
+          <form [formGroup]="stepForm" (ngSubmit)="submitStep()">
+            <div class="row g-3">
+              <div class="col-6 col-md-2">
+                <label class="form-label fw-500">步驟順序 <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" formControlName="stepOrder" min="1">
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">部門</label>
+                <select class="form-select" formControlName="departmentId">
+                  <option [ngValue]="null">— 不限部門 —</option>
+                  @for (dept of departments; track dept.id) {
+                    <option [ngValue]="dept.id">{{ dept.name }}</option>
+                  }
+                </select>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">職稱</label>
+                <select class="form-select" formControlName="jobTitleId">
+                  <option [ngValue]="null">— 不限職稱 —</option>
+                  @for (jt of jobTitles; track jt.id) {
+                    <option [ngValue]="jt.id">{{ jt.name }}（L{{ jt.level }}）</option>
+                  }
+                </select>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">步驟說明</label>
+                <input type="text" class="form-control" formControlName="note" placeholder="選填說明">
+              </div>
+            </div>
+            <div class="text-muted small mt-2">部門或職稱至少選一。</div>
+            <div class="d-flex gap-2 mt-3">
+              <button type="submit" class="btn btn-primary btn-sm waves-effect waves-light">
+                {{ editStep ? '更新' : '新增' }}
+              </button>
+              <button type="button" class="btn btn-outline-secondary btn-sm waves-effect"
+                      (click)="closeStepForm()">取消</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    }
+
+    @if (item.steps.length === 0) {
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center text-muted py-5">尚未設定任何步驟</div>
+      </div>
+    } @else {
+      <div class="d-flex flex-column gap-2">
+        @for (step of item.steps; track step.id; let last = $last) {
+          <div class="d-flex gap-2 align-items-start">
+            <!-- Step number bubble -->
+            <div class="d-flex flex-column align-items-center" style="min-width:36px">
+              <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold"
+                   style="width:32px;height:32px;font-size:.85rem">
+                {{ step.stepOrder }}
+              </div>
+              @if (!last) {
+                <div class="bg-secondary-subtle" style="width:2px;flex:1;min-height:20px"></div>
+              }
+            </div>
+            <!-- Step card -->
+            <div class="card border-0 shadow-sm flex-fill mb-0">
+              <div class="card-body py-2 px-3">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                  <div class="d-flex flex-wrap gap-2 align-items-center">
+                    @if (step.departmentName) {
+                      <span class="badge bg-primary-subtle text-primary d-inline-flex align-items-center gap-1" style="white-space:nowrap">
+                        <svg class="sa-icon" style="width:12px;height:12px;flex-shrink:0;stroke:currentColor"><use href="/assets/icons/sprite.svg#git-branch"></use></svg>
+                        {{ step.departmentName }}
+                      </span>
+                    }
+                    @if (step.jobTitleName) {
+                      <span class="badge bg-warning-subtle text-warning-emphasis d-inline-flex align-items-center gap-1" style="white-space:nowrap">
+                        <svg class="sa-icon" style="width:12px;height:12px;flex-shrink:0;stroke:currentColor"><use href="/assets/icons/sprite.svg#briefcase"></use></svg>
+                        {{ step.jobTitleName }}
+                      </span>
+                    }
+                    @if (step.note) {
+                      <span class="text-muted small">{{ step.note }}</span>
+                    }
+                  </div>
+                  <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-ghost-primary d-inline-flex align-items-center waves-effect"
+                            (click)="openEditStep(step)" title="編輯">
+                      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+                    </button>
+                    <button class="btn btn-sm btn-ghost-danger d-inline-flex align-items-center waves-effect"
+                            (click)="deleteStep(step)" title="刪除">
+                      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  } @else {
+    <p class="text-muted">找不到簽核項目。</p>
+  }
+</div>

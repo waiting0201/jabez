@@ -1,0 +1,56 @@
+<div class="container-fluid py-3">
+  <div class="d-flex align-items-center gap-2 mb-4">
+    <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+      <use href="/assets/icons/sprite.svg#check-square"></use>
+    </svg>
+    <h4 class="mb-0">簽核作業</h4>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>類型</th>
+              <th>申請人</th>
+              <th class="d-none d-md-table-cell">摘要</th>
+              <th>狀態</th>
+              <th class="d-none d-lg-table-cell">申請時間</th>
+              <th class="text-end">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of tasks$ | async; track t.applicationType + t.id) {
+              <tr>
+                <td>
+                  <span [class]="'badge ' + appTypeClass[t.applicationType]">
+                    {{ appTypeLabel[t.applicationType] }}
+                  </span>
+                </td>
+                <td class="fw-500">{{ t.submittedBy }}</td>
+                <td class="text-muted small d-none d-md-table-cell">{{ getSummary(t) }}</td>
+                <td>
+                  <span [class]="'badge ' + statusClass[t.status]">{{ statusLabel[t.status] }}</span>
+                </td>
+                <td class="text-muted small d-none d-lg-table-cell">{{ t.submittedAt | date:'yyyy-MM-dd' }}</td>
+                <td class="text-end" style="white-space: nowrap">
+                  <a [routerLink]="[t.applicationType, t.id, 'review']"
+                     [class]="'btn btn-sm d-inline-flex align-items-center waves-effect ' + (t.status === 'pending' ? 'btn-ghost-primary' : 'btn-ghost-secondary')">
+                    <svg class="sa-icon" style="stroke: currentColor">
+                      <use [attr.href]="t.status === 'pending' ? '/assets/icons/sprite.svg#edit' : '/assets/icons/sprite.svg#eye'"></use>
+                    </svg>
+                  </a>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="text-center text-muted py-4">尚無簽核作業。</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,141 @@
+<div class="container-fluid py-3">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
+    <div class="d-flex align-items-center gap-2">
+      <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#check-square"></use>
+      </svg>
+      <h4 class="mb-0">簽核管理</h4>
+    </div>
+    <button class="btn btn-primary d-inline-flex align-items-center gap-1 waves-effect waves-light" (click)="openCreate()">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+      新增項目
+    </button>
+  </div>
+
+  <!-- Inline Form Panel -->
+  @if (showForm) {
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-transparent fw-500">
+        {{ editItem ? '編輯簽核項目' : '新增簽核項目' }}
+      </div>
+      <div class="card-body">
+        <form [formGroup]="form" (ngSubmit)="submit()">
+          @if (items$ | async; as items) {
+            <div class="row g-3">
+              <div class="col-12 col-md-3">
+                <label class="form-label fw-500">項目名稱 <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" formControlName="name" placeholder="例如：請假申請">
+                @if (form.get('name')?.invalid && form.get('name')?.touched) {
+                  <div class="text-danger small mt-1">請輸入項目名稱。</div>
+                }
+              </div>
+              <div class="col-12 col-md-2">
+                <label class="form-label fw-500">代碼 <span class="text-danger">*</span></label>
+                <input type="text" class="form-control font-monospace" formControlName="code" placeholder="例如：leave_request">
+                @if (form.get('code')?.invalid && form.get('code')?.touched) {
+                  <div class="text-danger small mt-1">請輸入代碼。</div>
+                }
+              </div>
+              <div class="col-12 col-md-3">
+                <label class="form-label fw-500">描述</label>
+                <input type="text" class="form-control" formControlName="description" placeholder="選填說明">
+              </div>
+              <div class="col-12 col-md-3">
+                <label class="form-label fw-500">適用類型</label>
+                <select class="form-select" formControlName="applicationType">
+                  @for (opt of appTypeOptions; track opt.value) {
+                    <option [value]="opt.value" [disabled]="isTypeDisabled(opt.value, items)">
+                      {{ opt.label }}{{ isTypeDisabled(opt.value, items) ? '（已設定）' : '' }}
+                    </option>
+                  }
+                </select>
+              </div>
+              <div class="col-12 col-md-1 d-flex align-items-end">
+                <div class="form-check">
+                  <input type="checkbox" class="form-check-input" formControlName="isActive" id="isActive">
+                  <label class="form-check-label" for="isActive">啟用</label>
+                </div>
+              </div>
+            </div>
+          }
+          <div class="d-flex gap-2 mt-3">
+            <button type="submit" class="btn btn-primary btn-sm waves-effect waves-light" [disabled]="form.invalid">
+              {{ editItem ? '更新' : '建立' }}
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm waves-effect" (click)="closeForm()">取消</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- Items Table -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>項目名稱</th>
+              <th>代碼</th>
+              <th class="d-none d-md-table-cell">適用類型</th>
+              <th class="d-none d-xl-table-cell">描述</th>
+              <th>步驟數</th>
+              <th>狀態</th>
+              <th class="d-none d-lg-table-cell">建立時間</th>
+              <th class="text-end">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of items$ | async; track item.id) {
+              <tr>
+                <td class="fw-500">{{ item.name }}</td>
+                <td><code class="text-muted small">{{ item.code }}</code></td>
+                <td class="d-none d-md-table-cell">
+                  @if (item.applicationType) {
+                    <span [class]="'badge ' + appTypeClasses[item.applicationType]">
+                      {{ appTypeLabels[item.applicationType] }}
+                    </span>
+                  } @else {
+                    <span class="text-muted small">通用</span>
+                  }
+                </td>
+                <td class="text-muted d-none d-xl-table-cell">{{ item.description || '—' }}</td>
+                <td>
+                  <span class="badge bg-info-subtle text-info">{{ item.steps.length }} 步</span>
+                </td>
+                <td>
+                  <span [class]="'badge ' + (item.isActive ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary')">
+                    {{ item.isActive ? '啟用' : '停用' }}
+                  </span>
+                </td>
+                <td class="text-muted small d-none d-lg-table-cell">{{ item.createdAt | date:'yyyy-MM-dd' }}</td>
+                <td class="text-end" style="white-space: nowrap">
+                  <div class="d-flex justify-content-end gap-1">
+                    <a [routerLink]="[item.id, 'flow']"
+                       class="btn btn-sm btn-ghost-info d-inline-flex align-items-center waves-effect"
+                       title="管理流程">
+                      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#git-merge"></use></svg>
+                    </a>
+                    <button class="btn btn-sm btn-ghost-primary d-inline-flex align-items-center waves-effect"
+                            (click)="openEdit(item)" title="編輯">
+                      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+                    </button>
+                    <button class="btn btn-sm btn-ghost-danger d-inline-flex align-items-center waves-effect"
+                            (click)="delete(item)" title="刪除">
+                      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="8" class="text-center text-muted py-4">尚無簽核項目。</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

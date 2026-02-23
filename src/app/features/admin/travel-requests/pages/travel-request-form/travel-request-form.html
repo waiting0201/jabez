@@ -1,0 +1,92 @@
+<div class="container-fluid py-3">
+  <div class="d-flex align-items-center gap-2 mb-4">
+    <a routerLink="/admin/travel-requests" class="btn btn-sm btn-outline-secondary waves-effect">
+      <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+    </a>
+    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視出差申請' : (isReturned ? '修改出差申請（退回）' : '編輯出差申請')) : '新增出差申請' }}</h4>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <div class="row g-4">
+      <div class="col-12 col-lg-10 col-xl-8">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#map-pin"></use>
+            </svg>
+            出差資訊
+          </div>
+          <div class="card-body">
+
+            <div class="row g-3 mb-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">出差地點 <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" formControlName="destination" placeholder="例如：台南、台中">
+                @if (form.get('destination')?.invalid && form.get('destination')?.touched) {
+                  <div class="text-danger small mt-1">請填寫出差地點。</div>
+                }
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">預估費用（元）<span class="text-danger">*</span></label>
+                <input type="number" class="form-control" formControlName="estimatedCost" min="0" placeholder="0">
+                @if (form.get('estimatedCost')?.invalid && form.get('estimatedCost')?.touched) {
+                  <div class="text-danger small mt-1">請輸入預估費用。</div>
+                }
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">出發日期 <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" formControlName="startDate">
+                @if (form.get('startDate')?.invalid && form.get('startDate')?.touched) {
+                  <div class="text-danger small mt-1">請選擇出發日期。</div>
+                }
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">返回日期 <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" formControlName="endDate">
+                @if (form.get('endDate')?.invalid && form.get('endDate')?.touched) {
+                  <div class="text-danger small mt-1">請選擇返回日期。</div>
+                }
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">關聯專案（選填）</label>
+                <select class="form-select" formControlName="projectId">
+                  <option [ngValue]="null">— 不關聯專案 —</option>
+                  @for (p of projects; track p.id) {
+                    <option [ngValue]="p.id">{{ p.code }}{{ p.departmentName ? '（' + p.departmentName + '）' : '' }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-500">出差目的 <span class="text-danger">*</span></label>
+              <textarea class="form-control" formControlName="purpose" rows="3"
+                        placeholder="請填寫出差目的..."></textarea>
+              @if (form.get('purpose')?.invalid && form.get('purpose')?.touched) {
+                <div class="text-danger small mt-1">請填寫出差目的。</div>
+              }
+            </div>
+
+          </div>
+        </div>
+
+        @if (!isReadOnly) {
+          <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-primary waves-effect waves-light" [disabled]="form.invalid">
+              {{ isReturned ? '修改並重送' : (isEdit ? '更新' : '送出申請') }}
+            </button>
+            <a routerLink="/admin/travel-requests" class="btn btn-outline-secondary waves-effect">取消</a>
+          </div>
+        } @else {
+          <div class="mt-4">
+            <a routerLink="/admin/travel-requests" class="btn btn-outline-secondary waves-effect">返回列表</a>
+          </div>
+        }
+
+      </div>
+    </div>
+  </form>
+</div>

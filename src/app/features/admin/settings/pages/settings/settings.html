@@ -1,0 +1,57 @@
+<div class="container-fluid py-3">
+  <div class="d-flex align-items-center gap-2 mb-4">
+    <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+      <use href="/assets/icons/sprite.svg#settings"></use>
+    </svg>
+    <h4 class="mb-0">系統設定</h4>
+  </div>
+
+  @if (saved) {
+    <div class="alert alert-success d-flex align-items-center gap-2 mb-4 py-2" role="alert">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#check-circle"></use></svg>
+      設定已儲存成功。
+    </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <div class="row g-4">
+
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#clock"></use>
+            </svg>
+            工作時間
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label fw-500">上班時間 <span class="text-danger">*</span></label>
+              <input type="time" class="form-control" formControlName="workStartTime">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-500">下班時間 <span class="text-danger">*</span></label>
+              <input type="time" class="form-control" formControlName="workEndTime">
+            </div>
+            <div class="mb-0">
+              <label class="form-label fw-500">每月加班時數限制 <span class="text-muted fw-400">（小時）</span></label>
+              <input type="number" class="form-control" formControlName="monthlyOvertimeLimit" min="0" max="200">
+              @if (form.get('monthlyOvertimeLimit')?.invalid && form.get('monthlyOvertimeLimit')?.touched) {
+                <div class="text-danger small mt-1">請輸入 0 到 200 之間的數值。</div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12">
+        <button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-1 waves-effect waves-light"
+                [disabled]="form.invalid">
+          <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#save"></use></svg>
+          儲存設定
+        </button>
+      </div>
+
+    </div>
+  </form>
+</div>

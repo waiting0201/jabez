@@ -1,0 +1,71 @@
+<div class="container-fluid py-3">
+  <div class="d-flex align-items-center gap-2 mb-4">
+    <a routerLink="/admin/roles" class="btn btn-sm btn-outline-secondary waves-effect">
+      <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+    </a>
+    <h4 class="mb-0">{{ isEdit ? '編輯角色' : '新增角色' }}</h4>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <form [formGroup]="form" (ngSubmit)="submit()">
+
+            <div class="mb-3">
+              <label class="form-label fw-500">角色名稱 <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" formControlName="name" placeholder="例如：主管">
+              @if (form.get('name')?.invalid && form.get('name')?.touched) {
+                <div class="text-danger small mt-1">請輸入角色名稱。</div>
+              }
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-500">描述</label>
+              <input type="text" class="form-control" formControlName="description" placeholder="簡短描述">
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-500">權限</label>
+              <div class="border rounded p-3">
+                @for (module of modules; track module) {
+                  <div class="mb-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                      <input type="checkbox" class="form-check-input"
+                             [id]="'module-' + module"
+                             [checked]="isModuleAllSelected(module)"
+                             (change)="toggleModule(module, $any($event.target).checked)">
+                      <label class="form-check-label fw-600" [for]="'module-' + module">{{ module }}</label>
+                    </div>
+                    <div class="d-flex flex-wrap gap-3 ms-4">
+                      @for (perm of getPermissionsByModule(module); track perm.id) {
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox"
+                                 [id]="'perm-' + perm.id"
+                                 [checked]="isPermissionSelected(perm.code)"
+                                 (change)="togglePermission(perm.code)">
+                          <label class="form-check-label small" [for]="'perm-' + perm.id">{{ perm.name }}</label>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+              <div class="text-muted small mt-1">
+                已選取 {{ form.value.permissionCodes?.length ?? 0 }} 個權限
+              </div>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary waves-effect waves-light" [disabled]="form.invalid">
+                {{ isEdit ? '更新' : '建立' }}
+              </button>
+              <a routerLink="/admin/roles" class="btn btn-outline-secondary waves-effect">取消</a>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

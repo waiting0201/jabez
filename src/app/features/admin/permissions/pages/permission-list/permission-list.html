@@ -1,0 +1,58 @@
+<div class="container-fluid py-3">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
+    <div class="d-flex align-items-center gap-2">
+      <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#lock"></use>
+      </svg>
+      <h4 class="mb-0">權限管理</h4>
+    </div>
+    <a routerLink="new" class="btn btn-primary d-inline-flex align-items-center gap-1 waves-effect waves-light">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+      新增權限
+    </a>
+  </div>
+
+  @for (module of modules; track module) {
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-light fw-600 d-flex align-items-center">
+        <svg class="sa-icon me-2 text-primary" style="stroke: currentColor">
+          <use href="/assets/icons/sprite.svg#folder"></use>
+        </svg>
+        {{ module }}
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>代碼</th>
+                <th>名稱</th>
+                <th class="d-none d-md-table-cell">描述</th>
+                <th class="text-end">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (perm of getByModule(module); track perm.id) {
+                <tr>
+                  <td><code class="text-primary">{{ perm.code }}</code></td>
+                  <td class="fw-500">{{ perm.name }}</td>
+                  <td class="text-muted d-none d-md-table-cell">{{ perm.description ?? '—' }}</td>
+                  <td class="text-end" style="white-space: nowrap">
+                    <div class="d-flex justify-content-end gap-1">
+                      <a [routerLink]="[perm.id, 'edit']" class="btn btn-sm btn-ghost-primary d-inline-flex align-items-center waves-effect">
+                        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+                      </a>
+                      <button class="btn btn-sm btn-ghost-danger d-inline-flex align-items-center waves-effect" (click)="delete(perm)">
+                        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  }
+</div>

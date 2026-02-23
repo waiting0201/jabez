@@ -1,0 +1,82 @@
+import {Routes} from '@angular/router';
+import {UserList} from './users/pages/user-list/user-list';
+import {UserForm} from './users/pages/user-form/user-form';
+import {RoleList} from './roles/pages/role-list/role-list';
+import {RoleForm} from './roles/pages/role-form/role-form';
+import {PermissionList} from './permissions/pages/permission-list/permission-list';
+import {PermissionForm} from './permissions/pages/permission-form/permission-form';
+import {Settings} from './settings/pages/settings/settings';
+import {DepartmentList} from './departments/pages/department-list/department-list';
+import {DepartmentForm} from './departments/pages/department-form/department-form';
+import {JobTitleList} from './job-titles/pages/job-title-list/job-title-list';
+import {JobTitleForm} from './job-titles/pages/job-title-form/job-title-form';
+import {ApprovalList} from './approvals/pages/approval-list/approval-list';
+import {ApprovalFlow} from './approvals/pages/approval-flow/approval-flow';
+import {ProjectList} from './projects/pages/project-list/project-list';
+import {ProjectForm} from './projects/pages/project-form/project-form';
+import {PaymentList} from './payment-requests/pages/payment-list/payment-list';
+import {PaymentForm} from './payment-requests/pages/payment-form/payment-form';
+import {ApprovalTaskList} from './approval-tasks/pages/approval-task-list/approval-task-list';
+import {ApprovalTaskReview} from './approval-tasks/pages/approval-task-review/approval-task-review';
+import {LeaveRequestList} from './leave-requests/pages/leave-request-list/leave-request-list';
+import {LeaveRequestForm} from './leave-requests/pages/leave-request-form/leave-request-form';
+import {TravelRequestList} from './travel-requests/pages/travel-request-list/travel-request-list';
+import {TravelRequestForm} from './travel-requests/pages/travel-request-form/travel-request-form';
+
+export const ADMIN_ROUTES: Routes = [
+  {path: '', redirectTo: 'users', pathMatch: 'full'},
+
+  // 員工管理
+  {path: 'users',                component: UserList,       data: {title: '員工管理'}},
+  {path: 'users/new',            component: UserForm,       data: {title: '新增員工'}},
+  {path: 'users/:id/edit',       component: UserForm,       data: {title: '編輯員工'}},
+
+  // 部門管理
+  {path: 'departments',          component: DepartmentList, data: {title: '部門管理'}},
+  {path: 'departments/new',      component: DepartmentForm, data: {title: '新增部門'}},
+  {path: 'departments/:id/edit', component: DepartmentForm, data: {title: '編輯部門'}},
+
+  // 職稱管理
+  {path: 'job-titles',           component: JobTitleList,   data: {title: '職稱管理'}},
+  {path: 'job-titles/new',       component: JobTitleForm,   data: {title: '新增職稱'}},
+  {path: 'job-titles/:id/edit',  component: JobTitleForm,   data: {title: '編輯職稱'}},
+
+  // 簽核管理
+  {path: 'approvals',            component: ApprovalList,   data: {title: '簽核管理'}},
+  {path: 'approvals/:id/flow',   component: ApprovalFlow,   data: {title: '簽核流程'}},
+
+  // 角色 / 權限
+  {path: 'roles',                component: RoleList,       data: {title: '角色管理'}},
+  {path: 'roles/new',            component: RoleForm,       data: {title: '新增角色'}},
+  {path: 'roles/:id/edit',       component: RoleForm,       data: {title: '編輯角色'}},
+  {path: 'permissions',          component: PermissionList, data: {title: '權限管理'}},
+  {path: 'permissions/new',      component: PermissionForm, data: {title: '新增權限'}},
+  {path: 'permissions/:id/edit', component: PermissionForm, data: {title: '編輯權限'}},
+
+  // 專案管理
+  {path: 'projects',             component: ProjectList,    data: {title: '專案管理'}},
+  {path: 'projects/new',         component: ProjectForm,    data: {title: '新增專案'}},
+  {path: 'projects/:id/edit',    component: ProjectForm,    data: {title: '編輯專案'}},
+
+  // 請款申請
+  {path: 'payment-requests',             component: PaymentList, data: {title: '請款申請'}},
+  {path: 'payment-requests/new',         component: PaymentForm, data: {title: '新增請款申請'}},
+  {path: 'payment-requests/:id/edit',    component: PaymentForm, data: {title: '編輯請款申請'}},
+
+  // 請假申請
+  {path: 'leave-requests',             component: LeaveRequestList, data: {title: '請假申請'}},
+  {path: 'leave-requests/new',         component: LeaveRequestForm, data: {title: '新增請假申請'}},
+  {path: 'leave-requests/:id/edit',    component: LeaveRequestForm, data: {title: '編輯請假申請'}},
+
+  // 出差申請
+  {path: 'travel-requests',             component: TravelRequestList, data: {title: '出差申請'}},
+  {path: 'travel-requests/new',         component: TravelRequestForm, data: {title: '新增出差申請'}},
+  {path: 'travel-requests/:id/edit',    component: TravelRequestForm, data: {title: '編輯出差申請'}},
+
+  // 簽核作業
+  {path: 'approval-tasks',                                   component: ApprovalTaskList,   data: {title: '簽核作業'}},
+  {path: 'approval-tasks/:applicationType/:id/review',       component: ApprovalTaskReview, data: {title: '審核'}},
+
+  // 系統設定
+  {path: 'settings',             component: Settings,       data: {title: '系統設定'}},
+];

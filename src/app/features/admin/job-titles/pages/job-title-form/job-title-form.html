@@ -1,0 +1,49 @@
+<div class="container-fluid py-3">
+  <div class="d-flex align-items-center gap-2 mb-4">
+    <a routerLink="/admin/job-titles" class="btn btn-sm btn-outline-secondary waves-effect">
+      <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+    </a>
+    <h4 class="mb-0">{{ isEdit ? '編輯職稱' : '新增職稱' }}</h4>
+  </div>
+
+  <div class="row">
+    <div class="col-12 col-lg-6 col-xl-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <form [formGroup]="form" (ngSubmit)="submit()">
+
+            <div class="mb-3">
+              <label class="form-label fw-500">職稱名稱 <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" formControlName="name" placeholder="例如：資深工程師">
+              @if (form.get('name')?.invalid && form.get('name')?.touched) {
+                <div class="text-danger small mt-1">請輸入職稱名稱。</div>
+              }
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-500">等級 <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" formControlName="level" min="1" placeholder="例如：2">
+              <div class="text-muted small mt-1">數字越大等級越高。</div>
+              @if (form.get('level')?.invalid && form.get('level')?.touched) {
+                <div class="text-danger small mt-1">請輸入有效等級（最小值為 1）。</div>
+              }
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-500">描述</label>
+              <textarea class="form-control" formControlName="description" rows="2" placeholder="選填說明"></textarea>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary waves-effect waves-light" [disabled]="form.invalid">
+                {{ isEdit ? '更新' : '建立' }}
+              </button>
+              <a routerLink="/admin/job-titles" class="btn btn-outline-secondary waves-effect">取消</a>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

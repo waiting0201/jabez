@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/layout/components/sidenav/sidenav.scss"],
+  "sourcesContent": [":host {\n  app-app-logo {\n    display: block;\n    width: 100%;\n  }\n}\n"],
+  "mappings": ";AACE,MAAA;AACE,WAAA;AACA,SAAA;;",
+  "names": []
+}

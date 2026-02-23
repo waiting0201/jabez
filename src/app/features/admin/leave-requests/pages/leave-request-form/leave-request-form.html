@@ -1,0 +1,103 @@
+<div class="container-fluid py-3">
+  <div class="d-flex align-items-center gap-2 mb-4">
+    <a routerLink="/admin/leave-requests" class="btn btn-sm btn-outline-secondary waves-effect">
+      <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+    </a>
+    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視請假申請' : (isReturned ? '修改請假申請（退回）' : '編輯請假申請')) : '新增請假申請' }}</h4>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <div class="row g-4">
+      <div class="col-12 col-lg-10 col-xl-8">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#calendar"></use>
+            </svg>
+            請假資訊
+          </div>
+          <div class="card-body">
+
+            <div class="mb-3">
+              <label class="form-label fw-500">假別 <span class="text-danger">*</span></label>
+              <div class="d-flex flex-wrap gap-3 mt-1">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" formControlName="leaveType" value="annual" id="typeAnnual">
+                  <label class="form-check-label" for="typeAnnual">年假</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" formControlName="leaveType" value="personal" id="typePersonal">
+                  <label class="form-check-label" for="typePersonal">事假</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" formControlName="leaveType" value="sick" id="typeSick">
+                  <label class="form-check-label" for="typeSick">病假</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" formControlName="leaveType" value="compensatory" id="typeComp">
+                  <label class="form-check-label" for="typeComp">補休</label>
+                </div>
+              </div>
+              @if (form.get('leaveType')?.value === 'compensatory') {
+                <div class="alert alert-info d-flex align-items-center gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon flex-shrink-0" style="stroke: currentColor">
+                    <use href="/assets/icons/sprite.svg#clock"></use>
+                  </svg>
+                  <span class="small">目前可補休時數：<strong>{{ overtimeHours }} 小時</strong></span>
+                </div>
+              }
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">開始日期 <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" formControlName="startDate">
+                @if (form.get('startDate')?.invalid && form.get('startDate')?.touched) {
+                  <div class="text-danger small mt-1">請選擇開始日期。</div>
+                }
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">結束日期 <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" formControlName="endDate">
+                @if (form.get('endDate')?.invalid && form.get('endDate')?.touched) {
+                  <div class="text-danger small mt-1">請選擇結束日期。</div>
+                }
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">天數 <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" formControlName="days" min="0.5" step="0.5" placeholder="1">
+                @if (form.get('days')?.invalid && form.get('days')?.touched) {
+                  <div class="text-danger small mt-1">請輸入有效天數（最少 0.5）。</div>
+                }
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-500">請假原因 <span class="text-danger">*</span></label>
+              <textarea class="form-control" formControlName="reason" rows="3"
+                        placeholder="請填寫請假原因..."></textarea>
+              @if (form.get('reason')?.invalid && form.get('reason')?.touched) {
+                <div class="text-danger small mt-1">請填寫請假原因。</div>
+              }
+            </div>
+
+          </div>
+        </div>
+
+        @if (!isReadOnly) {
+          <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-primary waves-effect waves-light" [disabled]="form.invalid">
+              {{ isReturned ? '修改並重送' : (isEdit ? '更新' : '送出申請') }}
+            </button>
+            <a routerLink="/admin/leave-requests" class="btn btn-outline-secondary waves-effect">取消</a>
+          </div>
+        } @else {
+          <div class="mt-4">
+            <a routerLink="/admin/leave-requests" class="btn btn-outline-secondary waves-effect">返回列表</a>
+          </div>
+        }
+
+      </div>
+    </div>
+  </form>
+</div>

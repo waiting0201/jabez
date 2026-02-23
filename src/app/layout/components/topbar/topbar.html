@@ -1,0 +1,25 @@
+<div class="d-flex flex-grow-1 me-auto align-items-center">
+
+    <app-app-logo/>
+
+
+  <app-toggle-mobile-menu/>
+
+  <app-toggle-sidenav/>
+
+</div>
+
+@if (pendingCount$ | async; as count) {
+  @if (count > 0) {
+    <a routerLink="/admin/approval-tasks"
+       class="btn btn-system position-relative no-arrow"
+       aria-label="待簽核作業">
+      <span class="badge badge-icon pos-top pos-end">{{ count }}</span>
+      <svg class="sa-icon sa-icon-2x">
+        <use href="/assets/icons/sprite.svg#check-circle"></use>
+      </svg>
+    </a>
+  }
+}
+
+<app-profile-dropdown/>
