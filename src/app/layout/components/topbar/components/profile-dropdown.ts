@@ -8,11 +8,11 @@ import {AuthService} from '@core/auth/services/auth.service';
   imports: [NgbDropdownModule],
   template: `
     <div ngbDropdown>
-      <button type="button" ngbDropdownToggle title="drlantern@getwebora.com" data-bs-toggle="dropdown"
+      <button type="button" ngbDropdownToggle [title]="user()?.email ?? ''" data-bs-toggle="dropdown"
               class="btn-system no-arrow bg-transparent d-flex flex-shrink-0 align-items-center justify-content-center"
               aria-label="Open Profile Dropdown">
         <img src="/assets/img/demo/avatars/avatar-admin.png" class="profile-image profile-image-md rounded-circle"
-             alt="Sunny A.">
+             [alt]="user()?.name ?? ''">
       </button>
 
       <div ngbDropdownMenu class="dropdown-menu dropdown-menu-animated">
@@ -20,11 +20,11 @@ import {AuthService} from '@core/auth/services/auth.service';
           <div class="d-flex flex-row align-items-center mt-1 mb-1 color-white">
                 <span class="status status-success d-inline-block me-2">
                     <img src="/assets/img/demo/avatars/avatar-admin.png" class="profile-image rounded-circle"
-                         alt="Sunny A.">
+                         [alt]="user()?.name ?? ''">
                 </span>
             <div class="info-card-text">
-              <div class="fs-lg text-truncate text-truncate-lg">Sunny A.</div>
-              <span class="text-truncate text-truncate-md opacity-80 fs-sm">sunnya&#64;sadim.com</span>
+              <div class="fs-lg text-truncate text-truncate-lg">{{ user()?.name }}</div>
+              <span class="text-truncate text-truncate-md opacity-80 fs-sm">{{ user()?.email }}</span>
             </div>
           </div>
         </div>
@@ -42,6 +42,8 @@ import {AuthService} from '@core/auth/services/auth.service';
 export class ProfileDropdown {
   private auth = inject(AuthService);
   private router = inject(Router);
+
+  user = this.auth.currentUser;
 
   logout() {
     this.auth.logout();

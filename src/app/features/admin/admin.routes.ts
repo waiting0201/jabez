@@ -1,4 +1,5 @@
 import {Routes} from '@angular/router';
+import {permissionGuard} from '@core/auth/guards/permission.guard';
 import {UserList} from './users/pages/user-list/user-list';
 import {UserForm} from './users/pages/user-form/user-form';
 import {RoleList} from './roles/pages/role-list/role-list';
@@ -45,13 +46,13 @@ export const ADMIN_ROUTES: Routes = [
   {path: 'approvals',            component: ApprovalList,   data: {title: '簽核管理'}},
   {path: 'approvals/:id/flow',   component: ApprovalFlow,   data: {title: '簽核流程'}},
 
-  // 角色 / 權限
-  {path: 'roles',                component: RoleList,       data: {title: '角色管理'}},
-  {path: 'roles/new',            component: RoleForm,       data: {title: '新增角色'}},
-  {path: 'roles/:id/edit',       component: RoleForm,       data: {title: '編輯角色'}},
-  {path: 'permissions',          component: PermissionList, data: {title: '權限管理'}},
-  {path: 'permissions/new',      component: PermissionForm, data: {title: '新增權限'}},
-  {path: 'permissions/:id/edit', component: PermissionForm, data: {title: '編輯權限'}},
+  // 角色 / 權限（僅超管帳號可存取）
+  {path: 'roles',                component: RoleList,       canActivate: [permissionGuard], data: {title: '角色管理',   permission: 'superadmin'}},
+  {path: 'roles/new',            component: RoleForm,       canActivate: [permissionGuard], data: {title: '新增角色',   permission: 'superadmin'}},
+  {path: 'roles/:id/edit',       component: RoleForm,       canActivate: [permissionGuard], data: {title: '編輯角色',   permission: 'superadmin'}},
+  {path: 'permissions',          component: PermissionList, canActivate: [permissionGuard], data: {title: '權限管理',   permission: 'superadmin'}},
+  {path: 'permissions/new',      component: PermissionForm, canActivate: [permissionGuard], data: {title: '新增權限',   permission: 'superadmin'}},
+  {path: 'permissions/:id/edit', component: PermissionForm, canActivate: [permissionGuard], data: {title: '編輯權限',   permission: 'superadmin'}},
 
   // 專案管理
   {path: 'projects',             component: ProjectList,    data: {title: '專案管理'}},

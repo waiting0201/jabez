@@ -11,6 +11,7 @@ export interface JwtPayload {
   roles: string[];
   permissions: string[];
   exp: number;
+  is_superadmin?: boolean;
 }
 
 export interface LoginResponse {
@@ -40,6 +41,12 @@ export class AuthService {
     };
   });
 
+  /** 是否為超管帳號（signal） */
+  isSuperAdmin = computed<boolean>(() => {
+    const payload = this._decode(this._token());
+    return !!payload && payload.exp * 1000 > Date.now() && !!payload.is_superadmin;
+  });
+
   get token(): string | null {
     return this._token();
   }
@@ -51,7 +58,12 @@ export class AuthService {
 
   hasPermission(permissionCode: string): boolean {
     const payload = this._decode(this._token());
-    return !!payload && payload.permissions.includes(permissionCode);
+    if (!payload || payload.exp * 1000 <= Date.now()) return false;
+    // 超管帳號無視所有 permission 限制（包含 'superadmin' 哨兵值）
+    if (payload.is_superadmin) return true;
+    // 'superadmin' 是哨兵值，只有超管可通過
+    if (permissionCode === 'superadmin') return false;
+    return payload.permissions.includes(permissionCode);
   }
 
   /**
@@ -99,13 +111,15 @@ export class AuthService {
 
   /** 產生 mock JWT（header.payload.signature），僅供本地開發使用 */
   private _mockJwt(email: string): string {
+    const isSuperAdmin = email === 'sa@system.local';
     const header  = btoa(JSON.stringify({alg: 'HS256', typ: 'JWT'})).replace(/=+$/, '');
     const payload = btoa(JSON.stringify({
-      sub: '1',
-      name: 'Alice Chen',
+      sub: isSuperAdmin ? '00000000-0000-0000-0000-000000000001' : '1',
+      name: isSuperAdmin ? 'System Admin' : 'Alice Chen',
       email,
-      roles: ['admin'],
-      permissions: [
+      roles: isSuperAdmin ? [] : ['admin'],
+      is_superadmin: isSuperAdmin || undefined,
+      permissions: isSuperAdmin ? [] : [
         'admin:access',
         'users:read',       'users:write',       'users:delete',
         'roles:read',       'roles:write',       'roles:delete',

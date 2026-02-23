@@ -65,10 +65,10 @@ export const menuItems: MenuItemType[] = [
     icon: '/assets/icons/sprite.svg#shield',
     label: '系統權限',
     isCollapsed: true,
-    requiredPermission: 'admin:access',
+    requiredPermission: 'superadmin',
     children: [
-      { label: '角色管理', url: '/admin/roles', requiredPermission: 'roles:read' },
-      { label: '權限管理', url: '/admin/permissions', requiredPermission: 'permissions:read' },
+      { label: '角色管理', url: '/admin/roles', requiredPermission: 'superadmin' },
+      { label: '權限管理', url: '/admin/permissions', requiredPermission: 'superadmin' },
     ],
   },
   {
