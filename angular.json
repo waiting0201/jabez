@@ -44,6 +44,12 @@
             ],
             "styles": [
               "src/styles.scss"
+            ],
+            "outputPath": "dist/Admin",
+            "allowedCommonJsDependencies": [
+              "node-waves",
+              "tesseract.js",
+              "vanta/dist/vanta.halo.min"
             ]
           },
           "configurations": {
