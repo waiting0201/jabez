@@ -45,7 +45,7 @@
             "styles": [
               "src/styles.scss"
             ],
-            "outputPath": "dist/Admin",
+            "outputPath": "dist/Admin/browser",
             "allowedCommonJsDependencies": [
               "node-waves",
               "tesseract.js",
