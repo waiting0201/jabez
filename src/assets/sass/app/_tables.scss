@@ -30,31 +30,6 @@ th {
 }
 
 .table-hover > tbody > tr:hover  {
-    // box-shadow: 
-    //         inset 0 1px 0 var(--bs-body-bg),   /* Top */
-    //         inset 0 -1px 0 var(--bs-body-bg),  /* Bottom */
-    //         inset 1px 0 0 var(--bs-body-bg),   /* Left */
-    //         inset -1px 0 0 var(--bs-body-bg),  /* Right */
-    //         0 0 0 1px var(--primary-500) !important; /* Outer border */
-    outline: 1px solid var(--primary-500);
-    z-index: 1;
-    position: relative;
-
-    // & > * {
-    //     border-color: var(--primary-500) !important;
-    // }
-
-    // &::after {
-    //     content: '';
-    //     position: absolute;
-    //     top: 0;
-    //     bottom: 0;
-    //     right:0; 
-    //     left:0;
-    //     border: 1px solid var(--primary-500);
-    //     z-index: -1;
-    // }
-    
 }
 
 // calendar table
