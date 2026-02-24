@@ -1,12 +1,12 @@
 <div class="container-fluid py-3">
-  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
-    <div class="d-flex align-items-center gap-2">
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
       <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
         <use href="/assets/icons/sprite.svg#map-pin"></use>
       </svg>
       <h4 class="mb-0">出差申請</h4>
     </div>
-    <a routerLink="new" class="btn btn-primary d-inline-flex align-items-center gap-1 waves-effect waves-light">
+    <a routerLink="new" class="btn btn-primary inline-flex items-center gap-1">
       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
       新增申請
     </a>
@@ -21,36 +21,36 @@
               <th>出差地點</th>
               <th>開始日期</th>
               <th>結束日期</th>
-              <th class="text-end">預估費用</th>
-              <th class="d-none d-md-table-cell">目的</th>
-              <th class="d-none d-lg-table-cell">專案</th>
+              <th class="text-right">預估費用</th>
+              <th class="hidden md:table-cell">目的</th>
+              <th class="hidden lg:table-cell">專案</th>
               <th>狀態</th>
-              <th class="text-end">操作</th>
+              <th class="text-right">操作</th>
             </tr>
           </thead>
           <tbody>
-            @for (r of requests$ | async; track r.id) {
+            @for (r of pagedRequests(); track r.id) {
               <tr>
                 <td class="fw-500">{{ r.destination }}</td>
                 <td class="text-muted small">{{ r.startDate | date:'yyyy-MM-dd' }}</td>
                 <td class="text-muted small">{{ r.endDate | date:'yyyy-MM-dd' }}</td>
-                <td class="text-end fw-500">{{ r.estimatedCost | number:'1.0-0' }}</td>
-                <td class="text-muted small d-none d-md-table-cell">{{ r.purpose }}</td>
-                <td class="font-monospace small d-none d-lg-table-cell">{{ r.projectCode || '—' }}</td>
+                <td class="text-right fw-500">{{ r.estimatedCost | number:'1.0-0' }}</td>
+                <td class="text-muted small hidden md:table-cell">{{ r.purpose }}</td>
+                <td class="font-monospace small hidden lg:table-cell">{{ r.projectCode || '—' }}</td>
                 <td>
                   <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
                 </td>
-                <td class="text-end" style="white-space: nowrap">
-                  <div class="d-flex justify-content-end gap-1">
+                <td class="text-right" style="white-space: nowrap">
+                  <div class="flex justify-end gap-1">
                     @if (r.approvalStatus === 'pending' || r.approvalStatus === 'returned') {
-                      <a [routerLink]="[r.id, 'edit']" class="btn btn-sm btn-ghost-primary d-inline-flex align-items-center waves-effect" title="編輯">
+                      <a [routerLink]="[r.id, 'edit']" class="btn btn-sm btn-ghost-primary inline-flex items-center" title="編輯">
                         <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
                       </a>
-                      <button class="btn btn-sm btn-ghost-danger d-inline-flex align-items-center waves-effect" (click)="delete(r)" title="刪除">
+                      <button class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(r)" title="刪除">
                         <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
                       </button>
                     } @else {
-                      <a [routerLink]="[r.id, 'edit']" class="btn btn-sm btn-ghost-secondary d-inline-flex align-items-center waves-effect" title="檢視">
+                      <a [routerLink]="[r.id, 'edit']" class="btn btn-sm btn-ghost-secondary inline-flex items-center" title="檢視">
                         <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#eye"></use></svg>
                       </a>
                     }
@@ -65,6 +65,33 @@
           </tbody>
         </table>
       </div>
+      @if (totalPages() > 1) {
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t">
+          <span class="text-muted small text-center sm:text-left">共 {{ totalCount() }} 筆，第 {{ page() }} / {{ totalPages() }} 頁</span>
+          <div class="flex sm:hidden items-center gap-1">
+            <button class="page-link rounded" [class.disabled]="page() === 1" (click)="prev()">‹</button>
+            <span class="px-2 text-sm">{{ page() }} / {{ totalPages() }}</span>
+            <button class="page-link rounded" [class.disabled]="page() === totalPages()" (click)="next()">›</button>
+          </div>
+          <ul class="hidden sm:flex pagination mb-0">
+            <li class="page-item" [class.disabled]="page() === 1">
+              <button class="page-link" (click)="prev()">‹</button>
+            </li>
+            @for (p of pageNumbers(); track p) {
+              @if (p === -1) {
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+              } @else {
+                <li class="page-item" [class.active]="p === page()">
+                  <button class="page-link" (click)="goTo(p)">{{ p }}</button>
+                </li>
+              }
+            }
+            <li class="page-item" [class.disabled]="page() === totalPages()">
+              <button class="page-link" (click)="next()">›</button>
+            </li>
+          </ul>
+        </div>
+      }
     </div>
   </div>
 </div>

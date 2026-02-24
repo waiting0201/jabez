@@ -108,13 +108,8 @@ export class Apexchart implements OnInit, OnDestroy, AfterViewInit {
 
     this.layoutSub = this.layout.state$
       .pipe(
-        map(state => ({
-          theme: state.theme,
-          selectedTheme: state.selectedTheme
-        })),
-        distinctUntilChanged((prev, curr) =>
-          prev.theme === curr.theme && prev.selectedTheme === curr.selectedTheme
-        )
+        map(state => state.theme),
+        distinctUntilChanged()
       )
       .subscribe(() => {
         initializeColorMap();

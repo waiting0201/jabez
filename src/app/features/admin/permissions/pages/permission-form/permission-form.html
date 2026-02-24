@@ -1,48 +1,49 @@
 <div class="container-fluid py-3">
-  <div class="d-flex align-items-center gap-2 mb-4">
-    <a routerLink="/admin/permissions" class="btn btn-sm btn-outline-secondary waves-effect">
+  <div class="flex items-center gap-2 mb-6">
+    <a routerLink="/admin/permissions" class="btn btn-sm btn-outline-secondary">
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
     </a>
     <h4 class="mb-0">{{ isEdit ? '編輯權限' : '新增權限' }}</h4>
   </div>
 
-  <div class="row">
-    <div class="col-12">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <form [formGroup]="form" (ngSubmit)="submit()">
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <div class="row g-4">
+      <div class="col-12 col-lg-8 col-xl-6">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body">
 
-            <div class="mb-3">
+            <div class="mb-4">
               <label class="form-label fw-500">代碼 <span class="text-danger">*</span></label>
               <input type="text" class="form-control font-monospace" formControlName="code" placeholder="module:action">
               <div class="text-muted small mt-1">例如：<code>users:read</code>、<code>roles:write</code></div>
             </div>
 
-            <div class="mb-3">
+            <div class="mb-4">
               <label class="form-label fw-500">名稱 <span class="text-danger">*</span></label>
               <input type="text" class="form-control" formControlName="name" placeholder="顯示名稱">
             </div>
 
-            <div class="mb-3">
+            <div class="mb-4">
               <label class="form-label fw-500">模組 <span class="text-danger">*</span></label>
               <input type="text" class="form-control" formControlName="module" placeholder="例如：Users、Roles">
             </div>
 
-            <div class="mb-4">
+            <div class="mb-0">
               <label class="form-label fw-500">描述</label>
               <input type="text" class="form-control" formControlName="description" placeholder="選填說明">
             </div>
 
-            <div class="d-flex gap-2">
-              <button type="submit" class="btn btn-primary waves-effect waves-light" [disabled]="form.invalid">
-                {{ isEdit ? '更新' : '建立' }}
-              </button>
-              <a routerLink="/admin/permissions" class="btn btn-outline-secondary waves-effect">取消</a>
-            </div>
-
-          </form>
+          </div>
         </div>
+
+        <div class="mt-6 flex gap-2">
+          <button type="submit" class="btn btn-primary" [disabled]="form.invalid">
+            {{ isEdit ? '更新' : '建立' }}
+          </button>
+          <a routerLink="/admin/permissions" class="btn btn-outline-secondary">取消</a>
+        </div>
+
       </div>
     </div>
-  </div>
+  </form>
 </div>

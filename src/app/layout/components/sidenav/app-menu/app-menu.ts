@@ -33,6 +33,10 @@ export class AppMenuComponent implements OnInit {
       .subscribe(() => {
         this.expandActivePaths(this.menuItems);
         setTimeout(() => this.scrollToActiveLink(), 50);
+        if (document.documentElement.classList.contains('app-mobile-menu-open')) {
+          document.documentElement.classList.remove('app-mobile-menu-open');
+          this.layout.hideBackdrop();
+        }
       });
 
     this.expandActivePaths(this.menuItems);

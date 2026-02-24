@@ -1,17 +1,10 @@
 import { Component } from '@angular/core';
-import {RouterLink, RouterOutlet} from '@angular/router';
-import {BackgroundAnimationComponent} from '@app/components/background-animation';
+import { RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-auth-layout',
-  imports: [
-    RouterOutlet,
-    RouterLink,
-    BackgroundAnimationComponent
-  ],
+  imports: [RouterOutlet],
   templateUrl: './auth-layout.html',
   styles: ``
 })
-export class AuthLayout {
-
-}
+export class AuthLayout {}

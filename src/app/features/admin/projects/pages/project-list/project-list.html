@@ -1,12 +1,12 @@
 <div class="container-fluid py-3">
-  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
-    <div class="d-flex align-items-center gap-2">
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
       <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
         <use href="/assets/icons/sprite.svg#folder"></use>
       </svg>
       <h4 class="mb-0">專案管理</h4>
     </div>
-    <a routerLink="new" class="btn btn-primary d-inline-flex align-items-center gap-1 waves-effect waves-light">
+    <a routerLink="new" class="btn btn-primary inline-flex items-center gap-1">
       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
       新增專案
     </a>
@@ -20,15 +20,15 @@
             <tr>
               <th>編號</th>
               <th>部門</th>
-              <th class="text-end">預定金額</th>
-              <th class="text-end">實際金額</th>
-              <th class="text-end">業務金額</th>
-              <th class="d-none d-lg-table-cell">Google Drive</th>
-              <th class="text-end">操作</th>
+              <th class="text-right">預定金額</th>
+              <th class="text-right">實際金額</th>
+              <th class="text-right">業務金額</th>
+              <th class="hidden lg:table-cell">Google Drive</th>
+              <th class="text-right">操作</th>
             </tr>
           </thead>
           <tbody>
-            @for (project of projects$ | async; track project.id) {
+            @for (project of pagedProjects(); track project.id) {
               <tr>
                 <td class="fw-500 font-monospace">{{ project.code }}</td>
                 <td>
@@ -38,31 +38,31 @@
                     <span class="text-muted">—</span>
                   }
                 </td>
-                <td class="text-end">
+                <td class="text-right">
                   @if (project.budgetAmount != null) {
                     {{ project.budgetAmount | number:'1.0-0' }}
                   } @else {
                     <span class="text-muted">—</span>
                   }
                 </td>
-                <td class="text-end">
+                <td class="text-right">
                   @if (project.actualAmount != null) {
                     {{ project.actualAmount | number:'1.0-0' }}
                   } @else {
                     <span class="text-muted">—</span>
                   }
                 </td>
-                <td class="text-end">
+                <td class="text-right">
                   @if (project.businessAmount != null) {
                     {{ project.businessAmount | number:'1.0-0' }}
                   } @else {
                     <span class="text-muted">—</span>
                   }
                 </td>
-                <td class="d-none d-lg-table-cell">
+                <td class="hidden lg:table-cell">
                   @if (project.googleDriveUrl) {
                     <a [href]="project.googleDriveUrl" target="_blank" rel="noopener"
-                       class="d-inline-flex align-items-center gap-1 text-decoration-none text-muted small">
+                       class="inline-flex items-center gap-1 text-decoration-none text-muted small">
                       <svg class="sa-icon" style="stroke:currentColor;width:14px;height:14px"><use href="/assets/icons/sprite.svg#external-link"></use></svg>
                       開啟
                     </a>
@@ -70,12 +70,12 @@
                     <span class="text-muted">—</span>
                   }
                 </td>
-                <td class="text-end" style="white-space: nowrap">
-                  <div class="d-flex justify-content-end gap-1">
-                    <a [routerLink]="[project.id, 'edit']" class="btn btn-sm btn-ghost-primary d-inline-flex align-items-center waves-effect">
+                <td class="text-right" style="white-space: nowrap">
+                  <div class="flex justify-end gap-1">
+                    <a [routerLink]="[project.id, 'edit']" class="btn btn-sm btn-ghost-primary inline-flex items-center">
                       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
                     </a>
-                    <button class="btn btn-sm btn-ghost-danger d-inline-flex align-items-center waves-effect" (click)="delete(project)">
+                    <button class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(project)">
                       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
                     </button>
                   </div>
@@ -89,6 +89,33 @@
           </tbody>
         </table>
       </div>
+      @if (totalPages() > 1) {
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t">
+          <span class="text-muted small text-center sm:text-left">共 {{ totalCount() }} 筆，第 {{ page() }} / {{ totalPages() }} 頁</span>
+          <div class="flex sm:hidden items-center gap-1">
+            <button class="page-link rounded" [class.disabled]="page() === 1" (click)="prev()">‹</button>
+            <span class="px-2 text-sm">{{ page() }} / {{ totalPages() }}</span>
+            <button class="page-link rounded" [class.disabled]="page() === totalPages()" (click)="next()">›</button>
+          </div>
+          <ul class="hidden sm:flex pagination mb-0">
+            <li class="page-item" [class.disabled]="page() === 1">
+              <button class="page-link" (click)="prev()">‹</button>
+            </li>
+            @for (p of pageNumbers(); track p) {
+              @if (p === -1) {
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+              } @else {
+                <li class="page-item" [class.active]="p === page()">
+                  <button class="page-link" (click)="goTo(p)">{{ p }}</button>
+                </li>
+              }
+            }
+            <li class="page-item" [class.disabled]="page() === totalPages()">
+              <button class="page-link" (click)="next()">›</button>
+            </li>
+          </ul>
+        </div>
+      }
     </div>
   </div>
 </div>

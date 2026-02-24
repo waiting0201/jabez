@@ -10,7 +10,7 @@
     </button>
   </div>
 
-  <ngx-simplebar class="offcanvas-body h-100" style="max-height: 100%">
+  <ngx-simplebar class="offcanvas-body h-full" style="max-height: 100%">
 
     <div class="info-container">
       Unlock limitless design potential with 16+ layout combinations and extensive customization options—tailor your
@@ -23,7 +23,7 @@
       </button>
     </div>
 
-    <div class="d-flex justify-content-spaced w-100 app-fob-showcase-text" data-prefix="Preview">
+    <div class="flex justify-content-spaced w-full app-fob-showcase-text" data-prefix="Preview">
       <div class="app-fob app-fob-lg app-fob-showcase">
         <div></div>
         <div></div>
@@ -41,7 +41,7 @@
           Header position fixed
         </label>
       </div>
-      <div class="form-check d-none d-lg-block d-xl-block d-xxl-block">
+      <div class="form-check hidden lg:block">
         <input class="form-check-input" type="checkbox" id="actionNavFull"
                [checked]="layout.state().navFull"
                (change)="toggle('navFull', $event)"
@@ -52,7 +52,7 @@
       </div>
     </div>
 
-    <div class="mod-status d-none d-lg-block d-xl-block d-xxl-block" data-prefix="Addon Settings">
+    <div class="mod-status hidden lg:block" data-prefix="Addon Settings">
       <div class="form-check">
         <input class="form-check-input" type="checkbox" id="actionNavFixed" [checked]="layout.state().navFixed"
                (change)="toggle('navFixed', $event)">
@@ -71,7 +71,7 @@
     </div>
 
     <div class="mod-status" data-prefix="Misc Settings">
-      <div class="form-check d-none d-lg-block d-xl-block d-xxl-block">
+      <div class="form-check hidden lg:block">
         <input class="form-check-input" type="checkbox" id="actionNavMinified" [checked]="layout.state().navMinified"
                (change)="toggle('navMinified', $event)" [disabled]="layout.state().navCollapsed">
         <label class="form-check-label" for="actionNavMinified">
@@ -106,29 +106,9 @@
       </div>
     </div>
 
-    <div class="mod-status app-themes" data-prefix="Themes">
-      <div class="clickable-boxes">
-        @for (skin of skins; track $index; let i = $index) {
-          <input
-            type="radio"
-            [id]="'skin-' + i"
-            name="skins"
-            [value]="skin"
-            [checked]="layout.skin === skin"
-            (change)="setThemeStyle(skin)"
-          >
-          <label
-            [for]="'skin-' + i"
-            [attr.data-prefix]="skin | titlecase"
-            [style.background]="getSkinGradient(skin)"
-          ></label>
-        }
-      </div>
-    </div>
-
-    <div class="d-flex" style="gap:10px">
-      <button type="button" (click)="resetAll()" class="btn reset-button btn-outline-danger flex-grow-1"><i
-        class="sa sa-reload align-base me-1"></i> Factory Reset
+    <div class="flex" style="gap:10px">
+      <button type="button" (click)="resetAll()" class="btn reset-button btn-outline-danger grow">
+        <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#refresh-ccw"></use></svg> Factory Reset
       </button>
     </div>
   </ngx-simplebar>

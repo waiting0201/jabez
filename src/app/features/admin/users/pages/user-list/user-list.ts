@@ -1,29 +1,47 @@
-import {Component, inject, OnInit} from '@angular/core';
+import {Component, computed, inject, signal} from '@angular/core';
 import {RouterLink} from '@angular/router';
-import {AsyncPipe, DatePipe, CurrencyPipe} from '@angular/common';
+import {DatePipe, CurrencyPipe} from '@angular/common';
+import {toSignal, toObservable} from '@angular/core/rxjs-interop';
+import {switchMap} from 'rxjs/operators';
 import {UserService} from '../../services/user.service';
 import {RoleService} from '../../../roles/services/role.service';
 import {User} from '../../models/user.model';
 import {Role} from '../../../roles/models/role.model';
+import {PagedResult} from '../../../../../shared/models/paged-result.model';
 
 @Component({
   selector: 'app-user-list',
   templateUrl: './user-list.html',
-  imports: [RouterLink, AsyncPipe, DatePipe, CurrencyPipe],
+  imports: [RouterLink, DatePipe, CurrencyPipe],
 })
-export class UserList implements OnInit {
+export class UserList {
   private userService = inject(UserService);
   private roleService = inject(RoleService);
 
-  users$ = this.userService.getAll();
-  roles: Role[] = [];
+  private roles = toSignal(this.roleService.getAll(), {initialValue: [] as Role[]});
 
-  ngOnInit() {
-    this.roleService.getAll().subscribe(r => this.roles = r);
-  }
+  readonly PAGE_SIZE = 20;
+  page = signal(1);
+
+  private result = toSignal(
+    toObservable(this.page).pipe(
+      switchMap(p => this.userService.getPaged(p, this.PAGE_SIZE))
+    ),
+    {initialValue: {items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 1} as PagedResult<User>}
+  );
+
+  pagedUsers  = computed(() => this.result().items);
+  totalCount  = computed(() => this.result().totalCount);
+  totalPages  = computed(() => this.result().totalPages);
+  pageNumbers = computed(() => buildPageNumbers(this.page(), this.totalPages()));
+
+  goTo(p: number) { this.page.set(p); }
+  prev() { if (this.page() > 1) this.page.update(p => p - 1); }
+  next() { if (this.page() < this.totalPages()) this.page.update(p => p + 1); }
 
   getRoleNames(roleIds: string[]): string {
-    return roleIds.map(id => this.roles.find(r => r.id === id)?.name ?? id).join(', ');
+    const r = this.roles();
+    return roleIds.map(id => r.find(role => role.id === id)?.name ?? id).join(', ');
   }
 
   delete(user: User) {
@@ -31,4 +49,18 @@ export class UserList implements OnInit {
       this.userService.delete(user.id).subscribe();
     }
   }
+}
+
+function buildPageNumbers(current: number, total: number): number[] {
+  if (total <= 9) return Array.from({length: total}, (_, i) => i + 1);
+  const pages: number[] = [];
+  let prev = 0;
+  for (let i = 1; i <= total; i++) {
+    if (i === 1 || i === total || (i >= current - 2 && i <= current + 2)) {
+      if (prev && i - prev > 1) pages.push(-1);
+      pages.push(i);
+      prev = i;
+    }
+  }
+  return pages;
 }

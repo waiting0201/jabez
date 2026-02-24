@@ -3,13 +3,11 @@ import {
   ElementRef,
   Input,
   NgModule,
-  NgZone,
   ViewEncapsulation,
   setClassMetadata,
   ɵɵadvance,
   ɵɵattribute,
   ɵɵdefineComponent,
-  ɵɵdefineInjector,
   ɵɵdefineNgModule,
   ɵɵdirectiveInject,
   ɵɵelement,
@@ -17,7 +15,11 @@ import {
   ɵɵelementStart,
   ɵɵprojection,
   ɵɵprojectionDef
-} from "./chunk-L6GJXWCW.js";
+} from "./chunk-GXW6WHBZ.js";
+import {
+  NgZone,
+  ɵɵdefineInjector
+} from "./chunk-NCWOAHGH.js";
 import "./chunk-JRFR6BLO.js";
 import "./chunk-HWYXSU2G.js";
 import "./chunk-MARUHEWW.js";

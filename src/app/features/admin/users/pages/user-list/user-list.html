@@ -1,12 +1,12 @@
 <div class="container-fluid py-3">
-  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
-    <div class="d-flex align-items-center gap-2">
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
       <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
         <use href="/assets/icons/sprite.svg#user"></use>
       </svg>
       <h4 class="mb-0">員工管理</h4>
     </div>
-    <a routerLink="new" class="btn btn-primary d-inline-flex align-items-center gap-1 waves-effect waves-light">
+    <a routerLink="new" class="btn btn-primary inline-flex items-center gap-1">
       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
       新增員工
     </a>
@@ -19,18 +19,18 @@
           <thead class="table-light">
             <tr>
               <th>姓名</th>
-              <th class="d-none d-md-table-cell">Email</th>
-              <th class="d-none d-lg-table-cell">部門</th>
-              <th class="d-none d-lg-table-cell">職稱</th>
-              <th class="d-none d-xl-table-cell">入職日</th>
-              <th class="d-none d-xl-table-cell">底薪</th>
+              <th class="hidden md:table-cell">Email</th>
+              <th class="hidden lg:table-cell">部門</th>
+              <th class="hidden lg:table-cell">職稱</th>
+              <th class="hidden xl:table-cell">入職日</th>
+              <th class="hidden xl:table-cell">底薪</th>
               <th>角色</th>
-              <th class="d-none d-sm-table-cell">狀態</th>
-              <th class="text-end">操作</th>
+              <th class="hidden sm:table-cell">狀態</th>
+              <th class="text-right">操作</th>
             </tr>
           </thead>
           <tbody>
-            @for (user of users$ | async; track user.id) {
+            @for (user of pagedUsers(); track user.id) {
               <tr>
                 <td>
                   <div class="fw-500">{{ user.name }}</div>
@@ -38,20 +38,20 @@
                     <div class="text-muted small">代理人：{{ user.agentName }}</div>
                   }
                 </td>
-                <td class="text-muted d-none d-md-table-cell">{{ user.email }}</td>
-                <td class="d-none d-lg-table-cell">
+                <td class="text-muted hidden md:table-cell">{{ user.email }}</td>
+                <td class="hidden lg:table-cell">
                   {{ user.departmentName || '—' }}
                 </td>
-                <td class="d-none d-lg-table-cell">
+                <td class="hidden lg:table-cell">
                   {{ user.jobTitleName || '—' }}
                 </td>
-                <td class="text-muted small d-none d-xl-table-cell">
+                <td class="text-muted small hidden xl:table-cell">
                   {{ user.hireDate ? (user.hireDate | date:'yyyy-MM-dd') : '—' }}
                   @if (user.resignDate) {
                     <div class="text-danger">離職：{{ user.resignDate | date:'yyyy-MM-dd' }}</div>
                   }
                 </td>
-                <td class="d-none d-xl-table-cell">
+                <td class="hidden xl:table-cell">
                   {{ user.baseSalary ? (user.baseSalary | currency:'TWD':'symbol':'1.0-0') : '—' }}
                 </td>
                 <td>
@@ -59,17 +59,17 @@
                     <span class="badge bg-secondary me-1">{{ getRoleNames([roleId]) }}</span>
                   }
                 </td>
-                <td class="d-none d-sm-table-cell">
+                <td class="hidden sm:table-cell">
                   <span class="badge" [class.bg-success]="user.status === 'active'" [class.bg-secondary]="user.status === 'inactive'">
                     {{ user.status === 'active' ? '在職' : '離職' }}
                   </span>
                 </td>
-                <td class="text-end" style="white-space: nowrap">
-                  <div class="d-flex justify-content-end gap-1">
-                    <a [routerLink]="[user.id, 'edit']" class="btn btn-sm btn-ghost-primary d-inline-flex align-items-center waves-effect">
+                <td class="text-right" style="white-space: nowrap">
+                  <div class="flex justify-end gap-1">
+                    <a [routerLink]="[user.id, 'edit']" class="btn btn-sm btn-ghost-primary inline-flex items-center">
                       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
                     </a>
-                    <button class="btn btn-sm btn-ghost-danger d-inline-flex align-items-center waves-effect" (click)="delete(user)">
+                    <button class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(user)">
                       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
                     </button>
                   </div>
@@ -83,6 +83,33 @@
           </tbody>
         </table>
       </div>
+      @if (totalPages() > 1) {
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t">
+          <span class="text-muted small text-center sm:text-left">共 {{ totalCount() }} 筆，第 {{ page() }} / {{ totalPages() }} 頁</span>
+          <div class="flex sm:hidden items-center gap-1">
+            <button class="page-link rounded" [class.disabled]="page() === 1" (click)="prev()">‹</button>
+            <span class="px-2 text-sm">{{ page() }} / {{ totalPages() }}</span>
+            <button class="page-link rounded" [class.disabled]="page() === totalPages()" (click)="next()">›</button>
+          </div>
+          <ul class="hidden sm:flex pagination mb-0">
+            <li class="page-item" [class.disabled]="page() === 1">
+              <button class="page-link" (click)="prev()">‹</button>
+            </li>
+            @for (p of pageNumbers(); track p) {
+              @if (p === -1) {
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+              } @else {
+                <li class="page-item" [class.active]="p === page()">
+                  <button class="page-link" (click)="goTo(p)">{{ p }}</button>
+                </li>
+              }
+            }
+            <li class="page-item" [class.disabled]="page() === totalPages()">
+              <button class="page-link" (click)="next()">›</button>
+            </li>
+          </ul>
+        </div>
+      }
     </div>
   </div>
 </div>

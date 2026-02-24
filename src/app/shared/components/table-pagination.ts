@@ -8,18 +8,18 @@ import {NgbDropdownModule} from '@ng-bootstrap/ng-bootstrap';
   imports: [CommonModule,NgbDropdownModule],
   template: `
     <div
-      class="row align-items-center text-center text-sm-start"
-      [ngClass]="showInfo ? 'justify-content-between' : 'justify-content-end'"
+      class="row items-center text-center text-sm-start"
+      [ngClass]="showInfo ? 'justify-between' : 'justify-end'"
     >
       @if (showInfo || showPageLimit) {
         <div
-          class="col-sm-6 d-flex align-items-center justify-content-sm-start justify-content-center gap-2 order-1 order-sm-0">
+          class="col-sm-6 flex items-center sm:justify-start justify-center gap-2 order-1 order-sm-0">
 
           @if (showPageLimit) {
             <div ngbDropdown>
               <a class="btn btn-sm btn-outline-secondary pe-2 ps-2 py-1 no-arrow"
                  ngbDropdownToggle>
-                {{ pageSize }} <i class="sa sa-chevron-down"></i>
+                {{ pageSize }} <svg class="sa-icon sa-icon-1x inline-block"><use href="/assets/icons/sprite.svg#chevron-down"></use></svg>
               </a>
               <ul ngbDropdownMenu>
                 @for (size of [10, 15, 25, 50, 100]; track size) {
@@ -38,7 +38,7 @@ import {NgbDropdownModule} from '@ng-bootstrap/ng-bootstrap';
       }
 
       <div
-        class="col-xs-12 col-sm-6 d-flex align-items-center justify-content-sm-end justify-content-center mb-4 mb-sm-0">
+        class="col-xs-12 col-sm-6 flex items-center sm:justify-end justify-center mb-6 mb-sm-0">
         <nav>
           <ul class="pagination pagination-sm mb-0">
             <li class="page-item">
@@ -54,8 +54,8 @@ import {NgbDropdownModule} from '@ng-bootstrap/ng-bootstrap';
                 aria-label="Previous page"
                 type="button"
               >
-                <span class="d-none d-sm-none d-md-inline-block">Prev</span> <span
-                class="d-inline-block d-sm-inline-block d-md-none">‹</span>
+                <span class="hidden md:inline-block">Prev</span> <span
+                class="inline-block md:hidden">‹</span>
               </button>
             </li>
 
@@ -81,8 +81,8 @@ import {NgbDropdownModule} from '@ng-bootstrap/ng-bootstrap';
                 aria-label="Next page"
                 type="button"
               >
-                <span class="d-none d-sm-none d-md-inline-block">Next</span> <span
-                class="d-inline-block d-sm-inline-block d-md-none">›</span>
+                <span class="hidden md:inline-block">Next</span> <span
+                class="inline-block md:hidden">›</span>
               </button>
             </li>
 

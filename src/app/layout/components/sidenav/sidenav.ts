@@ -1,5 +1,4 @@
 import {Component} from '@angular/core';
-import {AppLogo} from '@app/components/app-logo';
 import {AppMenuComponent} from '@layouts/components/sidenav/app-menu/app-menu';
 import {SimplebarAngularModule} from 'simplebar-angular';
 import {menuItems} from '@layouts/components/data';
@@ -7,7 +6,6 @@ import {menuItems} from '@layouts/components/data';
 @Component({
   selector: 'app-sidenav',
   imports: [
-    AppLogo,
     AppMenuComponent,
     SimplebarAngularModule
   ],

@@ -1,14 +1,17 @@
 import {
+  takeUntilDestroyed
+} from "./chunk-Q2RDMODM.js";
+import {
   NG_VALIDATORS,
   NG_VALUE_ACCESSOR
-} from "./chunk-ER7DWGNI.js";
+} from "./chunk-NGSXRXBR.js";
 import {
   NgTemplateOutlet,
   PercentPipe,
   formatDate,
   isPlatformBrowser
-} from "./chunk-JYWZAQ4F.js";
-import "./chunk-U5KM76LM.js";
+} from "./chunk-FF566WQQ.js";
+import "./chunk-6TKDH7VM.js";
 import {
   ApplicationRef,
   Attribute,
@@ -17,19 +20,12 @@ import {
   Component,
   ContentChild,
   ContentChildren,
-  DOCUMENT,
-  DestroyRef,
   Directive,
   ElementRef,
-  EnvironmentInjector,
-  EventEmitter,
   Injectable,
-  InjectionToken,
-  Injector,
   Input,
   LOCALE_ID,
   NgModule,
-  NgZone,
   Output,
   PLATFORM_ID,
   TemplateRef,
@@ -39,10 +35,7 @@ import {
   ViewEncapsulation,
   afterEveryRender,
   afterNextRender,
-  assertInInjectionContext,
   createComponent,
-  forwardRef,
-  inject,
   setClassMetadata,
   ɵɵHostDirectivesFeature,
   ɵɵInheritDefinitionFeature,
@@ -57,8 +50,6 @@ import {
   ɵɵcontentQuery,
   ɵɵdefineComponent,
   ɵɵdefineDirective,
-  ɵɵdefineInjectable,
-  ɵɵdefineInjector,
   ɵɵdefineNgModule,
   ɵɵdirectiveInject,
   ɵɵdomElement,
@@ -96,8 +87,6 @@ import {
   ɵɵrepeaterCreate,
   ɵɵrepeaterTrackByIdentity,
   ɵɵrepeaterTrackByIndex,
-  ɵɵresetView,
-  ɵɵrestoreView,
   ɵɵstyleProp,
   ɵɵtemplate,
   ɵɵtemplateRefExtractor,
@@ -105,7 +94,22 @@ import {
   ɵɵtextInterpolate,
   ɵɵtextInterpolate1,
   ɵɵviewQuery
-} from "./chunk-L6GJXWCW.js";
+} from "./chunk-GXW6WHBZ.js";
+import {
+  DOCUMENT,
+  DestroyRef,
+  EnvironmentInjector,
+  EventEmitter,
+  InjectionToken,
+  Injector,
+  NgZone,
+  forwardRef,
+  inject,
+  ɵɵdefineInjectable,
+  ɵɵdefineInjector,
+  ɵɵresetView,
+  ɵɵrestoreView
+} from "./chunk-NCWOAHGH.js";
 import "./chunk-JRFR6BLO.js";
 import {
   NEVER,
@@ -141,25 +145,6 @@ import {
   __spreadProps,
   __spreadValues
 } from "./chunk-OCBFZOLU.js";
-
-// node_modules/@angular/core/fesm2022/rxjs-interop.mjs
-function takeUntilDestroyed(destroyRef) {
-  if (!destroyRef) {
-    ngDevMode && assertInInjectionContext(takeUntilDestroyed);
-    destroyRef = inject(DestroyRef);
-  }
-  const destroyed$ = new Observable((subscriber) => {
-    if (destroyRef.destroyed) {
-      subscriber.next();
-      return;
-    }
-    const unregisterFn = destroyRef.onDestroy(subscriber.next.bind(subscriber));
-    return unregisterFn;
-  });
-  return (source) => {
-    return source.pipe(takeUntil(destroyed$));
-  };
-}
 
 // node_modules/@ng-bootstrap/ng-bootstrap/fesm2022/ng-bootstrap-ng-bootstrap-config.mjs
 var NgbConfig = class _NgbConfig {
@@ -273,7 +258,7 @@ function applyStyles(_ref) {
     });
   });
 }
-function effect2(_ref2) {
+function effect(_ref2) {
   var state = _ref2.state;
   var initialStyles = {
     popper: {
@@ -316,7 +301,7 @@ var applyStyles_default = {
   enabled: true,
   phase: "write",
   fn: applyStyles,
-  effect: effect2,
+  effect,
   requires: ["computeStyles"]
 };
 
@@ -565,7 +550,7 @@ function arrow(_ref) {
   var axisProp = axis;
   state.modifiersData[name] = (_state$modifiersData$ = {}, _state$modifiersData$[axisProp] = offset2, _state$modifiersData$.centerOffset = offset2 - center, _state$modifiersData$);
 }
-function effect3(_ref2) {
+function effect2(_ref2) {
   var state = _ref2.state, options = _ref2.options;
   var _options$element = options.element, arrowElement = _options$element === void 0 ? "[data-popper-arrow]" : _options$element;
   if (arrowElement == null) {
@@ -587,7 +572,7 @@ var arrow_default = {
   enabled: true,
   phase: "main",
   fn: arrow,
-  effect: effect3,
+  effect: effect2,
   requires: ["popperOffsets"],
   requiresIfExists: ["preventOverflow"]
 };
@@ -722,7 +707,7 @@ var computeStyles_default = {
 var passive = {
   passive: true
 };
-function effect4(_ref) {
+function effect3(_ref) {
   var state = _ref.state, instance = _ref.instance, options = _ref.options;
   var _options$scroll = options.scroll, scroll = _options$scroll === void 0 ? true : _options$scroll, _options$resize = options.resize, resize = _options$resize === void 0 ? true : _options$resize;
   var window2 = getWindow(state.elements.popper);
@@ -752,7 +737,7 @@ var eventListeners_default = {
   phase: "write",
   fn: function fn() {
   },
-  effect: effect4,
+  effect: effect3,
   data: {}
 };
 
@@ -1615,9 +1600,9 @@ function popperGenerator(generatorOptions) {
     });
     function runModifierEffects() {
       state.orderedModifiers.forEach(function(_ref) {
-        var name = _ref.name, _ref$options = _ref.options, options2 = _ref$options === void 0 ? {} : _ref$options, effect5 = _ref.effect;
-        if (typeof effect5 === "function") {
-          var cleanupFn = effect5({
+        var name = _ref.name, _ref$options = _ref.options, options2 = _ref$options === void 0 ? {} : _ref$options, effect4 = _ref.effect;
+        if (typeof effect4 === "function") {
+          var cleanupFn = effect4({
             state,
             name,
             instance,

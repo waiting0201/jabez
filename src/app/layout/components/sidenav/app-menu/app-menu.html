@@ -1,4 +1,4 @@
-<ul class="nav-menu d-flex">
+<ul class="nav-menu flex">
 
   @for (item of menuItems; track $index) {
     @if (item.isTitle) {
@@ -33,14 +33,14 @@
       }
       <span class="nav-link-text">{{ item.label }}</span>
       @if (item.badge) {
-        <span [class]="`badge ms-auto me-4 bg-${item.badge.variant}-700`">{{ item.badge.text }}</span>
+        <span [class]="`badge ml-auto mr-4 bg-${item.badge.variant}`">{{ item.badge.text }}</span>
       }
         <span class="collapse-sign">
-            <i class="sa sa-chevron-up"></i>
+            <svg class="sa-icon" style="width:0.875rem;height:0.875rem;"><use href="/assets/icons/sprite.svg#chevron-up"></use></svg>
           </span>
     </a>
     <div   #collapse="ngbCollapse" [(ngbCollapse)]="item.isCollapsed!" class="collapse">
-      <ul class="sub-menu d-flex">
+      <ul class="sub-menu flex">
         @for (child of item.children; track $index) {
           <!-- menu item without any child -->
           @if (!hasSubMenu(child)) {
@@ -75,7 +75,7 @@
         }
         <span class="nav-link-text">{{ item.label }}</span>
         @if (item.badge) {
-          <span [ngClass]="`badge text-bg-${item.badge.variant} opacity-50`"
+          <span [ngClass]="`badge badge-${item.badge.variant} opacity-50`"
                 [innerHTML]="item.badge.text"></span>
         }
       </a>

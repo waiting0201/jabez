@@ -20,26 +20,26 @@ import {NgbOffcanvas, NgbOffcanvasModule, NgbTooltipModule} from '@ng-bootstrap/
           </svg>
         </button>
 
-        <div class="custom-scrollbar h-100 p-0">
-          <div class="d-flex flex-grow-1 p-0 w-100 h-100">
-            <div class="d-flex flex-column flex-grow-1 flex-0 overflow-x-auto h-100">
+        <div class="custom-scrollbar h-full p-0">
+          <div class="flex grow p-0 w-full h-full">
+            <div class="flex flex-col grow flex-0 overflow-x-auto h-full">
 
-              <div class="flex-wrap align-items-center flex-grow-1 position-relative bg-gray-50">
-                <div class="position-absolute top-0 bottom-0 w-100 overflow-hidden d-flex flex-column">
+              <div class="flex-wrap items-center grow position-relative bg-gray-50">
+                <div class="position-absolute top-0 bottom-0 w-full overflow-hidden flex flex-col">
 
-                  <div class="w-100 p-4 pb-0 px-lg-3 bg-subtlelight-fade custom-scroll flex-grow-1 d-flex flex-column">
+                  <div class="w-full p-6 pb-0 px-lg-3 bg-subtlelight-fade custom-scroll grow flex flex-col">
 
                     <div class="mb-g">
                       <h4 class="fw-600">Hi Sunny,</h4>
                       <span class="text-muted">how can I help you today?</span>
                     </div>
-                    <div class="mt-auto ms-auto mb-2 btn btn-outline-default px-2 py-1 fw-500 fs-xs text-gradient">
+                    <div class="mt-auto ml-auto mb-2 btn btn-outline-default px-2 py-1 fw-500 fs-xs text-gradient">
                       Analyze my data
                     </div>
-                    <p class="ms-auto mb-2 btn btn-outline-default px-2 py-1 fs-xs fw-500 text-gradient">
+                    <p class="ml-auto mb-2 btn btn-outline-default px-2 py-1 fs-xs fw-500 text-gradient">
                       Create a new report
                     </p>
-                    <p class="ms-auto mb-2 btn btn-outline-default px-2 py-1 fs-xs fw-500 text-gradient">
+                    <p class="ml-auto mb-2 btn btn-outline-default px-2 py-1 fs-xs fw-500 text-gradient">
                       Summarize my Calendar
                     </p>
 
@@ -47,9 +47,9 @@ import {NgbOffcanvas, NgbOffcanvasModule, NgbTooltipModule} from '@ng-bootstrap/
 
                   <div class="bg-faded m-3 rounded height-auto">
                     <textarea rows="2" class="form-control px-2 rounded-top" placeholder="Ask me anything"></textarea>
-                    <div class="d-flex align-items-center py-2 px-2 border border-top-0 rounded-bottom">
-                      <div class="d-flex gap-1 flex-row align-items-center flex-wrap flex-shrink-0">
-                        <button class="btn btn-icon fs-xl flex-shrink-0 waves-effect" aria-label="Attach Files or Photos"
+                    <div class="flex items-center py-2 px-2 border border-top-0 rounded-bottom">
+                      <div class="flex gap-1 flex-row items-center flex-wrap shrink-0">
+                        <button class="btn btn-icon fs-xl shrink-0" aria-label="Attach Files or Photos"
                                 type="button"
                                 ngbTooltip="Attach Files or Photos"
                                 placement="top">
@@ -57,14 +57,14 @@ import {NgbOffcanvas, NgbOffcanvasModule, NgbTooltipModule} from '@ng-bootstrap/
                             <use href="/assets/icons/sprite.svg#file"></use>
                           </svg>
                         </button>
-                        <button class="btn btn-icon fs-xl width-1 flex-shrink-0 waves-effect" aria-label="Voice" type="button"
+                        <button class="btn btn-icon fs-xl width-1 shrink-0" aria-label="Voice" type="button"
                                 ngbTooltip="Voice" placement="top">
                           <svg class="sa-icon sa-bold sa-icon-subtlelight">
                             <use href="/assets/icons/sprite.svg#mic"></use>
                           </svg>
                         </button>
                       </div>
-                      <button class="btn btn-icon fs-xl width-1 flex-shrink-0 ms-auto waves-effect" aria-label="Send" type="button"
+                      <button class="btn btn-icon fs-xl width-1 shrink-0 ml-auto" aria-label="Send" type="button"
                               ngbTooltip="Send" placement="top">
                         <svg class="sa-icon sa-bold sa-icon-subtlelight sa-icon-2x">
                           <use href="/assets/icons/sprite.svg#arrow-up-circle"></use>

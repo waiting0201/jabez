@@ -8,31 +8,31 @@ import {AuthService} from '@core/auth/services/auth.service';
   imports: [NgbDropdownModule],
   template: `
     <div ngbDropdown>
-      <button type="button" ngbDropdownToggle [title]="user()?.email ?? ''" data-bs-toggle="dropdown"
-              class="btn-system no-arrow bg-transparent d-flex flex-shrink-0 align-items-center justify-content-center"
+      <button type="button" ngbDropdownToggle [title]="user()?.email ?? ''"
+              class="btn-system no-arrow bg-transparent flex shrink-0 items-center justify-center"
               aria-label="Open Profile Dropdown">
-        <img src="/assets/img/demo/avatars/avatar-admin.png" class="profile-image profile-image-md rounded-circle"
+        <img src="/assets/img/demo/avatars/avatar-admin.png"
+             class="profile-image profile-image-md rounded-circle"
              [alt]="user()?.name ?? ''">
       </button>
 
-      <div ngbDropdownMenu class="dropdown-menu dropdown-menu-animated">
-        <div class="notification-header rounded-top mb-2">
-          <div class="d-flex flex-row align-items-center mt-1 mb-1 color-white">
-                <span class="status status-success d-inline-block me-2">
-                    <img src="/assets/img/demo/avatars/avatar-admin.png" class="profile-image rounded-circle"
-                         [alt]="user()?.name ?? ''">
-                </span>
-            <div class="info-card-text">
-              <div class="fs-lg text-truncate text-truncate-lg">{{ user()?.name }}</div>
-              <span class="text-truncate text-truncate-md opacity-80 fs-sm">{{ user()?.email }}</span>
-            </div>
+      <div ngbDropdownMenu class="dropdown-menu dropdown-menu-end dropdown-menu-animated">
+        <!-- User info header -->
+        <div class="flex items-center gap-3 px-4 py-3 border-b border-[--border]">
+          <img src="/assets/img/demo/avatars/avatar-admin.png"
+               class="w-10 h-10 rounded-full object-cover shrink-0"
+               [alt]="user()?.name ?? ''">
+          <div class="min-w-0">
+            <div class="text-sm font-semibold text-[--text-primary] truncate">{{ user()?.name }}</div>
+            <div class="text-xs text-[--text-muted] truncate">{{ user()?.email }}</div>
           </div>
         </div>
 
-        <div class="dropdown-divider m-0"></div>
-
-        <a class="dropdown-item py-3 fw-500 d-flex justify-content-between" href="javascript:void(0)" (click)="logout()">
-          <span class="text-danger" data-i18n="drpdwn.page-logout">登出</span>
+        <a class="dropdown-item" href="javascript:void(0)" (click)="logout()">
+          <svg class="sa-icon sa-icon-danger" style="width:1rem;height:1rem">
+            <use href="/assets/icons/sprite.svg#log-out"></use>
+          </svg>
+          <span class="text-[--red] font-medium">登出</span>
         </a>
       </div>
     </div>

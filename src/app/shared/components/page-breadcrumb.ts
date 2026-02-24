@@ -20,7 +20,7 @@ import {Component, Input} from '@angular/core';
       </nav>
 
       @if (subText) {
-        <h6 class="mt-3 mb-4 fst-italic">{{ subText }}</h6>
+        <h6 class="mt-3 mb-4 italic">{{ subText }}</h6>
       }
     </div>
 

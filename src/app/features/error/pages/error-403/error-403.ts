@@ -5,9 +5,9 @@ import {RouterLink} from '@angular/router';
   selector: 'app-error-403',
   imports: [RouterLink],
   template: `
-    <div class="main-content hide-page-header d-flex justify-content-center align-items-center position-relative">
+    <div class="main-content hide-page-header flex justify-center items-center position-relative">
       <div
-        class="logo-backdrop position-absolute translate-middle top-50 start-50 d-flex align-items-center justify-content-center"
+        class="logo-backdrop position-absolute translate-middle top-50 start-50 flex items-center justify-center"
         style="width: 45rem; height: 45rem; --blob-1: var(--warning-500); --blob-2: var(--danger-500);">
         <div class="blobs">
           <svg viewBox="0 0 1200 1200">
@@ -22,7 +22,7 @@ import {RouterLink} from '@angular/router';
           </svg>
         </div>
       </div>
-      <div class="h-alt-hf d-flex flex-column align-items-center justify-content-center text-center" style="z-index: 2;">
+      <div class="h-alt-hf flex flex-col items-center justify-center text-center" style="z-index: 2;">
         <h1 class="page-error color-fusion-500" style="font-size: 750%; font-weight: 700;">
           ERROR <span class="text-gradient">403</span>
           <small class="fw-500" style="font-size: 40%;">Access Denied</small>
@@ -30,7 +30,7 @@ import {RouterLink} from '@angular/router';
         <h3 class="fw-500 mb-5 text-muted">
           You do not have permission to access this page.
         </h3>
-        <a routerLink="/dashboard" class="btn btn-primary waves-effect waves-light">
+        <a routerLink="/dashboard" class="btn btn-primary">
           Back to Dashboard
         </a>
       </div>

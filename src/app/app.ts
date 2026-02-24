@@ -1,6 +1,5 @@
-import {AfterViewInit, Component, inject, OnInit} from '@angular/core';
+import {Component, inject, OnInit} from '@angular/core';
 import {ActivatedRoute, NavigationEnd, Router, RouterOutlet} from '@angular/router';
-import Waves from 'node-waves';
 import {provideIcons} from '@ng-icons/core';
 import * as fontAwesomeSolidIcons from '@ng-icons/font-awesome/solid';
 import * as fontAwesomeBrandIcons from '@ng-icons/font-awesome/brands';
@@ -15,15 +14,10 @@ import {filter, map, mergeMap} from 'rxjs';
   styleUrl: './app.scss',
   viewProviders: [provideIcons({...fontAwesomeSolidIcons, ...fontAwesomeBrandIcons, ...fontAwesomeRegularIcons})]
 })
-export class App implements AfterViewInit, OnInit {
+export class App implements OnInit {
   private titleService = inject(Title);
   private router = inject(Router);
   private activatedRoute = inject(ActivatedRoute);
-
-  ngAfterViewInit() {
-    Waves.attach('.waves-effect', ['waves-light']);
-    Waves.init();
-  }
 
   ngOnInit(): void {
     this.router.events

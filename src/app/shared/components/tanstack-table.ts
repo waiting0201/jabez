@@ -12,19 +12,19 @@ import {NgIcon} from '@ng-icons/core';
         <table class="st-table  table table-striped table-hover">
 
           @if (showHeaders) {
-            <thead class="bg-light align-middle bg-opacity-25 thead-sm">
+            <thead class="bg-light align-middle">
               @for (headerGroup of table.getHeaderGroups(); track headerGroup) {
-                <tr class="fs-xxs">
+                <tr class="text-xs">
                   @for (header of headerGroup.headers; track header.id) {
                     <th
                       (click)="header.column.toggleSorting()"
                       [style.cursor]="header.column.getCanSort() ? 'pointer' : 'default'"
                       style="user-select: none"
                     >
-                      <div class="d-flex align-items-center">
+                      <div class="flex items-center">
                         @if (header.column.id === 'select') {
                           <input type="checkbox"
-                                 class="form-check-input form-check-input-light fs-14"
+                                 class="form-check-input fs-14"
                                  [checked]="table.getIsAllRowsSelected()"
                                  [indeterminate]="table.getIsSomeRowsSelected()"
                                  (change)="table.toggleAllRowsSelected($any($event.target).checked)"/>
@@ -68,16 +68,16 @@ import {NgIcon} from '@ng-icons/core';
                   <td>
                     @if (cell.column.id === 'select') {
                       <input type="checkbox"
-                             class="form-check-input form-check-input-light fs-14"
+                             class="form-check-input fs-14"
                              [checked]="cell.row.getIsSelected()"
                              (change)="cell.row.toggleSelected($any($event.target).checked)"/>
                     }
                     @if (cell.column.id === 'actions' && deleteUser) {
-                      <div class="d-flex  gap-1 align-items-center">
-                        <button type="button" class="btn btn-primary waves-effect btn-xs edit-btn"
+                      <div class="flex gap-1 items-center">
+                        <button type="button" class="btn btn-primary btn-xs edit-btn"
                         >Edit
                         </button>
-                        <button type="button" class="btn btn-danger waves-effect btn-xs delete-btn"
+                        <button type="button" class="btn btn-danger btn-xs delete-btn"
                                 (click)="deleteUser(getId(cell))">Delete
                         </button>
 

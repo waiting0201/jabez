@@ -4,10 +4,10 @@ import { Component } from '@angular/core';
   selector: 'app-error-404',
   imports: [],
   template: `
-    <div class="main-content hide-page-header d-flex justify-content-center align-items-center position-relative">
+    <div class="main-content hide-page-header flex justify-center items-center position-relative">
 
       <div
-        class="logo-backdrop position-absolute translate-middle top-50 start-50 d-flex align-items-center justify-content-center"
+        class="logo-backdrop position-absolute translate-middle top-50 start-50 flex items-center justify-center"
         style="width: 45rem; height: 45rem;  --blob-1: var(--danger-500); --blob-2: var(--warning-500);">
         <div class="blobs">
           <svg viewBox="0 0 1200 1200">
@@ -39,7 +39,7 @@ import { Component } from '@angular/core';
         </div>
       </div>
 
-      <div class="h-alt-hf d-flex flex-column align-items-center justify-content-center text-center"
+      <div class="h-alt-hf flex flex-col items-center justify-center text-center"
            style="z-index: 2;">
         <h1 class="page-error color-fusion-500" style="font-size: 750%; font-weight: 700;">
           ERROR <span class="text-gradient">404</span>

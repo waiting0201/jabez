@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/layout/components/sidenav/sidenav.scss", "src/app/layout/components/sidenav/sidenav.scss"],
+  "sourcesContent": [":host {\n  app-app-logo {\n    display: block;\n    width: 100%;\n  }\n}\n", ":host app-app-logo {\n  display: block;\n  width: 100%;\n}\n/*# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJmaWxlOi8vL1VzZXJzL3RpbS93ZWJhcHBzL0phYmV6L0FkbWluL3NyYy9hcHAvbGF5b3V0L2NvbXBvbmVudHMvc2lkZW5hdi9zaWRlbmF2LnNjc3MiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6IkFBQ0U7RUFDRTtFQUNBIiwic291cmNlc0NvbnRlbnQiOlsiOmhvc3Qge1xuICBhcHAtYXBwLWxvZ28ge1xuICAgIGRpc3BsYXk6IGJsb2NrO1xuICAgIHdpZHRoOiAxMDAlO1xuICB9XG59XG4iXX0= */"],
+  "mappings": ";AACE,MAAA;AACE,WAAA;AACA,SAAA;ACAJ;",
+  "names": []
+}

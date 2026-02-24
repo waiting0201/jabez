@@ -1,5 +1,3 @@
-export type LayoutSkinType = 'default' | 'nebula' | 'olive' | 'solar' | 'lunar' | 'night' | 'aurora' | 'earth' | 'flare' | 'storm'
-
 export type LayoutThemeType =  'light' | 'dark'
 
 
@@ -13,7 +11,6 @@ export interface LayoutState {
   darkNavigation: boolean
   colorblindMode: boolean
   highContrastMode: boolean
-  selectedTheme: LayoutSkinType
 }
 
 export type MenuItemType = {

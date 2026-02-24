@@ -1,6 +1,6 @@
 <div class="container-fluid py-3">
-  <div class="d-flex align-items-center gap-2 mb-4">
-    <a routerLink="/admin/travel-requests" class="btn btn-sm btn-outline-secondary waves-effect">
+  <div class="flex items-center gap-2 mb-6">
+    <a routerLink="/admin/travel-requests" class="btn btn-sm btn-outline-secondary">
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
     </a>
     <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視出差申請' : (isReturned ? '修改出差申請（退回）' : '編輯出差申請')) : '新增出差申請' }}</h4>
@@ -10,7 +10,7 @@
     <div class="row g-4">
       <div class="col-12 col-lg-10 col-xl-8">
         <div class="card border-0 shadow-sm">
-          <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 fw-600">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
             <svg class="sa-icon text-primary" style="stroke: currentColor">
               <use href="/assets/icons/sprite.svg#map-pin"></use>
             </svg>
@@ -18,7 +18,7 @@
           </div>
           <div class="card-body">
 
-            <div class="row g-3 mb-3">
+            <div class="row g-3 mb-4">
               <div class="col-12 col-md-6">
                 <label class="form-label fw-500">出差地點 <span class="text-danger">*</span></label>
                 <input type="text" class="form-control" formControlName="destination" placeholder="例如：台南、台中">
@@ -35,7 +35,7 @@
               </div>
             </div>
 
-            <div class="row g-3 mb-3">
+            <div class="row g-3 mb-4">
               <div class="col-12 col-md-4">
                 <label class="form-label fw-500">出發日期 <span class="text-danger">*</span></label>
                 <input type="date" class="form-control" formControlName="startDate">
@@ -61,7 +61,7 @@
               </div>
             </div>
 
-            <div class="mb-3">
+            <div class="mb-4">
               <label class="form-label fw-500">出差目的 <span class="text-danger">*</span></label>
               <textarea class="form-control" formControlName="purpose" rows="3"
                         placeholder="請填寫出差目的..."></textarea>
@@ -74,15 +74,15 @@
         </div>
 
         @if (!isReadOnly) {
-          <div class="mt-4 d-flex gap-2">
-            <button type="submit" class="btn btn-primary waves-effect waves-light" [disabled]="form.invalid">
+          <div class="mt-6 flex gap-2">
+            <button type="submit" class="btn btn-primary" [disabled]="form.invalid">
               {{ isReturned ? '修改並重送' : (isEdit ? '更新' : '送出申請') }}
             </button>
-            <a routerLink="/admin/travel-requests" class="btn btn-outline-secondary waves-effect">取消</a>
+            <a routerLink="/admin/travel-requests" class="btn btn-outline-secondary">取消</a>
           </div>
         } @else {
-          <div class="mt-4">
-            <a routerLink="/admin/travel-requests" class="btn btn-outline-secondary waves-effect">返回列表</a>
+          <div class="mt-6">
+            <a routerLink="/admin/travel-requests" class="btn btn-outline-secondary">返回列表</a>
           </div>
         }
 

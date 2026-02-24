@@ -1,5 +1,5 @@
 <div class="container-fluid py-3">
-  <div class="d-flex align-items-center gap-2 mb-4">
+  <div class="flex items-center gap-2 mb-6">
     <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
       <use href="/assets/icons/sprite.svg#check-square"></use>
     </svg>
@@ -14,14 +14,14 @@
             <tr>
               <th>類型</th>
               <th>申請人</th>
-              <th class="d-none d-md-table-cell">摘要</th>
+              <th class="hidden md:table-cell">摘要</th>
               <th>狀態</th>
-              <th class="d-none d-lg-table-cell">申請時間</th>
-              <th class="text-end">操作</th>
+              <th class="hidden lg:table-cell">申請時間</th>
+              <th class="text-right">操作</th>
             </tr>
           </thead>
           <tbody>
-            @for (t of tasks$ | async; track t.applicationType + t.id) {
+            @for (t of pagedTasks(); track t.applicationType + t.id) {
               <tr>
                 <td>
                   <span [class]="'badge ' + appTypeClass[t.applicationType]">
@@ -29,14 +29,14 @@
                   </span>
                 </td>
                 <td class="fw-500">{{ t.submittedBy }}</td>
-                <td class="text-muted small d-none d-md-table-cell">{{ getSummary(t) }}</td>
+                <td class="text-muted small hidden md:table-cell">{{ getSummary(t) }}</td>
                 <td>
                   <span [class]="'badge ' + statusClass[t.status]">{{ statusLabel[t.status] }}</span>
                 </td>
-                <td class="text-muted small d-none d-lg-table-cell">{{ t.submittedAt | date:'yyyy-MM-dd' }}</td>
-                <td class="text-end" style="white-space: nowrap">
+                <td class="text-muted small hidden lg:table-cell">{{ t.submittedAt | date:'yyyy-MM-dd' }}</td>
+                <td class="text-right" style="white-space: nowrap">
                   <a [routerLink]="[t.applicationType, t.id, 'review']"
-                     [class]="'btn btn-sm d-inline-flex align-items-center waves-effect ' + (t.status === 'pending' ? 'btn-ghost-primary' : 'btn-ghost-secondary')">
+                     [class]="'btn btn-sm inline-flex items-center ' + (t.status === 'pending' ? 'btn-ghost-primary' : 'btn-ghost-secondary')">
                     <svg class="sa-icon" style="stroke: currentColor">
                       <use [attr.href]="t.status === 'pending' ? '/assets/icons/sprite.svg#edit' : '/assets/icons/sprite.svg#eye'"></use>
                     </svg>
@@ -51,6 +51,33 @@
           </tbody>
         </table>
       </div>
+      @if (totalPages() > 1) {
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t">
+          <span class="text-muted small text-center sm:text-left">共 {{ totalCount() }} 筆，第 {{ page() }} / {{ totalPages() }} 頁</span>
+          <div class="flex sm:hidden items-center gap-1">
+            <button class="page-link rounded" [class.disabled]="page() === 1" (click)="prev()">‹</button>
+            <span class="px-2 text-sm">{{ page() }} / {{ totalPages() }}</span>
+            <button class="page-link rounded" [class.disabled]="page() === totalPages()" (click)="next()">›</button>
+          </div>
+          <ul class="hidden sm:flex pagination mb-0">
+            <li class="page-item" [class.disabled]="page() === 1">
+              <button class="page-link" (click)="prev()">‹</button>
+            </li>
+            @for (p of pageNumbers(); track p) {
+              @if (p === -1) {
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+              } @else {
+                <li class="page-item" [class.active]="p === page()">
+                  <button class="page-link" (click)="goTo(p)">{{ p }}</button>
+                </li>
+              }
+            }
+            <li class="page-item" [class.disabled]="page() === totalPages()">
+              <button class="page-link" (click)="next()">›</button>
+            </li>
+          </ul>
+        </div>
+      }
     </div>
   </div>
 </div>

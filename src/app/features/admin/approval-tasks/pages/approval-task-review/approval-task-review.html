@@ -2,8 +2,8 @@
   @if (task$ | async; as task) {
 
     <!-- Page Header -->
-    <div class="d-flex align-items-center gap-2 mb-4">
-      <a routerLink="/admin/approval-tasks" class="btn btn-sm btn-outline-secondary waves-effect">
+    <div class="flex items-center gap-2 mb-6">
+      <a routerLink="/admin/approval-tasks" class="btn btn-sm btn-outline-secondary">
         <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
       </a>
       <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
@@ -23,7 +23,7 @@
           @case ('payment_request') {
             @if (task.paymentDetail; as d) {
               <div class="card border-0 shadow-sm">
-                <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 fw-600">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
                   <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#dollar-sign"></use></svg>
                   請款申請資訊
                 </div>
@@ -54,8 +54,8 @@
               </div>
 
               <!-- 發票明細 -->
-              <div class="card border-0 shadow-sm mt-4">
-                <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 fw-600">
+              <div class="card border-0 shadow-sm mt-6">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
                   <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
                   發票明細
                 </div>
@@ -66,7 +66,7 @@
                         <tr>
                           <th>檔案名稱</th>
                           <th>發票號碼</th>
-                          <th class="text-end">金額</th>
+                          <th class="text-right">金額</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -75,17 +75,17 @@
                             <td class="small" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
                               @if (inv.previewUrl) {
                                 <button type="button"
-                                        class="btn btn-link p-0 text-muted small d-inline-flex align-items-center gap-1"
+                                        class="btn btn-link p-0 text-muted small inline-flex items-center gap-1"
                                         style="text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis"
                                         (click)="openPreview(inv.fileName, inv.previewUrl)">
-                                  <svg class="sa-icon flex-shrink-0" style="width:14px;height:14px;stroke:currentColor">
+                                  <svg class="sa-icon shrink-0" style="width:14px;height:14px;stroke:currentColor">
                                     <use href="/assets/icons/sprite.svg#file-text"></use>
                                   </svg>
                                   {{ inv.fileName }}
                                 </button>
                               } @else {
-                                <span class="text-muted d-inline-flex align-items-center gap-1">
-                                  <svg class="sa-icon flex-shrink-0" style="width:14px;height:14px;stroke:currentColor">
+                                <span class="text-muted inline-flex items-center gap-1">
+                                  <svg class="sa-icon shrink-0" style="width:14px;height:14px;stroke:currentColor">
                                     <use href="/assets/icons/sprite.svg#file-text"></use>
                                   </svg>
                                   {{ inv.fileName }}
@@ -93,14 +93,14 @@
                               }
                             </td>
                             <td class="font-monospace small">{{ inv.invoiceNo }}</td>
-                            <td class="text-end fw-500">{{ inv.amount | number:'1.0-0' }}</td>
+                            <td class="text-right fw-500">{{ inv.amount | number:'1.0-0' }}</td>
                           </tr>
                         }
                       </tbody>
                       <tfoot>
                         <tr class="table-light">
-                          <td colspan="2" class="text-end fw-500 small">合計</td>
-                          <td class="text-end fw-600">{{ d.totalAmount | number:'1.0-0' }}</td>
+                          <td colspan="2" class="text-right fw-500 small">合計</td>
+                          <td class="text-right fw-600">{{ d.totalAmount | number:'1.0-0' }}</td>
                         </tr>
                       </tfoot>
                     </table>
@@ -113,7 +113,7 @@
           @case ('leave') {
             @if (task.leaveDetail; as d) {
               <div class="card border-0 shadow-sm">
-                <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 fw-600">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
                   <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#calendar"></use></svg>
                   請假申請資訊
                 </div>
@@ -141,7 +141,7 @@
                     </div>
                     <div class="col-12">
                       <div class="text-muted small mb-1">請假原因</div>
-                      <div class="border rounded p-3 bg-body-secondary small">{{ d.reason }}</div>
+                      <div class="border rounded p-4 bg-[--bg-base] small">{{ d.reason }}</div>
                     </div>
                   </div>
                 </div>
@@ -152,7 +152,7 @@
           @case ('travel') {
             @if (task.travelDetail; as d) {
               <div class="card border-0 shadow-sm">
-                <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 fw-600">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
                   <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
                   出差申請資訊
                 </div>
@@ -186,7 +186,7 @@
                     }
                     <div class="col-12">
                       <div class="text-muted small mb-1">出差目的</div>
-                      <div class="border rounded p-3 bg-body-secondary small">{{ d.purpose }}</div>
+                      <div class="border rounded p-4 bg-[--bg-base] small">{{ d.purpose }}</div>
                     </div>
                   </div>
                 </div>
@@ -198,37 +198,37 @@
 
         <!-- ── 簽核流程時間軸 ────────────────────────────────────── -->
         @if (task.flow) {
-          <div class="card border-0 shadow-sm mt-4">
-            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 fw-600">
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
               <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#git-merge"></use></svg>
               簽核流程
             </div>
             <div class="card-body">
-              <ol class="list-unstyled mb-0">
+              <ol class="list-none p-0 mb-0">
                 @for (step of task.flow.steps; track step.stepOrder; let last = $last) {
-                  <li class="d-flex align-items-start gap-3" [class.mb-4]="!last">
+                  <li class="flex items-start gap-3" [class.mb-6]="!last">
                     <!-- 步驟圓圈 -->
                     @if (getRecord(task.approvalRecords, step.stepOrder); as rec) {
                       @if (rec.action === 'approved') {
-                        <span class="badge bg-success rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                        <span class="badge bg-success rounded-circle flex items-center justify-center shrink-0"
                               style="width:28px;height:28px;min-width:28px;font-size:.85rem">✓</span>
                       } @else {
-                        <span class="badge bg-danger rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                        <span class="badge bg-danger rounded-circle flex items-center justify-center shrink-0"
                               style="width:28px;height:28px;min-width:28px;font-size:.85rem">✗</span>
                       }
                     } @else if (task.currentStepOrder === step.stepOrder && task.status === 'pending') {
-                      <span class="badge bg-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                      <span class="badge bg-primary rounded-circle flex items-center justify-center shrink-0"
                             style="width:28px;height:28px;min-width:28px;font-size:.75rem">{{ step.stepOrder }}</span>
                     } @else {
-                      <span class="badge bg-secondary-subtle text-secondary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                      <span class="badge bg-[--bg-base] text-[--text-muted] rounded-circle flex items-center justify-center shrink-0"
                             style="width:28px;height:28px;min-width:28px;font-size:.75rem">{{ step.stepOrder }}</span>
                     }
                     <!-- 步驟內容 -->
-                    <div class="flex-grow-1">
+                    <div class="grow">
                       <div class="fw-500">
                         {{ step.jobTitleName || '—' }}
                         @if (step.departmentName) {
-                          <span class="text-muted fw-400">（{{ step.departmentName }}）</span>
+                          <span class="text-muted font-normal">（{{ step.departmentName }}）</span>
                         }
                       </div>
                       @if (step.note) {
@@ -240,13 +240,13 @@
                           @if (rec.action === 'approved') {
                             <span class="text-success">已核准</span>
                           } @else if (rec.action === 'returned') {
-                            <span class="text-warning-emphasis">退回修改</span>
+                            <span class="text-[--yellow]">退回修改</span>
                           } @else {
                             <span class="text-danger">已拒絕</span>
                           }
                         </div>
                         @if (rec.reviewNote) {
-                          <div class="text-muted small fst-italic mt-1">「{{ rec.reviewNote }}」</div>
+                          <div class="text-muted small italic mt-1">「{{ rec.reviewNote }}」</div>
                         }
                       } @else if (task.currentStepOrder === step.stepOrder && task.status === 'pending') {
                         <div class="text-primary small mt-1">審核中…</div>
@@ -261,8 +261,8 @@
 
         <!-- ── 審核區塊 ──────────────────────────────────────────── -->
         @if (task.status === 'pending') {
-          <div class="card border-0 shadow-sm mt-4">
-            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 fw-600">
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
               <svg class="sa-icon text-primary" style="stroke: currentColor">
                 <use href="/assets/icons/sprite.svg#check-square"></use>
               </svg>
@@ -270,16 +270,16 @@
             </div>
             <div class="card-body">
               <form [formGroup]="form" (ngSubmit)="submit()">
-                <div class="mb-3">
+                <div class="mb-4">
                   <label class="form-label fw-500">審核結果 <span class="text-danger">*</span></label>
-                  <div class="d-flex flex-wrap gap-4 mt-1">
+                  <div class="flex flex-wrap gap-4 mt-1">
                     <div class="form-check">
                       <input class="form-check-input" type="radio" formControlName="action" value="approved" id="actionApprove">
                       <label class="form-check-label fw-500 text-success" for="actionApprove">核准</label>
                     </div>
                     <div class="form-check">
                       <input class="form-check-input" type="radio" formControlName="action" value="returned" id="actionReturn">
-                      <label class="form-check-label fw-500 text-warning-emphasis" for="actionReturn">退回修改</label>
+                      <label class="form-check-label fw-500 text-[--yellow]" for="actionReturn">退回修改</label>
                     </div>
                     <div class="form-check">
                       <input class="form-check-input" type="radio" formControlName="action" value="rejected" id="actionReject">
@@ -287,7 +287,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="mb-3">
+                <div class="mb-4">
                   <label class="form-label fw-500">
                     審核意見
                     @if (form.get('action')?.value === 'rejected' || form.get('action')?.value === 'returned') {
@@ -300,17 +300,17 @@
                     <div class="text-danger small mt-1">退回修改或拒絕時請填寫原因。</div>
                   }
                 </div>
-                <div class="d-flex gap-2">
-                  <button type="submit" class="btn btn-primary waves-effect waves-light">提交審核</button>
-                  <a routerLink="/admin/approval-tasks" class="btn btn-outline-secondary waves-effect">取消</a>
+                <div class="flex gap-2">
+                  <button type="submit" class="btn btn-primary">提交審核</button>
+                  <a routerLink="/admin/approval-tasks" class="btn btn-outline-secondary">取消</a>
                 </div>
               </form>
             </div>
           </div>
         } @else if (task.status === 'returned') {
           <!-- 退回修改 -->
-          <div class="card border-0 shadow-sm mt-4">
-            <div class="card-header bg-warning-subtle border-bottom d-flex align-items-center gap-2 fw-600 text-warning-emphasis">
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-[rgba(184,137,42,0.08)] border-bottom flex items-center gap-2 fw-600 text-[--yellow]">
               <svg class="sa-icon" style="stroke: currentColor">
                 <use href="/assets/icons/sprite.svg#rotate-ccw"></use>
               </svg>
@@ -320,17 +320,17 @@
               <p class="text-muted small mb-2">此申請已退回，待申請人修改後重新送出。</p>
               @if (task.reviewNote) {
                 <div class="text-muted small mb-1 fw-500">退回原因：</div>
-                <div class="border rounded p-3 bg-body-secondary small mb-3">{{ task.reviewNote }}</div>
+                <div class="border rounded p-4 bg-[--bg-base] small mb-4">{{ task.reviewNote }}</div>
               }
               <div class="mt-2">
-                <a routerLink="/admin/approval-tasks" class="btn btn-outline-secondary waves-effect">返回列表</a>
+                <a routerLink="/admin/approval-tasks" class="btn btn-outline-secondary">返回列表</a>
               </div>
             </div>
           </div>
         } @else {
           <!-- 已核准 / 已拒絕 -->
-          <div class="card border-0 shadow-sm mt-4">
-            <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 fw-600">
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
               <svg class="sa-icon text-primary" style="stroke: currentColor">
                 <use href="/assets/icons/sprite.svg#check-square"></use>
               </svg>
@@ -340,7 +340,7 @@
               <div class="row g-3">
                 <div class="col-6 col-md-4">
                   <div class="text-muted small mb-1">審核結果</div>
-                  <span [class]="'badge px-3 py-2 rounded-pill ' + statusClass[task.status]">
+                  <span [class]="'badge px-3 py-2 rounded-full ' + statusClass[task.status]">
                     {{ statusLabel[task.status] }}
                   </span>
                 </div>
@@ -351,12 +351,12 @@
                 @if (task.reviewNote) {
                   <div class="col-12">
                     <div class="text-muted small mb-1">審核意見</div>
-                    <div class="border rounded p-3 bg-body-secondary small">{{ task.reviewNote }}</div>
+                    <div class="border rounded p-4 bg-[--bg-base] small">{{ task.reviewNote }}</div>
                   </div>
                 }
               </div>
-              <div class="mt-3">
-                <a routerLink="/admin/approval-tasks" class="btn btn-outline-secondary waves-effect">返回列表</a>
+              <div class="mt-4">
+                <a routerLink="/admin/approval-tasks" class="btn btn-outline-secondary">返回列表</a>
               </div>
             </div>
           </div>
@@ -372,22 +372,22 @@
 
 <!-- File Preview Modal -->
 @if (previewFile) {
-  <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.6)" (click)="closePreview()">
+  <div class="modal" tabindex="-1" style="background:rgba(0,0,0,.6)" (click)="closePreview()">
     <div class="modal-dialog modal-lg modal-dialog-centered" (click)="$event.stopPropagation()">
       <div class="modal-content">
         <div class="modal-header py-2">
           <h6 class="modal-title mb-0 text-truncate">{{ previewFile.name }}</h6>
           <button type="button" class="btn-close" (click)="closePreview()"></button>
         </div>
-        <div class="modal-body p-0 text-center bg-body-secondary">
+        <div class="modal-body p-0 text-center bg-[--bg-base]">
           @if (isImageFile(previewFile.name)) {
-            <img [src]="previewFile.url" class="img-fluid" style="max-height:75vh;object-fit:contain">
+            <img [src]="previewFile.url" class="max-w-full" style="max-height:75vh;object-fit:contain">
           } @else if (isPdfFile(previewFile.name)) {
             <iframe [src]="previewFile.safeUrl" style="width:100%;height:75vh;border:0"></iframe>
           } @else {
             <div class="p-5">
               <a [href]="previewFile.url" [download]="previewFile.name" class="btn btn-primary">
-                <svg class="sa-icon me-1" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#download"></use></svg>
+                <svg class="sa-icon mr-1" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#download"></use></svg>
                 下載檔案
               </a>
             </div>

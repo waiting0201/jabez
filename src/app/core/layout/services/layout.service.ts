@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { LayoutSkinType, LayoutState, LayoutThemeType } from '../models/layout.model';
+import { LayoutState, LayoutThemeType } from '../models/layout.model';
 import { NgbOffcanvas } from '@ng-bootstrap/ng-bootstrap';
 import { Customizer } from '@layouts/components/customizer/customizer';
 
@@ -16,7 +16,6 @@ const INIT_STATE: LayoutState = {
   darkNavigation: true,
   colorblindMode: false,
   highContrastMode: false,
-  selectedTheme: 'earth',
 };
 
 @Injectable({ providedIn: 'root' })
@@ -39,7 +38,6 @@ export class LayoutService {
     darkNavigation: 'set-nav-dark',
     colorblindMode: 'set-colorblind-mode',
     highContrastMode: 'set-high-contrast-mode',
-    selectedTheme: '',
   };
 
   /** Customizer open state */
@@ -70,10 +68,6 @@ export class LayoutService {
   }
 
 
-  get skin() {
-    return this.state().selectedTheme;
-  }
-
   get navMinified() {
     return this.state().navMinified;
   }
@@ -96,22 +90,10 @@ export class LayoutService {
     this.updateState({ theme }, persist);
   }
 
-  changeThemeStyle(themeId: LayoutSkinType, persist = true) {
-    const themeStyleEl = document.getElementById('app-theme') as HTMLLinkElement | null;
-    if (themeId === 'default') {
-      if (themeStyleEl) themeStyleEl.href = '';
-    } else {
-      if (themeStyleEl) themeStyleEl.href = `/assets/css/${themeId}.css`;
-    }
-    this.updateState({ selectedTheme: themeId }, persist);
-  }
-
   /** -------- Reset -------- */
   reset() {
     const classesToRemove = Object.values(this.settingClassMap).filter(Boolean);
     classesToRemove.forEach(cls => this.html.classList.remove(cls));
-    const themeStyleEl = document.getElementById('app-theme') as HTMLLinkElement | null;
-    if (themeStyleEl) themeStyleEl.href = '';
     this.state.set(INIT_STATE);
     this.persist();
     localStorage.removeItem('panelStates');
@@ -122,7 +104,7 @@ export class LayoutService {
   showBackdrop() {
     const backdrop = document.createElement('div');
     backdrop.id = 'custom-backdrop';
-    backdrop.className = 'offcanvas-backdrop sidenav-backdrop fade show';
+    backdrop.className = 'sidenav-backdrop fade show';
     document.body.appendChild(backdrop);
     document.body.style.overflow = 'hidden';
     if (window.innerWidth > 767) document.body.style.paddingRight = '15px';
@@ -150,12 +132,6 @@ export class LayoutService {
   private applyAttributesFromState() {
     const s = this.state();
     this.toggleAttribute('data-bs-theme', s.theme);
-
-    const themeStyleEl = document.getElementById('app-theme') as HTMLLinkElement | null;
-    if (themeStyleEl) {
-      themeStyleEl.href =
-        s.selectedTheme === 'default' ? '' : `/assets/css/${s.selectedTheme}.css`;
-    }
 
     (Object.entries(s) as [keyof LayoutState, any][]).forEach(([key, val]) => {
       if (typeof val === 'boolean') {

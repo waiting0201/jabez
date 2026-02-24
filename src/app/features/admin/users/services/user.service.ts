@@ -3,6 +3,7 @@ import {HttpClient} from '@angular/common/http';
 import {BehaviorSubject, Observable, of} from 'rxjs';
 import {tap} from 'rxjs/operators';
 import {User} from '../models/user.model';
+import {PagedResult} from '../../../../shared/models/paged-result.model';
 
 const MOCK_USERS: User[] = [
   {
@@ -58,6 +59,19 @@ export class UserService {
 
     // ─── Mock（前端開發用）──────────────────────────────────
     return this.items$.asObservable();
+  }
+
+  getPaged(page: number, pageSize: number): Observable<PagedResult<User>> {
+    // ─── 真實 API（後端就緒時啟用）─────────────────────────
+    // return this.http.get<{success: boolean; data: PagedResult<User>}>(
+    //   '/api/users', {params: {page, pageSize}}
+    // ).pipe(map(r => r.data!));
+
+    // ─── Mock（前端開發用）──────────────────────────────────
+    const all = this.items$.getValue();
+    const start = (page - 1) * pageSize;
+    const totalPages = Math.max(1, Math.ceil(all.length / pageSize));
+    return of({items: all.slice(start, start + pageSize), totalCount: all.length, page, pageSize, totalPages});
   }
 
   getById(id: string): Observable<User | undefined> {

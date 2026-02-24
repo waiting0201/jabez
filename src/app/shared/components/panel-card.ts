@@ -20,7 +20,7 @@ import {CommonModule} from '@angular/common';
             <div class="panel-toolbar">
               <button
                 type="button"
-                class="btn btn-xs btn-outline-default waves-effect waves-themed"
+                class="btn btn-xs btn-outline-default"
                 (click)="handleRefresh()"
               >
                 Refresh
@@ -39,7 +39,7 @@ import {CommonModule} from '@angular/common';
               >
                 <svg class="sa-icon">
                   @if (isCollapsed) {
-                    <use class="panel-expand-icon d-block" href="/assets/icons/sprite.svg#plus-circle"></use>
+                    <use class="panel-expand-icon block" href="/assets/icons/sprite.svg#plus-circle"></use>
                   } @else {
                     <use class="panel-collapsed-icon" href="/assets/icons/sprite.svg#minus-circle"></use>
                   }
@@ -82,7 +82,7 @@ import {CommonModule} from '@angular/common';
         <ng-template #deleteModal let-modal>
           <div class="modal-header border-bottom-0">
             <h4 class="modal-title text-white">Delete Panel?</h4>
-            <button type="button" class="btn btn-system btn-system-light ms-auto" (click)="modal.dismiss()">
+            <button type="button" class="btn btn-system btn-system-light ml-auto" (click)="modal.dismiss()">
               <svg class="sa-icon sa-icon-2x">
                 <use href="/assets/icons/sprite.svg#x"></use>
               </svg>

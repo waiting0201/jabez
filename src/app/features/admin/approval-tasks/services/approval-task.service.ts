@@ -3,6 +3,7 @@ import {HttpClient} from '@angular/common/http';
 import {BehaviorSubject, Observable, of} from 'rxjs';
 import {map} from 'rxjs/operators';
 import {ApprovalTask, ApprovalRecord, TaskStatus} from '../models/approval-task.model';
+import {PagedResult} from '../../../../shared/models/paged-result.model';
 
 const MOCK_TASKS: ApprovalTask[] = [
   // ── Payment requests ──────────────────────────────────────────────────────
@@ -142,6 +143,19 @@ export class ApprovalTaskService {
     //   tap(items => this.items$.next(items)),
     // );
     return this.items$.asObservable();
+  }
+
+  getPaged(page: number, pageSize: number): Observable<PagedResult<ApprovalTask>> {
+    // ─── 真實 API（後端就緒時啟用）─────────────────────────
+    // return this.http.get<{success: boolean; data: PagedResult<ApprovalTask>}>(
+    //   '/api/approval-tasks', {params: {page, pageSize}}
+    // ).pipe(map(r => r.data!));
+
+    // ─── Mock（前端開發用）──────────────────────────────────
+    const all = this.items$.getValue();
+    const start = (page - 1) * pageSize;
+    const totalPages = Math.max(1, Math.ceil(all.length / pageSize));
+    return of({items: all.slice(start, start + pageSize), totalCount: all.length, page, pageSize, totalPages});
   }
 
   getById(id: number, applicationType?: string): Observable<ApprovalTask | undefined> {

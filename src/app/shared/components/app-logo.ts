@@ -9,10 +9,7 @@ import { RouterLink } from '@angular/router';
   host: { style: 'display: block;' },
   template: `
     <a routerLink="/dashboards/control-center" class="app-logo flex-shrink-0">
-
-      <svg class="custom-logo">
-        <use href="/assets/img/app-logo.svg#custom-logo"></use>
-      </svg>
+      <img src="/assets/img/jabez-logo.png" alt="Jabez" class="app-logo-img">
     </a>
   `,
   styles: ``
