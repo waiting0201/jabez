@@ -8,7 +8,7 @@ import { RouterLink } from '@angular/router';
   ],
   host: { style: 'display: block;' },
   template: `
-    <a routerLink="/dashboards/control-center" class="app-logo flex-shrink-0">
+    <a routerLink="/dashboard" class="app-logo flex-shrink-0">
       <img src="/assets/img/jabez-logo.png" alt="Jabez" class="app-logo-img">
     </a>
   `,

@@ -1,59 +1,208 @@
 import { Component } from '@angular/core';
-import {RouterLink} from '@angular/router';
-import {BackgroundAnimationComponent} from '@app/components/background-animation';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-error-404-alt',
-  imports: [
-    RouterLink,
-    BackgroundAnimationComponent
-  ],
+  imports: [RouterLink],
   template: `
-    <section class="hero-section position-relative overflow-hidden">
-      <div class="container" style="position: relative; z-index: 1;">
-        <div class="row justify-center">
-          <div class="col-11 col-md-8 col-lg-6 col-xl-4">
+    <div class="error-root">
 
-            <div class="login-card p-4 p-md-6 bg-dark bg-opacity-50 translucent-dark rounded-4 text-center">
-              <div class="mb-5 mx-auto" style="max-width: 100px;">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                  <g fill="none" fill-rule="evenodd" clip-rule="evenodd">
-                    <path fill="#fff"
-                          d="M12.276 15.59c-.277-.662-2.117-.054-2.874 1.706a5.39 5.39 0 0 0 .964 5.877a2.99 2.99 0 0 0 4.592-1.473a7.12 7.12 0 0 0-.94-5.43c-.414-.458-1.353-.988-1.742-.68m-.136.496a2.17 2.17 0 0 0-1.713 1.603a4.5 4.5 0 0 0 .727 4.404a1.69 1.69 0 0 0 2.567-.83c.33-.883.375-4.492-1.263-4.906a.43.43 0 0 1-.318-.271"/>
-                    <path fill="#ff0c0c"
-                          d="M13.019.337c-.2-.458-1.431-.39-2.078-.146a9.2 9.2 0 0 0-3.608 4.108c-3.192 5.907-3.78 9.218 2.746 9.734c2.484.177 4.98-.078 7.377-.754a2.44 2.44 0 0 0 1.705-2.763C18.929 8.668 14.624-.528 13.019.336m-.2.536a.4.4 0 0 1-.276.028C9.386.25 6.273 9.22 6.32 10.718c.082 2.829 8.758 2.105 10.629 1.342c.69-.276 1.014-.596.93-1.41a25 25 0 0 0-1.657-4.49C13.502.143 13.062 1.527 12.82.875z"/>
-                    <path fill="#ff0c0c"
-                          d="M12.46 9.179c-.25-.702-2.486-.172-1.914 1.533a1.381 1.381 0 0 0 2.567.141c.406-.975-.238-1.666-.652-1.674zm-.121-1.13c1.177-5.432-2-8.29-.83-.03a.415.415 0 1 0 .83.03"/>
-                    <path fill="#fff"
-                          d="M19.917 21.432c.243 2.04.23 2.62.754 2.565c.525-.056.33-.415.276-2.708c.83-.133 1.758-.108 1.692-.694c-.067-.585-.813-.356-1.71-.298c-.042-2.263-.034-2.21-.147-4.24c-.166-2.507-5.338 3.336-4.68 4.745c.45.926 2.782.744 3.815.63m-.122-1.077c-.11-1.105-.149-1.735-.237-2.926a10 10 0 0 0-1.79 2.27c-.46.896-.49.515.276.595q.873.09 1.751.053zM5.35 21.07c.222 1.882.206 2.763.772 2.71s.326-.477.277-2.781c.878-.07 1.76-.022 1.693-.62c-.058-.513-.552-.353-1.713-.367c-.038-2.183-.036-2.166-.143-4.17a.666.666 0 0 0-1.028-.513A19.2 19.2 0 0 0 1.38 20.34a.67.67 0 0 0 .627.845s1.724-.027 3.343-.116m-.117-1.077c-.097-1.01-.12-1.382-.213-2.647a30 30 0 0 0-1.934 2.583c.602.022 1.38.047 2.147.064"/>
-                  </g>
-                </svg>
-              </div>
-              <h4 class="text-white mb-2">Page Not Found</h4>
-              <p class="text-white opacity-50 mb-6">
-                Sorry, the page you are looking for doesn’t exist or has been moved.
-              </p>
+      <!-- Left panel — forest green -->
+      <div class="error-left">
+        <svg class="deco deco-tl" viewBox="0 0 200 200" fill="none">
+          <path d="M10 190 Q30 140 80 120 Q120 100 160 60 Q180 40 190 10"
+                stroke="rgba(255,255,255,0.12)" stroke-width="1.5" fill="none"/>
+          <path d="M10 160 Q50 130 90 100 Q130 70 150 20"
+                stroke="rgba(255,255,255,0.08)" stroke-width="1" fill="none"/>
+          <circle cx="80" cy="120" r="3" fill="rgba(255,255,255,0.15)"/>
+          <path d="M80 120 Q95 105 100 85" stroke="rgba(255,255,255,0.1)" stroke-width="1" fill="none"/>
+        </svg>
+        <svg class="deco deco-br" viewBox="0 0 200 200" fill="none">
+          <path d="M190 10 Q170 60 120 80 Q80 100 40 140 Q20 160 10 190"
+                stroke="rgba(255,255,255,0.12)" stroke-width="1.5" fill="none"/>
+          <circle cx="120" cy="80" r="3" fill="rgba(255,255,255,0.15)"/>
+          <path d="M120 80 Q135 72 150 78" stroke="rgba(255,255,255,0.1)" stroke-width="1" fill="none"/>
+        </svg>
 
-              <div class="mb-6">
-                <a routerLink="/" class="btn btn-primary me-2">Back to Home</a>
-                <a routerLink="[]" class="btn btn-success">Contact Support</a>
-              </div>
-
-              <div class="opacity-50 text-white small">
-                If you believe this is a mistake, please let us know.
-              </div>
-            </div>
-
-          </div>
+        <div class="left-content">
+          <div class="left-code">404</div>
+          <div class="left-divider"></div>
+          <p class="left-text">頁面漫遊中...</p>
         </div>
       </div>
 
-      <app-background-animation/>
+      <!-- Right panel — linen -->
+      <div class="error-right">
+        <div class="right-wrap" style="animation: fadeUp 0.5s ease both;">
 
-    </section>
+          <div class="error-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+            </svg>
+          </div>
+
+          <h1 class="right-title">找不到此頁面</h1>
+          <p class="right-desc">
+            抱歉，您所尋找的頁面不存在或已被移動。<br>
+            請確認網址是否正確。
+          </p>
+
+          <div class="right-actions">
+            <a routerLink="/" class="btn-forest">回到首頁</a>
+            <a routerLink="/auth/login" class="btn-outline">重新登入</a>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
   `,
-  styles: ``
-})
-export class Error404Alt {
+  styles: `
+    .error-root { display: flex; min-height: 100vh; min-height: 100dvh; }
 
-}
+    /* ── Left panel ── */
+    .error-left {
+      display: none;
+      position: relative;
+      width: 45%;
+      background: var(--forest);
+      color: white;
+      overflow: hidden;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    @media (min-width: 768px) {
+      .error-left { display: flex; }
+      .error-right { width: 55%; }
+    }
+
+    .deco {
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      pointer-events: none;
+    }
+    .deco-tl { top: 0; left: 0; }
+    .deco-br { bottom: 0; right: 0; }
+
+    .left-content {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+    }
+    .left-code {
+      font-family: var(--font-display);
+      font-size: 8rem;
+      font-weight: 700;
+      line-height: 1;
+      color: white;
+      opacity: 0.9;
+    }
+    .left-divider {
+      width: 4rem;
+      height: 2px;
+      background: rgba(255,255,255,0.3);
+      margin: 1.5rem auto;
+    }
+    .left-text {
+      font-family: var(--font-body);
+      font-size: 1rem;
+      color: rgba(255,255,255,0.7);
+      margin: 0;
+    }
+
+    /* ── Right panel ── */
+    .error-right {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-surface);
+      padding: 2rem 1.5rem;
+    }
+    .right-wrap {
+      width: 100%;
+      max-width: 24rem;
+      text-align: center;
+    }
+
+    .error-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 5.5rem;
+      height: 5.5rem;
+      border-radius: 50%;
+      background: rgba(74, 107, 58, 0.08);
+      color: var(--forest-mid);
+      border: 1.5px solid rgba(74, 107, 58, 0.18);
+      margin-bottom: 1.5rem;
+    }
+
+    .right-title {
+      font-family: var(--font-ui);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0 0 0.5rem;
+    }
+    .right-desc {
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      margin: 0 0 2rem;
+    }
+
+    .right-actions {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn-forest {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1.5rem;
+      font-family: var(--font-ui);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: white;
+      background: var(--forest);
+      border-radius: var(--border-radius-uniform);
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .btn-forest:hover { background: var(--forest-mid); }
+
+    .btn-outline {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1.5rem;
+      font-family: var(--font-ui);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--border-radius-uniform);
+      text-decoration: none;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-outline:hover {
+      border-color: var(--accent);
+      color: var(--text-primary);
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  `
+})
+export class Error404Alt {}
