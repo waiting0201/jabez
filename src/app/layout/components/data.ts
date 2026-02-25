@@ -3,8 +3,8 @@ import { MenuItemType } from '@core/layout/models/layout.model';
 export const menuItems: MenuItemType[] = [
   { label: '主選單', isTitle: true },
   {
-    icon: '/assets/icons/sprite.svg#home',
-    label: '儀表板',
+    icon: '/assets/icons/sprite.svg#clock',
+    label: '打卡',
     url: '/dashboard',
   },
 
@@ -32,6 +32,12 @@ export const menuItems: MenuItemType[] = [
     label: '出差申請',
     url: '/admin/travel-requests',
     requiredPermission: 'travel-requests:read',
+  },
+  {
+    icon: '/assets/icons/sprite.svg#zap',
+    label: '加班申請',
+    url: '/admin/overtime-requests',
+    requiredPermission: 'overtime-requests:read',
   },
   {
     icon: '/assets/icons/sprite.svg#check-square',

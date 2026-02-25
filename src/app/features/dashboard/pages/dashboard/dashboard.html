@@ -1,28 +1,191 @@
 <div class="container-fluid py-3">
-  <div class="row">
-    <div class="col-12">
-      <div class="flex items-center gap-4 mb-6">
-        <svg class="sa-icon sa-icon-3x text-primary">
-          <use href="/assets/icons/sprite.svg#home"></use>
-        </svg>
-        <div>
-          <h4 class="mb-0">儀表板</h4>
-          <p class="text-muted mb-0">歡迎回來！您的工作區已準備就緒。</p>
-        </div>
-      </div>
+
+  <!-- Header -->
+  <div class="flex items-center gap-3 mb-6">
+    <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+      <use href="/assets/icons/sprite.svg#clock"></use>
+    </svg>
+    <div>
+      <h4 class="mb-0">打卡系統</h4>
+      <p class="text-muted mb-0 small">{{ userName() }}，歡迎回來</p>
     </div>
   </div>
-  <div class="row g-3">
-    <div class="col-12">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body py-5 text-center">
-          <svg class="sa-icon sa-icon-3x text-secondary mb-4">
-            <use href="/assets/icons/sprite.svg#trello"></use>
+
+  <div class="row g-4">
+    <div class="col-12 col-lg-8">
+
+      <!-- Real-time Clock Card -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body text-center py-5">
+          <p class="text-muted mb-2 fw-500">{{ dateDisplay() }}</p>
+          <p class="mb-0 font-monospace" style="font-size: 3.5rem; font-weight: 700; letter-spacing: 0.05em; color: var(--text-primary)">
+            {{ timeDisplay() }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Today Status Card -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+          <svg class="sa-icon text-primary" style="stroke: currentColor">
+            <use href="/assets/icons/sprite.svg#activity"></use>
           </svg>
-          <h5 class="text-muted">開始建立您的功能</h5>
-          <p class="text-muted small">在 <code>src/app/features/</code> 中加入業務邏輯</p>
+          今日打卡紀錄
+        </div>
+        <div class="card-body">
+          <div class="row g-3 text-center">
+            <div class="col-6 col-md-3">
+              <div class="rounded-lg py-3" style="background: var(--accent-dim)">
+                <svg class="sa-icon mb-1" style="stroke: var(--green)"><use href="/assets/icons/sprite.svg#log-in"></use></svg>
+                <p class="text-muted small mb-1">上班</p>
+                <p class="fw-600 font-monospace mb-0">{{ formatTime(todayRecord()?.clockInTime) }}</p>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="rounded-lg py-3" style="background: var(--accent-dim)">
+                <svg class="sa-icon mb-1" style="stroke: var(--yellow)"><use href="/assets/icons/sprite.svg#log-out"></use></svg>
+                <p class="text-muted small mb-1">下班</p>
+                <p class="fw-600 font-monospace mb-0">{{ formatTime(todayRecord()?.clockOutTime) }}</p>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="rounded-lg py-3" style="background: var(--accent-dim)">
+                <svg class="sa-icon mb-1" style="stroke: var(--purple)"><use href="/assets/icons/sprite.svg#zap"></use></svg>
+                <p class="text-muted small mb-1">加班開始</p>
+                <p class="fw-600 font-monospace mb-0">{{ formatTime(todayRecord()?.overtimeStartTime) }}</p>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="rounded-lg py-3" style="background: var(--accent-dim)">
+                <svg class="sa-icon mb-1" style="stroke: var(--red)"><use href="/assets/icons/sprite.svg#zap-off"></use></svg>
+                <p class="text-muted small mb-1">加班結束</p>
+                <p class="fw-600 font-monospace mb-0">{{ formatTime(todayRecord()?.overtimeEndTime) }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Clock Action Buttons -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+          <svg class="sa-icon text-primary" style="stroke: currentColor">
+            <use href="/assets/icons/sprite.svg#check-circle"></use>
+          </svg>
+          打卡操作
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <!-- Clock In -->
+            <div class="col-6 col-md-3">
+              <button class="btn btn-primary w-100 py-3 flex flex-col items-center gap-2"
+                      [disabled]="!canClockIn()"
+                      (click)="performAction('clock-in')">
+                <svg class="sa-icon sa-icon-2x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#log-in"></use></svg>
+                <span class="fw-600">上班打卡</span>
+              </button>
+            </div>
+            <!-- Clock Out -->
+            <div class="col-6 col-md-3">
+              <button class="btn btn-warning w-100 py-3 flex flex-col items-center gap-2"
+                      [disabled]="!canClockOut()"
+                      (click)="performAction('clock-out')">
+                <svg class="sa-icon sa-icon-2x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#log-out"></use></svg>
+                <span class="fw-600">下班打卡</span>
+              </button>
+            </div>
+            <!-- Overtime Start (click → show selector) -->
+            <div class="col-6 col-md-3">
+              <button class="btn btn-outline-primary w-100 py-3 flex flex-col items-center gap-2"
+                      [disabled]="!canOvertimeStart()"
+                      (click)="onOvertimeStartClick()">
+                <svg class="sa-icon sa-icon-2x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#zap"></use></svg>
+                <span class="fw-600">加班開始</span>
+              </button>
+            </div>
+            <!-- Overtime End -->
+            <div class="col-6 col-md-3">
+              <button class="btn btn-outline-secondary w-100 py-3 flex flex-col items-center gap-2"
+                      [disabled]="!canOvertimeEnd()"
+                      (click)="performAction('overtime-end')">
+                <svg class="sa-icon sa-icon-2x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#zap-off"></use></svg>
+                <span class="fw-600">加班結束</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Overtime Request Selector (shown after clicking 加班開始) -->
+          @if (showOvertimeSelector()) {
+            <div class="mt-4 pt-3 border-t">
+              <label class="form-label fw-600">選擇加班申請單</label>
+              <select class="form-select mb-3" (change)="onOvertimeSelect($event)">
+                @for (req of approvedRequests(); track req.id) {
+                  <option [value]="req.id" [selected]="req.id === selectedOvertimeId()">
+                    {{ req.overtimeDate | date:'MM/dd' }} — {{ req.projectCodes?.join(', ') || '無專案' }} ({{ req.estimatedHours }}h)
+                  </option>
+                }
+              </select>
+              <div class="flex gap-2">
+                <button class="btn btn-primary btn-sm" (click)="confirmOvertimeStart()">確認打卡</button>
+                <button class="btn btn-outline-secondary btn-sm" (click)="cancelOvertimeSelector()">取消</button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Right sidebar: GPS status -->
+    <div class="col-12 col-lg-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+          <svg class="sa-icon text-primary" style="stroke: currentColor">
+            <use href="/assets/icons/sprite.svg#map-pin"></use>
+          </svg>
+          定位資訊
+        </div>
+        <div class="card-body">
+          @switch (gpsStatus()) {
+            @case ('idle') {
+              <p class="text-muted small mb-0">打卡時自動取得 GPS 座標。</p>
+            }
+            @case ('locating') {
+              <div class="flex items-center gap-2 text-muted">
+                <div class="spinner-border spinner-border-sm"></div>
+                <span class="small">定位中…</span>
+              </div>
+            }
+            @case ('success') {
+              <div class="flex items-center gap-2 mb-2" style="color: var(--green)">
+                <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#check-circle"></use></svg>
+                <span class="small fw-500">定位成功</span>
+              </div>
+              @if (gpsCoords()) {
+                <p class="font-monospace small text-muted mb-0">
+                  {{ gpsCoords()!.lat | number:'1.6-6' }}, {{ gpsCoords()!.lng | number:'1.6-6' }}
+                </p>
+              }
+            }
+            @case ('failed') {
+              <div class="flex items-center gap-2" style="color: var(--yellow)">
+                <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                <span class="small fw-500">無法取得定位（打卡仍有效）</span>
+              </div>
+            }
+          }
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Toast notification -->
+  @if (toast(); as t) {
+    <div class="position-fixed bottom-0 end-0 p-4" style="z-index: 1080">
+      <div class="px-4 py-3 rounded-lg shadow-lg fw-500"
+           [class]="t.type === 'success' ? 'bg-success text-white' : t.type === 'warning' ? 'bg-warning text-dark' : 'bg-danger text-white'">
+        {{ t.message }}
+      </div>
+    </div>
+  }
+
 </div>

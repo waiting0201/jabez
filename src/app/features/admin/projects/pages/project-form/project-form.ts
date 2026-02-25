@@ -2,6 +2,7 @@ import {Component, inject, OnInit} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {ProjectService} from '../../services/project.service';
+import {ProjectStatus} from '../../models/project.model';
 import {DepartmentService} from '../../../departments/services/department.service';
 import {Department} from '../../../departments/models/department.model';
 
@@ -23,6 +24,7 @@ export class ProjectForm implements OnInit {
 
   form = this.fb.group({
     code:           ['', Validators.required],
+    status:         ['active' as ProjectStatus, Validators.required],
     departmentId:   [null as number | null, Validators.required],
     budgetAmount:   [null as number | null, [Validators.required, Validators.min(0)]],
     actualAmount:   [null as number | null, [Validators.required, Validators.min(0)]],
@@ -39,6 +41,7 @@ export class ProjectForm implements OnInit {
       this.projectService.getById(this.projectId).subscribe(p => {
         if (p) this.form.patchValue({
           code:           p.code,
+          status:         p.status,
           departmentId:   p.departmentId ?? null,
           budgetAmount:   p.budgetAmount ?? null,
           actualAmount:   p.actualAmount ?? null,
@@ -55,6 +58,7 @@ export class ProjectForm implements OnInit {
     const dept = this.departments.find(d => d.id === v.departmentId);
     const payload = {
       code:           v.code!,
+      status:         v.status! as ProjectStatus,
       departmentId:   v.departmentId ?? undefined,
       departmentName: dept?.name,
       budgetAmount:   v.budgetAmount ?? undefined,

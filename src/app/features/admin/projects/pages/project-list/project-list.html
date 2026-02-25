@@ -19,6 +19,7 @@
           <thead class="table-light">
             <tr>
               <th>編號</th>
+              <th>狀態</th>
               <th>部門</th>
               <th class="text-right">預定金額</th>
               <th class="text-right">實際金額</th>
@@ -31,6 +32,9 @@
             @for (project of pagedProjects(); track project.id) {
               <tr>
                 <td class="fw-500 font-monospace">{{ project.code }}</td>
+                <td>
+                  <span [class]="'badge ' + statusClass[project.status]">{{ statusLabel[project.status] }}</span>
+                </td>
                 <td>
                   @if (project.departmentName) {
                     <span class="badge bg-primary-subtle text-primary">{{ project.departmentName }}</span>
@@ -83,7 +87,7 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="7" class="text-center text-muted py-4">尚無專案資料。</td>
+                <td colspan="8" class="text-center text-muted py-4">尚無專案資料。</td>
               </tr>
             }
           </tbody>

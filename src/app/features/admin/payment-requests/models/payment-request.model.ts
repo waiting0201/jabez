@@ -37,6 +37,7 @@ export interface InvoiceItem {
 
 export interface PaymentRequest {
   id: number;
+  employeeId?: string;
   type: PaymentType;
   projectId: number;
   projectCode: string;

@@ -4,7 +4,7 @@ import {DecimalPipe} from '@angular/common';
 import {toSignal, toObservable} from '@angular/core/rxjs-interop';
 import {switchMap} from 'rxjs/operators';
 import {ProjectService} from '../../services/project.service';
-import {Project} from '../../models/project.model';
+import {Project, PROJECT_STATUS_LABELS, PROJECT_STATUS_CLASSES} from '../../models/project.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
 
 @Component({
@@ -29,6 +29,9 @@ export class ProjectList {
   totalCount    = computed(() => this.result().totalCount);
   totalPages    = computed(() => this.result().totalPages);
   pageNumbers   = computed(() => buildPageNumbers(this.page(), this.totalPages()));
+
+  readonly statusLabel = PROJECT_STATUS_LABELS;
+  readonly statusClass = PROJECT_STATUS_CLASSES;
 
   goTo(p: number) { this.page.set(p); }
   prev() { if (this.page() > 1) this.page.update(p => p - 1); }

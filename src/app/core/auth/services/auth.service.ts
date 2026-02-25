@@ -112,10 +112,20 @@ export class AuthService {
   /** 產生 mock JWT（header.payload.signature），僅供本地開發使用 */
   private _mockJwt(email: string): string {
     const isSuperAdmin = email === 'sa@system.local';
+
+    // Mock 使用者對應表（依 email 查找名稱與 ID）
+    const mockUsers: Record<string, {id: string; name: string}> = {
+      'sa@system.local': {id: '00000000-0000-0000-0000-000000000001', name: 'System Admin'},
+      'alice@example.com': {id: '1', name: 'Alice Chen'},
+      'bob@example.com':   {id: '2', name: 'Bob Wang'},
+      'carol@example.com': {id: '3', name: 'Carol Liu'},
+    };
+    const matched = mockUsers[email] ?? {id: '99', name: email.split('@')[0]};
+
     const header  = btoa(JSON.stringify({alg: 'HS256', typ: 'JWT'})).replace(/=+$/, '');
     const payload = btoa(JSON.stringify({
-      sub: isSuperAdmin ? '00000000-0000-0000-0000-000000000001' : '1',
-      name: isSuperAdmin ? 'System Admin' : 'Alice Chen',
+      sub: matched.id,
+      name: matched.name,
       email,
       roles: isSuperAdmin ? [] : ['admin'],
       is_superadmin: isSuperAdmin || undefined,
@@ -132,6 +142,8 @@ export class AuthService {
         'approval-tasks:read', 'approval-tasks:write',
         'leave-requests:read',  'leave-requests:write',  'leave-requests:delete',
         'travel-requests:read', 'travel-requests:write', 'travel-requests:delete',
+        'overtime-requests:read', 'overtime-requests:write', 'overtime-requests:delete',
+        'attendances:read', 'attendances:write',
       ],
       exp: Math.floor(Date.now() / 1000) + 86400,
     })).replace(/=+$/, '');

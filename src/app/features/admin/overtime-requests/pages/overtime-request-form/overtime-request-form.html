@@ -1,0 +1,86 @@
+<div class="container-fluid py-3">
+  <div class="flex items-center gap-2 mb-6">
+    <a routerLink="/admin/overtime-requests" class="btn btn-sm btn-outline-secondary">
+      <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+    </a>
+    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視加班申請' : (isReturned ? '修改加班申請（退回）' : '編輯加班申請')) : '新增加班申請' }}</h4>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <div class="row g-4">
+      <div class="col-12 col-lg-10 col-xl-8">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#zap"></use>
+            </svg>
+            加班資訊
+          </div>
+          <div class="card-body">
+
+            <div class="row g-3 mb-4">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">加班日期 <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" formControlName="overtimeDate">
+                @if (form.get('overtimeDate')?.invalid && form.get('overtimeDate')?.touched) {
+                  <div class="text-danger small mt-1">請選擇加班日期。</div>
+                }
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">預估時數（小時）<span class="text-danger">*</span></label>
+                <input type="number" class="form-control" formControlName="estimatedHours" min="0.5" step="0.5" placeholder="1">
+                @if (form.get('estimatedHours')?.invalid && form.get('estimatedHours')?.touched) {
+                  <div class="text-danger small mt-1">請輸入預估時數（至少 0.5）。</div>
+                }
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-500">關聯專案（可多選）</label>
+              @if (isReadOnly) {
+                <p class="form-control-plaintext fw-500 font-monospace mb-0">{{ displayProjectCodes.join(', ') || '—' }}</p>
+              } @else {
+                <div class="flex flex-wrap gap-2">
+                  @for (p of projects; track p.id) {
+                    <label class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer"
+                           [class.border-primary]="selectedProjectIds.has(p.id)"
+                           [class.bg-primary-subtle]="selectedProjectIds.has(p.id)">
+                      <input type="checkbox" class="form-check-input m-0"
+                             [checked]="selectedProjectIds.has(p.id)"
+                             (change)="toggleProject(p.id)">
+                      <span class="small fw-500">{{ p.code }}{{ p.departmentName ? '（' + p.departmentName + '）' : '' }}</span>
+                    </label>
+                  }
+                </div>
+              }
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-500">加班原因 <span class="text-danger">*</span></label>
+              <textarea class="form-control" formControlName="reason" rows="3"
+                        placeholder="請填寫加班原因..."></textarea>
+              @if (form.get('reason')?.invalid && form.get('reason')?.touched) {
+                <div class="text-danger small mt-1">請填寫加班原因。</div>
+              }
+            </div>
+
+          </div>
+        </div>
+
+        @if (!isReadOnly) {
+          <div class="mt-6 flex gap-2">
+            <button type="submit" class="btn btn-primary" [disabled]="form.invalid">
+              {{ isReturned ? '修改並重送' : (isEdit ? '更新' : '送出申請') }}
+            </button>
+            <a routerLink="/admin/overtime-requests" class="btn btn-outline-secondary">取消</a>
+          </div>
+        } @else {
+          <div class="mt-6">
+            <a routerLink="/admin/overtime-requests" class="btn btn-outline-secondary">返回列表</a>
+          </div>
+        }
+
+      </div>
+    </div>
+  </form>
+</div>

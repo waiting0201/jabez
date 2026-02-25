@@ -3,7 +3,7 @@
     <a routerLink="/admin/payment-requests" class="btn btn-sm btn-outline-secondary">
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
     </a>
-    <h4 class="mb-0">{{ isReturned ? '修改請款申請（退回）' : isEdit ? '編輯請款申請' : '新增請款申請' }}</h4>
+    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視請款申請' : (isReturned ? '修改請款申請（退回）' : '編輯請款申請')) : '新增請款申請' }}</h4>
   </div>
 
   <form [formGroup]="form" (ngSubmit)="submit()">
@@ -40,14 +40,18 @@
 
             <div class="mb-4">
               <label class="form-label fw-500">專案 <span class="text-danger">*</span></label>
-              <select class="form-select" formControlName="projectId">
-                <option [ngValue]="null">— 請選擇專案 —</option>
-                @for (p of projects; track p.id) {
-                  <option [ngValue]="p.id">{{ p.code }}{{ p.departmentName ? '（' + p.departmentName + '）' : '' }}</option>
+              @if (isReadOnly) {
+                <p class="form-control-plaintext fw-500 font-monospace mb-0">{{ projectCode || '—' }}</p>
+              } @else {
+                <select class="form-select" formControlName="projectId">
+                  <option [ngValue]="null">— 請選擇專案 —</option>
+                  @for (p of projects; track p.id) {
+                    <option [ngValue]="p.id">{{ p.code }}{{ p.departmentName ? '（' + p.departmentName + '）' : '' }}</option>
+                  }
+                </select>
+                @if (form.get('projectId')?.invalid && form.get('projectId')?.touched) {
+                  <div class="text-danger small mt-1">請選擇專案。</div>
                 }
-              </select>
-              @if (form.get('projectId')?.invalid && form.get('projectId')?.touched) {
-                <div class="text-danger small mt-1">請選擇專案。</div>
               }
             </div>
 
@@ -75,20 +79,22 @@
           </div>
           <div class="card-body">
 
-            <!-- Upload area -->
-            <label class="flex flex-col items-center justify-center rounded-3 py-4 px-4 mb-4 text-center"
-                   style="cursor:pointer; border: 2px dashed var(--bs-border-color);">
-              <svg class="sa-icon sa-icon-2x text-muted mb-2" style="stroke: currentColor">
-                <use href="/assets/icons/sprite.svg#upload"></use>
-              </svg>
-              <span class="fw-500">點擊上傳發票圖檔</span>
-              <span class="text-muted small mt-1">支援 JPG、PNG、PDF，可多選</span>
-              <input type="file" class="hidden" multiple accept="image/*,application/pdf"
-                     (change)="onFilesSelected($event)">
-            </label>
+            @if (!isReadOnly) {
+              <!-- Upload area -->
+              <label class="flex flex-col items-center justify-center rounded-3 py-4 px-4 mb-4 text-center"
+                     style="cursor:pointer; border: 2px dashed var(--bs-border-color);">
+                <svg class="sa-icon sa-icon-2x text-muted mb-2" style="stroke: currentColor">
+                  <use href="/assets/icons/sprite.svg#upload"></use>
+                </svg>
+                <span class="fw-500">點擊上傳發票圖檔</span>
+                <span class="text-muted small mt-1">支援 JPG、PNG、PDF，可多選</span>
+                <input type="file" class="hidden" multiple accept="image/*,application/pdf"
+                       (change)="onFilesSelected($event)">
+              </label>
 
-            @if (showInvoiceError) {
-              <div class="alert alert-warning py-2 small mb-4">請至少上傳一張發票。</div>
+              @if (showInvoiceError) {
+                <div class="alert alert-warning py-2 small mb-4">請至少上傳一張發票。</div>
+              }
             }
 
             <!-- Invoice table -->
@@ -99,7 +105,9 @@
                     <th>檔案名稱</th>
                     <th style="min-width:160px">發票號碼</th>
                     <th style="min-width:120px">金額</th>
-                    <th style="width:48px"></th>
+                    @if (!isReadOnly) {
+                      <th style="width:48px"></th>
+                    }
                   </tr>
                 </thead>
                 <tbody formArrayName="invoices">
@@ -127,8 +135,10 @@
                           </span>
                         }
                       </td>
-                      <td>
-                        @if (isOcr) {
+                      <td class="align-middle">
+                        @if (isReadOnly) {
+                          <span class="font-monospace small">{{ ctrl.get('invoiceNo')?.value || '—' }}</span>
+                        } @else if (isOcr) {
                           <div class="flex items-center gap-2 text-muted small py-1">
                             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                             識別中…
@@ -138,26 +148,30 @@
                                  formControlName="invoiceNo" placeholder="AB12345678">
                         }
                       </td>
-                      <td>
-                        @if (isOcr) {
+                      <td class="align-middle">
+                        @if (isReadOnly) {
+                          <span class="small">{{ ctrl.get('amount')?.value | number:'1.0-0' }}</span>
+                        } @else if (isOcr) {
                           <div class="py-1">—</div>
                         } @else {
                           <input type="number" class="form-control form-control-sm"
                                  formControlName="amount" min="0" placeholder="0">
                         }
                       </td>
-                      <td class="text-right align-middle">
-                        <button type="button"
-                                class="btn btn-sm btn-ghost-danger inline-flex items-center"
-                                [disabled]="isOcr"
-                                (click)="removeInvoice(i)">
-                          <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
-                        </button>
-                      </td>
+                      @if (!isReadOnly) {
+                        <td class="text-right align-middle">
+                          <button type="button"
+                                  class="btn btn-sm btn-ghost-danger inline-flex items-center"
+                                  [disabled]="isOcr"
+                                  (click)="removeInvoice(i)">
+                            <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                          </button>
+                        </td>
+                      }
                     </tr>
                   } @empty {
                     <tr>
-                      <td colspan="4" class="text-center text-muted py-4 small">尚未新增發票</td>
+                      <td [attr.colspan]="isReadOnly ? 3 : 4" class="text-center text-muted py-4 small">尚未新增發票</td>
                     </tr>
                   }
                 </tbody>
@@ -166,7 +180,9 @@
                     <tr class="table-light">
                       <td colspan="2" class="text-right fw-500 small">合計</td>
                       <td class="fw-600">{{ totalAmount | number:'1.0-0' }}</td>
-                      <td></td>
+                      @if (!isReadOnly) {
+                        <td></td>
+                      }
                     </tr>
                   </tfoot>
                 }
@@ -176,16 +192,22 @@
           </div>
         </div>
 
-        <!-- Submit -->
-        <div class="mt-6 flex gap-2">
-          <button type="submit" class="btn btn-primary" [disabled]="form.invalid || isAnyOcrPending">
-            @if (isAnyOcrPending) {
-              <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-            }
-            {{ isReturned ? '修改並重送' : isEdit ? '更新' : '建立' }}
-          </button>
-          <a routerLink="/admin/payment-requests" class="btn btn-outline-secondary">取消</a>
-        </div>
+        <!-- Submit / Back -->
+        @if (!isReadOnly) {
+          <div class="mt-6 flex gap-2">
+            <button type="submit" class="btn btn-primary" [disabled]="form.invalid || isAnyOcrPending">
+              @if (isAnyOcrPending) {
+                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+              }
+              {{ isReturned ? '修改並重送' : isEdit ? '更新' : '建立' }}
+            </button>
+            <a routerLink="/admin/payment-requests" class="btn btn-outline-secondary">取消</a>
+          </div>
+        } @else {
+          <div class="mt-6">
+            <a routerLink="/admin/payment-requests" class="btn btn-outline-secondary">返回列表</a>
+          </div>
+        }
 
       </div>
     </div>

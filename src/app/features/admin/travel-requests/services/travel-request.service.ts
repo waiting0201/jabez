@@ -3,10 +3,12 @@ import {HttpClient} from '@angular/common/http';
 import {BehaviorSubject, Observable, of} from 'rxjs';
 import {TravelRequest} from '../models/travel-request.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
+import {AuthService} from '@core/auth/services/auth.service';
 
 const MOCK_REQUESTS: TravelRequest[] = [
   {
     id: 1,
+    employeeId: '1',
     destination:   '台南',
     startDate:     new Date('2026-03-10'),
     endDate:       new Date('2026-03-12'),
@@ -19,6 +21,7 @@ const MOCK_REQUESTS: TravelRequest[] = [
   },
   {
     id: 2,
+    employeeId: '2',
     destination:   '台中',
     startDate:     new Date('2026-02-25'),
     endDate:       new Date('2026-02-26'),
@@ -36,6 +39,7 @@ const MOCK_REQUESTS: TravelRequest[] = [
 @Injectable({providedIn: 'root'})
 export class TravelRequestService {
   private http = inject(HttpClient);
+  private auth = inject(AuthService);
   private items$ = new BehaviorSubject<TravelRequest[]>(MOCK_REQUESTS);
 
   getAll(): Observable<TravelRequest[]> {
@@ -47,13 +51,14 @@ export class TravelRequestService {
   }
 
   getPaged(page: number, pageSize: number): Observable<PagedResult<TravelRequest>> {
-    // ─── 真實 API（後端就緒時啟用）─────────────────────────
+    // ─── 真實 API（後端就緒時啟用，後端依 JWT 自動過濾）────
     // return this.http.get<{success: boolean; data: PagedResult<TravelRequest>}>(
     //   '/api/travel-requests', {params: {page, pageSize}}
     // ).pipe(map(r => r.data!));
 
-    // ─── Mock（前端開發用）──────────────────────────────────
-    const all = this.items$.getValue();
+    // ─── Mock（前端開發用，模擬只能看自己的資料）─────────────
+    const uid = this.auth.currentUser()?.id;
+    const all = this.items$.getValue().filter(r => r.employeeId === uid);
     const start = (page - 1) * pageSize;
     const totalPages = Math.max(1, Math.ceil(all.length / pageSize));
     return of({items: all.slice(start, start + pageSize), totalCount: all.length, page, pageSize, totalPages});
@@ -68,7 +73,8 @@ export class TravelRequestService {
     // return this.http.post<TravelRequest>('/api/travel-requests', data).pipe(
     //   tap(item => this.items$.next([...this.items$.getValue(), item])),
     // );
-    const item: TravelRequest = {...data, id: Date.now(), approvalStatus: 'pending', createdAt: new Date()};
+    const uid = this.auth.currentUser()?.id;
+    const item: TravelRequest = {...data, id: Date.now(), employeeId: uid, approvalStatus: 'pending', createdAt: new Date()};
     this.items$.next([...this.items$.getValue(), item]);
     return of(item);
   }

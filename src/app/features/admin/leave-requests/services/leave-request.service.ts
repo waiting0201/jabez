@@ -3,10 +3,12 @@ import {HttpClient} from '@angular/common/http';
 import {BehaviorSubject, Observable, of} from 'rxjs';
 import {LeaveRequest} from '../models/leave-request.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
+import {AuthService} from '@core/auth/services/auth.service';
 
 const MOCK_REQUESTS: LeaveRequest[] = [
   {
     id: 1,
+    employeeId: '1',
     leaveType: 'annual',
     startDate: new Date('2026-03-01'),
     endDate:   new Date('2026-03-05'),
@@ -17,6 +19,7 @@ const MOCK_REQUESTS: LeaveRequest[] = [
   },
   {
     id: 2,
+    employeeId: '1',
     leaveType: 'sick',
     startDate: new Date('2026-02-20'),
     endDate:   new Date('2026-02-21'),
@@ -29,6 +32,7 @@ const MOCK_REQUESTS: LeaveRequest[] = [
   },
   {
     id: 3,
+    employeeId: '2',
     leaveType: 'compensatory',
     startDate: new Date('2026-02-15'),
     endDate:   new Date('2026-02-15'),
@@ -44,6 +48,7 @@ const MOCK_REQUESTS: LeaveRequest[] = [
 @Injectable({providedIn: 'root'})
 export class LeaveRequestService {
   private http = inject(HttpClient);
+  private auth = inject(AuthService);
   private items$ = new BehaviorSubject<LeaveRequest[]>(MOCK_REQUESTS);
 
   getAll(): Observable<LeaveRequest[]> {
@@ -55,13 +60,14 @@ export class LeaveRequestService {
   }
 
   getPaged(page: number, pageSize: number): Observable<PagedResult<LeaveRequest>> {
-    // ─── 真實 API（後端就緒時啟用）─────────────────────────
+    // ─── 真實 API（後端就緒時啟用，後端依 JWT 自動過濾）────
     // return this.http.get<{success: boolean; data: PagedResult<LeaveRequest>}>(
     //   '/api/leave-requests', {params: {page, pageSize}}
     // ).pipe(map(r => r.data!));
 
-    // ─── Mock（前端開發用）──────────────────────────────────
-    const all = this.items$.getValue();
+    // ─── Mock（前端開發用，模擬只能看自己的資料）─────────────
+    const uid = this.auth.currentUser()?.id;
+    const all = this.items$.getValue().filter(r => r.employeeId === uid);
     const start = (page - 1) * pageSize;
     const totalPages = Math.max(1, Math.ceil(all.length / pageSize));
     return of({items: all.slice(start, start + pageSize), totalCount: all.length, page, pageSize, totalPages});
@@ -76,7 +82,8 @@ export class LeaveRequestService {
     // return this.http.post<LeaveRequest>('/api/leave-requests', data).pipe(
     //   tap(item => this.items$.next([...this.items$.getValue(), item])),
     // );
-    const item: LeaveRequest = {...data, id: Date.now(), approvalStatus: 'pending', createdAt: new Date()};
+    const uid = this.auth.currentUser()?.id;
+    const item: LeaveRequest = {...data, id: Date.now(), employeeId: uid, approvalStatus: 'pending', createdAt: new Date()};
     this.items$.next([...this.items$.getValue(), item]);
     return of(item);
   }

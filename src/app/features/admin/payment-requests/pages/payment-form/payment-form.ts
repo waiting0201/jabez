@@ -26,9 +26,12 @@ export class PaymentForm implements OnInit {
   projects: Project[] = [];
   isEdit     = false;
   isReturned = false;
+  isReadOnly = false;
   requestId  = 0;
   showInvoiceError = false;
   approvalStatus: ApprovalStatus = 'pending';
+  /** 檢視模式時顯示的專案編號 */
+  projectCode = '';
 
   /** IDs of invoice rows currently being OCR-processed */
   ocrLoadingIds = new Set<string>();
@@ -59,7 +62,7 @@ export class PaymentForm implements OnInit {
   }
 
   ngOnInit() {
-    this.projects$.getAll().subscribe(p => this.projects = p);
+    this.projects$.getAll().subscribe(p => this.projects = p.filter(x => x.status === 'active'));
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.isEdit = true;
@@ -68,8 +71,9 @@ export class PaymentForm implements OnInit {
         if (!r) return;
         this.approvalStatus = r.approvalStatus;
         this.isReturned     = r.approvalStatus === 'returned';
-        const isReadOnly    = r.approvalStatus !== 'pending' && r.approvalStatus !== 'returned';
-        if (isReadOnly) this.form.disable();
+        this.isReadOnly     = r.approvalStatus !== 'pending' && r.approvalStatus !== 'returned';
+        this.projectCode    = r.projectCode ?? '';
+        if (this.isReadOnly) this.form.disable();
         this.form.patchValue({type: r.type, projectId: r.projectId});
         r.invoices.forEach(inv => this.invoiceArray.push(
           this._invoiceGroup(inv.id, inv.fileName, inv.invoiceNo, inv.amount, inv.previewUrl ?? '')

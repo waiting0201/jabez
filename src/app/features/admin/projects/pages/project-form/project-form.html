@@ -21,6 +21,14 @@
             </div>
 
             <div class="mb-4">
+              <label class="form-label fw-500">狀態 <span class="text-danger">*</span></label>
+              <select class="form-select" formControlName="status">
+                <option value="active">進行中</option>
+                <option value="closed">已結案</option>
+              </select>
+            </div>
+
+            <div class="mb-4">
               <label class="form-label fw-500">部門 <span class="text-danger">*</span></label>
               <select class="form-select" formControlName="departmentId">
                 <option [ngValue]="null">— 請選擇部門 —</option>
