@@ -3,13 +3,43 @@
     <a routerLink="/admin/payment-requests" class="btn btn-sm btn-outline-secondary">
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
     </a>
-    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視請款申請' : (isReturned ? '修改請款申請（退回）' : (isDraft ? '編輯請款草稿' : '編輯請款申請'))) : '新增請款申請' }}</h4>
+    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視請款申請' : '編輯請款草稿') : '新增請款申請' }}</h4>
   </div>
 
   @if (errorMsg()) {
     <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
       {{ errorMsg() }}
+    </div>
+  }
+
+  @if (isReadOnly && approvalStatus === 'pending') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(13,110,253,0.08)] border-bottom flex items-center gap-2 fw-600 text-primary py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
+        此申請審核中，不可再修改。
+      </div>
+    </div>
+  } @else if (isReadOnly && approvalStatus === 'returned') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(255,193,7,0.08)] border-bottom flex items-center gap-2 fw-600 text-warning py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+        此申請已被退回，不可再修改。
+      </div>
+    </div>
+  } @else if (isReadOnly && approvalStatus === 'approved') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(37,162,68,0.08)] border-bottom flex items-center gap-2 fw-600 text-success py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#check-circle"></use></svg>
+        此申請已核准，不可再修改。
+      </div>
+    </div>
+  } @else if (isReadOnly && approvalStatus === 'rejected') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(220,53,69,0.08)] border-bottom flex items-center gap-2 fw-600 text-danger py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#x-circle"></use></svg>
+        此申請已被拒絕，不可再修改。
+      </div>
     </div>
   }
 
@@ -51,7 +81,7 @@
                 <p class="form-control-plaintext fw-500 font-monospace mb-0">{{ projectCode || '—' }}</p>
               } @else {
                 <select class="form-select" formControlName="projectId">
-                  <option [ngValue]="null">— 請選擇專案 —</option>
+                  <option [ngValue]="null">{{ loadingProjects ? '載入中…' : '— 請選擇專案 —' }}</option>
                   @for (p of projects; track p.id) {
                     <option [ngValue]="p.id">{{ p.code }}{{ p.departmentName ? '（' + p.departmentName + '）' : '' }}</option>
                   }
@@ -202,32 +232,16 @@
         <!-- Submit / Back -->
         @if (!isReadOnly) {
           <div class="mt-6 flex gap-2">
-            @if (!isEdit || isDraft) {
-              <!-- 新增或草稿：儲存草稿 + 送出申請 -->
-              <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid || isAnyOcrPending">
-                @if (isAnyOcrPending) {
-                  <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                }
-                {{ isEdit ? '儲存' : '儲存草稿' }}
-              </button>
-              <button type="button" class="btn btn-primary" [disabled]="form.invalid || isAnyOcrPending"
-                      (click)="submitForApproval()">
-                送出申請
-              </button>
-            } @else if (isReturned) {
-              <button type="button" class="btn btn-primary" [disabled]="form.invalid || isAnyOcrPending"
-                      (click)="submitForApproval()">
-                修改並重送
-              </button>
-            } @else {
-              <!-- pending 狀態：更新 -->
-              <button type="submit" class="btn btn-primary" [disabled]="form.invalid || isAnyOcrPending">
-                @if (isAnyOcrPending) {
-                  <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                }
-                更新
-              </button>
-            }
+            <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid || isAnyOcrPending">
+              @if (isAnyOcrPending) {
+                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+              }
+              {{ isEdit ? '儲存' : '儲存草稿' }}
+            </button>
+            <button type="button" class="btn btn-primary" [disabled]="form.invalid || isAnyOcrPending"
+                    (click)="submitForApproval()">
+              送出申請
+            </button>
             <a routerLink="/admin/payment-requests" class="btn btn-outline-secondary">取消</a>
           </div>
         } @else {

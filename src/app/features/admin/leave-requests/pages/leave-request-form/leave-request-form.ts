@@ -51,7 +51,7 @@ export class LeaveRequestForm implements OnInit {
         this.approvalStatus = r.approvalStatus;
         this.isDraft    = r.approvalStatus === 'draft';
         this.isReturned = r.approvalStatus === 'returned';
-        this.isReadOnly = !['draft', 'pending', 'returned'].includes(r.approvalStatus);
+        this.isReadOnly = r.approvalStatus !== 'draft';
         this.form.patchValue({
           leaveType:  r.leaveType,
           startDate:  r.startDate instanceof Date

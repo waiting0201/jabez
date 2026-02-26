@@ -1,15 +1,17 @@
-export type ApplicationType = 'payment_request' | 'leave' | 'travel';
+export type ApplicationType = 'payment_request' | 'leave' | 'travel' | 'overtime';
 
 export const APPLICATION_TYPE_LABELS: Record<ApplicationType, string> = {
   payment_request: '請款申請',
   leave:           '請假申請',
   travel:          '出差申請',
+  overtime:        '加班申請',
 };
 
 export const APPLICATION_TYPE_CLASSES: Record<ApplicationType, string> = {
   payment_request: 'bg-info-subtle text-info',
   leave:           'bg-success-subtle text-success',
   travel:          'bg-primary-subtle text-primary',
+  overtime:        'bg-warning-subtle text-warning-emphasis',
 };
 
 export interface ApprovalStep {

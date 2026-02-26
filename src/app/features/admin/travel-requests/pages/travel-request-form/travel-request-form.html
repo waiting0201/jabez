@@ -3,13 +3,43 @@
     <a routerLink="/admin/travel-requests" class="btn btn-sm btn-outline-secondary">
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
     </a>
-    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視出差申請' : (isReturned ? '修改出差申請（退回）' : (isDraft ? '編輯出差草稿' : '編輯出差申請'))) : '新增出差申請' }}</h4>
+    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視出差申請' : '編輯出差草稿') : '新增出差申請' }}</h4>
   </div>
 
   @if (errorMsg()) {
     <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
       {{ errorMsg() }}
+    </div>
+  }
+
+  @if (isReadOnly && approvalStatus === 'pending') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(13,110,253,0.08)] border-bottom flex items-center gap-2 fw-600 text-primary py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
+        此申請審核中，不可再修改。
+      </div>
+    </div>
+  } @else if (isReadOnly && approvalStatus === 'returned') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(255,193,7,0.08)] border-bottom flex items-center gap-2 fw-600 text-warning py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+        此申請已被退回，不可再修改。
+      </div>
+    </div>
+  } @else if (isReadOnly && approvalStatus === 'approved') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(37,162,68,0.08)] border-bottom flex items-center gap-2 fw-600 text-success py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#check-circle"></use></svg>
+        此申請已核准，不可再修改。
+      </div>
+    </div>
+  } @else if (isReadOnly && approvalStatus === 'rejected') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(220,53,69,0.08)] border-bottom flex items-center gap-2 fw-600 text-danger py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#x-circle"></use></svg>
+        此申請已被拒絕，不可再修改。
+      </div>
     </div>
   }
 
@@ -60,7 +90,7 @@
               <div class="col-12 col-md-4">
                 <label class="form-label fw-500">關聯專案（選填）</label>
                 <select class="form-select" formControlName="projectId">
-                  <option [ngValue]="null">— 不關聯專案 —</option>
+                  <option [ngValue]="null">{{ loadingProjects ? '載入中…' : '— 不關聯專案 —' }}</option>
                   @for (p of projects; track p.id) {
                     <option [ngValue]="p.id">{{ p.code }}{{ p.departmentName ? '（' + p.departmentName + '）' : '' }}</option>
                   }
@@ -82,24 +112,13 @@
 
         @if (!isReadOnly) {
           <div class="mt-6 flex gap-2">
-            @if (!isEdit || isDraft) {
-              <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid">
-                {{ isEdit ? '儲存' : '儲存草稿' }}
-              </button>
-              <button type="button" class="btn btn-primary" [disabled]="form.invalid"
-                      (click)="submitForApproval()">
-                送出申請
-              </button>
-            } @else if (isReturned) {
-              <button type="button" class="btn btn-primary" [disabled]="form.invalid"
-                      (click)="submitForApproval()">
-                修改並重送
-              </button>
-            } @else {
-              <button type="submit" class="btn btn-primary" [disabled]="form.invalid">
-                更新
-              </button>
-            }
+            <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid">
+              {{ isEdit ? '儲存' : '儲存草稿' }}
+            </button>
+            <button type="button" class="btn btn-primary" [disabled]="form.invalid"
+                    (click)="submitForApproval()">
+              送出申請
+            </button>
             <a routerLink="/admin/travel-requests" class="btn btn-outline-secondary">取消</a>
           </div>
         } @else {

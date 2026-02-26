@@ -40,8 +40,9 @@ export class OvertimeRequestService {
 
   /** 取得今日已核准的加班申請（打卡頁用） */
   getApprovedForToday(): Observable<OvertimeRequest[]> {
+    const today = new Date().toISOString().split('T')[0];
     return this.http.get<OvertimeRequest[]>(`${environment.apiUrl}/overtime-requests`, {
-      params: {status: 'approved', today: 'true'},
+      params: {status: 'approved', date: today},
     });
   }
 }

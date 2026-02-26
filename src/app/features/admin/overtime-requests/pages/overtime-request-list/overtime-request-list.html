@@ -40,7 +40,7 @@
                 <td class="text-muted small hidden lg:table-cell">{{ r.createdAt | date:'yyyy-MM-dd HH:mm' }}</td>
                 <td class="text-right" style="white-space: nowrap">
                   <div class="flex justify-end gap-1">
-                    @if (r.approvalStatus === 'pending' || r.approvalStatus === 'returned') {
+                    @if (r.approvalStatus === 'draft') {
                       <a [routerLink]="[r.id, 'edit']" class="btn btn-sm btn-ghost-primary inline-flex items-center" title="編輯">
                         <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
                       </a>

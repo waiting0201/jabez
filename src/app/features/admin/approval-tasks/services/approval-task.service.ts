@@ -24,7 +24,10 @@ export class ApprovalTaskService {
   }
 
   getById(id: number, applicationType?: string): Observable<ApprovalTask> {
-    return this.http.get<ApprovalTask>(`${environment.apiUrl}/approval-tasks/${id}`);
+    const path = applicationType
+      ? `${environment.apiUrl}/approval-tasks/${applicationType}/${id}`
+      : `${environment.apiUrl}/approval-tasks/${id}`;
+    return this.http.get<ApprovalTask>(path);
   }
 
   review(id: number, applicationType: string, action: TaskStatus, reviewNote: string): Observable<ApprovalTask> {

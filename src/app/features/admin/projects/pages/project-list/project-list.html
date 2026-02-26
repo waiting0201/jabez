@@ -76,12 +76,18 @@
                 </td>
                 <td class="text-right" style="white-space: nowrap">
                   <div class="flex justify-end gap-1">
-                    <a [routerLink]="[project.id, 'edit']" class="btn btn-sm btn-ghost-primary inline-flex items-center">
-                      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
-                    </a>
-                    <button class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(project)">
-                      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
-                    </button>
+                    @if (project.status !== 'closed') {
+                      <a [routerLink]="[project.id, 'edit']" class="btn btn-sm btn-ghost-primary inline-flex items-center">
+                        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+                      </a>
+                      <button class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(project)">
+                        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
+                      </button>
+                    } @else {
+                      <a [routerLink]="[project.id, 'edit']" class="btn btn-sm btn-ghost-secondary inline-flex items-center">
+                        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#eye"></use></svg>
+                      </a>
+                    }
                   </div>
                 </td>
               </tr>

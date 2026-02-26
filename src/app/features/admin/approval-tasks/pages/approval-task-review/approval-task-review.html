@@ -201,6 +201,47 @@
             }
           }
 
+          @case ('overtime') {
+            @if (task.overtimeDetail; as d) {
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
+                  加班申請資訊
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">加班日期</div>
+                      <span class="fw-500">{{ d.overtimeDate | date:'yyyy-MM-dd' }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">申請人</div>
+                      <span class="fw-500">{{ task.submittedBy }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">預計加班時數</div>
+                      <span class="fw-600 fs-5">{{ d.estimatedHours }} 小時</span>
+                    </div>
+                    @if (d.projectCodes && d.projectCodes.length > 0) {
+                      <div class="col-12 col-md-8">
+                        <div class="text-muted small mb-1">關聯專案</div>
+                        <div class="flex flex-wrap gap-1">
+                          @for (code of d.projectCodes; track code) {
+                            <span class="badge bg-[--bg-base] text-[--text-muted] font-monospace">{{ code }}</span>
+                          }
+                        </div>
+                      </div>
+                    }
+                    <div class="col-12">
+                      <div class="text-muted small mb-1">加班原因</div>
+                      <div class="border rounded p-4 bg-[--bg-base] small">{{ d.reason }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
+          }
+
         }
 
         <!-- ── 簽核流程時間軸 ────────────────────────────────────── -->
@@ -334,35 +375,50 @@
               </div>
             </div>
           </div>
-        } @else {
-          <!-- 已核准 / 已拒絕 -->
+        } @else if (task.status === 'approved') {
+          <!-- 已核准 -->
           <div class="card border-0 shadow-sm mt-6">
-            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
-              <svg class="sa-icon text-primary" style="stroke: currentColor">
-                <use href="/assets/icons/sprite.svg#check-square"></use>
+            <div class="card-header bg-[rgba(37,162,68,0.08)] border-bottom flex items-center gap-2 fw-600 text-success">
+              <svg class="sa-icon" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#check-circle"></use>
               </svg>
-              審核結果
+              已核准
             </div>
             <div class="card-body">
-              <div class="row g-3">
-                <div class="col-6 col-md-4">
-                  <div class="text-muted small mb-1">審核結果</div>
-                  <span [class]="'badge px-3 py-2 rounded-full ' + statusClass[task.status]">
-                    {{ statusLabel[task.status] }}
-                  </span>
-                </div>
-                <div class="col-6 col-md-4">
-                  <div class="text-muted small mb-1">審核時間</div>
-                  <span class="text-muted small">{{ task.reviewedAt | date:'yyyy-MM-dd' }}</span>
-                </div>
-                @if (task.reviewNote) {
-                  <div class="col-12">
-                    <div class="text-muted small mb-1">審核意見</div>
-                    <div class="border rounded p-4 bg-[--bg-base] small">{{ task.reviewNote }}</div>
-                  </div>
-                }
+              <p class="text-muted small mb-2">此申請已通過所有簽核流程，不可再修改。</p>
+              @if (task.reviewedAt) {
+                <div class="text-muted small mb-1 fw-500">核准時間：</div>
+                <div class="small mb-4">{{ task.reviewedAt | date:'yyyy-MM-dd HH:mm' }}</div>
+              }
+              @if (task.reviewNote) {
+                <div class="text-muted small mb-1 fw-500">審核意見：</div>
+                <div class="border rounded p-4 bg-[--bg-base] small mb-4">{{ task.reviewNote }}</div>
+              }
+              <div class="mt-2">
+                <a routerLink="/admin/approval-tasks" class="btn btn-outline-secondary">返回列表</a>
               </div>
-              <div class="mt-4">
+            </div>
+          </div>
+        } @else {
+          <!-- 已拒絕 -->
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-[rgba(220,53,69,0.08)] border-bottom flex items-center gap-2 fw-600 text-danger">
+              <svg class="sa-icon" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#x-circle"></use>
+              </svg>
+              已拒絕
+            </div>
+            <div class="card-body">
+              <p class="text-muted small mb-2">此申請已被拒絕，簽核流程終止，不可再修改。</p>
+              @if (task.reviewedAt) {
+                <div class="text-muted small mb-1 fw-500">拒絕時間：</div>
+                <div class="small mb-4">{{ task.reviewedAt | date:'yyyy-MM-dd HH:mm' }}</div>
+              }
+              @if (task.reviewNote) {
+                <div class="text-muted small mb-1 fw-500">拒絕原因：</div>
+                <div class="border rounded p-4 bg-[--bg-base] small mb-4">{{ task.reviewNote }}</div>
+              }
+              <div class="mt-2">
                 <a routerLink="/admin/approval-tasks" class="btn btn-outline-secondary">返回列表</a>
               </div>
             </div>

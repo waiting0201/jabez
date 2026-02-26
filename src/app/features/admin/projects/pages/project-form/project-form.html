@@ -3,7 +3,7 @@
     <a routerLink="/admin/projects" class="btn btn-sm btn-outline-secondary">
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
     </a>
-    <h4 class="mb-0">{{ isEdit ? '編輯專案' : '新增專案' }}</h4>
+    <h4 class="mb-0">{{ isClosed ? '檢視專案（已結案）' : (isEdit ? '編輯專案' : '新增專案') }}</h4>
   </div>
 
   @if (errorMsg()) {
@@ -38,7 +38,7 @@
             <div class="mb-4">
               <label class="form-label fw-500">部門 <span class="text-danger">*</span></label>
               <select class="form-select" formControlName="departmentId">
-                <option [ngValue]="null">— 請選擇部門 —</option>
+                <option [ngValue]="null">{{ loadingDepts ? '載入中…' : '— 請選擇部門 —' }}</option>
                 @for (dept of departments; track dept.id) {
                   <option [ngValue]="dept.id">{{ dept.name }}</option>
                 }
@@ -84,12 +84,18 @@
           </div>
         </div>
 
-        <div class="mt-6 flex gap-2">
-          <button type="submit" class="btn btn-primary" [disabled]="form.invalid">
-            {{ isEdit ? '更新' : '建立' }}
-          </button>
-          <a routerLink="/admin/projects" class="btn btn-outline-secondary">取消</a>
-        </div>
+        @if (isClosed) {
+          <div class="mt-6">
+            <a routerLink="/admin/projects" class="btn btn-outline-secondary">返回列表</a>
+          </div>
+        } @else {
+          <div class="mt-6 flex gap-2">
+            <button type="submit" class="btn btn-primary" [disabled]="form.invalid">
+              {{ isEdit ? '更新' : '建立' }}
+            </button>
+            <a routerLink="/admin/projects" class="btn btn-outline-secondary">取消</a>
+          </div>
+        }
 
       </div>
     </div>

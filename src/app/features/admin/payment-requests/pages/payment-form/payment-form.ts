@@ -67,8 +67,17 @@ export class PaymentForm implements OnInit {
     return this.invoiceArray.controls.reduce((sum, c) => sum + (+(c.get('amount')?.value) || 0), 0);
   }
 
+  loadingProjects = true;
+
   ngOnInit() {
-    this.projects$.getAll().subscribe(p => this.projects = p.filter(x => x.status === 'active'));
+    this.projects$.getAll().subscribe({
+      next: p => {
+        this.projects = p.filter(x => x.status === 'active');
+        this.loadingProjects = false;
+        this.cdr.markForCheck();
+      },
+      error: () => { this.loadingProjects = false; this.errorMsg.set('載入專案資料失敗。'); },
+    });
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.isEdit = true;
@@ -78,13 +87,14 @@ export class PaymentForm implements OnInit {
         this.approvalStatus = r.approvalStatus;
         this.isDraft        = r.approvalStatus === 'draft';
         this.isReturned     = r.approvalStatus === 'returned';
-        this.isReadOnly     = !['draft', 'pending', 'returned'].includes(r.approvalStatus);
+        this.isReadOnly     = r.approvalStatus !== 'draft';
         this.projectCode    = r.projectCode ?? '';
         if (this.isReadOnly) this.form.disable();
         this.form.patchValue({type: r.type, projectId: r.projectId});
         r.invoices.forEach(inv => this.invoiceArray.push(
           this._invoiceGroup(String(inv.id), inv.fileName, inv.invoiceNo, inv.amount, inv.fileUrl ?? '', inv.fileUrl ?? '')
         ));
+        this.cdr.markForCheck();
       });
     }
   }

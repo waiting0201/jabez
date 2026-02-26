@@ -4,7 +4,7 @@ import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {AsyncPipe, DatePipe, DecimalPipe} from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
-import {Observable} from 'rxjs';
+import {EMPTY, Observable, catchError, tap} from 'rxjs';
 import {ApprovalTaskService} from '../../services/approval-task.service';
 import {
   ApprovalTask, ApprovalRecord, TaskStatus,
@@ -28,6 +28,7 @@ export class ApprovalTaskReview implements OnInit {
   task$!: Observable<ApprovalTask | undefined>;
   taskId = 0;
   applicationType = '';
+  taskStatus = signal<TaskStatus>('pending');
   errorMsg = signal('');
   showNoteError = false;
 
@@ -54,7 +55,13 @@ export class ApprovalTaskReview implements OnInit {
   ngOnInit() {
     this.applicationType = this.route.snapshot.paramMap.get('applicationType') ?? '';
     this.taskId = +this.route.snapshot.paramMap.get('id')!;
-    this.task$  = this.service.getById(this.taskId, this.applicationType);
+    this.task$  = this.service.getById(this.taskId, this.applicationType).pipe(
+      tap(task => { if (task) this.taskStatus.set(task.status); }),
+      catchError((err: HttpErrorResponse) => {
+        this.errorMsg.set(err.error?.message || '載入簽核作業失敗。');
+        return EMPTY;
+      }),
+    );
   }
 
   getRecord(records: ApprovalRecord[], stepOrder: number): ApprovalRecord | undefined {
@@ -62,6 +69,7 @@ export class ApprovalTaskReview implements OnInit {
   }
 
   submit() {
+    if (this.taskStatus() !== 'pending') return;
     const action = this.form.value.action as TaskStatus;
     const note   = this.form.value.reviewNote?.trim() ?? '';
     if ((action === 'rejected' || action === 'returned') && !note) {

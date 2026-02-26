@@ -40,6 +40,7 @@ export class ProjectList {
   next() { if (this.page() < this.totalPages()) this.page.update(p => p + 1); }
 
   delete(project: Project) {
+    if (project.status === 'closed') return;
     if (confirm(`確定要刪除專案「${project.code}」嗎？`)) {
       this.projectService.delete(project.id).subscribe(() => {
         this.refresh.update(v => v + 1);

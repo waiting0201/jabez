@@ -1,4 +1,4 @@
-import {Component, inject, OnInit, signal} from '@angular/core';
+import {ChangeDetectorRef, Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {HttpErrorResponse} from '@angular/common/http';
@@ -18,6 +18,7 @@ export class OvertimeRequestForm implements OnInit {
   private projects$ = inject(ProjectService);
   private route     = inject(ActivatedRoute);
   private router    = inject(Router);
+  private cdr       = inject(ChangeDetectorRef);
 
   isEdit     = false;
   requestId  = 0;
@@ -42,8 +43,17 @@ export class OvertimeRequestForm implements OnInit {
     reason:         ['', Validators.required],
   });
 
+  loadingProjects = true;
+
   ngOnInit() {
-    this.projects$.getAll().subscribe(p => this.projects = p.filter(x => x.status === 'active'));
+    this.projects$.getAll().subscribe({
+      next: p => {
+        this.projects = p.filter(x => x.status === 'active');
+        this.loadingProjects = false;
+        this.cdr.markForCheck();
+      },
+      error: () => { this.loadingProjects = false; this.errorMsg.set('載入專案資料失敗。'); },
+    });
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.isEdit    = true;
@@ -53,7 +63,7 @@ export class OvertimeRequestForm implements OnInit {
         this.approvalStatus = r.approvalStatus;
         this.isDraft    = r.approvalStatus === 'draft';
         this.isReturned = r.approvalStatus === 'returned';
-        this.isReadOnly = !['draft', 'pending', 'returned'].includes(r.approvalStatus);
+        this.isReadOnly = r.approvalStatus !== 'draft';
         this.form.patchValue({
           overtimeDate: r.overtimeDate instanceof Date
             ? r.overtimeDate.toISOString().split('T')[0]
@@ -68,6 +78,7 @@ export class OvertimeRequestForm implements OnInit {
           this.displayProjectCodes = r.projectCodes;
         }
         if (this.isReadOnly) this.form.disable();
+        this.cdr.markForCheck();
       });
     }
   }

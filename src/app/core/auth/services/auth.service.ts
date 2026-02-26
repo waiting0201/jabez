@@ -1,7 +1,7 @@
 import {Injectable, computed, inject, signal} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable, throwError} from 'rxjs';
-import {tap} from 'rxjs/operators';
+import {switchMap, tap} from 'rxjs/operators';
 import {User} from '@features/admin/users/models/user.model';
 import {environment} from '@/environments/environment';
 
@@ -17,10 +17,12 @@ export interface JwtPayload {
 
 export interface LoginResponse {
   access_token: string;
+  refresh_token: string;
   token_type: string;
 }
 
 const TOKEN_KEY = 'access_token';
+const REFRESH_KEY = 'refresh_token';
 
 @Injectable({providedIn: 'root'})
 export class AuthService {
@@ -55,6 +57,10 @@ export class AuthService {
     return this._token();
   }
 
+  get refreshTokenValue(): string | null {
+    return localStorage.getItem(REFRESH_KEY);
+  }
+
   isLoggedIn(): boolean {
     const payload = this._decode(this._token());
     return !!payload && payload.exp * 1000 > Date.now();
@@ -76,26 +82,39 @@ export class AuthService {
     }
     return this.http.post<LoginResponse>(`${environment.apiUrl}/auth/login`, {email, password}).pipe(
       tap(res => {
-        console.log('[AuthService] login response:', res);
         if (!res?.access_token) {
           console.error('[AuthService] No access_token in response!', res);
         }
-        this._store(res.access_token);
-        console.log('[AuthService] isLoggedIn after store:', this.isLoggedIn());
+        this._storeTokens(res.access_token, res.refresh_token);
+      }),
+    );
+  }
+
+  /** 使用 refresh token 取得新的 access token */
+  refreshAccessToken(): Observable<LoginResponse> {
+    const rt = this.refreshTokenValue;
+    if (!rt) return throwError(() => new Error('No refresh token'));
+    return this.http.post<LoginResponse>(`${environment.apiUrl}/auth/refresh`, {refreshToken: rt}).pipe(
+      tap(res => {
+        this._storeTokens(res.access_token, res.refresh_token);
       }),
     );
   }
 
   logout(): void {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_KEY);
     this._token.set(null);
   }
 
   // ─── Private helpers ────────────────────────────────────
 
-  private _store(token: string): void {
-    localStorage.setItem(TOKEN_KEY, token);
-    this._token.set(token);
+  private _storeTokens(accessToken: string, refreshToken?: string): void {
+    localStorage.setItem(TOKEN_KEY, accessToken);
+    this._token.set(accessToken);
+    if (refreshToken) {
+      localStorage.setItem(REFRESH_KEY, refreshToken);
+    }
   }
 
   private _decode(token: string | null): JwtPayload | null {

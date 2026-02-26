@@ -75,6 +75,14 @@ export interface TravelTaskDetail {
   projectCode?: string;
 }
 
+export interface OvertimeTaskDetail {
+  overtimeRequestId: number;
+  overtimeDate: Date;
+  estimatedHours: number;
+  reason: string;
+  projectCodes?: string[];
+}
+
 // ── ApprovalRecord ───────────────────────────────────────────────────────────
 
 export interface ApprovalRecord {
@@ -101,5 +109,6 @@ export interface ApprovalTask {
   paymentDetail?: PaymentTaskDetail;
   leaveDetail?: LeaveTaskDetail;
   travelDetail?: TravelTaskDetail;
+  overtimeDetail?: OvertimeTaskDetail;
   approvalRecords: ApprovalRecord[];
 }

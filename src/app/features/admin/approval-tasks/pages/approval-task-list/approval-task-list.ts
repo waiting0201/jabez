@@ -56,6 +56,10 @@ export class ApprovalTaskList {
     if (t.travelDetail) {
       return `${t.travelDetail.destination}（${t.travelDetail.estimatedCost.toLocaleString()} 元）`;
     }
+    if (t.overtimeDetail) {
+      const dateStr = new Date(t.overtimeDetail.overtimeDate).toLocaleDateString('zh-TW');
+      return `${dateStr}・${t.overtimeDetail.estimatedHours} 小時・${t.overtimeDetail.reason}`;
+    }
     return '—';
   }
 }
