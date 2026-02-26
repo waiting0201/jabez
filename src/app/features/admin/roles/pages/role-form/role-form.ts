@@ -33,7 +33,7 @@ export class RoleForm implements OnInit {
   ngOnInit() {
     this.permissionService.getAll().subscribe(p => {
       this.permissions = p;
-      this.modules = this.permissionService.getModules();
+      this.modules = [...new Set(p.map(x => x.module))];
     });
     this.roleId = this.route.snapshot.paramMap.get('id') ?? '';
     if (this.roleId) {

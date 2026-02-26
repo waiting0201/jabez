@@ -2,9 +2,11 @@
 
   @for (item of menuItems; track $index) {
     @if (item.isTitle) {
-      <li class="nav-title"> <span> {{ item.label }}</span></li>
+      @if (isTitleVisible($index)) {
+        <li class="nav-title"> <span> {{ item.label }}</span></li>
+      }
     }
-    @if (!item.isTitle) {
+    @if (!item.isTitle && isItemVisible(item)) {
       <!-- menu item without any child -->
       @if (!hasSubMenu(item)) {
         <ng-container *appHasPermission="item.requiredPermission">

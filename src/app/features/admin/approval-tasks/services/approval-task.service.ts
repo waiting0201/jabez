@@ -13,8 +13,12 @@ export class ApprovalTaskService {
 
   pendingCount$ = this.items$.pipe(map(tasks => tasks.filter(t => t.status === 'pending').length));
 
+  /** 拉取所有待審核任務（解包 PagedResult），更新 items$ 供 pendingCount$ 使用 */
   getAll(): Observable<ApprovalTask[]> {
-    return this.http.get<ApprovalTask[]>(`${environment.apiUrl}/approval-tasks`).pipe(
+    return this.http.get<PagedResult<ApprovalTask>>(`${environment.apiUrl}/approval-tasks`, {
+      params: {page: 1, pageSize: 100},
+    }).pipe(
+      map(result => result.items ?? []),
       tap(items => this.items$.next(items)),
     );
   }

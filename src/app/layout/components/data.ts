@@ -51,7 +51,6 @@ export const menuItems: MenuItemType[] = [
     icon: '/assets/icons/sprite.svg#users',
     label: '組織管理',
     isCollapsed: true,
-    requiredPermission: 'admin:access',
     children: [
       { label: '員工管理', url: '/admin/users', requiredPermission: 'users:read' },
       { label: '部門管理', url: '/admin/departments', requiredPermission: 'departments:read' },
@@ -81,6 +80,6 @@ export const menuItems: MenuItemType[] = [
     icon: '/assets/icons/sprite.svg#settings',
     label: '系統設定',
     url: '/admin/settings',
-    requiredPermission: 'admin:access',
+    requiredPermission: 'settings:read',
   },
 ];

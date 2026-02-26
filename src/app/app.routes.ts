@@ -3,7 +3,6 @@ import {MainLayout} from '@layout/main-layout/main-layout';
 import {AuthLayout} from '@layout/auth-layout/auth-layout';
 import {authGuard} from '@core/auth/guards/auth.guard';
 import {noAuthGuard} from '@core/auth/guards/no-auth.guard';
-import {permissionGuard} from '@core/auth/guards/permission.guard';
 import {Login} from '@features/auth/pages/login/login';
 import {Register} from '@features/auth/pages/register/register';
 import {ForgotPassword} from '@features/auth/pages/forgot-password/forgot-password';
@@ -29,8 +28,6 @@ export const routes: Routes = [
       },
       {
         path: 'admin',
-        canActivate: [permissionGuard],
-        data: {permission: 'admin:access'},
         loadChildren: () => import('./features/admin/admin.routes').then(m => m.ADMIN_ROUTES),
       },
       {path: 'error/404', component: Error404, data: {title: 'Error 404'}},

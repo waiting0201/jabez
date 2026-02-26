@@ -7,6 +7,7 @@ import { filter } from 'rxjs';
 import { LayoutService } from '@core/layout/services/layout.service';
 import { scrollToElement } from '@shared/utils/layout-utils';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { AuthService } from '@core/auth/services/auth.service';
 
 @Component({
   selector: 'app-menu',
@@ -18,6 +19,7 @@ export class AppMenuComponent implements OnInit {
 
   router = inject(Router)
   layout = inject(LayoutService)
+  private authService = inject(AuthService)
   @Input({ required: true }) menuItems: MenuItemType[] = [];
 
   @ViewChild('MenuItemWithChildren', { static: true })
@@ -97,6 +99,27 @@ export class AppMenuComponent implements OnInit {
         this.expandFilteredPaths(item.children || []);
       }
     }
+  }
+
+  /** 判斷選單項目是否可見（遞迴檢查權限與子項目） */
+  isItemVisible(item: MenuItemType): boolean {
+    if (item.requiredPermission && !this.authService.hasPermission(item.requiredPermission)) {
+      return false;
+    }
+    // 有子選單時，至少一個子項目可見才顯示母選單
+    if (item.children && item.children.length > 0) {
+      return item.children.some(child => this.isItemVisible(child));
+    }
+    return true;
+  }
+
+  /** 判斷區段標題是否可見（該區段至少有一個項目可見） */
+  isTitleVisible(titleIndex: number): boolean {
+    for (let i = titleIndex + 1; i < this.menuItems.length; i++) {
+      if (this.menuItems[i].isTitle) break;
+      if (this.isItemVisible(this.menuItems[i])) return true;
+    }
+    return false;
   }
 
 }

@@ -86,5 +86,5 @@ export const ADMIN_ROUTES: Routes = [
   {path: 'approval-tasks/:applicationType/:id/review',       component: ApprovalTaskReview, canActivate: [permissionGuard], data: {title: '審核',       permission: 'approval-tasks:write'}},
 
   // 系統設定
-  {path: 'settings',             component: Settings,       canActivate: [permissionGuard], data: {title: '系統設定',   permission: 'admin:access'}},
+  {path: 'settings',             component: Settings,       canActivate: [permissionGuard], data: {title: '系統設定',   permission: 'settings:read'}},
 ];
