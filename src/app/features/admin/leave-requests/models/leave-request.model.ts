@@ -1,5 +1,5 @@
 export type LeaveType     = 'annual' | 'personal' | 'sick' | 'compensatory';
-export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'returned';
+export type ApprovalStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'returned';
 
 export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
   annual:       '年假',
@@ -16,6 +16,7 @@ export const LEAVE_TYPE_CLASSES: Record<LeaveType, string> = {
 };
 
 export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
+  draft:    '草稿',
   pending:  '待審核',
   approved: '已核准',
   rejected: '已拒絕',
@@ -23,6 +24,7 @@ export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
 };
 
 export const APPROVAL_STATUS_CLASSES: Record<ApprovalStatus, string> = {
+  draft:    'bg-blue-subtle text-blue-emphasis',
   pending:  'bg-warning-subtle text-warning-emphasis',
   approved: 'bg-success-subtle text-success',
   rejected: 'bg-danger-subtle text-danger',

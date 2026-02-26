@@ -1,5 +1,5 @@
 export type PaymentType     = 'vendor' | 'travel' | 'advance';
-export type ApprovalStatus  = 'pending' | 'approved' | 'rejected' | 'returned';
+export type ApprovalStatus  = 'draft' | 'pending' | 'approved' | 'rejected' | 'returned';
 
 export const PAYMENT_TYPE_LABELS: Record<PaymentType, string> = {
   vendor:  '廠商請款',
@@ -14,6 +14,7 @@ export const PAYMENT_TYPE_CLASSES: Record<PaymentType, string> = {
 };
 
 export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
+  draft:    '草稿',
   pending:  '待審核',
   approved: '已核准',
   rejected: '已拒絕',
@@ -21,6 +22,7 @@ export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
 };
 
 export const APPROVAL_STATUS_CLASSES: Record<ApprovalStatus, string> = {
+  draft:    'bg-blue-subtle text-blue-emphasis',
   pending:  'bg-warning-subtle text-warning-emphasis',
   approved: 'bg-success-subtle text-success',
   rejected: 'bg-danger-subtle text-danger',
@@ -32,7 +34,8 @@ export interface InvoiceItem {
   fileName: string;
   invoiceNo: string;
   amount: number;
-  previewUrl?: string;   // blob URL (new upload) or API URL (existing record)
+  fileUrl?: string;      // Azure Blob Storage URL (from API)
+  previewUrl?: string;   // local blob URL (new upload preview)
 }
 
 export interface PaymentRequest {

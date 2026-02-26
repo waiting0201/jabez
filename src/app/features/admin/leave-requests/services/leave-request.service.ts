@@ -1,107 +1,40 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
-import {BehaviorSubject, Observable, of} from 'rxjs';
+import {Observable} from 'rxjs';
 import {LeaveRequest} from '../models/leave-request.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
-import {AuthService} from '@core/auth/services/auth.service';
-
-const MOCK_REQUESTS: LeaveRequest[] = [
-  {
-    id: 1,
-    employeeId: '1',
-    leaveType: 'annual',
-    startDate: new Date('2026-03-01'),
-    endDate:   new Date('2026-03-05'),
-    days:      5,
-    reason:    '個人旅遊',
-    approvalStatus: 'pending',
-    createdAt: new Date('2026-02-10'),
-  },
-  {
-    id: 2,
-    employeeId: '1',
-    leaveType: 'sick',
-    startDate: new Date('2026-02-20'),
-    endDate:   new Date('2026-02-21'),
-    days:      2,
-    reason:    '身體不適就醫',
-    approvalStatus: 'approved',
-    createdAt:  new Date('2026-02-20'),
-    reviewedAt: new Date('2026-02-20'),
-    reviewNote: '核准',
-  },
-  {
-    id: 3,
-    employeeId: '2',
-    leaveType: 'compensatory',
-    startDate: new Date('2026-02-15'),
-    endDate:   new Date('2026-02-15'),
-    days:      1,
-    reason:    '補休加班時數',
-    approvalStatus: 'rejected',
-    createdAt:  new Date('2026-02-13'),
-    reviewedAt: new Date('2026-02-14'),
-    reviewNote: '補休時數不足，請確認後重新申請',
-  },
-];
+import {environment} from '@/environments/environment';
 
 @Injectable({providedIn: 'root'})
 export class LeaveRequestService {
   private http = inject(HttpClient);
-  private auth = inject(AuthService);
-  private items$ = new BehaviorSubject<LeaveRequest[]>(MOCK_REQUESTS);
 
   getAll(): Observable<LeaveRequest[]> {
-    // ─── 真實 API（後端就緒時啟用）─────────────────────────
-    // return this.http.get<LeaveRequest[]>('/api/leave-requests').pipe(
-    //   tap(items => this.items$.next(items)),
-    // );
-    return this.items$.asObservable();
+    return this.http.get<LeaveRequest[]>(`${environment.apiUrl}/leave-requests`);
   }
 
   getPaged(page: number, pageSize: number): Observable<PagedResult<LeaveRequest>> {
-    // ─── 真實 API（後端就緒時啟用，後端依 JWT 自動過濾）────
-    // return this.http.get<{success: boolean; data: PagedResult<LeaveRequest>}>(
-    //   '/api/leave-requests', {params: {page, pageSize}}
-    // ).pipe(map(r => r.data!));
-
-    // ─── Mock（前端開發用，模擬只能看自己的資料）─────────────
-    const uid = this.auth.currentUser()?.id;
-    const all = this.items$.getValue().filter(r => r.employeeId === uid);
-    const start = (page - 1) * pageSize;
-    const totalPages = Math.max(1, Math.ceil(all.length / pageSize));
-    return of({items: all.slice(start, start + pageSize), totalCount: all.length, page, pageSize, totalPages});
+    return this.http.get<PagedResult<LeaveRequest>>(`${environment.apiUrl}/leave-requests`, {params: {page, pageSize}});
   }
 
-  getById(id: number): Observable<LeaveRequest | undefined> {
-    // return this.http.get<LeaveRequest>(`/api/leave-requests/${id}`);
-    return of(this.items$.getValue().find(r => r.id === id));
+  getById(id: number): Observable<LeaveRequest> {
+    return this.http.get<LeaveRequest>(`${environment.apiUrl}/leave-requests/${id}`);
   }
 
   create(data: Omit<LeaveRequest, 'id' | 'createdAt' | 'approvalStatus'>): Observable<LeaveRequest> {
-    // return this.http.post<LeaveRequest>('/api/leave-requests', data).pipe(
-    //   tap(item => this.items$.next([...this.items$.getValue(), item])),
-    // );
-    const uid = this.auth.currentUser()?.id;
-    const item: LeaveRequest = {...data, id: Date.now(), employeeId: uid, approvalStatus: 'pending', createdAt: new Date()};
-    this.items$.next([...this.items$.getValue(), item]);
-    return of(item);
+    return this.http.post<LeaveRequest>(`${environment.apiUrl}/leave-requests`, data);
   }
 
   update(id: number, changes: Partial<LeaveRequest>): Observable<LeaveRequest> {
-    // return this.http.patch<LeaveRequest>(`/api/leave-requests/${id}`, changes).pipe(
-    //   tap(updated => this.items$.next(this.items$.getValue().map(r => r.id === id ? updated : r))),
-    // );
-    const updated = this.items$.getValue().map(r => r.id === id ? {...r, ...changes} : r);
-    this.items$.next(updated);
-    return of(updated.find(r => r.id === id)!);
+    return this.http.patch<LeaveRequest>(`${environment.apiUrl}/leave-requests/${id}`, changes);
   }
 
   delete(id: number): Observable<void> {
-    // return this.http.delete<void>(`/api/leave-requests/${id}`).pipe(
-    //   tap(() => this.items$.next(this.items$.getValue().filter(r => r.id !== id))),
-    // );
-    this.items$.next(this.items$.getValue().filter(r => r.id !== id));
-    return of(undefined);
+    return this.http.delete<void>(`${environment.apiUrl}/leave-requests/${id}`);
+  }
+
+  /** 送出申請（draft → pending） */
+  submit(id: number): Observable<LeaveRequest> {
+    return this.http.patch<LeaveRequest>(`${environment.apiUrl}/leave-requests/${id}/submit`, {});
   }
 }

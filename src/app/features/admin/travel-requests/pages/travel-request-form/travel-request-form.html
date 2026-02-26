@@ -3,10 +3,17 @@
     <a routerLink="/admin/travel-requests" class="btn btn-sm btn-outline-secondary">
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
     </a>
-    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視出差申請' : (isReturned ? '修改出差申請（退回）' : '編輯出差申請')) : '新增出差申請' }}</h4>
+    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視出差申請' : (isReturned ? '修改出差申請（退回）' : (isDraft ? '編輯出差草稿' : '編輯出差申請'))) : '新增出差申請' }}</h4>
   </div>
 
-  <form [formGroup]="form" (ngSubmit)="submit()">
+  @if (errorMsg()) {
+    <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+      {{ errorMsg() }}
+    </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="save()">
     <div class="row g-4">
       <div class="col-12 col-lg-10 col-xl-8">
         <div class="card border-0 shadow-sm">
@@ -75,9 +82,24 @@
 
         @if (!isReadOnly) {
           <div class="mt-6 flex gap-2">
-            <button type="submit" class="btn btn-primary" [disabled]="form.invalid">
-              {{ isReturned ? '修改並重送' : (isEdit ? '更新' : '送出申請') }}
-            </button>
+            @if (!isEdit || isDraft) {
+              <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid">
+                {{ isEdit ? '儲存' : '儲存草稿' }}
+              </button>
+              <button type="button" class="btn btn-primary" [disabled]="form.invalid"
+                      (click)="submitForApproval()">
+                送出申請
+              </button>
+            } @else if (isReturned) {
+              <button type="button" class="btn btn-primary" [disabled]="form.invalid"
+                      (click)="submitForApproval()">
+                修改並重送
+              </button>
+            } @else {
+              <button type="submit" class="btn btn-primary" [disabled]="form.invalid">
+                更新
+              </button>
+            }
             <a routerLink="/admin/travel-requests" class="btn btn-outline-secondary">取消</a>
           </div>
         } @else {

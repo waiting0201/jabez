@@ -1,7 +1,8 @@
-import {Component, inject, OnInit} from '@angular/core';
+import {Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {AsyncPipe, DatePipe, DecimalPipe} from '@angular/common';
+import {HttpErrorResponse} from '@angular/common/http';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {Observable} from 'rxjs';
 import {ApprovalTaskService} from '../../services/approval-task.service';
@@ -27,6 +28,7 @@ export class ApprovalTaskReview implements OnInit {
   task$!: Observable<ApprovalTask | undefined>;
   taskId = 0;
   applicationType = '';
+  errorMsg = signal('');
   showNoteError = false;
 
   previewFile: {name: string; url: string; safeUrl: SafeResourceUrl} | null = null;
@@ -67,8 +69,12 @@ export class ApprovalTaskReview implements OnInit {
       return;
     }
     this.showNoteError = false;
-    this.service.review(this.taskId, this.applicationType, action, note).subscribe(() => {
-      this.router.navigate(['/admin/approval-tasks']);
+    this.errorMsg.set('');
+    this.service.review(this.taskId, this.applicationType, action, note).subscribe({
+      next: () => this.router.navigate(['/admin/approval-tasks']),
+      error: (err: HttpErrorResponse) => {
+        this.errorMsg.set(err.error?.message || '審核失敗，請稍後再試。');
+      },
     });
   }
 }

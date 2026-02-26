@@ -15,7 +15,7 @@ export class PermissionList {
   allPermissions: Permission[] = [];
 
   constructor() {
-    this.permissionService.getAll().subscribe(p => this.allPermissions = p);
+    this.load();
   }
 
   getByModule(module: string): Permission[] {
@@ -24,7 +24,11 @@ export class PermissionList {
 
   delete(perm: Permission) {
     if (confirm(`Delete permission "${perm.name}"?`)) {
-      this.permissionService.delete(perm.id).subscribe();
+      this.permissionService.delete(perm.id).subscribe(() => this.load());
     }
+  }
+
+  private load() {
+    this.permissionService.getAll().subscribe(p => this.allPermissions = p);
   }
 }

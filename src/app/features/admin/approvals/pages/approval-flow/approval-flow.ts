@@ -1,7 +1,8 @@
-import {Component, inject, OnInit} from '@angular/core';
+import {Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, RouterLink} from '@angular/router';
 import {AsyncPipe} from '@angular/common';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
+import {HttpErrorResponse} from '@angular/common/http';
 import {BehaviorSubject, take} from 'rxjs';
 import {ApprovalService} from '../../services/approval.service';
 import {DepartmentService} from '../../../departments/services/department.service';
@@ -27,6 +28,7 @@ export class ApprovalFlow implements OnInit {
   departments: Department[] = [];
   jobTitles: JobTitle[] = [];
 
+  errorMsg = signal('');
   showStepForm = false;
   editStep: ApprovalStep | null = null;
 
@@ -93,15 +95,27 @@ export class ApprovalFlow implements OnInit {
       ? this.approvalService.updateStep(this.itemId, this.editStep.id, stepData)
       : this.approvalService.addStep(this.itemId, stepData);
 
-    obs.subscribe(item => {
-      this.item$.next(item);
-      this.showStepForm = false;
+    this.errorMsg.set('');
+    obs.subscribe({
+      next: item => {
+        this.item$.next(item);
+        this.showStepForm = false;
+      },
+      error: (err: HttpErrorResponse) => {
+        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+      },
     });
   }
 
   deleteStep(step: ApprovalStep) {
     if (confirm(`確定要刪除步驟 ${step.stepOrder} 嗎？`)) {
-      this.approvalService.deleteStep(this.itemId, step.id).subscribe(item => this.item$.next(item));
+      this.errorMsg.set('');
+      this.approvalService.deleteStep(this.itemId, step.id).subscribe({
+        next: item => this.item$.next(item),
+        error: (err: HttpErrorResponse) => {
+          this.errorMsg.set(err.error?.message || '刪除失敗，請稍後再試。');
+        },
+      });
     }
   }
 }

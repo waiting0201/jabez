@@ -12,6 +12,13 @@
     </button>
   </div>
 
+  @if (errorMsg()) {
+    <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+      {{ errorMsg() }}
+    </div>
+  }
+
   <!-- Inline Form Panel -->
   @if (showForm) {
     <div class="card border-0 shadow-sm mb-6">

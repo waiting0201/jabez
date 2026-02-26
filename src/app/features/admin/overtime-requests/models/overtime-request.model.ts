@@ -1,6 +1,7 @@
-export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'returned';
+export type ApprovalStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'returned';
 
 export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
+  draft:    '草稿',
   pending:  '待審核',
   approved: '已核准',
   rejected: '已拒絕',
@@ -8,6 +9,7 @@ export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
 };
 
 export const APPROVAL_STATUS_CLASSES: Record<ApprovalStatus, string> = {
+  draft:    'bg-blue-subtle text-blue-emphasis',
   pending:  'bg-warning-subtle text-warning-emphasis',
   approved: 'bg-success-subtle text-success',
   rejected: 'bg-danger-subtle text-danger',

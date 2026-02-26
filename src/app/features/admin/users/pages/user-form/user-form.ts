@@ -1,6 +1,7 @@
-import {Component, inject, OnInit} from '@angular/core';
+import {Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
+import {HttpErrorResponse} from '@angular/common/http';
 import {UserService} from '../../services/user.service';
 import {RoleService} from '../../../roles/services/role.service';
 import {DepartmentService} from '../../../departments/services/department.service';
@@ -30,6 +31,7 @@ export class UserForm implements OnInit {
   allUsers: User[]          = [];
   isEdit = false;
   userId = '';
+  errorMsg = signal('');
 
   form = this.fb.group({
     name:         ['', Validators.required],
@@ -104,6 +106,12 @@ export class UserForm implements OnInit {
     const obs = this.isEdit
       ? this.userService.update(this.userId, payload)
       : this.userService.create(payload);
-    obs.subscribe(() => this.router.navigate(['/admin/users']));
+    this.errorMsg.set('');
+    obs.subscribe({
+      next: () => this.router.navigate(['/admin/users']),
+      error: (err: HttpErrorResponse) => {
+        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+      },
+    });
   }
 }

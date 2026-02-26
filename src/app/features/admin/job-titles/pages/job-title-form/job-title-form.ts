@@ -1,6 +1,7 @@
-import {Component, inject, OnInit} from '@angular/core';
+import {Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
+import {HttpErrorResponse} from '@angular/common/http';
 import {JobTitleService} from '../../services/job-title.service';
 
 @Component({
@@ -16,6 +17,7 @@ export class JobTitleForm implements OnInit {
 
   isEdit = false;
   jobTitleId = 0;
+  errorMsg = signal('');
 
   form = this.fb.group({
     name:        ['', Validators.required],
@@ -40,6 +42,12 @@ export class JobTitleForm implements OnInit {
     const obs = this.isEdit
       ? this.jobTitleService.update(this.jobTitleId, value)
       : this.jobTitleService.create(value);
-    obs.subscribe(() => this.router.navigate(['/admin/job-titles']));
+    this.errorMsg.set('');
+    obs.subscribe({
+      next: () => this.router.navigate(['/admin/job-titles']),
+      error: (err: HttpErrorResponse) => {
+        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+      },
+    });
   }
 }

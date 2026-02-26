@@ -25,6 +25,10 @@ export const apiResponseInterceptor: HttpInterceptorFn = (req: HttpRequest<unkno
         'data' in event.body
       ) {
         const api = event.body as ApiResponse<unknown>;
+        console.log('[Interceptor] unwrap ApiResponse:', req.url, '→ data:', api.data);
+        if (!api.success) {
+          console.warn('[Interceptor] API returned success=false:', api.message, api.errors);
+        }
         return event.clone({ body: api.data });
       }
       return event;

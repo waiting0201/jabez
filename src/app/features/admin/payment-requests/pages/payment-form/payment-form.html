@@ -3,10 +3,17 @@
     <a routerLink="/admin/payment-requests" class="btn btn-sm btn-outline-secondary">
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
     </a>
-    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視請款申請' : (isReturned ? '修改請款申請（退回）' : '編輯請款申請')) : '新增請款申請' }}</h4>
+    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視請款申請' : (isReturned ? '修改請款申請（退回）' : (isDraft ? '編輯請款草稿' : '編輯請款申請'))) : '新增請款申請' }}</h4>
   </div>
 
-  <form [formGroup]="form" (ngSubmit)="submit()">
+  @if (errorMsg()) {
+    <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+      {{ errorMsg() }}
+    </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="save()">
     <div class="row g-4">
       <div class="col-12 col-lg-10 col-xl-8">
 
@@ -116,11 +123,11 @@
                     <tr [formGroupName]="i">
                       <td class="align-middle small"
                           style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                        @if (ctrl.get('previewUrl')?.value) {
+                        @if (ctrl.get('previewUrl')?.value || ctrl.get('fileUrl')?.value) {
                           <button type="button"
                                   class="btn btn-link p-0 text-muted small inline-flex items-center gap-1"
                                   style="text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis"
-                                  (click)="openPreview(ctrl.get('fileName')?.value, ctrl.get('previewUrl')?.value)">
+                                  (click)="openPreview(ctrl.get('fileName')?.value, ctrl.get('previewUrl')?.value || ctrl.get('fileUrl')?.value)">
                             <svg class="sa-icon shrink-0" style="width:14px;height:14px;stroke:currentColor">
                               <use href="/assets/icons/sprite.svg#file-text"></use>
                             </svg>
@@ -195,12 +202,32 @@
         <!-- Submit / Back -->
         @if (!isReadOnly) {
           <div class="mt-6 flex gap-2">
-            <button type="submit" class="btn btn-primary" [disabled]="form.invalid || isAnyOcrPending">
-              @if (isAnyOcrPending) {
-                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-              }
-              {{ isReturned ? '修改並重送' : isEdit ? '更新' : '建立' }}
-            </button>
+            @if (!isEdit || isDraft) {
+              <!-- 新增或草稿：儲存草稿 + 送出申請 -->
+              <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid || isAnyOcrPending">
+                @if (isAnyOcrPending) {
+                  <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                {{ isEdit ? '儲存' : '儲存草稿' }}
+              </button>
+              <button type="button" class="btn btn-primary" [disabled]="form.invalid || isAnyOcrPending"
+                      (click)="submitForApproval()">
+                送出申請
+              </button>
+            } @else if (isReturned) {
+              <button type="button" class="btn btn-primary" [disabled]="form.invalid || isAnyOcrPending"
+                      (click)="submitForApproval()">
+                修改並重送
+              </button>
+            } @else {
+              <!-- pending 狀態：更新 -->
+              <button type="submit" class="btn btn-primary" [disabled]="form.invalid || isAnyOcrPending">
+                @if (isAnyOcrPending) {
+                  <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                更新
+              </button>
+            }
             <a routerLink="/admin/payment-requests" class="btn btn-outline-secondary">取消</a>
           </div>
         } @else {

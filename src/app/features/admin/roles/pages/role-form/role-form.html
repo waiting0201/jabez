@@ -6,6 +6,13 @@
     <h4 class="mb-0">{{ isEdit ? '編輯角色' : '新增角色' }}</h4>
   </div>
 
+  @if (errorMsg()) {
+    <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+      {{ errorMsg() }}
+    </div>
+  }
+
   <form [formGroup]="form" (ngSubmit)="submit()">
     <div class="row g-4">
       <div class="col-12 col-xl-10">

@@ -121,13 +121,13 @@ import { AuthService } from '@core/auth/services/auth.service';
             </div>
 
             <!-- Error -->
-            @if (errorMsg) {
+            @if (errorMsg()) {
               <div class="error-bar">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.3"/>
                   <path d="M7 4v3M7 9.5v.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
                 </svg>
-                {{ errorMsg }}
+                {{ errorMsg() }}
               </div>
             }
 
@@ -249,7 +249,7 @@ export class Login {
 
   showPassword = signal(false);
   isLoading = signal(false);
-  errorMsg = '';
+  errorMsg = signal('');
 
   form = this.fb.group({
     email:    ['alice@example.com', [Validators.required, Validators.email]],
@@ -263,16 +263,18 @@ export class Login {
   submit() {
     if (this.form.invalid) return;
     this.isLoading.set(true);
-    this.errorMsg = '';
+    this.errorMsg.set('');
     const { email, password } = this.form.value;
     this.authService.login(email!, password!).subscribe({
       next: () => {
         const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? '/dashboard';
         this.router.navigateByUrl(returnUrl);
       },
-      error: () => {
+      error: (err) => {
         this.isLoading.set(false);
-        this.errorMsg = '電子郵件或密碼錯誤，請重試。';
+        console.error('[Login] error:', err);
+        const msg = err?.error?.message || err?.message || '電子郵件或密碼錯誤，請重試。';
+        this.errorMsg.set(msg);
       },
     });
   }

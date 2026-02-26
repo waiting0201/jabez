@@ -1,6 +1,7 @@
-import {Component, inject, OnInit} from '@angular/core';
+import {Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
+import {HttpErrorResponse} from '@angular/common/http';
 import {PermissionService} from '../../services/permission.service';
 
 @Component({
@@ -16,6 +17,7 @@ export class PermissionForm implements OnInit {
 
   isEdit = false;
   permId = '';
+  errorMsg = signal('');
 
   form = this.fb.group({
     code:        ['', Validators.required],
@@ -40,6 +42,12 @@ export class PermissionForm implements OnInit {
     const obs = this.isEdit
       ? this.service.update(this.permId, value)
       : this.service.create(value);
-    obs.subscribe(() => this.router.navigate(['/admin/permissions']));
+    this.errorMsg.set('');
+    obs.subscribe({
+      next: () => this.router.navigate(['/admin/permissions']),
+      error: (err: HttpErrorResponse) => {
+        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+      },
+    });
   }
 }

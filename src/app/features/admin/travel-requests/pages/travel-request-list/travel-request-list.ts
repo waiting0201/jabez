@@ -20,10 +20,11 @@ export class TravelRequestList {
 
   readonly PAGE_SIZE = 20;
   page = signal(1);
+  private refresh = signal(0);
 
   private result = toSignal(
-    toObservable(this.page).pipe(
-      switchMap(p => this.service.getPaged(p, this.PAGE_SIZE))
+    toObservable(computed(() => ({ page: this.page(), refresh: this.refresh() }))).pipe(
+      switchMap(({ page }) => this.service.getPaged(page, this.PAGE_SIZE))
     ),
     {initialValue: {items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 1} as PagedResult<TravelRequest>}
   );
@@ -42,7 +43,7 @@ export class TravelRequestList {
 
   delete(r: TravelRequest) {
     if (confirm(`確定要刪除此出差申請嗎？`)) {
-      this.service.delete(r.id).subscribe();
+      this.service.delete(r.id).subscribe(() => this.refresh.update(v => v + 1));
     }
   }
 }

@@ -14,6 +14,13 @@
       <span [class]="'badge ' + statusClass[task.status]">{{ statusLabel[task.status] }}</span>
     </div>
 
+    @if (errorMsg()) {
+      <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+        {{ errorMsg() }}
+      </div>
+    }
+
     <div class="row g-4">
       <div class="col-12 col-lg-10 col-xl-8">
 

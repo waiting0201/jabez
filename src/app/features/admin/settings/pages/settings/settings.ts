@@ -1,5 +1,6 @@
-import {Component, inject, OnInit} from '@angular/core';
+import {Component, inject, OnInit, signal} from '@angular/core';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
+import {HttpErrorResponse} from '@angular/common/http';
 import {SettingsService} from '../../services/settings.service';
 
 @Component({
@@ -12,6 +13,7 @@ export class Settings implements OnInit {
   private settingsService = inject(SettingsService);
 
   saved = false;
+  errorMsg = signal('');
 
   form = this.fb.group({
     workStartTime:        ['09:00', Validators.required],
@@ -25,9 +27,15 @@ export class Settings implements OnInit {
 
   submit() {
     if (this.form.invalid) return;
-    this.settingsService.save(this.form.value as any).subscribe(() => {
-      this.saved = true;
-      setTimeout(() => this.saved = false, 3000);
+    this.errorMsg.set('');
+    this.settingsService.save(this.form.value as any).subscribe({
+      next: () => {
+        this.saved = true;
+        setTimeout(() => this.saved = false, 3000);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+      },
     });
   }
 }

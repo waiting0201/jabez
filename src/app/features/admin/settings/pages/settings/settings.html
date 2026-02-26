@@ -6,6 +6,12 @@
     <h4 class="mb-0">系統設定</h4>
   </div>
 
+  @if (errorMsg()) {
+    <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+      {{ errorMsg() }}
+    </div>
+  }
   @if (saved) {
     <div class="alert alert-success flex items-center gap-2 mb-6 py-2" role="alert">
       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#check-circle"></use></svg>

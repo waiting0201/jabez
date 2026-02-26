@@ -1,6 +1,7 @@
-import {Component, inject, OnInit} from '@angular/core';
+import {Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
+import {HttpErrorResponse} from '@angular/common/http';
 import {RoleService} from '../../services/role.service';
 import {PermissionService} from '../../../permissions/services/permission.service';
 import {Permission} from '../../../permissions/models/permission.model';
@@ -21,6 +22,7 @@ export class RoleForm implements OnInit {
   modules: string[] = [];
   isEdit = false;
   roleId = '';
+  errorMsg = signal('');
 
   form = this.fb.group({
     name:            ['', Validators.required],
@@ -78,6 +80,12 @@ export class RoleForm implements OnInit {
     const obs = this.isEdit
       ? this.roleService.update(this.roleId, value)
       : this.roleService.create(value);
-    obs.subscribe(() => this.router.navigate(['/admin/roles']));
+    this.errorMsg.set('');
+    obs.subscribe({
+      next: () => this.router.navigate(['/admin/roles']),
+      error: (err: HttpErrorResponse) => {
+        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+      },
+    });
   }
 }

@@ -22,10 +22,11 @@ export class UserList {
 
   readonly PAGE_SIZE = 20;
   page = signal(1);
+  private refresh = signal(0);
 
   private result = toSignal(
-    toObservable(this.page).pipe(
-      switchMap(p => this.userService.getPaged(p, this.PAGE_SIZE))
+    toObservable(computed(() => ({ page: this.page(), refresh: this.refresh() }))).pipe(
+      switchMap(({ page }) => this.userService.getPaged(page, this.PAGE_SIZE))
     ),
     {initialValue: {items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 1} as PagedResult<User>}
   );
@@ -46,7 +47,7 @@ export class UserList {
 
   delete(user: User) {
     if (confirm(`確定要刪除員工「${user.name}」嗎？`)) {
-      this.userService.delete(user.id).subscribe();
+      this.userService.delete(user.id).subscribe(() => this.refresh.update(v => v + 1));
     }
   }
 }

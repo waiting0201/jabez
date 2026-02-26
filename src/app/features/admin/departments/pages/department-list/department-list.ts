@@ -1,6 +1,7 @@
 import {Component, inject} from '@angular/core';
 import {RouterLink} from '@angular/router';
 import {AsyncPipe} from '@angular/common';
+import {BehaviorSubject, switchMap} from 'rxjs';
 import {DepartmentService} from '../../services/department.service';
 import {Department} from '../../models/department.model';
 
@@ -11,11 +12,12 @@ import {Department} from '../../models/department.model';
 })
 export class DepartmentList {
   private deptService = inject(DepartmentService);
-  departments$ = this.deptService.getAll();
+  private refresh$ = new BehaviorSubject<void>(undefined);
+  departments$ = this.refresh$.pipe(switchMap(() => this.deptService.getAll()));
 
   delete(dept: Department) {
     if (confirm(`確定要刪除部門「${dept.name}」嗎？`)) {
-      this.deptService.delete(dept.id).subscribe();
+      this.deptService.delete(dept.id).subscribe(() => this.refresh$.next());
     }
   }
 }

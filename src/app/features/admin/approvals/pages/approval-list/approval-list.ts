@@ -1,7 +1,9 @@
-import {Component, inject} from '@angular/core';
+import {Component, inject, signal} from '@angular/core';
 import {RouterLink} from '@angular/router';
 import {AsyncPipe, DatePipe} from '@angular/common';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
+import {HttpErrorResponse} from '@angular/common/http';
+import {BehaviorSubject, switchMap} from 'rxjs';
 import {ApprovalService} from '../../services/approval.service';
 import {
   ApprovalItem, ApplicationType,
@@ -17,9 +19,11 @@ export class ApprovalList {
   private approvalService = inject(ApprovalService);
   private fb = inject(FormBuilder);
 
-  items$ = this.approvalService.getAll();
+  private refresh$ = new BehaviorSubject<void>(undefined);
+  items$ = this.refresh$.pipe(switchMap(() => this.approvalService.getAll()));
   showForm = false;
   editItem: ApprovalItem | null = null;
+  errorMsg = signal('');
 
   readonly appTypeLabels  = APPLICATION_TYPE_LABELS;
   readonly appTypeClasses = APPLICATION_TYPE_CLASSES;
@@ -40,12 +44,14 @@ export class ApprovalList {
 
   openCreate() {
     this.editItem = null;
+    this.errorMsg.set('');
     this.form.reset({isActive: true, applicationType: ''});
     this.showForm = true;
   }
 
   openEdit(item: ApprovalItem) {
     this.editItem = item;
+    this.errorMsg.set('');
     this.form.patchValue({...item, applicationType: item.applicationType ?? ''});
     this.showForm = true;
   }
@@ -56,7 +62,6 @@ export class ApprovalList {
 
   isTypeDisabled(value: ApplicationType | '', items: ApprovalItem[]): boolean {
     if (!value) return false;
-    // Disable if type is already used by another item
     return items.some(i => i.applicationType === value && i.id !== this.editItem?.id);
   }
 
@@ -70,16 +75,25 @@ export class ApprovalList {
     const obs = this.editItem
       ? this.approvalService.update(this.editItem.id, data)
       : this.approvalService.create(data);
-    obs.subscribe(() => this.showForm = false);
+    this.errorMsg.set('');
+    obs.subscribe({
+      next: () => {
+        this.showForm = false;
+        this.refresh$.next();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+      },
+    });
   }
 
   delete(item: ApprovalItem) {
     if (confirm(`確定要刪除簽核項目「${item.name}」嗎？`)) {
-      this.approvalService.delete(item.id).subscribe();
+      this.approvalService.delete(item.id).subscribe(() => this.refresh$.next());
     }
   }
 
   toggleActive(item: ApprovalItem) {
-    this.approvalService.update(item.id, {isActive: !item.isActive}).subscribe();
+    this.approvalService.update(item.id, {isActive: !item.isActive}).subscribe(() => this.refresh$.next());
   }
 }

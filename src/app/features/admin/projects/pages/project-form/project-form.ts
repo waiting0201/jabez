@@ -1,6 +1,7 @@
-import {Component, inject, OnInit} from '@angular/core';
+import {Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
+import {HttpErrorResponse} from '@angular/common/http';
 import {ProjectService} from '../../services/project.service';
 import {ProjectStatus} from '../../models/project.model';
 import {DepartmentService} from '../../../departments/services/department.service';
@@ -21,6 +22,7 @@ export class ProjectForm implements OnInit {
   departments: Department[] = [];
   isEdit = false;
   projectId = 0;
+  errorMsg = signal('');
 
   form = this.fb.group({
     code:           ['', Validators.required],
@@ -69,6 +71,12 @@ export class ProjectForm implements OnInit {
     const obs = this.isEdit
       ? this.projectService.update(this.projectId, payload)
       : this.projectService.create(payload);
-    obs.subscribe(() => this.router.navigate(['/admin/projects']));
+    this.errorMsg.set('');
+    obs.subscribe({
+      next: () => this.router.navigate(['/admin/projects']),
+      error: (err: HttpErrorResponse) => {
+        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+      },
+    });
   }
 }

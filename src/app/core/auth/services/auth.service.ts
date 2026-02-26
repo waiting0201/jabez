@@ -1,17 +1,18 @@
 import {Injectable, computed, inject, signal} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
-import {Observable, of, throwError} from 'rxjs';
+import {Observable, throwError} from 'rxjs';
 import {tap} from 'rxjs/operators';
 import {User} from '@features/admin/users/models/user.model';
+import {environment} from '@/environments/environment';
 
 export interface JwtPayload {
   sub: string;
   name: string;
   email: string;
-  roles: string[];
-  permissions: string[];
+  roles: string | string[];
+  permissions: string | string[];
   exp: number;
-  is_superadmin?: boolean;
+  is_superadmin?: string | boolean;
 }
 
 export interface LoginResponse {
@@ -31,11 +32,13 @@ export class AuthService {
   currentUser = computed<User | null>(() => {
     const payload = this._decode(this._token());
     if (!payload || payload.exp * 1000 <= Date.now()) return null;
+    // JWT 中 roles 可能是 string（單一角色）或 string[]（多角色）或 undefined
+    const roles = !payload.roles ? [] : Array.isArray(payload.roles) ? payload.roles : [payload.roles];
     return {
       id: payload.sub,
       name: payload.name,
       email: payload.email,
-      roleIds: payload.roles,
+      roleIds: roles,
       status: 'active',
       createdAt: new Date(),
     };
@@ -44,7 +47,8 @@ export class AuthService {
   /** 是否為超管帳號（signal） */
   isSuperAdmin = computed<boolean>(() => {
     const payload = this._decode(this._token());
-    return !!payload && payload.exp * 1000 > Date.now() && !!payload.is_superadmin;
+    return !!payload && payload.exp * 1000 > Date.now()
+      && (payload.is_superadmin === true || payload.is_superadmin === 'true');
   });
 
   get token(): string | null {
@@ -59,30 +63,27 @@ export class AuthService {
   hasPermission(permissionCode: string): boolean {
     const payload = this._decode(this._token());
     if (!payload || payload.exp * 1000 <= Date.now()) return false;
-    // 超管帳號無視所有 permission 限制（包含 'superadmin' 哨兵值）
-    if (payload.is_superadmin) return true;
-    // 'superadmin' 是哨兵值，只有超管可通過
+    if (payload.is_superadmin === true || payload.is_superadmin === 'true') return true;
     if (permissionCode === 'superadmin') return false;
-    return payload.permissions.includes(permissionCode);
+    const perms = Array.isArray(payload.permissions) ? payload.permissions : [payload.permissions];
+    return perms.includes(permissionCode);
   }
 
-  /**
-   * 登入：向後端取得 JWT。
-   * 後端就緒時取消下方注解並移除 mock 區塊即可。
-   */
+  /** 登入：向後端取得 JWT */
   login(email: string, password: string): Observable<LoginResponse> {
-    // ─── 真實 API（後端就緒時啟用）─────────────────────────
-    // return this.http.post<LoginResponse>('/api/auth/login', {email, password}).pipe(
-    //   tap(res => this._store(res.access_token)),
-    // );
-
-    // ─── Mock JWT（前端開發用）──────────────────────────────
-    if (email && password) {
-      const token = this._mockJwt(email);
-      this._store(token);
-      return of({access_token: token, token_type: 'Bearer'});
+    if (!email || !password) {
+      return throwError(() => new Error('Invalid credentials'));
     }
-    return throwError(() => new Error('Invalid credentials'));
+    return this.http.post<LoginResponse>(`${environment.apiUrl}/auth/login`, {email, password}).pipe(
+      tap(res => {
+        console.log('[AuthService] login response:', res);
+        if (!res?.access_token) {
+          console.error('[AuthService] No access_token in response!', res);
+        }
+        this._store(res.access_token);
+        console.log('[AuthService] isLoggedIn after store:', this.isLoggedIn());
+      }),
+    );
   }
 
   logout(): void {
@@ -107,46 +108,5 @@ export class AuthService {
     } catch {
       return null;
     }
-  }
-
-  /** 產生 mock JWT（header.payload.signature），僅供本地開發使用 */
-  private _mockJwt(email: string): string {
-    const isSuperAdmin = email === 'sa@system.local';
-
-    // Mock 使用者對應表（依 email 查找名稱與 ID）
-    const mockUsers: Record<string, {id: string; name: string}> = {
-      'sa@system.local': {id: '00000000-0000-0000-0000-000000000001', name: 'System Admin'},
-      'alice@example.com': {id: '1', name: 'Alice Chen'},
-      'bob@example.com':   {id: '2', name: 'Bob Wang'},
-      'carol@example.com': {id: '3', name: 'Carol Liu'},
-    };
-    const matched = mockUsers[email] ?? {id: '99', name: email.split('@')[0]};
-
-    const header  = btoa(JSON.stringify({alg: 'HS256', typ: 'JWT'})).replace(/=+$/, '');
-    const payload = btoa(JSON.stringify({
-      sub: matched.id,
-      name: matched.name,
-      email,
-      roles: isSuperAdmin ? [] : ['admin'],
-      is_superadmin: isSuperAdmin || undefined,
-      permissions: isSuperAdmin ? [] : [
-        'admin:access',
-        'users:read',       'users:write',       'users:delete',
-        'roles:read',       'roles:write',       'roles:delete',
-        'permissions:read', 'permissions:write', 'permissions:delete',
-        'departments:read', 'departments:write', 'departments:delete',
-        'job-titles:read',  'job-titles:write',  'job-titles:delete',
-        'approvals:read',   'approvals:write',   'approvals:delete',
-        'projects:read',    'projects:write',    'projects:delete',
-        'payment-requests:read', 'payment-requests:write', 'payment-requests:delete',
-        'approval-tasks:read', 'approval-tasks:write',
-        'leave-requests:read',  'leave-requests:write',  'leave-requests:delete',
-        'travel-requests:read', 'travel-requests:write', 'travel-requests:delete',
-        'overtime-requests:read', 'overtime-requests:write', 'overtime-requests:delete',
-        'attendances:read', 'attendances:write',
-      ],
-      exp: Math.floor(Date.now() / 1000) + 86400,
-    })).replace(/=+$/, '');
-    return `${header}.${payload}.mock_signature`;
   }
 }

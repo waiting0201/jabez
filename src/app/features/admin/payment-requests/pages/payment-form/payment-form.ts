@@ -1,8 +1,9 @@
-import {ChangeDetectorRef, Component, inject, OnInit} from '@angular/core';
+import {ChangeDetectorRef, Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {AbstractControl, FormArray, FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {DecimalPipe} from '@angular/common';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
+import {HttpErrorResponse} from '@angular/common/http';
 import {createWorker, PSM} from 'tesseract.js';
 import {PaymentRequestService} from '../../services/payment-request.service';
 import {ProjectService} from '../../../projects/services/project.service';
@@ -29,9 +30,14 @@ export class PaymentForm implements OnInit {
   isReadOnly = false;
   requestId  = 0;
   showInvoiceError = false;
-  approvalStatus: ApprovalStatus = 'pending';
+  errorMsg = signal('');
+  approvalStatus: ApprovalStatus = 'draft';
+  isDraft    = true;
   /** 檢視模式時顯示的專案編號 */
   projectCode = '';
+
+  /** invoice id → File 物件（新上傳的檔案） */
+  fileMap = new Map<string, File>();
 
   /** IDs of invoice rows currently being OCR-processed */
   ocrLoadingIds = new Set<string>();
@@ -70,13 +76,14 @@ export class PaymentForm implements OnInit {
       this.service.getById(this.requestId).subscribe(r => {
         if (!r) return;
         this.approvalStatus = r.approvalStatus;
+        this.isDraft        = r.approvalStatus === 'draft';
         this.isReturned     = r.approvalStatus === 'returned';
-        this.isReadOnly     = r.approvalStatus !== 'pending' && r.approvalStatus !== 'returned';
+        this.isReadOnly     = !['draft', 'pending', 'returned'].includes(r.approvalStatus);
         this.projectCode    = r.projectCode ?? '';
         if (this.isReadOnly) this.form.disable();
         this.form.patchValue({type: r.type, projectId: r.projectId});
         r.invoices.forEach(inv => this.invoiceArray.push(
-          this._invoiceGroup(inv.id, inv.fileName, inv.invoiceNo, inv.amount, inv.previewUrl ?? '')
+          this._invoiceGroup(String(inv.id), inv.fileName, inv.invoiceNo, inv.amount, inv.fileUrl ?? '', inv.fileUrl ?? '')
         ));
       });
     }
@@ -95,6 +102,7 @@ export class PaymentForm implements OnInit {
       const id         = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const previewUrl = URL.createObjectURL(file);
       this.ocrLoadingIds.add(id);
+      this.fileMap.set(id, file);
       this.invoiceArray.push(this._invoiceGroup(id, file.name, '', 0, previewUrl));
       return {id, file};
     });
@@ -135,37 +143,97 @@ export class PaymentForm implements OnInit {
   }
 
   removeInvoice(i: number) {
-    const url = this.invoiceArray.at(i).get('previewUrl')?.value as string;
+    const ctrl = this.invoiceArray.at(i);
+    const id  = ctrl.get('id')?.value as string;
+    const url = ctrl.get('previewUrl')?.value as string;
     if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
+    this.fileMap.delete(id);
     this.invoiceArray.removeAt(i);
   }
 
-  submit() {
+  /** 儲存（草稿或更新，不改變狀態） */
+  save() {
     if (this.form.invalid) return;
     if (this.invoiceArray.length === 0) {this.showInvoiceError = true; return;}
     this.showInvoiceError = false;
-    const v = this.form.value;
-    const project = this.projects.find(p => p.id === v.projectId);
-    const invoices = this.invoiceArray.value.map((inv: any) => ({...inv, amount: +inv.amount}));
-    const payload = {
-      type:           v.type as PaymentType,
-      projectId:      v.projectId!,
-      projectCode:    project?.code ?? '',
-      invoices,
-      totalAmount:    this.totalAmount,
-      approvalStatus: this.approvalStatus,
-    };
-    const obs = this.isEdit ? this.service.update(this.requestId, payload) : this.service.create(payload);
-    obs.subscribe(() => this.router.navigate(['/admin/payment-requests']));
+    const fd = this._buildFormData();
+    const obs = this.isEdit
+      ? this.service.updateWithFiles(this.requestId, fd)
+      : this.service.createWithFiles(fd);
+    this.errorMsg.set('');
+    obs.subscribe({
+      next: saved => {
+        if (!this.isEdit) this.requestId = saved.id;
+        this.router.navigate(['/admin/payment-requests']);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+      },
+    });
   }
 
-  private _invoiceGroup(id: string, fileName: string, invoiceNo: string, amount: number, previewUrl = '') {
+  /** 送出申請（先儲存再將狀態改為 pending） */
+  submitForApproval() {
+    if (this.form.invalid) return;
+    if (this.invoiceArray.length === 0) {this.showInvoiceError = true; return;}
+    this.showInvoiceError = false;
+    const fd = this._buildFormData();
+    const save$ = this.isEdit
+      ? this.service.updateWithFiles(this.requestId, fd)
+      : this.service.createWithFiles(fd);
+    this.errorMsg.set('');
+    save$.subscribe({
+      next: saved => {
+        this.service.submit(saved.id).subscribe({
+          next: () => this.router.navigate(['/admin/payment-requests']),
+          error: (err: HttpErrorResponse) => {
+            this.errorMsg.set(err.error?.message || '送出失敗，請稍後再試。');
+          },
+        });
+      },
+      error: (err: HttpErrorResponse) => {
+        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+      },
+    });
+  }
+
+  private _buildFormData(): FormData {
+    const fd = new FormData();
+    fd.append('type', this.form.get('type')!.value!);
+    fd.append('projectId', String(this.form.get('projectId')!.value));
+
+    const invoicesMeta: any[] = [];
+    let fileIndex = 0;
+
+    for (const ctrl of this.invoiceArray.controls) {
+      const id = ctrl.get('id')?.value;
+      const file = this.fileMap.get(id);
+      const meta = {
+        fileName:  ctrl.get('fileName')?.value,
+        invoiceNo: ctrl.get('invoiceNo')?.value,
+        amount:    +(ctrl.get('amount')?.value || 0),
+        fileUrl:   ctrl.get('fileUrl')?.value || null,
+        fileIndex: file ? fileIndex : -1,
+      };
+      if (file) {
+        fd.append('files', file, file.name);
+        fileIndex++;
+      }
+      invoicesMeta.push(meta);
+    }
+
+    fd.append('invoices', JSON.stringify(invoicesMeta));
+    return fd;
+  }
+
+  private _invoiceGroup(id: string, fileName: string, invoiceNo: string, amount: number, previewUrl = '', fileUrl = '') {
     return this.fb.group({
       id:         [id],
       fileName:   [fileName],
       invoiceNo:  [invoiceNo, Validators.required],
       amount:     [amount, [Validators.required, Validators.min(0)]],
       previewUrl: [previewUrl],
+      fileUrl:    [fileUrl],
     });
   }
 

@@ -18,9 +18,11 @@ export class ProjectList {
   readonly PAGE_SIZE = 20;
   page = signal(1);
 
+  private refresh = signal(0);
+
   private result = toSignal(
-    toObservable(this.page).pipe(
-      switchMap(p => this.projectService.getPaged(p, this.PAGE_SIZE))
+    toObservable(computed(() => ({ page: this.page(), refresh: this.refresh() }))).pipe(
+      switchMap(({ page }) => this.projectService.getPaged(page, this.PAGE_SIZE))
     ),
     {initialValue: {items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 1} as PagedResult<Project>}
   );
@@ -39,7 +41,9 @@ export class ProjectList {
 
   delete(project: Project) {
     if (confirm(`確定要刪除專案「${project.code}」嗎？`)) {
-      this.projectService.delete(project.id).subscribe();
+      this.projectService.delete(project.id).subscribe(() => {
+        this.refresh.update(v => v + 1);
+      });
     }
   }
 }
