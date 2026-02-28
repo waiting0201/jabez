@@ -46,19 +46,7 @@ export class PaymentForm implements OnInit {
   /** File preview modal state */
   previewFile: {name: string; url: string; safeUrl: SafeResourceUrl} | null = null;
   openPreview(name: string, url: string) {
-    // 本地 blob URL 直接開啟；Azure blob URL 需先取得 SAS URL
-    if (url.startsWith('blob:')) {
-      this._showPreview(name, url);
-    } else {
-      this.service.getSasUrl(url).subscribe({
-        next: sasUrl => this._showPreview(name, sasUrl),
-        error: () => this._showPreview(name, url), // fallback：嘗試原 URL
-      });
-    }
-  }
-  private _showPreview(name: string, url: string) {
     this.previewFile = {name, url, safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(url)};
-    this.cdr.markForCheck();
   }
   closePreview() { this.previewFile = null; }
   isImageFile(name: string) { return /\.(jpe?g|png|gif|webp|bmp)$/i.test(name); }
