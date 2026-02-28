@@ -2,9 +2,10 @@ import {ChangeDetectorRef, Component, inject, OnInit, signal} from '@angular/cor
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {AbstractControl, FormArray, FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {DecimalPipe} from '@angular/common';
-import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
+import {DomSanitizer} from '@angular/platform-browser';
 import {HttpErrorResponse} from '@angular/common/http';
 import {createWorker, PSM} from 'tesseract.js';
+import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {PaymentRequestService} from '../../services/payment-request.service';
 import {ProjectService} from '../../../projects/services/project.service';
 import {Project} from '../../../projects/models/project.model';
@@ -13,7 +14,7 @@ import {PaymentType, ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLA
 @Component({
   selector: 'app-payment-form',
   templateUrl: './payment-form.html',
-  imports: [ReactiveFormsModule, RouterLink, DecimalPipe],
+  imports: [ReactiveFormsModule, RouterLink, DecimalPipe, FilePreviewModal],
 })
 export class PaymentForm implements OnInit {
   private fb        = inject(FormBuilder);
@@ -44,13 +45,11 @@ export class PaymentForm implements OnInit {
   get isAnyOcrPending(): boolean { return this.ocrLoadingIds.size > 0; }
 
   /** File preview modal state */
-  previewFile: {name: string; url: string; safeUrl: SafeResourceUrl} | null = null;
+  previewFile: PreviewFileData | null = null;
   openPreview(name: string, url: string) {
     this.previewFile = {name, url, safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(url)};
   }
   closePreview() { this.previewFile = null; }
-  isImageFile(name: string) { return /\.(jpe?g|png|gif|webp|bmp)$/i.test(name); }
-  isPdfFile(name: string)   { return /\.pdf$/i.test(name); }
 
   readonly statusLabel = APPROVAL_STATUS_LABELS;
   readonly statusClass = APPROVAL_STATUS_CLASSES;

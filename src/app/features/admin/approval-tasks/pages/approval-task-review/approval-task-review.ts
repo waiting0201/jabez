@@ -3,8 +3,9 @@ import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {AsyncPipe, DatePipe, DecimalPipe} from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
-import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
+import {DomSanitizer} from '@angular/platform-browser';
 import {EMPTY, Observable, catchError, tap} from 'rxjs';
+import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {ApprovalTaskService} from '../../services/approval-task.service';
 import {
   ApprovalTask, ApprovalRecord, TaskStatus,
@@ -16,7 +17,7 @@ import {
 @Component({
   selector: 'app-approval-task-review',
   templateUrl: './approval-task-review.html',
-  imports: [RouterLink, ReactiveFormsModule, AsyncPipe, DatePipe, DecimalPipe],
+  imports: [RouterLink, ReactiveFormsModule, AsyncPipe, DatePipe, DecimalPipe, FilePreviewModal],
 })
 export class ApprovalTaskReview implements OnInit {
   private service   = inject(ApprovalTaskService);
@@ -32,13 +33,11 @@ export class ApprovalTaskReview implements OnInit {
   errorMsg = signal('');
   showNoteError = false;
 
-  previewFile: {name: string; url: string; safeUrl: SafeResourceUrl} | null = null;
+  previewFile: PreviewFileData | null = null;
   openPreview(name: string, url: string) {
     this.previewFile = {name, url, safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(url)};
   }
   closePreview() { this.previewFile = null; }
-  isImageFile(name: string) { return /\.(jpe?g|png|gif|webp|bmp)$/i.test(name); }
-  isPdfFile(name: string)   { return /\.pdf$/i.test(name); }
 
   readonly statusLabel    = TASK_STATUS_LABELS;
   readonly statusClass    = TASK_STATUS_CLASSES;
