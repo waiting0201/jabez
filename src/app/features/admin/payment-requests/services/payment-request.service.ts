@@ -1,6 +1,6 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
-import {Observable} from 'rxjs';
+import {Observable, map} from 'rxjs';
 import {PaymentRequest} from '../models/payment-request.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {environment} from '@/environments/environment';
@@ -36,5 +36,12 @@ export class PaymentRequestService {
   /** 送出申請（draft → pending） */
   submit(id: number): Observable<PaymentRequest> {
     return this.http.patch<PaymentRequest>(`${environment.apiUrl}/payment-requests/${id}/submit`, {});
+  }
+
+  /** 取得 Blob SAS URL（短效讀取連結） */
+  getSasUrl(fileUrl: string): Observable<string> {
+    return this.http.get<{data: string}>(`${environment.apiUrl}/blobs/sas`, {
+      params: {url: fileUrl, container: 'invoices'}
+    }).pipe(map(res => res.data));
   }
 }
