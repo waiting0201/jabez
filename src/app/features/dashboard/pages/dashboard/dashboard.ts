@@ -112,8 +112,10 @@ export class Dashboard implements OnInit, OnDestroy {
 
   formatTime(isoString?: string): string {
     if (!isoString) return '--:--';
-    const d = new Date(isoString);
-    return [d.getHours(), d.getMinutes()].map(n => String(n).padStart(2, '0')).join(':');
+    // 直接從 ISO 字串解析時間，避免 new Date() 時區轉換問題
+    const match = isoString.match(/T(\d{2}):(\d{2})/);
+    if (!match) return '--:--';
+    return `${match[1]}:${match[2]}`;
   }
 
   /** 點擊加班開始 → 先顯示選擇器 */
