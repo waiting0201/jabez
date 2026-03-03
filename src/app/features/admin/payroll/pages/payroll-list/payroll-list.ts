@@ -52,8 +52,8 @@ export class PayrollList {
 
   employees = computed(() => this.payroll()?.employees ?? []);
 
-  /** 字型快取：只下載一次 */
-  private fontCache: Promise<{regular: string; bold: string}> | null = null;
+  /** 資源快取：字型 + Logo 只下載一次 */
+  private assetCache: Promise<{regular: string; bold: string; logo: string}> | null = null;
 
   onMonthChange(value: string) {
     const [y, m] = value.split('-').map(Number);
@@ -79,17 +79,19 @@ export class PayrollList {
     });
   }
 
-  private loadFonts(): Promise<{regular: string; bold: string}> {
-    if (!this.fontCache) {
-      this.fontCache = Promise.all([
+  private loadAssets(): Promise<{regular: string; bold: string; logo: string}> {
+    if (!this.assetCache) {
+      this.assetCache = Promise.all([
         fetch('/assets/fonts/NotoSansTC-Regular.ttf').then(r => r.arrayBuffer()),
         fetch('/assets/fonts/NotoSansTC-Bold.ttf').then(r => r.arrayBuffer()),
-      ]).then(([regular, bold]) => ({
+        fetch('/assets/img/logo.jpg').then(r => r.arrayBuffer()),
+      ]).then(([regular, bold, logo]) => ({
         regular: arrayBufferToBase64(regular),
         bold: arrayBufferToBase64(bold),
+        logo: arrayBufferToBase64(logo),
       }));
     }
-    return this.fontCache;
+    return this.assetCache;
   }
 
   exportPdf() {
@@ -102,14 +104,14 @@ export class PayrollList {
     Promise.all([
       import('jspdf'),
       import('jspdf-autotable'),
-      this.loadFonts(),
-    ]).then(([{default: jsPDF}, {default: autoTable}, fonts]) => {
+      this.loadAssets(),
+    ]).then(([{default: jsPDF}, {default: autoTable}, assets]) => {
       const doc = new jsPDF('portrait', 'mm', 'a4');
       const F = 'NotoSansTC';
 
       // 註冊中文字型
-      doc.addFileToVFS('NotoSansTC-Regular.ttf', fonts.regular);
-      doc.addFileToVFS('NotoSansTC-Bold.ttf', fonts.bold);
+      doc.addFileToVFS('NotoSansTC-Regular.ttf', assets.regular);
+      doc.addFileToVFS('NotoSansTC-Bold.ttf', assets.bold);
       doc.addFont('NotoSansTC-Regular.ttf', F, 'normal');
       doc.addFont('NotoSansTC-Bold.ttf', F, 'bold');
 
@@ -122,7 +124,7 @@ export class PayrollList {
 
       p.employees.forEach((emp, idx) => {
         if (idx > 0) doc.addPage();
-        this.renderPaySlip(doc, autoTable, emp, p, idx, {pw, ph, mx, cw, F, fmt, printDate});
+        this.renderPaySlip(doc, autoTable, emp, p, idx, {pw, ph, mx, cw, F, fmt, printDate, logo: assets.logo});
       });
 
       doc.save(`payroll-${p.year}-${String(p.month).padStart(2, '0')}.pdf`);
@@ -137,9 +139,9 @@ export class PayrollList {
   private renderPaySlip(
     doc: any, autoTable: any,
     emp: EmployeePayroll, p: MonthlyPayroll, idx: number,
-    cfg: {pw: number; ph: number; mx: number; cw: number; F: string; fmt: (n: number) => string; printDate: string},
+    cfg: {pw: number; ph: number; mx: number; cw: number; F: string; fmt: (n: number) => string; printDate: string; logo: string},
   ) {
-    const {pw, ph, mx, cw, F, fmt, printDate} = cfg;
+    const {pw, ph, mx, cw, F, fmt, printDate, logo} = cfg;
     let y = 20;
 
     // ── 頂部裝飾線（森林綠雙線） ──
@@ -149,17 +151,21 @@ export class PayrollList {
     doc.setLineWidth(0.3);
     doc.line(mx, y + 1.5, pw - mx, y + 1.5);
 
-    // ── 標題區 ──
-    y += 10;
+    // ── Logo + 標題區 ──
+    y += 6;
+    const logoW = 48;
+    const logoH = 12;
+    doc.addImage(`data:image/jpeg;base64,${logo}`, 'JPEG', mx, y, logoW, logoH);
+
     doc.setFont(F, 'bold');
     doc.setFontSize(18);
     doc.setTextColor(...CIS.forest);
-    doc.text('薪資明細表', pw / 2, y, {align: 'center'});
-    y += 7;
+    doc.text('薪資明細表', pw - mx, y + 5, {align: 'right'});
     doc.setFont(F, 'normal');
     doc.setFontSize(10);
     doc.setTextColor(...CIS.textMuted);
-    doc.text(`${p.year} 年 ${p.month} 月`, pw / 2, y, {align: 'center'});
+    doc.text(`${p.year} 年 ${p.month} 月`, pw - mx, y + 11, {align: 'right'});
+    y += logoH + 2;
 
     // ── 員工資訊卡（暖色底） ──
     y += 10;

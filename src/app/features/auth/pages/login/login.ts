@@ -32,7 +32,7 @@ import { AuthService } from '@core/auth/services/auth.service';
         <!-- Brand content -->
         <div class="left-content">
           <div class="left-logo">
-            <img src="/assets/img/jabez-logo.png" alt="Jabez" class="left-logo-img" />
+            <img src="/assets/img/logo.jpg" alt="Jabez" class="left-logo-img" />
           </div>
 
           <h2 class="left-heading">紮根成長，<br>一切從這裡開始。</h2>
@@ -61,7 +61,7 @@ import { AuthService } from '@core/auth/services/auth.service';
         <div class="form-wrap" style="animation: fadeUp 0.5s ease both;">
 
           <div class="right-logo">
-            <img src="/assets/img/jabez-logo.png" alt="Jabez" class="right-logo-img" />
+            <img src="/assets/img/logo.jpg" alt="Jabez" class="right-logo-img" />
           </div>
 
           <div class="form-header">
