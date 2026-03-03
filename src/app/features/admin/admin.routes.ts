@@ -25,6 +25,9 @@ import {TravelRequestList} from './travel-requests/pages/travel-request-list/tra
 import {TravelRequestForm} from './travel-requests/pages/travel-request-form/travel-request-form';
 import {OvertimeRequestList} from './overtime-requests/pages/overtime-request-list/overtime-request-list';
 import {OvertimeRequestForm} from './overtime-requests/pages/overtime-request-form/overtime-request-form';
+import {AttendanceReport} from './reports/pages/attendance-report/attendance-report';
+import {InsuranceBracketList} from './insurance-brackets/pages/insurance-bracket-list/insurance-bracket-list';
+import {InsuranceBracketForm} from './insurance-brackets/pages/insurance-bracket-form/insurance-bracket-form';
 
 export const ADMIN_ROUTES: Routes = [
   {path: '', redirectTo: 'users', pathMatch: 'full'},
@@ -84,6 +87,14 @@ export const ADMIN_ROUTES: Routes = [
   // 簽核作業
   {path: 'approval-tasks',                                   component: ApprovalTaskList,   canActivate: [permissionGuard], data: {title: '簽核作業',   permission: 'approval-tasks:read'}},
   {path: 'approval-tasks/:applicationType/:id/review',       component: ApprovalTaskReview, canActivate: [permissionGuard], data: {title: '審核',       permission: 'approval-tasks:write'}},
+
+  // 統計報表
+  {path: 'reports/attendance',   component: AttendanceReport, canActivate: [permissionGuard], data: {title: '出缺勤紀錄', permission: 'reports-attendance:read'}},
+
+  // 勞健保級距
+  {path: 'insurance-brackets',             component: InsuranceBracketList, canActivate: [permissionGuard], data: {title: '勞健保級距維護', permission: 'insurance-brackets:read'}},
+  {path: 'insurance-brackets/new',         component: InsuranceBracketForm, canActivate: [permissionGuard], data: {title: '新增勞健保級距', permission: 'insurance-brackets:write'}},
+  {path: 'insurance-brackets/:id/edit',    component: InsuranceBracketForm, canActivate: [permissionGuard], data: {title: '編輯勞健保級距', permission: 'insurance-brackets:write'}},
 
   // 系統設定
   {path: 'settings',             component: Settings,       canActivate: [permissionGuard], data: {title: '系統設定',   permission: 'settings:read'}},

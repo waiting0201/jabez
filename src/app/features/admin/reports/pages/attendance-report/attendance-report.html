@@ -1,0 +1,96 @@
+<div class="container-fluid py-3">
+  <!-- Header -->
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
+      <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#bar-chart-2"></use>
+      </svg>
+      <h4 class="mb-0">出缺勤紀錄</h4>
+    </div>
+    <button class="btn btn-outline inline-flex items-center gap-1" (click)="exportExcel()">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#download"></use></svg>
+      匯出
+    </button>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+
+      <!-- Toolbar: 篩選列 -->
+      <div class="flex flex-wrap items-center gap-2 px-4 py-3 border-b">
+        <select class="form-control" [ngModel]="selectedEmployeeId()" (ngModelChange)="selectedEmployeeId.set($event)">
+          <option value="">請選擇員工</option>
+          @for (emp of employees(); track emp.id) {
+            <option [value]="emp.id">{{ emp.code }} {{ emp.name }}</option>
+          }
+        </select>
+        <select class="form-control" [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set($event)">
+          <option value="">請選擇年份</option>
+          @for (y of years(); track y) {
+            <option [value]="y">{{ y }}</option>
+          }
+        </select>
+        <select class="form-control" [ngModel]="selectedMonth()" (ngModelChange)="selectedMonth.set($event)">
+          <option value="">請選擇月份</option>
+          @for (m of months; track m) {
+            <option [value]="m">{{ m }}</option>
+          }
+        </select>
+        <button class="btn btn-primary" (click)="search()">篩選</button>
+      </div>
+
+      <!-- Table -->
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="text-center">員工編號</th>
+              <th>員工姓名</th>
+              <th class="text-center">日期</th>
+              <th class="text-center hidden md:table-cell">請假</th>
+              <th class="text-center hidden md:table-cell">請假時間</th>
+              <th class="text-center">上班時間</th>
+              <th class="text-center">下班時間</th>
+              <th class="text-center hidden lg:table-cell">加班時間</th>
+              <th class="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of records(); track row.employeeCode + row.recordDate) {
+              <tr>
+                <td class="text-center">{{ row.employeeCode }}</td>
+                <td class="fw-500">{{ row.employeeName }}</td>
+                <td class="text-center text-muted small">{{ row.recordDate }}</td>
+                <td class="text-center hidden md:table-cell">{{ row.leaveType }}</td>
+                <td class="text-center text-muted small hidden md:table-cell">{{ row.leaveTime }}</td>
+                <td class="text-center">{{ row.clockInTime }}</td>
+                <td class="text-center">{{ row.clockOutTime }}</td>
+                <td class="text-center hidden lg:table-cell">{{ row.overtimeRange }}</td>
+                <td class="text-right" style="white-space: nowrap">
+                  <div class="flex justify-end gap-1">
+                    @if (row.id) {
+                      <button class="btn btn-sm btn-ghost-primary inline-flex items-center" title="編輯">
+                        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="9" class="text-center text-muted py-4">
+                  @if (loading()) {
+                    載入中...
+                  } @else {
+                    尚無資料
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>

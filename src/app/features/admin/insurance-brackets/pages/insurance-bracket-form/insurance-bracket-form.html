@@ -1,0 +1,60 @@
+<div class="container-fluid py-3">
+  <!-- Header -->
+  <div class="flex items-center gap-2 mb-6">
+    <a routerLink="/admin/insurance-brackets" class="btn btn-sm btn-outline-secondary">
+      <svg class="sa-icon" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#arrow-left"></use>
+      </svg>
+    </a>
+    <h4 class="mb-0">{{ isEdit ? '編輯勞健保級距' : '新增勞健保級距' }}</h4>
+  </div>
+
+  <!-- Error -->
+  @if (errorMsg()) {
+    <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+      <svg class="sa-icon" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#alert-triangle"></use>
+      </svg>
+      {{ errorMsg() }}
+    </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <div class="col-12 col-lg-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent fw-500">級距資訊</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label fw-500">
+                投保級距 <span class="text-danger">*</span>
+              </label>
+              <input type="number" class="form-control" formControlName="salaryBracket" placeholder="例如：29500">
+              @if (form.get('salaryBracket')?.invalid && form.get('salaryBracket')?.touched) {
+                <div class="text-danger small mt-1">請輸入投保級距金額。</div>
+              }
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-500">員工負擔勞保 <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" formControlName="laborInsuranceEmployee" placeholder="例如：738">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-500">員工負擔健保 <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" formControlName="healthInsuranceEmployee" placeholder="例如：458">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 按鈕 -->
+    <div class="mt-6 flex gap-2">
+      <button type="submit" class="btn btn-primary" [disabled]="form.invalid">
+        {{ isEdit ? '更新' : '建立' }}
+      </button>
+      <a routerLink="/admin/insurance-brackets" class="btn btn-outline-secondary">
+        取消
+      </a>
+    </div>
+  </form>
+</div>

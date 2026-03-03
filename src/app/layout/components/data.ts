@@ -46,6 +46,13 @@ export const menuItems: MenuItemType[] = [
     requiredPermission: 'approval-tasks:read',
   },
 
+  { label: '統計報表', isTitle: true },
+  {
+    icon: '/assets/icons/sprite.svg#bar-chart-2',
+    label: '出缺勤紀錄',
+    url: '/admin/reports/attendance',
+    requiredPermission: 'reports-attendance:read',
+  },
   { label: '系統管理', isTitle: true },
   {
     icon: '/assets/icons/sprite.svg#users',
@@ -65,6 +72,12 @@ export const menuItems: MenuItemType[] = [
     children: [
       { label: '簽核項目', url: '/admin/approvals', requiredPermission: 'approvals:read' },
     ],
+  },
+  {
+    icon: '/assets/icons/sprite.svg#file-text',
+    label: '勞健保級距',
+    url: '/admin/insurance-brackets',
+    requiredPermission: 'insurance-brackets:read',
   },
   {
     icon: '/assets/icons/sprite.svg#shield',

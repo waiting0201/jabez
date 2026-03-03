@@ -1,0 +1,66 @@
+<div class="container-fluid py-3">
+  <!-- Header -->
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
+      <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#file-text"></use>
+      </svg>
+      <h4 class="mb-0">勞健保級距維護</h4>
+    </div>
+    <a routerLink="new" class="btn btn-primary inline-flex items-center gap-1">
+      <svg class="sa-icon" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#plus"></use>
+      </svg>
+      新增級距
+    </a>
+  </div>
+
+  <!-- 表格 -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="text-right">投保級距</th>
+              <th class="text-right">員工負擔勞保</th>
+              <th class="text-right">員工負擔健保</th>
+              <th class="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (b of brackets$ | async; track b.id) {
+              <tr>
+                <td class="text-right fw-500">{{ b.salaryBracket | number:'1.0-0' }}</td>
+                <td class="text-right">{{ b.laborInsuranceEmployee | number:'1.0-0' }}</td>
+                <td class="text-right">{{ b.healthInsuranceEmployee | number:'1.0-0' }}</td>
+                <td class="text-right">
+                  <div class="flex justify-end gap-1">
+                    <a [routerLink]="[b.id, 'edit']"
+                       class="btn btn-sm btn-ghost-primary inline-flex items-center">
+                      <svg class="sa-icon" style="stroke: currentColor">
+                        <use href="/assets/icons/sprite.svg#edit"></use>
+                      </svg>
+                    </a>
+                    <button class="btn btn-sm btn-ghost-danger inline-flex items-center"
+                            (click)="delete(b)">
+                      <svg class="sa-icon" style="stroke: currentColor">
+                        <use href="/assets/icons/sprite.svg#trash"></use>
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="4" class="text-center text-muted py-4">
+                  尚無勞健保級距資料。
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
