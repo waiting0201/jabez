@@ -1,11 +1,16 @@
-import {Component, inject, OnInit, signal} from '@angular/core';
+import {Component, DestroyRef, inject, OnInit, signal} from '@angular/core';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
+import {DecimalPipe} from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
+import {debounceTime, distinctUntilChanged, switchMap, catchError} from 'rxjs/operators';
+import {of} from 'rxjs';
 import {UserService} from '../../services/user.service';
 import {RoleService} from '../../../roles/services/role.service';
 import {DepartmentService} from '../../../departments/services/department.service';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
+import {InsuranceBracketService} from '../../../insurance-brackets/services/insurance-bracket.service';
 import {Role} from '../../../roles/models/role.model';
 import {Department} from '../../../departments/models/department.model';
 import {JobTitle} from '../../../job-titles/models/job-title.model';
@@ -14,16 +19,18 @@ import {User, UserStatus} from '../../models/user.model';
 @Component({
   selector: 'app-user-form',
   templateUrl: './user-form.html',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, DecimalPipe],
 })
 export class UserForm implements OnInit {
-  private fb             = inject(FormBuilder);
-  private userService    = inject(UserService);
-  private roleService    = inject(RoleService);
-  private deptService    = inject(DepartmentService);
-  private jtService      = inject(JobTitleService);
-  private route          = inject(ActivatedRoute);
-  private router         = inject(Router);
+  private fb              = inject(FormBuilder);
+  private userService     = inject(UserService);
+  private roleService     = inject(RoleService);
+  private deptService     = inject(DepartmentService);
+  private jtService       = inject(JobTitleService);
+  private bracketService  = inject(InsuranceBracketService);
+  private route           = inject(ActivatedRoute);
+  private router          = inject(Router);
+  private destroyRef      = inject(DestroyRef);
 
   roles: Role[]             = [];
   departments: Department[] = [];
@@ -31,7 +38,9 @@ export class UserForm implements OnInit {
   allUsers: User[]          = [];
   isEdit = false;
   userId = '';
-  errorMsg = signal('');
+  errorMsg        = signal('');
+  laborInsurance  = signal<number | null>(null);
+  healthInsurance = signal<number | null>(null);
 
   form = this.fb.group({
     name:         ['', Validators.required],
@@ -51,6 +60,21 @@ export class UserForm implements OnInit {
     this.deptService.getAll().subscribe(d => this.departments = d);
     this.jtService.getAll().subscribe(j => this.jobTitles = j);
     this.userService.getAll().subscribe(u => this.allUsers = u);
+
+    // 監聽底薪變化，非同步查詢對應勞健保級距（switchMap 自動取消前次請求）
+    this.form.get('baseSalary')!.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef),
+      debounceTime(500),
+      distinctUntilChanged(),
+      switchMap(val =>
+        val !== null && val > 0
+          ? this.bracketService.lookupBySalary(val).pipe(catchError(() => of(null)))
+          : of(null)
+      ),
+    ).subscribe(bracket => {
+      this.laborInsurance.set(bracket?.laborInsuranceEmployee ?? null);
+      this.healthInsurance.set(bracket?.healthInsuranceEmployee ?? null);
+    });
 
     this.userId = this.route.snapshot.paramMap.get('id') ?? '';
     if (this.userId) {

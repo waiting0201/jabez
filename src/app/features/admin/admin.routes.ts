@@ -28,6 +28,7 @@ import {OvertimeRequestForm} from './overtime-requests/pages/overtime-request-fo
 import {AttendanceReport} from './reports/pages/attendance-report/attendance-report';
 import {InsuranceBracketList} from './insurance-brackets/pages/insurance-bracket-list/insurance-bracket-list';
 import {InsuranceBracketForm} from './insurance-brackets/pages/insurance-bracket-form/insurance-bracket-form';
+import {PayrollList} from './payroll/pages/payroll-list/payroll-list';
 
 export const ADMIN_ROUTES: Routes = [
   {path: '', redirectTo: 'users', pathMatch: 'full'},
@@ -90,6 +91,9 @@ export const ADMIN_ROUTES: Routes = [
 
   // 統計報表
   {path: 'reports/attendance',   component: AttendanceReport, canActivate: [permissionGuard], data: {title: '出缺勤紀錄', permission: 'reports-attendance:read'}},
+
+  // 人事薪資
+  {path: 'payroll',                       component: PayrollList,          canActivate: [permissionGuard], data: {title: '人事薪資',       permission: 'payroll:read'}},
 
   // 勞健保級距
   {path: 'insurance-brackets',             component: InsuranceBracketList, canActivate: [permissionGuard], data: {title: '勞健保級距維護', permission: 'insurance-brackets:read'}},

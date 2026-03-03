@@ -168,6 +168,9 @@
                     <div class="col-6 col-md-4">
                       <div class="text-muted small mb-1">出差地點</div>
                       <span class="fw-500">{{ d.destination }}</span>
+                      @if (d.isHolidayTravel) {
+                        <span class="badge bg-info-subtle text-info ms-1">假日出差</span>
+                      }
                     </div>
                     <div class="col-6 col-md-4">
                       <div class="text-muted small mb-1">申請人</div>

@@ -39,9 +39,18 @@ export class TravelRequestForm implements OnInit {
     estimatedCost: [0, [Validators.required, Validators.min(0)]],
     purpose:       ['', Validators.required],
     projectId:     [null as number | null],
+    isHolidayTravel: [false],
   });
 
   loadingProjects = true;
+
+  get holidayDays(): number {
+    const v = this.form.value;
+    if (!v.isHolidayTravel || !v.startDate || !v.endDate) return 0;
+    const s = new Date(v.startDate);
+    const e = new Date(v.endDate);
+    return Math.max(0, Math.floor((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+  }
 
   ngOnInit() {
     this.projects$.getAll().subscribe({
@@ -71,8 +80,9 @@ export class TravelRequestForm implements OnInit {
             ? r.endDate.toISOString().split('T')[0]
             : String(r.endDate),
           estimatedCost: r.estimatedCost,
-          purpose:       r.purpose,
-          projectId:     r.projectId ?? null,
+          purpose:         r.purpose,
+          projectId:       r.projectId ?? null,
+          isHolidayTravel: r.isHolidayTravel ?? false,
         });
         if (this.isReadOnly) this.form.disable();
         this.cdr.markForCheck();
@@ -130,9 +140,10 @@ export class TravelRequestForm implements OnInit {
       startDate:     new Date(v.startDate!),
       endDate:       new Date(v.endDate!),
       estimatedCost: +v.estimatedCost!,
-      purpose:       v.purpose!,
-      projectId:     v.projectId ?? undefined,
-      projectCode:   project?.code,
+      purpose:         v.purpose!,
+      projectId:       v.projectId ?? undefined,
+      projectCode:     project?.code,
+      isHolidayTravel: !!v.isHolidayTravel,
     };
   }
 }

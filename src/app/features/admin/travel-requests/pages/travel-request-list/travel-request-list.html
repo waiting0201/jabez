@@ -31,7 +31,12 @@
           <tbody>
             @for (r of pagedRequests(); track r.id) {
               <tr>
-                <td class="fw-500">{{ r.destination }}</td>
+                <td class="fw-500">
+                  {{ r.destination }}
+                  @if (r.isHolidayTravel) {
+                    <span class="badge bg-info-subtle text-info ms-1">假日</span>
+                  }
+                </td>
                 <td class="text-muted small">{{ r.startDate | date:'yyyy-MM-dd' }}</td>
                 <td class="text-muted small">{{ r.endDate | date:'yyyy-MM-dd' }}</td>
                 <td class="text-right fw-500">{{ r.estimatedCost | number:'1.0-0' }}</td>

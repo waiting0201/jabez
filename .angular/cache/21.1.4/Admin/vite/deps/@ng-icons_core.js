@@ -1,7 +1,7 @@
 import {
   isPlatformServer
-} from "./chunk-FF566WQQ.js";
-import "./chunk-6TKDH7VM.js";
+} from "./chunk-64AUDPAQ.js";
+import "./chunk-B2XNSDAQ.js";
 import {
   ChangeDetectionStrategy,
   Component,
@@ -23,7 +23,7 @@ import {
   ɵɵprojection,
   ɵɵprojectionDef,
   ɵɵstyleProp
-} from "./chunk-GXW6WHBZ.js";
+} from "./chunk-ETCPGAYV.js";
 import {
   InjectionToken,
   Injector,
@@ -33,15 +33,15 @@ import {
   runInInjectionContext,
   ɵɵdefineInjector,
   ɵɵinject
-} from "./chunk-NCWOAHGH.js";
+} from "./chunk-DFOB7PJZ.js";
+import "./chunk-JRFR6BLO.js";
 import {
   isObservable
 } from "./chunk-HWYXSU2G.js";
-import "./chunk-JRFR6BLO.js";
 import "./chunk-MARUHEWW.js";
 import {
   __spreadValues
-} from "./chunk-OCBFZOLU.js";
+} from "./chunk-VL5VAURS.js";
 
 // node_modules/@ng-icons/core/fesm2022/ng-icons-core.mjs
 var _c0 = ["*"];

@@ -62,6 +62,7 @@ export const menuItems: MenuItemType[] = [
       { label: '員工管理', url: '/admin/users', requiredPermission: 'users:read' },
       { label: '部門管理', url: '/admin/departments', requiredPermission: 'departments:read' },
       { label: '職稱管理', url: '/admin/job-titles', requiredPermission: 'job-titles:read' },
+      { label: '人事薪資', url: '/admin/payroll', requiredPermission: 'payroll:read' },
     ],
   },
   {

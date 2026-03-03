@@ -104,6 +104,22 @@
                 </div>
               </div>
               <div class="col-12 col-md-6">
+                <label class="form-label fw-500">勞保（員工負擔）</label>
+                <div class="input-group">
+                  <span class="input-group-text">NT$</span>
+                  <input type="text" class="form-control bg-light" readonly
+                         [value]="laborInsurance() !== null ? (laborInsurance() | number:'1.0-0') : '—'">
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">健保（員工負擔）</label>
+                <div class="input-group">
+                  <span class="input-group-text">NT$</span>
+                  <input type="text" class="form-control bg-light" readonly
+                         [value]="healthInsurance() !== null ? (healthInsurance() | number:'1.0-0') : '—'">
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
                 <label class="form-label fw-500">職務代理人</label>
                 <select class="form-select" formControlName="agentUserId">
                   <option value="">— 無代理人 —</option>

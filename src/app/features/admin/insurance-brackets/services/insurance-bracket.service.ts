@@ -28,4 +28,8 @@ export class InsuranceBracketService {
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/${id}`);
   }
+
+  lookupBySalary(salary: number): Observable<InsuranceBracket> {
+    return this.http.get<InsuranceBracket>(`${this.base}/lookup`, {params: {salary}});
+  }
 }

@@ -1,4 +1,4 @@
-import "./chunk-OCBFZOLU.js";
+import "./chunk-VL5VAURS.js";
 
 // node_modules/@angular/localize/fesm2022/_localize-chunk.mjs
 var BLOCK_MARKER$1 = ":";

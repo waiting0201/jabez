@@ -99,6 +99,17 @@
             </div>
 
             <div class="mb-4">
+              <div class="flex items-center gap-2">
+                <input type="checkbox" class="form-check-input" formControlName="isHolidayTravel"
+                       id="isHolidayTravel">
+                <label class="form-check-label fw-500" for="isHolidayTravel">假日出差</label>
+              </div>
+              @if (form.get('isHolidayTravel')?.value && holidayDays > 0) {
+                <div class="text-muted small mt-1">假日天數：{{ holidayDays }} 天</div>
+              }
+            </div>
+
+            <div class="mb-4">
               <label class="form-label fw-500">出差目的 <span class="text-danger">*</span></label>
               <textarea class="form-control" formControlName="purpose" rows="3"
                         placeholder="請填寫出差目的..."></textarea>

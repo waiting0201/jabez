@@ -73,6 +73,7 @@ export interface TravelTaskDetail {
   estimatedCost: number;
   purpose: string;
   projectCode?: string;
+  isHolidayTravel: boolean;
 }
 
 export interface OvertimeTaskDetail {

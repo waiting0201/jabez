@@ -2,7 +2,8 @@ import {Component, computed, inject, signal} from '@angular/core';
 import {RouterLink} from '@angular/router';
 import {DatePipe, CurrencyPipe} from '@angular/common';
 import {toSignal, toObservable} from '@angular/core/rxjs-interop';
-import {switchMap} from 'rxjs/operators';
+import {catchError, switchMap} from 'rxjs/operators';
+import {of} from 'rxjs';
 import {UserService} from '../../services/user.service';
 import {RoleService} from '../../../roles/services/role.service';
 import {User} from '../../models/user.model';
@@ -18,7 +19,10 @@ export class UserList {
   private userService = inject(UserService);
   private roleService = inject(RoleService);
 
-  private roles = toSignal(this.roleService.getAll(), {initialValue: [] as Role[]});
+  private roles = toSignal(
+    this.roleService.getAll().pipe(catchError(() => of([] as Role[]))),
+    {initialValue: [] as Role[]},
+  );
 
   readonly PAGE_SIZE = 20;
   page = signal(1);
