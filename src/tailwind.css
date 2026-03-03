@@ -16,12 +16,12 @@
   --border-bright: #C8BBAA;
 
   /* Sidebar */
-  --sidebar-bg:       #2D402E;
-  --sidebar-surface:  #354C37;
-  --sidebar-hover:    #3D5940;
-  --sidebar-border:   rgba(255,255,255,0.07);
-  --sidebar-text:     rgba(255,255,255,0.70);
-  --sidebar-text-dim: rgba(255,255,255,0.32);
+  --sidebar-bg:       #699F34;
+  --sidebar-surface:  #5B8E2D;
+  --sidebar-hover:    #78AD42;
+  --sidebar-border:   rgba(255,255,255,0.18);
+  --sidebar-text:     rgba(255,255,255,0.92);
+  --sidebar-text-dim: rgba(255,255,255,0.58);
 
   /* Accent */
   --accent:        #8C7355;
@@ -31,11 +31,11 @@
   --accent-border: rgba(140,115,85,0.28);
 
   /* Semantic */
-  --forest:       #2D402E;
+  --forest:       #699F34;
   --forest-mid:   #4A6B3A;
   --forest-light: #6B8F5E;
-  --text-primary:   #2D3A2E;
-  --text-secondary: #6B6355;
+  --text-primary:   #525358;
+  --text-secondary: #6E6F73;
   --text-muted:     #A39685;
   --green:  #4A6B3A;
   --yellow: #B8892A;
@@ -74,7 +74,7 @@
   --app-nav-link-color:          var(--sidebar-text);
   --app-nav-link-active-color:   #ffffff;
   --app-nav-item-hover-bg:       var(--sidebar-hover);
-  --app-nav-item-active-bg:      rgba(255,255,255,0.12);
+  --app-nav-item-active-bg:      rgba(255,255,255,0.20);
   --app-nav-item-active-indicator: #ffffff;
   --app-nav-border-color:        var(--sidebar-border);
   --app-nav-svgicon-size:        1.25rem;

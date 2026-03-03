@@ -17,10 +17,10 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 
 /** CIS 色彩設計語言（對應 tailwind.css :root Design Tokens） */
 const CIS = {
-  forest:      [45, 64, 46]    as const,  // #2D402E
+  forest:      [105, 159, 52]  as const,  // #699F34
   forestMid:   [74, 107, 58]   as const,  // #4A6B3A
   accent:      [140, 115, 85]  as const,  // #8C7355
-  textPrimary: [45, 58, 46]    as const,  // #2D3A2E
+  textPrimary: [82, 83, 88]    as const,  // #525358
   textMuted:   [163, 150, 133] as const,  // #A39685
   bgBase:      [245, 242, 237] as const,  // #F5F2ED
   bgSurface:   [253, 250, 245] as const,  // #FDFAF5

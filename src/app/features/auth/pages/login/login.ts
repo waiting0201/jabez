@@ -32,7 +32,7 @@ import { AuthService } from '@core/auth/services/auth.service';
         <!-- Brand content -->
         <div class="left-content">
           <div class="left-logo">
-            <img src="/assets/img/logo.jpg" alt="Jabez" class="left-logo-img" />
+            <img src="/assets/img/logo.png" alt="Jabez" class="left-logo-img" />
           </div>
 
           <h2 class="left-heading">紮根成長，<br>一切從這裡開始。</h2>
@@ -61,7 +61,7 @@ import { AuthService } from '@core/auth/services/auth.service';
         <div class="form-wrap" style="animation: fadeUp 0.5s ease both;">
 
           <div class="right-logo">
-            <img src="/assets/img/logo.jpg" alt="Jabez" class="right-logo-img" />
+            <img src="/assets/img/logo.png" alt="Jabez" class="right-logo-img" />
           </div>
 
           <div class="form-header">
@@ -167,7 +167,7 @@ import { AuthService } from '@core/auth/services/auth.service';
     .deco-br { bottom: 0; right: 0; }
     .left-content { position: relative; z-index: 1; width: 100%; text-align: center; }
     .left-logo { margin-bottom: 2.5rem; display: flex; justify-content: center; }
-    .left-logo-img { height: 5rem; width: auto; border-radius: 0.75rem; }
+    .left-logo-img { height: 5rem; width: auto; border-radius: 0.75rem; background: rgba(255,255,255,0.92); padding: 0.5rem 0.75rem; }
     .left-heading {
       font-family: var(--font-display); font-size: 2rem; font-weight: 700;
       line-height: 1.3; color: white; margin-bottom: 1rem;
