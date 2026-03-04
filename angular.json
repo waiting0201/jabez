@@ -49,7 +49,8 @@
             "outputPath": "dist/Admin",
             "allowedCommonJsDependencies": [
               "tesseract.js",
-              "vanta/dist/vanta.halo.min"
+              "vanta/dist/vanta.halo.min",
+              "xlsx"
             ]
           },
           "configurations": {

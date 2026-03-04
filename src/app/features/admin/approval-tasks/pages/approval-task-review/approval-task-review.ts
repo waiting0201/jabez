@@ -49,6 +49,7 @@ export class ApprovalTaskReview implements OnInit {
   form = this.fb.group({
     action:     ['approved', Validators.required],
     reviewNote: [''],
+    paidAt:     [''],
   });
 
   ngOnInit() {
@@ -71,13 +72,14 @@ export class ApprovalTaskReview implements OnInit {
     if (this.taskStatus() !== 'pending') return;
     const action = this.form.value.action as TaskStatus;
     const note   = this.form.value.reviewNote?.trim() ?? '';
+    const paidAt = this.form.value.paidAt || undefined;
     if ((action === 'rejected' || action === 'returned') && !note) {
       this.showNoteError = true;
       return;
     }
     this.showNoteError = false;
     this.errorMsg.set('');
-    this.service.review(this.taskId, this.applicationType, action, note).subscribe({
+    this.service.review(this.taskId, this.applicationType, action, note, paidAt).subscribe({
       next: () => this.router.navigate(['/admin/approval-tasks']),
       error: (err: HttpErrorResponse) => {
         this.errorMsg.set(err.error?.message || '審核失敗，請稍後再試。');

@@ -54,6 +54,7 @@ export interface PaymentTaskDetail {
   projectCode: string;
   invoices: InvoiceItem[];
   totalAmount: number;
+  paidAt?: string;
 }
 
 export interface LeaveTaskDetail {

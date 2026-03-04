@@ -1,0 +1,122 @@
+<div class="container-fluid py-3">
+  <!-- Header -->
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
+      <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#clock"></use>
+      </svg>
+      <h4 class="mb-0">加班紀錄</h4>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+
+      <!-- Toolbar: 篩選列 -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 px-4 py-3 border-b items-end">
+        <div>
+          <label class="text-xs text-muted mb-1 block">員工</label>
+          <select class="form-control w-full" [ngModel]="selectedEmployeeId()" (ngModelChange)="selectedEmployeeId.set($event)">
+            <option value="">全部員工</option>
+            @for (emp of employees(); track emp.id) {
+              <option [value]="emp.id">{{ emp.code }} {{ emp.name }}</option>
+            }
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-muted mb-1 block">專案</label>
+          <select class="form-control w-full" [ngModel]="selectedProjectId()" (ngModelChange)="selectedProjectId.set($event)">
+            <option value="">全部專案</option>
+            @for (proj of projects(); track proj.id) {
+              <option [value]="proj.id">{{ proj.code }}</option>
+            }
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-muted mb-1 block">年份</label>
+          <select class="form-control w-full" [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set($event)">
+            <option value="">全部年份</option>
+            @for (y of years(); track y) {
+              <option [value]="y">{{ y }}</option>
+            }
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-muted mb-1 block">月份</label>
+          <select class="form-control w-full" [ngModel]="selectedMonth()" (ngModelChange)="selectedMonth.set($event)">
+            <option value="">全部月份</option>
+            @for (m of months; track m) {
+              <option [value]="m">{{ m }}月</option>
+            }
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-muted mb-1 block sm:invisible">&nbsp;</label>
+          <button class="btn btn-primary w-full" (click)="search()">篩選</button>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>員工姓名</th>
+              <th class="text-center">加班日期</th>
+              <th class="text-center hidden md:table-cell">所屬專案</th>
+              <th class="text-center">預估時數</th>
+              <th class="text-center">實際時數</th>
+              <th class="hidden lg:table-cell">事由</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of records(); track row.id) {
+              <tr>
+                <td class="fw-500">{{ row.employeeName }}</td>
+                <td class="text-center text-muted small">{{ row.overtimeDate }}</td>
+                <td class="text-center hidden md:table-cell">
+                  @if (row.projectCodes) {
+                    <span class="text-muted small">{{ row.projectCodes }}</span>
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
+                <td class="text-center">{{ row.estimatedHours }} h</td>
+                <td class="text-center">
+                  @if (row.actualHours !== null) {
+                    {{ row.actualHours }} h
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
+                <td class="hidden lg:table-cell text-muted small" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="row.reason">{{ row.reason }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="text-center text-muted py-4">
+                  @if (loading()) {
+                    載入中...
+                  } @else {
+                    尚無資料
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      @if (totalPages() > 1) {
+        <div class="flex items-center justify-between px-4 py-3 border-t">
+          <span class="text-muted small">共 {{ totalCount() }} 筆，第 {{ currentPage() }} / {{ totalPages() }} 頁</span>
+          <div class="flex gap-1">
+            <button class="btn btn-sm btn-outline" [disabled]="currentPage() <= 1" (click)="goToPage(currentPage() - 1)">上一頁</button>
+            <button class="btn btn-sm btn-outline" [disabled]="currentPage() >= totalPages()" (click)="goToPage(currentPage() + 1)">下一頁</button>
+          </div>
+        </div>
+      }
+
+    </div>
+  </div>
+</div>

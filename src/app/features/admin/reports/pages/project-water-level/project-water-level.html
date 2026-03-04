@@ -1,0 +1,86 @@
+<div class="container-fluid py-3">
+  <!-- Header -->
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
+      <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#trending-up"></use>
+      </svg>
+      <h4 class="mb-0">專案水位表</h4>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+
+      <!-- Table -->
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>專案代碼</th>
+              <th class="hidden md:table-cell">部門</th>
+              <th class="text-center hidden md:table-cell">狀態</th>
+              <th class="text-right">業務金額</th>
+              <th class="text-right">已請款</th>
+              <th class="text-right hidden lg:table-cell">已付款</th>
+              <th style="min-width: 180px">水位</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of records(); track row.projectId) {
+              <tr>
+                <td class="fw-600 font-monospace">{{ row.projectCode }}</td>
+                <td class="hidden md:table-cell text-muted small">{{ row.departmentName }}</td>
+                <td class="text-center hidden md:table-cell">
+                  @if (row.status === 'active') {
+                    <span class="badge bg-success-subtle text-success">進行中</span>
+                  } @else {
+                    <span class="badge bg-secondary-subtle text-secondary">已結案</span>
+                  }
+                </td>
+                <td class="text-right">
+                  @if (row.businessAmount !== null) {
+                    <span class="fw-500">{{ row.businessAmount | number:'1.0-0' }}</span>
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
+                <td class="text-right fw-500">{{ row.paymentAmount | number:'1.0-0' }}</td>
+                <td class="text-right hidden lg:table-cell text-muted">{{ row.paidAmount | number:'1.0-0' }}</td>
+                <td>
+                  <div class="flex items-center gap-2">
+                    <div class="grow rounded-full overflow-hidden" style="height: 8px; background: var(--bg-elevated)">
+                      <div class="h-full rounded-full transition-all duration-500"
+                           [style.width]="getBarWidth(row.percentage)"
+                           [style.background]="getBarColor(row.percentage)">
+                      </div>
+                    </div>
+                    <span class="shrink-0 text-right small fw-600" style="min-width: 42px"
+                          [style.color]="getBarColor(row.percentage)">
+                      @if (row.percentage !== null) {
+                        {{ row.percentage }}%
+                      } @else {
+                        —
+                      }
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" class="text-center text-muted py-4">
+                  @if (loading()) {
+                    載入中...
+                  } @else {
+                    尚無資料
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>

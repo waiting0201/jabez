@@ -56,6 +56,12 @@
                       <div class="text-muted small mb-1">總金額</div>
                       <span class="fw-600 fs-5">{{ d.totalAmount | number:'1.0-0' }}</span>
                     </div>
+                    @if (d.paidAt) {
+                      <div class="col-6 col-md-4">
+                        <div class="text-muted small mb-1">付款日期</div>
+                        <span class="fw-500 text-success">{{ d.paidAt | date:'yyyy-MM-dd' }}</span>
+                      </div>
+                    }
                   </div>
                 </div>
               </div>
@@ -338,6 +344,14 @@
                     </div>
                   </div>
                 </div>
+                @if (applicationType === 'payment_request') {
+                  <div class="mb-4">
+                    <label class="form-label fw-500">付款日期</label>
+                    <input type="date" class="form-control" formControlName="paidAt"
+                           style="max-width: 220px">
+                    <div class="text-muted small mt-1">填寫後表示此筆請款已付款</div>
+                  </div>
+                }
                 <div class="mb-4">
                   <label class="form-label fw-500">
                     審核意見
@@ -392,6 +406,10 @@
               @if (task.reviewedAt) {
                 <div class="text-muted small mb-1 fw-500">核准時間：</div>
                 <div class="small mb-4">{{ task.reviewedAt | date:'yyyy-MM-dd HH:mm' }}</div>
+              }
+              @if (task.applicationType === 'payment_request' && task.paymentDetail?.paidAt) {
+                <div class="text-muted small mb-1 fw-500">付款日期：</div>
+                <div class="small mb-4 text-success">{{ task.paymentDetail!.paidAt | date:'yyyy-MM-dd' }}</div>
               }
               @if (task.reviewNote) {
                 <div class="text-muted small mb-1 fw-500">審核意見：</div>

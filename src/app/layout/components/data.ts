@@ -53,6 +53,24 @@ export const menuItems: MenuItemType[] = [
     url: '/admin/reports/attendance',
     requiredPermission: 'reports-attendance:read',
   },
+  {
+    icon: '/assets/icons/sprite.svg#clock',
+    label: '加班紀錄',
+    url: '/admin/reports/overtime',
+    requiredPermission: 'reports-overtime:read',
+  },
+  {
+    icon: '/assets/icons/sprite.svg#credit-card',
+    label: '請款統計',
+    url: '/admin/reports/payment',
+    requiredPermission: 'reports-payment:read',
+  },
+  {
+    icon: '/assets/icons/sprite.svg#trending-up',
+    label: '專案水位表',
+    url: '/admin/reports/project-water-level',
+    requiredPermission: 'reports-project-water-level:read',
+  },
   { label: '系統管理', isTitle: true },
   {
     icon: '/assets/icons/sprite.svg#users',

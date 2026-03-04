@@ -26,6 +26,9 @@ import {TravelRequestForm} from './travel-requests/pages/travel-request-form/tra
 import {OvertimeRequestList} from './overtime-requests/pages/overtime-request-list/overtime-request-list';
 import {OvertimeRequestForm} from './overtime-requests/pages/overtime-request-form/overtime-request-form';
 import {AttendanceReport} from './reports/pages/attendance-report/attendance-report';
+import {OvertimeReport} from './reports/pages/overtime-report/overtime-report';
+import {PaymentReport} from './reports/pages/payment-report/payment-report';
+import {ProjectWaterLevel} from './reports/pages/project-water-level/project-water-level';
 import {InsuranceBracketList} from './insurance-brackets/pages/insurance-bracket-list/insurance-bracket-list';
 import {InsuranceBracketForm} from './insurance-brackets/pages/insurance-bracket-form/insurance-bracket-form';
 import {PayrollList} from './payroll/pages/payroll-list/payroll-list';
@@ -91,6 +94,9 @@ export const ADMIN_ROUTES: Routes = [
 
   // 統計報表
   {path: 'reports/attendance',   component: AttendanceReport, canActivate: [permissionGuard], data: {title: '出缺勤紀錄', permission: 'reports-attendance:read'}},
+  {path: 'reports/overtime',    component: OvertimeReport,   canActivate: [permissionGuard], data: {title: '加班紀錄',   permission: 'reports-overtime:read'}},
+  {path: 'reports/payment',    component: PaymentReport,    canActivate: [permissionGuard], data: {title: '請款統計',   permission: 'reports-payment:read'}},
+  {path: 'reports/project-water-level', component: ProjectWaterLevel, canActivate: [permissionGuard], data: {title: '專案水位表', permission: 'reports-project-water-level:read'}},
 
   // 人事薪資
   {path: 'payroll',                       component: PayrollList,          canActivate: [permissionGuard], data: {title: '人事薪資',       permission: 'payroll:read'}},

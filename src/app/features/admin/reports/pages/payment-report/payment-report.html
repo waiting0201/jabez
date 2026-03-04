@@ -1,0 +1,144 @@
+<div class="container-fluid py-3">
+  <!-- Header -->
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
+      <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#credit-card"></use>
+      </svg>
+      <h4 class="mb-0">請款統計</h4>
+    </div>
+    <button class="btn btn-outline inline-flex items-center gap-1"
+            [disabled]="exporting() || records().length === 0"
+            (click)="exportExcel()">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#download"></use></svg>
+      {{ exporting() ? '匯出中...' : '匯出' }}
+    </button>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+
+      <!-- Toolbar: 篩選列 -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 px-4 py-3 border-b items-end">
+        <div>
+          <label class="text-xs text-muted mb-1 block">年份</label>
+          <select class="form-control w-full" [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set($event)">
+            <option value="">全部年份</option>
+            @for (y of years(); track y) {
+              <option [value]="y">{{ y }}</option>
+            }
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-muted mb-1 block">月份</label>
+          <select class="form-control w-full" [ngModel]="selectedMonth()" (ngModelChange)="selectedMonth.set($event)">
+            <option value="">全部月份</option>
+            @for (m of months; track m) {
+              <option [value]="m">{{ m }}月</option>
+            }
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-muted mb-1 block">付款狀態</label>
+          <select class="form-control w-full" [ngModel]="selectedPaymentStatus()" (ngModelChange)="selectedPaymentStatus.set($event)">
+            <option value="">全部</option>
+            <option value="paid">已付</option>
+            <option value="unpaid">未付</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-muted mb-1 block sm:invisible">&nbsp;</label>
+          <button class="btn btn-primary w-full" (click)="search()">篩選</button>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>員工姓名</th>
+              <th class="text-center">請款類型</th>
+              <th class="text-center hidden md:table-cell">專案代碼</th>
+              <th class="hidden lg:table-cell">發票號碼</th>
+              <th class="text-right">總金額</th>
+              <th class="text-center">簽核狀態</th>
+              <th class="text-center hidden md:table-cell">付款日期</th>
+              <th class="text-center hidden lg:table-cell">申請日期</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of records(); track row.id) {
+              <tr>
+                <td class="fw-500">{{ row.employeeName }}</td>
+                <td class="text-center">
+                  <span class="badge bg-[--bg-base] text-[--text-secondary] small">{{ row.typeLabel }}</span>
+                </td>
+                <td class="text-center hidden md:table-cell font-monospace small">{{ row.projectCode }}</td>
+                <td class="hidden lg:table-cell text-muted small" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="row.invoiceNos">{{ row.invoiceNos || '—' }}</td>
+                <td class="text-right fw-600">{{ row.totalAmount | number:'1.0-0' }}</td>
+                <td class="text-center">
+                  @switch (row.approvalStatus) {
+                    @case ('approved') {
+                      <span class="badge bg-success-subtle text-success">{{ row.statusLabel }}</span>
+                    }
+                    @case ('pending') {
+                      <span class="badge bg-warning-subtle text-warning-emphasis">{{ row.statusLabel }}</span>
+                    }
+                    @case ('rejected') {
+                      <span class="badge bg-danger-subtle text-danger">{{ row.statusLabel }}</span>
+                    }
+                    @default {
+                      <span class="badge bg-secondary-subtle text-secondary">{{ row.statusLabel }}</span>
+                    }
+                  }
+                </td>
+                <td class="text-center hidden md:table-cell">
+                  @if (row.paidAt) {
+                    <span class="text-success small">{{ row.paidAt }}</span>
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
+                <td class="text-center hidden lg:table-cell text-muted small">{{ row.createdAt }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="8" class="text-center text-muted py-4">
+                  @if (loading()) {
+                    載入中...
+                  } @else {
+                    尚無資料
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+          @if (records().length > 0) {
+            <tfoot>
+              <tr class="table-light">
+                <td colspan="4" class="text-right fw-500 small hidden lg:table-cell">合計</td>
+                <td colspan="2" class="text-right fw-500 small table-cell lg:hidden">合計</td>
+                <td class="text-right fw-600">{{ totalAmount() | number:'1.0-0' }}</td>
+                <td colspan="3" class="hidden md:table-cell"></td>
+                <td class="table-cell md:hidden"></td>
+              </tr>
+            </tfoot>
+          }
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      @if (totalPages() > 1) {
+        <div class="flex items-center justify-between px-4 py-3 border-t">
+          <span class="text-muted small">共 {{ totalCount() }} 筆，第 {{ currentPage() }} / {{ totalPages() }} 頁</span>
+          <div class="flex gap-1">
+            <button class="btn btn-sm btn-outline" [disabled]="currentPage() <= 1" (click)="goToPage(currentPage() - 1)">上一頁</button>
+            <button class="btn btn-sm btn-outline" [disabled]="currentPage() >= totalPages()" (click)="goToPage(currentPage() + 1)">下一頁</button>
+          </div>
+        </div>
+      }
+
+    </div>
+  </div>
+</div>
