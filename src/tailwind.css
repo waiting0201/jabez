@@ -249,6 +249,7 @@
     align-items: center;
     justify-content: space-between;
     background: var(--app-header-background);
+    font-size: 0.75rem;
   }
 
   .app-logo {
