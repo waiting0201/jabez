@@ -13,6 +13,11 @@ export class ProjectService {
     return this.http.get<Project[]>(`${environment.apiUrl}/projects`);
   }
 
+  /** 取得未結案專案（不需 ProjectsRead 權限） */
+  getActive(): Observable<Project[]> {
+    return this.http.get<Project[]>(`${environment.apiUrl}/projects/active`);
+  }
+
   getPaged(page: number, pageSize: number): Observable<PagedResult<Project>> {
     return this.http.get<PagedResult<Project>>(`${environment.apiUrl}/projects`, {params: {page, pageSize}});
   }

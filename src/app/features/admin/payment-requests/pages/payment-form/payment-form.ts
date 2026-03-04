@@ -69,9 +69,9 @@ export class PaymentForm implements OnInit {
   loadingProjects = true;
 
   ngOnInit() {
-    this.projects$.getAll().subscribe({
+    this.projects$.getActive().subscribe({
       next: p => {
-        this.projects = p.filter(x => x.status === 'active');
+        this.projects = p;
         this.loadingProjects = false;
         this.cdr.markForCheck();
       },

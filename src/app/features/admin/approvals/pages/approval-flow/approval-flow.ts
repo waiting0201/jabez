@@ -33,10 +33,11 @@ export class ApprovalFlow implements OnInit {
   editStep: ApprovalStep | null = null;
 
   stepForm = this.fb.group({
-    stepOrder:    [1, [Validators.required, Validators.min(1)]],
-    departmentId: [null as number | null],
-    jobTitleId:   [null as number | null],
-    note:         [''],
+    stepOrder:              [1, [Validators.required, Validators.min(1)]],
+    departmentId:           [null as number | null],
+    jobTitleId:             [null as number | null],
+    useApplicantDepartment: [false],
+    note:                   [''],
   });
 
   ngOnInit() {
@@ -49,17 +50,18 @@ export class ApprovalFlow implements OnInit {
   openAddStep() {
     this.editStep = null;
     const nextOrder = (this.item$.getValue()?.steps.length ?? 0) + 1;
-    this.stepForm.reset({stepOrder: nextOrder, departmentId: null, jobTitleId: null, note: ''});
+    this.stepForm.reset({stepOrder: nextOrder, departmentId: null, jobTitleId: null, useApplicantDepartment: false, note: ''});
     this.showStepForm = true;
   }
 
   openEditStep(step: ApprovalStep) {
     this.editStep = step;
     this.stepForm.patchValue({
-      stepOrder:    step.stepOrder,
-      departmentId: step.departmentId ?? null,
-      jobTitleId:   step.jobTitleId ?? null,
-      note:         step.note ?? '',
+      stepOrder:              step.stepOrder,
+      departmentId:           step.departmentId ?? null,
+      jobTitleId:             step.jobTitleId ?? null,
+      useApplicantDepartment: step.useApplicantDepartment ?? false,
+      note:                   step.note ?? '',
     });
     this.showStepForm = true;
   }
@@ -68,13 +70,27 @@ export class ApprovalFlow implements OnInit {
     this.showStepForm = false;
   }
 
+  onUseApplicantDepartmentChange() {
+    const checked = this.stepForm.value.useApplicantDepartment;
+    if (checked) {
+      this.stepForm.patchValue({departmentId: null});
+    }
+  }
+
   submitStep() {
     if (this.stepForm.invalid) return;
     const v = this.stepForm.value;
-    const deptId = v.departmentId || undefined;
-    const jtId   = v.jobTitleId   || undefined;
+    const useAppDept = v.useApplicantDepartment ?? false;
+    const deptId = useAppDept ? undefined : (v.departmentId || undefined);
+    const jtId   = v.jobTitleId || undefined;
 
-    if (!deptId && !jtId) {
+    // 驗證：useApplicantDepartment 時只需 jobTitleId；否則部門或職稱至少選一
+    if (useAppDept) {
+      if (!jtId) {
+        alert('使用申請人部門時，職稱為必填。');
+        return;
+      }
+    } else if (!deptId && !jtId) {
       alert('部門或職稱至少選一。');
       return;
     }
@@ -83,12 +99,13 @@ export class ApprovalFlow implements OnInit {
     const jtName   = jtId   ? this.jobTitles.find(j => j.id === jtId)?.name   : undefined;
 
     const stepData = {
-      stepOrder:      v.stepOrder!,
-      departmentId:   deptId,
-      departmentName: deptName,
-      jobTitleId:     jtId,
-      jobTitleName:   jtName,
-      note:           v.note ?? '',
+      stepOrder:              v.stepOrder!,
+      departmentId:           deptId,
+      departmentName:         deptName,
+      jobTitleId:             jtId,
+      jobTitleName:           jtName,
+      useApplicantDepartment: useAppDept,
+      note:                   v.note ?? '',
     };
 
     const obs = this.editStep

@@ -37,4 +37,15 @@ export class LeaveRequestService {
   submit(id: number): Observable<LeaveRequest> {
     return this.http.patch<LeaveRequest>(`${environment.apiUrl}/leave-requests/${id}/submit`, {});
   }
+
+  /** 查詢當前使用者的可補休時數 */
+  getCompensatoryHours(): Observable<CompensatoryHours> {
+    return this.http.get<CompensatoryHours>(`${environment.apiUrl}/leave-requests/compensatory-hours`);
+  }
+}
+
+export interface CompensatoryHours {
+  totalOvertimeHours: number;
+  usedCompensatoryHours: number;
+  availableHours: number;
 }

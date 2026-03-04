@@ -27,8 +27,9 @@ export class LeaveRequestForm implements OnInit {
   approvalStatus: ApprovalStatus = 'draft';
   errorMsg = signal('');
 
-  // TODO: 後端就緒後改從 API 取得當前使用者的可補休時數
-  readonly overtimeHours = 16;
+  /** 可補休時數（從 API 取得） */
+  compensatoryHours = signal<{ totalOvertimeHours: number; usedCompensatoryHours: number; availableHours: number } | null>(null);
+  compensatoryLoading = signal(false);
 
   readonly statusLabel = APPROVAL_STATUS_LABELS;
   readonly statusClass = APPROVAL_STATUS_CLASSES;
@@ -42,6 +43,8 @@ export class LeaveRequestForm implements OnInit {
   });
 
   ngOnInit() {
+    this.loadCompensatoryHours();
+
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.isEdit    = true;
@@ -107,6 +110,18 @@ export class LeaveRequestForm implements OnInit {
       error: (err: HttpErrorResponse) => {
         this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
       },
+    });
+  }
+
+  /** 載入可補休時數 */
+  private loadCompensatoryHours() {
+    this.compensatoryLoading.set(true);
+    this.service.getCompensatoryHours().subscribe({
+      next: data => {
+        this.compensatoryHours.set(data);
+        this.compensatoryLoading.set(false);
+      },
+      error: () => this.compensatoryLoading.set(false),
     });
   }
 

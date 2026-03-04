@@ -49,12 +49,26 @@
               </div>
               <div class="col-12 col-md-4">
                 <label class="form-label fw-500">部門</label>
-                <select class="form-select" formControlName="departmentId">
-                  <option [ngValue]="null">— 不限部門 —</option>
-                  @for (dept of departments; track dept.id) {
-                    <option [ngValue]="dept.id">{{ dept.name }}</option>
-                  }
-                </select>
+                <div class="flex items-center gap-2 mb-2">
+                  <label class="flex items-center gap-1.5 cursor-pointer text-sm">
+                    <input type="checkbox" class="form-check-input m-0"
+                           formControlName="useApplicantDepartment"
+                           (change)="onUseApplicantDepartmentChange()">
+                    使用申請人部門
+                  </label>
+                </div>
+                @if (stepForm.value.useApplicantDepartment) {
+                  <div class="form-control bg-elevated text-muted" style="pointer-events:none">
+                    自動比對申請人所屬部門
+                  </div>
+                } @else {
+                  <select class="form-select" formControlName="departmentId">
+                    <option [ngValue]="null">— 不限部門 —</option>
+                    @for (dept of departments; track dept.id) {
+                      <option [ngValue]="dept.id">{{ dept.name }}</option>
+                    }
+                  </select>
+                }
               </div>
               <div class="col-12 col-md-4">
                 <label class="form-label fw-500">職稱</label>
@@ -70,7 +84,13 @@
                 <input type="text" class="form-control" formControlName="note" placeholder="選填說明">
               </div>
             </div>
-            <div class="text-muted small mt-2">部門或職稱至少選一。</div>
+            <div class="text-muted small mt-2">
+              @if (stepForm.value.useApplicantDepartment) {
+                開啟「使用申請人部門」時，職稱為必填。
+              } @else {
+                部門或職稱至少選一。
+              }
+            </div>
             <div class="flex gap-2 mt-4">
               <button type="submit" class="btn btn-primary btn-sm">
                 {{ editStep ? '更新' : '新增' }}
@@ -103,7 +123,12 @@
               <div class="card-body py-2 px-3">
                 <div class="flex items-center justify-between flex-wrap gap-2">
                   <div class="flex flex-wrap gap-2 items-center">
-                    @if (step.departmentName) {
+                    @if (step.useApplicantDepartment) {
+                      <span class="badge bg-accent-subtle text-accent inline-flex items-center gap-1" style="white-space:nowrap">
+                        <svg class="sa-icon" style="width:12px;height:12px;flex-shrink:0;stroke:currentColor"><use href="/assets/icons/sprite.svg#users"></use></svg>
+                        申請人部門
+                      </span>
+                    } @else if (step.departmentName) {
                       <span class="badge bg-primary-subtle text-primary inline-flex items-center gap-1" style="white-space:nowrap">
                         <svg class="sa-icon" style="width:12px;height:12px;flex-shrink:0;stroke:currentColor"><use href="/assets/icons/sprite.svg#git-branch"></use></svg>
                         {{ step.departmentName }}

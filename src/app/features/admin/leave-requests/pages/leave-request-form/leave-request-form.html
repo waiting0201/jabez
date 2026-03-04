@@ -80,7 +80,16 @@
                   <svg class="sa-icon shrink-0" style="stroke: currentColor">
                     <use href="/assets/icons/sprite.svg#clock"></use>
                   </svg>
-                  <span class="small">目前可補休時數：<strong>{{ overtimeHours }} 小時</strong></span>
+                  @if (compensatoryLoading()) {
+                    <span class="small">載入中...</span>
+                  } @else if (compensatoryHours()) {
+                    <span class="small">
+                      可補休時數：<strong>{{ compensatoryHours()!.availableHours }} 小時</strong>
+                      <span class="text-muted ms-2">（總加班 {{ compensatoryHours()!.totalOvertimeHours }} 小時 − 已補休 {{ compensatoryHours()!.usedCompensatoryHours }} 小時）</span>
+                    </span>
+                  } @else {
+                    <span class="small text-muted">無法取得補休時數資料</span>
+                  }
                 </div>
               }
             </div>

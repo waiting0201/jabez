@@ -34,10 +34,10 @@ export class ApprovalTaskService {
     return this.http.get<ApprovalTask>(path);
   }
 
-  review(id: number, applicationType: string, action: TaskStatus, reviewNote: string, paidAt?: string): Observable<ApprovalTask> {
+  review(id: number, applicationType: string, action: TaskStatus, reviewNote: string, estimatedPaymentDate?: string, paidAt?: string): Observable<ApprovalTask> {
     return this.http.patch<ApprovalTask>(
       `${environment.apiUrl}/approval-tasks/${applicationType}/${id}/review`,
-      {action, reviewNote, applicationType, paidAt},
+      {action, reviewNote, applicationType, estimatedPaymentDate, paidAt},
     ).pipe(
       tap(updated => this.items$.next(
         this.items$.getValue().map(t =>

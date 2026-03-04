@@ -21,6 +21,7 @@ export interface ApprovalStep {
   departmentName?: string;
   jobTitleId?: number;
   jobTitleName?: string;
+  useApplicantDepartment?: boolean;
   note?: string;
 }
 
