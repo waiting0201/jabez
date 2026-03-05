@@ -37,30 +37,46 @@
                 }
               </div>
               <div class="col-12 col-md-6">
+                <label class="form-label fw-500">密碼 @if (!isEdit) {<span class="text-danger">*</span>}</label>
+                <input type="password" class="form-control" formControlName="password"
+                       [placeholder]="isEdit ? '留空則不修改' : '請輸入密碼（至少 6 碼）'">
+                @if (form.get('password')?.invalid && form.get('password')?.touched) {
+                  <div class="text-danger small mt-1">
+                    @if (form.get('password')?.errors?.['required']) {
+                      請輸入密碼。
+                    } @else if (form.get('password')?.errors?.['minlength']) {
+                      密碼至少需要 6 個字元。
+                    }
+                  </div>
+                }
+              </div>
+              <div class="col-12 col-md-6">
                 <label class="form-label fw-500">狀態</label>
                 <select class="form-select" formControlName="status">
                   <option value="active">在職</option>
                   <option value="inactive">離職</option>
                 </select>
               </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label fw-500">角色 <span class="text-danger">*</span></label>
-                <div class="flex flex-wrap gap-4 mt-1">
-                  @for (role of roles; track role.id) {
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio"
-                             name="roleId"
-                             [id]="'role-' + role.id"
-                             [value]="role.id"
-                             formControlName="roleId">
-                      <label class="form-check-label" [for]="'role-' + role.id">{{ role.name }}</label>
-                    </div>
+              @if (isSuperAdmin()) {
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">角色 <span class="text-danger">*</span></label>
+                  <div class="flex flex-wrap gap-4 mt-1">
+                    @for (role of roles; track role.id) {
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio"
+                               name="roleId"
+                               [id]="'role-' + role.id"
+                               [value]="role.id"
+                               formControlName="roleId">
+                        <label class="form-check-label" [for]="'role-' + role.id">{{ role.name }}</label>
+                      </div>
+                    }
+                  </div>
+                  @if (form.get('roleId')?.invalid && form.get('roleId')?.touched) {
+                    <div class="text-danger small mt-1">請選擇角色。</div>
                   }
                 </div>
-                @if (form.get('roleId')?.invalid && form.get('roleId')?.touched) {
-                  <div class="text-danger small mt-1">請選擇角色。</div>
-                }
-              </div>
+              }
             </div>
           </div>
         </div>

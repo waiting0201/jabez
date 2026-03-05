@@ -6,6 +6,7 @@ import {DecimalPipe} from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
 import {debounceTime, distinctUntilChanged, switchMap, catchError} from 'rxjs/operators';
 import {of} from 'rxjs';
+import {AuthService} from '../../../../../core/auth/services/auth.service';
 import {UserService} from '../../services/user.service';
 import {RoleService} from '../../../roles/services/role.service';
 import {DepartmentService} from '../../../departments/services/department.service';
@@ -31,7 +32,9 @@ export class UserForm implements OnInit {
   private route           = inject(ActivatedRoute);
   private router          = inject(Router);
   private destroyRef      = inject(DestroyRef);
+  private authService     = inject(AuthService);
 
+  isSuperAdmin = this.authService.isSuperAdmin;
   roles: Role[]             = [];
   departments: Department[] = [];
   jobTitles: JobTitle[]     = [];
@@ -45,7 +48,8 @@ export class UserForm implements OnInit {
   form = this.fb.group({
     name:         ['', Validators.required],
     email:        ['', [Validators.required, Validators.email]],
-    roleId:       ['' as string, Validators.required],
+    password:     ['', [Validators.required, Validators.minLength(6)]],
+    roleId:       ['viewer' as string],
     status:       ['active' as UserStatus, Validators.required],
     departmentId: [null as number | null],
     jobTitleId:   [null as number | null],
@@ -56,7 +60,15 @@ export class UserForm implements OnInit {
   });
 
   ngOnInit() {
-    this.roleService.getAll().subscribe(r => this.roles = r);
+    // 僅 Superadmin 可選擇角色，需載入角色清單並加上必填驗證
+    if (this.isSuperAdmin()) {
+      this.form.get('roleId')!.setValidators(Validators.required);
+      this.form.get('roleId')!.updateValueAndValidity();
+      this.roleService.getAll().subscribe({
+        next: r => this.roles = r,
+        error: err => console.error('[UserForm] 無法載入角色清單', err),
+      });
+    }
     this.deptService.getAll().subscribe(d => this.departments = d);
     this.jtService.getAll().subscribe(j => this.jobTitles = j);
     this.userService.getAll().subscribe(u => this.allUsers = u);
@@ -79,6 +91,10 @@ export class UserForm implements OnInit {
     this.userId = this.route.snapshot.paramMap.get('id') ?? '';
     if (this.userId) {
       this.isEdit = true;
+      // 編輯模式：密碼非必填
+      this.form.get('password')!.clearValidators();
+      this.form.get('password')!.setValidators(Validators.minLength(6));
+      this.form.get('password')!.updateValueAndValidity();
       this.userService.getById(this.userId).subscribe(user => {
         if (!user) return;
         this.form.patchValue({
@@ -105,7 +121,7 @@ export class UserForm implements OnInit {
 
   submit() {
     if (this.form.invalid) return;
-    const {roleId, hireDate, resignDate, departmentId, jobTitleId, agentUserId, ...rest} = this.form.value as any;
+    const {roleId, hireDate, resignDate, departmentId, jobTitleId, agentUserId, password, ...rest} = this.form.value as any;
 
     const deptId  = departmentId  || undefined;
     const jtId    = jobTitleId    || undefined;
@@ -116,6 +132,7 @@ export class UserForm implements OnInit {
 
     const payload = {
       ...rest,
+      password:      password || undefined,
       roleIds:       roleId ? [roleId] : [],
       departmentId:  deptId,
       departmentName: deptName,

@@ -19,9 +19,9 @@
           <thead class="table-light">
             <tr>
               <th>假別</th>
-              <th>開始日期</th>
-              <th>結束日期</th>
-              <th class="text-right">天數</th>
+              <th>開始時間</th>
+              <th>結束時間</th>
+              <th class="text-right">時數</th>
               <th class="hidden md:table-cell">原因</th>
               <th>狀態</th>
               <th class="hidden lg:table-cell">申請時間</th>
@@ -34,9 +34,9 @@
                 <td>
                   <span [class]="'badge ' + typeClass[r.leaveType]">{{ typeLabel[r.leaveType] }}</span>
                 </td>
-                <td class="text-muted small">{{ r.startDate | date:'yyyy-MM-dd' }}</td>
-                <td class="text-muted small">{{ r.endDate | date:'yyyy-MM-dd' }}</td>
-                <td class="text-right fw-500">{{ r.days | number:'1.0-1' }} 天</td>
+                <td class="text-muted small">{{ r.startDate | date:'yyyy-MM-dd HH:mm' }}</td>
+                <td class="text-muted small">{{ r.endDate | date:'yyyy-MM-dd HH:mm' }}</td>
+                <td class="text-right fw-500">{{ r.hours | number:'1.0-1' }} 小時</td>
                 <td class="text-muted small hidden md:table-cell">{{ r.reason }}</td>
                 <td>
                   <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>

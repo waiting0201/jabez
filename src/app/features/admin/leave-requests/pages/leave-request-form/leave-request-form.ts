@@ -1,6 +1,6 @@
 import {Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
-import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
+import {FormBuilder, ReactiveFormsModule, ValidatorFn, Validators} from '@angular/forms';
 import {HttpErrorResponse} from '@angular/common/http';
 import {LeaveRequestService} from '../../services/leave-request.service';
 import {
@@ -34,13 +34,30 @@ export class LeaveRequestForm implements OnInit {
   readonly statusLabel = APPROVAL_STATUS_LABELS;
   readonly statusClass = APPROVAL_STATUS_CLASSES;
 
+  /** 驗證分鐘必須為 00 或 30 */
+  private static halfHourValidator: ValidatorFn = (ctrl) => {
+    const val = ctrl.value as string;
+    if (!val) return null;
+    const minutes = new Date(val).getMinutes();
+    return (minutes === 0 || minutes === 30) ? null : {halfHour: true};
+  };
+
   form = this.fb.group({
     leaveType:  ['annual' as LeaveType, Validators.required],
-    startDate:  ['', Validators.required],
-    endDate:    ['', Validators.required],
-    days:       [1, [Validators.required, Validators.min(0.5)]],
+    startDate:  ['', [Validators.required, LeaveRequestForm.halfHourValidator]],
+    endDate:    ['', [Validators.required, LeaveRequestForm.halfHourValidator]],
     reason:     ['', Validators.required],
   });
+
+  /** 從開始/結束時間自動計算時數 */
+  get calculatedHours(): number {
+    const start = this.form.get('startDate')?.value;
+    const end = this.form.get('endDate')?.value;
+    if (!start || !end) return 0;
+    const diff = new Date(end).getTime() - new Date(start).getTime();
+    if (diff <= 0) return 0;
+    return Math.round(diff / (1000 * 60 * 30)) * 0.5; // 四捨五入至 0.5 小時
+  }
 
   ngOnInit() {
     this.loadCompensatoryHours();
@@ -57,13 +74,8 @@ export class LeaveRequestForm implements OnInit {
         this.isReadOnly = r.approvalStatus !== 'draft';
         this.form.patchValue({
           leaveType:  r.leaveType,
-          startDate:  r.startDate instanceof Date
-            ? r.startDate.toISOString().split('T')[0]
-            : String(r.startDate),
-          endDate: r.endDate instanceof Date
-            ? r.endDate.toISOString().split('T')[0]
-            : String(r.endDate),
-          days:       r.days,
+          startDate:  this._toDatetimeLocal(r.startDate),
+          endDate:    this._toDatetimeLocal(r.endDate),
           reason:     r.reason,
         });
         if (this.isReadOnly) this.form.disable();
@@ -71,9 +83,18 @@ export class LeaveRequestForm implements OnInit {
     }
   }
 
+  /** 補休時數是否足夠 */
+  get isCompensatoryExceeded(): boolean {
+    if (this.form.get('leaveType')?.value !== 'compensatory') return false;
+    const hours = this.compensatoryHours();
+    if (!hours) return false;
+    const requestedHours = this.calculatedHours;
+    return requestedHours > hours.availableHours;
+  }
+
   /** 儲存（草稿或更新，不改變狀態） */
   save() {
-    if (this.form.invalid || this.isReadOnly) return;
+    if (this.form.invalid || this.isReadOnly || this.calculatedHours <= 0) return;
     const payload = this._buildPayload();
     const obs = this.isEdit
       ? this.service.update(this.requestId, payload)
@@ -92,7 +113,12 @@ export class LeaveRequestForm implements OnInit {
 
   /** 送出申請（先儲存再將狀態改為 pending） */
   submitForApproval() {
-    if (this.form.invalid || this.isReadOnly) return;
+    if (this.form.invalid || this.isReadOnly || this.calculatedHours <= 0) return;
+    if (this.isCompensatoryExceeded) {
+      const hours = this.compensatoryHours()!;
+      this.errorMsg.set(`補休時數不足。申請 ${this.calculatedHours} 小時，可用 ${hours.availableHours} 小時。`);
+      return;
+    }
     const payload = this._buildPayload();
     const save$ = this.isEdit
       ? this.service.update(this.requestId, payload)
@@ -129,10 +155,24 @@ export class LeaveRequestForm implements OnInit {
     const v = this.form.value;
     return {
       leaveType: v.leaveType as LeaveType,
-      startDate: new Date(v.startDate!),
-      endDate:   new Date(v.endDate!),
-      days:      +v.days!,
+      startDate: v.startDate!,   // 直接送字串，避免 new Date() 轉 UTC
+      endDate:   v.endDate!,
+      hours:     this.calculatedHours,
       reason:    v.reason!,
     };
+  }
+
+  /** 將日期轉為 datetime-local 輸入格式 yyyy-MM-ddTHH:mm（台北時區） */
+  private _toDatetimeLocal(date: Date | string): string {
+    const d = date instanceof Date ? date : new Date(date);
+    if (isNaN(d.getTime())) return '';
+    // 使用台北時區格式化，取得各欄位值
+    const parts = new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'Asia/Taipei',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+    }).formatToParts(d);
+    const get = (type: string) => parts.find(p => p.type === type)?.value ?? '00';
+    return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
   }
 }

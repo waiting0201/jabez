@@ -96,24 +96,32 @@
 
             <div class="row g-3 mb-4">
               <div class="col-12 col-md-4">
-                <label class="form-label fw-500">開始日期 <span class="text-danger">*</span></label>
-                <input type="date" class="form-control" formControlName="startDate">
-                @if (form.get('startDate')?.invalid && form.get('startDate')?.touched) {
-                  <div class="text-danger small mt-1">請選擇開始日期。</div>
+                <label class="form-label fw-500">開始時間 <span class="text-danger">*</span></label>
+                <input type="datetime-local" class="form-control" formControlName="startDate" step="1800">
+                @if (form.get('startDate')?.hasError('required') && form.get('startDate')?.touched) {
+                  <div class="text-danger small mt-1">請選擇開始時間。</div>
+                }
+                @if (form.get('startDate')?.hasError('halfHour')) {
+                  <div class="text-danger small mt-1">分鐘請選擇 00 或 30。</div>
                 }
               </div>
               <div class="col-12 col-md-4">
-                <label class="form-label fw-500">結束日期 <span class="text-danger">*</span></label>
-                <input type="date" class="form-control" formControlName="endDate">
-                @if (form.get('endDate')?.invalid && form.get('endDate')?.touched) {
-                  <div class="text-danger small mt-1">請選擇結束日期。</div>
+                <label class="form-label fw-500">結束時間 <span class="text-danger">*</span></label>
+                <input type="datetime-local" class="form-control" formControlName="endDate" step="1800">
+                @if (form.get('endDate')?.hasError('required') && form.get('endDate')?.touched) {
+                  <div class="text-danger small mt-1">請選擇結束時間。</div>
+                }
+                @if (form.get('endDate')?.hasError('halfHour')) {
+                  <div class="text-danger small mt-1">分鐘請選擇 00 或 30。</div>
                 }
               </div>
               <div class="col-12 col-md-4">
-                <label class="form-label fw-500">天數 <span class="text-danger">*</span></label>
-                <input type="number" class="form-control" formControlName="days" min="0.5" step="0.5" placeholder="1">
-                @if (form.get('days')?.invalid && form.get('days')?.touched) {
-                  <div class="text-danger small mt-1">請輸入有效天數（最少 0.5）。</div>
+                <label class="form-label fw-500">時數</label>
+                <div class="form-control bg-[var(--bg-elevated)]" style="pointer-events: none">
+                  {{ calculatedHours > 0 ? calculatedHours + ' 小時' : '—' }}
+                </div>
+                @if (isCompensatoryExceeded) {
+                  <div class="text-danger small mt-1">補休時數不足，可用 {{ compensatoryHours()!.availableHours }} 小時（申請 {{ calculatedHours }} 小時）。</div>
                 }
               </div>
             </div>
@@ -132,10 +140,10 @@
 
         @if (!isReadOnly) {
           <div class="mt-6 flex gap-2">
-            <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid">
+            <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid || calculatedHours <= 0">
               {{ isEdit ? '儲存' : '儲存草稿' }}
             </button>
-            <button type="button" class="btn btn-primary" [disabled]="form.invalid"
+            <button type="button" class="btn btn-primary" [disabled]="form.invalid || calculatedHours <= 0 || isCompensatoryExceeded"
                     (click)="submitForApproval()">
               送出申請
             </button>

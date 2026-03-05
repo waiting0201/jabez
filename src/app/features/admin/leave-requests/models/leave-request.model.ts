@@ -36,12 +36,12 @@ export interface LeaveRequest {
   employeeId?: string;
   approvalItemId?: number;
   leaveType: LeaveType;
-  startDate: Date;
-  endDate: Date;
-  days: number;
+  startDate: string;
+  endDate: string;
+  hours: number;
   reason: string;
   approvalStatus: ApprovalStatus;
-  createdAt: Date;
-  reviewedAt?: Date;
+  createdAt: string;
+  reviewedAt?: string;
   reviewNote?: string;
 }

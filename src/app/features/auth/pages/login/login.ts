@@ -1,11 +1,11 @@
 import { Component, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '@core/auth/services/auth.service';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule],
   template: `
     <div class="login-root">
 
@@ -111,13 +111,12 @@ import { AuthService } from '@core/auth/services/auth.service';
               </div>
             </div>
 
-            <!-- Remember + Forgot -->
+            <!-- Remember me -->
             <div class="remember-row">
               <label class="remember-label">
-                <input type="checkbox" class="remember-checkbox" />
+                <input type="checkbox" class="remember-checkbox" [checked]="rememberMe()" (change)="rememberMe.set($any($event.target).checked)" />
                 <span>記住我</span>
               </label>
-              <a routerLink="/auth/forgot-password" class="forgot-link">忘記密碼？</a>
             </div>
 
             <!-- Error -->
@@ -247,13 +246,16 @@ export class Login {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
 
+  private readonly REMEMBER_KEY = 'remember_email';
+
   showPassword = signal(false);
   isLoading = signal(false);
   errorMsg = signal('');
+  rememberMe = signal(!!localStorage.getItem(this.REMEMBER_KEY));
 
   form = this.fb.group({
-    email:    ['alice@example.com', [Validators.required, Validators.email]],
-    password: ['password', Validators.required],
+    email:    [localStorage.getItem(this.REMEMBER_KEY) || '', [Validators.required, Validators.email]],
+    password: ['', Validators.required],
   });
 
   togglePassword() {
@@ -267,6 +269,11 @@ export class Login {
     const { email, password } = this.form.value;
     this.authService.login(email!, password!).subscribe({
       next: () => {
+        if (this.rememberMe()) {
+          localStorage.setItem(this.REMEMBER_KEY, email!);
+        } else {
+          localStorage.removeItem(this.REMEMBER_KEY);
+        }
         const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? '/dashboard';
         this.router.navigateByUrl(returnUrl);
       },
