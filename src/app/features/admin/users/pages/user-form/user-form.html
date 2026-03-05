@@ -37,7 +37,7 @@
                 }
               </div>
               <div class="col-12 col-md-6">
-                <label class="form-label fw-500">密碼 @if (!isEdit) {<span class="text-danger">*</span>}</label>
+                <label class="form-label fw-500">密碼 <span class="text-danger">*</span></label>
                 <input type="password" class="form-control" formControlName="password"
                        [placeholder]="isEdit ? '留空則不修改' : '請輸入密碼（至少 6 碼）'">
                 @if (form.get('password')?.invalid && form.get('password')?.touched) {
@@ -61,7 +61,7 @@
                 <div class="col-12 col-md-6">
                   <label class="form-label fw-500">角色 <span class="text-danger">*</span></label>
                   <div class="flex flex-wrap gap-4 mt-1">
-                    @for (role of roles; track role.id) {
+                    @for (role of roles(); track role.id) {
                       <div class="form-check">
                         <input class="form-check-input" type="radio"
                                name="roleId"
@@ -90,7 +90,7 @@
                 <label class="form-label fw-500">部門</label>
                 <select class="form-select" formControlName="departmentId">
                   <option [ngValue]="null">— 未指定 —</option>
-                  @for (dept of departments; track dept.id) {
+                  @for (dept of departments(); track dept.id) {
                     <option [ngValue]="dept.id">{{ dept.name }}</option>
                   }
                 </select>
@@ -99,7 +99,7 @@
                 <label class="form-label fw-500">職稱</label>
                 <select class="form-select" formControlName="jobTitleId">
                   <option [ngValue]="null">— 未指定 —</option>
-                  @for (jt of jobTitles; track jt.id) {
+                  @for (jt of jobTitles(); track jt.id) {
                     <option [ngValue]="jt.id">{{ jt.name }}（L{{ jt.level }}）</option>
                   }
                 </select>
@@ -149,7 +149,7 @@
         </div>
 
         <div class="mt-6 flex gap-2">
-          <button type="submit" class="btn btn-primary" [disabled]="form.invalid">
+          <button type="submit" class="btn btn-primary">
             {{ isEdit ? '更新' : '建立' }}
           </button>
           <a routerLink="/admin/users" class="btn btn-outline-secondary">取消</a>

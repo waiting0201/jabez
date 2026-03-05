@@ -35,10 +35,10 @@ export class UserForm implements OnInit {
   private authService     = inject(AuthService);
 
   isSuperAdmin = this.authService.isSuperAdmin;
-  roles: Role[]             = [];
-  departments: Department[] = [];
-  jobTitles: JobTitle[]     = [];
-  allUsers: User[]          = [];
+  roles       = signal<Role[]>([]);
+  departments = signal<Department[]>([]);
+  jobTitles   = signal<JobTitle[]>([]);
+  allUsers    = signal<User[]>([]);
   isEdit = false;
   userId = '';
   errorMsg        = signal('');
@@ -65,13 +65,13 @@ export class UserForm implements OnInit {
       this.form.get('roleId')!.setValidators(Validators.required);
       this.form.get('roleId')!.updateValueAndValidity();
       this.roleService.getAll().subscribe({
-        next: r => this.roles = r,
+        next: r => this.roles.set(r),
         error: err => console.error('[UserForm] 無法載入角色清單', err),
       });
     }
-    this.deptService.getAll().subscribe(d => this.departments = d);
-    this.jtService.getAll().subscribe(j => this.jobTitles = j);
-    this.userService.getAll().subscribe(u => this.allUsers = u);
+    this.deptService.getAll().subscribe(d => this.departments.set(d));
+    this.jtService.getAll().subscribe(j => this.jobTitles.set(j));
+    this.userService.getAll().subscribe(u => this.allUsers.set(u));
 
     // 監聽底薪變化，非同步查詢對應勞健保級距（switchMap 自動取消前次請求）
     this.form.get('baseSalary')!.valueChanges.pipe(
@@ -112,7 +112,7 @@ export class UserForm implements OnInit {
   }
 
   getAvailableAgents(): User[] {
-    return this.allUsers.filter(u => u.id !== this.userId);
+    return this.allUsers().filter(u => u.id !== this.userId);
   }
 
   private toDateString(d: Date): string {
@@ -120,15 +120,18 @@ export class UserForm implements OnInit {
   }
 
   submit() {
-    if (this.form.invalid) return;
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
     const {roleId, hireDate, resignDate, departmentId, jobTitleId, agentUserId, password, ...rest} = this.form.value as any;
 
     const deptId  = departmentId  || undefined;
     const jtId    = jobTitleId    || undefined;
 
-    const deptName = deptId ? this.departments.find(d => d.id === deptId)?.name : undefined;
-    const jtName   = jtId   ? this.jobTitles.find(j => j.id === jtId)?.name    : undefined;
-    const agent    = agentUserId ? this.allUsers.find(u => u.id === agentUserId) : undefined;
+    const deptName = deptId ? this.departments().find(d => d.id === deptId)?.name : undefined;
+    const jtName   = jtId   ? this.jobTitles().find(j => j.id === jtId)?.name    : undefined;
+    const agent    = agentUserId ? this.allUsers().find(u => u.id === agentUserId) : undefined;
 
     const payload = {
       ...rest,
