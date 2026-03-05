@@ -39,4 +39,8 @@ export class AttendanceService {
       tap(record => this.today$.next(record)),
     );
   }
+
+  update(id: number, body: {clockInTime?: string | null; clockOutTime?: string | null; overtimeStartTime?: string | null; overtimeEndTime?: string | null}): Observable<any> {
+    return this.http.patch(`${environment.apiUrl}/attendances/${id}`, body);
+  }
 }

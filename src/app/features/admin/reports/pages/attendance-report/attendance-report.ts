@@ -3,6 +3,7 @@ import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {HttpClient} from '@angular/common/http';
 import {environment} from '@/environments/environment';
+import {AttendanceService} from '@/app/features/dashboard/services/attendance.service';
 
 const LEAVE_TYPE_LABELS: Record<string, string> = {
   annual: '特休',
@@ -19,6 +20,15 @@ export interface AttendanceRecordRow {
   leaveTime: string;
   clockInTime: string;
   clockOutTime: string;
+  overtimeStartTime: string;
+  overtimeEndTime: string;
+  /** 原始 ISO 日期（供編輯表單組合 DateTime） */
+  rawRecordDate: string | null;
+  /** 原始 ISO 時間（供編輯表單用） */
+  rawClockIn: string | null;
+  rawClockOut: string | null;
+  rawOvertimeStart: string | null;
+  rawOvertimeEnd: string | null;
 }
 
 @Component({
@@ -28,6 +38,7 @@ export interface AttendanceRecordRow {
 })
 export class AttendanceReport implements OnInit {
   private http = inject(HttpClient);
+  private attendanceService = inject(AttendanceService);
 
   /** 篩選條件 */
   selectedEmployeeId = signal('');
@@ -46,6 +57,11 @@ export class AttendanceReport implements OnInit {
   /** 紀錄 */
   records = signal<AttendanceRecordRow[]>([]);
   loading = signal(false);
+
+  /** 編輯 Modal */
+  editingRecord = signal<AttendanceRecordRow | null>(null);
+  editForm = signal({clockIn: '', clockOut: '', overtimeStart: '', overtimeEnd: ''});
+  saving = signal(false);
 
   ngOnInit() {
     const now = new Date();
@@ -90,6 +106,13 @@ export class AttendanceReport implements OnInit {
               : '',
             clockInTime: r.clockInTime ? new Date(r.clockInTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
             clockOutTime: r.clockOutTime ? new Date(r.clockOutTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
+            overtimeStartTime: r.overtimeStartTime ? new Date(r.overtimeStartTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
+            overtimeEndTime: r.overtimeEndTime ? new Date(r.overtimeEndTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
+            rawRecordDate: r.recordDate ?? null,
+            rawClockIn: r.clockInTime ?? null,
+            rawClockOut: r.clockOutTime ?? null,
+            rawOvertimeStart: r.overtimeStartTime ?? null,
+            rawOvertimeEnd: r.overtimeEndTime ?? null,
           }))
         );
         this.loading.set(false);
@@ -99,6 +122,66 @@ export class AttendanceReport implements OnInit {
         this.loading.set(false);
       },
     });
+  }
+
+  /** 開啟編輯 Modal */
+  openEdit(row: AttendanceRecordRow) {
+    this.editingRecord.set(row);
+    this.editForm.set({
+      clockIn: this.toTimeInput(row.rawClockIn),
+      clockOut: this.toTimeInput(row.rawClockOut),
+      overtimeStart: this.toTimeInput(row.rawOvertimeStart),
+      overtimeEnd: this.toTimeInput(row.rawOvertimeEnd),
+    });
+  }
+
+  /** 關閉 Modal */
+  closeEdit() {
+    this.editingRecord.set(null);
+  }
+
+  /** 儲存修改 */
+  saveEdit() {
+    const record = this.editingRecord();
+    if (!record?.id) return;
+
+    this.saving.set(true);
+    const form = this.editForm();
+
+    // 使用原始 recordDate 組合完整 DateTime
+    const dateStr = record.rawRecordDate
+      ? new Date(record.rawRecordDate).toISOString().substring(0, 10)
+      : new Date().toISOString().substring(0, 10);
+
+    const body = {
+      clockInTime: form.clockIn ? `${dateStr}T${form.clockIn}:00` : null,
+      clockOutTime: form.clockOut ? `${dateStr}T${form.clockOut}:00` : null,
+      overtimeStartTime: form.overtimeStart ? `${dateStr}T${form.overtimeStart}:00` : null,
+      overtimeEndTime: form.overtimeEnd ? `${dateStr}T${form.overtimeEnd}:00` : null,
+    };
+
+    console.log('[AttendanceReport] saveEdit body:', body);
+
+    this.attendanceService.update(record.id, body).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.closeEdit();
+        this.search();
+      },
+      error: (err) => {
+        console.error('[AttendanceReport] saveEdit error:', err);
+        this.saving.set(false);
+      },
+    });
+  }
+
+  /** 將 ISO 日期字串轉為 HH:mm 格式（供 input[type=time] 使用） */
+  private toTimeInput(isoStr: string | null): string {
+    if (!isoStr) return '';
+    const d = new Date(isoStr);
+    const h = d.getHours().toString().padStart(2, '0');
+    const m = d.getMinutes().toString().padStart(2, '0');
+    return `${h}:${m}`;
   }
 
   exportExcel() {

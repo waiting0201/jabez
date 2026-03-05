@@ -62,6 +62,8 @@
               <th class="text-center hidden md:table-cell">請假時間</th>
               <th class="text-center">上班時間</th>
               <th class="text-center">下班時間</th>
+              <th class="text-center hidden lg:table-cell">加班開始</th>
+              <th class="text-center hidden lg:table-cell">加班結束</th>
               <th class="text-right">操作</th>
             </tr>
           </thead>
@@ -74,10 +76,12 @@
                 <td class="text-center text-muted small hidden md:table-cell">{{ row.leaveTime }}</td>
                 <td class="text-center">{{ row.clockInTime }}</td>
                 <td class="text-center">{{ row.clockOutTime }}</td>
+                <td class="text-center hidden lg:table-cell">{{ row.overtimeStartTime }}</td>
+                <td class="text-center hidden lg:table-cell">{{ row.overtimeEndTime }}</td>
                 <td class="text-right" style="white-space: nowrap">
                   <div class="flex justify-end gap-1">
                     @if (row.id) {
-                      <button class="btn btn-sm btn-ghost-primary inline-flex items-center" title="編輯">
+                      <button class="btn btn-sm btn-ghost-primary inline-flex items-center" title="編輯" (click)="openEdit(row)">
                         <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
                       </button>
                     }
@@ -86,7 +90,7 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="7" class="text-center text-muted py-4">
+                <td colspan="9" class="text-center text-muted py-4">
                   @if (loading()) {
                     載入中...
                   } @else {
@@ -102,3 +106,63 @@
     </div>
   </div>
 </div>
+
+<!-- 編輯 Modal -->
+@if (editingRecord(); as record) {
+  <div class="modal-backdrop" (click)="closeEdit()"></div>
+  <div class="modal show" style="display: block" (click)="closeEdit()">
+    <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">編輯出缺勤紀錄</h5>
+          <button type="button" class="btn-close" (click)="closeEdit()"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <span class="text-muted text-sm">員工：</span>
+            <span class="fw-500">{{ record.employeeName }}</span>
+            <span class="text-muted text-sm ms-3">日期：</span>
+            <span>{{ record.recordDate }}</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="form-label">上班時間</label>
+              <input type="time" class="form-control"
+                     [ngModel]="editForm().clockIn"
+                     (ngModelChange)="editForm.set({...editForm(), clockIn: $event})">
+            </div>
+            <div>
+              <label class="form-label">下班時間</label>
+              <input type="time" class="form-control"
+                     [ngModel]="editForm().clockOut"
+                     (ngModelChange)="editForm.set({...editForm(), clockOut: $event})">
+            </div>
+            <div>
+              <label class="form-label">加班開始</label>
+              <input type="time" class="form-control"
+                     [ngModel]="editForm().overtimeStart"
+                     (ngModelChange)="editForm.set({...editForm(), overtimeStart: $event})">
+            </div>
+            <div>
+              <label class="form-label">加班結束</label>
+              <input type="time" class="form-control"
+                     [ngModel]="editForm().overtimeEnd"
+                     (ngModelChange)="editForm.set({...editForm(), overtimeEnd: $event})">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" (click)="closeEdit()">取消</button>
+          <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="saveEdit()">
+            @if (saving()) {
+              儲存中...
+            } @else {
+              儲存
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
