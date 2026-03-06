@@ -37,4 +37,12 @@ export class PaymentRequestService {
   submit(id: number): Observable<PaymentRequest> {
     return this.http.patch<PaymentRequest>(`${environment.apiUrl}/payment-requests/${id}/submit`, {});
   }
+
+  /** 更新已核准請款的撥款日期（僅財務部/Superadmin） */
+  updatePaymentDate(id: number, estimatedPaymentDate?: string, paidAt?: string): Observable<{id: number; estimatedPaymentDate?: string; paidAt?: string}> {
+    return this.http.patch<{id: number; estimatedPaymentDate?: string; paidAt?: string}>(
+      `${environment.apiUrl}/payment-requests/${id}/payment-date`,
+      {estimatedPaymentDate: estimatedPaymentDate || null, paidAt: paidAt || null},
+    );
+  }
 }

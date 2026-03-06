@@ -63,7 +63,7 @@ export interface LeaveTaskDetail {
   leaveType: LeaveType;
   startDate: Date;
   endDate: Date;
-  days: number;
+  hours: number;
   reason: string;
 }
 

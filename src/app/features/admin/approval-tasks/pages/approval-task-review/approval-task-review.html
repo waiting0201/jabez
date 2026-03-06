@@ -92,11 +92,11 @@
                         @for (inv of d.invoices; track inv.id) {
                           <tr>
                             <td class="small" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                              @if (inv.previewUrl) {
+                              @if (inv.previewUrl || inv.fileUrl) {
                                 <button type="button"
                                         class="btn btn-link p-0 text-muted small inline-flex items-center gap-1"
                                         style="text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis"
-                                        (click)="openPreview(inv.fileName, inv.previewUrl)">
+                                        (click)="openPreview(inv.fileName, inv.previewUrl || inv.fileUrl!)">
                                   <svg class="sa-icon shrink-0" style="width:14px;height:14px;stroke:currentColor">
                                     <use href="/assets/icons/sprite.svg#file-text"></use>
                                   </svg>
@@ -147,8 +147,8 @@
                       <span class="fw-500">{{ task.submittedBy }}</span>
                     </div>
                     <div class="col-6 col-md-4">
-                      <div class="text-muted small mb-1">天數</div>
-                      <span class="fw-600 fs-5">{{ d.days }} 天</span>
+                      <div class="text-muted small mb-1">時數</div>
+                      <span class="fw-600 fs-5">{{ d.hours }} 小時</span>
                     </div>
                     <div class="col-6 col-md-4">
                       <div class="text-muted small mb-1">開始日期</div>
@@ -350,19 +350,11 @@
                     </div>
                   </div>
                 </div>
-                @if (applicationType === 'payment_request') {
-                  <div class="mb-4 flex flex-wrap gap-6">
-                    <div>
-                      <label class="form-label fw-500">預計撥款日</label>
-                      <input type="date" class="form-control" formControlName="estimatedPaymentDate"
-                             style="max-width: 220px">
-                    </div>
-                    <div>
-                      <label class="form-label fw-500">撥款日</label>
-                      <input type="date" class="form-control" formControlName="paidAt"
-                             style="max-width: 220px">
-                      <div class="text-muted small mt-1">填寫後表示此筆請款已撥款</div>
-                    </div>
+                @if (applicationType === 'payment_request' && canSetPaymentDate(task)) {
+                  <div class="mb-4">
+                    <label class="form-label fw-500">預計撥款日</label>
+                    <input type="date" class="form-control" formControlName="estimatedPaymentDate"
+                           style="max-width: 220px">
                   </div>
                 }
                 <div class="mb-4">
@@ -427,6 +419,37 @@
               @if (task.applicationType === 'payment_request' && task.paymentDetail?.paidAt) {
                 <div class="text-muted small mb-1 fw-500">撥款日：</div>
                 <div class="small mb-4 text-success">{{ task.paymentDetail!.paidAt | date:'yyyy-MM-dd' }}</div>
+              }
+              @if (task.applicationType === 'payment_request' && (canUpdatePaymentDate() || canEditPaymentDate(task)) && !task.paymentDetail?.paidAt) {
+                <div class="border rounded p-4 bg-[--bg-base] mb-4">
+                  <div class="fw-500 mb-3">設定撥款日期</div>
+                  <div class="flex flex-wrap gap-6 items-end">
+                    <div>
+                      <label class="form-label fw-500 small">預計撥款日</label>
+                      <input type="date" class="form-control form-control-sm"
+                             [value]="paymentDateForm.estimatedPaymentDate"
+                             (input)="paymentDateForm.estimatedPaymentDate = $any($event.target).value"
+                             style="max-width: 200px">
+                    </div>
+                    <div>
+                      <label class="form-label fw-500 small">撥款日</label>
+                      <input type="date" class="form-control form-control-sm"
+                             [value]="paymentDateForm.paidAt"
+                             (input)="paymentDateForm.paidAt = $any($event.target).value"
+                             style="max-width: 200px">
+                      <div class="text-muted small mt-1">填寫後表示此筆請款已撥款</div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-primary" (click)="updatePaymentDate(task)">
+                      儲存
+                    </button>
+                  </div>
+                  @if (paymentDateMsg()) {
+                    <div class="text-success small mt-2">{{ paymentDateMsg() }}</div>
+                  }
+                  @if (paymentDateError()) {
+                    <div class="text-danger small mt-2">{{ paymentDateError() }}</div>
+                  }
+                </div>
               }
               @if (task.reviewNote) {
                 <div class="text-muted small mb-1 fw-500">審核意見：</div>

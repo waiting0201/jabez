@@ -6,6 +6,20 @@
     <h4 class="mb-0">簽核作業</h4>
   </div>
 
+  <!-- Tabs -->
+  <div class="flex gap-1 mb-4">
+    <button class="btn btn-sm"
+            [class]="activeTab() === 'pending' ? 'btn-primary' : 'btn-outline-secondary'"
+            (click)="switchTab('pending')">
+      待審核
+    </button>
+    <button class="btn btn-sm"
+            [class]="activeTab() === 'approved' ? 'btn-primary' : 'btn-outline-secondary'"
+            (click)="switchTab('approved')">
+      已核准
+    </button>
+  </div>
+
   <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
       <div class="table-responsive">
@@ -17,6 +31,10 @@
               <th class="hidden md:table-cell">摘要</th>
               <th>狀態</th>
               <th class="hidden lg:table-cell">申請時間</th>
+              @if (activeTab() === 'approved') {
+                <th class="hidden lg:table-cell">預計撥款日</th>
+                <th class="hidden lg:table-cell">撥款日</th>
+              }
               <th class="text-right">操作</th>
             </tr>
           </thead>
@@ -34,6 +52,18 @@
                   <span [class]="'badge ' + statusClass[t.status]">{{ statusLabel[t.status] }}</span>
                 </td>
                 <td class="text-muted small hidden lg:table-cell">{{ t.submittedAt | date:'yyyy-MM-dd' }}</td>
+                @if (activeTab() === 'approved') {
+                  <td class="text-muted small hidden lg:table-cell">
+                    {{ t.paymentDetail?.estimatedPaymentDate ? (t.paymentDetail!.estimatedPaymentDate | date:'yyyy-MM-dd') : '—' }}
+                  </td>
+                  <td class="text-muted small hidden lg:table-cell">
+                    @if (t.paymentDetail?.paidAt) {
+                      <span class="text-success fw-500">{{ t.paymentDetail!.paidAt | date:'yyyy-MM-dd' }}</span>
+                    } @else {
+                      <span class="text-muted">—</span>
+                    }
+                  </td>
+                }
                 <td class="text-right" style="white-space: nowrap">
                   <a [routerLink]="[t.applicationType, t.id, 'review']"
                      [class]="'btn btn-sm inline-flex items-center ' + (t.status === 'pending' ? 'btn-ghost-primary' : 'btn-ghost-secondary')">
@@ -45,7 +75,9 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="6" class="text-center text-muted py-4">尚無簽核作業。</td>
+                <td [attr.colspan]="activeTab() === 'approved' ? 8 : 6" class="text-center text-muted py-4">
+                  {{ activeTab() === 'pending' ? '目前沒有待審核的簽核作業。' : '目前沒有已核准的簽核作業。' }}
+                </td>
               </tr>
             }
           </tbody>

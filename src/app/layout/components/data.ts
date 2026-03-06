@@ -87,9 +87,9 @@ export const menuItems: MenuItemType[] = [
     icon: '/assets/icons/sprite.svg#check-square',
     label: '簽核管理',
     isCollapsed: true,
-    requiredPermission: 'approvals:read',
+    requiredPermission: 'superadmin',
     children: [
-      { label: '簽核項目', url: '/admin/approvals', requiredPermission: 'approvals:read' },
+      { label: '簽核項目', url: '/admin/approvals', requiredPermission: 'superadmin' },
     ],
   },
   {

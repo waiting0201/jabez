@@ -13,6 +13,8 @@ export interface JwtPayload {
   permissions: string | string[];
   exp: number;
   is_superadmin?: string | boolean;
+  department_name?: string;
+  job_title_name?: string;
 }
 
 export interface LoginResponse {
@@ -53,6 +55,23 @@ export class AuthService {
     return !!payload && payload.exp * 1000 > Date.now()
       && (payload.is_superadmin === true || payload.is_superadmin === 'true');
   });
+
+  /** 當前使用者的部門名稱（signal） */
+  departmentName = computed<string | null>(() => {
+    const payload = this._decode(this._token());
+    if (!payload || payload.exp * 1000 <= Date.now()) return null;
+    return payload.department_name ?? null;
+  });
+
+  /** 當前使用者的職稱名稱（signal） */
+  jobTitleName = computed<string | null>(() => {
+    const payload = this._decode(this._token());
+    if (!payload || payload.exp * 1000 <= Date.now()) return null;
+    return payload.job_title_name ?? null;
+  });
+
+  /** 是否為財務部（signal） */
+  isFinanceDept = computed<boolean>(() => this.departmentName() === '財務部');
 
   get token(): string | null {
     return this._token();
@@ -129,7 +148,10 @@ export class AuthService {
       const parts = token.split('.');
       if (parts.length !== 3) return null;
       const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-      return JSON.parse(atob(base64)) as JwtPayload;
+      const binary = atob(base64);
+      const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+      const json = new TextDecoder().decode(bytes);
+      return JSON.parse(json) as JwtPayload;
     } catch {
       return null;
     }

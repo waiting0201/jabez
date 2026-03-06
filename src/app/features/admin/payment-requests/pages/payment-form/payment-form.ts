@@ -36,6 +36,8 @@ export class PaymentForm implements OnInit {
   isDraft    = true;
   /** 檢視模式時顯示的專案編號 */
   projectCode = '';
+  estimatedPaymentDate = '';
+  paidAt = '';
 
   /** invoice id → File 物件（新上傳的檔案） */
   fileMap = new Map<string, File>();
@@ -88,6 +90,8 @@ export class PaymentForm implements OnInit {
         this.isReturned     = r.approvalStatus === 'returned';
         this.isReadOnly     = r.approvalStatus !== 'draft';
         this.projectCode    = r.projectCode ?? '';
+        this.estimatedPaymentDate = r.estimatedPaymentDate?.toString().slice(0, 10) ?? '';
+        this.paidAt               = r.paidAt?.toString().slice(0, 10) ?? '';
         if (this.isReadOnly) this.form.disable();
         this.form.patchValue({type: r.type, projectId: r.projectId});
         r.invoices.forEach(inv => this.invoiceArray.push(

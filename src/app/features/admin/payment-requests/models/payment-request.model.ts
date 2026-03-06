@@ -47,5 +47,7 @@ export interface PaymentRequest {
   invoices: InvoiceItem[];
   totalAmount: number;
   approvalStatus: ApprovalStatus;
+  estimatedPaymentDate?: string;
+  paidAt?: string;
   createdAt: Date;
 }

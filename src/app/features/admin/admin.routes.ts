@@ -51,9 +51,9 @@ export const ADMIN_ROUTES: Routes = [
   {path: 'job-titles/new',       component: JobTitleForm,   canActivate: [permissionGuard], data: {title: '新增職稱',   permission: 'job-titles:write'}},
   {path: 'job-titles/:id/edit',  component: JobTitleForm,   canActivate: [permissionGuard], data: {title: '編輯職稱',   permission: 'job-titles:write'}},
 
-  // 簽核管理
-  {path: 'approvals',            component: ApprovalList,   canActivate: [permissionGuard], data: {title: '簽核管理',   permission: 'approvals:read'}},
-  {path: 'approvals/:id/flow',   component: ApprovalFlow,   canActivate: [permissionGuard], data: {title: '簽核流程',   permission: 'approvals:read'}},
+  // 簽核管理（僅超管帳號可存取）
+  {path: 'approvals',            component: ApprovalList,   canActivate: [permissionGuard], data: {title: '簽核管理',   permission: 'superadmin'}},
+  {path: 'approvals/:id/flow',   component: ApprovalFlow,   canActivate: [permissionGuard], data: {title: '簽核流程',   permission: 'superadmin'}},
 
   // 角色 / 權限（僅超管帳號可存取）
   {path: 'roles',                component: RoleList,       canActivate: [permissionGuard], data: {title: '角色管理',   permission: 'superadmin'}},

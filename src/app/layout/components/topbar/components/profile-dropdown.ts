@@ -24,6 +24,9 @@ import {AuthService} from '@core/auth/services/auth.service';
                [alt]="user()?.name ?? ''">
           <div class="min-w-0">
             <div class="text-sm font-semibold text-[--text-primary] truncate">{{ user()?.name }}</div>
+            @if (departmentName() || jobTitleName()) {
+              <div class="text-xs text-[--text-secondary] truncate">{{ departmentName() }}{{ departmentName() && jobTitleName() ? '・' : '' }}{{ jobTitleName() }}</div>
+            }
             <div class="text-xs text-[--text-muted] truncate">{{ user()?.email }}</div>
           </div>
         </div>
@@ -51,6 +54,8 @@ export class ProfileDropdown {
   private router = inject(Router);
 
   user = this.auth.currentUser;
+  departmentName = this.auth.departmentName;
+  jobTitleName = this.auth.jobTitleName;
 
   logout() {
     this.auth.logout();

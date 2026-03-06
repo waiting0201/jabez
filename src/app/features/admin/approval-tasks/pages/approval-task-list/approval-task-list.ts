@@ -2,6 +2,7 @@ import {Component, computed, inject, signal} from '@angular/core';
 import {RouterLink} from '@angular/router';
 import {DatePipe} from '@angular/common';
 import {toSignal, toObservable} from '@angular/core/rxjs-interop';
+import {combineLatest} from 'rxjs';
 import {switchMap} from 'rxjs/operators';
 import {ApprovalTaskService} from '../../services/approval-task.service';
 import {
@@ -21,11 +22,17 @@ export class ApprovalTaskList {
   private service = inject(ApprovalTaskService);
 
   readonly PAGE_SIZE = 20;
+  activeTab = signal<'pending' | 'approved'>('pending');
   page = signal(1);
 
+  switchTab(tab: 'pending' | 'approved') {
+    this.activeTab.set(tab);
+    this.page.set(1);
+  }
+
   private result = toSignal(
-    toObservable(this.page).pipe(
-      switchMap(p => this.service.getPaged(p, this.PAGE_SIZE))
+    combineLatest([toObservable(this.page), toObservable(this.activeTab)]).pipe(
+      switchMap(([p, status]) => this.service.getPaged(p, this.PAGE_SIZE, status))
     ),
     {initialValue: {items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 1} as PagedResult<ApprovalTask>}
   );
@@ -51,7 +58,7 @@ export class ApprovalTaskList {
       return `${this.payTypeLabel[t.paymentDetail.paymentType]}・${t.paymentDetail.projectCode}（${t.paymentDetail.totalAmount.toLocaleString()} 元）`;
     }
     if (t.leaveDetail) {
-      return `${this.leaveTypeLabel[t.leaveDetail.leaveType]}・${t.leaveDetail.days} 天`;
+      return `${this.leaveTypeLabel[t.leaveDetail.leaveType]}・${t.leaveDetail.hours} 小時`;
     }
     if (t.travelDetail) {
       return `${t.travelDetail.destination}（${t.travelDetail.estimatedCost.toLocaleString()} 元）`;

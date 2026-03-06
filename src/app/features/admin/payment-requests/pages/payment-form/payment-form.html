@@ -93,7 +93,7 @@
             </div>
 
             @if (isEdit) {
-              <div class="mb-0">
+              <div class="mb-4">
                 <label class="form-label fw-500">簽核狀態</label>
                 <div>
                   <span class="badge rounded-pill px-3 py-2" [class]="statusClass[approvalStatus]">
@@ -101,6 +101,22 @@
                   </span>
                 </div>
               </div>
+              @if (estimatedPaymentDate || paidAt) {
+                <div class="row g-3 mb-0">
+                  @if (estimatedPaymentDate) {
+                    <div class="col-6 col-md-4">
+                      <label class="form-label fw-500">預計撥款日</label>
+                      <p class="form-control-plaintext fw-500 mb-0">{{ estimatedPaymentDate }}</p>
+                    </div>
+                  }
+                  @if (paidAt) {
+                    <div class="col-6 col-md-4">
+                      <label class="form-label fw-500">撥款日</label>
+                      <p class="form-control-plaintext fw-500 text-success mb-0">{{ paidAt }}</p>
+                    </div>
+                  }
+                </div>
+              }
             }
 
           </div>
