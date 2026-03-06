@@ -30,6 +30,11 @@ export const routes: Routes = [
         path: 'admin',
         loadChildren: () => import('./features/admin/admin.routes').then(m => m.ADMIN_ROUTES),
       },
+      {
+        path: 'account/change-password',
+        loadComponent: () => import('./features/account/pages/change-password/change-password').then(m => m.ChangePassword),
+        data: {title: '修改密碼'},
+      },
       {path: 'error/404', component: Error404, data: {title: 'Error 404'}},
       {path: 'error/403', component: Error403, data: {title: 'Error 403'}},
     ],

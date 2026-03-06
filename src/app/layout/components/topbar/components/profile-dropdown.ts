@@ -1,11 +1,11 @@
 import {Component, inject} from '@angular/core';
 import {NgbDropdownModule} from '@ng-bootstrap/ng-bootstrap';
-import {Router} from '@angular/router';
+import {Router, RouterLink} from '@angular/router';
 import {AuthService} from '@core/auth/services/auth.service';
 
 @Component({
   selector: 'app-profile-dropdown',
-  imports: [NgbDropdownModule],
+  imports: [NgbDropdownModule, RouterLink],
   template: `
     <div ngbDropdown>
       <button type="button" ngbDropdownToggle [title]="user()?.email ?? ''"
@@ -27,6 +27,13 @@ import {AuthService} from '@core/auth/services/auth.service';
             <div class="text-xs text-[--text-muted] truncate">{{ user()?.email }}</div>
           </div>
         </div>
+
+        <a class="dropdown-item" routerLink="/account/change-password">
+          <svg class="sa-icon" style="width:1rem;height:1rem;stroke:currentColor">
+            <use href="/assets/icons/sprite.svg#lock"></use>
+          </svg>
+          <span class="font-medium">修改密碼</span>
+        </a>
 
         <a class="dropdown-item" href="javascript:void(0)" (click)="logout()">
           <svg class="sa-icon sa-icon-danger" style="width:1rem;height:1rem">

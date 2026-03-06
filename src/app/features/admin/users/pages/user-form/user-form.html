@@ -4,6 +4,19 @@
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
     </a>
     <h4 class="mb-0">{{ isEdit ? '編輯員工' : '新增員工' }}</h4>
+    @if (isEdit) {
+      <button type="button" class="btn btn-sm btn-outline-info ms-auto"
+              [disabled]="sending()"
+              (click)="sendCredentials()">
+        @if (sending()) {
+          <span class="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin me-1"></span>
+          寄送中…
+        } @else {
+          <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#mail"></use></svg>
+          寄出帳號通知
+        }
+      </button>
+    }
   </div>
 
   @if (errorMsg()) {

@@ -268,11 +268,15 @@ export class Login {
     this.errorMsg.set('');
     const { email, password } = this.form.value;
     this.authService.login(email!, password!).subscribe({
-      next: () => {
+      next: (res) => {
         if (this.rememberMe()) {
           localStorage.setItem(this.REMEMBER_KEY, email!);
         } else {
           localStorage.removeItem(this.REMEMBER_KEY);
+        }
+        if (res.must_change_password) {
+          this.router.navigate(['/account/change-password'], { queryParams: { forced: '1' } });
+          return;
         }
         const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? '/dashboard';
         this.router.navigateByUrl(returnUrl);

@@ -6,6 +6,7 @@ import {DecimalPipe} from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
 import {debounceTime, distinctUntilChanged, switchMap, catchError} from 'rxjs/operators';
 import {of} from 'rxjs';
+import {ToastrService} from 'ngx-toastr';
 import {AuthService} from '../../../../../core/auth/services/auth.service';
 import {UserService} from '../../services/user.service';
 import {RoleService} from '../../../roles/services/role.service';
@@ -33,8 +34,10 @@ export class UserForm implements OnInit {
   private router          = inject(Router);
   private destroyRef      = inject(DestroyRef);
   private authService     = inject(AuthService);
+  private toastr          = inject(ToastrService);
 
   isSuperAdmin = this.authService.isSuperAdmin;
+  sending = signal(false);
   roles       = signal<Role[]>([]);
   departments = signal<Department[]>([]);
   jobTitles   = signal<JobTitle[]>([]);
@@ -117,6 +120,21 @@ export class UserForm implements OnInit {
 
   private toDateString(d: Date): string {
     return new Date(d).toISOString().substring(0, 10);
+  }
+
+  sendCredentials() {
+    if (!this.userId || this.sending()) return;
+    this.sending.set(true);
+    this.userService.sendCredentials(this.userId).subscribe({
+      next: () => {
+        this.sending.set(false);
+        this.toastr.success('通知信已寄出，員工首次登入後需修改密碼。', '寄送成功');
+      },
+      error: (err: HttpErrorResponse) => {
+        this.sending.set(false);
+        this.toastr.error(err.error?.message || '寄送失敗，請確認 SMTP 設定。', '寄送失敗');
+      },
+    });
   }
 
   submit() {

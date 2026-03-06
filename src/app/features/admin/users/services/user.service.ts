@@ -32,4 +32,8 @@ export class UserService {
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${environment.apiUrl}/users/${id}`);
   }
+
+  sendCredentials(id: string): Observable<void> {
+    return this.http.post<void>(`${environment.apiUrl}/users/${id}/send-credentials`, {});
+  }
 }

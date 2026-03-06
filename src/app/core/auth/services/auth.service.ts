@@ -19,6 +19,7 @@ export interface LoginResponse {
   access_token: string;
   refresh_token: string;
   token_type: string;
+  must_change_password?: boolean;
 }
 
 const TOKEN_KEY = 'access_token';
@@ -99,6 +100,11 @@ export class AuthService {
         this._storeTokens(res.access_token, res.refresh_token);
       }),
     );
+  }
+
+  /** 修改密碼 */
+  changePassword(currentPassword: string, newPassword: string): Observable<void> {
+    return this.http.post<void>(`${environment.apiUrl}/auth/change-password`, {currentPassword, newPassword});
   }
 
   logout(): void {
