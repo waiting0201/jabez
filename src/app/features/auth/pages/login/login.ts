@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ToastrService } from 'ngx-toastr';
 import { AuthService } from '@core/auth/services/auth.service';
 
 @Component({
@@ -245,6 +246,7 @@ export class Login {
   private authService = inject(AuthService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private toastr = inject(ToastrService);
 
   private readonly REMEMBER_KEY = 'remember_email';
 
@@ -274,6 +276,24 @@ export class Login {
         } else {
           localStorage.removeItem(this.REMEMBER_KEY);
         }
+        // 自動補卡提醒
+        if (res.auto_clock_out && res.auto_clock_out.count > 0) {
+          const dates = res.auto_clock_out.dates.join('、');
+          this.toastr.warning(
+            `以下日期未打下班卡，系統已自動以設定下班時間補上：${dates}`,
+            `自動補卡提醒（${res.auto_clock_out.count} 筆）`,
+            { timeOut: 10000, closeButton: true }
+          );
+        }
+        if (res.auto_overtime_end && res.auto_overtime_end.count > 0) {
+          const dates = res.auto_overtime_end.dates.join('、');
+          this.toastr.warning(
+            `以下日期未打加班結束卡，系統已依申請時數自動補上：${dates}`,
+            `加班補卡提醒（${res.auto_overtime_end.count} 筆）`,
+            { timeOut: 10000, closeButton: true }
+          );
+        }
+
         if (res.must_change_password) {
           this.router.navigate(['/account/change-password'], { queryParams: { forced: '1' } });
           return;

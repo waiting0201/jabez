@@ -17,11 +17,23 @@ export interface JwtPayload {
   job_title_name?: string;
 }
 
+export interface AutoClockOutInfo {
+  count: number;
+  dates: string[];
+}
+
+export interface AutoOvertimeEndInfo {
+  count: number;
+  dates: string[];
+}
+
 export interface LoginResponse {
   access_token: string;
   refresh_token: string;
   token_type: string;
   must_change_password?: boolean;
+  auto_clock_out?: AutoClockOutInfo | null;
+  auto_overtime_end?: AutoOvertimeEndInfo | null;
 }
 
 const TOKEN_KEY = 'access_token';
