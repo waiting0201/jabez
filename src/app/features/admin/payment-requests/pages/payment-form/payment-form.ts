@@ -4,7 +4,8 @@ import {AbstractControl, FormArray, FormBuilder, ReactiveFormsModule, Validators
 import {DecimalPipe} from '@angular/common';
 import {DomSanitizer} from '@angular/platform-browser';
 import {HttpErrorResponse} from '@angular/common/http';
-import {createWorker, PSM} from 'tesseract.js';
+import {firstValueFrom} from 'rxjs';
+import heic2any from 'heic2any';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {PaymentRequestService} from '../../services/payment-request.service';
 import {ProjectService} from '../../../projects/services/project.service';
@@ -106,9 +107,12 @@ export class PaymentForm implements OnInit {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) return;
 
-    const files = Array.from(input.files);
+    const rawFiles = Array.from(input.files);
     input.value = '';
     this.showInvoiceError = false;
+
+    // HEIC/HEIF → JPEG 轉換（iPhone 預設拍照格式）
+    const files = await Promise.all(rawFiles.map(f => this._convertHeicIfNeeded(f)));
 
     // Add all rows immediately as "loading" placeholders; create blob URL for preview
     const entries = files.map(file => {
@@ -120,38 +124,34 @@ export class PaymentForm implements OnInit {
       return {id, file};
     });
 
-    // Two workers initialised once per batch — each locked to its own PSM mode.
-    // AUTO: better for structured large-text blocks (invoice number).
-    // SPARSE_TEXT: better for scattered small text (amount line between barcodes).
-    const [wAuto, wSparse] = await Promise.all([
-      createWorker(['eng', 'chi_tra']),
-      createWorker(['eng', 'chi_tra']),
-    ]);
-    await wSparse.setParameters({tessedit_pageseg_mode: PSM.SPARSE_TEXT});
-    try {
-      for (const {id, file} of entries) {
-        try {
-          const [{data: {text: textAuto}}, {data: {text: textSparse}}] =
-            await Promise.all([wAuto.recognize(file), wSparse.recognize(file)]);
-
-          console.log('[OCR AUTO]', textAuto);
-          console.log('[OCR SPARSE]', textSparse);
-
-          const auto   = this._extractInvoiceData(textAuto);
-          const sparse = this._extractInvoiceData(textSparse);
-          const invoiceNo = auto.invoiceNo || sparse.invoiceNo;
-          const amount    = auto.amount    || sparse.amount;
-          const idx = this.invoiceArray.controls.findIndex(c => c.get('id')?.value === id);
-          if (idx >= 0) this.invoiceArray.controls[idx].patchValue({invoiceNo, amount});
-        } catch {
-          // OCR failed — leave fields empty for manual entry
-        } finally {
-          this.ocrLoadingIds.delete(id);
-          this.cdr.markForCheck();
-        }
+    // 使用後端 Claude Haiku API 辨識發票（並行處理所有檔案）
+    await Promise.all(entries.map(async ({id, file}) => {
+      try {
+        const result = await firstValueFrom(this.service.ocrInvoice(file));
+        const idx = this.invoiceArray.controls.findIndex(c => c.get('id')?.value === id);
+        if (idx >= 0) this.invoiceArray.controls[idx].patchValue({
+          invoiceNo: result.invoiceNo ?? '',
+          amount:    result.amount ?? 0,
+        });
+      } catch {
+        // OCR failed — leave fields empty for manual entry
+      } finally {
+        this.ocrLoadingIds.delete(id);
+        this.cdr.markForCheck();
       }
-    } finally {
-      await Promise.all([wAuto.terminate(), wSparse.terminate()]);
+    }));
+  }
+
+  /** HEIC/HEIF 圖片轉換為 JPEG（iPhone 預設格式瀏覽器無法顯示） */
+  private async _convertHeicIfNeeded(file: File): Promise<File> {
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.heic') && !name.endsWith('.heif')) return file;
+    try {
+      const blob = await heic2any({blob: file, toType: 'image/jpeg', quality: 0.85}) as Blob;
+      const jpegName = file.name.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg');
+      return new File([blob], jpegName, {type: 'image/jpeg'});
+    } catch {
+      return file; // 轉換失敗則使用原檔
     }
   }
 
@@ -250,34 +250,4 @@ export class PaymentForm implements OnInit {
     });
   }
 
-  /** Extract Taiwanese invoice number and total amount from raw OCR text. */
-  private _extractInvoiceData(text: string): {invoiceNo: string; amount: number} {
-    // Invoice number（統一發票號碼）: 2 uppercase letters + optional separator + 8 digits
-    const noMatch = text.match(/[A-Z]{2}[-\s]?\d{8}/);
-    let invoiceNo = '';
-    if (noMatch) {
-      invoiceNo = noMatch[0].replace(/[-\s]/g, '');
-    }
-
-    // Amount: try common invoice label patterns, then NT$ prefix.
-    // [^0-9]{0,20} as separator tolerates mis-read colons, extra spaces, etc.
-    // Two passes per label: first exact match, then with \s? between characters
-    // to tolerate OCR inserting spaces within Chinese words (e.g. "總 計").
-    const patterns = [
-      /(?:合計|總計|總金額|應付金額|應付款項|小計)[^0-9]{0,20}([\d,]+)/,
-      /(?:合\s*計|總\s*計|總\s*金\s*額|應\s*付\s*金\s*額|應\s*付\s*款\s*項|小\s*計)[^0-9]{0,20}([\d,]+)/,
-      /金額[^0-9]{0,10}([\d,]+)/,
-      /金\s*額[^0-9]{0,10}([\d,]+)/,
-      /(?:Amount|Total)[^0-9]{0,10}([\d,]+)/i,
-      /NT\$\s*([\d,]+)/,
-      /\$\s*([\d,]+)/,
-    ];
-    let amount = 0;
-    for (const p of patterns) {
-      const m = text.match(p);
-      if (m) {amount = parseInt(m[1].replace(/,/g, ''), 10); break;}
-    }
-
-    return {invoiceNo, amount};
-  }
 }

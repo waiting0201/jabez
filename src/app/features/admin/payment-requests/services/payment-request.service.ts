@@ -38,6 +38,13 @@ export class PaymentRequestService {
     return this.http.patch<PaymentRequest>(`${environment.apiUrl}/payment-requests/${id}/submit`, {});
   }
 
+  /** 發票 OCR 辨識（透過 Claude Haiku API） */
+  ocrInvoice(file: File): Observable<{invoiceNo: string; amount: number}> {
+    const fd = new FormData();
+    fd.append('file', file, file.name);
+    return this.http.post<{invoiceNo: string; amount: number}>(`${environment.apiUrl}/invoice-ocr`, fd);
+  }
+
   /** 更新已核准請款的撥款日期（僅財務部/Superadmin） */
   updatePaymentDate(id: number, estimatedPaymentDate?: string, paidAt?: string): Observable<{id: number; estimatedPaymentDate?: string; paidAt?: string}> {
     return this.http.patch<{id: number; estimatedPaymentDate?: string; paidAt?: string}>(

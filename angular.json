@@ -48,7 +48,7 @@
             ],
             "outputPath": "dist/Admin",
             "allowedCommonJsDependencies": [
-              "tesseract.js",
+              "heic2any",
               "vanta/dist/vanta.halo.min",
               "xlsx"
             ]
