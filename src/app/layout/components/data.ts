@@ -87,9 +87,9 @@ export const menuItems: MenuItemType[] = [
     icon: '/assets/icons/sprite.svg#check-square',
     label: '簽核管理',
     isCollapsed: true,
-    requiredPermission: 'superadmin',
+    requiredPermission: 'approvals:read',
     children: [
-      { label: '簽核項目', url: '/admin/approvals', requiredPermission: 'superadmin' },
+      { label: '簽核項目', url: '/admin/approvals', requiredPermission: 'approvals:read' },
     ],
   },
   {
@@ -102,10 +102,10 @@ export const menuItems: MenuItemType[] = [
     icon: '/assets/icons/sprite.svg#shield',
     label: '系統權限',
     isCollapsed: true,
-    requiredPermission: 'superadmin',
+    requiredPermission: 'roles:read',
     children: [
-      { label: '角色管理', url: '/admin/roles', requiredPermission: 'superadmin' },
-      { label: '權限管理', url: '/admin/permissions', requiredPermission: 'superadmin' },
+      { label: '角色管理', url: '/admin/roles', requiredPermission: 'roles:read' },
+      { label: '權限管理', url: '/admin/permissions', requiredPermission: 'permissions:read' },
     ],
   },
   {

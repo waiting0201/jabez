@@ -51,17 +51,17 @@ export const ADMIN_ROUTES: Routes = [
   {path: 'job-titles/new',       component: JobTitleForm,   canActivate: [permissionGuard], data: {title: '新增職稱',   permission: 'job-titles:write'}},
   {path: 'job-titles/:id/edit',  component: JobTitleForm,   canActivate: [permissionGuard], data: {title: '編輯職稱',   permission: 'job-titles:write'}},
 
-  // 簽核管理（僅超管帳號可存取）
-  {path: 'approvals',            component: ApprovalList,   canActivate: [permissionGuard], data: {title: '簽核管理',   permission: 'superadmin'}},
-  {path: 'approvals/:id/flow',   component: ApprovalFlow,   canActivate: [permissionGuard], data: {title: '簽核流程',   permission: 'superadmin'}},
+  // 簽核管理
+  {path: 'approvals',            component: ApprovalList,   canActivate: [permissionGuard], data: {title: '簽核管理',   permission: 'approvals:read'}},
+  {path: 'approvals/:id/flow',   component: ApprovalFlow,   canActivate: [permissionGuard], data: {title: '簽核流程',   permission: 'approvals:read'}},
 
-  // 角色 / 權限（僅超管帳號可存取）
-  {path: 'roles',                component: RoleList,       canActivate: [permissionGuard], data: {title: '角色管理',   permission: 'superadmin'}},
-  {path: 'roles/new',            component: RoleForm,       canActivate: [permissionGuard], data: {title: '新增角色',   permission: 'superadmin'}},
-  {path: 'roles/:id/edit',       component: RoleForm,       canActivate: [permissionGuard], data: {title: '編輯角色',   permission: 'superadmin'}},
-  {path: 'permissions',          component: PermissionList, canActivate: [permissionGuard], data: {title: '權限管理',   permission: 'superadmin'}},
-  {path: 'permissions/new',      component: PermissionForm, canActivate: [permissionGuard], data: {title: '新增權限',   permission: 'superadmin'}},
-  {path: 'permissions/:id/edit', component: PermissionForm, canActivate: [permissionGuard], data: {title: '編輯權限',   permission: 'superadmin'}},
+  // 角色 / 權限
+  {path: 'roles',                component: RoleList,       canActivate: [permissionGuard], data: {title: '角色管理',   permission: 'roles:read'}},
+  {path: 'roles/new',            component: RoleForm,       canActivate: [permissionGuard], data: {title: '新增角色',   permission: 'roles:write'}},
+  {path: 'roles/:id/edit',       component: RoleForm,       canActivate: [permissionGuard], data: {title: '編輯角色',   permission: 'roles:write'}},
+  {path: 'permissions',          component: PermissionList, canActivate: [permissionGuard], data: {title: '權限管理',   permission: 'permissions:read'}},
+  {path: 'permissions/new',      component: PermissionForm, canActivate: [permissionGuard], data: {title: '新增權限',   permission: 'permissions:write'}},
+  {path: 'permissions/:id/edit', component: PermissionForm, canActivate: [permissionGuard], data: {title: '編輯權限',   permission: 'permissions:write'}},
 
   // 專案管理
   {path: 'projects',             component: ProjectList,    canActivate: [permissionGuard], data: {title: '專案管理',       permission: 'projects:read'}},
