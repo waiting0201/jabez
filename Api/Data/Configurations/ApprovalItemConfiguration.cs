@@ -1,0 +1,48 @@
+using Jabez.Api.Models.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Jabez.Api.Data.Configurations;
+
+public class ApprovalItemConfiguration : IEntityTypeConfiguration<ApprovalItem>
+{
+    public void Configure(EntityTypeBuilder<ApprovalItem> builder)
+    {
+        builder.HasKey(a => a.Id);
+
+        builder.Property(a => a.Name)
+               .IsRequired()
+               .HasMaxLength(100);
+
+        builder.Property(a => a.Code)
+               .IsRequired()
+               .HasMaxLength(50);
+
+        builder.HasIndex(a => a.Code)
+               .IsUnique();
+
+        builder.Property(a => a.ApplicationType)
+               .HasMaxLength(30);
+
+        // Only one flow per application type
+        builder.HasIndex(a => a.ApplicationType)
+               .IsUnique()
+               .HasFilter("[ApplicationType] IS NOT NULL");
+
+        builder.Property(a => a.Description)
+               .HasMaxLength(500);
+
+        builder.Property(a => a.IsActive)
+               .HasDefaultValue(true);
+
+        builder.Property(a => a.CreatedAt)
+               .HasDefaultValueSql("DATEADD(hour, 8, GETUTCDATE())");
+
+        builder.HasData(
+            new ApprovalItem { Id = 2, Name = "請款申請", Code = "payment_request",  IsActive = true, ApplicationType = "payment_request", CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new ApprovalItem { Id = 3, Name = "加班申請", Code = "overtime_request",  IsActive = true, ApplicationType = "overtime",         CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new ApprovalItem { Id = 4, Name = "請假申請", Code = "leave_request",     IsActive = true, ApplicationType = "leave",           CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new ApprovalItem { Id = 5, Name = "出差申請", Code = "travel_request",    IsActive = true, ApplicationType = "travel",          CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+        );
+    }
+}
