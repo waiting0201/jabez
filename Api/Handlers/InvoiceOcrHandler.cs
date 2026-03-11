@@ -10,7 +10,7 @@ using System.Text.RegularExpressions;
 namespace Jabez.Api.Handlers;
 
 /// <summary>
-/// 發票 OCR Handler：接收圖片並透過 Gemini 2.0 Flash API 辨識台灣統一發票號碼與金額。
+/// 發票 OCR Handler：接收圖片並透過 Claude API 辨識台灣統一發票號碼與金額。
 /// </summary>
 public sealed class InvoiceOcrHandler(IConfiguration config)
 {
@@ -19,7 +19,8 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
         Timeout = TimeSpan.FromSeconds(30)
     };
 
-    private const string Model = "gemini-2.5-flash";
+    private const string Model = "claude-haiku-4-5-20251001";
+    private const string ApiEndpoint = "https://api.anthropic.com/v1/messages";
 
     // 允許的圖片 MIME 類型
     private static readonly HashSet<string> AllowedMediaTypes =
@@ -33,14 +34,14 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
 
     /// <summary>
     /// POST /invoice-ocr
-    /// 接收 multipart/form-data（欄位 "file"），呼叫 Gemini 2.0 Flash 辨識發票資訊。
+    /// 接收 multipart/form-data（欄位 "file"），呼叫 Claude API 辨識發票資訊。
     /// </summary>
     public async Task<IActionResult> RecognizeAsync(HttpRequest req)
     {
         // ── 1. 讀取設定 ────────────────────────────────────────────────────────
-        var apiKey = config["Gemini:ApiKey"];
+        var apiKey = config["Anthropic:ApiKey"];
         if (string.IsNullOrWhiteSpace(apiKey))
-            return new ObjectResult(ApiResponse.Fail("Gemini API Key 未設定。"))
+            return new ObjectResult(ApiResponse.Fail("Anthropic API Key 未設定。"))
                 { StatusCode = 503 };
 
         // ── 2. 解析 multipart/form-data ────────────────────────────────────────
@@ -101,7 +102,7 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
                 { StatusCode = 500 };
         }
 
-        // ── 5. 組建 Gemini API 請求 ───────────────────────────────────────────
+        // ── 5. 組建 Claude API 請求 ──────────────────────────────────────────
         var prompt = """
             請辨識這張台灣統一發票/收據圖片，提取以下資訊：
             1. 發票號碼（格式：2個英文大寫字母 + 8個數字，如 AB12345678）
@@ -111,68 +112,60 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
             {"invoiceNo": "發票號碼或空字串", "amount": 金額數字或0}
             """;
 
-        // Gemini generateContent 請求格式
         var requestBody = new
         {
-            contents = new[]
+            model = Model,
+            max_tokens = 1024,
+            messages = new[]
             {
                 new
                 {
-                    parts = new object[]
+                    role = "user",
+                    content = new object[]
                     {
                         new
                         {
-                            inlineData = new
+                            type = "image",
+                            source = new
                             {
-                                mimeType = mediaType,
-                                data     = base64Data
+                                type = "base64",
+                                media_type = mediaType,
+                                data = base64Data
                             }
                         },
-                        new { text = prompt }
+                        new
+                        {
+                            type = "text",
+                            text = prompt
+                        }
                     }
-                }
-            },
-            generationConfig = new
-            {
-                maxOutputTokens = 1024,
-                temperature     = 0.1,
-                responseMimeType = "application/json",
-                responseSchema = new
-                {
-                    type = "object",
-                    properties = new
-                    {
-                        invoiceNo = new { type = "string", description = "發票號碼（2英文大寫+8數字）" },
-                        amount    = new { type = "number", description = "總金額" }
-                    },
-                    required = new[] { "invoiceNo", "amount" }
                 }
             }
         };
 
         var jsonBody = JsonSerializer.Serialize(requestBody, CamelOpts);
 
-        // ── 6. 呼叫 Gemini API ────────────────────────────────────────────────
-        var endpoint = $"https://generativelanguage.googleapis.com/v1beta/models/{Model}:generateContent?key={apiKey}";
-
-        GeminiResponse? geminiResp;
+        // ── 6. 呼叫 Claude API ──────────────────────────────────────────────
+        ClaudeResponse? claudeResp;
         try
         {
-            using var httpReq = new HttpRequestMessage(HttpMethod.Post, endpoint);
+            using var httpReq = new HttpRequestMessage(HttpMethod.Post, ApiEndpoint);
             httpReq.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+            httpReq.Headers.Add("x-api-key", apiKey);
+            httpReq.Headers.Add("anthropic-version", "2023-06-01");
 
             using var httpResp = await _http.SendAsync(httpReq);
             var respBody = await httpResp.Content.ReadAsStringAsync();
 
             if (!httpResp.IsSuccessStatusCode)
             {
-                Console.Error.WriteLine($"[InvoiceOcr] Gemini API error {(int)httpResp.StatusCode}: {respBody}");
+                Console.Error.WriteLine($"[InvoiceOcr] Claude API error {(int)httpResp.StatusCode}: {respBody}");
                 return new ObjectResult(
                     ApiResponse.Fail($"AI 服務暫時無法使用（{(int)httpResp.StatusCode}），請稍後再試。"))
                     { StatusCode = 502 };
             }
 
-            geminiResp = JsonSerializer.Deserialize<GeminiResponse>(respBody, CamelOpts);
+            claudeResp = JsonSerializer.Deserialize<ClaudeResponse>(respBody, CamelOpts);
         }
         catch (TaskCanceledException)
         {
@@ -186,9 +179,9 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
                 { StatusCode = 500 };
         }
 
-        // ── 7. 解析 Gemini 回傳文字 ───────────────────────────────────────────
-        var rawText = geminiResp?.Candidates?.FirstOrDefault()
-                          ?.Content?.Parts?.FirstOrDefault()?.Text ?? string.Empty;
+        // ── 7. 解析 Claude 回傳文字 ──────────────────────────────────────────
+        var rawText = claudeResp?.Content?.FirstOrDefault(c => c.Type == "text")?.Text
+                      ?? string.Empty;
 
         var cleanedText = CleanJsonText(rawText);
 
@@ -245,27 +238,18 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
         [property: JsonPropertyName("invoiceNo")] string  InvoiceNo,
         [property: JsonPropertyName("amount")]    decimal Amount);
 
-    /// <summary>Gemini generateContent 回應結構</summary>
-    private sealed class GeminiResponse
-    {
-        [JsonPropertyName("candidates")]
-        public List<GeminiCandidate>? Candidates { get; set; }
-    }
-
-    private sealed class GeminiCandidate
+    /// <summary>Claude Messages API 回應結構</summary>
+    private sealed class ClaudeResponse
     {
         [JsonPropertyName("content")]
-        public GeminiContent? Content { get; set; }
+        public List<ClaudeContent>? Content { get; set; }
     }
 
-    private sealed class GeminiContent
+    private sealed class ClaudeContent
     {
-        [JsonPropertyName("parts")]
-        public List<GeminiPart>? Parts { get; set; }
-    }
+        [JsonPropertyName("type")]
+        public string? Type { get; set; }
 
-    private sealed class GeminiPart
-    {
         [JsonPropertyName("text")]
         public string? Text { get; set; }
     }
