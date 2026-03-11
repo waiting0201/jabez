@@ -299,7 +299,13 @@
                       }
                       @if (getRecord(task.approvalRecords, step.stepOrder); as rec) {
                         <div class="text-muted small mt-1">
-                          {{ rec.reviewedBy }} · {{ rec.reviewedAt | date:'yyyy-MM-dd' }} ·
+                          {{ rec.reviewedBy }}
+                          @if (rec.isEscalated && rec.onBehalfOf) {
+                            <span class="badge bg-[--bg-elevated] text-[--accent] ms-1" style="font-size:.7rem">代理 {{ rec.onBehalfOf }}</span>
+                          } @else if (rec.isEscalated) {
+                            <span class="badge bg-[--bg-elevated] text-[--purple] ms-1" style="font-size:.7rem">升級審核</span>
+                          }
+                          · {{ rec.reviewedAt | date:'yyyy-MM-dd' }} ·
                           @if (rec.action === 'approved') {
                             <span class="text-success">已核准</span>
                           } @else if (rec.action === 'returned') {

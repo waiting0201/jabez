@@ -104,7 +104,9 @@
             @if (employees().length > 0) {
               <tfoot class="table-light">
                 <tr class="fw-600">
-                  <td colspan="3">合計</td>
+                  <td>合計</td>
+                  <td class="hidden md:table-cell"></td>
+                  <td class="hidden lg:table-cell"></td>
                   <td class="text-right">{{ p.totalBaseSalary | number:'1.0-0' }}</td>
                   <td></td>
                   <td></td>

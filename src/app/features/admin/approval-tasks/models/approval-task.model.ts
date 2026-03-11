@@ -94,6 +94,8 @@ export interface ApprovalRecord {
   reviewedBy: string;
   reviewedAt: Date;
   reviewNote?: string;
+  onBehalfOf?: string;    // 代理審核：代替誰審核
+  isEscalated: boolean;   // 是否為升級審核
 }
 
 // ── ApprovalTask (polymorphic) ───────────────────────────────────────────────
