@@ -199,12 +199,15 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    /// <summary>驗證當前審核者是否有權審核此步驟（依職稱/部門設定，或升級審核指派）。</summary>
+    /// <summary>驗證當前審核者是否有權審核此步驟（依職稱/部門設定，或升級審核指派）。Superadmin 可審核任何步驟。</summary>
     private async Task AuthorizeStepAsync(
         int? approvalItemId, int currentStepOrder, User reviewer,
         int? applicantDepartmentId = null, string? applicationType = null, int? applicationId = null)
     {
         if (approvalItemId is null) return;
+
+        // Superadmin 可審核任何步驟
+        if (reviewer.IsSuperAdmin) return;
 
         var step = await db.ApprovalSteps
             .AsNoTracking()

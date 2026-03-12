@@ -167,10 +167,11 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             return parts.Length > 0 ? " WHERE " + string.Join(" AND ", parts) : "";
         }
 
-        string paymentWhere  = BuildWhere(paymentIdWhere,  StepMatchClause("pr", "sub", "payment_request"));
-        string leaveWhere    = BuildWhere(leaveIdWhere,    StepMatchClause("lr", "u",   "leave"));
-        string travelWhere   = BuildWhere(travelIdWhere,   StepMatchClause("tr", "u",   "travel"));
-        string overtimeWhere = BuildWhere(overtimeIdWhere, StepMatchClause("ot", "u",   "overtime"));
+        // 按 ID 查詢時不套用審核者過濾（StepMatchClause），只用 ID 條件
+        string paymentWhere  = filterId.HasValue ? BuildWhere(paymentIdWhere,  "") : BuildWhere("", StepMatchClause("pr", "sub", "payment_request"));
+        string leaveWhere    = filterId.HasValue ? BuildWhere(leaveIdWhere,    "") : BuildWhere("", StepMatchClause("lr", "u",   "leave"));
+        string travelWhere   = filterId.HasValue ? BuildWhere(travelIdWhere,   "") : BuildWhere("", StepMatchClause("tr", "u",   "travel"));
+        string overtimeWhere = filterId.HasValue ? BuildWhere(overtimeIdWhere, "") : BuildWhere("", StepMatchClause("ot", "u",   "overtime"));
 
         var paymentSql = $"""
             SELECT pr.Id, pr.Type AS PaymentType, proj.Code AS ProjectCode,
