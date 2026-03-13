@@ -74,10 +74,38 @@
                 <td class="text-center text-muted small">{{ row.recordDate }}</td>
                 <td class="text-center hidden md:table-cell">{{ row.leaveType }}</td>
                 <td class="text-center text-muted small hidden md:table-cell">{{ row.leaveTime }}</td>
-                <td class="text-center">{{ row.clockInTime }}</td>
-                <td class="text-center">{{ row.clockOutTime }}</td>
-                <td class="text-center hidden lg:table-cell">{{ row.overtimeStartTime }}</td>
-                <td class="text-center hidden lg:table-cell">{{ row.overtimeEndTime }}</td>
+                <td class="text-center">
+                  {{ row.clockInTime }}
+                  @if (row.clockInLatitude != null && row.clockInLongitude != null) {
+                    <button class="btn btn-sm btn-ghost-primary inline-flex items-center p-0 ms-1" title="查看打卡位置" (click)="openMap('上班打卡', row.clockInLatitude!, row.clockInLongitude!)">
+                      <svg class="sa-icon sa-icon-1x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
+                    </button>
+                  }
+                </td>
+                <td class="text-center">
+                  {{ row.clockOutTime }}
+                  @if (row.clockOutLatitude != null && row.clockOutLongitude != null) {
+                    <button class="btn btn-sm btn-ghost-primary inline-flex items-center p-0 ms-1" title="查看打卡位置" (click)="openMap('下班打卡', row.clockOutLatitude!, row.clockOutLongitude!)">
+                      <svg class="sa-icon sa-icon-1x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
+                    </button>
+                  }
+                </td>
+                <td class="text-center hidden lg:table-cell">
+                  {{ row.overtimeStartTime }}
+                  @if (row.overtimeStartLatitude != null && row.overtimeStartLongitude != null) {
+                    <button class="btn btn-sm btn-ghost-primary inline-flex items-center p-0 ms-1" title="查看打卡位置" (click)="openMap('加班開始', row.overtimeStartLatitude!, row.overtimeStartLongitude!)">
+                      <svg class="sa-icon sa-icon-1x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
+                    </button>
+                  }
+                </td>
+                <td class="text-center hidden lg:table-cell">
+                  {{ row.overtimeEndTime }}
+                  @if (row.overtimeEndLatitude != null && row.overtimeEndLongitude != null) {
+                    <button class="btn btn-sm btn-ghost-primary inline-flex items-center p-0 ms-1" title="查看打卡位置" (click)="openMap('加班結束', row.overtimeEndLatitude!, row.overtimeEndLongitude!)">
+                      <svg class="sa-icon sa-icon-1x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
+                    </button>
+                  }
+                </td>
                 <td class="text-right" style="white-space: nowrap">
                   <div class="flex justify-end gap-1">
                     @if (row.id) {
@@ -161,6 +189,38 @@
               儲存
             }
           </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- 地圖 Modal -->
+@if (mapModal(); as map) {
+  <div class="modal-backdrop" (click)="closeMap()"></div>
+  <div class="modal show" style="display: block" (click)="closeMap()">
+    <div class="modal-dialog modal-lg modal-dialog-centered" (click)="$event.stopPropagation()">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <svg class="sa-icon sa-icon-1x me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
+            {{ map.label }} 位置
+          </h5>
+          <button type="button" class="btn-close" (click)="closeMap()"></button>
+        </div>
+        <div class="modal-body p-0">
+          <iframe
+            [src]="mapIframeUrl()"
+            width="100%" height="450" style="border:0; display:block;" loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            allowfullscreen></iframe>
+        </div>
+        <div class="modal-footer">
+          <a class="btn btn-primary" [href]="'https://www.google.com/maps?q=' + map.lat + ',' + map.lng" target="_blank" rel="noopener">
+            <svg class="sa-icon sa-icon-1x me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#external-link"></use></svg>
+            在 Google Maps 中開啟
+          </a>
+          <button type="button" class="btn btn-outline" (click)="closeMap()">關閉</button>
         </div>
       </div>
     </div>

@@ -1,7 +1,8 @@
-import {Component, inject, OnInit, signal} from '@angular/core';
+import {Component, computed, inject, OnInit, signal} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {HttpClient} from '@angular/common/http';
+import {DomSanitizer} from '@angular/platform-browser';
 import {environment} from '@/environments/environment';
 import {AttendanceService} from '@/app/features/dashboard/services/attendance.service';
 import * as XLSX from 'xlsx';
@@ -23,6 +24,15 @@ export interface AttendanceRecordRow {
   clockOutTime: string;
   overtimeStartTime: string;
   overtimeEndTime: string;
+  /** GPS 經緯度 */
+  clockInLatitude: number | null;
+  clockInLongitude: number | null;
+  clockOutLatitude: number | null;
+  clockOutLongitude: number | null;
+  overtimeStartLatitude: number | null;
+  overtimeStartLongitude: number | null;
+  overtimeEndLatitude: number | null;
+  overtimeEndLongitude: number | null;
   /** 原始 ISO 日期（供編輯表單組合 DateTime） */
   rawRecordDate: string | null;
   /** 原始 ISO 時間（供編輯表單用） */
@@ -39,6 +49,7 @@ export interface AttendanceRecordRow {
 })
 export class AttendanceReport implements OnInit {
   private http = inject(HttpClient);
+  private sanitizer = inject(DomSanitizer);
   private attendanceService = inject(AttendanceService);
 
   /** 篩選條件 */
@@ -58,6 +69,16 @@ export class AttendanceReport implements OnInit {
   /** 紀錄 */
   records = signal<AttendanceRecordRow[]>([]);
   loading = signal(false);
+
+  /** 地圖 Modal */
+  mapModal = signal<{label: string; lat: number; lng: number} | null>(null);
+  mapIframeUrl = computed(() => {
+    const m = this.mapModal();
+    if (!m) return null;
+    return this.sanitizer.bypassSecurityTrustResourceUrl(
+      `https://www.google.com/maps?q=${m.lat},${m.lng}&z=16&output=embed`
+    );
+  });
 
   /** 編輯 Modal */
   editingRecord = signal<AttendanceRecordRow | null>(null);
@@ -109,6 +130,14 @@ export class AttendanceReport implements OnInit {
             clockOutTime: r.clockOutTime ? new Date(r.clockOutTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
             overtimeStartTime: r.overtimeStartTime ? new Date(r.overtimeStartTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
             overtimeEndTime: r.overtimeEndTime ? new Date(r.overtimeEndTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
+            clockInLatitude: r.clockInLatitude ?? null,
+            clockInLongitude: r.clockInLongitude ?? null,
+            clockOutLatitude: r.clockOutLatitude ?? null,
+            clockOutLongitude: r.clockOutLongitude ?? null,
+            overtimeStartLatitude: r.overtimeStartLatitude ?? null,
+            overtimeStartLongitude: r.overtimeStartLongitude ?? null,
+            overtimeEndLatitude: r.overtimeEndLatitude ?? null,
+            overtimeEndLongitude: r.overtimeEndLongitude ?? null,
             rawRecordDate: r.recordDate ?? null,
             rawClockIn: r.clockInTime ?? null,
             rawClockOut: r.clockOutTime ?? null,
@@ -123,6 +152,16 @@ export class AttendanceReport implements OnInit {
         this.loading.set(false);
       },
     });
+  }
+
+  /** 開啟地圖 Modal */
+  openMap(label: string, lat: number, lng: number) {
+    this.mapModal.set({label, lat, lng});
+  }
+
+  /** 關閉地圖 Modal */
+  closeMap() {
+    this.mapModal.set(null);
   }
 
   /** 開啟編輯 Modal */
