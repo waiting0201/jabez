@@ -7,9 +7,9 @@
       </svg>
       <h4 class="mb-0">出缺勤紀錄</h4>
     </div>
-    <button class="btn btn-outline inline-flex items-center gap-1" (click)="exportExcel()">
+    <button class="btn btn-outline inline-flex items-center gap-1" [disabled]="exporting() || records().length === 0" (click)="exportExcel()">
       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#download"></use></svg>
-      匯出
+      @if (exporting()) { 匯出中... } @else { 匯出 Excel }
     </button>
   </div>
 

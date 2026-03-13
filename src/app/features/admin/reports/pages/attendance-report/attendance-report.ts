@@ -4,6 +4,7 @@ import {FormsModule} from '@angular/forms';
 import {HttpClient} from '@angular/common/http';
 import {environment} from '@/environments/environment';
 import {AttendanceService} from '@/app/features/dashboard/services/attendance.service';
+import * as XLSX from 'xlsx';
 
 const LEAVE_TYPE_LABELS: Record<string, string> = {
   annual: '特休',
@@ -184,7 +185,44 @@ export class AttendanceReport implements OnInit {
     return `${h}:${m}`;
   }
 
+  exporting = signal(false);
+
   exportExcel() {
-    // TODO: 匯出 Excel
+    this.exporting.set(true);
+
+    const params: any = {page: 1, pageSize: 9999};
+    if (this.selectedEmployeeId()) params.employeeId = this.selectedEmployeeId();
+    if (this.selectedYear()) params.year = this.selectedYear();
+    if (this.selectedMonth()) params.month = this.selectedMonth();
+
+    this.http.get<any>(`${environment.apiUrl}/attendances`, {params}).subscribe({
+      next: (res) => {
+        const items = res?.items ?? res ?? [];
+        const wsData = items.map((r: any) => ({
+          '員工姓名': r.userName ?? '—',
+          '日期': r.recordDate ? new Date(r.recordDate).toLocaleDateString('zh-TW') : '',
+          '請假類型': r.leaveType ? (LEAVE_TYPE_LABELS[r.leaveType as string] ?? r.leaveType) : '',
+          '請假時間': r.leaveStartDate && r.leaveEndDate
+            ? `${new Date(r.leaveStartDate).toLocaleDateString('zh-TW')} ~ ${new Date(r.leaveEndDate).toLocaleDateString('zh-TW')}`
+            : '',
+          '上班時間': r.clockInTime ? new Date(r.clockInTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
+          '下班時間': r.clockOutTime ? new Date(r.clockOutTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
+          '加班開始': r.overtimeStartTime ? new Date(r.overtimeStartTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
+          '加班結束': r.overtimeEndTime ? new Date(r.overtimeEndTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(wsData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '出缺勤紀錄');
+
+        const year = this.selectedYear() || '全部';
+        const month = this.selectedMonth() || '全部';
+        XLSX.writeFile(wb, `出缺勤紀錄_${year}_${month}.xlsx`);
+        this.exporting.set(false);
+      },
+      error: () => {
+        this.exporting.set(false);
+      },
+    });
   }
 }
