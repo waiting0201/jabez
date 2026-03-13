@@ -32,8 +32,9 @@ export class RoleForm implements OnInit {
 
   ngOnInit() {
     this.permissionService.getAll().subscribe(p => {
-      this.permissions = p;
-      this.modules = [...new Set(p.map(x => x.module))];
+      // 權限管理為 superadmin 專屬，不開放給一般角色指派
+      this.permissions = p.filter(x => x.module !== '權限管理');
+      this.modules = [...new Set(this.permissions.map(x => x.module))];
     });
     this.roleId = this.route.snapshot.paramMap.get('id') ?? '';
     if (this.roleId) {
