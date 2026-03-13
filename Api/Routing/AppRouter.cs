@@ -55,6 +55,10 @@ public sealed class AppRouter(
                 return new UnauthorizedObjectResult(
                     ApiResponse.Fail("Unauthorized.", "Invalid or missing Bearer token."));
 
+            // Superadmin-only 路由檢查
+            if (IsSuperAdminRoute(method, segments))
+                RequireSuperAdmin(principal);
+
             var requiredPermission = GetRequiredPermission(method, segments);
             if (requiredPermission is not null)
                 RequirePermission(principal, requiredPermission);
@@ -245,11 +249,7 @@ public sealed class AppRouter(
             ("PUT" or "PATCH", ["roles", _])             => PermissionCodes.RolesWrite,
             ("DELETE", ["roles", _])                     => PermissionCodes.RolesDelete,
 
-            // Permissions
-            ("GET",    ["permissions", ..])              => PermissionCodes.PermissionsRead,
-            ("POST",   ["permissions"])                  => PermissionCodes.PermissionsWrite,
-            ("PUT" or "PATCH", ["permissions", _])       => PermissionCodes.PermissionsWrite,
-            ("DELETE", ["permissions", _])               => PermissionCodes.PermissionsDelete,
+            // Permissions — Superadmin-only，由 IsSuperAdminRoute 處理
 
             // Settings
             ("GET",    ["settings"])                     => PermissionCodes.SettingsRead,
@@ -344,6 +344,17 @@ public sealed class AppRouter(
 
             _ => null
         };
+
+    /// <summary>判斷是否為 Superadmin-only 路由</summary>
+    private static bool IsSuperAdminRoute(string method, string[] segments) =>
+        segments is ["permissions", ..];
+
+    /// <summary>檢查是否為 Superadmin，否則拋出 403</summary>
+    private static void RequireSuperAdmin(ClaimsPrincipal principal)
+    {
+        if (principal.FindFirst("is_superadmin")?.Value != "true")
+            throw AppException.Forbidden("此功能僅限 Superadmin 使用。");
+    }
 
     /// <summary>檢查 JWT claims 是否包含指定權限。Superadmin 自動通過。</summary>
     private static void RequirePermission(ClaimsPrincipal principal, string permissionCode)
