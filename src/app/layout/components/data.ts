@@ -105,7 +105,7 @@ export const menuItems: MenuItemType[] = [
     requiredPermission: 'roles:read',
     children: [
       { label: '角色管理', url: '/admin/roles', requiredPermission: 'roles:read' },
-      { label: '權限管理', url: '/admin/permissions', requiredPermission: 'permissions:read' },
+      { label: '權限管理', url: '/admin/permissions', requiredPermission: 'superadmin' },
     ],
   },
   {

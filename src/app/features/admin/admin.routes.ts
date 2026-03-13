@@ -59,9 +59,9 @@ export const ADMIN_ROUTES: Routes = [
   {path: 'roles',                component: RoleList,       canActivate: [permissionGuard], data: {title: '角色管理',   permission: 'roles:read'}},
   {path: 'roles/new',            component: RoleForm,       canActivate: [permissionGuard], data: {title: '新增角色',   permission: 'roles:write'}},
   {path: 'roles/:id/edit',       component: RoleForm,       canActivate: [permissionGuard], data: {title: '編輯角色',   permission: 'roles:write'}},
-  {path: 'permissions',          component: PermissionList, canActivate: [permissionGuard], data: {title: '權限管理',   permission: 'permissions:read'}},
-  {path: 'permissions/new',      component: PermissionForm, canActivate: [permissionGuard], data: {title: '新增權限',   permission: 'permissions:write'}},
-  {path: 'permissions/:id/edit', component: PermissionForm, canActivate: [permissionGuard], data: {title: '編輯權限',   permission: 'permissions:write'}},
+  {path: 'permissions',          component: PermissionList, canActivate: [permissionGuard], data: {title: '權限管理',   permission: 'superadmin'}},
+  {path: 'permissions/new',      component: PermissionForm, canActivate: [permissionGuard], data: {title: '新增權限',   permission: 'superadmin'}},
+  {path: 'permissions/:id/edit', component: PermissionForm, canActivate: [permissionGuard], data: {title: '編輯權限',   permission: 'superadmin'}},
 
   // 專案管理
   {path: 'projects',             component: ProjectList,    canActivate: [permissionGuard], data: {title: '專案管理',       permission: 'projects:read'}},
