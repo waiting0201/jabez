@@ -70,26 +70,24 @@
                   <option value="inactive">離職</option>
                 </select>
               </div>
-              @if (isSuperAdmin()) {
-                <div class="col-12 col-md-6">
-                  <label class="form-label fw-500">角色 <span class="text-danger">*</span></label>
-                  <div class="flex flex-wrap gap-4 mt-1">
-                    @for (role of roles(); track role.id) {
-                      <div class="form-check">
-                        <input class="form-check-input" type="radio"
-                               name="roleId"
-                               [id]="'role-' + role.id"
-                               [value]="role.id"
-                               formControlName="roleId">
-                        <label class="form-check-label" [for]="'role-' + role.id">{{ role.name }}</label>
-                      </div>
-                    }
-                  </div>
-                  @if (form.get('roleId')?.invalid && form.get('roleId')?.touched) {
-                    <div class="text-danger small mt-1">請選擇角色。</div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">角色 <span class="text-danger">*</span></label>
+                <div class="flex flex-wrap gap-4 mt-1">
+                  @for (role of roles(); track role.id) {
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio"
+                             name="roleId"
+                             [id]="'role-' + role.id"
+                             [value]="role.id"
+                             formControlName="roleId">
+                      <label class="form-check-label" [for]="'role-' + role.id">{{ role.name }}</label>
+                    </div>
                   }
                 </div>
-              }
+                @if (form.get('roleId')?.invalid && form.get('roleId')?.touched) {
+                  <div class="text-danger small mt-1">請選擇角色。</div>
+                }
+              </div>
             </div>
           </div>
         </div>
@@ -113,7 +111,7 @@
                 <select class="form-select" formControlName="jobTitleId">
                   <option [ngValue]="null">— 未指定 —</option>
                   @for (jt of jobTitles(); track jt.id) {
-                    <option [ngValue]="jt.id">{{ jt.name }}（L{{ jt.level }}）</option>
+                    <option [ngValue]="jt.id">{{ jt.name }}</option>
                   }
                 </select>
               </div>

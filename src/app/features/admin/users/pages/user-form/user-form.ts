@@ -52,7 +52,7 @@ export class UserForm implements OnInit {
     name:         ['', Validators.required],
     email:        ['', [Validators.required, Validators.email]],
     password:     ['', [Validators.required, Validators.minLength(6)]],
-    roleId:       ['viewer' as string],
+    roleId:       ['' as string],
     status:       ['active' as UserStatus, Validators.required],
     departmentId: [null as number | null],
     jobTitleId:   [null as number | null],
@@ -63,15 +63,13 @@ export class UserForm implements OnInit {
   });
 
   ngOnInit() {
-    // 僅 Superadmin 可選擇角色，需載入角色清單並加上必填驗證
-    if (this.isSuperAdmin()) {
-      this.form.get('roleId')!.setValidators(Validators.required);
-      this.form.get('roleId')!.updateValueAndValidity();
-      this.roleService.getAll().subscribe({
-        next: r => this.roles.set(r),
-        error: err => console.error('[UserForm] 無法載入角色清單', err),
-      });
-    }
+    // 載入角色清單並加上必填驗證
+    this.form.get('roleId')!.setValidators(Validators.required);
+    this.form.get('roleId')!.updateValueAndValidity();
+    this.roleService.getAll().subscribe({
+      next: r => this.roles.set(r),
+      error: err => console.error('[UserForm] 無法載入角色清單', err),
+    });
     this.deptService.getAll().subscribe(d => this.departments.set(d));
     this.jtService.getAll().subscribe(j => this.jobTitles.set(j));
     this.userService.getAll().subscribe(u => this.allUsers.set(u));
