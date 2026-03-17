@@ -9,6 +9,7 @@ public class User
     public string   Email        { get; set; } = string.Empty;
     public string   PasswordHash { get; set; } = string.Empty;
     public string?  Avatar       { get; set; }
+    public string?  SignatureUrl { get; set; }
     public string    Status       { get; set; } = "active"; // "active" | "inactive"
     public DateTime  CreatedAt    { get; set; } = Clock.Now;
     public DateTime  UpdatedAt    { get; set; } = Clock.Now;

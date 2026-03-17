@@ -28,6 +28,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Avatar)
                .HasMaxLength(500);
 
+        builder.Property(u => u.SignatureUrl)
+               .HasMaxLength(500);
+
         builder.Property(u => u.Status)
                .IsRequired()
                .HasMaxLength(20)

@@ -5,12 +5,16 @@ public sealed record InvoiceItemDto(
     string  FileName,
     string  InvoiceNo,
     decimal Amount,
+    string? ItemName,
+    string? Note,
     string? FileUrl);
 
 public sealed record InvoiceItemRequest(
     string  FileName,
     string  InvoiceNo,
-    decimal Amount);
+    decimal Amount,
+    string? ItemName,
+    string? Note);
 
 public sealed record PaymentRequestDto(
     int              Id,

@@ -13,7 +13,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                pr.TotalAmount, pr.ApprovalStatus, pr.EstimatedPaymentDate, pr.PaidAt,
                sub.Name AS SubmittedBy, pr.CreatedAt,
                pr.ReviewedAt, pr.ReviewNote,
-               ii.Id AS InvId, ii.FileName, ii.InvoiceNo, ii.Amount AS InvAmount, ii.FileUrl AS InvFileUrl
+               ii.Id AS InvId, ii.FileName, ii.InvoiceNo, ii.Amount AS InvAmount, ii.ItemName AS InvItemName, ii.Note AS InvNote, ii.FileUrl AS InvFileUrl
         FROM PaymentRequests pr
         LEFT JOIN Projects proj  ON pr.ProjectId     = proj.Id
         LEFT JOIN Users   sub    ON pr.SubmittedById  = sub.Id
@@ -177,7 +177,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             SELECT pr.Id, pr.Type AS PaymentType, proj.Code AS ProjectCode,
                    pr.TotalAmount, pr.ApprovalStatus, pr.EstimatedPaymentDate, pr.PaidAt, pr.ApprovalItemId, pr.CurrentStepOrder,
                    sub.Name AS SubmittedBy, pr.CreatedAt, pr.ReviewedAt, pr.ReviewNote,
-                   ii.Id AS InvId, ii.FileName, ii.InvoiceNo, ii.Amount AS InvAmount, ii.FileUrl AS InvFileUrl
+                   ii.Id AS InvId, ii.FileName, ii.InvoiceNo, ii.Amount AS InvAmount, ii.ItemName AS InvItemName, ii.Note AS InvNote, ii.FileUrl AS InvFileUrl
             FROM PaymentRequests pr
             LEFT JOIN Projects proj   ON pr.ProjectId    = proj.Id
             LEFT JOIN Users   sub     ON pr.SubmittedById = sub.Id
@@ -318,7 +318,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             if (row.InvId is not null)
                 paymentGrouped[id].invoices.Add(new InvoiceItemDto(
                     (int)row.InvId, (string)row.FileName,
-                    (string)row.InvoiceNo, (decimal)row.InvAmount, (string?)row.InvFileUrl));
+                    (string)row.InvoiceNo, (decimal)row.InvAmount,
+                    (string?)row.InvItemName, (string?)row.InvNote, (string?)row.InvFileUrl));
         }
         var paymentTasks = paymentGrouped.Values.Select(x => new ApprovalTaskDto(
             (int)x.pr.Id,
@@ -439,6 +440,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                     (string)row.FileName,
                     (string)row.InvoiceNo,
                     (decimal)row.InvAmount,
+                    (string?)row.InvItemName,
+                    (string?)row.InvNote,
                     (string?)row.InvFileUrl));
         }
 

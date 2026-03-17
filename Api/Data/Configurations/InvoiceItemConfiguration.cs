@@ -21,6 +21,12 @@ public class InvoiceItemConfiguration : IEntityTypeConfiguration<InvoiceItem>
         builder.Property(i => i.Amount)
                .HasColumnType("decimal(18,2)");
 
+        builder.Property(i => i.ItemName)
+               .HasMaxLength(200);
+
+        builder.Property(i => i.Note)
+               .HasMaxLength(500);
+
         builder.Property(i => i.FileUrl)
                .HasMaxLength(500);
 

@@ -5,6 +5,7 @@ public sealed record UserDto(
     string    Name,
     string    Email,
     string?   Avatar,
+    string?   SignatureUrl,
     string[]  RoleIds,
     string    Status,
     int?      DepartmentId,

@@ -33,6 +33,8 @@ public sealed class PaymentRequestHandler(
         string  FileName,
         string  InvoiceNo,
         decimal Amount,
+        string? ItemName,
+        string? Note,
         string? FileUrl,
         int     FileIndex);
 
@@ -118,6 +120,8 @@ public sealed class PaymentRequestHandler(
                 FileName  = inv.FileName,
                 InvoiceNo = inv.InvoiceNo,
                 Amount    = inv.Amount,
+                ItemName  = inv.ItemName,
+                Note      = inv.Note,
                 FileUrl   = fileUrl,
             });
         }
@@ -229,6 +233,8 @@ public sealed class PaymentRequestHandler(
                     FileName  = inv.FileName,
                     InvoiceNo = inv.InvoiceNo,
                     Amount    = inv.Amount,
+                    ItemName  = inv.ItemName,
+                    Note      = inv.Note,
                     FileUrl   = fileUrl,
                 });
             }

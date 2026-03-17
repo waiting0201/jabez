@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Jabez.Api.Handlers;
 
-public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmailService emailService)
+public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmailService emailService, IBlobStorageService blob)
 {
     // GET /api/users — Dapper 讀取（含 JOIN）
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
@@ -45,45 +45,80 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             : new OkObjectResult(ApiResponse.Ok(user));
     }
 
+    private const string SignatureContainer = "signatures";
+    private static readonly string[] AllowedSignatureTypes = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+
+    /// <summary>處理簽名檔上傳（新增/更新共用）</summary>
+    private async Task<string?> HandleSignatureUploadAsync(IFormFileCollection files, Guid userId, string? existingUrl)
+    {
+        var file = files.GetFile("signature");
+        if (file is null || file.Length == 0) return existingUrl;
+
+        if (!AllowedSignatureTypes.Contains(file.ContentType.ToLower()))
+            throw AppException.BadRequest("僅支援 PNG、JPEG、GIF、WebP 圖片格式。");
+
+        // 刪除舊簽名檔
+        var oldBlobName = blob.ExtractBlobName(existingUrl, SignatureContainer);
+        if (oldBlobName is not null)
+            await blob.DeleteAsync(SignatureContainer, oldBlobName);
+
+        var ext = Path.GetExtension(file.FileName);
+        var blobName = $"{userId}{ext}";
+        using var stream = file.OpenReadStream();
+        return await blob.UploadAsync(SignatureContainer, blobName, stream, file.ContentType);
+    }
+
     // POST /api/users
     public async Task<IActionResult> CreateAsync(HttpRequest req)
     {
-        var body = await req.ReadFromJsonAsync<CreateUserRequest>();
-        if (body is null)
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
+        var form = await req.ReadFormAsync();
 
-        if (string.IsNullOrWhiteSpace(body.Name) || string.IsNullOrWhiteSpace(body.Email))
+        var name     = form["name"].ToString();
+        var email    = form["email"].ToString();
+        var password = form["password"].ToString();
+        var avatar   = form["avatar"].ToString();
+        var status   = form["status"].ToString();
+        var roleIdsRaw = form["roleIds"].ToArray();
+
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(email))
             return new BadRequestObjectResult(ApiResponse.Fail("Name and Email are required."));
 
-        if (string.IsNullOrWhiteSpace(body.Password) || body.Password.Length < 6)
+        if (string.IsNullOrWhiteSpace(password) || password.Length < 6)
             return new BadRequestObjectResult(ApiResponse.Fail("Password is required and must be at least 6 characters."));
 
         // 檢查 Email 唯一
-        if (await db.Users.AnyAsync(u => u.Email.ToLower() == body.Email.ToLower()))
-            throw AppException.Conflict($"Email '{body.Email}' is already in use.");
+        if (await db.Users.AnyAsync(u => u.Email.ToLower() == email.ToLower()))
+            throw AppException.Conflict($"Email '{email}' is already in use.");
+
+        var userId = Guid.NewGuid();
 
         var user = new User
         {
-            Id           = Guid.NewGuid(),
-            Name         = body.Name,
-            Email        = body.Email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(body.Password),
-            Avatar       = body.Avatar,
-            Status       = body.Status,
-            DepartmentId = body.DepartmentId,
-            JobTitleId   = body.JobTitleId,
-            HireDate     = body.HireDate,
-            ResignDate   = body.ResignDate,
-            BaseSalary   = body.BaseSalary,
-            AgentUserId  = body.AgentUserId,
+            Id           = userId,
+            Name         = name,
+            Email        = email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+            Avatar       = string.IsNullOrEmpty(avatar) ? null : avatar,
+            Status       = string.IsNullOrEmpty(status) ? "active" : status,
+            DepartmentId = int.TryParse(form["departmentId"], out var did) && did > 0 ? did : null,
+            JobTitleId   = int.TryParse(form["jobTitleId"], out var jtid) && jtid > 0 ? jtid : null,
+            HireDate     = DateTime.TryParse(form["hireDate"], out var hd) ? hd : null,
+            ResignDate   = DateTime.TryParse(form["resignDate"], out var rd) ? rd : null,
+            BaseSalary   = decimal.TryParse(form["baseSalary"], out var bs) ? bs : null,
+            AgentUserId  = Guid.TryParse(form["agentUserId"], out var aid) && aid != Guid.Empty ? aid : null,
             CreatedAt    = Clock.Now,
             UpdatedAt    = Clock.Now,
         };
+
+        // 處理簽名檔
+        user.SignatureUrl = await HandleSignatureUploadAsync(form.Files, userId, null);
+
         db.Users.Add(user);
 
         // 處理 Roles
-        foreach (var roleId in body.RoleIds)
-            db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = roleId });
+        foreach (var roleId in roleIdsRaw)
+            if (!string.IsNullOrEmpty(roleId))
+                db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = roleId });
 
         await db.SaveChangesAsync();
 
@@ -97,9 +132,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         if (!Guid.TryParse(id, out var guid))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid user ID format."));
 
-        var body = await req.ReadFromJsonAsync<UpdateUserRequest>();
-        if (body is null)
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
+        var form = await req.ReadFormAsync();
 
         var user = await db.Users
             .Include(u => u.UserRoles)
@@ -109,25 +142,54 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         if (user.IsSuperAdmin)
             throw AppException.Forbidden("Cannot modify the system super admin account.");
 
-        if (body.Name         is not null) user.Name         = body.Name;
-        if (body.Email        is not null) user.Email        = body.Email;
-        if (body.Avatar       is not null) user.Avatar       = body.Avatar;
-        if (body.Status       is not null) user.Status       = body.Status;
-        if (body.Password     is not null) user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(body.Password);
-        if (body.DepartmentId.HasValue)    user.DepartmentId = body.DepartmentId == 0 ? null : body.DepartmentId;
-        if (body.JobTitleId.HasValue)      user.JobTitleId   = body.JobTitleId   == 0 ? null : body.JobTitleId;
-        if (body.HireDate.HasValue)        user.HireDate     = body.HireDate;
-        if (body.ResignDate.HasValue)      user.ResignDate   = body.ResignDate;
-        if (body.BaseSalary.HasValue)      user.BaseSalary   = body.BaseSalary;
-        if (body.AgentUserId.HasValue)     user.AgentUserId  = body.AgentUserId == Guid.Empty ? null : body.AgentUserId;
+        var nameVal     = form["name"].ToString();
+        var emailVal    = form["email"].ToString();
+        var avatarVal   = form["avatar"].ToString();
+        var statusVal   = form["status"].ToString();
+        var passwordVal = form["password"].ToString();
+
+        if (!string.IsNullOrEmpty(nameVal))     user.Name   = nameVal;
+        if (!string.IsNullOrEmpty(emailVal))    user.Email  = emailVal;
+        if (!string.IsNullOrEmpty(avatarVal))   user.Avatar = avatarVal;
+        if (!string.IsNullOrEmpty(statusVal))   user.Status = statusVal;
+        if (!string.IsNullOrEmpty(passwordVal)) user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(passwordVal);
+
+        if (form.ContainsKey("departmentId"))
+            user.DepartmentId = int.TryParse(form["departmentId"], out var did) && did > 0 ? did : null;
+        if (form.ContainsKey("jobTitleId"))
+            user.JobTitleId = int.TryParse(form["jobTitleId"], out var jtid) && jtid > 0 ? jtid : null;
+        if (form.ContainsKey("hireDate"))
+            user.HireDate = DateTime.TryParse(form["hireDate"], out var hd) ? hd : null;
+        if (form.ContainsKey("resignDate"))
+            user.ResignDate = DateTime.TryParse(form["resignDate"], out var rd) ? rd : null;
+        if (form.ContainsKey("baseSalary"))
+            user.BaseSalary = decimal.TryParse(form["baseSalary"], out var bs) ? bs : null;
+        if (form.ContainsKey("agentUserId"))
+            user.AgentUserId = Guid.TryParse(form["agentUserId"], out var aid) && aid != Guid.Empty ? aid : null;
+
+        // 處理簽名檔：removeSignature=true 表示刪除
+        if (form["removeSignature"] == "true")
+        {
+            var oldBlobName = blob.ExtractBlobName(user.SignatureUrl, SignatureContainer);
+            if (oldBlobName is not null)
+                await blob.DeleteAsync(SignatureContainer, oldBlobName);
+            user.SignatureUrl = null;
+        }
+        else
+        {
+            user.SignatureUrl = await HandleSignatureUploadAsync(form.Files, guid, user.SignatureUrl);
+        }
+
         user.UpdatedAt = Clock.Now;
 
         // 更新 Roles
-        if (body.RoleIds is not null)
+        if (form.ContainsKey("roleIds"))
         {
+            var roleIds = form["roleIds"].ToArray();
             db.UserRoles.RemoveRange(user.UserRoles);
-            foreach (var roleId in body.RoleIds)
-                db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = roleId });
+            foreach (var roleId in roleIds)
+                if (!string.IsNullOrEmpty(roleId))
+                    db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = roleId });
         }
 
         await db.SaveChangesAsync();

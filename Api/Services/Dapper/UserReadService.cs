@@ -14,7 +14,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
     {
         const string sql = """
             SELECT
-                u.Id, u.Name, u.Email, u.Avatar, u.Status, u.CreatedAt,
+                u.Id, u.Name, u.Email, u.Avatar, u.SignatureUrl, u.Status, u.CreatedAt,
                 u.DepartmentId, d.Name AS DepartmentName,
                 u.JobTitleId,   jt.Name AS JobTitleName,
                 u.HireDate, u.ResignDate, u.BaseSalary,
@@ -33,7 +33,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
         var rows = await db.QueryAsync<dynamic>(sql);
 
         var dict = new Dictionary<Guid, (
-            string Name, string Email, string? Avatar, string Status,
+            string Name, string Email, string? Avatar, string? SignatureUrl, string Status,
             int? DepartmentId, string? DepartmentName,
             int? JobTitleId, string? JobTitleName,
             DateTime? HireDate, DateTime? ResignDate, decimal? BaseSalary,
@@ -45,7 +45,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             var id = (Guid)row.Id;
             if (!dict.ContainsKey(id))
                 dict[id] = (
-                    (string)row.Name, (string)row.Email, (string?)row.Avatar, (string)row.Status,
+                    (string)row.Name, (string)row.Email, (string?)row.Avatar, (string?)row.SignatureUrl, (string)row.Status,
                     (int?)row.DepartmentId, (string?)row.DepartmentName,
                     (int?)row.JobTitleId, (string?)row.JobTitleName,
                     (DateTime?)row.HireDate, (DateTime?)row.ResignDate, (decimal?)row.BaseSalary,
@@ -59,7 +59,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
 
         return dict.Select(kv => new UserDto(
             kv.Key,
-            kv.Value.Name, kv.Value.Email, kv.Value.Avatar,
+            kv.Value.Name, kv.Value.Email, kv.Value.Avatar, kv.Value.SignatureUrl,
             kv.Value.RoleIds.ToArray(), kv.Value.Status,
             kv.Value.DepartmentId, kv.Value.DepartmentName,
             kv.Value.JobTitleId,   kv.Value.JobTitleName,
@@ -77,7 +77,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 ORDER BY CreatedAt OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
             )
             SELECT
-                u.Id, u.Name, u.Email, u.Avatar, u.Status, u.CreatedAt,
+                u.Id, u.Name, u.Email, u.Avatar, u.SignatureUrl, u.Status, u.CreatedAt,
                 u.DepartmentId, d.Name AS DepartmentName,
                 u.JobTitleId,   jt.Name AS JobTitleName,
                 u.HireDate, u.ResignDate, u.BaseSalary,
@@ -97,7 +97,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
         var rows = await db.QueryAsync<dynamic>(sql, new { Skip = (page - 1) * pageSize, Take = pageSize });
 
         var dict = new Dictionary<Guid, (
-            string Name, string Email, string? Avatar, string Status,
+            string Name, string Email, string? Avatar, string? SignatureUrl, string Status,
             int? DepartmentId, string? DepartmentName,
             int? JobTitleId, string? JobTitleName,
             DateTime? HireDate, DateTime? ResignDate, decimal? BaseSalary,
@@ -109,7 +109,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             var id = (Guid)row.Id;
             if (!dict.ContainsKey(id))
                 dict[id] = (
-                    (string)row.Name, (string)row.Email, (string?)row.Avatar, (string)row.Status,
+                    (string)row.Name, (string)row.Email, (string?)row.Avatar, (string?)row.SignatureUrl, (string)row.Status,
                     (int?)row.DepartmentId, (string?)row.DepartmentName,
                     (int?)row.JobTitleId, (string?)row.JobTitleName,
                     (DateTime?)row.HireDate, (DateTime?)row.ResignDate, (decimal?)row.BaseSalary,
@@ -123,7 +123,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
 
         var items = dict.Select(kv => new UserDto(
             kv.Key,
-            kv.Value.Name, kv.Value.Email, kv.Value.Avatar,
+            kv.Value.Name, kv.Value.Email, kv.Value.Avatar, kv.Value.SignatureUrl,
             kv.Value.RoleIds.ToArray(), kv.Value.Status,
             kv.Value.DepartmentId, kv.Value.DepartmentName,
             kv.Value.JobTitleId,   kv.Value.JobTitleName,
@@ -139,7 +139,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
     {
         const string sql = """
             SELECT
-                u.Id, u.Name, u.Email, u.Avatar, u.Status, u.CreatedAt,
+                u.Id, u.Name, u.Email, u.Avatar, u.SignatureUrl, u.Status, u.CreatedAt,
                 u.DepartmentId, d.Name AS DepartmentName,
                 u.JobTitleId,   jt.Name AS JobTitleName,
                 u.HireDate, u.ResignDate, u.BaseSalary,
@@ -162,7 +162,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
         foreach (var row in rows)
         {
             result ??= new UserDto(
-                (Guid)row.Id, (string)row.Name, (string)row.Email, (string?)row.Avatar,
+                (Guid)row.Id, (string)row.Name, (string)row.Email, (string?)row.Avatar, (string?)row.SignatureUrl,
                 Array.Empty<string>(), (string)row.Status,
                 (int?)row.DepartmentId, (string?)row.DepartmentName,
                 (int?)row.JobTitleId,   (string?)row.JobTitleName,
