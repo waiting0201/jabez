@@ -32,6 +32,7 @@ import {ProjectWaterLevel} from './reports/pages/project-water-level/project-wat
 import {InsuranceBracketList} from './insurance-brackets/pages/insurance-bracket-list/insurance-bracket-list';
 import {InsuranceBracketForm} from './insurance-brackets/pages/insurance-bracket-form/insurance-bracket-form';
 import {PayrollList} from './payroll/pages/payroll-list/payroll-list';
+import {PayrollForm} from './payroll/pages/payroll-form/payroll-form';
 import {AdvanceList} from './advance-requests/pages/advance-list/advance-list';
 import {AdvanceForm} from './advance-requests/pages/advance-form/advance-form';
 import {AdvanceDetail} from './advance-requests/pages/advance-detail/advance-detail';
@@ -111,6 +112,7 @@ export const ADMIN_ROUTES: Routes = [
 
   // 人事薪資
   {path: 'payroll',                       component: PayrollList,          canActivate: [permissionGuard], data: {title: '人事薪資',       permission: 'payroll:read'}},
+  {path: 'payroll/:id/edit',              component: PayrollForm,          canActivate: [permissionGuard], data: {title: '薪資調整',       permission: 'payroll:write'}},
 
   // 勞健保級距
   {path: 'insurance-brackets',             component: InsuranceBracketList, canActivate: [permissionGuard], data: {title: '勞健保級距維護', permission: 'insurance-brackets:read'}},

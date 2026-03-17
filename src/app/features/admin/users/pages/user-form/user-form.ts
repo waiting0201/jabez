@@ -65,6 +65,9 @@ export class UserForm implements OnInit {
     hireDate:     ['' as string],
     resignDate:   ['' as string],
     baseSalary:   [null as number | null],
+    mealAllowance: [null as number | null],
+    overtimePay:   [null as number | null],
+    sendPaySlip:   [false],
     agentUserId:  ['' as string],
     birthday:     ['' as string, Validators.required],
   });
@@ -108,8 +111,11 @@ export class UserForm implements OnInit {
           jobTitleId:   user.jobTitleId ?? null,
           hireDate:     user.hireDate   ? this.toDateString(user.hireDate)   : '',
           resignDate:   user.resignDate ? this.toDateString(user.resignDate) : '',
-          baseSalary:   user.baseSalary ?? null,
-          agentUserId:  user.agentUserId ?? '',
+          baseSalary:    user.baseSalary ?? null,
+          mealAllowance: user.mealAllowance ?? null,
+          overtimePay:   user.overtimePay ?? null,
+          sendPaySlip:   user.sendPaySlip ?? false,
+          agentUserId:   user.agentUserId ?? '',
           birthday:     user.birthday ? this.toDateString(user.birthday) : '',
         });
         this.signatureUrl.set(user.signatureUrl ?? null);

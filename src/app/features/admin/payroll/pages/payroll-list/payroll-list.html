@@ -18,11 +18,17 @@
         查詢
       </button>
       @if (payroll()) {
-        <button class="btn btn-outline-secondary inline-flex items-center gap-1" (click)="exportPdf()">
-          <svg class="sa-icon" style="stroke: currentColor">
-            <use href="/assets/icons/sprite.svg#download"></use>
-          </svg>
-          匯出 PDF
+        <button class="btn btn-outline-secondary inline-flex items-center gap-1"
+                (click)="sendSlips()" [disabled]="sending()">
+          @if (sending()) {
+            <span class="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+            寄送中…
+          } @else {
+            <svg class="sa-icon" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#mail"></use>
+            </svg>
+            寄送薪資明細
+          }
         </button>
       }
     </div>
@@ -71,12 +77,11 @@
                 <th class="hidden md:table-cell">部門</th>
                 <th class="hidden lg:table-cell">職稱</th>
                 <th class="text-right">底薪</th>
-                <th class="text-right">日薪</th>
-                <th class="text-right">假日天數</th>
                 <th class="text-right">假日津貼</th>
                 <th class="text-right">勞保費</th>
                 <th class="text-right">健保費</th>
                 <th class="text-right fw-600">實領薪水</th>
+                <th class="text-center" style="width:60px"></th>
               </tr>
             </thead>
             <tbody>
@@ -86,16 +91,21 @@
                   <td class="hidden md:table-cell text-muted">{{ emp.departmentName || '---' }}</td>
                   <td class="hidden lg:table-cell text-muted">{{ emp.jobTitleName || '---' }}</td>
                   <td class="text-right">{{ emp.baseSalary | number:'1.0-0' }}</td>
-                  <td class="text-right text-muted">{{ emp.dailySalary | number:'1.0-0' }}</td>
-                  <td class="text-right">{{ emp.holidayTravelDays }}</td>
                   <td class="text-right">{{ emp.holidayAllowance | number:'1.0-0' }}</td>
                   <td class="text-right text-danger">-{{ emp.laborInsurance | number:'1.0-0' }}</td>
                   <td class="text-right text-danger">-{{ emp.healthInsurance | number:'1.0-0' }}</td>
                   <td class="text-right fw-600 text-primary">{{ emp.netSalary | number:'1.0-0' }}</td>
+                  <td class="text-right" style="white-space: nowrap">
+                    <a [routerLink]="['/admin/payroll', emp.employeeId, 'edit']"
+                       [queryParams]="{year: selectedYear(), month: selectedMonth()}"
+                       class="btn btn-sm btn-ghost-primary inline-flex items-center">
+                      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+                    </a>
+                  </td>
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="10" class="text-center text-muted py-4">
+                  <td colspan="9" class="text-center text-muted py-4">
                     尚無薪資資料。請確認員工是否已設定底薪。
                   </td>
                 </tr>
@@ -108,12 +118,11 @@
                   <td class="hidden md:table-cell"></td>
                   <td class="hidden lg:table-cell"></td>
                   <td class="text-right">{{ p.totalBaseSalary | number:'1.0-0' }}</td>
-                  <td></td>
-                  <td></td>
                   <td class="text-right">{{ p.totalHolidayAllowance | number:'1.0-0' }}</td>
                   <td class="text-right text-danger">-{{ p.totalLaborInsurance | number:'1.0-0' }}</td>
                   <td class="text-right text-danger">-{{ p.totalHealthInsurance | number:'1.0-0' }}</td>
                   <td class="text-right text-primary">{{ p.totalNetSalary | number:'1.0-0' }}</td>
+                  <td></td>
                 </tr>
               </tfoot>
             }

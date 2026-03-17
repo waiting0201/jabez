@@ -143,6 +143,27 @@
                          [value]="healthInsurance() !== null ? (healthInsurance() | number:'1.0-0') : '—'">
                 </div>
               </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">伙食費</label>
+                <div class="input-group">
+                  <span class="input-group-text">NT$</span>
+                  <input type="number" class="form-control" formControlName="mealAllowance" placeholder="例如：2400" min="0">
+                </div>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">加班費</label>
+                <div class="input-group">
+                  <span class="input-group-text">NT$</span>
+                  <input type="number" class="form-control" formControlName="overtimePay" placeholder="例如：0" min="0">
+                </div>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">寄送薪資表</label>
+                <div class="form-check mt-2">
+                  <input class="form-check-input" type="checkbox" formControlName="sendPaySlip" id="sendPaySlip">
+                  <label class="form-check-label" for="sendPaySlip">寄送薪資明細</label>
+                </div>
+              </div>
               <div class="col-12 col-md-6">
                 <label class="form-label fw-500">離職日</label>
                 <input type="date" class="form-control" formControlName="resignDate">

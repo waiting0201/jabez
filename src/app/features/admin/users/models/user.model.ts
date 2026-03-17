@@ -16,6 +16,9 @@ export interface User {
   hireDate?: Date;
   resignDate?: Date;
   baseSalary?: number;
+  mealAllowance?: number;
+  overtimePay?: number;
+  sendPaySlip?: boolean;
   agentUserId?: string;
   agentName?: string;
   birthday?: Date;
