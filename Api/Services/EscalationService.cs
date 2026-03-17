@@ -9,13 +9,13 @@ namespace Jabez.Api.Services;
 /// 簽核升級服務實作。
 /// 當申請人即審核者（自審）時，根據申請類型往上層部門尋找合適的審核者。
 ///
-/// 加班：上層主管 → 主管請假？找代理人 → 沒有？繼續往上 → 停在董事長前
-/// 請假：上層主管 → 沒有？繼續往上 → 停在董事長前
-/// 出差：上層主管 → 沒有？繼續往上 → 無上限（可到董事長）
+/// 加班：上層主管 → 主管請假？找代理人 → 沒有？繼續往上 → 停在總監前
+/// 請假：上層主管 → 沒有？繼續往上 → 停在總監前
+/// 出差：上層主管 → 沒有？繼續往上 → 無上限（可到總監）
 /// </summary>
 public sealed class EscalationService(AppDbContext db) : IEscalationService
 {
-    /// <summary>董事長職稱 ID（總監）</summary>
+    /// <summary>總監職稱 ID</summary>
     private const int DirectorJobTitleId = 5;
 
     /// <summary>遞迴深度上限，防止資料錯誤導致無限迴圈</summary>
@@ -44,7 +44,7 @@ public sealed class EscalationService(AppDbContext db) : IEscalationService
         if (dept is null)
             throw AppException.BadRequest("找不到可審核的主管，無法送出申請。（部門不存在）");
 
-        // 是否停在董事長之前
+        // 是否停在總監之前
         bool stopBeforeDirector = applicationType is "leave" or "overtime";
         // 加班才檢查代理人
         bool checkDelegate = applicationType is "overtime";

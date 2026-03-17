@@ -7,6 +7,6 @@ public interface IProjectReadService
 {
     Task<IEnumerable<ProjectDto>>    GetAllAsync();
     Task<IEnumerable<ProjectDto>>    GetActiveAsync();
-    Task<PagedResult<ProjectDto>>    GetPagedAsync(int page, int pageSize);
+    Task<PagedResult<ProjectDto>>    GetPagedAsync(int page, int pageSize, string? search = null);
     Task<ProjectDto?>                GetByIdAsync(int id);
 }

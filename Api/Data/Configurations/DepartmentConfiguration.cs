@@ -40,7 +40,7 @@ public class DepartmentConfiguration : IEntityTypeConfiguration<Department>
             new Department { Id = 1, Name = "會計部",   Code = "AC",  SortOrder = 1, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new Department { Id = 2, Name = "財務部",   Code = "FIN", SortOrder = 2, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new Department { Id = 3, Name = "業務部",   Code = "SLS", SortOrder = 3, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Department { Id = 4, Name = "董事長室", Code = "CO",  SortOrder = 4, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+            new Department { Id = 4, Name = "總監室", Code = "CO",  SortOrder = 4, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
         );
     }
 }

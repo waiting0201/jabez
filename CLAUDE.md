@@ -430,6 +430,7 @@ public async Task<HttpResponseData> Run(
 | GET/POST | `/payment-requests` | 請款列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/payment-requests/{id}` | 請款 CRUD |
 | PATCH | `/payment-requests/{id}/submit` | 送出請款申請（draft → pending） |
+| PATCH | `/payment-requests/{id}/payment-date` | 更新撥款日期（僅財務部） |
 | GET/POST | `/leave-requests` | 請假列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/leave-requests/{id}` | 請假 CRUD |
 | PATCH | `/leave-requests/{id}/submit` | 送出請假申請（draft → pending） |
@@ -520,6 +521,50 @@ dotnet ef database update               # 套用 Migration
 
 ---
 
+## 請款簽核流程
+
+### 簽核步驟（Seed 預設）
+
+| 步驟 | 審核者 | 說明 |
+|------|--------|------|
+| Step 1 | 申請人部門的部門主管(JT=4) | 部門主管初核（`UseApplicantDepartment=true`） |
+| Step 2 | 會計部主管(JT=4) | 取得紙本資料審核 |
+| Step 3 | 財務部主管(JT=4) | 填入預計撥款日，核決及撥款 |
+| Step 4 | 總監(JT=5, 總監室) | 最終核決 |
+
+### 狀態流轉
+
+```
+draft → pending → approved / returned / rejected
+```
+
+- `draft`：草稿，可編輯
+- `pending`：已送出，等待審核中（逐步推進 `CurrentStepOrder`）
+- `approved`：所有步驟核准完成
+- `returned`：退回申請人修改（可重新送出）
+- `rejected`：拒絕（終止狀態）
+
+### 核決後通知與撥款
+
+當**最後一步**（Step 4 總監）核准後，系統自動：
+1. 狀態變更為 `approved`
+2. **通知申請人**：信件主旨 `[已核准] 請款申請 #XX`
+3. **通知財務部全員**：信件主旨 `[可撥款] 請款申請 #XX 已核准`
+
+財務部收到通知後，透過 `PATCH /payment-requests/{id}/payment-date` 填入：
+- `EstimatedPaymentDate`：預計撥款日
+- `PaidAt`：實際撥款日
+
+> 此端點僅限**財務部人員**或 **Superadmin** 操作。
+
+### 自審跳過規則（僅限請款）
+
+當申請人本身符合某步驟的審核者條件時（例如部門主管送出自己部門的請款），該步驟**自動跳過**（視為已通過），不觸發升級機制。若所有步驟都被跳過，申請**自動核准**。
+
+此行為與加班/請假/出差不同 — 後者會觸發升級機制往上層部門找主管審核。
+
+---
+
 ## 簽核升級機制（Escalation）
 
 當簽核步驟設定 `UseApplicantDepartment = true` 且申請人本身就是該步驟的審核者（自審情境，例如部門主管送出申請），系統會根據申請類型自動往上層部門尋找合適的審核者，而非自動核准。
@@ -531,7 +576,7 @@ dotnet ef database update               # 套用 Migration
 | 往上層部門找主管 | ✓ | ✓ | ✓ | ✗（維持自動跳過） |
 | 主管請假時找代理人 | ✓ | ✗ | ✗ | — |
 | 遞迴往上 | ✓ | ✓ | ✓ | — |
-| 停在董事長之前 | ✓ | ✓ | ✗ | — |
+| 停在總監之前 | ✓ | ✓ | ✗ | — |
 | 找不到人時 | 報錯 | 報錯 | 報錯 | — |
 
 ### 升級流程（以加班為例）
@@ -546,7 +591,7 @@ dotnet ef database update               # 套用 Migration
       → 有代理人 → 由代理人審核（ApprovalRecord 標記 OnBehalfOfUserId）
       → 無代理人 → 繼續往上層部門找（遞迴）
     → 沒找到 → 繼續往上層部門找
-  → 到達董事長（JobTitleId=5）前停止
+  → 到達總監（JobTitleId=5）前停止
   → 都找不到 → 拋出錯誤「找不到可審核的主管，無法送出申請」
 ```
 

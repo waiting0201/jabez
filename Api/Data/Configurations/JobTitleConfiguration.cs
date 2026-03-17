@@ -28,7 +28,7 @@ public class JobTitleConfiguration : IEntityTypeConfiguration<JobTitle>
             new JobTitle { Id = 2, Name = "資深工程師", Level = 2, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new JobTitle { Id = 3, Name = "主任工程師", Level = 3, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new JobTitle { Id = 4, Name = "部門主管",   Level = 4, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new JobTitle { Id = 5, Name = "董事長",     Level = 5, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+            new JobTitle { Id = 5, Name = "總監",       Level = 5, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
         );
     }
 }

@@ -39,7 +39,7 @@ public class ApprovalStepConfiguration : IEntityTypeConfiguration<ApprovalStep>
 
         // Seed: 請款申請四步驟，加班/請假/出差各一步驟
         builder.HasData(
-            // 請款申請: Step1=申請人部門主管初核 → Step2=會計部主管審核 → Step3=財務部主管撥款 → Step4=董事長最終核決
+            // 請款申請: Step1=申請人部門主管初核 → Step2=會計部主管審核 → Step3=財務部主管撥款 → Step4=總監最終核決
             new ApprovalStep { Id = 3, ApprovalItemId = 2, StepOrder = 1, DepartmentId = null, JobTitleId = 4, UseApplicantDepartment = true,  Note = "部門主管初核",                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new ApprovalStep { Id = 4, ApprovalItemId = 2, StepOrder = 2, DepartmentId = 1,    JobTitleId = 4, UseApplicantDepartment = false, Note = "取得紙本資料審核",                         CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new ApprovalStep { Id = 8, ApprovalItemId = 2, StepOrder = 3, DepartmentId = 2,    JobTitleId = 4, UseApplicantDepartment = false, Note = "填入預計撥款日，核決及撥款後，填入撥款日", CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },

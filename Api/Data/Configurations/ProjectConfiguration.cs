@@ -17,6 +17,13 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
         builder.HasIndex(p => p.Code)
                .IsUnique();
 
+        builder.Property(p => p.Name)
+               .IsRequired()
+               .HasMaxLength(200);
+
+        builder.Property(p => p.StartDate)
+               .IsRequired();
+
         builder.Property(p => p.Status)
                .IsRequired()
                .HasMaxLength(20)
@@ -45,7 +52,10 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
             {
                 Id             = 1,
                 Code           = "P2024-001",
+                Name           = "2024年度行銷專案",
                 Status         = "closed",
+                StartDate      = new DateTime(2024, 3, 1, 0, 0, 0, DateTimeKind.Utc),
+                EndDate        = new DateTime(2024, 12, 31, 0, 0, 0, DateTimeKind.Utc),
                 DepartmentId   = 3,
                 BudgetAmount   = 500000m,
                 ActualAmount   = 480000m,
@@ -57,6 +67,8 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
             {
                 Id             = 2,
                 Code           = "P2024-002",
+                Name           = "系統升級專案",
+                StartDate      = new DateTime(2024, 6, 15, 0, 0, 0, DateTimeKind.Utc),
                 DepartmentId   = 2,
                 BudgetAmount   = 1200000m,
                 ActualAmount   = 0m,
@@ -68,6 +80,8 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
             {
                 Id             = 3,
                 Code           = "P2025-001",
+                Name           = "2025年度研發專案",
+                StartDate      = new DateTime(2025, 1, 10, 0, 0, 0, DateTimeKind.Utc),
                 DepartmentId   = 1,
                 BudgetAmount   = 300000m,
                 ActualAmount   = 280000m,

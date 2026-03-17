@@ -18,7 +18,8 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader)
         {
             int page     = int.TryParse(req.Query["page"],     out var p)  ? Math.Max(1, p)         : 1;
             int pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, 100) : 20;
-            var result = await reader.GetPagedAsync(page, pageSize);
+            string? search = req.Query["search"];
+            var result = await reader.GetPagedAsync(page, pageSize, search);
             return new OkObjectResult(ApiResponse.Ok(result));
         }
 
@@ -53,13 +54,19 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader)
         if (string.IsNullOrWhiteSpace(body.Code))
             return new BadRequestObjectResult(ApiResponse.Fail("Code is required."));
 
+        if (string.IsNullOrWhiteSpace(body.Name))
+            return new BadRequestObjectResult(ApiResponse.Fail("Name is required."));
+
         if (await db.Projects.AnyAsync(p => p.Code == body.Code))
             throw AppException.Conflict($"Project code '{body.Code}' is already in use.");
 
         var project = new Project
         {
             Code           = body.Code.Trim(),
+            Name           = body.Name.Trim(),
             Status         = body.Status ?? "active",
+            StartDate      = body.StartDate,
+            EndDate        = body.EndDate,
             DepartmentId   = body.DepartmentId,
             BudgetAmount   = body.BudgetAmount,
             ActualAmount   = body.ActualAmount,
@@ -96,7 +103,10 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader)
                 throw AppException.Conflict($"Project code '{trimmed}' is already in use.");
             project.Code = trimmed;
         }
+        if (body.Name is not null)           project.Name           = body.Name.Trim();
         if (body.Status is not null)       project.Status         = body.Status;
+        if (body.StartDate.HasValue)       project.StartDate      = body.StartDate.Value;
+        if (body.EndDate.HasValue)         project.EndDate        = body.EndDate;
         if (body.DepartmentId.HasValue)     project.DepartmentId   = body.DepartmentId == 0 ? null : body.DepartmentId;
         if (body.BudgetAmount.HasValue)     project.BudgetAmount   = body.BudgetAmount;
         if (body.ActualAmount.HasValue)     project.ActualAmount   = body.ActualAmount;

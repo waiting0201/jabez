@@ -8,7 +8,8 @@ namespace Jabez.Api.Services.Dapper;
 public sealed class ProjectReadService(IDbConnection db) : IProjectReadService
 {
     private const string SelectSql = """
-        SELECT p.Id, p.Code, p.Status, p.DepartmentId, d.Name AS DepartmentName,
+        SELECT p.Id, p.Code, p.Name, p.Status, p.StartDate, p.EndDate,
+               p.DepartmentId, d.Name AS DepartmentName,
                p.BudgetAmount, p.ActualAmount, p.BusinessAmount,
                p.GoogleDriveUrl, p.CreatedAt
         FROM Projects p
@@ -29,13 +30,18 @@ public sealed class ProjectReadService(IDbConnection db) : IProjectReadService
         return rows.Select(ToDto);
     }
 
-    public async Task<PagedResult<ProjectDto>> GetPagedAsync(int page, int pageSize)
+    public async Task<PagedResult<ProjectDto>> GetPagedAsync(int page, int pageSize, string? search = null)
     {
-        const string countSql = "SELECT COUNT(*) FROM Projects";
-        const string sql = SelectSql +
+        var hasSearch = !string.IsNullOrWhiteSpace(search);
+        var searchWhere = hasSearch ? " WHERE p.Code LIKE @Search OR p.Name LIKE @Search" : "";
+        var searchParam = hasSearch ? $"%{search!.Trim()}%" : null;
+
+        var countSql = "SELECT COUNT(*) FROM Projects p" + searchWhere;
+        var sql = SelectSql + searchWhere +
             " ORDER BY p.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
-        int total = await db.ExecuteScalarAsync<int>(countSql);
-        var rows = await db.QueryAsync<dynamic>(sql, new { Skip = (page - 1) * pageSize, Take = pageSize });
+
+        int total = await db.ExecuteScalarAsync<int>(countSql, new { Search = searchParam });
+        var rows = await db.QueryAsync<dynamic>(sql, new { Search = searchParam, Skip = (page - 1) * pageSize, Take = pageSize });
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
         return new PagedResult<ProjectDto>(rows.Select(ToDto), total, page, pageSize, Math.Max(1, totalPages));
     }
@@ -50,7 +56,10 @@ public sealed class ProjectReadService(IDbConnection db) : IProjectReadService
     private static ProjectDto ToDto(dynamic row) => new(
         (int)row.Id,
         (string)row.Code,
+        (string)row.Name,
         (string)row.Status,
+        (DateTime)row.StartDate,
+        (DateTime?)row.EndDate,
         (int?)row.DepartmentId,
         (string?)row.DepartmentName,
         (decimal?)row.BudgetAmount,
