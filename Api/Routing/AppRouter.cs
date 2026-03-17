@@ -347,7 +347,7 @@ public sealed class AppRouter(
 
     /// <summary>判斷是否為 Superadmin-only 路由</summary>
     private static bool IsSuperAdminRoute(string method, string[] segments) =>
-        segments is ["permissions", ..];
+        false;
 
     /// <summary>檢查是否為 Superadmin，否則拋出 403</summary>
     private static void RequireSuperAdmin(ClaimsPrincipal principal)

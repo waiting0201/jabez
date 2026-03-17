@@ -7,7 +7,7 @@ namespace Jabez.Api.Handlers;
 
 /// <summary>
 /// GET /reports/project-water-level → 專案水位表
-/// 回傳每個有請款紀錄的專案，其請款金額佔業務金額的百分比。
+/// 回傳每個有請款紀錄的專案，其請款金額佔業務執行金額的百分比。
 /// </summary>
 public sealed class ProjectWaterLevelHandler(IProjectWaterLevelReadService reader)
 {
