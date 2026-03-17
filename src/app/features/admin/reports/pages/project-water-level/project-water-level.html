@@ -20,10 +20,12 @@
               <th>專案代碼</th>
               <th class="hidden md:table-cell">部門</th>
               <th class="text-center hidden md:table-cell">狀態</th>
-              <th class="text-right">業務金額</th>
+              <th class="text-right">實際金額</th>
+              <th class="text-right">業務執行金額</th>
               <th class="text-right">已請款</th>
               <th class="text-right hidden lg:table-cell">已付款</th>
-              <th style="min-width: 180px">水位</th>
+              <th style="min-width: 180px">業務執行水位</th>
+              <th style="min-width: 180px">總專案水位</th>
             </tr>
           </thead>
           <tbody>
@@ -36,6 +38,13 @@
                     <span class="badge bg-success-subtle text-success">進行中</span>
                   } @else {
                     <span class="badge bg-secondary-subtle text-secondary">已結案</span>
+                  }
+                </td>
+                <td class="text-right">
+                  @if (row.actualAmount !== null) {
+                    <span class="fw-500">{{ row.actualAmount | number:'1.0-0' }}</span>
+                  } @else {
+                    <span class="text-muted">—</span>
                   }
                 </td>
                 <td class="text-right">
@@ -65,10 +74,28 @@
                     </span>
                   </div>
                 </td>
+                <td>
+                  <div class="flex items-center gap-2">
+                    <div class="grow rounded-full overflow-hidden" style="height: 8px; background: var(--bg-elevated)">
+                      <div class="h-full rounded-full transition-all duration-500"
+                           [style.width]="getBarWidth(row.totalPercentage)"
+                           [style.background]="getBarColor(row.totalPercentage)">
+                      </div>
+                    </div>
+                    <span class="shrink-0 text-right small fw-600" style="min-width: 42px"
+                          [style.color]="getBarColor(row.totalPercentage)">
+                      @if (row.totalPercentage !== null) {
+                        {{ row.totalPercentage }}%
+                      } @else {
+                        —
+                      }
+                    </span>
+                  </div>
+                </td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="7" class="text-center text-muted py-4">
+                <td colspan="9" class="text-center text-muted py-4">
                   @if (loading()) {
                     載入中...
                   } @else {

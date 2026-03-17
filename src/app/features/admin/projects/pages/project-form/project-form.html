@@ -86,12 +86,30 @@
             </div>
 
             <div class="mb-4">
-              <label class="form-label fw-500">業務金額 <span class="text-danger">*</span></label>
+              <label class="form-label fw-500">
+                業務執行金額
+                @if (businessPercentage() !== null) {
+                  <span class="text-accent fw-600">（{{ businessPercentage() }}%）</span>
+                }
+                <span class="text-danger">*</span>
+              </label>
               <input type="number" class="form-control" formControlName="businessAmount" min="0">
               @if (form.get('businessAmount')?.invalid && form.get('businessAmount')?.touched) {
-                <div class="text-danger small mt-1">請輸入業務金額（不可為負數）。</div>
+                <div class="text-danger small mt-1">請輸入業務執行金額（不可為負數）。</div>
               }
             </div>
+
+            @if (reservedAmount() !== null) {
+              <div class="mb-4">
+                <label class="form-label fw-500">
+                  公司保留金額
+                  @if (reservedPercentage() !== null) {
+                    <span class="text-accent fw-600">（{{ reservedPercentage() }}%）</span>
+                  }
+                </label>
+                <div class="form-control bg-elevated">{{ reservedAmount()! | number }}</div>
+              </div>
+            }
 
             <div class="mb-0">
               <label class="form-label fw-500">Google Drive 連結 <span class="text-danger">*</span></label>

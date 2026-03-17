@@ -8,10 +8,12 @@ export interface ProjectWaterLevelRow {
   projectCode: string;
   status: string;
   departmentName: string;
+  actualAmount: number | null;
   businessAmount: number | null;
   paymentAmount: number;
   paidAmount: number;
   percentage: number | null;
+  totalPercentage: number | null;
 }
 
 @Component({
@@ -40,10 +42,12 @@ export class ProjectWaterLevel implements OnInit {
             projectCode: r.projectCode ?? '—',
             status: r.status ?? 'active',
             departmentName: r.departmentName ?? '—',
+            actualAmount: r.actualAmount,
             businessAmount: r.businessAmount,
             paymentAmount: r.paymentAmount ?? 0,
             paidAmount: r.paidAmount ?? 0,
             percentage: r.percentage,
+            totalPercentage: r.totalPercentage,
           }))
         );
         this.loading.set(false);

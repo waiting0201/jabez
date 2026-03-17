@@ -1,5 +1,6 @@
 import {ChangeDetectorRef, Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
+import {DecimalPipe} from '@angular/common';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {HttpErrorResponse} from '@angular/common/http';
 import {ProjectService} from '../../services/project.service';
@@ -10,7 +11,7 @@ import {Department} from '../../../departments/models/department.model';
 @Component({
   selector: 'app-project-form',
   templateUrl: './project-form.html',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, DecimalPipe],
 })
 export class ProjectForm implements OnInit {
   private fb = inject(FormBuilder);
@@ -26,6 +27,9 @@ export class ProjectForm implements OnInit {
   isClosed = false;
   projectId = 0;
   errorMsg = signal('');
+  businessPercentage = signal<number | null>(null);
+  reservedAmount = signal<number | null>(null);
+  reservedPercentage = signal<number | null>(null);
 
   form = this.fb.group({
     code:           ['', Validators.required],
@@ -54,6 +58,15 @@ export class ProjectForm implements OnInit {
         this.errorMsg.set('載入部門資料失敗。');
       },
     });
+    this.form.get('actualAmount')!.valueChanges.subscribe(val => {
+      const computed = val != null && val >= 0 ? Math.round(val * 0.6) : null;
+      this.form.get('businessAmount')!.setValue(computed, { emitEvent: false });
+      this.updateBusinessPercentage();
+    });
+    this.form.get('businessAmount')!.valueChanges.subscribe(() => {
+      this.updateBusinessPercentage();
+    });
+
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.isEdit = true;
@@ -79,6 +92,21 @@ export class ProjectForm implements OnInit {
         },
         error: () => this.errorMsg.set('載入專案資料失敗。'),
       });
+    }
+  }
+
+  private updateBusinessPercentage() {
+    const actual = this.form.get('actualAmount')!.value;
+    const business = this.form.get('businessAmount')!.value;
+    if (actual != null && actual > 0 && business != null && business >= 0) {
+      const pct = Math.round((business / actual) * 100);
+      this.businessPercentage.set(pct);
+      this.reservedAmount.set(actual - business);
+      this.reservedPercentage.set(100 - pct);
+    } else {
+      this.businessPercentage.set(null);
+      this.reservedAmount.set(null);
+      this.reservedPercentage.set(null);
     }
   }
 
