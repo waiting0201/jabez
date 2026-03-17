@@ -60,16 +60,16 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         int? reviewerJobTitleId = null, int? reviewerDepartmentId = null,
         string? status = null, Guid? reviewerUserId = null)
     {
-        var (payments, leaves, travels, overtimes, flows, records) =
+        var (payments, leaves, travels, overtimes, advances, flows, records) =
             await FetchAllAsync(reviewerJobTitleId: reviewerJobTitleId, reviewerDepartmentId: reviewerDepartmentId,
                                 statusFilter: status, reviewerUserId: reviewerUserId);
-        return BuildApprovalTasks(payments, leaves, travels, overtimes, flows, records);
+        return BuildApprovalTasks(payments, leaves, travels, overtimes, advances, flows, records);
     }
 
     public async Task<ApprovalTaskDto?> GetApprovalTaskByIdAsync(int id, string applicationType)
     {
-        var (payments, leaves, travels, overtimes, flows, records) = await FetchAllAsync(id, applicationType);
-        return BuildApprovalTasks(payments, leaves, travels, overtimes, flows, records)
+        var (payments, leaves, travels, overtimes, advances, flows, records) = await FetchAllAsync(id, applicationType);
+        return BuildApprovalTasks(payments, leaves, travels, overtimes, advances, flows, records)
             .FirstOrDefault(t => t.Id == id && t.ApplicationType == applicationType);
     }
 
@@ -84,6 +84,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         IEnumerable<dynamic> leaves,
         IEnumerable<dynamic> travels,
         IEnumerable<dynamic> overtimes,
+        IEnumerable<dynamic> advances,
         IEnumerable<dynamic> flows,
         IEnumerable<dynamic> records)> FetchAllAsync(
         int? filterId = null, string? filterType = null,
@@ -95,6 +96,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         string leaveIdWhere    = (filterId.HasValue && filterType == "leave")            ? "lr.Id = @Id" : "";
         string travelIdWhere   = (filterId.HasValue && filterType == "travel")           ? "tr.Id = @Id" : "";
         string overtimeIdWhere = (filterId.HasValue && filterType == "overtime")         ? "ot.Id = @Id" : "";
+        string advanceIdWhere  = (filterId.HasValue && filterType == "advance")          ? "adv.Id = @Id" : "";
 
         // ── Step-match filter for listing (reviewer's job title) ─────────────
         // Three modes:
@@ -182,6 +184,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         string leaveWhere    = filterId.HasValue ? BuildWhere(leaveIdWhere,    "") : BuildWhere("", StepMatchClause("lr", "u",   "leave"));
         string travelWhere   = filterId.HasValue ? BuildWhere(travelIdWhere,   "") : BuildWhere("", StepMatchClause("tr", "u",   "travel"));
         string overtimeWhere = filterId.HasValue ? BuildWhere(overtimeIdWhere, "") : BuildWhere("", StepMatchClause("ot", "u",   "overtime"));
+        string advanceWhere  = filterId.HasValue ? BuildWhere(advanceIdWhere,  "") : BuildWhere("", StepMatchClause("adv", "asub", "advance"));
 
         var paymentSql = $"""
             SELECT pr.Id, pr.Type AS PaymentType, proj.Code AS ProjectCode,
@@ -230,6 +233,19 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             ORDER BY ot.CreatedAt DESC
             """;
 
+        var advanceSql = $"""
+            SELECT adv.Id, adv.RequestNo, proj.Code AS ProjectCode,
+                   adv.ActivityName, adv.GrandTotal,
+                   adv.ApprovalStatus, adv.ApprovalItemId, adv.CurrentStepOrder,
+                   adv.EstimatedPaymentDate, adv.PaidAt,
+                   asub.Name AS SubmittedBy, adv.CreatedAt, adv.ReviewedAt, adv.ReviewNote
+            FROM AdvanceRequests adv
+            LEFT JOIN Projects proj ON adv.ProjectId    = proj.Id
+            LEFT JOIN Users   asub  ON adv.SubmittedById = asub.Id
+            {advanceWhere}
+            ORDER BY adv.CreatedAt DESC
+            """;
+
         const string flowSql = """
             SELECT ai.Id AS FlowId, ai.Name AS FlowName, ai.ApplicationType,
                    s.StepOrder, d.Name AS DepartmentName, j.Name AS JobTitleName, s.Note
@@ -263,10 +279,11 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         var leaves    = await db.QueryAsync<dynamic>(leaveSql,    param);
         var travels   = await db.QueryAsync<dynamic>(travelSql,   param);
         var overtimes = await db.QueryAsync<dynamic>(overtimeSql, param);
+        var advances  = await db.QueryAsync<dynamic>(advanceSql,  param);
         var flows     = await db.QueryAsync<dynamic>(flowSql);
         var records   = await db.QueryAsync<dynamic>(recordSql);
 
-        return (payments, leaves, travels, overtimes, flows, records);
+        return (payments, leaves, travels, overtimes, advances, flows, records);
     }
 
     private static IEnumerable<ApprovalTaskDto> BuildApprovalTasks(
@@ -274,6 +291,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         IEnumerable<dynamic> leaveRows,
         IEnumerable<dynamic> travelRows,
         IEnumerable<dynamic> overtimeRows,
+        IEnumerable<dynamic> advanceRows,
         IEnumerable<dynamic> flowRows,
         IEnumerable<dynamic> recordRows)
     {
@@ -350,9 +368,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (decimal)x.pr.TotalAmount,
                 (DateTime?)x.pr.EstimatedPaymentDate,
                 (DateTime?)x.pr.PaidAt),
-            null,
-            null,
-            null,
+            null, null, null, null,
             GetRecords("payment_request", (int)x.pr.Id)));
 
         // Leave requests
@@ -375,8 +391,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (DateTime)row.EndDate,
                 (decimal)row.Hours,
                 (string)row.Reason),
-            null,
-            null,
+            null, null, null,
             GetRecords("leave", (int)row.Id)));
 
         // Travel requests
@@ -402,7 +417,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (string)row.Purpose,
                 (string?)row.ProjectCode,
                 (bool)row.IsHolidayTravel),
-            null,
+            null, null,
             GetRecords("travel", (int)row.Id)));
 
         // Overtime requests
@@ -417,21 +432,44 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             (DateTime?)row.ReviewedAt,
             (string?)row.ReviewNote,
             GetFlow("overtime"),
-            null,
-            null,
-            null,
+            null, null, null,
             new OvertimeTaskDetailDto(
                 (int)row.Id,
                 (DateTime)row.OvertimeDate,
                 (string?)row.ProjectIds,
                 (decimal)row.EstimatedHours,
                 (string)row.Reason),
+            null,
             GetRecords("overtime", (int)row.Id)));
+
+        // Advance requests
+        var advanceTasks = advanceRows.Select(row => new ApprovalTaskDto(
+            (int)row.Id,
+            "advance",
+            $"預支申請 #{row.Id}（{row.ProjectCode}）",
+            (string?)row.SubmittedBy ?? "—",
+            (DateTime)row.CreatedAt,
+            (string)row.ApprovalStatus,
+            (int)row.CurrentStepOrder,
+            (DateTime?)row.ReviewedAt,
+            (string?)row.ReviewNote,
+            GetFlow("advance"),
+            null, null, null, null,
+            new AdvanceTaskDetailDto(
+                (int)row.Id,
+                (string)row.RequestNo,
+                (string)row.ProjectCode,
+                (string)row.ActivityName,
+                (decimal)row.GrandTotal,
+                (DateTime?)row.EstimatedPaymentDate,
+                (DateTime?)row.PaidAt),
+            GetRecords("advance", (int)row.Id)));
 
         return paymentTasks
             .Concat(leaveTasks)
             .Concat(travelTasks)
             .Concat(overtimeTasks)
+            .Concat(advanceTasks)
             .OrderByDescending(t => t.SubmittedAt);
     }
 

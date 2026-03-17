@@ -49,7 +49,10 @@ public class ApprovalStepConfiguration : IEntityTypeConfiguration<ApprovalStep>
             // 請假申請: Step1=申請人部門主管
             new ApprovalStep { Id = 6, ApprovalItemId = 4, StepOrder = 1, DepartmentId = null, JobTitleId = 4, UseApplicantDepartment = true,  CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             // 出差申請: Step1=申請人部門主管
-            new ApprovalStep { Id = 7, ApprovalItemId = 5, StepOrder = 1, DepartmentId = null, JobTitleId = 4, UseApplicantDepartment = true,  CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+            new ApprovalStep { Id = 7, ApprovalItemId = 5, StepOrder = 1, DepartmentId = null, JobTitleId = 4, UseApplicantDepartment = true,  CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            // 預支申請: Step1=申請人部門主管 → Step2=財務部主管
+            new ApprovalStep { Id = 10, ApprovalItemId = 6, StepOrder = 1, DepartmentId = null, JobTitleId = 4, UseApplicantDepartment = true,  Note = "部門主管核准",   CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new ApprovalStep { Id = 11, ApprovalItemId = 6, StepOrder = 2, DepartmentId = 2,    JobTitleId = 4, UseApplicantDepartment = false, Note = "財務部確認撥款", CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
         );
     }
 }

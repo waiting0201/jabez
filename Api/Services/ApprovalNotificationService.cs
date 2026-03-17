@@ -15,6 +15,7 @@ public sealed class ApprovalNotificationService(
         ["leave"]           = "請假申請",
         ["travel"]          = "出差申請",
         ["overtime"]        = "加班申請",
+        ["advance"]         = "預支申請",
     };
 
     /// <inheritdoc />
@@ -151,13 +152,13 @@ public sealed class ApprovalNotificationService(
     }
 
     /// <inheritdoc />
-    public async Task NotifyFinanceDeptAsync(int applicationId, Guid applicantId)
+    public async Task NotifyFinanceDeptAsync(int applicationId, Guid applicantId, string applicationType = "payment_request")
     {
         try
         {
             var applicant = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == applicantId);
             var applicantName = applicant?.Name ?? "未知";
-            var summary = await GetPaymentSummaryAsync(applicationId);
+            var summary = await GetSummaryAsync(applicationType, applicationId);
 
             // 查詢財務部所有有 Email 的使用者
             var financeDept = await db.Departments.AsNoTracking()
@@ -179,15 +180,16 @@ public sealed class ApprovalNotificationService(
                 return;
             }
 
-            var subject = $"[可撥款] 請款申請 #{applicationId} 已核准 — {applicantName}";
+            var label   = AppTypeLabels.GetValueOrDefault(applicationType, applicationType);
+            var subject = $"[可撥款] {label} #{applicationId} 已核准 — {applicantName}";
             var siteUrl = await GetSiteUrlAsync();
-            var linkUrl = BuildReviewUrl(siteUrl, "payment_request", applicationId);
+            var linkUrl = BuildReviewUrl(siteUrl, applicationType, applicationId);
 
             foreach (var r in recipients)
             {
-                var body = BuildFinanceDeptEmail(r.Name, applicantName, applicationId, summary, linkUrl);
+                var body = BuildFinanceDeptEmail(r.Name, applicantName, applicationId, summary, linkUrl, label);
                 await emailService.SendAsync(r.Email!, subject, body);
-                logger.LogInformation("已寄送撥款通知：{Email}（PaymentRequest #{Id}）", r.Email, applicationId);
+                logger.LogInformation("已寄送撥款通知：{Email}（{AppType} #{Id}）", r.Email, applicationType, applicationId);
             }
         }
         catch (Exception ex)
@@ -206,6 +208,7 @@ public sealed class ApprovalNotificationService(
             "leave"           => await GetLeaveSummaryAsync(applicationId),
             "travel"          => await GetTravelSummaryAsync(applicationId),
             "overtime"        => await GetOvertimeSummaryAsync(applicationId),
+            "advance"         => await GetAdvanceSummaryAsync(applicationId),
             _                 => $"#{applicationId}",
         };
     }
@@ -252,6 +255,15 @@ public sealed class ApprovalNotificationService(
             : $"#{id}";
     }
 
+    private async Task<string> GetAdvanceSummaryAsync(int id)
+    {
+        var ar = await db.AdvanceRequests.AsNoTracking()
+            .Where(x => x.Id == id)
+            .Select(x => new { x.GrandTotal, x.ActivityName, ProjectCode = x.Project != null ? x.Project.Code : "" })
+            .FirstOrDefaultAsync();
+        return ar is not null ? $"{ar.ProjectCode} — {ar.ActivityName}（{ar.GrandTotal:N0} 元）" : $"#{id}";
+    }
+
     // ── 取得前端網站網址 ─────────────────────────────────────────────────────────
 
     private async Task<string> GetSiteUrlAsync()
@@ -274,6 +286,7 @@ public sealed class ApprovalNotificationService(
             "leave"           => "leave-requests",
             "travel"          => "travel-requests",
             "overtime"        => "overtime-requests",
+            "advance"         => "advance-requests",
             _                 => "approval-tasks",
         };
         return $"{siteUrl}/admin/{path}/{applicationId}/edit";
@@ -330,17 +343,17 @@ public sealed class ApprovalNotificationService(
     }
 
     private static string BuildFinanceDeptEmail(
-        string recipientName, string applicantName, int applicationId, string summary, string linkUrl)
+        string recipientName, string applicantName, int applicationId, string summary, string linkUrl, string label = "請款申請")
     {
         return $"""
         <div style="font-family: 'Microsoft JhengHei', 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: #699F34; padding: 16px 24px; border-radius: 8px 8px 0 0;">
-            <h2 style="color: #fff; margin: 0; font-size: 18px;">請款核准 — 可進行撥款</h2>
+            <h2 style="color: #fff; margin: 0; font-size: 18px;">{label}核准 — 可進行撥款</h2>
           </div>
           <div style="background: #F5F2ED; padding: 24px; border-radius: 0 0 8px 8px;">
             <p style="color: #525358; margin: 0 0 16px;">{recipientName} 您好，</p>
             <p style="color: #525358; margin: 0 0 16px;">
-              <strong>{applicantName}</strong> 的請款申請已通過所有簽核步驟，請進行撥款作業：
+              <strong>{applicantName}</strong> 的{label}已通過所有簽核步驟，請進行撥款作業：
             </p>
             <table style="width: 100%; border-collapse: collapse; margin: 0 0 16px;">
               <tr>

@@ -26,6 +26,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<SystemSetting>    SystemSettings    { get; set; }
     public DbSet<InsuranceBracket>    InsuranceBrackets    { get; set; }
     public DbSet<EscalationOverride>  EscalationOverrides  { get; set; }
+    public DbSet<AdvanceRequest>       AdvanceRequests       { get; set; }
+    public DbSet<AdvanceRequestItem>   AdvanceRequestItems   { get; set; }
+    public DbSet<WriteOffRecord>       WriteOffRecords       { get; set; }
+    public DbSet<WriteOffItem>         WriteOffItems         { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

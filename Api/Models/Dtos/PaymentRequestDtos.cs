@@ -112,7 +112,7 @@ public sealed record OvertimeTaskDetailDto(
 
 public sealed record ApprovalTaskDto(
     int                    Id,
-    string                 ApplicationType,   // "payment_request" | "leave" | "travel" | "overtime"
+    string                 ApplicationType,   // "payment_request" | "leave" | "travel" | "overtime" | "advance"
     string                 Title,
     string                 SubmittedBy,
     DateTime               SubmittedAt,
@@ -125,4 +125,5 @@ public sealed record ApprovalTaskDto(
     LeaveTaskDetailDto?    LeaveDetail,
     TravelTaskDetailDto?   TravelDetail,
     OvertimeTaskDetailDto? OvertimeDetail,
+    AdvanceTaskDetailDto?  AdvanceDetail,
     ApprovalRecordDto[]    ApprovalRecords);

@@ -82,3 +82,29 @@ See `api-runtime-test-2026-03-02.md` for full report.
 - `ProjectDto` and `Project` entity have no `Name`, `Description`, `StartDate`, `EndDate`
 - Frontend sends these fields in POST but backend ignores them
 - Location: `/Users/tim/webapps/Jabez/Api/Models/Dtos/ProjectDtos.cs`
+
+## Advance Request Module QA (2026-03-17)
+See `advance-request-qa-2026-03-17.md` for full report.
+
+### CRITICAL: RequestNo 產生有並發競爭條件
+- `AdvanceRequestHandler.CreateAsync` 用 SELECT MAX 再 +1 的方式產生 ADV-yyyyMMdd-NNN
+- `AdvanceRequests.RequestNo` 無 UNIQUE INDEX，並發時會產生重複單號
+- Location: `/Users/tim/webapps/Jabez/Api/Handlers/AdvanceRequestHandler.cs` line 90-102
+
+### CRITICAL: GetByIdAsync/GetWriteOffsAsync 所有者驗證太嚴
+- `SubmittedById == userId` 的驗證使財務部/審核者無法直接透過 `/advance-requests/{id}` 取得詳情
+- 財務部在 ApprovalTaskReview 頁面呼叫 `service.getById()` 會返回 404
+- Location: `AdvanceRequestHandler.cs` lines 65-66, 351-352, 462-463
+
+### Warning: 硬編碼「財務部」字串判斷
+- 後端 `UpdatePaymentDateAsync` 和前端 `canSetPaymentDate` / `canEditPaymentDate` 都用 `'財務部'` 字串比對
+- 部門改名時功能靜默失效
+- Locations: `AdvanceRequestHandler.cs` line 320, `approval-task-review.ts` lines 123, 131-138
+
+### Warning: sortOrder 在沖銷表單中永遠為 0
+- `write-off-form.ts` 的 `_buildFormData()` 設定 `sortOrder: 0` 給所有明細
+- Location: `/Users/tim/webapps/Jabez/Admin/src/app/features/admin/advance-requests/pages/write-off-form/write-off-form.ts` line 192
+
+### Pattern: advance 類型已正確加入 ApplicationType
+- `approval.model.ts` 的 `ApplicationType` 已包含 `'advance'`（之前只有 payment_request/leave/travel/overtime）
+- 前後端 enum 現已一致

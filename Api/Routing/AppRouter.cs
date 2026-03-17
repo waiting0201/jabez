@@ -34,7 +34,8 @@ public sealed class AppRouter(
     OvertimeReportHandler  overtimeReport,
     PaymentReportHandler   paymentReport,
     ProjectWaterLevelHandler projectWaterLevel,
-    InvoiceOcrHandler      invoiceOcr)
+    InvoiceOcrHandler      invoiceOcr,
+    AdvanceRequestHandler  advanceRequests)
 {
     public async Task<IActionResult> RouteAsync(HttpRequest req, string route)
     {
@@ -154,6 +155,20 @@ public sealed class AppRouter(
             ("PUT",    ["payment-requests", var id])               => await paymentRequests.UpdateAsync(req, id),
             ("PATCH",  ["payment-requests", var id])               => await paymentRequests.UpdateAsync(req, id),
             ("DELETE", ["payment-requests", var id])               => await paymentRequests.DeleteAsync(req, id),
+
+            // ── Advance Requests ──────────────────────────────────────────────
+            ("GET",    ["advance-requests"])                                    => await advanceRequests.GetAllAsync(req),
+            ("POST",   ["advance-requests"])                                   => await advanceRequests.CreateAsync(req),
+            ("PATCH",  ["advance-requests", var id, "submit"])                 => await advanceRequests.SubmitAsync(req, id),
+            ("PATCH",  ["advance-requests", var id, "payment-date"])           => await advanceRequests.UpdatePaymentDateAsync(req, id),
+            ("GET",    ["advance-requests", var id, "write-offs"])             => await advanceRequests.GetWriteOffsAsync(req, id),
+            ("POST",   ["advance-requests", var id, "write-offs"])             => await advanceRequests.CreateWriteOffAsync(req, id),
+            ("GET",    ["advance-requests", var id, "write-offs", var wid])    => await advanceRequests.GetWriteOffByIdAsync(req, id, wid),
+            ("DELETE", ["advance-requests", var id, "write-offs", var wid])    => await advanceRequests.DeleteWriteOffAsync(req, id, wid),
+            ("GET",    ["advance-requests", var id])                           => await advanceRequests.GetByIdAsync(req, id),
+            ("PUT",    ["advance-requests", var id])                           => await advanceRequests.UpdateAsync(req, id),
+            ("PATCH",  ["advance-requests", var id])                           => await advanceRequests.UpdateAsync(req, id),
+            ("DELETE", ["advance-requests", var id])                           => await advanceRequests.DeleteAsync(req, id),
 
             // ── Leave Requests ─────────────────────────────────────────────────
             ("GET",    ["leave-requests"])                         => await leaveRequests.GetAllAsync(req),
@@ -294,6 +309,17 @@ public sealed class AppRouter(
             ("PATCH",  ["payment-requests", _, "payment-date"]) => PermissionCodes.PaymentRequestsWrite,
             ("PATCH",  ["payment-requests", _])                 => PermissionCodes.PaymentRequestsWrite,
             ("DELETE", ["payment-requests", _])          => PermissionCodes.PaymentRequestsDelete,
+
+            // Advance Requests
+            ("GET",    ["advance-requests", ..])         => PermissionCodes.AdvanceRequestsRead,
+            ("POST",   ["advance-requests"])             => PermissionCodes.AdvanceRequestsWrite,
+            ("PUT",    ["advance-requests", _])          => PermissionCodes.AdvanceRequestsWrite,
+            ("PATCH",  ["advance-requests", _, "submit"])       => PermissionCodes.AdvanceRequestsWrite,
+            ("PATCH",  ["advance-requests", _, "payment-date"]) => PermissionCodes.AdvanceRequestsWrite,
+            ("PATCH",  ["advance-requests", _])                 => PermissionCodes.AdvanceRequestsWrite,
+            ("POST",   ["advance-requests", _, "write-offs"])   => PermissionCodes.AdvanceRequestsWrite,
+            ("DELETE", ["advance-requests", _, "write-offs", _]) => PermissionCodes.AdvanceRequestsDelete,
+            ("DELETE", ["advance-requests", _])          => PermissionCodes.AdvanceRequestsDelete,
 
             // Leave Requests
             ("GET",    ["leave-requests", ..])           => PermissionCodes.LeaveRequestsRead,

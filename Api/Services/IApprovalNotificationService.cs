@@ -27,6 +27,6 @@ public interface IApprovalNotificationService
         Guid   applicantId,
         bool   isDelegate);
 
-    /// <summary>請款申請核准後，通知財務部人員可以進行撥款。</summary>
-    Task NotifyFinanceDeptAsync(int applicationId, Guid applicantId);
+    /// <summary>請款/預支申請核准後，通知財務部人員可以進行撥款。</summary>
+    Task NotifyFinanceDeptAsync(int applicationId, Guid applicantId, string applicationType = "payment_request");
 }

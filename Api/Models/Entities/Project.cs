@@ -17,5 +17,6 @@ public class Project
 
     // Navigation
     public Department?                    Department      { get; set; }
-    public ICollection<PaymentRequest>    PaymentRequests { get; set; } = [];
+    public ICollection<PaymentRequest>    PaymentRequests  { get; set; } = [];
+    public ICollection<AdvanceRequest>    AdvanceRequests  { get; set; } = [];
 }

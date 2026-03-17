@@ -18,4 +18,5 @@ public class ApprovalItem
     public ICollection<LeaveRequest>   LeaveRequests  { get; set; } = [];
     public ICollection<TravelRequest>   TravelRequests   { get; set; } = [];
     public ICollection<OvertimeRequest>  OvertimeRequests { get; set; } = [];
+    public ICollection<AdvanceRequest>   AdvanceRequests  { get; set; } = [];
 }

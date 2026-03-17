@@ -48,6 +48,9 @@ public static class PermissionCodes
     public const string ReportsOvertimeRead           = "reports-overtime:read";
     public const string ReportsPaymentRead            = "reports-payment:read";
     public const string ReportsProjectWaterLevelRead  = "reports-project-water-level:read";
+    public const string AdvanceRequestsRead             = "advance-requests:read";
+    public const string AdvanceRequestsWrite            = "advance-requests:write";
+    public const string AdvanceRequestsDelete           = "advance-requests:delete";
 }
 
 public static class RoleNames

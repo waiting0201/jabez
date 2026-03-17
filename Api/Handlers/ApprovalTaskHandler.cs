@@ -20,7 +20,7 @@ namespace Jabez.Api.Handlers;
 public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadService reader, IJwtService jwtService, IApprovalNotificationService notifier)
 {
     private static readonly HashSet<string> ValidActions  = ["approved", "returned", "rejected"];
-    public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "travel", "overtime"];
+    public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "travel", "overtime", "advance"];
 
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
@@ -189,6 +189,29 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 await db.SaveChangesAsync();
                 break;
             }
+            case "advance":
+            {
+                var adv = await db.AdvanceRequests.FindAsync(intId)
+                    ?? throw AppException.NotFound("AdvanceRequest");
+                if (adv.ApprovalStatus != "pending")
+                    throw AppException.BadRequest("Only pending advance requests can be reviewed.");
+
+                var advApplicant = adv.SubmittedById.HasValue
+                    ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == adv.SubmittedById.Value)
+                    : null;
+                await AuthorizeStepAsync(adv.ApprovalItemId, adv.CurrentStepOrder, reviewer, advApplicant?.DepartmentId, "advance", adv.Id);
+                if (body.EstimatedPaymentDate.HasValue)
+                    adv.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
+                if (body.PaidAt.HasValue)
+                    adv.PaidAt = body.PaidAt.Value;
+                await ProcessReviewAsync("advance", adv.Id, adv.CurrentStepOrder,
+                    adv.ApprovalItemId, body.Action, body.ReviewNote, reviewerId, adv.SubmittedById,
+                    setStatus:    s  => adv.ApprovalStatus   = s,
+                    incrementStep:    () => adv.CurrentStepOrder++,
+                    setReviewed:      () => { adv.ReviewedAt = Clock.Now; adv.ReviewedById = reviewerId; adv.ReviewNote = body.ReviewNote?.Trim(); });
+                await db.SaveChangesAsync();
+                break;
+            }
             default:
                 return new BadRequestObjectResult(ApiResponse.Fail("Unknown application type."));
         }
@@ -297,9 +320,9 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 if (applicantId.HasValue)
                     await notifier.NotifyApplicantAsync(applicationType, applicationId,
                         applicantId.Value, "approved", reviewNote);
-                // 請款申請核准後，額外通知財務部進行撥款
-                if (applicationType == "payment_request" && applicantId.HasValue)
-                    await notifier.NotifyFinanceDeptAsync(applicationId, applicantId.Value);
+                // 請款/預支申請核准後，額外通知財務部進行撥款
+                if (applicationType is "payment_request" or "advance" && applicantId.HasValue)
+                    await notifier.NotifyFinanceDeptAsync(applicationId, applicantId.Value, applicationType);
             }
         }
         else if (action == "returned")

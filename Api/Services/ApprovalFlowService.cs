@@ -39,7 +39,7 @@ public sealed class ApprovalFlowService(
             if (!isSelfReview)
             {
                 // 請款：若步驟使用申請人部門但該部門無符合條件的審核者，也跳過
-                if (applicationType == "payment_request" && step.UseApplicantDepartment && applicant.DepartmentId.HasValue)
+                if (applicationType is "payment_request" or "advance" && step.UseApplicantDepartment && applicant.DepartmentId.HasValue)
                 {
                     bool hasReviewer = await db.Users.AsNoTracking().AnyAsync(u =>
                         u.DepartmentId == applicant.DepartmentId
