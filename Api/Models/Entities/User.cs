@@ -21,6 +21,7 @@ public class User
     public DateTime? ResignDate   { get; set; }
     public decimal?  BaseSalary   { get; set; }
     public Guid?     AgentUserId  { get; set; }
+    public DateTime? Birthday     { get; set; }
 
     // 超管旗標：不受角色/權限異動影響，永遠擁有全系統存取權
     public bool IsSuperAdmin { get; set; } = false;

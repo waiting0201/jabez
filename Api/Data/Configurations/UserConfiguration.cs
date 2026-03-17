@@ -94,6 +94,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 JobTitleId   = 4, // 部門主管
                 HireDate     = new DateTime(2023, 12, 28, 0, 0, 0, DateTimeKind.Utc),
                 BaseSalary   = 60000m,
+                Birthday     = new DateTime(1990, 5, 15, 0, 0, 0, DateTimeKind.Utc),
                 CreatedAt    = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 UpdatedAt    = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             },
@@ -108,6 +109,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 JobTitleId   = 2, // 資深工程師
                 HireDate     = new DateTime(2024, 2, 9, 0, 0, 0, DateTimeKind.Utc),
                 BaseSalary   = 60000m,
+                Birthday     = new DateTime(1988, 8, 22, 0, 0, 0, DateTimeKind.Utc),
                 CreatedAt    = new DateTime(2024, 2, 10, 0, 0, 0, DateTimeKind.Utc),
                 UpdatedAt    = new DateTime(2024, 2, 10, 0, 0, 0, DateTimeKind.Utc)
             },
@@ -122,6 +124,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 JobTitleId   = 1, // 工程師
                 HireDate     = new DateTime(2024, 3, 3, 0, 0, 0, DateTimeKind.Utc),
                 BaseSalary   = 50000m,
+                Birthday     = new DateTime(1995, 3, 10, 0, 0, 0, DateTimeKind.Utc),
                 CreatedAt    = new DateTime(2024, 3, 5, 0, 0, 0, DateTimeKind.Utc),
                 UpdatedAt    = new DateTime(2024, 3, 5, 0, 0, 0, DateTimeKind.Utc)
             }

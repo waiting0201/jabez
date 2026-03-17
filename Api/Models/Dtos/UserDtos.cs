@@ -17,6 +17,7 @@ public sealed record UserDto(
     decimal?  BaseSalary,
     Guid?     AgentUserId,
     string?   AgentName,
+    DateTime? Birthday,
     DateTime  CreatedAt);
 
 public sealed record CreateUserRequest(
@@ -31,7 +32,8 @@ public sealed record CreateUserRequest(
     DateTime? HireDate     = null,
     DateTime? ResignDate   = null,
     decimal?  BaseSalary   = null,
-    Guid?     AgentUserId  = null);
+    Guid?     AgentUserId  = null,
+    DateTime? Birthday     = null);
 
 public sealed record UpdateUserRequest(
     string?    Name,
@@ -45,4 +47,5 @@ public sealed record UpdateUserRequest(
     DateTime?  HireDate,
     DateTime?  ResignDate,
     decimal?   BaseSalary,
-    Guid?      AgentUserId);
+    Guid?      AgentUserId,
+    DateTime?  Birthday);

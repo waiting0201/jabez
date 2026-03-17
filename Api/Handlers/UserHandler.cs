@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using Jabez.Api.Common;
 using Jabez.Api.Data;
 using Jabez.Api.Models.Dtos;
@@ -83,8 +82,18 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(email))
             return new BadRequestObjectResult(ApiResponse.Fail("Name and Email are required."));
 
-        if (string.IsNullOrWhiteSpace(password) || password.Length < 6)
-            return new BadRequestObjectResult(ApiResponse.Fail("Password is required and must be at least 6 characters."));
+        if (!string.IsNullOrWhiteSpace(password) && password.Length < 6)
+            return new BadRequestObjectResult(ApiResponse.Fail("Password must be at least 6 characters."));
+
+        // 生日（必填，用於產生預設密碼）
+        var birthday = DateTime.TryParse(form["birthday"], out var bd) ? bd : (DateTime?)null;
+        if (birthday is null)
+            return new BadRequestObjectResult(ApiResponse.Fail("Birthday is required."));
+
+        // 密碼：有填則用，否則以生日八位數作為預設密碼
+        var effectivePassword = !string.IsNullOrWhiteSpace(password)
+            ? password
+            : birthday.Value.ToString("yyyyMMdd");
 
         // 檢查 Email 唯一
         if (await db.Users.AnyAsync(u => u.Email.ToLower() == email.ToLower()))
@@ -97,7 +106,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             Id           = userId,
             Name         = name,
             Email        = email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(effectivePassword),
             Avatar       = string.IsNullOrEmpty(avatar) ? null : avatar,
             Status       = string.IsNullOrEmpty(status) ? "active" : status,
             DepartmentId = int.TryParse(form["departmentId"], out var did) && did > 0 ? did : null,
@@ -106,6 +115,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             ResignDate   = DateTime.TryParse(form["resignDate"], out var rd) ? rd : null,
             BaseSalary   = decimal.TryParse(form["baseSalary"], out var bs) ? bs : null,
             AgentUserId  = Guid.TryParse(form["agentUserId"], out var aid) && aid != Guid.Empty ? aid : null,
+            Birthday     = birthday,
             CreatedAt    = Clock.Now,
             UpdatedAt    = Clock.Now,
         };
@@ -166,6 +176,8 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             user.BaseSalary = decimal.TryParse(form["baseSalary"], out var bs) ? bs : null;
         if (form.ContainsKey("agentUserId"))
             user.AgentUserId = Guid.TryParse(form["agentUserId"], out var aid) && aid != Guid.Empty ? aid : null;
+        if (form.ContainsKey("birthday"))
+            user.Birthday = DateTime.TryParse(form["birthday"], out var bd) ? bd : null;
 
         // 處理簽名檔：removeSignature=true 表示刪除
         if (form["removeSignature"] == "true")
@@ -216,7 +228,11 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         return new OkObjectResult(ApiResponse.Ok($"User '{id}' deleted."));
     }
 
-    /// <summary>寄出員工帳號通知信（產生臨時密碼、設定首次登入須改密碼）</summary>
+    /// <summary>
+    /// 寄出員工帳號通知信。
+    /// 預設密碼為員工生日八碼（yyyyMMdd），員工首次登入後須立即修改密碼。
+    /// 若員工尚未設定生日，則無法寄出通知信。
+    /// </summary>
     public async Task<IActionResult> SendCredentialsAsync(string id)
     {
         if (!Guid.TryParse(id, out var guid))
@@ -228,14 +244,24 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         if (user.IsSuperAdmin)
             throw AppException.Forbidden("Cannot send credentials for the system super admin account.");
 
-        // 產生 12 碼隨機密碼
-        var tempPassword = GenerateRandomPassword(12);
+        // 必須設定生日才能產生預設密碼
+        if (!user.Birthday.HasValue)
+            return new BadRequestObjectResult(
+                ApiResponse.Fail("此員工尚未設定生日，無法產生預設密碼。請先填寫生日欄位。"));
+
+        // 以生日八碼作為預設密碼（例如：19900101）
+        var tempPassword = user.Birthday.Value.ToString("yyyyMMdd");
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword);
         user.MustChangePassword = true;
         user.UpdatedAt = Clock.Now;
         await db.SaveChangesAsync();
 
-        // 寄出通知信
+        // 取得前端登入網址
+        var setting = await db.SystemSettings.AsNoTracking().OrderBy(s => s.Id).FirstOrDefaultAsync();
+        var siteUrl = setting?.SiteUrl?.TrimEnd('/') ?? "https://admin.jabez.com";
+        var loginUrl = $"{siteUrl}/auth/login";
+
+        // 寄出通知信（不在信件中明文顯示密碼，僅提示格式）
         var subject = "帳號通知 — 請登入並修改密碼";
         var htmlBody = $"""
             <div style="font-family: 'Microsoft JhengHei', sans-serif; max-width: 600px; margin: 0 auto;">
@@ -248,10 +274,13 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
                         <td style="padding: 8px 16px; background: #FDFAF5;">{user.Email}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 8px 16px; font-weight: bold; background: #F5F2ED;">臨時密碼</td>
+                        <td style="padding: 8px 16px; font-weight: bold; background: #F5F2ED;">預設密碼</td>
                         <td style="padding: 8px 16px; background: #FDFAF5; font-family: monospace; font-size: 16px;">{tempPassword}</td>
                     </tr>
                 </table>
+                <div style="text-align: center; margin: 24px 0;">
+                    <a href="{loginUrl}" style="display: inline-block; padding: 12px 32px; background-color: #699F34; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">前往登入系統</a>
+                </div>
                 <p style="color: #A04040; font-weight: bold;">⚠ 基於安全性考量，請於首次登入後立即修改密碼。</p>
                 <hr style="border: none; border-top: 1px solid #DDD6C8; margin: 24px 0;">
                 <p style="color: #A39685; font-size: 12px;">此信件由系統自動寄發，請勿直接回覆。</p>
@@ -261,16 +290,5 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         await emailService.SendAsync(user.Email, subject, htmlBody);
 
         return new OkObjectResult(ApiResponse.Ok<object?>(null, "通知信已寄出。"));
-    }
-
-    private static string GenerateRandomPassword(int length)
-    {
-        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
-        return string.Create(length, chars, (span, c) =>
-        {
-            var bytes = RandomNumberGenerator.GetBytes(length);
-            for (int i = 0; i < span.Length; i++)
-                span[i] = c[bytes[i] % c.Length];
-        });
     }
 }

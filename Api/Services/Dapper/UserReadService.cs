@@ -19,6 +19,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.JobTitleId,   jt.Name AS JobTitleName,
                 u.HireDate, u.ResignDate, u.BaseSalary,
                 u.AgentUserId,  ag.Name AS AgentName,
+                u.Birthday,
                 r.Id AS RoleId
             FROM Users u
             LEFT JOIN UserRoles ur  ON u.Id = ur.UserId
@@ -38,6 +39,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             int? JobTitleId, string? JobTitleName,
             DateTime? HireDate, DateTime? ResignDate, decimal? BaseSalary,
             Guid? AgentUserId, string? AgentName,
+            DateTime? Birthday,
             DateTime CreatedAt, List<string> RoleIds)>();
 
         foreach (var row in rows)
@@ -51,6 +53,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     (DateTime?)row.HireDate, (DateTime?)row.ResignDate, (decimal?)row.BaseSalary,
                     row.AgentUserId is null ? null : (Guid?)row.AgentUserId,
                     (string?)row.AgentName,
+                    (DateTime?)row.Birthday,
                     (DateTime)row.CreatedAt, []);
 
             if (row.RoleId is not null)
@@ -65,6 +68,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.JobTitleId,   kv.Value.JobTitleName,
             kv.Value.HireDate, kv.Value.ResignDate, kv.Value.BaseSalary,
             kv.Value.AgentUserId, kv.Value.AgentName,
+            kv.Value.Birthday,
             kv.Value.CreatedAt));
     }
 
@@ -82,6 +86,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.JobTitleId,   jt.Name AS JobTitleName,
                 u.HireDate, u.ResignDate, u.BaseSalary,
                 u.AgentUserId,  ag.Name AS AgentName,
+                u.Birthday,
                 r.Id AS RoleId
             FROM Users u
             INNER JOIN PagedIds pid ON u.Id = pid.Id
@@ -102,6 +107,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             int? JobTitleId, string? JobTitleName,
             DateTime? HireDate, DateTime? ResignDate, decimal? BaseSalary,
             Guid? AgentUserId, string? AgentName,
+            DateTime? Birthday,
             DateTime CreatedAt, List<string> RoleIds)>();
 
         foreach (var row in rows)
@@ -115,6 +121,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     (DateTime?)row.HireDate, (DateTime?)row.ResignDate, (decimal?)row.BaseSalary,
                     row.AgentUserId is null ? null : (Guid?)row.AgentUserId,
                     (string?)row.AgentName,
+                    (DateTime?)row.Birthday,
                     (DateTime)row.CreatedAt, []);
 
             if (row.RoleId is not null)
@@ -129,6 +136,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.JobTitleId,   kv.Value.JobTitleName,
             kv.Value.HireDate, kv.Value.ResignDate, kv.Value.BaseSalary,
             kv.Value.AgentUserId, kv.Value.AgentName,
+            kv.Value.Birthday,
             kv.Value.CreatedAt));
 
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
@@ -144,6 +152,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.JobTitleId,   jt.Name AS JobTitleName,
                 u.HireDate, u.ResignDate, u.BaseSalary,
                 u.AgentUserId,  ag.Name AS AgentName,
+                u.Birthday,
                 r.Id AS RoleId
             FROM Users u
             LEFT JOIN UserRoles ur  ON u.Id = ur.UserId
@@ -169,6 +178,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 (DateTime?)row.HireDate, (DateTime?)row.ResignDate, (decimal?)row.BaseSalary,
                 row.AgentUserId is null ? null : (Guid?)row.AgentUserId,
                 (string?)row.AgentName,
+                (DateTime?)row.Birthday,
                 (DateTime)row.CreatedAt);
 
             if (row.RoleId is not null)
