@@ -3,7 +3,10 @@ export type ProjectStatus = 'active' | 'closed';
 export interface Project {
   id: number;
   code: string;
+  name: string;
   status: ProjectStatus;
+  startDate: string;
+  endDate?: string;
   departmentId?: number;
   departmentName?: string;
   budgetAmount?: number;

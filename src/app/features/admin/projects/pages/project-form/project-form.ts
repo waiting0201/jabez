@@ -29,7 +29,10 @@ export class ProjectForm implements OnInit {
 
   form = this.fb.group({
     code:           ['', Validators.required],
+    name:           ['', Validators.required],
     status:         ['active' as ProjectStatus, Validators.required],
+    startDate:      ['', Validators.required],
+    endDate:        [''],
     departmentId:   [{value: null as number | null, disabled: true}, Validators.required],
     budgetAmount:   [null as number | null, [Validators.required, Validators.min(0)]],
     actualAmount:   [null as number | null, [Validators.required, Validators.min(0)]],
@@ -61,7 +64,10 @@ export class ProjectForm implements OnInit {
           this.isClosed = p.status === 'closed';
           this.form.patchValue({
             code:           p.code,
+            name:           p.name,
             status:         p.status,
+            startDate:      p.startDate ? p.startDate.substring(0, 10) : '',
+            endDate:        p.endDate ? p.endDate.substring(0, 10) : '',
             departmentId:   p.departmentId ?? null,
             budgetAmount:   p.budgetAmount ?? null,
             actualAmount:   p.actualAmount ?? null,
@@ -83,7 +89,10 @@ export class ProjectForm implements OnInit {
     const dept = this.departments.find(d => d.id === v.departmentId);
     const payload = {
       code:           v.code!,
+      name:           v.name!,
       status:         v.status! as ProjectStatus,
+      startDate:      v.startDate!,
+      endDate:        v.endDate || undefined,
       departmentId:   v.departmentId ?? undefined,
       departmentName: dept?.name,
       budgetAmount:   v.budgetAmount ?? undefined,

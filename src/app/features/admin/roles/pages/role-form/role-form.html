@@ -35,27 +35,33 @@
             <div class="mb-0">
               <label class="form-label fw-500">權限</label>
               <div class="border rounded p-4">
-                @for (module of modules; track module) {
-                  <div class="mb-4">
-                    <div class="flex items-center gap-2 mb-2">
-                      <input type="checkbox" class="form-check-input"
-                             [id]="'module-' + module"
-                             [checked]="isModuleAllSelected(module)"
-                             (change)="toggleModule(module, $any($event.target).checked)">
-                      <label class="form-check-label fw-600" [for]="'module-' + module">{{ module }}</label>
+                @if (isLoading()) {
+                  <div class="text-muted py-4 text-center">載入權限中...</div>
+                } @else if (modules().length === 0) {
+                  <div class="text-muted py-4 text-center">尚無可指派的權限</div>
+                } @else {
+                  @for (module of modules(); track module) {
+                    <div class="mb-4">
+                      <div class="flex items-center gap-2 mb-2">
+                        <input type="checkbox" class="form-check-input"
+                               [id]="'module-' + module"
+                               [checked]="isModuleAllSelected(module)"
+                               (change)="toggleModule(module, $any($event.target).checked)">
+                        <label class="form-check-label fw-600" [for]="'module-' + module">{{ module }}</label>
+                      </div>
+                      <div class="flex flex-wrap gap-4 ms-4">
+                        @for (perm of getPermissionsByModule(module); track perm.id) {
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox"
+                                   [id]="'perm-' + perm.id"
+                                   [checked]="isPermissionSelected(perm.code)"
+                                   (change)="togglePermission(perm.code)">
+                            <label class="form-check-label small" [for]="'perm-' + perm.id">{{ perm.name }}</label>
+                          </div>
+                        }
+                      </div>
                     </div>
-                    <div class="flex flex-wrap gap-4 ms-4">
-                      @for (perm of getPermissionsByModule(module); track perm.id) {
-                        <div class="form-check">
-                          <input class="form-check-input" type="checkbox"
-                                 [id]="'perm-' + perm.id"
-                                 [checked]="isPermissionSelected(perm.code)"
-                                 (change)="togglePermission(perm.code)">
-                          <label class="form-check-label small" [for]="'perm-' + perm.id">{{ perm.name }}</label>
-                        </div>
-                      }
-                    </div>
-                  </div>
+                  }
                 }
               </div>
               <div class="text-muted small mt-1">

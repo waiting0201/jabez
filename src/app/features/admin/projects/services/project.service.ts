@@ -18,8 +18,10 @@ export class ProjectService {
     return this.http.get<Project[]>(`${environment.apiUrl}/projects/active`);
   }
 
-  getPaged(page: number, pageSize: number): Observable<PagedResult<Project>> {
-    return this.http.get<PagedResult<Project>>(`${environment.apiUrl}/projects`, {params: {page, pageSize}});
+  getPaged(page: number, pageSize: number, search?: string): Observable<PagedResult<Project>> {
+    const params: Record<string, string | number> = {page, pageSize};
+    if (search) params['search'] = search;
+    return this.http.get<PagedResult<Project>>(`${environment.apiUrl}/projects`, {params});
   }
 
   getById(id: number): Observable<Project> {

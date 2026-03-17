@@ -2,6 +2,7 @@ import {Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {HttpErrorResponse} from '@angular/common/http';
+import {forkJoin, of} from 'rxjs';
 import {RoleService} from '../../services/role.service';
 import {PermissionService} from '../../../permissions/services/permission.service';
 import {Permission} from '../../../permissions/models/permission.model';
@@ -18,10 +19,11 @@ export class RoleForm implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
-  permissions: Permission[] = [];
-  modules: string[] = [];
+  permissions = signal<Permission[]>([]);
+  modules = signal<string[]>([]);
   isEdit = false;
   roleId = '';
+  isLoading = signal(true);
   errorMsg = signal('');
 
   form = this.fb.group({
@@ -31,22 +33,31 @@ export class RoleForm implements OnInit {
   });
 
   ngOnInit() {
-    this.permissionService.getAll().subscribe(p => {
-      // 權限管理為 superadmin 專屬，不開放給一般角色指派
-      this.permissions = p.filter(x => x.module !== '權限管理');
-      this.modules = [...new Set(this.permissions.map(x => x.module))];
-    });
     this.roleId = this.route.snapshot.paramMap.get('id') ?? '';
-    if (this.roleId) {
-      this.isEdit = true;
-      this.roleService.getById(this.roleId).subscribe(role => {
+    if (this.roleId) this.isEdit = true;
+
+    // 使用 forkJoin 確保權限列表與角色資料同時載入完成，避免 race condition
+    forkJoin({
+      permissions: this.permissionService.getAll(),
+      role: this.roleId ? this.roleService.getById(this.roleId) : of(null),
+    }).subscribe({
+      next: ({permissions, role}) => {
+        // 權限管理為 superadmin 專屬，不開放給一般角色指派
+        const filtered = permissions.filter(x => x.module !== '權限管理');
+        this.permissions.set(filtered);
+        this.modules.set([...new Set(filtered.map(x => x.module))]);
         if (role) this.form.patchValue({...role});
-      });
-    }
+        this.isLoading.set(false);
+      },
+      error: () => {
+        this.errorMsg.set('載入資料失敗，請稍後再試。');
+        this.isLoading.set(false);
+      },
+    });
   }
 
   getPermissionsByModule(module: string): Permission[] {
-    return this.permissions.filter(p => p.module === module);
+    return this.permissions().filter(p => p.module === module);
   }
 
   isPermissionSelected(code: string): boolean {

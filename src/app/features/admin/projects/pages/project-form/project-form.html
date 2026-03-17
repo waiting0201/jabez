@@ -28,6 +28,14 @@
             </div>
 
             <div class="mb-4">
+              <label class="form-label fw-500">專案名稱 <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" formControlName="name" placeholder="請輸入專案名稱">
+              @if (form.get('name')?.invalid && form.get('name')?.touched) {
+                <div class="text-danger small mt-1">請輸入專案名稱。</div>
+              }
+            </div>
+
+            <div class="mb-4">
               <label class="form-label fw-500">狀態 <span class="text-danger">*</span></label>
               <select class="form-select" formControlName="status">
                 <option value="active">進行中</option>
@@ -46,6 +54,19 @@
               @if (form.get('departmentId')?.invalid && form.get('departmentId')?.touched) {
                 <div class="text-danger small mt-1">請選擇部門。</div>
               }
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-500">開始日期 <span class="text-danger">*</span></label>
+              <input type="date" class="form-control" formControlName="startDate">
+              @if (form.get('startDate')?.invalid && form.get('startDate')?.touched) {
+                <div class="text-danger small mt-1">請選擇開始日期。</div>
+              }
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-500">結束日期</label>
+              <input type="date" class="form-control" formControlName="endDate">
             </div>
 
             <div class="mb-4">

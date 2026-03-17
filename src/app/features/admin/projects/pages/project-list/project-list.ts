@@ -1,6 +1,7 @@
 import {Component, computed, inject, signal} from '@angular/core';
+import {FormsModule} from '@angular/forms';
 import {RouterLink} from '@angular/router';
-import {DecimalPipe} from '@angular/common';
+import {DatePipe, DecimalPipe} from '@angular/common';
 import {toSignal, toObservable} from '@angular/core/rxjs-interop';
 import {switchMap} from 'rxjs/operators';
 import {ProjectService} from '../../services/project.service';
@@ -10,19 +11,21 @@ import {PagedResult} from '../../../../../shared/models/paged-result.model';
 @Component({
   selector: 'app-project-list',
   templateUrl: './project-list.html',
-  imports: [RouterLink, DecimalPipe],
+  imports: [FormsModule, RouterLink, DatePipe, DecimalPipe],
 })
 export class ProjectList {
   private projectService = inject(ProjectService);
 
   readonly PAGE_SIZE = 20;
   page = signal(1);
+  searchInput = '';
+  private searchTerm = signal('');
 
   private refresh = signal(0);
 
   private result = toSignal(
-    toObservable(computed(() => ({ page: this.page(), refresh: this.refresh() }))).pipe(
-      switchMap(({ page }) => this.projectService.getPaged(page, this.PAGE_SIZE))
+    toObservable(computed(() => ({ page: this.page(), search: this.searchTerm(), refresh: this.refresh() }))).pipe(
+      switchMap(({ page, search }) => this.projectService.getPaged(page, this.PAGE_SIZE, search || undefined))
     ),
     {initialValue: {items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 1} as PagedResult<Project>}
   );
@@ -35,6 +38,7 @@ export class ProjectList {
   readonly statusLabel = PROJECT_STATUS_LABELS;
   readonly statusClass = PROJECT_STATUS_CLASSES;
 
+  doSearch() { this.searchTerm.set(this.searchInput); this.page.set(1); }
   goTo(p: number) { this.page.set(p); }
   prev() { if (this.page() > 1) this.page.update(p => p - 1); }
   next() { if (this.page() < this.totalPages()) this.page.update(p => p + 1); }
