@@ -21,12 +21,15 @@ export class UserService {
     return this.http.get<User>(`${environment.apiUrl}/users/${id}`);
   }
 
-  create(data: Omit<User, 'id' | 'createdAt'>): Observable<User> {
-    return this.http.post<User>(`${environment.apiUrl}/users`, data);
+  create(data: Record<string, any>, signatureFile?: File | null): Observable<User> {
+    const formData = this.buildFormData(data, signatureFile);
+    return this.http.post<User>(`${environment.apiUrl}/users`, formData);
   }
 
-  update(id: string, changes: Partial<User>): Observable<User> {
-    return this.http.patch<User>(`${environment.apiUrl}/users/${id}`, changes);
+  update(id: string, data: Record<string, any>, signatureFile?: File | null, removeSignature = false): Observable<User> {
+    const formData = this.buildFormData(data, signatureFile);
+    if (removeSignature) formData.append('removeSignature', 'true');
+    return this.http.patch<User>(`${environment.apiUrl}/users/${id}`, formData);
   }
 
   delete(id: string): Observable<void> {
@@ -35,5 +38,23 @@ export class UserService {
 
   sendCredentials(id: string): Observable<void> {
     return this.http.post<void>(`${environment.apiUrl}/users/${id}/send-credentials`, {});
+  }
+
+  private buildFormData(data: Record<string, any>, signatureFile?: File | null): FormData {
+    const fd = new FormData();
+    for (const [key, value] of Object.entries(data)) {
+      if (value === undefined || value === null) continue;
+      if (Array.isArray(value)) {
+        value.forEach(v => fd.append(key, String(v)));
+      } else if (value instanceof Date) {
+        fd.append(key, value.toISOString());
+      } else {
+        fd.append(key, String(value));
+      }
+    }
+    if (signatureFile) {
+      fd.append('signature', signatureFile);
+    }
+    return fd;
   }
 }

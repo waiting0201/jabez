@@ -5,6 +5,7 @@ export interface User {
   name: string;
   email: string;
   avatar?: string;
+  signatureUrl?: string;
   roleIds: string[];
   status: UserStatus;
   // 員工欄位

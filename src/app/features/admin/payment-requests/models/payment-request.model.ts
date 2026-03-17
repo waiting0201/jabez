@@ -34,6 +34,8 @@ export interface InvoiceItem {
   fileName: string;
   invoiceNo: string;
   amount: number;
+  itemName?: string;     // 項目
+  note?: string;         // 備註
   fileUrl?: string;      // Azure Blob Storage URL (from API)
   previewUrl?: string;   // local blob URL (new upload preview)
 }

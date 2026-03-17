@@ -71,7 +71,10 @@
 
             <div class="mb-4">
               <label class="form-label fw-500">預定金額 <span class="text-danger">*</span></label>
-              <input type="number" class="form-control" formControlName="budgetAmount" min="0">
+              <div class="input-group">
+                <span class="input-group-text">NT$</span>
+                <input type="number" class="form-control" formControlName="budgetAmount" min="0">
+              </div>
               @if (form.get('budgetAmount')?.invalid && form.get('budgetAmount')?.touched) {
                 <div class="text-danger small mt-1">請輸入預定金額（不可為負數）。</div>
               }
@@ -79,7 +82,10 @@
 
             <div class="mb-4">
               <label class="form-label fw-500">實際金額 <span class="text-danger">*</span></label>
-              <input type="number" class="form-control" formControlName="actualAmount" min="0">
+              <div class="input-group">
+                <span class="input-group-text">NT$</span>
+                <input type="number" class="form-control" formControlName="actualAmount" min="0">
+              </div>
               @if (form.get('actualAmount')?.invalid && form.get('actualAmount')?.touched) {
                 <div class="text-danger small mt-1">請輸入實際金額（不可為負數）。</div>
               }
@@ -93,7 +99,10 @@
                 }
                 <span class="text-danger">*</span>
               </label>
-              <input type="number" class="form-control" formControlName="businessAmount" min="0">
+              <div class="input-group">
+                <span class="input-group-text">NT$</span>
+                <input type="number" class="form-control" formControlName="businessAmount" min="0">
+              </div>
               @if (form.get('businessAmount')?.invalid && form.get('businessAmount')?.touched) {
                 <div class="text-danger small mt-1">請輸入業務執行金額（不可為負數）。</div>
               }

@@ -86,6 +86,8 @@
                           <th>檔案名稱</th>
                           <th>發票號碼</th>
                           <th class="text-right">金額</th>
+                          <th>項目</th>
+                          <th>備註</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -113,6 +115,8 @@
                             </td>
                             <td class="font-monospace small">{{ inv.invoiceNo }}</td>
                             <td class="text-right fw-500">{{ inv.amount | number:'1.0-0' }}</td>
+                            <td class="small">{{ inv.itemName || '—' }}</td>
+                            <td class="small">{{ inv.note || '—' }}</td>
                           </tr>
                         }
                       </tbody>
@@ -120,6 +124,7 @@
                         <tr class="table-light">
                           <td colspan="2" class="text-right fw-500 small">合計</td>
                           <td class="text-right fw-600">{{ d.totalAmount | number:'1.0-0' }}</td>
+                          <td colspan="2"></td>
                         </tr>
                       </tfoot>
                     </table>

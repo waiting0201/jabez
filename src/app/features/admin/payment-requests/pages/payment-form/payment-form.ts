@@ -96,7 +96,7 @@ export class PaymentForm implements OnInit {
         if (this.isReadOnly) this.form.disable();
         this.form.patchValue({type: r.type, projectId: r.projectId});
         r.invoices.forEach(inv => this.invoiceArray.push(
-          this._invoiceGroup(String(inv.id), inv.fileName, inv.invoiceNo, inv.amount, inv.fileUrl ?? '', inv.fileUrl ?? '')
+          this._invoiceGroup(String(inv.id), inv.fileName, inv.invoiceNo, inv.amount, inv.fileUrl ?? '', inv.fileUrl ?? '', inv.itemName ?? '', inv.note ?? '')
         ));
         this.cdr.markForCheck();
       });
@@ -225,6 +225,8 @@ export class PaymentForm implements OnInit {
         fileName:  ctrl.get('fileName')?.value,
         invoiceNo: ctrl.get('invoiceNo')?.value,
         amount:    +(ctrl.get('amount')?.value || 0),
+        itemName:  ctrl.get('itemName')?.value || null,
+        note:      ctrl.get('note')?.value || null,
         fileUrl:   ctrl.get('fileUrl')?.value || null,
         fileIndex: file ? fileIndex : -1,
       };
@@ -239,12 +241,14 @@ export class PaymentForm implements OnInit {
     return fd;
   }
 
-  private _invoiceGroup(id: string, fileName: string, invoiceNo: string, amount: number, previewUrl = '', fileUrl = '') {
+  private _invoiceGroup(id: string, fileName: string, invoiceNo: string, amount: number, previewUrl = '', fileUrl = '', itemName = '', note = '') {
     return this.fb.group({
       id:         [id],
       fileName:   [fileName],
       invoiceNo:  [invoiceNo, Validators.required],
       amount:     [amount, [Validators.required, Validators.min(0)]],
+      itemName:   [itemName],
+      note:       [note],
       previewUrl: [previewUrl],
       fileUrl:    [fileUrl],
     });

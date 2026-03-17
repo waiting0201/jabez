@@ -159,6 +159,39 @@
           </div>
         </div>
 
+        <!-- 簽名檔 -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-transparent fw-500">簽名檔</div>
+          <div class="card-body">
+            @if (displaySignature) {
+              <div class="mb-3">
+                <div class="border rounded p-3 bg-white inline-block">
+                  <img [src]="displaySignature" alt="簽名檔" class="max-h-24 object-contain">
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                  更換簽名檔
+                  <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp"
+                         (change)="onSignatureSelected($event)">
+                </label>
+                <button type="button" class="btn btn-sm btn-outline-danger"
+                        (click)="onRemoveSignature()">
+                  刪除簽名檔
+                </button>
+              </div>
+            } @else {
+              <p class="text-muted small mb-3">尚未上傳簽名檔，選擇檔案後將於儲存時一併上傳。</p>
+              <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                選擇簽名檔
+                <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp"
+                       (change)="onSignatureSelected($event)">
+              </label>
+            }
+          </div>
+        </div>
+
         <div class="mt-6 flex gap-2">
           <button type="submit" class="btn btn-primary">
             {{ isEdit ? '更新' : '建立' }}

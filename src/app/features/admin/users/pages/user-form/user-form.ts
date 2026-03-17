@@ -48,6 +48,12 @@ export class UserForm implements OnInit {
   laborInsurance  = signal<number | null>(null);
   healthInsurance = signal<number | null>(null);
 
+  // 簽名檔
+  signatureUrl     = signal<string | null>(null);  // 既有的遠端 URL
+  signaturePreview = signal<string | null>(null);  // 本地預覽 (data URL)
+  signatureFile    = signal<File | null>(null);     // 待上傳檔案
+  removeSignature  = signal(false);                 // 標記刪除
+
   form = this.fb.group({
     name:         ['', Validators.required],
     email:        ['', [Validators.required, Validators.email]],
@@ -108,6 +114,7 @@ export class UserForm implements OnInit {
           baseSalary:   user.baseSalary ?? null,
           agentUserId:  user.agentUserId ?? '',
         });
+        this.signatureUrl.set(user.signatureUrl ?? null);
       });
     }
   }
@@ -118,6 +125,31 @@ export class UserForm implements OnInit {
 
   private toDateString(d: Date): string {
     return new Date(d).toISOString().substring(0, 10);
+  }
+
+  onSignatureSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.signatureFile.set(file);
+    this.removeSignature.set(false);
+    // 本地預覽
+    const reader = new FileReader();
+    reader.onload = () => this.signaturePreview.set(reader.result as string);
+    reader.readAsDataURL(file);
+    input.value = '';
+  }
+
+  onRemoveSignature() {
+    this.signatureFile.set(null);
+    this.signaturePreview.set(null);
+    this.removeSignature.set(true);
+  }
+
+  /** 顯示的簽名圖片：本地預覽優先，否則既有 URL */
+  get displaySignature(): string | null {
+    if (this.removeSignature()) return null;
+    return this.signaturePreview() ?? this.signatureUrl();
   }
 
   sendCredentials() {
@@ -142,30 +174,20 @@ export class UserForm implements OnInit {
     }
     const {roleId, hireDate, resignDate, departmentId, jobTitleId, agentUserId, password, ...rest} = this.form.value as any;
 
-    const deptId  = departmentId  || undefined;
-    const jtId    = jobTitleId    || undefined;
-
-    const deptName = deptId ? this.departments().find(d => d.id === deptId)?.name : undefined;
-    const jtName   = jtId   ? this.jobTitles().find(j => j.id === jtId)?.name    : undefined;
-    const agent    = agentUserId ? this.allUsers().find(u => u.id === agentUserId) : undefined;
-
-    const payload = {
+    const payload: Record<string, any> = {
       ...rest,
-      password:      password || undefined,
-      roleIds:       roleId ? [roleId] : [],
-      departmentId:  deptId,
-      departmentName: deptName,
-      jobTitleId:    jtId,
-      jobTitleName:  jtName,
-      hireDate:      hireDate   ? new Date(hireDate)   : undefined,
-      resignDate:    resignDate ? new Date(resignDate) : undefined,
-      agentUserId:   agentUserId || undefined,
-      agentName:     agent?.name,
+      password:     password || undefined,
+      roleIds:      roleId ? [roleId] : [],
+      departmentId: departmentId || undefined,
+      jobTitleId:   jobTitleId || undefined,
+      hireDate:     hireDate   ? new Date(hireDate)   : undefined,
+      resignDate:   resignDate ? new Date(resignDate) : undefined,
+      agentUserId:  agentUserId || undefined,
     };
 
     const obs = this.isEdit
-      ? this.userService.update(this.userId, payload)
-      : this.userService.create(payload);
+      ? this.userService.update(this.userId, payload, this.signatureFile(), this.removeSignature())
+      : this.userService.create(payload, this.signatureFile());
     this.errorMsg.set('');
     obs.subscribe({
       next: () => this.router.navigate(['/admin/users']),
