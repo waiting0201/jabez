@@ -32,6 +32,10 @@ import {ProjectWaterLevel} from './reports/pages/project-water-level/project-wat
 import {InsuranceBracketList} from './insurance-brackets/pages/insurance-bracket-list/insurance-bracket-list';
 import {InsuranceBracketForm} from './insurance-brackets/pages/insurance-bracket-form/insurance-bracket-form';
 import {PayrollList} from './payroll/pages/payroll-list/payroll-list';
+import {AdvanceList} from './advance-requests/pages/advance-list/advance-list';
+import {AdvanceForm} from './advance-requests/pages/advance-form/advance-form';
+import {AdvanceDetail} from './advance-requests/pages/advance-detail/advance-detail';
+import {WriteOffForm} from './advance-requests/pages/write-off-form/write-off-form';
 
 export const ADMIN_ROUTES: Routes = [
   {path: '', redirectTo: 'users', pathMatch: 'full'},
@@ -72,6 +76,13 @@ export const ADMIN_ROUTES: Routes = [
   {path: 'payment-requests',             component: PaymentList, canActivate: [permissionGuard], data: {title: '請款申請',       permission: 'payment-requests:read'}},
   {path: 'payment-requests/new',         component: PaymentForm, canActivate: [permissionGuard], data: {title: '新增請款申請',   permission: 'payment-requests:write'}},
   {path: 'payment-requests/:id/edit',    component: PaymentForm, canActivate: [permissionGuard], data: {title: '編輯請款申請',   permission: 'payment-requests:read'}},
+
+  // 預支申請
+  {path: 'advance-requests',                            component: AdvanceList,   canActivate: [permissionGuard], data: {title: '預支申請',       permission: 'advance-requests:read'}},
+  {path: 'advance-requests/new',                        component: AdvanceForm,   canActivate: [permissionGuard], data: {title: '新增預支申請',   permission: 'advance-requests:write'}},
+  {path: 'advance-requests/:id/edit',                   component: AdvanceForm,   canActivate: [permissionGuard], data: {title: '編輯預支申請',   permission: 'advance-requests:write'}},
+  {path: 'advance-requests/:id/write-offs/new',         component: WriteOffForm,  canActivate: [permissionGuard], data: {title: '新增沖銷',       permission: 'advance-requests:write'}},
+  {path: 'advance-requests/:id',                        component: AdvanceDetail, canActivate: [permissionGuard], data: {title: '預支申請詳情',   permission: 'advance-requests:read'}},
 
   // 請假申請
   {path: 'leave-requests',             component: LeaveRequestList, canActivate: [permissionGuard], data: {title: '請假申請',       permission: 'leave-requests:read'}},

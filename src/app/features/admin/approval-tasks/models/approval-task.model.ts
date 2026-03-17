@@ -85,6 +85,16 @@ export interface OvertimeTaskDetail {
   projectCodes?: string[];
 }
 
+export interface AdvanceTaskDetail {
+  advanceRequestId: number;
+  requestNo: string;
+  projectCode: string;
+  activityName: string;
+  grandTotal: number;
+  estimatedPaymentDate?: string;
+  paidAt?: string;
+}
+
 // ── ApprovalRecord ───────────────────────────────────────────────────────────
 
 export interface ApprovalRecord {
@@ -114,5 +124,6 @@ export interface ApprovalTask {
   leaveDetail?: LeaveTaskDetail;
   travelDetail?: TravelTaskDetail;
   overtimeDetail?: OvertimeTaskDetail;
+  advanceDetail?: AdvanceTaskDetail;
   approvalRecords: ApprovalRecord[];
 }

@@ -8,6 +8,7 @@ import {EMPTY, Observable, catchError, tap} from 'rxjs';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {AuthService} from '../../../../../core/auth/services/auth.service';
 import {PaymentRequestService} from '../../../payment-requests/services/payment-request.service';
+import {AdvanceRequestService} from '../../../advance-requests/services/advance-request.service';
 import {ApprovalTaskService} from '../../services/approval-task.service';
 import {
   ApprovalTask, ApprovalRecord, TaskStatus,
@@ -47,6 +48,7 @@ const CIS = {
 export class ApprovalTaskReview implements OnInit {
   private service        = inject(ApprovalTaskService);
   private paymentService = inject(PaymentRequestService);
+  private advanceService = inject(AdvanceRequestService);
   private auth           = inject(AuthService);
   private route          = inject(ActivatedRoute);
   private router         = inject(Router);
@@ -97,6 +99,10 @@ export class ApprovalTaskReview implements OnInit {
           this.paymentDateForm.estimatedPaymentDate = task.paymentDetail.estimatedPaymentDate?.toString().slice(0, 10) ?? '';
           this.paymentDateForm.paidAt = task.paymentDetail.paidAt?.toString().slice(0, 10) ?? '';
         }
+        if (task.advanceDetail) {
+          this.paymentDateForm.estimatedPaymentDate = task.advanceDetail.estimatedPaymentDate?.toString().slice(0, 10) ?? '';
+          this.paymentDateForm.paidAt = task.advanceDetail.paidAt?.toString().slice(0, 10) ?? '';
+        }
       }),
       catchError((err: HttpErrorResponse) => {
         this.errorMsg.set(err.error?.message || '載入簽核作業失敗。');
@@ -133,18 +139,31 @@ export class ApprovalTaskReview implements OnInit {
     );
   }
 
-  /** 更新已核准請款的撥款日期 */
+  /** 更新已核准請款/預支的撥款日期 */
   updatePaymentDate(task: ApprovalTask) {
-    if (!task.paymentDetail) return;
     const {estimatedPaymentDate, paidAt} = this.paymentDateForm;
     if (!estimatedPaymentDate && !paidAt) return;
     this.paymentDateMsg.set('');
     this.paymentDateError.set('');
-    this.paymentService.updatePaymentDate(
-      task.paymentDetail.paymentRequestId,
-      estimatedPaymentDate || undefined,
-      paidAt || undefined,
-    ).subscribe({
+
+    let update$: Observable<any>;
+    if (task.advanceDetail) {
+      update$ = this.advanceService.updatePaymentDate(
+        task.advanceDetail.advanceRequestId,
+        estimatedPaymentDate || undefined,
+        paidAt || undefined,
+      );
+    } else if (task.paymentDetail) {
+      update$ = this.paymentService.updatePaymentDate(
+        task.paymentDetail.paymentRequestId,
+        estimatedPaymentDate || undefined,
+        paidAt || undefined,
+      );
+    } else {
+      return;
+    }
+
+    update$.subscribe({
       next: () => {
         this.paymentDateMsg.set('撥款日期已更新。');
         // 重新載入任務資料以反映更新

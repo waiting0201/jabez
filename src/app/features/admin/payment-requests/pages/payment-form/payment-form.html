@@ -152,7 +152,7 @@
               <table class="table table-sm mb-0">
                 <thead class="table-light">
                   <tr>
-                    <th>檔案名稱</th>
+                    <th style="width:40px"></th>
                     <th style="min-width:160px">發票號碼</th>
                     <th style="min-width:120px">金額</th>
                     <th style="min-width:140px">項目</th>
@@ -166,25 +166,15 @@
                   @for (ctrl of invoiceControls; track ctrl.get('id')?.value; let i = $index) {
                     @let isOcr = ocrLoadingIds.has(ctrl.get('id')?.value);
                     <tr [formGroupName]="i">
-                      <td class="align-middle small"
-                          style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                      <td class="align-middle text-center">
                         @if (ctrl.get('previewUrl')?.value || ctrl.get('fileUrl')?.value) {
-                          <button type="button"
-                                  class="btn btn-link p-0 text-muted small inline-flex items-center gap-1"
-                                  style="text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis"
-                                  (click)="openPreview(ctrl.get('fileName')?.value, ctrl.get('previewUrl')?.value || ctrl.get('fileUrl')?.value)">
-                            <svg class="sa-icon shrink-0" style="width:14px;height:14px;stroke:currentColor">
-                              <use href="/assets/icons/sprite.svg#file-text"></use>
-                            </svg>
-                            {{ ctrl.get('fileName')?.value }}
+                          <button type="button" class="btn btn-sm btn-ghost-secondary p-1"
+                                  (click)="openPreview(ctrl.get('fileName')?.value, ctrl.get('previewUrl')?.value || ctrl.get('fileUrl')?.value)"
+                                  title="{{ ctrl.get('fileName')?.value }}">
+                            <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
                           </button>
-                        } @else {
-                          <span class="text-muted inline-flex items-center gap-1">
-                            <svg class="sa-icon shrink-0" style="width:14px;height:14px;stroke:currentColor">
-                              <use href="/assets/icons/sprite.svg#file-text"></use>
-                            </svg>
-                            {{ ctrl.get('fileName')?.value }}
-                          </span>
+                        } @else if (isOcr) {
+                          <span class="spinner-border spinner-border-sm" role="status"></span>
                         }
                       </td>
                       <td class="align-middle">

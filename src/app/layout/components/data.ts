@@ -22,6 +22,12 @@ export const menuItems: MenuItemType[] = [
     requiredPermission: 'payment-requests:read',
   },
   {
+    icon: '/assets/icons/sprite.svg#credit-card',
+    label: '預支申請',
+    url: '/admin/advance-requests',
+    requiredPermission: 'advance-requests:read',
+  },
+  {
     icon: '/assets/icons/sprite.svg#calendar',
     label: '請假申請',
     url: '/admin/leave-requests',

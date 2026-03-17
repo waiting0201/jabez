@@ -67,6 +67,9 @@ export class ApprovalTaskList {
       const dateStr = new Date(t.overtimeDetail.overtimeDate).toLocaleDateString('zh-TW');
       return `${dateStr}・${t.overtimeDetail.estimatedHours} 小時・${t.overtimeDetail.reason}`;
     }
+    if (t.advanceDetail) {
+      return `${t.advanceDetail.requestNo}・${t.advanceDetail.activityName}（${t.advanceDetail.grandTotal.toLocaleString()} 元）`;
+    }
     return '—';
   }
 }

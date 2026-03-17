@@ -54,11 +54,19 @@
                 <td class="text-muted small hidden lg:table-cell">{{ t.submittedAt | date:'yyyy-MM-dd' }}</td>
                 @if (activeTab() === 'approved') {
                   <td class="text-muted small hidden lg:table-cell">
-                    {{ t.paymentDetail?.estimatedPaymentDate ? (t.paymentDetail!.estimatedPaymentDate | date:'yyyy-MM-dd') : '—' }}
+                    @if (t.paymentDetail?.estimatedPaymentDate) {
+                      {{ t.paymentDetail!.estimatedPaymentDate | date:'yyyy-MM-dd' }}
+                    } @else if (t.advanceDetail?.estimatedPaymentDate) {
+                      {{ t.advanceDetail!.estimatedPaymentDate | date:'yyyy-MM-dd' }}
+                    } @else {
+                      —
+                    }
                   </td>
                   <td class="text-muted small hidden lg:table-cell">
                     @if (t.paymentDetail?.paidAt) {
                       <span class="text-success fw-500">{{ t.paymentDetail!.paidAt | date:'yyyy-MM-dd' }}</span>
+                    } @else if (t.advanceDetail?.paidAt) {
+                      <span class="text-success fw-500">{{ t.advanceDetail!.paidAt | date:'yyyy-MM-dd' }}</span>
                     } @else {
                       <span class="text-muted">—</span>
                     }
