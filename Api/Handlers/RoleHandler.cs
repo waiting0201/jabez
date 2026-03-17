@@ -31,12 +31,14 @@ public sealed class RoleHandler(AppDbContext db, IRoleReadService reader)
         if (body is null)
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
 
-        if (await db.Roles.AnyAsync(r => r.Id == body.Id))
-            throw AppException.Conflict($"Role id '{body.Id}' already exists.");
+        var roleId = string.IsNullOrWhiteSpace(body.Id) ? Guid.NewGuid().ToString() : body.Id;
+
+        if (await db.Roles.AnyAsync(r => r.Id == roleId))
+            throw AppException.Conflict($"Role id '{roleId}' already exists.");
 
         var role = new Role
         {
-            Id          = body.Id,
+            Id          = roleId,
             Name        = body.Name,
             Description = body.Description,
             CreatedAt   = Clock.Now,

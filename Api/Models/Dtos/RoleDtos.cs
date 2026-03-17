@@ -8,7 +8,7 @@ public sealed record RoleDto(
     DateTime CreatedAt);
 
 public sealed record CreateRoleRequest(
-    string   Id,
+    string?  Id,
     string   Name,
     string?  Description,
     string[] PermissionCodes);
