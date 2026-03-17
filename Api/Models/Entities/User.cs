@@ -19,9 +19,12 @@ public class User
     public int?      JobTitleId   { get; set; }
     public DateTime? HireDate     { get; set; }
     public DateTime? ResignDate   { get; set; }
-    public decimal?  BaseSalary   { get; set; }
-    public Guid?     AgentUserId  { get; set; }
-    public DateTime? Birthday     { get; set; }
+    public decimal?  BaseSalary      { get; set; }
+    public decimal?  MealAllowance   { get; set; }   // 伙食費
+    public decimal?  OvertimePay     { get; set; }   // 加班費
+    public bool      SendPaySlip     { get; set; }   // 是否寄送薪資表
+    public Guid?     AgentUserId     { get; set; }
+    public DateTime? Birthday        { get; set; }
 
     // 超管旗標：不受角色/權限異動影響，永遠擁有全系統存取權
     public bool IsSuperAdmin { get; set; } = false;

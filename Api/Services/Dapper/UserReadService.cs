@@ -18,6 +18,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.DepartmentId, d.Name AS DepartmentName,
                 u.JobTitleId,   jt.Name AS JobTitleName,
                 u.HireDate, u.ResignDate, u.BaseSalary,
+                u.MealAllowance, u.OvertimePay, u.SendPaySlip,
                 u.AgentUserId,  ag.Name AS AgentName,
                 u.Birthday,
                 r.Id AS RoleId
@@ -38,6 +39,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             int? DepartmentId, string? DepartmentName,
             int? JobTitleId, string? JobTitleName,
             DateTime? HireDate, DateTime? ResignDate, decimal? BaseSalary,
+            decimal? MealAllowance, decimal? OvertimePay, bool SendPaySlip,
             Guid? AgentUserId, string? AgentName,
             DateTime? Birthday,
             DateTime CreatedAt, List<string> RoleIds)>();
@@ -51,6 +53,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     (int?)row.DepartmentId, (string?)row.DepartmentName,
                     (int?)row.JobTitleId, (string?)row.JobTitleName,
                     (DateTime?)row.HireDate, (DateTime?)row.ResignDate, (decimal?)row.BaseSalary,
+                    (decimal?)row.MealAllowance, (decimal?)row.OvertimePay, (bool)row.SendPaySlip,
                     row.AgentUserId is null ? null : (Guid?)row.AgentUserId,
                     (string?)row.AgentName,
                     (DateTime?)row.Birthday,
@@ -67,6 +70,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.DepartmentId, kv.Value.DepartmentName,
             kv.Value.JobTitleId,   kv.Value.JobTitleName,
             kv.Value.HireDate, kv.Value.ResignDate, kv.Value.BaseSalary,
+            kv.Value.MealAllowance, kv.Value.OvertimePay, kv.Value.SendPaySlip,
             kv.Value.AgentUserId, kv.Value.AgentName,
             kv.Value.Birthday,
             kv.Value.CreatedAt));
@@ -85,6 +89,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.DepartmentId, d.Name AS DepartmentName,
                 u.JobTitleId,   jt.Name AS JobTitleName,
                 u.HireDate, u.ResignDate, u.BaseSalary,
+                u.MealAllowance, u.OvertimePay, u.SendPaySlip,
                 u.AgentUserId,  ag.Name AS AgentName,
                 u.Birthday,
                 r.Id AS RoleId
@@ -106,6 +111,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             int? DepartmentId, string? DepartmentName,
             int? JobTitleId, string? JobTitleName,
             DateTime? HireDate, DateTime? ResignDate, decimal? BaseSalary,
+            decimal? MealAllowance, decimal? OvertimePay, bool SendPaySlip,
             Guid? AgentUserId, string? AgentName,
             DateTime? Birthday,
             DateTime CreatedAt, List<string> RoleIds)>();
@@ -119,6 +125,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     (int?)row.DepartmentId, (string?)row.DepartmentName,
                     (int?)row.JobTitleId, (string?)row.JobTitleName,
                     (DateTime?)row.HireDate, (DateTime?)row.ResignDate, (decimal?)row.BaseSalary,
+                    (decimal?)row.MealAllowance, (decimal?)row.OvertimePay, (bool)row.SendPaySlip,
                     row.AgentUserId is null ? null : (Guid?)row.AgentUserId,
                     (string?)row.AgentName,
                     (DateTime?)row.Birthday,
@@ -135,6 +142,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.DepartmentId, kv.Value.DepartmentName,
             kv.Value.JobTitleId,   kv.Value.JobTitleName,
             kv.Value.HireDate, kv.Value.ResignDate, kv.Value.BaseSalary,
+            kv.Value.MealAllowance, kv.Value.OvertimePay, kv.Value.SendPaySlip,
             kv.Value.AgentUserId, kv.Value.AgentName,
             kv.Value.Birthday,
             kv.Value.CreatedAt));
@@ -151,6 +159,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.DepartmentId, d.Name AS DepartmentName,
                 u.JobTitleId,   jt.Name AS JobTitleName,
                 u.HireDate, u.ResignDate, u.BaseSalary,
+                u.MealAllowance, u.OvertimePay, u.SendPaySlip,
                 u.AgentUserId,  ag.Name AS AgentName,
                 u.Birthday,
                 r.Id AS RoleId
@@ -176,6 +185,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 (int?)row.DepartmentId, (string?)row.DepartmentName,
                 (int?)row.JobTitleId,   (string?)row.JobTitleName,
                 (DateTime?)row.HireDate, (DateTime?)row.ResignDate, (decimal?)row.BaseSalary,
+                (decimal?)row.MealAllowance, (decimal?)row.OvertimePay, (bool)row.SendPaySlip,
                 row.AgentUserId is null ? null : (Guid?)row.AgentUserId,
                 (string?)row.AgentName,
                 (DateTime?)row.Birthday,

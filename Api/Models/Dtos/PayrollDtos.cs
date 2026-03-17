@@ -4,15 +4,28 @@ namespace Jabez.Api.Models.Dtos;
 public sealed record EmployeePayrollDto(
     Guid      EmployeeId,
     string    EmployeeName,
+    string?   Email,
+    bool      SendPaySlip,
     string?   DepartmentName,
     string?   JobTitleName,
     DateTime? HireDate,
     decimal   BaseSalary,
+    decimal   MealAllowance,
+    decimal   OvertimePay,
     decimal   DailySalary,
     int       HolidayTravelDays,
     decimal   HolidayAllowance,
+    decimal   OtherAddition,
+    string?   OtherAdditionNote,
     decimal   LaborInsurance,
     decimal   HealthInsurance,
+    int       PersonalLeaveDays,
+    decimal   PersonalLeaveDeduction,
+    int       SickLeaveDays,
+    decimal   SickLeaveDeduction,
+    decimal   OtherDeduction,
+    string?   OtherDeductionNote,
+    string?   Note,
     decimal   NetSalary);
 
 /// <summary>整月薪資計算回傳</summary>
@@ -21,7 +34,33 @@ public sealed record MonthlyPayrollDto(
     int Month,
     IEnumerable<EmployeePayrollDto> Employees,
     decimal TotalBaseSalary,
+    decimal TotalMealAllowance,
+    decimal TotalOvertimePay,
     decimal TotalHolidayAllowance,
+    decimal TotalOtherAddition,
     decimal TotalLaborInsurance,
     decimal TotalHealthInsurance,
+    decimal TotalPersonalLeaveDeduction,
+    decimal TotalSickLeaveDeduction,
+    decimal TotalOtherDeduction,
     decimal TotalNetSalary);
+
+/// <summary>薪資調整新增/更新請求</summary>
+public sealed record PayrollAdjustmentRequest(
+    decimal  OtherAddition,
+    string?  OtherAdditionNote,
+    decimal  OtherDeduction,
+    string?  OtherDeductionNote,
+    string?  Note);
+
+/// <summary>薪資調整回傳</summary>
+public sealed record PayrollAdjustmentDto(
+    int      Id,
+    Guid     EmployeeId,
+    int      Year,
+    int      Month,
+    decimal  OtherAddition,
+    string?  OtherAdditionNote,
+    decimal  OtherDeduction,
+    string?  OtherDeductionNote,
+    string?  Note);

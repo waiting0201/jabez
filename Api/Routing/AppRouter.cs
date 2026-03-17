@@ -218,7 +218,10 @@ public sealed class AppRouter(
             ("DELETE", ["insurance-brackets", var id])   => await insuranceBrackets.DeleteAsync(id),
 
             // ── Payroll ──────────────────────────────────────────────────────────
-            ("GET",    ["payroll"])                        => await payroll.GetMonthlyAsync(req),
+            ("GET",    ["payroll"])                                   => await payroll.GetMonthlyAsync(req),
+            ("POST",   ["payroll", "send-slips"])                    => await payroll.SendSlipsAsync(req),
+            ("GET",    ["payroll", var id, "adjustment"])             => await payroll.GetAdjustmentAsync(req, id),
+            ("PUT",    ["payroll", var id, "adjustment"])             => await payroll.UpsertAdjustmentAsync(req, id),
 
             // ── Reports ─────────────────────────────────────────────────────────
             ("GET",    ["reports", "overtime"])                    => await overtimeReport.GetAllAsync(req),
@@ -357,7 +360,10 @@ public sealed class AppRouter(
             ("DELETE", ["insurance-brackets", _])               => PermissionCodes.InsuranceBracketsDelete,
 
             // Payroll
-            ("GET",    ["payroll"])                      => PermissionCodes.PayrollRead,
+            ("GET",    ["payroll"])                           => PermissionCodes.PayrollRead,
+            ("POST",   ["payroll", "send-slips"])             => PermissionCodes.PayrollWrite,
+            ("GET",    ["payroll", _, "adjustment"])          => PermissionCodes.PayrollRead,
+            ("PUT",    ["payroll", _, "adjustment"])          => PermissionCodes.PayrollWrite,
 
             // Reports
             ("GET",    ["reports", "overtime"])                    => PermissionCodes.ReportsOvertimeRead,

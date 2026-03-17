@@ -4,6 +4,7 @@ using Jabez.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Jabez.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260317093431_AddPayrollAdjustment")]
+    partial class AddPayrollAdjustment
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1479,15 +1482,6 @@ namespace Jabez.Api.Data.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
-                    b.Property<decimal>("OtherAddition")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("decimal(12,2)")
-                        .HasDefaultValue(0m);
-
-                    b.Property<string>("OtherAdditionNote")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<decimal>("OtherDeduction")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("decimal(12,2)")
@@ -2680,9 +2674,6 @@ namespace Jabez.Api.Data.Migrations
                     b.Property<int?>("JobTitleId")
                         .HasColumnType("int");
 
-                    b.Property<decimal?>("MealAllowance")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<bool>("MustChangePassword")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
@@ -2693,9 +2684,6 @@ namespace Jabez.Api.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<decimal?>("OvertimePay")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -2703,9 +2691,6 @@ namespace Jabez.Api.Data.Migrations
 
                     b.Property<DateTime?>("ResignDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<bool>("SendPaySlip")
-                        .HasColumnType("bit");
 
                     b.Property<string>("SignatureUrl")
                         .HasMaxLength(500)
@@ -2746,7 +2731,6 @@ namespace Jabez.Api.Data.Migrations
                             MustChangePassword = false,
                             Name = "System Admin",
                             PasswordHash = "$2a$11$hBaZunc8xtFIsRVh738SJuHisvnVAsIODyfkzLxjMN.is7jZn3K7e",
-                            SendPaySlip = false,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -2764,7 +2748,6 @@ namespace Jabez.Api.Data.Migrations
                             MustChangePassword = false,
                             Name = "Alice Chen",
                             PasswordHash = "$2a$11$hBaZunc8xtFIsRVh738SJuHisvnVAsIODyfkzLxjMN.is7jZn3K7e",
-                            SendPaySlip = false,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -2782,7 +2765,6 @@ namespace Jabez.Api.Data.Migrations
                             MustChangePassword = false,
                             Name = "Bob Wang",
                             PasswordHash = "$2a$11$hBaZunc8xtFIsRVh738SJuHisvnVAsIODyfkzLxjMN.is7jZn3K7e",
-                            SendPaySlip = false,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 2, 10, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -2800,7 +2782,6 @@ namespace Jabez.Api.Data.Migrations
                             MustChangePassword = false,
                             Name = "Carol Liu",
                             PasswordHash = "$2a$11$hBaZunc8xtFIsRVh738SJuHisvnVAsIODyfkzLxjMN.is7jZn3K7e",
-                            SendPaySlip = false,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 3, 5, 0, 0, 0, 0, DateTimeKind.Utc)
                         });

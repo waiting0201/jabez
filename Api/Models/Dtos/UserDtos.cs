@@ -15,6 +15,9 @@ public sealed record UserDto(
     DateTime? HireDate,
     DateTime? ResignDate,
     decimal?  BaseSalary,
+    decimal?  MealAllowance,
+    decimal?  OvertimePay,
+    bool      SendPaySlip,
     Guid?     AgentUserId,
     string?   AgentName,
     DateTime? Birthday,
@@ -32,6 +35,9 @@ public sealed record CreateUserRequest(
     DateTime? HireDate     = null,
     DateTime? ResignDate   = null,
     decimal?  BaseSalary   = null,
+    decimal?  MealAllowance = null,
+    decimal?  OvertimePay   = null,
+    bool      SendPaySlip   = false,
     Guid?     AgentUserId  = null,
     DateTime? Birthday     = null);
 
@@ -47,5 +53,8 @@ public sealed record UpdateUserRequest(
     DateTime?  HireDate,
     DateTime?  ResignDate,
     decimal?   BaseSalary,
+    decimal?   MealAllowance,
+    decimal?   OvertimePay,
+    bool?      SendPaySlip,
     Guid?      AgentUserId,
     DateTime?  Birthday);

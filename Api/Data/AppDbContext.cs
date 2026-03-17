@@ -30,6 +30,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AdvanceRequestItem>   AdvanceRequestItems   { get; set; }
     public DbSet<WriteOffRecord>       WriteOffRecords       { get; set; }
     public DbSet<WriteOffItem>         WriteOffItems         { get; set; }
+    public DbSet<PayrollAdjustment>    PayrollAdjustments    { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

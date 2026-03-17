@@ -14,8 +14,9 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
         // 1. 查詢所有在職員工（有底薪、未離職或離職日在該月之後）
         const string employeeSql = """
             SELECT u.Id AS EmployeeId, u.Name AS EmployeeName,
+                   u.Email, u.SendPaySlip,
                    d.Name AS DepartmentName, jt.Name AS JobTitleName,
-                   u.HireDate, u.BaseSalary
+                   u.HireDate, u.BaseSalary, u.MealAllowance, u.OvertimePay
             FROM Users u
             LEFT JOIN Departments d  ON u.DepartmentId = d.Id
             LEFT JOIN JobTitles jt   ON u.JobTitleId = jt.Id
@@ -46,16 +47,50 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             ORDER BY SalaryBracket ASC
             """;
 
+        // 4. 查詢該月所有薪資調整（其他加項 + 其他扣項 + 備注）
+        const string adjustmentSql = """
+            SELECT EmployeeId, OtherAddition, OtherAdditionNote,
+                   OtherDeduction, OtherDeductionNote, Note
+            FROM PayrollAdjustments
+            WHERE Year = @Year AND Month = @Month
+            """;
+
+        // 5. 查詢該月已核准的事假/病假天數（按員工 + 假別分組）
+        const string leaveSql = """
+            SELECT lr.EmployeeId, lr.LeaveType,
+                   SUM(DATEDIFF(DAY,
+                       CASE WHEN lr.StartDate < @FirstDay THEN @FirstDay ELSE lr.StartDate END,
+                       CASE WHEN lr.EndDate   > @LastDay  THEN @LastDay  ELSE lr.EndDate   END
+                   ) + 1) AS TotalDays
+            FROM LeaveRequests lr
+            WHERE lr.ApprovalStatus = 'approved'
+              AND lr.LeaveType IN ('personal', 'sick')
+              AND lr.StartDate <= @LastDay
+              AND lr.EndDate   >= @FirstDay
+            GROUP BY lr.EmployeeId, lr.LeaveType
+            """;
+
         var employees = (await db.QueryAsync<dynamic>(employeeSql, new { FirstDay = firstDay })).ToList();
         var travelDays = (await db.QueryAsync<dynamic>(travelSql, new { FirstDay = firstDay, LastDay = lastDay }))
             .ToDictionary(r => (Guid)r.EmployeeId, r => (int)r.TotalDays);
         var brackets = (await db.QueryAsync<dynamic>(bracketSql)).ToList();
+        var adjustments = (await db.QueryAsync<dynamic>(adjustmentSql, new { Year = year, Month = month }))
+            .ToDictionary(r => (Guid)r.EmployeeId, r => r);
+
+        // 事假/病假天數：Dictionary<(EmployeeId, LeaveType), TotalDays>
+        var leaveRecords = (await db.QueryAsync<dynamic>(leaveSql, new { FirstDay = firstDay, LastDay = lastDay }))
+            .ToList();
+        var leaveDaysMap = new Dictionary<(Guid, string), int>();
+        foreach (var lr in leaveRecords)
+            leaveDaysMap[((Guid)lr.EmployeeId, (string)lr.LeaveType)] = (int)lr.TotalDays;
 
         var results = new List<EmployeePayrollDto>();
         foreach (var emp in employees)
         {
-            decimal baseSalary  = (decimal)emp.BaseSalary;
-            decimal dailySalary = Math.Round(baseSalary / 30m, 0);
+            decimal baseSalary     = (decimal)emp.BaseSalary;
+            decimal mealAllowance  = (decimal?)emp.MealAllowance ?? 0m;
+            decimal overtimePay    = (decimal?)emp.OvertimePay ?? 0m;
+            decimal dailySalary    = Math.Round(baseSalary / 30m, 0);
 
             int holidayDays = travelDays.TryGetValue((Guid)emp.EmployeeId, out var days) ? days : 0;
             decimal holidayAllowance = dailySalary * holidayDays;
@@ -64,32 +99,91 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             var bracket = brackets.FirstOrDefault(b => (decimal)b.SalaryBracket >= baseSalary)
                        ?? brackets.LastOrDefault();
 
-            decimal laborIns  = bracket is not null ? (decimal)bracket.LaborInsuranceEmployee  : 0m;
-            decimal healthIns = bracket is not null ? (decimal)bracket.HealthInsuranceEmployee : 0m;
+            decimal fullLaborIns  = bracket is not null ? (decimal)bracket.LaborInsuranceEmployee  : 0m;
+            decimal healthIns     = bracket is not null ? (decimal)bracket.HealthInsuranceEmployee : 0m;
 
-            decimal netSalary = baseSalary + holidayAllowance - laborIns - healthIns;
+            // 入職首月：勞保費按加保天數比例計算（月勞保費 ÷ 30 × 當月加保天數）
+            // 健保費：入職當月收全月，不按比例
+            decimal laborIns = fullLaborIns;
+            DateTime? hireDate = (DateTime?)emp.HireDate;
+            if (hireDate.HasValue
+                && hireDate.Value.Year == year
+                && hireDate.Value.Month == month)
+            {
+                int insuredDays = (lastDay - hireDate.Value).Days + 1;
+                laborIns = Math.Round(fullLaborIns / 30m * insuredDays, 0);
+            }
+
+            // 事假扣薪：日薪 × 事假天數（不給薪）
+            var empId = (Guid)emp.EmployeeId;
+            int personalDays = leaveDaysMap.TryGetValue((empId, "personal"), out var pd) ? pd : 0;
+            decimal personalDeduction = dailySalary * personalDays;
+
+            // 病假扣薪：日薪 × 0.5 × 病假天數（半薪）
+            int sickDays = leaveDaysMap.TryGetValue((empId, "sick"), out var sd) ? sd : 0;
+            decimal sickDeduction = Math.Round(dailySalary * 0.5m * sickDays, 0);
+
+            // 其他加項 / 其他扣項
+            decimal otherAddition = 0m;
+            string? otherAdditionNote = null;
+            decimal otherDeduction = 0m;
+            string? otherDeductionNote = null;
+            string? note = null;
+            if (adjustments.TryGetValue(empId, out var adj))
+            {
+                otherAddition      = (decimal)adj.OtherAddition;
+                otherAdditionNote  = (string?)adj.OtherAdditionNote;
+                otherDeduction     = (decimal)adj.OtherDeduction;
+                otherDeductionNote = (string?)adj.OtherDeductionNote;
+                note               = (string?)adj.Note;
+            }
+
+            decimal netSalary = baseSalary + mealAllowance + overtimePay
+                              + holidayAllowance + otherAddition
+                              - laborIns - healthIns
+                              - personalDeduction - sickDeduction
+                              - otherDeduction;
 
             results.Add(new EmployeePayrollDto(
-                (Guid)emp.EmployeeId,
+                empId,
                 (string)emp.EmployeeName,
+                (string?)emp.Email,
+                (bool)emp.SendPaySlip,
                 (string?)emp.DepartmentName,
                 (string?)emp.JobTitleName,
                 (DateTime?)emp.HireDate,
                 baseSalary,
+                mealAllowance,
+                overtimePay,
                 dailySalary,
                 holidayDays,
                 holidayAllowance,
+                otherAddition,
+                otherAdditionNote,
                 laborIns,
                 healthIns,
+                personalDays,
+                personalDeduction,
+                sickDays,
+                sickDeduction,
+                otherDeduction,
+                otherDeductionNote,
+                note,
                 netSalary));
         }
 
         return new MonthlyPayrollDto(
             year, month, results,
             results.Sum(r => r.BaseSalary),
+            results.Sum(r => r.MealAllowance),
+            results.Sum(r => r.OvertimePay),
             results.Sum(r => r.HolidayAllowance),
+            results.Sum(r => r.OtherAddition),
             results.Sum(r => r.LaborInsurance),
             results.Sum(r => r.HealthInsurance),
+            results.Sum(r => r.PersonalLeaveDeduction),
+            results.Sum(r => r.SickLeaveDeduction),
+            results.Sum(r => r.OtherDeduction),
             results.Sum(r => r.NetSalary));
     }
 }

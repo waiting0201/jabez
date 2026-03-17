@@ -113,8 +113,11 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             JobTitleId   = int.TryParse(form["jobTitleId"], out var jtid) && jtid > 0 ? jtid : null,
             HireDate     = DateTime.TryParse(form["hireDate"], out var hd) ? hd : null,
             ResignDate   = DateTime.TryParse(form["resignDate"], out var rd) ? rd : null,
-            BaseSalary   = decimal.TryParse(form["baseSalary"], out var bs) ? bs : null,
-            AgentUserId  = Guid.TryParse(form["agentUserId"], out var aid) && aid != Guid.Empty ? aid : null,
+            BaseSalary    = decimal.TryParse(form["baseSalary"], out var bs) ? bs : null,
+            MealAllowance = decimal.TryParse(form["mealAllowance"], out var ma) ? ma : null,
+            OvertimePay   = decimal.TryParse(form["overtimePay"], out var op) ? op : null,
+            SendPaySlip   = form["sendPaySlip"] == "true",
+            AgentUserId   = Guid.TryParse(form["agentUserId"], out var aid) && aid != Guid.Empty ? aid : null,
             Birthday     = birthday,
             CreatedAt    = Clock.Now,
             UpdatedAt    = Clock.Now,
@@ -174,6 +177,12 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             user.ResignDate = DateTime.TryParse(form["resignDate"], out var rd) ? rd : null;
         if (form.ContainsKey("baseSalary"))
             user.BaseSalary = decimal.TryParse(form["baseSalary"], out var bs) ? bs : null;
+        if (form.ContainsKey("mealAllowance"))
+            user.MealAllowance = decimal.TryParse(form["mealAllowance"], out var ma) ? ma : null;
+        if (form.ContainsKey("overtimePay"))
+            user.OvertimePay = decimal.TryParse(form["overtimePay"], out var op) ? op : null;
+        if (form.ContainsKey("sendPaySlip"))
+            user.SendPaySlip = form["sendPaySlip"] == "true";
         if (form.ContainsKey("agentUserId"))
             user.AgentUserId = Guid.TryParse(form["agentUserId"], out var aid) && aid != Guid.Empty ? aid : null;
         if (form.ContainsKey("birthday"))

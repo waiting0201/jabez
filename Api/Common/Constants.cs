@@ -45,6 +45,7 @@ public static class PermissionCodes
     public const string InsuranceBracketsWrite      = "insurance-brackets:write";
     public const string InsuranceBracketsDelete     = "insurance-brackets:delete";
     public const string PayrollRead                 = "payroll:read";
+    public const string PayrollWrite                = "payroll:write";
     public const string ReportsOvertimeRead           = "reports-overtime:read";
     public const string ReportsPaymentRead            = "reports-payment:read";
     public const string ReportsProjectWaterLevelRead  = "reports-project-water-level:read";
