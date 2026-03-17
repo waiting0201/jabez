@@ -84,7 +84,7 @@ public sealed class AuthHandler(
         AutoClockOutInfo? autoClockOutInfo = null;
         if (pendingRecords.Count > 0)
         {
-            var setting = await db.SystemSettings.FirstOrDefaultAsync();
+            var setting = await db.SystemSettings.OrderBy(s => s.Id).FirstOrDefaultAsync();
             var workEndTime = TimeSpan.TryParse(setting?.WorkEndTime, out var t) ? t : new TimeSpan(18, 0, 0);
 
             foreach (var record in pendingRecords)

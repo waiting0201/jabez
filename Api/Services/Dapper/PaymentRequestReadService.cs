@@ -117,14 +117,24 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 return $"{alias}.ApprovalStatus = @StatusFilter";
 
             // Normal reviewer — "approved" tab: show tasks the user has already reviewed
+            // 請款申請額外允許財務部成員查看所有已核准的請款（因需設定撥款日期）
             if (statusFilter == "approved")
                 return $"""
                   {alias}.ApprovalStatus = 'approved'
-                  AND EXISTS (
-                    SELECT 1 FROM ApprovalRecords ar2
-                    WHERE ar2.ApplicationType = '{appType}'
-                      AND ar2.ApplicationId = {alias}.Id
-                      AND ar2.ReviewedById = @ReviewerUserId
+                  AND (
+                    EXISTS (
+                      SELECT 1 FROM ApprovalRecords ar2
+                      WHERE ar2.ApplicationType = '{appType}'
+                        AND ar2.ApplicationId = {alias}.Id
+                        AND ar2.ReviewedById = @ReviewerUserId
+                    )
+                    {(appType == "payment_request" ? $"""
+                    OR EXISTS (
+                      SELECT 1 FROM Departments d
+                      WHERE d.Id = @ReviewerDepartmentId
+                        AND d.Name = N'財務部'
+                    )
+                    """ : "")}
                   )
                   """;
 

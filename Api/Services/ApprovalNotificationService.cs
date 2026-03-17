@@ -63,10 +63,12 @@ public sealed class ApprovalNotificationService(
             var label   = AppTypeLabels.GetValueOrDefault(applicationType, applicationType);
             var summary = await GetSummaryAsync(applicationType, applicationId);
             var subject = $"[待審核] {label} #{applicationId} — {applicantName}";
+            var siteUrl = await GetSiteUrlAsync();
+            var linkUrl = BuildReviewUrl(siteUrl, applicationType, applicationId);
 
             foreach (var r in reviewers)
             {
-                var body = BuildReviewerEmail(r.Name, applicantName, label, applicationId, summary, targetStepOrder);
+                var body = BuildReviewerEmail(r.Name, applicantName, label, applicationId, summary, targetStepOrder, linkUrl);
                 await emailService.SendAsync(r.Email!, subject, body);
                 logger.LogInformation("已寄送審核通知：{Email}（{AppType} #{Id}）", r.Email, applicationType, applicationId);
             }
@@ -98,8 +100,16 @@ public sealed class ApprovalNotificationService(
                 _          => (action, action),
             };
 
+            var siteUrl = await GetSiteUrlAsync();
+            // 核准 → 連到簽核詳情；退回 → 連到申請編輯頁；拒絕 → 連到簽核詳情
+            var (linkUrl, linkText) = action switch
+            {
+                "returned" => (BuildRequestUrl(siteUrl, applicationType, applicationId), "前往修改申請"),
+                _          => (BuildReviewUrl(siteUrl, applicationType, applicationId), "查看詳情"),
+            };
+
             var subject = $"[{tag}] 您的{label} #{applicationId} {tag}";
-            var body    = BuildApplicantEmail(applicant.Name, label, applicationId, summary, desc, reviewNote);
+            var body    = BuildApplicantEmail(applicant.Name, label, applicationId, summary, desc, reviewNote, linkUrl, linkText);
 
             await emailService.SendAsync(applicant.Email, subject, body);
             logger.LogInformation("已寄送結果通知：{Email}（{AppType} #{Id} → {Action}）",
@@ -127,7 +137,9 @@ public sealed class ApprovalNotificationService(
             var summary = await GetSummaryAsync(applicationType, applicationId);
             var tag     = isDelegate ? "（代理審核）" : "（升級審核）";
             var subject = $"[待審核] {label} #{applicationId} — {applicantName}{tag}";
-            var body    = BuildReviewerEmail(reviewer.Name, applicantName, label, applicationId, summary, 1);
+            var siteUrl = await GetSiteUrlAsync();
+            var linkUrl = BuildReviewUrl(siteUrl, applicationType, applicationId);
+            var body    = BuildReviewerEmail(reviewer.Name, applicantName, label, applicationId, summary, 1, linkUrl);
 
             await emailService.SendAsync(reviewer.Email, subject, body);
             logger.LogInformation("已寄送升級審核通知：{Email}（{AppType} #{Id}）", reviewer.Email, applicationType, applicationId);
@@ -168,10 +180,12 @@ public sealed class ApprovalNotificationService(
             }
 
             var subject = $"[可撥款] 請款申請 #{applicationId} 已核准 — {applicantName}";
+            var siteUrl = await GetSiteUrlAsync();
+            var linkUrl = BuildReviewUrl(siteUrl, "payment_request", applicationId);
 
             foreach (var r in recipients)
             {
-                var body = BuildFinanceDeptEmail(r.Name, applicantName, applicationId, summary);
+                var body = BuildFinanceDeptEmail(r.Name, applicantName, applicationId, summary, linkUrl);
                 await emailService.SendAsync(r.Email!, subject, body);
                 logger.LogInformation("已寄送撥款通知：{Email}（PaymentRequest #{Id}）", r.Email, applicationId);
             }
@@ -238,11 +252,50 @@ public sealed class ApprovalNotificationService(
             : $"#{id}";
     }
 
+    // ── 取得前端網站網址 ─────────────────────────────────────────────────────────
+
+    private async Task<string> GetSiteUrlAsync()
+    {
+        var setting = await db.SystemSettings.AsNoTracking().OrderBy(s => s.Id).FirstOrDefaultAsync();
+        var url = setting?.SiteUrl ?? "https://admin.jabez.com";
+        return url.TrimEnd('/');
+    }
+
+    /// <summary>根據申請類型產生前端審核頁面連結</summary>
+    private static string BuildReviewUrl(string siteUrl, string applicationType, int applicationId)
+        => $"{siteUrl}/admin/approval-tasks/{applicationType}/{applicationId}/review";
+
+    /// <summary>根據申請類型產生前端申請詳情連結（退回/拒絕時讓申請人查看）</summary>
+    private static string BuildRequestUrl(string siteUrl, string applicationType, int applicationId)
+    {
+        var path = applicationType switch
+        {
+            "payment_request" => "payment-requests",
+            "leave"           => "leave-requests",
+            "travel"          => "travel-requests",
+            "overtime"        => "overtime-requests",
+            _                 => "approval-tasks",
+        };
+        return $"{siteUrl}/admin/{path}/{applicationId}/edit";
+    }
+
+    /// <summary>產生 HTML 按鈕</summary>
+    private static string BuildButtonHtml(string url, string text)
+        => $"""
+            <div style="margin: 16px 0;">
+              <a href="{url}" target="_blank"
+                 style="display: inline-block; padding: 10px 24px; background: #699F34; color: #fff;
+                        text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;">
+                {text}
+              </a>
+            </div>
+            """;
+
     // ── Email HTML 模板 ───────────────────────────────────────────────────────
 
     private static string BuildReviewerEmail(
         string reviewerName, string applicantName, string label,
-        int applicationId, string summary, int stepOrder)
+        int applicationId, string summary, int stepOrder, string linkUrl)
     {
         return $"""
         <div style="font-family: 'Microsoft JhengHei', 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
@@ -268,7 +321,7 @@ public sealed class ApprovalNotificationService(
                 <td style="padding: 8px 12px; color: #525358;">第 {stepOrder} 步</td>
               </tr>
             </table>
-            <p style="color: #525358; margin: 0 0 8px;">請登入系統進行審核。</p>
+            {BuildButtonHtml(linkUrl, "前往審核")}
             <hr style="border: none; border-top: 1px solid #DDD6C8; margin: 16px 0;" />
             <p style="color: #A39685; font-size: 12px; margin: 0;">此信件由系統自動寄發，請勿直接回覆。</p>
           </div>
@@ -277,7 +330,7 @@ public sealed class ApprovalNotificationService(
     }
 
     private static string BuildFinanceDeptEmail(
-        string recipientName, string applicantName, int applicationId, string summary)
+        string recipientName, string applicantName, int applicationId, string summary, string linkUrl)
     {
         return $"""
         <div style="font-family: 'Microsoft JhengHei', 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
@@ -299,7 +352,7 @@ public sealed class ApprovalNotificationService(
                 <td style="padding: 8px 12px; color: #525358;">{summary}</td>
               </tr>
             </table>
-            <p style="color: #525358; margin: 0 0 8px;">請登入系統設定預計撥款日與撥款日。</p>
+            {BuildButtonHtml(linkUrl, "前往設定撥款日期")}
             <hr style="border: none; border-top: 1px solid #DDD6C8; margin: 16px 0;" />
             <p style="color: #A39685; font-size: 12px; margin: 0;">此信件由系統自動寄發，請勿直接回覆。</p>
           </div>
@@ -309,7 +362,7 @@ public sealed class ApprovalNotificationService(
 
     private static string BuildApplicantEmail(
         string applicantName, string label, int applicationId,
-        string summary, string description, string? reviewNote)
+        string summary, string description, string? reviewNote, string linkUrl, string linkText)
     {
         var noteHtml = string.IsNullOrWhiteSpace(reviewNote)
             ? ""
@@ -341,6 +394,7 @@ public sealed class ApprovalNotificationService(
               </tr>
               {noteHtml}
             </table>
+            {BuildButtonHtml(linkUrl, linkText)}
             <hr style="border: none; border-top: 1px solid #DDD6C8; margin: 16px 0;" />
             <p style="color: #A39685; font-size: 12px; margin: 0;">此信件由系統自動寄發，請勿直接回覆。</p>
           </div>

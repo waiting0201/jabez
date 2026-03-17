@@ -34,8 +34,29 @@ public sealed class ApprovalFlowService(
         int currentStep = 1;
         foreach (var step in steps)
         {
-            if (!IsApplicantTheReviewer(step, applicant))
-                return (currentStep, false, null); // 這一步不是自己 → 從這步開始
+            bool isSelfReview = IsApplicantTheReviewer(step, applicant);
+
+            if (!isSelfReview)
+            {
+                // 請款：若步驟使用申請人部門但該部門無符合條件的審核者，也跳過
+                if (applicationType == "payment_request" && step.UseApplicantDepartment && applicant.DepartmentId.HasValue)
+                {
+                    bool hasReviewer = await db.Users.AsNoTracking().AnyAsync(u =>
+                        u.DepartmentId == applicant.DepartmentId
+                        && u.Id != applicantId
+                        && !u.IsSuperAdmin
+                        && (step.JobTitleId == null || u.JobTitleId == step.JobTitleId));
+
+                    if (!hasReviewer)
+                    {
+                        // 該部門找不到審核者 → 跳過此步驟
+                        currentStep++;
+                        continue;
+                    }
+                }
+
+                return (currentStep, false, null); // 這一步不是自己且有審核者 → 從這步開始
+            }
 
             // 自審情境：根據申請類型決定處理方式
             if (applicationType is "leave" or "travel" or "overtime")
