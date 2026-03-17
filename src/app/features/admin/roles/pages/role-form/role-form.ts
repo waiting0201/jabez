@@ -6,6 +6,7 @@ import {forkJoin, of} from 'rxjs';
 import {RoleService} from '../../services/role.service';
 import {PermissionService} from '../../../permissions/services/permission.service';
 import {Permission} from '../../../permissions/models/permission.model';
+import {AuthService} from '../../../../../core/auth/services/auth.service';
 
 @Component({
   selector: 'app-role-form',
@@ -18,6 +19,7 @@ export class RoleForm implements OnInit {
   private permissionService = inject(PermissionService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private authService = inject(AuthService);
 
   permissions = signal<Permission[]>([]);
   modules = signal<string[]>([]);
@@ -42,8 +44,10 @@ export class RoleForm implements OnInit {
       role: this.roleId ? this.roleService.getById(this.roleId) : of(null),
     }).subscribe({
       next: ({permissions, role}) => {
-        // 權限管理為 superadmin 專屬，不開放給一般角色指派
-        const filtered = permissions.filter(x => x.module !== '權限管理');
+        // 權限管理模組僅 Superadmin 可見
+        const filtered = this.authService.isSuperAdmin()
+          ? permissions
+          : permissions.filter(x => x.module !== '權限管理');
         this.permissions.set(filtered);
         this.modules.set([...new Set(filtered.map(x => x.module))]);
         if (role) this.form.patchValue({...role});
