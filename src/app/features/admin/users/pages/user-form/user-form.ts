@@ -57,7 +57,7 @@ export class UserForm implements OnInit {
   form = this.fb.group({
     name:         ['', Validators.required],
     email:        ['', [Validators.required, Validators.email]],
-    password:     ['', [Validators.required, Validators.minLength(6)]],
+    password:     ['', Validators.minLength(6)],
     roleId:       ['' as string],
     status:       ['active' as UserStatus, Validators.required],
     departmentId: [null as number | null],
@@ -66,6 +66,7 @@ export class UserForm implements OnInit {
     resignDate:   ['' as string],
     baseSalary:   [null as number | null],
     agentUserId:  ['' as string],
+    birthday:     ['' as string, Validators.required],
   });
 
   ngOnInit() {
@@ -98,10 +99,6 @@ export class UserForm implements OnInit {
     this.userId = this.route.snapshot.paramMap.get('id') ?? '';
     if (this.userId) {
       this.isEdit = true;
-      // 編輯模式：密碼非必填
-      this.form.get('password')!.clearValidators();
-      this.form.get('password')!.setValidators(Validators.minLength(6));
-      this.form.get('password')!.updateValueAndValidity();
       this.userService.getById(this.userId).subscribe(user => {
         if (!user) return;
         this.form.patchValue({
@@ -113,6 +110,7 @@ export class UserForm implements OnInit {
           resignDate:   user.resignDate ? this.toDateString(user.resignDate) : '',
           baseSalary:   user.baseSalary ?? null,
           agentUserId:  user.agentUserId ?? '',
+          birthday:     user.birthday ? this.toDateString(user.birthday) : '',
         });
         this.signatureUrl.set(user.signatureUrl ?? null);
       });
@@ -172,7 +170,7 @@ export class UserForm implements OnInit {
       this.form.markAllAsTouched();
       return;
     }
-    const {roleId, hireDate, resignDate, departmentId, jobTitleId, agentUserId, password, ...rest} = this.form.value as any;
+    const {roleId, hireDate, resignDate, departmentId, jobTitleId, agentUserId, birthday, password, ...rest} = this.form.value as any;
 
     const payload: Record<string, any> = {
       ...rest,
@@ -183,6 +181,7 @@ export class UserForm implements OnInit {
       hireDate:     hireDate   ? new Date(hireDate)   : undefined,
       resignDate:   resignDate ? new Date(resignDate) : undefined,
       agentUserId:  agentUserId || undefined,
+      birthday:     birthday ? new Date(birthday) : undefined,
     };
 
     const obs = this.isEdit

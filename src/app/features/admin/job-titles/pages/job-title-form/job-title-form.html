@@ -1,16 +1,20 @@
 <div class="container-fluid py-3">
   <div class="flex items-center gap-2 mb-6">
     <a routerLink="/admin/job-titles" class="btn btn-sm btn-outline-secondary">
-      <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+      <svg class="sa-icon">
+        <use href="/assets/icons/sprite.svg#arrow-left"></use>
+      </svg>
     </a>
     <h4 class="mb-0">{{ isEdit ? '編輯職稱' : '新增職稱' }}</h4>
   </div>
 
   @if (errorMsg()) {
-    <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
-      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
-      {{ errorMsg() }}
-    </div>
+  <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+    <svg class="sa-icon" style="stroke: currentColor">
+      <use href="/assets/icons/sprite.svg#alert-triangle"></use>
+    </svg>
+    {{ errorMsg() }}
+  </div>
   }
 
   <form [formGroup]="form" (ngSubmit)="submit()">
@@ -23,16 +27,16 @@
               <label class="form-label fw-500">職稱名稱 <span class="text-danger">*</span></label>
               <input type="text" class="form-control" formControlName="name" placeholder="例如：資深工程師">
               @if (form.get('name')?.invalid && form.get('name')?.touched) {
-                <div class="text-danger small mt-1">請輸入職稱名稱。</div>
+              <div class="text-danger small mt-1">請輸入職稱名稱。</div>
               }
             </div>
 
             <div class="mb-4">
               <label class="form-label fw-500">排序 <span class="text-danger">*</span></label>
               <input type="number" class="form-control" formControlName="level" min="1" placeholder="例如：2">
-              <div class="text-muted small mt-1">數字越大排序越高。</div>
+              <div class="text-muted small mt-1">數字越小職位越高。</div>
               @if (form.get('level')?.invalid && form.get('level')?.touched) {
-                <div class="text-danger small mt-1">請輸入有效排序（最小值為 1）。</div>
+              <div class="text-danger small mt-1">請輸入有效排序（最小值為 1）。</div>
               }
             </div>
 

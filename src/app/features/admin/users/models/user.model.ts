@@ -18,5 +18,6 @@ export interface User {
   baseSalary?: number;
   agentUserId?: string;
   agentName?: string;
+  birthday?: Date;
   createdAt: Date;
 }

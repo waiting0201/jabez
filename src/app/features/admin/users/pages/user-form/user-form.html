@@ -50,17 +50,11 @@
                 }
               </div>
               <div class="col-12 col-md-6">
-                <label class="form-label fw-500">密碼 <span class="text-danger">*</span></label>
+                <label class="form-label fw-500">密碼</label>
                 <input type="password" class="form-control" formControlName="password"
-                       [placeholder]="isEdit ? '留空則不修改' : '請輸入密碼（至少 6 碼）'">
+                       placeholder="留空則不修改（至少 6 碼）">
                 @if (form.get('password')?.invalid && form.get('password')?.touched) {
-                  <div class="text-danger small mt-1">
-                    @if (form.get('password')?.errors?.['required']) {
-                      請輸入密碼。
-                    } @else if (form.get('password')?.errors?.['minlength']) {
-                      密碼至少需要 6 個字元。
-                    }
-                  </div>
+                  <div class="text-danger small mt-1">密碼至少需要 6 個字元。</div>
                 }
               </div>
               <div class="col-12 col-md-6">
@@ -116,21 +110,24 @@
                 </select>
               </div>
               <div class="col-12 col-md-6">
+                <label class="form-label fw-500">生日 <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" formControlName="birthday">
+                @if (form.get('birthday')?.invalid && form.get('birthday')?.touched) {
+                  <div class="text-danger small mt-1">請選擇生日。</div>
+                }
+              </div>
+              <div class="col-12 col-md-6">
                 <label class="form-label fw-500">入職日</label>
                 <input type="date" class="form-control" formControlName="hireDate">
               </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label fw-500">離職日</label>
-                <input type="date" class="form-control" formControlName="resignDate">
-              </div>
-              <div class="col-12 col-md-6">
+              <div class="col-12 col-md-4">
                 <label class="form-label fw-500">底薪</label>
                 <div class="input-group">
                   <span class="input-group-text">NT$</span>
                   <input type="number" class="form-control" formControlName="baseSalary" placeholder="例如：50000" min="0">
                 </div>
               </div>
-              <div class="col-12 col-md-6">
+              <div class="col-12 col-md-4">
                 <label class="form-label fw-500">勞保（員工負擔）</label>
                 <div class="input-group">
                   <span class="input-group-text">NT$</span>
@@ -138,13 +135,17 @@
                          [value]="laborInsurance() !== null ? (laborInsurance() | number:'1.0-0') : '—'">
                 </div>
               </div>
-              <div class="col-12 col-md-6">
+              <div class="col-12 col-md-4">
                 <label class="form-label fw-500">健保（員工負擔）</label>
                 <div class="input-group">
                   <span class="input-group-text">NT$</span>
                   <input type="text" class="form-control bg-light" readonly
                          [value]="healthInsurance() !== null ? (healthInsurance() | number:'1.0-0') : '—'">
                 </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">離職日</label>
+                <input type="date" class="form-control" formControlName="resignDate">
               </div>
               <div class="col-12 col-md-6">
                 <label class="form-label fw-500">職務代理人</label>
@@ -163,6 +164,7 @@
         <div class="card border-0 shadow-sm mb-4">
           <div class="card-header bg-transparent fw-500">簽名檔</div>
           <div class="card-body">
+            <p class="text-muted small mb-3">支援 PNG、JPEG、GIF、WebP 格式，建議尺寸 300×150 像素，檔案大小不超過 2MB。</p>
             @if (displaySignature) {
               <div class="mb-3">
                 <div class="border rounded p-3 bg-white inline-block">
@@ -182,6 +184,7 @@
               </div>
             } @else {
               <p class="text-muted small mb-3">尚未上傳簽名檔，選擇檔案後將於儲存時一併上傳。</p>
+
               <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
                 <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
                 選擇簽名檔
