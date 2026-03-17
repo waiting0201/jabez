@@ -116,7 +116,10 @@
                     <span class="text-accent fw-600">（{{ reservedPercentage() }}%）</span>
                   }
                 </label>
-                <div class="form-control bg-elevated">{{ reservedAmount()! | number }}</div>
+                <div class="input-group">
+                  <span class="input-group-text">NT$</span>
+                  <div class="form-control bg-elevated">{{ reservedAmount()! | number:'1.0-0' }}</div>
+                </div>
               </div>
             }
 

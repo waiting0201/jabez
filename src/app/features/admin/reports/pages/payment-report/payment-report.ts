@@ -8,7 +8,6 @@ import * as XLSX from 'xlsx';
 const PAYMENT_TYPE_LABELS: Record<string, string> = {
   vendor: '廠商請款',
   travel: '員工差旅',
-  advance: '員工預支',
 };
 
 const STATUS_LABELS: Record<string, string> = {

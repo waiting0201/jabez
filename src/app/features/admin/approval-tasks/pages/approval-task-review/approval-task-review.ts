@@ -16,6 +16,29 @@ import {
   PAYMENT_TYPE_LABELS, LEAVE_TYPE_LABELS,
 } from '../../models/approval-task.model';
 
+/** ArrayBuffer → base64（分塊處理避免 stack overflow） */
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunk = 8192;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)));
+  }
+  return btoa(binary);
+}
+
+/** CIS 色彩設計語言 */
+const CIS = {
+  forest:      [105, 159, 52]  as const,
+  forestMid:   [74, 107, 58]   as const,
+  accent:      [140, 115, 85]  as const,
+  textPrimary: [82, 83, 88]    as const,
+  textMuted:   [163, 150, 133] as const,
+  bgBase:      [245, 242, 237] as const,
+  bgSurface:   [253, 250, 245] as const,
+  border:      [221, 214, 200] as const,
+};
+
 @Component({
   selector: 'app-approval-task-review',
   templateUrl: './approval-task-review.html',
@@ -136,6 +159,253 @@ export class ApprovalTaskReview implements OnInit {
       error: (err: HttpErrorResponse) => {
         this.paymentDateError.set(err.error?.message || '更新撥款日期失敗。');
       },
+    });
+  }
+
+  /** 資源快取：字型只下載一次 */
+  private assetCache: Promise<{regular: string; bold: string}> | null = null;
+  pdfLoading = signal(false);
+
+  private loadFonts(): Promise<{regular: string; bold: string}> {
+    if (!this.assetCache) {
+      this.assetCache = Promise.all([
+        fetch('/assets/fonts/NotoSansTC-Regular.ttf').then(r => r.arrayBuffer()),
+        fetch('/assets/fonts/NotoSansTC-Bold.ttf').then(r => r.arrayBuffer()),
+      ]).then(([regular, bold]) => ({
+        regular: arrayBufferToBase64(regular),
+        bold: arrayBufferToBase64(bold),
+      }));
+    }
+    return this.assetCache;
+  }
+
+  /** 列印請款單 PDF */
+  printPaymentPdf(task: ApprovalTask) {
+    if (!task.paymentDetail || task.status !== 'approved') return;
+
+    this.pdfLoading.set(true);
+
+    Promise.all([
+      import('jspdf'),
+      import('jspdf-autotable'),
+      this.loadFonts(),
+    ]).then(([{default: jsPDF}, {default: autoTable}, fonts]) => {
+      const doc = new jsPDF('portrait', 'mm', 'a4');
+      const F = 'NotoSansTC';
+
+      doc.addFileToVFS('NotoSansTC-Regular.ttf', fonts.regular);
+      doc.addFileToVFS('NotoSansTC-Bold.ttf', fonts.bold);
+      doc.addFont('NotoSansTC-Regular.ttf', F, 'normal');
+      doc.addFont('NotoSansTC-Bold.ttf', F, 'bold');
+
+      const pw = doc.internal.pageSize.getWidth();   // 210
+      const ph = doc.internal.pageSize.getHeight();   // 297
+      const mx = 18;                                   // 左右邊距
+      const cw = pw - mx * 2;                         // 內容寬度
+      const d = task.paymentDetail!;
+      const fmt = (n: number) => n.toLocaleString('zh-TW');
+
+      let y = 22;
+
+      // ── 頂部裝飾線（森林綠雙線）──
+      doc.setDrawColor(...CIS.forest);
+      doc.setLineWidth(0.8);
+      doc.line(mx, y, pw - mx, y);
+      doc.setLineWidth(0.3);
+      doc.line(mx, y + 1.5, pw - mx, y + 1.5);
+
+      // ── 標題：依請款類型顯示 ──
+      y += 12;
+      const titleMap: Record<string, string> = {vendor: '廠 商 請 款 單', travel: '員 工 差 旅 請 款 單'};
+      const pdfTitle = titleMap[d.paymentType] || '請 款 單';
+      doc.setFont(F, 'bold');
+      doc.setFontSize(20);
+      doc.setTextColor(...CIS.forest);
+      doc.text(pdfTitle, pw / 2, y, {align: 'center'});
+
+      // ── 受款人 / 申請日期 ──
+      y += 12;
+      doc.setFont(F, 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(...CIS.textPrimary);
+      doc.text('受款人 ：', mx, y);
+      doc.setFont(F, 'bold');
+      doc.text(task.submittedBy, mx + 22, y);
+
+      doc.setFont(F, 'normal');
+      const submitDate = new Date(task.submittedAt).toLocaleDateString('zh-TW', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+      });
+      doc.text('申請日期 ：', pw - mx - 50, y);
+      doc.setFont(F, 'bold');
+      doc.text(submitDate, pw - mx - 24, y);
+
+      // ── 明細表格 ──
+      y += 8;
+      const invoices = d.invoices || [];
+      const bodyRows = invoices.map(inv => [
+        d.projectCode,
+        inv.invoiceNo || '—',
+        inv.itemName || '—',
+        fmt(inv.amount),
+        inv.note || '',
+      ]);
+      // 合計列
+      bodyRows.push([
+        {content: '合　計', colSpan: 3, styles: {halign: 'center', fontStyle: 'bold'}} as any,
+        {content: fmt(d.totalAmount), styles: {fontStyle: 'bold'}} as any,
+        '',
+      ]);
+
+      autoTable(doc, {
+        startY: y,
+        margin: {left: mx, right: mx, top: 20},
+        theme: 'grid',
+        showHead: 'everyPage',
+        styles: {
+          font: F,
+          fontSize: 9,
+          textColor: [...CIS.textPrimary],
+          lineColor: [...CIS.border],
+          lineWidth: 0.3,
+          cellPadding: {top: 3, bottom: 3, left: 4, right: 4},
+        },
+        headStyles: {
+          font: F,
+          fillColor: [...CIS.forest],
+          textColor: 255,
+          fontSize: 9.5,
+          fontStyle: 'bold',
+          halign: 'center',
+          cellPadding: {top: 4, bottom: 4, left: 4, right: 4},
+        },
+        bodyStyles: {
+          font: F,
+          fontSize: 9,
+          textColor: [...CIS.textPrimary],
+        },
+        columnStyles: {
+          0: {cellWidth: cw * 0.14, halign: 'center'},  // 案號
+          1: {cellWidth: cw * 0.16, halign: 'center'},  // 發票號碼
+          2: {cellWidth: cw * 0.30},                     // 項目
+          3: {cellWidth: cw * 0.16, halign: 'right'},    // 金額
+          4: {cellWidth: cw * 0.24},                     // 備註
+        },
+        head: [['案 號', '發票號碼', '項　　目', '金　額', '備　註']],
+        body: bodyRows,
+      });
+
+      // ── 簽名欄 ──
+      const tableEndY = (doc as any).lastAutoTable.finalY;
+      y = tableEndY + 16;
+
+      // 簽名欄標題對應簽核步驟
+      // Step 4: 總監, Step 3: 財務, Step 2: 會計, Step 1: 部門主管, 請款人
+      const signBlocks: {label: string; name: string; date: string}[] = [];
+      const records = task.approvalRecords || [];
+
+      // 根據 flow steps 對應簽名欄
+      const stepLabels: Record<number, string> = {};
+      if (task.flow) {
+        for (const step of task.flow.steps) {
+          // 根據步驟順序設定標籤
+          if (step.jobTitleName?.includes('總監') || step.stepOrder === 4) {
+            stepLabels[step.stepOrder] = '總監';
+          } else if (step.departmentName?.includes('財務') || step.stepOrder === 3) {
+            stepLabels[step.stepOrder] = '財務';
+          } else if (step.departmentName?.includes('會計') || step.stepOrder === 2) {
+            stepLabels[step.stepOrder] = '會計';
+          } else if (step.stepOrder === 1) {
+            stepLabels[step.stepOrder] = '部門主管';
+          } else {
+            stepLabels[step.stepOrder] = step.jobTitleName || `Step ${step.stepOrder}`;
+          }
+        }
+      }
+
+      // 按步驟順序倒排（總監在最左邊）
+      const stepOrders = Object.keys(stepLabels).map(Number).sort((a, b) => b - a);
+      for (const so of stepOrders) {
+        const rec = records.find(r => r.stepOrder === so);
+        signBlocks.push({
+          label: stepLabels[so],
+          name: rec?.reviewedBy || '',
+          date: rec?.reviewedAt
+            ? new Date(rec.reviewedAt).toLocaleDateString('zh-TW', {year: 'numeric', month: '2-digit', day: '2-digit'})
+            : '',
+        });
+      }
+
+      // 請款人（最右邊）
+      signBlocks.push({
+        label: '請款人',
+        name: task.submittedBy,
+        date: submitDate,
+      });
+
+      // 如果簽名欄會超出頁面，換頁
+      if (y + 40 > ph - 20) {
+        doc.addPage();
+        y = 30;
+      }
+
+      // 繪製簽名框
+      const blockCount = signBlocks.length;
+      const gap = 4;
+      const blockW = (cw - gap * (blockCount - 1)) / blockCount;
+
+      // 繪製上方分隔線
+      doc.setDrawColor(...CIS.border);
+      doc.setLineWidth(0.3);
+      doc.line(mx, y, pw - mx, y);
+
+      y += 6;
+      for (let i = 0; i < blockCount; i++) {
+        const bx = mx + i * (blockW + gap);
+        const block = signBlocks[i];
+
+        // 標籤
+        doc.setFont(F, 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(...CIS.textPrimary);
+        doc.text(block.label, bx + blockW / 2, y, {align: 'center'});
+
+        // 簽名線
+        const lineY = y + 16;
+        doc.setDrawColor(...CIS.border);
+        doc.setLineWidth(0.2);
+        doc.line(bx + 2, lineY, bx + blockW - 2, lineY);
+
+        // 簽核者名字（簽名線上方）
+        if (block.name) {
+          doc.setFont(F, 'normal');
+          doc.setFontSize(9);
+          doc.setTextColor(...CIS.textPrimary);
+          doc.text(block.name, bx + blockW / 2, lineY - 3, {align: 'center'});
+        }
+
+        // 日期（簽名線下方）
+        if (block.date) {
+          doc.setFont(F, 'normal');
+          doc.setFontSize(7.5);
+          doc.setTextColor(...CIS.textMuted);
+          doc.text(block.date, bx + blockW / 2, lineY + 5, {align: 'center'});
+        }
+      }
+
+      // ── 底部裝飾線（簽名欄下方）──
+      const bottomY = y + 26;
+      doc.setDrawColor(...CIS.forest);
+      doc.setLineWidth(0.3);
+      doc.line(mx, bottomY, pw - mx, bottomY);
+      doc.setLineWidth(0.8);
+      doc.line(mx, bottomY + 1.5, pw - mx, bottomY + 1.5);
+
+      doc.save(`請款單-${d.projectCode}-${task.id}.pdf`);
+      this.pdfLoading.set(false);
+    }).catch(() => {
+      this.pdfLoading.set(false);
+      this.errorMsg.set('匯出 PDF 失敗，請確認字型檔案是否存在。');
     });
   }
 

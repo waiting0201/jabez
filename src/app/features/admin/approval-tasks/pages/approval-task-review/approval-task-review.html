@@ -466,7 +466,21 @@
                 <div class="text-muted small mb-1 fw-500">審核意見：</div>
                 <div class="border rounded p-4 bg-[--bg-base] small mb-4">{{ task.reviewNote }}</div>
               }
-              <div class="mt-2">
+              <div class="mt-2 flex gap-2">
+                @if (task.applicationType === 'payment_request' && task.paymentDetail) {
+                  <button type="button" class="btn btn-primary inline-flex items-center gap-2"
+                          [disabled]="pdfLoading()" (click)="printPaymentPdf(task)">
+                    @if (pdfLoading()) {
+                      <span class="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                      產生中…
+                    } @else {
+                      <svg class="sa-icon" style="width:16px;height:16px;stroke:currentColor">
+                        <use href="/assets/icons/sprite.svg#printer"></use>
+                      </svg>
+                      列印請款單
+                    }
+                  </button>
+                }
                 <a routerLink="/admin/approval-tasks" class="btn btn-outline-secondary">返回列表</a>
               </div>
             </div>

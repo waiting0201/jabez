@@ -21,7 +21,6 @@ export const TASK_STATUS_CLASSES: Record<TaskStatus, string> = {
 export const PAYMENT_TYPE_LABELS: Record<PaymentType, string> = {
   vendor:  '廠商請款',
   travel:  '員工差旅',
-  advance: '員工預支',
 };
 
 export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
