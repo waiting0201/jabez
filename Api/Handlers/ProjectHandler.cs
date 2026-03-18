@@ -19,12 +19,21 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader)
             int page     = int.TryParse(req.Query["page"],     out var p)  ? Math.Max(1, p)         : 1;
             int pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, 100) : 20;
             string? search = req.Query["search"];
-            var result = await reader.GetPagedAsync(page, pageSize, search);
+            int? year = int.TryParse(req.Query["year"], out var y) ? y : null;
+            string? status = req.Query["status"];
+            var result = await reader.GetPagedAsync(page, pageSize, search, year, status);
             return new OkObjectResult(ApiResponse.Ok(result));
         }
 
         var all = await reader.GetAllAsync();
         return new OkObjectResult(ApiResponse.Ok(all));
+    }
+
+    /// <summary>取得所有年度（依 StartDate 年份去重）</summary>
+    public async Task<IActionResult> GetYearsAsync()
+    {
+        var years = await reader.GetYearsAsync();
+        return new OkObjectResult(ApiResponse.Ok(years));
     }
 
     /// <summary>取得未結案專案（不需 ProjectsRead 權限，供請款/加班表單下拉用）</summary>

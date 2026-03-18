@@ -21,6 +21,7 @@ public sealed record PaymentRequestDto(
     string           Type,
     int              ProjectId,
     string           ProjectCode,
+    string           ProjectName,
     InvoiceItemDto[] Invoices,
     decimal          TotalAmount,
     string           ApprovalStatus,
@@ -87,6 +88,7 @@ public sealed record PaymentTaskDetailDto(
     int              PaymentRequestId,
     string           PaymentType,
     string           ProjectCode,
+    string           ProjectName,
     InvoiceItemDto[] Invoices,
     decimal          TotalAmount,
     DateTime?        EstimatedPaymentDate,
@@ -108,6 +110,7 @@ public sealed record TravelTaskDetailDto(
     decimal  EstimatedCost,
     string   Purpose,
     string?  ProjectCode,
+    string?  ProjectName,
     bool     IsHolidayTravel);
 
 public sealed record OvertimeTaskDetailDto(

@@ -9,7 +9,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
 {
     // ── 通用 JOIN SQL ─────────────────────────────────────────────────────────
     private const string BaseSql = """
-        SELECT pr.Id, pr.Type, pr.ProjectId, proj.Code AS ProjectCode,
+        SELECT pr.Id, pr.Type, pr.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                pr.TotalAmount, pr.ApprovalStatus, pr.EstimatedPaymentDate, pr.PaidAt,
                sub.Name AS SubmittedBy, pr.CreatedAt,
                pr.ReviewedAt, pr.ReviewNote,
@@ -230,7 +230,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         string advanceWhere  = filterId.HasValue ? BuildWhere(advanceIdWhere,  "") : BuildWhere("", StepMatchClause("adv", "asub", "advance"));
 
         var paymentSql = $"""
-            SELECT pr.Id, pr.Type AS PaymentType, proj.Code AS ProjectCode,
+            SELECT pr.Id, pr.Type AS PaymentType, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    pr.TotalAmount, pr.ApprovalStatus, pr.EstimatedPaymentDate, pr.PaidAt, pr.ApprovalItemId, pr.CurrentStepOrder,
                    sub.Name AS SubmittedBy, sub.SignatureUrl AS SubmittedBySignatureUrl, pr.CreatedAt, pr.ReviewedAt, pr.ReviewNote,
                    ii.Id AS InvId, ii.FileName, ii.InvoiceNo, ii.Amount AS InvAmount, ii.ItemName AS InvItemName, ii.Note AS InvNote, ii.FileUrl AS InvFileUrl
@@ -254,7 +254,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
 
         var travelSql = $"""
             SELECT tr.Id, tr.Destination, tr.StartDate, tr.EndDate,
-                   tr.EstimatedCost, tr.Purpose, proj.Code AS ProjectCode,
+                   tr.EstimatedCost, tr.Purpose, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    tr.IsHolidayTravel,
                    tr.ApprovalStatus, tr.ApprovalItemId, tr.CurrentStepOrder,
                    u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, tr.CreatedAt, tr.ReviewedAt, tr.ReviewNote
@@ -277,7 +277,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             """;
 
         var advanceSql = $"""
-            SELECT adv.Id, adv.RequestNo, proj.Code AS ProjectCode,
+            SELECT adv.Id, adv.RequestNo, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    adv.ActivityName, adv.GrandTotal,
                    adv.ApprovalStatus, adv.ApprovalItemId, adv.CurrentStepOrder,
                    adv.EstimatedPaymentDate, adv.PaidAt,
@@ -412,6 +412,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (int)x.pr.Id,
                 (string)x.pr.PaymentType,
                 (string)x.pr.ProjectCode,
+                (string)x.pr.ProjectName,
                 [.. x.invoices],
                 (decimal)x.pr.TotalAmount,
                 (DateTime?)x.pr.EstimatedPaymentDate,
@@ -466,6 +467,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (decimal)row.EstimatedCost,
                 (string)row.Purpose,
                 (string?)row.ProjectCode,
+                (string?)row.ProjectName,
                 (bool)row.IsHolidayTravel),
             null, null,
             GetRecords("travel", (int)row.Id),
@@ -511,6 +513,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (int)row.Id,
                 (string)row.RequestNo,
                 (string)row.ProjectCode,
+                (string)row.ProjectName,
                 (string)row.ActivityName,
                 (decimal)row.GrandTotal,
                 (DateTime?)row.EstimatedPaymentDate,
@@ -551,6 +554,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             (string)x.pr.Type,
             (int)x.pr.ProjectId,
             (string)x.pr.ProjectCode,
+            (string)x.pr.ProjectName,
             [.. x.invoices],
             (decimal)x.pr.TotalAmount,
             (string)x.pr.ApprovalStatus,

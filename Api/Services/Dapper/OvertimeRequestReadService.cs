@@ -27,8 +27,8 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
                  .Where(id => id > 0)
                  .ToArray();
 
-    /// <summary>根據一批 ProjectIds 字串批次查詢對應 Code</summary>
-    private async Task<Dictionary<int, string>> GetProjectCodeMapAsync(IEnumerable<string?> allProjectIds)
+    /// <summary>根據一批 ProjectIds 字串批次查詢對應 Code 與 Name</summary>
+    private async Task<Dictionary<int, (string Code, string Name)>> GetProjectCodeMapAsync(IEnumerable<string?> allProjectIds)
     {
         var ids = allProjectIds
             .Where(s => !string.IsNullOrEmpty(s))
@@ -40,21 +40,23 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
 
         if (ids.Length == 0) return new();
 
-        const string sql = "SELECT Id, Code FROM Projects WHERE Id IN @Ids";
-        var rows = await db.QueryAsync<(int Id, string Code)>(sql, new { Ids = ids });
-        return rows.ToDictionary(r => r.Id, r => r.Code);
+        const string sql = "SELECT Id, Code, Name FROM Projects WHERE Id IN @Ids";
+        var rows = await db.QueryAsync<(int Id, string Code, string Name)>(sql, new { Ids = ids });
+        return rows.ToDictionary(r => r.Id, r => (r.Code, r.Name));
     }
 
-    private static OvertimeRequestDto MapRow(dynamic row, Dictionary<int, string> codeMap)
+    private static OvertimeRequestDto MapRow(dynamic row, Dictionary<int, (string Code, string Name)> codeMap)
     {
         var ids = ParseIds((string?)row.ProjectIds);
-        var codes = ids.Select(id => codeMap.TryGetValue(id, out var c) ? c : $"#{id}").ToArray();
+        var codes = ids.Select(id => codeMap.TryGetValue(id, out var v) ? v.Code : $"#{id}").ToArray();
+        var names = ids.Select(id => codeMap.TryGetValue(id, out var v) ? v.Name : $"#{id}").ToArray();
         return new(
             (int)row.Id,
             (string?)row.EmployeeName ?? "—",
             (DateTime)row.OvertimeDate,
             ids.Length > 0 ? ids : null,
             codes.Length > 0 ? codes : null,
+            names.Length > 0 ? names : null,
             (decimal)row.EstimatedHours,
             (string)row.Reason,
             (string)row.ApprovalStatus,

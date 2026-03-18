@@ -8,7 +8,7 @@ namespace Jabez.Api.Services.Dapper;
 public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceRequestReadService
 {
     private const string BaseSql = """
-        SELECT ar.Id, ar.RequestNo, ar.ProjectId, proj.Code AS ProjectCode,
+        SELECT ar.Id, ar.RequestNo, ar.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                ar.ActivityName, ar.ActivityPeriod, ar.AdvanceDate,
                ar.CashTotal, ar.CheckTotal, ar.GrandTotal,
                ar.ApprovalStatus, ar.EstimatedPaymentDate, ar.PaidAt,
@@ -133,6 +133,7 @@ public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceReques
                 (string)x.ar.RequestNo,
                 (int)x.ar.ProjectId,
                 (string)x.ar.ProjectCode,
+                (string)x.ar.ProjectName,
                 (string)x.ar.ActivityName,
                 (string)x.ar.ActivityPeriod,
                 (DateTime)x.ar.AdvanceDate,

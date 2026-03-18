@@ -6,6 +6,7 @@ public sealed record OvertimeRequestDto(
     DateTime  OvertimeDate,
     int[]?    ProjectIds,
     string[]? ProjectCodes,
+    string[]? ProjectNames,
     decimal   EstimatedHours,
     string    Reason,
     string    ApprovalStatus,

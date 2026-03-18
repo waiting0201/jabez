@@ -30,20 +30,32 @@ public sealed class ProjectReadService(IDbConnection db) : IProjectReadService
         return rows.Select(ToDto);
     }
 
-    public async Task<PagedResult<ProjectDto>> GetPagedAsync(int page, int pageSize, string? search = null)
+    public async Task<PagedResult<ProjectDto>> GetPagedAsync(int page, int pageSize, string? search = null, int? year = null, string? status = null)
     {
         var hasSearch = !string.IsNullOrWhiteSpace(search);
-        var searchWhere = hasSearch ? " WHERE p.Code LIKE @Search OR p.Name LIKE @Search" : "";
+        var hasStatus = !string.IsNullOrWhiteSpace(status);
+        var conditions = new List<string>();
+        if (hasSearch) conditions.Add("(p.Code LIKE @Search OR p.Name LIKE @Search)");
+        if (year.HasValue) conditions.Add("YEAR(p.StartDate) = @Year");
+        if (hasStatus) conditions.Add("p.Status = @Status");
+        var where = conditions.Count > 0 ? " WHERE " + string.Join(" AND ", conditions) : "";
         var searchParam = hasSearch ? $"%{search!.Trim()}%" : null;
 
-        var countSql = "SELECT COUNT(*) FROM Projects p" + searchWhere;
-        var sql = SelectSql + searchWhere +
+        var countSql = "SELECT COUNT(*) FROM Projects p" + where;
+        var sql = SelectSql + where +
             " ORDER BY p.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
 
-        int total = await db.ExecuteScalarAsync<int>(countSql, new { Search = searchParam });
-        var rows = await db.QueryAsync<dynamic>(sql, new { Search = searchParam, Skip = (page - 1) * pageSize, Take = pageSize });
+        var param = new { Search = searchParam, Year = year, Status = status, Skip = (page - 1) * pageSize, Take = pageSize };
+        int total = await db.ExecuteScalarAsync<int>(countSql, param);
+        var rows = await db.QueryAsync<dynamic>(sql, param);
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
         return new PagedResult<ProjectDto>(rows.Select(ToDto), total, page, pageSize, Math.Max(1, totalPages));
+    }
+
+    public async Task<IEnumerable<int>> GetYearsAsync()
+    {
+        const string sql = "SELECT DISTINCT YEAR(StartDate) AS Y FROM Projects ORDER BY Y DESC";
+        return await db.QueryAsync<int>(sql);
     }
 
     public async Task<ProjectDto?> GetByIdAsync(int id)

@@ -10,6 +10,7 @@ public sealed record TravelRequestDto(
     string    Purpose,
     int?      ProjectId,
     string?   ProjectCode,
+    string?   ProjectName,
     bool      IsHolidayTravel,
     string    ApprovalStatus,  // pending | approved | rejected
     DateTime  CreatedAt,

@@ -11,7 +11,7 @@ public sealed class TravelRequestReadService(IDbConnection db) : ITravelRequestR
         SELECT tr.Id, u.Name AS EmployeeName,
                tr.Destination, tr.StartDate, tr.EndDate,
                tr.EstimatedCost, tr.Purpose,
-               tr.ProjectId, proj.Code AS ProjectCode,
+               tr.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                tr.IsHolidayTravel,
                tr.ApprovalStatus, tr.CreatedAt, tr.ReviewedAt, tr.ReviewNote,
                tr.DesignatedReviewerId, dr.Name AS DesignatedReviewerName
@@ -59,6 +59,7 @@ public sealed class TravelRequestReadService(IDbConnection db) : ITravelRequestR
             (string)row.Purpose,
             (int?)row.ProjectId,
             (string?)row.ProjectCode,
+            (string?)row.ProjectName,
             (bool)row.IsHolidayTravel,
             (string)row.ApprovalStatus,
             (DateTime)row.CreatedAt,

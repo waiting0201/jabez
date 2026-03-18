@@ -139,6 +139,7 @@ public sealed class AppRouter(
             ("DELETE", ["approval-items", var id, "steps", var stepId])            => await approvals.DeleteStepAsync(id, stepId),
 
             // ── Projects ───────────────────────────────────────────────────────
+            ("GET",    ["projects", "years"])             => await projects.GetYearsAsync(),
             ("GET",    ["projects", "active"])            => await projects.GetActiveAsync(),
             ("GET",    ["projects"])                    => await projects.GetAllAsync(req),
             ("POST",   ["projects"])                    => await projects.CreateAsync(req),
