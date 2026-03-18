@@ -1,4 +1,5 @@
 import {Component, DestroyRef, inject, OnInit, signal} from '@angular/core';
+import {environment} from '../../../../../../environments/environment';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
@@ -150,10 +151,25 @@ export class UserForm implements OnInit {
     this.removeSignature.set(true);
   }
 
-  /** 顯示的簽名圖片：本地預覽優先，否則既有 URL */
+  /**
+   * 顯示的簽名圖片：
+   * - 本地預覽（data URL）優先，無需轉換
+   * - 既有遠端 URL：相對路徑加上 apiUrl 前綴；完整 blob URL 轉為 API 代理路徑
+   */
   get displaySignature(): string | null {
     if (this.removeSignature()) return null;
-    return this.signaturePreview() ?? this.signatureUrl();
+    const preview = this.signaturePreview();
+    if (preview) return preview;
+    const url = this.signatureUrl();
+    if (!url) return null;
+    if (!url.startsWith('http')) {
+      return `${environment.apiUrl}/${url}`;
+    }
+    const match = url.match(/\/signatures\/(.+)$/);
+    if (match) {
+      return `${environment.apiUrl}/files/signatures/${match[1]}`;
+    }
+    return url;
   }
 
   sendCredentials() {

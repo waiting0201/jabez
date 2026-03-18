@@ -1,6 +1,7 @@
 import {Injectable, signal} from '@angular/core';
 import {AdvanceRequest, WriteOffRecord} from '../models/advance-request.model';
 import {ApprovalRecord, ApprovalFlow} from '../../approval-tasks/models/approval-task.model';
+import {environment} from '../../../../../environments/environment';
 
 /** 簽名欄資料 */
 interface SignBlock {
@@ -18,6 +19,22 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
     binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)));
   }
   return btoa(binary);
+}
+
+/**
+ * 將簽名 URL 轉為可存取的端點：
+ * - 相對路徑（如 files/signatures/xxx.png）→ 加上 apiUrl 前綴
+ * - 完整 blob URL → 萃取檔名，轉為 API 代理路徑
+ */
+function resolveSignatureUrl(url: string): string {
+  if (!url.startsWith('http')) {
+    return `${environment.apiUrl}/${url}`;
+  }
+  const match = url.match(/\/signatures\/(.+)$/);
+  if (match) {
+    return `${environment.apiUrl}/files/signatures/${match[1]}`;
+  }
+  return url;
 }
 
 /** CIS 色彩 */
@@ -483,9 +500,11 @@ export class AdvancePdfService {
     const map = new Map<string, string>();
     await Promise.all(urls.map(async url => {
       try {
-        const resp = await fetch(url);
+        const fetchUrl = resolveSignatureUrl(url);
+        const resp = await fetch(fetchUrl);
         const buf = await resp.arrayBuffer();
         const mime = resp.headers.get('content-type') || 'image/png';
+        // Map key 仍使用原始 url，與 blocks 資料保持一致
         map.set(url, `data:${mime};base64,${arrayBufferToBase64(buf)}`);
       } catch { /* 載入失敗則跳過 */ }
     }));
