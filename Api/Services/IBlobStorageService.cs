@@ -10,4 +10,7 @@ public interface IBlobStorageService
 
     /// <summary>從完整 Blob URL 萃取 blob 名稱（容器後的路徑）。</summary>
     string? ExtractBlobName(string? blobUrl, string containerName);
+
+    /// <summary>從指定容器下載 Blob，回傳串流與 Content-Type。找不到時回傳 null。</summary>
+    Task<(Stream Content, string ContentType)?> DownloadAsync(string containerName, string blobName);
 }

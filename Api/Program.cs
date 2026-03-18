@@ -114,6 +114,7 @@ var host = new HostBuilder()
         services.AddScoped<ProjectWaterLevelHandler>();
         services.AddScoped<InvoiceOcrHandler>();
         services.AddScoped<AdvanceRequestHandler>();
+        services.AddScoped<FileHandler>();
 
         // ── Router（Scoped）──────────────────────────────────────────────
         services.AddScoped<AppRouter>();

@@ -35,6 +35,20 @@ public sealed class BlobStorageService : IBlobStorageService
         await container.GetBlobClient(blobName).DeleteIfExistsAsync();
     }
 
+    public async Task<(Stream Content, string ContentType)?> DownloadAsync(string containerName, string blobName)
+    {
+        var container = _client.GetBlobContainerClient(containerName);
+        var blobClient = container.GetBlobClient(blobName);
+
+        if (!await blobClient.ExistsAsync())
+            return null;
+
+        var download = await blobClient.DownloadAsync();
+        // ContentType 可能為空，預設回傳 application/octet-stream
+        var contentType = download.Value.ContentType ?? "application/octet-stream";
+        return (download.Value.Content, contentType);
+    }
+
     public string? ExtractBlobName(string? blobUrl, string containerName)
     {
         if (string.IsNullOrEmpty(blobUrl)) return null;

@@ -35,7 +35,8 @@ public sealed class AppRouter(
     PaymentReportHandler   paymentReport,
     ProjectWaterLevelHandler projectWaterLevel,
     InvoiceOcrHandler      invoiceOcr,
-    AdvanceRequestHandler  advanceRequests)
+    AdvanceRequestHandler  advanceRequests,
+    FileHandler            files)
 {
     public async Task<IActionResult> RouteAsync(HttpRequest req, string route)
     {
@@ -70,6 +71,9 @@ public sealed class AppRouter(
         {
             // ── Health ───────────────────────────────────────────────────────
             ("GET",    ["health"])                    => health.Get(),
+
+            // ── Files (Blob 代理，公開路由，不需 JWT) ─────────────────────────
+            ("GET",    ["files", "signatures", var fileName]) => await files.GetSignatureAsync(fileName),
 
             // ── Auth ──────────────────────────────────────────────────────────
             ("POST",   ["auth", "login"])             => await auth.LoginAsync(req),
@@ -248,12 +252,17 @@ public sealed class AppRouter(
         (method, segments) is
             ("GET",  ["health"]) or
             ("POST", ["auth", "login"]) or
-            ("POST", ["auth", "refresh"]);
+            ("POST", ["auth", "refresh"]) or
+            // 簽名檔代理：PDF 匯出時需要直接 fetch，不帶 Authorization header
+            ("GET",  ["files", "signatures", _]);
 
     /// <summary>根據 HTTP method + 路由 segments 決定所需的權限代碼</summary>
     private static string? GetRequiredPermission(string method, string[] segments) =>
         (method, segments) switch
         {
+            // Files（公開路由，不需任何權限）
+            ("GET", ["files", ..]) => null,
+
             // Users
             ("GET",    ["users", ..])                    => PermissionCodes.UsersRead,
             ("POST",   ["users"])                        => PermissionCodes.UsersWrite,

@@ -47,7 +47,11 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
     private const string SignatureContainer = "signatures";
     private static readonly string[] AllowedSignatureTypes = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 
-    /// <summary>處理簽名檔上傳（新增/更新共用）</summary>
+    /// <summary>
+    /// 處理簽名檔上傳（新增/更新共用）。
+    /// 上傳成功後回傳 API 代理路徑（/files/signatures/{blobName}），
+    /// 而非直接回傳 Blob URL，避免私有容器 403 及 CORS 問題。
+    /// </summary>
     private async Task<string?> HandleSignatureUploadAsync(IFormFileCollection files, Guid userId, string? existingUrl)
     {
         var file = files.GetFile("signature");
@@ -56,15 +60,20 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         if (!AllowedSignatureTypes.Contains(file.ContentType.ToLower()))
             throw AppException.BadRequest("僅支援 PNG、JPEG、GIF、WebP 圖片格式。");
 
-        // 刪除舊簽名檔
-        var oldBlobName = blob.ExtractBlobName(existingUrl, SignatureContainer);
+        // 刪除舊簽名檔：同時支援舊 Blob URL 格式與新 API 代理路徑格式
+        var oldBlobName = existingUrl is not null && existingUrl.StartsWith("files/signatures/", StringComparison.OrdinalIgnoreCase)
+            ? existingUrl["files/signatures/".Length..]
+            : blob.ExtractBlobName(existingUrl, SignatureContainer);
         if (oldBlobName is not null)
             await blob.DeleteAsync(SignatureContainer, oldBlobName);
 
         var ext = Path.GetExtension(file.FileName);
         var blobName = $"{userId}{ext}";
         using var stream = file.OpenReadStream();
-        return await blob.UploadAsync(SignatureContainer, blobName, stream, file.ContentType);
+
+        // 上傳至 Blob Storage，回傳 API 代理路徑供前端使用
+        await blob.UploadAsync(SignatureContainer, blobName, stream, file.ContentType);
+        return $"files/signatures/{blobName}";
     }
 
     // POST /api/users
