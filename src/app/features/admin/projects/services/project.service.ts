@@ -18,10 +18,17 @@ export class ProjectService {
     return this.http.get<Project[]>(`${environment.apiUrl}/projects/active`);
   }
 
-  getPaged(page: number, pageSize: number, search?: string): Observable<PagedResult<Project>> {
+  getPaged(page: number, pageSize: number, search?: string, year?: number, status?: string): Observable<PagedResult<Project>> {
     const params: Record<string, string | number> = {page, pageSize};
     if (search) params['search'] = search;
+    if (year) params['year'] = year;
+    if (status) params['status'] = status;
     return this.http.get<PagedResult<Project>>(`${environment.apiUrl}/projects`, {params});
+  }
+
+  /** 取得所有年度（依 StartDate 年份去重） */
+  getYears(): Observable<number[]> {
+    return this.http.get<number[]>(`${environment.apiUrl}/projects/years`);
   }
 
   getById(id: number): Observable<Project> {

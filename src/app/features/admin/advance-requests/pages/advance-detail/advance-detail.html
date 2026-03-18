@@ -40,7 +40,7 @@
         <div class="row g-3 mb-4">
           <div class="col-6 col-md-3">
             <div class="text-muted small">專案</div>
-            <div class="fw-500 font-monospace">{{ r.projectCode }}</div>
+            <div class="fw-500 font-monospace">{{ r.projectCode }}{{ r.projectName ? ' - ' + r.projectName : '' }}</div>
           </div>
           <div class="col-6 col-md-3">
             <div class="text-muted small">活動名稱</div>
@@ -129,6 +129,15 @@
         </div>
       </div>
     </div>
+
+    <!-- 簽核流程時間軸 -->
+    @if (approvalTask(); as task) {
+      <app-approval-timeline
+        [flow]="task.flow ?? null"
+        [approvalRecords]="task.approvalRecords"
+        [currentStepOrder]="task.currentStepOrder"
+        [status]="task.status" />
+    }
 
     <!-- 沖銷紀錄 -->
     <div class="card border-0 shadow-sm">

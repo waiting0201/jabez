@@ -27,6 +27,7 @@ export interface TravelRequest {
   purpose: string;
   projectId?: number;
   projectCode?: string;
+  projectName?: string;
   isHolidayTravel: boolean;
   approvalStatus: ApprovalStatus;
   designatedReviewerId?: string;

@@ -23,6 +23,7 @@ export interface OvertimeRequest {
   overtimeDate: Date;
   projectIds?: number[];
   projectCodes?: string[];
+  projectNames?: string[];
   estimatedHours: number;
   reason: string;
   approvalStatus: ApprovalStatus;

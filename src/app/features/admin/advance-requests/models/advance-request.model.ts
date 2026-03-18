@@ -43,6 +43,7 @@ export interface AdvanceRequest {
   requestNo: string;
   projectId: number;
   projectCode: string;
+  projectName: string;
   activityName: string;
   activityPeriod: string;
   advanceDate: string;

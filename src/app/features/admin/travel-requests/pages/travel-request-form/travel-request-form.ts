@@ -8,13 +8,17 @@ import {Project} from '../../../projects/models/project.model';
 import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/travel-request.model';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
+import {ApprovalService} from '../../../approvals/services/approval.service';
+import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
+import {ApprovalFlow, ApprovalRecord} from '../../../approval-tasks/models/approval-task.model';
+import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {JobTitle} from '../../../job-titles/models/job-title.model';
 import {User} from '../../../users/models/user.model';
 
 @Component({
   selector: 'app-travel-request-form',
   templateUrl: './travel-request-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, ApprovalTimeline],
 })
 export class TravelRequestForm implements OnInit {
   private fb          = inject(FormBuilder);
@@ -22,6 +26,8 @@ export class TravelRequestForm implements OnInit {
   private projects$   = inject(ProjectService);
   private jobTitleSvc = inject(JobTitleService);
   private userSvc     = inject(UserService);
+  private approvalSvc = inject(ApprovalService);
+  private taskSvc     = inject(ApprovalTaskService);
   private route       = inject(ActivatedRoute);
   private router      = inject(Router);
   private cdr         = inject(ChangeDetectorRef);
@@ -35,7 +41,14 @@ export class TravelRequestForm implements OnInit {
   errorMsg = signal('');
   projects: Project[] = [];
 
+  /** 簽核流程時間軸 */
+  approvalFlow: ApprovalFlow | null = null;
+  approvalRecords: ApprovalRecord[] = [];
+  taskCurrentStepOrder = 0;
+  taskStatus = '';
+
   /** 指定審核者相關 */
+  hasDesignatedStep = false;
   jobTitles: JobTitle[] = [];
   allUsers: User[] = [];
   filteredUsers: User[] = [];
@@ -73,9 +86,17 @@ export class TravelRequestForm implements OnInit {
   }
 
   ngOnInit() {
-    // 載入職稱與使用者清單
-    this.jobTitleSvc.getAll().subscribe({ next: jts => { this.jobTitles = jts; } });
-    this.userSvc.getAll().subscribe({ next: users => { this.allUsers = users; } });
+    // 檢查簽核流程是否有「申請人指定審核」步驟
+    this.approvalSvc.getAll().subscribe(items => {
+      this.hasDesignatedStep = items
+        .filter(i => i.isActive && i.applicationType === 'travel')
+        .some(i => i.steps.some(s => s.useApplicantDesignated));
+      if (this.hasDesignatedStep) {
+        this.jobTitleSvc.getAll().subscribe({ next: jts => { this.jobTitles = jts; } });
+        this.userSvc.getAll().subscribe({ next: users => { this.allUsers = users; } });
+      }
+      this.cdr.markForCheck();
+    });
 
     this.projects$.getActive().subscribe({
       next: p => {
@@ -113,6 +134,18 @@ export class TravelRequestForm implements OnInit {
           this._prefillDesignatedJobTitle(r.designatedReviewerId);
         }
         if (this.isReadOnly) this.form.disable();
+        // 非草稿時載入簽核流程
+        if (r.approvalStatus !== 'draft') {
+          this.taskSvc.getById(this.requestId, 'travel').subscribe({
+            next: task => {
+              this.approvalFlow = task.flow ?? null;
+              this.approvalRecords = task.approvalRecords ?? [];
+              this.taskCurrentStepOrder = task.currentStepOrder;
+              this.taskStatus = task.status;
+              this.cdr.markForCheck();
+            },
+          });
+        }
         this.cdr.markForCheck();
       });
     }

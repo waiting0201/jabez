@@ -8,11 +8,12 @@ import {AdvancePdfService} from '../../services/advance-pdf.service';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
 import {ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
 import {AdvanceRequest, WriteOffRecord, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/advance-request.model';
+import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 
 @Component({
   selector: 'app-advance-detail',
   templateUrl: './advance-detail.html',
-  imports: [RouterLink, DecimalPipe, DatePipe, FilePreviewModal],
+  imports: [RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline],
 })
 export class AdvanceDetail implements OnInit {
   private service = inject(AdvanceRequestService);

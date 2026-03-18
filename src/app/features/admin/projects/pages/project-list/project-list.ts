@@ -19,13 +19,18 @@ export class ProjectList {
   readonly PAGE_SIZE = 20;
   page = signal(1);
   searchInput = '';
+  selectedYearInput: number | undefined;
+  selectedStatusInput: string | undefined;
   private searchTerm = signal('');
+  private filterYear = signal<number | undefined>(undefined);
+  private filterStatus = signal<string | undefined>(undefined);
+  yearOptions = toSignal(this.projectService.getYears(), {initialValue: [] as number[]});
 
   private refresh = signal(0);
 
   private result = toSignal(
-    toObservable(computed(() => ({ page: this.page(), search: this.searchTerm(), refresh: this.refresh() }))).pipe(
-      switchMap(({ page, search }) => this.projectService.getPaged(page, this.PAGE_SIZE, search || undefined))
+    toObservable(computed(() => ({ page: this.page(), search: this.searchTerm(), year: this.filterYear(), status: this.filterStatus(), refresh: this.refresh() }))).pipe(
+      switchMap(({ page, search, year, status }) => this.projectService.getPaged(page, this.PAGE_SIZE, search || undefined, year, status))
     ),
     {initialValue: {items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 1} as PagedResult<Project>}
   );
@@ -38,7 +43,12 @@ export class ProjectList {
   readonly statusLabel = PROJECT_STATUS_LABELS;
   readonly statusClass = PROJECT_STATUS_CLASSES;
 
-  doSearch() { this.searchTerm.set(this.searchInput); this.page.set(1); }
+  doSearch() {
+    this.searchTerm.set(this.searchInput);
+    this.filterYear.set(this.selectedYearInput);
+    this.filterStatus.set(this.selectedStatusInput);
+    this.page.set(1);
+  }
   goTo(p: number) { this.page.set(p); }
   prev() { if (this.page() > 1) this.page.update(p => p - 1); }
   next() { if (this.page() < this.totalPages()) this.page.update(p => p + 1); }

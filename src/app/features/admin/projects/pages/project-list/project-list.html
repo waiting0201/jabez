@@ -14,15 +14,30 @@
 
   <div class="card border-0 shadow-sm">
     <div class="px-4 py-3 border-b">
-      <div class="flex items-center gap-2" style="max-width: 420px">
-        <div class="relative flex-1">
-          <svg class="sa-icon absolute left-3 top-1/2 -translate-y-1/2 text-muted" style="stroke: currentColor; width: 16px; height: 16px">
-            <use href="/assets/icons/sprite.svg#search"></use>
-          </svg>
-          <input type="text" class="form-control ps-9" placeholder="搜尋編號或專案名稱…"
-                 [(ngModel)]="searchInput" (keydown.enter)="doSearch()">
+      <div class="flex flex-wrap items-center gap-2">
+        <select class="form-select" style="width: auto; min-width: 120px"
+                [(ngModel)]="selectedYearInput">
+          <option [ngValue]="undefined">全部年度</option>
+          @for (y of yearOptions(); track y) {
+            <option [ngValue]="y">{{ y }}</option>
+          }
+        </select>
+        <select class="form-select" style="width: auto; min-width: 120px"
+                [(ngModel)]="selectedStatusInput">
+          <option [ngValue]="undefined">全部狀態</option>
+          <option value="active">{{ statusLabel['active'] }}</option>
+          <option value="closed">{{ statusLabel['closed'] }}</option>
+        </select>
+        <div class="flex items-center gap-2" style="max-width: 420px">
+          <div class="relative flex-1">
+            <svg class="sa-icon absolute left-3 top-1/2 -translate-y-1/2 text-muted" style="stroke: currentColor; width: 16px; height: 16px">
+              <use href="/assets/icons/sprite.svg#search"></use>
+            </svg>
+            <input type="text" class="form-control ps-9" placeholder="搜尋編號或專案名稱…"
+                   [(ngModel)]="searchInput" (keydown.enter)="doSearch()">
+          </div>
+          <button class="btn btn-primary" (click)="doSearch()">篩選</button>
         </div>
-        <button class="btn btn-primary" (click)="doSearch()">搜尋</button>
       </div>
     </div>
     <div class="card-body p-0">

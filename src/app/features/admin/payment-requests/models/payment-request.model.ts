@@ -44,6 +44,7 @@ export interface PaymentRequest {
   type: PaymentType;
   projectId: number;
   projectCode: string;
+  projectName: string;
   invoices: InvoiceItem[];
   totalAmount: number;
   approvalStatus: ApprovalStatus;

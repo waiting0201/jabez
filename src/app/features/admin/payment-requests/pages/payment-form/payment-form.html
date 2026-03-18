@@ -74,12 +74,12 @@
               <div class="col-12 col-md-6">
                 <label class="form-label fw-500">專案 <span class="text-danger">*</span></label>
                 @if (isReadOnly) {
-                  <p class="form-control-plaintext fw-500 font-monospace mb-0">{{ projectCode || '—' }}</p>
+                  <p class="form-control-plaintext fw-500 font-monospace mb-0">{{ projectCode ? projectCode + ' - ' + projectName : '—' }}</p>
                 } @else {
                   <select class="form-select" formControlName="projectId">
                     <option [ngValue]="null">{{ loadingProjects ? '載入中…' : '— 請選擇專案 —' }}</option>
                     @for (p of projects; track p.id) {
-                      <option [ngValue]="p.id">{{ p.code }}{{ p.departmentName ? '（' + p.departmentName + '）' : '' }}</option>
+                      <option [ngValue]="p.id">{{ p.code }} - {{ p.name }}{{ p.departmentName ? '（' + p.departmentName + '）' : '' }}</option>
                     }
                   </select>
                   @if (form.get('projectId')?.invalid && form.get('projectId')?.touched) {
@@ -117,34 +117,36 @@
             }
 
             <!-- 指定審核者 -->
-            @if (!isReadOnly) {
-              <div class="mt-4">
-                <label class="form-label fw-500">指定審核者</label>
-                <div class="row g-2">
-                  <div class="col-12 col-md-6">
-                    <select class="form-select" [(ngModel)]="selectedJobTitleId" [ngModelOptions]="{standalone: true}"
-                            (ngModelChange)="onDesignatedJobTitleChange()">
-                      <option [ngValue]="null">— 選擇職稱 —</option>
-                      @for (jt of jobTitles; track jt.id) {
-                        <option [ngValue]="jt.id">{{ jt.name }}</option>
-                      }
-                    </select>
-                  </div>
-                  <div class="col-12 col-md-6">
-                    <select class="form-select" formControlName="designatedReviewerId">
-                      <option [ngValue]="null">— 選擇人員 —</option>
-                      @for (user of filteredUsers; track user.id) {
-                        <option [ngValue]="user.id">{{ user.name }}</option>
-                      }
-                    </select>
+            @if (hasDesignatedStep) {
+              @if (!isReadOnly) {
+                <div class="mt-4">
+                  <label class="form-label fw-500">指定審核者</label>
+                  <div class="row g-2">
+                    <div class="col-12 col-md-6">
+                      <select class="form-select" [(ngModel)]="selectedJobTitleId" [ngModelOptions]="{standalone: true}"
+                              (ngModelChange)="onDesignatedJobTitleChange()">
+                        <option [ngValue]="null">— 選擇職稱 —</option>
+                        @for (jt of jobTitles; track jt.id) {
+                          <option [ngValue]="jt.id">{{ jt.name }}</option>
+                        }
+                      </select>
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <select class="form-select" formControlName="designatedReviewerId">
+                        <option [ngValue]="null">— 選擇人員 —</option>
+                        @for (user of filteredUsers; track user.id) {
+                          <option [ngValue]="user.id">{{ user.name }}</option>
+                        }
+                      </select>
+                    </div>
                   </div>
                 </div>
-              </div>
-            } @else if (form.get('designatedReviewerId')?.value) {
-              <div class="mt-4">
-                <label class="form-label fw-500">指定審核者</label>
-                <p class="form-control-plaintext fw-500 mb-0">{{ designatedReviewerName }}</p>
-              </div>
+              } @else if (form.get('designatedReviewerId')?.value) {
+                <div class="mt-4">
+                  <label class="form-label fw-500">指定審核者</label>
+                  <p class="form-control-plaintext fw-500 mb-0">{{ designatedReviewerName }}</p>
+                </div>
+              }
             }
 
           </div>
@@ -290,6 +292,13 @@
         </div>
 
         <!-- Submit / Back -->
+        <!-- 簽核流程時間軸 -->
+        <app-approval-timeline
+          [flow]="approvalFlow"
+          [approvalRecords]="approvalRecords"
+          [currentStepOrder]="taskCurrentStepOrder"
+          [status]="taskStatus" />
+
         @if (!isReadOnly) {
           <div class="mt-6 flex gap-2">
             <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid || isAnyOcrPending">
@@ -314,6 +323,23 @@
     </div>
   </form>
 </div>
+
+<!-- 送出成功 Modal -->
+<ng-template #successModal let-modal>
+  <div class="modal-header border-0 pb-0">
+    <button type="button" class="btn-close" (click)="modal.close()"></button>
+  </div>
+  <div class="modal-body text-center py-6">
+    <svg class="sa-icon sa-icon-3x text-success mb-4" style="stroke: currentColor">
+      <use href="/assets/icons/sprite.svg#check-circle"></use>
+    </svg>
+    <h5 class="fw-600 mb-2">申請成功</h5>
+    <p class="text-secondary mb-0">請盡早將正本資料送回管理處</p>
+  </div>
+  <div class="modal-footer border-0 justify-center pt-0">
+    <button type="button" class="btn btn-primary px-6" (click)="modal.close()">確定</button>
+  </div>
+</ng-template>
 
 @if (previewFile) {
   <app-file-preview-modal [file]="previewFile" (closed)="closePreview()" />

@@ -1,4 +1,4 @@
-import {ChangeDetectorRef, Component, inject, OnInit, signal} from '@angular/core';
+import {ChangeDetectorRef, Component, inject, OnInit, signal, TemplateRef, viewChild} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {AbstractControl, FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {DecimalPipe} from '@angular/common';
@@ -7,19 +7,24 @@ import {HttpErrorResponse} from '@angular/common/http';
 import {firstValueFrom} from 'rxjs';
 import heic2any from 'heic2any';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
+import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
+import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
+import {ApprovalFlow, ApprovalRecord} from '../../../approval-tasks/models/approval-task.model';
 import {PaymentRequestService} from '../../services/payment-request.service';
 import {ProjectService} from '../../../projects/services/project.service';
 import {Project} from '../../../projects/models/project.model';
 import {PaymentType, ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/payment-request.model';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
+import {ApprovalService} from '../../../approvals/services/approval.service';
 import {JobTitle} from '../../../job-titles/models/job-title.model';
 import {User} from '../../../users/models/user.model';
+import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 
 @Component({
   selector: 'app-payment-form',
   templateUrl: './payment-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, FilePreviewModal],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, FilePreviewModal, ApprovalTimeline],
 })
 export class PaymentForm implements OnInit {
   private fb           = inject(FormBuilder);
@@ -27,10 +32,15 @@ export class PaymentForm implements OnInit {
   private projects$    = inject(ProjectService);
   private jobTitleSvc  = inject(JobTitleService);
   private userSvc      = inject(UserService);
+  private approvalSvc  = inject(ApprovalService);
+  private taskSvc      = inject(ApprovalTaskService);
   private route        = inject(ActivatedRoute);
   private router       = inject(Router);
   private cdr          = inject(ChangeDetectorRef);
   private sanitizer    = inject(DomSanitizer);
+  private modal        = inject(NgbModal);
+
+  successModal = viewChild<TemplateRef<any>>('successModal');
 
   projects: Project[] = [];
   isEdit     = false;
@@ -41,12 +51,20 @@ export class PaymentForm implements OnInit {
   errorMsg = signal('');
   approvalStatus: ApprovalStatus = 'draft';
   isDraft    = true;
-  /** 檢視模式時顯示的專案編號 */
+  /** 檢視模式時顯示的專案編號與名稱 */
   projectCode = '';
+  projectName = '';
   estimatedPaymentDate = '';
   paidAt = '';
 
+  /** 簽核流程時間軸 */
+  approvalFlow: ApprovalFlow | null = null;
+  approvalRecords: ApprovalRecord[] = [];
+  taskCurrentStepOrder = 0;
+  taskStatus = '';
+
   /** 指定審核者相關 */
+  hasDesignatedStep = false;
   jobTitles: JobTitle[] = [];
   allUsers: User[] = [];
   filteredUsers: User[] = [];
@@ -92,13 +110,16 @@ export class PaymentForm implements OnInit {
   loadingProjects = true;
 
   ngOnInit() {
-    // 載入職稱清單
-    this.jobTitleSvc.getAll().subscribe({
-      next: jts => { this.jobTitles = jts; },
-    });
-    // 載入所有使用者（前端依職稱篩選）
-    this.userSvc.getAll().subscribe({
-      next: users => { this.allUsers = users; },
+    // 檢查簽核流程是否有「申請人指定審核」步驟
+    this.approvalSvc.getAll().subscribe(items => {
+      this.hasDesignatedStep = items
+        .filter(i => i.isActive && i.applicationType === 'payment_request')
+        .some(i => i.steps.some(s => s.useApplicantDesignated));
+      if (this.hasDesignatedStep) {
+        this.jobTitleSvc.getAll().subscribe({ next: jts => { this.jobTitles = jts; } });
+        this.userSvc.getAll().subscribe({ next: users => { this.allUsers = users; } });
+      }
+      this.cdr.markForCheck();
     });
 
     this.projects$.getActive().subscribe({
@@ -120,6 +141,7 @@ export class PaymentForm implements OnInit {
         this.isReturned     = r.approvalStatus === 'returned';
         this.isReadOnly     = r.approvalStatus !== 'draft';
         this.projectCode    = r.projectCode ?? '';
+        this.projectName    = r.projectName ?? '';
         this.estimatedPaymentDate = r.estimatedPaymentDate?.toString().slice(0, 10) ?? '';
         this.paidAt               = r.paidAt?.toString().slice(0, 10) ?? '';
         if (this.isReadOnly) this.form.disable();
@@ -131,6 +153,18 @@ export class PaymentForm implements OnInit {
         r.invoices.forEach(inv => this.invoiceArray.push(
           this._invoiceGroup(String(inv.id), inv.fileName, inv.invoiceNo, inv.amount, inv.fileUrl ?? '', inv.fileUrl ?? '', inv.itemName ?? '', inv.note ?? '')
         ));
+        // 非草稿時載入簽核流程
+        if (r.approvalStatus !== 'draft') {
+          this.taskSvc.getById(this.requestId, 'payment_request').subscribe({
+            next: task => {
+              this.approvalFlow = task.flow ?? null;
+              this.approvalRecords = task.approvalRecords ?? [];
+              this.taskCurrentStepOrder = task.currentStepOrder;
+              this.taskStatus = task.status;
+              this.cdr.markForCheck();
+            },
+          });
+        }
         this.cdr.markForCheck();
       });
     }
@@ -266,7 +300,16 @@ export class PaymentForm implements OnInit {
     save$.subscribe({
       next: saved => {
         this.service.submit(saved.id).subscribe({
-          next: () => this.router.navigate(['/admin/payment-requests']),
+          next: () => {
+            const tpl = this.successModal();
+            if (tpl) {
+              const ref = this.modal.open(tpl, { centered: true, backdrop: 'static', keyboard: false });
+              ref.result.then(() => this.router.navigate(['/admin/payment-requests']))
+                        .catch(() => this.router.navigate(['/admin/payment-requests']));
+            } else {
+              this.router.navigate(['/admin/payment-requests']);
+            }
+          },
           error: (err: HttpErrorResponse) => {
             this.errorMsg.set(err.error?.message || '送出失敗，請稍後再試。');
           },
