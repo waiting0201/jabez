@@ -33,6 +33,7 @@ export class ApprovalList {
     {value: 'leave',           label: '請假申請'},
     {value: 'travel',          label: '出差申請'},
     {value: 'overtime',        label: '加班申請'},
+    {value: 'advance',         label: '預支申請'},
   ];
 
   form = this.fb.group({
