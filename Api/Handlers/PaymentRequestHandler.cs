@@ -105,13 +105,20 @@ public sealed class PaymentRequestHandler(
         if (duplicatesInBatch.Count > 0)
             throw AppException.Conflict($"發票號碼重複：{string.Join(", ", duplicatesInBatch)}");
 
-        // 資料庫唯一性檢查
+        // 資料庫唯一性檢查（排除已拒絕的請款單，並跨沖銷表檢查）
         var invoiceNos = invoices.Select(i => i.InvoiceNo).ToList();
-        var existingNos = await db.InvoiceItems
-            .Where(ii => invoiceNos.Contains(ii.InvoiceNo))
+        var existInInvoice = await db.InvoiceItems
+            .Where(ii => invoiceNos.Contains(ii.InvoiceNo)
+                      && ii.PaymentRequest.ApprovalStatus != "rejected")
             .Select(ii => ii.InvoiceNo)
             .Distinct()
             .ToListAsync();
+        var existInWriteOff = await db.Set<WriteOffItem>()
+            .Where(wi => invoiceNos.Contains(wi.InvoiceNo!))
+            .Select(wi => wi.InvoiceNo!)
+            .Distinct()
+            .ToListAsync();
+        var existingNos = existInInvoice.Union(existInWriteOff).Distinct().ToList();
         if (existingNos.Count > 0)
             throw AppException.Conflict($"發票號碼已存在：{string.Join(", ", existingNos)}");
 
@@ -222,13 +229,21 @@ public sealed class PaymentRequestHandler(
             if (duplicatesInBatch.Count > 0)
                 throw AppException.Conflict($"發票號碼重複：{string.Join(", ", duplicatesInBatch)}");
 
-            // 資料庫唯一性檢查（排除自己目前的發票）
+            // 資料庫唯一性檢查（排除自己目前的發票 + 已拒絕的請款單，並跨沖銷表檢查）
             var invoiceNos = invoices.Select(i => i.InvoiceNo).ToList();
-            var existingNos = await db.InvoiceItems
-                .Where(ii => invoiceNos.Contains(ii.InvoiceNo) && ii.PaymentRequestId != intId)
+            var existInInvoice = await db.InvoiceItems
+                .Where(ii => invoiceNos.Contains(ii.InvoiceNo)
+                          && ii.PaymentRequestId != intId
+                          && ii.PaymentRequest.ApprovalStatus != "rejected")
                 .Select(ii => ii.InvoiceNo)
                 .Distinct()
                 .ToListAsync();
+            var existInWriteOff = await db.Set<WriteOffItem>()
+                .Where(wi => invoiceNos.Contains(wi.InvoiceNo!))
+                .Select(wi => wi.InvoiceNo!)
+                .Distinct()
+                .ToListAsync();
+            var existingNos = existInInvoice.Union(existInWriteOff).Distinct().ToList();
             if (existingNos.Count > 0)
                 throw AppException.Conflict($"發票號碼已存在：{string.Join(", ", existingNos)}");
 

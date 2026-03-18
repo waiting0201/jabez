@@ -419,6 +419,38 @@ public sealed class AdvanceRequestHandler(
         var checkTotal = items.Sum(i => i.CheckAmount);
         var grandTotal = items.Sum(i => i.TotalPrice);
 
+        // 批次內發票號碼重複檢查
+        var invoiceNos = items
+            .Where(i => !string.IsNullOrWhiteSpace(i.InvoiceNo))
+            .Select(i => i.InvoiceNo!)
+            .ToList();
+        if (invoiceNos.Count > 0)
+        {
+            var duplicatesInBatch = invoiceNos
+                .GroupBy(n => n)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+            if (duplicatesInBatch.Count > 0)
+                throw AppException.Conflict($"發票號碼重複：{string.Join(", ", duplicatesInBatch)}");
+
+            // 資料庫唯一性檢查（跨所有沖銷 + 請款發票，排除已拒絕的申請）
+            var existInWriteOff = await db.Set<WriteOffItem>()
+                .Where(wi => invoiceNos.Contains(wi.InvoiceNo!))
+                .Select(wi => wi.InvoiceNo!)
+                .Distinct()
+                .ToListAsync();
+            var existInInvoice = await db.InvoiceItems
+                .Where(ii => invoiceNos.Contains(ii.InvoiceNo)
+                          && ii.PaymentRequest.ApprovalStatus != "rejected")
+                .Select(ii => ii.InvoiceNo)
+                .Distinct()
+                .ToListAsync();
+            var existingNos = existInWriteOff.Union(existInInvoice).Distinct().ToList();
+            if (existingNos.Count > 0)
+                throw AppException.Conflict($"發票號碼已存在：{string.Join(", ", existingNos)}");
+        }
+
         // 檢查累計沖銷金額不超過預支金額
         var existingTotal = await db.WriteOffRecords
             .Where(w => w.AdvanceRequestId == intId)
