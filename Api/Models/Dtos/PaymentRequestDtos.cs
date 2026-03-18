@@ -29,17 +29,21 @@ public sealed record PaymentRequestDto(
     DateTime?        EstimatedPaymentDate,
     DateTime?        PaidAt,
     DateTime?        ReviewedAt,
-    string?          ReviewNote);
+    string?          ReviewNote,
+    Guid?            DesignatedReviewerId   = null,
+    string?          DesignatedReviewerName = null);
 
 public sealed record CreatePaymentRequestRequest(
     string              Type,
     int                 ProjectId,
-    InvoiceItemRequest[] Invoices);
+    InvoiceItemRequest[] Invoices,
+    Guid?               DesignatedReviewerId = null);
 
 public sealed record UpdatePaymentRequestRequest(
     string?              Type,
     int?                 ProjectId,
-    InvoiceItemRequest[] Invoices);
+    InvoiceItemRequest[] Invoices,
+    Guid?                DesignatedReviewerId = null);
 
 // 更新撥款日（財務部或 Superadmin 專用）
 public sealed record UpdatePaymentDateRequest(
@@ -61,7 +65,8 @@ public sealed record ApprovalRecordDto(
     DateTime ReviewedAt,
     string?  ReviewNote,
     string?  OnBehalfOf,      // 代理審核：代替誰審核（null 表示非代理）
-    bool     IsEscalated);    // 是否為升級審核
+    bool     IsEscalated,     // 是否為升級審核
+    string?  ReviewerSignatureUrl = null);  // 審核者簽名檔 URL
 
 // ── ApprovalTask 多型 DTOs ─────────────────────────────────────────────────
 
@@ -69,6 +74,8 @@ public sealed record ApprovalFlowStepDto(
     int     StepOrder,
     string? DepartmentName,
     string? JobTitleName,
+    bool    UseDirectSupervisor,
+    bool    UseApplicantDesignated,
     string? Note);
 
 public sealed record ApprovalFlowDto(
@@ -126,4 +133,5 @@ public sealed record ApprovalTaskDto(
     TravelTaskDetailDto?   TravelDetail,
     OvertimeTaskDetailDto? OvertimeDetail,
     AdvanceTaskDetailDto?  AdvanceDetail,
-    ApprovalRecordDto[]    ApprovalRecords);
+    ApprovalRecordDto[]    ApprovalRecords,
+    string?                SubmittedBySignatureUrl = null);  // 申請人簽名檔 URL

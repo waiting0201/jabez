@@ -11,18 +11,22 @@ public sealed record OvertimeRequestDto(
     string    ApprovalStatus,
     DateTime  CreatedAt,
     DateTime? ReviewedAt,
-    string?   ReviewNote);
+    string?   ReviewNote,
+    Guid?     DesignatedReviewerId   = null,
+    string?   DesignatedReviewerName = null);
 
 public sealed record CreateOvertimeRequestRequest(
     Guid?    EmployeeId,
-    int?     ApprovalItemId  = null,
-    DateTime OvertimeDate    = default,
-    int[]?   ProjectIds      = null,
-    decimal  EstimatedHours  = 1m,
-    string   Reason          = "");
+    int?     ApprovalItemId       = null,
+    DateTime OvertimeDate         = default,
+    int[]?   ProjectIds           = null,
+    decimal  EstimatedHours       = 1m,
+    string   Reason               = "",
+    Guid?    DesignatedReviewerId = null);
 
 public sealed record UpdateOvertimeRequestRequest(
     DateTime? OvertimeDate,
     int[]?    ProjectIds,
     decimal?  EstimatedHours,
-    string?   Reason);
+    string?   Reason,
+    Guid?     DesignatedReviewerId = null);

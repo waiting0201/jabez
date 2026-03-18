@@ -4,6 +4,7 @@ using Jabez.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Jabez.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260318010044_AddApprovalStepUseDirectSupervisor")]
+    partial class AddApprovalStepUseDirectSupervisor
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -67,9 +70,6 @@ namespace Jabez.Api.Data.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(1);
 
-                    b.Property<Guid?>("DesignatedReviewerId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateTime?>("EstimatedPaymentDate")
                         .HasColumnType("datetime2");
 
@@ -103,8 +103,6 @@ namespace Jabez.Api.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ApprovalItemId");
-
-                    b.HasIndex("DesignatedReviewerId");
 
                     b.HasIndex("ProjectId");
 
@@ -357,11 +355,6 @@ namespace Jabez.Api.Data.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
-                    b.Property<bool>("UseApplicantDesignated")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
                     b.Property<bool>("UseDirectSupervisor")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
@@ -387,7 +380,6 @@ namespace Jabez.Api.Data.Migrations
                             Note = "部門主管初核",
                             StepOrder = 1,
                             UseApplicantDepartment = true,
-                            UseApplicantDesignated = false,
                             UseDirectSupervisor = false
                         },
                         new
@@ -400,7 +392,6 @@ namespace Jabez.Api.Data.Migrations
                             Note = "取得紙本資料審核",
                             StepOrder = 2,
                             UseApplicantDepartment = false,
-                            UseApplicantDesignated = false,
                             UseDirectSupervisor = false
                         },
                         new
@@ -413,7 +404,6 @@ namespace Jabez.Api.Data.Migrations
                             Note = "填入預計撥款日，核決及撥款後，填入撥款日",
                             StepOrder = 3,
                             UseApplicantDepartment = false,
-                            UseApplicantDesignated = false,
                             UseDirectSupervisor = false
                         },
                         new
@@ -426,7 +416,6 @@ namespace Jabez.Api.Data.Migrations
                             Note = "最終核決",
                             StepOrder = 4,
                             UseApplicantDepartment = false,
-                            UseApplicantDesignated = false,
                             UseDirectSupervisor = false
                         },
                         new
@@ -437,7 +426,6 @@ namespace Jabez.Api.Data.Migrations
                             JobTitleId = 4,
                             StepOrder = 1,
                             UseApplicantDepartment = true,
-                            UseApplicantDesignated = false,
                             UseDirectSupervisor = false
                         },
                         new
@@ -448,7 +436,6 @@ namespace Jabez.Api.Data.Migrations
                             JobTitleId = 4,
                             StepOrder = 1,
                             UseApplicantDepartment = true,
-                            UseApplicantDesignated = false,
                             UseDirectSupervisor = false
                         },
                         new
@@ -459,7 +446,6 @@ namespace Jabez.Api.Data.Migrations
                             JobTitleId = 4,
                             StepOrder = 1,
                             UseApplicantDepartment = true,
-                            UseApplicantDesignated = false,
                             UseDirectSupervisor = false
                         },
                         new
@@ -471,7 +457,6 @@ namespace Jabez.Api.Data.Migrations
                             Note = "部門主管核准",
                             StepOrder = 1,
                             UseApplicantDepartment = true,
-                            UseApplicantDesignated = false,
                             UseDirectSupervisor = false
                         },
                         new
@@ -484,7 +469,6 @@ namespace Jabez.Api.Data.Migrations
                             Note = "財務部確認撥款",
                             StepOrder = 2,
                             UseApplicantDepartment = false,
-                            UseApplicantDesignated = false,
                             UseDirectSupervisor = false
                         });
                 });
@@ -1310,9 +1294,6 @@ namespace Jabez.Api.Data.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(1);
 
-                    b.Property<Guid?>("DesignatedReviewerId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<Guid?>("EmployeeId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1349,8 +1330,6 @@ namespace Jabez.Api.Data.Migrations
 
                     b.HasIndex("ApprovalItemId");
 
-                    b.HasIndex("DesignatedReviewerId");
-
                     b.HasIndex("EmployeeId");
 
                     b.HasIndex("ReviewedById");
@@ -1386,9 +1365,6 @@ namespace Jabez.Api.Data.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(1);
 
-                    b.Property<Guid?>("DesignatedReviewerId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<Guid?>("EmployeeId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1420,8 +1396,6 @@ namespace Jabez.Api.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ApprovalItemId");
-
-                    b.HasIndex("DesignatedReviewerId");
 
                     b.HasIndex("EmployeeId");
 
@@ -1456,9 +1430,6 @@ namespace Jabez.Api.Data.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(1);
 
-                    b.Property<Guid?>("DesignatedReviewerId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateTime?>("EstimatedPaymentDate")
                         .HasColumnType("datetime2");
 
@@ -1492,8 +1463,6 @@ namespace Jabez.Api.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ApprovalItemId");
-
-                    b.HasIndex("DesignatedReviewerId");
 
                     b.HasIndex("ProjectId");
 
@@ -2632,9 +2601,6 @@ namespace Jabez.Api.Data.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(1);
 
-                    b.Property<Guid?>("DesignatedReviewerId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("Destination")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -2678,8 +2644,6 @@ namespace Jabez.Api.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ApprovalItemId");
-
-                    b.HasIndex("DesignatedReviewerId");
 
                     b.HasIndex("EmployeeId");
 
@@ -3007,11 +2971,6 @@ namespace Jabez.Api.Data.Migrations
                         .HasForeignKey("ApprovalItemId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Jabez.Api.Models.Entities.User", "DesignatedReviewer")
-                        .WithMany()
-                        .HasForeignKey("DesignatedReviewerId")
-                        .OnDelete(DeleteBehavior.NoAction);
-
                     b.HasOne("Jabez.Api.Models.Entities.Project", "Project")
                         .WithMany("AdvanceRequests")
                         .HasForeignKey("ProjectId")
@@ -3029,8 +2988,6 @@ namespace Jabez.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("ApprovalItem");
-
-                    b.Navigation("DesignatedReviewer");
 
                     b.Navigation("Project");
 
@@ -3156,11 +3113,6 @@ namespace Jabez.Api.Data.Migrations
                         .HasForeignKey("ApprovalItemId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Jabez.Api.Models.Entities.User", "DesignatedReviewer")
-                        .WithMany()
-                        .HasForeignKey("DesignatedReviewerId")
-                        .OnDelete(DeleteBehavior.NoAction);
-
                     b.HasOne("Jabez.Api.Models.Entities.User", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
@@ -3172,8 +3124,6 @@ namespace Jabez.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("ApprovalItem");
-
-                    b.Navigation("DesignatedReviewer");
 
                     b.Navigation("Employee");
 
@@ -3187,11 +3137,6 @@ namespace Jabez.Api.Data.Migrations
                         .HasForeignKey("ApprovalItemId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Jabez.Api.Models.Entities.User", "DesignatedReviewer")
-                        .WithMany()
-                        .HasForeignKey("DesignatedReviewerId")
-                        .OnDelete(DeleteBehavior.NoAction);
-
                     b.HasOne("Jabez.Api.Models.Entities.User", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
@@ -3204,8 +3149,6 @@ namespace Jabez.Api.Data.Migrations
 
                     b.Navigation("ApprovalItem");
 
-                    b.Navigation("DesignatedReviewer");
-
                     b.Navigation("Employee");
 
                     b.Navigation("ReviewedBy");
@@ -3217,11 +3160,6 @@ namespace Jabez.Api.Data.Migrations
                         .WithMany("PaymentRequests")
                         .HasForeignKey("ApprovalItemId")
                         .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Jabez.Api.Models.Entities.User", "DesignatedReviewer")
-                        .WithMany()
-                        .HasForeignKey("DesignatedReviewerId")
-                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("Jabez.Api.Models.Entities.Project", "Project")
                         .WithMany("PaymentRequests")
@@ -3240,8 +3178,6 @@ namespace Jabez.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("ApprovalItem");
-
-                    b.Navigation("DesignatedReviewer");
 
                     b.Navigation("Project");
 
@@ -3308,11 +3244,6 @@ namespace Jabez.Api.Data.Migrations
                         .HasForeignKey("ApprovalItemId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Jabez.Api.Models.Entities.User", "DesignatedReviewer")
-                        .WithMany()
-                        .HasForeignKey("DesignatedReviewerId")
-                        .OnDelete(DeleteBehavior.NoAction);
-
                     b.HasOne("Jabez.Api.Models.Entities.User", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
@@ -3329,8 +3260,6 @@ namespace Jabez.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("ApprovalItem");
-
-                    b.Navigation("DesignatedReviewer");
 
                     b.Navigation("Employee");
 

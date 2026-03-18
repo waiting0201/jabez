@@ -15,10 +15,12 @@ public class LeaveRequest
     public Guid?    ReviewedById   { get; set; }
     public DateTime? ReviewedAt   { get; set; }
     public string?  ReviewNote     { get; set; }
+    public Guid?    DesignatedReviewerId { get; set; }
     public DateTime CreatedAt      { get; set; }
 
     // Navigation
-    public User?         Employee     { get; set; }
-    public User?         ReviewedBy   { get; set; }
-    public ApprovalItem? ApprovalItem { get; set; }
+    public User?         Employee           { get; set; }
+    public User?         ReviewedBy         { get; set; }
+    public User?         DesignatedReviewer { get; set; }
+    public ApprovalItem? ApprovalItem       { get; set; }
 }

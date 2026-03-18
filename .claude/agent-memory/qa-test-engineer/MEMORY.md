@@ -108,3 +108,67 @@ See `advance-request-qa-2026-03-17.md` for full report.
 ### Pattern: advance 類型已正確加入 ApplicationType
 - `approval.model.ts` 的 `ApplicationType` 已包含 `'advance'`（之前只有 payment_request/leave/travel/overtime）
 - 前後端 enum 現已一致
+
+## ApprovalItems / ApprovalSteps CRUD 測試 (2026-03-18)
+See `approval-items-qa-2026-03-18.md` for full report.
+
+### BUG: UpdateStepAsync — departmentId 無法被更新（patch 語意問題）
+- 測試案例：PUT step with `{useDirectSupervisor:false, departmentId:1, jobTitleId:4}`
+- 實際結果：departmentId 仍為 null，jobTitleId 正確更新為 4
+- 根本原因：`UpdateApprovalStepRequest.DepartmentId` 是 `int?`，傳入 `1` 時 `body.DepartmentId.HasValue` 為 true，但 `else if (step.UseApplicantDepartment)` 分支（line 190-194）在之前 `useApplicantDepartment` 為 true 時會再度將 `step.DepartmentId = null`，覆蓋剛設定的值
+- 補充：前一步驟中 step 的 `UseApplicantDepartment` 是 true（因原本是 useDirectSupervisor 模式），而 body 只傳 `useDirectSupervisor:false` 但未傳 `useApplicantDepartment:false`，所以 `step.UseApplicantDepartment` 維持 true，觸發 else-if 清除 departmentId
+- 換言之：切換模式時必須明確傳 `useApplicantDepartment:false`，否則 departmentId 會被強制清空
+- Location: `/Users/tim/webapps/Jabez/Api/Handlers/ApprovalHandler.cs` lines 176-194
+
+### BUG: AddStepAsync 回傳的 data.id 是 ApprovalItem ID，非新建 Step ID
+- POST /approval-items/{id}/steps 的回傳 data 是整個 ApprovalItemDto，其 `id` 是 ApprovalItem 的 ID
+- 前端若直接用 `response.data.id` 取得新步驟 ID 會得到錯誤值（ApprovalItem 的 ID）
+- 正確做法需從 `response.data.steps` 陣列中找出剛新增的步驟
+- Location: `/Users/tim/webapps/Jabez/Api/Handlers/ApprovalHandler.cs` line 160
+
+### 通過項目（2026-03-18）
+- GET /approval-items — 列表正常，含完整 steps 資料
+- GET /approval-items/{id} — 單筆查詢正常
+- POST /approval-items — 建立正常，回傳 201
+- PUT /approval-items/{id} — 更新名稱正常
+- DELETE /approval-items/{id} + 確認 404 — 正常
+- POST steps useDirectSupervisor=true — 自動清除 deptId/jtId，useApplicantDepartment 自動設 true
+- PUT step 改回 useDirectSupervisor=true — deptId/jtId 正確被清除
+- DELETE steps — 逐一刪除正常
+- 驗證規則 1：useDirectSupervisor=true 不需 deptId/jtId → 通過 (200)
+- 驗證規則 2：useApplicantDepartment=true 缺 jobTitleId → 400 + 正確訊息
+- 驗證規則 3：兩個 ID 都缺 → 400 + 正確訊息
+- 驗證規則 4：更新 code 為重複值 → 409（非 500）
+
+## UseDirectSupervisor 簽核流程測試 (2026-03-18)
+See `use-direct-supervisor-qa-2026-03-18.md` for full report.
+
+### Level 定義確認：數字越大 = 層級越高
+- DB 資料：工程師(1), 資深工程師(2), 主任工程師(3), 部門主管(4), 總監(5)
+- 程式碼用 `Level < applicantLevel` 找上層級 = Level 數字越大越高
+- 程式碼註解寫「Level 越小越高」是錯誤的誤導性文字
+
+### CRITICAL: UseDirectSupervisor Step 多層時中間步驟無法跳過 → 申請卡死
+- `ProcessReviewAsync` 在 Step N 通過後，直接 `incrementStep()` 推進到 Step N+1
+- 但 Step N+1 若 UseDirectSupervisor 且該 rank 的上層級不存在，沒有任何人能審核
+- 在送出時 `ResolveStartingStepAsync` 會跳過找不到上級的步驟
+- 但在 **審核推進** 時沒有對應的「下一步驟跳過」邏輯
+- 後果：申請永久卡在 pending 狀態，普通用戶無法審核，只有 SA 可以強制通過
+- 復現條件：Eve(Level2) 送出請假 → Carol(Level1) 通過 Step1 → Step2 要求 rank=1 但不存在
+- Location: `ApprovalTaskHandler.cs` `ProcessReviewAsync` + `ApprovalFlowService.cs` `ResolveStartingStepAsync`
+
+### CRITICAL: UseDirectSupervisor AuthorizeStepAsync 當 targetLevel=0 時沒有阻擋高層級使用者
+- 測試案例：Eve(Level2)的請假 Step2，rank=1 找不到人，targetLevel = default(int) = 0
+- Tim(Level4) 成功審核了 Step2，原因待確認（可能是 `targetLevel == 0` 的條件反而放行了某些路徑）
+- 重現：申請卡死後，業務部 Tim(Level4) 成功執行 PATCH review approved → 200 OK
+- Location: `ApprovalTaskHandler.cs` `AuthorizeStepAsync` line 273：`if (targetLevel == 0 || reviewerLevel != targetLevel)`
+  - 當 targetLevel=0（找不到人），這條件為 true → 應 throw Forbidden
+  - 但測試中 Tim 成功通過，需進一步調查是否有其他路徑繞過此檢查
+
+### 通過測試項目（UseDirectSupervisor，2026-03-18）
+- Step1 正常：Tim(Level4) 送出 → David(Level3, rank=0) 看到並審核 → Step2 進入
+- Step2 正常：Carol(Level1, rank=1) 看到並審核 → 全流程核准
+- 授權拒絕正常：David 嘗試審核 Step2（rank=1 位置）→ 403 Forbidden
+- 邊界 D-1 通過：Alice（部門唯一員工）送出 → 無上級 → 自動核准（系統正常）
+- 退回流程正常：Eve 退回 David 的請假 → David 重新送出 → 成功
+- 拒絕流程正常：Eve 拒絕 David 的請假 → status=rejected

@@ -506,11 +506,11 @@ dotnet ef database update               # 套用 Migration
 | `Department` | 部門主檔 |
 | `JobTitle` | 職稱主檔 |
 | `ApprovalItem` | 簽核流程項目 |
-| `ApprovalStep` | 簽核流程步驟 |
+| `ApprovalStep` | 簽核流程步驟（含 UseDirectSupervisor、UseApplicantDesignated） |
 | `ApprovalRecord` | 簽核動作記錄（含 OnBehalfOfUserId 代理標記、IsEscalated 升級標記） |
 | `EscalationOverride` | 升級審核指派（記錄被指派的升級/代理審核者，審核完成後清除） |
 | `Project` | 專案主檔 |
-| `PaymentRequest` | 請款申請 |
+| `PaymentRequest` | 請款申請（含 DesignatedReviewerId 指定審核者） |
 | `InvoiceItem` | 請款明細（發票項目） |
 | `LeaveRequest` | 請假申請 |
 | `TravelRequest` | 出差申請（含 IsHolidayTravel 假日出差欄位） |
@@ -562,6 +562,62 @@ draft → pending → approved / returned / rejected
 當申請人本身符合某步驟的審核者條件時（例如部門主管送出自己部門的請款），該步驟**自動跳過**（視為已通過），不觸發升級機制。若所有步驟都被跳過，申請**自動核准**。
 
 此行為與加班/請假/出差不同 — 後者會觸發升級機制往上層部門找主管審核。
+
+### 上層級審核模式（UseDirectSupervisor）
+
+`ApprovalStep` 新增 `UseDirectSupervisor`（bool, 預設 false）欄位，啟用時系統自動找同部門中層級最接近的上級作為審核者。
+
+**層級判斷：** `JobTitle.Level` 數字越小 = 層級越高。上層級 = 同部門中 `Level < 申請人 Level` 且 `Level` 最大（最接近）的人。
+
+**逐步往上爬：** 多個連續的 `UseDirectSupervisor` 步驟會自動往上找不同層級：
+- 第 1 個上層級步驟（rank=0）→ 找最接近的上級（例如資深工程師）
+- 第 2 個上層級步驟（rank=1）→ 找第 2 層上級（例如主任工程師）
+- 第 N 個上層級步驟 → 找第 N 層上級
+- rank 計算方式：該步驟前有幾個 `UseDirectSupervisor` 步驟
+
+**規則：**
+- 同層級有多人 → 全部通知，任一人審核即通過
+- 找不到更高層級的人 → 該步驟自動跳過（視為通過）
+- 所有步驟都跳過 → 自動核准
+- 此模式不走 EscalationService 升級機制
+- 啟用時自動忽略 `DepartmentId` 和 `JobTitleId`（隱含使用申請人部門）
+
+**可與現有模式混用：** 每個 ApprovalStep 獨立判斷，例如 Step 1 用 `UseDirectSupervisor=true`，Step 2 也用 `UseDirectSupervisor=true`（自動往上一層），Step 3 維持固定部門 + 職稱。
+
+**涉及元件：**
+| 元件 | 說明 |
+|------|------|
+| `ApprovalStep.UseDirectSupervisor` | Entity 欄位 |
+| `ApprovalFlowService.FindNthSuperiorLevelAsync()` | 找同部門第 N 層上級 |
+| `ApprovalTaskHandler.AuthorizeStepAsync()` | 驗證審核者是否為正確層級的上級 |
+| `PaymentRequestReadService.StepMatchClause()` | Dapper SQL 以 ROW_NUMBER 計算 rank 匹配審核者 |
+| `ApprovalNotificationService.NotifyReviewersAsync()` | 通知正確層級的上級 |
+| 前端 `approval-flow.html` | 設定頁 checkbox 開關 |
+
+### 申請人指定審核模式（UseApplicantDesignated）
+
+`ApprovalStep` 新增 `UseApplicantDesignated`（bool, 預設 false）欄位，啟用時審核者由申請人在表單中指定。
+
+**申請表欄位：** 5 張申請表（PaymentRequest、LeaveRequest、TravelRequest、OvertimeRequest、AdvanceRequest）各新增 `DesignatedReviewerId`（Guid?, nullable, FK → Users）。
+
+**前端連動下拉：** 申請表單中有「指定審核者」區塊，先選職稱再選人員。
+
+**規則：**
+- 送出（submit）時，如果流程中有 `UseApplicantDesignated` 步驟，`DesignatedReviewerId` 必填
+- 多個 `UseApplicantDesignated` 步驟都找同一個 `DesignatedReviewerId`
+- 指定自己為審核者：payment_request/advance 自動跳過，其他類型報錯
+- `DesignatedReviewerId` 為 null 時步驟自動跳過
+- 此模式與 `UseDirectSupervisor`、`UseApplicantDepartment` 互斥
+
+**涉及元件：**
+| 元件 | 說明 |
+|------|------|
+| `ApprovalStep.UseApplicantDesignated` | Entity 欄位 |
+| `{Request}.DesignatedReviewerId` | 5 張申請表的指定審核者欄位 |
+| `ApprovalFlowService.ResolveStartingStepAsync()` | 指定審核步驟的解析 |
+| `ApprovalTaskHandler.AuthorizeStepAsync()` | 驗證審核者是否為指定人員 |
+| `PaymentRequestReadService.StepMatchClause()` | Dapper SQL 匹配指定審核者 |
+| 前端各申請表單 | 職稱→人員連動下拉 |
 
 ---
 

@@ -16,6 +16,12 @@ public class ApprovalStepConfiguration : IEntityTypeConfiguration<ApprovalStep>
         builder.Property(s => s.UseApplicantDepartment)
                .HasDefaultValue(false);
 
+        builder.Property(s => s.UseDirectSupervisor)
+               .HasDefaultValue(false);
+
+        builder.Property(s => s.UseApplicantDesignated)
+               .HasDefaultValue(false);
+
         builder.Property(s => s.Note)
                .HasMaxLength(500);
 

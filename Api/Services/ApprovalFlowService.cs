@@ -1,3 +1,4 @@
+using Jabez.Api.Common;
 using Jabez.Api.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,7 +14,7 @@ public sealed class ApprovalFlowService(
     IEscalationService escalationService) : IApprovalFlowService
 {
     public async Task<(int startStep, bool autoApproved, EscalationResult? escalation)>
-        ResolveStartingStepAsync(int? approvalItemId, Guid applicantId, string applicationType)
+        ResolveStartingStepAsync(int? approvalItemId, Guid applicantId, string applicationType, Guid? designatedReviewerId = null)
     {
         if (approvalItemId is null)
             return (1, false, null);
@@ -27,18 +28,60 @@ public sealed class ApprovalFlowService(
         if (steps.Count == 0)
             return (1, false, null);
 
-        var applicant = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == applicantId);
+        var applicant = await db.Users.AsNoTracking()
+            .Include(u => u.JobTitle)
+            .FirstOrDefaultAsync(u => u.Id == applicantId);
         if (applicant is null)
             return (1, false, null);
 
         int currentStep = 1;
+        int directSupervisorRank = 0; // 追蹤目前是第幾個上層級步驟（0-based）
         foreach (var step in steps)
         {
+            // ── UseApplicantDesignated 模式：審核者是申請人指定的人 ──
+            if (step.UseApplicantDesignated)
+            {
+                if (designatedReviewerId.HasValue && designatedReviewerId.Value != applicantId)
+                {
+                    // 有指定審核者且不是自己 → 從這步開始
+                    return (currentStep, false, null);
+                }
+                else if (designatedReviewerId.HasValue && designatedReviewerId.Value == applicantId)
+                {
+                    // 自審：依申請類型處理（payment_request/advance 跳過，其他類型報錯）
+                    if (applicationType is "payment_request" or "advance")
+                    {
+                        currentStep++;
+                        continue;
+                    }
+                    // leave / travel / overtime 自審，嘗試升級（指定審核模式不走 EscalationService，直接報錯）
+                    throw AppException.BadRequest("指定審核者不能是申請人本人。");
+                }
+                else
+                {
+                    // designatedReviewerId 為 null → 跳過此步驟
+                    currentStep++;
+                    continue;
+                }
+            }
+
+            // ── UseDirectSupervisor 模式：找同部門中第 N 層上級 ──
+            if (step.UseDirectSupervisor)
+            {
+                var targetLevel = await FindNthSuperiorLevelAsync(applicant, directSupervisorRank);
+                directSupervisorRank++;
+                if (targetLevel.HasValue)
+                    return (currentStep, false, null); // 有上層級 → 從這步開始
+                // 找不到 → 跳過此步驟
+                currentStep++;
+                continue;
+            }
+
             bool isSelfReview = IsApplicantTheReviewer(step, applicant);
 
             if (!isSelfReview)
             {
-                // 請款：若步驟使用申請人部門但該部門無符合條件的審核者，也跳過
+                // 請款/預支：若步驟使用申請人部門但該部門無符合條件的審核者，也跳過
                 if (applicationType is "payment_request" or "advance" && step.UseApplicantDepartment && applicant.DepartmentId.HasValue)
                 {
                     bool hasReviewer = await db.Users.AsNoTracking().AnyAsync(u =>
@@ -73,6 +116,85 @@ public sealed class ApprovalFlowService(
 
         // 所有步驟都被跳過 → 自動核准
         return (steps.Count, true, null);
+    }
+
+    /// <summary>
+    /// 找同部門中第 N 層上級的 Level 值（0-based：rank=0 最接近，rank=1 再上一層...）。
+    /// Level 數字越小 = 層級越高。回傳 null 表示找不到。
+    /// </summary>
+    private async Task<int?> FindNthSuperiorLevelAsync(Models.Entities.User applicant, int rank)
+    {
+        if (applicant.DepartmentId is null || applicant.JobTitle is null)
+            return null;
+
+        var applicantLevel = applicant.JobTitle.Level;
+
+        // 取得同部門中所有比申請人高的不重複 Level，由近到遠排列（DESC，因為 Level 越小越高）
+        var superiorLevels = await db.Users.AsNoTracking()
+            .Where(u => u.DepartmentId == applicant.DepartmentId
+                && !u.IsSuperAdmin
+                && u.JobTitle != null
+                && u.JobTitle.Level < applicantLevel)
+            .Select(u => u.JobTitle!.Level)
+            .Distinct()
+            .OrderByDescending(l => l) // 最接近的排前面
+            .ToListAsync();
+
+        return rank < superiorLevels.Count ? superiorLevels[rank] : null;
+    }
+
+    /// <inheritdoc />
+    public async Task<(int nextStep, bool allSkipped)>
+        SkipUnreviewableStepsAsync(int? approvalItemId, Guid applicantId, int fromStepOrder, Guid? designatedReviewerId = null)
+    {
+        if (approvalItemId is null)
+            return (fromStepOrder, false);
+
+        var steps = await db.ApprovalSteps
+            .AsNoTracking()
+            .Where(s => s.ApprovalItemId == approvalItemId)
+            .OrderBy(s => s.StepOrder)
+            .ToListAsync();
+
+        if (steps.Count == 0)
+            return (fromStepOrder, false);
+
+        var applicant = await db.Users.AsNoTracking()
+            .Include(u => u.JobTitle)
+            .FirstOrDefaultAsync(u => u.Id == applicantId);
+        if (applicant is null)
+            return (fromStepOrder, false);
+
+        // 直接迭代 StepOrder >= fromStepOrder 的步驟（處理稀疏 StepOrder）
+        var remainingSteps = steps.Where(s => s.StepOrder >= fromStepOrder).ToList();
+
+        foreach (var step in remainingSteps)
+        {
+            // UseApplicantDesignated 步驟：有指定審核者且不是申請人本人 → 不跳過
+            if (step.UseApplicantDesignated)
+            {
+                if (designatedReviewerId.HasValue && designatedReviewerId.Value != applicantId)
+                    return (step.StepOrder, false); // 有合法的指定審核者，停在這步
+                // 否則（null 或自審）→ 跳過
+                continue;
+            }
+
+            if (!step.UseDirectSupervisor)
+                return (step.StepOrder, false); // 非上層級步驟，不跳過
+
+            // 計算此步驟的 rank
+            int rank = steps.Count(s => s.UseDirectSupervisor && s.StepOrder < step.StepOrder);
+            var targetLevel = await FindNthSuperiorLevelAsync(applicant, rank);
+
+            if (targetLevel.HasValue)
+                return (step.StepOrder, false); // 有審核者，停在這步
+
+            // 找不到 → 跳過，繼續下一步
+        }
+
+        // 所有剩餘步驟都跳過
+        var maxStepOrder = steps.Max(s => s.StepOrder);
+        return (maxStepOrder + 1, true);
     }
 
     /// <summary>判斷申請人是否符合此步驟的審核者條件（即「自己審自己」）</summary>

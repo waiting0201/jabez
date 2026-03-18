@@ -66,19 +66,28 @@ public sealed class TravelRequestHandler(
         if (body.EndDate < body.StartDate)
             return new BadRequestObjectResult(ApiResponse.Fail("EndDate must be on or after StartDate."));
 
+        // 指定審核者存在性驗證
+        if (body.DesignatedReviewerId.HasValue)
+        {
+            var exists = await db.Users.AsNoTracking().AnyAsync(u => u.Id == body.DesignatedReviewerId.Value);
+            if (!exists)
+                return new BadRequestObjectResult(ApiResponse.Fail("指定的審核者不存在。"));
+        }
+
         var item = new TravelRequest
         {
-            EmployeeId     = employeeId,   // 強制使用 JWT 身分，忽略 body.EmployeeId
-            ApprovalItemId = body.ApprovalItemId,
-            Destination    = body.Destination,
-            StartDate      = body.StartDate,
-            EndDate        = body.EndDate,
-            EstimatedCost  = body.EstimatedCost,
-            Purpose         = body.Purpose,
-            ProjectId       = body.ProjectId,
-            IsHolidayTravel = body.IsHolidayTravel,
-            ApprovalStatus  = "draft",
-            CreatedAt      = Clock.Now,
+            EmployeeId           = employeeId,   // 強制使用 JWT 身分，忽略 body.EmployeeId
+            ApprovalItemId       = body.ApprovalItemId,
+            Destination          = body.Destination,
+            StartDate            = body.StartDate,
+            EndDate              = body.EndDate,
+            EstimatedCost        = body.EstimatedCost,
+            Purpose              = body.Purpose,
+            ProjectId            = body.ProjectId,
+            IsHolidayTravel      = body.IsHolidayTravel,
+            ApprovalStatus       = "draft",
+            DesignatedReviewerId = body.DesignatedReviewerId,
+            CreatedAt            = Clock.Now,
         };
         db.TravelRequests.Add(item);
         await db.SaveChangesAsync();
@@ -103,13 +112,22 @@ public sealed class TravelRequestHandler(
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel requests can be edited.");
 
-        if (body.Destination   is not null) item.Destination   = body.Destination;
-        if (body.StartDate.HasValue)        item.StartDate     = body.StartDate.Value;
-        if (body.EndDate.HasValue)          item.EndDate       = body.EndDate.Value;
-        if (body.EstimatedCost.HasValue)    item.EstimatedCost = body.EstimatedCost.Value;
-        if (body.Purpose       is not null) item.Purpose       = body.Purpose;
-        if (body.ProjectId.HasValue)        item.ProjectId      = body.ProjectId == 0 ? null : body.ProjectId;
-        if (body.IsHolidayTravel.HasValue)  item.IsHolidayTravel = body.IsHolidayTravel.Value;
+        // 指定審核者存在性驗證（提供非空 Guid 時才驗證）
+        if (body.DesignatedReviewerId.HasValue && body.DesignatedReviewerId != Guid.Empty)
+        {
+            var exists = await db.Users.AsNoTracking().AnyAsync(u => u.Id == body.DesignatedReviewerId.Value);
+            if (!exists)
+                return new BadRequestObjectResult(ApiResponse.Fail("指定的審核者不存在。"));
+        }
+
+        if (body.Destination   is not null)         item.Destination         = body.Destination;
+        if (body.StartDate.HasValue)                item.StartDate           = body.StartDate.Value;
+        if (body.EndDate.HasValue)                  item.EndDate             = body.EndDate.Value;
+        if (body.EstimatedCost.HasValue)            item.EstimatedCost       = body.EstimatedCost.Value;
+        if (body.Purpose       is not null)         item.Purpose             = body.Purpose;
+        if (body.ProjectId.HasValue)                item.ProjectId           = body.ProjectId == 0 ? null : body.ProjectId;
+        if (body.IsHolidayTravel.HasValue)          item.IsHolidayTravel     = body.IsHolidayTravel.Value;
+        if (body.DesignatedReviewerId.HasValue)     item.DesignatedReviewerId = body.DesignatedReviewerId == Guid.Empty ? null : body.DesignatedReviewerId;
 
         await db.SaveChangesAsync();
 
@@ -186,9 +204,18 @@ public sealed class TravelRequestHandler(
                 item.ApprovalItemId = flow.Id;
         }
 
+        // 若流程中有 UseApplicantDesignated 步驟，DesignatedReviewerId 必填
+        if (item.ApprovalItemId.HasValue)
+        {
+            bool hasDesignatedStep = await db.ApprovalSteps.AsNoTracking()
+                .AnyAsync(s => s.ApprovalItemId == item.ApprovalItemId && s.UseApplicantDesignated);
+            if (hasDesignatedStep && !item.DesignatedReviewerId.HasValue)
+                return new BadRequestObjectResult(ApiResponse.Fail("此簽核流程包含申請人指定審核步驟，請提供 DesignatedReviewerId。"));
+        }
+
         // 解析審核步驟（含升級審核邏輯）
         var (startStep, autoApproved, escalation) =
-            await approvalFlow.ResolveStartingStepAsync(item.ApprovalItemId, userId, "travel");
+            await approvalFlow.ResolveStartingStepAsync(item.ApprovalItemId, userId, "travel", item.DesignatedReviewerId);
 
         if (autoApproved)
         {
@@ -226,7 +253,16 @@ public sealed class TravelRequestHandler(
             if (escalation is not null)
                 await notifier.NotifySpecificReviewerAsync("travel", item.Id, escalation.ReviewerId, userId, escalation.OnBehalfOfUserId is not null);
             else
-                await notifier.NotifyReviewersAsync("travel", item.Id, item.ApprovalItemId, startStep, userId);
+            {
+                bool isDesignatedStep = item.ApprovalItemId.HasValue && await db.ApprovalSteps.AsNoTracking()
+                    .AnyAsync(s => s.ApprovalItemId == item.ApprovalItemId
+                        && s.StepOrder == startStep
+                        && s.UseApplicantDesignated);
+                if (isDesignatedStep && item.DesignatedReviewerId.HasValue)
+                    await notifier.NotifySpecificReviewerAsync("travel", item.Id, item.DesignatedReviewerId.Value, userId, false);
+                else
+                    await notifier.NotifyReviewersAsync("travel", item.Id, item.ApprovalItemId, startStep, userId);
+            }
         }
 
         var dto = await reader.GetByIdAsync(item.Id);

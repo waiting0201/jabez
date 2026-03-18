@@ -81,16 +81,25 @@ public sealed class OvertimeRequestHandler(
         if (body.EstimatedHours <= 0)
             return new BadRequestObjectResult(ApiResponse.Fail("EstimatedHours must be greater than 0."));
 
+        // 指定審核者存在性驗證
+        if (body.DesignatedReviewerId.HasValue)
+        {
+            var exists = await db.Users.AsNoTracking().AnyAsync(u => u.Id == body.DesignatedReviewerId.Value);
+            if (!exists)
+                return new BadRequestObjectResult(ApiResponse.Fail("指定的審核者不存在。"));
+        }
+
         var item = new OvertimeRequest
         {
-            EmployeeId     = employeeId,   // 強制使用 JWT 身分，忽略 body.EmployeeId
-            ApprovalItemId = body.ApprovalItemId,
-            OvertimeDate   = body.OvertimeDate,
-            ProjectIds     = body.ProjectIds is { Length: > 0 } ? string.Join(",", body.ProjectIds) : null,
-            EstimatedHours = body.EstimatedHours,
-            Reason         = body.Reason,
-            ApprovalStatus = "draft",
-            CreatedAt      = Clock.Now,
+            EmployeeId           = employeeId,   // 強制使用 JWT 身分，忽略 body.EmployeeId
+            ApprovalItemId       = body.ApprovalItemId,
+            OvertimeDate         = body.OvertimeDate,
+            ProjectIds           = body.ProjectIds is { Length: > 0 } ? string.Join(",", body.ProjectIds) : null,
+            EstimatedHours       = body.EstimatedHours,
+            Reason               = body.Reason,
+            ApprovalStatus       = "draft",
+            DesignatedReviewerId = body.DesignatedReviewerId,
+            CreatedAt            = Clock.Now,
         };
         db.OvertimeRequests.Add(item);
         await db.SaveChangesAsync();
@@ -115,10 +124,19 @@ public sealed class OvertimeRequestHandler(
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned overtime requests can be edited.");
 
-        if (body.OvertimeDate.HasValue)   item.OvertimeDate   = body.OvertimeDate.Value;
-        if (body.ProjectIds is not null)  item.ProjectIds     = body.ProjectIds.Length > 0 ? string.Join(",", body.ProjectIds) : null;
-        if (body.EstimatedHours.HasValue) item.EstimatedHours = body.EstimatedHours.Value;
-        if (body.Reason is not null)      item.Reason         = body.Reason;
+        // 指定審核者存在性驗證（提供非空 Guid 時才驗證）
+        if (body.DesignatedReviewerId.HasValue && body.DesignatedReviewerId != Guid.Empty)
+        {
+            var exists = await db.Users.AsNoTracking().AnyAsync(u => u.Id == body.DesignatedReviewerId.Value);
+            if (!exists)
+                return new BadRequestObjectResult(ApiResponse.Fail("指定的審核者不存在。"));
+        }
+
+        if (body.OvertimeDate.HasValue)             item.OvertimeDate        = body.OvertimeDate.Value;
+        if (body.ProjectIds is not null)            item.ProjectIds          = body.ProjectIds.Length > 0 ? string.Join(",", body.ProjectIds) : null;
+        if (body.EstimatedHours.HasValue)           item.EstimatedHours      = body.EstimatedHours.Value;
+        if (body.Reason is not null)                item.Reason              = body.Reason;
+        if (body.DesignatedReviewerId.HasValue)     item.DesignatedReviewerId = body.DesignatedReviewerId == Guid.Empty ? null : body.DesignatedReviewerId;
 
         await db.SaveChangesAsync();
 
@@ -195,9 +213,18 @@ public sealed class OvertimeRequestHandler(
                 item.ApprovalItemId = flow.Id;
         }
 
+        // 若流程中有 UseApplicantDesignated 步驟，DesignatedReviewerId 必填
+        if (item.ApprovalItemId.HasValue)
+        {
+            bool hasDesignatedStep = await db.ApprovalSteps.AsNoTracking()
+                .AnyAsync(s => s.ApprovalItemId == item.ApprovalItemId && s.UseApplicantDesignated);
+            if (hasDesignatedStep && !item.DesignatedReviewerId.HasValue)
+                return new BadRequestObjectResult(ApiResponse.Fail("此簽核流程包含申請人指定審核步驟，請提供 DesignatedReviewerId。"));
+        }
+
         // 解析審核步驟（含升級審核邏輯）
         var (startStep, autoApproved, escalation) =
-            await approvalFlow.ResolveStartingStepAsync(item.ApprovalItemId, userId, "overtime");
+            await approvalFlow.ResolveStartingStepAsync(item.ApprovalItemId, userId, "overtime", item.DesignatedReviewerId);
 
         if (autoApproved)
         {
@@ -235,7 +262,16 @@ public sealed class OvertimeRequestHandler(
             if (escalation is not null)
                 await notifier.NotifySpecificReviewerAsync("overtime", item.Id, escalation.ReviewerId, userId, escalation.OnBehalfOfUserId is not null);
             else
-                await notifier.NotifyReviewersAsync("overtime", item.Id, item.ApprovalItemId, startStep, userId);
+            {
+                bool isDesignatedStep = item.ApprovalItemId.HasValue && await db.ApprovalSteps.AsNoTracking()
+                    .AnyAsync(s => s.ApprovalItemId == item.ApprovalItemId
+                        && s.StepOrder == startStep
+                        && s.UseApplicantDesignated);
+                if (isDesignatedStep && item.DesignatedReviewerId.HasValue)
+                    await notifier.NotifySpecificReviewerAsync("overtime", item.Id, item.DesignatedReviewerId.Value, userId, false);
+                else
+                    await notifier.NotifyReviewersAsync("overtime", item.Id, item.ApprovalItemId, startStep, userId);
+            }
         }
 
         var dto = await reader.GetByIdAsync(item.Id);

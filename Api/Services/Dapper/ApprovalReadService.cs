@@ -17,7 +17,8 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
         const string sql = """
             SELECT ai.Id, ai.Name, ai.Code, ai.Description, ai.IsActive, ai.ApplicationType, ai.CreatedAt,
                    s.Id AS StepId, s.StepOrder, s.DepartmentId, d.Name AS DepartmentName,
-                   s.JobTitleId, j.Name AS JobTitleName, s.UseApplicantDepartment, s.Note
+                   s.JobTitleId, j.Name AS JobTitleName,
+                   s.UseApplicantDepartment, s.UseDirectSupervisor, s.UseApplicantDesignated, s.Note
             FROM ApprovalItems ai
             LEFT JOIN ApprovalSteps s ON ai.Id = s.ApprovalItemId
             LEFT JOIN Departments d   ON s.DepartmentId = d.Id
@@ -35,7 +36,8 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
         const string sql = """
             SELECT ai.Id, ai.Name, ai.Code, ai.Description, ai.IsActive, ai.ApplicationType, ai.CreatedAt,
                    s.Id AS StepId, s.StepOrder, s.DepartmentId, d.Name AS DepartmentName,
-                   s.JobTitleId, j.Name AS JobTitleName, s.UseApplicantDepartment, s.Note
+                   s.JobTitleId, j.Name AS JobTitleName,
+                   s.UseApplicantDepartment, s.UseDirectSupervisor, s.UseApplicantDesignated, s.Note
             FROM ApprovalItems ai
             LEFT JOIN ApprovalSteps s ON ai.Id = s.ApprovalItemId
             LEFT JOIN Departments d   ON s.DepartmentId = d.Id
@@ -66,6 +68,8 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
                     (int?)row.JobTitleId,
                     (string?)row.JobTitleName,
                     (bool)row.UseApplicantDepartment,
+                    (bool)(row.UseDirectSupervisor ?? false),
+                    (bool)(row.UseApplicantDesignated ?? false),
                     (string?)row.Note));
             }
         }

@@ -37,20 +37,106 @@ public sealed class ApprovalNotificationService(
             var applicantDeptId = applicant?.DepartmentId;
 
             // 根據步驟設定查找符合條件的審核者（與 AuthorizeStepAsync / StepMatchClause 一致）
-            var query = db.Users.AsNoTracking()
-                .Where(u => !u.IsSuperAdmin && !string.IsNullOrEmpty(u.Email));
+            IQueryable<Models.Entities.User> query;
 
-            if (step.JobTitleId is not null)
-                query = query.Where(u => u.JobTitleId == step.JobTitleId);
-
-            if (step.UseApplicantDepartment)
+            // ── UseApplicantDesignated 模式：直接查指定審核者 ──
+            if (step.UseApplicantDesignated)
             {
-                if (applicantDeptId is null) return; // 申請人無部門，無法配對
-                query = query.Where(u => u.DepartmentId == applicantDeptId);
+                // 取得申請表上的 DesignatedReviewerId
+                Guid? designatedReviewerId = applicationType switch
+                {
+                    "payment_request" => (await db.PaymentRequests.AsNoTracking()
+                        .Where(x => x.Id == applicationId).Select(x => x.DesignatedReviewerId).FirstOrDefaultAsync()),
+                    "leave"           => (await db.LeaveRequests.AsNoTracking()
+                        .Where(x => x.Id == applicationId).Select(x => x.DesignatedReviewerId).FirstOrDefaultAsync()),
+                    "travel"          => (await db.TravelRequests.AsNoTracking()
+                        .Where(x => x.Id == applicationId).Select(x => x.DesignatedReviewerId).FirstOrDefaultAsync()),
+                    "overtime"        => (await db.OvertimeRequests.AsNoTracking()
+                        .Where(x => x.Id == applicationId).Select(x => x.DesignatedReviewerId).FirstOrDefaultAsync()),
+                    "advance"         => (await db.AdvanceRequests.AsNoTracking()
+                        .Where(x => x.Id == applicationId).Select(x => x.DesignatedReviewerId).FirstOrDefaultAsync()),
+                    _                 => null,
+                };
+
+                if (!designatedReviewerId.HasValue)
+                {
+                    logger.LogWarning("UseApplicantDesignated 步驟找不到 DesignatedReviewerId：{AppType} #{Id}, Step {Step}",
+                        applicationType, applicationId, targetStepOrder);
+                    return;
+                }
+
+                var designatedReviewer = await db.Users.AsNoTracking()
+                    .Where(u => u.Id == designatedReviewerId.Value && !string.IsNullOrEmpty(u.Email))
+                    .Select(u => new { u.Name, u.Email })
+                    .FirstOrDefaultAsync();
+
+                if (designatedReviewer is null)
+                {
+                    logger.LogWarning("指定審核者找不到或無 Email：UserId={UserId}（{AppType} #{Id}）",
+                        designatedReviewerId, applicationType, applicationId);
+                    return;
+                }
+
+                var label2  = AppTypeLabels.GetValueOrDefault(applicationType, applicationType);
+                var summary2 = await GetSummaryAsync(applicationType, applicationId);
+                var subject2 = $"[待審核] {label2} #{applicationId} — {applicantName}（指定審核）";
+                var siteUrl2 = await GetSiteUrlAsync();
+                var linkUrl2 = BuildReviewUrl(siteUrl2, applicationType, applicationId);
+                var body2 = BuildReviewerEmail(designatedReviewer.Name, applicantName, label2, applicationId, summary2, targetStepOrder, linkUrl2);
+                await emailService.SendAsync(designatedReviewer.Email!, subject2, body2);
+                logger.LogInformation("已寄送指定審核通知：{Email}（{AppType} #{Id}）", designatedReviewer.Email, applicationType, applicationId);
+                return;
             }
-            else if (step.DepartmentId is not null)
+
+            if (step.UseDirectSupervisor)
             {
-                query = query.Where(u => u.DepartmentId == step.DepartmentId);
+                // 上層級模式：找同部門中第 N 層上級（Level 越小 = 層級越高）
+                if (applicantDeptId is null) return;
+                var applicantJobTitleId = applicant?.JobTitleId;
+                if (applicantJobTitleId is null) return;
+                var applicantLevel = await db.JobTitles.AsNoTracking()
+                    .Where(j => j.Id == applicantJobTitleId).Select(j => j.Level).FirstOrDefaultAsync();
+
+                // 計算 rank：此步驟前有幾個 UseDirectSupervisor 步驟
+                var rank = await db.ApprovalSteps.AsNoTracking()
+                    .CountAsync(s => s.ApprovalItemId == approvalItemId
+                        && s.UseDirectSupervisor
+                        && s.StepOrder < targetStepOrder);
+
+                // 找第 N 層上級的目標 Level
+                var targetLevel = await db.Users.AsNoTracking()
+                    .Where(u => u.DepartmentId == applicantDeptId && !u.IsSuperAdmin
+                        && u.JobTitle != null && u.JobTitle.Level < applicantLevel)
+                    .Select(u => u.JobTitle!.Level)
+                    .Distinct()
+                    .OrderByDescending(l => l)
+                    .Skip(rank)
+                    .FirstOrDefaultAsync();
+
+                if (targetLevel == 0) return; // 找不到該層級
+
+                query = db.Users.AsNoTracking()
+                    .Where(u => u.DepartmentId == applicantDeptId && !u.IsSuperAdmin
+                        && !string.IsNullOrEmpty(u.Email)
+                        && u.JobTitle != null && u.JobTitle.Level == targetLevel);
+            }
+            else
+            {
+                query = db.Users.AsNoTracking()
+                    .Where(u => !u.IsSuperAdmin && !string.IsNullOrEmpty(u.Email));
+
+                if (step.JobTitleId is not null)
+                    query = query.Where(u => u.JobTitleId == step.JobTitleId);
+
+                if (step.UseApplicantDepartment)
+                {
+                    if (applicantDeptId is null) return; // 申請人無部門，無法配對
+                    query = query.Where(u => u.DepartmentId == applicantDeptId);
+                }
+                else if (step.DepartmentId is not null)
+                {
+                    query = query.Where(u => u.DepartmentId == step.DepartmentId);
+                }
             }
 
             var reviewers = await query.Select(u => new { u.Name, u.Email }).ToListAsync();

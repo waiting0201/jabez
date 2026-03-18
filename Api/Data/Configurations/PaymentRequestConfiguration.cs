@@ -48,6 +48,11 @@ public class PaymentRequestConfiguration : IEntityTypeConfiguration<PaymentReque
                .HasForeignKey(pr => pr.ReviewedById)
                .OnDelete(DeleteBehavior.NoAction);
 
+        builder.HasOne(pr => pr.DesignatedReviewer)
+               .WithMany()
+               .HasForeignKey(pr => pr.DesignatedReviewerId)
+               .OnDelete(DeleteBehavior.NoAction);
+
         // 無 Seed data — 申請單由使用者操作產生
     }
 }

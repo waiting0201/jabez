@@ -11,9 +11,11 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
         SELECT o.Id, u.Name AS EmployeeName,
                o.OvertimeDate, o.ProjectIds,
                o.EstimatedHours, o.Reason,
-               o.ApprovalStatus, o.CreatedAt, o.ReviewedAt, o.ReviewNote
+               o.ApprovalStatus, o.CreatedAt, o.ReviewedAt, o.ReviewNote,
+               o.DesignatedReviewerId, dr.Name AS DesignatedReviewerName
         FROM OvertimeRequests o
-        LEFT JOIN Users u ON o.EmployeeId = u.Id
+        LEFT JOIN Users u  ON o.EmployeeId          = u.Id
+        LEFT JOIN Users dr ON o.DesignatedReviewerId = dr.Id
         """;
 
     /// <summary>解析逗號分隔的 ProjectIds 字串為 int 陣列</summary>
@@ -58,7 +60,9 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
             (string)row.ApprovalStatus,
             (DateTime)row.CreatedAt,
             (DateTime?)row.ReviewedAt,
-            (string?)row.ReviewNote);
+            (string?)row.ReviewNote,
+            (Guid?)row.DesignatedReviewerId,
+            (string?)row.DesignatedReviewerName);
     }
 
     public async Task<IEnumerable<OvertimeRequestDto>> GetAllAsync()

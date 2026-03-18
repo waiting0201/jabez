@@ -83,6 +83,14 @@ public sealed class AdvanceRequestHandler(
         if (!await db.Projects.AnyAsync(p => p.Id == body.ProjectId))
             throw AppException.NotFound("Project");
 
+        // 指定審核者存在性驗證
+        if (body.DesignatedReviewerId.HasValue)
+        {
+            var exists = await db.Users.AsNoTracking().AnyAsync(u => u.Id == body.DesignatedReviewerId.Value);
+            if (!exists)
+                return new BadRequestObjectResult(ApiResponse.Fail("指定的審核者不存在。"));
+        }
+
         // 產生預支單號：ADV-yyyyMMdd-NNN（唯一索引保護並發）
         var today = Clock.Now;
         var prefix = $"ADV-{today:yyyyMMdd}-";
@@ -114,17 +122,18 @@ public sealed class AdvanceRequestHandler(
 
         var ar = new AdvanceRequest
         {
-            RequestNo      = requestNo,
-            ProjectId      = body.ProjectId,
-            ActivityName   = body.ActivityName,
-            ActivityPeriod = body.ActivityPeriod,
-            AdvanceDate    = body.AdvanceDate,
-            CashTotal      = items.Sum(i => i.CashAmount),
-            CheckTotal     = items.Sum(i => i.CheckAmount),
-            GrandTotal     = items.Sum(i => i.TotalPrice),
-            SubmittedById  = submittedById,
-            ApprovalStatus = "draft",
-            CreatedAt      = today,
+            RequestNo            = requestNo,
+            ProjectId            = body.ProjectId,
+            ActivityName         = body.ActivityName,
+            ActivityPeriod       = body.ActivityPeriod,
+            AdvanceDate          = body.AdvanceDate,
+            CashTotal            = items.Sum(i => i.CashAmount),
+            CheckTotal           = items.Sum(i => i.CheckAmount),
+            GrandTotal           = items.Sum(i => i.TotalPrice),
+            SubmittedById        = submittedById,
+            ApprovalStatus       = "draft",
+            DesignatedReviewerId = body.DesignatedReviewerId,
+            CreatedAt            = today,
         };
         ar.Items = items;
 
@@ -167,6 +176,16 @@ public sealed class AdvanceRequestHandler(
             ar.ActivityPeriod = body.ActivityPeriod;
         if (body.AdvanceDate.HasValue)
             ar.AdvanceDate = body.AdvanceDate.Value;
+        // 指定審核者存在性驗證（提供非空 Guid 時才驗證）
+        if (body.DesignatedReviewerId.HasValue && body.DesignatedReviewerId != Guid.Empty)
+        {
+            var exists = await db.Users.AsNoTracking().AnyAsync(u => u.Id == body.DesignatedReviewerId.Value);
+            if (!exists)
+                return new BadRequestObjectResult(ApiResponse.Fail("指定的審核者不存在。"));
+        }
+
+        if (body.DesignatedReviewerId.HasValue)
+            ar.DesignatedReviewerId = body.DesignatedReviewerId == Guid.Empty ? null : body.DesignatedReviewerId;
 
         if (body.Items is { Length: > 0 })
         {
@@ -268,8 +287,17 @@ public sealed class AdvanceRequestHandler(
             return new OkObjectResult(ApiResponse.Ok(saDto, "Advance request auto-approved."));
         }
 
+        // 若流程中有 UseApplicantDesignated 步驟，DesignatedReviewerId 必填
+        if (ar.ApprovalItemId.HasValue)
+        {
+            bool hasDesignatedStep = await db.ApprovalSteps.AsNoTracking()
+                .AnyAsync(s => s.ApprovalItemId == ar.ApprovalItemId && s.UseApplicantDesignated);
+            if (hasDesignatedStep && !ar.DesignatedReviewerId.HasValue)
+                return new BadRequestObjectResult(ApiResponse.Fail("此簽核流程包含申請人指定審核步驟，請提供 DesignatedReviewerId。"));
+        }
+
         // 自審跳過邏輯（與請款一致，不升級）
-        var (startStep, autoApproved, _) = await approvalFlow.ResolveStartingStepAsync(ar.ApprovalItemId, userId, "advance");
+        var (startStep, autoApproved, _) = await approvalFlow.ResolveStartingStepAsync(ar.ApprovalItemId, userId, "advance", ar.DesignatedReviewerId);
 
         if (autoApproved)
         {
@@ -288,7 +316,16 @@ public sealed class AdvanceRequestHandler(
         await db.SaveChangesAsync();
 
         if (!autoApproved && ar.SubmittedById.HasValue)
-            await notifier.NotifyReviewersAsync("advance", ar.Id, ar.ApprovalItemId, startStep, ar.SubmittedById.Value);
+        {
+            bool isDesignatedStep = ar.ApprovalItemId.HasValue && await db.ApprovalSteps.AsNoTracking()
+                .AnyAsync(s => s.ApprovalItemId == ar.ApprovalItemId
+                    && s.StepOrder == startStep
+                    && s.UseApplicantDesignated);
+            if (isDesignatedStep && ar.DesignatedReviewerId.HasValue)
+                await notifier.NotifySpecificReviewerAsync("advance", ar.Id, ar.DesignatedReviewerId.Value, ar.SubmittedById.Value, false);
+            else
+                await notifier.NotifyReviewersAsync("advance", ar.Id, ar.ApprovalItemId, startStep, ar.SubmittedById.Value);
+        }
 
         var dto = await reader.GetByIdAsync(ar.Id);
         var msg = autoApproved ? "Advance request auto-approved." : "Advance request submitted.";

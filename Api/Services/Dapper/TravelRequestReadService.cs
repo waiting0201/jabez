@@ -13,10 +13,12 @@ public sealed class TravelRequestReadService(IDbConnection db) : ITravelRequestR
                tr.EstimatedCost, tr.Purpose,
                tr.ProjectId, proj.Code AS ProjectCode,
                tr.IsHolidayTravel,
-               tr.ApprovalStatus, tr.CreatedAt, tr.ReviewedAt, tr.ReviewNote
+               tr.ApprovalStatus, tr.CreatedAt, tr.ReviewedAt, tr.ReviewNote,
+               tr.DesignatedReviewerId, dr.Name AS DesignatedReviewerName
         FROM TravelRequests tr
-        LEFT JOIN Users u    ON tr.EmployeeId = u.Id
-        LEFT JOIN Projects proj ON tr.ProjectId = proj.Id
+        LEFT JOIN Users u       ON tr.EmployeeId          = u.Id
+        LEFT JOIN Projects proj ON tr.ProjectId           = proj.Id
+        LEFT JOIN Users dr      ON tr.DesignatedReviewerId = dr.Id
         """;
 
     public async Task<IEnumerable<TravelRequestDto>> GetAllAsync()
@@ -59,5 +61,7 @@ public sealed class TravelRequestReadService(IDbConnection db) : ITravelRequestR
             (string)row.ApprovalStatus,
             (DateTime)row.CreatedAt,
             (DateTime?)row.ReviewedAt,
-            (string?)row.ReviewNote);
+            (string?)row.ReviewNote,
+            (Guid?)row.DesignatedReviewerId,
+            (string?)row.DesignatedReviewerName);
 }

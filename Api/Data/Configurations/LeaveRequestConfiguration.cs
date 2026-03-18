@@ -42,6 +42,11 @@ public class LeaveRequestConfiguration : IEntityTypeConfiguration<LeaveRequest>
                .HasForeignKey(l => l.ReviewedById)
                .OnDelete(DeleteBehavior.NoAction);
 
+        builder.HasOne(l => l.DesignatedReviewer)
+               .WithMany()
+               .HasForeignKey(l => l.DesignatedReviewerId)
+               .OnDelete(DeleteBehavior.NoAction);
+
         builder.HasOne(l => l.ApprovalItem)
                .WithMany(a => a.LeaveRequests)
                .HasForeignKey(l => l.ApprovalItemId)

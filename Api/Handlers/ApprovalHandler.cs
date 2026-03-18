@@ -75,7 +75,12 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
             ?? throw AppException.NotFound("ApprovalItem");
 
         if (body.Name        is not null) item.Name        = body.Name;
-        if (body.Code        is not null) item.Code        = body.Code;
+        if (body.Code is not null)
+        {
+            if (body.Code != item.Code && await db.ApprovalItems.AnyAsync(a => a.Code == body.Code && a.Id != intId))
+                throw AppException.Conflict($"Approval item code '{body.Code}' already exists.");
+            item.Code = body.Code;
+        }
         if (body.Description is not null) item.Description = body.Description;
         if (body.IsActive.HasValue)       item.IsActive    = body.IsActive.Value;
 
@@ -119,8 +124,16 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
         if (body is null)
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
 
-        // UseApplicantDepartment 時只需 JobTitleId；否則部門或職稱至少選一
-        if (body.UseApplicantDepartment)
+        // 三種模式互斥：UseApplicantDesignated / UseDirectSupervisor / 一般模式
+        if (body.UseApplicantDesignated)
+        {
+            // 申請人指定審核模式：不需要 DepartmentId / JobTitleId / UseApplicantDepartment
+        }
+        else if (body.UseDirectSupervisor)
+        {
+            // 上層級模式：自動使用申請人部門，不需指定職稱
+        }
+        else if (body.UseApplicantDepartment)
         {
             if (body.JobTitleId is null)
                 return new BadRequestObjectResult(ApiResponse.Fail("JobTitleId is required when UseApplicantDepartment is enabled."));
@@ -135,13 +148,16 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
 
         var step = new ApprovalStep
         {
-            ApprovalItemId         = intItemId,
-            StepOrder              = body.StepOrder,
-            DepartmentId           = body.UseApplicantDepartment ? null : body.DepartmentId,
-            JobTitleId             = body.JobTitleId,
-            UseApplicantDepartment = body.UseApplicantDepartment,
-            Note                   = body.Note,
-            CreatedAt              = Clock.Now,
+            ApprovalItemId          = intItemId,
+            StepOrder               = body.StepOrder,
+            // UseApplicantDesignated 時清除部門/職稱限制
+            DepartmentId            = (body.UseApplicantDesignated || body.UseDirectSupervisor || body.UseApplicantDepartment) ? null : body.DepartmentId,
+            JobTitleId              = (body.UseApplicantDesignated || body.UseDirectSupervisor) ? null : body.JobTitleId,
+            UseApplicantDepartment  = !body.UseApplicantDesignated && (body.UseDirectSupervisor || body.UseApplicantDepartment),
+            UseDirectSupervisor     = !body.UseApplicantDesignated && body.UseDirectSupervisor,
+            UseApplicantDesignated  = body.UseApplicantDesignated,
+            Note                    = body.Note,
+            CreatedAt               = Clock.Now,
         };
         db.ApprovalSteps.Add(step);
         await db.SaveChangesAsync();
@@ -163,20 +179,46 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
             .FirstOrDefaultAsync(s => s.Id == intStepId && s.ApprovalItemId == intItemId)
             ?? throw AppException.NotFound("ApprovalStep");
 
-        if (body.StepOrder.HasValue)              step.StepOrder              = body.StepOrder.Value;
-        if (body.UseApplicantDepartment.HasValue) step.UseApplicantDepartment = body.UseApplicantDepartment.Value;
-        if (body.DepartmentId.HasValue)           step.DepartmentId           = body.DepartmentId == 0 ? null : body.DepartmentId;
-        if (body.JobTitleId.HasValue)             step.JobTitleId             = body.JobTitleId   == 0 ? null : body.JobTitleId;
-        if (body.Note        is not null)         step.Note                   = body.Note;
+        if (body.StepOrder.HasValue)                 step.StepOrder               = body.StepOrder.Value;
+        if (body.UseApplicantDesignated.HasValue)    step.UseApplicantDesignated  = body.UseApplicantDesignated.Value;
+        if (body.UseApplicantDepartment.HasValue)    step.UseApplicantDepartment  = body.UseApplicantDepartment.Value;
+        if (body.UseDirectSupervisor.HasValue)       step.UseDirectSupervisor     = body.UseDirectSupervisor.Value;
+        if (body.DepartmentId.HasValue)              step.DepartmentId            = body.DepartmentId == 0 ? null : body.DepartmentId;
+        if (body.JobTitleId.HasValue)                step.JobTitleId              = body.JobTitleId   == 0 ? null : body.JobTitleId;
+        if (body.Note        is not null)            step.Note                    = body.Note;
 
-        // UseApplicantDepartment 時清除固定部門、且 JobTitleId 必填
-        if (step.UseApplicantDepartment)
+        // 三種模式互斥，以最後設定的模式為準
+        if (step.UseApplicantDesignated)
+        {
+            // 申請人指定審核模式：清除所有部門/職稱限制
+            step.DepartmentId           = null;
+            step.JobTitleId             = null;
+            step.UseApplicantDepartment = false;
+            step.UseDirectSupervisor    = false;
+        }
+        else if (step.UseDirectSupervisor)
+        {
+            // 直接上司模式：清除固定部門與職稱，自動視為使用申請人部門
+            step.DepartmentId           = null;
+            step.JobTitleId             = null;
+            step.UseApplicantDepartment = true;
+        }
+        else
+        {
+            // 從其他模式切回一般模式時，重設相關旗標（除非呼叫者明確指定）
+            if (body.UseDirectSupervisor == false && !body.UseApplicantDepartment.HasValue)
+                step.UseApplicantDepartment = false;
+            if (body.UseApplicantDesignated == false)
+                step.UseApplicantDesignated = false;
+        }
+
+        if (!step.UseApplicantDesignated && !step.UseDirectSupervisor && step.UseApplicantDepartment)
         {
             step.DepartmentId = null;
             if (step.JobTitleId is null)
                 return new BadRequestObjectResult(ApiResponse.Fail("JobTitleId is required when UseApplicantDepartment is enabled."));
         }
-        else if (step.DepartmentId is null && step.JobTitleId is null)
+        else if (!step.UseApplicantDesignated && step.DepartmentId is null && step.JobTitleId is null && !step.UseDirectSupervisor && !step.UseApplicantDepartment)
         {
             return new BadRequestObjectResult(ApiResponse.Fail("At least one of DepartmentId or JobTitleId is required."));
         }

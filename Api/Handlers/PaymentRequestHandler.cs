@@ -70,12 +70,21 @@ public sealed class PaymentRequestHandler(
         var type      = form["type"].ToString();
         var projectId = int.TryParse(form["projectId"], out var pid) ? pid : 0;
         var invoicesJson = form["invoices"].ToString();
+        Guid? designatedReviewerId = Guid.TryParse(form["designatedReviewerId"].ToString(), out var drId) ? drId : (Guid?)null;
 
         if (string.IsNullOrEmpty(type) || !ValidTypes.Contains(type))
             return new BadRequestObjectResult(ApiResponse.Fail($"Invalid type '{type}'. Must be vendor, travel, or advance."));
 
         if (!await db.Projects.AnyAsync(p => p.Id == projectId))
             throw AppException.NotFound("Project");
+
+        // 指定審核者存在性驗證
+        if (designatedReviewerId.HasValue)
+        {
+            var exists = await db.Users.AsNoTracking().AnyAsync(u => u.Id == designatedReviewerId.Value);
+            if (!exists)
+                return new BadRequestObjectResult(ApiResponse.Fail("指定的審核者不存在。"));
+        }
 
         var invoices = JsonSerializer.Deserialize<InvoiceMetadata[]>(invoicesJson, JsonOpts);
         if (invoices is null || invoices.Length == 0)
@@ -128,12 +137,13 @@ public sealed class PaymentRequestHandler(
 
         var pr = new PaymentRequest
         {
-            Type           = type,
-            ProjectId      = projectId,
-            SubmittedById  = submittedById,   // 強制使用 JWT 身分
-            TotalAmount    = invoices.Sum(i => i.Amount),
-            ApprovalStatus = "draft",
-            CreatedAt      = Clock.Now,
+            Type                 = type,
+            ProjectId            = projectId,
+            SubmittedById        = submittedById,   // 強制使用 JWT 身分
+            TotalAmount          = invoices.Sum(i => i.Amount),
+            ApprovalStatus       = "draft",
+            DesignatedReviewerId = designatedReviewerId,
+            CreatedAt            = Clock.Now,
         };
         pr.InvoiceItems = invoiceItems;
 
@@ -162,6 +172,7 @@ public sealed class PaymentRequestHandler(
 
         var type      = form["type"].ToString();
         var projectId = int.TryParse(form["projectId"], out var pid) ? pid : (int?)null;
+        Guid? updateDesignatedReviewerId = Guid.TryParse(form["designatedReviewerId"].ToString(), out var udrId) ? udrId : (Guid?)null;
 
         if (!string.IsNullOrEmpty(type))
         {
@@ -176,6 +187,18 @@ public sealed class PaymentRequestHandler(
                 throw AppException.NotFound("Project");
             pr.ProjectId = projectId.Value;
         }
+
+        // 指定審核者存在性驗證（提供非空 Guid 時才驗證）
+        if (updateDesignatedReviewerId.HasValue && updateDesignatedReviewerId != Guid.Empty)
+        {
+            var exists = await db.Users.AsNoTracking().AnyAsync(u => u.Id == updateDesignatedReviewerId.Value);
+            if (!exists)
+                return new BadRequestObjectResult(ApiResponse.Fail("指定的審核者不存在。"));
+        }
+
+        // 更新指定審核者（提供時才更新）
+        if (updateDesignatedReviewerId.HasValue)
+            pr.DesignatedReviewerId = updateDesignatedReviewerId == Guid.Empty ? null : updateDesignatedReviewerId;
 
         var invoicesJson = form["invoices"].ToString();
         if (!string.IsNullOrEmpty(invoicesJson))
@@ -344,8 +367,18 @@ public sealed class PaymentRequestHandler(
             return new OkObjectResult(ApiResponse.Ok(saDto, "Payment request auto-approved."));
         }
 
+        // 若流程中有 UseApplicantDesignated 步驟，DesignatedReviewerId 必填
+        if (pr.ApprovalItemId.HasValue)
+        {
+            bool hasDesignatedStep = await db.ApprovalSteps.AsNoTracking()
+                .AnyAsync(s => s.ApprovalItemId == pr.ApprovalItemId && s.UseApplicantDesignated);
+            if (hasDesignatedStep && !pr.DesignatedReviewerId.HasValue)
+                return new BadRequestObjectResult(ApiResponse.Fail("此簽核流程包含申請人指定審核步驟，請提供 DesignatedReviewerId。"));
+        }
+
         // 自動跳過「申請人即審核者」的步驟
-        var (startStep, autoApproved, _) = await approvalFlow.ResolveStartingStepAsync(pr.ApprovalItemId, userId, "payment_request");
+        var (startStep, autoApproved, _) = await approvalFlow.ResolveStartingStepAsync(
+            pr.ApprovalItemId, userId, "payment_request", pr.DesignatedReviewerId);
 
         if (autoApproved)
         {
@@ -363,9 +396,18 @@ public sealed class PaymentRequestHandler(
 
         await db.SaveChangesAsync();
 
-        // 通知實際需審核的步驟審核者（自動核准則不通知）
+        // 通知審核者：若為指定審核步驟則通知指定人員，否則通知符合條件的審核者
         if (!autoApproved && pr.SubmittedById.HasValue)
-            await notifier.NotifyReviewersAsync("payment_request", pr.Id, pr.ApprovalItemId, startStep, pr.SubmittedById.Value);
+        {
+            bool isDesignatedStep = pr.ApprovalItemId.HasValue && await db.ApprovalSteps.AsNoTracking()
+                .AnyAsync(s => s.ApprovalItemId == pr.ApprovalItemId
+                    && s.StepOrder == startStep
+                    && s.UseApplicantDesignated);
+            if (isDesignatedStep && pr.DesignatedReviewerId.HasValue)
+                await notifier.NotifySpecificReviewerAsync("payment_request", pr.Id, pr.DesignatedReviewerId.Value, pr.SubmittedById.Value, false);
+            else
+                await notifier.NotifyReviewersAsync("payment_request", pr.Id, pr.ApprovalItemId, startStep, pr.SubmittedById.Value);
+        }
 
         var dto = await reader.GetByIdAsync(pr.Id);
         var msg = autoApproved ? "Payment request auto-approved." : "Payment request submitted.";

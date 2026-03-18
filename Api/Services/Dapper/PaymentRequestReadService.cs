@@ -13,11 +13,13 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                pr.TotalAmount, pr.ApprovalStatus, pr.EstimatedPaymentDate, pr.PaidAt,
                sub.Name AS SubmittedBy, pr.CreatedAt,
                pr.ReviewedAt, pr.ReviewNote,
+               pr.DesignatedReviewerId, dr.Name AS DesignatedReviewerName,
                ii.Id AS InvId, ii.FileName, ii.InvoiceNo, ii.Amount AS InvAmount, ii.ItemName AS InvItemName, ii.Note AS InvNote, ii.FileUrl AS InvFileUrl
         FROM PaymentRequests pr
-        LEFT JOIN Projects proj  ON pr.ProjectId     = proj.Id
-        LEFT JOIN Users   sub    ON pr.SubmittedById  = sub.Id
-        LEFT JOIN InvoiceItems ii ON ii.PaymentRequestId = pr.Id
+        LEFT JOIN Projects proj    ON pr.ProjectId           = proj.Id
+        LEFT JOIN Users   sub      ON pr.SubmittedById        = sub.Id
+        LEFT JOIN Users   dr       ON pr.DesignatedReviewerId = dr.Id
+        LEFT JOIN InvoiceItems ii  ON ii.PaymentRequestId    = pr.Id
         """;
 
     // ── PaymentRequest ────────────────────────────────────────────────────────
@@ -152,6 +154,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                   JOIN ApprovalSteps s2 ON s2.ApprovalItemId = ai2.Id
                                        AND s2.StepOrder = {alias}.CurrentStepOrder
                   WHERE ai2.Id = {alias}.ApprovalItemId
+                    AND s2.UseDirectSupervisor = 0
+                    AND s2.UseApplicantDesignated = 0
                     AND (s2.JobTitleId IS NULL OR s2.JobTitleId = @ReviewerJobTitleId)
                     AND (
                       (s2.UseApplicantDepartment = 1
@@ -163,11 +167,49 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                     )
                 )
                 OR EXISTS (
+                  SELECT 1 FROM ApprovalItems ai3
+                  JOIN ApprovalSteps s3 ON s3.ApprovalItemId = ai3.Id
+                                       AND s3.StepOrder = {alias}.CurrentStepOrder
+                  WHERE ai3.Id = {alias}.ApprovalItemId
+                    AND s3.UseDirectSupervisor = 1
+                    AND {userAlias}.DepartmentId IS NOT NULL
+                    AND {userAlias}.DepartmentId = @ReviewerDepartmentId
+                    AND EXISTS (
+                      SELECT 1 FROM JobTitles appJt
+                      WHERE appJt.Id = {userAlias}.JobTitleId
+                        AND (SELECT Level FROM JobTitles WHERE Id = @ReviewerJobTitleId) = (
+                          SELECT Level FROM (
+                            SELECT DISTINCT jt2.Level,
+                                   ROW_NUMBER() OVER (ORDER BY jt2.Level DESC) AS rn
+                            FROM Users u2
+                            JOIN JobTitles jt2 ON jt2.Id = u2.JobTitleId
+                            WHERE u2.DepartmentId = {userAlias}.DepartmentId
+                              AND jt2.Level < appJt.Level
+                              AND u2.IsSuperAdmin = 0
+                          ) ranked
+                          WHERE ranked.rn = (
+                            SELECT COUNT(*) + 1 FROM ApprovalSteps prev
+                            WHERE prev.ApprovalItemId = s3.ApprovalItemId
+                              AND prev.UseDirectSupervisor = 1
+                              AND prev.StepOrder < s3.StepOrder
+                          )
+                        )
+                    )
+                )
+                OR EXISTS (
                   SELECT 1 FROM EscalationOverrides eo
                   WHERE eo.ApplicationType = '{appType}'
                     AND eo.ApplicationId = {alias}.Id
                     AND eo.StepOrder = {alias}.CurrentStepOrder
                     AND eo.ReviewerId = @ReviewerUserId
+                )
+                OR EXISTS (
+                  SELECT 1 FROM ApprovalItems ai4
+                  JOIN ApprovalSteps s4 ON s4.ApprovalItemId = ai4.Id
+                                       AND s4.StepOrder = {alias}.CurrentStepOrder
+                  WHERE ai4.Id = {alias}.ApprovalItemId
+                    AND s4.UseApplicantDesignated = 1
+                    AND {alias}.DesignatedReviewerId = @ReviewerUserId
                 )
               )
               """;
@@ -189,7 +231,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         var paymentSql = $"""
             SELECT pr.Id, pr.Type AS PaymentType, proj.Code AS ProjectCode,
                    pr.TotalAmount, pr.ApprovalStatus, pr.EstimatedPaymentDate, pr.PaidAt, pr.ApprovalItemId, pr.CurrentStepOrder,
-                   sub.Name AS SubmittedBy, pr.CreatedAt, pr.ReviewedAt, pr.ReviewNote,
+                   sub.Name AS SubmittedBy, sub.SignatureUrl AS SubmittedBySignatureUrl, pr.CreatedAt, pr.ReviewedAt, pr.ReviewNote,
                    ii.Id AS InvId, ii.FileName, ii.InvoiceNo, ii.Amount AS InvAmount, ii.ItemName AS InvItemName, ii.Note AS InvNote, ii.FileUrl AS InvFileUrl
             FROM PaymentRequests pr
             LEFT JOIN Projects proj   ON pr.ProjectId    = proj.Id
@@ -202,7 +244,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         var leaveSql = $"""
             SELECT lr.Id, lr.LeaveType, lr.StartDate, lr.EndDate, lr.Hours, lr.Reason,
                    lr.ApprovalStatus, lr.ApprovalItemId, lr.CurrentStepOrder,
-                   u.Name AS SubmittedBy, lr.CreatedAt, lr.ReviewedAt, lr.ReviewNote
+                   u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, lr.CreatedAt, lr.ReviewedAt, lr.ReviewNote
             FROM LeaveRequests lr
             LEFT JOIN Users u ON lr.EmployeeId = u.Id
             {leaveWhere}
@@ -214,7 +256,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                    tr.EstimatedCost, tr.Purpose, proj.Code AS ProjectCode,
                    tr.IsHolidayTravel,
                    tr.ApprovalStatus, tr.ApprovalItemId, tr.CurrentStepOrder,
-                   u.Name AS SubmittedBy, tr.CreatedAt, tr.ReviewedAt, tr.ReviewNote
+                   u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, tr.CreatedAt, tr.ReviewedAt, tr.ReviewNote
             FROM TravelRequests tr
             LEFT JOIN Users u       ON tr.EmployeeId = u.Id
             LEFT JOIN Projects proj ON tr.ProjectId  = proj.Id
@@ -226,7 +268,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             SELECT ot.Id, ot.OvertimeDate, ot.EstimatedHours, ot.Reason,
                    ot.ProjectIds,
                    ot.ApprovalStatus, ot.ApprovalItemId, ot.CurrentStepOrder,
-                   u.Name AS SubmittedBy, ot.CreatedAt, ot.ReviewedAt, ot.ReviewNote
+                   u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, ot.CreatedAt, ot.ReviewedAt, ot.ReviewNote
             FROM OvertimeRequests ot
             LEFT JOIN Users u ON ot.EmployeeId = u.Id
             {overtimeWhere}
@@ -238,7 +280,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                    adv.ActivityName, adv.GrandTotal,
                    adv.ApprovalStatus, adv.ApprovalItemId, adv.CurrentStepOrder,
                    adv.EstimatedPaymentDate, adv.PaidAt,
-                   asub.Name AS SubmittedBy, adv.CreatedAt, adv.ReviewedAt, adv.ReviewNote
+                   asub.Name AS SubmittedBy, asub.SignatureUrl AS SubmittedBySignatureUrl, adv.CreatedAt, adv.ReviewedAt, adv.ReviewNote
             FROM AdvanceRequests adv
             LEFT JOIN Projects proj ON adv.ProjectId    = proj.Id
             LEFT JOIN Users   asub  ON adv.SubmittedById = asub.Id
@@ -248,7 +290,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
 
         const string flowSql = """
             SELECT ai.Id AS FlowId, ai.Name AS FlowName, ai.ApplicationType,
-                   s.StepOrder, d.Name AS DepartmentName, j.Name AS JobTitleName, s.Note
+                   s.StepOrder, d.Name AS DepartmentName, j.Name AS JobTitleName,
+                   s.UseDirectSupervisor, s.UseApplicantDesignated, s.Note
             FROM ApprovalItems ai
             LEFT JOIN ApprovalSteps s ON s.ApprovalItemId = ai.Id
             LEFT JOIN Departments d   ON s.DepartmentId = d.Id
@@ -259,7 +302,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         const string recordSql = """
             SELECT ar.ApplicationType, ar.ApplicationId, ar.StepOrder, ar.Action,
                    u.Name AS ReviewedBy, ar.ReviewedAt, ar.ReviewNote,
-                   obu.Name AS OnBehalfOf, ar.IsEscalated
+                   obu.Name AS OnBehalfOf, ar.IsEscalated,
+                   u.SignatureUrl AS ReviewerSignatureUrl
             FROM ApprovalRecords ar
             LEFT JOIN Users u   ON ar.ReviewedById     = u.Id
             LEFT JOIN Users obu ON ar.OnBehalfOfUserId  = obu.Id
@@ -308,6 +352,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                     (int)row.StepOrder,
                     (string?)row.DepartmentName,
                     (string?)row.JobTitleName,
+                    (bool)(row.UseDirectSupervisor ?? false),
+                    (bool)(row.UseApplicantDesignated ?? false),
                     (string?)row.Note));
         }
 
@@ -330,7 +376,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (DateTime)row.ReviewedAt,
                 (string?)row.ReviewNote,
                 (string?)row.OnBehalfOf,
-                (bool)(row.IsEscalated ?? false)));
+                (bool)(row.IsEscalated ?? false),
+                (string?)row.ReviewerSignatureUrl));
         }
 
         ApprovalRecordDto[] GetRecords(string appType, int id) =>
@@ -369,7 +416,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (DateTime?)x.pr.EstimatedPaymentDate,
                 (DateTime?)x.pr.PaidAt),
             null, null, null, null,
-            GetRecords("payment_request", (int)x.pr.Id)));
+            GetRecords("payment_request", (int)x.pr.Id),
+            (string?)x.pr.SubmittedBySignatureUrl));
 
         // Leave requests
         var leaveTasks = leaveRows.Select(row => new ApprovalTaskDto(
@@ -392,7 +440,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (decimal)row.Hours,
                 (string)row.Reason),
             null, null, null,
-            GetRecords("leave", (int)row.Id)));
+            GetRecords("leave", (int)row.Id),
+            (string?)row.SubmittedBySignatureUrl));
 
         // Travel requests
         var travelTasks = travelRows.Select(row => new ApprovalTaskDto(
@@ -418,7 +467,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (string?)row.ProjectCode,
                 (bool)row.IsHolidayTravel),
             null, null,
-            GetRecords("travel", (int)row.Id)));
+            GetRecords("travel", (int)row.Id),
+            (string?)row.SubmittedBySignatureUrl));
 
         // Overtime requests
         var overtimeTasks = overtimeRows.Select(row => new ApprovalTaskDto(
@@ -440,7 +490,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (decimal)row.EstimatedHours,
                 (string)row.Reason),
             null,
-            GetRecords("overtime", (int)row.Id)));
+            GetRecords("overtime", (int)row.Id),
+            (string?)row.SubmittedBySignatureUrl));
 
         // Advance requests
         var advanceTasks = advanceRows.Select(row => new ApprovalTaskDto(
@@ -463,7 +514,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (decimal)row.GrandTotal,
                 (DateTime?)row.EstimatedPaymentDate,
                 (DateTime?)row.PaidAt),
-            GetRecords("advance", (int)row.Id)));
+            GetRecords("advance", (int)row.Id),
+            (string?)row.SubmittedBySignatureUrl));
 
         return paymentTasks
             .Concat(leaveTasks)
@@ -506,6 +558,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             (DateTime?)x.pr.EstimatedPaymentDate,
             (DateTime?)x.pr.PaidAt,
             (DateTime?)x.pr.ReviewedAt,
-            (string?)x.pr.ReviewNote));
+            (string?)x.pr.ReviewNote,
+            (Guid?)x.pr.DesignatedReviewerId,
+            (string?)x.pr.DesignatedReviewerName));
     }
 }

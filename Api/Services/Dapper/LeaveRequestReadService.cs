@@ -10,9 +10,11 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
     private const string BaseSql = """
         SELECT lr.Id, u.Name AS EmployeeName,
                lr.LeaveType, lr.StartDate, lr.EndDate, lr.Hours, lr.Reason,
-               lr.ApprovalStatus, lr.CreatedAt, lr.ReviewedAt, lr.ReviewNote
+               lr.ApprovalStatus, lr.CreatedAt, lr.ReviewedAt, lr.ReviewNote,
+               lr.DesignatedReviewerId, dr.Name AS DesignatedReviewerName
         FROM LeaveRequests lr
-        LEFT JOIN Users u ON lr.EmployeeId = u.Id
+        LEFT JOIN Users u  ON lr.EmployeeId         = u.Id
+        LEFT JOIN Users dr ON lr.DesignatedReviewerId = dr.Id
         """;
 
     public async Task<IEnumerable<LeaveRequestDto>> GetAllAsync()
@@ -52,5 +54,7 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
             (string)row.ApprovalStatus,
             (DateTime)row.CreatedAt,
             (DateTime?)row.ReviewedAt,
-            (string?)row.ReviewNote);
+            (string?)row.ReviewNote,
+            (Guid?)row.DesignatedReviewerId,
+            (string?)row.DesignatedReviewerName);
 }

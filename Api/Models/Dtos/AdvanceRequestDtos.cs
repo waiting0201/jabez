@@ -48,7 +48,9 @@ public sealed record AdvanceRequestDto(
     DateTime?                 ReviewedAt,
     string?                   ReviewNote,
     AdvanceRequestItemDto[]   Items,
-    WriteOffSummaryDto[]      WriteOffs);
+    WriteOffSummaryDto[]      WriteOffs,
+    Guid?                     DesignatedReviewerId   = null,
+    string?                   DesignatedReviewerName = null);
 
 // ── WriteOff DTOs ───────────────────────────────────────────────────────────
 
@@ -105,14 +107,16 @@ public sealed record CreateAdvanceRequestRequest(
     string                      ActivityName,
     string                      ActivityPeriod,
     DateTime                    AdvanceDate,
-    AdvanceRequestItemRequest[] Items);
+    AdvanceRequestItemRequest[] Items,
+    Guid?                       DesignatedReviewerId = null);
 
 public sealed record UpdateAdvanceRequestRequest(
     int?                         ProjectId,
     string?                      ActivityName,
     string?                      ActivityPeriod,
     DateTime?                    AdvanceDate,
-    AdvanceRequestItemRequest[]? Items);
+    AdvanceRequestItemRequest[]? Items,
+    Guid?                        DesignatedReviewerId = null);
 
 public sealed record CreateWriteOffRequest(
     WriteOffItemRequest[] Items,

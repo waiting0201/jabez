@@ -14,14 +14,16 @@ public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceReques
                ar.ApprovalStatus, ar.EstimatedPaymentDate, ar.PaidAt,
                sub.Name AS SubmittedBy, ar.CreatedAt,
                ar.ReviewedAt, ar.ReviewNote,
+               ar.DesignatedReviewerId, dr.Name AS DesignatedReviewerName,
                ai.Id AS ItemId, ai.Category, ai.SeqNo, ai.ItemName,
                ai.UnitPrice, ai.Quantity, ai.TotalPrice,
                ai.CashAmount AS ItemCash, ai.CheckAmount AS ItemCheck,
                ai.Note AS ItemNote, ai.SortOrder
         FROM AdvanceRequests ar
-        LEFT JOIN Projects proj  ON ar.ProjectId    = proj.Id
-        LEFT JOIN Users   sub    ON ar.SubmittedById = sub.Id
-        LEFT JOIN AdvanceRequestItems ai ON ai.AdvanceRequestId = ar.Id
+        LEFT JOIN Projects proj             ON ar.ProjectId           = proj.Id
+        LEFT JOIN Users   sub               ON ar.SubmittedById        = sub.Id
+        LEFT JOIN Users   dr                ON ar.DesignatedReviewerId = dr.Id
+        LEFT JOIN AdvanceRequestItems ai    ON ai.AdvanceRequestId    = ar.Id
         """;
 
     private const string WriteOffBaseSql = """
@@ -144,7 +146,9 @@ public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceReques
                 (DateTime?)x.ar.ReviewedAt,
                 (string?)x.ar.ReviewNote,
                 [.. x.items],
-                wos);
+                wos,
+                (Guid?)x.ar.DesignatedReviewerId,
+                (string?)x.ar.DesignatedReviewerName);
         });
     }
 

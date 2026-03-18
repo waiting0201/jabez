@@ -10,6 +10,8 @@ public class ApprovalStep
     public int?     DepartmentId   { get; set; }
     public int?     JobTitleId     { get; set; }
     public bool     UseApplicantDepartment { get; set; } = false;
+    public bool     UseDirectSupervisor    { get; set; } = false;
+    public bool     UseApplicantDesignated { get; set; } = false;
     public string?  Note           { get; set; }
     public DateTime CreatedAt      { get; set; } = Clock.Now;
 
