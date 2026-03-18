@@ -208,7 +208,7 @@ export class ApprovalTaskReview implements OnInit {
       import('jspdf'),
       import('jspdf-autotable'),
       this.loadFonts(),
-    ]).then(([{default: jsPDF}, {default: autoTable}, fonts]) => {
+    ]).then(async ([{default: jsPDF}, {default: autoTable}, fonts]) => {
       const doc = new jsPDF('portrait', 'mm', 'a4');
       const F = 'NotoSansTC';
 
@@ -320,15 +320,18 @@ export class ApprovalTaskReview implements OnInit {
 
       // 簽名欄標題對應簽核步驟
       // Step 4: 總監, Step 3: 財務, Step 2: 會計, Step 1: 部門主管, 請款人
-      const signBlocks: {label: string; name: string; date: string}[] = [];
+      const signBlocks: {label: string; signatureUrl?: string; date: string}[] = [];
       const records = task.approvalRecords || [];
 
       // 根據 flow steps 對應簽名欄
       const stepLabels: Record<number, string> = {};
       if (task.flow) {
         for (const step of task.flow.steps) {
-          // 根據步驟順序設定標籤
-          if (step.jobTitleName?.includes('總監') || step.stepOrder === 4) {
+          if (step.useApplicantDesignated) {
+            stepLabels[step.stepOrder] = '指定審核';
+          } else if (step.useDirectSupervisor) {
+            stepLabels[step.stepOrder] = '上層級';
+          } else if (step.jobTitleName?.includes('總監') || step.stepOrder === 4) {
             stepLabels[step.stepOrder] = '總監';
           } else if (step.departmentName?.includes('財務') || step.stepOrder === 3) {
             stepLabels[step.stepOrder] = '財務';
@@ -348,7 +351,7 @@ export class ApprovalTaskReview implements OnInit {
         const rec = records.find(r => r.stepOrder === so);
         signBlocks.push({
           label: stepLabels[so],
-          name: rec?.reviewedBy || '',
+          signatureUrl: rec?.reviewerSignatureUrl,
           date: rec?.reviewedAt
             ? new Date(rec.reviewedAt).toLocaleDateString('zh-TW', {year: 'numeric', month: '2-digit', day: '2-digit'})
             : '',
@@ -358,9 +361,21 @@ export class ApprovalTaskReview implements OnInit {
       // 請款人（最右邊）
       signBlocks.push({
         label: '請款人',
-        name: task.submittedBy,
+        signatureUrl: task.submittedBySignatureUrl,
         date: submitDate,
       });
+
+      // 預載所有簽名檔圖片
+      const sigUrls = signBlocks.map(b => b.signatureUrl).filter((u): u is string => !!u);
+      const sigImageMap = new Map<string, string>();
+      await Promise.all(sigUrls.map(async url => {
+        try {
+          const resp = await fetch(url);
+          const buf = await resp.arrayBuffer();
+          const mime = resp.headers.get('content-type') || 'image/png';
+          sigImageMap.set(url, `data:${mime};base64,${arrayBufferToBase64(buf)}`);
+        } catch { /* 載入失敗則跳過，不顯示圖片 */ }
+      }));
 
       // 如果簽名欄會超出頁面，換頁
       if (y + 40 > ph - 20) {
@@ -395,12 +410,20 @@ export class ApprovalTaskReview implements OnInit {
         doc.setLineWidth(0.2);
         doc.line(bx + 2, lineY, bx + blockW - 2, lineY);
 
-        // 簽核者名字（簽名線上方）
-        if (block.name) {
-          doc.setFont(F, 'normal');
-          doc.setFontSize(9);
-          doc.setTextColor(...CIS.textPrimary);
-          doc.text(block.name, bx + blockW / 2, lineY - 3, {align: 'center'});
+        // 簽名檔圖片（簽名線上方，等比例縮放）
+        if (block.signatureUrl && sigImageMap.has(block.signatureUrl)) {
+          const sigData = sigImageMap.get(block.signatureUrl)!;
+          const maxW = blockW - 8;  // 左右各留 4mm
+          const maxH = 12;          // 最大高度 12mm，不超出簽名欄
+          try {
+            const imgProps = doc.getImageProperties(sigData);
+            const ratio = Math.min(maxW / imgProps.width, maxH / imgProps.height);
+            const imgW = imgProps.width * ratio;
+            const imgH = imgProps.height * ratio;
+            const imgX = bx + (blockW - imgW) / 2;
+            const imgY = lineY - imgH - 1;  // 簽名線上方 1mm
+            doc.addImage(sigData, imgX, imgY, imgW, imgH);
+          } catch { /* 圖片格式有誤則跳過 */ }
         }
 
         // 日期（簽名線下方）

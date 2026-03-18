@@ -56,6 +56,7 @@ export interface AdvanceRequest {
   paidAt?: string;
   reviewedAt?: string;
   reviewNote?: string;
+  designatedReviewerId?: string;
   items: AdvanceRequestItem[];
   writeOffs: WriteOffSummary[];
 }

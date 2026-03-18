@@ -318,9 +318,15 @@
                     <!-- 步驟內容 -->
                     <div class="grow">
                       <div class="fw-500">
-                        {{ step.jobTitleName || '—' }}
-                        @if (step.departmentName) {
-                          <span class="text-muted font-normal">（{{ step.departmentName }}）</span>
+                        @if (step.useApplicantDesignated) {
+                          指定審核
+                        } @else if (step.useDirectSupervisor) {
+                          上層級
+                        } @else {
+                          {{ step.jobTitleName || '—' }}
+                          @if (step.departmentName) {
+                            <span class="text-muted font-normal">（{{ step.departmentName }}）</span>
+                          }
                         }
                       </div>
                       @if (step.note) {

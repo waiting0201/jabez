@@ -1,6 +1,6 @@
 import {ChangeDetectorRef, Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
-import {AbstractControl, FormArray, FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
+import {AbstractControl, FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {DecimalPipe} from '@angular/common';
 import {DomSanitizer} from '@angular/platform-browser';
 import {HttpErrorResponse} from '@angular/common/http';
@@ -11,20 +11,26 @@ import {PaymentRequestService} from '../../services/payment-request.service';
 import {ProjectService} from '../../../projects/services/project.service';
 import {Project} from '../../../projects/models/project.model';
 import {PaymentType, ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/payment-request.model';
+import {JobTitleService} from '../../../job-titles/services/job-title.service';
+import {UserService} from '../../../users/services/user.service';
+import {JobTitle} from '../../../job-titles/models/job-title.model';
+import {User} from '../../../users/models/user.model';
 
 @Component({
   selector: 'app-payment-form',
   templateUrl: './payment-form.html',
-  imports: [ReactiveFormsModule, RouterLink, DecimalPipe, FilePreviewModal],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, FilePreviewModal],
 })
 export class PaymentForm implements OnInit {
-  private fb        = inject(FormBuilder);
-  private service   = inject(PaymentRequestService);
-  private projects$ = inject(ProjectService);
-  private route     = inject(ActivatedRoute);
-  private router    = inject(Router);
-  private cdr       = inject(ChangeDetectorRef);
-  private sanitizer = inject(DomSanitizer);
+  private fb           = inject(FormBuilder);
+  private service      = inject(PaymentRequestService);
+  private projects$    = inject(ProjectService);
+  private jobTitleSvc  = inject(JobTitleService);
+  private userSvc      = inject(UserService);
+  private route        = inject(ActivatedRoute);
+  private router       = inject(Router);
+  private cdr          = inject(ChangeDetectorRef);
+  private sanitizer    = inject(DomSanitizer);
 
   projects: Project[] = [];
   isEdit     = false;
@@ -39,6 +45,19 @@ export class PaymentForm implements OnInit {
   projectCode = '';
   estimatedPaymentDate = '';
   paidAt = '';
+
+  /** 指定審核者相關 */
+  jobTitles: JobTitle[] = [];
+  allUsers: User[] = [];
+  filteredUsers: User[] = [];
+  selectedJobTitleId: number | null = null;
+
+  /** 取得已選審核者姓名（用於檢視模式顯示） */
+  get designatedReviewerName(): string {
+    const id = this.form.get('designatedReviewerId')?.value;
+    if (!id) return '—';
+    return this.allUsers.find(u => u.id === id)?.name ?? id;
+  }
 
   /** invoice id → File 物件（新上傳的檔案） */
   fileMap = new Map<string, File>();
@@ -58,9 +77,10 @@ export class PaymentForm implements OnInit {
   readonly statusClass = APPROVAL_STATUS_CLASSES;
 
   form = this.fb.group({
-    type:      ['vendor', Validators.required],
-    projectId: [null as number | null, Validators.required],
-    invoices:  this.fb.array([]),
+    type:                  ['vendor', Validators.required],
+    projectId:             [null as number | null, Validators.required],
+    designatedReviewerId:  [null as string | null],
+    invoices:              this.fb.array([]),
   });
 
   get invoiceArray(): FormArray { return this.form.get('invoices') as FormArray; }
@@ -72,6 +92,15 @@ export class PaymentForm implements OnInit {
   loadingProjects = true;
 
   ngOnInit() {
+    // 載入職稱清單
+    this.jobTitleSvc.getAll().subscribe({
+      next: jts => { this.jobTitles = jts; },
+    });
+    // 載入所有使用者（前端依職稱篩選）
+    this.userSvc.getAll().subscribe({
+      next: users => { this.allUsers = users; },
+    });
+
     this.projects$.getActive().subscribe({
       next: p => {
         this.projects = p;
@@ -94,13 +123,52 @@ export class PaymentForm implements OnInit {
         this.estimatedPaymentDate = r.estimatedPaymentDate?.toString().slice(0, 10) ?? '';
         this.paidAt               = r.paidAt?.toString().slice(0, 10) ?? '';
         if (this.isReadOnly) this.form.disable();
-        this.form.patchValue({type: r.type, projectId: r.projectId});
+        this.form.patchValue({type: r.type, projectId: r.projectId, designatedReviewerId: r.designatedReviewerId ?? null});
+        // 回填已選審核者的職稱
+        if (r.designatedReviewerId) {
+          this._prefillDesignatedJobTitle(r.designatedReviewerId);
+        }
         r.invoices.forEach(inv => this.invoiceArray.push(
           this._invoiceGroup(String(inv.id), inv.fileName, inv.invoiceNo, inv.amount, inv.fileUrl ?? '', inv.fileUrl ?? '', inv.itemName ?? '', inv.note ?? '')
         ));
         this.cdr.markForCheck();
       });
     }
+  }
+
+  /** 根據 designatedReviewerId 回填職稱下拉，並篩選人員清單 */
+  private _prefillDesignatedJobTitle(userId: string) {
+    // 等待 allUsers 載入後再處理
+    const tryPrefill = () => {
+      const user = this.allUsers.find(u => u.id === userId);
+      if (user?.jobTitleId) {
+        this.selectedJobTitleId = user.jobTitleId;
+        this.filteredUsers = this.allUsers.filter(u => u.jobTitleId === user.jobTitleId && u.status === 'active');
+      }
+      this.cdr.markForCheck();
+    };
+    if (this.allUsers.length > 0) {
+      tryPrefill();
+    } else {
+      // allUsers 尚未載入，稍後重試
+      const sub = this.userSvc.getAll().subscribe(users => {
+        this.allUsers = users;
+        tryPrefill();
+        sub.unsubscribe();
+      });
+    }
+  }
+
+  /** 職稱選擇變更，篩選可選人員並清除已選審核者 */
+  onDesignatedJobTitleChange() {
+    if (this.selectedJobTitleId == null) {
+      this.filteredUsers = [];
+    } else {
+      this.filteredUsers = this.allUsers.filter(
+        u => u.jobTitleId === this.selectedJobTitleId && u.status === 'active'
+      );
+    }
+    this.form.get('designatedReviewerId')?.setValue(null);
   }
 
   async onFilesSelected(event: Event) {
@@ -214,6 +282,8 @@ export class PaymentForm implements OnInit {
     const fd = new FormData();
     fd.append('type', this.form.get('type')!.value!);
     fd.append('projectId', String(this.form.get('projectId')!.value));
+    const designatedReviewerId = this.form.get('designatedReviewerId')?.value;
+    if (designatedReviewerId) fd.append('designatedReviewerId', designatedReviewerId);
 
     const invoicesMeta: any[] = [];
     let fileIndex = 0;

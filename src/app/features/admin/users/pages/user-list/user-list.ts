@@ -1,6 +1,6 @@
 import {Component, computed, inject, signal} from '@angular/core';
 import {RouterLink} from '@angular/router';
-import {DatePipe, CurrencyPipe} from '@angular/common';
+import {DatePipe} from '@angular/common';
 import {toSignal, toObservable} from '@angular/core/rxjs-interop';
 import {catchError, switchMap} from 'rxjs/operators';
 import {of} from 'rxjs';
@@ -13,7 +13,7 @@ import {PagedResult} from '../../../../../shared/models/paged-result.model';
 @Component({
   selector: 'app-user-list',
   templateUrl: './user-list.html',
-  imports: [RouterLink, DatePipe, CurrencyPipe],
+  imports: [RouterLink, DatePipe],
 })
 export class UserList {
   private userService = inject(UserService);

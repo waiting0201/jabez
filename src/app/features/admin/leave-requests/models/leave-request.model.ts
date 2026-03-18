@@ -41,6 +41,7 @@ export interface LeaveRequest {
   hours: number;
   reason: string;
   approvalStatus: ApprovalStatus;
+  designatedReviewerId?: string;
   createdAt: string;
   reviewedAt?: string;
   reviewNote?: string;

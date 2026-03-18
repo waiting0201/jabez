@@ -69,13 +69,13 @@ export class AdvanceDetail implements OnInit {
   printAdvance() {
     const r = this.request();
     const t = this.approvalTask();
-    if (r) this.pdfService.printAdvanceRequest(r, r.submittedBy ?? '', t?.approvalRecords ?? [], t?.flow);
+    if (r) this.pdfService.printAdvanceRequest(r, r.submittedBy ?? '', t?.approvalRecords ?? [], t?.flow, t?.submittedBySignatureUrl);
   }
 
   printWriteOff(wo: WriteOffRecord) {
     const r = this.request();
     const t = this.approvalTask();
-    if (r) this.pdfService.printWriteOff(r, wo, r.submittedBy ?? '', t?.approvalRecords ?? [], t?.flow);
+    if (r) this.pdfService.printWriteOff(r, wo, r.submittedBy ?? '', t?.approvalRecords ?? [], t?.flow, t?.submittedBySignatureUrl);
   }
 
   deleteWriteOff(wo: WriteOffRecord) {

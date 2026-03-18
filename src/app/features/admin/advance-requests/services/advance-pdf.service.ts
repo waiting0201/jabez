@@ -5,7 +5,7 @@ import {ApprovalRecord, ApprovalFlow} from '../../approval-tasks/models/approval
 /** 簽名欄資料 */
 interface SignBlock {
   label: string;
-  name: string;
+  signatureUrl?: string;
   date: string;
 }
 
@@ -53,7 +53,7 @@ export class AdvancePdfService {
   }
 
   /** 列印經費預支申請表 */
-  async printAdvanceRequest(r: AdvanceRequest, submittedByName: string, approvalRecords: ApprovalRecord[] = [], flow?: ApprovalFlow) {
+  async printAdvanceRequest(r: AdvanceRequest, submittedByName: string, approvalRecords: ApprovalRecord[] = [], flow?: ApprovalFlow, submittedBySignatureUrl?: string) {
     this.pdfLoading.set(true);
     try {
       const [{default: jsPDF}, {default: autoTable}, fonts] = await Promise.all([
@@ -211,8 +211,9 @@ export class AdvancePdfService {
 
       y += 8;
       const advSubmitDate = r.createdAt ? new Date(r.createdAt).toLocaleDateString('zh-TW', {year: 'numeric', month: '2-digit', day: '2-digit'}) : '';
-      const advSignBlocks = this._buildSignBlocks(flow, approvalRecords, submittedByName, advSubmitDate, '申請者');
-      this._drawSignatureBlock(doc, F, mx, pw, cw, y, advSignBlocks);
+      const advSignBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, advSubmitDate, '申請者');
+      const advSigMap = await this._loadSignatureImages(advSignBlocks);
+      this._drawSignatureBlock(doc, F, mx, pw, cw, y, advSignBlocks, advSigMap);
 
       // ── 底部裝飾線 ──
       y += 30;
@@ -229,7 +230,7 @@ export class AdvancePdfService {
   }
 
   /** 列印預支經費現金沖銷表 */
-  async printWriteOff(r: AdvanceRequest, wo: WriteOffRecord, submittedByName: string, approvalRecords: ApprovalRecord[] = [], flow?: ApprovalFlow) {
+  async printWriteOff(r: AdvanceRequest, wo: WriteOffRecord, submittedByName: string, approvalRecords: ApprovalRecord[] = [], flow?: ApprovalFlow, submittedBySignatureUrl?: string) {
     this.pdfLoading.set(true);
     try {
       const [{default: jsPDF}, {default: autoTable}, fonts] = await Promise.all([
@@ -398,8 +399,9 @@ export class AdvancePdfService {
       // ── 簽名欄 ──
       y += 8;
       const woSubmitDate = r.createdAt ? new Date(r.createdAt).toLocaleDateString('zh-TW', {year: 'numeric', month: '2-digit', day: '2-digit'}) : '';
-      const woSignBlocks = this._buildSignBlocks(flow, approvalRecords, submittedByName, woSubmitDate, '申請者');
-      this._drawSignatureBlock(doc, F, mx, pw, cw, y, woSignBlocks);
+      const woSignBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, woSubmitDate, '申請者');
+      const woSigMap = await this._loadSignatureImages(woSignBlocks);
+      this._drawSignatureBlock(doc, F, mx, pw, cw, y, woSignBlocks, woSigMap);
 
       // ── 底部裝飾線 ──
       y += 30;
@@ -419,7 +421,7 @@ export class AdvancePdfService {
   private _buildSignBlocks(
     flow: ApprovalFlow | undefined,
     records: ApprovalRecord[],
-    submittedByName: string,
+    submittedBySignatureUrl: string | undefined,
     submitDate: string,
     applicantLabel: string,
   ): SignBlock[] {
@@ -458,7 +460,7 @@ export class AdvancePdfService {
       const rec = labelRecordMap.get(label);
       blocks.push({
         label,
-        name: rec?.reviewedBy || '',
+        signatureUrl: rec?.reviewerSignatureUrl,
         date: rec?.reviewedAt
           ? new Date(rec.reviewedAt).toLocaleDateString('zh-TW', {year: 'numeric', month: '2-digit', day: '2-digit'})
           : '',
@@ -468,16 +470,32 @@ export class AdvancePdfService {
     // 申請者（最右邊）
     blocks.push({
       label: applicantLabel,
-      name: submittedByName,
+      signatureUrl: submittedBySignatureUrl,
       date: submitDate,
     });
 
     return blocks;
   }
 
-  /** 繪製簽名欄（含名字和日期） */
+  /** 預載所有簽名欄圖片，回傳 URL → base64 data URI 的 Map */
+  private async _loadSignatureImages(blocks: SignBlock[]): Promise<Map<string, string>> {
+    const urls = blocks.map(b => b.signatureUrl).filter((u): u is string => !!u);
+    const map = new Map<string, string>();
+    await Promise.all(urls.map(async url => {
+      try {
+        const resp = await fetch(url);
+        const buf = await resp.arrayBuffer();
+        const mime = resp.headers.get('content-type') || 'image/png';
+        map.set(url, `data:${mime};base64,${arrayBufferToBase64(buf)}`);
+      } catch { /* 載入失敗則跳過 */ }
+    }));
+    return map;
+  }
+
+  /** 繪製簽名欄（含簽名圖片和日期） */
   private _drawSignatureBlock(
-    doc: any, F: string, mx: number, pw: number, cw: number, y: number, blocks: SignBlock[]
+    doc: any, F: string, mx: number, pw: number, cw: number, y: number,
+    blocks: SignBlock[], sigImageMap: Map<string, string>
   ) {
     doc.setDrawColor(...CIS.border);
     doc.setLineWidth(0.3);
@@ -503,12 +521,20 @@ export class AdvancePdfService {
       doc.setLineWidth(0.2);
       doc.line(bx + 2, lineY, bx + blockW - 2, lineY);
 
-      // 簽核者名字（簽名線上方）
-      if (block.name) {
-        doc.setFont(F, 'normal');
-        doc.setFontSize(9);
-        doc.setTextColor(...CIS.textPrimary);
-        doc.text(block.name, bx + blockW / 2, lineY - 3, {align: 'center'});
+      // 簽名檔圖片（簽名線上方，等比例縮放）
+      if (block.signatureUrl && sigImageMap.has(block.signatureUrl)) {
+        const sigData = sigImageMap.get(block.signatureUrl)!;
+        const maxW = blockW - 6;  // 左右各留 3mm
+        const maxH = 10;          // 最大高度 10mm
+        try {
+          const imgProps = doc.getImageProperties(sigData);
+          const ratio = Math.min(maxW / imgProps.width, maxH / imgProps.height);
+          const imgW = imgProps.width * ratio;
+          const imgH = imgProps.height * ratio;
+          const imgX = bx + (blockW - imgW) / 2;
+          const imgY = lineY - imgH - 1;
+          doc.addImage(sigData, imgX, imgY, imgW, imgH);
+        } catch { /* 圖片格式有誤則跳過 */ }
       }
 
       // 日期（簽名線下方）

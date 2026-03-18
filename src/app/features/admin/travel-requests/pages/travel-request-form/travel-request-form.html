@@ -118,6 +118,37 @@
               }
             </div>
 
+            <!-- 指定審核者 -->
+            @if (!isReadOnly) {
+              <div class="mb-4">
+                <label class="form-label fw-500">指定審核者</label>
+                <div class="row g-2">
+                  <div class="col-12 col-md-6">
+                    <select class="form-select" [(ngModel)]="selectedJobTitleId" [ngModelOptions]="{standalone: true}"
+                            (ngModelChange)="onDesignatedJobTitleChange()">
+                      <option [ngValue]="null">— 選擇職稱 —</option>
+                      @for (jt of jobTitles; track jt.id) {
+                        <option [ngValue]="jt.id">{{ jt.name }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <select class="form-select" formControlName="designatedReviewerId">
+                      <option [ngValue]="null">— 選擇人員 —</option>
+                      @for (user of filteredUsers; track user.id) {
+                        <option [ngValue]="user.id">{{ user.name }}</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+              </div>
+            } @else if (form.get('designatedReviewerId')?.value) {
+              <div class="mb-4">
+                <label class="form-label fw-500">指定審核者</label>
+                <p class="form-control-plaintext fw-500 mb-0">{{ designatedReviewerName }}</p>
+              </div>
+            }
+
           </div>
         </div>
 

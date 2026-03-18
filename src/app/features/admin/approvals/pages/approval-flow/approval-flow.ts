@@ -37,6 +37,8 @@ export class ApprovalFlow implements OnInit {
     departmentId:           [null as number | null],
     jobTitleId:             [null as number | null],
     useApplicantDepartment: [false],
+    useDirectSupervisor:    [false],
+    useApplicantDesignated: [false],
     note:                   [''],
   });
 
@@ -50,7 +52,7 @@ export class ApprovalFlow implements OnInit {
   openAddStep() {
     this.editStep = null;
     const nextOrder = (this.item$.getValue()?.steps.length ?? 0) + 1;
-    this.stepForm.reset({stepOrder: nextOrder, departmentId: null, jobTitleId: null, useApplicantDepartment: false, note: ''});
+    this.stepForm.reset({stepOrder: nextOrder, departmentId: null, jobTitleId: null, useApplicantDepartment: false, useDirectSupervisor: false, useApplicantDesignated: false, note: ''});
     this.showStepForm = true;
   }
 
@@ -61,6 +63,8 @@ export class ApprovalFlow implements OnInit {
       departmentId:           step.departmentId ?? null,
       jobTitleId:             step.jobTitleId ?? null,
       useApplicantDepartment: step.useApplicantDepartment ?? false,
+      useDirectSupervisor:    step.useDirectSupervisor ?? false,
+      useApplicantDesignated: step.useApplicantDesignated ?? false,
       note:                   step.note ?? '',
     });
     this.showStepForm = true;
@@ -73,27 +77,47 @@ export class ApprovalFlow implements OnInit {
   onUseApplicantDepartmentChange() {
     const checked = this.stepForm.value.useApplicantDepartment;
     if (checked) {
-      this.stepForm.patchValue({departmentId: null});
+      this.stepForm.patchValue({departmentId: null, useDirectSupervisor: false});
+    }
+  }
+
+  onUseDirectSupervisorChange() {
+    const checked = this.stepForm.value.useDirectSupervisor;
+    if (checked) {
+      this.stepForm.patchValue({departmentId: null, jobTitleId: null, useApplicantDepartment: false, useApplicantDesignated: false});
+    }
+  }
+
+  onUseApplicantDesignatedChange() {
+    const checked = this.stepForm.value.useApplicantDesignated;
+    if (checked) {
+      this.stepForm.patchValue({departmentId: null, jobTitleId: null, useApplicantDepartment: false, useDirectSupervisor: false});
     }
   }
 
   submitStep() {
     if (this.stepForm.invalid) return;
     const v = this.stepForm.value;
+    const useApplicantDesignated = v.useApplicantDesignated ?? false;
+    const useDirectSupervisor = v.useDirectSupervisor ?? false;
     const useAppDept = v.useApplicantDepartment ?? false;
-    const deptId = useAppDept ? undefined : (v.departmentId || undefined);
-    const jtId   = v.jobTitleId || undefined;
 
-    // 驗證：useApplicantDepartment 時只需 jobTitleId；否則部門或職稱至少選一
-    if (useAppDept) {
-      if (!jtId) {
+    // 特殊模式不需要部門與職稱
+    if (useApplicantDesignated || useDirectSupervisor) {
+      // no validation needed
+    } else if (useAppDept) {
+      if (!v.jobTitleId) {
         alert('使用申請人部門時，職稱為必填。');
         return;
       }
-    } else if (!deptId && !jtId) {
+    } else if (!v.departmentId && !v.jobTitleId) {
       alert('部門或職稱至少選一。');
       return;
     }
+
+    const isSpecialMode = useApplicantDesignated || useDirectSupervisor;
+    const deptId = (isSpecialMode || useAppDept) ? undefined : (v.departmentId || undefined);
+    const jtId   = isSpecialMode ? undefined : (v.jobTitleId || undefined);
 
     const deptName = deptId ? this.departments.find(d => d.id === deptId)?.name : undefined;
     const jtName   = jtId   ? this.jobTitles.find(j => j.id === jtId)?.name   : undefined;
@@ -104,7 +128,9 @@ export class ApprovalFlow implements OnInit {
       departmentName:         deptName,
       jobTitleId:             jtId,
       jobTitleName:           jtName,
-      useApplicantDepartment: useAppDept,
+      useApplicantDepartment: !isSpecialMode && (useDirectSupervisor || useAppDept),
+      useDirectSupervisor:    !useApplicantDesignated && useDirectSupervisor,
+      useApplicantDesignated,
       note:                   v.note ?? '',
     };
 

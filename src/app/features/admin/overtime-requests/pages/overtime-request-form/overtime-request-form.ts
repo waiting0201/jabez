@@ -1,24 +1,30 @@
 import {ChangeDetectorRef, Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
-import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
+import {FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {HttpErrorResponse} from '@angular/common/http';
 import {OvertimeRequestService} from '../../services/overtime-request.service';
 import {ProjectService} from '../../../projects/services/project.service';
 import {Project} from '../../../projects/models/project.model';
 import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/overtime-request.model';
+import {JobTitleService} from '../../../job-titles/services/job-title.service';
+import {UserService} from '../../../users/services/user.service';
+import {JobTitle} from '../../../job-titles/models/job-title.model';
+import {User} from '../../../users/models/user.model';
 
 @Component({
   selector: 'app-overtime-request-form',
   templateUrl: './overtime-request-form.html',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink],
 })
 export class OvertimeRequestForm implements OnInit {
-  private fb        = inject(FormBuilder);
-  private service   = inject(OvertimeRequestService);
-  private projects$ = inject(ProjectService);
-  private route     = inject(ActivatedRoute);
-  private router    = inject(Router);
-  private cdr       = inject(ChangeDetectorRef);
+  private fb          = inject(FormBuilder);
+  private service     = inject(OvertimeRequestService);
+  private projects$   = inject(ProjectService);
+  private jobTitleSvc = inject(JobTitleService);
+  private userSvc     = inject(UserService);
+  private route       = inject(ActivatedRoute);
+  private router      = inject(Router);
+  private cdr         = inject(ChangeDetectorRef);
 
   isEdit     = false;
   requestId  = 0;
@@ -34,18 +40,36 @@ export class OvertimeRequestForm implements OnInit {
   /** 檢視模式時顯示的專案編號 */
   displayProjectCodes: string[] = [];
 
+  /** 指定審核者相關 */
+  jobTitles: JobTitle[] = [];
+  allUsers: User[] = [];
+  filteredUsers: User[] = [];
+  selectedJobTitleId: number | null = null;
+
+  /** 取得已選審核者姓名（用於檢視模式顯示） */
+  get designatedReviewerName(): string {
+    const id = this.form.get('designatedReviewerId')?.value;
+    if (!id) return '—';
+    return this.allUsers.find(u => u.id === id)?.name ?? id;
+  }
+
   readonly statusLabel = APPROVAL_STATUS_LABELS;
   readonly statusClass = APPROVAL_STATUS_CLASSES;
 
   form = this.fb.group({
-    overtimeDate:   ['', Validators.required],
-    estimatedHours: [1, [Validators.required, Validators.min(0.5)]],
-    reason:         ['', Validators.required],
+    overtimeDate:          ['', Validators.required],
+    estimatedHours:        [1, [Validators.required, Validators.min(0.5)]],
+    reason:                ['', Validators.required],
+    designatedReviewerId:  [null as string | null],
   });
 
   loadingProjects = true;
 
   ngOnInit() {
+    // 載入職稱與使用者清單
+    this.jobTitleSvc.getAll().subscribe({ next: jts => { this.jobTitles = jts; } });
+    this.userSvc.getAll().subscribe({ next: users => { this.allUsers = users; } });
+
     this.projects$.getActive().subscribe({
       next: p => {
         this.projects = p;
@@ -68,8 +92,9 @@ export class OvertimeRequestForm implements OnInit {
           overtimeDate: r.overtimeDate instanceof Date
             ? r.overtimeDate.toISOString().split('T')[0]
             : String(r.overtimeDate),
-          estimatedHours: r.estimatedHours,
-          reason:         r.reason,
+          estimatedHours:        r.estimatedHours,
+          reason:                r.reason,
+          designatedReviewerId:  r.designatedReviewerId ?? null,
         });
         if (r.projectIds) {
           r.projectIds.forEach(id => this.selectedProjectIds.add(id));
@@ -77,10 +102,46 @@ export class OvertimeRequestForm implements OnInit {
         if (r.projectCodes) {
           this.displayProjectCodes = r.projectCodes;
         }
+        if (r.designatedReviewerId) {
+          this._prefillDesignatedJobTitle(r.designatedReviewerId);
+        }
         if (this.isReadOnly) this.form.disable();
         this.cdr.markForCheck();
       });
     }
+  }
+
+  /** 根據 designatedReviewerId 回填職稱下拉，並篩選人員清單 */
+  private _prefillDesignatedJobTitle(userId: string) {
+    const tryPrefill = () => {
+      const user = this.allUsers.find(u => u.id === userId);
+      if (user?.jobTitleId) {
+        this.selectedJobTitleId = user.jobTitleId;
+        this.filteredUsers = this.allUsers.filter(u => u.jobTitleId === user.jobTitleId && u.status === 'active');
+      }
+      this.cdr.markForCheck();
+    };
+    if (this.allUsers.length > 0) {
+      tryPrefill();
+    } else {
+      const sub = this.userSvc.getAll().subscribe(users => {
+        this.allUsers = users;
+        tryPrefill();
+        sub.unsubscribe();
+      });
+    }
+  }
+
+  /** 職稱選擇變更，篩選可選人員並清除已選審核者 */
+  onDesignatedJobTitleChange() {
+    if (this.selectedJobTitleId == null) {
+      this.filteredUsers = [];
+    } else {
+      this.filteredUsers = this.allUsers.filter(
+        u => u.jobTitleId === this.selectedJobTitleId && u.status === 'active'
+      );
+    }
+    this.form.get('designatedReviewerId')?.setValue(null);
   }
 
   toggleProject(projectId: number) {
@@ -139,11 +200,12 @@ export class OvertimeRequestForm implements OnInit {
     const ids = Array.from(this.selectedProjectIds);
     const codes = ids.map(id => this.projects.find(p => p.id === id)?.code).filter(Boolean) as string[];
     return {
-      overtimeDate:   new Date(v.overtimeDate!),
-      projectIds:     ids.length > 0 ? ids : undefined,
-      projectCodes:   codes.length > 0 ? codes : undefined,
-      estimatedHours: +v.estimatedHours!,
-      reason:         v.reason!,
+      overtimeDate:          new Date(v.overtimeDate!),
+      projectIds:            ids.length > 0 ? ids : undefined,
+      projectCodes:          codes.length > 0 ? codes : undefined,
+      estimatedHours:        +v.estimatedHours!,
+      reason:                v.reason!,
+      designatedReviewerId:  v.designatedReviewerId ?? undefined,
     };
   }
 }

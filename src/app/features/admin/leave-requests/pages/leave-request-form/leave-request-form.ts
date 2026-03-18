@@ -1,23 +1,29 @@
 import {Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
-import {FormBuilder, ReactiveFormsModule, ValidatorFn, Validators} from '@angular/forms';
+import {FormBuilder, FormsModule, ReactiveFormsModule, ValidatorFn, Validators} from '@angular/forms';
 import {HttpErrorResponse} from '@angular/common/http';
 import {LeaveRequestService} from '../../services/leave-request.service';
 import {
   LeaveType, ApprovalStatus,
   APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES,
 } from '../../models/leave-request.model';
+import {JobTitleService} from '../../../job-titles/services/job-title.service';
+import {UserService} from '../../../users/services/user.service';
+import {JobTitle} from '../../../job-titles/models/job-title.model';
+import {User} from '../../../users/models/user.model';
 
 @Component({
   selector: 'app-leave-request-form',
   templateUrl: './leave-request-form.html',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink],
 })
 export class LeaveRequestForm implements OnInit {
-  private fb      = inject(FormBuilder);
-  private service = inject(LeaveRequestService);
-  private route   = inject(ActivatedRoute);
-  private router  = inject(Router);
+  private fb          = inject(FormBuilder);
+  private service     = inject(LeaveRequestService);
+  private jobTitleSvc = inject(JobTitleService);
+  private userSvc     = inject(UserService);
+  private route       = inject(ActivatedRoute);
+  private router      = inject(Router);
 
   isEdit     = false;
   requestId  = 0;
@@ -26,6 +32,19 @@ export class LeaveRequestForm implements OnInit {
   isDraft    = true;
   approvalStatus: ApprovalStatus = 'draft';
   errorMsg = signal('');
+
+  /** 指定審核者相關 */
+  jobTitles: JobTitle[] = [];
+  allUsers: User[] = [];
+  filteredUsers: User[] = [];
+  selectedJobTitleId: number | null = null;
+
+  /** 取得已選審核者姓名（用於檢視模式顯示） */
+  get designatedReviewerName(): string {
+    const id = this.form.get('designatedReviewerId')?.value;
+    if (!id) return '—';
+    return this.allUsers.find(u => u.id === id)?.name ?? id;
+  }
 
   /** 可補休時數（從 API 取得） */
   compensatoryHours = signal<{ totalOvertimeHours: number; usedCompensatoryHours: number; availableHours: number } | null>(null);
@@ -43,10 +62,11 @@ export class LeaveRequestForm implements OnInit {
   };
 
   form = this.fb.group({
-    leaveType:  ['annual' as LeaveType, Validators.required],
-    startDate:  ['', [Validators.required, LeaveRequestForm.halfHourValidator]],
-    endDate:    ['', [Validators.required, LeaveRequestForm.halfHourValidator]],
-    reason:     ['', Validators.required],
+    leaveType:             ['annual' as LeaveType, Validators.required],
+    startDate:             ['', [Validators.required, LeaveRequestForm.halfHourValidator]],
+    endDate:               ['', [Validators.required, LeaveRequestForm.halfHourValidator]],
+    reason:                ['', Validators.required],
+    designatedReviewerId:  [null as string | null],
   });
 
   /** 從開始/結束時間自動計算時數 */
@@ -62,6 +82,10 @@ export class LeaveRequestForm implements OnInit {
   ngOnInit() {
     this.loadCompensatoryHours();
 
+    // 載入職稱與使用者清單
+    this.jobTitleSvc.getAll().subscribe({ next: jts => { this.jobTitles = jts; } });
+    this.userSvc.getAll().subscribe({ next: users => { this.allUsers = users; } });
+
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.isEdit    = true;
@@ -73,14 +97,50 @@ export class LeaveRequestForm implements OnInit {
         this.isReturned = r.approvalStatus === 'returned';
         this.isReadOnly = r.approvalStatus !== 'draft';
         this.form.patchValue({
-          leaveType:  r.leaveType,
-          startDate:  this._toDatetimeLocal(r.startDate),
-          endDate:    this._toDatetimeLocal(r.endDate),
-          reason:     r.reason,
+          leaveType:             r.leaveType,
+          startDate:             this._toDatetimeLocal(r.startDate),
+          endDate:               this._toDatetimeLocal(r.endDate),
+          reason:                r.reason,
+          designatedReviewerId:  r.designatedReviewerId ?? null,
         });
+        if (r.designatedReviewerId) {
+          this._prefillDesignatedJobTitle(r.designatedReviewerId);
+        }
         if (this.isReadOnly) this.form.disable();
       });
     }
+  }
+
+  /** 根據 designatedReviewerId 回填職稱下拉，並篩選人員清單 */
+  private _prefillDesignatedJobTitle(userId: string) {
+    const tryPrefill = () => {
+      const user = this.allUsers.find(u => u.id === userId);
+      if (user?.jobTitleId) {
+        this.selectedJobTitleId = user.jobTitleId;
+        this.filteredUsers = this.allUsers.filter(u => u.jobTitleId === user.jobTitleId && u.status === 'active');
+      }
+    };
+    if (this.allUsers.length > 0) {
+      tryPrefill();
+    } else {
+      const sub = this.userSvc.getAll().subscribe(users => {
+        this.allUsers = users;
+        tryPrefill();
+        sub.unsubscribe();
+      });
+    }
+  }
+
+  /** 職稱選擇變更，篩選可選人員並清除已選審核者 */
+  onDesignatedJobTitleChange() {
+    if (this.selectedJobTitleId == null) {
+      this.filteredUsers = [];
+    } else {
+      this.filteredUsers = this.allUsers.filter(
+        u => u.jobTitleId === this.selectedJobTitleId && u.status === 'active'
+      );
+    }
+    this.form.get('designatedReviewerId')?.setValue(null);
   }
 
   /** 補休時數是否足夠 */
@@ -154,11 +214,12 @@ export class LeaveRequestForm implements OnInit {
   private _buildPayload() {
     const v = this.form.value;
     return {
-      leaveType: v.leaveType as LeaveType,
-      startDate: v.startDate!,   // 直接送字串，避免 new Date() 轉 UTC
-      endDate:   v.endDate!,
-      hours:     this.calculatedHours,
-      reason:    v.reason!,
+      leaveType:             v.leaveType as LeaveType,
+      startDate:             v.startDate!,   // 直接送字串，避免 new Date() 轉 UTC
+      endDate:               v.endDate!,
+      hours:                 this.calculatedHours,
+      reason:                v.reason!,
+      designatedReviewerId:  v.designatedReviewerId ?? undefined,
     };
   }
 

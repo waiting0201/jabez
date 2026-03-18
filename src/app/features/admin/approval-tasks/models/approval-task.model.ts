@@ -38,6 +38,8 @@ export interface ApprovalFlowStep {
   stepOrder: number;
   departmentName?: string;
   jobTitleName?: string;
+  useDirectSupervisor?: boolean;
+  useApplicantDesignated?: boolean;
   note?: string;
 }
 
@@ -105,6 +107,7 @@ export interface ApprovalRecord {
   reviewNote?: string;
   onBehalfOf?: string;    // 代理審核：代替誰審核
   isEscalated: boolean;   // 是否為升級審核
+  reviewerSignatureUrl?: string;  // 審核者簽名檔 URL
 }
 
 // ── ApprovalTask (polymorphic) ───────────────────────────────────────────────
@@ -126,4 +129,5 @@ export interface ApprovalTask {
   overtimeDetail?: OvertimeTaskDetail;
   advanceDetail?: AdvanceTaskDetail;
   approvalRecords: ApprovalRecord[];
+  submittedBySignatureUrl?: string;  // 申請人簽名檔 URL
 }

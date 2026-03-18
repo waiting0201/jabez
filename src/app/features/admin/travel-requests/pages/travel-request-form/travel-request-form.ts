@@ -1,24 +1,30 @@
 import {ChangeDetectorRef, Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
-import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
+import {FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {HttpErrorResponse} from '@angular/common/http';
 import {TravelRequestService} from '../../services/travel-request.service';
 import {ProjectService} from '../../../projects/services/project.service';
 import {Project} from '../../../projects/models/project.model';
 import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/travel-request.model';
+import {JobTitleService} from '../../../job-titles/services/job-title.service';
+import {UserService} from '../../../users/services/user.service';
+import {JobTitle} from '../../../job-titles/models/job-title.model';
+import {User} from '../../../users/models/user.model';
 
 @Component({
   selector: 'app-travel-request-form',
   templateUrl: './travel-request-form.html',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink],
 })
 export class TravelRequestForm implements OnInit {
-  private fb       = inject(FormBuilder);
-  private service  = inject(TravelRequestService);
-  private projects$ = inject(ProjectService);
-  private route    = inject(ActivatedRoute);
-  private router   = inject(Router);
-  private cdr      = inject(ChangeDetectorRef);
+  private fb          = inject(FormBuilder);
+  private service     = inject(TravelRequestService);
+  private projects$   = inject(ProjectService);
+  private jobTitleSvc = inject(JobTitleService);
+  private userSvc     = inject(UserService);
+  private route       = inject(ActivatedRoute);
+  private router      = inject(Router);
+  private cdr         = inject(ChangeDetectorRef);
 
   isEdit     = false;
   requestId  = 0;
@@ -29,17 +35,31 @@ export class TravelRequestForm implements OnInit {
   errorMsg = signal('');
   projects: Project[] = [];
 
+  /** 指定審核者相關 */
+  jobTitles: JobTitle[] = [];
+  allUsers: User[] = [];
+  filteredUsers: User[] = [];
+  selectedJobTitleId: number | null = null;
+
+  /** 取得已選審核者姓名（用於檢視模式顯示） */
+  get designatedReviewerName(): string {
+    const id = this.form.get('designatedReviewerId')?.value;
+    if (!id) return '—';
+    return this.allUsers.find(u => u.id === id)?.name ?? id;
+  }
+
   readonly statusLabel = APPROVAL_STATUS_LABELS;
   readonly statusClass = APPROVAL_STATUS_CLASSES;
 
   form = this.fb.group({
-    destination:   ['', Validators.required],
-    startDate:     ['', Validators.required],
-    endDate:       ['', Validators.required],
-    estimatedCost: [0, [Validators.required, Validators.min(0)]],
-    purpose:       ['', Validators.required],
-    projectId:     [null as number | null],
-    isHolidayTravel: [false],
+    destination:           ['', Validators.required],
+    startDate:             ['', Validators.required],
+    endDate:               ['', Validators.required],
+    estimatedCost:         [0, [Validators.required, Validators.min(0)]],
+    purpose:               ['', Validators.required],
+    projectId:             [null as number | null],
+    isHolidayTravel:       [false],
+    designatedReviewerId:  [null as string | null],
   });
 
   loadingProjects = true;
@@ -53,6 +73,10 @@ export class TravelRequestForm implements OnInit {
   }
 
   ngOnInit() {
+    // 載入職稱與使用者清單
+    this.jobTitleSvc.getAll().subscribe({ next: jts => { this.jobTitles = jts; } });
+    this.userSvc.getAll().subscribe({ next: users => { this.allUsers = users; } });
+
     this.projects$.getActive().subscribe({
       next: p => {
         this.projects = p;
@@ -72,22 +96,59 @@ export class TravelRequestForm implements OnInit {
         this.isReturned = r.approvalStatus === 'returned';
         this.isReadOnly = r.approvalStatus !== 'draft';
         this.form.patchValue({
-          destination:   r.destination,
+          destination:           r.destination,
           startDate: r.startDate instanceof Date
             ? r.startDate.toISOString().split('T')[0]
             : String(r.startDate),
           endDate: r.endDate instanceof Date
             ? r.endDate.toISOString().split('T')[0]
             : String(r.endDate),
-          estimatedCost: r.estimatedCost,
-          purpose:         r.purpose,
-          projectId:       r.projectId ?? null,
-          isHolidayTravel: r.isHolidayTravel ?? false,
+          estimatedCost:         r.estimatedCost,
+          purpose:               r.purpose,
+          projectId:             r.projectId ?? null,
+          isHolidayTravel:       r.isHolidayTravel ?? false,
+          designatedReviewerId:  r.designatedReviewerId ?? null,
         });
+        if (r.designatedReviewerId) {
+          this._prefillDesignatedJobTitle(r.designatedReviewerId);
+        }
         if (this.isReadOnly) this.form.disable();
         this.cdr.markForCheck();
       });
     }
+  }
+
+  /** 根據 designatedReviewerId 回填職稱下拉，並篩選人員清單 */
+  private _prefillDesignatedJobTitle(userId: string) {
+    const tryPrefill = () => {
+      const user = this.allUsers.find(u => u.id === userId);
+      if (user?.jobTitleId) {
+        this.selectedJobTitleId = user.jobTitleId;
+        this.filteredUsers = this.allUsers.filter(u => u.jobTitleId === user.jobTitleId && u.status === 'active');
+      }
+      this.cdr.markForCheck();
+    };
+    if (this.allUsers.length > 0) {
+      tryPrefill();
+    } else {
+      const sub = this.userSvc.getAll().subscribe(users => {
+        this.allUsers = users;
+        tryPrefill();
+        sub.unsubscribe();
+      });
+    }
+  }
+
+  /** 職稱選擇變更，篩選可選人員並清除已選審核者 */
+  onDesignatedJobTitleChange() {
+    if (this.selectedJobTitleId == null) {
+      this.filteredUsers = [];
+    } else {
+      this.filteredUsers = this.allUsers.filter(
+        u => u.jobTitleId === this.selectedJobTitleId && u.status === 'active'
+      );
+    }
+    this.form.get('designatedReviewerId')?.setValue(null);
   }
 
   /** 儲存（草稿或更新，不改變狀態） */
@@ -136,14 +197,15 @@ export class TravelRequestForm implements OnInit {
     const v = this.form.value;
     const project = this.projects.find(p => p.id === v.projectId);
     return {
-      destination:   v.destination!,
-      startDate:     new Date(v.startDate!),
-      endDate:       new Date(v.endDate!),
-      estimatedCost: +v.estimatedCost!,
-      purpose:         v.purpose!,
-      projectId:       v.projectId ?? undefined,
-      projectCode:     project?.code,
-      isHolidayTravel: !!v.isHolidayTravel,
+      destination:           v.destination!,
+      startDate:             new Date(v.startDate!),
+      endDate:               new Date(v.endDate!),
+      estimatedCost:         +v.estimatedCost!,
+      purpose:               v.purpose!,
+      projectId:             v.projectId ?? undefined,
+      projectCode:           project?.code,
+      isHolidayTravel:       !!v.isHolidayTravel,
+      designatedReviewerId:  v.designatedReviewerId ?? undefined,
     };
   }
 }

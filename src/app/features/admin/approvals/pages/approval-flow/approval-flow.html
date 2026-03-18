@@ -47,45 +47,70 @@
                 <label class="form-label fw-500">步驟順序 <span class="text-danger">*</span></label>
                 <input type="number" class="form-control" formControlName="stepOrder" min="1">
               </div>
-              <div class="col-12 col-md-4">
-                <label class="form-label fw-500">部門</label>
-                <div class="flex items-center gap-2 mb-2">
-                  <label class="flex items-center gap-1.5 cursor-pointer text-sm">
-                    <input type="checkbox" class="form-check-input m-0"
-                           formControlName="useApplicantDepartment"
-                           (change)="onUseApplicantDepartmentChange()">
-                    使用申請人部門
-                  </label>
-                </div>
-                @if (stepForm.value.useApplicantDepartment) {
-                  <div class="form-control bg-elevated text-muted" style="pointer-events:none">
-                    自動比對申請人所屬部門
+
+              <!-- 審核模式選擇 -->
+              <div class="col-12 flex flex-col gap-2">
+                <label class="flex items-center gap-1.5 cursor-pointer text-sm">
+                  <input type="checkbox" class="form-check-input m-0"
+                         formControlName="useDirectSupervisor"
+                         (change)="onUseDirectSupervisorChange()">
+                  <span class="fw-500">上層級審核</span>
+                  <span class="text-muted">— 自動找同部門中層級最接近的上級</span>
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer text-sm">
+                  <input type="checkbox" class="form-check-input m-0"
+                         formControlName="useApplicantDesignated"
+                         (change)="onUseApplicantDesignatedChange()">
+                  <span class="fw-500">申請人指定審核</span>
+                  <span class="text-muted">— 申請人在表單中選擇指定審核者</span>
+                </label>
+              </div>
+
+              @if (!stepForm.value.useDirectSupervisor && !stepForm.value.useApplicantDesignated) {
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">部門</label>
+                  <div class="flex items-center gap-2 mb-2">
+                    <label class="flex items-center gap-1.5 cursor-pointer text-sm">
+                      <input type="checkbox" class="form-check-input m-0"
+                             formControlName="useApplicantDepartment"
+                             (change)="onUseApplicantDepartmentChange()">
+                      使用申請人部門
+                    </label>
                   </div>
-                } @else {
-                  <select class="form-select" formControlName="departmentId">
-                    <option [ngValue]="null">— 不限部門 —</option>
-                    @for (dept of departments; track dept.id) {
-                      <option [ngValue]="dept.id">{{ dept.name }}</option>
+                  @if (stepForm.value.useApplicantDepartment) {
+                    <div class="form-control bg-elevated text-muted" style="pointer-events:none">
+                      自動比對申請人所屬部門
+                    </div>
+                  } @else {
+                    <select class="form-select" formControlName="departmentId">
+                      <option [ngValue]="null">— 不限部門 —</option>
+                      @for (dept of departments; track dept.id) {
+                        <option [ngValue]="dept.id">{{ dept.name }}</option>
+                      }
+                    </select>
+                  }
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">職稱</label>
+                  <select class="form-select" formControlName="jobTitleId">
+                    <option [ngValue]="null">— 不限職稱 —</option>
+                    @for (jt of jobTitles; track jt.id) {
+                      <option [ngValue]="jt.id">{{ jt.name }}（L{{ jt.level }}）</option>
                     }
                   </select>
-                }
-              </div>
-              <div class="col-12 col-md-4">
-                <label class="form-label fw-500">職稱</label>
-                <select class="form-select" formControlName="jobTitleId">
-                  <option [ngValue]="null">— 不限職稱 —</option>
-                  @for (jt of jobTitles; track jt.id) {
-                    <option [ngValue]="jt.id">{{ jt.name }}（L{{ jt.level }}）</option>
-                  }
-                </select>
-              </div>
+                </div>
+              }
               <div class="col-12 col-md-6">
                 <label class="form-label fw-500">步驟說明</label>
                 <input type="text" class="form-control" formControlName="note" placeholder="選填說明">
               </div>
             </div>
             <div class="text-muted small mt-2">
-              @if (stepForm.value.useApplicantDepartment) {
+              @if (stepForm.value.useApplicantDesignated) {
+                申請人在填寫表單時選擇指定審核者（先選職稱再選人）。
+              } @else if (stepForm.value.useDirectSupervisor) {
+                系統自動找同部門中層級最接近的上級審核。若找不到上級，此步驟自動跳過。
+              } @else if (stepForm.value.useApplicantDepartment) {
                 開啟「使用申請人部門」時，職稱為必填。
               } @else {
                 部門或職稱至少選一。
@@ -123,22 +148,34 @@
               <div class="card-body py-2 px-3">
                 <div class="flex items-center justify-between flex-wrap gap-2">
                   <div class="flex flex-wrap gap-2 items-center">
-                    @if (step.useApplicantDepartment) {
-                      <span class="badge bg-accent-subtle text-accent inline-flex items-center gap-1" style="white-space:nowrap">
-                        <svg class="sa-icon" style="width:12px;height:12px;flex-shrink:0;stroke:currentColor"><use href="/assets/icons/sprite.svg#users"></use></svg>
-                        申請人部門
+                    @if (step.useApplicantDesignated) {
+                      <span class="badge bg-info-subtle text-info inline-flex items-center gap-1" style="white-space:nowrap">
+                        <svg class="sa-icon" style="width:12px;height:12px;flex-shrink:0;stroke:currentColor"><use href="/assets/icons/sprite.svg#user-check"></use></svg>
+                        申請人指定
                       </span>
-                    } @else if (step.departmentName) {
-                      <span class="badge bg-primary-subtle text-primary inline-flex items-center gap-1" style="white-space:nowrap">
-                        <svg class="sa-icon" style="width:12px;height:12px;flex-shrink:0;stroke:currentColor"><use href="/assets/icons/sprite.svg#git-branch"></use></svg>
-                        {{ step.departmentName }}
+                    } @else if (step.useDirectSupervisor) {
+                      <span class="badge bg-purple-subtle text-purple inline-flex items-center gap-1" style="white-space:nowrap">
+                        <svg class="sa-icon" style="width:12px;height:12px;flex-shrink:0;stroke:currentColor"><use href="/assets/icons/sprite.svg#arrow-up"></use></svg>
+                        上層級
                       </span>
-                    }
-                    @if (step.jobTitleName) {
-                      <span class="badge bg-warning-subtle text-warning-emphasis inline-flex items-center gap-1" style="white-space:nowrap">
-                        <svg class="sa-icon" style="width:12px;height:12px;flex-shrink:0;stroke:currentColor"><use href="/assets/icons/sprite.svg#briefcase"></use></svg>
-                        {{ step.jobTitleName }}
-                      </span>
+                    } @else {
+                      @if (step.useApplicantDepartment) {
+                        <span class="badge bg-accent-subtle text-accent inline-flex items-center gap-1" style="white-space:nowrap">
+                          <svg class="sa-icon" style="width:12px;height:12px;flex-shrink:0;stroke:currentColor"><use href="/assets/icons/sprite.svg#users"></use></svg>
+                          申請人部門
+                        </span>
+                      } @else if (step.departmentName) {
+                        <span class="badge bg-primary-subtle text-primary inline-flex items-center gap-1" style="white-space:nowrap">
+                          <svg class="sa-icon" style="width:12px;height:12px;flex-shrink:0;stroke:currentColor"><use href="/assets/icons/sprite.svg#git-branch"></use></svg>
+                          {{ step.departmentName }}
+                        </span>
+                      }
+                      @if (step.jobTitleName) {
+                        <span class="badge bg-warning-subtle text-warning-emphasis inline-flex items-center gap-1" style="white-space:nowrap">
+                          <svg class="sa-icon" style="width:12px;height:12px;flex-shrink:0;stroke:currentColor"><use href="/assets/icons/sprite.svg#briefcase"></use></svg>
+                          {{ step.jobTitleName }}
+                        </span>
+                      }
                     }
                     @if (step.note) {
                       <span class="text-muted small">{{ step.note }}</span>

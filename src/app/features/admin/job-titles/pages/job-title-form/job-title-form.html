@@ -32,11 +32,11 @@
             </div>
 
             <div class="mb-4">
-              <label class="form-label fw-500">排序 <span class="text-danger">*</span></label>
+              <label class="form-label fw-500">級別 <span class="text-danger">*</span></label>
               <input type="number" class="form-control" formControlName="level" min="1" placeholder="例如：2">
               <div class="text-muted small mt-1">數字越小職位越高。</div>
               @if (form.get('level')?.invalid && form.get('level')?.touched) {
-              <div class="text-danger small mt-1">請輸入有效排序（最小值為 1）。</div>
+              <div class="text-danger small mt-1">請輸入有效級別（最小值為 1）。</div>
               }
             </div>
 

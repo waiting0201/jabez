@@ -26,6 +26,7 @@ export interface OvertimeRequest {
   estimatedHours: number;
   reason: string;
   approvalStatus: ApprovalStatus;
+  designatedReviewerId?: string;
   createdAt: Date;
   reviewedAt?: Date;
   reviewNote?: string;
