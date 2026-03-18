@@ -39,13 +39,14 @@ public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceReques
         LEFT JOIN WriteOffItems wi ON wi.WriteOffRecordId = wo.Id
         """;
 
-    public async Task<PagedResult<AdvanceRequestDto>> GetPagedAsync(int page, int pageSize, Guid userId)
+    public async Task<PagedResult<AdvanceRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null)
     {
-        const string countSql = "SELECT COUNT(*) FROM AdvanceRequests WHERE SubmittedById = @UserId";
+        var userFilter = userId.HasValue ? "WHERE SubmittedById = @UserId" : "";
+        var countSql = $"SELECT COUNT(*) FROM AdvanceRequests {userFilter}";
         var sql = $"""
             WITH PagedIds AS (
                 SELECT Id FROM AdvanceRequests
-                WHERE SubmittedById = @UserId
+                {userFilter}
                 ORDER BY CreatedAt DESC
                 OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
             )

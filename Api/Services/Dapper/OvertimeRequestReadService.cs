@@ -73,11 +73,13 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
         return rows.Select(r => (OvertimeRequestDto)MapRow(r, codeMap));
     }
 
-    public async Task<PagedResult<OvertimeRequestDto>> GetPagedAsync(int page, int pageSize, Guid userId)
+    public async Task<PagedResult<OvertimeRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null)
     {
-        const string countSql = "SELECT COUNT(*) FROM OvertimeRequests WHERE EmployeeId = @UserId";
-        const string sql = BaseSql +
-            " WHERE o.EmployeeId = @UserId ORDER BY o.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
+        var userFilter = userId.HasValue ? "WHERE EmployeeId = @UserId" : "";
+        var countSql = $"SELECT COUNT(*) FROM OvertimeRequests {userFilter}";
+        var sql = BaseSql +
+            (userId.HasValue ? " WHERE o.EmployeeId = @UserId" : "") +
+            " ORDER BY o.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
         int total = await db.ExecuteScalarAsync<int>(countSql, new { UserId = userId });
         var rows = (await db.QueryAsync<dynamic>(sql, new { UserId = userId, Skip = (page - 1) * pageSize, Take = pageSize })).ToList();
         var codeMap = await GetProjectCodeMapAsync(rows.Select(r => (string?)r.ProjectIds));

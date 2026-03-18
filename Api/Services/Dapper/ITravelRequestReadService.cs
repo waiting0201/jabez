@@ -6,6 +6,6 @@ namespace Jabez.Api.Services.Dapper;
 public interface ITravelRequestReadService
 {
     Task<IEnumerable<TravelRequestDto>>    GetAllAsync();
-    Task<PagedResult<TravelRequestDto>>    GetPagedAsync(int page, int pageSize, Guid userId);
+    Task<PagedResult<TravelRequestDto>>    GetPagedAsync(int page, int pageSize, Guid? userId = null);
     Task<TravelRequestDto?>                GetByIdAsync(int id);
 }

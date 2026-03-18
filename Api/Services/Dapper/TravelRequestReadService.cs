@@ -28,11 +28,13 @@ public sealed class TravelRequestReadService(IDbConnection db) : ITravelRequestR
         return rows.Select(MapRow);
     }
 
-    public async Task<PagedResult<TravelRequestDto>> GetPagedAsync(int page, int pageSize, Guid userId)
+    public async Task<PagedResult<TravelRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null)
     {
-        const string countSql = "SELECT COUNT(*) FROM TravelRequests WHERE EmployeeId = @UserId";
-        const string sql = BaseSql +
-            " WHERE tr.EmployeeId = @UserId ORDER BY tr.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
+        var userFilter = userId.HasValue ? "WHERE EmployeeId = @UserId" : "";
+        var countSql = $"SELECT COUNT(*) FROM TravelRequests {userFilter}";
+        var sql = BaseSql +
+            (userId.HasValue ? " WHERE tr.EmployeeId = @UserId" : "") +
+            " ORDER BY tr.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
         int total = await db.ExecuteScalarAsync<int>(countSql, new { UserId = userId });
         var rows = await db.QueryAsync<dynamic>(sql, new { UserId = userId, Skip = (page - 1) * pageSize, Take = pageSize });
         int totalPages = (int)Math.Ceiling((double)total / pageSize);

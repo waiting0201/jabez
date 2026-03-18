@@ -24,11 +24,13 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
         return rows.Select(MapRow);
     }
 
-    public async Task<PagedResult<LeaveRequestDto>> GetPagedAsync(int page, int pageSize, Guid userId)
+    public async Task<PagedResult<LeaveRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null)
     {
-        const string countSql = "SELECT COUNT(*) FROM LeaveRequests WHERE EmployeeId = @UserId";
-        const string sql = BaseSql +
-            " WHERE lr.EmployeeId = @UserId ORDER BY lr.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
+        var userFilter = userId.HasValue ? "WHERE EmployeeId = @UserId" : "";
+        var countSql = $"SELECT COUNT(*) FROM LeaveRequests {userFilter}";
+        var sql = BaseSql +
+            (userId.HasValue ? " WHERE lr.EmployeeId = @UserId" : "") +
+            " ORDER BY lr.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
         int total = await db.ExecuteScalarAsync<int>(countSql, new { UserId = userId });
         var rows = await db.QueryAsync<dynamic>(sql, new { UserId = userId, Skip = (page - 1) * pageSize, Take = pageSize });
         int totalPages = (int)Math.Ceiling((double)total / pageSize);

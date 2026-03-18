@@ -31,19 +31,20 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         return GroupToPaymentRequests(rows);
     }
 
-    public async Task<PagedResult<PaymentRequestDto>> GetPagedAsync(int page, int pageSize, Guid userId)
+    public async Task<PagedResult<PaymentRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null)
     {
-        const string countSql = "SELECT COUNT(*) FROM PaymentRequests WHERE SubmittedById = @UserId";
+        var userFilter = userId.HasValue ? "WHERE SubmittedById = @UserId" : "";
+        var countSql = $"SELECT COUNT(*) FROM PaymentRequests {userFilter}";
         var sql = $"""
             WITH PagedIds AS (
                 SELECT Id FROM PaymentRequests
-                WHERE SubmittedById = @UserId
+                {userFilter}
                 ORDER BY CreatedAt DESC
                 OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
             )
             {BaseSql} WHERE pr.Id IN (SELECT Id FROM PagedIds) ORDER BY pr.CreatedAt DESC, ii.Id
             """;
-        int total = await db.ExecuteScalarAsync<int>(countSql, new { UserId = userId });
+        int total = await db.ExecuteScalarAsync<int>(countSql, new { UserId = userId, Skip = (page - 1) * pageSize, Take = pageSize });
         var rows = await db.QueryAsync<dynamic>(sql, new { UserId = userId, Skip = (page - 1) * pageSize, Take = pageSize });
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
         return new PagedResult<PaymentRequestDto>(GroupToPaymentRequests(rows), total, page, pageSize, Math.Max(1, totalPages));

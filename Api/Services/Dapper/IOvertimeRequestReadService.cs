@@ -6,7 +6,7 @@ namespace Jabez.Api.Services.Dapper;
 public interface IOvertimeRequestReadService
 {
     Task<IEnumerable<OvertimeRequestDto>> GetAllAsync();
-    Task<PagedResult<OvertimeRequestDto>> GetPagedAsync(int page, int pageSize, Guid userId);
+    Task<PagedResult<OvertimeRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null);
     Task<OvertimeRequestDto?>             GetByIdAsync(int id);
 
     /// <summary>

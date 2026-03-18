@@ -29,6 +29,8 @@ public sealed class OvertimeRequestHandler(
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
         var userId = await GetUserIdAsync(req);
+        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        Guid? filterUserId = user?.IsSuperAdmin == true ? null : userId;
         var statusParam = req.Query["status"].ToString();
         var dateParam   = req.Query["date"].ToString();
 
@@ -39,14 +41,14 @@ public sealed class OvertimeRequestHandler(
             string?   status = string.IsNullOrEmpty(statusParam) ? null : statusParam;
             DateOnly? date   = DateOnly.TryParse(dateParam, out var d) ? d : (DateOnly?)null;
 
-            var filtered = await reader.GetFilteredAsync(status, date, userId);
+            var filtered = await reader.GetFilteredAsync(status, date, filterUserId);
             return new OkObjectResult(ApiResponse.Ok(filtered));
         }
 
         // 預設分頁列表
         int page     = int.TryParse(req.Query["page"],     out var p)  ? Math.Max(1, p)         : 1;
         int pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, 100) : 20;
-        var result = await reader.GetPagedAsync(page, pageSize, userId);
+        var result = await reader.GetPagedAsync(page, pageSize, filterUserId);
         return new OkObjectResult(ApiResponse.Ok(result));
     }
 
@@ -56,7 +58,11 @@ public sealed class OvertimeRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid overtime request ID format."));
 
-        if (!await db.OvertimeRequests.AnyAsync(x => x.Id == intId && x.EmployeeId == userId))
+        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var exists = user?.IsSuperAdmin == true
+            ? await db.OvertimeRequests.AnyAsync(x => x.Id == intId)
+            : await db.OvertimeRequests.AnyAsync(x => x.Id == intId && x.EmployeeId == userId);
+        if (!exists)
             return new NotFoundObjectResult(ApiResponse.Fail("Overtime request not found."));
 
         var item = await reader.GetByIdAsync(intId);
