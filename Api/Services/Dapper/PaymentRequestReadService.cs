@@ -159,7 +159,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                     OR EXISTS (
                       SELECT 1 FROM Departments d
                       WHERE d.Id = @ReviewerDepartmentId
-                        AND d.Name = N'財務部'
+                        AND d.Code = N'FIN'
                     )
                     """ : "")}
                   )
@@ -326,7 +326,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
 
         const string flowSql = """
             SELECT ai.Id AS FlowId, ai.Name AS FlowName, ai.ApplicationType,
-                   s.StepOrder, d.Name AS DepartmentName, j.Name AS JobTitleName,
+                   s.StepOrder, d.Name AS DepartmentName, d.Code AS DepartmentCode, j.Name AS JobTitleName,
                    s.UseDirectSupervisor, s.UseApplicantDesignated, s.Note
             FROM ApprovalItems ai
             LEFT JOIN ApprovalSteps s ON s.ApprovalItemId = ai.Id
@@ -417,6 +417,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 flowDict[appType].Steps.Add(new ApprovalFlowStepDto(
                     (int)row.StepOrder,
                     (string?)row.DepartmentName,
+                    (string?)row.DepartmentCode,
                     (string?)row.JobTitleName,
                     (bool)(row.UseDirectSupervisor ?? false),
                     (bool)(row.UseApplicantDesignated ?? false),

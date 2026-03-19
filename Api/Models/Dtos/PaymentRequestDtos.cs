@@ -92,6 +92,7 @@ public sealed record ApprovalRecordDto(
 public sealed record ApprovalFlowStepDto(
     int     StepOrder,
     string? DepartmentName,
+    string? DepartmentCode,
     string? JobTitleName,
     bool    UseDirectSupervisor,
     bool    UseApplicantDesignated,

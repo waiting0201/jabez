@@ -417,7 +417,7 @@ public sealed class AdvanceRequestHandler(
         if (user is null)
             return new UnauthorizedObjectResult(ApiResponse.Fail("User not found."));
 
-        if (!user.IsSuperAdmin && user.Department?.Name != "財務部")
+        if (!user.IsSuperAdmin && user.Department?.Code != "FIN")
             return new ForbidResult();
 
         var ar = await db.AdvanceRequests.FindAsync(intId)

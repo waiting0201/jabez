@@ -110,7 +110,7 @@ namespace Jabez.Api.Data.Migrations
 
                     b.HasIndex("SubmittedById");
 
-                    b.ToTable("AdvanceRequests");
+                    b.ToTable("AdvanceRequests", (string)null);
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.AdvanceRequestItem", b =>
@@ -165,7 +165,7 @@ namespace Jabez.Api.Data.Migrations
 
                     b.HasIndex("AdvanceRequestId");
 
-                    b.ToTable("AdvanceRequestItems");
+                    b.ToTable("AdvanceRequestItems", (string)null);
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.ApprovalItem", b =>
@@ -213,7 +213,7 @@ namespace Jabez.Api.Data.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.ToTable("ApprovalItems");
+                    b.ToTable("ApprovalItems", (string)null);
 
                     b.HasData(
                         new
@@ -370,7 +370,7 @@ namespace Jabez.Api.Data.Migrations
 
                     b.HasIndex("JobTitleId");
 
-                    b.ToTable("ApprovalSteps");
+                    b.ToTable("ApprovalSteps", (string)null);
 
                     b.HasData(
                         new
@@ -549,7 +549,7 @@ namespace Jabez.Api.Data.Migrations
                     b.HasIndex("UserId", "RecordDate")
                         .IsUnique();
 
-                    b.ToTable("AttendanceRecords");
+                    b.ToTable("AttendanceRecords", (string)null);
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.Department", b =>
@@ -594,7 +594,7 @@ namespace Jabez.Api.Data.Migrations
 
                     b.HasIndex("ParentId");
 
-                    b.ToTable("Departments");
+                    b.ToTable("Departments", (string)null);
 
                     b.HasData(
                         new
@@ -700,7 +700,7 @@ namespace Jabez.Api.Data.Migrations
                     b.HasIndex("SalaryBracket")
                         .IsUnique();
 
-                    b.ToTable("InsuranceBrackets");
+                    b.ToTable("InsuranceBrackets", (string)null);
 
                     b.HasData(
                         new
@@ -1209,7 +1209,7 @@ namespace Jabez.Api.Data.Migrations
 
                     b.HasIndex("PaymentRequestId");
 
-                    b.ToTable("InvoiceItems");
+                    b.ToTable("InvoiceItems", (string)null);
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.JobTitle", b =>
@@ -1239,7 +1239,7 @@ namespace Jabez.Api.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("JobTitles");
+                    b.ToTable("JobTitles", (string)null);
 
                     b.HasData(
                         new
@@ -1345,7 +1345,7 @@ namespace Jabez.Api.Data.Migrations
 
                     b.HasIndex("ReviewedById");
 
-                    b.ToTable("LeaveRequests");
+                    b.ToTable("LeaveRequests", (string)null);
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.OvertimeRequest", b =>
@@ -1412,7 +1412,7 @@ namespace Jabez.Api.Data.Migrations
 
                     b.HasIndex("ReviewedById");
 
-                    b.ToTable("OvertimeRequests");
+                    b.ToTable("OvertimeRequests", (string)null);
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.PaymentRequest", b =>
@@ -1481,7 +1481,7 @@ namespace Jabez.Api.Data.Migrations
 
                     b.HasIndex("SubmittedById");
 
-                    b.ToTable("PaymentRequests");
+                    b.ToTable("PaymentRequests", (string)null);
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.PayrollAdjustment", b =>
@@ -1538,7 +1538,7 @@ namespace Jabez.Api.Data.Migrations
                     b.HasIndex("EmployeeId", "Year", "Month")
                         .IsUnique();
 
-                    b.ToTable("PayrollAdjustments");
+                    b.ToTable("PayrollAdjustments", (string)null);
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.Permission", b =>
@@ -1571,7 +1571,7 @@ namespace Jabez.Api.Data.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.ToTable("Permissions");
+                    b.ToTable("Permissions", (string)null);
 
                     b.HasData(
                         new
@@ -2006,7 +2006,7 @@ namespace Jabez.Api.Data.Migrations
 
                     b.HasIndex("DepartmentId");
 
-                    b.ToTable("Projects");
+                    b.ToTable("Projects", (string)null);
 
                     b.HasData(
                         new
@@ -2090,7 +2090,7 @@ namespace Jabez.Api.Data.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("RefreshTokens");
+                    b.ToTable("RefreshTokens", (string)null);
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.RequestDesignatedReviewer", b =>
@@ -2168,7 +2168,7 @@ namespace Jabez.Api.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Roles");
+                    b.ToTable("Roles", (string)null);
 
                     b.HasData(
                         new
@@ -2206,7 +2206,7 @@ namespace Jabez.Api.Data.Migrations
 
                     b.HasIndex("PermissionId");
 
-                    b.ToTable("RolePermissions");
+                    b.ToTable("RolePermissions", (string)null);
 
                     b.HasData(
                         new
@@ -2616,7 +2616,7 @@ namespace Jabez.Api.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("SystemSettings");
+                    b.ToTable("SystemSettings", (string)null);
 
                     b.HasData(
                         new
@@ -2715,7 +2715,7 @@ namespace Jabez.Api.Data.Migrations
 
                     b.HasIndex("ReviewedById");
 
-                    b.ToTable("TravelRequests");
+                    b.ToTable("TravelRequests", (string)null);
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.User", b =>
@@ -2815,7 +2815,7 @@ namespace Jabez.Api.Data.Migrations
 
                     b.HasIndex("JobTitleId");
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
 
                     b.HasData(
                         new
@@ -2899,7 +2899,7 @@ namespace Jabez.Api.Data.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("UserRoles");
+                    b.ToTable("UserRoles", (string)null);
 
                     b.HasData(
                         new
@@ -2983,7 +2983,7 @@ namespace Jabez.Api.Data.Migrations
 
                     b.HasIndex("WriteOffRecordId");
 
-                    b.ToTable("WriteOffItems");
+                    b.ToTable("WriteOffItems", (string)null);
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.WriteOffRecord", b =>
@@ -3025,7 +3025,7 @@ namespace Jabez.Api.Data.Migrations
 
                     b.HasIndex("SubmittedById");
 
-                    b.ToTable("WriteOffRecords");
+                    b.ToTable("WriteOffRecords", (string)null);
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.AdvanceRequest", b =>

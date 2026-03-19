@@ -494,8 +494,6 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                         setReviewed();
                         await notifier.NotifyApplicantAsync(applicationType, applicationId,
                             applicantId.Value, "approved", reviewNote);
-                        if (applicationType is "payment_request" or "advance")
-                            await notifier.NotifyFinanceDeptAsync(applicationId, applicantId.Value, applicationType);
                         return;
                     }
 
@@ -531,9 +529,6 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 if (applicantId.HasValue)
                     await notifier.NotifyApplicantAsync(applicationType, applicationId,
                         applicantId.Value, "approved", reviewNote);
-                // 請款/預支申請核准後，額外通知財務部進行撥款
-                if (applicationType is "payment_request" or "advance" && applicantId.HasValue)
-                    await notifier.NotifyFinanceDeptAsync(applicationId, applicantId.Value, applicationType);
             }
         }
         else if (action == "returned")

@@ -525,8 +525,8 @@ public sealed class PaymentRequestHandler(
         if (user is null)
             return new UnauthorizedObjectResult(ApiResponse.Fail("User not found."));
 
-        // 只有財務部或 Superadmin 可更新撥款日
-        if (!user.IsSuperAdmin && user.Department?.Name != "財務部")
+        // 只有財務部(FIN)或 Superadmin 可更新撥款日
+        if (!user.IsSuperAdmin && user.Department?.Code != "FIN")
             return new ForbidResult();
 
         var pr = await db.PaymentRequests.FindAsync(intId)

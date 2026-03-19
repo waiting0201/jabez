@@ -240,12 +240,12 @@ public sealed class ApprovalNotificationService(
             var applicantName = applicant?.Name ?? "未知";
             var summary = await GetSummaryAsync(applicationType, applicationId);
 
-            // 查詢財務部所有有 Email 的使用者
+            // 查詢財務部(FIN)所有有 Email 的使用者
             var financeDept = await db.Departments.AsNoTracking()
-                .FirstOrDefaultAsync(d => d.Name == "財務部");
+                .FirstOrDefaultAsync(d => d.Code == "FIN");
             if (financeDept is null)
             {
-                logger.LogWarning("找不到「財務部」部門，無法寄送撥款通知：PaymentRequest #{Id}", applicationId);
+                logger.LogWarning("找不到「財務部(FIN)」部門，無法寄送撥款通知：PaymentRequest #{Id}", applicationId);
                 return;
             }
 
@@ -256,7 +256,7 @@ public sealed class ApprovalNotificationService(
 
             if (recipients.Count == 0)
             {
-                logger.LogWarning("財務部無可通知的使用者：PaymentRequest #{Id}", applicationId);
+                logger.LogWarning("財務部(FIN)無可通知的使用者：PaymentRequest #{Id}", applicationId);
                 return;
             }
 
@@ -274,7 +274,7 @@ public sealed class ApprovalNotificationService(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "寄送財務部撥款通知失敗：PaymentRequest #{Id}", applicationId);
+            logger.LogWarning(ex, "寄送財務部(FIN)撥款通知失敗：PaymentRequest #{Id}", applicationId);
         }
     }
 
