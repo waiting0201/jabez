@@ -157,12 +157,14 @@
                   <span class="fw-600">{{ wo.grandTotal | number:'1.0-0' }} 元</span>
                   <span class="text-muted small">{{ wo.createdAt | date:'yyyy-MM-dd' }}</span>
                 </div>
-                <button class="btn btn-sm btn-ghost-primary" (click)="printWriteOff(wo)" title="列印沖銷表" [disabled]="pdfLoading()">
-                  <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#printer"></use></svg>
-                </button>
-                <button class="btn btn-sm btn-ghost-danger" (click)="deleteWriteOff(wo)" title="刪除沖銷">
-                  <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
-                </button>
+                <div class="flex items-center gap-1">
+                  <button class="btn btn-sm btn-ghost-primary" (click)="printWriteOff(wo)" title="列印沖銷表" [disabled]="pdfLoading()">
+                    <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#printer"></use></svg>
+                  </button>
+                  <button class="btn btn-sm btn-ghost-danger" (click)="deleteWriteOff(wo)" title="刪除沖銷">
+                    <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
+                  </button>
+                </div>
               </div>
               <div class="table-responsive">
                 <table class="table table-sm mb-0">
