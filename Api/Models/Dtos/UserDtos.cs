@@ -41,6 +41,13 @@ public sealed record CreateUserRequest(
     Guid?     AgentUserId  = null,
     DateTime? Birthday     = null);
 
+/// <summary>輕量級使用者資料（供指定審核者下拉選單用，不需 users:read 權限）</summary>
+public sealed record UserLookupDto(
+    Guid    Id,
+    string  Name,
+    int?    JobTitleId,
+    string  Status);
+
 public sealed record UpdateUserRequest(
     string?    Name,
     string?    Email,

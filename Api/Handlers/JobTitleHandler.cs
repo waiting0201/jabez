@@ -10,6 +10,13 @@ namespace Jabez.Api.Handlers;
 
 public sealed class JobTitleHandler(AppDbContext db, IJobTitleReadService reader)
 {
+    // GET /api/job-titles/lookup — 輕量級職稱清單（供下拉選單，不需 job-titles:read 權限）
+    public async Task<IActionResult> GetLookupAsync()
+    {
+        var list = await reader.GetLookupAsync();
+        return new OkObjectResult(ApiResponse.Ok(list));
+    }
+
     public async Task<IActionResult> GetAllAsync()
     {
         var titles = await reader.GetAllAsync();

@@ -81,6 +81,7 @@ public sealed class AppRouter(
             ("POST",   ["auth", "change-password"])   => await auth.ChangePasswordAsync(req),
 
             // ── Users ─────────────────────────────────────────────────────────
+            ("GET",    ["users", "lookup"])           => await users.GetLookupAsync(),
             ("GET",    ["users"])                     => await users.GetAllAsync(req),
             ("POST",   ["users"])                     => await users.CreateAsync(req),
             ("POST",   ["users", var id, "send-credentials"]) => await users.SendCredentialsAsync(id),
@@ -118,6 +119,7 @@ public sealed class AppRouter(
             ("DELETE", ["departments", var id])       => await depts.DeleteAsync(id),
 
             // ── Job Titles ─────────────────────────────────────────────────────
+            ("GET",    ["job-titles", "lookup"])      => await jobTitles.GetLookupAsync(),
             ("GET",    ["job-titles"])                => await jobTitles.GetAllAsync(),
             ("POST",   ["job-titles"])                => await jobTitles.CreateAsync(req),
             ("GET",    ["job-titles", var id])        => await jobTitles.GetByIdAsync(id),
@@ -264,7 +266,8 @@ public sealed class AppRouter(
             // Files（公開路由，不需任何權限）
             ("GET", ["files", ..]) => null,
 
-            // Users
+            // Users（lookup 不需權限，登入即可）
+            ("GET",    ["users", "lookup"])               => null,
             ("GET",    ["users", ..])                    => PermissionCodes.UsersRead,
             ("POST",   ["users"])                        => PermissionCodes.UsersWrite,
             ("POST",   ["users", _, "send-credentials"]) => PermissionCodes.UsersWrite,
@@ -289,7 +292,8 @@ public sealed class AppRouter(
             ("PUT" or "PATCH", ["departments", _])       => PermissionCodes.DepartmentsWrite,
             ("DELETE", ["departments", _])               => PermissionCodes.DepartmentsDelete,
 
-            // Job Titles
+            // Job Titles（lookup 不需權限，登入即可）
+            ("GET",    ["job-titles", "lookup"])          => null,
             ("GET",    ["job-titles", ..])               => PermissionCodes.JobTitlesRead,
             ("POST",   ["job-titles"])                   => PermissionCodes.JobTitlesWrite,
             ("PUT" or "PATCH", ["job-titles", _])        => PermissionCodes.JobTitlesWrite,

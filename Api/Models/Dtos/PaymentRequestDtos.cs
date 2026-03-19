@@ -64,10 +64,11 @@ public sealed record UpdatePaymentRequestRequest(
     InvoiceItemRequest[] Invoices,
     DesignatedReviewerRequest[]? DesignatedReviewers = null);
 
-// 更新撥款日（財務部或 Superadmin 專用）
+// 更新撥款日與狀態（財務部或 Superadmin 專用，paidAt 未填入前皆可修改）
 public sealed record UpdatePaymentDateRequest(
     DateTime? EstimatedPaymentDate,
-    DateTime? PaidAt);
+    DateTime? PaidAt,
+    string?   ApprovalStatus);
 
 // 審核動作（核准 / 退回修改 / 拒絕）
 public sealed record ReviewPaymentRequestRequest(

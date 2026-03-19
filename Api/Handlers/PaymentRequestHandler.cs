@@ -532,8 +532,9 @@ public sealed class PaymentRequestHandler(
         var pr = await db.PaymentRequests.FindAsync(intId)
             ?? throw AppException.NotFound("PaymentRequest");
 
-        if (pr.ApprovalStatus != "approved")
-            return new BadRequestObjectResult(ApiResponse.Fail("只有已核准的請款申請可以設定撥款日。"));
+        // paidAt 已有值 → 鎖定，不可再修改
+        if (pr.PaidAt.HasValue)
+            return new BadRequestObjectResult(ApiResponse.Fail("此請款已撥款，無法再修改。"));
 
         var body = await req.ReadFromJsonAsync<UpdatePaymentDateRequest>();
         if (body is null)
@@ -544,9 +545,18 @@ public sealed class PaymentRequestHandler(
         if (body.PaidAt.HasValue)
             pr.PaidAt = body.PaidAt.Value;
 
+        // 更新狀態（僅允許合法狀態值）
+        if (!string.IsNullOrWhiteSpace(body.ApprovalStatus))
+        {
+            var allowed = new[] { "draft", "pending", "approved", "returned", "rejected" };
+            if (!allowed.Contains(body.ApprovalStatus))
+                return new BadRequestObjectResult(ApiResponse.Fail($"不合法的狀態值：{body.ApprovalStatus}"));
+            pr.ApprovalStatus = body.ApprovalStatus;
+        }
+
         await db.SaveChangesAsync();
 
-        return new OkObjectResult(ApiResponse.Ok(new { pr.Id, pr.EstimatedPaymentDate, pr.PaidAt }, "撥款日期已更新。"));
+        return new OkObjectResult(ApiResponse.Ok(new { pr.Id, pr.ApprovalStatus, pr.EstimatedPaymentDate, pr.PaidAt }, "已更新。"));
     }
 
     // ── Helper ──────────────────────────────────────────────────────────────────

@@ -6,6 +6,7 @@ namespace Jabez.Api.Services.Dapper;
 public interface IUserReadService
 {
     Task<IEnumerable<UserDto>>    GetAllAsync();
+    Task<IEnumerable<UserLookupDto>> GetLookupAsync();
     Task<PagedResult<UserDto>>    GetPagedAsync(int page, int pageSize);
     Task<UserDto?>                GetByIdAsync(Guid id);
 }

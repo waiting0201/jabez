@@ -28,6 +28,13 @@ public sealed class JobTitleReadService(IDbConnection db) : IJobTitleReadService
             (DateTime)row.CreatedAt));
     }
 
+    /// <summary>輕量級職稱清單（供下拉選單，不需 job-titles:read 權限）</summary>
+    public async Task<IEnumerable<JobTitleLookupDto>> GetLookupAsync()
+    {
+        const string sql = "SELECT Id, Name FROM JobTitles ORDER BY Level";
+        return await db.QueryAsync<JobTitleLookupDto>(sql);
+    }
+
     public async Task<JobTitleDto?> GetByIdAsync(int id)
     {
         const string sql = """

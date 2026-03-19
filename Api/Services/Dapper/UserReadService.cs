@@ -76,6 +76,19 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.CreatedAt));
     }
 
+    /// <summary>輕量級使用者清單（供指定審核者下拉選單，不需 users:read 權限）</summary>
+    public async Task<IEnumerable<UserLookupDto>> GetLookupAsync()
+    {
+        const string sql = """
+            SELECT Id, Name, JobTitleId, Status
+            FROM Users
+            WHERE IsSuperAdmin = 0
+            ORDER BY Name
+            """;
+
+        return await db.QueryAsync<UserLookupDto>(sql);
+    }
+
     public async Task<PagedResult<UserDto>> GetPagedAsync(int page, int pageSize)
     {
         const string countSql = "SELECT COUNT(*) FROM Users WHERE IsSuperAdmin = 0";

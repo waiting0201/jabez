@@ -12,6 +12,13 @@ namespace Jabez.Api.Handlers;
 
 public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmailService emailService, IBlobStorageService blob)
 {
+    // GET /api/users/lookup — 輕量級使用者清單（供指定審核者下拉選單，不需 users:read 權限）
+    public async Task<IActionResult> GetLookupAsync()
+    {
+        var list = await reader.GetLookupAsync();
+        return new OkObjectResult(ApiResponse.Ok(list));
+    }
+
     // GET /api/users — Dapper 讀取（含 JOIN）
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
