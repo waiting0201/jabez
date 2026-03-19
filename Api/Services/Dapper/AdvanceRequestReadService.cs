@@ -14,16 +14,14 @@ public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceReques
                ar.ApprovalStatus, ar.EstimatedPaymentDate, ar.PaidAt,
                sub.Name AS SubmittedBy, ar.CreatedAt,
                ar.ReviewedAt, ar.ReviewNote,
-               ar.DesignatedReviewerId, dr.Name AS DesignatedReviewerName,
                ai.Id AS ItemId, ai.Category, ai.SeqNo, ai.ItemName,
                ai.UnitPrice, ai.Quantity, ai.TotalPrice,
                ai.CashAmount AS ItemCash, ai.CheckAmount AS ItemCheck,
                ai.Note AS ItemNote, ai.SortOrder
         FROM AdvanceRequests ar
-        LEFT JOIN Projects proj             ON ar.ProjectId           = proj.Id
-        LEFT JOIN Users   sub               ON ar.SubmittedById        = sub.Id
-        LEFT JOIN Users   dr                ON ar.DesignatedReviewerId = dr.Id
-        LEFT JOIN AdvanceRequestItems ai    ON ai.AdvanceRequestId    = ar.Id
+        LEFT JOIN Projects proj          ON ar.ProjectId    = proj.Id
+        LEFT JOIN Users   sub            ON ar.SubmittedById = sub.Id
+        LEFT JOIN AdvanceRequestItems ai ON ai.AdvanceRequestId = ar.Id
         """;
 
     private const string WriteOffBaseSql = """
@@ -76,7 +74,29 @@ public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceReques
         var writeOffSummaries = await db.QueryAsync<dynamic>(
             "SELECT Id, AdvanceRequestId, WriteOffNo, GrandTotal, CreatedAt FROM WriteOffRecords WHERE AdvanceRequestId = @Id ORDER BY WriteOffNo",
             new { Id = id });
-        return GroupToAdvanceRequests(rows, writeOffSummaries).FirstOrDefault();
+        var dto = GroupToAdvanceRequests(rows, writeOffSummaries).FirstOrDefault();
+        if (dto is null) return null;
+
+        // 額外查詢指定審核者（GetByIdAsync 才需要，列表查詢不包含）
+        const string drSql = """
+            SELECT rdr.Id, rdr.ReviewerId, u.Name AS ReviewerName,
+                   rdr.StepOrder, rdr.Status, rdr.ReviewedAt, rdr.Comment
+            FROM RequestDesignatedReviewers rdr
+            JOIN Users u ON rdr.ReviewerId = u.Id
+            WHERE rdr.RequestType = 'advance' AND rdr.RequestId = @RequestId
+            ORDER BY rdr.StepOrder
+            """;
+        var drRows = await db.QueryAsync<dynamic>(drSql, new { RequestId = id });
+        var designatedReviewers = drRows.Select(r => new DesignatedReviewerDto(
+            (int)r.Id,
+            (Guid)r.ReviewerId,
+            (string)r.ReviewerName,
+            (int)r.StepOrder,
+            (string)r.Status,
+            (DateTime?)r.ReviewedAt,
+            (string?)r.Comment)).ToArray();
+
+        return dto with { DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null };
     }
 
     public async Task<IEnumerable<WriteOffRecordDto>> GetWriteOffsAsync(int advanceRequestId)
@@ -149,8 +169,7 @@ public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceReques
                 (string?)x.ar.ReviewNote,
                 [.. x.items],
                 wos,
-                (Guid?)x.ar.DesignatedReviewerId,
-                (string?)x.ar.DesignatedReviewerName);
+                null); // DesignatedReviewers 以 null 回傳
         });
     }
 

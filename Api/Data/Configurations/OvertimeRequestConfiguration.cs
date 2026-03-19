@@ -41,11 +41,6 @@ public class OvertimeRequestConfiguration : IEntityTypeConfiguration<OvertimeReq
                .HasForeignKey(o => o.ReviewedById)
                .OnDelete(DeleteBehavior.NoAction);
 
-        builder.HasOne(o => o.DesignatedReviewer)
-               .WithMany()
-               .HasForeignKey(o => o.DesignatedReviewerId)
-               .OnDelete(DeleteBehavior.NoAction);
-
         builder.HasOne(o => o.ApprovalItem)
                .WithMany(a => a.OvertimeRequests)
                .HasForeignKey(o => o.ApprovalItemId)

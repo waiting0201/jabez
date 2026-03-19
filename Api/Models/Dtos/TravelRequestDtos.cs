@@ -16,8 +16,10 @@ public sealed record TravelRequestDto(
     DateTime  CreatedAt,
     DateTime? ReviewedAt,
     string?   ReviewNote,
-    Guid?     DesignatedReviewerId   = null,
-    string?   DesignatedReviewerName = null);
+    int?      ApprovalItemId       = null,
+    int?      CurrentStepOrder     = null,
+    Guid?     ReviewedById         = null,
+    DesignatedReviewerDto[]? DesignatedReviewers = null);
 
 public sealed record CreateTravelRequestRequest(
     Guid?    EmployeeId,
@@ -29,7 +31,7 @@ public sealed record CreateTravelRequestRequest(
     string   Purpose              = "",
     int?     ProjectId            = null,
     bool     IsHolidayTravel      = false,
-    Guid?    DesignatedReviewerId = null);
+    DesignatedReviewerRequest[]? DesignatedReviewers = null);
 
 public sealed record UpdateTravelRequestRequest(
     string?   Destination,
@@ -39,4 +41,4 @@ public sealed record UpdateTravelRequestRequest(
     string?   Purpose,
     int?      ProjectId,
     bool?     IsHolidayTravel,
-    Guid?     DesignatedReviewerId = null);
+    DesignatedReviewerRequest[]? DesignatedReviewers = null);

@@ -14,11 +14,10 @@ public sealed class TravelRequestReadService(IDbConnection db) : ITravelRequestR
                tr.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                tr.IsHolidayTravel,
                tr.ApprovalStatus, tr.CreatedAt, tr.ReviewedAt, tr.ReviewNote,
-               tr.DesignatedReviewerId, dr.Name AS DesignatedReviewerName
+               tr.ApprovalItemId, tr.CurrentStepOrder, tr.ReviewedById
         FROM TravelRequests tr
-        LEFT JOIN Users u       ON tr.EmployeeId          = u.Id
-        LEFT JOIN Projects proj ON tr.ProjectId           = proj.Id
-        LEFT JOIN Users dr      ON tr.DesignatedReviewerId = dr.Id
+        LEFT JOIN Users u       ON tr.EmployeeId = u.Id
+        LEFT JOIN Projects proj ON tr.ProjectId  = proj.Id
         """;
 
     public async Task<IEnumerable<TravelRequestDto>> GetAllAsync()
@@ -45,7 +44,29 @@ public sealed class TravelRequestReadService(IDbConnection db) : ITravelRequestR
     {
         const string sql = BaseSql + " WHERE tr.Id = @Id";
         var row = await db.QueryFirstOrDefaultAsync<dynamic>(sql, new { Id = id });
-        return row is null ? null : MapRow(row);
+        if (row is null) return null;
+
+        // 額外查詢指定審核者（GetByIdAsync 才需要，列表查詢不包含）
+        const string drSql = """
+            SELECT rdr.Id, rdr.ReviewerId, u.Name AS ReviewerName,
+                   rdr.StepOrder, rdr.Status, rdr.ReviewedAt, rdr.Comment
+            FROM RequestDesignatedReviewers rdr
+            JOIN Users u ON rdr.ReviewerId = u.Id
+            WHERE rdr.RequestType = 'travel' AND rdr.RequestId = @RequestId
+            ORDER BY rdr.StepOrder
+            """;
+        var drRows = await db.QueryAsync<dynamic>(drSql, new { RequestId = id });
+        var designatedReviewers = drRows.Select(r => new DesignatedReviewerDto(
+            (int)r.Id,
+            (Guid)r.ReviewerId,
+            (string)r.ReviewerName,
+            (int)r.StepOrder,
+            (string)r.Status,
+            (DateTime?)r.ReviewedAt,
+            (string?)r.Comment)).ToArray();
+
+        TravelRequestDto dto = MapRow(row);
+        return dto with { DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null };
     }
 
     private static TravelRequestDto MapRow(dynamic row) =>
@@ -65,6 +86,7 @@ public sealed class TravelRequestReadService(IDbConnection db) : ITravelRequestR
             (DateTime)row.CreatedAt,
             (DateTime?)row.ReviewedAt,
             (string?)row.ReviewNote,
-            (Guid?)row.DesignatedReviewerId,
-            (string?)row.DesignatedReviewerName);
+            ApprovalItemId:   (int?)row.ApprovalItemId,
+            CurrentStepOrder: (int?)row.CurrentStepOrder,
+            ReviewedById:     (Guid?)row.ReviewedById);
 }

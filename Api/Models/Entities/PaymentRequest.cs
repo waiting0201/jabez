@@ -15,7 +15,6 @@ public class PaymentRequest
     public Guid?     ReviewedById   { get; set; }
     public DateTime? EstimatedPaymentDate { get; set; }
     public DateTime? PaidAt         { get; set; }
-    public Guid?     DesignatedReviewerId { get; set; }
     public DateTime  CreatedAt      { get; set; }
 
     // Navigation
@@ -23,6 +22,5 @@ public class PaymentRequest
     public ApprovalItem?             ApprovalItem       { get; set; }
     public User?                     SubmittedBy        { get; set; }
     public User?                     ReviewedBy         { get; set; }
-    public User?                     DesignatedReviewer { get; set; }
     public ICollection<InvoiceItem>  InvoiceItems { get; set; } = [];
 }

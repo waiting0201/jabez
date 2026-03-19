@@ -1,5 +1,24 @@
 namespace Jabez.Api.Models.Dtos;
 
+// ── 指定審核者共用 DTOs ───────────────────────────────────────────────────────
+
+/// <summary>指定審核者回應 DTO</summary>
+public sealed record DesignatedReviewerDto(
+    int       Id,
+    Guid      ReviewerId,
+    string    ReviewerName,
+    int       StepOrder,
+    string    Status,        // "pending" | "approved" | "returned"
+    DateTime? ReviewedAt,
+    string?   Comment);
+
+/// <summary>指定審核者請求 DTO（用於 Create/Update/Submit）</summary>
+public sealed record DesignatedReviewerRequest(
+    Guid ReviewerId,
+    int  StepOrder);
+
+// ── Invoice DTOs ──────────────────────────────────────────────────────────────
+
 public sealed record InvoiceItemDto(
     int     Id,
     string  FileName,
@@ -31,20 +50,19 @@ public sealed record PaymentRequestDto(
     DateTime?        PaidAt,
     DateTime?        ReviewedAt,
     string?          ReviewNote,
-    Guid?            DesignatedReviewerId   = null,
-    string?          DesignatedReviewerName = null);
+    DesignatedReviewerDto[]? DesignatedReviewers = null);
 
 public sealed record CreatePaymentRequestRequest(
     string              Type,
     int                 ProjectId,
     InvoiceItemRequest[] Invoices,
-    Guid?               DesignatedReviewerId = null);
+    DesignatedReviewerRequest[]? DesignatedReviewers = null);
 
 public sealed record UpdatePaymentRequestRequest(
     string?              Type,
     int?                 ProjectId,
     InvoiceItemRequest[] Invoices,
-    Guid?                DesignatedReviewerId = null);
+    DesignatedReviewerRequest[]? DesignatedReviewers = null);
 
 // 更新撥款日（財務部或 Superadmin 專用）
 public sealed record UpdatePaymentDateRequest(
@@ -136,5 +154,6 @@ public sealed record ApprovalTaskDto(
     TravelTaskDetailDto?   TravelDetail,
     OvertimeTaskDetailDto? OvertimeDetail,
     AdvanceTaskDetailDto?  AdvanceDetail,
-    ApprovalRecordDto[]    ApprovalRecords,
-    string?                SubmittedBySignatureUrl = null);  // 申請人簽名檔 URL
+    ApprovalRecordDto[]         ApprovalRecords,
+    DesignatedReviewerDto[]?    DesignatedReviewers    = null,
+    string?                     SubmittedBySignatureUrl = null);  // 申請人簽名檔 URL

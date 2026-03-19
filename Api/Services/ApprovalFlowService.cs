@@ -1,5 +1,6 @@
 using Jabez.Api.Common;
 using Jabez.Api.Data;
+using Jabez.Api.Models.Dtos;
 using Microsoft.EntityFrameworkCore;
 
 namespace Jabez.Api.Services;
@@ -14,7 +15,8 @@ public sealed class ApprovalFlowService(
     IEscalationService escalationService) : IApprovalFlowService
 {
     public async Task<(int startStep, bool autoApproved, EscalationResult? escalation)>
-        ResolveStartingStepAsync(int? approvalItemId, Guid applicantId, string applicationType, Guid? designatedReviewerId = null)
+        ResolveStartingStepAsync(int? approvalItemId, Guid applicantId, string applicationType,
+            IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers = null)
     {
         if (approvalItemId is null)
             return (1, false, null);
@@ -41,25 +43,33 @@ public sealed class ApprovalFlowService(
             // ── UseApplicantDesignated 模式：審核者是申請人指定的人 ──
             if (step.UseApplicantDesignated)
             {
-                if (designatedReviewerId.HasValue && designatedReviewerId.Value != applicantId)
+                // 取第一位指定審核者（min StepOrder）的 ReviewerId 進行判斷
+                var firstReviewer = designatedReviewers?
+                    .OrderBy(r => r.StepOrder)
+                    .FirstOrDefault();
+
+                // leave / travel / overtime 不允許任何一位指定審核者是申請人自己
+                if (applicationType is not ("payment_request" or "advance"))
                 {
-                    // 有指定審核者且不是自己 → 從這步開始
+                    bool anyIsSelf = designatedReviewers?.Any(r => r.ReviewerId == applicantId) ?? false;
+                    if (anyIsSelf)
+                        throw AppException.BadRequest("指定審核者不能是申請人本人。");
+                }
+
+                if (firstReviewer is not null && firstReviewer.ReviewerId != applicantId)
+                {
+                    // 有指定審核者且第 1 位不是自己 → 從這步開始
                     return (currentStep, false, null);
                 }
-                else if (designatedReviewerId.HasValue && designatedReviewerId.Value == applicantId)
+                else if (firstReviewer is not null && firstReviewer.ReviewerId == applicantId)
                 {
-                    // 自審：依申請類型處理（payment_request/advance 跳過，其他類型報錯）
-                    if (applicationType is "payment_request" or "advance")
-                    {
-                        currentStep++;
-                        continue;
-                    }
-                    // leave / travel / overtime 自審，嘗試升級（指定審核模式不走 EscalationService，直接報錯）
-                    throw AppException.BadRequest("指定審核者不能是申請人本人。");
+                    // payment_request / advance 自審第 1 位 → 跳過此步驟
+                    currentStep++;
+                    continue;
                 }
                 else
                 {
-                    // designatedReviewerId 為 null → 跳過此步驟
+                    // designatedReviewers 為 null 或空 → 跳過此步驟
                     currentStep++;
                     continue;
                 }
@@ -145,7 +155,8 @@ public sealed class ApprovalFlowService(
 
     /// <inheritdoc />
     public async Task<(int nextStep, bool allSkipped)>
-        SkipUnreviewableStepsAsync(int? approvalItemId, Guid applicantId, int fromStepOrder, Guid? designatedReviewerId = null)
+        SkipUnreviewableStepsAsync(int? approvalItemId, Guid applicantId, int fromStepOrder,
+            IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers = null)
     {
         if (approvalItemId is null)
             return (fromStepOrder, false);
@@ -173,7 +184,10 @@ public sealed class ApprovalFlowService(
             // UseApplicantDesignated 步驟：有指定審核者且不是申請人本人 → 不跳過
             if (step.UseApplicantDesignated)
             {
-                if (designatedReviewerId.HasValue && designatedReviewerId.Value != applicantId)
+                var firstReviewer = designatedReviewers?
+                    .OrderBy(r => r.StepOrder)
+                    .FirstOrDefault();
+                if (firstReviewer is not null && firstReviewer.ReviewerId != applicantId)
                     return (step.StepOrder, false); // 有合法的指定審核者，停在這步
                 // 否則（null 或自審）→ 跳過
                 continue;

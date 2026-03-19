@@ -510,11 +510,12 @@ dotnet ef database update               # 套用 Migration
 | `ApprovalRecord` | 簽核動作記錄（含 OnBehalfOfUserId 代理標記、IsEscalated 升級標記） |
 | `EscalationOverride` | 升級審核指派（記錄被指派的升級/代理審核者，審核完成後清除） |
 | `Project` | 專案主檔 |
-| `PaymentRequest` | 請款申請（含 DesignatedReviewerId 指定審核者） |
+| `PaymentRequest` | 請款申請 |
 | `InvoiceItem` | 請款明細（發票項目） |
 | `LeaveRequest` | 請假申請 |
 | `TravelRequest` | 出差申請（含 IsHolidayTravel 假日出差欄位） |
 | `OvertimeRequest` | 加班申請（走簽核流程） |
+| `RequestDesignatedReviewer` | 申請人指定審核者清單（多人依序審核） |
 | `AttendanceRecord` | 出勤打卡紀錄（每人每天一筆，含 GPS） |
 | `SystemSetting` | 系統設定 |
 | `InsuranceBracket` | 勞健保級距（投保級距、員工負擔勞保、員工負擔健保） |
@@ -596,28 +597,53 @@ draft → pending → approved / returned / rejected
 
 ### 申請人指定審核模式（UseApplicantDesignated）
 
-`ApprovalStep` 新增 `UseApplicantDesignated`（bool, 預設 false）欄位，啟用時審核者由申請人在表單中指定。
+`ApprovalStep` 新增 `UseApplicantDesignated`（bool, 預設 false）欄位，啟用時審核者由申請人在表單中**依序指定多人**。
 
-**申請表欄位：** 5 張申請表（PaymentRequest、LeaveRequest、TravelRequest、OvertimeRequest、AdvanceRequest）各新增 `DesignatedReviewerId`（Guid?, nullable, FK → Users）。
+**設計背景：** 因跨部門專案支援情境，簽核流程因人員配置不同而不固定，故由申請人在送出時自行決定第一步驟要哪些人審核、以何順序。
 
-**前端連動下拉：** 申請表單中有「指定審核者」區塊，先選職稱再選人員。
+**資料模型：** 不使用申請表本身的欄位，而是獨立資料表 `RequestDesignatedReviewers`：
+
+| 欄位 | 說明 |
+|------|------|
+| `RequestType` | `payment_request` / `leave` / `travel` / `overtime` / `advance` |
+| `RequestId` | 關聯申請單 ID |
+| `ReviewerId` | 審核者 User ID |
+| `StepOrder` | 審核順序（1, 2, 3...），依序逐一通過 |
+| `Status` | `pending` / `approved` / `returned` |
+| `ReviewedAt` | 審核時間 |
+| `Comment` | 審核備注 |
+
+**流程設計：**
+- Step 1 為 `UseApplicantDesignated=true`：走指定審核者多人順序流程
+- Step 2+ 回歸現有固定流程（固定部門+職稱、UseDirectSupervisor 等）
 
 **規則：**
-- 送出（submit）時，如果流程中有 `UseApplicantDesignated` 步驟，`DesignatedReviewerId` 必填
-- 多個 `UseApplicantDesignated` 步驟都找同一個 `DesignatedReviewerId`
-- 指定自己為審核者：payment_request/advance 自動跳過，其他類型報錯
-- `DesignatedReviewerId` 為 null 時步驟自動跳過
-- 此模式與 `UseDirectSupervisor`、`UseApplicantDepartment` 互斥
+- 送出（submit）時，如果流程中有 `UseApplicantDesignated` 步驟，`designatedReviewers` 清單必填且至少 1 人
+- 依 `StepOrder` 升序逐一審核，前一人核准後才輪到下一人
+- 指定審核者不需擁有全域 `approval-tasks:write` 權限，被指定即可審核
+- 自審規則：leave / travel / overtime — 任何一位指定審核者是申請人本人則報錯；payment_request / advance — 申請人排第 1 位時自動跳過，排其他位置不允許
+- 退回時：當前等待審核者狀態設為 `returned`，重送時所有指定審核者重置為 `pending`
+- 此模式與 `UseDirectSupervisor`、`UseApplicantDepartment` 互斥（每個 ApprovalStep 擇一使用）
+- 一個流程建議只有一個 `UseApplicantDesignated` 步驟
+
+**存取控制（`GET /approval-tasks/{type}/{id}`）：**
+- Superadmin：可查看所有
+- 有 `approval-tasks:read` 權限：可查看所有
+- 被指定為審核者（任何狀態）：可查看此申請單
+- 曾審核過（有 ApprovalRecord）：可查看此申請單
+- 其他人：403
 
 **涉及元件：**
 | 元件 | 說明 |
 |------|------|
 | `ApprovalStep.UseApplicantDesignated` | Entity 欄位 |
-| `{Request}.DesignatedReviewerId` | 5 張申請表的指定審核者欄位 |
-| `ApprovalFlowService.ResolveStartingStepAsync()` | 指定審核步驟的解析 |
-| `ApprovalTaskHandler.AuthorizeStepAsync()` | 驗證審核者是否為指定人員 |
-| `PaymentRequestReadService.StepMatchClause()` | Dapper SQL 匹配指定審核者 |
-| 前端各申請表單 | 職稱→人員連動下拉 |
+| `RequestDesignatedReviewer` | 獨立資料表，取代舊的單欄位設計 |
+| `ApprovalFlowService.ResolveStartingStepAsync()` | 驗證指定審核者清單、自審規則、解析起始步驟 |
+| `ApprovalTaskHandler.AuthorizeStepAsync()` | 驗證當前等待審核者（min StepOrder, Status=pending） |
+| `ApprovalTaskHandler.ProcessReviewAsync()` | 核准後推進到下一位指定審核者，全部通過後推進 ApprovalStep |
+| `PaymentRequestReadService.StepMatchClause()` | Dapper SQL：匹配 min(StepOrder) 且 Status=pending 的指定審核者 |
+| `ApprovalTaskHandler.GetByIdAsync()` | 單筆查詢含存取控制 |
+| 前端各申請表單 | 動態新增/刪除/排序多位指定審核者 UI |
 
 ---
 

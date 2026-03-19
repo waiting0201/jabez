@@ -89,28 +89,42 @@ public sealed class LeaveRequestHandler(
         var hours = (decimal)(body.EndDate - body.StartDate).TotalHours;
 
         // 指定審核者存在性驗證
-        if (body.DesignatedReviewerId.HasValue)
+        if (body.DesignatedReviewers is { Length: > 0 })
         {
-            var exists = await db.Users.AsNoTracking().AnyAsync(u => u.Id == body.DesignatedReviewerId.Value);
-            if (!exists)
-                return new BadRequestObjectResult(ApiResponse.Fail("指定的審核者不存在。"));
+            var reviewerIds = body.DesignatedReviewers.Select(r => r.ReviewerId).Distinct().ToList();
+            var existCount = await db.Users.AsNoTracking().CountAsync(u => reviewerIds.Contains(u.Id));
+            if (existCount != reviewerIds.Count)
+                return new BadRequestObjectResult(ApiResponse.Fail("一或多位指定審核者不存在。"));
         }
 
         var item = new LeaveRequest
         {
-            EmployeeId           = employeeId,   // 強制使用 JWT 身分，忽略 body.EmployeeId
-            ApprovalItemId       = body.ApprovalItemId,
-            LeaveType            = body.LeaveType,
-            StartDate            = body.StartDate,
-            EndDate              = body.EndDate,
-            Hours                = hours,
-            Reason               = body.Reason,
-            ApprovalStatus       = "draft",
-            DesignatedReviewerId = body.DesignatedReviewerId,
-            CreatedAt            = Clock.Now,
+            EmployeeId     = employeeId,   // 強制使用 JWT 身分，忽略 body.EmployeeId
+            ApprovalItemId = body.ApprovalItemId,
+            LeaveType      = body.LeaveType,
+            StartDate      = body.StartDate,
+            EndDate        = body.EndDate,
+            Hours          = hours,
+            Reason         = body.Reason,
+            ApprovalStatus = "draft",
+            CreatedAt      = Clock.Now,
         };
         db.LeaveRequests.Add(item);
         await db.SaveChangesAsync();
+
+        // 儲存指定審核者
+        if (body.DesignatedReviewers is { Length: > 0 })
+        {
+            db.RequestDesignatedReviewers.AddRange(
+                body.DesignatedReviewers.OrderBy(r => r.StepOrder).Select(r => new RequestDesignatedReviewer
+                {
+                    RequestType = "leave",
+                    RequestId   = item.Id,
+                    ReviewerId  = r.ReviewerId,
+                    StepOrder   = r.StepOrder,
+                }));
+            await db.SaveChangesAsync();
+        }
 
         var dto = await reader.GetByIdAsync(item.Id);
         return new ObjectResult(ApiResponse.Ok(dto, "Leave request created.")) { StatusCode = 201 };
@@ -132,19 +146,37 @@ public sealed class LeaveRequestHandler(
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned leave requests can be edited.");
 
-        // 指定審核者存在性驗證（提供非空 Guid 時才驗證）
-        if (body.DesignatedReviewerId.HasValue && body.DesignatedReviewerId != Guid.Empty)
+        // 指定審核者整組替換（提供 DesignatedReviewers 時才更新）
+        if (body.DesignatedReviewers is not null)
         {
-            var exists = await db.Users.AsNoTracking().AnyAsync(u => u.Id == body.DesignatedReviewerId.Value);
-            if (!exists)
-                return new BadRequestObjectResult(ApiResponse.Fail("指定的審核者不存在。"));
+            if (body.DesignatedReviewers.Length > 0)
+            {
+                var reviewerIds = body.DesignatedReviewers.Select(r => r.ReviewerId).Distinct().ToList();
+                var existCount = await db.Users.AsNoTracking().CountAsync(u => reviewerIds.Contains(u.Id));
+                if (existCount != reviewerIds.Count)
+                    return new BadRequestObjectResult(ApiResponse.Fail("一或多位指定審核者不存在。"));
+            }
+            var old = await db.RequestDesignatedReviewers
+                .Where(r => r.RequestType == "leave" && r.RequestId == intId)
+                .ToListAsync();
+            db.RequestDesignatedReviewers.RemoveRange(old);
+            if (body.DesignatedReviewers.Length > 0)
+            {
+                db.RequestDesignatedReviewers.AddRange(
+                    body.DesignatedReviewers.Select(r => new RequestDesignatedReviewer
+                    {
+                        RequestType = "leave",
+                        RequestId   = intId,
+                        ReviewerId  = r.ReviewerId,
+                        StepOrder   = r.StepOrder,
+                    }));
+            }
         }
 
-        if (body.LeaveType  is not null)            item.LeaveType           = body.LeaveType;
-        if (body.StartDate.HasValue)                item.StartDate           = body.StartDate.Value;
-        if (body.EndDate.HasValue)                  item.EndDate             = body.EndDate.Value;
-        if (body.Reason    is not null)             item.Reason              = body.Reason;
-        if (body.DesignatedReviewerId.HasValue)     item.DesignatedReviewerId = body.DesignatedReviewerId == Guid.Empty ? null : body.DesignatedReviewerId;
+        if (body.LeaveType is not null) item.LeaveType = body.LeaveType;
+        if (body.StartDate.HasValue)    item.StartDate = body.StartDate.Value;
+        if (body.EndDate.HasValue)      item.EndDate   = body.EndDate.Value;
+        if (body.Reason is not null)    item.Reason    = body.Reason;
 
         // 時數由開始/結束時間重新計算
         item.Hours = (decimal)(item.EndDate - item.StartDate).TotalHours;
@@ -230,7 +262,7 @@ public sealed class LeaveRequestHandler(
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned leave requests can be submitted.");
 
-        // 退回重送時清除舊審核記錄，重新走流程
+        // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
         if (item.ApprovalStatus == "returned")
         {
             var oldRecords = await db.ApprovalRecords
@@ -242,6 +274,17 @@ public sealed class LeaveRequestHandler(
                 .Where(o => o.ApplicationType == "leave" && o.ApplicationId == item.Id)
                 .ToListAsync();
             db.EscalationOverrides.RemoveRange(oldOverrides);
+
+            // 重置指定審核者狀態為 pending
+            var rdrsToReset = await db.RequestDesignatedReviewers
+                .Where(r => r.RequestType == "leave" && r.RequestId == item.Id)
+                .ToListAsync();
+            foreach (var rdr in rdrsToReset)
+            {
+                rdr.Status     = "pending";
+                rdr.ReviewedAt = null;
+                rdr.Comment    = null;
+            }
         }
 
         // 補休時數驗證：申請時數不得超過可用時數
@@ -278,18 +321,31 @@ public sealed class LeaveRequestHandler(
                 item.ApprovalItemId = flow.Id;
         }
 
-        // 若流程中有 UseApplicantDesignated 步驟，DesignatedReviewerId 必填
+        // 若流程中有 UseApplicantDesignated 步驟，必須有指定審核者
         if (item.ApprovalItemId.HasValue)
         {
             bool hasDesignatedStep = await db.ApprovalSteps.AsNoTracking()
                 .AnyAsync(s => s.ApprovalItemId == item.ApprovalItemId && s.UseApplicantDesignated);
-            if (hasDesignatedStep && !item.DesignatedReviewerId.HasValue)
-                return new BadRequestObjectResult(ApiResponse.Fail("此簽核流程包含申請人指定審核步驟，請提供 DesignatedReviewerId。"));
+            if (hasDesignatedStep)
+            {
+                bool hasReviewers = await db.RequestDesignatedReviewers
+                    .AnyAsync(r => r.RequestType == "leave" && r.RequestId == item.Id);
+                if (!hasReviewers)
+                    return new BadRequestObjectResult(ApiResponse.Fail("此簽核流程包含申請人指定審核步驟，請提供指定審核者。"));
+            }
         }
+
+        // 查詢指定審核者清單傳給 ResolveStartingStepAsync
+        var designatedReviewers = await db.RequestDesignatedReviewers
+            .AsNoTracking()
+            .Where(r => r.RequestType == "leave" && r.RequestId == item.Id)
+            .OrderBy(r => r.StepOrder)
+            .Select(r => new DesignatedReviewerRequest(r.ReviewerId, r.StepOrder))
+            .ToListAsync();
 
         // 解析審核步驟（含升級審核邏輯）
         var (startStep, autoApproved, escalation) =
-            await approvalFlow.ResolveStartingStepAsync(item.ApprovalItemId, userId, "leave", item.DesignatedReviewerId);
+            await approvalFlow.ResolveStartingStepAsync(item.ApprovalItemId, userId, "leave", designatedReviewers);
 
         if (autoApproved)
         {
@@ -333,8 +389,16 @@ public sealed class LeaveRequestHandler(
                     .AnyAsync(s => s.ApprovalItemId == item.ApprovalItemId
                         && s.StepOrder == startStep
                         && s.UseApplicantDesignated);
-                if (isDesignatedStep && item.DesignatedReviewerId.HasValue)
-                    await notifier.NotifySpecificReviewerAsync("leave", item.Id, item.DesignatedReviewerId.Value, userId, false);
+                if (isDesignatedStep)
+                {
+                    var firstReviewer = await db.RequestDesignatedReviewers
+                        .AsNoTracking()
+                        .Where(r => r.RequestType == "leave" && r.RequestId == item.Id && r.Status == "pending")
+                        .OrderBy(r => r.StepOrder)
+                        .FirstOrDefaultAsync();
+                    if (firstReviewer is not null)
+                        await notifier.NotifySpecificReviewerAsync("leave", item.Id, firstReviewer.ReviewerId, userId, false);
+                }
                 else
                     await notifier.NotifyReviewersAsync("leave", item.Id, item.ApprovalItemId, startStep, userId);
             }

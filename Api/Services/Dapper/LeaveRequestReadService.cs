@@ -11,10 +11,9 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
         SELECT lr.Id, u.Name AS EmployeeName,
                lr.LeaveType, lr.StartDate, lr.EndDate, lr.Hours, lr.Reason,
                lr.ApprovalStatus, lr.CreatedAt, lr.ReviewedAt, lr.ReviewNote,
-               lr.DesignatedReviewerId, dr.Name AS DesignatedReviewerName
+               lr.ApprovalItemId, lr.CurrentStepOrder, lr.ReviewedById
         FROM LeaveRequests lr
-        LEFT JOIN Users u  ON lr.EmployeeId         = u.Id
-        LEFT JOIN Users dr ON lr.DesignatedReviewerId = dr.Id
+        LEFT JOIN Users u ON lr.EmployeeId = u.Id
         """;
 
     public async Task<IEnumerable<LeaveRequestDto>> GetAllAsync()
@@ -41,7 +40,29 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
     {
         const string sql = BaseSql + " WHERE lr.Id = @Id";
         var row = await db.QueryFirstOrDefaultAsync<dynamic>(sql, new { Id = id });
-        return row is null ? null : MapRow(row);
+        if (row is null) return null;
+
+        // 額外查詢指定審核者（GetByIdAsync 才需要，列表查詢不包含）
+        const string drSql = """
+            SELECT rdr.Id, rdr.ReviewerId, u.Name AS ReviewerName,
+                   rdr.StepOrder, rdr.Status, rdr.ReviewedAt, rdr.Comment
+            FROM RequestDesignatedReviewers rdr
+            JOIN Users u ON rdr.ReviewerId = u.Id
+            WHERE rdr.RequestType = 'leave' AND rdr.RequestId = @RequestId
+            ORDER BY rdr.StepOrder
+            """;
+        var drRows = await db.QueryAsync<dynamic>(drSql, new { RequestId = id });
+        var designatedReviewers = drRows.Select(r => new DesignatedReviewerDto(
+            (int)r.Id,
+            (Guid)r.ReviewerId,
+            (string)r.ReviewerName,
+            (int)r.StepOrder,
+            (string)r.Status,
+            (DateTime?)r.ReviewedAt,
+            (string?)r.Comment)).ToArray();
+
+        LeaveRequestDto dto = MapRow(row);
+        return dto with { DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null };
     }
 
     private static LeaveRequestDto MapRow(dynamic row) =>
@@ -57,6 +78,7 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
             (DateTime)row.CreatedAt,
             (DateTime?)row.ReviewedAt,
             (string?)row.ReviewNote,
-            (Guid?)row.DesignatedReviewerId,
-            (string?)row.DesignatedReviewerName);
+            ApprovalItemId:   (int?)row.ApprovalItemId,
+            CurrentStepOrder: (int?)row.CurrentStepOrder,
+            ReviewedById:     (Guid?)row.ReviewedById);
 }

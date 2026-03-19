@@ -65,9 +65,5 @@ public class AdvanceRequestConfiguration : IEntityTypeConfiguration<AdvanceReque
                .HasForeignKey(a => a.ReviewedById)
                .OnDelete(DeleteBehavior.NoAction);
 
-        builder.HasOne(a => a.DesignatedReviewer)
-               .WithMany()
-               .HasForeignKey(a => a.DesignatedReviewerId)
-               .OnDelete(DeleteBehavior.NoAction);
     }
 }

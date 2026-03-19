@@ -12,10 +12,9 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
                o.OvertimeDate, o.ProjectIds,
                o.EstimatedHours, o.Reason,
                o.ApprovalStatus, o.CreatedAt, o.ReviewedAt, o.ReviewNote,
-               o.DesignatedReviewerId, dr.Name AS DesignatedReviewerName
+               o.ApprovalItemId, o.CurrentStepOrder, o.ReviewedById
         FROM OvertimeRequests o
-        LEFT JOIN Users u  ON o.EmployeeId          = u.Id
-        LEFT JOIN Users dr ON o.DesignatedReviewerId = dr.Id
+        LEFT JOIN Users u ON o.EmployeeId = u.Id
         """;
 
     /// <summary>解析逗號分隔的 ProjectIds 字串為 int 陣列</summary>
@@ -63,8 +62,9 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
             (DateTime)row.CreatedAt,
             (DateTime?)row.ReviewedAt,
             (string?)row.ReviewNote,
-            (Guid?)row.DesignatedReviewerId,
-            (string?)row.DesignatedReviewerName);
+            ApprovalItemId:   (int?)row.ApprovalItemId,
+            CurrentStepOrder: (int?)row.CurrentStepOrder,
+            ReviewedById:     (Guid?)row.ReviewedById);
     }
 
     public async Task<IEnumerable<OvertimeRequestDto>> GetAllAsync()
@@ -94,8 +94,30 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
         const string sql = BaseSql + " WHERE o.Id = @Id";
         var row = await db.QueryFirstOrDefaultAsync<dynamic>(sql, new { Id = id });
         if (row is null) return null;
+
         var codeMap = await GetProjectCodeMapAsync(new[] { (string?)row.ProjectIds });
-        return MapRow(row, codeMap);
+
+        // 額外查詢指定審核者（GetByIdAsync 才需要，列表查詢不包含）
+        const string drSql = """
+            SELECT rdr.Id, rdr.ReviewerId, u.Name AS ReviewerName,
+                   rdr.StepOrder, rdr.Status, rdr.ReviewedAt, rdr.Comment
+            FROM RequestDesignatedReviewers rdr
+            JOIN Users u ON rdr.ReviewerId = u.Id
+            WHERE rdr.RequestType = 'overtime' AND rdr.RequestId = @RequestId
+            ORDER BY rdr.StepOrder
+            """;
+        var drRows = await db.QueryAsync<dynamic>(drSql, new { RequestId = id });
+        var designatedReviewers = drRows.Select(r => new DesignatedReviewerDto(
+            (int)r.Id,
+            (Guid)r.ReviewerId,
+            (string)r.ReviewerName,
+            (int)r.StepOrder,
+            (string)r.Status,
+            (DateTime?)r.ReviewedAt,
+            (string?)r.Comment)).ToArray();
+
+        OvertimeRequestDto dto = MapRow(row, codeMap);
+        return dto with { DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null };
     }
 
     public async Task<IEnumerable<OvertimeRequestDto>> GetFilteredAsync(string? status, DateOnly? date, Guid? employeeId)

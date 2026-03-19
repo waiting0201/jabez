@@ -172,3 +172,51 @@ See `use-direct-supervisor-qa-2026-03-18.md` for full report.
 - 邊界 D-1 通過：Alice（部門唯一員工）送出 → 無上級 → 自動核准（系統正常）
 - 退回流程正常：Eve 退回 David 的請假 → David 重新送出 → 成功
 - 拒絕流程正常：Eve 拒絕 David 的請假 → status=rejected
+
+## UseApplicantDesignated 指定審核流程測試 (2026-03-19)
+See `designated-reviewer-qa-2026-03-19.md` for full report.
+
+### BUG: LeaveRequestDto 缺少關鍵欄位 → GET /leave-requests/{id} 回傳不完整資料
+- `LeaveRequestDto` 無 `CurrentStepOrder`、`ApprovalItemId`、`ReviewedById` 欄位
+- GET /leave-requests/{id} 回傳這些欄位永遠為 null
+- GET /approval-tasks 可正確回傳（使用不同 SQL 查詢路徑）
+- 同一申請的狀態在不同 endpoint 有不同的資料完整度
+- Location: `/Users/tim/webapps/Jabez/Api/Models/Dtos/LeaveRequestDtos.cs` + `LeaveRequestReadService.cs`
+
+### BUG: approvalStatus 在 approval-tasks 回傳值中永遠為 null
+- `GetApprovalTasksAsync` SQL 查詢有 `ApprovalStatus` 欄位，但 `ApprovalTaskDto` mapping 將其對應到 status=None
+- 確認：GET /approval-tasks 中 leave 4012 的 approvalStatus=null，但 GET /leave-requests/4012 正確回傳 approved
+- 同樣問題出現在 GetApprovalTaskByIdAsync — status 顯示為 null
+
+### BUG: 自審漏洞 — 申請人可被指定為「非第一位」審核者，且可在輪到時自審通過
+- submit 時只檢查第一位指定審核者（StepOrder 最小者）是否為申請人
+- 若申請人指定自己為 StepOrder=2，系統允許送出，且輪到時可自審通過（leave 類型）
+- 這與 CLAUDE.md 文件「leave / travel / overtime 自審 → 報錯」的規範衝突
+- 測試確認：LR 4017 Carol 自指為第 2 位 → 審核成功，status=pending（未自動推進到 Step 2 固定審核）
+- Location: `ApprovalFlowService.cs` `ResolveStartingStepAsync` 僅驗證 firstReviewer（min StepOrder）
+
+### 通過測試項目（UseApplicantDesignated，2026-03-19）
+- 正常流程：2 位指定審核者（Alice→Bob），逐步審核 ✅
+- 未輪到者搶先審核被拒絕：Bob 在 Alice 前搶審 → 403 ✅
+- 已審核者重複提交被拒絕：Alice 審完再審 → 403 ✅
+- 退回後重送：DR 全部重置為 pending，Alice 可再審核 ✅
+- Case A：送出時無指定審核者 → 400 ✅
+- Case B：指定自己（第 1 位）→ 400 ✅
+- 單一審核者後推進到下一固定步驟 ✅
+- 非 SA 無全域 approval_tasks 權限但被指定仍可看到並審核任務 ✅
+
+## 簽核作業資料可見性隔離測試 (2026-03-19)
+See `visibility-isolation-qa-2026-03-19.md` for full report.
+
+### CRITICAL: GET /approval-tasks/{type}/{id} 完全無存取控制
+- 任何已登入使用者可透過 ID 枚舉讀取所有申請單完整詳情
+- Location: `ApprovalTaskHandler.cs` `GetByIdAsync` — 無 userId 過濾
+
+### BUG: ForbidResult 在 Azure Functions Isolated Worker 回 HTTP 500 而非 403
+- 觸發：無 approval-tasks:write 權限的使用者執行 PATCH review
+- Location: `ApprovalTaskHandler.cs` line 124: `return new ForbidResult()`
+
+### GET /approval-tasks 清單隔離完全正確（2026-03-19 確認）
+- 6 位使用者各自只看到應看到的任務，零誤判
+- UseApplicantDesignated 時序保護正確（stepOrder=1 未完成前 stepOrder=2 不可見）
+- 固定部門/職稱步驟授權拒絕正確（403）

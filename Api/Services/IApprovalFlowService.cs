@@ -1,3 +1,5 @@
+using Jabez.Api.Models.Dtos;
+
 namespace Jabez.Api.Services;
 
 /// <summary>
@@ -13,19 +15,21 @@ public interface IApprovalFlowService
     /// <param name="approvalItemId">簽核流程 ID</param>
     /// <param name="applicantId">申請人 User ID</param>
     /// <param name="applicationType">申請類型：overtime | leave | travel | payment_request | advance</param>
-    /// <param name="designatedReviewerId">申請人指定的審核者 ID（UseApplicantDesignated 步驟使用）</param>
+    /// <param name="designatedReviewers">申請人指定的審核者清單（UseApplicantDesignated 步驟使用）</param>
     /// <returns>
     /// startStep: 應開始的步驟序號
     /// autoApproved: 是否全部步驟都被跳過而自動核准
     /// escalation: 升級審核結果（null 表示無升級）
     /// </returns>
     Task<(int startStep, bool autoApproved, EscalationResult? escalation)>
-        ResolveStartingStepAsync(int? approvalItemId, Guid applicantId, string applicationType, Guid? designatedReviewerId = null);
+        ResolveStartingStepAsync(int? approvalItemId, Guid applicantId, string applicationType,
+            IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers = null);
 
     /// <summary>
     /// 從指定步驟開始，跳過所有找不到審核者的 UseDirectSupervisor 或無效的 UseApplicantDesignated 步驟。
     /// 回傳下一個有效步驟序號，若全部跳過則回傳 (totalSteps, true)。
     /// </summary>
     Task<(int nextStep, bool allSkipped)>
-        SkipUnreviewableStepsAsync(int? approvalItemId, Guid applicantId, int fromStepOrder, Guid? designatedReviewerId = null);
+        SkipUnreviewableStepsAsync(int? approvalItemId, Guid applicantId, int fromStepOrder,
+            IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers = null);
 }

@@ -58,7 +58,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         return new OkObjectResult(ApiResponse.Ok(result));
     }
 
-    public async Task<IActionResult> GetByIdAsync(string id, string? applicationType = null)
+    public async Task<IActionResult> GetByIdAsync(HttpRequest req, string id, string? applicationType = null)
     {
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid approval task ID format."));
@@ -66,9 +66,37 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         var task = !string.IsNullOrEmpty(applicationType)
             ? await reader.GetApprovalTaskByIdAsync(intId, applicationType)
             : await reader.GetApprovalTaskByIdAsync(intId);
-        return task is null
-            ? new NotFoundObjectResult(ApiResponse.Fail("Approval task not found.", $"No request with id '{id}'."))
-            : new OkObjectResult(ApiResponse.Ok(task));
+
+        if (task is null)
+            return new NotFoundObjectResult(ApiResponse.Fail("Approval task not found.", $"No request with id '{id}'."));
+
+        // ── 存取控制：只有有權審核此申請的使用者才能查看詳情 ─────────────────
+        var principal = await jwtService.ValidateRequestAsync(req);
+        if (principal is not null)
+        {
+            var isSuperAdmin = principal.FindFirst("is_superadmin")?.Value == "true";
+            if (!isSuperAdmin)
+            {
+                var userIdStr = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+                if (Guid.TryParse(userIdStr, out var callerId))
+                {
+                    var appType = task.ApplicationType;
+                    // 1. 曾審核過（有 ApprovalRecord）
+                    bool hasRecord = await db.ApprovalRecords.AsNoTracking()
+                        .AnyAsync(ar => ar.ApplicationType == appType && ar.ApplicationId == intId && ar.ReviewedById == callerId);
+                    // 2. 被指定為審核者（任何狀態）
+                    bool isDesignated = await db.RequestDesignatedReviewers.AsNoTracking()
+                        .AnyAsync(r => r.RequestType == appType && r.RequestId == intId && r.ReviewerId == callerId);
+                    // 3. 符合全域審核權限（有 approval-tasks:read 可看清單的人也能看詳情）
+                    bool hasReadPerm = principal.FindAll("permissions").Any(c => c.Value == PermissionCodes.ApprovalTasksRead);
+
+                    if (!hasRecord && !isDesignated && !hasReadPerm)
+                        return new ObjectResult(ApiResponse.Fail("您沒有權限查看此申請單。")) { StatusCode = 403 };
+                }
+            }
+        }
+
+        return new OkObjectResult(ApiResponse.Ok(task));
     }
 
     public async Task<IActionResult> ReviewAsync(HttpRequest req, string applicationType, string id)
@@ -105,6 +133,26 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         if (reviewer is null)
             return new UnauthorizedObjectResult(ApiResponse.Fail("Reviewer not found."));
 
+        // ── 權限檢查：指定審核步驟（UseApplicantDesignated）的被指定人不需要全域審核權限 ──────
+        if (!reviewer.IsSuperAdmin)
+        {
+            // 先判斷是否為「被指定的審核者」
+            bool isDesignatedReviewer = await db.RequestDesignatedReviewers
+                .AsNoTracking()
+                .AnyAsync(r => r.RequestType == applicationType
+                             && r.RequestId == intId
+                             && r.ReviewerId == reviewerId
+                             && r.Status == "pending");
+
+            if (!isDesignatedReviewer)
+            {
+                // 非指定審核者 → 必須擁有全域審核權限
+                var permissions = principal.FindAll("permissions").Select(c => c.Value);
+                if (!permissions.Contains(PermissionCodes.ApprovalTasksWrite))
+                    return new ObjectResult(ApiResponse.Fail("缺少所需權限：approval-tasks:write")) { StatusCode = 403 };
+            }
+        }
+
         // ── 依申請類型處理 ─────────────────────────────────────────────────
         switch (applicationType)
         {
@@ -118,7 +166,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 var prApplicant = pr.SubmittedById.HasValue
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == pr.SubmittedById.Value)
                     : null;
-                await AuthorizeStepAsync(pr.ApprovalItemId, pr.CurrentStepOrder, reviewer, prApplicant?.DepartmentId, "payment_request", pr.Id, prApplicant?.JobTitleId, pr.DesignatedReviewerId);
+                await AuthorizeStepAsync(pr.ApprovalItemId, pr.CurrentStepOrder, reviewer, prApplicant?.DepartmentId, "payment_request", pr.Id, prApplicant?.JobTitleId);
                 // 設定預計撥款日 / 撥款日（審核者可在審核時填寫）
                 if (body.EstimatedPaymentDate.HasValue)
                     pr.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
@@ -126,10 +174,9 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     pr.PaidAt = body.PaidAt.Value;
                 await ProcessReviewAsync("payment_request", pr.Id, pr.CurrentStepOrder,
                     pr.ApprovalItemId, body.Action, body.ReviewNote, reviewerId, pr.SubmittedById,
-                    setStatus:    s  => pr.ApprovalStatus   = s,
-                    incrementStep:    () => pr.CurrentStepOrder++,
-                    setReviewed:      () => { pr.ReviewedAt = Clock.Now; pr.ReviewedById = reviewerId; pr.ReviewNote = body.ReviewNote?.Trim(); },
-                    designatedReviewerId: pr.DesignatedReviewerId);
+                    setStatus:     s  => pr.ApprovalStatus   = s,
+                    incrementStep: () => pr.CurrentStepOrder++,
+                    setReviewed:   () => { pr.ReviewedAt = Clock.Now; pr.ReviewedById = reviewerId; pr.ReviewNote = body.ReviewNote?.Trim(); });
                 await db.SaveChangesAsync();
                 break;
             }
@@ -143,13 +190,12 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 var lrApplicant = lr.EmployeeId.HasValue
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == lr.EmployeeId.Value)
                     : null;
-                await AuthorizeStepAsync(lr.ApprovalItemId, lr.CurrentStepOrder, reviewer, lrApplicant?.DepartmentId, "leave", lr.Id, lrApplicant?.JobTitleId, lr.DesignatedReviewerId);
+                await AuthorizeStepAsync(lr.ApprovalItemId, lr.CurrentStepOrder, reviewer, lrApplicant?.DepartmentId, "leave", lr.Id, lrApplicant?.JobTitleId);
                 await ProcessReviewAsync("leave", lr.Id, lr.CurrentStepOrder,
                     lr.ApprovalItemId, body.Action, body.ReviewNote, reviewerId, lr.EmployeeId,
-                    setStatus:    s  => lr.ApprovalStatus   = s,
-                    incrementStep:    () => lr.CurrentStepOrder++,
-                    setReviewed:      () => { lr.ReviewedAt = Clock.Now; lr.ReviewedById = reviewerId; lr.ReviewNote = body.ReviewNote?.Trim(); },
-                    designatedReviewerId: lr.DesignatedReviewerId);
+                    setStatus:     s  => lr.ApprovalStatus   = s,
+                    incrementStep: () => lr.CurrentStepOrder++,
+                    setReviewed:   () => { lr.ReviewedAt = Clock.Now; lr.ReviewedById = reviewerId; lr.ReviewNote = body.ReviewNote?.Trim(); });
                 await db.SaveChangesAsync();
                 break;
             }
@@ -163,13 +209,12 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 var trApplicant = tr.EmployeeId.HasValue
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == tr.EmployeeId.Value)
                     : null;
-                await AuthorizeStepAsync(tr.ApprovalItemId, tr.CurrentStepOrder, reviewer, trApplicant?.DepartmentId, "travel", tr.Id, trApplicant?.JobTitleId, tr.DesignatedReviewerId);
+                await AuthorizeStepAsync(tr.ApprovalItemId, tr.CurrentStepOrder, reviewer, trApplicant?.DepartmentId, "travel", tr.Id, trApplicant?.JobTitleId);
                 await ProcessReviewAsync("travel", tr.Id, tr.CurrentStepOrder,
                     tr.ApprovalItemId, body.Action, body.ReviewNote, reviewerId, tr.EmployeeId,
-                    setStatus:    s  => tr.ApprovalStatus   = s,
-                    incrementStep:    () => tr.CurrentStepOrder++,
-                    setReviewed:      () => { tr.ReviewedAt = Clock.Now; tr.ReviewedById = reviewerId; tr.ReviewNote = body.ReviewNote?.Trim(); },
-                    designatedReviewerId: tr.DesignatedReviewerId);
+                    setStatus:     s  => tr.ApprovalStatus   = s,
+                    incrementStep: () => tr.CurrentStepOrder++,
+                    setReviewed:   () => { tr.ReviewedAt = Clock.Now; tr.ReviewedById = reviewerId; tr.ReviewNote = body.ReviewNote?.Trim(); });
                 await db.SaveChangesAsync();
                 break;
             }
@@ -183,13 +228,12 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 var otApplicant = ot.EmployeeId.HasValue
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == ot.EmployeeId.Value)
                     : null;
-                await AuthorizeStepAsync(ot.ApprovalItemId, ot.CurrentStepOrder, reviewer, otApplicant?.DepartmentId, "overtime", ot.Id, otApplicant?.JobTitleId, ot.DesignatedReviewerId);
+                await AuthorizeStepAsync(ot.ApprovalItemId, ot.CurrentStepOrder, reviewer, otApplicant?.DepartmentId, "overtime", ot.Id, otApplicant?.JobTitleId);
                 await ProcessReviewAsync("overtime", ot.Id, ot.CurrentStepOrder,
                     ot.ApprovalItemId, body.Action, body.ReviewNote, reviewerId, ot.EmployeeId,
-                    setStatus:    s  => ot.ApprovalStatus   = s,
-                    incrementStep:    () => ot.CurrentStepOrder++,
-                    setReviewed:      () => { ot.ReviewedAt = Clock.Now; ot.ReviewedById = reviewerId; ot.ReviewNote = body.ReviewNote?.Trim(); },
-                    designatedReviewerId: ot.DesignatedReviewerId);
+                    setStatus:     s  => ot.ApprovalStatus   = s,
+                    incrementStep: () => ot.CurrentStepOrder++,
+                    setReviewed:   () => { ot.ReviewedAt = Clock.Now; ot.ReviewedById = reviewerId; ot.ReviewNote = body.ReviewNote?.Trim(); });
                 await db.SaveChangesAsync();
                 break;
             }
@@ -203,17 +247,16 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 var advApplicant = adv.SubmittedById.HasValue
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == adv.SubmittedById.Value)
                     : null;
-                await AuthorizeStepAsync(adv.ApprovalItemId, adv.CurrentStepOrder, reviewer, advApplicant?.DepartmentId, "advance", adv.Id, advApplicant?.JobTitleId, adv.DesignatedReviewerId);
+                await AuthorizeStepAsync(adv.ApprovalItemId, adv.CurrentStepOrder, reviewer, advApplicant?.DepartmentId, "advance", adv.Id, advApplicant?.JobTitleId);
                 if (body.EstimatedPaymentDate.HasValue)
                     adv.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
                 if (body.PaidAt.HasValue)
                     adv.PaidAt = body.PaidAt.Value;
                 await ProcessReviewAsync("advance", adv.Id, adv.CurrentStepOrder,
                     adv.ApprovalItemId, body.Action, body.ReviewNote, reviewerId, adv.SubmittedById,
-                    setStatus:    s  => adv.ApprovalStatus   = s,
-                    incrementStep:    () => adv.CurrentStepOrder++,
-                    setReviewed:      () => { adv.ReviewedAt = Clock.Now; adv.ReviewedById = reviewerId; adv.ReviewNote = body.ReviewNote?.Trim(); },
-                    designatedReviewerId: adv.DesignatedReviewerId);
+                    setStatus:     s  => adv.ApprovalStatus   = s,
+                    incrementStep: () => adv.CurrentStepOrder++,
+                    setReviewed:   () => { adv.ReviewedAt = Clock.Now; adv.ReviewedById = reviewerId; adv.ReviewNote = body.ReviewNote?.Trim(); });
                 await db.SaveChangesAsync();
                 break;
             }
@@ -231,7 +274,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
     private async Task AuthorizeStepAsync(
         int? approvalItemId, int currentStepOrder, User reviewer,
         int? applicantDepartmentId = null, string? applicationType = null, int? applicationId = null,
-        int? applicantJobTitleId = null, Guid? designatedReviewerId = null)
+        int? applicantJobTitleId = null)
     {
         if (approvalItemId is null) return;
 
@@ -244,11 +287,23 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
 
         if (step is null) return;
 
-        // ── UseApplicantDesignated 模式：驗證審核者是申請人指定的人 ──
+        // ── UseApplicantDesignated 模式：查詢 RequestDesignatedReviewers 找當前 pending 最小 StepOrder 的審核者 ──
         if (step.UseApplicantDesignated)
         {
-            if (designatedReviewerId.HasValue && reviewer.Id == designatedReviewerId.Value)
-                return; // 授權通過
+            if (applicationType is not null && applicationId.HasValue)
+            {
+                var currentDesignated = await db.RequestDesignatedReviewers
+                    .AsNoTracking()
+                    .Where(r => r.RequestType == applicationType
+                             && r.RequestId == applicationId.Value
+                             && r.Status == "pending")
+                    .OrderBy(r => r.StepOrder)
+                    .Select(r => r.ReviewerId)
+                    .FirstOrDefaultAsync();
+
+                if (currentDesignated != Guid.Empty && reviewer.Id == currentDesignated)
+                    return; // 授權通過
+            }
             throw AppException.Forbidden("You are not authorized to review this step.");
         }
 
@@ -324,7 +379,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         string applicationType, int applicationId, int currentStepOrder,
         int? approvalItemId, string action, string? reviewNote, Guid reviewerId, Guid? applicantId,
         Action<string> setStatus, Action incrementStep, Action setReviewed,
-        Action<int>? setStepOrder = null, Guid? designatedReviewerId = null)
+        Action<int>? setStepOrder = null)
     {
         // 查詢升級審核指派（若有）
         var escalation = await db.EscalationOverrides
@@ -352,6 +407,58 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
 
         if (action == "approved")
         {
+            // ── UseApplicantDesignated 步驟：處理多位指定審核者的逐一推進 ──
+            var currentStepDef = approvalItemId.HasValue
+                ? await db.ApprovalSteps.AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.ApprovalItemId == approvalItemId && s.StepOrder == currentStepOrder)
+                : null;
+
+            if (currentStepDef?.UseApplicantDesignated == true)
+            {
+                // 更新當前 pending 且 StepOrder 最小的指定審核者狀態為 approved
+                var currentDesignated = await db.RequestDesignatedReviewers
+                    .Where(r => r.RequestType == applicationType
+                             && r.RequestId == applicationId
+                             && r.Status == "pending")
+                    .OrderBy(r => r.StepOrder)
+                    .FirstOrDefaultAsync();
+
+                if (currentDesignated is not null)
+                {
+                    currentDesignated.Status     = "approved";
+                    currentDesignated.ReviewedAt = Clock.Now;
+                    currentDesignated.Comment    = reviewNote?.Trim();
+                }
+
+                // 檢查是否還有下一位指定審核者（StepOrder 比當前更大且狀態仍為 pending）
+                // 注意：不能直接過濾 Status == "pending" 來找「比當前更大」的記錄，
+                // 因為 currentDesignated.Status 已在記憶體中更新為 "approved"，
+                // 但尚未 SaveChanges，資料庫中仍為 "pending"。
+                // 以 StepOrder > currentDesignated.StepOrder 避免誤查回同一筆記錄。
+                int currentStepOrderDR = currentDesignated?.StepOrder ?? -1;
+                var nextDesignated = await db.RequestDesignatedReviewers
+                    .AsNoTracking()
+                    .Where(r => r.RequestType == applicationType
+                             && r.RequestId == applicationId
+                             && r.Status == "pending"
+                             && r.StepOrder > currentStepOrderDR)
+                    .OrderBy(r => r.StepOrder)
+                    .FirstOrDefaultAsync();
+
+                if (nextDesignated is not null)
+                {
+                    // 還有下一位指定審核者：保持 CurrentStepOrder 不變，通知下一位
+                    await db.SaveChangesAsync();
+                    if (applicantId.HasValue)
+                        await notifier.NotifySpecificReviewerAsync(applicationType, applicationId,
+                            nextDesignated.ReviewerId, applicantId.Value, false);
+                    return; // 不繼續後面的推進邏輯
+                }
+                // 所有指定審核者都 approved → 繼續原有推進到下一 ApprovalStep 的邏輯
+            }
+
+            // action == "returned" 時的指定審核者處理在下方 else if 區塊
+
             // 查詢下一個步驟（用 StepOrder 找，支援稀疏 StepOrder）
             var nextStepEntity = approvalItemId.HasValue
                 ? await db.ApprovalSteps.AsNoTracking()
@@ -367,8 +474,16 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 // 檢查後續步驟是否有審核者，跳過無人的步驟
                 if (applicantId.HasValue)
                 {
+                    // 查詢此申請單的指定審核者清單（用於 SkipUnreviewableStepsAsync 判斷 UseApplicantDesignated 步驟）
+                    var drList = await db.RequestDesignatedReviewers
+                        .AsNoTracking()
+                        .Where(r => r.RequestType == applicationType && r.RequestId == applicationId)
+                        .OrderBy(r => r.StepOrder)
+                        .Select(r => new DesignatedReviewerRequest(r.ReviewerId, r.StepOrder))
+                        .ToListAsync();
+
                     var (resolvedStep, allSkipped) = await approvalFlow
-                        .SkipUnreviewableStepsAsync(approvalItemId, applicantId.Value, nextStep, designatedReviewerId);
+                        .SkipUnreviewableStepsAsync(approvalItemId, applicantId.Value, nextStep, drList);
 
                     if (allSkipped)
                     {
@@ -423,6 +538,29 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         }
         else if (action == "returned")
         {
+            // UseApplicantDesignated 步驟退回時：更新當前 pending 指定審核者的狀態為 returned
+            var currentStepDefForReturn = approvalItemId.HasValue
+                ? await db.ApprovalSteps.AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.ApprovalItemId == approvalItemId && s.StepOrder == currentStepOrder)
+                : null;
+
+            if (currentStepDefForReturn?.UseApplicantDesignated == true)
+            {
+                var currentDesignatedForReturn = await db.RequestDesignatedReviewers
+                    .Where(r => r.RequestType == applicationType
+                             && r.RequestId == applicationId
+                             && r.Status == "pending")
+                    .OrderBy(r => r.StepOrder)
+                    .FirstOrDefaultAsync();
+
+                if (currentDesignatedForReturn is not null)
+                {
+                    currentDesignatedForReturn.Status     = "returned";
+                    currentDesignatedForReturn.ReviewedAt = Clock.Now;
+                    currentDesignatedForReturn.Comment    = reviewNote?.Trim();
+                }
+            }
+
             setStatus("returned"); // 退回申請人修改
             setReviewed();
             // 通知申請人：已退回

@@ -1,4 +1,5 @@
 using Jabez.Api.Data;
+using Jabez.Api.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -39,50 +40,43 @@ public sealed class ApprovalNotificationService(
             // 根據步驟設定查找符合條件的審核者（與 AuthorizeStepAsync / StepMatchClause 一致）
             IQueryable<Models.Entities.User> query;
 
-            // ── UseApplicantDesignated 模式：直接查指定審核者 ──
+            // ── UseApplicantDesignated 模式：查詢 RequestDesignatedReviewers 表找當前 pending 最小 StepOrder 的審核者 ──
             if (step.UseApplicantDesignated)
             {
-                // 取得申請表上的 DesignatedReviewerId
-                Guid? designatedReviewerId = applicationType switch
-                {
-                    "payment_request" => (await db.PaymentRequests.AsNoTracking()
-                        .Where(x => x.Id == applicationId).Select(x => x.DesignatedReviewerId).FirstOrDefaultAsync()),
-                    "leave"           => (await db.LeaveRequests.AsNoTracking()
-                        .Where(x => x.Id == applicationId).Select(x => x.DesignatedReviewerId).FirstOrDefaultAsync()),
-                    "travel"          => (await db.TravelRequests.AsNoTracking()
-                        .Where(x => x.Id == applicationId).Select(x => x.DesignatedReviewerId).FirstOrDefaultAsync()),
-                    "overtime"        => (await db.OvertimeRequests.AsNoTracking()
-                        .Where(x => x.Id == applicationId).Select(x => x.DesignatedReviewerId).FirstOrDefaultAsync()),
-                    "advance"         => (await db.AdvanceRequests.AsNoTracking()
-                        .Where(x => x.Id == applicationId).Select(x => x.DesignatedReviewerId).FirstOrDefaultAsync()),
-                    _                 => null,
-                };
+                var currentDesignated = await db.RequestDesignatedReviewers
+                    .AsNoTracking()
+                    .Where(r => r.RequestType == applicationType
+                             && r.RequestId == applicationId
+                             && r.Status == "pending")
+                    .OrderBy(r => r.StepOrder)
+                    .Select(r => new { r.ReviewerId, r.StepOrder })
+                    .FirstOrDefaultAsync();
 
-                if (!designatedReviewerId.HasValue)
+                if (currentDesignated is null)
                 {
-                    logger.LogWarning("UseApplicantDesignated 步驟找不到 DesignatedReviewerId：{AppType} #{Id}, Step {Step}",
+                    logger.LogWarning("UseApplicantDesignated 步驟找不到 pending 的指定審核者：{AppType} #{Id}, Step {Step}",
                         applicationType, applicationId, targetStepOrder);
                     return;
                 }
 
                 var designatedReviewer = await db.Users.AsNoTracking()
-                    .Where(u => u.Id == designatedReviewerId.Value && !string.IsNullOrEmpty(u.Email))
+                    .Where(u => u.Id == currentDesignated.ReviewerId && !string.IsNullOrEmpty(u.Email))
                     .Select(u => new { u.Name, u.Email })
                     .FirstOrDefaultAsync();
 
                 if (designatedReviewer is null)
                 {
                     logger.LogWarning("指定審核者找不到或無 Email：UserId={UserId}（{AppType} #{Id}）",
-                        designatedReviewerId, applicationType, applicationId);
+                        currentDesignated.ReviewerId, applicationType, applicationId);
                     return;
                 }
 
-                var label2  = AppTypeLabels.GetValueOrDefault(applicationType, applicationType);
+                var label2   = AppTypeLabels.GetValueOrDefault(applicationType, applicationType);
                 var summary2 = await GetSummaryAsync(applicationType, applicationId);
                 var subject2 = $"[待審核] {label2} #{applicationId} — {applicantName}（指定審核）";
                 var siteUrl2 = await GetSiteUrlAsync();
                 var linkUrl2 = BuildReviewUrl(siteUrl2, applicationType, applicationId);
-                var body2 = BuildReviewerEmail(designatedReviewer.Name, applicantName, label2, applicationId, summary2, targetStepOrder, linkUrl2);
+                var body2    = BuildReviewerEmail(designatedReviewer.Name, applicantName, label2, applicationId, summary2, targetStepOrder, linkUrl2);
                 await emailService.SendAsync(designatedReviewer.Email!, subject2, body2);
                 logger.LogInformation("已寄送指定審核通知：{Email}（{AppType} #{Id}）", designatedReviewer.Email, applicationType, applicationId);
                 return;

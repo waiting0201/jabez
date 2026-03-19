@@ -12,8 +12,10 @@ public sealed record LeaveRequestDto(
     DateTime  CreatedAt,
     DateTime? ReviewedAt,
     string?   ReviewNote,
-    Guid?     DesignatedReviewerId   = null,
-    string?   DesignatedReviewerName = null);
+    int?      ApprovalItemId       = null,
+    int?      CurrentStepOrder     = null,
+    Guid?     ReviewedById         = null,
+    DesignatedReviewerDto[]? DesignatedReviewers = null);
 
 public sealed record CreateLeaveRequestRequest(
     Guid?    EmployeeId,
@@ -23,7 +25,7 @@ public sealed record CreateLeaveRequestRequest(
     DateTime EndDate              = default,
     decimal  Hours                = 1m,
     string   Reason               = "",
-    Guid?    DesignatedReviewerId = null);
+    DesignatedReviewerRequest[]? DesignatedReviewers = null);
 
 public sealed record UpdateLeaveRequestRequest(
     string?   LeaveType,
@@ -31,4 +33,4 @@ public sealed record UpdateLeaveRequestRequest(
     DateTime? EndDate,
     decimal?  Hours,
     string?   Reason,
-    Guid?     DesignatedReviewerId = null);
+    DesignatedReviewerRequest[]? DesignatedReviewers = null);

@@ -13,13 +13,11 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                pr.TotalAmount, pr.ApprovalStatus, pr.EstimatedPaymentDate, pr.PaidAt,
                sub.Name AS SubmittedBy, pr.CreatedAt,
                pr.ReviewedAt, pr.ReviewNote,
-               pr.DesignatedReviewerId, dr.Name AS DesignatedReviewerName,
                ii.Id AS InvId, ii.FileName, ii.InvoiceNo, ii.Amount AS InvAmount, ii.ItemName AS InvItemName, ii.Note AS InvNote, ii.FileUrl AS InvFileUrl
         FROM PaymentRequests pr
-        LEFT JOIN Projects proj    ON pr.ProjectId           = proj.Id
-        LEFT JOIN Users   sub      ON pr.SubmittedById        = sub.Id
-        LEFT JOIN Users   dr       ON pr.DesignatedReviewerId = dr.Id
-        LEFT JOIN InvoiceItems ii  ON ii.PaymentRequestId    = pr.Id
+        LEFT JOIN Projects proj   ON pr.ProjectId    = proj.Id
+        LEFT JOIN Users   sub     ON pr.SubmittedById = sub.Id
+        LEFT JOIN InvoiceItems ii ON ii.PaymentRequestId = pr.Id
         """;
 
     // ── PaymentRequest ────────────────────────────────────────────────────────
@@ -54,7 +52,29 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
     {
         const string sql = BaseSql + " WHERE pr.Id = @Id ORDER BY ii.Id";
         var rows = await db.QueryAsync<dynamic>(sql, new { Id = id });
-        return GroupToPaymentRequests(rows).FirstOrDefault();
+        var dto = GroupToPaymentRequests(rows).FirstOrDefault();
+        if (dto is null) return null;
+
+        // 額外查詢指定審核者（GetByIdAsync 才需要，列表查詢不包含）
+        const string drSql = """
+            SELECT rdr.Id, rdr.ReviewerId, u.Name AS ReviewerName,
+                   rdr.StepOrder, rdr.Status, rdr.ReviewedAt, rdr.Comment
+            FROM RequestDesignatedReviewers rdr
+            JOIN Users u ON rdr.ReviewerId = u.Id
+            WHERE rdr.RequestType = 'payment_request' AND rdr.RequestId = @RequestId
+            ORDER BY rdr.StepOrder
+            """;
+        var drRows = await db.QueryAsync<dynamic>(drSql, new { RequestId = id });
+        var designatedReviewers = drRows.Select(r => new DesignatedReviewerDto(
+            (int)r.Id,
+            (Guid)r.ReviewerId,
+            (string)r.ReviewerName,
+            (int)r.StepOrder,
+            (string)r.Status,
+            (DateTime?)r.ReviewedAt,
+            (string?)r.Comment)).ToArray();
+
+        return dto with { DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null };
     }
 
     // ── ApprovalTask（彙總 PaymentRequest + LeaveRequest + TravelRequest + OvertimeRequest）──
@@ -63,22 +83,23 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         int? reviewerJobTitleId = null, int? reviewerDepartmentId = null,
         string? status = null, Guid? reviewerUserId = null)
     {
-        var (payments, leaves, travels, overtimes, advances, flows, records) =
+        var (payments, leaves, travels, overtimes, advances, flows, records, designatedRows) =
             await FetchAllAsync(reviewerJobTitleId: reviewerJobTitleId, reviewerDepartmentId: reviewerDepartmentId,
                                 statusFilter: status, reviewerUserId: reviewerUserId);
-        return BuildApprovalTasks(payments, leaves, travels, overtimes, advances, flows, records);
+        return BuildApprovalTasks(payments, leaves, travels, overtimes, advances, flows, records, designatedRows);
     }
 
     public async Task<ApprovalTaskDto?> GetApprovalTaskByIdAsync(int id, string applicationType)
     {
-        var (payments, leaves, travels, overtimes, advances, flows, records) = await FetchAllAsync(id, applicationType);
-        return BuildApprovalTasks(payments, leaves, travels, overtimes, advances, flows, records)
+        var (payments, leaves, travels, overtimes, advances, flows, records, designatedRows) = await FetchAllAsync(id, applicationType);
+        return BuildApprovalTasks(payments, leaves, travels, overtimes, advances, flows, records, designatedRows)
             .FirstOrDefault(t => t.Id == id && t.ApplicationType == applicationType);
     }
 
     // Backward-compat overload (scans all types)
     public async Task<ApprovalTaskDto?> GetApprovalTaskByIdAsync(int id)
         => (await GetApprovalTasksAsync()).FirstOrDefault(t => t.Id == id);
+
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
@@ -89,7 +110,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         IEnumerable<dynamic> overtimes,
         IEnumerable<dynamic> advances,
         IEnumerable<dynamic> flows,
-        IEnumerable<dynamic> records)> FetchAllAsync(
+        IEnumerable<dynamic> records,
+        IEnumerable<dynamic> designatedRows)> FetchAllAsync(
         int? filterId = null, string? filterType = null,
         int? reviewerJobTitleId = null, int? reviewerDepartmentId = null,
         string? statusFilter = null, Guid? reviewerUserId = null)
@@ -210,7 +232,20 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                                        AND s4.StepOrder = {alias}.CurrentStepOrder
                   WHERE ai4.Id = {alias}.ApprovalItemId
                     AND s4.UseApplicantDesignated = 1
-                    AND {alias}.DesignatedReviewerId = @ReviewerUserId
+                    AND EXISTS (
+                      SELECT 1 FROM RequestDesignatedReviewers rdr
+                      WHERE rdr.RequestType = '{appType}'
+                        AND rdr.RequestId = {alias}.Id
+                        AND rdr.ReviewerId = @ReviewerUserId
+                        AND rdr.Status = 'pending'
+                        AND rdr.StepOrder = (
+                          SELECT MIN(rdr2.StepOrder)
+                          FROM RequestDesignatedReviewers rdr2
+                          WHERE rdr2.RequestType = '{appType}'
+                            AND rdr2.RequestId = {alias}.Id
+                            AND rdr2.Status = 'pending'
+                        )
+                    )
                 )
               )
               """;
@@ -320,15 +355,24 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             StatusFilter         = statusFilter,
         };
 
-        var payments  = await db.QueryAsync<dynamic>(paymentSql,  param);
-        var leaves    = await db.QueryAsync<dynamic>(leaveSql,    param);
-        var travels   = await db.QueryAsync<dynamic>(travelSql,   param);
-        var overtimes = await db.QueryAsync<dynamic>(overtimeSql, param);
-        var advances  = await db.QueryAsync<dynamic>(advanceSql,  param);
-        var flows     = await db.QueryAsync<dynamic>(flowSql);
-        var records   = await db.QueryAsync<dynamic>(recordSql);
+        const string drSql = """
+            SELECT rdr.RequestType, rdr.RequestId, rdr.Id, rdr.ReviewerId,
+                   u.Name AS ReviewerName, rdr.StepOrder, rdr.Status, rdr.ReviewedAt, rdr.Comment
+            FROM RequestDesignatedReviewers rdr
+            JOIN Users u ON rdr.ReviewerId = u.Id
+            ORDER BY rdr.RequestType, rdr.RequestId, rdr.StepOrder
+            """;
 
-        return (payments, leaves, travels, overtimes, advances, flows, records);
+        var payments       = await db.QueryAsync<dynamic>(paymentSql,  param);
+        var leaves         = await db.QueryAsync<dynamic>(leaveSql,    param);
+        var travels        = await db.QueryAsync<dynamic>(travelSql,   param);
+        var overtimes      = await db.QueryAsync<dynamic>(overtimeSql, param);
+        var advances       = await db.QueryAsync<dynamic>(advanceSql,  param);
+        var flows          = await db.QueryAsync<dynamic>(flowSql);
+        var records        = await db.QueryAsync<dynamic>(recordSql);
+        var designatedRows = await db.QueryAsync<dynamic>(drSql);
+
+        return (payments, leaves, travels, overtimes, advances, flows, records, designatedRows);
     }
 
     private static IEnumerable<ApprovalTaskDto> BuildApprovalTasks(
@@ -338,8 +382,29 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         IEnumerable<dynamic> overtimeRows,
         IEnumerable<dynamic> advanceRows,
         IEnumerable<dynamic> flowRows,
-        IEnumerable<dynamic> recordRows)
+        IEnumerable<dynamic> recordRows,
+        IEnumerable<dynamic> designatedRows)
     {
+        // Build designated reviewer lookup keyed by (RequestType, RequestId)
+        var drDict = new Dictionary<(string, int), List<DesignatedReviewerDto>>();
+        foreach (var row in designatedRows)
+        {
+            var key = ((string)row.RequestType, (int)row.RequestId);
+            if (!drDict.ContainsKey(key))
+                drDict[key] = [];
+            drDict[key].Add(new DesignatedReviewerDto(
+                (int)row.Id,
+                (Guid)row.ReviewerId,
+                (string)row.ReviewerName,
+                (int)row.StepOrder,
+                (string)row.Status,
+                (DateTime?)row.ReviewedAt,
+                (string?)row.Comment));
+        }
+
+        DesignatedReviewerDto[]? GetDesignatedReviewers(string appType, int id) =>
+            drDict.TryGetValue((appType, id), out var drs) && drs.Count > 0 ? [.. drs] : null;
+
         // Build flow lookup keyed by ApplicationType
         var flowDict = new Dictionary<string, (int Id, string Name, List<ApprovalFlowStepDto> Steps)>();
         foreach (var row in flowRows)
@@ -419,6 +484,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (DateTime?)x.pr.PaidAt),
             null, null, null, null,
             GetRecords("payment_request", (int)x.pr.Id),
+            GetDesignatedReviewers("payment_request", (int)x.pr.Id),
             (string?)x.pr.SubmittedBySignatureUrl));
 
         // Leave requests
@@ -443,6 +509,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (string)row.Reason),
             null, null, null,
             GetRecords("leave", (int)row.Id),
+            GetDesignatedReviewers("leave", (int)row.Id),
             (string?)row.SubmittedBySignatureUrl));
 
         // Travel requests
@@ -471,6 +538,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (bool)row.IsHolidayTravel),
             null, null,
             GetRecords("travel", (int)row.Id),
+            GetDesignatedReviewers("travel", (int)row.Id),
             (string?)row.SubmittedBySignatureUrl));
 
         // Overtime requests
@@ -494,6 +562,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (string)row.Reason),
             null,
             GetRecords("overtime", (int)row.Id),
+            GetDesignatedReviewers("overtime", (int)row.Id),
             (string?)row.SubmittedBySignatureUrl));
 
         // Advance requests
@@ -519,6 +588,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (DateTime?)row.EstimatedPaymentDate,
                 (DateTime?)row.PaidAt),
             GetRecords("advance", (int)row.Id),
+            GetDesignatedReviewers("advance", (int)row.Id),
             (string?)row.SubmittedBySignatureUrl));
 
         return paymentTasks
@@ -564,7 +634,6 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             (DateTime?)x.pr.PaidAt,
             (DateTime?)x.pr.ReviewedAt,
             (string?)x.pr.ReviewNote,
-            (Guid?)x.pr.DesignatedReviewerId,
-            (string?)x.pr.DesignatedReviewerName));
+            null)); // DesignatedReviewers 以 null 回傳
     }
 }

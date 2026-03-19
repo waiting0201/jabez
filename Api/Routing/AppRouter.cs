@@ -236,8 +236,8 @@ public sealed class AppRouter(
             // ── Approval Tasks ─────────────────────────────────────────────────
             ("GET",    ["approval-tasks"])                                                      => await approvalTasks.GetAllAsync(req),
             ("GET",    ["approval-tasks", var appType, var id]) when ApprovalTaskHandler.ValidAppTypes.Contains(appType)
-                                                                                               => await approvalTasks.GetByIdAsync(id, appType),
-            ("GET",    ["approval-tasks", var id])                                             => await approvalTasks.GetByIdAsync(id),
+                                                                                               => await approvalTasks.GetByIdAsync(req, id, appType),
+            ("GET",    ["approval-tasks", var id])                                             => await approvalTasks.GetByIdAsync(req, id),
             ("PATCH",  ["approval-tasks", var appType, var id, "review"])                      => await approvalTasks.ReviewAsync(req, appType, id),
 
             // ── 404 ────────────────────────────────────────────────────────────
@@ -380,9 +380,9 @@ public sealed class AppRouter(
             ("GET",    ["reports", "payment"])                     => PermissionCodes.ReportsPaymentRead,
             ("GET",    ["reports", "project-water-level"])         => PermissionCodes.ReportsProjectWaterLevelRead,
 
-            // Approval Tasks
-            ("GET",    ["approval-tasks", ..])           => PermissionCodes.ApprovalTasksRead,
-            ("PATCH",  ["approval-tasks", _, _, "review"]) => PermissionCodes.ApprovalTasksWrite,
+            // Approval Tasks — 指定審核者不需要全域審核權限，改由 Handler 內部依步驟類型判斷
+            // GET: 任何已登入使用者可查詢（SQL 已依職稱/指定審核過濾）
+            // PATCH review: ReviewAsync 內部對非 UseApplicantDesignated 步驟仍要求 ApprovalTasksWrite
 
             _ => null
         };
