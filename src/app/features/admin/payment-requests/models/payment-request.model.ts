@@ -38,6 +38,16 @@ export interface InvoiceItem {
   previewUrl?: string;   // local blob URL (new upload preview)
 }
 
+export interface DesignatedReviewer {
+  id?: number;
+  reviewerId: string;
+  reviewerName?: string;
+  stepOrder: number;
+  status?: string;       // pending | approved | returned
+  reviewedAt?: string;
+  comment?: string;
+}
+
 export interface PaymentRequest {
   id: number;
   employeeId?: string;
@@ -50,6 +60,6 @@ export interface PaymentRequest {
   approvalStatus: ApprovalStatus;
   estimatedPaymentDate?: string;
   paidAt?: string;
-  designatedReviewerId?: string;
+  designatedReviewers?: DesignatedReviewer[];
   createdAt: Date;
 }

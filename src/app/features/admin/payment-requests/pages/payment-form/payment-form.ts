@@ -13,7 +13,7 @@ import {ApprovalFlow, ApprovalRecord} from '../../../approval-tasks/models/appro
 import {PaymentRequestService} from '../../services/payment-request.service';
 import {ProjectService} from '../../../projects/services/project.service';
 import {Project} from '../../../projects/models/project.model';
-import {PaymentType, ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/payment-request.model';
+import {PaymentType, ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, DesignatedReviewer} from '../../models/payment-request.model';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
 import {ApprovalService} from '../../../approvals/services/approval.service';
@@ -67,14 +67,42 @@ export class PaymentForm implements OnInit {
   hasDesignatedStep = false;
   jobTitles: JobTitle[] = [];
   allUsers: User[] = [];
-  filteredUsers: User[] = [];
-  selectedJobTitleId: number | null = null;
 
-  /** 取得已選審核者姓名（用於檢視模式顯示） */
-  get designatedReviewerName(): string {
-    const id = this.form.get('designatedReviewerId')?.value;
-    if (!id) return '—';
-    return this.allUsers.find(u => u.id === id)?.name ?? id;
+  /** 指定審核者條目清單（多人） */
+  designatedEntries: {
+    stepOrder: number;
+    selectedJobTitleId: number | null;
+    selectedUserId: string | null;
+    filteredUsers: User[];
+  }[] = [];
+
+  addDesignatedEntry() {
+    const nextOrder = this.designatedEntries.length + 1;
+    this.designatedEntries.push({
+      stepOrder: nextOrder,
+      selectedJobTitleId: null,
+      selectedUserId: null,
+      filteredUsers: [],
+    });
+  }
+
+  removeDesignatedEntry(i: number) {
+    this.designatedEntries.splice(i, 1);
+    // 重新排序 stepOrder
+    this.designatedEntries.forEach((e, idx) => e.stepOrder = idx + 1);
+  }
+
+  onEntryJobTitleChange(i: number) {
+    const e = this.designatedEntries[i];
+    e.filteredUsers = e.selectedJobTitleId
+      ? this.allUsers.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active')
+      : [];
+    e.selectedUserId = null;
+  }
+
+  getUserName(userId: string | null): string {
+    if (!userId) return '—';
+    return this.allUsers.find(u => u.id === userId)?.name ?? userId;
   }
 
   /** invoice id → File 物件（新上傳的檔案） */
@@ -95,10 +123,9 @@ export class PaymentForm implements OnInit {
   readonly statusClass = APPROVAL_STATUS_CLASSES;
 
   form = this.fb.group({
-    type:                  ['vendor', Validators.required],
-    projectId:             [null as number | null, Validators.required],
-    designatedReviewerId:  [null as string | null],
-    invoices:              this.fb.array([]),
+    type:      ['vendor', Validators.required],
+    projectId: [null as number | null, Validators.required],
+    invoices:  this.fb.array([]),
   });
 
   get invoiceArray(): FormArray { return this.form.get('invoices') as FormArray; }
@@ -117,7 +144,18 @@ export class PaymentForm implements OnInit {
         .some(i => i.steps.some(s => s.useApplicantDesignated));
       if (this.hasDesignatedStep) {
         this.jobTitleSvc.getAll().subscribe({ next: jts => { this.jobTitles = jts; } });
-        this.userSvc.getAll().subscribe({ next: users => { this.allUsers = users; } });
+        this.userSvc.getAll().subscribe({
+          next: users => {
+            this.allUsers = users;
+            // allUsers 載入後補填各條目的 filteredUsers
+            this.designatedEntries.forEach(e => {
+              if (e.selectedJobTitleId) {
+                e.filteredUsers = users.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active');
+              }
+            });
+            this.cdr.markForCheck();
+          },
+        });
       }
       this.cdr.markForCheck();
     });
@@ -145,10 +183,23 @@ export class PaymentForm implements OnInit {
         this.estimatedPaymentDate = r.estimatedPaymentDate?.toString().slice(0, 10) ?? '';
         this.paidAt               = r.paidAt?.toString().slice(0, 10) ?? '';
         if (this.isReadOnly) this.form.disable();
-        this.form.patchValue({type: r.type, projectId: r.projectId, designatedReviewerId: r.designatedReviewerId ?? null});
-        // 回填已選審核者的職稱
-        if (r.designatedReviewerId) {
-          this._prefillDesignatedJobTitle(r.designatedReviewerId);
+        this.form.patchValue({type: r.type, projectId: r.projectId});
+        // 回填指定審核者清單
+        if (r.designatedReviewers?.length) {
+          this.designatedEntries = r.designatedReviewers.map(dr => ({
+            stepOrder: dr.stepOrder,
+            selectedJobTitleId: this.allUsers.find(u => u.id === dr.reviewerId)?.jobTitleId ?? null,
+            selectedUserId: dr.reviewerId,
+            filteredUsers: [],  // allUsers 載入後再補填
+          }));
+          // 若 allUsers 已載入則立即補填 filteredUsers
+          if (this.allUsers.length > 0) {
+            this.designatedEntries.forEach(e => {
+              if (e.selectedJobTitleId) {
+                e.filteredUsers = this.allUsers.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active');
+              }
+            });
+          }
         }
         r.invoices.forEach(inv => this.invoiceArray.push(
           this._invoiceGroup(String(inv.id), inv.fileName, inv.invoiceNo, inv.amount, inv.fileUrl ?? '', inv.fileUrl ?? '', inv.itemName ?? '', inv.note ?? '')
@@ -168,41 +219,6 @@ export class PaymentForm implements OnInit {
         this.cdr.markForCheck();
       });
     }
-  }
-
-  /** 根據 designatedReviewerId 回填職稱下拉，並篩選人員清單 */
-  private _prefillDesignatedJobTitle(userId: string) {
-    // 等待 allUsers 載入後再處理
-    const tryPrefill = () => {
-      const user = this.allUsers.find(u => u.id === userId);
-      if (user?.jobTitleId) {
-        this.selectedJobTitleId = user.jobTitleId;
-        this.filteredUsers = this.allUsers.filter(u => u.jobTitleId === user.jobTitleId && u.status === 'active');
-      }
-      this.cdr.markForCheck();
-    };
-    if (this.allUsers.length > 0) {
-      tryPrefill();
-    } else {
-      // allUsers 尚未載入，稍後重試
-      const sub = this.userSvc.getAll().subscribe(users => {
-        this.allUsers = users;
-        tryPrefill();
-        sub.unsubscribe();
-      });
-    }
-  }
-
-  /** 職稱選擇變更，篩選可選人員並清除已選審核者 */
-  onDesignatedJobTitleChange() {
-    if (this.selectedJobTitleId == null) {
-      this.filteredUsers = [];
-    } else {
-      this.filteredUsers = this.allUsers.filter(
-        u => u.jobTitleId === this.selectedJobTitleId && u.status === 'active'
-      );
-    }
-    this.form.get('designatedReviewerId')?.setValue(null);
   }
 
   async onFilesSelected(event: Event) {
@@ -325,8 +341,11 @@ export class PaymentForm implements OnInit {
     const fd = new FormData();
     fd.append('type', this.form.get('type')!.value!);
     fd.append('projectId', String(this.form.get('projectId')!.value));
-    const designatedReviewerId = this.form.get('designatedReviewerId')?.value;
-    if (designatedReviewerId) fd.append('designatedReviewerId', designatedReviewerId);
+    // 指定審核者清單
+    const reviewers = this.designatedEntries
+      .filter(e => e.selectedUserId)
+      .map(e => ({ reviewerId: e.selectedUserId!, stepOrder: e.stepOrder }));
+    if (reviewers.length > 0) fd.append('designatedReviewers', JSON.stringify(reviewers));
 
     const invoicesMeta: any[] = [];
     let fileIndex = 0;

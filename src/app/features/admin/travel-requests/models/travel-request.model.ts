@@ -16,6 +16,16 @@ export const APPROVAL_STATUS_CLASSES: Record<ApprovalStatus, string> = {
   returned: 'bg-secondary-subtle text-secondary',
 };
 
+export interface DesignatedReviewer {
+  id?: number;
+  reviewerId: string;
+  reviewerName?: string;
+  stepOrder: number;
+  status?: string;       // pending | approved | returned
+  reviewedAt?: string;
+  comment?: string;
+}
+
 export interface TravelRequest {
   id: number;
   employeeId?: string;
@@ -30,7 +40,7 @@ export interface TravelRequest {
   projectName?: string;
   isHolidayTravel: boolean;
   approvalStatus: ApprovalStatus;
-  designatedReviewerId?: string;
+  designatedReviewers?: DesignatedReviewer[];
   createdAt: Date;
   reviewedAt?: Date;
   reviewNote?: string;

@@ -6,7 +6,7 @@ import {HttpErrorResponse} from '@angular/common/http';
 import {AdvanceRequestService} from '../../services/advance-request.service';
 import {ProjectService} from '../../../projects/services/project.service';
 import {Project} from '../../../projects/models/project.model';
-import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, ITEM_CATEGORIES} from '../../models/advance-request.model';
+import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, ITEM_CATEGORIES, DesignatedReviewer} from '../../models/advance-request.model';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
 import {ApprovalService} from '../../../approvals/services/approval.service';
@@ -54,26 +54,52 @@ export class AdvanceForm implements OnInit {
   hasDesignatedStep = false;
   jobTitles: JobTitle[] = [];
   allUsers: User[] = [];
-  filteredUsers: User[] = [];
-  selectedJobTitleId: number | null = null;
 
-  /** 取得已選審核者姓名（用於檢視模式顯示） */
-  get designatedReviewerName(): string {
-    const id = this.form.get('designatedReviewerId')?.value;
-    if (!id) return '—';
-    return this.allUsers.find(u => u.id === id)?.name ?? id;
+  /** 指定審核者條目清單（多人） */
+  designatedEntries: {
+    stepOrder: number;
+    selectedJobTitleId: number | null;
+    selectedUserId: string | null;
+    filteredUsers: User[];
+  }[] = [];
+
+  addDesignatedEntry() {
+    const nextOrder = this.designatedEntries.length + 1;
+    this.designatedEntries.push({
+      stepOrder: nextOrder,
+      selectedJobTitleId: null,
+      selectedUserId: null,
+      filteredUsers: [],
+    });
+  }
+
+  removeDesignatedEntry(i: number) {
+    this.designatedEntries.splice(i, 1);
+    this.designatedEntries.forEach((e, idx) => e.stepOrder = idx + 1);
+  }
+
+  onEntryJobTitleChange(i: number) {
+    const e = this.designatedEntries[i];
+    e.filteredUsers = e.selectedJobTitleId
+      ? this.allUsers.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active')
+      : [];
+    e.selectedUserId = null;
+  }
+
+  getUserName(userId: string | null): string {
+    if (!userId) return '—';
+    return this.allUsers.find(u => u.id === userId)?.name ?? userId;
   }
 
   readonly statusLabel = APPROVAL_STATUS_LABELS;
   readonly statusClass = APPROVAL_STATUS_CLASSES;
 
   form = this.fb.group({
-    projectId:             [null as number | null, Validators.required],
-    activityName:          ['', Validators.required],
-    activityPeriod:        ['', Validators.required],
-    advanceDate:           ['', Validators.required],
-    designatedReviewerId:  [null as string | null],
-    items:                 this.fb.array([]),
+    projectId:      [null as number | null, Validators.required],
+    activityName:   ['', Validators.required],
+    activityPeriod: ['', Validators.required],
+    advanceDate:    ['', Validators.required],
+    items:          this.fb.array([]),
   });
 
   get itemArray(): FormArray { return this.form.get('items') as FormArray; }
@@ -97,7 +123,17 @@ export class AdvanceForm implements OnInit {
         .some(i => i.steps.some(s => s.useApplicantDesignated));
       if (this.hasDesignatedStep) {
         this.jobTitleSvc.getAll().subscribe({ next: jts => { this.jobTitles = jts; } });
-        this.userSvc.getAll().subscribe({ next: users => { this.allUsers = users; } });
+        this.userSvc.getAll().subscribe({
+          next: users => {
+            this.allUsers = users;
+            this.designatedEntries.forEach(e => {
+              if (e.selectedJobTitleId) {
+                e.filteredUsers = users.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active');
+              }
+            });
+            this.cdr.markForCheck();
+          },
+        });
       }
       this.cdr.markForCheck();
     });
@@ -118,14 +154,26 @@ export class AdvanceForm implements OnInit {
         this.projectName = r.projectName ?? '';
         if (this.isReadOnly) this.form.disable();
         this.form.patchValue({
-          projectId:             r.projectId,
-          activityName:          r.activityName,
-          activityPeriod:        r.activityPeriod,
-          advanceDate:           r.advanceDate?.toString().slice(0, 10),
-          designatedReviewerId:  r.designatedReviewerId ?? null,
+          projectId:      r.projectId,
+          activityName:   r.activityName,
+          activityPeriod: r.activityPeriod,
+          advanceDate:    r.advanceDate?.toString().slice(0, 10),
         });
-        if (r.designatedReviewerId) {
-          this._prefillDesignatedJobTitle(r.designatedReviewerId);
+        // 回填指定審核者清單
+        if (r.designatedReviewers?.length) {
+          this.designatedEntries = r.designatedReviewers.map(dr => ({
+            stepOrder: dr.stepOrder,
+            selectedJobTitleId: this.allUsers.find(u => u.id === dr.reviewerId)?.jobTitleId ?? null,
+            selectedUserId: dr.reviewerId,
+            filteredUsers: [],
+          }));
+          if (this.allUsers.length > 0) {
+            this.designatedEntries.forEach(e => {
+              if (e.selectedJobTitleId) {
+                e.filteredUsers = this.allUsers.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active');
+              }
+            });
+          }
         }
         r.items.forEach((item, idx) => this.itemArray.push(this._itemGroup(
           item.category, item.seqNo, item.itemName, item.unitPrice,
@@ -147,39 +195,6 @@ export class AdvanceForm implements OnInit {
         this.cdr.markForCheck();
       });
     }
-  }
-
-  /** 根據 designatedReviewerId 回填職稱下拉，並篩選人員清單 */
-  private _prefillDesignatedJobTitle(userId: string) {
-    const tryPrefill = () => {
-      const user = this.allUsers.find(u => u.id === userId);
-      if (user?.jobTitleId) {
-        this.selectedJobTitleId = user.jobTitleId;
-        this.filteredUsers = this.allUsers.filter(u => u.jobTitleId === user.jobTitleId && u.status === 'active');
-      }
-      this.cdr.markForCheck();
-    };
-    if (this.allUsers.length > 0) {
-      tryPrefill();
-    } else {
-      const sub = this.userSvc.getAll().subscribe(users => {
-        this.allUsers = users;
-        tryPrefill();
-        sub.unsubscribe();
-      });
-    }
-  }
-
-  /** 職稱選擇變更，篩選可選人員並清除已選審核者 */
-  onDesignatedJobTitleChange() {
-    if (this.selectedJobTitleId == null) {
-      this.filteredUsers = [];
-    } else {
-      this.filteredUsers = this.allUsers.filter(
-        u => u.jobTitleId === this.selectedJobTitleId && u.status === 'active'
-      );
-    }
-    this.form.get('designatedReviewerId')?.setValue(null);
   }
 
   addItem() {
@@ -238,12 +253,15 @@ export class AdvanceForm implements OnInit {
 
   private _buildBody() {
     const f = this.form.value;
+    const reviewers = this.designatedEntries
+      .filter(e => e.selectedUserId)
+      .map(e => ({ reviewerId: e.selectedUserId!, stepOrder: e.stepOrder }));
     return {
-      projectId:             f.projectId,
-      activityName:          f.activityName,
-      activityPeriod:        f.activityPeriod,
-      advanceDate:           f.advanceDate,
-      designatedReviewerId:  f.designatedReviewerId ?? undefined,
+      projectId:            f.projectId,
+      activityName:         f.activityName,
+      activityPeriod:       f.activityPeriod,
+      advanceDate:          f.advanceDate,
+      designatedReviewers:  reviewers.length > 0 ? reviewers : undefined,
       items: this.itemArray.controls.map((c, idx) => ({
         category:    c.get('category')?.value || '',
         seqNo:       +(c.get('seqNo')?.value) || 0,

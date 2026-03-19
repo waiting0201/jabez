@@ -6,6 +6,7 @@ import {LeaveRequestService} from '../../services/leave-request.service';
 import {
   LeaveType, ApprovalStatus,
   APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES,
+  DesignatedReviewer,
 } from '../../models/leave-request.model';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
@@ -50,14 +51,41 @@ export class LeaveRequestForm implements OnInit {
   hasDesignatedStep = false;
   jobTitles: JobTitle[] = [];
   allUsers: User[] = [];
-  filteredUsers: User[] = [];
-  selectedJobTitleId: number | null = null;
 
-  /** 取得已選審核者姓名（用於檢視模式顯示） */
-  get designatedReviewerName(): string {
-    const id = this.form.get('designatedReviewerId')?.value;
-    if (!id) return '—';
-    return this.allUsers.find(u => u.id === id)?.name ?? id;
+  /** 指定審核者條目清單（多人） */
+  designatedEntries: {
+    stepOrder: number;
+    selectedJobTitleId: number | null;
+    selectedUserId: string | null;
+    filteredUsers: User[];
+  }[] = [];
+
+  addDesignatedEntry() {
+    const nextOrder = this.designatedEntries.length + 1;
+    this.designatedEntries.push({
+      stepOrder: nextOrder,
+      selectedJobTitleId: null,
+      selectedUserId: null,
+      filteredUsers: [],
+    });
+  }
+
+  removeDesignatedEntry(i: number) {
+    this.designatedEntries.splice(i, 1);
+    this.designatedEntries.forEach((e, idx) => e.stepOrder = idx + 1);
+  }
+
+  onEntryJobTitleChange(i: number) {
+    const e = this.designatedEntries[i];
+    e.filteredUsers = e.selectedJobTitleId
+      ? this.allUsers.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active')
+      : [];
+    e.selectedUserId = null;
+  }
+
+  getUserName(userId: string | null): string {
+    if (!userId) return '—';
+    return this.allUsers.find(u => u.id === userId)?.name ?? userId;
   }
 
   /** 可補休時數（從 API 取得） */
@@ -76,11 +104,10 @@ export class LeaveRequestForm implements OnInit {
   };
 
   form = this.fb.group({
-    leaveType:             ['annual' as LeaveType, Validators.required],
-    startDate:             ['', [Validators.required, LeaveRequestForm.halfHourValidator]],
-    endDate:               ['', [Validators.required, LeaveRequestForm.halfHourValidator]],
-    reason:                ['', Validators.required],
-    designatedReviewerId:  [null as string | null],
+    leaveType: ['annual' as LeaveType, Validators.required],
+    startDate: ['', [Validators.required, LeaveRequestForm.halfHourValidator]],
+    endDate:   ['', [Validators.required, LeaveRequestForm.halfHourValidator]],
+    reason:    ['', Validators.required],
   });
 
   /** 從開始/結束時間自動計算時數 */
@@ -103,7 +130,18 @@ export class LeaveRequestForm implements OnInit {
         .some(i => i.steps.some(s => s.useApplicantDesignated));
       if (this.hasDesignatedStep) {
         this.jobTitleSvc.getAll().subscribe({ next: jts => { this.jobTitles = jts; } });
-        this.userSvc.getAll().subscribe({ next: users => { this.allUsers = users; } });
+        this.userSvc.getAll().subscribe({
+          next: users => {
+            this.allUsers = users;
+            // allUsers 載入後補填各條目的 filteredUsers
+            this.designatedEntries.forEach(e => {
+              if (e.selectedJobTitleId) {
+                e.filteredUsers = users.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active');
+              }
+            });
+            this.cdr.markForCheck();
+          },
+        });
       }
       this.cdr.markForCheck();
     });
@@ -119,14 +157,26 @@ export class LeaveRequestForm implements OnInit {
         this.isReturned = r.approvalStatus === 'returned';
         this.isReadOnly = r.approvalStatus !== 'draft';
         this.form.patchValue({
-          leaveType:             r.leaveType,
-          startDate:             this._toDatetimeLocal(r.startDate),
-          endDate:               this._toDatetimeLocal(r.endDate),
-          reason:                r.reason,
-          designatedReviewerId:  r.designatedReviewerId ?? null,
+          leaveType:  r.leaveType,
+          startDate:  this._toDatetimeLocal(r.startDate),
+          endDate:    this._toDatetimeLocal(r.endDate),
+          reason:     r.reason,
         });
-        if (r.designatedReviewerId) {
-          this._prefillDesignatedJobTitle(r.designatedReviewerId);
+        // 回填指定審核者清單
+        if (r.designatedReviewers?.length) {
+          this.designatedEntries = r.designatedReviewers.map(dr => ({
+            stepOrder: dr.stepOrder,
+            selectedJobTitleId: this.allUsers.find(u => u.id === dr.reviewerId)?.jobTitleId ?? null,
+            selectedUserId: dr.reviewerId,
+            filteredUsers: [],
+          }));
+          if (this.allUsers.length > 0) {
+            this.designatedEntries.forEach(e => {
+              if (e.selectedJobTitleId) {
+                e.filteredUsers = this.allUsers.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active');
+              }
+            });
+          }
         }
         if (this.isReadOnly) this.form.disable();
         // 非草稿時載入簽核流程
@@ -143,38 +193,6 @@ export class LeaveRequestForm implements OnInit {
         }
       });
     }
-  }
-
-  /** 根據 designatedReviewerId 回填職稱下拉，並篩選人員清單 */
-  private _prefillDesignatedJobTitle(userId: string) {
-    const tryPrefill = () => {
-      const user = this.allUsers.find(u => u.id === userId);
-      if (user?.jobTitleId) {
-        this.selectedJobTitleId = user.jobTitleId;
-        this.filteredUsers = this.allUsers.filter(u => u.jobTitleId === user.jobTitleId && u.status === 'active');
-      }
-    };
-    if (this.allUsers.length > 0) {
-      tryPrefill();
-    } else {
-      const sub = this.userSvc.getAll().subscribe(users => {
-        this.allUsers = users;
-        tryPrefill();
-        sub.unsubscribe();
-      });
-    }
-  }
-
-  /** 職稱選擇變更，篩選可選人員並清除已選審核者 */
-  onDesignatedJobTitleChange() {
-    if (this.selectedJobTitleId == null) {
-      this.filteredUsers = [];
-    } else {
-      this.filteredUsers = this.allUsers.filter(
-        u => u.jobTitleId === this.selectedJobTitleId && u.status === 'active'
-      );
-    }
-    this.form.get('designatedReviewerId')?.setValue(null);
   }
 
   /** 補休時數是否足夠 */
@@ -247,13 +265,16 @@ export class LeaveRequestForm implements OnInit {
 
   private _buildPayload() {
     const v = this.form.value;
+    const reviewers = this.designatedEntries
+      .filter(e => e.selectedUserId)
+      .map(e => ({ reviewerId: e.selectedUserId!, stepOrder: e.stepOrder }));
     return {
-      leaveType:             v.leaveType as LeaveType,
-      startDate:             v.startDate!,   // 直接送字串，避免 new Date() 轉 UTC
-      endDate:               v.endDate!,
-      hours:                 this.calculatedHours,
-      reason:                v.reason!,
-      designatedReviewerId:  v.designatedReviewerId ?? undefined,
+      leaveType:            v.leaveType as LeaveType,
+      startDate:            v.startDate!,   // 直接送字串，避免 new Date() 轉 UTC
+      endDate:              v.endDate!,
+      hours:                this.calculatedHours,
+      reason:               v.reason!,
+      designatedReviewers:  reviewers.length > 0 ? reviewers : undefined,
     };
   }
 

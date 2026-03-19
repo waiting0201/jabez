@@ -38,6 +38,16 @@ export interface WriteOffSummary {
   createdAt: string;
 }
 
+export interface DesignatedReviewer {
+  id?: number;
+  reviewerId: string;
+  reviewerName?: string;
+  stepOrder: number;
+  status?: string;       // pending | approved | returned
+  reviewedAt?: string;
+  comment?: string;
+}
+
 export interface AdvanceRequest {
   id: number;
   requestNo: string;
@@ -57,7 +67,7 @@ export interface AdvanceRequest {
   paidAt?: string;
   reviewedAt?: string;
   reviewNote?: string;
-  designatedReviewerId?: string;
+  designatedReviewers?: DesignatedReviewer[];
   items: AdvanceRequestItem[];
   writeOffs: WriteOffSummary[];
 }
