@@ -17,8 +17,8 @@ import {PaymentType, ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLA
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
 import {ApprovalService} from '../../../approvals/services/approval.service';
-import {JobTitle} from '../../../job-titles/models/job-title.model';
-import {User} from '../../../users/models/user.model';
+import {JobTitleLookup} from '../../../job-titles/models/job-title.model';
+import {UserLookup} from '../../../users/models/user.model';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 
 @Component({
@@ -65,15 +65,15 @@ export class PaymentForm implements OnInit {
 
   /** 指定審核者相關 */
   hasDesignatedStep = false;
-  jobTitles: JobTitle[] = [];
-  allUsers: User[] = [];
+  jobTitles: JobTitleLookup[] = [];
+  allUsers: UserLookup[] = [];
 
   /** 指定審核者條目清單（多人） */
   designatedEntries: {
     stepOrder: number;
     selectedJobTitleId: number | null;
     selectedUserId: string | null;
-    filteredUsers: User[];
+    filteredUsers: UserLookup[];
   }[] = [];
 
   addDesignatedEntry() {
@@ -143,8 +143,8 @@ export class PaymentForm implements OnInit {
         .filter(i => i.isActive && i.applicationType === 'payment_request')
         .some(i => i.steps.some(s => s.useApplicantDesignated));
       if (this.hasDesignatedStep) {
-        this.jobTitleSvc.getAll().subscribe({ next: jts => { this.jobTitles = jts; } });
-        this.userSvc.getAll().subscribe({
+        this.jobTitleSvc.getLookup().subscribe({ next: jts => { this.jobTitles = jts; } });
+        this.userSvc.getLookup().subscribe({
           next: users => {
             this.allUsers = users;
             // allUsers 載入後補填各條目的 filteredUsers

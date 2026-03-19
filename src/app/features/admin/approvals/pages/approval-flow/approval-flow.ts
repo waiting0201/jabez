@@ -8,6 +8,7 @@ import {ApprovalService} from '../../services/approval.service';
 import {DepartmentService} from '../../../departments/services/department.service';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {ApprovalItem, ApprovalStep} from '../../models/approval.model';
+import {AuthService} from '@core/auth/services/auth.service';
 import {Department} from '../../../departments/models/department.model';
 import {JobTitle} from '../../../job-titles/models/job-title.model';
 
@@ -19,9 +20,13 @@ import {JobTitle} from '../../../job-titles/models/job-title.model';
 export class ApprovalFlow implements OnInit {
   private route = inject(ActivatedRoute);
   private approvalService = inject(ApprovalService);
+  private authService = inject(AuthService);
   private deptService = inject(DepartmentService);
   private jobTitleService = inject(JobTitleService);
   private fb = inject(FormBuilder);
+
+  readonly canWrite  = this.authService.hasPermission('approvals:write');
+  readonly canDelete = this.authService.hasPermission('approvals:delete');
 
   itemId = 0;
   item$ = new BehaviorSubject<ApprovalItem | undefined>(undefined);

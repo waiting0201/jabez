@@ -28,10 +28,12 @@
     <!-- Steps Timeline -->
     <div class="flex items-center justify-between mb-4">
       <h6 class="mb-0 text-muted">簽核步驟（共 {{ item.steps.length }} 步）</h6>
-      <button class="btn btn-outline-primary btn-sm inline-flex items-center gap-1" (click)="openAddStep()">
-        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
-        新增步驟
-      </button>
+      @if (canWrite) {
+        <button class="btn btn-outline-primary btn-sm inline-flex items-center gap-1" (click)="openAddStep()">
+          <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+          新增步驟
+        </button>
+      }
     </div>
 
     <!-- Step Form -->
@@ -181,16 +183,22 @@
                       <span class="text-muted small">{{ step.note }}</span>
                     }
                   </div>
-                  <div class="flex gap-1">
-                    <button class="btn btn-sm btn-ghost-primary inline-flex items-center"
-                            (click)="openEditStep(step)" title="編輯">
-                      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
-                    </button>
-                    <button class="btn btn-sm btn-ghost-danger inline-flex items-center"
-                            (click)="deleteStep(step)" title="刪除">
-                      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
-                    </button>
-                  </div>
+                  @if (canWrite || canDelete) {
+                    <div class="flex gap-1">
+                      @if (canWrite) {
+                        <button class="btn btn-sm btn-ghost-primary inline-flex items-center"
+                                (click)="openEditStep(step)" title="編輯">
+                          <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+                        </button>
+                      }
+                      @if (canDelete) {
+                        <button class="btn btn-sm btn-ghost-danger inline-flex items-center"
+                                (click)="deleteStep(step)" title="刪除">
+                          <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
+                        </button>
+                      }
+                    </div>
+                  }
                 </div>
               </div>
             </div>

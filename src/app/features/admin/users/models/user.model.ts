@@ -1,5 +1,13 @@
 export type UserStatus = 'active' | 'inactive';
 
+/** 輕量級使用者資料（供指定審核者下拉選單用） */
+export interface UserLookup {
+  id: string;
+  name: string;
+  jobTitleId?: number;
+  status: string;
+}
+
 export interface User {
   id: string;
   name: string;

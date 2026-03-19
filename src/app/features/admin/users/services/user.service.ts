@@ -1,7 +1,7 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
-import {User} from '../models/user.model';
+import {User, UserLookup} from '../models/user.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {environment} from '@/environments/environment';
 
@@ -11,6 +11,11 @@ export class UserService {
 
   getAll(): Observable<User[]> {
     return this.http.get<User[]>(`${environment.apiUrl}/users`);
+  }
+
+  /** 輕量級使用者清單（不需 users:read 權限，供指定審核者下拉選單用） */
+  getLookup(): Observable<UserLookup[]> {
+    return this.http.get<UserLookup[]>(`${environment.apiUrl}/users/lookup`);
   }
 
   getPaged(page: number, pageSize: number): Observable<PagedResult<User>> {

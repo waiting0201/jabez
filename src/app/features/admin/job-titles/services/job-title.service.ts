@@ -1,7 +1,7 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
-import {JobTitle} from '../models/job-title.model';
+import {JobTitle, JobTitleLookup} from '../models/job-title.model';
 import {environment} from '@/environments/environment';
 
 @Injectable({providedIn: 'root'})
@@ -10,6 +10,11 @@ export class JobTitleService {
 
   getAll(): Observable<JobTitle[]> {
     return this.http.get<JobTitle[]>(`${environment.apiUrl}/job-titles`);
+  }
+
+  /** 輕量級職稱清單（不需 job-titles:read 權限，供下拉選單用） */
+  getLookup(): Observable<JobTitleLookup[]> {
+    return this.http.get<JobTitleLookup[]>(`${environment.apiUrl}/job-titles/lookup`);
   }
 
   getById(id: number): Observable<JobTitle> {

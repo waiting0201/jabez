@@ -5,6 +5,8 @@ import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {HttpErrorResponse} from '@angular/common/http';
 import {BehaviorSubject, switchMap} from 'rxjs';
 import {ApprovalService} from '../../services/approval.service';
+import {AuthService} from '@core/auth/services/auth.service';
+
 import {
   ApprovalItem, ApplicationType,
   APPLICATION_TYPE_LABELS, APPLICATION_TYPE_CLASSES,
@@ -17,7 +19,11 @@ import {
 })
 export class ApprovalList {
   private approvalService = inject(ApprovalService);
+  private authService = inject(AuthService);
   private fb = inject(FormBuilder);
+
+  readonly canWrite  = this.authService.hasPermission('approvals:write');
+  readonly canDelete = this.authService.hasPermission('approvals:delete');
 
   private refresh$ = new BehaviorSubject<void>(undefined);
   items$ = this.refresh$.pipe(switchMap(() => this.approvalService.getAll()));

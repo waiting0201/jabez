@@ -14,8 +14,8 @@ import {ApprovalService} from '../../../approvals/services/approval.service';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
 import {ApprovalFlow, ApprovalRecord} from '../../../approval-tasks/models/approval-task.model';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
-import {JobTitle} from '../../../job-titles/models/job-title.model';
-import {User} from '../../../users/models/user.model';
+import {JobTitleLookup} from '../../../job-titles/models/job-title.model';
+import {UserLookup} from '../../../users/models/user.model';
 
 @Component({
   selector: 'app-leave-request-form',
@@ -49,15 +49,15 @@ export class LeaveRequestForm implements OnInit {
 
   /** 指定審核者相關 */
   hasDesignatedStep = false;
-  jobTitles: JobTitle[] = [];
-  allUsers: User[] = [];
+  jobTitles: JobTitleLookup[] = [];
+  allUsers: UserLookup[] = [];
 
   /** 指定審核者條目清單（多人） */
   designatedEntries: {
     stepOrder: number;
     selectedJobTitleId: number | null;
     selectedUserId: string | null;
-    filteredUsers: User[];
+    filteredUsers: UserLookup[];
   }[] = [];
 
   addDesignatedEntry() {
@@ -129,8 +129,8 @@ export class LeaveRequestForm implements OnInit {
         .filter(i => i.isActive && i.applicationType === 'leave')
         .some(i => i.steps.some(s => s.useApplicantDesignated));
       if (this.hasDesignatedStep) {
-        this.jobTitleSvc.getAll().subscribe({ next: jts => { this.jobTitles = jts; } });
-        this.userSvc.getAll().subscribe({
+        this.jobTitleSvc.getLookup().subscribe({ next: jts => { this.jobTitles = jts; } });
+        this.userSvc.getLookup().subscribe({
           next: users => {
             this.allUsers = users;
             // allUsers 載入後補填各條目的 filteredUsers
