@@ -139,16 +139,16 @@ export class ApprovalTaskReview implements OnInit {
     if (this.auth.isSuperAdmin()) return true;
     if (!task.flow) return false;
     const step = task.flow.steps.find(s => s.stepOrder === task.currentStepOrder);
-    return step?.departmentName === '財務部';
+    return step?.departmentCode === 'FIN';
   }
 
   /** 判斷已核准後是否可編輯撥款日：Superadmin、或曾審核過財務部步驟的使用者 */
   canEditPaymentDate(task: ApprovalTask): boolean {
     if (this.auth.isSuperAdmin()) return true;
     if (!task.flow || !task.approvalRecords?.length) return false;
-    // 找出流程中所有財務部步驟的 stepOrder
+    // 找出流程中所有財務部步驟（以部門代碼 'FIN' 判斷）的 stepOrder
     const financeStepOrders = task.flow.steps
-      .filter(s => s.departmentName === '財務部')
+      .filter(s => s.departmentCode === 'FIN')
       .map(s => s.stepOrder);
     if (!financeStepOrders.length) return false;
     // 檢查當前使用者是否審核過這些步驟

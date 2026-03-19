@@ -14,6 +14,7 @@ export interface JwtPayload {
   exp: number;
   is_superadmin?: string | boolean;
   department_name?: string;
+  department_code?: string;
   job_title_name?: string;
 }
 
@@ -75,6 +76,13 @@ export class AuthService {
     return payload.department_name ?? null;
   });
 
+  /** 當前使用者的部門代碼（signal） */
+  departmentCode = computed<string | null>(() => {
+    const payload = this._decode(this._token());
+    if (!payload || payload.exp * 1000 <= Date.now()) return null;
+    return payload.department_code ?? null;
+  });
+
   /** 當前使用者的職稱名稱（signal） */
   jobTitleName = computed<string | null>(() => {
     const payload = this._decode(this._token());
@@ -82,8 +90,8 @@ export class AuthService {
     return payload.job_title_name ?? null;
   });
 
-  /** 是否為財務部（signal） */
-  isFinanceDept = computed<boolean>(() => this.departmentName() === '財務部');
+  /** 是否為財務部（signal），以部門代碼 'FIN' 判斷 */
+  isFinanceDept = computed<boolean>(() => this.departmentCode() === 'FIN');
 
   get token(): string | null {
     return this._token();

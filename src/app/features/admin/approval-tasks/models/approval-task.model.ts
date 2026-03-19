@@ -37,6 +37,7 @@ export {APPLICATION_TYPE_LABELS, APPLICATION_TYPE_CLASSES};
 export interface ApprovalFlowStep {
   stepOrder: number;
   departmentName?: string;
+  departmentCode?: string;
   jobTitleName?: string;
   useDirectSupervisor?: boolean;
   useApplicantDesignated?: boolean;
