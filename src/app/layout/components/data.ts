@@ -28,6 +28,12 @@ export const menuItems: MenuItemType[] = [
     requiredPermission: 'advance-requests:read',
   },
   {
+    icon: '/assets/icons/sprite.svg#file-text',
+    label: '沖銷申請',
+    url: '/admin/write-off-requests',
+    requiredPermission: 'write-off-requests:read',
+  },
+  {
     icon: '/assets/icons/sprite.svg#calendar',
     label: '請假申請',
     url: '/admin/leave-requests',

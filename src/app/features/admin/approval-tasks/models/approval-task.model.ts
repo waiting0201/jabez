@@ -98,6 +98,15 @@ export interface AdvanceTaskDetail {
   paidAt?: string;
 }
 
+export interface WriteOffTaskDetail {
+  writeOffRequestId: number;
+  requestNo: string;
+  advanceRequestNo: string;
+  projectCode: string;
+  projectName: string;
+  grandTotal: number;
+}
+
 // ── ApprovalRecord ───────────────────────────────────────────────────────────
 
 export interface ApprovalRecord {
@@ -129,6 +138,7 @@ export interface ApprovalTask {
   travelDetail?: TravelTaskDetail;
   overtimeDetail?: OvertimeTaskDetail;
   advanceDetail?: AdvanceTaskDetail;
+  writeOffDetail?: WriteOffTaskDetail;
   approvalRecords: ApprovalRecord[];
   submittedBySignatureUrl?: string;  // 申請人簽名檔 URL
 }

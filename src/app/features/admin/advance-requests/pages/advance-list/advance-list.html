@@ -22,8 +22,6 @@
               <th>專案</th>
               <th>活動名稱</th>
               <th class="text-right">預支金額</th>
-              <th class="text-right">已沖銷</th>
-              <th>沖銷狀態</th>
               <th>簽核狀態</th>
               <th class="hidden lg:table-cell">建立時間</th>
               <th class="text-right">操作</th>
@@ -36,13 +34,13 @@
                 <td class="fw-500 font-monospace">{{ r.projectCode }}</td>
                 <td>{{ r.activityName }}</td>
                 <td class="text-right fw-500">{{ r.grandTotal | number:'1.0-0' }}</td>
-                <td class="text-right">{{ writeOffTotal(r) | number:'1.0-0' }}</td>
                 <td>
-                  @let ws = writeOffStatus(r);
-                  <span [class]="'badge ' + ws.cls">{{ ws.label }}</span>
-                </td>
-                <td>
-                  <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
+                  <div class="flex flex-wrap items-center gap-1">
+                    <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
+                    @if (r.isClosed) {
+                      <span class="badge bg-elevated text-secondary">已結案</span>
+                    }
+                  </div>
                 </td>
                 <td class="text-muted small hidden lg:table-cell">{{ r.createdAt | date:'yyyy-MM-dd' }}</td>
                 <td class="text-right" style="white-space: nowrap">
@@ -66,7 +64,7 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="9" class="text-center text-muted py-4">尚無預支申請。</td>
+                <td colspan="7" class="text-center text-muted py-4">尚無預支申請。</td>
               </tr>
             }
           </tbody>

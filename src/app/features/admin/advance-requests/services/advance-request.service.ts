@@ -41,6 +41,11 @@ export class AdvanceRequestService {
     });
   }
 
+  /** 更新差額退款匯款日期（僅財務部或 Superadmin 可操作） */
+  updateRefundDate(id: number, refundedAt: string): Observable<any> {
+    return this.http.patch(`${this.base}/${id}/refund-date`, {refundedAt});
+  }
+
   // ── 沖銷 ──────────────────────────────────────────────────────────────────
 
   getWriteOffs(id: number): Observable<WriteOffRecord[]> {
@@ -58,4 +63,5 @@ export class AdvanceRequestService {
   deleteWriteOff(id: number, writeOffId: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/${id}/write-offs/${writeOffId}`);
   }
+
 }

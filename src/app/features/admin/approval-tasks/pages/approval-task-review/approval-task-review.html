@@ -411,6 +411,15 @@
                     <div class="text-danger small mt-1">退回修改或拒絕時請填寫原因。</div>
                   }
                 </div>
+                @if (canCloseAdvance(task)) {
+                  <div class="mb-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" formControlName="closeAdvance" class="form-check-input">
+                      <span class="fw-500">預支結案</span>
+                    </label>
+                    <div class="text-muted small mt-1">勾選後，核准時將同步關閉關聯的預支申請。</div>
+                  </div>
+                }
                 <div class="flex gap-2">
                   <button type="submit" class="btn btn-primary">提交審核</button>
                   <a routerLink="/admin/approval-tasks" class="btn btn-outline-secondary">取消</a>
@@ -516,6 +525,34 @@
                         <use href="/assets/icons/sprite.svg#printer"></use>
                       </svg>
                       列印請款單
+                    }
+                  </button>
+                }
+                @if (task.applicationType === 'advance' && task.advanceDetail && task.status === 'approved') {
+                  <button type="button" class="btn btn-outline-secondary inline-flex items-center gap-2"
+                          [disabled]="advancePdfService.pdfLoading()" (click)="printAdvancePdf(task)">
+                    @if (advancePdfService.pdfLoading()) {
+                      <span class="inline-block w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin"></span>
+                      產生中…
+                    } @else {
+                      <svg class="sa-icon" style="width:16px;height:16px;stroke:currentColor">
+                        <use href="/assets/icons/sprite.svg#printer"></use>
+                      </svg>
+                      列印預支單
+                    }
+                  </button>
+                }
+                @if (task.applicationType === 'write_off' && task.writeOffDetail && task.status === 'approved') {
+                  <button type="button" class="btn btn-outline-secondary inline-flex items-center gap-2"
+                          [disabled]="writeOffPdfService.pdfLoading()" (click)="printWriteOffPdf(task)">
+                    @if (writeOffPdfService.pdfLoading()) {
+                      <span class="inline-block w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin"></span>
+                      產生中…
+                    } @else {
+                      <svg class="sa-icon" style="width:16px;height:16px;stroke:currentColor">
+                        <use href="/assets/icons/sprite.svg#printer"></use>
+                      </svg>
+                      列印沖銷單
                     }
                   </button>
                 }

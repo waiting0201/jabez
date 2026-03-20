@@ -1,5 +1,4 @@
 export type ApprovalStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'returned';
-export type WriteOffStatus = 'none' | 'partial' | 'completed';
 
 export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
   draft:    '草稿',
@@ -29,13 +28,6 @@ export interface AdvanceRequestItem {
   checkAmount: number;
   note?: string;
   sortOrder: number;
-}
-
-export interface WriteOffSummary {
-  id: number;
-  writeOffNo: number;
-  grandTotal: number;
-  createdAt: string;
 }
 
 export interface DesignatedReviewer {
@@ -70,6 +62,21 @@ export interface AdvanceRequest {
   designatedReviewers?: DesignatedReviewer[];
   items: AdvanceRequestItem[];
   writeOffs: WriteOffSummary[];
+  /** 是否已結案（所有沖銷已完成，差額已核對） */
+  isClosed: boolean;
+  /** 結案時間 */
+  closedAt?: string;
+  /** 應退還差額（預支金額 - 沖銷總金額，>0 表示需退款） */
+  refundAmount?: number;
+  /** 差額退款完成時間 */
+  refundedAt?: string;
+}
+
+export interface WriteOffSummary {
+  id: number;
+  writeOffNo: number;
+  grandTotal: number;
+  createdAt: string;
 }
 
 export interface WriteOffItem {

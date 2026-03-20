@@ -38,18 +38,6 @@ export class AdvanceList {
   readonly statusLabel = APPROVAL_STATUS_LABELS;
   readonly statusClass = APPROVAL_STATUS_CLASSES;
 
-  /** 計算沖銷狀態 */
-  writeOffStatus(r: AdvanceRequest): {label: string; cls: string} {
-    const total = r.writeOffs?.reduce((s, w) => s + w.grandTotal, 0) ?? 0;
-    if (total <= 0) return {label: '未沖銷', cls: 'bg-secondary-subtle text-secondary'};
-    if (total >= r.grandTotal) return {label: '已沖完', cls: 'bg-success-subtle text-success'};
-    return {label: '部分沖銷', cls: 'bg-warning-subtle text-warning-emphasis'};
-  }
-
-  writeOffTotal(r: AdvanceRequest): number {
-    return r.writeOffs?.reduce((s, w) => s + w.grandTotal, 0) ?? 0;
-  }
-
   delete(r: AdvanceRequest) {
     if (confirm('確定要刪除此預支申請嗎？')) {
       this.service.delete(r.id).subscribe(() => this.refresh.update(v => v + 1));

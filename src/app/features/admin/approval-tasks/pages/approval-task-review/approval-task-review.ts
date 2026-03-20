@@ -10,6 +10,9 @@ import {FilePreviewModal, PreviewFileData} from '../../../../../shared/component
 import {AuthService} from '../../../../../core/auth/services/auth.service';
 import {PaymentRequestService} from '../../../payment-requests/services/payment-request.service';
 import {AdvanceRequestService} from '../../../advance-requests/services/advance-request.service';
+import {AdvancePdfService} from '../../../advance-requests/services/advance-pdf.service';
+import {WriteOffRequestService} from '../../../write-off-requests/services/write-off-request.service';
+import {WriteOffPdfService} from '../../../write-off-requests/services/write-off-pdf.service';
 import {ApprovalTaskService} from '../../services/approval-task.service';
 import {
   ApprovalTask, ApprovalRecord, TaskStatus,
@@ -74,14 +77,17 @@ const CIS = {
   imports: [RouterLink, ReactiveFormsModule, AsyncPipe, DatePipe, DecimalPipe, FilePreviewModal],
 })
 export class ApprovalTaskReview implements OnInit {
-  private service        = inject(ApprovalTaskService);
-  private paymentService = inject(PaymentRequestService);
-  private advanceService = inject(AdvanceRequestService);
-  private auth           = inject(AuthService);
-  private route          = inject(ActivatedRoute);
-  private router         = inject(Router);
-  private fb             = inject(FormBuilder);
-  private sanitizer      = inject(DomSanitizer);
+  private service           = inject(ApprovalTaskService);
+  private paymentService    = inject(PaymentRequestService);
+  private advanceService    = inject(AdvanceRequestService);
+  protected advancePdfService = inject(AdvancePdfService);
+  private writeOffService     = inject(WriteOffRequestService);
+  protected writeOffPdfService = inject(WriteOffPdfService);
+  private auth              = inject(AuthService);
+  private route             = inject(ActivatedRoute);
+  private router            = inject(Router);
+  private fb                = inject(FormBuilder);
+  private sanitizer         = inject(DomSanitizer);
 
   task$!: Observable<ApprovalTask | undefined>;
   taskId = 0;
@@ -114,6 +120,7 @@ export class ApprovalTaskReview implements OnInit {
     reviewNote:           [''],
     estimatedPaymentDate: [''],
     paidAt:               [''],
+    closeAdvance:         [false],
   });
 
   ngOnInit() {
@@ -145,6 +152,15 @@ export class ApprovalTaskReview implements OnInit {
 
   /** 判斷當前簽核步驟是否為財務部，或登入者為 Superadmin */
   canSetPaymentDate(task: ApprovalTask): boolean {
+    if (this.auth.isSuperAdmin()) return true;
+    if (!task.flow) return false;
+    const step = task.flow.steps.find(s => s.stepOrder === task.currentStepOrder);
+    return step?.departmentCode === 'FIN';
+  }
+
+  /** 判斷是否顯示「預支結案」checkbox：沖銷申請 (write_off) 且當前步驟為財務部 */
+  canCloseAdvance(task: ApprovalTask): boolean {
+    if (task.applicationType !== 'write_off') return false;
     if (this.auth.isSuperAdmin()) return true;
     if (!task.flow) return false;
     const step = task.flow.steps.find(s => s.stepOrder === task.currentStepOrder);
@@ -481,19 +497,58 @@ export class ApprovalTaskReview implements OnInit {
     });
   }
 
+  /** 列印預支申請表 PDF */
+  printAdvancePdf(task: ApprovalTask) {
+    if (!task.advanceDetail || task.status !== 'approved') return;
+    this.advanceService.getById(task.advanceDetail.advanceRequestId).subscribe({
+      next: r => {
+        this.advancePdfService.printAdvanceRequest(
+          r,
+          task.submittedBy,
+          task.approvalRecords ?? [],
+          task.flow,
+          task.submittedBySignatureUrl,
+        );
+      },
+      error: () => {
+        this.errorMsg.set('載入預支申請資料失敗，無法匯出 PDF。');
+      },
+    });
+  }
+
+  /** 列印沖銷申請表 PDF */
+  printWriteOffPdf(task: ApprovalTask) {
+    if (!task.writeOffDetail || task.status !== 'approved') return;
+    this.writeOffService.getById(task.writeOffDetail.writeOffRequestId).subscribe({
+      next: r => {
+        this.writeOffPdfService.printWriteOff(
+          r,
+          task.submittedBy,
+          task.approvalRecords ?? [],
+          task.flow,
+          task.submittedBySignatureUrl,
+        );
+      },
+      error: () => {
+        this.errorMsg.set('載入沖銷申請資料失敗，無法匯出 PDF。');
+      },
+    });
+  }
+
   submit() {
     if (this.taskStatus() !== 'pending') return;
     const action = this.form.value.action as TaskStatus;
     const note   = this.form.value.reviewNote?.trim() ?? '';
     const estimatedPaymentDate = this.form.value.estimatedPaymentDate || undefined;
     const paidAt = this.form.value.paidAt || undefined;
+    const closeAdvance = this.form.value.closeAdvance ?? false;
     if ((action === 'rejected' || action === 'returned') && !note) {
       this.showNoteError = true;
       return;
     }
     this.showNoteError = false;
     this.errorMsg.set('');
-    this.service.review(this.taskId, this.applicationType, action, note, estimatedPaymentDate, paidAt).subscribe({
+    this.service.review(this.taskId, this.applicationType, action, note, estimatedPaymentDate, paidAt, closeAdvance).subscribe({
       next: () => this.router.navigate(['/admin/approval-tasks']),
       error: (err: HttpErrorResponse) => {
         this.errorMsg.set(err.error?.message || '審核失敗，請稍後再試。');
