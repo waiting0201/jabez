@@ -1,7 +1,7 @@
-import {Injectable, signal} from '@angular/core';
-import {AdvanceRequest, WriteOffRecord} from '../models/advance-request.model';
-import {ApprovalRecord, ApprovalFlow} from '../../approval-tasks/models/approval-task.model';
-import {environment} from '../../../../../environments/environment';
+import { Injectable, signal } from '@angular/core';
+import { AdvanceRequest, WriteOffRecord } from '../models/advance-request.model';
+import { ApprovalRecord, ApprovalFlow } from '../../approval-tasks/models/approval-task.model';
+import { environment } from '../../../../../environments/environment';
 
 /** 簽名欄資料 */
 interface SignBlock {
@@ -39,24 +39,24 @@ function resolveSignatureUrl(url: string): string {
 
 /** CIS 色彩 */
 const CIS = {
-  forest:      [105, 159, 52]  as const,
-  forestMid:   [74, 107, 58]   as const,
-  textPrimary: [82, 83, 88]    as const,
-  textMuted:   [163, 150, 133] as const,
-  bgBase:      [245, 242, 237] as const,
-  border:      [221, 214, 200] as const,
-  red:         [160, 64, 64]   as const,
+  forest: [105, 159, 52] as const,
+  forestMid: [74, 107, 58] as const,
+  textPrimary: [82, 83, 88] as const,
+  textMuted: [163, 150, 133] as const,
+  bgBase: [245, 242, 237] as const,
+  border: [221, 214, 200] as const,
+  red: [160, 64, 64] as const,
 };
 
 const fmt = (n: number) => n.toLocaleString('zh-TW');
 
-@Injectable({providedIn: 'root'})
+@Injectable({ providedIn: 'root' })
 export class AdvancePdfService {
   pdfLoading = signal(false);
 
-  private assetCache: Promise<{regular: string; bold: string}> | null = null;
+  private assetCache: Promise<{ regular: string; bold: string }> | null = null;
 
-  private loadFonts(): Promise<{regular: string; bold: string}> {
+  private loadFonts(): Promise<{ regular: string; bold: string }> {
     if (!this.assetCache) {
       this.assetCache = Promise.all([
         fetch('/assets/fonts/NotoSansTC-Regular.ttf').then(r => r.arrayBuffer()),
@@ -73,7 +73,7 @@ export class AdvancePdfService {
   async printAdvanceRequest(r: AdvanceRequest, submittedByName: string, approvalRecords: ApprovalRecord[] = [], flow?: ApprovalFlow, submittedBySignatureUrl?: string) {
     this.pdfLoading.set(true);
     try {
-      const [{default: jsPDF}, {default: autoTable}, fonts] = await Promise.all([
+      const [{ default: jsPDF }, { default: autoTable }, fonts] = await Promise.all([
         import('jspdf'),
         import('jspdf-autotable'),
         this.loadFonts(),
@@ -105,11 +105,11 @@ export class AdvancePdfService {
       doc.setFont(F, 'bold');
       doc.setFontSize(11);
       doc.setTextColor(...CIS.textPrimary);
-      doc.text('雅比斯國際創意策略股份有限公司', pw / 2, y, {align: 'center'});
+      doc.text('雅比斯國際創意策略股份有限公司', pw / 2, y, { align: 'center' });
       y += 8;
       doc.setFontSize(16);
       doc.setTextColor(...CIS.forest);
-      doc.text('經 費 預 支 申 請 表', pw / 2, y, {align: 'center'});
+      doc.text('經 費 預 支 申 請 表', pw / 2, y, { align: 'center' });
 
       // ── 表頭資訊 ──
       y += 10;
@@ -162,49 +162,49 @@ export class AdvancePdfService {
 
       // 合計列
       bodyRows.push([
-        {content: '預 支 現 金 數', colSpan: 6, styles: {halign: 'right', fontStyle: 'bold'}},
-        {content: fmt(r.cashTotal), styles: {fontStyle: 'bold', halign: 'right'}},
+        { content: '預 支 現 金 數', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: fmt(r.cashTotal), styles: { fontStyle: 'bold', halign: 'right' } },
         '',
         '',
       ]);
       bodyRows.push([
-        {content: '月結支票金額', colSpan: 6, styles: {halign: 'right', fontStyle: 'bold'}},
+        { content: '月結支票金額', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
         '',
-        {content: r.checkTotal > 0 ? fmt(r.checkTotal) : '', styles: {fontStyle: 'bold', halign: 'right'}},
+        { content: r.checkTotal > 0 ? fmt(r.checkTotal) : '', styles: { fontStyle: 'bold', halign: 'right' } },
         '',
       ]);
       bodyRows.push([
-        {content: '總計', colSpan: 6, styles: {halign: 'right', fontStyle: 'bold'}},
-        {content: fmt(r.grandTotal), colSpan: 2, styles: {fontStyle: 'bold', halign: 'right'}},
+        { content: '總計', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: fmt(r.grandTotal), colSpan: 2, styles: { fontStyle: 'bold', halign: 'right' } },
         '',
       ]);
 
       autoTable(doc, {
         startY: y,
-        margin: {left: mx, right: mx},
+        margin: { left: mx, right: mx },
         theme: 'grid',
         styles: {
           font: F, fontSize: 8.5,
           textColor: [...CIS.textPrimary],
           lineColor: [...CIS.border],
           lineWidth: 0.3,
-          cellPadding: {top: 2.5, bottom: 2.5, left: 3, right: 3},
+          cellPadding: { top: 2.5, bottom: 2.5, left: 3, right: 3 },
         },
         headStyles: {
           font: F, fillColor: [...CIS.forest], textColor: 255,
           fontSize: 9, fontStyle: 'bold', halign: 'center',
-          cellPadding: {top: 3, bottom: 3, left: 3, right: 3},
+          cellPadding: { top: 3, bottom: 3, left: 3, right: 3 },
         },
         columnStyles: {
-          0: {cellWidth: cw * 0.08, halign: 'center'},  // 分類
-          1: {cellWidth: cw * 0.04, halign: 'center'},  // 項次
-          2: {cellWidth: cw * 0.22},                      // 項目(說明)
-          3: {cellWidth: cw * 0.10, halign: 'right'},     // 單價
-          4: {cellWidth: cw * 0.08, halign: 'center'},    // 數量/單位
-          5: {cellWidth: cw * 0.10, halign: 'right'},     // 總價
-          6: {cellWidth: cw * 0.12, halign: 'right'},     // 現金(預支)
-          7: {cellWidth: cw * 0.12, halign: 'right'},     // 支票(月結算)
-          8: {cellWidth: cw * 0.14},                      // 備註
+          0: { cellWidth: cw * 0.08, halign: 'center' },  // 分類
+          1: { cellWidth: cw * 0.04, halign: 'center' },  // 項次
+          2: { cellWidth: cw * 0.22 },                      // 項目(說明)
+          3: { cellWidth: cw * 0.10, halign: 'right' },     // 單價
+          4: { cellWidth: cw * 0.08, halign: 'center' },    // 數量/單位
+          5: { cellWidth: cw * 0.10, halign: 'right' },     // 總價
+          6: { cellWidth: cw * 0.12, halign: 'right' },     // 現金(預支)
+          7: { cellWidth: cw * 0.12, halign: 'right' },     // 支票(月結算)
+          8: { cellWidth: cw * 0.14 },                      // 備註
         },
         head: [['分類', '項次', '項目(說明)', '單價', '數量/\n單位', '總價', '現金\n(預支)', '支票\n(月結算)', '備註']],
         body: bodyRows,
@@ -227,7 +227,7 @@ export class AdvancePdfService {
       doc.text('報銷時請附活動行程表及照片。 )', mx, y);
 
       y += 8;
-      const advSubmitDate = r.createdAt ? new Date(r.createdAt).toLocaleDateString('zh-TW', {year: 'numeric', month: '2-digit', day: '2-digit'}) : '';
+      const advSubmitDate = r.createdAt ? new Date(r.createdAt).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei' }) : '';
       const advSignBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, advSubmitDate, '申請者');
       const advSigMap = await this._loadSignatureImages(advSignBlocks);
       this._drawSignatureBlock(doc, F, mx, pw, cw, y, advSignBlocks, advSigMap);
@@ -250,7 +250,7 @@ export class AdvancePdfService {
   async printWriteOff(r: AdvanceRequest, wo: WriteOffRecord, submittedByName: string, approvalRecords: ApprovalRecord[] = [], flow?: ApprovalFlow, submittedBySignatureUrl?: string) {
     this.pdfLoading.set(true);
     try {
-      const [{default: jsPDF}, {default: autoTable}, fonts] = await Promise.all([
+      const [{ default: jsPDF }, { default: autoTable }, fonts] = await Promise.all([
         import('jspdf'),
         import('jspdf-autotable'),
         this.loadFonts(),
@@ -282,11 +282,11 @@ export class AdvancePdfService {
       doc.setFont(F, 'bold');
       doc.setFontSize(11);
       doc.setTextColor(...CIS.textPrimary);
-      doc.text('雅比斯國際創意策略股份有限公司', pw / 2, y, {align: 'center'});
+      doc.text('雅比斯國際創意策略股份有限公司', pw / 2, y, { align: 'center' });
       y += 8;
       doc.setFontSize(16);
       doc.setTextColor(...CIS.forest);
-      doc.text('預 支 經 費 現 金 沖 銷 表', pw / 2, y, {align: 'center'});
+      doc.text('預 支 經 費 現 金 沖 銷 表', pw / 2, y, { align: 'center' });
 
       // ── 表頭資訊 ──
       y += 10;
@@ -315,15 +315,15 @@ export class AdvancePdfService {
       doc.setFontSize(10);
       const summaryX = pw / 2 - 30;
       const valueX = pw / 2 + 30;
-      doc.text('預支現金數', summaryX, y, {align: 'right'});
-      doc.text(fmt(r.grandTotal), valueX, y, {align: 'right'});
+      doc.text('預支現金數', summaryX, y, { align: 'right' });
+      doc.text(fmt(r.grandTotal), valueX, y, { align: 'right' });
       y += 6;
-      doc.text(`第${wo.writeOffNo}次沖銷金額`, summaryX, y, {align: 'right'});
-      doc.text(fmt(wo.grandTotal), valueX, y, {align: 'right'});
+      doc.text(`第${wo.writeOffNo}次沖銷金額`, summaryX, y, { align: 'right' });
+      doc.text(fmt(wo.grandTotal), valueX, y, { align: 'right' });
       y += 6;
       doc.setTextColor(...CIS.red);
-      doc.text('繳回(應付)金額', summaryX, y, {align: 'right'});
-      doc.text(`$${fmt(balance)}`, valueX, y, {align: 'right'});
+      doc.text('預支待沖銷金額', summaryX, y, { align: 'right' });
+      doc.text(`$${fmt(balance)}`, valueX, y, { align: 'right' });
       doc.setTextColor(...CIS.textPrimary);
 
       // ── 沖銷明細表格 ──
@@ -349,52 +349,52 @@ export class AdvancePdfService {
 
       // 合計列
       bodyRows.push([
-        {content: '預 支 現 金 數', colSpan: 6, styles: {halign: 'right', fontStyle: 'bold'}},
+        { content: '預 支 現 金 數', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
         '', '', '',
       ]);
       bodyRows.push([
-        {content: '實支現金數', colSpan: 6, styles: {halign: 'right', fontStyle: 'bold'}},
-        {content: fmt(wo.cashTotal), styles: {fontStyle: 'bold', halign: 'right'}},
+        { content: '實支現金數', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: fmt(wo.cashTotal), styles: { fontStyle: 'bold', halign: 'right' } },
         '', '',
       ]);
       bodyRows.push([
-        {content: '月結支票金額', colSpan: 6, styles: {halign: 'right', fontStyle: 'bold'}},
+        { content: '月結支票金額', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
         '',
-        {content: wo.checkTotal > 0 ? fmt(wo.checkTotal) : '', styles: {fontStyle: 'bold', halign: 'right'}},
+        { content: wo.checkTotal > 0 ? fmt(wo.checkTotal) : '', styles: { fontStyle: 'bold', halign: 'right' } },
         '',
       ]);
       bodyRows.push([
-        {content: '實際總支出', colSpan: 6, styles: {halign: 'right', fontStyle: 'bold'}},
-        {content: fmt(wo.grandTotal), colSpan: 2, styles: {fontStyle: 'bold', halign: 'right'}},
+        { content: '實際總支出', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: fmt(wo.grandTotal), colSpan: 2, styles: { fontStyle: 'bold', halign: 'right' } },
         '',
       ]);
 
       autoTable(doc, {
         startY: y,
-        margin: {left: mx, right: mx},
+        margin: { left: mx, right: mx },
         theme: 'grid',
         styles: {
           font: F, fontSize: 8.5,
           textColor: [...CIS.textPrimary],
           lineColor: [...CIS.border],
           lineWidth: 0.3,
-          cellPadding: {top: 2.5, bottom: 2.5, left: 3, right: 3},
+          cellPadding: { top: 2.5, bottom: 2.5, left: 3, right: 3 },
         },
         headStyles: {
           font: F, fillColor: [...CIS.forest], textColor: 255,
           fontSize: 9, fontStyle: 'bold', halign: 'center',
-          cellPadding: {top: 3, bottom: 3, left: 3, right: 3},
+          cellPadding: { top: 3, bottom: 3, left: 3, right: 3 },
         },
         columnStyles: {
-          0: {cellWidth: cw * 0.08, halign: 'center'},
-          1: {cellWidth: cw * 0.04, halign: 'center'},
-          2: {cellWidth: cw * 0.22},
-          3: {cellWidth: cw * 0.10, halign: 'right'},
-          4: {cellWidth: cw * 0.08, halign: 'center'},
-          5: {cellWidth: cw * 0.10, halign: 'right'},
-          6: {cellWidth: cw * 0.12, halign: 'right'},
-          7: {cellWidth: cw * 0.12, halign: 'right'},
-          8: {cellWidth: cw * 0.14},
+          0: { cellWidth: cw * 0.08, halign: 'center' },
+          1: { cellWidth: cw * 0.04, halign: 'center' },
+          2: { cellWidth: cw * 0.22 },
+          3: { cellWidth: cw * 0.10, halign: 'right' },
+          4: { cellWidth: cw * 0.08, halign: 'center' },
+          5: { cellWidth: cw * 0.10, halign: 'right' },
+          6: { cellWidth: cw * 0.12, halign: 'right' },
+          7: { cellWidth: cw * 0.12, halign: 'right' },
+          8: { cellWidth: cw * 0.14 },
         },
         head: [['分類', '項次', '項目(說明)', '單價', '數量/\n單位', '總價', '實際\n現金花費', '支票\n實際金額', '備註']],
         body: bodyRows,
@@ -415,7 +415,7 @@ export class AdvancePdfService {
 
       // ── 簽名欄 ──
       y += 8;
-      const woSubmitDate = r.createdAt ? new Date(r.createdAt).toLocaleDateString('zh-TW', {year: 'numeric', month: '2-digit', day: '2-digit'}) : '';
+      const woSubmitDate = r.createdAt ? new Date(r.createdAt).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei' }) : '';
       const woSignBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, woSubmitDate, '申請者');
       const woSigMap = await this._loadSignatureImages(woSignBlocks);
       this._drawSignatureBlock(doc, F, mx, pw, cw, y, woSignBlocks, woSigMap);
@@ -479,7 +479,7 @@ export class AdvancePdfService {
         label,
         signatureUrl: rec?.reviewerSignatureUrl,
         date: rec?.reviewedAt
-          ? new Date(rec.reviewedAt).toLocaleDateString('zh-TW', {year: 'numeric', month: '2-digit', day: '2-digit'})
+          ? new Date(rec.reviewedAt).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei' })
           : '',
       });
     }
@@ -532,7 +532,7 @@ export class AdvancePdfService {
       doc.setFont(F, 'bold');
       doc.setFontSize(8.5);
       doc.setTextColor(...CIS.textPrimary);
-      doc.text(block.label, bx + blockW / 2, y, {align: 'center'});
+      doc.text(block.label, bx + blockW / 2, y, { align: 'center' });
 
       // 簽名線
       const lineY = y + 14;
@@ -556,12 +556,12 @@ export class AdvancePdfService {
         } catch { /* 圖片格式有誤則跳過 */ }
       }
 
-      // 日期（簽名線下方）
+      // 日期時間（簽名線下方）
       if (block.date) {
         doc.setFont(F, 'normal');
-        doc.setFontSize(7.5);
+        doc.setFontSize(6.5);
         doc.setTextColor(...CIS.textMuted);
-        doc.text(block.date, bx + blockW / 2, lineY + 5, {align: 'center'});
+        doc.text(block.date, bx + blockW / 2, lineY + 5, { align: 'center' });
       }
     }
   }

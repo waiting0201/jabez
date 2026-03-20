@@ -271,8 +271,8 @@ export class ApprovalTaskReview implements OnInit {
       doc.text(task.submittedBy, mx + 22, y);
 
       doc.setFont(F, 'normal');
-      const submitDate = new Date(task.submittedAt).toLocaleDateString('zh-TW', {
-        year: 'numeric', month: '2-digit', day: '2-digit',
+      const submitDate = new Date(task.submittedAt).toLocaleString('zh-TW', {
+        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei',
       });
       doc.text('申請日期 ：', pw - mx - 50, y);
       doc.setFont(F, 'bold');
@@ -372,7 +372,7 @@ export class ApprovalTaskReview implements OnInit {
           label: stepLabels[so],
           signatureUrl: rec?.reviewerSignatureUrl,
           date: rec?.reviewedAt
-            ? new Date(rec.reviewedAt).toLocaleDateString('zh-TW', {year: 'numeric', month: '2-digit', day: '2-digit'})
+            ? new Date(rec.reviewedAt).toLocaleString('zh-TW', {year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei'})
             : '',
         });
       }
@@ -447,10 +447,10 @@ export class ApprovalTaskReview implements OnInit {
           } catch { /* 圖片格式有誤則跳過 */ }
         }
 
-        // 日期（簽名線下方）
+        // 日期時間（簽名線下方）
         if (block.date) {
           doc.setFont(F, 'normal');
-          doc.setFontSize(7.5);
+          doc.setFontSize(6.5);
           doc.setTextColor(...CIS.textMuted);
           doc.text(block.date, bx + blockW / 2, lineY + 5, {align: 'center'});
         }
