@@ -83,16 +83,16 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         int? reviewerJobTitleId = null, int? reviewerDepartmentId = null,
         string? status = null, Guid? reviewerUserId = null)
     {
-        var (payments, leaves, travels, overtimes, advances, flows, records, designatedRows) =
+        var (payments, leaves, travels, overtimes, advances, writeOffs, flows, records, designatedRows) =
             await FetchAllAsync(reviewerJobTitleId: reviewerJobTitleId, reviewerDepartmentId: reviewerDepartmentId,
                                 statusFilter: status, reviewerUserId: reviewerUserId);
-        return BuildApprovalTasks(payments, leaves, travels, overtimes, advances, flows, records, designatedRows);
+        return BuildApprovalTasks(payments, leaves, travels, overtimes, advances, writeOffs, flows, records, designatedRows);
     }
 
     public async Task<ApprovalTaskDto?> GetApprovalTaskByIdAsync(int id, string applicationType)
     {
-        var (payments, leaves, travels, overtimes, advances, flows, records, designatedRows) = await FetchAllAsync(id, applicationType);
-        return BuildApprovalTasks(payments, leaves, travels, overtimes, advances, flows, records, designatedRows)
+        var (payments, leaves, travels, overtimes, advances, writeOffs, flows, records, designatedRows) = await FetchAllAsync(id, applicationType);
+        return BuildApprovalTasks(payments, leaves, travels, overtimes, advances, writeOffs, flows, records, designatedRows)
             .FirstOrDefault(t => t.Id == id && t.ApplicationType == applicationType);
     }
 
@@ -109,6 +109,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         IEnumerable<dynamic> travels,
         IEnumerable<dynamic> overtimes,
         IEnumerable<dynamic> advances,
+        IEnumerable<dynamic> writeOffs,
         IEnumerable<dynamic> flows,
         IEnumerable<dynamic> records,
         IEnumerable<dynamic> designatedRows)> FetchAllAsync(
@@ -122,6 +123,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         string travelIdWhere   = (filterId.HasValue && filterType == "travel")           ? "tr.Id = @Id" : "";
         string overtimeIdWhere = (filterId.HasValue && filterType == "overtime")         ? "ot.Id = @Id" : "";
         string advanceIdWhere  = (filterId.HasValue && filterType == "advance")          ? "adv.Id = @Id" : "";
+        string writeOffIdWhere = (filterId.HasValue && filterType == "write_off")        ? "wo.Id = @Id" : "";
 
         // ── Step-match filter for listing (reviewer's job title) ─────────────
         // Three modes:
@@ -263,6 +265,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         string travelWhere   = filterId.HasValue ? BuildWhere(travelIdWhere,   "") : BuildWhere("", StepMatchClause("tr", "u",   "travel"));
         string overtimeWhere = filterId.HasValue ? BuildWhere(overtimeIdWhere, "") : BuildWhere("", StepMatchClause("ot", "u",   "overtime"));
         string advanceWhere  = filterId.HasValue ? BuildWhere(advanceIdWhere,  "") : BuildWhere("", StepMatchClause("adv", "asub", "advance"));
+        string writeOffWhere = filterId.HasValue ? BuildWhere(writeOffIdWhere, "") : BuildWhere("", StepMatchClause("wo", "wsub", "write_off"));
 
         var paymentSql = $"""
             SELECT pr.Id, pr.Type AS PaymentType, proj.Code AS ProjectCode, proj.Name AS ProjectName,
@@ -324,6 +327,21 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             ORDER BY adv.CreatedAt DESC
             """;
 
+        var writeOffSql = $"""
+            SELECT wo.Id, wo.RequestNo, wo.AdvanceRequestId, arx.RequestNo AS AdvanceRequestNo,
+                   proj.Code AS ProjectCode, proj.Name AS ProjectName,
+                   wo.GrandTotal,
+                   wo.ApprovalStatus, wo.ApprovalItemId, wo.CurrentStepOrder,
+                   wsub.Name AS SubmittedBy, wsub.SignatureUrl AS SubmittedBySignatureUrl, wo.CreatedAt, wo.ReviewedAt, wo.ReviewNote,
+                   wo.SubmittedById
+            FROM WriteOffRecords wo
+            JOIN AdvanceRequests arx ON wo.AdvanceRequestId = arx.Id
+            LEFT JOIN Projects proj  ON arx.ProjectId       = proj.Id
+            LEFT JOIN Users   wsub   ON wo.SubmittedById    = wsub.Id
+            {writeOffWhere}
+            ORDER BY wo.CreatedAt DESC
+            """;
+
         const string flowSql = """
             SELECT ai.Id AS FlowId, ai.Name AS FlowName, ai.ApplicationType,
                    s.StepOrder, d.Name AS DepartmentName, d.Code AS DepartmentCode, j.Name AS JobTitleName,
@@ -368,11 +386,12 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         var travels        = await db.QueryAsync<dynamic>(travelSql,   param);
         var overtimes      = await db.QueryAsync<dynamic>(overtimeSql, param);
         var advances       = await db.QueryAsync<dynamic>(advanceSql,  param);
+        var writeOffs      = await db.QueryAsync<dynamic>(writeOffSql, param);
         var flows          = await db.QueryAsync<dynamic>(flowSql);
         var records        = await db.QueryAsync<dynamic>(recordSql);
         var designatedRows = await db.QueryAsync<dynamic>(drSql);
 
-        return (payments, leaves, travels, overtimes, advances, flows, records, designatedRows);
+        return (payments, leaves, travels, overtimes, advances, writeOffs, flows, records, designatedRows);
     }
 
     private static IEnumerable<ApprovalTaskDto> BuildApprovalTasks(
@@ -381,6 +400,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         IEnumerable<dynamic> travelRows,
         IEnumerable<dynamic> overtimeRows,
         IEnumerable<dynamic> advanceRows,
+        IEnumerable<dynamic> writeOffRows,
         IEnumerable<dynamic> flowRows,
         IEnumerable<dynamic> recordRows,
         IEnumerable<dynamic> designatedRows)
@@ -483,7 +503,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (decimal)x.pr.TotalAmount,
                 (DateTime?)x.pr.EstimatedPaymentDate,
                 (DateTime?)x.pr.PaidAt),
-            null, null, null, null,
+            null, null, null, null, null,
             GetRecords("payment_request", (int)x.pr.Id),
             GetDesignatedReviewers("payment_request", (int)x.pr.Id),
             (string?)x.pr.SubmittedBySignatureUrl));
@@ -508,7 +528,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (DateTime)row.EndDate,
                 (decimal)row.Hours,
                 (string)row.Reason),
-            null, null, null,
+            null, null, null, null,
             GetRecords("leave", (int)row.Id),
             GetDesignatedReviewers("leave", (int)row.Id),
             (string?)row.SubmittedBySignatureUrl));
@@ -537,7 +557,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (string?)row.ProjectCode,
                 (string?)row.ProjectName,
                 (bool)row.IsHolidayTravel),
-            null, null,
+            null, null, null,
             GetRecords("travel", (int)row.Id),
             GetDesignatedReviewers("travel", (int)row.Id),
             (string?)row.SubmittedBySignatureUrl));
@@ -561,7 +581,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (string?)row.ProjectIds,
                 (decimal)row.EstimatedHours,
                 (string)row.Reason),
-            null,
+            null, null,
             GetRecords("overtime", (int)row.Id),
             GetDesignatedReviewers("overtime", (int)row.Id),
             (string?)row.SubmittedBySignatureUrl));
@@ -588,8 +608,33 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (decimal)row.GrandTotal,
                 (DateTime?)row.EstimatedPaymentDate,
                 (DateTime?)row.PaidAt),
+            null,
             GetRecords("advance", (int)row.Id),
             GetDesignatedReviewers("advance", (int)row.Id),
+            (string?)row.SubmittedBySignatureUrl));
+
+        // Write-off requests
+        var writeOffTasks = writeOffRows.Select(row => new ApprovalTaskDto(
+            (int)row.Id,
+            "write_off",
+            $"沖銷申請 #{row.Id}（{row.ProjectCode}）",
+            (string?)row.SubmittedBy ?? "—",
+            (DateTime)row.CreatedAt,
+            (string)row.ApprovalStatus,
+            (int)row.CurrentStepOrder,
+            (DateTime?)row.ReviewedAt,
+            (string?)row.ReviewNote,
+            GetFlow("write_off"),
+            null, null, null, null, null,
+            new WriteOffTaskDetailDto(
+                (int)row.Id,
+                (string)row.RequestNo,
+                (string)row.AdvanceRequestNo,
+                (string?)row.ProjectCode ?? "",
+                (string?)row.ProjectName ?? "",
+                (decimal)row.GrandTotal),
+            GetRecords("write_off", (int)row.Id),
+            GetDesignatedReviewers("write_off", (int)row.Id),
             (string?)row.SubmittedBySignatureUrl));
 
         return paymentTasks
@@ -597,6 +642,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             .Concat(travelTasks)
             .Concat(overtimeTasks)
             .Concat(advanceTasks)
+            .Concat(writeOffTasks)
             .OrderByDescending(t => t.SubmittedAt);
     }
 

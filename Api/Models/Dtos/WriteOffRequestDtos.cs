@@ -1,0 +1,50 @@
+namespace Jabez.Api.Models.Dtos;
+
+// ── 沖銷申請 DTO ──────────────────────────────────────────────────────────────
+
+public sealed record WriteOffRequestDto(
+    int                       Id,
+    string                    RequestNo,
+    int                       AdvanceRequestId,
+    string                    AdvanceRequestNo,
+    int                       WriteOffNo,
+    string                    ProjectCode,
+    string                    ProjectName,
+    string                    ActivityName,
+    string                    ActivityPeriod,
+    decimal                   CashTotal,
+    decimal                   CheckTotal,
+    decimal                   GrandTotal,
+    string?                   Note,
+    string                    ApprovalStatus,
+    string?                   SubmittedBy,
+    DateTime                  CreatedAt,
+    DateTime?                 ReviewedAt,
+    string?                   ReviewNote,
+    WriteOffItemDto[]         Items,
+    DesignatedReviewerDto[]?  DesignatedReviewers = null,
+    decimal                   AdvanceGrandTotal = 0,
+    decimal                   AdvanceWrittenOffTotal = 0);
+
+// ── Request DTOs ──────────────────────────────────────────────────────────────
+
+public sealed record CreateWriteOffRequestRequest(
+    int                          AdvanceRequestId,
+    WriteOffItemRequest[]        Items,
+    string?                      Note,
+    DesignatedReviewerRequest[]? DesignatedReviewers = null);
+
+public sealed record UpdateWriteOffRequestRequest(
+    WriteOffItemRequest[]?       Items,
+    string?                      Note,
+    DesignatedReviewerRequest[]? DesignatedReviewers = null);
+
+// ── ApprovalTask 用 ──────────────────────────────────────────────────────────
+
+public sealed record WriteOffTaskDetailDto(
+    int       WriteOffRequestId,
+    string    RequestNo,
+    string    AdvanceRequestNo,
+    string    ProjectCode,
+    string    ProjectName,
+    decimal   GrandTotal);

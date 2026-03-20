@@ -220,6 +220,8 @@ Admin/src/app/
     │   ├── leave-requests/    # 請假申請
     │   ├── travel-requests/   # 出差申請
     │   ├── overtime-requests/ # 加班申請（走簽核流程）
+    │   ├── advance-requests/  # 預支申請
+    │   ├── write-off-requests/ # 沖銷申請（獨立簽核流程）
     │   ├── insurance-brackets/ # 勞健保級距維護
     │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出）
     │   └── settings/       # 系統設定
@@ -280,7 +282,7 @@ Api/
 │   └── RouterFunction.cs              # 唯一 HttpTrigger，catch-all route {*route}
 ├── Routing/
 │   └── AppRouter.cs                   # C# 12 List Pattern 路由分派器
-├── Handlers/                          # 18 個 Handler（業務邏輯）
+├── Handlers/                          # 19 個 Handler（業務邏輯）
 │   ├── AuthHandler.cs                 # 登入、刷新 Token
 │   ├── UserHandler.cs
 │   ├── RoleHandler.cs
@@ -294,6 +296,8 @@ Api/
 │   ├── LeaveRequestHandler.cs
 │   ├── TravelRequestHandler.cs
 │   ├── OvertimeRequestHandler.cs      # 加班申請 CRUD
+│   ├── AdvanceRequestHandler.cs       # 預支申請 CRUD
+│   ├── WriteOffRequestHandler.cs      # 沖銷申請 CRUD（獨立簽核流程）
 │   ├── AttendanceHandler.cs           # 打卡（上班/下班/加班開始/加班結束）
 │   ├── InsuranceBracketHandler.cs    # 勞健保級距 CRUD
 │   ├── PayrollHandler.cs             # 人事薪資查詢（月薪計算）
@@ -326,6 +330,8 @@ Api/
 │       ├── LeaveRequestReadService.cs
 │       ├── TravelRequestReadService.cs
 │       ├── OvertimeRequestReadService.cs
+│       ├── AdvanceRequestReadService.cs
+│       ├── WriteOffRequestReadService.cs
 │       ├── AttendanceReadService.cs
 │       ├── InsuranceBracketReadService.cs
 │       └── PayrollReadService.cs
@@ -423,7 +429,7 @@ public async Task<HttpResponseData> Run(
 | GET/POST | `/projects` | 專案列表 / 新增 |
 | GET/PUT/PATCH/DELETE | `/projects/{id}` | 專案 CRUD |
 
-#### 請款 / 請假 / 出差 / 加班申請
+#### 請款 / 請假 / 出差 / 加班 / 預支申請
 
 | Method | Path | 說明 |
 |--------|------|------|
@@ -440,6 +446,18 @@ public async Task<HttpResponseData> Run(
 | GET/POST | `/overtime-requests` | 加班申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/overtime-requests/{id}` | 加班申請 CRUD |
 | PATCH | `/overtime-requests/{id}/submit` | 送出加班申請（draft → pending） |
+| GET/POST | `/advance-requests` | 預支申請列表 / 新增（預設 draft） |
+| GET/PUT/PATCH/DELETE | `/advance-requests/{id}` | 預支申請 CRUD |
+| PATCH | `/advance-requests/{id}/submit` | 送出預支申請（draft → pending） |
+| PATCH | `/advance-requests/{id}/payment-date` | 更新撥款日期（僅財務部） |
+
+#### 沖銷申請
+
+| Method | Path | 說明 |
+|--------|------|------|
+| GET/POST | `/write-off-requests` | 沖銷申請列表 / 新增（預設 draft） |
+| GET/PUT/PATCH/DELETE | `/write-off-requests/{id}` | 沖銷申請 CRUD |
+| PATCH | `/write-off-requests/{id}/submit` | 送出沖銷申請（draft → pending） |
 
 #### 出勤打卡
 
@@ -515,6 +533,10 @@ dotnet ef database update               # 套用 Migration
 | `LeaveRequest` | 請假申請 |
 | `TravelRequest` | 出差申請（含 IsHolidayTravel 假日出差欄位） |
 | `OvertimeRequest` | 加班申請（走簽核流程） |
+| `AdvanceRequest` | 預支申請 |
+| `AdvanceRequestItem` | 預支明細 |
+| `WriteOffRecord` | 沖銷申請（獨立簽核流程，關聯 AdvanceRequest，含 ApprovalStatus/CurrentStepOrder） |
+| `WriteOffItem` | 沖銷明細（含發票號碼、檔案上傳） |
 | `RequestDesignatedReviewer` | 申請人指定審核者清單（多人依序審核） |
 | `AttendanceRecord` | 出勤打卡紀錄（每人每天一筆，含 GPS） |
 | `SystemSetting` | 系統設定 |
@@ -605,7 +627,7 @@ draft → pending → approved / returned / rejected
 
 | 欄位 | 說明 |
 |------|------|
-| `RequestType` | `payment_request` / `leave` / `travel` / `overtime` / `advance` |
+| `RequestType` | `payment_request` / `leave` / `travel` / `overtime` / `advance` / `write_off` |
 | `RequestId` | 關聯申請單 ID |
 | `ReviewerId` | 審核者 User ID |
 | `StepOrder` | 審核順序（1, 2, 3...），依序逐一通過 |
@@ -621,7 +643,7 @@ draft → pending → approved / returned / rejected
 - 送出（submit）時，如果流程中有 `UseApplicantDesignated` 步驟，`designatedReviewers` 清單必填且至少 1 人
 - 依 `StepOrder` 升序逐一審核，前一人核准後才輪到下一人
 - 指定審核者不需擁有全域 `approval-tasks:write` 權限，被指定即可審核
-- 自審規則：leave / travel / overtime — 任何一位指定審核者是申請人本人則報錯；payment_request / advance — 申請人排第 1 位時自動跳過，排其他位置不允許
+- 自審規則：leave / travel / overtime — 任何一位指定審核者是申請人本人則報錯；payment_request / advance / write_off — 申請人排第 1 位時自動跳過，排其他位置不允許
 - 退回時：當前等待審核者狀態設為 `returned`，重送時所有指定審核者重置為 `pending`
 - 此模式與 `UseDirectSupervisor`、`UseApplicantDepartment` 互斥（每個 ApprovalStep 擇一使用）
 - 一個流程建議只有一個 `UseApplicantDesignated` 步驟
@@ -653,13 +675,13 @@ draft → pending → approved / returned / rejected
 
 ### 各申請類型的升級規則
 
-| | 加班 | 請假 | 出差 | 請款 |
-|---|---|---|---|---|
-| 往上層部門找主管 | ✓ | ✓ | ✓ | ✗（維持自動跳過） |
-| 主管請假時找代理人 | ✓ | ✗ | ✗ | — |
-| 遞迴往上 | ✓ | ✓ | ✓ | — |
-| 停在總監之前 | ✓ | ✓ | ✗ | — |
-| 找不到人時 | 報錯 | 報錯 | 報錯 | — |
+| | 加班 | 請假 | 出差 | 請款 | 預支 | 沖銷 |
+|---|---|---|---|---|---|---|
+| 往上層部門找主管 | ✓ | ✓ | ✓ | ✗（自動跳過） | ✗（自動跳過） | ✗（自動跳過） |
+| 主管請假時找代理人 | ✓ | ✗ | ✗ | — | — | — |
+| 遞迴往上 | ✓ | ✓ | ✓ | — | — | — |
+| 停在總監之前 | ✓ | ✓ | ✗ | — | — | — |
+| 找不到人時 | 報錯 | 報錯 | 報錯 | — | — | — |
 
 ### 升級流程（以加班為例）
 

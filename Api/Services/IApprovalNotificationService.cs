@@ -29,4 +29,7 @@ public interface IApprovalNotificationService
 
     /// <summary>請款/預支申請核准後，通知財務部人員可以進行撥款。</summary>
     Task NotifyFinanceDeptAsync(int applicationId, Guid applicantId, string applicationType = "payment_request");
+
+    /// <summary>沖銷結案時，若沖銷累計超過預支金額，通知財務部需匯款差額。</summary>
+    Task NotifyFinanceRefundAsync(Models.Entities.AdvanceRequest advance, decimal refundAmount);
 }

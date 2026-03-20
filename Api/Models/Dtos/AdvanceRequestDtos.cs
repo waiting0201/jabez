@@ -50,7 +50,11 @@ public sealed record AdvanceRequestDto(
     string?                   ReviewNote,
     AdvanceRequestItemDto[]   Items,
     WriteOffSummaryDto[]      WriteOffs,
-    DesignatedReviewerDto[]?  DesignatedReviewers    = null);
+    DesignatedReviewerDto[]?  DesignatedReviewers    = null,
+    bool                      IsClosed               = false,
+    DateTime?                 ClosedAt               = null,
+    decimal?                  RefundAmount           = null,
+    DateTime?                 RefundedAt             = null);
 
 // ── WriteOff DTOs ───────────────────────────────────────────────────────────
 

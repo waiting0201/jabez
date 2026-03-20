@@ -7,3 +7,8 @@
 
 .DS_Store
 Thumbs.db
+
+# Azurite Storage Emulator
+AzuriteConfig/
+__azurite_db_*__.json
+__blobstorage__/

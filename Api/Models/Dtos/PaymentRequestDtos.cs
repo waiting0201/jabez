@@ -70,13 +70,17 @@ public sealed record UpdatePaymentDateRequest(
     DateTime? PaidAt,
     string?   ApprovalStatus);
 
+// 退還差額匯款日期
+public sealed record RefundDateRequest(DateTime? RefundedAt);
+
 // 審核動作（核准 / 退回修改 / 拒絕）
 public sealed record ReviewPaymentRequestRequest(
     string    Action,           // "approved" | "returned" | "rejected"
     string?   ReviewNote,
-    string    ApplicationType,  // "payment_request" | "leave" | "travel" | "overtime"
-    DateTime? EstimatedPaymentDate,  // 預計撥款日（僅請款申請使用）
-    DateTime? PaidAt);               // 撥款日（僅請款申請使用）
+    string    ApplicationType,  // "payment_request" | "leave" | "travel" | "overtime" | "advance" | "write_off"
+    DateTime? EstimatedPaymentDate,  // 預計撥款日（僅請款/預支申請使用）
+    DateTime? PaidAt,                // 撥款日（僅請款/預支申請使用）
+    bool?     CloseAdvance);         // 預支結案（僅沖銷申請的財務部步驟使用）
 
 public sealed record ApprovalRecordDto(
     int      StepOrder,
@@ -156,6 +160,7 @@ public sealed record ApprovalTaskDto(
     TravelTaskDetailDto?   TravelDetail,
     OvertimeTaskDetailDto? OvertimeDetail,
     AdvanceTaskDetailDto?  AdvanceDetail,
+    WriteOffTaskDetailDto? WriteOffDetail,
     ApprovalRecordDto[]         ApprovalRecords,
     DesignatedReviewerDto[]?    DesignatedReviewers    = null,
     string?                     SubmittedBySignatureUrl = null);  // 申請人簽名檔 URL

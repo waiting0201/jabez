@@ -8,41 +8,16 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
-using System.Text.Json;
 
 namespace Jabez.Api.Handlers;
 
 public sealed class AdvanceRequestHandler(
     AppDbContext db,
     IAdvanceRequestReadService reader,
-    IBlobStorageService blob,
     IJwtService jwtService,
     IApprovalNotificationService notifier,
     IApprovalFlowService approvalFlow)
 {
-    private const string ContainerName = "write-off-invoices";
-
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        PropertyNameCaseInsensitive = true,
-    };
-
-    /// <summary>沖銷明細 multipart JSON 的內部結構</summary>
-    private sealed record WriteOffItemMetadata(
-        string   Category,
-        int      SeqNo,
-        string   ItemName,
-        decimal  UnitPrice,
-        string   Quantity,
-        decimal  TotalPrice,
-        decimal  CashAmount,
-        decimal  CheckAmount,
-        string?  Note,
-        string?  InvoiceNo,
-        string?  FileName,
-        string?  FileUrl,
-        int      FileIndex,
-        int      SortOrder);
     // ── 列表（分頁）────────────────────────────────────────────────────────────
 
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
@@ -440,180 +415,45 @@ public sealed class AdvanceRequestHandler(
         return new OkObjectResult(ApiResponse.Ok(new { ar.Id, ar.EstimatedPaymentDate, ar.PaidAt }, "撥款日期已更新。"));
     }
 
-    // ── 沖銷：列表 ──────────────────────────────────────────────────────────
+    // ── 退還差額匯款日期（僅財務部）──────────────────────────────────────────
 
-    public async Task<IActionResult> GetWriteOffsAsync(HttpRequest req, string id)
+    public async Task<IActionResult> RefundDateAsync(HttpRequest req, string id)
     {
         if (!int.TryParse(id, out var intId))
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid advance request ID format."));
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid ID format."));
 
-        if (!await db.AdvanceRequests.AnyAsync(x => x.Id == intId))
-            return new NotFoundObjectResult(ApiResponse.Fail("Advance request not found."));
+        var principal = await jwtService.ValidateRequestAsync(req);
+        if (principal is null)
+            return new UnauthorizedObjectResult(ApiResponse.Fail("Unauthorized."));
 
-        var records = await reader.GetWriteOffsAsync(intId);
-        return new OkObjectResult(ApiResponse.Ok(records));
-    }
+        var userIdStr = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return new UnauthorizedObjectResult(ApiResponse.Fail("Invalid token claims."));
 
-    // ── 沖銷：新增（multipart/form-data，支援發票檔案上傳）─────────────────
+        var user = await db.Users.AsNoTracking().Include(u => u.Department).FirstOrDefaultAsync(u => u.Id == userId);
+        if (user is null)
+            return new UnauthorizedObjectResult(ApiResponse.Fail("User not found."));
 
-    public async Task<IActionResult> CreateWriteOffAsync(HttpRequest req, string id)
-    {
-        var userId = await GetUserIdAsync(req);
-        if (!int.TryParse(id, out var intId))
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid advance request ID format."));
+        if (!user.IsSuperAdmin && user.Department?.Code != "FIN")
+            return new ForbidResult();
 
-        var ar = await db.AdvanceRequests.FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId)
+        var ar = await db.AdvanceRequests.FindAsync(intId)
             ?? throw AppException.NotFound("AdvanceRequest");
 
-        if (ar.ApprovalStatus != "approved")
-            throw AppException.BadRequest("Only approved advance requests can have write-offs.");
+        if (!ar.IsClosed)
+            return new BadRequestObjectResult(ApiResponse.Fail("只有已結案的預支申請可以設定匯款日期。"));
 
-        if (!ar.PaidAt.HasValue)
-            throw AppException.BadRequest("預支尚未撥款，無法沖銷。");
+        if (ar.RefundAmount is null || ar.RefundAmount <= 0)
+            return new BadRequestObjectResult(ApiResponse.Fail("此預支申請無需退還差額。"));
 
-        var form = await req.ReadFormAsync();
-        var note = form["note"].ToString();
-        var itemsJson = form["items"].ToString();
+        var body = await req.ReadFromJsonAsync<RefundDateRequest>();
+        if (body?.RefundedAt is null)
+            return new BadRequestObjectResult(ApiResponse.Fail("請提供匯款日期。"));
 
-        var items = JsonSerializer.Deserialize<WriteOffItemMetadata[]>(itemsJson, JsonOpts);
-        if (items is null || items.Length == 0)
-            return new BadRequestObjectResult(ApiResponse.Fail("At least one write-off item is required."));
-
-        var cashTotal  = items.Sum(i => i.CashAmount);
-        var checkTotal = items.Sum(i => i.CheckAmount);
-        var grandTotal = items.Sum(i => i.TotalPrice);
-
-        // 批次內發票號碼重複檢查
-        var invoiceNos = items
-            .Where(i => !string.IsNullOrWhiteSpace(i.InvoiceNo))
-            .Select(i => i.InvoiceNo!)
-            .ToList();
-        if (invoiceNos.Count > 0)
-        {
-            var duplicatesInBatch = invoiceNos
-                .GroupBy(n => n)
-                .Where(g => g.Count() > 1)
-                .Select(g => g.Key)
-                .ToList();
-            if (duplicatesInBatch.Count > 0)
-                throw AppException.Conflict($"發票號碼重複：{string.Join(", ", duplicatesInBatch)}");
-
-            // 資料庫唯一性檢查（跨所有沖銷 + 請款發票，排除已拒絕的申請）
-            var existInWriteOff = await db.Set<WriteOffItem>()
-                .Where(wi => invoiceNos.Contains(wi.InvoiceNo!))
-                .Select(wi => wi.InvoiceNo!)
-                .Distinct()
-                .ToListAsync();
-            var existInInvoice = await db.InvoiceItems
-                .Where(ii => invoiceNos.Contains(ii.InvoiceNo)
-                          && ii.PaymentRequest.ApprovalStatus != "rejected")
-                .Select(ii => ii.InvoiceNo)
-                .Distinct()
-                .ToListAsync();
-            var existingNos = existInWriteOff.Union(existInInvoice).Distinct().ToList();
-            if (existingNos.Count > 0)
-                throw AppException.Conflict($"發票號碼已存在：{string.Join(", ", existingNos)}");
-        }
-
-        // 檢查累計沖銷金額不超過預支金額
-        var existingTotal = await db.WriteOffRecords
-            .Where(w => w.AdvanceRequestId == intId)
-            .SumAsync(w => w.GrandTotal);
-        if (existingTotal + grandTotal > ar.GrandTotal)
-            throw AppException.BadRequest($"沖銷金額超過預支餘額。預支總額：{ar.GrandTotal:N0}，已沖銷：{existingTotal:N0}，本次沖銷：{grandTotal:N0}");
-
-        // 取得下一個沖銷編號
-        var lastNo = await db.WriteOffRecords
-            .Where(w => w.AdvanceRequestId == intId)
-            .OrderByDescending(w => w.WriteOffNo)
-            .Select(w => w.WriteOffNo)
-            .FirstOrDefaultAsync();
-
-        // 上傳檔案至 Blob Storage
-        var files = form.Files.GetFiles("files");
-        var writeOffItems = new List<WriteOffItem>();
-        foreach (var (item, idx) in items.Select((v, i) => (v, i)))
-        {
-            string? fileUrl = null;
-            if (item.FileIndex >= 0 && item.FileIndex < files.Count)
-            {
-                var file = files[item.FileIndex];
-                var ext = Path.GetExtension(file.FileName);
-                var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
-                using var stream = file.OpenReadStream();
-                fileUrl = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
-            }
-
-            writeOffItems.Add(new WriteOffItem
-            {
-                Category    = item.Category,
-                SeqNo       = item.SeqNo,
-                ItemName    = item.ItemName,
-                UnitPrice   = item.UnitPrice,
-                Quantity    = item.Quantity,
-                TotalPrice  = item.TotalPrice,
-                CashAmount  = item.CashAmount,
-                CheckAmount = item.CheckAmount,
-                Note        = item.Note,
-                InvoiceNo   = item.InvoiceNo,
-                FileName    = item.FileName,
-                FileUrl     = fileUrl,
-                SortOrder   = item.SortOrder > 0 ? item.SortOrder : idx,
-            });
-        }
-
-        var wo = new WriteOffRecord
-        {
-            AdvanceRequestId = intId,
-            WriteOffNo       = lastNo + 1,
-            CashTotal        = cashTotal,
-            CheckTotal       = checkTotal,
-            GrandTotal       = grandTotal,
-            Note             = note,
-            SubmittedById    = userId,
-            CreatedAt        = Clock.Now,
-        };
-        wo.Items = writeOffItems;
-
-        db.WriteOffRecords.Add(wo);
+        ar.RefundedAt = body.RefundedAt.Value;
         await db.SaveChangesAsync();
 
-        var dto = await reader.GetWriteOffByIdAsync(wo.Id);
-        return new ObjectResult(ApiResponse.Ok(dto, "Write-off created.")) { StatusCode = 201 };
-    }
-
-    // ── 沖銷：單筆查詢 ──────────────────────────────────────────────────────
-
-    public async Task<IActionResult> GetWriteOffByIdAsync(HttpRequest req, string id, string writeOffId)
-    {
-        if (!int.TryParse(id, out var intId) || !int.TryParse(writeOffId, out var woId))
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid ID format."));
-
-        if (!await db.AdvanceRequests.AnyAsync(x => x.Id == intId))
-            return new NotFoundObjectResult(ApiResponse.Fail("Advance request not found."));
-
-        var dto = await reader.GetWriteOffByIdAsync(woId);
-        if (dto is null)
-            return new NotFoundObjectResult(ApiResponse.Fail("Write-off not found."));
-        return new OkObjectResult(ApiResponse.Ok(dto));
-    }
-
-    // ── 沖銷：刪除 ──────────────────────────────────────────────────────────
-
-    public async Task<IActionResult> DeleteWriteOffAsync(HttpRequest req, string id, string writeOffId)
-    {
-        var userId = await GetUserIdAsync(req);
-        if (!int.TryParse(id, out var intId) || !int.TryParse(writeOffId, out var woId))
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid ID format."));
-
-        var wo = await db.WriteOffRecords
-            .FirstOrDefaultAsync(w => w.Id == woId && w.AdvanceRequestId == intId && w.SubmittedById == userId)
-            ?? throw AppException.NotFound("WriteOffRecord");
-
-        db.WriteOffRecords.Remove(wo);
-        await db.SaveChangesAsync();
-
-        return new OkObjectResult(ApiResponse.Ok($"Write-off '{writeOffId}' deleted."));
+        return new OkObjectResult(ApiResponse.Ok(new { ar.Id, ar.RefundAmount, ar.RefundedAt }, "匯款日期已更新。"));
     }
 
     // ── Helper ──────────────────────────────────────────────────────────────

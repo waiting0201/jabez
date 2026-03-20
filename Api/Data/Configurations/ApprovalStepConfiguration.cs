@@ -58,7 +58,12 @@ public class ApprovalStepConfiguration : IEntityTypeConfiguration<ApprovalStep>
             new ApprovalStep { Id = 7, ApprovalItemId = 5, StepOrder = 1, DepartmentId = null, JobTitleId = 4, UseApplicantDepartment = true,  CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             // 預支申請: Step1=申請人部門主管 → Step2=財務部主管
             new ApprovalStep { Id = 10, ApprovalItemId = 6, StepOrder = 1, DepartmentId = null, JobTitleId = 4, UseApplicantDepartment = true,  Note = "部門主管核准",   CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new ApprovalStep { Id = 11, ApprovalItemId = 6, StepOrder = 2, DepartmentId = 2,    JobTitleId = 4, UseApplicantDepartment = false, Note = "財務部確認撥款", CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+            new ApprovalStep { Id = 11, ApprovalItemId = 6, StepOrder = 2, DepartmentId = 2,    JobTitleId = 4, UseApplicantDepartment = false, Note = "財務部確認撥款", CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            // 沖銷申請: Step1=申請人部門主管初核 → Step2=會計部主管審核 → Step3=財務部主管撥款 → Step4=總監最終核決（與請款相同）
+            new ApprovalStep { Id = 20, ApprovalItemId = 7, StepOrder = 1, DepartmentId = null, JobTitleId = 4, UseApplicantDepartment = true,  Note = "部門主管初核",                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new ApprovalStep { Id = 21, ApprovalItemId = 7, StepOrder = 2, DepartmentId = 1,    JobTitleId = 4, UseApplicantDepartment = false, Note = "取得紙本資料審核",                         CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new ApprovalStep { Id = 22, ApprovalItemId = 7, StepOrder = 3, DepartmentId = 2,    JobTitleId = 4, UseApplicantDepartment = false, Note = "填入預計撥款日，核決及撥款後，填入撥款日", CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new ApprovalStep { Id = 23, ApprovalItemId = 7, StepOrder = 4, DepartmentId = 4,    JobTitleId = 5, UseApplicantDepartment = false, Note = "最終核決",                                 CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
         );
     }
 }

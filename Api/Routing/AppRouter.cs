@@ -36,6 +36,7 @@ public sealed class AppRouter(
     ProjectWaterLevelHandler projectWaterLevel,
     InvoiceOcrHandler      invoiceOcr,
     AdvanceRequestHandler  advanceRequests,
+    WriteOffRequestHandler writeOffRequests,
     FileHandler            files)
 {
     public async Task<IActionResult> RouteAsync(HttpRequest req, string route)
@@ -168,14 +169,21 @@ public sealed class AppRouter(
             ("POST",   ["advance-requests"])                                   => await advanceRequests.CreateAsync(req),
             ("PATCH",  ["advance-requests", var id, "submit"])                 => await advanceRequests.SubmitAsync(req, id),
             ("PATCH",  ["advance-requests", var id, "payment-date"])           => await advanceRequests.UpdatePaymentDateAsync(req, id),
-            ("GET",    ["advance-requests", var id, "write-offs"])             => await advanceRequests.GetWriteOffsAsync(req, id),
-            ("POST",   ["advance-requests", var id, "write-offs"])             => await advanceRequests.CreateWriteOffAsync(req, id),
-            ("GET",    ["advance-requests", var id, "write-offs", var wid])    => await advanceRequests.GetWriteOffByIdAsync(req, id, wid),
-            ("DELETE", ["advance-requests", var id, "write-offs", var wid])    => await advanceRequests.DeleteWriteOffAsync(req, id, wid),
+            ("PATCH",  ["advance-requests", var id, "refund-date"])            => await advanceRequests.RefundDateAsync(req, id),
             ("GET",    ["advance-requests", var id])                           => await advanceRequests.GetByIdAsync(req, id),
             ("PUT",    ["advance-requests", var id])                           => await advanceRequests.UpdateAsync(req, id),
             ("PATCH",  ["advance-requests", var id])                           => await advanceRequests.UpdateAsync(req, id),
             ("DELETE", ["advance-requests", var id])                           => await advanceRequests.DeleteAsync(req, id),
+
+            // ── Write-Off Requests ──────────────────────────────────────────
+            ("GET",    ["write-off-requests", "available-advances"])            => await writeOffRequests.GetAvailableAdvancesAsync(req),
+            ("GET",    ["write-off-requests"])                                  => await writeOffRequests.GetAllAsync(req),
+            ("POST",   ["write-off-requests"])                                 => await writeOffRequests.CreateAsync(req),
+            ("PATCH",  ["write-off-requests", var id, "submit"])               => await writeOffRequests.SubmitAsync(req, id),
+            ("GET",    ["write-off-requests", var id])                         => await writeOffRequests.GetByIdAsync(req, id),
+            ("PUT",    ["write-off-requests", var id])                         => await writeOffRequests.UpdateAsync(req, id),
+            ("PATCH",  ["write-off-requests", var id])                         => await writeOffRequests.UpdateAsync(req, id),
+            ("DELETE", ["write-off-requests", var id])                         => await writeOffRequests.DeleteAsync(req, id),
 
             // ── Leave Requests ─────────────────────────────────────────────────
             ("GET",    ["leave-requests"])                         => await leaveRequests.GetAllAsync(req),
@@ -333,10 +341,17 @@ public sealed class AppRouter(
             ("PUT",    ["advance-requests", _])          => PermissionCodes.AdvanceRequestsWrite,
             ("PATCH",  ["advance-requests", _, "submit"])       => PermissionCodes.AdvanceRequestsWrite,
             ("PATCH",  ["advance-requests", _, "payment-date"]) => PermissionCodes.AdvanceRequestsWrite,
+            ("PATCH",  ["advance-requests", _, "refund-date"])  => PermissionCodes.AdvanceRequestsWrite,
             ("PATCH",  ["advance-requests", _])                 => PermissionCodes.AdvanceRequestsWrite,
-            ("POST",   ["advance-requests", _, "write-offs"])   => PermissionCodes.AdvanceRequestsWrite,
-            ("DELETE", ["advance-requests", _, "write-offs", _]) => PermissionCodes.AdvanceRequestsDelete,
             ("DELETE", ["advance-requests", _])          => PermissionCodes.AdvanceRequestsDelete,
+
+            // Write-Off Requests
+            ("GET",    ["write-off-requests", ..])              => PermissionCodes.WriteOffRequestsRead,
+            ("POST",   ["write-off-requests"])                  => PermissionCodes.WriteOffRequestsWrite,
+            ("PUT",    ["write-off-requests", _])               => PermissionCodes.WriteOffRequestsWrite,
+            ("PATCH",  ["write-off-requests", _, "submit"])     => PermissionCodes.WriteOffRequestsWrite,
+            ("PATCH",  ["write-off-requests", _])               => PermissionCodes.WriteOffRequestsWrite,
+            ("DELETE", ["write-off-requests", _])               => PermissionCodes.WriteOffRequestsDelete,
 
             // Leave Requests
             ("GET",    ["leave-requests", ..])           => PermissionCodes.LeaveRequestsRead,

@@ -99,7 +99,11 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             // 預支申請
             new Permission { Id = "51", Code = "advance-requests:read",   Name = "瀏覽",     Module = "預支申請" },
             new Permission { Id = "52", Code = "advance-requests:write",  Name = "新增/修改", Module = "預支申請" },
-            new Permission { Id = "53", Code = "advance-requests:delete", Name = "刪除",     Module = "預支申請" }
+            new Permission { Id = "53", Code = "advance-requests:delete", Name = "刪除",     Module = "預支申請" },
+            // 沖銷申請
+            new Permission { Id = "54", Code = "write-off-requests:read",   Name = "瀏覽",     Module = "沖銷申請" },
+            new Permission { Id = "55", Code = "write-off-requests:write",  Name = "新增/修改", Module = "沖銷申請" },
+            new Permission { Id = "56", Code = "write-off-requests:delete", Name = "刪除",     Module = "沖銷申請" }
         );
     }
 }

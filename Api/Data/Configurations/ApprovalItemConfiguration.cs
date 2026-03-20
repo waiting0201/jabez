@@ -43,7 +43,8 @@ public class ApprovalItemConfiguration : IEntityTypeConfiguration<ApprovalItem>
             new ApprovalItem { Id = 3, Name = "加班申請", Code = "overtime_request",  IsActive = true, ApplicationType = "overtime",         CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new ApprovalItem { Id = 4, Name = "請假申請", Code = "leave_request",     IsActive = true, ApplicationType = "leave",           CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new ApprovalItem { Id = 5, Name = "出差申請", Code = "travel_request",    IsActive = true, ApplicationType = "travel",          CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new ApprovalItem { Id = 6, Name = "預支申請", Code = "advance_request",  IsActive = true, ApplicationType = "advance",         CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+            new ApprovalItem { Id = 6, Name = "預支申請", Code = "advance_request",  IsActive = true, ApplicationType = "advance",         CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new ApprovalItem { Id = 7, Name = "沖銷申請", Code = "write_off_request", IsActive = true, ApplicationType = "write_off",      CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
         );
     }
 }

@@ -65,5 +65,18 @@ public class AdvanceRequestConfiguration : IEntityTypeConfiguration<AdvanceReque
                .HasForeignKey(a => a.ReviewedById)
                .OnDelete(DeleteBehavior.NoAction);
 
+        // 結案欄位
+        builder.Property(a => a.IsClosed)
+               .HasDefaultValue(false);
+
+        builder.HasOne(a => a.ClosedBy)
+               .WithMany()
+               .HasForeignKey(a => a.ClosedById)
+               .OnDelete(DeleteBehavior.NoAction);
+
+        // 退還差額
+        builder.Property(a => a.RefundAmount)
+               .HasColumnType("decimal(18,2)");
+
     }
 }

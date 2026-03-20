@@ -14,6 +14,7 @@ public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceReques
                ar.ApprovalStatus, ar.EstimatedPaymentDate, ar.PaidAt,
                sub.Name AS SubmittedBy, ar.CreatedAt,
                ar.ReviewedAt, ar.ReviewNote,
+               ar.IsClosed, ar.ClosedAt, ar.RefundAmount, ar.RefundedAt,
                ai.Id AS ItemId, ai.Category, ai.SeqNo, ai.ItemName,
                ai.UnitPrice, ai.Quantity, ai.TotalPrice,
                ai.CashAmount AS ItemCash, ai.CheckAmount AS ItemCheck,
@@ -22,19 +23,6 @@ public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceReques
         LEFT JOIN Projects proj          ON ar.ProjectId    = proj.Id
         LEFT JOIN Users   sub            ON ar.SubmittedById = sub.Id
         LEFT JOIN AdvanceRequestItems ai ON ai.AdvanceRequestId = ar.Id
-        """;
-
-    private const string WriteOffBaseSql = """
-        SELECT wo.Id, wo.WriteOffNo, wo.CashTotal, wo.CheckTotal, wo.GrandTotal,
-               wo.Note, sub.Name AS SubmittedBy, wo.CreatedAt,
-               wi.Id AS WiId, wi.Category, wi.SeqNo, wi.ItemName,
-               wi.UnitPrice, wi.Quantity, wi.TotalPrice,
-               wi.CashAmount AS WiCash, wi.CheckAmount AS WiCheck,
-               wi.Note AS WiNote, wi.InvoiceNo AS WiInvoiceNo,
-               wi.FileName AS WiFileName, wi.FileUrl AS WiFileUrl, wi.SortOrder
-        FROM WriteOffRecords wo
-        LEFT JOIN Users sub       ON wo.SubmittedById = sub.Id
-        LEFT JOIN WriteOffItems wi ON wi.WriteOffRecordId = wo.Id
         """;
 
     public async Task<PagedResult<AdvanceRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null)
@@ -99,20 +87,6 @@ public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceReques
         return dto with { DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null };
     }
 
-    public async Task<IEnumerable<WriteOffRecordDto>> GetWriteOffsAsync(int advanceRequestId)
-    {
-        var sql = WriteOffBaseSql + " WHERE wo.AdvanceRequestId = @Id ORDER BY wo.WriteOffNo, wi.SortOrder, wi.Id";
-        var rows = await db.QueryAsync<dynamic>(sql, new { Id = advanceRequestId });
-        return GroupToWriteOffRecords(rows);
-    }
-
-    public async Task<WriteOffRecordDto?> GetWriteOffByIdAsync(int writeOffId)
-    {
-        var sql = WriteOffBaseSql + " WHERE wo.Id = @Id ORDER BY wi.SortOrder, wi.Id";
-        var rows = await db.QueryAsync<dynamic>(sql, new { Id = writeOffId });
-        return GroupToWriteOffRecords(rows).FirstOrDefault();
-    }
-
     // ── Grouping helpers ─────────────────────────────────────────────────────
 
     private static IEnumerable<AdvanceRequestDto> GroupToAdvanceRequests(
@@ -169,37 +143,12 @@ public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceReques
                 (string?)x.ar.ReviewNote,
                 [.. x.items],
                 wos,
-                null); // DesignatedReviewers 以 null 回傳
+                null,                               // DesignatedReviewers 以 null 回傳
+                (bool)x.ar.IsClosed,
+                (DateTime?)x.ar.ClosedAt,
+                (decimal?)x.ar.RefundAmount,
+                (DateTime?)x.ar.RefundedAt);
         });
     }
 
-    private static IEnumerable<WriteOffRecordDto> GroupToWriteOffRecords(IEnumerable<dynamic> rows)
-    {
-        var dict = new Dictionary<int, (dynamic wo, List<WriteOffItemDto> items)>();
-        foreach (var row in rows)
-        {
-            int id = (int)row.Id;
-            if (!dict.ContainsKey(id))
-                dict[id] = (row, []);
-            if (row.WiId is not null)
-                dict[id].items.Add(new WriteOffItemDto(
-                    (int)row.WiId, (string)row.Category, (int)row.SeqNo,
-                    (string)row.ItemName, (decimal)row.UnitPrice, (string)row.Quantity,
-                    (decimal)row.TotalPrice, (decimal)row.WiCash, (decimal)row.WiCheck,
-                    (string?)row.WiNote, (string?)row.WiInvoiceNo,
-                    (string?)row.WiFileName, (string?)row.WiFileUrl,
-                    (int)row.SortOrder));
-        }
-
-        return dict.Values.Select(x => new WriteOffRecordDto(
-            (int)x.wo.Id,
-            (int)x.wo.WriteOffNo,
-            (decimal)x.wo.CashTotal,
-            (decimal)x.wo.CheckTotal,
-            (decimal)x.wo.GrandTotal,
-            (string?)x.wo.Note,
-            (string?)x.wo.SubmittedBy,
-            (DateTime)x.wo.CreatedAt,
-            [.. x.items]));
-    }
 }

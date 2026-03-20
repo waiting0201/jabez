@@ -4,6 +4,7 @@ using Jabez.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Jabez.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260320072900_AddWriteOffRequestApprovalFields")]
+    partial class AddWriteOffRequestApprovalFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -59,12 +62,6 @@ namespace Jabez.Api.Data.Migrations
                     b.Property<decimal>("CheckTotal")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<DateTime?>("ClosedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("ClosedById")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -79,22 +76,11 @@ namespace Jabez.Api.Data.Migrations
                     b.Property<decimal>("GrandTotal")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<bool>("IsClosed")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
                     b.Property<DateTime?>("PaidAt")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("ProjectId")
                         .HasColumnType("int");
-
-                    b.Property<decimal?>("RefundAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime?>("RefundedAt")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("RequestNo")
                         .IsRequired()
@@ -117,8 +103,6 @@ namespace Jabez.Api.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ApprovalItemId");
-
-                    b.HasIndex("ClosedById");
 
                     b.HasIndex("ProjectId");
 
@@ -3171,11 +3155,6 @@ namespace Jabez.Api.Data.Migrations
                         .HasForeignKey("ApprovalItemId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Jabez.Api.Models.Entities.User", "ClosedBy")
-                        .WithMany()
-                        .HasForeignKey("ClosedById")
-                        .OnDelete(DeleteBehavior.NoAction);
-
                     b.HasOne("Jabez.Api.Models.Entities.Project", "Project")
                         .WithMany("AdvanceRequests")
                         .HasForeignKey("ProjectId")
@@ -3193,8 +3172,6 @@ namespace Jabez.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("ApprovalItem");
-
-                    b.Navigation("ClosedBy");
 
                     b.Navigation("Project");
 

@@ -20,7 +20,7 @@ namespace Jabez.Api.Handlers;
 public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadService reader, IJwtService jwtService, IApprovalNotificationService notifier, IApprovalFlowService approvalFlow)
 {
     private static readonly HashSet<string> ValidActions  = ["approved", "returned", "rejected"];
-    public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "travel", "overtime", "advance"];
+    public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "travel", "overtime", "advance", "write_off"];
 
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
@@ -257,6 +257,64 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     setStatus:     s  => adv.ApprovalStatus   = s,
                     incrementStep: () => adv.CurrentStepOrder++,
                     setReviewed:   () => { adv.ReviewedAt = Clock.Now; adv.ReviewedById = reviewerId; adv.ReviewNote = body.ReviewNote?.Trim(); });
+                await db.SaveChangesAsync();
+                break;
+            }
+            case "write_off":
+            {
+                var wo = await db.WriteOffRecords.FindAsync(intId)
+                    ?? throw AppException.NotFound("WriteOffRecord");
+                if (wo.ApprovalStatus != "pending")
+                    throw AppException.BadRequest("Only pending write-off records can be reviewed.");
+
+                var woApplicant = wo.SubmittedById.HasValue
+                    ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == wo.SubmittedById.Value)
+                    : null;
+                await AuthorizeStepAsync(wo.ApprovalItemId, wo.CurrentStepOrder, reviewer, woApplicant?.DepartmentId, "write_off", wo.Id, woApplicant?.JobTitleId);
+                // 記住審核前的步驟（ProcessReviewAsync 可能會 increment）
+                var reviewedStepOrder = wo.CurrentStepOrder;
+
+                await ProcessReviewAsync("write_off", wo.Id, wo.CurrentStepOrder,
+                    wo.ApprovalItemId, body.Action, body.ReviewNote, reviewerId, wo.SubmittedById,
+                    setStatus:     s  => wo.ApprovalStatus   = s,
+                    incrementStep: () => wo.CurrentStepOrder++,
+                    setReviewed:   () => { wo.ReviewedAt = Clock.Now; wo.ReviewedById = reviewerId; wo.ReviewNote = body.ReviewNote?.Trim(); });
+
+                // 預支結案：財務部步驟核准時，可勾選結案
+                if (body.CloseAdvance == true && body.Action == "approved")
+                {
+                    // 驗證審核的步驟是否為財務部
+                    var currentStep = wo.ApprovalItemId.HasValue
+                        ? await db.ApprovalSteps.AsNoTracking()
+                            .Include(s => s.Department)
+                            .FirstOrDefaultAsync(s => s.ApprovalItemId == wo.ApprovalItemId && s.StepOrder == reviewedStepOrder)
+                        : null;
+
+                    if (currentStep?.Department?.Code == "FIN" || reviewer.IsSuperAdmin)
+                    {
+                        var advance = await db.AdvanceRequests.FindAsync(wo.AdvanceRequestId);
+                        if (advance is not null && !advance.IsClosed)
+                        {
+                            advance.IsClosed   = true;
+                            advance.ClosedAt   = Clock.Now;
+                            advance.ClosedById = reviewerId;
+
+                            // 檢查是否有退還差額（沖銷累計 > 預支金額）
+                            var totalWrittenOff = await db.WriteOffRecords
+                                .Where(w => w.AdvanceRequestId == wo.AdvanceRequestId && w.ApprovalStatus != "rejected")
+                                .SumAsync(w => (decimal?)w.GrandTotal) ?? 0m;
+
+                            var diff = totalWrittenOff - advance.GrandTotal;
+                            if (diff > 0)
+                            {
+                                advance.RefundAmount = diff;
+                                // 寄通知信給財務部全員
+                                await notifier.NotifyFinanceRefundAsync(advance, diff);
+                            }
+                        }
+                    }
+                }
+
                 await db.SaveChangesAsync();
                 break;
             }

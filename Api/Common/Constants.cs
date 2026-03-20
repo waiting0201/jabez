@@ -52,6 +52,9 @@ public static class PermissionCodes
     public const string AdvanceRequestsRead             = "advance-requests:read";
     public const string AdvanceRequestsWrite            = "advance-requests:write";
     public const string AdvanceRequestsDelete           = "advance-requests:delete";
+    public const string WriteOffRequestsRead            = "write-off-requests:read";
+    public const string WriteOffRequestsWrite           = "write-off-requests:write";
+    public const string WriteOffRequestsDelete          = "write-off-requests:delete";
 }
 
 public static class RoleNames

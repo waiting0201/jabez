@@ -17,6 +17,7 @@ public sealed class ApprovalNotificationService(
         ["travel"]          = "出差申請",
         ["overtime"]        = "加班申請",
         ["advance"]         = "預支申請",
+        ["write_off"]       = "沖銷申請",
     };
 
     /// <inheritdoc />
@@ -278,6 +279,49 @@ public sealed class ApprovalNotificationService(
         }
     }
 
+    /// <inheritdoc />
+    public async Task NotifyFinanceRefundAsync(AdvanceRequest advance, decimal refundAmount)
+    {
+        try
+        {
+            var applicant = advance.SubmittedById.HasValue
+                ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == advance.SubmittedById.Value)
+                : null;
+            var applicantName = applicant?.Name ?? "未知";
+
+            var financeDept = await db.Departments.AsNoTracking()
+                .FirstOrDefaultAsync(d => d.Code == "FIN");
+            if (financeDept is null)
+            {
+                logger.LogWarning("找不到「財務部(FIN)」部門，無法寄送退款通知：AdvanceRequest #{Id}", advance.Id);
+                return;
+            }
+
+            var recipients = await db.Users.AsNoTracking()
+                .Where(u => u.DepartmentId == financeDept.Id && !u.IsSuperAdmin && !string.IsNullOrEmpty(u.Email))
+                .Select(u => new { u.Name, u.Email })
+                .ToListAsync();
+
+            if (recipients.Count == 0) return;
+
+            var subject = $"[需匯款] 預支申請 #{advance.Id} 沖銷超額 — 差額 {refundAmount:N0} 元";
+            var siteUrl = await GetSiteUrlAsync();
+            var linkUrl = BuildReviewUrl(siteUrl, "advance", advance.Id);
+
+            foreach (var r in recipients)
+            {
+                var body = BuildRefundEmail(r.Name, applicantName, advance.Id, advance.RequestNo,
+                    advance.GrandTotal, refundAmount, linkUrl);
+                await emailService.SendAsync(r.Email!, subject, body);
+                logger.LogInformation("已寄送退款通知：{Email}（AdvanceRequest #{Id}）", r.Email, advance.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "寄送退款通知失敗：AdvanceRequest #{Id}", advance.Id);
+        }
+    }
+
     // ── 取得申請摘要 ──────────────────────────────────────────────────────────
 
     private async Task<string> GetSummaryAsync(string applicationType, int applicationId)
@@ -289,6 +333,7 @@ public sealed class ApprovalNotificationService(
             "travel"          => await GetTravelSummaryAsync(applicationId),
             "overtime"        => await GetOvertimeSummaryAsync(applicationId),
             "advance"         => await GetAdvanceSummaryAsync(applicationId),
+            "write_off"       => await GetWriteOffSummaryAsync(applicationId),
             _                 => $"#{applicationId}",
         };
     }
@@ -344,6 +389,15 @@ public sealed class ApprovalNotificationService(
         return ar is not null ? $"{ar.ProjectCode} — {ar.ActivityName}（{ar.GrandTotal:N0} 元）" : $"#{id}";
     }
 
+    private async Task<string> GetWriteOffSummaryAsync(int id)
+    {
+        var wo = await db.WriteOffRecords.AsNoTracking()
+            .Where(x => x.Id == id)
+            .Select(x => new { x.RequestNo, x.GrandTotal })
+            .FirstOrDefaultAsync();
+        return wo is not null ? $"{wo.RequestNo}（{wo.GrandTotal:N0} 元）" : $"#{id}";
+    }
+
     // ── 取得前端網站網址 ─────────────────────────────────────────────────────────
 
     private async Task<string> GetSiteUrlAsync()
@@ -367,6 +421,7 @@ public sealed class ApprovalNotificationService(
             "travel"          => "travel-requests",
             "overtime"        => "overtime-requests",
             "advance"         => "advance-requests",
+            "write_off"       => "write-off-requests",
             _                 => "approval-tasks",
         };
         return $"{siteUrl}/admin/{path}/{applicationId}/edit";
@@ -446,6 +501,42 @@ public sealed class ApprovalNotificationService(
               </tr>
             </table>
             {BuildButtonHtml(linkUrl, "前往設定撥款日期")}
+            <hr style="border: none; border-top: 1px solid #DDD6C8; margin: 16px 0;" />
+            <p style="color: #A39685; font-size: 12px; margin: 0;">此信件由系統自動寄發，請勿直接回覆。</p>
+          </div>
+        </div>
+        """;
+    }
+
+    private static string BuildRefundEmail(
+        string recipientName, string applicantName, int advanceId, string requestNo,
+        decimal advanceTotal, decimal refundAmount, string linkUrl)
+    {
+        return $"""
+        <div style="font-family: 'Microsoft JhengHei', 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: #B8892A; padding: 16px 24px; border-radius: 8px 8px 0 0;">
+            <h2 style="color: #fff; margin: 0; font-size: 18px;">預支沖銷超額 — 需匯款差額</h2>
+          </div>
+          <div style="background: #F5F2ED; padding: 24px; border-radius: 0 0 8px 8px;">
+            <p style="color: #525358; margin: 0 0 16px;">{recipientName} 您好，</p>
+            <p style="color: #525358; margin: 0 0 16px;">
+              <strong>{applicantName}</strong> 的預支申請已結案，沖銷金額超過預支金額，請進行差額匯款：
+            </p>
+            <table style="width: 100%; border-collapse: collapse; margin: 0 0 16px;">
+              <tr>
+                <td style="padding: 8px 12px; color: #6E6F73; width: 120px;">預支單號</td>
+                <td style="padding: 8px 12px; color: #525358; font-weight: 600;">{requestNo}</td>
+              </tr>
+              <tr style="background: #EDE9E1;">
+                <td style="padding: 8px 12px; color: #6E6F73;">預支金額</td>
+                <td style="padding: 8px 12px; color: #525358;">{advanceTotal:N0} 元</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 12px; color: #6E6F73;">應退還差額</td>
+                <td style="padding: 8px 12px; color: #A04040; font-weight: 600;">{refundAmount:N0} 元</td>
+              </tr>
+            </table>
+            {BuildButtonHtml(linkUrl, "前往預支申請")}
             <hr style="border: none; border-top: 1px solid #DDD6C8; margin: 16px 0;" />
             <p style="color: #A39685; font-size: 12px; margin: 0;">此信件由系統自動寄發，請勿直接回覆。</p>
           </div>
