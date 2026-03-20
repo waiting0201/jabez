@@ -37,6 +37,15 @@ function resolveSignatureUrl(url: string): string {
   return url;
 }
 
+/** 格式化日期時間（保證日期與時間之間有空格） */
+function fmtDT(val: string | Date): string {
+  const d = new Date(val);
+  const tz = 'Asia/Taipei';
+  const date = d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: tz });
+  const time = d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz });
+  return `${date} ${time}`;
+}
+
 /** CIS 色彩 */
 const CIS = {
   forest: [105, 159, 52] as const,
@@ -119,23 +128,30 @@ export class AdvancePdfService {
 
       const advDate = r.advanceDate ? new Date(r.advanceDate).toLocaleDateString('zh-TW') : '';
 
-      doc.text(`申 請 人：`, mx, y);
-      doc.setFont(F, 'bold'); doc.text(submittedByName, mx + 25, y); doc.setFont(F, 'normal');
-      doc.text(`案　　號：${r.projectCode}`, pw - mx - 50, y);
+      /** 畫標籤+值，值緊貼冒號後 */
+      const lv = (label: string, value: string, x: number, yy: number, bold = false) => {
+        doc.setFont(F, 'normal');
+        doc.text(label, x, yy);
+        const lw = doc.getTextWidth(label);
+        if (bold) doc.setFont(F, 'bold');
+        doc.text(value, x + lw, yy);
+        doc.setFont(F, 'normal');
+      };
+
+      lv('申請人：', submittedByName, mx, y, true);
+      lv('案號：', r.projectCode, pw - mx - 50, y, true);
 
       y += 6;
-      doc.text(`預支日期：${advDate}`, mx, y);
+      lv('預支日期：', advDate, mx, y);
 
       y += 6;
-      doc.text(`案　　名：`, mx, y);
-      // 案名可能較長，截斷
       const projectName = r.activityName || '';
-      doc.setFont(F, 'bold'); doc.text(projectName, mx + 25, y); doc.setFont(F, 'normal');
+      lv('案名：', projectName, mx, y, true);
 
       y += 6;
-      doc.text(`活動名稱：${r.activityName}`, mx, y);
+      lv('活動名稱：', r.activityName, mx, y);
       y += 6;
-      doc.text(`活動期間：${r.activityPeriod}`, mx, y);
+      lv('活動期間：', r.activityPeriod, mx, y);
 
       // ── 明細表格 ──
       y += 8;
@@ -227,7 +243,7 @@ export class AdvancePdfService {
       doc.text('報銷時請附活動行程表及照片。 )', mx, y);
 
       y += 8;
-      const advSubmitDate = r.createdAt ? new Date(r.createdAt).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei' }) : '';
+      const advSubmitDate = r.createdAt ? fmtDT(r.createdAt) : '';
       const advSignBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, advSubmitDate, '申請者');
       const advSigMap = await this._loadSignatureImages(advSignBlocks);
       this._drawSignatureBlock(doc, F, mx, pw, cw, y, advSignBlocks, advSigMap);
@@ -296,20 +312,36 @@ export class AdvancePdfService {
 
       const advDate = r.advanceDate ? new Date(r.advanceDate).toLocaleDateString('zh-TW') : '';
 
-      doc.text(`申 請 人：`, mx, y);
-      doc.setFont(F, 'bold'); doc.text(submittedByName, mx + 25, y); doc.setFont(F, 'normal');
-      doc.text(`案　　號：${r.projectCode}`, pw - mx - 50, y);
+      /** 畫標籤+值，值緊貼冒號後 */
+      const lv = (label: string, value: string, x: number, yy: number, bold = false) => {
+        doc.setFont(F, 'normal');
+        doc.text(label, x, yy);
+        const lw = doc.getTextWidth(label);
+        if (bold) doc.setFont(F, 'bold');
+        doc.text(value, x + lw, yy);
+        doc.setFont(F, 'normal');
+      };
+
+      lv('申請人：', submittedByName, mx, y, true);
+      lv('案號：', r.projectCode, pw - mx - 50, y, true);
 
       y += 6;
-      doc.text(`預支日期：${advDate}`, mx, y);
+      lv('預支日期：', advDate, mx, y);
       y += 6;
-      doc.text(`活動名稱：${r.activityName}`, mx, y);
+      lv('活動名稱：', r.activityName, mx, y);
       y += 6;
-      doc.text(`活動期間：${r.activityPeriod}`, mx, y);
+      lv('活動期間：', r.activityPeriod, mx, y);
 
-      // ── 摘要區：預支現金數 / 沖銷金額 / 繳回金額 ──
+      // ── 摘要區：預支現金數 / 前幾次沖銷 / 本次沖銷 / 待沖銷金額 ──
       y += 8;
-      const balance = r.grandTotal - wo.grandTotal;
+
+      // 累計前幾次沖銷（writeOffNo < 當前）
+      const prevTotal = (r.writeOffs || [])
+        .filter(w => w.writeOffNo < wo.writeOffNo)
+        .reduce((s, w) => s + w.grandTotal, 0);
+      // 含本次的累計
+      const accTotal = prevTotal + wo.grandTotal;
+      const balance = r.grandTotal - accTotal;
 
       doc.setFont(F, 'bold');
       doc.setFontSize(10);
@@ -317,13 +349,21 @@ export class AdvancePdfService {
       const valueX = pw / 2 + 30;
       doc.text('預支現金數', summaryX, y, { align: 'right' });
       doc.text(fmt(r.grandTotal), valueX, y, { align: 'right' });
+
+      // 有前幾次沖銷時才顯示
+      if (prevTotal > 0) {
+        y += 6;
+        doc.text(`前${wo.writeOffNo - 1}次累計沖銷`, summaryX, y, { align: 'right' });
+        doc.text(fmt(prevTotal), valueX, y, { align: 'right' });
+      }
+
       y += 6;
       doc.text(`第${wo.writeOffNo}次沖銷金額`, summaryX, y, { align: 'right' });
       doc.text(fmt(wo.grandTotal), valueX, y, { align: 'right' });
       y += 6;
       doc.setTextColor(...CIS.red);
       doc.text('預支待沖銷金額', summaryX, y, { align: 'right' });
-      doc.text(`$${fmt(balance)}`, valueX, y, { align: 'right' });
+      doc.text(balance < 0 ? `-$${fmt(Math.abs(balance))}` : `$${fmt(balance)}`, valueX, y, { align: 'right' });
       doc.setTextColor(...CIS.textPrimary);
 
       // ── 沖銷明細表格 ──
@@ -415,7 +455,7 @@ export class AdvancePdfService {
 
       // ── 簽名欄 ──
       y += 8;
-      const woSubmitDate = r.createdAt ? new Date(r.createdAt).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei' }) : '';
+      const woSubmitDate = r.createdAt ? fmtDT(r.createdAt) : '';
       const woSignBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, woSubmitDate, '申請者');
       const woSigMap = await this._loadSignatureImages(woSignBlocks);
       this._drawSignatureBlock(doc, F, mx, pw, cw, y, woSignBlocks, woSigMap);
@@ -478,9 +518,7 @@ export class AdvancePdfService {
       blocks.push({
         label,
         signatureUrl: rec?.reviewerSignatureUrl,
-        date: rec?.reviewedAt
-          ? new Date(rec.reviewedAt).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei' })
-          : '',
+        date: rec?.reviewedAt ? fmtDT(rec.reviewedAt) : '',
       });
     }
 

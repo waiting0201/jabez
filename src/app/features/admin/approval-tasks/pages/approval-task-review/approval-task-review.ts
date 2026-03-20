@@ -47,6 +47,15 @@ function resolveSignatureUrl(url: string): string {
   return url; // fallback：無法解析時原樣回傳
 }
 
+/** 格式化日期時間（保證日期與時間之間有空格） */
+function fmtDT(val: string | Date): string {
+  const d = new Date(val);
+  const tz = 'Asia/Taipei';
+  const date = d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: tz });
+  const time = d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz });
+  return `${date} ${time}`;
+}
+
 /** CIS 色彩設計語言 */
 const CIS = {
   forest:      [105, 159, 52]  as const,
@@ -266,17 +275,19 @@ export class ApprovalTaskReview implements OnInit {
       doc.setFont(F, 'normal');
       doc.setFontSize(10);
       doc.setTextColor(...CIS.textPrimary);
-      doc.text('受款人 ：', mx, y);
-      doc.setFont(F, 'bold');
-      doc.text(task.submittedBy, mx + 22, y);
+      /** 畫標籤+值，值緊貼冒號後 */
+      const lv = (label: string, value: string, x: number, yy: number, bold = false) => {
+        doc.setFont(F, 'normal');
+        doc.text(label, x, yy);
+        const lw = doc.getTextWidth(label);
+        if (bold) doc.setFont(F, 'bold');
+        doc.text(value, x + lw, yy);
+        doc.setFont(F, 'normal');
+      };
 
-      doc.setFont(F, 'normal');
-      const submitDate = new Date(task.submittedAt).toLocaleString('zh-TW', {
-        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei',
-      });
-      doc.text('申請日期 ：', pw - mx - 50, y);
-      doc.setFont(F, 'bold');
-      doc.text(submitDate, pw - mx - 24, y);
+      const submitDate = fmtDT(task.submittedAt);
+      lv('受款人：', task.submittedBy, mx, y, true);
+      lv('申請日期：', submitDate, pw - mx - 55, y, true);
 
       // ── 明細表格 ──
       y += 8;
@@ -371,9 +382,7 @@ export class ApprovalTaskReview implements OnInit {
         signBlocks.push({
           label: stepLabels[so],
           signatureUrl: rec?.reviewerSignatureUrl,
-          date: rec?.reviewedAt
-            ? new Date(rec.reviewedAt).toLocaleString('zh-TW', {year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei'})
-            : '',
+          date: rec?.reviewedAt ? fmtDT(rec.reviewedAt) : '',
         });
       }
 
