@@ -50,6 +50,8 @@ public sealed class WriteOffRequestHandler(
     public async Task<IActionResult> GetAvailableAdvancesAsync(HttpRequest req)
     {
         var userId = await GetUserIdAsync(req);
+        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        bool isSuperAdmin = user?.IsSuperAdmin == true;
 
         var list = await db.AdvanceRequests
             .AsNoTracking()
@@ -57,7 +59,7 @@ public sealed class WriteOffRequestHandler(
             .Where(a => a.ApprovalStatus == "approved"
                      && a.PaidAt != null
                      && !a.IsClosed
-                     && a.SubmittedById == userId)
+                     && (isSuperAdmin || a.SubmittedById == userId))
             .OrderByDescending(a => a.CreatedAt)
             .Select(a => new
             {

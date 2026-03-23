@@ -9,6 +9,8 @@
 Thumbs.db
 
 # Azurite Storage Emulator
+AzuriteConfig
 AzuriteConfig/
 __azurite_db_*__.json
 __blobstorage__/
+__queuestorage__/
