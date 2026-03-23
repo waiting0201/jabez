@@ -79,7 +79,7 @@ export class WriteOffPdfService {
   }
 
   /** 列印經費沖銷申請表 */
-  async printWriteOff(r: WriteOffRequest, submittedByName: string, approvalRecords: ApprovalRecord[] = [], flow?: ApprovalFlow, submittedBySignatureUrl?: string) {
+  async printWriteOff(r: WriteOffRequest, submittedByName: string, approvalRecords: ApprovalRecord[] = [], flow?: ApprovalFlow, submittedBySignatureUrl?: string, paidBySignatureUrl?: string, paidAt?: string) {
     this.pdfLoading.set(true);
     try {
       const [{ default: jsPDF }, { default: autoTable }, fonts] = await Promise.all([
@@ -247,7 +247,7 @@ export class WriteOffPdfService {
 
       y += 8;
       const submitDate = r.createdAt ? fmtDT(r.createdAt) : '';
-      const signBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, submitDate, '申請者');
+      const signBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, submitDate, '申請者', paidBySignatureUrl, paidAt);
       const sigMap = await this._loadSignatureImages(signBlocks);
       this._drawSignatureBlock(doc, F, mx, pw, cw, y, signBlocks, sigMap);
 
@@ -272,6 +272,8 @@ export class WriteOffPdfService {
     submittedBySignatureUrl: string | undefined,
     submitDate: string,
     applicantLabel: string,
+    paidBySignatureUrl?: string,
+    paidAt?: string,
   ): SignBlock[] {
     const blocks: SignBlock[] = [];
 
@@ -305,12 +307,21 @@ export class WriteOffPdfService {
 
     // 按固定標籤順序輸出
     for (const label of fixedLabels) {
-      const rec = labelRecordMap.get(label);
-      blocks.push({
-        label,
-        signatureUrl: rec?.reviewerSignatureUrl,
-        date: rec?.reviewedAt ? fmtDT(rec.reviewedAt) : '',
-      });
+      if (label === '出納') {
+        // 出納欄位使用撥款者簽名 + 撥款日期
+        blocks.push({
+          label,
+          signatureUrl: paidBySignatureUrl,
+          date: paidAt ? fmtDT(paidAt) : '',
+        });
+      } else {
+        const rec = labelRecordMap.get(label);
+        blocks.push({
+          label,
+          signatureUrl: rec?.reviewerSignatureUrl,
+          date: rec?.reviewedAt ? fmtDT(rec.reviewedAt) : '',
+        });
+      }
     }
 
     // 申請者（最右邊）

@@ -402,6 +402,13 @@ export class ApprovalTaskReview implements OnInit {
         });
       }
 
+      // 出納（撥款者簽名 + 撥款日期）
+      signBlocks.push({
+        label: '出納',
+        signatureUrl: task.paymentDetail?.paidBySignatureUrl,
+        date: task.paymentDetail?.paidAt ? fmtDT(task.paymentDetail.paidAt) : '',
+      });
+
       // 請款人（最右邊）
       signBlocks.push({
         label: '請款人',
@@ -508,6 +515,8 @@ export class ApprovalTaskReview implements OnInit {
           task.approvalRecords ?? [],
           task.flow,
           task.submittedBySignatureUrl,
+          task.advanceDetail?.paidBySignatureUrl,
+          task.advanceDetail?.paidAt,
         );
       },
       error: () => {
@@ -527,6 +536,8 @@ export class ApprovalTaskReview implements OnInit {
           task.approvalRecords ?? [],
           task.flow,
           task.submittedBySignatureUrl,
+          task.writeOffDetail?.paidBySignatureUrl,
+          task.writeOffDetail?.paidAt,
         );
       },
       error: () => {

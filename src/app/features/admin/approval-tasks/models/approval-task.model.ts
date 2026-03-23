@@ -58,6 +58,7 @@ export interface PaymentTaskDetail {
   totalAmount: number;
   estimatedPaymentDate?: string;
   paidAt?: string;
+  paidBySignatureUrl?: string;
 }
 
 export interface LeaveTaskDetail {
@@ -96,6 +97,7 @@ export interface AdvanceTaskDetail {
   grandTotal: number;
   estimatedPaymentDate?: string;
   paidAt?: string;
+  paidBySignatureUrl?: string;
 }
 
 export interface WriteOffTaskDetail {
@@ -105,6 +107,8 @@ export interface WriteOffTaskDetail {
   projectCode: string;
   projectName: string;
   grandTotal: number;
+  paidAt?: string;
+  paidBySignatureUrl?: string;
 }
 
 // ── ApprovalRecord ───────────────────────────────────────────────────────────
