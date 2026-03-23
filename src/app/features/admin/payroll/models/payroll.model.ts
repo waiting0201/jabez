@@ -24,6 +24,14 @@ export interface EmployeePayroll {
   otherDeductionNote: string | null;
   note: string | null;
   netSalary: number;
+  leaveDetails?: LeaveDetail[];
+}
+
+export interface LeaveDetail {
+  leaveType: string;
+  startDate: string;
+  endDate: string;
+  hours: number;
 }
 
 export interface MonthlyPayroll {

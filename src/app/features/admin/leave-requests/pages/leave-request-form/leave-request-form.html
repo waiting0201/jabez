@@ -55,27 +55,66 @@
           </div>
           <div class="card-body">
 
+            <!-- 假別選擇（下拉選單分群組） -->
             <div class="mb-4">
               <label class="form-label fw-500">假別 <span class="text-danger">*</span></label>
-              <div class="flex flex-wrap gap-4 mt-1">
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" formControlName="leaveType" value="annual" id="typeAnnual">
-                  <label class="form-check-label" for="typeAnnual">年假</label>
+              <select class="form-select" formControlName="leaveType" style="max-width: 320px">
+                @for (group of leaveTypeGroups; track group.label) {
+                  <optgroup [label]="group.label">
+                    @for (type of group.types; track type) {
+                      <option [value]="type">{{ leaveTypeLabels[type] }}</option>
+                    }
+                  </optgroup>
+                }
+              </select>
+
+              <!-- 年假額度提示 -->
+              @if (selectedLeaveType === 'annual') {
+                <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor">
+                    <use href="/assets/icons/sprite.svg#clock"></use>
+                  </svg>
+                  @if (annualQuotaLoading()) {
+                    <span class="small">載入中...</span>
+                  } @else if (annualQuota(); as quota) {
+                    @if (quota.message) {
+                      <span class="small text-muted">{{ quota.message }}</span>
+                    } @else {
+                      <span class="small">
+                        年資：<strong>{{ quota.seniorityYears }} 年 {{ quota.seniorityMonths }} 個月</strong>
+                        <span class="text-muted ms-2">｜年假額度：<strong>{{ quota.totalDays }}</strong> 天</span>
+                        <span class="text-muted ms-2">｜已使用：{{ quota.usedDays }} 天</span>
+                        <span class="ms-2">｜剩餘：<strong class="text-primary">{{ quota.availableDays }}</strong> 天</span>
+                      </span>
+                    }
+                  } @else {
+                    <span class="small text-muted">無法取得年假額度資料</span>
+                  }
                 </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" formControlName="leaveType" value="personal" id="typePersonal">
-                  <label class="form-check-label" for="typePersonal">事假</label>
+              }
+
+              <!-- 事假扣薪提示 -->
+              @if (selectedLeaveType === 'personal') {
+                <div class="alert alert-warning flex items-center gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor">
+                    <use href="/assets/icons/sprite.svg#alert-triangle"></use>
+                  </svg>
+                  <span class="small">按天數扣除全額薪資</span>
                 </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" formControlName="leaveType" value="sick" id="typeSick">
-                  <label class="form-check-label" for="typeSick">病假</label>
+              }
+
+              <!-- 病假扣薪提示 -->
+              @if (selectedLeaveType === 'sick') {
+                <div class="alert alert-warning flex items-center gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor">
+                    <use href="/assets/icons/sprite.svg#alert-triangle"></use>
+                  </svg>
+                  <span class="small">按天數扣除半薪</span>
                 </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" formControlName="leaveType" value="compensatory" id="typeComp">
-                  <label class="form-check-label" for="typeComp">補休</label>
-                </div>
-              </div>
-              @if (form.get('leaveType')?.value === 'compensatory') {
+              }
+
+              <!-- 補休時數提示 -->
+              @if (selectedLeaveType === 'compensatory') {
                 <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
                   <svg class="sa-icon shrink-0" style="stroke: currentColor">
                     <use href="/assets/icons/sprite.svg#clock"></use>
@@ -92,7 +131,40 @@
                   }
                 </div>
               }
+
+              <!-- 有天數上限的假別提示 -->
+              @if (currentDaysLimit !== null && selectedLeaveType !== 'bereavement' && selectedLeaveType !== 'annual' && selectedLeaveType !== 'compensatory') {
+                <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor">
+                    <use href="/assets/icons/sprite.svg#info"></use>
+                  </svg>
+                  <span class="small">{{ leaveTypeLabels[selectedLeaveType] }}上限：<strong>{{ currentDaysLimit }} 天</strong></span>
+                </div>
+              }
             </div>
+
+            <!-- 喪假親屬關係選擇 -->
+            @if (selectedLeaveType === 'bereavement') {
+              <div class="mb-4">
+                <label class="form-label fw-500">親屬關係 <span class="text-danger">*</span></label>
+                <select class="form-select" formControlName="bereavementRelationship" style="max-width: 320px">
+                  <option value="">— 請選擇 —</option>
+                  @for (group of bereavementGroups; track group.days) {
+                    <optgroup [label]="group.days + ' 天'">
+                      @for (rel of group.relationships; track rel) {
+                        <option [value]="rel">{{ bereavementLabels[rel] }}</option>
+                      }
+                    </optgroup>
+                  }
+                </select>
+                @if (form.get('bereavementRelationship')?.invalid && form.get('bereavementRelationship')?.touched) {
+                  <div class="text-danger small mt-1">請選擇親屬關係。</div>
+                }
+                @if (currentDaysLimit !== null) {
+                  <div class="text-muted small mt-1">喪假上限：<strong>{{ currentDaysLimit }} 天</strong></div>
+                }
+              </div>
+            }
 
             <div class="row g-3 mb-4">
               <div class="col-12 col-md-4">

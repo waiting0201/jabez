@@ -1,5 +1,5 @@
 import {PaymentType, InvoiceItem} from '../../payment-requests/models/payment-request.model';
-import {LeaveType} from '../../leave-requests/models/leave-request.model';
+import {LeaveType, LEAVE_TYPE_LABELS} from '../../leave-requests/models/leave-request.model';
 import {ApplicationType, APPLICATION_TYPE_LABELS, APPLICATION_TYPE_CLASSES} from '../../approvals/models/approval.model';
 
 export type TaskStatus = 'pending' | 'approved' | 'rejected' | 'returned';
@@ -23,12 +23,7 @@ export const PAYMENT_TYPE_LABELS: Record<PaymentType, string> = {
   travel:  '員工差旅',
 };
 
-export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
-  annual:       '年假',
-  personal:     '事假',
-  sick:         '病假',
-  compensatory: '補休',
-};
+export {LEAVE_TYPE_LABELS};
 
 export {APPLICATION_TYPE_LABELS, APPLICATION_TYPE_CLASSES};
 

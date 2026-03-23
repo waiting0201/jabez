@@ -5,6 +5,7 @@ import {DatePipe, DecimalPipe} from '@angular/common';
 import {ToastrService} from 'ngx-toastr';
 import {PayrollService} from '../../services/payroll.service';
 import {EmployeePayroll} from '../../models/payroll.model';
+import {LEAVE_TYPE_LABELS, LeaveType} from '../../../leave-requests/models/leave-request.model';
 
 @Component({
   selector: 'app-payroll-form',
@@ -52,6 +53,12 @@ export class PayrollForm implements OnInit {
   backLink = computed(() => `/admin/payroll`);
 
   periodLabel = computed(() => `${this.year} 年 ${this.month} 月`);
+
+  readonly leaveTypeLabels = LEAVE_TYPE_LABELS;
+
+  getLeaveTypeLabel(type: string): string {
+    return (LEAVE_TYPE_LABELS as Record<string, string>)[type] ?? type;
+  }
 
   ngOnInit() {
     this.employeeId = this.route.snapshot.paramMap.get('id') ?? '';

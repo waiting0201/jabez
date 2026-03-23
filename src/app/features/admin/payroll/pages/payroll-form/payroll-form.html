@@ -106,6 +106,38 @@
           </div>
         </div>
 
+        <!-- 本月請假紀錄 -->
+        @if (e.leaveDetails && e.leaveDetails.length > 0) {
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent fw-500">
+              <span class="inline-flex items-center gap-1 text-[#7C5E8C]">
+                <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#calendar"></use></svg>
+                本月請假紀錄
+              </span>
+            </div>
+            <div class="card-body p-0">
+              <table class="table table-sm mb-0">
+                <thead>
+                  <tr class="bg-[var(--bg-elevated)]">
+                    <th class="ps-4">假別</th>
+                    <th>期間</th>
+                    <th class="text-right pe-4">天數</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (ld of e.leaveDetails; track $index) {
+                    <tr>
+                      <td class="ps-4">{{ getLeaveTypeLabel(ld.leaveType) }}</td>
+                      <td>{{ ld.startDate | date:'MM/dd HH:mm' }} ~ {{ ld.endDate | date:'MM/dd HH:mm' }}</td>
+                      <td class="text-right pe-4">{{ ld.hours / 8 | number:'1.1-1' }} 天</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        }
+
         <!-- 可編輯：其他加項 + 其他扣項 + 備註 -->
         <form [formGroup]="form" (ngSubmit)="submit()">
 

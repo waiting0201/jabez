@@ -1,19 +1,97 @@
-export type LeaveType     = 'annual' | 'personal' | 'sick' | 'compensatory';
+export type LeaveType =
+  | 'annual' | 'personal' | 'sick' | 'compensatory'
+  | 'marriage' | 'bereavement' | 'official'
+  | 'maternity' | 'miscarriage_3m' | 'miscarriage_2to3m' | 'miscarriage_under2m'
+  | 'prenatal_checkup' | 'paternity';
+
 export type ApprovalStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'returned';
 
 export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
-  annual:       '年假',
-  personal:     '事假',
-  sick:         '病假',
-  compensatory: '補休',
+  annual:              '年假(特休假)',
+  personal:            '事假',
+  sick:                '病假',
+  compensatory:        '補休',
+  official:            '公假',
+  marriage:            '婚假',
+  maternity:           '產假',
+  miscarriage_3m:      '流產假(3個月以上)',
+  miscarriage_2to3m:   '流產假(2-3個月)',
+  miscarriage_under2m: '流產假(未滿2個月)',
+  prenatal_checkup:    '產檢假',
+  paternity:           '陪產假',
+  bereavement:         '喪假',
 };
 
 export const LEAVE_TYPE_CLASSES: Record<LeaveType, string> = {
-  annual:       'bg-primary-subtle text-primary',
-  personal:     'bg-info-subtle text-info',
-  sick:         'bg-warning-subtle text-warning-emphasis',
-  compensatory: 'bg-secondary-subtle text-secondary',
+  annual:              'bg-[rgba(105,159,52,0.12)] text-[#4A6B3A]',
+  personal:            'bg-[rgba(124,94,140,0.12)] text-[#7C5E8C]',
+  sick:                'bg-[rgba(184,137,42,0.12)] text-[#B8892A]',
+  compensatory:        'bg-[rgba(140,115,85,0.12)] text-[#8C7355]',
+  official:            'bg-[rgba(74,107,58,0.12)] text-[#4A6B3A]',
+  marriage:            'bg-[rgba(160,64,64,0.12)] text-[#A04040]',
+  maternity:           'bg-[rgba(124,94,140,0.12)] text-[#7C5E8C]',
+  miscarriage_3m:      'bg-[rgba(124,94,140,0.12)] text-[#7C5E8C]',
+  miscarriage_2to3m:   'bg-[rgba(124,94,140,0.12)] text-[#7C5E8C]',
+  miscarriage_under2m: 'bg-[rgba(124,94,140,0.12)] text-[#7C5E8C]',
+  prenatal_checkup:    'bg-[rgba(124,94,140,0.12)] text-[#7C5E8C]',
+  paternity:           'bg-[rgba(124,94,140,0.12)] text-[#7C5E8C]',
+  bereavement:         'bg-[rgba(82,83,88,0.12)] text-[#525358]',
 };
+
+/** 假別分組（供下拉選單 optgroup 使用） */
+export const LEAVE_TYPE_GROUPS: { label: string; types: LeaveType[] }[] = [
+  { label: '一般假別', types: ['annual', 'personal', 'sick', 'official', 'compensatory'] },
+  { label: '婚假',     types: ['marriage'] },
+  { label: '產假類別', types: ['maternity', 'miscarriage_3m', 'miscarriage_2to3m', 'miscarriage_under2m', 'prenatal_checkup', 'paternity'] },
+  { label: '喪假',     types: ['bereavement'] },
+];
+
+/** 假別天數上限（前端顯示用，實際驗證在後端） */
+export const LEAVE_TYPE_DAYS_LIMIT: Partial<Record<LeaveType, number>> = {
+  marriage:            8,
+  maternity:           56,
+  miscarriage_3m:      28,
+  miscarriage_2to3m:   7,
+  miscarriage_under2m: 5,
+  prenatal_checkup:    7,
+  paternity:           7,
+};
+
+// ── 喪假親屬關係 ──
+
+export type BereavementRelationship =
+  | 'spouse' | 'parent' | 'adoptive_parent' | 'step_parent'
+  | 'grandparent' | 'child' | 'spouse_parent' | 'spouse_adoptive_parent'
+  | 'great_grandparent' | 'sibling' | 'spouse_grandparent';
+
+export const BEREAVEMENT_RELATIONSHIP_LABELS: Record<BereavementRelationship, string> = {
+  spouse:                '配偶',
+  parent:                '父母',
+  adoptive_parent:       '養父母',
+  step_parent:           '繼父母',
+  grandparent:           '祖父母(含外祖父母)',
+  child:                 '子女',
+  spouse_parent:         '配偶之父母',
+  spouse_adoptive_parent:'配偶之養父母或繼父母',
+  great_grandparent:     '曾祖父母',
+  sibling:               '兄弟姊妹',
+  spouse_grandparent:    '配偶之祖父母',
+};
+
+export const BEREAVEMENT_DAYS: Record<BereavementRelationship, number> = {
+  spouse: 8, parent: 8, adoptive_parent: 8, step_parent: 8,
+  grandparent: 6, child: 6, spouse_parent: 6, spouse_adoptive_parent: 6,
+  great_grandparent: 3, sibling: 3, spouse_grandparent: 3,
+};
+
+/** 喪假關係分組（依天數分類顯示） */
+export const BEREAVEMENT_GROUPS: { days: number; relationships: BereavementRelationship[] }[] = [
+  { days: 8, relationships: ['spouse', 'parent', 'adoptive_parent', 'step_parent'] },
+  { days: 6, relationships: ['grandparent', 'child', 'spouse_parent', 'spouse_adoptive_parent'] },
+  { days: 3, relationships: ['great_grandparent', 'sibling', 'spouse_grandparent'] },
+];
+
+// ── 核批狀態 ──
 
 export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
   draft:    '草稿',
@@ -30,6 +108,8 @@ export const APPROVAL_STATUS_CLASSES: Record<ApprovalStatus, string> = {
   rejected: 'bg-danger-subtle text-danger',
   returned: 'bg-secondary-subtle text-secondary',
 };
+
+// ── 介面定義 ──
 
 export interface DesignatedReviewer {
   id?: number;
@@ -51,8 +131,24 @@ export interface LeaveRequest {
   hours: number;
   reason: string;
   approvalStatus: ApprovalStatus;
+  bereavementRelationship?: string;
   designatedReviewers?: DesignatedReviewer[];
   createdAt: string;
   reviewedAt?: string;
   reviewNote?: string;
+}
+
+export interface AnnualQuota {
+  totalDays: number;
+  usedDays: number;
+  availableDays: number;
+  seniorityYears: number;
+  seniorityMonths: number;
+  message?: string;
+}
+
+export interface CompensatoryHours {
+  totalOvertimeHours: number;
+  usedCompensatoryHours: number;
+  availableHours: number;
 }

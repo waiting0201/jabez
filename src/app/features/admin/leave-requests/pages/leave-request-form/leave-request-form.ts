@@ -4,8 +4,11 @@ import {FormBuilder, FormsModule, ReactiveFormsModule, ValidatorFn, Validators} 
 import {HttpErrorResponse} from '@angular/common/http';
 import {LeaveRequestService} from '../../services/leave-request.service';
 import {
-  LeaveType, ApprovalStatus,
+  LeaveType, ApprovalStatus, AnnualQuota, CompensatoryHours,
   APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES,
+  LEAVE_TYPE_GROUPS, LEAVE_TYPE_LABELS, LEAVE_TYPE_DAYS_LIMIT,
+  BEREAVEMENT_GROUPS, BEREAVEMENT_RELATIONSHIP_LABELS, BEREAVEMENT_DAYS,
+  BereavementRelationship,
   DesignatedReviewer,
 } from '../../models/leave-request.model';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
@@ -60,6 +63,24 @@ export class LeaveRequestForm implements OnInit {
     filteredUsers: UserLookup[];
   }[] = [];
 
+  /** 假別常數（供 template 使用） */
+  readonly leaveTypeGroups = LEAVE_TYPE_GROUPS;
+  readonly leaveTypeLabels = LEAVE_TYPE_LABELS;
+  readonly leaveTypeDaysLimit = LEAVE_TYPE_DAYS_LIMIT;
+  readonly bereavementGroups = BEREAVEMENT_GROUPS;
+  readonly bereavementLabels = BEREAVEMENT_RELATIONSHIP_LABELS;
+  readonly bereavementDays = BEREAVEMENT_DAYS;
+  readonly statusLabel = APPROVAL_STATUS_LABELS;
+  readonly statusClass = APPROVAL_STATUS_CLASSES;
+
+  /** 可補休時數（從 API 取得） */
+  compensatoryHours = signal<CompensatoryHours | null>(null);
+  compensatoryLoading = signal(false);
+
+  /** 年假額度（從 API 取得） */
+  annualQuota = signal<AnnualQuota | null>(null);
+  annualQuotaLoading = signal(false);
+
   addDesignatedEntry() {
     const nextOrder = this.designatedEntries.length + 1;
     this.designatedEntries.push({
@@ -88,13 +109,6 @@ export class LeaveRequestForm implements OnInit {
     return this.allUsers.find(u => u.id === userId)?.name ?? userId;
   }
 
-  /** 可補休時數（從 API 取得） */
-  compensatoryHours = signal<{ totalOvertimeHours: number; usedCompensatoryHours: number; availableHours: number } | null>(null);
-  compensatoryLoading = signal(false);
-
-  readonly statusLabel = APPROVAL_STATUS_LABELS;
-  readonly statusClass = APPROVAL_STATUS_CLASSES;
-
   /** 驗證分鐘必須為 00 或 30 */
   private static halfHourValidator: ValidatorFn = (ctrl) => {
     const val = ctrl.value as string;
@@ -104,10 +118,11 @@ export class LeaveRequestForm implements OnInit {
   };
 
   form = this.fb.group({
-    leaveType: ['annual' as LeaveType, Validators.required],
-    startDate: ['', [Validators.required, LeaveRequestForm.halfHourValidator]],
-    endDate:   ['', [Validators.required, LeaveRequestForm.halfHourValidator]],
-    reason:    ['', Validators.required],
+    leaveType:               ['annual' as LeaveType, Validators.required],
+    bereavementRelationship: ['' as string],
+    startDate:               ['', [Validators.required, LeaveRequestForm.halfHourValidator]],
+    endDate:                 ['', [Validators.required, LeaveRequestForm.halfHourValidator]],
+    reason:                  ['', Validators.required],
   });
 
   /** 從開始/結束時間自動計算時數 */
@@ -120,8 +135,35 @@ export class LeaveRequestForm implements OnInit {
     return Math.round(diff / (1000 * 60 * 30)) * 0.5; // 四捨五入至 0.5 小時
   }
 
+  /** 當前選擇的假別 */
+  get selectedLeaveType(): LeaveType {
+    return this.form.get('leaveType')?.value as LeaveType || 'annual';
+  }
+
+  /** 當前選擇的喪假關係 */
+  get selectedBereavementRelationship(): BereavementRelationship | null {
+    const v = this.form.get('bereavementRelationship')?.value;
+    return v ? v as BereavementRelationship : null;
+  }
+
+  /** 當前假別的天數上限 */
+  get currentDaysLimit(): number | null {
+    const type = this.selectedLeaveType;
+    if (type === 'bereavement') {
+      const rel = this.selectedBereavementRelationship;
+      return rel ? this.bereavementDays[rel] ?? null : null;
+    }
+    return this.leaveTypeDaysLimit[type] ?? null;
+  }
+
   ngOnInit() {
     this.loadCompensatoryHours();
+    this.loadAnnualQuota();
+
+    // 監聽假別變化
+    this.form.get('leaveType')?.valueChanges.subscribe(type => {
+      this.onLeaveTypeChange(type as LeaveType);
+    });
 
     // 檢查簽核流程是否有「申請人指定審核」步驟
     this.approvalSvc.getAll().subscribe(items => {
@@ -133,7 +175,6 @@ export class LeaveRequestForm implements OnInit {
         this.userSvc.getLookup().subscribe({
           next: users => {
             this.allUsers = users;
-            // allUsers 載入後補填各條目的 filteredUsers
             this.designatedEntries.forEach(e => {
               if (e.selectedJobTitleId) {
                 e.filteredUsers = users.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active');
@@ -157,10 +198,11 @@ export class LeaveRequestForm implements OnInit {
         this.isReturned = r.approvalStatus === 'returned';
         this.isReadOnly = r.approvalStatus !== 'draft';
         this.form.patchValue({
-          leaveType:  r.leaveType,
-          startDate:  this._toDatetimeLocal(r.startDate),
-          endDate:    this._toDatetimeLocal(r.endDate),
-          reason:     r.reason,
+          leaveType:               r.leaveType,
+          bereavementRelationship: r.bereavementRelationship ?? '',
+          startDate:               this._toDatetimeLocal(r.startDate),
+          endDate:                 this._toDatetimeLocal(r.endDate),
+          reason:                  r.reason,
         });
         // 回填指定審核者清單
         if (r.designatedReviewers?.length) {
@@ -193,6 +235,23 @@ export class LeaveRequestForm implements OnInit {
         }
       });
     }
+  }
+
+  /** 假別變化時的處理 */
+  private onLeaveTypeChange(type: LeaveType) {
+    // 喪假：bereavementRelationship 必填
+    if (type === 'bereavement') {
+      this.form.get('bereavementRelationship')?.setValidators(Validators.required);
+    } else {
+      this.form.get('bereavementRelationship')?.clearValidators();
+      this.form.get('bereavementRelationship')?.setValue('');
+    }
+    this.form.get('bereavementRelationship')?.updateValueAndValidity();
+
+    // 年假：載入額度
+    if (type === 'annual') this.loadAnnualQuota();
+    // 補休：載入可用時數
+    if (type === 'compensatory') this.loadCompensatoryHours();
   }
 
   /** 補休時數是否足夠 */
@@ -263,18 +322,31 @@ export class LeaveRequestForm implements OnInit {
     });
   }
 
+  /** 載入年假額度 */
+  private loadAnnualQuota() {
+    this.annualQuotaLoading.set(true);
+    this.service.getAnnualQuota().subscribe({
+      next: data => {
+        this.annualQuota.set(data);
+        this.annualQuotaLoading.set(false);
+      },
+      error: () => this.annualQuotaLoading.set(false),
+    });
+  }
+
   private _buildPayload() {
     const v = this.form.value;
     const reviewers = this.designatedEntries
       .filter(e => e.selectedUserId)
       .map(e => ({ reviewerId: e.selectedUserId!, stepOrder: e.stepOrder }));
     return {
-      leaveType:            v.leaveType as LeaveType,
-      startDate:            v.startDate!,   // 直接送字串，避免 new Date() 轉 UTC
-      endDate:              v.endDate!,
-      hours:                this.calculatedHours,
-      reason:               v.reason!,
-      designatedReviewers:  reviewers.length > 0 ? reviewers : undefined,
+      leaveType:               v.leaveType as LeaveType,
+      bereavementRelationship: v.leaveType === 'bereavement' ? v.bereavementRelationship || undefined : undefined,
+      startDate:               v.startDate!,
+      endDate:                 v.endDate!,
+      hours:                   this.calculatedHours,
+      reason:                  v.reason!,
+      designatedReviewers:     reviewers.length > 0 ? reviewers : undefined,
     };
   }
 
@@ -282,7 +354,6 @@ export class LeaveRequestForm implements OnInit {
   private _toDatetimeLocal(date: Date | string): string {
     const d = date instanceof Date ? date : new Date(date);
     if (isNaN(d.getTime())) return '';
-    // 使用台北時區格式化，取得各欄位值
     const parts = new Intl.DateTimeFormat('sv-SE', {
       timeZone: 'Asia/Taipei',
       year: 'numeric', month: '2-digit', day: '2-digit',

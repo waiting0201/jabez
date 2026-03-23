@@ -1,7 +1,7 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
-import {LeaveRequest} from '../models/leave-request.model';
+import {LeaveRequest, AnnualQuota, CompensatoryHours} from '../models/leave-request.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {environment} from '@/environments/environment';
 
@@ -42,10 +42,9 @@ export class LeaveRequestService {
   getCompensatoryHours(): Observable<CompensatoryHours> {
     return this.http.get<CompensatoryHours>(`${environment.apiUrl}/leave-requests/compensatory-hours`);
   }
-}
 
-export interface CompensatoryHours {
-  totalOvertimeHours: number;
-  usedCompensatoryHours: number;
-  availableHours: number;
+  /** 查詢當前使用者的年假額度 */
+  getAnnualQuota(): Observable<AnnualQuota> {
+    return this.http.get<AnnualQuota>(`${environment.apiUrl}/leave-requests/annual-quota`);
+  }
 }
