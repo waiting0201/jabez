@@ -543,7 +543,12 @@ public sealed class PaymentRequestHandler(
         if (body.EstimatedPaymentDate.HasValue)
             pr.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
         if (body.PaidAt.HasValue)
-            pr.PaidAt = body.PaidAt.Value;
+        {
+            var taipeiTz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Taipei");
+            var nowTaipei = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, taipeiTz);
+            pr.PaidAt = body.PaidAt.Value.Date + nowTaipei.TimeOfDay;
+            pr.PaidByUserId = userId;
+        }
 
         // 更新狀態（僅允許合法狀態值）
         if (!string.IsNullOrWhiteSpace(body.ApprovalStatus))

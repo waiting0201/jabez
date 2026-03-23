@@ -408,7 +408,12 @@ public sealed class AdvanceRequestHandler(
         if (body.EstimatedPaymentDate.HasValue)
             ar.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
         if (body.PaidAt.HasValue)
-            ar.PaidAt = body.PaidAt.Value;
+        {
+            var taipeiTz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Taipei");
+            var nowTaipei = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, taipeiTz);
+            ar.PaidAt = body.PaidAt.Value.Date + nowTaipei.TimeOfDay;
+            ar.PaidByUserId = userId;
+        }
 
         await db.SaveChangesAsync();
 

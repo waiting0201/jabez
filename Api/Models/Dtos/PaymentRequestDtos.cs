@@ -116,7 +116,8 @@ public sealed record PaymentTaskDetailDto(
     InvoiceItemDto[] Invoices,
     decimal          TotalAmount,
     DateTime?        EstimatedPaymentDate,
-    DateTime?        PaidAt);
+    DateTime?        PaidAt,
+    string?          PaidBySignatureUrl = null);
 
 public sealed record LeaveTaskDetailDto(
     int      LeaveRequestId,

@@ -42,9 +42,15 @@ public sealed record UpdateWriteOffRequestRequest(
 // ── ApprovalTask 用 ──────────────────────────────────────────────────────────
 
 public sealed record WriteOffTaskDetailDto(
-    int       WriteOffRequestId,
-    string    RequestNo,
-    string    AdvanceRequestNo,
-    string    ProjectCode,
-    string    ProjectName,
-    decimal   GrandTotal);
+    int                WriteOffRequestId,
+    string             RequestNo,
+    string             AdvanceRequestNo,
+    string             ProjectCode,
+    string             ProjectName,
+    decimal            GrandTotal,
+    decimal            CashTotal,
+    decimal            CheckTotal,
+    string?            Note,
+    WriteOffItemDto[]  Items,
+    DateTime?          PaidAt = null,
+    string?            PaidBySignatureUrl = null);

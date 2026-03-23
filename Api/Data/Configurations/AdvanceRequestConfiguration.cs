@@ -65,6 +65,11 @@ public class AdvanceRequestConfiguration : IEntityTypeConfiguration<AdvanceReque
                .HasForeignKey(a => a.ReviewedById)
                .OnDelete(DeleteBehavior.NoAction);
 
+        builder.HasOne(a => a.PaidBy)
+               .WithMany()
+               .HasForeignKey(a => a.PaidByUserId)
+               .OnDelete(DeleteBehavior.NoAction);
+
         // 結案欄位
         builder.Property(a => a.IsClosed)
                .HasDefaultValue(false);

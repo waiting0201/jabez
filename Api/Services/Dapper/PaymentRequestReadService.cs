@@ -83,16 +83,16 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         int? reviewerJobTitleId = null, int? reviewerDepartmentId = null,
         string? status = null, Guid? reviewerUserId = null)
     {
-        var (payments, leaves, travels, overtimes, advances, writeOffs, flows, records, designatedRows) =
+        var (payments, leaves, travels, overtimes, advances, writeOffs, flows, records, designatedRows, writeOffItems) =
             await FetchAllAsync(reviewerJobTitleId: reviewerJobTitleId, reviewerDepartmentId: reviewerDepartmentId,
                                 statusFilter: status, reviewerUserId: reviewerUserId);
-        return BuildApprovalTasks(payments, leaves, travels, overtimes, advances, writeOffs, flows, records, designatedRows);
+        return BuildApprovalTasks(payments, leaves, travels, overtimes, advances, writeOffs, flows, records, designatedRows, writeOffItems);
     }
 
     public async Task<ApprovalTaskDto?> GetApprovalTaskByIdAsync(int id, string applicationType)
     {
-        var (payments, leaves, travels, overtimes, advances, writeOffs, flows, records, designatedRows) = await FetchAllAsync(id, applicationType);
-        return BuildApprovalTasks(payments, leaves, travels, overtimes, advances, writeOffs, flows, records, designatedRows)
+        var (payments, leaves, travels, overtimes, advances, writeOffs, flows, records, designatedRows, writeOffItems) = await FetchAllAsync(id, applicationType);
+        return BuildApprovalTasks(payments, leaves, travels, overtimes, advances, writeOffs, flows, records, designatedRows, writeOffItems)
             .FirstOrDefault(t => t.Id == id && t.ApplicationType == applicationType);
     }
 
@@ -112,7 +112,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         IEnumerable<dynamic> writeOffs,
         IEnumerable<dynamic> flows,
         IEnumerable<dynamic> records,
-        IEnumerable<dynamic> designatedRows)> FetchAllAsync(
+        IEnumerable<dynamic> designatedRows,
+        IEnumerable<dynamic> writeOffItems)> FetchAllAsync(
         int? filterId = null, string? filterType = null,
         int? reviewerJobTitleId = null, int? reviewerDepartmentId = null,
         string? statusFilter = null, Guid? reviewerUserId = null)
@@ -271,10 +272,12 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             SELECT pr.Id, pr.Type AS PaymentType, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    pr.TotalAmount, pr.ApprovalStatus, pr.EstimatedPaymentDate, pr.PaidAt, pr.ApprovalItemId, pr.CurrentStepOrder,
                    sub.Name AS SubmittedBy, sub.SignatureUrl AS SubmittedBySignatureUrl, pr.CreatedAt, pr.ReviewedAt, pr.ReviewNote,
+                   paidby.SignatureUrl AS PaidBySignatureUrl,
                    ii.Id AS InvId, ii.FileName, ii.InvoiceNo, ii.Amount AS InvAmount, ii.ItemName AS InvItemName, ii.Note AS InvNote, ii.FileUrl AS InvFileUrl
             FROM PaymentRequests pr
             LEFT JOIN Projects proj   ON pr.ProjectId    = proj.Id
             LEFT JOIN Users   sub     ON pr.SubmittedById = sub.Id
+            LEFT JOIN Users   paidby  ON pr.PaidByUserId  = paidby.Id
             LEFT JOIN InvoiceItems ii ON ii.PaymentRequestId = pr.Id
             {paymentWhere}
             ORDER BY pr.CreatedAt DESC, ii.Id
@@ -319,10 +322,12 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                    adv.ActivityName, adv.GrandTotal,
                    adv.ApprovalStatus, adv.ApprovalItemId, adv.CurrentStepOrder,
                    adv.EstimatedPaymentDate, adv.PaidAt,
-                   asub.Name AS SubmittedBy, asub.SignatureUrl AS SubmittedBySignatureUrl, adv.CreatedAt, adv.ReviewedAt, adv.ReviewNote
+                   asub.Name AS SubmittedBy, asub.SignatureUrl AS SubmittedBySignatureUrl, adv.CreatedAt, adv.ReviewedAt, adv.ReviewNote,
+                   apaidby.SignatureUrl AS PaidBySignatureUrl
             FROM AdvanceRequests adv
-            LEFT JOIN Projects proj ON adv.ProjectId    = proj.Id
-            LEFT JOIN Users   asub  ON adv.SubmittedById = asub.Id
+            LEFT JOIN Projects proj   ON adv.ProjectId    = proj.Id
+            LEFT JOIN Users   asub    ON adv.SubmittedById = asub.Id
+            LEFT JOIN Users   apaidby ON adv.PaidByUserId  = apaidby.Id
             {advanceWhere}
             ORDER BY adv.CreatedAt DESC
             """;
@@ -330,14 +335,16 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         var writeOffSql = $"""
             SELECT wo.Id, wo.RequestNo, wo.AdvanceRequestId, arx.RequestNo AS AdvanceRequestNo,
                    proj.Code AS ProjectCode, proj.Name AS ProjectName,
-                   wo.GrandTotal,
+                   wo.GrandTotal, wo.CashTotal, wo.CheckTotal, wo.Note,
                    wo.ApprovalStatus, wo.ApprovalItemId, wo.CurrentStepOrder,
                    wsub.Name AS SubmittedBy, wsub.SignatureUrl AS SubmittedBySignatureUrl, wo.CreatedAt, wo.ReviewedAt, wo.ReviewNote,
-                   wo.SubmittedById
+                   wo.SubmittedById,
+                   arx.PaidAt AS AdvancePaidAt, wpaidby.SignatureUrl AS PaidBySignatureUrl
             FROM WriteOffRecords wo
-            JOIN AdvanceRequests arx ON wo.AdvanceRequestId = arx.Id
-            LEFT JOIN Projects proj  ON arx.ProjectId       = proj.Id
-            LEFT JOIN Users   wsub   ON wo.SubmittedById    = wsub.Id
+            JOIN AdvanceRequests arx  ON wo.AdvanceRequestId = arx.Id
+            LEFT JOIN Projects proj   ON arx.ProjectId       = proj.Id
+            LEFT JOIN Users   wsub    ON wo.SubmittedById    = wsub.Id
+            LEFT JOIN Users   wpaidby ON arx.PaidByUserId    = wpaidby.Id
             {writeOffWhere}
             ORDER BY wo.CreatedAt DESC
             """;
@@ -391,7 +398,16 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         var records        = await db.QueryAsync<dynamic>(recordSql);
         var designatedRows = await db.QueryAsync<dynamic>(drSql);
 
-        return (payments, leaves, travels, overtimes, advances, writeOffs, flows, records, designatedRows);
+        const string writeOffItemsSql = """
+            SELECT wi.Id, wi.WriteOffRecordId, wi.Category, wi.SeqNo, wi.ItemName,
+                   wi.UnitPrice, wi.Quantity, wi.TotalPrice, wi.CashAmount, wi.CheckAmount,
+                   wi.Note, wi.InvoiceNo, wi.FileName, wi.FileUrl, wi.SortOrder
+            FROM WriteOffItems wi
+            ORDER BY wi.WriteOffRecordId, wi.SortOrder
+            """;
+        var writeOffItemRows = await db.QueryAsync<dynamic>(writeOffItemsSql);
+
+        return (payments, leaves, travels, overtimes, advances, writeOffs, flows, records, designatedRows, writeOffItemRows);
     }
 
     private static IEnumerable<ApprovalTaskDto> BuildApprovalTasks(
@@ -403,7 +419,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         IEnumerable<dynamic> writeOffRows,
         IEnumerable<dynamic> flowRows,
         IEnumerable<dynamic> recordRows,
-        IEnumerable<dynamic> designatedRows)
+        IEnumerable<dynamic> designatedRows,
+        IEnumerable<dynamic> writeOffItemRows)
     {
         // Build designated reviewer lookup keyed by (RequestType, RequestId)
         var drDict = new Dictionary<(string, int), List<DesignatedReviewerDto>>();
@@ -502,7 +519,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 [.. x.invoices],
                 (decimal)x.pr.TotalAmount,
                 (DateTime?)x.pr.EstimatedPaymentDate,
-                (DateTime?)x.pr.PaidAt),
+                (DateTime?)x.pr.PaidAt,
+                (string?)x.pr.PaidBySignatureUrl),
             null, null, null, null, null,
             GetRecords("payment_request", (int)x.pr.Id),
             GetDesignatedReviewers("payment_request", (int)x.pr.Id),
@@ -607,11 +625,30 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (string)row.ActivityName,
                 (decimal)row.GrandTotal,
                 (DateTime?)row.EstimatedPaymentDate,
-                (DateTime?)row.PaidAt),
+                (DateTime?)row.PaidAt,
+                (string?)row.PaidBySignatureUrl),
             null,
             GetRecords("advance", (int)row.Id),
             GetDesignatedReviewers("advance", (int)row.Id),
             (string?)row.SubmittedBySignatureUrl));
+
+        // Write-off items lookup keyed by WriteOffRecordId
+        var woItemDict = new Dictionary<int, List<WriteOffItemDto>>();
+        foreach (var wi in writeOffItemRows)
+        {
+            int woId = (int)wi.WriteOffRecordId;
+            if (!woItemDict.ContainsKey(woId))
+                woItemDict[woId] = [];
+            woItemDict[woId].Add(new WriteOffItemDto(
+                (int)wi.Id, (string)wi.Category, (int)wi.SeqNo, (string)wi.ItemName,
+                (decimal)wi.UnitPrice, (string)wi.Quantity, (decimal)wi.TotalPrice,
+                (decimal)wi.CashAmount, (decimal)wi.CheckAmount,
+                (string?)wi.Note, (string?)wi.InvoiceNo,
+                (string?)wi.FileName, (string?)wi.FileUrl, (int)wi.SortOrder));
+        }
+
+        WriteOffItemDto[] GetWriteOffItems(int id) =>
+            woItemDict.TryGetValue(id, out var items) ? [.. items] : [];
 
         // Write-off requests
         var writeOffTasks = writeOffRows.Select(row => new ApprovalTaskDto(
@@ -632,7 +669,13 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (string)row.AdvanceRequestNo,
                 (string?)row.ProjectCode ?? "",
                 (string?)row.ProjectName ?? "",
-                (decimal)row.GrandTotal),
+                (decimal)row.GrandTotal,
+                (decimal)row.CashTotal,
+                (decimal)row.CheckTotal,
+                (string?)row.Note,
+                GetWriteOffItems((int)row.Id),
+                (DateTime?)row.AdvancePaidAt,
+                (string?)row.PaidBySignatureUrl),
             GetRecords("write_off", (int)row.Id),
             GetDesignatedReviewers("write_off", (int)row.Id),
             (string?)row.SubmittedBySignatureUrl));

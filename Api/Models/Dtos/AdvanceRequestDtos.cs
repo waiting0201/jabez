@@ -136,4 +136,5 @@ public sealed record AdvanceTaskDetailDto(
     string    ActivityName,
     decimal   GrandTotal,
     DateTime? EstimatedPaymentDate,
-    DateTime? PaidAt);
+    DateTime? PaidAt,
+    string?   PaidBySignatureUrl = null);
