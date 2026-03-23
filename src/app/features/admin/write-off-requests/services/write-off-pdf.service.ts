@@ -197,6 +197,30 @@ export class WriteOffPdfService {
         '',
       ]);
 
+      // 預支金額與沖銷結餘摘要
+      const totalWrittenOff = r.advanceWrittenOffTotal + r.grandTotal;
+      const balance = r.advanceGrandTotal - totalWrittenOff;
+      bodyRows.push([
+        { content: '預支金額', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: fmt(r.advanceGrandTotal), colSpan: 2, styles: { fontStyle: 'bold', halign: 'right' } },
+        '',
+        '',
+      ]);
+      if (r.advanceWrittenOffTotal > 0) {
+        bodyRows.push([
+          { content: '前次已沖銷', colSpan: 6, styles: { halign: 'right' } },
+          { content: fmt(r.advanceWrittenOffTotal), colSpan: 2, styles: { halign: 'right' } },
+          '',
+          '',
+        ]);
+      }
+      bodyRows.push([
+        { content: '結餘', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: fmt(balance), colSpan: 2, styles: { fontStyle: 'bold', halign: 'right', textColor: balance < 0 ? [...CIS.red] : [...CIS.textPrimary] } },
+        '',
+        '',
+      ]);
+
       autoTable(doc, {
         startY: y,
         margin: { left: mx, right: mx },

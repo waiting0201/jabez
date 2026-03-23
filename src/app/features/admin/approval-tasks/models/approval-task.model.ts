@@ -100,6 +100,22 @@ export interface AdvanceTaskDetail {
   paidBySignatureUrl?: string;
 }
 
+export interface WriteOffTaskDetailItem {
+  id: number;
+  category: string;
+  seqNo: number;
+  itemName: string;
+  unitPrice: number;
+  quantity: string;
+  totalPrice: number;
+  cashAmount: number;
+  checkAmount: number;
+  note?: string;
+  invoiceNo?: string;
+  fileName?: string;
+  fileUrl?: string;
+}
+
 export interface WriteOffTaskDetail {
   writeOffRequestId: number;
   requestNo: string;
@@ -107,6 +123,10 @@ export interface WriteOffTaskDetail {
   projectCode: string;
   projectName: string;
   grandTotal: number;
+  cashTotal: number;
+  checkTotal: number;
+  note?: string;
+  items: WriteOffTaskDetailItem[];
   paidAt?: string;
   paidBySignatureUrl?: string;
 }
