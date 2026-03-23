@@ -226,11 +226,60 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
 
                 {noteSection}
 
+                {BuildLeaveDetailSection(emp)}
+
                 <hr style="border:none;border-top:1px solid #DDD6C8;margin:24px 0">
                 <p style="color:#A39685;font-size:11px;margin:0">此為系統自動寄發之薪資明細，僅供參考。如有疑問請洽人事部門。</p>
             </div>
             """;
     }
+
+    /// <summary>產生請假紀錄 HTML 區塊（用於薪資明細信件）</summary>
+    private static string BuildLeaveDetailSection(EmployeePayrollDto emp)
+    {
+        if (emp.LeaveDetails is null || emp.LeaveDetails.Length == 0)
+            return "";
+
+        var rows = string.Join("", emp.LeaveDetails.Select((ld, i) =>
+        {
+            var bg = i % 2 == 0 ? "" : " style=\"background:#FDFAF5\"";
+            var label = GetLeaveTypeLabel(ld.LeaveType);
+            var period = $"{ld.StartDate:MM/dd HH:mm} ~ {ld.EndDate:MM/dd HH:mm}";
+            var days = Math.Round(ld.Hours / 8m, 1);
+            return $"<tr{bg}><td style=\"padding:8px 12px\">{label}</td><td style=\"padding:8px 12px\">{period}</td><td style=\"padding:8px 12px;text-align:right\">{days} 天</td></tr>";
+        }));
+
+        return $"""
+            <h3 style="color:#7C5E8C;font-size:15px;margin:20px 0 8px;border-bottom:2px solid #7C5E8C;padding-bottom:4px">本月請假紀錄</h3>
+            <table style="width:100%;border-collapse:collapse;font-size:14px">
+                <tr style="background:#F5F2ED;font-weight:bold">
+                    <td style="padding:8px 12px">假別</td>
+                    <td style="padding:8px 12px">期間</td>
+                    <td style="padding:8px 12px;text-align:right">天數</td>
+                </tr>
+                {rows}
+            </table>
+            """;
+    }
+
+    /// <summary>假別中文標籤（用於信件）</summary>
+    private static string GetLeaveTypeLabel(string leaveType) => leaveType switch
+    {
+        "annual"              => "年假",
+        "personal"            => "事假",
+        "sick"                => "病假",
+        "compensatory"        => "補休",
+        "marriage"            => "婚假",
+        "bereavement"         => "喪假",
+        "official"            => "公假",
+        "maternity"           => "產假",
+        "miscarriage_3m"      => "流產假(3個月以上)",
+        "miscarriage_2to3m"   => "流產假(2-3個月)",
+        "miscarriage_under2m" => "流產假(未滿2個月)",
+        "prenatal_checkup"    => "產檢假",
+        "paternity"           => "陪產假",
+        _                     => leaveType,
+    };
 
     private static PayrollAdjustmentDto ToDto(PayrollAdjustment a) => new(
         a.Id, a.EmployeeId, a.Year, a.Month,

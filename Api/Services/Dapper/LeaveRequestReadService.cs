@@ -11,7 +11,8 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
         SELECT lr.Id, u.Name AS EmployeeName,
                lr.LeaveType, lr.StartDate, lr.EndDate, lr.Hours, lr.Reason,
                lr.ApprovalStatus, lr.CreatedAt, lr.ReviewedAt, lr.ReviewNote,
-               lr.ApprovalItemId, lr.CurrentStepOrder, lr.ReviewedById
+               lr.ApprovalItemId, lr.CurrentStepOrder, lr.ReviewedById,
+               lr.BereavementRelationship
         FROM LeaveRequests lr
         LEFT JOIN Users u ON lr.EmployeeId = u.Id
         """;
@@ -78,7 +79,8 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
             (DateTime)row.CreatedAt,
             (DateTime?)row.ReviewedAt,
             (string?)row.ReviewNote,
-            ApprovalItemId:   (int?)row.ApprovalItemId,
-            CurrentStepOrder: (int?)row.CurrentStepOrder,
-            ReviewedById:     (Guid?)row.ReviewedById);
+            ApprovalItemId:          (int?)row.ApprovalItemId,
+            CurrentStepOrder:        (int?)row.CurrentStepOrder,
+            ReviewedById:            (Guid?)row.ReviewedById,
+            BereavementRelationship: (string?)row.BereavementRelationship);
 }

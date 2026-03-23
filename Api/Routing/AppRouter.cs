@@ -189,6 +189,7 @@ public sealed class AppRouter(
             ("GET",    ["leave-requests"])                         => await leaveRequests.GetAllAsync(req),
             ("POST",   ["leave-requests"])                         => await leaveRequests.CreateAsync(req),
             ("GET",    ["leave-requests", "compensatory-hours"])  => await leaveRequests.GetCompensatoryHoursAsync(req),
+            ("GET",    ["leave-requests", "annual-quota"])        => await leaveRequests.GetAnnualQuotaAsync(req),
             ("PATCH",  ["leave-requests", var id, "submit"])      => await leaveRequests.SubmitAsync(req, id),
             ("GET",    ["leave-requests", var id])                 => await leaveRequests.GetByIdAsync(req, id),
             ("PUT",    ["leave-requests", var id])                 => await leaveRequests.UpdateAsync(req, id),

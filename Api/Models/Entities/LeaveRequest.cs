@@ -5,7 +5,7 @@ public class LeaveRequest
     public int      Id             { get; set; }
     public Guid?    EmployeeId     { get; set; }
     public int?     ApprovalItemId { get; set; }
-    public string   LeaveType      { get; set; } = string.Empty; // annual | personal | sick | compensatory
+    public string   LeaveType      { get; set; } = string.Empty; // annual | personal | sick | compensatory | marriage | bereavement | official | maternity | miscarriage_3m | miscarriage_2to3m | miscarriage_under2m | prenatal_checkup | paternity
     public DateTime StartDate      { get; set; }
     public DateTime EndDate        { get; set; }
     public decimal  Hours          { get; set; }
@@ -15,6 +15,7 @@ public class LeaveRequest
     public Guid?    ReviewedById   { get; set; }
     public DateTime? ReviewedAt   { get; set; }
     public string?  ReviewNote     { get; set; }
+    public string?  BereavementRelationship { get; set; }  // 喪假親屬關係
     public DateTime CreatedAt      { get; set; }
 
     // Navigation

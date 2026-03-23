@@ -70,6 +70,16 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             GROUP BY lr.EmployeeId, lr.LeaveType
             """;
 
+        // 6. 查詢該月所有已核准的請假明細（全假別）
+        const string leaveDetailSql = """
+            SELECT lr.EmployeeId, lr.LeaveType, lr.StartDate, lr.EndDate, lr.Hours
+            FROM LeaveRequests lr
+            WHERE lr.ApprovalStatus = 'approved'
+              AND lr.StartDate <= @LastDay
+              AND lr.EndDate   >= @FirstDay
+            ORDER BY lr.StartDate
+            """;
+
         var employees = (await db.QueryAsync<dynamic>(employeeSql, new { FirstDay = firstDay })).ToList();
         var travelDays = (await db.QueryAsync<dynamic>(travelSql, new { FirstDay = firstDay, LastDay = lastDay }))
             .ToDictionary(r => (Guid)r.EmployeeId, r => (int)r.TotalDays);
@@ -83,6 +93,17 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
         var leaveDaysMap = new Dictionary<(Guid, string), int>();
         foreach (var lr in leaveRecords)
             leaveDaysMap[((Guid)lr.EmployeeId, (string)lr.LeaveType)] = (int)lr.TotalDays;
+
+        // 請假明細：Dictionary<EmployeeId, LeaveDetailDto[]>
+        var leaveDetails = (await db.QueryAsync<dynamic>(leaveDetailSql, new { FirstDay = firstDay, LastDay = lastDay }))
+            .GroupBy(r => (Guid)r.EmployeeId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(r => new LeaveDetailDto(
+                    (string)r.LeaveType,
+                    (DateTime)r.StartDate,
+                    (DateTime)r.EndDate,
+                    (decimal)r.Hours)).ToArray());
 
         var results = new List<EmployeePayrollDto>();
         foreach (var emp in employees)
@@ -169,7 +190,8 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 otherDeduction,
                 otherDeductionNote,
                 note,
-                netSalary));
+                netSalary,
+                leaveDetails.TryGetValue(empId, out var ld) ? ld : null));
         }
 
         return new MonthlyPayrollDto(

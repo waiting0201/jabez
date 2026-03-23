@@ -15,6 +15,7 @@ namespace Jabez.Api.Handlers;
 /// GET    /leave-requests                    → 列表
 /// POST   /leave-requests                    → 新增（EmployeeId 由 JWT 決定）
 /// GET    /leave-requests/compensatory-hours → 可補休時數查詢
+/// GET    /leave-requests/annual-quota       → 年假額度查詢
 /// GET    /leave-requests/{id}               → 單筆
 /// PUT    /leave-requests/{id}               → 更新（僅 draft 才允許）
 /// DELETE /leave-requests/{id}               → 刪除（僅 draft 才允許）
@@ -28,7 +29,38 @@ public sealed class LeaveRequestHandler(
     IApprovalFlowService approvalFlow)
 {
     private static readonly HashSet<string> ValidLeaveTypes =
-        ["annual", "personal", "sick", "compensatory", "marriage", "bereavement", "maternity", "paternity", "official"];
+        ["annual", "personal", "sick", "compensatory", "marriage", "bereavement",
+         "official", "maternity", "miscarriage_3m", "miscarriage_2to3m",
+         "miscarriage_under2m", "prenatal_checkup", "paternity"];
+
+    /// <summary>各假別天數上限（不含年假與補休，它們有獨立邏輯）</summary>
+    private static readonly Dictionary<string, int> LeaveTypeDaysLimit = new()
+    {
+        ["marriage"]            = 8,
+        ["maternity"]           = 56,
+        ["miscarriage_3m"]      = 28,
+        ["miscarriage_2to3m"]   = 7,
+        ["miscarriage_under2m"] = 5,
+        ["prenatal_checkup"]    = 7,
+        ["paternity"]           = 7,
+    };
+
+    /// <summary>喪假親屬關係對應天數上限</summary>
+    private static readonly Dictionary<string, int> BereavementDaysLimit = new()
+    {
+        ["spouse"]                 = 8,
+        ["parent"]                 = 8,
+        ["adoptive_parent"]        = 8,
+        ["step_parent"]            = 8,
+        ["grandparent"]            = 6,
+        ["child"]                  = 6,
+        ["spouse_parent"]          = 6,
+        ["spouse_adoptive_parent"] = 6,
+        ["great_grandparent"]      = 3,
+        ["sibling"]                = 3,
+        ["spouse_grandparent"]     = 3,
+    };
+
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
         var userId = await GetUserIdAsync(req);
@@ -73,6 +105,15 @@ public sealed class LeaveRequestHandler(
             return new BadRequestObjectResult(ApiResponse.Fail(
                 $"Invalid LeaveType '{body.LeaveType}'. Must be one of: {string.Join(", ", ValidLeaveTypes)}"));
 
+        // 喪假必須提供親屬關係
+        if (body.LeaveType == "bereavement")
+        {
+            if (string.IsNullOrWhiteSpace(body.BereavementRelationship))
+                return new BadRequestObjectResult(ApiResponse.Fail("喪假必須選擇親屬關係。"));
+            if (!BereavementDaysLimit.ContainsKey(body.BereavementRelationship))
+                return new BadRequestObjectResult(ApiResponse.Fail("無效的親屬關係。"));
+        }
+
         if (body.StartDate == default || body.EndDate == default)
             return new BadRequestObjectResult(ApiResponse.Fail("StartDate and EndDate are required."));
 
@@ -99,15 +140,16 @@ public sealed class LeaveRequestHandler(
 
         var item = new LeaveRequest
         {
-            EmployeeId     = employeeId,   // 強制使用 JWT 身分，忽略 body.EmployeeId
-            ApprovalItemId = body.ApprovalItemId,
-            LeaveType      = body.LeaveType,
-            StartDate      = body.StartDate,
-            EndDate        = body.EndDate,
-            Hours          = hours,
-            Reason         = body.Reason,
-            ApprovalStatus = "draft",
-            CreatedAt      = Clock.Now,
+            EmployeeId              = employeeId,   // 強制使用 JWT 身分，忽略 body.EmployeeId
+            ApprovalItemId          = body.ApprovalItemId,
+            LeaveType               = body.LeaveType,
+            StartDate               = body.StartDate,
+            EndDate                 = body.EndDate,
+            Hours                   = hours,
+            Reason                  = body.Reason,
+            BereavementRelationship = body.LeaveType == "bereavement" ? body.BereavementRelationship : null,
+            ApprovalStatus          = "draft",
+            CreatedAt               = Clock.Now,
         };
         db.LeaveRequests.Add(item);
         await db.SaveChangesAsync();
@@ -178,6 +220,18 @@ public sealed class LeaveRequestHandler(
         if (body.EndDate.HasValue)      item.EndDate   = body.EndDate.Value;
         if (body.Reason is not null)    item.Reason    = body.Reason;
 
+        // 喪假親屬關係更新
+        var effectiveLeaveType = body.LeaveType ?? item.LeaveType;
+        if (effectiveLeaveType == "bereavement")
+        {
+            if (body.BereavementRelationship is not null)
+                item.BereavementRelationship = body.BereavementRelationship;
+        }
+        else
+        {
+            item.BereavementRelationship = null;
+        }
+
         // 時數由開始/結束時間重新計算
         item.Hours = (decimal)(item.EndDate - item.StartDate).TotalHours;
 
@@ -232,6 +286,48 @@ public sealed class LeaveRequestHandler(
         }));
     }
 
+    /// <summary>查詢當前使用者的年假額度（根據 HireDate 計算年資）</summary>
+    public async Task<IActionResult> GetAnnualQuotaAsync(HttpRequest req)
+    {
+        var userId = await GetUserIdAsync(req);
+        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user?.HireDate is null)
+            return new OkObjectResult(ApiResponse.Ok(new
+            {
+                totalDays = 0,
+                usedDays = 0m,
+                availableDays = 0m,
+                seniorityYears = 0,
+                seniorityMonths = 0,
+                message = "未設定到職日",
+            }));
+
+        var now = Clock.Now;
+        var (years, months) = CalculateSeniority(user.HireDate.Value, now);
+        int totalDays = CalculateAnnualLeaveDays(years, months);
+
+        // 查詢今年已使用的年假天數（pending + approved）
+        var startOfYear = new DateTime(now.Year, 1, 1);
+        var endOfYear = new DateTime(now.Year, 12, 31, 23, 59, 59);
+        var usedHours = await db.LeaveRequests
+            .Where(l => l.EmployeeId == userId
+                     && l.LeaveType == "annual"
+                     && (l.ApprovalStatus == "approved" || l.ApprovalStatus == "pending")
+                     && l.StartDate >= startOfYear && l.StartDate <= endOfYear)
+            .SumAsync(l => l.Hours);
+        var usedDays = usedHours / 8m;
+
+        return new OkObjectResult(ApiResponse.Ok(new
+        {
+            totalDays,
+            usedDays = Math.Round(usedDays, 1),
+            availableDays = Math.Round(Math.Max(0, totalDays - usedDays), 1),
+            seniorityYears = years,
+            seniorityMonths = months,
+        }));
+    }
+
     /// <summary>計算指定使用者可用的補休時數</summary>
     private async Task<decimal> GetAvailableCompensatoryHoursAsync(Guid userId)
     {
@@ -261,6 +357,10 @@ public sealed class LeaveRequestHandler(
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned leave requests can be submitted.");
+
+        // 喪假驗證：必須有親屬關係
+        if (item.LeaveType == "bereavement" && string.IsNullOrWhiteSpace(item.BereavementRelationship))
+            return new BadRequestObjectResult(ApiResponse.Fail("喪假必須選擇親屬關係。"));
 
         // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
         if (item.ApprovalStatus == "returned")
@@ -296,6 +396,11 @@ public sealed class LeaveRequestHandler(
                 return new BadRequestObjectResult(ApiResponse.Fail(
                     $"補休時數不足。申請 {requestedHours} 小時，可用 {available} 小時。"));
         }
+
+        // 天數上限驗證（累計制）
+        var quotaError = await ValidateLeaveQuotaAsync(userId, item);
+        if (quotaError is not null)
+            return new BadRequestObjectResult(ApiResponse.Fail(quotaError));
 
         // Superadmin 無部門歸屬，直接自動核准
         var submitter = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
@@ -408,6 +513,138 @@ public sealed class LeaveRequestHandler(
         var msg = autoApproved ? "Leave request auto-approved." : "Leave request submitted.";
         return new OkObjectResult(ApiResponse.Ok(dto, msg));
     }
+
+    // ── Quota Validation ─────────────────────────────────────────────────────
+
+    /// <summary>驗證假別天數上限（累計制），回傳錯誤訊息或 null</summary>
+    private async Task<string?> ValidateLeaveQuotaAsync(Guid userId, LeaveRequest item)
+    {
+        var now = Clock.Now;
+
+        // 年假額度驗證
+        if (item.LeaveType == "annual")
+        {
+            var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+            if (user?.HireDate is null)
+                return "未設定到職日，無法申請年假。";
+
+            var (years, months) = CalculateSeniority(user.HireDate.Value, now);
+            int totalDays = CalculateAnnualLeaveDays(years, months);
+            if (totalDays <= 0)
+                return "年資不足，尚無年假額度。";
+
+            var usedHours = await GetUsedHoursAsync(userId, "annual", item.Id, now.Year);
+            var totalUsedDays = (usedHours + item.Hours) / 8m;
+            if (totalUsedDays > totalDays)
+                return $"年假額度不足。上限 {totalDays} 天，已使用 {Math.Round(usedHours / 8m, 1)} 天，本次申請 {Math.Round(item.Hours / 8m, 1)} 天。";
+
+            return null;
+        }
+
+        // 有固定天數上限的假別
+        if (LeaveTypeDaysLimit.TryGetValue(item.LeaveType, out var limit))
+        {
+            // 產假類別不限年度，其他按年度計算
+            bool isMaternityType = item.LeaveType is "maternity" or "miscarriage_3m" or "miscarriage_2to3m" or "miscarriage_under2m" or "prenatal_checkup" or "paternity";
+            int? year = isMaternityType ? null : now.Year;
+
+            var usedHours = await GetUsedHoursAsync(userId, item.LeaveType, item.Id, year);
+            var totalUsedDays = (usedHours + item.Hours) / 8m;
+            if (totalUsedDays > limit)
+            {
+                var leaveLabel = GetLeaveTypeLabel(item.LeaveType);
+                return $"{leaveLabel}額度不足。上限 {limit} 天，已使用 {Math.Round(usedHours / 8m, 1)} 天，本次申請 {Math.Round(item.Hours / 8m, 1)} 天。";
+            }
+            return null;
+        }
+
+        // 喪假：根據親屬關係的天數上限
+        if (item.LeaveType == "bereavement")
+        {
+            if (string.IsNullOrWhiteSpace(item.BereavementRelationship) ||
+                !BereavementDaysLimit.TryGetValue(item.BereavementRelationship, out var bLimit))
+                return "喪假必須選擇有效的親屬關係。";
+
+            // 喪假按同親屬關係累計（不限年度）
+            var usedHours = await db.LeaveRequests
+                .Where(l => l.EmployeeId == userId
+                         && l.LeaveType == "bereavement"
+                         && l.BereavementRelationship == item.BereavementRelationship
+                         && l.Id != item.Id
+                         && (l.ApprovalStatus == "approved" || l.ApprovalStatus == "pending"))
+                .SumAsync(l => l.Hours);
+            var totalUsedDays = (usedHours + item.Hours) / 8m;
+            if (totalUsedDays > bLimit)
+                return $"喪假額度不足。上限 {bLimit} 天，已使用 {Math.Round(usedHours / 8m, 1)} 天，本次申請 {Math.Round(item.Hours / 8m, 1)} 天。";
+            return null;
+        }
+
+        // personal / sick / official / compensatory：無天數上限或由其他邏輯驗證
+        return null;
+    }
+
+    /// <summary>查詢已使用時數（排除當前申請，可選按年度過濾）</summary>
+    private async Task<decimal> GetUsedHoursAsync(Guid userId, string leaveType, int excludeId, int? year)
+    {
+        var query = db.LeaveRequests
+            .Where(l => l.EmployeeId == userId
+                     && l.LeaveType == leaveType
+                     && l.Id != excludeId
+                     && (l.ApprovalStatus == "approved" || l.ApprovalStatus == "pending"));
+
+        if (year.HasValue)
+        {
+            var startOfYear = new DateTime(year.Value, 1, 1);
+            var endOfYear = new DateTime(year.Value, 12, 31, 23, 59, 59);
+            query = query.Where(l => l.StartDate >= startOfYear && l.StartDate <= endOfYear);
+        }
+
+        return await query.SumAsync(l => l.Hours);
+    }
+
+    // ── Seniority / Annual Leave ─────────────────────────────────────────────
+
+    /// <summary>計算年資（年, 月）</summary>
+    private static (int Years, int Months) CalculateSeniority(DateTime hireDate, DateTime now)
+    {
+        int years = now.Year - hireDate.Year;
+        int months = now.Month - hireDate.Month;
+        if (now.Day < hireDate.Day) months--;
+        if (months < 0) { years--; months += 12; }
+        return (years, months);
+    }
+
+    /// <summary>根據年資計算年假天數</summary>
+    private static int CalculateAnnualLeaveDays(int years, int months)
+    {
+        int totalMonths = years * 12 + months;
+        if (totalMonths < 6) return 0;          // 未滿 6 個月
+        if (totalMonths < 12) return 3;         // 滿 6 個月 ~ 未滿 1 年
+        if (years < 2) return 10;               // 滿 1 年 ~ 未滿 2 年
+        if (years < 3) return 10;               // 滿 2 年 ~ 未滿 3 年
+        if (years < 5) return 14;               // 滿 3 年 ~ 未滿 5 年
+        if (years < 10) return 15;              // 滿 5 年 ~ 未滿 10 年
+        return Math.Min(30, 15 + (years - 10)); // 10 年以上：每年加 1 天，上限 30 天
+    }
+
+    /// <summary>假別中文標籤（用於錯誤訊息）</summary>
+    private static string GetLeaveTypeLabel(string leaveType) => leaveType switch
+    {
+        "annual"             => "年假",
+        "personal"           => "事假",
+        "sick"               => "病假",
+        "compensatory"       => "補休",
+        "marriage"           => "婚假",
+        "bereavement"        => "喪假",
+        "official"           => "公假",
+        "maternity"          => "產假",
+        "miscarriage_3m"     => "流產假(3個月以上)",
+        "miscarriage_2to3m"  => "流產假(2-3個月)",
+        "miscarriage_under2m"=> "流產假(未滿2個月)",
+        "prenatal_checkup"   => "產檢假",
+        "paternity"          => "陪產假",
+        _                    => leaveType,
+    };
 
     // ── Helper ──────────────────────────────────────────────────────────────────
 

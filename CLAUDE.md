@@ -440,6 +440,8 @@ public async Task<HttpResponseData> Run(
 | GET/POST | `/leave-requests` | 請假列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/leave-requests/{id}` | 請假 CRUD |
 | PATCH | `/leave-requests/{id}/submit` | 送出請假申請（draft → pending） |
+| GET | `/leave-requests/compensatory-hours` | 查詢可補休時數（總加班 − 已補休） |
+| GET | `/leave-requests/annual-quota` | 查詢年假額度（依 HireDate 計算年資） |
 | GET/POST | `/travel-requests` | 出差列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/travel-requests/{id}` | 出差 CRUD |
 | PATCH | `/travel-requests/{id}/submit` | 送出出差申請（draft → pending） |
@@ -530,7 +532,7 @@ dotnet ef database update               # 套用 Migration
 | `Project` | 專案主檔 |
 | `PaymentRequest` | 請款申請 |
 | `InvoiceItem` | 請款明細（發票項目） |
-| `LeaveRequest` | 請假申請 |
+| `LeaveRequest` | 請假申請（含 BereavementRelationship 喪假親屬關係） |
 | `TravelRequest` | 出差申請（含 IsHolidayTravel 假日出差欄位） |
 | `OvertimeRequest` | 加班申請（走簽核流程） |
 | `AdvanceRequest` | 預支申請 |
@@ -541,6 +543,93 @@ dotnet ef database update               # 套用 Migration
 | `AttendanceRecord` | 出勤打卡紀錄（每人每天一筆，含 GPS） |
 | `SystemSetting` | 系統設定 |
 | `InsuranceBracket` | 勞健保級距（投保級距、員工負擔勞保、員工負擔健保） |
+
+---
+
+## 請假規則
+
+### 假別一覽（13 種）
+
+| # | 假別 | LeaveType | 天數上限 | 薪資影響 |
+|---|------|-----------|---------|---------|
+| 1 | 年假(特休假) | `annual` | 依年資（3~30 天） | 有薪 |
+| 2 | 事假 | `personal` | 無上限 | 按天數扣除全額薪資 |
+| 3 | 病假 | `sick` | 無上限 | 按天數扣除半薪 |
+| 4 | 補休 | `compensatory` | 依加班時數 | 有薪 |
+| 5 | 公假 | `official` | 無上限 | 有薪 |
+| 6 | 婚假 | `marriage` | 8 天 | 有薪 |
+| 7 | 產假 | `maternity` | 56 天 | 有薪 |
+| 8 | 流產假(3 個月以上) | `miscarriage_3m` | 28 天 | 有薪 |
+| 9 | 流產假(2-3 個月) | `miscarriage_2to3m` | 7 天 | 有薪 |
+| 10 | 流產假(未滿 2 個月) | `miscarriage_under2m` | 5 天 | 有薪 |
+| 11 | 產檢假 | `prenatal_checkup` | 7 天 | 有薪 |
+| 12 | 陪產假 | `paternity` | 7 天 | 有薪 |
+| 13 | 喪假 | `bereavement` | 依親屬關係（3/6/8 天） | 有薪 |
+
+### 年假額度規則（依年資）
+
+| 年資 | 年假天數 |
+|------|---------|
+| 未滿 6 個月 | 0 天 |
+| 滿 6 個月 ~ 未滿 1 年 | 3 天 |
+| 滿 1 年 ~ 未滿 2 年 | 10 天（優於勞基法 7 日） |
+| 滿 2 年 ~ 未滿 3 年 | 10 天 |
+| 滿 3 年 ~ 未滿 5 年 | 14 天 |
+| 滿 5 年 ~ 未滿 10 年 | 15 天 |
+| 10 年以上 | 每年加 1 天，上限 30 天 |
+
+> 年資根據 `User.HireDate` 計算。API 端點：`GET /leave-requests/annual-quota`。
+
+### 喪假親屬關係與天數
+
+| 天數 | 親屬關係 |
+|------|---------|
+| 8 天 | 配偶、父母、養父母、繼父母 |
+| 6 天 | 祖父母（含外祖父母）、子女、配偶之父母、配偶之養父母或繼父母 |
+| 3 天 | 曾祖父母、兄弟姊妹、配偶之祖父母 |
+
+> 喪假須在 `LeaveRequest.BereavementRelationship` 欄位記錄親屬關係，前端以下拉選單選擇。
+
+### 天數上限驗證（累計制）
+
+- 送出申請（submit）時，後端查詢該使用者**同假別**、**已送出或已核准**的申請總時數
+- 加上本次申請時數，檢查是否超過上限
+- 天數換算：`累計時數 ÷ 8 小時 = 天數`
+- 年假按**年度**累計，產假系列與喪假**不限年度**
+- 喪假按**同親屬關係**分別累計
+
+### 補休規則
+
+- 依系統統計之加班工時扣抵
+- 可補休時數 = 已核准加班申請 `EstimatedHours` 合計 − 已送出/已核准補休假 `Hours` 合計
+- API 端點：`GET /leave-requests/compensatory-hours`
+
+### 請假申請步驟
+
+```
+請假申請 → 選擇假別 → 填入開始/結束時間 → 請假原因 → 指定審核人
+如需多層級審核：新增審核人順序等同審核順序
+```
+
+### 人事薪資頁面整合
+
+- 薪資編輯頁顯示該月**所有已核准**的請假紀錄（假別、期間、天數）
+- 薪資明細信件同步顯示「本月請假紀錄」表格
+- 事假扣薪與病假扣薪仍於扣款項目中獨立計算
+
+### 涉及元件
+
+| 元件 | 說明 |
+|------|------|
+| `LeaveRequest.BereavementRelationship` | Entity 欄位：喪假親屬關係 |
+| `LeaveRequestHandler.ValidateLeaveQuotaAsync()` | 天數上限驗證（累計制） |
+| `LeaveRequestHandler.GetAnnualQuotaAsync()` | 年假額度 API |
+| `LeaveRequestHandler.CalculateAnnualLeaveDays()` | 年資 → 年假天數計算 |
+| `PayrollReadService` | 新增查詢該月所有請假明細 |
+| `PayrollHandler.BuildLeaveDetailSection()` | 薪資明細信件請假紀錄 HTML |
+| 前端 `leave-request.model.ts` | 13 種假別定義、喪假關係常數、天數上限常數 |
+| 前端 `leave-request-form` | 假別下拉選單（分群組）、條件式欄位、額度提示 |
+| 前端 `payroll-form` | 本月請假紀錄表格 |
 
 ---
 
@@ -789,9 +878,12 @@ draft → pending → approved / returned / rejected
 1. **日薪** = 底薪 ÷ 30（四捨五入至整數）
 2. **假日津貼** = 日薪 × 假日出差天數（來自該月已核准且 `IsHolidayTravel=true` 的出差申請）
 3. **勞保費 / 健保費**：根據底薪查詢勞健保級距表（向上取最近級距）
-4. **實領薪水** = 底薪 + 假日津貼 - 勞保費 - 健保費
+4. **事假扣薪** = 日薪 × 事假天數（按天數扣除全額薪資）
+5. **病假扣薪** = 日薪 × 0.5 × 病假天數（按天數扣除半薪）
+6. **實領薪水** = 底薪 + 假日津貼 - 勞保費 - 健保費 - 事假扣薪 - 病假扣薪
 
 > 人事薪資為動態計算，不儲存於資料庫。前端可匯出 PDF 薪資表。
+> 薪資編輯頁與薪資明細信件額外顯示該月**所有已核准的請假紀錄**（全假別，非僅事假/病假）。
 
 ---
 

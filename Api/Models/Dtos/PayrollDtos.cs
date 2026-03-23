@@ -26,7 +26,15 @@ public sealed record EmployeePayrollDto(
     decimal   OtherDeduction,
     string?   OtherDeductionNote,
     string?   Note,
-    decimal   NetSalary);
+    decimal   NetSalary,
+    LeaveDetailDto[]? LeaveDetails = null);
+
+/// <summary>請假明細（用於薪資頁面顯示）</summary>
+public sealed record LeaveDetailDto(
+    string   LeaveType,
+    DateTime StartDate,
+    DateTime EndDate,
+    decimal  Hours);
 
 /// <summary>整月薪資計算回傳</summary>
 public sealed record MonthlyPayrollDto(

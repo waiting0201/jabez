@@ -12,7 +12,7 @@ public class LeaveRequestConfiguration : IEntityTypeConfiguration<LeaveRequest>
 
         builder.Property(l => l.LeaveType)
                .IsRequired()
-               .HasMaxLength(20);
+               .HasMaxLength(30);
 
         builder.Property(l => l.Reason)
                .IsRequired()
@@ -31,6 +31,9 @@ public class LeaveRequestConfiguration : IEntityTypeConfiguration<LeaveRequest>
 
         builder.Property(l => l.ReviewNote)
                .HasMaxLength(1000);
+
+        builder.Property(l => l.BereavementRelationship)
+               .HasMaxLength(50);
 
         builder.HasOne(l => l.Employee)
                .WithMany()

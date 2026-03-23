@@ -3,18 +3,19 @@ namespace Jabez.Api.Models.Dtos;
 public sealed record LeaveRequestDto(
     int       Id,
     string    EmployeeName,
-    string    LeaveType,       // annual | personal | sick | compensatory
+    string    LeaveType,
     DateTime  StartDate,
     DateTime  EndDate,
     decimal   Hours,
     string    Reason,
-    string    ApprovalStatus,  // pending | approved | rejected
+    string    ApprovalStatus,
     DateTime  CreatedAt,
     DateTime? ReviewedAt,
     string?   ReviewNote,
     int?      ApprovalItemId       = null,
     int?      CurrentStepOrder     = null,
     Guid?     ReviewedById         = null,
+    string?   BereavementRelationship = null,
     DesignatedReviewerDto[]? DesignatedReviewers = null);
 
 public sealed record CreateLeaveRequestRequest(
@@ -25,6 +26,7 @@ public sealed record CreateLeaveRequestRequest(
     DateTime EndDate              = default,
     decimal  Hours                = 1m,
     string   Reason               = "",
+    string?  BereavementRelationship = null,
     DesignatedReviewerRequest[]? DesignatedReviewers = null);
 
 public sealed record UpdateLeaveRequestRequest(
@@ -33,4 +35,5 @@ public sealed record UpdateLeaveRequestRequest(
     DateTime? EndDate,
     decimal?  Hours,
     string?   Reason,
+    string?   BereavementRelationship = null,
     DesignatedReviewerRequest[]? DesignatedReviewers = null);
