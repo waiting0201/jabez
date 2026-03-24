@@ -6,7 +6,7 @@
         <a routerLink="/admin/write-off-requests" class="btn btn-sm btn-outline-secondary">
           <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
         </a>
-        <h4 class="mb-0">沖銷申請 {{ r.requestNo }}</h4>
+        <h4 class="mb-0">預支沖銷申請 {{ r.requestNo }}</h4>
         <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
       </div>
       <div class="flex flex-wrap gap-2">
@@ -79,19 +79,25 @@
           </div>
         </div>
 
-        <!-- 金額摘要 -->
+        <!-- 沖銷金額摘要 -->
         <div class="row g-3 mb-4">
-          <div class="col-6 col-md-4">
-            <div class="text-muted small">現金小計</div>
-            <div class="fw-600 text-lg">{{ r.cashTotal | number:'1.0-0' }}</div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">預支金額</div>
+            <div class="fw-600 text-lg">{{ r.advanceGrandTotal | number:'1.0-0' }}</div>
           </div>
-          <div class="col-6 col-md-4">
-            <div class="text-muted small">支票小計</div>
-            <div class="fw-600 text-lg">{{ r.checkTotal | number:'1.0-0' }}</div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">前次已沖銷</div>
+            <div class="fw-600 text-lg">{{ r.advanceWrittenOffTotal | number:'1.0-0' }}</div>
           </div>
-          <div class="col-6 col-md-4">
-            <div class="text-muted small">合計總額</div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">本次沖銷</div>
             <div class="fw-600 text-lg text-primary">{{ r.grandTotal | number:'1.0-0' }}</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">待沖銷餘額</div>
+            <div class="fw-600 text-lg" [class]="(r.advanceGrandTotal - r.advanceWrittenOffTotal - r.grandTotal) >= 0 ? 'text-green' : 'text-red'">
+              {{ r.advanceGrandTotal - r.advanceWrittenOffTotal - r.grandTotal | number:'1.0-0' }}
+            </div>
           </div>
         </div>
 

@@ -29,7 +29,7 @@ export const menuItems: MenuItemType[] = [
   },
   {
     icon: '/assets/icons/sprite.svg#file-text',
-    label: '沖銷申請',
+    label: '預支沖銷申請',
     url: '/admin/write-off-requests',
     requiredPermission: 'write-off-requests:read',
   },

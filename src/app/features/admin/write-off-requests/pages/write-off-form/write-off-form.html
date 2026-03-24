@@ -3,7 +3,7 @@
     <a routerLink="/admin/write-off-requests" class="btn btn-sm btn-outline-secondary">
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
     </a>
-    <h4 class="mb-0">{{ isEdit ? '編輯沖銷申請' : '新增沖銷申請' }}</h4>
+    <h4 class="mb-0">{{ isEdit ? '編輯預支沖銷申請' : '新增預支沖銷申請' }}</h4>
   </div>
 
   @if (errorMsg()) {
@@ -307,7 +307,7 @@
         @if (isAnyOcrPending) {
           <span class="spinner-border spinner-border-sm me-1" role="status"></span>
         }
-        {{ isEdit ? '儲存變更' : '建立沖銷申請' }}
+        {{ isEdit ? '儲存變更' : '建立預支沖銷申請' }}
       </button>
       <a routerLink="/admin/write-off-requests" class="btn btn-outline-secondary">取消</a>
     </div>

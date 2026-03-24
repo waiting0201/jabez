@@ -54,6 +54,7 @@ export interface PaymentTaskDetail {
   totalAmount: number;
   estimatedPaymentDate?: string;
   paidAt?: string;
+  reason?: string;
   paidBySignatureUrl?: string;
 }
 
@@ -114,6 +115,7 @@ export interface WriteOffTaskDetailItem {
 
 export interface WriteOffTaskDetail {
   writeOffRequestId: number;
+  advanceRequestId: number;
   requestNo: string;
   advanceRequestNo: string;
   projectCode: string;
@@ -123,8 +125,11 @@ export interface WriteOffTaskDetail {
   checkTotal: number;
   note?: string;
   items: WriteOffTaskDetailItem[];
+  estimatedPaymentDate?: string;
   paidAt?: string;
   paidBySignatureUrl?: string;
+  advanceGrandTotal: number;
+  otherWrittenOffTotal: number;
 }
 
 // ── ApprovalRecord ───────────────────────────────────────────────────────────

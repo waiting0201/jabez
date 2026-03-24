@@ -33,7 +33,7 @@ export class WriteOffRequestForm implements OnInit {
   private cdr            = inject(ChangeDetectorRef);
   private sanitizer      = inject(DomSanitizer);
 
-  /** undefined = 新增模式；數值 = 編輯模式（沖銷申請 ID） */
+  /** undefined = 新增模式；數值 = 編輯模式（預支沖銷申請 ID） */
   editId: number | null = null;
   isEdit = false;
 
@@ -157,7 +157,7 @@ export class WriteOffRequestForm implements OnInit {
 
     const idParam = this.route.snapshot.paramMap.get('id');
     if (idParam) {
-      // 編輯模式：載入現有沖銷申請
+      // 編輯模式：載入現有預支沖銷申請
       this.isEdit = true;
       this.editId = +idParam;
       this.service.getById(this.editId).subscribe(r => {

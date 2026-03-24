@@ -6,7 +6,7 @@ export const APPLICATION_TYPE_LABELS: Record<ApplicationType, string> = {
   travel:          '出差申請',
   overtime:        '加班申請',
   advance:         '預支申請',
-  write_off:       '沖銷申請',
+  write_off:       '預支沖銷申請',
 };
 
 export const APPLICATION_TYPE_CLASSES: Record<ApplicationType, string> = {

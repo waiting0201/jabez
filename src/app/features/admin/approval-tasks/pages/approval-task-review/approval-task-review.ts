@@ -138,6 +138,10 @@ export class ApprovalTaskReview implements OnInit {
           this.paymentDateForm.estimatedPaymentDate = task.advanceDetail.estimatedPaymentDate?.toString().slice(0, 10) ?? '';
           this.paymentDateForm.paidAt = task.advanceDetail.paidAt?.toString().slice(0, 10) ?? '';
         }
+        if (task.writeOffDetail) {
+          this.paymentDateForm.estimatedPaymentDate = task.writeOffDetail.estimatedPaymentDate?.toString().slice(0, 10) ?? '';
+          this.paymentDateForm.paidAt = task.writeOffDetail.paidAt?.toString().slice(0, 10) ?? '';
+        }
       }),
       catchError((err: HttpErrorResponse) => {
         this.errorMsg.set(err.error?.message || '載入簽核作業失敗。');
@@ -158,7 +162,7 @@ export class ApprovalTaskReview implements OnInit {
     return step?.departmentCode === 'FIN';
   }
 
-  /** 判斷是否顯示「預支結案」checkbox：沖銷申請 (write_off) 且當前步驟為財務部 */
+  /** 判斷是否顯示「預支結案」checkbox：預支沖銷申請 (write_off) 且當前步驟為財務部 */
   canCloseAdvance(task: ApprovalTask): boolean {
     if (task.applicationType !== 'write_off') return false;
     if (this.auth.isSuperAdmin()) return true;
@@ -191,7 +195,14 @@ export class ApprovalTaskReview implements OnInit {
     this.paymentDateError.set('');
 
     let update$: Observable<any>;
-    if (task.advanceDetail) {
+    if (task.writeOffDetail) {
+      // 沖銷：更新關聯的預支申請撥款日
+      update$ = this.advanceService.updatePaymentDate(
+        task.writeOffDetail.advanceRequestId,
+        estimatedPaymentDate || undefined,
+        paidAt || undefined,
+      );
+    } else if (task.advanceDetail) {
       update$ = this.advanceService.updatePaymentDate(
         task.advanceDetail.advanceRequestId,
         estimatedPaymentDate || undefined,
@@ -525,7 +536,7 @@ export class ApprovalTaskReview implements OnInit {
     });
   }
 
-  /** 列印沖銷申請表 PDF */
+  /** 列印預支沖銷申請表 PDF */
   printWriteOffPdf(task: ApprovalTask) {
     if (!task.writeOffDetail || task.status !== 'approved') return;
     this.writeOffService.getById(task.writeOffDetail.writeOffRequestId).subscribe({
@@ -541,7 +552,7 @@ export class ApprovalTaskReview implements OnInit {
         );
       },
       error: () => {
-        this.errorMsg.set('載入沖銷申請資料失敗，無法匯出 PDF。');
+        this.errorMsg.set('載入預支沖銷申請資料失敗，無法匯出 PDF。');
       },
     });
   }

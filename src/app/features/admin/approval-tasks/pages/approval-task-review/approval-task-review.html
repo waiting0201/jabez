@@ -68,6 +68,12 @@
                         <span class="fw-500 text-success">{{ d.paidAt | date:'yyyy-MM-dd' }}</span>
                       </div>
                     }
+                    @if (d.reason) {
+                      <div class="col-12">
+                        <div class="text-muted small mb-1">請款原因</div>
+                        <span class="fw-500">{{ d.reason }}</span>
+                      </div>
+                    }
                   </div>
                 </div>
               </div>
@@ -291,7 +297,7 @@
               <div class="card border-0 shadow-sm">
                 <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
                   <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
-                  沖銷申請資訊
+                  預支沖銷申請資訊
                 </div>
                 <div class="card-body">
                   <div class="row g-3 mb-4">
@@ -317,21 +323,28 @@
                     </div>
                   </div>
 
-                  <!-- 金額摘要 -->
+                  <!-- 沖銷金額摘要 -->
                   <div class="row g-3 mb-4">
-                    <div class="col-6 col-md-4">
-                      <div class="text-muted small mb-1">現金小計</div>
-                      <span class="fw-600 text-lg">{{ d.cashTotal | number:'1.0-0' }}</span>
+                    <div class="col-6 col-md-3">
+                      <div class="text-muted small mb-1">預支金額</div>
+                      <span class="fw-600 text-lg">{{ d.advanceGrandTotal | number:'1.0-0' }}</span>
                     </div>
-                    <div class="col-6 col-md-4">
-                      <div class="text-muted small mb-1">支票小計</div>
-                      <span class="fw-600 text-lg">{{ d.checkTotal | number:'1.0-0' }}</span>
+                    <div class="col-6 col-md-3">
+                      <div class="text-muted small mb-1">前次已沖銷</div>
+                      <span class="fw-600 text-lg">{{ d.otherWrittenOffTotal | number:'1.0-0' }}</span>
                     </div>
-                    <div class="col-6 col-md-4">
-                      <div class="text-muted small mb-1">合計總額</div>
+                    <div class="col-6 col-md-3">
+                      <div class="text-muted small mb-1">本次沖銷</div>
                       <span class="fw-600 text-lg text-primary">{{ d.grandTotal | number:'1.0-0' }}</span>
                     </div>
+                    <div class="col-6 col-md-3">
+                      <div class="text-muted small mb-1">待沖銷餘額</div>
+                      <span class="fw-600 text-lg" [class]="(d.advanceGrandTotal - d.otherWrittenOffTotal - d.grandTotal) >= 0 ? 'text-green' : 'text-red'">
+                        {{ d.advanceGrandTotal - d.otherWrittenOffTotal - d.grandTotal | number:'1.0-0' }}
+                      </span>
+                    </div>
                   </div>
+
 
                   @if (d.note) {
                     <div class="text-muted small mb-4">備註：{{ d.note }}</div>
@@ -343,6 +356,7 @@
                       <table class="table table-sm mb-0">
                         <thead class="table-light">
                           <tr>
+                            <th style="width:40px"></th>
                             <th>發票號碼</th>
                             <th>分類</th>
                             <th>項目說明</th>
@@ -357,6 +371,15 @@
                         <tbody>
                           @for (item of d.items; track item.id) {
                             <tr>
+                              <td class="align-middle text-center">
+                                @if (item.fileUrl) {
+                                  <button type="button" class="btn btn-sm btn-ghost-secondary p-1"
+                                          (click)="openPreview(item.fileName || '發票', item.fileUrl!)"
+                                          title="{{ item.fileName }}">
+                                    <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                                  </button>
+                                }
+                              </td>
                               <td class="small font-monospace">{{ item.invoiceNo || '—' }}</td>
                               <td class="small">{{ item.category }}</td>
                               <td class="small">{{ item.itemName }}</td>
@@ -371,7 +394,7 @@
                         </tbody>
                         <tfoot>
                           <tr class="table-light">
-                            <td colspan="5" class="text-right fw-500 small">合計</td>
+                            <td colspan="6" class="text-right fw-500 small">合計</td>
                             <td class="text-right fw-600">{{ d.grandTotal | number:'1.0-0' }}</td>
                             <td class="text-right fw-600">{{ d.cashTotal | number:'1.0-0' }}</td>
                             <td class="text-right fw-600">{{ d.checkTotal | number:'1.0-0' }}</td>
@@ -491,7 +514,7 @@
                     </div>
                   </div>
                 </div>
-                @if ((applicationType === 'payment_request' || applicationType === 'advance') && canSetPaymentDate(task)) {
+                @if ((applicationType === 'payment_request' || applicationType === 'advance' || applicationType === 'write_off') && canSetPaymentDate(task)) {
                   <div class="mb-4">
                     <label class="form-label fw-500">預計撥款日</label>
                     <input type="date" class="form-control" formControlName="estimatedPaymentDate"
@@ -578,7 +601,15 @@
                 <div class="text-muted small mb-1 fw-500">撥款日：</div>
                 <div class="small mb-4 text-success">{{ task.advanceDetail!.paidAt | date:'yyyy-MM-dd' }}</div>
               }
-              @if ((task.applicationType === 'payment_request' || task.applicationType === 'advance') && (canUpdatePaymentDate() || canEditPaymentDate(task)) && !(task.paymentDetail?.paidAt || task.advanceDetail?.paidAt)) {
+              @if (task.applicationType === 'write_off' && task.writeOffDetail?.estimatedPaymentDate) {
+                <div class="text-muted small mb-1 fw-500">預計撥款日：</div>
+                <div class="small mb-4">{{ task.writeOffDetail!.estimatedPaymentDate | date:'yyyy-MM-dd' }}</div>
+              }
+              @if (task.applicationType === 'write_off' && task.writeOffDetail?.paidAt) {
+                <div class="text-muted small mb-1 fw-500">撥款日：</div>
+                <div class="small mb-4 text-success">{{ task.writeOffDetail!.paidAt | date:'yyyy-MM-dd' }}</div>
+              }
+              @if ((task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'write_off') && (canUpdatePaymentDate() || canEditPaymentDate(task)) && !(task.paymentDetail?.paidAt || task.advanceDetail?.paidAt || task.writeOffDetail?.paidAt)) {
                 <div class="border rounded p-4 bg-[--bg-base] mb-4">
                   <div class="fw-500 mb-3">設定撥款日期</div>
                   <div class="flex flex-wrap gap-6 items-end">

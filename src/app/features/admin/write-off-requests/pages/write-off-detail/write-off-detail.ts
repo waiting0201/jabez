@@ -56,7 +56,7 @@ export class WriteOffRequestDetail implements OnInit {
   submit() {
     const r = this.request();
     if (!r) return;
-    if (confirm('確定要送出沖銷申請嗎？送出後將進入簽核流程。')) {
+    if (confirm('確定要送出預支沖銷申請嗎？送出後將進入簽核流程。')) {
       this.submitting.set(true);
       this.errorMsg.set('');
       this.service.submit(r.id).subscribe({
@@ -75,7 +75,7 @@ export class WriteOffRequestDetail implements OnInit {
 
   get pdfLoading() { return this.pdfService.pdfLoading; }
 
-  /** 列印沖銷申請表 PDF */
+  /** 列印預支沖銷申請表 PDF */
   printWriteOff() {
     const r = this.request();
     const t = this.approvalTask();
@@ -86,7 +86,7 @@ export class WriteOffRequestDetail implements OnInit {
   delete() {
     const r = this.request();
     if (!r) return;
-    if (confirm('確定要刪除此沖銷申請嗎？此操作無法復原。')) {
+    if (confirm('確定要刪除此預支沖銷申請嗎？此操作無法復原。')) {
       this.service.delete(r.id).subscribe({
         next: () => this.router.navigate(['/admin/write-off-requests']),
         error: (err: HttpErrorResponse) => this.errorMsg.set(err.error?.message || '刪除失敗。'),

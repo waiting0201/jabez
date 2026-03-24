@@ -78,7 +78,7 @@ export class WriteOffPdfService {
     return this.assetCache;
   }
 
-  /** 列印經費沖銷申請表 */
+  /** 列印預支沖銷申請表 */
   async printWriteOff(r: WriteOffRequest, submittedByName: string, approvalRecords: ApprovalRecord[] = [], flow?: ApprovalFlow, submittedBySignatureUrl?: string, paidBySignatureUrl?: string, paidAt?: string) {
     this.pdfLoading.set(true);
     try {
@@ -283,7 +283,7 @@ export class WriteOffPdfService {
       doc.setLineWidth(0.8);
       doc.line(mx, y + 1.5, pw - mx, y + 1.5);
 
-      doc.save(`經費沖銷申請表-${r.requestNo}.pdf`);
+      doc.save(`預支沖銷申請表-${r.requestNo}.pdf`);
     } finally {
       this.pdfLoading.set(false);
     }

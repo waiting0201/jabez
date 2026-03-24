@@ -125,6 +125,7 @@ export class PaymentForm implements OnInit {
   form = this.fb.group({
     type:      ['vendor', Validators.required],
     projectId: [null as number | null, Validators.required],
+    reason:    [''],
     invoices:  this.fb.array([]),
   });
 
@@ -183,7 +184,7 @@ export class PaymentForm implements OnInit {
         this.estimatedPaymentDate = r.estimatedPaymentDate?.toString().slice(0, 10) ?? '';
         this.paidAt               = r.paidAt?.toString().slice(0, 10) ?? '';
         if (this.isReadOnly) this.form.disable();
-        this.form.patchValue({type: r.type, projectId: r.projectId});
+        this.form.patchValue({type: r.type, projectId: r.projectId, reason: r.reason ?? ''});
         // 回填指定審核者清單
         if (r.designatedReviewers?.length) {
           this.designatedEntries = r.designatedReviewers.map(dr => ({
@@ -341,6 +342,7 @@ export class PaymentForm implements OnInit {
     const fd = new FormData();
     fd.append('type', this.form.get('type')!.value!);
     fd.append('projectId', String(this.form.get('projectId')!.value));
+    fd.append('reason', this.form.get('reason')?.value || '');
     // 指定審核者清單
     const reviewers = this.designatedEntries
       .filter(e => e.selectedUserId)

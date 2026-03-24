@@ -62,6 +62,7 @@ export interface PaymentRequest {
   approvalStatus: ApprovalStatus;
   estimatedPaymentDate?: string;
   paidAt?: string;
+  reason?: string;
   designatedReviewers?: DesignatedReviewer[];
   createdAt: Date;
 }

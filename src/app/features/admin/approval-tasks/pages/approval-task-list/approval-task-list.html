@@ -58,6 +58,8 @@
                       {{ t.paymentDetail!.estimatedPaymentDate | date:'yyyy-MM-dd' }}
                     } @else if (t.advanceDetail?.estimatedPaymentDate) {
                       {{ t.advanceDetail!.estimatedPaymentDate | date:'yyyy-MM-dd' }}
+                    } @else if (t.writeOffDetail?.estimatedPaymentDate) {
+                      {{ t.writeOffDetail!.estimatedPaymentDate | date:'yyyy-MM-dd' }}
                     } @else {
                       —
                     }
@@ -67,6 +69,8 @@
                       <span class="text-success fw-500">{{ t.paymentDetail!.paidAt | date:'yyyy-MM-dd' }}</span>
                     } @else if (t.advanceDetail?.paidAt) {
                       <span class="text-success fw-500">{{ t.advanceDetail!.paidAt | date:'yyyy-MM-dd' }}</span>
+                    } @else if (t.writeOffDetail?.paidAt) {
+                      <span class="text-success fw-500">{{ t.writeOffDetail!.paidAt | date:'yyyy-MM-dd' }}</span>
                     } @else {
                       <span class="text-muted">—</span>
                     }

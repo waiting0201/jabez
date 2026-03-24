@@ -93,6 +93,16 @@
               </div>
             </div>
 
+            <div class="mb-4">
+              <label class="form-label fw-500">請款原因</label>
+              @if (isReadOnly) {
+                <p class="form-control-plaintext mb-0">{{ form.get('reason')?.value || '—' }}</p>
+              } @else {
+                <textarea class="form-control" formControlName="reason" rows="3"
+                          placeholder="請說明請款原因…"></textarea>
+              }
+            </div>
+
             @if (isEdit) {
               <div class="mb-4">
                 <label class="form-label fw-500">簽核狀態</label>
