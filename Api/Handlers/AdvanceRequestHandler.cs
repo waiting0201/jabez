@@ -408,57 +408,11 @@ public sealed class AdvanceRequestHandler(
         if (body.EstimatedPaymentDate.HasValue)
             ar.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
         if (body.PaidAt.HasValue)
-        {
-            var taipeiTz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Taipei");
-            var nowTaipei = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, taipeiTz);
-            ar.PaidAt = body.PaidAt.Value.Date + nowTaipei.TimeOfDay;
-            ar.PaidByUserId = userId;
-        }
+            ar.RefundedAt = body.PaidAt.Value;
 
         await db.SaveChangesAsync();
 
-        return new OkObjectResult(ApiResponse.Ok(new { ar.Id, ar.EstimatedPaymentDate, ar.PaidAt }, "撥款日期已更新。"));
-    }
-
-    // ── 退還差額匯款日期（僅財務部）──────────────────────────────────────────
-
-    public async Task<IActionResult> RefundDateAsync(HttpRequest req, string id)
-    {
-        if (!int.TryParse(id, out var intId))
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid ID format."));
-
-        var principal = await jwtService.ValidateRequestAsync(req);
-        if (principal is null)
-            return new UnauthorizedObjectResult(ApiResponse.Fail("Unauthorized."));
-
-        var userIdStr = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        if (!Guid.TryParse(userIdStr, out var userId))
-            return new UnauthorizedObjectResult(ApiResponse.Fail("Invalid token claims."));
-
-        var user = await db.Users.AsNoTracking().Include(u => u.Department).FirstOrDefaultAsync(u => u.Id == userId);
-        if (user is null)
-            return new UnauthorizedObjectResult(ApiResponse.Fail("User not found."));
-
-        if (!user.IsSuperAdmin && user.Department?.Code != "FIN")
-            return new ForbidResult();
-
-        var ar = await db.AdvanceRequests.FindAsync(intId)
-            ?? throw AppException.NotFound("AdvanceRequest");
-
-        if (!ar.IsClosed)
-            return new BadRequestObjectResult(ApiResponse.Fail("只有已結案的預支申請可以設定匯款日期。"));
-
-        if (ar.RefundAmount is null || ar.RefundAmount <= 0)
-            return new BadRequestObjectResult(ApiResponse.Fail("此預支申請無需退還差額。"));
-
-        var body = await req.ReadFromJsonAsync<RefundDateRequest>();
-        if (body?.RefundedAt is null)
-            return new BadRequestObjectResult(ApiResponse.Fail("請提供匯款日期。"));
-
-        ar.RefundedAt = body.RefundedAt.Value;
-        await db.SaveChangesAsync();
-
-        return new OkObjectResult(ApiResponse.Ok(new { ar.Id, ar.RefundAmount, ar.RefundedAt }, "匯款日期已更新。"));
+        return new OkObjectResult(ApiResponse.Ok(new { ar.Id, ar.EstimatedPaymentDate, ar.RefundedAt }, "退款日期已更新。"));
     }
 
     // ── Helper ──────────────────────────────────────────────────────────────

@@ -170,7 +170,6 @@ public sealed class AppRouter(
             ("POST",   ["advance-requests"])                                   => await advanceRequests.CreateAsync(req),
             ("PATCH",  ["advance-requests", var id, "submit"])                 => await advanceRequests.SubmitAsync(req, id),
             ("PATCH",  ["advance-requests", var id, "payment-date"])           => await advanceRequests.UpdatePaymentDateAsync(req, id),
-            ("PATCH",  ["advance-requests", var id, "refund-date"])            => await advanceRequests.RefundDateAsync(req, id),
             ("GET",    ["advance-requests", var id])                           => await advanceRequests.GetByIdAsync(req, id),
             ("PUT",    ["advance-requests", var id])                           => await advanceRequests.UpdateAsync(req, id),
             ("PATCH",  ["advance-requests", var id])                           => await advanceRequests.UpdateAsync(req, id),

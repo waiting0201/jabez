@@ -45,7 +45,6 @@ public sealed record AdvanceRequestDto(
     string?                   SubmittedBy,
     DateTime                  CreatedAt,
     DateTime?                 EstimatedPaymentDate,
-    DateTime?                 PaidAt,
     DateTime?                 ReviewedAt,
     string?                   ReviewNote,
     AdvanceRequestItemDto[]   Items,
@@ -138,8 +137,7 @@ public sealed record AdvanceTaskDetailDto(
     string    ActivityName,
     decimal   GrandTotal,
     DateTime? EstimatedPaymentDate,
-    DateTime? PaidAt,
-    string?   PaidBySignatureUrl = null,
+    DateTime? RefundedAt,
     AdvanceRequestItemDto[] Items = null!)
 {
     public AdvanceRequestItemDto[] Items { get; init; } = Items ?? Array.Empty<AdvanceRequestItemDto>();

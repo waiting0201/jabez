@@ -45,7 +45,12 @@ public sealed record TravelRequestDto(
     int?      CurrentStepOrder     = null,
     Guid?     ReviewedById         = null,
     TravelRequestItemDto[]?      Items               = null,
-    DesignatedReviewerDto[]?     DesignatedReviewers = null);
+    DesignatedReviewerDto[]?     DesignatedReviewers = null,
+    bool                         IsClosed            = false,
+    DateTime?                    ClosedAt            = null,
+    decimal?                     RefundAmount        = null,
+    DateTime?                    EstimatedPaymentDate = null,
+    DateTime?                    RefundedAt          = null);
 
 public sealed record CreateTravelRequestRequest(
     Guid?    EmployeeId,

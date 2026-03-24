@@ -19,8 +19,6 @@ public class AdvanceRequest
     public string?   ReviewNote        { get; set; }
     public Guid?     ReviewedById      { get; set; }
     public DateTime? EstimatedPaymentDate { get; set; }
-    public DateTime? PaidAt            { get; set; }
-    public Guid?     PaidByUserId     { get; set; }
     public DateTime  CreatedAt         { get; set; }
 
     // 結案欄位
@@ -37,7 +35,6 @@ public class AdvanceRequest
     public ApprovalItem?                    ApprovalItem       { get; set; }
     public User?                            SubmittedBy        { get; set; }
     public User?                            ReviewedBy         { get; set; }
-    public User?                            PaidBy             { get; set; }
     public User?                            ClosedBy           { get; set; }
     public ICollection<AdvanceRequestItem>  Items        { get; set; } = [];
     public ICollection<WriteOffRecord>      WriteOffs    { get; set; } = [];

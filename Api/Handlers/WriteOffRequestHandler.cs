@@ -58,7 +58,6 @@ public sealed class WriteOffRequestHandler(
             .AsNoTracking()
             .Include(a => a.Project)
             .Where(a => a.ApprovalStatus == "approved"
-                     && a.PaidAt != null
                      && !a.IsClosed
                      && (isSuperAdmin || a.SubmittedById == userId))
             .OrderByDescending(a => a.CreatedAt)
@@ -69,7 +68,6 @@ public sealed class WriteOffRequestHandler(
                 ProjectCode = a.Project != null ? a.Project.Code : "",
                 a.ActivityName,
                 a.GrandTotal,
-                a.PaidAt,
                 WrittenOffTotal = db.WriteOffRecords
                     .Where(w => w.AdvanceRequestId == a.Id && w.ApprovalStatus != "rejected")
                     .Sum(w => (decimal?)w.GrandTotal) ?? 0m,
@@ -138,9 +136,6 @@ public sealed class WriteOffRequestHandler(
 
         if (ar.ApprovalStatus != "approved")
             throw AppException.BadRequest("Only approved advance requests can have write-offs.");
-
-        if (!ar.PaidAt.HasValue)
-            throw AppException.BadRequest("預支尚未撥款，無法沖銷。");
 
         if (ar.IsClosed)
             throw AppException.BadRequest("此預支申請已結案，無法再沖銷。");

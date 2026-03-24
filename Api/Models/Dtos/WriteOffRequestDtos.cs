@@ -54,7 +54,6 @@ public sealed record WriteOffTaskDetailDto(
     string?            Note,
     WriteOffItemDto[]  Items,
     DateTime?          EstimatedPaymentDate = null,
-    DateTime?          PaidAt = null,
-    string?            PaidBySignatureUrl = null,
+    DateTime?          RefundedAt = null,
     decimal            AdvanceGrandTotal = 0,
     decimal            OtherWrittenOffTotal = 0);

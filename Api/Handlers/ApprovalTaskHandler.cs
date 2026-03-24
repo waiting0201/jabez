@@ -254,10 +254,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 if (body.EstimatedPaymentDate.HasValue)
                     adv.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
                 if (body.PaidAt.HasValue)
-                {
-                    adv.PaidAt = body.PaidAt.Value;
-                    adv.PaidByUserId = reviewerId;
-                }
+                    adv.RefundedAt = body.PaidAt.Value;
                 await ProcessReviewAsync("advance", adv.Id, adv.CurrentStepOrder,
                     adv.ApprovalItemId, body.Action, body.ReviewNote, reviewerId, adv.SubmittedById,
                     setStatus:     s  => adv.ApprovalStatus   = s,
@@ -286,10 +283,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                         if (body.EstimatedPaymentDate.HasValue)
                             adv.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
                         if (body.PaidAt.HasValue)
-                        {
-                            adv.PaidAt = body.PaidAt.Value;
-                            adv.PaidByUserId = reviewerId;
-                        }
+                            adv.RefundedAt = body.PaidAt.Value;
                     }
                 }
                 // 記住審核前的步驟（ProcessReviewAsync 可能會 increment）
@@ -350,6 +344,19 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == two.SubmittedById.Value)
                     : null;
                 await AuthorizeStepAsync(two.ApprovalItemId, two.CurrentStepOrder, reviewer, twoApplicant?.DepartmentId, "travel_write_off", two.Id, twoApplicant?.JobTitleId);
+
+                // 設定出差申請退款日（審核者可在審核出差沖銷時填寫）
+                if (body.EstimatedPaymentDate.HasValue || body.PaidAt.HasValue)
+                {
+                    var travel = await db.TravelRequests.FindAsync(two.TravelRequestId);
+                    if (travel is not null)
+                    {
+                        if (body.EstimatedPaymentDate.HasValue)
+                            travel.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
+                        if (body.PaidAt.HasValue)
+                            travel.RefundedAt = body.PaidAt.Value;
+                    }
+                }
 
                 // 記住審核前的步驟（ProcessReviewAsync 可能會 increment）
                 var twoReviewedStepOrder = two.CurrentStepOrder;

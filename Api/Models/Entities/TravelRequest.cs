@@ -25,8 +25,9 @@ public class TravelRequest
     public Guid?     ClosedById  { get; set; }
 
     // 退還差額（沖銷累計超過出差金額時需匯款）
-    public decimal?  RefundAmount { get; set; }
-    public DateTime? RefundedAt   { get; set; }
+    public decimal?  RefundAmount            { get; set; }
+    public DateTime? EstimatedPaymentDate    { get; set; }
+    public DateTime? RefundedAt              { get; set; }
 
     // Navigation
     public User?         Employee           { get; set; }
