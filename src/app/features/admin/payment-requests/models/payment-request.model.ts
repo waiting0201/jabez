@@ -1,14 +1,16 @@
-export type PaymentType     = 'vendor' | 'travel';
+export type PaymentType     = 'vendor' | 'general' | 'business_trip';
 export type ApprovalStatus  = 'draft' | 'pending' | 'approved' | 'rejected' | 'returned';
 
 export const PAYMENT_TYPE_LABELS: Record<PaymentType, string> = {
-  vendor:  '廠商請款',
-  travel:  '員工差旅',
+  vendor:        '廠商請款',
+  general:       '一般請款',
+  business_trip: '員工公出請款',
 };
 
 export const PAYMENT_TYPE_CLASSES: Record<PaymentType, string> = {
-  vendor:  'bg-info-subtle text-info',
-  travel:  'bg-primary-subtle text-primary',
+  vendor:        'bg-info-subtle text-info',
+  general:       'bg-accent-subtle text-accent',
+  business_trip: 'bg-primary-subtle text-primary',
 };
 
 export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {

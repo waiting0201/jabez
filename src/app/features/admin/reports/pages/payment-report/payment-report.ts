@@ -6,8 +6,9 @@ import {environment} from '@/environments/environment';
 import * as XLSX from 'xlsx';
 
 const PAYMENT_TYPE_LABELS: Record<string, string> = {
-  vendor: '廠商請款',
-  travel: '員工差旅',
+  vendor:        '廠商請款',
+  general:       '一般請款',
+  business_trip: '員工公出請款',
 };
 
 const STATUS_LABELS: Record<string, string> = {
