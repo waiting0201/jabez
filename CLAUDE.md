@@ -946,6 +946,137 @@ hotfix/*      # 緊急修復
 - 通知訊息一律使用 `ngx-toastr`，不得自製 alert 或 modal 替代
 - 新頁面須放置於 `main-layout` 下，使用相同的 sidenav / topbar / footer 結構
 
+### 頁面排版規範
+
+所有 Form / Detail 頁面須遵循以下統一排版規範，確保視覺一致性與專業感。
+
+#### 頁面分類與寬度規則
+
+| 類型 | 統一寬度（RWD，皆含 `col-12`） | 適用頁面 |
+|------|------|------|
+| A. 簡單主檔 | `col-12 col-lg-8 col-xl-6` | department, job-title, permission, insurance-bracket, project |
+| B. 複雜主檔 | `col-12 col-xl-8` | user, role, payroll |
+| C. 申請（無明細表格） | `col-12 col-lg-10 col-xl-8` | leave-request, overtime-request |
+| C. 申請（有明細表格） | `col-12 col-xl-10` | payment, travel, advance, write-off, travel-write-off |
+| D. 詳情頁 | `col-12 col-xl-10` | advance-detail, write-off-detail, travel-write-off-detail |
+| E. 審核頁 | `col-12 col-lg-10 col-xl-8` | approval-task-review |
+| G. 設定頁 | `col-12 col-md-6 col-xl-4`（多欄並排） | settings |
+
+> 所有寬度必須保留 `col-12` 基礎，確保手機裝置全寬顯示。外層容器統一 `container-fluid py-3`，col 外層包 `<div class="row g-4">`。
+
+#### 頁頭結構
+
+**主檔 / 申請表單：**
+```html
+<div class="flex items-center gap-2 mb-6">
+  <a routerLink="..." class="btn btn-sm btn-outline-secondary">
+    <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+  </a>
+  <h4 class="mb-0">{{ title }}</h4>
+</div>
+```
+
+**詳情頁（含狀態 badge + 操作按鈕）：**
+```html
+<div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+  <div class="flex items-center gap-2 flex-wrap">
+    <a routerLink="..." class="btn btn-sm btn-outline-secondary">←</a>
+    <h4 class="mb-0">{{ title }} {{ requestNo }}</h4>
+    <span [class]="'badge ' + statusClass">{{ statusLabel }}</span>
+  </div>
+  <div class="flex flex-wrap gap-2"><!-- 操作按鈕 --></div>
+</div>
+```
+
+#### 卡片頭部統一樣式
+
+所有卡片（card）統一使用以下 card-header 結構：
+
+```html
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+    <svg class="sa-icon text-primary" style="stroke: currentColor">
+      <use href="/assets/icons/sprite.svg#ICON_NAME"></use>
+    </svg>
+    卡片標題
+  </div>
+  <div class="card-body"><!-- 內容 --></div>
+</div>
+```
+
+#### 卡片分組與排序
+
+**一般申請表單（payment / leave / travel / overtime / advance）：**
+1. 狀態提示卡（條件式，唯讀時顯示）
+2. 基本資訊卡（所有表單欄位 + 備註）
+3. 明細表格卡（如有：發票/費用/預算明細）
+4. **指定審核者卡（獨立卡片，icon `#users`）**
+5. 簽核流程（`<app-approval-timeline>`）
+
+**沖銷申請表單（write-off / travel-write-off）：**
+1. 主單選擇卡（預支單/出差單）
+2. 上傳發票卡
+3. 花費明細表格卡
+4. 沖銷備註卡
+5. **指定審核者卡（獨立卡片，icon `#users`）**
+
+> 指定審核者一律為獨立卡片，不得內嵌於其他卡片中。
+
+#### 按鈕位置規範
+
+**主檔表單底部：**
+```html
+<div class="mt-6 flex gap-2">
+  <button type="submit" class="btn btn-primary">{{ isEdit ? '更新' : '建立' }}</button>
+  <a routerLink="..." class="btn btn-outline-secondary">取消</a>
+</div>
+```
+
+**申請表單底部（編輯模式）：**
+```html
+<div class="mt-6 flex gap-2">
+  <button type="submit" class="btn btn-outline-secondary">{{ isEdit ? '儲存' : '儲存草稿' }}</button>
+  <button type="button" class="btn btn-primary" (click)="submitForApproval()">送出申請</button>
+  <a routerLink="..." class="btn btn-outline-secondary">取消</a>
+</div>
+```
+
+**申請表單底部（唯讀模式）：**
+```html
+<div class="mt-6">
+  <a routerLink="..." class="btn btn-outline-secondary">返回列表</a>
+</div>
+```
+
+#### 欄位間距規範
+
+- 卡片內每個欄位 / row 之間：`mb-4`，最後一個 `mb-0`
+- 卡片內 row gutter：`row g-3`
+- 外層 layout row gutter：`row g-4`
+- Label：`form-label fw-500`
+- 卡片之間：`mt-6`
+
+#### 狀態提示卡規範
+
+使用 `@if/@else if` 鏈式（不用 `@switch`），四種狀態色彩：
+
+| 狀態 | 背景色 | 文字色 | Icon |
+|------|--------|--------|------|
+| pending | `bg-[rgba(13,110,253,0.08)]` | `text-primary` | `#clock` |
+| returned | `bg-[rgba(255,193,7,0.08)]` | `text-warning` | `#alert-triangle` |
+| approved | `bg-[rgba(37,162,68,0.08)]` | `text-success` | `#check-circle` |
+| rejected | `bg-[rgba(220,53,69,0.08)]` | `text-danger` | `#x-circle` |
+
+文案統一：「此申請{狀態描述}，不可再修改。」
+
+#### RWD 注意事項
+
+- 所有 `col` 必須包含 `col-12` 基礎（mobile-first 全寬）
+- 明細表格使用 `table-responsive` 確保手機可橫向捲動
+- 詳情頁頁頭使用 `flex-wrap` 確保按鈕換行
+
+---
+
 ### 程式碼寫法與架構一致性
 
 **前端（Angular）：**
