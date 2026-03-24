@@ -120,8 +120,7 @@ export interface AdvanceTaskDetail {
   activityName: string;
   grandTotal: number;
   estimatedPaymentDate?: string;
-  paidAt?: string;
-  paidBySignatureUrl?: string;
+  refundedAt?: string;
   items: AdvanceTaskDetailItem[];
 }
 
@@ -155,8 +154,7 @@ export interface WriteOffTaskDetail {
   note?: string;
   items: WriteOffTaskDetailItem[];
   estimatedPaymentDate?: string;
-  paidAt?: string;
-  paidBySignatureUrl?: string;
+  refundedAt?: string;
   advanceGrandTotal: number;
   otherWrittenOffTotal: number;
 }
@@ -192,6 +190,8 @@ export interface TravelWriteOffTaskDetail {
   items: TravelWriteOffTaskDetailItem[];
   travelGrandTotal: number;
   otherWrittenOffTotal: number;
+  estimatedPaymentDate?: string;
+  refundedAt?: string;
 }
 
 // ── ApprovalRecord ───────────────────────────────────────────────────────────

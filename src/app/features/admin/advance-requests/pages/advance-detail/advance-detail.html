@@ -146,41 +146,29 @@
                   ${{ r.refundAmount | number:'1.0-0' }}
                 </div>
               </div>
+            }
 
-              <div class="col-12">
-                @if (r.refundedAt) {
-                  <!-- 已確認退款 -->
-                  <div class="flex items-center gap-2">
-                    <svg class="sa-icon" style="color: var(--green); stroke: currentColor">
-                      <use href="/assets/icons/sprite.svg#check-circle"></use>
-                    </svg>
-                    <span class="fw-500" style="color: var(--green)">已匯款</span>
-                    <span class="text-muted small">{{ r.refundedAt | date:'yyyy-MM-dd' }}</span>
-                  </div>
-                } @else if (canConfirmRefund()) {
-                  <!-- 財務部：輸入退款日期並確認 -->
-                  <div class="flex flex-wrap items-end gap-2">
-                    <div>
-                      <label class="text-muted small d-block mb-1">退款匯款日期</label>
-                      <input type="date"
-                             class="form-control form-control-sm"
-                             style="width: 180px"
-                             [ngModel]="refundDateInput()"
-                             (ngModelChange)="refundDateInput.set($event)" />
-                    </div>
-                    <button class="btn btn-sm btn-primary inline-flex items-center gap-1"
-                            [disabled]="refundSaving() || !refundDateInput()"
-                            (click)="confirmRefund()">
-                      @if (refundSaving()) {
-                        <span class="spinner-border spinner-border-sm" role="status"></span>
-                      }
-                      確認匯款
-                    </button>
-                  </div>
-                } @else {
-                  <!-- 非財務部：僅顯示「待退款」 -->
-                  <span class="text-muted small">差額尚未退款</span>
-                }
+            @if (r.estimatedPaymentDate) {
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">預計退款日</div>
+                <div class="fw-500">{{ r.estimatedPaymentDate | date:'yyyy-MM-dd' }}</div>
+              </div>
+            }
+
+            @if (r.refundedAt) {
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">退款日</div>
+                <div class="flex items-center gap-2">
+                  <svg class="sa-icon" style="color: var(--green); stroke: currentColor; width: 16px; height: 16px">
+                    <use href="/assets/icons/sprite.svg#check-circle"></use>
+                  </svg>
+                  <span class="fw-500" style="color: var(--green)">{{ r.refundedAt | date:'yyyy-MM-dd' }}</span>
+                </div>
+              </div>
+            } @else if (r.refundAmount != null && r.refundAmount > 0) {
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">退款日</div>
+                <span class="text-muted small">尚未退款</span>
               </div>
             }
 

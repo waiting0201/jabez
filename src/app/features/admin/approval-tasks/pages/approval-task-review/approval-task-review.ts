@@ -140,11 +140,15 @@ export class ApprovalTaskReview implements OnInit {
         }
         if (task.advanceDetail) {
           this.paymentDateForm.estimatedPaymentDate = task.advanceDetail.estimatedPaymentDate?.toString().slice(0, 10) ?? '';
-          this.paymentDateForm.paidAt = task.advanceDetail.paidAt?.toString().slice(0, 10) ?? '';
+          this.paymentDateForm.paidAt = task.advanceDetail.refundedAt?.toString().slice(0, 10) ?? '';
         }
         if (task.writeOffDetail) {
           this.paymentDateForm.estimatedPaymentDate = task.writeOffDetail.estimatedPaymentDate?.toString().slice(0, 10) ?? '';
-          this.paymentDateForm.paidAt = task.writeOffDetail.paidAt?.toString().slice(0, 10) ?? '';
+          this.paymentDateForm.paidAt = task.writeOffDetail.refundedAt?.toString().slice(0, 10) ?? '';
+        }
+        if (task.travelWriteOffDetail) {
+          this.paymentDateForm.estimatedPaymentDate = task.travelWriteOffDetail.estimatedPaymentDate?.toString().slice(0, 10) ?? '';
+          this.paymentDateForm.paidAt = task.travelWriteOffDetail.refundedAt?.toString().slice(0, 10) ?? '';
         }
       }),
       catchError((err: HttpErrorResponse) => {
@@ -208,32 +212,40 @@ export class ApprovalTaskReview implements OnInit {
     this.paymentDateError.set('');
 
     let update$: Observable<any>;
-    if (task.writeOffDetail) {
-      // 沖銷：更新關聯的預支申請撥款日
+    let successMsg: string;
+    if (task.travelWriteOffDetail) {
+      // 出差沖銷：目前透過審核流程設定退款日，此處不支援事後單獨更新
+      this.paymentDateError.set('出差沖銷退款日期請透過審核流程設定。');
+      return;
+    } else if (task.writeOffDetail) {
+      // 預支沖銷：更新關聯的預支申請退款日
       update$ = this.advanceService.updatePaymentDate(
         task.writeOffDetail.advanceRequestId,
         estimatedPaymentDate || undefined,
         paidAt || undefined,
       );
+      successMsg = '退款日期已更新。';
     } else if (task.advanceDetail) {
       update$ = this.advanceService.updatePaymentDate(
         task.advanceDetail.advanceRequestId,
         estimatedPaymentDate || undefined,
         paidAt || undefined,
       );
+      successMsg = '退款日期已更新。';
     } else if (task.paymentDetail) {
       update$ = this.paymentService.updatePaymentDate(
         task.paymentDetail.paymentRequestId,
         estimatedPaymentDate || undefined,
         paidAt || undefined,
       );
+      successMsg = '撥款日期已更新。';
     } else {
       return;
     }
 
     update$.subscribe({
       next: () => {
-        this.paymentDateMsg.set('撥款日期已更新。');
+        this.paymentDateMsg.set(successMsg);
         // 重新載入任務資料以反映更新
         this.task$ = this.service.getById(this.taskId, this.applicationType).pipe(
           tap(t => { if (t) this.taskStatus.set(t.status); }),
@@ -539,8 +551,8 @@ export class ApprovalTaskReview implements OnInit {
           task.approvalRecords ?? [],
           task.flow,
           task.submittedBySignatureUrl,
-          task.advanceDetail?.paidBySignatureUrl,
-          task.advanceDetail?.paidAt,
+          undefined,
+          task.advanceDetail?.refundedAt,
         );
       },
       error: () => {
@@ -560,8 +572,8 @@ export class ApprovalTaskReview implements OnInit {
           task.approvalRecords ?? [],
           task.flow,
           task.submittedBySignatureUrl,
-          task.writeOffDetail?.paidBySignatureUrl,
-          task.writeOffDetail?.paidAt,
+          undefined,
+          task.writeOffDetail?.refundedAt,
         );
       },
       error: () => {

@@ -56,7 +56,6 @@ export interface AdvanceRequest {
   submittedBy?: string;
   createdAt: string;
   estimatedPaymentDate?: string;
-  paidAt?: string;
   reviewedAt?: string;
   reviewNote?: string;
   designatedReviewers?: DesignatedReviewer[];

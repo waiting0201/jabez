@@ -736,9 +736,9 @@
                     </div>
                   </div>
                 </div>
-                @if ((applicationType === 'payment_request' || applicationType === 'advance' || applicationType === 'write_off') && canSetPaymentDate(task)) {
+                @if ((applicationType === 'payment_request' || applicationType === 'advance' || applicationType === 'write_off' || applicationType === 'travel_write_off') && canSetPaymentDate(task)) {
                   <div class="mb-4">
-                    <label class="form-label fw-500">預計撥款日</label>
+                    <label class="form-label fw-500">{{ applicationType === 'payment_request' ? '預計撥款日' : '預計退款日' }}</label>
                     <input type="date" class="form-control" formControlName="estimatedPaymentDate"
                            style="max-width: 220px">
                   </div>
@@ -825,39 +825,47 @@
                 <div class="small mb-4 text-success">{{ task.paymentDetail!.paidAt | date:'yyyy-MM-dd' }}</div>
               }
               @if (task.applicationType === 'advance' && task.advanceDetail?.estimatedPaymentDate) {
-                <div class="text-muted small mb-1 fw-500">預計撥款日：</div>
+                <div class="text-muted small mb-1 fw-500">預計退款日：</div>
                 <div class="small mb-4">{{ task.advanceDetail!.estimatedPaymentDate | date:'yyyy-MM-dd' }}</div>
               }
-              @if (task.applicationType === 'advance' && task.advanceDetail?.paidAt) {
-                <div class="text-muted small mb-1 fw-500">撥款日：</div>
-                <div class="small mb-4 text-success">{{ task.advanceDetail!.paidAt | date:'yyyy-MM-dd' }}</div>
+              @if (task.applicationType === 'advance' && task.advanceDetail?.refundedAt) {
+                <div class="text-muted small mb-1 fw-500">退款日：</div>
+                <div class="small mb-4 text-success">{{ task.advanceDetail!.refundedAt | date:'yyyy-MM-dd' }}</div>
               }
               @if (task.applicationType === 'write_off' && task.writeOffDetail?.estimatedPaymentDate) {
-                <div class="text-muted small mb-1 fw-500">預計撥款日：</div>
+                <div class="text-muted small mb-1 fw-500">預計退款日：</div>
                 <div class="small mb-4">{{ task.writeOffDetail!.estimatedPaymentDate | date:'yyyy-MM-dd' }}</div>
               }
-              @if (task.applicationType === 'write_off' && task.writeOffDetail?.paidAt) {
-                <div class="text-muted small mb-1 fw-500">撥款日：</div>
-                <div class="small mb-4 text-success">{{ task.writeOffDetail!.paidAt | date:'yyyy-MM-dd' }}</div>
+              @if (task.applicationType === 'write_off' && task.writeOffDetail?.refundedAt) {
+                <div class="text-muted small mb-1 fw-500">退款日：</div>
+                <div class="small mb-4 text-success">{{ task.writeOffDetail!.refundedAt | date:'yyyy-MM-dd' }}</div>
               }
-              @if ((task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'write_off') && (canUpdatePaymentDate() || canEditPaymentDate(task)) && !(task.paymentDetail?.paidAt || task.advanceDetail?.paidAt || task.writeOffDetail?.paidAt)) {
+              @if (task.applicationType === 'travel_write_off' && task.travelWriteOffDetail?.estimatedPaymentDate) {
+                <div class="text-muted small mb-1 fw-500">預計退款日：</div>
+                <div class="small mb-4">{{ task.travelWriteOffDetail!.estimatedPaymentDate | date:'yyyy-MM-dd' }}</div>
+              }
+              @if (task.applicationType === 'travel_write_off' && task.travelWriteOffDetail?.refundedAt) {
+                <div class="text-muted small mb-1 fw-500">退款日：</div>
+                <div class="small mb-4 text-success">{{ task.travelWriteOffDetail!.refundedAt | date:'yyyy-MM-dd' }}</div>
+              }
+              @if ((task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'write_off' || task.applicationType === 'travel_write_off') && (canUpdatePaymentDate() || canEditPaymentDate(task)) && !(task.paymentDetail?.paidAt || task.advanceDetail?.refundedAt || task.writeOffDetail?.refundedAt || task.travelWriteOffDetail?.refundedAt)) {
                 <div class="border rounded p-4 bg-[--bg-base] mb-4">
-                  <div class="fw-500 mb-3">設定撥款日期</div>
+                  <div class="fw-500 mb-3">{{ task.applicationType === 'payment_request' ? '設定撥款日期' : '設定退款日期' }}</div>
                   <div class="flex flex-wrap gap-6 items-end">
                     <div>
-                      <label class="form-label fw-500 small">預計撥款日</label>
+                      <label class="form-label fw-500 small">{{ task.applicationType === 'payment_request' ? '預計撥款日' : '預計退款日' }}</label>
                       <input type="date" class="form-control form-control-sm"
                              [value]="paymentDateForm.estimatedPaymentDate"
                              (input)="paymentDateForm.estimatedPaymentDate = $any($event.target).value"
                              style="max-width: 200px">
                     </div>
                     <div>
-                      <label class="form-label fw-500 small">撥款日</label>
+                      <label class="form-label fw-500 small">{{ task.applicationType === 'payment_request' ? '撥款日' : '退款日' }}</label>
                       <input type="date" class="form-control form-control-sm"
                              [value]="paymentDateForm.paidAt"
                              (input)="paymentDateForm.paidAt = $any($event.target).value"
                              style="max-width: 200px">
-                      <div class="text-muted small mt-1">填寫後表示此筆請款已撥款</div>
+                      <div class="text-muted small mt-1">{{ task.applicationType === 'payment_request' ? '填寫後表示此筆請款已撥款' : '填寫後表示退款已完成' }}</div>
                     </div>
                     <button type="button" class="btn btn-sm btn-primary" (click)="updatePaymentDate(task)">
                       儲存

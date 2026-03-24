@@ -1,12 +1,12 @@
 import {ChangeDetectorRef, Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {AbstractControl, FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
-import {DecimalPipe} from '@angular/common';
+import {DatePipe, DecimalPipe} from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
 import {TravelRequestService} from '../../services/travel-request.service';
 import {ProjectService} from '../../../projects/services/project.service';
 import {Project} from '../../../projects/models/project.model';
-import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, ITEM_CATEGORIES, DesignatedReviewer} from '../../models/travel-request.model';
+import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, ITEM_CATEGORIES, DesignatedReviewer, TravelRequest} from '../../models/travel-request.model';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
 import {ApprovalService} from '../../../approvals/services/approval.service';
@@ -19,7 +19,7 @@ import {UserLookup} from '../../../users/models/user.model';
 @Component({
   selector: 'app-travel-request-form',
   templateUrl: './travel-request-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, ApprovalTimeline],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, ApprovalTimeline],
 })
 export class TravelRequestForm implements OnInit {
   private fb          = inject(FormBuilder);
@@ -39,6 +39,8 @@ export class TravelRequestForm implements OnInit {
   isReturned = false;
   isDraft    = true;
   approvalStatus: ApprovalStatus = 'draft';
+  /** 編輯模式下的完整出差申請資料（用於顯示結案退款資訊） */
+  existingRequest: TravelRequest | null = null;
   errorMsg = signal('');
   projects: Project[] = [];
   loadingProjects = true;
@@ -157,6 +159,7 @@ export class TravelRequestForm implements OnInit {
       this.requestId = +id;
       this.service.getById(this.requestId).subscribe(r => {
         if (!r) return;
+        this.existingRequest = r;
         this.approvalStatus = r.approvalStatus;
         this.isDraft    = r.approvalStatus === 'draft';
         this.isReturned = r.approvalStatus === 'returned';

@@ -299,6 +299,62 @@
           [currentStepOrder]="taskCurrentStepOrder"
           [status]="taskStatus" />
 
+        <!-- 結案退款資訊 -->
+        @if (existingRequest && (existingRequest.isClosed || existingRequest.refundAmount || existingRequest.estimatedPaymentDate || existingRequest.refundedAt)) {
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon text-muted" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#check-circle"></use>
+              </svg>
+              結案退款資訊
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                @if (existingRequest.isClosed) {
+                  <div class="col-6 col-md-3">
+                    <div class="text-muted small">結案狀態</div>
+                    <span class="badge bg-elevated text-secondary">已結案</span>
+                  </div>
+                  @if (existingRequest.closedAt) {
+                    <div class="col-6 col-md-3">
+                      <div class="text-muted small">結案時間</div>
+                      <div class="fw-500">{{ existingRequest.closedAt | date:'yyyy-MM-dd' }}</div>
+                    </div>
+                  }
+                }
+                @if (existingRequest.refundAmount != null && existingRequest.refundAmount > 0) {
+                  <div class="col-6 col-md-3">
+                    <div class="text-muted small">應退還差額</div>
+                    <div class="fw-600" style="color: var(--red)">${{ existingRequest.refundAmount | number:'1.0-0' }}</div>
+                  </div>
+                }
+                @if (existingRequest.estimatedPaymentDate) {
+                  <div class="col-6 col-md-3">
+                    <div class="text-muted small">預計退款日</div>
+                    <div class="fw-500">{{ existingRequest.estimatedPaymentDate | date:'yyyy-MM-dd' }}</div>
+                  </div>
+                }
+                @if (existingRequest.refundedAt) {
+                  <div class="col-6 col-md-3">
+                    <div class="text-muted small">退款日</div>
+                    <div class="flex items-center gap-1">
+                      <svg class="sa-icon" style="color: var(--green); stroke: currentColor; width: 16px; height: 16px">
+                        <use href="/assets/icons/sprite.svg#check-circle"></use>
+                      </svg>
+                      <span class="fw-500" style="color: var(--green)">{{ existingRequest.refundedAt | date:'yyyy-MM-dd' }}</span>
+                    </div>
+                  </div>
+                } @else if (existingRequest.refundAmount != null && existingRequest.refundAmount > 0) {
+                  <div class="col-6 col-md-3">
+                    <div class="text-muted small">退款日</div>
+                    <span class="text-muted small">尚未退款</span>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        }
+
         @if (!isReadOnly) {
           <div class="mt-6 flex gap-2">
             <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid || itemArray.length === 0">

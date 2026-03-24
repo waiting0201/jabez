@@ -60,4 +60,14 @@ export interface TravelRequest {
   createdAt: Date;
   reviewedAt?: Date;
   reviewNote?: string;
+  /** 是否已結案（沖銷完成） */
+  isClosed?: boolean;
+  /** 結案時間 */
+  closedAt?: string;
+  /** 應退還差額（>0 表示需退款） */
+  refundAmount?: number;
+  /** 預計退款日期 */
+  estimatedPaymentDate?: string;
+  /** 差額退款完成時間 */
+  refundedAt?: string;
 }
