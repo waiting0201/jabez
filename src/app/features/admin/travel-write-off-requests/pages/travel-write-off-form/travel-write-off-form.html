@@ -91,6 +91,8 @@
   </div>
 
   <form [formGroup]="form" (ngSubmit)="save()">
+  <div class="row g-4">
+  <div class="col-12 col-xl-10">
 
     <!-- 發票上傳區 -->
     <div class="card border-0 shadow-sm mb-6">
@@ -288,8 +290,13 @@
 
     <!-- 備註 -->
     <div class="card border-0 shadow-sm mt-6">
+      <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+        <svg class="sa-icon text-primary" style="stroke: currentColor">
+          <use href="/assets/icons/sprite.svg#edit-3"></use>
+        </svg>
+        沖銷備註
+      </div>
       <div class="card-body">
-        <label class="form-label fw-500">沖銷備註</label>
         <textarea class="form-control" formControlName="note" rows="2" placeholder="選填"></textarea>
       </div>
     </div>
@@ -309,6 +316,9 @@
       </button>
       <a routerLink="/admin/travel-write-off-requests" class="btn btn-outline-secondary">取消</a>
     </div>
+
+  </div>
+  </div>
   </form>
 </div>
 

@@ -103,8 +103,19 @@
               }
             </div>
 
-            <!-- 指定審核者（多人清單） -->
-            @if (hasDesignatedStep && !isReadOnly) {
+          </div>
+        </div>
+
+        <!-- 指定審核者 -->
+        @if (hasDesignatedStep && !isReadOnly) {
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon text-primary" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#users"></use>
+              </svg>
+              指定審核者
+            </div>
+            <div class="card-body">
               <div class="mb-4">
                 <label class="form-label fw-500">指定審核者（依序審核）</label>
                 @for (entry of designatedEntries; track $index; let i = $index) {
@@ -135,7 +146,17 @@
                   新增審核人
                 </button>
               </div>
-            } @else if (isReadOnly && designatedEntries.length > 0) {
+            </div>
+          </div>
+        } @else if (isReadOnly && designatedEntries.length > 0) {
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon text-primary" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#users"></use>
+              </svg>
+              指定審核者
+            </div>
+            <div class="card-body">
               <div class="mb-4">
                 <label class="form-label fw-500">指定審核者（依序審核）</label>
                 <ol class="mb-0 ps-4">
@@ -144,10 +165,9 @@
                   }
                 </ol>
               </div>
-            }
-
+            </div>
           </div>
-        </div>
+        }
 
         <!-- 簽核流程時間軸 -->
         <app-approval-timeline

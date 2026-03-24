@@ -25,7 +25,10 @@
 
         <!-- 員工薪資摘要（唯讀） -->
         <div class="card border-0 shadow-sm mb-4">
-          <div class="card-header bg-transparent fw-500">薪資明細</div>
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon"><use href="/assets/icons/sprite.svg#dollar-sign"></use></svg>
+            薪資明細
+          </div>
           <div class="card-body p-0">
             <table class="table table-hover mb-0">
               <tbody>
@@ -109,11 +112,9 @@
         <!-- 本月請假紀錄 -->
         @if (e.leaveDetails && e.leaveDetails.length > 0) {
           <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-transparent fw-500">
-              <span class="inline-flex items-center gap-1 text-[#7C5E8C]">
-                <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#calendar"></use></svg>
-                本月請假紀錄
-              </span>
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600 text-[#7C5E8C]">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#calendar"></use></svg>
+              本月請假紀錄
             </div>
             <div class="card-body p-0">
               <table class="table table-sm mb-0">
@@ -143,11 +144,9 @@
 
           <!-- 其他加項 -->
           <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-transparent fw-500">
-              <span class="inline-flex items-center gap-1">
-                <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus-circle"></use></svg>
-                其他加項
-              </span>
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus-circle"></use></svg>
+              其他加項
             </div>
             <div class="card-body">
               <div class="row g-3">
@@ -169,11 +168,9 @@
 
           <!-- 其他扣項 -->
           <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-transparent fw-500">
-              <span class="inline-flex items-center gap-1">
-                <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#minus-circle"></use></svg>
-                其他扣項
-              </span>
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#minus-circle"></use></svg>
+              其他扣項
             </div>
             <div class="card-body">
               <div class="row g-3">
@@ -195,11 +192,9 @@
 
           <!-- 備註 -->
           <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-transparent fw-500">
-              <span class="inline-flex items-center gap-1">
-                <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
-                備註
-              </span>
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+              備註
             </div>
             <div class="card-body">
               <textarea class="form-control" formControlName="note" rows="3"

@@ -207,51 +207,67 @@
               }
             </div>
 
-            <!-- 指定審核者（多人清單） -->
-            @if (hasDesignatedStep && !isReadOnly) {
-              <div class="mb-4">
-                <label class="form-label fw-500">指定審核者（依序審核）</label>
-                @for (entry of designatedEntries; track $index; let i = $index) {
-                  <div class="flex items-center gap-2 mb-2">
-                    <span class="text-muted small" style="min-width:1.5rem">{{ i + 1 }}.</span>
-                    <select class="form-select form-select-sm" style="max-width:160px"
-                            [(ngModel)]="entry.selectedJobTitleId" [ngModelOptions]="{standalone: true}"
-                            (ngModelChange)="onEntryJobTitleChange(i)">
-                      <option [ngValue]="null">— 職稱 —</option>
-                      @for (jt of jobTitles; track jt.id) {
-                        <option [ngValue]="jt.id">{{ jt.name }}</option>
-                      }
-                    </select>
-                    <select class="form-select form-select-sm" style="max-width:200px"
-                            [(ngModel)]="entry.selectedUserId" [ngModelOptions]="{standalone: true}">
-                      <option [ngValue]="null">— 人員 —</option>
-                      @for (user of entry.filteredUsers; track user.id) {
-                        <option [ngValue]="user.id">{{ user.name }}</option>
-                      }
-                    </select>
-                    <button type="button" class="btn btn-sm btn-ghost-danger" (click)="removeDesignatedEntry(i)">
-                      <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
-                    </button>
-                  </div>
-                }
-                <button type="button" class="btn btn-sm btn-outline-secondary mt-1" (click)="addDesignatedEntry()">
-                  <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
-                  新增審核人
-                </button>
-              </div>
-            } @else if (isReadOnly && designatedEntries.length > 0) {
-              <div class="mb-4">
-                <label class="form-label fw-500">指定審核者（依序審核）</label>
-                <ol class="mb-0 ps-4">
-                  @for (entry of designatedEntries; track $index) {
-                    <li class="small">{{ getUserName(entry.selectedUserId) }}</li>
-                  }
-                </ol>
-              </div>
-            }
-
           </div>
         </div>
+
+        <!-- 指定審核者 -->
+        @if (hasDesignatedStep && !isReadOnly) {
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon text-primary" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#users"></use>
+              </svg>
+              指定審核者
+            </div>
+            <div class="card-body">
+              <label class="form-label fw-500">指定審核者（依序審核）</label>
+              @for (entry of designatedEntries; track $index; let i = $index) {
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-muted small" style="min-width:1.5rem">{{ i + 1 }}.</span>
+                  <select class="form-select form-select-sm" style="max-width:160px"
+                          [(ngModel)]="entry.selectedJobTitleId" [ngModelOptions]="{standalone: true}"
+                          (ngModelChange)="onEntryJobTitleChange(i)">
+                    <option [ngValue]="null">— 職稱 —</option>
+                    @for (jt of jobTitles; track jt.id) {
+                      <option [ngValue]="jt.id">{{ jt.name }}</option>
+                    }
+                  </select>
+                  <select class="form-select form-select-sm" style="max-width:200px"
+                          [(ngModel)]="entry.selectedUserId" [ngModelOptions]="{standalone: true}">
+                    <option [ngValue]="null">— 人員 —</option>
+                    @for (user of entry.filteredUsers; track user.id) {
+                      <option [ngValue]="user.id">{{ user.name }}</option>
+                    }
+                  </select>
+                  <button type="button" class="btn btn-sm btn-ghost-danger" (click)="removeDesignatedEntry(i)">
+                    <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                  </button>
+                </div>
+              }
+              <button type="button" class="btn btn-sm btn-outline-secondary mt-1" (click)="addDesignatedEntry()">
+                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                新增審核人
+              </button>
+            </div>
+          </div>
+        } @else if (isReadOnly && designatedEntries.length > 0) {
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon text-primary" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#users"></use>
+              </svg>
+              指定審核者
+            </div>
+            <div class="card-body">
+              <label class="form-label fw-500">指定審核者（依序審核）</label>
+              <ol class="mb-0 ps-4">
+                @for (entry of designatedEntries; track $index) {
+                  <li class="small">{{ getUserName(entry.selectedUserId) }}</li>
+                }
+              </ol>
+            </div>
+          </div>
+        }
 
         <!-- 簽核流程時間軸 -->
         <app-approval-timeline
