@@ -7,7 +7,7 @@ namespace Jabez.Api.Services.Dapper;
 
 public sealed class WriteOffRequestReadService(IDbConnection db) : IWriteOffRequestReadService
 {
-    // 沖銷申請主查詢：WriteOffRecords 關聯 AdvanceRequests、Projects、Users、WriteOffItems
+    // 預支沖銷申請主查詢：WriteOffRecords 關聯 AdvanceRequests、Projects、Users、WriteOffItems
     private const string BaseSql = """
         SELECT wo.Id, wo.RequestNo, wo.AdvanceRequestId, ar.RequestNo AS AdvanceRequestNo,
                wo.WriteOffNo, proj.Code AS ProjectCode, proj.Name AS ProjectName,
@@ -25,7 +25,8 @@ public sealed class WriteOffRequestReadService(IDbConnection db) : IWriteOffRequ
                wi.UnitPrice, wi.Quantity, wi.TotalPrice,
                wi.CashAmount AS ItemCash, wi.CheckAmount AS ItemCheck,
                wi.Note AS ItemNote, wi.InvoiceNo AS ItemInvoiceNo,
-               wi.FileName AS ItemFileName, wi.FileUrl AS ItemFileUrl, wi.SortOrder
+               wi.FileName AS ItemFileName, wi.FileUrl AS ItemFileUrl, wi.SortOrder,
+               wi.InvoiceDate AS ItemInvoiceDate
         FROM WriteOffRecords wo
         LEFT JOIN AdvanceRequests ar ON wo.AdvanceRequestId = ar.Id
         LEFT JOIN Projects proj      ON ar.ProjectId        = proj.Id
@@ -111,7 +112,8 @@ public sealed class WriteOffRequestReadService(IDbConnection db) : IWriteOffRequ
                     (string?)row.ItemInvoiceNo,
                     (string?)row.ItemFileName,
                     (string?)row.ItemFileUrl,
-                    (int)row.SortOrder));
+                    (int)row.SortOrder,
+                    (DateTime?)row.ItemInvoiceDate));
         }
 
         return dict.Values.Select(x => new WriteOffRequestDto(

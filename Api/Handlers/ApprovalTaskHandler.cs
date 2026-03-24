@@ -20,7 +20,7 @@ namespace Jabez.Api.Handlers;
 public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadService reader, IJwtService jwtService, IApprovalNotificationService notifier, IApprovalFlowService approvalFlow)
 {
     private static readonly HashSet<string> ValidActions  = ["approved", "returned", "rejected"];
-    public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "travel", "overtime", "advance", "write_off"];
+    public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "travel", "overtime", "advance", "write_off", "travel_write_off"];
 
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
@@ -171,7 +171,10 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 if (body.EstimatedPaymentDate.HasValue)
                     pr.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
                 if (body.PaidAt.HasValue)
+                {
                     pr.PaidAt = body.PaidAt.Value;
+                    pr.PaidByUserId = reviewerId;
+                }
                 await ProcessReviewAsync("payment_request", pr.Id, pr.CurrentStepOrder,
                     pr.ApprovalItemId, body.Action, body.ReviewNote, reviewerId, pr.SubmittedById,
                     setStatus:     s  => pr.ApprovalStatus   = s,
@@ -251,7 +254,10 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 if (body.EstimatedPaymentDate.HasValue)
                     adv.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
                 if (body.PaidAt.HasValue)
+                {
                     adv.PaidAt = body.PaidAt.Value;
+                    adv.PaidByUserId = reviewerId;
+                }
                 await ProcessReviewAsync("advance", adv.Id, adv.CurrentStepOrder,
                     adv.ApprovalItemId, body.Action, body.ReviewNote, reviewerId, adv.SubmittedById,
                     setStatus:     s  => adv.ApprovalStatus   = s,
@@ -271,6 +277,21 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == wo.SubmittedById.Value)
                     : null;
                 await AuthorizeStepAsync(wo.ApprovalItemId, wo.CurrentStepOrder, reviewer, woApplicant?.DepartmentId, "write_off", wo.Id, woApplicant?.JobTitleId);
+                // 設定預支申請撥款日（審核者可在審核沖銷時填寫）
+                if (body.EstimatedPaymentDate.HasValue || body.PaidAt.HasValue)
+                {
+                    var adv = await db.AdvanceRequests.FindAsync(wo.AdvanceRequestId);
+                    if (adv is not null)
+                    {
+                        if (body.EstimatedPaymentDate.HasValue)
+                            adv.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
+                        if (body.PaidAt.HasValue)
+                        {
+                            adv.PaidAt = body.PaidAt.Value;
+                            adv.PaidByUserId = reviewerId;
+                        }
+                    }
+                }
                 // 記住審核前的步驟（ProcessReviewAsync 可能會 increment）
                 var reviewedStepOrder = wo.CurrentStepOrder;
 
@@ -310,6 +331,65 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                                 advance.RefundAmount = diff;
                                 // 寄通知信給財務部全員
                                 await notifier.NotifyFinanceRefundAsync(advance, diff);
+                            }
+                        }
+                    }
+                }
+
+                await db.SaveChangesAsync();
+                break;
+            }
+            case "travel_write_off":
+            {
+                var two = await db.TravelWriteOffRecords.FindAsync(intId)
+                    ?? throw AppException.NotFound("TravelWriteOffRecord");
+                if (two.ApprovalStatus != "pending")
+                    throw AppException.BadRequest("Only pending travel write-off records can be reviewed.");
+
+                var twoApplicant = two.SubmittedById.HasValue
+                    ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == two.SubmittedById.Value)
+                    : null;
+                await AuthorizeStepAsync(two.ApprovalItemId, two.CurrentStepOrder, reviewer, twoApplicant?.DepartmentId, "travel_write_off", two.Id, twoApplicant?.JobTitleId);
+
+                // 記住審核前的步驟（ProcessReviewAsync 可能會 increment）
+                var twoReviewedStepOrder = two.CurrentStepOrder;
+
+                await ProcessReviewAsync("travel_write_off", two.Id, two.CurrentStepOrder,
+                    two.ApprovalItemId, body.Action, body.ReviewNote, reviewerId, two.SubmittedById,
+                    setStatus:     s  => two.ApprovalStatus    = s,
+                    incrementStep: () => two.CurrentStepOrder++,
+                    setReviewed:   () => { two.ReviewedAt = Clock.Now; two.ReviewedById = reviewerId; two.ReviewNote = body.ReviewNote?.Trim(); });
+
+                // 出差結案：財務部步驟核准時，可勾選結案
+                if (body.CloseAdvance == true && body.Action == "approved")
+                {
+                    // 驗證審核的步驟是否為財務部
+                    var currentStep = two.ApprovalItemId.HasValue
+                        ? await db.ApprovalSteps.AsNoTracking()
+                            .Include(s => s.Department)
+                            .FirstOrDefaultAsync(s => s.ApprovalItemId == two.ApprovalItemId && s.StepOrder == twoReviewedStepOrder)
+                        : null;
+
+                    if (currentStep?.Department?.Code == "FIN" || reviewer.IsSuperAdmin)
+                    {
+                        var travel = await db.TravelRequests.FindAsync(two.TravelRequestId);
+                        if (travel is not null && !travel.IsClosed)
+                        {
+                            travel.IsClosed   = true;
+                            travel.ClosedAt   = Clock.Now;
+                            travel.ClosedById = reviewerId;
+
+                            // 檢查是否有退還差額（沖銷累計 > 出差金額）
+                            var totalWrittenOff = await db.TravelWriteOffRecords
+                                .Where(w => w.TravelRequestId == two.TravelRequestId && w.ApprovalStatus != "rejected")
+                                .SumAsync(w => (decimal?)w.GrandTotal) ?? 0m;
+
+                            var diff = totalWrittenOff - travel.GrandTotal;
+                            if (diff > 0)
+                            {
+                                travel.RefundAmount = diff;
+                                // 寄通知信給財務部全員
+                                await notifier.NotifyFinanceTravelRefundAsync(travel, diff);
                             }
                         }
                     }

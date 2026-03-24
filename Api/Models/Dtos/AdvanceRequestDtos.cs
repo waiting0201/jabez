@@ -59,32 +59,34 @@ public sealed record AdvanceRequestDto(
 // ── WriteOff DTOs ───────────────────────────────────────────────────────────
 
 public sealed record WriteOffItemDto(
-    int      Id,
-    string   Category,
-    int      SeqNo,
-    string   ItemName,
-    decimal  UnitPrice,
-    string   Quantity,
-    decimal  TotalPrice,
-    decimal  CashAmount,
-    decimal  CheckAmount,
-    string?  Note,
-    string?  InvoiceNo,
-    string?  FileName,
-    string?  FileUrl,
-    int      SortOrder);
+    int       Id,
+    string    Category,
+    int       SeqNo,
+    string    ItemName,
+    decimal   UnitPrice,
+    string    Quantity,
+    decimal   TotalPrice,
+    decimal   CashAmount,
+    decimal   CheckAmount,
+    string?   Note,
+    string?   InvoiceNo,
+    string?   FileName,
+    string?   FileUrl,
+    int       SortOrder,
+    DateTime? InvoiceDate = null);
 
 public sealed record WriteOffItemRequest(
-    string   Category,
-    int      SeqNo,
-    string   ItemName,
-    decimal  UnitPrice,
-    string   Quantity,
-    decimal  TotalPrice,
-    decimal  CashAmount,
-    decimal  CheckAmount,
-    string?  Note,
-    int      SortOrder);
+    string    Category,
+    int       SeqNo,
+    string    ItemName,
+    decimal   UnitPrice,
+    string    Quantity,
+    decimal   TotalPrice,
+    decimal   CashAmount,
+    decimal   CheckAmount,
+    string?   Note,
+    int       SortOrder,
+    DateTime? InvoiceDate = null);
 
 public sealed record WriteOffRecordDto(
     int               Id,
@@ -137,4 +139,8 @@ public sealed record AdvanceTaskDetailDto(
     decimal   GrandTotal,
     DateTime? EstimatedPaymentDate,
     DateTime? PaidAt,
-    string?   PaidBySignatureUrl = null);
+    string?   PaidBySignatureUrl = null,
+    AdvanceRequestItemDto[] Items = null!)
+{
+    public AdvanceRequestItemDto[] Items { get; init; } = Items ?? Array.Empty<AdvanceRequestItemDto>();
+}

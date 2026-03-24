@@ -221,7 +221,8 @@ Admin/src/app/
     │   ├── travel-requests/   # 出差申請
     │   ├── overtime-requests/ # 加班申請（走簽核流程）
     │   ├── advance-requests/  # 預支申請
-    │   ├── write-off-requests/ # 沖銷申請（獨立簽核流程）
+    │   ├── write-off-requests/ # 預支沖銷申請（獨立簽核流程）
+    │   ├── travel-write-off-requests/ # 出差沖銷申請（獨立簽核流程）
     │   ├── insurance-brackets/ # 勞健保級距維護
     │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出）
     │   └── settings/       # 系統設定
@@ -297,7 +298,8 @@ Api/
 │   ├── TravelRequestHandler.cs
 │   ├── OvertimeRequestHandler.cs      # 加班申請 CRUD
 │   ├── AdvanceRequestHandler.cs       # 預支申請 CRUD
-│   ├── WriteOffRequestHandler.cs      # 沖銷申請 CRUD（獨立簽核流程）
+│   ├── WriteOffRequestHandler.cs      # 預支沖銷申請 CRUD（獨立簽核流程）
+│   ├── TravelWriteOffRequestHandler.cs # 出差沖銷申請 CRUD（獨立簽核流程）
 │   ├── AttendanceHandler.cs           # 打卡（上班/下班/加班開始/加班結束）
 │   ├── InsuranceBracketHandler.cs    # 勞健保級距 CRUD
 │   ├── PayrollHandler.cs             # 人事薪資查詢（月薪計算）
@@ -332,6 +334,7 @@ Api/
 │       ├── OvertimeRequestReadService.cs
 │       ├── AdvanceRequestReadService.cs
 │       ├── WriteOffRequestReadService.cs
+│       ├── TravelWriteOffRequestReadService.cs
 │       ├── AttendanceReadService.cs
 │       ├── InsuranceBracketReadService.cs
 │       └── PayrollReadService.cs
@@ -453,13 +456,22 @@ public async Task<HttpResponseData> Run(
 | PATCH | `/advance-requests/{id}/submit` | 送出預支申請（draft → pending） |
 | PATCH | `/advance-requests/{id}/payment-date` | 更新撥款日期（僅財務部） |
 
-#### 沖銷申請
+#### 預支沖銷申請
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET/POST | `/write-off-requests` | 沖銷申請列表 / 新增（預設 draft） |
-| GET/PUT/PATCH/DELETE | `/write-off-requests/{id}` | 沖銷申請 CRUD |
-| PATCH | `/write-off-requests/{id}/submit` | 送出沖銷申請（draft → pending） |
+| GET/POST | `/write-off-requests` | 預支沖銷申請列表 / 新增（預設 draft） |
+| GET/PUT/PATCH/DELETE | `/write-off-requests/{id}` | 預支沖銷申請 CRUD |
+| PATCH | `/write-off-requests/{id}/submit` | 送出預支沖銷申請（draft → pending） |
+
+#### 出差沖銷申請
+
+| Method | Path | 說明 |
+|--------|------|------|
+| GET | `/travel-write-off-requests/available-travels` | 可沖銷的出差申請清單 |
+| GET/POST | `/travel-write-off-requests` | 出差沖銷申請列表 / 新增（預設 draft） |
+| GET/PUT/PATCH/DELETE | `/travel-write-off-requests/{id}` | 出差沖銷申請 CRUD |
+| PATCH | `/travel-write-off-requests/{id}/submit` | 送出出差沖銷申請（draft → pending） |
 
 #### 出勤打卡
 
@@ -533,12 +545,15 @@ dotnet ef database update               # 套用 Migration
 | `PaymentRequest` | 請款申請 |
 | `InvoiceItem` | 請款明細（發票項目） |
 | `LeaveRequest` | 請假申請（含 BereavementRelationship 喪假親屬關係） |
-| `TravelRequest` | 出差申請（含 IsHolidayTravel 假日出差欄位） |
+| `TravelRequest` | 出差申請（含 IsHolidayTravel、IsClosed 結案、GrandTotal 明細合計） |
+| `TravelRequestItem` | 出差明細（交通費、住宿費、餐費、雜支） |
 | `OvertimeRequest` | 加班申請（走簽核流程） |
 | `AdvanceRequest` | 預支申請 |
 | `AdvanceRequestItem` | 預支明細 |
-| `WriteOffRecord` | 沖銷申請（獨立簽核流程，關聯 AdvanceRequest，含 ApprovalStatus/CurrentStepOrder） |
+| `WriteOffRecord` | 預支沖銷申請（獨立簽核流程，關聯 AdvanceRequest，含 ApprovalStatus/CurrentStepOrder） |
 | `WriteOffItem` | 沖銷明細（含發票號碼、檔案上傳） |
+| `TravelWriteOffRecord` | 出差沖銷申請（獨立簽核流程，關聯 TravelRequest） |
+| `TravelWriteOffItem` | 出差沖銷明細（含發票號碼、檔案上傳） |
 | `RequestDesignatedReviewer` | 申請人指定審核者清單（多人依序審核） |
 | `AttendanceRecord` | 出勤打卡紀錄（每人每天一筆，含 GPS） |
 | `SystemSetting` | 系統設定 |

@@ -16,6 +16,7 @@ public class WriteOffItem
     public string?  InvoiceNo        { get; set; }
     public string?  FileName         { get; set; }
     public string?  FileUrl          { get; set; }
+    public DateTime? InvoiceDate     { get; set; }
     public int      SortOrder        { get; set; }
 
     // Navigation

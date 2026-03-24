@@ -12,10 +12,10 @@ using System.IdentityModel.Tokens.Jwt;
 namespace Jabez.Api.Handlers;
 
 /// <summary>
-/// GET    /travel-requests           → 列表
+/// GET    /travel-requests           → 列表（分頁）
 /// POST   /travel-requests           → 新增（EmployeeId 由 JWT 決定）
 /// GET    /travel-requests/{id}      → 單筆
-/// PUT    /travel-requests/{id}      → 更新（僅 draft 才允許）
+/// PUT    /travel-requests/{id}      → 更新（僅 draft/returned 才允許）
 /// DELETE /travel-requests/{id}      → 刪除（僅 draft 才允許）
 /// PATCH  /travel-requests/{id}/submit → 送出（draft → pending）
 /// </summary>
@@ -72,6 +72,10 @@ public sealed class TravelRequestHandler(
         if (body.EndDate < body.StartDate)
             return new BadRequestObjectResult(ApiResponse.Fail("EndDate must be on or after StartDate."));
 
+        // 明細項目驗證：至少需要一筆
+        if (body.Items is null || body.Items.Length == 0)
+            return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
+
         // 指定審核者存在性驗證
         if (body.DesignatedReviewers is { Length: > 0 })
         {
@@ -81,21 +85,35 @@ public sealed class TravelRequestHandler(
                 return new BadRequestObjectResult(ApiResponse.Fail("一或多位指定審核者不存在。"));
         }
 
-        var item = new TravelRequest
+        // 建立明細項目，計算 GrandTotal
+        var items = body.Items.Select((i, idx) => new TravelRequestItem
+        {
+            Category  = i.Category,
+            SeqNo     = i.SeqNo,
+            ItemName  = i.ItemName,
+            UnitPrice = i.UnitPrice,
+            Quantity  = i.Quantity,
+            TotalPrice = i.TotalPrice,
+            Note      = i.Note,
+            SortOrder = i.SortOrder > 0 ? i.SortOrder : idx,
+        }).ToList();
+
+        var travelRequest = new TravelRequest
         {
             EmployeeId      = employeeId,   // 強制使用 JWT 身分，忽略 body.EmployeeId
             ApprovalItemId  = body.ApprovalItemId,
             Destination     = body.Destination,
             StartDate       = body.StartDate,
             EndDate         = body.EndDate,
-            EstimatedCost   = body.EstimatedCost,
+            GrandTotal      = items.Sum(i => i.TotalPrice),
             Purpose         = body.Purpose,
             ProjectId       = body.ProjectId,
             IsHolidayTravel = body.IsHolidayTravel,
             ApprovalStatus  = "draft",
             CreatedAt       = Clock.Now,
+            Items           = items,
         };
-        db.TravelRequests.Add(item);
+        db.TravelRequests.Add(travelRequest);
         await db.SaveChangesAsync();
 
         // 儲存指定審核者
@@ -105,14 +123,14 @@ public sealed class TravelRequestHandler(
                 body.DesignatedReviewers.OrderBy(r => r.StepOrder).Select(r => new RequestDesignatedReviewer
                 {
                     RequestType = "travel",
-                    RequestId   = item.Id,
+                    RequestId   = travelRequest.Id,
                     ReviewerId  = r.ReviewerId,
                     StepOrder   = r.StepOrder,
                 }));
             await db.SaveChangesAsync();
         }
 
-        var dto = await reader.GetByIdAsync(item.Id);
+        var dto = await reader.GetByIdAsync(travelRequest.Id);
         return new ObjectResult(ApiResponse.Ok(dto, "Travel request created.")) { StatusCode = 201 };
     }
 
@@ -126,7 +144,9 @@ public sealed class TravelRequestHandler(
         if (body is null)
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
 
-        var item = await db.TravelRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId)
+        var item = await db.TravelRequests
+                           .Include(x => x.Items)
+                           .FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId)
             ?? throw AppException.NotFound("TravelRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
@@ -162,10 +182,29 @@ public sealed class TravelRequestHandler(
         if (body.Destination is not null)     item.Destination     = body.Destination;
         if (body.StartDate.HasValue)          item.StartDate       = body.StartDate.Value;
         if (body.EndDate.HasValue)            item.EndDate         = body.EndDate.Value;
-        if (body.EstimatedCost.HasValue)      item.EstimatedCost   = body.EstimatedCost.Value;
         if (body.Purpose is not null)         item.Purpose         = body.Purpose;
         if (body.ProjectId.HasValue)          item.ProjectId       = body.ProjectId == 0 ? null : body.ProjectId;
         if (body.IsHolidayTravel.HasValue)    item.IsHolidayTravel = body.IsHolidayTravel.Value;
+
+        // 明細項目整組替換（提供 Items 時才更新）
+        if (body.Items is { Length: > 0 })
+        {
+            db.TravelRequestItems.RemoveRange(item.Items);
+            var newItems = body.Items.Select((i, idx) => new TravelRequestItem
+            {
+                TravelRequestId = intId,
+                Category  = i.Category,
+                SeqNo     = i.SeqNo,
+                ItemName  = i.ItemName,
+                UnitPrice = i.UnitPrice,
+                Quantity  = i.Quantity,
+                TotalPrice = i.TotalPrice,
+                Note      = i.Note,
+                SortOrder = i.SortOrder > 0 ? i.SortOrder : idx,
+            }).ToList();
+            item.Items      = newItems;
+            item.GrandTotal = newItems.Sum(i => i.TotalPrice);
+        }
 
         await db.SaveChangesAsync();
 
@@ -203,6 +242,11 @@ public sealed class TravelRequestHandler(
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel requests can be submitted.");
+
+        // 送出前確認有明細項目
+        var hasItems = await db.TravelRequestItems.AnyAsync(i => i.TravelRequestId == intId);
+        if (!hasItems)
+            return new BadRequestObjectResult(ApiResponse.Fail("出差申請至少需要一筆費用明細項目。"));
 
         // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
         if (item.ApprovalStatus == "returned")

@@ -21,7 +21,7 @@ public sealed class PaymentRequestHandler(
     IApprovalNotificationService notifier,
     IApprovalFlowService approvalFlow)
 {
-    private static readonly HashSet<string> ValidTypes = ["vendor", "travel", "advance"];
+    private static readonly HashSet<string> ValidTypes = ["vendor", "general", "business_trip"];
     private const string ContainerName = "invoices";
 
     private static readonly JsonSerializerOptions JsonOpts = new()
@@ -31,13 +31,14 @@ public sealed class PaymentRequestHandler(
 
     /// <summary>Multipart form 中 invoices JSON 的內部結構</summary>
     private sealed record InvoiceMetadata(
-        string  FileName,
-        string  InvoiceNo,
-        decimal Amount,
-        string? ItemName,
-        string? Note,
-        string? FileUrl,
-        int     FileIndex);
+        string    FileName,
+        string    InvoiceNo,
+        decimal   Amount,
+        string?   ItemName,
+        string?   Note,
+        string?   FileUrl,
+        int       FileIndex,
+        DateTime? InvoiceDate = null);
 
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
@@ -76,6 +77,7 @@ public sealed class PaymentRequestHandler(
 
         var type      = form["type"].ToString();
         var projectId = int.TryParse(form["projectId"], out var pid) ? pid : 0;
+        var reason    = form["reason"].ToString();
         var invoicesJson = form["invoices"].ToString();
         var designatedReviewersJson = form["designatedReviewers"].ToString();
         DesignatedReviewerRequest[]? designatedReviewers = null;
@@ -144,12 +146,13 @@ public sealed class PaymentRequestHandler(
 
             invoiceItems.Add(new InvoiceItem
             {
-                FileName  = inv.FileName,
-                InvoiceNo = inv.InvoiceNo,
-                Amount    = inv.Amount,
-                ItemName  = inv.ItemName,
-                Note      = inv.Note,
-                FileUrl   = fileUrl,
+                FileName    = inv.FileName,
+                InvoiceNo   = inv.InvoiceNo,
+                Amount      = inv.Amount,
+                ItemName    = inv.ItemName,
+                Note        = inv.Note,
+                FileUrl     = fileUrl,
+                InvoiceDate = inv.InvoiceDate,
             });
         }
 
@@ -157,6 +160,7 @@ public sealed class PaymentRequestHandler(
         {
             Type          = type,
             ProjectId     = projectId,
+            Reason        = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim(),
             SubmittedById = submittedById,   // 強制使用 JWT 身分
             TotalAmount   = invoices.Sum(i => i.Amount),
             ApprovalStatus = "draft",
@@ -205,6 +209,7 @@ public sealed class PaymentRequestHandler(
 
         var type      = form["type"].ToString();
         var projectId = int.TryParse(form["projectId"], out var pid) ? pid : (int?)null;
+        var reason    = form["reason"].ToString();
         var updateDesignatedReviewersJson = form["designatedReviewers"].ToString();
         DesignatedReviewerRequest[]? updateDesignatedReviewers = null;
         // 空字串表示「不更新」，非空字串（包含 "[]"）才處理
@@ -217,6 +222,10 @@ public sealed class PaymentRequestHandler(
                 return new BadRequestObjectResult(ApiResponse.Fail($"Invalid type '{type}'."));
             pr.Type = type;
         }
+
+        // 更新請款原因（空字串表示清除）
+        if (form.ContainsKey("reason"))
+            pr.Reason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
 
         if (projectId.HasValue)
         {
@@ -313,12 +322,13 @@ public sealed class PaymentRequestHandler(
 
                 invoiceItems.Add(new InvoiceItem
                 {
-                    FileName  = inv.FileName,
-                    InvoiceNo = inv.InvoiceNo,
-                    Amount    = inv.Amount,
-                    ItemName  = inv.ItemName,
-                    Note      = inv.Note,
-                    FileUrl   = fileUrl,
+                    FileName    = inv.FileName,
+                    InvoiceNo   = inv.InvoiceNo,
+                    Amount      = inv.Amount,
+                    ItemName    = inv.ItemName,
+                    Note        = inv.Note,
+                    FileUrl     = fileUrl,
+                    InvoiceDate = inv.InvoiceDate,
                 });
             }
 

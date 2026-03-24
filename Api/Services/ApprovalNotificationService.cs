@@ -17,7 +17,8 @@ public sealed class ApprovalNotificationService(
         ["travel"]          = "出差申請",
         ["overtime"]        = "加班申請",
         ["advance"]         = "預支申請",
-        ["write_off"]       = "沖銷申請",
+        ["write_off"]       = "預支沖銷申請",
+        ["travel_write_off"] = "出差沖銷申請",
     };
 
     /// <inheritdoc />
@@ -322,6 +323,49 @@ public sealed class ApprovalNotificationService(
         }
     }
 
+    /// <inheritdoc />
+    public async Task NotifyFinanceTravelRefundAsync(TravelRequest travel, decimal refundAmount)
+    {
+        try
+        {
+            var applicant = travel.EmployeeId.HasValue
+                ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == travel.EmployeeId.Value)
+                : null;
+            var applicantName = applicant?.Name ?? "未知";
+
+            var financeDept = await db.Departments.AsNoTracking()
+                .FirstOrDefaultAsync(d => d.Code == "FIN");
+            if (financeDept is null)
+            {
+                logger.LogWarning("找不到「財務部(FIN)」部門，無法寄送退款通知：TravelRequest #{Id}", travel.Id);
+                return;
+            }
+
+            var recipients = await db.Users.AsNoTracking()
+                .Where(u => u.DepartmentId == financeDept.Id && !u.IsSuperAdmin && !string.IsNullOrEmpty(u.Email))
+                .Select(u => new { u.Name, u.Email })
+                .ToListAsync();
+
+            if (recipients.Count == 0) return;
+
+            var subject = $"[需匯款] 出差申請 #{travel.Id} 沖銷超額 — 差額 {refundAmount:N0} 元";
+            var siteUrl = await GetSiteUrlAsync();
+            var linkUrl = BuildReviewUrl(siteUrl, "travel", travel.Id);
+
+            foreach (var r in recipients)
+            {
+                var body = BuildTravelRefundEmail(r.Name, applicantName, travel.Id,
+                    travel.Destination, travel.GrandTotal, refundAmount, linkUrl);
+                await emailService.SendAsync(r.Email!, subject, body);
+                logger.LogInformation("已寄送出差退款通知：{Email}（TravelRequest #{Id}）", r.Email, travel.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "寄送出差退款通知失敗：TravelRequest #{Id}", travel.Id);
+        }
+    }
+
     // ── 取得申請摘要 ──────────────────────────────────────────────────────────
 
     private async Task<string> GetSummaryAsync(string applicationType, int applicationId)
@@ -334,6 +378,7 @@ public sealed class ApprovalNotificationService(
             "overtime"        => await GetOvertimeSummaryAsync(applicationId),
             "advance"         => await GetAdvanceSummaryAsync(applicationId),
             "write_off"       => await GetWriteOffSummaryAsync(applicationId),
+            "travel_write_off" => await GetTravelWriteOffSummaryAsync(applicationId),
             _                 => $"#{applicationId}",
         };
     }
@@ -398,6 +443,15 @@ public sealed class ApprovalNotificationService(
         return wo is not null ? $"{wo.RequestNo}（{wo.GrandTotal:N0} 元）" : $"#{id}";
     }
 
+    private async Task<string> GetTravelWriteOffSummaryAsync(int id)
+    {
+        var two = await db.TravelWriteOffRecords.AsNoTracking()
+            .Where(x => x.Id == id)
+            .Select(x => new { x.RequestNo, x.GrandTotal })
+            .FirstOrDefaultAsync();
+        return two is not null ? $"{two.RequestNo}（{two.GrandTotal:N0} 元）" : $"#{id}";
+    }
+
     // ── 取得前端網站網址 ─────────────────────────────────────────────────────────
 
     private async Task<string> GetSiteUrlAsync()
@@ -416,13 +470,14 @@ public sealed class ApprovalNotificationService(
     {
         var path = applicationType switch
         {
-            "payment_request" => "payment-requests",
-            "leave"           => "leave-requests",
-            "travel"          => "travel-requests",
-            "overtime"        => "overtime-requests",
-            "advance"         => "advance-requests",
-            "write_off"       => "write-off-requests",
-            _                 => "approval-tasks",
+            "payment_request"  => "payment-requests",
+            "leave"            => "leave-requests",
+            "travel"           => "travel-requests",
+            "overtime"         => "overtime-requests",
+            "advance"          => "advance-requests",
+            "write_off"        => "write-off-requests",
+            "travel_write_off" => "travel-write-off-requests",
+            _                  => "approval-tasks",
         };
         return $"{siteUrl}/admin/{path}/{applicationId}/edit";
     }
@@ -537,6 +592,46 @@ public sealed class ApprovalNotificationService(
               </tr>
             </table>
             {BuildButtonHtml(linkUrl, "前往預支申請")}
+            <hr style="border: none; border-top: 1px solid #DDD6C8; margin: 16px 0;" />
+            <p style="color: #A39685; font-size: 12px; margin: 0;">此信件由系統自動寄發，請勿直接回覆。</p>
+          </div>
+        </div>
+        """;
+    }
+
+    private static string BuildTravelRefundEmail(
+        string recipientName, string applicantName, int travelId,
+        string destination, decimal travelTotal, decimal refundAmount, string linkUrl)
+    {
+        return $"""
+        <div style="font-family: 'Microsoft JhengHei', 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: #B8892A; padding: 16px 24px; border-radius: 8px 8px 0 0;">
+            <h2 style="color: #fff; margin: 0; font-size: 18px;">出差沖銷超額 — 需匯款差額</h2>
+          </div>
+          <div style="background: #F5F2ED; padding: 24px; border-radius: 0 0 8px 8px;">
+            <p style="color: #525358; margin: 0 0 16px;">{recipientName} 您好，</p>
+            <p style="color: #525358; margin: 0 0 16px;">
+              <strong>{applicantName}</strong> 的出差申請已結案，沖銷金額超過出差金額，請進行差額匯款：
+            </p>
+            <table style="width: 100%; border-collapse: collapse; margin: 0 0 16px;">
+              <tr>
+                <td style="padding: 8px 12px; color: #6E6F73; width: 120px;">出差申請編號</td>
+                <td style="padding: 8px 12px; color: #525358; font-weight: 600;">#{travelId}</td>
+              </tr>
+              <tr style="background: #EDE9E1;">
+                <td style="padding: 8px 12px; color: #6E6F73;">出差地點</td>
+                <td style="padding: 8px 12px; color: #525358;">{destination}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 12px; color: #6E6F73;">出差金額</td>
+                <td style="padding: 8px 12px; color: #525358;">{travelTotal:N0} 元</td>
+              </tr>
+              <tr style="background: #EDE9E1;">
+                <td style="padding: 8px 12px; color: #6E6F73;">應退還差額</td>
+                <td style="padding: 8px 12px; color: #A04040; font-weight: 600;">{refundAmount:N0} 元</td>
+              </tr>
+            </table>
+            {BuildButtonHtml(linkUrl, "前往出差申請")}
             <hr style="border: none; border-top: 1px solid #DDD6C8; margin: 16px 0;" />
             <p style="color: #A39685; font-size: 12px; margin: 0;">此信件由系統自動寄發，請勿直接回覆。</p>
           </div>

@@ -36,11 +36,18 @@ public class DepartmentConfiguration : IEntityTypeConfiguration<Department>
                .HasForeignKey(d => d.ParentId)
                .OnDelete(DeleteBehavior.Restrict);
 
+        // Seed: 與本機資料庫同步（2026-03-24）
         builder.HasData(
-            new Department { Id = 1, Name = "會計部",   Code = "AC",  SortOrder = 1, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Department { Id = 2, Name = "財務部",   Code = "FIN", SortOrder = 2, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Department { Id = 3, Name = "業務部",   Code = "SLS", SortOrder = 3, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Department { Id = 4, Name = "總監室", Code = "CO",  SortOrder = 4, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+            new Department { Id = 1,  Name = "會計部",           Code = "AC",             ParentId = 2,    SortOrder = 3, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Department { Id = 2,  Name = "行政財務部",       Code = "FIN",            ParentId = 5,    SortOrder = 2, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Department { Id = 3,  Name = "疆界",             Code = "Borders Design", ParentId = 1,    SortOrder = 3, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Department { Id = 4,  Name = "總監室",           Code = "CEO",            ParentId = null, SortOrder = 1, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Department { Id = 5,  Name = "雅比斯總公司管理部", Code = "Jabez HQ",      ParentId = 4,    SortOrder = 1, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Department { Id = 6,  Name = "豐濱營業所",       Code = "Store",          ParentId = 3,    SortOrder = 4, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Department { Id = 7,  Name = "海銀行",           Code = "SeaStore",       ParentId = 3,    SortOrder = 4, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Department { Id = 8,  Name = "雅比斯專案",       Code = "Jabez project",  ParentId = 1,    SortOrder = 3, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Department { Id = 9,  Name = "壯圍營業所",       Code = "YilanStore",     ParentId = 8,    SortOrder = 4, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Department { Id = 10, Name = "東發號",           Code = "EastStore",      ParentId = 3,    SortOrder = 4, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
         );
     }
 }

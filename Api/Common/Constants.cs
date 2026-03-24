@@ -55,6 +55,9 @@ public static class PermissionCodes
     public const string WriteOffRequestsRead            = "write-off-requests:read";
     public const string WriteOffRequestsWrite           = "write-off-requests:write";
     public const string WriteOffRequestsDelete          = "write-off-requests:delete";
+    public const string TravelWriteOffRequestsRead      = "travel-write-off-requests:read";
+    public const string TravelWriteOffRequestsWrite     = "travel-write-off-requests:write";
+    public const string TravelWriteOffRequestsDelete    = "travel-write-off-requests:delete";
 }
 
 public static class RoleNames

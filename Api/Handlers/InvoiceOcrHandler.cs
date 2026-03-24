@@ -108,9 +108,10 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
             請辨識這張台灣統一發票/收據圖片，提取以下資訊：
             1. 發票號碼（格式：2個英文大寫字母 + 8個數字，如 AB12345678）
             2. 總金額（合計/總計/應付金額的數字）
+            3. 發票日期（如果是民國年格式如「113年01月15日」或「113/01/15」，請轉換為西元年，例如 2024-01-15）
 
             請以 JSON 格式回覆，不要加任何其他文字：
-            {"invoiceNo": "發票號碼或空字串", "amount": 金額數字或0}
+            {"invoiceNo": "發票號碼或空字串", "amount": 金額數字或0, "invoiceDate": "YYYY-MM-DD格式日期或空字串"}
             """;
 
         var requestBody = new
@@ -189,7 +190,7 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
         try
         {
             ocrResult = JsonSerializer.Deserialize<OcrResult>(cleanedText, CamelOpts)
-                        ?? new OcrResult(string.Empty, 0);
+                        ?? new OcrResult(string.Empty, 0, string.Empty);
         }
         catch
         {
@@ -220,6 +221,7 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
     {
         var invoiceNo = string.Empty;
         decimal amount = 0;
+        var invoiceDate = string.Empty;
 
         var invoiceMatch = Regex.Match(text, @"[A-Z]{2}\d{8}");
         if (invoiceMatch.Success)
@@ -229,14 +231,35 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
         if (amountMatch.Success)
             decimal.TryParse(amountMatch.Groups[1].Value, out amount);
 
-        return new OcrResult(invoiceNo, amount);
+        // 嘗試萃取日期（西元 YYYY-MM-DD）
+        var dateMatch = Regex.Match(text, @"\d{4}-\d{2}-\d{2}");
+        if (dateMatch.Success)
+        {
+            invoiceDate = dateMatch.Value;
+        }
+        else
+        {
+            // 嘗試民國年格式：111年01月15日 或 111/01/15
+            var rocMatch = Regex.Match(text, @"(\d{2,3})\s*[年/]\s*(\d{1,2})\s*[月/]\s*(\d{1,2})");
+            if (rocMatch.Success &&
+                int.TryParse(rocMatch.Groups[1].Value, out var rocYear) &&
+                int.TryParse(rocMatch.Groups[2].Value, out var month) &&
+                int.TryParse(rocMatch.Groups[3].Value, out var day))
+            {
+                var adYear = rocYear + 1911;
+                invoiceDate = $"{adYear:D4}-{month:D2}-{day:D2}";
+            }
+        }
+
+        return new OcrResult(invoiceNo, amount, invoiceDate);
     }
 
     // ── 內部 DTO ──────────────────────────────────────────────────────────────
 
     private sealed record OcrResult(
-        [property: JsonPropertyName("invoiceNo")] string  InvoiceNo,
-        [property: JsonPropertyName("amount")]    decimal Amount);
+        [property: JsonPropertyName("invoiceNo")]    string  InvoiceNo,
+        [property: JsonPropertyName("amount")]       decimal Amount,
+        [property: JsonPropertyName("invoiceDate")]  string  InvoiceDate = "");
 
     /// <summary>Gemini API 回應結構</summary>
     private sealed class GeminiResponse

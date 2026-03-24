@@ -10,6 +10,7 @@ public class InvoiceItem
     public string? ItemName         { get; set; }
     public string? Note             { get; set; }
     public string? FileUrl          { get; set; }
+    public DateTime? InvoiceDate    { get; set; }
 
     // Navigation
     public PaymentRequest PaymentRequest { get; set; } = null!;

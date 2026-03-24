@@ -49,7 +49,7 @@ public sealed class ApprovalFlowService(
                     .FirstOrDefault();
 
                 // leave / travel / overtime 不允許任何一位指定審核者是申請人自己
-                if (applicationType is not ("payment_request" or "advance" or "write_off"))
+                if (applicationType is not ("payment_request" or "advance" or "write_off" or "travel_write_off"))
                 {
                     bool anyIsSelf = designatedReviewers?.Any(r => r.ReviewerId == applicantId) ?? false;
                     if (anyIsSelf)
@@ -92,7 +92,7 @@ public sealed class ApprovalFlowService(
             if (!isSelfReview)
             {
                 // 請款/預支/沖銷：若步驟使用申請人部門但該部門無符合條件的審核者，也跳過
-                if (applicationType is "payment_request" or "advance" or "write_off" && step.UseApplicantDepartment && applicant.DepartmentId.HasValue)
+                if (applicationType is "payment_request" or "advance" or "write_off" or "travel_write_off" && step.UseApplicantDepartment && applicant.DepartmentId.HasValue)
                 {
                     bool hasReviewer = await db.Users.AsNoTracking().AnyAsync(u =>
                         u.DepartmentId == applicant.DepartmentId

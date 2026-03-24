@@ -32,4 +32,7 @@ public interface IApprovalNotificationService
 
     /// <summary>沖銷結案時，若沖銷累計超過預支金額，通知財務部需匯款差額。</summary>
     Task NotifyFinanceRefundAsync(Models.Entities.AdvanceRequest advance, decimal refundAmount);
+
+    /// <summary>出差沖銷結案時，若沖銷累計超過出差金額，通知財務部需匯款差額。</summary>
+    Task NotifyFinanceTravelRefundAsync(Models.Entities.TravelRequest travel, decimal refundAmount);
 }

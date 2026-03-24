@@ -4,6 +4,7 @@ using Jabez.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Jabez.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260324020357_RenameWriteOffToAdvanceWriteOff")]
+    partial class RenameWriteOffToAdvanceWriteOff
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -293,15 +296,6 @@ namespace Jabez.Api.Data.Migrations
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             Name = "預支沖銷申請"
-                        },
-                        new
-                        {
-                            Id = 8,
-                            ApplicationType = "travel_write_off",
-                            Code = "travel_write_off_request",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            Name = "出差沖銷申請"
                         });
                 });
 
@@ -420,22 +414,10 @@ namespace Jabez.Api.Data.Migrations
                             Id = 3,
                             ApprovalItemId = 2,
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Note = "指定初核",
+                            JobTitleId = 4,
+                            Note = "部門主管初核",
                             StepOrder = 1,
-                            UseApplicantDepartment = false,
-                            UseApplicantDesignated = true,
-                            UseDirectSupervisor = false
-                        },
-                        new
-                        {
-                            Id = 9,
-                            ApprovalItemId = 2,
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 4,
-                            JobTitleId = 5,
-                            Note = "總監核決",
-                            StepOrder = 2,
-                            UseApplicantDepartment = false,
+                            UseApplicantDepartment = true,
                             UseApplicantDesignated = false,
                             UseDirectSupervisor = false
                         },
@@ -445,9 +427,9 @@ namespace Jabez.Api.Data.Migrations
                             ApprovalItemId = 2,
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             DepartmentId = 1,
-                            JobTitleId = 11,
+                            JobTitleId = 4,
                             Note = "取得紙本資料審核",
-                            StepOrder = 3,
+                            StepOrder = 2,
                             UseApplicantDepartment = false,
                             UseApplicantDesignated = false,
                             UseDirectSupervisor = false
@@ -458,8 +440,21 @@ namespace Jabez.Api.Data.Migrations
                             ApprovalItemId = 2,
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             DepartmentId = 2,
-                            JobTitleId = 7,
+                            JobTitleId = 4,
                             Note = "填入預計撥款日，核決及撥款後，填入撥款日",
+                            StepOrder = 3,
+                            UseApplicantDepartment = false,
+                            UseApplicantDesignated = false,
+                            UseDirectSupervisor = false
+                        },
+                        new
+                        {
+                            Id = 9,
+                            ApprovalItemId = 2,
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DepartmentId = 4,
+                            JobTitleId = 5,
+                            Note = "最終核決",
                             StepOrder = 4,
                             UseApplicantDepartment = false,
                             UseApplicantDesignated = false,
@@ -470,10 +465,10 @@ namespace Jabez.Api.Data.Migrations
                             Id = 5,
                             ApprovalItemId = 3,
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Note = "指定人審核",
+                            JobTitleId = 4,
                             StepOrder = 1,
-                            UseApplicantDepartment = false,
-                            UseApplicantDesignated = true,
+                            UseApplicantDepartment = true,
+                            UseApplicantDesignated = false,
                             UseDirectSupervisor = false
                         },
                         new
@@ -481,10 +476,10 @@ namespace Jabez.Api.Data.Migrations
                             Id = 6,
                             ApprovalItemId = 4,
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Note = "指定人審核",
+                            JobTitleId = 4,
                             StepOrder = 1,
-                            UseApplicantDepartment = false,
-                            UseApplicantDesignated = true,
+                            UseApplicantDepartment = true,
+                            UseApplicantDesignated = false,
                             UseDirectSupervisor = false
                         },
                         new
@@ -492,10 +487,10 @@ namespace Jabez.Api.Data.Migrations
                             Id = 7,
                             ApprovalItemId = 5,
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Note = "指定人審核",
+                            JobTitleId = 4,
                             StepOrder = 1,
-                            UseApplicantDepartment = false,
-                            UseApplicantDesignated = true,
+                            UseApplicantDepartment = true,
+                            UseApplicantDesignated = false,
                             UseDirectSupervisor = false
                         },
                         new
@@ -503,10 +498,11 @@ namespace Jabez.Api.Data.Migrations
                             Id = 10,
                             ApprovalItemId = 6,
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Note = "指定核准",
+                            JobTitleId = 4,
+                            Note = "部門主管核准",
                             StepOrder = 1,
-                            UseApplicantDepartment = false,
-                            UseApplicantDesignated = true,
+                            UseApplicantDepartment = true,
+                            UseApplicantDesignated = false,
                             UseDirectSupervisor = false
                         },
                         new
@@ -514,36 +510,10 @@ namespace Jabez.Api.Data.Migrations
                             Id = 11,
                             ApprovalItemId = 6,
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 4,
-                            JobTitleId = 5,
-                            Note = "總監簽核",
-                            StepOrder = 2,
-                            UseApplicantDepartment = false,
-                            UseApplicantDesignated = false,
-                            UseDirectSupervisor = false
-                        },
-                        new
-                        {
-                            Id = 12,
-                            ApprovalItemId = 6,
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 1,
-                            JobTitleId = 11,
-                            Note = "會計核對",
-                            StepOrder = 3,
-                            UseApplicantDepartment = false,
-                            UseApplicantDesignated = false,
-                            UseDirectSupervisor = false
-                        },
-                        new
-                        {
-                            Id = 13,
-                            ApprovalItemId = 6,
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             DepartmentId = 2,
-                            JobTitleId = 7,
-                            Note = "填入預計撥款日，撥款後，填入撥款日",
-                            StepOrder = 4,
+                            JobTitleId = 4,
+                            Note = "財務部確認撥款",
+                            StepOrder = 2,
                             UseApplicantDepartment = false,
                             UseApplicantDesignated = false,
                             UseDirectSupervisor = false
@@ -552,56 +522,6 @@ namespace Jabez.Api.Data.Migrations
                         {
                             Id = 20,
                             ApprovalItemId = 7,
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Note = "指定初核",
-                            StepOrder = 1,
-                            UseApplicantDepartment = false,
-                            UseApplicantDesignated = true,
-                            UseDirectSupervisor = false
-                        },
-                        new
-                        {
-                            Id = 23,
-                            ApprovalItemId = 7,
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 4,
-                            JobTitleId = 5,
-                            Note = "核決",
-                            StepOrder = 2,
-                            UseApplicantDepartment = false,
-                            UseApplicantDesignated = false,
-                            UseDirectSupervisor = false
-                        },
-                        new
-                        {
-                            Id = 21,
-                            ApprovalItemId = 7,
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 1,
-                            JobTitleId = 11,
-                            Note = "取得紙本資料審核",
-                            StepOrder = 3,
-                            UseApplicantDepartment = false,
-                            UseApplicantDesignated = false,
-                            UseDirectSupervisor = false
-                        },
-                        new
-                        {
-                            Id = 22,
-                            ApprovalItemId = 7,
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 2,
-                            JobTitleId = 7,
-                            Note = "填入預計撥款日，核決及撥款後，填入撥款日",
-                            StepOrder = 4,
-                            UseApplicantDepartment = false,
-                            UseApplicantDesignated = false,
-                            UseDirectSupervisor = false
-                        },
-                        new
-                        {
-                            Id = 30,
-                            ApprovalItemId = 8,
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             JobTitleId = 4,
                             Note = "部門主管初核",
@@ -612,12 +532,12 @@ namespace Jabez.Api.Data.Migrations
                         },
                         new
                         {
-                            Id = 33,
-                            ApprovalItemId = 8,
+                            Id = 21,
+                            ApprovalItemId = 7,
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 4,
-                            JobTitleId = 5,
-                            Note = "核決",
+                            DepartmentId = 1,
+                            JobTitleId = 4,
+                            Note = "取得紙本資料審核",
                             StepOrder = 2,
                             UseApplicantDepartment = false,
                             UseApplicantDesignated = false,
@@ -625,12 +545,12 @@ namespace Jabez.Api.Data.Migrations
                         },
                         new
                         {
-                            Id = 31,
-                            ApprovalItemId = 8,
+                            Id = 22,
+                            ApprovalItemId = 7,
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 1,
-                            JobTitleId = 11,
-                            Note = "取得紙本資料審核",
+                            DepartmentId = 2,
+                            JobTitleId = 4,
+                            Note = "填入預計撥款日，核決及撥款後，填入撥款日",
                             StepOrder = 3,
                             UseApplicantDepartment = false,
                             UseApplicantDesignated = false,
@@ -638,12 +558,12 @@ namespace Jabez.Api.Data.Migrations
                         },
                         new
                         {
-                            Id = 32,
-                            ApprovalItemId = 8,
+                            Id = 23,
+                            ApprovalItemId = 7,
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 2,
-                            JobTitleId = 7,
-                            Note = "填入預計撥款日，核決及撥款後，填入撥款日",
+                            DepartmentId = 4,
+                            JobTitleId = 5,
+                            Note = "最終核決",
                             StepOrder = 4,
                             UseApplicantDepartment = false,
                             UseApplicantDesignated = false,
@@ -770,87 +690,30 @@ namespace Jabez.Api.Data.Migrations
                             Code = "AC",
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Name = "會計部",
-                            ParentId = 2,
-                            SortOrder = 3
+                            SortOrder = 1
                         },
                         new
                         {
                             Id = 2,
                             Code = "FIN",
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "行政財務部",
-                            ParentId = 5,
+                            Name = "財務部",
                             SortOrder = 2
                         },
                         new
                         {
                             Id = 3,
-                            Code = "Borders Design",
+                            Code = "SLS",
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "疆界",
-                            ParentId = 1,
+                            Name = "業務部",
                             SortOrder = 3
                         },
                         new
                         {
                             Id = 4,
-                            Code = "CEO",
+                            Code = "CO",
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Name = "總監室",
-                            SortOrder = 1
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Code = "Jabez HQ",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "雅比斯總公司管理部",
-                            ParentId = 4,
-                            SortOrder = 1
-                        },
-                        new
-                        {
-                            Id = 6,
-                            Code = "Store",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "豐濱營業所",
-                            ParentId = 3,
-                            SortOrder = 4
-                        },
-                        new
-                        {
-                            Id = 7,
-                            Code = "SeaStore",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "海銀行",
-                            ParentId = 3,
-                            SortOrder = 4
-                        },
-                        new
-                        {
-                            Id = 8,
-                            Code = "Jabez project",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "雅比斯專案",
-                            ParentId = 1,
-                            SortOrder = 3
-                        },
-                        new
-                        {
-                            Id = 9,
-                            Code = "YilanStore",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "壯圍營業所",
-                            ParentId = 8,
-                            SortOrder = 4
-                        },
-                        new
-                        {
-                            Id = 10,
-                            Code = "EastStore",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "東發號",
-                            ParentId = 3,
                             SortOrder = 4
                         });
                 });
@@ -1413,9 +1276,6 @@ namespace Jabez.Api.Data.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<DateTime?>("InvoiceDate")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("InvoiceNo")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -1473,78 +1333,36 @@ namespace Jabez.Api.Data.Migrations
                         {
                             Id = 1,
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Level = 5,
+                            Level = 1,
                             Name = "工程師"
                         },
                         new
                         {
                             Id = 2,
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Level = 7,
-                            Name = "專案規劃師/店員"
+                            Level = 2,
+                            Name = "資深工程師"
                         },
                         new
                         {
                             Id = 3,
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Level = 6,
+                            Level = 3,
                             Name = "主任工程師"
                         },
                         new
                         {
                             Id = 4,
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Level = 6,
-                            Name = "專案副理/店長"
+                            Level = 4,
+                            Name = "部門主管"
                         },
                         new
                         {
                             Id = 5,
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Level = 1,
-                            Name = "總監"
-                        },
-                        new
-                        {
-                            Id = 6,
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Level = 2,
-                            Name = "COO"
-                        },
-                        new
-                        {
-                            Id = 7,
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Level = 2,
-                            Name = "CFO"
-                        },
-                        new
-                        {
-                            Id = 8,
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Level = 3,
-                            Name = "協理"
-                        },
-                        new
-                        {
-                            Id = 9,
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Level = 5,
-                            Name = "專案經理"
-                        },
-                        new
-                        {
-                            Id = 10,
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Level = 4,
-                            Name = "經理"
-                        },
-                        new
-                        {
-                            Id = 11,
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Level = 3,
-                            Name = "會計"
+                            Name = "總監"
                         });
                 });
 
@@ -2248,27 +2066,6 @@ namespace Jabez.Api.Data.Migrations
                             Code = "write-off-requests:delete",
                             Module = "預支沖銷申請",
                             Name = "刪除"
-                        },
-                        new
-                        {
-                            Id = "57",
-                            Code = "travel-write-off-requests:read",
-                            Module = "出差沖銷申請",
-                            Name = "瀏覽"
-                        },
-                        new
-                        {
-                            Id = "58",
-                            Code = "travel-write-off-requests:write",
-                            Module = "出差沖銷申請",
-                            Name = "新增/修改"
-                        },
-                        new
-                        {
-                            Id = "59",
-                            Code = "travel-write-off-requests:delete",
-                            Module = "出差沖銷申請",
-                            Name = "刪除"
                         });
                 });
 
@@ -2373,76 +2170,6 @@ namespace Jabez.Api.Data.Migrations
                             GoogleDriveUrl = "https://drive.google.com/drive/folders/example3",
                             Name = "2025年度研發專案",
                             StartDate = new DateTime(2025, 1, 10, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Status = "active"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            ActualAmount = 2350000m,
-                            BudgetAmount = 2500000m,
-                            BusinessAmount = 1410000m,
-                            Code = "J11203-T",
-                            CreatedAt = new DateTime(2026, 3, 17, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 9,
-                            GoogleDriveUrl = "test",
-                            Name = "壯圍沙丘生態園區出租案",
-                            StartDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Status = "active"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            ActualAmount = 4985000m,
-                            BudgetAmount = 5200000m,
-                            BusinessAmount = 2991000m,
-                            Code = "J11405-T",
-                            CreatedAt = new DateTime(2026, 3, 17, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 8,
-                            GoogleDriveUrl = "test",
-                            Name = "114-115年梨山風景區部落觀光產業輔導計畫",
-                            StartDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Status = "active"
-                        },
-                        new
-                        {
-                            Id = 6,
-                            ActualAmount = 2258000m,
-                            BudgetAmount = 2485000m,
-                            BusinessAmount = 1354800m,
-                            Code = "J11418-T",
-                            CreatedAt = new DateTime(2026, 3, 17, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 8,
-                            GoogleDriveUrl = "test",
-                            Name = "鰲鼓濕地森林園區生態旅遊培力與活動推展委託專業服務案",
-                            StartDate = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Status = "active"
-                        },
-                        new
-                        {
-                            Id = 7,
-                            ActualAmount = 6558000m,
-                            BudgetAmount = 6852000m,
-                            BusinessAmount = 3934800m,
-                            Code = "J11501-T",
-                            CreatedAt = new DateTime(2026, 3, 17, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 8,
-                            GoogleDriveUrl = "test",
-                            Name = "「115年地方創生東區輔導中心」委託辦理計畫案",
-                            StartDate = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Status = "closed"
-                        },
-                        new
-                        {
-                            Id = 8,
-                            ActualAmount = 6220000m,
-                            BudgetAmount = 6525000m,
-                            BusinessAmount = 3732000m,
-                            Code = "J11501-TT",
-                            CreatedAt = new DateTime(2026, 3, 18, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 8,
-                            GoogleDriveUrl = "----",
-                            Name = "「115年地方創生東區輔導中心」委託辦理計畫案",
-                            StartDate = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Status = "active"
                         });
                 });
@@ -2569,39 +2296,21 @@ namespace Jabez.Api.Data.Migrations
                             Id = "admin",
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "Full system access",
-                            Name = "後端管理者"
+                            Name = "Administrator"
                         },
                         new
                         {
                             Id = "manager",
                             CreatedAt = new DateTime(2024, 1, 15, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "Can manage users and view reports",
-                            Name = "總管理處"
+                            Name = "Manager"
                         },
                         new
                         {
                             Id = "viewer",
                             CreatedAt = new DateTime(2024, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "Read-only access",
-                            Name = "一般員工"
-                        },
-                        new
-                        {
-                            Id = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4",
-                            CreatedAt = new DateTime(2024, 3, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "員工-測試"
-                        },
-                        new
-                        {
-                            Id = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            CreatedAt = new DateTime(2024, 3, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "協理-測試"
-                        },
-                        new
-                        {
-                            Id = "fe015c41-d9a8-48fa-994d-5588b9c4a92b",
-                            CreatedAt = new DateTime(2024, 3, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "經理副理主管-測試"
+                            Name = "Viewer"
                         });
                 });
 
@@ -2638,21 +2347,6 @@ namespace Jabez.Api.Data.Migrations
                         new
                         {
                             RoleId = "admin",
-                            PermissionId = "5"
-                        },
-                        new
-                        {
-                            RoleId = "admin",
-                            PermissionId = "6"
-                        },
-                        new
-                        {
-                            RoleId = "admin",
-                            PermissionId = "7"
-                        },
-                        new
-                        {
-                            RoleId = "admin",
                             PermissionId = "11"
                         },
                         new
@@ -2829,51 +2523,6 @@ namespace Jabez.Api.Data.Migrations
                         {
                             RoleId = "admin",
                             PermissionId = "50"
-                        },
-                        new
-                        {
-                            RoleId = "admin",
-                            PermissionId = "51"
-                        },
-                        new
-                        {
-                            RoleId = "admin",
-                            PermissionId = "52"
-                        },
-                        new
-                        {
-                            RoleId = "admin",
-                            PermissionId = "53"
-                        },
-                        new
-                        {
-                            RoleId = "admin",
-                            PermissionId = "54"
-                        },
-                        new
-                        {
-                            RoleId = "admin",
-                            PermissionId = "55"
-                        },
-                        new
-                        {
-                            RoleId = "admin",
-                            PermissionId = "56"
-                        },
-                        new
-                        {
-                            RoleId = "admin",
-                            PermissionId = "57"
-                        },
-                        new
-                        {
-                            RoleId = "admin",
-                            PermissionId = "58"
-                        },
-                        new
-                        {
-                            RoleId = "admin",
-                            PermissionId = "59"
                         },
                         new
                         {
@@ -2888,86 +2537,6 @@ namespace Jabez.Api.Data.Migrations
                         new
                         {
                             RoleId = "manager",
-                            PermissionId = "4"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "5"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "6"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "7"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "11"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "12"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "13"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "14"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "15"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "16"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "17"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "18"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "19"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "20"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "21"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "22"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
                             PermissionId = "23"
                         },
                         new
@@ -3037,101 +2606,6 @@ namespace Jabez.Api.Data.Migrations
                         },
                         new
                         {
-                            RoleId = "manager",
-                            PermissionId = "39"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "40"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "41"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "44"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "45"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "46"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "47"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "48"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "49"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "50"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "51"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "52"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "53"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "54"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "55"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "56"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "57"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "58"
-                        },
-                        new
-                        {
-                            RoleId = "manager",
-                            PermissionId = "59"
-                        },
-                        new
-                        {
                             RoleId = "viewer",
                             PermissionId = "23"
                         },
@@ -3189,321 +2663,6 @@ namespace Jabez.Api.Data.Migrations
                         {
                             RoleId = "viewer",
                             PermissionId = "36"
-                        },
-                        new
-                        {
-                            RoleId = "viewer",
-                            PermissionId = "51"
-                        },
-                        new
-                        {
-                            RoleId = "viewer",
-                            PermissionId = "52"
-                        },
-                        new
-                        {
-                            RoleId = "viewer",
-                            PermissionId = "53"
-                        },
-                        new
-                        {
-                            RoleId = "viewer",
-                            PermissionId = "54"
-                        },
-                        new
-                        {
-                            RoleId = "viewer",
-                            PermissionId = "55"
-                        },
-                        new
-                        {
-                            RoleId = "viewer",
-                            PermissionId = "56"
-                        },
-                        new
-                        {
-                            RoleId = "viewer",
-                            PermissionId = "57"
-                        },
-                        new
-                        {
-                            RoleId = "viewer",
-                            PermissionId = "58"
-                        },
-                        new
-                        {
-                            RoleId = "viewer",
-                            PermissionId = "59"
-                        },
-                        new
-                        {
-                            RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4",
-                            PermissionId = "28"
-                        },
-                        new
-                        {
-                            RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4",
-                            PermissionId = "29"
-                        },
-                        new
-                        {
-                            RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4",
-                            PermissionId = "30"
-                        },
-                        new
-                        {
-                            RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4",
-                            PermissionId = "31"
-                        },
-                        new
-                        {
-                            RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4",
-                            PermissionId = "32"
-                        },
-                        new
-                        {
-                            RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4",
-                            PermissionId = "33"
-                        },
-                        new
-                        {
-                            RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4",
-                            PermissionId = "34"
-                        },
-                        new
-                        {
-                            RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4",
-                            PermissionId = "35"
-                        },
-                        new
-                        {
-                            RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4",
-                            PermissionId = "36"
-                        },
-                        new
-                        {
-                            RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4",
-                            PermissionId = "57"
-                        },
-                        new
-                        {
-                            RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4",
-                            PermissionId = "58"
-                        },
-                        new
-                        {
-                            RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4",
-                            PermissionId = "59"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "17"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "18"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "19"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "20"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "23"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "24"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "25"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "26"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "27"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "28"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "29"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "30"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "31"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "32"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "33"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "34"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "35"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "36"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "51"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "52"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "53"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "54"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "55"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "56"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "57"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "58"
-                        },
-                        new
-                        {
-                            RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856",
-                            PermissionId = "59"
-                        },
-                        new
-                        {
-                            RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b",
-                            PermissionId = "17"
-                        },
-                        new
-                        {
-                            RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b",
-                            PermissionId = "26"
-                        },
-                        new
-                        {
-                            RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b",
-                            PermissionId = "27"
-                        },
-                        new
-                        {
-                            RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b",
-                            PermissionId = "28"
-                        },
-                        new
-                        {
-                            RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b",
-                            PermissionId = "29"
-                        },
-                        new
-                        {
-                            RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b",
-                            PermissionId = "30"
-                        },
-                        new
-                        {
-                            RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b",
-                            PermissionId = "31"
-                        },
-                        new
-                        {
-                            RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b",
-                            PermissionId = "32"
-                        },
-                        new
-                        {
-                            RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b",
-                            PermissionId = "33"
-                        },
-                        new
-                        {
-                            RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b",
-                            PermissionId = "34"
-                        },
-                        new
-                        {
-                            RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b",
-                            PermissionId = "35"
-                        },
-                        new
-                        {
-                            RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b",
-                            PermissionId = "36"
-                        },
-                        new
-                        {
-                            RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b",
-                            PermissionId = "57"
-                        },
-                        new
-                        {
-                            RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b",
-                            PermissionId = "58"
-                        },
-                        new
-                        {
-                            RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b",
-                            PermissionId = "59"
                         });
                 });
 
@@ -3618,12 +2777,6 @@ namespace Jabez.Api.Data.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasDefaultValue("draft");
 
-                    b.Property<DateTime?>("ClosedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("ClosedById")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -3643,13 +2796,8 @@ namespace Jabez.Api.Data.Migrations
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<decimal>("GrandTotal")
+                    b.Property<decimal>("EstimatedCost")
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<bool>("IsClosed")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
 
                     b.Property<bool>("IsHolidayTravel")
                         .ValueGeneratedOnAdd()
@@ -3663,12 +2811,6 @@ namespace Jabez.Api.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
-
-                    b.Property<decimal?>("RefundAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime?>("RefundedAt")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("ReviewNote")
                         .HasMaxLength(1000)
@@ -3687,8 +2829,6 @@ namespace Jabez.Api.Data.Migrations
 
                     b.HasIndex("ApprovalItemId");
 
-                    b.HasIndex("ClosedById");
-
                     b.HasIndex("EmployeeId");
 
                     b.HasIndex("ProjectId");
@@ -3696,191 +2836,6 @@ namespace Jabez.Api.Data.Migrations
                     b.HasIndex("ReviewedById");
 
                     b.ToTable("TravelRequests");
-                });
-
-            modelBuilder.Entity("Jabez.Api.Models.Entities.TravelRequestItem", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("ItemName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("Note")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("Quantity")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<int>("SeqNo")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("TotalPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("TravelRequestId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("UnitPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TravelRequestId");
-
-                    b.ToTable("TravelRequestItems");
-                });
-
-            modelBuilder.Entity("Jabez.Api.Models.Entities.TravelWriteOffItem", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("FileName")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("FileUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime?>("InvoiceDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("InvoiceNo")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("ItemName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("Note")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("Quantity")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<int>("SeqNo")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("TotalPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("TravelWriteOffRecordId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("UnitPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TravelWriteOffRecordId");
-
-                    b.ToTable("TravelWriteOffItems");
-                });
-
-            modelBuilder.Entity("Jabez.Api.Models.Entities.TravelWriteOffRecord", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("ApprovalItemId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ApprovalStatus")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("draft");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("CurrentStepOrder")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(1);
-
-                    b.Property<decimal>("GrandTotal")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Note")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<string>("RequestNo")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)")
-                        .HasDefaultValue("");
-
-                    b.Property<string>("ReviewNote")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<DateTime?>("ReviewedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("ReviewedById")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("SubmittedById")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("TravelRequestId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("WriteOffNo")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ApprovalItemId");
-
-                    b.HasIndex("ReviewedById");
-
-                    b.HasIndex("SubmittedById");
-
-                    b.HasIndex("TravelRequestId");
-
-                    b.ToTable("TravelWriteOffRecords");
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.User", b =>
@@ -3999,17 +2954,17 @@ namespace Jabez.Api.Data.Migrations
                         new
                         {
                             Id = new Guid("11111111-1111-1111-1111-111111111111"),
-                            BaseSalary = 80000m,
-                            Birthday = new DateTime(1990, 5, 10, 0, 0, 0, 0, DateTimeKind.Utc),
+                            BaseSalary = 60000m,
+                            Birthday = new DateTime(1990, 5, 15, 0, 0, 0, 0, DateTimeKind.Utc),
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 2,
-                            Email = "cherng1217@hotmail.com",
-                            HireDate = new DateTime(2023, 12, 14, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DepartmentId = 1,
+                            Email = "alice@example.com",
+                            HireDate = new DateTime(2023, 12, 28, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsSuperAdmin = false,
-                            JobTitleId = 7,
+                            JobTitleId = 4,
                             MustChangePassword = false,
-                            Name = "洪薇淳",
-                            PasswordHash = "$2a$11$uanLV/06EWO8c4vt4h0gv.NwFEDxbAzLGfO7M1wvbeyZW0oScGCqy",
+                            Name = "Alice Chen",
+                            PasswordHash = "$2a$11$hBaZunc8xtFIsRVh738SJuHisvnVAsIODyfkzLxjMN.is7jZn3K7e",
                             SendPaySlip = false,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
@@ -4020,14 +2975,14 @@ namespace Jabez.Api.Data.Migrations
                             BaseSalary = 60000m,
                             Birthday = new DateTime(1988, 8, 22, 0, 0, 0, 0, DateTimeKind.Utc),
                             CreatedAt = new DateTime(2024, 2, 10, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 1,
+                            DepartmentId = 2,
                             Email = "bob@example.com",
-                            HireDate = new DateTime(2024, 2, 7, 0, 0, 0, 0, DateTimeKind.Utc),
+                            HireDate = new DateTime(2024, 2, 9, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsSuperAdmin = false,
-                            JobTitleId = 9,
+                            JobTitleId = 2,
                             MustChangePassword = false,
                             Name = "Bob Wang",
-                            PasswordHash = "$2a$11$jnbTwU3kFJLXuVyQecTy4e1rMkMfsBa191aEHHZswHpLcI2jRnJzW",
+                            PasswordHash = "$2a$11$hBaZunc8xtFIsRVh738SJuHisvnVAsIODyfkzLxjMN.is7jZn3K7e",
                             SendPaySlip = false,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 2, 10, 0, 0, 0, 0, DateTimeKind.Utc)
@@ -4040,129 +2995,15 @@ namespace Jabez.Api.Data.Migrations
                             CreatedAt = new DateTime(2024, 3, 5, 0, 0, 0, 0, DateTimeKind.Utc),
                             DepartmentId = 3,
                             Email = "carol@example.com",
-                            HireDate = new DateTime(2024, 3, 2, 0, 0, 0, 0, DateTimeKind.Utc),
+                            HireDate = new DateTime(2024, 3, 3, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsSuperAdmin = false,
                             JobTitleId = 1,
                             MustChangePassword = false,
                             Name = "Carol Liu",
-                            PasswordHash = "$2a$11$zq1cZo7mM27tuI.W4ZwbKuu5rn3PBsBeP7IzdEPw8i1ynhJJltP5m",
+                            PasswordHash = "$2a$11$hBaZunc8xtFIsRVh738SJuHisvnVAsIODyfkzLxjMN.is7jZn3K7e",
                             SendPaySlip = false,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 3, 5, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            Id = new Guid("6452ad1e-9648-4194-8fb0-0ac55a76f992"),
-                            BaseSalary = 100000m,
-                            Birthday = new DateTime(1975, 2, 2, 0, 0, 0, 0, DateTimeKind.Utc),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 4,
-                            Email = "hank@example.com",
-                            HireDate = new DateTime(2010, 1, 4, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsSuperAdmin = false,
-                            JobTitleId = 5,
-                            MustChangePassword = false,
-                            Name = "Hank",
-                            PasswordHash = "$2a$11$yNJIPqp5rr/PhDhajQJwIOoQ88yVQbJQLuU.tRPOmH4/xEmlsPb3i",
-                            SendPaySlip = false,
-                            Status = "active",
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            Id = new Guid("b56b8afd-1663-4317-9007-4560da27239d"),
-                            BaseSalary = 62530m,
-                            Birthday = new DateTime(1986, 12, 17, 0, 0, 0, 0, DateTimeKind.Utc),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 5,
-                            Email = "cherng1217@gmail.com",
-                            HireDate = new DateTime(2012, 5, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsSuperAdmin = false,
-                            JobTitleId = 3,
-                            MealAllowance = 3000m,
-                            MustChangePassword = false,
-                            Name = "Charles",
-                            OvertimePay = 3000m,
-                            PasswordHash = "$2a$11$J5eke3qMONqpznSkAUKQ9OaIwKYOv52VqF2cu.fSU3qtKiYaS7NLO",
-                            SendPaySlip = false,
-                            Status = "active",
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            Id = new Guid("281c2016-801e-48eb-b73b-751643464f48"),
-                            BaseSalary = 80000m,
-                            Birthday = new DateTime(1981, 1, 24, 0, 0, 0, 0, DateTimeKind.Utc),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 5,
-                            Email = "Ting@example.com",
-                            HireDate = new DateTime(2020, 5, 29, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsSuperAdmin = false,
-                            JobTitleId = 8,
-                            MealAllowance = 2400m,
-                            MustChangePassword = false,
-                            Name = "Ting",
-                            OvertimePay = 2400m,
-                            PasswordHash = "$2a$11$FXRjg2SgqKby.WL/hEMkoupv3pl/iffpeyvBxRjF0qY51SFwClWiK",
-                            SendPaySlip = false,
-                            Status = "active",
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            Id = new Guid("83f6b1f7-2f25-4f9b-b102-37d1a27f0b35"),
-                            BaseSalary = 55000m,
-                            Birthday = new DateTime(1985, 12, 29, 0, 0, 0, 0, DateTimeKind.Utc),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 1,
-                            Email = "accounting@example.com",
-                            HireDate = new DateTime(2009, 12, 29, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsSuperAdmin = false,
-                            JobTitleId = 11,
-                            MealAllowance = 2450m,
-                            MustChangePassword = false,
-                            Name = "陳珊雯",
-                            OvertimePay = 2570m,
-                            PasswordHash = "$2a$11$QajMz1QlJ4W.w.EdwzAH6eRQjThAHAbtYK09WM0RfOehln.FKH8ym",
-                            SendPaySlip = false,
-                            Status = "active",
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            Id = new Guid("6a4002be-23e0-4343-8092-f221b97c5098"),
-                            BaseSalary = 65000m,
-                            Birthday = new DateTime(1982, 12, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 8,
-                            Email = "tin@jacreative.com.tw",
-                            HireDate = new DateTime(2019, 12, 26, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsSuperAdmin = false,
-                            JobTitleId = 10,
-                            MustChangePassword = false,
-                            Name = "張雅婷",
-                            PasswordHash = "$2a$11$UVOY3lj8t7A4YnxhKBAigedGTYYIkBfFxl3bmBaUuBxq0JEs54k6e",
-                            SendPaySlip = false,
-                            Status = "active",
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            Id = new Guid("df5d56ad-dd46-4fca-948c-d8301610997a"),
-                            BaseSalary = 35000m,
-                            Birthday = new DateTime(1972, 8, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 9,
-                            Email = "arwen@jacreative.com.tw",
-                            HireDate = new DateTime(2024, 7, 28, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsSuperAdmin = false,
-                            JobTitleId = 4,
-                            MustChangePassword = false,
-                            Name = "徐嘉秀",
-                            PasswordHash = "$2a$11$2v7wVtBf77gz0vuZ/jZGseOQ2dvureuLomMb5HVECKoBNO3wcyzYy",
-                            SendPaySlip = false,
-                            Status = "active",
-                            UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         });
                 });
 
@@ -4183,18 +3024,8 @@ namespace Jabez.Api.Data.Migrations
                     b.HasData(
                         new
                         {
-                            UserId = new Guid("b56b8afd-1663-4317-9007-4560da27239d"),
-                            RoleId = "admin"
-                        },
-                        new
-                        {
-                            UserId = new Guid("6452ad1e-9648-4194-8fb0-0ac55a76f992"),
-                            RoleId = "manager"
-                        },
-                        new
-                        {
                             UserId = new Guid("11111111-1111-1111-1111-111111111111"),
-                            RoleId = "manager"
+                            RoleId = "admin"
                         },
                         new
                         {
@@ -4203,28 +3034,8 @@ namespace Jabez.Api.Data.Migrations
                         },
                         new
                         {
-                            UserId = new Guid("83f6b1f7-2f25-4f9b-b102-37d1a27f0b35"),
-                            RoleId = "manager"
-                        },
-                        new
-                        {
-                            UserId = new Guid("281c2016-801e-48eb-b73b-751643464f48"),
-                            RoleId = "manager"
-                        },
-                        new
-                        {
                             UserId = new Guid("33333333-3333-3333-3333-333333333333"),
                             RoleId = "viewer"
-                        },
-                        new
-                        {
-                            UserId = new Guid("df5d56ad-dd46-4fca-948c-d8301610997a"),
-                            RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4"
-                        },
-                        new
-                        {
-                            UserId = new Guid("6a4002be-23e0-4343-8092-f221b97c5098"),
-                            RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b"
                         });
                 });
 
@@ -4254,9 +3065,6 @@ namespace Jabez.Api.Data.Migrations
                     b.Property<string>("FileUrl")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime?>("InvoiceDate")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("InvoiceNo")
                         .HasMaxLength(50)
@@ -4688,11 +3496,6 @@ namespace Jabez.Api.Data.Migrations
                         .HasForeignKey("ApprovalItemId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Jabez.Api.Models.Entities.User", "ClosedBy")
-                        .WithMany()
-                        .HasForeignKey("ClosedById")
-                        .OnDelete(DeleteBehavior.NoAction);
-
                     b.HasOne("Jabez.Api.Models.Entities.User", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
@@ -4710,67 +3513,11 @@ namespace Jabez.Api.Data.Migrations
 
                     b.Navigation("ApprovalItem");
 
-                    b.Navigation("ClosedBy");
-
                     b.Navigation("Employee");
 
                     b.Navigation("Project");
 
                     b.Navigation("ReviewedBy");
-                });
-
-            modelBuilder.Entity("Jabez.Api.Models.Entities.TravelRequestItem", b =>
-                {
-                    b.HasOne("Jabez.Api.Models.Entities.TravelRequest", "TravelRequest")
-                        .WithMany("Items")
-                        .HasForeignKey("TravelRequestId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("TravelRequest");
-                });
-
-            modelBuilder.Entity("Jabez.Api.Models.Entities.TravelWriteOffItem", b =>
-                {
-                    b.HasOne("Jabez.Api.Models.Entities.TravelWriteOffRecord", "TravelWriteOffRecord")
-                        .WithMany("Items")
-                        .HasForeignKey("TravelWriteOffRecordId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("TravelWriteOffRecord");
-                });
-
-            modelBuilder.Entity("Jabez.Api.Models.Entities.TravelWriteOffRecord", b =>
-                {
-                    b.HasOne("Jabez.Api.Models.Entities.ApprovalItem", "ApprovalItem")
-                        .WithMany()
-                        .HasForeignKey("ApprovalItemId")
-                        .OnDelete(DeleteBehavior.NoAction);
-
-                    b.HasOne("Jabez.Api.Models.Entities.User", "ReviewedBy")
-                        .WithMany()
-                        .HasForeignKey("ReviewedById")
-                        .OnDelete(DeleteBehavior.NoAction);
-
-                    b.HasOne("Jabez.Api.Models.Entities.User", "SubmittedBy")
-                        .WithMany()
-                        .HasForeignKey("SubmittedById")
-                        .OnDelete(DeleteBehavior.NoAction);
-
-                    b.HasOne("Jabez.Api.Models.Entities.TravelRequest", "TravelRequest")
-                        .WithMany("WriteOffs")
-                        .HasForeignKey("TravelRequestId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ApprovalItem");
-
-                    b.Navigation("ReviewedBy");
-
-                    b.Navigation("SubmittedBy");
-
-                    b.Navigation("TravelRequest");
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.User", b =>
@@ -4915,18 +3662,6 @@ namespace Jabez.Api.Data.Migrations
                     b.Navigation("RolePermissions");
 
                     b.Navigation("UserRoles");
-                });
-
-            modelBuilder.Entity("Jabez.Api.Models.Entities.TravelRequest", b =>
-                {
-                    b.Navigation("Items");
-
-                    b.Navigation("WriteOffs");
-                });
-
-            modelBuilder.Entity("Jabez.Api.Models.Entities.TravelWriteOffRecord", b =>
-                {
-                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.User", b =>

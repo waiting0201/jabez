@@ -10,41 +10,56 @@ public sealed class TravelRequestReadService(IDbConnection db) : ITravelRequestR
     private const string BaseSql = """
         SELECT tr.Id, u.Name AS EmployeeName,
                tr.Destination, tr.StartDate, tr.EndDate,
-               tr.EstimatedCost, tr.Purpose,
+               tr.GrandTotal, tr.Purpose,
                tr.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                tr.IsHolidayTravel,
                tr.ApprovalStatus, tr.CreatedAt, tr.ReviewedAt, tr.ReviewNote,
-               tr.ApprovalItemId, tr.CurrentStepOrder, tr.ReviewedById
+               tr.ApprovalItemId, tr.CurrentStepOrder, tr.ReviewedById,
+               ti.Id AS ItemId, ti.Category, ti.SeqNo, ti.ItemName,
+               ti.UnitPrice, ti.Quantity, ti.TotalPrice,
+               ti.Note AS ItemNote, ti.SortOrder
         FROM TravelRequests tr
-        LEFT JOIN Users u       ON tr.EmployeeId = u.Id
-        LEFT JOIN Projects proj ON tr.ProjectId  = proj.Id
+        LEFT JOIN Users u             ON tr.EmployeeId = u.Id
+        LEFT JOIN Projects proj       ON tr.ProjectId  = proj.Id
+        LEFT JOIN TravelRequestItems ti ON ti.TravelRequestId = tr.Id
         """;
 
     public async Task<IEnumerable<TravelRequestDto>> GetAllAsync()
     {
-        const string sql = BaseSql + " ORDER BY tr.CreatedAt DESC";
+        const string sql = BaseSql + " ORDER BY tr.CreatedAt DESC, ti.SortOrder, ti.Id";
         var rows = await db.QueryAsync<dynamic>(sql);
-        return rows.Select(MapRow);
+        return GroupToTravelRequests(rows);
     }
 
     public async Task<PagedResult<TravelRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null)
     {
-        var userFilter = userId.HasValue ? "WHERE EmployeeId = @UserId" : "";
-        var countSql = $"SELECT COUNT(*) FROM TravelRequests {userFilter}";
-        var sql = BaseSql +
-            (userId.HasValue ? " WHERE tr.EmployeeId = @UserId" : "") +
-            " ORDER BY tr.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
+        var userFilter = userId.HasValue ? "WHERE SubmittedById = @UserId" : "";
+        var countSql   = userId.HasValue
+            ? "SELECT COUNT(*) FROM TravelRequests WHERE EmployeeId = @UserId"
+            : "SELECT COUNT(*) FROM TravelRequests";
+        var sql = $"""
+            WITH PagedIds AS (
+                SELECT Id FROM TravelRequests
+                {(userId.HasValue ? "WHERE EmployeeId = @UserId" : "")}
+                ORDER BY CreatedAt DESC
+                OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
+            )
+            {BaseSql} WHERE tr.Id IN (SELECT Id FROM PagedIds) ORDER BY tr.CreatedAt DESC, ti.SortOrder, ti.Id
+            """;
         int total = await db.ExecuteScalarAsync<int>(countSql, new { UserId = userId });
         var rows = await db.QueryAsync<dynamic>(sql, new { UserId = userId, Skip = (page - 1) * pageSize, Take = pageSize });
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
-        return new PagedResult<TravelRequestDto>(rows.Select(MapRow), total, page, pageSize, Math.Max(1, totalPages));
+        return new PagedResult<TravelRequestDto>(
+            GroupToTravelRequests(rows),
+            total, page, pageSize, Math.Max(1, totalPages));
     }
 
     public async Task<TravelRequestDto?> GetByIdAsync(int id)
     {
-        const string sql = BaseSql + " WHERE tr.Id = @Id";
-        var row = await db.QueryFirstOrDefaultAsync<dynamic>(sql, new { Id = id });
-        if (row is null) return null;
+        var sql = BaseSql + " WHERE tr.Id = @Id ORDER BY ti.SortOrder, ti.Id";
+        var rows = await db.QueryAsync<dynamic>(sql, new { Id = id });
+        var dto = GroupToTravelRequests(rows).FirstOrDefault();
+        if (dto is null) return null;
 
         // 額外查詢指定審核者（GetByIdAsync 才需要，列表查詢不包含）
         const string drSql = """
@@ -65,28 +80,56 @@ public sealed class TravelRequestReadService(IDbConnection db) : ITravelRequestR
             (DateTime?)r.ReviewedAt,
             (string?)r.Comment)).ToArray();
 
-        TravelRequestDto dto = MapRow(row);
         return dto with { DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null };
     }
 
-    private static TravelRequestDto MapRow(dynamic row) =>
-        new(
-            (int)row.Id,
-            (string?)row.EmployeeName ?? "—",
-            (string)row.Destination,
-            (DateTime)row.StartDate,
-            (DateTime)row.EndDate,
-            (decimal)row.EstimatedCost,
-            (string)row.Purpose,
-            (int?)row.ProjectId,
-            (string?)row.ProjectCode,
-            (string?)row.ProjectName,
-            (bool)row.IsHolidayTravel,
-            (string)row.ApprovalStatus,
-            (DateTime)row.CreatedAt,
-            (DateTime?)row.ReviewedAt,
-            (string?)row.ReviewNote,
-            ApprovalItemId:   (int?)row.ApprovalItemId,
-            CurrentStepOrder: (int?)row.CurrentStepOrder,
-            ReviewedById:     (Guid?)row.ReviewedById);
+    // ── Grouping helpers ─────────────────────────────────────────────────────
+
+    private static IEnumerable<TravelRequestDto> GroupToTravelRequests(IEnumerable<dynamic> rows)
+    {
+        var dict = new Dictionary<int, (dynamic tr, List<TravelRequestItemDto> items)>();
+        foreach (var row in rows)
+        {
+            int id = (int)row.Id;
+            if (!dict.ContainsKey(id))
+                dict[id] = (row, []);
+            if (row.ItemId is not null)
+                dict[id].items.Add(new TravelRequestItemDto(
+                    (int)row.ItemId,
+                    (string)row.Category,
+                    (int)row.SeqNo,
+                    (string)row.ItemName,
+                    (decimal)row.UnitPrice,
+                    (string)row.Quantity,
+                    (decimal)row.TotalPrice,
+                    (string?)row.ItemNote,
+                    (int)row.SortOrder));
+        }
+
+        return dict.Values.Select(x =>
+        {
+            var tr    = x.tr;
+            TravelRequestItemDto[]? items = x.items.Count > 0 ? [.. x.items] : null;
+            return new TravelRequestDto(
+                (int)tr.Id,
+                (string?)tr.EmployeeName ?? "—",
+                (string)tr.Destination,
+                (DateTime)tr.StartDate,
+                (DateTime)tr.EndDate,
+                (decimal)tr.GrandTotal,
+                (string)tr.Purpose,
+                (int?)tr.ProjectId,
+                (string?)tr.ProjectCode,
+                (string?)tr.ProjectName,
+                (bool)tr.IsHolidayTravel,
+                (string)tr.ApprovalStatus,
+                (DateTime)tr.CreatedAt,
+                (DateTime?)tr.ReviewedAt,
+                (string?)tr.ReviewNote,
+                ApprovalItemId:   (int?)tr.ApprovalItemId,
+                CurrentStepOrder: (int?)tr.CurrentStepOrder,
+                ReviewedById:     (Guid?)tr.ReviewedById,
+                Items:            items);
+        });
+    }
 }

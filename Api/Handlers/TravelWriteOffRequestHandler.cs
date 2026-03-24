@@ -12,32 +12,30 @@ using System.Text.Json;
 
 namespace Jabez.Api.Handlers;
 
-public sealed class WriteOffRequestHandler(
+public sealed class TravelWriteOffRequestHandler(
     AppDbContext db,
-    IWriteOffRequestReadService reader,
+    ITravelWriteOffRequestReadService reader,
     IBlobStorageService blob,
     IJwtService jwtService,
     IApprovalNotificationService notifier,
     IApprovalFlowService approvalFlow)
 {
-    private const string ContainerName = "write-off-invoices";
-    private const string RequestType   = "write_off";
+    private const string ContainerName = "travel-write-off-invoices";
+    private const string RequestType   = "travel_write_off";
 
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
         PropertyNameCaseInsensitive = true,
     };
 
-    /// <summary>沖銷明細 multipart JSON 的內部結構</summary>
-    private sealed record WriteOffItemMetadata(
+    /// <summary>出差沖銷明細 multipart JSON 的內部結構</summary>
+    private sealed record TravelWriteOffItemMetadata(
         string    Category,
         int       SeqNo,
         string    ItemName,
         decimal   UnitPrice,
         string    Quantity,
         decimal   TotalPrice,
-        decimal   CashAmount,
-        decimal   CheckAmount,
         string?   Note,
         string?   InvoiceNo,
         string?   FileName,
@@ -46,32 +44,32 @@ public sealed class WriteOffRequestHandler(
         int       SortOrder,
         DateTime? InvoiceDate = null);
 
-    // ── 可沖銷的預支申請清單（已核准且已撥款）───────────────────────────────
+    // ── 可沖銷的出差申請清單（已核准、未結案）────────────────────────────
 
-    public async Task<IActionResult> GetAvailableAdvancesAsync(HttpRequest req)
+    public async Task<IActionResult> GetAvailableTravelsAsync(HttpRequest req)
     {
         var userId = await GetUserIdAsync(req);
         var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         bool isSuperAdmin = user?.IsSuperAdmin == true;
 
-        var list = await db.AdvanceRequests
+        var list = await db.TravelRequests
             .AsNoTracking()
-            .Include(a => a.Project)
-            .Where(a => a.ApprovalStatus == "approved"
-                     && a.PaidAt != null
-                     && !a.IsClosed
-                     && (isSuperAdmin || a.SubmittedById == userId))
-            .OrderByDescending(a => a.CreatedAt)
-            .Select(a => new
+            .Include(t => t.Project)
+            .Where(t => t.ApprovalStatus == "approved"
+                     && !t.IsClosed
+                     && (isSuperAdmin || t.EmployeeId == userId))
+            .OrderByDescending(t => t.CreatedAt)
+            .Select(t => new
             {
-                a.Id,
-                a.RequestNo,
-                ProjectCode = a.Project != null ? a.Project.Code : "",
-                a.ActivityName,
-                a.GrandTotal,
-                a.PaidAt,
-                WrittenOffTotal = db.WriteOffRecords
-                    .Where(w => w.AdvanceRequestId == a.Id && w.ApprovalStatus != "rejected")
+                t.Id,
+                t.Destination,
+                t.StartDate,
+                t.EndDate,
+                t.Purpose,
+                ProjectCode = t.Project != null ? t.Project.Code : "",
+                t.GrandTotal,
+                WrittenOffTotal = db.TravelWriteOffRecords
+                    .Where(w => w.TravelRequestId == t.Id && w.ApprovalStatus != "rejected")
                     .Sum(w => (decimal?)w.GrandTotal) ?? 0m,
             })
             .ToListAsync();
@@ -101,15 +99,15 @@ public sealed class WriteOffRequestHandler(
         var userId = await GetUserIdAsync(req);
 
         if (!int.TryParse(id, out var intId))
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid write-off request ID format."));
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid travel write-off request ID format."));
 
         var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         var exists = user?.IsSuperAdmin == true
-            ? await db.WriteOffRecords.AnyAsync(x => x.Id == intId)
-            : await db.WriteOffRecords.AnyAsync(x => x.Id == intId && x.SubmittedById == userId);
+            ? await db.TravelWriteOffRecords.AnyAsync(x => x.Id == intId)
+            : await db.TravelWriteOffRecords.AnyAsync(x => x.Id == intId && x.SubmittedById == userId);
 
         if (!exists)
-            return new NotFoundObjectResult(ApiResponse.Fail("Write-off request not found."));
+            return new NotFoundObjectResult(ApiResponse.Fail("Travel write-off request not found."));
 
         var item = await reader.GetByIdAsync(intId);
         return new OkObjectResult(ApiResponse.Ok(item));
@@ -122,34 +120,33 @@ public sealed class WriteOffRequestHandler(
         var submittedById = await GetUserIdAsync(req);
 
         var form = await req.ReadFormAsync();
-        var advanceRequestIdStr = form["advanceRequestId"].ToString();
-        var itemsJson           = form["items"].ToString();
-        var note                = form["note"].ToString();
+        var travelRequestIdStr      = form["travelRequestId"].ToString();
+        var itemsJson               = form["items"].ToString();
+        var note                    = form["note"].ToString();
         var designatedReviewersJson = form["designatedReviewers"].ToString();
 
-        if (!int.TryParse(advanceRequestIdStr, out var advanceRequestId))
-            return new BadRequestObjectResult(ApiResponse.Fail("advanceRequestId 欄位為必填且須為整數。"));
+        if (!int.TryParse(travelRequestIdStr, out var travelRequestId))
+            return new BadRequestObjectResult(ApiResponse.Fail("travelRequestId 欄位為必填且須為整數。"));
 
-        // 驗證預支申請存在、已核准、已撥款
-        var ar = await db.AdvanceRequests
+        // 驗證出差申請存在、已核准、未結案
+        var submitter = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == submittedById);
+        var tr = await db.TravelRequests
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == advanceRequestId && x.SubmittedById == submittedById)
-            ?? throw AppException.NotFound("AdvanceRequest");
+            .FirstOrDefaultAsync(x => x.Id == travelRequestId
+                && (submitter != null && submitter.IsSuperAdmin || x.EmployeeId == submittedById))
+            ?? throw AppException.NotFound("TravelRequest");
 
-        if (ar.ApprovalStatus != "approved")
-            throw AppException.BadRequest("Only approved advance requests can have write-offs.");
+        if (tr.ApprovalStatus != "approved")
+            throw AppException.BadRequest("Only approved travel requests can have write-offs.");
 
-        if (!ar.PaidAt.HasValue)
-            throw AppException.BadRequest("預支尚未撥款，無法沖銷。");
-
-        if (ar.IsClosed)
-            throw AppException.BadRequest("此預支申請已結案，無法再沖銷。");
+        if (tr.IsClosed)
+            throw AppException.BadRequest("此出差申請已結案，無法再沖銷。");
 
         // 解析沖銷明細
         if (string.IsNullOrWhiteSpace(itemsJson))
             return new BadRequestObjectResult(ApiResponse.Fail("items 欄位為必填。"));
 
-        var items = JsonSerializer.Deserialize<WriteOffItemMetadata[]>(itemsJson, JsonOpts);
+        var items = JsonSerializer.Deserialize<TravelWriteOffItemMetadata[]>(itemsJson, JsonOpts);
         if (items is null || items.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one write-off item is required."));
 
@@ -170,19 +167,19 @@ public sealed class WriteOffRequestHandler(
         var grandTotal = items.Sum(i => i.TotalPrice);
 
         // 批次內發票號碼重複檢查
-        await ValidateInvoiceUniquenessAsync(items, excludeWriteOffRecordId: null);
+        await ValidateInvoiceUniquenessAsync(items, excludeTravelWriteOffRecordId: null);
 
-        // 取得下一個沖銷編號（WriteOffNo：本預支單的第幾次沖銷）
-        var lastNo = await db.WriteOffRecords
-            .Where(w => w.AdvanceRequestId == advanceRequestId)
+        // 取得下一個沖銷編號（WriteOffNo：本出差申請的第幾次沖銷）
+        var lastNo = await db.TravelWriteOffRecords
+            .Where(w => w.TravelRequestId == travelRequestId)
             .OrderByDescending(w => w.WriteOffNo)
             .Select(w => w.WriteOffNo)
             .FirstOrDefaultAsync();
 
-        // 產生沖銷申請單號：WO-yyyyMMdd-NNN（唯一索引保護並發）
+        // 產生沖銷申請單號：TWO-yyyyMMdd-NNN（唯一索引保護並發）
         var today  = Clock.Now;
-        var prefix = $"WO-{today:yyyyMMdd}-";
-        var maxNo  = await db.WriteOffRecords
+        var prefix = $"TWO-{today:yyyyMMdd}-";
+        var maxNo  = await db.TravelWriteOffRecords
             .Where(w => w.RequestNo.StartsWith(prefix))
             .MaxAsync(w => (string?)w.RequestNo);
         int seq = 1;
@@ -195,26 +192,24 @@ public sealed class WriteOffRequestHandler(
         var requestNo = $"{prefix}{seq:D3}";
 
         // 上傳檔案至 Blob Storage，組裝沖銷明細
-        var files         = form.Files.GetFiles("files");
-        var writeOffItems = await BuildWriteOffItemsAsync(items, files);
+        var files              = form.Files.GetFiles("files");
+        var travelWriteOffItems = await BuildTravelWriteOffItemsAsync(items, files);
 
-        var wo = new WriteOffRecord
+        var wo = new TravelWriteOffRecord
         {
-            RequestNo        = requestNo,
-            AdvanceRequestId = advanceRequestId,
-            WriteOffNo       = lastNo + 1,
-            CashTotal        = items.Sum(i => i.CashAmount),
-            CheckTotal       = items.Sum(i => i.CheckAmount),
-            GrandTotal       = grandTotal,
-            Note             = note,
-            SubmittedById    = submittedById,
-            ApprovalStatus   = "draft",
+            RequestNo       = requestNo,
+            TravelRequestId = travelRequestId,
+            WriteOffNo      = lastNo + 1,
+            GrandTotal      = grandTotal,
+            Note            = note,
+            SubmittedById   = submittedById,
+            ApprovalStatus  = "draft",
             CurrentStepOrder = 1,
-            CreatedAt        = today,
+            CreatedAt       = today,
         };
-        wo.Items = writeOffItems;
+        wo.Items = travelWriteOffItems;
 
-        db.WriteOffRecords.Add(wo);
+        db.TravelWriteOffRecords.Add(wo);
         await db.SaveChangesAsync();
 
         // 儲存指定審核者
@@ -232,7 +227,7 @@ public sealed class WriteOffRequestHandler(
         }
 
         var dto = await reader.GetByIdAsync(wo.Id);
-        return new ObjectResult(ApiResponse.Ok(dto, "Write-off request created.")) { StatusCode = 201 };
+        return new ObjectResult(ApiResponse.Ok(dto, "Travel write-off request created.")) { StatusCode = 201 };
     }
 
     // ── 更新草稿（multipart/form-data）──────────────────────────────────────
@@ -242,18 +237,18 @@ public sealed class WriteOffRequestHandler(
         var userId = await GetUserIdAsync(req);
 
         if (!int.TryParse(id, out var intId))
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid write-off request ID format."));
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid travel write-off request ID format."));
 
-        var wo = await db.WriteOffRecords
+        var wo = await db.TravelWriteOffRecords
                          .Include(x => x.Items)
                          .FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId)
-            ?? throw AppException.NotFound("WriteOffRecord");
+            ?? throw AppException.NotFound("TravelWriteOffRecord");
 
         if (wo.ApprovalStatus != "draft" && wo.ApprovalStatus != "returned")
-            throw AppException.BadRequest("Only draft or returned write-off requests can be edited.");
+            throw AppException.BadRequest("Only draft or returned travel write-off requests can be edited.");
 
-        var form    = await req.ReadFormAsync();
-        var note    = form["note"].ToString();
+        var form      = await req.ReadFormAsync();
+        var note      = form["note"].ToString();
         var itemsJson = form["items"].ToString();
         var designatedReviewersJson = form["designatedReviewers"].ToString();
 
@@ -297,12 +292,12 @@ public sealed class WriteOffRequestHandler(
         // 更新沖銷明細（提供時才更新）
         if (!string.IsNullOrWhiteSpace(itemsJson))
         {
-            var items = JsonSerializer.Deserialize<WriteOffItemMetadata[]>(itemsJson, JsonOpts);
+            var items = JsonSerializer.Deserialize<TravelWriteOffItemMetadata[]>(itemsJson, JsonOpts);
             if (items is null || items.Length == 0)
                 return new BadRequestObjectResult(ApiResponse.Fail("At least one write-off item is required."));
 
             // 發票唯一性驗證（排除本筆記錄自身的明細）
-            await ValidateInvoiceUniquenessAsync(items, excludeWriteOffRecordId: intId);
+            await ValidateInvoiceUniquenessAsync(items, excludeTravelWriteOffRecordId: intId);
 
             var newGrandTotal = items.Sum(i => i.TotalPrice);
 
@@ -313,9 +308,9 @@ public sealed class WriteOffRequestHandler(
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             // 上傳新檔案、保留既有 URL
-            var files         = form.Files.GetFiles("files");
-            var newWriteOffItems = new List<WriteOffItem>();
-            var newFileUrls   = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var files                = form.Files.GetFiles("files");
+            var newWriteOffItems     = new List<TravelWriteOffItem>();
+            var newFileUrls          = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var (item, idx) in items.Select((v, i) => (v, i)))
             {
@@ -331,30 +326,26 @@ public sealed class WriteOffRequestHandler(
                 if (!string.IsNullOrEmpty(fileUrl))
                     newFileUrls.Add(fileUrl);
 
-                newWriteOffItems.Add(new WriteOffItem
+                newWriteOffItems.Add(new TravelWriteOffItem
                 {
-                    WriteOffRecordId = intId,
-                    Category         = item.Category,
-                    SeqNo            = item.SeqNo,
-                    ItemName         = item.ItemName,
-                    UnitPrice        = item.UnitPrice,
-                    Quantity         = item.Quantity,
-                    TotalPrice       = item.TotalPrice,
-                    CashAmount       = item.CashAmount,
-                    CheckAmount      = item.CheckAmount,
-                    Note             = item.Note,
-                    InvoiceNo        = item.InvoiceNo,
-                    FileName         = item.FileName,
-                    FileUrl          = fileUrl,
-                    InvoiceDate      = item.InvoiceDate,
-                    SortOrder        = item.SortOrder > 0 ? item.SortOrder : idx,
+                    TravelWriteOffRecordId = intId,
+                    Category               = item.Category,
+                    SeqNo                  = item.SeqNo,
+                    ItemName               = item.ItemName,
+                    UnitPrice              = item.UnitPrice,
+                    Quantity               = item.Quantity,
+                    TotalPrice             = item.TotalPrice,
+                    Note                   = item.Note,
+                    InvoiceNo              = item.InvoiceNo,
+                    FileName               = item.FileName,
+                    FileUrl                = fileUrl,
+                    InvoiceDate            = item.InvoiceDate,
+                    SortOrder              = item.SortOrder > 0 ? item.SortOrder : idx,
                 });
             }
 
-            db.WriteOffItems.RemoveRange(wo.Items);
+            db.TravelWriteOffItems.RemoveRange(wo.Items);
             wo.Items      = newWriteOffItems;
-            wo.CashTotal  = items.Sum(i => i.CashAmount);
-            wo.CheckTotal = items.Sum(i => i.CheckAmount);
             wo.GrandTotal = newGrandTotal;
 
             await db.SaveChangesAsync();
@@ -374,7 +365,7 @@ public sealed class WriteOffRequestHandler(
         }
 
         var dto = await reader.GetByIdAsync(wo.Id);
-        return new OkObjectResult(ApiResponse.Ok(dto, "Write-off request updated."));
+        return new OkObjectResult(ApiResponse.Ok(dto, "Travel write-off request updated."));
     }
 
     // ── 刪除（僅草稿）────────────────────────────────────────────────────────
@@ -384,15 +375,15 @@ public sealed class WriteOffRequestHandler(
         var userId = await GetUserIdAsync(req);
 
         if (!int.TryParse(id, out var intId))
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid write-off request ID format."));
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid travel write-off request ID format."));
 
-        var wo = await db.WriteOffRecords
+        var wo = await db.TravelWriteOffRecords
                          .Include(x => x.Items)
                          .FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId)
-            ?? throw AppException.NotFound("WriteOffRecord");
+            ?? throw AppException.NotFound("TravelWriteOffRecord");
 
         if (wo.ApprovalStatus != "draft")
-            throw AppException.BadRequest("Only draft write-off requests can be deleted.");
+            throw AppException.BadRequest("Only draft travel write-off requests can be deleted.");
 
         // 收集要刪除的 blob
         var blobNames = wo.Items
@@ -400,14 +391,14 @@ public sealed class WriteOffRequestHandler(
             .Where(n => n is not null)
             .ToList();
 
-        db.WriteOffRecords.Remove(wo);
+        db.TravelWriteOffRecords.Remove(wo);
         await db.SaveChangesAsync();
 
         // 刪除 blob files（在 DB 刪除後才清理，避免孤兒資料）
         foreach (var name in blobNames)
             await blob.DeleteAsync(ContainerName, name!);
 
-        return new OkObjectResult(ApiResponse.Ok($"Write-off request '{id}' deleted."));
+        return new OkObjectResult(ApiResponse.Ok($"Travel write-off request '{id}' deleted."));
     }
 
     // ── 送出申請（draft/returned → pending）──────────────────────────────────
@@ -417,13 +408,13 @@ public sealed class WriteOffRequestHandler(
         var userId = await GetUserIdAsync(req);
 
         if (!int.TryParse(id, out var intId))
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid write-off request ID format."));
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid travel write-off request ID format."));
 
-        var wo = await db.WriteOffRecords.FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId)
-            ?? throw AppException.NotFound("WriteOffRecord");
+        var wo = await db.TravelWriteOffRecords.FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId)
+            ?? throw AppException.NotFound("TravelWriteOffRecord");
 
         if (wo.ApprovalStatus != "draft" && wo.ApprovalStatus != "returned")
-            throw AppException.BadRequest("Only draft or returned write-off requests can be submitted.");
+            throw AppException.BadRequest("Only draft or returned travel write-off requests can be submitted.");
 
         // 退回重送：清除舊審核記錄，重置指定審核者狀態
         if (wo.ApprovalStatus == "returned")
@@ -464,14 +455,14 @@ public sealed class WriteOffRequestHandler(
         var submitter = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         if (submitter?.IsSuperAdmin == true)
         {
-            wo.ApprovalStatus   = "approved";
-            wo.CurrentStepOrder = 1;
-            wo.ReviewedAt       = Clock.Now;
-            wo.ReviewedById     = userId;
-            wo.ReviewNote       = "系統自動核准（Superadmin）";
+            wo.ApprovalStatus    = "approved";
+            wo.CurrentStepOrder  = 1;
+            wo.ReviewedAt        = Clock.Now;
+            wo.ReviewedById      = userId;
+            wo.ReviewNote        = "系統自動核准（Superadmin）";
             await db.SaveChangesAsync();
             var saDto = await reader.GetByIdAsync(wo.Id);
-            return new OkObjectResult(ApiResponse.Ok(saDto, "Write-off request auto-approved."));
+            return new OkObjectResult(ApiResponse.Ok(saDto, "Travel write-off request auto-approved."));
         }
 
         // 若流程中有 UseApplicantDesignated 步驟，必須有指定審核者
@@ -496,22 +487,22 @@ public sealed class WriteOffRequestHandler(
             .Select(r => new DesignatedReviewerRequest(r.ReviewerId, r.StepOrder))
             .ToListAsync();
 
-        // 自審跳過邏輯（與請款、預支一致，不升級）
+        // 自審跳過邏輯（與請款、預支、沖銷一致，不升級）
         var (startStep, autoApproved, _) = await approvalFlow.ResolveStartingStepAsync(
             wo.ApprovalItemId, userId, RequestType, designatedReviewers);
 
         if (autoApproved)
         {
-            wo.ApprovalStatus   = "approved";
-            wo.CurrentStepOrder = startStep;
-            wo.ReviewedAt       = Clock.Now;
-            wo.ReviewedById     = userId;
-            wo.ReviewNote       = "系統自動核准（所有審核步驟皆為申請人本人）";
+            wo.ApprovalStatus    = "approved";
+            wo.CurrentStepOrder  = startStep;
+            wo.ReviewedAt        = Clock.Now;
+            wo.ReviewedById      = userId;
+            wo.ReviewNote        = "系統自動核准（所有審核步驟皆為申請人本人）";
         }
         else
         {
-            wo.ApprovalStatus   = "pending";
-            wo.CurrentStepOrder = startStep;
+            wo.ApprovalStatus    = "pending";
+            wo.CurrentStepOrder  = startStep;
         }
 
         await db.SaveChangesAsync();
@@ -539,7 +530,7 @@ public sealed class WriteOffRequestHandler(
         }
 
         var dto = await reader.GetByIdAsync(wo.Id);
-        var msg = autoApproved ? "Write-off request auto-approved." : "Write-off request submitted.";
+        var msg = autoApproved ? "Travel write-off request auto-approved." : "Travel write-off request submitted.";
         return new OkObjectResult(ApiResponse.Ok(dto, msg));
     }
 
@@ -556,12 +547,12 @@ public sealed class WriteOffRequestHandler(
     }
 
     /// <summary>
-    /// 驗證發票號碼唯一性：批次內去重 + 跨所有沖銷與請款發票表（排除已拒絕申請）。
-    /// excludeWriteOffRecordId：更新時傳入自身 ID 以排除自身明細。
+    /// 驗證發票號碼唯一性：批次內去重 + 跨所有出差沖銷、預支沖銷與請款發票表（排除已拒絕申請）。
+    /// excludeTravelWriteOffRecordId：更新時傳入自身 ID 以排除自身明細。
     /// </summary>
     private async Task ValidateInvoiceUniquenessAsync(
-        WriteOffItemMetadata[] items,
-        int? excludeWriteOffRecordId)
+        TravelWriteOffItemMetadata[] items,
+        int? excludeTravelWriteOffRecordId)
     {
         var invoiceNos = items
             .Where(i => !string.IsNullOrWhiteSpace(i.InvoiceNo))
@@ -579,15 +570,21 @@ public sealed class WriteOffRequestHandler(
         if (duplicatesInBatch.Count > 0)
             throw AppException.Conflict($"發票號碼重複：{string.Join(", ", duplicatesInBatch)}");
 
-        // 資料庫唯一性檢查（跨所有沖銷 + 請款發票，排除已拒絕的申請）
-        var writeOffQuery = db.WriteOffItems
-            .Where(wi => invoiceNos.Contains(wi.InvoiceNo!));
+        // 資料庫唯一性檢查（跨出差沖銷 + 預支沖銷 + 請款發票，排除已拒絕的申請）
+        var travelWriteOffQuery = db.TravelWriteOffItems
+            .Where(twi => invoiceNos.Contains(twi.InvoiceNo!));
 
-        // 更新場景：排除本筆 WriteOffRecord 的明細
-        if (excludeWriteOffRecordId.HasValue)
-            writeOffQuery = writeOffQuery.Where(wi => wi.WriteOffRecordId != excludeWriteOffRecordId.Value);
+        // 更新場景：排除本筆 TravelWriteOffRecord 的明細
+        if (excludeTravelWriteOffRecordId.HasValue)
+            travelWriteOffQuery = travelWriteOffQuery.Where(twi => twi.TravelWriteOffRecordId != excludeTravelWriteOffRecordId.Value);
 
-        var existInWriteOff = await writeOffQuery
+        var existInTravelWriteOff = await travelWriteOffQuery
+            .Select(twi => twi.InvoiceNo!)
+            .Distinct()
+            .ToListAsync();
+
+        var existInWriteOff = await db.WriteOffItems
+            .Where(wi => invoiceNos.Contains(wi.InvoiceNo!))
             .Select(wi => wi.InvoiceNo!)
             .Distinct()
             .ToListAsync();
@@ -599,19 +596,19 @@ public sealed class WriteOffRequestHandler(
             .Distinct()
             .ToListAsync();
 
-        var existingNos = existInWriteOff.Union(existInInvoice).Distinct().ToList();
+        var existingNos = existInTravelWriteOff.Union(existInWriteOff).Union(existInInvoice).Distinct().ToList();
         if (existingNos.Count > 0)
             throw AppException.Conflict($"發票號碼已存在：{string.Join(", ", existingNos)}");
     }
 
     /// <summary>
-    /// 依 multipart metadata 與上傳檔案清單，組裝 WriteOffItem 清單並上傳至 Blob Storage。
+    /// 依 multipart metadata 與上傳檔案清單，組裝 TravelWriteOffItem 清單並上傳至 Blob Storage。
     /// </summary>
-    private async Task<List<WriteOffItem>> BuildWriteOffItemsAsync(
-        WriteOffItemMetadata[] items,
+    private async Task<List<TravelWriteOffItem>> BuildTravelWriteOffItemsAsync(
+        TravelWriteOffItemMetadata[] items,
         IReadOnlyList<IFormFile> files)
     {
-        var result = new List<WriteOffItem>(items.Length);
+        var result = new List<TravelWriteOffItem>(items.Length);
 
         foreach (var (item, idx) in items.Select((v, i) => (v, i)))
         {
@@ -626,22 +623,20 @@ public sealed class WriteOffRequestHandler(
                 fileUrl = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
             }
 
-            result.Add(new WriteOffItem
+            result.Add(new TravelWriteOffItem
             {
-                Category    = item.Category,
-                SeqNo       = item.SeqNo,
-                ItemName    = item.ItemName,
-                UnitPrice   = item.UnitPrice,
-                Quantity    = item.Quantity,
-                TotalPrice  = item.TotalPrice,
-                CashAmount  = item.CashAmount,
-                CheckAmount = item.CheckAmount,
-                Note        = item.Note,
-                InvoiceNo   = item.InvoiceNo,
-                FileName    = item.FileName,
-                FileUrl     = fileUrl,
-                InvoiceDate = item.InvoiceDate,
-                SortOrder   = item.SortOrder > 0 ? item.SortOrder : idx,
+                Category               = item.Category,
+                SeqNo                  = item.SeqNo,
+                ItemName               = item.ItemName,
+                UnitPrice              = item.UnitPrice,
+                Quantity               = item.Quantity,
+                TotalPrice             = item.TotalPrice,
+                Note                   = item.Note,
+                InvoiceNo              = item.InvoiceNo,
+                FileName               = item.FileName,
+                FileUrl                = fileUrl,
+                InvoiceDate            = item.InvoiceDate,
+                SortOrder              = item.SortOrder > 0 ? item.SortOrder : idx,
             });
         }
 

@@ -1,6 +1,6 @@
 namespace Jabez.Api.Models.Dtos;
 
-// ── 沖銷申請 DTO ──────────────────────────────────────────────────────────────
+// ── 預支沖銷申請 DTO ──────────────────────────────────────────────────────────────
 
 public sealed record WriteOffRequestDto(
     int                       Id,
@@ -43,6 +43,7 @@ public sealed record UpdateWriteOffRequestRequest(
 
 public sealed record WriteOffTaskDetailDto(
     int                WriteOffRequestId,
+    int                AdvanceRequestId,
     string             RequestNo,
     string             AdvanceRequestNo,
     string             ProjectCode,
@@ -52,5 +53,8 @@ public sealed record WriteOffTaskDetailDto(
     decimal            CheckTotal,
     string?            Note,
     WriteOffItemDto[]  Items,
+    DateTime?          EstimatedPaymentDate = null,
     DateTime?          PaidAt = null,
-    string?            PaidBySignatureUrl = null);
+    string?            PaidBySignatureUrl = null,
+    decimal            AdvanceGrandTotal = 0,
+    decimal            OtherWrittenOffTotal = 0);

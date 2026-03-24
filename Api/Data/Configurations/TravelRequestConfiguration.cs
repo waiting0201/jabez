@@ -18,7 +18,7 @@ public class TravelRequestConfiguration : IEntityTypeConfiguration<TravelRequest
                .IsRequired()
                .HasMaxLength(500);
 
-        builder.Property(t => t.EstimatedCost)
+        builder.Property(t => t.GrandTotal)
                .HasColumnType("decimal(18,2)");
 
         builder.Property(t => t.IsHolidayTravel)
@@ -54,6 +54,18 @@ public class TravelRequestConfiguration : IEntityTypeConfiguration<TravelRequest
                .WithMany()
                .HasForeignKey(t => t.ProjectId)
                .OnDelete(DeleteBehavior.SetNull);
+
+        // 結案欄位
+        builder.Property(t => t.IsClosed)
+               .HasDefaultValue(false);
+
+        builder.Property(t => t.RefundAmount)
+               .HasColumnType("decimal(18,2)");
+
+        builder.HasOne(t => t.ClosedBy)
+               .WithMany()
+               .HasForeignKey(t => t.ClosedById)
+               .OnDelete(DeleteBehavior.NoAction);
 
         // 無 Seed data — 出差申請由使用者操作產生
     }

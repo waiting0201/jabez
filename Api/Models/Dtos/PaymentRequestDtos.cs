@@ -20,20 +20,22 @@ public sealed record DesignatedReviewerRequest(
 // ── Invoice DTOs ──────────────────────────────────────────────────────────────
 
 public sealed record InvoiceItemDto(
-    int     Id,
-    string  FileName,
-    string  InvoiceNo,
-    decimal Amount,
-    string? ItemName,
-    string? Note,
-    string? FileUrl);
+    int       Id,
+    string    FileName,
+    string    InvoiceNo,
+    decimal   Amount,
+    string?   ItemName,
+    string?   Note,
+    string?   FileUrl,
+    DateTime? InvoiceDate = null);
 
 public sealed record InvoiceItemRequest(
-    string  FileName,
-    string  InvoiceNo,
-    decimal Amount,
-    string? ItemName,
-    string? Note);
+    string    FileName,
+    string    InvoiceNo,
+    decimal   Amount,
+    string?   ItemName,
+    string?   Note,
+    DateTime? InvoiceDate = null);
 
 public sealed record PaymentRequestDto(
     int              Id,
@@ -50,18 +52,21 @@ public sealed record PaymentRequestDto(
     DateTime?        PaidAt,
     DateTime?        ReviewedAt,
     string?          ReviewNote,
+    string?          Reason = null,
     DesignatedReviewerDto[]? DesignatedReviewers = null);
 
 public sealed record CreatePaymentRequestRequest(
     string              Type,
     int                 ProjectId,
     InvoiceItemRequest[] Invoices,
+    string?             Reason = null,
     DesignatedReviewerRequest[]? DesignatedReviewers = null);
 
 public sealed record UpdatePaymentRequestRequest(
     string?              Type,
     int?                 ProjectId,
     InvoiceItemRequest[] Invoices,
+    string?             Reason = null,
     DesignatedReviewerRequest[]? DesignatedReviewers = null);
 
 // 更新撥款日與狀態（財務部或 Superadmin 專用，paidAt 未填入前皆可修改）
@@ -117,6 +122,7 @@ public sealed record PaymentTaskDetailDto(
     decimal          TotalAmount,
     DateTime?        EstimatedPaymentDate,
     DateTime?        PaidAt,
+    string?          Reason = null,
     string?          PaidBySignatureUrl = null);
 
 public sealed record LeaveTaskDetailDto(
@@ -132,11 +138,15 @@ public sealed record TravelTaskDetailDto(
     string   Destination,
     DateTime StartDate,
     DateTime EndDate,
-    decimal  EstimatedCost,
+    decimal  GrandTotal,
     string   Purpose,
     string?  ProjectCode,
     string?  ProjectName,
-    bool     IsHolidayTravel);
+    bool     IsHolidayTravel,
+    TravelRequestItemDto[] Items = null!)
+{
+    public TravelRequestItemDto[] Items { get; init; } = Items ?? Array.Empty<TravelRequestItemDto>();
+}
 
 public sealed record OvertimeTaskDetailDto(
     int      OvertimeRequestId,
