@@ -67,15 +67,28 @@ export interface LeaveTaskDetail {
   reason: string;
 }
 
+export interface TravelTaskDetailItem {
+  id: number;
+  category: string;
+  seqNo: number;
+  itemName: string;
+  unitPrice: number;
+  quantity: string;
+  totalPrice: number;
+  note?: string;
+  sortOrder: number;
+}
+
 export interface TravelTaskDetail {
   travelRequestId: number;
   destination: string;
   startDate: Date;
   endDate: Date;
-  estimatedCost: number;
+  grandTotal: number;
   purpose: string;
   projectCode?: string;
   isHolidayTravel: boolean;
+  items: TravelTaskDetailItem[];
 }
 
 export interface OvertimeTaskDetail {
@@ -84,6 +97,20 @@ export interface OvertimeTaskDetail {
   estimatedHours: number;
   reason: string;
   projectCodes?: string[];
+}
+
+export interface AdvanceTaskDetailItem {
+  id: number;
+  category: string;
+  seqNo: number;
+  itemName: string;
+  unitPrice: number;
+  quantity: string;
+  totalPrice: number;
+  cashAmount: number;
+  checkAmount: number;
+  note?: string;
+  sortOrder: number;
 }
 
 export interface AdvanceTaskDetail {
@@ -95,6 +122,7 @@ export interface AdvanceTaskDetail {
   estimatedPaymentDate?: string;
   paidAt?: string;
   paidBySignatureUrl?: string;
+  items: AdvanceTaskDetailItem[];
 }
 
 export interface WriteOffTaskDetailItem {
@@ -109,6 +137,7 @@ export interface WriteOffTaskDetailItem {
   checkAmount: number;
   note?: string;
   invoiceNo?: string;
+  invoiceDate?: string;
   fileName?: string;
   fileUrl?: string;
 }
@@ -129,6 +158,39 @@ export interface WriteOffTaskDetail {
   paidAt?: string;
   paidBySignatureUrl?: string;
   advanceGrandTotal: number;
+  otherWrittenOffTotal: number;
+}
+
+export interface TravelWriteOffTaskDetailItem {
+  id: number;
+  category: string;
+  seqNo: number;
+  itemName: string;
+  unitPrice: number;
+  quantity: string;
+  totalPrice: number;
+  note?: string;
+  invoiceNo?: string;
+  invoiceDate?: string;
+  fileName?: string;
+  fileUrl?: string;
+}
+
+export interface TravelWriteOffTaskDetail {
+  travelWriteOffRequestId: number;
+  travelRequestId: number;
+  requestNo: string;
+  travelRequestNo: string;
+  projectCode: string;
+  projectName: string;
+  destination: string;
+  startDate: string;
+  endDate: string;
+  purpose: string;
+  grandTotal: number;
+  note?: string;
+  items: TravelWriteOffTaskDetailItem[];
+  travelGrandTotal: number;
   otherWrittenOffTotal: number;
 }
 
@@ -164,6 +226,7 @@ export interface ApprovalTask {
   overtimeDetail?: OvertimeTaskDetail;
   advanceDetail?: AdvanceTaskDetail;
   writeOffDetail?: WriteOffTaskDetail;
+  travelWriteOffDetail?: TravelWriteOffTaskDetail;
   approvalRecords: ApprovalRecord[];
   submittedBySignatureUrl?: string;  // 申請人簽名檔 URL
 }

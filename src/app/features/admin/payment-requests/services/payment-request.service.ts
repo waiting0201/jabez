@@ -39,10 +39,10 @@ export class PaymentRequestService {
   }
 
   /** 發票 OCR 辨識（透過 Claude Haiku API） */
-  ocrInvoice(file: File): Observable<{invoiceNo: string; amount: number}> {
+  ocrInvoice(file: File): Observable<{invoiceNo: string; amount: number; invoiceDate: string}> {
     const fd = new FormData();
     fd.append('file', file, file.name);
-    return this.http.post<{invoiceNo: string; amount: number}>(`${environment.apiUrl}/invoice-ocr`, fd);
+    return this.http.post<{invoiceNo: string; amount: number; invoiceDate: string}>(`${environment.apiUrl}/invoice-ocr`, fd);
   }
 
   /** 更新已核准請款的撥款日期（僅財務部/Superadmin） */

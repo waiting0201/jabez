@@ -21,7 +21,7 @@
               <th>出差地點</th>
               <th>開始日期</th>
               <th>結束日期</th>
-              <th class="text-right">預估費用</th>
+              <th class="text-right">金額</th>
               <th class="hidden md:table-cell">目的</th>
               <th class="hidden lg:table-cell">專案</th>
               <th>狀態</th>
@@ -39,7 +39,7 @@
                 </td>
                 <td class="text-muted small">{{ r.startDate | date:'yyyy-MM-dd' }}</td>
                 <td class="text-muted small">{{ r.endDate | date:'yyyy-MM-dd' }}</td>
-                <td class="text-right fw-500">{{ r.estimatedCost | number:'1.0-0' }}</td>
+                <td class="text-right fw-500">{{ r.grandTotal | number:'1.0-0' }}</td>
                 <td class="text-muted small hidden md:table-cell">{{ r.purpose }}</td>
                 <td class="font-monospace small hidden lg:table-cell">{{ r.projectCode || '—' }}</td>
                 <td>

@@ -1,11 +1,12 @@
 import {ChangeDetectorRef, Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
-import {FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
+import {AbstractControl, FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
+import {DecimalPipe} from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
 import {TravelRequestService} from '../../services/travel-request.service';
 import {ProjectService} from '../../../projects/services/project.service';
 import {Project} from '../../../projects/models/project.model';
-import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, DesignatedReviewer} from '../../models/travel-request.model';
+import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, ITEM_CATEGORIES, DesignatedReviewer} from '../../models/travel-request.model';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
 import {ApprovalService} from '../../../approvals/services/approval.service';
@@ -18,7 +19,7 @@ import {UserLookup} from '../../../users/models/user.model';
 @Component({
   selector: 'app-travel-request-form',
   templateUrl: './travel-request-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, ApprovalTimeline],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, ApprovalTimeline],
 })
 export class TravelRequestForm implements OnInit {
   private fb          = inject(FormBuilder);
@@ -40,6 +41,8 @@ export class TravelRequestForm implements OnInit {
   approvalStatus: ApprovalStatus = 'draft';
   errorMsg = signal('');
   projects: Project[] = [];
+  loadingProjects = true;
+  categories = ITEM_CATEGORIES;
 
   /** 簽核流程時間軸 */
   approvalFlow: ApprovalFlow | null = null;
@@ -95,13 +98,18 @@ export class TravelRequestForm implements OnInit {
     destination:     ['', Validators.required],
     startDate:       ['', Validators.required],
     endDate:         ['', Validators.required],
-    estimatedCost:   [0, [Validators.required, Validators.min(0)]],
     purpose:         ['', Validators.required],
     projectId:       [null as number | null],
     isHolidayTravel: [false],
+    items:           this.fb.array([]),
   });
 
-  loadingProjects = true;
+  get itemArray(): FormArray { return this.form.get('items') as FormArray; }
+  get itemControls(): AbstractControl[] { return this.itemArray.controls; }
+
+  get grandTotal(): number {
+    return this.itemArray.controls.reduce((s, c) => s + (+(c.get('totalPrice')?.value) || 0), 0);
+  }
 
   get holidayDays(): number {
     const v = this.form.value;
@@ -142,6 +150,7 @@ export class TravelRequestForm implements OnInit {
       },
       error: () => { this.loadingProjects = false; this.errorMsg.set('載入專案資料失敗。'); },
     });
+
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.isEdit    = true;
@@ -151,7 +160,7 @@ export class TravelRequestForm implements OnInit {
         this.approvalStatus = r.approvalStatus;
         this.isDraft    = r.approvalStatus === 'draft';
         this.isReturned = r.approvalStatus === 'returned';
-        this.isReadOnly = r.approvalStatus !== 'draft';
+        this.isReadOnly = r.approvalStatus !== 'draft' && r.approvalStatus !== 'returned';
         this.form.patchValue({
           destination:     r.destination,
           startDate: r.startDate instanceof Date
@@ -160,7 +169,6 @@ export class TravelRequestForm implements OnInit {
           endDate: r.endDate instanceof Date
             ? r.endDate.toISOString().split('T')[0]
             : String(r.endDate),
-          estimatedCost:   r.estimatedCost,
           purpose:         r.purpose,
           projectId:       r.projectId ?? null,
           isHolidayTravel: r.isHolidayTravel ?? false,
@@ -181,6 +189,11 @@ export class TravelRequestForm implements OnInit {
             });
           }
         }
+        // 回填費用明細
+        (r.items ?? []).forEach((item, idx) => this.itemArray.push(this._itemGroup(
+          item.category, item.seqNo, item.itemName, item.unitPrice,
+          item.quantity, item.totalPrice, item.note ?? '', idx
+        )));
         if (this.isReadOnly) this.form.disable();
         // 非草稿時載入簽核流程
         if (r.approvalStatus !== 'draft') {
@@ -199,9 +212,26 @@ export class TravelRequestForm implements OnInit {
     }
   }
 
+  addItem() {
+    this.itemArray.push(this._itemGroup('', 0, '', 0, '', 0, '', this.itemArray.length));
+  }
+
+  removeItem(i: number) {
+    this.itemArray.removeAt(i);
+  }
+
+  /** 單價 × 數量（嘗試解析數量前面的數字） */
+  calcTotal(ctrl: AbstractControl) {
+    const unitPrice = +(ctrl.get('unitPrice')?.value) || 0;
+    const qtyStr = (ctrl.get('quantity')?.value ?? '').toString();
+    const qtyNum = parseFloat(qtyStr) || 0;
+    const total = Math.round(unitPrice * qtyNum);
+    ctrl.get('totalPrice')?.setValue(total, {emitEvent: false});
+  }
+
   /** 儲存（草稿或更新，不改變狀態） */
   save() {
-    if (this.form.invalid || this.isReadOnly) return;
+    if (this.form.invalid || this.itemArray.length === 0 || this.isReadOnly) return;
     const payload = this._buildPayload();
     const obs = this.isEdit
       ? this.service.update(this.requestId, payload)
@@ -220,7 +250,7 @@ export class TravelRequestForm implements OnInit {
 
   /** 送出申請（先儲存再將狀態改為 pending） */
   submitForApproval() {
-    if (this.form.invalid || this.isReadOnly) return;
+    if (this.form.invalid || this.itemArray.length === 0 || this.isReadOnly) return;
     const payload = this._buildPayload();
     const save$ = this.isEdit
       ? this.service.update(this.requestId, payload)
@@ -247,16 +277,44 @@ export class TravelRequestForm implements OnInit {
     const reviewers = this.designatedEntries
       .filter(e => e.selectedUserId)
       .map(e => ({ reviewerId: e.selectedUserId!, stepOrder: e.stepOrder }));
+    const items = this.itemArray.controls.map((c, idx) => ({
+      category:   c.get('category')?.value || '',
+      seqNo:      +(c.get('seqNo')?.value) || 0,
+      itemName:   c.get('itemName')?.value || '',
+      unitPrice:  +(c.get('unitPrice')?.value) || 0,
+      quantity:   c.get('quantity')?.value || '',
+      totalPrice: +(c.get('totalPrice')?.value) || 0,
+      note:       c.get('note')?.value || '',
+      sortOrder:  idx,
+    }));
+    const grandTotal = items.reduce((s, i) => s + i.totalPrice, 0);
     return {
-      destination:          v.destination!,
-      startDate:            new Date(v.startDate!),
-      endDate:              new Date(v.endDate!),
-      estimatedCost:        +v.estimatedCost!,
-      purpose:              v.purpose!,
-      projectId:            v.projectId ?? undefined,
-      projectCode:          project?.code,
-      isHolidayTravel:      !!v.isHolidayTravel,
-      designatedReviewers:  reviewers.length > 0 ? reviewers : undefined,
+      destination:         v.destination!,
+      startDate:           new Date(v.startDate!),
+      endDate:             new Date(v.endDate!),
+      purpose:             v.purpose!,
+      projectId:           v.projectId ?? undefined,
+      projectCode:         project?.code,
+      isHolidayTravel:     !!v.isHolidayTravel,
+      grandTotal,
+      designatedReviewers: reviewers.length > 0 ? reviewers : undefined,
+      items,
     };
+  }
+
+  private _itemGroup(
+    category: string, seqNo: number, itemName: string, unitPrice: number,
+    quantity: string, totalPrice: number, note: string, sortOrder: number
+  ) {
+    return this.fb.group({
+      category:   [category, Validators.required],
+      seqNo:      [seqNo],
+      itemName:   [itemName, Validators.required],
+      unitPrice:  [unitPrice, [Validators.required, Validators.min(0)]],
+      quantity:   [quantity, Validators.required],
+      totalPrice: [totalPrice],
+      note:       [note],
+      sortOrder:  [sortOrder],
+    });
   }
 }

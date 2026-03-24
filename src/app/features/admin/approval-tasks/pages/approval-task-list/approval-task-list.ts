@@ -61,7 +61,7 @@ export class ApprovalTaskList {
       return `${this.leaveTypeLabel[t.leaveDetail.leaveType]}・${t.leaveDetail.hours} 小時`;
     }
     if (t.travelDetail) {
-      return `${t.travelDetail.destination}（${t.travelDetail.estimatedCost.toLocaleString()} 元）`;
+      return `${t.travelDetail.destination}（${t.travelDetail.grandTotal.toLocaleString()} 元）`;
     }
     if (t.overtimeDetail) {
       const dateStr = new Date(t.overtimeDetail.overtimeDate).toLocaleDateString('zh-TW');

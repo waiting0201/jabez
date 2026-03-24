@@ -46,6 +46,12 @@ export const menuItems: MenuItemType[] = [
     requiredPermission: 'travel-requests:read',
   },
   {
+    icon: '/assets/icons/sprite.svg#map-pin',
+    label: '出差沖銷申請',
+    url: '/admin/travel-write-off-requests',
+    requiredPermission: 'travel-write-off-requests:read',
+  },
+  {
     icon: '/assets/icons/sprite.svg#zap',
     label: '加班申請',
     url: '/admin/overtime-requests',

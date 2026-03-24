@@ -1,9 +1,9 @@
 <div class="container-fluid py-3">
   <div class="flex items-center gap-2 mb-6">
-    <a routerLink="/admin/write-off-requests" class="btn btn-sm btn-outline-secondary">
+    <a routerLink="/admin/travel-write-off-requests" class="btn btn-sm btn-outline-secondary">
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
     </a>
-    <h4 class="mb-0">{{ isEdit ? '編輯預支沖銷申請' : '新增預支沖銷申請' }}</h4>
+    <h4 class="mb-0">{{ isEdit ? '編輯出差沖銷申請' : '新增出差沖銷申請' }}</h4>
   </div>
 
   @if (errorMsg()) {
@@ -13,77 +13,77 @@
     </div>
   }
 
-  <!-- 預支單選擇（新增模式）/ 預支單資訊（編輯模式） -->
+  <!-- 出差單選擇（新增模式）/ 出差單資訊（編輯模式） -->
   <div class="card border-0 shadow-sm mb-6">
     <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
       <svg class="sa-icon text-primary" style="stroke: currentColor">
-        <use href="/assets/icons/sprite.svg#credit-card"></use>
+        <use href="/assets/icons/sprite.svg#map-pin"></use>
       </svg>
-      預支單
+      出差單
     </div>
     <div class="card-body">
       @if (isEdit) {
-        <!-- 編輯模式：唯讀顯示預支單資訊 -->
+        <!-- 編輯模式：唯讀顯示出差單資訊 -->
         <div class="grid grid-cols-4 gap-4">
           <div>
-            <div class="text-muted small">預支單號</div>
-            <div class="fw-500 font-monospace">{{ editModeAdvanceNo }}</div>
-            <div class="text-muted small mt-2">專案代號</div>
-            <div class="fw-500 font-monospace">{{ editModeProjectCode }}</div>
-            <div class="text-muted small mt-2">活動名稱</div>
-            <div class="fw-500">{{ editModeActivityName }}</div>
+            <div class="text-muted small">出差單號</div>
+            <div class="fw-500 font-monospace">{{ editModeTravelNo }}</div>
+            <div class="text-muted small mt-2">目的地</div>
+            <div class="fw-500">{{ editModeDestination }}</div>
+            <div class="text-muted small mt-2">出差期間</div>
+            <div class="fw-500">{{ editModeDateRange }}</div>
           </div>
           <div class="bg-elevated rounded-lg px-4 py-2 text-sm">
-            <div class="text-muted small">預支金額</div>
-            <div class="fw-600">{{ editModeAdvanceGrandTotal | number:'1.0-0' }}</div>
+            <div class="text-muted small">出差金額</div>
+            <div class="fw-600">{{ editModeTravelGrandTotal | number:'1.0-0' }}</div>
           </div>
           <div class="bg-elevated rounded-lg px-4 py-2 text-sm">
             <div class="text-muted small">已沖銷</div>
-            <div class="fw-600 text-accent">{{ editModeAdvanceWrittenOffTotal | number:'1.0-0' }}</div>
+            <div class="fw-600 text-accent">{{ editModeTravelWrittenOffTotal | number:'1.0-0' }}</div>
           </div>
           <div class="bg-elevated rounded-lg px-4 py-2 text-sm">
             <div class="text-muted small">待沖銷</div>
-            <div class="fw-600" [class.text-success]="editModeAdvanceGrandTotal - editModeAdvanceWrittenOffTotal > 0"
-                 [class.text-danger]="editModeAdvanceGrandTotal - editModeAdvanceWrittenOffTotal < 0">
-              {{ editModeAdvanceGrandTotal - editModeAdvanceWrittenOffTotal | number:'1.0-0' }}
+            <div class="fw-600" [class.text-success]="editModeTravelGrandTotal - editModeTravelWrittenOffTotal > 0"
+                 [class.text-danger]="editModeTravelGrandTotal - editModeTravelWrittenOffTotal < 0">
+              {{ editModeTravelGrandTotal - editModeTravelWrittenOffTotal | number:'1.0-0' }}
             </div>
           </div>
         </div>
       } @else {
-        <!-- 新增模式：下拉選擇已撥款預支單 -->
-        <label class="form-label fw-500">選擇預支單 <span class="text-danger">*</span></label>
-        @if (loadingAdvances) {
+        <!-- 新增模式：下拉選擇已核准出差單 -->
+        <label class="form-label fw-500">選擇出差單 <span class="text-danger">*</span></label>
+        @if (loadingTravels) {
           <div class="text-muted small py-2">載入中…</div>
         } @else {
           <div class="grid grid-cols-4 gap-4 items-start">
-            <select class="form-select" [(ngModel)]="selectedAdvanceId" [ngModelOptions]="{standalone: true}">
-              <option [ngValue]="null">-- 請選擇已撥款的預支單 --</option>
-              @for (ar of advanceRequests(); track ar.id) {
-                <option [ngValue]="ar.id">
-                  [{{ ar.requestNo }}] {{ ar.projectCode }} - {{ ar.activityName }}
+            <select class="form-select" [(ngModel)]="selectedTravelId" [ngModelOptions]="{standalone: true}">
+              <option [ngValue]="null">-- 請選擇已核准的出差單 --</option>
+              @for (tr of travelRequests(); track tr.id) {
+                <option [ngValue]="tr.id">
+                  #{{ tr.id }} {{ tr.destination }} ({{ tr.startDate.slice(0,10) }} ~ {{ tr.endDate.slice(0,10) }}) — {{ tr.grandTotal | number:'1.0-0' }} 元
                 </option>
               }
             </select>
-            @if (selectedAdvance; as adv) {
+            @if (selectedTravel; as travel) {
               <div class="bg-elevated rounded-lg px-4 py-2 text-sm">
-                <div class="text-muted small">預支金額</div>
-                <div class="fw-600">{{ adv.grandTotal | number:'1.0-0' }}</div>
+                <div class="text-muted small">出差金額</div>
+                <div class="fw-600">{{ travel.grandTotal | number:'1.0-0' }}</div>
               </div>
               <div class="bg-elevated rounded-lg px-4 py-2 text-sm">
                 <div class="text-muted small">已沖銷</div>
-                <div class="fw-600 text-accent">{{ adv.writtenOffTotal | number:'1.0-0' }}</div>
+                <div class="fw-600 text-accent">{{ travel.writtenOffTotal | number:'1.0-0' }}</div>
               </div>
               <div class="bg-elevated rounded-lg px-4 py-2 text-sm">
                 <div class="text-muted small">待沖銷</div>
-                <div class="fw-600" [class.text-success]="adv.grandTotal - adv.writtenOffTotal > 0"
-                     [class.text-danger]="adv.grandTotal - adv.writtenOffTotal < 0">
-                  {{ adv.grandTotal - adv.writtenOffTotal | number:'1.0-0' }}
+                <div class="fw-600" [class.text-success]="travel.grandTotal - travel.writtenOffTotal > 0"
+                     [class.text-danger]="travel.grandTotal - travel.writtenOffTotal < 0">
+                  {{ travel.grandTotal - travel.writtenOffTotal | number:'1.0-0' }}
                 </div>
               </div>
             }
           </div>
-          @if (advanceRequests().length === 0) {
-            <div class="text-muted small mt-2">目前無可沖銷的預支單（需已核准且已撥款）。</div>
+          @if (travelRequests().length === 0) {
+            <div class="text-muted small mt-2">目前無可沖銷的出差單（需已核准）。</div>
           }
         }
       }
@@ -142,8 +142,6 @@
                 <th style="min-width:130px">單價</th>
                 <th style="min-width:80px">數量/單位</th>
                 <th style="min-width:130px">總價</th>
-                <th style="min-width:130px">現金花費</th>
-                <th style="min-width:130px">支票金額</th>
                 <th style="min-width:100px">備註</th>
                 <th style="width:48px"></th>
               </tr>
@@ -218,20 +216,6 @@
                     }
                   </td>
                   <td class="align-middle">
-                    @if (isOcr) {
-                      <div class="py-1 text-muted small">—</div>
-                    } @else {
-                      <input type="number" class="form-control form-control-sm" formControlName="cashAmount" min="0">
-                    }
-                  </td>
-                  <td class="align-middle">
-                    @if (isOcr) {
-                      <div class="py-1 text-muted small">—</div>
-                    } @else {
-                      <input type="number" class="form-control form-control-sm" formControlName="checkAmount" min="0">
-                    }
-                  </td>
-                  <td class="align-middle">
                     <input class="form-control form-control-sm" formControlName="note" placeholder="">
                   </td>
                   <td class="text-right align-middle">
@@ -243,7 +227,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="12" class="text-center text-muted py-4 small">請上傳發票圖檔，或點擊「手動新增行」</td>
+                  <td colspan="10" class="text-center text-muted py-4 small">請上傳發票圖檔，或點擊「手動新增行」</td>
                 </tr>
               }
             </tbody>
@@ -252,8 +236,6 @@
                 <tr class="table-light">
                   <td colspan="7" class="text-right fw-500 small">合計</td>
                   <td class="fw-600">{{ grandTotal | number:'1.0-0' }}</td>
-                  <td class="fw-600">{{ cashTotal | number:'1.0-0' }}</td>
-                  <td class="fw-600">{{ checkTotal | number:'1.0-0' }}</td>
                   <td colspan="2"></td>
                 </tr>
               </tfoot>
@@ -314,13 +296,13 @@
 
     <div class="mt-6 flex gap-2">
       <button type="submit" class="btn btn-primary"
-              [disabled]="itemArray.length === 0 || isAnyOcrPending || (!isEdit && !selectedAdvanceId)">
+              [disabled]="itemArray.length === 0 || isAnyOcrPending || (!isEdit && !selectedTravelId)">
         @if (isAnyOcrPending) {
           <span class="spinner-border spinner-border-sm me-1" role="status"></span>
         }
-        {{ isEdit ? '儲存變更' : '建立預支沖銷申請' }}
+        {{ isEdit ? '儲存變更' : '建立出差沖銷申請' }}
       </button>
-      <a routerLink="/admin/write-off-requests" class="btn btn-outline-secondary">取消</a>
+      <a routerLink="/admin/travel-write-off-requests" class="btn btn-outline-secondary">取消</a>
     </div>
   </form>
 </div>

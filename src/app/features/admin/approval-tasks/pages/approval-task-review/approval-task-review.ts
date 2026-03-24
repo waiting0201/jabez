@@ -13,6 +13,8 @@ import {AdvanceRequestService} from '../../../advance-requests/services/advance-
 import {AdvancePdfService} from '../../../advance-requests/services/advance-pdf.service';
 import {WriteOffRequestService} from '../../../write-off-requests/services/write-off-request.service';
 import {WriteOffPdfService} from '../../../write-off-requests/services/write-off-pdf.service';
+import {TravelWriteOffRequestService} from '../../../travel-write-off-requests/services/travel-write-off-request.service';
+import {TravelWriteOffPdfService} from '../../../travel-write-off-requests/services/travel-write-off-pdf.service';
 import {ApprovalTaskService} from '../../services/approval-task.service';
 import {
   ApprovalTask, ApprovalRecord, TaskStatus,
@@ -83,6 +85,8 @@ export class ApprovalTaskReview implements OnInit {
   protected advancePdfService = inject(AdvancePdfService);
   private writeOffService     = inject(WriteOffRequestService);
   protected writeOffPdfService = inject(WriteOffPdfService);
+  private travelWriteOffService     = inject(TravelWriteOffRequestService);
+  protected travelWriteOffPdfService = inject(TravelWriteOffPdfService);
   private auth              = inject(AuthService);
   private route             = inject(ActivatedRoute);
   private router            = inject(Router);
@@ -165,6 +169,15 @@ export class ApprovalTaskReview implements OnInit {
   /** 判斷是否顯示「預支結案」checkbox：預支沖銷申請 (write_off) 且當前步驟為財務部 */
   canCloseAdvance(task: ApprovalTask): boolean {
     if (task.applicationType !== 'write_off') return false;
+    if (this.auth.isSuperAdmin()) return true;
+    if (!task.flow) return false;
+    const step = task.flow.steps.find(s => s.stepOrder === task.currentStepOrder);
+    return step?.departmentCode === 'FIN';
+  }
+
+  /** 判斷是否顯示「出差結案」checkbox：出差沖銷申請 (travel_write_off) 且當前步驟為財務部 */
+  canCloseTravelRequest(task: ApprovalTask): boolean {
+    if (task.applicationType !== 'travel_write_off') return false;
     if (this.auth.isSuperAdmin()) return true;
     if (!task.flow) return false;
     const step = task.flow.steps.find(s => s.stepOrder === task.currentStepOrder);
@@ -555,6 +568,30 @@ export class ApprovalTaskReview implements OnInit {
         this.errorMsg.set('載入預支沖銷申請資料失敗，無法匯出 PDF。');
       },
     });
+  }
+
+  /** 列印出差沖銷申請表 PDF */
+  printTravelWriteOffPdf(task: ApprovalTask) {
+    if (!task.travelWriteOffDetail || task.status !== 'approved') return;
+    this.travelWriteOffService.getById(task.travelWriteOffDetail.travelWriteOffRequestId).subscribe({
+      next: r => {
+        this.travelWriteOffPdfService.printTravelWriteOff(
+          r,
+          task.submittedBy,
+          task.approvalRecords ?? [],
+          task.flow,
+          task.submittedBySignatureUrl,
+        );
+      },
+      error: () => {
+        this.errorMsg.set('載入出差沖銷申請資料失敗，無法匯出 PDF。');
+      },
+    });
+  }
+
+  /** 計算陣列中指定數值欄位的加總 */
+  sumField<T>(items: T[], field: keyof T): number {
+    return items.reduce((acc, item) => acc + (item[field] as unknown as number), 0);
   }
 
   submit() {

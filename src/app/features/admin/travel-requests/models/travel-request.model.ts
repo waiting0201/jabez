@@ -26,6 +26,21 @@ export interface DesignatedReviewer {
   comment?: string;
 }
 
+export interface TravelRequestItem {
+  id?: number;
+  category: string;
+  seqNo: number;
+  itemName: string;
+  unitPrice: number;
+  quantity: string;
+  totalPrice: number;
+  note?: string;
+  sortOrder: number;
+}
+
+/** 常用分類選項 */
+export const ITEM_CATEGORIES = ['交通費', '住宿費', '餐費', '雜支'] as const;
+
 export interface TravelRequest {
   id: number;
   employeeId?: string;
@@ -33,7 +48,7 @@ export interface TravelRequest {
   destination: string;
   startDate: Date;
   endDate: Date;
-  estimatedCost: number;
+  grandTotal: number;
   purpose: string;
   projectId?: number;
   projectCode?: string;
@@ -41,6 +56,7 @@ export interface TravelRequest {
   isHolidayTravel: boolean;
   approvalStatus: ApprovalStatus;
   designatedReviewers?: DesignatedReviewer[];
+  items: TravelRequestItem[];
   createdAt: Date;
   reviewedAt?: Date;
   reviewNote?: string;

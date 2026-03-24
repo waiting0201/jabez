@@ -41,6 +41,7 @@ export class ApprovalList {
     {value: 'overtime',        label: '加班申請'},
     {value: 'advance',         label: '預支申請'},
     {value: 'write_off',       label: '預支沖銷申請'},
+    {value: 'travel_write_off', label: '出差沖銷申請'},
   ];
 
   form = this.fb.group({

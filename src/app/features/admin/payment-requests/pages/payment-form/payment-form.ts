@@ -203,7 +203,7 @@ export class PaymentForm implements OnInit {
           }
         }
         r.invoices.forEach(inv => this.invoiceArray.push(
-          this._invoiceGroup(String(inv.id), inv.fileName, inv.invoiceNo, inv.amount, inv.fileUrl ?? '', inv.fileUrl ?? '', inv.itemName ?? '', inv.note ?? '')
+          this._invoiceGroup(String(inv.id), inv.fileName, inv.invoiceNo, inv.amount, inv.fileUrl ?? '', inv.fileUrl ?? '', inv.itemName ?? '', inv.note ?? '', inv.invoiceDate ?? '')
         ));
         // 非草稿時載入簽核流程
         if (r.approvalStatus !== 'draft') {
@@ -249,8 +249,9 @@ export class PaymentForm implements OnInit {
         const result = await firstValueFrom(this.service.ocrInvoice(file));
         const idx = this.invoiceArray.controls.findIndex(c => c.get('id')?.value === id);
         if (idx >= 0) this.invoiceArray.controls[idx].patchValue({
-          invoiceNo: result.invoiceNo ?? '',
-          amount:    result.amount ?? 0,
+          invoiceNo:   result.invoiceNo ?? '',
+          amount:      result.amount ?? 0,
+          invoiceDate: result.invoiceDate ?? '',
         });
       } catch {
         // OCR failed — leave fields empty for manual entry
@@ -356,13 +357,14 @@ export class PaymentForm implements OnInit {
       const id = ctrl.get('id')?.value;
       const file = this.fileMap.get(id);
       const meta = {
-        fileName:  ctrl.get('fileName')?.value,
-        invoiceNo: ctrl.get('invoiceNo')?.value,
-        amount:    +(ctrl.get('amount')?.value || 0),
-        itemName:  ctrl.get('itemName')?.value || null,
-        note:      ctrl.get('note')?.value || null,
-        fileUrl:   ctrl.get('fileUrl')?.value || null,
-        fileIndex: file ? fileIndex : -1,
+        fileName:    ctrl.get('fileName')?.value,
+        invoiceNo:   ctrl.get('invoiceNo')?.value,
+        invoiceDate: ctrl.get('invoiceDate')?.value || null,
+        amount:      +(ctrl.get('amount')?.value || 0),
+        itemName:    ctrl.get('itemName')?.value || null,
+        note:        ctrl.get('note')?.value || null,
+        fileUrl:     ctrl.get('fileUrl')?.value || null,
+        fileIndex:   file ? fileIndex : -1,
       };
       if (file) {
         fd.append('files', file, file.name);
@@ -375,16 +377,17 @@ export class PaymentForm implements OnInit {
     return fd;
   }
 
-  private _invoiceGroup(id: string, fileName: string, invoiceNo: string, amount: number, previewUrl = '', fileUrl = '', itemName = '', note = '') {
+  private _invoiceGroup(id: string, fileName: string, invoiceNo: string, amount: number, previewUrl = '', fileUrl = '', itemName = '', note = '', invoiceDate = '') {
     return this.fb.group({
-      id:         [id],
-      fileName:   [fileName],
-      invoiceNo:  [invoiceNo, Validators.required],
-      amount:     [amount, [Validators.required, Validators.min(0)]],
-      itemName:   [itemName],
-      note:       [note],
-      previewUrl: [previewUrl],
-      fileUrl:    [fileUrl],
+      id:          [id],
+      fileName:    [fileName],
+      invoiceNo:   [invoiceNo, Validators.required],
+      invoiceDate: [invoiceDate],
+      amount:      [amount, [Validators.required, Validators.min(0)]],
+      itemName:    [itemName],
+      note:        [note],
+      previewUrl:  [previewUrl],
+      fileUrl:     [fileUrl],
     });
   }
 

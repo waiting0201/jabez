@@ -16,7 +16,7 @@ export const APPROVAL_STATUS_CLASSES: Record<ApprovalStatus, string> = {
   returned: 'bg-secondary-subtle text-secondary',
 };
 
-export interface WriteOffItem {
+export interface TravelWriteOffItem {
   id: number;
   category: string;
   seqNo: number;
@@ -24,8 +24,6 @@ export interface WriteOffItem {
   unitPrice: number;
   quantity: string;
   totalPrice: number;
-  cashAmount: number;
-  checkAmount: number;
   note?: string;
   invoiceNo?: string;
   invoiceDate?: string;  // 發票日期（YYYY-MM-DD）
@@ -44,18 +42,18 @@ export interface DesignatedReviewer {
   comment?: string;
 }
 
-export interface WriteOffRequest {
+export interface TravelWriteOffRequest {
   id: number;
   requestNo: string;
-  advanceRequestId: number;
-  advanceRequestNo: string;
+  travelRequestId: number;
+  travelRequestNo: string;
   writeOffNo: number;
   projectCode: string;
   projectName: string;
-  activityName: string;
-  activityPeriod: string;
-  cashTotal: number;
-  checkTotal: number;
+  destination: string;
+  startDate: string;
+  endDate: string;
+  purpose: string;
   grandTotal: number;
   note?: string;
   approvalStatus: ApprovalStatus;
@@ -63,21 +61,23 @@ export interface WriteOffRequest {
   createdAt: string;
   reviewedAt?: string;
   reviewNote?: string;
-  items: WriteOffItem[];
+  items: TravelWriteOffItem[];
   designatedReviewers?: DesignatedReviewer[];
-  advanceGrandTotal: number;
-  advanceWrittenOffTotal: number;
+  travelGrandTotal: number;
+  travelWrittenOffTotal: number;
 }
 
-/** AdvanceRequest summary for dropdown selection */
-export interface AdvanceSummary {
+/** TravelRequest summary for dropdown selection */
+export interface TravelSummary {
   id: number;
   requestNo: string;
-  projectCode: string;
-  activityName: string;
+  destination: string;
+  startDate: string;
+  endDate: string;
   grandTotal: number;
   writtenOffTotal: number;
-  paidAt?: string;
+  projectCode?: string;
+  purpose: string;
 }
 
-export const ITEM_CATEGORIES = ['交通費', '活動費', '設計費', '雜支'] as const;
+export const ITEM_CATEGORIES = ['交通費', '住宿費', '餐費', '雜支'] as const;

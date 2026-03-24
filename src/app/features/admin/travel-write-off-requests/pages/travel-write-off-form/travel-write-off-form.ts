@@ -7,9 +7,9 @@ import {HttpErrorResponse} from '@angular/common/http';
 import {firstValueFrom} from 'rxjs';
 import heic2any from 'heic2any';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
-import {WriteOffRequestService} from '../../services/write-off-request.service';
+import {TravelWriteOffRequestService} from '../../services/travel-write-off-request.service';
 import {PaymentRequestService} from '../../../payment-requests/services/payment-request.service';
-import {AdvanceSummary, ITEM_CATEGORIES} from '../../models/write-off-request.model';
+import {TravelSummary, ITEM_CATEGORIES} from '../../models/travel-write-off-request.model';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
 import {ApprovalService} from '../../../approvals/services/approval.service';
@@ -17,13 +17,13 @@ import {JobTitleLookup} from '../../../job-titles/models/job-title.model';
 import {UserLookup} from '../../../users/models/user.model';
 
 @Component({
-  selector: 'app-write-off-request-form',
-  templateUrl: './write-off-form.html',
+  selector: 'app-travel-write-off-form',
+  templateUrl: './travel-write-off-form.html',
   imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, FilePreviewModal],
 })
-export class WriteOffRequestForm implements OnInit {
+export class TravelWriteOffForm implements OnInit {
   private fb             = inject(FormBuilder);
-  private service        = inject(WriteOffRequestService);
+  private service        = inject(TravelWriteOffRequestService);
   private paymentService = inject(PaymentRequestService);
   private jobTitleSvc    = inject(JobTitleService);
   private userSvc        = inject(UserService);
@@ -33,28 +33,28 @@ export class WriteOffRequestForm implements OnInit {
   private cdr            = inject(ChangeDetectorRef);
   private sanitizer      = inject(DomSanitizer);
 
-  /** undefined = 新增模式；數值 = 編輯模式（預支沖銷申請 ID） */
+  /** undefined = 新增模式；數值 = 編輯模式（出差沖銷申請 ID） */
   editId: number | null = null;
   isEdit = false;
 
-  /** 選擇的預支申請 ID（新增模式中由使用者選擇） */
-  selectedAdvanceId: number | null = null;
+  /** 選擇的出差申請 ID（新增模式中由使用者選擇） */
+  selectedTravelId: number | null = null;
 
-  /** 已撥款的預支申請清單（供新增模式下拉選擇） */
-  advanceRequests = signal<AdvanceSummary[]>([]);
+  /** 已核准的出差申請清單（供新增模式下拉選擇） */
+  travelRequests = signal<TravelSummary[]>([]);
 
-  /** 選中的預支申請摘要（供右側顯示金額資訊） */
-  get selectedAdvance(): AdvanceSummary | null {
-    return this.advanceRequests().find(a => a.id === this.selectedAdvanceId) ?? null;
+  /** 選中的出差申請摘要（供右側顯示金額資訊） */
+  get selectedTravel(): TravelSummary | null {
+    return this.travelRequests().find(a => a.id === this.selectedTravelId) ?? null;
   }
-  loadingAdvances = true;
+  loadingTravels = true;
 
-  /** 編輯模式時顯示的預支申請資訊（唯讀） */
-  editModeAdvanceNo = '';
-  editModeProjectCode = '';
-  editModeActivityName = '';
-  editModeAdvanceGrandTotal = 0;
-  editModeAdvanceWrittenOffTotal = 0;
+  /** 編輯模式時顯示的出差申請資訊（唯讀） */
+  editModeTravelNo = '';
+  editModeDestination = '';
+  editModeDateRange = '';
+  editModeTravelGrandTotal = 0;
+  editModeTravelWrittenOffTotal = 0;
 
   errorMsg = signal('');
   categories = ITEM_CATEGORIES;
@@ -122,12 +122,6 @@ export class WriteOffRequestForm implements OnInit {
   get itemArray(): FormArray { return this.form.get('items') as FormArray; }
   get itemControls(): AbstractControl[] { return this.itemArray.controls; }
 
-  get cashTotal(): number {
-    return this.itemArray.controls.reduce((s, c) => s + (+(c.get('cashAmount')?.value) || 0), 0);
-  }
-  get checkTotal(): number {
-    return this.itemArray.controls.reduce((s, c) => s + (+(c.get('checkAmount')?.value) || 0), 0);
-  }
   get grandTotal(): number {
     return this.itemArray.controls.reduce((s, c) => s + (+(c.get('totalPrice')?.value) || 0), 0);
   }
@@ -136,7 +130,7 @@ export class WriteOffRequestForm implements OnInit {
     // 檢查簽核流程是否有「申請人指定審核」步驟
     this.approvalSvc.getAll().subscribe(items => {
       this.hasDesignatedStep = items
-        .filter(i => i.isActive && i.applicationType === 'write_off')
+        .filter(i => i.isActive && i.applicationType === 'travel_write_off')
         .some(i => i.steps.some(s => s.useApplicantDesignated));
       if (this.hasDesignatedStep) {
         this.jobTitleSvc.getLookup().subscribe({ next: jts => { this.jobTitles = jts; } });
@@ -157,16 +151,16 @@ export class WriteOffRequestForm implements OnInit {
 
     const idParam = this.route.snapshot.paramMap.get('id');
     if (idParam) {
-      // 編輯模式：載入現有預支沖銷申請
+      // 編輯模式：載入現有出差沖銷申請
       this.isEdit = true;
       this.editId = +idParam;
       this.service.getById(this.editId).subscribe(r => {
-        this.editModeAdvanceNo    = r.advanceRequestNo;
-        this.editModeProjectCode  = r.projectCode;
-        this.editModeActivityName = r.activityName;
-        this.selectedAdvanceId    = r.advanceRequestId;
-        this.editModeAdvanceGrandTotal      = r.advanceGrandTotal;
-        this.editModeAdvanceWrittenOffTotal  = r.advanceWrittenOffTotal;
+        this.editModeTravelNo    = r.travelRequestNo;
+        this.editModeDestination = r.destination;
+        this.editModeDateRange   = `${r.startDate?.slice(0, 10) ?? ''} ~ ${r.endDate?.slice(0, 10) ?? ''}`;
+        this.selectedTravelId    = r.travelRequestId;
+        this.editModeTravelGrandTotal      = r.travelGrandTotal;
+        this.editModeTravelWrittenOffTotal  = r.travelWrittenOffTotal;
         this.form.patchValue({note: r.note ?? ''});
         // 回填指定審核者清單
         if (r.designatedReviewers?.length) {
@@ -194,8 +188,6 @@ export class WriteOffRequestForm implements OnInit {
             item.unitPrice,
             item.quantity,
             item.totalPrice,
-            item.cashAmount,
-            item.checkAmount,
             item.note ?? '',
             idx,
             '',           // 無本地 blob URL
@@ -207,16 +199,16 @@ export class WriteOffRequestForm implements OnInit {
         this.cdr.markForCheck();
       });
     } else {
-      // 新增模式：載入已撥款的預支申請清單
-      this.service.getAvailableAdvances().subscribe({
+      // 新增模式：載入已核准的出差申請清單
+      this.service.getAvailableTravels().subscribe({
         next: list => {
-          this.advanceRequests.set(list);
-          this.loadingAdvances = false;
+          this.travelRequests.set(list);
+          this.loadingTravels = false;
           this.cdr.markForCheck();
         },
         error: () => {
-          this.loadingAdvances = false;
-          this.errorMsg.set('載入預支申請清單失敗。');
+          this.loadingTravels = false;
+          this.errorMsg.set('載入出差申請清單失敗。');
           this.cdr.markForCheck();
         },
       });
@@ -224,7 +216,7 @@ export class WriteOffRequestForm implements OnInit {
   }
 
   addItem() {
-    this.itemArray.push(this._itemGroup('', '', 0, '', 0, '', 0, 0, 0, '', this.itemArray.length));
+    this.itemArray.push(this._itemGroup('', '', 0, '', 0, '', 0, '', this.itemArray.length));
   }
 
   removeItem(i: number) {
@@ -251,7 +243,7 @@ export class WriteOffRequestForm implements OnInit {
       const previewUrl = URL.createObjectURL(file);
       this.ocrLoadingIds.add(id);
       this.fileMap.set(id, file);
-      this.itemArray.push(this._itemGroup(id, file.name, 0, '', 0, '', 0, 0, 0, '', this.itemArray.length, previewUrl));
+      this.itemArray.push(this._itemGroup(id, file.name, 0, '', 0, '', 0, '', this.itemArray.length, previewUrl));
       return {id, file};
     });
 
@@ -266,7 +258,6 @@ export class WriteOffRequestForm implements OnInit {
             invoiceDate: result.invoiceDate ?? '',
             unitPrice:   result.amount ?? 0,
             totalPrice:  result.amount ?? 0,
-            cashAmount:  result.amount ?? 0,
             quantity:    '1式',
           });
         }
@@ -297,13 +288,12 @@ export class WriteOffRequestForm implements OnInit {
     const qtyNum = parseFloat(qtyStr) || 0;
     const total = Math.round(unitPrice * qtyNum);
     ctrl.get('totalPrice')?.setValue(total, {emitEvent: false});
-    ctrl.get('cashAmount')?.setValue(total, {emitEvent: false});
   }
 
   submit() {
     if (this.itemArray.length === 0) return;
-    if (!this.isEdit && !this.selectedAdvanceId) {
-      this.errorMsg.set('請選擇預支單。');
+    if (!this.isEdit && !this.selectedTravelId) {
+      this.errorMsg.set('請選擇出差單。');
       return;
     }
     const fd = this._buildFormData();
@@ -312,7 +302,7 @@ export class WriteOffRequestForm implements OnInit {
       ? this.service.update(this.editId!, fd)
       : this.service.create(fd);
     obs.subscribe({
-      next: saved => this.router.navigate(['/admin/write-off-requests', saved.id]),
+      next: saved => this.router.navigate(['/admin/travel-write-off-requests', saved.id]),
       error: (err: HttpErrorResponse) => this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。'),
     });
   }
@@ -321,9 +311,9 @@ export class WriteOffRequestForm implements OnInit {
     const fd = new FormData();
     fd.append('note', this.form.get('note')?.value || '');
 
-    // 新增模式需帶入 advanceRequestId
-    if (!this.isEdit && this.selectedAdvanceId) {
-      fd.append('advanceRequestId', String(this.selectedAdvanceId));
+    // 新增模式需帶入 travelRequestId
+    if (!this.isEdit && this.selectedTravelId) {
+      fd.append('travelRequestId', String(this.selectedTravelId));
     }
 
     // 指定審核者
@@ -348,8 +338,6 @@ export class WriteOffRequestForm implements OnInit {
         unitPrice:   +(ctrl.get('unitPrice')?.value) || 0,
         quantity:    ctrl.get('quantity')?.value || '',
         totalPrice:  +(ctrl.get('totalPrice')?.value) || 0,
-        cashAmount:  +(ctrl.get('cashAmount')?.value) || 0,
-        checkAmount: +(ctrl.get('checkAmount')?.value) || 0,
         note:        ctrl.get('note')?.value || null,
         invoiceNo:   ctrl.get('invoiceNo')?.value || null,
         invoiceDate: ctrl.get('invoiceDate')?.value || null,
@@ -371,7 +359,7 @@ export class WriteOffRequestForm implements OnInit {
 
   private _itemGroup(
     id: string, fileName: string, seqNo: number, itemName: string, unitPrice: number,
-    quantity: string, totalPrice: number, cashAmount: number, checkAmount: number,
+    quantity: string, totalPrice: number,
     note: string, sortOrder: number, previewUrl = '', fileUrl = ''
   ) {
     return this.fb.group({
@@ -385,8 +373,6 @@ export class WriteOffRequestForm implements OnInit {
       unitPrice:   [unitPrice, [Validators.min(0)]],
       quantity:    [quantity],
       totalPrice:  [totalPrice],
-      cashAmount:  [cashAmount],
-      checkAmount: [checkAmount],
       note:        [note],
       previewUrl:  [previewUrl],
       fileUrl:     [fileUrl],

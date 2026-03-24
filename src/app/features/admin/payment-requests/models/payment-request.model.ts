@@ -33,6 +33,7 @@ export interface InvoiceItem {
   id: string;
   fileName: string;
   invoiceNo: string;
+  invoiceDate?: string;  // 發票日期（YYYY-MM-DD）
   amount: number;
   itemName?: string;     // 項目
   note?: string;         // 備註

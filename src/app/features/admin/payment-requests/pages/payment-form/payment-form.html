@@ -211,6 +211,7 @@
                   <tr>
                     <th style="width:40px"></th>
                     <th style="min-width:160px">發票號碼</th>
+                    <th style="min-width:130px">發票日期</th>
                     <th style="min-width:120px">金額</th>
                     <th style="min-width:140px">項目</th>
                     <th style="min-width:140px">備註</th>
@@ -245,6 +246,19 @@
                         } @else {
                           <input class="form-control form-control-sm font-monospace"
                                  formControlName="invoiceNo" placeholder="AB12345678">
+                        }
+                      </td>
+                      <td class="align-middle">
+                        @if (isReadOnly) {
+                          <span class="small">{{ ctrl.get('invoiceDate')?.value || '—' }}</span>
+                        } @else if (isOcr) {
+                          <div class="flex items-center gap-2 text-muted small py-1">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            識別中…
+                          </div>
+                        } @else {
+                          <input type="date" class="form-control form-control-sm"
+                                 formControlName="invoiceDate">
                         }
                       </td>
                       <td class="align-middle">
@@ -293,14 +307,14 @@
                     </tr>
                   } @empty {
                     <tr>
-                      <td [attr.colspan]="isReadOnly ? 5 : 6" class="text-center text-muted py-4 small">尚未新增發票</td>
+                      <td [attr.colspan]="isReadOnly ? 6 : 7" class="text-center text-muted py-4 small">尚未新增發票</td>
                     </tr>
                   }
                 </tbody>
                 @if (invoiceControls.length > 0) {
                   <tfoot>
                     <tr class="table-light">
-                      <td colspan="2" class="text-right fw-500 small">合計</td>
+                      <td colspan="3" class="text-right fw-500 small">合計</td>
                       <td class="fw-600">{{ totalAmount | number:'1.0-0' }}</td>
                       <td colspan="2"></td>
                       @if (!isReadOnly) {
