@@ -290,7 +290,8 @@ export class TravelWriteOffForm implements OnInit {
     ctrl.get('totalPrice')?.setValue(total, {emitEvent: false});
   }
 
-  submit() {
+  /** 儲存（草稿或更新，不改變狀態） */
+  save() {
     if (this.itemArray.length === 0) return;
     if (!this.isEdit && !this.selectedTravelId) {
       this.errorMsg.set('請選擇出差單。');
@@ -302,8 +303,35 @@ export class TravelWriteOffForm implements OnInit {
       ? this.service.update(this.editId!, fd)
       : this.service.create(fd);
     obs.subscribe({
-      next: saved => this.router.navigate(['/admin/travel-write-off-requests', saved.id]),
+      next: () => this.router.navigate(['/admin/travel-write-off-requests']),
       error: (err: HttpErrorResponse) => this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。'),
+    });
+  }
+
+  /** 送出申請（先儲存再將狀態改為 pending） */
+  submitForApproval() {
+    if (this.itemArray.length === 0) return;
+    if (!this.isEdit && !this.selectedTravelId) {
+      this.errorMsg.set('請選擇出差單。');
+      return;
+    }
+    const fd = this._buildFormData();
+    this.errorMsg.set('');
+    const save$ = this.isEdit
+      ? this.service.update(this.editId!, fd)
+      : this.service.create(fd);
+    save$.subscribe({
+      next: saved => {
+        this.service.submit(saved.id).subscribe({
+          next: () => this.router.navigate(['/admin/travel-write-off-requests']),
+          error: (err: HttpErrorResponse) => {
+            this.errorMsg.set(err.error?.message || '送出失敗，請稍後再試。');
+          },
+        });
+      },
+      error: (err: HttpErrorResponse) => {
+        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+      },
     });
   }
 

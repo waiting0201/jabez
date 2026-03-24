@@ -90,7 +90,7 @@
     </div>
   </div>
 
-  <form [formGroup]="form" (ngSubmit)="submit()">
+  <form [formGroup]="form" (ngSubmit)="save()">
 
     <!-- 發票上傳區 -->
     <div class="card border-0 shadow-sm mb-6">
@@ -313,12 +313,17 @@
     </div>
 
     <div class="mt-6 flex gap-2">
-      <button type="submit" class="btn btn-primary"
+      <button type="submit" class="btn btn-outline-secondary"
               [disabled]="itemArray.length === 0 || isAnyOcrPending || (!isEdit && !selectedAdvanceId)">
+        {{ isEdit ? '儲存' : '儲存草稿' }}
+      </button>
+      <button type="button" class="btn btn-primary"
+              [disabled]="itemArray.length === 0 || isAnyOcrPending || (!isEdit && !selectedAdvanceId)"
+              (click)="submitForApproval()">
         @if (isAnyOcrPending) {
           <span class="spinner-border spinner-border-sm me-1" role="status"></span>
         }
-        {{ isEdit ? '儲存變更' : '建立預支沖銷申請' }}
+        送出申請
       </button>
       <a routerLink="/admin/write-off-requests" class="btn btn-outline-secondary">取消</a>
     </div>
