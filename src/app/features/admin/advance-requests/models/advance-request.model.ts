@@ -74,6 +74,8 @@ export interface AdvanceRequest {
   estimatedRefundDate?: string;
   /** 差額退款完成時間 */
   refundedAt?: string;
+  /** 沖銷紀錄含明細（僅 GetById 回傳，PDF 列印用） */
+  writeOffRecords?: WriteOffRecord[];
 }
 
 export interface WriteOffSummary {
@@ -102,10 +104,12 @@ export interface WriteOffItem {
 
 export interface WriteOffRecord {
   id: number;
+  requestNo: string;
   writeOffNo: number;
   cashTotal: number;
   checkTotal: number;
   grandTotal: number;
+  approvalStatus: ApprovalStatus;
   note?: string;
   submittedBy?: string;
   createdAt: string;

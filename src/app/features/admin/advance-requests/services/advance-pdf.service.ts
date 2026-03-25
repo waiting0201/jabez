@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { AdvanceRequest } from '../models/advance-request.model';
+import { AdvanceRequest, APPROVAL_STATUS_LABELS, ApprovalStatus } from '../models/advance-request.model';
 import { ApprovalRecord, ApprovalFlow } from '../../approval-tasks/models/approval-task.model';
 import { environment } from '../../../../../environments/environment';
 
@@ -226,9 +226,119 @@ export class AdvancePdfService {
         body: bodyRows,
       });
 
+      // ── 沖銷紀錄表格（按次展開） ──
+      y = (doc as any).lastAutoTable.finalY + 6;
+      const woRecords = r.writeOffRecords || [];
+      for (const wo of woRecords) {
+        // 小標題：第 N 次沖銷
+        if (y + 30 > ph - 15) { doc.addPage(); y = 20; }
+        y += 6;
+        doc.setFont(F, 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(...CIS.forestMid);
+        const statusLabel = APPROVAL_STATUS_LABELS[wo.approvalStatus as ApprovalStatus] || wo.approvalStatus;
+        doc.text(`第 ${wo.writeOffNo} 次沖銷 - ${wo.requestNo}（${statusLabel}）`, mx, y);
+        y += 6;
+
+        // 沖銷明細表格
+        const woBodyRows: any[][] = [];
+        let woLastCat = '';
+        for (const item of wo.items) {
+          const cat = item.category === woLastCat ? '' : item.category;
+          woLastCat = item.category;
+          woBodyRows.push([
+            cat,
+            item.seqNo.toString(),
+            item.itemName,
+            `${fmt(item.unitPrice)}元`,
+            item.quantity,
+            fmt(item.totalPrice),
+            fmt(item.cashAmount),
+            item.checkAmount > 0 ? fmt(item.checkAmount) : '',
+            item.invoiceNo || '',
+            item.note || '',
+          ]);
+        }
+
+        // 合計列
+        woBodyRows.push([
+          { content: '現金小計', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
+          { content: fmt(wo.cashTotal), styles: { fontStyle: 'bold', halign: 'right' } },
+          '', '', '',
+        ]);
+        woBodyRows.push([
+          { content: '支票小計', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
+          '',
+          { content: wo.checkTotal > 0 ? fmt(wo.checkTotal) : '', styles: { fontStyle: 'bold', halign: 'right' } },
+          '', '',
+        ]);
+        woBodyRows.push([
+          { content: '總計', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
+          { content: fmt(wo.grandTotal), colSpan: 2, styles: { fontStyle: 'bold', halign: 'right' } },
+          '', '',
+        ]);
+
+        autoTable(doc, {
+          startY: y,
+          margin: { left: mx, right: mx },
+          theme: 'grid',
+          styles: {
+            font: F, fontSize: 8,
+            textColor: [...CIS.textPrimary],
+            lineColor: [...CIS.border],
+            lineWidth: 0.3,
+            cellPadding: { top: 2, bottom: 2, left: 2.5, right: 2.5 },
+          },
+          headStyles: {
+            font: F, fillColor: [...CIS.forestMid], textColor: 255,
+            fontSize: 8, fontStyle: 'bold', halign: 'center',
+            cellPadding: { top: 2.5, bottom: 2.5, left: 2.5, right: 2.5 },
+          },
+          columnStyles: {
+            0: { cellWidth: cw * 0.07, halign: 'center' },  // 分類
+            1: { cellWidth: cw * 0.04, halign: 'center' },  // 項次
+            2: { cellWidth: cw * 0.19 },                     // 項目(說明)
+            3: { cellWidth: cw * 0.09, halign: 'right' },    // 單價
+            4: { cellWidth: cw * 0.07, halign: 'center' },   // 數量/單位
+            5: { cellWidth: cw * 0.09, halign: 'right' },    // 總價
+            6: { cellWidth: cw * 0.11, halign: 'right' },    // 現金
+            7: { cellWidth: cw * 0.11, halign: 'right' },    // 支票
+            8: { cellWidth: cw * 0.11, halign: 'center' },   // 發票號碼
+            9: { cellWidth: cw * 0.12 },                     // 備註
+          },
+          head: [['分類', '項次', '項目(說明)', '單價', '數量/\n單位', '總價', '現金', '支票', '發票號碼', '備註']],
+          body: woBodyRows,
+        });
+
+        y = (doc as any).lastAutoTable.finalY + 4;
+      }
+
+      // ── 沖銷金額摘要 ──
+      if (woRecords.length > 0) {
+        const writtenOff = woRecords
+          .filter(w => w.approvalStatus !== 'rejected')
+          .reduce((sum, w) => sum + w.grandTotal, 0);
+        const remaining = r.grandTotal - writtenOff;
+
+        if (y + 20 > ph - 15) { doc.addPage(); y = 20; }
+        y += 4;
+        doc.setFont(F, 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(...CIS.textPrimary);
+
+        const summaryX = pw - mx;
+        doc.text(`預支總金額：${fmt(r.grandTotal)} 元`, summaryX, y, { align: 'right' });
+        y += 6;
+        doc.text(`已沖銷金額：${fmt(writtenOff)} 元`, summaryX, y, { align: 'right' });
+        y += 6;
+        const [cr, cg, cb] = remaining > 0 ? CIS.red : CIS.forest;
+        doc.setTextColor(cr, cg, cb);
+        doc.text(`待沖銷金額：${fmt(remaining)} 元`, summaryX, y, { align: 'right' });
+        doc.setTextColor(...CIS.textPrimary);
+      }
+
       // ── 簽名欄 ──
-      const tableEndY = (doc as any).lastAutoTable.finalY;
-      y = tableEndY + 10;
+      y += 6;
 
       if (y + 35 > ph - 15) { doc.addPage(); y = 20; }
 
