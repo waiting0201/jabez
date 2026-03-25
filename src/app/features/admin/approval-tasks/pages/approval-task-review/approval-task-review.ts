@@ -145,6 +145,47 @@ export class ApprovalTaskReview implements OnInit {
     return step?.departmentCode === 'FIN';
   }
 
+  /** 判斷已核准的沖銷申請是否可結案：財務部或 Superadmin，且關聯的預支/出差未結案 */
+  canCloseAfterApproval(task: ApprovalTask): boolean {
+    if (task.status !== 'approved') return false;
+    if (!this.auth.isSuperAdmin() && !this.auth.isFinanceDept()) return false;
+    if (task.applicationType === 'write_off')
+      return !!task.writeOffDetail && !task.writeOffDetail.advanceIsClosed;
+    if (task.applicationType === 'travel_write_off')
+      return !!task.travelWriteOffDetail && !task.travelWriteOffDetail.travelIsClosed;
+    return false;
+  }
+
+  /** 已核准後的沖銷申請是否已結案 */
+  isClosedAfterApproval(task: ApprovalTask): boolean {
+    if (task.applicationType === 'write_off')
+      return !!task.writeOffDetail?.advanceIsClosed;
+    if (task.applicationType === 'travel_write_off')
+      return !!task.travelWriteOffDetail?.travelIsClosed;
+    return false;
+  }
+
+  closeCaseLoading = signal(false);
+
+  /** 執行結案 */
+  closeCase(task: ApprovalTask) {
+    const type = task.applicationType as 'write_off' | 'travel_write_off';
+    this.closeCaseLoading.set(true);
+    this.service.closeCase(task.id, type).pipe(
+      catchError((err: HttpErrorResponse) => {
+        this.closeCaseLoading.set(false);
+        this.errorMsg.set(err.error?.message || '結案失敗');
+        return EMPTY;
+      }),
+    ).subscribe(() => {
+      this.closeCaseLoading.set(false);
+      // 重新載入 task 資料
+      this.task$ = this.service.getById(this.taskId, this.applicationType).pipe(
+        tap(t => { if (t) this.taskStatus.set(t.status as TaskStatus); }),
+      );
+    });
+  }
+
   /** 判斷已核准後是否可編輯撥款日：Superadmin、或曾審核過財務部步驟的使用者 */
   canEditPaymentDate(task: ApprovalTask): boolean {
     if (this.auth.isSuperAdmin()) return true;

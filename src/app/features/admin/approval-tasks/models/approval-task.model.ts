@@ -176,6 +176,7 @@ export interface WriteOffTaskDetail {
   otherWrittenOffTotal: number;
   paidBySignatureUrl?: string;
   refundedBySignatureUrl?: string;
+  advanceIsClosed?: boolean;
 }
 
 export interface TravelWriteOffTaskDetailItem {
@@ -214,6 +215,7 @@ export interface TravelWriteOffTaskDetail {
   refundedAt?: string;
   paidBySignatureUrl?: string;
   refundedBySignatureUrl?: string;
+  travelIsClosed?: boolean;
 }
 
 // ── ApprovalRecord ───────────────────────────────────────────────────────────

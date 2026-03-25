@@ -44,4 +44,10 @@ export class ApprovalTaskService {
       switchMap(updated => this.getAll().pipe(map(() => updated))),
     );
   }
+
+  closeCase(id: number, applicationType: 'write_off' | 'travel_write_off'): Observable<ApprovalTask> {
+    return this.http.patch<ApprovalTask>(
+      `${environment.apiUrl}/approval-tasks/${applicationType}/${id}/close`, {},
+    );
+  }
 }

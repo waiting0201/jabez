@@ -903,6 +903,33 @@
                   }
                 </div>
               }
+              @if (canCloseAfterApproval(task)) {
+                <div class="border rounded p-4 bg-[--bg-base] mb-4">
+                  <div class="fw-500 mb-2">
+                    {{ task.applicationType === 'write_off' ? '預支結案' : '出差結案' }}
+                  </div>
+                  <p class="text-muted small mb-3">
+                    {{ task.applicationType === 'write_off'
+                      ? '此沖銷申請已核准，點擊下方按鈕可結案關閉關聯的預支申請。'
+                      : '此沖銷申請已核准，點擊下方按鈕可結案關閉關聯的出差申請。' }}
+                  </p>
+                  <button type="button" class="btn btn-sm btn-primary" [disabled]="closeCaseLoading()" (click)="closeCase(task)">
+                    @if (closeCaseLoading()) {
+                      <span class="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin me-1"></span>
+                      處理中…
+                    } @else {
+                      {{ task.applicationType === 'write_off' ? '預支結案' : '出差結案' }}
+                    }
+                  </button>
+                </div>
+              } @else if (isClosedAfterApproval(task)) {
+                <div class="flex items-center gap-2 text-success small mb-4">
+                  <svg class="sa-icon" style="width:16px;height:16px;stroke:currentColor">
+                    <use href="/assets/icons/sprite.svg#check-circle"></use>
+                  </svg>
+                  {{ task.applicationType === 'write_off' ? '預支申請已結案' : '出差申請已結案' }}
+                </div>
+              }
               @if (task.reviewNote) {
                 <div class="text-muted small mb-1 fw-500">審核意見：</div>
                 <div class="border rounded p-4 bg-[--bg-base] small mb-4">{{ task.reviewNote }}</div>
