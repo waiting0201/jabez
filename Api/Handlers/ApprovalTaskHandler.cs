@@ -49,8 +49,9 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         int    page     = int.TryParse(req.Query["page"],     out var p)  ? Math.Max(1, p)         : 1;
         int    pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, 100) : 20;
         string? status  = req.Query["status"].ToString() is { Length: > 0 } s ? s : null;
+        string? paymentStatus = req.Query["paymentStatus"].ToString() is { Length: > 0 } ps2 ? ps2 : null;
 
-        var allTasks = (await reader.GetApprovalTasksAsync(jobTitleId, deptId, status, reviewerUserId)).ToList();
+        var allTasks = (await reader.GetApprovalTasksAsync(jobTitleId, deptId, status, reviewerUserId, paymentStatus)).ToList();
         int total = allTasks.Count;
         var items = allTasks.Skip((page - 1) * pageSize).Take(pageSize);
         int totalPages = (int)Math.Ceiling((double)total / pageSize);

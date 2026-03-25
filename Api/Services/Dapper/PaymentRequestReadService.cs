@@ -81,11 +81,11 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
 
     public async Task<IEnumerable<ApprovalTaskDto>> GetApprovalTasksAsync(
         int? reviewerJobTitleId = null, int? reviewerDepartmentId = null,
-        string? status = null, Guid? reviewerUserId = null)
+        string? status = null, Guid? reviewerUserId = null, string? paymentStatus = null)
     {
         var (payments, leaves, travels, overtimes, advances, writeOffs, travelWriteOffs, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems) =
             await FetchAllAsync(reviewerJobTitleId: reviewerJobTitleId, reviewerDepartmentId: reviewerDepartmentId,
-                                statusFilter: status, reviewerUserId: reviewerUserId);
+                                statusFilter: status, reviewerUserId: reviewerUserId, paymentStatus: paymentStatus);
         return BuildApprovalTasks(payments, leaves, travels, overtimes, advances, writeOffs, travelWriteOffs, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems);
     }
 
@@ -120,7 +120,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         IEnumerable<dynamic> travelWriteOffItems)> FetchAllAsync(
         int? filterId = null, string? filterType = null,
         int? reviewerJobTitleId = null, int? reviewerDepartmentId = null,
-        string? statusFilter = null, Guid? reviewerUserId = null)
+        string? statusFilter = null, Guid? reviewerUserId = null,
+        string? paymentStatus = null)
     {
         // ── WHERE clause for specific ID lookup ──────────────────────────────
         string paymentIdWhere       = (filterId.HasValue && filterType == "payment_request")  ? "pr.Id = @Id"  : "";
@@ -265,14 +266,24 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             return parts.Length > 0 ? " WHERE " + string.Join(" AND ", parts) : "";
         }
 
+        // ── 撥款/退款狀態篩選（僅在已核准頁籤且有 paymentStatus 時生效）───
+        bool hasPaymentFilter = !string.IsNullOrEmpty(paymentStatus) && !filterId.HasValue;
+        string PaymentStatusClause(string paidAtColumn)
+        {
+            if (!hasPaymentFilter) return "";
+            return paymentStatus == "paid"
+                ? $" AND {paidAtColumn} IS NOT NULL"
+                : $" AND {paidAtColumn} IS NULL";
+        }
+
         // 按 ID 查詢時不套用審核者過濾（StepMatchClause），只用 ID 條件
-        string paymentWhere       = filterId.HasValue ? BuildWhere(paymentIdWhere,       "") : BuildWhere("", StepMatchClause("pr",  "sub",  "payment_request"));
-        string leaveWhere         = filterId.HasValue ? BuildWhere(leaveIdWhere,         "") : BuildWhere("", StepMatchClause("lr",  "u",    "leave"));
-        string travelWhere        = filterId.HasValue ? BuildWhere(travelIdWhere,        "") : BuildWhere("", StepMatchClause("tr",  "u",    "travel"));
-        string overtimeWhere      = filterId.HasValue ? BuildWhere(overtimeIdWhere,      "") : BuildWhere("", StepMatchClause("ot",  "u",    "overtime"));
-        string advanceWhere       = filterId.HasValue ? BuildWhere(advanceIdWhere,       "") : BuildWhere("", StepMatchClause("adv", "asub", "advance"));
-        string writeOffWhere      = filterId.HasValue ? BuildWhere(writeOffIdWhere,      "") : BuildWhere("", StepMatchClause("wo",  "wsub", "write_off"));
-        string travelWriteOffWhere = filterId.HasValue ? BuildWhere(travelWriteOffIdWhere, "") : BuildWhere("", StepMatchClause("two", "trsub", "travel_write_off"));
+        string paymentWhere       = filterId.HasValue ? BuildWhere(paymentIdWhere,       "") : BuildWhere("", StepMatchClause("pr",  "sub",  "payment_request")) + PaymentStatusClause("pr.PaidAt");
+        string leaveWhere         = hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(leaveIdWhere,         "") : BuildWhere("", StepMatchClause("lr",  "u",    "leave")));
+        string travelWhere        = filterId.HasValue ? BuildWhere(travelIdWhere,        "") : BuildWhere("", StepMatchClause("tr",  "u",    "travel")) + PaymentStatusClause("tr.PaidAt");
+        string overtimeWhere      = hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(overtimeIdWhere,      "") : BuildWhere("", StepMatchClause("ot",  "u",    "overtime")));
+        string advanceWhere       = filterId.HasValue ? BuildWhere(advanceIdWhere,       "") : BuildWhere("", StepMatchClause("adv", "asub", "advance")) + PaymentStatusClause("adv.PaidAt");
+        string writeOffWhere      = filterId.HasValue ? BuildWhere(writeOffIdWhere,      "") : BuildWhere("", StepMatchClause("wo",  "wsub", "write_off")) + PaymentStatusClause("arx.RefundedAt");
+        string travelWriteOffWhere = filterId.HasValue ? BuildWhere(travelWriteOffIdWhere, "") : BuildWhere("", StepMatchClause("two", "trsub", "travel_write_off")) + PaymentStatusClause("trx.RefundedAt");
 
         var paymentSql = $"""
             SELECT pr.Id, pr.Type AS PaymentType, proj.Code AS ProjectCode, proj.Name AS ProjectName,
