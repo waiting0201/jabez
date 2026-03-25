@@ -1,4 +1,4 @@
-import {ChangeDetectorRef, Component, inject, OnInit, signal} from '@angular/core';
+import {ChangeDetectorRef, Component, inject, OnInit, signal, TemplateRef, viewChild} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {AbstractControl, FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {DecimalPipe} from '@angular/common';
@@ -6,6 +6,7 @@ import {DomSanitizer} from '@angular/platform-browser';
 import {HttpErrorResponse} from '@angular/common/http';
 import {firstValueFrom} from 'rxjs';
 import heic2any from 'heic2any';
+import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {WriteOffRequestService} from '../../services/write-off-request.service';
 import {PaymentRequestService} from '../../../payment-requests/services/payment-request.service';
@@ -31,6 +32,8 @@ export class WriteOffRequestForm implements OnInit {
   private route          = inject(ActivatedRoute);
   private router         = inject(Router);
   private cdr            = inject(ChangeDetectorRef);
+  private modal          = inject(NgbModal);
+  successModal = viewChild<TemplateRef<any>>('successModal');
   private sanitizer      = inject(DomSanitizer);
 
   /** undefined = 新增模式；數值 = 編輯模式（預支沖銷申請 ID） */
@@ -333,7 +336,16 @@ export class WriteOffRequestForm implements OnInit {
     save$.subscribe({
       next: saved => {
         this.service.submit(saved.id).subscribe({
-          next: () => this.router.navigate(['/admin/write-off-requests']),
+          next: () => {
+            const tpl = this.successModal();
+            if (tpl) {
+              const ref = this.modal.open(tpl, { centered: true, backdrop: 'static', keyboard: false });
+              ref.result.then(() => this.router.navigate(['/admin/write-off-requests']))
+                        .catch(() => this.router.navigate(['/admin/write-off-requests']));
+            } else {
+              this.router.navigate(['/admin/write-off-requests']);
+            }
+          },
           error: (err: HttpErrorResponse) => {
             this.errorMsg.set(err.error?.message || '送出失敗，請稍後再試。');
           },

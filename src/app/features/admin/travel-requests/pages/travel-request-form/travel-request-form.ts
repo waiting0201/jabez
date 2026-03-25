@@ -1,4 +1,4 @@
-import {ChangeDetectorRef, Component, inject, OnInit, signal} from '@angular/core';
+import {ChangeDetectorRef, Component, inject, OnInit, signal, TemplateRef, viewChild} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {AbstractControl, FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {DatePipe, DecimalPipe} from '@angular/common';
@@ -12,6 +12,7 @@ import {UserService} from '../../../users/services/user.service';
 import {ApprovalService} from '../../../approvals/services/approval.service';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
 import {ApprovalFlow, ApprovalRecord} from '../../../approval-tasks/models/approval-task.model';
+import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {JobTitleLookup} from '../../../job-titles/models/job-title.model';
 import {UserLookup} from '../../../users/models/user.model';
@@ -32,6 +33,8 @@ export class TravelRequestForm implements OnInit {
   private route       = inject(ActivatedRoute);
   private router      = inject(Router);
   private cdr         = inject(ChangeDetectorRef);
+  private modal       = inject(NgbModal);
+  successModal = viewChild<TemplateRef<any>>('successModal');
 
   isEdit     = false;
   requestId  = 0;
@@ -262,7 +265,16 @@ export class TravelRequestForm implements OnInit {
     save$.subscribe({
       next: saved => {
         this.service.submit(saved.id).subscribe({
-          next: () => this.router.navigate(['/admin/travel-requests']),
+          next: () => {
+            const tpl = this.successModal();
+            if (tpl) {
+              const ref = this.modal.open(tpl, { centered: true, backdrop: 'static', keyboard: false });
+              ref.result.then(() => this.router.navigate(['/admin/travel-requests']))
+                        .catch(() => this.router.navigate(['/admin/travel-requests']));
+            } else {
+              this.router.navigate(['/admin/travel-requests']);
+            }
+          },
           error: (err: HttpErrorResponse) => {
             this.errorMsg.set(err.error?.message || '送出失敗，請稍後再試。');
           },
