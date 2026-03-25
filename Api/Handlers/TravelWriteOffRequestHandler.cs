@@ -247,10 +247,11 @@ public sealed class TravelWriteOffRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid travel write-off request ID format."));
 
-        var wo = await db.TravelWriteOffRecords
-                         .Include(x => x.Items)
-                         .FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId)
-            ?? throw AppException.NotFound("TravelWriteOffRecord");
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var wo = currentUser?.IsSuperAdmin == true
+            ? await db.TravelWriteOffRecords.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.TravelWriteOffRecords.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
+        if (wo is null) throw AppException.NotFound("TravelWriteOffRecord");
 
         if (wo.ApprovalStatus != "draft" && wo.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel write-off requests can be edited.");
@@ -385,13 +386,14 @@ public sealed class TravelWriteOffRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid travel write-off request ID format."));
 
-        var wo = await db.TravelWriteOffRecords
-                         .Include(x => x.Items)
-                         .FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId)
-            ?? throw AppException.NotFound("TravelWriteOffRecord");
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var wo = currentUser?.IsSuperAdmin == true
+            ? await db.TravelWriteOffRecords.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.TravelWriteOffRecords.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
+        if (wo is null) throw AppException.NotFound("TravelWriteOffRecord");
 
-        if (wo.ApprovalStatus != "draft")
-            throw AppException.BadRequest("Only draft travel write-off requests can be deleted.");
+        if (wo.ApprovalStatus != "draft" && wo.ApprovalStatus != "returned")
+            throw AppException.BadRequest("Only draft or returned travel write-off requests can be deleted.");
 
         // 收集要刪除的 blob
         var blobNames = wo.Items
@@ -418,8 +420,11 @@ public sealed class TravelWriteOffRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid travel write-off request ID format."));
 
-        var wo = await db.TravelWriteOffRecords.FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId)
-            ?? throw AppException.NotFound("TravelWriteOffRecord");
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var wo = currentUser?.IsSuperAdmin == true
+            ? await db.TravelWriteOffRecords.FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.TravelWriteOffRecords.FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
+        if (wo is null) throw AppException.NotFound("TravelWriteOffRecord");
 
         if (wo.ApprovalStatus != "draft" && wo.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel write-off requests can be submitted.");

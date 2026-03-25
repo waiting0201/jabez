@@ -138,8 +138,11 @@ public sealed class OvertimeRequestHandler(
         if (body is null)
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
 
-        var item = await db.OvertimeRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId)
-            ?? throw AppException.NotFound("OvertimeRequest");
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var item = currentUser?.IsSuperAdmin == true
+            ? await db.OvertimeRequests.FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.OvertimeRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
+        if (item is null) throw AppException.NotFound("OvertimeRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned overtime requests can be edited.");
@@ -188,8 +191,11 @@ public sealed class OvertimeRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid overtime request ID format."));
 
-        var item = await db.OvertimeRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId)
-            ?? throw AppException.NotFound("OvertimeRequest");
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var item = currentUser?.IsSuperAdmin == true
+            ? await db.OvertimeRequests.FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.OvertimeRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
+        if (item is null) throw AppException.NotFound("OvertimeRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned overtime requests can be deleted.");
@@ -207,8 +213,11 @@ public sealed class OvertimeRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid overtime request ID format."));
 
-        var item = await db.OvertimeRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId)
-            ?? throw AppException.NotFound("OvertimeRequest");
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var item = currentUser?.IsSuperAdmin == true
+            ? await db.OvertimeRequests.FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.OvertimeRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
+        if (item is null) throw AppException.NotFound("OvertimeRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned overtime requests can be submitted.");

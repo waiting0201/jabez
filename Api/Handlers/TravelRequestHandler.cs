@@ -144,10 +144,11 @@ public sealed class TravelRequestHandler(
         if (body is null)
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
 
-        var item = await db.TravelRequests
-                           .Include(x => x.Items)
-                           .FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId)
-            ?? throw AppException.NotFound("TravelRequest");
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var item = currentUser?.IsSuperAdmin == true
+            ? await db.TravelRequests.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.TravelRequests.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
+        if (item is null) throw AppException.NotFound("TravelRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel requests can be edited.");
@@ -218,8 +219,11 @@ public sealed class TravelRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid travel request ID format."));
 
-        var item = await db.TravelRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId)
-            ?? throw AppException.NotFound("TravelRequest");
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var item = currentUser?.IsSuperAdmin == true
+            ? await db.TravelRequests.FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.TravelRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
+        if (item is null) throw AppException.NotFound("TravelRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel requests can be deleted.");
@@ -237,8 +241,11 @@ public sealed class TravelRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid travel request ID format."));
 
-        var item = await db.TravelRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId)
-            ?? throw AppException.NotFound("TravelRequest");
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var item = currentUser?.IsSuperAdmin == true
+            ? await db.TravelRequests.FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.TravelRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
+        if (item is null) throw AppException.NotFound("TravelRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel requests can be submitted.");

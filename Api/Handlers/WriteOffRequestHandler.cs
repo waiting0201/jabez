@@ -247,10 +247,11 @@ public sealed class WriteOffRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid write-off request ID format."));
 
-        var wo = await db.WriteOffRecords
-                         .Include(x => x.Items)
-                         .FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId)
-            ?? throw AppException.NotFound("WriteOffRecord");
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var wo = currentUser?.IsSuperAdmin == true
+            ? await db.WriteOffRecords.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.WriteOffRecords.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
+        if (wo is null) throw AppException.NotFound("WriteOffRecord");
 
         if (wo.ApprovalStatus != "draft" && wo.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned write-off requests can be edited.");
@@ -389,13 +390,14 @@ public sealed class WriteOffRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid write-off request ID format."));
 
-        var wo = await db.WriteOffRecords
-                         .Include(x => x.Items)
-                         .FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId)
-            ?? throw AppException.NotFound("WriteOffRecord");
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var wo = currentUser?.IsSuperAdmin == true
+            ? await db.WriteOffRecords.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.WriteOffRecords.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
+        if (wo is null) throw AppException.NotFound("WriteOffRecord");
 
-        if (wo.ApprovalStatus != "draft")
-            throw AppException.BadRequest("Only draft write-off requests can be deleted.");
+        if (wo.ApprovalStatus != "draft" && wo.ApprovalStatus != "returned")
+            throw AppException.BadRequest("Only draft or returned write-off requests can be deleted.");
 
         // 收集要刪除的 blob
         var blobNames = wo.Items
@@ -422,8 +424,11 @@ public sealed class WriteOffRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid write-off request ID format."));
 
-        var wo = await db.WriteOffRecords.FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId)
-            ?? throw AppException.NotFound("WriteOffRecord");
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var wo = currentUser?.IsSuperAdmin == true
+            ? await db.WriteOffRecords.FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.WriteOffRecords.FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
+        if (wo is null) throw AppException.NotFound("WriteOffRecord");
 
         if (wo.ApprovalStatus != "draft" && wo.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned write-off requests can be submitted.");

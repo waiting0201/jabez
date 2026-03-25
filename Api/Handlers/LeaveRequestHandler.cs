@@ -182,8 +182,11 @@ public sealed class LeaveRequestHandler(
         if (body is null)
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
 
-        var item = await db.LeaveRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId)
-            ?? throw AppException.NotFound("LeaveRequest");
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var item = currentUser?.IsSuperAdmin == true
+            ? await db.LeaveRequests.FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.LeaveRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
+        if (item is null) throw AppException.NotFound("LeaveRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned leave requests can be edited.");
@@ -247,8 +250,11 @@ public sealed class LeaveRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid leave request ID format."));
 
-        var item = await db.LeaveRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId)
-            ?? throw AppException.NotFound("LeaveRequest");
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var item = currentUser?.IsSuperAdmin == true
+            ? await db.LeaveRequests.FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.LeaveRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
+        if (item is null) throw AppException.NotFound("LeaveRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned leave requests can be deleted.");
@@ -352,8 +358,11 @@ public sealed class LeaveRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid leave request ID format."));
 
-        var item = await db.LeaveRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId)
-            ?? throw AppException.NotFound("LeaveRequest");
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var item = currentUser?.IsSuperAdmin == true
+            ? await db.LeaveRequests.FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.LeaveRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
+        if (item is null) throw AppException.NotFound("LeaveRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned leave requests can be submitted.");

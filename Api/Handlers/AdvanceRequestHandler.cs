@@ -143,10 +143,11 @@ public sealed class AdvanceRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid advance request ID format."));
 
-        var ar = await db.AdvanceRequests
-                         .Include(x => x.Items)
-                         .FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId)
-            ?? throw AppException.NotFound("AdvanceRequest");
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var ar = currentUser?.IsSuperAdmin == true
+            ? await db.AdvanceRequests.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.AdvanceRequests.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
+        if (ar is null) throw AppException.NotFound("AdvanceRequest");
 
         if (ar.ApprovalStatus != "draft" && ar.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned advance requests can be edited.");
@@ -232,11 +233,14 @@ public sealed class AdvanceRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid advance request ID format."));
 
-        var ar = await db.AdvanceRequests.FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId)
-            ?? throw AppException.NotFound("AdvanceRequest");
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var ar = currentUser?.IsSuperAdmin == true
+            ? await db.AdvanceRequests.FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.AdvanceRequests.FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
+        if (ar is null) throw AppException.NotFound("AdvanceRequest");
 
-        if (ar.ApprovalStatus != "draft")
-            throw AppException.BadRequest("Only draft advance requests can be deleted.");
+        if (ar.ApprovalStatus != "draft" && ar.ApprovalStatus != "returned")
+            throw AppException.BadRequest("Only draft or returned advance requests can be deleted.");
 
         db.AdvanceRequests.Remove(ar);
         await db.SaveChangesAsync();
@@ -251,8 +255,11 @@ public sealed class AdvanceRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid advance request ID format."));
 
-        var ar = await db.AdvanceRequests.FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId)
-            ?? throw AppException.NotFound("AdvanceRequest");
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var ar = currentUser?.IsSuperAdmin == true
+            ? await db.AdvanceRequests.FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.AdvanceRequests.FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
+        if (ar is null) throw AppException.NotFound("AdvanceRequest");
 
         if (ar.ApprovalStatus != "draft" && ar.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned advance requests can be submitted.");

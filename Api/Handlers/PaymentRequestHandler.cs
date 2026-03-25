@@ -197,10 +197,11 @@ public sealed class PaymentRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid payment request ID format."));
 
-        var pr = await db.PaymentRequests
-                         .Include(x => x.InvoiceItems)
-                         .FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId)
-            ?? throw AppException.NotFound("PaymentRequest");
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var pr = currentUser?.IsSuperAdmin == true
+            ? await db.PaymentRequests.Include(x => x.InvoiceItems).FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.PaymentRequests.Include(x => x.InvoiceItems).FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
+        if (pr is null) throw AppException.NotFound("PaymentRequest");
 
         if (pr.ApprovalStatus != "draft" && pr.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned payment requests can be edited.");
@@ -362,13 +363,14 @@ public sealed class PaymentRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid payment request ID format."));
 
-        var pr = await db.PaymentRequests
-                         .Include(x => x.InvoiceItems)
-                         .FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId)
-            ?? throw AppException.NotFound("PaymentRequest");
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var pr = currentUser?.IsSuperAdmin == true
+            ? await db.PaymentRequests.Include(x => x.InvoiceItems).FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.PaymentRequests.Include(x => x.InvoiceItems).FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
+        if (pr is null) throw AppException.NotFound("PaymentRequest");
 
-        if (pr.ApprovalStatus != "draft")
-            throw AppException.BadRequest("Only draft payment requests can be deleted.");
+        if (pr.ApprovalStatus != "draft" && pr.ApprovalStatus != "returned")
+            throw AppException.BadRequest("Only draft or returned payment requests can be deleted.");
 
         // 收集要刪除的 blob
         var blobNames = pr.InvoiceItems
@@ -393,8 +395,11 @@ public sealed class PaymentRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid payment request ID format."));
 
-        var pr = await db.PaymentRequests.FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId)
-            ?? throw AppException.NotFound("PaymentRequest");
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var pr = currentUser?.IsSuperAdmin == true
+            ? await db.PaymentRequests.FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.PaymentRequests.FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
+        if (pr is null) throw AppException.NotFound("PaymentRequest");
 
         if (pr.ApprovalStatus != "draft" && pr.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned payment requests can be submitted.");
