@@ -1,7 +1,7 @@
 import {ChangeDetectorRef, Component, inject, OnInit, signal, TemplateRef, viewChild} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {AbstractControl, FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
-import {DecimalPipe} from '@angular/common';
+import {DatePipe, DecimalPipe} from '@angular/common';
 import {DomSanitizer} from '@angular/platform-browser';
 import {HttpErrorResponse} from '@angular/common/http';
 import {firstValueFrom} from 'rxjs';
@@ -24,7 +24,7 @@ import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 @Component({
   selector: 'app-payment-form',
   templateUrl: './payment-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, FilePreviewModal, ApprovalTimeline],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline],
 })
 export class PaymentForm implements OnInit {
   private fb           = inject(FormBuilder);

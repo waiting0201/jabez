@@ -66,8 +66,12 @@ export interface TravelRequest {
   closedAt?: string;
   /** 應退還差額（>0 表示需退款） */
   refundAmount?: number;
-  /** 預計退款日期 */
+  /** 預計撥款日 */
   estimatedPaymentDate?: string;
+  /** 實際撥款日 */
+  paidAt?: string;
+  /** 預計退款日（沖銷退還差額） */
+  estimatedRefundDate?: string;
   /** 差額退款完成時間 */
   refundedAt?: string;
 }

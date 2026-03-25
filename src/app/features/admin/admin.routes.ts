@@ -23,6 +23,7 @@ import {LeaveRequestList} from './leave-requests/pages/leave-request-list/leave-
 import {LeaveRequestForm} from './leave-requests/pages/leave-request-form/leave-request-form';
 import {TravelRequestList} from './travel-requests/pages/travel-request-list/travel-request-list';
 import {TravelRequestForm} from './travel-requests/pages/travel-request-form/travel-request-form';
+import {TravelDetail} from './travel-requests/pages/travel-detail/travel-detail';
 import {OvertimeRequestList} from './overtime-requests/pages/overtime-request-list/overtime-request-list';
 import {OvertimeRequestForm} from './overtime-requests/pages/overtime-request-form/overtime-request-form';
 import {AttendanceReport} from './reports/pages/attendance-report/attendance-report';
@@ -110,6 +111,7 @@ export const ADMIN_ROUTES: Routes = [
   {path: 'travel-requests',             component: TravelRequestList, canActivate: [permissionGuard], data: {title: '出差申請',       permission: 'travel-requests:read'}},
   {path: 'travel-requests/new',         component: TravelRequestForm, canActivate: [permissionGuard], data: {title: '新增出差申請',   permission: 'travel-requests:write'}},
   {path: 'travel-requests/:id/edit',    component: TravelRequestForm, canActivate: [permissionGuard], data: {title: '編輯出差申請',   permission: 'travel-requests:read'}},
+  {path: 'travel-requests/:id',         component: TravelDetail,      canActivate: [permissionGuard], data: {title: '出差申請詳情',   permission: 'travel-requests:read'}},
 
   // 加班申請
   {path: 'overtime-requests',             component: OvertimeRequestList, canActivate: [permissionGuard], data: {title: '加班申請',       permission: 'overtime-requests:read'}},

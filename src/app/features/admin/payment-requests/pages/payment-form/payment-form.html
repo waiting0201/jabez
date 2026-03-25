@@ -207,7 +207,7 @@
                       </td>
                       <td class="align-middle">
                         @if (isReadOnly) {
-                          <span class="small">{{ ctrl.get('invoiceDate')?.value || '—' }}</span>
+                          <span class="small">{{ ctrl.get('invoiceDate')?.value ? (ctrl.get('invoiceDate')?.value | date:'yyyy-MM-dd') : '—' }}</span>
                         } @else if (isOcr) {
                           <div class="flex items-center gap-2 text-muted small py-1">
                             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>

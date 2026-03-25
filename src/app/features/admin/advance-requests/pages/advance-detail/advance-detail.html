@@ -153,8 +153,32 @@
 
             @if (r.estimatedPaymentDate) {
               <div class="col-6 col-md-3">
-                <div class="text-muted small">預計退款日</div>
+                <div class="text-muted small">預計撥款日</div>
                 <div class="fw-500">{{ r.estimatedPaymentDate | date:'yyyy-MM-dd' }}</div>
+              </div>
+            }
+
+            @if (r.paidAt) {
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">撥款日</div>
+                <div class="flex items-center gap-2">
+                  <svg class="sa-icon" style="color: var(--green); stroke: currentColor; width: 16px; height: 16px">
+                    <use href="/assets/icons/sprite.svg#check-circle"></use>
+                  </svg>
+                  <span class="fw-500" style="color: var(--green)">{{ r.paidAt | date:'yyyy-MM-dd' }}</span>
+                </div>
+              </div>
+            } @else if (r.estimatedPaymentDate) {
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">撥款日</div>
+                <span class="text-muted small">尚未撥款</span>
+              </div>
+            }
+
+            @if (r.estimatedRefundDate) {
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">預計退款日</div>
+                <div class="fw-500">{{ r.estimatedRefundDate | date:'yyyy-MM-dd' }}</div>
               </div>
             }
 

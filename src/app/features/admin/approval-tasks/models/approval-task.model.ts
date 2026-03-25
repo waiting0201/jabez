@@ -89,6 +89,15 @@ export interface TravelTaskDetail {
   projectCode?: string;
   isHolidayTravel: boolean;
   items: TravelTaskDetailItem[];
+  /** 預計撥款日 */
+  estimatedPaymentDate?: string;
+  /** 實際撥款日 */
+  paidAt?: string;
+  /** 預計退款日（沖銷退還差額） */
+  estimatedRefundDate?: string;
+  /** 差額退款完成時間 */
+  refundedAt?: string;
+  paidBySignatureUrl?: string;
 }
 
 export interface OvertimeTaskDetail {
@@ -119,9 +128,16 @@ export interface AdvanceTaskDetail {
   projectCode: string;
   activityName: string;
   grandTotal: number;
+  /** 預計撥款日 */
   estimatedPaymentDate?: string;
+  /** 實際撥款日 */
+  paidAt?: string;
+  /** 預計退款日（沖銷退還差額） */
+  estimatedRefundDate?: string;
+  /** 差額退款完成時間 */
   refundedAt?: string;
   items: AdvanceTaskDetailItem[];
+  paidBySignatureUrl?: string;
 }
 
 export interface WriteOffTaskDetailItem {
@@ -153,10 +169,12 @@ export interface WriteOffTaskDetail {
   checkTotal: number;
   note?: string;
   items: WriteOffTaskDetailItem[];
-  estimatedPaymentDate?: string;
+  /** 預計退款日（改自 estimatedPaymentDate） */
+  estimatedRefundDate?: string;
   refundedAt?: string;
   advanceGrandTotal: number;
   otherWrittenOffTotal: number;
+  paidBySignatureUrl?: string;
 }
 
 export interface TravelWriteOffTaskDetailItem {
@@ -190,8 +208,10 @@ export interface TravelWriteOffTaskDetail {
   items: TravelWriteOffTaskDetailItem[];
   travelGrandTotal: number;
   otherWrittenOffTotal: number;
-  estimatedPaymentDate?: string;
+  /** 預計退款日（改自 estimatedPaymentDate） */
+  estimatedRefundDate?: string;
   refundedAt?: string;
+  paidBySignatureUrl?: string;
 }
 
 // ── ApprovalRecord ───────────────────────────────────────────────────────────

@@ -121,6 +121,7 @@
               <tr>
                 <th style="width:40px"></th>
                 <th>發票號碼</th>
+                <th>發票日期</th>
                 <th>分類</th>
                 <th>項目說明</th>
                 <th>單價</th>
@@ -142,6 +143,7 @@
                     }
                   </td>
                   <td class="small font-monospace">{{ item.invoiceNo || '—' }}</td>
+                  <td class="small">{{ item.invoiceDate ? (item.invoiceDate | date:'yyyy-MM-dd') : '—' }}</td>
                   <td class="small">{{ item.category }}</td>
                   <td class="small">{{ item.itemName }}</td>
                   <td class="small">{{ item.unitPrice | number:'1.0-0' }}</td>
@@ -153,7 +155,7 @@
             </tbody>
             <tfoot>
               <tr class="table-light">
-                <td colspan="6" class="text-right fw-500 small">合計</td>
+                <td colspan="7" class="text-right fw-500 small">合計</td>
                 <td class="text-right fw-600">{{ r.grandTotal | number:'1.0-0' }}</td>
                 <td></td>
               </tr>

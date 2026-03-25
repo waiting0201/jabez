@@ -58,10 +58,12 @@
                       {{ t.paymentDetail!.estimatedPaymentDate | date:'yyyy-MM-dd' }}
                     } @else if (t.advanceDetail?.estimatedPaymentDate) {
                       {{ t.advanceDetail!.estimatedPaymentDate | date:'yyyy-MM-dd' }}
-                    } @else if (t.writeOffDetail?.estimatedPaymentDate) {
-                      {{ t.writeOffDetail!.estimatedPaymentDate | date:'yyyy-MM-dd' }}
-                    } @else if (t.travelWriteOffDetail?.estimatedPaymentDate) {
-                      {{ t.travelWriteOffDetail!.estimatedPaymentDate | date:'yyyy-MM-dd' }}
+                    } @else if (t.travelDetail?.estimatedPaymentDate) {
+                      {{ t.travelDetail!.estimatedPaymentDate | date:'yyyy-MM-dd' }}
+                    } @else if (t.writeOffDetail?.estimatedRefundDate) {
+                      {{ t.writeOffDetail!.estimatedRefundDate | date:'yyyy-MM-dd' }}
+                    } @else if (t.travelWriteOffDetail?.estimatedRefundDate) {
+                      {{ t.travelWriteOffDetail!.estimatedRefundDate | date:'yyyy-MM-dd' }}
                     } @else {
                       —
                     }
@@ -69,8 +71,10 @@
                   <td class="text-muted small hidden lg:table-cell">
                     @if (t.paymentDetail?.paidAt) {
                       <span class="text-success fw-500">{{ t.paymentDetail!.paidAt | date:'yyyy-MM-dd' }}</span>
-                    } @else if (t.advanceDetail?.refundedAt) {
-                      <span class="text-success fw-500">{{ t.advanceDetail!.refundedAt | date:'yyyy-MM-dd' }}</span>
+                    } @else if (t.advanceDetail?.paidAt) {
+                      <span class="text-success fw-500">{{ t.advanceDetail!.paidAt | date:'yyyy-MM-dd' }}</span>
+                    } @else if (t.travelDetail?.paidAt) {
+                      <span class="text-success fw-500">{{ t.travelDetail!.paidAt | date:'yyyy-MM-dd' }}</span>
                     } @else if (t.writeOffDetail?.refundedAt) {
                       <span class="text-success fw-500">{{ t.writeOffDetail!.refundedAt | date:'yyyy-MM-dd' }}</span>
                     } @else if (t.travelWriteOffDetail?.refundedAt) {

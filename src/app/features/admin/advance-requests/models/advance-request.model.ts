@@ -55,7 +55,10 @@ export interface AdvanceRequest {
   approvalStatus: ApprovalStatus;
   submittedBy?: string;
   createdAt: string;
+  /** 預計撥款日 */
   estimatedPaymentDate?: string;
+  /** 實際撥款日 */
+  paidAt?: string;
   reviewedAt?: string;
   reviewNote?: string;
   designatedReviewers?: DesignatedReviewer[];
@@ -67,6 +70,8 @@ export interface AdvanceRequest {
   closedAt?: string;
   /** 應退還差額（預支金額 - 沖銷總金額，>0 表示需退款） */
   refundAmount?: number;
+  /** 預計退款日（沖銷退還差額） */
+  estimatedRefundDate?: string;
   /** 差額退款完成時間 */
   refundedAt?: string;
 }

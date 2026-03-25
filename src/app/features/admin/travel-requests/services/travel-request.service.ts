@@ -37,4 +37,12 @@ export class TravelRequestService {
   submit(id: number): Observable<TravelRequest> {
     return this.http.patch<TravelRequest>(`${environment.apiUrl}/travel-requests/${id}/submit`, {});
   }
+
+  /** 更新撥款日期（核准後財務部操作） */
+  updatePaymentDate(id: number, estimatedPaymentDate?: string, paidAt?: string): Observable<any> {
+    return this.http.patch(`${environment.apiUrl}/travel-requests/${id}/payment-date`, {
+      estimatedPaymentDate: estimatedPaymentDate || null,
+      paidAt: paidAt || null,
+    });
+  }
 }
