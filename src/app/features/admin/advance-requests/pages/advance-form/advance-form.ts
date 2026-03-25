@@ -40,6 +40,7 @@ export class AdvanceForm implements OnInit {
   loadingProjects = true;
   isEdit     = false;
   isReadOnly = false;
+  isReturned = false;
   requestId  = 0;
   errorMsg   = signal('');
   approvalStatus: ApprovalStatus = 'draft';
@@ -152,6 +153,7 @@ export class AdvanceForm implements OnInit {
       this.service.getById(this.requestId).subscribe(r => {
         if (!r) return;
         this.approvalStatus = r.approvalStatus;
+        this.isReturned = r.approvalStatus === 'returned';
         this.isReadOnly = r.approvalStatus !== 'draft' && r.approvalStatus !== 'returned';
         this.projectCode = r.projectCode ?? '';
         this.projectName = r.projectName ?? '';

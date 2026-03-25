@@ -146,7 +146,7 @@ export class OvertimeRequestForm implements OnInit {
         this.approvalStatus = r.approvalStatus;
         this.isDraft    = r.approvalStatus === 'draft';
         this.isReturned = r.approvalStatus === 'returned';
-        this.isReadOnly = r.approvalStatus !== 'draft';
+        this.isReadOnly = r.approvalStatus !== 'draft' && r.approvalStatus !== 'returned';
         this.form.patchValue({
           overtimeDate: r.overtimeDate instanceof Date
             ? r.overtimeDate.toISOString().split('T')[0]

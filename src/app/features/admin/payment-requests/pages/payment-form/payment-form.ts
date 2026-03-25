@@ -178,7 +178,7 @@ export class PaymentForm implements OnInit {
         this.approvalStatus = r.approvalStatus;
         this.isDraft        = r.approvalStatus === 'draft';
         this.isReturned     = r.approvalStatus === 'returned';
-        this.isReadOnly     = r.approvalStatus !== 'draft';
+        this.isReadOnly     = r.approvalStatus !== 'draft' && r.approvalStatus !== 'returned';
         this.projectCode    = r.projectCode ?? '';
         this.projectName    = r.projectName ?? '';
         this.estimatedPaymentDate = r.estimatedPaymentDate?.toString().slice(0, 10) ?? '';

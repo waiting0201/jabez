@@ -3,7 +3,7 @@
     <a routerLink="/admin/leave-requests" class="btn btn-sm btn-outline-secondary">
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
     </a>
-    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視請假申請' : '編輯請假草稿') : '新增請假申請' }}</h4>
+    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視請假申請' : (isReturned ? '修改請假申請' : '編輯請假草稿')) : '新增請假申請' }}</h4>
   </div>
 
   @if (errorMsg()) {
@@ -20,11 +20,11 @@
         此申請審核中，不可再修改。
       </div>
     </div>
-  } @else if (isReadOnly && approvalStatus === 'returned') {
+  } @else if (approvalStatus === 'returned') {
     <div class="card border-0 shadow-sm mb-6">
       <div class="card-header bg-[rgba(255,193,7,0.08)] border-bottom flex items-center gap-2 fw-600 text-warning py-3">
         <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
-        此申請已被退回，不可再修改。
+        此申請已被退回，請修改後重新送出。
       </div>
     </div>
   } @else if (isReadOnly && approvalStatus === 'approved') {
