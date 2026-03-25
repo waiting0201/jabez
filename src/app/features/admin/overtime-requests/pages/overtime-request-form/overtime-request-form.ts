@@ -153,7 +153,7 @@ export class OvertimeRequestForm implements OnInit {
         this.form.patchValue({
           overtimeDate: r.overtimeDate instanceof Date
             ? r.overtimeDate.toISOString().split('T')[0]
-            : String(r.overtimeDate),
+            : String(r.overtimeDate).split('T')[0],
           estimatedHours: r.estimatedHours,
           reason:         r.reason,
         });
