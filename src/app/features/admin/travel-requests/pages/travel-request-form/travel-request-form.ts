@@ -136,6 +136,9 @@ export class TravelRequestForm implements OnInit {
           next: users => {
             this.allUsers = users;
             this.designatedEntries.forEach(e => {
+              if (!e.selectedJobTitleId && e.selectedUserId) {
+                e.selectedJobTitleId = users.find(u => u.id === e.selectedUserId)?.jobTitleId ?? null;
+              }
               if (e.selectedJobTitleId) {
                 e.filteredUsers = users.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active');
               }

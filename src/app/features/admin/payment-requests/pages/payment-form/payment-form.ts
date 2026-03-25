@@ -148,8 +148,11 @@ export class PaymentForm implements OnInit {
         this.userSvc.getLookup().subscribe({
           next: users => {
             this.allUsers = users;
-            // allUsers 載入後補填各條目的 filteredUsers
+            // allUsers 載入後補填 selectedJobTitleId 與 filteredUsers
             this.designatedEntries.forEach(e => {
+              if (!e.selectedJobTitleId && e.selectedUserId) {
+                e.selectedJobTitleId = users.find(u => u.id === e.selectedUserId)?.jobTitleId ?? null;
+              }
               if (e.selectedJobTitleId) {
                 e.filteredUsers = users.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active');
               }
