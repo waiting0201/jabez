@@ -367,7 +367,68 @@
             </button>
             <a routerLink="/admin/payment-requests" class="btn btn-outline-secondary">取消</a>
           </div>
+        } @else if (approvalStatus === 'approved') {
+          <!-- 已核准 -->
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-[rgba(37,162,68,0.08)] border-bottom flex items-center gap-2 fw-600 text-success">
+              <svg class="sa-icon" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#check-circle"></use>
+              </svg>
+              已核准
+            </div>
+            <div class="card-body">
+              <p class="text-muted small mb-2">此申請已通過所有簽核流程，不可再修改。</p>
+              @if (approvalTask?.reviewedAt) {
+                <div class="text-muted small mb-1 fw-500">核准時間：</div>
+                <div class="small mb-4">{{ approvalTask!.reviewedAt | date:'yyyy-MM-dd HH:mm' }}</div>
+              }
+              @if (approvalTask?.reviewNote) {
+                <div class="text-muted small mb-1 fw-500">審核意見：</div>
+                <div class="border rounded p-4 bg-[--bg-base] small mb-4">{{ approvalTask!.reviewNote }}</div>
+              }
+              <div class="mt-2 flex gap-2">
+                @if (approvalTask?.paymentDetail) {
+                  <button type="button" class="btn btn-outline-secondary inline-flex items-center gap-2"
+                          [disabled]="pdfService.pdfLoading()" (click)="printPayment()">
+                    @if (pdfService.pdfLoading()) {
+                      <span class="spinner-border spinner-border-sm" role="status"></span>
+                      產生中…
+                    } @else {
+                      <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#printer"></use></svg>
+                      列印請款單
+                    }
+                  </button>
+                }
+                <a routerLink="/admin/payment-requests" class="btn btn-outline-secondary">返回列表</a>
+              </div>
+            </div>
+          </div>
+        } @else if (approvalStatus === 'rejected') {
+          <!-- 已拒絕 -->
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-[rgba(220,53,69,0.08)] border-bottom flex items-center gap-2 fw-600 text-danger">
+              <svg class="sa-icon" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#x-circle"></use>
+              </svg>
+              已拒絕
+            </div>
+            <div class="card-body">
+              <p class="text-muted small mb-2">此申請已被拒絕，簽核流程終止，不可再修改。</p>
+              @if (approvalTask?.reviewedAt) {
+                <div class="text-muted small mb-1 fw-500">拒絕時間：</div>
+                <div class="small mb-4">{{ approvalTask!.reviewedAt | date:'yyyy-MM-dd HH:mm' }}</div>
+              }
+              @if (approvalTask?.reviewNote) {
+                <div class="text-muted small mb-1 fw-500">拒絕原因：</div>
+                <div class="border rounded p-4 bg-[--bg-base] small mb-4">{{ approvalTask!.reviewNote }}</div>
+              }
+              <div class="mt-2">
+                <a routerLink="/admin/payment-requests" class="btn btn-outline-secondary">返回列表</a>
+              </div>
+            </div>
+          </div>
         } @else {
+          <!-- pending -->
           <div class="mt-6">
             <a routerLink="/admin/payment-requests" class="btn btn-outline-secondary">返回列表</a>
           </div>

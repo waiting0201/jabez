@@ -9,8 +9,9 @@ import heic2any from 'heic2any';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
-import {ApprovalFlow, ApprovalRecord} from '../../../approval-tasks/models/approval-task.model';
+import {ApprovalFlow, ApprovalRecord, ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
 import {PaymentRequestService} from '../../services/payment-request.service';
+import {PaymentPdfService} from '../../services/payment-pdf.service';
 import {ProjectService} from '../../../projects/services/project.service';
 import {Project} from '../../../projects/models/project.model';
 import {PaymentType, ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, DesignatedReviewer} from '../../models/payment-request.model';
@@ -39,6 +40,7 @@ export class PaymentForm implements OnInit {
   private cdr          = inject(ChangeDetectorRef);
   private sanitizer    = inject(DomSanitizer);
   private modal        = inject(NgbModal);
+  pdfService           = inject(PaymentPdfService);
 
   successModal = viewChild<TemplateRef<any>>('successModal');
 
@@ -62,6 +64,7 @@ export class PaymentForm implements OnInit {
   approvalRecords: ApprovalRecord[] = [];
   taskCurrentStepOrder = 0;
   taskStatus = '';
+  approvalTask: ApprovalTask | null = null;
 
   /** 指定審核者相關 */
   hasDesignatedStep = false;
@@ -212,6 +215,7 @@ export class PaymentForm implements OnInit {
         if (r.approvalStatus !== 'draft') {
           this.taskSvc.getById(this.requestId, 'payment_request').subscribe({
             next: task => {
+              this.approvalTask = task;
               this.approvalFlow = task.flow ?? null;
               this.approvalRecords = task.approvalRecords ?? [];
               this.taskCurrentStepOrder = task.currentStepOrder;
@@ -306,6 +310,11 @@ export class PaymentForm implements OnInit {
         this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
       },
     });
+  }
+
+  /** 列印請款單 PDF */
+  printPayment() {
+    if (this.approvalTask) this.pdfService.printPaymentRequest(this.approvalTask);
   }
 
   /** 送出申請（先儲存再將狀態改為 pending） */
