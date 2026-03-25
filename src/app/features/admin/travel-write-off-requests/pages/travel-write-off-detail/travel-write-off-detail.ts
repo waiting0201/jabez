@@ -46,7 +46,7 @@ export class TravelWriteOffDetail implements OnInit {
 
   private loadData(id: number) {
     this.service.getById(id).subscribe(r => this.request.set(r));
-    this.taskService.getById(id, 'travel-write-off').subscribe({
+    this.taskService.getById(id, 'travel_write_off').subscribe({
       next: t  => this.approvalTask.set(t),
       error: () => {}, // 草稿狀態尚無簽核任務
     });

@@ -175,6 +175,7 @@ export interface WriteOffTaskDetail {
   advanceGrandTotal: number;
   otherWrittenOffTotal: number;
   paidBySignatureUrl?: string;
+  refundedBySignatureUrl?: string;
 }
 
 export interface TravelWriteOffTaskDetailItem {
@@ -212,6 +213,7 @@ export interface TravelWriteOffTaskDetail {
   estimatedRefundDate?: string;
   refundedAt?: string;
   paidBySignatureUrl?: string;
+  refundedBySignatureUrl?: string;
 }
 
 // ── ApprovalRecord ───────────────────────────────────────────────────────────

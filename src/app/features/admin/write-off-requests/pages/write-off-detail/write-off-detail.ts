@@ -46,7 +46,7 @@ export class WriteOffRequestDetail implements OnInit {
 
   private loadData(id: number) {
     this.service.getById(id).subscribe(r => this.request.set(r));
-    this.taskService.getById(id, 'write-off').subscribe({
+    this.taskService.getById(id, 'write_off').subscribe({
       next: t  => this.approvalTask.set(t),
       error: () => {}, // 草稿狀態尚無簽核任務
     });
@@ -79,7 +79,7 @@ export class WriteOffRequestDetail implements OnInit {
   printWriteOff() {
     const r = this.request();
     const t = this.approvalTask();
-    if (r) this.pdfService.printWriteOff(r, r.submittedBy ?? '', t?.approvalRecords ?? [], t?.flow, t?.submittedBySignatureUrl, t?.writeOffDetail?.paidBySignatureUrl, t?.writeOffDetail?.refundedAt);
+    if (r) this.pdfService.printWriteOff(r, r.submittedBy ?? '', t?.approvalRecords ?? [], t?.flow, t?.submittedBySignatureUrl, t?.writeOffDetail?.paidBySignatureUrl, t?.writeOffDetail?.refundedAt, t?.writeOffDetail?.refundedBySignatureUrl);
   }
 
   /** 刪除申請（僅 draft） */

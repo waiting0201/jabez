@@ -171,13 +171,19 @@ export class ApprovalTaskReview implements OnInit {
     let update$: Observable<any>;
     let successMsg: string;
     if (task.travelWriteOffDetail) {
-      // 出差沖銷：目前透過審核流程設定退款日，此處不支援事後單獨更新
-      this.paymentDateError.set('出差沖銷退款日期請透過審核流程設定。');
-      return;
+      // 出差沖銷：更新關聯的出差申請退款日
+      update$ = this.travelService.updatePaymentDate(
+        task.travelWriteOffDetail.travelRequestId,
+        undefined, undefined,
+        estimatedPaymentDate || undefined,
+        paidAt || undefined,
+      );
+      successMsg = '退款日期已更新。';
     } else if (task.writeOffDetail) {
       // 預支沖銷：更新關聯的預支申請退款日
       update$ = this.advanceService.updatePaymentDate(
         task.writeOffDetail.advanceRequestId,
+        undefined, undefined,
         estimatedPaymentDate || undefined,
         paidAt || undefined,
       );
@@ -264,6 +270,7 @@ export class ApprovalTaskReview implements OnInit {
           task.submittedBySignatureUrl,
           task.writeOffDetail?.paidBySignatureUrl,
           task.writeOffDetail?.refundedAt,
+          task.writeOffDetail?.refundedBySignatureUrl,
         );
       },
       error: () => {

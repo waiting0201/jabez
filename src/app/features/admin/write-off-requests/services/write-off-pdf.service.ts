@@ -79,7 +79,7 @@ export class WriteOffPdfService {
   }
 
   /** 列印預支沖銷申請表 */
-  async printWriteOff(r: WriteOffRequest, submittedByName: string, approvalRecords: ApprovalRecord[] = [], flow?: ApprovalFlow, submittedBySignatureUrl?: string, paidBySignatureUrl?: string, paidAt?: string) {
+  async printWriteOff(r: WriteOffRequest, submittedByName: string, approvalRecords: ApprovalRecord[] = [], flow?: ApprovalFlow, submittedBySignatureUrl?: string, paidBySignatureUrl?: string, paidAt?: string, refundedBySignatureUrl?: string) {
     this.pdfLoading.set(true);
     try {
       const [{ default: jsPDF }, { default: autoTable }, fonts] = await Promise.all([
@@ -271,7 +271,7 @@ export class WriteOffPdfService {
 
       y += 8;
       const submitDate = r.createdAt ? fmtDT(r.createdAt) : '';
-      const signBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, submitDate, '申請者', paidBySignatureUrl, paidAt);
+      const signBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, submitDate, '申請者', paidBySignatureUrl, paidAt, refundedBySignatureUrl);
       const sigMap = await this._loadSignatureImages(signBlocks);
       this._drawSignatureBlock(doc, F, mx, pw, cw, y, signBlocks, sigMap);
 
@@ -298,6 +298,7 @@ export class WriteOffPdfService {
     applicantLabel: string,
     paidBySignatureUrl?: string,
     paidAt?: string,
+    refundedBySignatureUrl?: string,
   ): SignBlock[] {
     const blocks: SignBlock[] = [];
 
@@ -332,10 +333,10 @@ export class WriteOffPdfService {
     // 按固定標籤順序輸出
     for (const label of fixedLabels) {
       if (label === '出納') {
-        // 出納欄位使用撥款者簽名 + 撥款日期
+        // 出納欄位：優先使用退款處理人簽名，fallback 使用撥款者簽名
         blocks.push({
           label,
-          signatureUrl: paidBySignatureUrl,
+          signatureUrl: refundedBySignatureUrl || paidBySignatureUrl,
           date: paidAt ? fmtDT(paidAt) : '',
         });
       } else {
