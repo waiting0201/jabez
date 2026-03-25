@@ -45,6 +45,7 @@ public sealed record AdvanceRequestDto(
     string?                   SubmittedBy,
     DateTime                  CreatedAt,
     DateTime?                 EstimatedPaymentDate,
+    DateTime?                 PaidAt,
     DateTime?                 ReviewedAt,
     string?                   ReviewNote,
     AdvanceRequestItemDto[]   Items,
@@ -53,7 +54,9 @@ public sealed record AdvanceRequestDto(
     bool                      IsClosed               = false,
     DateTime?                 ClosedAt               = null,
     decimal?                  RefundAmount           = null,
-    DateTime?                 RefundedAt             = null);
+    DateTime?                 EstimatedRefundDate    = null,
+    DateTime?                 RefundedAt             = null,
+    WriteOffRecordDto[]?      WriteOffRecords        = null);
 
 // ── WriteOff DTOs ───────────────────────────────────────────────────────────
 
@@ -89,10 +92,12 @@ public sealed record WriteOffItemRequest(
 
 public sealed record WriteOffRecordDto(
     int               Id,
+    string            RequestNo,
     int               WriteOffNo,
     decimal           CashTotal,
     decimal           CheckTotal,
     decimal           GrandTotal,
+    string            ApprovalStatus,
     string?           Note,
     string?           SubmittedBy,
     DateTime          CreatedAt,
@@ -137,8 +142,11 @@ public sealed record AdvanceTaskDetailDto(
     string    ActivityName,
     decimal   GrandTotal,
     DateTime? EstimatedPaymentDate,
+    DateTime? PaidAt,
+    DateTime? EstimatedRefundDate,
     DateTime? RefundedAt,
-    AdvanceRequestItemDto[] Items = null!)
+    AdvanceRequestItemDto[] Items = null!,
+    string?   PaidBySignatureUrl = null)
 {
     public AdvanceRequestItemDto[] Items { get; init; } = Items ?? Array.Empty<AdvanceRequestItemDto>();
 }

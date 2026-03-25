@@ -53,7 +53,10 @@ public sealed record WriteOffTaskDetailDto(
     decimal            CheckTotal,
     string?            Note,
     WriteOffItemDto[]  Items,
-    DateTime?          EstimatedPaymentDate = null,
+    DateTime?          EstimatedRefundDate = null,
     DateTime?          RefundedAt = null,
     decimal            AdvanceGrandTotal = 0,
-    decimal            OtherWrittenOffTotal = 0);
+    decimal            OtherWrittenOffTotal = 0,
+    string?            PaidBySignatureUrl = null,
+    string?            RefundedBySignatureUrl = null,
+    bool               AdvanceIsClosed = false);

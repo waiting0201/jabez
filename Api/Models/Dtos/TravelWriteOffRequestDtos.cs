@@ -83,7 +83,10 @@ public sealed record TravelWriteOffTaskDetailDto(
     decimal                  GrandTotal,
     string?                  Note,
     TravelWriteOffItemDto[]  Items,
-    DateTime?                EstimatedPaymentDate  = null,
+    DateTime?                EstimatedRefundDate   = null,
     DateTime?                RefundedAt            = null,
     decimal                  TravelGrandTotal      = 0,
-    decimal                  OtherWrittenOffTotal  = 0);
+    decimal                  OtherWrittenOffTotal  = 0,
+    string?                  PaidBySignatureUrl    = null,
+    string?                  RefundedBySignatureUrl = null,
+    bool                     TravelIsClosed        = false);

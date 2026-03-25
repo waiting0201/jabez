@@ -18,7 +18,11 @@ public class AdvanceRequest
     public DateTime? ReviewedAt        { get; set; }
     public string?   ReviewNote        { get; set; }
     public Guid?     ReviewedById      { get; set; }
+    // 撥款欄位
     public DateTime? EstimatedPaymentDate { get; set; }
+    public DateTime? PaidAt            { get; set; }
+    public Guid?     PaidByUserId      { get; set; }
+
     public DateTime  CreatedAt         { get; set; }
 
     // 結案欄位
@@ -27,15 +31,19 @@ public class AdvanceRequest
     public Guid?     ClosedById        { get; set; }
 
     // 退還差額欄位（沖銷累計 > 預支時，系統自動計算）
-    public decimal?  RefundAmount      { get; set; }
-    public DateTime? RefundedAt        { get; set; }
+    public decimal?  RefundAmount         { get; set; }
+    public DateTime? EstimatedRefundDate  { get; set; }
+    public DateTime? RefundedAt           { get; set; }
+    public Guid?     RefundedByUserId     { get; set; }
 
     // Navigation
     public Project                          Project            { get; set; } = null!;
     public ApprovalItem?                    ApprovalItem       { get; set; }
     public User?                            SubmittedBy        { get; set; }
     public User?                            ReviewedBy         { get; set; }
+    public User?                            PaidBy             { get; set; }
     public User?                            ClosedBy           { get; set; }
+    public User?                            RefundedBy         { get; set; }
     public ICollection<AdvanceRequestItem>  Items        { get; set; } = [];
     public ICollection<WriteOffRecord>      WriteOffs    { get; set; } = [];
 }

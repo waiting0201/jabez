@@ -11,10 +11,10 @@ public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceReques
         SELECT ar.Id, ar.RequestNo, ar.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                ar.ActivityName, ar.ActivityPeriod, ar.AdvanceDate,
                ar.CashTotal, ar.CheckTotal, ar.GrandTotal,
-               ar.ApprovalStatus, ar.EstimatedPaymentDate,
+               ar.ApprovalStatus, ar.EstimatedPaymentDate, ar.PaidAt,
                sub.Name AS SubmittedBy, ar.CreatedAt,
                ar.ReviewedAt, ar.ReviewNote,
-               ar.IsClosed, ar.ClosedAt, ar.RefundAmount, ar.RefundedAt,
+               ar.IsClosed, ar.ClosedAt, ar.RefundAmount, ar.EstimatedRefundDate, ar.RefundedAt,
                ai.Id AS ItemId, ai.Category, ai.SeqNo, ai.ItemName,
                ai.UnitPrice, ai.Quantity, ai.TotalPrice,
                ai.CashAmount AS ItemCash, ai.CheckAmount AS ItemCheck,
@@ -84,7 +84,30 @@ public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceReques
             (DateTime?)r.ReviewedAt,
             (string?)r.Comment)).ToArray();
 
-        return dto with { DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null };
+        // 查詢沖銷紀錄含明細（PDF 列印用）
+        const string woDetailSql = """
+            SELECT wo.Id, wo.RequestNo, wo.WriteOffNo, wo.CashTotal, wo.CheckTotal,
+                   wo.GrandTotal, wo.ApprovalStatus, wo.Note,
+                   sub.Name AS SubmittedBy, wo.CreatedAt,
+                   wi.Id AS ItemId, wi.Category, wi.SeqNo, wi.ItemName,
+                   wi.UnitPrice, wi.Quantity, wi.TotalPrice,
+                   wi.CashAmount AS ItemCash, wi.CheckAmount AS ItemCheck,
+                   wi.Note AS ItemNote, wi.InvoiceNo, wi.FileName, wi.FileUrl,
+                   wi.SortOrder, wi.InvoiceDate
+            FROM WriteOffRecords wo
+            LEFT JOIN Users sub ON wo.SubmittedById = sub.Id
+            LEFT JOIN WriteOffItems wi ON wi.WriteOffRecordId = wo.Id
+            WHERE wo.AdvanceRequestId = @Id
+            ORDER BY wo.WriteOffNo, wi.SortOrder, wi.Id
+            """;
+        var woDetailRows = await db.QueryAsync<dynamic>(woDetailSql, new { Id = id });
+        var writeOffRecords = GroupToWriteOffRecords(woDetailRows);
+
+        return dto with
+        {
+            DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null,
+            WriteOffRecords = writeOffRecords.Length > 0 ? writeOffRecords : null,
+        };
     }
 
     // ── Grouping helpers ─────────────────────────────────────────────────────
@@ -138,6 +161,7 @@ public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceReques
                 (string?)x.ar.SubmittedBy,
                 (DateTime)x.ar.CreatedAt,
                 (DateTime?)x.ar.EstimatedPaymentDate,
+                (DateTime?)x.ar.PaidAt,
                 (DateTime?)x.ar.ReviewedAt,
                 (string?)x.ar.ReviewNote,
                 [.. x.items],
@@ -146,8 +170,45 @@ public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceReques
                 (bool)x.ar.IsClosed,
                 (DateTime?)x.ar.ClosedAt,
                 (decimal?)x.ar.RefundAmount,
+                (DateTime?)x.ar.EstimatedRefundDate,
                 (DateTime?)x.ar.RefundedAt);
         });
+    }
+
+    /// <summary>將沖銷明細查詢結果 group 為 WriteOffRecordDto[]</summary>
+    private static WriteOffRecordDto[] GroupToWriteOffRecords(IEnumerable<dynamic> rows)
+    {
+        var dict = new Dictionary<int, (dynamic wo, List<WriteOffItemDto> items)>();
+        foreach (var row in rows)
+        {
+            int woId = (int)row.Id;
+            if (!dict.ContainsKey(woId))
+                dict[woId] = (row, []);
+            if (row.ItemId is not null)
+                dict[woId].items.Add(new WriteOffItemDto(
+                    (int)row.ItemId, (string)row.Category, (int)row.SeqNo,
+                    (string)row.ItemName, (decimal)row.UnitPrice, (string)row.Quantity,
+                    (decimal)row.TotalPrice, (decimal)row.ItemCash, (decimal)row.ItemCheck,
+                    (string?)row.ItemNote, (string?)row.InvoiceNo,
+                    (string?)row.FileName, (string?)row.FileUrl,
+                    (int)row.SortOrder, (DateTime?)row.InvoiceDate));
+        }
+
+        return dict.Values
+            .OrderBy(x => (int)x.wo.WriteOffNo)
+            .Select(x => new WriteOffRecordDto(
+                (int)x.wo.Id,
+                (string)x.wo.RequestNo,
+                (int)x.wo.WriteOffNo,
+                (decimal)x.wo.CashTotal,
+                (decimal)x.wo.CheckTotal,
+                (decimal)x.wo.GrandTotal,
+                (string)x.wo.ApprovalStatus,
+                (string?)x.wo.Note,
+                (string?)x.wo.SubmittedBy,
+                (DateTime)x.wo.CreatedAt,
+                [.. x.items]))
+            .ToArray();
     }
 
 }

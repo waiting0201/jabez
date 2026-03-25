@@ -4,6 +4,7 @@ using Jabez.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Jabez.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260325022650_AddPaidByUserIdToAdvanceAndTravel")]
+    partial class AddPaidByUserIdToAdvanceAndTravel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -102,9 +105,6 @@ namespace Jabez.Api.Data.Migrations
                     b.Property<DateTime?>("RefundedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid?>("RefundedByUserId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("RequestNo")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -132,8 +132,6 @@ namespace Jabez.Api.Data.Migrations
                     b.HasIndex("PaidByUserId");
 
                     b.HasIndex("ProjectId");
-
-                    b.HasIndex("RefundedByUserId");
 
                     b.HasIndex("RequestNo")
                         .IsUnique();
@@ -3690,9 +3688,6 @@ namespace Jabez.Api.Data.Migrations
                     b.Property<DateTime?>("RefundedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid?>("RefundedByUserId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("ReviewNote")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -3717,8 +3712,6 @@ namespace Jabez.Api.Data.Migrations
                     b.HasIndex("PaidByUserId");
 
                     b.HasIndex("ProjectId");
-
-                    b.HasIndex("RefundedByUserId");
 
                     b.HasIndex("ReviewedById");
 
@@ -4426,11 +4419,6 @@ namespace Jabez.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Jabez.Api.Models.Entities.User", "RefundedBy")
-                        .WithMany()
-                        .HasForeignKey("RefundedByUserId")
-                        .OnDelete(DeleteBehavior.NoAction);
-
                     b.HasOne("Jabez.Api.Models.Entities.User", "ReviewedBy")
                         .WithMany()
                         .HasForeignKey("ReviewedById")
@@ -4448,8 +4436,6 @@ namespace Jabez.Api.Data.Migrations
                     b.Navigation("PaidBy");
 
                     b.Navigation("Project");
-
-                    b.Navigation("RefundedBy");
 
                     b.Navigation("ReviewedBy");
 
@@ -4742,11 +4728,6 @@ namespace Jabez.Api.Data.Migrations
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Jabez.Api.Models.Entities.User", "RefundedBy")
-                        .WithMany()
-                        .HasForeignKey("RefundedByUserId")
-                        .OnDelete(DeleteBehavior.NoAction);
-
                     b.HasOne("Jabez.Api.Models.Entities.User", "ReviewedBy")
                         .WithMany()
                         .HasForeignKey("ReviewedById")
@@ -4761,8 +4742,6 @@ namespace Jabez.Api.Data.Migrations
                     b.Navigation("PaidBy");
 
                     b.Navigation("Project");
-
-                    b.Navigation("RefundedBy");
 
                     b.Navigation("ReviewedBy");
                 });

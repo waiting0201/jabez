@@ -274,16 +274,19 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == wo.SubmittedById.Value)
                     : null;
                 await AuthorizeStepAsync(wo.ApprovalItemId, wo.CurrentStepOrder, reviewer, woApplicant?.DepartmentId, "write_off", wo.Id, woApplicant?.JobTitleId);
-                // 設定預支申請撥款日（審核者可在審核沖銷時填寫）
+                // 設定預支申請退款日（審核者可在審核沖銷時填寫）
                 if (body.EstimatedPaymentDate.HasValue || body.PaidAt.HasValue)
                 {
                     var adv = await db.AdvanceRequests.FindAsync(wo.AdvanceRequestId);
                     if (adv is not null)
                     {
                         if (body.EstimatedPaymentDate.HasValue)
-                            adv.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
+                            adv.EstimatedRefundDate = body.EstimatedPaymentDate.Value;
                         if (body.PaidAt.HasValue)
+                        {
                             adv.RefundedAt = body.PaidAt.Value;
+                            adv.RefundedByUserId = reviewerId;
+                        }
                     }
                 }
                 // 記住審核前的步驟（ProcessReviewAsync 可能會 increment）
@@ -306,28 +309,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                         : null;
 
                     if (currentStep?.Department?.Code == "FIN" || reviewer.IsSuperAdmin)
-                    {
-                        var advance = await db.AdvanceRequests.FindAsync(wo.AdvanceRequestId);
-                        if (advance is not null && !advance.IsClosed)
-                        {
-                            advance.IsClosed   = true;
-                            advance.ClosedAt   = Clock.Now;
-                            advance.ClosedById = reviewerId;
-
-                            // 檢查是否有退還差額（沖銷累計 > 預支金額）
-                            var totalWrittenOff = await db.WriteOffRecords
-                                .Where(w => w.AdvanceRequestId == wo.AdvanceRequestId && w.ApprovalStatus != "rejected")
-                                .SumAsync(w => (decimal?)w.GrandTotal) ?? 0m;
-
-                            var diff = totalWrittenOff - advance.GrandTotal;
-                            if (diff > 0)
-                            {
-                                advance.RefundAmount = diff;
-                                // 寄通知信給財務部全員
-                                await notifier.NotifyFinanceRefundAsync(advance, diff);
-                            }
-                        }
-                    }
+                        await CloseAdvanceRequestAsync(reviewerId, wo.AdvanceRequestId);
                 }
 
                 await db.SaveChangesAsync();
@@ -352,9 +334,12 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     if (travel is not null)
                     {
                         if (body.EstimatedPaymentDate.HasValue)
-                            travel.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
+                            travel.EstimatedRefundDate = body.EstimatedPaymentDate.Value;
                         if (body.PaidAt.HasValue)
+                        {
                             travel.RefundedAt = body.PaidAt.Value;
+                            travel.RefundedByUserId = reviewerId;
+                        }
                     }
                 }
 
@@ -378,28 +363,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                         : null;
 
                     if (currentStep?.Department?.Code == "FIN" || reviewer.IsSuperAdmin)
-                    {
-                        var travel = await db.TravelRequests.FindAsync(two.TravelRequestId);
-                        if (travel is not null && !travel.IsClosed)
-                        {
-                            travel.IsClosed   = true;
-                            travel.ClosedAt   = Clock.Now;
-                            travel.ClosedById = reviewerId;
-
-                            // 檢查是否有退還差額（沖銷累計 > 出差金額）
-                            var totalWrittenOff = await db.TravelWriteOffRecords
-                                .Where(w => w.TravelRequestId == two.TravelRequestId && w.ApprovalStatus != "rejected")
-                                .SumAsync(w => (decimal?)w.GrandTotal) ?? 0m;
-
-                            var diff = totalWrittenOff - travel.GrandTotal;
-                            if (diff > 0)
-                            {
-                                travel.RefundAmount = diff;
-                                // 寄通知信給財務部全員
-                                await notifier.NotifyFinanceTravelRefundAsync(travel, diff);
-                            }
-                        }
-                    }
+                        await CloseTravelRequestAsync(reviewerId, two.TravelRequestId);
                 }
 
                 await db.SaveChangesAsync();
@@ -717,5 +681,125 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 await notifier.NotifyApplicantAsync(applicationType, applicationId,
                     applicantId.Value, "rejected", reviewNote);
         }
+    }
+
+    // ── 結案 Helpers ─────────────────────────────────────────────────────────
+
+    /// <summary>關閉預支申請：設 IsClosed、計算退款差額、通知財務。</summary>
+    private async Task CloseAdvanceRequestAsync(Guid closedById, int advanceRequestId)
+    {
+        var advance = await db.AdvanceRequests.FindAsync(advanceRequestId);
+        if (advance is null || advance.IsClosed) return;
+
+        advance.IsClosed   = true;
+        advance.ClosedAt   = Clock.Now;
+        advance.ClosedById = closedById;
+
+        // 檢查是否有退還差額（沖銷累計 > 預支金額）
+        var totalWrittenOff = await db.WriteOffRecords
+            .Where(w => w.AdvanceRequestId == advanceRequestId && w.ApprovalStatus != "rejected")
+            .SumAsync(w => (decimal?)w.GrandTotal) ?? 0m;
+
+        var diff = totalWrittenOff - advance.GrandTotal;
+        if (diff > 0)
+        {
+            advance.RefundAmount = diff;
+            await notifier.NotifyFinanceRefundAsync(advance, diff);
+        }
+    }
+
+    /// <summary>關閉出差申請：設 IsClosed、計算退款差額、通知財務。</summary>
+    private async Task CloseTravelRequestAsync(Guid closedById, int travelRequestId)
+    {
+        var travel = await db.TravelRequests.FindAsync(travelRequestId);
+        if (travel is null || travel.IsClosed) return;
+
+        travel.IsClosed   = true;
+        travel.ClosedAt   = Clock.Now;
+        travel.ClosedById = closedById;
+
+        // 檢查是否有退還差額（沖銷累計 > 出差金額）
+        var totalWrittenOff = await db.TravelWriteOffRecords
+            .Where(w => w.TravelRequestId == travelRequestId && w.ApprovalStatus != "rejected")
+            .SumAsync(w => (decimal?)w.GrandTotal) ?? 0m;
+
+        var diff = totalWrittenOff - travel.GrandTotal;
+        if (diff > 0)
+        {
+            travel.RefundAmount = diff;
+            await notifier.NotifyFinanceTravelRefundAsync(travel, diff);
+        }
+    }
+
+    // ── 獨立結案端點 ─────────────────────────────────────────────────────────
+
+    /// <summary>預支沖銷已核准後，財務部可獨立結案預支申請。</summary>
+    public async Task<IActionResult> CloseWriteOffAsync(HttpRequest req, string id)
+    {
+        if (!int.TryParse(id, out var intId))
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid ID format."));
+
+        var principal = await jwtService.ValidateRequestAsync(req);
+        if (principal is null)
+            return new UnauthorizedObjectResult(ApiResponse.Fail("Unauthorized."));
+
+        var userIdStr = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return new UnauthorizedObjectResult(ApiResponse.Fail("Invalid token claims."));
+
+        var user = await db.Users.AsNoTracking().Include(u => u.Department).FirstOrDefaultAsync(u => u.Id == userId);
+        if (user is null)
+            return new UnauthorizedObjectResult(ApiResponse.Fail("User not found."));
+
+        if (!user.IsSuperAdmin && user.Department?.Code != "FIN")
+            return new ObjectResult(ApiResponse.Fail("僅財務部或 Superadmin 可執行結案操作。")) { StatusCode = 403 };
+
+        var wo = await db.WriteOffRecords.AsNoTracking().FirstOrDefaultAsync(w => w.Id == intId);
+        if (wo is null)
+            return new NotFoundObjectResult(ApiResponse.Fail("Write-off record not found."));
+
+        if (wo.ApprovalStatus != "approved")
+            return new BadRequestObjectResult(ApiResponse.Fail("僅已核准的沖銷申請可執行結案。"));
+
+        await CloseAdvanceRequestAsync(userId, wo.AdvanceRequestId);
+        await db.SaveChangesAsync();
+
+        var task = await reader.GetApprovalTaskByIdAsync(intId, "write_off");
+        return new OkObjectResult(ApiResponse.Ok(task, "預支申請已結案。"));
+    }
+
+    /// <summary>出差沖銷已核准後，財務部可獨立結案出差申請。</summary>
+    public async Task<IActionResult> CloseTravelWriteOffAsync(HttpRequest req, string id)
+    {
+        if (!int.TryParse(id, out var intId))
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid ID format."));
+
+        var principal = await jwtService.ValidateRequestAsync(req);
+        if (principal is null)
+            return new UnauthorizedObjectResult(ApiResponse.Fail("Unauthorized."));
+
+        var userIdStr = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return new UnauthorizedObjectResult(ApiResponse.Fail("Invalid token claims."));
+
+        var user = await db.Users.AsNoTracking().Include(u => u.Department).FirstOrDefaultAsync(u => u.Id == userId);
+        if (user is null)
+            return new UnauthorizedObjectResult(ApiResponse.Fail("User not found."));
+
+        if (!user.IsSuperAdmin && user.Department?.Code != "FIN")
+            return new ObjectResult(ApiResponse.Fail("僅財務部或 Superadmin 可執行結案操作。")) { StatusCode = 403 };
+
+        var two = await db.TravelWriteOffRecords.AsNoTracking().FirstOrDefaultAsync(w => w.Id == intId);
+        if (two is null)
+            return new NotFoundObjectResult(ApiResponse.Fail("Travel write-off record not found."));
+
+        if (two.ApprovalStatus != "approved")
+            return new BadRequestObjectResult(ApiResponse.Fail("僅已核准的沖銷申請可執行結案。"));
+
+        await CloseTravelRequestAsync(userId, two.TravelRequestId);
+        await db.SaveChangesAsync();
+
+        var task = await reader.GetApprovalTaskByIdAsync(intId, "travel_write_off");
+        return new OkObjectResult(ApiResponse.Ok(task, "出差申請已結案。"));
     }
 }

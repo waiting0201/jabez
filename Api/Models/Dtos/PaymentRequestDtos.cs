@@ -73,7 +73,9 @@ public sealed record UpdatePaymentRequestRequest(
 public sealed record UpdatePaymentDateRequest(
     DateTime? EstimatedPaymentDate,
     DateTime? PaidAt,
-    string?   ApprovalStatus);
+    string?   ApprovalStatus,
+    DateTime? EstimatedRefundDate = null,
+    DateTime? RefundedAt = null);
 
 // 退還差額匯款日期
 public sealed record RefundDateRequest(DateTime? RefundedAt);
@@ -134,16 +136,21 @@ public sealed record LeaveTaskDetailDto(
     string   Reason);
 
 public sealed record TravelTaskDetailDto(
-    int      TravelRequestId,
-    string   Destination,
-    DateTime StartDate,
-    DateTime EndDate,
-    decimal  GrandTotal,
-    string   Purpose,
-    string?  ProjectCode,
-    string?  ProjectName,
-    bool     IsHolidayTravel,
-    TravelRequestItemDto[] Items = null!)
+    int       TravelRequestId,
+    string    Destination,
+    DateTime  StartDate,
+    DateTime  EndDate,
+    decimal   GrandTotal,
+    string    Purpose,
+    string?   ProjectCode,
+    string?   ProjectName,
+    bool      IsHolidayTravel,
+    DateTime? EstimatedPaymentDate,
+    DateTime? PaidAt,
+    DateTime? EstimatedRefundDate,
+    DateTime? RefundedAt,
+    TravelRequestItemDto[] Items = null!,
+    string?   PaidBySignatureUrl = null)
 {
     public TravelRequestItemDto[] Items { get; init; } = Items ?? Array.Empty<TravelRequestItemDto>();
 }

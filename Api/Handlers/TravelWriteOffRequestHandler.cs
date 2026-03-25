@@ -101,13 +101,21 @@ public sealed class TravelWriteOffRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid travel write-off request ID format."));
 
-        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
-        var exists = user?.IsSuperAdmin == true
-            ? await db.TravelWriteOffRecords.AnyAsync(x => x.Id == intId)
-            : await db.TravelWriteOffRecords.AnyAsync(x => x.Id == intId && x.SubmittedById == userId);
-
-        if (!exists)
+        if (!await db.TravelWriteOffRecords.AnyAsync(x => x.Id == intId))
             return new NotFoundObjectResult(ApiResponse.Fail("Travel write-off request not found."));
+
+        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        if (user?.IsSuperAdmin != true)
+        {
+            bool isSubmitter = await db.TravelWriteOffRecords.AnyAsync(x => x.Id == intId && x.SubmittedById == userId);
+            bool hasReviewed = await db.ApprovalRecords.AsNoTracking()
+                .AnyAsync(ar => ar.ApplicationType == "travel_write_off" && ar.ApplicationId == intId && ar.ReviewedById == userId);
+            bool isDesignated = await db.RequestDesignatedReviewers.AsNoTracking()
+                .AnyAsync(r => r.RequestType == "travel_write_off" && r.RequestId == intId && r.ReviewerId == userId);
+
+            if (!isSubmitter && !hasReviewed && !isDesignated)
+                return new NotFoundObjectResult(ApiResponse.Fail("Travel write-off request not found."));
+        }
 
         var item = await reader.GetByIdAsync(intId);
         return new OkObjectResult(ApiResponse.Ok(item));

@@ -408,11 +408,22 @@ public sealed class AdvanceRequestHandler(
         if (body.EstimatedPaymentDate.HasValue)
             ar.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
         if (body.PaidAt.HasValue)
-            ar.RefundedAt = body.PaidAt.Value;
+        {
+            ar.PaidAt = body.PaidAt.Value;
+            ar.PaidByUserId = userId;
+        }
+        if (body.EstimatedRefundDate.HasValue)
+            ar.EstimatedRefundDate = body.EstimatedRefundDate.Value;
+        if (body.RefundedAt.HasValue)
+        {
+            ar.RefundedAt = body.RefundedAt.Value;
+            ar.RefundedByUserId = userId;
+        }
 
         await db.SaveChangesAsync();
 
-        return new OkObjectResult(ApiResponse.Ok(new { ar.Id, ar.EstimatedPaymentDate, ar.RefundedAt }, "退款日期已更新。"));
+        var msg = (body.EstimatedRefundDate.HasValue || body.RefundedAt.HasValue) ? "退款日期已更新。" : "撥款日期已更新。";
+        return new OkObjectResult(ApiResponse.Ok(new { ar.Id, ar.EstimatedPaymentDate, ar.PaidAt, ar.EstimatedRefundDate, ar.RefundedAt }, msg));
     }
 
     // ── Helper ──────────────────────────────────────────────────────────────

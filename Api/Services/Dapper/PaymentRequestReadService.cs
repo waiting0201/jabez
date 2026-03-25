@@ -304,11 +304,14 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             SELECT tr.Id, tr.Destination, tr.StartDate, tr.EndDate,
                    tr.GrandTotal, tr.Purpose, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    tr.IsHolidayTravel,
+                   tr.EstimatedPaymentDate, tr.PaidAt, tr.EstimatedRefundDate, tr.RefundedAt,
                    tr.ApprovalStatus, tr.ApprovalItemId, tr.CurrentStepOrder,
-                   u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, tr.CreatedAt, tr.ReviewedAt, tr.ReviewNote
+                   u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, tr.CreatedAt, tr.ReviewedAt, tr.ReviewNote,
+                   trpaidby.SignatureUrl AS PaidBySignatureUrl
             FROM TravelRequests tr
-            LEFT JOIN Users u       ON tr.EmployeeId = u.Id
-            LEFT JOIN Projects proj ON tr.ProjectId  = proj.Id
+            LEFT JOIN Users u          ON tr.EmployeeId  = u.Id
+            LEFT JOIN Users trpaidby   ON tr.PaidByUserId = trpaidby.Id
+            LEFT JOIN Projects proj    ON tr.ProjectId   = proj.Id
             {travelWhere}
             ORDER BY tr.CreatedAt DESC
             """;
@@ -328,11 +331,13 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             SELECT adv.Id, adv.RequestNo, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    adv.ActivityName, adv.GrandTotal,
                    adv.ApprovalStatus, adv.ApprovalItemId, adv.CurrentStepOrder,
-                   adv.EstimatedPaymentDate, adv.RefundedAt,
-                   asub.Name AS SubmittedBy, asub.SignatureUrl AS SubmittedBySignatureUrl, adv.CreatedAt, adv.ReviewedAt, adv.ReviewNote
+                   adv.EstimatedPaymentDate, adv.PaidAt, adv.EstimatedRefundDate, adv.RefundedAt,
+                   asub.Name AS SubmittedBy, asub.SignatureUrl AS SubmittedBySignatureUrl, adv.CreatedAt, adv.ReviewedAt, adv.ReviewNote,
+                   advpaidby.SignatureUrl AS PaidBySignatureUrl
             FROM AdvanceRequests adv
-            LEFT JOIN Projects proj   ON adv.ProjectId    = proj.Id
-            LEFT JOIN Users   asub    ON adv.SubmittedById = asub.Id
+            LEFT JOIN Projects proj      ON adv.ProjectId    = proj.Id
+            LEFT JOIN Users   asub       ON adv.SubmittedById = asub.Id
+            LEFT JOIN Users   advpaidby  ON adv.PaidByUserId  = advpaidby.Id
             {advanceWhere}
             ORDER BY adv.CreatedAt DESC
             """;
@@ -344,17 +349,22 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                    wo.ApprovalStatus, wo.ApprovalItemId, wo.CurrentStepOrder,
                    wsub.Name AS SubmittedBy, wsub.SignatureUrl AS SubmittedBySignatureUrl, wo.CreatedAt, wo.ReviewedAt, wo.ReviewNote,
                    wo.SubmittedById,
-                   arx.EstimatedPaymentDate AS AdvanceEstimatedPaymentDate,
+                   arx.EstimatedRefundDate AS AdvanceEstimatedRefundDate,
                    arx.RefundedAt AS AdvanceRefundedAt,
                    arx.GrandTotal AS AdvanceGrandTotal,
                    ISNULL((SELECT SUM(w2.GrandTotal) FROM WriteOffRecords w2
                            WHERE w2.AdvanceRequestId = wo.AdvanceRequestId
                              AND w2.ApprovalStatus <> 'rejected'
-                             AND w2.Id <> wo.Id), 0) AS OtherWrittenOffTotal
+                             AND w2.Id <> wo.Id), 0) AS OtherWrittenOffTotal,
+                   wopaidby.SignatureUrl AS PaidBySignatureUrl,
+                   worefundby.SignatureUrl AS RefundedBySignatureUrl,
+                   arx.IsClosed AS AdvanceIsClosed
             FROM WriteOffRecords wo
             JOIN AdvanceRequests arx  ON wo.AdvanceRequestId = arx.Id
             LEFT JOIN Projects proj   ON arx.ProjectId       = proj.Id
             LEFT JOIN Users   wsub    ON wo.SubmittedById    = wsub.Id
+            LEFT JOIN Users   wopaidby ON arx.PaidByUserId   = wopaidby.Id
+            LEFT JOIN Users   worefundby ON arx.RefundedByUserId = worefundby.Id
             {writeOffWhere}
             ORDER BY wo.CreatedAt DESC
             """;
@@ -368,17 +378,22 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                    two.ApprovalStatus, two.ApprovalItemId, two.CurrentStepOrder,
                    trsub.Name AS SubmittedBy, trsub.SignatureUrl AS SubmittedBySignatureUrl,
                    two.CreatedAt, two.ReviewedAt, two.ReviewNote,
-                   trx.EstimatedPaymentDate AS TravelEstimatedPaymentDate,
+                   trx.EstimatedRefundDate AS TravelEstimatedRefundDate,
                    trx.RefundedAt AS TravelRefundedAt,
                    trx.GrandTotal AS TravelGrandTotal,
                    ISNULL((SELECT SUM(tw2.GrandTotal) FROM TravelWriteOffRecords tw2
                            WHERE tw2.TravelRequestId = two.TravelRequestId
                              AND tw2.ApprovalStatus <> 'rejected'
-                             AND tw2.Id <> two.Id), 0) AS OtherWrittenOffTotal
+                             AND tw2.Id <> two.Id), 0) AS OtherWrittenOffTotal,
+                   twopaidby.SignatureUrl AS PaidBySignatureUrl,
+                   tworefundby.SignatureUrl AS RefundedBySignatureUrl,
+                   trx.IsClosed AS TravelIsClosed
             FROM TravelWriteOffRecords two
             JOIN TravelRequests trx    ON two.TravelRequestId = trx.Id
             LEFT JOIN Projects proj    ON trx.ProjectId       = proj.Id
             LEFT JOIN Users   trsub    ON two.SubmittedById   = trsub.Id
+            LEFT JOIN Users   twopaidby ON trx.PaidByUserId   = twopaidby.Id
+            LEFT JOIN Users   tworefundby ON trx.RefundedByUserId = tworefundby.Id
             {travelWriteOffWhere}
             ORDER BY two.CreatedAt DESC
             """;
@@ -675,7 +690,12 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (string?)row.ProjectCode,
                 (string?)row.ProjectName,
                 (bool)row.IsHolidayTravel,
-                GetTravelItems((int)row.Id)),
+                (DateTime?)row.EstimatedPaymentDate,
+                (DateTime?)row.PaidAt,
+                (DateTime?)row.EstimatedRefundDate,
+                (DateTime?)row.RefundedAt,
+                GetTravelItems((int)row.Id),
+                (string?)row.PaidBySignatureUrl),
             null, null, null, null,
             GetRecords("travel", (int)row.Id),
             GetDesignatedReviewers("travel", (int)row.Id),
@@ -726,8 +746,11 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (string)row.ActivityName,
                 (decimal)row.GrandTotal,
                 (DateTime?)row.EstimatedPaymentDate,
+                (DateTime?)row.PaidAt,
+                (DateTime?)row.EstimatedRefundDate,
                 (DateTime?)row.RefundedAt,
-                GetAdvanceItems((int)row.Id)),
+                GetAdvanceItems((int)row.Id),
+                (string?)row.PaidBySignatureUrl),
             null, null,
             GetRecords("advance", (int)row.Id),
             GetDesignatedReviewers("advance", (int)row.Id),
@@ -777,10 +800,13 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (decimal)row.CheckTotal,
                 (string?)row.Note,
                 GetWriteOffItems((int)row.Id),
-                (DateTime?)row.AdvanceEstimatedPaymentDate,
+                (DateTime?)row.AdvanceEstimatedRefundDate,
                 (DateTime?)row.AdvanceRefundedAt,
                 (decimal)row.AdvanceGrandTotal,
-                (decimal)row.OtherWrittenOffTotal),
+                (decimal)row.OtherWrittenOffTotal,
+                (string?)row.PaidBySignatureUrl,
+                (string?)row.RefundedBySignatureUrl,
+                (bool)row.AdvanceIsClosed),
             null,
             GetRecords("write_off", (int)row.Id),
             GetDesignatedReviewers("write_off", (int)row.Id),
@@ -831,10 +857,13 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (decimal)row.GrandTotal,
                 (string?)row.Note,
                 GetTravelWriteOffItems((int)row.Id),
-                (DateTime?)row.TravelEstimatedPaymentDate,
+                (DateTime?)row.TravelEstimatedRefundDate,
                 (DateTime?)row.TravelRefundedAt,
                 (decimal)row.TravelGrandTotal,
-                (decimal)row.OtherWrittenOffTotal),
+                (decimal)row.OtherWrittenOffTotal,
+                (string?)row.PaidBySignatureUrl,
+                (string?)row.RefundedBySignatureUrl,
+                (bool)row.TravelIsClosed),
             GetRecords("travel_write_off", (int)row.Id),
             GetDesignatedReviewers("travel_write_off", (int)row.Id),
             (string?)row.SubmittedBySignatureUrl));

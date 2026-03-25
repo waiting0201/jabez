@@ -48,9 +48,11 @@ public sealed record TravelRequestDto(
     DesignatedReviewerDto[]?     DesignatedReviewers = null,
     bool                         IsClosed            = false,
     DateTime?                    ClosedAt            = null,
-    decimal?                     RefundAmount        = null,
+    decimal?                     RefundAmount         = null,
     DateTime?                    EstimatedPaymentDate = null,
-    DateTime?                    RefundedAt          = null);
+    DateTime?                    PaidAt               = null,
+    DateTime?                    EstimatedRefundDate  = null,
+    DateTime?                    RefundedAt           = null);
 
 public sealed record CreateTravelRequestRequest(
     Guid?    EmployeeId,

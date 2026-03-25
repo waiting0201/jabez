@@ -101,13 +101,21 @@ public sealed class WriteOffRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid write-off request ID format."));
 
-        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
-        var exists = user?.IsSuperAdmin == true
-            ? await db.WriteOffRecords.AnyAsync(x => x.Id == intId)
-            : await db.WriteOffRecords.AnyAsync(x => x.Id == intId && x.SubmittedById == userId);
-
-        if (!exists)
+        if (!await db.WriteOffRecords.AnyAsync(x => x.Id == intId))
             return new NotFoundObjectResult(ApiResponse.Fail("Write-off request not found."));
+
+        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        if (user?.IsSuperAdmin != true)
+        {
+            bool isSubmitter = await db.WriteOffRecords.AnyAsync(x => x.Id == intId && x.SubmittedById == userId);
+            bool hasReviewed = await db.ApprovalRecords.AsNoTracking()
+                .AnyAsync(ar => ar.ApplicationType == "write_off" && ar.ApplicationId == intId && ar.ReviewedById == userId);
+            bool isDesignated = await db.RequestDesignatedReviewers.AsNoTracking()
+                .AnyAsync(r => r.RequestType == "write_off" && r.RequestId == intId && r.ReviewerId == userId);
+
+            if (!isSubmitter && !hasReviewed && !isDesignated)
+                return new NotFoundObjectResult(ApiResponse.Fail("Write-off request not found."));
+        }
 
         var item = await reader.GetByIdAsync(intId);
         return new OkObjectResult(ApiResponse.Ok(item));

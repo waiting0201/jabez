@@ -45,6 +45,11 @@ public class TravelRequestConfiguration : IEntityTypeConfiguration<TravelRequest
                .HasForeignKey(t => t.ReviewedById)
                .OnDelete(DeleteBehavior.NoAction);
 
+        builder.HasOne(t => t.PaidBy)
+               .WithMany()
+               .HasForeignKey(t => t.PaidByUserId)
+               .OnDelete(DeleteBehavior.NoAction);
+
         builder.HasOne(t => t.ApprovalItem)
                .WithMany(a => a.TravelRequests)
                .HasForeignKey(t => t.ApprovalItemId)
@@ -65,6 +70,11 @@ public class TravelRequestConfiguration : IEntityTypeConfiguration<TravelRequest
         builder.HasOne(t => t.ClosedBy)
                .WithMany()
                .HasForeignKey(t => t.ClosedById)
+               .OnDelete(DeleteBehavior.NoAction);
+
+        builder.HasOne(t => t.RefundedBy)
+               .WithMany()
+               .HasForeignKey(t => t.RefundedByUserId)
                .OnDelete(DeleteBehavior.NoAction);
 
         // 無 Seed data — 出差申請由使用者操作產生

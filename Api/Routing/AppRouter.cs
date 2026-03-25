@@ -209,7 +209,8 @@ public sealed class AppRouter(
             // ── Travel Requests ────────────────────────────────────────────────
             ("GET",    ["travel-requests"])                        => await travelRequests.GetAllAsync(req),
             ("POST",   ["travel-requests"])                        => await travelRequests.CreateAsync(req),
-            ("PATCH",  ["travel-requests", var id, "submit"])     => await travelRequests.SubmitAsync(req, id),
+            ("PATCH",  ["travel-requests", var id, "submit"])        => await travelRequests.SubmitAsync(req, id),
+            ("PATCH",  ["travel-requests", var id, "payment-date"]) => await travelRequests.UpdatePaymentDateAsync(req, id),
             ("GET",    ["travel-requests", var id])                => await travelRequests.GetByIdAsync(req, id),
             ("PUT",    ["travel-requests", var id])                => await travelRequests.UpdateAsync(req, id),
             ("PATCH",  ["travel-requests", var id])                => await travelRequests.UpdateAsync(req, id),
@@ -260,6 +261,8 @@ public sealed class AppRouter(
                                                                                                => await approvalTasks.GetByIdAsync(req, id, appType),
             ("GET",    ["approval-tasks", var id])                                             => await approvalTasks.GetByIdAsync(req, id),
             ("PATCH",  ["approval-tasks", var appType, var id, "review"])                      => await approvalTasks.ReviewAsync(req, appType, id),
+            ("PATCH",  ["approval-tasks", "write_off", var id, "close"])                       => await approvalTasks.CloseWriteOffAsync(req, id),
+            ("PATCH",  ["approval-tasks", "travel_write_off", var id, "close"])                => await approvalTasks.CloseTravelWriteOffAsync(req, id),
 
             // ── 404 ────────────────────────────────────────────────────────────
             _ => new NotFoundObjectResult(
@@ -385,6 +388,7 @@ public sealed class AppRouter(
             ("POST",   ["travel-requests"])              => PermissionCodes.TravelRequestsWrite,
             ("PUT",    ["travel-requests", _])           => PermissionCodes.TravelRequestsWrite,
             ("PATCH",  ["travel-requests", _, "submit"]) => PermissionCodes.TravelRequestsWrite,
+            ("PATCH",  ["travel-requests", _, "payment-date"]) => PermissionCodes.TravelRequestsWrite,
             ("PATCH",  ["travel-requests", _])           => PermissionCodes.TravelRequestsWrite,
             ("DELETE", ["travel-requests", _])           => PermissionCodes.TravelRequestsDelete,
 

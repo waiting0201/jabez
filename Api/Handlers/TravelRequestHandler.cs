@@ -384,6 +384,59 @@ public sealed class TravelRequestHandler(
         return new OkObjectResult(ApiResponse.Ok(dto, msg));
     }
 
+    // ── 更新撥款日（僅財務部/Superadmin）──────────────────────────────────────
+
+    public async Task<IActionResult> UpdatePaymentDateAsync(HttpRequest req, string id)
+    {
+        if (!int.TryParse(id, out var intId))
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid ID format."));
+
+        var principal = await jwtService.ValidateRequestAsync(req);
+        if (principal is null)
+            return new UnauthorizedObjectResult(ApiResponse.Fail("Unauthorized."));
+
+        var userIdStr = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return new UnauthorizedObjectResult(ApiResponse.Fail("Invalid token claims."));
+
+        var user = await db.Users.AsNoTracking().Include(u => u.Department).FirstOrDefaultAsync(u => u.Id == userId);
+        if (user is null)
+            return new UnauthorizedObjectResult(ApiResponse.Fail("User not found."));
+
+        if (!user.IsSuperAdmin && user.Department?.Code != "FIN")
+            return new ForbidResult();
+
+        var tr = await db.TravelRequests.FindAsync(intId)
+            ?? throw AppException.NotFound("TravelRequest");
+
+        if (tr.ApprovalStatus != "approved")
+            return new BadRequestObjectResult(ApiResponse.Fail("只有已核准的出差申請可以設定撥款日。"));
+
+        var body = await req.ReadFromJsonAsync<UpdatePaymentDateRequest>();
+        if (body is null)
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
+
+        if (body.EstimatedPaymentDate.HasValue)
+            tr.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
+        if (body.PaidAt.HasValue)
+        {
+            tr.PaidAt = body.PaidAt.Value;
+            tr.PaidByUserId = userId;
+        }
+        if (body.EstimatedRefundDate.HasValue)
+            tr.EstimatedRefundDate = body.EstimatedRefundDate.Value;
+        if (body.RefundedAt.HasValue)
+        {
+            tr.RefundedAt = body.RefundedAt.Value;
+            tr.RefundedByUserId = userId;
+        }
+
+        await db.SaveChangesAsync();
+
+        var msg = (body.EstimatedRefundDate.HasValue || body.RefundedAt.HasValue) ? "退款日期已更新。" : "撥款日期已更新。";
+        return new OkObjectResult(ApiResponse.Ok(new { tr.Id, tr.EstimatedPaymentDate, tr.PaidAt, tr.EstimatedRefundDate, tr.RefundedAt }, msg));
+    }
+
     // ── Helper ──────────────────────────────────────────────────────────────────
 
     /// <summary>從 JWT Bearer Token 取出 sub claim 作為使用者 GUID</summary>

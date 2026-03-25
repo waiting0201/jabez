@@ -15,7 +15,8 @@ public sealed class TravelRequestReadService(IDbConnection db) : ITravelRequestR
                tr.IsHolidayTravel,
                tr.ApprovalStatus, tr.CreatedAt, tr.ReviewedAt, tr.ReviewNote,
                tr.ApprovalItemId, tr.CurrentStepOrder, tr.ReviewedById,
-               tr.IsClosed, tr.ClosedAt, tr.RefundAmount, tr.EstimatedPaymentDate, tr.RefundedAt,
+               tr.IsClosed, tr.ClosedAt, tr.RefundAmount,
+               tr.EstimatedPaymentDate, tr.PaidAt, tr.EstimatedRefundDate, tr.RefundedAt,
                ti.Id AS ItemId, ti.Category, ti.SeqNo, ti.ItemName,
                ti.UnitPrice, ti.Quantity, ti.TotalPrice,
                ti.Note AS ItemNote, ti.SortOrder
@@ -135,6 +136,8 @@ public sealed class TravelRequestReadService(IDbConnection db) : ITravelRequestR
                 ClosedAt:                (DateTime?)tr.ClosedAt,
                 RefundAmount:            (decimal?)tr.RefundAmount,
                 EstimatedPaymentDate:    (DateTime?)tr.EstimatedPaymentDate,
+                PaidAt:                  (DateTime?)tr.PaidAt,
+                EstimatedRefundDate:     (DateTime?)tr.EstimatedRefundDate,
                 RefundedAt:              (DateTime?)tr.RefundedAt);
         });
     }
