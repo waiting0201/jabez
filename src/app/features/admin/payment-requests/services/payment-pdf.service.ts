@@ -195,9 +195,17 @@ export class PaymentPdfService {
         body: bodyRows,
       });
 
-      // ── 簽名欄 ──
+      // ── 預計撥款日 / 撥款日 ──
       const tableEndY = (doc as any).lastAutoTable.finalY;
-      y = tableEndY + 16;
+      y = tableEndY + 8;
+      doc.setFont(F, 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(...CIS.textPrimary);
+      lv('預計撥款日：', d.estimatedPaymentDate ? fmtDT(d.estimatedPaymentDate).split(' ')[0] : '—', mx, y, true);
+      lv('撥  款  日：', d.paidAt ? fmtDT(d.paidAt).split(' ')[0] : '—', pw - mx - 55, y, true);
+
+      // ── 簽名欄 ──
+      y += 12;
 
       const signBlocks = this._buildSignBlocks(task, submitDate);
       const sigImageMap = await this._loadSignatureImages(signBlocks);
@@ -224,43 +232,50 @@ export class PaymentPdfService {
     }
   }
 
-  /** 根據簽核流程和記錄建立簽名欄資料 */
+  /** 根據簽核流程和記錄建立簽名欄資料（固定順序：總監→財務→會計→出納→指定審核→請款人） */
   private _buildSignBlocks(task: ApprovalTask, submitDate: string): SignBlock[] {
     const blocks: SignBlock[] = [];
     const records = task.approvalRecords || [];
 
-    // 根據 flow steps 對應簽名欄
-    const stepLabels: Record<number, string> = {};
+    // 根據 flow steps 建立 label → stepOrder 映射（不依賴 hardcoded stepOrder）
+    const labelToStep: Record<string, number> = {};
+    let step1Label = '指定審核'; // step1 的預設 label
     if (task.flow) {
       for (const step of task.flow.steps) {
+        let label: string;
         if (step.useApplicantDesignated) {
-          stepLabels[step.stepOrder] = '指定審核';
+          label = '指定審核';
         } else if (step.useDirectSupervisor) {
-          stepLabels[step.stepOrder] = '上層級';
-        } else if (step.jobTitleName?.includes('總監') || step.stepOrder === 4) {
-          stepLabels[step.stepOrder] = '總監';
-        } else if (step.departmentName?.includes('財務') || step.stepOrder === 3) {
-          stepLabels[step.stepOrder] = '財務';
-        } else if (step.departmentName?.includes('會計') || step.stepOrder === 2) {
-          stepLabels[step.stepOrder] = '會計';
-        } else if (step.stepOrder === 1) {
-          stepLabels[step.stepOrder] = '部門主管';
+          label = '上層級';
+        } else if (step.jobTitleName?.includes('總監')) {
+          label = '總監';
+        } else if (step.departmentName?.includes('財務')) {
+          label = '財務';
+        } else if (step.departmentName?.includes('會計')) {
+          label = '會計';
         } else {
-          stepLabels[step.stepOrder] = step.jobTitleName || `Step ${step.stepOrder}`;
+          label = step.departmentName || step.jobTitleName || `Step ${step.stepOrder}`;
         }
+        labelToStep[label] = step.stepOrder;
+        if (step.stepOrder === 1) step1Label = label;
       }
     }
 
-    // 按步驟順序倒排（總監在最左邊）
-    const stepOrders = Object.keys(stepLabels).map(Number).sort((a, b) => b - a);
-    for (const so of stepOrders) {
-      const rec = records.find(r => r.stepOrder === so);
+    /** 根據 label 找到對應的 approval record 並建立 block */
+    const addStepBlock = (label: string) => {
+      const so = labelToStep[label];
+      const rec = so != null ? records.find(r => r.stepOrder === so) : undefined;
       blocks.push({
-        label: stepLabels[so],
+        label,
         signatureUrl: rec?.reviewerSignatureUrl,
         date: rec?.reviewedAt ? fmtDT(rec.reviewedAt) : '',
       });
-    }
+    };
+
+    // 固定順序：總監 → 財務 → 會計
+    addStepBlock('總監');
+    addStepBlock('財務');
+    addStepBlock('會計');
 
     // 出納（撥款者簽名 + 撥款日期）
     blocks.push({
@@ -268,6 +283,9 @@ export class PaymentPdfService {
       signatureUrl: task.paymentDetail?.paidBySignatureUrl,
       date: task.paymentDetail?.paidAt ? fmtDT(task.paymentDetail.paidAt) : '',
     });
+
+    // 指定審核（step1，label 可能是「指定審核」「部門主管」「上層級」）
+    addStepBlock(step1Label);
 
     // 請款人（最右邊）
     blocks.push({

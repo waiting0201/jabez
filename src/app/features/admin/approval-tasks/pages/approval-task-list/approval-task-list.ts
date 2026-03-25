@@ -12,6 +12,10 @@ import {
   ApprovalTask,
 } from '../../models/approval-task.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
+import {AuthService} from '../../../../../core/auth/services/auth.service';
+
+/** 可看到撥款/退款篩選的部門代碼：總監室、行政財務部、會計部 */
+const PAYMENT_FILTER_DEPT_CODES = new Set(['CEO', 'FIN', 'AC']);
 
 @Component({
   selector: 'app-approval-task-list',
@@ -20,19 +24,32 @@ import {PagedResult} from '../../../../../shared/models/paged-result.model';
 })
 export class ApprovalTaskList {
   private service = inject(ApprovalTaskService);
+  private auth = inject(AuthService);
+
+  /** Superadmin 或總監室/財務部/會計部才顯示撥款/退款子篩選 */
+  canSeePaymentFilter = computed(() =>
+    this.auth.isSuperAdmin() || PAYMENT_FILTER_DEPT_CODES.has(this.auth.departmentCode() ?? '')
+  );
 
   readonly PAGE_SIZE = 20;
   activeTab = signal<'pending' | 'approved'>('pending');
+  paymentStatus = signal<'' | 'paid' | 'unpaid'>('');
   page = signal(1);
 
   switchTab(tab: 'pending' | 'approved') {
     this.activeTab.set(tab);
+    this.paymentStatus.set('');
+    this.page.set(1);
+  }
+
+  setPaymentStatus(status: '' | 'paid' | 'unpaid') {
+    this.paymentStatus.set(status);
     this.page.set(1);
   }
 
   private result = toSignal(
-    combineLatest([toObservable(this.page), toObservable(this.activeTab)]).pipe(
-      switchMap(([p, status]) => this.service.getPaged(p, this.PAGE_SIZE, status))
+    combineLatest([toObservable(this.page), toObservable(this.activeTab), toObservable(this.paymentStatus)]).pipe(
+      switchMap(([p, status, ps]) => this.service.getPaged(p, this.PAGE_SIZE, status, ps || undefined))
     ),
     {initialValue: {items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 1} as PagedResult<ApprovalTask>}
   );

@@ -20,6 +20,29 @@
     </button>
   </div>
 
+  <!-- 撥款/退款狀態篩選（僅已核准頁籤 + Superadmin/總監室/財務部/會計部） -->
+  @if (activeTab() === 'approved' && canSeePaymentFilter()) {
+    <div class="flex gap-1 mb-4">
+      <button class="btn btn-sm"
+              [class]="paymentStatus() === '' ? 'btn-outline-primary' : 'btn-outline-secondary'"
+              (click)="setPaymentStatus('')">
+        全部
+      </button>
+      <button class="btn btn-sm"
+              [class]="paymentStatus() === 'unpaid' ? 'btn-outline-primary' : 'btn-outline-secondary'"
+              (click)="setPaymentStatus('unpaid')">
+        <svg class="sa-icon me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
+        未撥款/未退款
+      </button>
+      <button class="btn btn-sm"
+              [class]="paymentStatus() === 'paid' ? 'btn-outline-primary' : 'btn-outline-secondary'"
+              (click)="setPaymentStatus('paid')">
+        <svg class="sa-icon me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#check-circle"></use></svg>
+        已撥款/已退款
+      </button>
+    </div>
+  }
+
   <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
       <div class="table-responsive">
@@ -60,7 +83,10 @@
             } @empty {
               <tr>
                 <td colspan="6" class="text-center text-muted py-4">
-                  {{ activeTab() === 'pending' ? '目前沒有待審核的簽核作業。' : '目前沒有已核准的簽核作業。' }}
+                  {{ activeTab() === 'pending' ? '目前沒有待審核的簽核作業。'
+                     : paymentStatus() === 'unpaid' ? '目前沒有未撥款/未退款的已核准簽核作業。'
+                     : paymentStatus() === 'paid' ? '目前沒有已撥款/已退款的已核准簽核作業。'
+                     : '目前沒有已核准的簽核作業。' }}
                 </td>
               </tr>
             }

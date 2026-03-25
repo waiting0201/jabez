@@ -209,7 +209,7 @@ export class PaymentForm implements OnInit {
           }
         }
         r.invoices.forEach(inv => this.invoiceArray.push(
-          this._invoiceGroup(String(inv.id), inv.fileName, inv.invoiceNo, inv.amount, inv.fileUrl ?? '', inv.fileUrl ?? '', inv.itemName ?? '', inv.note ?? '', inv.invoiceDate ?? '')
+          this._invoiceGroup(String(inv.id), inv.fileName, inv.invoiceNo, inv.amount, inv.fileUrl ?? '', inv.fileUrl ?? '', inv.itemName ?? '', inv.note ?? '', inv.invoiceDate?.toString().slice(0, 10) ?? '')
         ));
         // 非草稿時載入簽核流程
         if (r.approvalStatus !== 'draft') {
