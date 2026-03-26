@@ -228,9 +228,17 @@ export class TravelPdfService {
         body: bodyRows,
       });
 
-      // ── 簽名欄 ──
+      // ── 預計撥款日 / 撥款日 ──
       const tableEndY = (doc as any).lastAutoTable.finalY;
-      y = tableEndY + 10;
+      y = tableEndY + 8;
+      doc.setFont(F, 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(...CIS.textPrimary);
+      lv('預計撥款日：', r.estimatedPaymentDate ? fmtDT(r.estimatedPaymentDate).split(' ')[0] : '—', mx, y, true);
+      lv('撥  款  日：', r.paidAt ? fmtDT(r.paidAt).split(' ')[0] : '—', pw - mx - 55, y, true);
+
+      // ── 簽名欄 ──
+      y += 10;
 
       if (y + 35 > ph - 15) { doc.addPage(); y = 20; }
 

@@ -228,6 +228,16 @@ export class AdvancePdfService {
 
       // ── 沖銷紀錄表格（按次展開） ──
       y = (doc as any).lastAutoTable.finalY + 6;
+
+      // ── 預計撥款日 / 撥款日 ──
+      y += 2;
+      doc.setFont(F, 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(...CIS.textPrimary);
+      lv('預計撥款日：', r.estimatedPaymentDate ? fmtDT(r.estimatedPaymentDate).split(' ')[0] : '—', mx, y, true);
+      lv('撥  款  日：', r.paidAt ? fmtDT(r.paidAt).split(' ')[0] : '—', pw - mx - 55, y, true);
+      y += 6;
+
       const woRecords = r.writeOffRecords || [];
       for (const wo of woRecords) {
         // 小標題：第 N 次沖銷
