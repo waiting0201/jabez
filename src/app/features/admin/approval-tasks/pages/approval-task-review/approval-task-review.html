@@ -208,6 +208,14 @@
                         <span class="font-monospace fw-500">{{ d.projectCode }}</span>
                       </div>
                     }
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">預計撥款日</div>
+                      <span class="fw-500">{{ d.estimatedPaymentDate ? (d.estimatedPaymentDate | date:'yyyy/MM/dd') : '—' }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">撥款日</div>
+                      <span class="fw-500">{{ d.paidAt ? (d.paidAt | date:'yyyy/MM/dd') : '—' }}</span>
+                    </div>
                     <div class="col-12">
                       <div class="text-muted small mb-1">出差目的</div>
                       <div class="border rounded p-4 bg-[--bg-base] small">{{ d.purpose }}</div>
@@ -332,6 +340,14 @@
                     <div class="col-6 col-md-4">
                       <div class="text-muted small mb-1">預支金額</div>
                       <span class="fw-600 fs-5">{{ d.grandTotal | number:'1.0-0' }} 元</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">預計撥款日</div>
+                      <span class="fw-500">{{ d.estimatedPaymentDate ? (d.estimatedPaymentDate | date:'yyyy/MM/dd') : '—' }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">撥款日</div>
+                      <span class="fw-500">{{ d.paidAt ? (d.paidAt | date:'yyyy/MM/dd') : '—' }}</span>
                     </div>
                   </div>
                 </div>
