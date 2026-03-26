@@ -11,7 +11,11 @@ public sealed record TravelRequestItemDto(
     string  Quantity,
     decimal TotalPrice,
     string? Note,
-    int     SortOrder);
+    int     SortOrder,
+    string? InvoiceNo    = null,
+    string? FileName     = null,
+    string? FileUrl      = null,
+    DateTime? InvoiceDate = null);
 
 public sealed record TravelRequestItemRequest(
     string  Category,
@@ -22,6 +26,12 @@ public sealed record TravelRequestItemRequest(
     decimal TotalPrice,
     string? Note    = null,
     int     SortOrder = 0);
+
+// ── 參與者 DTO ────────────────────────────────────────────────────────────
+
+public sealed record ParticipantRequest(Guid UserId, int SortOrder);
+
+public sealed record ParticipantDto(Guid UserId, string UserName, int SortOrder);
 
 // ── 主申請單 DTO ────────────────────────────────────────────────────────────
 
@@ -52,7 +62,9 @@ public sealed record TravelRequestDto(
     DateTime?                    EstimatedPaymentDate = null,
     DateTime?                    PaidAt               = null,
     DateTime?                    EstimatedRefundDate  = null,
-    DateTime?                    RefundedAt           = null);
+    DateTime?                    RefundedAt           = null,
+    int                          HolidayDays          = 0,
+    ParticipantDto[]?            Participants         = null);
 
 public sealed record CreateTravelRequestRequest(
     Guid?    EmployeeId,
@@ -64,7 +76,8 @@ public sealed record CreateTravelRequestRequest(
     int?     ProjectId            = null,
     bool     IsHolidayTravel      = false,
     TravelRequestItemRequest[]?  Items               = null,
-    DesignatedReviewerRequest[]? DesignatedReviewers = null);
+    DesignatedReviewerRequest[]? DesignatedReviewers = null,
+    ParticipantRequest[]?        Participants        = null);
 
 public sealed record UpdateTravelRequestRequest(
     string?   Destination,
@@ -74,4 +87,5 @@ public sealed record UpdateTravelRequestRequest(
     int?      ProjectId,
     bool?     IsHolidayTravel,
     TravelRequestItemRequest[]?  Items               = null,
-    DesignatedReviewerRequest[]? DesignatedReviewers = null);
+    DesignatedReviewerRequest[]? DesignatedReviewers = null,
+    ParticipantRequest[]?        Participants        = null);

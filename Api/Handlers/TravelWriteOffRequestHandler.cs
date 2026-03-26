@@ -68,6 +68,7 @@ public sealed class TravelWriteOffRequestHandler(
                 t.Purpose,
                 ProjectCode = t.Project != null ? t.Project.Code : "",
                 t.GrandTotal,
+                t.IsHolidayTravel,
                 WrittenOffTotal = db.TravelWriteOffRecords
                     .Where(w => w.TravelRequestId == t.Id && w.ApprovalStatus != "rejected")
                     .Sum(w => (decimal?)w.GrandTotal) ?? 0m,

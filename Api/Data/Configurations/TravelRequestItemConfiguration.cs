@@ -31,6 +31,15 @@ public class TravelRequestItemConfiguration : IEntityTypeConfiguration<TravelReq
         builder.Property(i => i.Note)
                .HasMaxLength(500);
 
+        builder.Property(i => i.InvoiceNo)
+               .HasMaxLength(50);
+
+        builder.Property(i => i.FileName)
+               .HasMaxLength(500);
+
+        builder.Property(i => i.FileUrl)
+               .HasMaxLength(2000);
+
         builder.HasOne(i => i.TravelRequest)
                .WithMany(t => t.Items)
                .HasForeignKey(i => i.TravelRequestId)

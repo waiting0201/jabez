@@ -35,6 +35,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<TravelWriteOffItem>   TravelWriteOffItems   { get; set; }
     public DbSet<PayrollAdjustment>    PayrollAdjustments    { get; set; }
     public DbSet<RequestDesignatedReviewer> RequestDesignatedReviewers { get; set; }
+    public DbSet<CalendarDay>                CalendarDays               { get; set; }
+    public DbSet<TravelRequestParticipant>   TravelRequestParticipants  { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

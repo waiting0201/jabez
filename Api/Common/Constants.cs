@@ -58,6 +58,12 @@ public static class PermissionCodes
     public const string TravelWriteOffRequestsRead      = "travel-write-off-requests:read";
     public const string TravelWriteOffRequestsWrite     = "travel-write-off-requests:write";
     public const string TravelWriteOffRequestsDelete    = "travel-write-off-requests:delete";
+    public const string HolidayTravelRequestsRead       = "holiday-travel-requests:read";
+    public const string HolidayTravelRequestsWrite      = "holiday-travel-requests:write";
+    public const string HolidayTravelRequestsDelete     = "holiday-travel-requests:delete";
+    public const string CalendarDaysRead                = "calendar-days:read";
+    public const string CalendarDaysWrite               = "calendar-days:write";
+    public const string CalendarDaysDelete              = "calendar-days:delete";
 }
 
 public static class RoleNames

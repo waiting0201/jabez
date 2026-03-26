@@ -24,6 +24,9 @@ public class TravelRequestConfiguration : IEntityTypeConfiguration<TravelRequest
         builder.Property(t => t.IsHolidayTravel)
                .HasDefaultValue(false);
 
+        builder.Property(t => t.HolidayDays)
+               .HasDefaultValue(0);
+
         builder.Property(t => t.ApprovalStatus)
                .IsRequired()
                .HasMaxLength(20)

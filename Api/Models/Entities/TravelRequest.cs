@@ -12,6 +12,7 @@ public class TravelRequest
     public string   Purpose         { get; set; } = string.Empty;
     public int?     ProjectId       { get; set; }
     public bool     IsHolidayTravel { get; set; }
+    public int      HolidayDays     { get; set; }  // 假日天數（Submit 時自動計算）
     public string   ApprovalStatus   { get; set; } = "pending";  // pending | approved | rejected | returned
     public int      CurrentStepOrder { get; set; } = 1;
     public Guid?    ReviewedById    { get; set; }
@@ -43,6 +44,7 @@ public class TravelRequest
     public ApprovalItem? ApprovalItem       { get; set; }
     public Project?      Project            { get; set; }
     public User?         ClosedBy           { get; set; }
-    public ICollection<TravelRequestItem>   Items    { get; set; } = [];
-    public ICollection<TravelWriteOffRecord> WriteOffs { get; set; } = [];
+    public ICollection<TravelRequestItem>        Items        { get; set; } = [];
+    public ICollection<TravelRequestParticipant>  Participants { get; set; } = [];
+    public ICollection<TravelWriteOffRecord>      WriteOffs    { get; set; } = [];
 }

@@ -24,16 +24,17 @@ public sealed class TravelRequestHandler(
     ITravelRequestReadService reader,
     IJwtService jwtService,
     IApprovalNotificationService notifier,
-    IApprovalFlowService approvalFlow)
+    IApprovalFlowService approvalFlow,
+    ICalendarDayReadService calendarDayReader)
 {
-    public async Task<IActionResult> GetAllAsync(HttpRequest req)
+    public async Task<IActionResult> GetAllAsync(HttpRequest req, bool isHolidayTravel = false)
     {
         var userId = await GetUserIdAsync(req);
         var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         Guid? filterUserId = user?.IsSuperAdmin == true ? null : userId;
         int page     = int.TryParse(req.Query["page"],     out var p)  ? Math.Max(1, p)         : 1;
         int pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, 100) : 20;
-        var result = await reader.GetPagedAsync(page, pageSize, filterUserId);
+        var result = await reader.GetPagedAsync(page, pageSize, filterUserId, isHolidayTravel);
         return new OkObjectResult(ApiResponse.Ok(result));
     }
 
@@ -54,8 +55,9 @@ public sealed class TravelRequestHandler(
         return new OkObjectResult(ApiResponse.Ok(item));
     }
 
-    public async Task<IActionResult> CreateAsync(HttpRequest req)
+    public async Task<IActionResult> CreateAsync(HttpRequest req, bool isHolidayTravel = false)
     {
+        var appType = isHolidayTravel ? "holiday_travel" : "travel";
         // BUG-04: EmployeeId 由 JWT 中的 sub claim 決定，不信任客戶端傳入的值
         var employeeId = await GetUserIdAsync(req);
 
@@ -85,6 +87,15 @@ public sealed class TravelRequestHandler(
                 return new BadRequestObjectResult(ApiResponse.Fail("一或多位指定審核者不存在。"));
         }
 
+        // 假日出差：參與者存在性驗證
+        if (isHolidayTravel && body.Participants is { Length: > 0 })
+        {
+            var participantIds = body.Participants.Select(p => p.UserId).Distinct().ToList();
+            var existCount = await db.Users.AsNoTracking().CountAsync(u => participantIds.Contains(u.Id));
+            if (existCount != participantIds.Count)
+                return new BadRequestObjectResult(ApiResponse.Fail("一或多位出差參與者不存在。"));
+        }
+
         // 建立明細項目，計算 GrandTotal
         var items = body.Items.Select((i, idx) => new TravelRequestItem
         {
@@ -108,7 +119,7 @@ public sealed class TravelRequestHandler(
             GrandTotal      = items.Sum(i => i.TotalPrice),
             Purpose         = body.Purpose,
             ProjectId       = body.ProjectId,
-            IsHolidayTravel = body.IsHolidayTravel,
+            IsHolidayTravel = isHolidayTravel,  // 強制由路由決定，忽略 body 的值
             ApprovalStatus  = "draft",
             CreatedAt       = Clock.Now,
             Items           = items,
@@ -122,10 +133,23 @@ public sealed class TravelRequestHandler(
             db.RequestDesignatedReviewers.AddRange(
                 body.DesignatedReviewers.OrderBy(r => r.StepOrder).Select(r => new RequestDesignatedReviewer
                 {
-                    RequestType = "travel",
+                    RequestType = appType,
                     RequestId   = travelRequest.Id,
                     ReviewerId  = r.ReviewerId,
                     StepOrder   = r.StepOrder,
+                }));
+            await db.SaveChangesAsync();
+        }
+
+        // 假日出差：儲存參與者
+        if (isHolidayTravel && body.Participants is { Length: > 0 })
+        {
+            db.TravelRequestParticipants.AddRange(
+                body.Participants.Select(p => new TravelRequestParticipant
+                {
+                    TravelRequestId = travelRequest.Id,
+                    UserId          = p.UserId,
+                    SortOrder       = p.SortOrder,
                 }));
             await db.SaveChangesAsync();
         }
@@ -134,8 +158,9 @@ public sealed class TravelRequestHandler(
         return new ObjectResult(ApiResponse.Ok(dto, "Travel request created.")) { StatusCode = 201 };
     }
 
-    public async Task<IActionResult> UpdateAsync(HttpRequest req, string id)
+    public async Task<IActionResult> UpdateAsync(HttpRequest req, string id, bool isHolidayTravel = false)
     {
+        var appType = isHolidayTravel ? "holiday_travel" : "travel";
         var userId = await GetUserIdAsync(req);
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid travel request ID format."));
@@ -146,8 +171,8 @@ public sealed class TravelRequestHandler(
 
         var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         var item = currentUser?.IsSuperAdmin == true
-            ? await db.TravelRequests.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId)
-            : await db.TravelRequests.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
+            ? await db.TravelRequests.Include(x => x.Items).Include(x => x.Participants).FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.TravelRequests.Include(x => x.Items).Include(x => x.Participants).FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
         if (item is null) throw AppException.NotFound("TravelRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
@@ -164,7 +189,7 @@ public sealed class TravelRequestHandler(
                     return new BadRequestObjectResult(ApiResponse.Fail("一或多位指定審核者不存在。"));
             }
             var old = await db.RequestDesignatedReviewers
-                .Where(r => r.RequestType == "travel" && r.RequestId == intId)
+                .Where(r => r.RequestType == appType && r.RequestId == intId)
                 .ToListAsync();
             db.RequestDesignatedReviewers.RemoveRange(old);
             if (body.DesignatedReviewers.Length > 0)
@@ -172,7 +197,7 @@ public sealed class TravelRequestHandler(
                 db.RequestDesignatedReviewers.AddRange(
                     body.DesignatedReviewers.Select(r => new RequestDesignatedReviewer
                     {
-                        RequestType = "travel",
+                        RequestType = appType,
                         RequestId   = intId,
                         ReviewerId  = r.ReviewerId,
                         StepOrder   = r.StepOrder,
@@ -180,12 +205,35 @@ public sealed class TravelRequestHandler(
             }
         }
 
-        if (body.Destination is not null)     item.Destination     = body.Destination;
-        if (body.StartDate.HasValue)          item.StartDate       = body.StartDate.Value;
-        if (body.EndDate.HasValue)            item.EndDate         = body.EndDate.Value;
-        if (body.Purpose is not null)         item.Purpose         = body.Purpose;
-        if (body.ProjectId.HasValue)          item.ProjectId       = body.ProjectId == 0 ? null : body.ProjectId;
-        if (body.IsHolidayTravel.HasValue)    item.IsHolidayTravel = body.IsHolidayTravel.Value;
+        // 假日出差：參與者整組替換（提供 Participants 時才更新）
+        if (isHolidayTravel && body.Participants is not null)
+        {
+            if (body.Participants.Length > 0)
+            {
+                var participantIds = body.Participants.Select(p => p.UserId).Distinct().ToList();
+                var existCount = await db.Users.AsNoTracking().CountAsync(u => participantIds.Contains(u.Id));
+                if (existCount != participantIds.Count)
+                    return new BadRequestObjectResult(ApiResponse.Fail("一或多位出差參與者不存在。"));
+            }
+            db.TravelRequestParticipants.RemoveRange(item.Participants);
+            if (body.Participants.Length > 0)
+            {
+                db.TravelRequestParticipants.AddRange(
+                    body.Participants.Select(p => new TravelRequestParticipant
+                    {
+                        TravelRequestId = intId,
+                        UserId          = p.UserId,
+                        SortOrder       = p.SortOrder,
+                    }));
+            }
+        }
+
+        if (body.Destination is not null)  item.Destination = body.Destination;
+        if (body.StartDate.HasValue)       item.StartDate   = body.StartDate.Value;
+        if (body.EndDate.HasValue)         item.EndDate     = body.EndDate.Value;
+        if (body.Purpose is not null)      item.Purpose     = body.Purpose;
+        if (body.ProjectId.HasValue)       item.ProjectId   = body.ProjectId == 0 ? null : body.ProjectId;
+        // IsHolidayTravel 不允許透過 UpdateAsync 修改（由路由決定），忽略 body.IsHolidayTravel
 
         // 明細項目整組替換（提供 Items 時才更新）
         if (body.Items is { Length: > 0 })
@@ -235,8 +283,11 @@ public sealed class TravelRequestHandler(
     }
 
     /// <summary>送出申請（draft → pending）</summary>
-    public async Task<IActionResult> SubmitAsync(HttpRequest req, string id)
+    public async Task<IActionResult> SubmitAsync(HttpRequest req, string id, bool isHolidayTravel = false)
     {
+        // 根據路由決定申請類型（假日出差 vs 一般出差）
+        var appType = isHolidayTravel ? "holiday_travel" : "travel";
+
         var userId = await GetUserIdAsync(req);
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid travel request ID format."));
@@ -255,22 +306,32 @@ public sealed class TravelRequestHandler(
         if (!hasItems)
             return new BadRequestObjectResult(ApiResponse.Fail("出差申請至少需要一筆費用明細項目。"));
 
+        // 假日出差：計算 HolidayDays（送出時計算，需確認行事曆資料已匯入）
+        if (isHolidayTravel)
+        {
+            var hasCalendarData = await calendarDayReader.HasDataForRangeAsync(item.StartDate, item.EndDate);
+            if (!hasCalendarData)
+                return new BadRequestObjectResult(ApiResponse.Fail($"行事曆資料尚未匯入（{item.StartDate:yyyy/MM/dd} ~ {item.EndDate:yyyy/MM/dd}），請聯絡管理員匯入後再送出。"));
+
+            item.HolidayDays = await calendarDayReader.CountHolidaysAsync(item.StartDate, item.EndDate);
+        }
+
         // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
         if (item.ApprovalStatus == "returned")
         {
             var oldRecords = await db.ApprovalRecords
-                .Where(r => r.ApplicationType == "travel" && r.ApplicationId == item.Id)
+                .Where(r => r.ApplicationType == appType && r.ApplicationId == item.Id)
                 .ToListAsync();
             db.ApprovalRecords.RemoveRange(oldRecords);
 
             var oldOverrides = await db.EscalationOverrides
-                .Where(o => o.ApplicationType == "travel" && o.ApplicationId == item.Id)
+                .Where(o => o.ApplicationType == appType && o.ApplicationId == item.Id)
                 .ToListAsync();
             db.EscalationOverrides.RemoveRange(oldOverrides);
 
             // 重置指定審核者狀態為 pending
             var rdrsToReset = await db.RequestDesignatedReviewers
-                .Where(r => r.RequestType == "travel" && r.RequestId == item.Id)
+                .Where(r => r.RequestType == appType && r.RequestId == item.Id)
                 .ToListAsync();
             foreach (var rdr in rdrsToReset)
             {
@@ -299,7 +360,7 @@ public sealed class TravelRequestHandler(
         {
             var flow = await db.ApprovalItems
                 .AsNoTracking()
-                .FirstOrDefaultAsync(ai => ai.ApplicationType == "travel" && ai.IsActive);
+                .FirstOrDefaultAsync(ai => ai.ApplicationType == appType && ai.IsActive);
             if (flow is not null)
                 item.ApprovalItemId = flow.Id;
         }
@@ -312,7 +373,7 @@ public sealed class TravelRequestHandler(
             if (hasDesignatedStep)
             {
                 bool hasReviewers = await db.RequestDesignatedReviewers
-                    .AnyAsync(r => r.RequestType == "travel" && r.RequestId == item.Id);
+                    .AnyAsync(r => r.RequestType == appType && r.RequestId == item.Id);
                 if (!hasReviewers)
                     return new BadRequestObjectResult(ApiResponse.Fail("此簽核流程包含申請人指定審核步驟，請提供指定審核者。"));
             }
@@ -321,14 +382,14 @@ public sealed class TravelRequestHandler(
         // 查詢指定審核者清單傳給 ResolveStartingStepAsync
         var designatedReviewers = await db.RequestDesignatedReviewers
             .AsNoTracking()
-            .Where(r => r.RequestType == "travel" && r.RequestId == item.Id)
+            .Where(r => r.RequestType == appType && r.RequestId == item.Id)
             .OrderBy(r => r.StepOrder)
             .Select(r => new DesignatedReviewerRequest(r.ReviewerId, r.StepOrder))
             .ToListAsync();
 
         // 解析審核步驟（含升級審核邏輯）
         var (startStep, autoApproved, escalation) =
-            await approvalFlow.ResolveStartingStepAsync(item.ApprovalItemId, userId, "travel", designatedReviewers);
+            await approvalFlow.ResolveStartingStepAsync(item.ApprovalItemId, userId, appType, designatedReviewers);
 
         if (autoApproved)
         {
@@ -349,7 +410,7 @@ public sealed class TravelRequestHandler(
         {
             db.EscalationOverrides.Add(new EscalationOverride
             {
-                ApplicationType  = "travel",
+                ApplicationType  = appType,
                 ApplicationId    = item.Id,
                 StepOrder        = startStep,
                 ReviewerId       = escalation.ReviewerId,
@@ -364,7 +425,7 @@ public sealed class TravelRequestHandler(
         if (!autoApproved)
         {
             if (escalation is not null)
-                await notifier.NotifySpecificReviewerAsync("travel", item.Id, escalation.ReviewerId, userId, escalation.OnBehalfOfUserId is not null);
+                await notifier.NotifySpecificReviewerAsync(appType, item.Id, escalation.ReviewerId, userId, escalation.OnBehalfOfUserId is not null);
             else
             {
                 bool isDesignatedStep = item.ApprovalItemId.HasValue && await db.ApprovalSteps.AsNoTracking()
@@ -375,14 +436,14 @@ public sealed class TravelRequestHandler(
                 {
                     var firstReviewer = await db.RequestDesignatedReviewers
                         .AsNoTracking()
-                        .Where(r => r.RequestType == "travel" && r.RequestId == item.Id && r.Status == "pending")
+                        .Where(r => r.RequestType == appType && r.RequestId == item.Id && r.Status == "pending")
                         .OrderBy(r => r.StepOrder)
                         .FirstOrDefaultAsync();
                     if (firstReviewer is not null)
-                        await notifier.NotifySpecificReviewerAsync("travel", item.Id, firstReviewer.ReviewerId, userId, false);
+                        await notifier.NotifySpecificReviewerAsync(appType, item.Id, firstReviewer.ReviewerId, userId, false);
                 }
                 else
-                    await notifier.NotifyReviewersAsync("travel", item.Id, item.ApprovalItemId, startStep, userId);
+                    await notifier.NotifyReviewersAsync(appType, item.Id, item.ApprovalItemId, startStep, userId);
             }
         }
 

@@ -28,16 +28,28 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             ORDER BY u.Name
             """;
 
-        // 2. 查詢該月已核准的假日出差天數
+        // 2. 查詢該月已核准的假日出差天數（含參與執行人員）
+        //    使用 HolidayDays 欄位（前端填寫的假日天數），以 CTE + UNION ALL 合併申請人與參與人員
         const string travelSql = """
-            SELECT tr.EmployeeId,
-                   SUM(DATEDIFF(DAY, tr.StartDate, tr.EndDate) + 1) AS TotalDays
-            FROM TravelRequests tr
-            WHERE tr.IsHolidayTravel = 1
-              AND tr.ApprovalStatus = 'approved'
-              AND tr.StartDate <= @LastDay
-              AND tr.EndDate >= @FirstDay
-            GROUP BY tr.EmployeeId
+            ;WITH HolidayTravelDays AS (
+                -- 申請人的假日天數
+                SELECT tr.EmployeeId, tr.HolidayDays
+                FROM TravelRequests tr
+                WHERE tr.IsHolidayTravel = 1
+                  AND tr.ApprovalStatus = 'approved'
+                  AND tr.StartDate <= @LastDay AND tr.EndDate >= @FirstDay
+                UNION ALL
+                -- 參與執行人員的假日天數
+                SELECT p.UserId AS EmployeeId, tr.HolidayDays
+                FROM TravelRequestParticipants p
+                JOIN TravelRequests tr ON p.TravelRequestId = tr.Id
+                WHERE tr.IsHolidayTravel = 1
+                  AND tr.ApprovalStatus = 'approved'
+                  AND tr.StartDate <= @LastDay AND tr.EndDate >= @FirstDay
+            )
+            SELECT EmployeeId, SUM(HolidayDays) AS TotalDays
+            FROM HolidayTravelDays
+            GROUP BY EmployeeId
             """;
 
         // 3. 查詢所有勞健保級距

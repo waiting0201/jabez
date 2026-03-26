@@ -48,8 +48,8 @@ public sealed class ApprovalFlowService(
                     .OrderBy(r => r.StepOrder)
                     .FirstOrDefault();
 
-                // leave / travel / overtime 不允許任何一位指定審核者是申請人自己
-                if (applicationType is not ("payment_request" or "advance" or "write_off" or "travel_write_off"))
+                // leave / travel / overtime / holiday_travel 不允許任何一位指定審核者是申請人自己
+                if (applicationType is not ("payment_request" or "advance" or "write_off" or "travel_write_off" or "holiday_travel"))
                 {
                     bool anyIsSelf = designatedReviewers?.Any(r => r.ReviewerId == applicantId) ?? false;
                     if (anyIsSelf)

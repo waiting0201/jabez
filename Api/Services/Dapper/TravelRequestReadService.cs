@@ -12,14 +12,15 @@ public sealed class TravelRequestReadService(IDbConnection db) : ITravelRequestR
                tr.Destination, tr.StartDate, tr.EndDate,
                tr.GrandTotal, tr.Purpose,
                tr.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
-               tr.IsHolidayTravel,
+               tr.IsHolidayTravel, tr.HolidayDays,
                tr.ApprovalStatus, tr.CreatedAt, tr.ReviewedAt, tr.ReviewNote,
                tr.ApprovalItemId, tr.CurrentStepOrder, tr.ReviewedById,
                tr.IsClosed, tr.ClosedAt, tr.RefundAmount,
                tr.EstimatedPaymentDate, tr.PaidAt, tr.EstimatedRefundDate, tr.RefundedAt,
                ti.Id AS ItemId, ti.Category, ti.SeqNo, ti.ItemName,
                ti.UnitPrice, ti.Quantity, ti.TotalPrice,
-               ti.Note AS ItemNote, ti.SortOrder
+               ti.Note AS ItemNote, ti.SortOrder,
+               ti.InvoiceNo, ti.FileName AS ItemFileName, ti.FileUrl AS ItemFileUrl, ti.InvoiceDate AS ItemInvoiceDate
         FROM TravelRequests tr
         LEFT JOIN Users u             ON tr.EmployeeId = u.Id
         LEFT JOIN Projects proj       ON tr.ProjectId  = proj.Id
@@ -33,23 +34,27 @@ public sealed class TravelRequestReadService(IDbConnection db) : ITravelRequestR
         return GroupToTravelRequests(rows);
     }
 
-    public async Task<PagedResult<TravelRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null)
+    public async Task<PagedResult<TravelRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null, bool? isHolidayTravel = null)
     {
-        var userFilter = userId.HasValue ? "WHERE SubmittedById = @UserId" : "";
-        var countSql   = userId.HasValue
-            ? "SELECT COUNT(*) FROM TravelRequests WHERE EmployeeId = @UserId"
-            : "SELECT COUNT(*) FROM TravelRequests";
+        // 動態組合 WHERE 條件
+        var conditions = new List<string>();
+        if (userId.HasValue)         conditions.Add("EmployeeId = @UserId");
+        if (isHolidayTravel.HasValue) conditions.Add("IsHolidayTravel = @IsHolidayTravel");
+        var whereClause = conditions.Count > 0 ? "WHERE " + string.Join(" AND ", conditions) : "";
+
+        var countSql = $"SELECT COUNT(*) FROM TravelRequests {whereClause}";
         var sql = $"""
             WITH PagedIds AS (
                 SELECT Id FROM TravelRequests
-                {(userId.HasValue ? "WHERE EmployeeId = @UserId" : "")}
+                {whereClause}
                 ORDER BY CreatedAt DESC
                 OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
             )
             {BaseSql} WHERE tr.Id IN (SELECT Id FROM PagedIds) ORDER BY tr.CreatedAt DESC, ti.SortOrder, ti.Id
             """;
-        int total = await db.ExecuteScalarAsync<int>(countSql, new { UserId = userId });
-        var rows = await db.QueryAsync<dynamic>(sql, new { UserId = userId, Skip = (page - 1) * pageSize, Take = pageSize });
+        var parameters = new { UserId = userId, IsHolidayTravel = isHolidayTravel, Skip = (page - 1) * pageSize, Take = pageSize };
+        int total = await db.ExecuteScalarAsync<int>(countSql, parameters);
+        var rows = await db.QueryAsync<dynamic>(sql, parameters);
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
         return new PagedResult<TravelRequestDto>(
             GroupToTravelRequests(rows),
@@ -82,7 +87,25 @@ public sealed class TravelRequestReadService(IDbConnection db) : ITravelRequestR
             (DateTime?)r.ReviewedAt,
             (string?)r.Comment)).ToArray();
 
-        return dto with { DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null };
+        // 額外查詢出差參與者（假日出差才需要，但統一回傳）
+        const string participantSql = """
+            SELECT trp.UserId, u.Name AS UserName, trp.SortOrder
+            FROM TravelRequestParticipants trp
+            JOIN Users u ON trp.UserId = u.Id
+            WHERE trp.TravelRequestId = @TravelRequestId
+            ORDER BY trp.SortOrder
+            """;
+        var participantRows = await db.QueryAsync<dynamic>(participantSql, new { TravelRequestId = id });
+        var participants = participantRows.Select(r => new ParticipantDto(
+            (Guid)r.UserId,
+            (string)r.UserName,
+            (int)r.SortOrder)).ToArray();
+
+        return dto with
+        {
+            DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null,
+            Participants        = participants.Length > 0 ? participants : null,
+        };
     }
 
     // ── Grouping helpers ─────────────────────────────────────────────────────
@@ -105,7 +128,11 @@ public sealed class TravelRequestReadService(IDbConnection db) : ITravelRequestR
                     (string)row.Quantity,
                     (decimal)row.TotalPrice,
                     (string?)row.ItemNote,
-                    (int)row.SortOrder));
+                    (int)row.SortOrder,
+                    (string?)row.InvoiceNo,
+                    (string?)row.ItemFileName,
+                    (string?)row.ItemFileUrl,
+                    (DateTime?)row.ItemInvoiceDate));
         }
 
         return dict.Values.Select(x =>
@@ -138,7 +165,8 @@ public sealed class TravelRequestReadService(IDbConnection db) : ITravelRequestR
                 EstimatedPaymentDate:    (DateTime?)tr.EstimatedPaymentDate,
                 PaidAt:                  (DateTime?)tr.PaidAt,
                 EstimatedRefundDate:     (DateTime?)tr.EstimatedRefundDate,
-                RefundedAt:              (DateTime?)tr.RefundedAt);
+                RefundedAt:              (DateTime?)tr.RefundedAt,
+                HolidayDays:             (int)tr.HolidayDays);
         });
     }
 }

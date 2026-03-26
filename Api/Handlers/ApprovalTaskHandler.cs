@@ -20,7 +20,7 @@ namespace Jabez.Api.Handlers;
 public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadService reader, IJwtService jwtService, IApprovalNotificationService notifier, IApprovalFlowService approvalFlow)
 {
     private static readonly HashSet<string> ValidActions  = ["approved", "returned", "rejected"];
-    public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "travel", "overtime", "advance", "write_off", "travel_write_off"];
+    public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "travel", "overtime", "advance", "write_off", "travel_write_off", "holiday_travel"];
 
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
@@ -219,6 +219,25 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     setStatus:     s  => tr.ApprovalStatus   = s,
                     incrementStep: () => tr.CurrentStepOrder++,
                     setReviewed:   () => { tr.ReviewedAt = Clock.Now; tr.ReviewedById = reviewerId; tr.ReviewNote = body.ReviewNote?.Trim(); });
+                await db.SaveChangesAsync();
+                break;
+            }
+            case "holiday_travel":
+            {
+                var htr = await db.TravelRequests.FindAsync(intId)
+                    ?? throw AppException.NotFound("TravelRequest");
+                if (htr.ApprovalStatus != "pending")
+                    throw AppException.BadRequest("Only pending travel requests can be reviewed.");
+
+                var htrApplicant = htr.EmployeeId.HasValue
+                    ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == htr.EmployeeId.Value)
+                    : null;
+                await AuthorizeStepAsync(htr.ApprovalItemId, htr.CurrentStepOrder, reviewer, htrApplicant?.DepartmentId, "holiday_travel", htr.Id, htrApplicant?.JobTitleId);
+                await ProcessReviewAsync("holiday_travel", htr.Id, htr.CurrentStepOrder,
+                    htr.ApprovalItemId, body.Action, body.ReviewNote, reviewerId, htr.EmployeeId,
+                    setStatus:     s  => htr.ApprovalStatus   = s,
+                    incrementStep: () => htr.CurrentStepOrder++,
+                    setReviewed:   () => { htr.ReviewedAt = Clock.Now; htr.ReviewedById = reviewerId; htr.ReviewNote = body.ReviewNote?.Trim(); });
                 await db.SaveChangesAsync();
                 break;
             }

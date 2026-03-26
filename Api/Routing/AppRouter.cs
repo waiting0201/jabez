@@ -38,6 +38,7 @@ public sealed class AppRouter(
     AdvanceRequestHandler           advanceRequests,
     WriteOffRequestHandler          writeOffRequests,
     TravelWriteOffRequestHandler    travelWriteOffRequests,
+    CalendarDayHandler              calendarDays,
     FileHandler                     files)
 {
     public async Task<IActionResult> RouteAsync(HttpRequest req, string route)
@@ -194,6 +195,24 @@ public sealed class AppRouter(
             ("PUT",    ["travel-write-off-requests", var id])                  => await travelWriteOffRequests.UpdateAsync(req, id),
             ("PATCH",  ["travel-write-off-requests", var id])                  => await travelWriteOffRequests.UpdateAsync(req, id),
             ("DELETE", ["travel-write-off-requests", var id])                  => await travelWriteOffRequests.DeleteAsync(req, id),
+
+            // ── Holiday Travel Requests（假日出差，共用 TravelRequestHandler）──────
+            ("GET",    ["holiday-travel-requests"])                        => await travelRequests.GetAllAsync(req, isHolidayTravel: true),
+            ("POST",   ["holiday-travel-requests"])                        => await travelRequests.CreateAsync(req, isHolidayTravel: true),
+            ("PATCH",  ["holiday-travel-requests", var id, "submit"])      => await travelRequests.SubmitAsync(req, id, isHolidayTravel: true),
+            ("PATCH",  ["holiday-travel-requests", var id, "payment-date"])=> await travelRequests.UpdatePaymentDateAsync(req, id),
+            ("GET",    ["holiday-travel-requests", var id])                => await travelRequests.GetByIdAsync(req, id),
+            ("PUT",    ["holiday-travel-requests", var id])                => await travelRequests.UpdateAsync(req, id, isHolidayTravel: true),
+            ("PATCH",  ["holiday-travel-requests", var id])                => await travelRequests.UpdateAsync(req, id, isHolidayTravel: true),
+            ("DELETE", ["holiday-travel-requests", var id])                => await travelRequests.DeleteAsync(req, id),
+
+            // ── Calendar Days（行事曆管理）─────────────────────────────────────────
+            ("GET",    ["calendar-days"])                                  => await calendarDays.GetByYearAsync(req),
+            ("POST",   ["calendar-days", "import"])                       => await calendarDays.ImportYearAsync(req),
+            ("POST",   ["calendar-days"])                                 => await calendarDays.CreateAsync(req),
+            ("PUT",    ["calendar-days", var id])                         => await calendarDays.UpdateAsync(req, id),
+            ("PATCH",  ["calendar-days", var id])                         => await calendarDays.UpdateAsync(req, id),
+            ("DELETE", ["calendar-days", var id])                         => await calendarDays.DeleteAsync(id),
 
             // ── Leave Requests ─────────────────────────────────────────────────
             ("GET",    ["leave-requests"])                         => await leaveRequests.GetAllAsync(req),
@@ -374,6 +393,23 @@ public sealed class AppRouter(
             ("PATCH",  ["travel-write-off-requests", _, "submit"])   => PermissionCodes.TravelWriteOffRequestsWrite,
             ("PATCH",  ["travel-write-off-requests", _])             => PermissionCodes.TravelWriteOffRequestsWrite,
             ("DELETE", ["travel-write-off-requests", _])             => PermissionCodes.TravelWriteOffRequestsDelete,
+
+            // Holiday Travel Requests
+            ("GET",    ["holiday-travel-requests", ..])            => PermissionCodes.HolidayTravelRequestsRead,
+            ("POST",   ["holiday-travel-requests"])                => PermissionCodes.HolidayTravelRequestsWrite,
+            ("PUT",    ["holiday-travel-requests", _])             => PermissionCodes.HolidayTravelRequestsWrite,
+            ("PATCH",  ["holiday-travel-requests", _, "submit"])   => PermissionCodes.HolidayTravelRequestsWrite,
+            ("PATCH",  ["holiday-travel-requests", _, "payment-date"]) => PermissionCodes.HolidayTravelRequestsWrite,
+            ("PATCH",  ["holiday-travel-requests", _])             => PermissionCodes.HolidayTravelRequestsWrite,
+            ("DELETE", ["holiday-travel-requests", _])             => PermissionCodes.HolidayTravelRequestsDelete,
+
+            // Calendar Days
+            ("GET",    ["calendar-days", ..])                      => PermissionCodes.CalendarDaysRead,
+            ("POST",   ["calendar-days", "import"])                => PermissionCodes.CalendarDaysWrite,
+            ("POST",   ["calendar-days"])                          => PermissionCodes.CalendarDaysWrite,
+            ("PUT",    ["calendar-days", _])                       => PermissionCodes.CalendarDaysWrite,
+            ("PATCH",  ["calendar-days", _])                       => PermissionCodes.CalendarDaysWrite,
+            ("DELETE", ["calendar-days", _])                       => PermissionCodes.CalendarDaysDelete,
 
             // Leave Requests
             ("GET",    ["leave-requests", ..])           => PermissionCodes.LeaveRequestsRead,
