@@ -67,6 +67,9 @@ export interface WriteOffRequest {
   designatedReviewers?: DesignatedReviewer[];
   advanceGrandTotal: number;
   advanceWrittenOffTotal: number;
+  advanceIsClosed: boolean;
+  estimatedRefundDate?: string;
+  refundedAt?: string;
 }
 
 /** AdvanceRequest summary for dropdown selection */

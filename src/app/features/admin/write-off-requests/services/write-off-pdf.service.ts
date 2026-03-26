@@ -220,6 +220,21 @@ export class WriteOffPdfService {
         '',
         '',
       ]);
+      if (r.advanceIsClosed && balance < 0) {
+        const fmtDate = (v?: string) => v ? new Date(v).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Taipei' }) : '尚未設定';
+        bodyRows.push([
+          { content: '預計退款日', colSpan: 6, styles: { halign: 'right' } },
+          { content: fmtDate(r.estimatedRefundDate), colSpan: 2, styles: { halign: 'right' } },
+          '',
+          '',
+        ]);
+        bodyRows.push([
+          { content: '退款日', colSpan: 6, styles: { halign: 'right' } },
+          { content: r.refundedAt ? fmtDate(r.refundedAt) : '尚未退款', colSpan: 2, styles: { halign: 'right' } },
+          '',
+          '',
+        ]);
+      }
 
       autoTable(doc, {
         startY: y,

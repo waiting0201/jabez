@@ -104,6 +104,19 @@
           </div>
         </div>
 
+        @if (r.advanceIsClosed && (r.advanceGrandTotal - r.advanceWrittenOffTotal - r.grandTotal) < 0) {
+          <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+              <div class="text-muted small">預計退款日</div>
+              <div class="fw-500">{{ r.estimatedRefundDate ? (r.estimatedRefundDate | date:'yyyy-MM-dd') : '尚未設定' }}</div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="text-muted small">退款日</div>
+              <div class="fw-500" [class.text-success]="r.refundedAt">{{ r.refundedAt ? (r.refundedAt | date:'yyyy-MM-dd') : '尚未退款' }}</div>
+            </div>
+          </div>
+        }
+
         @if (r.note) {
           <div class="text-muted small mb-2">備註：{{ r.note }}</div>
         }
