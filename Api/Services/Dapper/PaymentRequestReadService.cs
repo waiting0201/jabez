@@ -365,8 +365,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                    arx.GrandTotal AS AdvanceGrandTotal,
                    ISNULL((SELECT SUM(w2.GrandTotal) FROM WriteOffRecords w2
                            WHERE w2.AdvanceRequestId = wo.AdvanceRequestId
-                             AND w2.ApprovalStatus <> 'rejected'
-                             AND w2.Id <> wo.Id), 0) AS OtherWrittenOffTotal,
+                             AND w2.ApprovalStatus = 'approved'
+                             AND w2.Id < wo.Id), 0) AS OtherWrittenOffTotal,
                    wopaidby.SignatureUrl AS PaidBySignatureUrl,
                    worefundby.SignatureUrl AS RefundedBySignatureUrl,
                    arx.IsClosed AS AdvanceIsClosed
@@ -394,8 +394,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                    trx.GrandTotal AS TravelGrandTotal,
                    ISNULL((SELECT SUM(tw2.GrandTotal) FROM TravelWriteOffRecords tw2
                            WHERE tw2.TravelRequestId = two.TravelRequestId
-                             AND tw2.ApprovalStatus <> 'rejected'
-                             AND tw2.Id <> two.Id), 0) AS OtherWrittenOffTotal,
+                             AND tw2.ApprovalStatus = 'approved'
+                             AND tw2.Id < two.Id), 0) AS OtherWrittenOffTotal,
                    twopaidby.SignatureUrl AS PaidBySignatureUrl,
                    tworefundby.SignatureUrl AS RefundedBySignatureUrl,
                    trx.IsClosed AS TravelIsClosed

@@ -19,8 +19,10 @@ public sealed class WriteOffRequestReadService(IDbConnection db) : IWriteOffRequ
                ar.GrandTotal AS AdvanceGrandTotal,
                ISNULL((SELECT SUM(w2.GrandTotal) FROM WriteOffRecords w2
                        WHERE w2.AdvanceRequestId = wo.AdvanceRequestId
-                         AND w2.ApprovalStatus <> 'rejected'
-                         AND w2.Id <> wo.Id), 0) AS AdvanceWrittenOffTotal,
+                         AND w2.ApprovalStatus = 'approved'
+                         AND w2.Id < wo.Id), 0) AS AdvanceWrittenOffTotal,
+               CAST(ISNULL(ar.IsClosed, 0) AS BIT) AS AdvanceIsClosed,
+               ar.EstimatedRefundDate, ar.RefundedAt,
                wi.Id AS ItemId, wi.Category, wi.SeqNo, wi.ItemName,
                wi.UnitPrice, wi.Quantity, wi.TotalPrice,
                wi.CashAmount AS ItemCash, wi.CheckAmount AS ItemCheck,
@@ -138,6 +140,9 @@ public sealed class WriteOffRequestReadService(IDbConnection db) : IWriteOffRequ
             [.. x.items],
             null, // DesignatedReviewers 以 null 回傳（GetByIdAsync 才填入）
             (decimal)x.wo.AdvanceGrandTotal,
-            (decimal)x.wo.AdvanceWrittenOffTotal));
+            (decimal)x.wo.AdvanceWrittenOffTotal,
+            (bool)x.wo.AdvanceIsClosed,
+            (DateTime?)x.wo.EstimatedRefundDate,
+            (DateTime?)x.wo.RefundedAt));
     }
 }

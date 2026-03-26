@@ -24,7 +24,10 @@ public sealed record WriteOffRequestDto(
     WriteOffItemDto[]         Items,
     DesignatedReviewerDto[]?  DesignatedReviewers = null,
     decimal                   AdvanceGrandTotal = 0,
-    decimal                   AdvanceWrittenOffTotal = 0);
+    decimal                   AdvanceWrittenOffTotal = 0,
+    bool                      AdvanceIsClosed = false,
+    DateTime?                 EstimatedRefundDate = null,
+    DateTime?                 RefundedAt = null);
 
 // ── Request DTOs ──────────────────────────────────────────────────────────────
 

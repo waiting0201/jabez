@@ -18,8 +18,8 @@ public sealed class TravelWriteOffRequestReadService(IDbConnection db) : ITravel
                tr.GrandTotal AS TravelGrandTotal,
                ISNULL((SELECT SUM(w2.GrandTotal) FROM TravelWriteOffRecords w2
                        WHERE w2.TravelRequestId = two.TravelRequestId
-                         AND w2.ApprovalStatus <> 'rejected'
-                         AND w2.Id <> two.Id), 0) AS TravelWrittenOffTotal,
+                         AND w2.ApprovalStatus = 'approved'
+                         AND w2.Id < two.Id), 0) AS TravelWrittenOffTotal,
                twi.Id AS ItemId, twi.Category, twi.SeqNo, twi.ItemName,
                twi.UnitPrice, twi.Quantity, twi.TotalPrice,
                twi.Note AS ItemNote, twi.InvoiceNo AS ItemInvoiceNo,
