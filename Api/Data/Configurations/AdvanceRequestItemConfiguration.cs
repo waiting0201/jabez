@@ -37,6 +37,12 @@ public class AdvanceRequestItemConfiguration : IEntityTypeConfiguration<AdvanceR
         builder.Property(i => i.Note)
                .HasMaxLength(500);
 
+        builder.Property(i => i.FileName)
+               .HasMaxLength(500);
+
+        builder.Property(i => i.FileUrl)
+               .HasMaxLength(2000);
+
         builder.HasOne(i => i.AdvanceRequest)
                .WithMany(a => a.Items)
                .HasForeignKey(i => i.AdvanceRequestId)

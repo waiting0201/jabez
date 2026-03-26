@@ -14,6 +14,8 @@ public class AdvanceRequestItem
     public decimal  CheckAmount       { get; set; }                  // 支票（月結算）
     public string?  Note              { get; set; }
     public int      SortOrder         { get; set; }
+    public string?  FileName          { get; set; }                  // 原始檔名
+    public string?  FileUrl           { get; set; }                  // Azure Blob Storage URL
 
     // Navigation
     public AdvanceRequest AdvanceRequest { get; set; } = null!;

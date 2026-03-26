@@ -471,7 +471,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         const string advanceItemsSql = """
             SELECT ai.Id, ai.AdvanceRequestId, ai.Category, ai.SeqNo, ai.ItemName,
                    ai.UnitPrice, ai.Quantity, ai.TotalPrice, ai.CashAmount, ai.CheckAmount,
-                   ai.Note, ai.SortOrder
+                   ai.Note, ai.SortOrder, ai.FileName, ai.FileUrl
             FROM AdvanceRequestItems ai
             ORDER BY ai.AdvanceRequestId, ai.SortOrder
             """;
@@ -589,7 +589,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (int)ai.Id, (string)ai.Category, (int)ai.SeqNo, (string)ai.ItemName,
                 (decimal)ai.UnitPrice, (string)ai.Quantity, (decimal)ai.TotalPrice,
                 (decimal)ai.CashAmount, (decimal)ai.CheckAmount,
-                (string?)ai.Note, (int)ai.SortOrder));
+                (string?)ai.Note, (int)ai.SortOrder,
+                (string?)ai.FileName, (string?)ai.FileUrl));
         }
 
         AdvanceRequestItemDto[] GetAdvanceItems(int id) =>

@@ -8,16 +8,40 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
+using System.Text.Json;
 
 namespace Jabez.Api.Handlers;
 
 public sealed class AdvanceRequestHandler(
     AppDbContext db,
     IAdvanceRequestReadService reader,
+    IBlobStorageService blob,
     IJwtService jwtService,
     IApprovalNotificationService notifier,
     IApprovalFlowService approvalFlow)
 {
+    private const string ContainerName = "advance-files";
+
+    private static readonly JsonSerializerOptions JsonOpts = new()
+    {
+        PropertyNameCaseInsensitive = true,
+    };
+
+    /// <summary>Multipart form 中 items JSON 的內部結構</summary>
+    private sealed record ItemMetadata(
+        string   Category,
+        int      SeqNo,
+        string   ItemName,
+        decimal  UnitPrice,
+        string   Quantity,
+        decimal  TotalPrice,
+        decimal  CashAmount,
+        decimal  CheckAmount,
+        string?  Note,
+        int      SortOrder,
+        string?  FileName,
+        string?  FileUrl,
+        int      FileIndex);
     // ── 列表（分頁）────────────────────────────────────────────────────────────
 
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
@@ -50,20 +74,34 @@ public sealed class AdvanceRequestHandler(
     public async Task<IActionResult> CreateAsync(HttpRequest req)
     {
         var submittedById = await GetUserIdAsync(req);
-        var body = await req.ReadFromJsonAsync<CreateAdvanceRequestRequest>();
-        if (body is null)
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
 
-        if (body.Items.Length == 0)
+        var form = await req.ReadFormAsync();
+
+        var projectId      = int.TryParse(form["projectId"], out var pid) ? pid : 0;
+        var activityName   = form["activityName"].ToString();
+        var activityPeriod = form["activityPeriod"].ToString();
+        var advanceDateStr = form["advanceDate"].ToString();
+        var itemsJson      = form["items"].ToString();
+        var drJson         = form["designatedReviewers"].ToString();
+
+        if (!DateTime.TryParse(advanceDateStr, out var advanceDate))
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid advanceDate."));
+
+        var itemsMeta = JsonSerializer.Deserialize<ItemMetadata[]>(itemsJson, JsonOpts);
+        if (itemsMeta is null || itemsMeta.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
 
-        if (!await db.Projects.AnyAsync(p => p.Id == body.ProjectId))
+        if (!await db.Projects.AnyAsync(p => p.Id == projectId))
             throw AppException.NotFound("Project");
 
-        // 指定審核者存在性驗證
-        if (body.DesignatedReviewers is { Length: > 0 })
+        // 指定審核者
+        DesignatedReviewerRequest[]? designatedReviewers = null;
+        if (!string.IsNullOrEmpty(drJson))
+            designatedReviewers = JsonSerializer.Deserialize<DesignatedReviewerRequest[]>(drJson, JsonOpts);
+
+        if (designatedReviewers is { Length: > 0 })
         {
-            var reviewerIds = body.DesignatedReviewers.Select(r => r.ReviewerId).Distinct().ToList();
+            var reviewerIds = designatedReviewers.Select(r => r.ReviewerId).Distinct().ToList();
             var existCount = await db.Users.AsNoTracking().CountAsync(u => reviewerIds.Contains(u.Id));
             if (existCount != reviewerIds.Count)
                 return new BadRequestObjectResult(ApiResponse.Fail("一或多位指定審核者不存在。"));
@@ -84,27 +122,47 @@ public sealed class AdvanceRequestHandler(
         }
         var requestNo = $"{prefix}{seq:D3}";
 
-        var items = body.Items.Select((i, idx) => new AdvanceRequestItem
+        // 上傳檔案至 Blob Storage
+        var files = form.Files.GetFiles("files");
+        var items = new List<AdvanceRequestItem>();
+        foreach (var (meta, idx) in itemsMeta.Select((m, i) => (m, i)))
         {
-            Category    = i.Category,
-            SeqNo       = i.SeqNo,
-            ItemName    = i.ItemName,
-            UnitPrice   = i.UnitPrice,
-            Quantity    = i.Quantity,
-            TotalPrice  = i.TotalPrice,
-            CashAmount  = i.CashAmount,
-            CheckAmount = i.CheckAmount,
-            Note        = i.Note,
-            SortOrder   = i.SortOrder > 0 ? i.SortOrder : idx,
-        }).ToList();
+            string? fileUrl  = null;
+            string? fileName = meta.FileName;
+            if (meta.FileIndex >= 0 && meta.FileIndex < files.Count)
+            {
+                var file = files[meta.FileIndex];
+                var ext = Path.GetExtension(file.FileName);
+                var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
+                using var stream = file.OpenReadStream();
+                fileUrl  = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                fileName = file.FileName;
+            }
+
+            items.Add(new AdvanceRequestItem
+            {
+                Category    = meta.Category,
+                SeqNo       = meta.SeqNo,
+                ItemName    = meta.ItemName,
+                UnitPrice   = meta.UnitPrice,
+                Quantity    = meta.Quantity,
+                TotalPrice  = meta.TotalPrice,
+                CashAmount  = meta.CashAmount,
+                CheckAmount = meta.CheckAmount,
+                Note        = meta.Note,
+                SortOrder   = meta.SortOrder > 0 ? meta.SortOrder : idx,
+                FileName    = fileName,
+                FileUrl     = fileUrl,
+            });
+        }
 
         var ar = new AdvanceRequest
         {
             RequestNo      = requestNo,
-            ProjectId      = body.ProjectId,
-            ActivityName   = body.ActivityName,
-            ActivityPeriod = body.ActivityPeriod,
-            AdvanceDate    = body.AdvanceDate,
+            ProjectId      = projectId,
+            ActivityName   = activityName,
+            ActivityPeriod = activityPeriod,
+            AdvanceDate    = advanceDate,
             CashTotal      = items.Sum(i => i.CashAmount),
             CheckTotal     = items.Sum(i => i.CheckAmount),
             GrandTotal     = items.Sum(i => i.TotalPrice),
@@ -118,10 +176,10 @@ public sealed class AdvanceRequestHandler(
         await db.SaveChangesAsync();
 
         // 儲存指定審核者
-        if (body.DesignatedReviewers is { Length: > 0 })
+        if (designatedReviewers is { Length: > 0 })
         {
             db.RequestDesignatedReviewers.AddRange(
-                body.DesignatedReviewers.OrderBy(r => r.StepOrder).Select(r => new RequestDesignatedReviewer
+                designatedReviewers.OrderBy(r => r.StepOrder).Select(r => new RequestDesignatedReviewer
                 {
                     RequestType = "advance",
                     RequestId   = ar.Id,
@@ -152,29 +210,38 @@ public sealed class AdvanceRequestHandler(
         if (ar.ApprovalStatus != "draft" && ar.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned advance requests can be edited.");
 
-        var body = await req.ReadFromJsonAsync<UpdateAdvanceRequestRequest>();
-        if (body is null)
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
+        var form = await req.ReadFormAsync();
 
-        if (body.ProjectId.HasValue)
+        var projectIdStr   = form["projectId"].ToString();
+        var activityName   = form["activityName"].ToString();
+        var activityPeriod = form["activityPeriod"].ToString();
+        var advanceDateStr = form["advanceDate"].ToString();
+        var itemsJson      = form["items"].ToString();
+        var drJson         = form["designatedReviewers"].ToString();
+
+        if (int.TryParse(projectIdStr, out var projectId) && projectId > 0)
         {
-            if (!await db.Projects.AnyAsync(p => p.Id == body.ProjectId))
+            if (!await db.Projects.AnyAsync(p => p.Id == projectId))
                 throw AppException.NotFound("Project");
-            ar.ProjectId = body.ProjectId.Value;
+            ar.ProjectId = projectId;
         }
-        if (!string.IsNullOrEmpty(body.ActivityName))
-            ar.ActivityName = body.ActivityName;
-        if (!string.IsNullOrEmpty(body.ActivityPeriod))
-            ar.ActivityPeriod = body.ActivityPeriod;
-        if (body.AdvanceDate.HasValue)
-            ar.AdvanceDate = body.AdvanceDate.Value;
+        if (!string.IsNullOrEmpty(activityName))
+            ar.ActivityName = activityName;
+        if (!string.IsNullOrEmpty(activityPeriod))
+            ar.ActivityPeriod = activityPeriod;
+        if (DateTime.TryParse(advanceDateStr, out var advanceDate))
+            ar.AdvanceDate = advanceDate;
 
-        // 指定審核者整組替換（提供 DesignatedReviewers 時才更新）
-        if (body.DesignatedReviewers is not null)
+        // 指定審核者整組替換
+        if (!string.IsNullOrEmpty(drJson) || form.ContainsKey("designatedReviewers"))
         {
-            if (body.DesignatedReviewers.Length > 0)
+            DesignatedReviewerRequest[]? designatedReviewers = null;
+            if (!string.IsNullOrEmpty(drJson))
+                designatedReviewers = JsonSerializer.Deserialize<DesignatedReviewerRequest[]>(drJson, JsonOpts);
+
+            if (designatedReviewers is { Length: > 0 })
             {
-                var reviewerIds = body.DesignatedReviewers.Select(r => r.ReviewerId).Distinct().ToList();
+                var reviewerIds = designatedReviewers.Select(r => r.ReviewerId).Distinct().ToList();
                 var existCount = await db.Users.AsNoTracking().CountAsync(u => reviewerIds.Contains(u.Id));
                 if (existCount != reviewerIds.Count)
                     return new BadRequestObjectResult(ApiResponse.Fail("一或多位指定審核者不存在。"));
@@ -183,10 +250,10 @@ public sealed class AdvanceRequestHandler(
                 .Where(r => r.RequestType == "advance" && r.RequestId == intId)
                 .ToListAsync();
             db.RequestDesignatedReviewers.RemoveRange(old);
-            if (body.DesignatedReviewers.Length > 0)
+            if (designatedReviewers is { Length: > 0 })
             {
                 db.RequestDesignatedReviewers.AddRange(
-                    body.DesignatedReviewers.Select(r => new RequestDesignatedReviewer
+                    designatedReviewers.Select(r => new RequestDesignatedReviewer
                     {
                         RequestType = "advance",
                         RequestId   = intId,
@@ -196,33 +263,84 @@ public sealed class AdvanceRequestHandler(
             }
         }
 
-        if (body.Items is { Length: > 0 })
+        // 更新明細（含檔案上傳）
+        if (!string.IsNullOrEmpty(itemsJson))
         {
-            db.AdvanceRequestItems.RemoveRange(ar.Items);
-            var newItems = body.Items.Select((i, idx) => new AdvanceRequestItem
+            var itemsMeta = JsonSerializer.Deserialize<ItemMetadata[]>(itemsJson, JsonOpts);
+            if (itemsMeta is { Length: > 0 })
             {
-                AdvanceRequestId = ar.Id,
-                Category    = i.Category,
-                SeqNo       = i.SeqNo,
-                ItemName    = i.ItemName,
-                UnitPrice   = i.UnitPrice,
-                Quantity    = i.Quantity,
-                TotalPrice  = i.TotalPrice,
-                CashAmount  = i.CashAmount,
-                CheckAmount = i.CheckAmount,
-                Note        = i.Note,
-                SortOrder   = i.SortOrder > 0 ? i.SortOrder : idx,
-            }).ToList();
-            ar.Items      = newItems;
-            ar.CashTotal  = newItems.Sum(i => i.CashAmount);
-            ar.CheckTotal = newItems.Sum(i => i.CheckAmount);
-            ar.GrandTotal = newItems.Sum(i => i.TotalPrice);
+                // 收集舊的 blob URLs
+                var oldFileUrls = ar.Items
+                    .Where(i => !string.IsNullOrEmpty(i.FileUrl))
+                    .Select(i => i.FileUrl!)
+                    .ToHashSet();
+
+                db.AdvanceRequestItems.RemoveRange(ar.Items);
+
+                var files = form.Files.GetFiles("files");
+                var newItems = new List<AdvanceRequestItem>();
+                var newFileUrls = new HashSet<string>();
+
+                foreach (var (meta, idx) in itemsMeta.Select((m, i) => (m, i)))
+                {
+                    string? fileUrl  = meta.FileUrl;
+                    string? fileName = meta.FileName;
+
+                    if (meta.FileIndex >= 0 && meta.FileIndex < files.Count)
+                    {
+                        var file = files[meta.FileIndex];
+                        var ext = Path.GetExtension(file.FileName);
+                        var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
+                        using var stream = file.OpenReadStream();
+                        fileUrl  = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                        fileName = file.FileName;
+                    }
+
+                    if (!string.IsNullOrEmpty(fileUrl))
+                        newFileUrls.Add(fileUrl);
+
+                    newItems.Add(new AdvanceRequestItem
+                    {
+                        AdvanceRequestId = ar.Id,
+                        Category    = meta.Category,
+                        SeqNo       = meta.SeqNo,
+                        ItemName    = meta.ItemName,
+                        UnitPrice   = meta.UnitPrice,
+                        Quantity    = meta.Quantity,
+                        TotalPrice  = meta.TotalPrice,
+                        CashAmount  = meta.CashAmount,
+                        CheckAmount = meta.CheckAmount,
+                        Note        = meta.Note,
+                        SortOrder   = meta.SortOrder > 0 ? meta.SortOrder : idx,
+                        FileName    = fileName,
+                        FileUrl     = fileUrl,
+                    });
+                }
+
+                ar.Items      = newItems;
+                ar.CashTotal  = newItems.Sum(i => i.CashAmount);
+                ar.CheckTotal = newItems.Sum(i => i.CheckAmount);
+                ar.GrandTotal = newItems.Sum(i => i.TotalPrice);
+
+                await db.SaveChangesAsync();
+
+                // 刪除不再引用的舊 blob
+                foreach (var oldUrl in oldFileUrls.Except(newFileUrls))
+                {
+                    var blobName = blob.ExtractBlobName(oldUrl, ContainerName);
+                    if (blobName is not null)
+                        await blob.DeleteAsync(ContainerName, blobName);
+                }
+
+                var dto = await reader.GetByIdAsync(ar.Id);
+                return new OkObjectResult(ApiResponse.Ok(dto, "Advance request updated."));
+            }
         }
 
         await db.SaveChangesAsync();
 
-        var dto = await reader.GetByIdAsync(ar.Id);
-        return new OkObjectResult(ApiResponse.Ok(dto, "Advance request updated."));
+        var dtoResult = await reader.GetByIdAsync(ar.Id);
+        return new OkObjectResult(ApiResponse.Ok(dtoResult, "Advance request updated."));
     }
 
     // ── 刪除草稿 ────────────────────────────────────────────────────────────
@@ -235,15 +353,26 @@ public sealed class AdvanceRequestHandler(
 
         var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         var ar = currentUser?.IsSuperAdmin == true
-            ? await db.AdvanceRequests.FirstOrDefaultAsync(x => x.Id == intId)
-            : await db.AdvanceRequests.FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
+            ? await db.AdvanceRequests.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.AdvanceRequests.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
         if (ar is null) throw AppException.NotFound("AdvanceRequest");
 
         if (ar.ApprovalStatus != "draft" && ar.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned advance requests can be deleted.");
 
+        // 收集需清理的 blob
+        var blobNames = ar.Items
+            .Select(i => blob.ExtractBlobName(i.FileUrl, ContainerName))
+            .Where(n => n is not null)
+            .ToList();
+
         db.AdvanceRequests.Remove(ar);
         await db.SaveChangesAsync();
+
+        // 刪除 blob
+        foreach (var name in blobNames)
+            await blob.DeleteAsync(ContainerName, name!);
+
         return new OkObjectResult(ApiResponse.Ok($"Advance request '{id}' deleted."));
     }
 

@@ -13,7 +13,9 @@ public sealed record AdvanceRequestItemDto(
     decimal  CashAmount,
     decimal  CheckAmount,
     string?  Note,
-    int      SortOrder);
+    int      SortOrder,
+    string?  FileName = null,
+    string?  FileUrl  = null);
 
 public sealed record AdvanceRequestItemRequest(
     string   Category,

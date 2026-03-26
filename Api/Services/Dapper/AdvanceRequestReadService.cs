@@ -18,7 +18,8 @@ public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceReques
                ai.Id AS ItemId, ai.Category, ai.SeqNo, ai.ItemName,
                ai.UnitPrice, ai.Quantity, ai.TotalPrice,
                ai.CashAmount AS ItemCash, ai.CheckAmount AS ItemCheck,
-               ai.Note AS ItemNote, ai.SortOrder
+               ai.Note AS ItemNote, ai.SortOrder,
+               ai.FileName AS ItemFileName, ai.FileUrl AS ItemFileUrl
         FROM AdvanceRequests ar
         LEFT JOIN Projects proj          ON ar.ProjectId    = proj.Id
         LEFT JOIN Users   sub            ON ar.SubmittedById = sub.Id
@@ -126,7 +127,8 @@ public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceReques
                     (int)row.ItemId, (string)row.Category, (int)row.SeqNo,
                     (string)row.ItemName, (decimal)row.UnitPrice, (string)row.Quantity,
                     (decimal)row.TotalPrice, (decimal)row.ItemCash, (decimal)row.ItemCheck,
-                    (string?)row.ItemNote, (int)row.SortOrder));
+                    (string?)row.ItemNote, (int)row.SortOrder,
+                    (string?)row.ItemFileName, (string?)row.ItemFileUrl));
         }
 
         // 沖銷摘要 grouped by AdvanceRequestId
