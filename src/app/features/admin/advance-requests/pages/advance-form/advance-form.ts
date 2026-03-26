@@ -2,6 +2,7 @@ import {ChangeDetectorRef, Component, inject, OnInit, signal, TemplateRef, viewC
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {AbstractControl, FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {DecimalPipe} from '@angular/common';
+import {DomSanitizer} from '@angular/platform-browser';
 import {HttpErrorResponse} from '@angular/common/http';
 import {AdvanceRequestService} from '../../services/advance-request.service';
 import {ProjectService} from '../../../projects/services/project.service';
@@ -14,13 +15,15 @@ import {ApprovalTaskService} from '../../../approval-tasks/services/approval-tas
 import {ApprovalFlow, ApprovalRecord} from '../../../approval-tasks/models/approval-task.model';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
+import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {JobTitleLookup} from '../../../job-titles/models/job-title.model';
 import {UserLookup} from '../../../users/models/user.model';
+import heic2any from 'heic2any';
 
 @Component({
   selector: 'app-advance-form',
   templateUrl: './advance-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, ApprovalTimeline],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, ApprovalTimeline, FilePreviewModal],
 })
 export class AdvanceForm implements OnInit {
   private fb             = inject(FormBuilder);
@@ -34,6 +37,7 @@ export class AdvanceForm implements OnInit {
   private router         = inject(Router);
   private cdr            = inject(ChangeDetectorRef);
   private modal          = inject(NgbModal);
+  private sanitizer      = inject(DomSanitizer);
   successModal = viewChild<TemplateRef<any>>('successModal');
 
   projects: Project[] = [];
@@ -47,6 +51,10 @@ export class AdvanceForm implements OnInit {
   projectCode = '';
   projectName = '';
   categories = ITEM_CATEGORIES;
+
+  /** 檔案上傳相關 */
+  fileMap = new Map<string, File>();
+  previewFile: PreviewFileData | null = null;
 
   /** 簽核流程時間軸 */
   approvalFlow: ApprovalFlow | null = null;
@@ -186,7 +194,7 @@ export class AdvanceForm implements OnInit {
         r.items.forEach((item, idx) => this.itemArray.push(this._itemGroup(
           item.category, item.seqNo, item.itemName, item.unitPrice,
           item.quantity, item.totalPrice, item.cashAmount, item.checkAmount,
-          item.note ?? '', idx
+          item.note ?? '', idx, item.fileName ?? '', item.fileUrl ?? ''
         )));
         // 非草稿時載入簽核流程
         if (r.approvalStatus !== 'draft') {
@@ -210,7 +218,60 @@ export class AdvanceForm implements OnInit {
   }
 
   removeItem(i: number) {
+    const ctrl = this.itemArray.at(i);
+    const id  = ctrl.get('id')?.value as string;
+    const url = ctrl.get('previewUrl')?.value as string;
+    if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
+    this.fileMap.delete(id);
     this.itemArray.removeAt(i);
+  }
+
+  /** 單列檔案選取 */
+  async onFileSelected(event: Event, rowIndex: number) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    let file = input.files[0];
+    input.value = '';
+    file = await this._convertHeicIfNeeded(file);
+
+    const ctrl = this.itemArray.at(rowIndex);
+    const id = ctrl.get('id')?.value as string;
+
+    // 清理舊的 blob URL
+    const oldUrl = ctrl.get('previewUrl')?.value as string;
+    if (oldUrl?.startsWith('blob:')) URL.revokeObjectURL(oldUrl);
+
+    const previewUrl = URL.createObjectURL(file);
+    this.fileMap.set(id, file);
+    ctrl.patchValue({ fileName: file.name, previewUrl, fileUrl: '' });
+    this.cdr.markForCheck();
+  }
+
+  removeFile(rowIndex: number) {
+    const ctrl = this.itemArray.at(rowIndex);
+    const id  = ctrl.get('id')?.value as string;
+    const url = ctrl.get('previewUrl')?.value as string;
+    if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
+    this.fileMap.delete(id);
+    ctrl.patchValue({ fileName: '', previewUrl: '', fileUrl: '' });
+  }
+
+  openPreview(name: string, url: string) {
+    this.previewFile = {name, url, safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(url)};
+  }
+  closePreview() { this.previewFile = null; }
+
+  /** HEIC/HEIF → JPEG 轉換 */
+  private async _convertHeicIfNeeded(file: File): Promise<File> {
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.heic') && !name.endsWith('.heif')) return file;
+    try {
+      const blob = await heic2any({blob: file, toType: 'image/jpeg', quality: 0.85}) as Blob;
+      const jpegName = file.name.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg');
+      return new File([blob], jpegName, {type: 'image/jpeg'});
+    } catch {
+      return file;
+    }
   }
 
   /** 單價 × 數量（嘗試解析數量前面的數字） */
@@ -225,10 +286,10 @@ export class AdvanceForm implements OnInit {
 
   save() {
     if (this.form.invalid || this.itemArray.length === 0) return;
-    const body = this._buildBody();
+    const fd = this._buildFormData();
     const obs = this.isEdit
-      ? this.service.update(this.requestId, body)
-      : this.service.create(body);
+      ? this.service.updateWithFiles(this.requestId, fd)
+      : this.service.createWithFiles(fd);
     this.errorMsg.set('');
     obs.subscribe({
       next: saved => {
@@ -243,10 +304,10 @@ export class AdvanceForm implements OnInit {
 
   submitForApproval() {
     if (this.form.invalid || this.itemArray.length === 0) return;
-    const body = this._buildBody();
+    const fd = this._buildFormData();
     const save$ = this.isEdit
-      ? this.service.update(this.requestId, body)
-      : this.service.create(body);
+      ? this.service.updateWithFiles(this.requestId, fd)
+      : this.service.createWithFiles(fd);
     this.errorMsg.set('');
     save$.subscribe({
       next: saved => {
@@ -268,38 +329,56 @@ export class AdvanceForm implements OnInit {
     });
   }
 
-  private _buildBody() {
-    const f = this.form.value;
+  private _buildFormData(): FormData {
+    const fd = new FormData();
+    fd.append('projectId', String(this.form.get('projectId')!.value));
+    fd.append('activityName', this.form.get('activityName')?.value || '');
+    fd.append('activityPeriod', this.form.get('activityPeriod')?.value || '');
+    fd.append('advanceDate', this.form.get('advanceDate')?.value || '');
+
     const reviewers = this.designatedEntries
       .filter(e => e.selectedUserId)
       .map(e => ({ reviewerId: e.selectedUserId!, stepOrder: e.stepOrder }));
-    return {
-      projectId:            f.projectId,
-      activityName:         f.activityName,
-      activityPeriod:       f.activityPeriod,
-      advanceDate:          f.advanceDate,
-      designatedReviewers:  reviewers.length > 0 ? reviewers : undefined,
-      items: this.itemArray.controls.map((c, idx) => ({
-        category:    c.get('category')?.value || '',
-        seqNo:       +(c.get('seqNo')?.value) || 0,
-        itemName:    c.get('itemName')?.value || '',
-        unitPrice:   +(c.get('unitPrice')?.value) || 0,
-        quantity:    c.get('quantity')?.value || '',
-        totalPrice:  +(c.get('totalPrice')?.value) || 0,
-        cashAmount:  +(c.get('cashAmount')?.value) || 0,
-        checkAmount: +(c.get('checkAmount')?.value) || 0,
-        note:        c.get('note')?.value || '',
-        sortOrder:   idx,
-      })),
-    };
+    if (reviewers.length > 0) fd.append('designatedReviewers', JSON.stringify(reviewers));
+
+    const itemsMeta: any[] = [];
+    let fileIndex = 0;
+
+    for (const ctrl of this.itemArray.controls) {
+      const id = ctrl.get('id')?.value;
+      const file = this.fileMap.get(id);
+      const meta = {
+        category:    ctrl.get('category')?.value || '',
+        seqNo:       +(ctrl.get('seqNo')?.value) || 0,
+        itemName:    ctrl.get('itemName')?.value || '',
+        unitPrice:   +(ctrl.get('unitPrice')?.value) || 0,
+        quantity:    ctrl.get('quantity')?.value || '',
+        totalPrice:  +(ctrl.get('totalPrice')?.value) || 0,
+        cashAmount:  +(ctrl.get('cashAmount')?.value) || 0,
+        checkAmount: +(ctrl.get('checkAmount')?.value) || 0,
+        note:        ctrl.get('note')?.value || '',
+        sortOrder:   itemsMeta.length,
+        fileName:    file ? file.name : (ctrl.get('fileName')?.value || null),
+        fileUrl:     ctrl.get('fileUrl')?.value || null,
+        fileIndex:   file ? fileIndex : -1,
+      };
+      if (file) {
+        fd.append('files', file, file.name);
+        fileIndex++;
+      }
+      itemsMeta.push(meta);
+    }
+    fd.append('items', JSON.stringify(itemsMeta));
+    return fd;
   }
 
   private _itemGroup(
     category: string, seqNo: number, itemName: string, unitPrice: number,
     quantity: string, totalPrice: number, cashAmount: number, checkAmount: number,
-    note: string, sortOrder: number
+    note: string, sortOrder: number, fileName = '', fileUrl = ''
   ) {
     return this.fb.group({
+      id:          [`${Date.now()}-${Math.random().toString(36).slice(2)}`],
       category:    [category, Validators.required],
       seqNo:       [seqNo],
       itemName:    [itemName, Validators.required],
@@ -310,6 +389,9 @@ export class AdvanceForm implements OnInit {
       checkAmount: [checkAmount],
       note:        [note],
       sortOrder:   [sortOrder],
+      fileName:    [fileName],
+      fileUrl:     [fileUrl],
+      previewUrl:  [fileUrl],  // 既有檔案用 fileUrl 作為預覽
     });
   }
 }

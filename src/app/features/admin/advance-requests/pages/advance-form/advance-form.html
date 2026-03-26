@@ -130,6 +130,7 @@
                     <th style="min-width:100px">現金(預支)</th>
                     <th style="min-width:100px">支票(月結)</th>
                     <th style="min-width:100px">備註</th>
+                    <th style="min-width:80px">檔案</th>
                     @if (!isReadOnly) {
                       <th style="width:48px"></th>
                     }
@@ -208,6 +209,38 @@
                           <input class="form-control form-control-sm" formControlName="note" placeholder="">
                         }
                       </td>
+                      <td class="align-middle">
+                        @if (isReadOnly) {
+                          @if (ctrl.get('fileUrl')?.value) {
+                            <button type="button" class="btn btn-sm btn-ghost-primary p-1"
+                                    (click)="openPreview(ctrl.get('fileName')?.value || '檔案', ctrl.get('fileUrl')?.value)"
+                                    [title]="ctrl.get('fileName')?.value">
+                              <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                            </button>
+                          } @else {
+                            <span class="text-muted small">—</span>
+                          }
+                        } @else {
+                          @if (ctrl.get('previewUrl')?.value) {
+                            <div class="flex items-center gap-1">
+                              <button type="button" class="btn btn-sm btn-ghost-primary p-1"
+                                      (click)="openPreview(ctrl.get('fileName')?.value || '檔案', ctrl.get('previewUrl')?.value)"
+                                      [title]="ctrl.get('fileName')?.value">
+                                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                              </button>
+                              <button type="button" class="btn btn-sm btn-ghost-danger p-1" (click)="removeFile(i)">
+                                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                              </button>
+                            </div>
+                          } @else {
+                            <label class="btn btn-sm btn-outline-secondary mb-0" style="cursor:pointer">
+                              <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                              <input type="file" class="d-none" accept=".jpg,.jpeg,.png,.heic,.heif,.pdf"
+                                     (change)="onFileSelected($event, i)">
+                            </label>
+                          }
+                        }
+                      </td>
                       @if (!isReadOnly) {
                         <td class="text-right align-middle">
                           <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeItem(i)">
@@ -218,7 +251,7 @@
                     </tr>
                   } @empty {
                     <tr>
-                      <td [attr.colspan]="isReadOnly ? 9 : 10" class="text-center text-muted py-4 small">尚未新增預算項目</td>
+                      <td [attr.colspan]="isReadOnly ? 10 : 11" class="text-center text-muted py-4 small">尚未新增預算項目</td>
                     </tr>
                   }
                 </tbody>
@@ -229,6 +262,7 @@
                       <td class="fw-600">{{ grandTotal | number:'1.0-0' }}</td>
                       <td class="fw-600">{{ cashTotal | number:'1.0-0' }}</td>
                       <td class="fw-600">{{ checkTotal | number:'1.0-0' }}</td>
+                      <td></td>
                       <td></td>
                       @if (!isReadOnly) { <td></td> }
                     </tr>
@@ -331,6 +365,10 @@
     </div>
   </form>
 </div>
+
+@if (previewFile) {
+  <app-file-preview-modal [file]="previewFile" (closed)="closePreview()" />
+}
 
 <ng-template #successModal let-modal>
   <div class="modal-header border-0 pb-0">

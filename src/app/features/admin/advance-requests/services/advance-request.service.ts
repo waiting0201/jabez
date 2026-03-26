@@ -18,12 +18,12 @@ export class AdvanceRequestService {
     return this.http.get<AdvanceRequest>(`${this.base}/${id}`);
   }
 
-  create(body: any): Observable<AdvanceRequest> {
-    return this.http.post<AdvanceRequest>(this.base, body);
+  createWithFiles(formData: FormData): Observable<AdvanceRequest> {
+    return this.http.post<AdvanceRequest>(this.base, formData);
   }
 
-  update(id: number, body: any): Observable<AdvanceRequest> {
-    return this.http.patch<AdvanceRequest>(`${this.base}/${id}`, body);
+  updateWithFiles(id: number, formData: FormData): Observable<AdvanceRequest> {
+    return this.http.patch<AdvanceRequest>(`${this.base}/${id}`, formData);
   }
 
   delete(id: number): Observable<void> {

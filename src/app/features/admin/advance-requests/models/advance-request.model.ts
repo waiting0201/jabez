@@ -28,6 +28,8 @@ export interface AdvanceRequestItem {
   checkAmount: number;
   note?: string;
   sortOrder: number;
+  fileName?: string;
+  fileUrl?: string;
 }
 
 export interface DesignatedReviewer {

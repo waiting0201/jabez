@@ -357,6 +357,7 @@
                             <th class="text-right">現金花費</th>
                             <th class="text-right">支票金額</th>
                             <th>備註</th>
+                            <th>檔案</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -370,6 +371,17 @@
                               <td class="text-right small">{{ item.cashAmount | number:'1.0-0' }}</td>
                               <td class="text-right small">{{ item.checkAmount | number:'1.0-0' }}</td>
                               <td class="small text-muted">{{ item.note || '—' }}</td>
+                              <td class="align-middle">
+                                @if (item.fileUrl) {
+                                  <button type="button" class="btn btn-sm btn-ghost-primary p-1"
+                                          (click)="openPreview(item.fileName || '檔案', item.fileUrl)"
+                                          [title]="item.fileName">
+                                    <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                                  </button>
+                                } @else {
+                                  <span class="text-muted small">—</span>
+                                }
+                              </td>
                             </tr>
                           }
                         </tbody>
@@ -379,6 +391,7 @@
                             <td class="text-right fw-600">{{ d.grandTotal | number:'1.0-0' }}</td>
                             <td class="text-right fw-600">{{ sumField(d.items, 'cashAmount') | number:'1.0-0' }}</td>
                             <td class="text-right fw-600">{{ sumField(d.items, 'checkAmount') | number:'1.0-0' }}</td>
+                            <td></td>
                             <td></td>
                           </tr>
                         </tfoot>
