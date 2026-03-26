@@ -78,6 +78,7 @@ export interface TravelSummary {
   writtenOffTotal: number;
   projectCode?: string;
   purpose: string;
+  isHolidayTravel?: boolean;
 }
 
 export const ITEM_CATEGORIES = ['交通費', '住宿費', '餐費', '雜支'] as const;

@@ -53,7 +53,7 @@ export interface TravelRequest {
   projectId?: number;
   projectCode?: string;
   projectName?: string;
-  isHolidayTravel: boolean;
+  isHolidayTravel?: boolean;
   approvalStatus: ApprovalStatus;
   designatedReviewers?: DesignatedReviewer[];
   items: TravelRequestItem[];

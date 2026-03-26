@@ -77,6 +77,10 @@ export interface TravelTaskDetailItem {
   totalPrice: number;
   note?: string;
   sortOrder: number;
+  invoiceNo?: string;
+  fileName?: string;
+  fileUrl?: string;
+  invoiceDate?: string;
 }
 
 export interface TravelTaskDetail {

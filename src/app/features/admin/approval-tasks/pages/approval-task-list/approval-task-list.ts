@@ -32,11 +32,11 @@ export class ApprovalTaskList {
   );
 
   readonly PAGE_SIZE = 20;
-  activeTab = signal<'pending' | 'approved'>('pending');
+  activeTab = signal<'pending' | 'approved' | 'rejected'>('pending');
   paymentStatus = signal<'' | 'paid' | 'unpaid'>('');
   page = signal(1);
 
-  switchTab(tab: 'pending' | 'approved') {
+  switchTab(tab: 'pending' | 'approved' | 'rejected') {
     this.activeTab.set(tab);
     this.paymentStatus.set('');
     this.page.set(1);

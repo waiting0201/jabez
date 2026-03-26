@@ -46,6 +46,12 @@ export const menuItems: MenuItemType[] = [
     requiredPermission: 'travel-requests:read',
   },
   {
+    icon: '/assets/icons/sprite.svg#sun',
+    label: '假日出差申請',
+    url: '/admin/holiday-travel-requests',
+    requiredPermission: 'holiday-travel-requests:read',
+  },
+  {
     icon: '/assets/icons/sprite.svg#map-pin',
     label: '出差沖銷申請',
     url: '/admin/travel-write-off-requests',
@@ -125,6 +131,12 @@ export const menuItems: MenuItemType[] = [
       { label: '角色管理', url: '/admin/roles', requiredPermission: 'roles:read' },
       { label: '權限管理', url: '/admin/permissions', requiredPermission: 'superadmin' },
     ],
+  },
+  {
+    icon: '/assets/icons/sprite.svg#calendar',
+    label: '行事曆管理',
+    url: '/admin/calendar-days',
+    requiredPermission: 'calendar-days:read',
   },
   {
     icon: '/assets/icons/sprite.svg#settings',

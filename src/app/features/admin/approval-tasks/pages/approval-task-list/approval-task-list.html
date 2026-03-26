@@ -18,6 +18,11 @@
             (click)="switchTab('approved')">
       已核准
     </button>
+    <button class="btn btn-sm"
+            [class]="activeTab() === 'rejected' ? 'btn-primary' : 'btn-outline-secondary'"
+            (click)="switchTab('rejected')">
+      已拒絕
+    </button>
   </div>
 
   <!-- 撥款/退款狀態篩選（僅已核准頁籤 + Superadmin/總監室/財務部/會計部） -->
@@ -84,6 +89,7 @@
               <tr>
                 <td colspan="6" class="text-center text-muted py-4">
                   {{ activeTab() === 'pending' ? '目前沒有待審核的簽核作業。'
+                     : activeTab() === 'rejected' ? '目前沒有已拒絕的簽核作業。'
                      : paymentStatus() === 'unpaid' ? '目前沒有未撥款/未退款的已核准簽核作業。'
                      : paymentStatus() === 'paid' ? '目前沒有已撥款/已退款的已核准簽核作業。'
                      : '目前沒有已核准的簽核作業。' }}

@@ -60,7 +60,7 @@
               <option [ngValue]="null">-- 請選擇已核准的出差單 --</option>
               @for (tr of travelRequests(); track tr.id) {
                 <option [ngValue]="tr.id">
-                  #{{ tr.id }} {{ tr.destination }} ({{ tr.startDate.slice(0,10) }} ~ {{ tr.endDate.slice(0,10) }}) — {{ tr.grandTotal | number:'1.0-0' }} 元
+                  #{{ tr.id }} {{ tr.destination }}{{ tr.isHolidayTravel ? ' [假日]' : '' }} ({{ tr.startDate.slice(0,10) }} ~ {{ tr.endDate.slice(0,10) }}) — {{ tr.grandTotal | number:'1.0-0' }} 元
                 </option>
               }
             </select>

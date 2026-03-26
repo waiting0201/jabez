@@ -105,7 +105,6 @@ export class TravelRequestForm implements OnInit {
     endDate:         ['', Validators.required],
     purpose:         ['', Validators.required],
     projectId:       [null as number | null],
-    isHolidayTravel: [false],
     items:           this.fb.array([]),
   });
 
@@ -114,14 +113,6 @@ export class TravelRequestForm implements OnInit {
 
   get grandTotal(): number {
     return this.itemArray.controls.reduce((s, c) => s + (+(c.get('totalPrice')?.value) || 0), 0);
-  }
-
-  get holidayDays(): number {
-    const v = this.form.value;
-    if (!v.isHolidayTravel || !v.startDate || !v.endDate) return 0;
-    const s = new Date(v.startDate);
-    const e = new Date(v.endDate);
-    return Math.max(0, Math.floor((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1);
   }
 
   ngOnInit() {
@@ -180,7 +171,6 @@ export class TravelRequestForm implements OnInit {
             : String(r.endDate),
           purpose:         r.purpose,
           projectId:       r.projectId ?? null,
-          isHolidayTravel: r.isHolidayTravel ?? false,
         });
         // 回填指定審核者清單
         if (r.designatedReviewers?.length) {
@@ -313,7 +303,6 @@ export class TravelRequestForm implements OnInit {
       purpose:             v.purpose!,
       projectId:           v.projectId ?? undefined,
       projectCode:         project?.code,
-      isHolidayTravel:     !!v.isHolidayTravel,
       grandTotal,
       designatedReviewers: reviewers.length > 0 ? reviewers : undefined,
       items,

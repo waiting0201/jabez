@@ -113,6 +113,15 @@ export const ADMIN_ROUTES: Routes = [
   {path: 'travel-requests/:id/edit',    component: TravelRequestForm, canActivate: [permissionGuard], data: {title: '編輯出差申請',   permission: 'travel-requests:read'}},
   {path: 'travel-requests/:id',         component: TravelDetail,      canActivate: [permissionGuard], data: {title: '出差申請詳情',   permission: 'travel-requests:read'}},
 
+  // 假日出差申請
+  {path: 'holiday-travel-requests',          canActivate: [permissionGuard], data: {title: '假日出差申請',       permission: 'holiday-travel-requests:read'}, loadComponent: () => import('./holiday-travel-requests/pages/holiday-travel-request-list/holiday-travel-request-list').then(m => m.HolidayTravelRequestList)},
+  {path: 'holiday-travel-requests/new',      canActivate: [permissionGuard], data: {title: '新增假日出差申請',   permission: 'holiday-travel-requests:write'}, loadComponent: () => import('./holiday-travel-requests/pages/holiday-travel-request-form/holiday-travel-request-form').then(m => m.HolidayTravelRequestForm)},
+  {path: 'holiday-travel-requests/:id/edit', canActivate: [permissionGuard], data: {title: '編輯假日出差申請',   permission: 'holiday-travel-requests:read'}, loadComponent: () => import('./holiday-travel-requests/pages/holiday-travel-request-form/holiday-travel-request-form').then(m => m.HolidayTravelRequestForm)},
+  {path: 'holiday-travel-requests/:id',      canActivate: [permissionGuard], data: {title: '假日出差申請詳情',   permission: 'holiday-travel-requests:read'}, loadComponent: () => import('./holiday-travel-requests/pages/holiday-travel-detail/holiday-travel-detail').then(m => m.HolidayTravelDetail)},
+
+  // 行事曆管理
+  {path: 'calendar-days',                    canActivate: [permissionGuard], data: {title: '行事曆管理',         permission: 'calendar-days:read'}, loadComponent: () => import('./calendar-days/pages/calendar-day-list/calendar-day-list').then(m => m.CalendarDayList)},
+
   // 加班申請
   {path: 'overtime-requests',             component: OvertimeRequestList, canActivate: [permissionGuard], data: {title: '加班申請',       permission: 'overtime-requests:read'}},
   {path: 'overtime-requests/new',         component: OvertimeRequestForm, canActivate: [permissionGuard], data: {title: '新增加班申請',   permission: 'overtime-requests:write'}},
@@ -120,7 +129,7 @@ export const ADMIN_ROUTES: Routes = [
 
   // 簽核作業
   {path: 'approval-tasks',                                   component: ApprovalTaskList,   canActivate: [permissionGuard], data: {title: '簽核作業',   permission: 'approval-tasks:read'}},
-  {path: 'approval-tasks/:applicationType/:id/review',       component: ApprovalTaskReview, canActivate: [permissionGuard], data: {title: '審核',       permission: 'approval-tasks:write'}},
+  {path: 'approval-tasks/:applicationType/:id/review',       component: ApprovalTaskReview, canActivate: [permissionGuard], data: {title: '審核',       permission: 'approval-tasks:read'}},
 
   // 統計報表
   {path: 'reports/attendance',   component: AttendanceReport, canActivate: [permissionGuard], data: {title: '出缺勤紀錄', permission: 'reports-attendance:read'}},

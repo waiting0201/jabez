@@ -1,0 +1,213 @@
+<div class="container-fluid py-3">
+
+  <!-- 頁頭 -->
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
+      <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#calendar"></use>
+      </svg>
+      <h4 class="mb-0">行事曆管理</h4>
+    </div>
+
+    <!-- 工具列：年份選擇 + 匯入按鈕 -->
+    <div class="flex items-center gap-2">
+      <select class="form-select form-select-sm"
+              style="width: 120px"
+              [ngModel]="selectedYear()"
+              (ngModelChange)="onYearChange($event)">
+        @for (y of yearOptions(); track y) {
+          <option [value]="y">{{ y }} 年</option>
+        }
+      </select>
+
+      <button class="btn btn-outline-primary btn-sm inline-flex items-center gap-1"
+              [disabled]="importing()"
+              (click)="importYear()">
+        @if (importing()) {
+          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+          <span>匯入中...</span>
+        } @else {
+          <svg class="sa-icon" style="stroke: currentColor">
+            <use href="/assets/icons/sprite.svg#download"></use>
+          </svg>
+          <span>匯入 {{ selectedYear() }} 年</span>
+        }
+      </button>
+    </div>
+  </div>
+
+  <!-- 主內容區 -->
+  <div class="row g-4">
+    <div class="col-12 col-xl-10">
+
+      <div class="card border-0 shadow-sm">
+        <!-- 卡片標頭 -->
+        <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+          <svg class="sa-icon text-primary" style="stroke: currentColor">
+            <use href="/assets/icons/sprite.svg#calendar"></use>
+          </svg>
+          {{ selectedYear() }} 年行事曆
+          @if (!loading() && days().length > 0) {
+            <span class="badge bg-secondary ms-auto fw-400">共 {{ days().length }} 筆</span>
+          }
+        </div>
+
+        <div class="card-body p-0">
+
+          <!-- 載入中 -->
+          @if (loading()) {
+            <div class="text-center text-muted py-5">
+              <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+              載入中...
+            </div>
+          }
+
+          <!-- 無資料提示 -->
+          @else if (days().length === 0) {
+            <div class="text-center py-5">
+              <svg class="sa-icon sa-icon-2x text-muted mb-3" style="stroke: currentColor; display: block; margin: 0 auto 0.75rem">
+                <use href="/assets/icons/sprite.svg#calendar"></use>
+              </svg>
+              <p class="text-muted mb-3">
+                尚未匯入 {{ selectedYear() }} 年行事曆資料，請點選匯入按鈕。
+              </p>
+              <button class="btn btn-primary btn-sm inline-flex items-center gap-1"
+                      [disabled]="importing()"
+                      (click)="importYear()">
+                <svg class="sa-icon" style="stroke: currentColor">
+                  <use href="/assets/icons/sprite.svg#download"></use>
+                </svg>
+                匯入 {{ selectedYear() }} 年
+              </button>
+            </div>
+          }
+
+          <!-- 資料表格 -->
+          @else {
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th style="min-width: 110px">日期</th>
+                    <th style="width: 60px" class="text-center">星期</th>
+                    <th style="width: 100px" class="text-center">狀態</th>
+                    <th>說明</th>
+                    <th style="width: 120px" class="text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (day of days(); track day.id) {
+                    <!-- 一般顯示列 -->
+                    @if (editingId() !== day.id) {
+                      <tr [class.table-success]="day.isHoliday" [class.text-muted]="!day.isHoliday && !isWeekend(day.date)">
+                        <td class="fw-500">
+                          {{ day.date | date:'yyyy/MM/dd' }}
+                        </td>
+                        <td class="text-center">
+                          <span [class.text-danger]="isWeekend(day.date)"
+                                [class.fw-600]="isWeekend(day.date)">
+                            {{ getWeekdayLabel(day.date) }}
+                          </span>
+                        </td>
+                        <td class="text-center">
+                          @if (day.isHoliday) {
+                            <span class="badge"
+                                  style="background-color: var(--forest); color: #fff;">
+                              放假
+                            </span>
+                          } @else {
+                            <span class="text-muted small">上班</span>
+                          }
+                        </td>
+                        <td>
+                          @if (day.description) {
+                            <span>{{ day.description }}</span>
+                          } @else {
+                            <span class="text-muted">—</span>
+                          }
+                        </td>
+                        <td class="text-right">
+                          <div class="flex justify-end gap-1">
+                            <button class="btn btn-sm btn-ghost-primary inline-flex items-center"
+                                    title="編輯"
+                                    (click)="startEdit(day)">
+                              <svg class="sa-icon" style="stroke: currentColor">
+                                <use href="/assets/icons/sprite.svg#edit"></use>
+                              </svg>
+                            </button>
+                            <button class="btn btn-sm btn-ghost-danger inline-flex items-center"
+                                    title="刪除"
+                                    (click)="delete(day)">
+                              <svg class="sa-icon" style="stroke: currentColor">
+                                <use href="/assets/icons/sprite.svg#trash"></use>
+                              </svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    }
+
+                    <!-- 行內編輯列 -->
+                    @else {
+                      <tr class="table-warning">
+                        <td class="fw-500">
+                          {{ day.date | date:'yyyy/MM/dd' }}
+                        </td>
+                        <td class="text-center">
+                          <span [class.text-danger]="isWeekend(day.date)"
+                                [class.fw-600]="isWeekend(day.date)">
+                            {{ getWeekdayLabel(day.date) }}
+                          </span>
+                        </td>
+                        <td class="text-center">
+                          <!-- 放假狀態切換 -->
+                          <div class="form-check form-switch d-flex justify-content-center mb-0">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   role="switch"
+                                   id="holiday-{{ day.id }}"
+                                   [ngModel]="editingIsHoliday()"
+                                   (ngModelChange)="editingIsHoliday.set($event)">
+                          </div>
+                        </td>
+                        <td>
+                          <!-- 說明文字編輯 -->
+                          <input type="text"
+                                 class="form-control form-control-sm"
+                                 placeholder="國定假日名稱或備註"
+                                 [ngModel]="editingDescription()"
+                                 (ngModelChange)="editingDescription.set($event)">
+                        </td>
+                        <td class="text-right">
+                          <div class="flex justify-end gap-1">
+                            <button class="btn btn-sm btn-success inline-flex items-center"
+                                    title="儲存"
+                                    (click)="saveEdit(day)">
+                              <svg class="sa-icon" style="stroke: currentColor">
+                                <use href="/assets/icons/sprite.svg#check"></use>
+                              </svg>
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary inline-flex items-center"
+                                    title="取消"
+                                    (click)="cancelEdit()">
+                              <svg class="sa-icon" style="stroke: currentColor">
+                                <use href="/assets/icons/sprite.svg#x"></use>
+                              </svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    }
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
