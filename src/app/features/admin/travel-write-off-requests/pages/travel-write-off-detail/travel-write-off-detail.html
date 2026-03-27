@@ -111,11 +111,22 @@
         </div>
 
         @if (r.note) {
-          <div class="text-muted small mb-2">備註：{{ r.note }}</div>
+          <div class="text-muted small mb-0">備註：{{ r.note }}</div>
         }
 
-        <!-- 沖銷明細 -->
-        <div class="table-responsive mt-4">
+      </div>
+    </div>
+
+    <!-- 沖銷明細 -->
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+        <svg class="sa-icon text-primary" style="stroke: currentColor">
+          <use href="/assets/icons/sprite.svg#list"></use>
+        </svg>
+        沖銷明細
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
           <table class="table table-sm mb-0">
             <thead class="table-light">
               <tr>
