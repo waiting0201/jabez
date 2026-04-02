@@ -196,7 +196,8 @@ public sealed class AppRouter(
             ("PATCH",  ["travel-write-off-requests", var id])                  => await travelWriteOffRequests.UpdateAsync(req, id),
             ("DELETE", ["travel-write-off-requests", var id])                  => await travelWriteOffRequests.DeleteAsync(req, id),
 
-            // ── Holiday Travel Requests（假日出差，共用 TravelRequestHandler）──────
+            // ── Holiday Travel Requests（假日執行活動，共用 TravelRequestHandler）──────
+            ("GET",    ["holiday-travel-requests", "count-holidays"])      => await travelRequests.CountHolidaysAsync(req),
             ("GET",    ["holiday-travel-requests"])                        => await travelRequests.GetAllAsync(req, isHolidayTravel: true),
             ("POST",   ["holiday-travel-requests"])                        => await travelRequests.CreateAsync(req, isHolidayTravel: true),
             ("PATCH",  ["holiday-travel-requests", var id, "submit"])      => await travelRequests.SubmitAsync(req, id, isHolidayTravel: true),

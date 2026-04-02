@@ -28,7 +28,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             ORDER BY u.Name
             """;
 
-        // 2. 查詢該月已核准的假日出差天數（含參與執行人員）
+        // 2. 查詢該月已核准的假日執行活動天數（含參與執行人員）
         //    使用 HolidayDays 欄位（前端填寫的假日天數），以 CTE + UNION ALL 合併申請人與參與人員
         const string travelSql = """
             ;WITH HolidayTravelDays AS (

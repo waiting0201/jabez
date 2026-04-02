@@ -46,7 +46,7 @@ public class ApprovalItemConfiguration : IEntityTypeConfiguration<ApprovalItem>
             new ApprovalItem { Id = 6, Name = "預支申請", Code = "advance_request",  IsActive = true, ApplicationType = "advance",         CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new ApprovalItem { Id = 7, Name = "預支沖銷申請",  Code = "write_off_request",        IsActive = true, ApplicationType = "write_off",        CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new ApprovalItem { Id = 8, Name = "出差沖銷申請",  Code = "travel_write_off_request",  IsActive = true, ApplicationType = "travel_write_off", CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new ApprovalItem { Id = 9, Name = "假日出差申請",  Code = "holiday_travel_request",    IsActive = true, ApplicationType = "holiday_travel",   CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+            new ApprovalItem { Id = 9, Name = "假日執行活動申請",  Code = "holiday_travel_request",    IsActive = true, ApplicationType = "holiday_travel",   CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
         );
     }
 }

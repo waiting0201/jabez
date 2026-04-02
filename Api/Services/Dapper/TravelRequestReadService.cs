@@ -87,7 +87,7 @@ public sealed class TravelRequestReadService(IDbConnection db) : ITravelRequestR
             (DateTime?)r.ReviewedAt,
             (string?)r.Comment)).ToArray();
 
-        // 額外查詢出差參與者（假日出差才需要，但統一回傳）
+        // 額外查詢出差參與者（假日執行活動才需要，但統一回傳）
         const string participantSql = """
             SELECT trp.UserId, u.Name AS UserName, trp.SortOrder
             FROM TravelRequestParticipants trp

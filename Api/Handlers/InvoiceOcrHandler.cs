@@ -22,9 +22,9 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
     private const string DefaultModel = "gemini-2.0-flash-lite-001";
     private const string ApiBase = "https://generativelanguage.googleapis.com/v1beta/models";
 
-    // 允許的圖片 MIME 類型
+    // 允許的 MIME 類型（圖片 + PDF）
     private static readonly HashSet<string> AllowedMediaTypes =
-        ["image/jpeg", "image/png", "image/gif", "image/webp"];
+        ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf"];
 
     private static readonly JsonSerializerOptions CamelOpts = new()
     {
@@ -64,7 +64,7 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
 
         if (file is null || file.Length == 0)
             return new BadRequestObjectResult(
-                ApiResponse.Fail("請上傳圖片檔案（欄位名稱：file）。"));
+                ApiResponse.Fail("請上傳圖片或 PDF 檔案（欄位名稱：file）。"));
 
         // ── 3. 驗證檔案類型與大小 ───────────────────────────────────────────────
         var mediaType = file.ContentType?.ToLowerInvariant() ?? "image/jpeg";
@@ -77,11 +77,12 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
                 ".png"            => "image/png",
                 ".gif"            => "image/gif",
                 ".webp"           => "image/webp",
+                ".pdf"            => "application/pdf",
                 _                 => string.Empty
             };
             if (string.IsNullOrEmpty(mediaType))
                 return new BadRequestObjectResult(
-                    ApiResponse.Fail("不支援的圖片格式。請上傳 JPEG、PNG、GIF 或 WebP 圖片。"));
+                    ApiResponse.Fail("不支援的檔案格式。請上傳 JPEG、PNG、GIF、WebP 圖片或 PDF。"));
         }
 
         const long maxBytes = 5 * 1024 * 1024;
@@ -105,7 +106,7 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
 
         // ── 5. 組建 Gemini API 請求 ──────────────────────────────────────────
         var prompt = """
-            請辨識這張台灣統一發票/收據圖片，提取以下資訊：
+            請辨識這張台灣統一發票/收據（圖片或 PDF），提取以下資訊：
             1. 發票號碼（格式：2個英文大寫字母 + 8個數字，如 AB12345678）
             2. 總金額（合計/總計/應付金額的數字）
             3. 發票日期（如果是民國年格式如「113年01月15日」或「113/01/15」，請轉換為西元年，例如 2024-01-15）

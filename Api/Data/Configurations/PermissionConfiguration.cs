@@ -108,10 +108,10 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             new Permission { Id = "57", Code = "travel-write-off-requests:read",   Name = "瀏覽",     Module = "出差沖銷申請" },
             new Permission { Id = "58", Code = "travel-write-off-requests:write",  Name = "新增/修改", Module = "出差沖銷申請" },
             new Permission { Id = "59", Code = "travel-write-off-requests:delete", Name = "刪除",     Module = "出差沖銷申請" },
-            // 假日出差申請
-            new Permission { Id = "60", Code = "holiday-travel-requests:read",   Name = "瀏覽",     Module = "假日出差申請" },
-            new Permission { Id = "61", Code = "holiday-travel-requests:write",  Name = "新增/修改", Module = "假日出差申請" },
-            new Permission { Id = "62", Code = "holiday-travel-requests:delete", Name = "刪除",     Module = "假日出差申請" },
+            // 假日執行活動申請
+            new Permission { Id = "60", Code = "holiday-travel-requests:read",   Name = "瀏覽",     Module = "假日執行活動申請" },
+            new Permission { Id = "61", Code = "holiday-travel-requests:write",  Name = "新增/修改", Module = "假日執行活動申請" },
+            new Permission { Id = "62", Code = "holiday-travel-requests:delete", Name = "刪除",     Module = "假日執行活動申請" },
             // 行事曆管理
             new Permission { Id = "63", Code = "calendar-days:read",   Name = "瀏覽",     Module = "行事曆管理" },
             new Permission { Id = "64", Code = "calendar-days:write",  Name = "新增/修改", Module = "行事曆管理" },

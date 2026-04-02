@@ -20,3 +20,5 @@ __queuestorage__/
 
 # TypeScript incremental compilation
 *.tsbuildinfo
+
+reference/

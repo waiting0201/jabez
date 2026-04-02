@@ -342,7 +342,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             ORDER BY tr.CreatedAt DESC
             """;
 
-        // 假日出差申請（IsHolidayTravel = 1），獨立 ApplicationType = "holiday_travel"
+        // 假日執行活動申請（IsHolidayTravel = 1），獨立 ApplicationType = "holiday_travel"
         var holidayTravelSql = $"""
             SELECT tr.Id, tr.Destination, tr.StartDate, tr.EndDate,
                    tr.GrandTotal, tr.Purpose, proj.Code AS ProjectCode, proj.Name AS ProjectName,
@@ -715,7 +715,7 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             GetDesignatedReviewers("leave", (int)row.Id),
             (string?)row.SubmittedBySignatureUrl));
 
-        // Travel requests (非假日出差，IsHolidayTravel = 0)
+        // Travel requests (非假日執行活動，IsHolidayTravel = 0)
         var travelTasks = travelRows.Select(row => new ApprovalTaskDto(
             (int)row.Id,
             "travel",
@@ -750,11 +750,11 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             GetDesignatedReviewers("travel", (int)row.Id),
             (string?)row.SubmittedBySignatureUrl));
 
-        // Holiday travel requests (假日出差，IsHolidayTravel = 1)，使用獨立 ApplicationType = "holiday_travel"
+        // Holiday travel requests (假日執行活動，IsHolidayTravel = 1)，使用獨立 ApplicationType = "holiday_travel"
         var holidayTravelTasks = holidayTravelRows.Select(row => new ApprovalTaskDto(
             (int)row.Id,
             "holiday_travel",
-            $"假日出差申請 #{row.Id}（{row.Destination}）",
+            $"假日執行活動申請 #{row.Id}（{row.Destination}）",
             (string?)row.SubmittedBy ?? "—",
             (DateTime)row.CreatedAt,
             (string)row.ApprovalStatus,

@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
+using System.Text.Json;
 
 namespace Jabez.Api.Handlers;
 
@@ -25,8 +26,27 @@ public sealed class TravelRequestHandler(
     IJwtService jwtService,
     IApprovalNotificationService notifier,
     IApprovalFlowService approvalFlow,
-    ICalendarDayReadService calendarDayReader)
+    ICalendarDayReadService calendarDayReader,
+    IBlobStorageService blob)
 {
+    private const string ContainerName = "invoices";
+    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+
+    /// <summary>假日執行活動 FormData 明細 metadata（對應前端 _buildFormData 的 items JSON）</summary>
+    private sealed record HolidayItemMeta(
+        string  Category,
+        int     SeqNo,
+        string  ItemName,
+        decimal UnitPrice,
+        string  Quantity,
+        decimal TotalPrice,
+        string? Note        = null,
+        string? InvoiceNo   = null,
+        DateTime? InvoiceDate = null,
+        string? FileName    = null,
+        string? FileUrl     = null,
+        int     FileIndex   = -1,
+        int     SortOrder   = 0);
     public async Task<IActionResult> GetAllAsync(HttpRequest req, bool isHolidayTravel = false)
     {
         var userId = await GetUserIdAsync(req);
@@ -61,6 +81,10 @@ public sealed class TravelRequestHandler(
         // BUG-04: EmployeeId 由 JWT 中的 sub claim 決定，不信任客戶端傳入的值
         var employeeId = await GetUserIdAsync(req);
 
+        // 假日執行活動前端送 FormData（含發票檔案上傳），一般出差送 JSON
+        if (isHolidayTravel)
+            return await CreateFromFormDataAsync(req, employeeId, appType);
+
         var body = await req.ReadFromJsonAsync<CreateTravelRequestRequest>();
         if (body is null)
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
@@ -87,15 +111,6 @@ public sealed class TravelRequestHandler(
                 return new BadRequestObjectResult(ApiResponse.Fail("一或多位指定審核者不存在。"));
         }
 
-        // 假日出差：參與者存在性驗證
-        if (isHolidayTravel && body.Participants is { Length: > 0 })
-        {
-            var participantIds = body.Participants.Select(p => p.UserId).Distinct().ToList();
-            var existCount = await db.Users.AsNoTracking().CountAsync(u => participantIds.Contains(u.Id));
-            if (existCount != participantIds.Count)
-                return new BadRequestObjectResult(ApiResponse.Fail("一或多位出差參與者不存在。"));
-        }
-
         // 建立明細項目，計算 GrandTotal
         var items = body.Items.Select((i, idx) => new TravelRequestItem
         {
@@ -119,7 +134,7 @@ public sealed class TravelRequestHandler(
             GrandTotal      = items.Sum(i => i.TotalPrice),
             Purpose         = body.Purpose,
             ProjectId       = body.ProjectId,
-            IsHolidayTravel = isHolidayTravel,  // 強制由路由決定，忽略 body 的值
+            IsHolidayTravel = false,
             ApprovalStatus  = "draft",
             CreatedAt       = Clock.Now,
             Items           = items,
@@ -141,11 +156,132 @@ public sealed class TravelRequestHandler(
             await db.SaveChangesAsync();
         }
 
-        // 假日出差：儲存參與者
-        if (isHolidayTravel && body.Participants is { Length: > 0 })
+        var dto = await reader.GetByIdAsync(travelRequest.Id);
+        return new ObjectResult(ApiResponse.Ok(dto, "Travel request created.")) { StatusCode = 201 };
+    }
+
+    /// <summary>假日執行活動：從 FormData 建立（支援發票檔案上傳）</summary>
+    private async Task<IActionResult> CreateFromFormDataAsync(HttpRequest req, Guid employeeId, string appType)
+    {
+        var form = await req.ReadFormAsync();
+
+        var destination = form["destination"].ToString();
+        var purpose     = form["purpose"].ToString();
+        var projectId   = int.TryParse(form["projectId"], out var pid) ? (int?)pid : null;
+        var startDate   = DateTime.TryParse(form["startDate"], out var sd) ? sd : default;
+        var endDate     = DateTime.TryParse(form["endDate"], out var ed) ? ed : default;
+
+        if (string.IsNullOrWhiteSpace(destination))
+            return new BadRequestObjectResult(ApiResponse.Fail("Destination is required."));
+        if (startDate == default || endDate == default)
+            return new BadRequestObjectResult(ApiResponse.Fail("StartDate and EndDate are required."));
+        if (endDate < startDate)
+            return new BadRequestObjectResult(ApiResponse.Fail("EndDate must be on or after StartDate."));
+
+        // 解析明細 JSON
+        var itemsJson = form["items"].ToString();
+        var itemsMeta = string.IsNullOrEmpty(itemsJson)
+            ? null
+            : JsonSerializer.Deserialize<HolidayItemMeta[]>(itemsJson, JsonOpts);
+        if (itemsMeta is null || itemsMeta.Length == 0)
+            return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
+
+        // 解析指定審核者 JSON
+        DesignatedReviewerRequest[]? designatedReviewers = null;
+        var drJson = form["designatedReviewers"].ToString();
+        if (!string.IsNullOrEmpty(drJson))
+            designatedReviewers = JsonSerializer.Deserialize<DesignatedReviewerRequest[]>(drJson, JsonOpts);
+
+        if (designatedReviewers is { Length: > 0 })
+        {
+            var reviewerIds = designatedReviewers.Select(r => r.ReviewerId).Distinct().ToList();
+            var existCount = await db.Users.AsNoTracking().CountAsync(u => reviewerIds.Contains(u.Id));
+            if (existCount != reviewerIds.Count)
+                return new BadRequestObjectResult(ApiResponse.Fail("一或多位指定審核者不存在。"));
+        }
+
+        // 解析參與者 JSON
+        ParticipantRequest[]? participants = null;
+        var pJson = form["participants"].ToString();
+        if (!string.IsNullOrEmpty(pJson))
+            participants = JsonSerializer.Deserialize<ParticipantRequest[]>(pJson, JsonOpts);
+
+        if (participants is { Length: > 0 })
+        {
+            var participantIds = participants.Select(p => p.UserId).Distinct().ToList();
+            var existCount = await db.Users.AsNoTracking().CountAsync(u => participantIds.Contains(u.Id));
+            if (existCount != participantIds.Count)
+                return new BadRequestObjectResult(ApiResponse.Fail("一或多位出差參與者不存在。"));
+        }
+
+        // 上傳檔案並建立明細
+        var files = form.Files.GetFiles("files");
+        var items = new List<TravelRequestItem>();
+        foreach (var (meta, idx) in itemsMeta.Select((m, i) => (m, i)))
+        {
+            string? fileUrl = meta.FileUrl; // 保留已有的 URL
+            if (meta.FileIndex >= 0 && meta.FileIndex < files.Count)
+            {
+                var file = files[meta.FileIndex];
+                var ext = Path.GetExtension(file.FileName);
+                var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
+                using var stream = file.OpenReadStream();
+                fileUrl = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+            }
+
+            items.Add(new TravelRequestItem
+            {
+                Category    = meta.Category,
+                SeqNo       = meta.SeqNo,
+                ItemName    = meta.ItemName,
+                UnitPrice   = meta.UnitPrice,
+                Quantity    = meta.Quantity,
+                TotalPrice  = meta.TotalPrice,
+                Note        = meta.Note,
+                InvoiceNo   = meta.InvoiceNo,
+                InvoiceDate = meta.InvoiceDate,
+                FileName    = meta.FileName,
+                FileUrl     = fileUrl,
+                SortOrder   = meta.SortOrder > 0 ? meta.SortOrder : idx,
+            });
+        }
+
+        var travelRequest = new TravelRequest
+        {
+            EmployeeId      = employeeId,
+            Destination     = destination,
+            StartDate       = startDate,
+            EndDate         = endDate,
+            GrandTotal      = items.Sum(i => i.TotalPrice),
+            Purpose         = purpose,
+            ProjectId       = projectId,
+            IsHolidayTravel = true,
+            ApprovalStatus  = "draft",
+            CreatedAt       = Clock.Now,
+            Items           = items,
+        };
+        db.TravelRequests.Add(travelRequest);
+        await db.SaveChangesAsync();
+
+        // 儲存指定審核者
+        if (designatedReviewers is { Length: > 0 })
+        {
+            db.RequestDesignatedReviewers.AddRange(
+                designatedReviewers.OrderBy(r => r.StepOrder).Select(r => new RequestDesignatedReviewer
+                {
+                    RequestType = appType,
+                    RequestId   = travelRequest.Id,
+                    ReviewerId  = r.ReviewerId,
+                    StepOrder   = r.StepOrder,
+                }));
+            await db.SaveChangesAsync();
+        }
+
+        // 儲存參與者
+        if (participants is { Length: > 0 })
         {
             db.TravelRequestParticipants.AddRange(
-                body.Participants.Select(p => new TravelRequestParticipant
+                participants.Select(p => new TravelRequestParticipant
                 {
                     TravelRequestId = travelRequest.Id,
                     UserId          = p.UserId,
@@ -165,14 +301,18 @@ public sealed class TravelRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid travel request ID format."));
 
+        // 假日執行活動前端送 FormData（含發票檔案上傳），一般出差送 JSON
+        if (isHolidayTravel)
+            return await UpdateFromFormDataAsync(req, userId, intId, appType);
+
         var body = await req.ReadFromJsonAsync<UpdateTravelRequestRequest>();
         if (body is null)
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
 
         var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         var item = currentUser?.IsSuperAdmin == true
-            ? await db.TravelRequests.Include(x => x.Items).Include(x => x.Participants).FirstOrDefaultAsync(x => x.Id == intId)
-            : await db.TravelRequests.Include(x => x.Items).Include(x => x.Participants).FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
+            ? await db.TravelRequests.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.TravelRequests.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
         if (item is null) throw AppException.NotFound("TravelRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
@@ -205,35 +345,11 @@ public sealed class TravelRequestHandler(
             }
         }
 
-        // 假日出差：參與者整組替換（提供 Participants 時才更新）
-        if (isHolidayTravel && body.Participants is not null)
-        {
-            if (body.Participants.Length > 0)
-            {
-                var participantIds = body.Participants.Select(p => p.UserId).Distinct().ToList();
-                var existCount = await db.Users.AsNoTracking().CountAsync(u => participantIds.Contains(u.Id));
-                if (existCount != participantIds.Count)
-                    return new BadRequestObjectResult(ApiResponse.Fail("一或多位出差參與者不存在。"));
-            }
-            db.TravelRequestParticipants.RemoveRange(item.Participants);
-            if (body.Participants.Length > 0)
-            {
-                db.TravelRequestParticipants.AddRange(
-                    body.Participants.Select(p => new TravelRequestParticipant
-                    {
-                        TravelRequestId = intId,
-                        UserId          = p.UserId,
-                        SortOrder       = p.SortOrder,
-                    }));
-            }
-        }
-
         if (body.Destination is not null)  item.Destination = body.Destination;
         if (body.StartDate.HasValue)       item.StartDate   = body.StartDate.Value;
         if (body.EndDate.HasValue)         item.EndDate     = body.EndDate.Value;
         if (body.Purpose is not null)      item.Purpose     = body.Purpose;
         if (body.ProjectId.HasValue)       item.ProjectId   = body.ProjectId == 0 ? null : body.ProjectId;
-        // IsHolidayTravel 不允許透過 UpdateAsync 修改（由路由決定），忽略 body.IsHolidayTravel
 
         // 明細項目整組替換（提供 Items 時才更新）
         if (body.Items is { Length: > 0 })
@@ -253,6 +369,158 @@ public sealed class TravelRequestHandler(
             }).ToList();
             item.Items      = newItems;
             item.GrandTotal = newItems.Sum(i => i.TotalPrice);
+        }
+
+        await db.SaveChangesAsync();
+
+        var dto = await reader.GetByIdAsync(item.Id);
+        return new OkObjectResult(ApiResponse.Ok(dto, "Travel request updated."));
+    }
+
+    /// <summary>假日執行活動：從 FormData 更新（支援發票檔案上傳）</summary>
+    private async Task<IActionResult> UpdateFromFormDataAsync(HttpRequest req, Guid userId, int intId, string appType)
+    {
+        var form = await req.ReadFormAsync();
+
+        var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var item = currentUser?.IsSuperAdmin == true
+            ? await db.TravelRequests.Include(x => x.Items).Include(x => x.Participants).FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.TravelRequests.Include(x => x.Items).Include(x => x.Participants).FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
+        if (item is null) throw AppException.NotFound("TravelRequest");
+
+        if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
+            throw AppException.BadRequest("Only draft or returned travel requests can be edited.");
+
+        // 基本欄位更新
+        var destination = form["destination"].ToString();
+        if (!string.IsNullOrEmpty(destination)) item.Destination = destination;
+        if (DateTime.TryParse(form["startDate"], out var sd)) item.StartDate = sd;
+        if (DateTime.TryParse(form["endDate"], out var ed))   item.EndDate   = ed;
+        var purpose = form["purpose"].ToString();
+        if (!string.IsNullOrEmpty(purpose)) item.Purpose = purpose;
+        if (int.TryParse(form["projectId"], out var pid))
+            item.ProjectId = pid == 0 ? null : pid;
+
+        // 指定審核者整組替換
+        var drJson = form["designatedReviewers"].ToString();
+        if (!string.IsNullOrEmpty(drJson))
+        {
+            var designatedReviewers = JsonSerializer.Deserialize<DesignatedReviewerRequest[]>(drJson, JsonOpts);
+            if (designatedReviewers is { Length: > 0 })
+            {
+                var reviewerIds = designatedReviewers.Select(r => r.ReviewerId).Distinct().ToList();
+                var existCount = await db.Users.AsNoTracking().CountAsync(u => reviewerIds.Contains(u.Id));
+                if (existCount != reviewerIds.Count)
+                    return new BadRequestObjectResult(ApiResponse.Fail("一或多位指定審核者不存在。"));
+            }
+            var old = await db.RequestDesignatedReviewers
+                .Where(r => r.RequestType == appType && r.RequestId == intId)
+                .ToListAsync();
+            db.RequestDesignatedReviewers.RemoveRange(old);
+            if (designatedReviewers is { Length: > 0 })
+            {
+                db.RequestDesignatedReviewers.AddRange(
+                    designatedReviewers.Select(r => new RequestDesignatedReviewer
+                    {
+                        RequestType = appType,
+                        RequestId   = intId,
+                        ReviewerId  = r.ReviewerId,
+                        StepOrder   = r.StepOrder,
+                    }));
+            }
+        }
+
+        // 參與者整組替換
+        var pJson = form["participants"].ToString();
+        if (!string.IsNullOrEmpty(pJson))
+        {
+            var participants = JsonSerializer.Deserialize<ParticipantRequest[]>(pJson, JsonOpts);
+            if (participants is { Length: > 0 })
+            {
+                var participantIds = participants.Select(p => p.UserId).Distinct().ToList();
+                var existCount = await db.Users.AsNoTracking().CountAsync(u => participantIds.Contains(u.Id));
+                if (existCount != participantIds.Count)
+                    return new BadRequestObjectResult(ApiResponse.Fail("一或多位出差參與者不存在。"));
+            }
+            db.TravelRequestParticipants.RemoveRange(item.Participants);
+            if (participants is { Length: > 0 })
+            {
+                db.TravelRequestParticipants.AddRange(
+                    participants.Select(p => new TravelRequestParticipant
+                    {
+                        TravelRequestId = intId,
+                        UserId          = p.UserId,
+                        SortOrder       = p.SortOrder,
+                    }));
+            }
+        }
+
+        // 明細項目整組替換（含檔案上傳）
+        var itemsJson = form["items"].ToString();
+        if (!string.IsNullOrEmpty(itemsJson))
+        {
+            var itemsMeta = JsonSerializer.Deserialize<HolidayItemMeta[]>(itemsJson, JsonOpts);
+            if (itemsMeta is { Length: > 0 })
+            {
+                // 收集舊 FileUrl（稍後比對，刪除不再使用的 blob）
+                var oldFileUrls = item.Items
+                    .Where(i => !string.IsNullOrEmpty(i.FileUrl))
+                    .Select(i => i.FileUrl!)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                db.TravelRequestItems.RemoveRange(item.Items);
+                var files = form.Files.GetFiles("files");
+                var newItems = new List<TravelRequestItem>();
+                var newFileUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var (meta, idx) in itemsMeta.Select((m, i) => (m, i)))
+                {
+                    string? fileUrl = meta.FileUrl;
+                    if (meta.FileIndex >= 0 && meta.FileIndex < files.Count)
+                    {
+                        var file = files[meta.FileIndex];
+                        var ext = Path.GetExtension(file.FileName);
+                        var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
+                        using var stream = file.OpenReadStream();
+                        fileUrl = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                    }
+                    if (!string.IsNullOrEmpty(fileUrl))
+                        newFileUrls.Add(fileUrl);
+
+                    newItems.Add(new TravelRequestItem
+                    {
+                        TravelRequestId = intId,
+                        Category    = meta.Category,
+                        SeqNo       = meta.SeqNo,
+                        ItemName    = meta.ItemName,
+                        UnitPrice   = meta.UnitPrice,
+                        Quantity    = meta.Quantity,
+                        TotalPrice  = meta.TotalPrice,
+                        Note        = meta.Note,
+                        InvoiceNo   = meta.InvoiceNo,
+                        InvoiceDate = meta.InvoiceDate,
+                        FileName    = meta.FileName,
+                        FileUrl     = fileUrl,
+                        SortOrder   = meta.SortOrder > 0 ? meta.SortOrder : idx,
+                    });
+                }
+
+                item.Items      = newItems;
+                item.GrandTotal = newItems.Sum(i => i.TotalPrice);
+
+                await db.SaveChangesAsync();
+
+                // 刪除不再使用的舊 blob
+                foreach (var url in oldFileUrls.Except(newFileUrls))
+                {
+                    var blobName = blob.ExtractBlobName(url, ContainerName);
+                    if (blobName is not null)
+                        await blob.DeleteAsync(ContainerName, blobName);
+                }
+
+                var dto2 = await reader.GetByIdAsync(item.Id);
+                return new OkObjectResult(ApiResponse.Ok(dto2, "Travel request updated."));
+            }
         }
 
         await db.SaveChangesAsync();
@@ -285,7 +553,7 @@ public sealed class TravelRequestHandler(
     /// <summary>送出申請（draft → pending）</summary>
     public async Task<IActionResult> SubmitAsync(HttpRequest req, string id, bool isHolidayTravel = false)
     {
-        // 根據路由決定申請類型（假日出差 vs 一般出差）
+        // 根據路由決定申請類型（假日執行活動 vs 一般出差）
         var appType = isHolidayTravel ? "holiday_travel" : "travel";
 
         var userId = await GetUserIdAsync(req);
@@ -306,7 +574,7 @@ public sealed class TravelRequestHandler(
         if (!hasItems)
             return new BadRequestObjectResult(ApiResponse.Fail("出差申請至少需要一筆費用明細項目。"));
 
-        // 假日出差：計算 HolidayDays（送出時計算，需確認行事曆資料已匯入）
+        // 假日執行活動：計算 HolidayDays（送出時計算，需確認行事曆資料已匯入）
         if (isHolidayTravel)
         {
             var hasCalendarData = await calendarDayReader.HasDataForRangeAsync(item.StartDate, item.EndDate);
@@ -503,6 +771,27 @@ public sealed class TravelRequestHandler(
 
         var msg = (body.EstimatedRefundDate.HasValue || body.RefundedAt.HasValue) ? "退款日期已更新。" : "撥款日期已更新。";
         return new OkObjectResult(ApiResponse.Ok(new { tr.Id, tr.EstimatedPaymentDate, tr.PaidAt, tr.EstimatedRefundDate, tr.RefundedAt }, msg));
+    }
+
+    // ── 假日天數查詢 ────────────────────────────────────────────────────────────
+
+    /// <summary>查詢日期範圍內的假日天數（依行事曆資料）</summary>
+    public async Task<IActionResult> CountHolidaysAsync(HttpRequest req)
+    {
+        if (!DateTime.TryParse(req.Query["startDate"], out var startDate) ||
+            !DateTime.TryParse(req.Query["endDate"], out var endDate))
+            return new BadRequestObjectResult(ApiResponse.Fail("請提供 startDate 和 endDate 參數。"));
+
+        if (endDate < startDate)
+            return new BadRequestObjectResult(ApiResponse.Fail("endDate 不可早於 startDate。"));
+
+        var hasData = await calendarDayReader.HasDataForRangeAsync(startDate, endDate);
+        if (!hasData)
+            return new OkObjectResult(ApiResponse.Ok(new { holidayDays = (int?)null, hasCalendarData = false },
+                "行事曆資料尚未匯入。"));
+
+        var count = await calendarDayReader.CountHolidaysAsync(startDate, endDate);
+        return new OkObjectResult(ApiResponse.Ok(new { holidayDays = count, hasCalendarData = true }));
     }
 
     // ── Helper ──────────────────────────────────────────────────────────────────
