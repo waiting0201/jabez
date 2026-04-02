@@ -1,80 +1,12 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { ApprovalTask, ApprovalRecord, ApprovalFlow } from '../../approval-tasks/models/approval-task.model';
-import { environment } from '../../../../../environments/environment';
-
-/** 簽名欄資料 */
-interface SignBlock {
-  label: string;
-  signatureUrl?: string;
-  date: string;
-}
-
-/** ArrayBuffer → base64 */
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  const chunk = 8192;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)));
-  }
-  return btoa(binary);
-}
-
-/**
- * 將簽名 URL 轉為可存取的端點：
- * - 相對路徑（如 files/signatures/xxx.png）→ 加上 apiUrl 前綴
- * - 完整 blob URL → 萃取檔名，轉為 API 代理路徑
- */
-function resolveSignatureUrl(url: string): string {
-  if (!url.startsWith('http')) {
-    return `${environment.apiUrl}/${url}`;
-  }
-  const match = url.match(/\/signatures\/(.+)$/);
-  if (match) {
-    return `${environment.apiUrl}/files/signatures/${match[1]}`;
-  }
-  return url;
-}
-
-/** 格式化日期時間（保證日期與時間之間有空格） */
-function fmtDT(val: string | Date): string {
-  const d = new Date(val);
-  const tz = 'Asia/Taipei';
-  const date = d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: tz });
-  const time = d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz });
-  return `${date} ${time}`;
-}
-
-/** CIS 色彩設計語言 */
-const CIS = {
-  forest:      [105, 159, 52]  as const,
-  forestMid:   [74, 107, 58]   as const,
-  accent:      [140, 115, 85]  as const,
-  textPrimary: [82, 83, 88]    as const,
-  textMuted:   [163, 150, 133] as const,
-  bgBase:      [245, 242, 237] as const,
-  bgSurface:   [253, 250, 245] as const,
-  border:      [221, 214, 200] as const,
-};
+import { PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, DrawSignatureOptions } from '../../../../shared/services/pdf-core.service';
 
 @Injectable({ providedIn: 'root' })
 export class PaymentPdfService {
   pdfLoading = signal(false);
 
-  private assetCache: Promise<{ regular: string; bold: string }> | null = null;
-
-  private loadFonts(): Promise<{ regular: string; bold: string }> {
-    if (!this.assetCache) {
-      this.assetCache = Promise.all([
-        fetch('/assets/fonts/NotoSansTC-Regular.ttf').then(r => r.arrayBuffer()),
-        fetch('/assets/fonts/NotoSansTC-Bold.ttf').then(r => r.arrayBuffer()),
-      ]).then(([regular, bold]) => ({
-        regular: arrayBufferToBase64(regular),
-        bold: arrayBufferToBase64(bold),
-      }));
-    }
-    return this.assetCache;
-  }
+  private pdfCore = inject(PdfCoreService);
 
   /** 列印請款單 PDF */
   async printPaymentRequest(task: ApprovalTask) {
@@ -85,16 +17,13 @@ export class PaymentPdfService {
       const [{ default: jsPDF }, { default: autoTable }, fonts] = await Promise.all([
         import('jspdf'),
         import('jspdf-autotable'),
-        this.loadFonts(),
+        this.pdfCore.loadFonts(),
       ]);
 
       const doc = new jsPDF('portrait', 'mm', 'a4');
-      const F = 'NotoSansTC';
+      const F = FONT_FAMILY;
 
-      doc.addFileToVFS('NotoSansTC-Regular.ttf', fonts.regular);
-      doc.addFileToVFS('NotoSansTC-Bold.ttf', fonts.bold);
-      doc.addFont('NotoSansTC-Regular.ttf', F, 'normal');
-      doc.addFont('NotoSansTC-Bold.ttf', F, 'bold');
+      this.pdfCore.registerFonts(doc, fonts);
 
       const pw = doc.internal.pageSize.getWidth();   // 210
       const ph = doc.internal.pageSize.getHeight();   // 297
@@ -208,7 +137,7 @@ export class PaymentPdfService {
       y += 12;
 
       const signBlocks = this._buildSignBlocks(task, submitDate);
-      const sigImageMap = await this._loadSignatureImages(signBlocks);
+      const sigImageMap = await this.pdfCore.loadSignatureImages(signBlocks);
 
       // 如果簽名欄會超出頁面，換頁
       if (y + 40 > ph - 20) {
@@ -216,7 +145,7 @@ export class PaymentPdfService {
         y = 30;
       }
 
-      this._drawSignatureBlock(doc, F, mx, pw, cw, y, signBlocks, sigImageMap);
+      this.pdfCore.drawSignatureBlock(doc, mx, pw, cw, y, signBlocks, sigImageMap, { gap: 4, labelSize: 9, maxH: 12, padding: 4 });
 
       // ── 底部裝飾線（簽名欄下方）──
       const bottomY = y + 34;
@@ -295,78 +224,5 @@ export class PaymentPdfService {
     });
 
     return blocks;
-  }
-
-  /** 預載所有簽名欄圖片，回傳 URL → base64 data URI 的 Map */
-  private async _loadSignatureImages(blocks: SignBlock[]): Promise<Map<string, string>> {
-    const urls = blocks.map(b => b.signatureUrl).filter((u): u is string => !!u);
-    const map = new Map<string, string>();
-    await Promise.all(urls.map(async url => {
-      try {
-        const fetchUrl = resolveSignatureUrl(url);
-        const resp = await fetch(fetchUrl);
-        const buf = await resp.arrayBuffer();
-        const mime = resp.headers.get('content-type') || 'image/png';
-        map.set(url, `data:${mime};base64,${arrayBufferToBase64(buf)}`);
-      } catch { /* 載入失敗則跳過 */ }
-    }));
-    return map;
-  }
-
-  /** 繪製簽名欄（含簽名圖片和日期） */
-  private _drawSignatureBlock(
-    doc: any, F: string, mx: number, pw: number, cw: number, y: number,
-    blocks: SignBlock[], sigImageMap: Map<string, string>
-  ) {
-    const blockCount = blocks.length;
-    const gap = 4;
-    const blockW = (cw - gap * (blockCount - 1)) / blockCount;
-
-    // 繪製上方分隔線
-    doc.setDrawColor(...CIS.border);
-    doc.setLineWidth(0.3);
-    doc.line(mx, y, pw - mx, y);
-
-    y += 6;
-    for (let i = 0; i < blockCount; i++) {
-      const bx = mx + i * (blockW + gap);
-      const block = blocks[i];
-
-      // 標籤
-      doc.setFont(F, 'bold');
-      doc.setFontSize(9);
-      doc.setTextColor(...CIS.textPrimary);
-      doc.text(block.label, bx + blockW / 2, y, {align: 'center'});
-
-      // 簽名線
-      const lineY = y + 16;
-      doc.setDrawColor(...CIS.border);
-      doc.setLineWidth(0.2);
-      doc.line(bx + 2, lineY, bx + blockW - 2, lineY);
-
-      // 簽名檔圖片（簽名線上方，等比例縮放）
-      if (block.signatureUrl && sigImageMap.has(block.signatureUrl)) {
-        const sigData = sigImageMap.get(block.signatureUrl)!;
-        const maxW = blockW - 8;  // 左右各留 4mm
-        const maxH = 12;          // 最大高度 12mm
-        try {
-          const imgProps = doc.getImageProperties(sigData);
-          const ratio = Math.min(maxW / imgProps.width, maxH / imgProps.height);
-          const imgW = imgProps.width * ratio;
-          const imgH = imgProps.height * ratio;
-          const imgX = bx + (blockW - imgW) / 2;
-          const imgY = lineY - imgH - 1;  // 簽名線上方 1mm
-          doc.addImage(sigData, imgX, imgY, imgW, imgH);
-        } catch { /* 圖片格式有誤則跳過 */ }
-      }
-
-      // 日期時間（簽名線下方）
-      if (block.date) {
-        doc.setFont(F, 'normal');
-        doc.setFontSize(6.5);
-        doc.setTextColor(...CIS.textMuted);
-        doc.text(block.date, bx + blockW / 2, lineY + 5, {align: 'center'});
-      }
-    }
   }
 }

@@ -3,7 +3,7 @@
     <a routerLink="/admin/holiday-travel-requests" class="btn btn-sm btn-outline-secondary">
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
     </a>
-    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視假日出差申請' : (isReturned ? '修改假日出差申請' : '編輯假日出差草稿')) : '新增假日出差申請' }}</h4>
+    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視假日執行活動申請' : (isReturned ? '修改假日執行活動申請' : '編輯假日執行活動草稿')) : '新增假日執行活動申請' }}</h4>
   </div>
 
   @if (errorMsg()) {
@@ -80,14 +80,14 @@
             <div class="row g-3 mb-4">
               <div class="col-12 col-md-4">
                 <label class="form-label fw-500">開始日期 <span class="text-danger">*</span></label>
-                <input type="date" class="form-control" formControlName="startDate">
+                <input type="date" class="form-control" formControlName="startDate" (change)="onDateChange()">
                 @if (form.get('startDate')?.invalid && form.get('startDate')?.touched) {
                   <div class="text-danger small mt-1">請選擇開始日期。</div>
                 }
               </div>
               <div class="col-12 col-md-4">
                 <label class="form-label fw-500">結束日期 <span class="text-danger">*</span></label>
-                <input type="date" class="form-control" formControlName="endDate">
+                <input type="date" class="form-control" formControlName="endDate" (change)="onDateChange()">
                 @if (form.get('endDate')?.invalid && form.get('endDate')?.touched) {
                   <div class="text-danger small mt-1">請選擇結束日期。</div>
                 }
@@ -95,13 +95,17 @@
               <div class="col-12 col-md-4">
                 <label class="form-label fw-500">假日天數</label>
                 <div class="form-control bg-elevated text-muted" style="cursor: default">
-                  @if (holidayDays > 0) {
-                    <span class="fw-500" style="color: var(--forest)">{{ holidayDays }} 天</span>
+                  @if (holidayDaysLoading()) {
+                    <span class="spinner-border spinner-border-sm me-1" role="status"></span> 查詢中…
+                  } @else if (holidayDaysNoCalendar()) {
+                    <span class="text-warning">行事曆資料尚未匯入</span>
+                  } @else if (holidayDays() !== null) {
+                    <span class="fw-500" style="color: var(--forest)">{{ holidayDays() }} 天</span>
                   } @else {
                     <span>— 請先選擇日期</span>
                   }
                 </div>
-                <div class="text-muted small mt-1">系統依開始至結束日期自動計算</div>
+                <div class="text-muted small mt-1">系統依行事曆資料自動計算</div>
               </div>
             </div>
 
@@ -445,11 +449,11 @@
         @if (!isReadOnly) {
           <div class="mt-6 flex gap-2">
             <button type="submit" class="btn btn-outline-secondary"
-                    [disabled]="form.invalid || itemArray.length === 0 || isAnyOcrPending">
+                    [disabled]="disabledReason !== null">
               {{ isEdit ? '儲存' : '儲存草稿' }}
             </button>
             <button type="button" class="btn btn-primary"
-                    [disabled]="form.invalid || itemArray.length === 0 || isAnyOcrPending"
+                    [disabled]="disabledReason !== null"
                     (click)="submitForApproval()">
               @if (isAnyOcrPending) {
                 <span class="spinner-border spinner-border-sm me-1" role="status"></span>
@@ -458,6 +462,12 @@
             </button>
             <a routerLink="/admin/holiday-travel-requests" class="btn btn-outline-secondary">取消</a>
           </div>
+          @if (disabledReason; as reason) {
+            <div class="text-warning small mt-2 flex items-center gap-1">
+              <svg class="sa-icon shrink-0" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+              {{ reason }}
+            </div>
+          }
         } @else {
           <div class="mt-6">
             <a routerLink="/admin/holiday-travel-requests" class="btn btn-outline-secondary">返回列表</a>

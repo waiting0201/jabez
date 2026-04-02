@@ -47,7 +47,7 @@ export const menuItems: MenuItemType[] = [
   },
   {
     icon: '/assets/icons/sprite.svg#sun',
-    label: '假日出差申請',
+    label: '假日執行活動申請',
     url: '/admin/holiday-travel-requests',
     requiredPermission: 'holiday-travel-requests:read',
   },

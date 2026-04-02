@@ -1,0 +1,221 @@
+import { Injectable } from '@angular/core';
+import { environment } from '../../../environments/environment';
+
+/** 簽名欄資料 */
+export interface SignBlock {
+  label: string;
+  signatureUrl?: string;
+  date: string;
+}
+
+/** 繪製簽名欄的選項（各 PDF service 依版型微調） */
+export interface DrawSignatureOptions {
+  gap?: number;       // 欄間距（預設 3）
+  labelSize?: number; // 標籤字體大小（預設 8.5）
+  maxH?: number;      // 簽名圖片最大高度 mm（預設 10）
+  padding?: number;   // 簽名圖片左右留白 mm（預設 3）
+}
+
+/** ArrayBuffer → base64 */
+export function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunk = 8192;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)));
+  }
+  return btoa(binary);
+}
+
+/**
+ * 將簽名 URL 轉為可存取的端點：
+ * - 相對路徑（如 files/signatures/xxx.png）→ 加上 apiUrl 前綴
+ * - 完整 blob URL → 萃取檔名，轉為 API 代理路徑
+ */
+export function resolveSignatureUrl(url: string): string {
+  if (!url.startsWith('http')) {
+    return `${environment.apiUrl}/${url}`;
+  }
+  const match = url.match(/\/signatures\/(.+)$/);
+  if (match) {
+    return `${environment.apiUrl}/files/signatures/${match[1]}`;
+  }
+  return url;
+}
+
+/** 格式化日期時間（保證日期與時間之間有空格） */
+export function fmtDT(val: string | Date): string {
+  const d = new Date(val);
+  const tz = 'Asia/Taipei';
+  const date = d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: tz });
+  const time = d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz });
+  return `${date} ${time}`;
+}
+
+/** 格式化日期（僅日期） */
+export function fmtDate(val: string | Date): string {
+  const d = new Date(val);
+  return d.toLocaleDateString('zh-TW', {
+    year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Taipei'
+  });
+}
+
+/** 數字千分位格式化 */
+export const fmt = (n: number) => n.toLocaleString('zh-TW');
+
+/** CIS 色彩設計語言（所有 PDF service 的 superset） */
+export const CIS = {
+  forest:      [105, 159, 52]  as const,
+  forestMid:   [74, 107, 58]   as const,
+  accent:      [140, 115, 85]  as const,
+  textPrimary: [82, 83, 88]    as const,
+  textMuted:   [163, 150, 133] as const,
+  bgBase:      [245, 242, 237] as const,
+  bgSurface:   [253, 250, 245] as const,
+  border:      [221, 214, 200] as const,
+  red:         [160, 64, 64]   as const,
+};
+
+/** 字體名稱常數 */
+export const FONT_FAMILY = 'NotoSansTC';
+
+/**
+ * 將圖片透過 Canvas 縮放至指定尺寸，用於壓縮簽名圖片。
+ * - 不放大（scale 最大為 1）
+ * - 保留透明背景（PNG）
+ */
+async function optimizeSignatureImage(buf: ArrayBuffer, mime: string): Promise<string> {
+  const maxW = 300;
+  const maxH = 150;
+
+  const blob = new Blob([buf], { type: mime });
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = reject;
+      el.src = url;
+    });
+
+    const scale = Math.min(1, maxW / img.width, maxH / img.height);
+    const w = Math.round(img.width * scale);
+    const h = Math.round(img.height * scale);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(img, 0, 0, w, h);
+
+    return canvas.toDataURL('image/png');
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+@Injectable({ providedIn: 'root' })
+export class PdfCoreService {
+
+  private fontCache: Promise<{ regular: string; bold: string }> | null = null;
+
+  /** 載入字體（singleton cache，全應用只載入一次） */
+  loadFonts(): Promise<{ regular: string; bold: string }> {
+    if (!this.fontCache) {
+      this.fontCache = Promise.all([
+        fetch('/assets/fonts/NotoSansTC-Regular.subset.ttf').then(r => r.arrayBuffer()),
+        fetch('/assets/fonts/NotoSansTC-Bold.subset.ttf').then(r => r.arrayBuffer()),
+      ]).then(([regular, bold]) => ({
+        regular: arrayBufferToBase64(regular),
+        bold: arrayBufferToBase64(bold),
+      }));
+    }
+    return this.fontCache;
+  }
+
+  /** 註冊字體到 jsPDF 文件 */
+  registerFonts(doc: any, fonts: { regular: string; bold: string }): void {
+    doc.addFileToVFS('NotoSansTC-Regular.ttf', fonts.regular);
+    doc.addFileToVFS('NotoSansTC-Bold.ttf', fonts.bold);
+    doc.addFont('NotoSansTC-Regular.ttf', FONT_FAMILY, 'normal');
+    doc.addFont('NotoSansTC-Bold.ttf', FONT_FAMILY, 'bold');
+  }
+
+  /** 預載所有簽名欄圖片（含壓縮），回傳 URL → base64 data URI 的 Map */
+  async loadSignatureImages(blocks: SignBlock[]): Promise<Map<string, string>> {
+    const urls = blocks.map(b => b.signatureUrl).filter((u): u is string => !!u);
+    const unique = [...new Set(urls)];
+    const map = new Map<string, string>();
+    await Promise.all(unique.map(async url => {
+      try {
+        const fetchUrl = resolveSignatureUrl(url);
+        const resp = await fetch(fetchUrl);
+        const buf = await resp.arrayBuffer();
+        const mime = resp.headers.get('content-type') || 'image/png';
+        const dataUri = await optimizeSignatureImage(buf, mime);
+        map.set(url, dataUri);
+      } catch { /* 載入失敗則跳過 */ }
+    }));
+    return map;
+  }
+
+  /** 繪製簽名欄（含簽名圖片和日期），各 PDF service 可透過 opts 微調尺寸 */
+  drawSignatureBlock(
+    doc: any, mx: number, pw: number, cw: number, y: number,
+    blocks: SignBlock[], sigImageMap: Map<string, string>,
+    opts?: DrawSignatureOptions,
+  ): void {
+    const F = FONT_FAMILY;
+    const gap = opts?.gap ?? 3;
+    const labelSize = opts?.labelSize ?? 8.5;
+    const maxH = opts?.maxH ?? 10;
+    const padding = opts?.padding ?? 3;
+
+    doc.setDrawColor(...CIS.border);
+    doc.setLineWidth(0.3);
+    doc.line(mx, y, pw - mx, y);
+
+    y += (gap === 4 ? 6 : 5);
+    const blockW = (cw - gap * (blocks.length - 1)) / blocks.length;
+
+    for (let i = 0; i < blocks.length; i++) {
+      const bx = mx + i * (blockW + gap);
+      const block = blocks[i];
+
+      // 標籤
+      doc.setFont(F, 'bold');
+      doc.setFontSize(labelSize);
+      doc.setTextColor(...CIS.textPrimary);
+      doc.text(block.label, bx + blockW / 2, y, { align: 'center' });
+
+      // 簽名線
+      const lineY = y + (gap === 4 ? 16 : 14);
+      doc.setDrawColor(...CIS.border);
+      doc.setLineWidth(0.2);
+      doc.line(bx + 2, lineY, bx + blockW - 2, lineY);
+
+      // 簽名檔圖片（簽名線上方，等比例縮放）
+      if (block.signatureUrl && sigImageMap.has(block.signatureUrl)) {
+        const sigData = sigImageMap.get(block.signatureUrl)!;
+        const imgMaxW = blockW - padding * 2;
+        try {
+          const imgProps = doc.getImageProperties(sigData);
+          const ratio = Math.min(imgMaxW / imgProps.width, maxH / imgProps.height);
+          const imgW = imgProps.width * ratio;
+          const imgH = imgProps.height * ratio;
+          const imgX = bx + (blockW - imgW) / 2;
+          const imgY = lineY - imgH - 1;
+          doc.addImage(sigData, imgX, imgY, imgW, imgH);
+        } catch { /* 圖片格式有誤則跳過 */ }
+      }
+
+      // 日期時間（簽名線下方）
+      if (block.date) {
+        doc.setFont(F, 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(...CIS.textMuted);
+        doc.text(block.date, bx + blockW / 2, lineY + 5, { align: 'center' });
+      }
+    }
+  }
+}

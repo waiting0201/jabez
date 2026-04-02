@@ -64,6 +64,11 @@ export class HolidayTravelRequestForm implements OnInit {
   loadingProjects = true;
   categories = ITEM_CATEGORIES;
 
+  /** 假日天數（從行事曆 API 查詢） */
+  holidayDays = signal<number | null>(null);
+  holidayDaysLoading = signal(false);
+  holidayDaysNoCalendar = signal(false);
+
   /** 簽核流程時間軸 */
   approvalFlow: ApprovalFlow | null = null;
   approvalRecords: ApprovalRecord[] = [];
@@ -122,13 +127,45 @@ export class HolidayTravelRequestForm implements OnInit {
     return this.itemArray.controls.reduce((s, c) => s + (+(c.get('totalPrice')?.value) || 0), 0);
   }
 
-  /** 計算假日天數（開始日期到結束日期的天數） */
-  get holidayDays(): number {
+  /** 按鈕 disabled 時的提示訊息，null 表示可提交 */
+  get disabledReason(): string | null {
+    if (this.isAnyOcrPending) return '發票辨識中，請稍候…';
+    if (this.itemArray.length === 0) return '請新增至少一筆費用明細。';
+    if (this.form.invalid) {
+      const fields: [string, string][] = [
+        ['destination', '執行活動地點'], ['startDate', '開始日期'],
+        ['endDate', '結束日期'], ['purpose', '活動主旨及內容'],
+      ];
+      for (const [key, label] of fields) {
+        if (this.form.get(key)?.invalid) return `請填寫「${label}」。`;
+      }
+      const idx = this.itemControls.findIndex(c => c.get('itemName')?.invalid);
+      if (idx >= 0) return `第 ${idx + 1} 筆費用明細的「項目說明」未填寫。`;
+      return '表單資料不完整，請檢查必填欄位。';
+    }
+    return null;
+  }
+
+  /** 日期變更時查詢假日天數 */
+  onDateChange() {
     const v = this.form.value;
-    if (!v.startDate || !v.endDate) return 0;
-    const s = new Date(v.startDate);
-    const e = new Date(v.endDate);
-    return Math.max(0, Math.floor((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    if (!v.startDate || !v.endDate) {
+      this.holidayDays.set(null);
+      return;
+    }
+    this.holidayDaysLoading.set(true);
+    this.holidayDaysNoCalendar.set(false);
+    this.service.countHolidays(v.startDate, v.endDate).subscribe({
+      next: res => {
+        this.holidayDays.set(res.holidayDays);
+        this.holidayDaysNoCalendar.set(!res.hasCalendarData);
+        this.holidayDaysLoading.set(false);
+      },
+      error: () => {
+        this.holidayDays.set(null);
+        this.holidayDaysLoading.set(false);
+      },
+    });
   }
 
   // ── 指定審核者操作 ──
@@ -206,6 +243,7 @@ export class HolidayTravelRequestForm implements OnInit {
             unitPrice:   result.amount ?? 0,
             totalPrice:  result.amount ?? 0,
             quantity:    '1式',
+            itemName:    result.invoiceNo ? `發票 ${result.invoiceNo}` : file.name,
           });
         }
       } catch {
@@ -302,6 +340,9 @@ export class HolidayTravelRequestForm implements OnInit {
           purpose:   r.purpose,
           projectId: r.projectId ?? null,
         });
+
+        // 回填日期後查詢假日天數
+        this.onDateChange();
 
         // 回填參與執行人員
         if (r.participants?.length) {

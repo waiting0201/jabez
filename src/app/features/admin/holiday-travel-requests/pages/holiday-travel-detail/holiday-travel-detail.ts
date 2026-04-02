@@ -77,7 +77,7 @@ export class HolidayTravelDetail implements OnInit {
 
   deleteRequest() {
     const r = this.request();
-    if (!r || !confirm('確定要刪除此假日出差申請？')) return;
+    if (!r || !confirm('確定要刪除此假日執行活動申請？')) return;
     this.deleting.set(true);
     this.service.delete(r.id).subscribe({
       next: () => this.router.navigate(['/admin/holiday-travel-requests']),

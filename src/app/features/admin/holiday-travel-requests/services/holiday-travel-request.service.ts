@@ -22,14 +22,14 @@ export class HolidayTravelRequestService {
   }
 
   /**
-   * 新增假日出差申請（使用 FormData 以支援發票附件上傳）
+   * 新增假日執行活動申請（使用 FormData 以支援發票附件上傳）
    */
   create(data: FormData): Observable<HolidayTravelRequest> {
     return this.http.post<HolidayTravelRequest>(`${environment.apiUrl}/holiday-travel-requests`, data);
   }
 
   /**
-   * 更新假日出差申請（使用 FormData 以支援發票附件上傳）
+   * 更新假日執行活動申請（使用 FormData 以支援發票附件上傳）
    */
   update(id: number, data: FormData): Observable<HolidayTravelRequest> {
     return this.http.patch<HolidayTravelRequest>(`${environment.apiUrl}/holiday-travel-requests/${id}`, data);
@@ -37,6 +37,12 @@ export class HolidayTravelRequestService {
 
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${environment.apiUrl}/holiday-travel-requests/${id}`);
+  }
+
+  /** 查詢日期範圍內的假日天數（依行事曆資料） */
+  countHolidays(startDate: string, endDate: string): Observable<{holidayDays: number | null; hasCalendarData: boolean}> {
+    return this.http.get<{holidayDays: number | null; hasCalendarData: boolean}>(
+      `${environment.apiUrl}/holiday-travel-requests/count-holidays`, {params: {startDate, endDate}});
   }
 
   /** 送出申請（draft → pending） */

@@ -42,7 +42,7 @@ export class HolidayTravelRequestList {
   readonly statusClass = APPROVAL_STATUS_CLASSES;
 
   delete(r: HolidayTravelRequest) {
-    if (confirm(`確定要刪除此假日出差申請嗎？`)) {
+    if (confirm(`確定要刪除此假日執行活動申請嗎？`)) {
       this.service.delete(r.id).subscribe(() => this.refresh.update(v => v + 1));
     }
   }
