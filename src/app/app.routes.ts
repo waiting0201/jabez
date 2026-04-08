@@ -35,6 +35,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/account/pages/change-password/change-password').then(m => m.ChangePassword),
         data: {title: '修改密碼'},
       },
+      {
+        path: 'line/bind-callback',
+        loadComponent: () => import('./features/account/pages/line-bind-callback/line-bind-callback').then(m => m.LineBindCallback),
+        data: {title: 'LINE 綁定'},
+      },
       {path: 'error/404', component: Error404, data: {title: 'Error 404'}},
       {path: 'error/403', component: Error403, data: {title: 'Error 403'}},
     ],
