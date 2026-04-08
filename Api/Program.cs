@@ -63,6 +63,9 @@ var host = new HostBuilder()
         // ── Email Service（SMTP）──────────────────────────────────────────
         services.AddSingleton<IEmailService, EmailService>();
 
+        // ── LINE Service（HttpClient 注入）───────────────────────────────
+        services.AddHttpClient<ILineService, LineService>();
+
         // ── 簽核通知服務（Scoped，依賴 AppDbContext）──────────────────────
         services.AddScoped<IApprovalNotificationService, ApprovalNotificationService>();
 
@@ -121,6 +124,7 @@ var host = new HostBuilder()
         services.AddScoped<TravelWriteOffRequestHandler>();
         services.AddScoped<CalendarDayHandler>();
         services.AddScoped<FileHandler>();
+        services.AddScoped<LineHandler>();
 
         // ── Router（Scoped）──────────────────────────────────────────────
         services.AddScoped<AppRouter>();

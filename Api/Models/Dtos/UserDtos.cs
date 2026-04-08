@@ -21,7 +21,9 @@ public sealed record UserDto(
     Guid?     AgentUserId,
     string?   AgentName,
     DateTime? Birthday,
-    DateTime  CreatedAt);
+    DateTime  CreatedAt,
+    string?   LineUserId   = null,
+    DateTime? LineLinkedAt  = null);
 
 public sealed record CreateUserRequest(
     string    Name,

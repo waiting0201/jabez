@@ -21,6 +21,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.MealAllowance, u.OvertimePay, u.SendPaySlip,
                 u.AgentUserId,  ag.Name AS AgentName,
                 u.Birthday,
+                u.LineUserId, u.LineLinkedAt,
                 r.Id AS RoleId
             FROM Users u
             LEFT JOIN UserRoles ur  ON u.Id = ur.UserId
@@ -42,6 +43,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             decimal? MealAllowance, decimal? OvertimePay, bool SendPaySlip,
             Guid? AgentUserId, string? AgentName,
             DateTime? Birthday,
+            string? LineUserId, DateTime? LineLinkedAt,
             DateTime CreatedAt, List<string> RoleIds)>();
 
         foreach (var row in rows)
@@ -57,6 +59,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     row.AgentUserId is null ? null : (Guid?)row.AgentUserId,
                     (string?)row.AgentName,
                     (DateTime?)row.Birthday,
+                    (string?)row.LineUserId, (DateTime?)row.LineLinkedAt,
                     (DateTime)row.CreatedAt, []);
 
             if (row.RoleId is not null)
@@ -73,7 +76,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.MealAllowance, kv.Value.OvertimePay, kv.Value.SendPaySlip,
             kv.Value.AgentUserId, kv.Value.AgentName,
             kv.Value.Birthday,
-            kv.Value.CreatedAt));
+            kv.Value.CreatedAt,
+            kv.Value.LineUserId, kv.Value.LineLinkedAt));
     }
 
     /// <summary>輕量級使用者清單（供指定審核者下拉選單，不需 users:read 權限）</summary>
@@ -105,6 +109,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.MealAllowance, u.OvertimePay, u.SendPaySlip,
                 u.AgentUserId,  ag.Name AS AgentName,
                 u.Birthday,
+                u.LineUserId, u.LineLinkedAt,
                 r.Id AS RoleId
             FROM Users u
             INNER JOIN PagedIds pid ON u.Id = pid.Id
@@ -127,6 +132,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             decimal? MealAllowance, decimal? OvertimePay, bool SendPaySlip,
             Guid? AgentUserId, string? AgentName,
             DateTime? Birthday,
+            string? LineUserId, DateTime? LineLinkedAt,
             DateTime CreatedAt, List<string> RoleIds)>();
 
         foreach (var row in rows)
@@ -142,6 +148,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     row.AgentUserId is null ? null : (Guid?)row.AgentUserId,
                     (string?)row.AgentName,
                     (DateTime?)row.Birthday,
+                    (string?)row.LineUserId, (DateTime?)row.LineLinkedAt,
                     (DateTime)row.CreatedAt, []);
 
             if (row.RoleId is not null)
@@ -158,7 +165,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.MealAllowance, kv.Value.OvertimePay, kv.Value.SendPaySlip,
             kv.Value.AgentUserId, kv.Value.AgentName,
             kv.Value.Birthday,
-            kv.Value.CreatedAt));
+            kv.Value.CreatedAt,
+            kv.Value.LineUserId, kv.Value.LineLinkedAt));
 
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
         return new PagedResult<UserDto>(items, total, page, pageSize, Math.Max(1, totalPages));
@@ -175,6 +183,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.MealAllowance, u.OvertimePay, u.SendPaySlip,
                 u.AgentUserId,  ag.Name AS AgentName,
                 u.Birthday,
+                u.LineUserId, u.LineLinkedAt,
                 r.Id AS RoleId
             FROM Users u
             LEFT JOIN UserRoles ur  ON u.Id = ur.UserId
@@ -202,7 +211,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 row.AgentUserId is null ? null : (Guid?)row.AgentUserId,
                 (string?)row.AgentName,
                 (DateTime?)row.Birthday,
-                (DateTime)row.CreatedAt);
+                (DateTime)row.CreatedAt,
+                (string?)row.LineUserId, (DateTime?)row.LineLinkedAt);
 
             if (row.RoleId is not null)
                 roleIds.Add((string)row.RoleId);

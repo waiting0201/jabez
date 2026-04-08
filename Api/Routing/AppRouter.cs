@@ -39,7 +39,8 @@ public sealed class AppRouter(
     WriteOffRequestHandler          writeOffRequests,
     TravelWriteOffRequestHandler    travelWriteOffRequests,
     CalendarDayHandler              calendarDays,
-    FileHandler                     files)
+    FileHandler                     files,
+    LineHandler                     line)
 {
     public async Task<IActionResult> RouteAsync(HttpRequest req, string route)
     {
@@ -283,6 +284,12 @@ public sealed class AppRouter(
             ("PATCH",  ["approval-tasks", var appType, var id, "review"])                      => await approvalTasks.ReviewAsync(req, appType, id),
             ("PATCH",  ["approval-tasks", "write_off", var id, "close"])                       => await approvalTasks.CloseWriteOffAsync(req, id),
             ("PATCH",  ["approval-tasks", "travel_write_off", var id, "close"])                => await approvalTasks.CloseTravelWriteOffAsync(req, id),
+
+            // ── LINE 綁定 ─────────────────────────────────────────────────────
+            ("GET",    ["line", "bind-url"])         => await line.GetBindUrlAsync(req),
+            ("POST",   ["line", "bind"])             => await line.BindAsync(req),
+            ("POST",   ["line", "unbind"])            => await line.UnbindAsync(req),
+            ("GET",    ["line", "binding-status"])    => await line.GetStatusAsync(req),
 
             // ── 404 ────────────────────────────────────────────────────────────
             _ => new NotFoundObjectResult(

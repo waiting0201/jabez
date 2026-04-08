@@ -48,6 +48,12 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.MustChangePassword)
                .HasDefaultValue(false);
 
+        // LINE 綁定
+        builder.Property(u => u.LineUserId).HasMaxLength(50);
+        builder.HasIndex(u => u.LineUserId)
+               .IsUnique()
+               .HasFilter("[LineUserId] IS NOT NULL");
+
         // Employee fields
         builder.Property(u => u.BaseSalary)
                .HasColumnType("decimal(18,2)");

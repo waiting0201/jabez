@@ -283,7 +283,7 @@ Api/
 │   └── RouterFunction.cs              # 唯一 HttpTrigger，catch-all route {*route}
 ├── Routing/
 │   └── AppRouter.cs                   # C# 12 List Pattern 路由分派器
-├── Handlers/                          # 19 個 Handler（業務邏輯）
+├── Handlers/                          # 20 個 Handler（業務邏輯）
 │   ├── AuthHandler.cs                 # 登入、刷新 Token
 │   ├── UserHandler.cs
 │   ├── RoleHandler.cs
@@ -303,6 +303,7 @@ Api/
 │   ├── AttendanceHandler.cs           # 打卡（上班/下班/加班開始/加班結束）
 │   ├── InsuranceBracketHandler.cs    # 勞健保級距 CRUD
 │   ├── PayrollHandler.cs             # 人事薪資查詢（月薪計算）
+│   ├── LineHandler.cs                # LINE 帳號綁定/解綁
 │   ├── SettingsHandler.cs
 │   └── HealthHandler.cs
 ├── Middleware/
@@ -314,13 +315,16 @@ Api/
 │   └── Migrations/                    # EF Core Migration 檔案
 ├── Models/
 │   ├── Entities/                      # 21 個資料庫實體
-│   └── Dtos/                          # 16 個 DTO 檔案
+│   └── Dtos/                          # 17 個 DTO 檔案（含 LineDtos）
 ├── Services/
 │   ├── IJwtService.cs
 │   ├── JwtService.cs                  # HS256 JWT 產生與驗證
 │   ├── IEscalationService.cs          # 簽核升級服務介面
 │   ├── EscalationService.cs           # 簽核升級邏輯（上層部門主管遞迴 + 代理人）
 │   ├── EscalationResult.cs            # 升級結果 record
+│   ├── ILineService.cs               # LINE API 操作介面
+│   ├── LineService.cs                # LINE Platform REST API 封裝（token 換取 + 推播）
+│   ├── LineFlexMessageBuilder.cs     # 6 種簽核通知的 LINE Flex Message 模板
 │   └── Dapper/                        # Dapper 讀取服務（12 組 interface + 實作）
 │       ├── UserReadService.cs
 │       ├── RoleReadService.cs
@@ -501,6 +505,15 @@ public async Task<HttpResponseData> Run(
 |--------|------|------|
 | GET | `/payroll?year=YYYY&month=MM` | 月薪計算（動態計算，不存 DB） |
 
+#### LINE 綁定
+
+| Method | Path | 說明 |
+|--------|------|------|
+| GET | `/line/bind-url` | 產生 LINE OAuth URL（含 state 防 CSRF） |
+| POST | `/line/bind` | 用 OAuth code 換取 LINE userId 並綁定 |
+| POST | `/line/unbind` | 解除 LINE 綁定 |
+| GET | `/line/binding-status` | 查詢當前用戶 LINE 綁定狀態 |
+
 #### 其他
 
 | Method | Path | 說明 |
@@ -529,7 +542,7 @@ dotnet ef database update               # 套用 Migration
 
 | 實體 | 說明 |
 |------|------|
-| `User` | 使用者（含 DepartmentId、JobTitleId、IsSuperAdmin） |
+| `User` | 使用者（含 DepartmentId、JobTitleId、IsSuperAdmin、LineUserId） |
 | `Role` | 角色定義 |
 | `Permission` | 權限代碼 |
 | `UserRole` | 使用者 ↔ 角色（Junction） |
@@ -856,6 +869,69 @@ draft → pending → approved / returned / rejected
 - 路由/選單 `permission: 'superadmin'` 代表僅 Superadmin 可見
 - 使用者列表 SQL 過濾：`WHERE IsSuperAdmin = 0`
 - Superadmin 無法被編輯或刪除
+
+---
+
+## LINE 整合
+
+### 功能範圍
+
+- **LINE 帳號綁定**：員工在右上角 profile dropdown 透過 LINE OAuth 綁定 LINE userId
+- **LINE 簽核通知推播**：6 種簽核通知同時推播 LINE Flex Message（Email 保留）
+- LINE Login 僅用於取得 userId 進行綁定，不作為登入方式
+- 不做 LIFF、不做 Webhook
+
+### 綁定流程
+
+```
+1. 用戶在 profile dropdown 點擊「綁定 LINE」
+2. 前端呼叫 GET /line/bind-url → 取得 LINE OAuth URL + state
+3. 前端存 state 到 sessionStorage，導向 LINE 授權頁
+4. 用戶在 LINE 授權 → 回導 /line/bind-callback?code=xxx&state=yyy
+5. 前端驗證 state → POST /line/bind（帶 JWT + code）
+6. 後端用 code 向 LINE 換取 id_token → 驗證取得 userId → 寫入 User.LineUserId
+7. 導回 dashboard，profile dropdown 顯示「LINE 已綁定」
+```
+
+### LINE 通知推播
+
+簽核通知在 Email 發送後，自動查詢收件人的 `LineUserId`，有綁定則推播 Flex Message。推播失敗不影響 Email。
+
+**6 種推播類型**：
+1. `BuildReviewerMessage` — 待審核通知
+2. `BuildApplicantResultMessage` — 審核結果（核准/退回/拒絕）
+3. `BuildSpecificReviewerMessage` — 指定/升級/代理審核者通知
+4. `BuildFinanceDeptMessage` — 財務撥款通知
+5. `BuildRefundMessage` — 預支沖銷超額通知
+6. `BuildTravelRefundMessage` — 出差沖銷超額通知
+
+### 涉及元件
+
+| 元件 | 說明 |
+|------|------|
+| `User.LineUserId` / `User.LineLinkedAt` | Entity 欄位 |
+| `ILineService` / `LineService` | LINE API 封裝（token 換取 + 推播） |
+| `LineFlexMessageBuilder` | 6 種 Flex Message 模板（品牌綠 #699F34 標頭） |
+| `LineHandler` | 4 個 API：bind-url / bind / unbind / binding-status |
+| `ApprovalNotificationService` | 6 個通知方法各加入 LINE 推播 |
+| 前端 `LineService` | `core/auth/services/line.service.ts`（共享 `isBound` signal） |
+| 前端 `ProfileDropdown` | 綁定/解綁按鈕（LINE 官方 logo SVG） |
+| 前端 `LineBindCallback` | OAuth callback 頁面 |
+
+### LINE 設定
+
+**後端** `local.settings.json`（雙底線命名）：
+- `Line__LoginChannelId` — LINE Login Channel ID
+- `Line__LoginChannelSecret` — LINE Login Channel Secret
+- `Line__MessagingChannelAccessToken` — Messaging API Long-lived Token
+- `Line__MessagingChannelSecret` — Messaging API Channel Secret
+- `Line__CallbackUrl` — OAuth callback URL
+
+**前端** `environment.ts`：
+- `lineLoginChannelId` — LINE Login Channel ID
+- `lineCallbackUrl` — OAuth callback URL
+
+> **重要**：LINE Login 和 Messaging API 須在同一 Provider 下建立，LINE 才會使用相同 userId。
 
 ---
 

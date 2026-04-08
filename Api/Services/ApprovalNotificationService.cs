@@ -8,6 +8,7 @@ namespace Jabez.Api.Services;
 public sealed class ApprovalNotificationService(
     AppDbContext db,
     IEmailService emailService,
+    ILineService lineService,
     ILogger<ApprovalNotificationService> logger) : IApprovalNotificationService
 {
     private static readonly Dictionary<string, string> AppTypeLabels = new()
@@ -80,6 +81,8 @@ public sealed class ApprovalNotificationService(
                 var linkUrl2 = BuildReviewUrl(siteUrl2, applicationType, applicationId);
                 var body2    = BuildReviewerEmail(designatedReviewer.Name, applicantName, label2, applicationId, summary2, targetStepOrder, linkUrl2);
                 await emailService.SendAsync(designatedReviewer.Email!, subject2, body2);
+                await PushLineByEmailAsync(designatedReviewer.Email!,
+                    LineFlexMessageBuilder.BuildSpecificReviewerMessage(applicantName, label2, applicationId, summary2, "指定審核", linkUrl2));
                 logger.LogInformation("已寄送指定審核通知：{Email}（{AppType} #{Id}）", designatedReviewer.Email, applicationType, applicationId);
                 return;
             }
@@ -149,10 +152,28 @@ public sealed class ApprovalNotificationService(
             var siteUrl = await GetSiteUrlAsync();
             var linkUrl = BuildReviewUrl(siteUrl, applicationType, applicationId);
 
+            // 一次查出所有 reviewer 的 LINE userId
+            var reviewerEmails = reviewers.Select(r => r.Email!).ToArray();
+            var lineMap = await db.Users.AsNoTracking()
+                .Where(u => reviewerEmails.Contains(u.Email) && u.LineUserId != null)
+                .Select(u => new { u.Email, u.LineUserId })
+                .ToDictionaryAsync(u => u.Email!, u => u.LineUserId!);
+
             foreach (var r in reviewers)
             {
                 var body = BuildReviewerEmail(r.Name, applicantName, label, applicationId, summary, targetStepOrder, linkUrl);
                 await emailService.SendAsync(r.Email!, subject, body);
+
+                if (lineMap.TryGetValue(r.Email!, out var lineUid))
+                {
+                    try
+                    {
+                        var flex = LineFlexMessageBuilder.BuildReviewerMessage(applicantName, label, applicationId, summary, targetStepOrder, linkUrl);
+                        await lineService.PushMessageAsync(lineUid, flex);
+                    }
+                    catch (Exception lex) { logger.LogWarning(lex, "LINE 推播失敗：{LineUserId}", lineUid); }
+                }
+
                 logger.LogInformation("已寄送審核通知：{Email}（{AppType} #{Id}）", r.Email, applicationType, applicationId);
             }
         }
@@ -195,6 +216,8 @@ public sealed class ApprovalNotificationService(
             var body    = BuildApplicantEmail(applicant.Name, label, applicationId, summary, desc, reviewNote, linkUrl, linkText);
 
             await emailService.SendAsync(applicant.Email, subject, body);
+            await PushLineByUserIdAsync(applicantId,
+                LineFlexMessageBuilder.BuildApplicantResultMessage(label, applicationId, action, reviewNote, linkUrl));
             logger.LogInformation("已寄送結果通知：{Email}（{AppType} #{Id} → {Action}）",
                 applicant.Email, applicationType, applicationId, action);
         }
@@ -225,6 +248,9 @@ public sealed class ApprovalNotificationService(
             var body    = BuildReviewerEmail(reviewer.Name, applicantName, label, applicationId, summary, 1, linkUrl);
 
             await emailService.SendAsync(reviewer.Email, subject, body);
+            var suffix = isDelegate ? "代理審核" : "升級審核";
+            await PushLineByUserIdAsync(reviewerId,
+                LineFlexMessageBuilder.BuildSpecificReviewerMessage(applicantName, label, applicationId, summary, suffix, linkUrl));
             logger.LogInformation("已寄送升級審核通知：{Email}（{AppType} #{Id}）", reviewer.Email, applicationType, applicationId);
         }
         catch (Exception ex)
@@ -267,10 +293,27 @@ public sealed class ApprovalNotificationService(
             var siteUrl = await GetSiteUrlAsync();
             var linkUrl = BuildReviewUrl(siteUrl, applicationType, applicationId);
 
+            var finEmails = recipients.Select(r => r.Email!).ToArray();
+            var finLineMap = await db.Users.AsNoTracking()
+                .Where(u => finEmails.Contains(u.Email) && u.LineUserId != null)
+                .Select(u => new { u.Email, u.LineUserId })
+                .ToDictionaryAsync(u => u.Email!, u => u.LineUserId!);
+
             foreach (var r in recipients)
             {
                 var body = BuildFinanceDeptEmail(r.Name, applicantName, applicationId, summary, linkUrl, label);
                 await emailService.SendAsync(r.Email!, subject, body);
+
+                if (finLineMap.TryGetValue(r.Email!, out var lineUid))
+                {
+                    try
+                    {
+                        var flex = LineFlexMessageBuilder.BuildFinanceDeptMessage(applicantName, label, applicationId, summary, linkUrl);
+                        await lineService.PushMessageAsync(lineUid, flex);
+                    }
+                    catch (Exception lex) { logger.LogWarning(lex, "LINE 推播失敗：{LineUserId}", lineUid); }
+                }
+
                 logger.LogInformation("已寄送撥款通知：{Email}（{AppType} #{Id}）", r.Email, applicationType, applicationId);
             }
         }
@@ -309,11 +352,29 @@ public sealed class ApprovalNotificationService(
             var siteUrl = await GetSiteUrlAsync();
             var linkUrl = BuildReviewUrl(siteUrl, "advance", advance.Id);
 
+            var refundEmails = recipients.Select(r => r.Email!).ToArray();
+            var refundLineMap = await db.Users.AsNoTracking()
+                .Where(u => refundEmails.Contains(u.Email) && u.LineUserId != null)
+                .Select(u => new { u.Email, u.LineUserId })
+                .ToDictionaryAsync(u => u.Email!, u => u.LineUserId!);
+
             foreach (var r in recipients)
             {
                 var body = BuildRefundEmail(r.Name, applicantName, advance.Id, advance.RequestNo,
                     advance.GrandTotal, refundAmount, linkUrl);
                 await emailService.SendAsync(r.Email!, subject, body);
+
+                if (refundLineMap.TryGetValue(r.Email!, out var lineUid))
+                {
+                    try
+                    {
+                        var flex = LineFlexMessageBuilder.BuildRefundMessage(applicantName, advance.RequestNo,
+                            advance.GrandTotal, refundAmount, linkUrl);
+                        await lineService.PushMessageAsync(lineUid, flex);
+                    }
+                    catch (Exception lex) { logger.LogWarning(lex, "LINE 推播失敗：{LineUserId}", lineUid); }
+                }
+
                 logger.LogInformation("已寄送退款通知：{Email}（AdvanceRequest #{Id}）", r.Email, advance.Id);
             }
         }
@@ -352,11 +413,29 @@ public sealed class ApprovalNotificationService(
             var siteUrl = await GetSiteUrlAsync();
             var linkUrl = BuildReviewUrl(siteUrl, "travel", travel.Id);
 
+            var trvEmails = recipients.Select(r => r.Email!).ToArray();
+            var trvLineMap = await db.Users.AsNoTracking()
+                .Where(u => trvEmails.Contains(u.Email) && u.LineUserId != null)
+                .Select(u => new { u.Email, u.LineUserId })
+                .ToDictionaryAsync(u => u.Email!, u => u.LineUserId!);
+
             foreach (var r in recipients)
             {
                 var body = BuildTravelRefundEmail(r.Name, applicantName, travel.Id,
                     travel.Destination, travel.GrandTotal, refundAmount, linkUrl);
                 await emailService.SendAsync(r.Email!, subject, body);
+
+                if (trvLineMap.TryGetValue(r.Email!, out var lineUid))
+                {
+                    try
+                    {
+                        var flex = LineFlexMessageBuilder.BuildTravelRefundMessage(applicantName,
+                            travel.Destination, travel.GrandTotal, refundAmount, linkUrl);
+                        await lineService.PushMessageAsync(lineUid, flex);
+                    }
+                    catch (Exception lex) { logger.LogWarning(lex, "LINE 推播失敗：{LineUserId}", lineUid); }
+                }
+
                 logger.LogInformation("已寄送出差退款通知：{Email}（TravelRequest #{Id}）", r.Email, travel.Id);
             }
         }
@@ -493,6 +572,44 @@ public sealed class ApprovalNotificationService(
               </a>
             </div>
             """;
+
+    // ── LINE 推播輔助 ──────────────────────────────────────────────────────────
+
+    /// <summary>根據 Email 查找 LineUserId 並推播（找不到或失敗靜默忽略）。</summary>
+    private async Task PushLineByEmailAsync(string email, object flexMessage)
+    {
+        try
+        {
+            var lineUserId = await db.Users.AsNoTracking()
+                .Where(u => u.Email == email && u.LineUserId != null)
+                .Select(u => u.LineUserId)
+                .FirstOrDefaultAsync();
+            if (!string.IsNullOrEmpty(lineUserId))
+                await lineService.PushMessageAsync(lineUserId, flexMessage);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "LINE 推播失敗（by email）：{Email}", email);
+        }
+    }
+
+    /// <summary>根據 UserId 查找 LineUserId 並推播（找不到或失敗靜默忽略）。</summary>
+    private async Task PushLineByUserIdAsync(Guid userId, object flexMessage)
+    {
+        try
+        {
+            var lineUserId = await db.Users.AsNoTracking()
+                .Where(u => u.Id == userId && u.LineUserId != null)
+                .Select(u => u.LineUserId)
+                .FirstOrDefaultAsync();
+            if (!string.IsNullOrEmpty(lineUserId))
+                await lineService.PushMessageAsync(lineUserId, flexMessage);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "LINE 推播失敗（by userId）：{UserId}", userId);
+        }
+    }
 
     // ── Email HTML 模板 ───────────────────────────────────────────────────────
 

@@ -32,6 +32,10 @@ public class User
     // 首次登入須修改密碼
     public bool MustChangePassword { get; set; } = false;
 
+    // LINE 綁定
+    public string?   LineUserId  { get; set; }   // LINE platform userId (U 開頭 33 字元)
+    public DateTime? LineLinkedAt { get; set; }   // 綁定時間
+
     // Navigation
     public ICollection<UserRole>     UserRoles     { get; set; } = [];
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
