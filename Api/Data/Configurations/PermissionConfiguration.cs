@@ -92,6 +92,7 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             new Permission { Id = "46", Code = "insurance-brackets:delete",        Name = "刪除",     Module = "勞健保級距" },
             // 人事薪資
             new Permission { Id = "47", Code = "payroll:read",                     Name = "瀏覽",     Module = "人事薪資" },
+            new Permission { Id = "66", Code = "payroll:write",                    Name = "新增/修改", Module = "人事薪資" },
             // Reports
             new Permission { Id = "48", Code = "reports-overtime:read",            Name = "加班紀錄",   Module = "Reports" },
             new Permission { Id = "49", Code = "reports-payment:read",             Name = "請款統計",   Module = "Reports" },
