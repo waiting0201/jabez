@@ -1,7 +1,7 @@
-import {Component, inject, signal, computed} from '@angular/core';
+import {Component, inject, signal, computed, OnInit} from '@angular/core';
 import {DecimalPipe} from '@angular/common';
 import {FormsModule} from '@angular/forms';
-import {RouterLink} from '@angular/router';
+import {ActivatedRoute, RouterLink} from '@angular/router';
 import {ToastrService} from 'ngx-toastr';
 import {PayrollService} from '../../services/payroll.service';
 import {MonthlyPayroll} from '../../models/payroll.model';
@@ -11,14 +11,27 @@ import {MonthlyPayroll} from '../../models/payroll.model';
   templateUrl: './payroll-list.html',
   imports: [DecimalPipe, FormsModule, RouterLink],
 })
-export class PayrollList {
+export class PayrollList implements OnInit {
   private service = inject(PayrollService);
   private toastr  = inject(ToastrService);
+  private route   = inject(ActivatedRoute);
   sending = signal(false);
 
   private now = new Date();
   selectedYear  = signal(this.now.getFullYear());
   selectedMonth = signal(this.now.getMonth() + 1);
+
+  ngOnInit() {
+    // 若從編輯頁返回帶有 year/month queryParams，沿用同月份
+    const y = Number(this.route.snapshot.queryParamMap.get('year'));
+    const m = Number(this.route.snapshot.queryParamMap.get('month'));
+    if (y && m >= 1 && m <= 12) {
+      this.selectedYear.set(y);
+      this.selectedMonth.set(m);
+    }
+    // 自動載入當前年月的薪資資料，確保與後端計算一致（不再依賴手動查詢）
+    this.search();
+  }
 
   yearMonth = computed(() => {
     const y = this.selectedYear();
@@ -71,6 +84,8 @@ export class PayrollList {
         if (res.errors?.length > 0) {
           this.errorMsg.set(`部分寄送失敗：${res.errors.join('；')}`);
         }
+        // 寄送後重新載入，確保列表顯示與信件內容一致
+        this.search();
       },
       error: () => {
         this.sending.set(false);

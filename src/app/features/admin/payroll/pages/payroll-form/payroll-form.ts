@@ -117,7 +117,10 @@ export class PayrollForm implements OnInit {
       next: () => {
         this.toastr.success('薪資調整已儲存。', '儲存成功');
         this.saving.set(false);
-        this.router.navigate(['/admin/payroll']);
+        // 帶上 year/month 讓列表頁重新載入該月最新計算結果（避免顯示快取值）
+        this.router.navigate(['/admin/payroll'], {
+          queryParams: {year: this.year, month: this.month},
+        });
       },
       error: () => {
         this.errorMsg.set('儲存失敗，請稍後再試。');
