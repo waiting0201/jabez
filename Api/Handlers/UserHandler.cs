@@ -135,6 +135,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             SendPaySlip   = form["sendPaySlip"] == "true",
             AgentUserId   = Guid.TryParse(form["agentUserId"], out var aid) && aid != Guid.Empty ? aid : null,
             Birthday     = birthday,
+            IsIndigenous = form["isIndigenous"] == "true",
             CreatedAt    = Clock.Now,
             UpdatedAt    = Clock.Now,
         };
@@ -203,6 +204,8 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             user.AgentUserId = Guid.TryParse(form["agentUserId"], out var aid) && aid != Guid.Empty ? aid : null;
         if (form.ContainsKey("birthday"))
             user.Birthday = DateTime.TryParse(form["birthday"], out var bd) ? bd : null;
+        if (form.ContainsKey("isIndigenous"))
+            user.IsIndigenous = form["isIndigenous"] == "true";
 
         // 處理簽名檔：removeSignature=true 表示刪除
         if (form["removeSignature"] == "true")

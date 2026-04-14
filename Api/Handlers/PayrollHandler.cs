@@ -278,6 +278,7 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
         "miscarriage_under2m" => "流產假(未滿2個月)",
         "prenatal_checkup"    => "產檢假",
         "paternity"           => "陪產假",
+        "ceremonial_festival" => "歲時祭儀假",
         _                     => leaveType,
     };
 

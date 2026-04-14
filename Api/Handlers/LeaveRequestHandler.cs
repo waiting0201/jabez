@@ -31,7 +31,8 @@ public sealed class LeaveRequestHandler(
     private static readonly HashSet<string> ValidLeaveTypes =
         ["annual", "personal", "sick", "compensatory", "marriage", "bereavement",
          "official", "maternity", "miscarriage_3m", "miscarriage_2to3m",
-         "miscarriage_under2m", "prenatal_checkup", "paternity"];
+         "miscarriage_under2m", "prenatal_checkup", "paternity",
+         "ceremonial_festival"];
 
     /// <summary>各假別天數上限（不含年假與補休，它們有獨立邏輯）</summary>
     private static readonly Dictionary<string, int> LeaveTypeDaysLimit = new()
@@ -334,6 +335,46 @@ public sealed class LeaveRequestHandler(
         }));
     }
 
+    /// <summary>查詢當前使用者的歲時祭儀假額度（僅原住民可用，每年 3 天，跨年歸零）</summary>
+    public async Task<IActionResult> GetCeremonialQuotaAsync(HttpRequest req)
+    {
+        var userId = await GetUserIdAsync(req);
+        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+
+        bool isIndigenous = user?.IsIndigenous == true;
+        if (!isIndigenous)
+        {
+            return new OkObjectResult(ApiResponse.Ok(new
+            {
+                totalDays = 0,
+                usedDays = 0m,
+                availableDays = 0m,
+                isIndigenous = false,
+                message = "僅原住民身份之員工可申請歲時祭儀假。",
+            }));
+        }
+
+        const int totalDays = 3;
+        var now = Clock.Now;
+        var startOfYear = new DateTime(now.Year, 1, 1);
+        var endOfYear = new DateTime(now.Year, 12, 31, 23, 59, 59);
+        var usedHours = await db.LeaveRequests
+            .Where(l => l.EmployeeId == userId
+                     && l.LeaveType == "ceremonial_festival"
+                     && (l.ApprovalStatus == "approved" || l.ApprovalStatus == "pending")
+                     && l.StartDate >= startOfYear && l.StartDate <= endOfYear)
+            .SumAsync(l => l.Hours);
+        var usedDays = usedHours / 8m;
+
+        return new OkObjectResult(ApiResponse.Ok(new
+        {
+            totalDays,
+            usedDays = Math.Round(usedDays, 1),
+            availableDays = Math.Round(Math.Max(0, totalDays - usedDays), 1),
+            isIndigenous = true,
+        }));
+    }
+
     /// <summary>計算指定使用者可用的補休時數</summary>
     private async Task<decimal> GetAvailableCompensatoryHoursAsync(Guid userId)
     {
@@ -550,6 +591,21 @@ public sealed class LeaveRequestHandler(
             return null;
         }
 
+        // 歲時祭儀假：限原住民身份，每年 3 天（跨年歸零）
+        if (item.LeaveType == "ceremonial_festival")
+        {
+            var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+            if (user?.IsIndigenous != true)
+                return "僅原住民身份之員工可申請歲時祭儀假。";
+
+            const int totalDays = 3;
+            var usedHours = await GetUsedHoursAsync(userId, "ceremonial_festival", item.Id, now.Year);
+            var totalUsedDays = (usedHours + item.Hours) / 8m;
+            if (totalUsedDays > totalDays)
+                return $"歲時祭儀假額度不足。上限 {totalDays} 天，已使用 {Math.Round(usedHours / 8m, 1)} 天，本次申請 {Math.Round(item.Hours / 8m, 1)} 天。";
+            return null;
+        }
+
         // 有固定天數上限的假別
         if (LeaveTypeDaysLimit.TryGetValue(item.LeaveType, out var limit))
         {
@@ -652,6 +708,7 @@ public sealed class LeaveRequestHandler(
         "miscarriage_under2m"=> "流產假(未滿2個月)",
         "prenatal_checkup"   => "產檢假",
         "paternity"          => "陪產假",
+        "ceremonial_festival"=> "歲時祭儀假",
         _                    => leaveType,
     };
 

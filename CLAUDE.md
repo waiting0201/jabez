@@ -449,6 +449,7 @@ public async Task<HttpResponseData> Run(
 | PATCH | `/leave-requests/{id}/submit` | 送出請假申請（draft → pending） |
 | GET | `/leave-requests/compensatory-hours` | 查詢可補休時數（總加班 − 已補休） |
 | GET | `/leave-requests/annual-quota` | 查詢年假額度（依 HireDate 計算年資） |
+| GET | `/leave-requests/ceremonial-quota` | 查詢歲時祭儀假額度（僅原住民，每年 3 天，跨年歸零） |
 | GET/POST | `/travel-requests` | 出差列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/travel-requests/{id}` | 出差 CRUD |
 | PATCH | `/travel-requests/{id}/submit` | 送出出差申請（draft → pending） |
@@ -542,7 +543,7 @@ dotnet ef database update               # 套用 Migration
 
 | 實體 | 說明 |
 |------|------|
-| `User` | 使用者（含 DepartmentId、JobTitleId、IsSuperAdmin、LineUserId） |
+| `User` | 使用者（含 DepartmentId、JobTitleId、IsSuperAdmin、LineUserId、IsIndigenous） |
 | `Role` | 角色定義 |
 | `Permission` | 權限代碼 |
 | `UserRole` | 使用者 ↔ 角色（Junction） |
@@ -593,6 +594,7 @@ dotnet ef database update               # 套用 Migration
 | 11 | 產檢假 | `prenatal_checkup` | 7 天 | 有薪 |
 | 12 | 陪產假 | `paternity` | 7 天 | 有薪 |
 | 13 | 喪假 | `bereavement` | 依親屬關係（3/6/8 天） | 有薪 |
+| 14 | 歲時祭儀假 | `ceremonial_festival` | 3 天/年（跨年歸零，**限原住民**） | 有薪 |
 
 ### 年假額度規則（依年資）
 

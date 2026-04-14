@@ -48,6 +48,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.MustChangePassword)
                .HasDefaultValue(false);
 
+        builder.Property(u => u.IsIndigenous)
+               .HasDefaultValue(false);
+
         // LINE 綁定
         builder.Property(u => u.LineUserId).HasMaxLength(50);
         builder.HasIndex(u => u.LineUserId)

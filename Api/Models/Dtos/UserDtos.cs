@@ -22,6 +22,7 @@ public sealed record UserDto(
     string?   AgentName,
     DateTime? Birthday,
     DateTime  CreatedAt,
+    bool      IsIndigenous = false,
     string?   LineUserId   = null,
     DateTime? LineLinkedAt  = null);
 
@@ -41,7 +42,8 @@ public sealed record CreateUserRequest(
     decimal?  OvertimePay   = null,
     bool      SendPaySlip   = false,
     Guid?     AgentUserId  = null,
-    DateTime? Birthday     = null);
+    DateTime? Birthday     = null,
+    bool      IsIndigenous = false);
 
 /// <summary>輕量級使用者資料（供指定審核者下拉選單用，不需 users:read 權限）</summary>
 public sealed record UserLookupDto(
@@ -66,4 +68,5 @@ public sealed record UpdateUserRequest(
     decimal?   OvertimePay,
     bool?      SendPaySlip,
     Guid?      AgentUserId,
-    DateTime?  Birthday);
+    DateTime?  Birthday,
+    bool?      IsIndigenous);

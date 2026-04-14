@@ -21,6 +21,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.MealAllowance, u.OvertimePay, u.SendPaySlip,
                 u.AgentUserId,  ag.Name AS AgentName,
                 u.Birthday,
+                u.IsIndigenous,
                 u.LineUserId, u.LineLinkedAt,
                 r.Id AS RoleId
             FROM Users u
@@ -43,6 +44,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             decimal? MealAllowance, decimal? OvertimePay, bool SendPaySlip,
             Guid? AgentUserId, string? AgentName,
             DateTime? Birthday,
+            bool IsIndigenous,
             string? LineUserId, DateTime? LineLinkedAt,
             DateTime CreatedAt, List<string> RoleIds)>();
 
@@ -59,6 +61,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     row.AgentUserId is null ? null : (Guid?)row.AgentUserId,
                     (string?)row.AgentName,
                     (DateTime?)row.Birthday,
+                    (bool)row.IsIndigenous,
                     (string?)row.LineUserId, (DateTime?)row.LineLinkedAt,
                     (DateTime)row.CreatedAt, []);
 
@@ -77,6 +80,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.AgentUserId, kv.Value.AgentName,
             kv.Value.Birthday,
             kv.Value.CreatedAt,
+            kv.Value.IsIndigenous,
             kv.Value.LineUserId, kv.Value.LineLinkedAt));
     }
 
@@ -109,6 +113,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.MealAllowance, u.OvertimePay, u.SendPaySlip,
                 u.AgentUserId,  ag.Name AS AgentName,
                 u.Birthday,
+                u.IsIndigenous,
                 u.LineUserId, u.LineLinkedAt,
                 r.Id AS RoleId
             FROM Users u
@@ -132,6 +137,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             decimal? MealAllowance, decimal? OvertimePay, bool SendPaySlip,
             Guid? AgentUserId, string? AgentName,
             DateTime? Birthday,
+            bool IsIndigenous,
             string? LineUserId, DateTime? LineLinkedAt,
             DateTime CreatedAt, List<string> RoleIds)>();
 
@@ -148,6 +154,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     row.AgentUserId is null ? null : (Guid?)row.AgentUserId,
                     (string?)row.AgentName,
                     (DateTime?)row.Birthday,
+                    (bool)row.IsIndigenous,
                     (string?)row.LineUserId, (DateTime?)row.LineLinkedAt,
                     (DateTime)row.CreatedAt, []);
 
@@ -166,6 +173,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.AgentUserId, kv.Value.AgentName,
             kv.Value.Birthday,
             kv.Value.CreatedAt,
+            kv.Value.IsIndigenous,
             kv.Value.LineUserId, kv.Value.LineLinkedAt));
 
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
@@ -183,6 +191,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.MealAllowance, u.OvertimePay, u.SendPaySlip,
                 u.AgentUserId,  ag.Name AS AgentName,
                 u.Birthday,
+                u.IsIndigenous,
                 u.LineUserId, u.LineLinkedAt,
                 r.Id AS RoleId
             FROM Users u
@@ -212,6 +221,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 (string?)row.AgentName,
                 (DateTime?)row.Birthday,
                 (DateTime)row.CreatedAt,
+                (bool)row.IsIndigenous,
                 (string?)row.LineUserId, (DateTime?)row.LineLinkedAt);
 
             if (row.RoleId is not null)
