@@ -30,5 +30,6 @@ export interface User {
   agentUserId?: string;
   agentName?: string;
   birthday?: Date;
+  isIndigenous?: boolean;
   createdAt: Date;
 }

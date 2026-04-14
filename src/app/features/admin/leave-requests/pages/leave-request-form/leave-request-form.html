@@ -132,8 +132,41 @@
                 </div>
               }
 
+              <!-- 歲時祭儀假提示（僅原住民可申請） -->
+              @if (selectedLeaveType === 'ceremonial_festival') {
+                @if (ceremonialLoading()) {
+                  <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                    <svg class="sa-icon shrink-0" style="stroke: currentColor">
+                      <use href="/assets/icons/sprite.svg#clock"></use>
+                    </svg>
+                    <span class="small">載入中...</span>
+                  </div>
+                } @else if (ceremonialQuota(); as quota) {
+                  @if (!quota.isIndigenous) {
+                    <div class="alert alert-danger flex items-center gap-2 py-2 mt-2 mb-0">
+                      <svg class="sa-icon shrink-0" style="stroke: currentColor">
+                        <use href="/assets/icons/sprite.svg#alert-triangle"></use>
+                      </svg>
+                      <span class="small">{{ quota.message || '僅原住民身份之員工可申請歲時祭儀假。' }}</span>
+                    </div>
+                  } @else {
+                    <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                      <svg class="sa-icon shrink-0" style="stroke: currentColor">
+                        <use href="/assets/icons/sprite.svg#info"></use>
+                      </svg>
+                      <span class="small">
+                        歲時祭儀假：<strong>{{ quota.totalDays }}</strong> 天／年
+                        <span class="text-muted ms-2">｜已使用：{{ quota.usedDays }} 天</span>
+                        <span class="ms-2">｜剩餘：<strong class="text-primary">{{ quota.availableDays }}</strong> 天</span>
+                        <span class="text-muted ms-2">（跨年歸零）</span>
+                      </span>
+                    </div>
+                  }
+                }
+              }
+
               <!-- 有天數上限的假別提示 -->
-              @if (currentDaysLimit !== null && selectedLeaveType !== 'bereavement' && selectedLeaveType !== 'annual' && selectedLeaveType !== 'compensatory') {
+              @if (currentDaysLimit !== null && selectedLeaveType !== 'bereavement' && selectedLeaveType !== 'annual' && selectedLeaveType !== 'compensatory' && selectedLeaveType !== 'ceremonial_festival') {
                 <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
                   <svg class="sa-icon shrink-0" style="stroke: currentColor">
                     <use href="/assets/icons/sprite.svg#info"></use>
@@ -281,7 +314,7 @@
             <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid || calculatedHours <= 0">
               {{ isEdit ? '儲存' : '儲存草稿' }}
             </button>
-            <button type="button" class="btn btn-primary" [disabled]="form.invalid || calculatedHours <= 0 || isCompensatoryExceeded"
+            <button type="button" class="btn btn-primary" [disabled]="form.invalid || calculatedHours <= 0 || isCompensatoryExceeded || isCeremonialNotAllowed"
                     (click)="submitForApproval()">
               送出申請
             </button>

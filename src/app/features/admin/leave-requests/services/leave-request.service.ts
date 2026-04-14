@@ -1,7 +1,7 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
-import {LeaveRequest, AnnualQuota, CompensatoryHours} from '../models/leave-request.model';
+import {LeaveRequest, AnnualQuota, CompensatoryHours, CeremonialQuota} from '../models/leave-request.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {environment} from '@/environments/environment';
 
@@ -46,5 +46,10 @@ export class LeaveRequestService {
   /** 查詢當前使用者的年假額度 */
   getAnnualQuota(): Observable<AnnualQuota> {
     return this.http.get<AnnualQuota>(`${environment.apiUrl}/leave-requests/annual-quota`);
+  }
+
+  /** 查詢當前使用者的歲時祭儀假額度（僅原住民） */
+  getCeremonialQuota(): Observable<CeremonialQuota> {
+    return this.http.get<CeremonialQuota>(`${environment.apiUrl}/leave-requests/ceremonial-quota`);
   }
 }

@@ -69,6 +69,7 @@ export class UserForm implements OnInit {
     mealAllowance: [null as number | null],
     overtimePay:   [null as number | null],
     sendPaySlip:   [false],
+    isIndigenous:  [false],
     agentUserId:  ['' as string],
     birthday:     ['' as string, Validators.required],
   });
@@ -116,6 +117,7 @@ export class UserForm implements OnInit {
           mealAllowance: user.mealAllowance ?? null,
           overtimePay:   user.overtimePay ?? null,
           sendPaySlip:   user.sendPaySlip ?? false,
+          isIndigenous:  user.isIndigenous ?? false,
           agentUserId:   user.agentUserId ?? '',
           birthday:     user.birthday ? this.toDateString(user.birthday) : '',
         });

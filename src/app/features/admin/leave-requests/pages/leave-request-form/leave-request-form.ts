@@ -4,7 +4,7 @@ import {FormBuilder, FormsModule, ReactiveFormsModule, ValidatorFn, Validators} 
 import {HttpErrorResponse} from '@angular/common/http';
 import {LeaveRequestService} from '../../services/leave-request.service';
 import {
-  LeaveType, ApprovalStatus, AnnualQuota, CompensatoryHours,
+  LeaveType, ApprovalStatus, AnnualQuota, CompensatoryHours, CeremonialQuota,
   APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES,
   LEAVE_TYPE_GROUPS, LEAVE_TYPE_LABELS, LEAVE_TYPE_DAYS_LIMIT,
   BEREAVEMENT_GROUPS, BEREAVEMENT_RELATIONSHIP_LABELS, BEREAVEMENT_DAYS,
@@ -80,6 +80,10 @@ export class LeaveRequestForm implements OnInit {
   /** 年假額度（從 API 取得） */
   annualQuota = signal<AnnualQuota | null>(null);
   annualQuotaLoading = signal(false);
+
+  /** 歲時祭儀假額度（從 API 取得） */
+  ceremonialQuota = signal<CeremonialQuota | null>(null);
+  ceremonialLoading = signal(false);
 
   addDesignatedEntry() {
     const nextOrder = this.designatedEntries.length + 1;
@@ -255,6 +259,8 @@ export class LeaveRequestForm implements OnInit {
     if (type === 'annual') this.loadAnnualQuota();
     // 補休：載入可用時數
     if (type === 'compensatory') this.loadCompensatoryHours();
+    // 歲時祭儀假：載入額度（同時確認原住民身份）
+    if (type === 'ceremonial_festival') this.loadCeremonialQuota();
   }
 
   /** 補休時數是否足夠 */
@@ -264,6 +270,13 @@ export class LeaveRequestForm implements OnInit {
     if (!hours) return false;
     const requestedHours = this.calculatedHours;
     return requestedHours > hours.availableHours;
+  }
+
+  /** 歲時祭儀假：申請人非原住民則不可申請 */
+  get isCeremonialNotAllowed(): boolean {
+    if (this.form.get('leaveType')?.value !== 'ceremonial_festival') return false;
+    const q = this.ceremonialQuota();
+    return q !== null && !q.isIndigenous;
   }
 
   /** 儲存（草稿或更新，不改變狀態） */
@@ -291,6 +304,10 @@ export class LeaveRequestForm implements OnInit {
     if (this.isCompensatoryExceeded) {
       const hours = this.compensatoryHours()!;
       this.errorMsg.set(`補休時數不足。申請 ${this.calculatedHours} 小時，可用 ${hours.availableHours} 小時。`);
+      return;
+    }
+    if (this.isCeremonialNotAllowed) {
+      this.errorMsg.set('僅原住民身份之員工可申請歲時祭儀假。');
       return;
     }
     const payload = this._buildPayload();
@@ -334,6 +351,18 @@ export class LeaveRequestForm implements OnInit {
         this.annualQuotaLoading.set(false);
       },
       error: () => this.annualQuotaLoading.set(false),
+    });
+  }
+
+  /** 載入歲時祭儀假額度 */
+  private loadCeremonialQuota() {
+    this.ceremonialLoading.set(true);
+    this.service.getCeremonialQuota().subscribe({
+      next: data => {
+        this.ceremonialQuota.set(data);
+        this.ceremonialLoading.set(false);
+      },
+      error: () => this.ceremonialLoading.set(false),
     });
   }
 
