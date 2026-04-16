@@ -24,12 +24,15 @@ public sealed class LineHandler(
         var callbackUrl = cfg["Line:CallbackUrl"]    ?? "";
         var state = Guid.NewGuid().ToString("N");
 
+        // bot_prompt=aggressive：授權完成後自動導向「加 OA 為好友」畫面，
+        // 確保用戶能收到 Messaging API 推播（未加好友者一律收不到推播）。
         var url = $"https://access.line.me/oauth2/v2.1/authorize" +
                   $"?response_type=code" +
                   $"&client_id={channelId}" +
                   $"&redirect_uri={Uri.EscapeDataString(callbackUrl)}" +
                   $"&state={state}" +
-                  $"&scope=openid%20profile";
+                  $"&scope=openid%20profile" +
+                  $"&bot_prompt=aggressive";
 
         return await Task.FromResult<IActionResult>(
             new OkObjectResult(ApiResponse.Ok(new LineBindUrlDto(url, state))));
@@ -68,8 +71,12 @@ public sealed class LineHandler(
         user.UpdatedAt   = Clock.Now;
         await db.SaveChangesAsync();
 
+        // 綁定成功後立刻查詢 OA 好友狀態（bot_prompt=aggressive 理論上應該是 true，
+        // 但用戶可能在 LINE 的加好友畫面拒絕，故實際檢查）
+        var isBotFriend = await lineService.IsBotFriendAsync(lineUserId);
+
         return new OkObjectResult(ApiResponse.Ok(
-            new LineBindingStatusDto(true, user.LineLinkedAt)));
+            new LineBindingStatusDto(true, user.LineLinkedAt, isBotFriend)));
     }
 
     /// <summary>POST /line/unbind — 解除 LINE 綁定。</summary>
@@ -90,7 +97,7 @@ public sealed class LineHandler(
         await db.SaveChangesAsync();
 
         return new OkObjectResult(ApiResponse.Ok(
-            new LineBindingStatusDto(false, null)));
+            new LineBindingStatusDto(false, null, false)));
     }
 
     /// <summary>GET /line/binding-status — 查詢當前用戶的 LINE 綁定狀態。</summary>
@@ -109,7 +116,11 @@ public sealed class LineHandler(
         if (user is null)
             return new NotFoundObjectResult(ApiResponse.Fail("使用者不存在。"));
 
+        var isBound = !string.IsNullOrEmpty(user.LineUserId);
+        // 已綁定時才查好友狀態（避免浪費 LINE API 呼叫）
+        var isBotFriend = isBound && await lineService.IsBotFriendAsync(user.LineUserId!);
+
         return new OkObjectResult(ApiResponse.Ok(
-            new LineBindingStatusDto(!string.IsNullOrEmpty(user.LineUserId), user.LineLinkedAt)));
+            new LineBindingStatusDto(isBound, user.LineLinkedAt, isBotFriend)));
     }
 }

@@ -92,7 +92,49 @@ public sealed class LineService : ILineService
         if (!resp.IsSuccessStatusCode)
         {
             var body = await resp.Content.ReadAsStringAsync();
-            _logger.LogWarning("LINE push failed to {UserId}: {Status} {Body}", lineUserId, resp.StatusCode, body);
+            // LINE 回 400 且 body 提到未加好友 → 升級為 Error 並清楚標示原因，方便排查
+            if (body.Contains("hasn't added the LINE Official Account as a friend", StringComparison.OrdinalIgnoreCase)
+                || body.Contains("has been blocked by the user", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogError(
+                    "LINE push 失敗（用戶未加 OA 好友或已封鎖）：UserId={UserId} Status={Status} Body={Body}",
+                    lineUserId, resp.StatusCode, body);
+            }
+            else
+            {
+                _logger.LogWarning("LINE push failed to {UserId}: {Status} {Body}", lineUserId, resp.StatusCode, body);
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> IsBotFriendAsync(string lineUserId)
+    {
+        if (string.IsNullOrEmpty(lineUserId)) return false;
+        try
+        {
+            using var request = new HttpRequestMessage(
+                HttpMethod.Get,
+                $"https://api.line.me/v2/bot/profile/{Uri.EscapeDataString(lineUserId)}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _messagingAccessToken);
+
+            var resp = await _http.SendAsync(request);
+            if (resp.IsSuccessStatusCode) return true;
+
+            // 404 = 非好友或已封鎖；其他非 200 視為不可用，記 warning
+            if ((int)resp.StatusCode != 404)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                _logger.LogWarning(
+                    "LINE profile 查詢失敗：UserId={UserId} Status={Status} Body={Body}",
+                    lineUserId, resp.StatusCode, body);
+            }
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "LINE profile 查詢例外：UserId={UserId}", lineUserId);
+            return false;
         }
     }
 }
