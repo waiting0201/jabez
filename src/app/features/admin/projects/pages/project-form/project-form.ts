@@ -1,10 +1,10 @@
 import {ChangeDetectorRef, Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {DecimalPipe} from '@angular/common';
-import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
+import {FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {HttpErrorResponse} from '@angular/common/http';
 import {ProjectService} from '../../services/project.service';
-import {ProjectStatus} from '../../models/project.model';
+import {ProjectPaymentSchedule, ProjectStatus} from '../../models/project.model';
 import {DepartmentService} from '../../../departments/services/department.service';
 import {Department} from '../../../departments/models/department.model';
 
@@ -38,11 +38,20 @@ export class ProjectForm implements OnInit {
     startDate:      ['', Validators.required],
     endDate:        [''],
     departmentId:   [{value: null as number | null, disabled: true}, Validators.required],
-    budgetAmount:   [null as number | null, [Validators.required, Validators.min(0)]],
-    actualAmount:   [null as number | null, [Validators.required, Validators.min(0)]],
+    receivedAmount: [null as number | null, [Validators.required, Validators.min(0)]],
+    contractAmount: [null as number | null, [Validators.required, Validators.min(0)]],
     businessAmount: [null as number | null, [Validators.required, Validators.min(0)]],
     googleDriveUrl: ['', Validators.required],
+    schedules:      this.fb.array<FormGroup>([]),
   });
+
+  get schedulesArray(): FormArray<FormGroup> {
+    return this.form.get('schedules') as FormArray<FormGroup>;
+  }
+
+  get scheduleControls(): FormGroup[] {
+    return this.schedulesArray.controls as FormGroup[];
+  }
 
   ngOnInit() {
     this.deptService.getAll().subscribe({
@@ -58,7 +67,7 @@ export class ProjectForm implements OnInit {
         this.errorMsg.set('載入部門資料失敗。');
       },
     });
-    this.form.get('actualAmount')!.valueChanges.subscribe(val => {
+    this.form.get('contractAmount')!.valueChanges.subscribe(val => {
       const computed = val != null && val >= 0 ? Math.round(val * 0.6) : null;
       this.form.get('businessAmount')!.setValue(computed, { emitEvent: false });
       this.updateBusinessPercentage();
@@ -82,11 +91,16 @@ export class ProjectForm implements OnInit {
             startDate:      p.startDate ? p.startDate.substring(0, 10) : '',
             endDate:        p.endDate ? p.endDate.substring(0, 10) : '',
             departmentId:   p.departmentId ?? null,
-            budgetAmount:   p.budgetAmount ?? null,
-            actualAmount:   p.actualAmount ?? null,
+            receivedAmount: p.receivedAmount ?? null,
+            contractAmount: p.contractAmount ?? null,
             businessAmount: p.businessAmount ?? null,
             googleDriveUrl: p.googleDriveUrl ?? '',
           });
+
+          this.schedulesArray.clear();
+          const schedules = [...(p.paymentSchedules ?? [])].sort((a, b) => a.periodNo - b.periodNo);
+          schedules.forEach(s => this.schedulesArray.push(this.buildScheduleGroup(s)));
+
           if (this.isClosed) this.form.disable();
           this.cdr.markForCheck();
         },
@@ -95,13 +109,55 @@ export class ProjectForm implements OnInit {
     }
   }
 
+  private buildScheduleGroup(s?: Partial<ProjectPaymentSchedule>): FormGroup {
+    return this.fb.group({
+      id:            [s?.id ?? (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : this.fallbackUuid())],
+      billingDate:   [s?.billingDate ? String(s.billingDate).substring(0, 10) : ''],
+      billingAmount: [s?.billingAmount ?? null],
+      invoiceDate:   [s?.invoiceDate ? String(s.invoiceDate).substring(0, 10) : ''],
+      invoiceAmount: [s?.invoiceAmount ?? null],
+      depositDate:   [s?.depositDate ? String(s.depositDate).substring(0, 10) : ''],
+      depositAmount: [s?.depositAmount ?? null],
+      deductionNote: [s?.deductionNote ?? ''],
+    });
+  }
+
+  /** 舊瀏覽器或非 HTTPS 情境下的簡易 UUID fallback */
+  private fallbackUuid(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+
+  addSchedule() {
+    if (this.isClosed) return;
+    this.schedulesArray.push(this.buildScheduleGroup());
+  }
+
+  removeSchedule(index: number) {
+    if (this.isClosed) return;
+    this.schedulesArray.removeAt(index);
+  }
+
+  /** 即時計算某一期扣款金額（發票 − 入帳），兩值任一缺失則回傳 null */
+  deductionFor(index: number): number | null {
+    const g = this.scheduleControls[index];
+    if (!g) return null;
+    const inv = g.get('invoiceAmount')!.value as number | null;
+    const dep = g.get('depositAmount')!.value as number | null;
+    if (inv == null || dep == null) return null;
+    return inv - dep;
+  }
+
   private updateBusinessPercentage() {
-    const actual = this.form.get('actualAmount')!.value;
+    const contract = this.form.get('contractAmount')!.value;
     const business = this.form.get('businessAmount')!.value;
-    if (actual != null && actual > 0 && business != null && business >= 0) {
-      const pct = Math.round((business / actual) * 100);
+    if (contract != null && contract > 0 && business != null && business >= 0) {
+      const pct = Math.round((business / contract) * 100);
       this.businessPercentage.set(pct);
-      this.reservedAmount.set(actual - business);
+      this.reservedAmount.set(contract - business);
       this.reservedPercentage.set(100 - pct);
     } else {
       this.businessPercentage.set(null);
@@ -115,18 +171,31 @@ export class ProjectForm implements OnInit {
     const v = this.form.getRawValue();
     if (v.status === 'closed' && !confirm('確定要將此專案設為「已結案」嗎？結案後將無法再修改或刪除。')) return;
     const dept = this.departments.find(d => d.id === v.departmentId);
+    const schedules = this.scheduleControls.map((g, idx) => ({
+      id:            g.get('id')!.value as string,
+      periodNo:      idx + 1,
+      billingDate:   (g.get('billingDate')!.value as string) || null,
+      billingAmount: this.toNumberOrNull(g.get('billingAmount')!.value),
+      invoiceDate:   (g.get('invoiceDate')!.value as string) || null,
+      invoiceAmount: this.toNumberOrNull(g.get('invoiceAmount')!.value),
+      depositDate:   (g.get('depositDate')!.value as string) || null,
+      depositAmount: this.toNumberOrNull(g.get('depositAmount')!.value),
+      deductionNote: (g.get('deductionNote')!.value as string) || null,
+    }));
+
     const payload = {
-      code:           v.code!,
-      name:           v.name!,
-      status:         v.status! as ProjectStatus,
-      startDate:      v.startDate!,
-      endDate:        v.endDate || undefined,
-      departmentId:   v.departmentId ?? undefined,
-      departmentName: dept?.name,
-      budgetAmount:   v.budgetAmount ?? undefined,
-      actualAmount:   v.actualAmount ?? undefined,
-      businessAmount: v.businessAmount ?? undefined,
-      googleDriveUrl: v.googleDriveUrl || undefined,
+      code:             v.code!,
+      name:             v.name!,
+      status:           v.status! as ProjectStatus,
+      startDate:        v.startDate!,
+      endDate:          v.endDate || undefined,
+      departmentId:     v.departmentId ?? undefined,
+      departmentName:   dept?.name,
+      receivedAmount:   v.receivedAmount ?? undefined,
+      contractAmount:   v.contractAmount ?? undefined,
+      businessAmount:   v.businessAmount ?? undefined,
+      googleDriveUrl:   v.googleDriveUrl || undefined,
+      paymentSchedules: schedules,
     };
     const obs = this.isEdit
       ? this.projectService.update(this.projectId, payload)
@@ -138,5 +207,11 @@ export class ProjectForm implements OnInit {
         this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
       },
     });
+  }
+
+  private toNumberOrNull(val: unknown): number | null {
+    if (val === null || val === undefined || val === '') return null;
+    const n = Number(val);
+    return Number.isFinite(n) ? n : null;
   }
 }

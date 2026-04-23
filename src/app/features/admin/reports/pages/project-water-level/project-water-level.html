@@ -20,7 +20,7 @@
               <th>專案代碼</th>
               <th class="hidden md:table-cell">部門</th>
               <th class="text-center hidden md:table-cell">狀態</th>
-              <th class="text-right">實際金額</th>
+              <th class="text-right">契約金額</th>
               <th class="text-right">業務執行金額</th>
               <th class="text-right">已請款</th>
               <th class="text-right hidden lg:table-cell">已付款</th>
@@ -41,8 +41,8 @@
                   }
                 </td>
                 <td class="text-right">
-                  @if (row.actualAmount !== null) {
-                    <span class="fw-500">{{ row.actualAmount | number:'1.0-0' }}</span>
+                  @if (row.contractAmount !== null) {
+                    <span class="fw-500">{{ row.contractAmount | number:'1.0-0' }}</span>
                   } @else {
                     <span class="text-muted">—</span>
                   }

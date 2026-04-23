@@ -8,7 +8,7 @@ export interface ProjectWaterLevelRow {
   projectCode: string;
   status: string;
   departmentName: string;
-  actualAmount: number | null;
+  contractAmount: number | null;
   businessAmount: number | null;
   paymentAmount: number;
   paidAmount: number;
@@ -42,7 +42,7 @@ export class ProjectWaterLevel implements OnInit {
             projectCode: r.projectCode ?? '—',
             status: r.status ?? 'active',
             departmentName: r.departmentName ?? '—',
-            actualAmount: r.actualAmount,
+            contractAmount: r.contractAmount,
             businessAmount: r.businessAmount,
             paymentAmount: r.paymentAmount ?? 0,
             paidAmount: r.paidAmount ?? 0,

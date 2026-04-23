@@ -15,7 +15,9 @@
 
   <form [formGroup]="form" (ngSubmit)="submit()">
     <div class="row g-4">
-      <div class="col-12 col-lg-8 col-xl-6">
+      <div class="col-12 col-lg-10 col-xl-8">
+
+        <!-- 專案資訊 -->
         <div class="card border-0 shadow-sm">
           <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
             <svg class="sa-icon text-primary" style="stroke: currentColor">
@@ -25,109 +27,114 @@
           </div>
           <div class="card-body">
 
-            <div class="mb-4">
-              <label class="form-label fw-500">專案編號 <span class="text-danger">*</span></label>
-              <input type="text" class="form-control font-monospace" formControlName="code" placeholder="例如：P2025-001">
-              @if (form.get('code')?.invalid && form.get('code')?.touched) {
-                <div class="text-danger small mt-1">請輸入專案編號。</div>
-              }
-            </div>
-
-            <div class="mb-4">
-              <label class="form-label fw-500">專案名稱 <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" formControlName="name" placeholder="請輸入專案名稱">
-              @if (form.get('name')?.invalid && form.get('name')?.touched) {
-                <div class="text-danger small mt-1">請輸入專案名稱。</div>
-              }
-            </div>
-
-            <div class="mb-4">
-              <label class="form-label fw-500">狀態 <span class="text-danger">*</span></label>
-              <select class="form-select" formControlName="status">
-                <option value="active">進行中</option>
-                <option value="closed">已結案</option>
-              </select>
-            </div>
-
-            <div class="mb-4">
-              <label class="form-label fw-500">部門 <span class="text-danger">*</span></label>
-              <select class="form-select" formControlName="departmentId">
-                <option [ngValue]="null">{{ loadingDepts ? '載入中…' : '— 請選擇部門 —' }}</option>
-                @for (dept of departments; track dept.id) {
-                  <option [ngValue]="dept.id">{{ dept.name }}</option>
+            <div class="row g-3 mb-4">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">專案編號 <span class="text-danger">*</span></label>
+                <input type="text" class="form-control font-monospace" formControlName="code" placeholder="例如：P2025-001">
+                @if (form.get('code')?.invalid && form.get('code')?.touched) {
+                  <div class="text-danger small mt-1">請輸入專案編號。</div>
                 }
-              </select>
-              @if (form.get('departmentId')?.invalid && form.get('departmentId')?.touched) {
-                <div class="text-danger small mt-1">請選擇部門。</div>
-              }
-            </div>
-
-            <div class="mb-4">
-              <label class="form-label fw-500">開始日期 <span class="text-danger">*</span></label>
-              <input type="date" class="form-control" formControlName="startDate">
-              @if (form.get('startDate')?.invalid && form.get('startDate')?.touched) {
-                <div class="text-danger small mt-1">請選擇開始日期。</div>
-              }
-            </div>
-
-            <div class="mb-4">
-              <label class="form-label fw-500">結束日期</label>
-              <input type="date" class="form-control" formControlName="endDate">
-            </div>
-
-            <div class="mb-4">
-              <label class="form-label fw-500">預定金額 <span class="text-danger">*</span></label>
-              <div class="input-group">
-                <span class="input-group-text">NT$</span>
-                <input type="number" class="form-control" formControlName="budgetAmount" min="0">
               </div>
-              @if (form.get('budgetAmount')?.invalid && form.get('budgetAmount')?.touched) {
-                <div class="text-danger small mt-1">請輸入預定金額（不可為負數）。</div>
-              }
-            </div>
-
-            <div class="mb-4">
-              <label class="form-label fw-500">實際金額 <span class="text-danger">*</span></label>
-              <div class="input-group">
-                <span class="input-group-text">NT$</span>
-                <input type="number" class="form-control" formControlName="actualAmount" min="0">
-              </div>
-              @if (form.get('actualAmount')?.invalid && form.get('actualAmount')?.touched) {
-                <div class="text-danger small mt-1">請輸入實際金額（不可為負數）。</div>
-              }
-            </div>
-
-            <div class="mb-4">
-              <label class="form-label fw-500">
-                業務執行金額
-                @if (businessPercentage() !== null) {
-                  <span class="text-accent fw-600">（{{ businessPercentage() }}%）</span>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">專案名稱 <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" formControlName="name" placeholder="請輸入專案名稱">
+                @if (form.get('name')?.invalid && form.get('name')?.touched) {
+                  <div class="text-danger small mt-1">請輸入專案名稱。</div>
                 }
-                <span class="text-danger">*</span>
-              </label>
-              <div class="input-group">
-                <span class="input-group-text">NT$</span>
-                <input type="number" class="form-control" formControlName="businessAmount" min="0">
               </div>
-              @if (form.get('businessAmount')?.invalid && form.get('businessAmount')?.touched) {
-                <div class="text-danger small mt-1">請輸入業務執行金額（不可為負數）。</div>
-              }
             </div>
 
-            @if (reservedAmount() !== null) {
-              <div class="mb-4">
-                <label class="form-label fw-500">
-                  公司保留金額
-                  @if (reservedPercentage() !== null) {
-                    <span class="text-accent fw-600">（{{ reservedPercentage() }}%）</span>
+            <div class="row g-3 mb-4">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">狀態 <span class="text-danger">*</span></label>
+                <select class="form-select" formControlName="status">
+                  <option value="active">進行中</option>
+                  <option value="closed">已結案</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">部門 <span class="text-danger">*</span></label>
+                <select class="form-select" formControlName="departmentId">
+                  <option [ngValue]="null">{{ loadingDepts ? '載入中…' : '— 請選擇部門 —' }}</option>
+                  @for (dept of departments; track dept.id) {
+                    <option [ngValue]="dept.id">{{ dept.name }}</option>
                   }
+                </select>
+                @if (form.get('departmentId')?.invalid && form.get('departmentId')?.touched) {
+                  <div class="text-danger small mt-1">請選擇部門。</div>
+                }
+              </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">開始日期 <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" formControlName="startDate">
+                @if (form.get('startDate')?.invalid && form.get('startDate')?.touched) {
+                  <div class="text-danger small mt-1">請選擇開始日期。</div>
+                }
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">結束日期</label>
+                <input type="date" class="form-control" formControlName="endDate">
+              </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">實收金額 <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <span class="input-group-text">NT$</span>
+                  <input type="number" class="form-control" formControlName="receivedAmount" min="0">
+                </div>
+                @if (form.get('receivedAmount')?.invalid && form.get('receivedAmount')?.touched) {
+                  <div class="text-danger small mt-1">請輸入實收金額（不可為負數）。</div>
+                }
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">契約金額 <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <span class="input-group-text">NT$</span>
+                  <input type="number" class="form-control" formControlName="contractAmount" min="0">
+                </div>
+                @if (form.get('contractAmount')?.invalid && form.get('contractAmount')?.touched) {
+                  <div class="text-danger small mt-1">請輸入契約金額（不可為負數）。</div>
+                }
+              </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">
+                  業務執行金額
+                  @if (businessPercentage() !== null) {
+                    <span class="text-accent fw-600">（{{ businessPercentage() }}%）</span>
+                  }
+                  <span class="text-danger">*</span>
                 </label>
                 <div class="input-group">
                   <span class="input-group-text">NT$</span>
-                  <div class="form-control bg-elevated">{{ reservedAmount()! | number:'1.0-0' }}</div>
+                  <input type="number" class="form-control" formControlName="businessAmount" min="0">
                 </div>
+                @if (form.get('businessAmount')?.invalid && form.get('businessAmount')?.touched) {
+                  <div class="text-danger small mt-1">請輸入業務執行金額（不可為負數）。</div>
+                }
               </div>
-            }
+              @if (reservedAmount() !== null) {
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">
+                    公司保留金額
+                    @if (reservedPercentage() !== null) {
+                      <span class="text-accent fw-600">（{{ reservedPercentage() }}%）</span>
+                    }
+                  </label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <div class="form-control bg-elevated">{{ reservedAmount()! | number:'1.0-0' }}</div>
+                  </div>
+                </div>
+              }
+            </div>
 
             <div class="mb-0">
               <label class="form-label fw-500">Google Drive 連結 <span class="text-danger">*</span></label>
@@ -137,6 +144,102 @@
                 <div class="text-danger small mt-1">請輸入 Google Drive 連結。</div>
               }
             </div>
+
+          </div>
+        </div>
+
+        <!-- 請款期別明細 -->
+        <div class="card border-0 shadow-sm mt-6">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#file-text"></use>
+            </svg>
+            請款期別明細
+          </div>
+          <div class="card-body">
+
+            <div class="table-responsive">
+              <table class="table table-sm mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width:60px">期別</th>
+                    <th style="min-width:140px">請款日期</th>
+                    <th style="min-width:140px">請款金額</th>
+                    <th style="min-width:140px">發票日期</th>
+                    <th style="min-width:140px">發票金額</th>
+                    <th style="min-width:140px">入帳日期</th>
+                    <th style="min-width:140px">入帳金額</th>
+                    <th style="min-width:140px">扣款金額</th>
+                    <th style="min-width:180px">扣款備註</th>
+                    @if (!isClosed) {
+                      <th style="width:48px"></th>
+                    }
+                  </tr>
+                </thead>
+                <tbody formArrayName="schedules">
+                  @for (ctrl of scheduleControls; track ctrl.get('id')?.value; let i = $index) {
+                    <tr [formGroupName]="i">
+                      <td class="align-middle text-center fw-500">{{ i + 1 }}</td>
+                      <td class="align-middle">
+                        <input type="date" class="form-control form-control-sm" formControlName="billingDate">
+                      </td>
+                      <td class="align-middle">
+                        <input type="number" class="form-control form-control-sm"
+                               formControlName="billingAmount" min="0" placeholder="0">
+                      </td>
+                      <td class="align-middle">
+                        <input type="date" class="form-control form-control-sm" formControlName="invoiceDate">
+                      </td>
+                      <td class="align-middle">
+                        <input type="number" class="form-control form-control-sm"
+                               formControlName="invoiceAmount" min="0" placeholder="0">
+                      </td>
+                      <td class="align-middle">
+                        <input type="date" class="form-control form-control-sm" formControlName="depositDate">
+                      </td>
+                      <td class="align-middle">
+                        <input type="number" class="form-control form-control-sm"
+                               formControlName="depositAmount" min="0" placeholder="0">
+                      </td>
+                      <td class="align-middle">
+                        <div class="form-control form-control-sm bg-elevated">
+                          @if (deductionFor(i) !== null) {
+                            {{ deductionFor(i)! | number:'1.0-0' }}
+                          } @else {
+                            <span class="text-muted">—</span>
+                          }
+                        </div>
+                      </td>
+                      <td class="align-middle">
+                        <input class="form-control form-control-sm"
+                               formControlName="deductionNote" maxlength="500" placeholder="">
+                      </td>
+                      @if (!isClosed) {
+                        <td class="text-right align-middle">
+                          <button type="button"
+                                  class="btn btn-sm btn-ghost-danger inline-flex items-center"
+                                  (click)="removeSchedule(i)">
+                            <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                          </button>
+                        </td>
+                      }
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td [attr.colspan]="isClosed ? 9 : 10" class="text-center text-muted py-4 small">尚未新增期別</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            @if (!isClosed) {
+              <button type="button" class="btn btn-sm btn-outline-secondary mt-3 inline-flex items-center gap-1"
+                      (click)="addSchedule()">
+                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                新增一期
+              </button>
+            }
 
           </div>
         </div>

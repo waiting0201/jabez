@@ -50,8 +50,8 @@
               <th>狀態</th>
               <th>部門</th>
               <th class="hidden md:table-cell">開始日期</th>
-              <th class="text-right">預定金額</th>
-              <th class="text-right">實際金額</th>
+              <th class="text-right">實收金額</th>
+              <th class="text-right">契約金額</th>
               <th class="text-right">業務執行金額</th>
               <th class="hidden lg:table-cell">Google Drive</th>
               <th class="text-right">操作</th>
@@ -74,15 +74,15 @@
                 </td>
                 <td class="hidden md:table-cell">{{ project.startDate | date:'yyyy/MM/dd' }}</td>
                 <td class="text-right">
-                  @if (project.budgetAmount != null) {
-                    {{ project.budgetAmount | number:'1.0-0' }}
+                  @if (project.receivedAmount != null) {
+                    {{ project.receivedAmount | number:'1.0-0' }}
                   } @else {
                     <span class="text-muted">—</span>
                   }
                 </td>
                 <td class="text-right">
-                  @if (project.actualAmount != null) {
-                    {{ project.actualAmount | number:'1.0-0' }}
+                  @if (project.contractAmount != null) {
+                    {{ project.contractAmount | number:'1.0-0' }}
                   } @else {
                     <span class="text-muted">—</span>
                   }
