@@ -274,6 +274,7 @@ export class WriteOffRequestForm implements OnInit {
             totalPrice:  result.amount ?? 0,
             cashAmount:  result.amount ?? 0,
             quantity:    '1式',
+            ...(result.docType === 'ticket' ? { note: '票號' } : {}),
           });
         }
       } catch {

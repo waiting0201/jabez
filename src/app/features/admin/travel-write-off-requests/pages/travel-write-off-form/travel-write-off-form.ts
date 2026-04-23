@@ -265,6 +265,7 @@ export class TravelWriteOffForm implements OnInit {
             unitPrice:   result.amount ?? 0,
             totalPrice:  result.amount ?? 0,
             quantity:    '1式',
+            ...(result.docType === 'ticket' ? { note: '票號' } : {}),
           });
         }
       } catch {

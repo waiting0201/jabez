@@ -259,6 +259,7 @@ export class PaymentForm implements OnInit {
           invoiceNo:   result.invoiceNo ?? '',
           amount:      result.amount ?? 0,
           invoiceDate: result.invoiceDate ?? '',
+          ...(result.docType === 'ticket' ? { note: '票號' } : {}),
         });
       } catch {
         // OCR failed — leave fields empty for manual entry

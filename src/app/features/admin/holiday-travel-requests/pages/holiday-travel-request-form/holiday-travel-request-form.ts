@@ -244,6 +244,7 @@ export class HolidayTravelRequestForm implements OnInit {
             totalPrice:  result.amount ?? 0,
             quantity:    '1式',
             itemName:    result.invoiceNo ? `發票 ${result.invoiceNo}` : file.name,
+            ...(result.docType === 'ticket' ? { note: '票號' } : {}),
           });
         }
       } catch {
