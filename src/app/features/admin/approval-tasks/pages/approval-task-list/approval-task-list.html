@@ -73,7 +73,12 @@
                 <td class="fw-500">{{ t.submittedBy }}</td>
                 <td class="text-muted small hidden md:table-cell">{{ getSummary(t) }}</td>
                 <td>
-                  <span [class]="'badge ' + statusClass[t.status]">{{ statusLabel[t.status] }}</span>
+                  <div class="flex flex-wrap items-center gap-1">
+                    <span [class]="'badge ' + statusClass[t.status]">{{ statusLabel[t.status] }}</span>
+                    @if (getPaymentBadge(t); as pb) {
+                      <span [class]="'badge ' + pb.cls">{{ pb.label }}</span>
+                    }
+                  </div>
                 </td>
                 <td class="text-muted small hidden lg:table-cell">{{ t.submittedAt | date:'yyyy-MM-dd' }}</td>
                 <td class="text-right" style="white-space: nowrap">

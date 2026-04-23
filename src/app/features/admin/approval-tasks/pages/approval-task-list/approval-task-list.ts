@@ -70,6 +70,52 @@ export class ApprovalTaskList {
   readonly payTypeLabel   = PAYMENT_TYPE_LABELS;
   readonly leaveTypeLabel = LEAVE_TYPE_LABELS;
 
+  /**
+   * 取得已核准簽核作業的款項狀態（第二個 badge）。
+   * - 撥款類（payment_request / advance / travel / holiday_travel）：看 paidAt
+   * - 退款類（write_off / travel_write_off）：僅超支時適用，看 refundedAt
+   * - 其他（leave / overtime）：無款項概念，回傳 null
+   */
+  getPaymentBadge(t: ApprovalTask): { label: string; cls: string } | null {
+    if (t.status !== 'approved') return null;
+
+    const type = t.applicationType;
+    if (type === 'payment_request') {
+      return t.paymentDetail?.paidAt
+        ? { label: '款項已完成', cls: 'bg-success-subtle text-success' }
+        : { label: '款項待處理', cls: 'bg-warning-subtle text-warning-emphasis' };
+    }
+    if (type === 'advance') {
+      return t.advanceDetail?.paidAt
+        ? { label: '款項已完成', cls: 'bg-success-subtle text-success' }
+        : { label: '款項待處理', cls: 'bg-warning-subtle text-warning-emphasis' };
+    }
+    if (type === 'travel' || type === 'holiday_travel') {
+      return t.travelDetail?.paidAt
+        ? { label: '款項已完成', cls: 'bg-success-subtle text-success' }
+        : { label: '款項待處理', cls: 'bg-warning-subtle text-warning-emphasis' };
+    }
+    if (type === 'write_off') {
+      const d = t.writeOffDetail;
+      if (!d) return null;
+      const overspent = (d.advanceGrandTotal - d.otherWrittenOffTotal - d.grandTotal) < 0;
+      if (!overspent) return null;
+      return d.refundedAt
+        ? { label: '款項已完成', cls: 'bg-success-subtle text-success' }
+        : { label: '款項待處理', cls: 'bg-warning-subtle text-warning-emphasis' };
+    }
+    if (type === 'travel_write_off') {
+      const d = t.travelWriteOffDetail;
+      if (!d) return null;
+      const overspent = (d.travelGrandTotal - d.otherWrittenOffTotal - d.grandTotal) < 0;
+      if (!overspent) return null;
+      return d.refundedAt
+        ? { label: '款項已完成', cls: 'bg-success-subtle text-success' }
+        : { label: '款項待處理', cls: 'bg-warning-subtle text-warning-emphasis' };
+    }
+    return null;
+  }
+
   getSummary(t: ApprovalTask): string {
     if (t.paymentDetail) {
       return `${this.payTypeLabel[t.paymentDetail.paymentType]}・${t.paymentDetail.projectCode}（${t.paymentDetail.totalAmount.toLocaleString()} 元）`;
