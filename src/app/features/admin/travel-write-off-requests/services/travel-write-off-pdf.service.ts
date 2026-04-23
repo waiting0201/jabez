@@ -113,7 +113,8 @@ export class TravelWriteOffPdfService {
 
       // 出差金額與沖銷結餘摘要
       const totalWrittenOff = r.travelWrittenOffTotal + r.grandTotal;
-      const balance = r.travelGrandTotal - totalWrittenOff;
+      const refundedAmount = r.travelRefundedAmount ?? 0;
+      const balance = r.travelGrandTotal - totalWrittenOff + refundedAmount;
       bodyRows.push([
         { content: '出差金額', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } },
         { content: fmt(r.travelGrandTotal), styles: { fontStyle: 'bold', halign: 'right' } },
@@ -124,6 +125,14 @@ export class TravelWriteOffPdfService {
         bodyRows.push([
           { content: '前次已沖銷', colSpan: 5, styles: { halign: 'right' } },
           { content: fmt(r.travelWrittenOffTotal), styles: { halign: 'right' } },
+          '',
+          '',
+        ]);
+      }
+      if (refundedAmount > 0) {
+        bodyRows.push([
+          { content: '實際退款', colSpan: 5, styles: { halign: 'right' } },
+          { content: fmt(refundedAmount), styles: { halign: 'right' } },
           '',
           '',
         ]);

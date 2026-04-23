@@ -70,6 +70,10 @@ export interface WriteOffRequest {
   advanceIsClosed: boolean;
   estimatedRefundDate?: string;
   refundedAt?: string;
+  /** 關聯預支單的應退差額（系統自動計算） */
+  advanceRefundAmount?: number;
+  /** 關聯預支單的實際退款金額（財務手動填入） */
+  advanceRefundedAmount?: number;
 }
 
 /** AdvanceRequest summary for dropdown selection */

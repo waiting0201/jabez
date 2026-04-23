@@ -127,7 +127,8 @@ export class WriteOffPdfService {
 
       // 預支金額與沖銷結餘摘要
       const totalWrittenOff = r.advanceWrittenOffTotal + r.grandTotal;
-      const balance = r.advanceGrandTotal - totalWrittenOff;
+      const refundedAmount = r.advanceRefundedAmount ?? 0;
+      const balance = r.advanceGrandTotal - totalWrittenOff + refundedAmount;
       bodyRows.push([
         { content: '預支金額', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
         { content: fmt(r.advanceGrandTotal), colSpan: 2, styles: { fontStyle: 'bold', halign: 'right' } },
@@ -142,13 +143,21 @@ export class WriteOffPdfService {
           '',
         ]);
       }
+      if (refundedAmount > 0) {
+        bodyRows.push([
+          { content: '實際退款', colSpan: 6, styles: { halign: 'right' } },
+          { content: fmt(refundedAmount), colSpan: 2, styles: { halign: 'right' } },
+          '',
+          '',
+        ]);
+      }
       bodyRows.push([
         { content: '結餘', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
         { content: fmt(balance), colSpan: 2, styles: { fontStyle: 'bold', halign: 'right', textColor: balance < 0 ? [...CIS.red] : [...CIS.textPrimary] } },
         '',
         '',
       ]);
-      if (r.advanceIsClosed && balance < 0) {
+      if (r.advanceIsClosed && (r.advanceGrandTotal - totalWrittenOff) < 0) {
         const fmtDate = (v?: string) => v ? new Date(v).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Taipei' }) : '尚未設定';
         bodyRows.push([
           { content: '預計退款日', colSpan: 6, styles: { halign: 'right' } },

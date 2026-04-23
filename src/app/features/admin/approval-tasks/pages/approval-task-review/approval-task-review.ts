@@ -55,9 +55,36 @@ export class ApprovalTaskReview implements OnInit {
 
   /** 已核准後：財務部/Superadmin 可更新撥款日 */
   canUpdatePaymentDate = computed(() => this.auth.isSuperAdmin() || this.auth.isFinanceDept());
-  paymentDateForm = {estimatedPaymentDate: '', paidAt: ''};
+  paymentDateForm = {estimatedPaymentDate: '', paidAt: '', refundedAmount: ''};
   paymentDateMsg   = signal('');
   paymentDateError = signal('');
+
+  /** 預支沖銷：原始餘額（沖銷累計 > 預支時為負） */
+  writeOffRawBalance(task: ApprovalTask): number {
+    const d = task.writeOffDetail;
+    if (!d) return 0;
+    return d.advanceGrandTotal - d.otherWrittenOffTotal - d.grandTotal;
+  }
+  /** 出差沖銷：原始餘額（沖銷累計 > 出差時為負） */
+  travelWriteOffRawBalance(task: ApprovalTask): number {
+    const d = task.travelWriteOffDetail;
+    if (!d) return 0;
+    return d.travelGrandTotal - d.otherWrittenOffTotal - d.grandTotal;
+  }
+  /** 預支沖銷是否超支（需退款） */
+  isWriteOffOverspent(task: ApprovalTask): boolean {
+    return !!task.writeOffDetail && this.writeOffRawBalance(task) < 0;
+  }
+  /** 出差沖銷是否超支（需退款） */
+  isTravelWriteOffOverspent(task: ApprovalTask): boolean {
+    return !!task.travelWriteOffDetail && this.travelWriteOffRawBalance(task) < 0;
+  }
+  /** 沖銷類型是否需要顯示退款輸入卡片（僅超支情境） */
+  shouldShowRefundCard(task: ApprovalTask): boolean {
+    if (task.applicationType === 'write_off') return this.isWriteOffOverspent(task);
+    if (task.applicationType === 'travel_write_off') return this.isTravelWriteOffOverspent(task);
+    return false;
+  }
 
   previewFile: PreviewFileData | null = null;
   openPreview(name: string, url: string) {
@@ -102,10 +129,16 @@ export class ApprovalTaskReview implements OnInit {
         if (task.writeOffDetail) {
           this.paymentDateForm.estimatedPaymentDate = task.writeOffDetail.estimatedRefundDate?.toString().slice(0, 10) ?? '';
           this.paymentDateForm.paidAt = task.writeOffDetail.refundedAt?.toString().slice(0, 10) ?? '';
+          this.paymentDateForm.refundedAmount = task.writeOffDetail.advanceRefundedAmount != null
+            ? String(task.writeOffDetail.advanceRefundedAmount)
+            : '';
         }
         if (task.travelWriteOffDetail) {
           this.paymentDateForm.estimatedPaymentDate = task.travelWriteOffDetail.estimatedRefundDate?.toString().slice(0, 10) ?? '';
           this.paymentDateForm.paidAt = task.travelWriteOffDetail.refundedAt?.toString().slice(0, 10) ?? '';
+          this.paymentDateForm.refundedAmount = task.travelWriteOffDetail.travelRefundedAmount != null
+            ? String(task.travelWriteOffDetail.travelRefundedAmount)
+            : '';
         }
       }),
       catchError((err: HttpErrorResponse) => {
@@ -204,31 +237,38 @@ export class ApprovalTaskReview implements OnInit {
 
   /** 更新已核准請款/預支的撥款日期 */
   updatePaymentDate(task: ApprovalTask) {
-    const {estimatedPaymentDate, paidAt} = this.paymentDateForm;
-    if (!estimatedPaymentDate && !paidAt) return;
+    const {estimatedPaymentDate, paidAt, refundedAmount} = this.paymentDateForm;
+    const parsedRefunded = refundedAmount.trim() === '' ? null : Number(refundedAmount);
+    if (parsedRefunded != null && (!Number.isFinite(parsedRefunded) || parsedRefunded < 0)) {
+      this.paymentDateError.set('退款金額必須為非負數字。');
+      return;
+    }
+    if (!estimatedPaymentDate && !paidAt && parsedRefunded == null) return;
     this.paymentDateMsg.set('');
     this.paymentDateError.set('');
 
     let update$: Observable<any>;
     let successMsg: string;
     if (task.travelWriteOffDetail) {
-      // 出差沖銷：更新關聯的出差申請退款日
+      // 出差沖銷：更新關聯的出差申請退款日與退款金額
       update$ = this.travelService.updatePaymentDate(
         task.travelWriteOffDetail.travelRequestId,
         undefined, undefined,
         estimatedPaymentDate || undefined,
         paidAt || undefined,
+        parsedRefunded,
       );
-      successMsg = '退款日期已更新。';
+      successMsg = '退款資訊已更新。';
     } else if (task.writeOffDetail) {
-      // 預支沖銷：更新關聯的預支申請退款日
+      // 預支沖銷：更新關聯的預支申請退款日與退款金額
       update$ = this.advanceService.updatePaymentDate(
         task.writeOffDetail.advanceRequestId,
         undefined, undefined,
         estimatedPaymentDate || undefined,
         paidAt || undefined,
+        parsedRefunded,
       );
-      successMsg = '退款日期已更新。';
+      successMsg = '退款資訊已更新。';
     } else if (task.advanceDetail) {
       update$ = this.advanceService.updatePaymentDate(
         task.advanceDetail.advanceRequestId,

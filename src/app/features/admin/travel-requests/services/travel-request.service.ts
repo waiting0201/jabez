@@ -39,12 +39,13 @@ export class TravelRequestService {
   }
 
   /** 更新撥款日期（核准後財務部操作） */
-  updatePaymentDate(id: number, estimatedPaymentDate?: string, paidAt?: string, estimatedRefundDate?: string, refundedAt?: string): Observable<any> {
+  updatePaymentDate(id: number, estimatedPaymentDate?: string, paidAt?: string, estimatedRefundDate?: string, refundedAt?: string, refundedAmount?: number | null): Observable<any> {
     return this.http.patch(`${environment.apiUrl}/travel-requests/${id}/payment-date`, {
       estimatedPaymentDate: estimatedPaymentDate || null,
       paidAt: paidAt || null,
       estimatedRefundDate: estimatedRefundDate || null,
       refundedAt: refundedAt || null,
+      refundedAmount: refundedAmount ?? null,
     });
   }
 }

@@ -72,6 +72,8 @@ export interface AdvanceRequest {
   closedAt?: string;
   /** 應退還差額（預支金額 - 沖銷總金額，>0 表示需退款） */
   refundAmount?: number;
+  /** 實際退款金額（財務手動填入） */
+  refundedAmount?: number;
   /** 預計退款日（沖銷退還差額） */
   estimatedRefundDate?: string;
   /** 差額退款完成時間 */

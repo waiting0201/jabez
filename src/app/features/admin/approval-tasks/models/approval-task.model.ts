@@ -183,6 +183,10 @@ export interface WriteOffTaskDetail {
   paidBySignatureUrl?: string;
   refundedBySignatureUrl?: string;
   advanceIsClosed?: boolean;
+  /** 關聯預支單的應退差額（系統自動計算） */
+  advanceRefundAmount?: number;
+  /** 關聯預支單的實際退款金額（財務手動填入） */
+  advanceRefundedAmount?: number;
 }
 
 export interface TravelWriteOffTaskDetailItem {
@@ -222,6 +226,10 @@ export interface TravelWriteOffTaskDetail {
   paidBySignatureUrl?: string;
   refundedBySignatureUrl?: string;
   travelIsClosed?: boolean;
+  /** 關聯出差單的應退差額（系統自動計算） */
+  travelRefundAmount?: number;
+  /** 關聯出差單的實際退款金額（財務手動填入） */
+  travelRefundedAmount?: number;
 }
 
 // ── ApprovalRecord ───────────────────────────────────────────────────────────

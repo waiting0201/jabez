@@ -65,6 +65,16 @@ export interface TravelWriteOffRequest {
   designatedReviewers?: DesignatedReviewer[];
   travelGrandTotal: number;
   travelWrittenOffTotal: number;
+  /** 出差主單是否已結案 */
+  travelIsClosed?: boolean;
+  /** 預計退款日（源自出差主單） */
+  estimatedRefundDate?: string;
+  /** 退款日（源自出差主單） */
+  refundedAt?: string;
+  /** 關聯出差單的應退差額（系統自動計算） */
+  travelRefundAmount?: number;
+  /** 關聯出差單的實際退款金額（財務手動填入） */
+  travelRefundedAmount?: number;
 }
 
 /** TravelRequest summary for dropdown selection */

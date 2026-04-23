@@ -98,8 +98,8 @@
           </div>
           <div class="col-6 col-md-3">
             <div class="text-muted small">待沖銷餘額</div>
-            <div class="fw-600 text-lg" [class]="(r.advanceGrandTotal - r.advanceWrittenOffTotal - r.grandTotal) >= 0 ? 'text-green' : 'text-red'">
-              {{ r.advanceGrandTotal - r.advanceWrittenOffTotal - r.grandTotal | number:'1.0-0' }}
+            <div class="fw-600 text-lg" [class]="(r.advanceGrandTotal - r.advanceWrittenOffTotal - r.grandTotal + (r.advanceRefundedAmount ?? 0)) >= 0 ? 'text-green' : 'text-red'">
+              {{ r.advanceGrandTotal - r.advanceWrittenOffTotal - r.grandTotal + (r.advanceRefundedAmount ?? 0) | number:'1.0-0' }}
             </div>
           </div>
         </div>
@@ -114,6 +114,12 @@
               <div class="text-muted small">退款日</div>
               <div class="fw-500" [class.text-success]="r.refundedAt">{{ r.refundedAt ? (r.refundedAt | date:'yyyy-MM-dd') : '尚未退款' }}</div>
             </div>
+            @if (r.advanceRefundedAmount != null) {
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">退款金額</div>
+                <div class="fw-500">${{ r.advanceRefundedAmount | number:'1.0-0' }}</div>
+              </div>
+            }
           </div>
         }
 

@@ -577,8 +577,8 @@
                     </div>
                     <div class="col-6 col-md-3">
                       <div class="text-muted small mb-1">待沖銷餘額</div>
-                      <span class="fw-600 text-lg" [class]="(d.advanceGrandTotal - d.otherWrittenOffTotal - d.grandTotal) >= 0 ? 'text-green' : 'text-red'">
-                        {{ d.advanceGrandTotal - d.otherWrittenOffTotal - d.grandTotal | number:'1.0-0' }}
+                      <span class="fw-600 text-lg" [class]="(d.advanceGrandTotal - d.otherWrittenOffTotal - d.grandTotal + (d.advanceRefundedAmount ?? 0)) >= 0 ? 'text-green' : 'text-red'">
+                        {{ d.advanceGrandTotal - d.otherWrittenOffTotal - d.grandTotal + (d.advanceRefundedAmount ?? 0) | number:'1.0-0' }}
                       </span>
                     </div>
                   </div>
@@ -593,6 +593,12 @@
                         <div class="text-muted small mb-1">退款日</div>
                         <span class="fw-500" [class.text-success]="d.refundedAt">{{ d.refundedAt ? (d.refundedAt | date:'yyyy-MM-dd') : '尚未退款' }}</span>
                       </div>
+                      @if (d.advanceRefundedAmount != null) {
+                        <div class="col-6 col-md-3">
+                          <div class="text-muted small mb-1">退款金額</div>
+                          <span class="fw-500">${{ d.advanceRefundedAmount | number:'1.0-0' }}</span>
+                        </div>
+                      }
                     </div>
                   }
 
@@ -726,11 +732,30 @@
                     </div>
                     <div class="col-6 col-md-3">
                       <div class="text-muted small mb-1">待沖銷餘額</div>
-                      <span class="fw-600 text-lg" [class]="(d.travelGrandTotal - d.otherWrittenOffTotal - d.grandTotal) >= 0 ? 'text-green' : 'text-red'">
-                        {{ d.travelGrandTotal - d.otherWrittenOffTotal - d.grandTotal | number:'1.0-0' }}
+                      <span class="fw-600 text-lg" [class]="(d.travelGrandTotal - d.otherWrittenOffTotal - d.grandTotal + (d.travelRefundedAmount ?? 0)) >= 0 ? 'text-green' : 'text-red'">
+                        {{ d.travelGrandTotal - d.otherWrittenOffTotal - d.grandTotal + (d.travelRefundedAmount ?? 0) | number:'1.0-0' }}
                       </span>
                     </div>
                   </div>
+
+                  @if (d.travelIsClosed && (d.travelGrandTotal - d.otherWrittenOffTotal - d.grandTotal) < 0) {
+                    <div class="row g-3 mt-4 mb-0">
+                      <div class="col-6 col-md-3">
+                        <div class="text-muted small mb-1">預計退款日</div>
+                        <span class="fw-500">{{ d.estimatedRefundDate ? (d.estimatedRefundDate | date:'yyyy-MM-dd') : '尚未設定' }}</span>
+                      </div>
+                      <div class="col-6 col-md-3">
+                        <div class="text-muted small mb-1">退款日</div>
+                        <span class="fw-500" [class.text-success]="d.refundedAt">{{ d.refundedAt ? (d.refundedAt | date:'yyyy-MM-dd') : '尚未退款' }}</span>
+                      </div>
+                      @if (d.travelRefundedAmount != null) {
+                        <div class="col-6 col-md-3">
+                          <div class="text-muted small mb-1">退款金額</div>
+                          <span class="fw-500">${{ d.travelRefundedAmount | number:'1.0-0' }}</span>
+                        </div>
+                      }
+                    </div>
+                  }
 
                   @if (d.note) {
                     <div class="text-muted small mt-4 mb-0">備註：{{ d.note }}</div>
@@ -1032,6 +1057,10 @@
                 <div class="text-muted small mb-1 fw-500">退款日：</div>
                 <div class="small mb-4 text-success">{{ task.writeOffDetail!.refundedAt | date:'yyyy-MM-dd' }}</div>
               }
+              @if (task.applicationType === 'write_off' && task.writeOffDetail?.advanceRefundedAmount != null) {
+                <div class="text-muted small mb-1 fw-500">退款金額：</div>
+                <div class="small mb-4">${{ task.writeOffDetail!.advanceRefundedAmount | number:'1.0-0' }}</div>
+              }
               @if (task.applicationType === 'travel_write_off' && task.travelWriteOffDetail?.estimatedRefundDate) {
                 <div class="text-muted small mb-1 fw-500">預計退款日：</div>
                 <div class="small mb-4">{{ task.travelWriteOffDetail!.estimatedRefundDate | date:'yyyy-MM-dd' }}</div>
@@ -1040,7 +1069,11 @@
                 <div class="text-muted small mb-1 fw-500">退款日：</div>
                 <div class="small mb-4 text-success">{{ task.travelWriteOffDetail!.refundedAt | date:'yyyy-MM-dd' }}</div>
               }
-              @if ((task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'travel' || task.applicationType === 'holiday_travel' || task.applicationType === 'write_off' || task.applicationType === 'travel_write_off') && (canUpdatePaymentDate() || canEditPaymentDate(task)) && !(task.paymentDetail?.paidAt || task.advanceDetail?.paidAt || task.travelDetail?.paidAt || task.writeOffDetail?.refundedAt || task.travelWriteOffDetail?.refundedAt)) {
+              @if (task.applicationType === 'travel_write_off' && task.travelWriteOffDetail?.travelRefundedAmount != null) {
+                <div class="text-muted small mb-1 fw-500">退款金額：</div>
+                <div class="small mb-4">${{ task.travelWriteOffDetail!.travelRefundedAmount | number:'1.0-0' }}</div>
+              }
+              @if ((task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'travel' || task.applicationType === 'holiday_travel' || task.applicationType === 'write_off' || task.applicationType === 'travel_write_off') && (canUpdatePaymentDate() || canEditPaymentDate(task)) && !(task.paymentDetail?.paidAt || task.advanceDetail?.paidAt || task.travelDetail?.paidAt || task.writeOffDetail?.refundedAt || task.travelWriteOffDetail?.refundedAt) && (task.applicationType !== 'write_off' || isWriteOffOverspent(task)) && (task.applicationType !== 'travel_write_off' || isTravelWriteOffOverspent(task))) {
                 <div class="border rounded p-4 bg-[--bg-base] mb-4">
                   <div class="fw-500 mb-3">{{ (task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'travel' || task.applicationType === 'holiday_travel') ? '設定撥款日期' : '設定退款日期' }}</div>
                   <div class="flex flex-wrap gap-6 items-end">
@@ -1059,6 +1092,16 @@
                              style="max-width: 200px">
                       <div class="text-muted small mt-1">{{ (task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'travel' || task.applicationType === 'holiday_travel') ? '填寫後表示此筆申請已撥款' : '填寫後表示退款已完成' }}</div>
                     </div>
+                    @if (task.applicationType === 'write_off' || task.applicationType === 'travel_write_off') {
+                      <div>
+                        <label class="form-label fw-500 small">退款金額</label>
+                        <input type="number" min="0" step="1" class="form-control form-control-sm"
+                               [value]="paymentDateForm.refundedAmount"
+                               (input)="paymentDateForm.refundedAmount = $any($event.target).value"
+                               style="max-width: 200px">
+                        <div class="text-muted small mt-1">財務實際退還差額</div>
+                      </div>
+                    }
                     <button type="button" class="btn btn-sm btn-primary" (click)="updatePaymentDate(task)">
                       儲存
                     </button>
