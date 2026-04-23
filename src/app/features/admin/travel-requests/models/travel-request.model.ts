@@ -39,7 +39,7 @@ export interface TravelRequestItem {
 }
 
 /** 常用分類選項 */
-export const ITEM_CATEGORIES = ['交通費', '住宿費', '餐費', '雜支'] as const;
+export const ITEM_CATEGORIES = ['交通費', '住宿費', '餐費', '人事費', '雜支'] as const;
 
 export interface TravelRequest {
   id: number;

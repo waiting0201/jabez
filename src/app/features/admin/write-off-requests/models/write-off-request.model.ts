@@ -83,4 +83,4 @@ export interface AdvanceSummary {
   paidAt?: string;
 }
 
-export const ITEM_CATEGORIES = ['交通費', '活動費', '設計費', '雜支'] as const;
+export const ITEM_CATEGORIES = ['交通費', '活動費', '設計費', '人事費', '餐費', '雜支'] as const;
