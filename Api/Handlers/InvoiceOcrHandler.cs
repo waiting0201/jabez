@@ -106,13 +106,32 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
 
         // ── 5. 組建 Gemini API 請求 ──────────────────────────────────────────
         var prompt = """
-            請辨識這張台灣統一發票/收據（圖片或 PDF），提取以下資訊：
-            1. 發票號碼（格式：2個英文大寫字母 + 8個數字，如 AB12345678）
-            2. 總金額（合計/總計/應付金額的數字）
-            3. 發票日期（如果是民國年格式如「113年01月15日」或「113/01/15」，請轉換為西元年，例如 2024-01-15）
+            請辨識這張圖片或 PDF，它可能是以下其中一種：
+            A. 台灣統一發票 / 收據
+            B. 交通票根（高鐵、台鐵、捷運、客運、機票 / 登機證、計程車收據、停車費收據、ETC 通行費等）
 
-            請以 JSON 格式回覆，不要加任何其他文字：
-            {"invoiceNo": "發票號碼或空字串", "amount": 金額數字或0, "invoiceDate": "YYYY-MM-DD格式日期或空字串"}
+            請依下列規則提取 4 個欄位，並以 JSON 格式回覆（不要加任何其他文字、不要 markdown）：
+
+            - docType：文件類型
+              * 若為 A 類（統一發票 / 收據）：填 "invoice"
+              * 若為 B 類（交通票根）：填 "ticket"
+
+            【若為台灣統一發票 / 收據】
+            - invoiceNo：發票號碼（格式為 2 個英文大寫字母 + 8 個數字，例如 AB12345678）
+            - amount：總金額 / 合計 / 應付金額（純數字，無則填 0）
+            - invoiceDate：發票日期（西元 YYYY-MM-DD；若為民國年如「113 年 01 月 15 日」或「113/01/15」請轉為西元）
+
+            【若為交通票根】
+            - invoiceNo：票號 / 車票號碼 / 訂位代號 / 序號（保留完整英數字，不做格式限制）
+              * 特別規則：若為「高鐵票（台灣高鐵 THSR）」，票號請**移除所有 dash（「-」）符號**，僅保留 13 碼純數字
+            - amount：票價 / 金額（純數字，票券未印金額則填 0）
+            - invoiceDate：搭乘日期 / 乘車日期 / 航班日期（西元 YYYY-MM-DD；民國年請轉為西元；去回程票以去程日期為準）
+
+            找不到的欄位：字串欄位填空字串 ""、金額填 0。
+            無法判別文件類型時：docType 填 "invoice"。
+
+            回覆格式（僅此一行 JSON，無任何多餘文字）：
+            {"docType": "invoice|ticket", "invoiceNo": "...", "amount": 0, "invoiceDate": "YYYY-MM-DD 或空字串"}
             """;
 
         var requestBody = new
@@ -198,6 +217,8 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
             ocrResult = FallbackExtract(rawText);
         }
 
+        ocrResult = NormalizeInvoiceNo(ocrResult);
+
         return new OkObjectResult(ApiResponse.Ok(ocrResult, "發票辨識成功。"));
     }
 
@@ -217,16 +238,45 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
         return trimmed;
     }
 
+    /// <summary>
+    /// 後處理：高鐵票號若為「含 dash 的 13 碼純數字」，移除所有 dash（含全形「－」）。
+    /// 對統一發票（AB12345678）等其他格式無副作用。
+    /// </summary>
+    private static OcrResult NormalizeInvoiceNo(OcrResult r)
+    {
+        if (string.IsNullOrEmpty(r.InvoiceNo)) return r;
+        var noDash = r.InvoiceNo.Replace("-", string.Empty).Replace("－", string.Empty);
+        if (noDash.Length == 13 && noDash.All(char.IsDigit) && noDash != r.InvoiceNo)
+            return r with { InvoiceNo = noDash };
+        return r;
+    }
+
     /// <summary>JSON 解析失敗時的備援萃取</summary>
     private static OcrResult FallbackExtract(string text)
     {
         var invoiceNo = string.Empty;
         decimal amount = 0;
         var invoiceDate = string.Empty;
+        var docType = "invoice";
 
-        var invoiceMatch = Regex.Match(text, @"[A-Z]{2}\d{8}");
-        if (invoiceMatch.Success)
-            invoiceNo = invoiceMatch.Value;
+        // 嘗試從 JSON 文字中萃取 docType
+        var docTypeMatch = Regex.Match(text, @"""docType""\s*:\s*""(invoice|ticket)""");
+        if (docTypeMatch.Success)
+            docType = docTypeMatch.Groups[1].Value;
+
+        // 優先：直接從 JSON 字串萃取 invoiceNo 欄位（支援任意格式的票號，例如交通票根）
+        var invoiceNoJsonMatch = Regex.Match(text, @"""invoiceNo""\s*:\s*""([^""]*)""");
+        if (invoiceNoJsonMatch.Success)
+        {
+            invoiceNo = invoiceNoJsonMatch.Groups[1].Value;
+        }
+        else
+        {
+            // Fallback：嘗試統一發票格式
+            var invoiceMatch = Regex.Match(text, @"[A-Z]{2}\d{8}");
+            if (invoiceMatch.Success)
+                invoiceNo = invoiceMatch.Value;
+        }
 
         var amountMatch = Regex.Match(text, @"""amount""\s*:\s*(\d+(?:\.\d+)?)");
         if (amountMatch.Success)
@@ -252,7 +302,7 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
             }
         }
 
-        return new OcrResult(invoiceNo, amount, invoiceDate);
+        return new OcrResult(invoiceNo, amount, invoiceDate, docType);
     }
 
     // ── 內部 DTO ──────────────────────────────────────────────────────────────
@@ -260,7 +310,8 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
     private sealed record OcrResult(
         [property: JsonPropertyName("invoiceNo")]    string  InvoiceNo,
         [property: JsonPropertyName("amount")]       decimal Amount,
-        [property: JsonPropertyName("invoiceDate")]  string  InvoiceDate = "");
+        [property: JsonPropertyName("invoiceDate")]  string  InvoiceDate = "",
+        [property: JsonPropertyName("docType")]      string  DocType = "invoice");
 
     /// <summary>Gemini API 回應結構</summary>
     private sealed class GeminiResponse
