@@ -428,6 +428,7 @@ public async Task<HttpResponseData> Run(
 | GET | `/approval-tasks` | 待審核任務列表 |
 | GET | `/approval-tasks/{id}` | 取得任務詳情 |
 | PATCH | `/approval-tasks/{appType}/{id}/review` | 審核（核准 / 退回） |
+| POST | `/approval-tasks/batch-approve` | 批次核准多筆待審申請（僅 approved 動作，需 `approval-tasks:batch-approve` 權限；撥款/退款日留空，完成後以提醒清單回傳需補填者） |
 
 #### 專案管理
 
@@ -699,6 +700,16 @@ draft → pending → approved / returned / rejected
 - `PaidAt`：實際撥款日
 
 > 此端點僅限**財務部人員**或 **Superadmin** 操作。
+
+### 批次核准（全選核准）
+
+擁有 `approval-tasks:batch-approve` 權限的使用者，可在簽核作業「待審核」頁籤勾選多筆待審申請一次核准。
+
+- **動作限定**：僅支援 `approved`；退回/拒絕仍須進入詳情頁個別操作。
+- **權限獨立**：批次核准為獨立權限，不依賴 `approval-tasks:write`；未擁有此權限者按鈕不顯示，後端亦回 403。
+- **逐筆驗證**：每筆仍經過 `AuthorizeStepAsync`（職稱/部門/指定/升級），失敗者回報於 `failed` 清單，不中斷其他項目。
+- **撥款類留空**：批次核准 payment_request / advance 時 `EstimatedPaymentDate`、`PaidAt` 留空，後端回傳 `pendingPayment` 清單，前端以 banner 提示使用者「前往補填」撥款/退款日。
+- **沖銷結案不觸發**：批次核准不會設定 `CloseAdvance`；沖銷結案仍須於詳情頁或獨立結案端點操作。
 
 ### 自審跳過規則（僅限請款）
 

@@ -28,8 +28,9 @@ public static class PermissionCodes
     public const string PaymentRequestsRead    = "payment-requests:read";
     public const string PaymentRequestsWrite   = "payment-requests:write";
     public const string PaymentRequestsDelete  = "payment-requests:delete";
-    public const string ApprovalTasksRead      = "approval-tasks:read";
-    public const string ApprovalTasksWrite     = "approval-tasks:write";
+    public const string ApprovalTasksRead          = "approval-tasks:read";
+    public const string ApprovalTasksWrite         = "approval-tasks:write";
+    public const string ApprovalTasksBatchApprove  = "approval-tasks:batch-approve";
     public const string LeaveRequestsRead      = "leave-requests:read";
     public const string LeaveRequestsWrite     = "leave-requests:write";
     public const string LeaveRequestsDelete    = "leave-requests:delete";

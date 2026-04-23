@@ -69,6 +69,7 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             // 簽核作業
             new Permission { Id = "26", Code = "approval-tasks:read",              Name = "瀏覽",     Module = "簽核作業",   Description = "簽核作業" },
             new Permission { Id = "27", Code = "approval-tasks:write",             Name = "審核",     Module = "簽核作業",   Description = "簽核作業" },
+            new Permission { Id = "67", Code = "approval-tasks:batch-approve",     Name = "全選核准", Module = "簽核作業",   Description = "簽核作業" },
             // 請假申請
             new Permission { Id = "28", Code = "leave-requests:read",              Name = "瀏覽",     Module = "請假申請",   Description = "請假申請" },
             new Permission { Id = "29", Code = "leave-requests:write",             Name = "新增/修改", Module = "請假申請",   Description = "請假申請" },

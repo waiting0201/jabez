@@ -155,6 +155,101 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         }
 
         // ── 依申請類型處理 ─────────────────────────────────────────────────
+        await ReviewOneEntityAsync(
+            applicationType, intId, reviewer, reviewerId,
+            body.Action, body.ReviewNote,
+            body.EstimatedPaymentDate, body.PaidAt, body.CloseAdvance);
+
+        var task = await reader.GetApprovalTaskByIdAsync(intId, applicationType);
+        return new OkObjectResult(ApiResponse.Ok(task, $"Request {body.Action}."));
+    }
+
+    /// <summary>
+    /// 批次核准多筆待審申請（僅支援 approved 動作）。
+    /// 每筆仍獨立走 AuthorizeStepAsync 驗證；單筆失敗不影響其他，失敗項目回報於 Failed。
+    /// 核准後若有需補填撥款/退款日的申請，回傳於 PendingPayment 供前端提醒。
+    /// </summary>
+    public async Task<IActionResult> BatchApproveAsync(HttpRequest req)
+    {
+        // ── 取得目前審核者 ──────────────────────────────────────────────────
+        var principal = await jwtService.ValidateRequestAsync(req);
+        if (principal is null)
+            return new UnauthorizedObjectResult(ApiResponse.Fail("Unauthorized."));
+
+        var userIdStr = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(userIdStr, out var reviewerId))
+            return new UnauthorizedObjectResult(ApiResponse.Fail("Invalid token claims."));
+
+        var reviewer = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == reviewerId);
+        if (reviewer is null)
+            return new UnauthorizedObjectResult(ApiResponse.Fail("Reviewer not found."));
+
+        // ── 權限檢查：非 superadmin 必須擁有 approval-tasks:batch-approve 權限 ──
+        if (!reviewer.IsSuperAdmin)
+        {
+            var permissions = principal.FindAll("permissions").Select(c => c.Value);
+            if (!permissions.Contains(PermissionCodes.ApprovalTasksBatchApprove))
+                return new ObjectResult(ApiResponse.Fail("缺少所需權限：approval-tasks:batch-approve")) { StatusCode = 403 };
+        }
+
+        // ── 讀取請求內容 ───────────────────────────────────────────────────
+        var body = await req.ReadFromJsonAsync<BatchApproveRequest>();
+        if (body is null || body.Items is null || body.Items.Count == 0)
+            return new BadRequestObjectResult(ApiResponse.Fail("批次核准清單不可為空。"));
+
+        var succeeded = 0;
+        var failed    = new List<BatchApproveFailure>();
+        var pending   = new List<BatchApprovePending>();
+
+        foreach (var item in body.Items)
+        {
+            if (!ValidAppTypes.Contains(item.ApplicationType))
+            {
+                failed.Add(new BatchApproveFailure(item.ApplicationType, item.Id, "未知的申請類型"));
+                continue;
+            }
+
+            try
+            {
+                await ReviewOneEntityAsync(
+                    item.ApplicationType, item.Id, reviewer, reviewerId,
+                    action: "approved", reviewNote: null,
+                    estimatedPaymentDate: null, paidAt: null, closeAdvance: null);
+                succeeded++;
+
+                // 若核准後該申請已變成最終 approved 且需補填撥款/退款日，加入提醒清單
+                var reminder = await BuildPendingPaymentReminderAsync(item.ApplicationType, item.Id);
+                if (reminder is not null)
+                    pending.Add(reminder);
+            }
+            catch (AppException ex)
+            {
+                failed.Add(new BatchApproveFailure(item.ApplicationType, item.Id, ex.Message));
+            }
+            catch (Exception)
+            {
+                failed.Add(new BatchApproveFailure(item.ApplicationType, item.Id, "批次核准失敗"));
+            }
+        }
+
+        return new OkObjectResult(ApiResponse.Ok(new BatchApproveResult(succeeded, failed, pending)));
+    }
+
+    /// <summary>
+    /// 單筆核准/退回/拒絕的核心邏輯：依申請類型載入實體、驗證審核者、寫入審核紀錄、推進步驟、SaveChanges。
+    /// 由 <see cref="ReviewAsync"/> 與 <see cref="BatchApproveAsync"/> 共用。
+    /// </summary>
+    private async Task ReviewOneEntityAsync(
+        string    applicationType,
+        int       intId,
+        User      reviewer,
+        Guid      reviewerId,
+        string    action,
+        string?   reviewNote,
+        DateTime? estimatedPaymentDate,
+        DateTime? paidAt,
+        bool?     closeAdvance)
+    {
         switch (applicationType)
         {
             case "payment_request":
@@ -169,18 +264,18 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     : null;
                 await AuthorizeStepAsync(pr.ApprovalItemId, pr.CurrentStepOrder, reviewer, prApplicant?.DepartmentId, "payment_request", pr.Id, prApplicant?.JobTitleId);
                 // 設定預計撥款日 / 撥款日（審核者可在審核時填寫）
-                if (body.EstimatedPaymentDate.HasValue)
-                    pr.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
-                if (body.PaidAt.HasValue)
+                if (estimatedPaymentDate.HasValue)
+                    pr.EstimatedPaymentDate = estimatedPaymentDate.Value;
+                if (paidAt.HasValue)
                 {
-                    pr.PaidAt = body.PaidAt.Value;
+                    pr.PaidAt = paidAt.Value;
                     pr.PaidByUserId = reviewerId;
                 }
                 await ProcessReviewAsync("payment_request", pr.Id, pr.CurrentStepOrder,
-                    pr.ApprovalItemId, body.Action, body.ReviewNote, reviewerId, pr.SubmittedById,
+                    pr.ApprovalItemId, action, reviewNote, reviewerId, pr.SubmittedById,
                     setStatus:     s  => pr.ApprovalStatus   = s,
                     incrementStep: () => pr.CurrentStepOrder++,
-                    setReviewed:   () => { pr.ReviewedAt = Clock.Now; pr.ReviewedById = reviewerId; pr.ReviewNote = body.ReviewNote?.Trim(); });
+                    setReviewed:   () => { pr.ReviewedAt = Clock.Now; pr.ReviewedById = reviewerId; pr.ReviewNote = reviewNote?.Trim(); });
                 await db.SaveChangesAsync();
                 break;
             }
@@ -196,10 +291,10 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     : null;
                 await AuthorizeStepAsync(lr.ApprovalItemId, lr.CurrentStepOrder, reviewer, lrApplicant?.DepartmentId, "leave", lr.Id, lrApplicant?.JobTitleId);
                 await ProcessReviewAsync("leave", lr.Id, lr.CurrentStepOrder,
-                    lr.ApprovalItemId, body.Action, body.ReviewNote, reviewerId, lr.EmployeeId,
+                    lr.ApprovalItemId, action, reviewNote, reviewerId, lr.EmployeeId,
                     setStatus:     s  => lr.ApprovalStatus   = s,
                     incrementStep: () => lr.CurrentStepOrder++,
-                    setReviewed:   () => { lr.ReviewedAt = Clock.Now; lr.ReviewedById = reviewerId; lr.ReviewNote = body.ReviewNote?.Trim(); });
+                    setReviewed:   () => { lr.ReviewedAt = Clock.Now; lr.ReviewedById = reviewerId; lr.ReviewNote = reviewNote?.Trim(); });
                 await db.SaveChangesAsync();
                 break;
             }
@@ -215,10 +310,10 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     : null;
                 await AuthorizeStepAsync(tr.ApprovalItemId, tr.CurrentStepOrder, reviewer, trApplicant?.DepartmentId, "travel", tr.Id, trApplicant?.JobTitleId);
                 await ProcessReviewAsync("travel", tr.Id, tr.CurrentStepOrder,
-                    tr.ApprovalItemId, body.Action, body.ReviewNote, reviewerId, tr.EmployeeId,
+                    tr.ApprovalItemId, action, reviewNote, reviewerId, tr.EmployeeId,
                     setStatus:     s  => tr.ApprovalStatus   = s,
                     incrementStep: () => tr.CurrentStepOrder++,
-                    setReviewed:   () => { tr.ReviewedAt = Clock.Now; tr.ReviewedById = reviewerId; tr.ReviewNote = body.ReviewNote?.Trim(); });
+                    setReviewed:   () => { tr.ReviewedAt = Clock.Now; tr.ReviewedById = reviewerId; tr.ReviewNote = reviewNote?.Trim(); });
                 await db.SaveChangesAsync();
                 break;
             }
@@ -234,10 +329,10 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     : null;
                 await AuthorizeStepAsync(htr.ApprovalItemId, htr.CurrentStepOrder, reviewer, htrApplicant?.DepartmentId, "holiday_travel", htr.Id, htrApplicant?.JobTitleId);
                 await ProcessReviewAsync("holiday_travel", htr.Id, htr.CurrentStepOrder,
-                    htr.ApprovalItemId, body.Action, body.ReviewNote, reviewerId, htr.EmployeeId,
+                    htr.ApprovalItemId, action, reviewNote, reviewerId, htr.EmployeeId,
                     setStatus:     s  => htr.ApprovalStatus   = s,
                     incrementStep: () => htr.CurrentStepOrder++,
-                    setReviewed:   () => { htr.ReviewedAt = Clock.Now; htr.ReviewedById = reviewerId; htr.ReviewNote = body.ReviewNote?.Trim(); });
+                    setReviewed:   () => { htr.ReviewedAt = Clock.Now; htr.ReviewedById = reviewerId; htr.ReviewNote = reviewNote?.Trim(); });
                 await db.SaveChangesAsync();
                 break;
             }
@@ -253,10 +348,10 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     : null;
                 await AuthorizeStepAsync(ot.ApprovalItemId, ot.CurrentStepOrder, reviewer, otApplicant?.DepartmentId, "overtime", ot.Id, otApplicant?.JobTitleId);
                 await ProcessReviewAsync("overtime", ot.Id, ot.CurrentStepOrder,
-                    ot.ApprovalItemId, body.Action, body.ReviewNote, reviewerId, ot.EmployeeId,
+                    ot.ApprovalItemId, action, reviewNote, reviewerId, ot.EmployeeId,
                     setStatus:     s  => ot.ApprovalStatus   = s,
                     incrementStep: () => ot.CurrentStepOrder++,
-                    setReviewed:   () => { ot.ReviewedAt = Clock.Now; ot.ReviewedById = reviewerId; ot.ReviewNote = body.ReviewNote?.Trim(); });
+                    setReviewed:   () => { ot.ReviewedAt = Clock.Now; ot.ReviewedById = reviewerId; ot.ReviewNote = reviewNote?.Trim(); });
                 await db.SaveChangesAsync();
                 break;
             }
@@ -271,15 +366,15 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == adv.SubmittedById.Value)
                     : null;
                 await AuthorizeStepAsync(adv.ApprovalItemId, adv.CurrentStepOrder, reviewer, advApplicant?.DepartmentId, "advance", adv.Id, advApplicant?.JobTitleId);
-                if (body.EstimatedPaymentDate.HasValue)
-                    adv.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
-                if (body.PaidAt.HasValue)
-                    adv.RefundedAt = body.PaidAt.Value;
+                if (estimatedPaymentDate.HasValue)
+                    adv.EstimatedPaymentDate = estimatedPaymentDate.Value;
+                if (paidAt.HasValue)
+                    adv.RefundedAt = paidAt.Value;
                 await ProcessReviewAsync("advance", adv.Id, adv.CurrentStepOrder,
-                    adv.ApprovalItemId, body.Action, body.ReviewNote, reviewerId, adv.SubmittedById,
+                    adv.ApprovalItemId, action, reviewNote, reviewerId, adv.SubmittedById,
                     setStatus:     s  => adv.ApprovalStatus   = s,
                     incrementStep: () => adv.CurrentStepOrder++,
-                    setReviewed:   () => { adv.ReviewedAt = Clock.Now; adv.ReviewedById = reviewerId; adv.ReviewNote = body.ReviewNote?.Trim(); });
+                    setReviewed:   () => { adv.ReviewedAt = Clock.Now; adv.ReviewedById = reviewerId; adv.ReviewNote = reviewNote?.Trim(); });
                 await db.SaveChangesAsync();
                 break;
             }
@@ -295,16 +390,16 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     : null;
                 await AuthorizeStepAsync(wo.ApprovalItemId, wo.CurrentStepOrder, reviewer, woApplicant?.DepartmentId, "write_off", wo.Id, woApplicant?.JobTitleId);
                 // 設定預支申請退款日（審核者可在審核沖銷時填寫）
-                if (body.EstimatedPaymentDate.HasValue || body.PaidAt.HasValue)
+                if (estimatedPaymentDate.HasValue || paidAt.HasValue)
                 {
                     var adv = await db.AdvanceRequests.FindAsync(wo.AdvanceRequestId);
                     if (adv is not null)
                     {
-                        if (body.EstimatedPaymentDate.HasValue)
-                            adv.EstimatedRefundDate = body.EstimatedPaymentDate.Value;
-                        if (body.PaidAt.HasValue)
+                        if (estimatedPaymentDate.HasValue)
+                            adv.EstimatedRefundDate = estimatedPaymentDate.Value;
+                        if (paidAt.HasValue)
                         {
-                            adv.RefundedAt = body.PaidAt.Value;
+                            adv.RefundedAt = paidAt.Value;
                             adv.RefundedByUserId = reviewerId;
                         }
                     }
@@ -313,13 +408,13 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 var reviewedStepOrder = wo.CurrentStepOrder;
 
                 await ProcessReviewAsync("write_off", wo.Id, wo.CurrentStepOrder,
-                    wo.ApprovalItemId, body.Action, body.ReviewNote, reviewerId, wo.SubmittedById,
+                    wo.ApprovalItemId, action, reviewNote, reviewerId, wo.SubmittedById,
                     setStatus:     s  => wo.ApprovalStatus   = s,
                     incrementStep: () => wo.CurrentStepOrder++,
-                    setReviewed:   () => { wo.ReviewedAt = Clock.Now; wo.ReviewedById = reviewerId; wo.ReviewNote = body.ReviewNote?.Trim(); });
+                    setReviewed:   () => { wo.ReviewedAt = Clock.Now; wo.ReviewedById = reviewerId; wo.ReviewNote = reviewNote?.Trim(); });
 
                 // 預支結案：財務部步驟核准時，可勾選結案
-                if (body.CloseAdvance == true && body.Action == "approved")
+                if (closeAdvance == true && action == "approved")
                 {
                     // 驗證審核的步驟是否為財務部
                     var currentStep = wo.ApprovalItemId.HasValue
@@ -348,16 +443,16 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 await AuthorizeStepAsync(two.ApprovalItemId, two.CurrentStepOrder, reviewer, twoApplicant?.DepartmentId, "travel_write_off", two.Id, twoApplicant?.JobTitleId);
 
                 // 設定出差申請退款日（審核者可在審核出差沖銷時填寫）
-                if (body.EstimatedPaymentDate.HasValue || body.PaidAt.HasValue)
+                if (estimatedPaymentDate.HasValue || paidAt.HasValue)
                 {
                     var travel = await db.TravelRequests.FindAsync(two.TravelRequestId);
                     if (travel is not null)
                     {
-                        if (body.EstimatedPaymentDate.HasValue)
-                            travel.EstimatedRefundDate = body.EstimatedPaymentDate.Value;
-                        if (body.PaidAt.HasValue)
+                        if (estimatedPaymentDate.HasValue)
+                            travel.EstimatedRefundDate = estimatedPaymentDate.Value;
+                        if (paidAt.HasValue)
                         {
-                            travel.RefundedAt = body.PaidAt.Value;
+                            travel.RefundedAt = paidAt.Value;
                             travel.RefundedByUserId = reviewerId;
                         }
                     }
@@ -367,13 +462,13 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 var twoReviewedStepOrder = two.CurrentStepOrder;
 
                 await ProcessReviewAsync("travel_write_off", two.Id, two.CurrentStepOrder,
-                    two.ApprovalItemId, body.Action, body.ReviewNote, reviewerId, two.SubmittedById,
+                    two.ApprovalItemId, action, reviewNote, reviewerId, two.SubmittedById,
                     setStatus:     s  => two.ApprovalStatus    = s,
                     incrementStep: () => two.CurrentStepOrder++,
-                    setReviewed:   () => { two.ReviewedAt = Clock.Now; two.ReviewedById = reviewerId; two.ReviewNote = body.ReviewNote?.Trim(); });
+                    setReviewed:   () => { two.ReviewedAt = Clock.Now; two.ReviewedById = reviewerId; two.ReviewNote = reviewNote?.Trim(); });
 
                 // 出差結案：財務部步驟核准時，可勾選結案
-                if (body.CloseAdvance == true && body.Action == "approved")
+                if (closeAdvance == true && action == "approved")
                 {
                     // 驗證審核的步驟是否為財務部
                     var currentStep = two.ApprovalItemId.HasValue
@@ -390,11 +485,47 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 break;
             }
             default:
-                return new BadRequestObjectResult(ApiResponse.Fail("Unknown application type."));
+                throw AppException.BadRequest("Unknown application type.");
         }
+    }
 
-        var task = await reader.GetApprovalTaskByIdAsync(intId, applicationType);
-        return new OkObjectResult(ApiResponse.Ok(task, $"Request {body.Action}."));
+    /// <summary>
+    /// 批次核准後，若該申請已變成最終 approved 且尚未填寫撥款/退款日，回傳提醒；否則回傳 null。
+    /// - payment_request / advance / travel / holiday_travel：PaidAt 為空 → kind="payment"
+    /// - write_off / travel_write_off：尚未支援（需依 CloseAdvance 流程，批次核准不觸發）→ 回 null
+    /// </summary>
+    private async Task<BatchApprovePending?> BuildPendingPaymentReminderAsync(string applicationType, int id)
+    {
+        switch (applicationType)
+        {
+            case "payment_request":
+            {
+                var pr = await db.PaymentRequests.AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.Id == id);
+                if (pr is not null && pr.ApprovalStatus == "approved" && pr.PaidAt is null)
+                    return new BatchApprovePending("payment_request", id, $"#{id}", "payment");
+                return null;
+            }
+            case "advance":
+            {
+                var adv = await db.AdvanceRequests.AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.Id == id);
+                if (adv is not null && adv.ApprovalStatus == "approved" && adv.PaidAt is null)
+                    return new BatchApprovePending("advance", id, adv.RequestNo, "payment");
+                return null;
+            }
+            case "travel":
+            case "holiday_travel":
+            {
+                var tr = await db.TravelRequests.AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.Id == id);
+                if (tr is not null && tr.ApprovalStatus == "approved" && tr.PaidAt is null)
+                    return new BatchApprovePending(applicationType, id, $"#{id}", "payment");
+                return null;
+            }
+            default:
+                return null;
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
