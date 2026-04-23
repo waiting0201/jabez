@@ -4,7 +4,8 @@ import {DatePipe} from '@angular/common';
 import {toSignal, toObservable} from '@angular/core/rxjs-interop';
 import {combineLatest} from 'rxjs';
 import {switchMap} from 'rxjs/operators';
-import {ApprovalTaskService} from '../../services/approval-task.service';
+import {ToastrService} from 'ngx-toastr';
+import {ApprovalTaskService, BatchApprovePending} from '../../services/approval-task.service';
 import {
   TASK_STATUS_LABELS, TASK_STATUS_CLASSES,
   APPLICATION_TYPE_LABELS, APPLICATION_TYPE_CLASSES,
@@ -25,10 +26,16 @@ const PAYMENT_FILTER_DEPT_CODES = new Set(['CEO', 'FIN', 'AC']);
 export class ApprovalTaskList {
   private service = inject(ApprovalTaskService);
   private auth = inject(AuthService);
+  private toastr = inject(ToastrService);
 
   /** Superadmin 或總監室/財務部/會計部才顯示撥款/退款子篩選 */
   canSeePaymentFilter = computed(() =>
     this.auth.isSuperAdmin() || PAYMENT_FILTER_DEPT_CODES.has(this.auth.departmentCode() ?? '')
+  );
+
+  /** 是否具備全選核准權限（待審核 tab 才啟用 UI） */
+  canBatchApprove = computed(() =>
+    this.auth.isSuperAdmin() || this.auth.hasPermission('approval-tasks:batch-approve')
   );
 
   readonly PAGE_SIZE = 20;
@@ -36,10 +43,23 @@ export class ApprovalTaskList {
   paymentStatus = signal<'' | 'paid' | 'unpaid'>('');
   page = signal(1);
 
+  /** 已勾選的任務 key 集合，格式：${applicationType}:${id} */
+  selectedKeys = signal<Set<string>>(new Set());
+
+  /** 批次核准後需補填撥款/退款日的提醒清單（null = 不顯示 banner） */
+  pendingPaymentResult = signal<BatchApprovePending[] | null>(null);
+
+  /** 批次核准執行中，避免重複提交 */
+  submitting = signal(false);
+
+  /** 重新載入當頁資料的觸發訊號（批次核准完成後遞增） */
+  private reloadTrigger = signal(0);
+
   switchTab(tab: 'pending' | 'approved' | 'rejected') {
     this.activeTab.set(tab);
     this.paymentStatus.set('');
     this.page.set(1);
+    this.selectedKeys.set(new Set());
   }
 
   setPaymentStatus(status: '' | 'paid' | 'unpaid') {
@@ -47,8 +67,80 @@ export class ApprovalTaskList {
     this.page.set(1);
   }
 
+  // ── 選取狀態 ──────────────────────────────────────────────────────────
+  private keyOf(t: ApprovalTask): string { return `${t.applicationType}:${t.id}`; }
+
+  isSelected(t: ApprovalTask): boolean { return this.selectedKeys().has(this.keyOf(t)); }
+
+  toggleSelect(t: ApprovalTask): void {
+    const key = this.keyOf(t);
+    const next = new Set(this.selectedKeys());
+    if (next.has(key)) next.delete(key); else next.add(key);
+    this.selectedKeys.set(next);
+  }
+
+  isAllSelected = computed(() => {
+    const tasks = this.pagedTasks();
+    if (tasks.length === 0) return false;
+    const selected = this.selectedKeys();
+    return tasks.every(t => selected.has(this.keyOf(t)));
+  });
+
+  toggleSelectAll(): void {
+    const tasks = this.pagedTasks();
+    if (this.isAllSelected()) {
+      const next = new Set(this.selectedKeys());
+      tasks.forEach(t => next.delete(this.keyOf(t)));
+      this.selectedKeys.set(next);
+    } else {
+      const next = new Set(this.selectedKeys());
+      tasks.forEach(t => next.add(this.keyOf(t)));
+      this.selectedKeys.set(next);
+    }
+  }
+
+  /** 執行批次核准：發送 API → 顯示結果 Toast → 若有需補填項目則開啟 banner */
+  submitBatchApprove(): void {
+    if (this.submitting() || this.selectedKeys().size === 0) return;
+
+    const items = Array.from(this.selectedKeys()).map(key => {
+      const [applicationType, idStr] = key.split(':');
+      return { applicationType, id: Number(idStr) };
+    });
+
+    this.submitting.set(true);
+    this.service.batchApprove(items).subscribe({
+      next: result => {
+        const { succeeded, failed, pendingPayment } = result;
+        if (failed.length === 0) {
+          this.toastr.success(`已核准 ${succeeded} 筆`, '批次核准完成');
+        } else {
+          this.toastr.warning(`已核准 ${succeeded} 筆，失敗 ${failed.length} 筆：\n` +
+            failed.slice(0, 3).map(f => `・${this.appTypeLabel[f.applicationType as keyof typeof this.appTypeLabel] ?? f.applicationType} #${f.id}：${f.reason}`).join('\n'),
+            '批次核准完成', { enableHtml: false });
+        }
+        this.pendingPaymentResult.set(pendingPayment.length > 0 ? pendingPayment : null);
+        this.selectedKeys.set(new Set());
+        this.submitting.set(false);
+        this.reloadTrigger.update(n => n + 1);
+      },
+      error: err => {
+        this.submitting.set(false);
+        const msg = err?.error?.message ?? '批次核准失敗';
+        this.toastr.error(msg, '批次核准失敗');
+      },
+    });
+  }
+
+  dismissPendingReminder(): void { this.pendingPaymentResult.set(null); }
+
   private result = toSignal(
-    combineLatest([toObservable(this.page), toObservable(this.activeTab), toObservable(this.paymentStatus)]).pipe(
+    combineLatest([
+      toObservable(this.page),
+      toObservable(this.activeTab),
+      toObservable(this.paymentStatus),
+      toObservable(this.reloadTrigger),
+    ]).pipe(
       switchMap(([p, status, ps]) => this.service.getPaged(p, this.PAGE_SIZE, status, ps || undefined))
     ),
     {initialValue: {items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 1} as PagedResult<ApprovalTask>}
