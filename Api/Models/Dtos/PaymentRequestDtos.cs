@@ -75,7 +75,8 @@ public sealed record UpdatePaymentDateRequest(
     DateTime? PaidAt,
     string?   ApprovalStatus,
     DateTime? EstimatedRefundDate = null,
-    DateTime? RefundedAt = null);
+    DateTime? RefundedAt = null,
+    decimal?  RefundedAmount = null);
 
 // 退還差額匯款日期
 public sealed record RefundDateRequest(DateTime? RefundedAt);

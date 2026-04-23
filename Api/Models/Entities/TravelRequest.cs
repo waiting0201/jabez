@@ -32,6 +32,7 @@ public class TravelRequest
 
     // 退還差額（沖銷累計超過出差金額時需匯款）
     public decimal?  RefundAmount            { get; set; }
+    public decimal?  RefundedAmount          { get; set; }
     public DateTime? EstimatedRefundDate     { get; set; }
     public DateTime? RefundedAt              { get; set; }
     public Guid?     RefundedByUserId        { get; set; }

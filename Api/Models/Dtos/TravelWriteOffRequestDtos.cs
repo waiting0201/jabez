@@ -24,7 +24,12 @@ public sealed record TravelWriteOffRequestDto(
     TravelWriteOffItemDto[]       Items,
     DesignatedReviewerDto[]?      DesignatedReviewers   = null,
     decimal                       TravelGrandTotal      = 0,
-    decimal                       TravelWrittenOffTotal = 0);
+    decimal                       TravelWrittenOffTotal = 0,
+    bool                          TravelIsClosed        = false,
+    DateTime?                     EstimatedRefundDate   = null,
+    DateTime?                     RefundedAt            = null,
+    decimal?                      TravelRefundAmount    = null,
+    decimal?                      TravelRefundedAmount  = null);
 
 // ── Item DTO ──────────────────────────────────────────────────────────────────
 
@@ -89,4 +94,6 @@ public sealed record TravelWriteOffTaskDetailDto(
     decimal                  OtherWrittenOffTotal  = 0,
     string?                  PaidBySignatureUrl    = null,
     string?                  RefundedBySignatureUrl = null,
-    bool                     TravelIsClosed        = false);
+    bool                     TravelIsClosed        = false,
+    decimal?                 TravelRefundAmount    = null,
+    decimal?                 TravelRefundedAmount  = null);

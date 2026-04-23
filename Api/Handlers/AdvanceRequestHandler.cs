@@ -555,11 +555,13 @@ public sealed class AdvanceRequestHandler(
             ar.RefundedAt = body.RefundedAt.Value;
             ar.RefundedByUserId = userId;
         }
+        if (body.RefundedAmount.HasValue)
+            ar.RefundedAmount = body.RefundedAmount.Value;
 
         await db.SaveChangesAsync();
 
-        var msg = (body.EstimatedRefundDate.HasValue || body.RefundedAt.HasValue) ? "退款日期已更新。" : "撥款日期已更新。";
-        return new OkObjectResult(ApiResponse.Ok(new { ar.Id, ar.EstimatedPaymentDate, ar.PaidAt, ar.EstimatedRefundDate, ar.RefundedAt }, msg));
+        var msg = (body.EstimatedRefundDate.HasValue || body.RefundedAt.HasValue || body.RefundedAmount.HasValue) ? "退款資訊已更新。" : "撥款日期已更新。";
+        return new OkObjectResult(ApiResponse.Ok(new { ar.Id, ar.EstimatedPaymentDate, ar.PaidAt, ar.EstimatedRefundDate, ar.RefundedAt, ar.RefundedAmount }, msg));
     }
 
     // ── Helper ──────────────────────────────────────────────────────────────

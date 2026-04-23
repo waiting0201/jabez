@@ -16,6 +16,10 @@ public sealed class TravelWriteOffRequestReadService(IDbConnection db) : ITravel
                sub.Name AS SubmittedBy, two.CreatedAt,
                two.ReviewedAt, two.ReviewNote,
                tr.GrandTotal AS TravelGrandTotal,
+               CAST(ISNULL(tr.IsClosed, 0) AS BIT) AS TravelIsClosed,
+               tr.EstimatedRefundDate, tr.RefundedAt,
+               tr.RefundAmount AS TravelRefundAmount,
+               tr.RefundedAmount AS TravelRefundedAmount,
                ISNULL((SELECT SUM(w2.GrandTotal) FROM TravelWriteOffRecords w2
                        WHERE w2.TravelRequestId = two.TravelRequestId
                          AND w2.ApprovalStatus = 'approved'
@@ -134,6 +138,11 @@ public sealed class TravelWriteOffRequestReadService(IDbConnection db) : ITravel
             [.. x.items],
             null, // DesignatedReviewers 以 null 回傳（GetByIdAsync 才填入）
             (decimal)x.two.TravelGrandTotal,
-            (decimal)x.two.TravelWrittenOffTotal));
+            (decimal)x.two.TravelWrittenOffTotal,
+            (bool)x.two.TravelIsClosed,
+            (DateTime?)x.two.EstimatedRefundDate,
+            (DateTime?)x.two.RefundedAt,
+            (decimal?)x.two.TravelRefundAmount,
+            (decimal?)x.two.TravelRefundedAmount));
     }
 }

@@ -56,6 +56,7 @@ public sealed record AdvanceRequestDto(
     bool                      IsClosed               = false,
     DateTime?                 ClosedAt               = null,
     decimal?                  RefundAmount           = null,
+    decimal?                  RefundedAmount         = null,
     DateTime?                 EstimatedRefundDate    = null,
     DateTime?                 RefundedAt             = null,
     WriteOffRecordDto[]?      WriteOffRecords        = null);
@@ -148,7 +149,9 @@ public sealed record AdvanceTaskDetailDto(
     DateTime? EstimatedRefundDate,
     DateTime? RefundedAt,
     AdvanceRequestItemDto[] Items = null!,
-    string?   PaidBySignatureUrl = null)
+    string?   PaidBySignatureUrl = null,
+    decimal?  RefundAmount = null,
+    decimal?  RefundedAmount = null)
 {
     public AdvanceRequestItemDto[] Items { get; init; } = Items ?? Array.Empty<AdvanceRequestItemDto>();
 }

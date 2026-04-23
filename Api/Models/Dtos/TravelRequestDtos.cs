@@ -59,6 +59,7 @@ public sealed record TravelRequestDto(
     bool                         IsClosed            = false,
     DateTime?                    ClosedAt            = null,
     decimal?                     RefundAmount         = null,
+    decimal?                     RefundedAmount       = null,
     DateTime?                    EstimatedPaymentDate = null,
     DateTime?                    PaidAt               = null,
     DateTime?                    EstimatedRefundDate  = null,

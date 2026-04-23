@@ -23,6 +23,8 @@ public sealed class WriteOffRequestReadService(IDbConnection db) : IWriteOffRequ
                          AND w2.Id < wo.Id), 0) AS AdvanceWrittenOffTotal,
                CAST(ISNULL(ar.IsClosed, 0) AS BIT) AS AdvanceIsClosed,
                ar.EstimatedRefundDate, ar.RefundedAt,
+               ar.RefundAmount AS AdvanceRefundAmount,
+               ar.RefundedAmount AS AdvanceRefundedAmount,
                wi.Id AS ItemId, wi.Category, wi.SeqNo, wi.ItemName,
                wi.UnitPrice, wi.Quantity, wi.TotalPrice,
                wi.CashAmount AS ItemCash, wi.CheckAmount AS ItemCheck,
@@ -143,6 +145,8 @@ public sealed class WriteOffRequestReadService(IDbConnection db) : IWriteOffRequ
             (decimal)x.wo.AdvanceWrittenOffTotal,
             (bool)x.wo.AdvanceIsClosed,
             (DateTime?)x.wo.EstimatedRefundDate,
-            (DateTime?)x.wo.RefundedAt));
+            (DateTime?)x.wo.RefundedAt,
+            (decimal?)x.wo.AdvanceRefundAmount,
+            (decimal?)x.wo.AdvanceRefundedAmount));
     }
 }

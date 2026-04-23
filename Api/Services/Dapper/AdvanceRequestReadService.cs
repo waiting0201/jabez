@@ -14,7 +14,7 @@ public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceReques
                ar.ApprovalStatus, ar.EstimatedPaymentDate, ar.PaidAt,
                sub.Name AS SubmittedBy, ar.CreatedAt,
                ar.ReviewedAt, ar.ReviewNote,
-               ar.IsClosed, ar.ClosedAt, ar.RefundAmount, ar.EstimatedRefundDate, ar.RefundedAt,
+               ar.IsClosed, ar.ClosedAt, ar.RefundAmount, ar.RefundedAmount, ar.EstimatedRefundDate, ar.RefundedAt,
                ai.Id AS ItemId, ai.Category, ai.SeqNo, ai.ItemName,
                ai.UnitPrice, ai.Quantity, ai.TotalPrice,
                ai.CashAmount AS ItemCash, ai.CheckAmount AS ItemCheck,
@@ -172,6 +172,7 @@ public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceReques
                 (bool)x.ar.IsClosed,
                 (DateTime?)x.ar.ClosedAt,
                 (decimal?)x.ar.RefundAmount,
+                (decimal?)x.ar.RefundedAmount,
                 (DateTime?)x.ar.EstimatedRefundDate,
                 (DateTime?)x.ar.RefundedAt);
         });

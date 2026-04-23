@@ -394,6 +394,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                    wo.SubmittedById,
                    arx.EstimatedRefundDate AS AdvanceEstimatedRefundDate,
                    arx.RefundedAt AS AdvanceRefundedAt,
+                   arx.RefundAmount AS AdvanceRefundAmount,
+                   arx.RefundedAmount AS AdvanceRefundedAmount,
                    arx.GrandTotal AS AdvanceGrandTotal,
                    ISNULL((SELECT SUM(w2.GrandTotal) FROM WriteOffRecords w2
                            WHERE w2.AdvanceRequestId = wo.AdvanceRequestId
@@ -423,6 +425,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                    two.CreatedAt, two.ReviewedAt, two.ReviewNote,
                    trx.EstimatedRefundDate AS TravelEstimatedRefundDate,
                    trx.RefundedAt AS TravelRefundedAt,
+                   trx.RefundAmount AS TravelRefundAmount,
+                   trx.RefundedAmount AS TravelRefundedAmount,
                    trx.GrandTotal AS TravelGrandTotal,
                    ISNULL((SELECT SUM(tw2.GrandTotal) FROM TravelWriteOffRecords tw2
                            WHERE tw2.TravelRequestId = two.TravelRequestId
@@ -890,7 +894,9 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (decimal)row.OtherWrittenOffTotal,
                 (string?)row.PaidBySignatureUrl,
                 (string?)row.RefundedBySignatureUrl,
-                (bool)row.AdvanceIsClosed),
+                (bool)row.AdvanceIsClosed,
+                (decimal?)row.AdvanceRefundAmount,
+                (decimal?)row.AdvanceRefundedAmount),
             null,
             GetRecords("write_off", (int)row.Id),
             GetDesignatedReviewers("write_off", (int)row.Id),
@@ -947,7 +953,9 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (decimal)row.OtherWrittenOffTotal,
                 (string?)row.PaidBySignatureUrl,
                 (string?)row.RefundedBySignatureUrl,
-                (bool)row.TravelIsClosed),
+                (bool)row.TravelIsClosed,
+                (decimal?)row.TravelRefundAmount,
+                (decimal?)row.TravelRefundedAmount),
             GetRecords("travel_write_off", (int)row.Id),
             GetDesignatedReviewers("travel_write_off", (int)row.Id),
             (string?)row.SubmittedBySignatureUrl));

@@ -32,6 +32,7 @@ public class AdvanceRequest
 
     // 退還差額欄位（沖銷累計 > 預支時，系統自動計算）
     public decimal?  RefundAmount         { get; set; }
+    public decimal?  RefundedAmount       { get; set; }
     public DateTime? EstimatedRefundDate  { get; set; }
     public DateTime? RefundedAt           { get; set; }
     public Guid?     RefundedByUserId     { get; set; }

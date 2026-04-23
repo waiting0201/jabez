@@ -83,6 +83,9 @@ public class AdvanceRequestConfiguration : IEntityTypeConfiguration<AdvanceReque
         builder.Property(a => a.RefundAmount)
                .HasColumnType("decimal(18,2)");
 
+        builder.Property(a => a.RefundedAmount)
+               .HasColumnType("decimal(18,2)");
+
         builder.HasOne(a => a.RefundedBy)
                .WithMany()
                .HasForeignKey(a => a.RefundedByUserId)

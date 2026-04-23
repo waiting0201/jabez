@@ -766,11 +766,13 @@ public sealed class TravelRequestHandler(
             tr.RefundedAt = body.RefundedAt.Value;
             tr.RefundedByUserId = userId;
         }
+        if (body.RefundedAmount.HasValue)
+            tr.RefundedAmount = body.RefundedAmount.Value;
 
         await db.SaveChangesAsync();
 
-        var msg = (body.EstimatedRefundDate.HasValue || body.RefundedAt.HasValue) ? "退款日期已更新。" : "撥款日期已更新。";
-        return new OkObjectResult(ApiResponse.Ok(new { tr.Id, tr.EstimatedPaymentDate, tr.PaidAt, tr.EstimatedRefundDate, tr.RefundedAt }, msg));
+        var msg = (body.EstimatedRefundDate.HasValue || body.RefundedAt.HasValue || body.RefundedAmount.HasValue) ? "退款資訊已更新。" : "撥款日期已更新。";
+        return new OkObjectResult(ApiResponse.Ok(new { tr.Id, tr.EstimatedPaymentDate, tr.PaidAt, tr.EstimatedRefundDate, tr.RefundedAt, tr.RefundedAmount }, msg));
     }
 
     // ── 假日天數查詢 ────────────────────────────────────────────────────────────
