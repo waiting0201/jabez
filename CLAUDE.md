@@ -555,7 +555,8 @@ dotnet ef database update               # 套用 Migration
 | `ApprovalStep` | 簽核流程步驟（含 UseDirectSupervisor、UseApplicantDesignated） |
 | `ApprovalRecord` | 簽核動作記錄（含 OnBehalfOfUserId 代理標記、IsEscalated 升級標記） |
 | `EscalationOverride` | 升級審核指派（記錄被指派的升級/代理審核者，審核完成後清除） |
-| `Project` | 專案主檔 |
+| `Project` | 專案主檔（含 ReceivedAmount 實收金額、ContractAmount 契約金額、BusinessAmount 業務執行金額） |
+| `ProjectPaymentSchedule` | 專案請款期別明細（一期一筆：請款/發票/入帳日期與金額、扣款備註；扣款金額 = 發票 − 入帳，前端計算不存 DB） |
 | `PaymentRequest` | 請款申請 |
 | `InvoiceItem` | 請款明細（發票項目） |
 | `LeaveRequest` | 請假申請（含 BereavementRelationship 喪假親屬關係） |

@@ -77,12 +77,20 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader)
             StartDate      = body.StartDate,
             EndDate        = body.EndDate,
             DepartmentId   = body.DepartmentId,
-            BudgetAmount   = body.BudgetAmount,
-            ActualAmount   = body.ActualAmount,
+            ReceivedAmount = body.ReceivedAmount,
+            ContractAmount = body.ContractAmount,
             BusinessAmount = body.BusinessAmount,
             GoogleDriveUrl = body.GoogleDriveUrl,
             CreatedAt      = Clock.Now,
         };
+
+        if (body.PaymentSchedules is { Count: > 0 })
+        {
+            project.PaymentSchedules = body.PaymentSchedules
+                .Select((s, idx) => BuildSchedule(s, idx + 1))
+                .ToList();
+        }
+
         db.Projects.Add(project);
         await db.SaveChangesAsync();
 
@@ -112,15 +120,30 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader)
                 throw AppException.Conflict($"Project code '{trimmed}' is already in use.");
             project.Code = trimmed;
         }
-        if (body.Name is not null)           project.Name           = body.Name.Trim();
-        if (body.Status is not null)       project.Status         = body.Status;
-        if (body.StartDate.HasValue)       project.StartDate      = body.StartDate.Value;
-        if (body.EndDate.HasValue)         project.EndDate        = body.EndDate;
-        if (body.DepartmentId.HasValue)     project.DepartmentId   = body.DepartmentId == 0 ? null : body.DepartmentId;
-        if (body.BudgetAmount.HasValue)     project.BudgetAmount   = body.BudgetAmount;
-        if (body.ActualAmount.HasValue)     project.ActualAmount   = body.ActualAmount;
-        if (body.BusinessAmount.HasValue)   project.BusinessAmount = body.BusinessAmount;
-        if (body.GoogleDriveUrl is not null) project.GoogleDriveUrl = body.GoogleDriveUrl;
+        if (body.Name is not null)            project.Name           = body.Name.Trim();
+        if (body.Status is not null)          project.Status         = body.Status;
+        if (body.StartDate.HasValue)          project.StartDate      = body.StartDate.Value;
+        if (body.EndDate.HasValue)            project.EndDate        = body.EndDate;
+        if (body.DepartmentId.HasValue)       project.DepartmentId   = body.DepartmentId == 0 ? null : body.DepartmentId;
+        if (body.ReceivedAmount.HasValue)     project.ReceivedAmount = body.ReceivedAmount;
+        if (body.ContractAmount.HasValue)     project.ContractAmount = body.ContractAmount;
+        if (body.BusinessAmount.HasValue)     project.BusinessAmount = body.BusinessAmount;
+        if (body.GoogleDriveUrl is not null)  project.GoogleDriveUrl = body.GoogleDriveUrl;
+
+        // 請款期別明細：全量 Replace（刪除舊資料後依 payload 重建）
+        if (body.PaymentSchedules is not null)
+        {
+            var existing = await db.ProjectPaymentSchedules
+                .Where(s => s.ProjectId == intId)
+                .ToListAsync();
+            db.ProjectPaymentSchedules.RemoveRange(existing);
+
+            var fresh = body.PaymentSchedules
+                .Select((s, idx) => BuildSchedule(s, idx + 1, intId))
+                .ToList();
+            if (fresh.Count > 0)
+                await db.ProjectPaymentSchedules.AddRangeAsync(fresh);
+        }
 
         await db.SaveChangesAsync();
 
@@ -147,4 +170,19 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader)
 
         return new OkObjectResult(ApiResponse.Ok($"Project '{id}' deleted."));
     }
+
+    /// <summary>把 DTO 轉成 Entity；若有 ProjectId（更新情境）一併填入</summary>
+    private static ProjectPaymentSchedule BuildSchedule(ProjectPaymentScheduleRequest s, int periodNo, int? projectId = null) => new()
+    {
+        Id            = s.Id is { } gid && gid != Guid.Empty ? gid : Guid.NewGuid(),
+        ProjectId     = projectId ?? 0,
+        PeriodNo      = periodNo,
+        BillingDate   = s.BillingDate,
+        BillingAmount = s.BillingAmount,
+        InvoiceDate   = s.InvoiceDate,
+        InvoiceAmount = s.InvoiceAmount,
+        DepositDate   = s.DepositDate,
+        DepositAmount = s.DepositAmount,
+        DeductionNote = s.DeductionNote,
+    };
 }

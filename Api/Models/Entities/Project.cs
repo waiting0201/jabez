@@ -9,14 +9,15 @@ public class Project
     public DateTime  StartDate       { get; set; }
     public DateTime? EndDate         { get; set; }
     public int?      DepartmentId    { get; set; }
-    public decimal?  BudgetAmount    { get; set; }
-    public decimal?  ActualAmount    { get; set; }
+    public decimal?  ReceivedAmount  { get; set; }   // 實收金額（原 BudgetAmount）
+    public decimal?  ContractAmount  { get; set; }   // 契約金額（原 ActualAmount）
     public decimal?  BusinessAmount  { get; set; }
     public string?   GoogleDriveUrl  { get; set; }
     public DateTime  CreatedAt       { get; set; }
 
     // Navigation
-    public Department?                    Department      { get; set; }
-    public ICollection<PaymentRequest>    PaymentRequests  { get; set; } = [];
-    public ICollection<AdvanceRequest>    AdvanceRequests  { get; set; } = [];
+    public Department?                         Department       { get; set; }
+    public ICollection<PaymentRequest>         PaymentRequests  { get; set; } = [];
+    public ICollection<AdvanceRequest>         AdvanceRequests  { get; set; } = [];
+    public ICollection<ProjectPaymentSchedule> PaymentSchedules { get; set; } = [];
 }

@@ -17,7 +17,7 @@ public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWat
                    p.Code        AS ProjectCode,
                    p.Status,
                    d.Name        AS DepartmentName,
-                   p.ActualAmount,
+                   p.ContractAmount,
                    p.BusinessAmount,
                    ISNULL(SUM(pr.TotalAmount), 0)                                              AS PaymentAmount,
                    ISNULL(SUM(CASE WHEN pr.PaidAt IS NOT NULL THEN pr.TotalAmount ELSE 0 END), 0) AS PaidAmount
@@ -25,7 +25,7 @@ public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWat
             LEFT JOIN Departments      d  ON p.DepartmentId = d.Id
             LEFT JOIN PaymentRequests  pr ON pr.ProjectId   = p.Id
                                          AND pr.ApprovalStatus != 'draft'
-            GROUP BY p.Id, p.Code, p.Status, d.Name, p.ActualAmount, p.BusinessAmount
+            GROUP BY p.Id, p.Code, p.Status, d.Name, p.ContractAmount, p.BusinessAmount
             HAVING SUM(pr.TotalAmount) > 0
             ORDER BY p.Code
             """;
@@ -36,7 +36,7 @@ public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWat
         {
             decimal paymentAmount = (decimal)row.PaymentAmount;
             decimal paidAmount    = (decimal)row.PaidAmount;
-            decimal? actualAmount   = row.ActualAmount is null ? null : (decimal?)row.ActualAmount;
+            decimal? contractAmount = row.ContractAmount is null ? null : (decimal?)row.ContractAmount;
             decimal? businessAmount = row.BusinessAmount is null ? null : (decimal?)row.BusinessAmount;
 
             // 在 C# 端計算百分比，防止 SQL 端除零例外
@@ -44,8 +44,8 @@ public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWat
                 ? Math.Round(paymentAmount / businessAmount.Value * 100, 1)
                 : null;
 
-            decimal? totalPercentage = (actualAmount.HasValue && actualAmount.Value > 0)
-                ? Math.Round(paymentAmount / actualAmount.Value * 100, 1)
+            decimal? totalPercentage = (contractAmount.HasValue && contractAmount.Value > 0)
+                ? Math.Round(paymentAmount / contractAmount.Value * 100, 1)
                 : null;
 
             return new ProjectWaterLevelDto(
@@ -53,7 +53,7 @@ public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWat
                 ProjectCode:     (string)row.ProjectCode,
                 Status:          (string)row.Status,
                 DepartmentName:  (string?)row.DepartmentName,
-                ActualAmount:    actualAmount,
+                ContractAmount:  contractAmount,
                 BusinessAmount:  businessAmount,
                 PaymentAmount:   paymentAmount,
                 PaidAmount:      paidAmount,

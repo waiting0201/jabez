@@ -15,7 +15,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<JobTitle>       JobTitles       { get; set; }
     public DbSet<ApprovalItem>   ApprovalItems   { get; set; }
     public DbSet<ApprovalStep>   ApprovalSteps   { get; set; }
-    public DbSet<Project>        Projects        { get; set; }
+    public DbSet<Project>                 Projects                 { get; set; }
+    public DbSet<ProjectPaymentSchedule>  ProjectPaymentSchedules  { get; set; }
     public DbSet<PaymentRequest> PaymentRequests { get; set; }
     public DbSet<InvoiceItem>    InvoiceItems    { get; set; }
     public DbSet<LeaveRequest>   LeaveRequests   { get; set; }
