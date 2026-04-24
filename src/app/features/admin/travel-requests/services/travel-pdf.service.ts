@@ -55,7 +55,7 @@ export class TravelPdfService {
       y += 8;
       doc.setFontSize(16);
       doc.setTextColor(...CIS.forest);
-      doc.text('出 差 申 請 單', pw / 2, y, { align: 'center' });
+      doc.text('出 差 預 支 申 請 單', pw / 2, y, { align: 'center' });
 
       // ── 表頭資訊 ──
       y += 10;
@@ -175,7 +175,7 @@ export class TravelPdfService {
       doc.setLineWidth(0.8);
       doc.line(mx, y + 1.5, pw - mx, y + 1.5);
 
-      doc.save(`出差申請單-${r.id}.pdf`);
+      doc.save(`出差預支申請單-${r.id}.pdf`);
     } finally {
       this.pdfLoading.set(false);
     }

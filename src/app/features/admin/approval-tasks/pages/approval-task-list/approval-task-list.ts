@@ -187,6 +187,11 @@ export class ApprovalTaskList {
         ? { label: '款項已完成', cls: 'bg-success-subtle text-success' }
         : { label: '款項待處理', cls: 'bg-warning-subtle text-warning-emphasis' };
     }
+    if (type === 'travel_payment') {
+      return t.travelPaymentDetail?.paidAt
+        ? { label: '款項已完成', cls: 'bg-success-subtle text-success' }
+        : { label: '款項待處理', cls: 'bg-warning-subtle text-warning-emphasis' };
+    }
     if (type === 'write_off') {
       const d = t.writeOffDetail;
       if (!d) return null;
@@ -224,6 +229,9 @@ export class ApprovalTaskList {
     }
     if (t.advanceDetail) {
       return `${t.advanceDetail.requestNo}・${t.advanceDetail.activityName}（${t.advanceDetail.grandTotal.toLocaleString()} 元）`;
+    }
+    if (t.travelPaymentDetail) {
+      return `${t.travelPaymentDetail.destination}（${t.travelPaymentDetail.grandTotal.toLocaleString()} 元）`;
     }
     return '—';
   }

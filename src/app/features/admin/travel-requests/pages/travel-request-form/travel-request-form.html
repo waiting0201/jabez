@@ -3,7 +3,7 @@
     <a routerLink="/admin/travel-requests" class="btn btn-sm btn-outline-secondary">
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
     </a>
-    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視出差申請' : (isReturned ? '修改出差申請' : '編輯出差草稿')) : '新增出差申請' }}</h4>
+    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視出差預支申請' : (isReturned ? '修改出差預支申請' : '編輯出差預支草稿')) : '新增出差預支申請' }}</h4>
   </div>
 
   @if (errorMsg()) {

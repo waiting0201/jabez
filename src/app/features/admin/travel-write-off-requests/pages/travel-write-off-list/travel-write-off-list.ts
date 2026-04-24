@@ -39,7 +39,7 @@ export class TravelWriteOffList {
   readonly statusClass = APPROVAL_STATUS_CLASSES;
 
   delete(r: TravelWriteOffRequest) {
-    if (confirm('確定要刪除此出差沖銷申請嗎？')) {
+    if (confirm('確定要刪除此出差預支沖銷申請嗎？')) {
       this.service.delete(r.id).subscribe(() => this.refresh.update(v => v + 1));
     }
   }

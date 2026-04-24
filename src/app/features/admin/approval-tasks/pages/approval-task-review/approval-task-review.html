@@ -175,7 +175,7 @@
               <div class="card border-0 shadow-sm">
                 <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
                   <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
-                  出差申請資訊
+                  出差預支申請資訊
                 </div>
                 <div class="card-body">
                   <div class="row g-3">
@@ -675,12 +675,114 @@
             }
           }
 
+          @case ('travel_payment') {
+            @if (task.travelPaymentDetail; as d) {
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
+                  出差請款申請資訊
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">出差地點</div>
+                      <span class="fw-500">{{ d.destination }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">申請人</div>
+                      <span class="fw-500">{{ task.submittedBy }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">金額</div>
+                      <span class="fw-600 fs-5">{{ d.grandTotal | number:'1.0-0' }} 元</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">出發日期</div>
+                      <span class="text-muted small">{{ d.startDate | date:'yyyy-MM-dd' }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">返回日期</div>
+                      <span class="text-muted small">{{ d.endDate | date:'yyyy-MM-dd' }}</span>
+                    </div>
+                    @if (d.projectCode) {
+                      <div class="col-6 col-md-4">
+                        <div class="text-muted small mb-1">關聯專案</div>
+                        <span class="font-monospace fw-500">{{ d.projectCode }}</span>
+                      </div>
+                    }
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">預計撥款日</div>
+                      <span class="fw-500">{{ d.estimatedPaymentDate ? (d.estimatedPaymentDate | date:'yyyy/MM/dd') : '—' }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">撥款日</div>
+                      <span class="fw-500">{{ d.paidAt ? (d.paidAt | date:'yyyy/MM/dd') : '—' }}</span>
+                    </div>
+                    <div class="col-12">
+                      <div class="text-muted small mb-1">出差目的</div>
+                      <div class="border rounded p-4 bg-[--bg-base] small">{{ d.purpose }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 費用明細 -->
+              @if (d.items && d.items.length > 0) {
+                <div class="card border-0 shadow-sm mt-6">
+                  <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                    <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#list"></use></svg>
+                    費用明細
+                  </div>
+                  <div class="card-body p-0">
+                    <div class="table-responsive">
+                      <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                          <tr>
+                            <th>分類</th>
+                            <th>項目說明</th>
+                            <th class="text-right">單價</th>
+                            <th>數量/單位</th>
+                            <th class="text-right">總價</th>
+                            <th>備註</th>
+                            <th>發票號碼</th>
+                            <th>發票日期</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (item of d.items; track item.id) {
+                            <tr>
+                              <td class="small">{{ item.category }}</td>
+                              <td class="small">{{ item.itemName }}</td>
+                              <td class="text-right small">{{ item.unitPrice | number:'1.0-0' }}</td>
+                              <td class="small">{{ item.quantity }}</td>
+                              <td class="text-right small fw-500">{{ item.totalPrice | number:'1.0-0' }}</td>
+                              <td class="small text-muted">{{ item.note || '—' }}</td>
+                              <td class="small font-monospace">{{ item.invoiceNo || '—' }}</td>
+                              <td class="small">{{ item.invoiceDate ? (item.invoiceDate | date:'yyyy-MM-dd') : '—' }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                        <tfoot>
+                          <tr class="table-light">
+                            <td colspan="4" class="text-right fw-500 small">合計</td>
+                            <td class="text-right fw-600">{{ d.grandTotal | number:'1.0-0' }}</td>
+                            <td colspan="3"></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              }
+            }
+          }
+
           @case ('travel_write_off') {
             @if (task.travelWriteOffDetail; as d) {
               <div class="card border-0 shadow-sm">
                 <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
                   <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
-                  出差沖銷申請資訊
+                  出差預支沖銷申請資訊
                 </div>
                 <div class="card-body">
                   <div class="row g-3 mb-4">
@@ -929,9 +1031,9 @@
                     </div>
                   </div>
                 </div>
-                @if ((applicationType === 'payment_request' || applicationType === 'advance' || applicationType === 'travel' || applicationType === 'write_off' || applicationType === 'travel_write_off') && canSetPaymentDate(task)) {
+                @if ((applicationType === 'payment_request' || applicationType === 'advance' || applicationType === 'travel' || applicationType === 'travel_payment' || applicationType === 'write_off' || applicationType === 'travel_write_off') && canSetPaymentDate(task)) {
                   <div class="mb-4">
-                    <label class="form-label fw-500">{{ (applicationType === 'payment_request' || applicationType === 'advance' || applicationType === 'travel') ? '預計撥款日' : '預計退款日' }}</label>
+                    <label class="form-label fw-500">{{ (applicationType === 'payment_request' || applicationType === 'advance' || applicationType === 'travel' || applicationType === 'travel_payment') ? '預計撥款日' : '預計退款日' }}</label>
                     <input type="date" class="form-control" formControlName="estimatedPaymentDate"
                            style="max-width: 220px">
                   </div>
@@ -964,7 +1066,7 @@
                       <input type="checkbox" formControlName="closeAdvance" class="form-check-input">
                       <span class="fw-500">出差結案</span>
                     </label>
-                    <div class="text-muted small mt-1">勾選後，核准時將同步關閉關聯的出差申請。</div>
+                    <div class="text-muted small mt-1">勾選後，核准時將同步關閉關聯的出差預支申請。</div>
                   </div>
                 }
                 <div class="flex gap-2">
@@ -1049,6 +1151,14 @@
                 <div class="text-muted small mb-1 fw-500">退款日：</div>
                 <div class="small mb-4 text-success">{{ task.travelDetail!.refundedAt | date:'yyyy-MM-dd' }}</div>
               }
+              @if (task.applicationType === 'travel_payment' && task.travelPaymentDetail?.estimatedPaymentDate) {
+                <div class="text-muted small mb-1 fw-500">預計撥款日：</div>
+                <div class="small mb-4">{{ task.travelPaymentDetail!.estimatedPaymentDate | date:'yyyy-MM-dd' }}</div>
+              }
+              @if (task.applicationType === 'travel_payment' && task.travelPaymentDetail?.paidAt) {
+                <div class="text-muted small mb-1 fw-500">撥款日：</div>
+                <div class="small mb-4 text-success">{{ task.travelPaymentDetail!.paidAt | date:'yyyy-MM-dd' }}</div>
+              }
               @if (task.applicationType === 'write_off' && task.writeOffDetail?.estimatedRefundDate) {
                 <div class="text-muted small mb-1 fw-500">預計退款日：</div>
                 <div class="small mb-4">{{ task.writeOffDetail!.estimatedRefundDate | date:'yyyy-MM-dd' }}</div>
@@ -1073,24 +1183,24 @@
                 <div class="text-muted small mb-1 fw-500">退款金額：</div>
                 <div class="small mb-4">${{ task.travelWriteOffDetail!.travelRefundedAmount | number:'1.0-0' }}</div>
               }
-              @if ((task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'travel' || task.applicationType === 'holiday_travel' || task.applicationType === 'write_off' || task.applicationType === 'travel_write_off') && (canUpdatePaymentDate() || canEditPaymentDate(task)) && !(task.paymentDetail?.paidAt || task.advanceDetail?.paidAt || task.travelDetail?.paidAt || task.writeOffDetail?.refundedAt || task.travelWriteOffDetail?.refundedAt) && (task.applicationType !== 'write_off' || isWriteOffOverspent(task)) && (task.applicationType !== 'travel_write_off' || isTravelWriteOffOverspent(task))) {
+              @if ((task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'travel' || task.applicationType === 'holiday_travel' || task.applicationType === 'travel_payment' || task.applicationType === 'write_off' || task.applicationType === 'travel_write_off') && (canUpdatePaymentDate() || canEditPaymentDate(task)) && !(task.paymentDetail?.paidAt || task.advanceDetail?.paidAt || task.travelDetail?.paidAt || task.travelPaymentDetail?.paidAt || task.writeOffDetail?.refundedAt || task.travelWriteOffDetail?.refundedAt) && (task.applicationType !== 'write_off' || isWriteOffOverspent(task)) && (task.applicationType !== 'travel_write_off' || isTravelWriteOffOverspent(task))) {
                 <div class="border rounded p-4 bg-[--bg-base] mb-4">
-                  <div class="fw-500 mb-3">{{ (task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'travel' || task.applicationType === 'holiday_travel') ? '設定撥款日期' : '設定退款日期' }}</div>
+                  <div class="fw-500 mb-3">{{ (task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'travel' || task.applicationType === 'holiday_travel' || task.applicationType === 'travel_payment') ? '設定撥款日期' : '設定退款日期' }}</div>
                   <div class="flex flex-wrap gap-6 items-end">
                     <div>
-                      <label class="form-label fw-500 small">{{ (task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'travel' || task.applicationType === 'holiday_travel') ? '預計撥款日' : '預計退款日' }}</label>
+                      <label class="form-label fw-500 small">{{ (task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'travel' || task.applicationType === 'holiday_travel' || task.applicationType === 'travel_payment') ? '預計撥款日' : '預計退款日' }}</label>
                       <input type="date" class="form-control form-control-sm"
                              [value]="paymentDateForm.estimatedPaymentDate"
                              (input)="paymentDateForm.estimatedPaymentDate = $any($event.target).value"
                              style="max-width: 200px">
                     </div>
                     <div>
-                      <label class="form-label fw-500 small">{{ (task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'travel' || task.applicationType === 'holiday_travel') ? '撥款日' : '退款日' }}</label>
+                      <label class="form-label fw-500 small">{{ (task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'travel' || task.applicationType === 'holiday_travel' || task.applicationType === 'travel_payment') ? '撥款日' : '退款日' }}</label>
                       <input type="date" class="form-control form-control-sm"
                              [value]="paymentDateForm.paidAt"
                              (input)="paymentDateForm.paidAt = $any($event.target).value"
                              style="max-width: 200px">
-                      <div class="text-muted small mt-1">{{ (task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'travel' || task.applicationType === 'holiday_travel') ? '填寫後表示此筆申請已撥款' : '填寫後表示退款已完成' }}</div>
+                      <div class="text-muted small mt-1">{{ (task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'travel' || task.applicationType === 'holiday_travel' || task.applicationType === 'travel_payment') ? '填寫後表示此筆申請已撥款' : '填寫後表示退款已完成' }}</div>
                     </div>
                     @if (task.applicationType === 'write_off' || task.applicationType === 'travel_write_off') {
                       <div>
@@ -1122,7 +1232,7 @@
                   <p class="text-muted small mb-3">
                     {{ task.applicationType === 'write_off'
                       ? '此沖銷申請已核准，點擊下方按鈕可結案關閉關聯的預支申請。'
-                      : '此沖銷申請已核准，點擊下方按鈕可結案關閉關聯的出差申請。' }}
+                      : '此沖銷申請已核准，點擊下方按鈕可結案關閉關聯的出差預支申請。' }}
                   </p>
                   <button type="button" class="btn btn-sm btn-primary" [disabled]="closeCaseLoading()" (click)="closeCase(task)">
                     @if (closeCaseLoading()) {
@@ -1138,7 +1248,7 @@
                   <svg class="sa-icon" style="width:16px;height:16px;stroke:currentColor">
                     <use href="/assets/icons/sprite.svg#check-circle"></use>
                   </svg>
-                  {{ task.applicationType === 'write_off' ? '預支申請已結案' : '出差申請已結案' }}
+                  {{ task.applicationType === 'write_off' ? '預支申請已結案' : '出差預支申請已結案' }}
                 </div>
               }
               @if (task.reviewNote) {
@@ -1199,6 +1309,20 @@
                         <use href="/assets/icons/sprite.svg#printer"></use>
                       </svg>
                       列印出差沖銷單
+                    }
+                  </button>
+                }
+                @if (task.applicationType === 'travel_payment' && task.travelPaymentDetail && task.status === 'approved') {
+                  <button type="button" class="btn btn-outline-secondary inline-flex items-center gap-2"
+                          [disabled]="travelPaymentPdfService.pdfLoading()" (click)="printTravelPaymentPdf(task)">
+                    @if (travelPaymentPdfService.pdfLoading()) {
+                      <span class="inline-block w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin"></span>
+                      產生中…
+                    } @else {
+                      <svg class="sa-icon" style="width:16px;height:16px;stroke:currentColor">
+                        <use href="/assets/icons/sprite.svg#printer"></use>
+                      </svg>
+                      列印出差請款單
                     }
                   </button>
                 }

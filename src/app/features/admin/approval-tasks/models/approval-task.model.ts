@@ -1,6 +1,7 @@
 import {PaymentType, InvoiceItem} from '../../payment-requests/models/payment-request.model';
 import {LeaveType, LEAVE_TYPE_LABELS} from '../../leave-requests/models/leave-request.model';
 import {ApplicationType, APPLICATION_TYPE_LABELS, APPLICATION_TYPE_CLASSES} from '../../approvals/models/approval.model';
+import {TravelPaymentRequestItem} from '../../travel-payment-requests/models/travel-payment-request.model';
 
 export type TaskStatus = 'pending' | 'approved' | 'rejected' | 'returned';
 
@@ -232,6 +233,21 @@ export interface TravelWriteOffTaskDetail {
   travelRefundedAmount?: number;
 }
 
+export interface TravelPaymentTaskDetail {
+  travelPaymentRequestId: number;
+  destination: string;
+  startDate: Date;
+  endDate: Date;
+  grandTotal: number;
+  purpose: string;
+  projectCode?: string;
+  projectName?: string;
+  estimatedPaymentDate?: string;
+  paidAt?: string;
+  items: TravelPaymentRequestItem[];
+  paidBySignatureUrl?: string;
+}
+
 // ── ApprovalRecord ───────────────────────────────────────────────────────────
 
 export interface ApprovalRecord {
@@ -265,6 +281,7 @@ export interface ApprovalTask {
   advanceDetail?: AdvanceTaskDetail;
   writeOffDetail?: WriteOffTaskDetail;
   travelWriteOffDetail?: TravelWriteOffTaskDetail;
+  travelPaymentDetail?: TravelPaymentTaskDetail;
   approvalRecords: ApprovalRecord[];
   submittedBySignatureUrl?: string;  // 申請人簽名檔 URL
 }

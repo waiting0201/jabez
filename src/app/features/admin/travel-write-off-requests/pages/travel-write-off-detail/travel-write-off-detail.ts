@@ -56,7 +56,7 @@ export class TravelWriteOffDetail implements OnInit {
   submit() {
     const r = this.request();
     if (!r) return;
-    if (confirm('確定要送出出差沖銷申請嗎？送出後將進入簽核流程。')) {
+    if (confirm('確定要送出出差預支沖銷申請嗎？送出後將進入簽核流程。')) {
       this.submitting.set(true);
       this.errorMsg.set('');
       this.service.submit(r.id).subscribe({
@@ -86,7 +86,7 @@ export class TravelWriteOffDetail implements OnInit {
   delete() {
     const r = this.request();
     if (!r) return;
-    if (confirm('確定要刪除此出差沖銷申請嗎？此操作無法復原。')) {
+    if (confirm('確定要刪除此出差預支沖銷申請嗎？此操作無法復原。')) {
       this.service.delete(r.id).subscribe({
         next: () => this.router.navigate(['/admin/travel-write-off-requests']),
         error: (err: HttpErrorResponse) => this.errorMsg.set(err.error?.message || '刪除失敗。'),

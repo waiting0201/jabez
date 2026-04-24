@@ -67,7 +67,7 @@ export class TravelDetail implements OnInit {
 
   deleteRequest() {
     const r = this.request();
-    if (!r || !confirm('確定要刪除此出差申請？')) return;
+    if (!r || !confirm('確定要刪除此出差預支申請？')) return;
     this.deleting.set(true);
     this.service.delete(r.id).subscribe({
       next: () => this.router.navigate(['/admin/travel-requests']),

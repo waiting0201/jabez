@@ -16,6 +16,8 @@ import {PaymentPdfService} from '../../../payment-requests/services/payment-pdf.
 import {TravelRequestService} from '../../../travel-requests/services/travel-request.service';
 import {TravelWriteOffRequestService} from '../../../travel-write-off-requests/services/travel-write-off-request.service';
 import {TravelWriteOffPdfService} from '../../../travel-write-off-requests/services/travel-write-off-pdf.service';
+import {TravelPaymentRequestService} from '../../../travel-payment-requests/services/travel-payment-request.service';
+import {TravelPaymentPdfService} from '../../../travel-payment-requests/services/travel-payment-pdf.service';
 import {ApprovalTaskService} from '../../services/approval-task.service';
 import {
   ApprovalTask, ApprovalRecord, TaskStatus,
@@ -38,9 +40,11 @@ export class ApprovalTaskReview implements OnInit {
   private writeOffService     = inject(WriteOffRequestService);
   protected writeOffPdfService = inject(WriteOffPdfService);
   protected paymentPdfService = inject(PaymentPdfService);
-  private travelService         = inject(TravelRequestService);
-  private travelWriteOffService     = inject(TravelWriteOffRequestService);
-  protected travelWriteOffPdfService = inject(TravelWriteOffPdfService);
+  private travelService               = inject(TravelRequestService);
+  private travelWriteOffService       = inject(TravelWriteOffRequestService);
+  protected travelWriteOffPdfService  = inject(TravelWriteOffPdfService);
+  private travelPaymentService        = inject(TravelPaymentRequestService);
+  protected travelPaymentPdfService   = inject(TravelPaymentPdfService);
   private auth              = inject(AuthService);
   private route             = inject(ActivatedRoute);
   private router            = inject(Router);
@@ -131,6 +135,10 @@ export class ApprovalTaskReview implements OnInit {
         if (task.travelDetail) {
           this.paymentDateForm.estimatedPaymentDate = task.travelDetail.estimatedPaymentDate?.toString().slice(0, 10) ?? '';
           this.paymentDateForm.paidAt = task.travelDetail.paidAt?.toString().slice(0, 10) ?? '';
+        }
+        if (task.travelPaymentDetail) {
+          this.paymentDateForm.estimatedPaymentDate = task.travelPaymentDetail.estimatedPaymentDate?.toString().slice(0, 10) ?? '';
+          this.paymentDateForm.paidAt = task.travelPaymentDetail.paidAt?.toString().slice(0, 10) ?? '';
         }
         if (task.writeOffDetail) {
           this.paymentDateForm.estimatedPaymentDate = task.writeOffDetail.estimatedRefundDate?.toString().slice(0, 10) ?? '';
@@ -255,7 +263,16 @@ export class ApprovalTaskReview implements OnInit {
 
     let update$: Observable<any>;
     let successMsg: string;
-    if (task.travelWriteOffDetail) {
+    if (task.travelPaymentDetail) {
+      update$ = this.travelPaymentService.updatePaymentDate(
+        task.travelPaymentDetail.travelPaymentRequestId,
+        {
+          estimatedPaymentDate: estimatedPaymentDate || undefined,
+          paidAt: paidAt || undefined,
+        },
+      );
+      successMsg = '撥款日期已更新。';
+    } else if (task.travelWriteOffDetail) {
       // 出差沖銷：更新關聯的出差申請退款日與退款金額
       update$ = this.travelService.updatePaymentDate(
         task.travelWriteOffDetail.travelRequestId,
@@ -362,6 +379,28 @@ export class ApprovalTaskReview implements OnInit {
       },
       error: () => {
         this.errorMsg.set('載入預支沖銷申請資料失敗，無法匯出 PDF。');
+      },
+    });
+  }
+
+  /** 列印出差請款申請表 PDF */
+  printTravelPaymentPdf(task: ApprovalTask) {
+    if (!task.travelPaymentDetail || task.status !== 'approved') return;
+    this.travelPaymentService.getById(task.travelPaymentDetail.travelPaymentRequestId).subscribe({
+      next: r => {
+        this.travelPaymentPdfService.printTravelPaymentRequest(
+          r,
+          task.submittedBy,
+          task.approvalRecords ?? [],
+          task.flow,
+          task.submittedBySignatureUrl,
+          undefined,
+          task.travelPaymentDetail?.paidAt,
+          task.travelPaymentDetail?.paidBySignatureUrl,
+        );
+      },
+      error: () => {
+        this.errorMsg.set('載入出差請款申請資料失敗，無法匯出 PDF。');
       },
     });
   }

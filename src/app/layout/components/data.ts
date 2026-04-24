@@ -41,21 +41,27 @@ export const menuItems: MenuItemType[] = [
   },
   {
     icon: '/assets/icons/sprite.svg#map-pin',
-    label: '出差申請',
+    label: '出差請款申請',
+    url: '/admin/travel-payment-requests',
+    requiredPermission: 'travel-payment-requests:read',
+  },
+  {
+    icon: '/assets/icons/sprite.svg#map-pin',
+    label: '出差預支申請',
     url: '/admin/travel-requests',
     requiredPermission: 'travel-requests:read',
+  },
+  {
+    icon: '/assets/icons/sprite.svg#map-pin',
+    label: '出差預支沖銷申請',
+    url: '/admin/travel-write-off-requests',
+    requiredPermission: 'travel-write-off-requests:read',
   },
   {
     icon: '/assets/icons/sprite.svg#sun',
     label: '假日執行活動申請',
     url: '/admin/holiday-travel-requests',
     requiredPermission: 'holiday-travel-requests:read',
-  },
-  {
-    icon: '/assets/icons/sprite.svg#map-pin',
-    label: '出差沖銷申請',
-    url: '/admin/travel-write-off-requests',
-    requiredPermission: 'travel-write-off-requests:read',
   },
   {
     icon: '/assets/icons/sprite.svg#zap',

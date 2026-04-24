@@ -96,22 +96,28 @@ export const ADMIN_ROUTES: Routes = [
   {path: 'write-off-requests/:id/edit',  component: WriteOffForm,   canActivate: [permissionGuard], data: {title: '編輯沖銷申請',   permission: 'write-off-requests:write'}},
   {path: 'write-off-requests/:id',       component: WriteOffDetail, canActivate: [permissionGuard], data: {title: '沖銷申請詳情',   permission: 'write-off-requests:read'}},
 
-  // 出差沖銷申請
-  {path: 'travel-write-off-requests',           component: TravelWriteOffList,   canActivate: [permissionGuard], data: {title: '出差沖銷申請',       permission: 'travel-write-off-requests:read'}},
-  {path: 'travel-write-off-requests/new',       component: TravelWriteOffForm,   canActivate: [permissionGuard], data: {title: '新增出差沖銷申請',   permission: 'travel-write-off-requests:write'}},
-  {path: 'travel-write-off-requests/:id/edit',  component: TravelWriteOffForm,   canActivate: [permissionGuard], data: {title: '編輯出差沖銷申請',   permission: 'travel-write-off-requests:write'}},
-  {path: 'travel-write-off-requests/:id',       component: TravelWriteOffDetail, canActivate: [permissionGuard], data: {title: '出差沖銷申請詳情',   permission: 'travel-write-off-requests:read'}},
+  // 出差預支沖銷申請
+  {path: 'travel-write-off-requests',           component: TravelWriteOffList,   canActivate: [permissionGuard], data: {title: '出差預支沖銷申請',       permission: 'travel-write-off-requests:read'}},
+  {path: 'travel-write-off-requests/new',       component: TravelWriteOffForm,   canActivate: [permissionGuard], data: {title: '新增出差預支沖銷申請',   permission: 'travel-write-off-requests:write'}},
+  {path: 'travel-write-off-requests/:id/edit',  component: TravelWriteOffForm,   canActivate: [permissionGuard], data: {title: '編輯出差預支沖銷申請',   permission: 'travel-write-off-requests:write'}},
+  {path: 'travel-write-off-requests/:id',       component: TravelWriteOffDetail, canActivate: [permissionGuard], data: {title: '出差預支沖銷申請詳情',   permission: 'travel-write-off-requests:read'}},
 
   // 請假申請
   {path: 'leave-requests',             component: LeaveRequestList, canActivate: [permissionGuard], data: {title: '請假申請',       permission: 'leave-requests:read'}},
   {path: 'leave-requests/new',         component: LeaveRequestForm, canActivate: [permissionGuard], data: {title: '新增請假申請',   permission: 'leave-requests:write'}},
   {path: 'leave-requests/:id/edit',    component: LeaveRequestForm, canActivate: [permissionGuard], data: {title: '編輯請假申請',   permission: 'leave-requests:read'}},
 
-  // 出差申請
-  {path: 'travel-requests',             component: TravelRequestList, canActivate: [permissionGuard], data: {title: '出差申請',       permission: 'travel-requests:read'}},
-  {path: 'travel-requests/new',         component: TravelRequestForm, canActivate: [permissionGuard], data: {title: '新增出差申請',   permission: 'travel-requests:write'}},
-  {path: 'travel-requests/:id/edit',    component: TravelRequestForm, canActivate: [permissionGuard], data: {title: '編輯出差申請',   permission: 'travel-requests:read'}},
-  {path: 'travel-requests/:id',         component: TravelDetail,      canActivate: [permissionGuard], data: {title: '出差申請詳情',   permission: 'travel-requests:read'}},
+  // 出差預支申請
+  {path: 'travel-requests',             component: TravelRequestList, canActivate: [permissionGuard], data: {title: '出差預支申請',       permission: 'travel-requests:read'}},
+  {path: 'travel-requests/new',         component: TravelRequestForm, canActivate: [permissionGuard], data: {title: '新增出差預支申請',   permission: 'travel-requests:write'}},
+  {path: 'travel-requests/:id/edit',    component: TravelRequestForm, canActivate: [permissionGuard], data: {title: '編輯出差預支申請',   permission: 'travel-requests:read'}},
+  {path: 'travel-requests/:id',         component: TravelDetail,      canActivate: [permissionGuard], data: {title: '出差預支申請詳情',   permission: 'travel-requests:read'}},
+
+  // 出差請款申請
+  {path: 'travel-payment-requests',          canActivate: [permissionGuard], data: {title: '出差請款申請',     permission: 'travel-payment-requests:read'  }, loadComponent: () => import('./travel-payment-requests/pages/travel-payment-list/travel-payment-list').then(m => m.TravelPaymentList)},
+  {path: 'travel-payment-requests/new',      canActivate: [permissionGuard], data: {title: '新增出差請款申請', permission: 'travel-payment-requests:write' }, loadComponent: () => import('./travel-payment-requests/pages/travel-payment-form/travel-payment-form').then(m => m.TravelPaymentForm)},
+  {path: 'travel-payment-requests/:id/edit', canActivate: [permissionGuard], data: {title: '編輯出差請款申請', permission: 'travel-payment-requests:read'  }, loadComponent: () => import('./travel-payment-requests/pages/travel-payment-form/travel-payment-form').then(m => m.TravelPaymentForm)},
+  {path: 'travel-payment-requests/:id',      canActivate: [permissionGuard], data: {title: '出差請款申請詳情', permission: 'travel-payment-requests:read'  }, loadComponent: () => import('./travel-payment-requests/pages/travel-payment-detail/travel-payment-detail').then(m => m.TravelPaymentDetail)},
 
   // 假日執行活動申請
   {path: 'holiday-travel-requests',          canActivate: [permissionGuard], data: {title: '假日執行活動申請',       permission: 'holiday-travel-requests:read'}, loadComponent: () => import('./holiday-travel-requests/pages/holiday-travel-request-list/holiday-travel-request-list').then(m => m.HolidayTravelRequestList)},
