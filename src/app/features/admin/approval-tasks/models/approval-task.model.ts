@@ -93,6 +93,8 @@ export interface TravelTaskDetail {
   purpose: string;
   projectCode?: string;
   isHolidayTravel: boolean;
+  /** 假日天數（僅假日執行活動使用） */
+  holidayDays?: number;
   items: TravelTaskDetailItem[];
   /** 預計撥款日 */
   estimatedPaymentDate?: string;

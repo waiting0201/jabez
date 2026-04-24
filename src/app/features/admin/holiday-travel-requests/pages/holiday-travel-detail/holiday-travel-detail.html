@@ -93,10 +93,6 @@
               <div class="fw-500 font-monospace">{{ r.projectCode }}{{ r.projectName ? ' - ' + r.projectName : '' }}</div>
             </div>
           }
-          <div class="col-6 col-md-3">
-            <div class="text-muted small">金額合計</div>
-            <div class="fw-600 text-lg">{{ r.grandTotal | number:'1.0-0' }}</div>
-          </div>
         </div>
 
         <div class="row g-3 mb-0">
@@ -127,105 +123,6 @@
       </div>
     }
 
-    <!-- 費用明細 -->
-    @if (r.items && r.items.length > 0) {
-      <div class="card border-0 shadow-sm mb-6">
-        <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
-          <svg class="sa-icon text-primary" style="stroke: currentColor">
-            <use href="/assets/icons/sprite.svg#list"></use>
-          </svg>
-          費用明細
-        </div>
-        <div class="card-body p-0">
-          <div class="table-responsive">
-            <table class="table table-sm mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th style="width:40px"></th>
-                  <th>分類</th>
-                  <th>項次</th>
-                  <th>項目說明</th>
-                  <th class="text-right">單價</th>
-                  <th>數量/單位</th>
-                  <th class="text-right">總價</th>
-                  <th>發票號碼</th>
-                  <th>備註</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (item of r.items; track item.id) {
-                  <tr>
-                    <td class="align-middle text-center">
-                      @if (item.fileUrl) {
-                        <button type="button" class="btn btn-sm btn-ghost-secondary p-1"
-                                (click)="openPreview(item.fileName || '發票', item.fileUrl)"
-                                title="{{ item.fileName || '發票' }}">
-                          <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
-                        </button>
-                      }
-                    </td>
-                    <td class="small">{{ item.category || '—' }}</td>
-                    <td class="small">{{ item.seqNo }}</td>
-                    <td class="small">{{ item.itemName }}</td>
-                    <td class="text-right small">{{ item.unitPrice | number:'1.0-0' }}</td>
-                    <td class="small">{{ item.quantity }}</td>
-                    <td class="text-right small fw-500">{{ item.totalPrice | number:'1.0-0' }}</td>
-                    <td class="small font-monospace">{{ item.invoiceNo || '—' }}</td>
-                    <td class="small text-muted">{{ item.note || '—' }}</td>
-                  </tr>
-                }
-              </tbody>
-              <tfoot>
-                <tr class="table-light">
-                  <td colspan="6" class="text-right fw-500 small">合計</td>
-                  <td class="text-right fw-600">{{ r.grandTotal | number:'1.0-0' }}</td>
-                  <td colspan="2"></td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-      </div>
-    }
-
-    <!-- 撥款資訊（已核准後顯示） -->
-    @if (r.estimatedPaymentDate || r.paidAt) {
-      <div class="card border-0 shadow-sm mb-6">
-        <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
-          <svg class="sa-icon text-muted" style="stroke: currentColor">
-            <use href="/assets/icons/sprite.svg#credit-card"></use>
-          </svg>
-          撥款資訊
-        </div>
-        <div class="card-body">
-          <div class="row g-3">
-            @if (r.estimatedPaymentDate) {
-              <div class="col-6 col-md-3">
-                <div class="text-muted small">預計撥款日</div>
-                <div class="fw-500">{{ r.estimatedPaymentDate | date:'yyyy-MM-dd' }}</div>
-              </div>
-            }
-            @if (r.paidAt) {
-              <div class="col-6 col-md-3">
-                <div class="text-muted small">撥款日</div>
-                <div class="flex items-center gap-2">
-                  <svg class="sa-icon" style="color: var(--green); stroke: currentColor; width: 16px; height: 16px">
-                    <use href="/assets/icons/sprite.svg#check-circle"></use>
-                  </svg>
-                  <span class="fw-500" style="color: var(--green)">{{ r.paidAt | date:'yyyy-MM-dd' }}</span>
-                </div>
-              </div>
-            } @else if (r.estimatedPaymentDate) {
-              <div class="col-6 col-md-3">
-                <div class="text-muted small">撥款日</div>
-                <span class="text-muted small">尚未撥款</span>
-              </div>
-            }
-          </div>
-        </div>
-      </div>
-    }
-
     <!-- 簽核流程時間軸 -->
     @if (approvalTask(); as task) {
       <app-approval-timeline
@@ -242,7 +139,3 @@
     <div class="text-center py-6 text-muted">載入中…</div>
   }
 </div>
-
-@if (previewFile) {
-  <app-file-preview-modal [file]="previewFile" (closed)="closePreview()" />
-}

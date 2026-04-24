@@ -26,36 +26,12 @@ export interface DesignatedReviewer {
   comment?: string;
 }
 
-/** 費用明細（含發票上傳資訊） */
-export interface HolidayTravelRequestItem {
-  id?: number;
-  category: string;
-  seqNo: number;
-  itemName: string;
-  unitPrice: number;
-  quantity: string;
-  totalPrice: number;
-  note?: string;
-  sortOrder: number;
-  /** 發票號碼（OCR 自動填入） */
-  invoiceNo?: string;
-  /** 發票日期 */
-  invoiceDate?: string;
-  /** 上傳的檔案名稱 */
-  fileName?: string;
-  /** 已存檔的 API 存取 URL */
-  fileUrl?: string;
-}
-
 /** 參與執行人員 */
 export interface TravelParticipant {
   userId: string;
   userName?: string;
   sortOrder: number;
 }
-
-/** 常用分類選項 */
-export const ITEM_CATEGORIES = ['交通費', '住宿費', '餐費', '雜支'] as const;
 
 export interface HolidayTravelRequest {
   id: number;
@@ -67,7 +43,6 @@ export interface HolidayTravelRequest {
   startDate: Date;
   /** 結束日期（DB 欄位：endDate） */
   endDate: Date;
-  grandTotal: number;
   /** 活動主旨及內容（DB 欄位：purpose） */
   purpose: string;
   projectId?: number;
@@ -79,12 +54,7 @@ export interface HolidayTravelRequest {
   participants?: TravelParticipant[];
   approvalStatus: ApprovalStatus;
   designatedReviewers?: DesignatedReviewer[];
-  items: HolidayTravelRequestItem[];
   createdAt: Date;
   reviewedAt?: Date;
   reviewNote?: string;
-  /** 預計撥款日 */
-  estimatedPaymentDate?: string;
-  /** 實際撥款日 */
-  paidAt?: string;
 }

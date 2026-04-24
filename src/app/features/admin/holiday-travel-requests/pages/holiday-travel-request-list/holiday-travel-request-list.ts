@@ -1,6 +1,6 @@
 import {Component, computed, inject, signal} from '@angular/core';
 import {RouterLink} from '@angular/router';
-import {DatePipe, DecimalPipe} from '@angular/common';
+import {DatePipe} from '@angular/common';
 import {toSignal, toObservable} from '@angular/core/rxjs-interop';
 import {switchMap} from 'rxjs/operators';
 import {HolidayTravelRequestService} from '../../services/holiday-travel-request.service';
@@ -13,7 +13,7 @@ import {PagedResult} from '../../../../../shared/models/paged-result.model';
 @Component({
   selector: 'app-holiday-travel-request-list',
   templateUrl: './holiday-travel-request-list.html',
-  imports: [RouterLink, DatePipe, DecimalPipe],
+  imports: [RouterLink, DatePipe],
 })
 export class HolidayTravelRequestList {
   private service = inject(HolidayTravelRequestService);

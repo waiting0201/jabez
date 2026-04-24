@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HolidayTravelRequest } from '../models/holiday-travel-request.model';
 import { ApprovalRecord, ApprovalFlow } from '../../approval-tasks/models/approval-task.model';
-import { PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, fmtDate, fmt } from '../../../../shared/services/pdf-core.service';
+import { PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, fmtDate } from '../../../../shared/services/pdf-core.service';
 
 @Injectable({ providedIn: 'root' })
 export class HolidayTravelPdfService {
@@ -16,15 +16,11 @@ export class HolidayTravelPdfService {
     approvalRecords: ApprovalRecord[] = [],
     flow?: ApprovalFlow,
     submittedBySignatureUrl?: string,
-    reviewerSignatureUrls?: Map<string, string>,
-    paidAt?: string,
-    paidBySignatureUrl?: string,
   ) {
     this.pdfLoading.set(true);
     try {
-      const [{ default: jsPDF }, { default: autoTable }, fonts] = await Promise.all([
+      const [{ default: jsPDF }, fonts] = await Promise.all([
         import('jspdf'),
-        import('jspdf-autotable'),
         this.pdfCore.loadFonts(),
       ]);
 
@@ -55,7 +51,7 @@ export class HolidayTravelPdfService {
       y += 8;
       doc.setFontSize(16);
       doc.setTextColor(...CIS.forest);
-      doc.text('假 日 出 差 申 請 單', pw / 2, y, { align: 'center' });
+      doc.text('假 日 執 行 活 動 申 請 單', pw / 2, y, { align: 'center' });
 
       // ── 表頭資訊 ──
       y += 10;
@@ -87,7 +83,6 @@ export class HolidayTravelPdfService {
       if (r.projectCode || r.projectName) {
         lv('關聯專案：', `${r.projectCode ?? ''}${r.projectName ? ' - ' + r.projectName : ''}`, mx, y, true);
       }
-      lv('金額合計：', `NT$ ${fmt(r.grandTotal)}`, pw - mx - 60, y, true);
 
       y += 6;
       lv('活動主旨及內容：', r.purpose || '', mx, y);
@@ -102,81 +97,13 @@ export class HolidayTravelPdfService {
         lv('參與執行人員：', names, mx, y);
       }
 
-      // ── 費用明細表格 ──
-      y += 8;
-      const items = r.items || [];
-
-      const bodyRows: any[][] = [];
-      let lastCategory = '';
-      for (const item of items) {
-        const cat = item.category === lastCategory ? '' : item.category;
-        lastCategory = item.category;
-        bodyRows.push([
-          cat,
-          item.seqNo.toString(),
-          item.itemName,
-          `${fmt(item.unitPrice)}元`,
-          item.quantity,
-          fmt(item.totalPrice),
-          item.invoiceNo || '',
-          item.note || '',
-        ]);
-      }
-
-      // 合計列
-      bodyRows.push([
-        { content: '合計', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } },
-        { content: fmt(r.grandTotal), styles: { fontStyle: 'bold', halign: 'right' } },
-        '',
-        '',
-      ]);
-
-      autoTable(doc, {
-        startY: y,
-        margin: { left: mx, right: mx },
-        theme: 'grid',
-        styles: {
-          font: F, fontSize: 8.5,
-          textColor: [...CIS.textPrimary],
-          lineColor: [...CIS.border],
-          lineWidth: 0.3,
-          cellPadding: { top: 2.5, bottom: 2.5, left: 3, right: 3 },
-        },
-        headStyles: {
-          font: F, fillColor: [...CIS.forest], textColor: 255,
-          fontSize: 9, fontStyle: 'bold', halign: 'center',
-          cellPadding: { top: 3, bottom: 3, left: 3, right: 3 },
-        },
-        columnStyles: {
-          0: { cellWidth: cw * 0.08, halign: 'center' },  // 分類
-          1: { cellWidth: cw * 0.05, halign: 'center' },  // 項次
-          2: { cellWidth: cw * 0.24 },                     // 項目說明
-          3: { cellWidth: cw * 0.10, halign: 'right' },    // 單價
-          4: { cellWidth: cw * 0.09, halign: 'center' },   // 數量
-          5: { cellWidth: cw * 0.10, halign: 'right' },    // 總價
-          6: { cellWidth: cw * 0.14, halign: 'center' },   // 發票號碼
-          7: { cellWidth: cw * 0.20 },                     // 備註
-        },
-        head: [['分類', '項次', '項目說明', '單價', '數量/單位', '總價', '發票號碼', '備註']],
-        body: bodyRows,
-      });
-
-      // ── 預計撥款日 / 撥款日 ──
-      const tableEndY = (doc as any).lastAutoTable.finalY;
-      y = tableEndY + 8;
-      doc.setFont(F, 'normal');
-      doc.setFontSize(10);
-      doc.setTextColor(...CIS.textPrimary);
-      lv('預計撥款日：', r.estimatedPaymentDate ? fmtDT(r.estimatedPaymentDate).split(' ')[0] : '—', mx, y, true);
-      lv('撥  款  日：', r.paidAt ? fmtDT(r.paidAt).split(' ')[0] : '—', pw - mx - 55, y, true);
-
       // ── 簽名欄 ──
-      y += 10;
+      y += 16;
 
       if (y + 35 > ph - 15) { doc.addPage(); y = 20; }
 
       const submitDate = r.createdAt ? fmtDT(r.createdAt) : '';
-      const signBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, submitDate, '申請者', paidAt, paidBySignatureUrl);
+      const signBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, submitDate, '申請者');
       const sigMap = await this.pdfCore.loadSignatureImages(signBlocks);
       this.pdfCore.drawSignatureBlock(doc, mx, pw, cw, y, signBlocks, sigMap);
 
@@ -201,8 +128,6 @@ export class HolidayTravelPdfService {
     submittedBySignatureUrl: string | undefined,
     submitDate: string,
     applicantLabel: string,
-    paidAt?: string,
-    paidBySignatureUrl?: string,
   ): SignBlock[] {
     const blocks: SignBlock[] = [];
 
@@ -232,23 +157,15 @@ export class HolidayTravelPdfService {
     }
 
     // 固定簽名欄標籤順序
-    const fixedLabels = ['總監核准', '財務部簽核', '會計', '出納', '部門主管'];
+    const fixedLabels = ['總監核准', '財務部簽核', '會計', '部門主管'];
 
     for (const label of fixedLabels) {
-      if (label === '出納') {
-        blocks.push({
-          label,
-          signatureUrl: paidBySignatureUrl,
-          date: paidAt ? fmtDT(paidAt) : '',
-        });
-      } else {
-        const rec = labelRecordMap.get(label);
-        blocks.push({
-          label,
-          signatureUrl: rec?.reviewerSignatureUrl,
-          date: rec?.reviewedAt ? fmtDT(rec.reviewedAt) : '',
-        });
-      }
+      const rec = labelRecordMap.get(label);
+      blocks.push({
+        label,
+        signatureUrl: rec?.reviewerSignatureUrl,
+        date: rec?.reviewedAt ? fmtDT(rec.reviewedAt) : '',
+      });
     }
 
     // 申請者（最右邊）

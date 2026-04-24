@@ -22,7 +22,6 @@
               <th>開始日期</th>
               <th>結束日期</th>
               <th class="text-right">假日天數</th>
-              <th class="text-right">金額</th>
               <th class="hidden md:table-cell">活動主旨</th>
               <th class="hidden lg:table-cell">專案</th>
               <th>狀態</th>
@@ -42,7 +41,6 @@
                     <span class="text-muted">—</span>
                   }
                 </td>
-                <td class="text-right fw-500">{{ r.grandTotal | number:'1.0-0' }}</td>
                 <td class="text-muted small hidden md:table-cell">{{ r.purpose }}</td>
                 <td class="font-monospace small hidden lg:table-cell">{{ r.projectCode || '—' }}</td>
                 <td>
@@ -69,7 +67,7 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="9" class="text-center text-muted py-4">尚無假日執行活動申請。</td>
+                <td colspan="8" class="text-center text-muted py-4">尚無假日執行活動申請。</td>
               </tr>
             }
           </tbody>
