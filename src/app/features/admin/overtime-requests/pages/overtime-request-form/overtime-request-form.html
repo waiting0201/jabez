@@ -78,6 +78,8 @@
                 <p class="form-control-plaintext fw-500 font-monospace mb-0">{{ displayProjectLabels.join(', ') || '—' }}</p>
               } @else if (loadingProjects) {
                 <p class="text-muted small mb-0">載入中…</p>
+              } @else if (projects.length === 0) {
+                <p class="text-muted small mb-0">您目前可申請的專案清單為空，請聯絡主管或確認部門設定。</p>
               } @else {
                 <div class="flex flex-wrap gap-2">
                   @for (p of projects; track p.id) {

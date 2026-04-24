@@ -169,6 +169,10 @@ export class ProjectForm implements OnInit {
   submit() {
     if (this.form.invalid || this.isClosed) return;
     const v = this.form.getRawValue();
+    if (!v.departmentId) {
+      this.errorMsg.set('請選擇部門。');
+      return;
+    }
     if (v.status === 'closed' && !confirm('確定要將此專案設為「已結案」嗎？結案後將無法再修改或刪除。')) return;
     const dept = this.departments.find(d => d.id === v.departmentId);
     const schedules = this.scheduleControls.map((g, idx) => ({
@@ -189,7 +193,7 @@ export class ProjectForm implements OnInit {
       status:           v.status! as ProjectStatus,
       startDate:        v.startDate!,
       endDate:          v.endDate || undefined,
-      departmentId:     v.departmentId ?? undefined,
+      departmentId:     v.departmentId!,
       departmentName:   dept?.name,
       receivedAmount:   v.receivedAmount ?? undefined,
       contractAmount:   v.contractAmount ?? undefined,

@@ -45,7 +45,12 @@
                 <td class="text-muted hidden sm:table-cell"><code>{{ dept.code ?? '—' }}</code></td>
                 <td class="text-muted hidden md:table-cell">{{ dept.description ?? '—' }}</td>
                 <td>
-                  <span class="badge bg-info">{{ dept.employeeCount }} 人</span>
+                  <div class="flex flex-wrap items-center gap-1">
+                    <span class="badge bg-info">{{ dept.employeeCount }} 人</span>
+                    @if (dept.canViewSiblings) {
+                      <span class="badge bg-success" title="成員可見同 ParentId 兄弟部門的專案">同層可見</span>
+                    }
+                  </div>
                 </td>
                 <td class="text-right" style="white-space: nowrap">
                   <div class="flex justify-end gap-1">

@@ -54,9 +54,20 @@
               <div class="text-muted small mt-1">數字越小排越前面。</div>
             </div>
 
-            <div class="mb-0">
+            <div class="mb-4">
               <label class="form-label fw-500">描述</label>
               <textarea class="form-control" formControlName="description" rows="2" placeholder="選填說明"></textarea>
+            </div>
+
+            <div class="mb-0">
+              <label class="form-label fw-500">專案可見性</label>
+              <div class="form-check mt-1">
+                <input type="checkbox" class="form-check-input" id="canViewSiblings" formControlName="canViewSiblings">
+                <label class="form-check-label" for="canViewSiblings">
+                  同層部門可見（成員可在申請表單下拉看到同 ParentId 的兄弟部門專案）
+                </label>
+              </div>
+              <div class="text-muted small mt-1">未勾選時，成員僅可見自己部門的專案。</div>
             </div>
 
           </div>

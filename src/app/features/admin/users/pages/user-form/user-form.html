@@ -98,13 +98,16 @@
           <div class="card-body">
             <div class="row g-3">
               <div class="col-12 col-md-6">
-                <label class="form-label fw-500">部門</label>
+                <label class="form-label fw-500">部門 <span class="text-danger">*</span></label>
                 <select class="form-select" formControlName="departmentId">
-                  <option [ngValue]="null">— 未指定 —</option>
+                  <option [ngValue]="null">— 請選擇部門 —</option>
                   @for (dept of departments(); track dept.id) {
                     <option [ngValue]="dept.id">{{ dept.name }}</option>
                   }
                 </select>
+                @if (form.get('departmentId')?.invalid && form.get('departmentId')?.touched) {
+                  <div class="text-danger small mt-1">請設定部門。</div>
+                }
               </div>
               <div class="col-12 col-md-6">
                 <label class="form-label fw-500">職稱</label>

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/shared/components/background-animation.ts", "background-animation.ts"],
+  "sourcesContent": ["\n    #net {\n      position: absolute;\n      top: 0;\n      left: 0;\n      width: 100%;\n      height: 100%;\n    }\n  ", "#net {\n  position: absolute;\n  top: 0;\n  left: 0;\n  width: 100%;\n  height: 100%;\n}\n/*# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJmaWxlOi8vL1VzZXJzL3RpbS93ZWJhcHBzL0phYmV6L0FkbWluL3NyYy9hcHAvc2hhcmVkL2NvbXBvbmVudHMvYmFja2dyb3VuZC1hbmltYXRpb24udHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6IkFBQ0k7RUFDRTtFQUNBO0VBQ0E7RUFDQTtFQUNBIiwic291cmNlc0NvbnRlbnQiOlsiXG4gICAgI25ldCB7XG4gICAgICBwb3NpdGlvbjogYWJzb2x1dGU7XG4gICAgICB0b3A6IDA7XG4gICAgICBsZWZ0OiAwO1xuICAgICAgd2lkdGg6IDEwMCU7XG4gICAgICBoZWlnaHQ6IDEwMCU7XG4gICAgfVxuICAiXX0= */"],
+  "mappings": ";AACI,CAAA;AACE,YAAA;AACA,OAAA;AACA,QAAA;AACA,SAAA;AACA,UAAA;ACAN;",
+  "names": []
+}

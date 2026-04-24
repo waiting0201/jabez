@@ -73,7 +73,7 @@ export class UserForm implements OnInit {
     password:     ['', Validators.minLength(6)],
     roleId:       ['' as string],
     status:       ['active' as UserStatus, Validators.required],
-    departmentId: [null as number | null],
+    departmentId: [null as number | null, Validators.required],
     jobTitleId:   [null as number | null],
     hireDate:     ['' as string],
     resignDate:   ['' as string],

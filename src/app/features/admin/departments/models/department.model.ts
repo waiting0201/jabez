@@ -6,6 +6,7 @@ export interface Department {
   parentId?: number;
   parentName?: string;
   sortOrder: number;
+  canViewSiblings: boolean;
   employeeCount: number;
   createdAt: Date;
 }

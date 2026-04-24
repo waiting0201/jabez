@@ -86,6 +86,9 @@
                       <option [ngValue]="p.id">{{ p.code }} - {{ p.name }}{{ p.departmentName ? '（' + p.departmentName + '）' : '' }}</option>
                     }
                   </select>
+                  @if (!loadingProjects && projects.length === 0) {
+                    <div class="text-muted small mt-1">您目前可申請的專案清單為空，請聯絡主管或確認部門設定。</div>
+                  }
                   @if (form.get('projectId')?.invalid && form.get('projectId')?.touched) {
                     <div class="text-danger small mt-1">請選擇專案。</div>
                   }

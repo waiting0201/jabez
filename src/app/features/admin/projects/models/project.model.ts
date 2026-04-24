@@ -19,7 +19,7 @@ export interface Project {
   status: ProjectStatus;
   startDate: string;
   endDate?: string;
-  departmentId?: number;
+  departmentId: number;
   departmentName?: string;
   receivedAmount?: number;    // 實收金額（原 budgetAmount）
   contractAmount?: number;    // 契約金額（原 actualAmount）
