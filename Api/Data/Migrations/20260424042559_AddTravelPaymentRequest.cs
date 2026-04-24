@@ -145,30 +145,33 @@ namespace Jabez.Api.Data.Migrations
                     { 53, 10, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), 2, 7, "填入預計撥款日，核決及撥款後，填入撥款日", 4 }
                 });
 
-            migrationBuilder.InsertData(
-                table: "RolePermissions",
-                columns: new[] { "PermissionId", "RoleId" },
-                values: new object[,]
-                {
-                    { "68", "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4" },
-                    { "69", "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4" },
-                    { "70", "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4" },
-                    { "68", "44e48f58-1bef-441e-bb70-a624d4f97856" },
-                    { "69", "44e48f58-1bef-441e-bb70-a624d4f97856" },
-                    { "70", "44e48f58-1bef-441e-bb70-a624d4f97856" },
-                    { "68", "admin" },
-                    { "69", "admin" },
-                    { "70", "admin" },
-                    { "68", "fe015c41-d9a8-48fa-994d-5588b9c4a92b" },
-                    { "69", "fe015c41-d9a8-48fa-994d-5588b9c4a92b" },
-                    { "70", "fe015c41-d9a8-48fa-994d-5588b9c4a92b" },
-                    { "68", "manager" },
-                    { "69", "manager" },
-                    { "70", "manager" },
-                    { "68", "viewer" },
-                    { "69", "viewer" },
-                    { "70", "viewer" }
-                });
+            // 只對實際存在於 Roles 表的 RoleId 建立權限，避免不同環境（Azure SQL）因 Role GUID 差異觸發 FK 違反
+            migrationBuilder.Sql("""
+                INSERT INTO RolePermissions (PermissionId, RoleId)
+                SELECT v.PermissionId, v.RoleId
+                FROM (VALUES
+                    ('68', '3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4'),
+                    ('69', '3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4'),
+                    ('70', '3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4'),
+                    ('68', '44e48f58-1bef-441e-bb70-a624d4f97856'),
+                    ('69', '44e48f58-1bef-441e-bb70-a624d4f97856'),
+                    ('70', '44e48f58-1bef-441e-bb70-a624d4f97856'),
+                    ('68', 'admin'),
+                    ('69', 'admin'),
+                    ('70', 'admin'),
+                    ('68', 'fe015c41-d9a8-48fa-994d-5588b9c4a92b'),
+                    ('69', 'fe015c41-d9a8-48fa-994d-5588b9c4a92b'),
+                    ('70', 'fe015c41-d9a8-48fa-994d-5588b9c4a92b'),
+                    ('68', 'manager'),
+                    ('69', 'manager'),
+                    ('70', 'manager'),
+                    ('68', 'viewer'),
+                    ('69', 'viewer'),
+                    ('70', 'viewer')
+                ) AS v(PermissionId, RoleId)
+                WHERE EXISTS (SELECT 1 FROM Roles r WHERE r.Id = v.RoleId)
+                  AND NOT EXISTS (SELECT 1 FROM RolePermissions rp WHERE rp.PermissionId = v.PermissionId AND rp.RoleId = v.RoleId);
+                """);
 
             migrationBuilder.CreateIndex(
                 name: "IX_TravelPaymentRequestItems_TravelPaymentRequestId",

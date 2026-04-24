@@ -572,8 +572,8 @@ dotnet ef database update               # 套用 Migration
 | `PaymentRequest` | 請款申請 |
 | `InvoiceItem` | 請款明細（發票項目） |
 | `LeaveRequest` | 請假申請（含 BereavementRelationship 喪假親屬關係） |
-| `TravelRequest` | 出差預支申請（含 IsHolidayTravel、IsClosed 結案、GrandTotal 明細合計；事後走沖銷流程） |
-| `TravelRequestItem` | 出差預支明細（交通費、住宿費、餐費、雜支） |
+| `TravelRequest` | 出差預支申請（含 IsHolidayTravel、IsClosed 結案、GrandTotal 明細合計；事後走沖銷流程）。當 `IsHolidayTravel=true`（假日執行活動）時不含 Items 與發票明細，僅記錄活動地點/期間/參與人員 |
+| `TravelRequestItem` | 出差預支明細（交通費、住宿費、餐費、雜支）；假日執行活動不使用 |
 | `TravelPaymentRequest` | 出差請款申請（員工代墊後直接請款，無沖銷流程；含 EstimatedPaymentDate/PaidAt 撥款欄位） |
 | `TravelPaymentRequestItem` | 出差請款明細（交通費、住宿費、餐費、雜支，含發票號碼、檔案上傳） |
 | `OvertimeRequest` | 加班申請（走簽核流程） |
@@ -1024,7 +1024,7 @@ draft → pending → approved / returned / rejected
 ## 薪水計算公式（人事薪資模組）
 
 1. **日薪** = 底薪 ÷ 30（四捨五入至整數）
-2. **假日津貼** = 日薪 × 假日執行活動天數（來自該月已核准且 `IsHolidayTravel=true` 的出差申請）
+2. **假日津貼** = 日薪 × 假日執行活動天數（**上個月**歸月：以已核准假日執行活動申請的 `EndDate` 所屬月份歸月，獎金計入次月薪資。例：3 月活動 → 4 月薪資；跨月活動（如 3/30~4/2）EndDate=4/2 歸 4 月 → 5 月薪資）
 3. **勞保費 / 健保費**：根據底薪查詢勞健保級距表（向上取最近級距）
 4. **事假扣薪** = 日薪 × 事假天數（按天數扣除全額薪資）
 5. **病假扣薪** = 日薪 × 0.5 × 病假天數（按天數扣除半薪）

@@ -8,8 +8,9 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
 {
     public async Task<MonthlyPayrollDto> CalculateMonthlyPayrollAsync(int year, int month)
     {
-        var firstDay = new DateTime(year, month, 1);
-        var lastDay  = firstDay.AddMonths(1).AddDays(-1);
+        var firstDay          = new DateTime(year, month, 1);
+        var lastDay           = firstDay.AddMonths(1).AddDays(-1);
+        var prevMonthFirstDay = firstDay.AddMonths(-1);   // 假日活動獎金：歸屬於上個月 EndDate 的申請
 
         // 1. 查詢所有在職員工（有底薪、未離職或離職日在該月之後）
         const string employeeSql = """
@@ -28,8 +29,8 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             ORDER BY u.Name
             """;
 
-        // 2. 查詢該月已核准的假日執行活動天數（含參與執行人員）
-        //    使用 HolidayDays 欄位（前端填寫的假日天數），以 CTE + UNION ALL 合併申請人與參與人員
+        // 2. 查詢「上一個月」已核准的假日執行活動天數（以 EndDate 歸月，獎金計入次月薪資）
+        //    例：4 月薪資只計入 EndDate 落在 3/1~3/31 的活動；跨月活動以 EndDate 所屬月份歸屬
         const string travelSql = """
             ;WITH HolidayTravelDays AS (
                 -- 申請人的假日天數
@@ -37,7 +38,8 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 FROM TravelRequests tr
                 WHERE tr.IsHolidayTravel = 1
                   AND tr.ApprovalStatus = 'approved'
-                  AND tr.StartDate <= @LastDay AND tr.EndDate >= @FirstDay
+                  AND tr.EndDate >= @PrevMonthFirstDay
+                  AND tr.EndDate <  @CurrMonthFirstDay
                 UNION ALL
                 -- 參與執行人員的假日天數
                 SELECT p.UserId AS EmployeeId, tr.HolidayDays
@@ -45,7 +47,8 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 JOIN TravelRequests tr ON p.TravelRequestId = tr.Id
                 WHERE tr.IsHolidayTravel = 1
                   AND tr.ApprovalStatus = 'approved'
-                  AND tr.StartDate <= @LastDay AND tr.EndDate >= @FirstDay
+                  AND tr.EndDate >= @PrevMonthFirstDay
+                  AND tr.EndDate <  @CurrMonthFirstDay
             )
             SELECT EmployeeId, SUM(HolidayDays) AS TotalDays
             FROM HolidayTravelDays
@@ -91,7 +94,10 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             """;
 
         var employees = (await db.QueryAsync<dynamic>(employeeSql, new { FirstDay = firstDay })).ToList();
-        var travelDays = (await db.QueryAsync<dynamic>(travelSql, new { FirstDay = firstDay, LastDay = lastDay }))
+        var travelDays = (await db.QueryAsync<dynamic>(travelSql, new {
+                PrevMonthFirstDay = prevMonthFirstDay,
+                CurrMonthFirstDay = firstDay,
+            }))
             .ToDictionary(r => (Guid)r.EmployeeId, r => (int)r.TotalDays);
         var brackets = (await db.QueryAsync<dynamic>(bracketSql)).ToList();
         var adjustments = (await db.QueryAsync<dynamic>(adjustmentSql, new { Year = year, Month = month }))

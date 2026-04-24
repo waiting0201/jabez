@@ -150,6 +150,7 @@ public sealed record TravelTaskDetailDto(
     DateTime? PaidAt,
     DateTime? EstimatedRefundDate,
     DateTime? RefundedAt,
+    int?      HolidayDays = null,
     TravelRequestItemDto[] Items = null!,
     string?   PaidBySignatureUrl = null)
 {

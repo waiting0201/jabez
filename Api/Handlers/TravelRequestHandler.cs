@@ -32,21 +32,6 @@ public sealed class TravelRequestHandler(
     private const string ContainerName = "invoices";
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
 
-    /// <summary>假日執行活動 FormData 明細 metadata（對應前端 _buildFormData 的 items JSON）</summary>
-    private sealed record HolidayItemMeta(
-        string  Category,
-        int     SeqNo,
-        string  ItemName,
-        decimal UnitPrice,
-        string  Quantity,
-        decimal TotalPrice,
-        string? Note        = null,
-        string? InvoiceNo   = null,
-        DateTime? InvoiceDate = null,
-        string? FileName    = null,
-        string? FileUrl     = null,
-        int     FileIndex   = -1,
-        int     SortOrder   = 0);
     public async Task<IActionResult> GetAllAsync(HttpRequest req, bool isHolidayTravel = false)
     {
         var userId = await GetUserIdAsync(req);
@@ -160,7 +145,7 @@ public sealed class TravelRequestHandler(
         return new ObjectResult(ApiResponse.Ok(dto, "Travel request created.")) { StatusCode = 201 };
     }
 
-    /// <summary>假日執行活動：從 FormData 建立（支援發票檔案上傳）</summary>
+    /// <summary>假日執行活動：從 FormData 建立（不含發票/明細，只保留基本欄位、參與者、指定審核者）</summary>
     private async Task<IActionResult> CreateFromFormDataAsync(HttpRequest req, Guid employeeId, string appType)
     {
         var form = await req.ReadFormAsync();
@@ -177,14 +162,6 @@ public sealed class TravelRequestHandler(
             return new BadRequestObjectResult(ApiResponse.Fail("StartDate and EndDate are required."));
         if (endDate < startDate)
             return new BadRequestObjectResult(ApiResponse.Fail("EndDate must be on or after StartDate."));
-
-        // 解析明細 JSON
-        var itemsJson = form["items"].ToString();
-        var itemsMeta = string.IsNullOrEmpty(itemsJson)
-            ? null
-            : JsonSerializer.Deserialize<HolidayItemMeta[]>(itemsJson, JsonOpts);
-        if (itemsMeta is null || itemsMeta.Length == 0)
-            return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
 
         // 解析指定審核者 JSON
         DesignatedReviewerRequest[]? designatedReviewers = null;
@@ -214,51 +191,19 @@ public sealed class TravelRequestHandler(
                 return new BadRequestObjectResult(ApiResponse.Fail("一或多位出差參與者不存在。"));
         }
 
-        // 上傳檔案並建立明細
-        var files = form.Files.GetFiles("files");
-        var items = new List<TravelRequestItem>();
-        foreach (var (meta, idx) in itemsMeta.Select((m, i) => (m, i)))
-        {
-            string? fileUrl = meta.FileUrl; // 保留已有的 URL
-            if (meta.FileIndex >= 0 && meta.FileIndex < files.Count)
-            {
-                var file = files[meta.FileIndex];
-                var ext = Path.GetExtension(file.FileName);
-                var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
-                using var stream = file.OpenReadStream();
-                fileUrl = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
-            }
-
-            items.Add(new TravelRequestItem
-            {
-                Category    = meta.Category,
-                SeqNo       = meta.SeqNo,
-                ItemName    = meta.ItemName,
-                UnitPrice   = meta.UnitPrice,
-                Quantity    = meta.Quantity,
-                TotalPrice  = meta.TotalPrice,
-                Note        = meta.Note,
-                InvoiceNo   = meta.InvoiceNo,
-                InvoiceDate = meta.InvoiceDate,
-                FileName    = meta.FileName,
-                FileUrl     = fileUrl,
-                SortOrder   = meta.SortOrder > 0 ? meta.SortOrder : idx,
-            });
-        }
-
         var travelRequest = new TravelRequest
         {
             EmployeeId      = employeeId,
             Destination     = destination,
             StartDate       = startDate,
             EndDate         = endDate,
-            GrandTotal      = items.Sum(i => i.TotalPrice),
+            GrandTotal      = 0m,
             Purpose         = purpose,
             ProjectId       = projectId,
             IsHolidayTravel = true,
             ApprovalStatus  = "draft",
             CreatedAt       = Clock.Now,
-            Items           = items,
+            Items           = new List<TravelRequestItem>(),
         };
         db.TravelRequests.Add(travelRequest);
         await db.SaveChangesAsync();
@@ -377,7 +322,7 @@ public sealed class TravelRequestHandler(
         return new OkObjectResult(ApiResponse.Ok(dto, "Travel request updated."));
     }
 
-    /// <summary>假日執行活動：從 FormData 更新（支援發票檔案上傳）</summary>
+    /// <summary>假日執行活動：從 FormData 更新（不含發票/明細，只保留基本欄位、參與者、指定審核者）</summary>
     private async Task<IActionResult> UpdateFromFormDataAsync(HttpRequest req, Guid userId, int intId, string appType)
     {
         var form = await req.ReadFormAsync();
@@ -455,73 +400,25 @@ public sealed class TravelRequestHandler(
             }
         }
 
-        // 明細項目整組替換（含檔案上傳）
-        var itemsJson = form["items"].ToString();
-        if (!string.IsNullOrEmpty(itemsJson))
+        // 假日活動不再使用明細與發票；若既存資料留有舊 Items，一併清除（含 Blob）
+        if (item.Items.Count > 0)
         {
-            var itemsMeta = JsonSerializer.Deserialize<HolidayItemMeta[]>(itemsJson, JsonOpts);
-            if (itemsMeta is { Length: > 0 })
+            var oldFileUrls = item.Items
+                .Where(i => !string.IsNullOrEmpty(i.FileUrl))
+                .Select(i => i.FileUrl!)
+                .ToList();
+
+            db.TravelRequestItems.RemoveRange(item.Items);
+            item.Items = new List<TravelRequestItem>();
+
+            foreach (var url in oldFileUrls)
             {
-                // 收集舊 FileUrl（稍後比對，刪除不再使用的 blob）
-                var oldFileUrls = item.Items
-                    .Where(i => !string.IsNullOrEmpty(i.FileUrl))
-                    .Select(i => i.FileUrl!)
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-                db.TravelRequestItems.RemoveRange(item.Items);
-                var files = form.Files.GetFiles("files");
-                var newItems = new List<TravelRequestItem>();
-                var newFileUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-                foreach (var (meta, idx) in itemsMeta.Select((m, i) => (m, i)))
-                {
-                    string? fileUrl = meta.FileUrl;
-                    if (meta.FileIndex >= 0 && meta.FileIndex < files.Count)
-                    {
-                        var file = files[meta.FileIndex];
-                        var ext = Path.GetExtension(file.FileName);
-                        var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
-                        using var stream = file.OpenReadStream();
-                        fileUrl = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
-                    }
-                    if (!string.IsNullOrEmpty(fileUrl))
-                        newFileUrls.Add(fileUrl);
-
-                    newItems.Add(new TravelRequestItem
-                    {
-                        TravelRequestId = intId,
-                        Category    = meta.Category,
-                        SeqNo       = meta.SeqNo,
-                        ItemName    = meta.ItemName,
-                        UnitPrice   = meta.UnitPrice,
-                        Quantity    = meta.Quantity,
-                        TotalPrice  = meta.TotalPrice,
-                        Note        = meta.Note,
-                        InvoiceNo   = meta.InvoiceNo,
-                        InvoiceDate = meta.InvoiceDate,
-                        FileName    = meta.FileName,
-                        FileUrl     = fileUrl,
-                        SortOrder   = meta.SortOrder > 0 ? meta.SortOrder : idx,
-                    });
-                }
-
-                item.Items      = newItems;
-                item.GrandTotal = newItems.Sum(i => i.TotalPrice);
-
-                await db.SaveChangesAsync();
-
-                // 刪除不再使用的舊 blob
-                foreach (var url in oldFileUrls.Except(newFileUrls))
-                {
-                    var blobName = blob.ExtractBlobName(url, ContainerName);
-                    if (blobName is not null)
-                        await blob.DeleteAsync(ContainerName, blobName);
-                }
-
-                var dto2 = await reader.GetByIdAsync(item.Id);
-                return new OkObjectResult(ApiResponse.Ok(dto2, "Travel request updated."));
+                var blobName = blob.ExtractBlobName(url, ContainerName);
+                if (blobName is not null)
+                    await blob.DeleteAsync(ContainerName, blobName);
             }
         }
+        item.GrandTotal = 0m;
 
         await db.SaveChangesAsync();
 
@@ -569,10 +466,13 @@ public sealed class TravelRequestHandler(
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel requests can be submitted.");
 
-        // 送出前確認有明細項目
-        var hasItems = await db.TravelRequestItems.AnyAsync(i => i.TravelRequestId == intId);
-        if (!hasItems)
-            return new BadRequestObjectResult(ApiResponse.Fail("出差申請至少需要一筆費用明細項目。"));
+        // 送出前確認有明細項目（假日執行活動不需明細）
+        if (!isHolidayTravel)
+        {
+            var hasItems = await db.TravelRequestItems.AnyAsync(i => i.TravelRequestId == intId);
+            if (!hasItems)
+                return new BadRequestObjectResult(ApiResponse.Fail("出差申請至少需要一筆費用明細項目。"));
+        }
 
         // 假日執行活動：計算 HolidayDays（送出時計算，需確認行事曆資料已匯入）
         if (isHolidayTravel)
