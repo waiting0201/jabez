@@ -94,13 +94,13 @@
                 </tr>
                 @if (e.personalLeaveDays > 0) {
                   <tr>
-                    <td class="ps-6">事假扣薪（{{ e.personalLeaveDays }} 天）</td>
+                    <td class="ps-6">事假扣薪（{{ e.personalLeaveDays | number:'1.0-2' }} 天 = {{ e.personalLeaveDays * 8 | number:'1.0-1' }} 小時）</td>
                     <td class="text-right pe-4 text-danger">-{{ e.personalLeaveDeduction | number:'1.0-0' }}</td>
                   </tr>
                 }
                 @if (e.sickLeaveDays > 0) {
                   <tr>
-                    <td class="ps-6">病假扣薪（{{ e.sickLeaveDays }} 天 × 半薪）</td>
+                    <td class="ps-6">病假扣薪（{{ e.sickLeaveDays | number:'1.0-2' }} 天 = {{ e.sickLeaveDays * 8 | number:'1.0-1' }} 小時 × 半薪）</td>
                     <td class="text-right pe-4 text-danger">-{{ e.sickLeaveDeduction | number:'1.0-0' }}</td>
                   </tr>
                 }
@@ -122,7 +122,7 @@
                   <tr class="bg-[var(--bg-elevated)]">
                     <th class="ps-4">假別</th>
                     <th>期間</th>
-                    <th class="text-right pe-4">天數</th>
+                    <th class="text-right pe-4">期間</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -130,7 +130,7 @@
                     <tr>
                       <td class="ps-4">{{ getLeaveTypeLabel(ld.leaveType) }}</td>
                       <td>{{ ld.startDate | date:'MM/dd HH:mm' }} ~ {{ ld.endDate | date:'MM/dd HH:mm' }}</td>
-                      <td class="text-right pe-4">{{ ld.hours / 8 | number:'1.1-1' }} 天</td>
+                      <td class="text-right pe-4">{{ formatLeaveDuration(ld.leaveType, ld.hours) }}</td>
                     </tr>
                   }
                 </tbody>

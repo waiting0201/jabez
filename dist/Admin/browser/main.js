@@ -39,7 +39,7 @@ import {
 } from "./chunk-T7CPNHWL.js";
 import {
   AuthService
-} from "./chunk-LM7DYDCX.js";
+} from "./chunk-VH76I5X6.js";
 import {
   ActivatedRoute,
   NavigationEnd,
@@ -5871,15 +5871,15 @@ var routes = [
     children: [
       {
         path: "dashboard",
-        loadChildren: () => import("./chunk-CQPBMXUF.js").then((m) => m.DASHBOARD_ROUTES)
+        loadChildren: () => import("./chunk-HQCHHSSI.js").then((m) => m.DASHBOARD_ROUTES)
       },
       {
         path: "admin",
-        loadChildren: () => import("./chunk-6P5RQ7Q5.js").then((m) => m.ADMIN_ROUTES)
+        loadChildren: () => import("./chunk-JZTRSRXA.js").then((m) => m.ADMIN_ROUTES)
       },
       {
         path: "account/change-password",
-        loadComponent: () => import("./chunk-RBFOOH33.js").then((m) => m.ChangePassword),
+        loadComponent: () => import("./chunk-QDWPAVB3.js").then((m) => m.ChangePassword),
         data: { title: "\u4FEE\u6539\u5BC6\u78BC" }
       },
       {

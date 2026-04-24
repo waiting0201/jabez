@@ -14,7 +14,7 @@ import {
 } from "./chunk-T7CPNHWL.js";
 import {
   AuthService
-} from "./chunk-LM7DYDCX.js";
+} from "./chunk-VH76I5X6.js";
 import {
   ActivatedRoute,
   Router
@@ -295,4 +295,4 @@ var ChangePassword = class _ChangePassword {
 export {
   ChangePassword
 };
-//# sourceMappingURL=chunk-RBFOOH33.js.map
+//# sourceMappingURL=chunk-QDWPAVB3.js.map

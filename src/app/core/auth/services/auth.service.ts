@@ -16,6 +16,7 @@ export interface JwtPayload {
   department_name?: string;
   department_code?: string;
   job_title_name?: string;
+  job_title_level?: string | number;
 }
 
 export interface AutoClockOutInfo {
@@ -88,6 +89,22 @@ export class AuthService {
     const payload = this._decode(this._token());
     if (!payload || payload.exp * 1000 <= Date.now()) return null;
     return payload.job_title_name ?? null;
+  });
+
+  /** 當前使用者的職級（signal），Level 數字越小 = 層級越高；找不到回傳 null */
+  jobTitleLevel = computed<number | null>(() => {
+    const payload = this._decode(this._token());
+    if (!payload || payload.exp * 1000 <= Date.now()) return null;
+    const raw = payload.job_title_level;
+    if (raw === undefined || raw === null) return null;
+    const n = typeof raw === 'number' ? raw : parseInt(raw, 10);
+    return Number.isFinite(n) ? n : null;
+  });
+
+  /** 是否為協理以上（Level ≤ 3），用於高階主管假權限判斷 */
+  isSeniorExecutive = computed<boolean>(() => {
+    const level = this.jobTitleLevel();
+    return level !== null && level <= 3;
   });
 
   /** 是否為財務部（signal），以部門代碼 'FIN' 判斷 */

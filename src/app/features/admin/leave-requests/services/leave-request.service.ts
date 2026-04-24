@@ -1,7 +1,10 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
-import {LeaveRequest, AnnualQuota, CompensatoryHours, CeremonialQuota} from '../models/leave-request.model';
+import {
+  LeaveRequest, AnnualQuota, CompensatoryHours, CeremonialQuota,
+  MarriageQuota, MaternityStatus, BereavementQuota, SeniorExecutiveEligibility,
+} from '../models/leave-request.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {environment} from '@/environments/environment';
 
@@ -51,5 +54,27 @@ export class LeaveRequestService {
   /** 查詢當前使用者的歲時祭儀假額度（僅原住民） */
   getCeremonialQuota(): Observable<CeremonialQuota> {
     return this.http.get<CeremonialQuota>(`${environment.apiUrl}/leave-requests/ceremonial-quota`);
+  }
+
+  /** 查詢當前使用者的婚假配額（上限 8 天） */
+  getMarriageQuota(): Observable<MarriageQuota> {
+    return this.http.get<MarriageQuota>(`${environment.apiUrl}/leave-requests/marriage-quota`);
+  }
+
+  /** 查詢當前使用者的產假狀態（檢查是否已有活躍申請） */
+  getMaternityStatus(): Observable<MaternityStatus> {
+    return this.http.get<MaternityStatus>(`${environment.apiUrl}/leave-requests/maternity-status`);
+  }
+
+  /** 查詢當前使用者的喪假配額（依親屬關係） */
+  getBereavementQuota(relationship: string): Observable<BereavementQuota> {
+    return this.http.get<BereavementQuota>(`${environment.apiUrl}/leave-requests/bereavement-quota`, {
+      params: {relationship},
+    });
+  }
+
+  /** 查詢當前使用者高階主管假適用性（JobTitle.Level ≤ 3） */
+  getSeniorExecutiveEligibility(): Observable<SeniorExecutiveEligibility> {
+    return this.http.get<SeniorExecutiveEligibility>(`${environment.apiUrl}/leave-requests/senior-executive-eligibility`);
   }
 }

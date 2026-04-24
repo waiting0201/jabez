@@ -5,7 +5,7 @@ import {DatePipe, DecimalPipe} from '@angular/common';
 import {ToastrService} from 'ngx-toastr';
 import {PayrollService} from '../../services/payroll.service';
 import {EmployeePayroll} from '../../models/payroll.model';
-import {LEAVE_TYPE_LABELS, LeaveType} from '../../../leave-requests/models/leave-request.model';
+import {LEAVE_TYPE_LABELS, LeaveType, formatLeaveDuration} from '../../../leave-requests/models/leave-request.model';
 
 @Component({
   selector: 'app-payroll-form',
@@ -58,6 +58,11 @@ export class PayrollForm implements OnInit {
 
   getLeaveTypeLabel(type: string): string {
     return (LEAVE_TYPE_LABELS as Record<string, string>)[type] ?? type;
+  }
+
+  /** 依假別單位格式化時數顯示 */
+  formatLeaveDuration(type: string, hours: number): string {
+    return formatLeaveDuration(type as LeaveType, hours);
   }
 
   ngOnInit() {

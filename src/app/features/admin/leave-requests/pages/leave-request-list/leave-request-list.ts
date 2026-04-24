@@ -1,20 +1,21 @@
 import {Component, computed, inject, signal} from '@angular/core';
 import {RouterLink} from '@angular/router';
-import {DatePipe, DecimalPipe} from '@angular/common';
+import {DatePipe} from '@angular/common';
 import {toSignal, toObservable} from '@angular/core/rxjs-interop';
 import {switchMap} from 'rxjs/operators';
 import {LeaveRequestService} from '../../services/leave-request.service';
 import {
-  LeaveRequest,
-  LEAVE_TYPE_LABELS, LEAVE_TYPE_CLASSES,
+  LeaveRequest, LeaveType,
+  LEAVE_TYPE_LABELS, LEAVE_TYPE_CLASSES, LEAVE_TIME_UNIT,
   APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES,
+  formatLeaveDuration,
 } from '../../models/leave-request.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
 
 @Component({
   selector: 'app-leave-request-list',
   templateUrl: './leave-request-list.html',
-  imports: [RouterLink, DatePipe, DecimalPipe],
+  imports: [RouterLink, DatePipe],
 })
 export class LeaveRequestList {
   private service = inject(LeaveRequestService);
@@ -41,8 +42,14 @@ export class LeaveRequestList {
 
   readonly typeLabel   = LEAVE_TYPE_LABELS;
   readonly typeClass   = LEAVE_TYPE_CLASSES;
+  readonly timeUnit    = LEAVE_TIME_UNIT;
   readonly statusLabel = APPROVAL_STATUS_LABELS;
   readonly statusClass = APPROVAL_STATUS_CLASSES;
+
+  /** 依假別單位格式化時數 */
+  formatDuration(leaveType: string, hours: number): string {
+    return formatLeaveDuration(leaveType as LeaveType, hours);
+  }
 
   delete(r: LeaveRequest) {
     if (confirm(`確定要刪除此請假申請嗎？`)) {

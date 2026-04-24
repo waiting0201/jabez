@@ -58,6 +58,22 @@ var AuthService = class _AuthService {
       return null;
     return payload.job_title_name ?? null;
   }, ...ngDevMode ? [{ debugName: "jobTitleName" }] : []);
+  /** 當前使用者的職級（signal），Level 數字越小 = 層級越高；找不到回傳 null */
+  jobTitleLevel = computed(() => {
+    const payload = this._decode(this._token());
+    if (!payload || payload.exp * 1e3 <= Date.now())
+      return null;
+    const raw = payload.job_title_level;
+    if (raw === void 0 || raw === null)
+      return null;
+    const n = typeof raw === "number" ? raw : parseInt(raw, 10);
+    return Number.isFinite(n) ? n : null;
+  }, ...ngDevMode ? [{ debugName: "jobTitleLevel" }] : []);
+  /** 是否為協理以上（Level ≤ 3），用於高階主管假權限判斷 */
+  isSeniorExecutive = computed(() => {
+    const level = this.jobTitleLevel();
+    return level !== null && level <= 3;
+  }, ...ngDevMode ? [{ debugName: "isSeniorExecutive" }] : []);
   /** 是否為財務部（signal），以部門代碼 'FIN' 判斷 */
   isFinanceDept = computed(() => this.departmentCode() === "FIN", ...ngDevMode ? [{ debugName: "isFinanceDept" }] : []);
   get token() {
@@ -150,4 +166,4 @@ var AuthService = class _AuthService {
 export {
   AuthService
 };
-//# sourceMappingURL=chunk-LM7DYDCX.js.map
+//# sourceMappingURL=chunk-VH76I5X6.js.map

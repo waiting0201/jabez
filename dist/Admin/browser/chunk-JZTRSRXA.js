@@ -56,7 +56,7 @@ import {
 } from "./chunk-OUEFYP6B.js";
 import {
   AuthService
-} from "./chunk-LM7DYDCX.js";
+} from "./chunk-VH76I5X6.js";
 import {
   takeUntilDestroyed,
   toObservable,
@@ -9317,8 +9317,33 @@ var LEAVE_TYPE_LABELS = {
   prenatal_checkup: "\u7522\u6AA2\u5047",
   paternity: "\u966A\u7522\u5047",
   bereavement: "\u55AA\u5047",
-  ceremonial_festival: "\u6B72\u6642\u796D\u5100\u5047"
+  ceremonial_festival: "\u6B72\u6642\u796D\u5100\u5047",
+  senior_executive: "\u9AD8\u968E\u4E3B\u7BA1\u5047"
 };
+var LEAVE_TIME_UNIT = {
+  personal: "hour",
+  sick: "hour",
+  prenatal_checkup: "hour",
+  paternity: "hour",
+  annual: "half_day",
+  compensatory: "half_day",
+  senior_executive: "half_day",
+  official: "day",
+  marriage: "day",
+  maternity: "day",
+  bereavement: "day",
+  ceremonial_festival: "day",
+  miscarriage_3m: "day",
+  miscarriage_2to3m: "day",
+  miscarriage_under2m: "day"
+};
+function formatLeaveDuration(leaveType, hours) {
+  const unit = LEAVE_TIME_UNIT[leaveType];
+  if (unit === "hour")
+    return `${Math.round(hours * 10) / 10} \u5C0F\u6642`;
+  const days2 = Math.round(hours / 8 * 10) / 10;
+  return `${days2} \u5929`;
+}
 var LEAVE_TYPE_CLASSES = {
   annual: "bg-[rgba(105,159,52,0.12)] text-[#4A6B3A]",
   personal: "bg-[rgba(124,94,140,0.12)] text-[#7C5E8C]",
@@ -9333,14 +9358,17 @@ var LEAVE_TYPE_CLASSES = {
   prenatal_checkup: "bg-[rgba(124,94,140,0.12)] text-[#7C5E8C]",
   paternity: "bg-[rgba(124,94,140,0.12)] text-[#7C5E8C]",
   bereavement: "bg-[rgba(82,83,88,0.12)] text-[#525358]",
-  ceremonial_festival: "bg-[rgba(140,115,85,0.12)] text-[#8C7355]"
+  ceremonial_festival: "bg-[rgba(140,115,85,0.12)] text-[#8C7355]",
+  senior_executive: "bg-[rgba(105,159,52,0.12)] text-[#4A6B3A]"
 };
 var LEAVE_TYPE_GROUPS = [
   { label: "\u4E00\u822C\u5047\u5225", types: ["annual", "personal", "sick", "official", "compensatory"] },
   { label: "\u5A5A\u5047", types: ["marriage"] },
   { label: "\u7522\u5047\u985E\u5225", types: ["maternity", "miscarriage_3m", "miscarriage_2to3m", "miscarriage_under2m", "prenatal_checkup", "paternity"] },
   { label: "\u55AA\u5047", types: ["bereavement"] },
-  { label: "\u5176\u4ED6\u5047\u5225", types: ["ceremonial_festival"] }
+  { label: "\u5176\u4ED6\u5047\u5225", types: ["ceremonial_festival"] },
+  // 高階主管假僅協理以上可見（實際顯示由前端依 auth.isSeniorExecutive() 過濾）
+  { label: "\u9AD8\u968E\u4E3B\u7BA1\u5047", types: ["senior_executive"] }
 ];
 var LEAVE_TYPE_DAYS_LIMIT = {
   marriage: 8,
@@ -11604,7 +11632,7 @@ function ApprovalTaskReview_Conditional_1_Case_16_Conditional_0_Template(rf, ctx
     \u0275\u0275text(16);
     \u0275\u0275elementEnd()();
     \u0275\u0275elementStart(17, "div", 22)(18, "div", 23);
-    \u0275\u0275text(19, "\u6642\u6578");
+    \u0275\u0275text(19, "\u671F\u9593");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(20, "span", 27);
     \u0275\u0275text(21);
@@ -11639,7 +11667,7 @@ function ApprovalTaskReview_Conditional_1_Case_16_Conditional_0_Template(rf, ctx
     \u0275\u0275advance(5);
     \u0275\u0275textInterpolate(task_r5.submittedBy);
     \u0275\u0275advance(5);
-    \u0275\u0275textInterpolate1("", d_r6.hours, " \u5C0F\u6642");
+    \u0275\u0275textInterpolate(ctx_r0.formatLeaveDuration(d_r6.leaveType, d_r6.hours));
     \u0275\u0275advance(5);
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(27, 6, d_r6.startDate, "yyyy-MM-dd"));
     \u0275\u0275advance(6);
@@ -14404,6 +14432,10 @@ var ApprovalTaskReview = class _ApprovalTaskReview {
   appTypeClass = APPLICATION_TYPE_CLASSES;
   payTypeLabel = PAYMENT_TYPE_LABELS2;
   leaveTypeLabel = LEAVE_TYPE_LABELS;
+  /** 依假別單位格式化時數顯示 */
+  formatLeaveDuration(type, hours) {
+    return formatLeaveDuration(type, hours);
+  }
   form = this.fb.group({
     action: ["approved", Validators.required],
     reviewNote: [""],
@@ -14819,8 +14851,8 @@ var ApprovalTaskReview = class _ApprovalTaskReview {
                       <span class="fw-500">{{ task.submittedBy }}</span>\r
                     </div>\r
                     <div class="col-6 col-md-4">\r
-                      <div class="text-muted small mb-1">\u6642\u6578</div>\r
-                      <span class="fw-600 fs-5">{{ d.hours }} \u5C0F\u6642</span>\r
+                      <div class="text-muted small mb-1">\u671F\u9593</div>\r
+                      <span class="fw-600 fs-5">{{ formatLeaveDuration(d.leaveType, d.hours) }}</span>\r
                     </div>\r
                     <div class="col-6 col-md-4">\r
                       <div class="text-muted small mb-1">\u958B\u59CB\u65E5\u671F</div>\r
@@ -15917,7 +15949,7 @@ var ApprovalTaskReview = class _ApprovalTaskReview {
   }], null, null);
 })();
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ApprovalTaskReview, { className: "ApprovalTaskReview", filePath: "src/app/features/admin/approval-tasks/pages/approval-task-review/approval-task-review.ts", lineNumber: 32 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ApprovalTaskReview, { className: "ApprovalTaskReview", filePath: "src/app/features/admin/approval-tasks/pages/approval-task-review/approval-task-review.ts", lineNumber: 33 });
 })();
 
 // src/app/features/admin/leave-requests/services/leave-request.service.ts
@@ -15957,6 +15989,24 @@ var LeaveRequestService = class _LeaveRequestService {
   getCeremonialQuota() {
     return this.http.get(`${environment.apiUrl}/leave-requests/ceremonial-quota`);
   }
+  /** 查詢當前使用者的婚假配額（上限 8 天） */
+  getMarriageQuota() {
+    return this.http.get(`${environment.apiUrl}/leave-requests/marriage-quota`);
+  }
+  /** 查詢當前使用者的產假狀態（檢查是否已有活躍申請） */
+  getMaternityStatus() {
+    return this.http.get(`${environment.apiUrl}/leave-requests/maternity-status`);
+  }
+  /** 查詢當前使用者的喪假配額（依親屬關係） */
+  getBereavementQuota(relationship) {
+    return this.http.get(`${environment.apiUrl}/leave-requests/bereavement-quota`, {
+      params: { relationship }
+    });
+  }
+  /** 查詢當前使用者高階主管假適用性（JobTitle.Level ≤ 3） */
+  getSeniorExecutiveEligibility() {
+    return this.http.get(`${environment.apiUrl}/leave-requests/senior-executive-eligibility`);
+  }
   static \u0275fac = function LeaveRequestService_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _LeaveRequestService)();
   };
@@ -15972,11 +16022,11 @@ var LeaveRequestService = class _LeaveRequestService {
 // src/app/features/admin/leave-requests/pages/leave-request-list/leave-request-list.ts
 var _c011 = (a0) => [a0, "edit"];
 var _forTrack017 = ($index, $item) => $item.id;
-function LeaveRequestList_For_35_Conditional_23_Conditional_3_Template(rf, ctx) {
+function LeaveRequestList_For_35_Conditional_22_Conditional_3_Template(rf, ctx) {
   if (rf & 1) {
     const _r1 = \u0275\u0275getCurrentView();
     \u0275\u0275elementStart(0, "button", 28);
-    \u0275\u0275listener("click", function LeaveRequestList_For_35_Conditional_23_Conditional_3_Template_button_click_0_listener() {
+    \u0275\u0275listener("click", function LeaveRequestList_For_35_Conditional_22_Conditional_3_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r1);
       const r_r2 = \u0275\u0275nextContext(2).$implicit;
       const ctx_r2 = \u0275\u0275nextContext();
@@ -15988,14 +16038,14 @@ function LeaveRequestList_For_35_Conditional_23_Conditional_3_Template(rf, ctx) 
     \u0275\u0275elementEnd()();
   }
 }
-function LeaveRequestList_For_35_Conditional_23_Template(rf, ctx) {
+function LeaveRequestList_For_35_Conditional_22_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "a", 25);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 7);
     \u0275\u0275element(2, "use", 26);
     \u0275\u0275elementEnd()();
-    \u0275\u0275conditionalCreate(3, LeaveRequestList_For_35_Conditional_23_Conditional_3_Template, 3, 0, "button", 27);
+    \u0275\u0275conditionalCreate(3, LeaveRequestList_For_35_Conditional_22_Conditional_3_Template, 3, 0, "button", 27);
   }
   if (rf & 2) {
     const r_r2 = \u0275\u0275nextContext().$implicit;
@@ -16004,7 +16054,7 @@ function LeaveRequestList_For_35_Conditional_23_Template(rf, ctx) {
     \u0275\u0275conditional(r_r2.approvalStatus === "draft" ? 3 : -1);
   }
 }
-function LeaveRequestList_For_35_Conditional_24_Template(rf, ctx) {
+function LeaveRequestList_For_35_Conditional_23_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "a", 24);
     \u0275\u0275namespaceSVG();
@@ -16032,20 +16082,19 @@ function LeaveRequestList_For_35_Template(rf, ctx) {
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(10, "td", 19);
     \u0275\u0275text(11);
-    \u0275\u0275pipe(12, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(13, "td", 20);
-    \u0275\u0275text(14);
+    \u0275\u0275elementStart(12, "td", 20);
+    \u0275\u0275text(13);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "td")(16, "span");
-    \u0275\u0275text(17);
+    \u0275\u0275elementStart(14, "td")(15, "span");
+    \u0275\u0275text(16);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(18, "td", 21);
-    \u0275\u0275text(19);
-    \u0275\u0275pipe(20, "date");
+    \u0275\u0275elementStart(17, "td", 21);
+    \u0275\u0275text(18);
+    \u0275\u0275pipe(19, "date");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(21, "td", 22)(22, "div", 23);
-    \u0275\u0275conditionalCreate(23, LeaveRequestList_For_35_Conditional_23_Template, 4, 4)(24, LeaveRequestList_For_35_Conditional_24_Template, 3, 3, "a", 24);
+    \u0275\u0275elementStart(20, "td", 22)(21, "div", 23);
+    \u0275\u0275conditionalCreate(22, LeaveRequestList_For_35_Conditional_22_Template, 4, 4)(23, LeaveRequestList_For_35_Conditional_23_Template, 3, 3, "a", 24);
     \u0275\u0275elementEnd()()();
   }
   if (rf & 2) {
@@ -16060,17 +16109,17 @@ function LeaveRequestList_For_35_Template(rf, ctx) {
     \u0275\u0275advance(3);
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(9, 15, r_r2.endDate, "yyyy-MM-dd HH:mm"));
     \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate1("", \u0275\u0275pipeBind2(12, 18, r_r2.hours, "1.0-1"), " \u5C0F\u6642");
-    \u0275\u0275advance(3);
+    \u0275\u0275textInterpolate(ctx_r2.formatDuration(r_r2.leaveType, r_r2.hours));
+    \u0275\u0275advance(2);
     \u0275\u0275textInterpolate(r_r2.reason);
     \u0275\u0275advance(2);
     \u0275\u0275classMap("badge " + ctx_r2.statusClass[r_r2.approvalStatus]);
     \u0275\u0275advance();
     \u0275\u0275textInterpolate(ctx_r2.statusLabel[r_r2.approvalStatus]);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(20, 21, r_r2.createdAt, "yyyy-MM-dd"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(19, 18, r_r2.createdAt, "yyyy-MM-dd"));
     \u0275\u0275advance(4);
-    \u0275\u0275conditional(r_r2.approvalStatus === "draft" || r_r2.approvalStatus === "returned" ? 23 : 24);
+    \u0275\u0275conditional(r_r2.approvalStatus === "draft" || r_r2.approvalStatus === "returned" ? 22 : 23);
   }
 }
 function LeaveRequestList_ForEmpty_36_Template(rf, ctx) {
@@ -16201,8 +16250,13 @@ var LeaveRequestList = class _LeaveRequestList {
   }
   typeLabel = LEAVE_TYPE_LABELS;
   typeClass = LEAVE_TYPE_CLASSES;
+  timeUnit = LEAVE_TIME_UNIT;
   statusLabel = APPROVAL_STATUS_LABELS2;
   statusClass = APPROVAL_STATUS_CLASSES2;
+  /** 依假別單位格式化時數 */
+  formatDuration(leaveType, hours) {
+    return formatLeaveDuration(leaveType, hours);
+  }
   delete(r) {
     if (confirm(`\u78BA\u5B9A\u8981\u522A\u9664\u6B64\u8ACB\u5047\u7533\u8ACB\u55CE\uFF1F`)) {
       this.service.delete(r.id).subscribe(() => this.refresh.update((v) => v + 1));
@@ -16240,7 +16294,7 @@ var LeaveRequestList = class _LeaveRequestList {
       \u0275\u0275text(22, "\u7D50\u675F\u6642\u9593");
       \u0275\u0275elementEnd();
       \u0275\u0275elementStart(23, "th", 14);
-      \u0275\u0275text(24, "\u6642\u6578");
+      \u0275\u0275text(24, "\u671F\u9593");
       \u0275\u0275elementEnd();
       \u0275\u0275elementStart(25, "th", 15);
       \u0275\u0275text(26, "\u539F\u56E0");
@@ -16255,7 +16309,7 @@ var LeaveRequestList = class _LeaveRequestList {
       \u0275\u0275text(32, "\u64CD\u4F5C");
       \u0275\u0275elementEnd()()();
       \u0275\u0275elementStart(33, "tbody");
-      \u0275\u0275repeaterCreate(34, LeaveRequestList_For_35_Template, 25, 24, "tr", null, _forTrack017, false, LeaveRequestList_ForEmpty_36_Template, 3, 0, "tr");
+      \u0275\u0275repeaterCreate(34, LeaveRequestList_For_35_Template, 24, 21, "tr", null, _forTrack017, false, LeaveRequestList_ForEmpty_36_Template, 3, 0, "tr");
       \u0275\u0275elementEnd()()();
       \u0275\u0275conditionalCreate(37, LeaveRequestList_Conditional_37_Template, 19, 13, "div", 17);
       \u0275\u0275elementEnd()()();
@@ -16266,12 +16320,12 @@ var LeaveRequestList = class _LeaveRequestList {
       \u0275\u0275advance(3);
       \u0275\u0275conditional(ctx.totalPages() > 1 ? 37 : -1);
     }
-  }, dependencies: [RouterLink, DatePipe, DecimalPipe], encapsulation: 2 });
+  }, dependencies: [RouterLink, DatePipe], encapsulation: 2 });
 };
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(LeaveRequestList, [{
     type: Component,
-    args: [{ selector: "app-leave-request-list", imports: [RouterLink, DatePipe, DecimalPipe], template: `<div class="container-fluid py-3">\r
+    args: [{ selector: "app-leave-request-list", imports: [RouterLink, DatePipe], template: `<div class="container-fluid py-3">\r
   <div class="flex flex-wrap items-center justify-between gap-2 mb-6">\r
     <div class="flex items-center gap-2">\r
       <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">\r
@@ -16294,7 +16348,7 @@ var LeaveRequestList = class _LeaveRequestList {
               <th>\u5047\u5225</th>\r
               <th>\u958B\u59CB\u6642\u9593</th>\r
               <th>\u7D50\u675F\u6642\u9593</th>\r
-              <th class="text-right">\u6642\u6578</th>\r
+              <th class="text-right">\u671F\u9593</th>\r
               <th class="hidden md:table-cell">\u539F\u56E0</th>\r
               <th>\u72C0\u614B</th>\r
               <th class="hidden lg:table-cell">\u7533\u8ACB\u6642\u9593</th>\r
@@ -16309,7 +16363,7 @@ var LeaveRequestList = class _LeaveRequestList {
                 </td>\r
                 <td class="text-muted small">{{ r.startDate | date:'yyyy-MM-dd HH:mm' }}</td>\r
                 <td class="text-muted small">{{ r.endDate | date:'yyyy-MM-dd HH:mm' }}</td>\r
-                <td class="text-right fw-500">{{ r.hours | number:'1.0-1' }} \u5C0F\u6642</td>\r
+                <td class="text-right fw-500">{{ formatDuration(r.leaveType, r.hours) }}</td>\r
                 <td class="text-muted small hidden md:table-cell">{{ r.reason }}</td>\r
                 <td>\r
                   <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>\r
@@ -16376,7 +16430,7 @@ var LeaveRequestList = class _LeaveRequestList {
   }], null, null);
 })();
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(LeaveRequestList, { className: "LeaveRequestList", filePath: "src/app/features/admin/leave-requests/pages/leave-request-list/leave-request-list.ts", lineNumber: 19 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(LeaveRequestList, { className: "LeaveRequestList", filePath: "src/app/features/admin/leave-requests/pages/leave-request-list/leave-request-list.ts", lineNumber: 20 });
 })();
 function buildPageNumbers5(current, total) {
   if (total <= 9)
@@ -16403,8 +16457,8 @@ function LeaveRequestForm_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 6);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 34);
-    \u0275\u0275element(2, "use", 35);
+    \u0275\u0275elementStart(1, "svg", 31);
+    \u0275\u0275element(2, "use", 32);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3);
     \u0275\u0275elementEnd();
@@ -16417,10 +16471,10 @@ function LeaveRequestForm_Conditional_7_Template(rf, ctx) {
 }
 function LeaveRequestForm_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 7)(1, "div", 36);
+    \u0275\u0275elementStart(0, "div", 7)(1, "div", 33);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(2, "svg", 34);
-    \u0275\u0275element(3, "use", 37);
+    \u0275\u0275elementStart(2, "svg", 31);
+    \u0275\u0275element(3, "use", 34);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u6B64\u7533\u8ACB\u5BE9\u6838\u4E2D\uFF0C\u4E0D\u53EF\u518D\u4FEE\u6539\u3002 ");
     \u0275\u0275elementEnd()();
@@ -16428,10 +16482,10 @@ function LeaveRequestForm_Conditional_8_Template(rf, ctx) {
 }
 function LeaveRequestForm_Conditional_9_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 7)(1, "div", 38);
+    \u0275\u0275elementStart(0, "div", 7)(1, "div", 35);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(2, "svg", 34);
-    \u0275\u0275element(3, "use", 35);
+    \u0275\u0275elementStart(2, "svg", 31);
+    \u0275\u0275element(3, "use", 32);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u6B64\u7533\u8ACB\u5DF2\u88AB\u9000\u56DE\uFF0C\u8ACB\u4FEE\u6539\u5F8C\u91CD\u65B0\u9001\u51FA\u3002 ");
     \u0275\u0275elementEnd()();
@@ -16439,10 +16493,10 @@ function LeaveRequestForm_Conditional_9_Template(rf, ctx) {
 }
 function LeaveRequestForm_Conditional_10_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 7)(1, "div", 39);
+    \u0275\u0275elementStart(0, "div", 7)(1, "div", 36);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(2, "svg", 34);
-    \u0275\u0275element(3, "use", 40);
+    \u0275\u0275elementStart(2, "svg", 31);
+    \u0275\u0275element(3, "use", 37);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u6B64\u7533\u8ACB\u5DF2\u6838\u51C6\uFF0C\u4E0D\u53EF\u518D\u4FEE\u6539\u3002 ");
     \u0275\u0275elementEnd()();
@@ -16450,52 +16504,89 @@ function LeaveRequestForm_Conditional_10_Template(rf, ctx) {
 }
 function LeaveRequestForm_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 7)(1, "div", 41);
+    \u0275\u0275elementStart(0, "div", 7)(1, "div", 38);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(2, "svg", 34);
-    \u0275\u0275element(3, "use", 42);
+    \u0275\u0275elementStart(2, "svg", 31);
+    \u0275\u0275element(3, "use", 39);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u6B64\u7533\u8ACB\u5DF2\u88AB\u62D2\u7D55\uFF0C\u4E0D\u53EF\u518D\u4FEE\u6539\u3002 ");
     \u0275\u0275elementEnd()();
   }
 }
-function LeaveRequestForm_For_28_For_2_Template(rf, ctx) {
+function LeaveRequestForm_For_28_Conditional_0_For_2_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 43);
+    \u0275\u0275elementStart(0, "option", 41);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
     const type_r2 = ctx.$implicit;
-    const ctx_r0 = \u0275\u0275nextContext(2);
+    const ctx_r0 = \u0275\u0275nextContext(3);
     \u0275\u0275property("value", type_r2);
     \u0275\u0275advance();
     \u0275\u0275textInterpolate(ctx_r0.leaveTypeLabels[type_r2]);
   }
 }
-function LeaveRequestForm_For_28_Template(rf, ctx) {
+function LeaveRequestForm_For_28_Conditional_0_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "optgroup", 20);
-    \u0275\u0275repeaterCreate(1, LeaveRequestForm_For_28_For_2_Template, 2, 2, "option", 43, \u0275\u0275repeaterTrackByIdentity);
+    \u0275\u0275elementStart(0, "optgroup", 40);
+    \u0275\u0275repeaterCreate(1, LeaveRequestForm_For_28_Conditional_0_For_2_Template, 2, 2, "option", 41, \u0275\u0275repeaterTrackByIdentity);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const group_r3 = ctx.$implicit;
+    const group_r3 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275property("label", group_r3.label);
     \u0275\u0275advance();
     \u0275\u0275repeater(group_r3.types);
   }
 }
-function LeaveRequestForm_Conditional_29_Conditional_3_Template(rf, ctx) {
+function LeaveRequestForm_For_28_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 45);
+    \u0275\u0275conditionalCreate(0, LeaveRequestForm_For_28_Conditional_0_Template, 3, 1, "optgroup", 40);
+  }
+  if (rf & 2) {
+    const group_r3 = ctx.$implicit;
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275conditional(group_r3.label !== "\u9AD8\u968E\u4E3B\u7BA1\u5047" || ctx_r0.isSeniorExecutive() ? 0 : -1);
+  }
+}
+function LeaveRequestForm_Case_30_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " \u6642\u9593\u55AE\u4F4D\uFF1A");
+    \u0275\u0275elementStart(1, "strong");
+    \u0275\u0275text(2, "\u5C0F\u6642\uFF08\u6574\u9EDE\uFF09");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3, "\uFF0C\u4E0B\u62C9\u53EA\u986F\u793A\u6574\u9EDE ");
+  }
+}
+function LeaveRequestForm_Case_31_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " \u6642\u9593\u55AE\u4F4D\uFF1A");
+    \u0275\u0275elementStart(1, "strong");
+    \u0275\u0275text(2, "\u534A\u5929");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3, "\uFF084 \u5C0F\u6642\uFF09 ");
+  }
+}
+function LeaveRequestForm_Case_32_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " \u6642\u9593\u55AE\u4F4D\uFF1A");
+    \u0275\u0275elementStart(1, "strong");
+    \u0275\u0275text(2, "\u6574\u5929");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3, "\uFF088 \u5C0F\u6642\uFF09 ");
+  }
+}
+function LeaveRequestForm_Conditional_33_Conditional_3_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 43);
     \u0275\u0275text(1, "\u8F09\u5165\u4E2D...");
     \u0275\u0275elementEnd();
   }
 }
-function LeaveRequestForm_Conditional_29_Conditional_4_Conditional_0_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_33_Conditional_4_Conditional_0_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 46);
+    \u0275\u0275elementStart(0, "span", 44);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -16505,26 +16596,26 @@ function LeaveRequestForm_Conditional_29_Conditional_4_Conditional_0_Template(rf
     \u0275\u0275textInterpolate(quota_r4.message);
   }
 }
-function LeaveRequestForm_Conditional_29_Conditional_4_Conditional_1_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_33_Conditional_4_Conditional_1_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 45);
+    \u0275\u0275elementStart(0, "span", 43);
     \u0275\u0275text(1, " \u5E74\u8CC7\uFF1A");
     \u0275\u0275elementStart(2, "strong");
     \u0275\u0275text(3);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "span", 47);
+    \u0275\u0275elementStart(4, "span", 45);
     \u0275\u0275text(5, "\uFF5C\u5E74\u5047\u984D\u5EA6\uFF1A");
     \u0275\u0275elementStart(6, "strong");
     \u0275\u0275text(7);
     \u0275\u0275elementEnd();
     \u0275\u0275text(8, " \u5929");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "span", 47);
+    \u0275\u0275elementStart(9, "span", 45);
     \u0275\u0275text(10);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(11, "span", 48);
+    \u0275\u0275elementStart(11, "span", 46);
     \u0275\u0275text(12, "\uFF5C\u5269\u9918\uFF1A");
-    \u0275\u0275elementStart(13, "strong", 49);
+    \u0275\u0275elementStart(13, "strong", 47);
     \u0275\u0275text(14);
     \u0275\u0275elementEnd();
     \u0275\u0275text(15, " \u5929");
@@ -16542,29 +16633,29 @@ function LeaveRequestForm_Conditional_29_Conditional_4_Conditional_1_Template(rf
     \u0275\u0275textInterpolate(quota_r4.availableDays);
   }
 }
-function LeaveRequestForm_Conditional_29_Conditional_4_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_33_Conditional_4_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275conditionalCreate(0, LeaveRequestForm_Conditional_29_Conditional_4_Conditional_0_Template, 2, 1, "span", 46)(1, LeaveRequestForm_Conditional_29_Conditional_4_Conditional_1_Template, 16, 5, "span", 45);
+    \u0275\u0275conditionalCreate(0, LeaveRequestForm_Conditional_33_Conditional_4_Conditional_0_Template, 2, 1, "span", 44)(1, LeaveRequestForm_Conditional_33_Conditional_4_Conditional_1_Template, 16, 5, "span", 43);
   }
   if (rf & 2) {
     \u0275\u0275conditional(ctx.message ? 0 : 1);
   }
 }
-function LeaveRequestForm_Conditional_29_Conditional_5_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_33_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 46);
+    \u0275\u0275elementStart(0, "span", 44);
     \u0275\u0275text(1, "\u7121\u6CD5\u53D6\u5F97\u5E74\u5047\u984D\u5EA6\u8CC7\u6599");
     \u0275\u0275elementEnd();
   }
 }
-function LeaveRequestForm_Conditional_29_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_33_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 21);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 44);
-    \u0275\u0275element(2, "use", 37);
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 34);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(3, LeaveRequestForm_Conditional_29_Conditional_3_Template, 2, 0, "span", 45)(4, LeaveRequestForm_Conditional_29_Conditional_4_Template, 2, 1)(5, LeaveRequestForm_Conditional_29_Conditional_5_Template, 2, 0, "span", 46);
+    \u0275\u0275conditionalCreate(3, LeaveRequestForm_Conditional_33_Conditional_3_Template, 2, 0, "span", 43)(4, LeaveRequestForm_Conditional_33_Conditional_4_Template, 2, 1)(5, LeaveRequestForm_Conditional_33_Conditional_5_Template, 2, 0, "span", 44);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -16574,161 +16665,294 @@ function LeaveRequestForm_Conditional_29_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r0.annualQuotaLoading() ? 3 : (tmp_1_0 = ctx_r0.annualQuota()) ? 4 : 5, tmp_1_0);
   }
 }
-function LeaveRequestForm_Conditional_30_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_34_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 22);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 44);
-    \u0275\u0275element(2, "use", 35);
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 32);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(3, "span", 45);
-    \u0275\u0275text(4, "\u6309\u5929\u6578\u6263\u9664\u5168\u984D\u85AA\u8CC7");
+    \u0275\u0275elementStart(3, "span", 43);
+    \u0275\u0275text(4, "\u6309\u5C0F\u6642\u8A08\uFF0C\u4E8B\u5047\u6309\u5929\u6578\u6263\u9664\u5168\u984D\u85AA\u8CC7");
     \u0275\u0275elementEnd()();
   }
 }
-function LeaveRequestForm_Conditional_31_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_35_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 22);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 44);
-    \u0275\u0275element(2, "use", 35);
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 32);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(3, "span", 45);
-    \u0275\u0275text(4, "\u6309\u5929\u6578\u6263\u9664\u534A\u85AA");
+    \u0275\u0275elementStart(3, "span", 43);
+    \u0275\u0275text(4, "\u6309\u5C0F\u6642\u8A08\uFF0C\u75C5\u5047\u6309\u5929\u6578\u6263\u9664\u534A\u85AA");
     \u0275\u0275elementEnd()();
   }
 }
-function LeaveRequestForm_Conditional_32_Conditional_3_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_36_Conditional_3_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 45);
+    \u0275\u0275elementStart(0, "span", 43);
     \u0275\u0275text(1, "\u8F09\u5165\u4E2D...");
     \u0275\u0275elementEnd();
   }
 }
-function LeaveRequestForm_Conditional_32_Conditional_4_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_36_Conditional_4_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 45);
+    \u0275\u0275elementStart(0, "span", 43);
     \u0275\u0275text(1, " \u53EF\u88DC\u4F11\u6642\u6578\uFF1A");
     \u0275\u0275elementStart(2, "strong");
     \u0275\u0275text(3);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "span", 47);
+    \u0275\u0275elementStart(4, "span", 45);
     \u0275\u0275text(5);
+    \u0275\u0275pipe(6, "number");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "span", 45);
+    \u0275\u0275text(8, "\uFF5C\u534A\u5929\u6263\u9664 4 \u5C0F\u6642");
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    const ctx_r0 = \u0275\u0275nextContext(2);
+    const h_r5 = ctx;
     \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate1("", ctx_r0.compensatoryHours().availableHours, " \u5C0F\u6642");
+    \u0275\u0275textInterpolate1("", h_r5.availableHours, " \u5C0F\u6642");
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate2("\uFF08\u7E3D\u52A0\u73ED ", ctx_r0.compensatoryHours().totalOvertimeHours, " \u5C0F\u6642 \u2212 \u5DF2\u88DC\u4F11 ", ctx_r0.compensatoryHours().usedCompensatoryHours, " \u5C0F\u6642\uFF09");
+    \u0275\u0275textInterpolate1("\uFF08= ", \u0275\u0275pipeBind2(6, 2, h_r5.availableHours / 4, "1.0-1"), " \u500B\u534A\u5929\uFF09");
   }
 }
-function LeaveRequestForm_Conditional_32_Conditional_5_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_36_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 46);
+    \u0275\u0275elementStart(0, "span", 44);
     \u0275\u0275text(1, "\u7121\u6CD5\u53D6\u5F97\u88DC\u4F11\u6642\u6578\u8CC7\u6599");
     \u0275\u0275elementEnd();
   }
 }
-function LeaveRequestForm_Conditional_32_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_36_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 21);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 44);
-    \u0275\u0275element(2, "use", 37);
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 34);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(3, LeaveRequestForm_Conditional_32_Conditional_3_Template, 2, 0, "span", 45)(4, LeaveRequestForm_Conditional_32_Conditional_4_Template, 6, 3, "span", 45)(5, LeaveRequestForm_Conditional_32_Conditional_5_Template, 2, 0, "span", 46);
+    \u0275\u0275conditionalCreate(3, LeaveRequestForm_Conditional_36_Conditional_3_Template, 2, 0, "span", 43)(4, LeaveRequestForm_Conditional_36_Conditional_4_Template, 9, 5, "span", 43)(5, LeaveRequestForm_Conditional_36_Conditional_5_Template, 2, 0, "span", 44);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
+    let tmp_1_0;
     const ctx_r0 = \u0275\u0275nextContext();
     \u0275\u0275advance(3);
-    \u0275\u0275conditional(ctx_r0.compensatoryLoading() ? 3 : ctx_r0.compensatoryHours() ? 4 : 5);
+    \u0275\u0275conditional(ctx_r0.compensatoryLoading() ? 3 : (tmp_1_0 = ctx_r0.compensatoryHours()) ? 4 : 5, tmp_1_0);
   }
 }
-function LeaveRequestForm_Conditional_33_Conditional_0_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_37_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 21);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 44);
-    \u0275\u0275element(2, "use", 37);
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 48);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(3, "span", 45);
+    \u0275\u0275elementStart(3, "span", 43);
+    \u0275\u0275text(4, "\u516C\u5047\uFF08\u6559\u53EC\uFF0F\u9078\u8209\uFF0F\u51FA\u5EAD\uFF09\u4EE5\u5929\u8A08\u7B97\uFF0C");
+    \u0275\u0275elementStart(5, "strong");
+    \u0275\u0275text(6, "\u4E0D\u6263\u85AA");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(7, "\u3002");
+    \u0275\u0275elementEnd()();
+  }
+}
+function LeaveRequestForm_Conditional_38_Conditional_3_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 43);
+    \u0275\u0275text(1, " \u5A5A\u5047\u4E0A\u9650\uFF1A");
+    \u0275\u0275elementStart(2, "strong");
+    \u0275\u0275text(3);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(4, " \u5929\uFF08\u53EF\u4E0D\u9023\u7E8C\uFF09 ");
+    \u0275\u0275elementStart(5, "span", 45);
+    \u0275\u0275text(6);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "span", 46);
+    \u0275\u0275text(8, "\uFF5C\u5269\u9918\uFF1A");
+    \u0275\u0275elementStart(9, "strong", 47);
+    \u0275\u0275text(10);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(11, " \u5929");
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const q_r6 = ctx;
+    \u0275\u0275advance(3);
+    \u0275\u0275textInterpolate(q_r6.maxDays);
+    \u0275\u0275advance(3);
+    \u0275\u0275textInterpolate1("\uFF5C\u5DF2\u8ACB\uFF1A", q_r6.usedDays, " \u5929");
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate(q_r6.remainingDays);
+  }
+}
+function LeaveRequestForm_Conditional_38_Conditional_4_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 44);
+    \u0275\u0275text(1, "\u8F09\u5165\u4E2D...");
+    \u0275\u0275elementEnd();
+  }
+}
+function LeaveRequestForm_Conditional_38_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 21);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 48);
+    \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(3, LeaveRequestForm_Conditional_38_Conditional_3_Template, 12, 3, "span", 43)(4, LeaveRequestForm_Conditional_38_Conditional_4_Template, 2, 0, "span", 44);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    let tmp_1_0;
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275advance(3);
+    \u0275\u0275conditional((tmp_1_0 = ctx_r0.marriageQuota()) ? 3 : 4, tmp_1_0);
+  }
+}
+function LeaveRequestForm_Conditional_39_Conditional_8_Conditional_5_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 50);
+    \u0275\u0275text(1);
+    \u0275\u0275pipe(2, "date");
+    \u0275\u0275pipe(3, "date");
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext(3);
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate3("\uFF08", \u0275\u0275pipeBind2(2, 3, ctx_r0.maternityStatus().startDate, "yyyy-MM-dd"), " ~ ", \u0275\u0275pipeBind2(3, 6, ctx_r0.maternityStatus().endDate, "yyyy-MM-dd"), "\uFF0C\u72C0\u614B\uFF1A", ctx_r0.getStatusLabel(ctx_r0.maternityStatus().approvalStatus), "\uFF09");
+  }
+}
+function LeaveRequestForm_Conditional_39_Conditional_8_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 49);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 32);
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(3, "span", 43);
+    \u0275\u0275text(4, " \u5DF2\u6709\u672A\u5B8C\u6210\u6216\u9032\u884C\u4E2D\u7684\u7522\u5047\u7533\u8ACB ");
+    \u0275\u0275conditionalCreate(5, LeaveRequestForm_Conditional_39_Conditional_8_Conditional_5_Template, 4, 9, "span", 50);
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    let tmp_2_0;
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275advance(5);
+    \u0275\u0275conditional(((tmp_2_0 = ctx_r0.maternityStatus()) == null ? null : tmp_2_0.startDate) ? 5 : -1);
+  }
+}
+function LeaveRequestForm_Conditional_39_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 21);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 48);
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(3, "span", 43);
+    \u0275\u0275text(4, "\u7522\u5047\u70BA\u6CD5\u5B9A\u4E00\u6B21\u8ACB\u5B8C\uFF1A\u9078\u64C7\u8D77\u59CB\u65E5\uFF0C\u7CFB\u7D71\u81EA\u52D5\u8A08\u7B97 ");
+    \u0275\u0275elementStart(5, "strong");
+    \u0275\u0275text(6, "56 \u5929");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(7, "\u3002");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275conditionalCreate(8, LeaveRequestForm_Conditional_39_Conditional_8_Template, 6, 1, "div", 49);
+  }
+  if (rf & 2) {
+    let tmp_1_0;
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275advance(8);
+    \u0275\u0275conditional(((tmp_1_0 = ctx_r0.maternityStatus()) == null ? null : tmp_1_0.hasActiveRequest) && ((tmp_1_0 = ctx_r0.maternityStatus()) == null ? null : tmp_1_0.activeRequestId) !== ctx_r0.requestId ? 8 : -1);
+  }
+}
+function LeaveRequestForm_Conditional_40_Conditional_0_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 21);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 34);
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(3, "span", 43);
     \u0275\u0275text(4, "\u8F09\u5165\u4E2D...");
     \u0275\u0275elementEnd()();
   }
 }
-function LeaveRequestForm_Conditional_33_Conditional_1_Conditional_0_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_40_Conditional_1_Conditional_0_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 50);
+    \u0275\u0275elementStart(0, "div", 49);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 44);
-    \u0275\u0275element(2, "use", 35);
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 32);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(3, "span", 45);
+    \u0275\u0275elementStart(3, "span", 43);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    const quota_r5 = \u0275\u0275nextContext();
+    const quota_r7 = \u0275\u0275nextContext();
     \u0275\u0275advance(4);
-    \u0275\u0275textInterpolate(quota_r5.message || "\u50C5\u539F\u4F4F\u6C11\u8EAB\u4EFD\u4E4B\u54E1\u5DE5\u53EF\u7533\u8ACB\u6B72\u6642\u796D\u5100\u5047\u3002");
+    \u0275\u0275textInterpolate(quota_r7.message || "\u50C5\u539F\u4F4F\u6C11\u8EAB\u4EFD\u4E4B\u54E1\u5DE5\u53EF\u7533\u8ACB\u6B72\u6642\u796D\u5100\u5047\u3002");
   }
 }
-function LeaveRequestForm_Conditional_33_Conditional_1_Conditional_1_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_40_Conditional_1_Conditional_1_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 21);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 44);
-    \u0275\u0275element(2, "use", 51);
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 48);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(3, "span", 45);
+    \u0275\u0275elementStart(3, "span", 43);
     \u0275\u0275text(4, " \u6B72\u6642\u796D\u5100\u5047\uFF1A");
     \u0275\u0275elementStart(5, "strong");
     \u0275\u0275text(6);
     \u0275\u0275elementEnd();
     \u0275\u0275text(7, " \u5929\uFF0F\u5E74 ");
-    \u0275\u0275elementStart(8, "span", 47);
+    \u0275\u0275elementStart(8, "span", 45);
     \u0275\u0275text(9);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(10, "span", 48);
+    \u0275\u0275elementStart(10, "span", 46);
     \u0275\u0275text(11, "\uFF5C\u5269\u9918\uFF1A");
-    \u0275\u0275elementStart(12, "strong", 49);
+    \u0275\u0275elementStart(12, "strong", 47);
     \u0275\u0275text(13);
     \u0275\u0275elementEnd();
     \u0275\u0275text(14, " \u5929");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "span", 47);
+    \u0275\u0275elementStart(15, "span", 45);
     \u0275\u0275text(16, "\uFF08\u8DE8\u5E74\u6B78\u96F6\uFF09");
     \u0275\u0275elementEnd()()();
   }
   if (rf & 2) {
-    const quota_r5 = \u0275\u0275nextContext();
+    const quota_r7 = \u0275\u0275nextContext();
     \u0275\u0275advance(6);
-    \u0275\u0275textInterpolate(quota_r5.totalDays);
+    \u0275\u0275textInterpolate(quota_r7.totalDays);
     \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate1("\uFF5C\u5DF2\u4F7F\u7528\uFF1A", quota_r5.usedDays, " \u5929");
+    \u0275\u0275textInterpolate1("\uFF5C\u5DF2\u4F7F\u7528\uFF1A", quota_r7.usedDays, " \u5929");
     \u0275\u0275advance(4);
-    \u0275\u0275textInterpolate(quota_r5.availableDays);
+    \u0275\u0275textInterpolate(quota_r7.availableDays);
   }
 }
-function LeaveRequestForm_Conditional_33_Conditional_1_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_40_Conditional_1_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275conditionalCreate(0, LeaveRequestForm_Conditional_33_Conditional_1_Conditional_0_Template, 5, 1, "div", 50)(1, LeaveRequestForm_Conditional_33_Conditional_1_Conditional_1_Template, 17, 3, "div", 21);
+    \u0275\u0275conditionalCreate(0, LeaveRequestForm_Conditional_40_Conditional_1_Conditional_0_Template, 5, 1, "div", 49)(1, LeaveRequestForm_Conditional_40_Conditional_1_Conditional_1_Template, 17, 3, "div", 21);
   }
   if (rf & 2) {
     \u0275\u0275conditional(!ctx.isIndigenous ? 0 : 1);
   }
 }
-function LeaveRequestForm_Conditional_33_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_40_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275conditionalCreate(0, LeaveRequestForm_Conditional_33_Conditional_0_Template, 5, 0, "div", 21)(1, LeaveRequestForm_Conditional_33_Conditional_1_Template, 2, 1);
+    \u0275\u0275conditionalCreate(0, LeaveRequestForm_Conditional_40_Conditional_0_Template, 5, 0, "div", 21)(1, LeaveRequestForm_Conditional_40_Conditional_1_Template, 2, 1);
   }
   if (rf & 2) {
     let tmp_1_0;
@@ -16736,65 +16960,156 @@ function LeaveRequestForm_Conditional_33_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r0.ceremonialLoading() ? 0 : (tmp_1_0 = ctx_r0.ceremonialQuota()) ? 1 : -1, tmp_1_0);
   }
 }
-function LeaveRequestForm_Conditional_34_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_41_Conditional_11_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 49);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 32);
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(3, "span", 43);
+    \u0275\u0275text(4, "\u50C5\u9650\u5354\u7406\uFF08\u542B\uFF09\u4EE5\u4E0A\u8077\u7D1A\u7533\u8ACB\u3002");
+    \u0275\u0275elementEnd()();
+  }
+}
+function LeaveRequestForm_Conditional_41_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 21);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 44);
-    \u0275\u0275element(2, "use", 51);
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 48);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(3, "span", 45);
-    \u0275\u0275text(4);
+    \u0275\u0275elementStart(3, "span", 43);
+    \u0275\u0275text(4, " \u9AD8\u968E\u4E3B\u7BA1\u5047\uFF1A\u4EE5\u534A\u5929\u70BA\u55AE\u4F4D\uFF0C");
     \u0275\u0275elementStart(5, "strong");
-    \u0275\u0275text(6);
-    \u0275\u0275elementEnd()()();
+    \u0275\u0275text(6, "\u4E0D\u6263\u4EFB\u4F55\u9805\u76EE");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(7, "\u3001");
+    \u0275\u0275elementStart(8, "strong");
+    \u0275\u0275text(9, "\u7121\u984D\u5EA6\u4E0A\u9650");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(10, "\uFF0C\u50C5\u4F5C\u7D00\u9304\u3002 ");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275conditionalCreate(11, LeaveRequestForm_Conditional_41_Conditional_11_Template, 5, 0, "div", 49);
   }
   if (rf & 2) {
     const ctx_r0 = \u0275\u0275nextContext();
-    \u0275\u0275advance(4);
-    \u0275\u0275textInterpolate1("", ctx_r0.leaveTypeLabels[ctx_r0.selectedLeaveType], "\u4E0A\u9650\uFF1A");
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate1("", ctx_r0.currentDaysLimit, " \u5929");
+    \u0275\u0275advance(11);
+    \u0275\u0275conditional(!ctx_r0.isSeniorExecutive() ? 11 : -1);
   }
 }
-function LeaveRequestForm_Conditional_35_For_9_For_2_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_42_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 43);
+    \u0275\u0275elementStart(0, "span", 51);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const rel_r6 = ctx.$implicit;
-    const ctx_r0 = \u0275\u0275nextContext(3);
-    \u0275\u0275property("value", rel_r6);
+    const ctx_r0 = \u0275\u0275nextContext(2);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(ctx_r0.bereavementLabels[rel_r6]);
+    \u0275\u0275textInterpolate1("\uFF08= ", ctx_r0.currentDaysLimit * 8, " \u5C0F\u6642\uFF09");
   }
 }
-function LeaveRequestForm_Conditional_35_For_9_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_42_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "optgroup", 20);
-    \u0275\u0275repeaterCreate(1, LeaveRequestForm_Conditional_35_For_9_For_2_Template, 2, 2, "option", 43, \u0275\u0275repeaterTrackByIdentity);
+    \u0275\u0275elementStart(0, "div", 21);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 48);
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(3, "span", 43);
+    \u0275\u0275text(4);
+    \u0275\u0275elementStart(5, "strong");
+    \u0275\u0275text(6);
+    \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(7, LeaveRequestForm_Conditional_42_Conditional_7_Template, 2, 1, "span", 51);
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate1(" ", ctx_r0.leaveTypeLabels[ctx_r0.selectedLeaveType], "\u4E0A\u9650\uFF1A");
+    \u0275\u0275advance(2);
+    \u0275\u0275textInterpolate1("", ctx_r0.currentDaysLimit, " \u5929");
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r0.selectedUnit === "hour" ? 7 : -1);
+  }
+}
+function LeaveRequestForm_Conditional_43_For_9_For_2_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "option", 41);
+    \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const group_r7 = ctx.$implicit;
-    \u0275\u0275property("label", group_r7.days + " \u5929");
+    const rel_r8 = ctx.$implicit;
+    const ctx_r0 = \u0275\u0275nextContext(3);
+    \u0275\u0275property("value", rel_r8);
     \u0275\u0275advance();
-    \u0275\u0275repeater(group_r7.relationships);
+    \u0275\u0275textInterpolate(ctx_r0.bereavementLabels[rel_r8]);
   }
 }
-function LeaveRequestForm_Conditional_35_Conditional_10_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_43_For_9_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "optgroup", 40);
+    \u0275\u0275repeaterCreate(1, LeaveRequestForm_Conditional_43_For_9_For_2_Template, 2, 2, "option", 41, \u0275\u0275repeaterTrackByIdentity);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const group_r9 = ctx.$implicit;
+    \u0275\u0275property("label", group_r9.days + " \u5929");
+    \u0275\u0275advance();
+    \u0275\u0275repeater(group_r9.relationships);
+  }
+}
+function LeaveRequestForm_Conditional_43_Conditional_10_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 26);
     \u0275\u0275text(1, "\u8ACB\u9078\u64C7\u89AA\u5C6C\u95DC\u4FC2\u3002");
     \u0275\u0275elementEnd();
   }
 }
-function LeaveRequestForm_Conditional_35_Conditional_11_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_43_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 54);
+    \u0275\u0275elementStart(0, "div", 21);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 48);
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(3, "span", 43);
+    \u0275\u0275text(4, " \u6B64\u89AA\u5C6C\u95DC\u4FC2\u4E0A\u9650\uFF1A");
+    \u0275\u0275elementStart(5, "strong");
+    \u0275\u0275text(6);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(7, " \u5929 ");
+    \u0275\u0275elementStart(8, "span", 45);
+    \u0275\u0275text(9);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(10, "span", 46);
+    \u0275\u0275text(11, "\uFF5C\u5269\u9918\uFF1A");
+    \u0275\u0275elementStart(12, "strong", 47);
+    \u0275\u0275text(13);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(14, " \u5929");
+    \u0275\u0275elementEnd()()();
+  }
+  if (rf & 2) {
+    const q_r10 = ctx;
+    \u0275\u0275advance(6);
+    \u0275\u0275textInterpolate(q_r10.maxDays);
+    \u0275\u0275advance(3);
+    \u0275\u0275textInterpolate1("\uFF5C\u5DF2\u8ACB\uFF1A", q_r10.usedDays, " \u5929");
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate(q_r10.remainingDays);
+  }
+}
+function LeaveRequestForm_Conditional_43_Conditional_12_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 20);
     \u0275\u0275text(1, "\u55AA\u5047\u4E0A\u9650\uFF1A");
     \u0275\u0275elementStart(2, "strong");
     \u0275\u0275text(3);
@@ -16806,7 +17121,7 @@ function LeaveRequestForm_Conditional_35_Conditional_11_Template(rf, ctx) {
     \u0275\u0275textInterpolate1("", ctx_r0.currentDaysLimit, " \u5929");
   }
 }
-function LeaveRequestForm_Conditional_35_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_43_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 16)(1, "label", 17);
     \u0275\u0275text(2, "\u89AA\u5C6C\u95DC\u4FC2 ");
@@ -16816,169 +17131,369 @@ function LeaveRequestForm_Conditional_35_Template(rf, ctx) {
     \u0275\u0275elementStart(5, "select", 52)(6, "option", 53);
     \u0275\u0275text(7, "\u2014 \u8ACB\u9078\u64C7 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(8, LeaveRequestForm_Conditional_35_For_9_Template, 3, 1, "optgroup", 20, _forTrack15);
+    \u0275\u0275repeaterCreate(8, LeaveRequestForm_Conditional_43_For_9_Template, 3, 1, "optgroup", 40, _forTrack15);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(10, LeaveRequestForm_Conditional_35_Conditional_10_Template, 2, 0, "div", 26);
-    \u0275\u0275conditionalCreate(11, LeaveRequestForm_Conditional_35_Conditional_11_Template, 4, 1, "div", 54);
+    \u0275\u0275conditionalCreate(10, LeaveRequestForm_Conditional_43_Conditional_10_Template, 2, 0, "div", 26);
+    \u0275\u0275conditionalCreate(11, LeaveRequestForm_Conditional_43_Conditional_11_Template, 15, 3, "div", 21)(12, LeaveRequestForm_Conditional_43_Conditional_12_Template, 4, 1, "div", 20);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
     let tmp_2_0;
+    let tmp_3_0;
     const ctx_r0 = \u0275\u0275nextContext();
     \u0275\u0275advance(8);
     \u0275\u0275repeater(ctx_r0.bereavementGroups);
     \u0275\u0275advance(2);
     \u0275\u0275conditional(((tmp_2_0 = ctx_r0.form.get("bereavementRelationship")) == null ? null : tmp_2_0.invalid) && ((tmp_2_0 = ctx_r0.form.get("bereavementRelationship")) == null ? null : tmp_2_0.touched) ? 10 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r0.currentDaysLimit !== null ? 11 : -1);
+    \u0275\u0275conditional((tmp_3_0 = ctx_r0.bereavementQuota()) ? 11 : ctx_r0.currentDaysLimit !== null ? 12 : -1, tmp_3_0);
   }
 }
-function LeaveRequestForm_Conditional_43_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_44_For_10_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 26);
-    \u0275\u0275text(1, "\u8ACB\u9078\u64C7\u958B\u59CB\u6642\u9593\u3002");
-    \u0275\u0275elementEnd();
-  }
-}
-function LeaveRequestForm_Conditional_44_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 26);
-    \u0275\u0275text(1, "\u5206\u9418\u8ACB\u9078\u64C7 00 \u6216 30\u3002");
-    \u0275\u0275elementEnd();
-  }
-}
-function LeaveRequestForm_Conditional_51_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 26);
-    \u0275\u0275text(1, "\u8ACB\u9078\u64C7\u7D50\u675F\u6642\u9593\u3002");
-    \u0275\u0275elementEnd();
-  }
-}
-function LeaveRequestForm_Conditional_52_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 26);
-    \u0275\u0275text(1, "\u5206\u9418\u8ACB\u9078\u64C7 00 \u6216 30\u3002");
-    \u0275\u0275elementEnd();
-  }
-}
-function LeaveRequestForm_Conditional_58_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 26);
+    \u0275\u0275elementStart(0, "option", 58);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const ctx_r0 = \u0275\u0275nextContext();
+    const h_r11 = ctx.$implicit;
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("ngValue", h_r11);
     \u0275\u0275advance();
+    \u0275\u0275textInterpolate(ctx_r0.formatHour(h_r11));
+  }
+}
+function LeaveRequestForm_Conditional_44_For_20_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "option", 58);
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const h_r12 = ctx.$implicit;
+    const ctx_r0 = \u0275\u0275nextContext(2);
+    \u0275\u0275property("ngValue", h_r12);
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate(ctx_r0.formatHour(h_r12));
+  }
+}
+function LeaveRequestForm_Conditional_44_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 23)(1, "div", 54)(2, "label", 17);
+    \u0275\u0275text(3, "\u958B\u59CB\u65E5\u671F ");
+    \u0275\u0275elementStart(4, "span", 18);
+    \u0275\u0275text(5, "*");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(6, "div", 55);
+    \u0275\u0275element(7, "input", 56);
+    \u0275\u0275elementStart(8, "select", 57);
+    \u0275\u0275repeaterCreate(9, LeaveRequestForm_Conditional_44_For_10_Template, 2, 2, "option", 58, \u0275\u0275repeaterTrackByIdentity);
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(11, "div", 54)(12, "label", 17);
+    \u0275\u0275text(13, "\u7D50\u675F\u65E5\u671F ");
+    \u0275\u0275elementStart(14, "span", 18);
+    \u0275\u0275text(15, "*");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(16, "div", 55);
+    \u0275\u0275element(17, "input", 59);
+    \u0275\u0275elementStart(18, "select", 60);
+    \u0275\u0275repeaterCreate(19, LeaveRequestForm_Conditional_44_For_20_Template, 2, 2, "option", 58, \u0275\u0275repeaterTrackByIdentity);
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(21, "div", 61)(22, "label", 17);
+    \u0275\u0275text(23, "\u6642\u6578");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(24, "div", 62);
+    \u0275\u0275text(25);
+    \u0275\u0275elementEnd()()();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275advance(9);
+    \u0275\u0275repeater(ctx_r0.hourOptions);
+    \u0275\u0275advance(10);
+    \u0275\u0275repeater(ctx_r0.hourOptions);
+    \u0275\u0275advance(6);
+    \u0275\u0275textInterpolate(ctx_r0.calculatedDisplay);
+  }
+}
+function LeaveRequestForm_Conditional_45_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 23)(1, "div", 63)(2, "label", 17);
+    \u0275\u0275text(3, "\u8D77\u59CB\u65E5 ");
+    \u0275\u0275elementStart(4, "span", 18);
+    \u0275\u0275text(5, "*");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275element(6, "input", 56);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "div", 63)(8, "label", 17);
+    \u0275\u0275text(9, "\u7D50\u675F\u65E5\uFF08\u81EA\u52D5\uFF09");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(10, "div", 62);
+    \u0275\u0275text(11);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(12, "div", 63)(13, "label", 17);
+    \u0275\u0275text(14, "\u5929\u6578");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(15, "div", 62);
+    \u0275\u0275text(16);
+    \u0275\u0275elementEnd()()();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275advance(11);
+    \u0275\u0275textInterpolate1(" ", ctx_r0.maternityEndDate ?? "\u2014", " ");
+    \u0275\u0275advance(5);
+    \u0275\u0275textInterpolate(ctx_r0.calculatedDisplay);
+  }
+}
+function LeaveRequestForm_Conditional_46_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 23)(1, "div", 63)(2, "label", 17);
+    \u0275\u0275text(3, "\u958B\u59CB\u65E5\u671F ");
+    \u0275\u0275elementStart(4, "span", 18);
+    \u0275\u0275text(5, "*");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275element(6, "input", 56);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "div", 63)(8, "label", 17);
+    \u0275\u0275text(9, "\u7D50\u675F\u65E5\u671F ");
+    \u0275\u0275elementStart(10, "span", 18);
+    \u0275\u0275text(11, "*");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275element(12, "input", 59);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(13, "div", 63)(14, "label", 17);
+    \u0275\u0275text(15, "\u5929\u6578");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(16, "div", 62);
+    \u0275\u0275text(17);
+    \u0275\u0275elementEnd()()();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275advance(17);
+    \u0275\u0275textInterpolate(ctx_r0.calculatedDisplay);
+  }
+}
+function LeaveRequestForm_Conditional_47_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 23)(1, "div", 54)(2, "label", 17);
+    \u0275\u0275text(3, "\u958B\u59CB\u65E5\u671F ");
+    \u0275\u0275elementStart(4, "span", 18);
+    \u0275\u0275text(5, "*");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(6, "div", 55);
+    \u0275\u0275element(7, "input", 56);
+    \u0275\u0275elementStart(8, "select", 64)(9, "option", 65);
+    \u0275\u0275text(10, "\u4E0A\u5348\uFF08\u5F9E 08:00\uFF09");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(11, "option", 66);
+    \u0275\u0275text(12, "\u4E0B\u5348\uFF08\u5F9E 13:00\uFF09");
+    \u0275\u0275elementEnd()()()();
+    \u0275\u0275elementStart(13, "div", 54)(14, "label", 17);
+    \u0275\u0275text(15, "\u7D50\u675F\u65E5\u671F ");
+    \u0275\u0275elementStart(16, "span", 18);
+    \u0275\u0275text(17, "*");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(18, "div", 55);
+    \u0275\u0275element(19, "input", 59);
+    \u0275\u0275elementStart(20, "select", 67)(21, "option", 65);
+    \u0275\u0275text(22, "\u4E0A\u5348\uFF08\u81F3 12:00\uFF09");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(23, "option", 66);
+    \u0275\u0275text(24, "\u4E0B\u5348\uFF08\u81F3 17:00\uFF09");
+    \u0275\u0275elementEnd()()()();
+    \u0275\u0275elementStart(25, "div", 61)(26, "label", 17);
+    \u0275\u0275text(27, "\u5408\u8A08");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(28, "div", 62);
+    \u0275\u0275text(29);
+    \u0275\u0275elementStart(30, "span", 68);
+    \u0275\u0275text(31, "\uFF08\u534A\u5929 = 4 \u5C0F\u6642\uFF0C\u6574\u5929 = 8 \u5C0F\u6642\uFF09");
+    \u0275\u0275elementEnd()()()();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275advance(29);
+    \u0275\u0275textInterpolate1(" ", ctx_r0.calculatedDisplay, " ");
+  }
+}
+function LeaveRequestForm_Conditional_48_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 24);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 32);
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(3, "span", 43);
+    \u0275\u0275text(4, "\u7D50\u675F\u6642\u9593\u5FC5\u9808\u665A\u65BC\u958B\u59CB\u6642\u9593\uFF0C\u8ACB\u6AA2\u67E5\u65E5\u671F\u8207\u6642\u6BB5\u8A2D\u5B9A\u3002");
+    \u0275\u0275elementEnd()();
+  }
+}
+function LeaveRequestForm_Conditional_49_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 24);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 32);
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(3, "span", 43);
+    \u0275\u0275text(4);
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275advance(4);
     \u0275\u0275textInterpolate2("\u88DC\u4F11\u6642\u6578\u4E0D\u8DB3\uFF0C\u53EF\u7528 ", ctx_r0.compensatoryHours().availableHours, " \u5C0F\u6642\uFF08\u7533\u8ACB ", ctx_r0.calculatedHours, " \u5C0F\u6642\uFF09\u3002");
   }
 }
-function LeaveRequestForm_Conditional_65_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_50_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 24);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 32);
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(3, "span", 43);
+    \u0275\u0275text(4);
+    \u0275\u0275pipe(5, "number");
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate2("\u5A5A\u5047\u5269\u9918 ", ctx.remainingDays, " \u5929\uFF0C\u672C\u6B21\u7533\u8ACB ", \u0275\u0275pipeBind2(5, 2, ctx_r0.calculatedHours / 8, "1.0-1"), " \u5929\u5DF2\u8D85\u904E\u4E0A\u9650\u3002");
+  }
+}
+function LeaveRequestForm_Conditional_51_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 24);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 32);
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(3, "span", 43);
+    \u0275\u0275text(4);
+    \u0275\u0275pipe(5, "number");
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const q_r13 = ctx;
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate3("\u55AA\u5047\u5269\u9918 ", q_r13.remainingDays, " \u5929\uFF08", ctx_r0.getBereavementLabel(q_r13.relationship), "\uFF09\uFF0C\u672C\u6B21\u7533\u8ACB ", \u0275\u0275pipeBind2(5, 3, ctx_r0.calculatedHours / 8, "1.0-1"), " \u5929\u5DF2\u8D85\u904E\u4E0A\u9650\u3002");
+  }
+}
+function LeaveRequestForm_Conditional_58_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 26);
     \u0275\u0275text(1, "\u8ACB\u586B\u5BEB\u8ACB\u5047\u539F\u56E0\u3002");
     \u0275\u0275elementEnd();
   }
 }
-function LeaveRequestForm_Conditional_66_For_9_For_7_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_59_For_9_For_7_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 61);
+    \u0275\u0275elementStart(0, "option", 58);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const jt_r12 = ctx.$implicit;
-    \u0275\u0275property("ngValue", jt_r12.id);
+    const jt_r18 = ctx.$implicit;
+    \u0275\u0275property("ngValue", jt_r18.id);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(jt_r12.name);
+    \u0275\u0275textInterpolate(jt_r18.name);
   }
 }
-function LeaveRequestForm_Conditional_66_For_9_For_12_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_59_For_9_For_12_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 61);
+    \u0275\u0275elementStart(0, "option", 58);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const user_r13 = ctx.$implicit;
-    \u0275\u0275property("ngValue", user_r13.id);
+    const user_r19 = ctx.$implicit;
+    \u0275\u0275property("ngValue", user_r19.id);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(user_r13.name);
+    \u0275\u0275textInterpolate(user_r19.name);
   }
 }
-function LeaveRequestForm_Conditional_66_For_9_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_59_For_9_Template(rf, ctx) {
   if (rf & 1) {
-    const _r9 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 56)(1, "span", 59);
+    const _r15 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 70)(1, "span", 73);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "select", 60);
-    \u0275\u0275twoWayListener("ngModelChange", function LeaveRequestForm_Conditional_66_For_9_Template_select_ngModelChange_3_listener($event) {
-      const entry_r10 = \u0275\u0275restoreView(_r9).$implicit;
-      \u0275\u0275twoWayBindingSet(entry_r10.selectedJobTitleId, $event) || (entry_r10.selectedJobTitleId = $event);
+    \u0275\u0275elementStart(3, "select", 74);
+    \u0275\u0275twoWayListener("ngModelChange", function LeaveRequestForm_Conditional_59_For_9_Template_select_ngModelChange_3_listener($event) {
+      const entry_r16 = \u0275\u0275restoreView(_r15).$implicit;
+      \u0275\u0275twoWayBindingSet(entry_r16.selectedJobTitleId, $event) || (entry_r16.selectedJobTitleId = $event);
       return \u0275\u0275resetView($event);
     });
-    \u0275\u0275listener("ngModelChange", function LeaveRequestForm_Conditional_66_For_9_Template_select_ngModelChange_3_listener() {
-      const \u0275$index_358_r11 = \u0275\u0275restoreView(_r9).$index;
+    \u0275\u0275listener("ngModelChange", function LeaveRequestForm_Conditional_59_For_9_Template_select_ngModelChange_3_listener() {
+      const \u0275$index_665_r17 = \u0275\u0275restoreView(_r15).$index;
       const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.onEntryJobTitleChange(\u0275$index_358_r11));
+      return \u0275\u0275resetView(ctx_r0.onEntryJobTitleChange(\u0275$index_665_r17));
     });
-    \u0275\u0275elementStart(4, "option", 61);
+    \u0275\u0275elementStart(4, "option", 58);
     \u0275\u0275text(5, "\u2014 \u8077\u7A31 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(6, LeaveRequestForm_Conditional_66_For_9_For_7_Template, 2, 2, "option", 61, _forTrack2);
+    \u0275\u0275repeaterCreate(6, LeaveRequestForm_Conditional_59_For_9_For_7_Template, 2, 2, "option", 58, _forTrack2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "select", 62);
-    \u0275\u0275twoWayListener("ngModelChange", function LeaveRequestForm_Conditional_66_For_9_Template_select_ngModelChange_8_listener($event) {
-      const entry_r10 = \u0275\u0275restoreView(_r9).$implicit;
-      \u0275\u0275twoWayBindingSet(entry_r10.selectedUserId, $event) || (entry_r10.selectedUserId = $event);
+    \u0275\u0275elementStart(8, "select", 75);
+    \u0275\u0275twoWayListener("ngModelChange", function LeaveRequestForm_Conditional_59_For_9_Template_select_ngModelChange_8_listener($event) {
+      const entry_r16 = \u0275\u0275restoreView(_r15).$implicit;
+      \u0275\u0275twoWayBindingSet(entry_r16.selectedUserId, $event) || (entry_r16.selectedUserId = $event);
       return \u0275\u0275resetView($event);
     });
-    \u0275\u0275elementStart(9, "option", 61);
+    \u0275\u0275elementStart(9, "option", 58);
     \u0275\u0275text(10, "\u2014 \u4EBA\u54E1 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(11, LeaveRequestForm_Conditional_66_For_9_For_12_Template, 2, 2, "option", 61, _forTrack2);
+    \u0275\u0275repeaterCreate(11, LeaveRequestForm_Conditional_59_For_9_For_12_Template, 2, 2, "option", 58, _forTrack2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(13, "button", 63);
-    \u0275\u0275listener("click", function LeaveRequestForm_Conditional_66_For_9_Template_button_click_13_listener() {
-      const \u0275$index_358_r11 = \u0275\u0275restoreView(_r9).$index;
+    \u0275\u0275elementStart(13, "button", 76);
+    \u0275\u0275listener("click", function LeaveRequestForm_Conditional_59_For_9_Template_button_click_13_listener() {
+      const \u0275$index_665_r17 = \u0275\u0275restoreView(_r15).$index;
       const ctx_r0 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r0.removeDesignatedEntry(\u0275$index_358_r11));
+      return \u0275\u0275resetView(ctx_r0.removeDesignatedEntry(\u0275$index_665_r17));
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(14, "svg", 34);
-    \u0275\u0275element(15, "use", 64);
+    \u0275\u0275elementStart(14, "svg", 31);
+    \u0275\u0275element(15, "use", 77);
     \u0275\u0275elementEnd()()();
   }
   if (rf & 2) {
-    const entry_r10 = ctx.$implicit;
-    const \u0275$index_358_r11 = ctx.$index;
+    const entry_r16 = ctx.$implicit;
+    const \u0275$index_665_r17 = ctx.$index;
     const ctx_r0 = \u0275\u0275nextContext(2);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate1("", \u0275$index_358_r11 + 1, ".");
+    \u0275\u0275textInterpolate1("", \u0275$index_665_r17 + 1, ".");
     \u0275\u0275advance();
-    \u0275\u0275twoWayProperty("ngModel", entry_r10.selectedJobTitleId);
+    \u0275\u0275twoWayProperty("ngModel", entry_r16.selectedJobTitleId);
     \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(7, _c012));
     \u0275\u0275advance();
     \u0275\u0275property("ngValue", null);
     \u0275\u0275advance(2);
     \u0275\u0275repeater(ctx_r0.jobTitles);
     \u0275\u0275advance(2);
-    \u0275\u0275twoWayProperty("ngModel", entry_r10.selectedUserId);
+    \u0275\u0275twoWayProperty("ngModel", entry_r16.selectedUserId);
     \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(8, _c012));
     \u0275\u0275advance();
     \u0275\u0275property("ngValue", null);
     \u0275\u0275advance(2);
-    \u0275\u0275repeater(entry_r10.filteredUsers);
+    \u0275\u0275repeater(entry_r16.filteredUsers);
   }
 }
-function LeaveRequestForm_Conditional_66_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_59_Template(rf, ctx) {
   if (rf & 1) {
-    const _r8 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 30)(1, "div", 12);
+    const _r14 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 27)(1, "div", 12);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 13);
-    \u0275\u0275element(3, "use", 55);
+    \u0275\u0275element(3, "use", 69);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u6307\u5B9A\u5BE9\u6838\u8005 ");
     \u0275\u0275elementEnd();
@@ -16986,16 +17501,16 @@ function LeaveRequestForm_Conditional_66_Template(rf, ctx) {
     \u0275\u0275elementStart(5, "div", 15)(6, "label", 17);
     \u0275\u0275text(7, "\u6307\u5B9A\u5BE9\u6838\u8005\uFF08\u4F9D\u5E8F\u5BE9\u6838\uFF09");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(8, LeaveRequestForm_Conditional_66_For_9_Template, 16, 9, "div", 56, \u0275\u0275repeaterTrackByIndex);
-    \u0275\u0275elementStart(10, "button", 57);
-    \u0275\u0275listener("click", function LeaveRequestForm_Conditional_66_Template_button_click_10_listener() {
-      \u0275\u0275restoreView(_r8);
+    \u0275\u0275repeaterCreate(8, LeaveRequestForm_Conditional_59_For_9_Template, 16, 9, "div", 70, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275elementStart(10, "button", 71);
+    \u0275\u0275listener("click", function LeaveRequestForm_Conditional_59_Template_button_click_10_listener() {
+      \u0275\u0275restoreView(_r14);
       const ctx_r0 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r0.addDesignatedEntry());
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(11, "svg", 34);
-    \u0275\u0275element(12, "use", 58);
+    \u0275\u0275elementStart(11, "svg", 31);
+    \u0275\u0275element(12, "use", 72);
     \u0275\u0275elementEnd();
     \u0275\u0275text(13, " \u65B0\u589E\u5BE9\u6838\u4EBA ");
     \u0275\u0275elementEnd()()();
@@ -17006,25 +17521,25 @@ function LeaveRequestForm_Conditional_66_Template(rf, ctx) {
     \u0275\u0275repeater(ctx_r0.designatedEntries);
   }
 }
-function LeaveRequestForm_Conditional_67_For_10_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_60_For_10_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "li", 45);
+    \u0275\u0275elementStart(0, "li", 43);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const entry_r14 = ctx.$implicit;
+    const entry_r20 = ctx.$implicit;
     const ctx_r0 = \u0275\u0275nextContext(2);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(ctx_r0.getUserName(entry_r14.selectedUserId));
+    \u0275\u0275textInterpolate(ctx_r0.getUserName(entry_r20.selectedUserId));
   }
 }
-function LeaveRequestForm_Conditional_67_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_60_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 30)(1, "div", 12);
+    \u0275\u0275elementStart(0, "div", 27)(1, "div", 12);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 13);
-    \u0275\u0275element(3, "use", 55);
+    \u0275\u0275element(3, "use", 69);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u6307\u5B9A\u5BE9\u6838\u8005 ");
     \u0275\u0275elementEnd();
@@ -17032,8 +17547,8 @@ function LeaveRequestForm_Conditional_67_Template(rf, ctx) {
     \u0275\u0275elementStart(5, "div", 15)(6, "label", 17);
     \u0275\u0275text(7, "\u6307\u5B9A\u5BE9\u6838\u8005\uFF08\u4F9D\u5E8F\u5BE9\u6838\uFF09");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "ol", 65);
-    \u0275\u0275repeaterCreate(9, LeaveRequestForm_Conditional_67_For_10_Template, 2, 1, "li", 45, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275elementStart(8, "ol", 78);
+    \u0275\u0275repeaterCreate(9, LeaveRequestForm_Conditional_60_For_10_Template, 2, 1, "li", 43, \u0275\u0275repeaterTrackByIndex);
     \u0275\u0275elementEnd()()();
   }
   if (rf & 2) {
@@ -17042,37 +17557,37 @@ function LeaveRequestForm_Conditional_67_Template(rf, ctx) {
     \u0275\u0275repeater(ctx_r0.designatedEntries);
   }
 }
-function LeaveRequestForm_Conditional_69_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_62_Template(rf, ctx) {
   if (rf & 1) {
-    const _r15 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 32)(1, "button", 66);
+    const _r21 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 29)(1, "button", 79);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "button", 67);
-    \u0275\u0275listener("click", function LeaveRequestForm_Conditional_69_Template_button_click_3_listener() {
-      \u0275\u0275restoreView(_r15);
+    \u0275\u0275elementStart(3, "button", 80);
+    \u0275\u0275listener("click", function LeaveRequestForm_Conditional_62_Template_button_click_3_listener() {
+      \u0275\u0275restoreView(_r21);
       const ctx_r0 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r0.submitForApproval());
     });
     \u0275\u0275text(4, " \u9001\u51FA\u7533\u8ACB ");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "a", 68);
+    \u0275\u0275elementStart(5, "a", 81);
     \u0275\u0275text(6, "\u53D6\u6D88");
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
     const ctx_r0 = \u0275\u0275nextContext();
     \u0275\u0275advance();
-    \u0275\u0275property("disabled", ctx_r0.form.invalid || ctx_r0.calculatedHours <= 0);
+    \u0275\u0275property("disabled", !ctx_r0.canSubmit);
     \u0275\u0275advance();
     \u0275\u0275textInterpolate1(" ", ctx_r0.isEdit ? "\u5132\u5B58" : "\u5132\u5B58\u8349\u7A3F", " ");
     \u0275\u0275advance();
-    \u0275\u0275property("disabled", ctx_r0.form.invalid || ctx_r0.calculatedHours <= 0 || ctx_r0.isCompensatoryExceeded || ctx_r0.isCeremonialNotAllowed);
+    \u0275\u0275property("disabled", !ctx_r0.canSubmit);
   }
 }
-function LeaveRequestForm_Conditional_70_Template(rf, ctx) {
+function LeaveRequestForm_Conditional_63_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 33)(1, "a", 68);
+    \u0275\u0275elementStart(0, "div", 30)(1, "a", 81);
     \u0275\u0275text(2, "\u8FD4\u56DE\u5217\u8868");
     \u0275\u0275elementEnd()();
   }
@@ -17084,6 +17599,7 @@ var LeaveRequestForm = class _LeaveRequestForm {
   userSvc = inject(UserService);
   approvalSvc = inject(ApprovalService);
   taskSvc = inject(ApprovalTaskService);
+  auth = inject(AuthService);
   route = inject(ActivatedRoute);
   router = inject(Router);
   cdr = inject(ChangeDetectorRef);
@@ -17109,6 +17625,7 @@ var LeaveRequestForm = class _LeaveRequestForm {
   leaveTypeGroups = LEAVE_TYPE_GROUPS;
   leaveTypeLabels = LEAVE_TYPE_LABELS;
   leaveTypeDaysLimit = LEAVE_TYPE_DAYS_LIMIT;
+  leaveTimeUnit = LEAVE_TIME_UNIT;
   bereavementGroups = BEREAVEMENT_GROUPS;
   bereavementLabels = BEREAVEMENT_RELATIONSHIP_LABELS;
   bereavementDays = BEREAVEMENT_DAYS;
@@ -17123,6 +17640,188 @@ var LeaveRequestForm = class _LeaveRequestForm {
   /** 歲時祭儀假額度（從 API 取得） */
   ceremonialQuota = signal(null, ...ngDevMode ? [{ debugName: "ceremonialQuota" }] : []);
   ceremonialLoading = signal(false, ...ngDevMode ? [{ debugName: "ceremonialLoading" }] : []);
+  /** 婚假額度 */
+  marriageQuota = signal(null, ...ngDevMode ? [{ debugName: "marriageQuota" }] : []);
+  /** 產假狀態 */
+  maternityStatus = signal(null, ...ngDevMode ? [{ debugName: "maternityStatus" }] : []);
+  /** 喪假額度（依當前選擇的親屬關係） */
+  bereavementQuota = signal(null, ...ngDevMode ? [{ debugName: "bereavementQuota" }] : []);
+  /** 高階主管假適用性 */
+  seniorExecEligibility = signal(null, ...ngDevMode ? [{ debugName: "seniorExecEligibility" }] : []);
+  /**
+   * 是否為協理以上（決定高階主管假選項是否顯示）
+   * - Superadmin 一律通過
+   * - 同時檢查 JWT `job_title_level` claim 與後端 `/leave-requests/senior-executive-eligibility` API，
+   *   任一來源為真即顯示，避免舊 JWT 尚無 claim 時被誤過濾。
+   */
+  isSeniorExecutive = computed(() => {
+    if (this.auth.isSuperAdmin())
+      return true;
+    if (this.auth.isSeniorExecutive())
+      return true;
+    return this.seniorExecEligibility()?.isEligible === true;
+  }, ...ngDevMode ? [{ debugName: "isSeniorExecutive" }] : []);
+  /** 整點小時選項（0 ~ 23） */
+  hourOptions = Array.from({ length: 24 }, (_, i) => i);
+  form = this.fb.group({
+    leaveType: ["annual", Validators.required],
+    bereavementRelationship: [""],
+    // 日期（yyyy-MM-dd）：Hour / HalfDay / Day / Maternity 共用
+    startDate: [""],
+    endDate: [""],
+    // Hour 模式：整點小時下拉（0 ~ 23）
+    startHour: [9],
+    endHour: [18],
+    // HalfDay 模式：時段
+    startSlot: ["am"],
+    endSlot: ["pm"],
+    reason: ["", Validators.required]
+  });
+  /** 將整數小時轉為 HH:00 顯示 */
+  formatHour(h) {
+    return `${String(h).padStart(2, "0")}:00`;
+  }
+  /** 當前選擇的假別 */
+  get selectedLeaveType() {
+    return this.form.get("leaveType")?.value || "annual";
+  }
+  /** 當前假別的時間單位 */
+  get selectedUnit() {
+    return this.leaveTimeUnit[this.selectedLeaveType];
+  }
+  /** 當前選擇的喪假關係 */
+  get selectedBereavementRelationship() {
+    const v = this.form.get("bereavementRelationship")?.value;
+    return v ? v : null;
+  }
+  /** 當前假別的天數上限 */
+  get currentDaysLimit() {
+    const type = this.selectedLeaveType;
+    if (type === "bereavement") {
+      const rel = this.selectedBereavementRelationship;
+      return rel ? this.bereavementDays[rel] ?? null : null;
+    }
+    return this.leaveTypeDaysLimit[type] ?? null;
+  }
+  /** 產假自動計算的結束日（start + 55 天） */
+  get maternityEndDate() {
+    if (this.selectedLeaveType !== "maternity")
+      return null;
+    const start = this.form.get("startDate")?.value;
+    if (!start)
+      return null;
+    const d = new Date(start);
+    if (isNaN(d.getTime()))
+      return null;
+    d.setDate(d.getDate() + 55);
+    return this._formatDate(d);
+  }
+  /** 根據當前表單狀態計算時數 */
+  get calculatedHours() {
+    const type = this.selectedLeaveType;
+    const unit = this.selectedUnit;
+    if (type === "maternity") {
+      return this.form.get("startDate")?.value ? 448 : 0;
+    }
+    if (unit === "hour") {
+      const sDate = this.form.get("startDate")?.value;
+      const eDate = this.form.get("endDate")?.value;
+      const sHour = this.form.get("startHour")?.value;
+      const eHour = this.form.get("endHour")?.value;
+      if (!sDate || !eDate || sHour === null || sHour === void 0 || eHour === null || eHour === void 0)
+        return 0;
+      const startD2 = this._parseDate(sDate);
+      const endD2 = this._parseDate(eDate);
+      if (!startD2 || !endD2)
+        return 0;
+      const startMs = startD2.getTime() + sHour * 36e5;
+      const endMs = endD2.getTime() + eHour * 36e5;
+      const diff = endMs - startMs;
+      if (diff <= 0)
+        return 0;
+      return Math.round(diff / 36e5);
+    }
+    if (unit === "day") {
+      const s2 = this.form.get("startDate")?.value;
+      const e2 = this.form.get("endDate")?.value;
+      if (!s2 || !e2)
+        return 0;
+      const startD2 = this._parseDate(s2);
+      const endD2 = this._parseDate(e2);
+      if (!startD2 || !endD2)
+        return 0;
+      const days2 = Math.floor((endD2.getTime() - startD2.getTime()) / (1e3 * 60 * 60 * 24)) + 1;
+      return days2 > 0 ? days2 * 8 : 0;
+    }
+    const s = this.form.get("startDate")?.value;
+    const e = this.form.get("endDate")?.value;
+    if (!s || !e)
+      return 0;
+    const startD = this._parseDate(s);
+    const endD = this._parseDate(e);
+    if (!startD || !endD)
+      return 0;
+    const startSlot = this.form.get("startSlot")?.value;
+    const endSlot = this.form.get("endSlot")?.value;
+    if (startD.getTime() === endD.getTime()) {
+      if (startSlot === "am" && endSlot === "am")
+        return 4;
+      if (startSlot === "am" && endSlot === "pm")
+        return 8;
+      if (startSlot === "pm" && endSlot === "pm")
+        return 4;
+      return 0;
+    }
+    if (endD.getTime() < startD.getTime())
+      return 0;
+    const startHrs = startSlot === "am" ? 8 : 4;
+    const endHrs = endSlot === "pm" ? 8 : 4;
+    const daysBetween = Math.floor((endD.getTime() - startD.getTime()) / (1e3 * 60 * 60 * 24)) - 1;
+    return startHrs + Math.max(0, daysBetween) * 8 + endHrs;
+  }
+  /** 時數顯示（依單位） */
+  get calculatedDisplay() {
+    const h = this.calculatedHours;
+    if (h <= 0)
+      return "\u2014";
+    const unit = this.selectedUnit;
+    if (unit === "hour")
+      return `${h} \u5C0F\u6642`;
+    const days2 = Math.round(h / 8 * 10) / 10;
+    return `${days2} \u5929`;
+  }
+  /** 是否為「結束早於開始」的非法時間範圍（用於顯示錯誤訊息） */
+  get isTimeRangeInvalid() {
+    const type = this.selectedLeaveType;
+    if (type === "maternity")
+      return false;
+    const unit = this.selectedUnit;
+    const sDate = this.form.get("startDate")?.value;
+    const eDate = this.form.get("endDate")?.value;
+    if (!sDate || !eDate)
+      return false;
+    const startD = this._parseDate(sDate);
+    const endD = this._parseDate(eDate);
+    if (!startD || !endD)
+      return false;
+    if (unit === "hour") {
+      const sHour = this.form.get("startHour")?.value ?? 0;
+      const eHour = this.form.get("endHour")?.value ?? 0;
+      return endD.getTime() + eHour * 36e5 <= startD.getTime() + sHour * 36e5;
+    }
+    if (unit === "day") {
+      return endD.getTime() < startD.getTime();
+    }
+    if (endD.getTime() < startD.getTime())
+      return true;
+    if (endD.getTime() === startD.getTime()) {
+      const s = this.form.get("startSlot")?.value;
+      const e = this.form.get("endSlot")?.value;
+      return s === "pm" && e === "am";
+    }
+    return false;
+  }
+  // ── 指定審核者 ───────────────────────────────────────
   addDesignatedEntry() {
     const nextOrder = this.designatedEntries.length + 1;
     this.designatedEntries.push({
@@ -17146,55 +17845,30 @@ var LeaveRequestForm = class _LeaveRequestForm {
       return "\u2014";
     return this.allUsers.find((u) => u.id === userId)?.name ?? userId;
   }
-  /** 驗證分鐘必須為 00 或 30 */
-  static halfHourValidator = (ctrl) => {
-    const val = ctrl.value;
-    if (!val)
-      return null;
-    const minutes = new Date(val).getMinutes();
-    return minutes === 0 || minutes === 30 ? null : { halfHour: true };
-  };
-  form = this.fb.group({
-    leaveType: ["annual", Validators.required],
-    bereavementRelationship: [""],
-    startDate: ["", [Validators.required, _LeaveRequestForm.halfHourValidator]],
-    endDate: ["", [Validators.required, _LeaveRequestForm.halfHourValidator]],
-    reason: ["", Validators.required]
-  });
-  /** 從開始/結束時間自動計算時數 */
-  get calculatedHours() {
-    const start = this.form.get("startDate")?.value;
-    const end = this.form.get("endDate")?.value;
-    if (!start || !end)
-      return 0;
-    const diff = new Date(end).getTime() - new Date(start).getTime();
-    if (diff <= 0)
-      return 0;
-    return Math.round(diff / (1e3 * 60 * 30)) * 0.5;
+  /** 取得簽核狀態標籤（安全索引） */
+  getStatusLabel(status) {
+    if (!status)
+      return "";
+    return APPROVAL_STATUS_LABELS2[status] ?? status;
   }
-  /** 當前選擇的假別 */
-  get selectedLeaveType() {
-    return this.form.get("leaveType")?.value || "annual";
-  }
-  /** 當前選擇的喪假關係 */
-  get selectedBereavementRelationship() {
-    const v = this.form.get("bereavementRelationship")?.value;
-    return v ? v : null;
-  }
-  /** 當前假別的天數上限 */
-  get currentDaysLimit() {
-    const type = this.selectedLeaveType;
-    if (type === "bereavement") {
-      const rel = this.selectedBereavementRelationship;
-      return rel ? this.bereavementDays[rel] ?? null : null;
-    }
-    return this.leaveTypeDaysLimit[type] ?? null;
+  /** 取得喪假關係標籤（安全索引） */
+  getBereavementLabel(rel) {
+    if (!rel)
+      return "";
+    return BEREAVEMENT_RELATIONSHIP_LABELS[rel] ?? rel;
   }
   ngOnInit() {
-    this.loadCompensatoryHours();
     this.loadAnnualQuota();
+    this.loadSeniorExecEligibility();
     this.form.get("leaveType")?.valueChanges.subscribe((type) => {
       this.onLeaveTypeChange(type);
+    });
+    this.form.get("bereavementRelationship")?.valueChanges.subscribe((rel) => {
+      if (this.selectedLeaveType === "bereavement" && rel) {
+        this.loadBereavementQuota(rel);
+      } else {
+        this.bereavementQuota.set(null);
+      }
     });
     this.approvalSvc.getAll().subscribe((items) => {
       this.hasDesignatedStep = items.filter((i) => i.isActive && i.applicationType === "leave").some((i) => i.steps.some((s) => s.useApplicantDesignated));
@@ -17230,13 +17904,39 @@ var LeaveRequestForm = class _LeaveRequestForm {
         this.isDraft = r.approvalStatus === "draft";
         this.isReturned = r.approvalStatus === "returned";
         this.isReadOnly = r.approvalStatus !== "draft" && r.approvalStatus !== "returned";
-        this.form.patchValue({
+        const unit = LEAVE_TIME_UNIT[r.leaveType];
+        const baseValues = {
           leaveType: r.leaveType,
           bereavementRelationship: r.bereavementRelationship ?? "",
-          startDate: this._toDatetimeLocal(r.startDate),
-          endDate: this._toDatetimeLocal(r.endDate),
           reason: r.reason
-        });
+        };
+        if (unit === "hour") {
+          const startParts = this._splitDateHour(r.startDate);
+          const endParts = this._splitDateHour(r.endDate);
+          this.form.patchValue(__spreadProps(__spreadValues({}, baseValues), {
+            startDate: startParts.date,
+            endDate: endParts.date,
+            startHour: startParts.hour,
+            endHour: endParts.hour
+          }));
+        } else if (r.leaveType === "maternity") {
+          this.form.patchValue(__spreadProps(__spreadValues({}, baseValues), {
+            startDate: this._toDateString(r.startDate)
+          }));
+        } else if (unit === "day") {
+          this.form.patchValue(__spreadProps(__spreadValues({}, baseValues), {
+            startDate: this._toDateString(r.startDate),
+            endDate: this._toDateString(r.endDate)
+          }));
+        } else {
+          const slots = this._inferHalfDaySlots(r.startDate, r.endDate, r.hours);
+          this.form.patchValue(__spreadProps(__spreadValues({}, baseValues), {
+            startDate: this._toDateString(r.startDate),
+            endDate: this._toDateString(r.endDate),
+            startSlot: slots.startSlot,
+            endSlot: slots.endSlot
+          }));
+        }
         if (r.designatedReviewers?.length) {
           this.designatedEntries = r.designatedReviewers.map((dr) => ({
             stepOrder: dr.stepOrder,
@@ -17270,42 +17970,104 @@ var LeaveRequestForm = class _LeaveRequestForm {
   }
   /** 假別變化時的處理 */
   onLeaveTypeChange(type) {
+    this.form.patchValue({ startDate: "", endDate: "" }, { emitEvent: false });
     if (type === "bereavement") {
       this.form.get("bereavementRelationship")?.setValidators(Validators.required);
     } else {
       this.form.get("bereavementRelationship")?.clearValidators();
-      this.form.get("bereavementRelationship")?.setValue("");
+      this.form.get("bereavementRelationship")?.setValue("", { emitEvent: false });
+      this.bereavementQuota.set(null);
     }
-    this.form.get("bereavementRelationship")?.updateValueAndValidity();
+    this.form.get("bereavementRelationship")?.updateValueAndValidity({ emitEvent: false });
     if (type === "annual")
       this.loadAnnualQuota();
     if (type === "compensatory")
       this.loadCompensatoryHours();
     if (type === "ceremonial_festival")
       this.loadCeremonialQuota();
+    if (type === "marriage")
+      this.loadMarriageQuota();
+    if (type === "maternity")
+      this.loadMaternityStatus();
   }
   /** 補休時數是否足夠 */
   get isCompensatoryExceeded() {
-    if (this.form.get("leaveType")?.value !== "compensatory")
+    if (this.selectedLeaveType !== "compensatory")
       return false;
     const hours = this.compensatoryHours();
     if (!hours)
       return false;
-    const requestedHours = this.calculatedHours;
-    return requestedHours > hours.availableHours;
+    return this.calculatedHours > hours.availableHours;
   }
   /** 歲時祭儀假：申請人非原住民則不可申請 */
   get isCeremonialNotAllowed() {
-    if (this.form.get("leaveType")?.value !== "ceremonial_festival")
+    if (this.selectedLeaveType !== "ceremonial_festival")
       return false;
     const q = this.ceremonialQuota();
     return q !== null && !q.isIndigenous;
   }
+  /** 產假：已有活躍申請則不可再送 */
+  get isMaternityBlocked() {
+    if (this.selectedLeaveType !== "maternity")
+      return false;
+    const status = this.maternityStatus();
+    if (!status?.hasActiveRequest)
+      return false;
+    return !this.isEdit || status.activeRequestId !== this.requestId;
+  }
+  /** 高階主管假：非協理以上不可申請 */
+  get isSeniorExecBlocked() {
+    return this.selectedLeaveType === "senior_executive" && !this.isSeniorExecutive();
+  }
+  /** 婚假：是否已超過上限 */
+  get isMarriageExceeded() {
+    if (this.selectedLeaveType !== "marriage")
+      return false;
+    const q = this.marriageQuota();
+    if (!q)
+      return false;
+    const requestDays = this.calculatedHours / 8;
+    return requestDays > q.remainingDays;
+  }
+  /** 喪假：是否已超過親屬上限 */
+  get isBereavementExceeded() {
+    if (this.selectedLeaveType !== "bereavement")
+      return false;
+    const q = this.bereavementQuota();
+    if (!q)
+      return false;
+    const requestDays = this.calculatedHours / 8;
+    return requestDays > q.remainingDays;
+  }
+  /** 表單整體是否可送出 */
+  get canSubmit() {
+    if (this.form.invalid || this.isReadOnly)
+      return false;
+    if (this.isTimeRangeInvalid)
+      return false;
+    if (this.calculatedHours <= 0)
+      return false;
+    if (this.isCompensatoryExceeded)
+      return false;
+    if (this.isCeremonialNotAllowed)
+      return false;
+    if (this.isMaternityBlocked)
+      return false;
+    if (this.isSeniorExecBlocked)
+      return false;
+    if (this.isMarriageExceeded)
+      return false;
+    if (this.isBereavementExceeded)
+      return false;
+    return true;
+  }
   /** 儲存（草稿或更新，不改變狀態） */
   save() {
-    if (this.form.invalid || this.isReadOnly || this.calculatedHours <= 0)
+    if (this.calculatedHours <= 0 || this.form.invalid || this.isReadOnly)
       return;
     const payload = this._buildPayload();
+    if (!payload)
+      return;
     const obs = this.isEdit ? this.service.update(this.requestId, payload) : this.service.create(payload);
     this.errorMsg.set("");
     obs.subscribe({
@@ -17321,7 +18083,7 @@ var LeaveRequestForm = class _LeaveRequestForm {
   }
   /** 送出申請（先儲存再將狀態改為 pending） */
   submitForApproval() {
-    if (this.form.invalid || this.isReadOnly || this.calculatedHours <= 0)
+    if (!this.canSubmit)
       return;
     if (this.isCompensatoryExceeded) {
       const hours = this.compensatoryHours();
@@ -17332,7 +18094,17 @@ var LeaveRequestForm = class _LeaveRequestForm {
       this.errorMsg.set("\u50C5\u539F\u4F4F\u6C11\u8EAB\u4EFD\u4E4B\u54E1\u5DE5\u53EF\u7533\u8ACB\u6B72\u6642\u796D\u5100\u5047\u3002");
       return;
     }
+    if (this.isMaternityBlocked) {
+      this.errorMsg.set("\u5DF2\u6709\u672A\u5B8C\u6210\u6216\u9032\u884C\u4E2D\u7684\u7522\u5047\u7533\u8ACB\uFF0C\u7522\u5047\u9700\u4E00\u6B21\u8ACB\u5B8C\u3002");
+      return;
+    }
+    if (this.isSeniorExecBlocked) {
+      this.errorMsg.set("\u9AD8\u968E\u4E3B\u7BA1\u5047\u50C5\u9650\u5354\u7406\uFF08\u542B\uFF09\u4EE5\u4E0A\u8077\u7D1A\u7533\u8ACB\u3002");
+      return;
+    }
     const payload = this._buildPayload();
+    if (!payload)
+      return;
     const save$ = this.isEdit ? this.service.update(this.requestId, payload) : this.service.create(payload);
     this.errorMsg.set("");
     save$.subscribe({
@@ -17349,7 +18121,7 @@ var LeaveRequestForm = class _LeaveRequestForm {
       }
     });
   }
-  /** 載入可補休時數 */
+  // ── Quota loaders ────────────────────────────────────
   loadCompensatoryHours() {
     this.compensatoryLoading.set(true);
     this.service.getCompensatoryHours().subscribe({
@@ -17360,7 +18132,6 @@ var LeaveRequestForm = class _LeaveRequestForm {
       error: () => this.compensatoryLoading.set(false)
     });
   }
-  /** 載入年假額度 */
   loadAnnualQuota() {
     this.annualQuotaLoading.set(true);
     this.service.getAnnualQuota().subscribe({
@@ -17371,7 +18142,6 @@ var LeaveRequestForm = class _LeaveRequestForm {
       error: () => this.annualQuotaLoading.set(false)
     });
   }
-  /** 載入歲時祭儀假額度 */
   loadCeremonialQuota() {
     this.ceremonialLoading.set(true);
     this.service.getCeremonialQuota().subscribe({
@@ -17382,19 +18152,67 @@ var LeaveRequestForm = class _LeaveRequestForm {
       error: () => this.ceremonialLoading.set(false)
     });
   }
+  loadMarriageQuota() {
+    this.service.getMarriageQuota().subscribe({
+      next: (data) => this.marriageQuota.set(data)
+    });
+  }
+  loadMaternityStatus() {
+    this.service.getMaternityStatus().subscribe({
+      next: (data) => this.maternityStatus.set(data)
+    });
+  }
+  loadBereavementQuota(relationship) {
+    this.service.getBereavementQuota(relationship).subscribe({
+      next: (data) => this.bereavementQuota.set(data)
+    });
+  }
+  loadSeniorExecEligibility() {
+    this.service.getSeniorExecutiveEligibility().subscribe({
+      next: (data) => this.seniorExecEligibility.set(data)
+    });
+  }
+  // ── Payload builder ──────────────────────────────────
   _buildPayload() {
     const v = this.form.value;
+    const type = v.leaveType;
+    const unit = LEAVE_TIME_UNIT[type];
     const reviewers = this.designatedEntries.filter((e) => e.selectedUserId).map((e) => ({ reviewerId: e.selectedUserId, stepOrder: e.stepOrder }));
+    let startDateStr = "";
+    let endDateStr = "";
+    let hours = this.calculatedHours;
+    if (type === "maternity") {
+      const s = v.startDate;
+      startDateStr = `${s}T00:00:00`;
+      const endD = this._parseDate(s);
+      endD.setDate(endD.getDate() + 55);
+      endDateStr = `${this._formatDate(endD)}T00:00:00`;
+      hours = 448;
+    } else if (unit === "hour") {
+      const sh = String(v.startHour ?? 0).padStart(2, "0");
+      const eh = String(v.endHour ?? 0).padStart(2, "0");
+      startDateStr = `${v.startDate}T${sh}:00:00`;
+      endDateStr = `${v.endDate}T${eh}:00:00`;
+    } else if (unit === "day") {
+      startDateStr = `${v.startDate}T00:00:00`;
+      endDateStr = `${v.endDate}T23:59:00`;
+    } else {
+      const startHour = v.startSlot === "am" ? "08:00:00" : "13:00:00";
+      const endHour = v.endSlot === "am" ? "12:00:00" : "17:00:00";
+      startDateStr = `${v.startDate}T${startHour}`;
+      endDateStr = `${v.endDate}T${endHour}`;
+    }
     return {
-      leaveType: v.leaveType,
-      bereavementRelationship: v.leaveType === "bereavement" ? v.bereavementRelationship || void 0 : void 0,
-      startDate: v.startDate,
-      endDate: v.endDate,
-      hours: this.calculatedHours,
+      leaveType: type,
+      bereavementRelationship: type === "bereavement" ? v.bereavementRelationship || void 0 : void 0,
+      startDate: startDateStr,
+      endDate: endDateStr,
+      hours,
       reason: v.reason,
       designatedReviewers: reviewers.length > 0 ? reviewers : void 0
     };
   }
+  // ── Date helpers ─────────────────────────────────────
   /** 將日期轉為 datetime-local 輸入格式 yyyy-MM-ddTHH:mm（台北時區） */
   _toDatetimeLocal(date) {
     const d = date instanceof Date ? date : new Date(date);
@@ -17412,10 +18230,67 @@ var LeaveRequestForm = class _LeaveRequestForm {
     const get = (type) => parts.find((p) => p.type === type)?.value ?? "00";
     return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
   }
+  /** 將日期轉為 yyyy-MM-dd（台北時區） */
+  _toDateString(date) {
+    const d = date instanceof Date ? date : new Date(date);
+    if (isNaN(d.getTime()))
+      return "";
+    const parts = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "Asia/Taipei",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).formatToParts(d);
+    const get = (type) => parts.find((p) => p.type === type)?.value ?? "00";
+    return `${get("year")}-${get("month")}-${get("day")}`;
+  }
+  /** yyyy-MM-dd → 當天 00:00 Date（本地時區） */
+  _parseDate(s) {
+    if (!s)
+      return null;
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m)
+      return null;
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  }
+  /** Date → yyyy-MM-dd */
+  _formatDate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${dd}`;
+  }
+  /** 將既有記錄的 date / datetime 拆成 (yyyy-MM-dd, hour) 供 Hour 模式回填 */
+  _splitDateHour(date) {
+    const d = date instanceof Date ? date : new Date(date);
+    if (isNaN(d.getTime()))
+      return { date: "", hour: 0 };
+    const parts = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "Asia/Taipei",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      hour12: false
+    }).formatToParts(d);
+    const get = (type) => parts.find((p) => p.type === type)?.value ?? "00";
+    return {
+      date: `${get("year")}-${get("month")}-${get("day")}`,
+      hour: Number(get("hour"))
+    };
+  }
+  /** 根據後端存的 startDate / endDate / hours 反推半天模式的 slots */
+  _inferHalfDaySlots(startDate, endDate, hours) {
+    const startHour = new Date(startDate).getHours();
+    const endHour = new Date(endDate).getHours();
+    const startSlot = startHour >= 12 ? "pm" : "am";
+    const endSlot = endHour < 13 ? "am" : "pm";
+    return { startSlot, endSlot };
+  }
   static \u0275fac = function LeaveRequestForm_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _LeaveRequestForm)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _LeaveRequestForm, selectors: [["app-leave-request-form"]], decls: 71, vars: 24, consts: [[1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6"], ["routerLink", "/admin/leave-requests", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "mb-0"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [1, "card", "border-0", "shadow-sm", "mb-6"], [3, "ngSubmit", "formGroup"], [1, "row", "g-4"], [1, "col-12", "col-lg-10", "col-xl-8"], [1, "card", "border-0", "shadow-sm"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#calendar"], [1, "card-body"], [1, "mb-4"], [1, "form-label", "fw-500"], [1, "text-danger"], ["formControlName", "leaveType", 1, "form-select", 2, "max-width", "320px"], [3, "label"], [1, "alert", "alert-info", "flex", "items-center", "gap-2", "py-2", "mt-2", "mb-0"], [1, "alert", "alert-warning", "flex", "items-center", "gap-2", "py-2", "mt-2", "mb-0"], [1, "row", "g-3", "mb-4"], [1, "col-12", "col-md-4"], ["type", "datetime-local", "formControlName", "startDate", "step", "1800", 1, "form-control"], [1, "text-danger", "small", "mt-1"], ["type", "datetime-local", "formControlName", "endDate", "step", "1800", 1, "form-control"], [1, "form-control", "bg-[var(--bg-elevated)]", 2, "pointer-events", "none"], ["formControlName", "reason", "rows", "3", "placeholder", "\u8ACB\u586B\u5BEB\u8ACB\u5047\u539F\u56E0...", 1, "form-control"], [1, "card", "border-0", "shadow-sm", "mt-6"], [3, "flow", "approvalRecords", "currentStepOrder", "status"], [1, "mt-6", "flex", "gap-2"], [1, "mt-6"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "card-header", "bg-[rgba(13,110,253,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-primary", "py-3"], ["href", "/assets/icons/sprite.svg#clock"], [1, "card-header", "bg-[rgba(255,193,7,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-warning", "py-3"], [1, "card-header", "bg-[rgba(37,162,68,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-success", "py-3"], ["href", "/assets/icons/sprite.svg#check-circle"], [1, "card-header", "bg-[rgba(220,53,69,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-danger", "py-3"], ["href", "/assets/icons/sprite.svg#x-circle"], [3, "value"], [1, "sa-icon", "shrink-0", 2, "stroke", "currentColor"], [1, "small"], [1, "small", "text-muted"], [1, "text-muted", "ms-2"], [1, "ms-2"], [1, "text-primary"], [1, "alert", "alert-danger", "flex", "items-center", "gap-2", "py-2", "mt-2", "mb-0"], ["href", "/assets/icons/sprite.svg#info"], ["formControlName", "bereavementRelationship", 1, "form-select", 2, "max-width", "320px"], ["value", ""], [1, "text-muted", "small", "mt-1"], ["href", "/assets/icons/sprite.svg#users"], [1, "flex", "items-center", "gap-2", "mb-2"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "mt-1", 3, "click"], ["href", "/assets/icons/sprite.svg#plus"], [1, "text-muted", "small", 2, "min-width", "1.5rem"], [1, "form-select", "form-select-sm", 2, "max-width", "160px", 3, "ngModelChange", "ngModel", "ngModelOptions"], [3, "ngValue"], [1, "form-select", "form-select-sm", 2, "max-width", "200px", 3, "ngModelChange", "ngModel", "ngModelOptions"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-danger", 3, "click"], ["href", "/assets/icons/sprite.svg#x"], [1, "mb-0", "ps-4"], ["type", "submit", 1, "btn", "btn-outline-secondary", 3, "disabled"], ["type", "button", 1, "btn", "btn-primary", 3, "click", "disabled"], ["routerLink", "/admin/leave-requests", 1, "btn", "btn-outline-secondary"]], template: function LeaveRequestForm_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _LeaveRequestForm, selectors: [["app-leave-request-form"]], decls: 64, vars: 31, consts: [[1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6"], ["routerLink", "/admin/leave-requests", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "mb-0"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [1, "card", "border-0", "shadow-sm", "mb-6"], [3, "ngSubmit", "formGroup"], [1, "row", "g-4"], [1, "col-12", "col-lg-10", "col-xl-8"], [1, "card", "border-0", "shadow-sm"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#calendar"], [1, "card-body"], [1, "mb-4"], [1, "form-label", "fw-500"], [1, "text-danger"], ["formControlName", "leaveType", 1, "form-select", 2, "max-width", "320px"], [1, "text-muted", "small", "mt-1"], [1, "alert", "alert-info", "flex", "items-center", "gap-2", "py-2", "mt-2", "mb-0"], [1, "alert", "alert-warning", "flex", "items-center", "gap-2", "py-2", "mt-2", "mb-0"], [1, "row", "g-3", "mb-4"], [1, "alert", "alert-danger", "flex", "items-center", "gap-2", "py-2", "mb-4"], ["formControlName", "reason", "rows", "3", "placeholder", "\u8ACB\u586B\u5BEB\u8ACB\u5047\u539F\u56E0...", 1, "form-control"], [1, "text-danger", "small", "mt-1"], [1, "card", "border-0", "shadow-sm", "mt-6"], [3, "flow", "approvalRecords", "currentStepOrder", "status"], [1, "mt-6", "flex", "gap-2"], [1, "mt-6"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "card-header", "bg-[rgba(13,110,253,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-primary", "py-3"], ["href", "/assets/icons/sprite.svg#clock"], [1, "card-header", "bg-[rgba(255,193,7,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-warning", "py-3"], [1, "card-header", "bg-[rgba(37,162,68,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-success", "py-3"], ["href", "/assets/icons/sprite.svg#check-circle"], [1, "card-header", "bg-[rgba(220,53,69,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-danger", "py-3"], ["href", "/assets/icons/sprite.svg#x-circle"], [3, "label"], [3, "value"], [1, "sa-icon", "shrink-0", 2, "stroke", "currentColor"], [1, "small"], [1, "small", "text-muted"], [1, "text-muted", "ms-2"], [1, "ms-2"], [1, "text-primary"], ["href", "/assets/icons/sprite.svg#info"], [1, "alert", "alert-danger", "flex", "items-center", "gap-2", "py-2", "mt-2", "mb-0"], [1, "text-muted", "ms-1"], [1, "text-muted"], ["formControlName", "bereavementRelationship", 1, "form-select", 2, "max-width", "320px"], ["value", ""], [1, "col-12", "col-md-6"], [1, "flex", "gap-2"], ["type", "date", "formControlName", "startDate", 1, "form-control"], ["formControlName", "startHour", 1, "form-select", 2, "max-width", "120px"], [3, "ngValue"], ["type", "date", "formControlName", "endDate", 1, "form-control"], ["formControlName", "endHour", 1, "form-select", 2, "max-width", "120px"], [1, "col-12"], [1, "form-control", "bg-[var(--bg-elevated)]", 2, "pointer-events", "none"], [1, "col-12", "col-md-4"], ["formControlName", "startSlot", 1, "form-select", 2, "max-width", "180px"], ["value", "am"], ["value", "pm"], ["formControlName", "endSlot", 1, "form-select", 2, "max-width", "180px"], [1, "text-muted", "small", "ms-2"], ["href", "/assets/icons/sprite.svg#users"], [1, "flex", "items-center", "gap-2", "mb-2"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "mt-1", 3, "click"], ["href", "/assets/icons/sprite.svg#plus"], [1, "text-muted", "small", 2, "min-width", "1.5rem"], [1, "form-select", "form-select-sm", 2, "max-width", "160px", 3, "ngModelChange", "ngModel", "ngModelOptions"], [1, "form-select", "form-select-sm", 2, "max-width", "200px", 3, "ngModelChange", "ngModel", "ngModelOptions"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-danger", 3, "click"], ["href", "/assets/icons/sprite.svg#x"], [1, "mb-0", "ps-4"], ["type", "submit", 1, "btn", "btn-outline-secondary", 3, "disabled"], ["type", "button", 1, "btn", "btn-primary", 3, "click", "disabled"], ["routerLink", "/admin/leave-requests", 1, "btn", "btn-outline-secondary"]], template: function LeaveRequestForm_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "a", 2);
       \u0275\u0275namespaceSVG();
@@ -17446,61 +18321,49 @@ var LeaveRequestForm = class _LeaveRequestForm {
       \u0275\u0275text(25, "*");
       \u0275\u0275elementEnd()();
       \u0275\u0275elementStart(26, "select", 19);
-      \u0275\u0275repeaterCreate(27, LeaveRequestForm_For_28_Template, 3, 1, "optgroup", 20, _forTrack018);
+      \u0275\u0275repeaterCreate(27, LeaveRequestForm_For_28_Template, 1, 1, null, null, _forTrack018);
       \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(29, LeaveRequestForm_Conditional_29_Template, 6, 1, "div", 21);
-      \u0275\u0275conditionalCreate(30, LeaveRequestForm_Conditional_30_Template, 5, 0, "div", 22);
-      \u0275\u0275conditionalCreate(31, LeaveRequestForm_Conditional_31_Template, 5, 0, "div", 22);
-      \u0275\u0275conditionalCreate(32, LeaveRequestForm_Conditional_32_Template, 6, 1, "div", 21);
-      \u0275\u0275conditionalCreate(33, LeaveRequestForm_Conditional_33_Template, 2, 1);
-      \u0275\u0275conditionalCreate(34, LeaveRequestForm_Conditional_34_Template, 7, 2, "div", 21);
+      \u0275\u0275elementStart(29, "div", 20);
+      \u0275\u0275conditionalCreate(30, LeaveRequestForm_Case_30_Template, 4, 0)(31, LeaveRequestForm_Case_31_Template, 4, 0)(32, LeaveRequestForm_Case_32_Template, 4, 0);
       \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(35, LeaveRequestForm_Conditional_35_Template, 12, 2, "div", 16);
-      \u0275\u0275elementStart(36, "div", 23)(37, "div", 24)(38, "label", 17);
-      \u0275\u0275text(39, "\u958B\u59CB\u6642\u9593 ");
-      \u0275\u0275elementStart(40, "span", 18);
-      \u0275\u0275text(41, "*");
+      \u0275\u0275conditionalCreate(33, LeaveRequestForm_Conditional_33_Template, 6, 1, "div", 21);
+      \u0275\u0275conditionalCreate(34, LeaveRequestForm_Conditional_34_Template, 5, 0, "div", 22);
+      \u0275\u0275conditionalCreate(35, LeaveRequestForm_Conditional_35_Template, 5, 0, "div", 22);
+      \u0275\u0275conditionalCreate(36, LeaveRequestForm_Conditional_36_Template, 6, 1, "div", 21);
+      \u0275\u0275conditionalCreate(37, LeaveRequestForm_Conditional_37_Template, 8, 0, "div", 21);
+      \u0275\u0275conditionalCreate(38, LeaveRequestForm_Conditional_38_Template, 5, 1, "div", 21);
+      \u0275\u0275conditionalCreate(39, LeaveRequestForm_Conditional_39_Template, 9, 1);
+      \u0275\u0275conditionalCreate(40, LeaveRequestForm_Conditional_40_Template, 2, 1);
+      \u0275\u0275conditionalCreate(41, LeaveRequestForm_Conditional_41_Template, 12, 1);
+      \u0275\u0275conditionalCreate(42, LeaveRequestForm_Conditional_42_Template, 8, 3, "div", 21);
+      \u0275\u0275elementEnd();
+      \u0275\u0275conditionalCreate(43, LeaveRequestForm_Conditional_43_Template, 13, 2, "div", 16);
+      \u0275\u0275conditionalCreate(44, LeaveRequestForm_Conditional_44_Template, 26, 1, "div", 23);
+      \u0275\u0275conditionalCreate(45, LeaveRequestForm_Conditional_45_Template, 17, 2, "div", 23);
+      \u0275\u0275conditionalCreate(46, LeaveRequestForm_Conditional_46_Template, 18, 1, "div", 23);
+      \u0275\u0275conditionalCreate(47, LeaveRequestForm_Conditional_47_Template, 32, 1, "div", 23);
+      \u0275\u0275conditionalCreate(48, LeaveRequestForm_Conditional_48_Template, 5, 0, "div", 24);
+      \u0275\u0275conditionalCreate(49, LeaveRequestForm_Conditional_49_Template, 5, 2, "div", 24);
+      \u0275\u0275conditionalCreate(50, LeaveRequestForm_Conditional_50_Template, 6, 5, "div", 24);
+      \u0275\u0275conditionalCreate(51, LeaveRequestForm_Conditional_51_Template, 6, 6, "div", 24);
+      \u0275\u0275elementStart(52, "div", 5)(53, "label", 17);
+      \u0275\u0275text(54, "\u8ACB\u5047\u539F\u56E0 ");
+      \u0275\u0275elementStart(55, "span", 18);
+      \u0275\u0275text(56, "*");
       \u0275\u0275elementEnd()();
-      \u0275\u0275element(42, "input", 25);
-      \u0275\u0275conditionalCreate(43, LeaveRequestForm_Conditional_43_Template, 2, 0, "div", 26);
-      \u0275\u0275conditionalCreate(44, LeaveRequestForm_Conditional_44_Template, 2, 0, "div", 26);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(45, "div", 24)(46, "label", 17);
-      \u0275\u0275text(47, "\u7D50\u675F\u6642\u9593 ");
-      \u0275\u0275elementStart(48, "span", 18);
-      \u0275\u0275text(49, "*");
-      \u0275\u0275elementEnd()();
-      \u0275\u0275element(50, "input", 27);
-      \u0275\u0275conditionalCreate(51, LeaveRequestForm_Conditional_51_Template, 2, 0, "div", 26);
-      \u0275\u0275conditionalCreate(52, LeaveRequestForm_Conditional_52_Template, 2, 0, "div", 26);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(53, "div", 24)(54, "label", 17);
-      \u0275\u0275text(55, "\u6642\u6578");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(56, "div", 28);
-      \u0275\u0275text(57);
-      \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(58, LeaveRequestForm_Conditional_58_Template, 2, 2, "div", 26);
-      \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(59, "div", 16)(60, "label", 17);
-      \u0275\u0275text(61, "\u8ACB\u5047\u539F\u56E0 ");
-      \u0275\u0275elementStart(62, "span", 18);
-      \u0275\u0275text(63, "*");
-      \u0275\u0275elementEnd()();
-      \u0275\u0275element(64, "textarea", 29);
-      \u0275\u0275conditionalCreate(65, LeaveRequestForm_Conditional_65_Template, 2, 0, "div", 26);
+      \u0275\u0275element(57, "textarea", 25);
+      \u0275\u0275conditionalCreate(58, LeaveRequestForm_Conditional_58_Template, 2, 0, "div", 26);
       \u0275\u0275elementEnd()()();
-      \u0275\u0275conditionalCreate(66, LeaveRequestForm_Conditional_66_Template, 14, 0, "div", 30)(67, LeaveRequestForm_Conditional_67_Template, 11, 0, "div", 30);
-      \u0275\u0275element(68, "app-approval-timeline", 31);
-      \u0275\u0275conditionalCreate(69, LeaveRequestForm_Conditional_69_Template, 7, 3, "div", 32)(70, LeaveRequestForm_Conditional_70_Template, 3, 0, "div", 33);
+      \u0275\u0275conditionalCreate(59, LeaveRequestForm_Conditional_59_Template, 14, 0, "div", 27)(60, LeaveRequestForm_Conditional_60_Template, 11, 0, "div", 27);
+      \u0275\u0275element(61, "app-approval-timeline", 28);
+      \u0275\u0275conditionalCreate(62, LeaveRequestForm_Conditional_62_Template, 7, 3, "div", 29)(63, LeaveRequestForm_Conditional_63_Template, 3, 0, "div", 30);
       \u0275\u0275elementEnd()()()();
     }
     if (rf & 2) {
-      let tmp_12_0;
-      let tmp_13_0;
-      let tmp_14_0;
-      let tmp_15_0;
-      let tmp_18_0;
+      let tmp_5_0;
+      let tmp_23_0;
+      let tmp_24_0;
+      let tmp_25_0;
       \u0275\u0275advance(6);
       \u0275\u0275textInterpolate(ctx.isEdit ? ctx.isReadOnly ? "\u6AA2\u8996\u8ACB\u5047\u7533\u8ACB" : ctx.isReturned ? "\u4FEE\u6539\u8ACB\u5047\u7533\u8ACB" : "\u7DE8\u8F2F\u8ACB\u5047\u8349\u7A3F" : "\u65B0\u589E\u8ACB\u5047\u7533\u8ACB");
       \u0275\u0275advance();
@@ -17511,47 +18374,61 @@ var LeaveRequestForm = class _LeaveRequestForm {
       \u0275\u0275property("formGroup", ctx.form);
       \u0275\u0275advance(15);
       \u0275\u0275repeater(ctx.leaveTypeGroups);
-      \u0275\u0275advance(2);
-      \u0275\u0275conditional(ctx.selectedLeaveType === "annual" ? 29 : -1);
+      \u0275\u0275advance(3);
+      \u0275\u0275conditional((tmp_5_0 = ctx.selectedUnit) === "hour" ? 30 : tmp_5_0 === "half_day" ? 31 : tmp_5_0 === "day" ? 32 : -1);
+      \u0275\u0275advance(3);
+      \u0275\u0275conditional(ctx.selectedLeaveType === "annual" ? 33 : -1);
       \u0275\u0275advance();
-      \u0275\u0275conditional(ctx.selectedLeaveType === "personal" ? 30 : -1);
+      \u0275\u0275conditional(ctx.selectedLeaveType === "personal" ? 34 : -1);
       \u0275\u0275advance();
-      \u0275\u0275conditional(ctx.selectedLeaveType === "sick" ? 31 : -1);
+      \u0275\u0275conditional(ctx.selectedLeaveType === "sick" ? 35 : -1);
       \u0275\u0275advance();
-      \u0275\u0275conditional(ctx.selectedLeaveType === "compensatory" ? 32 : -1);
+      \u0275\u0275conditional(ctx.selectedLeaveType === "compensatory" ? 36 : -1);
       \u0275\u0275advance();
-      \u0275\u0275conditional(ctx.selectedLeaveType === "ceremonial_festival" ? 33 : -1);
+      \u0275\u0275conditional(ctx.selectedLeaveType === "official" ? 37 : -1);
       \u0275\u0275advance();
-      \u0275\u0275conditional(ctx.currentDaysLimit !== null && ctx.selectedLeaveType !== "bereavement" && ctx.selectedLeaveType !== "annual" && ctx.selectedLeaveType !== "compensatory" && ctx.selectedLeaveType !== "ceremonial_festival" ? 34 : -1);
+      \u0275\u0275conditional(ctx.selectedLeaveType === "marriage" ? 38 : -1);
       \u0275\u0275advance();
-      \u0275\u0275conditional(ctx.selectedLeaveType === "bereavement" ? 35 : -1);
-      \u0275\u0275advance(8);
-      \u0275\u0275conditional(((tmp_12_0 = ctx.form.get("startDate")) == null ? null : tmp_12_0.hasError("required")) && ((tmp_12_0 = ctx.form.get("startDate")) == null ? null : tmp_12_0.touched) ? 43 : -1);
+      \u0275\u0275conditional(ctx.selectedLeaveType === "maternity" ? 39 : -1);
       \u0275\u0275advance();
-      \u0275\u0275conditional(((tmp_13_0 = ctx.form.get("startDate")) == null ? null : tmp_13_0.hasError("halfHour")) ? 44 : -1);
+      \u0275\u0275conditional(ctx.selectedLeaveType === "ceremonial_festival" ? 40 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.selectedLeaveType === "senior_executive" ? 41 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.currentDaysLimit !== null && ctx.selectedLeaveType !== "bereavement" && ctx.selectedLeaveType !== "annual" && ctx.selectedLeaveType !== "compensatory" && ctx.selectedLeaveType !== "ceremonial_festival" && ctx.selectedLeaveType !== "marriage" && ctx.selectedLeaveType !== "maternity" ? 42 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.selectedLeaveType === "bereavement" ? 43 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.selectedUnit === "hour" ? 44 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.selectedLeaveType === "maternity" ? 45 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.selectedUnit === "day" && ctx.selectedLeaveType !== "maternity" ? 46 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.selectedUnit === "half_day" ? 47 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.isTimeRangeInvalid ? 48 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.isCompensatoryExceeded ? 49 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275conditional((tmp_23_0 = ctx.isMarriageExceeded && ctx.marriageQuota()) ? 50 : -1, tmp_23_0);
+      \u0275\u0275advance();
+      \u0275\u0275conditional((tmp_24_0 = ctx.isBereavementExceeded && ctx.bereavementQuota()) ? 51 : -1, tmp_24_0);
       \u0275\u0275advance(7);
-      \u0275\u0275conditional(((tmp_14_0 = ctx.form.get("endDate")) == null ? null : tmp_14_0.hasError("required")) && ((tmp_14_0 = ctx.form.get("endDate")) == null ? null : tmp_14_0.touched) ? 51 : -1);
+      \u0275\u0275conditional(((tmp_25_0 = ctx.form.get("reason")) == null ? null : tmp_25_0.invalid) && ((tmp_25_0 = ctx.form.get("reason")) == null ? null : tmp_25_0.touched) ? 58 : -1);
       \u0275\u0275advance();
-      \u0275\u0275conditional(((tmp_15_0 = ctx.form.get("endDate")) == null ? null : tmp_15_0.hasError("halfHour")) ? 52 : -1);
-      \u0275\u0275advance(5);
-      \u0275\u0275textInterpolate1(" ", ctx.calculatedHours > 0 ? ctx.calculatedHours + " \u5C0F\u6642" : "\u2014", " ");
-      \u0275\u0275advance();
-      \u0275\u0275conditional(ctx.isCompensatoryExceeded ? 58 : -1);
-      \u0275\u0275advance(7);
-      \u0275\u0275conditional(((tmp_18_0 = ctx.form.get("reason")) == null ? null : tmp_18_0.invalid) && ((tmp_18_0 = ctx.form.get("reason")) == null ? null : tmp_18_0.touched) ? 65 : -1);
-      \u0275\u0275advance();
-      \u0275\u0275conditional(ctx.hasDesignatedStep && !ctx.isReadOnly ? 66 : ctx.isReadOnly && ctx.designatedEntries.length > 0 ? 67 : -1);
+      \u0275\u0275conditional(ctx.hasDesignatedStep && !ctx.isReadOnly ? 59 : ctx.isReadOnly && ctx.designatedEntries.length > 0 ? 60 : -1);
       \u0275\u0275advance(2);
       \u0275\u0275property("flow", ctx.approvalFlow)("approvalRecords", ctx.approvalRecords)("currentStepOrder", ctx.taskCurrentStepOrder)("status", ctx.taskStatus);
       \u0275\u0275advance();
-      \u0275\u0275conditional(!ctx.isReadOnly ? 69 : 70);
+      \u0275\u0275conditional(!ctx.isReadOnly ? 62 : 63);
     }
-  }, dependencies: [ReactiveFormsModule, \u0275NgNoValidate, NgSelectOption, \u0275NgSelectMultipleOption, DefaultValueAccessor, SelectControlValueAccessor, NgControlStatus, NgControlStatusGroup, FormGroupDirective, FormControlName, FormsModule, NgModel, RouterLink, ApprovalTimeline], encapsulation: 2 });
+  }, dependencies: [ReactiveFormsModule, \u0275NgNoValidate, NgSelectOption, \u0275NgSelectMultipleOption, DefaultValueAccessor, SelectControlValueAccessor, NgControlStatus, NgControlStatusGroup, FormGroupDirective, FormControlName, FormsModule, NgModel, RouterLink, ApprovalTimeline, DatePipe, DecimalPipe], encapsulation: 2 });
 };
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(LeaveRequestForm, [{
     type: Component,
-    args: [{ selector: "app-leave-request-form", imports: [ReactiveFormsModule, FormsModule, RouterLink, ApprovalTimeline], template: `<div class="container-fluid py-3">
+    args: [{ selector: "app-leave-request-form", imports: [ReactiveFormsModule, FormsModule, RouterLink, ApprovalTimeline, DatePipe, DecimalPipe], template: `<div class="container-fluid py-3">
   <div class="flex items-center gap-2 mb-6">
     <a routerLink="/admin/leave-requests" class="btn btn-sm btn-outline-secondary">
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
@@ -17608,25 +18485,34 @@ var LeaveRequestForm = class _LeaveRequestForm {
           </div>
           <div class="card-body">
 
-            <!-- \u5047\u5225\u9078\u64C7\uFF08\u4E0B\u62C9\u9078\u55AE\u5206\u7FA4\u7D44\uFF09 -->
+            <!-- \u5047\u5225\u9078\u64C7\uFF08\u4E0B\u62C9\u9078\u55AE\u5206\u7FA4\u7D44\uFF1B\u9AD8\u968E\u4E3B\u7BA1\u5047\u50C5\u5354\u7406\u4EE5\u4E0A\u53EF\u898B\uFF09 -->
             <div class="mb-4">
               <label class="form-label fw-500">\u5047\u5225 <span class="text-danger">*</span></label>
               <select class="form-select" formControlName="leaveType" style="max-width: 320px">
                 @for (group of leaveTypeGroups; track group.label) {
-                  <optgroup [label]="group.label">
-                    @for (type of group.types; track type) {
-                      <option [value]="type">{{ leaveTypeLabels[type] }}</option>
-                    }
-                  </optgroup>
+                  @if (group.label !== '\u9AD8\u968E\u4E3B\u7BA1\u5047' || isSeniorExecutive()) {
+                    <optgroup [label]="group.label">
+                      @for (type of group.types; track type) {
+                        <option [value]="type">{{ leaveTypeLabels[type] }}</option>
+                      }
+                    </optgroup>
+                  }
                 }
               </select>
+
+              <!-- \u7576\u524D\u55AE\u4F4D\u63D0\u793A -->
+              <div class="text-muted small mt-1">
+                @switch (selectedUnit) {
+                  @case ('hour') { \u6642\u9593\u55AE\u4F4D\uFF1A<strong>\u5C0F\u6642\uFF08\u6574\u9EDE\uFF09</strong>\uFF0C\u4E0B\u62C9\u53EA\u986F\u793A\u6574\u9EDE }
+                  @case ('half_day') { \u6642\u9593\u55AE\u4F4D\uFF1A<strong>\u534A\u5929</strong>\uFF084 \u5C0F\u6642\uFF09 }
+                  @case ('day') { \u6642\u9593\u55AE\u4F4D\uFF1A<strong>\u6574\u5929</strong>\uFF088 \u5C0F\u6642\uFF09 }
+                }
+              </div>
 
               <!-- \u5E74\u5047\u984D\u5EA6\u63D0\u793A -->
               @if (selectedLeaveType === 'annual') {
                 <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
-                  <svg class="sa-icon shrink-0" style="stroke: currentColor">
-                    <use href="/assets/icons/sprite.svg#clock"></use>
-                  </svg>
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
                   @if (annualQuotaLoading()) {
                     <span class="small">\u8F09\u5165\u4E2D...</span>
                   } @else if (annualQuota(); as quota) {
@@ -17649,35 +18535,30 @@ var LeaveRequestForm = class _LeaveRequestForm {
               <!-- \u4E8B\u5047\u6263\u85AA\u63D0\u793A -->
               @if (selectedLeaveType === 'personal') {
                 <div class="alert alert-warning flex items-center gap-2 py-2 mt-2 mb-0">
-                  <svg class="sa-icon shrink-0" style="stroke: currentColor">
-                    <use href="/assets/icons/sprite.svg#alert-triangle"></use>
-                  </svg>
-                  <span class="small">\u6309\u5929\u6578\u6263\u9664\u5168\u984D\u85AA\u8CC7</span>
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                  <span class="small">\u6309\u5C0F\u6642\u8A08\uFF0C\u4E8B\u5047\u6309\u5929\u6578\u6263\u9664\u5168\u984D\u85AA\u8CC7</span>
                 </div>
               }
 
               <!-- \u75C5\u5047\u6263\u85AA\u63D0\u793A -->
               @if (selectedLeaveType === 'sick') {
                 <div class="alert alert-warning flex items-center gap-2 py-2 mt-2 mb-0">
-                  <svg class="sa-icon shrink-0" style="stroke: currentColor">
-                    <use href="/assets/icons/sprite.svg#alert-triangle"></use>
-                  </svg>
-                  <span class="small">\u6309\u5929\u6578\u6263\u9664\u534A\u85AA</span>
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                  <span class="small">\u6309\u5C0F\u6642\u8A08\uFF0C\u75C5\u5047\u6309\u5929\u6578\u6263\u9664\u534A\u85AA</span>
                 </div>
               }
 
               <!-- \u88DC\u4F11\u6642\u6578\u63D0\u793A -->
               @if (selectedLeaveType === 'compensatory') {
                 <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
-                  <svg class="sa-icon shrink-0" style="stroke: currentColor">
-                    <use href="/assets/icons/sprite.svg#clock"></use>
-                  </svg>
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
                   @if (compensatoryLoading()) {
                     <span class="small">\u8F09\u5165\u4E2D...</span>
-                  } @else if (compensatoryHours()) {
+                  } @else if (compensatoryHours(); as h) {
                     <span class="small">
-                      \u53EF\u88DC\u4F11\u6642\u6578\uFF1A<strong>{{ compensatoryHours()!.availableHours }} \u5C0F\u6642</strong>
-                      <span class="text-muted ms-2">\uFF08\u7E3D\u52A0\u73ED {{ compensatoryHours()!.totalOvertimeHours }} \u5C0F\u6642 \u2212 \u5DF2\u88DC\u4F11 {{ compensatoryHours()!.usedCompensatoryHours }} \u5C0F\u6642\uFF09</span>
+                      \u53EF\u88DC\u4F11\u6642\u6578\uFF1A<strong>{{ h.availableHours }} \u5C0F\u6642</strong>
+                      <span class="text-muted ms-2">\uFF08= {{ h.availableHours / 4 | number:'1.0-1' }} \u500B\u534A\u5929\uFF09</span>
+                      <span class="text-muted ms-2">\uFF5C\u534A\u5929\u6263\u9664 4 \u5C0F\u6642</span>
                     </span>
                   } @else {
                     <span class="small text-muted">\u7121\u6CD5\u53D6\u5F97\u88DC\u4F11\u6642\u6578\u8CC7\u6599</span>
@@ -17685,28 +18566,65 @@ var LeaveRequestForm = class _LeaveRequestForm {
                 </div>
               }
 
-              <!-- \u6B72\u6642\u796D\u5100\u5047\u63D0\u793A\uFF08\u50C5\u539F\u4F4F\u6C11\u53EF\u7533\u8ACB\uFF09 -->
+              <!-- \u516C\u5047\u63D0\u793A -->
+              @if (selectedLeaveType === 'official') {
+                <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+                  <span class="small">\u516C\u5047\uFF08\u6559\u53EC\uFF0F\u9078\u8209\uFF0F\u51FA\u5EAD\uFF09\u4EE5\u5929\u8A08\u7B97\uFF0C<strong>\u4E0D\u6263\u85AA</strong>\u3002</span>
+                </div>
+              }
+
+              <!-- \u5A5A\u5047\u914D\u984D -->
+              @if (selectedLeaveType === 'marriage') {
+                <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+                  @if (marriageQuota(); as q) {
+                    <span class="small">
+                      \u5A5A\u5047\u4E0A\u9650\uFF1A<strong>{{ q.maxDays }}</strong> \u5929\uFF08\u53EF\u4E0D\u9023\u7E8C\uFF09
+                      <span class="text-muted ms-2">\uFF5C\u5DF2\u8ACB\uFF1A{{ q.usedDays }} \u5929</span>
+                      <span class="ms-2">\uFF5C\u5269\u9918\uFF1A<strong class="text-primary">{{ q.remainingDays }}</strong> \u5929</span>
+                    </span>
+                  } @else {
+                    <span class="small text-muted">\u8F09\u5165\u4E2D...</span>
+                  }
+                </div>
+              }
+
+              <!-- \u7522\u5047\u72C0\u614B -->
+              @if (selectedLeaveType === 'maternity') {
+                <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+                  <span class="small">\u7522\u5047\u70BA\u6CD5\u5B9A\u4E00\u6B21\u8ACB\u5B8C\uFF1A\u9078\u64C7\u8D77\u59CB\u65E5\uFF0C\u7CFB\u7D71\u81EA\u52D5\u8A08\u7B97 <strong>56 \u5929</strong>\u3002</span>
+                </div>
+                @if (maternityStatus()?.hasActiveRequest && maternityStatus()?.activeRequestId !== requestId) {
+                  <div class="alert alert-danger flex items-center gap-2 py-2 mt-2 mb-0">
+                    <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                    <span class="small">
+                      \u5DF2\u6709\u672A\u5B8C\u6210\u6216\u9032\u884C\u4E2D\u7684\u7522\u5047\u7533\u8ACB
+                      @if (maternityStatus()?.startDate) {
+                        <span class="text-muted ms-1">\uFF08{{ maternityStatus()!.startDate | date:'yyyy-MM-dd' }} ~ {{ maternityStatus()!.endDate | date:'yyyy-MM-dd' }}\uFF0C\u72C0\u614B\uFF1A{{ getStatusLabel(maternityStatus()!.approvalStatus) }}\uFF09</span>
+                      }
+                    </span>
+                  </div>
+                }
+              }
+
+              <!-- \u6B72\u6642\u796D\u5100\u5047 -->
               @if (selectedLeaveType === 'ceremonial_festival') {
                 @if (ceremonialLoading()) {
                   <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
-                    <svg class="sa-icon shrink-0" style="stroke: currentColor">
-                      <use href="/assets/icons/sprite.svg#clock"></use>
-                    </svg>
+                    <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
                     <span class="small">\u8F09\u5165\u4E2D...</span>
                   </div>
                 } @else if (ceremonialQuota(); as quota) {
                   @if (!quota.isIndigenous) {
                     <div class="alert alert-danger flex items-center gap-2 py-2 mt-2 mb-0">
-                      <svg class="sa-icon shrink-0" style="stroke: currentColor">
-                        <use href="/assets/icons/sprite.svg#alert-triangle"></use>
-                      </svg>
+                      <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
                       <span class="small">{{ quota.message || '\u50C5\u539F\u4F4F\u6C11\u8EAB\u4EFD\u4E4B\u54E1\u5DE5\u53EF\u7533\u8ACB\u6B72\u6642\u796D\u5100\u5047\u3002' }}</span>
                     </div>
                   } @else {
                     <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
-                      <svg class="sa-icon shrink-0" style="stroke: currentColor">
-                        <use href="/assets/icons/sprite.svg#info"></use>
-                      </svg>
+                      <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
                       <span class="small">
                         \u6B72\u6642\u796D\u5100\u5047\uFF1A<strong>{{ quota.totalDays }}</strong> \u5929\uFF0F\u5E74
                         <span class="text-muted ms-2">\uFF5C\u5DF2\u4F7F\u7528\uFF1A{{ quota.usedDays }} \u5929</span>
@@ -17718,18 +18636,39 @@ var LeaveRequestForm = class _LeaveRequestForm {
                 }
               }
 
-              <!-- \u6709\u5929\u6578\u4E0A\u9650\u7684\u5047\u5225\u63D0\u793A -->
-              @if (currentDaysLimit !== null && selectedLeaveType !== 'bereavement' && selectedLeaveType !== 'annual' && selectedLeaveType !== 'compensatory' && selectedLeaveType !== 'ceremonial_festival') {
+              <!-- \u9AD8\u968E\u4E3B\u7BA1\u5047\u63D0\u793A -->
+              @if (selectedLeaveType === 'senior_executive') {
                 <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
-                  <svg class="sa-icon shrink-0" style="stroke: currentColor">
-                    <use href="/assets/icons/sprite.svg#info"></use>
-                  </svg>
-                  <span class="small">{{ leaveTypeLabels[selectedLeaveType] }}\u4E0A\u9650\uFF1A<strong>{{ currentDaysLimit }} \u5929</strong></span>
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+                  <span class="small">
+                    \u9AD8\u968E\u4E3B\u7BA1\u5047\uFF1A\u4EE5\u534A\u5929\u70BA\u55AE\u4F4D\uFF0C<strong>\u4E0D\u6263\u4EFB\u4F55\u9805\u76EE</strong>\u3001<strong>\u7121\u984D\u5EA6\u4E0A\u9650</strong>\uFF0C\u50C5\u4F5C\u7D00\u9304\u3002
+                  </span>
+                </div>
+                @if (!isSeniorExecutive()) {
+                  <div class="alert alert-danger flex items-center gap-2 py-2 mt-2 mb-0">
+                    <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                    <span class="small">\u50C5\u9650\u5354\u7406\uFF08\u542B\uFF09\u4EE5\u4E0A\u8077\u7D1A\u7533\u8ACB\u3002</span>
+                  </div>
+                }
+              }
+
+              <!-- \u5176\u4ED6\u6709\u4E0A\u9650\u7684\u5047\u5225\u63D0\u793A -->
+              @if (currentDaysLimit !== null && selectedLeaveType !== 'bereavement' && selectedLeaveType !== 'annual'
+                && selectedLeaveType !== 'compensatory' && selectedLeaveType !== 'ceremonial_festival'
+                && selectedLeaveType !== 'marriage' && selectedLeaveType !== 'maternity') {
+                <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+                  <span class="small">
+                    {{ leaveTypeLabels[selectedLeaveType] }}\u4E0A\u9650\uFF1A<strong>{{ currentDaysLimit }} \u5929</strong>
+                    @if (selectedUnit === 'hour') {
+                      <span class="text-muted">\uFF08= {{ currentDaysLimit * 8 }} \u5C0F\u6642\uFF09</span>
+                    }
+                  </span>
                 </div>
               }
             </div>
 
-            <!-- \u55AA\u5047\u89AA\u5C6C\u95DC\u4FC2\u9078\u64C7 -->
+            <!-- \u55AA\u5047\u89AA\u5C6C\u95DC\u4FC2 -->
             @if (selectedLeaveType === 'bereavement') {
               <div class="mb-4">
                 <label class="form-label fw-500">\u89AA\u5C6C\u95DC\u4FC2 <span class="text-danger">*</span></label>
@@ -17746,48 +18685,155 @@ var LeaveRequestForm = class _LeaveRequestForm {
                 @if (form.get('bereavementRelationship')?.invalid && form.get('bereavementRelationship')?.touched) {
                   <div class="text-danger small mt-1">\u8ACB\u9078\u64C7\u89AA\u5C6C\u95DC\u4FC2\u3002</div>
                 }
-                @if (currentDaysLimit !== null) {
+                @if (bereavementQuota(); as q) {
+                  <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                    <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+                    <span class="small">
+                      \u6B64\u89AA\u5C6C\u95DC\u4FC2\u4E0A\u9650\uFF1A<strong>{{ q.maxDays }}</strong> \u5929
+                      <span class="text-muted ms-2">\uFF5C\u5DF2\u8ACB\uFF1A{{ q.usedDays }} \u5929</span>
+                      <span class="ms-2">\uFF5C\u5269\u9918\uFF1A<strong class="text-primary">{{ q.remainingDays }}</strong> \u5929</span>
+                    </span>
+                  </div>
+                } @else if (currentDaysLimit !== null) {
                   <div class="text-muted small mt-1">\u55AA\u5047\u4E0A\u9650\uFF1A<strong>{{ currentDaysLimit }} \u5929</strong></div>
                 }
               </div>
             }
 
-            <div class="row g-3 mb-4">
-              <div class="col-12 col-md-4">
-                <label class="form-label fw-500">\u958B\u59CB\u6642\u9593 <span class="text-danger">*</span></label>
-                <input type="datetime-local" class="form-control" formControlName="startDate" step="1800">
-                @if (form.get('startDate')?.hasError('required') && form.get('startDate')?.touched) {
-                  <div class="text-danger small mt-1">\u8ACB\u9078\u64C7\u958B\u59CB\u6642\u9593\u3002</div>
-                }
-                @if (form.get('startDate')?.hasError('halfHour')) {
-                  <div class="text-danger small mt-1">\u5206\u9418\u8ACB\u9078\u64C7 00 \u6216 30\u3002</div>
-                }
-              </div>
-              <div class="col-12 col-md-4">
-                <label class="form-label fw-500">\u7D50\u675F\u6642\u9593 <span class="text-danger">*</span></label>
-                <input type="datetime-local" class="form-control" formControlName="endDate" step="1800">
-                @if (form.get('endDate')?.hasError('required') && form.get('endDate')?.touched) {
-                  <div class="text-danger small mt-1">\u8ACB\u9078\u64C7\u7D50\u675F\u6642\u9593\u3002</div>
-                }
-                @if (form.get('endDate')?.hasError('halfHour')) {
-                  <div class="text-danger small mt-1">\u5206\u9418\u8ACB\u9078\u64C7 00 \u6216 30\u3002</div>
-                }
-              </div>
-              <div class="col-12 col-md-4">
-                <label class="form-label fw-500">\u6642\u6578</label>
-                <div class="form-control bg-[var(--bg-elevated)]" style="pointer-events: none">
-                  {{ calculatedHours > 0 ? calculatedHours + ' \u5C0F\u6642' : '\u2014' }}
+            <!-- Hour \u6A21\u5F0F\uFF1A\u65E5\u671F + \u6574\u9EDE\u5C0F\u6642\u4E0B\u62C9 -->
+            @if (selectedUnit === 'hour') {
+              <div class="row g-3 mb-4">
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">\u958B\u59CB\u65E5\u671F <span class="text-danger">*</span></label>
+                  <div class="flex gap-2">
+                    <input type="date" class="form-control" formControlName="startDate">
+                    <select class="form-select" formControlName="startHour" style="max-width:120px">
+                      @for (h of hourOptions; track h) {
+                        <option [ngValue]="h">{{ formatHour(h) }}</option>
+                      }
+                    </select>
+                  </div>
                 </div>
-                @if (isCompensatoryExceeded) {
-                  <div class="text-danger small mt-1">\u88DC\u4F11\u6642\u6578\u4E0D\u8DB3\uFF0C\u53EF\u7528 {{ compensatoryHours()!.availableHours }} \u5C0F\u6642\uFF08\u7533\u8ACB {{ calculatedHours }} \u5C0F\u6642\uFF09\u3002</div>
-                }
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">\u7D50\u675F\u65E5\u671F <span class="text-danger">*</span></label>
+                  <div class="flex gap-2">
+                    <input type="date" class="form-control" formControlName="endDate">
+                    <select class="form-select" formControlName="endHour" style="max-width:120px">
+                      @for (h of hourOptions; track h) {
+                        <option [ngValue]="h">{{ formatHour(h) }}</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <label class="form-label fw-500">\u6642\u6578</label>
+                  <div class="form-control bg-[var(--bg-elevated)]" style="pointer-events: none">{{ calculatedDisplay }}</div>
+                </div>
               </div>
-            </div>
+            }
 
-            <div class="mb-4">
+            <!-- \u7522\u5047\uFF1A\u53EA\u9078\u8D77\u59CB\u65E5\uFF0C\u7D50\u675F\u65E5\u81EA\u52D5 -->
+            @if (selectedLeaveType === 'maternity') {
+              <div class="row g-3 mb-4">
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u8D77\u59CB\u65E5 <span class="text-danger">*</span></label>
+                  <input type="date" class="form-control" formControlName="startDate">
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u7D50\u675F\u65E5\uFF08\u81EA\u52D5\uFF09</label>
+                  <div class="form-control bg-[var(--bg-elevated)]" style="pointer-events: none">
+                    {{ maternityEndDate ?? '\u2014' }}
+                  </div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u5929\u6578</label>
+                  <div class="form-control bg-[var(--bg-elevated)]" style="pointer-events: none">{{ calculatedDisplay }}</div>
+                </div>
+              </div>
+            }
+
+            <!-- Day \u6A21\u5F0F\uFF1A\u6574\u5929 -->
+            @if (selectedUnit === 'day' && selectedLeaveType !== 'maternity') {
+              <div class="row g-3 mb-4">
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u958B\u59CB\u65E5\u671F <span class="text-danger">*</span></label>
+                  <input type="date" class="form-control" formControlName="startDate">
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u7D50\u675F\u65E5\u671F <span class="text-danger">*</span></label>
+                  <input type="date" class="form-control" formControlName="endDate">
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u5929\u6578</label>
+                  <div class="form-control bg-[var(--bg-elevated)]" style="pointer-events: none">{{ calculatedDisplay }}</div>
+                </div>
+              </div>
+            }
+
+            <!-- HalfDay \u6A21\u5F0F\uFF1A\u65E5\u671F + \u6642\u6BB5 -->
+            @if (selectedUnit === 'half_day') {
+              <div class="row g-3 mb-4">
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">\u958B\u59CB\u65E5\u671F <span class="text-danger">*</span></label>
+                  <div class="flex gap-2">
+                    <input type="date" class="form-control" formControlName="startDate">
+                    <select class="form-select" formControlName="startSlot" style="max-width:180px">
+                      <option value="am">\u4E0A\u5348\uFF08\u5F9E 08:00\uFF09</option>
+                      <option value="pm">\u4E0B\u5348\uFF08\u5F9E 13:00\uFF09</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">\u7D50\u675F\u65E5\u671F <span class="text-danger">*</span></label>
+                  <div class="flex gap-2">
+                    <input type="date" class="form-control" formControlName="endDate">
+                    <select class="form-select" formControlName="endSlot" style="max-width:180px">
+                      <option value="am">\u4E0A\u5348\uFF08\u81F3 12:00\uFF09</option>
+                      <option value="pm">\u4E0B\u5348\uFF08\u81F3 17:00\uFF09</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <label class="form-label fw-500">\u5408\u8A08</label>
+                  <div class="form-control bg-[var(--bg-elevated)]" style="pointer-events: none">
+                    {{ calculatedDisplay }}
+                    <span class="text-muted small ms-2">\uFF08\u534A\u5929 = 4 \u5C0F\u6642\uFF0C\u6574\u5929 = 8 \u5C0F\u6642\uFF09</span>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- \u7D50\u675F\u6642\u9593\u65E9\u65BC\u958B\u59CB\u6642\u9593\u8B66\u793A -->
+            @if (isTimeRangeInvalid) {
+              <div class="alert alert-danger flex items-center gap-2 py-2 mb-4">
+                <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                <span class="small">\u7D50\u675F\u6642\u9593\u5FC5\u9808\u665A\u65BC\u958B\u59CB\u6642\u9593\uFF0C\u8ACB\u6AA2\u67E5\u65E5\u671F\u8207\u6642\u6BB5\u8A2D\u5B9A\u3002</span>
+              </div>
+            }
+
+            <!-- \u8D85\u984D\u8B66\u793A -->
+            @if (isCompensatoryExceeded) {
+              <div class="alert alert-danger flex items-center gap-2 py-2 mb-4">
+                <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                <span class="small">\u88DC\u4F11\u6642\u6578\u4E0D\u8DB3\uFF0C\u53EF\u7528 {{ compensatoryHours()!.availableHours }} \u5C0F\u6642\uFF08\u7533\u8ACB {{ calculatedHours }} \u5C0F\u6642\uFF09\u3002</span>
+              </div>
+            }
+            @if (isMarriageExceeded && marriageQuota(); as q) {
+              <div class="alert alert-danger flex items-center gap-2 py-2 mb-4">
+                <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                <span class="small">\u5A5A\u5047\u5269\u9918 {{ q.remainingDays }} \u5929\uFF0C\u672C\u6B21\u7533\u8ACB {{ calculatedHours / 8 | number:'1.0-1' }} \u5929\u5DF2\u8D85\u904E\u4E0A\u9650\u3002</span>
+              </div>
+            }
+            @if (isBereavementExceeded && bereavementQuota(); as q) {
+              <div class="alert alert-danger flex items-center gap-2 py-2 mb-4">
+                <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                <span class="small">\u55AA\u5047\u5269\u9918 {{ q.remainingDays }} \u5929\uFF08{{ getBereavementLabel(q.relationship) }}\uFF09\uFF0C\u672C\u6B21\u7533\u8ACB {{ calculatedHours / 8 | number:'1.0-1' }} \u5929\u5DF2\u8D85\u904E\u4E0A\u9650\u3002</span>
+              </div>
+            }
+
+            <div class="mb-0">
               <label class="form-label fw-500">\u8ACB\u5047\u539F\u56E0 <span class="text-danger">*</span></label>
-              <textarea class="form-control" formControlName="reason" rows="3"
-                        placeholder="\u8ACB\u586B\u5BEB\u8ACB\u5047\u539F\u56E0..."></textarea>
+              <textarea class="form-control" formControlName="reason" rows="3" placeholder="\u8ACB\u586B\u5BEB\u8ACB\u5047\u539F\u56E0..."></textarea>
               @if (form.get('reason')?.invalid && form.get('reason')?.touched) {
                 <div class="text-danger small mt-1">\u8ACB\u586B\u5BEB\u8ACB\u5047\u539F\u56E0\u3002</div>
               }
@@ -17800,9 +18846,7 @@ var LeaveRequestForm = class _LeaveRequestForm {
         @if (hasDesignatedStep && !isReadOnly) {
           <div class="card border-0 shadow-sm mt-6">
             <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
-              <svg class="sa-icon text-primary" style="stroke: currentColor">
-                <use href="/assets/icons/sprite.svg#users"></use>
-              </svg>
+              <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#users"></use></svg>
               \u6307\u5B9A\u5BE9\u6838\u8005
             </div>
             <div class="card-body">
@@ -17839,9 +18883,7 @@ var LeaveRequestForm = class _LeaveRequestForm {
         } @else if (isReadOnly && designatedEntries.length > 0) {
           <div class="card border-0 shadow-sm mt-6">
             <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
-              <svg class="sa-icon text-primary" style="stroke: currentColor">
-                <use href="/assets/icons/sprite.svg#users"></use>
-              </svg>
+              <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#users"></use></svg>
               \u6307\u5B9A\u5BE9\u6838\u8005
             </div>
             <div class="card-body">
@@ -17864,11 +18906,10 @@ var LeaveRequestForm = class _LeaveRequestForm {
 
         @if (!isReadOnly) {
           <div class="mt-6 flex gap-2">
-            <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid || calculatedHours <= 0">
+            <button type="submit" class="btn btn-outline-secondary" [disabled]="!canSubmit">
               {{ isEdit ? '\u5132\u5B58' : '\u5132\u5B58\u8349\u7A3F' }}
             </button>
-            <button type="button" class="btn btn-primary" [disabled]="form.invalid || calculatedHours <= 0 || isCompensatoryExceeded || isCeremonialNotAllowed"
-                    (click)="submitForApproval()">
+            <button type="button" class="btn btn-primary" [disabled]="!canSubmit" (click)="submitForApproval()">
               \u9001\u51FA\u7533\u8ACB
             </button>
             <a routerLink="/admin/leave-requests" class="btn btn-outline-secondary">\u53D6\u6D88</a>
@@ -17887,7 +18928,7 @@ var LeaveRequestForm = class _LeaveRequestForm {
   }], null, null);
 })();
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(LeaveRequestForm, { className: "LeaveRequestForm", filePath: "src/app/features/admin/leave-requests/pages/leave-request-form/leave-request-form.ts", lineNumber: 28 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(LeaveRequestForm, { className: "LeaveRequestForm", filePath: "src/app/features/admin/leave-requests/pages/leave-request-form/leave-request-form.ts", lineNumber: 32 });
 })();
 
 // src/app/features/admin/travel-requests/models/travel-request.model.ts
@@ -46263,36 +47304,40 @@ function PayrollForm_Conditional_11_Conditional_85_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "tr")(1, "td", 25);
     \u0275\u0275text(2);
+    \u0275\u0275pipe(3, "number");
+    \u0275\u0275pipe(4, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td", 30);
-    \u0275\u0275text(4);
-    \u0275\u0275pipe(5, "number");
+    \u0275\u0275elementStart(5, "td", 30);
+    \u0275\u0275text(6);
+    \u0275\u0275pipe(7, "number");
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
     const e_r3 = \u0275\u0275nextContext();
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate1("\u4E8B\u5047\u6263\u85AA\uFF08", e_r3.personalLeaveDays, " \u5929\uFF09");
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate1("-", \u0275\u0275pipeBind2(5, 2, e_r3.personalLeaveDeduction, "1.0-0"));
+    \u0275\u0275textInterpolate2("\u4E8B\u5047\u6263\u85AA\uFF08", \u0275\u0275pipeBind2(3, 3, e_r3.personalLeaveDays, "1.0-2"), " \u5929 = ", \u0275\u0275pipeBind2(4, 6, e_r3.personalLeaveDays * 8, "1.0-1"), " \u5C0F\u6642\uFF09");
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate1("-", \u0275\u0275pipeBind2(7, 9, e_r3.personalLeaveDeduction, "1.0-0"));
   }
 }
 function PayrollForm_Conditional_11_Conditional_86_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "tr")(1, "td", 25);
     \u0275\u0275text(2);
+    \u0275\u0275pipe(3, "number");
+    \u0275\u0275pipe(4, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td", 30);
-    \u0275\u0275text(4);
-    \u0275\u0275pipe(5, "number");
+    \u0275\u0275elementStart(5, "td", 30);
+    \u0275\u0275text(6);
+    \u0275\u0275pipe(7, "number");
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
     const e_r3 = \u0275\u0275nextContext();
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate1("\u75C5\u5047\u6263\u85AA\uFF08", e_r3.sickLeaveDays, " \u5929 \xD7 \u534A\u85AA\uFF09");
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate1("-", \u0275\u0275pipeBind2(5, 2, e_r3.sickLeaveDeduction, "1.0-0"));
+    \u0275\u0275textInterpolate2("\u75C5\u5047\u6263\u85AA\uFF08", \u0275\u0275pipeBind2(3, 3, e_r3.sickLeaveDays, "1.0-2"), " \u5929 = ", \u0275\u0275pipeBind2(4, 6, e_r3.sickLeaveDays * 8, "1.0-1"), " \u5C0F\u6642 \xD7 \u534A\u85AA\uFF09");
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate1("-", \u0275\u0275pipeBind2(7, 9, e_r3.sickLeaveDeduction, "1.0-0"));
   }
 }
 function PayrollForm_Conditional_11_Conditional_87_For_17_Template(rf, ctx) {
@@ -46307,7 +47352,6 @@ function PayrollForm_Conditional_11_Conditional_87_For_17_Template(rf, ctx) {
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(7, "td", 26);
     \u0275\u0275text(8);
-    \u0275\u0275pipe(9, "number");
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -46318,7 +47362,7 @@ function PayrollForm_Conditional_11_Conditional_87_For_17_Template(rf, ctx) {
     \u0275\u0275advance(2);
     \u0275\u0275textInterpolate2("", \u0275\u0275pipeBind2(5, 4, ld_r4.startDate, "MM/dd HH:mm"), " ~ ", \u0275\u0275pipeBind2(6, 7, ld_r4.endDate, "MM/dd HH:mm"));
     \u0275\u0275advance(4);
-    \u0275\u0275textInterpolate1("", \u0275\u0275pipeBind2(9, 10, ld_r4.hours / 8, "1.1-1"), " \u5929");
+    \u0275\u0275textInterpolate(ctx_r0.formatLeaveDuration(ld_r4.leaveType, ld_r4.hours));
   }
 }
 function PayrollForm_Conditional_11_Conditional_87_Template(rf, ctx) {
@@ -46338,10 +47382,10 @@ function PayrollForm_Conditional_11_Conditional_87_Template(rf, ctx) {
     \u0275\u0275text(12, "\u671F\u9593");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(13, "th", 26);
-    \u0275\u0275text(14, "\u5929\u6578");
+    \u0275\u0275text(14, "\u671F\u9593");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(15, "tbody");
-    \u0275\u0275repeaterCreate(16, PayrollForm_Conditional_11_Conditional_87_For_17_Template, 10, 13, "tr", null, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275repeaterCreate(16, PayrollForm_Conditional_11_Conditional_87_For_17_Template, 9, 10, "tr", null, \u0275\u0275repeaterTrackByIndex);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
@@ -46462,8 +47506,8 @@ function PayrollForm_Conditional_11_Template(rf, ctx) {
     \u0275\u0275text(83);
     \u0275\u0275pipe(84, "number");
     \u0275\u0275elementEnd()();
-    \u0275\u0275conditionalCreate(85, PayrollForm_Conditional_11_Conditional_85_Template, 6, 5, "tr");
-    \u0275\u0275conditionalCreate(86, PayrollForm_Conditional_11_Conditional_86_Template, 6, 5, "tr");
+    \u0275\u0275conditionalCreate(85, PayrollForm_Conditional_11_Conditional_85_Template, 8, 12, "tr");
+    \u0275\u0275conditionalCreate(86, PayrollForm_Conditional_11_Conditional_86_Template, 8, 12, "tr");
     \u0275\u0275elementEnd()()()();
     \u0275\u0275conditionalCreate(87, PayrollForm_Conditional_11_Conditional_87_Template, 18, 0, "div", 13);
     \u0275\u0275elementStart(88, "form", 31);
@@ -46617,6 +47661,10 @@ var PayrollForm = class _PayrollForm {
   leaveTypeLabels = LEAVE_TYPE_LABELS;
   getLeaveTypeLabel(type) {
     return LEAVE_TYPE_LABELS[type] ?? type;
+  }
+  /** 依假別單位格式化時數顯示 */
+  formatLeaveDuration(type, hours) {
+    return formatLeaveDuration(type, hours);
   }
   ngOnInit() {
     this.employeeId = this.route.snapshot.paramMap.get("id") ?? "";
@@ -46813,13 +47861,13 @@ var PayrollForm = class _PayrollForm {
                 </tr>\r
                 @if (e.personalLeaveDays > 0) {\r
                   <tr>\r
-                    <td class="ps-6">\u4E8B\u5047\u6263\u85AA\uFF08{{ e.personalLeaveDays }} \u5929\uFF09</td>\r
+                    <td class="ps-6">\u4E8B\u5047\u6263\u85AA\uFF08{{ e.personalLeaveDays | number:'1.0-2' }} \u5929 = {{ e.personalLeaveDays * 8 | number:'1.0-1' }} \u5C0F\u6642\uFF09</td>\r
                     <td class="text-right pe-4 text-danger">-{{ e.personalLeaveDeduction | number:'1.0-0' }}</td>\r
                   </tr>\r
                 }\r
                 @if (e.sickLeaveDays > 0) {\r
                   <tr>\r
-                    <td class="ps-6">\u75C5\u5047\u6263\u85AA\uFF08{{ e.sickLeaveDays }} \u5929 \xD7 \u534A\u85AA\uFF09</td>\r
+                    <td class="ps-6">\u75C5\u5047\u6263\u85AA\uFF08{{ e.sickLeaveDays | number:'1.0-2' }} \u5929 = {{ e.sickLeaveDays * 8 | number:'1.0-1' }} \u5C0F\u6642 \xD7 \u534A\u85AA\uFF09</td>\r
                     <td class="text-right pe-4 text-danger">-{{ e.sickLeaveDeduction | number:'1.0-0' }}</td>\r
                   </tr>\r
                 }\r
@@ -46841,7 +47889,7 @@ var PayrollForm = class _PayrollForm {
                   <tr class="bg-[var(--bg-elevated)]">\r
                     <th class="ps-4">\u5047\u5225</th>\r
                     <th>\u671F\u9593</th>\r
-                    <th class="text-right pe-4">\u5929\u6578</th>\r
+                    <th class="text-right pe-4">\u671F\u9593</th>\r
                   </tr>\r
                 </thead>\r
                 <tbody>\r
@@ -46849,7 +47897,7 @@ var PayrollForm = class _PayrollForm {
                     <tr>\r
                       <td class="ps-4">{{ getLeaveTypeLabel(ld.leaveType) }}</td>\r
                       <td>{{ ld.startDate | date:'MM/dd HH:mm' }} ~ {{ ld.endDate | date:'MM/dd HH:mm' }}</td>\r
-                      <td class="text-right pe-4">{{ ld.hours / 8 | number:'1.1-1' }} \u5929</td>\r
+                      <td class="text-right pe-4">{{ formatLeaveDuration(ld.leaveType, ld.hours) }}</td>\r
                     </tr>\r
                   }\r
                 </tbody>\r
@@ -55547,4 +56595,4 @@ xlsx/xlsx.mjs:
 xlsx/xlsx.mjs:
   (*! sheetjs (C) 2013-present SheetJS -- http://sheetjs.com *)
 */
-//# sourceMappingURL=chunk-6P5RQ7Q5.js.map
+//# sourceMappingURL=chunk-JZTRSRXA.js.map

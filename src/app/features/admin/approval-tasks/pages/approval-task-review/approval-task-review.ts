@@ -23,6 +23,7 @@ import {
   APPLICATION_TYPE_LABELS, APPLICATION_TYPE_CLASSES,
   PAYMENT_TYPE_LABELS, LEAVE_TYPE_LABELS,
 } from '../../models/approval-task.model';
+import {LeaveType, formatLeaveDuration} from '../../../leave-requests/models/leave-request.model';
 
 @Component({
   selector: 'app-approval-task-review',
@@ -98,6 +99,11 @@ export class ApprovalTaskReview implements OnInit {
   readonly appTypeClass   = APPLICATION_TYPE_CLASSES;
   readonly payTypeLabel   = PAYMENT_TYPE_LABELS;
   readonly leaveTypeLabel = LEAVE_TYPE_LABELS;
+
+  /** 依假別單位格式化時數顯示 */
+  formatLeaveDuration(type: string, hours: number): string {
+    return formatLeaveDuration(type as LeaveType, hours);
+  }
 
   form = this.fb.group({
     action:               ['approved', Validators.required],

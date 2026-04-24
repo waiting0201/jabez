@@ -3,7 +3,11 @@ export type LeaveType =
   | 'marriage' | 'bereavement' | 'official'
   | 'maternity' | 'miscarriage_3m' | 'miscarriage_2to3m' | 'miscarriage_under2m'
   | 'prenatal_checkup' | 'paternity'
-  | 'ceremonial_festival';
+  | 'ceremonial_festival'
+  | 'senior_executive';
+
+/** 時間單位：小時 / 半天(4hr) / 整天(8hr) */
+export type LeaveTimeUnit = 'hour' | 'half_day' | 'day';
 
 export type ApprovalStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'returned';
 
@@ -22,7 +26,41 @@ export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
   paternity:           '陪產假',
   bereavement:         '喪假',
   ceremonial_festival: '歲時祭儀假',
+  senior_executive:    '高階主管假',
 };
+
+/**
+ * 各假別時間單位對應（需與後端 LeaveRequestHandler.TimeUnitMap 保持同步）
+ * - hour: 事假 / 病假 / 產檢假 / 陪產假
+ * - half_day: 特休 / 補休 / 高階主管假（4 小時）
+ * - day: 公假 / 婚假 / 產假 / 喪假 / 歲時祭儀假 / 流產假系列（8 小時）
+ */
+export const LEAVE_TIME_UNIT: Record<LeaveType, LeaveTimeUnit> = {
+  personal:            'hour',
+  sick:                'hour',
+  prenatal_checkup:    'hour',
+  paternity:           'hour',
+  annual:              'half_day',
+  compensatory:        'half_day',
+  senior_executive:    'half_day',
+  official:            'day',
+  marriage:            'day',
+  maternity:           'day',
+  bereavement:         'day',
+  ceremonial_festival: 'day',
+  miscarriage_3m:      'day',
+  miscarriage_2to3m:   'day',
+  miscarriage_under2m: 'day',
+};
+
+/** 格式化時數顯示（依單位） */
+export function formatLeaveDuration(leaveType: LeaveType, hours: number): string {
+  const unit = LEAVE_TIME_UNIT[leaveType];
+  if (unit === 'hour') return `${Math.round(hours * 10) / 10} 小時`;
+  // half_day / day 都以「天」為單位顯示（0.5 天 = 4 小時）
+  const days = Math.round((hours / 8) * 10) / 10;
+  return `${days} 天`;
+}
 
 export const LEAVE_TYPE_CLASSES: Record<LeaveType, string> = {
   annual:              'bg-[rgba(105,159,52,0.12)] text-[#4A6B3A]',
@@ -39,6 +77,7 @@ export const LEAVE_TYPE_CLASSES: Record<LeaveType, string> = {
   paternity:           'bg-[rgba(124,94,140,0.12)] text-[#7C5E8C]',
   bereavement:         'bg-[rgba(82,83,88,0.12)] text-[#525358]',
   ceremonial_festival: 'bg-[rgba(140,115,85,0.12)] text-[#8C7355]',
+  senior_executive:    'bg-[rgba(105,159,52,0.12)] text-[#4A6B3A]',
 };
 
 /** 假別分組（供下拉選單 optgroup 使用） */
@@ -48,6 +87,8 @@ export const LEAVE_TYPE_GROUPS: { label: string; types: LeaveType[] }[] = [
   { label: '產假類別', types: ['maternity', 'miscarriage_3m', 'miscarriage_2to3m', 'miscarriage_under2m', 'prenatal_checkup', 'paternity'] },
   { label: '喪假',     types: ['bereavement'] },
   { label: '其他假別', types: ['ceremonial_festival'] },
+  // 高階主管假僅協理以上可見（實際顯示由前端依 auth.isSeniorExecutive() 過濾）
+  { label: '高階主管假', types: ['senior_executive'] },
 ];
 
 /** 假別天數上限（前端顯示用，實際驗證在後端） */
@@ -164,4 +205,34 @@ export interface CeremonialQuota {
   availableDays: number;
   isIndigenous: boolean;
   message?: string;
+}
+
+/** 婚假配額（上限 8 天，不限年度） */
+export interface MarriageQuota {
+  maxDays: number;
+  usedDays: number;
+  remainingDays: number;
+}
+
+/** 產假狀態（一次請完制） */
+export interface MaternityStatus {
+  hasActiveRequest: boolean;
+  activeRequestId?: number;
+  startDate?: string;
+  endDate?: string;
+  approvalStatus?: string;
+}
+
+/** 喪假配額（依親屬關係） */
+export interface BereavementQuota {
+  relationship: string;
+  maxDays: number;
+  usedDays: number;
+  remainingDays: number;
+}
+
+/** 高階主管假適用性（JobTitle.Level ≤ 3） */
+export interface SeniorExecutiveEligibility {
+  isEligible: boolean;
+  jobTitleLevel?: number;
 }

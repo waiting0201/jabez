@@ -149,8 +149,8 @@
                       <span class="fw-500">{{ task.submittedBy }}</span>
                     </div>
                     <div class="col-6 col-md-4">
-                      <div class="text-muted small mb-1">時數</div>
-                      <span class="fw-600 fs-5">{{ d.hours }} 小時</span>
+                      <div class="text-muted small mb-1">期間</div>
+                      <span class="fw-600 fs-5">{{ formatLeaveDuration(d.leaveType, d.hours) }}</span>
                     </div>
                     <div class="col-6 col-md-4">
                       <div class="text-muted small mb-1">開始日期</div>
