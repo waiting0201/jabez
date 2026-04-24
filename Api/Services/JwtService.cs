@@ -40,7 +40,8 @@ public sealed class JwtService : IJwtService
         bool                isSuperAdmin = false,
         string?             departmentName = null,
         string?             jobTitleName = null,
-        string?             departmentCode = null)
+        string?             departmentCode = null,
+        int?                jobTitleLevel = null)
     {
         var claims = new List<Claim>
         {
@@ -65,6 +66,10 @@ public sealed class JwtService : IJwtService
         // 部門代碼 — Angular JWT decode reads payload.department_code
         if (!string.IsNullOrEmpty(departmentCode))
             claims.Add(new Claim("department_code", departmentCode));
+
+        // 職級 — Angular JWT decode reads payload.job_title_level（高階主管假權限判斷）
+        if (jobTitleLevel.HasValue)
+            claims.Add(new Claim("job_title_level", jobTitleLevel.Value.ToString()));
 
         // Roles — Angular JWT decode reads payload.roles[]
         foreach (var role in roleIds)

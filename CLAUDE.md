@@ -451,6 +451,10 @@ public async Task<HttpResponseData> Run(
 | GET | `/leave-requests/compensatory-hours` | 查詢可補休時數（總加班 − 已補休） |
 | GET | `/leave-requests/annual-quota` | 查詢年假額度（依 HireDate 計算年資） |
 | GET | `/leave-requests/ceremonial-quota` | 查詢歲時祭儀假額度（僅原住民，每年 3 天，跨年歸零） |
+| GET | `/leave-requests/marriage-quota` | 查詢婚假配額（上限 8 天，不限年度） |
+| GET | `/leave-requests/maternity-status` | 查詢產假狀態（是否已有活躍申請） |
+| GET | `/leave-requests/bereavement-quota?relationship={rel}` | 查詢喪假配額（依親屬關係 3/6/8 天） |
+| GET | `/leave-requests/senior-executive-eligibility` | 查詢高階主管假適用性（JobTitle.Level ≤ 3） |
 | GET/POST | `/travel-requests` | 出差列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/travel-requests/{id}` | 出差 CRUD |
 | PATCH | `/travel-requests/{id}/submit` | 送出出差申請（draft → pending） |
@@ -579,24 +583,40 @@ dotnet ef database update               # 套用 Migration
 
 ## 請假規則
 
-### 假別一覽（13 種）
+### 假別一覽（15 種）
 
-| # | 假別 | LeaveType | 天數上限 | 薪資影響 |
-|---|------|-----------|---------|---------|
-| 1 | 年假(特休假) | `annual` | 依年資（3~30 天） | 有薪 |
-| 2 | 事假 | `personal` | 無上限 | 按天數扣除全額薪資 |
-| 3 | 病假 | `sick` | 無上限 | 按天數扣除半薪 |
-| 4 | 補休 | `compensatory` | 依加班時數 | 有薪 |
-| 5 | 公假 | `official` | 無上限 | 有薪 |
-| 6 | 婚假 | `marriage` | 8 天 | 有薪 |
-| 7 | 產假 | `maternity` | 56 天 | 有薪 |
-| 8 | 流產假(3 個月以上) | `miscarriage_3m` | 28 天 | 有薪 |
-| 9 | 流產假(2-3 個月) | `miscarriage_2to3m` | 7 天 | 有薪 |
-| 10 | 流產假(未滿 2 個月) | `miscarriage_under2m` | 5 天 | 有薪 |
-| 11 | 產檢假 | `prenatal_checkup` | 7 天 | 有薪 |
-| 12 | 陪產假 | `paternity` | 7 天 | 有薪 |
-| 13 | 喪假 | `bereavement` | 依親屬關係（3/6/8 天） | 有薪 |
-| 14 | 歲時祭儀假 | `ceremonial_festival` | 3 天/年（跨年歸零，**限原住民**） | 有薪 |
+| # | 假別 | LeaveType | 時間單位 | 天數上限 | 薪資影響 |
+|---|------|-----------|---------|---------|---------|
+| 1 | 年假(特休假) | `annual` | 半天 | 依年資（3~30 天） | 有薪 |
+| 2 | 事假 | `personal` | 小時 | 無上限 | 按天數扣除全額薪資 |
+| 3 | 病假 | `sick` | 小時 | 無上限 | 按天數扣除半薪 |
+| 4 | 補休 | `compensatory` | 半天（扣 4 小時/半天） | 依加班時數 | 有薪 |
+| 5 | 公假 | `official` | 天 | 無上限 | 有薪 |
+| 6 | 婚假 | `marriage` | 天 | 8 天（可不連續） | 有薪 |
+| 7 | 產假 | `maternity` | 天（**選起始日、自動填 56 天**） | 56 天 | 有薪 |
+| 8 | 流產假(3 個月以上) | `miscarriage_3m` | 天 | 28 天 | 有薪 |
+| 9 | 流產假(2-3 個月) | `miscarriage_2to3m` | 天 | 7 天 | 有薪 |
+| 10 | 流產假(未滿 2 個月) | `miscarriage_under2m` | 天 | 5 天 | 有薪 |
+| 11 | 產檢假 | `prenatal_checkup` | 小時 | 7 天 | 有薪 |
+| 12 | 陪產假 | `paternity` | 小時 | 7 天 | 有薪 |
+| 13 | 喪假 | `bereavement` | 天 | 依親屬關係（3/6/8 天） | 有薪 |
+| 14 | 歲時祭儀假 | `ceremonial_festival` | 天 | 3 天/年（跨年歸零，**限原住民**） | 有薪 |
+| 15 | 高階主管假 | `senior_executive` | 半天 | **無上限** | **不扣任何項目**（協理以上專用，`JobTitle.Level ≤ 3`） |
+
+### 時間單位規則
+
+請假輸入依假別分為三種單位，儲存仍為 `LeaveRequest.Hours`（`decimal(5,1)`）：
+
+| 單位 | 換算 | 輸入 UI | 適用假別 |
+|------|------|---------|---------|
+| 小時 (`hour`) | 自然小時（**整點**） | `datetime-local` 整點步進（分鐘僅 00） | 事假、病假、產檢假、陪產假 |
+| 半天 (`half_day`) | 4 小時 = 半天 | 日期 + 上午/下午 選擇 | 年假、補休、高階主管假 |
+| 整天 (`day`) | 8 小時 = 1 天 | 起迄日期選擇 | 公假、婚假、產假、喪假、歲時祭儀假、流產假系列 |
+
+- **產假特例**：選擇起始日後，結束日自動填為起始日 + 55 天（共 56 天），總時數固定 448 小時。法規為一次請完，禁止重複活躍申請（同 `EmployeeId` 存在 `pending` / `approved` 產假）。
+- **補休扣除**：申請 1 個半天（4 小時）→ 從可補休時數池扣 4 小時。
+- **高階主管假權限閘門**：前後端皆檢查 `JobTitle.Level ≤ 3`；前端透過 JWT `job_title_level` claim 判斷選項可見性，後端在 `CreateAsync` / `UpdateAsync` / `SubmitAsync` 各階段驗證。
+- **分鐘限制（小時單位）**：僅允許 `:00`（`step="3600"` 秒 = 整點步進），前後端皆驗證時數為整數倍。
 
 ### 年假額度規則（依年資）
 

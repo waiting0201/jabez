@@ -67,13 +67,11 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             WHERE Year = @Year AND Month = @Month
             """;
 
-        // 5. 查詢該月已核准的事假/病假天數（按員工 + 假別分組）
+        // 5. 查詢該月已核准的事假/病假時數（按員工 + 假別分組）
+        //    事假/病假為「小時」單位，以 SUM(Hours) 累計，C# 端再 ÷ 8 換算天數
         const string leaveSql = """
             SELECT lr.EmployeeId, lr.LeaveType,
-                   SUM(DATEDIFF(DAY,
-                       CASE WHEN lr.StartDate < @FirstDay THEN @FirstDay ELSE lr.StartDate END,
-                       CASE WHEN lr.EndDate   > @LastDay  THEN @LastDay  ELSE lr.EndDate   END
-                   ) + 1) AS TotalDays
+                   SUM(lr.Hours) AS TotalHours
             FROM LeaveRequests lr
             WHERE lr.ApprovalStatus = 'approved'
               AND lr.LeaveType IN ('personal', 'sick')
@@ -99,12 +97,13 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
         var adjustments = (await db.QueryAsync<dynamic>(adjustmentSql, new { Year = year, Month = month }))
             .ToDictionary(r => (Guid)r.EmployeeId, r => r);
 
-        // 事假/病假天數：Dictionary<(EmployeeId, LeaveType), TotalDays>
+        // 事假/病假天數：Dictionary<(EmployeeId, LeaveType), TotalDays (decimal)>
+        // TotalHours ÷ 8 = 實際天數（保留小數，例如 2 小時 = 0.25 天）
         var leaveRecords = (await db.QueryAsync<dynamic>(leaveSql, new { FirstDay = firstDay, LastDay = lastDay }))
             .ToList();
-        var leaveDaysMap = new Dictionary<(Guid, string), int>();
+        var leaveDaysMap = new Dictionary<(Guid, string), decimal>();
         foreach (var lr in leaveRecords)
-            leaveDaysMap[((Guid)lr.EmployeeId, (string)lr.LeaveType)] = (int)lr.TotalDays;
+            leaveDaysMap[((Guid)lr.EmployeeId, (string)lr.LeaveType)] = (decimal)lr.TotalHours / 8m;
 
         // 請假明細：Dictionary<EmployeeId, LeaveDetailDto[]>
         var leaveDetails = (await db.QueryAsync<dynamic>(leaveDetailSql, new { FirstDay = firstDay, LastDay = lastDay }))
@@ -147,13 +146,13 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 laborIns = Math.Round(fullLaborIns / 30m * insuredDays, 0);
             }
 
-            // 事假扣薪：日薪 × 事假天數（不給薪）
+            // 事假扣薪：日薪 × 事假天數（不給薪）；天數 = SUM(Hours) / 8，保留小數
             var empId = (Guid)emp.EmployeeId;
-            int personalDays = leaveDaysMap.TryGetValue((empId, "personal"), out var pd) ? pd : 0;
-            decimal personalDeduction = dailySalary * personalDays;
+            decimal personalDays = leaveDaysMap.TryGetValue((empId, "personal"), out var pd) ? pd : 0m;
+            decimal personalDeduction = Math.Round(dailySalary * personalDays, 0);
 
-            // 病假扣薪：日薪 × 0.5 × 病假天數（半薪）
-            int sickDays = leaveDaysMap.TryGetValue((empId, "sick"), out var sd) ? sd : 0;
+            // 病假扣薪：日薪 × 0.5 × 病假天數（半薪）；天數 = SUM(Hours) / 8
+            decimal sickDays = leaveDaysMap.TryGetValue((empId, "sick"), out var sd) ? sd : 0m;
             decimal sickDeduction = Math.Round(dailySalary * 0.5m * sickDays, 0);
 
             // 其他加項 / 其他扣項

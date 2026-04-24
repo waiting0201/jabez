@@ -32,7 +32,33 @@ public sealed class LeaveRequestHandler(
         ["annual", "personal", "sick", "compensatory", "marriage", "bereavement",
          "official", "maternity", "miscarriage_3m", "miscarriage_2to3m",
          "miscarriage_under2m", "prenatal_checkup", "paternity",
-         "ceremonial_festival"];
+         "ceremonial_festival", "senior_executive"];
+
+    /// <summary>各假別時間單位對應</summary>
+    private static readonly Dictionary<string, LeaveTimeUnit> TimeUnitMap = new()
+    {
+        ["personal"]            = LeaveTimeUnit.Hour,
+        ["sick"]                = LeaveTimeUnit.Hour,
+        ["prenatal_checkup"]    = LeaveTimeUnit.Hour,
+        ["paternity"]           = LeaveTimeUnit.Hour,
+        ["annual"]              = LeaveTimeUnit.HalfDay,
+        ["compensatory"]        = LeaveTimeUnit.HalfDay,
+        ["senior_executive"]    = LeaveTimeUnit.HalfDay,
+        ["official"]            = LeaveTimeUnit.Day,
+        ["marriage"]            = LeaveTimeUnit.Day,
+        ["maternity"]           = LeaveTimeUnit.Day,
+        ["bereavement"]         = LeaveTimeUnit.Day,
+        ["ceremonial_festival"] = LeaveTimeUnit.Day,
+        ["miscarriage_3m"]      = LeaveTimeUnit.Day,
+        ["miscarriage_2to3m"]   = LeaveTimeUnit.Day,
+        ["miscarriage_under2m"] = LeaveTimeUnit.Day,
+    };
+
+    /// <summary>高階主管假可申請之最高職級（JobTitle.Level 數字越小層級越高）</summary>
+    private const int SeniorExecMaxLevel = 3;
+
+    /// <summary>產假固定天數（法規為一次請完）</summary>
+    private const int MaternityDays = 56;
 
     /// <summary>各假別天數上限（不含年假與補休，它們有獨立邏輯）</summary>
     private static readonly Dictionary<string, int> LeaveTypeDaysLimit = new()
@@ -44,6 +70,19 @@ public sealed class LeaveRequestHandler(
         ["miscarriage_under2m"] = 5,
         ["prenatal_checkup"]    = 7,
         ["paternity"]           = 7,
+    };
+
+    /// <summary>取得指定假別的時間單位</summary>
+    private static LeaveTimeUnit GetTimeUnit(string leaveType) =>
+        TimeUnitMap.TryGetValue(leaveType, out var u) ? u : LeaveTimeUnit.Hour;
+
+    /// <summary>時間單位轉字串（前端使用）</summary>
+    private static string TimeUnitToString(LeaveTimeUnit unit) => unit switch
+    {
+        LeaveTimeUnit.Hour    => "hour",
+        LeaveTimeUnit.HalfDay => "half_day",
+        LeaveTimeUnit.Day     => "day",
+        _                     => "hour",
     };
 
     /// <summary>喪假親屬關係對應天數上限</summary>
@@ -115,20 +154,76 @@ public sealed class LeaveRequestHandler(
                 return new BadRequestObjectResult(ApiResponse.Fail("無效的親屬關係。"));
         }
 
-        if (body.StartDate == default || body.EndDate == default)
-            return new BadRequestObjectResult(ApiResponse.Fail("StartDate and EndDate are required."));
+        // 高階主管假：職級檢查（JobTitle.Level <= 3）
+        if (body.LeaveType == "senior_executive")
+        {
+            var eligError = await CheckSeniorExecutiveEligibilityAsync(employeeId);
+            if (eligError is not null)
+                return new BadRequestObjectResult(ApiResponse.Fail(eligError));
+        }
 
-        if (body.EndDate <= body.StartDate)
-            return new BadRequestObjectResult(ApiResponse.Fail("EndDate must be after StartDate."));
+        // 產假：禁止重複活躍申請（一次請完制）
+        if (body.LeaveType == "maternity")
+        {
+            var hasActive = await db.LeaveRequests.AnyAsync(l =>
+                l.EmployeeId == employeeId
+                && l.LeaveType == "maternity"
+                && (l.ApprovalStatus == "pending" || l.ApprovalStatus == "approved"));
+            if (hasActive)
+                return new BadRequestObjectResult(ApiResponse.Fail("已有未完成或進行中的產假申請，產假需一次請完。"));
+        }
 
-        // 分鐘必須為 00 或 30
-        if (body.StartDate.Minute % 30 != 0)
-            return new BadRequestObjectResult(ApiResponse.Fail("StartDate 的分鐘必須為 00 或 30。"));
-        if (body.EndDate.Minute % 30 != 0)
-            return new BadRequestObjectResult(ApiResponse.Fail("EndDate 的分鐘必須為 00 或 30。"));
+        if (body.StartDate == default)
+            return new BadRequestObjectResult(ApiResponse.Fail("StartDate is required."));
 
-        // 時數由開始/結束時間計算，不信任客戶端傳入值
-        var hours = (decimal)(body.EndDate - body.StartDate).TotalHours;
+        // 產假自動填充 EndDate 與 Hours（56 天）
+        DateTime effectiveStart = body.StartDate;
+        DateTime effectiveEnd   = body.EndDate;
+        if (body.LeaveType == "maternity")
+        {
+            effectiveStart = body.StartDate.Date;
+            effectiveEnd   = effectiveStart.AddDays(MaternityDays - 1);
+        }
+        else
+        {
+            if (body.EndDate == default)
+                return new BadRequestObjectResult(ApiResponse.Fail("EndDate is required."));
+            if (body.EndDate <= body.StartDate)
+                return new BadRequestObjectResult(ApiResponse.Fail("EndDate must be after StartDate."));
+        }
+
+        var unit = GetTimeUnit(body.LeaveType);
+
+        // 分鐘必須為 0（僅整點，Hour 單位）
+        if (unit == LeaveTimeUnit.Hour)
+        {
+            if (effectiveStart.Minute != 0)
+                return new BadRequestObjectResult(ApiResponse.Fail("StartDate 必須為整點（分鐘 00）。"));
+            if (effectiveEnd.Minute != 0)
+                return new BadRequestObjectResult(ApiResponse.Fail("EndDate 必須為整點（分鐘 00）。"));
+        }
+
+        // 時數計算：Hour → 實算時差；HalfDay → 信任 client；Day → 依起迄日期推算
+        decimal hours = body.LeaveType switch
+        {
+            "maternity" => MaternityDays * 8m, // 56 * 8 = 448
+            _ => unit switch
+            {
+                LeaveTimeUnit.Hour    => (decimal)(effectiveEnd - effectiveStart).TotalHours,
+                LeaveTimeUnit.HalfDay => body.Hours,
+                LeaveTimeUnit.Day     => ((effectiveEnd.Date - effectiveStart.Date).Days + 1) * 8m,
+                _                     => (decimal)(effectiveEnd - effectiveStart).TotalHours,
+            },
+        };
+
+        if (hours <= 0)
+            return new BadRequestObjectResult(ApiResponse.Fail("時數必須大於 0。"));
+        if (unit == LeaveTimeUnit.HalfDay && hours % 4m != 0m)
+            return new BadRequestObjectResult(ApiResponse.Fail("特休／補休／高階主管假需以半天（4 小時）為單位。"));
+        if (unit == LeaveTimeUnit.Day && hours % 8m != 0m)
+            return new BadRequestObjectResult(ApiResponse.Fail("此假別需以整天（8 小時）為單位。"));
+        if (unit == LeaveTimeUnit.Hour && hours % 1m != 0m)
+            return new BadRequestObjectResult(ApiResponse.Fail("小時單位必須為整數（整點計時）。"));
 
         // 指定審核者存在性驗證
         if (body.DesignatedReviewers is { Length: > 0 })
@@ -144,8 +239,8 @@ public sealed class LeaveRequestHandler(
             EmployeeId              = employeeId,   // 強制使用 JWT 身分，忽略 body.EmployeeId
             ApprovalItemId          = body.ApprovalItemId,
             LeaveType               = body.LeaveType,
-            StartDate               = body.StartDate,
-            EndDate                 = body.EndDate,
+            StartDate               = effectiveStart,
+            EndDate                 = effectiveEnd,
             Hours                   = hours,
             Reason                  = body.Reason,
             BereavementRelationship = body.LeaveType == "bereavement" ? body.BereavementRelationship : null,
@@ -219,13 +314,19 @@ public sealed class LeaveRequestHandler(
             }
         }
 
-        if (body.LeaveType is not null) item.LeaveType = body.LeaveType;
-        if (body.StartDate.HasValue)    item.StartDate = body.StartDate.Value;
-        if (body.EndDate.HasValue)      item.EndDate   = body.EndDate.Value;
-        if (body.Reason is not null)    item.Reason    = body.Reason;
+        if (body.LeaveType is not null)
+        {
+            if (!ValidLeaveTypes.Contains(body.LeaveType))
+                return new BadRequestObjectResult(ApiResponse.Fail(
+                    $"Invalid LeaveType '{body.LeaveType}'."));
+            item.LeaveType = body.LeaveType;
+        }
+        if (body.StartDate.HasValue) item.StartDate = body.StartDate.Value;
+        if (body.EndDate.HasValue)   item.EndDate   = body.EndDate.Value;
+        if (body.Reason is not null) item.Reason    = body.Reason;
 
         // 喪假親屬關係更新
-        var effectiveLeaveType = body.LeaveType ?? item.LeaveType;
+        var effectiveLeaveType = item.LeaveType;
         if (effectiveLeaveType == "bereavement")
         {
             if (body.BereavementRelationship is not null)
@@ -236,8 +337,55 @@ public sealed class LeaveRequestHandler(
             item.BereavementRelationship = null;
         }
 
-        // 時數由開始/結束時間重新計算
-        item.Hours = (decimal)(item.EndDate - item.StartDate).TotalHours;
+        // 高階主管假：職級檢查
+        if (effectiveLeaveType == "senior_executive")
+        {
+            var eligError = await CheckSeniorExecutiveEligibilityAsync(item.EmployeeId ?? Guid.Empty);
+            if (eligError is not null)
+                return new BadRequestObjectResult(ApiResponse.Fail(eligError));
+        }
+
+        var unit = GetTimeUnit(effectiveLeaveType);
+
+        // 產假：自動填充 56 天，不論 client 傳入
+        if (effectiveLeaveType == "maternity")
+        {
+            item.StartDate = item.StartDate.Date;
+            item.EndDate   = item.StartDate.AddDays(MaternityDays - 1);
+            item.Hours     = MaternityDays * 8m;
+        }
+        else
+        {
+            // 分鐘必須為 0（僅整點，Hour 單位）
+            if (unit == LeaveTimeUnit.Hour)
+            {
+                if (item.StartDate.Minute != 0)
+                    return new BadRequestObjectResult(ApiResponse.Fail("StartDate 必須為整點（分鐘 00）。"));
+                if (item.EndDate.Minute != 0)
+                    return new BadRequestObjectResult(ApiResponse.Fail("EndDate 必須為整點（分鐘 00）。"));
+            }
+
+            if (item.EndDate <= item.StartDate)
+                return new BadRequestObjectResult(ApiResponse.Fail("EndDate must be after StartDate."));
+
+            // 時數依單位計算
+            decimal recalcHours = unit switch
+            {
+                LeaveTimeUnit.Hour    => (decimal)(item.EndDate - item.StartDate).TotalHours,
+                LeaveTimeUnit.HalfDay => body.Hours ?? (decimal)(item.EndDate - item.StartDate).TotalHours,
+                LeaveTimeUnit.Day     => ((item.EndDate.Date - item.StartDate.Date).Days + 1) * 8m,
+                _                     => (decimal)(item.EndDate - item.StartDate).TotalHours,
+            };
+            if (recalcHours <= 0)
+                return new BadRequestObjectResult(ApiResponse.Fail("時數必須大於 0。"));
+            if (unit == LeaveTimeUnit.HalfDay && recalcHours % 4m != 0m)
+                return new BadRequestObjectResult(ApiResponse.Fail("特休／補休／高階主管假需以半天（4 小時）為單位。"));
+            if (unit == LeaveTimeUnit.Day && recalcHours % 8m != 0m)
+                return new BadRequestObjectResult(ApiResponse.Fail("此假別需以整天（8 小時）為單位。"));
+            if (unit == LeaveTimeUnit.Hour && recalcHours % 1m != 0m)
+                return new BadRequestObjectResult(ApiResponse.Fail("小時單位必須為整數（整點計時）。"));
+            item.Hours = recalcHours;
+        }
 
         await db.SaveChangesAsync();
 
@@ -375,6 +523,94 @@ public sealed class LeaveRequestHandler(
         }));
     }
 
+    /// <summary>查詢當前使用者的婚假配額（上限 8 天，不限年度）</summary>
+    public async Task<IActionResult> GetMarriageQuotaAsync(HttpRequest req)
+    {
+        var userId = await GetUserIdAsync(req);
+        const int maxDays = 8;
+
+        var usedHours = await db.LeaveRequests
+            .Where(l => l.EmployeeId == userId
+                     && l.LeaveType == "marriage"
+                     && (l.ApprovalStatus == "approved" || l.ApprovalStatus == "pending"))
+            .SumAsync(l => l.Hours);
+        var usedDays = Math.Round(usedHours / 8m, 1);
+        var remaining = Math.Round(Math.Max(0, maxDays - usedDays), 1);
+
+        return new OkObjectResult(ApiResponse.Ok(new MarriageQuotaDto(maxDays, usedDays, remaining)));
+    }
+
+    /// <summary>查詢當前使用者的產假狀態（檢查是否已有活躍申請）</summary>
+    public async Task<IActionResult> GetMaternityStatusAsync(HttpRequest req)
+    {
+        var userId = await GetUserIdAsync(req);
+
+        var active = await db.LeaveRequests
+            .AsNoTracking()
+            .Where(l => l.EmployeeId == userId
+                     && l.LeaveType == "maternity"
+                     && (l.ApprovalStatus == "pending" || l.ApprovalStatus == "approved"))
+            .OrderByDescending(l => l.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        return new OkObjectResult(ApiResponse.Ok(new MaternityStatusDto(
+            HasActiveRequest: active is not null,
+            ActiveRequestId:  active?.Id,
+            StartDate:        active?.StartDate,
+            EndDate:          active?.EndDate,
+            ApprovalStatus:   active?.ApprovalStatus)));
+    }
+
+    /// <summary>查詢當前使用者的喪假配額（依親屬關係）</summary>
+    public async Task<IActionResult> GetBereavementQuotaAsync(HttpRequest req)
+    {
+        var userId = await GetUserIdAsync(req);
+        var relationship = req.Query["relationship"].ToString();
+        if (string.IsNullOrWhiteSpace(relationship))
+            return new BadRequestObjectResult(ApiResponse.Fail("relationship 為必填參數。"));
+        if (!BereavementDaysLimit.TryGetValue(relationship, out var maxDays))
+            return new BadRequestObjectResult(ApiResponse.Fail("無效的親屬關係。"));
+
+        var usedHours = await db.LeaveRequests
+            .Where(l => l.EmployeeId == userId
+                     && l.LeaveType == "bereavement"
+                     && l.BereavementRelationship == relationship
+                     && (l.ApprovalStatus == "approved" || l.ApprovalStatus == "pending"))
+            .SumAsync(l => l.Hours);
+        var usedDays = Math.Round(usedHours / 8m, 1);
+        var remaining = Math.Round(Math.Max(0, maxDays - usedDays), 1);
+
+        return new OkObjectResult(ApiResponse.Ok(new BereavementQuotaDto(relationship, maxDays, usedDays, remaining)));
+    }
+
+    /// <summary>查詢當前使用者高階主管假適用性（Superadmin 或 JobTitle.Level ≤ 3）</summary>
+    public async Task<IActionResult> GetSeniorExecutiveEligibilityAsync(HttpRequest req)
+    {
+        var userId = await GetUserIdAsync(req);
+        var user = await db.Users
+            .AsNoTracking()
+            .Include(u => u.JobTitle)
+            .FirstOrDefaultAsync(u => u.Id == userId);
+        var level = user?.JobTitle?.Level;
+        // Superadmin 一律視為符合
+        bool eligible = user?.IsSuperAdmin == true || (level.HasValue && level.Value <= SeniorExecMaxLevel);
+        return new OkObjectResult(ApiResponse.Ok(new SeniorExecutiveEligibilityDto(eligible, level)));
+    }
+
+    /// <summary>檢查使用者是否符合高階主管假資格，回傳錯誤訊息或 null（Superadmin 一律通過）</summary>
+    private async Task<string?> CheckSeniorExecutiveEligibilityAsync(Guid userId)
+    {
+        var user = await db.Users
+            .AsNoTracking()
+            .Include(u => u.JobTitle)
+            .FirstOrDefaultAsync(u => u.Id == userId);
+        if (user?.IsSuperAdmin == true) return null;
+        var level = user?.JobTitle?.Level;
+        if (!level.HasValue || level.Value > SeniorExecMaxLevel)
+            return "高階主管假僅限協理（含）以上職級申請。";
+        return null;
+    }
+
     /// <summary>計算指定使用者可用的補休時數</summary>
     private async Task<decimal> GetAvailableCompensatoryHoursAsync(Guid userId)
     {
@@ -411,6 +647,14 @@ public sealed class LeaveRequestHandler(
         // 喪假驗證：必須有親屬關係
         if (item.LeaveType == "bereavement" && string.IsNullOrWhiteSpace(item.BereavementRelationship))
             return new BadRequestObjectResult(ApiResponse.Fail("喪假必須選擇親屬關係。"));
+
+        // 高階主管假：職級檢查（送出時再次驗證，防止草稿期間職級變更）
+        if (item.LeaveType == "senior_executive")
+        {
+            var eligError = await CheckSeniorExecutiveEligibilityAsync(item.EmployeeId ?? Guid.Empty);
+            if (eligError is not null)
+                return new BadRequestObjectResult(ApiResponse.Fail(eligError));
+        }
 
         // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
         if (item.ApprovalStatus == "returned")
@@ -709,6 +953,7 @@ public sealed class LeaveRequestHandler(
         "prenatal_checkup"   => "產檢假",
         "paternity"          => "陪產假",
         "ceremonial_festival"=> "歲時祭儀假",
+        "senior_executive"   => "高階主管假",
         _                    => leaveType,
     };
 

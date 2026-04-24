@@ -160,11 +160,11 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
             """;
         if (emp.PersonalLeaveDays > 0)
             deductionRows += $"""
-            <tr><td style="padding:8px 12px">事假扣薪（{emp.PersonalLeaveDays} 天）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.PersonalLeaveDeduction)}</td></tr>
+            <tr><td style="padding:8px 12px">事假扣薪（{Math.Round(emp.PersonalLeaveDays, 2)} 天 = {Math.Round(emp.PersonalLeaveDays * 8m, 1)} 小時）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.PersonalLeaveDeduction)}</td></tr>
             """;
         if (emp.SickLeaveDays > 0)
             deductionRows += $"""
-            <tr style="background:#FDF5F5"><td style="padding:8px 12px">病假扣薪（{emp.SickLeaveDays} 天 × 半薪）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.SickLeaveDeduction)}</td></tr>
+            <tr style="background:#FDF5F5"><td style="padding:8px 12px">病假扣薪（{Math.Round(emp.SickLeaveDays, 2)} 天 = {Math.Round(emp.SickLeaveDays * 8m, 1)} 小時 × 半薪）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.SickLeaveDeduction)}</td></tr>
             """;
         if (emp.OtherDeduction > 0)
             deductionRows += $"""
@@ -245,8 +245,8 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
             var bg = i % 2 == 0 ? "" : " style=\"background:#FDFAF5\"";
             var label = GetLeaveTypeLabel(ld.LeaveType);
             var period = $"{ld.StartDate:MM/dd HH:mm} ~ {ld.EndDate:MM/dd HH:mm}";
-            var days = Math.Round(ld.Hours / 8m, 1);
-            return $"<tr{bg}><td style=\"padding:8px 12px\">{label}</td><td style=\"padding:8px 12px\">{period}</td><td style=\"padding:8px 12px;text-align:right\">{days} 天</td></tr>";
+            var duration = FormatLeaveDuration(ld.LeaveType, ld.Hours);
+            return $"<tr{bg}><td style=\"padding:8px 12px\">{label}</td><td style=\"padding:8px 12px\">{period}</td><td style=\"padding:8px 12px;text-align:right\">{duration}</td></tr>";
         }));
 
         return $"""
@@ -279,7 +279,21 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
         "prenatal_checkup"    => "產檢假",
         "paternity"           => "陪產假",
         "ceremonial_festival" => "歲時祭儀假",
+        "senior_executive"    => "高階主管假",
         _                     => leaveType,
+    };
+
+    /// <summary>依假別時間單位格式化時數顯示</summary>
+    private static string FormatLeaveDuration(string leaveType, decimal hours) => leaveType switch
+    {
+        // 小時單位
+        "personal" or "sick" or "prenatal_checkup" or "paternity"
+            => $"{Math.Round(hours, 1)} 小時",
+        // 半天單位：4 hrs = 0.5 天
+        "annual" or "compensatory" or "senior_executive"
+            => $"{Math.Round(hours / 8m, 1)} 天",
+        // 整天單位
+        _ => $"{Math.Round(hours / 8m, 0)} 天",
     };
 
     private static PayrollAdjustmentDto ToDto(PayrollAdjustment a) => new(

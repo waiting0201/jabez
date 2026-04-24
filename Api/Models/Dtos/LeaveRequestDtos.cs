@@ -16,7 +16,8 @@ public sealed record LeaveRequestDto(
     int?      CurrentStepOrder     = null,
     Guid?     ReviewedById         = null,
     string?   BereavementRelationship = null,
-    DesignatedReviewerDto[]? DesignatedReviewers = null);
+    DesignatedReviewerDto[]? DesignatedReviewers = null,
+    string?   TimeUnit             = null);
 
 public sealed record CreateLeaveRequestRequest(
     Guid?    EmployeeId,
@@ -37,3 +38,29 @@ public sealed record UpdateLeaveRequestRequest(
     string?   Reason,
     string?   BereavementRelationship = null,
     DesignatedReviewerRequest[]? DesignatedReviewers = null);
+
+/// <summary>婚假配額回應</summary>
+public sealed record MarriageQuotaDto(
+    int     MaxDays,
+    decimal UsedDays,
+    decimal RemainingDays);
+
+/// <summary>產假狀態回應（一次請完制，檢查是否已有活躍申請）</summary>
+public sealed record MaternityStatusDto(
+    bool      HasActiveRequest,
+    int?      ActiveRequestId,
+    DateTime? StartDate,
+    DateTime? EndDate,
+    string?   ApprovalStatus);
+
+/// <summary>喪假配額回應（依親屬關係）</summary>
+public sealed record BereavementQuotaDto(
+    string  Relationship,
+    int     MaxDays,
+    decimal UsedDays,
+    decimal RemainingDays);
+
+/// <summary>高階主管假適用性回應</summary>
+public sealed record SeniorExecutiveEligibilityDto(
+    bool IsEligible,
+    int? JobTitleLevel);

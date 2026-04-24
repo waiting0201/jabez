@@ -66,11 +66,13 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
         return dto with { DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null };
     }
 
-    private static LeaveRequestDto MapRow(dynamic row) =>
-        new(
+    private static LeaveRequestDto MapRow(dynamic row)
+    {
+        var leaveType = (string)row.LeaveType;
+        return new(
             (int)row.Id,
             (string?)row.EmployeeName ?? "—",
-            (string)row.LeaveType,
+            leaveType,
             (DateTime)row.StartDate,
             (DateTime)row.EndDate,
             (decimal)row.Hours,
@@ -82,5 +84,15 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
             ApprovalItemId:          (int?)row.ApprovalItemId,
             CurrentStepOrder:        (int?)row.CurrentStepOrder,
             ReviewedById:            (Guid?)row.ReviewedById,
-            BereavementRelationship: (string?)row.BereavementRelationship);
+            BereavementRelationship: (string?)row.BereavementRelationship,
+            TimeUnit:                GetTimeUnitString(leaveType));
+    }
+
+    /// <summary>依假別取得時間單位字串（與 LeaveRequestHandler 保持一致）</summary>
+    private static string GetTimeUnitString(string leaveType) => leaveType switch
+    {
+        "personal" or "sick" or "prenatal_checkup" or "paternity"   => "hour",
+        "annual" or "compensatory" or "senior_executive"            => "half_day",
+        _                                                            => "day",
+    };
 }
