@@ -77,8 +77,11 @@ public sealed class AppRouter(
             // ── Health ───────────────────────────────────────────────────────
             ("GET",    ["health"])                    => health.Get(),
 
-            // ── Files (Blob 代理，公開路由，不需 JWT) ─────────────────────────
-            ("GET",    ["files", "signatures", var fileName]) => await files.GetSignatureAsync(fileName),
+            // ── Files (Blob 代理) ──────────────────────────────────────────────
+            // 簽名檔、頭像為公開路由；原住民證明屬 HR 敏感資料需 JWT + users:read
+            ("GET",    ["files", "signatures", var fileName])        => await files.GetSignatureAsync(fileName),
+            ("GET",    ["files", "avatars", var fileName])           => await files.GetAvatarAsync(fileName),
+            ("GET",    ["files", "indigenous-proofs", var fileName]) => await files.GetIndigenousProofAsync(fileName),
 
             // ── Auth ──────────────────────────────────────────────────────────
             ("POST",   ["auth", "login"])             => await auth.LoginAsync(req),
@@ -323,14 +326,20 @@ public sealed class AppRouter(
             ("POST", ["auth", "login"]) or
             ("POST", ["auth", "refresh"]) or
             // 簽名檔代理：PDF 匯出時需要直接 fetch，不帶 Authorization header
-            ("GET",  ["files", "signatures", _]);
+            ("GET",  ["files", "signatures", _]) or
+            // 頭像代理：topbar 顯示頭像不帶 Authorization header
+            ("GET",  ["files", "avatars", _]);
 
     /// <summary>根據 HTTP method + 路由 segments 決定所需的權限代碼</summary>
     private static string? GetRequiredPermission(string method, string[] segments) =>
         (method, segments) switch
         {
-            // Files（公開路由，不需任何權限）
-            ("GET", ["files", ..]) => null,
+            // Files
+            // signatures / avatars 為公開路由（由 IsPublicRoute 攔住），此處 null 僅為保險
+            ("GET", ["files", "signatures", _])        => null,
+            ("GET", ["files", "avatars", _])           => null,
+            // indigenous-proofs 屬 HR 敏感 PII，需 users:read 權限
+            ("GET", ["files", "indigenous-proofs", _]) => PermissionCodes.UsersRead,
 
             // Users（lookup 不需權限，登入即可）
             ("GET",    ["users", "lookup"])               => null,

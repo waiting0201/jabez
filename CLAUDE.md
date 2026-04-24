@@ -527,6 +527,14 @@ public async Task<HttpResponseData> Run(
 | POST | `/line/unbind` | 解除 LINE 綁定 |
 | GET | `/line/binding-status` | 查詢當前用戶 LINE 綁定狀態 |
 
+#### 檔案代理（Blob Storage）
+
+| Method | Path | 說明 |
+|--------|------|------|
+| GET | `/files/signatures/{fileName}` | 簽名檔代理（公開，PDF 匯出用） |
+| GET | `/files/avatars/{fileName}` | 頭像代理（公開，topbar 顯示用） |
+| GET | `/files/indigenous-proofs/{fileName}` | 原住民證明文件代理（需 `users:read`，HR 敏感 PII） |
+
 #### 其他
 
 | Method | Path | 說明 |
@@ -555,7 +563,7 @@ dotnet ef database update               # 套用 Migration
 
 | 實體 | 說明 |
 |------|------|
-| `User` | 使用者（含 DepartmentId、JobTitleId、IsSuperAdmin、LineUserId、IsIndigenous） |
+| `User` | 使用者（含 DepartmentId、JobTitleId、IsSuperAdmin、LineUserId、IsIndigenous、Avatar、SignatureUrl、IndigenousProofUrl） |
 | `Role` | 角色定義 |
 | `Permission` | 權限代碼 |
 | `UserRole` | 使用者 ↔ 角色（Junction） |
@@ -890,7 +898,7 @@ draft → pending → approved / returned / rejected
 - Audience：`jabez-admin`
 - 存取 Token 有效期：60 分鐘
 - Refresh Token 有效期：7 天
-- Claims：`sub`（使用者 ID）、`name`、`email`、`jti`、`roles`、`permissions`、`is_superadmin`
+- Claims：`sub`（使用者 ID）、`name`、`email`、`jti`、`roles`、`permissions`、`is_superadmin`、`department_name`、`department_code`、`job_title_name`、`job_title_level`、`avatar`
 
 ### 登入流程
 

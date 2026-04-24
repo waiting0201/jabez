@@ -8,8 +8,9 @@ public class User
     public string   Name         { get; set; } = string.Empty;
     public string   Email        { get; set; } = string.Empty;
     public string   PasswordHash { get; set; } = string.Empty;
-    public string?  Avatar       { get; set; }
-    public string?  SignatureUrl { get; set; }
+    public string?  Avatar              { get; set; }
+    public string?  SignatureUrl        { get; set; }
+    public string?  IndigenousProofUrl  { get; set; }   // 原住民身份證明文件（圖或 PDF）
     public string    Status       { get; set; } = "active"; // "active" | "inactive"
     public DateTime  CreatedAt    { get; set; } = Clock.Now;
     public DateTime  UpdatedAt    { get; set; } = Clock.Now;

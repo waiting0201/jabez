@@ -24,7 +24,8 @@ public sealed record UserDto(
     DateTime  CreatedAt,
     bool      IsIndigenous = false,
     string?   LineUserId   = null,
-    DateTime? LineLinkedAt  = null);
+    DateTime? LineLinkedAt  = null,
+    string?   IndigenousProofUrl = null);
 
 public sealed record CreateUserRequest(
     string    Name,

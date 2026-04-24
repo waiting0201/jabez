@@ -51,37 +51,69 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             : new OkObjectResult(ApiResponse.Ok(user));
     }
 
-    private const string SignatureContainer = "signatures";
-    private static readonly string[] AllowedSignatureTypes = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+    private const string SignatureContainer        = "signatures";
+    private const string AvatarContainer           = "avatars";
+    private const string IndigenousProofContainer  = "indigenous-proofs";
+
+    private static readonly string[] AllowedSignatureTypes       = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+    private static readonly string[] AllowedAvatarTypes          = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+    private static readonly string[] AllowedIndigenousProofTypes = ["image/png", "image/jpeg", "application/pdf"];
 
     /// <summary>
-    /// 處理簽名檔上傳（新增/更新共用）。
-    /// 上傳成功後回傳 API 代理路徑（/files/signatures/{blobName}），
+    /// 處理檔案上傳的共用邏輯（新增/更新共用）。
+    /// 上傳成功後回傳 API 代理路徑（/files/{container}/{blobName}），
     /// 而非直接回傳 Blob URL，避免私有容器 403 及 CORS 問題。
     /// </summary>
-    private async Task<string?> HandleSignatureUploadAsync(IFormFileCollection files, Guid userId, string? existingUrl)
+    private async Task<string?> HandleFileUploadAsync(
+        IFormFileCollection files,
+        string              formFieldName,
+        string              container,
+        string[]            allowedTypes,
+        string              badTypeMessage,
+        Guid                userId,
+        string?             existingUrl)
     {
-        var file = files.GetFile("signature");
+        var file = files.GetFile(formFieldName);
         if (file is null || file.Length == 0) return existingUrl;
 
-        if (!AllowedSignatureTypes.Contains(file.ContentType.ToLower()))
-            throw AppException.BadRequest("僅支援 PNG、JPEG、GIF、WebP 圖片格式。");
+        if (!allowedTypes.Contains(file.ContentType.ToLower()))
+            throw AppException.BadRequest(badTypeMessage);
 
-        // 刪除舊簽名檔：同時支援舊 Blob URL 格式與新 API 代理路徑格式
-        var oldBlobName = existingUrl is not null && existingUrl.StartsWith("files/signatures/", StringComparison.OrdinalIgnoreCase)
-            ? existingUrl["files/signatures/".Length..]
-            : blob.ExtractBlobName(existingUrl, SignatureContainer);
-        if (oldBlobName is not null)
-            await blob.DeleteAsync(SignatureContainer, oldBlobName);
+        await DeleteBlobByUrlAsync(container, existingUrl);
 
         var ext = Path.GetExtension(file.FileName);
         var blobName = $"{userId}{ext}";
         using var stream = file.OpenReadStream();
 
-        // 上傳至 Blob Storage，回傳 API 代理路徑供前端使用
-        await blob.UploadAsync(SignatureContainer, blobName, stream, file.ContentType);
-        return $"files/signatures/{blobName}";
+        await blob.UploadAsync(container, blobName, stream, file.ContentType);
+        return $"files/{container}/{blobName}";
     }
+
+    /// <summary>刪除指定 container 中的舊檔（同時支援舊 Blob URL 格式與新 API 代理路徑格式）。</summary>
+    private async Task DeleteBlobByUrlAsync(string container, string? existingUrl)
+    {
+        if (string.IsNullOrEmpty(existingUrl)) return;
+
+        var proxyPrefix = $"files/{container}/";
+        var oldBlobName = existingUrl.StartsWith(proxyPrefix, StringComparison.OrdinalIgnoreCase)
+            ? existingUrl[proxyPrefix.Length..]
+            : blob.ExtractBlobName(existingUrl, container);
+
+        if (oldBlobName is not null)
+            await blob.DeleteAsync(container, oldBlobName);
+    }
+
+    private Task<string?> HandleSignatureUploadAsync(IFormFileCollection files, Guid userId, string? existingUrl)
+        => HandleFileUploadAsync(files, "signature", SignatureContainer, AllowedSignatureTypes,
+            "僅支援 PNG、JPEG、GIF、WebP 圖片格式。", userId, existingUrl);
+
+    private Task<string?> HandleAvatarUploadAsync(IFormFileCollection files, Guid userId, string? existingUrl)
+        => HandleFileUploadAsync(files, "avatar", AvatarContainer, AllowedAvatarTypes,
+            "頭像僅支援 PNG、JPEG、GIF、WebP 圖片格式。", userId, existingUrl);
+
+    private Task<string?> HandleIndigenousProofUploadAsync(IFormFileCollection files, Guid userId, string? existingUrl)
+        => HandleFileUploadAsync(files, "indigenousProof", IndigenousProofContainer, AllowedIndigenousProofTypes,
+            "原住民證明文件僅支援 PNG、JPEG 圖片或 PDF 格式。", userId, existingUrl);
 
     // POST /api/users
     public async Task<IActionResult> CreateAsync(HttpRequest req)
@@ -91,7 +123,6 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         var name     = form["name"].ToString();
         var email    = form["email"].ToString();
         var password = form["password"].ToString();
-        var avatar   = form["avatar"].ToString();
         var status   = form["status"].ToString();
         var roleIdsRaw = form["roleIds"].ToArray();
 
@@ -123,7 +154,6 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             Name         = name,
             Email        = email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(effectivePassword),
-            Avatar       = string.IsNullOrEmpty(avatar) ? null : avatar,
             Status       = string.IsNullOrEmpty(status) ? "active" : status,
             DepartmentId = int.TryParse(form["departmentId"], out var did) && did > 0 ? did : null,
             JobTitleId   = int.TryParse(form["jobTitleId"], out var jtid) && jtid > 0 ? jtid : null,
@@ -140,8 +170,16 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             UpdatedAt    = Clock.Now,
         };
 
-        // 處理簽名檔
+        // 處理檔案上傳：簽名檔、頭像、原住民證明
         user.SignatureUrl = await HandleSignatureUploadAsync(form.Files, userId, null);
+        user.Avatar       = await HandleAvatarUploadAsync(form.Files, userId, null);
+
+        if (user.IsIndigenous)
+        {
+            user.IndigenousProofUrl = await HandleIndigenousProofUploadAsync(form.Files, userId, null);
+            if (user.IndigenousProofUrl is null)
+                throw AppException.BadRequest("勾選原住民身分時必須上傳證明文件。");
+        }
 
         db.Users.Add(user);
 
@@ -174,13 +212,11 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
 
         var nameVal     = form["name"].ToString();
         var emailVal    = form["email"].ToString();
-        var avatarVal   = form["avatar"].ToString();
         var statusVal   = form["status"].ToString();
         var passwordVal = form["password"].ToString();
 
         if (!string.IsNullOrEmpty(nameVal))     user.Name   = nameVal;
         if (!string.IsNullOrEmpty(emailVal))    user.Email  = emailVal;
-        if (!string.IsNullOrEmpty(avatarVal))   user.Avatar = avatarVal;
         if (!string.IsNullOrEmpty(statusVal))   user.Status = statusVal;
         if (!string.IsNullOrEmpty(passwordVal)) user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(passwordVal);
 
@@ -210,15 +246,47 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         // 處理簽名檔：removeSignature=true 表示刪除
         if (form["removeSignature"] == "true")
         {
-            var oldBlobName = blob.ExtractBlobName(user.SignatureUrl, SignatureContainer);
-            if (oldBlobName is not null)
-                await blob.DeleteAsync(SignatureContainer, oldBlobName);
+            await DeleteBlobByUrlAsync(SignatureContainer, user.SignatureUrl);
             user.SignatureUrl = null;
         }
         else
         {
             user.SignatureUrl = await HandleSignatureUploadAsync(form.Files, guid, user.SignatureUrl);
         }
+
+        // 處理頭像：removeAvatar=true 表示刪除
+        if (form["removeAvatar"] == "true")
+        {
+            await DeleteBlobByUrlAsync(AvatarContainer, user.Avatar);
+            user.Avatar = null;
+        }
+        else
+        {
+            user.Avatar = await HandleAvatarUploadAsync(form.Files, guid, user.Avatar);
+        }
+
+        // 處理原住民證明文件：
+        // 1. 若 IsIndigenous 由 true → false：自動刪除證明檔
+        // 2. 若 removeIndigenousProof=true：刪除
+        // 3. 否則依上傳檔案覆寫
+        // 4. 最後檢查：IsIndigenous=true 時必須有證明檔
+        if (!user.IsIndigenous)
+        {
+            await DeleteBlobByUrlAsync(IndigenousProofContainer, user.IndigenousProofUrl);
+            user.IndigenousProofUrl = null;
+        }
+        else if (form["removeIndigenousProof"] == "true")
+        {
+            await DeleteBlobByUrlAsync(IndigenousProofContainer, user.IndigenousProofUrl);
+            user.IndigenousProofUrl = null;
+        }
+        else
+        {
+            user.IndigenousProofUrl = await HandleIndigenousProofUploadAsync(form.Files, guid, user.IndigenousProofUrl);
+        }
+
+        if (user.IsIndigenous && string.IsNullOrEmpty(user.IndigenousProofUrl))
+            throw AppException.BadRequest("勾選原住民身分時必須上傳證明文件。");
 
         user.UpdatedAt = Clock.Now;
 

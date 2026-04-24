@@ -22,6 +22,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.AgentUserId,  ag.Name AS AgentName,
                 u.Birthday,
                 u.IsIndigenous,
+                u.IndigenousProofUrl,
                 u.LineUserId, u.LineLinkedAt,
                 r.Id AS RoleId
             FROM Users u
@@ -45,6 +46,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             Guid? AgentUserId, string? AgentName,
             DateTime? Birthday,
             bool IsIndigenous,
+            string? IndigenousProofUrl,
             string? LineUserId, DateTime? LineLinkedAt,
             DateTime CreatedAt, List<string> RoleIds)>();
 
@@ -62,6 +64,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     (string?)row.AgentName,
                     (DateTime?)row.Birthday,
                     (bool)row.IsIndigenous,
+                    (string?)row.IndigenousProofUrl,
                     (string?)row.LineUserId, (DateTime?)row.LineLinkedAt,
                     (DateTime)row.CreatedAt, []);
 
@@ -81,7 +84,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.Birthday,
             kv.Value.CreatedAt,
             kv.Value.IsIndigenous,
-            kv.Value.LineUserId, kv.Value.LineLinkedAt));
+            kv.Value.LineUserId, kv.Value.LineLinkedAt,
+            kv.Value.IndigenousProofUrl));
     }
 
     /// <summary>輕量級使用者清單（供指定審核者下拉選單，不需 users:read 權限）</summary>
@@ -114,6 +118,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.AgentUserId,  ag.Name AS AgentName,
                 u.Birthday,
                 u.IsIndigenous,
+                u.IndigenousProofUrl,
                 u.LineUserId, u.LineLinkedAt,
                 r.Id AS RoleId
             FROM Users u
@@ -138,6 +143,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             Guid? AgentUserId, string? AgentName,
             DateTime? Birthday,
             bool IsIndigenous,
+            string? IndigenousProofUrl,
             string? LineUserId, DateTime? LineLinkedAt,
             DateTime CreatedAt, List<string> RoleIds)>();
 
@@ -155,6 +161,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     (string?)row.AgentName,
                     (DateTime?)row.Birthday,
                     (bool)row.IsIndigenous,
+                    (string?)row.IndigenousProofUrl,
                     (string?)row.LineUserId, (DateTime?)row.LineLinkedAt,
                     (DateTime)row.CreatedAt, []);
 
@@ -174,7 +181,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.Birthday,
             kv.Value.CreatedAt,
             kv.Value.IsIndigenous,
-            kv.Value.LineUserId, kv.Value.LineLinkedAt));
+            kv.Value.LineUserId, kv.Value.LineLinkedAt,
+            kv.Value.IndigenousProofUrl));
 
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
         return new PagedResult<UserDto>(items, total, page, pageSize, Math.Max(1, totalPages));
@@ -192,6 +200,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.AgentUserId,  ag.Name AS AgentName,
                 u.Birthday,
                 u.IsIndigenous,
+                u.IndigenousProofUrl,
                 u.LineUserId, u.LineLinkedAt,
                 r.Id AS RoleId
             FROM Users u
@@ -222,7 +231,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 (DateTime?)row.Birthday,
                 (DateTime)row.CreatedAt,
                 (bool)row.IsIndigenous,
-                (string?)row.LineUserId, (DateTime?)row.LineLinkedAt);
+                (string?)row.LineUserId, (DateTime?)row.LineLinkedAt,
+                (string?)row.IndigenousProofUrl);
 
             if (row.RoleId is not null)
                 roleIds.Add((string)row.RoleId);

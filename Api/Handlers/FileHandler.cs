@@ -10,20 +10,56 @@ namespace Jabez.Api.Handlers;
 /// </summary>
 public sealed class FileHandler(IBlobStorageService blob)
 {
-    private const string SignatureContainer = "signatures";
+    private const string SignatureContainer        = "signatures";
+    private const string AvatarContainer           = "avatars";
+    private const string IndigenousProofContainer  = "indigenous-proofs";
 
     /// <summary>
     /// 代理讀取簽名檔圖片。
     /// 路由：GET /files/signatures/{fileName}
     /// 此端點不需要 JWT（PDF 匯出時需要直接 fetch，無 Authorization header）。
     /// </summary>
-    public async Task<IActionResult> GetSignatureAsync(string fileName)
+    public Task<IActionResult> GetSignatureAsync(string fileName)
+        => GetImageAsync(SignatureContainer, fileName);
+
+    /// <summary>
+    /// 代理讀取頭像圖片。
+    /// 路由：GET /files/avatars/{fileName}
+    /// 此端點不需要 JWT（topbar 顯示頭像時不帶 Authorization header）。
+    /// </summary>
+    public Task<IActionResult> GetAvatarAsync(string fileName)
+        => GetImageAsync(AvatarContainer, fileName);
+
+    /// <summary>
+    /// 代理讀取原住民證明文件（圖片或 PDF）。
+    /// 路由：GET /files/indigenous-proofs/{fileName}
+    /// 此端點需要 JWT + users:read 權限（HR 敏感 PII，僅人事管理員可檢視）。
+    /// </summary>
+    public async Task<IActionResult> GetIndigenousProofAsync(string fileName)
     {
-        // 防止路徑穿越攻擊（Path Traversal）
-        if (string.IsNullOrWhiteSpace(fileName) || fileName.Contains('/') || fileName.Contains('\\'))
+        if (!IsSafeFileName(fileName))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid file name."));
 
-        var result = await blob.DownloadAsync(SignatureContainer, fileName);
+        var result = await blob.DownloadAsync(IndigenousProofContainer, fileName);
+        if (result is null)
+            return new NotFoundObjectResult(ApiResponse.Fail("File not found."));
+
+        var (content, contentType) = result.Value;
+
+        // 僅允許圖片或 PDF；其他型別降級為 octet-stream 以避免意外洩漏內容
+        if (!contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
+            && !contentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
+            contentType = "application/octet-stream";
+
+        return new FileStreamResult(content, contentType);
+    }
+
+    private async Task<IActionResult> GetImageAsync(string container, string fileName)
+    {
+        if (!IsSafeFileName(fileName))
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid file name."));
+
+        var result = await blob.DownloadAsync(container, fileName);
         if (result is null)
             return new NotFoundObjectResult(ApiResponse.Fail("File not found."));
 
@@ -35,4 +71,10 @@ public sealed class FileHandler(IBlobStorageService blob)
 
         return new FileStreamResult(content, contentType);
     }
+
+    // 防止路徑穿越攻擊（Path Traversal）
+    private static bool IsSafeFileName(string fileName) =>
+        !string.IsNullOrWhiteSpace(fileName)
+        && !fileName.Contains('/')
+        && !fileName.Contains('\\');
 }

@@ -41,7 +41,8 @@ public sealed class JwtService : IJwtService
         string?             departmentName = null,
         string?             jobTitleName = null,
         string?             departmentCode = null,
-        int?                jobTitleLevel = null)
+        int?                jobTitleLevel = null,
+        string?             avatar = null)
     {
         var claims = new List<Claim>
         {
@@ -70,6 +71,10 @@ public sealed class JwtService : IJwtService
         // 職級 — Angular JWT decode reads payload.job_title_level（高階主管假權限判斷）
         if (jobTitleLevel.HasValue)
             claims.Add(new Claim("job_title_level", jobTitleLevel.Value.ToString()));
+
+        // 頭像 — Angular JWT decode reads payload.avatar（topbar profile dropdown 顯示）
+        if (!string.IsNullOrEmpty(avatar))
+            claims.Add(new Claim("avatar", avatar));
 
         // Roles — Angular JWT decode reads payload.roles[]
         foreach (var role in roleIds)

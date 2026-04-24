@@ -15,7 +15,8 @@ public interface IJwtService
         string?             departmentName = null,
         string?             jobTitleName = null,
         string?             departmentCode = null,
-        int?                jobTitleLevel = null);
+        int?                jobTitleLevel = null,
+        string?             avatar = null);
 
     /// <summary>產生 Refresh Token（隨機不透明字串）。</summary>
     string GenerateRefreshToken();
