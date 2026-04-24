@@ -17,6 +17,7 @@ export interface JwtPayload {
   department_code?: string;
   job_title_name?: string;
   job_title_level?: string | number;
+  avatar?: string;
 }
 
 export interface AutoClockOutInfo {
@@ -57,10 +58,20 @@ export class AuthService {
       id: payload.sub,
       name: payload.name,
       email: payload.email,
+      avatar: payload.avatar,
       roleIds: roles,
       status: 'active',
       createdAt: new Date(),
     };
+  });
+
+  /** 當前使用者的頭像 URL（signal）— 透過 API 代理路徑顯示；無頭像則回傳 null */
+  avatarUrl = computed<string | null>(() => {
+    const payload = this._decode(this._token());
+    if (!payload || payload.exp * 1000 <= Date.now()) return null;
+    const raw = payload.avatar;
+    if (!raw) return null;
+    return raw.startsWith('http') ? raw : `${environment.apiUrl}/${raw}`;
   });
 
   /** 是否為超管帳號（signal） */

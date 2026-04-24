@@ -5,6 +5,18 @@ import {User, UserLookup} from '../models/user.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {environment} from '@/environments/environment';
 
+export interface UserFileOptions {
+  signatureFile?: File | null;
+  avatarFile?: File | null;
+  indigenousProofFile?: File | null;
+}
+
+export interface UserUpdateFileOptions extends UserFileOptions {
+  removeSignature?: boolean;
+  removeAvatar?: boolean;
+  removeIndigenousProof?: boolean;
+}
+
 @Injectable({providedIn: 'root'})
 export class UserService {
   private http = inject(HttpClient);
@@ -26,14 +38,16 @@ export class UserService {
     return this.http.get<User>(`${environment.apiUrl}/users/${id}`);
   }
 
-  create(data: Record<string, any>, signatureFile?: File | null): Observable<User> {
-    const formData = this.buildFormData(data, signatureFile);
+  create(data: Record<string, any>, files?: UserFileOptions): Observable<User> {
+    const formData = this.buildFormData(data, files);
     return this.http.post<User>(`${environment.apiUrl}/users`, formData);
   }
 
-  update(id: string, data: Record<string, any>, signatureFile?: File | null, removeSignature = false): Observable<User> {
-    const formData = this.buildFormData(data, signatureFile);
-    if (removeSignature) formData.append('removeSignature', 'true');
+  update(id: string, data: Record<string, any>, files?: UserUpdateFileOptions): Observable<User> {
+    const formData = this.buildFormData(data, files);
+    if (files?.removeSignature)        formData.append('removeSignature', 'true');
+    if (files?.removeAvatar)           formData.append('removeAvatar', 'true');
+    if (files?.removeIndigenousProof)  formData.append('removeIndigenousProof', 'true');
     return this.http.patch<User>(`${environment.apiUrl}/users/${id}`, formData);
   }
 
@@ -45,7 +59,12 @@ export class UserService {
     return this.http.post<void>(`${environment.apiUrl}/users/${id}/send-credentials`, {});
   }
 
-  private buildFormData(data: Record<string, any>, signatureFile?: File | null): FormData {
+  /** 以 JWT 取得原住民證明檔（HR 權限保護，回傳 Blob 供前端開啟） */
+  getIndigenousProof(fileName: string): Observable<Blob> {
+    return this.http.get(`${environment.apiUrl}/files/indigenous-proofs/${fileName}`, {responseType: 'blob'});
+  }
+
+  private buildFormData(data: Record<string, any>, files?: UserFileOptions): FormData {
     const fd = new FormData();
     for (const [key, value] of Object.entries(data)) {
       if (value === undefined || value === null) continue;
@@ -57,9 +76,9 @@ export class UserService {
         fd.append(key, String(value));
       }
     }
-    if (signatureFile) {
-      fd.append('signature', signatureFile);
-    }
+    if (files?.signatureFile)       fd.append('signature', files.signatureFile);
+    if (files?.avatarFile)          fd.append('avatar', files.avatarFile);
+    if (files?.indigenousProofFile) fd.append('indigenousProof', files.indigenousProofFile);
     return fd;
   }
 }

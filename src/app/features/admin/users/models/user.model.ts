@@ -31,5 +31,6 @@ export interface User {
   agentName?: string;
   birthday?: Date;
   isIndigenous?: boolean;
+  indigenousProofUrl?: string;
   createdAt: Date;
 }

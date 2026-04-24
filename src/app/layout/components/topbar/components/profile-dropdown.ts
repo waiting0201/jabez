@@ -13,7 +13,7 @@ import {environment} from '@/environments/environment';
       <button type="button" ngbDropdownToggle [title]="user()?.email ?? ''"
               class="btn-system no-arrow bg-transparent flex shrink-0 items-center justify-center"
               aria-label="Open Profile Dropdown">
-        <img src="/assets/img/demo/avatars/avatar-admin.png"
+        <img [src]="avatarUrl() ?? '/assets/img/demo/avatars/avatar-admin.png'"
              class="profile-image profile-image-md rounded-circle"
              [alt]="user()?.name ?? ''">
       </button>
@@ -21,7 +21,7 @@ import {environment} from '@/environments/environment';
       <div ngbDropdownMenu class="dropdown-menu dropdown-menu-end dropdown-menu-animated">
         <!-- User info header -->
         <div class="flex items-center gap-3 px-4 py-3 border-b border-[--border]">
-          <img src="/assets/img/demo/avatars/avatar-admin.png"
+          <img [src]="avatarUrl() ?? '/assets/img/demo/avatars/avatar-admin.png'"
                class="w-10 h-10 rounded-full object-cover shrink-0"
                [alt]="user()?.name ?? ''">
           <div class="min-w-0">
@@ -107,6 +107,7 @@ export class ProfileDropdown implements OnInit {
   private lineService = inject(LineService);
 
   user = this.auth.currentUser;
+  avatarUrl = this.auth.avatarUrl;
   departmentName = this.auth.departmentName;
   jobTitleName = this.auth.jobTitleName;
 

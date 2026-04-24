@@ -194,6 +194,86 @@
           </div>
         </div>
 
+        <!-- 頭像 -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon"><use href="/assets/icons/sprite.svg#image"></use></svg>
+            頭像
+          </div>
+          <div class="card-body">
+            <p class="text-muted small mb-3">支援 PNG、JPEG、GIF、WebP 圖片格式。頭像會顯示於右上角個人下拉選單。</p>
+            @if (displayAvatar) {
+              <div class="mb-3">
+                <img [src]="displayAvatar" alt="頭像" class="w-24 h-24 rounded-full object-cover border">
+              </div>
+              <div class="flex gap-2">
+                <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                  更換頭像
+                  <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp"
+                         (change)="onAvatarSelected($event)">
+                </label>
+                <button type="button" class="btn btn-sm btn-outline-danger"
+                        (click)="onRemoveAvatar()">
+                  刪除頭像
+                </button>
+              </div>
+            } @else {
+              <p class="text-muted small mb-3">尚未上傳頭像，選擇檔案後將於儲存時一併上傳。</p>
+              <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                選擇頭像
+                <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp"
+                       (change)="onAvatarSelected($event)">
+              </label>
+            }
+          </div>
+        </div>
+
+        <!-- 原住民證明文件（僅在勾選原住民身份時顯示） -->
+        @if (form.value.isIndigenous) {
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+              原住民身份證明文件 <span class="text-danger">*</span>
+            </div>
+            <div class="card-body">
+              <p class="text-muted small mb-3">支援 PNG、JPEG 圖片或 PDF 檔案。此文件僅供人事部門稽核，受權限保護。</p>
+              @if (indigenousProofDisplayName) {
+                <div class="flex items-center gap-2 mb-3 border rounded px-3 py-2 bg-[--bg-surface]">
+                  <svg class="sa-icon text-[--accent]" style="stroke: currentColor">
+                    <use href="/assets/icons/sprite.svg#file-text"></use>
+                  </svg>
+                  <span class="fw-500 text-[--text-primary] truncate">{{ indigenousProofDisplayName }}</span>
+                  @if (hasExistingIndigenousProof) {
+                    <button type="button" class="btn btn-sm btn-outline-secondary ms-auto"
+                            (click)="viewIndigenousProof()">
+                      檢視
+                    </button>
+                  }
+                </div>
+                <div class="flex gap-2">
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    更換檔案
+                    <input type="file" class="hidden" accept="image/png,image/jpeg,application/pdf"
+                           (change)="onIndigenousProofSelected($event)">
+                  </label>
+                  <button type="button" class="btn btn-sm btn-outline-danger"
+                          (click)="onRemoveIndigenousProof()">
+                    刪除檔案
+                  </button>
+                </div>
+              } @else {
+                <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                  <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                  選擇檔案
+                  <input type="file" class="hidden" accept="image/png,image/jpeg,application/pdf"
+                         (change)="onIndigenousProofSelected($event)">
+                </label>
+              }
+            </div>
+          </div>
+        }
+
         <!-- 簽名檔 -->
         <div class="card border-0 shadow-sm mb-4">
           <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
