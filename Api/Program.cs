@@ -69,6 +69,9 @@ var host = new HostBuilder()
         // ── 簽核通知服務（Scoped，依賴 AppDbContext）──────────────────────
         services.AddScoped<IApprovalNotificationService, ApprovalNotificationService>();
 
+        // ── 打卡提醒服務（Timer Trigger 排程使用）──────────────────────────
+        services.AddScoped<IAttendanceReminderService, AttendanceReminderService>();
+
         // ── 簽核流程輔助服務 ────────────────────────────────────────────────
         services.AddScoped<IApprovalFlowService, ApprovalFlowService>();
         services.AddScoped<IEscalationService, EscalationService>();
@@ -89,6 +92,7 @@ var host = new HostBuilder()
         services.AddScoped<ITravelRequestReadService, TravelRequestReadService>();
         services.AddScoped<IOvertimeRequestReadService, OvertimeRequestReadService>();
         services.AddScoped<IAttendanceReadService, AttendanceReadService>();
+        services.AddScoped<IAttendanceReminderReadService, AttendanceReminderReadService>();
         services.AddScoped<IPermissionReadService, PermissionReadService>();
         services.AddScoped<IInsuranceBracketReadService, InsuranceBracketReadService>();
         services.AddScoped<IPayrollReadService, PayrollReadService>();
@@ -131,6 +135,7 @@ var host = new HostBuilder()
         services.AddScoped<FileHandler>();
         services.AddScoped<LineHandler>();
         services.AddScoped<TravelPaymentRequestHandler>();
+        services.AddScoped<AttendanceReminderAdminHandler>();
 
         // ── Router（Scoped）──────────────────────────────────────────────
         services.AddScoped<AppRouter>();

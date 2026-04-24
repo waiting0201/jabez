@@ -281,10 +281,11 @@ export const environment = {
 ```
 Api/
 ├── Functions/
-│   └── RouterFunction.cs              # 唯一 HttpTrigger，catch-all route {*route}
+│   ├── RouterFunction.cs              # HttpTrigger，catch-all route {*route}
+│   └── AttendanceReminderFunction.cs  # TimerTrigger：每分鐘檢查上下班前 2 分鐘，命中則 LINE 推播打卡提醒
 ├── Routing/
 │   └── AppRouter.cs                   # C# 12 List Pattern 路由分派器
-├── Handlers/                          # 21 個 Handler（業務邏輯）
+├── Handlers/                          # 22 個 Handler（業務邏輯）
 │   ├── AuthHandler.cs                 # 登入、刷新 Token
 │   ├── UserHandler.cs
 │   ├── RoleHandler.cs
@@ -306,6 +307,7 @@ Api/
 │   ├── InsuranceBracketHandler.cs    # 勞健保級距 CRUD
 │   ├── PayrollHandler.cs             # 人事薪資查詢（月薪計算）
 │   ├── LineHandler.cs                # LINE 帳號綁定/解綁
+│   ├── AttendanceReminderAdminHandler.cs # 打卡提醒手動觸發（Superadmin，除錯用）
 │   ├── SettingsHandler.cs
 │   └── HealthHandler.cs
 ├── Middleware/
@@ -326,7 +328,9 @@ Api/
 │   ├── EscalationResult.cs            # 升級結果 record
 │   ├── ILineService.cs               # LINE API 操作介面
 │   ├── LineService.cs                # LINE Platform REST API 封裝（token 換取 + 推播）
-│   ├── LineFlexMessageBuilder.cs     # 6 種簽核通知的 LINE Flex Message 模板
+│   ├── LineFlexMessageBuilder.cs     # 6 種簽核通知 + 打卡提醒的 LINE Flex Message 模板
+│   ├── IAttendanceReminderService.cs # 打卡提醒服務介面
+│   ├── AttendanceReminderService.cs  # 打卡提醒協調：判斷時點、過濾對象、推播 LINE
 │   └── Dapper/                        # Dapper 讀取服務（13 組 interface + 實作）
 │       ├── UserReadService.cs
 │       ├── RoleReadService.cs
@@ -343,6 +347,7 @@ Api/
 │       ├── WriteOffRequestReadService.cs
 │       ├── TravelWriteOffRequestReadService.cs
 │       ├── AttendanceReadService.cs
+│       ├── AttendanceReminderReadService.cs
 │       ├── InsuranceBracketReadService.cs
 │       └── PayrollReadService.cs
 ├── Common/
@@ -500,6 +505,14 @@ public async Task<HttpResponseData> Run(
 | POST | `/attendances/clock-out` | 下班打卡（含 GPS） |
 | POST | `/attendances/overtime-start` | 加班開始打卡（需核准的加班申請） |
 | POST | `/attendances/overtime-end` | 加班結束打卡 |
+
+#### 打卡提醒（手動觸發，僅 Superadmin）
+
+| Method | Path | 說明 |
+|--------|------|------|
+| POST | `/admin/attendance-reminder/run?type=clockIn\|clockOut` | 繞過時點與週末檢查，強制對符合條件的員工推播 LINE 打卡提醒（除錯用） |
+
+> 自動排程由 `AttendanceReminderFunction`（TimerTrigger，每分鐘）執行，不透過 HTTP 觸發；此端點僅供本地/Production 驗證。
 
 #### 勞健保級距
 
@@ -1054,6 +1067,55 @@ draft → pending → approved / returned / rejected
 > **重要**：
 > - LINE Login 和 Messaging API 須在同一 Provider 下建立，LINE 才會使用相同 userId。
 > - OAuth URL 必須帶 `bot_prompt=aggressive` 參數（已內建於 `LineHandler.GetBindUrlAsync`），綁定後 LINE 才會自動導向「加 OA 為好友」畫面；否則用戶只綁定 Login 但未加好友，所有 Messaging API 推播一律失敗。
+
+---
+
+## 打卡提醒（TimerTrigger + LINE 推播）
+
+### 功能範圍
+
+- 每日上班前 2 分鐘、下班前 2 分鐘各一次，自動推播 LINE Flex Message 提醒員工打卡
+- 無需前端介入：員工即使未登入系統，只要已綁定 LINE 即可收到
+- 排程由 `AttendanceReminderFunction` TimerTrigger 每分鐘觸發
+
+### 觸發邏輯
+
+1. Cron `0 */1 * * * *`（UTC 每分鐘）進入 Function
+2. 透過 `Clock.Now`（台北時區）取得當前 `HH:mm`
+3. 比對 `SystemSetting.WorkStartTime - 2min` / `WorkEndTime - 2min`；未命中直接 return
+4. 週末（Saturday/Sunday）直接 return
+5. 命中 → Dapper 查詢對象 → LINE 推播
+
+### 對象過濾條件（Dapper SQL）
+
+- `User.LineUserId` 不為 null 且不為空字串
+- `User.IsSuperAdmin = 0`
+- `User.Status = 'active'`
+- 未離職（`ResignDate` 為 null 或 > 今日）
+- **非請假中**：今日不落在任何 `LeaveRequest.ApprovalStatus='approved'` 範圍內
+- **未打卡**：上班提醒排除今日 `AttendanceRecord.ClockInTime` 已有值者；下班提醒排除 `ClockOutTime` 已有值者
+
+### 手動觸發（除錯）
+
+`POST /admin/attendance-reminder/run?type=clockIn|clockOut`（僅 Superadmin）
+繞過時點與週末檢查，強制對符合條件員工推播；其餘過濾條件保留。回傳 `{ type, pushedCount }`。
+
+### 設計決策
+
+- **Cron Timezone**：UTC 觸發 + 內部 `Clock.Now` 比對，不依賴 `WEBSITE_TIME_ZONE` / `TZ` 環境變數，相容 Linux Consumption Plan
+- **幂等性**：不持久化發送紀錄；依賴 Azure Functions Timer 的 singleton lock（AzureWebJobsStorage blob lease）保證同一 cron tick 只觸發一次，加上 `RunOnStartup=false` 與 `IsPastDue` 跳過防止意外重複
+- **成本**：Consumption Plan 每月 43,200 次執行、~553 GB-s，遠低於免費額度（實質成本 0）
+
+### 涉及元件
+
+| 元件 | 說明 |
+|------|------|
+| `AttendanceReminderFunction` | TimerTrigger entrypoint |
+| `IAttendanceReminderService` / `AttendanceReminderService` | 時點判斷 + 推播協調 |
+| `IAttendanceReminderReadService` / `AttendanceReminderReadService` | Dapper 查詢符合條件的員工 |
+| `AttendanceReminderRecipientDto` | `(UserId, LineUserId, UserName)` |
+| `LineFlexMessageBuilder.BuildAttendanceReminderMessage` | 品牌綠 Flex Message 模板 |
+| `AttendanceReminderAdminHandler` | 手動觸發 HTTP 端點（Superadmin） |
 
 ---
 

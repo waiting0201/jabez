@@ -41,7 +41,8 @@ public sealed class AppRouter(
     CalendarDayHandler              calendarDays,
     FileHandler                     files,
     LineHandler                     line,
-    TravelPaymentRequestHandler     travelPaymentRequests)
+    TravelPaymentRequestHandler     travelPaymentRequests,
+    AttendanceReminderAdminHandler  attendanceReminderAdmin)
 {
     public async Task<IActionResult> RouteAsync(HttpRequest req, string route)
     {
@@ -308,6 +309,9 @@ public sealed class AppRouter(
             ("PATCH",  ["approval-tasks", "write_off", var id, "close"])                       => await approvalTasks.CloseWriteOffAsync(req, id),
             ("PATCH",  ["approval-tasks", "travel_write_off", var id, "close"])                => await approvalTasks.CloseTravelWriteOffAsync(req, id),
 
+            // ── Attendance Reminder（僅 Superadmin 手動觸發，排程由 TimerTrigger 自動執行）──
+            ("POST",   ["admin", "attendance-reminder", "run"]) => await attendanceReminderAdmin.RunAsync(req),
+
             // ── LINE 綁定 ─────────────────────────────────────────────────────
             ("GET",    ["line", "bind-url"])         => await line.GetBindUrlAsync(req),
             ("POST",   ["line", "bind"])             => await line.BindAsync(req),
@@ -513,7 +517,7 @@ public sealed class AppRouter(
 
     /// <summary>判斷是否為 Superadmin-only 路由</summary>
     private static bool IsSuperAdminRoute(string method, string[] segments) =>
-        false;
+        (method, segments) is ("POST", ["admin", "attendance-reminder", "run"]);
 
     /// <summary>檢查是否為 Superadmin，否則拋出 403</summary>
     private static void RequireSuperAdmin(ClaimsPrincipal principal)

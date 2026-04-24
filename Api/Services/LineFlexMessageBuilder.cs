@@ -119,6 +119,34 @@ public static class LineFlexMessageBuilder
             buttonUrl: linkUrl);
     }
 
+    /// <summary>打卡提醒 — 上班/下班前 N 分鐘推播給員工。</summary>
+    public static object BuildAttendanceReminderMessage(
+        string reminderType, string userName, int minutesUntil, string workTime, string linkUrl)
+    {
+        var isClockIn   = reminderType == "clockIn";
+        var headerText  = isClockIn ? "上班打卡提醒" : "下班打卡提醒";
+        var altText     = isClockIn
+            ? $"[打卡提醒] 再 {minutesUntil} 分鐘上班（{workTime}）— {userName}"
+            : $"[打卡提醒] 再 {minutesUntil} 分鐘下班（{workTime}）— {userName}";
+        var tip         = isClockIn
+            ? "記得上班後打卡，開始新的一天"
+            : "記得下班前打卡，別忘了喔";
+
+        return BuildBubble(
+            altText:      altText,
+            headerColor:  BrandGreen,
+            headerText:   headerText,
+            rows: new[]
+            {
+                ("員工",     userName),
+                ("目標時刻", workTime),
+                ("剩餘時間", $"{minutesUntil} 分鐘"),
+                ("提醒",     tip),
+            },
+            buttonLabel: "前往打卡",
+            buttonUrl:   linkUrl);
+    }
+
     /// <summary>出差沖銷超額 — 通知財務部需匯款差額。</summary>
     public static object BuildTravelRefundMessage(
         string applicantName, string destination, decimal travelTotal,
