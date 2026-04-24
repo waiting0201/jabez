@@ -73,6 +73,10 @@ var host = new HostBuilder()
         services.AddScoped<IApprovalFlowService, ApprovalFlowService>();
         services.AddScoped<IEscalationService, EscalationService>();
 
+        // ── 專案可見性解析（依使用者部門 + 財務體系 + Superadmin 判定）─────
+        services.AddScoped<IProjectAccessResolver, ProjectAccessResolver>();
+        services.AddHttpContextAccessor();
+
         // ── Dapper 讀取服務（Scoped，依賴 IDbConnection）─────────────────
         services.AddScoped<IUserReadService, UserReadService>();
         services.AddScoped<IRoleReadService, RoleReadService>();

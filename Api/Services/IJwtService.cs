@@ -15,6 +15,7 @@ public interface IJwtService
         string?             departmentName = null,
         string?             jobTitleName = null,
         string?             departmentCode = null,
+        int?                departmentId = null,
         int?                jobTitleLevel = null,
         string?             avatar = null);
 

@@ -27,6 +27,9 @@ public class DepartmentConfiguration : IEntityTypeConfiguration<Department>
         builder.Property(d => d.SortOrder)
                .HasDefaultValue(0);
 
+        builder.Property(d => d.CanViewSiblings)
+               .HasDefaultValue(false);
+
         builder.Property(d => d.CreatedAt)
                .HasDefaultValueSql("DATEADD(hour, 8, GETUTCDATE())");
 

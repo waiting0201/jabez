@@ -69,6 +69,9 @@ public sealed class AppRouter(
             var requiredPermission = GetRequiredPermission(method, segments);
             if (requiredPermission is not null)
                 RequirePermission(principal, requiredPermission);
+
+            // 把 principal 寫入 HttpContext.User，讓 Handler 透過 IHttpContextAccessor 可取得
+            req.HttpContext.User = principal;
         }
 
         // List Pattern 路由分派（C# 12）
@@ -150,10 +153,10 @@ public sealed class AppRouter(
 
             // ── Projects ───────────────────────────────────────────────────────
             ("GET",    ["projects", "years"])             => await projects.GetYearsAsync(),
-            ("GET",    ["projects", "active"])            => await projects.GetActiveAsync(),
+            ("GET",    ["projects", "active"])            => await projects.GetActiveAsync(req),
             ("GET",    ["projects"])                    => await projects.GetAllAsync(req),
             ("POST",   ["projects"])                    => await projects.CreateAsync(req),
-            ("GET",    ["projects", var id])            => await projects.GetByIdAsync(id),
+            ("GET",    ["projects", var id])            => await projects.GetByIdAsync(req, id),
             ("PUT",    ["projects", var id])            => await projects.UpdateAsync(req, id),
             ("PATCH",  ["projects", var id])            => await projects.UpdateAsync(req, id),
             ("DELETE", ["projects", var id])            => await projects.DeleteAsync(id),

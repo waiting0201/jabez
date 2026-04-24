@@ -2,6 +2,7 @@ using Jabez.Api.Common;
 using Jabez.Api.Data;
 using Jabez.Api.Models.Dtos;
 using Jabez.Api.Models.Entities;
+using Jabez.Api.Services;
 using Jabez.Api.Services.Dapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -9,10 +10,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Jabez.Api.Handlers;
 
-public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader)
+public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader, IProjectAccessResolver access)
 {
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
+        var scope = await access.ResolveAsync(req.HttpContext.User);
+
         // 有分頁參數 → 回傳 PagedResult；無分頁參數 → 回傳平面陣列（供下拉選單用）
         if (req.Query.ContainsKey("page") || req.Query.ContainsKey("pageSize"))
         {
@@ -21,11 +24,11 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader)
             string? search = req.Query["search"];
             int? year = int.TryParse(req.Query["year"], out var y) ? y : null;
             string? status = req.Query["status"];
-            var result = await reader.GetPagedAsync(page, pageSize, search, year, status);
+            var result = await reader.GetPagedAsync(scope, page, pageSize, search, year, status);
             return new OkObjectResult(ApiResponse.Ok(result));
         }
 
-        var all = await reader.GetAllAsync();
+        var all = await reader.GetAllAsync(scope);
         return new OkObjectResult(ApiResponse.Ok(all));
     }
 
@@ -36,19 +39,22 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader)
         return new OkObjectResult(ApiResponse.Ok(years));
     }
 
-    /// <summary>取得未結案專案（不需 ProjectsRead 權限，供請款/加班表單下拉用）</summary>
-    public async Task<IActionResult> GetActiveAsync()
+    /// <summary>取得未結案專案（不需 ProjectsRead 權限；可見範圍依使用者部門過濾，規則見 CLAUDE.md 專案可見性規則）</summary>
+    public async Task<IActionResult> GetActiveAsync(HttpRequest req)
     {
-        var active = await reader.GetActiveAsync();
+        var scope = await access.ResolveAsync(req.HttpContext.User);
+        var active = await reader.GetActiveAsync(scope);
         return new OkObjectResult(ApiResponse.Ok(active));
     }
 
-    public async Task<IActionResult> GetByIdAsync(string id)
+    public async Task<IActionResult> GetByIdAsync(HttpRequest req, string id)
     {
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid project ID format."));
 
-        var item = await reader.GetByIdAsync(intId);
+        var scope = await access.ResolveAsync(req.HttpContext.User);
+        var item = await reader.GetByIdAsync(intId, scope);
+        // 不符 scope 一律回 404 避免資訊洩漏
         return item is null
             ? new NotFoundObjectResult(ApiResponse.Fail("Project not found.", $"No project with id '{id}'."))
             : new OkObjectResult(ApiResponse.Ok(item));
@@ -65,6 +71,12 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader)
 
         if (string.IsNullOrWhiteSpace(body.Name))
             return new BadRequestObjectResult(ApiResponse.Fail("Name is required."));
+
+        if (body.DepartmentId <= 0)
+            return new BadRequestObjectResult(ApiResponse.Fail("請指定專案所屬部門。"));
+
+        if (!await db.Departments.AnyAsync(d => d.Id == body.DepartmentId))
+            return new BadRequestObjectResult(ApiResponse.Fail("指定的部門不存在。"));
 
         if (await db.Projects.AnyAsync(p => p.Code == body.Code))
             throw AppException.Conflict($"Project code '{body.Code}' is already in use.");
@@ -94,7 +106,8 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader)
         db.Projects.Add(project);
         await db.SaveChangesAsync();
 
-        var dto = await reader.GetByIdAsync(project.Id);
+        // 寫入後以 SeeAll scope 讀回，避免寫入者因部門 scope 讀不到自己剛建立/修改的資料
+        var dto = await reader.GetByIdAsync(project.Id, new ProjectAccessScope(true, []));
         return new ObjectResult(ApiResponse.Ok(dto, "Project created.")) { StatusCode = 201 };
     }
 
@@ -124,7 +137,14 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader)
         if (body.Status is not null)          project.Status         = body.Status;
         if (body.StartDate.HasValue)          project.StartDate      = body.StartDate.Value;
         if (body.EndDate.HasValue)            project.EndDate        = body.EndDate;
-        if (body.DepartmentId.HasValue)       project.DepartmentId   = body.DepartmentId == 0 ? null : body.DepartmentId;
+        if (body.DepartmentId.HasValue)
+        {
+            if (body.DepartmentId.Value <= 0)
+                return new BadRequestObjectResult(ApiResponse.Fail("請指定專案所屬部門。"));
+            if (!await db.Departments.AnyAsync(d => d.Id == body.DepartmentId.Value))
+                return new BadRequestObjectResult(ApiResponse.Fail("指定的部門不存在。"));
+            project.DepartmentId = body.DepartmentId.Value;
+        }
         if (body.ReceivedAmount.HasValue)     project.ReceivedAmount = body.ReceivedAmount;
         if (body.ContractAmount.HasValue)     project.ContractAmount = body.ContractAmount;
         if (body.BusinessAmount.HasValue)     project.BusinessAmount = body.BusinessAmount;
@@ -147,7 +167,8 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader)
 
         await db.SaveChangesAsync();
 
-        var dto = await reader.GetByIdAsync(project.Id);
+        // 寫入後以 SeeAll scope 讀回，避免寫入者因部門 scope 讀不到自己剛建立/修改的資料
+        var dto = await reader.GetByIdAsync(project.Id, new ProjectAccessScope(true, []));
         return new OkObjectResult(ApiResponse.Ok(dto, "Project updated."));
     }
 

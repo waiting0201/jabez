@@ -10,6 +10,7 @@ public class Department
     public string?  Description { get; set; }
     public int?     ParentId    { get; set; }
     public int      SortOrder   { get; set; }
+    public bool     CanViewSiblings { get; set; } = false;   // 專案可見性：同 ParentId 兄弟部門專案是否可見
     public DateTime CreatedAt   { get; set; } = Clock.Now;
 
     // Navigation

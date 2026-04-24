@@ -41,10 +41,13 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
         builder.Property(p => p.BusinessAmount)
                .HasColumnType("decimal(18,2)");
 
+        builder.Property(p => p.DepartmentId)
+               .IsRequired();
+
         builder.HasOne(p => p.Department)
                .WithMany()
                .HasForeignKey(p => p.DepartmentId)
-               .OnDelete(DeleteBehavior.SetNull);
+               .OnDelete(DeleteBehavior.Restrict);
 
         // Seed data — mirrors Angular MOCK_PROJECTS
         // Seed: 與本機資料庫同步（2026-03-24）

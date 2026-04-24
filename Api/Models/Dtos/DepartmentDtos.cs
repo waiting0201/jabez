@@ -8,19 +8,22 @@ public sealed record DepartmentDto(
     int?     ParentId,
     string?  ParentName,
     int      SortOrder,
+    bool     CanViewSiblings,
     int      EmployeeCount,
     DateTime CreatedAt);
 
 public sealed record CreateDepartmentRequest(
     string  Name,
-    string? Code        = null,
-    string? Description = null,
-    int?    ParentId    = null,
-    int     SortOrder   = 0);
+    string? Code            = null,
+    string? Description     = null,
+    int?    ParentId        = null,
+    int     SortOrder       = 0,
+    bool    CanViewSiblings = false);
 
 public sealed record UpdateDepartmentRequest(
     string?  Name,
     string?  Code,
     string?  Description,
     int?     ParentId,
-    int?     SortOrder);
+    int?     SortOrder,
+    bool?    CanViewSiblings);

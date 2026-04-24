@@ -1,5 +1,6 @@
 using Dapper;
 using Jabez.Api.Models.Dtos;
+using Jabez.Api.Services;
 using System.Data;
 
 namespace Jabez.Api.Services.Dapper;
@@ -9,10 +10,23 @@ public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWat
     /// <summary>
     /// 查詢所有有非 draft 請款紀錄的專案，計算請款金額、已付款金額及佔業務執行金額百分比。
     /// Percentage 在 C# 端計算，避免 SQL 端除零問題。
+    /// 套用 CLAUDE.md「專案可見性規則」：Superadmin / 財務體系部門看全部；其他員工僅自己部門（+ 同層兄弟部門可見時）。
     /// </summary>
-    public async Task<IEnumerable<ProjectWaterLevelDto>> GetAllAsync()
+    public async Task<IEnumerable<ProjectWaterLevelDto>> GetAllAsync(ProjectAccessScope scope)
     {
-        const string sql = """
+        var param = new DynamicParameters();
+        string scopeClause;
+        if (scope.SeeAll)
+            scopeClause = "";
+        else if (scope.AllowedDepartmentIds.Count == 0)
+            scopeClause = " WHERE 1 = 0";
+        else
+        {
+            scopeClause = " WHERE p.DepartmentId IN @AllowedDeptIds";
+            param.Add("AllowedDeptIds", scope.AllowedDepartmentIds);
+        }
+
+        var sql = $"""
             SELECT p.Id          AS ProjectId,
                    p.Code        AS ProjectCode,
                    p.Status,
@@ -25,12 +39,13 @@ public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWat
             LEFT JOIN Departments      d  ON p.DepartmentId = d.Id
             LEFT JOIN PaymentRequests  pr ON pr.ProjectId   = p.Id
                                          AND pr.ApprovalStatus != 'draft'
+            {scopeClause}
             GROUP BY p.Id, p.Code, p.Status, d.Name, p.ContractAmount, p.BusinessAmount
             HAVING SUM(pr.TotalAmount) > 0
             ORDER BY p.Code
             """;
 
-        var rows = await db.QueryAsync<dynamic>(sql);
+        var rows = await db.QueryAsync<dynamic>(sql, param);
 
         return rows.Select(row =>
         {

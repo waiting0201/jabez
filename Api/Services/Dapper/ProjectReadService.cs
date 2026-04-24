@@ -1,6 +1,7 @@
 using Dapper;
 using Jabez.Api.Common;
 using Jabez.Api.Models.Dtos;
+using Jabez.Api.Services;
 using System.Data;
 
 namespace Jabez.Api.Services.Dapper;
@@ -16,21 +17,44 @@ public sealed class ProjectReadService(IDbConnection db) : IProjectReadService
         LEFT JOIN Departments d ON p.DepartmentId = d.Id
         """;
 
-    public async Task<IEnumerable<ProjectDto>> GetAllAsync()
+    /// <summary>
+    /// 依 scope 組合 WHERE 片段與 Dapper 參數：
+    /// scope.SeeAll=true → 不加條件
+    /// scope.SeeAll=false + AllowedIds 非空 → WHERE p.DepartmentId IN @AllowedIds
+    /// scope.SeeAll=false + AllowedIds 為空 → WHERE 1 = 0（空集合）
+    /// </summary>
+    private static (string clause, DynamicParameters param) BuildScopeFilter(ProjectAccessScope scope)
     {
-        const string sql = SelectSql + " ORDER BY p.CreatedAt DESC";
-        var rows = await db.QueryAsync<dynamic>(sql);
+        var p = new DynamicParameters();
+        if (scope.SeeAll)
+            return ("", p);
+        if (scope.AllowedDepartmentIds.Count == 0)
+            return ("1 = 0", p);
+        p.Add("AllowedDeptIds", scope.AllowedDepartmentIds);
+        return ("p.DepartmentId IN @AllowedDeptIds", p);
+    }
+
+    public async Task<IEnumerable<ProjectDto>> GetAllAsync(ProjectAccessScope scope)
+    {
+        var (scopeClause, param) = BuildScopeFilter(scope);
+        var where = string.IsNullOrEmpty(scopeClause) ? "" : " WHERE " + scopeClause;
+        var sql = SelectSql + where + " ORDER BY p.CreatedAt DESC";
+        var rows = await db.QueryAsync<dynamic>(sql, param);
         return rows.Select(r => (ProjectDto)ToDto(r, null));
     }
 
-    public async Task<IEnumerable<ProjectDto>> GetActiveAsync()
+    public async Task<IEnumerable<ProjectDto>> GetActiveAsync(ProjectAccessScope scope)
     {
-        const string sql = SelectSql + " WHERE p.Status = 'active' ORDER BY p.CreatedAt DESC";
-        var rows = await db.QueryAsync<dynamic>(sql);
+        var (scopeClause, param) = BuildScopeFilter(scope);
+        var where = string.IsNullOrEmpty(scopeClause)
+            ? " WHERE p.Status = 'active'"
+            : " WHERE p.Status = 'active' AND " + scopeClause;
+        var sql = SelectSql + where + " ORDER BY p.CreatedAt DESC";
+        var rows = await db.QueryAsync<dynamic>(sql, param);
         return rows.Select(r => (ProjectDto)ToDto(r, null));
     }
 
-    public async Task<PagedResult<ProjectDto>> GetPagedAsync(int page, int pageSize, string? search = null, int? year = null, string? status = null)
+    public async Task<PagedResult<ProjectDto>> GetPagedAsync(ProjectAccessScope scope, int page, int pageSize, string? search = null, int? year = null, string? status = null)
     {
         var hasSearch = !string.IsNullOrWhiteSpace(search);
         var hasStatus = !string.IsNullOrWhiteSpace(status);
@@ -38,6 +62,10 @@ public sealed class ProjectReadService(IDbConnection db) : IProjectReadService
         if (hasSearch) conditions.Add("(p.Code LIKE @Search OR p.Name LIKE @Search)");
         if (year.HasValue) conditions.Add("YEAR(p.StartDate) = @Year");
         if (hasStatus) conditions.Add("p.Status = @Status");
+
+        var (scopeClause, scopeParam) = BuildScopeFilter(scope);
+        if (!string.IsNullOrEmpty(scopeClause)) conditions.Add(scopeClause);
+
         var where = conditions.Count > 0 ? " WHERE " + string.Join(" AND ", conditions) : "";
         var searchParam = hasSearch ? $"%{search!.Trim()}%" : null;
 
@@ -45,9 +73,14 @@ public sealed class ProjectReadService(IDbConnection db) : IProjectReadService
         var sql = SelectSql + where +
             " ORDER BY p.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
 
-        var param = new { Search = searchParam, Year = year, Status = status, Skip = (page - 1) * pageSize, Take = pageSize };
-        int total = await db.ExecuteScalarAsync<int>(countSql, param);
-        var rows = await db.QueryAsync<dynamic>(sql, param);
+        scopeParam.Add("Search", searchParam);
+        scopeParam.Add("Year",   year);
+        scopeParam.Add("Status", status);
+        scopeParam.Add("Skip",   (page - 1) * pageSize);
+        scopeParam.Add("Take",   pageSize);
+
+        int total = await db.ExecuteScalarAsync<int>(countSql, scopeParam);
+        var rows = await db.QueryAsync<dynamic>(sql, scopeParam);
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
         return new PagedResult<ProjectDto>(rows.Select(r => (ProjectDto)ToDto(r, null)), total, page, pageSize, Math.Max(1, totalPages));
     }
@@ -58,10 +91,13 @@ public sealed class ProjectReadService(IDbConnection db) : IProjectReadService
         return await db.QueryAsync<int>(sql);
     }
 
-    public async Task<ProjectDto?> GetByIdAsync(int id)
+    public async Task<ProjectDto?> GetByIdAsync(int id, ProjectAccessScope scope)
     {
-        const string sql = SelectSql + " WHERE p.Id = @Id";
-        var row = await db.QueryFirstOrDefaultAsync<dynamic>(sql, new { Id = id });
+        var (scopeClause, param) = BuildScopeFilter(scope);
+        var scopeFragment = string.IsNullOrEmpty(scopeClause) ? "" : " AND " + scopeClause;
+        var sql = SelectSql + " WHERE p.Id = @Id" + scopeFragment;
+        param.Add("Id", id);
+        var row = await db.QueryFirstOrDefaultAsync<dynamic>(sql, param);
         if (row is null) return null;
 
         var schedules = await LoadSchedulesAsync(id);
@@ -89,7 +125,7 @@ public sealed class ProjectReadService(IDbConnection db) : IProjectReadService
         (string)row.Status,
         (DateTime)row.StartDate,
         (DateTime?)row.EndDate,
-        (int?)row.DepartmentId,
+        (int)row.DepartmentId,
         (string?)row.DepartmentName,
         (decimal?)row.ReceivedAmount,
         (decimal?)row.ContractAmount,

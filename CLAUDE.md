@@ -569,13 +569,13 @@ dotnet ef database update               # 套用 Migration
 | `UserRole` | 使用者 ↔ 角色（Junction） |
 | `RolePermission` | 角色 ↔ 權限（Junction） |
 | `RefreshToken` | Refresh Token 儲存 |
-| `Department` | 部門主檔 |
+| `Department` | 部門主檔（含 ParentId 階層、**CanViewSiblings 同層兄弟部門可見旗標**） |
 | `JobTitle` | 職稱主檔 |
 | `ApprovalItem` | 簽核流程項目 |
 | `ApprovalStep` | 簽核流程步驟（含 UseDirectSupervisor、UseApplicantDesignated） |
 | `ApprovalRecord` | 簽核動作記錄（含 OnBehalfOfUserId 代理標記、IsEscalated 升級標記） |
 | `EscalationOverride` | 升級審核指派（記錄被指派的升級/代理審核者，審核完成後清除） |
-| `Project` | 專案主檔（含 ReceivedAmount 實收金額、ContractAmount 契約金額、BusinessAmount 業務執行金額） |
+| `Project` | 專案主檔（含 **DepartmentId 必填**、ReceivedAmount 實收金額、ContractAmount 契約金額、BusinessAmount 業務執行金額） |
 | `ProjectPaymentSchedule` | 專案請款期別明細（一期一筆：請款/發票/入帳日期與金額、扣款備註；扣款金額 = 發票 − 入帳，前端計算不存 DB） |
 | `PaymentRequest` | 請款申請 |
 | `InvoiceItem` | 請款明細（發票項目） |
@@ -834,6 +834,63 @@ draft → pending → approved / returned / rejected
 | `PaymentRequestReadService.StepMatchClause()` | Dapper SQL：匹配 min(StepOrder) 且 Status=pending 的指定審核者 |
 | `ApprovalTaskHandler.GetByIdAsync()` | 單筆查詢含存取控制 |
 | 前端各申請表單 | 動態新增/刪除/排序多位指定審核者 UI |
+
+---
+
+## 專案可見性規則
+
+專案清單（`Projects`）在前端的顯示（6 個申請表單下拉 + 專案管理列表 + 詳情頁）套用以下三層規則，依優先序判定，第一個符合者即套用：
+
+### 規則
+
+| 優先序 | 使用者類別 | 可見範圍 |
+|---|---|---|
+| 1 | Superadmin | 全部 |
+| 2 | 部門 Code ∈ `AC`(會計部) / `FIN`(行政財務部) / `Jabez HQ`(雅比斯總公司管理部) / `CEO`(總監室) | 全部 |
+| 3 | 一般員工 | 自己部門專案；若 `Department.CanViewSiblings = true` 加上**同 ParentId 的兄弟部門**專案 |
+
+### 套用端點
+
+- `GET /projects/active`（申請表單下拉，僅 `Status = 'active'`）
+- `GET /projects`（專案管理列表 / 分頁）
+- `GET /projects/{id}`（單筆詳情；不符 scope 回 404）
+- `GET /reports/project-water-level`（專案水位表）
+
+### 前置必要條件（資料完整性）
+
+- `Project.DepartmentId` 必填（DB NOT NULL + 前後端驗證；FK `DeleteBehavior.Restrict`）
+- `User.DepartmentId` 必填（Superadmin 例外；前後端均驗證）
+- `Department.CanViewSiblings` 預設 false，由部門 CRUD 頁維護
+
+### 涉及元件
+
+| 元件 | 說明 |
+|---|---|
+| `Department.CanViewSiblings` | Entity 旗標，由部門 CRUD 頁維護 |
+| `Api/Common/Constants.cs` `DepartmentCodes.FinancialAndAbove` | 財務體系部門 Code 集合（AC / FIN / Jabez HQ / CEO） |
+| `Api/Services/IProjectAccessResolver` + `ProjectAccessResolver` | 解析 JWT claims → `ProjectAccessScope(SeeAll, AllowedDepartmentIds)` |
+| `Api/Services/Dapper/ProjectReadService` | 四個讀取方法皆依 scope 組合 WHERE（`DepartmentId IN @AllowedIds` 或 `1=0`） |
+| `Api/Services/Dapper/ProjectWaterLevelReadService` | 專案水位表同樣依 scope 組合 WHERE |
+| `Api/Handlers/ProjectHandler` | 所有 GET 先呼叫 resolver；寫入後以 SeeAll scope 讀回避免寫入者讀不到自己的資料 |
+| `Api/Handlers/ProjectWaterLevelHandler` | GET 先呼叫 resolver 取 scope 再傳給 reader |
+| JWT `department_id` claim | Resolver 查 CanViewSiblings 與同層兄弟部門用 |
+| `Api/Routing/AppRouter` | JWT 驗證後將 principal 寫入 `HttpContext.User`，供 Handler 經 `IHttpContextAccessor` 取得 |
+
+### 6 個申請表單的下拉空值提示
+
+當使用者的可見專案清單為空時，下拉下方顯示灰字「您目前可申請的專案清單為空，請聯絡主管或確認部門設定。」：
+
+- [payment-form](Admin/src/app/features/admin/payment-requests/pages/payment-form/payment-form.html)
+- [advance-form](Admin/src/app/features/admin/advance-requests/pages/advance-form/advance-form.html)
+- [overtime-request-form](Admin/src/app/features/admin/overtime-requests/pages/overtime-request-form/overtime-request-form.html)
+- [travel-request-form](Admin/src/app/features/admin/travel-requests/pages/travel-request-form/travel-request-form.html)
+- [travel-payment-form](Admin/src/app/features/admin/travel-payment-requests/pages/travel-payment-form/travel-payment-form.html)
+- [holiday-travel-request-form](Admin/src/app/features/admin/holiday-travel-requests/pages/holiday-travel-request-form/holiday-travel-request-form.html)
+
+### 不套用過濾的端點（維持原行為）
+
+- `/approval-tasks`（申請單既有列表過濾已足夠隔離）
+- `/payroll`（人事薪資顯示 projectCode）
 
 ---
 

@@ -61,7 +61,7 @@ public sealed class AuthHandler(
                 .ToArray();
         }
 
-        var accessToken  = jwt.GenerateAccessToken(user.Id, user.Name, user.Email, roleIds, permissions, user.IsSuperAdmin, user.Department?.Name, user.JobTitle?.Name, user.Department?.Code, user.JobTitle?.Level, user.Avatar);
+        var accessToken  = jwt.GenerateAccessToken(user.Id, user.Name, user.Email, roleIds, permissions, user.IsSuperAdmin, user.Department?.Name, user.JobTitle?.Name, user.Department?.Code, user.DepartmentId, user.JobTitle?.Level, user.Avatar);
         var refreshToken = jwt.GenerateRefreshToken();
 
         // 儲存 Refresh Token
@@ -183,7 +183,7 @@ public sealed class AuthHandler(
                 .ToArray();
         }
 
-        var newAccess  = jwt.GenerateAccessToken(user.Id, user.Name, user.Email, roleIds, permissions, user.IsSuperAdmin, user.Department?.Name, user.JobTitle?.Name, user.Department?.Code, user.JobTitle?.Level, user.Avatar);
+        var newAccess  = jwt.GenerateAccessToken(user.Id, user.Name, user.Email, roleIds, permissions, user.IsSuperAdmin, user.Department?.Name, user.JobTitle?.Name, user.Department?.Code, user.DepartmentId, user.JobTitle?.Level, user.Avatar);
         var newRefresh = jwt.GenerateRefreshToken();
 
         db.RefreshTokens.Add(new RefreshToken

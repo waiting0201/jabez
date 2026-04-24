@@ -41,6 +41,7 @@ public sealed class JwtService : IJwtService
         string?             departmentName = null,
         string?             jobTitleName = null,
         string?             departmentCode = null,
+        int?                departmentId = null,
         int?                jobTitleLevel = null,
         string?             avatar = null)
     {
@@ -67,6 +68,10 @@ public sealed class JwtService : IJwtService
         // 部門代碼 — Angular JWT decode reads payload.department_code
         if (!string.IsNullOrEmpty(departmentCode))
             claims.Add(new Claim("department_code", departmentCode));
+
+        // 部門 Id — ProjectAccessResolver 依此查 CanViewSiblings 與同層兄弟部門
+        if (departmentId.HasValue)
+            claims.Add(new Claim("department_id", departmentId.Value.ToString()));
 
         // 職級 — Angular JWT decode reads payload.job_title_level（高階主管假權限判斷）
         if (jobTitleLevel.HasValue)

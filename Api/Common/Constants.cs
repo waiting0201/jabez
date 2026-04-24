@@ -76,3 +76,26 @@ public static class RoleNames
     public const string Manager = "manager";
     public const string Viewer  = "viewer";
 }
+
+/// <summary>
+/// 部門代碼常數。用於專案可見性規則等需硬編碼判斷的場景。
+/// </summary>
+public static class DepartmentCodes
+{
+    public const string Accounting = "AC";         // 會計部
+    public const string Finance    = "FIN";        // 行政財務部
+    public const string HQAdmin    = "Jabez HQ";   // 雅比斯總公司管理部
+    public const string Executive  = "CEO";        // 總監室
+
+    /// <summary>
+    /// 財務/管理/總監級部門：成員在專案可見性上不受部門過濾。
+    /// </summary>
+    public static readonly IReadOnlySet<string> FinancialAndAbove =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            Accounting,
+            Finance,
+            HQAdmin,
+            Executive,
+        };
+}

@@ -132,6 +132,13 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         if (!string.IsNullOrWhiteSpace(password) && password.Length < 6)
             return new BadRequestObjectResult(ApiResponse.Fail("Password must be at least 6 characters."));
 
+        // 部門必填（Superadmin 例外，但此端點不會建立 Superadmin）
+        var createDeptId = int.TryParse(form["departmentId"], out var didCreate) && didCreate > 0 ? didCreate : (int?)null;
+        if (createDeptId is null)
+            return new BadRequestObjectResult(ApiResponse.Fail("請設定部門。"));
+        if (!await db.Departments.AnyAsync(d => d.Id == createDeptId.Value))
+            return new BadRequestObjectResult(ApiResponse.Fail("指定的部門不存在。"));
+
         // 生日（必填，用於產生預設密碼）
         var birthday = DateTime.TryParse(form["birthday"], out var bd) ? bd : (DateTime?)null;
         if (birthday is null)
@@ -155,7 +162,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             Email        = email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(effectivePassword),
             Status       = string.IsNullOrEmpty(status) ? "active" : status,
-            DepartmentId = int.TryParse(form["departmentId"], out var did) && did > 0 ? did : null,
+            DepartmentId = createDeptId,
             JobTitleId   = int.TryParse(form["jobTitleId"], out var jtid) && jtid > 0 ? jtid : null,
             HireDate     = DateTime.TryParse(form["hireDate"], out var hd) ? hd : null,
             ResignDate   = DateTime.TryParse(form["resignDate"], out var rd) ? rd : null,
@@ -221,7 +228,14 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         if (!string.IsNullOrEmpty(passwordVal)) user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(passwordVal);
 
         if (form.ContainsKey("departmentId"))
-            user.DepartmentId = int.TryParse(form["departmentId"], out var did) && did > 0 ? did : null;
+        {
+            var did = int.TryParse(form["departmentId"], out var didV) && didV > 0 ? didV : (int?)null;
+            if (did is null)
+                return new BadRequestObjectResult(ApiResponse.Fail("請設定部門。"));
+            if (!await db.Departments.AnyAsync(d => d.Id == did.Value))
+                return new BadRequestObjectResult(ApiResponse.Fail("指定的部門不存在。"));
+            user.DepartmentId = did;
+        }
         if (form.ContainsKey("jobTitleId"))
             user.JobTitleId = int.TryParse(form["jobTitleId"], out var jtid) && jtid > 0 ? jtid : null;
         if (form.ContainsKey("hireDate"))
