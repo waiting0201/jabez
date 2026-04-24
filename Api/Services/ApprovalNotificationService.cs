@@ -15,11 +15,12 @@ public sealed class ApprovalNotificationService(
     {
         ["payment_request"] = "請款申請",
         ["leave"]           = "請假申請",
-        ["travel"]          = "出差申請",
+        ["travel"]          = "出差預支申請",
         ["overtime"]        = "加班申請",
         ["advance"]         = "預支申請",
         ["write_off"]       = "預支沖銷申請",
-        ["travel_write_off"] = "出差沖銷申請",
+        ["travel_write_off"] = "出差預支沖銷申請",
+        ["travel_payment"]  = "出差請款申請",
     };
 
     /// <inheritdoc />
@@ -458,6 +459,7 @@ public sealed class ApprovalNotificationService(
             "advance"         => await GetAdvanceSummaryAsync(applicationId),
             "write_off"       => await GetWriteOffSummaryAsync(applicationId),
             "travel_write_off" => await GetTravelWriteOffSummaryAsync(applicationId),
+            "travel_payment"  => await GetTravelPaymentSummaryAsync(applicationId),
             _                 => $"#{applicationId}",
         };
     }
@@ -531,6 +533,17 @@ public sealed class ApprovalNotificationService(
         return two is not null ? $"{two.RequestNo}（{two.GrandTotal:N0} 元）" : $"#{id}";
     }
 
+    private async Task<string> GetTravelPaymentSummaryAsync(int id)
+    {
+        var tpr = await db.TravelPaymentRequests.AsNoTracking()
+            .Where(x => x.Id == id)
+            .Select(x => new { x.Destination, x.StartDate, x.EndDate, x.GrandTotal })
+            .FirstOrDefaultAsync();
+        return tpr is not null
+            ? $"{tpr.Destination}（{tpr.StartDate:yyyy-MM-dd} ~ {tpr.EndDate:yyyy-MM-dd}，{tpr.GrandTotal:N0} 元）"
+            : $"#{id}";
+    }
+
     // ── 取得前端網站網址 ─────────────────────────────────────────────────────────
 
     private async Task<string> GetSiteUrlAsync()
@@ -556,6 +569,7 @@ public sealed class ApprovalNotificationService(
             "advance"          => "advance-requests",
             "write_off"        => "write-off-requests",
             "travel_write_off" => "travel-write-off-requests",
+            "travel_payment"   => "travel-payment-requests",
             _                  => "approval-tasks",
         };
         return $"{siteUrl}/admin/{path}/{applicationId}/edit";

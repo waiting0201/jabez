@@ -95,6 +95,7 @@ var host = new HostBuilder()
         services.AddScoped<IPaymentReportReadService, PaymentReportReadService>();
         services.AddScoped<IProjectWaterLevelReadService, ProjectWaterLevelReadService>();
         services.AddScoped<ICalendarDayReadService, CalendarDayReadService>();
+        services.AddScoped<ITravelPaymentRequestReadService, TravelPaymentRequestReadService>();
 
         // ── Handlers（Scoped，依賴 DbContext）────────────────────────────
         services.AddScoped<AuthHandler>();
@@ -125,6 +126,7 @@ var host = new HostBuilder()
         services.AddScoped<CalendarDayHandler>();
         services.AddScoped<FileHandler>();
         services.AddScoped<LineHandler>();
+        services.AddScoped<TravelPaymentRequestHandler>();
 
         // ── Router（Scoped）──────────────────────────────────────────────
         services.AddScoped<AppRouter>();

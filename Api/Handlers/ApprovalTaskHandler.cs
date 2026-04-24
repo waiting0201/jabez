@@ -20,7 +20,7 @@ namespace Jabez.Api.Handlers;
 public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadService reader, IJwtService jwtService, IApprovalNotificationService notifier, IApprovalFlowService approvalFlow)
 {
     private static readonly HashSet<string> ValidActions  = ["approved", "returned", "rejected"];
-    public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "travel", "overtime", "advance", "write_off", "travel_write_off", "holiday_travel"];
+    public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "travel", "overtime", "advance", "write_off", "travel_write_off", "holiday_travel", "travel_payment"];
 
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
@@ -484,6 +484,32 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 await db.SaveChangesAsync();
                 break;
             }
+            case "travel_payment":
+            {
+                var tpr = await db.TravelPaymentRequests.FindAsync(intId)
+                    ?? throw AppException.NotFound("TravelPaymentRequest");
+                if (tpr.ApprovalStatus != "pending")
+                    throw AppException.BadRequest("Only pending travel payment requests can be reviewed.");
+
+                var tprApplicant = tpr.EmployeeId.HasValue
+                    ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == tpr.EmployeeId.Value)
+                    : null;
+                await AuthorizeStepAsync(tpr.ApprovalItemId, tpr.CurrentStepOrder, reviewer, tprApplicant?.DepartmentId, "travel_payment", tpr.Id, tprApplicant?.JobTitleId);
+                if (estimatedPaymentDate.HasValue)
+                    tpr.EstimatedPaymentDate = estimatedPaymentDate.Value;
+                if (paidAt.HasValue)
+                {
+                    tpr.PaidAt        = paidAt.Value;
+                    tpr.PaidByUserId  = reviewerId;
+                }
+                await ProcessReviewAsync("travel_payment", tpr.Id, tpr.CurrentStepOrder,
+                    tpr.ApprovalItemId, action, reviewNote, reviewerId, tpr.EmployeeId,
+                    setStatus:     s  => tpr.ApprovalStatus   = s,
+                    incrementStep: () => tpr.CurrentStepOrder++,
+                    setReviewed:   () => { tpr.ReviewedAt = Clock.Now; tpr.ReviewedById = reviewerId; tpr.ReviewNote = reviewNote?.Trim(); });
+                await db.SaveChangesAsync();
+                break;
+            }
             default:
                 throw AppException.BadRequest("Unknown application type.");
         }
@@ -521,6 +547,14 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     .FirstOrDefaultAsync(x => x.Id == id);
                 if (tr is not null && tr.ApprovalStatus == "approved" && tr.PaidAt is null)
                     return new BatchApprovePending(applicationType, id, $"#{id}", "payment");
+                return null;
+            }
+            case "travel_payment":
+            {
+                var tpr = await db.TravelPaymentRequests.AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.Id == id);
+                if (tpr is not null && tpr.ApprovalStatus == "approved" && tpr.PaidAt is null)
+                    return new BatchApprovePending("travel_payment", id, $"#{id}", "payment");
                 return null;
             }
             default:

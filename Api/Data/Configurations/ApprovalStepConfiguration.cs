@@ -75,7 +75,12 @@ public class ApprovalStepConfiguration : IEntityTypeConfiguration<ApprovalStep>
             new ApprovalStep { Id = 40, ApprovalItemId = 9, StepOrder = 1, DepartmentId = null, JobTitleId = null, UseApplicantDesignated = true, Note = "指定初核",                               CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new ApprovalStep { Id = 41, ApprovalItemId = 9, StepOrder = 2, DepartmentId = 4,    JobTitleId = 5,    Note = "總監核決",                                                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new ApprovalStep { Id = 42, ApprovalItemId = 9, StepOrder = 3, DepartmentId = 1,    JobTitleId = 11,   Note = "取得紙本資料審核",                                                     CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new ApprovalStep { Id = 43, ApprovalItemId = 9, StepOrder = 4, DepartmentId = 2,    JobTitleId = 7,    Note = "填入預計撥款日，核決及撥款後，填入撥款日",                               CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+            new ApprovalStep { Id = 43, ApprovalItemId = 9, StepOrder = 4, DepartmentId = 2,    JobTitleId = 7,    Note = "填入預計撥款日，核決及撥款後，填入撥款日",                               CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            // 出差請款申請: Step1=部門主管初核 → Step2=總監核決 → Step3=會計審核 → Step4=行政財務部CFO撥款
+            new ApprovalStep { Id = 50, ApprovalItemId = 10, StepOrder = 1, DepartmentId = null, JobTitleId = 4,  UseApplicantDepartment = true, Note = "部門主管初核",                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new ApprovalStep { Id = 51, ApprovalItemId = 10, StepOrder = 2, DepartmentId = 4,    JobTitleId = 5,  Note = "總監核決",                                                               CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new ApprovalStep { Id = 52, ApprovalItemId = 10, StepOrder = 3, DepartmentId = 1,    JobTitleId = 11, Note = "取得紙本資料審核",                                                       CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new ApprovalStep { Id = 53, ApprovalItemId = 10, StepOrder = 4, DepartmentId = 2,    JobTitleId = 7,  Note = "填入預計撥款日，核決及撥款後，填入撥款日",                                 CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
         );
     }
 }

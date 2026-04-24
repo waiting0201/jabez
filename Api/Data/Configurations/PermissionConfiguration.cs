@@ -74,10 +74,10 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             new Permission { Id = "28", Code = "leave-requests:read",              Name = "瀏覽",     Module = "請假申請",   Description = "請假申請" },
             new Permission { Id = "29", Code = "leave-requests:write",             Name = "新增/修改", Module = "請假申請",   Description = "請假申請" },
             new Permission { Id = "30", Code = "leave-requests:delete",            Name = "刪除",     Module = "請假申請",   Description = "請假申請" },
-            // 出差申請
-            new Permission { Id = "31", Code = "travel-requests:read",             Name = "瀏覽",     Module = "出差申請",   Description = "出差申請" },
-            new Permission { Id = "32", Code = "travel-requests:write",            Name = "新增/修改", Module = "出差申請",   Description = "出差申請" },
-            new Permission { Id = "33", Code = "travel-requests:delete",           Name = "刪除",     Module = "出差申請",   Description = "出差申請" },
+            // 出差預支申請
+            new Permission { Id = "31", Code = "travel-requests:read",             Name = "瀏覽",     Module = "出差預支申請",   Description = "出差預支申請" },
+            new Permission { Id = "32", Code = "travel-requests:write",            Name = "新增/修改", Module = "出差預支申請",   Description = "出差預支申請" },
+            new Permission { Id = "33", Code = "travel-requests:delete",           Name = "刪除",     Module = "出差預支申請",   Description = "出差預支申請" },
             // 加班申請
             new Permission { Id = "34", Code = "overtime-requests:read",           Name = "瀏覽",     Module = "加班申請",   Description = "加班申請" },
             new Permission { Id = "35", Code = "overtime-requests:write",          Name = "新增/修改", Module = "加班申請",   Description = "加班申請" },
@@ -106,10 +106,10 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             new Permission { Id = "54", Code = "write-off-requests:read",          Name = "瀏覽",     Module = "預支沖銷申請" },
             new Permission { Id = "55", Code = "write-off-requests:write",         Name = "新增/修改", Module = "預支沖銷申請" },
             new Permission { Id = "56", Code = "write-off-requests:delete",        Name = "刪除",     Module = "預支沖銷申請" },
-            // 出差沖銷申請
-            new Permission { Id = "57", Code = "travel-write-off-requests:read",   Name = "瀏覽",     Module = "出差沖銷申請" },
-            new Permission { Id = "58", Code = "travel-write-off-requests:write",  Name = "新增/修改", Module = "出差沖銷申請" },
-            new Permission { Id = "59", Code = "travel-write-off-requests:delete", Name = "刪除",     Module = "出差沖銷申請" },
+            // 出差預支沖銷申請
+            new Permission { Id = "57", Code = "travel-write-off-requests:read",   Name = "瀏覽",     Module = "出差預支沖銷申請" },
+            new Permission { Id = "58", Code = "travel-write-off-requests:write",  Name = "新增/修改", Module = "出差預支沖銷申請" },
+            new Permission { Id = "59", Code = "travel-write-off-requests:delete", Name = "刪除",     Module = "出差預支沖銷申請" },
             // 假日執行活動申請
             new Permission { Id = "60", Code = "holiday-travel-requests:read",   Name = "瀏覽",     Module = "假日執行活動申請" },
             new Permission { Id = "61", Code = "holiday-travel-requests:write",  Name = "新增/修改", Module = "假日執行活動申請" },
@@ -117,7 +117,11 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             // 行事曆管理
             new Permission { Id = "63", Code = "calendar-days:read",   Name = "瀏覽",     Module = "行事曆管理" },
             new Permission { Id = "64", Code = "calendar-days:write",  Name = "新增/修改", Module = "行事曆管理" },
-            new Permission { Id = "65", Code = "calendar-days:delete", Name = "刪除",     Module = "行事曆管理" }
+            new Permission { Id = "65", Code = "calendar-days:delete", Name = "刪除",     Module = "行事曆管理" },
+            // 出差請款申請
+            new Permission { Id = "68", Code = "travel-payment-requests:read",   Name = "瀏覽",     Module = "出差請款申請" },
+            new Permission { Id = "69", Code = "travel-payment-requests:write",  Name = "新增/修改", Module = "出差請款申請" },
+            new Permission { Id = "70", Code = "travel-payment-requests:delete", Name = "刪除",     Module = "出差請款申請" }
         );
     }
 }

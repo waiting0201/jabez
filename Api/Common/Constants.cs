@@ -65,6 +65,9 @@ public static class PermissionCodes
     public const string CalendarDaysRead                = "calendar-days:read";
     public const string CalendarDaysWrite               = "calendar-days:write";
     public const string CalendarDaysDelete              = "calendar-days:delete";
+    public const string TravelPaymentRequestsRead    = "travel-payment-requests:read";
+    public const string TravelPaymentRequestsWrite   = "travel-payment-requests:write";
+    public const string TravelPaymentRequestsDelete  = "travel-payment-requests:delete";
 }
 
 public static class RoleNames

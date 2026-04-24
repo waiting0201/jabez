@@ -75,6 +75,9 @@ public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissi
             new RolePermission { RoleId = "admin", PermissionId = "57" },
             new RolePermission { RoleId = "admin", PermissionId = "58" },
             new RolePermission { RoleId = "admin", PermissionId = "59" },
+            new RolePermission { RoleId = "admin", PermissionId = "68" },
+            new RolePermission { RoleId = "admin", PermissionId = "69" },
+            new RolePermission { RoleId = "admin", PermissionId = "70" },
 
             // manager（總管理處）: 全功能（同 admin）
             new RolePermission { RoleId = "manager", PermissionId = "2"  },
@@ -128,8 +131,14 @@ public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissi
             new RolePermission { RoleId = "manager", PermissionId = "57" },
             new RolePermission { RoleId = "manager", PermissionId = "58" },
             new RolePermission { RoleId = "manager", PermissionId = "59" },
+            new RolePermission { RoleId = "manager", PermissionId = "68" },
+            new RolePermission { RoleId = "manager", PermissionId = "69" },
+            new RolePermission { RoleId = "manager", PermissionId = "70" },
 
-            // viewer（一般員工）: 各申請模組 CRUD + 預支/沖銷
+            // viewer（一般員工）: 各申請模組 CRUD + 預支/沖銷 + 出差請款
+            new RolePermission { RoleId = "viewer", PermissionId = "68" },
+            new RolePermission { RoleId = "viewer", PermissionId = "69" },
+            new RolePermission { RoleId = "viewer", PermissionId = "70" },
             new RolePermission { RoleId = "viewer", PermissionId = "23" },
             new RolePermission { RoleId = "viewer", PermissionId = "24" },
             new RolePermission { RoleId = "viewer", PermissionId = "25" },
@@ -152,7 +161,10 @@ public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissi
             new RolePermission { RoleId = "viewer", PermissionId = "58" },
             new RolePermission { RoleId = "viewer", PermissionId = "59" },
 
-            // 員工-測試: 請假/出差/加班 + 出差沖銷
+            // 員工-測試: 請假/出差/加班 + 出差沖銷 + 出差請款
+            new RolePermission { RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4", PermissionId = "68" },
+            new RolePermission { RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4", PermissionId = "69" },
+            new RolePermission { RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4", PermissionId = "70" },
             new RolePermission { RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4", PermissionId = "28" },
             new RolePermission { RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4", PermissionId = "29" },
             new RolePermission { RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4", PermissionId = "30" },
@@ -166,7 +178,10 @@ public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissi
             new RolePermission { RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4", PermissionId = "58" },
             new RolePermission { RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4", PermissionId = "59" },
 
-            // 協理-測試: 簽核+專案+請款+簽核作業+請假/出差/加班+預支/沖銷
+            // 協理-測試: 簽核+專案+請款+簽核作業+請假/出差/加班+預支/沖銷 + 出差請款
+            new RolePermission { RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856", PermissionId = "68" },
+            new RolePermission { RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856", PermissionId = "69" },
+            new RolePermission { RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856", PermissionId = "70" },
             new RolePermission { RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856", PermissionId = "17" },
             new RolePermission { RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856", PermissionId = "18" },
             new RolePermission { RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856", PermissionId = "19" },
@@ -195,7 +210,10 @@ public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissi
             new RolePermission { RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856", PermissionId = "58" },
             new RolePermission { RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856", PermissionId = "59" },
 
-            // 經理副理主管-測試: 簽核+簽核作業+請假/出差/加班+沖銷
+            // 經理副理主管-測試: 簽核+簽核作業+請假/出差/加班+沖銷 + 出差請款
+            new RolePermission { RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b", PermissionId = "68" },
+            new RolePermission { RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b", PermissionId = "69" },
+            new RolePermission { RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b", PermissionId = "70" },
             new RolePermission { RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b", PermissionId = "17" },
             new RolePermission { RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b", PermissionId = "26" },
             new RolePermission { RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b", PermissionId = "27" },

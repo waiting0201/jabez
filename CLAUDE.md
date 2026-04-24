@@ -218,11 +218,12 @@ Admin/src/app/
     │   ├── projects/       # 專案管理
     │   ├── payment-requests/  # 請款申請
     │   ├── leave-requests/    # 請假申請
-    │   ├── travel-requests/   # 出差申請
+    │   ├── travel-payment-requests/ # 出差請款申請（小額已代墊直接請款，無沖銷）
+    │   ├── travel-requests/   # 出差預支申請（走沖銷流程）
     │   ├── overtime-requests/ # 加班申請（走簽核流程）
     │   ├── advance-requests/  # 預支申請
     │   ├── write-off-requests/ # 預支沖銷申請（獨立簽核流程）
-    │   ├── travel-write-off-requests/ # 出差沖銷申請（獨立簽核流程）
+    │   ├── travel-write-off-requests/ # 出差預支沖銷申請（獨立簽核流程）
     │   ├── insurance-brackets/ # 勞健保級距維護
     │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出）
     │   └── settings/       # 系統設定
@@ -283,7 +284,7 @@ Api/
 │   └── RouterFunction.cs              # 唯一 HttpTrigger，catch-all route {*route}
 ├── Routing/
 │   └── AppRouter.cs                   # C# 12 List Pattern 路由分派器
-├── Handlers/                          # 20 個 Handler（業務邏輯）
+├── Handlers/                          # 21 個 Handler（業務邏輯）
 │   ├── AuthHandler.cs                 # 登入、刷新 Token
 │   ├── UserHandler.cs
 │   ├── RoleHandler.cs
@@ -295,11 +296,12 @@ Api/
 │   ├── ProjectHandler.cs
 │   ├── PaymentRequestHandler.cs
 │   ├── LeaveRequestHandler.cs
-│   ├── TravelRequestHandler.cs
+│   ├── TravelRequestHandler.cs        # 出差預支申請 CRUD（預支後沖銷）
+│   ├── TravelPaymentRequestHandler.cs # 出差請款申請 CRUD（小額代墊直接請款）
 │   ├── OvertimeRequestHandler.cs      # 加班申請 CRUD
 │   ├── AdvanceRequestHandler.cs       # 預支申請 CRUD
 │   ├── WriteOffRequestHandler.cs      # 預支沖銷申請 CRUD（獨立簽核流程）
-│   ├── TravelWriteOffRequestHandler.cs # 出差沖銷申請 CRUD（獨立簽核流程）
+│   ├── TravelWriteOffRequestHandler.cs # 出差預支沖銷申請 CRUD（獨立簽核流程）
 │   ├── AttendanceHandler.cs           # 打卡（上班/下班/加班開始/加班結束）
 │   ├── InsuranceBracketHandler.cs    # 勞健保級距 CRUD
 │   ├── PayrollHandler.cs             # 人事薪資查詢（月薪計算）
@@ -325,7 +327,7 @@ Api/
 │   ├── ILineService.cs               # LINE API 操作介面
 │   ├── LineService.cs                # LINE Platform REST API 封裝（token 換取 + 推播）
 │   ├── LineFlexMessageBuilder.cs     # 6 種簽核通知的 LINE Flex Message 模板
-│   └── Dapper/                        # Dapper 讀取服務（12 組 interface + 實作）
+│   └── Dapper/                        # Dapper 讀取服務（13 組 interface + 實作）
 │       ├── UserReadService.cs
 │       ├── RoleReadService.cs
 │       ├── DepartmentReadService.cs
@@ -335,6 +337,7 @@ Api/
 │       ├── PaymentRequestReadService.cs
 │       ├── LeaveRequestReadService.cs
 │       ├── TravelRequestReadService.cs
+│       ├── TravelPaymentRequestReadService.cs
 │       ├── OvertimeRequestReadService.cs
 │       ├── AdvanceRequestReadService.cs
 │       ├── WriteOffRequestReadService.cs
@@ -455,9 +458,13 @@ public async Task<HttpResponseData> Run(
 | GET | `/leave-requests/maternity-status` | 查詢產假狀態（是否已有活躍申請） |
 | GET | `/leave-requests/bereavement-quota?relationship={rel}` | 查詢喪假配額（依親屬關係 3/6/8 天） |
 | GET | `/leave-requests/senior-executive-eligibility` | 查詢高階主管假適用性（JobTitle.Level ≤ 3） |
-| GET/POST | `/travel-requests` | 出差列表 / 新增（預設 draft） |
-| GET/PUT/PATCH/DELETE | `/travel-requests/{id}` | 出差 CRUD |
-| PATCH | `/travel-requests/{id}/submit` | 送出出差申請（draft → pending） |
+| GET/POST | `/travel-requests` | 出差預支申請列表 / 新增（預設 draft） |
+| GET/PUT/PATCH/DELETE | `/travel-requests/{id}` | 出差預支申請 CRUD |
+| PATCH | `/travel-requests/{id}/submit` | 送出出差預支申請（draft → pending） |
+| GET/POST | `/travel-payment-requests` | 出差請款申請列表 / 新增（預設 draft） |
+| GET/PUT/PATCH/DELETE | `/travel-payment-requests/{id}` | 出差請款申請 CRUD |
+| PATCH | `/travel-payment-requests/{id}/submit` | 送出出差請款申請（draft → pending） |
+| PATCH | `/travel-payment-requests/{id}/payment-date` | 更新撥款日期（僅財務部） |
 | GET/POST | `/overtime-requests` | 加班申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/overtime-requests/{id}` | 加班申請 CRUD |
 | PATCH | `/overtime-requests/{id}/submit` | 送出加班申請（draft → pending） |
@@ -474,14 +481,14 @@ public async Task<HttpResponseData> Run(
 | GET/PUT/PATCH/DELETE | `/write-off-requests/{id}` | 預支沖銷申請 CRUD |
 | PATCH | `/write-off-requests/{id}/submit` | 送出預支沖銷申請（draft → pending） |
 
-#### 出差沖銷申請
+#### 出差預支沖銷申請
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/travel-write-off-requests/available-travels` | 可沖銷的出差申請清單 |
-| GET/POST | `/travel-write-off-requests` | 出差沖銷申請列表 / 新增（預設 draft） |
-| GET/PUT/PATCH/DELETE | `/travel-write-off-requests/{id}` | 出差沖銷申請 CRUD |
-| PATCH | `/travel-write-off-requests/{id}/submit` | 送出出差沖銷申請（draft → pending） |
+| GET | `/travel-write-off-requests/available-travels` | 可沖銷的出差預支申請清單 |
+| GET/POST | `/travel-write-off-requests` | 出差預支沖銷申請列表 / 新增（預設 draft） |
+| GET/PUT/PATCH/DELETE | `/travel-write-off-requests/{id}` | 出差預支沖銷申請 CRUD |
+| PATCH | `/travel-write-off-requests/{id}/submit` | 送出出差預支沖銷申請（draft → pending） |
 
 #### 出勤打卡
 
@@ -544,7 +551,7 @@ dotnet ef database update               # 套用 Migration
 
 ### 資料庫名稱：`JabezDb`
 
-### 21 個資料表實體
+### 23 個資料表實體
 
 | 實體 | 說明 |
 |------|------|
@@ -565,15 +572,17 @@ dotnet ef database update               # 套用 Migration
 | `PaymentRequest` | 請款申請 |
 | `InvoiceItem` | 請款明細（發票項目） |
 | `LeaveRequest` | 請假申請（含 BereavementRelationship 喪假親屬關係） |
-| `TravelRequest` | 出差申請（含 IsHolidayTravel、IsClosed 結案、GrandTotal 明細合計） |
-| `TravelRequestItem` | 出差明細（交通費、住宿費、餐費、雜支） |
+| `TravelRequest` | 出差預支申請（含 IsHolidayTravel、IsClosed 結案、GrandTotal 明細合計；事後走沖銷流程） |
+| `TravelRequestItem` | 出差預支明細（交通費、住宿費、餐費、雜支） |
+| `TravelPaymentRequest` | 出差請款申請（員工代墊後直接請款，無沖銷流程；含 EstimatedPaymentDate/PaidAt 撥款欄位） |
+| `TravelPaymentRequestItem` | 出差請款明細（交通費、住宿費、餐費、雜支，含發票號碼、檔案上傳） |
 | `OvertimeRequest` | 加班申請（走簽核流程） |
 | `AdvanceRequest` | 預支申請 |
 | `AdvanceRequestItem` | 預支明細 |
 | `WriteOffRecord` | 預支沖銷申請（獨立簽核流程，關聯 AdvanceRequest，含 ApprovalStatus/CurrentStepOrder） |
 | `WriteOffItem` | 沖銷明細（含發票號碼、檔案上傳） |
-| `TravelWriteOffRecord` | 出差沖銷申請（獨立簽核流程，關聯 TravelRequest） |
-| `TravelWriteOffItem` | 出差沖銷明細（含發票號碼、檔案上傳） |
+| `TravelWriteOffRecord` | 出差預支沖銷申請（獨立簽核流程，關聯 TravelRequest） |
+| `TravelWriteOffItem` | 出差預支沖銷明細（含發票號碼、檔案上傳） |
 | `RequestDesignatedReviewer` | 申請人指定審核者清單（多人依序審核） |
 | `AttendanceRecord` | 出勤打卡紀錄（每人每天一筆，含 GPS） |
 | `SystemSetting` | 系統設定 |

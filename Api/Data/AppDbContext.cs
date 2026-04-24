@@ -38,6 +38,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<RequestDesignatedReviewer> RequestDesignatedReviewers { get; set; }
     public DbSet<CalendarDay>                CalendarDays               { get; set; }
     public DbSet<TravelRequestParticipant>   TravelRequestParticipants  { get; set; }
+    public DbSet<TravelPaymentRequest>       TravelPaymentRequests      { get; set; }
+    public DbSet<TravelPaymentRequestItem>   TravelPaymentRequestItems  { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -4,6 +4,7 @@ using Jabez.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Jabez.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260424042559_AddTravelPaymentRequest")]
+    partial class AddTravelPaymentRequest
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2273,24 +2276,24 @@ namespace Jabez.Api.Data.Migrations
                         {
                             Id = "31",
                             Code = "travel-requests:read",
-                            Description = "出差預支申請",
-                            Module = "出差預支申請",
+                            Description = "出差申請",
+                            Module = "出差申請",
                             Name = "瀏覽"
                         },
                         new
                         {
                             Id = "32",
                             Code = "travel-requests:write",
-                            Description = "出差預支申請",
-                            Module = "出差預支申請",
+                            Description = "出差申請",
+                            Module = "出差申請",
                             Name = "新增/修改"
                         },
                         new
                         {
                             Id = "33",
                             Code = "travel-requests:delete",
-                            Description = "出差預支申請",
-                            Module = "出差預支申請",
+                            Description = "出差申請",
+                            Module = "出差申請",
                             Name = "刪除"
                         },
                         new
@@ -2442,21 +2445,21 @@ namespace Jabez.Api.Data.Migrations
                         {
                             Id = "57",
                             Code = "travel-write-off-requests:read",
-                            Module = "出差預支沖銷申請",
+                            Module = "出差沖銷申請",
                             Name = "瀏覽"
                         },
                         new
                         {
                             Id = "58",
                             Code = "travel-write-off-requests:write",
-                            Module = "出差預支沖銷申請",
+                            Module = "出差沖銷申請",
                             Name = "新增/修改"
                         },
                         new
                         {
                             Id = "59",
                             Code = "travel-write-off-requests:delete",
-                            Module = "出差預支沖銷申請",
+                            Module = "出差沖銷申請",
                             Name = "刪除"
                         },
                         new

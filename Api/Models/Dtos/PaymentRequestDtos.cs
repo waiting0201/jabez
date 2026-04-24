@@ -163,9 +163,27 @@ public sealed record OvertimeTaskDetailDto(
     decimal  EstimatedHours,
     string   Reason);
 
+/// <summary>出差請款申請審核任務詳情 DTO</summary>
+public sealed record TravelPaymentTaskDetailDto(
+    int       TravelPaymentRequestId,
+    string    Destination,
+    DateTime  StartDate,
+    DateTime  EndDate,
+    decimal   GrandTotal,
+    string    Purpose,
+    string?   ProjectCode,
+    string?   ProjectName,
+    DateTime? EstimatedPaymentDate,
+    DateTime? PaidAt,
+    TravelPaymentRequestItemDto[] Items = null!,
+    string?   PaidBySignatureUrl = null)
+{
+    public TravelPaymentRequestItemDto[] Items { get; init; } = Items ?? Array.Empty<TravelPaymentRequestItemDto>();
+}
+
 public sealed record ApprovalTaskDto(
     int                         Id,
-    string                      ApplicationType,   // "payment_request" | "leave" | "travel" | "overtime" | "advance" | "write_off" | "travel_write_off"
+    string                      ApplicationType,   // "payment_request" | "leave" | "travel" | "overtime" | "advance" | "write_off" | "travel_write_off" | "travel_payment"
     string                      Title,
     string                      SubmittedBy,
     DateTime                    SubmittedAt,
@@ -183,4 +201,5 @@ public sealed record ApprovalTaskDto(
     TravelWriteOffTaskDetailDto? TravelWriteOffDetail,
     ApprovalRecordDto[]         ApprovalRecords,
     DesignatedReviewerDto[]?    DesignatedReviewers     = null,
-    string?                     SubmittedBySignatureUrl = null);  // 申請人簽名檔 URL
+    string?                     SubmittedBySignatureUrl = null,
+    TravelPaymentTaskDetailDto? TravelPaymentDetail     = null);  // 出差請款申請詳情

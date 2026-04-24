@@ -40,7 +40,8 @@ public sealed class AppRouter(
     TravelWriteOffRequestHandler    travelWriteOffRequests,
     CalendarDayHandler              calendarDays,
     FileHandler                     files,
-    LineHandler                     line)
+    LineHandler                     line,
+    TravelPaymentRequestHandler     travelPaymentRequests)
 {
     public async Task<IActionResult> RouteAsync(HttpRequest req, string route)
     {
@@ -186,6 +187,16 @@ public sealed class AppRouter(
             ("PUT",    ["write-off-requests", var id])                         => await writeOffRequests.UpdateAsync(req, id),
             ("PATCH",  ["write-off-requests", var id])                         => await writeOffRequests.UpdateAsync(req, id),
             ("DELETE", ["write-off-requests", var id])                         => await writeOffRequests.DeleteAsync(req, id),
+
+            // ── Travel Payment Requests ─────────────────────────────────────
+            ("GET",    ["travel-payment-requests"])                                    => await travelPaymentRequests.GetAllAsync(req),
+            ("POST",   ["travel-payment-requests"])                                    => await travelPaymentRequests.CreateAsync(req),
+            ("PATCH",  ["travel-payment-requests", var id, "submit"])                  => await travelPaymentRequests.SubmitAsync(req, id),
+            ("PATCH",  ["travel-payment-requests", var id, "payment-date"])            => await travelPaymentRequests.UpdatePaymentDateAsync(req, id),
+            ("GET",    ["travel-payment-requests", var id])                            => await travelPaymentRequests.GetByIdAsync(req, id),
+            ("PUT",    ["travel-payment-requests", var id])                            => await travelPaymentRequests.UpdateAsync(req, id),
+            ("PATCH",  ["travel-payment-requests", var id])                            => await travelPaymentRequests.UpdateAsync(req, id),
+            ("DELETE", ["travel-payment-requests", var id])                            => await travelPaymentRequests.DeleteAsync(req, id),
 
             // ── Travel Write-Off Requests ───────────────────────────────────
             ("GET",    ["travel-write-off-requests", "available-travels"])      => await travelWriteOffRequests.GetAvailableTravelsAsync(req),
@@ -399,6 +410,15 @@ public sealed class AppRouter(
             ("PATCH",  ["write-off-requests", _, "submit"])     => PermissionCodes.WriteOffRequestsWrite,
             ("PATCH",  ["write-off-requests", _])               => PermissionCodes.WriteOffRequestsWrite,
             ("DELETE", ["write-off-requests", _])               => PermissionCodes.WriteOffRequestsDelete,
+
+            // Travel Payment Requests
+            ("GET",    ["travel-payment-requests", ..])               => PermissionCodes.TravelPaymentRequestsRead,
+            ("POST",   ["travel-payment-requests"])                   => PermissionCodes.TravelPaymentRequestsWrite,
+            ("PUT",    ["travel-payment-requests", _])                => PermissionCodes.TravelPaymentRequestsWrite,
+            ("PATCH",  ["travel-payment-requests", _, "submit"])      => PermissionCodes.TravelPaymentRequestsWrite,
+            ("PATCH",  ["travel-payment-requests", _, "payment-date"]) => PermissionCodes.TravelPaymentRequestsWrite,
+            ("PATCH",  ["travel-payment-requests", _])                => PermissionCodes.TravelPaymentRequestsWrite,
+            ("DELETE", ["travel-payment-requests", _])                => PermissionCodes.TravelPaymentRequestsDelete,
 
             // Travel Write-Off Requests
             ("GET",    ["travel-write-off-requests", ..])            => PermissionCodes.TravelWriteOffRequestsRead,
