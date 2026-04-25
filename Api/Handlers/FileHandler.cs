@@ -73,8 +73,30 @@ public sealed class FileHandler(IBlobStorageService blob)
     }
 
     // 防止路徑穿越攻擊（Path Traversal）
-    private static bool IsSafeFileName(string fileName) =>
-        !string.IsNullOrWhiteSpace(fileName)
-        && !fileName.Contains('/')
-        && !fileName.Contains('\\');
+    // 拒絕：URL 編碼的分隔符與 .. 序列、原始分隔符、控制字元、空白檔名
+    private static bool IsSafeFileName(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+            return false;
+
+        // 解碼後再次檢查，避免 %2f / %5c / %2e%2e 繞過
+        string decoded;
+        try
+        {
+            decoded = Uri.UnescapeDataString(fileName);
+        }
+        catch
+        {
+            return false;
+        }
+
+        return !ContainsTraversal(fileName) && !ContainsTraversal(decoded);
+    }
+
+    private static bool ContainsTraversal(string value) =>
+        value.Contains('/')
+        || value.Contains('\\')
+        || value.Contains("..", StringComparison.Ordinal)
+        || value.Contains('\0')
+        || value.Any(char.IsControl);
 }

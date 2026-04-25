@@ -339,8 +339,28 @@ public sealed class TravelRequestHandler(
         // 基本欄位更新
         var destination = form["destination"].ToString();
         if (!string.IsNullOrEmpty(destination)) item.Destination = destination;
-        if (DateTime.TryParse(form["startDate"], out var sd)) item.StartDate = sd;
-        if (DateTime.TryParse(form["endDate"], out var ed))   item.EndDate   = ed;
+
+        var datesChanged = false;
+        if (DateTime.TryParse(form["startDate"], out var sd) && item.StartDate != sd)
+        {
+            item.StartDate = sd;
+            datesChanged = true;
+        }
+        if (DateTime.TryParse(form["endDate"], out var ed) && item.EndDate != ed)
+        {
+            item.EndDate = ed;
+            datesChanged = true;
+        }
+
+        // 假日活動：日期變更時同步重算 HolidayDays（行事曆缺資料時退回 0，由 Submit 階段強制驗證）
+        if (item.IsHolidayTravel && datesChanged)
+        {
+            var hasCalendarData = await calendarDayReader.HasDataForRangeAsync(item.StartDate, item.EndDate);
+            item.HolidayDays = hasCalendarData
+                ? await calendarDayReader.CountHolidaysAsync(item.StartDate, item.EndDate)
+                : 0;
+        }
+
         var purpose = form["purpose"].ToString();
         if (!string.IsNullOrEmpty(purpose)) item.Purpose = purpose;
         if (int.TryParse(form["projectId"], out var pid))
@@ -639,8 +659,8 @@ public sealed class TravelRequestHandler(
         if (user is null)
             return new UnauthorizedObjectResult(ApiResponse.Fail("User not found."));
 
-        if (!user.IsSuperAdmin && user.Department?.Code != "FIN")
-            return new ForbidResult();
+        if (!user.IsSuperAdmin && !DepartmentCodes.FinancialAndAbove.Contains(user.Department?.Code ?? ""))
+            throw AppException.Forbidden("僅財務體系部門或 Superadmin 可更新撥款日。");
 
         var tr = await db.TravelRequests.FindAsync(intId)
             ?? throw AppException.NotFound("TravelRequest");

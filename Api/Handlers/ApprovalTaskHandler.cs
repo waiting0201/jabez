@@ -936,8 +936,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         if (user is null)
             return new UnauthorizedObjectResult(ApiResponse.Fail("User not found."));
 
-        if (!user.IsSuperAdmin && user.Department?.Code != "FIN")
-            return new ObjectResult(ApiResponse.Fail("僅財務部或 Superadmin 可執行結案操作。")) { StatusCode = 403 };
+        if (!user.IsSuperAdmin && !DepartmentCodes.FinancialAndAbove.Contains(user.Department?.Code ?? ""))
+            return new ObjectResult(ApiResponse.Fail("僅財務體系部門或 Superadmin 可執行結案操作。")) { StatusCode = 403 };
 
         var wo = await db.WriteOffRecords.AsNoTracking().FirstOrDefaultAsync(w => w.Id == intId);
         if (wo is null)
@@ -971,8 +971,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         if (user is null)
             return new UnauthorizedObjectResult(ApiResponse.Fail("User not found."));
 
-        if (!user.IsSuperAdmin && user.Department?.Code != "FIN")
-            return new ObjectResult(ApiResponse.Fail("僅財務部或 Superadmin 可執行結案操作。")) { StatusCode = 403 };
+        if (!user.IsSuperAdmin && !DepartmentCodes.FinancialAndAbove.Contains(user.Department?.Code ?? ""))
+            return new ObjectResult(ApiResponse.Fail("僅財務體系部門或 Superadmin 可執行結案操作。")) { StatusCode = 403 };
 
         var two = await db.TravelWriteOffRecords.AsNoTracking().FirstOrDefaultAsync(w => w.Id == intId);
         if (two is null)

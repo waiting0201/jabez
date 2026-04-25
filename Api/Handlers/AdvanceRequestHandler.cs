@@ -528,8 +528,8 @@ public sealed class AdvanceRequestHandler(
         if (user is null)
             return new UnauthorizedObjectResult(ApiResponse.Fail("User not found."));
 
-        if (!user.IsSuperAdmin && user.Department?.Code != "FIN")
-            return new ForbidResult();
+        if (!user.IsSuperAdmin && !DepartmentCodes.FinancialAndAbove.Contains(user.Department?.Code ?? ""))
+            throw AppException.Forbidden("僅財務體系部門或 Superadmin 可更新撥款日。");
 
         var ar = await db.AdvanceRequests.FindAsync(intId)
             ?? throw AppException.NotFound("AdvanceRequest");

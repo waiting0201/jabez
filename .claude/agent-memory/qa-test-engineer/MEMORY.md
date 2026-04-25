@@ -205,6 +205,21 @@ See `designated-reviewer-qa-2026-03-19.md` for full report.
 - 單一審核者後推進到下一固定步驟 ✅
 - 非 SA 無全域 approval_tasks 權限但被指定仍可看到並審核任務 ✅
 
+## 最近 5 Commit 整合測試 (2026-04-25)
+See `5-commit-qa-2026-04-25.md` for full report.
+
+### 重要確認
+- `User.Avatar` 欄位名稱確認為 `Avatar`（非 `AvatarUrl`），JWT claim 為 `avatar`，前後端一致
+- `ApplicationType` enum 在 `approval.model.ts` 已包含所有 9 種類型（含 travel_payment, holiday_travel）
+- `FileHandler.IsSafeFileName` 過濾 `/` 和 `\`，但未過濾 URL 編碼形式（`%2f`, `%2e%2e`），有路徑穿越風險
+- 打卡提醒 LINE 推播失敗用 `LogWarning` 而非 `LogError`，未區分「未加好友」與其他錯誤
+
+### Payroll 假日津貼歸月邏輯確認
+- `PrevMonthFirstDay = firstDay.AddMonths(-1)`，查詢 `EndDate >= PrevMonthFirstDay AND EndDate < CurrMonthFirstDay`
+- 「4月薪資」算的是 EndDate 落在 3/1~3/31 的活動。CLAUDE.md 說「4月薪資計入 3月EndDate的活動」→ 正確
+- CLAUDE.md 範例「3月活動 → 4月薪資」是對的，但這要求薪資月 = EndDate月 + 1月
+- 查詢參數：PrevMonthFirstDay = 3/1，CurrMonthFirstDay = 4/1 → EndDate in [3/1, 4/1) → 即 3月份 EndDate → 進入 4月薪資 ✅
+
 ## 簽核作業資料可見性隔離測試 (2026-03-19)
 See `visibility-isolation-qa-2026-03-19.md` for full report.
 

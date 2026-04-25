@@ -108,8 +108,11 @@ public sealed class AttendanceReminderService(
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex,
-                    "打卡提醒推播失敗：UserId={UserId}, Name={Name}", r.UserId, r.UserName);
+                // LineService 自行處理業務錯誤（未加好友/已封鎖）並 LogError；
+                // 此處能進入 catch 代表是網路/系統層級例外（HttpRequestException、Timeout 等），
+                // 屬於整個推播管道失敗，升級為 Error 以利監控告警
+                logger.LogError(ex,
+                    "打卡提醒推播失敗（系統錯誤）：UserId={UserId}, Name={Name}", r.UserId, r.UserName);
             }
         }
 

@@ -452,7 +452,7 @@ public async Task<HttpResponseData> Run(
 | GET/POST | `/payment-requests` | 請款列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/payment-requests/{id}` | 請款 CRUD |
 | PATCH | `/payment-requests/{id}/submit` | 送出請款申請（draft → pending） |
-| PATCH | `/payment-requests/{id}/payment-date` | 更新撥款日期（僅財務部） |
+| PATCH | `/payment-requests/{id}/payment-date` | 更新撥款日期（財務體系部門：AC/FIN/Jabez HQ/CEO） |
 | GET/POST | `/leave-requests` | 請假列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/leave-requests/{id}` | 請假 CRUD |
 | PATCH | `/leave-requests/{id}/submit` | 送出請假申請（draft → pending） |
@@ -469,14 +469,14 @@ public async Task<HttpResponseData> Run(
 | GET/POST | `/travel-payment-requests` | 出差請款申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/travel-payment-requests/{id}` | 出差請款申請 CRUD |
 | PATCH | `/travel-payment-requests/{id}/submit` | 送出出差請款申請（draft → pending） |
-| PATCH | `/travel-payment-requests/{id}/payment-date` | 更新撥款日期（僅財務部） |
+| PATCH | `/travel-payment-requests/{id}/payment-date` | 更新撥款日期（財務體系部門：AC/FIN/Jabez HQ/CEO） |
 | GET/POST | `/overtime-requests` | 加班申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/overtime-requests/{id}` | 加班申請 CRUD |
 | PATCH | `/overtime-requests/{id}/submit` | 送出加班申請（draft → pending） |
 | GET/POST | `/advance-requests` | 預支申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/advance-requests/{id}` | 預支申請 CRUD |
 | PATCH | `/advance-requests/{id}/submit` | 送出預支申請（draft → pending） |
-| PATCH | `/advance-requests/{id}/payment-date` | 更新撥款日期（僅財務部） |
+| PATCH | `/advance-requests/{id}/payment-date` | 更新撥款日期（財務體系部門：AC/FIN/Jabez HQ/CEO） |
 
 #### 預支沖銷申請
 
@@ -749,7 +749,7 @@ draft → pending → approved / returned / rejected
 - `EstimatedPaymentDate`：預計撥款日
 - `PaidAt`：實際撥款日
 
-> 此端點僅限**財務部人員**或 **Superadmin** 操作。
+> 此端點僅限**財務體系部門**（部門 Code ∈ AC / FIN / Jabez HQ / CEO，定義於 `Api/Common/Constants.cs` `DepartmentCodes.FinancialAndAbove`）或 **Superadmin** 操作。同樣規則套用於 `/advance-requests/{id}/payment-date`、`/travel-requests/{id}/payment-date`、`/travel-payment-requests/{id}/payment-date`，以及預支結案 / 出差結案端點。
 
 ### 批次核准（全選核准）
 

@@ -21,6 +21,9 @@ public sealed class AttendanceReminderAdminHandler(IAttendanceReminderService se
         if (string.IsNullOrWhiteSpace(type))
             throw AppException.BadRequest("必須提供 ?type=clockIn|clockOut");
 
+        if (type is not ("clockIn" or "clockOut"))
+            throw AppException.BadRequest("type 必須為 clockIn 或 clockOut");
+
         var count = await service.ForceRunAsync(type);
         return new OkObjectResult(ApiResponse.Ok(new { type, pushedCount = count }));
     }
