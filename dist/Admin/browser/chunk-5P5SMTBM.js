@@ -182,7 +182,7 @@ function TravelPaymentForm_For_36_Template(rf, ctx) {
 function TravelPaymentForm_Conditional_37_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 25);
-    \u0275\u0275text(1, "\u60A8\u76EE\u524D\u53EF\u95DC\u806F\u7684\u5C08\u6848\u6E05\u55AE\u70BA\u7A7A\uFF1B\u5982\u9700\u95DC\u806F\u5C08\u6848\u8ACB\u806F\u7D61\u4E3B\u7BA1\u6216\u78BA\u8A8D\u90E8\u9580\u8A2D\u5B9A\u3002");
+    \u0275\u0275text(1, "\u60A8\u76EE\u524D\u53EF\u7533\u8ACB\u7684\u5C08\u6848\u6E05\u55AE\u70BA\u7A7A\uFF0C\u8ACB\u806F\u7D61\u4E3B\u7BA1\u6216\u78BA\u8A8D\u90E8\u9580\u8A2D\u5B9A\u3002");
     \u0275\u0275elementEnd();
   }
 }
@@ -1387,7 +1387,7 @@ var TravelPaymentForm = class _TravelPaymentForm {
                   }
                 </select>
                 @if (!loadingProjects && projects.length === 0) {
-                  <div class="text-muted small mt-1">\u60A8\u76EE\u524D\u53EF\u95DC\u806F\u7684\u5C08\u6848\u6E05\u55AE\u70BA\u7A7A\uFF1B\u5982\u9700\u95DC\u806F\u5C08\u6848\u8ACB\u806F\u7D61\u4E3B\u7BA1\u6216\u78BA\u8A8D\u90E8\u9580\u8A2D\u5B9A\u3002</div>
+                  <div class="text-muted small mt-1">\u60A8\u76EE\u524D\u53EF\u7533\u8ACB\u7684\u5C08\u6848\u6E05\u55AE\u70BA\u7A7A\uFF0C\u8ACB\u806F\u7D61\u4E3B\u7BA1\u6216\u78BA\u8A8D\u90E8\u9580\u8A2D\u5B9A\u3002</div>
                 }
               </div>
             </div>
@@ -1723,4 +1723,4 @@ var TravelPaymentForm = class _TravelPaymentForm {
 export {
   TravelPaymentForm
 };
-//# sourceMappingURL=chunk-7RYRKPZL.js.map
+//# sourceMappingURL=chunk-5P5SMTBM.js.map

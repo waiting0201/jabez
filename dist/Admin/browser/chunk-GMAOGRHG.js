@@ -21600,7 +21600,7 @@ function TravelRequestForm_For_36_Template(rf, ctx) {
 function TravelRequestForm_Conditional_37_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 25);
-    \u0275\u0275text(1, "\u60A8\u76EE\u524D\u53EF\u95DC\u806F\u7684\u5C08\u6848\u6E05\u55AE\u70BA\u7A7A\uFF1B\u5982\u9700\u95DC\u806F\u5C08\u6848\u8ACB\u806F\u7D61\u4E3B\u7BA1\u6216\u78BA\u8A8D\u90E8\u9580\u8A2D\u5B9A\u3002");
+    \u0275\u0275text(1, "\u60A8\u76EE\u524D\u53EF\u7533\u8ACB\u7684\u5C08\u6848\u6E05\u55AE\u70BA\u7A7A\uFF0C\u8ACB\u806F\u7D61\u4E3B\u7BA1\u6216\u78BA\u8A8D\u90E8\u9580\u8A2D\u5B9A\u3002");
     \u0275\u0275elementEnd();
   }
 }
@@ -22804,7 +22804,7 @@ var TravelRequestForm = class _TravelRequestForm {
                   }
                 </select>
                 @if (!loadingProjects && projects.length === 0) {
-                  <div class="text-muted small mt-1">\u60A8\u76EE\u524D\u53EF\u95DC\u806F\u7684\u5C08\u6848\u6E05\u55AE\u70BA\u7A7A\uFF1B\u5982\u9700\u95DC\u806F\u5C08\u6848\u8ACB\u806F\u7D61\u4E3B\u7BA1\u6216\u78BA\u8A8D\u90E8\u9580\u8A2D\u5B9A\u3002</div>
+                  <div class="text-muted small mt-1">\u60A8\u76EE\u524D\u53EF\u7533\u8ACB\u7684\u5C08\u6848\u6E05\u55AE\u70BA\u7A7A\uFF0C\u8ACB\u806F\u7D61\u4E3B\u7BA1\u6216\u78BA\u8A8D\u90E8\u9580\u8A2D\u5B9A\u3002</div>
                 }
               </div>
             </div>
@@ -58739,13 +58739,13 @@ var ADMIN_ROUTES = [
   { path: "travel-requests/:id", component: TravelDetail, canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u9810\u652F\u7533\u8ACB\u8A73\u60C5", permission: "travel-requests:read" } },
   // 出差請款申請
   { path: "travel-payment-requests", canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-RKVCWNO7.js").then((m) => m.TravelPaymentList) },
-  { path: "travel-payment-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:write" }, loadComponent: () => import("./chunk-7RYRKPZL.js").then((m) => m.TravelPaymentForm) },
-  { path: "travel-payment-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-7RYRKPZL.js").then((m) => m.TravelPaymentForm) },
+  { path: "travel-payment-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:write" }, loadComponent: () => import("./chunk-5P5SMTBM.js").then((m) => m.TravelPaymentForm) },
+  { path: "travel-payment-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-5P5SMTBM.js").then((m) => m.TravelPaymentForm) },
   { path: "travel-payment-requests/:id", canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB\u8A73\u60C5", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-IQFMIBUL.js").then((m) => m.TravelPaymentDetail) },
   // 假日執行活動申請
   { path: "holiday-travel-requests", canActivate: [permissionGuard], data: { title: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-DVCVHA6G.js").then((m) => m.HolidayTravelRequestList) },
-  { path: "holiday-travel-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:write" }, loadComponent: () => import("./chunk-TTPSV2AO.js").then((m) => m.HolidayTravelRequestForm) },
-  { path: "holiday-travel-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-TTPSV2AO.js").then((m) => m.HolidayTravelRequestForm) },
+  { path: "holiday-travel-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:write" }, loadComponent: () => import("./chunk-FJXETATF.js").then((m) => m.HolidayTravelRequestForm) },
+  { path: "holiday-travel-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-FJXETATF.js").then((m) => m.HolidayTravelRequestForm) },
   { path: "holiday-travel-requests/:id", canActivate: [permissionGuard], data: { title: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB\u8A73\u60C5", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-WFKS4I4J.js").then((m) => m.HolidayTravelDetail) },
   // 行事曆管理
   { path: "calendar-days", canActivate: [permissionGuard], data: { title: "\u884C\u4E8B\u66C6\u7BA1\u7406", permission: "calendar-days:read" }, loadComponent: () => import("./chunk-TEHSGVKV.js").then((m) => m.CalendarDayList) },
@@ -58782,4 +58782,4 @@ xlsx/xlsx.mjs:
 xlsx/xlsx.mjs:
   (*! sheetjs (C) 2013-present SheetJS -- http://sheetjs.com *)
 */
-//# sourceMappingURL=chunk-LSXUD25Y.js.map
+//# sourceMappingURL=chunk-GMAOGRHG.js.map
