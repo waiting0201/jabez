@@ -17460,7 +17460,7 @@ function LeaveRequestForm_For_28_Template(rf, ctx) {
   if (rf & 2) {
     const group_r3 = ctx.$implicit;
     const ctx_r0 = \u0275\u0275nextContext();
-    \u0275\u0275conditional(group_r3.label !== "\u9AD8\u968E\u4E3B\u7BA1\u5047" || ctx_r0.isSeniorExecutive() ? 0 : -1);
+    \u0275\u0275conditional((group_r3.label !== "\u9AD8\u968E\u4E3B\u7BA1\u5047" || ctx_r0.isSeniorExecutive()) && (group_r3.label !== "\u5176\u4ED6\u5047\u5225" || ctx_r0.isIndigenousUser()) ? 0 : -1);
   }
 }
 function LeaveRequestForm_Case_30_Template(rf, ctx) {
@@ -18773,6 +18773,7 @@ var LeaveRequestForm = class _LeaveRequestForm {
   ngOnInit() {
     this.loadAnnualQuota();
     this.loadSeniorExecEligibility();
+    this.loadCeremonialQuota();
     this.form.get("leaveType")?.valueChanges.subscribe((type) => {
       this.onLeaveTypeChange(type);
     });
@@ -18912,6 +18913,17 @@ var LeaveRequestForm = class _LeaveRequestForm {
       return false;
     return this.calculatedHours > hours.availableHours;
   }
+  /**
+   * 申請人是否為原住民身份（用於下拉選單過濾歲時祭儀假選項）
+   * - Superadmin 一律通過（可代任何員工建立）
+   * - 否則依 ceremonialQuota.isIndigenous 判斷
+   * - 尚未載入時預設 false（保守：先不顯示，載入後再揭露）
+   */
+  isIndigenousUser = computed(() => {
+    if (this.auth.isSuperAdmin())
+      return true;
+    return this.ceremonialQuota()?.isIndigenous === true;
+  }, ...ngDevMode ? [{ debugName: "isIndigenousUser" }] : []);
   /** 歲時祭儀假：申請人非原住民則不可申請 */
   get isCeremonialNotAllowed() {
     if (this.selectedLeaveType !== "ceremonial_festival")
@@ -18978,6 +18990,10 @@ var LeaveRequestForm = class _LeaveRequestForm {
   save() {
     if (this.calculatedHours <= 0 || this.form.invalid || this.isReadOnly)
       return;
+    if (this.isCeremonialNotAllowed) {
+      this.errorMsg.set("\u50C5\u539F\u4F4F\u6C11\u8EAB\u4EFD\u4E4B\u54E1\u5DE5\u53EF\u7533\u8ACB\u6B72\u6642\u796D\u5100\u5047\u3002");
+      return;
+    }
     const payload = this._buildPayload();
     if (!payload)
       return;
@@ -19403,7 +19419,8 @@ var LeaveRequestForm = class _LeaveRequestForm {
               <label class="form-label fw-500">\u5047\u5225 <span class="text-danger">*</span></label>
               <select class="form-select" formControlName="leaveType" style="max-width: 320px">
                 @for (group of leaveTypeGroups; track group.label) {
-                  @if (group.label !== '\u9AD8\u968E\u4E3B\u7BA1\u5047' || isSeniorExecutive()) {
+                  @if ((group.label !== '\u9AD8\u968E\u4E3B\u7BA1\u5047' || isSeniorExecutive())
+                       && (group.label !== '\u5176\u4ED6\u5047\u5225' || isIndigenousUser())) {
                     <optgroup [label]="group.label">
                       @for (type of group.types; track type) {
                         <option [value]="type">{{ leaveTypeLabels[type] }}</option>
@@ -57549,4 +57566,4 @@ xlsx/xlsx.mjs:
 xlsx/xlsx.mjs:
   (*! sheetjs (C) 2013-present SheetJS -- http://sheetjs.com *)
 */
-//# sourceMappingURL=chunk-7VZ3XCI7.js.map
+//# sourceMappingURL=chunk-ZBWIHFWR.js.map

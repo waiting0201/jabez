@@ -322,6 +322,8 @@ export class LeaveRequestForm implements OnInit {
   ngOnInit() {
     this.loadAnnualQuota();
     this.loadSeniorExecEligibility();
+    // 預載歲時祭儀假額度以判斷使用者是否為原住民身份（用於下拉過濾）
+    this.loadCeremonialQuota();
 
     // 監聽假別變化
     this.form.get('leaveType')?.valueChanges.subscribe(type => {
@@ -476,6 +478,17 @@ export class LeaveRequestForm implements OnInit {
     return this.calculatedHours > hours.availableHours;
   }
 
+  /**
+   * 申請人是否為原住民身份（用於下拉選單過濾歲時祭儀假選項）
+   * - Superadmin 一律通過（可代任何員工建立）
+   * - 否則依 ceremonialQuota.isIndigenous 判斷
+   * - 尚未載入時預設 false（保守：先不顯示，載入後再揭露）
+   */
+  readonly isIndigenousUser = computed<boolean>(() => {
+    if (this.auth.isSuperAdmin()) return true;
+    return this.ceremonialQuota()?.isIndigenous === true;
+  });
+
   /** 歲時祭儀假：申請人非原住民則不可申請 */
   get isCeremonialNotAllowed(): boolean {
     if (this.selectedLeaveType !== 'ceremonial_festival') return false;
@@ -532,6 +545,11 @@ export class LeaveRequestForm implements OnInit {
   /** 儲存（草稿或更新，不改變狀態） */
   save() {
     if (this.calculatedHours <= 0 || this.form.invalid || this.isReadOnly) return;
+    // 後端 CreateAsync / UpdateAsync 已擋；前端保險擋一次避免空跑
+    if (this.isCeremonialNotAllowed) {
+      this.errorMsg.set('僅原住民身份之員工可申請歲時祭儀假。');
+      return;
+    }
     const payload = this._buildPayload();
     if (!payload) return;
     const obs = this.isEdit

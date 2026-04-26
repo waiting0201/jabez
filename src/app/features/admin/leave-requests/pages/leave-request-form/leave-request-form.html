@@ -60,7 +60,8 @@
               <label class="form-label fw-500">假別 <span class="text-danger">*</span></label>
               <select class="form-select" formControlName="leaveType" style="max-width: 320px">
                 @for (group of leaveTypeGroups; track group.label) {
-                  @if (group.label !== '高階主管假' || isSeniorExecutive()) {
+                  @if ((group.label !== '高階主管假' || isSeniorExecutive())
+                       && (group.label !== '其他假別' || isIndigenousUser())) {
                     <optgroup [label]="group.label">
                       @for (type of group.types; track type) {
                         <option [value]="type">{{ leaveTypeLabels[type] }}</option>
