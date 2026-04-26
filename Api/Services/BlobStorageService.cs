@@ -15,7 +15,12 @@ public sealed class BlobStorageService : IBlobStorageService
     {
         var connStr = cfg["BlobStorageConnection"]
             ?? throw new InvalidOperationException("BlobStorageConnection is required.");
-        _client = new BlobServiceClient(connStr);
+
+        // Pin 到 2024-11-04 API 版本：
+        // Azure.Storage.Blobs 12.27.0 預設用 V2026_02_06，但本地 Azurite 不一定跟得上
+        // （3.35.0 會回 400 InvalidHeaderValue）。固定一個保守版本，dev 與 prod 都相容。
+        var options = new BlobClientOptions(BlobClientOptions.ServiceVersion.V2024_11_04);
+        _client = new BlobServiceClient(connStr, options);
         _logger = logger;
     }
 
