@@ -1,6 +1,7 @@
 using Jabez.Api.Common;
 using Jabez.Api.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace Jabez.Api.Handlers;
 
@@ -8,7 +9,7 @@ namespace Jabez.Api.Handlers;
 /// 檔案代理 Handler。
 /// 透過後端 API 代理讀取私有 Blob Storage，避免前端直接存取 Blob URL 遭到 403 或 CORS 問題。
 /// </summary>
-public sealed class FileHandler(IBlobStorageService blob)
+public sealed class FileHandler(IBlobStorageService blob, ILogger<FileHandler> logger)
 {
     private const string SignatureContainer        = "signatures";
     private const string AvatarContainer           = "avatars";
@@ -35,26 +36,18 @@ public sealed class FileHandler(IBlobStorageService blob)
     /// 路由：GET /files/indigenous-proofs/{fileName}
     /// 此端點需要 JWT + users:read 權限（HR 敏感 PII，僅人事管理員可檢視）。
     /// </summary>
-    public async Task<IActionResult> GetIndigenousProofAsync(string fileName)
-    {
-        if (!IsSafeFileName(fileName))
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid file name."));
+    public Task<IActionResult> GetIndigenousProofAsync(string fileName)
+        => GetFileAsync(IndigenousProofContainer, fileName, IsImageOrPdf);
 
-        var result = await blob.DownloadAsync(IndigenousProofContainer, fileName);
-        if (result is null)
-            return new NotFoundObjectResult(ApiResponse.Fail("File not found."));
+    private Task<IActionResult> GetImageAsync(string container, string fileName)
+        => GetFileAsync(container, fileName, IsImage);
 
-        var (content, contentType) = result.Value;
-
-        // 僅允許圖片或 PDF；其他型別降級為 octet-stream 以避免意外洩漏內容
-        if (!contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
-            && !contentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
-            contentType = "application/octet-stream";
-
-        return new FileStreamResult(content, contentType);
-    }
-
-    private async Task<IActionResult> GetImageAsync(string container, string fileName)
+    /// <summary>
+    /// 共用代理：取出 Blob 後驗證 Content-Type 是否在預期清單。
+    /// 不在清單時不靜默降級為 octet-stream（會讓前端拿到無法顯示的檔案而難以發現問題），
+    /// 改為 LogError + 500，將「container 內存在意料外的檔案」這種資料異常立刻浮上來。
+    /// </summary>
+    private async Task<IActionResult> GetFileAsync(string container, string fileName, Func<string, bool> isAllowed)
     {
         if (!IsSafeFileName(fileName))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid file name."));
@@ -65,12 +58,25 @@ public sealed class FileHandler(IBlobStorageService blob)
 
         var (content, contentType) = result.Value;
 
-        // 確保 Content-Type 為圖片類型，避免意外回傳非預期格式
-        if (!contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-            contentType = "application/octet-stream";
+        if (!isAllowed(contentType))
+        {
+            logger.LogError(
+                "Blob 內含預期外的 Content-Type：container={Container} blob={Blob} contentType={Type} — 上傳路徑應已擋下，請檢查資料完整性。",
+                container, fileName, contentType);
+            await content.DisposeAsync();
+            return new ObjectResult(ApiResponse.Fail("檔案格式不符預期，請聯絡系統管理員。"))
+                { StatusCode = 500 };
+        }
 
         return new FileStreamResult(content, contentType);
     }
+
+    private static bool IsImage(string contentType) =>
+        contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsImageOrPdf(string contentType) =>
+        IsImage(contentType)
+        || contentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase);
 
     // 防止路徑穿越攻擊（Path Traversal）
     // 拒絕：URL 編碼的分隔符與 .. 序列、原始分隔符、控制字元、空白檔名
