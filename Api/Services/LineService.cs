@@ -74,7 +74,7 @@ public sealed class LineService : ILineService
     }
 
     /// <inheritdoc />
-    public async Task PushMessageAsync(string lineUserId, object messagePayload)
+    public async Task<bool> PushMessageAsync(string lineUserId, object messagePayload)
     {
         var payload = new { to = lineUserId, messages = new[] { messagePayload } };
         var content = new StringContent(
@@ -89,22 +89,30 @@ public sealed class LineService : ILineService
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _messagingAccessToken);
 
         var resp = await _http.SendAsync(request);
-        if (!resp.IsSuccessStatusCode)
+        if (resp.IsSuccessStatusCode)
+            return true;
+
+        var body = await resp.Content.ReadAsStringAsync();
+        // 401 / 403 → Token 過期或無效，整個推播管道將靜默失效，必須以 Critical 告警
+        if (resp.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
         {
-            var body = await resp.Content.ReadAsStringAsync();
-            // LINE 回 400 且 body 提到未加好友 → 升級為 Error 並清楚標示原因，方便排查
-            if (body.Contains("hasn't added the LINE Official Account as a friend", StringComparison.OrdinalIgnoreCase)
-                || body.Contains("has been blocked by the user", StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.LogError(
-                    "LINE push 失敗（用戶未加 OA 好友或已封鎖）：UserId={UserId} Status={Status} Body={Body}",
-                    lineUserId, resp.StatusCode, body);
-            }
-            else
-            {
-                _logger.LogWarning("LINE push failed to {UserId}: {Status} {Body}", lineUserId, resp.StatusCode, body);
-            }
+            _logger.LogCritical(
+                "LINE Messaging Token 失效（{Status}）— 整個推播管道無法運作，請立即至 LINE Developers Console 重新發行 Token。Body={Body}",
+                resp.StatusCode, body);
         }
+        // 400 且 body 提到未加好友 → 用戶層問題，升級為 Error 清楚標示
+        else if (body.Contains("hasn't added the LINE Official Account as a friend", StringComparison.OrdinalIgnoreCase)
+              || body.Contains("has been blocked by the user", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogError(
+                "LINE push 失敗（用戶未加 OA 好友或已封鎖）：UserId={UserId} Status={Status} Body={Body}",
+                lineUserId, resp.StatusCode, body);
+        }
+        else
+        {
+            _logger.LogWarning("LINE push failed to {UserId}: {Status} {Body}", lineUserId, resp.StatusCode, body);
+        }
+        return false;
     }
 
     /// <inheritdoc />

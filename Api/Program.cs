@@ -64,7 +64,12 @@ var host = new HostBuilder()
         services.AddSingleton<IEmailService, EmailService>();
 
         // ── LINE Service（HttpClient 注入）───────────────────────────────
-        services.AddHttpClient<ILineService, LineService>();
+        // 顯式 10s timeout：LINE API 對單 request 通常 < 1s，
+        // 若異常則寧可快速失敗也不要拖延整批推播（預設 100s 會讓 50 人推播在最壞情況下耗 5,000s）。
+        services.AddHttpClient<ILineService, LineService>(c =>
+        {
+            c.Timeout = TimeSpan.FromSeconds(10);
+        });
 
         // ── 簽核通知服務（Scoped，依賴 AppDbContext）──────────────────────
         services.AddScoped<IApprovalNotificationService, ApprovalNotificationService>();
