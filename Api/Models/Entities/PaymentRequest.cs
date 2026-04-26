@@ -7,7 +7,7 @@ public class PaymentRequest
     public int       ProjectId      { get; set; }
     public int?      ApprovalItemId { get; set; }
     public decimal   TotalAmount    { get; set; }
-    public string    ApprovalStatus   { get; set; } = "pending";  // pending | approved | rejected | returned
+    public string    ApprovalStatus   { get; set; } = "draft";    // draft | pending | approved | rejected | returned
     public int       CurrentStepOrder { get; set; } = 1;
     public Guid?     SubmittedById  { get; set; }
     public DateTime? ReviewedAt     { get; set; }

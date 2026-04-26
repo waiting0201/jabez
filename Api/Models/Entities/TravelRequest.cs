@@ -13,7 +13,7 @@ public class TravelRequest
     public int?     ProjectId       { get; set; }
     public bool     IsHolidayTravel { get; set; }
     public int      HolidayDays     { get; set; }  // 假日天數（Submit 時自動計算）
-    public string   ApprovalStatus   { get; set; } = "pending";  // pending | approved | rejected | returned
+    public string   ApprovalStatus   { get; set; } = "draft";    // draft | pending | approved | rejected | returned
     public int      CurrentStepOrder { get; set; } = 1;
     public Guid?    ReviewedById    { get; set; }
     public DateTime? ReviewedAt    { get; set; }

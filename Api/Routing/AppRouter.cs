@@ -67,6 +67,11 @@ public sealed class AppRouter(
             if (IsSuperAdminRoute(method, segments))
                 RequireSuperAdmin(principal);
 
+            // 撥款日 / 退款日端點：必須是財務體系部門或 Superadmin（縱深防禦：
+            // 即使 Handler 內部的部門檢查被誤刪，路由層仍會擋下）
+            if (IsFinanceOrSuperAdminRoute(method, segments))
+                RequireFinanceOrSuperAdmin(principal);
+
             var requiredPermission = GetRequiredPermission(method, segments);
             if (requiredPermission is not null)
                 RequirePermission(principal, requiredPermission);
@@ -519,11 +524,35 @@ public sealed class AppRouter(
     private static bool IsSuperAdminRoute(string method, string[] segments) =>
         (method, segments) is ("POST", ["admin", "attendance-reminder", "run"]);
 
+    /// <summary>
+    /// 撥款日 / 退款日 / 結案 等只允許財務體系部門（AC/FIN/Jabez HQ/CEO）或 Superadmin 操作的路由清單。
+    /// Handler 內部仍保留同樣的檢查作為縱深防禦。
+    /// </summary>
+    private static bool IsFinanceOrSuperAdminRoute(string method, string[] segments) =>
+        (method, segments) is
+            ("PATCH", ["payment-requests",         _, "payment-date"]) or
+            ("PATCH", ["advance-requests",         _, "payment-date"]) or
+            ("PATCH", ["travel-requests",          _, "payment-date"]) or
+            ("PATCH", ["travel-payment-requests",  _, "payment-date"]) or
+            ("PATCH", ["holiday-travel-requests",  _, "payment-date"]);
+
     /// <summary>檢查是否為 Superadmin，否則拋出 403</summary>
     private static void RequireSuperAdmin(ClaimsPrincipal principal)
     {
         if (principal.FindFirst("is_superadmin")?.Value != "true")
             throw AppException.Forbidden("此功能僅限 Superadmin 使用。");
+    }
+
+    /// <summary>檢查是否為財務體系部門（AC/FIN/Jabez HQ/CEO）或 Superadmin，否則拋出 403</summary>
+    private static void RequireFinanceOrSuperAdmin(ClaimsPrincipal principal)
+    {
+        if (principal.FindFirst("is_superadmin")?.Value == "true") return;
+
+        var deptCode = principal.FindFirst("department_code")?.Value;
+        if (!string.IsNullOrEmpty(deptCode) && DepartmentCodes.FinancialAndAbove.Contains(deptCode))
+            return;
+
+        throw AppException.Forbidden("此操作僅限財務體系部門（會計部 / 行政財務部 / 雅比斯總公司管理部 / 總監室）或 Superadmin 使用。");
     }
 
     /// <summary>檢查 JWT claims 是否包含指定權限。Superadmin 自動通過。</summary>

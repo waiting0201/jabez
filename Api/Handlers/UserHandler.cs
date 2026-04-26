@@ -408,7 +408,8 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         var siteUrl = setting?.SiteUrl?.TrimEnd('/') ?? "https://admin.jabez.com";
         var loginUrl = $"{siteUrl}/auth/login";
 
-        // 寄出通知信（不在信件中明文顯示密碼，僅提示格式）
+        // 寄出通知信：不在信件中明文顯示密碼（Email 為非加密通道、可被轉發、可長期留存於收件匣），
+        // 改為告知密碼推導規則（生日 yyyyMMdd 八位數），員工自行對照。
         var subject = "帳號通知 — 請登入並修改密碼";
         var htmlBody = $"""
             <div style="font-family: 'Microsoft JhengHei', sans-serif; max-width: 600px; margin: 0 auto;">
@@ -422,13 +423,14 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
                     </tr>
                     <tr>
                         <td style="padding: 8px 16px; font-weight: bold; background: #F5F2ED;">預設密碼</td>
-                        <td style="padding: 8px 16px; background: #FDFAF5; font-family: monospace; font-size: 16px;">{tempPassword}</td>
+                        <td style="padding: 8px 16px; background: #FDFAF5;">您的<strong>生日八碼數字</strong>（格式：yyyyMMdd，例如 1990 年 5 月 10 日為 <code>19900510</code>）</td>
                     </tr>
                 </table>
                 <div style="text-align: center; margin: 24px 0;">
                     <a href="{loginUrl}" style="display: inline-block; padding: 12px 32px; background-color: #699F34; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">前往登入系統</a>
                 </div>
                 <p style="color: #A04040; font-weight: bold;">⚠ 基於安全性考量，請於首次登入後立即修改密碼。</p>
+                <p style="color: #6E6F73; font-size: 13px;">若您忘記生日資料或登入有問題，請洽公司 HR 或系統管理員協助。</p>
                 <hr style="border: none; border-top: 1px solid #DDD6C8; margin: 24px 0;">
                 <p style="color: #A39685; font-size: 12px;">此信件由系統自動寄發，請勿直接回覆。</p>
             </div>
