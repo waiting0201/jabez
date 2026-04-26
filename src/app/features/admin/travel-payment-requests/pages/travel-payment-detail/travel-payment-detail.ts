@@ -1,17 +1,19 @@
 import {Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {DatePipe, DecimalPipe} from '@angular/common';
+import {DomSanitizer} from '@angular/platform-browser';
 import {TravelPaymentRequestService} from '../../services/travel-payment-request.service';
 import {TravelPaymentPdfService} from '../../services/travel-payment-pdf.service';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
 import {ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
 import {TravelPaymentRequest, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/travel-payment-request.model';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
+import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 
 @Component({
   selector: 'app-travel-payment-detail',
   templateUrl: './travel-payment-detail.html',
-  imports: [RouterLink, DecimalPipe, DatePipe, ApprovalTimeline],
+  imports: [RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, FilePreviewModal],
 })
 export class TravelPaymentDetail implements OnInit {
   private service = inject(TravelPaymentRequestService);
@@ -19,10 +21,19 @@ export class TravelPaymentDetail implements OnInit {
   private taskService = inject(ApprovalTaskService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private sanitizer = inject(DomSanitizer);
 
   request = signal<TravelPaymentRequest | null>(null);
   approvalTask = signal<ApprovalTask | null>(null);
   deleting = signal(false);
+
+  /** 檔案預覽 modal */
+  previewFile: PreviewFileData | null = null;
+  openPreview(name: string, url: string) {
+    if (!url) return;
+    this.previewFile = {name, url, safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(url)};
+  }
+  closePreview() { this.previewFile = null; }
 
   readonly statusLabel = APPROVAL_STATUS_LABELS;
   readonly statusClass = APPROVAL_STATUS_CLASSES;

@@ -17,12 +17,12 @@ export class TravelPaymentRequestService {
     return this.http.get<TravelPaymentRequest>(`${environment.apiUrl}/travel-payment-requests/${id}`);
   }
 
-  create(data: Omit<TravelPaymentRequest, 'id' | 'createdAt' | 'approvalStatus'>): Observable<TravelPaymentRequest> {
-    return this.http.post<TravelPaymentRequest>(`${environment.apiUrl}/travel-payment-requests`, data);
+  create(formData: FormData): Observable<TravelPaymentRequest> {
+    return this.http.post<TravelPaymentRequest>(`${environment.apiUrl}/travel-payment-requests`, formData);
   }
 
-  update(id: number, changes: Partial<TravelPaymentRequest>): Observable<TravelPaymentRequest> {
-    return this.http.patch<TravelPaymentRequest>(`${environment.apiUrl}/travel-payment-requests/${id}`, changes);
+  update(id: number, formData: FormData): Observable<TravelPaymentRequest> {
+    return this.http.patch<TravelPaymentRequest>(`${environment.apiUrl}/travel-payment-requests/${id}`, formData);
   }
 
   delete(id: number): Observable<void> {

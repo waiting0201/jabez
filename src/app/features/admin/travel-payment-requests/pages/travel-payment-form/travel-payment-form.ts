@@ -3,7 +3,11 @@ import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {AbstractControl, FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {DatePipe, DecimalPipe} from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
+import {DomSanitizer} from '@angular/platform-browser';
+import {firstValueFrom} from 'rxjs';
+import heic2any from 'heic2any';
 import {TravelPaymentRequestService} from '../../services/travel-payment-request.service';
+import {PaymentRequestService} from '../../../payment-requests/services/payment-request.service';
 import {ProjectService} from '../../../projects/services/project.service';
 import {Project} from '../../../projects/models/project.model';
 import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, ITEM_CATEGORIES, DesignatedReviewer, TravelPaymentRequest} from '../../models/travel-payment-request.model';
@@ -14,27 +18,45 @@ import {ApprovalTaskService} from '../../../approval-tasks/services/approval-tas
 import {ApprovalFlow, ApprovalRecord} from '../../../approval-tasks/models/approval-task.model';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
+import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {JobTitleLookup} from '../../../job-titles/models/job-title.model';
 import {UserLookup} from '../../../users/models/user.model';
 
 @Component({
   selector: 'app-travel-payment-form',
   templateUrl: './travel-payment-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, ApprovalTimeline],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, FilePreviewModal],
 })
 export class TravelPaymentForm implements OnInit {
-  private fb          = inject(FormBuilder);
-  private service     = inject(TravelPaymentRequestService);
-  private projects$   = inject(ProjectService);
-  private jobTitleSvc = inject(JobTitleService);
-  private userSvc     = inject(UserService);
-  private approvalSvc = inject(ApprovalService);
-  private taskSvc     = inject(ApprovalTaskService);
-  private route       = inject(ActivatedRoute);
-  private router      = inject(Router);
-  private cdr         = inject(ChangeDetectorRef);
-  private modal       = inject(NgbModal);
+  private fb             = inject(FormBuilder);
+  private service        = inject(TravelPaymentRequestService);
+  private paymentService = inject(PaymentRequestService);
+  private projects$      = inject(ProjectService);
+  private jobTitleSvc    = inject(JobTitleService);
+  private userSvc        = inject(UserService);
+  private approvalSvc    = inject(ApprovalService);
+  private taskSvc        = inject(ApprovalTaskService);
+  private route          = inject(ActivatedRoute);
+  private router         = inject(Router);
+  private cdr            = inject(ChangeDetectorRef);
+  private modal          = inject(NgbModal);
+  private sanitizer      = inject(DomSanitizer);
   successModal = viewChild<TemplateRef<any>>('successModal');
+
+  /** invoice id → File 物件（新上傳的檔案） */
+  fileMap = new Map<string, File>();
+
+  /** 正在 OCR 辨識中的列 ID */
+  ocrLoadingIds = new Set<string>();
+  get isAnyOcrPending(): boolean { return this.ocrLoadingIds.size > 0; }
+
+  /** 檔案預覽 modal */
+  previewFile: PreviewFileData | null = null;
+  openPreview(name: string, url: string) {
+    if (!url) return;
+    this.previewFile = {name, url, safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(url)};
+  }
+  closePreview() { this.previewFile = null; }
 
   isEdit     = false;
   requestId  = 0;
@@ -187,11 +209,13 @@ export class TravelPaymentForm implements OnInit {
             });
           }
         }
-        // 回填費用明細
+        // 回填費用明細（保留既有發票檔案 URL）
         (r.items ?? []).forEach((item, idx) => this.itemArray.push(this._itemGroup(
+          `existing-${item.id ?? idx}`, item.fileName ?? '',
           item.category, item.seqNo, item.itemName, item.unitPrice,
           item.quantity, item.totalPrice, item.note ?? '',
-          item.invoiceNo ?? '', item.invoiceDate ?? '', idx
+          item.invoiceNo ?? '', item.invoiceDate ?? '', idx,
+          '', item.fileUrl ?? '',
         )));
         if (this.isReadOnly) this.form.disable();
         // 非草稿時載入簽核流程
@@ -212,11 +236,76 @@ export class TravelPaymentForm implements OnInit {
   }
 
   addItem() {
-    this.itemArray.push(this._itemGroup('', 0, '', 0, '', 0, '', '', '', this.itemArray.length));
+    this.itemArray.push(this._itemGroup(
+      '', '', '', 0, '', 0, '', 0, '', '', '', this.itemArray.length,
+    ));
   }
 
   removeItem(i: number) {
+    const ctrl = this.itemArray.at(i);
+    const id   = ctrl.get('id')?.value as string;
+    const url  = ctrl.get('previewUrl')?.value as string;
+    if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
+    this.fileMap.delete(id);
     this.itemArray.removeAt(i);
+  }
+
+  /** 發票檔案上傳 — 自動新增行、OCR 辨識 */
+  async onFilesSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+
+    const rawFiles = Array.from(input.files);
+    input.value = '';
+
+    const files = await Promise.all(rawFiles.map(f => this._convertHeicIfNeeded(f)));
+
+    const entries = files.map(file => {
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const previewUrl = URL.createObjectURL(file);
+      this.ocrLoadingIds.add(id);
+      this.fileMap.set(id, file);
+      this.itemArray.push(this._itemGroup(
+        id, file.name, '', 0, '', 0, '', 0, '', '', '',
+        this.itemArray.length, previewUrl,
+      ));
+      return {id, file};
+    });
+
+    // OCR 辨識（並行）
+    await Promise.all(entries.map(async ({id, file}) => {
+      try {
+        const result = await firstValueFrom(this.paymentService.ocrInvoice(file));
+        const idx = this.itemArray.controls.findIndex(c => c.get('id')?.value === id);
+        if (idx >= 0) {
+          this.itemArray.controls[idx].patchValue({
+            invoiceNo:   result.invoiceNo ?? '',
+            invoiceDate: result.invoiceDate ?? '',
+            unitPrice:   result.amount ?? 0,
+            totalPrice:  result.amount ?? 0,
+            quantity:    '1式',
+            ...(result.docType === 'ticket' ? { note: '票號', category: '交通費' } : {}),
+          });
+        }
+      } catch {
+        // OCR 失敗 — 保留空白欄位
+      } finally {
+        this.ocrLoadingIds.delete(id);
+        this.cdr.markForCheck();
+      }
+    }));
+  }
+
+  private async _convertHeicIfNeeded(file: File): Promise<File> {
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.heic') && !name.endsWith('.heif')) return file;
+    try {
+      const blob = await heic2any({blob: file, toType: 'image/jpeg', quality: 0.85}) as Blob;
+      const jpegName = file.name.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg');
+      return new File([blob], jpegName, {type: 'image/jpeg'});
+    } catch {
+      return file;
+    }
   }
 
   /** 單價 × 數量（嘗試解析數量前面的數字） */
@@ -230,12 +319,12 @@ export class TravelPaymentForm implements OnInit {
 
   /** 儲存（草稿或更新，不改變狀態） */
   save() {
-    if (this.form.invalid || this.itemArray.length === 0 || this.isReadOnly) return;
-    const payload = this._buildPayload();
-    const obs = this.isEdit
-      ? this.service.update(this.requestId, payload)
-      : this.service.create(payload);
+    if (this.form.invalid || this.itemArray.length === 0 || this.isReadOnly || this.isAnyOcrPending) return;
+    const fd = this._buildFormData();
     this.errorMsg.set('');
+    const obs = this.isEdit
+      ? this.service.update(this.requestId, fd)
+      : this.service.create(fd);
     obs.subscribe({
       next: saved => {
         if (!this.isEdit) this.requestId = saved.id;
@@ -249,12 +338,12 @@ export class TravelPaymentForm implements OnInit {
 
   /** 送出申請（先儲存再將狀態改為 pending） */
   submitForApproval() {
-    if (this.form.invalid || this.itemArray.length === 0 || this.isReadOnly) return;
-    const payload = this._buildPayload();
-    const save$ = this.isEdit
-      ? this.service.update(this.requestId, payload)
-      : this.service.create(payload);
+    if (this.form.invalid || this.itemArray.length === 0 || this.isReadOnly || this.isAnyOcrPending) return;
+    const fd = this._buildFormData();
     this.errorMsg.set('');
+    const save$ = this.isEdit
+      ? this.service.update(this.requestId, fd)
+      : this.service.create(fd);
     save$.subscribe({
       next: saved => {
         this.service.submit(saved.id).subscribe({
@@ -279,44 +368,63 @@ export class TravelPaymentForm implements OnInit {
     });
   }
 
-  private _buildPayload() {
+  private _buildFormData(): FormData {
     const v = this.form.value;
-    const project = this.projects.find(p => p.id === v.projectId);
+    const fd = new FormData();
+    fd.append('destination', v.destination ?? '');
+    fd.append('purpose',     v.purpose ?? '');
+    if (v.startDate) fd.append('startDate', v.startDate);
+    if (v.endDate)   fd.append('endDate',   v.endDate);
+    if (v.projectId != null) fd.append('projectId', String(v.projectId));
+
     const reviewers = this.designatedEntries
       .filter(e => e.selectedUserId)
       .map(e => ({ reviewerId: e.selectedUserId!, stepOrder: e.stepOrder }));
-    const items = this.itemArray.controls.map((c, idx) => ({
-      category:    c.get('category')?.value || '',
-      seqNo:       +(c.get('seqNo')?.value) || 0,
-      itemName:    c.get('itemName')?.value || '',
-      unitPrice:   +(c.get('unitPrice')?.value) || 0,
-      quantity:    c.get('quantity')?.value || '',
-      totalPrice:  +(c.get('totalPrice')?.value) || 0,
-      note:        c.get('note')?.value || '',
-      invoiceNo:   c.get('invoiceNo')?.value || '',
-      invoiceDate: c.get('invoiceDate')?.value || '',
-      sortOrder:   idx,
-    }));
-    const grandTotal = items.reduce((s, i) => s + i.totalPrice, 0);
-    return {
-      destination:         v.destination!,
-      startDate:           new Date(v.startDate!),
-      endDate:             new Date(v.endDate!),
-      purpose:             v.purpose!,
-      projectId:           v.projectId ?? undefined,
-      projectCode:         project?.code,
-      grandTotal,
-      designatedReviewers: reviewers.length > 0 ? reviewers : undefined,
-      items,
-    };
+    fd.append('designatedReviewers', JSON.stringify(reviewers));
+
+    const itemsMeta: object[] = [];
+    let fileIndex = 0;
+    let sortIdx = 0;
+
+    for (const ctrl of this.itemArray.controls) {
+      const id   = ctrl.get('id')?.value;
+      const file = this.fileMap.get(id);
+      const meta = {
+        category:    ctrl.get('category')?.value || '',
+        seqNo:       +(ctrl.get('seqNo')?.value) || 0,
+        itemName:    ctrl.get('itemName')?.value || '',
+        unitPrice:   +(ctrl.get('unitPrice')?.value) || 0,
+        quantity:    ctrl.get('quantity')?.value || '',
+        totalPrice:  +(ctrl.get('totalPrice')?.value) || 0,
+        note:        ctrl.get('note')?.value || null,
+        invoiceNo:   ctrl.get('invoiceNo')?.value || null,
+        invoiceDate: ctrl.get('invoiceDate')?.value || null,
+        fileName:    ctrl.get('fileName')?.value || null,
+        fileUrl:     ctrl.get('fileUrl')?.value || null,
+        fileIndex:   file ? fileIndex : -1,
+        sortOrder:   sortIdx++,
+      };
+      if (file) {
+        fd.append('files', file, file.name);
+        fileIndex++;
+      }
+      itemsMeta.push(meta);
+    }
+
+    fd.append('items', JSON.stringify(itemsMeta));
+    return fd;
   }
 
   private _itemGroup(
+    id: string, fileName: string,
     category: string, seqNo: number, itemName: string, unitPrice: number,
     quantity: string, totalPrice: number, note: string,
-    invoiceNo: string, invoiceDate: string, sortOrder: number
+    invoiceNo: string, invoiceDate: string, sortOrder: number,
+    previewUrl = '', fileUrl = '',
   ) {
     return this.fb.group({
+      id:          [id || `${Date.now()}-${Math.random().toString(36).slice(2)}`],
+      fileName:    [fileName],
       category:    [category, Validators.required],
       seqNo:       [seqNo],
       itemName:    [itemName, Validators.required],
@@ -326,6 +434,8 @@ export class TravelPaymentForm implements OnInit {
       note:        [note],
       invoiceNo:   [invoiceNo],
       invoiceDate: [invoiceDate],
+      previewUrl:  [previewUrl],
+      fileUrl:     [fileUrl],
       sortOrder:   [sortOrder],
     });
   }

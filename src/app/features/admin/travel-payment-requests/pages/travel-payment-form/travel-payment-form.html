@@ -119,6 +119,30 @@
           </div>
         </div>
 
+        <!-- 上傳發票 -->
+        @if (!isReadOnly) {
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon text-primary" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#upload"></use>
+              </svg>
+              上傳發票
+            </div>
+            <div class="card-body">
+              <label class="flex flex-col items-center justify-center rounded-3 py-4 px-4 mb-0 text-center"
+                     style="cursor:pointer; border: 2px dashed var(--bs-border-color);">
+                <svg class="sa-icon sa-icon-2x text-muted mb-2" style="stroke: currentColor">
+                  <use href="/assets/icons/sprite.svg#upload"></use>
+                </svg>
+                <span class="fw-500">點擊上傳發票圖檔</span>
+                <span class="text-muted small mt-1">支援 JPG、PNG、HEIC、PDF，可多選。上傳後自動新增明細行並辨識發票資訊</span>
+                <input type="file" class="hidden" multiple accept="image/*,.heic,.heif,application/pdf"
+                       (change)="onFilesSelected($event)">
+              </label>
+            </div>
+          </div>
+        }
+
         <!-- 費用明細（含發票欄位） -->
         <div class="card border-0 shadow-sm mt-6">
           <div class="card-header bg-transparent border-bottom flex items-center justify-between">
@@ -131,7 +155,7 @@
             @if (!isReadOnly) {
               <button type="button" class="btn btn-sm btn-outline-primary inline-flex items-center gap-1" (click)="addItem()">
                 <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
-                新增項目
+                手動新增行
               </button>
             }
           </div>
@@ -140,6 +164,7 @@
               <table class="table table-sm mb-0">
                 <thead class="table-light">
                   <tr>
+                    <th style="width:40px"></th>
                     <th style="min-width:100px">分類</th>
                     <th style="min-width:60px">項次</th>
                     <th style="min-width:160px">項目說明</th>
@@ -155,8 +180,20 @@
                   </tr>
                 </thead>
                 <tbody formArrayName="items">
-                  @for (ctrl of itemControls; track $index; let i = $index) {
+                  @for (ctrl of itemControls; track ctrl.get('id')?.value; let i = $index) {
+                    @let isOcr = ocrLoadingIds.has(ctrl.get('id')?.value);
                     <tr [formGroupName]="i">
+                      <td class="align-middle text-center">
+                        @if (ctrl.get('previewUrl')?.value || ctrl.get('fileUrl')?.value) {
+                          <button type="button" class="btn btn-sm btn-ghost-secondary p-1"
+                                  (click)="openPreview(ctrl.get('fileName')?.value, ctrl.get('previewUrl')?.value || ctrl.get('fileUrl')?.value)"
+                                  title="{{ ctrl.get('fileName')?.value }}">
+                            <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                          </button>
+                        } @else if (isOcr) {
+                          <span class="spinner-border spinner-border-sm" role="status"></span>
+                        }
+                      </td>
                       <td class="align-middle">
                         @if (isReadOnly) {
                           <span class="small">{{ ctrl.get('category')?.value }}</span>
@@ -186,6 +223,8 @@
                       <td class="align-middle">
                         @if (isReadOnly) {
                           <span class="small">{{ ctrl.get('unitPrice')?.value | number:'1.0-0' }}</span>
+                        } @else if (isOcr) {
+                          <div class="py-1 text-muted small">—</div>
                         } @else {
                           <input type="number" class="form-control form-control-sm" formControlName="unitPrice" min="0"
                                  (input)="calcTotal(ctrl)">
@@ -194,6 +233,8 @@
                       <td class="align-middle">
                         @if (isReadOnly) {
                           <span class="small">{{ ctrl.get('quantity')?.value }}</span>
+                        } @else if (isOcr) {
+                          <div class="py-1 text-muted small">—</div>
                         } @else {
                           <input class="form-control form-control-sm" formControlName="quantity" placeholder="如：1式"
                                  (input)="calcTotal(ctrl)">
@@ -202,6 +243,8 @@
                       <td class="align-middle">
                         @if (isReadOnly) {
                           <span class="small fw-500">{{ ctrl.get('totalPrice')?.value | number:'1.0-0' }}</span>
+                        } @else if (isOcr) {
+                          <div class="py-1 text-muted small">—</div>
                         } @else {
                           <input type="number" class="form-control form-control-sm" formControlName="totalPrice" min="0">
                         }
@@ -216,6 +259,11 @@
                       <td class="align-middle">
                         @if (isReadOnly) {
                           <span class="small font-monospace">{{ ctrl.get('invoiceNo')?.value || '—' }}</span>
+                        } @else if (isOcr) {
+                          <div class="flex items-center gap-1 text-muted small py-1">
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                            識別中…
+                          </div>
                         } @else {
                           <input class="form-control form-control-sm font-monospace" formControlName="invoiceNo" placeholder="AB-12345678">
                         }
@@ -223,13 +271,19 @@
                       <td class="align-middle">
                         @if (isReadOnly) {
                           <span class="small">{{ ctrl.get('invoiceDate')?.value || '—' }}</span>
+                        } @else if (isOcr) {
+                          <div class="flex items-center gap-1 text-muted small py-1">
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                            識別中…
+                          </div>
                         } @else {
                           <input type="date" class="form-control form-control-sm" formControlName="invoiceDate">
                         }
                       </td>
                       @if (!isReadOnly) {
                         <td class="text-right align-middle">
-                          <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeItem(i)">
+                          <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center"
+                                  [disabled]="isOcr" (click)="removeItem(i)">
                             <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
                           </button>
                         </td>
@@ -237,14 +291,14 @@
                     </tr>
                   } @empty {
                     <tr>
-                      <td [attr.colspan]="isReadOnly ? 9 : 10" class="text-center text-muted py-4 small">尚未新增費用項目</td>
+                      <td [attr.colspan]="isReadOnly ? 10 : 11" class="text-center text-muted py-4 small">請上傳發票圖檔，或點擊「手動新增行」</td>
                     </tr>
                   }
                 </tbody>
                 @if (itemControls.length > 0) {
                   <tfoot>
                     <tr class="table-light">
-                      <td colspan="5" class="text-right fw-500 small">合計</td>
+                      <td colspan="6" class="text-right fw-500 small">合計</td>
                       <td class="fw-600">{{ grandTotal | number:'1.0-0' }}</td>
                       <td colspan="3"></td>
                       @if (!isReadOnly) { <td></td> }
@@ -385,6 +439,10 @@
     </div>
   </form>
 </div>
+
+@if (previewFile) {
+  <app-file-preview-modal [file]="previewFile" (closed)="closePreview()" />
+}
 
 <ng-template #successModal let-modal>
   <div class="modal-header border-0 pb-0">
