@@ -282,7 +282,7 @@ export const environment = {
 Api/
 ├── Functions/
 │   ├── RouterFunction.cs              # HttpTrigger，catch-all route {*route}
-│   └── AttendanceReminderFunction.cs  # TimerTrigger：每分鐘檢查上下班前 2 分鐘，命中則 LINE 推播打卡提醒
+│   └── AttendanceReminderFunction.cs  # TimerTrigger：限定 7-9 / 16-18 Taipei 時段每分鐘檢查上下班前 2 分鐘，命中則 LINE 推播；cron 由 `AttendanceReminderCron` app setting 控制
 ├── Routing/
 │   └── AppRouter.cs                   # C# 12 List Pattern 路由分派器
 ├── Handlers/                          # 22 個 Handler（業務邏輯）
@@ -596,7 +596,7 @@ dotnet ef database update               # 套用 Migration
 | `TravelRequest` | 出差預支申請（含 IsHolidayTravel、IsClosed 結案、GrandTotal 明細合計；事後走沖銷流程）。當 `IsHolidayTravel=true`（假日執行活動）時不含 Items 與發票明細，僅記錄活動地點/期間/參與人員 |
 | `TravelRequestItem` | 出差預支明細（交通費、住宿費、餐費、雜支）；假日執行活動不使用 |
 | `TravelPaymentRequest` | 出差請款申請（員工代墊後直接請款，無沖銷流程；含 EstimatedPaymentDate/PaidAt 撥款欄位） |
-| `TravelPaymentRequestItem` | 出差請款明細（交通費、住宿費、餐費、雜支，含發票號碼、檔案上傳） |
+| `TravelPaymentRequestItem` | 出差請款明細（交通費、住宿費、餐費、雜支，含發票號碼、發票日期、發票檔案上傳；上傳走 multipart + Azure Blob `invoices` container，前端支援拖放、OCR 自動辨識、HEIC/PDF） |
 | `OvertimeRequest` | 加班申請（走簽核流程） |
 | `AdvanceRequest` | 預支申請 |
 | `AdvanceRequestItem` | 預支明細 |
@@ -1076,14 +1076,14 @@ draft → pending → approved / returned / rejected
 
 - 每日上班前 2 分鐘、下班前 2 分鐘各一次，自動推播 LINE Flex Message 提醒員工打卡
 - 無需前端介入：員工即使未登入系統，只要已綁定 LINE 即可收到
-- 排程由 `AttendanceReminderFunction` TimerTrigger 每分鐘觸發
+- 排程由 `AttendanceReminderFunction` TimerTrigger 觸發；cron 由 app setting `AttendanceReminderCron` 控制
 
 ### 觸發邏輯
 
-1. Cron `0 */1 * * * *`（UTC 每分鐘）進入 Function
+1. Cron `%AttendanceReminderCron%`（UTC）進入 Function；預設 `0 */1 23,0-1,8-10 * * *`，僅在 7-9 Taipei（= UTC 23,0,1）與 16-18 Taipei（= UTC 8,9,10）時段每分鐘觸發
 2. 透過 `Clock.Now`（台北時區）取得當前 `HH:mm`
 3. 比對 `SystemSetting.WorkStartTime - 2min` / `WorkEndTime - 2min`；未命中直接 return
-4. 週末（Saturday/Sunday）直接 return
+4. 週末（Saturday/Sunday）直接 return（cron 跨午夜時 day-of-week 無法在單一表達式中正確涵蓋週一至週五，故由 Service 端統一過濾）
 5. 命中 → Dapper 查詢對象 → LINE 推播
 
 ### 對象過濾條件（Dapper SQL）
@@ -1103,8 +1103,9 @@ draft → pending → approved / returned / rejected
 ### 設計決策
 
 - **Cron Timezone**：UTC 觸發 + 內部 `Clock.Now` 比對，不依賴 `WEBSITE_TIME_ZONE` / `TZ` 環境變數，相容 Linux Consumption Plan
+- **限定時段**：cron 只在 7-9 / 16-18 Taipei 時段每分鐘觸發（共 6 小時/日），其他時段不進入 Function；對應預設 `WorkStartTime=09:00` / `WorkEndTime=18:00` 並留 1 小時前後緩衝。若上下班時間調整至此區間外，須同步修改 `AttendanceReminderCron`（Production：Function App → Configuration）
 - **幂等性**：不持久化發送紀錄；依賴 Azure Functions Timer 的 singleton lock（AzureWebJobsStorage blob lease）保證同一 cron tick 只觸發一次，加上 `RunOnStartup=false` 與 `IsPastDue` 跳過防止意外重複
-- **成本**：Consumption Plan 每月 43,200 次執行、~553 GB-s，遠低於免費額度（實質成本 0）
+- **成本**：Consumption Plan 每月約 10,800 次執行（限定時段後），遠低於免費額度（實質成本 0）
 
 ### 涉及元件
 

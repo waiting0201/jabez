@@ -8,15 +8,16 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
+using System.Text.Json;
 
 namespace Jabez.Api.Handlers;
 
 /// <summary>
 /// 出差請款申請 Handler。
 /// GET    /travel-payment-requests           → 列表（分頁）
-/// POST   /travel-payment-requests           → 新增（EmployeeId 由 JWT 決定）
+/// POST   /travel-payment-requests           → 新增（multipart/form-data，含發票檔案）
 /// GET    /travel-payment-requests/{id}      → 單筆
-/// PUT    /travel-payment-requests/{id}      → 更新（僅 draft/returned 才允許）
+/// PUT    /travel-payment-requests/{id}      → 更新（multipart/form-data，僅 draft/returned 才允許）
 /// PATCH  /travel-payment-requests/{id}      → 部分更新（同上）
 /// DELETE /travel-payment-requests/{id}      → 刪除（僅 draft 才允許）
 /// PATCH  /travel-payment-requests/{id}/submit       → 送出（draft → pending）
@@ -25,11 +26,18 @@ namespace Jabez.Api.Handlers;
 public sealed class TravelPaymentRequestHandler(
     AppDbContext db,
     ITravelPaymentRequestReadService reader,
+    IBlobStorageService blob,
     IJwtService jwtService,
     IApprovalNotificationService notifier,
     IApprovalFlowService approvalFlow)
 {
     private const string AppType = "travel_payment";
+    private const string ContainerName = "invoices";
+
+    private static readonly JsonSerializerOptions JsonOpts = new()
+    {
+        PropertyNameCaseInsensitive = true,
+    };
 
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
@@ -64,65 +72,99 @@ public sealed class TravelPaymentRequestHandler(
         // EmployeeId 由 JWT 中的 sub claim 決定，不信任客戶端傳入的值
         var employeeId = await GetUserIdAsync(req);
 
-        var body = await req.ReadFromJsonAsync<CreateTravelPaymentRequestRequest>();
-        if (body is null)
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
+        var form = await req.ReadFormAsync();
 
-        if (string.IsNullOrWhiteSpace(body.Destination))
+        var destination = form["destination"].ToString();
+        var purpose     = form["purpose"].ToString();
+        var startDateStr = form["startDate"].ToString();
+        var endDateStr   = form["endDate"].ToString();
+        int? projectId   = int.TryParse(form["projectId"], out var pid) ? pid : null;
+        int? approvalItemId = int.TryParse(form["approvalItemId"], out var aiid) ? aiid : null;
+
+        if (string.IsNullOrWhiteSpace(destination))
             return new BadRequestObjectResult(ApiResponse.Fail("Destination is required."));
-
-        if (body.StartDate == default || body.EndDate == default)
+        if (!DateTime.TryParse(startDateStr, out var startDate) || !DateTime.TryParse(endDateStr, out var endDate))
             return new BadRequestObjectResult(ApiResponse.Fail("StartDate and EndDate are required."));
-
-        if (body.EndDate < body.StartDate)
+        if (endDate < startDate)
             return new BadRequestObjectResult(ApiResponse.Fail("EndDate must be on or after StartDate."));
 
-        if (body.Items is null || body.Items.Length == 0)
+        var itemsJson = form["items"].ToString();
+        if (string.IsNullOrEmpty(itemsJson))
+            return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
+        var itemRequests = JsonSerializer.Deserialize<TravelPaymentRequestItemRequest[]>(itemsJson, JsonOpts);
+        if (itemRequests is null || itemRequests.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
 
-        // 指定審核者存在性驗證
-        if (body.DesignatedReviewers is { Length: > 0 })
+        // 指定審核者
+        DesignatedReviewerRequest[]? designatedReviewers = null;
+        var drJson = form["designatedReviewers"].ToString();
+        if (!string.IsNullOrEmpty(drJson))
+            designatedReviewers = JsonSerializer.Deserialize<DesignatedReviewerRequest[]>(drJson, JsonOpts);
+
+        if (designatedReviewers is { Length: > 0 })
         {
-            var reviewerIds = body.DesignatedReviewers.Select(r => r.ReviewerId).Distinct().ToList();
+            var reviewerIds = designatedReviewers.Select(r => r.ReviewerId).Distinct().ToList();
             var existCount = await db.Users.AsNoTracking().CountAsync(u => reviewerIds.Contains(u.Id));
             if (existCount != reviewerIds.Count)
                 return new BadRequestObjectResult(ApiResponse.Fail("一或多位指定審核者不存在。"));
         }
 
-        var items = body.Items.Select((i, idx) => new TravelPaymentRequestItem
+        // 上傳檔案至 Blob Storage（依 FileIndex 對應）
+        var files = form.Files.GetFiles("files");
+        var entityItems = new List<TravelPaymentRequestItem>();
+        for (int idx = 0; idx < itemRequests.Length; idx++)
         {
-            Category   = i.Category,
-            SeqNo      = i.SeqNo,
-            ItemName   = i.ItemName,
-            UnitPrice  = i.UnitPrice,
-            Quantity   = i.Quantity,
-            TotalPrice = i.TotalPrice,
-            Note       = i.Note,
-            SortOrder  = i.SortOrder > 0 ? i.SortOrder : idx,
-        }).ToList();
+            var i = itemRequests[idx];
+            string? fileUrl = null;
+            string? fileName = i.FileName;
+            if (i.FileIndex >= 0 && i.FileIndex < files.Count)
+            {
+                var file = files[i.FileIndex];
+                var ext = Path.GetExtension(file.FileName);
+                var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
+                using var stream = file.OpenReadStream();
+                fileUrl  = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                fileName = file.FileName;
+            }
+
+            entityItems.Add(new TravelPaymentRequestItem
+            {
+                Category    = i.Category,
+                SeqNo       = i.SeqNo,
+                ItemName    = i.ItemName,
+                UnitPrice   = i.UnitPrice,
+                Quantity    = i.Quantity,
+                TotalPrice  = i.TotalPrice,
+                Note        = i.Note,
+                SortOrder   = i.SortOrder > 0 ? i.SortOrder : idx,
+                InvoiceNo   = string.IsNullOrWhiteSpace(i.InvoiceNo) ? null : i.InvoiceNo,
+                InvoiceDate = i.InvoiceDate,
+                FileName    = fileName,
+                FileUrl     = fileUrl,
+            });
+        }
 
         var request = new TravelPaymentRequest
         {
             EmployeeId      = employeeId,
-            ApprovalItemId  = body.ApprovalItemId,
-            Destination     = body.Destination,
-            StartDate       = body.StartDate,
-            EndDate         = body.EndDate,
-            GrandTotal      = items.Sum(i => i.TotalPrice),
-            Purpose         = body.Purpose,
-            ProjectId       = body.ProjectId,
+            ApprovalItemId  = approvalItemId,
+            Destination     = destination,
+            StartDate       = startDate,
+            EndDate         = endDate,
+            GrandTotal      = entityItems.Sum(i => i.TotalPrice),
+            Purpose         = purpose,
+            ProjectId       = projectId,
             ApprovalStatus  = "draft",
             CreatedAt       = Clock.Now,
-            Items           = items,
+            Items           = entityItems,
         };
         db.TravelPaymentRequests.Add(request);
         await db.SaveChangesAsync();
 
-        // 儲存指定審核者
-        if (body.DesignatedReviewers is { Length: > 0 })
+        if (designatedReviewers is { Length: > 0 })
         {
             db.RequestDesignatedReviewers.AddRange(
-                body.DesignatedReviewers.OrderBy(r => r.StepOrder).Select(r => new RequestDesignatedReviewer
+                designatedReviewers.OrderBy(r => r.StepOrder).Select(r => new RequestDesignatedReviewer
                 {
                     RequestType = AppType,
                     RequestId   = request.Id,
@@ -142,10 +184,6 @@ public sealed class TravelPaymentRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid travel payment request ID format."));
 
-        var body = await req.ReadFromJsonAsync<UpdateTravelPaymentRequestRequest>();
-        if (body is null)
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
-
         var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         var item = currentUser?.IsSuperAdmin == true
             ? await db.TravelPaymentRequests.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId)
@@ -155,60 +193,132 @@ public sealed class TravelPaymentRequestHandler(
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel payment requests can be edited.");
 
-        // 指定審核者整組替換（提供 DesignatedReviewers 時才更新）
-        if (body.DesignatedReviewers is not null)
+        var form = await req.ReadFormAsync();
+
+        // 主檔欄位（皆為選填，未提供則保留原值）
+        if (form.ContainsKey("destination"))
         {
-            if (body.DesignatedReviewers.Length > 0)
+            var destination = form["destination"].ToString();
+            if (!string.IsNullOrWhiteSpace(destination)) item.Destination = destination;
+        }
+        if (form.ContainsKey("purpose"))
+            item.Purpose = form["purpose"].ToString();
+        if (form.ContainsKey("startDate") && DateTime.TryParse(form["startDate"], out var startDate))
+            item.StartDate = startDate;
+        if (form.ContainsKey("endDate") && DateTime.TryParse(form["endDate"], out var endDate))
+            item.EndDate = endDate;
+        if (form.ContainsKey("projectId"))
+        {
+            if (int.TryParse(form["projectId"], out var pid))
+                item.ProjectId = pid == 0 ? null : pid;
+            else
+                item.ProjectId = null;
+        }
+
+        // 指定審核者整組替換
+        var drJson = form["designatedReviewers"].ToString();
+        if (!string.IsNullOrEmpty(drJson))
+        {
+            var updateDesignatedReviewers = JsonSerializer.Deserialize<DesignatedReviewerRequest[]>(drJson, JsonOpts);
+            if (updateDesignatedReviewers is not null)
             {
-                var reviewerIds = body.DesignatedReviewers.Select(r => r.ReviewerId).Distinct().ToList();
-                var existCount = await db.Users.AsNoTracking().CountAsync(u => reviewerIds.Contains(u.Id));
-                if (existCount != reviewerIds.Count)
-                    return new BadRequestObjectResult(ApiResponse.Fail("一或多位指定審核者不存在。"));
-            }
-            var old = await db.RequestDesignatedReviewers
-                .Where(r => r.RequestType == AppType && r.RequestId == intId)
-                .ToListAsync();
-            db.RequestDesignatedReviewers.RemoveRange(old);
-            if (body.DesignatedReviewers.Length > 0)
-            {
-                db.RequestDesignatedReviewers.AddRange(
-                    body.DesignatedReviewers.Select(r => new RequestDesignatedReviewer
-                    {
-                        RequestType = AppType,
-                        RequestId   = intId,
-                        ReviewerId  = r.ReviewerId,
-                        StepOrder   = r.StepOrder,
-                    }));
+                if (updateDesignatedReviewers.Length > 0)
+                {
+                    var reviewerIds = updateDesignatedReviewers.Select(r => r.ReviewerId).Distinct().ToList();
+                    var existCount = await db.Users.AsNoTracking().CountAsync(u => reviewerIds.Contains(u.Id));
+                    if (existCount != reviewerIds.Count)
+                        return new BadRequestObjectResult(ApiResponse.Fail("一或多位指定審核者不存在。"));
+                }
+                var old = await db.RequestDesignatedReviewers
+                    .Where(r => r.RequestType == AppType && r.RequestId == intId)
+                    .ToListAsync();
+                db.RequestDesignatedReviewers.RemoveRange(old);
+                if (updateDesignatedReviewers.Length > 0)
+                {
+                    db.RequestDesignatedReviewers.AddRange(
+                        updateDesignatedReviewers.Select(r => new RequestDesignatedReviewer
+                        {
+                            RequestType = AppType,
+                            RequestId   = intId,
+                            ReviewerId  = r.ReviewerId,
+                            StepOrder   = r.StepOrder,
+                        }));
+                }
             }
         }
 
-        if (body.Destination is not null) item.Destination = body.Destination;
-        if (body.StartDate.HasValue)      item.StartDate   = body.StartDate.Value;
-        if (body.EndDate.HasValue)        item.EndDate     = body.EndDate.Value;
-        if (body.Purpose is not null)     item.Purpose     = body.Purpose;
-        if (body.ProjectId.HasValue)      item.ProjectId   = body.ProjectId == 0 ? null : body.ProjectId;
-
-        // 明細項目整組替換（提供 Items 時才更新）
-        if (body.Items is { Length: > 0 })
+        // 明細整組替換（提供 items 時才更新）
+        var itemsJson = form["items"].ToString();
+        if (!string.IsNullOrEmpty(itemsJson))
         {
+            var itemRequests = JsonSerializer.Deserialize<TravelPaymentRequestItemRequest[]>(itemsJson, JsonOpts);
+            if (itemRequests is null || itemRequests.Length == 0)
+                return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
+
+            // 收集舊 FileUrl（稍後清理孤立 blob）
+            var oldFileUrls = item.Items
+                .Where(it => !string.IsNullOrEmpty(it.FileUrl))
+                .Select(it => it.FileUrl!)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var files = form.Files.GetFiles("files");
+            var newFileUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var newItems = new List<TravelPaymentRequestItem>();
+
+            for (int idx = 0; idx < itemRequests.Length; idx++)
+            {
+                var i = itemRequests[idx];
+                string? fileUrl  = i.FileUrl;
+                string? fileName = i.FileName;
+                if (i.FileIndex >= 0 && i.FileIndex < files.Count)
+                {
+                    var file = files[i.FileIndex];
+                    var ext = Path.GetExtension(file.FileName);
+                    var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
+                    using var stream = file.OpenReadStream();
+                    fileUrl  = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                    fileName = file.FileName;
+                }
+                if (!string.IsNullOrEmpty(fileUrl))
+                    newFileUrls.Add(fileUrl);
+
+                newItems.Add(new TravelPaymentRequestItem
+                {
+                    TravelPaymentRequestId = intId,
+                    Category    = i.Category,
+                    SeqNo       = i.SeqNo,
+                    ItemName    = i.ItemName,
+                    UnitPrice   = i.UnitPrice,
+                    Quantity    = i.Quantity,
+                    TotalPrice  = i.TotalPrice,
+                    Note        = i.Note,
+                    SortOrder   = i.SortOrder > 0 ? i.SortOrder : idx,
+                    InvoiceNo   = string.IsNullOrWhiteSpace(i.InvoiceNo) ? null : i.InvoiceNo,
+                    InvoiceDate = i.InvoiceDate,
+                    FileName    = fileName,
+                    FileUrl     = fileUrl,
+                });
+            }
+
             db.TravelPaymentRequestItems.RemoveRange(item.Items);
-            var newItems = body.Items.Select((i, idx) => new TravelPaymentRequestItem
-            {
-                TravelPaymentRequestId = intId,
-                Category   = i.Category,
-                SeqNo      = i.SeqNo,
-                ItemName   = i.ItemName,
-                UnitPrice  = i.UnitPrice,
-                Quantity   = i.Quantity,
-                TotalPrice = i.TotalPrice,
-                Note       = i.Note,
-                SortOrder  = i.SortOrder > 0 ? i.SortOrder : idx,
-            }).ToList();
             item.Items      = newItems;
-            item.GrandTotal = newItems.Sum(i => i.TotalPrice);
-        }
+            item.GrandTotal = newItems.Sum(it => it.TotalPrice);
 
-        await db.SaveChangesAsync();
+            await db.SaveChangesAsync();
+
+            // 刪除不再使用的舊 blob
+            var removedUrls = oldFileUrls.Except(newFileUrls);
+            foreach (var url in removedUrls)
+            {
+                var blobName = blob.ExtractBlobName(url, ContainerName);
+                if (blobName is not null)
+                    await blob.DeleteAsync(ContainerName, blobName);
+            }
+        }
+        else
+        {
+            await db.SaveChangesAsync();
+        }
 
         var dto = await reader.GetByIdAsync(item.Id);
         return new OkObjectResult(ApiResponse.Ok(dto, "Travel payment request updated."));
@@ -222,15 +332,24 @@ public sealed class TravelPaymentRequestHandler(
 
         var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         var item = currentUser?.IsSuperAdmin == true
-            ? await db.TravelPaymentRequests.FirstOrDefaultAsync(x => x.Id == intId)
-            : await db.TravelPaymentRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
+            ? await db.TravelPaymentRequests.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.TravelPaymentRequests.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
         if (item is null) throw AppException.NotFound("TravelPaymentRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel payment requests can be deleted.");
 
+        // 收集要刪除的 blob
+        var blobNames = item.Items
+            .Select(it => blob.ExtractBlobName(it.FileUrl, ContainerName))
+            .Where(n => n is not null)
+            .ToList();
+
         db.TravelPaymentRequests.Remove(item);
         await db.SaveChangesAsync();
+
+        foreach (var name in blobNames)
+            await blob.DeleteAsync(ContainerName, name!);
 
         return new OkObjectResult(ApiResponse.Ok($"Travel payment request '{id}' deleted."));
     }

@@ -24,8 +24,13 @@ public sealed record TravelPaymentRequestItemRequest(
     decimal   UnitPrice,
     string    Quantity,
     decimal   TotalPrice,
-    string?   Note      = null,
-    int       SortOrder = 0);
+    string?   Note        = null,
+    int       SortOrder   = 0,
+    string?   InvoiceNo   = null,
+    DateTime? InvoiceDate = null,
+    string?   FileName    = null,
+    string?   FileUrl     = null,
+    int       FileIndex   = -1);
 
 // ── 主申請單 DTO ────────────────────────────────────────────────────────────
 
@@ -52,22 +57,4 @@ public sealed record TravelPaymentRequestDto(
     TravelPaymentRequestItemDto[]?  Items               = null,
     DesignatedReviewerDto[]?        DesignatedReviewers = null);
 
-public sealed record CreateTravelPaymentRequestRequest(
-    Guid?    EmployeeId,
-    int?     ApprovalItemId               = null,
-    string   Destination                  = "",
-    DateTime StartDate                    = default,
-    DateTime EndDate                      = default,
-    string   Purpose                      = "",
-    int?     ProjectId                    = null,
-    TravelPaymentRequestItemRequest[]?  Items               = null,
-    DesignatedReviewerRequest[]?        DesignatedReviewers = null);
-
-public sealed record UpdateTravelPaymentRequestRequest(
-    string?   Destination,
-    DateTime? StartDate,
-    DateTime? EndDate,
-    string?   Purpose,
-    int?      ProjectId,
-    TravelPaymentRequestItemRequest[]?  Items               = null,
-    DesignatedReviewerRequest[]?        DesignatedReviewers = null);
+// Note: Create/Update 接收 multipart/form-data，於 Handler 內直接從 form 讀取欄位，故不再需要 Create/Update Request DTO。
