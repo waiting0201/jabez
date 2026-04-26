@@ -1,3 +1,4 @@
+using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Configuration;
@@ -38,15 +39,27 @@ public sealed class BlobStorageService : IBlobStorageService
     public async Task<(Stream Content, string ContentType)?> DownloadAsync(string containerName, string blobName)
     {
         var container = _client.GetBlobContainerClient(containerName);
-        var blobClient = container.GetBlobClient(blobName);
 
-        if (!await blobClient.ExistsAsync())
+        // Container 不存在時 blobClient.ExistsAsync 會拋 RequestFailedException(404)；
+        // 改為先檢查 container，把「找不到」一律降為 null（→ 上層回傳 404 而非 500）。
+        try
+        {
+            if (!await container.ExistsAsync())
+                return null;
+
+            var blobClient = container.GetBlobClient(blobName);
+            if (!await blobClient.ExistsAsync())
+                return null;
+
+            var download = await blobClient.DownloadAsync();
+            // ContentType 可能為空，預設回傳 application/octet-stream
+            var contentType = download.Value.ContentType ?? "application/octet-stream";
+            return (download.Value.Content, contentType);
+        }
+        catch (RequestFailedException ex) when (ex.Status == 404)
+        {
             return null;
-
-        var download = await blobClient.DownloadAsync();
-        // ContentType 可能為空，預設回傳 application/octet-stream
-        var contentType = download.Value.ContentType ?? "application/octet-stream";
-        return (download.Value.Content, contentType);
+        }
     }
 
     public string? ExtractBlobName(string? blobUrl, string containerName)

@@ -79,14 +79,32 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         if (!allowedTypes.Contains(file.ContentType.ToLower()))
             throw AppException.BadRequest(badTypeMessage);
 
-        await DeleteBlobByUrlAsync(container, existingUrl);
-
-        var ext = Path.GetExtension(file.FileName);
+        var ext      = Path.GetExtension(file.FileName);
         var blobName = $"{userId}{ext}";
-        using var stream = file.OpenReadStream();
+        var newUrl   = $"files/{container}/{blobName}";
 
-        await blob.UploadAsync(container, blobName, stream, file.ContentType);
-        return $"files/{container}/{blobName}";
+        // 先上傳新檔（若失敗，舊檔保留供後續存取，避免「上傳失敗→使用者頭像消失」的不一致狀態）
+        using (var stream = file.OpenReadStream())
+        {
+            await blob.UploadAsync(container, blobName, stream, file.ContentType);
+        }
+
+        // 上傳成功後再刪舊檔；同名（同副檔名）會被覆寫，跳過刪除以免誤刪剛上傳的檔案
+        if (!string.Equals(existingUrl, newUrl, StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                await DeleteBlobByUrlAsync(container, existingUrl);
+            }
+            catch (Exception)
+            {
+                // 舊檔刪除失敗不阻斷整體流程；新檔已就位，舊檔變為孤兒檔案
+                // （比起 throw 造成 user 帶有未存入的 newUrl 而新檔已上傳成功的不一致狀態，
+                //   留下一個孤兒檔案是更可承受的後果）
+            }
+        }
+
+        return newUrl;
     }
 
     /// <summary>刪除指定 container 中的舊檔（同時支援舊 Blob URL 格式與新 API 代理路徑格式）。</summary>
@@ -332,10 +350,29 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         if (user.IsSuperAdmin)
             throw AppException.Forbidden("Cannot delete the system super admin account.");
 
+        // 先記下需清理的 Blob URL（DB 刪除後就拿不到了）；
+        // IndigenousProofUrl 屬 PII，不清理會造成已離職員工的個資長期殘留在 Storage
+        var avatarUrl    = user.Avatar;
+        var signatureUrl = user.SignatureUrl;
+        var proofUrl     = user.IndigenousProofUrl;
+
         db.Users.Remove(user);
         await db.SaveChangesAsync();
 
+        // DB 刪除完成後再清理 Blob：失敗不影響使用者刪除結果（孤兒檔案下次手動清理即可）
+        await TryDeleteBlobAsync(AvatarContainer, avatarUrl);
+        await TryDeleteBlobAsync(SignatureContainer, signatureUrl);
+        await TryDeleteBlobAsync(IndigenousProofContainer, proofUrl);
+
         return new OkObjectResult(ApiResponse.Ok($"User '{id}' deleted."));
+    }
+
+    /// <summary>嘗試刪除 Blob；任何錯誤都吞掉以免阻斷主流程。</summary>
+    private async Task TryDeleteBlobAsync(string container, string? url)
+    {
+        if (string.IsNullOrEmpty(url)) return;
+        try { await DeleteBlobByUrlAsync(container, url); }
+        catch (Exception) { /* 孤兒檔案：可接受 */ }
     }
 
     /// <summary>
