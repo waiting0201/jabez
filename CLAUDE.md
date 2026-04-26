@@ -862,6 +862,8 @@ draft → pending → approved / returned / rejected
 | 2 | 部門 Code ∈ `AC`(會計部) / `FIN`(行政財務部) / `Jabez HQ`(雅比斯總公司管理部) / `CEO`(總監室) | 全部 |
 | 3 | 一般員工 | 自己部門專案；若 `Department.CanViewSiblings = true` 加上**同 ParentId 的兄弟部門**專案 |
 
+> **設計決策**：`CanViewSiblings = true` 只擴及**同層兄弟部門**，**父部門本身不可見**。父部門通常是管理單位（如總監室），其專案屬於管理層級資料，不應對下層子部門開放。如未來需要「父部門也可見」，請另開獨立旗標（例如 `CanViewParent`）而非擴大此旗標的語意。
+
 ### 套用端點
 
 - `GET /projects/active`（申請表單下拉，僅 `Status = 'active'`）
