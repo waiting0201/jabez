@@ -28,7 +28,8 @@ public sealed class AttendanceReminderReadService(IDbConnection db)
               AND  u.LineUserId <> ''
               AND  u.IsSuperAdmin = 0
               AND  u.Status = 'active'
-              AND  (u.ResignDate IS NULL OR CAST(u.ResignDate AS DATE) > CAST(@TargetTime AS DATE))
+              -- ResignDate >= 今天 → 仍在職（離職當日 = 最後上班日，與 PayrollReadService 相同慣例）
+              AND  (u.ResignDate IS NULL OR CAST(u.ResignDate AS DATE) >= CAST(@TargetTime AS DATE))
               -- 今日已打該類型卡 → 排除
               AND  NOT EXISTS (
                     SELECT 1 FROM AttendanceRecords a

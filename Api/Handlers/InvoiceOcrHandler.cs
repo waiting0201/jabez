@@ -2,6 +2,7 @@ using Jabez.Api.Common;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -12,7 +13,7 @@ namespace Jabez.Api.Handlers;
 /// <summary>
 /// 發票 OCR Handler：接收圖片並透過 Google Gemini API 辨識台灣統一發票號碼與金額。
 /// </summary>
-public sealed class InvoiceOcrHandler(IConfiguration config)
+public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrHandler> logger)
 {
     private static readonly HttpClient _http = new()
     {
@@ -163,7 +164,7 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
 
         // Log 送出的 JSON（去掉 base64 data 避免 log 爆量）
         var logJson = Regex.Replace(jsonBody, @"""data""\s*:\s*""[^""]+""", @"""data"":""[BASE64_TRUNCATED]""");
-        Console.WriteLine($"[InvoiceOcr] Request JSON: {logJson}");
+        logger.LogDebug("InvoiceOcr request JSON: {Body}", logJson);
 
         // ── 6. 呼叫 Gemini API ──────────────────────────────────────────────
         GeminiResponse? geminiResp;
@@ -173,13 +174,13 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
             using var httpReq = new HttpRequestMessage(HttpMethod.Post, apiUrl);
             httpReq.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
 
-            Console.WriteLine($"[InvoiceOcr] Calling Gemini API: model={model}");
+            logger.LogInformation("InvoiceOcr calling Gemini API: model={Model}", model);
             using var httpResp = await _http.SendAsync(httpReq);
             var respBody = await httpResp.Content.ReadAsStringAsync();
 
             if (!httpResp.IsSuccessStatusCode)
             {
-                Console.Error.WriteLine($"[InvoiceOcr] Gemini API error {(int)httpResp.StatusCode}: {respBody}");
+                logger.LogError("InvoiceOcr Gemini API error {Status}: {Body}", (int)httpResp.StatusCode, respBody);
                 return new ObjectResult(
                     ApiResponse.Fail($"AI 服務暫時無法使用（{(int)httpResp.StatusCode}），請稍後再試。"))
                     { StatusCode = 502 };
@@ -194,7 +195,7 @@ public sealed class InvoiceOcrHandler(IConfiguration config)
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[InvoiceOcr] HTTP error: {ex.Message}");
+            logger.LogError(ex, "InvoiceOcr HTTP error");
             return new ObjectResult(ApiResponse.Fail("呼叫 AI 服務時發生錯誤，請稍後再試。"))
                 { StatusCode = 500 };
         }

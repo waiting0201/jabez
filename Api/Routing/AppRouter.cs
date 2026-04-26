@@ -3,6 +3,7 @@ using Jabez.Api.Handlers;
 using Jabez.Api.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
 namespace Jabez.Api.Routing;
@@ -12,6 +13,7 @@ namespace Jabez.Api.Routing;
 /// 接收 (method, route) → 拆解 segments → C# List Pattern 分派到對應 Handler。
 /// </summary>
 public sealed class AppRouter(
+    ILogger<AppRouter>     logger,
     IJwtService            jwt,
     HealthHandler          health,
     AuthHandler            auth,
@@ -49,7 +51,7 @@ public sealed class AppRouter(
         var method   = req.Method.ToUpper();
         var segments = route.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
 
-        Console.WriteLine($"[Router] method={method}, route={route}, segments=[{string.Join(", ", segments)}]");
+        logger.LogDebug("Router: method={Method} route={Route}", method, route);
 
         // CORS preflight — 允許所有 OPTIONS
         if (method == "OPTIONS")

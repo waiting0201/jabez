@@ -131,7 +131,9 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             decimal dailySalary    = Math.Round(baseSalary / 30m, 0);
 
             int holidayDays = travelDays.TryGetValue((Guid)emp.EmployeeId, out var days) ? days : 0;
-            decimal holidayAllowance = dailySalary * holidayDays;
+            // dailySalary 已四捨五入為整數、holidayDays 為 int，目前乘積必為整數；
+            // 仍包一層 Math.Round 作防禦，未來若改為比例天數計算不會跑出小數金額。
+            decimal holidayAllowance = Math.Round(dailySalary * holidayDays, 0);
 
             // 查找級距：第一個 SalaryBracket >= BaseSalary 的級距，若無則取最高級距
             var bracket = brackets.FirstOrDefault(b => (decimal)b.SalaryBracket >= baseSalary)
