@@ -34,10 +34,33 @@ public sealed class TravelPaymentRequestHandler(
     private const string AppType = "travel_payment";
     private const string ContainerName = "invoices";
 
+    /// <summary>發票檔案允許的格式（與前端拖放 / OCR 支援一致）。</summary>
+    private static readonly HashSet<string> AllowedInvoiceTypes =
+        ["image/jpeg", "image/png", "image/gif", "image/webp", "image/heic", "application/pdf"];
+
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
         PropertyNameCaseInsensitive = true,
     };
+
+    /// <summary>
+    /// 用 magic bytes 驗證上傳檔案的真實格式，不信任客戶端的 Content-Type。
+    /// 回傳 (actualType, blobName)；若格式不在白名單則拋 BadRequest。
+    /// </summary>
+    private static async Task<(string ActualType, string BlobName)> ValidateAndBuildBlobNameAsync(IFormFile file)
+    {
+        string? actualType;
+        using (var peek = file.OpenReadStream())
+        {
+            actualType = await FileSignatureValidator.DetectAsync(peek);
+        }
+        if (actualType is null || !AllowedInvoiceTypes.Contains(actualType))
+            throw AppException.BadRequest("發票檔案僅支援 JPG / PNG / GIF / WebP / HEIC / PDF 格式。");
+
+        var ext = Path.GetExtension(file.FileName);
+        var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
+        return (actualType, blobName);
+    }
 
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
@@ -120,10 +143,9 @@ public sealed class TravelPaymentRequestHandler(
             if (i.FileIndex >= 0 && i.FileIndex < files.Count)
             {
                 var file = files[i.FileIndex];
-                var ext = Path.GetExtension(file.FileName);
-                var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
+                var (actualType, blobName) = await ValidateAndBuildBlobNameAsync(file);
                 using var stream = file.OpenReadStream();
-                fileUrl  = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                fileUrl  = await blob.UploadAsync(ContainerName, blobName, stream, actualType);
                 fileName = file.FileName;
             }
 
@@ -273,10 +295,9 @@ public sealed class TravelPaymentRequestHandler(
                 if (i.FileIndex >= 0 && i.FileIndex < files.Count)
                 {
                     var file = files[i.FileIndex];
-                    var ext = Path.GetExtension(file.FileName);
-                    var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
+                    var (actualType, blobName) = await ValidateAndBuildBlobNameAsync(file);
                     using var stream = file.OpenReadStream();
-                    fileUrl  = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                    fileUrl  = await blob.UploadAsync(ContainerName, blobName, stream, actualType);
                     fileName = file.FileName;
                 }
                 if (!string.IsNullOrEmpty(fileUrl))

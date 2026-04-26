@@ -79,14 +79,24 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         if (!allowedTypes.Contains(file.ContentType.ToLower()))
             throw AppException.BadRequest(badTypeMessage);
 
+        // 用 magic bytes 偵測實際格式，避免攻擊者偽造 Content-Type 上傳 .exe / .svg(XSS) 等
+        string? actualType;
+        using (var peek = file.OpenReadStream())
+        {
+            actualType = await FileSignatureValidator.DetectAsync(peek);
+        }
+        if (actualType is null || !allowedTypes.Contains(actualType))
+            throw AppException.BadRequest(badTypeMessage);
+
         var ext      = Path.GetExtension(file.FileName);
         var blobName = $"{userId}{ext}";
         var newUrl   = $"files/{container}/{blobName}";
 
-        // 先上傳新檔（若失敗，舊檔保留供後續存取，避免「上傳失敗→使用者頭像消失」的不一致狀態）
+        // 先上傳新檔（若失敗，舊檔保留供後續存取，避免「上傳失敗→使用者頭像消失」的不一致狀態）。
+        // 用 actualType（magic bytes 偵測結果）取代客戶端宣告的 ContentType，避免錯誤的 metadata 寫進 Blob。
         using (var stream = file.OpenReadStream())
         {
-            await blob.UploadAsync(container, blobName, stream, file.ContentType);
+            await blob.UploadAsync(container, blobName, stream, actualType);
         }
 
         // 上傳成功後再刪舊檔；同名（同副檔名）會被覆寫，跳過刪除以免誤刪剛上傳的檔案

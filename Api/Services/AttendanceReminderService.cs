@@ -20,6 +20,9 @@ public sealed class AttendanceReminderService(
     /// <summary>提醒提前時間（分鐘）。</summary>
     private const int LeadMinutes = 2;
 
+    /// <summary>推播間隔（毫秒）：避免一次性 burst 觸發 LINE 速率限制。</summary>
+    private const int InterPushDelayMs = 100;
+
     public async Task RunAsync(CancellationToken ct = default)
     {
         var now = Clock.Now;
@@ -105,9 +108,15 @@ public sealed class AttendanceReminderService(
 
         int pushed = 0;
         int failed = 0;
-        foreach (var r in recipients)
+        for (int i = 0; i < recipients.Count; i++)
         {
             ct.ThrowIfCancellationRequested();
+            var r = recipients[i];
+
+            // 從第二個開始加入間隔，避免一次性 burst 觸發 429（PushMessageAsync 仍會 retry 一次）
+            if (i > 0)
+                await Task.Delay(InterPushDelayMs, ct);
+
             try
             {
                 var flex = LineFlexMessageBuilder.BuildAttendanceReminderMessage(

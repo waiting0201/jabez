@@ -76,43 +76,63 @@ public sealed class LineService : ILineService
     /// <inheritdoc />
     public async Task<bool> PushMessageAsync(string lineUserId, object messagePayload)
     {
-        var payload = new { to = lineUserId, messages = new[] { messagePayload } };
-        var content = new StringContent(
-            JsonSerializer.Serialize(payload),
-            Encoding.UTF8,
-            "application/json");
+        var jsonBody = JsonSerializer.Serialize(new { to = lineUserId, messages = new[] { messagePayload } });
 
+        var resp = await SendPushAsync(jsonBody);
+
+        // 429 Too Many Requests → 等 Retry-After（或預設 1 秒）後 retry 一次
+        if (resp.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            var retryAfter = resp.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(1);
+            _logger.LogWarning(
+                "LINE push 收到 429（rate limit），{Delay}s 後 retry：UserId={UserId}",
+                retryAfter.TotalSeconds, lineUserId);
+            resp.Dispose();
+            await Task.Delay(retryAfter);
+            resp = await SendPushAsync(jsonBody);
+        }
+
+        try
+        {
+            if (resp.IsSuccessStatusCode) return true;
+
+            var body = await resp.Content.ReadAsStringAsync();
+            // 401 / 403 → Token 過期或無效，整個推播管道將靜默失效，必須以 Critical 告警
+            if (resp.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            {
+                _logger.LogCritical(
+                    "LINE Messaging Token 失效（{Status}）— 整個推播管道無法運作，請立即至 LINE Developers Console 重新發行 Token。Body={Body}",
+                    resp.StatusCode, body);
+            }
+            // 400 且 body 提到未加好友 → 用戶層問題，升級為 Error 清楚標示
+            else if (body.Contains("hasn't added the LINE Official Account as a friend", StringComparison.OrdinalIgnoreCase)
+                  || body.Contains("has been blocked by the user", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogError(
+                    "LINE push 失敗（用戶未加 OA 好友或已封鎖）：UserId={UserId} Status={Status} Body={Body}",
+                    lineUserId, resp.StatusCode, body);
+            }
+            else
+            {
+                _logger.LogWarning("LINE push failed to {UserId}: {Status} {Body}", lineUserId, resp.StatusCode, body);
+            }
+            return false;
+        }
+        finally
+        {
+            resp.Dispose();
+        }
+    }
+
+    /// <summary>共用單次 push 請求；caller 負責 dispose 回傳的 HttpResponseMessage。</summary>
+    private async Task<HttpResponseMessage> SendPushAsync(string jsonBody)
+    {
         using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.line.me/v2/bot/message/push")
         {
-            Content = content
+            Content = new StringContent(jsonBody, Encoding.UTF8, "application/json"),
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _messagingAccessToken);
-
-        var resp = await _http.SendAsync(request);
-        if (resp.IsSuccessStatusCode)
-            return true;
-
-        var body = await resp.Content.ReadAsStringAsync();
-        // 401 / 403 → Token 過期或無效，整個推播管道將靜默失效，必須以 Critical 告警
-        if (resp.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
-        {
-            _logger.LogCritical(
-                "LINE Messaging Token 失效（{Status}）— 整個推播管道無法運作，請立即至 LINE Developers Console 重新發行 Token。Body={Body}",
-                resp.StatusCode, body);
-        }
-        // 400 且 body 提到未加好友 → 用戶層問題，升級為 Error 清楚標示
-        else if (body.Contains("hasn't added the LINE Official Account as a friend", StringComparison.OrdinalIgnoreCase)
-              || body.Contains("has been blocked by the user", StringComparison.OrdinalIgnoreCase))
-        {
-            _logger.LogError(
-                "LINE push 失敗（用戶未加 OA 好友或已封鎖）：UserId={UserId} Status={Status} Body={Body}",
-                lineUserId, resp.StatusCode, body);
-        }
-        else
-        {
-            _logger.LogWarning("LINE push failed to {UserId}: {Status} {Body}", lineUserId, resp.StatusCode, body);
-        }
-        return false;
+        return await _http.SendAsync(request);
     }
 
     /// <inheritdoc />
