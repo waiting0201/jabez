@@ -22,3 +22,7 @@ __queuestorage__/
 *.tsbuildinfo
 
 reference/
+
+# Azure Functions local settings (contains secrets — never commit)
+Api/local.settings.json
+**/local.settings.json

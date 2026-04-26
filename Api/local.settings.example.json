@@ -1,0 +1,35 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "Jwt__Secret": "REPLACE_WITH_AT_LEAST_32_CHARS_RANDOM_STRING",
+    "Jwt__Issuer": "jabez-api",
+    "Jwt__Audience": "jabez-admin",
+    "Jwt__ExpiryMinutes": "60",
+    "Jwt__RefreshExpiryDays": "7",
+    "BlobStorageConnection": "UseDevelopmentStorage=true",
+    "Smtp__Host": "smtp-relay.brevo.com",
+    "Smtp__Port": "587",
+    "Smtp__Username": "REPLACE_WITH_SMTP_USERNAME",
+    "Smtp__Password": "REPLACE_WITH_SMTP_PASSWORD",
+    "Smtp__From": "REPLACE_WITH_FROM_ADDRESS",
+    "Smtp__EnableSsl": "true",
+    "Google__ApiKey": "REPLACE_WITH_GOOGLE_GEMINI_API_KEY",
+    "Google__Model": "gemini-3.1-flash-lite-preview",
+    "Line__LoginChannelId": "REPLACE_WITH_LINE_LOGIN_CHANNEL_ID",
+    "Line__LoginChannelSecret": "REPLACE_WITH_LINE_LOGIN_CHANNEL_SECRET",
+    "Line__MessagingChannelAccessToken": "REPLACE_WITH_LINE_MESSAGING_LONG_LIVED_TOKEN",
+    "Line__MessagingChannelSecret": "REPLACE_WITH_LINE_MESSAGING_CHANNEL_SECRET",
+    "Line__CallbackUrl": "http://localhost:4200/line/bind-callback",
+    "AttendanceReminderCron": "0 */1 23,0-1,8-10 * * *"
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost,1433;Database=JabezDb;User Id=sa;Password=YOUR_SQL_PASSWORD;TrustServerCertificate=True;"
+  },
+  "Host": {
+    "LocalHttpPort": 7071,
+    "CORS": "*",
+    "CORSCredentials": false
+  }
+}
