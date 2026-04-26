@@ -24,9 +24,16 @@ public sealed class AttendanceReminderFunction(
         [TimerTrigger("%AttendanceReminderCron%", RunOnStartup = false)] TimerInfo timer,
         CancellationToken ct)
     {
-        // Host 延遲積壓時不補跑，避免半夜重啟瞬間補跑到早上的槽位
+        // Host 延遲積壓時不補跑，避免半夜重啟瞬間補跑到早上的槽位。
+        // 但要留下 LogWarning 讓運維知道有一次 tick 被跳過（08:58 / 17:58 等真正的提醒時點）；
+        // 若是非提醒時段（cron 仍會觸發每分鐘）的跳過，下游 RunAsync 也只是 no-op，影響可接受。
         if (timer.IsPastDue)
+        {
+            logger.LogWarning(
+                "AttendanceReminder tick 被跳過（IsPastDue=true），可能是 host 延遲或重啟造成；下次排程：{Next}",
+                timer.ScheduleStatus?.Next);
             return;
+        }
 
         try
         {
