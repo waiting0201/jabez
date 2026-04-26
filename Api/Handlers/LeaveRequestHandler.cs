@@ -162,6 +162,14 @@ public sealed class LeaveRequestHandler(
                 return new BadRequestObjectResult(ApiResponse.Fail(eligError));
         }
 
+        // 歲時祭儀假：限原住民身份（前置檢查；ValidateLeaveQuotaAsync 會在 submit 時再次驗證）
+        if (body.LeaveType == "ceremonial_festival")
+        {
+            var applicant = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == employeeId);
+            if (applicant?.IsIndigenous != true)
+                return new BadRequestObjectResult(ApiResponse.Fail("僅原住民身份之員工可申請歲時祭儀假。"));
+        }
+
         // 產假：禁止重複活躍申請（一次請完制）
         if (body.LeaveType == "maternity")
         {
@@ -343,6 +351,14 @@ public sealed class LeaveRequestHandler(
             var eligError = await CheckSeniorExecutiveEligibilityAsync(item.EmployeeId ?? Guid.Empty);
             if (eligError is not null)
                 return new BadRequestObjectResult(ApiResponse.Fail(eligError));
+        }
+
+        // 歲時祭儀假：限原住民身份（與 CreateAsync 保持一致）
+        if (effectiveLeaveType == "ceremonial_festival")
+        {
+            var applicant = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == item.EmployeeId);
+            if (applicant?.IsIndigenous != true)
+                return new BadRequestObjectResult(ApiResponse.Fail("僅原住民身份之員工可申請歲時祭儀假。"));
         }
 
         var unit = GetTimeUnit(effectiveLeaveType);
