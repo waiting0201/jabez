@@ -2,18 +2,21 @@ using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Jabez.Api.Services;
 
 public sealed class BlobStorageService : IBlobStorageService
 {
     private readonly BlobServiceClient _client;
+    private readonly ILogger<BlobStorageService> _logger;
 
-    public BlobStorageService(IConfiguration cfg)
+    public BlobStorageService(IConfiguration cfg, ILogger<BlobStorageService> logger)
     {
         var connStr = cfg["BlobStorageConnection"]
             ?? throw new InvalidOperationException("BlobStorageConnection is required.");
         _client = new BlobServiceClient(connStr);
+        _logger = logger;
     }
 
     public async Task<string> UploadAsync(string containerName, string blobName, Stream content, string contentType)
@@ -40,8 +43,8 @@ public sealed class BlobStorageService : IBlobStorageService
     {
         var container = _client.GetBlobContainerClient(containerName);
 
-        // Container 不存在時 blobClient.ExistsAsync 會拋 RequestFailedException(404)；
-        // 改為先檢查 container，把「找不到」一律降為 null（→ 上層回傳 404 而非 500）。
+        // 找不到一律降為 null（→ 上層回傳 404 而非 500）；
+        // 其他狀態（403 auth / 5xx 服務錯誤）以 LogError 記錄並重拋（500 with alert）。
         try
         {
             if (!await container.ExistsAsync())
@@ -56,9 +59,16 @@ public sealed class BlobStorageService : IBlobStorageService
             var contentType = download.Value.ContentType ?? "application/octet-stream";
             return (download.Value.Content, contentType);
         }
-        catch (RequestFailedException ex) when (ex.Status == 404)
+        catch (RequestFailedException ex) when (ex.Status == 404 || ex.ErrorCode is "ContainerNotFound" or "BlobNotFound")
         {
             return null;
+        }
+        catch (RequestFailedException ex)
+        {
+            _logger.LogError(ex,
+                "Blob 取得失敗（非 404）：container={Container} blob={Blob} status={Status} code={Code}",
+                containerName, blobName, ex.Status, ex.ErrorCode);
+            throw;
         }
     }
 
