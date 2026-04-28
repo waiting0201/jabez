@@ -152,6 +152,10 @@ export const ADMIN_ROUTES: Routes = [
   {path: 'insurance-brackets/new',         component: InsuranceBracketForm, canActivate: [permissionGuard], data: {title: '新增勞健保級距', permission: 'insurance-brackets:write'}},
   {path: 'insurance-brackets/:id/edit',    component: InsuranceBracketForm, canActivate: [permissionGuard], data: {title: '編輯勞健保級距', permission: 'insurance-brackets:write'}},
 
+  // 打卡提醒紀錄（Superadmin only）
+  {path: 'attendance-reminder-logs',                  canActivate: [permissionGuard], data: {title: '打卡提醒紀錄',     permission: 'superadmin'}, loadComponent: () => import('./attendance-reminder-logs/pages/attendance-reminder-log-list/attendance-reminder-log-list').then(m => m.AttendanceReminderLogList)},
+  {path: 'attendance-reminder-logs/batches/:batchId', canActivate: [permissionGuard], data: {title: '打卡提醒批次詳情', permission: 'superadmin'}, loadComponent: () => import('./attendance-reminder-logs/pages/attendance-reminder-log-detail/attendance-reminder-log-detail').then(m => m.AttendanceReminderLogDetail)},
+
   // 系統設定
   {path: 'settings',             component: Settings,       canActivate: [permissionGuard], data: {title: '系統設定',   permission: 'settings:read'}},
 ];

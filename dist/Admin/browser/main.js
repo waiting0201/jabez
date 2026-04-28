@@ -1,6 +1,6 @@
 import {
   LineService
-} from "./chunk-G5Z7KIMJ.js";
+} from "./chunk-3U7ZN6EP.js";
 import {
   ContentRef,
   FOCUSABLE_ELEMENTS_SELECTOR,
@@ -18,14 +18,14 @@ import {
   ngbPositioning,
   ngbRunTransition,
   reflow
-} from "./chunk-LSOD7TVZ.js";
+} from "./chunk-QACKTNEL.js";
 import {
   ApprovalTaskService
-} from "./chunk-36VAPF3E.js";
+} from "./chunk-DM6SSN3O.js";
 import {
   ToastrService,
   provideToastr
-} from "./chunk-T7CPNHWL.js";
+} from "./chunk-X3EGCDLG.js";
 import {
   DefaultValueAccessor,
   FormBuilder,
@@ -36,10 +36,10 @@ import {
   ReactiveFormsModule,
   Validators,
   ɵNgNoValidate
-} from "./chunk-34GBN4YM.js";
+} from "./chunk-TUAOQ2AP.js";
 import {
   AuthService
-} from "./chunk-GT3K32MH.js";
+} from "./chunk-QLN4CKKJ.js";
 import {
   ActivatedRoute,
   NavigationEnd,
@@ -48,11 +48,11 @@ import {
   RouterOutlet,
   provideRouter,
   withInMemoryScrolling
-} from "./chunk-DAKIU35D.js";
+} from "./chunk-DUW2WF5C.js";
 import {
   Title,
   bootstrapApplication
-} from "./chunk-R2IFWBRK.js";
+} from "./chunk-JDEYLUO2.js";
 import {
   ApplicationRef,
   AsyncPipe,
@@ -185,7 +185,7 @@ import {
   ɵɵtwoWayListener,
   ɵɵtwoWayProperty,
   ɵɵviewQuery
-} from "./chunk-GQPYF5UN.js";
+} from "./chunk-IFQ7CN6S.js";
 import {
   __export,
   __spreadProps,
@@ -4637,6 +4637,12 @@ var menuItems = [
     requiredPermission: "calendar-days:read"
   },
   {
+    icon: "/assets/icons/sprite.svg#bell",
+    label: "\u6253\u5361\u63D0\u9192\u7D00\u9304",
+    url: "/admin/attendance-reminder-logs",
+    requiredPermission: "superadmin"
+  },
+  {
     icon: "/assets/icons/sprite.svg#settings",
     label: "\u7CFB\u7D71\u8A2D\u5B9A",
     url: "/admin/settings",
@@ -5878,20 +5884,20 @@ var routes = [
     children: [
       {
         path: "dashboard",
-        loadChildren: () => import("./chunk-P6BRGL4C.js").then((m) => m.DASHBOARD_ROUTES)
+        loadChildren: () => import("./chunk-D5OKNLI3.js").then((m) => m.DASHBOARD_ROUTES)
       },
       {
         path: "admin",
-        loadChildren: () => import("./chunk-ZBWIHFWR.js").then((m) => m.ADMIN_ROUTES)
+        loadChildren: () => import("./chunk-7R7JJXSU.js").then((m) => m.ADMIN_ROUTES)
       },
       {
         path: "account/change-password",
-        loadComponent: () => import("./chunk-I5GMLH7B.js").then((m) => m.ChangePassword),
+        loadComponent: () => import("./chunk-WSSO4CRT.js").then((m) => m.ChangePassword),
         data: { title: "\u4FEE\u6539\u5BC6\u78BC" }
       },
       {
         path: "line/bind-callback",
-        loadComponent: () => import("./chunk-IXWYRQ6D.js").then((m) => m.LineBindCallback),
+        loadComponent: () => import("./chunk-BBKDGSAX.js").then((m) => m.LineBindCallback),
         data: { title: "LINE \u7D81\u5B9A" }
       },
       { path: "error/404", component: Error404, data: { title: "Error 404" } },

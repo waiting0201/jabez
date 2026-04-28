@@ -145,6 +145,12 @@ export const menuItems: MenuItemType[] = [
     requiredPermission: 'calendar-days:read',
   },
   {
+    icon: '/assets/icons/sprite.svg#bell',
+    label: '打卡提醒紀錄',
+    url: '/admin/attendance-reminder-logs',
+    requiredPermission: 'superadmin',
+  },
+  {
     icon: '/assets/icons/sprite.svg#settings',
     label: '系統設定',
     url: '/admin/settings',
