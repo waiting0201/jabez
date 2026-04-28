@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Jabez.Api.Common;
 using Jabez.Api.Services;
 using Microsoft.AspNetCore.Http;
@@ -24,13 +25,20 @@ public sealed class AttendanceReminderAdminHandler(IAttendanceReminderService se
         if (type is not ("clockIn" or "clockOut"))
             throw AppException.BadRequest("type 必須為 clockIn 或 clockOut");
 
-        var result = await service.ForceRunAsync(type);
+        // 從 JWT sub claim 取得觸發者 (Superadmin) 用以記錄至 AttendanceReminderLogs
+        Guid? triggeredByUserId = null;
+        var sub = req.HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? req.HttpContext.User.FindFirst("sub")?.Value;
+        if (Guid.TryParse(sub, out var uid)) triggeredByUserId = uid;
+
+        var result = await service.ForceRunAsync(type, triggeredByUserId);
         return new OkObjectResult(ApiResponse.Ok(new
         {
             type,
             recipientCount = result.RecipientCount,
             pushedCount    = result.PushedCount,
             failureCount   = result.FailureCount,
+            batchId        = result.BatchId,
         }));
     }
 }

@@ -40,6 +40,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<TravelRequestParticipant>   TravelRequestParticipants  { get; set; }
     public DbSet<TravelPaymentRequest>       TravelPaymentRequests      { get; set; }
     public DbSet<TravelPaymentRequestItem>   TravelPaymentRequestItems  { get; set; }
+    public DbSet<AttendanceReminderLog>      AttendanceReminderLogs     { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

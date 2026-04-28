@@ -44,7 +44,8 @@ public sealed class AppRouter(
     FileHandler                     files,
     LineHandler                     line,
     TravelPaymentRequestHandler     travelPaymentRequests,
-    AttendanceReminderAdminHandler  attendanceReminderAdmin)
+    AttendanceReminderAdminHandler  attendanceReminderAdmin,
+    AttendanceReminderLogHandler    attendanceReminderLogs)
 {
     public async Task<IActionResult> RouteAsync(HttpRequest req, string route)
     {
@@ -319,6 +320,13 @@ public sealed class AppRouter(
             // ── Attendance Reminder（僅 Superadmin 手動觸發，排程由 TimerTrigger 自動執行）──
             ("POST",   ["admin", "attendance-reminder", "run"]) => await attendanceReminderAdmin.RunAsync(req),
 
+            // ── Attendance Reminder Logs（僅 Superadmin 查詢推播紀錄）──
+            // 注意 List Pattern 順序：stats / batches/{guid} 必須排在 {id} 之前
+            ("GET",    ["admin", "attendance-reminder-logs"])                    => await attendanceReminderLogs.GetPagedAsync(req),
+            ("GET",    ["admin", "attendance-reminder-logs", "stats"])           => await attendanceReminderLogs.GetStatsAsync(req),
+            ("GET",    ["admin", "attendance-reminder-logs", "batches", var bid]) => await attendanceReminderLogs.GetByBatchIdAsync(req, bid),
+            ("GET",    ["admin", "attendance-reminder-logs", var id])            => await attendanceReminderLogs.GetByIdAsync(req, id),
+
             // ── LINE 綁定 ─────────────────────────────────────────────────────
             ("GET",    ["line", "bind-url"])         => await line.GetBindUrlAsync(req),
             ("POST",   ["line", "bind"])             => await line.BindAsync(req),
@@ -524,7 +532,9 @@ public sealed class AppRouter(
 
     /// <summary>判斷是否為 Superadmin-only 路由</summary>
     private static bool IsSuperAdminRoute(string method, string[] segments) =>
-        (method, segments) is ("POST", ["admin", "attendance-reminder", "run"]);
+        (method, segments) is
+            ("POST", ["admin", "attendance-reminder", "run"]) or
+            ("GET",  ["admin", "attendance-reminder-logs", ..]);
 
     /// <summary>
     /// 撥款日 / 退款日 / 結案 等只允許財務體系部門（AC/FIN/Jabez HQ/CEO）或 Superadmin 操作的路由清單。

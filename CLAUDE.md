@@ -226,6 +226,7 @@ Admin/src/app/
     │   ├── travel-write-off-requests/ # 出差預支沖銷申請（獨立簽核流程）
     │   ├── insurance-brackets/ # 勞健保級距維護
     │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出）
+    │   ├── attendance-reminder-logs/ # 打卡提醒推播紀錄（僅 Superadmin）
     │   └── settings/       # 系統設定
     └── error/
         └── pages/ (error-403, error-404, error-500)
@@ -308,6 +309,7 @@ Api/
 │   ├── PayrollHandler.cs             # 人事薪資查詢（月薪計算）
 │   ├── LineHandler.cs                # LINE 帳號綁定/解綁
 │   ├── AttendanceReminderAdminHandler.cs # 打卡提醒手動觸發（Superadmin，除錯用）
+│   ├── AttendanceReminderLogHandler.cs   # 打卡提醒推播紀錄查詢（Superadmin）
 │   ├── SettingsHandler.cs
 │   └── HealthHandler.cs
 ├── Middleware/
@@ -327,7 +329,8 @@ Api/
 │   ├── EscalationService.cs           # 簽核升級邏輯（上層部門主管遞迴 + 代理人）
 │   ├── EscalationResult.cs            # 升級結果 record
 │   ├── ILineService.cs               # LINE API 操作介面
-│   ├── LineService.cs                # LINE Platform REST API 封裝（token 換取 + 推播）
+│   ├── LineService.cs                # LINE Platform REST API 封裝（token 換取 + 推播；回 PushResult）
+│   ├── PushResult.cs                 # LINE 推播結果 record（含 ErrorCategory 分類）
 │   ├── LineFlexMessageBuilder.cs     # 6 種簽核通知 + 打卡提醒的 LINE Flex Message 模板
 │   ├── IAttendanceReminderService.cs # 打卡提醒服務介面
 │   ├── AttendanceReminderService.cs  # 打卡提醒協調：判斷時點、過濾對象、推播 LINE
@@ -348,6 +351,7 @@ Api/
 │       ├── TravelWriteOffRequestReadService.cs
 │       ├── AttendanceReadService.cs
 │       ├── AttendanceReminderReadService.cs
+│       ├── AttendanceReminderLogReadService.cs
 │       ├── InsuranceBracketReadService.cs
 │       └── PayrollReadService.cs
 ├── Common/
@@ -506,13 +510,18 @@ public async Task<HttpResponseData> Run(
 | POST | `/attendances/overtime-start` | 加班開始打卡（需核准的加班申請） |
 | POST | `/attendances/overtime-end` | 加班結束打卡 |
 
-#### 打卡提醒（手動觸發，僅 Superadmin）
+#### 打卡提醒（手動觸發 + 紀錄查詢，僅 Superadmin）
 
 | Method | Path | 說明 |
 |--------|------|------|
-| POST | `/admin/attendance-reminder/run?type=clockIn\|clockOut` | 繞過時點與週末檢查，強制對符合條件的員工推播 LINE 打卡提醒（除錯用） |
+| POST | `/admin/attendance-reminder/run?type=clockIn\|clockOut` | 繞過時點與週末檢查，強制對符合條件的員工推播 LINE 打卡提醒（除錯用），回傳 `recipientCount/pushedCount/failureCount/batchId` |
+| GET | `/admin/attendance-reminder-logs` | 推播紀錄列表（分頁 + 篩選：日期區間、提醒類型、結果、失敗原因、員工、觸發來源） |
+| GET | `/admin/attendance-reminder-logs/stats` | 統計卡資料（今日推播數 / 失敗數 / 批次 tick 數 + 最近 7 天趨勢） |
+| GET | `/admin/attendance-reminder-logs/batches/{batchId}` | 同一批次（同一次 tick）所有紀錄，含 batchStart |
+| GET | `/admin/attendance-reminder-logs/{id}` | 單筆紀錄詳情 |
 
-> 自動排程由 `AttendanceReminderFunction`（TimerTrigger，每分鐘）執行，不透過 HTTP 觸發；此端點僅供本地/Production 驗證。
+> 自動排程由 `AttendanceReminderFunction`（TimerTrigger，每分鐘）執行，不透過 HTTP 觸發；POST `run` 端點僅供本地/Production 驗證。
+> 所有 GET 紀錄查詢端點透過 `AppRouter.IsSuperAdminRoute` 守門，僅 Superadmin 可見。
 
 #### 勞健保級距
 
@@ -606,6 +615,7 @@ dotnet ef database update               # 套用 Migration
 | `TravelWriteOffItem` | 出差預支沖銷明細（含發票號碼、檔案上傳） |
 | `RequestDesignatedReviewer` | 申請人指定審核者清單（多人依序審核） |
 | `AttendanceRecord` | 出勤打卡紀錄（每人每天一筆，含 GPS） |
+| `AttendanceReminderLog` | 打卡提醒推播紀錄（BatchId 串聯同一次 tick；含 batchStart 紀錄、ErrorCategory 失敗分類、HttpStatusCode、DurationMs；Snapshot 欄位保留歷史） |
 | `SystemSetting` | 系統設定 |
 | `InsuranceBracket` | 勞健保級距（投保級距、員工負擔勞保、員工負擔健保） |
 
@@ -1100,13 +1110,38 @@ draft → pending → approved / returned / rejected
 ### 手動觸發（除錯）
 
 `POST /admin/attendance-reminder/run?type=clockIn|clockOut`（僅 Superadmin）
-繞過時點與週末檢查，強制對符合條件員工推播；其餘過濾條件保留。回傳 `{ type, pushedCount }`。
+繞過時點與週末檢查，強制對符合條件員工推播；其餘過濾條件保留。回傳 `{ type, recipientCount, pushedCount, failureCount, batchId }`。
+
+### 推播紀錄持久化
+
+每次排程命中時點 / 手動觸發都會寫入 `AttendanceReminderLogs` 資料表，供前端「打卡提醒紀錄」頁查詢：
+
+- **BatchId 串聯**：每次 `RunAsync` 開頭產生一個 `Guid`，同一次 tick 的所有紀錄共用。
+- **batchStart 紀錄**：每次推播前先寫一筆 `Status='batchStart' / UserId=null`，即使 0 對象也能驗證排程有跑、命中時點。
+- **逐筆推播紀錄**：對每位推播對象寫一筆 success/failure，含 `LineUserIdSnapshot / UserNameSnapshot`（歷史快照，員工解綁/離職後仍可查）、`HttpStatusCode`、`DurationMs`、`ErrorCategory`（`not_friend / token_invalid / rate_limited / network_error / unknown / system_error`）、`ErrorMessage`（截斷至 500 字）。
+- **Dapper INSERT**：使用 `IDbConnection` 直接 INSERT，避免 EF ChangeTracker 在迴圈中累積污染；寫入失敗只記 `LogError`，**絕不 throw**，不影響推播主流程。
+- **資料保留**：本次未實作清理機制；保守估每年 ~100K rows，仍在 SQL 可 sustain 範圍。未來可加 `CleanupAttendanceReminderLogsFunction` TimerTrigger 月清 6 個月前資料。
+
+### LineService 推播失敗分類
+
+`LineService.PushMessageAsync` 回傳 `PushResult(Success, HttpStatusCode, ErrorCategory, ErrorMessage)`：
+
+| ErrorCategory | 觸發條件 | Log Level |
+|---|---|---|
+| `not_friend` | 400 + body 含 "hasn't added" 或 "blocked by the user" | LogError |
+| `token_invalid` | 401 / 403 | LogCritical（整個推播管道失效） |
+| `rate_limited` | 429 retry 後仍失敗 | LogWarning |
+| `network_error` | `HttpRequestException` / `TaskCanceledException` | LogError |
+| `unknown` | 其他非 2xx | LogWarning |
+| `system_error` | AttendanceReminderService 迴圈內非預期例外 | LogError |
+
+`ApprovalNotificationService` 6 處呼叫不取 `PushResult`，編譯仍相容。
 
 ### 設計決策
 
 - **Cron Timezone**：UTC 觸發 + 內部 `Clock.Now` 比對，不依賴 `WEBSITE_TIME_ZONE` / `TZ` 環境變數，相容 Linux Consumption Plan
 - **限定時段**：cron 只在 7-9 / 16-18 Taipei 時段每分鐘觸發（共 6 小時/日），其他時段不進入 Function；對應預設 `WorkStartTime=09:00` / `WorkEndTime=18:00` 並留 1 小時前後緩衝。若上下班時間調整至此區間外，須同步修改 `AttendanceReminderCron`（Production：Function App → Configuration）
-- **幂等性**：不持久化發送紀錄；依賴 Azure Functions Timer 的 singleton lock（AzureWebJobsStorage blob lease）保證同一 cron tick 只觸發一次，加上 `RunOnStartup=false` 與 `IsPastDue` 跳過防止意外重複
+- **幂等性**：依賴 Azure Functions Timer 的 singleton lock（AzureWebJobsStorage blob lease）保證同一 cron tick 只觸發一次，加上 `RunOnStartup=false` 與 `IsPastDue` 跳過防止意外重複
 - **成本**：Consumption Plan 每月約 10,800 次執行（限定時段後），遠低於免費額度（實質成本 0）
 
 ### 涉及元件
@@ -1114,11 +1149,17 @@ draft → pending → approved / returned / rejected
 | 元件 | 說明 |
 |------|------|
 | `AttendanceReminderFunction` | TimerTrigger entrypoint |
-| `IAttendanceReminderService` / `AttendanceReminderService` | 時點判斷 + 推播協調 |
+| `IAttendanceReminderService` / `AttendanceReminderService` | 時點判斷 + 推播協調，含 BatchId 與 SafeWriteLogAsync |
 | `IAttendanceReminderReadService` / `AttendanceReminderReadService` | Dapper 查詢符合條件的員工 |
 | `AttendanceReminderRecipientDto` | `(UserId, LineUserId, UserName)` |
+| `AttendanceReminderLog` Entity + `AttendanceReminderLogs` 資料表 | 推播紀錄持久化（BatchId、ErrorCategory、Snapshot 欄位） |
+| `IAttendanceReminderLogReadService` / `AttendanceReminderLogReadService` | Dapper 查詢列表 / 詳情 / 批次 / 統計 |
+| `AttendanceReminderLogDto` / `AttendanceReminderLogStatsDto` | 列表項目與統計卡資料 |
+| `AttendanceReminderLogHandler` | 4 個 GET 端點（list / stats / batches / by id） |
+| `PushResult` record | LINE 推播結果（含 ErrorCategory / HttpStatusCode） |
 | `LineFlexMessageBuilder.BuildAttendanceReminderMessage` | 品牌綠 Flex Message 模板 |
 | `AttendanceReminderAdminHandler` | 手動觸發 HTTP 端點（Superadmin） |
+| 前端 `attendance-reminder-logs/` feature | 列表頁（含手動觸發按鈕、3 統計卡、7 天趨勢、6 維篩選）+ 批次詳情頁 |
 
 ---
 

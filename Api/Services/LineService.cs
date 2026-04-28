@@ -74,11 +74,26 @@ public sealed class LineService : ILineService
     }
 
     /// <inheritdoc />
-    public async Task<bool> PushMessageAsync(string lineUserId, object messagePayload)
+    public async Task<PushResult> PushMessageAsync(string lineUserId, object messagePayload)
     {
         var jsonBody = JsonSerializer.Serialize(new { to = lineUserId, messages = new[] { messagePayload } });
 
-        var resp = await SendPushAsync(jsonBody);
+        HttpResponseMessage resp;
+        bool retried = false;
+        try
+        {
+            resp = await SendPushAsync(jsonBody);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "LINE push 網路錯誤：UserId={UserId}", lineUserId);
+            return new PushResult(false, null, "network_error", Truncate(ex.Message, 500));
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "LINE push timeout：UserId={UserId}", lineUserId);
+            return new PushResult(false, null, "network_error", Truncate(ex.Message, 500));
+        }
 
         // 429 Too Many Requests → 等 Retry-After（或預設 1 秒）後 retry 一次
         if (resp.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
@@ -89,40 +104,72 @@ public sealed class LineService : ILineService
                 retryAfter.TotalSeconds, lineUserId);
             resp.Dispose();
             await Task.Delay(retryAfter);
-            resp = await SendPushAsync(jsonBody);
+            try
+            {
+                resp = await SendPushAsync(jsonBody);
+                retried = true;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "LINE push retry 網路錯誤：UserId={UserId}", lineUserId);
+                return new PushResult(false, null, "network_error", Truncate(ex.Message, 500));
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "LINE push retry timeout：UserId={UserId}", lineUserId);
+                return new PushResult(false, null, "network_error", Truncate(ex.Message, 500));
+            }
         }
 
         try
         {
-            if (resp.IsSuccessStatusCode) return true;
+            var status = (int)resp.StatusCode;
+            if (resp.IsSuccessStatusCode) return new PushResult(true, status);
 
             var body = await resp.Content.ReadAsStringAsync();
+            string category;
+
             // 401 / 403 → Token 過期或無效，整個推播管道將靜默失效，必須以 Critical 告警
             if (resp.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
             {
+                category = "token_invalid";
                 _logger.LogCritical(
                     "LINE Messaging Token 失效（{Status}）— 整個推播管道無法運作，請立即至 LINE Developers Console 重新發行 Token。Body={Body}",
                     resp.StatusCode, body);
             }
-            // 400 且 body 提到未加好友 → 用戶層問題，升級為 Error 清楚標示
+            // 400 且 body 提到未加好友 → 用戶層問題
             else if (body.Contains("hasn't added the LINE Official Account as a friend", StringComparison.OrdinalIgnoreCase)
                   || body.Contains("has been blocked by the user", StringComparison.OrdinalIgnoreCase))
             {
+                category = "not_friend";
                 _logger.LogError(
                     "LINE push 失敗（用戶未加 OA 好友或已封鎖）：UserId={UserId} Status={Status} Body={Body}",
                     lineUserId, resp.StatusCode, body);
             }
+            // 429 retry 後仍失敗 → rate_limited
+            else if (resp.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                category = "rate_limited";
+                _logger.LogWarning(
+                    "LINE push retry 後仍 429（rate limit 持續）：UserId={UserId} Body={Body}", lineUserId, body);
+            }
             else
             {
-                _logger.LogWarning("LINE push failed to {UserId}: {Status} {Body}", lineUserId, resp.StatusCode, body);
+                category = "unknown";
+                _logger.LogWarning(
+                    "LINE push failed to {UserId}: {Status} {Body} (retried={Retried})",
+                    lineUserId, resp.StatusCode, body, retried);
             }
-            return false;
+            return new PushResult(false, status, category, Truncate(body, 500));
         }
         finally
         {
             resp.Dispose();
         }
     }
+
+    private static string Truncate(string s, int max) =>
+        string.IsNullOrEmpty(s) || s.Length <= max ? s : s[..max];
 
     /// <summary>共用單次 push 請求；caller 負責 dispose 回傳的 HttpResponseMessage。</summary>
     private async Task<HttpResponseMessage> SendPushAsync(string jsonBody)

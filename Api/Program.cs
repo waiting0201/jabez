@@ -109,6 +109,7 @@ var host = new HostBuilder()
         services.AddScoped<IProjectWaterLevelReadService, ProjectWaterLevelReadService>();
         services.AddScoped<ICalendarDayReadService, CalendarDayReadService>();
         services.AddScoped<ITravelPaymentRequestReadService, TravelPaymentRequestReadService>();
+        services.AddScoped<IAttendanceReminderLogReadService, AttendanceReminderLogReadService>();
 
         // ── Handlers（Scoped，依賴 DbContext）────────────────────────────
         services.AddScoped<AuthHandler>();
@@ -141,6 +142,7 @@ var host = new HostBuilder()
         services.AddScoped<LineHandler>();
         services.AddScoped<TravelPaymentRequestHandler>();
         services.AddScoped<AttendanceReminderAdminHandler>();
+        services.AddScoped<AttendanceReminderLogHandler>();
 
         // ── Router（Scoped）──────────────────────────────────────────────
         services.AddScoped<AppRouter>();
