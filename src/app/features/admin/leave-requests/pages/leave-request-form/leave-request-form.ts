@@ -49,6 +49,14 @@ export class LeaveRequestForm implements OnInit {
   approvalStatus: ApprovalStatus = 'draft';
   errorMsg = signal('');
 
+  /**
+   * 載入既有資料期間的 reentry guard。
+   * patchValue 與 form.disable() 都會同步觸發 child controls 的 valueChanges；
+   * 若不擋下，leaveType 的 valueChanges → onLeaveTypeChange 會把剛回填的 startDate/endDate 清掉
+   * （特別是 disable() 在 patch 之後重新觸發，導致檢視頁日期消失）。
+   */
+  private isLoadingExisting = false;
+
   /** 簽核流程時間軸 */
   approvalFlow: ApprovalFlow | null = null;
   approvalRecords: ApprovalRecord[] = [];
@@ -325,12 +333,14 @@ export class LeaveRequestForm implements OnInit {
     // 預載歲時祭儀假額度以判斷使用者是否為原住民身份（用於下拉過濾）
     this.loadCeremonialQuota();
 
-    // 監聽假別變化
+    // 監聽假別變化（載入既有資料期間跳過，避免 patch / disable 觸發的 valueChanges 把日期清掉）
     this.form.get('leaveType')?.valueChanges.subscribe(type => {
+      if (this.isLoadingExisting) return;
       this.onLeaveTypeChange(type as LeaveType);
     });
-    // 監聽喪假親屬關係變化
+    // 監聽喪假親屬關係變化（同樣跳過載入期間，由 applyLeaveTypeOnLoad 統一處理）
     this.form.get('bereavementRelationship')?.valueChanges.subscribe(rel => {
+      if (this.isLoadingExisting) return;
       if (this.selectedLeaveType === 'bereavement' && rel) {
         this.loadBereavementQuota(rel);
       } else {
@@ -374,63 +384,72 @@ export class LeaveRequestForm implements OnInit {
         this.isReturned = r.approvalStatus === 'returned';
         this.isReadOnly = r.approvalStatus !== 'draft' && r.approvalStatus !== 'returned';
 
-        // 依單位回填對應欄位
-        const unit = LEAVE_TIME_UNIT[r.leaveType];
-        const baseValues = {
-          leaveType:               r.leaveType,
-          bereavementRelationship: r.bereavementRelationship ?? '',
-          reason:                  r.reason,
-        };
-        if (unit === 'hour') {
-          const startParts = this._splitDateHour(r.startDate);
-          const endParts = this._splitDateHour(r.endDate);
-          this.form.patchValue({
-            ...baseValues,
-            startDate: startParts.date,
-            endDate:   endParts.date,
-            startHour: startParts.hour,
-            endHour:   endParts.hour,
-          });
-        } else if (r.leaveType === 'maternity') {
-          this.form.patchValue({
-            ...baseValues,
-            startDate: this._toDateString(r.startDate),
-          });
-        } else if (unit === 'day') {
-          this.form.patchValue({
-            ...baseValues,
-            startDate: this._toDateString(r.startDate),
-            endDate:   this._toDateString(r.endDate),
-          });
-        } else {
-          // half_day：從 hours 反推 slots
-          const slots = this._inferHalfDaySlots(r.startDate, r.endDate, r.hours);
-          this.form.patchValue({
-            ...baseValues,
-            startDate: this._toDateString(r.startDate),
-            endDate:   this._toDateString(r.endDate),
-            startSlot: slots.startSlot,
-            endSlot:   slots.endSlot,
-          });
-        }
-
-        // 回填指定審核者清單
-        if (r.designatedReviewers?.length) {
-          this.designatedEntries = r.designatedReviewers.map(dr => ({
-            stepOrder: dr.stepOrder,
-            selectedJobTitleId: this.allUsers.find(u => u.id === dr.reviewerId)?.jobTitleId ?? null,
-            selectedUserId: dr.reviewerId,
-            filteredUsers: [],
-          }));
-          if (this.allUsers.length > 0) {
-            this.designatedEntries.forEach(e => {
-              if (e.selectedJobTitleId) {
-                e.filteredUsers = this.allUsers.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active');
-              }
+        this.isLoadingExisting = true;
+        try {
+          // 依單位回填對應欄位
+          const unit = LEAVE_TIME_UNIT[r.leaveType];
+          const baseValues = {
+            leaveType:               r.leaveType,
+            bereavementRelationship: r.bereavementRelationship ?? '',
+            reason:                  r.reason,
+          };
+          if (unit === 'hour') {
+            const startParts = this._splitDateHour(r.startDate);
+            const endParts = this._splitDateHour(r.endDate);
+            this.form.patchValue({
+              ...baseValues,
+              startDate: startParts.date,
+              endDate:   endParts.date,
+              startHour: startParts.hour,
+              endHour:   endParts.hour,
+            });
+          } else if (r.leaveType === 'maternity') {
+            this.form.patchValue({
+              ...baseValues,
+              startDate: this._toDateString(r.startDate),
+            });
+          } else if (unit === 'day') {
+            this.form.patchValue({
+              ...baseValues,
+              startDate: this._toDateString(r.startDate),
+              endDate:   this._toDateString(r.endDate),
+            });
+          } else {
+            // half_day：從 hours 反推 slots
+            const slots = this._inferHalfDaySlots(r.startDate, r.endDate, r.hours);
+            this.form.patchValue({
+              ...baseValues,
+              startDate: this._toDateString(r.startDate),
+              endDate:   this._toDateString(r.endDate),
+              startSlot: slots.startSlot,
+              endSlot:   slots.endSlot,
             });
           }
+
+          // 回填指定審核者清單
+          if (r.designatedReviewers?.length) {
+            this.designatedEntries = r.designatedReviewers.map(dr => ({
+              stepOrder: dr.stepOrder,
+              selectedJobTitleId: this.allUsers.find(u => u.id === dr.reviewerId)?.jobTitleId ?? null,
+              selectedUserId: dr.reviewerId,
+              filteredUsers: [],
+            }));
+            if (this.allUsers.length > 0) {
+              this.designatedEntries.forEach(e => {
+                if (e.selectedJobTitleId) {
+                  e.filteredUsers = this.allUsers.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active');
+                }
+              });
+            }
+          }
+          if (this.isReadOnly) this.form.disable();
+        } finally {
+          this.isLoadingExisting = false;
         }
-        if (this.isReadOnly) this.form.disable();
+
+        // 取代被 guard 跳過的 valueChanges 副作用：手動套用驗證規則與配額載入
+        this.applyLeaveTypeOnLoad(r.leaveType, r.bereavementRelationship);
+
         // 非草稿時載入簽核流程
         if (r.approvalStatus !== 'draft') {
           this.taskSvc.getById(this.requestId, 'leave').subscribe({
@@ -463,6 +482,20 @@ export class LeaveRequestForm implements OnInit {
     this.form.get('bereavementRelationship')?.updateValueAndValidity({emitEvent: false});
 
     // 依假別載入對應配額
+    if (type === 'annual') this.loadAnnualQuota();
+    if (type === 'compensatory') this.loadCompensatoryHours();
+    if (type === 'ceremonial_festival') this.loadCeremonialQuota();
+    if (type === 'marriage') this.loadMarriageQuota();
+    if (type === 'maternity') this.loadMaternityStatus();
+  }
+
+  /** 載入既有資料時手動套用 leaveType 對應的驗證規則與配額載入（取代被 guard 跳過的 valueChanges 副作用） */
+  private applyLeaveTypeOnLoad(type: LeaveType, bereavementRel?: string | null) {
+    if (type === 'bereavement') {
+      this.form.get('bereavementRelationship')?.setValidators(Validators.required);
+      this.form.get('bereavementRelationship')?.updateValueAndValidity({emitEvent: false});
+      if (bereavementRel) this.loadBereavementQuota(bereavementRel);
+    }
     if (type === 'annual') this.loadAnnualQuota();
     if (type === 'compensatory') this.loadCompensatoryHours();
     if (type === 'ceremonial_festival') this.loadCeremonialQuota();

@@ -7869,8 +7869,8 @@ function PaymentForm_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 7);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 50);
-    \u0275\u0275element(2, "use", 51);
+    \u0275\u0275elementStart(1, "svg", 48);
+    \u0275\u0275element(2, "use", 49);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3);
     \u0275\u0275elementEnd();
@@ -7883,10 +7883,10 @@ function PaymentForm_Conditional_7_Template(rf, ctx) {
 }
 function PaymentForm_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 8)(1, "div", 52);
+    \u0275\u0275elementStart(0, "div", 8)(1, "div", 50);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(2, "svg", 50);
-    \u0275\u0275element(3, "use", 53);
+    \u0275\u0275elementStart(2, "svg", 48);
+    \u0275\u0275element(3, "use", 51);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u6B64\u7533\u8ACB\u5BE9\u6838\u4E2D\uFF0C\u4E0D\u53EF\u518D\u4FEE\u6539\u3002 ");
     \u0275\u0275elementEnd()();
@@ -7894,10 +7894,10 @@ function PaymentForm_Conditional_8_Template(rf, ctx) {
 }
 function PaymentForm_Conditional_9_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 8)(1, "div", 54);
+    \u0275\u0275elementStart(0, "div", 8)(1, "div", 52);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(2, "svg", 50);
-    \u0275\u0275element(3, "use", 51);
+    \u0275\u0275elementStart(2, "svg", 48);
+    \u0275\u0275element(3, "use", 49);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u6B64\u7533\u8ACB\u5DF2\u88AB\u9000\u56DE\uFF0C\u8ACB\u4FEE\u6539\u5F8C\u91CD\u65B0\u9001\u51FA\u3002 ");
     \u0275\u0275elementEnd()();
@@ -7905,10 +7905,10 @@ function PaymentForm_Conditional_9_Template(rf, ctx) {
 }
 function PaymentForm_Conditional_10_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 8)(1, "div", 55);
+    \u0275\u0275elementStart(0, "div", 8)(1, "div", 53);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(2, "svg", 50);
-    \u0275\u0275element(3, "use", 56);
+    \u0275\u0275elementStart(2, "svg", 48);
+    \u0275\u0275element(3, "use", 54);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u6B64\u7533\u8ACB\u5DF2\u6838\u51C6\uFF0C\u4E0D\u53EF\u518D\u4FEE\u6539\u3002 ");
     \u0275\u0275elementEnd()();
@@ -7916,18 +7916,18 @@ function PaymentForm_Conditional_10_Template(rf, ctx) {
 }
 function PaymentForm_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 8)(1, "div", 57);
+    \u0275\u0275elementStart(0, "div", 8)(1, "div", 55);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(2, "svg", 50);
-    \u0275\u0275element(3, "use", 58);
+    \u0275\u0275elementStart(2, "svg", 48);
+    \u0275\u0275element(3, "use", 56);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u6B64\u7533\u8ACB\u5DF2\u88AB\u62D2\u7D55\uFF0C\u4E0D\u53EF\u518D\u4FEE\u6539\u3002 ");
     \u0275\u0275elementEnd()();
   }
 }
-function PaymentForm_Conditional_45_Template(rf, ctx) {
+function PaymentForm_Conditional_41_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "p", 29);
+    \u0275\u0275elementStart(0, "p", 27);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -7937,9 +7937,9 @@ function PaymentForm_Conditional_45_Template(rf, ctx) {
     \u0275\u0275textInterpolate(ctx_r1.projectCode ? ctx_r1.projectCode + " - " + ctx_r1.projectName : "\u2014");
   }
 }
-function PaymentForm_Conditional_46_For_4_Template(rf, ctx) {
+function PaymentForm_Conditional_42_For_4_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 60);
+    \u0275\u0275elementStart(0, "option", 58);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -7950,29 +7950,29 @@ function PaymentForm_Conditional_46_For_4_Template(rf, ctx) {
     \u0275\u0275textInterpolate3("", p_r3.code, " - ", p_r3.name, "", p_r3.departmentName ? "\uFF08" + p_r3.departmentName + "\uFF09" : "");
   }
 }
-function PaymentForm_Conditional_46_Conditional_5_Template(rf, ctx) {
+function PaymentForm_Conditional_42_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 61);
+    \u0275\u0275elementStart(0, "div", 59);
     \u0275\u0275text(1, "\u60A8\u76EE\u524D\u53EF\u7533\u8ACB\u7684\u5C08\u6848\u6E05\u55AE\u70BA\u7A7A\uFF0C\u8ACB\u806F\u7D61\u4E3B\u7BA1\u6216\u78BA\u8A8D\u90E8\u9580\u8A2D\u5B9A\u3002");
     \u0275\u0275elementEnd();
   }
 }
-function PaymentForm_Conditional_46_Conditional_6_Template(rf, ctx) {
+function PaymentForm_Conditional_42_Conditional_6_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 62);
+    \u0275\u0275elementStart(0, "div", 60);
     \u0275\u0275text(1, "\u8ACB\u9078\u64C7\u5C08\u6848\u3002");
     \u0275\u0275elementEnd();
   }
 }
-function PaymentForm_Conditional_46_Template(rf, ctx) {
+function PaymentForm_Conditional_42_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "select", 59)(1, "option", 60);
+    \u0275\u0275elementStart(0, "select", 57)(1, "option", 58);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(3, PaymentForm_Conditional_46_For_4_Template, 2, 4, "option", 60, _forTrack13);
+    \u0275\u0275repeaterCreate(3, PaymentForm_Conditional_42_For_4_Template, 2, 4, "option", 58, _forTrack13);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(5, PaymentForm_Conditional_46_Conditional_5_Template, 2, 0, "div", 61);
-    \u0275\u0275conditionalCreate(6, PaymentForm_Conditional_46_Conditional_6_Template, 2, 0, "div", 62);
+    \u0275\u0275conditionalCreate(5, PaymentForm_Conditional_42_Conditional_5_Template, 2, 0, "div", 59);
+    \u0275\u0275conditionalCreate(6, PaymentForm_Conditional_42_Conditional_6_Template, 2, 0, "div", 60);
   }
   if (rf & 2) {
     let tmp_6_0;
@@ -7989,9 +7989,9 @@ function PaymentForm_Conditional_46_Template(rf, ctx) {
     \u0275\u0275conditional(((tmp_6_0 = ctx_r1.form.get("projectId")) == null ? null : tmp_6_0.invalid) && ((tmp_6_0 = ctx_r1.form.get("projectId")) == null ? null : tmp_6_0.touched) ? 6 : -1);
   }
 }
-function PaymentForm_Conditional_50_Template(rf, ctx) {
+function PaymentForm_Conditional_46_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "p", 31);
+    \u0275\u0275elementStart(0, "p", 29);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -8002,17 +8002,17 @@ function PaymentForm_Conditional_50_Template(rf, ctx) {
     \u0275\u0275textInterpolate(((tmp_2_0 = ctx_r1.form.get("reason")) == null ? null : tmp_2_0.value) || "\u2014");
   }
 }
-function PaymentForm_Conditional_51_Template(rf, ctx) {
+function PaymentForm_Conditional_47_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "textarea", 32);
+    \u0275\u0275element(0, "textarea", 30);
   }
 }
-function PaymentForm_Conditional_52_Conditional_6_Conditional_1_Template(rf, ctx) {
+function PaymentForm_Conditional_48_Conditional_6_Conditional_1_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 65)(1, "label", 19);
+    \u0275\u0275elementStart(0, "div", 63)(1, "label", 19);
     \u0275\u0275text(2, "\u9810\u8A08\u64A5\u6B3E\u65E5");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "p", 66);
+    \u0275\u0275elementStart(3, "p", 64);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd()();
   }
@@ -8022,12 +8022,12 @@ function PaymentForm_Conditional_52_Conditional_6_Conditional_1_Template(rf, ctx
     \u0275\u0275textInterpolate(ctx_r1.estimatedPaymentDate);
   }
 }
-function PaymentForm_Conditional_52_Conditional_6_Conditional_2_Template(rf, ctx) {
+function PaymentForm_Conditional_48_Conditional_6_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 65)(1, "label", 19);
+    \u0275\u0275elementStart(0, "div", 63)(1, "label", 19);
     \u0275\u0275text(2, "\u64A5\u6B3E\u65E5");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "p", 67);
+    \u0275\u0275elementStart(3, "p", 65);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd()();
   }
@@ -8037,11 +8037,11 @@ function PaymentForm_Conditional_52_Conditional_6_Conditional_2_Template(rf, ctx
     \u0275\u0275textInterpolate(ctx_r1.paidAt);
   }
 }
-function PaymentForm_Conditional_52_Conditional_6_Template(rf, ctx) {
+function PaymentForm_Conditional_48_Conditional_6_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 64);
-    \u0275\u0275conditionalCreate(1, PaymentForm_Conditional_52_Conditional_6_Conditional_1_Template, 5, 1, "div", 65);
-    \u0275\u0275conditionalCreate(2, PaymentForm_Conditional_52_Conditional_6_Conditional_2_Template, 5, 1, "div", 65);
+    \u0275\u0275elementStart(0, "div", 62);
+    \u0275\u0275conditionalCreate(1, PaymentForm_Conditional_48_Conditional_6_Conditional_1_Template, 5, 1, "div", 63);
+    \u0275\u0275conditionalCreate(2, PaymentForm_Conditional_48_Conditional_6_Conditional_2_Template, 5, 1, "div", 63);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -8052,15 +8052,15 @@ function PaymentForm_Conditional_52_Conditional_6_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r1.paidAt ? 2 : -1);
   }
 }
-function PaymentForm_Conditional_52_Template(rf, ctx) {
+function PaymentForm_Conditional_48_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 30)(1, "label", 19);
+    \u0275\u0275elementStart(0, "div", 28)(1, "label", 19);
     \u0275\u0275text(2, "\u7C3D\u6838\u72C0\u614B");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div")(4, "span", 63);
+    \u0275\u0275elementStart(3, "div")(4, "span", 61);
     \u0275\u0275text(5);
     \u0275\u0275elementEnd()()();
-    \u0275\u0275conditionalCreate(6, PaymentForm_Conditional_52_Conditional_6_Template, 3, 2, "div", 64);
+    \u0275\u0275conditionalCreate(6, PaymentForm_Conditional_48_Conditional_6_Template, 3, 2, "div", 62);
   }
   if (rf & 2) {
     const ctx_r1 = \u0275\u0275nextContext();
@@ -8072,36 +8072,36 @@ function PaymentForm_Conditional_52_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r1.estimatedPaymentDate || ctx_r1.paidAt ? 6 : -1);
   }
 }
-function PaymentForm_Conditional_59_Conditional_8_Template(rf, ctx) {
+function PaymentForm_Conditional_55_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 73);
+    \u0275\u0275elementStart(0, "div", 71);
     \u0275\u0275text(1, "\u8ACB\u81F3\u5C11\u4E0A\u50B3\u4E00\u5F35\u767C\u7968\u3002");
     \u0275\u0275elementEnd();
   }
 }
-function PaymentForm_Conditional_59_Template(rf, ctx) {
+function PaymentForm_Conditional_55_Template(rf, ctx) {
   if (rf & 1) {
     const _r4 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "label", 68);
+    \u0275\u0275elementStart(0, "label", 66);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 69);
-    \u0275\u0275element(2, "use", 70);
+    \u0275\u0275elementStart(1, "svg", 67);
+    \u0275\u0275element(2, "use", 68);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(3, "span", 71);
+    \u0275\u0275elementStart(3, "span", 69);
     \u0275\u0275text(4, "\u9EDE\u64CA\u4E0A\u50B3\u767C\u7968\u5716\u6A94");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "span", 61);
+    \u0275\u0275elementStart(5, "span", 59);
     \u0275\u0275text(6, "\u652F\u63F4 JPG\u3001PNG\u3001HEIC\u3001PDF\uFF0C\u53EF\u591A\u9078");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "input", 72);
-    \u0275\u0275listener("change", function PaymentForm_Conditional_59_Template_input_change_7_listener($event) {
+    \u0275\u0275elementStart(7, "input", 70);
+    \u0275\u0275listener("change", function PaymentForm_Conditional_55_Template_input_change_7_listener($event) {
       \u0275\u0275restoreView(_r4);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.onFilesSelected($event));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275conditionalCreate(8, PaymentForm_Conditional_59_Conditional_8_Template, 2, 0, "div", 73);
+    \u0275\u0275conditionalCreate(8, PaymentForm_Conditional_55_Conditional_8_Template, 2, 0, "div", 71);
   }
   if (rf & 2) {
     const ctx_r1 = \u0275\u0275nextContext();
@@ -8109,16 +8109,16 @@ function PaymentForm_Conditional_59_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r1.showInvoiceError ? 8 : -1);
   }
 }
-function PaymentForm_Conditional_75_Template(rf, ctx) {
+function PaymentForm_Conditional_71_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "th", 43);
+    \u0275\u0275element(0, "th", 41);
   }
 }
-function PaymentForm_For_78_Conditional_3_Template(rf, ctx) {
+function PaymentForm_For_74_Conditional_3_Template(rf, ctx) {
   if (rf & 1) {
     const _r5 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 88);
-    \u0275\u0275listener("click", function PaymentForm_For_78_Conditional_3_Template_button_click_0_listener() {
+    \u0275\u0275elementStart(0, "button", 86);
+    \u0275\u0275listener("click", function PaymentForm_For_74_Conditional_3_Template_button_click_0_listener() {
       let tmp_15_0;
       \u0275\u0275restoreView(_r5);
       const ctrl_r6 = \u0275\u0275nextContext().$implicit;
@@ -8126,8 +8126,8 @@ function PaymentForm_For_78_Conditional_3_Template(rf, ctx) {
       return \u0275\u0275resetView(ctx_r1.openPreview((tmp_15_0 = ctrl_r6.get("fileName")) == null ? null : tmp_15_0.value, ((tmp_15_0 = ctrl_r6.get("previewUrl")) == null ? null : tmp_15_0.value) || ((tmp_15_0 = ctrl_r6.get("fileUrl")) == null ? null : tmp_15_0.value)));
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 50);
-    \u0275\u0275element(2, "use", 34);
+    \u0275\u0275elementStart(1, "svg", 48);
+    \u0275\u0275element(2, "use", 32);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -8136,14 +8136,14 @@ function PaymentForm_For_78_Conditional_3_Template(rf, ctx) {
     \u0275\u0275property("title", \u0275\u0275interpolate((tmp_14_0 = ctrl_r6.get("fileName")) == null ? null : tmp_14_0.value));
   }
 }
-function PaymentForm_For_78_Conditional_4_Template(rf, ctx) {
+function PaymentForm_For_74_Conditional_4_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "span", 76);
+    \u0275\u0275element(0, "span", 74);
   }
 }
-function PaymentForm_For_78_Conditional_6_Template(rf, ctx) {
+function PaymentForm_For_74_Conditional_6_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 78);
+    \u0275\u0275elementStart(0, "span", 76);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -8154,22 +8154,22 @@ function PaymentForm_For_78_Conditional_6_Template(rf, ctx) {
     \u0275\u0275textInterpolate(((tmp_14_0 = ctrl_r6.get("invoiceNo")) == null ? null : tmp_14_0.value) || "\u2014");
   }
 }
-function PaymentForm_For_78_Conditional_7_Template(rf, ctx) {
+function PaymentForm_For_74_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 79);
-    \u0275\u0275element(1, "span", 89);
+    \u0275\u0275elementStart(0, "div", 77);
+    \u0275\u0275element(1, "span", 87);
     \u0275\u0275text(2, " \u8B58\u5225\u4E2D\u2026 ");
     \u0275\u0275elementEnd();
   }
 }
-function PaymentForm_For_78_Conditional_8_Template(rf, ctx) {
+function PaymentForm_For_74_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "input", 80);
+    \u0275\u0275element(0, "input", 78);
   }
 }
-function PaymentForm_For_78_Conditional_10_Template(rf, ctx) {
+function PaymentForm_For_74_Conditional_10_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 81);
+    \u0275\u0275elementStart(0, "span", 79);
     \u0275\u0275text(1);
     \u0275\u0275pipe(2, "date");
     \u0275\u0275elementEnd();
@@ -8181,22 +8181,22 @@ function PaymentForm_For_78_Conditional_10_Template(rf, ctx) {
     \u0275\u0275textInterpolate(((tmp_14_0 = ctrl_r6.get("invoiceDate")) == null ? null : tmp_14_0.value) ? \u0275\u0275pipeBind2(2, 1, (tmp_14_0 = ctrl_r6.get("invoiceDate")) == null ? null : tmp_14_0.value, "yyyy-MM-dd") : "\u2014");
   }
 }
-function PaymentForm_For_78_Conditional_11_Template(rf, ctx) {
+function PaymentForm_For_74_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 79);
-    \u0275\u0275element(1, "span", 89);
+    \u0275\u0275elementStart(0, "div", 77);
+    \u0275\u0275element(1, "span", 87);
     \u0275\u0275text(2, " \u8B58\u5225\u4E2D\u2026 ");
     \u0275\u0275elementEnd();
   }
 }
-function PaymentForm_For_78_Conditional_12_Template(rf, ctx) {
+function PaymentForm_For_74_Conditional_12_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "input", 82);
+    \u0275\u0275element(0, "input", 80);
   }
 }
-function PaymentForm_For_78_Conditional_14_Template(rf, ctx) {
+function PaymentForm_For_74_Conditional_14_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 81);
+    \u0275\u0275elementStart(0, "span", 79);
     \u0275\u0275text(1);
     \u0275\u0275pipe(2, "number");
     \u0275\u0275elementEnd();
@@ -8208,25 +8208,25 @@ function PaymentForm_For_78_Conditional_14_Template(rf, ctx) {
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(2, 1, (tmp_14_0 = ctrl_r6.get("amount")) == null ? null : tmp_14_0.value, "1.0-0"));
   }
 }
-function PaymentForm_For_78_Conditional_15_Template(rf, ctx) {
+function PaymentForm_For_74_Conditional_15_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 83);
+    \u0275\u0275elementStart(0, "div", 81);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
 }
-function PaymentForm_For_78_Conditional_16_Template(rf, ctx) {
+function PaymentForm_For_74_Conditional_16_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 84)(1, "span", 90);
+    \u0275\u0275elementStart(0, "div", 82)(1, "span", 88);
     \u0275\u0275text(2, "NT$");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(3, "input", 91);
+    \u0275\u0275element(3, "input", 89);
     \u0275\u0275elementEnd();
   }
 }
-function PaymentForm_For_78_Conditional_18_Template(rf, ctx) {
+function PaymentForm_For_74_Conditional_18_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 81);
+    \u0275\u0275elementStart(0, "span", 79);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -8237,21 +8237,21 @@ function PaymentForm_For_78_Conditional_18_Template(rf, ctx) {
     \u0275\u0275textInterpolate(((tmp_14_0 = ctrl_r6.get("itemName")) == null ? null : tmp_14_0.value) || "\u2014");
   }
 }
-function PaymentForm_For_78_Conditional_19_Template(rf, ctx) {
+function PaymentForm_For_74_Conditional_19_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 83);
+    \u0275\u0275elementStart(0, "div", 81);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
 }
-function PaymentForm_For_78_Conditional_20_Template(rf, ctx) {
+function PaymentForm_For_74_Conditional_20_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "input", 85);
+    \u0275\u0275element(0, "input", 83);
   }
 }
-function PaymentForm_For_78_Conditional_22_Template(rf, ctx) {
+function PaymentForm_For_74_Conditional_22_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 81);
+    \u0275\u0275elementStart(0, "span", 79);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -8262,31 +8262,31 @@ function PaymentForm_For_78_Conditional_22_Template(rf, ctx) {
     \u0275\u0275textInterpolate(((tmp_14_0 = ctrl_r6.get("note")) == null ? null : tmp_14_0.value) || "\u2014");
   }
 }
-function PaymentForm_For_78_Conditional_23_Template(rf, ctx) {
+function PaymentForm_For_74_Conditional_23_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 83);
+    \u0275\u0275elementStart(0, "div", 81);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
 }
-function PaymentForm_For_78_Conditional_24_Template(rf, ctx) {
+function PaymentForm_For_74_Conditional_24_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "input", 86);
+    \u0275\u0275element(0, "input", 84);
   }
 }
-function PaymentForm_For_78_Conditional_25_Template(rf, ctx) {
+function PaymentForm_For_74_Conditional_25_Template(rf, ctx) {
   if (rf & 1) {
     const _r7 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "td", 87)(1, "button", 92);
-    \u0275\u0275listener("click", function PaymentForm_For_78_Conditional_25_Template_button_click_1_listener() {
+    \u0275\u0275elementStart(0, "td", 85)(1, "button", 90);
+    \u0275\u0275listener("click", function PaymentForm_For_74_Conditional_25_Template_button_click_1_listener() {
       \u0275\u0275restoreView(_r7);
-      const \u0275$index_246_r8 = \u0275\u0275nextContext().$index;
+      const \u0275$index_239_r8 = \u0275\u0275nextContext().$index;
       const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.removeInvoice(\u0275$index_246_r8));
+      return \u0275\u0275resetView(ctx_r1.removeInvoice(\u0275$index_239_r8));
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(2, "svg", 50);
-    \u0275\u0275element(3, "use", 93);
+    \u0275\u0275elementStart(2, "svg", 48);
+    \u0275\u0275element(3, "use", 91);
     \u0275\u0275elementEnd()()();
   }
   if (rf & 2) {
@@ -8296,39 +8296,39 @@ function PaymentForm_For_78_Conditional_25_Template(rf, ctx) {
     \u0275\u0275property("disabled", isOcr_r9);
   }
 }
-function PaymentForm_For_78_Template(rf, ctx) {
+function PaymentForm_For_74_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275declareLet(0);
-    \u0275\u0275elementStart(1, "tr", 45)(2, "td", 74);
-    \u0275\u0275conditionalCreate(3, PaymentForm_For_78_Conditional_3_Template, 3, 2, "button", 75)(4, PaymentForm_For_78_Conditional_4_Template, 1, 0, "span", 76);
+    \u0275\u0275elementStart(1, "tr", 43)(2, "td", 72);
+    \u0275\u0275conditionalCreate(3, PaymentForm_For_74_Conditional_3_Template, 3, 2, "button", 73)(4, PaymentForm_For_74_Conditional_4_Template, 1, 0, "span", 74);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "td", 77);
-    \u0275\u0275conditionalCreate(6, PaymentForm_For_78_Conditional_6_Template, 2, 1, "span", 78)(7, PaymentForm_For_78_Conditional_7_Template, 3, 0, "div", 79)(8, PaymentForm_For_78_Conditional_8_Template, 1, 0, "input", 80);
+    \u0275\u0275elementStart(5, "td", 75);
+    \u0275\u0275conditionalCreate(6, PaymentForm_For_74_Conditional_6_Template, 2, 1, "span", 76)(7, PaymentForm_For_74_Conditional_7_Template, 3, 0, "div", 77)(8, PaymentForm_For_74_Conditional_8_Template, 1, 0, "input", 78);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "td", 77);
-    \u0275\u0275conditionalCreate(10, PaymentForm_For_78_Conditional_10_Template, 3, 4, "span", 81)(11, PaymentForm_For_78_Conditional_11_Template, 3, 0, "div", 79)(12, PaymentForm_For_78_Conditional_12_Template, 1, 0, "input", 82);
+    \u0275\u0275elementStart(9, "td", 75);
+    \u0275\u0275conditionalCreate(10, PaymentForm_For_74_Conditional_10_Template, 3, 4, "span", 79)(11, PaymentForm_For_74_Conditional_11_Template, 3, 0, "div", 77)(12, PaymentForm_For_74_Conditional_12_Template, 1, 0, "input", 80);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(13, "td", 77);
-    \u0275\u0275conditionalCreate(14, PaymentForm_For_78_Conditional_14_Template, 3, 4, "span", 81)(15, PaymentForm_For_78_Conditional_15_Template, 2, 0, "div", 83)(16, PaymentForm_For_78_Conditional_16_Template, 4, 0, "div", 84);
+    \u0275\u0275elementStart(13, "td", 75);
+    \u0275\u0275conditionalCreate(14, PaymentForm_For_74_Conditional_14_Template, 3, 4, "span", 79)(15, PaymentForm_For_74_Conditional_15_Template, 2, 0, "div", 81)(16, PaymentForm_For_74_Conditional_16_Template, 4, 0, "div", 82);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(17, "td", 77);
-    \u0275\u0275conditionalCreate(18, PaymentForm_For_78_Conditional_18_Template, 2, 1, "span", 81)(19, PaymentForm_For_78_Conditional_19_Template, 2, 0, "div", 83)(20, PaymentForm_For_78_Conditional_20_Template, 1, 0, "input", 85);
+    \u0275\u0275elementStart(17, "td", 75);
+    \u0275\u0275conditionalCreate(18, PaymentForm_For_74_Conditional_18_Template, 2, 1, "span", 79)(19, PaymentForm_For_74_Conditional_19_Template, 2, 0, "div", 81)(20, PaymentForm_For_74_Conditional_20_Template, 1, 0, "input", 83);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(21, "td", 77);
-    \u0275\u0275conditionalCreate(22, PaymentForm_For_78_Conditional_22_Template, 2, 1, "span", 81)(23, PaymentForm_For_78_Conditional_23_Template, 2, 0, "div", 83)(24, PaymentForm_For_78_Conditional_24_Template, 1, 0, "input", 86);
+    \u0275\u0275elementStart(21, "td", 75);
+    \u0275\u0275conditionalCreate(22, PaymentForm_For_74_Conditional_22_Template, 2, 1, "span", 79)(23, PaymentForm_For_74_Conditional_23_Template, 2, 0, "div", 81)(24, PaymentForm_For_74_Conditional_24_Template, 1, 0, "input", 84);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(25, PaymentForm_For_78_Conditional_25_Template, 4, 1, "td", 87);
+    \u0275\u0275conditionalCreate(25, PaymentForm_For_74_Conditional_25_Template, 4, 1, "td", 85);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
     let tmp_12_0;
     let tmp_14_0;
     const ctrl_r6 = ctx.$implicit;
-    const \u0275$index_246_r8 = ctx.$index;
+    const \u0275$index_239_r8 = ctx.$index;
     const ctx_r1 = \u0275\u0275nextContext();
     const isOcr_r10 = \u0275\u0275storeLet(ctx_r1.ocrLoadingIds.has((tmp_12_0 = ctrl_r6.get("id")) == null ? null : tmp_12_0.value));
     \u0275\u0275advance();
-    \u0275\u0275property("formGroupName", \u0275$index_246_r8);
+    \u0275\u0275property("formGroupName", \u0275$index_239_r8);
     \u0275\u0275advance(2);
     \u0275\u0275conditional(((tmp_14_0 = ctrl_r6.get("previewUrl")) == null ? null : tmp_14_0.value) || ((tmp_14_0 = ctrl_r6.get("fileUrl")) == null ? null : tmp_14_0.value) ? 3 : isOcr_r10 ? 4 : -1);
     \u0275\u0275advance(3);
@@ -8345,9 +8345,9 @@ function PaymentForm_For_78_Template(rf, ctx) {
     \u0275\u0275conditional(!ctx_r1.isReadOnly ? 25 : -1);
   }
 }
-function PaymentForm_ForEmpty_79_Template(rf, ctx) {
+function PaymentForm_ForEmpty_75_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 94);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 92);
     \u0275\u0275text(2, "\u5C1A\u672A\u65B0\u589E\u767C\u7968");
     \u0275\u0275elementEnd()();
   }
@@ -8357,22 +8357,22 @@ function PaymentForm_ForEmpty_79_Template(rf, ctx) {
     \u0275\u0275attribute("colspan", ctx_r1.isReadOnly ? 6 : 7);
   }
 }
-function PaymentForm_Conditional_80_Conditional_8_Template(rf, ctx) {
+function PaymentForm_Conditional_76_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275element(0, "td");
   }
 }
-function PaymentForm_Conditional_80_Template(rf, ctx) {
+function PaymentForm_Conditional_76_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tfoot")(1, "tr", 37)(2, "td", 95);
+    \u0275\u0275elementStart(0, "tfoot")(1, "tr", 35)(2, "td", 93);
     \u0275\u0275text(3, "\u5408\u8A08");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "td", 96);
+    \u0275\u0275elementStart(4, "td", 94);
     \u0275\u0275text(5);
     \u0275\u0275pipe(6, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(7, "td", 97);
-    \u0275\u0275conditionalCreate(8, PaymentForm_Conditional_80_Conditional_8_Template, 1, 0, "td");
+    \u0275\u0275element(7, "td", 95);
+    \u0275\u0275conditionalCreate(8, PaymentForm_Conditional_76_Conditional_8_Template, 1, 0, "td");
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -8383,9 +8383,9 @@ function PaymentForm_Conditional_80_Template(rf, ctx) {
     \u0275\u0275conditional(!ctx_r1.isReadOnly ? 8 : -1);
   }
 }
-function PaymentForm_Conditional_81_For_9_For_7_Template(rf, ctx) {
+function PaymentForm_Conditional_77_For_9_For_7_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 60);
+    \u0275\u0275elementStart(0, "option", 58);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -8396,9 +8396,9 @@ function PaymentForm_Conditional_81_For_9_For_7_Template(rf, ctx) {
     \u0275\u0275textInterpolate(jt_r15.name);
   }
 }
-function PaymentForm_Conditional_81_For_9_For_12_Template(rf, ctx) {
+function PaymentForm_Conditional_77_For_9_For_12_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 60);
+    \u0275\u0275elementStart(0, "option", 58);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -8409,56 +8409,56 @@ function PaymentForm_Conditional_81_For_9_For_12_Template(rf, ctx) {
     \u0275\u0275textInterpolate(user_r16.name);
   }
 }
-function PaymentForm_Conditional_81_For_9_Template(rf, ctx) {
+function PaymentForm_Conditional_77_For_9_Template(rf, ctx) {
   if (rf & 1) {
     const _r12 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 99)(1, "span", 102);
+    \u0275\u0275elementStart(0, "div", 97)(1, "span", 100);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "select", 103);
-    \u0275\u0275twoWayListener("ngModelChange", function PaymentForm_Conditional_81_For_9_Template_select_ngModelChange_3_listener($event) {
+    \u0275\u0275elementStart(3, "select", 101);
+    \u0275\u0275twoWayListener("ngModelChange", function PaymentForm_Conditional_77_For_9_Template_select_ngModelChange_3_listener($event) {
       const entry_r13 = \u0275\u0275restoreView(_r12).$implicit;
       \u0275\u0275twoWayBindingSet(entry_r13.selectedJobTitleId, $event) || (entry_r13.selectedJobTitleId = $event);
       return \u0275\u0275resetView($event);
     });
-    \u0275\u0275listener("ngModelChange", function PaymentForm_Conditional_81_For_9_Template_select_ngModelChange_3_listener() {
-      const \u0275$index_385_r14 = \u0275\u0275restoreView(_r12).$index;
+    \u0275\u0275listener("ngModelChange", function PaymentForm_Conditional_77_For_9_Template_select_ngModelChange_3_listener() {
+      const \u0275$index_378_r14 = \u0275\u0275restoreView(_r12).$index;
       const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.onEntryJobTitleChange(\u0275$index_385_r14));
+      return \u0275\u0275resetView(ctx_r1.onEntryJobTitleChange(\u0275$index_378_r14));
     });
-    \u0275\u0275elementStart(4, "option", 60);
+    \u0275\u0275elementStart(4, "option", 58);
     \u0275\u0275text(5, "\u2014 \u8077\u7A31 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(6, PaymentForm_Conditional_81_For_9_For_7_Template, 2, 2, "option", 60, _forTrack13);
+    \u0275\u0275repeaterCreate(6, PaymentForm_Conditional_77_For_9_For_7_Template, 2, 2, "option", 58, _forTrack13);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "select", 104);
-    \u0275\u0275twoWayListener("ngModelChange", function PaymentForm_Conditional_81_For_9_Template_select_ngModelChange_8_listener($event) {
+    \u0275\u0275elementStart(8, "select", 102);
+    \u0275\u0275twoWayListener("ngModelChange", function PaymentForm_Conditional_77_For_9_Template_select_ngModelChange_8_listener($event) {
       const entry_r13 = \u0275\u0275restoreView(_r12).$implicit;
       \u0275\u0275twoWayBindingSet(entry_r13.selectedUserId, $event) || (entry_r13.selectedUserId = $event);
       return \u0275\u0275resetView($event);
     });
-    \u0275\u0275elementStart(9, "option", 60);
+    \u0275\u0275elementStart(9, "option", 58);
     \u0275\u0275text(10, "\u2014 \u4EBA\u54E1 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(11, PaymentForm_Conditional_81_For_9_For_12_Template, 2, 2, "option", 60, _forTrack13);
+    \u0275\u0275repeaterCreate(11, PaymentForm_Conditional_77_For_9_For_12_Template, 2, 2, "option", 58, _forTrack13);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(13, "button", 105);
-    \u0275\u0275listener("click", function PaymentForm_Conditional_81_For_9_Template_button_click_13_listener() {
-      const \u0275$index_385_r14 = \u0275\u0275restoreView(_r12).$index;
+    \u0275\u0275elementStart(13, "button", 103);
+    \u0275\u0275listener("click", function PaymentForm_Conditional_77_For_9_Template_button_click_13_listener() {
+      const \u0275$index_378_r14 = \u0275\u0275restoreView(_r12).$index;
       const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.removeDesignatedEntry(\u0275$index_385_r14));
+      return \u0275\u0275resetView(ctx_r1.removeDesignatedEntry(\u0275$index_378_r14));
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(14, "svg", 50);
-    \u0275\u0275element(15, "use", 93);
+    \u0275\u0275elementStart(14, "svg", 48);
+    \u0275\u0275element(15, "use", 91);
     \u0275\u0275elementEnd()()();
   }
   if (rf & 2) {
     const entry_r13 = ctx.$implicit;
-    const \u0275$index_385_r14 = ctx.$index;
+    const \u0275$index_378_r14 = ctx.$index;
     const ctx_r1 = \u0275\u0275nextContext(2);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate1("", \u0275$index_385_r14 + 1, ".");
+    \u0275\u0275textInterpolate1("", \u0275$index_378_r14 + 1, ".");
     \u0275\u0275advance();
     \u0275\u0275twoWayProperty("ngModel", entry_r13.selectedJobTitleId);
     \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(7, _c13));
@@ -8475,13 +8475,13 @@ function PaymentForm_Conditional_81_For_9_Template(rf, ctx) {
     \u0275\u0275repeater(entry_r13.filteredUsers);
   }
 }
-function PaymentForm_Conditional_81_Template(rf, ctx) {
+function PaymentForm_Conditional_77_Template(rf, ctx) {
   if (rf & 1) {
     const _r11 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 33)(1, "div", 13);
+    \u0275\u0275elementStart(0, "div", 31)(1, "div", 13);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 14);
-    \u0275\u0275element(3, "use", 98);
+    \u0275\u0275element(3, "use", 96);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u6307\u5B9A\u5BE9\u6838\u8005 ");
     \u0275\u0275elementEnd();
@@ -8489,16 +8489,16 @@ function PaymentForm_Conditional_81_Template(rf, ctx) {
     \u0275\u0275elementStart(5, "div", 16)(6, "label", 19);
     \u0275\u0275text(7, "\u6307\u5B9A\u5BE9\u6838\u8005\uFF08\u4F9D\u5E8F\u5BE9\u6838\uFF09");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(8, PaymentForm_Conditional_81_For_9_Template, 16, 9, "div", 99, \u0275\u0275repeaterTrackByIndex);
-    \u0275\u0275elementStart(10, "button", 100);
-    \u0275\u0275listener("click", function PaymentForm_Conditional_81_Template_button_click_10_listener() {
+    \u0275\u0275repeaterCreate(8, PaymentForm_Conditional_77_For_9_Template, 16, 9, "div", 97, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275elementStart(10, "button", 98);
+    \u0275\u0275listener("click", function PaymentForm_Conditional_77_Template_button_click_10_listener() {
       \u0275\u0275restoreView(_r11);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.addDesignatedEntry());
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(11, "svg", 50);
-    \u0275\u0275element(12, "use", 101);
+    \u0275\u0275elementStart(11, "svg", 48);
+    \u0275\u0275element(12, "use", 99);
     \u0275\u0275elementEnd();
     \u0275\u0275text(13, " \u65B0\u589E\u5BE9\u6838\u4EBA ");
     \u0275\u0275elementEnd()()();
@@ -8509,9 +8509,9 @@ function PaymentForm_Conditional_81_Template(rf, ctx) {
     \u0275\u0275repeater(ctx_r1.designatedEntries);
   }
 }
-function PaymentForm_Conditional_82_For_10_Template(rf, ctx) {
+function PaymentForm_Conditional_78_For_10_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "li", 81);
+    \u0275\u0275elementStart(0, "li", 79);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -8522,12 +8522,12 @@ function PaymentForm_Conditional_82_For_10_Template(rf, ctx) {
     \u0275\u0275textInterpolate(ctx_r1.getUserName(entry_r17.selectedUserId));
   }
 }
-function PaymentForm_Conditional_82_Template(rf, ctx) {
+function PaymentForm_Conditional_78_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 33)(1, "div", 13);
+    \u0275\u0275elementStart(0, "div", 31)(1, "div", 13);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 14);
-    \u0275\u0275element(3, "use", 98);
+    \u0275\u0275element(3, "use", 96);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u6307\u5B9A\u5BE9\u6838\u8005 ");
     \u0275\u0275elementEnd();
@@ -8535,8 +8535,8 @@ function PaymentForm_Conditional_82_Template(rf, ctx) {
     \u0275\u0275elementStart(5, "div", 16)(6, "label", 19);
     \u0275\u0275text(7, "\u6307\u5B9A\u5BE9\u6838\u8005\uFF08\u4F9D\u5E8F\u5BE9\u6838\uFF09");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "ol", 106);
-    \u0275\u0275repeaterCreate(9, PaymentForm_Conditional_82_For_10_Template, 2, 1, "li", 81, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275elementStart(8, "ol", 104);
+    \u0275\u0275repeaterCreate(9, PaymentForm_Conditional_78_For_10_Template, 2, 1, "li", 79, \u0275\u0275repeaterTrackByIndex);
     \u0275\u0275elementEnd()()();
   }
   if (rf & 2) {
@@ -8545,27 +8545,27 @@ function PaymentForm_Conditional_82_Template(rf, ctx) {
     \u0275\u0275repeater(ctx_r1.designatedEntries);
   }
 }
-function PaymentForm_Conditional_84_Conditional_2_Template(rf, ctx) {
+function PaymentForm_Conditional_80_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "span", 108);
+    \u0275\u0275element(0, "span", 106);
   }
 }
-function PaymentForm_Conditional_84_Template(rf, ctx) {
+function PaymentForm_Conditional_80_Template(rf, ctx) {
   if (rf & 1) {
     const _r18 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 47)(1, "button", 107);
-    \u0275\u0275conditionalCreate(2, PaymentForm_Conditional_84_Conditional_2_Template, 1, 0, "span", 108);
+    \u0275\u0275elementStart(0, "div", 45)(1, "button", 105);
+    \u0275\u0275conditionalCreate(2, PaymentForm_Conditional_80_Conditional_2_Template, 1, 0, "span", 106);
     \u0275\u0275text(3);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "button", 109);
-    \u0275\u0275listener("click", function PaymentForm_Conditional_84_Template_button_click_4_listener() {
+    \u0275\u0275elementStart(4, "button", 107);
+    \u0275\u0275listener("click", function PaymentForm_Conditional_80_Template_button_click_4_listener() {
       \u0275\u0275restoreView(_r18);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.submitForApproval());
     });
     \u0275\u0275text(5, " \u9001\u51FA\u7533\u8ACB ");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "a", 110);
+    \u0275\u0275elementStart(6, "a", 108);
     \u0275\u0275text(7, "\u53D6\u6D88");
     \u0275\u0275elementEnd()();
   }
@@ -8581,12 +8581,12 @@ function PaymentForm_Conditional_84_Template(rf, ctx) {
     \u0275\u0275property("disabled", ctx_r1.form.invalid || ctx_r1.isAnyOcrPending);
   }
 }
-function PaymentForm_Conditional_85_Conditional_8_Template(rf, ctx) {
+function PaymentForm_Conditional_81_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 115);
+    \u0275\u0275elementStart(0, "div", 113);
     \u0275\u0275text(1, "\u6838\u51C6\u6642\u9593\uFF1A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(2, "div", 116);
+    \u0275\u0275elementStart(2, "div", 114);
     \u0275\u0275text(3);
     \u0275\u0275pipe(4, "date");
     \u0275\u0275elementEnd();
@@ -8597,12 +8597,12 @@ function PaymentForm_Conditional_85_Conditional_8_Template(rf, ctx) {
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(4, 1, ctx_r1.approvalTask.reviewedAt, "yyyy-MM-dd HH:mm"));
   }
 }
-function PaymentForm_Conditional_85_Conditional_9_Template(rf, ctx) {
+function PaymentForm_Conditional_81_Conditional_9_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 115);
+    \u0275\u0275elementStart(0, "div", 113);
     \u0275\u0275text(1, "\u5BE9\u6838\u610F\u898B\uFF1A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(2, "div", 117);
+    \u0275\u0275elementStart(2, "div", 115);
     \u0275\u0275text(3);
     \u0275\u0275elementEnd();
   }
@@ -8612,31 +8612,31 @@ function PaymentForm_Conditional_85_Conditional_9_Template(rf, ctx) {
     \u0275\u0275textInterpolate(ctx_r1.approvalTask.reviewNote);
   }
 }
-function PaymentForm_Conditional_85_Conditional_11_Conditional_1_Template(rf, ctx) {
+function PaymentForm_Conditional_81_Conditional_11_Conditional_1_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "span", 76);
+    \u0275\u0275element(0, "span", 74);
     \u0275\u0275text(1, " \u7522\u751F\u4E2D\u2026 ");
   }
 }
-function PaymentForm_Conditional_85_Conditional_11_Conditional_2_Template(rf, ctx) {
+function PaymentForm_Conditional_81_Conditional_11_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(0, "svg", 50);
-    \u0275\u0275element(1, "use", 119);
+    \u0275\u0275elementStart(0, "svg", 48);
+    \u0275\u0275element(1, "use", 117);
     \u0275\u0275elementEnd();
     \u0275\u0275text(2, " \u5217\u5370\u8ACB\u6B3E\u55AE ");
   }
 }
-function PaymentForm_Conditional_85_Conditional_11_Template(rf, ctx) {
+function PaymentForm_Conditional_81_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
     const _r19 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 118);
-    \u0275\u0275listener("click", function PaymentForm_Conditional_85_Conditional_11_Template_button_click_0_listener() {
+    \u0275\u0275elementStart(0, "button", 116);
+    \u0275\u0275listener("click", function PaymentForm_Conditional_81_Conditional_11_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r19);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.printPayment());
     });
-    \u0275\u0275conditionalCreate(1, PaymentForm_Conditional_85_Conditional_11_Conditional_1_Template, 2, 0)(2, PaymentForm_Conditional_85_Conditional_11_Conditional_2_Template, 3, 0);
+    \u0275\u0275conditionalCreate(1, PaymentForm_Conditional_81_Conditional_11_Conditional_1_Template, 2, 0)(2, PaymentForm_Conditional_81_Conditional_11_Conditional_2_Template, 3, 0);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -8646,24 +8646,24 @@ function PaymentForm_Conditional_85_Conditional_11_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r1.pdfService.pdfLoading() ? 1 : 2);
   }
 }
-function PaymentForm_Conditional_85_Template(rf, ctx) {
+function PaymentForm_Conditional_81_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 33)(1, "div", 111);
+    \u0275\u0275elementStart(0, "div", 31)(1, "div", 109);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(2, "svg", 50);
-    \u0275\u0275element(3, "use", 56);
+    \u0275\u0275elementStart(2, "svg", 48);
+    \u0275\u0275element(3, "use", 54);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u5DF2\u6838\u51C6 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "div", 16)(6, "p", 112);
+    \u0275\u0275elementStart(5, "div", 16)(6, "p", 110);
     \u0275\u0275text(7, "\u6B64\u7533\u8ACB\u5DF2\u901A\u904E\u6240\u6709\u7C3D\u6838\u6D41\u7A0B\uFF0C\u4E0D\u53EF\u518D\u4FEE\u6539\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(8, PaymentForm_Conditional_85_Conditional_8_Template, 5, 4);
-    \u0275\u0275conditionalCreate(9, PaymentForm_Conditional_85_Conditional_9_Template, 4, 1);
-    \u0275\u0275elementStart(10, "div", 113);
-    \u0275\u0275conditionalCreate(11, PaymentForm_Conditional_85_Conditional_11_Template, 3, 2, "button", 114);
-    \u0275\u0275elementStart(12, "a", 110);
+    \u0275\u0275conditionalCreate(8, PaymentForm_Conditional_81_Conditional_8_Template, 5, 4);
+    \u0275\u0275conditionalCreate(9, PaymentForm_Conditional_81_Conditional_9_Template, 4, 1);
+    \u0275\u0275elementStart(10, "div", 111);
+    \u0275\u0275conditionalCreate(11, PaymentForm_Conditional_81_Conditional_11_Template, 3, 2, "button", 112);
+    \u0275\u0275elementStart(12, "a", 108);
     \u0275\u0275text(13, "\u8FD4\u56DE\u5217\u8868");
     \u0275\u0275elementEnd()()()();
   }
@@ -8677,12 +8677,12 @@ function PaymentForm_Conditional_85_Template(rf, ctx) {
     \u0275\u0275conditional((ctx_r1.approvalTask == null ? null : ctx_r1.approvalTask.paymentDetail) ? 11 : -1);
   }
 }
-function PaymentForm_Conditional_86_Conditional_8_Template(rf, ctx) {
+function PaymentForm_Conditional_82_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 115);
+    \u0275\u0275elementStart(0, "div", 113);
     \u0275\u0275text(1, "\u62D2\u7D55\u6642\u9593\uFF1A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(2, "div", 116);
+    \u0275\u0275elementStart(2, "div", 114);
     \u0275\u0275text(3);
     \u0275\u0275pipe(4, "date");
     \u0275\u0275elementEnd();
@@ -8693,12 +8693,12 @@ function PaymentForm_Conditional_86_Conditional_8_Template(rf, ctx) {
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(4, 1, ctx_r1.approvalTask.reviewedAt, "yyyy-MM-dd HH:mm"));
   }
 }
-function PaymentForm_Conditional_86_Conditional_9_Template(rf, ctx) {
+function PaymentForm_Conditional_82_Conditional_9_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 115);
+    \u0275\u0275elementStart(0, "div", 113);
     \u0275\u0275text(1, "\u62D2\u7D55\u539F\u56E0\uFF1A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(2, "div", 117);
+    \u0275\u0275elementStart(2, "div", 115);
     \u0275\u0275text(3);
     \u0275\u0275elementEnd();
   }
@@ -8708,22 +8708,22 @@ function PaymentForm_Conditional_86_Conditional_9_Template(rf, ctx) {
     \u0275\u0275textInterpolate(ctx_r1.approvalTask.reviewNote);
   }
 }
-function PaymentForm_Conditional_86_Template(rf, ctx) {
+function PaymentForm_Conditional_82_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 33)(1, "div", 120);
+    \u0275\u0275elementStart(0, "div", 31)(1, "div", 118);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(2, "svg", 50);
-    \u0275\u0275element(3, "use", 58);
+    \u0275\u0275elementStart(2, "svg", 48);
+    \u0275\u0275element(3, "use", 56);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u5DF2\u62D2\u7D55 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "div", 16)(6, "p", 112);
+    \u0275\u0275elementStart(5, "div", 16)(6, "p", 110);
     \u0275\u0275text(7, "\u6B64\u7533\u8ACB\u5DF2\u88AB\u62D2\u7D55\uFF0C\u7C3D\u6838\u6D41\u7A0B\u7D42\u6B62\uFF0C\u4E0D\u53EF\u518D\u4FEE\u6539\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(8, PaymentForm_Conditional_86_Conditional_8_Template, 5, 4);
-    \u0275\u0275conditionalCreate(9, PaymentForm_Conditional_86_Conditional_9_Template, 4, 1);
-    \u0275\u0275elementStart(10, "div", 121)(11, "a", 110);
+    \u0275\u0275conditionalCreate(8, PaymentForm_Conditional_82_Conditional_8_Template, 5, 4);
+    \u0275\u0275conditionalCreate(9, PaymentForm_Conditional_82_Conditional_9_Template, 4, 1);
+    \u0275\u0275elementStart(10, "div", 119)(11, "a", 108);
     \u0275\u0275text(12, "\u8FD4\u56DE\u5217\u8868");
     \u0275\u0275elementEnd()()()();
   }
@@ -8735,36 +8735,36 @@ function PaymentForm_Conditional_86_Template(rf, ctx) {
     \u0275\u0275conditional((ctx_r1.approvalTask == null ? null : ctx_r1.approvalTask.reviewNote) ? 9 : -1);
   }
 }
-function PaymentForm_Conditional_87_Template(rf, ctx) {
+function PaymentForm_Conditional_83_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 48)(1, "a", 110);
+    \u0275\u0275elementStart(0, "div", 46)(1, "a", 108);
     \u0275\u0275text(2, "\u8FD4\u56DE\u5217\u8868");
     \u0275\u0275elementEnd()();
   }
 }
-function PaymentForm_ng_template_88_Template(rf, ctx) {
+function PaymentForm_ng_template_84_Template(rf, ctx) {
   if (rf & 1) {
     const _r20 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 122)(1, "button", 123);
-    \u0275\u0275listener("click", function PaymentForm_ng_template_88_Template_button_click_1_listener() {
+    \u0275\u0275elementStart(0, "div", 120)(1, "button", 121);
+    \u0275\u0275listener("click", function PaymentForm_ng_template_84_Template_button_click_1_listener() {
       const modal_r21 = \u0275\u0275restoreView(_r20).$implicit;
       return \u0275\u0275resetView(modal_r21.close());
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(2, "div", 124);
+    \u0275\u0275elementStart(2, "div", 122);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(3, "svg", 125);
-    \u0275\u0275element(4, "use", 56);
+    \u0275\u0275elementStart(3, "svg", 123);
+    \u0275\u0275element(4, "use", 54);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "h5", 126);
+    \u0275\u0275elementStart(5, "h5", 124);
     \u0275\u0275text(6, "\u7533\u8ACB\u6210\u529F");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "p", 127);
+    \u0275\u0275elementStart(7, "p", 125);
     \u0275\u0275text(8, "\u8ACB\u76E1\u65E9\u5C07\u6B63\u672C\u8CC7\u6599\u9001\u56DE\u7BA1\u7406\u8655");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(9, "div", 128)(10, "button", 129);
-    \u0275\u0275listener("click", function PaymentForm_ng_template_88_Template_button_click_10_listener() {
+    \u0275\u0275elementStart(9, "div", 126)(10, "button", 127);
+    \u0275\u0275listener("click", function PaymentForm_ng_template_84_Template_button_click_10_listener() {
       const modal_r21 = \u0275\u0275restoreView(_r20).$implicit;
       return \u0275\u0275resetView(modal_r21.close());
     });
@@ -8772,11 +8772,11 @@ function PaymentForm_ng_template_88_Template(rf, ctx) {
     \u0275\u0275elementEnd()();
   }
 }
-function PaymentForm_Conditional_90_Template(rf, ctx) {
+function PaymentForm_Conditional_86_Template(rf, ctx) {
   if (rf & 1) {
     const _r22 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-file-preview-modal", 130);
-    \u0275\u0275listener("closed", function PaymentForm_Conditional_90_Template_app_file_preview_modal_closed_0_listener() {
+    \u0275\u0275elementStart(0, "app-file-preview-modal", 128);
+    \u0275\u0275listener("closed", function PaymentForm_Conditional_86_Template_app_file_preview_modal_closed_0_listener() {
       \u0275\u0275restoreView(_r22);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.closePreview());
@@ -9143,7 +9143,7 @@ var PaymentForm = class _PaymentForm {
     if (rf & 2) {
       \u0275\u0275queryAdvance();
     }
-  }, decls: 91, vars: 18, consts: [["successModal", ""], [1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6"], ["routerLink", "/admin/payment-requests", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "mb-0"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [1, "card", "border-0", "shadow-sm", "mb-6"], [3, "ngSubmit", "formGroup"], [1, "row", "g-4"], [1, "col-12", "col-lg-10", "col-xl-8"], [1, "card", "border-0", "shadow-sm"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#dollar-sign"], [1, "card-body"], [1, "row", "g-3", "mb-4"], [1, "col-12", "col-md-6"], [1, "form-label", "fw-500"], [1, "text-danger"], [1, "flex", "flex-wrap", "gap-4", "mt-1"], [1, "form-check"], ["type", "radio", "formControlName", "type", "value", "vendor", "id", "typeVendor", 1, "form-check-input"], ["for", "typeVendor", 1, "form-check-label"], ["type", "radio", "formControlName", "type", "value", "general", "id", "typeGeneral", 1, "form-check-input"], ["for", "typeGeneral", 1, "form-check-label"], ["type", "radio", "formControlName", "type", "value", "business_trip", "id", "typeBusinessTrip", 1, "form-check-input"], ["for", "typeBusinessTrip", 1, "form-check-label"], [1, "form-control-plaintext", "fw-500", "font-monospace", "mb-0"], [1, "mb-4"], [1, "form-control-plaintext", "mb-0"], ["formControlName", "reason", "rows", "3", "placeholder", "\u8ACB\u8AAA\u660E\u8ACB\u6B3E\u539F\u56E0\u2026", 1, "form-control"], [1, "card", "border-0", "shadow-sm", "mt-6"], ["href", "/assets/icons/sprite.svg#file-text"], [1, "table-responsive"], [1, "table", "table-sm", "mb-0"], [1, "table-light"], [2, "width", "40px"], [2, "min-width", "160px"], [2, "min-width", "130px"], [2, "min-width", "120px"], [2, "min-width", "140px"], [2, "width", "48px"], ["formArrayName", "invoices"], [3, "formGroupName"], [3, "flow", "approvalRecords", "currentStepOrder", "status"], [1, "mt-6", "flex", "gap-2"], [1, "mt-6"], [3, "file"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "card-header", "bg-[rgba(13,110,253,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-primary", "py-3"], ["href", "/assets/icons/sprite.svg#clock"], [1, "card-header", "bg-[rgba(255,193,7,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-warning", "py-3"], [1, "card-header", "bg-[rgba(37,162,68,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-success", "py-3"], ["href", "/assets/icons/sprite.svg#check-circle"], [1, "card-header", "bg-[rgba(220,53,69,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-danger", "py-3"], ["href", "/assets/icons/sprite.svg#x-circle"], ["formControlName", "projectId", 1, "form-select"], [3, "ngValue"], [1, "text-muted", "small", "mt-1"], [1, "text-danger", "small", "mt-1"], [1, "badge", "rounded-pill", "px-3", "py-2"], [1, "row", "g-3", "mb-0"], [1, "col-6", "col-md-4"], [1, "form-control-plaintext", "fw-500", "mb-0"], [1, "form-control-plaintext", "fw-500", "text-success", "mb-0"], [1, "flex", "flex-col", "items-center", "justify-center", "rounded-3", "py-4", "px-4", "mb-4", "text-center", 2, "cursor", "pointer", "border", "2px dashed var(--bs-border-color)"], [1, "sa-icon", "sa-icon-2x", "text-muted", "mb-2", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#upload"], [1, "fw-500"], ["type", "file", "multiple", "", "accept", "image/*,.heic,.heif,application/pdf", 1, "hidden", 3, "change"], [1, "alert", "alert-warning", "py-2", "small", "mb-4"], [1, "align-middle", "text-center"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-secondary", "p-1", 3, "title"], ["role", "status", 1, "spinner-border", "spinner-border-sm"], [1, "align-middle"], [1, "font-monospace", "small"], [1, "flex", "items-center", "gap-2", "text-muted", "small", "py-1"], ["formControlName", "invoiceNo", "placeholder", "AB12345678", 1, "form-control", "form-control-sm", "font-monospace"], [1, "small"], ["type", "date", "formControlName", "invoiceDate", 1, "form-control", "form-control-sm"], [1, "py-1"], [1, "input-group", "input-group-sm"], ["formControlName", "itemName", "placeholder", "", 1, "form-control", "form-control-sm"], ["formControlName", "note", "placeholder", "", 1, "form-control", "form-control-sm"], [1, "text-right", "align-middle"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-secondary", "p-1", 3, "click", "title"], ["role", "status", "aria-hidden", "true", 1, "spinner-border", "spinner-border-sm"], [1, "input-group-text"], ["type", "number", "formControlName", "amount", "min", "0", "placeholder", "0", 1, "form-control", "form-control-sm"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center", 3, "click", "disabled"], ["href", "/assets/icons/sprite.svg#x"], [1, "text-center", "text-muted", "py-4", "small"], ["colspan", "3", 1, "text-right", "fw-500", "small"], [1, "fw-600"], ["colspan", "2"], ["href", "/assets/icons/sprite.svg#users"], [1, "flex", "items-center", "gap-2", "mb-2"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "mt-1", 3, "click"], ["href", "/assets/icons/sprite.svg#plus"], [1, "text-muted", "small", 2, "min-width", "1.5rem"], [1, "form-select", "form-select-sm", 2, "max-width", "160px", 3, "ngModelChange", "ngModel", "ngModelOptions"], [1, "form-select", "form-select-sm", 2, "max-width", "200px", 3, "ngModelChange", "ngModel", "ngModelOptions"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-danger", 3, "click"], [1, "mb-0", "ps-4"], ["type", "submit", 1, "btn", "btn-outline-secondary", 3, "disabled"], ["role", "status", "aria-hidden", "true", 1, "spinner-border", "spinner-border-sm", "me-1"], ["type", "button", 1, "btn", "btn-primary", 3, "click", "disabled"], ["routerLink", "/admin/payment-requests", 1, "btn", "btn-outline-secondary"], [1, "card-header", "bg-[rgba(37,162,68,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-success"], [1, "text-muted", "small", "mb-2"], [1, "mt-2", "flex", "gap-2"], ["type", "button", 1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-2", 3, "disabled"], [1, "text-muted", "small", "mb-1", "fw-500"], [1, "small", "mb-4"], [1, "border", "rounded", "p-4", "bg-[--bg-base]", "small", "mb-4"], ["type", "button", 1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-2", 3, "click", "disabled"], ["href", "/assets/icons/sprite.svg#printer"], [1, "card-header", "bg-[rgba(220,53,69,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-danger"], [1, "mt-2"], [1, "modal-header", "border-0", "pb-0"], ["type", "button", 1, "btn-close", 3, "click"], [1, "modal-body", "text-center", "py-6"], [1, "sa-icon", "sa-icon-3x", "text-success", "mb-4", 2, "stroke", "currentColor"], [1, "fw-600", "mb-2"], [1, "text-secondary", "mb-0"], [1, "modal-footer", "border-0", "justify-center", "pt-0"], ["type", "button", 1, "btn", "btn-primary", "px-6", 3, "click"], [3, "closed", "file"]], template: function PaymentForm_Template(rf, ctx) {
+  }, decls: 87, vars: 18, consts: [["successModal", ""], [1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6"], ["routerLink", "/admin/payment-requests", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "mb-0"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [1, "card", "border-0", "shadow-sm", "mb-6"], [3, "ngSubmit", "formGroup"], [1, "row", "g-4"], [1, "col-12", "col-lg-10", "col-xl-8"], [1, "card", "border-0", "shadow-sm"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#dollar-sign"], [1, "card-body"], [1, "row", "g-3", "mb-4"], [1, "col-12", "col-md-6"], [1, "form-label", "fw-500"], [1, "text-danger"], [1, "flex", "flex-wrap", "gap-4", "mt-1"], [1, "form-check"], ["type", "radio", "formControlName", "type", "value", "vendor", "id", "typeVendor", 1, "form-check-input"], ["for", "typeVendor", 1, "form-check-label"], ["type", "radio", "formControlName", "type", "value", "general", "id", "typeGeneral", 1, "form-check-input"], ["for", "typeGeneral", 1, "form-check-label"], [1, "form-control-plaintext", "fw-500", "font-monospace", "mb-0"], [1, "mb-4"], [1, "form-control-plaintext", "mb-0"], ["formControlName", "reason", "rows", "3", "placeholder", "\u8ACB\u8AAA\u660E\u8ACB\u6B3E\u539F\u56E0\u2026", 1, "form-control"], [1, "card", "border-0", "shadow-sm", "mt-6"], ["href", "/assets/icons/sprite.svg#file-text"], [1, "table-responsive"], [1, "table", "table-sm", "mb-0"], [1, "table-light"], [2, "width", "40px"], [2, "min-width", "160px"], [2, "min-width", "130px"], [2, "min-width", "120px"], [2, "min-width", "140px"], [2, "width", "48px"], ["formArrayName", "invoices"], [3, "formGroupName"], [3, "flow", "approvalRecords", "currentStepOrder", "status"], [1, "mt-6", "flex", "gap-2"], [1, "mt-6"], [3, "file"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "card-header", "bg-[rgba(13,110,253,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-primary", "py-3"], ["href", "/assets/icons/sprite.svg#clock"], [1, "card-header", "bg-[rgba(255,193,7,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-warning", "py-3"], [1, "card-header", "bg-[rgba(37,162,68,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-success", "py-3"], ["href", "/assets/icons/sprite.svg#check-circle"], [1, "card-header", "bg-[rgba(220,53,69,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-danger", "py-3"], ["href", "/assets/icons/sprite.svg#x-circle"], ["formControlName", "projectId", 1, "form-select"], [3, "ngValue"], [1, "text-muted", "small", "mt-1"], [1, "text-danger", "small", "mt-1"], [1, "badge", "rounded-pill", "px-3", "py-2"], [1, "row", "g-3", "mb-0"], [1, "col-6", "col-md-4"], [1, "form-control-plaintext", "fw-500", "mb-0"], [1, "form-control-plaintext", "fw-500", "text-success", "mb-0"], [1, "flex", "flex-col", "items-center", "justify-center", "rounded-3", "py-4", "px-4", "mb-4", "text-center", 2, "cursor", "pointer", "border", "2px dashed var(--bs-border-color)"], [1, "sa-icon", "sa-icon-2x", "text-muted", "mb-2", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#upload"], [1, "fw-500"], ["type", "file", "multiple", "", "accept", "image/*,.heic,.heif,application/pdf", 1, "hidden", 3, "change"], [1, "alert", "alert-warning", "py-2", "small", "mb-4"], [1, "align-middle", "text-center"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-secondary", "p-1", 3, "title"], ["role", "status", 1, "spinner-border", "spinner-border-sm"], [1, "align-middle"], [1, "font-monospace", "small"], [1, "flex", "items-center", "gap-2", "text-muted", "small", "py-1"], ["formControlName", "invoiceNo", "placeholder", "AB12345678", 1, "form-control", "form-control-sm", "font-monospace"], [1, "small"], ["type", "date", "formControlName", "invoiceDate", 1, "form-control", "form-control-sm"], [1, "py-1"], [1, "input-group", "input-group-sm"], ["formControlName", "itemName", "placeholder", "", 1, "form-control", "form-control-sm"], ["formControlName", "note", "placeholder", "", 1, "form-control", "form-control-sm"], [1, "text-right", "align-middle"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-secondary", "p-1", 3, "click", "title"], ["role", "status", "aria-hidden", "true", 1, "spinner-border", "spinner-border-sm"], [1, "input-group-text"], ["type", "number", "formControlName", "amount", "min", "0", "placeholder", "0", 1, "form-control", "form-control-sm"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center", 3, "click", "disabled"], ["href", "/assets/icons/sprite.svg#x"], [1, "text-center", "text-muted", "py-4", "small"], ["colspan", "3", 1, "text-right", "fw-500", "small"], [1, "fw-600"], ["colspan", "2"], ["href", "/assets/icons/sprite.svg#users"], [1, "flex", "items-center", "gap-2", "mb-2"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "mt-1", 3, "click"], ["href", "/assets/icons/sprite.svg#plus"], [1, "text-muted", "small", 2, "min-width", "1.5rem"], [1, "form-select", "form-select-sm", 2, "max-width", "160px", 3, "ngModelChange", "ngModel", "ngModelOptions"], [1, "form-select", "form-select-sm", 2, "max-width", "200px", 3, "ngModelChange", "ngModel", "ngModelOptions"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-danger", 3, "click"], [1, "mb-0", "ps-4"], ["type", "submit", 1, "btn", "btn-outline-secondary", 3, "disabled"], ["role", "status", "aria-hidden", "true", 1, "spinner-border", "spinner-border-sm", "me-1"], ["type", "button", 1, "btn", "btn-primary", 3, "click", "disabled"], ["routerLink", "/admin/payment-requests", 1, "btn", "btn-outline-secondary"], [1, "card-header", "bg-[rgba(37,162,68,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-success"], [1, "text-muted", "small", "mb-2"], [1, "mt-2", "flex", "gap-2"], ["type", "button", 1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-2", 3, "disabled"], [1, "text-muted", "small", "mb-1", "fw-500"], [1, "small", "mb-4"], [1, "border", "rounded", "p-4", "bg-[--bg-base]", "small", "mb-4"], ["type", "button", 1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-2", 3, "click", "disabled"], ["href", "/assets/icons/sprite.svg#printer"], [1, "card-header", "bg-[rgba(220,53,69,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-danger"], [1, "mt-2"], [1, "modal-header", "border-0", "pb-0"], ["type", "button", 1, "btn-close", 3, "click"], [1, "modal-body", "text-center", "py-6"], [1, "sa-icon", "sa-icon-3x", "text-success", "mb-4", 2, "stroke", "currentColor"], [1, "fw-600", "mb-2"], [1, "text-secondary", "mb-0"], [1, "modal-footer", "border-0", "justify-center", "pt-0"], ["type", "button", 1, "btn", "btn-primary", "px-6", 3, "click"], [3, "closed", "file"]], template: function PaymentForm_Template(rf, ctx) {
     if (rf & 1) {
       const _r1 = \u0275\u0275getCurrentView();
       \u0275\u0275elementStart(0, "div", 1)(1, "div", 2)(2, "a", 3);
@@ -9184,66 +9184,61 @@ var PaymentForm = class _PaymentForm {
       \u0275\u0275element(33, "input", 25);
       \u0275\u0275elementStart(34, "label", 26);
       \u0275\u0275text(35, "\u4E00\u822C\u8ACB\u6B3E");
-      \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(36, "div", 22);
-      \u0275\u0275element(37, "input", 27);
-      \u0275\u0275elementStart(38, "label", 28);
-      \u0275\u0275text(39, "\u54E1\u5DE5\u516C\u51FA\u8ACB\u6B3E");
       \u0275\u0275elementEnd()()()();
-      \u0275\u0275elementStart(40, "div", 18)(41, "label", 19);
-      \u0275\u0275text(42, "\u5C08\u6848 ");
-      \u0275\u0275elementStart(43, "span", 20);
-      \u0275\u0275text(44, "*");
+      \u0275\u0275elementStart(36, "div", 18)(37, "label", 19);
+      \u0275\u0275text(38, "\u5C08\u6848 ");
+      \u0275\u0275elementStart(39, "span", 20);
+      \u0275\u0275text(40, "*");
       \u0275\u0275elementEnd()();
-      \u0275\u0275conditionalCreate(45, PaymentForm_Conditional_45_Template, 2, 1, "p", 29)(46, PaymentForm_Conditional_46_Template, 7, 4);
+      \u0275\u0275conditionalCreate(41, PaymentForm_Conditional_41_Template, 2, 1, "p", 27)(42, PaymentForm_Conditional_42_Template, 7, 4);
       \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(47, "div", 30)(48, "label", 19);
-      \u0275\u0275text(49, "\u8ACB\u6B3E\u539F\u56E0");
+      \u0275\u0275elementStart(43, "div", 28)(44, "label", 19);
+      \u0275\u0275text(45, "\u8ACB\u6B3E\u539F\u56E0");
       \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(50, PaymentForm_Conditional_50_Template, 2, 1, "p", 31)(51, PaymentForm_Conditional_51_Template, 1, 0, "textarea", 32);
+      \u0275\u0275conditionalCreate(46, PaymentForm_Conditional_46_Template, 2, 1, "p", 29)(47, PaymentForm_Conditional_47_Template, 1, 0, "textarea", 30);
       \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(52, PaymentForm_Conditional_52_Template, 7, 4);
+      \u0275\u0275conditionalCreate(48, PaymentForm_Conditional_48_Template, 7, 4);
       \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(53, "div", 33)(54, "div", 13);
+      \u0275\u0275elementStart(49, "div", 31)(50, "div", 13);
       \u0275\u0275namespaceSVG();
-      \u0275\u0275elementStart(55, "svg", 14);
-      \u0275\u0275element(56, "use", 34);
+      \u0275\u0275elementStart(51, "svg", 14);
+      \u0275\u0275element(52, "use", 32);
       \u0275\u0275elementEnd();
-      \u0275\u0275text(57, " \u767C\u7968 ");
+      \u0275\u0275text(53, " \u767C\u7968 ");
       \u0275\u0275elementEnd();
       \u0275\u0275namespaceHTML();
-      \u0275\u0275elementStart(58, "div", 16);
-      \u0275\u0275conditionalCreate(59, PaymentForm_Conditional_59_Template, 9, 1);
-      \u0275\u0275elementStart(60, "div", 35)(61, "table", 36)(62, "thead", 37)(63, "tr");
-      \u0275\u0275element(64, "th", 38);
+      \u0275\u0275elementStart(54, "div", 16);
+      \u0275\u0275conditionalCreate(55, PaymentForm_Conditional_55_Template, 9, 1);
+      \u0275\u0275elementStart(56, "div", 33)(57, "table", 34)(58, "thead", 35)(59, "tr");
+      \u0275\u0275element(60, "th", 36);
+      \u0275\u0275elementStart(61, "th", 37);
+      \u0275\u0275text(62, "\u767C\u7968\u865F\u78BC");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(63, "th", 38);
+      \u0275\u0275text(64, "\u767C\u7968\u65E5\u671F");
+      \u0275\u0275elementEnd();
       \u0275\u0275elementStart(65, "th", 39);
-      \u0275\u0275text(66, "\u767C\u7968\u865F\u78BC");
+      \u0275\u0275text(66, "\u91D1\u984D");
       \u0275\u0275elementEnd();
       \u0275\u0275elementStart(67, "th", 40);
-      \u0275\u0275text(68, "\u767C\u7968\u65E5\u671F");
+      \u0275\u0275text(68, "\u9805\u76EE");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(69, "th", 41);
-      \u0275\u0275text(70, "\u91D1\u984D");
+      \u0275\u0275elementStart(69, "th", 40);
+      \u0275\u0275text(70, "\u5099\u8A3B");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(71, "th", 42);
-      \u0275\u0275text(72, "\u9805\u76EE");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(73, "th", 42);
-      \u0275\u0275text(74, "\u5099\u8A3B");
-      \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(75, PaymentForm_Conditional_75_Template, 1, 0, "th", 43);
+      \u0275\u0275conditionalCreate(71, PaymentForm_Conditional_71_Template, 1, 0, "th", 41);
       \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(76, "tbody", 44);
-      \u0275\u0275repeaterCreate(77, PaymentForm_For_78_Template, 26, 9, "tr", 45, _forTrack014, false, PaymentForm_ForEmpty_79_Template, 3, 1, "tr");
+      \u0275\u0275elementStart(72, "tbody", 42);
+      \u0275\u0275repeaterCreate(73, PaymentForm_For_74_Template, 26, 9, "tr", 43, _forTrack014, false, PaymentForm_ForEmpty_75_Template, 3, 1, "tr");
       \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(80, PaymentForm_Conditional_80_Template, 9, 5, "tfoot");
+      \u0275\u0275conditionalCreate(76, PaymentForm_Conditional_76_Template, 9, 5, "tfoot");
       \u0275\u0275elementEnd()()()();
-      \u0275\u0275conditionalCreate(81, PaymentForm_Conditional_81_Template, 14, 0, "div", 33)(82, PaymentForm_Conditional_82_Template, 11, 0, "div", 33);
-      \u0275\u0275element(83, "app-approval-timeline", 46);
-      \u0275\u0275conditionalCreate(84, PaymentForm_Conditional_84_Template, 8, 4, "div", 47)(85, PaymentForm_Conditional_85_Template, 14, 3, "div", 33)(86, PaymentForm_Conditional_86_Template, 13, 2, "div", 33)(87, PaymentForm_Conditional_87_Template, 3, 0, "div", 48);
+      \u0275\u0275conditionalCreate(77, PaymentForm_Conditional_77_Template, 14, 0, "div", 31)(78, PaymentForm_Conditional_78_Template, 11, 0, "div", 31);
+      \u0275\u0275element(79, "app-approval-timeline", 44);
+      \u0275\u0275conditionalCreate(80, PaymentForm_Conditional_80_Template, 8, 4, "div", 45)(81, PaymentForm_Conditional_81_Template, 14, 3, "div", 31)(82, PaymentForm_Conditional_82_Template, 13, 2, "div", 31)(83, PaymentForm_Conditional_83_Template, 3, 0, "div", 46);
       \u0275\u0275elementEnd()()()();
-      \u0275\u0275template(88, PaymentForm_ng_template_88_Template, 12, 0, "ng-template", null, 0, \u0275\u0275templateRefExtractor);
-      \u0275\u0275conditionalCreate(90, PaymentForm_Conditional_90_Template, 1, 1, "app-file-preview-modal", 49);
+      \u0275\u0275template(84, PaymentForm_ng_template_84_Template, 12, 0, "ng-template", null, 0, \u0275\u0275templateRefExtractor);
+      \u0275\u0275conditionalCreate(86, PaymentForm_Conditional_86_Template, 1, 1, "app-file-preview-modal", 47);
     }
     if (rf & 2) {
       \u0275\u0275advance(6);
@@ -9254,28 +9249,28 @@ var PaymentForm = class _PaymentForm {
       \u0275\u0275conditional(ctx.isReadOnly && ctx.approvalStatus === "pending" ? 8 : ctx.approvalStatus === "returned" ? 9 : ctx.isReadOnly && ctx.approvalStatus === "approved" ? 10 : ctx.isReadOnly && ctx.approvalStatus === "rejected" ? 11 : -1);
       \u0275\u0275advance(4);
       \u0275\u0275property("formGroup", ctx.form);
-      \u0275\u0275advance(33);
-      \u0275\u0275conditional(ctx.isReadOnly ? 45 : 46);
+      \u0275\u0275advance(29);
+      \u0275\u0275conditional(ctx.isReadOnly ? 41 : 42);
       \u0275\u0275advance(5);
-      \u0275\u0275conditional(ctx.isReadOnly ? 50 : 51);
+      \u0275\u0275conditional(ctx.isReadOnly ? 46 : 47);
       \u0275\u0275advance(2);
-      \u0275\u0275conditional(ctx.isEdit ? 52 : -1);
+      \u0275\u0275conditional(ctx.isEdit ? 48 : -1);
       \u0275\u0275advance(7);
-      \u0275\u0275conditional(!ctx.isReadOnly ? 59 : -1);
+      \u0275\u0275conditional(!ctx.isReadOnly ? 55 : -1);
       \u0275\u0275advance(16);
-      \u0275\u0275conditional(!ctx.isReadOnly ? 75 : -1);
+      \u0275\u0275conditional(!ctx.isReadOnly ? 71 : -1);
       \u0275\u0275advance(2);
       \u0275\u0275repeater(ctx.invoiceControls);
       \u0275\u0275advance(3);
-      \u0275\u0275conditional(ctx.invoiceControls.length > 0 ? 80 : -1);
+      \u0275\u0275conditional(ctx.invoiceControls.length > 0 ? 76 : -1);
       \u0275\u0275advance();
-      \u0275\u0275conditional(ctx.hasDesignatedStep && !ctx.isReadOnly ? 81 : ctx.isReadOnly && ctx.designatedEntries.length > 0 ? 82 : -1);
+      \u0275\u0275conditional(ctx.hasDesignatedStep && !ctx.isReadOnly ? 77 : ctx.isReadOnly && ctx.designatedEntries.length > 0 ? 78 : -1);
       \u0275\u0275advance(2);
       \u0275\u0275property("flow", ctx.approvalFlow)("approvalRecords", ctx.approvalRecords)("currentStepOrder", ctx.taskCurrentStepOrder)("status", ctx.taskStatus);
       \u0275\u0275advance();
-      \u0275\u0275conditional(!ctx.isReadOnly ? 84 : ctx.approvalStatus === "approved" ? 85 : ctx.approvalStatus === "rejected" ? 86 : 87);
+      \u0275\u0275conditional(!ctx.isReadOnly ? 80 : ctx.approvalStatus === "approved" ? 81 : ctx.approvalStatus === "rejected" ? 82 : 83);
       \u0275\u0275advance(6);
-      \u0275\u0275conditional(ctx.previewFile ? 90 : -1);
+      \u0275\u0275conditional(ctx.previewFile ? 86 : -1);
     }
   }, dependencies: [ReactiveFormsModule, \u0275NgNoValidate, NgSelectOption, \u0275NgSelectMultipleOption, DefaultValueAccessor, NumberValueAccessor, SelectControlValueAccessor, RadioControlValueAccessor, NgControlStatus, NgControlStatusGroup, MinValidator, FormGroupDirective, FormControlName, FormGroupName, FormArrayName, FormsModule, NgModel, RouterLink, FilePreviewModal, ApprovalTimeline, DecimalPipe, DatePipe], encapsulation: 2 });
 };
@@ -9352,10 +9347,6 @@ var PaymentForm = class _PaymentForm {
                   <div class="form-check">
                     <input class="form-check-input" type="radio" formControlName="type" value="general" id="typeGeneral">
                     <label class="form-check-label" for="typeGeneral">\u4E00\u822C\u8ACB\u6B3E</label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="radio" formControlName="type" value="business_trip" id="typeBusinessTrip">
-                    <label class="form-check-label" for="typeBusinessTrip">\u54E1\u5DE5\u516C\u51FA\u8ACB\u6B3E</label>
                   </div>
                 </div>
               </div>
@@ -18523,6 +18514,13 @@ var LeaveRequestForm = class _LeaveRequestForm {
   isDraft = true;
   approvalStatus = "draft";
   errorMsg = signal("", ...ngDevMode ? [{ debugName: "errorMsg" }] : []);
+  /**
+   * 載入既有資料期間的 reentry guard。
+   * patchValue 與 form.disable() 都會同步觸發 child controls 的 valueChanges；
+   * 若不擋下，leaveType 的 valueChanges → onLeaveTypeChange 會把剛回填的 startDate/endDate 清掉
+   * （特別是 disable() 在 patch 之後重新觸發，導致檢視頁日期消失）。
+   */
+  isLoadingExisting = false;
   /** 簽核流程時間軸 */
   approvalFlow = null;
   approvalRecords = [];
@@ -18775,9 +18773,13 @@ var LeaveRequestForm = class _LeaveRequestForm {
     this.loadSeniorExecEligibility();
     this.loadCeremonialQuota();
     this.form.get("leaveType")?.valueChanges.subscribe((type) => {
+      if (this.isLoadingExisting)
+        return;
       this.onLeaveTypeChange(type);
     });
     this.form.get("bereavementRelationship")?.valueChanges.subscribe((rel) => {
+      if (this.isLoadingExisting)
+        return;
       if (this.selectedLeaveType === "bereavement" && rel) {
         this.loadBereavementQuota(rel);
       } else {
@@ -18818,56 +18820,62 @@ var LeaveRequestForm = class _LeaveRequestForm {
         this.isDraft = r.approvalStatus === "draft";
         this.isReturned = r.approvalStatus === "returned";
         this.isReadOnly = r.approvalStatus !== "draft" && r.approvalStatus !== "returned";
-        const unit = LEAVE_TIME_UNIT[r.leaveType];
-        const baseValues = {
-          leaveType: r.leaveType,
-          bereavementRelationship: r.bereavementRelationship ?? "",
-          reason: r.reason
-        };
-        if (unit === "hour") {
-          const startParts = this._splitDateHour(r.startDate);
-          const endParts = this._splitDateHour(r.endDate);
-          this.form.patchValue(__spreadProps(__spreadValues({}, baseValues), {
-            startDate: startParts.date,
-            endDate: endParts.date,
-            startHour: startParts.hour,
-            endHour: endParts.hour
-          }));
-        } else if (r.leaveType === "maternity") {
-          this.form.patchValue(__spreadProps(__spreadValues({}, baseValues), {
-            startDate: this._toDateString(r.startDate)
-          }));
-        } else if (unit === "day") {
-          this.form.patchValue(__spreadProps(__spreadValues({}, baseValues), {
-            startDate: this._toDateString(r.startDate),
-            endDate: this._toDateString(r.endDate)
-          }));
-        } else {
-          const slots = this._inferHalfDaySlots(r.startDate, r.endDate, r.hours);
-          this.form.patchValue(__spreadProps(__spreadValues({}, baseValues), {
-            startDate: this._toDateString(r.startDate),
-            endDate: this._toDateString(r.endDate),
-            startSlot: slots.startSlot,
-            endSlot: slots.endSlot
-          }));
-        }
-        if (r.designatedReviewers?.length) {
-          this.designatedEntries = r.designatedReviewers.map((dr) => ({
-            stepOrder: dr.stepOrder,
-            selectedJobTitleId: this.allUsers.find((u) => u.id === dr.reviewerId)?.jobTitleId ?? null,
-            selectedUserId: dr.reviewerId,
-            filteredUsers: []
-          }));
-          if (this.allUsers.length > 0) {
-            this.designatedEntries.forEach((e) => {
-              if (e.selectedJobTitleId) {
-                e.filteredUsers = this.allUsers.filter((u) => u.jobTitleId === e.selectedJobTitleId && u.status === "active");
-              }
-            });
+        this.isLoadingExisting = true;
+        try {
+          const unit = LEAVE_TIME_UNIT[r.leaveType];
+          const baseValues = {
+            leaveType: r.leaveType,
+            bereavementRelationship: r.bereavementRelationship ?? "",
+            reason: r.reason
+          };
+          if (unit === "hour") {
+            const startParts = this._splitDateHour(r.startDate);
+            const endParts = this._splitDateHour(r.endDate);
+            this.form.patchValue(__spreadProps(__spreadValues({}, baseValues), {
+              startDate: startParts.date,
+              endDate: endParts.date,
+              startHour: startParts.hour,
+              endHour: endParts.hour
+            }));
+          } else if (r.leaveType === "maternity") {
+            this.form.patchValue(__spreadProps(__spreadValues({}, baseValues), {
+              startDate: this._toDateString(r.startDate)
+            }));
+          } else if (unit === "day") {
+            this.form.patchValue(__spreadProps(__spreadValues({}, baseValues), {
+              startDate: this._toDateString(r.startDate),
+              endDate: this._toDateString(r.endDate)
+            }));
+          } else {
+            const slots = this._inferHalfDaySlots(r.startDate, r.endDate, r.hours);
+            this.form.patchValue(__spreadProps(__spreadValues({}, baseValues), {
+              startDate: this._toDateString(r.startDate),
+              endDate: this._toDateString(r.endDate),
+              startSlot: slots.startSlot,
+              endSlot: slots.endSlot
+            }));
           }
+          if (r.designatedReviewers?.length) {
+            this.designatedEntries = r.designatedReviewers.map((dr) => ({
+              stepOrder: dr.stepOrder,
+              selectedJobTitleId: this.allUsers.find((u) => u.id === dr.reviewerId)?.jobTitleId ?? null,
+              selectedUserId: dr.reviewerId,
+              filteredUsers: []
+            }));
+            if (this.allUsers.length > 0) {
+              this.designatedEntries.forEach((e) => {
+                if (e.selectedJobTitleId) {
+                  e.filteredUsers = this.allUsers.filter((u) => u.jobTitleId === e.selectedJobTitleId && u.status === "active");
+                }
+              });
+            }
+          }
+          if (this.isReadOnly)
+            this.form.disable();
+        } finally {
+          this.isLoadingExisting = false;
         }
-        if (this.isReadOnly)
-          this.form.disable();
+        this.applyLeaveTypeOnLoad(r.leaveType, r.bereavementRelationship);
         if (r.approvalStatus !== "draft") {
           this.taskSvc.getById(this.requestId, "leave").subscribe({
             next: (task) => {
@@ -18893,6 +18901,25 @@ var LeaveRequestForm = class _LeaveRequestForm {
       this.bereavementQuota.set(null);
     }
     this.form.get("bereavementRelationship")?.updateValueAndValidity({ emitEvent: false });
+    if (type === "annual")
+      this.loadAnnualQuota();
+    if (type === "compensatory")
+      this.loadCompensatoryHours();
+    if (type === "ceremonial_festival")
+      this.loadCeremonialQuota();
+    if (type === "marriage")
+      this.loadMarriageQuota();
+    if (type === "maternity")
+      this.loadMaternityStatus();
+  }
+  /** 載入既有資料時手動套用 leaveType 對應的驗證規則與配額載入（取代被 guard 跳過的 valueChanges 副作用） */
+  applyLeaveTypeOnLoad(type, bereavementRel) {
+    if (type === "bereavement") {
+      this.form.get("bereavementRelationship")?.setValidators(Validators.required);
+      this.form.get("bereavementRelationship")?.updateValueAndValidity({ emitEvent: false });
+      if (bereavementRel)
+        this.loadBereavementQuota(bereavementRel);
+    }
     if (type === "annual")
       this.loadAnnualQuota();
     if (type === "compensatory")
@@ -57569,4 +57596,4 @@ xlsx/xlsx.mjs:
 xlsx/xlsx.mjs:
   (*! sheetjs (C) 2013-present SheetJS -- http://sheetjs.com *)
 */
-//# sourceMappingURL=chunk-7R7JJXSU.js.map
+//# sourceMappingURL=chunk-7ECXINKX.js.map
