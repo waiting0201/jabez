@@ -1,4 +1,5 @@
 using Jabez.Api.Common;
+using Jabez.Api.Services;
 using Jabez.Api.Services.Dapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,7 @@ namespace Jabez.Api.Handlers;
 /// <summary>
 /// GET /reports/payment → 請款統計報表
 /// </summary>
-public sealed class PaymentReportHandler(IPaymentReportReadService reader)
+public sealed class PaymentReportHandler(IPaymentReportReadService reader, IProjectAccessResolver access)
 {
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
@@ -19,7 +20,8 @@ public sealed class PaymentReportHandler(IPaymentReportReadService reader)
         string? paymentStatus = req.Query["paymentStatus"];
         if (string.IsNullOrEmpty(paymentStatus)) paymentStatus = null;
 
-        var result = await reader.GetPagedAsync(page, pageSize, year, month, paymentStatus);
+        var scope = await access.ResolveAsync(req.HttpContext.User);
+        var result = await reader.GetPagedAsync(scope, page, pageSize, year, month, paymentStatus);
         return new OkObjectResult(ApiResponse.Ok(result));
     }
 }

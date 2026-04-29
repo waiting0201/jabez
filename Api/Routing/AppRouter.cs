@@ -101,7 +101,7 @@ public sealed class AppRouter(
             ("POST",   ["auth", "change-password"])   => await auth.ChangePasswordAsync(req),
 
             // ── Users ─────────────────────────────────────────────────────────
-            ("GET",    ["users", "lookup"])           => await users.GetLookupAsync(),
+            ("GET",    ["users", "lookup"])           => await users.GetLookupAsync(req),
             ("GET",    ["users"])                     => await users.GetAllAsync(req),
             ("POST",   ["users"])                     => await users.CreateAsync(req),
             ("POST",   ["users", var id, "send-credentials"]) => await users.SendCredentialsAsync(id),

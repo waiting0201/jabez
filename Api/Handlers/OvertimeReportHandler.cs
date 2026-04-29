@@ -1,4 +1,5 @@
 using Jabez.Api.Common;
+using Jabez.Api.Services;
 using Jabez.Api.Services.Dapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,7 @@ namespace Jabez.Api.Handlers;
 /// <summary>
 /// GET /reports/overtime → 加班紀錄報表（已核准的加班申請 + 實際打卡時數）
 /// </summary>
-public sealed class OvertimeReportHandler(IOvertimeReportReadService reader)
+public sealed class OvertimeReportHandler(IOvertimeReportReadService reader, IProjectAccessResolver access)
 {
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
@@ -20,7 +21,8 @@ public sealed class OvertimeReportHandler(IOvertimeReportReadService reader)
         int?  year       = int.TryParse(req.Query["year"],  out var y) ? y : null;
         int?  month      = int.TryParse(req.Query["month"], out var m) ? m : null;
 
-        var result = await reader.GetPagedAsync(page, pageSize, employeeId, projectId, year, month);
+        var scope = await access.ResolveAsync(req.HttpContext.User);
+        var result = await reader.GetPagedAsync(scope, page, pageSize, employeeId, projectId, year, month);
         return new OkObjectResult(ApiResponse.Ok(result));
     }
 }

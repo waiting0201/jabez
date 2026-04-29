@@ -1,6 +1,7 @@
 using Dapper;
 using Jabez.Api.Common;
 using Jabez.Api.Models.Dtos;
+using Jabez.Api.Services;
 using System.Data;
 using System.Text;
 
@@ -8,6 +9,10 @@ namespace Jabez.Api.Services.Dapper;
 
 public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadService
 {
+    /// <summary>
+    /// 列表 SQL：以 INNER JOIN Users 確保部門 scope 過濾穩定（離職員工 / 已刪除使用者不會出現）。
+    /// 部門 scope 透過 BuildDeptScopeFilter 加入 WHERE 鏈。
+    /// </summary>
     private const string ListSql = """
         SELECT a.Id, u.Name AS UserName, a.RecordDate,
                a.ClockInTime, a.ClockInLatitude, a.ClockInLongitude,
@@ -17,20 +22,39 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
                a.OvertimeRequestId, a.CreatedAt,
                lr.LeaveType, lr.StartDate AS LeaveStartDate, lr.EndDate AS LeaveEndDate
         FROM AttendanceRecords a
-        LEFT JOIN Users u ON a.UserId = u.Id
+        INNER JOIN Users u ON a.UserId = u.Id
         LEFT JOIN LeaveRequests lr ON a.UserId = lr.EmployeeId
             AND CAST(a.RecordDate AS DATE) >= CAST(lr.StartDate AS DATE)
             AND CAST(a.RecordDate AS DATE) <= CAST(lr.EndDate AS DATE)
             AND lr.ApprovalStatus = 'approved'
         """;
 
-    public async Task<PagedResult<AttendanceRecordDto>> GetPagedAsync(int page, int pageSize,
+    private const string CountFromSql = """
+        SELECT COUNT(*) FROM AttendanceRecords a
+        INNER JOIN Users u ON a.UserId = u.Id
+        """;
+
+    /// <summary>
+    /// 依 scope 產生「員工部門」過濾片段（前綴 " AND "）。
+    /// SeeAll → 空字串；AllowedIds 為空 → " AND 1=0"；否則 " AND u.DepartmentId IN @AllowedDeptIds"
+    /// </summary>
+    private static string BuildDeptScopeFilter(ProjectAccessScope scope, DynamicParameters parameters)
+    {
+        if (scope.SeeAll) return "";
+        if (scope.AllowedDepartmentIds.Count == 0) return " AND 1=0";
+        parameters.Add("AllowedDeptIds", scope.AllowedDepartmentIds);
+        return " AND u.DepartmentId IN @AllowedDeptIds";
+    }
+
+    public async Task<PagedResult<AttendanceRecordDto>> GetPagedAsync(ProjectAccessScope scope, int page, int pageSize,
         Guid? employeeId = null, int? year = null, int? month = null)
     {
         var where = new StringBuilder();
         var parameters = new DynamicParameters();
         parameters.Add("Skip", (page - 1) * pageSize);
         parameters.Add("Take", pageSize);
+
+        where.Append(BuildDeptScopeFilter(scope, parameters));
 
         if (employeeId.HasValue)
         {
@@ -52,7 +76,7 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
 
         var whereClause = where.Length > 0 ? " WHERE 1=1" + where : "";
 
-        var countSql = "SELECT COUNT(*) FROM AttendanceRecords a" + whereClause;
+        var countSql = CountFromSql + whereClause;
         var sql = ListSql + whereClause +
             " ORDER BY a.RecordDate DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
 

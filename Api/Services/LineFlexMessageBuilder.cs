@@ -147,6 +147,44 @@ public static class LineFlexMessageBuilder
             buttonUrl:   linkUrl);
     }
 
+    /// <summary>撥款完成通知 — 通知申請人款項已撥付。</summary>
+    public static object BuildApplicantPaidMessage(
+        string label, int applicationId, decimal amount, DateTime paidAt, string linkUrl)
+    {
+        return BuildBubble(
+            altText: $"[已撥款] 您的{label} #{applicationId} 已撥款 — {amount:N0} 元",
+            headerColor: SuccessGreen,
+            headerText: $"{label}已撥款",
+            rows: new[]
+            {
+                ("申請類型", label),
+                ("申請編號", $"#{applicationId}"),
+                ("撥款金額", $"{amount:N0} 元"),
+                ("撥款日期", paidAt.ToString("yyyy-MM-dd")),
+            },
+            buttonLabel: "查看詳情",
+            buttonUrl: linkUrl);
+    }
+
+    /// <summary>退款完成通知 — 通知申請人退款已匯款。</summary>
+    public static object BuildApplicantRefundedMessage(
+        string label, int applicationId, decimal refundAmount, DateTime refundedAt, string linkUrl)
+    {
+        return BuildBubble(
+            altText: $"[已退款] 您的{label} #{applicationId} 退款已匯款 — {refundAmount:N0} 元",
+            headerColor: SuccessGreen,
+            headerText: $"{label}退款完成",
+            rows: new[]
+            {
+                ("申請類型", label),
+                ("申請編號", $"#{applicationId}"),
+                ("退款金額", $"{refundAmount:N0} 元"),
+                ("退款日期", refundedAt.ToString("yyyy-MM-dd")),
+            },
+            buttonLabel: "查看詳情",
+            buttonUrl: linkUrl);
+    }
+
     /// <summary>出差沖銷超額 — 通知財務部需匯款差額。</summary>
     public static object BuildTravelRefundMessage(
         string applicantName, string destination, decimal travelTotal,

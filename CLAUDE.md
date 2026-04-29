@@ -503,7 +503,7 @@ public async Task<HttpResponseData> Run(
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/attendances` | 出勤紀錄列表（分頁） |
+| GET | `/attendances` | 出勤紀錄列表（分頁，套用部門可見性 scope） |
 | GET | `/attendances/today` | 今日打卡紀錄（當前使用者） |
 | POST | `/attendances/clock-in` | 上班打卡（含 GPS） |
 | POST | `/attendances/clock-out` | 下班打卡（含 GPS） |
@@ -775,6 +775,20 @@ draft → pending → approved / returned / rejected
 
 > 此端點僅限**財務體系部門**（部門 Code ∈ AC / FIN / Jabez HQ / CEO，定義於 `Api/Common/Constants.cs` `DepartmentCodes.FinancialAndAbove`）或 **Superadmin** 操作。同樣規則套用於 `/advance-requests/{id}/payment-date`、`/travel-requests/{id}/payment-date`、`/travel-payment-requests/{id}/payment-date`，以及預支結案 / 出差結案端點。
 
+#### 撥款 / 退款完成通知申請人
+
+當財務在以上端點將 `PaidAt`（或預支沖銷 / 出差沖銷的 `RefundedAt`）從 `null` → 有值時，系統自動同時透過 **Email + LINE Flex Message** 通知申請人：
+
+| 觸發欄位轉換 | 適用申請類型 | 通知方法 |
+|---|---|---|
+| `PaidAt`（null → 有值） | payment_request / advance / travel / travel_payment | `NotifyApplicantPaidAsync` |
+| `RefundedAt`（null → 有值） | advance / travel | `NotifyApplicantRefundedAsync` |
+
+- **僅首次轉換**：之後若調整撥款日或退款日不會重發（避免騷擾）。
+- **Email + LINE 雙軌**：與其他簽核通知一致；申請人未綁定 LINE 仍會收到 Email。
+- **LINE Flex 模板**：`BuildApplicantPaidMessage` / `BuildApplicantRefundedMessage`（品牌綠 #4A6B3A，列出申請編號 / 金額 / 日期）。
+- **金額來源**：撥款用 `TotalAmount` (payment) 或 `GrandTotal` (travel/advance/travel_payment)；退款用 `RefundedAmount`。
+
 ### 批次核准（全選核准）
 
 擁有 `approval-tasks:batch-approve` 權限的使用者，可在簽核作業「待審核」頁籤勾選多筆待審申請一次核准。
@@ -874,9 +888,13 @@ draft → pending → approved / returned / rejected
 
 ---
 
-## 專案可見性規則
+## 部門可見性規則（原「專案可見性規則」）
 
-專案清單（`Projects`）在前端的顯示（6 個申請表單下拉 + 專案管理列表 + 詳情頁）套用以下三層規則，依優先序判定，第一個符合者即套用：
+部門可見性規則最早為「專案清單」設計，後擴充至**員工資料相關報表**（出缺勤紀錄、加班紀錄、請款統計、報表員工下拉）。底層由 `IProjectAccessResolver` 解析 `ProjectAccessScope(SeeAll, AllowedDepartmentIds)`，名稱保留「Project」字眼但**語意已是通用部門 scope**，套用於兩類過濾欄位：
+- `Project.DepartmentId`（專案歸屬部門）
+- `User.DepartmentId`（員工 / 申請人歸屬部門）
+
+依優先序判定，第一個符合者即套用：
 
 ### 規則
 
@@ -890,10 +908,17 @@ draft → pending → approved / returned / rejected
 
 ### 套用端點
 
+**過濾鍵：`Project.DepartmentId`**
 - `GET /projects/active`（申請表單下拉，僅 `Status = 'active'`）
 - `GET /projects`（專案管理列表 / 分頁）
 - `GET /projects/{id}`（單筆詳情；不符 scope 回 404）
 - `GET /reports/project-water-level`（專案水位表）
+
+**過濾鍵：`User.DepartmentId`（員工 / 申請人歸屬部門）**
+- `GET /attendances`（出缺勤紀錄報表，JOIN `Users` 後過濾）
+- `GET /reports/overtime`（加班紀錄報表，JOIN `Users` 後過濾）
+- `GET /reports/payment`（請款統計報表，JOIN `Users` 後過濾）
+- `GET /users/lookup?scope=department`（報表員工下拉，**不帶 `scope` 參數時維持原行為，回傳全公司**）
 
 ### 前置必要條件（資料完整性）
 
@@ -910,8 +935,14 @@ draft → pending → approved / returned / rejected
 | `Api/Services/IProjectAccessResolver` + `ProjectAccessResolver` | 解析 JWT claims → `ProjectAccessScope(SeeAll, AllowedDepartmentIds)` |
 | `Api/Services/Dapper/ProjectReadService` | 四個讀取方法皆依 scope 組合 WHERE（`DepartmentId IN @AllowedIds` 或 `1=0`） |
 | `Api/Services/Dapper/ProjectWaterLevelReadService` | 專案水位表同樣依 scope 組合 WHERE |
+| `Api/Services/Dapper/AttendanceReadService` | 出缺勤列表 SQL 改 `INNER JOIN Users u`，加 `u.DepartmentId IN @AllowedDeptIds` 子句 |
+| `Api/Services/Dapper/OvertimeReportReadService` | 加班報表 SQL 改 `INNER JOIN Users u`，加同上子句 |
+| `Api/Services/Dapper/PaymentReportReadService` | 請款報表 SQL 既有 `JOIN Users u ON pr.SubmittedById = u.Id`，加同上子句 |
+| `Api/Services/Dapper/UserReadService.GetLookupAsync(scope)` | 員工 lookup 加 `WHERE DepartmentId IN @AllowedDeptIds` |
 | `Api/Handlers/ProjectHandler` | 所有 GET 先呼叫 resolver；寫入後以 SeeAll scope 讀回避免寫入者讀不到自己的資料 |
 | `Api/Handlers/ProjectWaterLevelHandler` | GET 先呼叫 resolver 取 scope 再傳給 reader |
+| `Api/Handlers/AttendanceHandler` / `OvertimeReportHandler` / `PaymentReportHandler` | GET 先呼叫 resolver 取 scope 再傳給 reader |
+| `Api/Handlers/UserHandler.GetLookupAsync` | 接 `?scope=department` 時呼叫 `reader.GetLookupAsync(scope)`；不帶參數維持原行為 |
 | JWT `department_id` claim | Resolver 查 CanViewSiblings 與同層兄弟部門用 |
 | `Api/Routing/AppRouter` | JWT 驗證後將 principal 寫入 `HttpContext.User`，供 Handler 經 `IHttpContextAccessor` 取得 |
 
@@ -930,6 +961,9 @@ draft → pending → approved / returned / rejected
 
 - `/approval-tasks`（申請單既有列表過濾已足夠隔離）
 - `/payroll`（人事薪資顯示 projectCode）
+- `/users`、`/users/lookup`（不帶 `?scope=department` 時）— 全公司可見，供管理頁與指定審核者下拉使用
+- `/projects/years`（僅回傳年份不洩漏明細）
+- 各申請列表（`/payment-requests`、`/leave-requests`、`/overtime-requests` 等）— 各自有「我自己 / Superadmin」邏輯
 
 ---
 
@@ -1053,13 +1087,15 @@ draft → pending → approved / returned / rejected
 
 `LineService.PushMessageAsync` 會偵測 LINE 回應 body，若發現「未加好友 / 已封鎖」錯誤，會以 `LogError` 明確記錄原因（其他錯誤維持 warning），方便排查。
 
-**6 種推播類型**：
+**8 種推播類型**：
 1. `BuildReviewerMessage` — 待審核通知
 2. `BuildApplicantResultMessage` — 審核結果（核准/退回/拒絕）
 3. `BuildSpecificReviewerMessage` — 指定/升級/代理審核者通知
 4. `BuildFinanceDeptMessage` — 財務撥款通知
 5. `BuildRefundMessage` — 預支沖銷超額通知
 6. `BuildTravelRefundMessage` — 出差沖銷超額通知
+7. `BuildApplicantPaidMessage` — 撥款完成通知申請人（請款 / 預支 / 出差預支 / 出差請款）
+8. `BuildApplicantRefundedMessage` — 退款完成通知申請人（預支 / 出差預支）
 
 ### 涉及元件
 

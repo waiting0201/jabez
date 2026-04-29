@@ -1,6 +1,7 @@
 using Dapper;
 using Jabez.Api.Common;
 using Jabez.Api.Models.Dtos;
+using Jabez.Api.Services;
 using System.Data;
 
 namespace Jabez.Api.Services.Dapper;
@@ -99,6 +100,26 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             """;
 
         return await db.QueryAsync<UserLookupDto>(sql);
+    }
+
+    /// <summary>
+    /// 依部門 scope 過濾的輕量使用者清單（供報表員工下拉，避免顯示無法查到資料的員工）。
+    /// 規則同 IProjectAccessResolver：SeeAll → 全部；AllowedIds 為空 → 空集合；否則 DepartmentId IN @AllowedDeptIds。
+    /// </summary>
+    public async Task<IEnumerable<UserLookupDto>> GetLookupAsync(ProjectAccessScope scope)
+    {
+        if (scope.SeeAll) return await GetLookupAsync();
+        if (scope.AllowedDepartmentIds.Count == 0) return [];
+
+        const string sql = """
+            SELECT Id, Name, JobTitleId, Status
+            FROM Users
+            WHERE IsSuperAdmin = 0
+              AND DepartmentId IN @AllowedDeptIds
+            ORDER BY Name
+            """;
+
+        return await db.QueryAsync<UserLookupDto>(sql, new { AllowedDeptIds = scope.AllowedDepartmentIds });
     }
 
     public async Task<PagedResult<UserDto>> GetPagedAsync(int page, int pageSize)

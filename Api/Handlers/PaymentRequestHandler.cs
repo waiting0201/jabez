@@ -555,6 +555,9 @@ public sealed class PaymentRequestHandler(
         if (body is null)
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
 
+        // 偵測撥款狀態轉換（null → 有值）
+        var wasPaidNull = !pr.PaidAt.HasValue;
+
         if (body.EstimatedPaymentDate.HasValue)
             pr.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
         if (body.PaidAt.HasValue)
@@ -575,6 +578,11 @@ public sealed class PaymentRequestHandler(
         }
 
         await db.SaveChangesAsync();
+
+        // 首次撥款（null → 有值）→ 通知申請人
+        if (wasPaidNull && pr.PaidAt.HasValue && pr.SubmittedById.HasValue)
+            await notifier.NotifyApplicantPaidAsync(
+                "payment_request", pr.Id, pr.SubmittedById.Value, pr.TotalAmount, pr.PaidAt.Value);
 
         return new OkObjectResult(ApiResponse.Ok(new { pr.Id, pr.ApprovalStatus, pr.EstimatedPaymentDate, pr.PaidAt }, "已更新。"));
     }

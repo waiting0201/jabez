@@ -35,4 +35,20 @@ public interface IApprovalNotificationService
 
     /// <summary>出差沖銷結案時，若沖銷累計超過出差金額，通知財務部需匯款差額。</summary>
     Task NotifyFinanceTravelRefundAsync(Models.Entities.TravelRequest travel, decimal refundAmount);
+
+    /// <summary>財務確認撥款（PaidAt 從 null → 有值）後，通知申請人款項已撥付。</summary>
+    Task NotifyApplicantPaidAsync(
+        string   applicationType,
+        int      applicationId,
+        Guid     applicantId,
+        decimal  amount,
+        DateTime paidAt);
+
+    /// <summary>財務確認退款（RefundedAt 從 null → 有值）後，通知申請人退款已匯款。</summary>
+    Task NotifyApplicantRefundedAsync(
+        string   applicationType,
+        int      applicationId,
+        Guid     applicantId,
+        decimal  refundAmount,
+        DateTime refundedAt);
 }

@@ -22,7 +22,8 @@ namespace Jabez.Api.Handlers;
 public sealed class AttendanceHandler(
     AppDbContext db,
     IAttendanceReadService reader,
-    IJwtService jwtService)
+    IJwtService jwtService,
+    IProjectAccessResolver access)
 {
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
@@ -33,7 +34,8 @@ public sealed class AttendanceHandler(
         int? year        = int.TryParse(req.Query["year"],  out var y) ? y : null;
         int? month       = int.TryParse(req.Query["month"], out var m) ? m : null;
 
-        var result = await reader.GetPagedAsync(page, pageSize, employeeId, year, month);
+        var scope = await access.ResolveAsync(req.HttpContext.User);
+        var result = await reader.GetPagedAsync(scope, page, pageSize, employeeId, year, month);
         return new OkObjectResult(ApiResponse.Ok(result));
     }
 

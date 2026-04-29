@@ -1,6 +1,7 @@
 using Dapper;
 using Jabez.Api.Common;
 using Jabez.Api.Models.Dtos;
+using Jabez.Api.Services;
 using System.Data;
 using System.Text;
 
@@ -25,7 +26,29 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         JOIN Projects proj ON pr.ProjectId    = proj.Id
         """;
 
+    /// <summary>
+    /// count SQL 必須與 BaseSql 共用 JOIN，否則 WHERE u.DepartmentId / proj 欄位無法使用。
+    /// </summary>
+    private const string CountFromSql = """
+        SELECT COUNT(*) FROM PaymentRequests pr
+        JOIN Users   u    ON pr.SubmittedById = u.Id
+        JOIN Projects proj ON pr.ProjectId    = proj.Id
+        """;
+
+    /// <summary>
+    /// 依 scope 產生「申請人部門」過濾片段（前綴 " AND "）。
+    /// SeeAll → 空字串；AllowedIds 為空 → " AND 1=0"；否則 " AND u.DepartmentId IN @AllowedDeptIds"
+    /// </summary>
+    private static string BuildDeptScopeFilter(ProjectAccessScope scope, DynamicParameters parameters)
+    {
+        if (scope.SeeAll) return "";
+        if (scope.AllowedDepartmentIds.Count == 0) return " AND 1=0";
+        parameters.Add("AllowedDeptIds", scope.AllowedDepartmentIds);
+        return " AND u.DepartmentId IN @AllowedDeptIds";
+    }
+
     public async Task<PagedResult<PaymentReportDto>> GetPagedAsync(
+        ProjectAccessScope scope,
         int page, int pageSize,
         int? year = null, int? month = null, string? paymentStatus = null)
     {
@@ -34,6 +57,8 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         var parameters = new DynamicParameters();
         parameters.Add("Skip", (page - 1) * pageSize);
         parameters.Add("Take", pageSize);
+
+        where.Append(BuildDeptScopeFilter(scope, parameters));
 
         if (year.HasValue)
         {
@@ -59,7 +84,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
 
         var whereClause = where.ToString();
 
-        var countSql = "SELECT COUNT(*) FROM PaymentRequests pr" + whereClause;
+        var countSql = CountFromSql + whereClause;
         int total = await db.ExecuteScalarAsync<int>(countSql, parameters);
 
         var sql = BaseSql + whereClause +

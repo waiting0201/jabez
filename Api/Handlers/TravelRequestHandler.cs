@@ -672,6 +672,10 @@ public sealed class TravelRequestHandler(
         if (body is null)
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
 
+        // 偵測撥款 / 退款狀態轉換（null → 有值）
+        var wasPaidNull     = !tr.PaidAt.HasValue;
+        var wasRefundedNull = !tr.RefundedAt.HasValue;
+
         if (body.EstimatedPaymentDate.HasValue)
             tr.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
         if (body.PaidAt.HasValue)
@@ -690,6 +694,17 @@ public sealed class TravelRequestHandler(
             tr.RefundedAmount = body.RefundedAmount.Value;
 
         await db.SaveChangesAsync();
+
+        // 首次撥款 / 退款（null → 有值）→ 通知申請人
+        if (tr.EmployeeId.HasValue)
+        {
+            if (wasPaidNull && tr.PaidAt.HasValue)
+                await notifier.NotifyApplicantPaidAsync(
+                    "travel", tr.Id, tr.EmployeeId.Value, tr.GrandTotal, tr.PaidAt.Value);
+            if (wasRefundedNull && tr.RefundedAt.HasValue && tr.RefundedAmount.HasValue)
+                await notifier.NotifyApplicantRefundedAsync(
+                    "travel", tr.Id, tr.EmployeeId.Value, tr.RefundedAmount.Value, tr.RefundedAt.Value);
+        }
 
         var msg = (body.EstimatedRefundDate.HasValue || body.RefundedAt.HasValue || body.RefundedAmount.HasValue) ? "退款資訊已更新。" : "撥款日期已更新。";
         return new OkObjectResult(ApiResponse.Ok(new { tr.Id, tr.EstimatedPaymentDate, tr.PaidAt, tr.EstimatedRefundDate, tr.RefundedAt, tr.RefundedAmount }, msg));

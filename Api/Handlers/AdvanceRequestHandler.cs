@@ -541,6 +541,10 @@ public sealed class AdvanceRequestHandler(
         if (body is null)
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
 
+        // 偵測撥款 / 退款狀態轉換（null → 有值）
+        var wasPaidNull     = !ar.PaidAt.HasValue;
+        var wasRefundedNull = !ar.RefundedAt.HasValue;
+
         if (body.EstimatedPaymentDate.HasValue)
             ar.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
         if (body.PaidAt.HasValue)
@@ -559,6 +563,17 @@ public sealed class AdvanceRequestHandler(
             ar.RefundedAmount = body.RefundedAmount.Value;
 
         await db.SaveChangesAsync();
+
+        // 首次撥款 / 退款（null → 有值）→ 通知申請人
+        if (ar.SubmittedById.HasValue)
+        {
+            if (wasPaidNull && ar.PaidAt.HasValue)
+                await notifier.NotifyApplicantPaidAsync(
+                    "advance", ar.Id, ar.SubmittedById.Value, ar.GrandTotal, ar.PaidAt.Value);
+            if (wasRefundedNull && ar.RefundedAt.HasValue && ar.RefundedAmount.HasValue)
+                await notifier.NotifyApplicantRefundedAsync(
+                    "advance", ar.Id, ar.SubmittedById.Value, ar.RefundedAmount.Value, ar.RefundedAt.Value);
+        }
 
         var msg = (body.EstimatedRefundDate.HasValue || body.RefundedAt.HasValue || body.RefundedAmount.HasValue) ? "退款資訊已更新。" : "撥款日期已更新。";
         return new OkObjectResult(ApiResponse.Ok(new { ar.Id, ar.EstimatedPaymentDate, ar.PaidAt, ar.EstimatedRefundDate, ar.RefundedAt, ar.RefundedAmount }, msg));

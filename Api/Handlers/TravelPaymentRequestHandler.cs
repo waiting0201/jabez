@@ -558,6 +558,9 @@ public sealed class TravelPaymentRequestHandler(
         if (body is null)
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
 
+        // 偵測撥款狀態轉換（null → 有值）
+        var wasPaidNull = !tpr.PaidAt.HasValue;
+
         if (body.EstimatedPaymentDate.HasValue)
             tpr.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
         if (body.PaidAt.HasValue)
@@ -567,6 +570,11 @@ public sealed class TravelPaymentRequestHandler(
         }
 
         await db.SaveChangesAsync();
+
+        // 首次撥款（null → 有值）→ 通知申請人
+        if (wasPaidNull && tpr.PaidAt.HasValue && tpr.EmployeeId.HasValue)
+            await notifier.NotifyApplicantPaidAsync(
+                "travel_payment", tpr.Id, tpr.EmployeeId.Value, tpr.GrandTotal, tpr.PaidAt.Value);
 
         return new OkObjectResult(ApiResponse.Ok(
             new { tpr.Id, tpr.EstimatedPaymentDate, tpr.PaidAt },

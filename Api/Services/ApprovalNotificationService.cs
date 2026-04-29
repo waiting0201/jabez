@@ -446,6 +446,64 @@ public sealed class ApprovalNotificationService(
         }
     }
 
+    /// <inheritdoc />
+    public async Task NotifyApplicantPaidAsync(
+        string applicationType, int applicationId, Guid applicantId, decimal amount, DateTime paidAt)
+    {
+        try
+        {
+            var applicant = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == applicantId);
+            if (applicant is null || string.IsNullOrEmpty(applicant.Email)) return;
+
+            var label   = AppTypeLabels.GetValueOrDefault(applicationType, applicationType);
+            var summary = await GetSummaryAsync(applicationType, applicationId);
+            var siteUrl = await GetSiteUrlAsync();
+            var linkUrl = BuildReviewUrl(siteUrl, applicationType, applicationId);
+
+            var subject = $"[已撥款] 您的{label} #{applicationId} 已撥款 — {amount:N0} 元";
+            var body    = BuildApplicantPaidEmail(applicant.Name, label, applicationId, summary, amount, paidAt, linkUrl);
+
+            await emailService.SendAsync(applicant.Email, subject, body);
+            await PushLineByUserIdAsync(applicantId,
+                LineFlexMessageBuilder.BuildApplicantPaidMessage(label, applicationId, amount, paidAt, linkUrl));
+            logger.LogInformation("已寄送撥款完成通知：{Email}（{AppType} #{Id}）",
+                applicant.Email, applicationType, applicationId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "寄送撥款完成通知失敗：{AppType} #{Id}", applicationType, applicationId);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task NotifyApplicantRefundedAsync(
+        string applicationType, int applicationId, Guid applicantId, decimal refundAmount, DateTime refundedAt)
+    {
+        try
+        {
+            var applicant = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == applicantId);
+            if (applicant is null || string.IsNullOrEmpty(applicant.Email)) return;
+
+            var label   = AppTypeLabels.GetValueOrDefault(applicationType, applicationType);
+            var summary = await GetSummaryAsync(applicationType, applicationId);
+            var siteUrl = await GetSiteUrlAsync();
+            var linkUrl = BuildReviewUrl(siteUrl, applicationType, applicationId);
+
+            var subject = $"[已退款] 您的{label} #{applicationId} 退款已匯款 — {refundAmount:N0} 元";
+            var body    = BuildApplicantRefundedEmail(applicant.Name, label, applicationId, summary, refundAmount, refundedAt, linkUrl);
+
+            await emailService.SendAsync(applicant.Email, subject, body);
+            await PushLineByUserIdAsync(applicantId,
+                LineFlexMessageBuilder.BuildApplicantRefundedMessage(label, applicationId, refundAmount, refundedAt, linkUrl));
+            logger.LogInformation("已寄送退款完成通知：{Email}（{AppType} #{Id}）",
+                applicant.Email, applicationType, applicationId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "寄送退款完成通知失敗：{AppType} #{Id}", applicationType, applicationId);
+        }
+    }
+
     // ── 取得申請摘要 ──────────────────────────────────────────────────────────
 
     private async Task<string> GetSummaryAsync(string applicationType, int applicationId)
@@ -763,6 +821,86 @@ public sealed class ApprovalNotificationService(
               </tr>
             </table>
             {BuildButtonHtml(linkUrl, "前往出差申請")}
+            <hr style="border: none; border-top: 1px solid #DDD6C8; margin: 16px 0;" />
+            <p style="color: #A39685; font-size: 12px; margin: 0;">此信件由系統自動寄發，請勿直接回覆。</p>
+          </div>
+        </div>
+        """;
+    }
+
+    private static string BuildApplicantPaidEmail(
+        string applicantName, string label, int applicationId, string summary,
+        decimal amount, DateTime paidAt, string linkUrl)
+    {
+        return $"""
+        <div style="font-family: 'Microsoft JhengHei', 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: #4A6B3A; padding: 16px 24px; border-radius: 8px 8px 0 0;">
+            <h2 style="color: #fff; margin: 0; font-size: 18px;">{label}已撥款</h2>
+          </div>
+          <div style="background: #F5F2ED; padding: 24px; border-radius: 0 0 8px 8px;">
+            <p style="color: #525358; margin: 0 0 16px;">{applicantName} 您好，</p>
+            <p style="color: #525358; margin: 0 0 16px;">
+              您的<strong>{label} #{applicationId}</strong> 已由財務完成撥款作業，款項已撥付。
+            </p>
+            <table style="width: 100%; border-collapse: collapse; margin: 0 0 16px;">
+              <tr>
+                <td style="padding: 8px 12px; color: #6E6F73; width: 100px;">申請編號</td>
+                <td style="padding: 8px 12px; color: #525358; font-weight: 600;">#{applicationId}</td>
+              </tr>
+              <tr style="background: #EDE9E1;">
+                <td style="padding: 8px 12px; color: #6E6F73;">申請摘要</td>
+                <td style="padding: 8px 12px; color: #525358;">{summary}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 12px; color: #6E6F73;">撥款金額</td>
+                <td style="padding: 8px 12px; color: #4A6B3A; font-weight: 600;">{amount:N0} 元</td>
+              </tr>
+              <tr style="background: #EDE9E1;">
+                <td style="padding: 8px 12px; color: #6E6F73;">撥款日期</td>
+                <td style="padding: 8px 12px; color: #525358;">{paidAt:yyyy-MM-dd}</td>
+              </tr>
+            </table>
+            {BuildButtonHtml(linkUrl, "查看詳情")}
+            <hr style="border: none; border-top: 1px solid #DDD6C8; margin: 16px 0;" />
+            <p style="color: #A39685; font-size: 12px; margin: 0;">此信件由系統自動寄發，請勿直接回覆。</p>
+          </div>
+        </div>
+        """;
+    }
+
+    private static string BuildApplicantRefundedEmail(
+        string applicantName, string label, int applicationId, string summary,
+        decimal refundAmount, DateTime refundedAt, string linkUrl)
+    {
+        return $"""
+        <div style="font-family: 'Microsoft JhengHei', 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: #4A6B3A; padding: 16px 24px; border-radius: 8px 8px 0 0;">
+            <h2 style="color: #fff; margin: 0; font-size: 18px;">{label}退款完成</h2>
+          </div>
+          <div style="background: #F5F2ED; padding: 24px; border-radius: 0 0 8px 8px;">
+            <p style="color: #525358; margin: 0 0 16px;">{applicantName} 您好，</p>
+            <p style="color: #525358; margin: 0 0 16px;">
+              您的<strong>{label} #{applicationId}</strong> 退款已由財務完成匯款作業。
+            </p>
+            <table style="width: 100%; border-collapse: collapse; margin: 0 0 16px;">
+              <tr>
+                <td style="padding: 8px 12px; color: #6E6F73; width: 100px;">申請編號</td>
+                <td style="padding: 8px 12px; color: #525358; font-weight: 600;">#{applicationId}</td>
+              </tr>
+              <tr style="background: #EDE9E1;">
+                <td style="padding: 8px 12px; color: #6E6F73;">申請摘要</td>
+                <td style="padding: 8px 12px; color: #525358;">{summary}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 12px; color: #6E6F73;">退款金額</td>
+                <td style="padding: 8px 12px; color: #4A6B3A; font-weight: 600;">{refundAmount:N0} 元</td>
+              </tr>
+              <tr style="background: #EDE9E1;">
+                <td style="padding: 8px 12px; color: #6E6F73;">退款日期</td>
+                <td style="padding: 8px 12px; color: #525358;">{refundedAt:yyyy-MM-dd}</td>
+              </tr>
+            </table>
+            {BuildButtonHtml(linkUrl, "查看詳情")}
             <hr style="border: none; border-top: 1px solid #DDD6C8; margin: 16px 0;" />
             <p style="color: #A39685; font-size: 12px; margin: 0;">此信件由系統自動寄發，請勿直接回覆。</p>
           </div>

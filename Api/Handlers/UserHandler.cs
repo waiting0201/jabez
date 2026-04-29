@@ -10,11 +10,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Jabez.Api.Handlers;
 
-public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmailService emailService, IBlobStorageService blob)
+public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmailService emailService, IBlobStorageService blob, IProjectAccessResolver access)
 {
-    // GET /api/users/lookup — 輕量級使用者清單（供指定審核者下拉選單，不需 users:read 權限）
-    public async Task<IActionResult> GetLookupAsync()
+    // GET /api/users/lookup            → 全公司輕量清單（指定審核者下拉用）
+    // GET /api/users/lookup?scope=department → 套用部門 scope 過濾（報表頁員工下拉用）
+    public async Task<IActionResult> GetLookupAsync(HttpRequest req)
     {
+        var scopeMode = req.Query["scope"].ToString();
+        if (string.Equals(scopeMode, "department", StringComparison.OrdinalIgnoreCase))
+        {
+            var scope = await access.ResolveAsync(req.HttpContext.User);
+            var scoped = await reader.GetLookupAsync(scope);
+            return new OkObjectResult(ApiResponse.Ok(scoped));
+        }
+
         var list = await reader.GetLookupAsync();
         return new OkObjectResult(ApiResponse.Ok(list));
     }
