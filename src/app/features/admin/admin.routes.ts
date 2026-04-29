@@ -77,7 +77,7 @@ export const ADMIN_ROUTES: Routes = [
   // 專案管理
   {path: 'projects',             component: ProjectList,    canActivate: [permissionGuard], data: {title: '專案管理',       permission: 'projects:read'}},
   {path: 'projects/new',         component: ProjectForm,    canActivate: [permissionGuard], data: {title: '新增專案',       permission: 'projects:write'}},
-  {path: 'projects/:id/edit',    component: ProjectForm,    canActivate: [permissionGuard], data: {title: '編輯專案',       permission: 'projects:write'}},
+  {path: 'projects/:id/edit',    component: ProjectForm,    canActivate: [permissionGuard], data: {title: '檢視專案',       permission: 'projects:read'}},
 
   // 請款申請
   {path: 'payment-requests',             component: PaymentList, canActivate: [permissionGuard], data: {title: '請款申請',       permission: 'payment-requests:read'}},

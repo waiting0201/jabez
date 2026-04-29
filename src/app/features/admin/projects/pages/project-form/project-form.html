@@ -3,7 +3,7 @@
     <a routerLink="/admin/projects" class="btn btn-sm btn-outline-secondary">
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
     </a>
-    <h4 class="mb-0">{{ isClosed ? '檢視專案（已結案）' : (isEdit ? '編輯專案' : '新增專案') }}</h4>
+    <h4 class="mb-0">{{ isClosed ? '檢視專案（已結案）' : (isReadOnly ? '檢視專案' : (isEdit ? '編輯專案' : '新增專案')) }}</h4>
   </div>
 
   @if (errorMsg()) {
@@ -171,7 +171,7 @@
                     <th style="min-width:140px">入帳金額</th>
                     <th style="min-width:140px">扣款金額</th>
                     <th style="min-width:180px">扣款備註</th>
-                    @if (!isClosed) {
+                    @if (!isReadOnly) {
                       <th style="width:48px"></th>
                     }
                   </tr>
@@ -214,7 +214,7 @@
                         <input class="form-control form-control-sm"
                                formControlName="deductionNote" maxlength="500" placeholder="">
                       </td>
-                      @if (!isClosed) {
+                      @if (!isReadOnly) {
                         <td class="text-right align-middle">
                           <button type="button"
                                   class="btn btn-sm btn-ghost-danger inline-flex items-center"
@@ -226,14 +226,14 @@
                     </tr>
                   } @empty {
                     <tr>
-                      <td [attr.colspan]="isClosed ? 9 : 10" class="text-center text-muted py-4 small">尚未新增期別</td>
+                      <td [attr.colspan]="isReadOnly ? 9 : 10" class="text-center text-muted py-4 small">尚未新增期別</td>
                     </tr>
                   }
                 </tbody>
               </table>
             </div>
 
-            @if (!isClosed) {
+            @if (!isReadOnly) {
               <button type="button" class="btn btn-sm btn-outline-secondary mt-3 inline-flex items-center gap-1"
                       (click)="addSchedule()">
                 <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
@@ -244,7 +244,7 @@
           </div>
         </div>
 
-        @if (isClosed) {
+        @if (isReadOnly) {
           <div class="mt-6">
             <a routerLink="/admin/projects" class="btn btn-outline-secondary">返回列表</a>
           </div>

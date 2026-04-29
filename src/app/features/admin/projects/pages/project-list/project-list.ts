@@ -7,6 +7,7 @@ import {switchMap} from 'rxjs/operators';
 import {ProjectService} from '../../services/project.service';
 import {Project, PROJECT_STATUS_LABELS, PROJECT_STATUS_CLASSES} from '../../models/project.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
+import {AuthService} from '../../../../../core/auth/services/auth.service';
 
 @Component({
   selector: 'app-project-list',
@@ -15,6 +16,10 @@ import {PagedResult} from '../../../../../shared/models/paged-result.model';
 })
 export class ProjectList {
   private projectService = inject(ProjectService);
+  private auth = inject(AuthService);
+
+  /** 是否擁有 projects:write 權限（決定列表的編輯/刪除按鈕與「新增專案」按鈕顯示） */
+  canWrite = computed(() => this.auth.hasPermission('projects:write'));
 
   readonly PAGE_SIZE = 20;
   page = signal(1);

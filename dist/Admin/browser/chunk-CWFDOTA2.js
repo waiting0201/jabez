@@ -5579,9 +5579,20 @@ var PROJECT_STATUS_CLASSES = {
 // src/app/features/admin/projects/pages/project-list/project-list.ts
 var _c07 = (a0) => [a0, "edit"];
 var _forTrack011 = ($index, $item) => $item.id;
-function ProjectList_For_18_Template(rf, ctx) {
+function ProjectList_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 13);
+    \u0275\u0275elementStart(0, "a", 6);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 28);
+    \u0275\u0275element(2, "use", 29);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3, " \u65B0\u589E\u5C08\u6848 ");
+    \u0275\u0275elementEnd();
+  }
+}
+function ProjectList_For_15_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "option", 11);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -5592,7 +5603,7 @@ function ProjectList_For_18_Template(rf, ctx) {
     \u0275\u0275textInterpolate(y_r1);
   }
 }
-function ProjectList_For_60_Conditional_9_Template(rf, ctx) {
+function ProjectList_For_57_Conditional_9_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "span", 31);
     \u0275\u0275text(1);
@@ -5604,14 +5615,14 @@ function ProjectList_For_60_Conditional_9_Template(rf, ctx) {
     \u0275\u0275textInterpolate(project_r2.departmentName);
   }
 }
-function ProjectList_For_60_Conditional_10_Template(rf, ctx) {
+function ProjectList_For_57_Conditional_10_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "span", 32);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
 }
-function ProjectList_For_60_Conditional_15_Template(rf, ctx) {
+function ProjectList_For_57_Conditional_15_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0);
     \u0275\u0275pipe(1, "number");
@@ -5621,14 +5632,14 @@ function ProjectList_For_60_Conditional_15_Template(rf, ctx) {
     \u0275\u0275textInterpolate1(" ", \u0275\u0275pipeBind2(1, 1, project_r2.receivedAmount, "1.0-0"), " ");
   }
 }
-function ProjectList_For_60_Conditional_16_Template(rf, ctx) {
+function ProjectList_For_57_Conditional_16_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "span", 32);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
 }
-function ProjectList_For_60_Conditional_18_Template(rf, ctx) {
+function ProjectList_For_57_Conditional_18_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0);
     \u0275\u0275pipe(1, "number");
@@ -5638,14 +5649,14 @@ function ProjectList_For_60_Conditional_18_Template(rf, ctx) {
     \u0275\u0275textInterpolate1(" ", \u0275\u0275pipeBind2(1, 1, project_r2.contractAmount, "1.0-0"), " ");
   }
 }
-function ProjectList_For_60_Conditional_19_Template(rf, ctx) {
+function ProjectList_For_57_Conditional_19_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "span", 32);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
 }
-function ProjectList_For_60_Conditional_21_Template(rf, ctx) {
+function ProjectList_For_57_Conditional_21_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0);
     \u0275\u0275pipe(1, "number");
@@ -5655,14 +5666,14 @@ function ProjectList_For_60_Conditional_21_Template(rf, ctx) {
     \u0275\u0275textInterpolate1(" ", \u0275\u0275pipeBind2(1, 1, project_r2.businessAmount, "1.0-0"), " ");
   }
 }
-function ProjectList_For_60_Conditional_22_Template(rf, ctx) {
+function ProjectList_For_57_Conditional_22_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "span", 32);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
 }
-function ProjectList_For_60_Conditional_24_Template(rf, ctx) {
+function ProjectList_For_57_Conditional_24_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "a", 33);
     \u0275\u0275namespaceSVG();
@@ -5677,31 +5688,31 @@ function ProjectList_For_60_Conditional_24_Template(rf, ctx) {
     \u0275\u0275property("href", project_r2.googleDriveUrl, \u0275\u0275sanitizeUrl);
   }
 }
-function ProjectList_For_60_Conditional_25_Template(rf, ctx) {
+function ProjectList_For_57_Conditional_25_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "span", 32);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
 }
-function ProjectList_For_60_Conditional_28_Template(rf, ctx) {
+function ProjectList_For_57_Conditional_28_Template(rf, ctx) {
   if (rf & 1) {
     const _r3 = \u0275\u0275getCurrentView();
     \u0275\u0275elementStart(0, "a", 39);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 7);
+    \u0275\u0275elementStart(1, "svg", 28);
     \u0275\u0275element(2, "use", 40);
     \u0275\u0275elementEnd()();
     \u0275\u0275namespaceHTML();
     \u0275\u0275elementStart(3, "button", 41);
-    \u0275\u0275listener("click", function ProjectList_For_60_Conditional_28_Template_button_click_3_listener() {
+    \u0275\u0275listener("click", function ProjectList_For_57_Conditional_28_Template_button_click_3_listener() {
       \u0275\u0275restoreView(_r3);
       const project_r2 = \u0275\u0275nextContext().$implicit;
       const ctx_r3 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r3.delete(project_r2));
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(4, "svg", 7);
+    \u0275\u0275elementStart(4, "svg", 28);
     \u0275\u0275element(5, "use", 42);
     \u0275\u0275elementEnd()();
   }
@@ -5710,11 +5721,11 @@ function ProjectList_For_60_Conditional_28_Template(rf, ctx) {
     \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c07, project_r2.id));
   }
 }
-function ProjectList_For_60_Conditional_29_Template(rf, ctx) {
+function ProjectList_For_57_Conditional_29_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "a", 36);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 7);
+    \u0275\u0275elementStart(1, "svg", 28);
     \u0275\u0275element(2, "use", 43);
     \u0275\u0275elementEnd()();
   }
@@ -5723,7 +5734,7 @@ function ProjectList_For_60_Conditional_29_Template(rf, ctx) {
     \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c07, project_r2.id));
   }
 }
-function ProjectList_For_60_Template(rf, ctx) {
+function ProjectList_For_57_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "tr")(1, "td", 30);
     \u0275\u0275text(2);
@@ -5735,26 +5746,26 @@ function ProjectList_For_60_Template(rf, ctx) {
     \u0275\u0275text(7);
     \u0275\u0275elementEnd()();
     \u0275\u0275elementStart(8, "td");
-    \u0275\u0275conditionalCreate(9, ProjectList_For_60_Conditional_9_Template, 2, 1, "span", 31)(10, ProjectList_For_60_Conditional_10_Template, 2, 0, "span", 32);
+    \u0275\u0275conditionalCreate(9, ProjectList_For_57_Conditional_9_Template, 2, 1, "span", 31)(10, ProjectList_For_57_Conditional_10_Template, 2, 0, "span", 32);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(11, "td", 26);
+    \u0275\u0275elementStart(11, "td", 24);
     \u0275\u0275text(12);
     \u0275\u0275pipe(13, "date");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(14, "td", 27);
-    \u0275\u0275conditionalCreate(15, ProjectList_For_60_Conditional_15_Template, 2, 4)(16, ProjectList_For_60_Conditional_16_Template, 2, 0, "span", 32);
+    \u0275\u0275elementStart(14, "td", 25);
+    \u0275\u0275conditionalCreate(15, ProjectList_For_57_Conditional_15_Template, 2, 4)(16, ProjectList_For_57_Conditional_16_Template, 2, 0, "span", 32);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(17, "td", 27);
-    \u0275\u0275conditionalCreate(18, ProjectList_For_60_Conditional_18_Template, 2, 4)(19, ProjectList_For_60_Conditional_19_Template, 2, 0, "span", 32);
+    \u0275\u0275elementStart(17, "td", 25);
+    \u0275\u0275conditionalCreate(18, ProjectList_For_57_Conditional_18_Template, 2, 4)(19, ProjectList_For_57_Conditional_19_Template, 2, 0, "span", 32);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(20, "td", 27);
-    \u0275\u0275conditionalCreate(21, ProjectList_For_60_Conditional_21_Template, 2, 4)(22, ProjectList_For_60_Conditional_22_Template, 2, 0, "span", 32);
+    \u0275\u0275elementStart(20, "td", 25);
+    \u0275\u0275conditionalCreate(21, ProjectList_For_57_Conditional_21_Template, 2, 4)(22, ProjectList_For_57_Conditional_22_Template, 2, 0, "span", 32);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(23, "td", 28);
-    \u0275\u0275conditionalCreate(24, ProjectList_For_60_Conditional_24_Template, 4, 1, "a", 33)(25, ProjectList_For_60_Conditional_25_Template, 2, 0, "span", 32);
+    \u0275\u0275elementStart(23, "td", 26);
+    \u0275\u0275conditionalCreate(24, ProjectList_For_57_Conditional_24_Template, 4, 1, "a", 33)(25, ProjectList_For_57_Conditional_25_Template, 2, 0, "span", 32);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(26, "td", 34)(27, "div", 35);
-    \u0275\u0275conditionalCreate(28, ProjectList_For_60_Conditional_28_Template, 6, 3)(29, ProjectList_For_60_Conditional_29_Template, 3, 3, "a", 36);
+    \u0275\u0275conditionalCreate(28, ProjectList_For_57_Conditional_28_Template, 6, 3)(29, ProjectList_For_57_Conditional_29_Template, 3, 3, "a", 36);
     \u0275\u0275elementEnd()()();
   }
   if (rf & 2) {
@@ -5781,28 +5792,28 @@ function ProjectList_For_60_Template(rf, ctx) {
     \u0275\u0275advance(3);
     \u0275\u0275conditional(project_r2.googleDriveUrl ? 24 : 25);
     \u0275\u0275advance(4);
-    \u0275\u0275conditional(project_r2.status !== "closed" ? 28 : 29);
+    \u0275\u0275conditional(ctx_r3.canWrite() && project_r2.status !== "closed" ? 28 : 29);
   }
 }
-function ProjectList_ForEmpty_61_Template(rf, ctx) {
+function ProjectList_ForEmpty_58_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "tr")(1, "td", 44);
     \u0275\u0275text(2, "\u5C1A\u7121\u5C08\u6848\u8CC7\u6599\u3002");
     \u0275\u0275elementEnd()();
   }
 }
-function ProjectList_Conditional_62_For_15_Conditional_0_Template(rf, ctx) {
+function ProjectList_Conditional_59_For_15_Conditional_0_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "li", 52)(1, "span", 54);
     \u0275\u0275text(2, "\u2026");
     \u0275\u0275elementEnd()();
   }
 }
-function ProjectList_Conditional_62_For_15_Conditional_1_Template(rf, ctx) {
+function ProjectList_Conditional_59_For_15_Conditional_1_Template(rf, ctx) {
   if (rf & 1) {
     const _r6 = \u0275\u0275getCurrentView();
     \u0275\u0275elementStart(0, "li", 50)(1, "button", 51);
-    \u0275\u0275listener("click", function ProjectList_Conditional_62_For_15_Conditional_1_Template_button_click_1_listener() {
+    \u0275\u0275listener("click", function ProjectList_Conditional_59_For_15_Conditional_1_Template_button_click_1_listener() {
       \u0275\u0275restoreView(_r6);
       const p_r7 = \u0275\u0275nextContext().$implicit;
       const ctx_r3 = \u0275\u0275nextContext(2);
@@ -5819,23 +5830,23 @@ function ProjectList_Conditional_62_For_15_Conditional_1_Template(rf, ctx) {
     \u0275\u0275textInterpolate(p_r7);
   }
 }
-function ProjectList_Conditional_62_For_15_Template(rf, ctx) {
+function ProjectList_Conditional_59_For_15_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275conditionalCreate(0, ProjectList_Conditional_62_For_15_Conditional_0_Template, 3, 0, "li", 52)(1, ProjectList_Conditional_62_For_15_Conditional_1_Template, 3, 3, "li", 53);
+    \u0275\u0275conditionalCreate(0, ProjectList_Conditional_59_For_15_Conditional_0_Template, 3, 0, "li", 52)(1, ProjectList_Conditional_59_For_15_Conditional_1_Template, 3, 3, "li", 53);
   }
   if (rf & 2) {
     const p_r7 = ctx.$implicit;
     \u0275\u0275conditional(p_r7 === -1 ? 0 : 1);
   }
 }
-function ProjectList_Conditional_62_Template(rf, ctx) {
+function ProjectList_Conditional_59_Template(rf, ctx) {
   if (rf & 1) {
     const _r5 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 29)(1, "span", 45);
+    \u0275\u0275elementStart(0, "div", 27)(1, "span", 45);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "div", 46)(4, "button", 47);
-    \u0275\u0275listener("click", function ProjectList_Conditional_62_Template_button_click_4_listener() {
+    \u0275\u0275listener("click", function ProjectList_Conditional_59_Template_button_click_4_listener() {
       \u0275\u0275restoreView(_r5);
       const ctx_r3 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r3.prev());
@@ -5846,7 +5857,7 @@ function ProjectList_Conditional_62_Template(rf, ctx) {
     \u0275\u0275text(7);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(8, "button", 47);
-    \u0275\u0275listener("click", function ProjectList_Conditional_62_Template_button_click_8_listener() {
+    \u0275\u0275listener("click", function ProjectList_Conditional_59_Template_button_click_8_listener() {
       \u0275\u0275restoreView(_r5);
       const ctx_r3 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r3.next());
@@ -5854,16 +5865,16 @@ function ProjectList_Conditional_62_Template(rf, ctx) {
     \u0275\u0275text(9, "\u203A");
     \u0275\u0275elementEnd()();
     \u0275\u0275elementStart(10, "ul", 49)(11, "li", 50)(12, "button", 51);
-    \u0275\u0275listener("click", function ProjectList_Conditional_62_Template_button_click_12_listener() {
+    \u0275\u0275listener("click", function ProjectList_Conditional_59_Template_button_click_12_listener() {
       \u0275\u0275restoreView(_r5);
       const ctx_r3 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r3.prev());
     });
     \u0275\u0275text(13, "\u2039");
     \u0275\u0275elementEnd()();
-    \u0275\u0275repeaterCreate(14, ProjectList_Conditional_62_For_15_Template, 2, 1, null, null, \u0275\u0275repeaterTrackByIdentity);
+    \u0275\u0275repeaterCreate(14, ProjectList_Conditional_59_For_15_Template, 2, 1, null, null, \u0275\u0275repeaterTrackByIdentity);
     \u0275\u0275elementStart(16, "li", 50)(17, "button", 51);
-    \u0275\u0275listener("click", function ProjectList_Conditional_62_Template_button_click_17_listener() {
+    \u0275\u0275listener("click", function ProjectList_Conditional_59_Template_button_click_17_listener() {
       \u0275\u0275restoreView(_r5);
       const ctx_r3 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r3.next());
@@ -5891,6 +5902,9 @@ function ProjectList_Conditional_62_Template(rf, ctx) {
 }
 var ProjectList = class _ProjectList {
   projectService = inject(ProjectService);
+  auth = inject(AuthService);
+  /** 是否擁有 projects:write 權限（決定列表的編輯/刪除按鈕與「新增專案」按鈕顯示） */
+  canWrite = computed(() => this.auth.hasPermission("projects:write"), ...ngDevMode ? [{ debugName: "canWrite" }] : []);
   PAGE_SIZE = 20;
   page = signal(1, ...ngDevMode ? [{ debugName: "page" }] : []);
   searchInput = "";
@@ -5937,7 +5951,7 @@ var ProjectList = class _ProjectList {
   static \u0275fac = function ProjectList_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _ProjectList)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ProjectList, selectors: [["app-project-list"]], decls: 63, vars: 9, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#folder"], [1, "mb-0"], ["routerLink", "new", 1, "btn", "btn-primary", "inline-flex", "items-center", "gap-1"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#plus"], [1, "card", "border-0", "shadow-sm"], [1, "px-4", "py-3", "border-b"], [1, "flex", "flex-wrap", "items-center", "gap-2"], [1, "form-select", 2, "width", "auto", "min-width", "120px", 3, "ngModelChange", "ngModel"], [3, "ngValue"], ["value", "active"], ["value", "closed"], [1, "flex", "items-center", "gap-2", 2, "max-width", "420px"], [1, "relative", "flex-1"], [1, "sa-icon", "absolute", "left-3", "top-1/2", "-translate-y-1/2", "text-muted", 2, "stroke", "currentColor", "width", "16px", "height", "16px"], ["href", "/assets/icons/sprite.svg#search"], ["type", "text", "placeholder", "\u641C\u5C0B\u7DE8\u865F\u6216\u5C08\u6848\u540D\u7A31\u2026", 1, "form-control", "ps-9", 3, "ngModelChange", "keydown.enter", "ngModel"], [1, "btn", "btn-primary", 3, "click"], [1, "card-body", "p-0"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "hidden", "md:table-cell"], [1, "text-right"], [1, "hidden", "lg:table-cell"], [1, "flex", "flex-col", "gap-2", "sm:flex-row", "sm:items-center", "sm:justify-between", "px-4", "py-3", "border-t"], [1, "fw-500", "font-monospace"], [1, "badge", "bg-primary-subtle", "text-primary"], [1, "text-muted"], ["target", "_blank", "rel", "noopener", 1, "inline-flex", "items-center", "gap-1", "text-decoration-none", "text-muted", "small", 3, "href"], [1, "text-right", 2, "white-space", "nowrap"], [1, "flex", "justify-end", "gap-1"], [1, "btn", "btn-sm", "btn-ghost-secondary", "inline-flex", "items-center", 3, "routerLink"], [1, "sa-icon", 2, "stroke", "currentColor", "width", "14px", "height", "14px"], ["href", "/assets/icons/sprite.svg#external-link"], [1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center", 3, "routerLink"], ["href", "/assets/icons/sprite.svg#edit"], [1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center", 3, "click"], ["href", "/assets/icons/sprite.svg#trash"], ["href", "/assets/icons/sprite.svg#eye"], ["colspan", "10", 1, "text-center", "text-muted", "py-4"], [1, "text-muted", "small", "text-center", "sm:text-left"], [1, "flex", "sm:hidden", "items-center", "gap-1"], [1, "page-link", "rounded", 3, "click"], [1, "px-2", "text-sm"], [1, "hidden", "sm:flex", "pagination", "mb-0"], [1, "page-item"], [1, "page-link", 3, "click"], [1, "page-item", "disabled"], [1, "page-item", 3, "active"], [1, "page-link"]], template: function ProjectList_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ProjectList, selectors: [["app-project-list"]], decls: 60, vars: 10, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#folder"], [1, "mb-0"], ["routerLink", "new", 1, "btn", "btn-primary", "inline-flex", "items-center", "gap-1"], [1, "card", "border-0", "shadow-sm"], [1, "px-4", "py-3", "border-b"], [1, "flex", "flex-wrap", "items-center", "gap-2"], [1, "form-select", 2, "width", "auto", "min-width", "120px", 3, "ngModelChange", "ngModel"], [3, "ngValue"], ["value", "active"], ["value", "closed"], [1, "flex", "items-center", "gap-2", 2, "max-width", "420px"], [1, "relative", "flex-1"], [1, "sa-icon", "absolute", "left-3", "top-1/2", "-translate-y-1/2", "text-muted", 2, "stroke", "currentColor", "width", "16px", "height", "16px"], ["href", "/assets/icons/sprite.svg#search"], ["type", "text", "placeholder", "\u641C\u5C0B\u7DE8\u865F\u6216\u5C08\u6848\u540D\u7A31\u2026", 1, "form-control", "ps-9", 3, "ngModelChange", "keydown.enter", "ngModel"], [1, "btn", "btn-primary", 3, "click"], [1, "card-body", "p-0"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "hidden", "md:table-cell"], [1, "text-right"], [1, "hidden", "lg:table-cell"], [1, "flex", "flex-col", "gap-2", "sm:flex-row", "sm:items-center", "sm:justify-between", "px-4", "py-3", "border-t"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#plus"], [1, "fw-500", "font-monospace"], [1, "badge", "bg-primary-subtle", "text-primary"], [1, "text-muted"], ["target", "_blank", "rel", "noopener", 1, "inline-flex", "items-center", "gap-1", "text-decoration-none", "text-muted", "small", 3, "href"], [1, "text-right", 2, "white-space", "nowrap"], [1, "flex", "justify-end", "gap-1"], ["title", "\u6AA2\u8996", 1, "btn", "btn-sm", "btn-ghost-secondary", "inline-flex", "items-center", 3, "routerLink"], [1, "sa-icon", 2, "stroke", "currentColor", "width", "14px", "height", "14px"], ["href", "/assets/icons/sprite.svg#external-link"], ["title", "\u7DE8\u8F2F", 1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center", 3, "routerLink"], ["href", "/assets/icons/sprite.svg#edit"], ["title", "\u522A\u9664", 1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center", 3, "click"], ["href", "/assets/icons/sprite.svg#trash"], ["href", "/assets/icons/sprite.svg#eye"], ["colspan", "10", 1, "text-center", "text-muted", "py-4"], [1, "text-muted", "small", "text-center", "sm:text-left"], [1, "flex", "sm:hidden", "items-center", "gap-1"], [1, "page-link", "rounded", 3, "click"], [1, "px-2", "text-sm"], [1, "hidden", "sm:flex", "pagination", "mb-0"], [1, "page-item"], [1, "page-link", 3, "click"], [1, "page-item", "disabled"], [1, "page-item", 3, "active"], [1, "page-link"]], template: function ProjectList_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "div", 2);
       \u0275\u0275namespaceSVG();
@@ -5948,97 +5962,93 @@ var ProjectList = class _ProjectList {
       \u0275\u0275elementStart(5, "h4", 5);
       \u0275\u0275text(6, "\u5C08\u6848\u7BA1\u7406");
       \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(7, "a", 6);
-      \u0275\u0275namespaceSVG();
-      \u0275\u0275elementStart(8, "svg", 7);
-      \u0275\u0275element(9, "use", 8);
+      \u0275\u0275conditionalCreate(7, ProjectList_Conditional_7_Template, 4, 0, "a", 6);
       \u0275\u0275elementEnd();
-      \u0275\u0275text(10, " \u65B0\u589E\u5C08\u6848 ");
-      \u0275\u0275elementEnd()();
-      \u0275\u0275namespaceHTML();
-      \u0275\u0275elementStart(11, "div", 9)(12, "div", 10)(13, "div", 11)(14, "select", 12);
-      \u0275\u0275twoWayListener("ngModelChange", function ProjectList_Template_select_ngModelChange_14_listener($event) {
+      \u0275\u0275elementStart(8, "div", 7)(9, "div", 8)(10, "div", 9)(11, "select", 10);
+      \u0275\u0275twoWayListener("ngModelChange", function ProjectList_Template_select_ngModelChange_11_listener($event) {
         \u0275\u0275twoWayBindingSet(ctx.selectedYearInput, $event) || (ctx.selectedYearInput = $event);
         return $event;
       });
-      \u0275\u0275elementStart(15, "option", 13);
-      \u0275\u0275text(16, "\u5168\u90E8\u5E74\u5EA6");
+      \u0275\u0275elementStart(12, "option", 11);
+      \u0275\u0275text(13, "\u5168\u90E8\u5E74\u5EA6");
       \u0275\u0275elementEnd();
-      \u0275\u0275repeaterCreate(17, ProjectList_For_18_Template, 2, 2, "option", 13, \u0275\u0275repeaterTrackByIdentity);
+      \u0275\u0275repeaterCreate(14, ProjectList_For_15_Template, 2, 2, "option", 11, \u0275\u0275repeaterTrackByIdentity);
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(19, "select", 12);
-      \u0275\u0275twoWayListener("ngModelChange", function ProjectList_Template_select_ngModelChange_19_listener($event) {
+      \u0275\u0275elementStart(16, "select", 10);
+      \u0275\u0275twoWayListener("ngModelChange", function ProjectList_Template_select_ngModelChange_16_listener($event) {
         \u0275\u0275twoWayBindingSet(ctx.selectedStatusInput, $event) || (ctx.selectedStatusInput = $event);
         return $event;
       });
-      \u0275\u0275elementStart(20, "option", 13);
-      \u0275\u0275text(21, "\u5168\u90E8\u72C0\u614B");
+      \u0275\u0275elementStart(17, "option", 11);
+      \u0275\u0275text(18, "\u5168\u90E8\u72C0\u614B");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(22, "option", 14);
-      \u0275\u0275text(23);
+      \u0275\u0275elementStart(19, "option", 12);
+      \u0275\u0275text(20);
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(24, "option", 15);
-      \u0275\u0275text(25);
+      \u0275\u0275elementStart(21, "option", 13);
+      \u0275\u0275text(22);
       \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(26, "div", 16)(27, "div", 17);
+      \u0275\u0275elementStart(23, "div", 14)(24, "div", 15);
       \u0275\u0275namespaceSVG();
-      \u0275\u0275elementStart(28, "svg", 18);
-      \u0275\u0275element(29, "use", 19);
+      \u0275\u0275elementStart(25, "svg", 16);
+      \u0275\u0275element(26, "use", 17);
       \u0275\u0275elementEnd();
       \u0275\u0275namespaceHTML();
-      \u0275\u0275elementStart(30, "input", 20);
-      \u0275\u0275twoWayListener("ngModelChange", function ProjectList_Template_input_ngModelChange_30_listener($event) {
+      \u0275\u0275elementStart(27, "input", 18);
+      \u0275\u0275twoWayListener("ngModelChange", function ProjectList_Template_input_ngModelChange_27_listener($event) {
         \u0275\u0275twoWayBindingSet(ctx.searchInput, $event) || (ctx.searchInput = $event);
         return $event;
       });
-      \u0275\u0275listener("keydown.enter", function ProjectList_Template_input_keydown_enter_30_listener() {
+      \u0275\u0275listener("keydown.enter", function ProjectList_Template_input_keydown_enter_27_listener() {
         return ctx.doSearch();
       });
       \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(31, "button", 21);
-      \u0275\u0275listener("click", function ProjectList_Template_button_click_31_listener() {
+      \u0275\u0275elementStart(28, "button", 19);
+      \u0275\u0275listener("click", function ProjectList_Template_button_click_28_listener() {
         return ctx.doSearch();
       });
-      \u0275\u0275text(32, "\u7BE9\u9078");
+      \u0275\u0275text(29, "\u7BE9\u9078");
       \u0275\u0275elementEnd()()()();
-      \u0275\u0275elementStart(33, "div", 22)(34, "div", 23)(35, "table", 24)(36, "thead", 25)(37, "tr")(38, "th");
-      \u0275\u0275text(39, "\u7DE8\u865F");
+      \u0275\u0275elementStart(30, "div", 20)(31, "div", 21)(32, "table", 22)(33, "thead", 23)(34, "tr")(35, "th");
+      \u0275\u0275text(36, "\u7DE8\u865F");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(40, "th");
-      \u0275\u0275text(41, "\u5C08\u6848\u540D\u7A31");
+      \u0275\u0275elementStart(37, "th");
+      \u0275\u0275text(38, "\u5C08\u6848\u540D\u7A31");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(42, "th");
-      \u0275\u0275text(43, "\u72C0\u614B");
+      \u0275\u0275elementStart(39, "th");
+      \u0275\u0275text(40, "\u72C0\u614B");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(44, "th");
-      \u0275\u0275text(45, "\u90E8\u9580");
+      \u0275\u0275elementStart(41, "th");
+      \u0275\u0275text(42, "\u90E8\u9580");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(46, "th", 26);
-      \u0275\u0275text(47, "\u958B\u59CB\u65E5\u671F");
+      \u0275\u0275elementStart(43, "th", 24);
+      \u0275\u0275text(44, "\u958B\u59CB\u65E5\u671F");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(48, "th", 27);
-      \u0275\u0275text(49, "\u5BE6\u6536\u91D1\u984D");
+      \u0275\u0275elementStart(45, "th", 25);
+      \u0275\u0275text(46, "\u5BE6\u6536\u91D1\u984D");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(50, "th", 27);
-      \u0275\u0275text(51, "\u5951\u7D04\u91D1\u984D");
+      \u0275\u0275elementStart(47, "th", 25);
+      \u0275\u0275text(48, "\u5951\u7D04\u91D1\u984D");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(52, "th", 27);
-      \u0275\u0275text(53, "\u696D\u52D9\u57F7\u884C\u91D1\u984D");
+      \u0275\u0275elementStart(49, "th", 25);
+      \u0275\u0275text(50, "\u696D\u52D9\u57F7\u884C\u91D1\u984D");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(54, "th", 28);
-      \u0275\u0275text(55, "Google Drive");
+      \u0275\u0275elementStart(51, "th", 26);
+      \u0275\u0275text(52, "Google Drive");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(56, "th", 27);
-      \u0275\u0275text(57, "\u64CD\u4F5C");
+      \u0275\u0275elementStart(53, "th", 25);
+      \u0275\u0275text(54, "\u64CD\u4F5C");
       \u0275\u0275elementEnd()()();
-      \u0275\u0275elementStart(58, "tbody");
-      \u0275\u0275repeaterCreate(59, ProjectList_For_60_Template, 30, 15, "tr", null, _forTrack011, false, ProjectList_ForEmpty_61_Template, 3, 0, "tr");
+      \u0275\u0275elementStart(55, "tbody");
+      \u0275\u0275repeaterCreate(56, ProjectList_For_57_Template, 30, 15, "tr", null, _forTrack011, false, ProjectList_ForEmpty_58_Template, 3, 0, "tr");
       \u0275\u0275elementEnd()()();
-      \u0275\u0275conditionalCreate(62, ProjectList_Conditional_62_Template, 19, 13, "div", 29);
+      \u0275\u0275conditionalCreate(59, ProjectList_Conditional_59_Template, 19, 13, "div", 27);
       \u0275\u0275elementEnd()()();
     }
     if (rf & 2) {
-      \u0275\u0275advance(14);
+      \u0275\u0275advance(7);
+      \u0275\u0275conditional(ctx.canWrite() ? 7 : -1);
+      \u0275\u0275advance(4);
       \u0275\u0275twoWayProperty("ngModel", ctx.selectedYearInput);
       \u0275\u0275advance();
       \u0275\u0275property("ngValue", void 0);
@@ -6057,7 +6067,7 @@ var ProjectList = class _ProjectList {
       \u0275\u0275advance(29);
       \u0275\u0275repeater(ctx.pagedProjects());
       \u0275\u0275advance(3);
-      \u0275\u0275conditional(ctx.totalPages() > 1 ? 62 : -1);
+      \u0275\u0275conditional(ctx.totalPages() > 1 ? 59 : -1);
     }
   }, dependencies: [FormsModule, NgSelectOption, \u0275NgSelectMultipleOption, DefaultValueAccessor, SelectControlValueAccessor, NgControlStatus, NgModel, RouterLink, DatePipe, DecimalPipe], encapsulation: 2 });
 };
@@ -6072,10 +6082,12 @@ var ProjectList = class _ProjectList {
       </svg>
       <h4 class="mb-0">\u5C08\u6848\u7BA1\u7406</h4>
     </div>
-    <a routerLink="new" class="btn btn-primary inline-flex items-center gap-1">
-      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
-      \u65B0\u589E\u5C08\u6848
-    </a>
+    @if (canWrite()) {
+      <a routerLink="new" class="btn btn-primary inline-flex items-center gap-1">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+        \u65B0\u589E\u5C08\u6848
+      </a>
+    }
   </div>
 
   <div class="card border-0 shadow-sm">
@@ -6173,15 +6185,15 @@ var ProjectList = class _ProjectList {
                 </td>
                 <td class="text-right" style="white-space: nowrap">
                   <div class="flex justify-end gap-1">
-                    @if (project.status !== 'closed') {
-                      <a [routerLink]="[project.id, 'edit']" class="btn btn-sm btn-ghost-primary inline-flex items-center">
+                    @if (canWrite() && project.status !== 'closed') {
+                      <a [routerLink]="[project.id, 'edit']" class="btn btn-sm btn-ghost-primary inline-flex items-center" title="\u7DE8\u8F2F">
                         <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
                       </a>
-                      <button class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(project)">
+                      <button class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(project)" title="\u522A\u9664">
                         <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
                       </button>
                     } @else {
-                      <a [routerLink]="[project.id, 'edit']" class="btn btn-sm btn-ghost-secondary inline-flex items-center">
+                      <a [routerLink]="[project.id, 'edit']" class="btn btn-sm btn-ghost-secondary inline-flex items-center" title="\u6AA2\u8996">
                         <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#eye"></use></svg>
                       </a>
                     }
@@ -6230,7 +6242,7 @@ var ProjectList = class _ProjectList {
   }], null, null);
 })();
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ProjectList, { className: "ProjectList", filePath: "src/app/features/admin/projects/pages/project-list/project-list.ts", lineNumber: 16 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ProjectList, { className: "ProjectList", filePath: "src/app/features/admin/projects/pages/project-list/project-list.ts", lineNumber: 17 });
 })();
 function buildPageNumbers2(current, total) {
   if (total <= 9)
@@ -6465,7 +6477,7 @@ function ProjectForm_For_138_Template(rf, ctx) {
     \u0275\u0275advance(15);
     \u0275\u0275conditional(ctx_r0.deductionFor(\u0275$index_280_r3) !== null ? 17 : 18);
     \u0275\u0275advance(4);
-    \u0275\u0275conditional(!ctx_r0.isClosed ? 21 : -1);
+    \u0275\u0275conditional(!ctx_r0.isReadOnly ? 21 : -1);
   }
 }
 function ProjectForm_ForEmpty_139_Template(rf, ctx) {
@@ -6477,7 +6489,7 @@ function ProjectForm_ForEmpty_139_Template(rf, ctx) {
   if (rf & 2) {
     const ctx_r0 = \u0275\u0275nextContext();
     \u0275\u0275advance();
-    \u0275\u0275attribute("colspan", ctx_r0.isClosed ? 9 : 10);
+    \u0275\u0275attribute("colspan", ctx_r0.isReadOnly ? 9 : 10);
   }
 }
 function ProjectForm_Conditional_140_Template(rf, ctx) {
@@ -6528,10 +6540,13 @@ var ProjectForm = class _ProjectForm {
   route = inject(ActivatedRoute);
   router = inject(Router);
   cdr = inject(ChangeDetectorRef);
+  auth = inject(AuthService);
   departments = [];
   loadingDepts = true;
   isEdit = false;
   isClosed = false;
+  /** 唯讀模式：已結案 OR 無 projects:write 權限 */
+  isReadOnly = false;
   projectId = 0;
   errorMsg = signal("", ...ngDevMode ? [{ debugName: "errorMsg" }] : []);
   businessPercentage = signal(null, ...ngDevMode ? [{ debugName: "businessPercentage" }] : []);
@@ -6557,17 +6572,18 @@ var ProjectForm = class _ProjectForm {
     return this.schedulesArray.controls;
   }
   ngOnInit() {
+    this.isReadOnly = !this.auth.hasPermission("projects:write");
     this.deptService.getAll().subscribe({
       next: (d) => {
         this.departments = d;
         this.loadingDepts = false;
-        if (!this.isClosed)
+        if (!this.isReadOnly)
           this.form.get("departmentId").enable();
         this.cdr.markForCheck();
       },
       error: () => {
         this.loadingDepts = false;
-        if (!this.isClosed)
+        if (!this.isReadOnly)
           this.form.get("departmentId").enable();
         this.errorMsg.set("\u8F09\u5165\u90E8\u9580\u8CC7\u6599\u5931\u6557\u3002");
       }
@@ -6589,6 +6605,7 @@ var ProjectForm = class _ProjectForm {
           if (!p)
             return;
           this.isClosed = p.status === "closed";
+          this.isReadOnly = this.isClosed || !this.auth.hasPermission("projects:write");
           this.form.patchValue({
             code: p.code,
             name: p.name,
@@ -6604,7 +6621,7 @@ var ProjectForm = class _ProjectForm {
           this.schedulesArray.clear();
           const schedules = [...p.paymentSchedules ?? []].sort((a, b) => a.periodNo - b.periodNo);
           schedules.forEach((s) => this.schedulesArray.push(this.buildScheduleGroup(s)));
-          if (this.isClosed)
+          if (this.isReadOnly)
             this.form.disable();
           this.cdr.markForCheck();
         },
@@ -6633,12 +6650,12 @@ var ProjectForm = class _ProjectForm {
     });
   }
   addSchedule() {
-    if (this.isClosed)
+    if (this.isReadOnly)
       return;
     this.schedulesArray.push(this.buildScheduleGroup());
   }
   removeSchedule(index) {
-    if (this.isClosed)
+    if (this.isReadOnly)
       return;
     this.schedulesArray.removeAt(index);
   }
@@ -6668,7 +6685,7 @@ var ProjectForm = class _ProjectForm {
     }
   }
   submit() {
-    if (this.form.invalid || this.isClosed)
+    if (this.form.invalid || this.isReadOnly)
       return;
     const v = this.form.getRawValue();
     if (!v.departmentId) {
@@ -6899,7 +6916,7 @@ var ProjectForm = class _ProjectForm {
       let tmp_13_0;
       let tmp_15_0;
       \u0275\u0275advance(6);
-      \u0275\u0275textInterpolate(ctx.isClosed ? "\u6AA2\u8996\u5C08\u6848\uFF08\u5DF2\u7D50\u6848\uFF09" : ctx.isEdit ? "\u7DE8\u8F2F\u5C08\u6848" : "\u65B0\u589E\u5C08\u6848");
+      \u0275\u0275textInterpolate(ctx.isClosed ? "\u6AA2\u8996\u5C08\u6848\uFF08\u5DF2\u7D50\u6848\uFF09" : ctx.isReadOnly ? "\u6AA2\u8996\u5C08\u6848" : ctx.isEdit ? "\u7DE8\u8F2F\u5C08\u6848" : "\u65B0\u589E\u5C08\u6848");
       \u0275\u0275advance();
       \u0275\u0275conditional(ctx.errorMsg() ? 7 : -1);
       \u0275\u0275advance();
@@ -6931,13 +6948,13 @@ var ProjectForm = class _ProjectForm {
       \u0275\u0275advance(7);
       \u0275\u0275conditional(((tmp_15_0 = ctx.form.get("googleDriveUrl")) == null ? null : tmp_15_0.invalid) && ((tmp_15_0 = ctx.form.get("googleDriveUrl")) == null ? null : tmp_15_0.touched) ? 106 : -1);
       \u0275\u0275advance(29);
-      \u0275\u0275conditional(!ctx.isClosed ? 135 : -1);
+      \u0275\u0275conditional(!ctx.isReadOnly ? 135 : -1);
       \u0275\u0275advance(2);
       \u0275\u0275repeater(ctx.scheduleControls);
       \u0275\u0275advance(3);
-      \u0275\u0275conditional(!ctx.isClosed ? 140 : -1);
+      \u0275\u0275conditional(!ctx.isReadOnly ? 140 : -1);
       \u0275\u0275advance();
-      \u0275\u0275conditional(ctx.isClosed ? 141 : 142);
+      \u0275\u0275conditional(ctx.isReadOnly ? 141 : 142);
     }
   }, dependencies: [ReactiveFormsModule, \u0275NgNoValidate, NgSelectOption, \u0275NgSelectMultipleOption, DefaultValueAccessor, NumberValueAccessor, SelectControlValueAccessor, NgControlStatus, NgControlStatusGroup, MaxLengthValidator, MinValidator, FormGroupDirective, FormControlName, FormGroupName, FormArrayName, RouterLink, DecimalPipe], encapsulation: 2 });
 };
@@ -6949,7 +6966,7 @@ var ProjectForm = class _ProjectForm {
     <a routerLink="/admin/projects" class="btn btn-sm btn-outline-secondary">
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
     </a>
-    <h4 class="mb-0">{{ isClosed ? '\u6AA2\u8996\u5C08\u6848\uFF08\u5DF2\u7D50\u6848\uFF09' : (isEdit ? '\u7DE8\u8F2F\u5C08\u6848' : '\u65B0\u589E\u5C08\u6848') }}</h4>
+    <h4 class="mb-0">{{ isClosed ? '\u6AA2\u8996\u5C08\u6848\uFF08\u5DF2\u7D50\u6848\uFF09' : (isReadOnly ? '\u6AA2\u8996\u5C08\u6848' : (isEdit ? '\u7DE8\u8F2F\u5C08\u6848' : '\u65B0\u589E\u5C08\u6848')) }}</h4>
   </div>
 
   @if (errorMsg()) {
@@ -7117,7 +7134,7 @@ var ProjectForm = class _ProjectForm {
                     <th style="min-width:140px">\u5165\u5E33\u91D1\u984D</th>
                     <th style="min-width:140px">\u6263\u6B3E\u91D1\u984D</th>
                     <th style="min-width:180px">\u6263\u6B3E\u5099\u8A3B</th>
-                    @if (!isClosed) {
+                    @if (!isReadOnly) {
                       <th style="width:48px"></th>
                     }
                   </tr>
@@ -7160,7 +7177,7 @@ var ProjectForm = class _ProjectForm {
                         <input class="form-control form-control-sm"
                                formControlName="deductionNote" maxlength="500" placeholder="">
                       </td>
-                      @if (!isClosed) {
+                      @if (!isReadOnly) {
                         <td class="text-right align-middle">
                           <button type="button"
                                   class="btn btn-sm btn-ghost-danger inline-flex items-center"
@@ -7172,14 +7189,14 @@ var ProjectForm = class _ProjectForm {
                     </tr>
                   } @empty {
                     <tr>
-                      <td [attr.colspan]="isClosed ? 9 : 10" class="text-center text-muted py-4 small">\u5C1A\u672A\u65B0\u589E\u671F\u5225</td>
+                      <td [attr.colspan]="isReadOnly ? 9 : 10" class="text-center text-muted py-4 small">\u5C1A\u672A\u65B0\u589E\u671F\u5225</td>
                     </tr>
                   }
                 </tbody>
               </table>
             </div>
 
-            @if (!isClosed) {
+            @if (!isReadOnly) {
               <button type="button" class="btn btn-sm btn-outline-secondary mt-3 inline-flex items-center gap-1"
                       (click)="addSchedule()">
                 <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
@@ -7190,7 +7207,7 @@ var ProjectForm = class _ProjectForm {
           </div>
         </div>
 
-        @if (isClosed) {
+        @if (isReadOnly) {
           <div class="mt-6">
             <a routerLink="/admin/projects" class="btn btn-outline-secondary">\u8FD4\u56DE\u5217\u8868</a>
           </div>
@@ -7211,7 +7228,7 @@ var ProjectForm = class _ProjectForm {
   }], null, null);
 })();
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ProjectForm, { className: "ProjectForm", filePath: "src/app/features/admin/projects/pages/project-form/project-form.ts", lineNumber: 16 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ProjectForm, { className: "ProjectForm", filePath: "src/app/features/admin/projects/pages/project-form/project-form.ts", lineNumber: 17 });
 })();
 
 // src/app/features/admin/payment-requests/models/payment-request.model.ts
@@ -57519,7 +57536,7 @@ var ADMIN_ROUTES = [
   // 專案管理
   { path: "projects", component: ProjectList, canActivate: [permissionGuard], data: { title: "\u5C08\u6848\u7BA1\u7406", permission: "projects:read" } },
   { path: "projects/new", component: ProjectForm, canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u5C08\u6848", permission: "projects:write" } },
-  { path: "projects/:id/edit", component: ProjectForm, canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u5C08\u6848", permission: "projects:write" } },
+  { path: "projects/:id/edit", component: ProjectForm, canActivate: [permissionGuard], data: { title: "\u6AA2\u8996\u5C08\u6848", permission: "projects:read" } },
   // 請款申請
   { path: "payment-requests", component: PaymentList, canActivate: [permissionGuard], data: { title: "\u8ACB\u6B3E\u7533\u8ACB", permission: "payment-requests:read" } },
   { path: "payment-requests/new", component: PaymentForm, canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u8ACB\u6B3E\u7533\u8ACB", permission: "payment-requests:write" } },
@@ -57596,4 +57613,4 @@ xlsx/xlsx.mjs:
 xlsx/xlsx.mjs:
   (*! sheetjs (C) 2013-present SheetJS -- http://sheetjs.com *)
 */
-//# sourceMappingURL=chunk-7ECXINKX.js.map
+//# sourceMappingURL=chunk-CWFDOTA2.js.map

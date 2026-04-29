@@ -7,6 +7,7 @@ import {ProjectService} from '../../services/project.service';
 import {ProjectPaymentSchedule, ProjectStatus} from '../../models/project.model';
 import {DepartmentService} from '../../../departments/services/department.service';
 import {Department} from '../../../departments/models/department.model';
+import {AuthService} from '../../../../../core/auth/services/auth.service';
 
 @Component({
   selector: 'app-project-form',
@@ -20,11 +21,14 @@ export class ProjectForm implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
+  private auth = inject(AuthService);
 
   departments: Department[] = [];
   loadingDepts = true;
   isEdit = false;
   isClosed = false;
+  /** 唯讀模式：已結案 OR 無 projects:write 權限 */
+  isReadOnly = false;
   projectId = 0;
   errorMsg = signal('');
   businessPercentage = signal<number | null>(null);
@@ -54,16 +58,19 @@ export class ProjectForm implements OnInit {
   }
 
   ngOnInit() {
+    // 預設依權限決定唯讀（新增模式或尚未載入專案資料時亦適用）
+    this.isReadOnly = !this.auth.hasPermission('projects:write');
+
     this.deptService.getAll().subscribe({
       next: d => {
         this.departments = d;
         this.loadingDepts = false;
-        if (!this.isClosed) this.form.get('departmentId')!.enable();
+        if (!this.isReadOnly) this.form.get('departmentId')!.enable();
         this.cdr.markForCheck();
       },
       error: () => {
         this.loadingDepts = false;
-        if (!this.isClosed) this.form.get('departmentId')!.enable();
+        if (!this.isReadOnly) this.form.get('departmentId')!.enable();
         this.errorMsg.set('載入部門資料失敗。');
       },
     });
@@ -84,6 +91,7 @@ export class ProjectForm implements OnInit {
         next: p => {
           if (!p) return;
           this.isClosed = p.status === 'closed';
+          this.isReadOnly = this.isClosed || !this.auth.hasPermission('projects:write');
           this.form.patchValue({
             code:           p.code,
             name:           p.name,
@@ -101,7 +109,7 @@ export class ProjectForm implements OnInit {
           const schedules = [...(p.paymentSchedules ?? [])].sort((a, b) => a.periodNo - b.periodNo);
           schedules.forEach(s => this.schedulesArray.push(this.buildScheduleGroup(s)));
 
-          if (this.isClosed) this.form.disable();
+          if (this.isReadOnly) this.form.disable();
           this.cdr.markForCheck();
         },
         error: () => this.errorMsg.set('載入專案資料失敗。'),
@@ -132,12 +140,12 @@ export class ProjectForm implements OnInit {
   }
 
   addSchedule() {
-    if (this.isClosed) return;
+    if (this.isReadOnly) return;
     this.schedulesArray.push(this.buildScheduleGroup());
   }
 
   removeSchedule(index: number) {
-    if (this.isClosed) return;
+    if (this.isReadOnly) return;
     this.schedulesArray.removeAt(index);
   }
 
@@ -167,7 +175,7 @@ export class ProjectForm implements OnInit {
   }
 
   submit() {
-    if (this.form.invalid || this.isClosed) return;
+    if (this.form.invalid || this.isReadOnly) return;
     const v = this.form.getRawValue();
     if (!v.departmentId) {
       this.errorMsg.set('請選擇部門。');
