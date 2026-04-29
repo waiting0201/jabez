@@ -62,9 +62,10 @@ export class OvertimeReport implements OnInit {
   }
 
   loadEmployees() {
-    this.http.get<any>(`${environment.apiUrl}/users`).subscribe({
+    // 套用部門 scope 過濾，避免下拉顯示無資料權限的員工
+    this.http.get<any>(`${environment.apiUrl}/users/lookup?scope=department`).subscribe({
       next: (res) => {
-        const items = res?.items ?? res ?? [];
+        const items = res?.data ?? res?.items ?? res ?? [];
         this.employees.set(
           items.map((u: any) => ({id: u.id, code: u.employeeCode ?? '', name: u.name}))
         );
