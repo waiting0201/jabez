@@ -66,6 +66,30 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
         return dto with { DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null };
     }
 
+    public async Task<IEnumerable<OverlappingLeaveRequestDto>> GetOverlappingRequestsAsync(
+        Guid employeeId, DateTime startDate, DateTime endDate, int? excludeId = null)
+    {
+        // 半開區間嚴格相交：existing.Start < new.End AND existing.End > new.Start
+        // 半天/小時假時段已編碼於 datetime；同日 09–12 + 14–17 不視為重疊
+        const string sql = """
+            SELECT lr.Id, lr.LeaveType, lr.StartDate, lr.EndDate, lr.ApprovalStatus, lr.Hours
+            FROM LeaveRequests lr
+            WHERE lr.EmployeeId = @EmployeeId
+              AND lr.ApprovalStatus IN ('draft','pending','approved')
+              AND lr.StartDate < @EndDate
+              AND lr.EndDate   > @StartDate
+              AND (@ExcludeId IS NULL OR lr.Id <> @ExcludeId)
+            ORDER BY lr.StartDate
+            """;
+        return await db.QueryAsync<OverlappingLeaveRequestDto>(sql, new
+        {
+            EmployeeId = employeeId,
+            StartDate  = startDate,
+            EndDate    = endDate,
+            ExcludeId  = excludeId.HasValue ? (object)excludeId.Value : DBNull.Value,
+        });
+    }
+
     private static LeaveRequestDto MapRow(dynamic row)
     {
         var leaveType = (string)row.LeaveType;

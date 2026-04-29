@@ -119,7 +119,10 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
 
             【若為台灣統一發票 / 收據】
             - invoiceNo：發票號碼（格式為 2 個英文大寫字母 + 8 個數字，例如 AB12345678）
-            - amount：總金額 / 合計 / 應付金額（純數字，無則填 0）
+            - amount：金額（純數字，無則填 0）
+              * 優先序（由高至低）：實收金額 > 應付/應收金額 > 總計/合計 > 小計
+              * 若收據同時印出「金額」與「實收金額」，一律以「實收金額」為準
+              * 折扣後 / 抹零後的金額優先於折扣前的金額
             - invoiceDate：發票日期（西元 YYYY-MM-DD；若為民國年如「113 年 01 月 15 日」或「113/01/15」請轉為西元）
 
             【若為交通票根】

@@ -690,6 +690,16 @@ dotnet ef database update               # 套用 Migration
 - 年假按**年度**累計，產假系列與喪假**不限年度**
 - 喪假按**同親屬關係**分別累計
 
+### 日期重疊驗證（防重複申請）
+
+- **觸發點**：Create / Update / Submit 三處皆驗證
+- **判定方式**：以 `[StartDate, EndDate)` datetime 半開區間嚴格相交為準（`existing.Start < new.End AND existing.End > new.Start`）
+  - 半天 / 小時假時段已編碼於 datetime，「同日上午半天 + 下午半天」、「4/1 09:00-12:00 + 4/1 14:00-17:00」可正確並存
+- **比對範圍**：既有申請狀態為 `draft` / `pending` / `approved`（編輯時 `excludeId` 排除自身）
+- **跨假別**：不同假別也會檢查重疊（避免事假 + 病假同期重疊）
+- **產假特例**：產假已有獨立 active 檢查（`LeaveType=='maternity'` 時若已存在 pending/approved 直接擋下，文案為「已有未完成或進行中的產假申請」），重疊邏輯對 maternity 跳過避免雙重訊息；但其他假別仍會檢查與既有產假的重疊
+- **錯誤訊息**：列出最多 3 筆衝突明細（`#ID 假別 起迄時間 (status)`），超過則附「另有 N 筆…」
+
 ### 補休規則
 
 - 依系統統計之加班工時扣抵
@@ -715,6 +725,10 @@ dotnet ef database update               # 套用 Migration
 |------|------|
 | `LeaveRequest.BereavementRelationship` | Entity 欄位：喪假親屬關係 |
 | `LeaveRequestHandler.ValidateLeaveQuotaAsync()` | 天數上限驗證（累計制） |
+| `LeaveRequestHandler.CheckOverlapAsync()` | 日期重疊驗證（draft/pending/approved 比對） |
+| `LeaveRequestHandler.LeaveTypeNameZh` | 假別中文名稱字典（重疊衝突訊息用） |
+| `LeaveRequestReadService.GetOverlappingRequestsAsync()` | Dapper：查詢同員工 datetime 區間相交申請 |
+| `OverlappingLeaveRequestDto` | 重疊衝突 DTO（內部用） |
 | `LeaveRequestHandler.GetAnnualQuotaAsync()` | 年假額度 API |
 | `LeaveRequestHandler.CalculateAnnualLeaveDays()` | 年資 → 年假天數計算 |
 | `PayrollReadService` | 新增查詢該月所有請假明細 |

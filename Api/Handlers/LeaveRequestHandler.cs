@@ -72,6 +72,26 @@ public sealed class LeaveRequestHandler(
         ["paternity"]           = 7,
     };
 
+    /// <summary>假別中文名稱（用於日期重疊衝突訊息）</summary>
+    private static readonly Dictionary<string, string> LeaveTypeNameZh = new()
+    {
+        ["annual"]              = "特休假",
+        ["personal"]            = "事假",
+        ["sick"]                = "病假",
+        ["compensatory"]        = "補休",
+        ["official"]            = "公假",
+        ["marriage"]            = "婚假",
+        ["maternity"]           = "產假",
+        ["miscarriage_3m"]      = "流產假(3個月以上)",
+        ["miscarriage_2to3m"]   = "流產假(2-3個月)",
+        ["miscarriage_under2m"] = "流產假(未滿2個月)",
+        ["prenatal_checkup"]    = "產檢假",
+        ["paternity"]           = "陪產假",
+        ["bereavement"]         = "喪假",
+        ["ceremonial_festival"] = "歲時祭儀假",
+        ["senior_executive"]    = "高階主管假",
+    };
+
     /// <summary>取得指定假別的時間單位</summary>
     private static LeaveTimeUnit GetTimeUnit(string leaveType) =>
         TimeUnitMap.TryGetValue(leaveType, out var u) ? u : LeaveTimeUnit.Hour;
@@ -232,6 +252,11 @@ public sealed class LeaveRequestHandler(
             return new BadRequestObjectResult(ApiResponse.Fail("此假別需以整天（8 小時）為單位。"));
         if (unit == LeaveTimeUnit.Hour && hours % 1m != 0m)
             return new BadRequestObjectResult(ApiResponse.Fail("小時單位必須為整數（整點計時）。"));
+
+        // 日期重疊檢查：擋下與既有 draft / pending / approved 申請時間區間相交者
+        var overlapErr = await CheckOverlapAsync(employeeId, effectiveStart, effectiveEnd, body.LeaveType, excludeId: null);
+        if (overlapErr is not null)
+            return new BadRequestObjectResult(ApiResponse.Fail(overlapErr));
 
         // 指定審核者存在性驗證
         if (body.DesignatedReviewers is { Length: > 0 })
@@ -402,6 +427,11 @@ public sealed class LeaveRequestHandler(
                 return new BadRequestObjectResult(ApiResponse.Fail("小時單位必須為整數（整點計時）。"));
             item.Hours = recalcHours;
         }
+
+        // 日期重疊檢查：排除自身
+        var overlapErr = await CheckOverlapAsync(item.EmployeeId!.Value, item.StartDate, item.EndDate, item.LeaveType, excludeId: item.Id);
+        if (overlapErr is not null)
+            return new BadRequestObjectResult(ApiResponse.Fail(overlapErr));
 
         await db.SaveChangesAsync();
 
@@ -697,6 +727,11 @@ public sealed class LeaveRequestHandler(
             }
         }
 
+        // 日期重疊檢查：排除自身（送出階段再驗一次，防範 draft 期間其他申請已先被建立）
+        var overlapErr = await CheckOverlapAsync(item.EmployeeId!.Value, item.StartDate, item.EndDate, item.LeaveType, excludeId: item.Id);
+        if (overlapErr is not null)
+            return new BadRequestObjectResult(ApiResponse.Fail(overlapErr));
+
         // 補休時數驗證：申請時數不得超過可用時數
         if (item.LeaveType == "compensatory")
         {
@@ -822,6 +857,32 @@ public sealed class LeaveRequestHandler(
         var dto = await reader.GetByIdAsync(item.Id);
         var msg = autoApproved ? "Leave request auto-approved." : "Leave request submitted.";
         return new OkObjectResult(ApiResponse.Ok(dto, msg));
+    }
+
+    // ── Overlap Validation ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// 檢查同員工同期間是否有重疊申請（draft / pending / approved）。
+    /// 產假已有獨立 active 檢查（CreateAsync 中），此處跳過避免重複訊息；
+    /// 但其他假別仍會檢查與既有產假的重疊（重疊 SQL 不限假別）。
+    /// </summary>
+    /// <returns>衝突時回傳中文錯誤訊息；無衝突回 null</returns>
+    private async Task<string?> CheckOverlapAsync(
+        Guid employeeId, DateTime startDate, DateTime endDate,
+        string leaveType, int? excludeId)
+    {
+        if (leaveType == "maternity") return null;
+
+        var conflicts = (await reader.GetOverlappingRequestsAsync(employeeId, startDate, endDate, excludeId)).ToList();
+        if (conflicts.Count == 0) return null;
+
+        var lines = conflicts.Take(3).Select(c =>
+        {
+            var name = LeaveTypeNameZh.GetValueOrDefault(c.LeaveType, c.LeaveType);
+            return $"• #{c.Id} {name} {c.StartDate:yyyy/MM/dd HH:mm}–{c.EndDate:yyyy/MM/dd HH:mm}（{c.ApprovalStatus}）";
+        });
+        var more = conflicts.Count > 3 ? $"\n（另有 {conflicts.Count - 3} 筆…）" : "";
+        return $"申請期間與既有申請衝突，請調整或先處理既有申請：\n{string.Join("\n", lines)}{more}";
     }
 
     // ── Quota Validation ─────────────────────────────────────────────────────

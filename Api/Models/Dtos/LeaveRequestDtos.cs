@@ -64,3 +64,12 @@ public sealed record BereavementQuotaDto(
 public sealed record SeniorExecutiveEligibilityDto(
     bool IsEligible,
     int? JobTitleLevel);
+
+/// <summary>重疊請假申請（內部用，組合衝突錯誤訊息）</summary>
+public sealed record OverlappingLeaveRequestDto(
+    int      Id,
+    string   LeaveType,
+    DateTime StartDate,
+    DateTime EndDate,
+    string   ApprovalStatus,
+    decimal  Hours);
