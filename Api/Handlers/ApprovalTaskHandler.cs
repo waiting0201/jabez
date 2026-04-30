@@ -777,7 +777,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                         .ToListAsync();
 
                     var (resolvedStep, allSkipped) = await approvalFlow
-                        .SkipUnreviewableStepsAsync(approvalItemId, applicantId.Value, nextStep, drList);
+                        .SkipUnreviewableStepsAsync(approvalItemId, applicantId.Value, nextStep, drList, reviewerId);
 
                     if (allSkipped)
                     {

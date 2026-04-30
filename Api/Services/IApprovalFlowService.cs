@@ -27,9 +27,12 @@ public interface IApprovalFlowService
 
     /// <summary>
     /// 從指定步驟開始，跳過所有找不到審核者的 UseDirectSupervisor 或無效的 UseApplicantDesignated 步驟。
+    /// 若提供 lastApproverId，並且某 step 解析出的「唯一審核者」剛好就是上一步核准者，則該 step 也會被跳過
+    /// （連續往後檢查，直到遇到審核者池含其他人或無法解析為唯一者的 step 為止）。
     /// 回傳下一個有效步驟序號，若全部跳過則回傳 (totalSteps, true)。
     /// </summary>
     Task<(int nextStep, bool allSkipped)>
         SkipUnreviewableStepsAsync(int? approvalItemId, Guid applicantId, int fromStepOrder,
-            IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers = null);
+            IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers = null,
+            Guid? lastApproverId = null);
 }
