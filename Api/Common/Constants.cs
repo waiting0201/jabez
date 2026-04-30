@@ -78,7 +78,8 @@ public static class RoleNames
 }
 
 /// <summary>
-/// 部門代碼常數。用於專案可見性規則等需硬編碼判斷的場景。
+/// 部門代碼常數。用於「撥款 / 退款 / 結案 / 批次核准」等業務操作權限的硬編碼判斷。
+/// 注意：可見性 SeeAll 已改由 Department.CanSeeAll 旗標驅動（見 CLAUDE.md「部門可見性規則」），與此常數無關。
 /// </summary>
 public static class DepartmentCodes
 {
@@ -88,7 +89,7 @@ public static class DepartmentCodes
     public const string Executive  = "CEO";        // 總監室
 
     /// <summary>
-    /// 財務/管理/總監級部門：成員在專案可見性上不受部門過濾。
+    /// 財務 / 管理 / 總監級部門：成員可執行撥款日 / 退款日 / 結案 / 批次核准等業務操作。
     /// </summary>
     public static readonly IReadOnlySet<string> FinancialAndAbove =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase)

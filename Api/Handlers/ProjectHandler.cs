@@ -39,7 +39,7 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader, 
         return new OkObjectResult(ApiResponse.Ok(years));
     }
 
-    /// <summary>取得未結案專案（不需 ProjectsRead 權限；可見範圍依使用者部門過濾，規則見 CLAUDE.md 專案可見性規則）</summary>
+    /// <summary>取得未結案專案（不需 ProjectsRead 權限；可見範圍依使用者部門過濾，規則見 CLAUDE.md「部門可見性規則」）</summary>
     public async Task<IActionResult> GetActiveAsync(HttpRequest req)
     {
         var scope = await access.ResolveAsync(req.HttpContext.User);

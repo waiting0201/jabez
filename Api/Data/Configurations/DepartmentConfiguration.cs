@@ -30,6 +30,12 @@ public class DepartmentConfiguration : IEntityTypeConfiguration<Department>
         builder.Property(d => d.CanViewSiblings)
                .HasDefaultValue(false);
 
+        builder.Property(d => d.CanSeeAll)
+               .HasDefaultValue(false);
+
+        builder.Property(d => d.CanViewDescendants)
+               .HasDefaultValue(false);
+
         builder.Property(d => d.CreatedAt)
                .HasDefaultValueSql("DATEADD(hour, 8, GETUTCDATE())");
 

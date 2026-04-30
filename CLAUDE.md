@@ -901,10 +901,14 @@ draft → pending → approved / returned / rejected
 | 優先序 | 使用者類別 | 可見範圍 |
 |---|---|---|
 | 1 | Superadmin | 全部 |
-| 2 | 部門 Code ∈ `AC`(會計部) / `FIN`(行政財務部) / `Jabez HQ`(雅比斯總公司管理部) / `CEO`(總監室) | 全部 |
-| 3 | 一般員工 | 自己部門專案；若 `Department.CanViewSiblings = true` 加上**同 ParentId 的兄弟部門**專案 |
+| 2 | `Department.CanSeeAll = true` 的部門成員 | 全部 |
+| 3 | 一般員工 | 自己部門；若 `CanViewSiblings = true` 加同 ParentId 兄弟部門；若 `CanViewDescendants = true` 加所有遞迴下層子部門 |
 
-> **設計決策**：`CanViewSiblings = true` 只擴及**同層兄弟部門**，**父部門本身不可見**。父部門通常是管理單位（如總監室），其專案屬於管理層級資料，不應對下層子部門開放。如未來需要「父部門也可見」，請另開獨立旗標（例如 `CanViewParent`）而非擴大此旗標的語意。
+> **設計決策（CanSeeAll）**：原本 Rule 2 以寫死的 `DepartmentCodes.FinancialAndAbove`（`AC` / `FIN` / `Jabez HQ` / `CEO`）字串集合判定，2026-04 改為由 `Department.CanSeeAll` 旗標驅動，避免部門代碼變動時必須改程式重新部署。Migration `AddDepartmentVisibilityFlags` 已對既有 4 個財務 / 管理 / 總監部門 seed `CanSeeAll = 1`，行為不變。`DepartmentCodes.FinancialAndAbove` 常數**保留**供「撥款 / 退款 / 結案 / 批次核准」等業務操作權限使用（與可見性 SeeAll 屬不同概念）。
+>
+> **設計決策（CanViewSiblings）**：只擴及**同層兄弟部門**，**父部門本身不可見**。父部門通常是管理單位（如總監室），其專案屬於管理層級資料，不應對下層子部門開放。
+>
+> **設計決策（CanViewDescendants）**：擴及**本部門 + 所有遞迴後代部門**，可與 `CanViewSiblings` 併用（聯集 = 同層兄弟 ∪ 所有下層）。實作採記憶體 DFS 遍歷（`ProjectAccessResolver.GetDescendantIdsAsync`），避免引入 SQL CTE；部門表筆數小成本可接受。
 
 ### 套用端點
 
@@ -924,15 +928,18 @@ draft → pending → approved / returned / rejected
 
 - `Project.DepartmentId` 必填（DB NOT NULL + 前後端驗證；FK `DeleteBehavior.Restrict`）
 - `User.DepartmentId` 必填（Superadmin 例外；前後端均驗證）
-- `Department.CanViewSiblings` 預設 false，由部門 CRUD 頁維護
+- `Department.CanSeeAll` / `CanViewSiblings` / `CanViewDescendants` 預設皆 false，由部門 CRUD 頁維護
 
 ### 涉及元件
 
 | 元件 | 說明 |
 |---|---|
-| `Department.CanViewSiblings` | Entity 旗標，由部門 CRUD 頁維護 |
-| `Api/Common/Constants.cs` `DepartmentCodes.FinancialAndAbove` | 財務體系部門 Code 集合（AC / FIN / Jabez HQ / CEO） |
-| `Api/Services/IProjectAccessResolver` + `ProjectAccessResolver` | 解析 JWT claims → `ProjectAccessScope(SeeAll, AllowedDepartmentIds)` |
+| `Department.CanSeeAll` | Entity 旗標，勾選後該部門成員擁有 SeeAll；取代原寫死的 `DepartmentCodes.FinancialAndAbove` 判定 |
+| `Department.CanViewSiblings` | Entity 旗標，勾選後可見同 ParentId 兄弟部門 |
+| `Department.CanViewDescendants` | Entity 旗標，勾選後可見本部門 + 所有遞迴下層子部門 |
+| `Api/Common/Constants.cs` `DepartmentCodes.FinancialAndAbove` | 財務體系部門 Code 集合，**僅供「撥款 / 退款 / 結案 / 批次核准」業務操作權限使用**，不再參與可見性判定 |
+| `Api/Services/IProjectAccessResolver` + `ProjectAccessResolver` | 解析 ClaimsPrincipal + DB 旗標 → `ProjectAccessScope(SeeAll, AllowedDepartmentIds)` |
+| `ProjectAccessResolver.GetDescendantIdsAsync` | 載入全部 Departments 後在記憶體 DFS 遍歷取得遞迴後代 Id；含 visited HashSet 防呆循環依賴 |
 | `Api/Services/Dapper/ProjectReadService` | 四個讀取方法皆依 scope 組合 WHERE（`DepartmentId IN @AllowedIds` 或 `1=0`） |
 | `Api/Services/Dapper/ProjectWaterLevelReadService` | 專案水位表同樣依 scope 組合 WHERE |
 | `Api/Services/Dapper/AttendanceReadService` | 出缺勤列表 SQL 改 `INNER JOIN Users u`，加 `u.DepartmentId IN @AllowedDeptIds` 子句 |
@@ -943,7 +950,7 @@ draft → pending → approved / returned / rejected
 | `Api/Handlers/ProjectWaterLevelHandler` | GET 先呼叫 resolver 取 scope 再傳給 reader |
 | `Api/Handlers/AttendanceHandler` / `OvertimeReportHandler` / `PaymentReportHandler` | GET 先呼叫 resolver 取 scope 再傳給 reader |
 | `Api/Handlers/UserHandler.GetLookupAsync` | 接 `?scope=department` 時呼叫 `reader.GetLookupAsync(scope)`；不帶參數維持原行為 |
-| JWT `department_id` claim | Resolver 查 CanViewSiblings 與同層兄弟部門用 |
+| JWT `department_id` claim | Resolver 用以查詢該部門所有可見性旗標（CanSeeAll / CanViewSiblings / CanViewDescendants）|
 | `Api/Routing/AppRouter` | JWT 驗證後將 principal 寫入 `HttpContext.User`，供 Handler 經 `IHttpContextAccessor` 取得 |
 
 ### 6 個申請表單的下拉空值提示

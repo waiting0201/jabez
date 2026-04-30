@@ -42,13 +42,15 @@ public sealed class DepartmentHandler(AppDbContext db, IDepartmentReadService re
 
         var dept = new Department
         {
-            Name            = body.Name,
-            Code            = body.Code,
-            Description     = body.Description,
-            ParentId        = body.ParentId,
-            SortOrder       = body.SortOrder,
-            CanViewSiblings = body.CanViewSiblings,
-            CreatedAt       = Clock.Now,
+            Name               = body.Name,
+            Code               = body.Code,
+            Description        = body.Description,
+            ParentId           = body.ParentId,
+            SortOrder          = body.SortOrder,
+            CanViewSiblings    = body.CanViewSiblings,
+            CanSeeAll          = body.CanSeeAll,
+            CanViewDescendants = body.CanViewDescendants,
+            CreatedAt          = Clock.Now,
         };
         db.Departments.Add(dept);
         await db.SaveChangesAsync();
@@ -72,9 +74,11 @@ public sealed class DepartmentHandler(AppDbContext db, IDepartmentReadService re
         if (body.Name        is not null) dept.Name        = body.Name;
         if (body.Code        is not null) dept.Code        = body.Code;
         if (body.Description is not null) dept.Description = body.Description;
-        if (body.ParentId.HasValue)         dept.ParentId        = body.ParentId == 0 ? null : body.ParentId;
-        if (body.SortOrder.HasValue)        dept.SortOrder       = body.SortOrder.Value;
-        if (body.CanViewSiblings.HasValue)  dept.CanViewSiblings = body.CanViewSiblings.Value;
+        if (body.ParentId.HasValue)             dept.ParentId           = body.ParentId == 0 ? null : body.ParentId;
+        if (body.SortOrder.HasValue)            dept.SortOrder          = body.SortOrder.Value;
+        if (body.CanViewSiblings.HasValue)      dept.CanViewSiblings    = body.CanViewSiblings.Value;
+        if (body.CanSeeAll.HasValue)            dept.CanSeeAll          = body.CanSeeAll.Value;
+        if (body.CanViewDescendants.HasValue)   dept.CanViewDescendants = body.CanViewDescendants.Value;
 
         await db.SaveChangesAsync();
 

@@ -9,16 +9,20 @@ public sealed record DepartmentDto(
     string?  ParentName,
     int      SortOrder,
     bool     CanViewSiblings,
+    bool     CanSeeAll,
+    bool     CanViewDescendants,
     int      EmployeeCount,
     DateTime CreatedAt);
 
 public sealed record CreateDepartmentRequest(
     string  Name,
-    string? Code            = null,
-    string? Description     = null,
-    int?    ParentId        = null,
-    int     SortOrder       = 0,
-    bool    CanViewSiblings = false);
+    string? Code               = null,
+    string? Description        = null,
+    int?    ParentId           = null,
+    int     SortOrder          = 0,
+    bool    CanViewSiblings    = false,
+    bool    CanSeeAll          = false,
+    bool    CanViewDescendants = false);
 
 public sealed record UpdateDepartmentRequest(
     string?  Name,
@@ -26,4 +30,6 @@ public sealed record UpdateDepartmentRequest(
     string?  Description,
     int?     ParentId,
     int?     SortOrder,
-    bool?    CanViewSiblings);
+    bool?    CanViewSiblings,
+    bool?    CanSeeAll,
+    bool?    CanViewDescendants);

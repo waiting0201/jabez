@@ -9,7 +9,7 @@ namespace Jabez.Api.Handlers;
 /// <summary>
 /// GET /reports/project-water-level → 專案水位表
 /// 回傳每個有請款紀錄的專案，其請款金額佔業務執行金額的百分比。
-/// 可見範圍依 CLAUDE.md「專案可見性規則」套用（Superadmin / 財務體系部門看全部；其他員工僅自己部門）。
+/// 可見範圍依 CLAUDE.md「部門可見性規則」套用（Superadmin / CanSeeAll 部門看全部；其他員工依 CanViewSiblings / CanViewDescendants 旗標）。
 /// </summary>
 public sealed class ProjectWaterLevelHandler(
     IProjectWaterLevelReadService reader,

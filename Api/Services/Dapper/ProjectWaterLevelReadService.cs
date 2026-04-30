@@ -10,7 +10,7 @@ public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWat
     /// <summary>
     /// 查詢所有有非 draft 請款紀錄的專案，計算請款金額、已付款金額及佔業務執行金額百分比。
     /// Percentage 在 C# 端計算，避免 SQL 端除零問題。
-    /// 套用 CLAUDE.md「專案可見性規則」：Superadmin / 財務體系部門看全部；其他員工僅自己部門（+ 同層兄弟部門可見時）。
+    /// 套用 CLAUDE.md「部門可見性規則」：可見範圍由 IProjectAccessResolver 決定（Superadmin / CanSeeAll → SeeAll；其他依 CanViewSiblings / CanViewDescendants 旗標聯集）。
     /// </summary>
     public async Task<IEnumerable<ProjectWaterLevelDto>> GetAllAsync(ProjectAccessScope scope)
     {
