@@ -9,6 +9,7 @@ export interface Department {
   canViewSiblings: boolean;
   canSeeAll: boolean;
   canViewDescendants: boolean;
+  canViewParent: boolean;
   employeeCount: number;
   createdAt: Date;
 }

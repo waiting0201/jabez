@@ -53,6 +53,9 @@
                     @if (dept.canViewSiblings) {
                       <span class="badge bg-success" title="成員可見同 ParentId 兄弟部門資料">同層可見</span>
                     }
+                    @if (dept.canViewParent) {
+                      <span class="badge bg-secondary" title="成員可見直接父部門（不遞迴祖先）資料">父層可見</span>
+                    }
                     @if (dept.canViewDescendants) {
                       <span class="badge bg-warning" title="成員可見此部門及所有遞迴下層子部門資料">下層可見</span>
                     }

@@ -30,6 +30,7 @@ export class DepartmentForm implements OnInit {
     canViewSiblings:    [false],
     canSeeAll:          [false],
     canViewDescendants: [false],
+    canViewParent:      [false],
   });
 
   ngOnInit() {

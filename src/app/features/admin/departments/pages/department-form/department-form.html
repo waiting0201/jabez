@@ -76,7 +76,15 @@
                   同層部門可見
                 </label>
               </div>
-              <div class="text-muted small mt-1 mb-2">勾選後可見同 ParentId 兄弟部門資料；可與「下層部門可見」併用。</div>
+              <div class="text-muted small mt-1 mb-2">勾選後可見同 ParentId 兄弟部門資料；可與「下層部門可見」「父層部門可見」併用。</div>
+
+              <div class="form-check mt-1">
+                <input type="checkbox" class="form-check-input" id="canViewParent" formControlName="canViewParent">
+                <label class="form-check-label" for="canViewParent">
+                  父層部門可見
+                </label>
+              </div>
+              <div class="text-muted small mt-1 mb-2">勾選後可見直接父部門（不遞迴祖先）資料；例如子部門需查閱上層管理單位的專案、出缺勤紀錄。</div>
 
               <div class="form-check mt-1">
                 <input type="checkbox" class="form-check-input" id="canViewDescendants" formControlName="canViewDescendants">
@@ -84,7 +92,7 @@
                   下層部門可見
                 </label>
               </div>
-              <div class="text-muted small mt-1">勾選後可見此部門及所有遞迴下層子部門資料；可與「同層部門可見」併用。</div>
+              <div class="text-muted small mt-1">勾選後可見此部門及所有遞迴下層子部門資料；可與「同層部門可見」「父層部門可見」併用。</div>
             </div>
 
           </div>
