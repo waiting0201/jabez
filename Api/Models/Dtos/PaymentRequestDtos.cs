@@ -136,6 +136,13 @@ public sealed record LeaveTaskDetailDto(
     decimal  Hours,
     string   Reason);
 
+/// <summary>假日活動每位人員（申請人 + 參與者）的津貼預估，依 round(BaseSalary / 30) × HolidayDays 計算，與 PayrollReadService 一致</summary>
+public sealed record HolidayAllowanceDto(
+    Guid    UserId,
+    string  UserName,
+    int     Allowance,
+    bool    IsApplicant);
+
 public sealed record TravelTaskDetailDto(
     int       TravelRequestId,
     string    Destination,
@@ -152,7 +159,8 @@ public sealed record TravelTaskDetailDto(
     DateTime? RefundedAt,
     int?      HolidayDays = null,
     TravelRequestItemDto[] Items = null!,
-    string?   PaidBySignatureUrl = null)
+    string?   PaidBySignatureUrl = null,
+    HolidayAllowanceDto[]? HolidayAllowances = null)
 {
     public TravelRequestItemDto[] Items { get; init; } = Items ?? Array.Empty<TravelRequestItemDto>();
 }

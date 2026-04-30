@@ -81,18 +81,20 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
 
     public async Task<IEnumerable<ApprovalTaskDto>> GetApprovalTasksAsync(
         int? reviewerJobTitleId = null, int? reviewerDepartmentId = null,
-        string? status = null, Guid? reviewerUserId = null, string? paymentStatus = null)
+        string? status = null, Guid? reviewerUserId = null, string? paymentStatus = null,
+        string? applicationType = null)
     {
-        var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems) =
+        var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants) =
             await FetchAllAsync(reviewerJobTitleId: reviewerJobTitleId, reviewerDepartmentId: reviewerDepartmentId,
-                                statusFilter: status, reviewerUserId: reviewerUserId, paymentStatus: paymentStatus);
-        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems);
+                                statusFilter: status, reviewerUserId: reviewerUserId, paymentStatus: paymentStatus,
+                                applicationType: applicationType);
+        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants);
     }
 
     public async Task<ApprovalTaskDto?> GetApprovalTaskByIdAsync(int id, string applicationType)
     {
-        var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems) = await FetchAllAsync(id, applicationType);
-        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems)
+        var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants) = await FetchAllAsync(id, applicationType);
+        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants)
             .FirstOrDefault(t => t.Id == id && t.ApplicationType == applicationType);
     }
 
@@ -120,11 +122,12 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         IEnumerable<dynamic> advanceItems,
         IEnumerable<dynamic> travelItems,
         IEnumerable<dynamic> travelWriteOffItems,
-        IEnumerable<dynamic> travelPaymentItems)> FetchAllAsync(
+        IEnumerable<dynamic> travelPaymentItems,
+        IEnumerable<dynamic> holidayParticipants)> FetchAllAsync(
         int? filterId = null, string? filterType = null,
         int? reviewerJobTitleId = null, int? reviewerDepartmentId = null,
         string? statusFilter = null, Guid? reviewerUserId = null,
-        string? paymentStatus = null)
+        string? paymentStatus = null, string? applicationType = null)
     {
         // ── WHERE clause for specific ID lookup ──────────────────────────────
         string paymentIdWhere        = (filterId.HasValue && filterType == "payment_request")  ? "pr.Id = @Id"  : "";
@@ -293,16 +296,21 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 : $" AND {paidAtColumn} IS NULL";
         }
 
+        // ── 類型篩選（已核准頁籤可選擇單一申請類型；按 ID 查詢時略過）───
+        // 非選定類型的 SQL 直接 short-circuit 為 WHERE 1=0，避免拉取後再丟棄
+        bool hasTypeFilter = !string.IsNullOrEmpty(applicationType) && !filterId.HasValue;
+        bool TypeAllowed(string thisType) => !hasTypeFilter || applicationType == thisType;
+
         // 按 ID 查詢時不套用審核者過濾（StepMatchClause），只用 ID 條件
-        string paymentWhere       = filterId.HasValue ? BuildWhere(paymentIdWhere,       "") : BuildWhere("", StepMatchClause("pr",  "sub",  "payment_request")) + PaymentStatusClause("pr.PaidAt");
-        string leaveWhere         = hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(leaveIdWhere,         "") : BuildWhere("", StepMatchClause("lr",  "u",    "leave")));
-        string travelWhere        = filterId.HasValue ? BuildWhere(travelIdWhere,        "") + " AND tr.IsHolidayTravel = 0" : BuildWhere("tr.IsHolidayTravel = 0", StepMatchClause("tr",  "u",    "travel")) + PaymentStatusClause("tr.PaidAt");
-        string holidayTravelWhere = filterId.HasValue ? BuildWhere(holidayTravelIdWhere, "") + " AND tr.IsHolidayTravel = 1" : BuildWhere("tr.IsHolidayTravel = 1", StepMatchClause("tr",  "u",    "holiday_travel")) + PaymentStatusClause("tr.PaidAt");
-        string overtimeWhere      = hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(overtimeIdWhere,      "") : BuildWhere("", StepMatchClause("ot",  "u",    "overtime")));
-        string advanceWhere       = filterId.HasValue ? BuildWhere(advanceIdWhere,       "") : BuildWhere("", StepMatchClause("adv", "asub", "advance")) + PaymentStatusClause("adv.PaidAt");
-        string writeOffWhere      = filterId.HasValue ? BuildWhere(writeOffIdWhere,      "") : BuildWhere("", StepMatchClause("wo",  "wsub", "write_off")) + PaymentStatusClause("arx.RefundedAt");
-        string travelWriteOffWhere  = filterId.HasValue ? BuildWhere(travelWriteOffIdWhere,  "") : BuildWhere("", StepMatchClause("two", "trsub", "travel_write_off")) + PaymentStatusClause("trx.RefundedAt");
-        string travelPaymentWhere   = filterId.HasValue ? BuildWhere(travelPaymentIdWhere,   "") : BuildWhere("", StepMatchClause("tpr", "tpru", "travel_payment")) + PaymentStatusClause("tpr.PaidAt");
+        string paymentWhere       = !TypeAllowed("payment_request") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(paymentIdWhere,       "") : BuildWhere("", StepMatchClause("pr",  "sub",  "payment_request")) + PaymentStatusClause("pr.PaidAt"));
+        string leaveWhere         = !TypeAllowed("leave") || hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(leaveIdWhere,         "") : BuildWhere("", StepMatchClause("lr",  "u",    "leave")));
+        string travelWhere        = !TypeAllowed("travel") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(travelIdWhere,        "") + " AND tr.IsHolidayTravel = 0" : BuildWhere("tr.IsHolidayTravel = 0", StepMatchClause("tr",  "u",    "travel")) + PaymentStatusClause("tr.PaidAt"));
+        string holidayTravelWhere = !TypeAllowed("holiday_travel") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(holidayTravelIdWhere, "") + " AND tr.IsHolidayTravel = 1" : BuildWhere("tr.IsHolidayTravel = 1", StepMatchClause("tr",  "u",    "holiday_travel")) + PaymentStatusClause("tr.PaidAt"));
+        string overtimeWhere      = !TypeAllowed("overtime") || hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(overtimeIdWhere,      "") : BuildWhere("", StepMatchClause("ot",  "u",    "overtime")));
+        string advanceWhere       = !TypeAllowed("advance") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(advanceIdWhere,       "") : BuildWhere("", StepMatchClause("adv", "asub", "advance")) + PaymentStatusClause("adv.PaidAt"));
+        string writeOffWhere      = !TypeAllowed("write_off") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(writeOffIdWhere,      "") : BuildWhere("", StepMatchClause("wo",  "wsub", "write_off")) + PaymentStatusClause("arx.RefundedAt"));
+        string travelWriteOffWhere  = !TypeAllowed("travel_write_off") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(travelWriteOffIdWhere,  "") : BuildWhere("", StepMatchClause("two", "trsub", "travel_write_off")) + PaymentStatusClause("trx.RefundedAt"));
+        string travelPaymentWhere   = !TypeAllowed("travel_payment") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(travelPaymentIdWhere,   "") : BuildWhere("", StepMatchClause("tpr", "tpru", "travel_payment")) + PaymentStatusClause("tpr.PaidAt"));
 
         var paymentSql = $"""
             SELECT pr.Id, pr.Type AS PaymentType, proj.Code AS ProjectCode, proj.Name AS ProjectName,
@@ -347,12 +355,14 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             """;
 
         // 假日執行活動申請（IsHolidayTravel = 1），獨立 ApplicationType = "holiday_travel"
+        // ApplicantId / ApplicantBaseSalary 用於計算申請人本人的假日津貼
         var holidayTravelSql = $"""
             SELECT tr.Id, tr.Destination, tr.StartDate, tr.EndDate,
                    tr.GrandTotal, tr.Purpose, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    tr.IsHolidayTravel, tr.HolidayDays,
                    tr.EstimatedPaymentDate, tr.PaidAt, tr.EstimatedRefundDate, tr.RefundedAt,
                    tr.ApprovalStatus, tr.ApprovalItemId, tr.CurrentStepOrder,
+                   tr.EmployeeId AS ApplicantId, u.BaseSalary AS ApplicantBaseSalary,
                    u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, tr.CreatedAt, tr.ReviewedAt, tr.ReviewNote,
                    trpaidby.SignatureUrl AS PaidBySignatureUrl
             FROM TravelRequests tr
@@ -562,7 +572,19 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             """;
         var travelPaymentItemRows = await db.QueryAsync<dynamic>(travelPaymentItemsSql);
 
-        return (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, flows, records, designatedRows, writeOffItemRows, advanceItemRows, travelItemRows, travelWriteOffItemRows, travelPaymentItemRows);
+        // 假日活動參與者（不含申請人本人；申請人在 holidayTravelSql 已帶 ApplicantBaseSalary）
+        // 用於假日津貼預估顯示，金額計算公式與 PayrollReadService 一致
+        const string holidayParticipantsSql = """
+            SELECT p.TravelRequestId, p.UserId, u.Name AS UserName, u.BaseSalary, p.SortOrder
+            FROM TravelRequestParticipants p
+            JOIN TravelRequests tr ON p.TravelRequestId = tr.Id
+            LEFT JOIN Users u      ON p.UserId = u.Id
+            WHERE tr.IsHolidayTravel = 1
+            ORDER BY p.TravelRequestId, p.SortOrder
+            """;
+        var holidayParticipantRows = await db.QueryAsync<dynamic>(holidayParticipantsSql);
+
+        return (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, flows, records, designatedRows, writeOffItemRows, advanceItemRows, travelItemRows, travelWriteOffItemRows, travelPaymentItemRows, holidayParticipantRows);
     }
 
     private static IEnumerable<ApprovalTaskDto> BuildApprovalTasks(
@@ -582,7 +604,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         IEnumerable<dynamic> advanceItemRows,
         IEnumerable<dynamic> travelItemRows,
         IEnumerable<dynamic> travelWriteOffItemRows,
-        IEnumerable<dynamic> travelPaymentItemRows)
+        IEnumerable<dynamic> travelPaymentItemRows,
+        IEnumerable<dynamic> holidayParticipantRows)
     {
         // Build designated reviewer lookup keyed by (RequestType, RequestId)
         var drDict = new Dictionary<(string, int), List<DesignatedReviewerDto>>();
@@ -684,6 +707,41 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
 
         TravelRequestItemDto[] GetTravelItems(int id) =>
             travelItemDict.TryGetValue(id, out var items) ? [.. items] : [];
+
+        // Holiday travel participants lookup keyed by TravelRequestId
+        // 每筆只存 (UserId, UserName, BaseSalary)；津貼金額在 mapper 內依 HolidayDays 計算
+        var holidayParticipantsDict = new Dictionary<int, List<(Guid UserId, string UserName, decimal? BaseSalary)>>();
+        foreach (var hp in holidayParticipantRows)
+        {
+            int trId = (int)hp.TravelRequestId;
+            if (!holidayParticipantsDict.ContainsKey(trId))
+                holidayParticipantsDict[trId] = [];
+            holidayParticipantsDict[trId].Add((
+                (Guid)hp.UserId,
+                (string?)hp.UserName ?? "—",
+                (decimal?)hp.BaseSalary));
+        }
+
+        // 計算單筆假日活動的所有人員（申請人 + 參與者）津貼明細
+        // 公式：round(BaseSalary / 30) × HolidayDays，與 PayrollReadService.CalculateMonthlyPayrollAsync 一致
+        HolidayAllowanceDto[] BuildHolidayAllowances(int trId, Guid applicantId, string applicantName, decimal? applicantBaseSalary, int holidayDays)
+        {
+            static int Allowance(decimal? baseSalary, int days)
+                => baseSalary is { } bs && bs > 0 && days > 0
+                    ? (int)Math.Round(bs / 30m, 0) * days
+                    : 0;
+
+            var list = new List<HolidayAllowanceDto>
+            {
+                new(applicantId, applicantName, Allowance(applicantBaseSalary, holidayDays), IsApplicant: true),
+            };
+            if (holidayParticipantsDict.TryGetValue(trId, out var participants))
+            {
+                foreach (var (uid, name, bs) in participants)
+                    list.Add(new HolidayAllowanceDto(uid, name, Allowance(bs, holidayDays), IsApplicant: false));
+            }
+            return [.. list];
+        }
 
         // Payment requests (one-to-many with InvoiceItems)
         var paymentGrouped = new Dictionary<int, (dynamic pr, List<InvoiceItemDto> invoices)>();
@@ -817,7 +875,13 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (DateTime?)row.RefundedAt,
                 (int?)row.HolidayDays,
                 GetTravelItems((int)row.Id),
-                (string?)row.PaidBySignatureUrl),
+                (string?)row.PaidBySignatureUrl,
+                BuildHolidayAllowances(
+                    (int)row.Id,
+                    (Guid)row.ApplicantId,
+                    (string?)row.SubmittedBy ?? "—",
+                    (decimal?)row.ApplicantBaseSalary,
+                    (int?)row.HolidayDays ?? 0)),
             null, null, null, null,
             GetRecords("holiday_travel", (int)row.Id),
             GetDesignatedReviewers("holiday_travel", (int)row.Id),
