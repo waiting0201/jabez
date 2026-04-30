@@ -96,7 +96,8 @@
                   <td class="text-right text-danger">-{{ emp.healthInsurance | number:'1.0-0' }}</td>
                   <td class="text-right fw-600 text-primary">{{ emp.netSalary | number:'1.0-0' }}</td>
                   <td class="text-right" style="white-space: nowrap">
-                    <a [routerLink]="['/admin/payroll', emp.employeeId, 'edit']"
+                    <a *appHasPermission="'payroll:write'"
+                       [routerLink]="['/admin/payroll', emp.employeeId, 'edit']"
                        [queryParams]="{year: selectedYear(), month: selectedMonth()}"
                        class="btn btn-sm btn-ghost-primary inline-flex items-center">
                       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>

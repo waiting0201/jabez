@@ -4,6 +4,7 @@ import {CalendarDayService} from '../../services/calendar-day.service';
 import {CalendarDay} from '../../models/calendar-day.model';
 import {ToastrService} from 'ngx-toastr';
 import {DatePipe} from '@angular/common';
+import {AuthService} from '@core/auth/services/auth.service';
 
 /** 星期對照表（台灣中文） */
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
@@ -16,6 +17,10 @@ const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
 export class CalendarDayList implements OnInit {
   private svc = inject(CalendarDayService);
   private toastr = inject(ToastrService);
+  private auth = inject(AuthService);
+
+  canWrite()  { return this.auth.hasPermission('calendar-days:write'); }
+  canDelete() { return this.auth.hasPermission('calendar-days:delete'); }
 
   /** 目前選擇的年份，預設今年 */
   selectedYear = signal<number>(new Date().getFullYear());

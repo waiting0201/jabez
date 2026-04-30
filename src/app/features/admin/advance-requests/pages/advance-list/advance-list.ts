@@ -6,14 +6,20 @@ import {switchMap} from 'rxjs/operators';
 import {AdvanceRequestService} from '../../services/advance-request.service';
 import {AdvanceRequest, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/advance-request.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
+import {AuthService} from '@core/auth/services/auth.service';
+import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-advance-list',
   templateUrl: './advance-list.html',
-  imports: [RouterLink, DecimalPipe, DatePipe],
+  imports: [RouterLink, DecimalPipe, DatePipe, HasPermissionDirective],
 })
 export class AdvanceList {
   private service = inject(AdvanceRequestService);
+  private auth = inject(AuthService);
+
+  canWrite()  { return this.auth.hasPermission('advance-requests:write'); }
+  canDelete() { return this.auth.hasPermission('advance-requests:delete'); }
 
   readonly PAGE_SIZE = 20;
   page = signal(1);

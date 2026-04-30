@@ -4,6 +4,7 @@ import {AsyncPipe} from '@angular/common';
 import {BehaviorSubject, map, switchMap} from 'rxjs';
 import {DepartmentService} from '../../services/department.service';
 import {Department} from '../../models/department.model';
+import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
 
 interface DepartmentRow extends Department {
   depth: number;
@@ -13,7 +14,7 @@ interface DepartmentRow extends Department {
 @Component({
   selector: 'app-department-list',
   templateUrl: './department-list.html',
-  imports: [RouterLink, AsyncPipe],
+  imports: [RouterLink, AsyncPipe, HasPermissionDirective],
 })
 export class DepartmentList {
   private deptService = inject(DepartmentService);

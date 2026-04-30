@@ -5,11 +5,12 @@ import {BehaviorSubject, switchMap} from 'rxjs';
 import {InsuranceBracketService} from '../../services/insurance-bracket.service';
 import {InsuranceBracket} from '../../models/insurance-bracket.model';
 import {ToastrService} from 'ngx-toastr';
+import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-insurance-bracket-list',
   templateUrl: './insurance-bracket-list.html',
-  imports: [RouterLink, AsyncPipe, DecimalPipe],
+  imports: [RouterLink, AsyncPipe, DecimalPipe, HasPermissionDirective],
 })
 export class InsuranceBracketList {
   private svc = inject(InsuranceBracketService);

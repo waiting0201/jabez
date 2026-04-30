@@ -9,11 +9,12 @@ import {RoleService} from '../../../roles/services/role.service';
 import {User} from '../../models/user.model';
 import {Role} from '../../../roles/models/role.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
+import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-user-list',
   templateUrl: './user-list.html',
-  imports: [RouterLink, DatePipe],
+  imports: [RouterLink, DatePipe, HasPermissionDirective],
 })
 export class UserList {
   private userService = inject(UserService);

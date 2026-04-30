@@ -6,7 +6,7 @@
       </svg>
       <h4 class="mb-0">職稱管理</h4>
     </div>
-    <a routerLink="new" class="btn btn-primary inline-flex items-center gap-1">
+    <a *appHasPermission="'job-titles:write'" routerLink="new" class="btn btn-primary inline-flex items-center gap-1">
       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
       新增職稱
     </a>
@@ -38,10 +38,10 @@
                 <td class="text-muted small hidden lg:table-cell">{{ jt.createdAt | date:'yyyy-MM-dd' }}</td>
                 <td class="text-right" style="white-space: nowrap">
                   <div class="flex justify-end gap-1">
-                    <a [routerLink]="[jt.id, 'edit']" class="btn btn-sm btn-ghost-primary inline-flex items-center">
+                    <a *appHasPermission="'job-titles:write'" [routerLink]="[jt.id, 'edit']" class="btn btn-sm btn-ghost-primary inline-flex items-center">
                       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
                     </a>
-                    <button class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(jt)">
+                    <button *appHasPermission="'job-titles:delete'" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(jt)">
                       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
                     </button>
                   </div>

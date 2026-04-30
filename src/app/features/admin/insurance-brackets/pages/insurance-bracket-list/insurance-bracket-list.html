@@ -7,7 +7,7 @@
       </svg>
       <h4 class="mb-0">勞健保級距維護</h4>
     </div>
-    <a routerLink="new" class="btn btn-primary inline-flex items-center gap-1">
+    <a *appHasPermission="'insurance-brackets:write'" routerLink="new" class="btn btn-primary inline-flex items-center gap-1">
       <svg class="sa-icon" style="stroke: currentColor">
         <use href="/assets/icons/sprite.svg#plus"></use>
       </svg>
@@ -36,13 +36,13 @@
                 <td class="text-right">{{ b.healthInsuranceEmployee | number:'1.0-0' }}</td>
                 <td class="text-right">
                   <div class="flex justify-end gap-1">
-                    <a [routerLink]="[b.id, 'edit']"
+                    <a *appHasPermission="'insurance-brackets:write'" [routerLink]="[b.id, 'edit']"
                        class="btn btn-sm btn-ghost-primary inline-flex items-center">
                       <svg class="sa-icon" style="stroke: currentColor">
                         <use href="/assets/icons/sprite.svg#edit"></use>
                       </svg>
                     </a>
-                    <button class="btn btn-sm btn-ghost-danger inline-flex items-center"
+                    <button *appHasPermission="'insurance-brackets:delete'" class="btn btn-sm btn-ghost-danger inline-flex items-center"
                             (click)="delete(b)">
                       <svg class="sa-icon" style="stroke: currentColor">
                         <use href="/assets/icons/sprite.svg#trash"></use>

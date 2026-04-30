@@ -10,14 +10,20 @@ import {
   APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES,
 } from '../../models/payment-request.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
+import {AuthService} from '@core/auth/services/auth.service';
+import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-payment-list',
   templateUrl: './payment-list.html',
-  imports: [RouterLink, DecimalPipe, DatePipe],
+  imports: [RouterLink, DecimalPipe, DatePipe, HasPermissionDirective],
 })
 export class PaymentList {
   private service = inject(PaymentRequestService);
+  private auth = inject(AuthService);
+
+  canWrite()  { return this.auth.hasPermission('payment-requests:write'); }
+  canDelete() { return this.auth.hasPermission('payment-requests:delete'); }
 
   readonly PAGE_SIZE = 20;
   page = signal(1);

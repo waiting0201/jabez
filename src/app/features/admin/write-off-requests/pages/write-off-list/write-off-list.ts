@@ -6,14 +6,20 @@ import {switchMap} from 'rxjs/operators';
 import {WriteOffRequestService} from '../../services/write-off-request.service';
 import {WriteOffRequest, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/write-off-request.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
+import {AuthService} from '@core/auth/services/auth.service';
+import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-write-off-list',
   templateUrl: './write-off-list.html',
-  imports: [RouterLink, DecimalPipe, DatePipe],
+  imports: [RouterLink, DecimalPipe, DatePipe, HasPermissionDirective],
 })
 export class WriteOffList {
   private service = inject(WriteOffRequestService);
+  private auth = inject(AuthService);
+
+  canWrite()  { return this.auth.hasPermission('write-off-requests:write'); }
+  canDelete() { return this.auth.hasPermission('write-off-requests:delete'); }
 
   readonly PAGE_SIZE = 20;
   page = signal(1);

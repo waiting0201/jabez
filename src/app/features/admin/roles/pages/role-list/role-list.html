@@ -6,7 +6,7 @@
       </svg>
       <h4 class="mb-0">角色管理</h4>
     </div>
-    <a routerLink="new" class="btn btn-primary inline-flex items-center gap-1">
+    <a *appHasPermission="'roles:write'" routerLink="new" class="btn btn-primary inline-flex items-center gap-1">
       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
       新增角色
     </a>
@@ -36,10 +36,10 @@
                 <td class="text-muted hidden lg:table-cell">{{ role.createdAt | date:'yyyy-MM-dd' }}</td>
                 <td class="text-right" style="white-space: nowrap">
                   <div class="flex justify-end gap-1">
-                    <a [routerLink]="[role.id, 'edit']" class="btn btn-sm btn-ghost-primary inline-flex items-center">
+                    <a *appHasPermission="'roles:write'" [routerLink]="[role.id, 'edit']" class="btn btn-sm btn-ghost-primary inline-flex items-center">
                       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
                     </a>
-                    <button class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(role)">
+                    <button *appHasPermission="'roles:delete'" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(role)">
                       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
                     </button>
                   </div>

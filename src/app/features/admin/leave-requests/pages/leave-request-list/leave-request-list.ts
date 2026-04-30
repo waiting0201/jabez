@@ -11,14 +11,20 @@ import {
   formatLeaveDuration,
 } from '../../models/leave-request.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
+import {AuthService} from '@core/auth/services/auth.service';
+import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-leave-request-list',
   templateUrl: './leave-request-list.html',
-  imports: [RouterLink, DatePipe],
+  imports: [RouterLink, DatePipe, HasPermissionDirective],
 })
 export class LeaveRequestList {
   private service = inject(LeaveRequestService);
+  private auth = inject(AuthService);
+
+  canWrite()  { return this.auth.hasPermission('leave-requests:write'); }
+  canDelete() { return this.auth.hasPermission('leave-requests:delete'); }
 
   readonly PAGE_SIZE = 20;
   page = signal(1);

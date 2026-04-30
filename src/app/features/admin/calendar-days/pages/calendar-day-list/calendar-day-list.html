@@ -20,19 +20,21 @@
         }
       </select>
 
-      <button class="btn btn-outline-primary btn-sm inline-flex items-center gap-1"
-              [disabled]="importing()"
-              (click)="importYear()">
-        @if (importing()) {
-          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-          <span>匯入中...</span>
-        } @else {
-          <svg class="sa-icon" style="stroke: currentColor">
-            <use href="/assets/icons/sprite.svg#download"></use>
-          </svg>
-          <span>匯入 {{ selectedYear() }} 年</span>
-        }
-      </button>
+      @if (canWrite()) {
+        <button class="btn btn-outline-primary btn-sm inline-flex items-center gap-1"
+                [disabled]="importing()"
+                (click)="importYear()">
+          @if (importing()) {
+            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            <span>匯入中...</span>
+          } @else {
+            <svg class="sa-icon" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#download"></use>
+            </svg>
+            <span>匯入 {{ selectedYear() }} 年</span>
+          }
+        </button>
+      }
     </div>
   </div>
 
@@ -69,16 +71,18 @@
                 <use href="/assets/icons/sprite.svg#calendar"></use>
               </svg>
               <p class="text-muted mb-3">
-                尚未匯入 {{ selectedYear() }} 年行事曆資料，請點選匯入按鈕。
+                尚未匯入 {{ selectedYear() }} 年行事曆資料{{ canWrite() ? '，請點選匯入按鈕' : '' }}。
               </p>
-              <button class="btn btn-primary btn-sm inline-flex items-center gap-1"
-                      [disabled]="importing()"
-                      (click)="importYear()">
-                <svg class="sa-icon" style="stroke: currentColor">
-                  <use href="/assets/icons/sprite.svg#download"></use>
-                </svg>
-                匯入 {{ selectedYear() }} 年
-              </button>
+              @if (canWrite()) {
+                <button class="btn btn-primary btn-sm inline-flex items-center gap-1"
+                        [disabled]="importing()"
+                        (click)="importYear()">
+                  <svg class="sa-icon" style="stroke: currentColor">
+                    <use href="/assets/icons/sprite.svg#download"></use>
+                  </svg>
+                  匯入 {{ selectedYear() }} 年
+                </button>
+              }
             </div>
           }
 
@@ -128,20 +132,24 @@
                         </td>
                         <td class="text-right">
                           <div class="flex justify-end gap-1">
-                            <button class="btn btn-sm btn-ghost-primary inline-flex items-center"
-                                    title="編輯"
-                                    (click)="startEdit(day)">
-                              <svg class="sa-icon" style="stroke: currentColor">
-                                <use href="/assets/icons/sprite.svg#edit"></use>
-                              </svg>
-                            </button>
-                            <button class="btn btn-sm btn-ghost-danger inline-flex items-center"
-                                    title="刪除"
-                                    (click)="delete(day)">
-                              <svg class="sa-icon" style="stroke: currentColor">
-                                <use href="/assets/icons/sprite.svg#trash"></use>
-                              </svg>
-                            </button>
+                            @if (canWrite()) {
+                              <button class="btn btn-sm btn-ghost-primary inline-flex items-center"
+                                      title="編輯"
+                                      (click)="startEdit(day)">
+                                <svg class="sa-icon" style="stroke: currentColor">
+                                  <use href="/assets/icons/sprite.svg#edit"></use>
+                                </svg>
+                              </button>
+                            }
+                            @if (canDelete()) {
+                              <button class="btn btn-sm btn-ghost-danger inline-flex items-center"
+                                      title="刪除"
+                                      (click)="delete(day)">
+                                <svg class="sa-icon" style="stroke: currentColor">
+                                  <use href="/assets/icons/sprite.svg#trash"></use>
+                                </svg>
+                              </button>
+                            }
                           </div>
                         </td>
                       </tr>

@@ -5,11 +5,12 @@ import {ActivatedRoute, RouterLink} from '@angular/router';
 import {ToastrService} from 'ngx-toastr';
 import {PayrollService} from '../../services/payroll.service';
 import {MonthlyPayroll} from '../../models/payroll.model';
+import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-payroll-list',
   templateUrl: './payroll-list.html',
-  imports: [DecimalPipe, FormsModule, RouterLink],
+  imports: [DecimalPipe, FormsModule, RouterLink, HasPermissionDirective],
 })
 export class PayrollList implements OnInit {
   private service = inject(PayrollService);

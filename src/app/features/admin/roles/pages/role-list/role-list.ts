@@ -4,11 +4,12 @@ import {AsyncPipe, DatePipe} from '@angular/common';
 import {BehaviorSubject, switchMap} from 'rxjs';
 import {RoleService} from '../../services/role.service';
 import {Role} from '../../models/role.model';
+import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-role-list',
   templateUrl: './role-list.html',
-  imports: [RouterLink, AsyncPipe, DatePipe],
+  imports: [RouterLink, AsyncPipe, DatePipe, HasPermissionDirective],
 })
 export class RoleList {
   private roleService = inject(RoleService);

@@ -9,14 +9,20 @@ import {
   APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES,
 } from '../../models/holiday-travel-request.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
+import {AuthService} from '@core/auth/services/auth.service';
+import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-holiday-travel-request-list',
   templateUrl: './holiday-travel-request-list.html',
-  imports: [RouterLink, DatePipe],
+  imports: [RouterLink, DatePipe, HasPermissionDirective],
 })
 export class HolidayTravelRequestList {
   private service = inject(HolidayTravelRequestService);
+  private auth = inject(AuthService);
+
+  canWrite()  { return this.auth.hasPermission('holiday-travel-requests:write'); }
+  canDelete() { return this.auth.hasPermission('holiday-travel-requests:delete'); }
 
   readonly PAGE_SIZE = 20;
   page = signal(1);

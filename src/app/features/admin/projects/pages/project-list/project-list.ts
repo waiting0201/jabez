@@ -18,8 +18,10 @@ export class ProjectList {
   private projectService = inject(ProjectService);
   private auth = inject(AuthService);
 
-  /** 是否擁有 projects:write 權限（決定列表的編輯/刪除按鈕與「新增專案」按鈕顯示） */
-  canWrite = computed(() => this.auth.hasPermission('projects:write'));
+  /** 是否擁有 projects:write 權限（決定「新增/編輯」按鈕顯示） */
+  canWrite  = computed(() => this.auth.hasPermission('projects:write'));
+  /** 是否擁有 projects:delete 權限（決定「刪除」按鈕顯示） */
+  canDelete = computed(() => this.auth.hasPermission('projects:delete'));
 
   readonly PAGE_SIZE = 20;
   page = signal(1);

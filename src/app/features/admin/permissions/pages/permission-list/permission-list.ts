@@ -4,11 +4,12 @@ import {AsyncPipe} from '@angular/common';
 import {BehaviorSubject, map, shareReplay, switchMap} from 'rxjs';
 import {PermissionService} from '../../services/permission.service';
 import {Permission} from '../../models/permission.model';
+import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-permission-list',
   templateUrl: './permission-list.html',
-  imports: [RouterLink, AsyncPipe],
+  imports: [RouterLink, AsyncPipe, HasPermissionDirective],
 })
 export class PermissionList {
   private permissionService = inject(PermissionService);

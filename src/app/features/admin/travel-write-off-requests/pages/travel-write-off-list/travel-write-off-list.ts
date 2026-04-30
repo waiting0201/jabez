@@ -6,14 +6,20 @@ import {switchMap} from 'rxjs/operators';
 import {TravelWriteOffRequestService} from '../../services/travel-write-off-request.service';
 import {TravelWriteOffRequest, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/travel-write-off-request.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
+import {AuthService} from '@core/auth/services/auth.service';
+import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-travel-write-off-list',
   templateUrl: './travel-write-off-list.html',
-  imports: [RouterLink, DecimalPipe, DatePipe],
+  imports: [RouterLink, DecimalPipe, DatePipe, HasPermissionDirective],
 })
 export class TravelWriteOffList {
   private service = inject(TravelWriteOffRequestService);
+  private auth = inject(AuthService);
+
+  canWrite()  { return this.auth.hasPermission('travel-write-off-requests:write'); }
+  canDelete() { return this.auth.hasPermission('travel-write-off-requests:delete'); }
 
   readonly PAGE_SIZE = 20;
   page = signal(1);

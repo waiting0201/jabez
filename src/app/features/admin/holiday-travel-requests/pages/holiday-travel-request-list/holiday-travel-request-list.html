@@ -6,7 +6,7 @@
       </svg>
       <h4 class="mb-0">假日執行活動申請</h4>
     </div>
-    <a routerLink="new" class="btn btn-primary inline-flex items-center gap-1">
+    <a *appHasPermission="'holiday-travel-requests:write'" routerLink="new" class="btn btn-primary inline-flex items-center gap-1">
       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
       新增申請
     </a>
@@ -48,11 +48,11 @@
                 </td>
                 <td class="text-right" style="white-space: nowrap">
                   <div class="flex justify-end gap-1">
-                    @if (r.approvalStatus === 'draft' || r.approvalStatus === 'returned') {
+                    @if (canWrite() && (r.approvalStatus === 'draft' || r.approvalStatus === 'returned')) {
                       <a [routerLink]="[r.id, 'edit']" class="btn btn-sm btn-ghost-primary inline-flex items-center" title="編輯">
                         <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
                       </a>
-                      @if (r.approvalStatus === 'draft') {
+                      @if (canDelete() && r.approvalStatus === 'draft') {
                         <button class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(r)" title="刪除">
                           <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
                         </button>
