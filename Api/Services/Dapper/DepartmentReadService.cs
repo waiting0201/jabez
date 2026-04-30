@@ -11,14 +11,14 @@ public sealed class DepartmentReadService(IDbConnection db) : IDepartmentReadSer
         const string sql = """
             SELECT d.Id, d.Name, d.Code, d.Description, d.ParentId,
                    p.Name AS ParentName, d.SortOrder,
-                   d.CanViewSiblings, d.CanSeeAll, d.CanViewDescendants,
+                   d.CanViewSiblings, d.CanSeeAll, d.CanViewDescendants, d.CanViewParent,
                    d.CreatedAt,
                    COUNT(u.Id) AS EmployeeCount
             FROM Departments d
             LEFT JOIN Departments p ON d.ParentId = p.Id
             LEFT JOIN Users u       ON u.DepartmentId = d.Id
             GROUP BY d.Id, d.Name, d.Code, d.Description, d.ParentId, p.Name, d.SortOrder,
-                     d.CanViewSiblings, d.CanSeeAll, d.CanViewDescendants, d.CreatedAt
+                     d.CanViewSiblings, d.CanSeeAll, d.CanViewDescendants, d.CanViewParent, d.CreatedAt
             ORDER BY d.SortOrder, d.Name
             """;
 
@@ -35,6 +35,7 @@ public sealed class DepartmentReadService(IDbConnection db) : IDepartmentReadSer
             (bool)row.CanViewSiblings,
             (bool)row.CanSeeAll,
             (bool)row.CanViewDescendants,
+            (bool)row.CanViewParent,
             (int)row.EmployeeCount,
             (DateTime)row.CreatedAt));
     }
@@ -44,7 +45,7 @@ public sealed class DepartmentReadService(IDbConnection db) : IDepartmentReadSer
         const string sql = """
             SELECT d.Id, d.Name, d.Code, d.Description, d.ParentId,
                    p.Name AS ParentName, d.SortOrder,
-                   d.CanViewSiblings, d.CanSeeAll, d.CanViewDescendants,
+                   d.CanViewSiblings, d.CanSeeAll, d.CanViewDescendants, d.CanViewParent,
                    d.CreatedAt,
                    COUNT(u.Id) AS EmployeeCount
             FROM Departments d
@@ -52,7 +53,7 @@ public sealed class DepartmentReadService(IDbConnection db) : IDepartmentReadSer
             LEFT JOIN Users u       ON u.DepartmentId = d.Id
             WHERE d.Id = @Id
             GROUP BY d.Id, d.Name, d.Code, d.Description, d.ParentId, p.Name, d.SortOrder,
-                     d.CanViewSiblings, d.CanSeeAll, d.CanViewDescendants, d.CreatedAt
+                     d.CanViewSiblings, d.CanSeeAll, d.CanViewDescendants, d.CanViewParent, d.CreatedAt
             """;
 
         var row = await db.QueryFirstOrDefaultAsync<dynamic>(sql, new { Id = id });
@@ -69,6 +70,7 @@ public sealed class DepartmentReadService(IDbConnection db) : IDepartmentReadSer
             (bool)row.CanViewSiblings,
             (bool)row.CanSeeAll,
             (bool)row.CanViewDescendants,
+            (bool)row.CanViewParent,
             (int)row.EmployeeCount,
             (DateTime)row.CreatedAt);
     }

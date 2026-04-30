@@ -11,7 +11,8 @@ namespace Jabez.Api.Services;
 /// 3. 其他員工 → 自己部門
 ///    + 若 CanViewSiblings=true 加同 ParentId 兄弟部門
 ///    + 若 CanViewDescendants=true 加所有遞迴下層子部門
-/// 兩個 (sibling / descendants) 旗標可同時生效，採聯集。
+///    + 若 CanViewParent=true 加直接父部門（不遞迴祖先）
+/// 三個 (sibling / descendants / parent) 旗標可同時生效，採聯集。
 /// </summary>
 public sealed class ProjectAccessResolver(AppDbContext db) : IProjectAccessResolver
 {
@@ -28,7 +29,7 @@ public sealed class ProjectAccessResolver(AppDbContext db) : IProjectAccessResol
         var self = await db.Departments
             .AsNoTracking()
             .Where(d => d.Id == deptId)
-            .Select(d => new { d.Id, d.ParentId, d.CanSeeAll, d.CanViewSiblings, d.CanViewDescendants })
+            .Select(d => new { d.Id, d.ParentId, d.CanSeeAll, d.CanViewSiblings, d.CanViewDescendants, d.CanViewParent })
             .FirstOrDefaultAsync();
 
         if (self is null)
@@ -56,6 +57,10 @@ public sealed class ProjectAccessResolver(AppDbContext db) : IProjectAccessResol
             foreach (var d in await GetDescendantIdsAsync(self.Id))
                 allowed.Add(d);
         }
+
+        // CanViewParent：加直接父部門（不遞迴祖先）。頂層部門 (ParentId=null) 啟用此旗標時不擴展。
+        if (self.CanViewParent && self.ParentId is int directParentId)
+            allowed.Add(directParentId);
 
         return new ProjectAccessScope(false, [.. allowed]);
     }

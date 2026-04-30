@@ -50,6 +50,7 @@ public sealed class DepartmentHandler(AppDbContext db, IDepartmentReadService re
             CanViewSiblings    = body.CanViewSiblings,
             CanSeeAll          = body.CanSeeAll,
             CanViewDescendants = body.CanViewDescendants,
+            CanViewParent      = body.CanViewParent,
             CreatedAt          = Clock.Now,
         };
         db.Departments.Add(dept);
@@ -79,6 +80,7 @@ public sealed class DepartmentHandler(AppDbContext db, IDepartmentReadService re
         if (body.CanViewSiblings.HasValue)      dept.CanViewSiblings    = body.CanViewSiblings.Value;
         if (body.CanSeeAll.HasValue)            dept.CanSeeAll          = body.CanSeeAll.Value;
         if (body.CanViewDescendants.HasValue)   dept.CanViewDescendants = body.CanViewDescendants.Value;
+        if (body.CanViewParent.HasValue)        dept.CanViewParent      = body.CanViewParent.Value;
 
         await db.SaveChangesAsync();
 

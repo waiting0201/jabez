@@ -47,7 +47,7 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
     }
 
     public async Task<PagedResult<AttendanceRecordDto>> GetPagedAsync(ProjectAccessScope scope, int page, int pageSize,
-        Guid? employeeId = null, int? year = null, int? month = null)
+        Guid? employeeId = null, DateOnly? dateFrom = null, DateOnly? dateTo = null)
     {
         var where = new StringBuilder();
         var parameters = new DynamicParameters();
@@ -62,16 +62,17 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
             parameters.Add("EmployeeId", employeeId.Value);
         }
 
-        if (year.HasValue)
+        // a.RecordDate 為 DATE 型別，inclusive 兩端皆可
+        if (dateFrom.HasValue)
         {
-            where.Append(" AND YEAR(a.RecordDate) = @Year");
-            parameters.Add("Year", year.Value);
+            where.Append(" AND a.RecordDate >= @DateFrom");
+            parameters.Add("DateFrom", dateFrom.Value.ToDateTime(TimeOnly.MinValue));
         }
 
-        if (month.HasValue)
+        if (dateTo.HasValue)
         {
-            where.Append(" AND MONTH(a.RecordDate) = @Month");
-            parameters.Add("Month", month.Value);
+            where.Append(" AND a.RecordDate <= @DateTo");
+            parameters.Add("DateTo", dateTo.Value.ToDateTime(TimeOnly.MinValue));
         }
 
         var whereClause = where.Length > 0 ? " WHERE 1=1" + where : "";

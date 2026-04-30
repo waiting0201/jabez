@@ -15,13 +15,13 @@ public sealed class PaymentReportHandler(IPaymentReportReadService reader, IProj
     {
         int page     = int.TryParse(req.Query["page"],     out var p)  ? Math.Max(1, p)         : 1;
         int pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, 100) : 20;
-        int? year    = int.TryParse(req.Query["year"],  out var y) ? y : null;
-        int? month   = int.TryParse(req.Query["month"], out var m) ? m : null;
+        DateOnly? dateFrom = DateOnly.TryParse(req.Query["dateFrom"], out var df) ? df : null;
+        DateOnly? dateTo   = DateOnly.TryParse(req.Query["dateTo"],   out var dt) ? dt : null;
         string? paymentStatus = req.Query["paymentStatus"];
         if (string.IsNullOrEmpty(paymentStatus)) paymentStatus = null;
 
         var scope = await access.ResolveAsync(req.HttpContext.User);
-        var result = await reader.GetPagedAsync(scope, page, pageSize, year, month, paymentStatus);
+        var result = await reader.GetPagedAsync(scope, page, pageSize, dateFrom, dateTo, paymentStatus);
         return new OkObjectResult(ApiResponse.Ok(result));
     }
 }

@@ -9,5 +9,5 @@ public interface IPaymentReportReadService
     Task<PagedResult<PaymentReportDto>> GetPagedAsync(
         ProjectAccessScope scope,
         int page, int pageSize,
-        int? year = null, int? month = null, string? paymentStatus = null);
+        DateOnly? dateFrom = null, DateOnly? dateTo = null, string? paymentStatus = null);
 }

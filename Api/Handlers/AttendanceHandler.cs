@@ -30,12 +30,12 @@ public sealed class AttendanceHandler(
         int page     = int.TryParse(req.Query["page"],     out var p)  ? Math.Max(1, p)         : 1;
         int pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, 100) : 20;
 
-        Guid? employeeId = Guid.TryParse(req.Query["employeeId"], out var eid) ? eid : null;
-        int? year        = int.TryParse(req.Query["year"],  out var y) ? y : null;
-        int? month       = int.TryParse(req.Query["month"], out var m) ? m : null;
+        Guid? employeeId   = Guid.TryParse(req.Query["employeeId"], out var eid) ? eid : null;
+        DateOnly? dateFrom = DateOnly.TryParse(req.Query["dateFrom"], out var df) ? df : null;
+        DateOnly? dateTo   = DateOnly.TryParse(req.Query["dateTo"],   out var dt) ? dt : null;
 
         var scope = await access.ResolveAsync(req.HttpContext.User);
-        var result = await reader.GetPagedAsync(scope, page, pageSize, employeeId, year, month);
+        var result = await reader.GetPagedAsync(scope, page, pageSize, employeeId, dateFrom, dateTo);
         return new OkObjectResult(ApiResponse.Ok(result));
     }
 

@@ -503,12 +503,22 @@ public async Task<HttpResponseData> Run(
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/attendances` | 出勤紀錄列表（分頁，套用部門可見性 scope） |
+| GET | `/attendances` | 出勤紀錄列表（分頁，套用部門可見性 scope；支援 `?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD` 區間篩選，前端依「日 / 週 / 月」模式換算） |
 | GET | `/attendances/today` | 今日打卡紀錄（當前使用者） |
 | POST | `/attendances/clock-in` | 上班打卡（含 GPS） |
 | POST | `/attendances/clock-out` | 下班打卡（含 GPS） |
 | POST | `/attendances/overtime-start` | 加班開始打卡（需核准的加班申請） |
 | POST | `/attendances/overtime-end` | 加班結束打卡 |
+
+#### 報表（Reports）
+
+三個報表（出缺勤、加班、請款）共用「日 / 週 / 月」三選一時段模式。前端 segmented control 切換模式後，依使用者輸入計算 `dateFrom` / `dateTo`（皆 `YYYY-MM-DD`，inclusive）送出；後端統一接 `dateFrom` / `dateTo`（取代舊有的 `year` / `month`）。週為 ISO 8601（週一→週日），共用工具於 [Admin/src/app/features/admin/reports/utils/date-range.ts](Admin/src/app/features/admin/reports/utils/date-range.ts)。
+
+| Method | Path | 說明 |
+|--------|------|------|
+| GET | `/attendances` | 出缺勤紀錄列表（共用上方出勤打卡端點，篩選參數：`employeeId / dateFrom / dateTo`） |
+| GET | `/reports/overtime` | 加班紀錄報表（已核准的加班申請 + 實際打卡時數，篩選參數：`employeeId / projectId / dateFrom / dateTo`） |
+| GET | `/reports/payment` | 請款統計報表（已送出的請款申請，篩選參數：`dateFrom / dateTo / paymentStatus`；`pr.CreatedAt` 為 DATETIME，`dateTo` 用 `< DATEADD(day, 1, @DateTo)` 半開區間涵蓋當日 23:59:59） |
 
 #### 打卡提醒（手動觸發 + 紀錄查詢，僅 Superadmin）
 
@@ -591,7 +601,7 @@ dotnet ef database update               # 套用 Migration
 | `UserRole` | 使用者 ↔ 角色（Junction） |
 | `RolePermission` | 角色 ↔ 權限（Junction） |
 | `RefreshToken` | Refresh Token 儲存 |
-| `Department` | 部門主檔（含 ParentId 階層、**CanViewSiblings 同層兄弟部門可見旗標**） |
+| `Department` | 部門主檔（含 ParentId 階層、**CanSeeAll / CanViewSiblings / CanViewDescendants / CanViewParent 四個可見性旗標**） |
 | `JobTitle` | 職稱主檔 |
 | `ApprovalItem` | 簽核流程項目 |
 | `ApprovalStep` | 簽核流程步驟（含 UseDirectSupervisor、UseApplicantDesignated） |
@@ -902,13 +912,15 @@ draft → pending → approved / returned / rejected
 |---|---|---|
 | 1 | Superadmin | 全部 |
 | 2 | `Department.CanSeeAll = true` 的部門成員 | 全部 |
-| 3 | 一般員工 | 自己部門；若 `CanViewSiblings = true` 加同 ParentId 兄弟部門；若 `CanViewDescendants = true` 加所有遞迴下層子部門 |
+| 3 | 一般員工 | 自己部門；若 `CanViewSiblings = true` 加同 ParentId 兄弟部門；若 `CanViewDescendants = true` 加所有遞迴下層子部門；若 `CanViewParent = true` 加直接父部門（不遞迴祖先） |
 
 > **設計決策（CanSeeAll）**：原本 Rule 2 以寫死的 `DepartmentCodes.FinancialAndAbove`（`AC` / `FIN` / `Jabez HQ` / `CEO`）字串集合判定，2026-04 改為由 `Department.CanSeeAll` 旗標驅動，避免部門代碼變動時必須改程式重新部署。Migration `AddDepartmentVisibilityFlags` 已對既有 4 個財務 / 管理 / 總監部門 seed `CanSeeAll = 1`，行為不變。`DepartmentCodes.FinancialAndAbove` 常數**保留**供「撥款 / 退款 / 結案 / 批次核准」等業務操作權限使用（與可見性 SeeAll 屬不同概念）。
 >
 > **設計決策（CanViewSiblings）**：只擴及**同層兄弟部門**，**父部門本身不可見**。父部門通常是管理單位（如總監室），其專案屬於管理層級資料，不應對下層子部門開放。
 >
 > **設計決策（CanViewDescendants）**：擴及**本部門 + 所有遞迴後代部門**，可與 `CanViewSiblings` 併用（聯集 = 同層兄弟 ∪ 所有下層）。實作採記憶體 DFS 遍歷（`ProjectAccessResolver.GetDescendantIdsAsync`），避免引入 SQL CTE；部門表筆數小成本可接受。
+>
+> **設計決策（CanViewParent）**：只擴及**直接父部門**（`ParentId` 指到的那一個），**不遞迴向上找祖先**。理由：與「同層兄弟（一層）」對稱，避免基層員工意外看到 CEO/總監室層級的資料；若未來需要遞迴祖先再開另一個旗標。頂層部門（`ParentId = null`）啟用此旗標時不擴展、不報錯。可與 `CanViewSiblings` / `CanViewDescendants` 任意組合，皆採聯集。Migration `AddCanViewParentToDepartment`（2026-04-30）僅新增欄位 default false，不 seed 任何部門。
 
 ### 套用端點
 
@@ -919,16 +931,16 @@ draft → pending → approved / returned / rejected
 - `GET /reports/project-water-level`（專案水位表）
 
 **過濾鍵：`User.DepartmentId`（員工 / 申請人歸屬部門）**
-- `GET /attendances`（出缺勤紀錄報表，JOIN `Users` 後過濾）
-- `GET /reports/overtime`（加班紀錄報表，JOIN `Users` 後過濾）
-- `GET /reports/payment`（請款統計報表，JOIN `Users` 後過濾）
+- `GET /attendances`（出缺勤紀錄報表，JOIN `Users` 後過濾；支援 `dateFrom / dateTo` 區間篩選）
+- `GET /reports/overtime`（加班紀錄報表，JOIN `Users` 後過濾；支援 `dateFrom / dateTo` 區間篩選）
+- `GET /reports/payment`（請款統計報表，JOIN `Users` 後過濾；支援 `dateFrom / dateTo` 區間篩選）
 - `GET /users/lookup?scope=department`（報表員工下拉，**不帶 `scope` 參數時維持原行為，回傳全公司**）
 
 ### 前置必要條件（資料完整性）
 
 - `Project.DepartmentId` 必填（DB NOT NULL + 前後端驗證；FK `DeleteBehavior.Restrict`）
 - `User.DepartmentId` 必填（Superadmin 例外；前後端均驗證）
-- `Department.CanSeeAll` / `CanViewSiblings` / `CanViewDescendants` 預設皆 false，由部門 CRUD 頁維護
+- `Department.CanSeeAll` / `CanViewSiblings` / `CanViewDescendants` / `CanViewParent` 預設皆 false，由部門 CRUD 頁維護
 
 ### 涉及元件
 
@@ -937,6 +949,7 @@ draft → pending → approved / returned / rejected
 | `Department.CanSeeAll` | Entity 旗標，勾選後該部門成員擁有 SeeAll；取代原寫死的 `DepartmentCodes.FinancialAndAbove` 判定 |
 | `Department.CanViewSiblings` | Entity 旗標，勾選後可見同 ParentId 兄弟部門 |
 | `Department.CanViewDescendants` | Entity 旗標，勾選後可見本部門 + 所有遞迴下層子部門 |
+| `Department.CanViewParent` | Entity 旗標，勾選後可見直接父部門（不遞迴祖先）；頂層部門啟用時不擴展 |
 | `Api/Common/Constants.cs` `DepartmentCodes.FinancialAndAbove` | 財務體系部門 Code 集合，**僅供「撥款 / 退款 / 結案 / 批次核准」業務操作權限使用**，不再參與可見性判定 |
 | `Api/Services/IProjectAccessResolver` + `ProjectAccessResolver` | 解析 ClaimsPrincipal + DB 旗標 → `ProjectAccessScope(SeeAll, AllowedDepartmentIds)` |
 | `ProjectAccessResolver.GetDescendantIdsAsync` | 載入全部 Departments 後在記憶體 DFS 遍歷取得遞迴後代 Id；含 visited HashSet 防呆循環依賴 |
@@ -950,7 +963,7 @@ draft → pending → approved / returned / rejected
 | `Api/Handlers/ProjectWaterLevelHandler` | GET 先呼叫 resolver 取 scope 再傳給 reader |
 | `Api/Handlers/AttendanceHandler` / `OvertimeReportHandler` / `PaymentReportHandler` | GET 先呼叫 resolver 取 scope 再傳給 reader |
 | `Api/Handlers/UserHandler.GetLookupAsync` | 接 `?scope=department` 時呼叫 `reader.GetLookupAsync(scope)`；不帶參數維持原行為 |
-| JWT `department_id` claim | Resolver 用以查詢該部門所有可見性旗標（CanSeeAll / CanViewSiblings / CanViewDescendants）|
+| JWT `department_id` claim | Resolver 用以查詢該部門所有可見性旗標（CanSeeAll / CanViewSiblings / CanViewDescendants / CanViewParent）|
 | `Api/Routing/AppRouter` | JWT 驗證後將 principal 寫入 `HttpContext.User`，供 Handler 經 `IHttpContextAccessor` 取得 |
 
 ### 6 個申請表單的下拉空值提示

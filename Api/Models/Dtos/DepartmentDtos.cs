@@ -11,6 +11,7 @@ public sealed record DepartmentDto(
     bool     CanViewSiblings,
     bool     CanSeeAll,
     bool     CanViewDescendants,
+    bool     CanViewParent,
     int      EmployeeCount,
     DateTime CreatedAt);
 
@@ -22,7 +23,8 @@ public sealed record CreateDepartmentRequest(
     int     SortOrder          = 0,
     bool    CanViewSiblings    = false,
     bool    CanSeeAll          = false,
-    bool    CanViewDescendants = false);
+    bool    CanViewDescendants = false,
+    bool    CanViewParent      = false);
 
 public sealed record UpdateDepartmentRequest(
     string?  Name,
@@ -32,4 +34,5 @@ public sealed record UpdateDepartmentRequest(
     int?     SortOrder,
     bool?    CanViewSiblings,
     bool?    CanSeeAll,
-    bool?    CanViewDescendants);
+    bool?    CanViewDescendants,
+    bool?    CanViewParent);

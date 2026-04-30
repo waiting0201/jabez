@@ -50,7 +50,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
     public async Task<PagedResult<PaymentReportDto>> GetPagedAsync(
         ProjectAccessScope scope,
         int page, int pageSize,
-        int? year = null, int? month = null, string? paymentStatus = null)
+        DateOnly? dateFrom = null, DateOnly? dateTo = null, string? paymentStatus = null)
     {
         // 排除草稿狀態的基礎 WHERE，僅回傳已送出的申請
         var where = new StringBuilder(" WHERE pr.ApprovalStatus != 'draft'");
@@ -60,16 +60,17 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
 
         where.Append(BuildDeptScopeFilter(scope, parameters));
 
-        if (year.HasValue)
+        // pr.CreatedAt 為 DATETIME；dateFrom 從當日 00:00 起，dateTo 用半開區間涵蓋當日 23:59:59.999
+        if (dateFrom.HasValue)
         {
-            where.Append(" AND YEAR(pr.CreatedAt) = @Year");
-            parameters.Add("Year", year.Value);
+            where.Append(" AND pr.CreatedAt >= @DateFrom");
+            parameters.Add("DateFrom", dateFrom.Value.ToDateTime(TimeOnly.MinValue));
         }
 
-        if (month.HasValue)
+        if (dateTo.HasValue)
         {
-            where.Append(" AND MONTH(pr.CreatedAt) = @Month");
-            parameters.Add("Month", month.Value);
+            where.Append(" AND pr.CreatedAt < DATEADD(day, 1, @DateTo)");
+            parameters.Add("DateTo", dateTo.Value.ToDateTime(TimeOnly.MinValue));
         }
 
         // paymentStatus: 'paid' → PaidAt IS NOT NULL；'unpaid' → PaidAt IS NULL

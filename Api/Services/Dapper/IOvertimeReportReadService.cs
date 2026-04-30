@@ -7,5 +7,5 @@ namespace Jabez.Api.Services.Dapper;
 public interface IOvertimeReportReadService
 {
     Task<PagedResult<OvertimeReportDto>> GetPagedAsync(ProjectAccessScope scope, int page, int pageSize,
-        Guid? employeeId = null, int? projectId = null, int? year = null, int? month = null);
+        Guid? employeeId = null, int? projectId = null, DateOnly? dateFrom = null, DateOnly? dateTo = null);
 }

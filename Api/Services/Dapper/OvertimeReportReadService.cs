@@ -45,7 +45,7 @@ public sealed class OvertimeReportReadService(IDbConnection db) : IOvertimeRepor
     }
 
     public async Task<PagedResult<OvertimeReportDto>> GetPagedAsync(ProjectAccessScope scope, int page, int pageSize,
-        Guid? employeeId = null, int? projectId = null, int? year = null, int? month = null)
+        Guid? employeeId = null, int? projectId = null, DateOnly? dateFrom = null, DateOnly? dateTo = null)
     {
         var where = new StringBuilder(" WHERE o.ApprovalStatus = 'approved'");
         var parameters = new DynamicParameters();
@@ -67,16 +67,17 @@ public sealed class OvertimeReportReadService(IDbConnection db) : IOvertimeRepor
             parameters.Add("ProjectId", projectId.Value);
         }
 
-        if (year.HasValue)
+        // o.OvertimeDate 為 DATE 型別，inclusive 兩端皆可
+        if (dateFrom.HasValue)
         {
-            where.Append(" AND YEAR(o.OvertimeDate) = @Year");
-            parameters.Add("Year", year.Value);
+            where.Append(" AND o.OvertimeDate >= @DateFrom");
+            parameters.Add("DateFrom", dateFrom.Value.ToDateTime(TimeOnly.MinValue));
         }
 
-        if (month.HasValue)
+        if (dateTo.HasValue)
         {
-            where.Append(" AND MONTH(o.OvertimeDate) = @Month");
-            parameters.Add("Month", month.Value);
+            where.Append(" AND o.OvertimeDate <= @DateTo");
+            parameters.Add("DateTo", dateTo.Value.ToDateTime(TimeOnly.MinValue));
         }
 
         var whereClause = where.ToString();
