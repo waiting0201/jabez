@@ -9,6 +9,9 @@ public class User
     public string   Email        { get; set; } = string.Empty;
     public string   PasswordHash { get; set; } = string.Empty;
     public string?  Avatar              { get; set; }
+    public decimal  AvatarPositionX     { get; set; } = 50m;   // 頭像 X 位置（0-100%），預設 50 = 置中
+    public decimal  AvatarPositionY     { get; set; } = 50m;   // 頭像 Y 位置（0-100%），預設 50 = 置中
+    public decimal  AvatarScale         { get; set; } = 1m;    // 頭像縮放倍率（1.0-3.0），預設 1.0 = 無縮放
     public string?  SignatureUrl        { get; set; }
     public string?  IndigenousProofUrl  { get; set; }   // 原住民身份證明文件（圖或 PDF）
     public string    Status       { get; set; } = "active"; // "active" | "inactive"

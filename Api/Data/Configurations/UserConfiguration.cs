@@ -28,6 +28,18 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Avatar)
                .HasMaxLength(500);
 
+        builder.Property(u => u.AvatarPositionX)
+               .HasPrecision(5, 2)
+               .HasDefaultValue(50m);
+
+        builder.Property(u => u.AvatarPositionY)
+               .HasPrecision(5, 2)
+               .HasDefaultValue(50m);
+
+        builder.Property(u => u.AvatarScale)
+               .HasPrecision(3, 2)
+               .HasDefaultValue(1m);
+
         builder.Property(u => u.SignatureUrl)
                .HasMaxLength(500);
 

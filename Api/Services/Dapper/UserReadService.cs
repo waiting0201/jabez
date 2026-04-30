@@ -25,6 +25,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.IsIndigenous,
                 u.IndigenousProofUrl,
                 u.LineUserId, u.LineLinkedAt,
+                u.AvatarPositionX, u.AvatarPositionY, u.AvatarScale,
                 r.Id AS RoleId
             FROM Users u
             LEFT JOIN UserRoles ur  ON u.Id = ur.UserId
@@ -49,6 +50,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             bool IsIndigenous,
             string? IndigenousProofUrl,
             string? LineUserId, DateTime? LineLinkedAt,
+            decimal AvatarPositionX, decimal AvatarPositionY, decimal AvatarScale,
             DateTime CreatedAt, List<string> RoleIds)>();
 
         foreach (var row in rows)
@@ -67,6 +69,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     (bool)row.IsIndigenous,
                     (string?)row.IndigenousProofUrl,
                     (string?)row.LineUserId, (DateTime?)row.LineLinkedAt,
+                    (decimal)row.AvatarPositionX, (decimal)row.AvatarPositionY, (decimal)row.AvatarScale,
                     (DateTime)row.CreatedAt, []);
 
             if (row.RoleId is not null)
@@ -86,7 +89,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.CreatedAt,
             kv.Value.IsIndigenous,
             kv.Value.LineUserId, kv.Value.LineLinkedAt,
-            kv.Value.IndigenousProofUrl));
+            kv.Value.IndigenousProofUrl,
+            kv.Value.AvatarPositionX, kv.Value.AvatarPositionY, kv.Value.AvatarScale));
     }
 
     /// <summary>輕量級使用者清單（供指定審核者下拉選單，不需 users:read 權限）</summary>
@@ -141,6 +145,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.IsIndigenous,
                 u.IndigenousProofUrl,
                 u.LineUserId, u.LineLinkedAt,
+                u.AvatarPositionX, u.AvatarPositionY, u.AvatarScale,
                 r.Id AS RoleId
             FROM Users u
             INNER JOIN PagedIds pid ON u.Id = pid.Id
@@ -166,6 +171,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             bool IsIndigenous,
             string? IndigenousProofUrl,
             string? LineUserId, DateTime? LineLinkedAt,
+            decimal AvatarPositionX, decimal AvatarPositionY, decimal AvatarScale,
             DateTime CreatedAt, List<string> RoleIds)>();
 
         foreach (var row in rows)
@@ -184,6 +190,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     (bool)row.IsIndigenous,
                     (string?)row.IndigenousProofUrl,
                     (string?)row.LineUserId, (DateTime?)row.LineLinkedAt,
+                    (decimal)row.AvatarPositionX, (decimal)row.AvatarPositionY, (decimal)row.AvatarScale,
                     (DateTime)row.CreatedAt, []);
 
             if (row.RoleId is not null)
@@ -203,7 +210,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.CreatedAt,
             kv.Value.IsIndigenous,
             kv.Value.LineUserId, kv.Value.LineLinkedAt,
-            kv.Value.IndigenousProofUrl));
+            kv.Value.IndigenousProofUrl,
+            kv.Value.AvatarPositionX, kv.Value.AvatarPositionY, kv.Value.AvatarScale));
 
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
         return new PagedResult<UserDto>(items, total, page, pageSize, Math.Max(1, totalPages));
@@ -223,6 +231,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.IsIndigenous,
                 u.IndigenousProofUrl,
                 u.LineUserId, u.LineLinkedAt,
+                u.AvatarPositionX, u.AvatarPositionY, u.AvatarScale,
                 r.Id AS RoleId
             FROM Users u
             LEFT JOIN UserRoles ur  ON u.Id = ur.UserId
@@ -253,7 +262,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 (DateTime)row.CreatedAt,
                 (bool)row.IsIndigenous,
                 (string?)row.LineUserId, (DateTime?)row.LineLinkedAt,
-                (string?)row.IndigenousProofUrl);
+                (string?)row.IndigenousProofUrl,
+                (decimal)row.AvatarPositionX, (decimal)row.AvatarPositionY, (decimal)row.AvatarScale);
 
             if (row.RoleId is not null)
                 roleIds.Add((string)row.RoleId);

@@ -17,7 +17,10 @@ public interface IJwtService
         string?             departmentCode = null,
         int?                departmentId = null,
         int?                jobTitleLevel = null,
-        string?             avatar = null);
+        string?             avatar = null,
+        decimal?            avatarPositionX = null,
+        decimal?            avatarPositionY = null,
+        decimal?            avatarScale = null);
 
     /// <summary>產生 Refresh Token（隨機不透明字串）。</summary>
     string GenerateRefreshToken();

@@ -43,7 +43,10 @@ public sealed class JwtService : IJwtService
         string?             departmentCode = null,
         int?                departmentId = null,
         int?                jobTitleLevel = null,
-        string?             avatar = null)
+        string?             avatar = null,
+        decimal?            avatarPositionX = null,
+        decimal?            avatarPositionY = null,
+        decimal?            avatarScale = null)
     {
         var claims = new List<Claim>
         {
@@ -80,6 +83,14 @@ public sealed class JwtService : IJwtService
         // 頭像 — Angular JWT decode reads payload.avatar（topbar profile dropdown 顯示）
         if (!string.IsNullOrEmpty(avatar))
             claims.Add(new Claim("avatar", avatar));
+
+        // 頭像位置 / 縮放 — 僅在非預設值時加入 claim 以節省 token byte
+        if (avatarPositionX.HasValue && avatarPositionX.Value != 50m)
+            claims.Add(new Claim("avatar_x", avatarPositionX.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        if (avatarPositionY.HasValue && avatarPositionY.Value != 50m)
+            claims.Add(new Claim("avatar_y", avatarPositionY.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        if (avatarScale.HasValue && avatarScale.Value != 1m)
+            claims.Add(new Claim("avatar_scale", avatarScale.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
         // Roles — Angular JWT decode reads payload.roles[]
         foreach (var role in roleIds)

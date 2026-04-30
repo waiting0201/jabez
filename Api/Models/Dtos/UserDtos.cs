@@ -25,7 +25,10 @@ public sealed record UserDto(
     bool      IsIndigenous = false,
     string?   LineUserId   = null,
     DateTime? LineLinkedAt  = null,
-    string?   IndigenousProofUrl = null);
+    string?   IndigenousProofUrl = null,
+    decimal   AvatarPositionX = 50m,
+    decimal   AvatarPositionY = 50m,
+    decimal   AvatarScale     = 1m);
 
 public sealed record CreateUserRequest(
     string    Name,

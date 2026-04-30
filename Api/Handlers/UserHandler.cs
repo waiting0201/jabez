@@ -140,6 +140,26 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             await blob.DeleteAsync(container, oldBlobName);
     }
 
+    /// <summary>解析 avatar 位置百分比（0-100），失敗或缺值時回傳 fallback。</summary>
+    private static decimal ParseAvatarPosition(Microsoft.Extensions.Primitives.StringValues raw, decimal fallback)
+    {
+        var text = raw.ToString();
+        if (string.IsNullOrEmpty(text)) return fallback;
+        if (!decimal.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v))
+            return fallback;
+        return Math.Clamp(v, 0m, 100m);
+    }
+
+    /// <summary>解析 avatar 縮放倍率（1.0-3.0），失敗或缺值時回傳 fallback。</summary>
+    private static decimal ParseAvatarScale(Microsoft.Extensions.Primitives.StringValues raw, decimal fallback)
+    {
+        var text = raw.ToString();
+        if (string.IsNullOrEmpty(text)) return fallback;
+        if (!decimal.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v))
+            return fallback;
+        return Math.Clamp(v, 1m, 3m);
+    }
+
     private Task<string?> HandleSignatureUploadAsync(IFormFileCollection files, Guid userId, string? existingUrl)
         => HandleFileUploadAsync(files, "signature", SignatureContainer, AllowedSignatureTypes,
             "僅支援 PNG、JPEG、GIF、WebP 圖片格式。", userId, existingUrl);
@@ -210,6 +230,9 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             AgentUserId   = Guid.TryParse(form["agentUserId"], out var aid) && aid != Guid.Empty ? aid : null,
             Birthday     = birthday,
             IsIndigenous = form["isIndigenous"] == "true",
+            AvatarPositionX = ParseAvatarPosition(form["avatarPositionX"], 50m),
+            AvatarPositionY = ParseAvatarPosition(form["avatarPositionY"], 50m),
+            AvatarScale     = ParseAvatarScale(form["avatarScale"], 1m),
             CreatedAt    = Clock.Now,
             UpdatedAt    = Clock.Now,
         };
@@ -310,11 +333,23 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         {
             await DeleteBlobByUrlAsync(AvatarContainer, user.Avatar);
             user.Avatar = null;
+            // 沒頭像就沒位置概念，重置為預設值
+            user.AvatarPositionX = 50m;
+            user.AvatarPositionY = 50m;
+            user.AvatarScale     = 1m;
         }
         else
         {
             user.Avatar = await HandleAvatarUploadAsync(form.Files, guid, user.Avatar);
         }
+
+        // 頭像位置 / 縮放（更換頭像時不重置，保留使用者上次調整）
+        if (form.ContainsKey("avatarPositionX"))
+            user.AvatarPositionX = ParseAvatarPosition(form["avatarPositionX"], user.AvatarPositionX);
+        if (form.ContainsKey("avatarPositionY"))
+            user.AvatarPositionY = ParseAvatarPosition(form["avatarPositionY"], user.AvatarPositionY);
+        if (form.ContainsKey("avatarScale"))
+            user.AvatarScale = ParseAvatarScale(form["avatarScale"], user.AvatarScale);
 
         // 處理原住民證明文件：
         // 1. 若 IsIndigenous 由 true → false：自動刪除證明檔
