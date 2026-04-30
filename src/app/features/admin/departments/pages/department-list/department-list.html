@@ -47,8 +47,14 @@
                 <td>
                   <div class="flex flex-wrap items-center gap-1">
                     <span class="badge bg-info">{{ dept.employeeCount }} 人</span>
+                    @if (dept.canSeeAll) {
+                      <span class="badge bg-primary" title="成員可見全公司所有部門資料">全部可見</span>
+                    }
                     @if (dept.canViewSiblings) {
-                      <span class="badge bg-success" title="成員可見同 ParentId 兄弟部門的專案">同層可見</span>
+                      <span class="badge bg-success" title="成員可見同 ParentId 兄弟部門資料">同層可見</span>
+                    }
+                    @if (dept.canViewDescendants) {
+                      <span class="badge bg-warning" title="成員可見此部門及所有遞迴下層子部門資料">下層可見</span>
                     }
                   </div>
                 </td>

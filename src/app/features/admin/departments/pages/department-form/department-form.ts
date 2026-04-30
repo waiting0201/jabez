@@ -22,12 +22,14 @@ export class DepartmentForm implements OnInit {
   errorMsg = signal('');
 
   form = this.fb.group({
-    name:            ['', Validators.required],
-    code:            [''],
-    description:     [''],
-    parentId:        [null as number | null],
-    sortOrder:       [0],
-    canViewSiblings: [false],
+    name:               ['', Validators.required],
+    code:               [''],
+    description:        [''],
+    parentId:           [null as number | null],
+    sortOrder:          [0],
+    canViewSiblings:    [false],
+    canSeeAll:          [false],
+    canViewDescendants: [false],
   });
 
   ngOnInit() {

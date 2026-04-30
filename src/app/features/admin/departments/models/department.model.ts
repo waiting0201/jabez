@@ -7,6 +7,8 @@ export interface Department {
   parentName?: string;
   sortOrder: number;
   canViewSiblings: boolean;
+  canSeeAll: boolean;
+  canViewDescendants: boolean;
   employeeCount: number;
   createdAt: Date;
 }

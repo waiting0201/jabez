@@ -60,14 +60,31 @@
             </div>
 
             <div class="mb-0">
-              <label class="form-label fw-500">專案可見性</label>
+              <label class="form-label fw-500">部門可見性</label>
+
+              <div class="form-check mt-1">
+                <input type="checkbox" class="form-check-input" id="canSeeAll" formControlName="canSeeAll">
+                <label class="form-check-label" for="canSeeAll">
+                  全部部門可見（SeeAll）
+                </label>
+              </div>
+              <div class="text-muted small mt-1 mb-2">勾選後此部門成員可見全公司資料；通常用於財務 / 管理 / 總監級單位。</div>
+
               <div class="form-check mt-1">
                 <input type="checkbox" class="form-check-input" id="canViewSiblings" formControlName="canViewSiblings">
                 <label class="form-check-label" for="canViewSiblings">
-                  同層部門可見（成員可在申請表單下拉看到同 ParentId 的兄弟部門專案）
+                  同層部門可見
                 </label>
               </div>
-              <div class="text-muted small mt-1">未勾選時，成員僅可見自己部門的專案。</div>
+              <div class="text-muted small mt-1 mb-2">勾選後可見同 ParentId 兄弟部門資料；可與「下層部門可見」併用。</div>
+
+              <div class="form-check mt-1">
+                <input type="checkbox" class="form-check-input" id="canViewDescendants" formControlName="canViewDescendants">
+                <label class="form-check-label" for="canViewDescendants">
+                  下層部門可見
+                </label>
+              </div>
+              <div class="text-muted small mt-1">勾選後可見此部門及所有遞迴下層子部門資料；可與「同層部門可見」併用。</div>
             </div>
 
           </div>
