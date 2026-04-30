@@ -5,7 +5,7 @@ import {HttpClient} from '@angular/common/http';
 import {DomSanitizer} from '@angular/platform-browser';
 import {environment} from '@/environments/environment';
 import {AttendanceService} from '@/app/features/dashboard/services/attendance.service';
-import {currentIsoWeek, dayToRange, FilterMode, isoWeekToRange, monthToRange} from '@/app/features/admin/reports/utils/date-range';
+import {dayToRange, FilterMode, monthToRange, shiftDateString, snapToIsoWeek, todayString} from '@/app/features/admin/reports/utils/date-range';
 import * as XLSX from 'xlsx';
 
 const LEAVE_TYPE_LABELS: Record<string, string> = {
@@ -61,8 +61,8 @@ export class AttendanceReport implements OnInit {
 
   /** 日模式：'YYYY-MM-DD' */
   selectedDate = signal('');
-  /** 週模式：'YYYY-Www'（瀏覽器原生 input[type=week] 格式） */
-  selectedWeek = signal('');
+  /** 週模式：'YYYY-MM-DD'（任一天，由系統 snap 到該週週一→週日） */
+  selectedWeekDate = signal('');
   /** 月模式：年 / 月 */
   selectedYear = signal('');
   selectedMonth = signal('');
@@ -102,14 +102,15 @@ export class AttendanceReport implements OnInit {
     this.selectedYear.set(String(currentYear));
     this.selectedMonth.set(String(now.getMonth() + 1));
     // 預先填入日 / 週 預設值，使用者切換模式即可使用
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    this.selectedDate.set(`${y}-${m}-${d}`);
-    this.selectedWeek.set(currentIsoWeek(now));
+    const today = todayString(now);
+    this.selectedDate.set(today);
+    this.selectedWeekDate.set(today);
     this.loadEmployees();
     this.search();
   }
+
+  /** 週模式 snap 結果（含週號 / 起訖日），供 UI 顯示「W18：04/27 ~ 05/03」 */
+  weekRange = computed(() => snapToIsoWeek(this.selectedWeekDate()));
 
   /** 依 filterMode 計算 dateFrom/dateTo（回傳 null 代表使用者尚未選擇日期/週） */
   private computeDateRange(): { dateFrom: string; dateTo: string } | null {
@@ -118,7 +119,8 @@ export class AttendanceReport implements OnInit {
       return dayToRange(this.selectedDate());
     }
     if (mode === 'week') {
-      return isoWeekToRange(this.selectedWeek());
+      const r = this.weekRange();
+      return r ? { dateFrom: r.dateFrom, dateTo: r.dateTo } : null;
     }
     // month
     const year = Number(this.selectedYear());
@@ -127,11 +129,26 @@ export class AttendanceReport implements OnInit {
     return monthToRange(year, month);
   }
 
+  /** 上 / 下週切換：將 selectedWeekDate 加減 7 天 */
+  shiftWeek(days: number) {
+    const cur = this.selectedWeekDate();
+    if (!cur) return;
+    this.selectedWeekDate.set(shiftDateString(cur, days));
+  }
+
+  /** 重置為本週 */
+  resetToThisWeek() {
+    this.selectedWeekDate.set(todayString());
+  }
+
   /** 匯出檔名後綴：依 mode 給友善字串 */
   private exportSuffix(): string {
     const mode = this.filterMode();
     if (mode === 'day') return this.selectedDate() || '全部';
-    if (mode === 'week') return this.selectedWeek() || '全部';
+    if (mode === 'week') {
+      const r = this.weekRange();
+      return r ? `${r.isoYear}-W${String(r.weekNumber).padStart(2, '0')}` : '全部';
+    }
     const year = this.selectedYear() || '全部';
     const month = this.selectedMonth() || '全部';
     return `${year}-${String(month).padStart(2, '0')}`;

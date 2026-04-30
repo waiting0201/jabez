@@ -60,7 +60,7 @@ export function dayToRange(dateStr: string): DateRange | null {
   return { dateFrom: dateStr, dateTo: dateStr };
 }
 
-/** 取得本週的 ISO 週字串（'YYYY-Www'），用於進頁時預設值 */
+/** 取得本週的 ISO 週字串（'YYYY-Www'），用於進頁時預設值（保留向後相容） */
 export function currentIsoWeek(d: Date = new Date()): string {
   const target = new Date(d);
   // 推進到本週四（ISO 週號以週四所屬年份為準）
@@ -70,4 +70,45 @@ export function currentIsoWeek(d: Date = new Date()): string {
   const yearStart = new Date(year, 0, 1);
   const week = Math.ceil(((target.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
   return `${year}-W${String(week).padStart(2, '0')}`;
+}
+
+/** 'YYYY-MM-DD' 解析為本地時區 Date（避免 'YYYY-MM-DD' 直接被當 UTC） */
+function parseLocalDate(s: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/**
+ * 取使用者挑選的任一天，snap 到該天所屬 ISO 週的週一 ~ 週日，並回傳 ISO 週號 / 年。
+ * 範例：snapToIsoWeek('2026-04-30') → { dateFrom: '2026-04-27', dateTo: '2026-05-03', weekNumber: 18, isoYear: 2026 }
+ */
+export function snapToIsoWeek(dateStr: string): (DateRange & { weekNumber: number; isoYear: number }) | null {
+  const d = parseLocalDate(dateStr);
+  if (!d) return null;
+  const dow = d.getDay() === 0 ? 7 : d.getDay();
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - (dow - 1));
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  // ISO 週號：以該週週四所屬年份為基準
+  const thursday = new Date(monday);
+  thursday.setDate(monday.getDate() + 3);
+  const isoYear = thursday.getFullYear();
+  const yearStart = new Date(isoYear, 0, 1);
+  const weekNumber = Math.ceil(((thursday.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return { dateFrom: fmt(monday), dateTo: fmt(sunday), weekNumber, isoYear };
+}
+
+/** 將 'YYYY-MM-DD' 加減 N 天後回傳新的 'YYYY-MM-DD'（本地時區） */
+export function shiftDateString(dateStr: string, days: number): string {
+  const d = parseLocalDate(dateStr);
+  if (!d) return dateStr;
+  d.setDate(d.getDate() + days);
+  return fmt(d);
+}
+
+/** 格式化今日為 'YYYY-MM-DD'（本地時區） */
+export function todayString(d: Date = new Date()): string {
+  return fmt(d);
 }

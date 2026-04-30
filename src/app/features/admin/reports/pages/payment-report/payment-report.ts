@@ -1,9 +1,9 @@
-import {Component, inject, OnInit, signal} from '@angular/core';
+import {Component, computed, inject, OnInit, signal} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {HttpClient} from '@angular/common/http';
 import {environment} from '@/environments/environment';
-import {currentIsoWeek, dayToRange, FilterMode, isoWeekToRange, monthToRange} from '@/app/features/admin/reports/utils/date-range';
+import {dayToRange, FilterMode, monthToRange, shiftDateString, snapToIsoWeek, todayString} from '@/app/features/admin/reports/utils/date-range';
 import * as XLSX from 'xlsx';
 
 const PAYMENT_TYPE_LABELS: Record<string, string> = {
@@ -47,7 +47,8 @@ export class PaymentReport implements OnInit {
   /** 時段模式：日 / 週 / 月（預設月）*/
   filterMode = signal<FilterMode>('month');
   selectedDate = signal('');
-  selectedWeek = signal('');
+  /** 週模式：'YYYY-MM-DD'（任一天，由系統 snap 到該週週一→週日） */
+  selectedWeekDate = signal('');
   selectedYear = signal('');
   selectedMonth = signal('');
 
@@ -77,28 +78,45 @@ export class PaymentReport implements OnInit {
     this.years.set([currentYear - 1, currentYear]);
     this.selectedYear.set(String(currentYear));
     this.selectedMonth.set(String(now.getMonth() + 1));
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    this.selectedDate.set(`${y}-${m}-${d}`);
-    this.selectedWeek.set(currentIsoWeek(now));
+    const today = todayString(now);
+    this.selectedDate.set(today);
+    this.selectedWeekDate.set(today);
     this.search();
   }
+
+  /** 週模式 snap 結果（含週號 / 起訖日） */
+  weekRange = computed(() => snapToIsoWeek(this.selectedWeekDate()));
 
   private computeDateRange(): { dateFrom: string; dateTo: string } | null {
     const mode = this.filterMode();
     if (mode === 'day') return dayToRange(this.selectedDate());
-    if (mode === 'week') return isoWeekToRange(this.selectedWeek());
+    if (mode === 'week') {
+      const r = this.weekRange();
+      return r ? { dateFrom: r.dateFrom, dateTo: r.dateTo } : null;
+    }
     const year = Number(this.selectedYear());
     const month = Number(this.selectedMonth());
     if (!year || !month) return null;
     return monthToRange(year, month);
   }
 
+  shiftWeek(days: number) {
+    const cur = this.selectedWeekDate();
+    if (!cur) return;
+    this.selectedWeekDate.set(shiftDateString(cur, days));
+  }
+
+  resetToThisWeek() {
+    this.selectedWeekDate.set(todayString());
+  }
+
   private exportSuffix(): string {
     const mode = this.filterMode();
     if (mode === 'day') return this.selectedDate() || '全部';
-    if (mode === 'week') return this.selectedWeek() || '全部';
+    if (mode === 'week') {
+      const r = this.weekRange();
+      return r ? `${r.isoYear}-W${String(r.weekNumber).padStart(2, '0')}` : '全部';
+    }
     const year = this.selectedYear() || '全部';
     const month = this.selectedMonth() || '全部';
     return `${year}-${String(month).padStart(2, '0')}`;

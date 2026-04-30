@@ -24714,23 +24714,6 @@ function fmt2(d) {
   const dd = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${dd}`;
 }
-function isoWeekToRange(weekStr) {
-  const match = /^(\d{4})-W(\d{2})$/.exec(weekStr);
-  if (!match)
-    return null;
-  const year = Number(match[1]);
-  const week = Number(match[2]);
-  if (week < 1 || week > 53)
-    return null;
-  const jan4 = new Date(year, 0, 4);
-  const jan4Dow = jan4.getDay() === 0 ? 7 : jan4.getDay();
-  const week1Monday = new Date(year, 0, 4 - (jan4Dow - 1));
-  const monday = new Date(week1Monday);
-  monday.setDate(week1Monday.getDate() + (week - 1) * 7);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  return { dateFrom: fmt2(monday), dateTo: fmt2(sunday) };
-}
 function monthToRange(year, month) {
   const first = new Date(year, month - 1, 1);
   const last = new Date(year, month, 0);
@@ -24741,14 +24724,37 @@ function dayToRange(dateStr) {
     return null;
   return { dateFrom: dateStr, dateTo: dateStr };
 }
-function currentIsoWeek(d = /* @__PURE__ */ new Date()) {
-  const target = new Date(d);
-  const dow = target.getDay() === 0 ? 7 : target.getDay();
-  target.setDate(target.getDate() + 4 - dow);
-  const year = target.getFullYear();
-  const yearStart = new Date(year, 0, 1);
-  const week = Math.ceil(((target.getTime() - yearStart.getTime()) / 864e5 + 1) / 7);
-  return `${year}-W${String(week).padStart(2, "0")}`;
+function parseLocalDate(s) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s))
+    return null;
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+function snapToIsoWeek(dateStr) {
+  const d = parseLocalDate(dateStr);
+  if (!d)
+    return null;
+  const dow = d.getDay() === 0 ? 7 : d.getDay();
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - (dow - 1));
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const thursday = new Date(monday);
+  thursday.setDate(monday.getDate() + 3);
+  const isoYear = thursday.getFullYear();
+  const yearStart = new Date(isoYear, 0, 1);
+  const weekNumber = Math.ceil(((thursday.getTime() - yearStart.getTime()) / 864e5 + 1) / 7);
+  return { dateFrom: fmt2(monday), dateTo: fmt2(sunday), weekNumber, isoYear };
+}
+function shiftDateString(dateStr, days2) {
+  const d = parseLocalDate(dateStr);
+  if (!d)
+    return dateStr;
+  d.setDate(d.getDate() + days2);
+  return fmt2(d);
+}
+function todayString(d = /* @__PURE__ */ new Date()) {
+  return fmt2(d);
 }
 
 // node_modules/xlsx/xlsx.mjs
@@ -45297,24 +45303,65 @@ function AttendanceReport_Conditional_34_Template(rf, ctx) {
     \u0275\u0275property("ngModel", ctx_r2.selectedDate());
   }
 }
+function AttendanceReport_Conditional_35_Conditional_11_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 38);
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const r_r5 = ctx;
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate3(" \u7B2C ", r_r5.weekNumber, " \u9031\uFF08", r_r5.dateFrom, " \u4E00 ~ ", r_r5.dateTo, " \u65E5\uFF09 ");
+  }
+}
 function AttendanceReport_Conditional_35_Template(rf, ctx) {
   if (rf & 1) {
     const _r4 = \u0275\u0275getCurrentView();
     \u0275\u0275elementStart(0, "div", 22)(1, "label", 18);
-    \u0275\u0275text(2, "\u9031\u6B21\uFF08\u9031\u4E00\u2192\u9031\u65E5\uFF09");
+    \u0275\u0275text(2, "\u9031\u6B21\uFF08\u6311\u4EFB\u4E00\u5929\u5373\u81EA\u52D5\u53D6\u6574\u9031\uFF09");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "input", 33);
-    \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_35_Template_input_ngModelChange_3_listener($event) {
+    \u0275\u0275elementStart(3, "div", 33)(4, "button", 34);
+    \u0275\u0275listener("click", function AttendanceReport_Conditional_35_Template_button_click_4_listener() {
       \u0275\u0275restoreView(_r4);
       const ctx_r2 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r2.selectedWeek.set($event));
+      return \u0275\u0275resetView(ctx_r2.shiftWeek(-7));
     });
+    \u0275\u0275text(5, "\u2039");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(6, "input", 35);
+    \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_35_Template_input_ngModelChange_6_listener($event) {
+      \u0275\u0275restoreView(_r4);
+      const ctx_r2 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r2.selectedWeekDate.set($event));
+    });
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "button", 36);
+    \u0275\u0275listener("click", function AttendanceReport_Conditional_35_Template_button_click_7_listener() {
+      \u0275\u0275restoreView(_r4);
+      const ctx_r2 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r2.shiftWeek(7));
+    });
+    \u0275\u0275text(8, "\u203A");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(9, "button", 37);
+    \u0275\u0275listener("click", function AttendanceReport_Conditional_35_Template_button_click_9_listener() {
+      \u0275\u0275restoreView(_r4);
+      const ctx_r2 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r2.resetToThisWeek());
+    });
+    \u0275\u0275text(10, "\u672C\u9031");
     \u0275\u0275elementEnd()();
+    \u0275\u0275conditionalCreate(11, AttendanceReport_Conditional_35_Conditional_11_Template, 2, 3, "div", 38);
+    \u0275\u0275elementEnd();
   }
   if (rf & 2) {
+    let tmp_2_0;
     const ctx_r2 = \u0275\u0275nextContext();
-    \u0275\u0275advance(3);
-    \u0275\u0275property("ngModel", ctx_r2.selectedWeek());
+    \u0275\u0275advance(6);
+    \u0275\u0275property("ngModel", ctx_r2.selectedWeekDate());
+    \u0275\u0275advance(5);
+    \u0275\u0275conditional((tmp_2_0 = ctx_r2.weekRange()) ? 11 : -1, tmp_2_0);
   }
 }
 function AttendanceReport_Conditional_36_For_7_Template(rf, ctx) {
@@ -45324,10 +45371,10 @@ function AttendanceReport_Conditional_36_For_7_Template(rf, ctx) {
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const y_r6 = ctx.$implicit;
-    \u0275\u0275property("value", y_r6);
+    const y_r7 = ctx.$implicit;
+    \u0275\u0275property("value", y_r7);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(y_r6);
+    \u0275\u0275textInterpolate(y_r7);
   }
 }
 function AttendanceReport_Conditional_36_For_15_Template(rf, ctx) {
@@ -45337,21 +45384,21 @@ function AttendanceReport_Conditional_36_For_15_Template(rf, ctx) {
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const m_r7 = ctx.$implicit;
-    \u0275\u0275property("value", m_r7);
+    const m_r8 = ctx.$implicit;
+    \u0275\u0275property("value", m_r8);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate1("", m_r7, "\u6708");
+    \u0275\u0275textInterpolate1("", m_r8, "\u6708");
   }
 }
 function AttendanceReport_Conditional_36_Template(rf, ctx) {
   if (rf & 1) {
-    const _r5 = \u0275\u0275getCurrentView();
+    const _r6 = \u0275\u0275getCurrentView();
     \u0275\u0275elementStart(0, "div")(1, "label", 18);
     \u0275\u0275text(2, "\u5E74\u4EFD");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "select", 19);
     \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_36_Template_select_ngModelChange_3_listener($event) {
-      \u0275\u0275restoreView(_r5);
+      \u0275\u0275restoreView(_r6);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.selectedYear.set($event));
     });
@@ -45365,7 +45412,7 @@ function AttendanceReport_Conditional_36_Template(rf, ctx) {
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(11, "select", 19);
     \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_36_Template_select_ngModelChange_11_listener($event) {
-      \u0275\u0275restoreView(_r5);
+      \u0275\u0275restoreView(_r6);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.selectedMonth.set($event));
     });
@@ -45389,146 +45436,146 @@ function AttendanceReport_Conditional_36_Template(rf, ctx) {
 }
 function AttendanceReport_For_66_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
-    const _r8 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 41);
+    const _r9 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 46);
     \u0275\u0275listener("click", function AttendanceReport_For_66_Conditional_11_Template_button_click_0_listener() {
-      \u0275\u0275restoreView(_r8);
-      const row_r9 = \u0275\u0275nextContext().$implicit;
+      \u0275\u0275restoreView(_r9);
+      const row_r10 = \u0275\u0275nextContext().$implicit;
       const ctx_r2 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r2.openMap("\u4E0A\u73ED\u6253\u5361", row_r9.clockInLatitude, row_r9.clockInLongitude));
+      return \u0275\u0275resetView(ctx_r2.openMap("\u4E0A\u73ED\u6253\u5361", row_r10.clockInLatitude, row_r10.clockInLongitude));
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 42);
-    \u0275\u0275element(2, "use", 43);
+    \u0275\u0275elementStart(1, "svg", 47);
+    \u0275\u0275element(2, "use", 48);
     \u0275\u0275elementEnd()();
   }
 }
 function AttendanceReport_For_66_Conditional_14_Template(rf, ctx) {
   if (rf & 1) {
-    const _r10 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 41);
+    const _r11 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 46);
     \u0275\u0275listener("click", function AttendanceReport_For_66_Conditional_14_Template_button_click_0_listener() {
-      \u0275\u0275restoreView(_r10);
-      const row_r9 = \u0275\u0275nextContext().$implicit;
+      \u0275\u0275restoreView(_r11);
+      const row_r10 = \u0275\u0275nextContext().$implicit;
       const ctx_r2 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r2.openMap("\u4E0B\u73ED\u6253\u5361", row_r9.clockOutLatitude, row_r9.clockOutLongitude));
+      return \u0275\u0275resetView(ctx_r2.openMap("\u4E0B\u73ED\u6253\u5361", row_r10.clockOutLatitude, row_r10.clockOutLongitude));
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 42);
-    \u0275\u0275element(2, "use", 43);
+    \u0275\u0275elementStart(1, "svg", 47);
+    \u0275\u0275element(2, "use", 48);
     \u0275\u0275elementEnd()();
   }
 }
 function AttendanceReport_For_66_Conditional_17_Template(rf, ctx) {
   if (rf & 1) {
-    const _r11 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 41);
+    const _r12 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 46);
     \u0275\u0275listener("click", function AttendanceReport_For_66_Conditional_17_Template_button_click_0_listener() {
-      \u0275\u0275restoreView(_r11);
-      const row_r9 = \u0275\u0275nextContext().$implicit;
+      \u0275\u0275restoreView(_r12);
+      const row_r10 = \u0275\u0275nextContext().$implicit;
       const ctx_r2 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r2.openMap("\u52A0\u73ED\u958B\u59CB", row_r9.overtimeStartLatitude, row_r9.overtimeStartLongitude));
+      return \u0275\u0275resetView(ctx_r2.openMap("\u52A0\u73ED\u958B\u59CB", row_r10.overtimeStartLatitude, row_r10.overtimeStartLongitude));
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 42);
-    \u0275\u0275element(2, "use", 43);
+    \u0275\u0275elementStart(1, "svg", 47);
+    \u0275\u0275element(2, "use", 48);
     \u0275\u0275elementEnd()();
   }
 }
 function AttendanceReport_For_66_Conditional_20_Template(rf, ctx) {
   if (rf & 1) {
-    const _r12 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 41);
+    const _r13 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 46);
     \u0275\u0275listener("click", function AttendanceReport_For_66_Conditional_20_Template_button_click_0_listener() {
-      \u0275\u0275restoreView(_r12);
-      const row_r9 = \u0275\u0275nextContext().$implicit;
+      \u0275\u0275restoreView(_r13);
+      const row_r10 = \u0275\u0275nextContext().$implicit;
       const ctx_r2 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r2.openMap("\u52A0\u73ED\u7D50\u675F", row_r9.overtimeEndLatitude, row_r9.overtimeEndLongitude));
+      return \u0275\u0275resetView(ctx_r2.openMap("\u52A0\u73ED\u7D50\u675F", row_r10.overtimeEndLatitude, row_r10.overtimeEndLongitude));
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 42);
-    \u0275\u0275element(2, "use", 43);
+    \u0275\u0275elementStart(1, "svg", 47);
+    \u0275\u0275element(2, "use", 48);
     \u0275\u0275elementEnd()();
   }
 }
 function AttendanceReport_For_66_Conditional_23_Template(rf, ctx) {
   if (rf & 1) {
-    const _r13 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 44);
+    const _r14 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 49);
     \u0275\u0275listener("click", function AttendanceReport_For_66_Conditional_23_Template_button_click_0_listener() {
-      \u0275\u0275restoreView(_r13);
-      const row_r9 = \u0275\u0275nextContext().$implicit;
+      \u0275\u0275restoreView(_r14);
+      const row_r10 = \u0275\u0275nextContext().$implicit;
       const ctx_r2 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r2.openEdit(row_r9));
+      return \u0275\u0275resetView(ctx_r2.openEdit(row_r10));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 7);
-    \u0275\u0275element(2, "use", 45);
+    \u0275\u0275element(2, "use", 50);
     \u0275\u0275elementEnd()();
   }
 }
 function AttendanceReport_For_66_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 34);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 39);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td", 35);
+    \u0275\u0275elementStart(3, "td", 40);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(5, "td", 29);
     \u0275\u0275text(6);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "td", 36);
+    \u0275\u0275elementStart(7, "td", 41);
     \u0275\u0275text(8);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(9, "td", 28);
     \u0275\u0275text(10);
-    \u0275\u0275conditionalCreate(11, AttendanceReport_For_66_Conditional_11_Template, 3, 0, "button", 37);
+    \u0275\u0275conditionalCreate(11, AttendanceReport_For_66_Conditional_11_Template, 3, 0, "button", 42);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(12, "td", 28);
     \u0275\u0275text(13);
-    \u0275\u0275conditionalCreate(14, AttendanceReport_For_66_Conditional_14_Template, 3, 0, "button", 37);
+    \u0275\u0275conditionalCreate(14, AttendanceReport_For_66_Conditional_14_Template, 3, 0, "button", 42);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(15, "td", 30);
     \u0275\u0275text(16);
-    \u0275\u0275conditionalCreate(17, AttendanceReport_For_66_Conditional_17_Template, 3, 0, "button", 37);
+    \u0275\u0275conditionalCreate(17, AttendanceReport_For_66_Conditional_17_Template, 3, 0, "button", 42);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(18, "td", 30);
     \u0275\u0275text(19);
-    \u0275\u0275conditionalCreate(20, AttendanceReport_For_66_Conditional_20_Template, 3, 0, "button", 37);
+    \u0275\u0275conditionalCreate(20, AttendanceReport_For_66_Conditional_20_Template, 3, 0, "button", 42);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(21, "td", 38)(22, "div", 39);
-    \u0275\u0275conditionalCreate(23, AttendanceReport_For_66_Conditional_23_Template, 3, 0, "button", 40);
+    \u0275\u0275elementStart(21, "td", 43)(22, "div", 44);
+    \u0275\u0275conditionalCreate(23, AttendanceReport_For_66_Conditional_23_Template, 3, 0, "button", 45);
     \u0275\u0275elementEnd()()();
   }
   if (rf & 2) {
-    const row_r9 = ctx.$implicit;
+    const row_r10 = ctx.$implicit;
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(row_r9.employeeName);
+    \u0275\u0275textInterpolate(row_r10.employeeName);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(row_r9.recordDate);
+    \u0275\u0275textInterpolate(row_r10.recordDate);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(row_r9.leaveType);
+    \u0275\u0275textInterpolate(row_r10.leaveType);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(row_r9.leaveTime);
+    \u0275\u0275textInterpolate(row_r10.leaveTime);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate1(" ", row_r9.clockInTime, " ");
+    \u0275\u0275textInterpolate1(" ", row_r10.clockInTime, " ");
     \u0275\u0275advance();
-    \u0275\u0275conditional(row_r9.clockInLatitude != null && row_r9.clockInLongitude != null ? 11 : -1);
+    \u0275\u0275conditional(row_r10.clockInLatitude != null && row_r10.clockInLongitude != null ? 11 : -1);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate1(" ", row_r9.clockOutTime, " ");
+    \u0275\u0275textInterpolate1(" ", row_r10.clockOutTime, " ");
     \u0275\u0275advance();
-    \u0275\u0275conditional(row_r9.clockOutLatitude != null && row_r9.clockOutLongitude != null ? 14 : -1);
+    \u0275\u0275conditional(row_r10.clockOutLatitude != null && row_r10.clockOutLongitude != null ? 14 : -1);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate1(" ", row_r9.overtimeStartTime, " ");
+    \u0275\u0275textInterpolate1(" ", row_r10.overtimeStartTime, " ");
     \u0275\u0275advance();
-    \u0275\u0275conditional(row_r9.overtimeStartLatitude != null && row_r9.overtimeStartLongitude != null ? 17 : -1);
+    \u0275\u0275conditional(row_r10.overtimeStartLatitude != null && row_r10.overtimeStartLongitude != null ? 17 : -1);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate1(" ", row_r9.overtimeEndTime, " ");
+    \u0275\u0275textInterpolate1(" ", row_r10.overtimeEndTime, " ");
     \u0275\u0275advance();
-    \u0275\u0275conditional(row_r9.overtimeEndLatitude != null && row_r9.overtimeEndLongitude != null ? 20 : -1);
+    \u0275\u0275conditional(row_r10.overtimeEndLatitude != null && row_r10.overtimeEndLongitude != null ? 20 : -1);
     \u0275\u0275advance(3);
-    \u0275\u0275conditional(row_r9.id ? 23 : -1);
+    \u0275\u0275conditional(row_r10.id ? 23 : -1);
   }
 }
 function AttendanceReport_ForEmpty_67_Conditional_2_Template(rf, ctx) {
@@ -45543,7 +45590,7 @@ function AttendanceReport_ForEmpty_67_Conditional_3_Template(rf, ctx) {
 }
 function AttendanceReport_ForEmpty_67_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 46);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 51);
     \u0275\u0275conditionalCreate(2, AttendanceReport_ForEmpty_67_Conditional_2_Template, 1, 0)(3, AttendanceReport_ForEmpty_67_Conditional_3_Template, 1, 0);
     \u0275\u0275elementEnd()();
   }
@@ -45565,98 +45612,98 @@ function AttendanceReport_Conditional_68_Conditional_40_Template(rf, ctx) {
 }
 function AttendanceReport_Conditional_68_Template(rf, ctx) {
   if (rf & 1) {
-    const _r14 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 47);
+    const _r15 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 52);
     \u0275\u0275listener("click", function AttendanceReport_Conditional_68_Template_div_click_0_listener() {
-      \u0275\u0275restoreView(_r14);
+      \u0275\u0275restoreView(_r15);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.closeEdit());
     });
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(1, "div", 48);
+    \u0275\u0275elementStart(1, "div", 53);
     \u0275\u0275listener("click", function AttendanceReport_Conditional_68_Template_div_click_1_listener() {
-      \u0275\u0275restoreView(_r14);
+      \u0275\u0275restoreView(_r15);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.closeEdit());
     });
-    \u0275\u0275elementStart(2, "div", 49);
+    \u0275\u0275elementStart(2, "div", 54);
     \u0275\u0275listener("click", function AttendanceReport_Conditional_68_Template_div_click_2_listener($event) {
-      \u0275\u0275restoreView(_r14);
+      \u0275\u0275restoreView(_r15);
       return \u0275\u0275resetView($event.stopPropagation());
     });
-    \u0275\u0275elementStart(3, "div", 50)(4, "div", 51)(5, "h5", 52);
+    \u0275\u0275elementStart(3, "div", 55)(4, "div", 56)(5, "h5", 57);
     \u0275\u0275text(6, "\u7DE8\u8F2F\u51FA\u7F3A\u52E4\u7D00\u9304");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "button", 53);
+    \u0275\u0275elementStart(7, "button", 58);
     \u0275\u0275listener("click", function AttendanceReport_Conditional_68_Template_button_click_7_listener() {
-      \u0275\u0275restoreView(_r14);
+      \u0275\u0275restoreView(_r15);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.closeEdit());
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(8, "div", 54)(9, "div", 55)(10, "span", 56);
+    \u0275\u0275elementStart(8, "div", 59)(9, "div", 60)(10, "span", 61);
     \u0275\u0275text(11, "\u54E1\u5DE5\uFF1A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(12, "span", 34);
+    \u0275\u0275elementStart(12, "span", 39);
     \u0275\u0275text(13);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(14, "span", 57);
+    \u0275\u0275elementStart(14, "span", 62);
     \u0275\u0275text(15, "\u65E5\u671F\uFF1A");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(16, "span");
     \u0275\u0275text(17);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(18, "div", 58)(19, "div")(20, "label", 59);
+    \u0275\u0275elementStart(18, "div", 63)(19, "div")(20, "label", 64);
     \u0275\u0275text(21, "\u4E0A\u73ED\u6642\u9593");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(22, "input", 60);
+    \u0275\u0275elementStart(22, "input", 65);
     \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_68_Template_input_ngModelChange_22_listener($event) {
-      \u0275\u0275restoreView(_r14);
+      \u0275\u0275restoreView(_r15);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.editForm.set(__spreadProps(__spreadValues({}, ctx_r2.editForm()), { clockIn: $event })));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(23, "div")(24, "label", 59);
+    \u0275\u0275elementStart(23, "div")(24, "label", 64);
     \u0275\u0275text(25, "\u4E0B\u73ED\u6642\u9593");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(26, "input", 60);
+    \u0275\u0275elementStart(26, "input", 65);
     \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_68_Template_input_ngModelChange_26_listener($event) {
-      \u0275\u0275restoreView(_r14);
+      \u0275\u0275restoreView(_r15);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.editForm.set(__spreadProps(__spreadValues({}, ctx_r2.editForm()), { clockOut: $event })));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(27, "div")(28, "label", 59);
+    \u0275\u0275elementStart(27, "div")(28, "label", 64);
     \u0275\u0275text(29, "\u52A0\u73ED\u958B\u59CB");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(30, "input", 60);
+    \u0275\u0275elementStart(30, "input", 65);
     \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_68_Template_input_ngModelChange_30_listener($event) {
-      \u0275\u0275restoreView(_r14);
+      \u0275\u0275restoreView(_r15);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.editForm.set(__spreadProps(__spreadValues({}, ctx_r2.editForm()), { overtimeStart: $event })));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(31, "div")(32, "label", 59);
+    \u0275\u0275elementStart(31, "div")(32, "label", 64);
     \u0275\u0275text(33, "\u52A0\u73ED\u7D50\u675F");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(34, "input", 60);
+    \u0275\u0275elementStart(34, "input", 65);
     \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_68_Template_input_ngModelChange_34_listener($event) {
-      \u0275\u0275restoreView(_r14);
+      \u0275\u0275restoreView(_r15);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.editForm.set(__spreadProps(__spreadValues({}, ctx_r2.editForm()), { overtimeEnd: $event })));
     });
     \u0275\u0275elementEnd()()()();
-    \u0275\u0275elementStart(35, "div", 61)(36, "button", 62);
+    \u0275\u0275elementStart(35, "div", 66)(36, "button", 67);
     \u0275\u0275listener("click", function AttendanceReport_Conditional_68_Template_button_click_36_listener() {
-      \u0275\u0275restoreView(_r14);
+      \u0275\u0275restoreView(_r15);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.closeEdit());
     });
     \u0275\u0275text(37, "\u53D6\u6D88");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(38, "button", 63);
+    \u0275\u0275elementStart(38, "button", 68);
     \u0275\u0275listener("click", function AttendanceReport_Conditional_68_Template_button_click_38_listener() {
-      \u0275\u0275restoreView(_r14);
+      \u0275\u0275restoreView(_r15);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.saveEdit());
     });
@@ -45664,12 +45711,12 @@ function AttendanceReport_Conditional_68_Template(rf, ctx) {
     \u0275\u0275elementEnd()()()()();
   }
   if (rf & 2) {
-    const record_r15 = ctx;
+    const record_r16 = ctx;
     const ctx_r2 = \u0275\u0275nextContext();
     \u0275\u0275advance(13);
-    \u0275\u0275textInterpolate(record_r15.employeeName);
+    \u0275\u0275textInterpolate(record_r16.employeeName);
     \u0275\u0275advance(4);
-    \u0275\u0275textInterpolate(record_r15.recordDate);
+    \u0275\u0275textInterpolate(record_r16.recordDate);
     \u0275\u0275advance(5);
     \u0275\u0275property("ngModel", ctx_r2.editForm().clockIn);
     \u0275\u0275advance(4);
@@ -45686,54 +45733,54 @@ function AttendanceReport_Conditional_68_Template(rf, ctx) {
 }
 function AttendanceReport_Conditional_69_Template(rf, ctx) {
   if (rf & 1) {
-    const _r16 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 47);
+    const _r17 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 52);
     \u0275\u0275listener("click", function AttendanceReport_Conditional_69_Template_div_click_0_listener() {
-      \u0275\u0275restoreView(_r16);
+      \u0275\u0275restoreView(_r17);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.closeMap());
     });
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(1, "div", 48);
+    \u0275\u0275elementStart(1, "div", 53);
     \u0275\u0275listener("click", function AttendanceReport_Conditional_69_Template_div_click_1_listener() {
-      \u0275\u0275restoreView(_r16);
+      \u0275\u0275restoreView(_r17);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.closeMap());
     });
-    \u0275\u0275elementStart(2, "div", 64);
+    \u0275\u0275elementStart(2, "div", 69);
     \u0275\u0275listener("click", function AttendanceReport_Conditional_69_Template_div_click_2_listener($event) {
-      \u0275\u0275restoreView(_r16);
+      \u0275\u0275restoreView(_r17);
       return \u0275\u0275resetView($event.stopPropagation());
     });
-    \u0275\u0275elementStart(3, "div", 50)(4, "div", 51)(5, "h5", 65);
+    \u0275\u0275elementStart(3, "div", 55)(4, "div", 56)(5, "h5", 70);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(6, "svg", 42);
-    \u0275\u0275element(7, "use", 43);
+    \u0275\u0275elementStart(6, "svg", 47);
+    \u0275\u0275element(7, "use", 48);
     \u0275\u0275elementEnd();
     \u0275\u0275text(8);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(9, "button", 53);
+    \u0275\u0275elementStart(9, "button", 58);
     \u0275\u0275listener("click", function AttendanceReport_Conditional_69_Template_button_click_9_listener() {
-      \u0275\u0275restoreView(_r16);
+      \u0275\u0275restoreView(_r17);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.closeMap());
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(10, "div", 66);
-    \u0275\u0275element(11, "iframe", 67);
+    \u0275\u0275elementStart(10, "div", 71);
+    \u0275\u0275element(11, "iframe", 72);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(12, "div", 61)(13, "a", 68);
+    \u0275\u0275elementStart(12, "div", 66)(13, "a", 73);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(14, "svg", 69);
-    \u0275\u0275element(15, "use", 70);
+    \u0275\u0275elementStart(14, "svg", 74);
+    \u0275\u0275element(15, "use", 75);
     \u0275\u0275elementEnd();
     \u0275\u0275text(16, " \u5728 Google Maps \u4E2D\u958B\u555F ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(17, "button", 62);
+    \u0275\u0275elementStart(17, "button", 67);
     \u0275\u0275listener("click", function AttendanceReport_Conditional_69_Template_button_click_17_listener() {
-      \u0275\u0275restoreView(_r16);
+      \u0275\u0275restoreView(_r17);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.closeMap());
     });
@@ -45741,14 +45788,14 @@ function AttendanceReport_Conditional_69_Template(rf, ctx) {
     \u0275\u0275elementEnd()()()()();
   }
   if (rf & 2) {
-    const map_r17 = ctx;
+    const map_r18 = ctx;
     const ctx_r2 = \u0275\u0275nextContext();
     \u0275\u0275advance(8);
-    \u0275\u0275textInterpolate1(" ", map_r17.label, " \u4F4D\u7F6E ");
+    \u0275\u0275textInterpolate1(" ", map_r18.label, " \u4F4D\u7F6E ");
     \u0275\u0275advance(3);
     \u0275\u0275property("src", ctx_r2.mapIframeUrl(), \u0275\u0275sanitizeResourceUrl);
     \u0275\u0275advance(2);
-    \u0275\u0275property("href", "https://www.google.com/maps?q=" + map_r17.lat + "," + map_r17.lng, \u0275\u0275sanitizeUrl);
+    \u0275\u0275property("href", "https://www.google.com/maps?q=" + map_r18.lat + "," + map_r18.lng, \u0275\u0275sanitizeUrl);
   }
 }
 var LEAVE_TYPE_LABELS2 = {
@@ -45767,8 +45814,8 @@ var AttendanceReport = class _AttendanceReport {
   filterMode = signal("month", ...ngDevMode ? [{ debugName: "filterMode" }] : []);
   /** 日模式：'YYYY-MM-DD' */
   selectedDate = signal("", ...ngDevMode ? [{ debugName: "selectedDate" }] : []);
-  /** 週模式：'YYYY-Www'（瀏覽器原生 input[type=week] 格式） */
-  selectedWeek = signal("", ...ngDevMode ? [{ debugName: "selectedWeek" }] : []);
+  /** 週模式：'YYYY-MM-DD'（任一天，由系統 snap 到該週週一→週日） */
+  selectedWeekDate = signal("", ...ngDevMode ? [{ debugName: "selectedWeekDate" }] : []);
   /** 月模式：年 / 月 */
   selectedYear = signal("", ...ngDevMode ? [{ debugName: "selectedYear" }] : []);
   selectedMonth = signal("", ...ngDevMode ? [{ debugName: "selectedMonth" }] : []);
@@ -45799,14 +45846,14 @@ var AttendanceReport = class _AttendanceReport {
     this.years.set([currentYear - 1, currentYear]);
     this.selectedYear.set(String(currentYear));
     this.selectedMonth.set(String(now.getMonth() + 1));
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, "0");
-    const d = String(now.getDate()).padStart(2, "0");
-    this.selectedDate.set(`${y}-${m}-${d}`);
-    this.selectedWeek.set(currentIsoWeek(now));
+    const today = todayString(now);
+    this.selectedDate.set(today);
+    this.selectedWeekDate.set(today);
     this.loadEmployees();
     this.search();
   }
+  /** 週模式 snap 結果（含週號 / 起訖日），供 UI 顯示「W18：04/27 ~ 05/03」 */
+  weekRange = computed(() => snapToIsoWeek(this.selectedWeekDate()), ...ngDevMode ? [{ debugName: "weekRange" }] : []);
   /** 依 filterMode 計算 dateFrom/dateTo（回傳 null 代表使用者尚未選擇日期/週） */
   computeDateRange() {
     const mode = this.filterMode();
@@ -45814,7 +45861,8 @@ var AttendanceReport = class _AttendanceReport {
       return dayToRange(this.selectedDate());
     }
     if (mode === "week") {
-      return isoWeekToRange(this.selectedWeek());
+      const r = this.weekRange();
+      return r ? { dateFrom: r.dateFrom, dateTo: r.dateTo } : null;
     }
     const year = Number(this.selectedYear());
     const month = Number(this.selectedMonth());
@@ -45822,13 +45870,26 @@ var AttendanceReport = class _AttendanceReport {
       return null;
     return monthToRange(year, month);
   }
+  /** 上 / 下週切換：將 selectedWeekDate 加減 7 天 */
+  shiftWeek(days2) {
+    const cur = this.selectedWeekDate();
+    if (!cur)
+      return;
+    this.selectedWeekDate.set(shiftDateString(cur, days2));
+  }
+  /** 重置為本週 */
+  resetToThisWeek() {
+    this.selectedWeekDate.set(todayString());
+  }
   /** 匯出檔名後綴：依 mode 給友善字串 */
   exportSuffix() {
     const mode = this.filterMode();
     if (mode === "day")
       return this.selectedDate() || "\u5168\u90E8";
-    if (mode === "week")
-      return this.selectedWeek() || "\u5168\u90E8";
+    if (mode === "week") {
+      const r = this.weekRange();
+      return r ? `${r.isoYear}-W${String(r.weekNumber).padStart(2, "0")}` : "\u5168\u90E8";
+    }
     const year = this.selectedYear() || "\u5168\u90E8";
     const month = this.selectedMonth() || "\u5168\u90E8";
     return `${year}-${String(month).padStart(2, "0")}`;
@@ -45982,7 +46043,7 @@ var AttendanceReport = class _AttendanceReport {
   static \u0275fac = function AttendanceReport_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _AttendanceReport)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _AttendanceReport, selectors: [["app-attendance-report"]], decls: 70, vars: 19, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#bar-chart-2"], [1, "mb-0"], [1, "btn", "btn-outline", "inline-flex", "items-center", "gap-1", 3, "click", "disabled"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#download"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "px-4", "py-3", "border-b"], [1, "mb-3", "flex", "items-center", "gap-2", "flex-wrap"], [1, "text-xs", "text-muted"], [1, "inline-flex", "border", "rounded-md", "overflow-hidden"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", 3, "click"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", "border-l", "border-r", 3, "click"], [1, "grid", "grid-cols-1", "sm:grid-cols-2", "lg:grid-cols-4", "gap-2", "items-end"], [1, "text-xs", "text-muted", "mb-1", "block"], [1, "form-control", "w-full", 3, "ngModelChange", "ngModel"], ["value", ""], [3, "value"], [1, "lg:col-span-2"], [1, "text-xs", "text-muted", "mb-1", "block", "sm:invisible"], [1, "btn", "btn-primary", "w-full", 3, "click"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "text-center"], [1, "text-center", "hidden", "md:table-cell"], [1, "text-center", "hidden", "lg:table-cell"], [1, "text-right"], ["type", "date", 1, "form-control", "w-full", 3, "ngModelChange", "ngModel"], ["type", "week", 1, "form-control", "w-full", 3, "ngModelChange", "ngModel"], [1, "fw-500"], [1, "text-center", "text-muted", "small"], [1, "text-center", "text-muted", "small", "hidden", "md:table-cell"], ["title", "\u67E5\u770B\u6253\u5361\u4F4D\u7F6E", 1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center", "p-0", "ms-1"], [1, "text-right", 2, "white-space", "nowrap"], [1, "flex", "justify-end", "gap-1"], ["title", "\u7DE8\u8F2F", 1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center"], ["title", "\u67E5\u770B\u6253\u5361\u4F4D\u7F6E", 1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center", "p-0", "ms-1", 3, "click"], [1, "sa-icon", "sa-icon-1x", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#map-pin"], ["title", "\u7DE8\u8F2F", 1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center", 3, "click"], ["href", "/assets/icons/sprite.svg#edit"], ["colspan", "9", 1, "text-center", "text-muted", "py-4"], [1, "modal-backdrop", 3, "click"], [1, "modal", "show", 2, "display", "block", 3, "click"], [1, "modal-dialog", "modal-dialog-centered", 3, "click"], [1, "modal-content"], [1, "modal-header"], [1, "modal-title"], ["type", "button", 1, "btn-close", 3, "click"], [1, "modal-body"], [1, "mb-3"], [1, "text-muted", "text-sm"], [1, "text-muted", "text-sm", "ms-3"], [1, "grid", "grid-cols-1", "sm:grid-cols-2", "gap-4"], [1, "form-label"], ["type", "time", 1, "form-control", 3, "ngModelChange", "ngModel"], [1, "modal-footer"], ["type", "button", 1, "btn", "btn-outline", 3, "click"], ["type", "button", 1, "btn", "btn-primary", 3, "click", "disabled"], [1, "modal-dialog", "modal-lg", "modal-dialog-centered", 3, "click"], [1, "modal-title", "inline-flex", "items-center", "gap-1"], [1, "modal-body", "p-0"], ["width", "100%", "height", "450", "loading", "lazy", "referrerpolicy", "no-referrer-when-downgrade", "allowfullscreen", "", 2, "border", "0", "display", "block", 3, "src"], ["target", "_blank", "rel", "noopener", 1, "btn", "btn-primary", 3, "href"], [1, "sa-icon", "sa-icon-1x", "me-1", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#external-link"]], template: function AttendanceReport_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _AttendanceReport, selectors: [["app-attendance-report"]], decls: 70, vars: 19, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#bar-chart-2"], [1, "mb-0"], [1, "btn", "btn-outline", "inline-flex", "items-center", "gap-1", 3, "click", "disabled"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#download"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "px-4", "py-3", "border-b"], [1, "mb-3", "flex", "items-center", "gap-2", "flex-wrap"], [1, "text-xs", "text-muted"], [1, "inline-flex", "border", "rounded-md", "overflow-hidden"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", 3, "click"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", "border-l", "border-r", 3, "click"], [1, "grid", "grid-cols-1", "sm:grid-cols-2", "lg:grid-cols-4", "gap-2", "items-end"], [1, "text-xs", "text-muted", "mb-1", "block"], [1, "form-control", "w-full", 3, "ngModelChange", "ngModel"], ["value", ""], [3, "value"], [1, "lg:col-span-2"], [1, "text-xs", "text-muted", "mb-1", "block", "sm:invisible"], [1, "btn", "btn-primary", "w-full", 3, "click"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "text-center"], [1, "text-center", "hidden", "md:table-cell"], [1, "text-center", "hidden", "lg:table-cell"], [1, "text-right"], ["type", "date", 1, "form-control", "w-full", 3, "ngModelChange", "ngModel"], [1, "flex", "items-stretch", "gap-1"], ["type", "button", "title", "\u4E0A\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "date", 1, "form-control", "flex-1", 3, "ngModelChange", "ngModel"], ["type", "button", "title", "\u4E0B\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "button", "title", "\u56DE\u5230\u672C\u9031", 1, "btn", "btn-outline", "whitespace-nowrap", 3, "click"], [1, "text-xs", "text-muted", "mt-1"], [1, "fw-500"], [1, "text-center", "text-muted", "small"], [1, "text-center", "text-muted", "small", "hidden", "md:table-cell"], ["title", "\u67E5\u770B\u6253\u5361\u4F4D\u7F6E", 1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center", "p-0", "ms-1"], [1, "text-right", 2, "white-space", "nowrap"], [1, "flex", "justify-end", "gap-1"], ["title", "\u7DE8\u8F2F", 1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center"], ["title", "\u67E5\u770B\u6253\u5361\u4F4D\u7F6E", 1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center", "p-0", "ms-1", 3, "click"], [1, "sa-icon", "sa-icon-1x", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#map-pin"], ["title", "\u7DE8\u8F2F", 1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center", 3, "click"], ["href", "/assets/icons/sprite.svg#edit"], ["colspan", "9", 1, "text-center", "text-muted", "py-4"], [1, "modal-backdrop", 3, "click"], [1, "modal", "show", 2, "display", "block", 3, "click"], [1, "modal-dialog", "modal-dialog-centered", 3, "click"], [1, "modal-content"], [1, "modal-header"], [1, "modal-title"], ["type", "button", 1, "btn-close", 3, "click"], [1, "modal-body"], [1, "mb-3"], [1, "text-muted", "text-sm"], [1, "text-muted", "text-sm", "ms-3"], [1, "grid", "grid-cols-1", "sm:grid-cols-2", "gap-4"], [1, "form-label"], ["type", "time", 1, "form-control", 3, "ngModelChange", "ngModel"], [1, "modal-footer"], ["type", "button", 1, "btn", "btn-outline", 3, "click"], ["type", "button", 1, "btn", "btn-primary", 3, "click", "disabled"], [1, "modal-dialog", "modal-lg", "modal-dialog-centered", 3, "click"], [1, "modal-title", "inline-flex", "items-center", "gap-1"], [1, "modal-body", "p-0"], ["width", "100%", "height", "450", "loading", "lazy", "referrerpolicy", "no-referrer-when-downgrade", "allowfullscreen", "", 2, "border", "0", "display", "block", 3, "src"], ["target", "_blank", "rel", "noopener", 1, "btn", "btn-primary", 3, "href"], [1, "sa-icon", "sa-icon-1x", "me-1", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#external-link"]], template: function AttendanceReport_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "div", 2);
       \u0275\u0275namespaceSVG();
@@ -46037,7 +46098,7 @@ var AttendanceReport = class _AttendanceReport {
       \u0275\u0275elementEnd();
       \u0275\u0275repeaterCreate(32, AttendanceReport_For_33_Template, 2, 3, "option", 21, _forTrack024);
       \u0275\u0275elementEnd()();
-      \u0275\u0275conditionalCreate(34, AttendanceReport_Conditional_34_Template, 4, 1, "div", 22)(35, AttendanceReport_Conditional_35_Template, 4, 1, "div", 22)(36, AttendanceReport_Conditional_36_Template, 16, 2);
+      \u0275\u0275conditionalCreate(34, AttendanceReport_Conditional_34_Template, 4, 1, "div", 22)(35, AttendanceReport_Conditional_35_Template, 12, 2, "div", 22)(36, AttendanceReport_Conditional_36_Template, 16, 2);
       \u0275\u0275elementStart(37, "div")(38, "label", 23);
       \u0275\u0275text(39, "\xA0");
       \u0275\u0275elementEnd();
@@ -46165,9 +46226,19 @@ var AttendanceReport = class _AttendanceReport {
             </div>
           } @else if (filterMode() === 'week') {
             <div class="lg:col-span-2">
-              <label class="text-xs text-muted mb-1 block">\u9031\u6B21\uFF08\u9031\u4E00\u2192\u9031\u65E5\uFF09</label>
-              <input type="week" class="form-control w-full"
-                     [ngModel]="selectedWeek()" (ngModelChange)="selectedWeek.set($event)" />
+              <label class="text-xs text-muted mb-1 block">\u9031\u6B21\uFF08\u6311\u4EFB\u4E00\u5929\u5373\u81EA\u52D5\u53D6\u6574\u9031\uFF09</label>
+              <div class="flex items-stretch gap-1">
+                <button type="button" class="btn btn-outline px-2" title="\u4E0A\u4E00\u9031" (click)="shiftWeek(-7)">\u2039</button>
+                <input type="date" class="form-control flex-1"
+                       [ngModel]="selectedWeekDate()" (ngModelChange)="selectedWeekDate.set($event)" />
+                <button type="button" class="btn btn-outline px-2" title="\u4E0B\u4E00\u9031" (click)="shiftWeek(7)">\u203A</button>
+                <button type="button" class="btn btn-outline whitespace-nowrap" title="\u56DE\u5230\u672C\u9031" (click)="resetToThisWeek()">\u672C\u9031</button>
+              </div>
+              @if (weekRange(); as r) {
+                <div class="text-xs text-muted mt-1">
+                  \u7B2C {{ r.weekNumber }} \u9031\uFF08{{ r.dateFrom }} \u4E00 ~ {{ r.dateTo }} \u65E5\uFF09
+                </div>
+              }
             </div>
           } @else {
             <div>
@@ -46426,24 +46497,65 @@ function OvertimeReport_Conditional_37_Template(rf, ctx) {
     \u0275\u0275property("ngModel", ctx_r3.selectedDate());
   }
 }
+function OvertimeReport_Conditional_38_Conditional_11_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 35);
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const r_r6 = ctx;
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate3(" \u7B2C ", r_r6.weekNumber, " \u9031\uFF08", r_r6.dateFrom, " \u4E00 ~ ", r_r6.dateTo, " \u65E5\uFF09 ");
+  }
+}
 function OvertimeReport_Conditional_38_Template(rf, ctx) {
   if (rf & 1) {
     const _r5 = \u0275\u0275getCurrentView();
     \u0275\u0275elementStart(0, "div", 19)(1, "label", 15);
-    \u0275\u0275text(2, "\u9031\u6B21\uFF08\u9031\u4E00\u2192\u9031\u65E5\uFF09");
+    \u0275\u0275text(2, "\u9031\u6B21\uFF08\u6311\u4EFB\u4E00\u5929\u5373\u81EA\u52D5\u53D6\u6574\u9031\uFF09");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "input", 30);
-    \u0275\u0275listener("ngModelChange", function OvertimeReport_Conditional_38_Template_input_ngModelChange_3_listener($event) {
+    \u0275\u0275elementStart(3, "div", 30)(4, "button", 31);
+    \u0275\u0275listener("click", function OvertimeReport_Conditional_38_Template_button_click_4_listener() {
       \u0275\u0275restoreView(_r5);
       const ctx_r3 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r3.selectedWeek.set($event));
+      return \u0275\u0275resetView(ctx_r3.shiftWeek(-7));
     });
+    \u0275\u0275text(5, "\u2039");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(6, "input", 32);
+    \u0275\u0275listener("ngModelChange", function OvertimeReport_Conditional_38_Template_input_ngModelChange_6_listener($event) {
+      \u0275\u0275restoreView(_r5);
+      const ctx_r3 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r3.selectedWeekDate.set($event));
+    });
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "button", 33);
+    \u0275\u0275listener("click", function OvertimeReport_Conditional_38_Template_button_click_7_listener() {
+      \u0275\u0275restoreView(_r5);
+      const ctx_r3 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r3.shiftWeek(7));
+    });
+    \u0275\u0275text(8, "\u203A");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(9, "button", 34);
+    \u0275\u0275listener("click", function OvertimeReport_Conditional_38_Template_button_click_9_listener() {
+      \u0275\u0275restoreView(_r5);
+      const ctx_r3 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r3.resetToThisWeek());
+    });
+    \u0275\u0275text(10, "\u672C\u9031");
     \u0275\u0275elementEnd()();
+    \u0275\u0275conditionalCreate(11, OvertimeReport_Conditional_38_Conditional_11_Template, 2, 3, "div", 35);
+    \u0275\u0275elementEnd();
   }
   if (rf & 2) {
+    let tmp_2_0;
     const ctx_r3 = \u0275\u0275nextContext();
-    \u0275\u0275advance(3);
-    \u0275\u0275property("ngModel", ctx_r3.selectedWeek());
+    \u0275\u0275advance(6);
+    \u0275\u0275property("ngModel", ctx_r3.selectedWeekDate());
+    \u0275\u0275advance(5);
+    \u0275\u0275conditional((tmp_2_0 = ctx_r3.weekRange()) ? 11 : -1, tmp_2_0);
   }
 }
 function OvertimeReport_Conditional_39_For_7_Template(rf, ctx) {
@@ -46453,10 +46565,10 @@ function OvertimeReport_Conditional_39_For_7_Template(rf, ctx) {
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const y_r7 = ctx.$implicit;
-    \u0275\u0275property("value", y_r7);
+    const y_r8 = ctx.$implicit;
+    \u0275\u0275property("value", y_r8);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(y_r7);
+    \u0275\u0275textInterpolate(y_r8);
   }
 }
 function OvertimeReport_Conditional_39_For_15_Template(rf, ctx) {
@@ -46466,21 +46578,21 @@ function OvertimeReport_Conditional_39_For_15_Template(rf, ctx) {
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const m_r8 = ctx.$implicit;
-    \u0275\u0275property("value", m_r8);
+    const m_r9 = ctx.$implicit;
+    \u0275\u0275property("value", m_r9);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate1("", m_r8, "\u6708");
+    \u0275\u0275textInterpolate1("", m_r9, "\u6708");
   }
 }
 function OvertimeReport_Conditional_39_Template(rf, ctx) {
   if (rf & 1) {
-    const _r6 = \u0275\u0275getCurrentView();
+    const _r7 = \u0275\u0275getCurrentView();
     \u0275\u0275elementStart(0, "div")(1, "label", 15);
     \u0275\u0275text(2, "\u5E74\u4EFD");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "select", 16);
     \u0275\u0275listener("ngModelChange", function OvertimeReport_Conditional_39_Template_select_ngModelChange_3_listener($event) {
-      \u0275\u0275restoreView(_r6);
+      \u0275\u0275restoreView(_r7);
       const ctx_r3 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r3.selectedYear.set($event));
     });
@@ -46494,7 +46606,7 @@ function OvertimeReport_Conditional_39_Template(rf, ctx) {
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(11, "select", 16);
     \u0275\u0275listener("ngModelChange", function OvertimeReport_Conditional_39_Template_select_ngModelChange_11_listener($event) {
-      \u0275\u0275restoreView(_r6);
+      \u0275\u0275restoreView(_r7);
       const ctx_r3 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r3.selectedMonth.set($event));
     });
@@ -46518,19 +46630,19 @@ function OvertimeReport_Conditional_39_Template(rf, ctx) {
 }
 function OvertimeReport_For_63_Conditional_6_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 33);
+    \u0275\u0275elementStart(0, "span", 38);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const row_r9 = \u0275\u0275nextContext().$implicit;
+    const row_r10 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(row_r9.projectCodes);
+    \u0275\u0275textInterpolate(row_r10.projectCodes);
   }
 }
 function OvertimeReport_For_63_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 34);
+    \u0275\u0275elementStart(0, "span", 39);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
@@ -46540,54 +46652,54 @@ function OvertimeReport_For_63_Conditional_11_Template(rf, ctx) {
     \u0275\u0275text(0);
   }
   if (rf & 2) {
-    const row_r9 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275textInterpolate1(" ", row_r9.actualHours, " h ");
+    const row_r10 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275textInterpolate1(" ", row_r10.actualHours, " h ");
   }
 }
 function OvertimeReport_For_63_Conditional_12_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 34);
+    \u0275\u0275elementStart(0, "span", 39);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
 }
 function OvertimeReport_For_63_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 31);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 36);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td", 32);
+    \u0275\u0275elementStart(3, "td", 37);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(5, "td", 26);
-    \u0275\u0275conditionalCreate(6, OvertimeReport_For_63_Conditional_6_Template, 2, 1, "span", 33)(7, OvertimeReport_For_63_Conditional_7_Template, 2, 0, "span", 34);
+    \u0275\u0275conditionalCreate(6, OvertimeReport_For_63_Conditional_6_Template, 2, 1, "span", 38)(7, OvertimeReport_For_63_Conditional_7_Template, 2, 0, "span", 39);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(8, "td", 25);
     \u0275\u0275text(9);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(10, "td", 25);
-    \u0275\u0275conditionalCreate(11, OvertimeReport_For_63_Conditional_11_Template, 1, 1)(12, OvertimeReport_For_63_Conditional_12_Template, 2, 0, "span", 34);
+    \u0275\u0275conditionalCreate(11, OvertimeReport_For_63_Conditional_11_Template, 1, 1)(12, OvertimeReport_For_63_Conditional_12_Template, 2, 0, "span", 39);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(13, "td", 35);
+    \u0275\u0275elementStart(13, "td", 40);
     \u0275\u0275text(14);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    const row_r9 = ctx.$implicit;
+    const row_r10 = ctx.$implicit;
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(row_r9.employeeName);
+    \u0275\u0275textInterpolate(row_r10.employeeName);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(row_r9.overtimeDate);
+    \u0275\u0275textInterpolate(row_r10.overtimeDate);
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(row_r9.projectCodes ? 6 : 7);
+    \u0275\u0275conditional(row_r10.projectCodes ? 6 : 7);
     \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate1("", row_r9.estimatedHours, " h");
+    \u0275\u0275textInterpolate1("", row_r10.estimatedHours, " h");
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(row_r9.actualHours !== null ? 11 : 12);
+    \u0275\u0275conditional(row_r10.actualHours !== null ? 11 : 12);
     \u0275\u0275advance(2);
-    \u0275\u0275property("title", row_r9.reason);
+    \u0275\u0275property("title", row_r10.reason);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(row_r9.reason);
+    \u0275\u0275textInterpolate(row_r10.reason);
   }
 }
 function OvertimeReport_ForEmpty_64_Conditional_2_Template(rf, ctx) {
@@ -46602,7 +46714,7 @@ function OvertimeReport_ForEmpty_64_Conditional_3_Template(rf, ctx) {
 }
 function OvertimeReport_ForEmpty_64_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 36);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 41);
     \u0275\u0275conditionalCreate(2, OvertimeReport_ForEmpty_64_Conditional_2_Template, 1, 0)(3, OvertimeReport_ForEmpty_64_Conditional_3_Template, 1, 0);
     \u0275\u0275elementEnd()();
   }
@@ -46614,21 +46726,21 @@ function OvertimeReport_ForEmpty_64_Template(rf, ctx) {
 }
 function OvertimeReport_Conditional_65_Template(rf, ctx) {
   if (rf & 1) {
-    const _r10 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 28)(1, "span", 33);
+    const _r11 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 28)(1, "span", 38);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div", 37)(4, "button", 38);
+    \u0275\u0275elementStart(3, "div", 42)(4, "button", 43);
     \u0275\u0275listener("click", function OvertimeReport_Conditional_65_Template_button_click_4_listener() {
-      \u0275\u0275restoreView(_r10);
+      \u0275\u0275restoreView(_r11);
       const ctx_r3 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r3.goToPage(ctx_r3.currentPage() - 1));
     });
     \u0275\u0275text(5, "\u4E0A\u4E00\u9801");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "button", 38);
+    \u0275\u0275elementStart(6, "button", 43);
     \u0275\u0275listener("click", function OvertimeReport_Conditional_65_Template_button_click_6_listener() {
-      \u0275\u0275restoreView(_r10);
+      \u0275\u0275restoreView(_r11);
       const ctx_r3 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r3.goToPage(ctx_r3.currentPage() + 1));
     });
@@ -46653,7 +46765,8 @@ var OvertimeReport = class _OvertimeReport {
   /** 時段模式：日 / 週 / 月（預設月） */
   filterMode = signal("month", ...ngDevMode ? [{ debugName: "filterMode" }] : []);
   selectedDate = signal("", ...ngDevMode ? [{ debugName: "selectedDate" }] : []);
-  selectedWeek = signal("", ...ngDevMode ? [{ debugName: "selectedWeek" }] : []);
+  /** 週模式：'YYYY-MM-DD'（任一天，由系統 snap 到該週週一→週日） */
+  selectedWeekDate = signal("", ...ngDevMode ? [{ debugName: "selectedWeekDate" }] : []);
   selectedYear = signal("", ...ngDevMode ? [{ debugName: "selectedYear" }] : []);
   selectedMonth = signal("", ...ngDevMode ? [{ debugName: "selectedMonth" }] : []);
   /** 員工清單 */
@@ -46678,26 +46791,37 @@ var OvertimeReport = class _OvertimeReport {
     this.years.set([currentYear - 1, currentYear]);
     this.selectedYear.set(String(currentYear));
     this.selectedMonth.set(String(now.getMonth() + 1));
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, "0");
-    const d = String(now.getDate()).padStart(2, "0");
-    this.selectedDate.set(`${y}-${m}-${d}`);
-    this.selectedWeek.set(currentIsoWeek(now));
+    const today = todayString(now);
+    this.selectedDate.set(today);
+    this.selectedWeekDate.set(today);
     this.loadEmployees();
     this.loadProjects();
     this.search();
   }
+  /** 週模式 snap 結果（含週號 / 起訖日） */
+  weekRange = computed(() => snapToIsoWeek(this.selectedWeekDate()), ...ngDevMode ? [{ debugName: "weekRange" }] : []);
   computeDateRange() {
     const mode = this.filterMode();
     if (mode === "day")
       return dayToRange(this.selectedDate());
-    if (mode === "week")
-      return isoWeekToRange(this.selectedWeek());
+    if (mode === "week") {
+      const r = this.weekRange();
+      return r ? { dateFrom: r.dateFrom, dateTo: r.dateTo } : null;
+    }
     const year = Number(this.selectedYear());
     const month = Number(this.selectedMonth());
     if (!year || !month)
       return null;
     return monthToRange(year, month);
+  }
+  shiftWeek(days2) {
+    const cur = this.selectedWeekDate();
+    if (!cur)
+      return;
+    this.selectedWeekDate.set(shiftDateString(cur, days2));
+  }
+  resetToThisWeek() {
+    this.selectedWeekDate.set(todayString());
   }
   loadEmployees() {
     this.http.get(`${environment.apiUrl}/users/lookup?scope=department`).subscribe({
@@ -46761,7 +46885,7 @@ var OvertimeReport = class _OvertimeReport {
   static \u0275fac = function OvertimeReport_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _OvertimeReport)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _OvertimeReport, selectors: [["app-overtime-report"]], decls: 66, vars: 17, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#clock"], [1, "mb-0"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "px-4", "py-3", "border-b"], [1, "mb-3", "flex", "items-center", "gap-2", "flex-wrap"], [1, "text-xs", "text-muted"], [1, "inline-flex", "border", "rounded-md", "overflow-hidden"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", 3, "click"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", "border-l", "border-r", 3, "click"], [1, "grid", "grid-cols-1", "sm:grid-cols-2", "lg:grid-cols-5", "gap-2", "items-end"], [1, "text-xs", "text-muted", "mb-1", "block"], [1, "form-control", "w-full", 3, "ngModelChange", "ngModel"], ["value", ""], [3, "value"], [1, "lg:col-span-2"], [1, "text-xs", "text-muted", "mb-1", "block", "sm:invisible"], [1, "btn", "btn-primary", "w-full", 3, "click"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "text-center"], [1, "text-center", "hidden", "md:table-cell"], [1, "hidden", "lg:table-cell"], [1, "flex", "items-center", "justify-between", "px-4", "py-3", "border-t"], ["type", "date", 1, "form-control", "w-full", 3, "ngModelChange", "ngModel"], ["type", "week", 1, "form-control", "w-full", 3, "ngModelChange", "ngModel"], [1, "fw-500"], [1, "text-center", "text-muted", "small"], [1, "text-muted", "small"], [1, "text-muted"], [1, "hidden", "lg:table-cell", "text-muted", "small", 2, "max-width", "200px", "overflow", "hidden", "text-overflow", "ellipsis", "white-space", "nowrap", 3, "title"], ["colspan", "6", 1, "text-center", "text-muted", "py-4"], [1, "flex", "gap-1"], [1, "btn", "btn-sm", "btn-outline", 3, "click", "disabled"]], template: function OvertimeReport_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _OvertimeReport, selectors: [["app-overtime-report"]], decls: 66, vars: 17, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#clock"], [1, "mb-0"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "px-4", "py-3", "border-b"], [1, "mb-3", "flex", "items-center", "gap-2", "flex-wrap"], [1, "text-xs", "text-muted"], [1, "inline-flex", "border", "rounded-md", "overflow-hidden"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", 3, "click"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", "border-l", "border-r", 3, "click"], [1, "grid", "grid-cols-1", "sm:grid-cols-2", "lg:grid-cols-5", "gap-2", "items-end"], [1, "text-xs", "text-muted", "mb-1", "block"], [1, "form-control", "w-full", 3, "ngModelChange", "ngModel"], ["value", ""], [3, "value"], [1, "lg:col-span-2"], [1, "text-xs", "text-muted", "mb-1", "block", "sm:invisible"], [1, "btn", "btn-primary", "w-full", 3, "click"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "text-center"], [1, "text-center", "hidden", "md:table-cell"], [1, "hidden", "lg:table-cell"], [1, "flex", "items-center", "justify-between", "px-4", "py-3", "border-t"], ["type", "date", 1, "form-control", "w-full", 3, "ngModelChange", "ngModel"], [1, "flex", "items-stretch", "gap-1"], ["type", "button", "title", "\u4E0A\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "date", 1, "form-control", "flex-1", 3, "ngModelChange", "ngModel"], ["type", "button", "title", "\u4E0B\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "button", "title", "\u56DE\u5230\u672C\u9031", 1, "btn", "btn-outline", "whitespace-nowrap", 3, "click"], [1, "text-xs", "text-muted", "mt-1"], [1, "fw-500"], [1, "text-center", "text-muted", "small"], [1, "text-muted", "small"], [1, "text-muted"], [1, "hidden", "lg:table-cell", "text-muted", "small", 2, "max-width", "200px", "overflow", "hidden", "text-overflow", "ellipsis", "white-space", "nowrap", 3, "title"], ["colspan", "6", 1, "text-center", "text-muted", "py-4"], [1, "flex", "gap-1"], [1, "btn", "btn-sm", "btn-outline", 3, "click", "disabled"]], template: function OvertimeReport_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "div", 2);
       \u0275\u0275namespaceSVG();
@@ -46817,7 +46941,7 @@ var OvertimeReport = class _OvertimeReport {
       \u0275\u0275elementEnd();
       \u0275\u0275repeaterCreate(35, OvertimeReport_For_36_Template, 2, 2, "option", 18, _forTrack025);
       \u0275\u0275elementEnd()();
-      \u0275\u0275conditionalCreate(37, OvertimeReport_Conditional_37_Template, 4, 1, "div", 19)(38, OvertimeReport_Conditional_38_Template, 4, 1, "div", 19)(39, OvertimeReport_Conditional_39_Template, 16, 2);
+      \u0275\u0275conditionalCreate(37, OvertimeReport_Conditional_37_Template, 4, 1, "div", 19)(38, OvertimeReport_Conditional_38_Template, 12, 2, "div", 19)(39, OvertimeReport_Conditional_39_Template, 16, 2);
       \u0275\u0275elementStart(40, "div")(41, "label", 20);
       \u0275\u0275text(42, "\xA0");
       \u0275\u0275elementEnd();
@@ -46937,9 +47061,19 @@ var OvertimeReport = class _OvertimeReport {
             </div>\r
           } @else if (filterMode() === 'week') {\r
             <div class="lg:col-span-2">\r
-              <label class="text-xs text-muted mb-1 block">\u9031\u6B21\uFF08\u9031\u4E00\u2192\u9031\u65E5\uFF09</label>\r
-              <input type="week" class="form-control w-full"\r
-                     [ngModel]="selectedWeek()" (ngModelChange)="selectedWeek.set($event)" />\r
+              <label class="text-xs text-muted mb-1 block">\u9031\u6B21\uFF08\u6311\u4EFB\u4E00\u5929\u5373\u81EA\u52D5\u53D6\u6574\u9031\uFF09</label>\r
+              <div class="flex items-stretch gap-1">\r
+                <button type="button" class="btn btn-outline px-2" title="\u4E0A\u4E00\u9031" (click)="shiftWeek(-7)">\u2039</button>\r
+                <input type="date" class="form-control flex-1"\r
+                       [ngModel]="selectedWeekDate()" (ngModelChange)="selectedWeekDate.set($event)" />\r
+                <button type="button" class="btn btn-outline px-2" title="\u4E0B\u4E00\u9031" (click)="shiftWeek(7)">\u203A</button>\r
+                <button type="button" class="btn btn-outline whitespace-nowrap" title="\u56DE\u5230\u672C\u9031" (click)="resetToThisWeek()">\u672C\u9031</button>\r
+              </div>\r
+              @if (weekRange(); as r) {\r
+                <div class="text-xs text-muted mt-1">\r
+                  \u7B2C {{ r.weekNumber }} \u9031\uFF08{{ r.dateFrom }} \u4E00 ~ {{ r.dateTo }} \u65E5\uFF09\r
+                </div>\r
+              }\r
             </div>\r
           } @else {\r
             <div>\r
@@ -47061,82 +47195,123 @@ function PaymentReport_Conditional_25_Template(rf, ctx) {
     \u0275\u0275property("ngModel", ctx_r1.selectedDate());
   }
 }
+function PaymentReport_Conditional_26_Conditional_11_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 41);
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const r_r4 = ctx;
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate3(" \u7B2C ", r_r4.weekNumber, " \u9031\uFF08", r_r4.dateFrom, " \u4E00 ~ ", r_r4.dateTo, " \u65E5\uFF09 ");
+  }
+}
 function PaymentReport_Conditional_26_Template(rf, ctx) {
   if (rf & 1) {
     const _r3 = \u0275\u0275getCurrentView();
     \u0275\u0275elementStart(0, "div", 18)(1, "label", 19);
-    \u0275\u0275text(2, "\u9031\u6B21\uFF08\u9031\u4E00\u2192\u9031\u65E5\uFF09");
+    \u0275\u0275text(2, "\u9031\u6B21\uFF08\u6311\u4EFB\u4E00\u5929\u5373\u81EA\u52D5\u53D6\u6574\u9031\uFF09");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "input", 36);
-    \u0275\u0275listener("ngModelChange", function PaymentReport_Conditional_26_Template_input_ngModelChange_3_listener($event) {
+    \u0275\u0275elementStart(3, "div", 36)(4, "button", 37);
+    \u0275\u0275listener("click", function PaymentReport_Conditional_26_Template_button_click_4_listener() {
       \u0275\u0275restoreView(_r3);
       const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.selectedWeek.set($event));
+      return \u0275\u0275resetView(ctx_r1.shiftWeek(-7));
     });
+    \u0275\u0275text(5, "\u2039");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(6, "input", 38);
+    \u0275\u0275listener("ngModelChange", function PaymentReport_Conditional_26_Template_input_ngModelChange_6_listener($event) {
+      \u0275\u0275restoreView(_r3);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.selectedWeekDate.set($event));
+    });
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "button", 39);
+    \u0275\u0275listener("click", function PaymentReport_Conditional_26_Template_button_click_7_listener() {
+      \u0275\u0275restoreView(_r3);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.shiftWeek(7));
+    });
+    \u0275\u0275text(8, "\u203A");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(9, "button", 40);
+    \u0275\u0275listener("click", function PaymentReport_Conditional_26_Template_button_click_9_listener() {
+      \u0275\u0275restoreView(_r3);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.resetToThisWeek());
+    });
+    \u0275\u0275text(10, "\u672C\u9031");
     \u0275\u0275elementEnd()();
+    \u0275\u0275conditionalCreate(11, PaymentReport_Conditional_26_Conditional_11_Template, 2, 3, "div", 41);
+    \u0275\u0275elementEnd();
   }
   if (rf & 2) {
+    let tmp_2_0;
     const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275advance(3);
-    \u0275\u0275property("ngModel", ctx_r1.selectedWeek());
+    \u0275\u0275advance(6);
+    \u0275\u0275property("ngModel", ctx_r1.selectedWeekDate());
+    \u0275\u0275advance(5);
+    \u0275\u0275conditional((tmp_2_0 = ctx_r1.weekRange()) ? 11 : -1, tmp_2_0);
   }
 }
 function PaymentReport_Conditional_27_For_7_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 37);
+    \u0275\u0275elementStart(0, "option", 42);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const y_r5 = ctx.$implicit;
-    \u0275\u0275property("value", y_r5);
+    const y_r6 = ctx.$implicit;
+    \u0275\u0275property("value", y_r6);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(y_r5);
+    \u0275\u0275textInterpolate(y_r6);
   }
 }
 function PaymentReport_Conditional_27_For_15_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 37);
+    \u0275\u0275elementStart(0, "option", 42);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const m_r6 = ctx.$implicit;
-    \u0275\u0275property("value", m_r6);
+    const m_r7 = ctx.$implicit;
+    \u0275\u0275property("value", m_r7);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate1("", m_r6, "\u6708");
+    \u0275\u0275textInterpolate1("", m_r7, "\u6708");
   }
 }
 function PaymentReport_Conditional_27_Template(rf, ctx) {
   if (rf & 1) {
-    const _r4 = \u0275\u0275getCurrentView();
+    const _r5 = \u0275\u0275getCurrentView();
     \u0275\u0275elementStart(0, "div")(1, "label", 19);
     \u0275\u0275text(2, "\u5E74\u4EFD");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "select", 20);
     \u0275\u0275listener("ngModelChange", function PaymentReport_Conditional_27_Template_select_ngModelChange_3_listener($event) {
-      \u0275\u0275restoreView(_r4);
+      \u0275\u0275restoreView(_r5);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.selectedYear.set($event));
     });
     \u0275\u0275elementStart(4, "option", 21);
     \u0275\u0275text(5, "\u5168\u90E8\u5E74\u4EFD");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(6, PaymentReport_Conditional_27_For_7_Template, 2, 2, "option", 37, \u0275\u0275repeaterTrackByIdentity);
+    \u0275\u0275repeaterCreate(6, PaymentReport_Conditional_27_For_7_Template, 2, 2, "option", 42, \u0275\u0275repeaterTrackByIdentity);
     \u0275\u0275elementEnd()();
     \u0275\u0275elementStart(8, "div")(9, "label", 19);
     \u0275\u0275text(10, "\u6708\u4EFD");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(11, "select", 20);
     \u0275\u0275listener("ngModelChange", function PaymentReport_Conditional_27_Template_select_ngModelChange_11_listener($event) {
-      \u0275\u0275restoreView(_r4);
+      \u0275\u0275restoreView(_r5);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.selectedMonth.set($event));
     });
     \u0275\u0275elementStart(12, "option", 21);
     \u0275\u0275text(13, "\u5168\u90E8\u6708\u4EFD");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(14, PaymentReport_Conditional_27_For_15_Template, 2, 2, "option", 37, \u0275\u0275repeaterTrackByIdentity);
+    \u0275\u0275repeaterCreate(14, PaymentReport_Conditional_27_For_15_Template, 2, 2, "option", 42, \u0275\u0275repeaterTrackByIdentity);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -47153,120 +47328,120 @@ function PaymentReport_Conditional_27_Template(rf, ctx) {
 }
 function PaymentReport_For_65_Case_14_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 43);
+    \u0275\u0275elementStart(0, "span", 48);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const row_r7 = \u0275\u0275nextContext().$implicit;
+    const row_r8 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(row_r7.statusLabel);
+    \u0275\u0275textInterpolate(row_r8.statusLabel);
   }
 }
 function PaymentReport_For_65_Case_15_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 44);
+    \u0275\u0275elementStart(0, "span", 49);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const row_r7 = \u0275\u0275nextContext().$implicit;
+    const row_r8 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(row_r7.statusLabel);
+    \u0275\u0275textInterpolate(row_r8.statusLabel);
   }
 }
 function PaymentReport_For_65_Case_16_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 45);
+    \u0275\u0275elementStart(0, "span", 50);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const row_r7 = \u0275\u0275nextContext().$implicit;
+    const row_r8 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(row_r7.statusLabel);
+    \u0275\u0275textInterpolate(row_r8.statusLabel);
   }
 }
 function PaymentReport_For_65_Case_17_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 46);
+    \u0275\u0275elementStart(0, "span", 51);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const row_r7 = \u0275\u0275nextContext().$implicit;
+    const row_r8 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(row_r7.statusLabel);
+    \u0275\u0275textInterpolate(row_r8.statusLabel);
   }
 }
 function PaymentReport_For_65_Conditional_19_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 47);
+    \u0275\u0275elementStart(0, "span", 52);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const row_r7 = \u0275\u0275nextContext().$implicit;
+    const row_r8 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(row_r7.paidAt);
+    \u0275\u0275textInterpolate(row_r8.paidAt);
   }
 }
 function PaymentReport_For_65_Conditional_20_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 48);
+    \u0275\u0275elementStart(0, "span", 53);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
 }
 function PaymentReport_For_65_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 38);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 43);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td", 29)(4, "span", 39);
+    \u0275\u0275elementStart(3, "td", 29)(4, "span", 44);
     \u0275\u0275text(5);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(6, "td", 40);
+    \u0275\u0275elementStart(6, "td", 45);
     \u0275\u0275text(7);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "td", 41);
+    \u0275\u0275elementStart(8, "td", 46);
     \u0275\u0275text(9);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(10, "td", 42);
+    \u0275\u0275elementStart(10, "td", 47);
     \u0275\u0275text(11);
     \u0275\u0275pipe(12, "number");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(13, "td", 29);
-    \u0275\u0275conditionalCreate(14, PaymentReport_For_65_Case_14_Template, 2, 1, "span", 43)(15, PaymentReport_For_65_Case_15_Template, 2, 1, "span", 44)(16, PaymentReport_For_65_Case_16_Template, 2, 1, "span", 45)(17, PaymentReport_For_65_Case_17_Template, 2, 1, "span", 46);
+    \u0275\u0275conditionalCreate(14, PaymentReport_For_65_Case_14_Template, 2, 1, "span", 48)(15, PaymentReport_For_65_Case_15_Template, 2, 1, "span", 49)(16, PaymentReport_For_65_Case_16_Template, 2, 1, "span", 50)(17, PaymentReport_For_65_Case_17_Template, 2, 1, "span", 51);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(18, "td", 30);
-    \u0275\u0275conditionalCreate(19, PaymentReport_For_65_Conditional_19_Template, 2, 1, "span", 47)(20, PaymentReport_For_65_Conditional_20_Template, 2, 0, "span", 48);
+    \u0275\u0275conditionalCreate(19, PaymentReport_For_65_Conditional_19_Template, 2, 1, "span", 52)(20, PaymentReport_For_65_Conditional_20_Template, 2, 0, "span", 53);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(21, "td", 49);
+    \u0275\u0275elementStart(21, "td", 54);
     \u0275\u0275text(22);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
     let tmp_16_0;
-    const row_r7 = ctx.$implicit;
+    const row_r8 = ctx.$implicit;
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(row_r7.employeeName);
+    \u0275\u0275textInterpolate(row_r8.employeeName);
     \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate(row_r7.typeLabel);
+    \u0275\u0275textInterpolate(row_r8.typeLabel);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(row_r7.projectCode);
+    \u0275\u0275textInterpolate(row_r8.projectCode);
     \u0275\u0275advance();
-    \u0275\u0275property("title", row_r7.invoiceNos);
+    \u0275\u0275property("title", row_r8.invoiceNos);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(row_r7.invoiceNos || "\u2014");
+    \u0275\u0275textInterpolate(row_r8.invoiceNos || "\u2014");
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(12, 9, row_r7.totalAmount, "1.0-0"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(12, 9, row_r8.totalAmount, "1.0-0"));
     \u0275\u0275advance(3);
-    \u0275\u0275conditional((tmp_16_0 = row_r7.approvalStatus) === "approved" ? 14 : tmp_16_0 === "pending" ? 15 : tmp_16_0 === "rejected" ? 16 : 17);
+    \u0275\u0275conditional((tmp_16_0 = row_r8.approvalStatus) === "approved" ? 14 : tmp_16_0 === "pending" ? 15 : tmp_16_0 === "rejected" ? 16 : 17);
     \u0275\u0275advance(5);
-    \u0275\u0275conditional(row_r7.paidAt ? 19 : 20);
+    \u0275\u0275conditional(row_r8.paidAt ? 19 : 20);
     \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate(row_r7.createdAt);
+    \u0275\u0275textInterpolate(row_r8.createdAt);
   }
 }
 function PaymentReport_ForEmpty_66_Conditional_2_Template(rf, ctx) {
@@ -47281,7 +47456,7 @@ function PaymentReport_ForEmpty_66_Conditional_3_Template(rf, ctx) {
 }
 function PaymentReport_ForEmpty_66_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 50);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 55);
     \u0275\u0275conditionalCreate(2, PaymentReport_ForEmpty_66_Conditional_2_Template, 1, 0)(3, PaymentReport_ForEmpty_66_Conditional_3_Template, 1, 0);
     \u0275\u0275elementEnd()();
   }
@@ -47293,17 +47468,17 @@ function PaymentReport_ForEmpty_66_Template(rf, ctx) {
 }
 function PaymentReport_Conditional_67_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tfoot")(1, "tr", 28)(2, "td", 51);
+    \u0275\u0275elementStart(0, "tfoot")(1, "tr", 28)(2, "td", 56);
     \u0275\u0275text(3, "\u5408\u8A08");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "td", 52);
+    \u0275\u0275elementStart(4, "td", 57);
     \u0275\u0275text(5, "\u5408\u8A08");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "td", 42);
+    \u0275\u0275elementStart(6, "td", 47);
     \u0275\u0275text(7);
     \u0275\u0275pipe(8, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(9, "td", 53)(10, "td", 54);
+    \u0275\u0275element(9, "td", 58)(10, "td", 59);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -47314,21 +47489,21 @@ function PaymentReport_Conditional_67_Template(rf, ctx) {
 }
 function PaymentReport_Conditional_68_Template(rf, ctx) {
   if (rf & 1) {
-    const _r8 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 34)(1, "span", 55);
+    const _r9 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 34)(1, "span", 60);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div", 56)(4, "button", 57);
+    \u0275\u0275elementStart(3, "div", 61)(4, "button", 62);
     \u0275\u0275listener("click", function PaymentReport_Conditional_68_Template_button_click_4_listener() {
-      \u0275\u0275restoreView(_r8);
+      \u0275\u0275restoreView(_r9);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.goToPage(ctx_r1.currentPage() - 1));
     });
     \u0275\u0275text(5, "\u4E0A\u4E00\u9801");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "button", 57);
+    \u0275\u0275elementStart(6, "button", 62);
     \u0275\u0275listener("click", function PaymentReport_Conditional_68_Template_button_click_6_listener() {
-      \u0275\u0275restoreView(_r8);
+      \u0275\u0275restoreView(_r9);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.goToPage(ctx_r1.currentPage() + 1));
     });
@@ -47363,7 +47538,8 @@ var PaymentReport = class _PaymentReport {
   /** 時段模式：日 / 週 / 月（預設月）*/
   filterMode = signal("month", ...ngDevMode ? [{ debugName: "filterMode" }] : []);
   selectedDate = signal("", ...ngDevMode ? [{ debugName: "selectedDate" }] : []);
-  selectedWeek = signal("", ...ngDevMode ? [{ debugName: "selectedWeek" }] : []);
+  /** 週模式：'YYYY-MM-DD'（任一天，由系統 snap 到該週週一→週日） */
+  selectedWeekDate = signal("", ...ngDevMode ? [{ debugName: "selectedWeekDate" }] : []);
   selectedYear = signal("", ...ngDevMode ? [{ debugName: "selectedYear" }] : []);
   selectedMonth = signal("", ...ngDevMode ? [{ debugName: "selectedMonth" }] : []);
   /** 年份選項 */
@@ -47387,31 +47563,44 @@ var PaymentReport = class _PaymentReport {
     this.years.set([currentYear - 1, currentYear]);
     this.selectedYear.set(String(currentYear));
     this.selectedMonth.set(String(now.getMonth() + 1));
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, "0");
-    const d = String(now.getDate()).padStart(2, "0");
-    this.selectedDate.set(`${y}-${m}-${d}`);
-    this.selectedWeek.set(currentIsoWeek(now));
+    const today = todayString(now);
+    this.selectedDate.set(today);
+    this.selectedWeekDate.set(today);
     this.search();
   }
+  /** 週模式 snap 結果（含週號 / 起訖日） */
+  weekRange = computed(() => snapToIsoWeek(this.selectedWeekDate()), ...ngDevMode ? [{ debugName: "weekRange" }] : []);
   computeDateRange() {
     const mode = this.filterMode();
     if (mode === "day")
       return dayToRange(this.selectedDate());
-    if (mode === "week")
-      return isoWeekToRange(this.selectedWeek());
+    if (mode === "week") {
+      const r = this.weekRange();
+      return r ? { dateFrom: r.dateFrom, dateTo: r.dateTo } : null;
+    }
     const year = Number(this.selectedYear());
     const month = Number(this.selectedMonth());
     if (!year || !month)
       return null;
     return monthToRange(year, month);
   }
+  shiftWeek(days2) {
+    const cur = this.selectedWeekDate();
+    if (!cur)
+      return;
+    this.selectedWeekDate.set(shiftDateString(cur, days2));
+  }
+  resetToThisWeek() {
+    this.selectedWeekDate.set(todayString());
+  }
   exportSuffix() {
     const mode = this.filterMode();
     if (mode === "day")
       return this.selectedDate() || "\u5168\u90E8";
-    if (mode === "week")
-      return this.selectedWeek() || "\u5168\u90E8";
+    if (mode === "week") {
+      const r = this.weekRange();
+      return r ? `${r.isoYear}-W${String(r.weekNumber).padStart(2, "0")}` : "\u5168\u90E8";
+    }
     const year = this.selectedYear() || "\u5168\u90E8";
     const month = this.selectedMonth() || "\u5168\u90E8";
     return `${year}-${String(month).padStart(2, "0")}`;
@@ -47510,7 +47699,7 @@ var PaymentReport = class _PaymentReport {
   static \u0275fac = function PaymentReport_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _PaymentReport)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _PaymentReport, selectors: [["app-payment-report"]], decls: 69, vars: 19, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#credit-card"], [1, "mb-0"], [1, "btn", "btn-outline", "inline-flex", "items-center", "gap-1", 3, "click", "disabled"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#download"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "px-4", "py-3", "border-b"], [1, "mb-3", "flex", "items-center", "gap-2", "flex-wrap"], [1, "text-xs", "text-muted"], [1, "inline-flex", "border", "rounded-md", "overflow-hidden"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", 3, "click"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", "border-l", "border-r", 3, "click"], [1, "grid", "grid-cols-1", "sm:grid-cols-2", "lg:grid-cols-4", "gap-2", "items-end"], [1, "lg:col-span-2"], [1, "text-xs", "text-muted", "mb-1", "block"], [1, "form-control", "w-full", 3, "ngModelChange", "ngModel"], ["value", ""], ["value", "paid"], ["value", "unpaid"], [1, "text-xs", "text-muted", "mb-1", "block", "sm:invisible"], [1, "btn", "btn-primary", "w-full", 3, "click"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "text-center"], [1, "text-center", "hidden", "md:table-cell"], [1, "hidden", "lg:table-cell"], [1, "text-right"], [1, "text-center", "hidden", "lg:table-cell"], [1, "flex", "items-center", "justify-between", "px-4", "py-3", "border-t"], ["type", "date", 1, "form-control", "w-full", 3, "ngModelChange", "ngModel"], ["type", "week", 1, "form-control", "w-full", 3, "ngModelChange", "ngModel"], [3, "value"], [1, "fw-500"], [1, "badge", "bg-[--bg-base]", "text-[--text-secondary]", "small"], [1, "text-center", "hidden", "md:table-cell", "font-monospace", "small"], [1, "hidden", "lg:table-cell", "text-muted", "small", 2, "max-width", "180px", "overflow", "hidden", "text-overflow", "ellipsis", "white-space", "nowrap", 3, "title"], [1, "text-right", "fw-600"], [1, "badge", "bg-success-subtle", "text-success"], [1, "badge", "bg-warning-subtle", "text-warning-emphasis"], [1, "badge", "bg-danger-subtle", "text-danger"], [1, "badge", "bg-secondary-subtle", "text-secondary"], [1, "text-success", "small"], [1, "text-muted"], [1, "text-center", "hidden", "lg:table-cell", "text-muted", "small"], ["colspan", "8", 1, "text-center", "text-muted", "py-4"], ["colspan", "4", 1, "text-right", "fw-500", "small", "hidden", "lg:table-cell"], ["colspan", "2", 1, "text-right", "fw-500", "small", "table-cell", "lg:hidden"], ["colspan", "3", 1, "hidden", "md:table-cell"], [1, "table-cell", "md:hidden"], [1, "text-muted", "small"], [1, "flex", "gap-1"], [1, "btn", "btn-sm", "btn-outline", 3, "click", "disabled"]], template: function PaymentReport_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _PaymentReport, selectors: [["app-payment-report"]], decls: 69, vars: 19, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#credit-card"], [1, "mb-0"], [1, "btn", "btn-outline", "inline-flex", "items-center", "gap-1", 3, "click", "disabled"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#download"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "px-4", "py-3", "border-b"], [1, "mb-3", "flex", "items-center", "gap-2", "flex-wrap"], [1, "text-xs", "text-muted"], [1, "inline-flex", "border", "rounded-md", "overflow-hidden"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", 3, "click"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", "border-l", "border-r", 3, "click"], [1, "grid", "grid-cols-1", "sm:grid-cols-2", "lg:grid-cols-4", "gap-2", "items-end"], [1, "lg:col-span-2"], [1, "text-xs", "text-muted", "mb-1", "block"], [1, "form-control", "w-full", 3, "ngModelChange", "ngModel"], ["value", ""], ["value", "paid"], ["value", "unpaid"], [1, "text-xs", "text-muted", "mb-1", "block", "sm:invisible"], [1, "btn", "btn-primary", "w-full", 3, "click"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "text-center"], [1, "text-center", "hidden", "md:table-cell"], [1, "hidden", "lg:table-cell"], [1, "text-right"], [1, "text-center", "hidden", "lg:table-cell"], [1, "flex", "items-center", "justify-between", "px-4", "py-3", "border-t"], ["type", "date", 1, "form-control", "w-full", 3, "ngModelChange", "ngModel"], [1, "flex", "items-stretch", "gap-1"], ["type", "button", "title", "\u4E0A\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "date", 1, "form-control", "flex-1", 3, "ngModelChange", "ngModel"], ["type", "button", "title", "\u4E0B\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "button", "title", "\u56DE\u5230\u672C\u9031", 1, "btn", "btn-outline", "whitespace-nowrap", 3, "click"], [1, "text-xs", "text-muted", "mt-1"], [3, "value"], [1, "fw-500"], [1, "badge", "bg-[--bg-base]", "text-[--text-secondary]", "small"], [1, "text-center", "hidden", "md:table-cell", "font-monospace", "small"], [1, "hidden", "lg:table-cell", "text-muted", "small", 2, "max-width", "180px", "overflow", "hidden", "text-overflow", "ellipsis", "white-space", "nowrap", 3, "title"], [1, "text-right", "fw-600"], [1, "badge", "bg-success-subtle", "text-success"], [1, "badge", "bg-warning-subtle", "text-warning-emphasis"], [1, "badge", "bg-danger-subtle", "text-danger"], [1, "badge", "bg-secondary-subtle", "text-secondary"], [1, "text-success", "small"], [1, "text-muted"], [1, "text-center", "hidden", "lg:table-cell", "text-muted", "small"], ["colspan", "8", 1, "text-center", "text-muted", "py-4"], ["colspan", "4", 1, "text-right", "fw-500", "small", "hidden", "lg:table-cell"], ["colspan", "2", 1, "text-right", "fw-500", "small", "table-cell", "lg:hidden"], ["colspan", "3", 1, "hidden", "md:table-cell"], [1, "table-cell", "md:hidden"], [1, "text-muted", "small"], [1, "flex", "gap-1"], [1, "btn", "btn-sm", "btn-outline", 3, "click", "disabled"]], template: function PaymentReport_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "div", 2);
       \u0275\u0275namespaceSVG();
@@ -47554,7 +47743,7 @@ var PaymentReport = class _PaymentReport {
       \u0275\u0275text(23, "\u6708");
       \u0275\u0275elementEnd()()();
       \u0275\u0275elementStart(24, "div", 17);
-      \u0275\u0275conditionalCreate(25, PaymentReport_Conditional_25_Template, 4, 1, "div", 18)(26, PaymentReport_Conditional_26_Template, 4, 1, "div", 18)(27, PaymentReport_Conditional_27_Template, 16, 2);
+      \u0275\u0275conditionalCreate(25, PaymentReport_Conditional_25_Template, 4, 1, "div", 18)(26, PaymentReport_Conditional_26_Template, 12, 2, "div", 18)(27, PaymentReport_Conditional_27_Template, 16, 2);
       \u0275\u0275elementStart(28, "div")(29, "label", 19);
       \u0275\u0275text(30, "\u4ED8\u6B3E\u72C0\u614B");
       \u0275\u0275elementEnd();
@@ -47686,9 +47875,19 @@ var PaymentReport = class _PaymentReport {
             </div>
           } @else if (filterMode() === 'week') {
             <div class="lg:col-span-2">
-              <label class="text-xs text-muted mb-1 block">\u9031\u6B21\uFF08\u9031\u4E00\u2192\u9031\u65E5\uFF09</label>
-              <input type="week" class="form-control w-full"
-                     [ngModel]="selectedWeek()" (ngModelChange)="selectedWeek.set($event)" />
+              <label class="text-xs text-muted mb-1 block">\u9031\u6B21\uFF08\u6311\u4EFB\u4E00\u5929\u5373\u81EA\u52D5\u53D6\u6574\u9031\uFF09</label>
+              <div class="flex items-stretch gap-1">
+                <button type="button" class="btn btn-outline px-2" title="\u4E0A\u4E00\u9031" (click)="shiftWeek(-7)">\u2039</button>
+                <input type="date" class="form-control flex-1"
+                       [ngModel]="selectedWeekDate()" (ngModelChange)="selectedWeekDate.set($event)" />
+                <button type="button" class="btn btn-outline px-2" title="\u4E0B\u4E00\u9031" (click)="shiftWeek(7)">\u203A</button>
+                <button type="button" class="btn btn-outline whitespace-nowrap" title="\u56DE\u5230\u672C\u9031" (click)="resetToThisWeek()">\u672C\u9031</button>
+              </div>
+              @if (weekRange(); as r) {
+                <div class="text-xs text-muted mt-1">
+                  \u7B2C {{ r.weekNumber }} \u9031\uFF08{{ r.dateFrom }} \u4E00 ~ {{ r.dateTo }} \u65E5\uFF09
+                </div>
+              }
             </div>
           } @else {
             <div>
@@ -58589,4 +58788,4 @@ xlsx/xlsx.mjs:
 xlsx/xlsx.mjs:
   (*! sheetjs (C) 2013-present SheetJS -- http://sheetjs.com *)
 */
-//# sourceMappingURL=chunk-C33WJUZZ.js.map
+//# sourceMappingURL=chunk-5MDKX5WB.js.map

@@ -52,9 +52,19 @@
             </div>
           } @else if (filterMode() === 'week') {
             <div class="lg:col-span-2">
-              <label class="text-xs text-muted mb-1 block">週次（週一→週日）</label>
-              <input type="week" class="form-control w-full"
-                     [ngModel]="selectedWeek()" (ngModelChange)="selectedWeek.set($event)" />
+              <label class="text-xs text-muted mb-1 block">週次（挑任一天即自動取整週）</label>
+              <div class="flex items-stretch gap-1">
+                <button type="button" class="btn btn-outline px-2" title="上一週" (click)="shiftWeek(-7)">‹</button>
+                <input type="date" class="form-control flex-1"
+                       [ngModel]="selectedWeekDate()" (ngModelChange)="selectedWeekDate.set($event)" />
+                <button type="button" class="btn btn-outline px-2" title="下一週" (click)="shiftWeek(7)">›</button>
+                <button type="button" class="btn btn-outline whitespace-nowrap" title="回到本週" (click)="resetToThisWeek()">本週</button>
+              </div>
+              @if (weekRange(); as r) {
+                <div class="text-xs text-muted mt-1">
+                  第 {{ r.weekNumber }} 週（{{ r.dateFrom }} 一 ~ {{ r.dateTo }} 日）
+                </div>
+              }
             </div>
           } @else {
             <div>
