@@ -29,7 +29,7 @@ import {
 import "./chunk-QACKTNEL.js";
 import {
   ApprovalTaskService
-} from "./chunk-DM6SSN3O.js";
+} from "./chunk-TZRFZK6Q.js";
 import {
   ToastrService
 } from "./chunk-X3EGCDLG.js";
@@ -10337,9 +10337,10 @@ var PAYMENT_TYPE_LABELS2 = {
 // src/app/features/admin/approval-tasks/pages/approval-task-list/approval-task-list.ts
 var _c010 = (a0, a1) => [a0, a1, "review"];
 var _forTrack015 = ($index, $item) => $item.applicationType + $item.id;
+var _forTrack14 = ($index, $item) => $item[0];
 function ApprovalTaskList_Conditional_13_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 22);
+    \u0275\u0275elementStart(0, "span", 23);
     \u0275\u0275text(1, "\u8655\u7406\u4E2D\u2026");
     \u0275\u0275elementEnd();
   }
@@ -10347,19 +10348,19 @@ function ApprovalTaskList_Conditional_13_Conditional_5_Template(rf, ctx) {
 function ApprovalTaskList_Conditional_13_Template(rf, ctx) {
   if (rf & 1) {
     const _r1 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 7)(1, "button", 19);
+    \u0275\u0275elementStart(0, "div", 7)(1, "button", 20);
     \u0275\u0275listener("click", function ApprovalTaskList_Conditional_13_Template_button_click_1_listener() {
       \u0275\u0275restoreView(_r1);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.submitBatchApprove());
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(2, "svg", 20);
-    \u0275\u0275element(3, "use", 21);
+    \u0275\u0275elementStart(2, "svg", 21);
+    \u0275\u0275element(3, "use", 22);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(5, ApprovalTaskList_Conditional_13_Conditional_5_Template, 2, 0, "span", 22);
+    \u0275\u0275conditionalCreate(5, ApprovalTaskList_Conditional_13_Conditional_5_Template, 2, 0, "span", 23);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -10377,10 +10378,10 @@ function ApprovalTaskList_Conditional_14_For_10_Template(rf, ctx) {
     \u0275\u0275elementStart(0, "li")(1, "span");
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "span", 29);
+    \u0275\u0275elementStart(3, "span", 30);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "a", 30);
+    \u0275\u0275elementStart(5, "a", 31);
     \u0275\u0275text(6, "\u524D\u5F80\u88DC\u586B \u2192");
     \u0275\u0275elementEnd()();
   }
@@ -10400,16 +10401,16 @@ function ApprovalTaskList_Conditional_14_For_10_Template(rf, ctx) {
 function ApprovalTaskList_Conditional_14_Template(rf, ctx) {
   if (rf & 1) {
     const _r3 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 8)(1, "div", 23);
+    \u0275\u0275elementStart(0, "div", 8)(1, "div", 24);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(2, "svg", 24);
-    \u0275\u0275element(3, "use", 25);
+    \u0275\u0275elementStart(2, "svg", 25);
+    \u0275\u0275element(3, "use", 26);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(4, "div", 26);
+    \u0275\u0275elementStart(4, "div", 27);
     \u0275\u0275text(5);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "button", 27);
+    \u0275\u0275elementStart(6, "button", 28);
     \u0275\u0275listener("click", function ApprovalTaskList_Conditional_14_Template_button_click_6_listener() {
       \u0275\u0275restoreView(_r3);
       const ctx_r1 = \u0275\u0275nextContext();
@@ -10417,7 +10418,7 @@ function ApprovalTaskList_Conditional_14_Template(rf, ctx) {
     });
     \u0275\u0275text(7, "\u95DC\u9589");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(8, "ul", 28);
+    \u0275\u0275elementStart(8, "ul", 29);
     \u0275\u0275repeaterCreate(9, ApprovalTaskList_Conditional_14_For_10_Template, 7, 8, "li", null, _forTrack015);
     \u0275\u0275elementEnd()();
   }
@@ -10429,45 +10430,58 @@ function ApprovalTaskList_Conditional_14_Template(rf, ctx) {
     \u0275\u0275repeater(pending_r5);
   }
 }
-function ApprovalTaskList_Conditional_15_Template(rf, ctx) {
+function ApprovalTaskList_Conditional_15_For_5_Template(rf, ctx) {
   if (rf & 1) {
-    const _r6 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 5)(1, "button", 6);
-    \u0275\u0275listener("click", function ApprovalTaskList_Conditional_15_Template_button_click_1_listener() {
-      \u0275\u0275restoreView(_r6);
-      const ctx_r1 = \u0275\u0275nextContext();
+    \u0275\u0275elementStart(0, "option", 34);
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const opt_r7 = ctx.$implicit;
+    \u0275\u0275property("value", opt_r7[0]);
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate(opt_r7[1]);
+  }
+}
+function ApprovalTaskList_Conditional_15_Conditional_6_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r8 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 35)(1, "button", 6);
+    \u0275\u0275listener("click", function ApprovalTaskList_Conditional_15_Conditional_6_Template_button_click_1_listener() {
+      \u0275\u0275restoreView(_r8);
+      const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.setPaymentStatus(""));
     });
     \u0275\u0275text(2, " \u5168\u90E8 ");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "button", 6);
-    \u0275\u0275listener("click", function ApprovalTaskList_Conditional_15_Template_button_click_3_listener() {
-      \u0275\u0275restoreView(_r6);
-      const ctx_r1 = \u0275\u0275nextContext();
+    \u0275\u0275listener("click", function ApprovalTaskList_Conditional_15_Conditional_6_Template_button_click_3_listener() {
+      \u0275\u0275restoreView(_r8);
+      const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.setPaymentStatus("unpaid"));
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(4, "svg", 20);
-    \u0275\u0275element(5, "use", 31);
+    \u0275\u0275elementStart(4, "svg", 21);
+    \u0275\u0275element(5, "use", 36);
     \u0275\u0275elementEnd();
     \u0275\u0275text(6, " \u672A\u64A5\u6B3E/\u672A\u9000\u6B3E ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
     \u0275\u0275elementStart(7, "button", 6);
-    \u0275\u0275listener("click", function ApprovalTaskList_Conditional_15_Template_button_click_7_listener() {
-      \u0275\u0275restoreView(_r6);
-      const ctx_r1 = \u0275\u0275nextContext();
+    \u0275\u0275listener("click", function ApprovalTaskList_Conditional_15_Conditional_6_Template_button_click_7_listener() {
+      \u0275\u0275restoreView(_r8);
+      const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.setPaymentStatus("paid"));
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(8, "svg", 20);
-    \u0275\u0275element(9, "use", 21);
+    \u0275\u0275elementStart(8, "svg", 21);
+    \u0275\u0275element(9, "use", 22);
     \u0275\u0275elementEnd();
     \u0275\u0275text(10, " \u5DF2\u64A5\u6B3E/\u5DF2\u9000\u6B3E ");
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext();
+    const ctx_r1 = \u0275\u0275nextContext(2);
     \u0275\u0275advance();
     \u0275\u0275classMap(ctx_r1.paymentStatus() === "" ? "btn-outline-primary" : "btn-outline-secondary");
     \u0275\u0275advance(2);
@@ -10476,12 +10490,39 @@ function ApprovalTaskList_Conditional_15_Template(rf, ctx) {
     \u0275\u0275classMap(ctx_r1.paymentStatus() === "paid" ? "btn-outline-primary" : "btn-outline-secondary");
   }
 }
+function ApprovalTaskList_Conditional_15_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r6 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 9)(1, "select", 32);
+    \u0275\u0275listener("change", function ApprovalTaskList_Conditional_15_Template_select_change_1_listener($event) {
+      \u0275\u0275restoreView(_r6);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.setApplicationTypeFilter($event.target.value));
+    });
+    \u0275\u0275elementStart(2, "option", 33);
+    \u0275\u0275text(3, "\u5168\u90E8\u985E\u578B");
+    \u0275\u0275elementEnd();
+    \u0275\u0275repeaterCreate(4, ApprovalTaskList_Conditional_15_For_5_Template, 2, 2, "option", 34, _forTrack14);
+    \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(6, ApprovalTaskList_Conditional_15_Conditional_6_Template, 11, 6, "div", 35);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext();
+    \u0275\u0275advance();
+    \u0275\u0275property("value", ctx_r1.applicationTypeFilter());
+    \u0275\u0275advance(3);
+    \u0275\u0275repeater(ctx_r1.appTypeOptions());
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(ctx_r1.canSeePaymentFilter() ? 6 : -1);
+  }
+}
 function ApprovalTaskList_Conditional_22_Template(rf, ctx) {
   if (rf & 1) {
-    const _r7 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "th", 14)(1, "input", 32);
+    const _r9 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "th", 15)(1, "input", 37);
     \u0275\u0275listener("change", function ApprovalTaskList_Conditional_22_Template_input_change_1_listener() {
-      \u0275\u0275restoreView(_r7);
+      \u0275\u0275restoreView(_r9);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.toggleSelectAll());
     });
@@ -10495,22 +10536,22 @@ function ApprovalTaskList_Conditional_22_Template(rf, ctx) {
 }
 function ApprovalTaskList_For_37_Conditional_1_Template(rf, ctx) {
   if (rf & 1) {
-    const _r8 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "td")(1, "input", 41);
+    const _r10 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "td")(1, "input", 46);
     \u0275\u0275listener("change", function ApprovalTaskList_For_37_Conditional_1_Template_input_change_1_listener() {
-      \u0275\u0275restoreView(_r8);
-      const t_r9 = \u0275\u0275nextContext().$implicit;
+      \u0275\u0275restoreView(_r10);
+      const t_r11 = \u0275\u0275nextContext().$implicit;
       const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.toggleSelect(t_r9));
+      return \u0275\u0275resetView(ctx_r1.toggleSelect(t_r11));
     });
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    const t_r9 = \u0275\u0275nextContext().$implicit;
+    const t_r11 = \u0275\u0275nextContext().$implicit;
     const ctx_r1 = \u0275\u0275nextContext();
     \u0275\u0275advance();
-    \u0275\u0275property("checked", ctx_r1.isSelected(t_r9));
-    \u0275\u0275attribute("aria-label", "\u52FE\u9078 " + ctx_r1.appTypeLabel[t_r9.applicationType]);
+    \u0275\u0275property("checked", ctx_r1.isSelected(t_r11));
+    \u0275\u0275attribute("aria-label", "\u52FE\u9078 " + ctx_r1.appTypeLabel[t_r11.applicationType]);
   }
 }
 function ApprovalTaskList_For_37_Conditional_13_Template(rf, ctx) {
@@ -10520,10 +10561,10 @@ function ApprovalTaskList_For_37_Conditional_13_Template(rf, ctx) {
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const pb_r10 = ctx;
-    \u0275\u0275classMap("badge " + pb_r10.cls);
+    const pb_r12 = ctx;
+    \u0275\u0275classMap("badge " + pb_r12.cls);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(pb_r10.label);
+    \u0275\u0275textInterpolate(pb_r12.label);
   }
 }
 function ApprovalTaskList_For_37_Template(rf, ctx) {
@@ -10533,59 +10574,59 @@ function ApprovalTaskList_For_37_Template(rf, ctx) {
     \u0275\u0275elementStart(2, "td")(3, "span");
     \u0275\u0275text(4);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(5, "td", 33);
+    \u0275\u0275elementStart(5, "td", 38);
     \u0275\u0275text(6);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "td", 34);
+    \u0275\u0275elementStart(7, "td", 39);
     \u0275\u0275text(8);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "td")(10, "div", 35)(11, "span");
+    \u0275\u0275elementStart(9, "td")(10, "div", 40)(11, "span");
     \u0275\u0275text(12);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(13, ApprovalTaskList_For_37_Conditional_13_Template, 2, 3, "span", 36);
+    \u0275\u0275conditionalCreate(13, ApprovalTaskList_For_37_Conditional_13_Template, 2, 3, "span", 41);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(14, "td", 37);
+    \u0275\u0275elementStart(14, "td", 42);
     \u0275\u0275text(15);
     \u0275\u0275pipe(16, "date");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(17, "td", 38)(18, "a", 39);
+    \u0275\u0275elementStart(17, "td", 43)(18, "a", 44);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(19, "svg", 40);
+    \u0275\u0275elementStart(19, "svg", 45);
     \u0275\u0275element(20, "use");
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
     let tmp_17_0;
-    const t_r9 = ctx.$implicit;
+    const t_r11 = ctx.$implicit;
     const ctx_r1 = \u0275\u0275nextContext();
     \u0275\u0275advance();
     \u0275\u0275conditional(ctx_r1.activeTab() === "pending" && ctx_r1.canBatchApprove() ? 1 : -1);
     \u0275\u0275advance(2);
-    \u0275\u0275classMap("badge " + ctx_r1.appTypeClass[t_r9.applicationType]);
+    \u0275\u0275classMap("badge " + ctx_r1.appTypeClass[t_r11.applicationType]);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate1(" ", ctx_r1.appTypeLabel[t_r9.applicationType], " ");
+    \u0275\u0275textInterpolate1(" ", ctx_r1.appTypeLabel[t_r11.applicationType], " ");
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(t_r9.submittedBy);
+    \u0275\u0275textInterpolate(t_r11.submittedBy);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(ctx_r1.getSummary(t_r9));
+    \u0275\u0275textInterpolate(ctx_r1.getSummary(t_r11));
     \u0275\u0275advance(3);
-    \u0275\u0275classMap("badge " + ctx_r1.statusClass[t_r9.status]);
+    \u0275\u0275classMap("badge " + ctx_r1.statusClass[t_r11.status]);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(ctx_r1.statusLabel[t_r9.status]);
+    \u0275\u0275textInterpolate(ctx_r1.statusLabel[t_r11.status]);
     \u0275\u0275advance();
-    \u0275\u0275conditional((tmp_17_0 = ctx_r1.getPaymentBadge(t_r9)) ? 13 : -1, tmp_17_0);
+    \u0275\u0275conditional((tmp_17_0 = ctx_r1.getPaymentBadge(t_r11)) ? 13 : -1, tmp_17_0);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(16, 15, t_r9.submittedAt, "yyyy-MM-dd"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(16, 15, t_r11.submittedAt, "yyyy-MM-dd"));
     \u0275\u0275advance(3);
-    \u0275\u0275classMap("btn btn-sm inline-flex items-center " + (t_r9.status === "pending" ? "btn-ghost-primary" : "btn-ghost-secondary"));
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction2(18, _c010, t_r9.applicationType, t_r9.id));
+    \u0275\u0275classMap("btn btn-sm inline-flex items-center " + (t_r11.status === "pending" ? "btn-ghost-primary" : "btn-ghost-secondary"));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction2(18, _c010, t_r11.applicationType, t_r11.id));
     \u0275\u0275advance(2);
-    \u0275\u0275attribute("href", t_r9.status === "pending" ? "/assets/icons/sprite.svg#edit" : "/assets/icons/sprite.svg#eye");
+    \u0275\u0275attribute("href", t_r11.status === "pending" ? "/assets/icons/sprite.svg#edit" : "/assets/icons/sprite.svg#eye");
   }
 }
 function ApprovalTaskList_ForEmpty_38_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 42);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 47);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd()();
   }
@@ -10594,83 +10635,83 @@ function ApprovalTaskList_ForEmpty_38_Template(rf, ctx) {
     \u0275\u0275advance();
     \u0275\u0275attribute("colspan", ctx_r1.activeTab() === "pending" && ctx_r1.canBatchApprove() ? 7 : 6);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate1(" ", ctx_r1.activeTab() === "pending" ? "\u76EE\u524D\u6C92\u6709\u5F85\u5BE9\u6838\u7684\u7C3D\u6838\u4F5C\u696D\u3002" : ctx_r1.activeTab() === "rejected" ? "\u76EE\u524D\u6C92\u6709\u5DF2\u62D2\u7D55\u7684\u7C3D\u6838\u4F5C\u696D\u3002" : ctx_r1.paymentStatus() === "unpaid" ? "\u76EE\u524D\u6C92\u6709\u672A\u64A5\u6B3E/\u672A\u9000\u6B3E\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002" : ctx_r1.paymentStatus() === "paid" ? "\u76EE\u524D\u6C92\u6709\u5DF2\u64A5\u6B3E/\u5DF2\u9000\u6B3E\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002" : "\u76EE\u524D\u6C92\u6709\u5DF2\u6838\u51C6\u7684\u7C3D\u6838\u4F5C\u696D\u3002", " ");
+    \u0275\u0275textInterpolate1(" ", ctx_r1.activeTab() === "pending" ? "\u76EE\u524D\u6C92\u6709\u5F85\u5BE9\u6838\u7684\u7C3D\u6838\u4F5C\u696D\u3002" : ctx_r1.activeTab() === "rejected" ? "\u76EE\u524D\u6C92\u6709\u5DF2\u62D2\u7D55\u7684\u7C3D\u6838\u4F5C\u696D\u3002" : ctx_r1.applicationTypeFilter() ? "\u76EE\u524D\u6C92\u6709\u6B64\u985E\u578B\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002" : ctx_r1.paymentStatus() === "unpaid" ? "\u76EE\u524D\u6C92\u6709\u672A\u64A5\u6B3E/\u672A\u9000\u6B3E\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002" : ctx_r1.paymentStatus() === "paid" ? "\u76EE\u524D\u6C92\u6709\u5DF2\u64A5\u6B3E/\u5DF2\u9000\u6B3E\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002" : "\u76EE\u524D\u6C92\u6709\u5DF2\u6838\u51C6\u7684\u7C3D\u6838\u4F5C\u696D\u3002", " ");
   }
 }
 function ApprovalTaskList_Conditional_39_For_15_Conditional_0_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "li", 50)(1, "span", 52);
+    \u0275\u0275elementStart(0, "li", 55)(1, "span", 57);
     \u0275\u0275text(2, "\u2026");
     \u0275\u0275elementEnd()();
   }
 }
 function ApprovalTaskList_Conditional_39_For_15_Conditional_1_Template(rf, ctx) {
   if (rf & 1) {
-    const _r12 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "li", 48)(1, "button", 49);
+    const _r14 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "li", 53)(1, "button", 54);
     \u0275\u0275listener("click", function ApprovalTaskList_Conditional_39_For_15_Conditional_1_Template_button_click_1_listener() {
-      \u0275\u0275restoreView(_r12);
-      const p_r13 = \u0275\u0275nextContext().$implicit;
+      \u0275\u0275restoreView(_r14);
+      const p_r15 = \u0275\u0275nextContext().$implicit;
       const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.goTo(p_r13));
+      return \u0275\u0275resetView(ctx_r1.goTo(p_r15));
     });
     \u0275\u0275text(2);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    const p_r13 = \u0275\u0275nextContext().$implicit;
+    const p_r15 = \u0275\u0275nextContext().$implicit;
     const ctx_r1 = \u0275\u0275nextContext(2);
-    \u0275\u0275classProp("active", p_r13 === ctx_r1.page());
+    \u0275\u0275classProp("active", p_r15 === ctx_r1.page());
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(p_r13);
+    \u0275\u0275textInterpolate(p_r15);
   }
 }
 function ApprovalTaskList_Conditional_39_For_15_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275conditionalCreate(0, ApprovalTaskList_Conditional_39_For_15_Conditional_0_Template, 3, 0, "li", 50)(1, ApprovalTaskList_Conditional_39_For_15_Conditional_1_Template, 3, 3, "li", 51);
+    \u0275\u0275conditionalCreate(0, ApprovalTaskList_Conditional_39_For_15_Conditional_0_Template, 3, 0, "li", 55)(1, ApprovalTaskList_Conditional_39_For_15_Conditional_1_Template, 3, 3, "li", 56);
   }
   if (rf & 2) {
-    const p_r13 = ctx.$implicit;
-    \u0275\u0275conditional(p_r13 === -1 ? 0 : 1);
+    const p_r15 = ctx.$implicit;
+    \u0275\u0275conditional(p_r15 === -1 ? 0 : 1);
   }
 }
 function ApprovalTaskList_Conditional_39_Template(rf, ctx) {
   if (rf & 1) {
-    const _r11 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 18)(1, "span", 43);
+    const _r13 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 19)(1, "span", 48);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div", 44)(4, "button", 45);
+    \u0275\u0275elementStart(3, "div", 49)(4, "button", 50);
     \u0275\u0275listener("click", function ApprovalTaskList_Conditional_39_Template_button_click_4_listener() {
-      \u0275\u0275restoreView(_r11);
+      \u0275\u0275restoreView(_r13);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.prev());
     });
     \u0275\u0275text(5, "\u2039");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "span", 46);
+    \u0275\u0275elementStart(6, "span", 51);
     \u0275\u0275text(7);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "button", 45);
+    \u0275\u0275elementStart(8, "button", 50);
     \u0275\u0275listener("click", function ApprovalTaskList_Conditional_39_Template_button_click_8_listener() {
-      \u0275\u0275restoreView(_r11);
+      \u0275\u0275restoreView(_r13);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.next());
     });
     \u0275\u0275text(9, "\u203A");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(10, "ul", 47)(11, "li", 48)(12, "button", 49);
+    \u0275\u0275elementStart(10, "ul", 52)(11, "li", 53)(12, "button", 54);
     \u0275\u0275listener("click", function ApprovalTaskList_Conditional_39_Template_button_click_12_listener() {
-      \u0275\u0275restoreView(_r11);
+      \u0275\u0275restoreView(_r13);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.prev());
     });
     \u0275\u0275text(13, "\u2039");
     \u0275\u0275elementEnd()();
     \u0275\u0275repeaterCreate(14, ApprovalTaskList_Conditional_39_For_15_Template, 2, 1, null, null, \u0275\u0275repeaterTrackByIdentity);
-    \u0275\u0275elementStart(16, "li", 48)(17, "button", 49);
+    \u0275\u0275elementStart(16, "li", 53)(17, "button", 54);
     \u0275\u0275listener("click", function ApprovalTaskList_Conditional_39_Template_button_click_17_listener() {
-      \u0275\u0275restoreView(_r11);
+      \u0275\u0275restoreView(_r13);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.next());
     });
@@ -10707,7 +10748,10 @@ var ApprovalTaskList = class _ApprovalTaskList {
   PAGE_SIZE = 20;
   activeTab = signal("pending", ...ngDevMode ? [{ debugName: "activeTab" }] : []);
   paymentStatus = signal("", ...ngDevMode ? [{ debugName: "paymentStatus" }] : []);
+  applicationTypeFilter = signal("", ...ngDevMode ? [{ debugName: "applicationTypeFilter" }] : []);
   page = signal(1, ...ngDevMode ? [{ debugName: "page" }] : []);
+  /** 類型下拉選項：[ApplicationType, 中文 label][] */
+  appTypeOptions = computed(() => Object.entries(APPLICATION_TYPE_LABELS), ...ngDevMode ? [{ debugName: "appTypeOptions" }] : []);
   /** 已勾選的任務 key 集合，格式：${applicationType}:${id} */
   selectedKeys = signal(/* @__PURE__ */ new Set(), ...ngDevMode ? [{ debugName: "selectedKeys" }] : []);
   /** 批次核准後需補填撥款/退款日的提醒清單（null = 不顯示 banner） */
@@ -10719,11 +10763,16 @@ var ApprovalTaskList = class _ApprovalTaskList {
   switchTab(tab) {
     this.activeTab.set(tab);
     this.paymentStatus.set("");
+    this.applicationTypeFilter.set("");
     this.page.set(1);
     this.selectedKeys.set(/* @__PURE__ */ new Set());
   }
   setPaymentStatus(status) {
     this.paymentStatus.set(status);
+    this.page.set(1);
+  }
+  setApplicationTypeFilter(value) {
+    this.applicationTypeFilter.set(value || "");
     this.page.set(1);
   }
   // ── 選取狀態 ──────────────────────────────────────────────────────────
@@ -10798,8 +10847,9 @@ var ApprovalTaskList = class _ApprovalTaskList {
     toObservable(this.page),
     toObservable(this.activeTab),
     toObservable(this.paymentStatus),
+    toObservable(this.applicationTypeFilter),
     toObservable(this.reloadTrigger)
-  ]).pipe(switchMap(([p, status, ps]) => this.service.getPaged(p, this.PAGE_SIZE, status, ps || void 0))), { initialValue: { items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 1 } });
+  ]).pipe(switchMap(([p, status, ps, at]) => this.service.getPaged(p, this.PAGE_SIZE, status, ps || void 0, at || void 0))), { initialValue: { items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 1 } });
   pagedTasks = computed(() => this.result().items, ...ngDevMode ? [{ debugName: "pagedTasks" }] : []);
   totalCount = computed(() => this.result().totalCount, ...ngDevMode ? [{ debugName: "totalCount" }] : []);
   totalPages = computed(() => this.result().totalPages, ...ngDevMode ? [{ debugName: "totalPages" }] : []);
@@ -10870,6 +10920,15 @@ var ApprovalTaskList = class _ApprovalTaskList {
     if (t.leaveDetail) {
       return `${this.leaveTypeLabel[t.leaveDetail.leaveType]}\u30FB${t.leaveDetail.hours} \u5C0F\u6642`;
     }
+    if (t.applicationType === "holiday_travel" && t.travelDetail) {
+      const days2 = t.travelDetail.holidayDays ?? 0;
+      const list = t.travelDetail.holidayAllowances ?? [];
+      const head = `${t.travelDetail.destination}\u30FB${days2} \u5929`;
+      if (list.length === 0)
+        return head;
+      const parts = list.map((a) => `${a.userName} ${a.allowance.toLocaleString()} \u5143`).join("\u3001");
+      return `${head}\uFF5C${parts}`;
+    }
     if (t.travelDetail) {
       return `${t.travelDetail.destination}\uFF08${t.travelDetail.grandTotal.toLocaleString()} \u5143\uFF09`;
     }
@@ -10888,7 +10947,7 @@ var ApprovalTaskList = class _ApprovalTaskList {
   static \u0275fac = function ApprovalTaskList_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _ApprovalTaskList)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ApprovalTaskList, selectors: [["app-approval-task-list"]], decls: 40, vars: 12, consts: [[1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#check-square"], [1, "mb-0"], [1, "flex", "gap-1", "mb-4"], [1, "btn", "btn-sm", 3, "click"], [1, "flex", "items-center", "gap-2", "mb-4"], [1, "alert", "alert-warning", "mb-4"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [2, "width", "2.5rem"], [1, "hidden", "md:table-cell"], [1, "hidden", "lg:table-cell"], [1, "text-right"], [1, "flex", "flex-col", "gap-2", "sm:flex-row", "sm:items-center", "sm:justify-between", "px-4", "py-3", "border-t"], [1, "btn", "btn-sm", "btn-primary", "inline-flex", "items-center", 3, "click", "disabled"], [1, "sa-icon", "me-1", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#check-circle"], [1, "text-muted", "small"], [1, "flex", "items-start", "gap-2", "mb-2"], [1, "sa-icon", "mt-1", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "fw-600", "flex-1"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", 3, "click"], [1, "mb-0", "ps-4"], [1, "text-muted", "small", "me-2"], [1, "small", 3, "routerLink"], ["href", "/assets/icons/sprite.svg#clock"], ["type", "checkbox", "aria-label", "\u5168\u9078\u672C\u9801", 3, "change", "checked"], [1, "fw-500"], [1, "text-muted", "small", "hidden", "md:table-cell"], [1, "flex", "flex-wrap", "items-center", "gap-1"], [3, "class"], [1, "text-muted", "small", "hidden", "lg:table-cell"], [1, "text-right", 2, "white-space", "nowrap"], [3, "routerLink"], [1, "sa-icon", 2, "stroke", "currentColor"], ["type", "checkbox", 3, "change", "checked"], [1, "text-center", "text-muted", "py-4"], [1, "text-muted", "small", "text-center", "sm:text-left"], [1, "flex", "sm:hidden", "items-center", "gap-1"], [1, "page-link", "rounded", 3, "click"], [1, "px-2", "text-sm"], [1, "hidden", "sm:flex", "pagination", "mb-0"], [1, "page-item"], [1, "page-link", 3, "click"], [1, "page-item", "disabled"], [1, "page-item", 3, "active"], [1, "page-link"]], template: function ApprovalTaskList_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ApprovalTaskList, selectors: [["app-approval-task-list"]], decls: 40, vars: 12, consts: [[1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#check-square"], [1, "mb-0"], [1, "flex", "gap-1", "mb-4"], [1, "btn", "btn-sm", 3, "click"], [1, "flex", "items-center", "gap-2", "mb-4"], [1, "alert", "alert-warning", "mb-4"], [1, "flex", "flex-wrap", "items-center", "gap-2", "mb-4"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [2, "width", "2.5rem"], [1, "hidden", "md:table-cell"], [1, "hidden", "lg:table-cell"], [1, "text-right"], [1, "flex", "flex-col", "gap-2", "sm:flex-row", "sm:items-center", "sm:justify-between", "px-4", "py-3", "border-t"], [1, "btn", "btn-sm", "btn-primary", "inline-flex", "items-center", 3, "click", "disabled"], [1, "sa-icon", "me-1", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#check-circle"], [1, "text-muted", "small"], [1, "flex", "items-start", "gap-2", "mb-2"], [1, "sa-icon", "mt-1", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "fw-600", "flex-1"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", 3, "click"], [1, "mb-0", "ps-4"], [1, "text-muted", "small", "me-2"], [1, "small", 3, "routerLink"], ["aria-label", "\u7BE9\u9078\u985E\u578B", 1, "form-select", "form-select-sm", "w-auto", 3, "change", "value"], ["value", ""], [3, "value"], [1, "flex", "gap-1"], ["href", "/assets/icons/sprite.svg#clock"], ["type", "checkbox", "aria-label", "\u5168\u9078\u672C\u9801", 3, "change", "checked"], [1, "fw-500"], [1, "text-muted", "small", "hidden", "md:table-cell"], [1, "flex", "flex-wrap", "items-center", "gap-1"], [3, "class"], [1, "text-muted", "small", "hidden", "lg:table-cell"], [1, "text-right", 2, "white-space", "nowrap"], [3, "routerLink"], [1, "sa-icon", 2, "stroke", "currentColor"], ["type", "checkbox", 3, "change", "checked"], [1, "text-center", "text-muted", "py-4"], [1, "text-muted", "small", "text-center", "sm:text-left"], [1, "flex", "sm:hidden", "items-center", "gap-1"], [1, "page-link", "rounded", 3, "click"], [1, "px-2", "text-sm"], [1, "hidden", "sm:flex", "pagination", "mb-0"], [1, "page-item"], [1, "page-link", 3, "click"], [1, "page-item", "disabled"], [1, "page-item", 3, "active"], [1, "page-link"]], template: function ApprovalTaskList_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1);
       \u0275\u0275namespaceSVG();
@@ -10919,31 +10978,31 @@ var ApprovalTaskList = class _ApprovalTaskList {
       \u0275\u0275elementEnd()();
       \u0275\u0275conditionalCreate(13, ApprovalTaskList_Conditional_13_Template, 6, 3, "div", 7);
       \u0275\u0275conditionalCreate(14, ApprovalTaskList_Conditional_14_Template, 11, 1, "div", 8);
-      \u0275\u0275conditionalCreate(15, ApprovalTaskList_Conditional_15_Template, 11, 6, "div", 5);
-      \u0275\u0275elementStart(16, "div", 9)(17, "div", 10)(18, "div", 11)(19, "table", 12)(20, "thead", 13)(21, "tr");
-      \u0275\u0275conditionalCreate(22, ApprovalTaskList_Conditional_22_Template, 2, 1, "th", 14);
+      \u0275\u0275conditionalCreate(15, ApprovalTaskList_Conditional_15_Template, 7, 2, "div", 9);
+      \u0275\u0275elementStart(16, "div", 10)(17, "div", 11)(18, "div", 12)(19, "table", 13)(20, "thead", 14)(21, "tr");
+      \u0275\u0275conditionalCreate(22, ApprovalTaskList_Conditional_22_Template, 2, 1, "th", 15);
       \u0275\u0275elementStart(23, "th");
       \u0275\u0275text(24, "\u985E\u578B");
       \u0275\u0275elementEnd();
       \u0275\u0275elementStart(25, "th");
       \u0275\u0275text(26, "\u7533\u8ACB\u4EBA");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(27, "th", 15);
+      \u0275\u0275elementStart(27, "th", 16);
       \u0275\u0275text(28, "\u6458\u8981");
       \u0275\u0275elementEnd();
       \u0275\u0275elementStart(29, "th");
       \u0275\u0275text(30, "\u72C0\u614B");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(31, "th", 16);
+      \u0275\u0275elementStart(31, "th", 17);
       \u0275\u0275text(32, "\u7533\u8ACB\u6642\u9593");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(33, "th", 17);
+      \u0275\u0275elementStart(33, "th", 18);
       \u0275\u0275text(34, "\u64CD\u4F5C");
       \u0275\u0275elementEnd()()();
       \u0275\u0275elementStart(35, "tbody");
       \u0275\u0275repeaterCreate(36, ApprovalTaskList_For_37_Template, 21, 21, "tr", null, _forTrack015, false, ApprovalTaskList_ForEmpty_38_Template, 3, 2, "tr");
       \u0275\u0275elementEnd()()();
-      \u0275\u0275conditionalCreate(39, ApprovalTaskList_Conditional_39_Template, 19, 13, "div", 18);
+      \u0275\u0275conditionalCreate(39, ApprovalTaskList_Conditional_39_Template, 19, 13, "div", 19);
       \u0275\u0275elementEnd()()();
     }
     if (rf & 2) {
@@ -10959,7 +11018,7 @@ var ApprovalTaskList = class _ApprovalTaskList {
       \u0275\u0275advance();
       \u0275\u0275conditional((tmp_4_0 = ctx.pendingPaymentResult()) ? 14 : -1, tmp_4_0);
       \u0275\u0275advance();
-      \u0275\u0275conditional(ctx.activeTab() === "approved" && ctx.canSeePaymentFilter() ? 15 : -1);
+      \u0275\u0275conditional(ctx.activeTab() === "approved" ? 15 : -1);
       \u0275\u0275advance(7);
       \u0275\u0275conditional(ctx.activeTab() === "pending" && ctx.canBatchApprove() ? 22 : -1);
       \u0275\u0275advance(14);
@@ -11038,26 +11097,40 @@ var ApprovalTaskList = class _ApprovalTaskList {
     </div>\r
   }\r
 \r
-  <!-- \u64A5\u6B3E/\u9000\u6B3E\u72C0\u614B\u7BE9\u9078\uFF08\u50C5\u5DF2\u6838\u51C6\u9801\u7C64 + Superadmin/\u7E3D\u76E3\u5BA4/\u8CA1\u52D9\u90E8/\u6703\u8A08\u90E8\uFF09 -->\r
-  @if (activeTab() === 'approved' && canSeePaymentFilter()) {\r
-    <div class="flex gap-1 mb-4">\r
-      <button class="btn btn-sm"\r
-              [class]="paymentStatus() === '' ? 'btn-outline-primary' : 'btn-outline-secondary'"\r
-              (click)="setPaymentStatus('')">\r
-        \u5168\u90E8\r
-      </button>\r
-      <button class="btn btn-sm"\r
-              [class]="paymentStatus() === 'unpaid' ? 'btn-outline-primary' : 'btn-outline-secondary'"\r
-              (click)="setPaymentStatus('unpaid')">\r
-        <svg class="sa-icon me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>\r
-        \u672A\u64A5\u6B3E/\u672A\u9000\u6B3E\r
-      </button>\r
-      <button class="btn btn-sm"\r
-              [class]="paymentStatus() === 'paid' ? 'btn-outline-primary' : 'btn-outline-secondary'"\r
-              (click)="setPaymentStatus('paid')">\r
-        <svg class="sa-icon me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#check-circle"></use></svg>\r
-        \u5DF2\u64A5\u6B3E/\u5DF2\u9000\u6B3E\r
-      </button>\r
+  <!-- \u5DF2\u6838\u51C6\u9801\u7C64\u7BE9\u9078\u5217\uFF1A\u985E\u578B\uFF08\u6240\u6709\u4EBA\u53EF\u898B\uFF09 + \u64A5\u6B3E/\u9000\u6B3E\uFF08\u50C5 Superadmin/\u7E3D\u76E3\u5BA4/\u8CA1\u52D9\u90E8/\u6703\u8A08\u90E8\uFF09 -->\r
+  @if (activeTab() === 'approved') {\r
+    <div class="flex flex-wrap items-center gap-2 mb-4">\r
+      <select class="form-select form-select-sm w-auto"\r
+              [value]="applicationTypeFilter()"\r
+              (change)="setApplicationTypeFilter($any($event.target).value)"\r
+              aria-label="\u7BE9\u9078\u985E\u578B">\r
+        <option value="">\u5168\u90E8\u985E\u578B</option>\r
+        @for (opt of appTypeOptions(); track opt[0]) {\r
+          <option [value]="opt[0]">{{ opt[1] }}</option>\r
+        }\r
+      </select>\r
+\r
+      @if (canSeePaymentFilter()) {\r
+        <div class="flex gap-1">\r
+          <button class="btn btn-sm"\r
+                  [class]="paymentStatus() === '' ? 'btn-outline-primary' : 'btn-outline-secondary'"\r
+                  (click)="setPaymentStatus('')">\r
+            \u5168\u90E8\r
+          </button>\r
+          <button class="btn btn-sm"\r
+                  [class]="paymentStatus() === 'unpaid' ? 'btn-outline-primary' : 'btn-outline-secondary'"\r
+                  (click)="setPaymentStatus('unpaid')">\r
+            <svg class="sa-icon me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>\r
+            \u672A\u64A5\u6B3E/\u672A\u9000\u6B3E\r
+          </button>\r
+          <button class="btn btn-sm"\r
+                  [class]="paymentStatus() === 'paid' ? 'btn-outline-primary' : 'btn-outline-secondary'"\r
+                  (click)="setPaymentStatus('paid')">\r
+            <svg class="sa-icon me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#check-circle"></use></svg>\r
+            \u5DF2\u64A5\u6B3E/\u5DF2\u9000\u6B3E\r
+          </button>\r
+        </div>\r
+      }\r
     </div>\r
   }\r
 \r
@@ -11124,6 +11197,7 @@ var ApprovalTaskList = class _ApprovalTaskList {
                 <td [attr.colspan]="(activeTab() === 'pending' && canBatchApprove()) ? 7 : 6" class="text-center text-muted py-4">\r
                   {{ activeTab() === 'pending' ? '\u76EE\u524D\u6C92\u6709\u5F85\u5BE9\u6838\u7684\u7C3D\u6838\u4F5C\u696D\u3002'\r
                      : activeTab() === 'rejected' ? '\u76EE\u524D\u6C92\u6709\u5DF2\u62D2\u7D55\u7684\u7C3D\u6838\u4F5C\u696D\u3002'\r
+                     : applicationTypeFilter() ? '\u76EE\u524D\u6C92\u6709\u6B64\u985E\u578B\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002'\r
                      : paymentStatus() === 'unpaid' ? '\u76EE\u524D\u6C92\u6709\u672A\u64A5\u6B3E/\u672A\u9000\u6B3E\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002'\r
                      : paymentStatus() === 'paid' ? '\u76EE\u524D\u6C92\u6709\u5DF2\u64A5\u6B3E/\u5DF2\u9000\u6B3E\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002'\r
                      : '\u76EE\u524D\u6C92\u6709\u5DF2\u6838\u51C6\u7684\u7C3D\u6838\u4F5C\u696D\u3002' }}\r
@@ -11167,7 +11241,7 @@ var ApprovalTaskList = class _ApprovalTaskList {
   }], null, null);
 })();
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ApprovalTaskList, { className: "ApprovalTaskList", filePath: "src/app/features/admin/approval-tasks/pages/approval-task-list/approval-task-list.ts", lineNumber: 26 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ApprovalTaskList, { className: "ApprovalTaskList", filePath: "src/app/features/admin/approval-tasks/pages/approval-task-list/approval-task-list.ts", lineNumber: 27 });
 })();
 function buildPageNumbers4(current, total) {
   if (total <= 9)
@@ -12261,7 +12335,7 @@ var TravelWriteOffPdfService = class _TravelWriteOffPdfService {
 
 // src/app/features/admin/approval-tasks/pages/approval-task-review/approval-task-review.ts
 var _forTrack016 = ($index, $item) => $item.id;
-var _forTrack14 = ($index, $item) => $item.stepOrder;
+var _forTrack15 = ($index, $item) => $item.stepOrder;
 function ApprovalTaskReview_Conditional_1_Conditional_12_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 10);
@@ -14486,7 +14560,7 @@ function ApprovalTaskReview_Conditional_1_Conditional_24_Template(rf, ctx) {
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
     \u0275\u0275elementStart(5, "div", 20)(6, "ol", 76);
-    \u0275\u0275repeaterCreate(7, ApprovalTaskReview_Conditional_1_Conditional_24_For_8_Template, 12, 6, "li", 77, _forTrack14);
+    \u0275\u0275repeaterCreate(7, ApprovalTaskReview_Conditional_1_Conditional_24_For_8_Template, 12, 6, "li", 77, _forTrack15);
     \u0275\u0275elementEnd()()();
   }
   if (rf & 2) {
@@ -17817,7 +17891,7 @@ function buildPageNumbers5(current, total) {
 // src/app/features/admin/leave-requests/pages/leave-request-form/leave-request-form.ts
 var _c012 = () => ({ standalone: true });
 var _forTrack018 = ($index, $item) => $item.label;
-var _forTrack15 = ($index, $item) => $item.days;
+var _forTrack16 = ($index, $item) => $item.days;
 var _forTrack2 = ($index, $item) => $item.id;
 function LeaveRequestForm_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
@@ -18497,7 +18571,7 @@ function LeaveRequestForm_Conditional_43_Template(rf, ctx) {
     \u0275\u0275elementStart(5, "select", 52)(6, "option", 53);
     \u0275\u0275text(7, "\u2014 \u8ACB\u9078\u64C7 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(8, LeaveRequestForm_Conditional_43_For_9_Template, 3, 1, "optgroup", 40, _forTrack15);
+    \u0275\u0275repeaterCreate(8, LeaveRequestForm_Conditional_43_For_9_Template, 3, 1, "optgroup", 40, _forTrack16);
     \u0275\u0275elementEnd();
     \u0275\u0275conditionalCreate(10, LeaveRequestForm_Conditional_43_Conditional_10_Template, 2, 0, "div", 26);
     \u0275\u0275conditionalCreate(11, LeaveRequestForm_Conditional_43_Conditional_11_Template, 15, 3, "div", 21)(12, LeaveRequestForm_Conditional_43_Conditional_12_Template, 4, 1, "div", 20);
@@ -53692,7 +53766,7 @@ function _forTrack034($index, $item) {
   let tmp_0_0;
   return (tmp_0_0 = $item.get("id")) == null ? null : tmp_0_0.value;
 }
-var _forTrack16 = ($index, $item) => $item.id;
+var _forTrack17 = ($index, $item) => $item.id;
 function WriteOffRequestForm_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 7);
@@ -53845,7 +53919,7 @@ function WriteOffRequestForm_Conditional_15_Conditional_5_Template(rf, ctx) {
     \u0275\u0275elementStart(2, "option", 64);
     \u0275\u0275text(3, "-- \u8ACB\u9078\u64C7\u5DF2\u64A5\u6B3E\u7684\u9810\u652F\u55AE --");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(4, WriteOffRequestForm_Conditional_15_Conditional_5_For_5_Template, 2, 4, "option", 64, _forTrack16);
+    \u0275\u0275repeaterCreate(4, WriteOffRequestForm_Conditional_15_Conditional_5_For_5_Template, 2, 4, "option", 64, _forTrack17);
     \u0275\u0275elementEnd();
     \u0275\u0275conditionalCreate(6, WriteOffRequestForm_Conditional_15_Conditional_5_Conditional_6_Template, 18, 16);
     \u0275\u0275elementEnd();
@@ -54186,7 +54260,7 @@ function WriteOffRequestForm_Conditional_75_For_7_Template(rf, ctx) {
     \u0275\u0275elementStart(4, "option", 64);
     \u0275\u0275text(5, "\u2014 \u8077\u7A31 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(6, WriteOffRequestForm_Conditional_75_For_7_For_7_Template, 2, 2, "option", 64, _forTrack16);
+    \u0275\u0275repeaterCreate(6, WriteOffRequestForm_Conditional_75_For_7_For_7_Template, 2, 2, "option", 64, _forTrack17);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(8, "select", 97);
     \u0275\u0275twoWayListener("ngModelChange", function WriteOffRequestForm_Conditional_75_For_7_Template_select_ngModelChange_8_listener($event) {
@@ -54197,7 +54271,7 @@ function WriteOffRequestForm_Conditional_75_For_7_Template(rf, ctx) {
     \u0275\u0275elementStart(9, "option", 64);
     \u0275\u0275text(10, "\u2014 \u4EBA\u54E1 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(11, WriteOffRequestForm_Conditional_75_For_7_For_12_Template, 2, 2, "option", 64, _forTrack16);
+    \u0275\u0275repeaterCreate(11, WriteOffRequestForm_Conditional_75_For_7_For_12_Template, 2, 2, "option", 64, _forTrack17);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(13, "button", 98);
     \u0275\u0275listener("click", function WriteOffRequestForm_Conditional_75_For_7_Template_button_click_13_listener() {
@@ -56547,7 +56621,7 @@ function _forTrack037($index, $item) {
   let tmp_0_0;
   return (tmp_0_0 = $item.get("id")) == null ? null : tmp_0_0.value;
 }
-var _forTrack17 = ($index, $item) => $item.id;
+var _forTrack18 = ($index, $item) => $item.id;
 function TravelWriteOffForm_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 7);
@@ -56701,7 +56775,7 @@ function TravelWriteOffForm_Conditional_15_Conditional_5_Template(rf, ctx) {
     \u0275\u0275elementStart(2, "option", 64);
     \u0275\u0275text(3, "-- \u8ACB\u9078\u64C7\u5DF2\u6838\u51C6\u7684\u51FA\u5DEE\u55AE --");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(4, TravelWriteOffForm_Conditional_15_Conditional_5_For_5_Template, 3, 10, "option", 64, _forTrack17);
+    \u0275\u0275repeaterCreate(4, TravelWriteOffForm_Conditional_15_Conditional_5_For_5_Template, 3, 10, "option", 64, _forTrack18);
     \u0275\u0275elementEnd();
     \u0275\u0275conditionalCreate(6, TravelWriteOffForm_Conditional_15_Conditional_5_Conditional_6_Template, 18, 16);
     \u0275\u0275elementEnd();
@@ -56996,7 +57070,7 @@ function TravelWriteOffForm_Conditional_71_For_7_Template(rf, ctx) {
     \u0275\u0275elementStart(4, "option", 64);
     \u0275\u0275text(5, "\u2014 \u8077\u7A31 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(6, TravelWriteOffForm_Conditional_71_For_7_For_7_Template, 2, 2, "option", 64, _forTrack17);
+    \u0275\u0275repeaterCreate(6, TravelWriteOffForm_Conditional_71_For_7_For_7_Template, 2, 2, "option", 64, _forTrack18);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(8, "select", 95);
     \u0275\u0275twoWayListener("ngModelChange", function TravelWriteOffForm_Conditional_71_For_7_Template_select_ngModelChange_8_listener($event) {
@@ -57007,7 +57081,7 @@ function TravelWriteOffForm_Conditional_71_For_7_Template(rf, ctx) {
     \u0275\u0275elementStart(9, "option", 64);
     \u0275\u0275text(10, "\u2014 \u4EBA\u54E1 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(11, TravelWriteOffForm_Conditional_71_For_7_For_12_Template, 2, 2, "option", 64, _forTrack17);
+    \u0275\u0275repeaterCreate(11, TravelWriteOffForm_Conditional_71_For_7_For_12_Template, 2, 2, "option", 64, _forTrack18);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(13, "button", 96);
     \u0275\u0275listener("click", function TravelWriteOffForm_Conditional_71_For_7_Template_button_click_13_listener() {
@@ -58921,14 +58995,14 @@ var ADMIN_ROUTES = [
   { path: "travel-requests/:id", component: TravelDetail, canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u9810\u652F\u7533\u8ACB\u8A73\u60C5", permission: "travel-requests:read" } },
   // 出差請款申請
   { path: "travel-payment-requests", canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-DTCMHY24.js").then((m) => m.TravelPaymentList) },
-  { path: "travel-payment-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:write" }, loadComponent: () => import("./chunk-TX6UR6HX.js").then((m) => m.TravelPaymentForm) },
-  { path: "travel-payment-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-TX6UR6HX.js").then((m) => m.TravelPaymentForm) },
-  { path: "travel-payment-requests/:id", canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB\u8A73\u60C5", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-SLVSGPJC.js").then((m) => m.TravelPaymentDetail) },
+  { path: "travel-payment-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:write" }, loadComponent: () => import("./chunk-RZJXQOSJ.js").then((m) => m.TravelPaymentForm) },
+  { path: "travel-payment-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-RZJXQOSJ.js").then((m) => m.TravelPaymentForm) },
+  { path: "travel-payment-requests/:id", canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB\u8A73\u60C5", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-HQ6DF36V.js").then((m) => m.TravelPaymentDetail) },
   // 假日執行活動申請
   { path: "holiday-travel-requests", canActivate: [permissionGuard], data: { title: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-KK76WW3G.js").then((m) => m.HolidayTravelRequestList) },
-  { path: "holiday-travel-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:write" }, loadComponent: () => import("./chunk-DDSZSJCB.js").then((m) => m.HolidayTravelRequestForm) },
-  { path: "holiday-travel-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-DDSZSJCB.js").then((m) => m.HolidayTravelRequestForm) },
-  { path: "holiday-travel-requests/:id", canActivate: [permissionGuard], data: { title: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB\u8A73\u60C5", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-5U2QR74N.js").then((m) => m.HolidayTravelDetail) },
+  { path: "holiday-travel-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:write" }, loadComponent: () => import("./chunk-HX3KZBZH.js").then((m) => m.HolidayTravelRequestForm) },
+  { path: "holiday-travel-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-HX3KZBZH.js").then((m) => m.HolidayTravelRequestForm) },
+  { path: "holiday-travel-requests/:id", canActivate: [permissionGuard], data: { title: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB\u8A73\u60C5", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-BLZD4IUR.js").then((m) => m.HolidayTravelDetail) },
   // 行事曆管理
   { path: "calendar-days", canActivate: [permissionGuard], data: { title: "\u884C\u4E8B\u66C6\u7BA1\u7406", permission: "calendar-days:read" }, loadComponent: () => import("./chunk-UIBKU7T2.js").then((m) => m.CalendarDayList) },
   // 加班申請
@@ -58967,4 +59041,4 @@ xlsx/xlsx.mjs:
 xlsx/xlsx.mjs:
   (*! sheetjs (C) 2013-present SheetJS -- http://sheetjs.com *)
 */
-//# sourceMappingURL=chunk-AUCV2CNZ.js.map
+//# sourceMappingURL=chunk-G2B55XSS.js.map

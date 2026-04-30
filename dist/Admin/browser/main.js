@@ -21,7 +21,7 @@ import {
 } from "./chunk-QACKTNEL.js";
 import {
   ApprovalTaskService
-} from "./chunk-DM6SSN3O.js";
+} from "./chunk-TZRFZK6Q.js";
 import {
   ToastrService,
   provideToastr
@@ -5879,7 +5879,7 @@ var routes = [
       },
       {
         path: "admin",
-        loadChildren: () => import("./chunk-AUCV2CNZ.js").then((m) => m.ADMIN_ROUTES)
+        loadChildren: () => import("./chunk-G2B55XSS.js").then((m) => m.ADMIN_ROUTES)
       },
       {
         path: "account/change-password",

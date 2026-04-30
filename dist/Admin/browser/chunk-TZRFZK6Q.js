@@ -22,12 +22,14 @@ var ApprovalTaskService = class _ApprovalTaskService {
       params: { page: 1, pageSize: 100, status: "pending" }
     }).pipe(map((result) => result.items ?? []), tap((items) => this.items$.next(items)));
   }
-  getPaged(page, pageSize, status, paymentStatus) {
+  getPaged(page, pageSize, status, paymentStatus, applicationType) {
     const params = { page, pageSize };
     if (status)
       params["status"] = status;
     if (paymentStatus)
       params["paymentStatus"] = paymentStatus;
+    if (applicationType)
+      params["applicationType"] = applicationType;
     return this.http.get(`${environment.apiUrl}/approval-tasks`, { params });
   }
   getById(id, applicationType) {
@@ -62,4 +64,4 @@ var ApprovalTaskService = class _ApprovalTaskService {
 export {
   ApprovalTaskService
 };
-//# sourceMappingURL=chunk-DM6SSN3O.js.map
+//# sourceMappingURL=chunk-TZRFZK6Q.js.map

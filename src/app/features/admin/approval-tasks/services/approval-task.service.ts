@@ -44,10 +44,11 @@ export class ApprovalTaskService {
     );
   }
 
-  getPaged(page: number, pageSize: number, status?: string, paymentStatus?: string): Observable<PagedResult<ApprovalTask>> {
+  getPaged(page: number, pageSize: number, status?: string, paymentStatus?: string, applicationType?: string): Observable<PagedResult<ApprovalTask>> {
     const params: Record<string, any> = {page, pageSize};
     if (status) params['status'] = status;
     if (paymentStatus) params['paymentStatus'] = paymentStatus;
+    if (applicationType) params['applicationType'] = applicationType;
     return this.http.get<PagedResult<ApprovalTask>>(`${environment.apiUrl}/approval-tasks`, {params});
   }
 

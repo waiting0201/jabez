@@ -12,6 +12,7 @@ import {
   PAYMENT_TYPE_LABELS, LEAVE_TYPE_LABELS,
   ApprovalTask,
 } from '../../models/approval-task.model';
+import {ApplicationType} from '../../../approvals/models/approval.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
 import {AuthService} from '../../../../../core/auth/services/auth.service';
 
@@ -41,7 +42,11 @@ export class ApprovalTaskList {
   readonly PAGE_SIZE = 20;
   activeTab = signal<'pending' | 'approved' | 'rejected'>('pending');
   paymentStatus = signal<'' | 'paid' | 'unpaid'>('');
+  applicationTypeFilter = signal<'' | ApplicationType>('');
   page = signal(1);
+
+  /** 類型下拉選項：[ApplicationType, 中文 label][] */
+  appTypeOptions = computed(() => Object.entries(APPLICATION_TYPE_LABELS) as [ApplicationType, string][]);
 
   /** 已勾選的任務 key 集合，格式：${applicationType}:${id} */
   selectedKeys = signal<Set<string>>(new Set());
@@ -58,12 +63,18 @@ export class ApprovalTaskList {
   switchTab(tab: 'pending' | 'approved' | 'rejected') {
     this.activeTab.set(tab);
     this.paymentStatus.set('');
+    this.applicationTypeFilter.set('');
     this.page.set(1);
     this.selectedKeys.set(new Set());
   }
 
   setPaymentStatus(status: '' | 'paid' | 'unpaid') {
     this.paymentStatus.set(status);
+    this.page.set(1);
+  }
+
+  setApplicationTypeFilter(value: string) {
+    this.applicationTypeFilter.set((value || '') as '' | ApplicationType);
     this.page.set(1);
   }
 
@@ -139,9 +150,10 @@ export class ApprovalTaskList {
       toObservable(this.page),
       toObservable(this.activeTab),
       toObservable(this.paymentStatus),
+      toObservable(this.applicationTypeFilter),
       toObservable(this.reloadTrigger),
     ]).pipe(
-      switchMap(([p, status, ps]) => this.service.getPaged(p, this.PAGE_SIZE, status, ps || undefined))
+      switchMap(([p, status, ps, at]) => this.service.getPaged(p, this.PAGE_SIZE, status, ps || undefined, at || undefined))
     ),
     {initialValue: {items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 1} as PagedResult<ApprovalTask>}
   );
@@ -219,6 +231,15 @@ export class ApprovalTaskList {
     }
     if (t.leaveDetail) {
       return `${this.leaveTypeLabel[t.leaveDetail.leaveType]}・${t.leaveDetail.hours} 小時`;
+    }
+    // 假日執行活動：列出每位人員（申請人 + 參與者）的津貼預估
+    if (t.applicationType === 'holiday_travel' && t.travelDetail) {
+      const days = t.travelDetail.holidayDays ?? 0;
+      const list = t.travelDetail.holidayAllowances ?? [];
+      const head = `${t.travelDetail.destination}・${days} 天`;
+      if (list.length === 0) return head;
+      const parts = list.map(a => `${a.userName} ${a.allowance.toLocaleString()} 元`).join('、');
+      return `${head}｜${parts}`;
     }
     if (t.travelDetail) {
       return `${t.travelDetail.destination}（${t.travelDetail.grandTotal.toLocaleString()} 元）`;

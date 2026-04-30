@@ -84,6 +84,15 @@ export interface TravelTaskDetailItem {
   invoiceDate?: string;
 }
 
+/** 假日活動每位人員（申請人 + 參與者）的津貼預估 */
+export interface HolidayAllowance {
+  userId: string;
+  userName: string;
+  /** round(BaseSalary / 30) × HolidayDays，與 PayrollReadService 公式一致 */
+  allowance: number;
+  isApplicant: boolean;
+}
+
 export interface TravelTaskDetail {
   travelRequestId: number;
   destination: string;
@@ -105,6 +114,8 @@ export interface TravelTaskDetail {
   /** 差額退款完成時間 */
   refundedAt?: string;
   paidBySignatureUrl?: string;
+  /** 假日活動每位人員津貼預估（僅 isHolidayTravel=true 時提供） */
+  holidayAllowances?: HolidayAllowance[];
 }
 
 export interface OvertimeTaskDetail {
