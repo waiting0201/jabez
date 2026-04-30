@@ -3,6 +3,7 @@ import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {HttpClient} from '@angular/common/http';
 import {environment} from '@/environments/environment';
+import {currentIsoWeek, dayToRange, FilterMode, isoWeekToRange, monthToRange} from '@/app/features/admin/reports/utils/date-range';
 
 export interface OvertimeReportRow {
   id: number;
@@ -25,6 +26,11 @@ export class OvertimeReport implements OnInit {
   /** 篩選條件 */
   selectedEmployeeId = signal('');
   selectedProjectId = signal('');
+
+  /** 時段模式：日 / 週 / 月（預設月） */
+  filterMode = signal<FilterMode>('month');
+  selectedDate = signal('');
+  selectedWeek = signal('');
   selectedYear = signal('');
   selectedMonth = signal('');
 
@@ -56,9 +62,24 @@ export class OvertimeReport implements OnInit {
     this.years.set([currentYear - 1, currentYear]);
     this.selectedYear.set(String(currentYear));
     this.selectedMonth.set(String(now.getMonth() + 1));
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    this.selectedDate.set(`${y}-${m}-${d}`);
+    this.selectedWeek.set(currentIsoWeek(now));
     this.loadEmployees();
     this.loadProjects();
     this.search();
+  }
+
+  private computeDateRange(): { dateFrom: string; dateTo: string } | null {
+    const mode = this.filterMode();
+    if (mode === 'day') return dayToRange(this.selectedDate());
+    if (mode === 'week') return isoWeekToRange(this.selectedWeek());
+    const year = Number(this.selectedYear());
+    const month = Number(this.selectedMonth());
+    if (!year || !month) return null;
+    return monthToRange(year, month);
   }
 
   loadEmployees() {
@@ -100,8 +121,11 @@ export class OvertimeReport implements OnInit {
     const params: any = {page: this.currentPage(), pageSize: this.pageSize};
     if (this.selectedEmployeeId()) params.employeeId = this.selectedEmployeeId();
     if (this.selectedProjectId()) params.projectId = this.selectedProjectId();
-    if (this.selectedYear()) params.year = this.selectedYear();
-    if (this.selectedMonth()) params.month = this.selectedMonth();
+    const range = this.computeDateRange();
+    if (range) {
+      params.dateFrom = range.dateFrom;
+      params.dateTo = range.dateTo;
+    }
 
     this.http.get<any>(`${environment.apiUrl}/reports/overtime`, {params}).subscribe({
       next: (res) => {

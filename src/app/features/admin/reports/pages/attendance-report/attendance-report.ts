@@ -5,6 +5,7 @@ import {HttpClient} from '@angular/common/http';
 import {DomSanitizer} from '@angular/platform-browser';
 import {environment} from '@/environments/environment';
 import {AttendanceService} from '@/app/features/dashboard/services/attendance.service';
+import {currentIsoWeek, dayToRange, FilterMode, isoWeekToRange, monthToRange} from '@/app/features/admin/reports/utils/date-range';
 import * as XLSX from 'xlsx';
 
 const LEAVE_TYPE_LABELS: Record<string, string> = {
@@ -54,6 +55,15 @@ export class AttendanceReport implements OnInit {
 
   /** 篩選條件 */
   selectedEmployeeId = signal('');
+
+  /** 時段模式：日 / 週 / 月（預設月）*/
+  filterMode = signal<FilterMode>('month');
+
+  /** 日模式：'YYYY-MM-DD' */
+  selectedDate = signal('');
+  /** 週模式：'YYYY-Www'（瀏覽器原生 input[type=week] 格式） */
+  selectedWeek = signal('');
+  /** 月模式：年 / 月 */
   selectedYear = signal('');
   selectedMonth = signal('');
 
@@ -91,8 +101,40 @@ export class AttendanceReport implements OnInit {
     this.years.set([currentYear - 1, currentYear]);
     this.selectedYear.set(String(currentYear));
     this.selectedMonth.set(String(now.getMonth() + 1));
+    // 預先填入日 / 週 預設值，使用者切換模式即可使用
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    this.selectedDate.set(`${y}-${m}-${d}`);
+    this.selectedWeek.set(currentIsoWeek(now));
     this.loadEmployees();
     this.search();
+  }
+
+  /** 依 filterMode 計算 dateFrom/dateTo（回傳 null 代表使用者尚未選擇日期/週） */
+  private computeDateRange(): { dateFrom: string; dateTo: string } | null {
+    const mode = this.filterMode();
+    if (mode === 'day') {
+      return dayToRange(this.selectedDate());
+    }
+    if (mode === 'week') {
+      return isoWeekToRange(this.selectedWeek());
+    }
+    // month
+    const year = Number(this.selectedYear());
+    const month = Number(this.selectedMonth());
+    if (!year || !month) return null;
+    return monthToRange(year, month);
+  }
+
+  /** 匯出檔名後綴：依 mode 給友善字串 */
+  private exportSuffix(): string {
+    const mode = this.filterMode();
+    if (mode === 'day') return this.selectedDate() || '全部';
+    if (mode === 'week') return this.selectedWeek() || '全部';
+    const year = this.selectedYear() || '全部';
+    const month = this.selectedMonth() || '全部';
+    return `${year}-${String(month).padStart(2, '0')}`;
   }
 
   loadEmployees() {
@@ -112,8 +154,11 @@ export class AttendanceReport implements OnInit {
 
     const params: any = {page: 1, pageSize: 100};
     if (this.selectedEmployeeId()) params.employeeId = this.selectedEmployeeId();
-    if (this.selectedYear()) params.year = this.selectedYear();
-    if (this.selectedMonth()) params.month = this.selectedMonth();
+    const range = this.computeDateRange();
+    if (range) {
+      params.dateFrom = range.dateFrom;
+      params.dateTo = range.dateTo;
+    }
 
     this.http.get<any>(`${environment.apiUrl}/attendances`, {params}).subscribe({
       next: (res) => {
@@ -232,8 +277,11 @@ export class AttendanceReport implements OnInit {
 
     const params: any = {page: 1, pageSize: 9999};
     if (this.selectedEmployeeId()) params.employeeId = this.selectedEmployeeId();
-    if (this.selectedYear()) params.year = this.selectedYear();
-    if (this.selectedMonth()) params.month = this.selectedMonth();
+    const range = this.computeDateRange();
+    if (range) {
+      params.dateFrom = range.dateFrom;
+      params.dateTo = range.dateTo;
+    }
 
     this.http.get<any>(`${environment.apiUrl}/attendances`, {params}).subscribe({
       next: (res) => {
@@ -255,9 +303,7 @@ export class AttendanceReport implements OnInit {
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, '出缺勤紀錄');
 
-        const year = this.selectedYear() || '全部';
-        const month = this.selectedMonth() || '全部';
-        XLSX.writeFile(wb, `出缺勤紀錄_${year}_${month}.xlsx`);
+        XLSX.writeFile(wb, `出缺勤紀錄_${this.exportSuffix()}.xlsx`);
         this.exporting.set(false);
       },
       error: () => {

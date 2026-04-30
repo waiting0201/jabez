@@ -19,36 +19,68 @@
     <div class="card-body p-0">
 
       <!-- Toolbar: 篩選列 -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 px-4 py-3 border-b items-end">
-        <div>
-          <label class="text-xs text-muted mb-1 block">年份</label>
-          <select class="form-control w-full" [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set($event)">
-            <option value="">全部年份</option>
-            @for (y of years(); track y) {
-              <option [value]="y">{{ y }}</option>
-            }
-          </select>
+      <div class="px-4 py-3 border-b">
+        <!-- 時段模式切換 -->
+        <div class="mb-3 flex items-center gap-2 flex-wrap">
+          <span class="text-xs text-muted">時段：</span>
+          <div class="inline-flex border rounded-md overflow-hidden">
+            <button type="button" class="px-3 py-1.5 text-sm"
+                    [class.bg-primary]="filterMode()==='day'" [class.text-white]="filterMode()==='day'"
+                    (click)="filterMode.set('day')">日</button>
+            <button type="button" class="px-3 py-1.5 text-sm border-l border-r"
+                    [class.bg-primary]="filterMode()==='week'" [class.text-white]="filterMode()==='week'"
+                    (click)="filterMode.set('week')">週</button>
+            <button type="button" class="px-3 py-1.5 text-sm"
+                    [class.bg-primary]="filterMode()==='month'" [class.text-white]="filterMode()==='month'"
+                    (click)="filterMode.set('month')">月</button>
+          </div>
         </div>
-        <div>
-          <label class="text-xs text-muted mb-1 block">月份</label>
-          <select class="form-control w-full" [ngModel]="selectedMonth()" (ngModelChange)="selectedMonth.set($event)">
-            <option value="">全部月份</option>
-            @for (m of months; track m) {
-              <option [value]="m">{{ m }}月</option>
-            }
-          </select>
-        </div>
-        <div>
-          <label class="text-xs text-muted mb-1 block">付款狀態</label>
-          <select class="form-control w-full" [ngModel]="selectedPaymentStatus()" (ngModelChange)="selectedPaymentStatus.set($event)">
-            <option value="">全部</option>
-            <option value="paid">已付</option>
-            <option value="unpaid">未付</option>
-          </select>
-        </div>
-        <div>
-          <label class="text-xs text-muted mb-1 block sm:invisible">&nbsp;</label>
-          <button class="btn btn-primary w-full" (click)="search()">篩選</button>
+        <!-- 條件列 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-end">
+          @if (filterMode() === 'day') {
+            <div class="lg:col-span-2">
+              <label class="text-xs text-muted mb-1 block">日期</label>
+              <input type="date" class="form-control w-full"
+                     [ngModel]="selectedDate()" (ngModelChange)="selectedDate.set($event)" />
+            </div>
+          } @else if (filterMode() === 'week') {
+            <div class="lg:col-span-2">
+              <label class="text-xs text-muted mb-1 block">週次（週一→週日）</label>
+              <input type="week" class="form-control w-full"
+                     [ngModel]="selectedWeek()" (ngModelChange)="selectedWeek.set($event)" />
+            </div>
+          } @else {
+            <div>
+              <label class="text-xs text-muted mb-1 block">年份</label>
+              <select class="form-control w-full" [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set($event)">
+                <option value="">全部年份</option>
+                @for (y of years(); track y) {
+                  <option [value]="y">{{ y }}</option>
+                }
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-muted mb-1 block">月份</label>
+              <select class="form-control w-full" [ngModel]="selectedMonth()" (ngModelChange)="selectedMonth.set($event)">
+                <option value="">全部月份</option>
+                @for (m of months; track m) {
+                  <option [value]="m">{{ m }}月</option>
+                }
+              </select>
+            </div>
+          }
+          <div>
+            <label class="text-xs text-muted mb-1 block">付款狀態</label>
+            <select class="form-control w-full" [ngModel]="selectedPaymentStatus()" (ngModelChange)="selectedPaymentStatus.set($event)">
+              <option value="">全部</option>
+              <option value="paid">已付</option>
+              <option value="unpaid">未付</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs text-muted mb-1 block sm:invisible">&nbsp;</label>
+            <button class="btn btn-primary w-full" (click)="search()">篩選</button>
+          </div>
         </div>
       </div>
 

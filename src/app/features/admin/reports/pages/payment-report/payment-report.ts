@@ -3,6 +3,7 @@ import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {HttpClient} from '@angular/common/http';
 import {environment} from '@/environments/environment';
+import {currentIsoWeek, dayToRange, FilterMode, isoWeekToRange, monthToRange} from '@/app/features/admin/reports/utils/date-range';
 import * as XLSX from 'xlsx';
 
 const PAYMENT_TYPE_LABELS: Record<string, string> = {
@@ -41,9 +42,14 @@ export class PaymentReport implements OnInit {
   private http = inject(HttpClient);
 
   /** 篩選條件 */
+  selectedPaymentStatus = signal('');
+
+  /** 時段模式：日 / 週 / 月（預設月）*/
+  filterMode = signal<FilterMode>('month');
+  selectedDate = signal('');
+  selectedWeek = signal('');
   selectedYear = signal('');
   selectedMonth = signal('');
-  selectedPaymentStatus = signal('');
 
   /** 年份選項 */
   years = signal<number[]>([]);
@@ -71,7 +77,31 @@ export class PaymentReport implements OnInit {
     this.years.set([currentYear - 1, currentYear]);
     this.selectedYear.set(String(currentYear));
     this.selectedMonth.set(String(now.getMonth() + 1));
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    this.selectedDate.set(`${y}-${m}-${d}`);
+    this.selectedWeek.set(currentIsoWeek(now));
     this.search();
+  }
+
+  private computeDateRange(): { dateFrom: string; dateTo: string } | null {
+    const mode = this.filterMode();
+    if (mode === 'day') return dayToRange(this.selectedDate());
+    if (mode === 'week') return isoWeekToRange(this.selectedWeek());
+    const year = Number(this.selectedYear());
+    const month = Number(this.selectedMonth());
+    if (!year || !month) return null;
+    return monthToRange(year, month);
+  }
+
+  private exportSuffix(): string {
+    const mode = this.filterMode();
+    if (mode === 'day') return this.selectedDate() || '全部';
+    if (mode === 'week') return this.selectedWeek() || '全部';
+    const year = this.selectedYear() || '全部';
+    const month = this.selectedMonth() || '全部';
+    return `${year}-${String(month).padStart(2, '0')}`;
   }
 
   search() {
@@ -93,8 +123,11 @@ export class PaymentReport implements OnInit {
       params['page'] = 1;
       params['pageSize'] = 9999;
     }
-    if (this.selectedYear()) params['year'] = this.selectedYear();
-    if (this.selectedMonth()) params['month'] = this.selectedMonth();
+    const range = this.computeDateRange();
+    if (range) {
+      params['dateFrom'] = range.dateFrom;
+      params['dateTo'] = range.dateTo;
+    }
     if (this.selectedPaymentStatus()) params['paymentStatus'] = this.selectedPaymentStatus();
     return params;
   }
@@ -164,9 +197,7 @@ export class PaymentReport implements OnInit {
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, '請款統計');
 
-        const year = this.selectedYear() || '全部';
-        const month = this.selectedMonth() || '全部';
-        XLSX.writeFile(wb, `請款統計_${year}_${month}.xlsx`);
+        XLSX.writeFile(wb, `請款統計_${this.exportSuffix()}.xlsx`);
         this.exporting.set(false);
       },
       error: () => {
