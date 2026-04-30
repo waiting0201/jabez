@@ -18,6 +18,9 @@ export interface JwtPayload {
   job_title_name?: string;
   job_title_level?: string | number;
   avatar?: string;
+  avatar_x?: string | number;
+  avatar_y?: string | number;
+  avatar_scale?: string | number;
 }
 
 export interface AutoClockOutInfo {
@@ -72,6 +75,27 @@ export class AuthService {
     const raw = payload.avatar;
     if (!raw) return null;
     return raw.startsWith('http') ? raw : `${environment.apiUrl}/${raw}`;
+  });
+
+  /** 頭像 X 位置（百分比 0-100），預設 50 */
+  avatarPositionX = computed<number>(() => {
+    const payload = this._decode(this._token());
+    if (!payload || payload.exp * 1000 <= Date.now()) return 50;
+    return this._parseAvatarNumber(payload.avatar_x, 50);
+  });
+
+  /** 頭像 Y 位置（百分比 0-100），預設 50 */
+  avatarPositionY = computed<number>(() => {
+    const payload = this._decode(this._token());
+    if (!payload || payload.exp * 1000 <= Date.now()) return 50;
+    return this._parseAvatarNumber(payload.avatar_y, 50);
+  });
+
+  /** 頭像縮放倍率（1.0-3.0），預設 1.0 */
+  avatarScale = computed<number>(() => {
+    const payload = this._decode(this._token());
+    if (!payload || payload.exp * 1000 <= Date.now()) return 1;
+    return this._parseAvatarNumber(payload.avatar_scale, 1);
   });
 
   /** 是否為超管帳號（signal） */
@@ -188,6 +212,12 @@ export class AuthService {
     if (refreshToken) {
       localStorage.setItem(REFRESH_KEY, refreshToken);
     }
+  }
+
+  private _parseAvatarNumber(raw: string | number | undefined, fallback: number): number {
+    if (raw === undefined || raw === null) return fallback;
+    const n = typeof raw === 'number' ? raw : parseFloat(raw);
+    return Number.isFinite(n) ? n : fallback;
   }
 
   private _decode(token: string | null): JwtPayload | null {

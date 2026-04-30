@@ -204,15 +204,43 @@
             頭像
           </div>
           <div class="card-body">
-            <p class="text-muted small mb-3">支援 PNG、JPEG、GIF、WebP 圖片格式。頭像會顯示於右上角個人下拉選單。</p>
+            <p class="text-muted small mb-3">支援 PNG、JPEG、GIF、WebP、HEIC 圖片格式。上傳後可拖曳調整位置、滑桿縮放，圖檔會自動壓縮。</p>
             @if (displayAvatar) {
-              <div class="mb-3">
-                <img [src]="displayAvatar" alt="頭像" class="w-24 h-24 rounded-full object-cover border">
+              <div class="flex flex-wrap items-start gap-4 mb-3">
+                <!-- 圓形預覽框（拖曳調整位置） -->
+                <div class="relative w-32 h-32 rounded-full overflow-hidden border cursor-move select-none touch-none bg-[--bg-elevated]"
+                     (pointerdown)="onAvatarPointerDown($event)"
+                     (pointermove)="onAvatarPointerMove($event)"
+                     (pointerup)="onAvatarPointerUp()"
+                     (pointercancel)="onAvatarPointerUp()">
+                  <img [src]="displayAvatar" alt="頭像"
+                       class="w-full h-full object-cover pointer-events-none"
+                       [style.objectPosition]="avatarPosX() + '% ' + avatarPosY() + '%'"
+                       [style.transform]="'scale(' + avatarScale() + ')'"
+                       style="transform-origin: center">
+                </div>
+
+                <!-- 縮放滑桿 + 重設 -->
+                <div class="flex-1 min-w-[200px]">
+                  <label class="form-label fw-500 text-sm mb-1">縮放</label>
+                  <div class="flex items-center gap-2 mb-2">
+                    <input type="range" min="1" max="3" step="0.05"
+                           [value]="avatarScale()"
+                           (input)="onAvatarScaleChange($event)"
+                           class="flex-1">
+                    <span class="text-sm text-muted w-12 text-right">{{ avatarScale() | number: '1.2-2' }}x</span>
+                  </div>
+                  <p class="text-muted small mb-2">在預覽框中按住滑鼠或手指拖曳調整位置。</p>
+                  <button type="button" class="btn btn-sm btn-outline-secondary"
+                          (click)="resetAvatarPosition()">
+                    重設位置
+                  </button>
+                </div>
               </div>
               <div class="flex gap-2">
                 <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
                   更換頭像
-                  <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp"
+                  <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif"
                          (change)="onAvatarSelected($event)">
                 </label>
                 <button type="button" class="btn btn-sm btn-outline-danger"
@@ -225,7 +253,7 @@
               <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
                 <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
                 選擇頭像
-                <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp"
+                <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif"
                        (change)="onAvatarSelected($event)">
               </label>
             }

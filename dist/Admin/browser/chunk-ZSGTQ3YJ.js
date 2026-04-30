@@ -43,6 +43,27 @@ var AuthService = class _AuthService {
       return null;
     return raw.startsWith("http") ? raw : `${environment.apiUrl}/${raw}`;
   }, ...ngDevMode ? [{ debugName: "avatarUrl" }] : []);
+  /** 頭像 X 位置（百分比 0-100），預設 50 */
+  avatarPositionX = computed(() => {
+    const payload = this._decode(this._token());
+    if (!payload || payload.exp * 1e3 <= Date.now())
+      return 50;
+    return this._parseAvatarNumber(payload.avatar_x, 50);
+  }, ...ngDevMode ? [{ debugName: "avatarPositionX" }] : []);
+  /** 頭像 Y 位置（百分比 0-100），預設 50 */
+  avatarPositionY = computed(() => {
+    const payload = this._decode(this._token());
+    if (!payload || payload.exp * 1e3 <= Date.now())
+      return 50;
+    return this._parseAvatarNumber(payload.avatar_y, 50);
+  }, ...ngDevMode ? [{ debugName: "avatarPositionY" }] : []);
+  /** 頭像縮放倍率（1.0-3.0），預設 1.0 */
+  avatarScale = computed(() => {
+    const payload = this._decode(this._token());
+    if (!payload || payload.exp * 1e3 <= Date.now())
+      return 1;
+    return this._parseAvatarNumber(payload.avatar_scale, 1);
+  }, ...ngDevMode ? [{ debugName: "avatarScale" }] : []);
   /** 是否為超管帳號（signal） */
   isSuperAdmin = computed(() => {
     const payload = this._decode(this._token());
@@ -146,6 +167,12 @@ var AuthService = class _AuthService {
       localStorage.setItem(REFRESH_KEY, refreshToken);
     }
   }
+  _parseAvatarNumber(raw, fallback) {
+    if (raw === void 0 || raw === null)
+      return fallback;
+    const n = typeof raw === "number" ? raw : parseFloat(raw);
+    return Number.isFinite(n) ? n : fallback;
+  }
   _decode(token) {
     if (!token)
       return null;
@@ -177,4 +204,4 @@ var AuthService = class _AuthService {
 export {
   AuthService
 };
-//# sourceMappingURL=chunk-QLN4CKKJ.js.map
+//# sourceMappingURL=chunk-ZSGTQ3YJ.js.map

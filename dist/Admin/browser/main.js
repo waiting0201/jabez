@@ -39,7 +39,7 @@ import {
 } from "./chunk-TUAOQ2AP.js";
 import {
   HasPermissionDirective
-} from "./chunk-SQBR33JO.js";
+} from "./chunk-M7DGJIC4.js";
 import {
   ActivatedRoute,
   NavigationEnd,
@@ -55,7 +55,7 @@ import {
 } from "./chunk-JDEYLUO2.js";
 import {
   AuthService
-} from "./chunk-QLN4CKKJ.js";
+} from "./chunk-ZSGTQ3YJ.js";
 import {
   ApplicationRef,
   AsyncPipe,
@@ -3522,9 +3522,9 @@ var ToggleMobileMenu = class _ToggleMobileMenu {
 })();
 
 // src/app/layout/components/topbar/components/profile-dropdown.ts
-function ProfileDropdown_Conditional_9_Template(rf, ctx) {
+function ProfileDropdown_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 8);
+    \u0275\u0275elementStart(0, "div", 9);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -3534,39 +3534,39 @@ function ProfileDropdown_Conditional_9_Template(rf, ctx) {
     \u0275\u0275textInterpolate3("", ctx_r0.departmentName(), "", ctx_r0.departmentName() && ctx_r0.jobTitleName() ? "\u30FB" : "", "", ctx_r0.jobTitleName());
   }
 }
-function ProfileDropdown_Conditional_17_Template(rf, ctx) {
+function ProfileDropdown_Conditional_19_Template(rf, ctx) {
   if (rf & 1) {
     const _r2 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "a", 17);
-    \u0275\u0275listener("click", function ProfileDropdown_Conditional_17_Template_a_click_0_listener() {
+    \u0275\u0275elementStart(0, "a", 18);
+    \u0275\u0275listener("click", function ProfileDropdown_Conditional_19_Template_a_click_0_listener() {
       \u0275\u0275restoreView(_r2);
       const ctx_r0 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r0.bindLine());
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 21);
-    \u0275\u0275element(2, "path", 22);
+    \u0275\u0275elementStart(1, "svg", 22);
+    \u0275\u0275element(2, "path", 23);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(3, "span", 13);
+    \u0275\u0275elementStart(3, "span", 14);
     \u0275\u0275text(4, "\u7D81\u5B9A LINE");
     \u0275\u0275elementEnd()();
   }
 }
-function ProfileDropdown_Conditional_18_Template(rf, ctx) {
+function ProfileDropdown_Conditional_20_Template(rf, ctx) {
   if (rf & 1) {
     const _r3 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 15)(1, "div", 23);
+    \u0275\u0275elementStart(0, "div", 16)(1, "div", 24);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(2, "svg", 21);
-    \u0275\u0275element(3, "path", 22);
+    \u0275\u0275elementStart(2, "svg", 22);
+    \u0275\u0275element(3, "path", 23);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(4, "span", 24);
+    \u0275\u0275elementStart(4, "span", 25);
     \u0275\u0275text(5, "LINE \u5DF2\u7D81\u5B9A");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(6, "button", 25);
-    \u0275\u0275listener("click", function ProfileDropdown_Conditional_18_Template_button_click_6_listener($event) {
+    \u0275\u0275elementStart(6, "button", 26);
+    \u0275\u0275listener("click", function ProfileDropdown_Conditional_20_Template_button_click_6_listener($event) {
       \u0275\u0275restoreView(_r3);
       const ctx_r0 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r0.unbindLine($event));
@@ -3575,43 +3575,43 @@ function ProfileDropdown_Conditional_18_Template(rf, ctx) {
     \u0275\u0275elementEnd()();
   }
 }
-function ProfileDropdown_Conditional_19_Template(rf, ctx) {
+function ProfileDropdown_Conditional_21_Template(rf, ctx) {
   if (rf & 1) {
     const _r4 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 16)(1, "div", 26);
+    \u0275\u0275elementStart(0, "div", 17)(1, "div", 27);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(2, "svg", 27);
-    \u0275\u0275element(3, "use", 28);
+    \u0275\u0275elementStart(2, "svg", 28);
+    \u0275\u0275element(3, "use", 29);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(4, "div", 6)(5, "div", 29);
+    \u0275\u0275elementStart(4, "div", 7)(5, "div", 30);
     \u0275\u0275text(6, "\u5C1A\u672A\u52A0\u5165 LINE \u5B98\u65B9\u5E33\u865F");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "div", 30);
+    \u0275\u0275elementStart(7, "div", 31);
     \u0275\u0275text(8, " LINE \u5E33\u865F\u5DF2\u7D81\u5B9A\uFF0C\u4F46\u8ACB\u52A0\u5165\u5B98\u65B9\u5E33\u865F\u70BA\u597D\u53CB\u5F8C\u624D\u80FD\u6536\u5230\u901A\u77E5\u63A8\u64AD\u3002 ");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(9, "div", 31)(10, "a", 32);
-    \u0275\u0275listener("click", function ProfileDropdown_Conditional_19_Template_a_click_10_listener($event) {
+    \u0275\u0275elementStart(9, "div", 32)(10, "a", 33);
+    \u0275\u0275listener("click", function ProfileDropdown_Conditional_21_Template_a_click_10_listener($event) {
       \u0275\u0275restoreView(_r4);
       return \u0275\u0275resetView($event.stopPropagation());
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(11, "svg", 33);
-    \u0275\u0275element(12, "path", 22);
+    \u0275\u0275elementStart(11, "svg", 34);
+    \u0275\u0275element(12, "path", 23);
     \u0275\u0275elementEnd();
     \u0275\u0275text(13, " \u52A0\u5165\u597D\u53CB ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(14, "button", 34);
-    \u0275\u0275listener("click", function ProfileDropdown_Conditional_19_Template_button_click_14_listener($event) {
+    \u0275\u0275elementStart(14, "button", 35);
+    \u0275\u0275listener("click", function ProfileDropdown_Conditional_21_Template_button_click_14_listener($event) {
       \u0275\u0275restoreView(_r4);
       const ctx_r0 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r0.refreshLineStatus($event));
     });
     \u0275\u0275text(15, "\u91CD\u65B0\u6AA2\u67E5");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(16, "button", 35);
-    \u0275\u0275listener("click", function ProfileDropdown_Conditional_19_Template_button_click_16_listener($event) {
+    \u0275\u0275elementStart(16, "button", 36);
+    \u0275\u0275listener("click", function ProfileDropdown_Conditional_21_Template_button_click_16_listener($event) {
       \u0275\u0275restoreView(_r4);
       const ctx_r0 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r0.unbindLine($event));
@@ -3632,6 +3632,9 @@ var ProfileDropdown = class _ProfileDropdown {
   lineService = inject(LineService);
   user = this.auth.currentUser;
   avatarUrl = this.auth.avatarUrl;
+  avatarPosX = this.auth.avatarPositionX;
+  avatarPosY = this.auth.avatarPositionY;
+  avatarScale = this.auth.avatarScale;
   departmentName = this.auth.departmentName;
   jobTitleName = this.auth.jobTitleName;
   isLineBound = this.lineService.isBound;
@@ -3666,63 +3669,66 @@ var ProfileDropdown = class _ProfileDropdown {
   static \u0275fac = function ProfileDropdown_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _ProfileDropdown)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ProfileDropdown, selectors: [["app-profile-dropdown"]], decls: 25, vars: 9, consts: [["ngbDropdown", ""], ["type", "button", "ngbDropdownToggle", "", "aria-label", "Open Profile Dropdown", 1, "btn-system", "no-arrow", "bg-transparent", "flex", "shrink-0", "items-center", "justify-center", 3, "title"], [1, "profile-image", "profile-image-md", "rounded-circle", 3, "src", "alt"], ["ngbDropdownMenu", "", 1, "dropdown-menu", "dropdown-menu-end", "dropdown-menu-animated"], [1, "flex", "items-center", "gap-3", "px-4", "py-3", "border-b", "border-[--border]"], [1, "w-10", "h-10", "rounded-full", "object-cover", "shrink-0", 3, "src", "alt"], [1, "min-w-0"], [1, "text-sm", "font-semibold", "text-[--text-primary]", "truncate"], [1, "text-xs", "text-[--text-secondary]", "truncate"], [1, "text-xs", "text-[--text-muted]", "truncate"], ["routerLink", "/account/change-password", 1, "dropdown-item"], [1, "sa-icon", 2, "width", "1rem", "height", "1rem", "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#lock"], [1, "font-medium"], ["href", "javascript:void(0)", 1, "dropdown-item"], [1, "dropdown-item", "flex", "items-center", "justify-between", 2, "cursor", "default"], [1, "px-4", "py-3", "border-t", "border-[--border]", 2, "background", "rgba(184, 137, 42, 0.06)"], ["href", "javascript:void(0)", 1, "dropdown-item", 3, "click"], [1, "sa-icon", "sa-icon-danger", 2, "width", "1rem", "height", "1rem"], ["href", "/assets/icons/sprite.svg#log-out"], [1, "text-[--red]", "font-medium"], ["viewBox", "0 0 24 24", "fill", "#06C755", 2, "width", "1rem", "height", "1rem"], ["d", "M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386a.63.63 0 0 1-.63-.629V8.108a.63.63 0 0 1 .63-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016a.63.63 0 0 1-.63.629.626.626 0 0 1-.51-.262l-2.397-3.274v2.906a.63.63 0 0 1-.629.63.63.63 0 0 1-.631-.63V8.108a.63.63 0 0 1 .631-.63c.2 0 .386.096.504.259l2.403 3.274V8.108a.63.63 0 0 1 .629-.63.63.63 0 0 1 .63.63v4.771zm-5.741 0a.63.63 0 0 1-1.26 0V8.108a.63.63 0 0 1 1.26 0v4.771zm-2.451.629H4.932a.63.63 0 0 1-.63-.629V8.108a.63.63 0 0 1 1.261 0v4.141h1.756c.348 0 .629.283.629.63 0 .344-.281.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"], [1, "flex", "items-center", "gap-2"], [1, "font-medium", "text-[--green]"], [1, "text-xs", "text-[--text-muted]", "hover:text-[--red]", "px-1", 3, "click"], [1, "flex", "items-start", "gap-2", "mb-2"], [1, "sa-icon", "shrink-0", 2, "width", "1rem", "height", "1rem", "stroke", "var(--yellow)", "margin-top", "2px"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "text-sm", "font-semibold", "text-[--yellow]"], [1, "text-xs", "text-[--text-secondary]", "mt-1", "leading-relaxed"], [1, "flex", "items-center", "gap-2", "mt-2"], ["target", "_blank", "rel", "noopener", 1, "btn", "btn-sm", "btn-primary", "flex", "items-center", "gap-1", 3, "click", "href"], ["viewBox", "0 0 24 24", "fill", "#fff", 2, "width", "0.875rem", "height", "0.875rem"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", 3, "click"], ["type", "button", 1, "text-xs", "text-[--text-muted]", "hover:text-[--red]", "ms-auto", "px-1", 3, "click"]], template: function ProfileDropdown_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ProfileDropdown, selectors: [["app-profile-dropdown"]], decls: 27, vars: 17, consts: [["ngbDropdown", ""], ["type", "button", "ngbDropdownToggle", "", "aria-label", "Open Profile Dropdown", 1, "btn-system", "no-arrow", "bg-transparent", "flex", "shrink-0", "items-center", "justify-center", 3, "title"], [1, "profile-image", "profile-image-md", "rounded-circle", "inline-block", "overflow-hidden"], [1, "w-full", "h-full", "object-cover", 2, "transform-origin", "center", 3, "src", "alt"], ["ngbDropdownMenu", "", 1, "dropdown-menu", "dropdown-menu-end", "dropdown-menu-animated"], [1, "flex", "items-center", "gap-3", "px-4", "py-3", "border-b", "border-[--border]"], [1, "block", "w-10", "h-10", "rounded-full", "overflow-hidden", "shrink-0"], [1, "min-w-0"], [1, "text-sm", "font-semibold", "text-[--text-primary]", "truncate"], [1, "text-xs", "text-[--text-secondary]", "truncate"], [1, "text-xs", "text-[--text-muted]", "truncate"], ["routerLink", "/account/change-password", 1, "dropdown-item"], [1, "sa-icon", 2, "width", "1rem", "height", "1rem", "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#lock"], [1, "font-medium"], ["href", "javascript:void(0)", 1, "dropdown-item"], [1, "dropdown-item", "flex", "items-center", "justify-between", 2, "cursor", "default"], [1, "px-4", "py-3", "border-t", "border-[--border]", 2, "background", "rgba(184, 137, 42, 0.06)"], ["href", "javascript:void(0)", 1, "dropdown-item", 3, "click"], [1, "sa-icon", "sa-icon-danger", 2, "width", "1rem", "height", "1rem"], ["href", "/assets/icons/sprite.svg#log-out"], [1, "text-[--red]", "font-medium"], ["viewBox", "0 0 24 24", "fill", "#06C755", 2, "width", "1rem", "height", "1rem"], ["d", "M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386a.63.63 0 0 1-.63-.629V8.108a.63.63 0 0 1 .63-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016a.63.63 0 0 1-.63.629.626.626 0 0 1-.51-.262l-2.397-3.274v2.906a.63.63 0 0 1-.629.63.63.63 0 0 1-.631-.63V8.108a.63.63 0 0 1 .631-.63c.2 0 .386.096.504.259l2.403 3.274V8.108a.63.63 0 0 1 .629-.63.63.63 0 0 1 .63.63v4.771zm-5.741 0a.63.63 0 0 1-1.26 0V8.108a.63.63 0 0 1 1.26 0v4.771zm-2.451.629H4.932a.63.63 0 0 1-.63-.629V8.108a.63.63 0 0 1 1.261 0v4.141h1.756c.348 0 .629.283.629.63 0 .344-.281.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"], [1, "flex", "items-center", "gap-2"], [1, "font-medium", "text-[--green]"], [1, "text-xs", "text-[--text-muted]", "hover:text-[--red]", "px-1", 3, "click"], [1, "flex", "items-start", "gap-2", "mb-2"], [1, "sa-icon", "shrink-0", 2, "width", "1rem", "height", "1rem", "stroke", "var(--yellow)", "margin-top", "2px"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "text-sm", "font-semibold", "text-[--yellow]"], [1, "text-xs", "text-[--text-secondary]", "mt-1", "leading-relaxed"], [1, "flex", "items-center", "gap-2", "mt-2"], ["target", "_blank", "rel", "noopener", 1, "btn", "btn-sm", "btn-primary", "flex", "items-center", "gap-1", 3, "click", "href"], ["viewBox", "0 0 24 24", "fill", "#fff", 2, "width", "0.875rem", "height", "0.875rem"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", 3, "click"], ["type", "button", 1, "text-xs", "text-[--text-muted]", "hover:text-[--red]", "ms-auto", "px-1", 3, "click"]], template: function ProfileDropdown_Template(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275elementStart(0, "div", 0)(1, "button", 1);
-      \u0275\u0275element(2, "img", 2);
+      \u0275\u0275elementStart(0, "div", 0)(1, "button", 1)(2, "span", 2);
+      \u0275\u0275element(3, "img", 3);
+      \u0275\u0275elementEnd()();
+      \u0275\u0275elementStart(4, "div", 4)(5, "div", 5)(6, "span", 6);
+      \u0275\u0275element(7, "img", 3);
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(3, "div", 3)(4, "div", 4);
-      \u0275\u0275element(5, "img", 5);
-      \u0275\u0275elementStart(6, "div", 6)(7, "div", 7);
-      \u0275\u0275text(8);
+      \u0275\u0275elementStart(8, "div", 7)(9, "div", 8);
+      \u0275\u0275text(10);
       \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(9, ProfileDropdown_Conditional_9_Template, 2, 3, "div", 8);
-      \u0275\u0275elementStart(10, "div", 9);
-      \u0275\u0275text(11);
+      \u0275\u0275conditionalCreate(11, ProfileDropdown_Conditional_11_Template, 2, 3, "div", 9);
+      \u0275\u0275elementStart(12, "div", 10);
+      \u0275\u0275text(13);
       \u0275\u0275elementEnd()()();
-      \u0275\u0275elementStart(12, "a", 10);
+      \u0275\u0275elementStart(14, "a", 11);
       \u0275\u0275namespaceSVG();
-      \u0275\u0275elementStart(13, "svg", 11);
-      \u0275\u0275element(14, "use", 12);
+      \u0275\u0275elementStart(15, "svg", 12);
+      \u0275\u0275element(16, "use", 13);
       \u0275\u0275elementEnd();
       \u0275\u0275namespaceHTML();
-      \u0275\u0275elementStart(15, "span", 13);
-      \u0275\u0275text(16, "\u4FEE\u6539\u5BC6\u78BC");
+      \u0275\u0275elementStart(17, "span", 14);
+      \u0275\u0275text(18, "\u4FEE\u6539\u5BC6\u78BC");
       \u0275\u0275elementEnd()();
-      \u0275\u0275conditionalCreate(17, ProfileDropdown_Conditional_17_Template, 5, 0, "a", 14)(18, ProfileDropdown_Conditional_18_Template, 8, 0, "div", 15)(19, ProfileDropdown_Conditional_19_Template, 18, 5, "div", 16);
-      \u0275\u0275elementStart(20, "a", 17);
-      \u0275\u0275listener("click", function ProfileDropdown_Template_a_click_20_listener() {
+      \u0275\u0275conditionalCreate(19, ProfileDropdown_Conditional_19_Template, 5, 0, "a", 15)(20, ProfileDropdown_Conditional_20_Template, 8, 0, "div", 16)(21, ProfileDropdown_Conditional_21_Template, 18, 5, "div", 17);
+      \u0275\u0275elementStart(22, "a", 18);
+      \u0275\u0275listener("click", function ProfileDropdown_Template_a_click_22_listener() {
         return ctx.logout();
       });
       \u0275\u0275namespaceSVG();
-      \u0275\u0275elementStart(21, "svg", 18);
-      \u0275\u0275element(22, "use", 19);
+      \u0275\u0275elementStart(23, "svg", 19);
+      \u0275\u0275element(24, "use", 20);
       \u0275\u0275elementEnd();
       \u0275\u0275namespaceHTML();
-      \u0275\u0275elementStart(23, "span", 20);
-      \u0275\u0275text(24, "\u767B\u51FA");
+      \u0275\u0275elementStart(25, "span", 21);
+      \u0275\u0275text(26, "\u767B\u51FA");
       \u0275\u0275elementEnd()()()();
     }
     if (rf & 2) {
       let tmp_0_0;
-      let tmp_2_0;
       let tmp_4_0;
-      let tmp_5_0;
-      let tmp_7_0;
+      let tmp_8_0;
+      let tmp_9_0;
+      let tmp_11_0;
       \u0275\u0275advance();
       \u0275\u0275property("title", ((tmp_0_0 = ctx.user()) == null ? null : tmp_0_0.email) ?? "");
-      \u0275\u0275advance();
-      \u0275\u0275property("src", ctx.avatarUrl() ?? "/assets/img/demo/avatars/avatar-admin.png", \u0275\u0275sanitizeUrl)("alt", ((tmp_2_0 = ctx.user()) == null ? null : tmp_2_0.name) ?? "");
-      \u0275\u0275advance(3);
-      \u0275\u0275property("src", ctx.avatarUrl() ?? "/assets/img/demo/avatars/avatar-admin.png", \u0275\u0275sanitizeUrl)("alt", ((tmp_4_0 = ctx.user()) == null ? null : tmp_4_0.name) ?? "");
-      \u0275\u0275advance(3);
-      \u0275\u0275textInterpolate((tmp_5_0 = ctx.user()) == null ? null : tmp_5_0.name);
-      \u0275\u0275advance();
-      \u0275\u0275conditional(ctx.departmentName() || ctx.jobTitleName() ? 9 : -1);
       \u0275\u0275advance(2);
-      \u0275\u0275textInterpolate((tmp_7_0 = ctx.user()) == null ? null : tmp_7_0.email);
+      \u0275\u0275styleProp("object-position", ctx.avatarPosX() + "% " + ctx.avatarPosY() + "%")("transform", ctx.avatarScale() === 1 ? null : "scale(" + ctx.avatarScale() + ")");
+      \u0275\u0275property("src", ctx.avatarUrl() ?? "/assets/img/demo/avatars/avatar-admin.png", \u0275\u0275sanitizeUrl)("alt", ((tmp_4_0 = ctx.user()) == null ? null : tmp_4_0.name) ?? "");
+      \u0275\u0275advance(4);
+      \u0275\u0275styleProp("object-position", ctx.avatarPosX() + "% " + ctx.avatarPosY() + "%")("transform", ctx.avatarScale() === 1 ? null : "scale(" + ctx.avatarScale() + ")");
+      \u0275\u0275property("src", ctx.avatarUrl() ?? "/assets/img/demo/avatars/avatar-admin.png", \u0275\u0275sanitizeUrl)("alt", ((tmp_8_0 = ctx.user()) == null ? null : tmp_8_0.name) ?? "");
+      \u0275\u0275advance(3);
+      \u0275\u0275textInterpolate((tmp_9_0 = ctx.user()) == null ? null : tmp_9_0.name);
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.departmentName() || ctx.jobTitleName() ? 11 : -1);
+      \u0275\u0275advance(2);
+      \u0275\u0275textInterpolate((tmp_11_0 = ctx.user()) == null ? null : tmp_11_0.email);
       \u0275\u0275advance(6);
-      \u0275\u0275conditional(!ctx.isLineBound() ? 17 : ctx.isBotFriend() ? 18 : 19);
+      \u0275\u0275conditional(!ctx.isLineBound() ? 19 : ctx.isBotFriend() ? 20 : 21);
     }
   }, dependencies: [NgbDropdownModule, NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, RouterLink], encapsulation: 2 });
 };
@@ -3734,17 +3740,27 @@ var ProfileDropdown = class _ProfileDropdown {
       <button type="button" ngbDropdownToggle [title]="user()?.email ?? ''"
               class="btn-system no-arrow bg-transparent flex shrink-0 items-center justify-center"
               aria-label="Open Profile Dropdown">
-        <img [src]="avatarUrl() ?? '/assets/img/demo/avatars/avatar-admin.png'"
-             class="profile-image profile-image-md rounded-circle"
-             [alt]="user()?.name ?? ''">
+        <span class="profile-image profile-image-md rounded-circle inline-block overflow-hidden">
+          <img [src]="avatarUrl() ?? '/assets/img/demo/avatars/avatar-admin.png'"
+               class="w-full h-full object-cover"
+               [style.objectPosition]="avatarPosX() + '% ' + avatarPosY() + '%'"
+               [style.transform]="avatarScale() === 1 ? null : ('scale(' + avatarScale() + ')')"
+               style="transform-origin: center"
+               [alt]="user()?.name ?? ''">
+        </span>
       </button>
 
       <div ngbDropdownMenu class="dropdown-menu dropdown-menu-end dropdown-menu-animated">
         <!-- User info header -->
         <div class="flex items-center gap-3 px-4 py-3 border-b border-[--border]">
-          <img [src]="avatarUrl() ?? '/assets/img/demo/avatars/avatar-admin.png'"
-               class="w-10 h-10 rounded-full object-cover shrink-0"
-               [alt]="user()?.name ?? ''">
+          <span class="block w-10 h-10 rounded-full overflow-hidden shrink-0">
+            <img [src]="avatarUrl() ?? '/assets/img/demo/avatars/avatar-admin.png'"
+                 class="w-full h-full object-cover"
+                 [style.objectPosition]="avatarPosX() + '% ' + avatarPosY() + '%'"
+                 [style.transform]="avatarScale() === 1 ? null : ('scale(' + avatarScale() + ')')"
+                 style="transform-origin: center"
+                 [alt]="user()?.name ?? ''">
+          </span>
           <div class="min-w-0">
             <div class="text-sm font-semibold text-[--text-primary] truncate">{{ user()?.name }}</div>
             @if (departmentName() || jobTitleName()) {
@@ -3823,7 +3839,7 @@ var ProfileDropdown = class _ProfileDropdown {
   }], null, null);
 })();
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ProfileDropdown, { className: "ProfileDropdown", filePath: "src/app/layout/components/topbar/components/profile-dropdown.ts", lineNumber: 104 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ProfileDropdown, { className: "ProfileDropdown", filePath: "src/app/layout/components/topbar/components/profile-dropdown.ts", lineNumber: 114 });
 })();
 
 // src/app/layout/components/topbar/topbar.ts
@@ -5859,15 +5875,15 @@ var routes = [
     children: [
       {
         path: "dashboard",
-        loadChildren: () => import("./chunk-D5OKNLI3.js").then((m) => m.DASHBOARD_ROUTES)
+        loadChildren: () => import("./chunk-3FZAWVCX.js").then((m) => m.DASHBOARD_ROUTES)
       },
       {
         path: "admin",
-        loadChildren: () => import("./chunk-5MDKX5WB.js").then((m) => m.ADMIN_ROUTES)
+        loadChildren: () => import("./chunk-AUCV2CNZ.js").then((m) => m.ADMIN_ROUTES)
       },
       {
         path: "account/change-password",
-        loadComponent: () => import("./chunk-CUX7JMYD.js").then((m) => m.ChangePassword),
+        loadComponent: () => import("./chunk-4E3UIRDU.js").then((m) => m.ChangePassword),
         data: { title: "\u4FEE\u6539\u5BC6\u78BC" }
       },
       {

@@ -1,6 +1,6 @@
 import {
   AuthService
-} from "./chunk-QLN4CKKJ.js";
+} from "./chunk-ZSGTQ3YJ.js";
 import {
   Directive,
   Input,
@@ -41,4 +41,4 @@ var HasPermissionDirective = class _HasPermissionDirective {
 export {
   HasPermissionDirective
 };
-//# sourceMappingURL=chunk-SQBR33JO.js.map
+//# sourceMappingURL=chunk-M7DGJIC4.js.map

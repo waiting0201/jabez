@@ -19,7 +19,7 @@ import {
 import "./chunk-JDEYLUO2.js";
 import {
   AuthService
-} from "./chunk-QLN4CKKJ.js";
+} from "./chunk-ZSGTQ3YJ.js";
 import {
   Component,
   inject,
@@ -295,4 +295,4 @@ var ChangePassword = class _ChangePassword {
 export {
   ChangePassword
 };
-//# sourceMappingURL=chunk-CUX7JMYD.js.map
+//# sourceMappingURL=chunk-4E3UIRDU.js.map

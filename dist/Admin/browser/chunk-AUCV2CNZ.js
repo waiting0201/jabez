@@ -1,7 +1,7 @@
 import {
   PaymentRequestService,
   require_heic2any
-} from "./chunk-Q7YKQOJC.js";
+} from "./chunk-DHHQQPKR.js";
 import {
   TravelPaymentPdfService
 } from "./chunk-4V4CQHBR.js";
@@ -71,7 +71,7 @@ import {
 } from "./chunk-Y7L4DWFX.js";
 import {
   HasPermissionDirective
-} from "./chunk-SQBR33JO.js";
+} from "./chunk-M7DGJIC4.js";
 import {
   ActivatedRoute,
   Router,
@@ -82,7 +82,7 @@ import {
 } from "./chunk-JDEYLUO2.js";
 import {
   AuthService
-} from "./chunk-QLN4CKKJ.js";
+} from "./chunk-ZSGTQ3YJ.js";
 import {
   AsyncPipe,
   BehaviorSubject,
@@ -686,6 +686,9 @@ function buildPageNumbers(current, total) {
   return pages;
 }
 
+// src/app/features/admin/users/pages/user-form/user-form.ts
+var import_heic2any = __toESM(require_heic2any());
+
 // src/app/features/admin/departments/services/department.service.ts
 var DepartmentService = class _DepartmentService {
   http = inject(HttpClient);
@@ -904,31 +907,78 @@ function UserForm_For_154_Template(rf, ctx) {
 function UserForm_Conditional_163_Template(rf, ctx) {
   if (rf & 1) {
     const _r7 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 64);
-    \u0275\u0275element(1, "img", 65);
+    \u0275\u0275elementStart(0, "div", 64)(1, "div", 65);
+    \u0275\u0275listener("pointerdown", function UserForm_Conditional_163_Template_div_pointerdown_1_listener($event) {
+      \u0275\u0275restoreView(_r7);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.onAvatarPointerDown($event));
+    })("pointermove", function UserForm_Conditional_163_Template_div_pointermove_1_listener($event) {
+      \u0275\u0275restoreView(_r7);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.onAvatarPointerMove($event));
+    })("pointerup", function UserForm_Conditional_163_Template_div_pointerup_1_listener() {
+      \u0275\u0275restoreView(_r7);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.onAvatarPointerUp());
+    })("pointercancel", function UserForm_Conditional_163_Template_div_pointercancel_1_listener() {
+      \u0275\u0275restoreView(_r7);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.onAvatarPointerUp());
+    });
+    \u0275\u0275element(2, "img", 66);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(2, "div", 66)(3, "label", 67);
-    \u0275\u0275text(4, " \u66F4\u63DB\u982D\u50CF ");
-    \u0275\u0275elementStart(5, "input", 68);
-    \u0275\u0275listener("change", function UserForm_Conditional_163_Template_input_change_5_listener($event) {
+    \u0275\u0275elementStart(3, "div", 67)(4, "label", 68);
+    \u0275\u0275text(5, "\u7E2E\u653E");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(6, "div", 69)(7, "input", 70);
+    \u0275\u0275listener("input", function UserForm_Conditional_163_Template_input_input_7_listener($event) {
+      \u0275\u0275restoreView(_r7);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.onAvatarScaleChange($event));
+    });
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(8, "span", 71);
+    \u0275\u0275text(9);
+    \u0275\u0275pipe(10, "number");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(11, "p", 72);
+    \u0275\u0275text(12, "\u5728\u9810\u89BD\u6846\u4E2D\u6309\u4F4F\u6ED1\u9F20\u6216\u624B\u6307\u62D6\u66F3\u8ABF\u6574\u4F4D\u7F6E\u3002");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(13, "button", 73);
+    \u0275\u0275listener("click", function UserForm_Conditional_163_Template_button_click_13_listener() {
+      \u0275\u0275restoreView(_r7);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.resetAvatarPosition());
+    });
+    \u0275\u0275text(14, " \u91CD\u8A2D\u4F4D\u7F6E ");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(15, "div", 74)(16, "label", 75);
+    \u0275\u0275text(17, " \u66F4\u63DB\u982D\u50CF ");
+    \u0275\u0275elementStart(18, "input", 76);
+    \u0275\u0275listener("change", function UserForm_Conditional_163_Template_input_change_18_listener($event) {
       \u0275\u0275restoreView(_r7);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.onAvatarSelected($event));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(6, "button", 69);
-    \u0275\u0275listener("click", function UserForm_Conditional_163_Template_button_click_6_listener() {
+    \u0275\u0275elementStart(19, "button", 77);
+    \u0275\u0275listener("click", function UserForm_Conditional_163_Template_button_click_19_listener() {
       \u0275\u0275restoreView(_r7);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.onRemoveAvatar());
     });
-    \u0275\u0275text(7, " \u522A\u9664\u982D\u50CF ");
+    \u0275\u0275text(20, " \u522A\u9664\u982D\u50CF ");
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
     const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275advance();
+    \u0275\u0275advance(2);
+    \u0275\u0275styleProp("object-position", ctx_r1.avatarPosX() + "% " + ctx_r1.avatarPosY() + "%")("transform", "scale(" + ctx_r1.avatarScale() + ")");
     \u0275\u0275property("src", ctx_r1.displayAvatar, \u0275\u0275sanitizeUrl);
+    \u0275\u0275advance(5);
+    \u0275\u0275property("value", ctx_r1.avatarScale());
+    \u0275\u0275advance(2);
+    \u0275\u0275textInterpolate1("", \u0275\u0275pipeBind2(10, 7, ctx_r1.avatarScale(), "1.2-2"), "x");
   }
 }
 function UserForm_Conditional_164_Template(rf, ctx) {
@@ -937,14 +987,14 @@ function UserForm_Conditional_164_Template(rf, ctx) {
     \u0275\u0275elementStart(0, "p", 51);
     \u0275\u0275text(1, "\u5C1A\u672A\u4E0A\u50B3\u982D\u50CF\uFF0C\u9078\u64C7\u6A94\u6848\u5F8C\u5C07\u65BC\u5132\u5B58\u6642\u4E00\u4F75\u4E0A\u50B3\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(2, "label", 67);
+    \u0275\u0275elementStart(2, "label", 75);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(3, "svg", 58);
-    \u0275\u0275element(4, "use", 70);
+    \u0275\u0275element(4, "use", 78);
     \u0275\u0275elementEnd();
     \u0275\u0275text(5, " \u9078\u64C7\u982D\u50CF ");
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(6, "input", 68);
+    \u0275\u0275elementStart(6, "input", 76);
     \u0275\u0275listener("change", function UserForm_Conditional_164_Template_input_change_6_listener($event) {
       \u0275\u0275restoreView(_r8);
       const ctx_r1 = \u0275\u0275nextContext();
@@ -956,7 +1006,7 @@ function UserForm_Conditional_164_Template(rf, ctx) {
 function UserForm_Conditional_165_Conditional_10_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
     const _r10 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 77);
+    \u0275\u0275elementStart(0, "button", 85);
     \u0275\u0275listener("click", function UserForm_Conditional_165_Conditional_10_Conditional_5_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r10);
       const ctx_r1 = \u0275\u0275nextContext(3);
@@ -969,27 +1019,27 @@ function UserForm_Conditional_165_Conditional_10_Conditional_5_Template(rf, ctx)
 function UserForm_Conditional_165_Conditional_10_Template(rf, ctx) {
   if (rf & 1) {
     const _r9 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 72);
+    \u0275\u0275elementStart(0, "div", 80);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 73);
-    \u0275\u0275element(2, "use", 71);
+    \u0275\u0275elementStart(1, "svg", 81);
+    \u0275\u0275element(2, "use", 79);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(3, "span", 74);
+    \u0275\u0275elementStart(3, "span", 82);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(5, UserForm_Conditional_165_Conditional_10_Conditional_5_Template, 2, 0, "button", 75);
+    \u0275\u0275conditionalCreate(5, UserForm_Conditional_165_Conditional_10_Conditional_5_Template, 2, 0, "button", 83);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "div", 66)(7, "label", 67);
+    \u0275\u0275elementStart(6, "div", 74)(7, "label", 75);
     \u0275\u0275text(8, " \u66F4\u63DB\u6A94\u6848 ");
-    \u0275\u0275elementStart(9, "input", 76);
+    \u0275\u0275elementStart(9, "input", 84);
     \u0275\u0275listener("change", function UserForm_Conditional_165_Conditional_10_Template_input_change_9_listener($event) {
       \u0275\u0275restoreView(_r9);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.onIndigenousProofSelected($event));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(10, "button", 69);
+    \u0275\u0275elementStart(10, "button", 77);
     \u0275\u0275listener("click", function UserForm_Conditional_165_Conditional_10_Template_button_click_10_listener() {
       \u0275\u0275restoreView(_r9);
       const ctx_r1 = \u0275\u0275nextContext(2);
@@ -1009,14 +1059,14 @@ function UserForm_Conditional_165_Conditional_10_Template(rf, ctx) {
 function UserForm_Conditional_165_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
     const _r11 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "label", 67);
+    \u0275\u0275elementStart(0, "label", 75);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 58);
-    \u0275\u0275element(2, "use", 70);
+    \u0275\u0275element(2, "use", 78);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3, " \u9078\u64C7\u6A94\u6848 ");
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(4, "input", 76);
+    \u0275\u0275elementStart(4, "input", 84);
     \u0275\u0275listener("change", function UserForm_Conditional_165_Conditional_11_Template_input_change_4_listener($event) {
       \u0275\u0275restoreView(_r11);
       const ctx_r1 = \u0275\u0275nextContext(2);
@@ -1030,7 +1080,7 @@ function UserForm_Conditional_165_Template(rf, ctx) {
     \u0275\u0275elementStart(0, "div", 11)(1, "div", 12);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 3);
-    \u0275\u0275element(3, "use", 71);
+    \u0275\u0275element(3, "use", 79);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u539F\u4F4F\u6C11\u8EAB\u4EFD\u8B49\u660E\u6587\u4EF6 ");
     \u0275\u0275namespaceHTML();
@@ -1040,7 +1090,7 @@ function UserForm_Conditional_165_Template(rf, ctx) {
     \u0275\u0275elementStart(7, "div", 14)(8, "p", 51);
     \u0275\u0275text(9, "\u652F\u63F4 PNG\u3001JPEG \u5716\u7247\u6216 PDF \u6A94\u6848\u3002\u6B64\u6587\u4EF6\u50C5\u4F9B\u4EBA\u4E8B\u90E8\u9580\u7A3D\u6838\uFF0C\u53D7\u6B0A\u9650\u4FDD\u8B77\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(10, UserForm_Conditional_165_Conditional_10_Template, 12, 2)(11, UserForm_Conditional_165_Conditional_11_Template, 5, 0, "label", 67);
+    \u0275\u0275conditionalCreate(10, UserForm_Conditional_165_Conditional_10_Template, 12, 2)(11, UserForm_Conditional_165_Conditional_11_Template, 5, 0, "label", 75);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -1052,19 +1102,19 @@ function UserForm_Conditional_165_Template(rf, ctx) {
 function UserForm_Conditional_174_Template(rf, ctx) {
   if (rf & 1) {
     const _r12 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 64)(1, "div", 78);
-    \u0275\u0275element(2, "img", 79);
+    \u0275\u0275elementStart(0, "div", 86)(1, "div", 87);
+    \u0275\u0275element(2, "img", 88);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(3, "div", 66)(4, "label", 67);
+    \u0275\u0275elementStart(3, "div", 74)(4, "label", 75);
     \u0275\u0275text(5, " \u66F4\u63DB\u7C3D\u540D\u6A94 ");
-    \u0275\u0275elementStart(6, "input", 68);
+    \u0275\u0275elementStart(6, "input", 89);
     \u0275\u0275listener("change", function UserForm_Conditional_174_Template_input_change_6_listener($event) {
       \u0275\u0275restoreView(_r12);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.onSignatureSelected($event));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(7, "button", 69);
+    \u0275\u0275elementStart(7, "button", 77);
     \u0275\u0275listener("click", function UserForm_Conditional_174_Template_button_click_7_listener() {
       \u0275\u0275restoreView(_r12);
       const ctx_r1 = \u0275\u0275nextContext();
@@ -1085,14 +1135,14 @@ function UserForm_Conditional_175_Template(rf, ctx) {
     \u0275\u0275elementStart(0, "p", 51);
     \u0275\u0275text(1, "\u5C1A\u672A\u4E0A\u50B3\u7C3D\u540D\u6A94\uFF0C\u9078\u64C7\u6A94\u6848\u5F8C\u5C07\u65BC\u5132\u5B58\u6642\u4E00\u4F75\u4E0A\u50B3\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(2, "label", 67);
+    \u0275\u0275elementStart(2, "label", 75);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(3, "svg", 58);
-    \u0275\u0275element(4, "use", 70);
+    \u0275\u0275element(4, "use", 78);
     \u0275\u0275elementEnd();
     \u0275\u0275text(5, " \u9078\u64C7\u7C3D\u540D\u6A94 ");
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(6, "input", 68);
+    \u0275\u0275elementStart(6, "input", 89);
     \u0275\u0275listener("change", function UserForm_Conditional_175_Template_input_change_6_listener($event) {
       \u0275\u0275restoreView(_r13);
       const ctx_r1 = \u0275\u0275nextContext();
@@ -1138,6 +1188,11 @@ var UserForm = class _UserForm {
   avatarPreview = signal(null, ...ngDevMode ? [{ debugName: "avatarPreview" }] : []);
   avatarFile = signal(null, ...ngDevMode ? [{ debugName: "avatarFile" }] : []);
   removeAvatar = signal(false, ...ngDevMode ? [{ debugName: "removeAvatar" }] : []);
+  // 頭像位置 / 縮放（圓形裁切框內顯示參數）
+  avatarPosX = signal(50, ...ngDevMode ? [{ debugName: "avatarPosX" }] : []);
+  avatarPosY = signal(50, ...ngDevMode ? [{ debugName: "avatarPosY" }] : []);
+  avatarScale = signal(1, ...ngDevMode ? [{ debugName: "avatarScale" }] : []);
+  avatarDragStart = null;
   // 原住民證明文件（圖或 PDF）
   indigenousProofUrl = signal(null, ...ngDevMode ? [{ debugName: "indigenousProofUrl" }] : []);
   indigenousProofFile = signal(null, ...ngDevMode ? [{ debugName: "indigenousProofFile" }] : []);
@@ -1198,6 +1253,9 @@ var UserForm = class _UserForm {
         }));
         this.signatureUrl.set(user.signatureUrl ?? null);
         this.avatarUrl.set(user.avatar ?? null);
+        this.avatarPosX.set(user.avatarPositionX ?? 50);
+        this.avatarPosY.set(user.avatarPositionY ?? 50);
+        this.avatarScale.set(user.avatarScale ?? 1);
         this.indigenousProofUrl.set(user.indigenousProofUrl ?? null);
       });
     }
@@ -1225,22 +1283,101 @@ var UserForm = class _UserForm {
     this.signaturePreview.set(null);
     this.removeSignature.set(true);
   }
-  onAvatarSelected(event) {
+  async onAvatarSelected(event) {
     const input = event.target;
     const file = input.files?.[0];
     if (!file)
       return;
-    this.avatarFile.set(file);
-    this.removeAvatar.set(false);
-    const reader = new FileReader();
-    reader.onload = () => this.avatarPreview.set(reader.result);
-    reader.readAsDataURL(file);
     input.value = "";
+    try {
+      const compressed = await this.compressImage(file);
+      this.avatarFile.set(compressed);
+      this.removeAvatar.set(false);
+      const reader = new FileReader();
+      reader.onload = () => this.avatarPreview.set(reader.result);
+      reader.readAsDataURL(compressed);
+    } catch (err) {
+      console.error("[UserForm] \u982D\u50CF\u58D3\u7E2E\u5931\u6557", err);
+      this.toastr.error("\u982D\u50CF\u8655\u7406\u5931\u6557\uFF0C\u8ACB\u6539\u7528\u5176\u4ED6\u5716\u7247\u3002", "\u8655\u7406\u5931\u6557");
+    }
   }
   onRemoveAvatar() {
     this.avatarFile.set(null);
     this.avatarPreview.set(null);
     this.removeAvatar.set(true);
+    this.avatarPosX.set(50);
+    this.avatarPosY.set(50);
+    this.avatarScale.set(1);
+  }
+  /**
+   * 圖檔壓縮：等比縮放到 max 800x800，輸出 JPEG 0.85。
+   * iOS HEIC 走 heic2any 先轉 JPEG，再走 Canvas 縮放。
+   */
+  async compressImage(file, maxSize = 800, quality = 0.85) {
+    let workingBlob = file;
+    if (/\.(heic|heif)$/i.test(file.name) || file.type === "image/heic" || file.type === "image/heif") {
+      workingBlob = await (0, import_heic2any.default)({ blob: file, toType: "image/jpeg", quality });
+    }
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(workingBlob);
+    });
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error("Failed to load image"));
+      i.src = dataUrl;
+    });
+    const ratio = Math.min(maxSize / img.width, maxSize / img.height, 1);
+    const w = Math.round(img.width * ratio);
+    const h = Math.round(img.height * ratio);
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx)
+      throw new Error("Canvas context unavailable");
+    ctx.drawImage(img, 0, 0, w, h);
+    const compressed = await new Promise((resolve, reject) => canvas.toBlob((b) => b ? resolve(b) : reject(new Error("toBlob returned null")), "image/jpeg", quality));
+    const baseName = file.name.replace(/\.[^.]+$/, "");
+    return new File([compressed], `${baseName}.jpg`, { type: "image/jpeg" });
+  }
+  // ── 頭像拖曳 / 縮放 互動 ──────────────────────────
+  onAvatarPointerDown(e) {
+    if (!this.displayAvatar)
+      return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    this.avatarDragStart = {
+      x: e.clientX,
+      y: e.clientY,
+      posX: this.avatarPosX(),
+      posY: this.avatarPosY()
+    };
+  }
+  onAvatarPointerMove(e) {
+    if (!this.avatarDragStart)
+      return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const scale = this.avatarScale();
+    const dx = (e.clientX - this.avatarDragStart.x) / rect.width / scale * 100;
+    const dy = (e.clientY - this.avatarDragStart.y) / rect.height / scale * 100;
+    this.avatarPosX.set(Math.max(0, Math.min(100, this.avatarDragStart.posX - dx)));
+    this.avatarPosY.set(Math.max(0, Math.min(100, this.avatarDragStart.posY - dy)));
+  }
+  onAvatarPointerUp() {
+    this.avatarDragStart = null;
+  }
+  onAvatarScaleChange(event) {
+    const v = parseFloat(event.target.value);
+    if (Number.isFinite(v))
+      this.avatarScale.set(Math.max(1, Math.min(3, v)));
+  }
+  resetAvatarPosition() {
+    this.avatarPosX.set(50);
+    this.avatarPosY.set(50);
+    this.avatarScale.set(1);
   }
   onIndigenousProofSelected(event) {
     const input = event.target;
@@ -1373,7 +1510,11 @@ var UserForm = class _UserForm {
       hireDate: hireDate ? new Date(hireDate) : void 0,
       resignDate: resignDate ? new Date(resignDate) : void 0,
       agentUserId: agentUserId || void 0,
-      birthday: birthday ? new Date(birthday) : void 0
+      birthday: birthday ? new Date(birthday) : void 0,
+      // 頭像顯示參數（僅在有頭像時送出，刪除時後端會自行重置）
+      avatarPositionX: this.removeAvatar() ? void 0 : this.avatarPosX(),
+      avatarPositionY: this.removeAvatar() ? void 0 : this.avatarPosY(),
+      avatarScale: this.removeAvatar() ? void 0 : this.avatarScale()
     });
     const obs = this.isEdit ? this.userService.update(this.userId, payload, {
       signatureFile: this.signatureFile(),
@@ -1389,7 +1530,17 @@ var UserForm = class _UserForm {
     });
     this.errorMsg.set("");
     obs.subscribe({
-      next: () => this.router.navigate(["/admin/users"]),
+      next: () => {
+        const currentUserId = this.authService.currentUser()?.id;
+        if (this.isEdit && currentUserId === this.userId) {
+          this.authService.refreshAccessToken().subscribe({
+            next: () => this.router.navigate(["/admin/users"]),
+            error: () => this.router.navigate(["/admin/users"])
+          });
+        } else {
+          this.router.navigate(["/admin/users"]);
+        }
+      },
       error: (err) => {
         this.errorMsg.set(err.error?.message || "\u5132\u5B58\u5931\u6557\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66\u3002");
       }
@@ -1398,7 +1549,7 @@ var UserForm = class _UserForm {
   static \u0275fac = function UserForm_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _UserForm)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _UserForm, selectors: [["app-user-form"]], decls: 181, vars: 24, consts: [[1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6"], ["routerLink", "/admin/users", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "mb-0"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-info", "ms-auto", 3, "disabled"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [1, "row"], [1, "col-12", "col-xl-8"], [3, "ngSubmit", "formGroup"], [1, "card", "border-0", "shadow-sm", "mb-4"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], ["href", "/assets/icons/sprite.svg#user"], [1, "card-body"], [1, "row", "g-3"], [1, "col-12", "col-md-6"], [1, "form-label", "fw-500"], [1, "text-danger"], ["type", "text", "formControlName", "name", "placeholder", "\u8ACB\u8F38\u5165\u59D3\u540D", 1, "form-control"], [1, "text-danger", "small", "mt-1"], ["type", "email", "formControlName", "email", "placeholder", "user@example.com", 1, "form-control"], ["type", "password", "formControlName", "password", "placeholder", "\u7559\u7A7A\u5247\u4E0D\u4FEE\u6539\uFF08\u81F3\u5C11 6 \u78BC\uFF09", 1, "form-control"], ["formControlName", "status", 1, "form-select"], ["value", "active"], ["value", "inactive"], [1, "flex", "flex-wrap", "gap-4", "mt-1"], [1, "form-check"], ["href", "/assets/icons/sprite.svg#briefcase"], ["formControlName", "departmentId", 1, "form-select"], [3, "ngValue"], ["formControlName", "jobTitleId", 1, "form-select"], ["type", "date", "formControlName", "birthday", 1, "form-control"], ["type", "date", "formControlName", "hireDate", 1, "form-control"], [1, "col-12", "col-md-4"], [1, "input-group"], [1, "input-group-text"], ["type", "number", "formControlName", "baseSalary", "placeholder", "\u4F8B\u5982\uFF1A50000", "min", "0", 1, "form-control"], ["type", "text", "readonly", "", 1, "form-control", "bg-light", 3, "value"], ["type", "number", "formControlName", "mealAllowance", "placeholder", "\u4F8B\u5982\uFF1A2400", "min", "0", 1, "form-control"], ["type", "number", "formControlName", "overtimePay", "placeholder", "\u4F8B\u5982\uFF1A0", "min", "0", 1, "form-control"], [1, "form-check", "mt-2"], ["type", "checkbox", "formControlName", "sendPaySlip", "id", "sendPaySlip", 1, "form-check-input"], ["for", "sendPaySlip", 1, "form-check-label"], ["type", "checkbox", "formControlName", "isIndigenous", "id", "isIndigenous", 1, "form-check-input"], ["for", "isIndigenous", 1, "form-check-label"], ["type", "date", "formControlName", "resignDate", 1, "form-control"], ["formControlName", "agentUserId", 1, "form-select"], ["value", ""], [3, "value"], ["href", "/assets/icons/sprite.svg#image"], [1, "text-muted", "small", "mb-3"], ["href", "/assets/icons/sprite.svg#edit"], [1, "mt-6", "flex", "gap-2"], ["type", "submit", 1, "btn", "btn-primary"], ["routerLink", "/admin/users", 1, "btn", "btn-outline-secondary"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-info", "ms-auto", 3, "click", "disabled"], [1, "inline-block", "w-4", "h-4", "border-2", "border-current", "border-t-transparent", "rounded-full", "animate-spin", "me-1"], [1, "sa-icon", "me-1"], ["href", "/assets/icons/sprite.svg#mail"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], ["type", "radio", "name", "roleId", "formControlName", "roleId", 1, "form-check-input", 3, "id", "value"], [1, "form-check-label", 3, "for"], [1, "mb-3"], ["alt", "\u982D\u50CF", 1, "w-24", "h-24", "rounded-full", "object-cover", "border", 3, "src"], [1, "flex", "gap-2"], [1, "btn", "btn-sm", "btn-outline-primary", "cursor-pointer", "mb-0"], ["type", "file", "accept", "image/png,image/jpeg,image/gif,image/webp", 1, "hidden", 3, "change"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-danger", 3, "click"], ["href", "/assets/icons/sprite.svg#upload"], ["href", "/assets/icons/sprite.svg#file-text"], [1, "flex", "items-center", "gap-2", "mb-3", "border", "rounded", "px-3", "py-2", "bg-[--bg-surface]"], [1, "sa-icon", "text-[--accent]", 2, "stroke", "currentColor"], [1, "fw-500", "text-[--text-primary]", "truncate"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "ms-auto"], ["type", "file", "accept", "image/png,image/jpeg,application/pdf", 1, "hidden", 3, "change"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "ms-auto", 3, "click"], [1, "border", "rounded", "p-3", "bg-white", "inline-block"], ["alt", "\u7C3D\u540D\u6A94", 1, "max-h-24", "object-contain", 3, "src"]], template: function UserForm_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _UserForm, selectors: [["app-user-form"]], decls: 181, vars: 24, consts: [[1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6"], ["routerLink", "/admin/users", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "mb-0"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-info", "ms-auto", 3, "disabled"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [1, "row"], [1, "col-12", "col-xl-8"], [3, "ngSubmit", "formGroup"], [1, "card", "border-0", "shadow-sm", "mb-4"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], ["href", "/assets/icons/sprite.svg#user"], [1, "card-body"], [1, "row", "g-3"], [1, "col-12", "col-md-6"], [1, "form-label", "fw-500"], [1, "text-danger"], ["type", "text", "formControlName", "name", "placeholder", "\u8ACB\u8F38\u5165\u59D3\u540D", 1, "form-control"], [1, "text-danger", "small", "mt-1"], ["type", "email", "formControlName", "email", "placeholder", "user@example.com", 1, "form-control"], ["type", "password", "formControlName", "password", "placeholder", "\u7559\u7A7A\u5247\u4E0D\u4FEE\u6539\uFF08\u81F3\u5C11 6 \u78BC\uFF09", 1, "form-control"], ["formControlName", "status", 1, "form-select"], ["value", "active"], ["value", "inactive"], [1, "flex", "flex-wrap", "gap-4", "mt-1"], [1, "form-check"], ["href", "/assets/icons/sprite.svg#briefcase"], ["formControlName", "departmentId", 1, "form-select"], [3, "ngValue"], ["formControlName", "jobTitleId", 1, "form-select"], ["type", "date", "formControlName", "birthday", 1, "form-control"], ["type", "date", "formControlName", "hireDate", 1, "form-control"], [1, "col-12", "col-md-4"], [1, "input-group"], [1, "input-group-text"], ["type", "number", "formControlName", "baseSalary", "placeholder", "\u4F8B\u5982\uFF1A50000", "min", "0", 1, "form-control"], ["type", "text", "readonly", "", 1, "form-control", "bg-light", 3, "value"], ["type", "number", "formControlName", "mealAllowance", "placeholder", "\u4F8B\u5982\uFF1A2400", "min", "0", 1, "form-control"], ["type", "number", "formControlName", "overtimePay", "placeholder", "\u4F8B\u5982\uFF1A0", "min", "0", 1, "form-control"], [1, "form-check", "mt-2"], ["type", "checkbox", "formControlName", "sendPaySlip", "id", "sendPaySlip", 1, "form-check-input"], ["for", "sendPaySlip", 1, "form-check-label"], ["type", "checkbox", "formControlName", "isIndigenous", "id", "isIndigenous", 1, "form-check-input"], ["for", "isIndigenous", 1, "form-check-label"], ["type", "date", "formControlName", "resignDate", 1, "form-control"], ["formControlName", "agentUserId", 1, "form-select"], ["value", ""], [3, "value"], ["href", "/assets/icons/sprite.svg#image"], [1, "text-muted", "small", "mb-3"], ["href", "/assets/icons/sprite.svg#edit"], [1, "mt-6", "flex", "gap-2"], ["type", "submit", 1, "btn", "btn-primary"], ["routerLink", "/admin/users", 1, "btn", "btn-outline-secondary"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-info", "ms-auto", 3, "click", "disabled"], [1, "inline-block", "w-4", "h-4", "border-2", "border-current", "border-t-transparent", "rounded-full", "animate-spin", "me-1"], [1, "sa-icon", "me-1"], ["href", "/assets/icons/sprite.svg#mail"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], ["type", "radio", "name", "roleId", "formControlName", "roleId", 1, "form-check-input", 3, "id", "value"], [1, "form-check-label", 3, "for"], [1, "flex", "flex-wrap", "items-start", "gap-4", "mb-3"], [1, "relative", "w-32", "h-32", "rounded-full", "overflow-hidden", "border", "cursor-move", "select-none", "touch-none", "bg-[--bg-elevated]", 3, "pointerdown", "pointermove", "pointerup", "pointercancel"], ["alt", "\u982D\u50CF", 1, "w-full", "h-full", "object-cover", "pointer-events-none", 2, "transform-origin", "center", 3, "src"], [1, "flex-1", "min-w-[200px]"], [1, "form-label", "fw-500", "text-sm", "mb-1"], [1, "flex", "items-center", "gap-2", "mb-2"], ["type", "range", "min", "1", "max", "3", "step", "0.05", 1, "flex-1", 3, "input", "value"], [1, "text-sm", "text-muted", "w-12", "text-right"], [1, "text-muted", "small", "mb-2"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", 3, "click"], [1, "flex", "gap-2"], [1, "btn", "btn-sm", "btn-outline-primary", "cursor-pointer", "mb-0"], ["type", "file", "accept", "image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif", 1, "hidden", 3, "change"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-danger", 3, "click"], ["href", "/assets/icons/sprite.svg#upload"], ["href", "/assets/icons/sprite.svg#file-text"], [1, "flex", "items-center", "gap-2", "mb-3", "border", "rounded", "px-3", "py-2", "bg-[--bg-surface]"], [1, "sa-icon", "text-[--accent]", 2, "stroke", "currentColor"], [1, "fw-500", "text-[--text-primary]", "truncate"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "ms-auto"], ["type", "file", "accept", "image/png,image/jpeg,application/pdf", 1, "hidden", 3, "change"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "ms-auto", 3, "click"], [1, "mb-3"], [1, "border", "rounded", "p-3", "bg-white", "inline-block"], ["alt", "\u7C3D\u540D\u6A94", 1, "max-h-24", "object-contain", 3, "src"], ["type", "file", "accept", "image/png,image/jpeg,image/gif,image/webp", 1, "hidden", 3, "change"]], template: function UserForm_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "a", 2);
       \u0275\u0275namespaceSVG();
@@ -1586,9 +1737,9 @@ var UserForm = class _UserForm {
       \u0275\u0275elementEnd();
       \u0275\u0275namespaceHTML();
       \u0275\u0275elementStart(160, "div", 14)(161, "p", 51);
-      \u0275\u0275text(162, "\u652F\u63F4 PNG\u3001JPEG\u3001GIF\u3001WebP \u5716\u7247\u683C\u5F0F\u3002\u982D\u50CF\u6703\u986F\u793A\u65BC\u53F3\u4E0A\u89D2\u500B\u4EBA\u4E0B\u62C9\u9078\u55AE\u3002");
+      \u0275\u0275text(162, "\u652F\u63F4 PNG\u3001JPEG\u3001GIF\u3001WebP\u3001HEIC \u5716\u7247\u683C\u5F0F\u3002\u4E0A\u50B3\u5F8C\u53EF\u62D6\u66F3\u8ABF\u6574\u4F4D\u7F6E\u3001\u6ED1\u687F\u7E2E\u653E\uFF0C\u5716\u6A94\u6703\u81EA\u52D5\u58D3\u7E2E\u3002");
       \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(163, UserForm_Conditional_163_Template, 8, 1)(164, UserForm_Conditional_164_Template, 7, 0);
+      \u0275\u0275conditionalCreate(163, UserForm_Conditional_163_Template, 21, 10)(164, UserForm_Conditional_164_Template, 7, 0);
       \u0275\u0275elementEnd()();
       \u0275\u0275conditionalCreate(165, UserForm_Conditional_165_Template, 12, 1, "div", 11);
       \u0275\u0275elementStart(166, "div", 11)(167, "div", 12);
@@ -1874,15 +2025,43 @@ var UserForm = class _UserForm {
             \u982D\u50CF\r
           </div>\r
           <div class="card-body">\r
-            <p class="text-muted small mb-3">\u652F\u63F4 PNG\u3001JPEG\u3001GIF\u3001WebP \u5716\u7247\u683C\u5F0F\u3002\u982D\u50CF\u6703\u986F\u793A\u65BC\u53F3\u4E0A\u89D2\u500B\u4EBA\u4E0B\u62C9\u9078\u55AE\u3002</p>\r
+            <p class="text-muted small mb-3">\u652F\u63F4 PNG\u3001JPEG\u3001GIF\u3001WebP\u3001HEIC \u5716\u7247\u683C\u5F0F\u3002\u4E0A\u50B3\u5F8C\u53EF\u62D6\u66F3\u8ABF\u6574\u4F4D\u7F6E\u3001\u6ED1\u687F\u7E2E\u653E\uFF0C\u5716\u6A94\u6703\u81EA\u52D5\u58D3\u7E2E\u3002</p>\r
             @if (displayAvatar) {\r
-              <div class="mb-3">\r
-                <img [src]="displayAvatar" alt="\u982D\u50CF" class="w-24 h-24 rounded-full object-cover border">\r
+              <div class="flex flex-wrap items-start gap-4 mb-3">\r
+                <!-- \u5713\u5F62\u9810\u89BD\u6846\uFF08\u62D6\u66F3\u8ABF\u6574\u4F4D\u7F6E\uFF09 -->\r
+                <div class="relative w-32 h-32 rounded-full overflow-hidden border cursor-move select-none touch-none bg-[--bg-elevated]"\r
+                     (pointerdown)="onAvatarPointerDown($event)"\r
+                     (pointermove)="onAvatarPointerMove($event)"\r
+                     (pointerup)="onAvatarPointerUp()"\r
+                     (pointercancel)="onAvatarPointerUp()">\r
+                  <img [src]="displayAvatar" alt="\u982D\u50CF"\r
+                       class="w-full h-full object-cover pointer-events-none"\r
+                       [style.objectPosition]="avatarPosX() + '% ' + avatarPosY() + '%'"\r
+                       [style.transform]="'scale(' + avatarScale() + ')'"\r
+                       style="transform-origin: center">\r
+                </div>\r
+\r
+                <!-- \u7E2E\u653E\u6ED1\u687F + \u91CD\u8A2D -->\r
+                <div class="flex-1 min-w-[200px]">\r
+                  <label class="form-label fw-500 text-sm mb-1">\u7E2E\u653E</label>\r
+                  <div class="flex items-center gap-2 mb-2">\r
+                    <input type="range" min="1" max="3" step="0.05"\r
+                           [value]="avatarScale()"\r
+                           (input)="onAvatarScaleChange($event)"\r
+                           class="flex-1">\r
+                    <span class="text-sm text-muted w-12 text-right">{{ avatarScale() | number: '1.2-2' }}x</span>\r
+                  </div>\r
+                  <p class="text-muted small mb-2">\u5728\u9810\u89BD\u6846\u4E2D\u6309\u4F4F\u6ED1\u9F20\u6216\u624B\u6307\u62D6\u66F3\u8ABF\u6574\u4F4D\u7F6E\u3002</p>\r
+                  <button type="button" class="btn btn-sm btn-outline-secondary"\r
+                          (click)="resetAvatarPosition()">\r
+                    \u91CD\u8A2D\u4F4D\u7F6E\r
+                  </button>\r
+                </div>\r
               </div>\r
               <div class="flex gap-2">\r
                 <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">\r
                   \u66F4\u63DB\u982D\u50CF\r
-                  <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp"\r
+                  <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif"\r
                          (change)="onAvatarSelected($event)">\r
                 </label>\r
                 <button type="button" class="btn btn-sm btn-outline-danger"\r
@@ -1895,7 +2074,7 @@ var UserForm = class _UserForm {
               <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">\r
                 <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>\r
                 \u9078\u64C7\u982D\u50CF\r
-                <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp"\r
+                <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif"\r
                        (change)="onAvatarSelected($event)">\r
               </label>\r
             }\r
@@ -2000,7 +2179,7 @@ var UserForm = class _UserForm {
   }], null, null);
 })();
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(UserForm, { className: "UserForm", filePath: "src/app/features/admin/users/pages/user-form/user-form.ts", lineNumber: 27 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(UserForm, { className: "UserForm", filePath: "src/app/features/admin/users/pages/user-form/user-form.ts", lineNumber: 28 });
 })();
 
 // src/app/features/admin/roles/pages/role-list/role-list.ts
@@ -7924,7 +8103,7 @@ function buildPageNumbers3(current, total) {
 }
 
 // src/app/features/admin/payment-requests/pages/payment-form/payment-form.ts
-var import_heic2any = __toESM(require_heic2any());
+var import_heic2any2 = __toESM(require_heic2any());
 
 // src/app/features/admin/payment-requests/services/payment-pdf.service.ts
 var PaymentPdfService = class _PaymentPdfService {
@@ -9278,7 +9457,7 @@ var PaymentForm = class _PaymentForm {
     if (!name.endsWith(".heic") && !name.endsWith(".heif"))
       return file;
     try {
-      const blob = await (0, import_heic2any.default)({ blob: file, toType: "image/jpeg", quality: 0.85 });
+      const blob = await (0, import_heic2any2.default)({ blob: file, toType: "image/jpeg", quality: 0.85 });
       const jpegName = file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg");
       return new File([blob], jpegName, { type: "image/jpeg" });
     } catch {
@@ -50568,7 +50747,7 @@ function buildPageNumbers8(current, total) {
 }
 
 // src/app/features/admin/advance-requests/pages/advance-form/advance-form.ts
-var import_heic2any2 = __toESM(require_heic2any());
+var import_heic2any3 = __toESM(require_heic2any());
 var _c021 = ["successModal"];
 var _c18 = () => ({ standalone: true });
 var _forTrack031 = ($index, $item) => $item.id;
@@ -51626,7 +51805,7 @@ var AdvanceForm = class _AdvanceForm {
     if (!name.endsWith(".heic") && !name.endsWith(".heif"))
       return file;
     try {
-      const blob = await (0, import_heic2any2.default)({ blob: file, toType: "image/jpeg", quality: 0.85 });
+      const blob = await (0, import_heic2any3.default)({ blob: file, toType: "image/jpeg", quality: 0.85 });
       const jpegName = file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg");
       return new File([blob], jpegName, { type: "image/jpeg" });
     } catch {
@@ -53506,7 +53685,7 @@ function buildPageNumbers9(current, total) {
 }
 
 // src/app/features/admin/write-off-requests/pages/write-off-form/write-off-form.ts
-var import_heic2any3 = __toESM(require_heic2any());
+var import_heic2any4 = __toESM(require_heic2any());
 var _c023 = ["successModal"];
 var _c110 = () => ({ standalone: true });
 function _forTrack034($index, $item) {
@@ -54374,7 +54553,7 @@ var WriteOffRequestForm = class _WriteOffRequestForm {
     if (!name.endsWith(".heic") && !name.endsWith(".heif"))
       return file;
     try {
-      const blob = await (0, import_heic2any3.default)({ blob: file, toType: "image/jpeg", quality: 0.85 });
+      const blob = await (0, import_heic2any4.default)({ blob: file, toType: "image/jpeg", quality: 0.85 });
       const jpegName = file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg");
       return new File([blob], jpegName, { type: "image/jpeg" });
     } catch {
@@ -56361,7 +56540,7 @@ function buildPageNumbers10(current, total) {
 }
 
 // src/app/features/admin/travel-write-off-requests/pages/travel-write-off-form/travel-write-off-form.ts
-var import_heic2any4 = __toESM(require_heic2any());
+var import_heic2any5 = __toESM(require_heic2any());
 var _c026 = ["successModal"];
 var _c112 = () => ({ standalone: true });
 function _forTrack037($index, $item) {
@@ -57175,7 +57354,7 @@ var TravelWriteOffForm = class _TravelWriteOffForm {
     if (!name.endsWith(".heic") && !name.endsWith(".heif"))
       return file;
     try {
-      const blob = await (0, import_heic2any4.default)({ blob: file, toType: "image/jpeg", quality: 0.85 });
+      const blob = await (0, import_heic2any5.default)({ blob: file, toType: "image/jpeg", quality: 0.85 });
       const jpegName = file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg");
       return new File([blob], jpegName, { type: "image/jpeg" });
     } catch {
@@ -58741,17 +58920,17 @@ var ADMIN_ROUTES = [
   { path: "travel-requests/:id/edit", component: TravelRequestForm, canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u51FA\u5DEE\u9810\u652F\u7533\u8ACB", permission: "travel-requests:read" } },
   { path: "travel-requests/:id", component: TravelDetail, canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u9810\u652F\u7533\u8ACB\u8A73\u60C5", permission: "travel-requests:read" } },
   // 出差請款申請
-  { path: "travel-payment-requests", canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-DT7XYQW6.js").then((m) => m.TravelPaymentList) },
-  { path: "travel-payment-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:write" }, loadComponent: () => import("./chunk-QTW25GKI.js").then((m) => m.TravelPaymentForm) },
-  { path: "travel-payment-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-QTW25GKI.js").then((m) => m.TravelPaymentForm) },
+  { path: "travel-payment-requests", canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-DTCMHY24.js").then((m) => m.TravelPaymentList) },
+  { path: "travel-payment-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:write" }, loadComponent: () => import("./chunk-TX6UR6HX.js").then((m) => m.TravelPaymentForm) },
+  { path: "travel-payment-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-TX6UR6HX.js").then((m) => m.TravelPaymentForm) },
   { path: "travel-payment-requests/:id", canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB\u8A73\u60C5", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-SLVSGPJC.js").then((m) => m.TravelPaymentDetail) },
   // 假日執行活動申請
-  { path: "holiday-travel-requests", canActivate: [permissionGuard], data: { title: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-RUEYUIHJ.js").then((m) => m.HolidayTravelRequestList) },
+  { path: "holiday-travel-requests", canActivate: [permissionGuard], data: { title: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-KK76WW3G.js").then((m) => m.HolidayTravelRequestList) },
   { path: "holiday-travel-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:write" }, loadComponent: () => import("./chunk-DDSZSJCB.js").then((m) => m.HolidayTravelRequestForm) },
   { path: "holiday-travel-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-DDSZSJCB.js").then((m) => m.HolidayTravelRequestForm) },
   { path: "holiday-travel-requests/:id", canActivate: [permissionGuard], data: { title: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB\u8A73\u60C5", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-5U2QR74N.js").then((m) => m.HolidayTravelDetail) },
   // 行事曆管理
-  { path: "calendar-days", canActivate: [permissionGuard], data: { title: "\u884C\u4E8B\u66C6\u7BA1\u7406", permission: "calendar-days:read" }, loadComponent: () => import("./chunk-YNR6PB3I.js").then((m) => m.CalendarDayList) },
+  { path: "calendar-days", canActivate: [permissionGuard], data: { title: "\u884C\u4E8B\u66C6\u7BA1\u7406", permission: "calendar-days:read" }, loadComponent: () => import("./chunk-UIBKU7T2.js").then((m) => m.CalendarDayList) },
   // 加班申請
   { path: "overtime-requests", component: OvertimeRequestList, canActivate: [permissionGuard], data: { title: "\u52A0\u73ED\u7533\u8ACB", permission: "overtime-requests:read" } },
   { path: "overtime-requests/new", component: OvertimeRequestForm, canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u52A0\u73ED\u7533\u8ACB", permission: "overtime-requests:write" } },
@@ -58788,4 +58967,4 @@ xlsx/xlsx.mjs:
 xlsx/xlsx.mjs:
   (*! sheetjs (C) 2013-present SheetJS -- http://sheetjs.com *)
 */
-//# sourceMappingURL=chunk-5MDKX5WB.js.map
+//# sourceMappingURL=chunk-AUCV2CNZ.js.map

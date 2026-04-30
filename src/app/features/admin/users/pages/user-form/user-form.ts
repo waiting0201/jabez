@@ -8,6 +8,7 @@ import {HttpErrorResponse} from '@angular/common/http';
 import {debounceTime, distinctUntilChanged, switchMap, catchError} from 'rxjs/operators';
 import {of} from 'rxjs';
 import {ToastrService} from 'ngx-toastr';
+import heic2any from 'heic2any';
 import {AuthService} from '../../../../../core/auth/services/auth.service';
 import {UserService} from '../../services/user.service';
 import {RoleService} from '../../../roles/services/role.service';
@@ -60,6 +61,11 @@ export class UserForm implements OnInit {
   avatarPreview = signal<string | null>(null);
   avatarFile    = signal<File | null>(null);
   removeAvatar  = signal(false);
+  // 頭像位置 / 縮放（圓形裁切框內顯示參數）
+  avatarPosX    = signal(50);
+  avatarPosY    = signal(50);
+  avatarScale   = signal(1);
+  private avatarDragStart: { x: number; y: number; posX: number; posY: number } | null = null;
 
   // 原住民證明文件（圖或 PDF）
   indigenousProofUrl      = signal<string | null>(null);
@@ -135,6 +141,9 @@ export class UserForm implements OnInit {
         });
         this.signatureUrl.set(user.signatureUrl ?? null);
         this.avatarUrl.set(user.avatar ?? null);
+        this.avatarPosX.set(user.avatarPositionX ?? 50);
+        this.avatarPosY.set(user.avatarPositionY ?? 50);
+        this.avatarScale.set(user.avatarScale ?? 1);
         this.indigenousProofUrl.set(user.indigenousProofUrl ?? null);
       });
     }
@@ -167,22 +176,114 @@ export class UserForm implements OnInit {
     this.removeSignature.set(true);
   }
 
-  onAvatarSelected(event: Event) {
+  async onAvatarSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
-    this.avatarFile.set(file);
-    this.removeAvatar.set(false);
-    const reader = new FileReader();
-    reader.onload = () => this.avatarPreview.set(reader.result as string);
-    reader.readAsDataURL(file);
     input.value = '';
+
+    try {
+      const compressed = await this.compressImage(file);
+      this.avatarFile.set(compressed);
+      this.removeAvatar.set(false);
+      const reader = new FileReader();
+      reader.onload = () => this.avatarPreview.set(reader.result as string);
+      reader.readAsDataURL(compressed);
+    } catch (err) {
+      console.error('[UserForm] 頭像壓縮失敗', err);
+      this.toastr.error('頭像處理失敗，請改用其他圖片。', '處理失敗');
+    }
   }
 
   onRemoveAvatar() {
     this.avatarFile.set(null);
     this.avatarPreview.set(null);
     this.removeAvatar.set(true);
+    // 沒頭像就沒位置概念，重置以避免殘留套用
+    this.avatarPosX.set(50);
+    this.avatarPosY.set(50);
+    this.avatarScale.set(1);
+  }
+
+  /**
+   * 圖檔壓縮：等比縮放到 max 800x800，輸出 JPEG 0.85。
+   * iOS HEIC 走 heic2any 先轉 JPEG，再走 Canvas 縮放。
+   */
+  private async compressImage(file: File, maxSize = 800, quality = 0.85): Promise<File> {
+    let workingBlob: Blob = file;
+    if (/\.(heic|heif)$/i.test(file.name) || file.type === 'image/heic' || file.type === 'image/heif') {
+      workingBlob = await heic2any({blob: file, toType: 'image/jpeg', quality}) as Blob;
+    }
+
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(workingBlob);
+    });
+
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error('Failed to load image'));
+      i.src = dataUrl;
+    });
+
+    const ratio = Math.min(maxSize / img.width, maxSize / img.height, 1);
+    const w = Math.round(img.width * ratio);
+    const h = Math.round(img.height * ratio);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas context unavailable');
+    ctx.drawImage(img, 0, 0, w, h);
+
+    const compressed: Blob = await new Promise((resolve, reject) =>
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob returned null')), 'image/jpeg', quality)
+    );
+
+    const baseName = file.name.replace(/\.[^.]+$/, '');
+    return new File([compressed], `${baseName}.jpg`, {type: 'image/jpeg'});
+  }
+
+  // ── 頭像拖曳 / 縮放 互動 ──────────────────────────
+  onAvatarPointerDown(e: PointerEvent) {
+    if (!this.displayAvatar) return;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    this.avatarDragStart = {
+      x: e.clientX,
+      y: e.clientY,
+      posX: this.avatarPosX(),
+      posY: this.avatarPosY(),
+    };
+  }
+
+  onAvatarPointerMove(e: PointerEvent) {
+    if (!this.avatarDragStart) return;
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const scale = this.avatarScale();
+    // 拖右 (dx>0) → 看圖更左邊 → posX 減小；scale 越高同樣像素位移百分比變化越小，視覺感受才一致
+    const dx = (e.clientX - this.avatarDragStart.x) / rect.width / scale * 100;
+    const dy = (e.clientY - this.avatarDragStart.y) / rect.height / scale * 100;
+    this.avatarPosX.set(Math.max(0, Math.min(100, this.avatarDragStart.posX - dx)));
+    this.avatarPosY.set(Math.max(0, Math.min(100, this.avatarDragStart.posY - dy)));
+  }
+
+  onAvatarPointerUp() {
+    this.avatarDragStart = null;
+  }
+
+  onAvatarScaleChange(event: Event) {
+    const v = parseFloat((event.target as HTMLInputElement).value);
+    if (Number.isFinite(v)) this.avatarScale.set(Math.max(1, Math.min(3, v)));
+  }
+
+  resetAvatarPosition() {
+    this.avatarPosX.set(50);
+    this.avatarPosY.set(50);
+    this.avatarScale.set(1);
   }
 
   onIndigenousProofSelected(event: Event) {
@@ -318,6 +419,10 @@ export class UserForm implements OnInit {
       resignDate:   resignDate ? new Date(resignDate) : undefined,
       agentUserId:  agentUserId || undefined,
       birthday:     birthday ? new Date(birthday) : undefined,
+      // 頭像顯示參數（僅在有頭像時送出，刪除時後端會自行重置）
+      avatarPositionX: this.removeAvatar() ? undefined : this.avatarPosX(),
+      avatarPositionY: this.removeAvatar() ? undefined : this.avatarPosY(),
+      avatarScale:     this.removeAvatar() ? undefined : this.avatarScale(),
     };
 
     const obs = this.isEdit
@@ -336,7 +441,18 @@ export class UserForm implements OnInit {
         });
     this.errorMsg.set('');
     obs.subscribe({
-      next: () => this.router.navigate(['/admin/users']),
+      next: () => {
+        // 編輯自己時刷新 token，topbar 立即套用新頭像位置 / 縮放
+        const currentUserId = this.authService.currentUser()?.id;
+        if (this.isEdit && currentUserId === this.userId) {
+          this.authService.refreshAccessToken().subscribe({
+            next: () => this.router.navigate(['/admin/users']),
+            error: () => this.router.navigate(['/admin/users']),
+          });
+        } else {
+          this.router.navigate(['/admin/users']);
+        }
+      },
       error: (err: HttpErrorResponse) => {
         this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
       },

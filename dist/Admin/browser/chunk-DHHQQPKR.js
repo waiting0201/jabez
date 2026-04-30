@@ -992,7 +992,7 @@ var PaymentRequestService = class _PaymentRequestService {
 })();
 
 export {
-  PaymentRequestService,
-  require_heic2any
+  require_heic2any,
+  PaymentRequestService
 };
-//# sourceMappingURL=chunk-Q7YKQOJC.js.map
+//# sourceMappingURL=chunk-DHHQQPKR.js.map

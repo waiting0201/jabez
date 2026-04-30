@@ -13,17 +13,27 @@ import {environment} from '@/environments/environment';
       <button type="button" ngbDropdownToggle [title]="user()?.email ?? ''"
               class="btn-system no-arrow bg-transparent flex shrink-0 items-center justify-center"
               aria-label="Open Profile Dropdown">
-        <img [src]="avatarUrl() ?? '/assets/img/demo/avatars/avatar-admin.png'"
-             class="profile-image profile-image-md rounded-circle"
-             [alt]="user()?.name ?? ''">
+        <span class="profile-image profile-image-md rounded-circle inline-block overflow-hidden">
+          <img [src]="avatarUrl() ?? '/assets/img/demo/avatars/avatar-admin.png'"
+               class="w-full h-full object-cover"
+               [style.objectPosition]="avatarPosX() + '% ' + avatarPosY() + '%'"
+               [style.transform]="avatarScale() === 1 ? null : ('scale(' + avatarScale() + ')')"
+               style="transform-origin: center"
+               [alt]="user()?.name ?? ''">
+        </span>
       </button>
 
       <div ngbDropdownMenu class="dropdown-menu dropdown-menu-end dropdown-menu-animated">
         <!-- User info header -->
         <div class="flex items-center gap-3 px-4 py-3 border-b border-[--border]">
-          <img [src]="avatarUrl() ?? '/assets/img/demo/avatars/avatar-admin.png'"
-               class="w-10 h-10 rounded-full object-cover shrink-0"
-               [alt]="user()?.name ?? ''">
+          <span class="block w-10 h-10 rounded-full overflow-hidden shrink-0">
+            <img [src]="avatarUrl() ?? '/assets/img/demo/avatars/avatar-admin.png'"
+                 class="w-full h-full object-cover"
+                 [style.objectPosition]="avatarPosX() + '% ' + avatarPosY() + '%'"
+                 [style.transform]="avatarScale() === 1 ? null : ('scale(' + avatarScale() + ')')"
+                 style="transform-origin: center"
+                 [alt]="user()?.name ?? ''">
+          </span>
           <div class="min-w-0">
             <div class="text-sm font-semibold text-[--text-primary] truncate">{{ user()?.name }}</div>
             @if (departmentName() || jobTitleName()) {
@@ -108,6 +118,9 @@ export class ProfileDropdown implements OnInit {
 
   user = this.auth.currentUser;
   avatarUrl = this.auth.avatarUrl;
+  avatarPosX = this.auth.avatarPositionX;
+  avatarPosY = this.auth.avatarPositionY;
+  avatarScale = this.auth.avatarScale;
   departmentName = this.auth.departmentName;
   jobTitleName = this.auth.jobTitleName;
 

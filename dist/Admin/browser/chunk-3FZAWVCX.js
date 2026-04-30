@@ -4,7 +4,7 @@ import {
 } from "./chunk-WPAYQD66.js";
 import {
   AuthService
-} from "./chunk-QLN4CKKJ.js";
+} from "./chunk-ZSGTQ3YJ.js";
 import {
   ChangeDetectionStrategy,
   Component,
@@ -735,4 +735,4 @@ var DASHBOARD_ROUTES = [
 export {
   DASHBOARD_ROUTES
 };
-//# sourceMappingURL=chunk-D5OKNLI3.js.map
+//# sourceMappingURL=chunk-3FZAWVCX.js.map

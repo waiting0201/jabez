@@ -32,5 +32,9 @@ export interface User {
   birthday?: Date;
   isIndigenous?: boolean;
   indigenousProofUrl?: string;
+  /** 頭像顯示參數（圓形裁切框內的位置 / 縮放） */
+  avatarPositionX?: number;
+  avatarPositionY?: number;
+  avatarScale?: number;
   createdAt: Date;
 }
