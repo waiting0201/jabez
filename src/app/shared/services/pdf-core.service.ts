@@ -61,7 +61,8 @@ function resolveStepLabel(step: SignFlowStep): string {
 /**
  * 依 flow.steps 動態建立 PDF 簽名欄。
  *
- * - 每個非 useApplicantDesignated step 各一格，依 stepOrder 反轉後（最高權限步驟在最左）排列
+ * - 每個非 useApplicantDesignated step 各一格，依 stepOrder 反轉後排列
+ * - 「總監核准」一律 hoist 到最左，不論 flow 中總監步驟的 stepOrder
  * - 指定簽核步驟（useApplicantDesignated）不獨立佔欄位
  * - 例外：若指定簽核紀錄裡有人職稱含「總監」：
  *   - flow 沒有總監步驟 → 加「總監核准」欄至最左
@@ -84,6 +85,16 @@ export function buildDynamicSignBlocks(opts: BuildDynamicSignBlocksOptions): Sig
       signatureUrl: rec?.reviewerSignatureUrl,
       date: rec?.reviewedAt ? fmtDT(rec.reviewedAt as Date | string) : '',
     });
+  }
+
+  // 1.5 將「總監核准」block 移至陣列尾端 → reverse 後保證落在最左
+  //     不論 flow 中總監步驟的 stepOrder 排序如何，PDF 第一欄一律為總監
+  const directorBlocks = stepBlocks.filter(b => b.label === '總監核准');
+  if (directorBlocks.length > 0) {
+    for (const d of directorBlocks) {
+      stepBlocks.splice(stepBlocks.indexOf(d), 1);
+    }
+    stepBlocks.push(...directorBlocks);
   }
 
   // 2. 處理「指定簽核中的總監」
