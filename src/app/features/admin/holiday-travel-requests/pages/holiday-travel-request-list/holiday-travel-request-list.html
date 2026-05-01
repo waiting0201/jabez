@@ -42,7 +42,12 @@
                   }
                 </td>
                 <td class="text-muted small hidden md:table-cell">{{ r.purpose }}</td>
-                <td class="font-monospace small hidden lg:table-cell">{{ r.projectCode || '—' }}</td>
+                <td class="hidden lg:table-cell">
+                  <div class="font-monospace small fw-500">{{ r.projectCode || '—' }}</div>
+                  @if (r.projectName) {
+                    <div class="text-muted small">{{ r.projectName }}</div>
+                  }
+                </td>
                 <td>
                   <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
                 </td>
