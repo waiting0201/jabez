@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { ApprovalTask, ApprovalRecord, ApprovalFlow } from '../../approval-tasks/models/approval-task.model';
-import { PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, DrawSignatureOptions } from '../../../../shared/services/pdf-core.service';
+import { ApprovalTask } from '../../approval-tasks/models/approval-task.model';
+import { PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, buildDynamicSignBlocks } from '../../../../shared/services/pdf-core.service';
 
 @Injectable({ providedIn: 'root' })
 export class PaymentPdfService {
@@ -161,68 +161,18 @@ export class PaymentPdfService {
     }
   }
 
-  /** 根據簽核流程和記錄建立簽名欄資料（固定順序：總監→財務→會計→出納→指定審核→請款人） */
+  /** 根據 flow steps 動態建立簽名欄資料 */
   private _buildSignBlocks(task: ApprovalTask, submitDate: string): SignBlock[] {
-    const blocks: SignBlock[] = [];
-    const records = task.approvalRecords || [];
-
-    // 根據 flow steps 建立 label → stepOrder 映射（不依賴 hardcoded stepOrder）
-    const labelToStep: Record<string, number> = {};
-    let step1Label = '指定審核'; // step1 的預設 label
-    if (task.flow) {
-      for (const step of task.flow.steps) {
-        let label: string;
-        if (step.useApplicantDesignated) {
-          label = '指定審核';
-        } else if (step.useDirectSupervisor) {
-          label = '上層級';
-        } else if (step.jobTitleName?.includes('總監')) {
-          label = '總監';
-        } else if (step.departmentName?.includes('財務')) {
-          label = '財務';
-        } else if (step.departmentName?.includes('會計')) {
-          label = '會計';
-        } else {
-          label = step.departmentName || step.jobTitleName || `Step ${step.stepOrder}`;
-        }
-        labelToStep[label] = step.stepOrder;
-        if (step.stepOrder === 1) step1Label = label;
-      }
-    }
-
-    /** 根據 label 找到對應的 approval record 並建立 block */
-    const addStepBlock = (label: string) => {
-      const so = labelToStep[label];
-      const rec = so != null ? records.find(r => r.stepOrder === so) : undefined;
-      blocks.push({
-        label,
-        signatureUrl: rec?.reviewerSignatureUrl,
-        date: rec?.reviewedAt ? fmtDT(rec.reviewedAt) : '',
-      });
-    };
-
-    // 固定順序：總監 → 財務 → 會計
-    addStepBlock('總監');
-    addStepBlock('財務');
-    addStepBlock('會計');
-
-    // 出納（撥款者簽名 + 撥款日期）
-    blocks.push({
-      label: '出納',
-      signatureUrl: task.paymentDetail?.paidBySignatureUrl,
-      date: task.paymentDetail?.paidAt ? fmtDT(task.paymentDetail.paidAt) : '',
+    return buildDynamicSignBlocks({
+      flow: task.flow,
+      records: task.approvalRecords || [],
+      submittedBySignatureUrl: task.submittedBySignatureUrl,
+      submitDate,
+      applicantLabel: '請款人',
+      cashier: {
+        paidBySignatureUrl: task.paymentDetail?.paidBySignatureUrl,
+        paidAt: task.paymentDetail?.paidAt,
+      },
     });
-
-    // 指定審核（step1，label 可能是「指定審核」「部門主管」「上層級」）
-    addStepBlock(step1Label);
-
-    // 請款人（最右邊）
-    blocks.push({
-      label: '請款人',
-      signatureUrl: task.submittedBySignatureUrl,
-      date: submitDate,
-    });
-
-    return blocks;
   }
 }

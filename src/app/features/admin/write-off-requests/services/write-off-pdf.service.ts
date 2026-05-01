@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { WriteOffRequest } from '../models/write-off-request.model';
 import { ApprovalRecord, ApprovalFlow } from '../../approval-tasks/models/approval-task.model';
-import { PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, fmt } from '../../../../shared/services/pdf-core.service';
+import { PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, fmt, buildDynamicSignBlocks } from '../../../../shared/services/pdf-core.service';
 
 @Injectable({ providedIn: 'root' })
 export class WriteOffPdfService {
@@ -241,7 +241,7 @@ export class WriteOffPdfService {
     }
   }
 
-  /** 根據簽核流程和記錄建立簽名欄資料 */
+  /** 根據 flow steps 動態建立簽名欄資料 */
   private _buildSignBlocks(
     flow: ApprovalFlow | undefined,
     records: ApprovalRecord[],
@@ -252,62 +252,13 @@ export class WriteOffPdfService {
     paidAt?: string,
     refundedBySignatureUrl?: string,
   ): SignBlock[] {
-    const blocks: SignBlock[] = [];
-
-    // 固定簽名欄標籤（參考文件格式）
-    const fixedLabels = ['總監核准', '財務部簽核', '會計', '出納', '專案主管'];
-
-    // 從流程步驟建立 stepOrder → label 對照
-    const stepLabels: Record<number, string> = {};
-    if (flow) {
-      for (const step of flow.steps) {
-        if (step.jobTitleName?.includes('總監') || step.departmentName?.includes('總監')) {
-          stepLabels[step.stepOrder] = '總監核准';
-        } else if (step.departmentName?.includes('財務')) {
-          stepLabels[step.stepOrder] = '財務部簽核';
-        } else if (step.departmentName?.includes('會計')) {
-          stepLabels[step.stepOrder] = '會計';
-        } else if (step.stepOrder === 1) {
-          stepLabels[step.stepOrder] = '專案主管';
-        } else {
-          stepLabels[step.stepOrder] = step.note || step.jobTitleName || `Step ${step.stepOrder}`;
-        }
-      }
-    }
-
-    // 建立 label → record 對照
-    const labelRecordMap = new Map<string, ApprovalRecord>();
-    for (const rec of records) {
-      const label = stepLabels[rec.stepOrder];
-      if (label) labelRecordMap.set(label, rec);
-    }
-
-    // 按固定標籤順序輸出
-    for (const label of fixedLabels) {
-      if (label === '出納') {
-        // 出納欄位：優先使用退款處理人簽名，fallback 使用撥款者簽名
-        blocks.push({
-          label,
-          signatureUrl: refundedBySignatureUrl || paidBySignatureUrl,
-          date: paidAt ? fmtDT(paidAt) : '',
-        });
-      } else {
-        const rec = labelRecordMap.get(label);
-        blocks.push({
-          label,
-          signatureUrl: rec?.reviewerSignatureUrl,
-          date: rec?.reviewedAt ? fmtDT(rec.reviewedAt) : '',
-        });
-      }
-    }
-
-    // 申請者（最右邊）
-    blocks.push({
-      label: applicantLabel,
-      signatureUrl: submittedBySignatureUrl,
-      date: submitDate,
+    return buildDynamicSignBlocks({
+      flow,
+      records,
+      submittedBySignatureUrl,
+      submitDate,
+      applicantLabel,
+      cashier: { paidBySignatureUrl, paidAt, refundedBySignatureUrl },
     });
-
-    return blocks;
   }
 }

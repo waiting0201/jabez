@@ -272,6 +272,7 @@ export interface ApprovalRecord {
   onBehalfOf?: string;    // 代理審核：代替誰審核
   isEscalated: boolean;   // 是否為升級審核
   reviewerSignatureUrl?: string;  // 審核者簽名檔 URL
+  reviewerJobTitle?: string;      // 審核者職稱（PDF 簽名欄判定總監等特殊角色用）
 }
 
 // ── ApprovalTask (polymorphic) ───────────────────────────────────────────────

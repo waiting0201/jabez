@@ -6,6 +6,68 @@ import {
 } from "./chunk-IFQ7CN6S.js";
 
 // src/app/shared/services/pdf-core.service.ts
+function resolveStepLabel(step) {
+  if (step.useDirectSupervisor)
+    return "\u4E0A\u5C64\u7D1A";
+  if (step.jobTitleName?.includes("\u7E3D\u76E3") || step.departmentName?.includes("\u7E3D\u76E3"))
+    return "\u7E3D\u76E3\u6838\u51C6";
+  if (step.departmentName?.includes("\u8CA1\u52D9"))
+    return "\u8CA1\u52D9\u90E8\u7C3D\u6838";
+  if (step.departmentName?.includes("\u6703\u8A08"))
+    return "\u6703\u8A08";
+  return step.note || step.departmentName || step.jobTitleName || `Step ${step.stepOrder}`;
+}
+function buildDynamicSignBlocks(opts) {
+  const { flow, records, submittedBySignatureUrl, submitDate, applicantLabel, cashier } = opts;
+  const steps = (flow?.steps ?? []).slice().sort((a, b) => a.stepOrder - b.stepOrder);
+  const stepBlocks = [];
+  for (const step of steps) {
+    if (step.useApplicantDesignated)
+      continue;
+    const rec = records.find((r) => r.stepOrder === step.stepOrder);
+    stepBlocks.push({
+      label: resolveStepLabel(step),
+      signatureUrl: rec?.reviewerSignatureUrl,
+      date: rec?.reviewedAt ? fmtDT(rec.reviewedAt) : ""
+    });
+  }
+  const designatedStep = steps.find((s) => s.useApplicantDesignated);
+  if (designatedStep) {
+    const designatedDirectors = records.filter((r) => r.stepOrder === designatedStep.stepOrder && r.reviewerJobTitle?.includes("\u7E3D\u76E3"));
+    const designatedDirector = designatedDirectors.at(-1);
+    if (designatedDirector) {
+      const existing = stepBlocks.find((b) => b.label === "\u7E3D\u76E3\u6838\u51C6");
+      if (!existing) {
+        stepBlocks.unshift({
+          label: "\u7E3D\u76E3\u6838\u51C6",
+          signatureUrl: designatedDirector.reviewerSignatureUrl,
+          date: designatedDirector.reviewedAt ? fmtDT(designatedDirector.reviewedAt) : ""
+        });
+      } else {
+        const idx = stepBlocks.indexOf(existing);
+        stepBlocks.splice(idx + 1, 0, {
+          label: "\u7E3D\u76E3\uFF08\u6307\u5B9A\uFF09",
+          signatureUrl: designatedDirector.reviewerSignatureUrl,
+          date: designatedDirector.reviewedAt ? fmtDT(designatedDirector.reviewedAt) : ""
+        });
+      }
+    }
+  }
+  const ordered = stepBlocks.reverse();
+  if (cashier) {
+    ordered.push({
+      label: "\u51FA\u7D0D",
+      signatureUrl: cashier.refundedBySignatureUrl ?? cashier.paidBySignatureUrl,
+      date: cashier.paidAt ? fmtDT(cashier.paidAt) : ""
+    });
+  }
+  ordered.push({
+    label: applicantLabel,
+    signatureUrl: submittedBySignatureUrl,
+    date: submitDate
+  });
+  return ordered;
+}
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -177,6 +239,7 @@ var PdfCoreService = class _PdfCoreService {
 })();
 
 export {
+  buildDynamicSignBlocks,
   fmtDT,
   fmtDate,
   fmt,
@@ -184,4 +247,4 @@ export {
   FONT_FAMILY,
   PdfCoreService
 };
-//# sourceMappingURL=chunk-FIU2UBSB.js.map
+//# sourceMappingURL=chunk-M7HNOGB7.js.map

@@ -5879,7 +5879,7 @@ var routes = [
       },
       {
         path: "admin",
-        loadChildren: () => import("./chunk-UN5SKUYK.js").then((m) => m.ADMIN_ROUTES)
+        loadChildren: () => import("./chunk-XYJOMQYS.js").then((m) => m.ADMIN_ROUTES)
       },
       {
         path: "account/change-password",

@@ -8,6 +8,138 @@ export interface SignBlock {
   date: string;
 }
 
+/** buildDynamicSignBlocks 用的最小 step 介面（與 ApprovalFlowStep 結構相容） */
+export interface SignFlowStep {
+  stepOrder: number;
+  departmentName?: string;
+  jobTitleName?: string;
+  useDirectSupervisor?: boolean;
+  useApplicantDesignated?: boolean;
+  note?: string;
+}
+
+/** buildDynamicSignBlocks 用的最小 flow 介面（與 ApprovalFlow 結構相容） */
+export interface SignFlow {
+  steps: SignFlowStep[];
+}
+
+/** buildDynamicSignBlocks 用的最小 record 介面（與 ApprovalRecord 結構相容） */
+export interface SignRecord {
+  stepOrder: number;
+  reviewedAt?: Date | string | null;
+  reviewerSignatureUrl?: string;
+  reviewerJobTitle?: string;
+}
+
+/** buildDynamicSignBlocks 出納欄資訊（請款 / 預支 / 出差請款 PDF 才傳） */
+export interface SignCashierInfo {
+  paidBySignatureUrl?: string;
+  paidAt?: string | Date | null;
+  /** 退款處理人簽名（沖銷類用，優先於 paidBy） */
+  refundedBySignatureUrl?: string;
+}
+
+/** buildDynamicSignBlocks 主要參數 */
+export interface BuildDynamicSignBlocksOptions {
+  flow?: SignFlow;
+  records: SignRecord[];
+  submittedBySignatureUrl?: string;
+  submitDate: string;
+  applicantLabel: string;
+  cashier?: SignCashierInfo;
+}
+
+/** step → 簽名欄 label */
+function resolveStepLabel(step: SignFlowStep): string {
+  if (step.useDirectSupervisor) return '上層級';
+  if (step.jobTitleName?.includes('總監') || step.departmentName?.includes('總監')) return '總監核准';
+  if (step.departmentName?.includes('財務')) return '財務部簽核';
+  if (step.departmentName?.includes('會計')) return '會計';
+  return step.note || step.departmentName || step.jobTitleName || `Step ${step.stepOrder}`;
+}
+
+/**
+ * 依 flow.steps 動態建立 PDF 簽名欄。
+ *
+ * - 每個非 useApplicantDesignated step 各一格，依 stepOrder 反轉後（最高權限步驟在最左）排列
+ * - 指定簽核步驟（useApplicantDesignated）不獨立佔欄位
+ * - 例外：若指定簽核紀錄裡有人職稱含「總監」：
+ *   - flow 沒有總監步驟 → 插入「總監核准」欄
+ *   - flow 已有總監步驟 → 一律額外加「總監（指定）」欄並列（即使同人簽兩次，兩格皆顯示）
+ * - 出納欄（如有）緊接在 step 欄位之後、申請者欄之前
+ * - 申請者欄永遠在最右
+ */
+export function buildDynamicSignBlocks(opts: BuildDynamicSignBlocksOptions): SignBlock[] {
+  const { flow, records, submittedBySignatureUrl, submitDate, applicantLabel, cashier } = opts;
+
+  const steps = (flow?.steps ?? []).slice().sort((a, b) => a.stepOrder - b.stepOrder);
+
+  // 1. 為每個非 useApplicantDesignated 步驟建一格
+  const stepBlocks: SignBlock[] = [];
+  for (const step of steps) {
+    if (step.useApplicantDesignated) continue;
+    const rec = records.find(r => r.stepOrder === step.stepOrder);
+    stepBlocks.push({
+      label: resolveStepLabel(step),
+      signatureUrl: rec?.reviewerSignatureUrl,
+      date: rec?.reviewedAt ? fmtDT(rec.reviewedAt as Date | string) : '',
+    });
+  }
+
+  // 2. 處理「指定簽核中的總監」
+  const designatedStep = steps.find(s => s.useApplicantDesignated);
+  if (designatedStep) {
+    const designatedDirectors = records.filter(r =>
+      r.stepOrder === designatedStep.stepOrder && r.reviewerJobTitle?.includes('總監')
+    );
+    const designatedDirector = designatedDirectors.at(-1);
+
+    if (designatedDirector) {
+      const existing = stepBlocks.find(b => b.label === '總監核准');
+
+      if (!existing) {
+        // flow 沒有總監步驟 → 插入新「總監核准」欄（放最前面，反轉後在最左）
+        stepBlocks.unshift({
+          label: '總監核准',
+          signatureUrl: designatedDirector.reviewerSignatureUrl,
+          date: designatedDirector.reviewedAt
+            ? fmtDT(designatedDirector.reviewedAt as Date | string) : '',
+        });
+      } else {
+        // flow 已有總監步驟 → 一律加「總監（指定）」欄並列（即使同人簽兩次，兩格皆顯示）
+        const idx = stepBlocks.indexOf(existing);
+        stepBlocks.splice(idx + 1, 0, {
+          label: '總監（指定）',
+          signatureUrl: designatedDirector.reviewerSignatureUrl,
+          date: designatedDirector.reviewedAt
+            ? fmtDT(designatedDirector.reviewedAt as Date | string) : '',
+        });
+      }
+    }
+  }
+
+  // 3. 反轉（最高權限步驟在左，最接近申請者的 step 在右）
+  const ordered = stepBlocks.reverse();
+
+  // 4. 出納欄
+  if (cashier) {
+    ordered.push({
+      label: '出納',
+      signatureUrl: cashier.refundedBySignatureUrl ?? cashier.paidBySignatureUrl,
+      date: cashier.paidAt ? fmtDT(cashier.paidAt as Date | string) : '',
+    });
+  }
+
+  // 5. 申請者欄
+  ordered.push({
+    label: applicantLabel,
+    signatureUrl: submittedBySignatureUrl,
+    date: submitDate,
+  });
+
+  return ordered;
+}
+
 /** 繪製簽名欄的選項（各 PDF service 依版型微調） */
 export interface DrawSignatureOptions {
   gap?: number;       // 欄間距（預設 3）

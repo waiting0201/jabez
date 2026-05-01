@@ -2,10 +2,11 @@ import {
   CIS,
   FONT_FAMILY,
   PdfCoreService,
+  buildDynamicSignBlocks,
   fmt,
   fmtDT,
   fmtDate
-} from "./chunk-FIU2UBSB.js";
+} from "./chunk-M7HNOGB7.js";
 import {
   Injectable,
   inject,
@@ -172,54 +173,16 @@ var TravelPaymentPdfService = class _TravelPaymentPdfService {
       this.pdfLoading.set(false);
     }
   }
-  /** 根據簽核流程和記錄建立簽名欄資料 */
+  /** 根據 flow steps 動態建立簽名欄資料 */
   _buildSignBlocks(flow, records, submittedBySignatureUrl, submitDate, applicantLabel, paidAt, paidBySignatureUrl) {
-    const blocks = [];
-    const stepLabels = {};
-    if (flow) {
-      for (const step of flow.steps) {
-        if (step.jobTitleName?.includes("\u7E3D\u76E3") || step.departmentName?.includes("\u7E3D\u76E3")) {
-          stepLabels[step.stepOrder] = "\u7E3D\u76E3\u6838\u51C6";
-        } else if (step.departmentName?.includes("\u8CA1\u52D9")) {
-          stepLabels[step.stepOrder] = "\u8CA1\u52D9\u90E8\u7C3D\u6838";
-        } else if (step.departmentName?.includes("\u6703\u8A08")) {
-          stepLabels[step.stepOrder] = "\u6703\u8A08";
-        } else if (step.stepOrder === 1) {
-          stepLabels[step.stepOrder] = "\u90E8\u9580\u4E3B\u7BA1";
-        } else {
-          stepLabels[step.stepOrder] = step.note || step.jobTitleName || `Step ${step.stepOrder}`;
-        }
-      }
-    }
-    const labelRecordMap = /* @__PURE__ */ new Map();
-    for (const rec of records) {
-      const label = stepLabels[rec.stepOrder];
-      if (label)
-        labelRecordMap.set(label, rec);
-    }
-    const fixedLabels = ["\u7E3D\u76E3\u6838\u51C6", "\u8CA1\u52D9\u90E8\u7C3D\u6838", "\u6703\u8A08", "\u51FA\u7D0D", "\u90E8\u9580\u4E3B\u7BA1"];
-    for (const label of fixedLabels) {
-      if (label === "\u51FA\u7D0D") {
-        blocks.push({
-          label,
-          signatureUrl: paidBySignatureUrl,
-          date: paidAt ? fmtDT(paidAt) : ""
-        });
-      } else {
-        const rec = labelRecordMap.get(label);
-        blocks.push({
-          label,
-          signatureUrl: rec?.reviewerSignatureUrl,
-          date: rec?.reviewedAt ? fmtDT(rec.reviewedAt) : ""
-        });
-      }
-    }
-    blocks.push({
-      label: applicantLabel,
-      signatureUrl: submittedBySignatureUrl,
-      date: submitDate
+    return buildDynamicSignBlocks({
+      flow,
+      records,
+      submittedBySignatureUrl,
+      submitDate,
+      applicantLabel,
+      cashier: { paidBySignatureUrl, paidAt }
     });
-    return blocks;
   }
   static \u0275fac = function TravelPaymentPdfService_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _TravelPaymentPdfService)();
@@ -236,4 +199,4 @@ var TravelPaymentPdfService = class _TravelPaymentPdfService {
 export {
   TravelPaymentPdfService
 };
-//# sourceMappingURL=chunk-4V4CQHBR.js.map
+//# sourceMappingURL=chunk-GEAYN3YC.js.map
