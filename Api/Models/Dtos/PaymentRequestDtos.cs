@@ -98,7 +98,8 @@ public sealed record ApprovalRecordDto(
     string?  ReviewNote,
     string?  OnBehalfOf,      // 代理審核：代替誰審核（null 表示非代理）
     bool     IsEscalated,     // 是否為升級審核
-    string?  ReviewerSignatureUrl = null);  // 審核者簽名檔 URL
+    string?  ReviewerSignatureUrl = null,   // 審核者簽名檔 URL
+    string?  ReviewerJobTitle    = null);   // 審核者職稱（PDF 簽名欄判定總監等特殊角色用）
 
 // ── ApprovalTask 多型 DTOs ─────────────────────────────────────────────────
 

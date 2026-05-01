@@ -490,10 +490,12 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             SELECT ar.ApplicationType, ar.ApplicationId, ar.StepOrder, ar.Action,
                    u.Name AS ReviewedBy, ar.ReviewedAt, ar.ReviewNote,
                    obu.Name AS OnBehalfOf, ar.IsEscalated,
-                   u.SignatureUrl AS ReviewerSignatureUrl
+                   u.SignatureUrl AS ReviewerSignatureUrl,
+                   jt.Name AS ReviewerJobTitle
             FROM ApprovalRecords ar
-            LEFT JOIN Users u   ON ar.ReviewedById     = u.Id
-            LEFT JOIN Users obu ON ar.OnBehalfOfUserId  = obu.Id
+            LEFT JOIN Users u      ON ar.ReviewedById     = u.Id
+            LEFT JOIN Users obu    ON ar.OnBehalfOfUserId = obu.Id
+            LEFT JOIN JobTitles jt ON u.JobTitleId        = jt.Id
             ORDER BY ar.ApplicationType, ar.ApplicationId, ar.StepOrder
             """;
 
@@ -667,7 +669,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (string?)row.ReviewNote,
                 (string?)row.OnBehalfOf,
                 (bool)(row.IsEscalated ?? false),
-                (string?)row.ReviewerSignatureUrl));
+                (string?)row.ReviewerSignatureUrl,
+                (string?)row.ReviewerJobTitle));
         }
 
         ApprovalRecordDto[] GetRecords(string appType, int id) =>
