@@ -907,7 +907,7 @@ draft → pending → approved / returned / rejected
 ### 規則
 
 1. **每個 step 一格**：依 `stepOrder` 為每個非 `useApplicantDesignated` 步驟建一格簽名欄
-2. **欄位順序**：建立後反轉 → 最高 stepOrder 在最左、最低在最右（最後簽核者位於申請者左側）
+2. **欄位順序**：建立後反轉 → 最高 stepOrder 在最左、最低在最右（最後簽核者位於申請者左側）。**「總監」一律排在最左**：當總監僅來自指定簽核（情境 C）時，仍會推到最左；flow 與指定皆有總監（情境 D/E）時，「總監核准」在最左、「總監（指定）」緊接其右
 3. **Label 由 step 推斷**（依序判定，`resolveStepLabel`）：
    - `useDirectSupervisor=true` → `上層級`
    - `jobTitleName` 或 `departmentName` 含「總監」→ `總監核准`
@@ -922,10 +922,10 @@ draft → pending → approved / returned / rejected
 
 | 情境 | flow 有總監步驟 | 指定簽核含總監 | 結果 |
 |---|---|---|---|
-| A | ✓ | ✗ | 1 個總監核准欄（flow step 那位）|
+| A | ✓ | ✗ | 1 個總監核准欄（flow step 那位），位於最左 |
 | B | ✗ | ✗ | 不顯示總監欄 |
-| C | ✗ | ✓ | 1 個總監核准欄（指定的總監）|
-| D/E | ✓ | ✓ | **2 欄並列**：總監核准 + 總監（指定）— 不論同人或不同人 |
+| C | ✗ | ✓ | 1 個總監核准欄（指定的總監），位於最左 |
+| D/E | ✓ | ✓ | **2 欄並列（左→右）**：總監核准 + 總監（指定）— 不論同人或不同人 |
 
 > 多位指定總監：取最後一筆（最新核准）。其他非總監的指定簽核者，簽名**不**顯示在 PDF。
 
