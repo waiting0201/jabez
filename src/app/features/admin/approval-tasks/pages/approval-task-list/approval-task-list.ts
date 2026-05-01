@@ -194,10 +194,14 @@ export class ApprovalTaskList {
         ? { label: '款項已完成', cls: 'bg-success-subtle text-success' }
         : { label: '款項待處理', cls: 'bg-warning-subtle text-warning-emphasis' };
     }
-    if (type === 'travel' || type === 'holiday_travel') {
+    if (type === 'travel') {
       return t.travelDetail?.paidAt
         ? { label: '款項已完成', cls: 'bg-success-subtle text-success' }
         : { label: '款項待處理', cls: 'bg-warning-subtle text-warning-emphasis' };
+    }
+    // holiday_travel：津貼隨次月薪資發放、不走撥款流程，故不顯示款項 badge
+    if (type === 'holiday_travel') {
+      return null;
     }
     if (type === 'travel_payment') {
       return t.travelPaymentDetail?.paidAt
