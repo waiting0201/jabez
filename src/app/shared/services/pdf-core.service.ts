@@ -64,8 +64,8 @@ function resolveStepLabel(step: SignFlowStep): string {
  * - 每個非 useApplicantDesignated step 各一格，依 stepOrder 反轉後（最高權限步驟在最左）排列
  * - 指定簽核步驟（useApplicantDesignated）不獨立佔欄位
  * - 例外：若指定簽核紀錄裡有人職稱含「總監」：
- *   - flow 沒有總監步驟 → 插入「總監核准」欄
- *   - flow 已有總監步驟 → 一律額外加「總監（指定）」欄並列（即使同人簽兩次，兩格皆顯示）
+ *   - flow 沒有總監步驟 → 加「總監核准」欄至最左
+ *   - flow 已有總監步驟 → 額外加「總監（指定）」欄並列在「總監核准」右側（即使同人簽兩次，兩格皆顯示）
  * - 出納欄（如有）緊接在 step 欄位之後、申請者欄之前
  * - 申請者欄永遠在最右
  */
@@ -98,17 +98,18 @@ export function buildDynamicSignBlocks(opts: BuildDynamicSignBlocksOptions): Sig
       const existing = stepBlocks.find(b => b.label === '總監核准');
 
       if (!existing) {
-        // flow 沒有總監步驟 → 插入新「總監核准」欄（放最前面，反轉後在最左）
-        stepBlocks.unshift({
+        // flow 沒有總監步驟 → 插入新「總監核准」欄（放最後面，reverse 後在最左）
+        stepBlocks.push({
           label: '總監核准',
           signatureUrl: designatedDirector.reviewerSignatureUrl,
           date: designatedDirector.reviewedAt
             ? fmtDT(designatedDirector.reviewedAt as Date | string) : '',
         });
       } else {
-        // flow 已有總監步驟 → 一律加「總監（指定）」欄並列（即使同人簽兩次，兩格皆顯示）
+        // flow 已有總監步驟 → 加「總監（指定）」欄並列；插在「總監核准」之前
+        // （reverse 後「總監核准」在最左、「總監（指定）」緊接在右側）
         const idx = stepBlocks.indexOf(existing);
-        stepBlocks.splice(idx + 1, 0, {
+        stepBlocks.splice(idx, 0, {
           label: '總監（指定）',
           signatureUrl: designatedDirector.reviewerSignatureUrl,
           date: designatedDirector.reviewedAt
