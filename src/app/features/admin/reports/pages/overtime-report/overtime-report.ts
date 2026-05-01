@@ -9,7 +9,8 @@ export interface OvertimeReportRow {
   id: number;
   employeeName: string;
   overtimeDate: string;
-  projectCodes: string;
+  projectCodes: string[];
+  projectNames: string[];
   estimatedHours: string;
   actualHours: string | null;
   reason: string;
@@ -154,7 +155,8 @@ export class OvertimeReport implements OnInit {
             id: r.id,
             employeeName: r.employeeName ?? '—',
             overtimeDate: r.overtimeDate ? new Date(r.overtimeDate).toLocaleDateString('zh-TW') : '',
-            projectCodes: r.projectCodes?.join(', ') ?? '',
+            projectCodes: r.projectCodes ?? [],
+            projectNames: r.projectNames ?? [],
             estimatedHours: Number(r.estimatedHours).toFixed(1),
             actualHours: r.actualHours != null ? Number(r.actualHours).toFixed(1) : null,
             reason: r.reason ?? '',

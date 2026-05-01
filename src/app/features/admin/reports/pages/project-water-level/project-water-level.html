@@ -17,7 +17,7 @@
         <table class="table table-hover mb-0">
           <thead class="table-light">
             <tr>
-              <th>專案代碼</th>
+              <th>專案</th>
               <th class="hidden md:table-cell">部門</th>
               <th class="text-center hidden md:table-cell">狀態</th>
               <th class="text-right">契約金額</th>
@@ -31,7 +31,12 @@
           <tbody>
             @for (row of records(); track row.projectId) {
               <tr>
-                <td class="fw-600 font-monospace">{{ row.projectCode }}</td>
+                <td>
+                  <div class="fw-600 font-monospace">{{ row.projectCode }}</div>
+                  @if (row.projectName) {
+                    <div class="text-muted small">{{ row.projectName }}</div>
+                  }
+                </td>
                 <td class="hidden md:table-cell text-muted small">{{ row.departmentName }}</td>
                 <td class="text-center hidden md:table-cell">
                   @if (row.status === 'active') {

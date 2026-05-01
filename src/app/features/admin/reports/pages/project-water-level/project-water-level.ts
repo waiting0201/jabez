@@ -6,6 +6,7 @@ import {environment} from '@/environments/environment';
 export interface ProjectWaterLevelRow {
   projectId: number;
   projectCode: string;
+  projectName: string;
   status: string;
   departmentName: string;
   contractAmount: number | null;
@@ -40,6 +41,7 @@ export class ProjectWaterLevel implements OnInit {
           (Array.isArray(items) ? items : []).map((r: any) => ({
             projectId: r.projectId,
             projectCode: r.projectCode ?? '—',
+            projectName: r.projectName ?? '',
             status: r.status ?? 'active',
             departmentName: r.departmentName ?? '—',
             contractAmount: r.contractAmount,

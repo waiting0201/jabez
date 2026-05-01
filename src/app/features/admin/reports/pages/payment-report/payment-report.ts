@@ -25,6 +25,7 @@ export interface PaymentReportRow {
   type: string;
   typeLabel: string;
   projectCode: string;
+  projectName: string;
   invoiceNos: string;
   totalAmount: number;
   approvalStatus: string;
@@ -157,6 +158,7 @@ export class PaymentReport implements OnInit {
       type: r.type,
       typeLabel: PAYMENT_TYPE_LABELS[r.type] ?? r.type,
       projectCode: r.projectCode ?? '—',
+      projectName: r.projectName ?? '',
       invoiceNos: r.invoiceNos?.join(', ') ?? '',
       totalAmount: r.totalAmount ?? 0,
       approvalStatus: r.approvalStatus,
@@ -204,6 +206,7 @@ export class PaymentReport implements OnInit {
           '員工姓名': r.employeeName,
           '請款類型': r.typeLabel,
           '專案代碼': r.projectCode,
+          '專案名稱': r.projectName,
           '發票號碼': r.invoiceNos,
           '總金額': r.totalAmount,
           '簽核狀態': r.statusLabel,

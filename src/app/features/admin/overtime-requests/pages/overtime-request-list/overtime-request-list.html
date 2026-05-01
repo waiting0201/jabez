@@ -31,7 +31,20 @@
             @for (r of pagedRequests(); track r.id) {
               <tr>
                 <td class="fw-500">{{ r.overtimeDate | date:'yyyy-MM-dd' }}</td>
-                <td class="font-monospace small">{{ r.projectCodes?.join(', ') || '—' }}</td>
+                <td>
+                  @if (r.projectCodes?.length) {
+                    @for (code of r.projectCodes; track code; let i = $index) {
+                      <div class="mb-1 last:mb-0">
+                        <div class="font-monospace small fw-500">{{ code }}</div>
+                        @if (r.projectNames?.[i]) {
+                          <div class="text-muted text-xs">{{ r.projectNames?.[i] }}</div>
+                        }
+                      </div>
+                    }
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
                 <td class="text-right fw-500">{{ r.estimatedHours | number:'1.1-1' }} h</td>
                 <td class="text-muted small hidden md:table-cell">{{ r.reason }}</td>
                 <td>

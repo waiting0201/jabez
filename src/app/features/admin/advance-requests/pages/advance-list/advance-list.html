@@ -31,7 +31,12 @@
             @for (r of pagedRequests(); track r.id) {
               <tr>
                 <td class="fw-500 font-monospace">{{ r.requestNo }}</td>
-                <td class="fw-500 font-monospace">{{ r.projectCode }}</td>
+                <td>
+                  <div class="font-monospace fw-500">{{ r.projectCode || '—' }}</div>
+                  @if (r.projectName) {
+                    <div class="text-muted small">{{ r.projectName }}</div>
+                  }
+                </td>
                 <td>{{ r.activityName }}</td>
                 <td class="text-right fw-500">{{ r.grandTotal | number:'1.0-0' }}</td>
                 <td>

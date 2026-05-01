@@ -13,6 +13,7 @@ interface WriteOffGroup {
   key: number;                      // advanceRequestId
   advanceRequestNo: string;
   projectCode: string;
+  projectName: string;
   count: number;
   advanceGrandTotal: number;
   advanceWrittenOffTotal: number;
@@ -57,6 +58,7 @@ export class WriteOffList {
           key: r.advanceRequestId,
           advanceRequestNo: r.advanceRequestNo,
           projectCode: r.projectCode,
+          projectName: r.projectName,
           count: 0,
           advanceGrandTotal: r.advanceGrandTotal,
           advanceWrittenOffTotal: r.advanceWrittenOffTotal,

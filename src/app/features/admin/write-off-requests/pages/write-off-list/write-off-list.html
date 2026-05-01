@@ -34,7 +34,12 @@
                 <tr>
                   <td class="fw-500 font-monospace">{{ r.requestNo }}</td>
                   <td class="font-monospace text-muted">{{ r.advanceRequestNo }}</td>
-                  <td class="fw-500 font-monospace">{{ r.projectCode }}</td>
+                  <td>
+                    <div class="font-monospace fw-500">{{ r.projectCode || '—' }}</div>
+                    @if (r.projectName) {
+                      <div class="text-muted small">{{ r.projectName }}</div>
+                    }
+                  </td>
                   <td class="text-right fw-500">{{ r.grandTotal | number:'1.0-0' }}</td>
                   <td>
                     <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
@@ -78,7 +83,12 @@
                     </span>
                   </td>
                   <td class="font-monospace fw-600">{{ g.advanceRequestNo }}</td>
-                  <td class="font-monospace text-muted">{{ g.projectCode }}</td>
+                  <td>
+                    <div class="font-monospace fw-600">{{ g.projectCode || '—' }}</div>
+                    @if (g.projectName) {
+                      <div class="text-muted small">{{ g.projectName }}</div>
+                    }
+                  </td>
                   <td class="text-right fw-600">
                     {{ g.advanceWrittenOffTotal | number:'1.0-0' }}
                     <span class="text-muted"> / {{ g.advanceGrandTotal | number:'1.0-0' }}</span>
@@ -91,7 +101,12 @@
                     <tr class="border-l-2 border-[var(--forest)]">
                       <td class="fw-500 font-monospace pl-6">{{ r.requestNo }}</td>
                       <td class="font-monospace text-muted">{{ r.advanceRequestNo }}</td>
-                      <td class="fw-500 font-monospace">{{ r.projectCode }}</td>
+                      <td>
+                        <div class="font-monospace fw-500">{{ r.projectCode || '—' }}</div>
+                        @if (r.projectName) {
+                          <div class="text-muted small">{{ r.projectName }}</div>
+                        }
+                      </td>
                       <td class="text-right fw-500">{{ r.grandTotal | number:'1.0-0' }}</td>
                       <td>
                         <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>

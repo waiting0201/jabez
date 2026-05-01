@@ -101,7 +101,7 @@
             <tr>
               <th>員工姓名</th>
               <th class="text-center">請款類型</th>
-              <th class="text-center hidden md:table-cell">專案代碼</th>
+              <th class="hidden md:table-cell">專案</th>
               <th class="hidden lg:table-cell">發票號碼</th>
               <th class="text-right">總金額</th>
               <th class="text-center">簽核狀態</th>
@@ -116,7 +116,12 @@
                 <td class="text-center">
                   <span class="badge bg-[--bg-base] text-[--text-secondary] small">{{ row.typeLabel }}</span>
                 </td>
-                <td class="text-center hidden md:table-cell font-monospace small">{{ row.projectCode }}</td>
+                <td class="hidden md:table-cell">
+                  <div class="font-monospace small fw-500">{{ row.projectCode }}</div>
+                  @if (row.projectName) {
+                    <div class="text-muted text-xs">{{ row.projectName }}</div>
+                  }
+                </td>
                 <td class="hidden lg:table-cell text-muted small" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="row.invoiceNos">{{ row.invoiceNos || '—' }}</td>
                 <td class="text-right fw-600">{{ row.totalAmount | number:'1.0-0' }}</td>
                 <td class="text-center">

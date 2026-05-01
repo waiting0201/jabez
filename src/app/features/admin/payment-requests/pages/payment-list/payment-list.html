@@ -19,7 +19,7 @@
           <thead class="table-light">
             <tr>
               <th>類型</th>
-              <th>專案編號</th>
+              <th>專案</th>
               <th>發票數</th>
               <th class="text-right">總金額</th>
               <th>簽核狀態</th>
@@ -33,7 +33,12 @@
                 <td>
                   <span [class]="'badge ' + typeClass[r.type]">{{ typeLabel[r.type] }}</span>
                 </td>
-                <td class="fw-500 font-monospace">{{ r.projectCode }}</td>
+                <td>
+                  <div class="font-monospace fw-500">{{ r.projectCode || '—' }}</div>
+                  @if (r.projectName) {
+                    <div class="text-muted small">{{ r.projectName }}</div>
+                  }
+                </td>
                 <td>
                   <span class="badge bg-secondary-subtle text-secondary">{{ r.invoices.length }} 張</span>
                 </td>
