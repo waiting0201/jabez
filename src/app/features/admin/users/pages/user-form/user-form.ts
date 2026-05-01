@@ -184,6 +184,11 @@ export class UserForm implements OnInit {
 
     try {
       const compressed = await this.compressImage(file);
+      const MAX_AVATAR_BYTES = 1 * 1024 * 1024; // 1 MB
+      if (compressed.size > MAX_AVATAR_BYTES) {
+        this.toastr.warning('上傳照片勿超過1MB');
+        return;
+      }
       this.avatarFile.set(compressed);
       this.removeAvatar.set(false);
       const reader = new FileReader();
