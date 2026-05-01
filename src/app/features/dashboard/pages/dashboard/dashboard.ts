@@ -4,7 +4,16 @@ import {AuthService} from '@core/auth/services/auth.service';
 import {AttendanceService} from '../../services/attendance.service';
 import {OvertimeRequestService} from '@features/admin/overtime-requests/services/overtime-request.service';
 import {OvertimeRequest} from '@features/admin/overtime-requests/models/overtime-request.model';
-import {TodayAttendance, ClockActionType} from '../../models/attendance.model';
+import {TodayAttendance, ClockActionType, ActiveLeave} from '../../models/attendance.model';
+
+const LEAVE_TYPE_LABELS: Record<string, string> = {
+  annual: '特休假', personal: '事假', sick: '病假', compensatory: '補休',
+  official: '公假', marriage: '婚假', maternity: '產假',
+  miscarriage_3m: '流產假(3個月以上)', miscarriage_2to3m: '流產假(2-3個月)',
+  miscarriage_under2m: '流產假(未滿2個月)', prenatal_checkup: '產檢假',
+  paternity: '陪產假', bereavement: '喪假',
+  ceremonial_festival: '歲時祭儀假', senior_executive: '高階主管假',
+};
 
 const DAY_NAMES = ['日', '一', '二', '三', '四', '五', '六'];
 
@@ -66,15 +75,30 @@ export class Dashboard implements OnInit, OnDestroy {
       .join(':');
   });
 
+  /**
+   * 目前是否落在某個已核准請假時段內（[startDate, endDate) 半開區間）。
+   * 依賴 now signal（每秒更新），請假時段切換時 computed 會自動重算。
+   */
+  currentLeave = computed<ActiveLeave | null>(() => {
+    const r = this.todayRecord();
+    if (!r?.todayLeaves?.length) return null;
+    const nowMs = this.now().getTime();
+    return r.todayLeaves.find(lv => {
+      const start = new Date(lv.startDate).getTime();
+      const end   = new Date(lv.endDate).getTime();
+      return start <= nowMs && nowMs < end;
+    }) ?? null;
+  });
+
   /** Button enable states */
   canClockIn = computed(() => {
     const r = this.todayRecord();
-    return !r?.clockInTime && !this.loading();
+    return !r?.clockInTime && !this.loading() && !this.currentLeave();
   });
 
   canClockOut = computed(() => {
     const r = this.todayRecord();
-    return !!r?.clockInTime && !r?.clockOutTime && !this.loading();
+    return !!r?.clockInTime && !r?.clockOutTime && !this.loading() && !this.currentLeave();
   });
 
   canOvertimeStart = computed(() => {
@@ -88,10 +112,15 @@ export class Dashboard implements OnInit, OnDestroy {
     return !!r?.overtimeStartTime && !r?.overtimeEndTime && !this.loading();
   });
 
+  leaveTypeLabel(type: string): string {
+    return LEAVE_TYPE_LABELS[type] ?? type;
+  }
+
   ngOnInit() {
     this.timerId = setInterval(() => this.now.set(new Date()), 1000);
 
     this.attendanceService.getToday().subscribe(r => {
+      // 後端永遠回傳非 null（即使無打卡紀錄也會回傳含 todayLeaves 的空殼 DTO）
       if (r) this.todayRecord.set(r);
     });
 
@@ -171,9 +200,11 @@ export class Dashboard implements OnInit, OnDestroy {
           };
           this.showToast(`${labels[type]}成功！`, coords ? 'success' : 'warning');
         },
-        error: () => {
+        error: (err) => {
           this.loading.set(false);
-          this.showToast('打卡失敗，請稍後重試', 'error');
+          // 後端 ApiResponse.Fail 在 ExceptionMiddleware 包成 { success:false, message, errors } 結構
+          const message = err?.error?.message ?? err?.message ?? '打卡失敗，請稍後重試';
+          this.showToast(message, 'error');
         },
       });
     });

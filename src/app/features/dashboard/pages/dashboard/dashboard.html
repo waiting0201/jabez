@@ -75,11 +75,31 @@
           打卡操作
         </div>
         <div class="card-body">
+
+          <!-- 已核准請假提示 banner -->
+          @if ((todayRecord()?.todayLeaves?.length ?? 0) > 0) {
+            <div class="rounded-2 px-3 py-2 mb-3 flex items-start gap-2 bg-[rgba(13,110,253,0.08)] text-primary">
+              <svg class="sa-icon mt-1 flex-shrink-0" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#calendar"></use>
+              </svg>
+              <div class="small">
+                <div class="fw-600 mb-1">您今日有已核准的請假，請假時段內無法打卡：</div>
+                @for (lv of todayRecord()!.todayLeaves; track lv.id) {
+                  <div>
+                    {{ leaveTypeLabel(lv.leaveType) }}
+                    {{ lv.startDate | date:'HH:mm' }}–{{ lv.endDate | date:'HH:mm' }}
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
           <div class="row g-3">
             <!-- Clock In -->
             <div class="col-6 col-md-3">
               <button class="btn btn-primary w-100 py-3 flex flex-col items-center gap-2"
                       [disabled]="!canClockIn()"
+                      [title]="currentLeave() ? '目前在請假時段內，無法打卡' : ''"
                       (click)="performAction('clock-in')">
                 <svg class="sa-icon sa-icon-2x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#log-in"></use></svg>
                 <span class="fw-600">上班打卡</span>
@@ -89,6 +109,7 @@
             <div class="col-6 col-md-3">
               <button class="btn btn-warning w-100 py-3 flex flex-col items-center gap-2"
                       [disabled]="!canClockOut()"
+                      [title]="currentLeave() ? '目前在請假時段內，無法打卡' : ''"
                       (click)="performAction('clock-out')">
                 <svg class="sa-icon sa-icon-2x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#log-out"></use></svg>
                 <span class="fw-600">下班打卡</span>

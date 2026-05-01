@@ -1,3 +1,10 @@
+export interface ActiveLeave {
+  id: number;
+  leaveType: string;
+  startDate: string; // ISO datetime (Asia/Taipei)
+  endDate: string;
+}
+
 export interface TodayAttendance {
   id: number;
   userId: string;
@@ -15,6 +22,8 @@ export interface TodayAttendance {
   overtimeEndLatitude?: number;
   overtimeEndLongitude?: number;
   overtimeRequestId?: number;
+  /** 當日已核准請假時段（含尚未開始 / 已結束的時段；空陣列代表當日無請假） */
+  todayLeaves: ActiveLeave[];
 }
 
 export type ClockActionType = 'clock-in' | 'clock-out' | 'overtime-start' | 'overtime-end';
