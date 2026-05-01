@@ -28,35 +28,97 @@
             </tr>
           </thead>
           <tbody>
-            @for (r of pagedRequests(); track r.id) {
-              <tr>
-                <td class="fw-500 font-monospace">{{ r.requestNo }}</td>
-                <td class="font-monospace text-muted">{{ r.advanceRequestNo }}</td>
-                <td class="fw-500 font-monospace">{{ r.projectCode }}</td>
-                <td class="text-right fw-500">{{ r.grandTotal | number:'1.0-0' }}</td>
-                <td>
-                  <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
-                </td>
-                <td class="text-muted small hidden lg:table-cell">{{ r.createdAt | date:'yyyy-MM-dd' }}</td>
-                <td class="text-right" style="white-space: nowrap">
-                  <div class="flex justify-end gap-1">
-                    @if (canWrite() && (r.approvalStatus === 'draft' || r.approvalStatus === 'returned')) {
-                      <a [routerLink]="[r.id, 'edit']" class="btn btn-sm btn-ghost-primary inline-flex items-center" title="編輯">
-                        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
-                      </a>
-                      @if (canDelete() && r.approvalStatus === 'draft') {
-                        <button class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(r)" title="刪除">
-                          <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
-                        </button>
+            @for (g of groups(); track g.key) {
+              @if (g.count === 1) {
+                @let r = g.items[0];
+                <tr>
+                  <td class="fw-500 font-monospace">{{ r.requestNo }}</td>
+                  <td class="font-monospace text-muted">{{ r.advanceRequestNo }}</td>
+                  <td class="fw-500 font-monospace">{{ r.projectCode }}</td>
+                  <td class="text-right fw-500">{{ r.grandTotal | number:'1.0-0' }}</td>
+                  <td>
+                    <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
+                  </td>
+                  <td class="text-muted small hidden lg:table-cell">{{ r.createdAt | date:'yyyy-MM-dd' }}</td>
+                  <td class="text-right" style="white-space: nowrap">
+                    <div class="flex justify-end gap-1">
+                      @if (canWrite() && (r.approvalStatus === 'draft' || r.approvalStatus === 'returned')) {
+                        <a [routerLink]="[r.id, 'edit']" class="btn btn-sm btn-ghost-primary inline-flex items-center" title="編輯">
+                          <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+                        </a>
+                        @if (canDelete() && r.approvalStatus === 'draft') {
+                          <button class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(r)" title="刪除">
+                            <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
+                          </button>
+                        }
+                      } @else {
+                        <a [routerLink]="[r.id]" class="btn btn-sm btn-ghost-secondary inline-flex items-center" title="檢視">
+                          <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#eye"></use></svg>
+                        </a>
                       }
-                    } @else {
-                      <a [routerLink]="[r.id]" class="btn btn-sm btn-ghost-secondary inline-flex items-center" title="檢視">
-                        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#eye"></use></svg>
-                      </a>
-                    }
-                  </div>
-                </td>
-              </tr>
+                    </div>
+                  </td>
+                </tr>
+              } @else {
+                <tr class="bg-[var(--bg-elevated)] cursor-pointer hover:brightness-95"
+                    role="button"
+                    tabindex="0"
+                    [attr.aria-expanded]="isExpanded(g.key)"
+                    (click)="toggle(g.key)"
+                    (keydown.enter)="toggle(g.key)"
+                    (keydown.space)="toggle(g.key); $event.preventDefault()">
+                  <td>
+                    <span class="inline-flex items-center gap-1 text-xs text-muted">
+                      <svg class="sa-icon transition-transform"
+                           [class.rotate-90]="isExpanded(g.key)"
+                           style="stroke: currentColor">
+                        <use href="/assets/icons/sprite.svg#chevron-right"></use>
+                      </svg>
+                      {{ g.count }} 筆
+                    </span>
+                  </td>
+                  <td class="font-monospace fw-600">{{ g.advanceRequestNo }}</td>
+                  <td class="font-monospace text-muted">{{ g.projectCode }}</td>
+                  <td class="text-right fw-600">
+                    {{ g.advanceWrittenOffTotal | number:'1.0-0' }}
+                    <span class="text-muted"> / {{ g.advanceGrandTotal | number:'1.0-0' }}</span>
+                  </td>
+                  <td colspan="3"></td>
+                </tr>
+
+                @if (isExpanded(g.key)) {
+                  @for (r of g.items; track r.id) {
+                    <tr class="border-l-2 border-[var(--forest)]">
+                      <td class="fw-500 font-monospace pl-6">{{ r.requestNo }}</td>
+                      <td class="font-monospace text-muted">{{ r.advanceRequestNo }}</td>
+                      <td class="fw-500 font-monospace">{{ r.projectCode }}</td>
+                      <td class="text-right fw-500">{{ r.grandTotal | number:'1.0-0' }}</td>
+                      <td>
+                        <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
+                      </td>
+                      <td class="text-muted small hidden lg:table-cell">{{ r.createdAt | date:'yyyy-MM-dd' }}</td>
+                      <td class="text-right" style="white-space: nowrap">
+                        <div class="flex justify-end gap-1">
+                          @if (canWrite() && (r.approvalStatus === 'draft' || r.approvalStatus === 'returned')) {
+                            <a [routerLink]="[r.id, 'edit']" class="btn btn-sm btn-ghost-primary inline-flex items-center" title="編輯">
+                              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+                            </a>
+                            @if (canDelete() && r.approvalStatus === 'draft') {
+                              <button class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(r)" title="刪除">
+                                <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
+                              </button>
+                            }
+                          } @else {
+                            <a [routerLink]="[r.id]" class="btn btn-sm btn-ghost-secondary inline-flex items-center" title="檢視">
+                              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#eye"></use></svg>
+                            </a>
+                          }
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                }
+              }
             } @empty {
               <tr>
                 <td colspan="7" class="text-center text-muted py-4">尚無預支沖銷申請。</td>
@@ -67,7 +129,10 @@
       </div>
       @if (totalPages() > 1) {
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t">
-          <span class="text-muted small text-center sm:text-left">共 {{ totalCount() }} 筆，第 {{ page() }} / {{ totalPages() }} 頁</span>
+          <div class="flex flex-col gap-1 text-center sm:text-left">
+            <span class="text-muted small">共 {{ totalCount() }} 筆，第 {{ page() }} / {{ totalPages() }} 頁</span>
+            <span class="text-muted text-xs">同一預支單之沖銷可能分散於不同分頁。</span>
+          </div>
           <div class="flex sm:hidden items-center gap-1">
             <button class="page-link rounded" [class.disabled]="page() === 1" (click)="prev()">‹</button>
             <span class="px-2 text-sm">{{ page() }} / {{ totalPages() }}</span>

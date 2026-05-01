@@ -1,4 +1,4 @@
-import {Component, computed, inject, signal} from '@angular/core';
+import {Component, computed, effect, inject, signal} from '@angular/core';
 import {RouterLink} from '@angular/router';
 import {DatePipe, DecimalPipe} from '@angular/common';
 import {toSignal, toObservable} from '@angular/core/rxjs-interop';
@@ -8,6 +8,16 @@ import {WriteOffRequest, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
 import {AuthService} from '@core/auth/services/auth.service';
 import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
+
+interface WriteOffGroup {
+  key: number;                      // advanceRequestId
+  advanceRequestNo: string;
+  projectCode: string;
+  count: number;
+  advanceGrandTotal: number;
+  advanceWrittenOffTotal: number;
+  items: WriteOffRequest[];
+}
 
 @Component({
   selector: 'app-write-off-list',
@@ -36,6 +46,51 @@ export class WriteOffList {
   totalCount    = computed(() => this.result().totalCount);
   totalPages    = computed(() => this.result().totalPages);
   pageNumbers   = computed(() => buildPageNumbers(this.page(), this.totalPages()));
+
+  // 依預支單分組（保持伺服器排序，不重排）
+  groups = computed<WriteOffGroup[]>(() => {
+    const map = new Map<number, WriteOffGroup>();
+    for (const r of this.pagedRequests()) {
+      let g = map.get(r.advanceRequestId);
+      if (!g) {
+        g = {
+          key: r.advanceRequestId,
+          advanceRequestNo: r.advanceRequestNo,
+          projectCode: r.projectCode,
+          count: 0,
+          advanceGrandTotal: r.advanceGrandTotal,
+          advanceWrittenOffTotal: r.advanceWrittenOffTotal,
+          items: [],
+        };
+        map.set(r.advanceRequestId, g);
+      }
+      g.items.push(r);
+      g.count++;
+    }
+    return [...map.values()];
+  });
+
+  private collapsed = signal<Set<number>>(new Set());
+
+  isExpanded(key: number) { return !this.collapsed().has(key); }
+
+  toggle(key: number) {
+    this.collapsed.update(set => {
+      const next = new Set(set);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }
+
+  constructor() {
+    // 資料變動（換頁、刪除 refresh）後，所有多筆群組重置為「預設收合」
+    effect(() => {
+      const gs = this.groups();
+      const next = new Set<number>();
+      for (const g of gs) if (g.count >= 2) next.add(g.key);
+      this.collapsed.set(next);
+    });
+  }
 
   goTo(p: number) { this.page.set(p); }
   prev() { if (this.page() > 1) this.page.update(p => p - 1); }
