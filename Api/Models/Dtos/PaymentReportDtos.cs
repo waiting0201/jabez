@@ -5,6 +5,7 @@ public sealed record PaymentReportDto(
     string    EmployeeName,
     string    Type,
     string    ProjectCode,
+    string    ProjectName,
     string[]  InvoiceNos,
     decimal   TotalAmount,
     string    ApprovalStatus,

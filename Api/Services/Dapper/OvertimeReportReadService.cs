@@ -90,12 +90,12 @@ public sealed class OvertimeReportReadService(IDbConnection db) : IOvertimeRepor
 
         var rows = (await db.QueryAsync<dynamic>(sql, parameters)).ToList();
 
-        // 批次查詢 ProjectCodes
-        var codeMap = await GetProjectCodeMapAsync(rows.Select(r => (string?)r.ProjectIds));
+        // 批次查詢 Project Code / Name
+        var projectMap = await GetProjectMapAsync(rows.Select(r => (string?)r.ProjectIds));
 
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
         return new PagedResult<OvertimeReportDto>(
-            rows.Select(r => (OvertimeReportDto)MapRow(r, codeMap)),
+            rows.Select(r => (OvertimeReportDto)MapRow(r, projectMap)),
             total, page, pageSize, Math.Max(1, totalPages));
     }
 
@@ -108,8 +108,8 @@ public sealed class OvertimeReportReadService(IDbConnection db) : IOvertimeRepor
                  .Where(id => id > 0)
                  .ToArray();
 
-    /// <summary>根據一批 ProjectIds 字串批次查詢對應 Code</summary>
-    private async Task<Dictionary<int, string>> GetProjectCodeMapAsync(IEnumerable<string?> allProjectIds)
+    /// <summary>根據一批 ProjectIds 字串批次查詢對應 Code 與 Name</summary>
+    private async Task<Dictionary<int, (string Code, string Name)>> GetProjectMapAsync(IEnumerable<string?> allProjectIds)
     {
         var ids = allProjectIds
             .Where(s => !string.IsNullOrEmpty(s))
@@ -121,20 +121,22 @@ public sealed class OvertimeReportReadService(IDbConnection db) : IOvertimeRepor
 
         if (ids.Length == 0) return new();
 
-        const string sql = "SELECT Id, Code FROM Projects WHERE Id IN @Ids";
-        var rows = await db.QueryAsync<(int Id, string Code)>(sql, new { Ids = ids });
-        return rows.ToDictionary(r => r.Id, r => r.Code);
+        const string sql = "SELECT Id, Code, Name FROM Projects WHERE Id IN @Ids";
+        var rows = await db.QueryAsync<(int Id, string Code, string Name)>(sql, new { Ids = ids });
+        return rows.ToDictionary(r => r.Id, r => (r.Code, r.Name));
     }
 
-    private static OvertimeReportDto MapRow(dynamic row, Dictionary<int, string> codeMap)
+    private static OvertimeReportDto MapRow(dynamic row, Dictionary<int, (string Code, string Name)> projectMap)
     {
         var ids = ParseIds((string?)row.ProjectIds);
-        var codes = ids.Select(id => codeMap.TryGetValue(id, out var c) ? c : $"#{id}").ToArray();
+        var codes = ids.Select(id => projectMap.TryGetValue(id, out var p) ? p.Code : $"#{id}").ToArray();
+        var names = ids.Select(id => projectMap.TryGetValue(id, out var p) ? p.Name : "").ToArray();
         return new(
             (int)row.Id,
             (string?)row.EmployeeName ?? "—",
             (DateTime)row.OvertimeDate,
             codes.Length > 0 ? codes : null,
+            names.Length > 0 ? names : null,
             (decimal)row.EstimatedHours,
             (decimal?)row.ActualHours,
             (string)row.Reason);

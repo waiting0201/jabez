@@ -14,6 +14,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                u.Name  AS EmployeeName,
                pr.Type,
                proj.Code AS ProjectCode,
+               proj.Name AS ProjectName,
                (SELECT STRING_AGG(InvoiceNo, ',')
                 FROM InvoiceItems
                 WHERE PaymentRequestId = pr.Id) AS InvoiceNos,
@@ -113,6 +114,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
             EmployeeName:   (string?)row.EmployeeName ?? "—",
             Type:           (string)row.Type,
             ProjectCode:    (string?)row.ProjectCode ?? "—",
+            ProjectName:    (string?)row.ProjectName ?? "—",
             InvoiceNos:     invoiceNos,
             TotalAmount:    (decimal)row.TotalAmount,
             ApprovalStatus: (string)row.ApprovalStatus,

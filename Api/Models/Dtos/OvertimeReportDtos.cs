@@ -5,6 +5,7 @@ public sealed record OvertimeReportDto(
     string    EmployeeName,
     DateTime  OvertimeDate,
     string[]? ProjectCodes,
+    string[]? ProjectNames,
     decimal   EstimatedHours,
     decimal?  ActualHours,
     string    Reason);

@@ -29,6 +29,7 @@ public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWat
         var sql = $"""
             SELECT p.Id          AS ProjectId,
                    p.Code        AS ProjectCode,
+                   p.Name        AS ProjectName,
                    p.Status,
                    d.Name        AS DepartmentName,
                    p.ContractAmount,
@@ -40,7 +41,7 @@ public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWat
             LEFT JOIN PaymentRequests  pr ON pr.ProjectId   = p.Id
                                          AND pr.ApprovalStatus != 'draft'
             {scopeClause}
-            GROUP BY p.Id, p.Code, p.Status, d.Name, p.ContractAmount, p.BusinessAmount
+            GROUP BY p.Id, p.Code, p.Name, p.Status, d.Name, p.ContractAmount, p.BusinessAmount
             HAVING SUM(pr.TotalAmount) > 0
             ORDER BY p.Code
             """;
@@ -66,6 +67,7 @@ public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWat
             return new ProjectWaterLevelDto(
                 ProjectId:       (int)row.ProjectId,
                 ProjectCode:     (string)row.ProjectCode,
+                ProjectName:     (string)row.ProjectName,
                 Status:          (string)row.Status,
                 DepartmentName:  (string?)row.DepartmentName,
                 ContractAmount:  contractAmount,

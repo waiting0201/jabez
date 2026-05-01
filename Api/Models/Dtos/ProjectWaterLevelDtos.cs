@@ -3,6 +3,7 @@ namespace Jabez.Api.Models.Dtos;
 /// <summary>專案水位表 DTO</summary>
 /// <param name="ProjectId">專案 ID</param>
 /// <param name="ProjectCode">專案代碼</param>
+/// <param name="ProjectName">專案名稱</param>
 /// <param name="Status">專案狀態</param>
 /// <param name="DepartmentName">所屬部門名稱</param>
 /// <param name="ContractAmount">契約金額（null 代表未設定）</param>
@@ -14,6 +15,7 @@ namespace Jabez.Api.Models.Dtos;
 public sealed record ProjectWaterLevelDto(
     int      ProjectId,
     string   ProjectCode,
+    string   ProjectName,
     string   Status,
     string?  DepartmentName,
     decimal? ContractAmount,
