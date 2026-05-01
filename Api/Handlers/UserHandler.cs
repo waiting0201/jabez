@@ -165,8 +165,15 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             "僅支援 PNG、JPEG、GIF、WebP 圖片格式。", userId, existingUrl);
 
     private Task<string?> HandleAvatarUploadAsync(IFormFileCollection files, Guid userId, string? existingUrl)
-        => HandleFileUploadAsync(files, "avatar", AvatarContainer, AllowedAvatarTypes,
+    {
+        const long AvatarMaxBytes = 1 * 1024 * 1024; // 1 MB
+        var file = files.GetFile("avatar");
+        if (file is not null && file.Length > AvatarMaxBytes)
+            throw AppException.BadRequest("上傳照片勿超過1MB");
+
+        return HandleFileUploadAsync(files, "avatar", AvatarContainer, AllowedAvatarTypes,
             "頭像僅支援 PNG、JPEG、GIF、WebP 圖片格式。", userId, existingUrl);
+    }
 
     private Task<string?> HandleIndigenousProofUploadAsync(IFormFileCollection files, Guid userId, string? existingUrl)
         => HandleFileUploadAsync(files, "indigenousProof", IndigenousProofContainer, AllowedIndigenousProofTypes,

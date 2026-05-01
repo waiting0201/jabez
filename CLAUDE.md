@@ -1290,6 +1290,7 @@ draft → pending → approved / returned / rejected
 8. **DB 自動初始化**：啟動時自動執行 EF Migration 並 Seed 初始資料（Superadmin、預設 Role/Permission）
 9. **測試規範**：測試功能時，必須實際輸入測試資料進行測試，不得僅以目視或靜態檢查代替。確認 CRUD 流程（新增、讀取、更新、刪除）與業務邏輯皆正常運作後，方可視為測試通過。
 10. **系統時區**：所有涉及日期時間的處理（包含前端顯示與後端邏輯），一律使用**台北時間（Asia/Taipei, UTC+8）**。後端取得當前時間應使用 `TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Asia/Taipei"))`，前端則確保日期時間以台北時區呈現。
+11. **頭像上傳大小限制**：員工頭像上傳上限 **1 MB**（前端 [user-form.ts](Admin/src/app/features/admin/users/pages/user-form/user-form.ts) `onAvatarSelected` 於 `compressImage` 後驗證、後端 [UserHandler.cs](Api/Handlers/UserHandler.cs) `HandleAvatarUploadAsync` 於 `IFormFile.Length` 驗證）。前端 toastr 與後端 `AppException.BadRequest` 訊息皆為「上傳照片勿超過1MB」。
 
 ---
 
