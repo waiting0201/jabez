@@ -72,26 +72,6 @@ public sealed class LeaveRequestHandler(
         ["paternity"]           = 7,
     };
 
-    /// <summary>假別中文名稱（用於日期重疊衝突訊息）</summary>
-    private static readonly Dictionary<string, string> LeaveTypeNameZh = new()
-    {
-        ["annual"]              = "特休假",
-        ["personal"]            = "事假",
-        ["sick"]                = "病假",
-        ["compensatory"]        = "補休",
-        ["official"]            = "公假",
-        ["marriage"]            = "婚假",
-        ["maternity"]           = "產假",
-        ["miscarriage_3m"]      = "流產假(3個月以上)",
-        ["miscarriage_2to3m"]   = "流產假(2-3個月)",
-        ["miscarriage_under2m"] = "流產假(未滿2個月)",
-        ["prenatal_checkup"]    = "產檢假",
-        ["paternity"]           = "陪產假",
-        ["bereavement"]         = "喪假",
-        ["ceremonial_festival"] = "歲時祭儀假",
-        ["senior_executive"]    = "高階主管假",
-    };
-
     /// <summary>取得指定假別的時間單位</summary>
     private static LeaveTimeUnit GetTimeUnit(string leaveType) =>
         TimeUnitMap.TryGetValue(leaveType, out var u) ? u : LeaveTimeUnit.Hour;
@@ -878,7 +858,7 @@ public sealed class LeaveRequestHandler(
 
         var lines = conflicts.Take(3).Select(c =>
         {
-            var name = LeaveTypeNameZh.GetValueOrDefault(c.LeaveType, c.LeaveType);
+            var name = LeaveTypeNames.GetZh(c.LeaveType);
             return $"• #{c.Id} {name} {c.StartDate:yyyy/MM/dd HH:mm}–{c.EndDate:yyyy/MM/dd HH:mm}（{c.ApprovalStatus}）";
         });
         var more = conflicts.Count > 3 ? $"\n（另有 {conflicts.Count - 3} 筆…）" : "";

@@ -504,11 +504,13 @@ public async Task<HttpResponseData> Run(
 | Method | Path | 說明 |
 |--------|------|------|
 | GET | `/attendances` | 出勤紀錄列表（分頁，套用部門可見性 scope；支援 `?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD` 區間篩選，前端依「日 / 週 / 月」模式換算） |
-| GET | `/attendances/today` | 今日打卡紀錄（當前使用者） |
-| POST | `/attendances/clock-in` | 上班打卡（含 GPS） |
-| POST | `/attendances/clock-out` | 下班打卡（含 GPS） |
-| POST | `/attendances/overtime-start` | 加班開始打卡（需核准的加班申請） |
-| POST | `/attendances/overtime-end` | 加班結束打卡 |
+| GET | `/attendances/today` | 今日打卡紀錄（當前使用者；含 `todayLeaves` 陣列：當日所有已核准請假時段，供前端顯示提示與 disable 按鈕；無打卡紀錄時回傳 `Id=0` 空殼仍含請假資訊） |
+| POST | `/attendances/clock-in` | 上班打卡（含 GPS；落在已核准請假 `[StartDate, EndDate)` 區間內會回 BadRequest） |
+| POST | `/attendances/clock-out` | 下班打卡（含 GPS；同上規則） |
+| POST | `/attendances/overtime-start` | 加班開始打卡（需核准的加班申請；不受請假時段阻擋） |
+| POST | `/attendances/overtime-end` | 加班結束打卡（不受請假時段阻擋） |
+
+> **請假時段阻擋規則**：上下班打卡以 `Clock.Now`（Asia/Taipei）比對員工 `LeaveRequests` 中 `ApprovalStatus='approved'` 的紀錄，落在 `StartDate <= now < EndDate` 半開區間內即阻擋並回含請假單編號 / 假別 / 時段的錯誤訊息。半天 / 小時請假時段已編碼於 datetime，時段外仍可打卡（如上午半天請假，下午可打上班卡；09:00–12:00 病假，12:00 整點可打卡）。加班打卡不套用此規則。實作於 [Api/Handlers/AttendanceHandler.cs](Api/Handlers/AttendanceHandler.cs) `EnsureNotOnLeaveAsync`，Dapper SQL 於 [Api/Services/Dapper/AttendanceReadService.cs](Api/Services/Dapper/AttendanceReadService.cs) `GetActiveLeaveAtAsync`。
 
 #### 報表（Reports）
 

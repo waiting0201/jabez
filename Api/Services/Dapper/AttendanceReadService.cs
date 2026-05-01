@@ -105,6 +105,38 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
         return row is null ? null : MapTodayRow(row);
     }
 
+    public async Task<ActiveLeaveDto?> GetActiveLeaveAtAsync(Guid userId, DateTime when)
+    {
+        const string sql = """
+            SELECT TOP 1 Id, LeaveType, StartDate, EndDate
+            FROM   LeaveRequests
+            WHERE  EmployeeId = @UserId
+              AND  ApprovalStatus = 'approved'
+              AND  StartDate <= @When
+              AND  @When < EndDate
+            ORDER BY StartDate ASC
+            """;
+        var row = await db.QueryFirstOrDefaultAsync<dynamic>(sql, new { UserId = userId, When = when });
+        return row is null ? null : MapActiveLeaveRow(row);
+    }
+
+    public async Task<IReadOnlyList<ActiveLeaveDto>> GetLeavesOnDateAsync(Guid userId, DateOnly date)
+    {
+        const string sql = """
+            SELECT Id, LeaveType, StartDate, EndDate
+            FROM   LeaveRequests
+            WHERE  EmployeeId = @UserId
+              AND  ApprovalStatus = 'approved'
+              AND  StartDate <  @NextDay
+              AND  EndDate   >  @DayStart
+            ORDER BY StartDate ASC
+            """;
+        var dayStart = date.ToDateTime(TimeOnly.MinValue);
+        var nextDay  = dayStart.AddDays(1);
+        var rows = await db.QueryAsync<dynamic>(sql, new { UserId = userId, DayStart = dayStart, NextDay = nextDay });
+        return rows.Select(MapActiveLeaveRow).ToList();
+    }
+
     private static AttendanceRecordDto MapListRow(dynamic row) =>
         new(
             (int)row.Id,
@@ -144,5 +176,13 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
             (DateTime?)row.OvertimeEndTime,
             (double?)row.OvertimeEndLatitude,
             (double?)row.OvertimeEndLongitude,
-            (int?)row.OvertimeRequestId);
+            (int?)row.OvertimeRequestId,
+            Array.Empty<ActiveLeaveDto>());
+
+    private static ActiveLeaveDto MapActiveLeaveRow(dynamic row) =>
+        new(
+            (int)row.Id,
+            (string)row.LeaveType,
+            (DateTime)row.StartDate,
+            (DateTime)row.EndDate);
 }

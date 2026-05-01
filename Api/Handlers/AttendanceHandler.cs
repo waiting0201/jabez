@@ -39,12 +39,12 @@ public sealed class AttendanceHandler(
         return new OkObjectResult(ApiResponse.Ok(result));
     }
 
-    /// <summary>取得當前使用者今日打卡紀錄（無紀錄回傳 null data）</summary>
+    /// <summary>取得當前使用者今日打卡紀錄（含當日已核准請假時段；無打卡紀錄時回傳僅含請假資訊的空殼 DTO）</summary>
     public async Task<IActionResult> GetTodayAsync(HttpRequest req)
     {
         var userId = await GetUserIdAsync(req);
-        var today = await reader.GetTodayAsync(userId);
-        return new OkObjectResult(ApiResponse.Ok(today));
+        var dto = await BuildTodayDtoAsync(userId);
+        return new OkObjectResult(ApiResponse.Ok(dto));
     }
 
     /// <summary>上班打卡</summary>
@@ -63,6 +63,8 @@ public sealed class AttendanceHandler(
         if (record is not null && record.ClockInTime.HasValue)
             throw AppException.BadRequest("今日已打上班卡。");
 
+        await EnsureNotOnLeaveAsync(userId, now);
+
         if (record is null)
         {
             record = new AttendanceRecord
@@ -80,7 +82,7 @@ public sealed class AttendanceHandler(
 
         await db.SaveChangesAsync();
 
-        var dto = await reader.GetTodayAsync(userId);
+        var dto = await BuildTodayDtoAsync(userId);
         return new OkObjectResult(ApiResponse.Ok(dto, "上班打卡成功。"));
     }
 
@@ -101,13 +103,15 @@ public sealed class AttendanceHandler(
         if (record.ClockOutTime.HasValue)
             throw AppException.BadRequest("今日已打下班卡。");
 
+        await EnsureNotOnLeaveAsync(userId, now);
+
         record.ClockOutTime      = now;
         record.ClockOutLatitude   = body.Latitude;
         record.ClockOutLongitude  = body.Longitude;
 
         await db.SaveChangesAsync();
 
-        var dto = await reader.GetTodayAsync(userId);
+        var dto = await BuildTodayDtoAsync(userId);
         return new OkObjectResult(ApiResponse.Ok(dto, "下班打卡成功。"));
     }
 
@@ -147,7 +151,7 @@ public sealed class AttendanceHandler(
 
         await db.SaveChangesAsync();
 
-        var dto = await reader.GetTodayAsync(userId);
+        var dto = await BuildTodayDtoAsync(userId);
         return new OkObjectResult(ApiResponse.Ok(dto, "加班開始打卡成功。"));
     }
 
@@ -174,7 +178,7 @@ public sealed class AttendanceHandler(
 
         await db.SaveChangesAsync();
 
-        var dto = await reader.GetTodayAsync(userId);
+        var dto = await BuildTodayDtoAsync(userId);
         return new OkObjectResult(ApiResponse.Ok(dto, "加班結束打卡成功。"));
     }
 
@@ -209,5 +213,42 @@ public sealed class AttendanceHandler(
         if (!Guid.TryParse(userIdStr, out var userId))
             throw AppException.Unauthorized("Invalid token claims.");
         return userId;
+    }
+
+    /// <summary>
+    /// 阻擋落在已核准請假時段內的打卡（[StartDate, EndDate) 半開區間）。
+    /// 僅針對上下班打卡使用；加班打卡不呼叫此方法。
+    /// </summary>
+    private async Task EnsureNotOnLeaveAsync(Guid userId, DateTime when)
+    {
+        var active = await reader.GetActiveLeaveAtAsync(userId, when);
+        if (active is null) return;
+
+        var typeZh = LeaveTypeNames.GetZh(active.LeaveType);
+        throw AppException.BadRequest(
+            $"您於此時段有已核准的請假（#{active.Id} {typeZh} " +
+            $"{active.StartDate:MM/dd HH:mm}–{active.EndDate:MM/dd HH:mm}），無法打卡。");
+    }
+
+    /// <summary>
+    /// 組合今日打卡 DTO + 當日已核准請假清單。打卡紀錄不存在時回傳 Id=0 的空殼 DTO，仍帶請假資訊供前端顯示提示。
+    /// </summary>
+    private async Task<TodayAttendanceDto> BuildTodayDtoAsync(Guid userId)
+    {
+        var today  = DateOnly.FromDateTime(Clock.Now);
+        var record = await reader.GetTodayAsync(userId);
+        var leaves = await reader.GetLeavesOnDateAsync(userId, today);
+
+        return record is null
+            ? new TodayAttendanceDto(
+                Id: 0,
+                RecordDate: today.ToDateTime(TimeOnly.MinValue),
+                ClockInTime: null,             ClockInLatitude:  null, ClockInLongitude:  null,
+                ClockOutTime: null,            ClockOutLatitude: null, ClockOutLongitude: null,
+                OvertimeStartTime: null,       OvertimeStartLatitude: null, OvertimeStartLongitude: null,
+                OvertimeEndTime:   null,       OvertimeEndLatitude:   null, OvertimeEndLongitude:   null,
+                OvertimeRequestId: null,
+                TodayLeaves: leaves)
+            : record with { TodayLeaves = leaves };
     }
 }
