@@ -92,11 +92,23 @@ function HolidayTravelRequestList_For_32_Conditional_11_Template(rf, ctx) {
     \u0275\u0275elementEnd();
   }
 }
-function HolidayTravelRequestList_For_32_Conditional_21_Conditional_3_Template(rf, ctx) {
+function HolidayTravelRequestList_For_32_Conditional_17_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 20);
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const r_r1 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate(r_r1.projectName);
+  }
+}
+function HolidayTravelRequestList_For_32_Conditional_23_Conditional_3_Template(rf, ctx) {
   if (rf & 1) {
     const _r2 = \u0275\u0275getCurrentView();
     \u0275\u0275elementStart(0, "button", 31);
-    \u0275\u0275listener("click", function HolidayTravelRequestList_For_32_Conditional_21_Conditional_3_Template_button_click_0_listener() {
+    \u0275\u0275listener("click", function HolidayTravelRequestList_For_32_Conditional_23_Conditional_3_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r2);
       const r_r1 = \u0275\u0275nextContext(2).$implicit;
       const ctx_r2 = \u0275\u0275nextContext();
@@ -108,14 +120,14 @@ function HolidayTravelRequestList_For_32_Conditional_21_Conditional_3_Template(r
     \u0275\u0275elementEnd()();
   }
 }
-function HolidayTravelRequestList_For_32_Conditional_21_Template(rf, ctx) {
+function HolidayTravelRequestList_For_32_Conditional_23_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "a", 28);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 17);
     \u0275\u0275element(2, "use", 29);
     \u0275\u0275elementEnd()();
-    \u0275\u0275conditionalCreate(3, HolidayTravelRequestList_For_32_Conditional_21_Conditional_3_Template, 3, 0, "button", 30);
+    \u0275\u0275conditionalCreate(3, HolidayTravelRequestList_For_32_Conditional_23_Conditional_3_Template, 3, 0, "button", 30);
   }
   if (rf & 2) {
     const r_r1 = \u0275\u0275nextContext().$implicit;
@@ -125,7 +137,7 @@ function HolidayTravelRequestList_For_32_Conditional_21_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r2.canDelete() && r_r1.approvalStatus === "draft" ? 3 : -1);
   }
 }
-function HolidayTravelRequestList_For_32_Conditional_22_Template(rf, ctx) {
+function HolidayTravelRequestList_For_32_Conditional_24_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "a", 27);
     \u0275\u0275namespaceSVG();
@@ -157,14 +169,16 @@ function HolidayTravelRequestList_For_32_Template(rf, ctx) {
     \u0275\u0275elementStart(12, "td", 23);
     \u0275\u0275text(13);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(14, "td", 24);
-    \u0275\u0275text(15);
+    \u0275\u0275elementStart(14, "td", 14)(15, "div", 24);
+    \u0275\u0275text(16);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(16, "td")(17, "span");
-    \u0275\u0275text(18);
+    \u0275\u0275conditionalCreate(17, HolidayTravelRequestList_For_32_Conditional_17_Template, 2, 1, "div", 20);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(18, "td")(19, "span");
+    \u0275\u0275text(20);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(19, "td", 25)(20, "div", 26);
-    \u0275\u0275conditionalCreate(21, HolidayTravelRequestList_For_32_Conditional_21_Template, 4, 4)(22, HolidayTravelRequestList_For_32_Conditional_22_Template, 3, 3, "a", 27);
+    \u0275\u0275elementStart(21, "td", 25)(22, "div", 26);
+    \u0275\u0275conditionalCreate(23, HolidayTravelRequestList_For_32_Conditional_23_Template, 4, 4)(24, HolidayTravelRequestList_For_32_Conditional_24_Template, 3, 3, "a", 27);
     \u0275\u0275elementEnd()()();
   }
   if (rf & 2) {
@@ -173,21 +187,23 @@ function HolidayTravelRequestList_For_32_Template(rf, ctx) {
     \u0275\u0275advance(2);
     \u0275\u0275textInterpolate(r_r1.destination);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(5, 10, r_r1.startDate, "yyyy-MM-dd"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(5, 11, r_r1.startDate, "yyyy-MM-dd"));
     \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(8, 13, r_r1.endDate, "yyyy-MM-dd"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(8, 14, r_r1.endDate, "yyyy-MM-dd"));
     \u0275\u0275advance(3);
     \u0275\u0275conditional(r_r1.holidayDays != null ? 10 : 11);
     \u0275\u0275advance(3);
     \u0275\u0275textInterpolate(r_r1.purpose);
-    \u0275\u0275advance(2);
+    \u0275\u0275advance(3);
     \u0275\u0275textInterpolate(r_r1.projectCode || "\u2014");
+    \u0275\u0275advance();
+    \u0275\u0275conditional(r_r1.projectName ? 17 : -1);
     \u0275\u0275advance(2);
     \u0275\u0275classMap("badge " + ctx_r2.statusClass[r_r1.approvalStatus]);
     \u0275\u0275advance();
     \u0275\u0275textInterpolate(ctx_r2.statusLabel[r_r1.approvalStatus]);
     \u0275\u0275advance(3);
-    \u0275\u0275conditional(ctx_r2.canWrite() && (r_r1.approvalStatus === "draft" || r_r1.approvalStatus === "returned") ? 21 : 22);
+    \u0275\u0275conditional(ctx_r2.canWrite() && (r_r1.approvalStatus === "draft" || r_r1.approvalStatus === "returned") ? 23 : 24);
   }
 }
 function HolidayTravelRequestList_ForEmpty_33_Template(rf, ctx) {
@@ -333,7 +349,7 @@ var HolidayTravelRequestList = class _HolidayTravelRequestList {
   static \u0275fac = function HolidayTravelRequestList_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _HolidayTravelRequestList)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _HolidayTravelRequestList, selectors: [["app-holiday-travel-request-list"]], decls: 35, vars: 3, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#sun"], [1, "mb-0"], ["routerLink", "new", "class", "btn btn-primary inline-flex items-center gap-1", 4, "appHasPermission"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "text-right"], [1, "hidden", "md:table-cell"], [1, "hidden", "lg:table-cell"], [1, "flex", "flex-col", "gap-2", "sm:flex-row", "sm:items-center", "sm:justify-between", "px-4", "py-3", "border-t"], ["routerLink", "new", 1, "btn", "btn-primary", "inline-flex", "items-center", "gap-1"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#plus"], [1, "fw-500"], [1, "text-muted", "small"], [1, "text-right", "small"], [1, "text-muted"], [1, "text-muted", "small", "hidden", "md:table-cell"], [1, "font-monospace", "small", "hidden", "lg:table-cell"], [1, "text-right", 2, "white-space", "nowrap"], [1, "flex", "justify-end", "gap-1"], ["title", "\u6AA2\u8996", 1, "btn", "btn-sm", "btn-ghost-secondary", "inline-flex", "items-center", 3, "routerLink"], ["title", "\u7DE8\u8F2F", 1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center", 3, "routerLink"], ["href", "/assets/icons/sprite.svg#edit"], ["title", "\u522A\u9664", 1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center"], ["title", "\u522A\u9664", 1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center", 3, "click"], ["href", "/assets/icons/sprite.svg#trash"], ["href", "/assets/icons/sprite.svg#eye"], ["colspan", "8", 1, "text-center", "text-muted", "py-4"], [1, "text-muted", "small", "text-center", "sm:text-left"], [1, "flex", "sm:hidden", "items-center", "gap-1"], [1, "page-link", "rounded", 3, "click"], [1, "px-2", "text-sm"], [1, "hidden", "sm:flex", "pagination", "mb-0"], [1, "page-item"], [1, "page-link", 3, "click"], [1, "page-item", "disabled"], [1, "page-item", 3, "active"], [1, "page-link"]], template: function HolidayTravelRequestList_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _HolidayTravelRequestList, selectors: [["app-holiday-travel-request-list"]], decls: 35, vars: 3, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#sun"], [1, "mb-0"], ["routerLink", "new", "class", "btn btn-primary inline-flex items-center gap-1", 4, "appHasPermission"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "text-right"], [1, "hidden", "md:table-cell"], [1, "hidden", "lg:table-cell"], [1, "flex", "flex-col", "gap-2", "sm:flex-row", "sm:items-center", "sm:justify-between", "px-4", "py-3", "border-t"], ["routerLink", "new", 1, "btn", "btn-primary", "inline-flex", "items-center", "gap-1"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#plus"], [1, "fw-500"], [1, "text-muted", "small"], [1, "text-right", "small"], [1, "text-muted"], [1, "text-muted", "small", "hidden", "md:table-cell"], [1, "font-monospace", "small", "fw-500"], [1, "text-right", 2, "white-space", "nowrap"], [1, "flex", "justify-end", "gap-1"], ["title", "\u6AA2\u8996", 1, "btn", "btn-sm", "btn-ghost-secondary", "inline-flex", "items-center", 3, "routerLink"], ["title", "\u7DE8\u8F2F", 1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center", 3, "routerLink"], ["href", "/assets/icons/sprite.svg#edit"], ["title", "\u522A\u9664", 1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center"], ["title", "\u522A\u9664", 1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center", 3, "click"], ["href", "/assets/icons/sprite.svg#trash"], ["href", "/assets/icons/sprite.svg#eye"], ["colspan", "8", 1, "text-center", "text-muted", "py-4"], [1, "text-muted", "small", "text-center", "sm:text-left"], [1, "flex", "sm:hidden", "items-center", "gap-1"], [1, "page-link", "rounded", 3, "click"], [1, "px-2", "text-sm"], [1, "hidden", "sm:flex", "pagination", "mb-0"], [1, "page-item"], [1, "page-link", 3, "click"], [1, "page-item", "disabled"], [1, "page-item", 3, "active"], [1, "page-link"]], template: function HolidayTravelRequestList_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "div", 2);
       \u0275\u0275namespaceSVG();
@@ -371,7 +387,7 @@ var HolidayTravelRequestList = class _HolidayTravelRequestList {
       \u0275\u0275text(29, "\u64CD\u4F5C");
       \u0275\u0275elementEnd()()();
       \u0275\u0275elementStart(30, "tbody");
-      \u0275\u0275repeaterCreate(31, HolidayTravelRequestList_For_32_Template, 23, 16, "tr", null, _forTrack0, false, HolidayTravelRequestList_ForEmpty_33_Template, 3, 0, "tr");
+      \u0275\u0275repeaterCreate(31, HolidayTravelRequestList_For_32_Template, 25, 17, "tr", null, _forTrack0, false, HolidayTravelRequestList_ForEmpty_33_Template, 3, 0, "tr");
       \u0275\u0275elementEnd()()();
       \u0275\u0275conditionalCreate(34, HolidayTravelRequestList_Conditional_34_Template, 19, 13, "div", 15);
       \u0275\u0275elementEnd()()();
@@ -433,7 +449,12 @@ var HolidayTravelRequestList = class _HolidayTravelRequestList {
                   }
                 </td>
                 <td class="text-muted small hidden md:table-cell">{{ r.purpose }}</td>
-                <td class="font-monospace small hidden lg:table-cell">{{ r.projectCode || '\u2014' }}</td>
+                <td class="hidden lg:table-cell">
+                  <div class="font-monospace small fw-500">{{ r.projectCode || '\u2014' }}</div>
+                  @if (r.projectName) {
+                    <div class="text-muted small">{{ r.projectName }}</div>
+                  }
+                </td>
                 <td>
                   <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
                 </td>
@@ -518,4 +539,4 @@ function buildPageNumbers(current, total) {
 export {
   HolidayTravelRequestList
 };
-//# sourceMappingURL=chunk-KK76WW3G.js.map
+//# sourceMappingURL=chunk-V73RJJXO.js.map

@@ -128,11 +128,9 @@ export class AdvanceForm implements OnInit {
   }
 
   ngOnInit() {
-    // 檢查簽核流程是否有「申請人指定審核」步驟
-    this.approvalSvc.getAll().subscribe(items => {
-      this.hasDesignatedStep = items
-        .filter(i => i.isActive && i.applicationType === 'advance')
-        .some(i => i.steps.some(s => s.useApplicantDesignated));
+    // 檢查簽核流程是否有「申請人指定審核」步驟（呼叫輕量端點，免 approvals:read 權限）
+    this.approvalSvc.getActiveByType('advance').subscribe(flow => {
+      this.hasDesignatedStep = flow?.steps.some(s => s.useApplicantDesignated) ?? false;
       if (this.hasDesignatedStep) {
         this.jobTitleSvc.getLookup().subscribe({ next: jts => { this.jobTitles = jts; } });
         this.userSvc.getLookup().subscribe({
@@ -304,6 +302,14 @@ export class AdvanceForm implements OnInit {
 
   submitForApproval() {
     if (this.form.invalid || this.itemArray.length === 0) return;
+    // 流程含「申請人指定審核」步驟時，至少需要 1 位指定審核者（fail-fast，避免送出後才被後端擋下）
+    if (this.hasDesignatedStep) {
+      const validEntries = this.designatedEntries.filter(e => e.selectedUserId);
+      if (validEntries.length === 0) {
+        this.errorMsg.set('此簽核流程包含申請人指定審核步驟，請於下方「指定審核者」區塊新增至少 1 位審核者。');
+        return;
+      }
+    }
     const fd = this._buildFormData();
     const save$ = this.isEdit
       ? this.service.updateWithFiles(this.requestId, fd)

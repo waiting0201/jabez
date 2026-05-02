@@ -1099,6 +1099,14 @@ var ApprovalService = class _ApprovalService {
   getAll() {
     return this.http.get(`${environment.apiUrl}/approval-items`);
   }
+  /**
+   * 取得指定 ApplicationType 的啟用中流程摘要（精簡版）。
+   * 不需 approvals:read 權限（登入即可），供申請表單判斷是否需顯示「指定審核者」欄位。
+   * 回傳 null 代表該類型尚未設定啟用中的流程。
+   */
+  getActiveByType(type) {
+    return this.http.get(`${environment.apiUrl}/approval-items/active`, { params: { type } });
+  }
   getById(id) {
     return this.http.get(`${environment.apiUrl}/approval-items/${id}`);
   }
@@ -1188,4 +1196,4 @@ export {
   ApprovalService,
   ProjectService
 };
-//# sourceMappingURL=chunk-PYHKUIZW.js.map
+//# sourceMappingURL=chunk-JJKWVXDC.js.map

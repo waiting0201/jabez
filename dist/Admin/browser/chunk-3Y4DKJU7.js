@@ -4,7 +4,7 @@ import {
 } from "./chunk-DHHQQPKR.js";
 import {
   TravelPaymentPdfService
-} from "./chunk-GEAYN3YC.js";
+} from "./chunk-5JGYQ54D.js";
 import {
   FilePreviewModal
 } from "./chunk-GWKNDEFV.js";
@@ -14,7 +14,7 @@ import {
   NgbModal,
   ProjectService,
   UserService
-} from "./chunk-PYHKUIZW.js";
+} from "./chunk-JJKWVXDC.js";
 import {
   CIS,
   FONT_FAMILY,
@@ -23,7 +23,7 @@ import {
   fmt,
   fmtDT,
   fmtDate
-} from "./chunk-M7HNOGB7.js";
+} from "./chunk-II2TI2JG.js";
 import {
   ApprovalTimeline
 } from "./chunk-B4OWGIJG.js";
@@ -9325,8 +9325,8 @@ var PaymentForm = class _PaymentForm {
   }
   loadingProjects = true;
   ngOnInit() {
-    this.approvalSvc.getAll().subscribe((items) => {
-      this.hasDesignatedStep = items.filter((i) => i.isActive && i.applicationType === "payment_request").some((i) => i.steps.some((s) => s.useApplicantDesignated));
+    this.approvalSvc.getActiveByType("payment_request").subscribe((flow) => {
+      this.hasDesignatedStep = flow?.steps.some((s) => s.useApplicantDesignated) ?? false;
       if (this.hasDesignatedStep) {
         this.jobTitleSvc.getLookup().subscribe({ next: (jts) => {
           this.jobTitles = jts;
@@ -9502,6 +9502,13 @@ var PaymentForm = class _PaymentForm {
       return;
     }
     this.showInvoiceError = false;
+    if (this.hasDesignatedStep) {
+      const validEntries = this.designatedEntries.filter((e) => e.selectedUserId);
+      if (validEntries.length === 0) {
+        this.errorMsg.set("\u6B64\u7C3D\u6838\u6D41\u7A0B\u5305\u542B\u7533\u8ACB\u4EBA\u6307\u5B9A\u5BE9\u6838\u6B65\u9A5F\uFF0C\u8ACB\u65BC\u4E0B\u65B9\u300C\u6307\u5B9A\u5BE9\u6838\u8005\u300D\u5340\u584A\u65B0\u589E\u81F3\u5C11 1 \u4F4D\u5BE9\u6838\u8005\u3002");
+        return;
+      }
+    }
     const fd = this._buildFormData();
     const save$ = this.isEdit ? this.service.updateWithFiles(this.requestId, fd) : this.service.createWithFiles(fd);
     this.errorMsg.set("");
@@ -19210,8 +19217,8 @@ var LeaveRequestForm = class _LeaveRequestForm {
         this.bereavementQuota.set(null);
       }
     });
-    this.approvalSvc.getAll().subscribe((items) => {
-      this.hasDesignatedStep = items.filter((i) => i.isActive && i.applicationType === "leave").some((i) => i.steps.some((s) => s.useApplicantDesignated));
+    this.approvalSvc.getActiveByType("leave").subscribe((flow) => {
+      this.hasDesignatedStep = flow?.steps.some((s) => s.useApplicantDesignated) ?? false;
       if (this.hasDesignatedStep) {
         this.jobTitleSvc.getLookup().subscribe({ next: (jts) => {
           this.jobTitles = jts;
@@ -19481,6 +19488,13 @@ var LeaveRequestForm = class _LeaveRequestForm {
     if (this.isSeniorExecBlocked) {
       this.errorMsg.set("\u9AD8\u968E\u4E3B\u7BA1\u5047\u50C5\u9650\u5354\u7406\uFF08\u542B\uFF09\u4EE5\u4E0A\u8077\u7D1A\u7533\u8ACB\u3002");
       return;
+    }
+    if (this.hasDesignatedStep) {
+      const validEntries = this.designatedEntries.filter((e) => e.selectedUserId);
+      if (validEntries.length === 0) {
+        this.errorMsg.set("\u6B64\u7C3D\u6838\u6D41\u7A0B\u5305\u542B\u7533\u8ACB\u4EBA\u6307\u5B9A\u5BE9\u6838\u6B65\u9A5F\uFF0C\u8ACB\u65BC\u4E0B\u65B9\u300C\u6307\u5B9A\u5BE9\u6838\u8005\u300D\u5340\u584A\u65B0\u589E\u81F3\u5C11 1 \u4F4D\u5BE9\u6838\u8005\u3002");
+        return;
+      }
     }
     const payload = this._buildPayload();
     if (!payload)
@@ -21634,8 +21648,8 @@ var TravelRequestForm = class _TravelRequestForm {
     return this.itemArray.controls.reduce((s, c) => s + (+c.get("totalPrice")?.value || 0), 0);
   }
   ngOnInit() {
-    this.approvalSvc.getAll().subscribe((items) => {
-      this.hasDesignatedStep = items.filter((i) => i.isActive && i.applicationType === "travel").some((i) => i.steps.some((s) => s.useApplicantDesignated));
+    this.approvalSvc.getActiveByType("travel").subscribe((flow) => {
+      this.hasDesignatedStep = flow?.steps.some((s) => s.useApplicantDesignated) ?? false;
       if (this.hasDesignatedStep) {
         this.jobTitleSvc.getLookup().subscribe({ next: (jts) => {
           this.jobTitles = jts;
@@ -21756,6 +21770,13 @@ var TravelRequestForm = class _TravelRequestForm {
   submitForApproval() {
     if (this.form.invalid || this.itemArray.length === 0 || this.isReadOnly)
       return;
+    if (this.hasDesignatedStep) {
+      const validEntries = this.designatedEntries.filter((e) => e.selectedUserId);
+      if (validEntries.length === 0) {
+        this.errorMsg.set("\u6B64\u7C3D\u6838\u6D41\u7A0B\u5305\u542B\u7533\u8ACB\u4EBA\u6307\u5B9A\u5BE9\u6838\u6B65\u9A5F\uFF0C\u8ACB\u65BC\u4E0B\u65B9\u300C\u6307\u5B9A\u5BE9\u6838\u8005\u300D\u5340\u584A\u65B0\u589E\u81F3\u5C11 1 \u4F4D\u5BE9\u6838\u8005\u3002");
+        return;
+      }
+    }
     const payload = this._buildPayload();
     const save$ = this.isEdit ? this.service.update(this.requestId, payload) : this.service.create(payload);
     this.errorMsg.set("");
@@ -24438,8 +24459,8 @@ var OvertimeRequestForm = class _OvertimeRequestForm {
   });
   loadingProjects = true;
   ngOnInit() {
-    this.approvalSvc.getAll().subscribe((items) => {
-      this.hasDesignatedStep = items.filter((i) => i.isActive && i.applicationType === "overtime").some((i) => i.steps.some((s) => s.useApplicantDesignated));
+    this.approvalSvc.getActiveByType("overtime").subscribe((flow) => {
+      this.hasDesignatedStep = flow?.steps.some((s) => s.useApplicantDesignated) ?? false;
       if (this.hasDesignatedStep) {
         this.jobTitleSvc.getLookup().subscribe({ next: (jts) => {
           this.jobTitles = jts;
@@ -24558,6 +24579,13 @@ var OvertimeRequestForm = class _OvertimeRequestForm {
   submitForApproval() {
     if (this.form.invalid || this.isReadOnly)
       return;
+    if (this.hasDesignatedStep) {
+      const validEntries = this.designatedEntries.filter((e) => e.selectedUserId);
+      if (validEntries.length === 0) {
+        this.errorMsg.set("\u6B64\u7C3D\u6838\u6D41\u7A0B\u5305\u542B\u7533\u8ACB\u4EBA\u6307\u5B9A\u5BE9\u6838\u6B65\u9A5F\uFF0C\u8ACB\u65BC\u4E0B\u65B9\u300C\u6307\u5B9A\u5BE9\u6838\u8005\u300D\u5340\u584A\u65B0\u589E\u81F3\u5C11 1 \u4F4D\u5BE9\u6838\u8005\u3002");
+        return;
+      }
+    }
     const payload = this._buildPayload();
     const save$ = this.isEdit ? this.service.update(this.requestId, payload) : this.service.create(payload);
     this.errorMsg.set("");
@@ -51776,8 +51804,8 @@ var AdvanceForm = class _AdvanceForm {
     return this.itemArray.controls.reduce((s, c) => s + (+c.get("totalPrice")?.value || 0), 0);
   }
   ngOnInit() {
-    this.approvalSvc.getAll().subscribe((items) => {
-      this.hasDesignatedStep = items.filter((i) => i.isActive && i.applicationType === "advance").some((i) => i.steps.some((s) => s.useApplicantDesignated));
+    this.approvalSvc.getActiveByType("advance").subscribe((flow) => {
+      this.hasDesignatedStep = flow?.steps.some((s) => s.useApplicantDesignated) ?? false;
       if (this.hasDesignatedStep) {
         this.jobTitleSvc.getLookup().subscribe({ next: (jts) => {
           this.jobTitles = jts;
@@ -51948,6 +51976,13 @@ var AdvanceForm = class _AdvanceForm {
   submitForApproval() {
     if (this.form.invalid || this.itemArray.length === 0)
       return;
+    if (this.hasDesignatedStep) {
+      const validEntries = this.designatedEntries.filter((e) => e.selectedUserId);
+      if (validEntries.length === 0) {
+        this.errorMsg.set("\u6B64\u7C3D\u6838\u6D41\u7A0B\u5305\u542B\u7533\u8ACB\u4EBA\u6307\u5B9A\u5BE9\u6838\u6B65\u9A5F\uFF0C\u8ACB\u65BC\u4E0B\u65B9\u300C\u6307\u5B9A\u5BE9\u6838\u8005\u300D\u5340\u584A\u65B0\u589E\u81F3\u5C11 1 \u4F4D\u5BE9\u6838\u8005\u3002");
+        return;
+      }
+    }
     const fd = this._buildFormData();
     const save$ = this.isEdit ? this.service.updateWithFiles(this.requestId, fd) : this.service.createWithFiles(fd);
     this.errorMsg.set("");
@@ -54878,8 +54913,8 @@ var WriteOffRequestForm = class _WriteOffRequestForm {
     return this.itemArray.controls.reduce((s, c) => s + (+c.get("totalPrice")?.value || 0), 0);
   }
   ngOnInit() {
-    this.approvalSvc.getAll().subscribe((items) => {
-      this.hasDesignatedStep = items.filter((i) => i.isActive && i.applicationType === "write_off").some((i) => i.steps.some((s) => s.useApplicantDesignated));
+    this.approvalSvc.getActiveByType("write_off").subscribe((flow) => {
+      this.hasDesignatedStep = flow?.steps.some((s) => s.useApplicantDesignated) ?? false;
       if (this.hasDesignatedStep) {
         this.jobTitleSvc.getLookup().subscribe({ next: (jts) => {
           this.jobTitles = jts;
@@ -55057,6 +55092,13 @@ var WriteOffRequestForm = class _WriteOffRequestForm {
     if (!this.isEdit && !this.selectedAdvanceId) {
       this.errorMsg.set("\u8ACB\u9078\u64C7\u9810\u652F\u55AE\u3002");
       return;
+    }
+    if (this.hasDesignatedStep) {
+      const validEntries = this.designatedEntries.filter((e) => e.selectedUserId);
+      if (validEntries.length === 0) {
+        this.errorMsg.set("\u6B64\u7C3D\u6838\u6D41\u7A0B\u5305\u542B\u7533\u8ACB\u4EBA\u6307\u5B9A\u5BE9\u6838\u6B65\u9A5F\uFF0C\u8ACB\u65BC\u4E0B\u65B9\u300C\u6307\u5B9A\u5BE9\u6838\u8005\u300D\u5340\u584A\u65B0\u589E\u81F3\u5C11 1 \u4F4D\u5BE9\u6838\u8005\u3002");
+        return;
+      }
     }
     const fd = this._buildFormData();
     this.errorMsg.set("");
@@ -57976,8 +58018,8 @@ var TravelWriteOffForm = class _TravelWriteOffForm {
     return this.itemArray.controls.reduce((s, c) => s + (+c.get("totalPrice")?.value || 0), 0);
   }
   ngOnInit() {
-    this.approvalSvc.getAll().subscribe((items) => {
-      this.hasDesignatedStep = items.filter((i) => i.isActive && i.applicationType === "travel_write_off").some((i) => i.steps.some((s) => s.useApplicantDesignated));
+    this.approvalSvc.getActiveByType("travel_write_off").subscribe((flow) => {
+      this.hasDesignatedStep = flow?.steps.some((s) => s.useApplicantDesignated) ?? false;
       if (this.hasDesignatedStep) {
         this.jobTitleSvc.getLookup().subscribe({ next: (jts) => {
           this.jobTitles = jts;
@@ -58151,6 +58193,13 @@ var TravelWriteOffForm = class _TravelWriteOffForm {
     if (!this.isEdit && !this.selectedTravelId) {
       this.errorMsg.set("\u8ACB\u9078\u64C7\u51FA\u5DEE\u55AE\u3002");
       return;
+    }
+    if (this.hasDesignatedStep) {
+      const validEntries = this.designatedEntries.filter((e) => e.selectedUserId);
+      if (validEntries.length === 0) {
+        this.errorMsg.set("\u6B64\u7C3D\u6838\u6D41\u7A0B\u5305\u542B\u7533\u8ACB\u4EBA\u6307\u5B9A\u5BE9\u6838\u6B65\u9A5F\uFF0C\u8ACB\u65BC\u4E0B\u65B9\u300C\u6307\u5B9A\u5BE9\u6838\u8005\u300D\u5340\u584A\u65B0\u589E\u81F3\u5C11 1 \u4F4D\u5BE9\u6838\u8005\u3002");
+        return;
+      }
     }
     const fd = this._buildFormData();
     this.errorMsg.set("");
@@ -59681,14 +59730,14 @@ var ADMIN_ROUTES = [
   { path: "travel-requests/:id", component: TravelDetail, canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u9810\u652F\u7533\u8ACB\u8A73\u60C5", permission: "travel-requests:read" } },
   // 出差請款申請
   { path: "travel-payment-requests", canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-DTCMHY24.js").then((m) => m.TravelPaymentList) },
-  { path: "travel-payment-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:write" }, loadComponent: () => import("./chunk-RZJXQOSJ.js").then((m) => m.TravelPaymentForm) },
-  { path: "travel-payment-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-RZJXQOSJ.js").then((m) => m.TravelPaymentForm) },
-  { path: "travel-payment-requests/:id", canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB\u8A73\u60C5", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-JY6Q3NN2.js").then((m) => m.TravelPaymentDetail) },
+  { path: "travel-payment-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:write" }, loadComponent: () => import("./chunk-3ZT6NHFU.js").then((m) => m.TravelPaymentForm) },
+  { path: "travel-payment-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-3ZT6NHFU.js").then((m) => m.TravelPaymentForm) },
+  { path: "travel-payment-requests/:id", canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB\u8A73\u60C5", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-RWETPPJZ.js").then((m) => m.TravelPaymentDetail) },
   // 假日執行活動申請
-  { path: "holiday-travel-requests", canActivate: [permissionGuard], data: { title: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-KK76WW3G.js").then((m) => m.HolidayTravelRequestList) },
-  { path: "holiday-travel-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:write" }, loadComponent: () => import("./chunk-HX3KZBZH.js").then((m) => m.HolidayTravelRequestForm) },
-  { path: "holiday-travel-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-HX3KZBZH.js").then((m) => m.HolidayTravelRequestForm) },
-  { path: "holiday-travel-requests/:id", canActivate: [permissionGuard], data: { title: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB\u8A73\u60C5", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-IYTS56SC.js").then((m) => m.HolidayTravelDetail) },
+  { path: "holiday-travel-requests", canActivate: [permissionGuard], data: { title: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-V73RJJXO.js").then((m) => m.HolidayTravelRequestList) },
+  { path: "holiday-travel-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:write" }, loadComponent: () => import("./chunk-DAJ7DCIL.js").then((m) => m.HolidayTravelRequestForm) },
+  { path: "holiday-travel-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-DAJ7DCIL.js").then((m) => m.HolidayTravelRequestForm) },
+  { path: "holiday-travel-requests/:id", canActivate: [permissionGuard], data: { title: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB\u8A73\u60C5", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-MCAFP4HT.js").then((m) => m.HolidayTravelDetail) },
   // 行事曆管理
   { path: "calendar-days", canActivate: [permissionGuard], data: { title: "\u884C\u4E8B\u66C6\u7BA1\u7406", permission: "calendar-days:read" }, loadComponent: () => import("./chunk-UIBKU7T2.js").then((m) => m.CalendarDayList) },
   // 加班申請
@@ -59727,4 +59776,4 @@ xlsx/xlsx.mjs:
 xlsx/xlsx.mjs:
   (*! sheetjs (C) 2013-present SheetJS -- http://sheetjs.com *)
 */
-//# sourceMappingURL=chunk-XYJOMQYS.js.map
+//# sourceMappingURL=chunk-3Y4DKJU7.js.map

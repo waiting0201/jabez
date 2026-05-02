@@ -31,6 +31,13 @@ function buildDynamicSignBlocks(opts) {
       date: rec?.reviewedAt ? fmtDT(rec.reviewedAt) : ""
     });
   }
+  const directorBlocks = stepBlocks.filter((b) => b.label === "\u7E3D\u76E3\u6838\u51C6");
+  if (directorBlocks.length > 0) {
+    for (const d of directorBlocks) {
+      stepBlocks.splice(stepBlocks.indexOf(d), 1);
+    }
+    stepBlocks.push(...directorBlocks);
+  }
   const designatedStep = steps.find((s) => s.useApplicantDesignated);
   if (designatedStep) {
     const designatedDirectors = records.filter((r) => r.stepOrder === designatedStep.stepOrder && r.reviewerJobTitle?.includes("\u7E3D\u76E3"));
@@ -38,14 +45,14 @@ function buildDynamicSignBlocks(opts) {
     if (designatedDirector) {
       const existing = stepBlocks.find((b) => b.label === "\u7E3D\u76E3\u6838\u51C6");
       if (!existing) {
-        stepBlocks.unshift({
+        stepBlocks.push({
           label: "\u7E3D\u76E3\u6838\u51C6",
           signatureUrl: designatedDirector.reviewerSignatureUrl,
           date: designatedDirector.reviewedAt ? fmtDT(designatedDirector.reviewedAt) : ""
         });
       } else {
         const idx = stepBlocks.indexOf(existing);
-        stepBlocks.splice(idx + 1, 0, {
+        stepBlocks.splice(idx, 0, {
           label: "\u7E3D\u76E3\uFF08\u6307\u5B9A\uFF09",
           signatureUrl: designatedDirector.reviewerSignatureUrl,
           date: designatedDirector.reviewedAt ? fmtDT(designatedDirector.reviewedAt) : ""
@@ -247,4 +254,4 @@ export {
   FONT_FAMILY,
   PdfCoreService
 };
-//# sourceMappingURL=chunk-M7HNOGB7.js.map
+//# sourceMappingURL=chunk-II2TI2JG.js.map

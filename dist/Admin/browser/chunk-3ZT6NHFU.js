@@ -11,7 +11,7 @@ import {
   NgbModal,
   ProjectService,
   UserService
-} from "./chunk-PYHKUIZW.js";
+} from "./chunk-JJKWVXDC.js";
 import {
   ApprovalTimeline
 } from "./chunk-B4OWGIJG.js";
@@ -1106,8 +1106,8 @@ var TravelPaymentForm = class _TravelPaymentForm {
     return this.itemArray.controls.reduce((s, c) => s + (+c.get("totalPrice")?.value || 0), 0);
   }
   ngOnInit() {
-    this.approvalSvc.getAll().subscribe((items) => {
-      this.hasDesignatedStep = items.filter((i) => i.isActive && i.applicationType === "travel_payment").some((i) => i.steps.some((s) => s.useApplicantDesignated));
+    this.approvalSvc.getActiveByType("travel_payment").subscribe((flow) => {
+      this.hasDesignatedStep = flow?.steps.some((s) => s.useApplicantDesignated) ?? false;
       if (this.hasDesignatedStep) {
         this.jobTitleSvc.getLookup().subscribe({ next: (jts) => {
           this.jobTitles = jts;
@@ -1282,6 +1282,13 @@ var TravelPaymentForm = class _TravelPaymentForm {
   submitForApproval() {
     if (this.form.invalid || this.itemArray.length === 0 || this.isReadOnly || this.isAnyOcrPending)
       return;
+    if (this.hasDesignatedStep) {
+      const validEntries = this.designatedEntries.filter((e) => e.selectedUserId);
+      if (validEntries.length === 0) {
+        this.errorMsg.set("\u6B64\u7C3D\u6838\u6D41\u7A0B\u5305\u542B\u7533\u8ACB\u4EBA\u6307\u5B9A\u5BE9\u6838\u6B65\u9A5F\uFF0C\u8ACB\u65BC\u4E0B\u65B9\u300C\u6307\u5B9A\u5BE9\u6838\u8005\u300D\u5340\u584A\u65B0\u589E\u81F3\u5C11 1 \u4F4D\u5BE9\u6838\u8005\u3002");
+        return;
+      }
+    }
     const fd = this._buildFormData();
     this.errorMsg.set("");
     const save$ = this.isEdit ? this.service.update(this.requestId, fd) : this.service.create(fd);
@@ -2031,4 +2038,4 @@ var TravelPaymentForm = class _TravelPaymentForm {
 export {
   TravelPaymentForm
 };
-//# sourceMappingURL=chunk-RZJXQOSJ.js.map
+//# sourceMappingURL=chunk-3ZT6NHFU.js.map

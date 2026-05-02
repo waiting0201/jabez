@@ -1,7 +1,7 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
-import {ApprovalItem, ApprovalStep} from '../models/approval.model';
+import {ApplicationType, ApprovalFlowSummary, ApprovalItem, ApprovalStep} from '../models/approval.model';
 import {environment} from '@/environments/environment';
 
 @Injectable({providedIn: 'root'})
@@ -10,6 +10,18 @@ export class ApprovalService {
 
   getAll(): Observable<ApprovalItem[]> {
     return this.http.get<ApprovalItem[]>(`${environment.apiUrl}/approval-items`);
+  }
+
+  /**
+   * 取得指定 ApplicationType 的啟用中流程摘要（精簡版）。
+   * 不需 approvals:read 權限（登入即可），供申請表單判斷是否需顯示「指定審核者」欄位。
+   * 回傳 null 代表該類型尚未設定啟用中的流程。
+   */
+  getActiveByType(type: ApplicationType): Observable<ApprovalFlowSummary | null> {
+    return this.http.get<ApprovalFlowSummary | null>(
+      `${environment.apiUrl}/approval-items/active`,
+      {params: {type}},
+    );
   }
 
   getById(id: number): Observable<ApprovalItem> {

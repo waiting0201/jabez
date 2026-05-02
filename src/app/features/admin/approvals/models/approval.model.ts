@@ -47,3 +47,15 @@ export interface ApprovalItem {
   steps: ApprovalStep[];
   createdAt: Date;
 }
+
+/** 輕量流程摘要（不含敏感設定，免 approvals:read 權限即可呼叫） */
+export interface ApprovalFlowSummary {
+  id: number;
+  applicationType?: ApplicationType;
+  steps: ApprovalFlowStepSummary[];
+}
+
+export interface ApprovalFlowStepSummary {
+  stepOrder: number;
+  useApplicantDesignated: boolean;
+}
