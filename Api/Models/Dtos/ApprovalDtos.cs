@@ -22,6 +22,16 @@ public sealed record ApprovalItemDto(
     ApprovalStepDto[] Steps,
     DateTime          CreatedAt);
 
+// 輕量級流程摘要（供申請表單判斷是否有指定審核步驟，不含部門 / 職稱等敏感設定）
+public sealed record ApprovalFlowSummaryDto(
+    int                          Id,
+    string?                      ApplicationType,
+    ApprovalFlowStepSummaryDto[] Steps);
+
+public sealed record ApprovalFlowStepSummaryDto(
+    int  StepOrder,
+    bool UseApplicantDesignated);
+
 public sealed record CreateApprovalItemRequest(
     string  Name,
     string  Code,

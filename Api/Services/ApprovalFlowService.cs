@@ -48,7 +48,10 @@ public sealed class ApprovalFlowService(
                     .OrderBy(r => r.StepOrder)
                     .FirstOrDefault();
 
-                // leave / travel / overtime / holiday_travel 不允許任何一位指定審核者是申請人自己
+                // 自審規則分兩組：
+                //   Group A 全程禁止自審（任一位置為申請人即報錯）：leave / travel / overtime / travel_payment
+                //   Group B 首位跳過（申請人排第 1 位 → 自動跳過此步驟；2+ 位置不檢查）：payment_request / advance / write_off / travel_write_off / holiday_travel
+                // 此處先處理 Group A：當 applicationType 不在 Group B 名單內 → 套用 Group A 規則
                 if (applicationType is not ("payment_request" or "advance" or "write_off" or "travel_write_off" or "holiday_travel"))
                 {
                     bool anyIsSelf = designatedReviewers?.Any(r => r.ReviewerId == applicantId) ?? false;
@@ -69,9 +72,10 @@ public sealed class ApprovalFlowService(
                 }
                 else
                 {
-                    // designatedReviewers 為 null 或空 → 跳過此步驟
-                    currentStep++;
-                    continue;
+                    // designatedReviewers 為 null 或空：理論上 Handler 層守門會先擋下，
+                    // 此處作 defense-in-depth — 流程明確要求指定審核者卻沒提供，視為呼叫端 bug。
+                    // 與 8 個 SubmitAsync Handler 的守門訊息保持一致。
+                    throw AppException.BadRequest("此簽核流程包含申請人指定審核步驟，請提供指定審核者。");
                 }
             }
 

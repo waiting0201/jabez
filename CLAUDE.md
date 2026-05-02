@@ -220,6 +220,7 @@ Admin/src/app/
     │   ├── leave-requests/    # 請假申請
     │   ├── travel-payment-requests/ # 出差請款申請（小額已代墊直接請款，無沖銷）
     │   ├── travel-requests/   # 出差預支申請（走沖銷流程）
+    │   ├── holiday-travel-requests/ # 假日執行活動申請（共用 TravelRequest entity，IsHolidayTravel=true，計入假日津貼）
     │   ├── overtime-requests/ # 加班申請（走簽核流程）
     │   ├── advance-requests/  # 預支申請
     │   ├── write-off-requests/ # 預支沖銷申請（獨立簽核流程）
@@ -427,7 +428,8 @@ public async Task<HttpResponseData> Run(
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET/POST | `/approval-items` | 簽核項目列表 / 新增 |
+| GET | `/approval-items/active?type=<applicationType>` | **輕量摘要：免 `approvals:read` 權限**，回傳該類型啟用流程 `{id, applicationType, steps:[{stepOrder, useApplicantDesignated}]}`，供申請表單判斷是否顯示「指定審核者」欄位 |
+| GET/POST | `/approval-items` | 簽核項目列表 / 新增（需 `approvals:read` / `approvals:write`） |
 | GET/PUT/PATCH/DELETE | `/approval-items/{id}` | 簽核項目 CRUD |
 | POST | `/approval-items/{id}/steps` | 新增簽核步驟 |
 | PUT/PATCH | `/approval-items/{id}/steps/{stepId}` | 更新簽核步驟 |
@@ -474,6 +476,12 @@ public async Task<HttpResponseData> Run(
 | GET/PUT/PATCH/DELETE | `/travel-payment-requests/{id}` | 出差請款申請 CRUD |
 | PATCH | `/travel-payment-requests/{id}/submit` | 送出出差請款申請（draft → pending） |
 | PATCH | `/travel-payment-requests/{id}/payment-date` | 更新撥款日期（財務體系部門：AC/FIN/Jabez HQ/CEO） |
+| GET | `/holiday-travel-requests` | 假日執行活動申請列表（共用 TravelRequest，`IsHolidayTravel=true`） |
+| POST | `/holiday-travel-requests` | 新增假日執行活動申請（預設 draft，無 Items 與發票明細） |
+| GET/PUT/PATCH/DELETE | `/holiday-travel-requests/{id}` | 假日執行活動申請 CRUD |
+| PATCH | `/holiday-travel-requests/{id}/submit` | 送出假日執行活動申請（draft → pending） |
+| PATCH | `/holiday-travel-requests/{id}/payment-date` | 更新撥款日期（財務體系部門：AC/FIN/Jabez HQ/CEO） |
+| GET | `/holiday-travel-requests/count-holidays?startDate=...&endDate=...` | 計算指定區間內的假日天數（用於計算假日津貼） |
 | GET/POST | `/overtime-requests` | 加班申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/overtime-requests/{id}` | 加班申請 CRUD |
 | PATCH | `/overtime-requests/{id}/submit` | 送出加班申請（draft → pending） |
@@ -633,6 +641,60 @@ dotnet ef database update               # 套用 Migration
 
 ---
 
+## 申請表類型總覽（9 種）
+
+系統共有 **9 種申請表**，依用途分為三類：
+
+### 一般申請表（5 種）
+
+| # | 申請表 | 前端路徑 | API Prefix / RequestType | 自審分組 | 流程特性 |
+|---|--------|----------|--------------------------|---------|---------|
+| 1 | 請款申請 | `/admin/payment-requests` | `/payment-requests` / `payment_request` | **Group B 首位跳過** | 一般費用請款（含發票明細）；走簽核 + 撥款 |
+| 2 | 請假申請 | `/admin/leave-requests` | `/leave-requests` / `leave` | **Group A 全程禁止** | 15 種假別；走簽核（無撥款） |
+| 3 | 加班申請 | `/admin/overtime-requests` | `/overtime-requests` / `overtime` | **Group A 全程禁止** | 加班預申請；走簽核（無撥款） |
+| 4 | 預支申請 | `/admin/advance-requests` | `/advance-requests` / `advance` | **Group B 首位跳過** | 費用預支；走簽核 + 撥款，**事後須沖銷** |
+| 5 | 出差預支申請 | `/admin/travel-requests` | `/travel-requests` / `travel` | **Group A 全程禁止** | 出差預支款項；走簽核 + 撥款，**事後走沖銷流程** |
+
+### 出差類申請表（2 種）
+
+| # | 申請表 | 前端路徑 | API Prefix / RequestType | 自審分組 | 流程特性 |
+|---|--------|----------|--------------------------|---------|---------|
+| 6 | 出差請款申請 | `/admin/travel-payment-requests` | `/travel-payment-requests` / `travel_payment` | **Group A 全程禁止** | 員工小額代墊後直接請款（**無沖銷流程**）；走簽核 + 撥款 |
+| 7 | 假日執行活動申請 | `/admin/holiday-travel-requests` | `/holiday-travel-requests` / `holiday_travel` | **Group B 首位跳過** | 假日活動，**計入假日津貼**（無發票明細）；共用 `TravelRequest` entity（`IsHolidayTravel=true`） |
+
+### 沖銷類申請表（2 種，獨立簽核流程）
+
+| # | 申請表 | 前端路徑 | API Prefix / RequestType | 自審分組 | 流程特性 |
+|---|--------|----------|--------------------------|---------|---------|
+| 8 | 預支沖銷申請 | `/admin/write-off-requests` | `/write-off-requests` / `write_off` | **Group B 首位跳過** | 沖銷預支申請（含發票上傳）；獨立簽核流程，可能產生退款 |
+| 9 | 出差預支沖銷申請 | `/admin/travel-write-off-requests` | `/travel-write-off-requests` / `travel_write_off` | **Group B 首位跳過** | 沖銷出差預支申請；獨立簽核流程，可能產生退款 |
+
+> **自審分組說明**：所有 9 種申請表均支援指定審核者（`UseApplicantDesignated`）模式，但對「申請人本身排入指定審核者清單」的處理方式分為兩組。詳見 [申請人指定審核模式](#申請人指定審核模式useapplicantdesignated) 章節。
+
+### 流程關係圖
+
+```
+預支申請        ──→  預支沖銷申請（事後沖銷）
+出差預支申請    ──→  出差預支沖銷申請（事後沖銷）
+出差請款申請    ──→  （無沖銷，小額代墊直接請款）
+請款 / 加班 / 請假 / 假日執行活動  ──→  獨立流程，無沖銷
+```
+
+### 假日執行活動 vs 出差預支 差異
+
+兩者共用 `TravelRequest` entity，但 `IsHolidayTravel` 旗標決定行為：
+
+| 項目 | 出差預支（`IsHolidayTravel=false`） | 假日執行活動（`IsHolidayTravel=true`） |
+|------|-------------------------------------|--------------------------------------|
+| 前端路徑 | `/admin/travel-requests` | `/admin/holiday-travel-requests` |
+| 含 Items 與發票明細 | ✓ | ✗（僅記錄活動地點 / 期間 / 參與人員） |
+| 走沖銷流程 | ✓（`travel-write-off-requests`） | ✗ |
+| 計入假日津貼 | ✗ | ✓（依已核准 EndDate 月份歸月，獎金計入次月薪資） |
+| 含撥款日 / 預計撥款日 | ✓ | ✓ |
+| 權限 Code | `travel-requests:*` | `holiday-travel-requests:*`（獨立權限） |
+
+---
+
 ## 請假規則
 
 ### 假別一覽（15 種）
@@ -785,7 +847,7 @@ draft → pending → approved / returned / rejected
 - `EstimatedPaymentDate`：預計撥款日
 - `PaidAt`：實際撥款日
 
-> 此端點僅限**財務體系部門**（部門 Code ∈ AC / FIN / Jabez HQ / CEO，定義於 `Api/Common/Constants.cs` `DepartmentCodes.FinancialAndAbove`）或 **Superadmin** 操作。同樣規則套用於 `/advance-requests/{id}/payment-date`、`/travel-requests/{id}/payment-date`、`/travel-payment-requests/{id}/payment-date`，以及預支結案 / 出差結案端點。
+> 此端點僅限**財務體系部門**（部門 Code ∈ AC / FIN / Jabez HQ / CEO，定義於 `Api/Common/Constants.cs` `DepartmentCodes.FinancialAndAbove`）或 **Superadmin** 操作。同樣規則套用於 `/advance-requests/{id}/payment-date`、`/travel-requests/{id}/payment-date`、`/travel-payment-requests/{id}/payment-date`、`/holiday-travel-requests/{id}/payment-date`，以及預支結案 / 出差結案端點。
 
 #### 撥款 / 退款完成通知申請人
 
@@ -871,10 +933,16 @@ draft → pending → approved / returned / rejected
 - Step 2+ 回歸現有固定流程（固定部門+職稱、UseDirectSupervisor 等）
 
 **規則：**
-- 送出（submit）時，如果流程中有 `UseApplicantDesignated` 步驟，`designatedReviewers` 清單必填且至少 1 人
+- 送出（submit）時，如果流程中有 `UseApplicantDesignated` 步驟，`designatedReviewers` 清單必填且至少 1 人。守門落在三層：
+  - **前端 fail-fast**：9 個申請表單的 `submitForApproval()` 在 `form.invalid` 檢查後立即驗證 `hasDesignatedStep && designatedEntries.filter(e => e.selectedUserId).length === 0`，缺漏即顯示錯誤訊息不送 HTTP request
+  - **後端 Handler 守門**：8 個 `*RequestHandler.SubmitAsync`（覆蓋 9 種申請類型，holiday-travel 與 travel 共用 `TravelRequestHandler`）在呼叫 `ResolveStartingStepAsync` 前先查 `ApprovalSteps` + `RequestDesignatedReviewers`，缺漏回 `BadRequest("此簽核流程包含申請人指定審核步驟，請提供指定審核者。")`
+  - **`ApprovalFlowService` defense-in-depth**：[ApprovalFlowService.cs](Api/Services/ApprovalFlowService.cs) 在處理 `UseApplicantDesignated` 步驟時若 `designatedReviewers` 為 null/空，會 throw `AppException.BadRequest`（與 Handler 訊息一致），確保未來新增第 10 種申請類型若忘記抄 Handler 守門也不會無聲產生孤兒申請
 - 依 `StepOrder` 升序逐一審核，前一人核准後才輪到下一人
-- 指定審核者不需擁有全域 `approval-tasks:write` 權限，被指定即可審核
-- 自審規則：leave / travel / overtime — 任何一位指定審核者是申請人本人則報錯；payment_request / advance / write_off — 申請人排第 1 位時自動跳過，排其他位置不允許
+- 指定審核者不需擁有全域 `approval-tasks:write` 權限，被指定即可審核（[ApprovalTaskHandler.cs:140-157](Api/Handlers/ApprovalTaskHandler.cs#L140-L157)）
+- **批次核准（`POST /approval-tasks/batch-approve`）不支援指定審核者**身份；批次核准要求獨立的 `approval-tasks:batch-approve` 權限。
+- 自審規則（依申請類型分為兩組，規則源於 [ApprovalFlowService.cs:51](Api/Services/ApprovalFlowService.cs#L51)）：
+  - **Group A 全程禁止**（任一位置為申請人 → 報錯）：`leave` / `overtime` / `travel` / `travel_payment`
+  - **Group B 首位跳過**（申請人排第 1 位 → 自動跳過此步驟；2+ 位置目前無強制檢查）：`payment_request` / `advance` / `write_off` / `travel_write_off` / `holiday_travel`
 - 退回時：當前等待審核者狀態設為 `returned`，重送時所有指定審核者重置為 `pending`
 - 此模式與 `UseDirectSupervisor`、`UseApplicantDepartment` 互斥（每個 ApprovalStep 擇一使用）
 - 一個流程建議只有一個 `UseApplicantDesignated` 步驟
@@ -1332,6 +1400,43 @@ draft → pending → approved / returned / rejected
 
 ---
 
+## 輕量讀取端點模式（Public Lookup Pattern）
+
+當「全體員工都會用到」的功能依賴「需後台管理權限的 CRUD 端點」時，會把後者的權限隱含地強加到前者上，造成一般員工功能異常。本系統統一以「輕量讀取端點」解決：對同一資源額外開一支 **read-only、欄位精簡、免特定權限**（仍需 JWT 登入）的子端點。
+
+### 已採用此模式的端點
+
+| 輕量端點 | 對應的權限端點 | 用途 | 為何不能直接用權限端點 |
+|---|---|---|---|
+| `GET /users/lookup` | `GET /users`（需 `users:read`） | 申請表「指定審核者」、人員下拉 | `users:read` 屬 HR 管理權限，員工通常無此權限 |
+| `GET /projects/active` | `GET /projects`（需 `projects:read`） | 申請表「專案」下拉、僅回傳 `active` 狀態 | `projects:read` 屬專案管理權限，會套用部門可見性 scope |
+| `GET /approval-items/active?type=<applicationType>` | `GET /approval-items`（需 `approvals:read`） | 申請表判斷流程是否含 `useApplicantDesignated` 步驟 | `approvals:read` 屬簽核流程設定權限，僅 admin 持有 |
+| `GET /files/signatures/{fileName}` / `GET /files/avatars/{fileName}` | — | 簽名檔 / 頭像 Blob 代理（公開路由） | PDF / topbar 顯示需在無 JWT 環境下讀取 |
+| `GET /job-titles/lookup` | `GET /job-titles`（需 `job-titles:read`） | 申請表「指定審核者」職稱下拉 | 職稱主檔屬人事管理權限 |
+
+> 註：`GET /files/indigenous-proofs/{fileName}` 屬 HR 敏感 PII，**不**走輕量模式，仍需 `users:read`。
+
+### 設計原則
+
+1. **欄位最小化**：輕量端點只回傳前端真正需要的欄位，**不**回傳敏感配置（部門設定、角色權限、薪資、原住民證明等）。例：`/approval-items/active` 故意不 JOIN `Departments` / `JobTitles`，避免外洩流程內部設定。
+2. **read-only**：絕不接受 `POST` / `PUT` / `PATCH` / `DELETE`；寫入路由維持權限檢查不變。
+3. **路由命名**：以子路徑（`/<resource>/active`、`/<resource>/lookup`）區隔，方便在 `AppRouter` 的權限表中以單行 `null` 覆寫。
+4. **路由次序**：在 [AppRouter.cs](Api/Routing/AppRouter.cs) 的 dispatch table 與 permission table 中，**輕量子路由必須擺在 `[var id]` catch-all pattern 之前**，否則會被 catch-all 攔截。
+5. **DTO 獨立**：輕量端點使用獨立的 Summary DTO，避免重用主 DTO 後新增欄位時意外洩漏（例：`ApprovalFlowSummaryDto` 與 `ApprovalItemDto` 分離）。
+
+### 何時要新增輕量端點？
+
+當你發現以下情況之一時，請考慮加一支：
+
+- **症狀**：某個前端表單 / 元件的功能對「沒有 X 管理權限」的使用者異常（欄位不顯示、下拉是空的、按鈕點下去無反應）
+- **檢查點**：F12 看 Network 是否有 `403 Forbidden`，且該 API 的 `requiredPermission` 對應到一個多數員工不會持有的管理權限
+- **典型案例**：申請表單在 `ngOnInit` 載入下拉選項 / 流程設定 / 部門資訊時呼叫了 admin 後台用的清單 API
+- **修法**：在 [AppRouter.cs](Api/Routing/AppRouter.cs) 加一支 `("GET", ["<resource>", "<sub>"]) => null` 路由 + 對應 Handler 與 Reader 方法，再把前端改呼叫此端點
+
+> **歷史教訓**（2026-05）：所有 9 種申請表單的「指定審核者」欄位皆呼叫 `GET /approval-items`（需 `approvals:read`），導致無此權限的員工看不到欄位、無法選擇審核者。最後以 `GET /approval-items/active?type=` 解決。Code Review 時若看到一般員工頁面呼叫 admin CRUD 端點，要立刻警覺。
+
+---
+
 ## 開發注意事項
 
 1. **CORS**：本地開發時 Api 已允許所有來源（`"CORS": "*"`）
@@ -1345,6 +1450,10 @@ draft → pending → approved / returned / rejected
 9. **測試規範**：測試功能時，必須實際輸入測試資料進行測試，不得僅以目視或靜態檢查代替。確認 CRUD 流程（新增、讀取、更新、刪除）與業務邏輯皆正常運作後，方可視為測試通過。
 10. **系統時區**：所有涉及日期時間的處理（包含前端顯示與後端邏輯），一律使用**台北時間（Asia/Taipei, UTC+8）**。後端取得當前時間應使用 `TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Asia/Taipei"))`，前端則確保日期時間以台北時區呈現。
 11. **頭像上傳大小限制**：員工頭像上傳上限 **1 MB**（前端 [user-form.ts](Admin/src/app/features/admin/users/pages/user-form/user-form.ts) `onAvatarSelected` 於 `compressImage` 後驗證、後端 [UserHandler.cs](Api/Handlers/UserHandler.cs) `HandleAvatarUploadAsync` 於 `IFormFile.Length` 驗證）。前端 toastr 與後端 `AppException.BadRequest` 訊息皆為「上傳照片勿超過1MB」。
+12. **程式碼註解與邏輯同步**：修改程式邏輯時，**必須一併更新該段程式碼的註解**，避免註解與實作矛盾造成後續誤解。
+    - 範例：[ApprovalFlowService.cs:51](Api/Services/ApprovalFlowService.cs#L51) 曾因註解寫「`holiday_travel` 屬全程禁止自審」，但實際排除清單已將其歸入「首位跳過」群組，導致閱讀者誤判規則歸屬。
+    - 程式碼 / 註解 / CLAUDE.md 三者須同步：邏輯異動 → 同步檔案內註解 → 若為跨檔關鍵規則，亦須更新 CLAUDE.md。
+    - Code Review 時須檢查註解是否仍正確描述實際行為。
 
 ---
 

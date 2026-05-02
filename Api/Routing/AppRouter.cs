@@ -148,6 +148,8 @@ public sealed class AppRouter(
             ("DELETE", ["job-titles", var id])        => await jobTitles.DeleteAsync(id),
 
             // ── Approval Items ─────────────────────────────────────────────────
+            // active：輕量級查詢，免 approvals:read 權限（必須在 var id 模式之前）
+            ("GET",    ["approval-items", "active"])  => await approvals.GetActiveByTypeAsync(req),
             ("GET",    ["approval-items"])            => await approvals.GetAllAsync(),
             ("POST",   ["approval-items"])            => await approvals.CreateAsync(req),
             ("GET",    ["approval-items", var id])    => await approvals.GetByIdAsync(id),
@@ -397,6 +399,8 @@ public sealed class AppRouter(
             ("DELETE", ["job-titles", _])                => PermissionCodes.JobTitlesDelete,
 
             // Approval Items + Steps
+            // active：輕量級查詢，免權限（供申請表單判斷指定審核步驟用，不含敏感設定）
+            ("GET",    ["approval-items", "active"])     => null,
             ("GET",    ["approval-items", ..])           => PermissionCodes.ApprovalsRead,
             ("POST",   ["approval-items"])               => PermissionCodes.ApprovalsWrite,
             ("POST",   ["approval-items", _, "steps"])   => PermissionCodes.ApprovalsWrite,

@@ -12,6 +12,39 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
         return BuildDtos(rows);
     }
 
+    public async Task<ApprovalFlowSummaryDto?> GetActiveByTypeAsync(string applicationType)
+    {
+        // 僅讀取「是否含 UseApplicantDesignated 步驟」所需最小欄位；
+        // 故意不 JOIN Departments / JobTitles，避免敏感設定外洩給未授權呼叫者。
+        // 一個 ApplicationType 至多對應一個啟用流程（CreateAsync/UpdateAsync 已強制唯一），
+        // 但可能有多筆 step，故用 QueryAsync 後手動聚合。
+        const string sql = """
+            SELECT ai.Id, ai.ApplicationType,
+                   s.StepOrder, s.UseApplicantDesignated
+            FROM ApprovalItems ai
+            LEFT JOIN ApprovalSteps s ON ai.Id = s.ApprovalItemId
+            WHERE ai.ApplicationType = @Type AND ai.IsActive = 1
+            ORDER BY s.StepOrder
+            """;
+
+        var rows = (await db.QueryAsync<dynamic>(sql, new { Type = applicationType })).ToList();
+
+        if (rows.Count == 0) return null;
+
+        var first = rows[0];
+        var steps = rows
+            .Where(r => r.StepOrder is not null)
+            .Select(r => new ApprovalFlowStepSummaryDto(
+                (int)r.StepOrder,
+                (bool)(r.UseApplicantDesignated ?? false)))
+            .ToArray();
+
+        return new ApprovalFlowSummaryDto(
+            (int)first.Id,
+            (string?)first.ApplicationType,
+            steps);
+    }
+
     public async Task<ApprovalItemDto?> GetByIdAsync(int id)
     {
         const string sql = """

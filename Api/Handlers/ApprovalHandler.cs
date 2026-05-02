@@ -19,6 +19,20 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
         return new OkObjectResult(ApiResponse.Ok(items));
     }
 
+    /// <summary>
+    /// 輕量級查詢：取得指定 ApplicationType 啟用中流程的精簡資訊。
+    /// 不需 approvals:read 權限（登入即可），供申請表單判斷是否需顯示「指定審核者」欄位。
+    /// </summary>
+    public async Task<IActionResult> GetActiveByTypeAsync(HttpRequest req)
+    {
+        var type = req.Query["type"].ToString();
+        if (string.IsNullOrWhiteSpace(type))
+            return new BadRequestObjectResult(ApiResponse.Fail("Query parameter 'type' is required."));
+
+        var flow = await reader.GetActiveByTypeAsync(type);
+        return new OkObjectResult(ApiResponse.Ok(flow));
+    }
+
     public async Task<IActionResult> GetByIdAsync(string id)
     {
         if (!int.TryParse(id, out var intId))
