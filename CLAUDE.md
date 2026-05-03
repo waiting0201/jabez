@@ -1635,6 +1635,55 @@ hotfix/*      # 緊急修復
 
 ---
 
+## Coding Style 一致性（重要）
+
+> **背景**：本專案的程式碼會在**不同時段、不同對話**中持續開發。為避免同一專案出現多種寫法、命名風格、檔案結構，**每次撰寫或修改程式碼前，必須先參考既有相似檔案的寫法**，再依照相同模式進行。
+
+### 強制原則
+
+1. **先讀後寫**：新增功能前，**必須先讀至少一份同類型既有檔案**作為範本（例如新增 Handler 前先讀 `PaymentRequestHandler.cs`、新增 Angular Form 前先讀 `payment-form.ts`）。不可憑空想像架構。
+2. **跟隨既有模式**：命名、檔案結構、目錄階層、import 順序、方法排列順序、錯誤處理風格、回應格式 **一律比照既有檔案**。發現既有寫法有問題時，先提出討論再統一重構，不可單獨在新檔案改寫。
+3. **同類功能同寫法**：所有 Handler 套用相同的 try/await/ApiResponse 模式；所有 ReadService 套用相同的 Dapper SQL 風格；所有 Angular Component 套用相同的 Signal + Service 注入模式。
+4. **禁止個人風格混入**：不得引入既有檔案沒用過的程式設計模式（如 RxJS Observable 取代 Signal、自訂 IoC 容器取代 DI、Repository Pattern 取代 Dapper ReadService）。
+
+### Coding Style Checklist（每次撰寫前自我檢查）
+
+#### 後端（.NET）
+- [ ] Handler 是否符合既有 `<Module>Handler.cs` 的方法命名（`GetListAsync` / `GetByIdAsync` / `CreateAsync` / `UpdateAsync` / `DeleteAsync` / `SubmitAsync`）？
+- [ ] 是否使用 `ApiResponse<T>.Ok(...)` / `ApiResponse<T>.Fail(...)` 回應，未直接 `return data`？
+- [ ] 例外是否使用 `AppException.BadRequest` / `NotFound` / `Forbidden`，未自行 throw `Exception`？
+- [ ] DTO 是否放在 `Models/Dtos/<Module>Dtos.cs` 而非散落於 Handler 內？
+- [ ] 讀取查詢是否走 `Services/Dapper/<Module>ReadService.cs`，未在 Handler 直接寫 SQL？
+- [ ] 寫入操作是否走 EF Core `AppDbContext`，未 mix Dapper INSERT/UPDATE？
+- [ ] 是否所有 I/O 都 `async/await`，未出現 `.Result` / `.Wait()` / `.GetAwaiter().GetResult()`？
+- [ ] 時間是否使用 `Clock.Now`（Asia/Taipei），未直接呼叫 `DateTime.UtcNow` / `DateTime.Now`？
+
+#### 前端（Angular）
+- [ ] 是否使用 **Standalone Component**（`standalone: true`），未引入 NgModule？
+- [ ] 元件狀態是否使用 **Signal**（`signal()` / `computed()`），未用 BehaviorSubject？
+- [ ] HTTP 是否封裝於 `features/<module>/services/<module>.service.ts`，未在 Component 直接注入 `HttpClient`？
+- [ ] DI 是否使用 `inject()` 函式，未用 constructor injection？
+- [ ] Template 是否使用 `@if` / `@for` / `@switch` 控制流，未用 `*ngIf` / `*ngFor`？
+- [ ] 樣式是否使用 **Tailwind utility classes** + `@layer components` 既有語意類別，未引入 Bootstrap 或自訂 SCSS 樣式？
+- [ ] Toastr 通知是否使用 `ngx-toastr`，未自製 alert / modal 替代？
+- [ ] Icon 是否使用 `<svg class="sa-icon"><use href="/assets/icons/sprite.svg#NAME"></use></svg>` 格式？
+- [ ] 路由是否在 `app.routes.ts` 用 `loadComponent` lazy load？
+
+#### 命名與結構
+- [ ] C# 類別 / 方法 / 屬性 PascalCase；TypeScript 變數 / 函式 camelCase；DB 欄位 PascalCase；CSS class kebab-case
+- [ ] Angular 檔名 kebab-case（`payment-form.ts`），class 名 PascalCase（`PaymentFormComponent`）
+- [ ] Feature 目錄一律 `models/` `pages/` `services/` 三層
+
+### 違反一致性的處理
+
+- **小幅偏離**（命名 / 檔案位置）：發現後立即修正，補齊到既有風格。
+- **架構性偏離**（引入新模式 / 新框架 / 新狀態管理方式）：**禁止單獨變更**，須先在 CLAUDE.md 提案討論並更新規範後才能套用，並一次性重構所有同類檔案。
+- **Code Review 重點**：審查時優先確認「與既有檔案是否一致」，再看正確性與效能。
+
+> **判斷原則**：當你不確定該怎麼寫，就找 3 份相似的既有檔案，**取多數派寫法**。寧可保持「不完美但統一」，也不要「個別完美但分散」。
+
+---
+
 ## 程式碼規範
 
 - **命名**：C# PascalCase、TypeScript camelCase、資料庫欄位 PascalCase
