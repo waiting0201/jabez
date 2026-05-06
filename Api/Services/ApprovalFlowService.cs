@@ -18,6 +18,7 @@ public sealed class ApprovalFlowService(
         ResolveStartingStepAsync(int? approvalItemId, Guid applicantId, string applicationType,
             IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers = null)
     {
+        // 註：初次送出無 approved 紀錄，毋需歷史比對，保持既有「自審 + 升級」邏輯。
         if (approvalItemId is null)
             return (1, false, null);
 
@@ -158,13 +159,41 @@ public sealed class ApprovalFlowService(
     }
 
     /// <inheritdoc />
-    public async Task<(int nextStep, bool allSkipped)>
+    public async Task<HashSet<Guid>> GetApprovedReviewerIdsAsync(
+        string applicationType, int applicationId)
+    {
+        // 退回重送 → 歷史清零：以最近一次 Action='returned' 的 ReviewedAt 當分隔線
+        var lastReturnedAt = await db.ApprovalRecords.AsNoTracking()
+            .Where(r => r.ApplicationType == applicationType
+                     && r.ApplicationId == applicationId
+                     && r.Action == "returned")
+            .MaxAsync(r => (DateTime?)r.ReviewedAt) ?? DateTime.MinValue;
+
+        var ids = await db.ApprovalRecords.AsNoTracking()
+            .Where(r => r.ApplicationType == applicationType
+                     && r.ApplicationId == applicationId
+                     && r.Action == "approved"
+                     && r.ReviewedById != null
+                     && r.ReviewedAt > lastReturnedAt)
+            .Select(r => r.ReviewedById!.Value)
+            .Distinct()
+            .ToListAsync();
+
+        return [.. ids];
+    }
+
+    /// <inheritdoc />
+    public async Task<(int nextStep, bool allSkipped, IReadOnlyList<SkippedStepInfo> skippedSteps)>
         SkipUnreviewableStepsAsync(int? approvalItemId, Guid applicantId, int fromStepOrder,
             IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers = null,
-            Guid? lastApproverId = null)
+            IReadOnlySet<Guid>? approvedReviewerIds = null,
+            string? applicationType = null,
+            int? applicationId = null)
     {
+        var emptySkipped = Array.Empty<SkippedStepInfo>();
+
         if (approvalItemId is null)
-            return (fromStepOrder, false);
+            return (fromStepOrder, false, emptySkipped);
 
         var steps = await db.ApprovalSteps
             .AsNoTracking()
@@ -173,16 +202,18 @@ public sealed class ApprovalFlowService(
             .ToListAsync();
 
         if (steps.Count == 0)
-            return (fromStepOrder, false);
+            return (fromStepOrder, false, emptySkipped);
 
         var applicant = await db.Users.AsNoTracking()
             .Include(u => u.JobTitle)
             .FirstOrDefaultAsync(u => u.Id == applicantId);
         if (applicant is null)
-            return (fromStepOrder, false);
+            return (fromStepOrder, false, emptySkipped);
 
         // 直接迭代 StepOrder >= fromStepOrder 的步驟（處理稀疏 StepOrder）
         var remainingSteps = steps.Where(s => s.StepOrder >= fromStepOrder).ToList();
+
+        var skipped = new List<SkippedStepInfo>();
 
         foreach (var step in remainingSteps)
         {
@@ -207,73 +238,113 @@ public sealed class ApprovalFlowService(
             }
 
             if (!hasReviewer)
-                continue; // 找不到審核者 → 跳過
+                continue; // 找不到審核者 → 跳過（不寫代簽，因為池本來就空）
 
-            // ── 第二階段：若有「上一步核准者」，檢查本 step 解析出的唯一審核者是否就是同一人 ──
-            if (lastApproverId.HasValue)
+            // ── 第二階段：跨步驟同人去重（全歷史） ──
+            // 若 approvedReviewerIds 提供，解析池後扣掉歷史已審者；池被完全覆蓋 → 跳過 + 標記代簽人。
+            if (approvedReviewerIds is not null && approvedReviewerIds.Count > 0)
             {
                 int directSupervisorRank = steps.Count(s => s.UseDirectSupervisor && s.StepOrder < step.StepOrder);
-                var uniqueReviewerId = await ResolveUniqueReviewerAsync(
+                var pool = await ResolveReviewerPoolAsync(
                     step, applicant, designatedReviewers, directSupervisorRank);
 
-                if (uniqueReviewerId.HasValue && uniqueReviewerId.Value == lastApproverId.Value)
-                    continue; // 唯一審核者 = 剛核准者 → 跳過，連續往後檢查
+                if (pool.Count > 0 && pool.All(id => approvedReviewerIds.Contains(id)))
+                {
+                    // 池中所有人皆已審 → 整 step 跳過，挑「池 ∩ 歷史已審者中最早審過此申請者」作為代簽人
+                    var proxyId = await PickEarliestProxyAsync(
+                        pool, applicationType, applicationId);
+                    if (proxyId.HasValue)
+                    {
+                        skipped.Add(new SkippedStepInfo(step.StepOrder, proxyId.Value, step.UseApplicantDesignated));
+                        continue;
+                    }
+                }
             }
 
-            return (step.StepOrder, false); // 停在這步
+            return (step.StepOrder, false, skipped); // 停在這步
         }
 
         // 所有剩餘步驟都跳過
         var maxStepOrder = steps.Max(s => s.StepOrder);
-        return (maxStepOrder + 1, true);
+        return (maxStepOrder + 1, true, skipped);
     }
 
     /// <summary>
-    /// 解析該步驟的「唯一審核者」：若該步驟解析出的審核者池剛好只有 1 位（且非申請人），回傳該 user Id；
-    /// 否則回傳 null（包含 0 人、多人、無法解析三種情境）。
-    /// 用於相鄰步驟同人自動跳過判定。
+    /// 從「step 池 ∩ 歷史已審者」中取最早審過此申請者作為代簽人。
+    /// 多人時按 ApprovalRecords.ReviewedAt 升序取首位（最早審過此申請的池內成員）；
+    /// applicationType / applicationId 缺漏時回退為池內第一位（理論上不會發生，呼叫端應提供）。
     /// </summary>
-    private async Task<Guid?> ResolveUniqueReviewerAsync(
+    private async Task<Guid?> PickEarliestProxyAsync(
+        IReadOnlyList<Guid> pool,
+        string? applicationType,
+        int? applicationId)
+    {
+        if (pool.Count == 0) return null;
+        if (pool.Count == 1) return pool[0];
+
+        if (applicationType is null || !applicationId.HasValue)
+            return pool[0];
+
+        var poolSet = pool.ToHashSet();
+        var earliest = await db.ApprovalRecords.AsNoTracking()
+            .Where(r => r.ApplicationType == applicationType
+                     && r.ApplicationId == applicationId.Value
+                     && r.Action == "approved"
+                     && r.ReviewedById != null
+                     && poolSet.Contains(r.ReviewedById!.Value))
+            .OrderBy(r => r.ReviewedAt)
+            .Select(r => r.ReviewedById!.Value)
+            .FirstOrDefaultAsync();
+
+        return earliest != Guid.Empty ? earliest : pool[0];
+    }
+
+    /// <summary>
+    /// 解析該步驟的「審核者池」：
+    /// - UseApplicantDesignated：該 step 中所有 pending designee 的 ReviewerId
+    /// - UseDirectSupervisor：同部門 + 第 N 層上級 Level + 非 superadmin + 非申請人
+    /// - 固定部門+職稱（含 UseApplicantDepartment）：對應部門 + 職稱 + 非 superadmin + 非申請人
+    /// 回傳 List<Guid>（最多 50 筆防呆）。
+    /// </summary>
+    private async Task<List<Guid>> ResolveReviewerPoolAsync(
         Models.Entities.ApprovalStep step,
         Models.Entities.User applicant,
         IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers,
         int directSupervisorRank)
     {
-        // ── UseApplicantDesignated：取 designatedReviewers 中 StepOrder 最小者（pending 邏輯由呼叫端提供的清單已隱含） ──
+        // ── UseApplicantDesignated：該 step 內所有 designee（依 designatedReviewers 順序） ──
         if (step.UseApplicantDesignated)
         {
-            var firstReviewer = designatedReviewers?
-                .OrderBy(r => r.StepOrder)
-                .FirstOrDefault();
-            if (firstReviewer is null) return null;
-            if (firstReviewer.ReviewerId == applicant.Id) return null; // 自審情境不視為唯一審核者
-            return firstReviewer.ReviewerId;
+            return designatedReviewers?
+                .Where(r => r.ReviewerId != applicant.Id)
+                .Select(r => r.ReviewerId)
+                .Distinct()
+                .Take(50)
+                .ToList() ?? [];
         }
 
-        // ── UseDirectSupervisor：找該 rank 對應 Level，再查同部門該 Level 是否僅 1 位 ──
+        // ── UseDirectSupervisor：找該 rank 對應 Level，再查同部門該 Level 全部使用者 ──
         if (step.UseDirectSupervisor)
         {
             var targetLevel = await FindNthSuperiorLevelAsync(applicant, directSupervisorRank);
-            if (!targetLevel.HasValue || applicant.DepartmentId is null) return null;
+            if (!targetLevel.HasValue || applicant.DepartmentId is null) return [];
 
-            var candidates = await db.Users.AsNoTracking()
+            return await db.Users.AsNoTracking()
                 .Where(u => u.DepartmentId == applicant.DepartmentId
                     && !u.IsSuperAdmin
                     && u.Id != applicant.Id
                     && u.JobTitle != null
                     && u.JobTitle.Level == targetLevel.Value)
                 .Select(u => u.Id)
-                .Take(2)
+                .Take(50)
                 .ToListAsync();
-
-            return candidates.Count == 1 ? candidates[0] : null;
         }
 
-        // ── 固定部門+職稱（含 UseApplicantDepartment）：查該部門 + 職稱 + 非 superadmin + 非申請人，唯一才回傳 ──
+        // ── 固定部門+職稱（含 UseApplicantDepartment） ──
         int? targetDepartmentId = step.UseApplicantDepartment
             ? applicant.DepartmentId
             : step.DepartmentId;
-        if (targetDepartmentId is null) return null;
+        if (targetDepartmentId is null) return [];
 
         var query = db.Users.AsNoTracking()
             .Where(u => u.DepartmentId == targetDepartmentId.Value
@@ -283,12 +354,10 @@ public sealed class ApprovalFlowService(
         if (step.JobTitleId.HasValue)
             query = query.Where(u => u.JobTitleId == step.JobTitleId.Value);
 
-        var fixedCandidates = await query
+        return await query
             .Select(u => u.Id)
-            .Take(2)
+            .Take(50)
             .ToListAsync();
-
-        return fixedCandidates.Count == 1 ? fixedCandidates[0] : null;
     }
 
     /// <summary>判斷申請人是否符合此步驟的審核者條件（即「自己審自己」）</summary>

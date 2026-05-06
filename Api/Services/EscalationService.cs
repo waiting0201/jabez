@@ -22,7 +22,8 @@ public sealed class EscalationService(AppDbContext db) : IEscalationService
     private const int MaxDepth = 10;
 
     public async Task<EscalationResult?> TryEscalateAsync(
-        ApprovalStep step, User applicant, string applicationType)
+        ApprovalStep step, User applicant, string applicationType,
+        IReadOnlySet<Guid>? excludeUserIds = null)
     {
         // 只處理「使用申請人部門」的步驟（動態匹配）
         if (!step.UseApplicantDepartment)
@@ -70,7 +71,7 @@ public sealed class EscalationService(AppDbContext db) : IEscalationService
 
             // 找該部門中符合步驟職稱條件的主管
             var manager = await FindManagerInDepartmentAsync(
-                parentDept.Id, step.JobTitleId, applicant.Id, stopBeforeDirector);
+                parentDept.Id, step.JobTitleId, applicant.Id, stopBeforeDirector, excludeUserIds);
 
             if (manager is not null)
             {
@@ -80,8 +81,10 @@ public sealed class EscalationService(AppDbContext db) : IEscalationService
                     bool onLeave = await IsOnLeaveAsync(manager.Id);
                     if (onLeave)
                     {
-                        // 找代理人
-                        if (manager.AgentUserId is not null && manager.AgentUserId != applicant.Id)
+                        // 找代理人（同樣排除已在歷史中審過的人）
+                        if (manager.AgentUserId is not null
+                            && manager.AgentUserId != applicant.Id
+                            && (excludeUserIds is null || !excludeUserIds.Contains(manager.AgentUserId.Value)))
                         {
                             var agent = await db.Users.AsNoTracking()
                                 .FirstOrDefaultAsync(u => u.Id == manager.AgentUserId
@@ -120,9 +123,10 @@ public sealed class EscalationService(AppDbContext db) : IEscalationService
         return jobTitleMatch;
     }
 
-    /// <summary>在指定部門中尋找符合職稱的主管</summary>
+    /// <summary>在指定部門中尋找符合職稱的主管（會排除已在歷史中審過此申請者）</summary>
     private async Task<User?> FindManagerInDepartmentAsync(
-        int departmentId, int? requiredJobTitleId, Guid excludeUserId, bool stopBeforeDirector)
+        int departmentId, int? requiredJobTitleId, Guid excludeUserId, bool stopBeforeDirector,
+        IReadOnlySet<Guid>? excludeUserIds = null)
     {
         var query = db.Users.AsNoTracking()
             .Where(u => u.DepartmentId == departmentId
@@ -135,6 +139,13 @@ public sealed class EscalationService(AppDbContext db) : IEscalationService
 
         if (stopBeforeDirector)
             query = query.Where(u => u.JobTitleId != DirectorJobTitleId);
+
+        // 排除已在歷史中審過此申請者
+        if (excludeUserIds is not null && excludeUserIds.Count > 0)
+        {
+            var excludeIds = excludeUserIds.ToArray();
+            query = query.Where(u => !excludeIds.Contains(u.Id));
+        }
 
         return await query.FirstOrDefaultAsync();
     }

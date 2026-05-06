@@ -277,6 +277,22 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                     )
                 )
               )
+              -- 跨步驟同人去重（全歷史）：排除已於本申請（最近一次 returned 之後）核准過任一 step 的審核者
+              -- 避免使用者看到「已自動代簽 / 待跳過」的殘留待審項目
+              AND NOT EXISTS (
+                SELECT 1 FROM ApprovalRecords arDup
+                WHERE arDup.ApplicationType = '{appType}'
+                  AND arDup.ApplicationId = {alias}.Id
+                  AND arDup.ReviewedById = @ReviewerUserId
+                  AND arDup.Action = 'approved'
+                  AND arDup.ReviewedAt > ISNULL(
+                    (SELECT MAX(arRet.ReviewedAt) FROM ApprovalRecords arRet
+                     WHERE arRet.ApplicationType = '{appType}'
+                       AND arRet.ApplicationId = {alias}.Id
+                       AND arRet.Action = 'returned'),
+                    '0001-01-01'
+                  )
+              )
               """;
         }
 

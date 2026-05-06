@@ -44,6 +44,9 @@ public sealed class ApprovalNotificationService(
             // 根據步驟設定查找符合條件的審核者（與 AuthorizeStepAsync / StepMatchClause 一致）
             IQueryable<Models.Entities.User> query;
 
+            // 取得歷史已審者集合（最近一次 returned 之後的 approved）— 用於排除重複通知
+            var approvedIds = await GetApprovedReviewerIdsAsync(applicationType, applicationId);
+
             // ── UseApplicantDesignated 模式：查詢 RequestDesignatedReviewers 表找當前 pending 最小 StepOrder 的審核者 ──
             if (step.UseApplicantDesignated)
             {
@@ -60,6 +63,14 @@ public sealed class ApprovalNotificationService(
                 {
                     logger.LogWarning("UseApplicantDesignated 步驟找不到 pending 的指定審核者：{AppType} #{Id}, Step {Step}",
                         applicationType, applicationId, targetStepOrder);
+                    return;
+                }
+
+                // 跨步驟同人去重：當前指定審核者若已在歷史中審過，不再通知（自動代簽由 ProcessReviewAsync 處理）
+                if (approvedIds.Contains(currentDesignated.ReviewerId))
+                {
+                    logger.LogInformation("指定審核者已於先前步驟審核，跳過通知：UserId={UserId}（{AppType} #{Id}）",
+                        currentDesignated.ReviewerId, applicationType, applicationId);
                     return;
                 }
 
@@ -138,6 +149,10 @@ public sealed class ApprovalNotificationService(
                     query = query.Where(u => u.DepartmentId == step.DepartmentId);
                 }
             }
+
+            // 跨步驟同人去重：排除已在歷史中審過此申請者
+            if (approvedIds.Count > 0)
+                query = query.Where(u => !approvedIds.Contains(u.Id));
 
             var reviewers = await query.Select(u => new { u.Name, u.Email }).ToListAsync();
             if (reviewers.Count == 0)
@@ -235,6 +250,15 @@ public sealed class ApprovalNotificationService(
     {
         try
         {
+            // 跨步驟同人去重：被通知者若已在歷史中審過，跳過通知（自動代簽由 ProcessReviewAsync 處理）
+            var approvedIds = await GetApprovedReviewerIdsAsync(applicationType, applicationId);
+            if (approvedIds.Contains(reviewerId))
+            {
+                logger.LogInformation("特定審核者已於先前步驟審核，跳過通知：UserId={UserId}（{AppType} #{Id}）",
+                    reviewerId, applicationType, applicationId);
+                return;
+            }
+
             var reviewer  = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == reviewerId);
             var applicant = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == applicantId);
             if (reviewer is null || string.IsNullOrEmpty(reviewer.Email)) return;
@@ -505,6 +529,31 @@ public sealed class ApprovalNotificationService(
     }
 
     // ── 取得申請摘要 ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// 取得此申請「最近一次 returned 之後」所有 approved 的審核者 Id。
+    /// 用於排除已審者重複通知（與 ApprovalFlowService.GetApprovedReviewerIdsAsync 一致）。
+    /// </summary>
+    private async Task<HashSet<Guid>> GetApprovedReviewerIdsAsync(string applicationType, int applicationId)
+    {
+        var lastReturnedAt = await db.ApprovalRecords.AsNoTracking()
+            .Where(r => r.ApplicationType == applicationType
+                     && r.ApplicationId == applicationId
+                     && r.Action == "returned")
+            .MaxAsync(r => (DateTime?)r.ReviewedAt) ?? DateTime.MinValue;
+
+        var ids = await db.ApprovalRecords.AsNoTracking()
+            .Where(r => r.ApplicationType == applicationType
+                     && r.ApplicationId == applicationId
+                     && r.Action == "approved"
+                     && r.ReviewedById != null
+                     && r.ReviewedAt > lastReturnedAt)
+            .Select(r => r.ReviewedById!.Value)
+            .Distinct()
+            .ToListAsync();
+
+        return [.. ids];
+    }
 
     private async Task<string> GetSummaryAsync(string applicationType, int applicationId)
     {

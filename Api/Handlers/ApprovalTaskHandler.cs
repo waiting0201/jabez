@@ -577,6 +577,27 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         // Superadmin 可審核任何步驟
         if (reviewer.IsSuperAdmin) return;
 
+        // 跨步驟同人去重防呆：若該 reviewer 已於本申請（最近一次 returned 之後）approved 過任一 step，
+        // 不允許再次審核（避免被通知到尚未跳過的 step、或 stale UI、或 race condition 造成重複審核）。
+        if (applicationType is not null && applicationId.HasValue)
+        {
+            var lastReturnedAt = await db.ApprovalRecords.AsNoTracking()
+                .Where(r => r.ApplicationType == applicationType
+                         && r.ApplicationId == applicationId.Value
+                         && r.Action == "returned")
+                .MaxAsync(r => (DateTime?)r.ReviewedAt) ?? DateTime.MinValue;
+
+            bool alreadyApproved = await db.ApprovalRecords.AsNoTracking()
+                .AnyAsync(r => r.ApplicationType == applicationType
+                            && r.ApplicationId == applicationId.Value
+                            && r.Action == "approved"
+                            && r.ReviewedById == reviewer.Id
+                            && r.ReviewedAt > lastReturnedAt);
+
+            if (alreadyApproved)
+                throw AppException.BadRequest("您已在先前步驟核准過此申請，不需重複審核。");
+        }
+
         var step = await db.ApprovalSteps
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.ApprovalItemId == approvalItemId && s.StepOrder == currentStepOrder);
@@ -726,31 +747,62 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     currentDesignated.Comment    = reviewNote?.Trim();
                 }
 
-                // 檢查是否還有下一位指定審核者（StepOrder 比當前更大且狀態仍為 pending）
+                // 取得歷史已審者集合（含當下 reviewer），用於自動代簽判斷
+                var approvedIdsForDesignated = await approvalFlow
+                    .GetApprovedReviewerIdsAsync(applicationType, applicationId);
+                approvedIdsForDesignated.Add(reviewerId);
+
+                // 跨步驟同人去重：下一位 designee 若已於先前步驟核准過 → 自動代簽，繼續找下一位。
                 // 注意：不能直接過濾 Status == "pending" 來找「比當前更大」的記錄，
                 // 因為 currentDesignated.Status 已在記憶體中更新為 "approved"，
                 // 但尚未 SaveChanges，資料庫中仍為 "pending"。
                 // 以 StepOrder > currentDesignated.StepOrder 避免誤查回同一筆記錄。
                 int currentStepOrderDR = currentDesignated?.StepOrder ?? -1;
-                var nextDesignated = await db.RequestDesignatedReviewers
-                    .AsNoTracking()
-                    .Where(r => r.RequestType == applicationType
-                             && r.RequestId == applicationId
-                             && r.Status == "pending"
-                             && r.StepOrder > currentStepOrderDR)
-                    .OrderBy(r => r.StepOrder)
-                    .FirstOrDefaultAsync();
 
-                if (nextDesignated is not null)
+                while (true)
                 {
-                    // 還有下一位指定審核者：保持 CurrentStepOrder 不變，通知下一位
+                    var nextDesignated = await db.RequestDesignatedReviewers
+                        .Where(r => r.RequestType == applicationType
+                                 && r.RequestId == applicationId
+                                 && r.Status == "pending"
+                                 && r.StepOrder > currentStepOrderDR)
+                        .OrderBy(r => r.StepOrder)
+                        .FirstOrDefaultAsync();
+
+                    if (nextDesignated is null)
+                        break; // 沒有下一位，跳出 → 推進到下一 ApprovalStep
+
+                    if (approvedIdsForDesignated.Contains(nextDesignated.ReviewerId))
+                    {
+                        // 自動代簽：標記 designee approved + 寫一筆代簽 ApprovalRecord
+                        nextDesignated.Status     = "approved";
+                        nextDesignated.ReviewedAt = Clock.Now;
+                        nextDesignated.Comment    = "已於先前步驟審核（自動核准）";
+
+                        db.ApprovalRecords.Add(new ApprovalRecord
+                        {
+                            ApplicationType  = applicationType,
+                            ApplicationId    = applicationId,
+                            StepOrder        = currentStepOrder,
+                            Action           = "approved",
+                            ReviewedById     = nextDesignated.ReviewerId,
+                            ReviewedAt       = Clock.Now,
+                            ReviewNote       = "自動核准：已於先前步驟審核",
+                            IsEscalated      = false,
+                        });
+
+                        currentStepOrderDR = nextDesignated.StepOrder;
+                        continue; // 找再下一位
+                    }
+
+                    // 下一位是新人 → 通知並結束
                     await db.SaveChangesAsync();
                     if (applicantId.HasValue)
                         await notifier.NotifySpecificReviewerAsync(applicationType, applicationId,
                             nextDesignated.ReviewerId, applicantId.Value, false);
                     return; // 不繼續後面的推進邏輯
                 }
-                // 所有指定審核者都 approved → 繼續原有推進到下一 ApprovalStep 的邏輯
+                // 所有指定審核者都 approved（含自動代簽）→ 繼續原有推進到下一 ApprovalStep 的邏輯
             }
 
             // action == "returned" 時的指定審核者處理在下方 else if 區塊
@@ -778,8 +830,57 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                         .Select(r => new DesignatedReviewerRequest(r.ReviewerId, r.StepOrder))
                         .ToListAsync();
 
-                    var (resolvedStep, allSkipped) = await approvalFlow
-                        .SkipUnreviewableStepsAsync(approvalItemId, applicantId.Value, nextStep, drList, reviewerId);
+                    // 取得歷史已審者集合（含當下 reviewer 與 designated while-loop 中已自動代簽者）
+                    // 注意：尚未 SaveChanges，但 ChangeTracker 中的 ApprovalRecord 還沒寫入 DB，
+                    // GetApprovedReviewerIdsAsync 是用 AsNoTracking 讀 DB，看不到尚未 save 的紀錄。
+                    // 因此手動把當前 ChangeTracker 中 Action='approved' 的 ReviewedById 加入集合。
+                    var approvedIds = await approvalFlow
+                        .GetApprovedReviewerIdsAsync(applicationType, applicationId);
+                    foreach (var pendingRec in db.ChangeTracker.Entries<ApprovalRecord>()
+                        .Where(e => e.State == EntityState.Added
+                                 && e.Entity.ApplicationType == applicationType
+                                 && e.Entity.ApplicationId == applicationId
+                                 && e.Entity.Action == "approved"
+                                 && e.Entity.ReviewedById.HasValue))
+                    {
+                        approvedIds.Add(pendingRec.Entity.ReviewedById!.Value);
+                    }
+
+                    var (resolvedStep, allSkipped, skippedSteps) = await approvalFlow
+                        .SkipUnreviewableStepsAsync(approvalItemId, applicantId.Value, nextStep, drList,
+                            approvedIds, applicationType, applicationId);
+
+                    // 對被自動跳過的 step 寫代簽 ApprovalRecord（PDF / 簽核時間軸需要）
+                    foreach (var skipped in skippedSteps)
+                    {
+                        db.ApprovalRecords.Add(new ApprovalRecord
+                        {
+                            ApplicationType = applicationType,
+                            ApplicationId   = applicationId,
+                            StepOrder       = skipped.StepOrder,
+                            Action          = "approved",
+                            ReviewedById    = skipped.ProxyApproverId,
+                            ReviewedAt      = Clock.Now,
+                            ReviewNote      = $"自動核准：已於先前步驟核准本申請",
+                            IsEscalated     = false,
+                        });
+
+                        // designated step 整步跳過時，把整個申請的 pending designee 都設為 approved
+                        if (skipped.IsApplicantDesignated)
+                        {
+                            var stepPendingDesignees = await db.RequestDesignatedReviewers
+                                .Where(r => r.RequestType == applicationType
+                                         && r.RequestId == applicationId
+                                         && r.Status == "pending")
+                                .ToListAsync();
+                            foreach (var d in stepPendingDesignees)
+                            {
+                                d.Status     = "approved";
+                                d.ReviewedAt = Clock.Now;
+                                d.Comment    = "已於先前步驟審核（自動核准）";
+                            }
+                        }
+                    }
 
                     if (allSkipped)
                     {
