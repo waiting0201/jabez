@@ -277,21 +277,30 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                     )
                 )
               )
-              -- 跨步驟同人去重（全歷史）：排除已於本申請（最近一次 returned 之後）核准過任一 step 的審核者
-              -- 避免使用者看到「已自動代簽 / 待跳過」的殘留待審項目
-              AND NOT EXISTS (
-                SELECT 1 FROM ApprovalRecords arDup
-                WHERE arDup.ApplicationType = '{appType}'
-                  AND arDup.ApplicationId = {alias}.Id
-                  AND arDup.ReviewedById = @ReviewerUserId
-                  AND arDup.Action = 'approved'
-                  AND arDup.ReviewedAt > ISNULL(
-                    (SELECT MAX(arRet.ReviewedAt) FROM ApprovalRecords arRet
-                     WHERE arRet.ApplicationType = '{appType}'
-                       AND arRet.ApplicationId = {alias}.Id
-                       AND arRet.Action = 'returned'),
-                    '0001-01-01'
-                  )
+              -- 跨步驟同人去重（限縮：總監 OR 相鄰 step）：僅排除「總監（JobTitle.Level=1）reviewer 已審」的殘留待審項目。
+              -- 非總監 reviewer 的「相鄰 step 同人」由後端 SkipUnreviewableStepsAsync 在進入 step 前自動跳過 + 寫代簽，根本不會出現在 pending 清單。
+              -- 非總監 reviewer 的「不相鄰 step 同人」不應被排除，需要該 reviewer 重新審核（這是新規則的設計核心）。
+              AND NOT (
+                EXISTS (
+                  SELECT 1 FROM JobTitles jtDup
+                  JOIN Users uDup ON uDup.JobTitleId = jtDup.Id
+                  WHERE uDup.Id = @ReviewerUserId
+                    AND jtDup.Level = 1
+                )
+                AND EXISTS (
+                  SELECT 1 FROM ApprovalRecords arDup
+                  WHERE arDup.ApplicationType = '{appType}'
+                    AND arDup.ApplicationId = {alias}.Id
+                    AND arDup.ReviewedById = @ReviewerUserId
+                    AND arDup.Action = 'approved'
+                    AND arDup.ReviewedAt > ISNULL(
+                      (SELECT MAX(arRet.ReviewedAt) FROM ApprovalRecords arRet
+                       WHERE arRet.ApplicationType = '{appType}'
+                         AND arRet.ApplicationId = {alias}.Id
+                         AND arRet.Action = 'returned'),
+                      '0001-01-01'
+                    )
+                )
               )
               """;
         }

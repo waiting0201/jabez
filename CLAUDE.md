@@ -966,44 +966,56 @@ draft → pending → approved / returned / rejected
 | `ApprovalTaskHandler.GetByIdAsync()` | 單筆查詢含存取控制 |
 | 前端各申請表單 | 動態新增/刪除/排序多位指定審核者 UI |
 
-### 跨步驟同人去重（全歷史）
+### 跨步驟同人去重（限縮：總監 OR 相鄰 step）
 
-任一申請進行中時，後續任意 step（不限相鄰）的解析審核者池在扣除「該申請已 approved 的所有 ReviewedById」後若為空，
-該步驟自動跳過。仍有剩餘成員則僅通知並授權剩餘成員。
+> **2026-05 規則限縮**：原本「全歷史」去重對所有審核者生效，過於激進；非總監若在跨多個 step 後再回到同一審核者，可能是流程設計需要分階段把關。新規則只對「總監 (`JobTitle.Level == 1`)」或「相鄰 step 同人」自動跳過 + 代簽，其餘場景要求重新審核。
 
-**統一自動代簽**：當某 step 因歷史去重而跳過時，**一律寫一筆代簽 `ApprovalRecord`**（含 `Action='approved' / ReviewedById=代簽人 / ReviewNote='自動核准：已於先前步驟核准本申請'`），讓 PDF 簽名欄、簽核時間軸能正確顯示已審者的簽名。代簽人選擇邏輯：取「step 池 ∩ 歷史已審者」交集後按 `ApprovalRecords.ReviewedAt` 升序取首位（最早審過此申請者）。
+任一申請進行中時，後續任意 step 的解析審核者池被「該申請已 approved 的所有 ReviewedById」完全覆蓋時，是否自動跳過 + 代簽，依下表判定：
 
-**指定審核步驟（`UseApplicantDesignated`）內部**：[ApprovalTaskHandler.cs](Api/Handlers/ApprovalTaskHandler.cs) `ProcessReviewAsync` 中以 `while` 迴圈推進 — 下一位 designee 若已於先前步驟核准 → 自動標記 `RequestDesignatedReviewer.Status='approved'` + `Comment='已於先前步驟審核（自動核准）'`，並寫一筆代簽 `ApprovalRecord`，繼續找再下一位；遇到沒在歷史中的 designee 才停下並通知。
+| 情境 | 行為 |
+|---|---|
+| 池中仍有未審者 | 通知未審者（仍排除已審總監） |
+| 池被覆蓋 + 代簽人 `JobTitle.Level == 1`（總監） | **跳過 + 寫代簽** |
+| 池被覆蓋 + 代簽人非總監 + 與「上一個有審核紀錄的 step」相鄰 | **跳過 + 寫代簽** |
+| 池被覆蓋 + 代簽人非總監 + 不相鄰 | **不跳過**，停在此 step（要求重審） |
+| 同一 designated step 內 multi-designee 同人 | **維持原樣，自動代簽**（同 step 內延續，視為「比相鄰更緊」，不論角色） |
 
-**外層整 step 跳過 designated**：當外層 `SkipUnreviewableStepsAsync` 偵測到某未抵達的 designated step 全部 designee 都已在歷史中 → 整步跳過，並把該申請所有 pending designee 都設為 approved（保持 `RequestDesignatedReviewers` 與 `ApprovalRecord` 狀態一致）。
+「相鄰」精確定義：以 `ApprovalSteps` 依 `StepOrder` 排序後的索引為準，當前 step 索引 == 上一審核 step 索引 + 1（避免稀疏 StepOrder 數值差距誤判）。連鎖跳過時，每跳過一步即更新「上一審核 step」為剛跳過者，下個 step 仍可能算相鄰。
+
+**統一自動代簽**：當某 step 因新規則跳過時，**一律寫一筆代簽 `ApprovalRecord`**（含 `Action='approved' / ReviewedById=代簽人 / ReviewNote='自動核准：已於先前步驟核准本申請'`），讓 PDF 簽名欄、簽核時間軸能正確顯示已審者的簽名。代簽人選擇邏輯：取「step 池 ∩ 歷史已審者」交集後按 `ApprovalRecords.ReviewedAt` 升序取首位（最早審過此申請者）。
+
+**指定審核步驟（`UseApplicantDesignated`）內部**：[ApprovalTaskHandler.cs](Api/Handlers/ApprovalTaskHandler.cs) `ProcessReviewAsync` 中以 `while` 迴圈推進 — 下一位 designee 若已於先前步驟核准 → 自動標記 `RequestDesignatedReviewer.Status='approved'` + `Comment='已於先前步驟審核（自動核准）'`，並寫一筆代簽 `ApprovalRecord`，繼續找再下一位；遇到沒在歷史中的 designee 才停下並通知。**此邏輯不受新規則限縮影響**（同 step 內延續）。
+
+**外層整 step 跳過 designated**：當外層 `SkipUnreviewableStepsAsync` 偵測到某未抵達的 designated step 全部 designee 都已在歷史中 → 依新規則判斷（總監 OR 相鄰）→ 整步跳過時，並把該申請所有 pending designee 都設為 approved（保持 `RequestDesignatedReviewers` 與 `ApprovalRecord` 狀態一致）。
 
 **所有剩餘步驟皆被自動代簽** → 申請自動核准 + 通知申請人。
 
-**AuthorizeStepAsync 防呆**：同一人嘗試重複 PATCH 審核同一申請 → 400「您已在先前步驟核准過此申請，不需重複審核」。
+**AuthorizeStepAsync 防呆**：限縮為「總監（`JobTitle.Level == 1`）reviewer 重複 PATCH」→ 400「您已在先前步驟核准過此申請，不需重複審核」。非總監允許重審（與新規則對齊）。
 
-**待審清單同步**：[PaymentRequestReadService.StepMatchClause](Api/Services/Dapper/PaymentRequestReadService.cs) pending tab 加 `NOT EXISTS ApprovalRecords` 子句（含「最近一次 returned」分隔線），避免使用者看到已被自動代簽的殘留待審項目。
+**待審清單同步**：[PaymentRequestReadService.StepMatchClause](Api/Services/Dapper/PaymentRequestReadService.cs) pending tab 的 `NOT EXISTS` 子句加上「reviewer 是 Level=1」條件，僅排除「總監已被自動代簽」的殘留待審項目。非總監若不滿足跳過條件 → 該 step 正常顯示在待審清單中。
 
 **代理審核**：以 `ReviewedById`（實際點按者）為去重依據，`OnBehalfOfUserId`（受代理人）不算已審。
 
 **退回重送 → 歷史清零**：以 `ApprovalRecords` 中最近一次 `Action='returned'` 的 `ReviewedAt` 當分隔線，僅計入該時點之後的 approved 紀錄。退回前審過的人重送後仍須再審。不需新增 schema、不影響稽核軌跡（紀錄全保留）。
 
-**升級審核排除**：[EscalationService.FindManagerInDepartmentAsync](Api/Services/EscalationService.cs) 接受 `excludeUserIds` 集合，跳過已在歷史中審過的主管，繼續往上層部門找。
+**升級審核排除**：[EscalationService.FindManagerInDepartmentAsync](Api/Services/EscalationService.cs) 的 `excludeUserIds` 語義改為「總監（Level=1）已審者」。實務上 escalation 鏈停在總監前，此調整理論上影響極小，但維持與 `SkipUnreviewableStepsAsync` 邏輯一致。
 
 **涉及元件：**
 | 元件 | 說明 |
 |---|---|
-| `IApprovalFlowService.GetApprovedReviewerIdsAsync` | 共用 helper：取最近一次 returned 之後的 approved ReviewedById HashSet |
-| `ApprovalFlowService.SkipUnreviewableStepsAsync` | 接受 `approvedReviewerIds` 集合 + `applicationType/Id`；回傳 `(nextStep, allSkipped, IReadOnlyList<SkippedStepInfo> skippedSteps)` |
+| `IApprovalFlowService.GetApprovedReviewerIdsAsync` | 共用 helper：取最近一次 returned 之後的 approved ReviewedById HashSet（全部 reviewers，不分 Level） |
+| `IApprovalFlowService.GetApprovedSupervisorIdsAsync` | **新增**：同上但只回「總監（Level=1）」的子集 — 條件 (A) 去重池 |
+| `ApprovalFlowService.SkipUnreviewableStepsAsync` | 新增 `supervisorIds` / `priorStepOrder` 兩個參數；內部 `adjacencyAnchorStepOrder` 連鎖跳過時更新 |
 | `SkippedStepInfo` record | `(StepOrder, ProxyApproverId, IsApplicantDesignated)` — 跨服務溝通跳過資訊 |
 | `ApprovalFlowService.ResolveReviewerPoolAsync` | 取代舊 `ResolveUniqueReviewerAsync`，回傳整個 reviewer 池 List<Guid>（最多 50 筆防呆） |
 | `ApprovalFlowService.PickEarliestProxyAsync` | 從池 ∩ 已審者中按 ApprovalRecords.ReviewedAt 升序取首位作代簽人 |
-| `ApprovalTaskHandler.ProcessReviewAsync` | designated while-loop 推進、ChangeTracker 抓尚未 SaveChanges 的代簽紀錄、外層 skippedSteps 寫 ApprovalRecord + 同步 RequestDesignatedReviewers |
-| `ApprovalTaskHandler.AuthorizeStepAsync` | 入口加歷史檢查，已審者 PATCH 回 400 |
-| `ApprovalNotificationService.GetApprovedReviewerIdsAsync` | 與 ApprovalFlowService 同邏輯的私用 helper |
-| `ApprovalNotificationService.NotifyReviewersAsync` | query 加 `.Where(u => !approvedIds.Contains(u.Id))`，designated 分支也排除 |
-| `ApprovalNotificationService.NotifySpecificReviewerAsync` | 入口檢查 reviewerId 是否在歷史中，是則 no-op |
-| `EscalationService` | `TryEscalateAsync / FindManagerInDepartmentAsync` 加 `excludeUserIds` 參數 |
-| `PaymentRequestReadService.StepMatchClause` | pending tab SQL 加 `NOT EXISTS ApprovalRecords` 子句 + returned 分隔線 |
+| `ApprovalTaskHandler.ProcessReviewAsync` | 呼叫 `SkipUnreviewableStepsAsync` 時額外傳 `supervisorIds`（含 ChangeTracker pending Level=1 reviewers）+ `priorStepOrder=currentStepOrder` |
+| `ApprovalTaskHandler.AuthorizeStepAsync` | 防呆限縮：先查 reviewer 的 JobTitle.Level，僅 Level=1 已審者 throw 400 |
+| `ApprovalNotificationService.GetApprovedReviewerIdsAsync` | 私用 helper，邏輯改為只回 Level=1 已審者（與 IApprovalFlowService.GetApprovedSupervisorIdsAsync 一致） |
+| `ApprovalNotificationService.NotifyReviewersAsync` | 排除集合改為「總監已審者」，相鄰跳過由 SkipUnreviewableStepsAsync 在進入該 step 前先處理 |
+| `ApprovalNotificationService.NotifySpecificReviewerAsync` | 入口檢查 reviewerId 是否在「總監已審者」集合中，是則 no-op |
+| `IEscalationService.TryEscalateAsync` | 文件更新：`excludeUserIds` 應為 supervisorIds（與 SkipUnreviewableStepsAsync 來源一致） |
+| `PaymentRequestReadService.StepMatchClause` | `NOT EXISTS` 子句改為 `NOT (EXISTS Level=1 AND EXISTS ApprovalRecords...)` — 僅排除總監殘留 |
 
 ---
 

@@ -531,8 +531,10 @@ public sealed class ApprovalNotificationService(
     // ── 取得申請摘要 ──────────────────────────────────────────────────────────
 
     /// <summary>
-    /// 取得此申請「最近一次 returned 之後」所有 approved 的審核者 Id。
-    /// 用於排除已審者重複通知（與 ApprovalFlowService.GetApprovedReviewerIdsAsync 一致）。
+    /// 取得此申請「最近一次 returned 之後」所有 approved 且為「總監（JobTitle.Level=1）」的審核者 Id。
+    /// 用於排除已審者重複通知（與 ApprovalFlowService.GetApprovedSupervisorIdsAsync 一致）。
+    /// 註：同人去重新規則限縮為「總監 OR 相鄰 step」；通知時無相鄰判斷上下文，僅排除總監。
+    /// 「相鄰 step 同人」會在 SkipUnreviewableStepsAsync 進入該 step 前就被自動跳過，根本不會觸發通知。
     /// </summary>
     private async Task<HashSet<Guid>> GetApprovedReviewerIdsAsync(string applicationType, int applicationId)
     {
@@ -542,15 +544,18 @@ public sealed class ApprovalNotificationService(
                      && r.Action == "returned")
             .MaxAsync(r => (DateTime?)r.ReviewedAt) ?? DateTime.MinValue;
 
-        var ids = await db.ApprovalRecords.AsNoTracking()
-            .Where(r => r.ApplicationType == applicationType
-                     && r.ApplicationId == applicationId
-                     && r.Action == "approved"
-                     && r.ReviewedById != null
-                     && r.ReviewedAt > lastReturnedAt)
-            .Select(r => r.ReviewedById!.Value)
-            .Distinct()
-            .ToListAsync();
+        var ids = await (from r in db.ApprovalRecords.AsNoTracking()
+                         join u in db.Users.AsNoTracking() on r.ReviewedById equals u.Id
+                         join j in db.JobTitles.AsNoTracking() on u.JobTitleId equals j.Id
+                         where r.ApplicationType == applicationType
+                            && r.ApplicationId == applicationId
+                            && r.Action == "approved"
+                            && r.ReviewedById != null
+                            && r.ReviewedAt > lastReturnedAt
+                            && j.Level == 1
+                         select r.ReviewedById!.Value)
+                        .Distinct()
+                        .ToListAsync();
 
         return [.. ids];
     }

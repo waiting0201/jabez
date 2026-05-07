@@ -183,12 +183,41 @@ public sealed class ApprovalFlowService(
     }
 
     /// <inheritdoc />
+    public async Task<HashSet<Guid>> GetApprovedSupervisorIdsAsync(
+        string applicationType, int applicationId)
+    {
+        var lastReturnedAt = await db.ApprovalRecords.AsNoTracking()
+            .Where(r => r.ApplicationType == applicationType
+                     && r.ApplicationId == applicationId
+                     && r.Action == "returned")
+            .MaxAsync(r => (DateTime?)r.ReviewedAt) ?? DateTime.MinValue;
+
+        // 已 approved 的 reviewerId join Users + JobTitles 過濾 Level=1
+        var ids = await (from r in db.ApprovalRecords.AsNoTracking()
+                         join u in db.Users.AsNoTracking() on r.ReviewedById equals u.Id
+                         join j in db.JobTitles.AsNoTracking() on u.JobTitleId equals j.Id
+                         where r.ApplicationType == applicationType
+                            && r.ApplicationId == applicationId
+                            && r.Action == "approved"
+                            && r.ReviewedById != null
+                            && r.ReviewedAt > lastReturnedAt
+                            && j.Level == 1
+                         select r.ReviewedById!.Value)
+                        .Distinct()
+                        .ToListAsync();
+
+        return [.. ids];
+    }
+
+    /// <inheritdoc />
     public async Task<(int nextStep, bool allSkipped, IReadOnlyList<SkippedStepInfo> skippedSteps)>
         SkipUnreviewableStepsAsync(int? approvalItemId, Guid applicantId, int fromStepOrder,
             IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers = null,
             IReadOnlySet<Guid>? approvedReviewerIds = null,
             string? applicationType = null,
-            int? applicationId = null)
+            int? applicationId = null,
+            IReadOnlySet<Guid>? supervisorIds = null,
+            int? priorStepOrder = null)
     {
         var emptySkipped = Array.Empty<SkippedStepInfo>();
 
@@ -215,6 +244,11 @@ public sealed class ApprovalFlowService(
 
         var skipped = new List<SkippedStepInfo>();
 
+        // ── 相鄰判斷準備：以 ordered StepOrder 索引判定，避免稀疏 StepOrder 數值差距誤判 ──
+        var orderedStepOrders = steps.Select(s => s.StepOrder).OrderBy(x => x).ToList();
+        // adjacencyAnchorStepOrder = 上一個有審核紀錄（含代簽）的 StepOrder；連鎖跳過時會更新
+        int? adjacencyAnchorStepOrder = priorStepOrder;
+
         foreach (var step in remainingSteps)
         {
             // ── 第一階段：判斷該步驟是否「找不到審核者」 ──
@@ -240,8 +274,9 @@ public sealed class ApprovalFlowService(
             if (!hasReviewer)
                 continue; // 找不到審核者 → 跳過（不寫代簽，因為池本來就空）
 
-            // ── 第二階段：跨步驟同人去重（全歷史） ──
-            // 若 approvedReviewerIds 提供，解析池後扣掉歷史已審者；池被完全覆蓋 → 跳過 + 標記代簽人。
+            // ── 第二階段：跨步驟同人去重（限縮：總監 OR 相鄰 step 同人） ──
+            // 若 approvedReviewerIds 提供，解析池後檢查是否被完全覆蓋；
+            // 池被覆蓋且滿足 (A) 代簽人為總監（Level=1） 或 (B) 與上一審核 step 相鄰 → 跳過 + 標記代簽人。
             if (approvedReviewerIds is not null && approvedReviewerIds.Count > 0)
             {
                 int directSupervisorRank = steps.Count(s => s.UseDirectSupervisor && s.StepOrder < step.StepOrder);
@@ -250,18 +285,32 @@ public sealed class ApprovalFlowService(
 
                 if (pool.Count > 0 && pool.All(id => approvedReviewerIds.Contains(id)))
                 {
-                    // 池中所有人皆已審 → 整 step 跳過，挑「池 ∩ 歷史已審者中最早審過此申請者」作為代簽人
+                    // 池中所有人皆已審 → 挑「池 ∩ 歷史已審者中最早審過此申請者」作為代簽人
                     var proxyId = await PickEarliestProxyAsync(
                         pool, applicationType, applicationId);
                     if (proxyId.HasValue)
                     {
-                        skipped.Add(new SkippedStepInfo(step.StepOrder, proxyId.Value, step.UseApplicantDesignated));
-                        continue;
+                        bool proxyIsSupervisor = supervisorIds is not null && supervisorIds.Contains(proxyId.Value);
+
+                        bool isAdjacent = false;
+                        if (adjacencyAnchorStepOrder.HasValue)
+                        {
+                            int anchorIdx = orderedStepOrders.IndexOf(adjacencyAnchorStepOrder.Value);
+                            int curIdx    = orderedStepOrders.IndexOf(step.StepOrder);
+                            isAdjacent    = anchorIdx >= 0 && curIdx == anchorIdx + 1;
+                        }
+
+                        if (proxyIsSupervisor || isAdjacent)
+                        {
+                            skipped.Add(new SkippedStepInfo(step.StepOrder, proxyId.Value, step.UseApplicantDesignated));
+                            adjacencyAnchorStepOrder = step.StepOrder; // 連鎖：下一 step 仍可能與此相鄰
+                            continue;
+                        }
                     }
                 }
             }
 
-            return (step.StepOrder, false, skipped); // 停在這步
+            return (step.StepOrder, false, skipped); // 停在這步（含「池被覆蓋但非總監且不相鄰 → 要求重審」）
         }
 
         // 所有剩餘步驟都跳過

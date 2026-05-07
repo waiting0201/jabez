@@ -26,17 +26,23 @@ public interface IApprovalFlowService
             IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers = null);
 
     /// <summary>
-    /// 從指定步驟開始，跳過所有找不到審核者或「審核者池已被歷史已審者完全覆蓋」的步驟。
-    /// 跨步驟同人去重（全歷史）：若某 step 的解析審核者池在扣除 approvedReviewerIds 後為空，
-    /// 該 step 自動跳過，並由呼叫端對該 step 寫一筆代簽 ApprovalRecord（代簽人取池中最早審過此申請者）。
+    /// 從指定步驟開始，跳過所有找不到審核者或「應自動跳過」的步驟。
+    /// 自動跳過條件（任一成立）：
+    ///   (A) 解析後的審核者池被 approvedReviewerIds 完全覆蓋，且代簽人為「總監」（JobTitle.Level == 1）
+    ///   (B) 池被覆蓋且當前 step 與 priorStepOrder（連鎖跳過時會更新）相鄰（中間沒夾任何 ApprovalStep）
+    /// 跳過時由呼叫端對該 step 寫一筆代簽 ApprovalRecord（代簽人取池中最早審過此申請者）。
     /// 回傳：下一個有效步驟、是否全部跳過、被跳過的步驟清單（含代簽人 + 是否為 UseApplicantDesignated）。
     /// </summary>
+    /// <param name="supervisorIds">「總監（Level=1）」歷史已審者集合；用於條件 (A)。可為 null。</param>
+    /// <param name="priorStepOrder">上一個有審核紀錄的 step；用於條件 (B) 相鄰判定。連鎖跳過時內部會自動更新。可為 null。</param>
     Task<(int nextStep, bool allSkipped, IReadOnlyList<SkippedStepInfo> skippedSteps)>
         SkipUnreviewableStepsAsync(int? approvalItemId, Guid applicantId, int fromStepOrder,
             IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers = null,
             IReadOnlySet<Guid>? approvedReviewerIds = null,
             string? applicationType = null,
-            int? applicationId = null);
+            int? applicationId = null,
+            IReadOnlySet<Guid>? supervisorIds = null,
+            int? priorStepOrder = null);
 
     /// <summary>
     /// 取得此申請「最近一次 returned 之後」所有 approved 的審核者 Id（去重 HashSet）。
@@ -44,6 +50,12 @@ public interface IApprovalFlowService
     /// 從未被退回 → 等同全歷史。
     /// </summary>
     Task<HashSet<Guid>> GetApprovedReviewerIdsAsync(string applicationType, int applicationId);
+
+    /// <summary>
+    /// 取得此申請「最近一次 returned 之後」所有 approved 且職稱為「總監（JobTitle.Level == 1）」的審核者 Id。
+    /// 用於同人去重新規則的條件 (A)：總監一旦審過，後續所有步驟皆自動跳過 + 代簽。
+    /// </summary>
+    Task<HashSet<Guid>> GetApprovedSupervisorIdsAsync(string applicationType, int applicationId);
 }
 
 /// <summary>

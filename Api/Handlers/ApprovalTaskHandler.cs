@@ -577,8 +577,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         // Superadmin 可審核任何步驟
         if (reviewer.IsSuperAdmin) return;
 
-        // 跨步驟同人去重防呆：若該 reviewer 已於本申請（最近一次 returned 之後）approved 過任一 step，
-        // 不允許再次審核（避免被通知到尚未跳過的 step、或 stale UI、或 race condition 造成重複審核）。
+        // 跨步驟同人去重防呆（限縮版）：僅當 reviewer 為「總監（JobTitle.Level=1）」時，
+        // 已審過則不允許再次審核（總監絕不重審，留一道兜底）。非總監放寬以對齊 SkipUnreviewableStepsAsync 的限縮邏輯。
         if (applicationType is not null && applicationId.HasValue)
         {
             var lastReturnedAt = await db.ApprovalRecords.AsNoTracking()
@@ -595,7 +595,16 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                             && r.ReviewedAt > lastReturnedAt);
 
             if (alreadyApproved)
-                throw AppException.BadRequest("您已在先前步驟核准過此申請，不需重複審核。");
+            {
+                var reviewerLevel = await db.JobTitles.AsNoTracking()
+                    .Where(j => j.Id == reviewer.JobTitleId)
+                    .Select(j => (int?)j.Level)
+                    .FirstOrDefaultAsync();
+                if (reviewerLevel == 1)
+                    throw AppException.BadRequest("您已在先前步驟核准過此申請，不需重複審核。");
+                // 非總監：允許重審（依新規則只有「總監 OR 相鄰 step 同人」才會被自動跳過；
+                // 跳過邏輯在 ProcessReviewAsync 推進時處理，此處只防總監二度審）
+            }
         }
 
         var step = await db.ApprovalSteps
@@ -836,19 +845,36 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     // 因此手動把當前 ChangeTracker 中 Action='approved' 的 ReviewedById 加入集合。
                     var approvedIds = await approvalFlow
                         .GetApprovedReviewerIdsAsync(applicationType, applicationId);
-                    foreach (var pendingRec in db.ChangeTracker.Entries<ApprovalRecord>()
+                    var pendingApprovedIds = db.ChangeTracker.Entries<ApprovalRecord>()
                         .Where(e => e.State == EntityState.Added
                                  && e.Entity.ApplicationType == applicationType
                                  && e.Entity.ApplicationId == applicationId
                                  && e.Entity.Action == "approved"
-                                 && e.Entity.ReviewedById.HasValue))
+                                 && e.Entity.ReviewedById.HasValue)
+                        .Select(e => e.Entity.ReviewedById!.Value)
+                        .ToHashSet();
+                    foreach (var id in pendingApprovedIds)
+                        approvedIds.Add(id);
+
+                    // 同人去重新規則：取「總監（JobTitle.Level=1）」歷史已審者集合 + ChangeTracker 中尚未 save 但已是總監的代簽人
+                    var supervisorIds = await approvalFlow
+                        .GetApprovedSupervisorIdsAsync(applicationType, applicationId);
+                    if (pendingApprovedIds.Count > 0)
                     {
-                        approvedIds.Add(pendingRec.Entity.ReviewedById!.Value);
+                        var pendingSupervisorIds = await db.Users.AsNoTracking()
+                            .Where(u => pendingApprovedIds.Contains(u.Id)
+                                     && u.JobTitle != null
+                                     && u.JobTitle.Level == 1)
+                            .Select(u => u.Id)
+                            .ToListAsync();
+                        foreach (var id in pendingSupervisorIds)
+                            supervisorIds.Add(id);
                     }
 
                     var (resolvedStep, allSkipped, skippedSteps) = await approvalFlow
                         .SkipUnreviewableStepsAsync(approvalItemId, applicantId.Value, nextStep, drList,
-                            approvedIds, applicationType, applicationId);
+                            approvedIds, applicationType, applicationId,
+                            supervisorIds: supervisorIds, priorStepOrder: currentStepOrder);
 
                     // 對被自動跳過的 step 寫代簽 ApprovalRecord（PDF / 簽核時間軸需要）
                     foreach (var skipped in skippedSteps)
