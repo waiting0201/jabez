@@ -2,6 +2,8 @@ import {Component, computed, inject, signal, OnInit, OnDestroy, ChangeDetectionS
 import {DatePipe, DecimalPipe} from '@angular/common';
 import {AuthService} from '@core/auth/services/auth.service';
 import {AttendanceService} from '../../services/attendance.service';
+import {LineQuotaService} from '../../services/line-quota.service';
+import {LineQuota} from '../../models/line-quota.model';
 import {OvertimeRequestService} from '@features/admin/overtime-requests/services/overtime-request.service';
 import {OvertimeRequest} from '@features/admin/overtime-requests/models/overtime-request.model';
 import {TodayAttendance, ClockActionType, ActiveLeave} from '../../models/attendance.model';
@@ -27,6 +29,7 @@ export class Dashboard implements OnInit, OnDestroy {
   private auth = inject(AuthService);
   private attendanceService = inject(AttendanceService);
   private overtimeService = inject(OvertimeRequestService);
+  private lineQuotaService = inject(LineQuotaService);
 
   private timerId: ReturnType<typeof setInterval> | null = null;
 
@@ -54,6 +57,14 @@ export class Dashboard implements OnInit, OnDestroy {
 
   /** Toast message */
   toast = signal<{message: string; type: 'success' | 'warning' | 'error'} | null>(null);
+
+  /** LINE 推播用量（needs line-quota:read permission to load） */
+  lineQuota = signal<LineQuota | null>(null);
+  /** 用量查詢失敗（LINE API 不可用 / Token 無效），給卡片顯示提示用 */
+  lineQuotaFailed = signal(false);
+
+  /** 是否有權限看 LINE 用量卡片（line-quota:read 或 superadmin） */
+  canViewLineQuota = computed(() => this.auth.hasPermission('line-quota:read'));
 
   /** User display name */
   userName = computed(() => this.auth.currentUser()?.name ?? '使用者');
@@ -112,6 +123,21 @@ export class Dashboard implements OnInit, OnDestroy {
     return !!r?.overtimeStartTime && !r?.overtimeEndTime && !this.loading();
   });
 
+  /** 用量百分比（type=limited 才有意義；夾在 0~100 避免極端值衝破進度條） */
+  usagePercent = computed<number>(() => {
+    const q = this.lineQuota();
+    if (!q || q.type !== 'limited' || !q.limit) return 0;
+    return Math.min(100, Math.round((q.used / q.limit) * 100));
+  });
+
+  /** 進度條色塊：< 70% 綠，70~89% 黃，≥ 90% 紅 */
+  quotaWarningClass = computed<string>(() => {
+    const p = this.usagePercent();
+    if (p >= 90) return 'bg-danger';
+    if (p >= 70) return 'bg-warning';
+    return 'bg-success';
+  });
+
   leaveTypeLabel(type: string): string {
     return LEAVE_TYPE_LABELS[type] ?? type;
   }
@@ -128,6 +154,14 @@ export class Dashboard implements OnInit, OnDestroy {
       this.approvedRequests.set(list);
       if (list.length > 0) this.selectedOvertimeId.set(list[0].id);
     });
+
+    // 有權限才呼叫，避免一般員工觸發 403（router 守門）
+    if (this.canViewLineQuota()) {
+      this.lineQuotaService.getQuota().subscribe({
+        next: q => this.lineQuota.set(q),
+        error: () => this.lineQuotaFailed.set(true),
+      });
+    }
   }
 
   ngOnDestroy() {

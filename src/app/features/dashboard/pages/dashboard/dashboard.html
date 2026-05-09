@@ -196,6 +196,56 @@
           }
         </div>
       </div>
+
+      <!-- LINE 推播用量（line-quota:read 或 superadmin 才顯示） -->
+      @if (canViewLineQuota()) {
+        <div class="card border-0 shadow-sm mt-4">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#message-circle"></use>
+            </svg>
+            LINE 推播用量
+          </div>
+          <div class="card-body">
+            @if (lineQuota(); as q) {
+              @if (q.type === 'limited') {
+                <div class="flex items-center justify-between mb-2">
+                  <span class="small text-muted">本月已使用</span>
+                  <span class="fw-600 font-monospace">{{ q.used | number }} / {{ q.limit | number }}</span>
+                </div>
+                <div class="progress mb-2" style="height: 8px">
+                  <div class="progress-bar" [class]="quotaWarningClass()"
+                       [style.width.%]="usagePercent()"></div>
+                </div>
+                <p class="small text-muted mb-3">剩餘 {{ q.remaining | number }} 則可發送（{{ usagePercent() }}% 已用）</p>
+              } @else {
+                <p class="small text-muted mb-3">此 LINE 帳號為無上限方案。</p>
+              }
+              <a href="https://manager.line.biz/" target="_blank" rel="noopener"
+                 class="btn btn-outline-primary btn-sm w-100 flex items-center justify-center gap-2">
+                <svg class="sa-icon" style="stroke: currentColor">
+                  <use href="/assets/icons/sprite.svg#external-link"></use>
+                </svg>
+                前往 LINE 官方帳號管理 / 補額度
+              </a>
+            } @else if (lineQuotaFailed()) {
+              <div class="flex items-center gap-2 mb-3" style="color: var(--yellow)">
+                <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                <span class="small fw-500">無法取得用量（Token 失效或 LINE 暫時不可用）</span>
+              </div>
+              <a href="https://manager.line.biz/" target="_blank" rel="noopener"
+                 class="btn btn-outline-primary btn-sm w-100 flex items-center justify-center gap-2">
+                <svg class="sa-icon" style="stroke: currentColor">
+                  <use href="/assets/icons/sprite.svg#external-link"></use>
+                </svg>
+                前往 LINE 官方帳號管理
+              </a>
+            } @else {
+              <p class="small text-muted mb-0">載入中…</p>
+            }
+          </div>
+        </div>
+      }
     </div>
   </div>
 

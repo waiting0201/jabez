@@ -5876,7 +5876,7 @@ var routes = [
     children: [
       {
         path: "dashboard",
-        loadChildren: () => import("./chunk-V5LUZJ3O.js").then((m) => m.DASHBOARD_ROUTES)
+        loadChildren: () => import("./chunk-VXTWQIOF.js").then((m) => m.DASHBOARD_ROUTES)
       },
       {
         path: "admin",
