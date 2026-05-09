@@ -82,14 +82,12 @@
 
             <div class="row g-3 mb-4">
               <div class="col-12 col-md-6">
-                <label class="form-label fw-500">實收金額 <span class="text-danger">*</span></label>
+                <label class="form-label fw-500">實收金額</label>
                 <div class="input-group">
                   <span class="input-group-text">NT$</span>
-                  <input type="number" class="form-control" formControlName="receivedAmount" min="0">
+                  <div class="form-control bg-elevated">{{ computedReceivedAmount() | number:'1.0-0' }}</div>
                 </div>
-                @if (form.get('receivedAmount')?.invalid && form.get('receivedAmount')?.touched) {
-                  <div class="text-danger small mt-1">請輸入實收金額（不可為負數）。</div>
-                }
+                <div class="text-muted small mt-1">由下方付款明細的「入帳金額」自動加總。</div>
               </div>
               <div class="col-12 col-md-6">
                 <label class="form-label fw-500">契約金額 <span class="text-danger">*</span></label>
@@ -134,6 +132,20 @@
                   </div>
                 </div>
               }
+            </div>
+
+            <div class="row g-3 mb-4">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">剩餘金額</label>
+                <div class="input-group">
+                  <span class="input-group-text">NT$</span>
+                  <input type="number" class="form-control" formControlName="remainingAmount" min="0">
+                </div>
+                <div class="text-muted small mt-1">系統導入時的契約剩餘預算（選填，僅供舊有專案紀錄用）。</div>
+                @if (form.get('remainingAmount')?.invalid && form.get('remainingAmount')?.touched) {
+                  <div class="text-danger small mt-1">剩餘金額不可為負數。</div>
+                }
+              </div>
             </div>
 
             <div class="mb-0">

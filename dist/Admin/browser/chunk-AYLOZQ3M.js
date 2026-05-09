@@ -119,6 +119,7 @@ import {
   ElementRef,
   EventEmitter,
   HttpClient,
+  HttpParams,
   Injectable,
   Injector,
   Input,
@@ -167,7 +168,6 @@ import {
   ɵɵdefineInjectable,
   ɵɵdefineInjector,
   ɵɵdefineNgModule,
-  ɵɵdomElement,
   ɵɵdomElementContainerEnd,
   ɵɵdomElementContainerStart,
   ɵɵdomElementEnd,
@@ -11215,8 +11215,8 @@ function ProjectForm_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 6);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 50);
-    \u0275\u0275element(2, "use", 51);
+    \u0275\u0275elementStart(1, "svg", 52);
+    \u0275\u0275element(2, "use", 53);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3);
     \u0275\u0275elementEnd();
@@ -11268,23 +11268,16 @@ function ProjectForm_Conditional_61_Template(rf, ctx) {
     \u0275\u0275elementEnd();
   }
 }
-function ProjectForm_Conditional_76_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 20);
-    \u0275\u0275text(1, "\u8ACB\u8F38\u5165\u5BE6\u6536\u91D1\u984D\uFF08\u4E0D\u53EF\u70BA\u8CA0\u6578\uFF09\u3002");
-    \u0275\u0275elementEnd();
-  }
-}
-function ProjectForm_Conditional_86_Template(rf, ctx) {
+function ProjectForm_Conditional_87_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 20);
     \u0275\u0275text(1, "\u8ACB\u8F38\u5165\u5951\u7D04\u91D1\u984D\uFF08\u4E0D\u53EF\u70BA\u8CA0\u6578\uFF09\u3002");
     \u0275\u0275elementEnd();
   }
 }
-function ProjectForm_Conditional_91_Template(rf, ctx) {
+function ProjectForm_Conditional_92_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 33);
+    \u0275\u0275elementStart(0, "span", 34);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -11294,16 +11287,16 @@ function ProjectForm_Conditional_91_Template(rf, ctx) {
     \u0275\u0275textInterpolate1("\uFF08", ctx_r0.businessPercentage(), "%\uFF09");
   }
 }
-function ProjectForm_Conditional_98_Template(rf, ctx) {
+function ProjectForm_Conditional_99_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 20);
     \u0275\u0275text(1, "\u8ACB\u8F38\u5165\u696D\u52D9\u57F7\u884C\u91D1\u984D\uFF08\u4E0D\u53EF\u70BA\u8CA0\u6578\uFF09\u3002");
     \u0275\u0275elementEnd();
   }
 }
-function ProjectForm_Conditional_99_Conditional_3_Template(rf, ctx) {
+function ProjectForm_Conditional_100_Conditional_3_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 33);
+    \u0275\u0275elementStart(0, "span", 34);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -11313,16 +11306,16 @@ function ProjectForm_Conditional_99_Conditional_3_Template(rf, ctx) {
     \u0275\u0275textInterpolate1("\uFF08", ctx_r0.reservedPercentage(), "%\uFF09");
   }
 }
-function ProjectForm_Conditional_99_Template(rf, ctx) {
+function ProjectForm_Conditional_100_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 16)(1, "label", 17);
     \u0275\u0275text(2, " \u516C\u53F8\u4FDD\u7559\u91D1\u984D ");
-    \u0275\u0275conditionalCreate(3, ProjectForm_Conditional_99_Conditional_3_Template, 2, 1, "span", 33);
+    \u0275\u0275conditionalCreate(3, ProjectForm_Conditional_100_Conditional_3_Template, 2, 1, "span", 34);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(4, "div", 29)(5, "span", 30);
     \u0275\u0275text(6, "NT$");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "div", 52);
+    \u0275\u0275elementStart(7, "div", 31);
     \u0275\u0275text(8);
     \u0275\u0275pipe(9, "number");
     \u0275\u0275elementEnd()()();
@@ -11335,99 +11328,106 @@ function ProjectForm_Conditional_99_Template(rf, ctx) {
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(9, 2, ctx_r0.reservedAmount(), "1.0-0"));
   }
 }
-function ProjectForm_Conditional_106_Template(rf, ctx) {
+function ProjectForm_Conditional_111_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 20);
+    \u0275\u0275text(1, "\u5269\u9918\u91D1\u984D\u4E0D\u53EF\u70BA\u8CA0\u6578\u3002");
+    \u0275\u0275elementEnd();
+  }
+}
+function ProjectForm_Conditional_118_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 20);
     \u0275\u0275text(1, "\u8ACB\u8F38\u5165 Google Drive \u9023\u7D50\u3002");
     \u0275\u0275elementEnd();
   }
 }
-function ProjectForm_Conditional_135_Template(rf, ctx) {
+function ProjectForm_Conditional_147_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "th", 44);
+    \u0275\u0275element(0, "th", 46);
   }
 }
-function ProjectForm_For_138_Conditional_17_Template(rf, ctx) {
+function ProjectForm_For_150_Conditional_17_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0);
     \u0275\u0275pipe(1, "number");
   }
   if (rf & 2) {
-    const \u0275$index_280_r3 = \u0275\u0275nextContext().$index;
+    const \u0275$index_299_r3 = \u0275\u0275nextContext().$index;
     const ctx_r0 = \u0275\u0275nextContext();
-    \u0275\u0275textInterpolate1(" ", \u0275\u0275pipeBind2(1, 1, ctx_r0.deductionFor(\u0275$index_280_r3), "1.0-0"), " ");
+    \u0275\u0275textInterpolate1(" ", \u0275\u0275pipeBind2(1, 1, ctx_r0.deductionFor(\u0275$index_299_r3), "1.0-0"), " ");
   }
 }
-function ProjectForm_For_138_Conditional_18_Template(rf, ctx) {
+function ProjectForm_For_150_Conditional_18_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 62);
+    \u0275\u0275elementStart(0, "span", 63);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
 }
-function ProjectForm_For_138_Conditional_21_Template(rf, ctx) {
+function ProjectForm_For_150_Conditional_21_Template(rf, ctx) {
   if (rf & 1) {
     const _r4 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "td", 64)(1, "button", 65);
-    \u0275\u0275listener("click", function ProjectForm_For_138_Conditional_21_Template_button_click_1_listener() {
+    \u0275\u0275elementStart(0, "td", 65)(1, "button", 66);
+    \u0275\u0275listener("click", function ProjectForm_For_150_Conditional_21_Template_button_click_1_listener() {
       \u0275\u0275restoreView(_r4);
-      const \u0275$index_280_r3 = \u0275\u0275nextContext().$index;
+      const \u0275$index_299_r3 = \u0275\u0275nextContext().$index;
       const ctx_r0 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r0.removeSchedule(\u0275$index_280_r3));
+      return \u0275\u0275resetView(ctx_r0.removeSchedule(\u0275$index_299_r3));
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(2, "svg", 50);
-    \u0275\u0275element(3, "use", 66);
+    \u0275\u0275elementStart(2, "svg", 52);
+    \u0275\u0275element(3, "use", 67);
     \u0275\u0275elementEnd()()();
   }
 }
-function ProjectForm_For_138_Template(rf, ctx) {
+function ProjectForm_For_150_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr", 46)(1, "td", 53);
+    \u0275\u0275elementStart(0, "tr", 48)(1, "td", 54);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td", 54);
-    \u0275\u0275element(4, "input", 55);
+    \u0275\u0275elementStart(3, "td", 55);
+    \u0275\u0275element(4, "input", 56);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "td", 54);
-    \u0275\u0275element(6, "input", 56);
+    \u0275\u0275elementStart(5, "td", 55);
+    \u0275\u0275element(6, "input", 57);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "td", 54);
-    \u0275\u0275element(8, "input", 57);
+    \u0275\u0275elementStart(7, "td", 55);
+    \u0275\u0275element(8, "input", 58);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "td", 54);
-    \u0275\u0275element(10, "input", 58);
+    \u0275\u0275elementStart(9, "td", 55);
+    \u0275\u0275element(10, "input", 59);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(11, "td", 54);
-    \u0275\u0275element(12, "input", 59);
+    \u0275\u0275elementStart(11, "td", 55);
+    \u0275\u0275element(12, "input", 60);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(13, "td", 54);
-    \u0275\u0275element(14, "input", 60);
+    \u0275\u0275elementStart(13, "td", 55);
+    \u0275\u0275element(14, "input", 61);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "td", 54)(16, "div", 61);
-    \u0275\u0275conditionalCreate(17, ProjectForm_For_138_Conditional_17_Template, 2, 4)(18, ProjectForm_For_138_Conditional_18_Template, 2, 0, "span", 62);
+    \u0275\u0275elementStart(15, "td", 55)(16, "div", 62);
+    \u0275\u0275conditionalCreate(17, ProjectForm_For_150_Conditional_17_Template, 2, 4)(18, ProjectForm_For_150_Conditional_18_Template, 2, 0, "span", 63);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(19, "td", 54);
-    \u0275\u0275element(20, "input", 63);
+    \u0275\u0275elementStart(19, "td", 55);
+    \u0275\u0275element(20, "input", 64);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(21, ProjectForm_For_138_Conditional_21_Template, 4, 0, "td", 64);
+    \u0275\u0275conditionalCreate(21, ProjectForm_For_150_Conditional_21_Template, 4, 0, "td", 65);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const \u0275$index_280_r3 = ctx.$index;
+    const \u0275$index_299_r3 = ctx.$index;
     const ctx_r0 = \u0275\u0275nextContext();
-    \u0275\u0275property("formGroupName", \u0275$index_280_r3);
+    \u0275\u0275property("formGroupName", \u0275$index_299_r3);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(\u0275$index_280_r3 + 1);
+    \u0275\u0275textInterpolate(\u0275$index_299_r3 + 1);
     \u0275\u0275advance(15);
-    \u0275\u0275conditional(ctx_r0.deductionFor(\u0275$index_280_r3) !== null ? 17 : 18);
+    \u0275\u0275conditional(ctx_r0.deductionFor(\u0275$index_299_r3) !== null ? 17 : 18);
     \u0275\u0275advance(4);
     \u0275\u0275conditional(!ctx_r0.isReadOnly ? 21 : -1);
   }
 }
-function ProjectForm_ForEmpty_139_Template(rf, ctx) {
+function ProjectForm_ForEmpty_151_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 67);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 68);
     \u0275\u0275text(2, "\u5C1A\u672A\u65B0\u589E\u671F\u5225");
     \u0275\u0275elementEnd()();
   }
@@ -11437,36 +11437,36 @@ function ProjectForm_ForEmpty_139_Template(rf, ctx) {
     \u0275\u0275attribute("colspan", ctx_r0.isReadOnly ? 9 : 10);
   }
 }
-function ProjectForm_Conditional_140_Template(rf, ctx) {
+function ProjectForm_Conditional_152_Template(rf, ctx) {
   if (rf & 1) {
     const _r5 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 68);
-    \u0275\u0275listener("click", function ProjectForm_Conditional_140_Template_button_click_0_listener() {
+    \u0275\u0275elementStart(0, "button", 69);
+    \u0275\u0275listener("click", function ProjectForm_Conditional_152_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r5);
       const ctx_r0 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r0.addSchedule());
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 50);
-    \u0275\u0275element(2, "use", 69);
+    \u0275\u0275elementStart(1, "svg", 52);
+    \u0275\u0275element(2, "use", 70);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3, " \u65B0\u589E\u4E00\u671F ");
     \u0275\u0275elementEnd();
   }
 }
-function ProjectForm_Conditional_141_Template(rf, ctx) {
+function ProjectForm_Conditional_153_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 48)(1, "a", 70);
+    \u0275\u0275elementStart(0, "div", 50)(1, "a", 71);
     \u0275\u0275text(2, "\u8FD4\u56DE\u5217\u8868");
     \u0275\u0275elementEnd()();
   }
 }
-function ProjectForm_Conditional_142_Template(rf, ctx) {
+function ProjectForm_Conditional_154_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 49)(1, "button", 71);
+    \u0275\u0275elementStart(0, "div", 51)(1, "button", 72);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "a", 70);
+    \u0275\u0275elementStart(3, "a", 71);
     \u0275\u0275text(4, "\u53D6\u6D88");
     \u0275\u0275elementEnd()();
   }
@@ -11497,6 +11497,8 @@ var ProjectForm = class _ProjectForm {
   businessPercentage = signal(null, ...ngDevMode ? [{ debugName: "businessPercentage" }] : []);
   reservedAmount = signal(null, ...ngDevMode ? [{ debugName: "reservedAmount" }] : []);
   reservedPercentage = signal(null, ...ngDevMode ? [{ debugName: "reservedPercentage" }] : []);
+  /** 實收金額（自動計算：SUM(schedules.depositAmount)） */
+  computedReceivedAmount = signal(0, ...ngDevMode ? [{ debugName: "computedReceivedAmount" }] : []);
   form = this.fb.group({
     code: ["", Validators.required],
     name: ["", Validators.required],
@@ -11504,9 +11506,9 @@ var ProjectForm = class _ProjectForm {
     startDate: ["", Validators.required],
     endDate: [""],
     departmentId: [{ value: null, disabled: true }, Validators.required],
-    receivedAmount: [null, [Validators.required, Validators.min(0)]],
     contractAmount: [null, [Validators.required, Validators.min(0)]],
     businessAmount: [null, [Validators.required, Validators.min(0)]],
+    remainingAmount: [null, [Validators.min(0)]],
     googleDriveUrl: ["", Validators.required],
     schedules: this.fb.array([])
   });
@@ -11541,6 +11543,7 @@ var ProjectForm = class _ProjectForm {
     this.form.get("businessAmount").valueChanges.subscribe(() => {
       this.updateBusinessPercentage();
     });
+    this.schedulesArray.valueChanges.subscribe(() => this.recomputeReceivedAmount());
     const id = this.route.snapshot.paramMap.get("id");
     if (id) {
       this.isEdit = true;
@@ -11558,14 +11561,15 @@ var ProjectForm = class _ProjectForm {
             startDate: p.startDate ? p.startDate.substring(0, 10) : "",
             endDate: p.endDate ? p.endDate.substring(0, 10) : "",
             departmentId: p.departmentId ?? null,
-            receivedAmount: p.receivedAmount ?? null,
             contractAmount: p.contractAmount ?? null,
             businessAmount: p.businessAmount ?? null,
+            remainingAmount: p.remainingAmount ?? null,
             googleDriveUrl: p.googleDriveUrl ?? ""
           });
           this.schedulesArray.clear();
           const schedules = [...p.paymentSchedules ?? []].sort((a, b) => a.periodNo - b.periodNo);
           schedules.forEach((s) => this.schedulesArray.push(this.buildScheduleGroup(s)));
+          this.recomputeReceivedAmount();
           if (this.isReadOnly)
             this.form.disable();
           this.cdr.markForCheck();
@@ -11629,6 +11633,13 @@ var ProjectForm = class _ProjectForm {
       this.reservedPercentage.set(null);
     }
   }
+  recomputeReceivedAmount() {
+    const total = this.scheduleControls.reduce((sum, g) => {
+      const v = this.toNumberOrNull(g.get("depositAmount").value);
+      return sum + (v ?? 0);
+    }, 0);
+    this.computedReceivedAmount.set(total);
+  }
   submit() {
     if (this.form.invalid || this.isReadOnly)
       return;
@@ -11659,9 +11670,9 @@ var ProjectForm = class _ProjectForm {
       endDate: v.endDate || void 0,
       departmentId: v.departmentId,
       departmentName: dept?.name,
-      receivedAmount: v.receivedAmount ?? void 0,
       contractAmount: v.contractAmount ?? void 0,
       businessAmount: v.businessAmount ?? void 0,
+      remainingAmount: v.remainingAmount ?? void 0,
       googleDriveUrl: v.googleDriveUrl || void 0,
       paymentSchedules: schedules
     };
@@ -11683,7 +11694,7 @@ var ProjectForm = class _ProjectForm {
   static \u0275fac = function ProjectForm_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _ProjectForm)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ProjectForm, selectors: [["app-project-form"]], decls: 143, vars: 19, consts: [[1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6"], ["routerLink", "/admin/projects", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "mb-0"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [3, "ngSubmit", "formGroup"], [1, "row", "g-4"], [1, "col-12", "col-lg-10", "col-xl-8"], [1, "card", "border-0", "shadow-sm"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#folder"], [1, "card-body"], [1, "row", "g-3", "mb-4"], [1, "col-12", "col-md-6"], [1, "form-label", "fw-500"], [1, "text-danger"], ["type", "text", "formControlName", "code", "placeholder", "\u4F8B\u5982\uFF1AP2025-001", 1, "form-control", "font-monospace"], [1, "text-danger", "small", "mt-1"], ["type", "text", "formControlName", "name", "placeholder", "\u8ACB\u8F38\u5165\u5C08\u6848\u540D\u7A31", 1, "form-control"], ["formControlName", "status", 1, "form-select"], ["value", "active"], ["value", "closed"], ["formControlName", "departmentId", 1, "form-select"], [3, "ngValue"], ["type", "date", "formControlName", "startDate", 1, "form-control"], ["type", "date", "formControlName", "endDate", 1, "form-control"], [1, "input-group"], [1, "input-group-text"], ["type", "number", "formControlName", "receivedAmount", "min", "0", 1, "form-control"], ["type", "number", "formControlName", "contractAmount", "min", "0", 1, "form-control"], [1, "text-accent", "fw-600"], ["type", "number", "formControlName", "businessAmount", "min", "0", 1, "form-control"], ["type", "url", "formControlName", "googleDriveUrl", "placeholder", "https://drive.google.com/drive/folders/...", 1, "form-control"], [1, "card", "border-0", "shadow-sm", "mt-6"], ["href", "/assets/icons/sprite.svg#file-text"], [1, "table-responsive"], [1, "table", "table-sm", "mb-0"], [1, "table-light"], [2, "width", "60px"], [2, "min-width", "140px"], [2, "min-width", "180px"], [2, "width", "48px"], ["formArrayName", "schedules"], [3, "formGroupName"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "mt-3", "inline-flex", "items-center", "gap-1"], [1, "mt-6"], [1, "mt-6", "flex", "gap-2"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "form-control", "bg-elevated"], [1, "align-middle", "text-center", "fw-500"], [1, "align-middle"], ["type", "date", "formControlName", "billingDate", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "billingAmount", "min", "0", "placeholder", "0", 1, "form-control", "form-control-sm"], ["type", "date", "formControlName", "invoiceDate", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "invoiceAmount", "min", "0", "placeholder", "0", 1, "form-control", "form-control-sm"], ["type", "date", "formControlName", "depositDate", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "depositAmount", "min", "0", "placeholder", "0", 1, "form-control", "form-control-sm"], [1, "form-control", "form-control-sm", "bg-elevated"], [1, "text-muted"], ["formControlName", "deductionNote", "maxlength", "500", "placeholder", "", 1, "form-control", "form-control-sm"], [1, "text-right", "align-middle"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center", 3, "click"], ["href", "/assets/icons/sprite.svg#x"], [1, "text-center", "text-muted", "py-4", "small"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "mt-3", "inline-flex", "items-center", "gap-1", 3, "click"], ["href", "/assets/icons/sprite.svg#plus"], ["routerLink", "/admin/projects", 1, "btn", "btn-outline-secondary"], ["type", "submit", 1, "btn", "btn-primary", 3, "disabled"]], template: function ProjectForm_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ProjectForm, selectors: [["app-project-form"]], decls: 155, vars: 23, consts: [[1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6"], ["routerLink", "/admin/projects", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "mb-0"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [3, "ngSubmit", "formGroup"], [1, "row", "g-4"], [1, "col-12", "col-lg-10", "col-xl-8"], [1, "card", "border-0", "shadow-sm"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#folder"], [1, "card-body"], [1, "row", "g-3", "mb-4"], [1, "col-12", "col-md-6"], [1, "form-label", "fw-500"], [1, "text-danger"], ["type", "text", "formControlName", "code", "placeholder", "\u4F8B\u5982\uFF1AP2025-001", 1, "form-control", "font-monospace"], [1, "text-danger", "small", "mt-1"], ["type", "text", "formControlName", "name", "placeholder", "\u8ACB\u8F38\u5165\u5C08\u6848\u540D\u7A31", 1, "form-control"], ["formControlName", "status", 1, "form-select"], ["value", "active"], ["value", "closed"], ["formControlName", "departmentId", 1, "form-select"], [3, "ngValue"], ["type", "date", "formControlName", "startDate", 1, "form-control"], ["type", "date", "formControlName", "endDate", 1, "form-control"], [1, "input-group"], [1, "input-group-text"], [1, "form-control", "bg-elevated"], [1, "text-muted", "small", "mt-1"], ["type", "number", "formControlName", "contractAmount", "min", "0", 1, "form-control"], [1, "text-accent", "fw-600"], ["type", "number", "formControlName", "businessAmount", "min", "0", 1, "form-control"], ["type", "number", "formControlName", "remainingAmount", "min", "0", 1, "form-control"], ["type", "url", "formControlName", "googleDriveUrl", "placeholder", "https://drive.google.com/drive/folders/...", 1, "form-control"], [1, "card", "border-0", "shadow-sm", "mt-6"], ["href", "/assets/icons/sprite.svg#file-text"], [1, "table-responsive"], [1, "table", "table-sm", "mb-0"], [1, "table-light"], [2, "width", "60px"], [2, "min-width", "140px"], [2, "min-width", "180px"], [2, "width", "48px"], ["formArrayName", "schedules"], [3, "formGroupName"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "mt-3", "inline-flex", "items-center", "gap-1"], [1, "mt-6"], [1, "mt-6", "flex", "gap-2"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "align-middle", "text-center", "fw-500"], [1, "align-middle"], ["type", "date", "formControlName", "billingDate", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "billingAmount", "min", "0", "placeholder", "0", 1, "form-control", "form-control-sm"], ["type", "date", "formControlName", "invoiceDate", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "invoiceAmount", "min", "0", "placeholder", "0", 1, "form-control", "form-control-sm"], ["type", "date", "formControlName", "depositDate", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "depositAmount", "min", "0", "placeholder", "0", 1, "form-control", "form-control-sm"], [1, "form-control", "form-control-sm", "bg-elevated"], [1, "text-muted"], ["formControlName", "deductionNote", "maxlength", "500", "placeholder", "", 1, "form-control", "form-control-sm"], [1, "text-right", "align-middle"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center", 3, "click"], ["href", "/assets/icons/sprite.svg#x"], [1, "text-center", "text-muted", "py-4", "small"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "mt-3", "inline-flex", "items-center", "gap-1", 3, "click"], ["href", "/assets/icons/sprite.svg#plus"], ["routerLink", "/admin/projects", 1, "btn", "btn-outline-secondary"], ["type", "submit", 1, "btn", "btn-primary", 3, "disabled"]], template: function ProjectForm_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "a", 2);
       \u0275\u0275namespaceSVG();
@@ -11760,95 +11771,109 @@ var ProjectForm = class _ProjectForm {
       \u0275\u0275element(65, "input", 28);
       \u0275\u0275elementEnd()();
       \u0275\u0275elementStart(66, "div", 15)(67, "div", 16)(68, "label", 17);
-      \u0275\u0275text(69, "\u5BE6\u6536\u91D1\u984D ");
-      \u0275\u0275elementStart(70, "span", 18);
-      \u0275\u0275text(71, "*");
+      \u0275\u0275text(69, "\u5BE6\u6536\u91D1\u984D");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(70, "div", 29)(71, "span", 30);
+      \u0275\u0275text(72, "NT$");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(73, "div", 31);
+      \u0275\u0275text(74);
+      \u0275\u0275pipe(75, "number");
       \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(72, "div", 29)(73, "span", 30);
-      \u0275\u0275text(74, "NT$");
-      \u0275\u0275elementEnd();
-      \u0275\u0275element(75, "input", 31);
-      \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(76, ProjectForm_Conditional_76_Template, 2, 0, "div", 20);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(77, "div", 16)(78, "label", 17);
-      \u0275\u0275text(79, "\u5951\u7D04\u91D1\u984D ");
-      \u0275\u0275elementStart(80, "span", 18);
-      \u0275\u0275text(81, "*");
+      \u0275\u0275elementStart(76, "div", 32);
+      \u0275\u0275text(77, "\u7531\u4E0B\u65B9\u4ED8\u6B3E\u660E\u7D30\u7684\u300C\u5165\u5E33\u91D1\u984D\u300D\u81EA\u52D5\u52A0\u7E3D\u3002");
       \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(82, "div", 29)(83, "span", 30);
-      \u0275\u0275text(84, "NT$");
-      \u0275\u0275elementEnd();
-      \u0275\u0275element(85, "input", 32);
-      \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(86, ProjectForm_Conditional_86_Template, 2, 0, "div", 20);
+      \u0275\u0275elementStart(78, "div", 16)(79, "label", 17);
+      \u0275\u0275text(80, "\u5951\u7D04\u91D1\u984D ");
+      \u0275\u0275elementStart(81, "span", 18);
+      \u0275\u0275text(82, "*");
       \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(87, "div", 15)(88, "div", 16)(89, "label", 17);
-      \u0275\u0275text(90, " \u696D\u52D9\u57F7\u884C\u91D1\u984D ");
-      \u0275\u0275conditionalCreate(91, ProjectForm_Conditional_91_Template, 2, 1, "span", 33);
-      \u0275\u0275elementStart(92, "span", 18);
-      \u0275\u0275text(93, "*");
+      \u0275\u0275elementStart(83, "div", 29)(84, "span", 30);
+      \u0275\u0275text(85, "NT$");
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(86, "input", 33);
+      \u0275\u0275elementEnd();
+      \u0275\u0275conditionalCreate(87, ProjectForm_Conditional_87_Template, 2, 0, "div", 20);
       \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(94, "div", 29)(95, "span", 30);
-      \u0275\u0275text(96, "NT$");
-      \u0275\u0275elementEnd();
-      \u0275\u0275element(97, "input", 34);
-      \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(98, ProjectForm_Conditional_98_Template, 2, 0, "div", 20);
-      \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(99, ProjectForm_Conditional_99_Template, 10, 5, "div", 16);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(100, "div", 5)(101, "label", 17);
-      \u0275\u0275text(102, "Google Drive \u9023\u7D50 ");
-      \u0275\u0275elementStart(103, "span", 18);
-      \u0275\u0275text(104, "*");
+      \u0275\u0275elementStart(88, "div", 15)(89, "div", 16)(90, "label", 17);
+      \u0275\u0275text(91, " \u696D\u52D9\u57F7\u884C\u91D1\u984D ");
+      \u0275\u0275conditionalCreate(92, ProjectForm_Conditional_92_Template, 2, 1, "span", 34);
+      \u0275\u0275elementStart(93, "span", 18);
+      \u0275\u0275text(94, "*");
       \u0275\u0275elementEnd()();
-      \u0275\u0275element(105, "input", 35);
-      \u0275\u0275conditionalCreate(106, ProjectForm_Conditional_106_Template, 2, 0, "div", 20);
+      \u0275\u0275elementStart(95, "div", 29)(96, "span", 30);
+      \u0275\u0275text(97, "NT$");
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(98, "input", 35);
+      \u0275\u0275elementEnd();
+      \u0275\u0275conditionalCreate(99, ProjectForm_Conditional_99_Template, 2, 0, "div", 20);
+      \u0275\u0275elementEnd();
+      \u0275\u0275conditionalCreate(100, ProjectForm_Conditional_100_Template, 10, 5, "div", 16);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(101, "div", 15)(102, "div", 16)(103, "label", 17);
+      \u0275\u0275text(104, "\u5269\u9918\u91D1\u984D");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(105, "div", 29)(106, "span", 30);
+      \u0275\u0275text(107, "NT$");
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(108, "input", 36);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(109, "div", 32);
+      \u0275\u0275text(110, "\u7CFB\u7D71\u5C0E\u5165\u6642\u7684\u5951\u7D04\u5269\u9918\u9810\u7B97\uFF08\u9078\u586B\uFF0C\u50C5\u4F9B\u820A\u6709\u5C08\u6848\u7D00\u9304\u7528\uFF09\u3002");
+      \u0275\u0275elementEnd();
+      \u0275\u0275conditionalCreate(111, ProjectForm_Conditional_111_Template, 2, 0, "div", 20);
+      \u0275\u0275elementEnd()();
+      \u0275\u0275elementStart(112, "div", 5)(113, "label", 17);
+      \u0275\u0275text(114, "Google Drive \u9023\u7D50 ");
+      \u0275\u0275elementStart(115, "span", 18);
+      \u0275\u0275text(116, "*");
+      \u0275\u0275elementEnd()();
+      \u0275\u0275element(117, "input", 37);
+      \u0275\u0275conditionalCreate(118, ProjectForm_Conditional_118_Template, 2, 0, "div", 20);
       \u0275\u0275elementEnd()()();
-      \u0275\u0275elementStart(107, "div", 36)(108, "div", 11);
+      \u0275\u0275elementStart(119, "div", 38)(120, "div", 11);
       \u0275\u0275namespaceSVG();
-      \u0275\u0275elementStart(109, "svg", 12);
-      \u0275\u0275element(110, "use", 37);
+      \u0275\u0275elementStart(121, "svg", 12);
+      \u0275\u0275element(122, "use", 39);
       \u0275\u0275elementEnd();
-      \u0275\u0275text(111, " \u8ACB\u6B3E\u671F\u5225\u660E\u7D30 ");
+      \u0275\u0275text(123, " \u8ACB\u6B3E\u671F\u5225\u660E\u7D30 ");
       \u0275\u0275elementEnd();
       \u0275\u0275namespaceHTML();
-      \u0275\u0275elementStart(112, "div", 14)(113, "div", 38)(114, "table", 39)(115, "thead", 40)(116, "tr")(117, "th", 41);
-      \u0275\u0275text(118, "\u671F\u5225");
+      \u0275\u0275elementStart(124, "div", 14)(125, "div", 40)(126, "table", 41)(127, "thead", 42)(128, "tr")(129, "th", 43);
+      \u0275\u0275text(130, "\u671F\u5225");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(119, "th", 42);
-      \u0275\u0275text(120, "\u8ACB\u6B3E\u65E5\u671F");
+      \u0275\u0275elementStart(131, "th", 44);
+      \u0275\u0275text(132, "\u8ACB\u6B3E\u65E5\u671F");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(121, "th", 42);
-      \u0275\u0275text(122, "\u8ACB\u6B3E\u91D1\u984D");
+      \u0275\u0275elementStart(133, "th", 44);
+      \u0275\u0275text(134, "\u8ACB\u6B3E\u91D1\u984D");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(123, "th", 42);
-      \u0275\u0275text(124, "\u767C\u7968\u65E5\u671F");
+      \u0275\u0275elementStart(135, "th", 44);
+      \u0275\u0275text(136, "\u767C\u7968\u65E5\u671F");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(125, "th", 42);
-      \u0275\u0275text(126, "\u767C\u7968\u91D1\u984D");
+      \u0275\u0275elementStart(137, "th", 44);
+      \u0275\u0275text(138, "\u767C\u7968\u91D1\u984D");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(127, "th", 42);
-      \u0275\u0275text(128, "\u5165\u5E33\u65E5\u671F");
+      \u0275\u0275elementStart(139, "th", 44);
+      \u0275\u0275text(140, "\u5165\u5E33\u65E5\u671F");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(129, "th", 42);
-      \u0275\u0275text(130, "\u5165\u5E33\u91D1\u984D");
+      \u0275\u0275elementStart(141, "th", 44);
+      \u0275\u0275text(142, "\u5165\u5E33\u91D1\u984D");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(131, "th", 42);
-      \u0275\u0275text(132, "\u6263\u6B3E\u91D1\u984D");
+      \u0275\u0275elementStart(143, "th", 44);
+      \u0275\u0275text(144, "\u6263\u6B3E\u91D1\u984D");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(133, "th", 43);
-      \u0275\u0275text(134, "\u6263\u6B3E\u5099\u8A3B");
+      \u0275\u0275elementStart(145, "th", 45);
+      \u0275\u0275text(146, "\u6263\u6B3E\u5099\u8A3B");
       \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(135, ProjectForm_Conditional_135_Template, 1, 0, "th", 44);
+      \u0275\u0275conditionalCreate(147, ProjectForm_Conditional_147_Template, 1, 0, "th", 46);
       \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(136, "tbody", 45);
-      \u0275\u0275repeaterCreate(137, ProjectForm_For_138_Template, 22, 4, "tr", 46, _forTrack12, false, ProjectForm_ForEmpty_139_Template, 3, 1, "tr");
+      \u0275\u0275elementStart(148, "tbody", 47);
+      \u0275\u0275repeaterCreate(149, ProjectForm_For_150_Template, 22, 4, "tr", 48, _forTrack12, false, ProjectForm_ForEmpty_151_Template, 3, 1, "tr");
       \u0275\u0275elementEnd()()();
-      \u0275\u0275conditionalCreate(140, ProjectForm_Conditional_140_Template, 4, 0, "button", 47);
+      \u0275\u0275conditionalCreate(152, ProjectForm_Conditional_152_Template, 4, 0, "button", 49);
       \u0275\u0275elementEnd()();
-      \u0275\u0275conditionalCreate(141, ProjectForm_Conditional_141_Template, 3, 0, "div", 48)(142, ProjectForm_Conditional_142_Template, 5, 2, "div", 49);
+      \u0275\u0275conditionalCreate(153, ProjectForm_Conditional_153_Template, 3, 0, "div", 50)(154, ProjectForm_Conditional_154_Template, 5, 2, "div", 51);
       \u0275\u0275elementEnd()()()();
     }
     if (rf & 2) {
@@ -11856,10 +11881,10 @@ var ProjectForm = class _ProjectForm {
       let tmp_4_0;
       let tmp_8_0;
       let tmp_9_0;
-      let tmp_10_0;
       let tmp_11_0;
       let tmp_13_0;
       let tmp_15_0;
+      let tmp_16_0;
       \u0275\u0275advance(6);
       \u0275\u0275textInterpolate(ctx.isClosed ? "\u6AA2\u8996\u5C08\u6848\uFF08\u5DF2\u7D50\u6848\uFF09" : ctx.isReadOnly ? "\u6AA2\u8996\u5C08\u6848" : ctx.isEdit ? "\u7DE8\u8F2F\u5C08\u6848" : "\u65B0\u589E\u5C08\u6848");
       \u0275\u0275advance();
@@ -11880,26 +11905,28 @@ var ProjectForm = class _ProjectForm {
       \u0275\u0275conditional(((tmp_8_0 = ctx.form.get("departmentId")) == null ? null : tmp_8_0.invalid) && ((tmp_8_0 = ctx.form.get("departmentId")) == null ? null : tmp_8_0.touched) ? 53 : -1);
       \u0275\u0275advance(8);
       \u0275\u0275conditional(((tmp_9_0 = ctx.form.get("startDate")) == null ? null : tmp_9_0.invalid) && ((tmp_9_0 = ctx.form.get("startDate")) == null ? null : tmp_9_0.touched) ? 61 : -1);
-      \u0275\u0275advance(15);
-      \u0275\u0275conditional(((tmp_10_0 = ctx.form.get("receivedAmount")) == null ? null : tmp_10_0.invalid) && ((tmp_10_0 = ctx.form.get("receivedAmount")) == null ? null : tmp_10_0.touched) ? 76 : -1);
-      \u0275\u0275advance(10);
-      \u0275\u0275conditional(((tmp_11_0 = ctx.form.get("contractAmount")) == null ? null : tmp_11_0.invalid) && ((tmp_11_0 = ctx.form.get("contractAmount")) == null ? null : tmp_11_0.touched) ? 86 : -1);
+      \u0275\u0275advance(13);
+      \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(75, 20, ctx.computedReceivedAmount(), "1.0-0"));
+      \u0275\u0275advance(13);
+      \u0275\u0275conditional(((tmp_11_0 = ctx.form.get("contractAmount")) == null ? null : tmp_11_0.invalid) && ((tmp_11_0 = ctx.form.get("contractAmount")) == null ? null : tmp_11_0.touched) ? 87 : -1);
       \u0275\u0275advance(5);
-      \u0275\u0275conditional(ctx.businessPercentage() !== null ? 91 : -1);
+      \u0275\u0275conditional(ctx.businessPercentage() !== null ? 92 : -1);
       \u0275\u0275advance(7);
-      \u0275\u0275conditional(((tmp_13_0 = ctx.form.get("businessAmount")) == null ? null : tmp_13_0.invalid) && ((tmp_13_0 = ctx.form.get("businessAmount")) == null ? null : tmp_13_0.touched) ? 98 : -1);
+      \u0275\u0275conditional(((tmp_13_0 = ctx.form.get("businessAmount")) == null ? null : tmp_13_0.invalid) && ((tmp_13_0 = ctx.form.get("businessAmount")) == null ? null : tmp_13_0.touched) ? 99 : -1);
       \u0275\u0275advance();
-      \u0275\u0275conditional(ctx.reservedAmount() !== null ? 99 : -1);
+      \u0275\u0275conditional(ctx.reservedAmount() !== null ? 100 : -1);
+      \u0275\u0275advance(11);
+      \u0275\u0275conditional(((tmp_15_0 = ctx.form.get("remainingAmount")) == null ? null : tmp_15_0.invalid) && ((tmp_15_0 = ctx.form.get("remainingAmount")) == null ? null : tmp_15_0.touched) ? 111 : -1);
       \u0275\u0275advance(7);
-      \u0275\u0275conditional(((tmp_15_0 = ctx.form.get("googleDriveUrl")) == null ? null : tmp_15_0.invalid) && ((tmp_15_0 = ctx.form.get("googleDriveUrl")) == null ? null : tmp_15_0.touched) ? 106 : -1);
+      \u0275\u0275conditional(((tmp_16_0 = ctx.form.get("googleDriveUrl")) == null ? null : tmp_16_0.invalid) && ((tmp_16_0 = ctx.form.get("googleDriveUrl")) == null ? null : tmp_16_0.touched) ? 118 : -1);
       \u0275\u0275advance(29);
-      \u0275\u0275conditional(!ctx.isReadOnly ? 135 : -1);
+      \u0275\u0275conditional(!ctx.isReadOnly ? 147 : -1);
       \u0275\u0275advance(2);
       \u0275\u0275repeater(ctx.scheduleControls);
       \u0275\u0275advance(3);
-      \u0275\u0275conditional(!ctx.isReadOnly ? 140 : -1);
+      \u0275\u0275conditional(!ctx.isReadOnly ? 152 : -1);
       \u0275\u0275advance();
-      \u0275\u0275conditional(ctx.isReadOnly ? 141 : 142);
+      \u0275\u0275conditional(ctx.isReadOnly ? 153 : 154);
     }
   }, dependencies: [ReactiveFormsModule, \u0275NgNoValidate, NgSelectOption, \u0275NgSelectMultipleOption, DefaultValueAccessor, NumberValueAccessor, SelectControlValueAccessor, NgControlStatus, NgControlStatusGroup, MaxLengthValidator, MinValidator, FormGroupDirective, FormControlName, FormGroupName, FormArrayName, RouterLink, DecimalPipe], encapsulation: 2 });
 };
@@ -11990,14 +12017,12 @@ var ProjectForm = class _ProjectForm {
 
             <div class="row g-3 mb-4">
               <div class="col-12 col-md-6">
-                <label class="form-label fw-500">\u5BE6\u6536\u91D1\u984D <span class="text-danger">*</span></label>
+                <label class="form-label fw-500">\u5BE6\u6536\u91D1\u984D</label>
                 <div class="input-group">
                   <span class="input-group-text">NT$</span>
-                  <input type="number" class="form-control" formControlName="receivedAmount" min="0">
+                  <div class="form-control bg-elevated">{{ computedReceivedAmount() | number:'1.0-0' }}</div>
                 </div>
-                @if (form.get('receivedAmount')?.invalid && form.get('receivedAmount')?.touched) {
-                  <div class="text-danger small mt-1">\u8ACB\u8F38\u5165\u5BE6\u6536\u91D1\u984D\uFF08\u4E0D\u53EF\u70BA\u8CA0\u6578\uFF09\u3002</div>
-                }
+                <div class="text-muted small mt-1">\u7531\u4E0B\u65B9\u4ED8\u6B3E\u660E\u7D30\u7684\u300C\u5165\u5E33\u91D1\u984D\u300D\u81EA\u52D5\u52A0\u7E3D\u3002</div>
               </div>
               <div class="col-12 col-md-6">
                 <label class="form-label fw-500">\u5951\u7D04\u91D1\u984D <span class="text-danger">*</span></label>
@@ -12042,6 +12067,20 @@ var ProjectForm = class _ProjectForm {
                   </div>
                 </div>
               }
+            </div>
+
+            <div class="row g-3 mb-4">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">\u5269\u9918\u91D1\u984D</label>
+                <div class="input-group">
+                  <span class="input-group-text">NT$</span>
+                  <input type="number" class="form-control" formControlName="remainingAmount" min="0">
+                </div>
+                <div class="text-muted small mt-1">\u7CFB\u7D71\u5C0E\u5165\u6642\u7684\u5951\u7D04\u5269\u9918\u9810\u7B97\uFF08\u9078\u586B\uFF0C\u50C5\u4F9B\u820A\u6709\u5C08\u6848\u7D00\u9304\u7528\uFF09\u3002</div>
+                @if (form.get('remainingAmount')?.invalid && form.get('remainingAmount')?.touched) {
+                  <div class="text-danger small mt-1">\u5269\u9918\u91D1\u984D\u4E0D\u53EF\u70BA\u8CA0\u6578\u3002</div>
+                }
+              </div>
             </div>
 
             <div class="mb-0">
@@ -17107,7 +17146,7 @@ var APPROVAL_STATUS_CLASSES3 = {
   rejected: "bg-danger-subtle text-danger",
   returned: "bg-secondary-subtle text-secondary"
 };
-var ITEM_CATEGORIES = ["\u4EA4\u901A\u8CBB", "\u6D3B\u52D5\u8CBB", "\u8A2D\u8A08\u8CBB", "\u4EBA\u4E8B\u8CBB", "\u9910\u8CBB", "\u96DC\u652F"];
+var ITEM_CATEGORIES = ["\u4EA4\u901A\u8CBB", "\u6D3B\u52D5\u8CBB", "\u8A2D\u8A08\u8CBB", "\u4EBA\u4E8B\u8CBB", "\u9910\u8CBB", "\u96DC\u652F", "\u6536\u6B3E\u4EBA", "\u5EE0\u5546"];
 
 // src/app/features/admin/advance-requests/services/advance-pdf.service.ts
 var AdvancePdfService = class _AdvancePdfService {
@@ -51299,9 +51338,9 @@ function AttendanceReport_Conditional_11_Template(rf, ctx) {
     \u0275\u0275text(0, " \u532F\u51FA Excel ");
   }
 }
-function AttendanceReport_For_33_Template(rf, ctx) {
+function AttendanceReport_For_20_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 21);
+    \u0275\u0275elementStart(0, "option", 15);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -51312,226 +51351,207 @@ function AttendanceReport_For_33_Template(rf, ctx) {
     \u0275\u0275textInterpolate2("", emp_r1.code, " ", emp_r1.name);
   }
 }
-function AttendanceReport_Conditional_34_Template(rf, ctx) {
+function AttendanceReport_Conditional_28_Template(rf, ctx) {
   if (rf & 1) {
     const _r2 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 22)(1, "label", 18);
-    \u0275\u0275text(2, "\u65E5\u671F");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "input", 32);
-    \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_34_Template_input_ngModelChange_3_listener($event) {
+    \u0275\u0275elementStart(0, "input", 29);
+    \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_28_Template_input_ngModelChange_0_listener($event) {
       \u0275\u0275restoreView(_r2);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.selectedDate.set($event));
     });
-    \u0275\u0275elementEnd()();
+    \u0275\u0275elementEnd();
   }
   if (rf & 2) {
     const ctx_r2 = \u0275\u0275nextContext();
-    \u0275\u0275advance(3);
     \u0275\u0275property("ngModel", ctx_r2.selectedDate());
   }
 }
-function AttendanceReport_Conditional_35_Conditional_11_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 38);
-    \u0275\u0275text(1);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const r_r5 = ctx;
-    \u0275\u0275advance();
-    \u0275\u0275textInterpolate3(" \u7B2C ", r_r5.weekNumber, " \u9031\uFF08", r_r5.dateFrom, " \u4E00 ~ ", r_r5.dateTo, " \u65E5\uFF09 ");
-  }
-}
-function AttendanceReport_Conditional_35_Template(rf, ctx) {
+function AttendanceReport_Conditional_29_Template(rf, ctx) {
   if (rf & 1) {
     const _r4 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 22)(1, "label", 18);
-    \u0275\u0275text(2, "\u9031\u6B21\uFF08\u6311\u4EFB\u4E00\u5929\u5373\u81EA\u52D5\u53D6\u6574\u9031\uFF09");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div", 33)(4, "button", 34);
-    \u0275\u0275listener("click", function AttendanceReport_Conditional_35_Template_button_click_4_listener() {
+    \u0275\u0275elementStart(0, "button", 30);
+    \u0275\u0275listener("click", function AttendanceReport_Conditional_29_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r4);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.shiftWeek(-7));
     });
-    \u0275\u0275text(5, "\u2039");
+    \u0275\u0275text(1, "\u2039");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "input", 35);
-    \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_35_Template_input_ngModelChange_6_listener($event) {
+    \u0275\u0275elementStart(2, "input", 29);
+    \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_29_Template_input_ngModelChange_2_listener($event) {
       \u0275\u0275restoreView(_r4);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.selectedWeekDate.set($event));
     });
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "button", 36);
-    \u0275\u0275listener("click", function AttendanceReport_Conditional_35_Template_button_click_7_listener() {
+    \u0275\u0275elementStart(3, "button", 31);
+    \u0275\u0275listener("click", function AttendanceReport_Conditional_29_Template_button_click_3_listener() {
       \u0275\u0275restoreView(_r4);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.shiftWeek(7));
     });
-    \u0275\u0275text(8, "\u203A");
+    \u0275\u0275text(4, "\u203A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "button", 37);
-    \u0275\u0275listener("click", function AttendanceReport_Conditional_35_Template_button_click_9_listener() {
+    \u0275\u0275elementStart(5, "button", 32);
+    \u0275\u0275listener("click", function AttendanceReport_Conditional_29_Template_button_click_5_listener() {
       \u0275\u0275restoreView(_r4);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.resetToThisWeek());
     });
-    \u0275\u0275text(10, "\u672C\u9031");
-    \u0275\u0275elementEnd()();
-    \u0275\u0275conditionalCreate(11, AttendanceReport_Conditional_35_Conditional_11_Template, 2, 3, "div", 38);
+    \u0275\u0275text(6, "\u672C\u9031");
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    let tmp_2_0;
     const ctx_r2 = \u0275\u0275nextContext();
-    \u0275\u0275advance(6);
+    \u0275\u0275advance(2);
     \u0275\u0275property("ngModel", ctx_r2.selectedWeekDate());
-    \u0275\u0275advance(5);
-    \u0275\u0275conditional((tmp_2_0 = ctx_r2.weekRange()) ? 11 : -1, tmp_2_0);
   }
 }
-function AttendanceReport_Conditional_36_For_7_Template(rf, ctx) {
+function AttendanceReport_Conditional_30_For_4_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 21);
+    \u0275\u0275elementStart(0, "option", 15);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const y_r7 = ctx.$implicit;
-    \u0275\u0275property("value", y_r7);
+    const y_r6 = ctx.$implicit;
+    \u0275\u0275property("value", y_r6);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(y_r7);
+    \u0275\u0275textInterpolate(y_r6);
   }
 }
-function AttendanceReport_Conditional_36_For_15_Template(rf, ctx) {
+function AttendanceReport_Conditional_30_For_9_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 21);
+    \u0275\u0275elementStart(0, "option", 15);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const m_r8 = ctx.$implicit;
-    \u0275\u0275property("value", m_r8);
+    const m_r7 = ctx.$implicit;
+    \u0275\u0275property("value", m_r7);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate1("", m_r8, "\u6708");
+    \u0275\u0275textInterpolate1("", m_r7, "\u6708");
   }
 }
-function AttendanceReport_Conditional_36_Template(rf, ctx) {
+function AttendanceReport_Conditional_30_Template(rf, ctx) {
   if (rf & 1) {
-    const _r6 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div")(1, "label", 18);
-    \u0275\u0275text(2, "\u5E74\u4EFD");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "select", 19);
-    \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_36_Template_select_ngModelChange_3_listener($event) {
-      \u0275\u0275restoreView(_r6);
+    const _r5 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "select", 33);
+    \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_30_Template_select_ngModelChange_0_listener($event) {
+      \u0275\u0275restoreView(_r5);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.selectedYear.set($event));
     });
-    \u0275\u0275elementStart(4, "option", 20);
-    \u0275\u0275text(5, "\u5168\u90E8\u5E74\u4EFD");
+    \u0275\u0275elementStart(1, "option", 14);
+    \u0275\u0275text(2, "\u5168\u90E8\u5E74\u4EFD");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(6, AttendanceReport_Conditional_36_For_7_Template, 2, 2, "option", 21, \u0275\u0275repeaterTrackByIdentity);
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(8, "div")(9, "label", 18);
-    \u0275\u0275text(10, "\u6708\u4EFD");
+    \u0275\u0275repeaterCreate(3, AttendanceReport_Conditional_30_For_4_Template, 2, 2, "option", 15, \u0275\u0275repeaterTrackByIdentity);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(11, "select", 19);
-    \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_36_Template_select_ngModelChange_11_listener($event) {
-      \u0275\u0275restoreView(_r6);
+    \u0275\u0275elementStart(5, "select", 33);
+    \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_30_Template_select_ngModelChange_5_listener($event) {
+      \u0275\u0275restoreView(_r5);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.selectedMonth.set($event));
     });
-    \u0275\u0275elementStart(12, "option", 20);
-    \u0275\u0275text(13, "\u5168\u90E8\u6708\u4EFD");
+    \u0275\u0275elementStart(6, "option", 14);
+    \u0275\u0275text(7, "\u5168\u90E8\u6708\u4EFD");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(14, AttendanceReport_Conditional_36_For_15_Template, 2, 2, "option", 21, \u0275\u0275repeaterTrackByIdentity);
-    \u0275\u0275elementEnd()();
+    \u0275\u0275repeaterCreate(8, AttendanceReport_Conditional_30_For_9_Template, 2, 2, "option", 15, \u0275\u0275repeaterTrackByIdentity);
+    \u0275\u0275elementEnd();
   }
   if (rf & 2) {
     const ctx_r2 = \u0275\u0275nextContext();
-    \u0275\u0275advance(3);
     \u0275\u0275property("ngModel", ctx_r2.selectedYear());
     \u0275\u0275advance(3);
     \u0275\u0275repeater(ctx_r2.years());
-    \u0275\u0275advance(5);
+    \u0275\u0275advance(2);
     \u0275\u0275property("ngModel", ctx_r2.selectedMonth());
     \u0275\u0275advance(3);
     \u0275\u0275repeater(ctx_r2.months);
   }
 }
-function AttendanceReport_For_66_Conditional_11_Template(rf, ctx) {
+function AttendanceReport_Conditional_33_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 21);
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const r_r8 = ctx;
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate3("\u7B2C ", r_r8.weekNumber, " \u9031\uFF08", r_r8.dateFrom, " \u4E00 ~ ", r_r8.dateTo, " \u65E5\uFF09");
+  }
+}
+function AttendanceReport_For_58_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
     const _r9 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 46);
-    \u0275\u0275listener("click", function AttendanceReport_For_66_Conditional_11_Template_button_click_0_listener() {
+    \u0275\u0275elementStart(0, "button", 41);
+    \u0275\u0275listener("click", function AttendanceReport_For_58_Conditional_11_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r9);
       const row_r10 = \u0275\u0275nextContext().$implicit;
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.openMap("\u4E0A\u73ED\u6253\u5361", row_r10.clockInLatitude, row_r10.clockInLongitude));
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 47);
-    \u0275\u0275element(2, "use", 48);
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 43);
     \u0275\u0275elementEnd()();
   }
 }
-function AttendanceReport_For_66_Conditional_14_Template(rf, ctx) {
+function AttendanceReport_For_58_Conditional_14_Template(rf, ctx) {
   if (rf & 1) {
     const _r11 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 46);
-    \u0275\u0275listener("click", function AttendanceReport_For_66_Conditional_14_Template_button_click_0_listener() {
+    \u0275\u0275elementStart(0, "button", 41);
+    \u0275\u0275listener("click", function AttendanceReport_For_58_Conditional_14_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r11);
       const row_r10 = \u0275\u0275nextContext().$implicit;
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.openMap("\u4E0B\u73ED\u6253\u5361", row_r10.clockOutLatitude, row_r10.clockOutLongitude));
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 47);
-    \u0275\u0275element(2, "use", 48);
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 43);
     \u0275\u0275elementEnd()();
   }
 }
-function AttendanceReport_For_66_Conditional_17_Template(rf, ctx) {
+function AttendanceReport_For_58_Conditional_17_Template(rf, ctx) {
   if (rf & 1) {
     const _r12 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 46);
-    \u0275\u0275listener("click", function AttendanceReport_For_66_Conditional_17_Template_button_click_0_listener() {
+    \u0275\u0275elementStart(0, "button", 41);
+    \u0275\u0275listener("click", function AttendanceReport_For_58_Conditional_17_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r12);
       const row_r10 = \u0275\u0275nextContext().$implicit;
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.openMap("\u52A0\u73ED\u958B\u59CB", row_r10.overtimeStartLatitude, row_r10.overtimeStartLongitude));
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 47);
-    \u0275\u0275element(2, "use", 48);
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 43);
     \u0275\u0275elementEnd()();
   }
 }
-function AttendanceReport_For_66_Conditional_20_Template(rf, ctx) {
+function AttendanceReport_For_58_Conditional_20_Template(rf, ctx) {
   if (rf & 1) {
     const _r13 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 46);
-    \u0275\u0275listener("click", function AttendanceReport_For_66_Conditional_20_Template_button_click_0_listener() {
+    \u0275\u0275elementStart(0, "button", 41);
+    \u0275\u0275listener("click", function AttendanceReport_For_58_Conditional_20_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r13);
       const row_r10 = \u0275\u0275nextContext().$implicit;
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.openMap("\u52A0\u73ED\u7D50\u675F", row_r10.overtimeEndLatitude, row_r10.overtimeEndLongitude));
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 47);
-    \u0275\u0275element(2, "use", 48);
+    \u0275\u0275elementStart(1, "svg", 42);
+    \u0275\u0275element(2, "use", 43);
     \u0275\u0275elementEnd()();
   }
 }
-function AttendanceReport_For_66_Conditional_23_Template(rf, ctx) {
+function AttendanceReport_For_58_Conditional_23_Template(rf, ctx) {
   if (rf & 1) {
     const _r14 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 49);
-    \u0275\u0275listener("click", function AttendanceReport_For_66_Conditional_23_Template_button_click_0_listener() {
+    \u0275\u0275elementStart(0, "button", 44);
+    \u0275\u0275listener("click", function AttendanceReport_For_58_Conditional_23_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r14);
       const row_r10 = \u0275\u0275nextContext().$implicit;
       const ctx_r2 = \u0275\u0275nextContext();
@@ -51539,42 +51559,42 @@ function AttendanceReport_For_66_Conditional_23_Template(rf, ctx) {
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 7);
-    \u0275\u0275element(2, "use", 50);
+    \u0275\u0275element(2, "use", 45);
     \u0275\u0275elementEnd()();
   }
 }
-function AttendanceReport_For_66_Template(rf, ctx) {
+function AttendanceReport_For_58_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 39);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 34);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td", 40);
+    \u0275\u0275elementStart(3, "td", 35);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "td", 29);
+    \u0275\u0275elementStart(5, "td", 26);
     \u0275\u0275text(6);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "td", 41);
+    \u0275\u0275elementStart(7, "td", 36);
     \u0275\u0275text(8);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "td", 28);
+    \u0275\u0275elementStart(9, "td", 25);
     \u0275\u0275text(10);
-    \u0275\u0275conditionalCreate(11, AttendanceReport_For_66_Conditional_11_Template, 3, 0, "button", 42);
+    \u0275\u0275conditionalCreate(11, AttendanceReport_For_58_Conditional_11_Template, 3, 0, "button", 37);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(12, "td", 28);
+    \u0275\u0275elementStart(12, "td", 25);
     \u0275\u0275text(13);
-    \u0275\u0275conditionalCreate(14, AttendanceReport_For_66_Conditional_14_Template, 3, 0, "button", 42);
+    \u0275\u0275conditionalCreate(14, AttendanceReport_For_58_Conditional_14_Template, 3, 0, "button", 37);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "td", 30);
+    \u0275\u0275elementStart(15, "td", 27);
     \u0275\u0275text(16);
-    \u0275\u0275conditionalCreate(17, AttendanceReport_For_66_Conditional_17_Template, 3, 0, "button", 42);
+    \u0275\u0275conditionalCreate(17, AttendanceReport_For_58_Conditional_17_Template, 3, 0, "button", 37);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(18, "td", 30);
+    \u0275\u0275elementStart(18, "td", 27);
     \u0275\u0275text(19);
-    \u0275\u0275conditionalCreate(20, AttendanceReport_For_66_Conditional_20_Template, 3, 0, "button", 42);
+    \u0275\u0275conditionalCreate(20, AttendanceReport_For_58_Conditional_20_Template, 3, 0, "button", 37);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(21, "td", 43)(22, "div", 44);
-    \u0275\u0275conditionalCreate(23, AttendanceReport_For_66_Conditional_23_Template, 3, 0, "button", 45);
+    \u0275\u0275elementStart(21, "td", 38)(22, "div", 39);
+    \u0275\u0275conditionalCreate(23, AttendanceReport_For_58_Conditional_23_Template, 3, 0, "button", 40);
     \u0275\u0275elementEnd()()();
   }
   if (rf & 2) {
@@ -51607,20 +51627,20 @@ function AttendanceReport_For_66_Template(rf, ctx) {
     \u0275\u0275conditional(row_r10.id ? 23 : -1);
   }
 }
-function AttendanceReport_ForEmpty_67_Conditional_2_Template(rf, ctx) {
+function AttendanceReport_ForEmpty_59_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u8F09\u5165\u4E2D... ");
   }
 }
-function AttendanceReport_ForEmpty_67_Conditional_3_Template(rf, ctx) {
+function AttendanceReport_ForEmpty_59_Conditional_3_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u5C1A\u7121\u8CC7\u6599 ");
   }
 }
-function AttendanceReport_ForEmpty_67_Template(rf, ctx) {
+function AttendanceReport_ForEmpty_59_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 51);
-    \u0275\u0275conditionalCreate(2, AttendanceReport_ForEmpty_67_Conditional_2_Template, 1, 0)(3, AttendanceReport_ForEmpty_67_Conditional_3_Template, 1, 0);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 46);
+    \u0275\u0275conditionalCreate(2, AttendanceReport_ForEmpty_59_Conditional_2_Template, 1, 0)(3, AttendanceReport_ForEmpty_59_Conditional_3_Template, 1, 0);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -51629,114 +51649,114 @@ function AttendanceReport_ForEmpty_67_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r2.loading() ? 2 : 3);
   }
 }
-function AttendanceReport_Conditional_68_Conditional_39_Template(rf, ctx) {
+function AttendanceReport_Conditional_60_Conditional_39_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u5132\u5B58\u4E2D... ");
   }
 }
-function AttendanceReport_Conditional_68_Conditional_40_Template(rf, ctx) {
+function AttendanceReport_Conditional_60_Conditional_40_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u5132\u5B58 ");
   }
 }
-function AttendanceReport_Conditional_68_Template(rf, ctx) {
+function AttendanceReport_Conditional_60_Template(rf, ctx) {
   if (rf & 1) {
     const _r15 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 52);
-    \u0275\u0275listener("click", function AttendanceReport_Conditional_68_Template_div_click_0_listener() {
+    \u0275\u0275elementStart(0, "div", 47);
+    \u0275\u0275listener("click", function AttendanceReport_Conditional_60_Template_div_click_0_listener() {
       \u0275\u0275restoreView(_r15);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.closeEdit());
     });
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(1, "div", 53);
-    \u0275\u0275listener("click", function AttendanceReport_Conditional_68_Template_div_click_1_listener() {
+    \u0275\u0275elementStart(1, "div", 48);
+    \u0275\u0275listener("click", function AttendanceReport_Conditional_60_Template_div_click_1_listener() {
       \u0275\u0275restoreView(_r15);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.closeEdit());
     });
-    \u0275\u0275elementStart(2, "div", 54);
-    \u0275\u0275listener("click", function AttendanceReport_Conditional_68_Template_div_click_2_listener($event) {
+    \u0275\u0275elementStart(2, "div", 49);
+    \u0275\u0275listener("click", function AttendanceReport_Conditional_60_Template_div_click_2_listener($event) {
       \u0275\u0275restoreView(_r15);
       return \u0275\u0275resetView($event.stopPropagation());
     });
-    \u0275\u0275elementStart(3, "div", 55)(4, "div", 56)(5, "h5", 57);
+    \u0275\u0275elementStart(3, "div", 50)(4, "div", 51)(5, "h5", 52);
     \u0275\u0275text(6, "\u7DE8\u8F2F\u51FA\u7F3A\u52E4\u7D00\u9304");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "button", 58);
-    \u0275\u0275listener("click", function AttendanceReport_Conditional_68_Template_button_click_7_listener() {
+    \u0275\u0275elementStart(7, "button", 53);
+    \u0275\u0275listener("click", function AttendanceReport_Conditional_60_Template_button_click_7_listener() {
       \u0275\u0275restoreView(_r15);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.closeEdit());
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(8, "div", 59)(9, "div", 60)(10, "span", 61);
+    \u0275\u0275elementStart(8, "div", 54)(9, "div", 55)(10, "span", 56);
     \u0275\u0275text(11, "\u54E1\u5DE5\uFF1A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(12, "span", 39);
+    \u0275\u0275elementStart(12, "span", 34);
     \u0275\u0275text(13);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(14, "span", 62);
+    \u0275\u0275elementStart(14, "span", 57);
     \u0275\u0275text(15, "\u65E5\u671F\uFF1A");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(16, "span");
     \u0275\u0275text(17);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(18, "div", 63)(19, "div")(20, "label", 64);
+    \u0275\u0275elementStart(18, "div", 58)(19, "div")(20, "label", 59);
     \u0275\u0275text(21, "\u4E0A\u73ED\u6642\u9593");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(22, "input", 65);
-    \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_68_Template_input_ngModelChange_22_listener($event) {
+    \u0275\u0275elementStart(22, "input", 60);
+    \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_60_Template_input_ngModelChange_22_listener($event) {
       \u0275\u0275restoreView(_r15);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.editForm.set(__spreadProps(__spreadValues({}, ctx_r2.editForm()), { clockIn: $event })));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(23, "div")(24, "label", 64);
+    \u0275\u0275elementStart(23, "div")(24, "label", 59);
     \u0275\u0275text(25, "\u4E0B\u73ED\u6642\u9593");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(26, "input", 65);
-    \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_68_Template_input_ngModelChange_26_listener($event) {
+    \u0275\u0275elementStart(26, "input", 60);
+    \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_60_Template_input_ngModelChange_26_listener($event) {
       \u0275\u0275restoreView(_r15);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.editForm.set(__spreadProps(__spreadValues({}, ctx_r2.editForm()), { clockOut: $event })));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(27, "div")(28, "label", 64);
+    \u0275\u0275elementStart(27, "div")(28, "label", 59);
     \u0275\u0275text(29, "\u52A0\u73ED\u958B\u59CB");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(30, "input", 65);
-    \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_68_Template_input_ngModelChange_30_listener($event) {
+    \u0275\u0275elementStart(30, "input", 60);
+    \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_60_Template_input_ngModelChange_30_listener($event) {
       \u0275\u0275restoreView(_r15);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.editForm.set(__spreadProps(__spreadValues({}, ctx_r2.editForm()), { overtimeStart: $event })));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(31, "div")(32, "label", 64);
+    \u0275\u0275elementStart(31, "div")(32, "label", 59);
     \u0275\u0275text(33, "\u52A0\u73ED\u7D50\u675F");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(34, "input", 65);
-    \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_68_Template_input_ngModelChange_34_listener($event) {
+    \u0275\u0275elementStart(34, "input", 60);
+    \u0275\u0275listener("ngModelChange", function AttendanceReport_Conditional_60_Template_input_ngModelChange_34_listener($event) {
       \u0275\u0275restoreView(_r15);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.editForm.set(__spreadProps(__spreadValues({}, ctx_r2.editForm()), { overtimeEnd: $event })));
     });
     \u0275\u0275elementEnd()()()();
-    \u0275\u0275elementStart(35, "div", 66)(36, "button", 67);
-    \u0275\u0275listener("click", function AttendanceReport_Conditional_68_Template_button_click_36_listener() {
+    \u0275\u0275elementStart(35, "div", 61)(36, "button", 62);
+    \u0275\u0275listener("click", function AttendanceReport_Conditional_60_Template_button_click_36_listener() {
       \u0275\u0275restoreView(_r15);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.closeEdit());
     });
     \u0275\u0275text(37, "\u53D6\u6D88");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(38, "button", 68);
-    \u0275\u0275listener("click", function AttendanceReport_Conditional_68_Template_button_click_38_listener() {
+    \u0275\u0275elementStart(38, "button", 63);
+    \u0275\u0275listener("click", function AttendanceReport_Conditional_60_Template_button_click_38_listener() {
       \u0275\u0275restoreView(_r15);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.saveEdit());
     });
-    \u0275\u0275conditionalCreate(39, AttendanceReport_Conditional_68_Conditional_39_Template, 1, 0)(40, AttendanceReport_Conditional_68_Conditional_40_Template, 1, 0);
+    \u0275\u0275conditionalCreate(39, AttendanceReport_Conditional_60_Conditional_39_Template, 1, 0)(40, AttendanceReport_Conditional_60_Conditional_40_Template, 1, 0);
     \u0275\u0275elementEnd()()()()();
   }
   if (rf & 2) {
@@ -51760,55 +51780,55 @@ function AttendanceReport_Conditional_68_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r2.saving() ? 39 : 40);
   }
 }
-function AttendanceReport_Conditional_69_Template(rf, ctx) {
+function AttendanceReport_Conditional_61_Template(rf, ctx) {
   if (rf & 1) {
     const _r17 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 52);
-    \u0275\u0275listener("click", function AttendanceReport_Conditional_69_Template_div_click_0_listener() {
+    \u0275\u0275elementStart(0, "div", 47);
+    \u0275\u0275listener("click", function AttendanceReport_Conditional_61_Template_div_click_0_listener() {
       \u0275\u0275restoreView(_r17);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.closeMap());
     });
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(1, "div", 53);
-    \u0275\u0275listener("click", function AttendanceReport_Conditional_69_Template_div_click_1_listener() {
+    \u0275\u0275elementStart(1, "div", 48);
+    \u0275\u0275listener("click", function AttendanceReport_Conditional_61_Template_div_click_1_listener() {
       \u0275\u0275restoreView(_r17);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.closeMap());
     });
-    \u0275\u0275elementStart(2, "div", 69);
-    \u0275\u0275listener("click", function AttendanceReport_Conditional_69_Template_div_click_2_listener($event) {
+    \u0275\u0275elementStart(2, "div", 64);
+    \u0275\u0275listener("click", function AttendanceReport_Conditional_61_Template_div_click_2_listener($event) {
       \u0275\u0275restoreView(_r17);
       return \u0275\u0275resetView($event.stopPropagation());
     });
-    \u0275\u0275elementStart(3, "div", 55)(4, "div", 56)(5, "h5", 70);
+    \u0275\u0275elementStart(3, "div", 50)(4, "div", 51)(5, "h5", 65);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(6, "svg", 47);
-    \u0275\u0275element(7, "use", 48);
+    \u0275\u0275elementStart(6, "svg", 42);
+    \u0275\u0275element(7, "use", 43);
     \u0275\u0275elementEnd();
     \u0275\u0275text(8);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(9, "button", 58);
-    \u0275\u0275listener("click", function AttendanceReport_Conditional_69_Template_button_click_9_listener() {
+    \u0275\u0275elementStart(9, "button", 53);
+    \u0275\u0275listener("click", function AttendanceReport_Conditional_61_Template_button_click_9_listener() {
       \u0275\u0275restoreView(_r17);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.closeMap());
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(10, "div", 71);
-    \u0275\u0275element(11, "iframe", 72);
+    \u0275\u0275elementStart(10, "div", 66);
+    \u0275\u0275element(11, "iframe", 67);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(12, "div", 66)(13, "a", 73);
+    \u0275\u0275elementStart(12, "div", 61)(13, "a", 68);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(14, "svg", 74);
-    \u0275\u0275element(15, "use", 75);
+    \u0275\u0275elementStart(14, "svg", 69);
+    \u0275\u0275element(15, "use", 70);
     \u0275\u0275elementEnd();
     \u0275\u0275text(16, " \u5728 Google Maps \u4E2D\u958B\u555F ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(17, "button", 67);
-    \u0275\u0275listener("click", function AttendanceReport_Conditional_69_Template_button_click_17_listener() {
+    \u0275\u0275elementStart(17, "button", 62);
+    \u0275\u0275listener("click", function AttendanceReport_Conditional_61_Template_button_click_17_listener() {
       \u0275\u0275restoreView(_r17);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.closeMap());
@@ -52072,7 +52092,7 @@ var AttendanceReport = class _AttendanceReport {
   static \u0275fac = function AttendanceReport_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _AttendanceReport)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _AttendanceReport, selectors: [["app-attendance-report"]], decls: 70, vars: 19, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#bar-chart-2"], [1, "mb-0"], [1, "btn", "btn-outline", "inline-flex", "items-center", "gap-1", 3, "click", "disabled"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#download"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "px-4", "py-3", "border-b"], [1, "mb-3", "flex", "items-center", "gap-2", "flex-wrap"], [1, "text-xs", "text-muted"], [1, "inline-flex", "border", "rounded-md", "overflow-hidden"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", 3, "click"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", "border-l", "border-r", 3, "click"], [1, "grid", "grid-cols-1", "sm:grid-cols-2", "lg:grid-cols-4", "gap-2", "items-end"], [1, "text-xs", "text-muted", "mb-1", "block"], [1, "form-control", "w-full", 3, "ngModelChange", "ngModel"], ["value", ""], [3, "value"], [1, "lg:col-span-2"], [1, "text-xs", "text-muted", "mb-1", "block", "sm:invisible"], [1, "btn", "btn-primary", "w-full", 3, "click"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "text-center"], [1, "text-center", "hidden", "md:table-cell"], [1, "text-center", "hidden", "lg:table-cell"], [1, "text-right"], ["type", "date", 1, "form-control", "w-full", 3, "ngModelChange", "ngModel"], [1, "flex", "items-stretch", "gap-1"], ["type", "button", "title", "\u4E0A\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "date", 1, "form-control", "flex-1", 3, "ngModelChange", "ngModel"], ["type", "button", "title", "\u4E0B\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "button", "title", "\u56DE\u5230\u672C\u9031", 1, "btn", "btn-outline", "whitespace-nowrap", 3, "click"], [1, "text-xs", "text-muted", "mt-1"], [1, "fw-500"], [1, "text-center", "text-muted", "small"], [1, "text-center", "text-muted", "small", "hidden", "md:table-cell"], ["title", "\u67E5\u770B\u6253\u5361\u4F4D\u7F6E", 1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center", "p-0", "ms-1"], [1, "text-right", 2, "white-space", "nowrap"], [1, "flex", "justify-end", "gap-1"], ["title", "\u7DE8\u8F2F", 1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center"], ["title", "\u67E5\u770B\u6253\u5361\u4F4D\u7F6E", 1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center", "p-0", "ms-1", 3, "click"], [1, "sa-icon", "sa-icon-1x", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#map-pin"], ["title", "\u7DE8\u8F2F", 1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center", 3, "click"], ["href", "/assets/icons/sprite.svg#edit"], ["colspan", "9", 1, "text-center", "text-muted", "py-4"], [1, "modal-backdrop", 3, "click"], [1, "modal", "show", 2, "display", "block", 3, "click"], [1, "modal-dialog", "modal-dialog-centered", 3, "click"], [1, "modal-content"], [1, "modal-header"], [1, "modal-title"], ["type", "button", 1, "btn-close", 3, "click"], [1, "modal-body"], [1, "mb-3"], [1, "text-muted", "text-sm"], [1, "text-muted", "text-sm", "ms-3"], [1, "grid", "grid-cols-1", "sm:grid-cols-2", "gap-4"], [1, "form-label"], ["type", "time", 1, "form-control", 3, "ngModelChange", "ngModel"], [1, "modal-footer"], ["type", "button", 1, "btn", "btn-outline", 3, "click"], ["type", "button", 1, "btn", "btn-primary", 3, "click", "disabled"], [1, "modal-dialog", "modal-lg", "modal-dialog-centered", 3, "click"], [1, "modal-title", "inline-flex", "items-center", "gap-1"], [1, "modal-body", "p-0"], ["width", "100%", "height", "450", "loading", "lazy", "referrerpolicy", "no-referrer-when-downgrade", "allowfullscreen", "", 2, "border", "0", "display", "block", 3, "src"], ["target", "_blank", "rel", "noopener", 1, "btn", "btn-primary", 3, "href"], [1, "sa-icon", "sa-icon-1x", "me-1", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#external-link"]], template: function AttendanceReport_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _AttendanceReport, selectors: [["app-attendance-report"]], decls: 62, vars: 20, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#bar-chart-2"], [1, "mb-0"], [1, "btn", "btn-outline", "inline-flex", "items-center", "gap-1", 3, "click", "disabled"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#download"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "px-4", "py-3", "border-b"], [1, "flex", "flex-wrap", "items-center", "gap-2"], [1, "form-select", 2, "width", "auto", "min-width", "160px", 3, "ngModelChange", "ngModel"], ["value", ""], [3, "value"], [1, "inline-flex", "border", "rounded-md", "overflow-hidden"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", 3, "click"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", "border-l", "border-r", 3, "click"], ["type", "date", 1, "form-control", 2, "width", "auto", "min-width", "150px", 3, "ngModel"], [1, "btn", "btn-primary", 3, "click"], [1, "text-xs", "text-muted", "mt-2"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "text-center"], [1, "text-center", "hidden", "md:table-cell"], [1, "text-center", "hidden", "lg:table-cell"], [1, "text-right"], ["type", "date", 1, "form-control", 2, "width", "auto", "min-width", "150px", 3, "ngModelChange", "ngModel"], ["type", "button", "title", "\u4E0A\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "button", "title", "\u4E0B\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "button", "title", "\u56DE\u5230\u672C\u9031", 1, "btn", "btn-outline", "whitespace-nowrap", 3, "click"], [1, "form-select", 2, "width", "auto", "min-width", "120px", 3, "ngModelChange", "ngModel"], [1, "fw-500"], [1, "text-center", "text-muted", "small"], [1, "text-center", "text-muted", "small", "hidden", "md:table-cell"], ["title", "\u67E5\u770B\u6253\u5361\u4F4D\u7F6E", 1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center", "p-0", "ms-1"], [1, "text-right", 2, "white-space", "nowrap"], [1, "flex", "justify-end", "gap-1"], ["title", "\u7DE8\u8F2F", 1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center"], ["title", "\u67E5\u770B\u6253\u5361\u4F4D\u7F6E", 1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center", "p-0", "ms-1", 3, "click"], [1, "sa-icon", "sa-icon-1x", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#map-pin"], ["title", "\u7DE8\u8F2F", 1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center", 3, "click"], ["href", "/assets/icons/sprite.svg#edit"], ["colspan", "9", 1, "text-center", "text-muted", "py-4"], [1, "modal-backdrop", 3, "click"], [1, "modal", "show", 2, "display", "block", 3, "click"], [1, "modal-dialog", "modal-dialog-centered", 3, "click"], [1, "modal-content"], [1, "modal-header"], [1, "modal-title"], ["type", "button", 1, "btn-close", 3, "click"], [1, "modal-body"], [1, "mb-3"], [1, "text-muted", "text-sm"], [1, "text-muted", "text-sm", "ms-3"], [1, "grid", "grid-cols-1", "sm:grid-cols-2", "gap-4"], [1, "form-label"], ["type", "time", 1, "form-control", 3, "ngModelChange", "ngModel"], [1, "modal-footer"], ["type", "button", 1, "btn", "btn-outline", 3, "click"], ["type", "button", 1, "btn", "btn-primary", 3, "click", "disabled"], [1, "modal-dialog", "modal-lg", "modal-dialog-centered", 3, "click"], [1, "modal-title", "inline-flex", "items-center", "gap-1"], [1, "modal-body", "p-0"], ["width", "100%", "height", "450", "loading", "lazy", "referrerpolicy", "no-referrer-when-downgrade", "allowfullscreen", "", 2, "border", "0", "display", "block", 3, "src"], ["target", "_blank", "rel", "noopener", 1, "btn", "btn-primary", 3, "href"], [1, "sa-icon", "sa-icon-1x", "me-1", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#external-link"]], template: function AttendanceReport_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "div", 2);
       \u0275\u0275namespaceSVG();
@@ -52094,107 +52114,103 @@ var AttendanceReport = class _AttendanceReport {
       \u0275\u0275conditionalCreate(10, AttendanceReport_Conditional_10_Template, 1, 0)(11, AttendanceReport_Conditional_11_Template, 1, 0);
       \u0275\u0275elementEnd()();
       \u0275\u0275namespaceHTML();
-      \u0275\u0275elementStart(12, "div", 9)(13, "div", 10)(14, "div", 11)(15, "div", 12)(16, "span", 13);
-      \u0275\u0275text(17, "\u6642\u6BB5\uFF1A");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(18, "div", 14)(19, "button", 15);
-      \u0275\u0275listener("click", function AttendanceReport_Template_button_click_19_listener() {
-        return ctx.filterMode.set("day");
-      });
-      \u0275\u0275text(20, "\u65E5");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(21, "button", 16);
-      \u0275\u0275listener("click", function AttendanceReport_Template_button_click_21_listener() {
-        return ctx.filterMode.set("week");
-      });
-      \u0275\u0275text(22, "\u9031");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(23, "button", 15);
-      \u0275\u0275listener("click", function AttendanceReport_Template_button_click_23_listener() {
-        return ctx.filterMode.set("month");
-      });
-      \u0275\u0275text(24, "\u6708");
-      \u0275\u0275elementEnd()()();
-      \u0275\u0275elementStart(25, "div", 17)(26, "div")(27, "label", 18);
-      \u0275\u0275text(28, "\u54E1\u5DE5");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(29, "select", 19);
-      \u0275\u0275listener("ngModelChange", function AttendanceReport_Template_select_ngModelChange_29_listener($event) {
+      \u0275\u0275elementStart(12, "div", 9)(13, "div", 10)(14, "div", 11)(15, "div", 12)(16, "select", 13);
+      \u0275\u0275listener("ngModelChange", function AttendanceReport_Template_select_ngModelChange_16_listener($event) {
         return ctx.selectedEmployeeId.set($event);
       });
-      \u0275\u0275elementStart(30, "option", 20);
-      \u0275\u0275text(31, "\u5168\u90E8\u54E1\u5DE5");
+      \u0275\u0275elementStart(17, "option", 14);
+      \u0275\u0275text(18, "\u5168\u90E8\u54E1\u5DE5");
       \u0275\u0275elementEnd();
-      \u0275\u0275repeaterCreate(32, AttendanceReport_For_33_Template, 2, 3, "option", 21, _forTrack025);
+      \u0275\u0275repeaterCreate(19, AttendanceReport_For_20_Template, 2, 3, "option", 15, _forTrack025);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(21, "div", 16)(22, "button", 17);
+      \u0275\u0275listener("click", function AttendanceReport_Template_button_click_22_listener() {
+        return ctx.filterMode.set("day");
+      });
+      \u0275\u0275text(23, "\u65E5");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(24, "button", 18);
+      \u0275\u0275listener("click", function AttendanceReport_Template_button_click_24_listener() {
+        return ctx.filterMode.set("week");
+      });
+      \u0275\u0275text(25, "\u9031");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(26, "button", 17);
+      \u0275\u0275listener("click", function AttendanceReport_Template_button_click_26_listener() {
+        return ctx.filterMode.set("month");
+      });
+      \u0275\u0275text(27, "\u6708");
       \u0275\u0275elementEnd()();
-      \u0275\u0275conditionalCreate(34, AttendanceReport_Conditional_34_Template, 4, 1, "div", 22)(35, AttendanceReport_Conditional_35_Template, 12, 2, "div", 22)(36, AttendanceReport_Conditional_36_Template, 16, 2);
-      \u0275\u0275elementStart(37, "div")(38, "label", 23);
-      \u0275\u0275text(39, "\xA0");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(40, "button", 24);
-      \u0275\u0275listener("click", function AttendanceReport_Template_button_click_40_listener() {
+      \u0275\u0275conditionalCreate(28, AttendanceReport_Conditional_28_Template, 1, 1, "input", 19)(29, AttendanceReport_Conditional_29_Template, 7, 1)(30, AttendanceReport_Conditional_30_Template, 10, 2);
+      \u0275\u0275elementStart(31, "button", 20);
+      \u0275\u0275listener("click", function AttendanceReport_Template_button_click_31_listener() {
         return ctx.search();
       });
-      \u0275\u0275text(41, "\u7BE9\u9078");
-      \u0275\u0275elementEnd()()()();
-      \u0275\u0275elementStart(42, "div", 25)(43, "table", 26)(44, "thead", 27)(45, "tr")(46, "th");
-      \u0275\u0275text(47, "\u54E1\u5DE5\u59D3\u540D");
+      \u0275\u0275text(32, "\u7BE9\u9078");
+      \u0275\u0275elementEnd()();
+      \u0275\u0275conditionalCreate(33, AttendanceReport_Conditional_33_Template, 2, 3, "div", 21);
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(48, "th", 28);
-      \u0275\u0275text(49, "\u65E5\u671F");
+      \u0275\u0275elementStart(34, "div", 22)(35, "table", 23)(36, "thead", 24)(37, "tr")(38, "th");
+      \u0275\u0275text(39, "\u54E1\u5DE5\u59D3\u540D");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(50, "th", 29);
-      \u0275\u0275text(51, "\u8ACB\u5047");
+      \u0275\u0275elementStart(40, "th", 25);
+      \u0275\u0275text(41, "\u65E5\u671F");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(52, "th", 29);
-      \u0275\u0275text(53, "\u8ACB\u5047\u6642\u9593");
+      \u0275\u0275elementStart(42, "th", 26);
+      \u0275\u0275text(43, "\u8ACB\u5047");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(44, "th", 26);
+      \u0275\u0275text(45, "\u8ACB\u5047\u6642\u9593");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(46, "th", 25);
+      \u0275\u0275text(47, "\u4E0A\u73ED\u6642\u9593");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(48, "th", 25);
+      \u0275\u0275text(49, "\u4E0B\u73ED\u6642\u9593");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(50, "th", 27);
+      \u0275\u0275text(51, "\u52A0\u73ED\u958B\u59CB");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(52, "th", 27);
+      \u0275\u0275text(53, "\u52A0\u73ED\u7D50\u675F");
       \u0275\u0275elementEnd();
       \u0275\u0275elementStart(54, "th", 28);
-      \u0275\u0275text(55, "\u4E0A\u73ED\u6642\u9593");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(56, "th", 28);
-      \u0275\u0275text(57, "\u4E0B\u73ED\u6642\u9593");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(58, "th", 30);
-      \u0275\u0275text(59, "\u52A0\u73ED\u958B\u59CB");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(60, "th", 30);
-      \u0275\u0275text(61, "\u52A0\u73ED\u7D50\u675F");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(62, "th", 31);
-      \u0275\u0275text(63, "\u64CD\u4F5C");
+      \u0275\u0275text(55, "\u64CD\u4F5C");
       \u0275\u0275elementEnd()()();
-      \u0275\u0275elementStart(64, "tbody");
-      \u0275\u0275repeaterCreate(65, AttendanceReport_For_66_Template, 24, 13, "tr", null, _forTrack025, false, AttendanceReport_ForEmpty_67_Template, 4, 1, "tr");
+      \u0275\u0275elementStart(56, "tbody");
+      \u0275\u0275repeaterCreate(57, AttendanceReport_For_58_Template, 24, 13, "tr", null, _forTrack025, false, AttendanceReport_ForEmpty_59_Template, 4, 1, "tr");
       \u0275\u0275elementEnd()()()()()();
-      \u0275\u0275conditionalCreate(68, AttendanceReport_Conditional_68_Template, 41, 8);
-      \u0275\u0275conditionalCreate(69, AttendanceReport_Conditional_69_Template, 19, 3);
+      \u0275\u0275conditionalCreate(60, AttendanceReport_Conditional_60_Template, 41, 8);
+      \u0275\u0275conditionalCreate(61, AttendanceReport_Conditional_61_Template, 19, 3);
     }
     if (rf & 2) {
-      let tmp_12_0;
+      let tmp_11_0;
       let tmp_13_0;
+      let tmp_14_0;
       \u0275\u0275advance(7);
       \u0275\u0275property("disabled", ctx.exporting() || ctx.records().length === 0);
       \u0275\u0275advance(3);
       \u0275\u0275conditional(ctx.exporting() ? 10 : 11);
-      \u0275\u0275advance(9);
+      \u0275\u0275advance(6);
+      \u0275\u0275property("ngModel", ctx.selectedEmployeeId());
+      \u0275\u0275advance(3);
+      \u0275\u0275repeater(ctx.employees());
+      \u0275\u0275advance(3);
       \u0275\u0275classProp("bg-primary", ctx.filterMode() === "day")("text-white", ctx.filterMode() === "day");
       \u0275\u0275advance(2);
       \u0275\u0275classProp("bg-primary", ctx.filterMode() === "week")("text-white", ctx.filterMode() === "week");
       \u0275\u0275advance(2);
       \u0275\u0275classProp("bg-primary", ctx.filterMode() === "month")("text-white", ctx.filterMode() === "month");
-      \u0275\u0275advance(6);
-      \u0275\u0275property("ngModel", ctx.selectedEmployeeId());
-      \u0275\u0275advance(3);
-      \u0275\u0275repeater(ctx.employees());
       \u0275\u0275advance(2);
-      \u0275\u0275conditional(ctx.filterMode() === "day" ? 34 : ctx.filterMode() === "week" ? 35 : 36);
-      \u0275\u0275advance(31);
+      \u0275\u0275conditional(ctx.filterMode() === "day" ? 28 : ctx.filterMode() === "week" ? 29 : 30);
+      \u0275\u0275advance(5);
+      \u0275\u0275conditional((tmp_11_0 = ctx.filterMode() === "week" && ctx.weekRange()) ? 33 : -1, tmp_11_0);
+      \u0275\u0275advance(24);
       \u0275\u0275repeater(ctx.records());
       \u0275\u0275advance(3);
-      \u0275\u0275conditional((tmp_12_0 = ctx.editingRecord()) ? 68 : -1, tmp_12_0);
+      \u0275\u0275conditional((tmp_13_0 = ctx.editingRecord()) ? 60 : -1, tmp_13_0);
       \u0275\u0275advance();
-      \u0275\u0275conditional((tmp_13_0 = ctx.mapModal()) ? 69 : -1, tmp_13_0);
+      \u0275\u0275conditional((tmp_14_0 = ctx.mapModal()) ? 61 : -1, tmp_14_0);
     }
   }, dependencies: [CommonModule, FormsModule, NgSelectOption, \u0275NgSelectMultipleOption, DefaultValueAccessor, SelectControlValueAccessor, NgControlStatus, NgModel], encapsulation: 2 });
 };
@@ -52221,9 +52237,14 @@ var AttendanceReport = class _AttendanceReport {
 
       <!-- Toolbar: \u7BE9\u9078\u5217 -->
       <div class="px-4 py-3 border-b">
-        <!-- \u6642\u6BB5\u6A21\u5F0F\u5207\u63DB -->
-        <div class="mb-3 flex items-center gap-2 flex-wrap">
-          <span class="text-xs text-muted">\u6642\u6BB5\uFF1A</span>
+        <div class="flex flex-wrap items-center gap-2">
+          <select class="form-select" style="width: auto; min-width: 160px"
+                  [ngModel]="selectedEmployeeId()" (ngModelChange)="selectedEmployeeId.set($event)">
+            <option value="">\u5168\u90E8\u54E1\u5DE5</option>
+            @for (emp of employees(); track emp.id) {
+              <option [value]="emp.id">{{ emp.code }} {{ emp.name }}</option>
+            }
+          </select>
           <div class="inline-flex border rounded-md overflow-hidden">
             <button type="button" class="px-3 py-1.5 text-sm"
                     [class.bg-primary]="filterMode()==='day'" [class.text-white]="filterMode()==='day'"
@@ -52235,65 +52256,36 @@ var AttendanceReport = class _AttendanceReport {
                     [class.bg-primary]="filterMode()==='month'" [class.text-white]="filterMode()==='month'"
                     (click)="filterMode.set('month')">\u6708</button>
           </div>
-        </div>
-        <!-- \u689D\u4EF6\u5217 -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-end">
-          <div>
-            <label class="text-xs text-muted mb-1 block">\u54E1\u5DE5</label>
-            <select class="form-control w-full" [ngModel]="selectedEmployeeId()" (ngModelChange)="selectedEmployeeId.set($event)">
-              <option value="">\u5168\u90E8\u54E1\u5DE5</option>
-              @for (emp of employees(); track emp.id) {
-                <option [value]="emp.id">{{ emp.code }} {{ emp.name }}</option>
+          @if (filterMode() === 'day') {
+            <input type="date" class="form-control" style="width: auto; min-width: 150px"
+                   [ngModel]="selectedDate()" (ngModelChange)="selectedDate.set($event)" />
+          } @else if (filterMode() === 'week') {
+            <button type="button" class="btn btn-outline px-2" title="\u4E0A\u4E00\u9031" (click)="shiftWeek(-7)">\u2039</button>
+            <input type="date" class="form-control" style="width: auto; min-width: 150px"
+                   [ngModel]="selectedWeekDate()" (ngModelChange)="selectedWeekDate.set($event)" />
+            <button type="button" class="btn btn-outline px-2" title="\u4E0B\u4E00\u9031" (click)="shiftWeek(7)">\u203A</button>
+            <button type="button" class="btn btn-outline whitespace-nowrap" title="\u56DE\u5230\u672C\u9031" (click)="resetToThisWeek()">\u672C\u9031</button>
+          } @else {
+            <select class="form-select" style="width: auto; min-width: 120px"
+                    [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set($event)">
+              <option value="">\u5168\u90E8\u5E74\u4EFD</option>
+              @for (y of years(); track y) {
+                <option [value]="y">{{ y }}</option>
               }
             </select>
-          </div>
-          @if (filterMode() === 'day') {
-            <div class="lg:col-span-2">
-              <label class="text-xs text-muted mb-1 block">\u65E5\u671F</label>
-              <input type="date" class="form-control w-full"
-                     [ngModel]="selectedDate()" (ngModelChange)="selectedDate.set($event)" />
-            </div>
-          } @else if (filterMode() === 'week') {
-            <div class="lg:col-span-2">
-              <label class="text-xs text-muted mb-1 block">\u9031\u6B21\uFF08\u6311\u4EFB\u4E00\u5929\u5373\u81EA\u52D5\u53D6\u6574\u9031\uFF09</label>
-              <div class="flex items-stretch gap-1">
-                <button type="button" class="btn btn-outline px-2" title="\u4E0A\u4E00\u9031" (click)="shiftWeek(-7)">\u2039</button>
-                <input type="date" class="form-control flex-1"
-                       [ngModel]="selectedWeekDate()" (ngModelChange)="selectedWeekDate.set($event)" />
-                <button type="button" class="btn btn-outline px-2" title="\u4E0B\u4E00\u9031" (click)="shiftWeek(7)">\u203A</button>
-                <button type="button" class="btn btn-outline whitespace-nowrap" title="\u56DE\u5230\u672C\u9031" (click)="resetToThisWeek()">\u672C\u9031</button>
-              </div>
-              @if (weekRange(); as r) {
-                <div class="text-xs text-muted mt-1">
-                  \u7B2C {{ r.weekNumber }} \u9031\uFF08{{ r.dateFrom }} \u4E00 ~ {{ r.dateTo }} \u65E5\uFF09
-                </div>
+            <select class="form-select" style="width: auto; min-width: 120px"
+                    [ngModel]="selectedMonth()" (ngModelChange)="selectedMonth.set($event)">
+              <option value="">\u5168\u90E8\u6708\u4EFD</option>
+              @for (m of months; track m) {
+                <option [value]="m">{{ m }}\u6708</option>
               }
-            </div>
-          } @else {
-            <div>
-              <label class="text-xs text-muted mb-1 block">\u5E74\u4EFD</label>
-              <select class="form-control w-full" [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set($event)">
-                <option value="">\u5168\u90E8\u5E74\u4EFD</option>
-                @for (y of years(); track y) {
-                  <option [value]="y">{{ y }}</option>
-                }
-              </select>
-            </div>
-            <div>
-              <label class="text-xs text-muted mb-1 block">\u6708\u4EFD</label>
-              <select class="form-control w-full" [ngModel]="selectedMonth()" (ngModelChange)="selectedMonth.set($event)">
-                <option value="">\u5168\u90E8\u6708\u4EFD</option>
-                @for (m of months; track m) {
-                  <option [value]="m">{{ m }}\u6708</option>
-                }
-              </select>
-            </div>
+            </select>
           }
-          <div>
-            <label class="text-xs text-muted mb-1 block sm:invisible">&nbsp;</label>
-            <button class="btn btn-primary w-full" (click)="search()">\u7BE9\u9078</button>
-          </div>
+          <button class="btn btn-primary" (click)="search()">\u7BE9\u9078</button>
         </div>
+        @if (filterMode() === 'week' && weekRange(); as r) {
+          <div class="text-xs text-muted mt-2">\u7B2C {{ r.weekNumber }} \u9031\uFF08{{ r.dateFrom }} \u4E00 ~ {{ r.dateTo }} \u65E5\uFF09</div>
+        }
       </div>
 
       <!-- Table -->
@@ -52480,9 +52472,19 @@ var AttendanceReport = class _AttendanceReport {
 
 // src/app/features/admin/reports/pages/overtime-report/overtime-report.ts
 var _forTrack026 = ($index, $item) => $item.id;
-function OvertimeReport_For_28_Template(rf, ctx) {
+function OvertimeReport_Conditional_10_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 18);
+    \u0275\u0275text(0, " \u532F\u51FA\u4E2D... ");
+  }
+}
+function OvertimeReport_Conditional_11_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " \u532F\u51FA Excel ");
+  }
+}
+function OvertimeReport_For_20_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "option", 15);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -52493,9 +52495,9 @@ function OvertimeReport_For_28_Template(rf, ctx) {
     \u0275\u0275textInterpolate2("", emp_r1.code, " ", emp_r1.name);
   }
 }
-function OvertimeReport_For_36_Template(rf, ctx) {
+function OvertimeReport_For_25_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 18);
+    \u0275\u0275elementStart(0, "option", 15);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -52503,208 +52505,189 @@ function OvertimeReport_For_36_Template(rf, ctx) {
     const proj_r2 = ctx.$implicit;
     \u0275\u0275property("value", proj_r2.id);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(proj_r2.code);
+    \u0275\u0275textInterpolate2("", proj_r2.code, " - ", proj_r2.name);
   }
 }
-function OvertimeReport_Conditional_37_Template(rf, ctx) {
+function OvertimeReport_Conditional_33_Template(rf, ctx) {
   if (rf & 1) {
     const _r3 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 19)(1, "label", 15);
-    \u0275\u0275text(2, "\u65E5\u671F");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "input", 29);
-    \u0275\u0275listener("ngModelChange", function OvertimeReport_Conditional_37_Template_input_ngModelChange_3_listener($event) {
+    \u0275\u0275elementStart(0, "input", 29);
+    \u0275\u0275listener("ngModelChange", function OvertimeReport_Conditional_33_Template_input_ngModelChange_0_listener($event) {
       \u0275\u0275restoreView(_r3);
       const ctx_r3 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r3.selectedDate.set($event));
     });
-    \u0275\u0275elementEnd()();
+    \u0275\u0275elementEnd();
   }
   if (rf & 2) {
     const ctx_r3 = \u0275\u0275nextContext();
-    \u0275\u0275advance(3);
     \u0275\u0275property("ngModel", ctx_r3.selectedDate());
   }
 }
-function OvertimeReport_Conditional_38_Conditional_11_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 35);
-    \u0275\u0275text(1);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const r_r6 = ctx;
-    \u0275\u0275advance();
-    \u0275\u0275textInterpolate3(" \u7B2C ", r_r6.weekNumber, " \u9031\uFF08", r_r6.dateFrom, " \u4E00 ~ ", r_r6.dateTo, " \u65E5\uFF09 ");
-  }
-}
-function OvertimeReport_Conditional_38_Template(rf, ctx) {
+function OvertimeReport_Conditional_34_Template(rf, ctx) {
   if (rf & 1) {
     const _r5 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 19)(1, "label", 15);
-    \u0275\u0275text(2, "\u9031\u6B21\uFF08\u6311\u4EFB\u4E00\u5929\u5373\u81EA\u52D5\u53D6\u6574\u9031\uFF09");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div", 30)(4, "button", 31);
-    \u0275\u0275listener("click", function OvertimeReport_Conditional_38_Template_button_click_4_listener() {
+    \u0275\u0275elementStart(0, "button", 30);
+    \u0275\u0275listener("click", function OvertimeReport_Conditional_34_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r5);
       const ctx_r3 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r3.shiftWeek(-7));
     });
-    \u0275\u0275text(5, "\u2039");
+    \u0275\u0275text(1, "\u2039");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "input", 32);
-    \u0275\u0275listener("ngModelChange", function OvertimeReport_Conditional_38_Template_input_ngModelChange_6_listener($event) {
+    \u0275\u0275elementStart(2, "input", 29);
+    \u0275\u0275listener("ngModelChange", function OvertimeReport_Conditional_34_Template_input_ngModelChange_2_listener($event) {
       \u0275\u0275restoreView(_r5);
       const ctx_r3 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r3.selectedWeekDate.set($event));
     });
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "button", 33);
-    \u0275\u0275listener("click", function OvertimeReport_Conditional_38_Template_button_click_7_listener() {
+    \u0275\u0275elementStart(3, "button", 31);
+    \u0275\u0275listener("click", function OvertimeReport_Conditional_34_Template_button_click_3_listener() {
       \u0275\u0275restoreView(_r5);
       const ctx_r3 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r3.shiftWeek(7));
     });
-    \u0275\u0275text(8, "\u203A");
+    \u0275\u0275text(4, "\u203A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "button", 34);
-    \u0275\u0275listener("click", function OvertimeReport_Conditional_38_Template_button_click_9_listener() {
+    \u0275\u0275elementStart(5, "button", 32);
+    \u0275\u0275listener("click", function OvertimeReport_Conditional_34_Template_button_click_5_listener() {
       \u0275\u0275restoreView(_r5);
       const ctx_r3 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r3.resetToThisWeek());
     });
-    \u0275\u0275text(10, "\u672C\u9031");
-    \u0275\u0275elementEnd()();
-    \u0275\u0275conditionalCreate(11, OvertimeReport_Conditional_38_Conditional_11_Template, 2, 3, "div", 35);
+    \u0275\u0275text(6, "\u672C\u9031");
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    let tmp_2_0;
     const ctx_r3 = \u0275\u0275nextContext();
-    \u0275\u0275advance(6);
+    \u0275\u0275advance(2);
     \u0275\u0275property("ngModel", ctx_r3.selectedWeekDate());
-    \u0275\u0275advance(5);
-    \u0275\u0275conditional((tmp_2_0 = ctx_r3.weekRange()) ? 11 : -1, tmp_2_0);
   }
 }
-function OvertimeReport_Conditional_39_For_7_Template(rf, ctx) {
+function OvertimeReport_Conditional_35_For_4_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 18);
+    \u0275\u0275elementStart(0, "option", 15);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const y_r8 = ctx.$implicit;
-    \u0275\u0275property("value", y_r8);
+    const y_r7 = ctx.$implicit;
+    \u0275\u0275property("value", y_r7);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(y_r8);
+    \u0275\u0275textInterpolate(y_r7);
   }
 }
-function OvertimeReport_Conditional_39_For_15_Template(rf, ctx) {
+function OvertimeReport_Conditional_35_For_9_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 18);
+    \u0275\u0275elementStart(0, "option", 15);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const m_r9 = ctx.$implicit;
-    \u0275\u0275property("value", m_r9);
+    const m_r8 = ctx.$implicit;
+    \u0275\u0275property("value", m_r8);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate1("", m_r9, "\u6708");
+    \u0275\u0275textInterpolate1("", m_r8, "\u6708");
   }
 }
-function OvertimeReport_Conditional_39_Template(rf, ctx) {
+function OvertimeReport_Conditional_35_Template(rf, ctx) {
   if (rf & 1) {
-    const _r7 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div")(1, "label", 15);
-    \u0275\u0275text(2, "\u5E74\u4EFD");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "select", 16);
-    \u0275\u0275listener("ngModelChange", function OvertimeReport_Conditional_39_Template_select_ngModelChange_3_listener($event) {
-      \u0275\u0275restoreView(_r7);
+    const _r6 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "select", 33);
+    \u0275\u0275listener("ngModelChange", function OvertimeReport_Conditional_35_Template_select_ngModelChange_0_listener($event) {
+      \u0275\u0275restoreView(_r6);
       const ctx_r3 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r3.selectedYear.set($event));
     });
-    \u0275\u0275elementStart(4, "option", 17);
-    \u0275\u0275text(5, "\u5168\u90E8\u5E74\u4EFD");
+    \u0275\u0275elementStart(1, "option", 14);
+    \u0275\u0275text(2, "\u5168\u90E8\u5E74\u4EFD");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(6, OvertimeReport_Conditional_39_For_7_Template, 2, 2, "option", 18, \u0275\u0275repeaterTrackByIdentity);
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(8, "div")(9, "label", 15);
-    \u0275\u0275text(10, "\u6708\u4EFD");
+    \u0275\u0275repeaterCreate(3, OvertimeReport_Conditional_35_For_4_Template, 2, 2, "option", 15, \u0275\u0275repeaterTrackByIdentity);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(11, "select", 16);
-    \u0275\u0275listener("ngModelChange", function OvertimeReport_Conditional_39_Template_select_ngModelChange_11_listener($event) {
-      \u0275\u0275restoreView(_r7);
+    \u0275\u0275elementStart(5, "select", 33);
+    \u0275\u0275listener("ngModelChange", function OvertimeReport_Conditional_35_Template_select_ngModelChange_5_listener($event) {
+      \u0275\u0275restoreView(_r6);
       const ctx_r3 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r3.selectedMonth.set($event));
     });
-    \u0275\u0275elementStart(12, "option", 17);
-    \u0275\u0275text(13, "\u5168\u90E8\u6708\u4EFD");
+    \u0275\u0275elementStart(6, "option", 14);
+    \u0275\u0275text(7, "\u5168\u90E8\u6708\u4EFD");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(14, OvertimeReport_Conditional_39_For_15_Template, 2, 2, "option", 18, \u0275\u0275repeaterTrackByIdentity);
-    \u0275\u0275elementEnd()();
+    \u0275\u0275repeaterCreate(8, OvertimeReport_Conditional_35_For_9_Template, 2, 2, "option", 15, \u0275\u0275repeaterTrackByIdentity);
+    \u0275\u0275elementEnd();
   }
   if (rf & 2) {
     const ctx_r3 = \u0275\u0275nextContext();
-    \u0275\u0275advance(3);
     \u0275\u0275property("ngModel", ctx_r3.selectedYear());
     \u0275\u0275advance(3);
     \u0275\u0275repeater(ctx_r3.years());
-    \u0275\u0275advance(5);
+    \u0275\u0275advance(2);
     \u0275\u0275property("ngModel", ctx_r3.selectedMonth());
     \u0275\u0275advance(3);
     \u0275\u0275repeater(ctx_r3.months);
   }
 }
-function OvertimeReport_For_63_Conditional_6_For_1_Conditional_3_Template(rf, ctx) {
+function OvertimeReport_Conditional_38_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 43);
+    \u0275\u0275elementStart(0, "div", 21);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const \u0275$index_174_r10 = \u0275\u0275nextContext().$index;
-    const row_r11 = \u0275\u0275nextContext(2).$implicit;
+    const r_r9 = ctx;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(row_r11.projectNames[\u0275$index_174_r10]);
+    \u0275\u0275textInterpolate3("\u7B2C ", r_r9.weekNumber, " \u9031\uFF08", r_r9.dateFrom, " \u4E00 ~ ", r_r9.dateTo, " \u65E5\uFF09");
   }
 }
-function OvertimeReport_For_63_Conditional_6_For_1_Template(rf, ctx) {
+function OvertimeReport_For_57_Conditional_6_For_1_Conditional_3_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 41)(1, "div", 42);
+    \u0275\u0275elementStart(0, "div", 41);
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const \u0275$index_142_r10 = \u0275\u0275nextContext().$index;
+    const row_r11 = \u0275\u0275nextContext(2).$implicit;
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate(row_r11.projectNames[\u0275$index_142_r10]);
+  }
+}
+function OvertimeReport_For_57_Conditional_6_For_1_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 39)(1, "div", 40);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(3, OvertimeReport_For_63_Conditional_6_For_1_Conditional_3_Template, 2, 1, "div", 43);
+    \u0275\u0275conditionalCreate(3, OvertimeReport_For_57_Conditional_6_For_1_Conditional_3_Template, 2, 1, "div", 41);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
     const code_r12 = ctx.$implicit;
-    const \u0275$index_174_r10 = ctx.$index;
+    const \u0275$index_142_r10 = ctx.$index;
     const row_r11 = \u0275\u0275nextContext(2).$implicit;
     \u0275\u0275advance(2);
     \u0275\u0275textInterpolate(code_r12);
     \u0275\u0275advance();
-    \u0275\u0275conditional(row_r11.projectNames[\u0275$index_174_r10] ? 3 : -1);
+    \u0275\u0275conditional(row_r11.projectNames[\u0275$index_142_r10] ? 3 : -1);
   }
 }
-function OvertimeReport_For_63_Conditional_6_Template(rf, ctx) {
+function OvertimeReport_For_57_Conditional_6_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275repeaterCreate(0, OvertimeReport_For_63_Conditional_6_For_1_Template, 4, 2, "div", 41, \u0275\u0275repeaterTrackByIdentity);
+    \u0275\u0275repeaterCreate(0, OvertimeReport_For_57_Conditional_6_For_1_Template, 4, 2, "div", 39, \u0275\u0275repeaterTrackByIdentity);
   }
   if (rf & 2) {
     const row_r11 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275repeater(row_r11.projectCodes);
   }
 }
-function OvertimeReport_For_63_Conditional_7_Template(rf, ctx) {
+function OvertimeReport_For_57_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 39);
+    \u0275\u0275elementStart(0, "span", 37);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
 }
-function OvertimeReport_For_63_Conditional_11_Template(rf, ctx) {
+function OvertimeReport_For_57_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0);
   }
@@ -52713,31 +52696,31 @@ function OvertimeReport_For_63_Conditional_11_Template(rf, ctx) {
     \u0275\u0275textInterpolate1(" ", row_r11.actualHours, " h ");
   }
 }
-function OvertimeReport_For_63_Conditional_12_Template(rf, ctx) {
+function OvertimeReport_For_57_Conditional_12_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 39);
+    \u0275\u0275elementStart(0, "span", 37);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
 }
-function OvertimeReport_For_63_Template(rf, ctx) {
+function OvertimeReport_For_57_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 36);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 34);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td", 37);
+    \u0275\u0275elementStart(3, "td", 35);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "td", 38);
-    \u0275\u0275conditionalCreate(6, OvertimeReport_For_63_Conditional_6_Template, 2, 0)(7, OvertimeReport_For_63_Conditional_7_Template, 2, 0, "span", 39);
+    \u0275\u0275elementStart(5, "td", 36);
+    \u0275\u0275conditionalCreate(6, OvertimeReport_For_57_Conditional_6_Template, 2, 0)(7, OvertimeReport_For_57_Conditional_7_Template, 2, 0, "span", 37);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(8, "td", 25);
     \u0275\u0275text(9);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(10, "td", 25);
-    \u0275\u0275conditionalCreate(11, OvertimeReport_For_63_Conditional_11_Template, 1, 1)(12, OvertimeReport_For_63_Conditional_12_Template, 2, 0, "span", 39);
+    \u0275\u0275conditionalCreate(11, OvertimeReport_For_57_Conditional_11_Template, 1, 1)(12, OvertimeReport_For_57_Conditional_12_Template, 2, 0, "span", 37);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(13, "td", 40);
+    \u0275\u0275elementStart(13, "td", 38);
     \u0275\u0275text(14);
     \u0275\u0275elementEnd()();
   }
@@ -52759,20 +52742,20 @@ function OvertimeReport_For_63_Template(rf, ctx) {
     \u0275\u0275textInterpolate(row_r11.reason);
   }
 }
-function OvertimeReport_ForEmpty_64_Conditional_2_Template(rf, ctx) {
+function OvertimeReport_ForEmpty_58_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u8F09\u5165\u4E2D... ");
   }
 }
-function OvertimeReport_ForEmpty_64_Conditional_3_Template(rf, ctx) {
+function OvertimeReport_ForEmpty_58_Conditional_3_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u5C1A\u7121\u8CC7\u6599 ");
   }
 }
-function OvertimeReport_ForEmpty_64_Template(rf, ctx) {
+function OvertimeReport_ForEmpty_58_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 44);
-    \u0275\u0275conditionalCreate(2, OvertimeReport_ForEmpty_64_Conditional_2_Template, 1, 0)(3, OvertimeReport_ForEmpty_64_Conditional_3_Template, 1, 0);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 42);
+    \u0275\u0275conditionalCreate(2, OvertimeReport_ForEmpty_58_Conditional_2_Template, 1, 0)(3, OvertimeReport_ForEmpty_58_Conditional_3_Template, 1, 0);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -52781,22 +52764,22 @@ function OvertimeReport_ForEmpty_64_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r3.loading() ? 2 : 3);
   }
 }
-function OvertimeReport_Conditional_65_Template(rf, ctx) {
+function OvertimeReport_Conditional_59_Template(rf, ctx) {
   if (rf & 1) {
     const _r13 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 28)(1, "span", 45);
+    \u0275\u0275elementStart(0, "div", 28)(1, "span", 43);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div", 46)(4, "button", 47);
-    \u0275\u0275listener("click", function OvertimeReport_Conditional_65_Template_button_click_4_listener() {
+    \u0275\u0275elementStart(3, "div", 44)(4, "button", 45);
+    \u0275\u0275listener("click", function OvertimeReport_Conditional_59_Template_button_click_4_listener() {
       \u0275\u0275restoreView(_r13);
       const ctx_r3 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r3.goToPage(ctx_r3.currentPage() - 1));
     });
     \u0275\u0275text(5, "\u4E0A\u4E00\u9801");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "button", 47);
-    \u0275\u0275listener("click", function OvertimeReport_Conditional_65_Template_button_click_6_listener() {
+    \u0275\u0275elementStart(6, "button", 45);
+    \u0275\u0275listener("click", function OvertimeReport_Conditional_59_Template_button_click_6_listener() {
       \u0275\u0275restoreView(_r13);
       const ctx_r3 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r3.goToPage(ctx_r3.currentPage() + 1));
@@ -52837,6 +52820,7 @@ var OvertimeReport = class _OvertimeReport {
   /** 紀錄 */
   records = signal([], ...ngDevMode ? [{ debugName: "records" }] : []);
   loading = signal(false, ...ngDevMode ? [{ debugName: "loading" }] : []);
+  exporting = signal(false, ...ngDevMode ? [{ debugName: "exporting" }] : []);
   /** 分頁 */
   currentPage = signal(1, ...ngDevMode ? [{ debugName: "currentPage" }] : []);
   totalCount = signal(0, ...ngDevMode ? [{ debugName: "totalCount" }] : []);
@@ -52880,6 +52864,19 @@ var OvertimeReport = class _OvertimeReport {
   resetToThisWeek() {
     this.selectedWeekDate.set(todayString());
   }
+  /** 匯出檔名後綴：依 mode 給友善字串 */
+  exportSuffix() {
+    const mode = this.filterMode();
+    if (mode === "day")
+      return this.selectedDate() || "\u5168\u90E8";
+    if (mode === "week") {
+      const r = this.weekRange();
+      return r ? `${r.isoYear}-W${String(r.weekNumber).padStart(2, "0")}` : "\u5168\u90E8";
+    }
+    const year = this.selectedYear() || "\u5168\u90E8";
+    const month = this.selectedMonth() || "\u5168\u90E8";
+    return `${year}-${String(month).padStart(2, "0")}`;
+  }
   loadEmployees() {
     this.http.get(`${environment.apiUrl}/users/lookup?scope=department`).subscribe({
       next: (res) => {
@@ -52892,7 +52889,7 @@ var OvertimeReport = class _OvertimeReport {
     this.http.get(`${environment.apiUrl}/projects`).subscribe({
       next: (res) => {
         const items = res?.data?.items ?? res?.items ?? res ?? [];
-        this.projects.set(items.map((p) => ({ id: p.id, code: p.code })));
+        this.projects.set(items.map((p) => ({ id: p.id, code: p.code, name: p.name ?? "" })));
       }
     });
   }
@@ -52940,10 +52937,50 @@ var OvertimeReport = class _OvertimeReport {
       }
     });
   }
+  exportExcel() {
+    this.exporting.set(true);
+    const params = { page: 1, pageSize: 9999 };
+    if (this.selectedEmployeeId())
+      params.employeeId = this.selectedEmployeeId();
+    if (this.selectedProjectId())
+      params.projectId = this.selectedProjectId();
+    const range = this.computeDateRange();
+    if (range) {
+      params.dateFrom = range.dateFrom;
+      params.dateTo = range.dateTo;
+    }
+    this.http.get(`${environment.apiUrl}/reports/overtime`, { params }).subscribe({
+      next: (res) => {
+        const data = res?.data ?? res ?? {};
+        const items = data?.items ?? [];
+        const wsData = items.map((r) => {
+          const codes = r.projectCodes ?? [];
+          const names = r.projectNames ?? [];
+          const projectText = codes.map((c, i) => names[i] ? `${c} ${names[i]}` : c).join("\u3001");
+          return {
+            "\u54E1\u5DE5\u59D3\u540D": r.employeeName ?? "\u2014",
+            "\u52A0\u73ED\u65E5\u671F": r.overtimeDate ? new Date(r.overtimeDate).toLocaleDateString("zh-TW") : "",
+            "\u5C08\u6848": projectText,
+            "\u9810\u4F30\u6642\u6578": r.estimatedHours != null ? Number(r.estimatedHours).toFixed(1) : "",
+            "\u5BE6\u969B\u6642\u6578": r.actualHours != null ? Number(r.actualHours).toFixed(1) : "",
+            "\u4E8B\u7531": r.reason ?? ""
+          };
+        });
+        const ws = utils.json_to_sheet(wsData);
+        const wb = utils.book_new();
+        utils.book_append_sheet(wb, ws, "\u52A0\u73ED\u7D00\u9304");
+        writeFileSync(wb, `\u52A0\u73ED\u7D00\u9304_${this.exportSuffix()}.xlsx`);
+        this.exporting.set(false);
+      },
+      error: () => {
+        this.exporting.set(false);
+      }
+    });
+  }
   static \u0275fac = function OvertimeReport_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _OvertimeReport)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _OvertimeReport, selectors: [["app-overtime-report"]], decls: 66, vars: 17, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#clock"], [1, "mb-0"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "px-4", "py-3", "border-b"], [1, "mb-3", "flex", "items-center", "gap-2", "flex-wrap"], [1, "text-xs", "text-muted"], [1, "inline-flex", "border", "rounded-md", "overflow-hidden"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", 3, "click"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", "border-l", "border-r", 3, "click"], [1, "grid", "grid-cols-1", "sm:grid-cols-2", "lg:grid-cols-5", "gap-2", "items-end"], [1, "text-xs", "text-muted", "mb-1", "block"], [1, "form-control", "w-full", 3, "ngModelChange", "ngModel"], ["value", ""], [3, "value"], [1, "lg:col-span-2"], [1, "text-xs", "text-muted", "mb-1", "block", "sm:invisible"], [1, "btn", "btn-primary", "w-full", 3, "click"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "text-center"], [1, "text-center", "hidden", "md:table-cell"], [1, "hidden", "lg:table-cell"], [1, "flex", "items-center", "justify-between", "px-4", "py-3", "border-t"], ["type", "date", 1, "form-control", "w-full", 3, "ngModelChange", "ngModel"], [1, "flex", "items-stretch", "gap-1"], ["type", "button", "title", "\u4E0A\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "date", 1, "form-control", "flex-1", 3, "ngModelChange", "ngModel"], ["type", "button", "title", "\u4E0B\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "button", "title", "\u56DE\u5230\u672C\u9031", 1, "btn", "btn-outline", "whitespace-nowrap", 3, "click"], [1, "text-xs", "text-muted", "mt-1"], [1, "fw-500"], [1, "text-center", "text-muted", "small"], [1, "hidden", "md:table-cell"], [1, "text-muted"], [1, "hidden", "lg:table-cell", "text-muted", "small", 2, "max-width", "200px", "overflow", "hidden", "text-overflow", "ellipsis", "white-space", "nowrap", 3, "title"], [1, "mb-1", "last:mb-0"], [1, "font-monospace", "small", "fw-500"], [1, "text-muted", "text-xs"], ["colspan", "6", 1, "text-center", "text-muted", "py-4"], [1, "text-muted", "small"], [1, "flex", "gap-1"], [1, "btn", "btn-sm", "btn-outline", 3, "click", "disabled"]], template: function OvertimeReport_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _OvertimeReport, selectors: [["app-overtime-report"]], decls: 60, vars: 20, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#clock"], [1, "mb-0"], [1, "btn", "btn-outline", "inline-flex", "items-center", "gap-1", 3, "click", "disabled"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#download"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "px-4", "py-3", "border-b"], [1, "flex", "flex-wrap", "items-center", "gap-2"], [1, "form-select", 2, "width", "auto", "min-width", "160px", 3, "ngModelChange", "ngModel"], ["value", ""], [3, "value"], [1, "inline-flex", "border", "rounded-md", "overflow-hidden"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", 3, "click"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", "border-l", "border-r", 3, "click"], ["type", "date", 1, "form-control", 2, "width", "auto", "min-width", "150px", 3, "ngModel"], [1, "btn", "btn-primary", 3, "click"], [1, "text-xs", "text-muted", "mt-2"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "text-center"], [1, "text-center", "hidden", "md:table-cell"], [1, "hidden", "lg:table-cell"], [1, "flex", "items-center", "justify-between", "px-4", "py-3", "border-t"], ["type", "date", 1, "form-control", 2, "width", "auto", "min-width", "150px", 3, "ngModelChange", "ngModel"], ["type", "button", "title", "\u4E0A\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "button", "title", "\u4E0B\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "button", "title", "\u56DE\u5230\u672C\u9031", 1, "btn", "btn-outline", "whitespace-nowrap", 3, "click"], [1, "form-select", 2, "width", "auto", "min-width", "120px", 3, "ngModelChange", "ngModel"], [1, "fw-500"], [1, "text-center", "text-muted", "small"], [1, "hidden", "md:table-cell"], [1, "text-muted"], [1, "hidden", "lg:table-cell", "text-muted", "small", 2, "max-width", "200px", "overflow", "hidden", "text-overflow", "ellipsis", "white-space", "nowrap", 3, "title"], [1, "mb-1", "last:mb-0"], [1, "font-monospace", "small", "fw-500"], [1, "text-muted", "text-xs"], ["colspan", "6", 1, "text-center", "text-muted", "py-4"], [1, "text-muted", "small"], [1, "flex", "gap-1"], [1, "btn", "btn-sm", "btn-outline", 3, "click", "disabled"]], template: function OvertimeReport_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "div", 2);
       \u0275\u0275namespaceSVG();
@@ -52953,107 +52990,115 @@ var OvertimeReport = class _OvertimeReport {
       \u0275\u0275namespaceHTML();
       \u0275\u0275elementStart(5, "h4", 5);
       \u0275\u0275text(6, "\u52A0\u73ED\u7D00\u9304");
-      \u0275\u0275elementEnd()()();
-      \u0275\u0275elementStart(7, "div", 6)(8, "div", 7)(9, "div", 8)(10, "div", 9)(11, "span", 10);
-      \u0275\u0275text(12, "\u6642\u6BB5\uFF1A");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(13, "div", 11)(14, "button", 12);
-      \u0275\u0275listener("click", function OvertimeReport_Template_button_click_14_listener() {
-        return ctx.filterMode.set("day");
+      \u0275\u0275elementEnd()();
+      \u0275\u0275elementStart(7, "button", 6);
+      \u0275\u0275listener("click", function OvertimeReport_Template_button_click_7_listener() {
+        return ctx.exportExcel();
       });
-      \u0275\u0275text(15, "\u65E5");
+      \u0275\u0275namespaceSVG();
+      \u0275\u0275elementStart(8, "svg", 7);
+      \u0275\u0275element(9, "use", 8);
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(16, "button", 13);
-      \u0275\u0275listener("click", function OvertimeReport_Template_button_click_16_listener() {
-        return ctx.filterMode.set("week");
-      });
-      \u0275\u0275text(17, "\u9031");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(18, "button", 12);
-      \u0275\u0275listener("click", function OvertimeReport_Template_button_click_18_listener() {
-        return ctx.filterMode.set("month");
-      });
-      \u0275\u0275text(19, "\u6708");
-      \u0275\u0275elementEnd()()();
-      \u0275\u0275elementStart(20, "div", 14)(21, "div")(22, "label", 15);
-      \u0275\u0275text(23, "\u54E1\u5DE5");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(24, "select", 16);
-      \u0275\u0275listener("ngModelChange", function OvertimeReport_Template_select_ngModelChange_24_listener($event) {
+      \u0275\u0275conditionalCreate(10, OvertimeReport_Conditional_10_Template, 1, 0)(11, OvertimeReport_Conditional_11_Template, 1, 0);
+      \u0275\u0275elementEnd()();
+      \u0275\u0275namespaceHTML();
+      \u0275\u0275elementStart(12, "div", 9)(13, "div", 10)(14, "div", 11)(15, "div", 12)(16, "select", 13);
+      \u0275\u0275listener("ngModelChange", function OvertimeReport_Template_select_ngModelChange_16_listener($event) {
         return ctx.selectedEmployeeId.set($event);
       });
-      \u0275\u0275elementStart(25, "option", 17);
-      \u0275\u0275text(26, "\u5168\u90E8\u54E1\u5DE5");
+      \u0275\u0275elementStart(17, "option", 14);
+      \u0275\u0275text(18, "\u5168\u90E8\u54E1\u5DE5");
       \u0275\u0275elementEnd();
-      \u0275\u0275repeaterCreate(27, OvertimeReport_For_28_Template, 2, 3, "option", 18, _forTrack026);
-      \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(29, "div")(30, "label", 15);
-      \u0275\u0275text(31, "\u5C08\u6848");
+      \u0275\u0275repeaterCreate(19, OvertimeReport_For_20_Template, 2, 3, "option", 15, _forTrack026);
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(32, "select", 16);
-      \u0275\u0275listener("ngModelChange", function OvertimeReport_Template_select_ngModelChange_32_listener($event) {
+      \u0275\u0275elementStart(21, "select", 13);
+      \u0275\u0275listener("ngModelChange", function OvertimeReport_Template_select_ngModelChange_21_listener($event) {
         return ctx.selectedProjectId.set($event);
       });
-      \u0275\u0275elementStart(33, "option", 17);
-      \u0275\u0275text(34, "\u5168\u90E8\u5C08\u6848");
+      \u0275\u0275elementStart(22, "option", 14);
+      \u0275\u0275text(23, "\u5168\u90E8\u5C08\u6848");
       \u0275\u0275elementEnd();
-      \u0275\u0275repeaterCreate(35, OvertimeReport_For_36_Template, 2, 2, "option", 18, _forTrack026);
+      \u0275\u0275repeaterCreate(24, OvertimeReport_For_25_Template, 2, 3, "option", 15, _forTrack026);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(26, "div", 16)(27, "button", 17);
+      \u0275\u0275listener("click", function OvertimeReport_Template_button_click_27_listener() {
+        return ctx.filterMode.set("day");
+      });
+      \u0275\u0275text(28, "\u65E5");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(29, "button", 18);
+      \u0275\u0275listener("click", function OvertimeReport_Template_button_click_29_listener() {
+        return ctx.filterMode.set("week");
+      });
+      \u0275\u0275text(30, "\u9031");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(31, "button", 17);
+      \u0275\u0275listener("click", function OvertimeReport_Template_button_click_31_listener() {
+        return ctx.filterMode.set("month");
+      });
+      \u0275\u0275text(32, "\u6708");
       \u0275\u0275elementEnd()();
-      \u0275\u0275conditionalCreate(37, OvertimeReport_Conditional_37_Template, 4, 1, "div", 19)(38, OvertimeReport_Conditional_38_Template, 12, 2, "div", 19)(39, OvertimeReport_Conditional_39_Template, 16, 2);
-      \u0275\u0275elementStart(40, "div")(41, "label", 20);
-      \u0275\u0275text(42, "\xA0");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(43, "button", 21);
-      \u0275\u0275listener("click", function OvertimeReport_Template_button_click_43_listener() {
+      \u0275\u0275conditionalCreate(33, OvertimeReport_Conditional_33_Template, 1, 1, "input", 19)(34, OvertimeReport_Conditional_34_Template, 7, 1)(35, OvertimeReport_Conditional_35_Template, 10, 2);
+      \u0275\u0275elementStart(36, "button", 20);
+      \u0275\u0275listener("click", function OvertimeReport_Template_button_click_36_listener() {
         return ctx.search();
       });
-      \u0275\u0275text(44, "\u7BE9\u9078");
-      \u0275\u0275elementEnd()()()();
-      \u0275\u0275elementStart(45, "div", 22)(46, "table", 23)(47, "thead", 24)(48, "tr")(49, "th");
-      \u0275\u0275text(50, "\u54E1\u5DE5\u59D3\u540D");
+      \u0275\u0275text(37, "\u7BE9\u9078");
+      \u0275\u0275elementEnd()();
+      \u0275\u0275conditionalCreate(38, OvertimeReport_Conditional_38_Template, 2, 3, "div", 21);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(39, "div", 22)(40, "table", 23)(41, "thead", 24)(42, "tr")(43, "th");
+      \u0275\u0275text(44, "\u54E1\u5DE5\u59D3\u540D");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(45, "th", 25);
+      \u0275\u0275text(46, "\u52A0\u73ED\u65E5\u671F");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(47, "th", 26);
+      \u0275\u0275text(48, "\u5C08\u6848");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(49, "th", 25);
+      \u0275\u0275text(50, "\u9810\u4F30\u6642\u6578");
       \u0275\u0275elementEnd();
       \u0275\u0275elementStart(51, "th", 25);
-      \u0275\u0275text(52, "\u52A0\u73ED\u65E5\u671F");
+      \u0275\u0275text(52, "\u5BE6\u969B\u6642\u6578");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(53, "th", 26);
-      \u0275\u0275text(54, "\u5C08\u6848");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(55, "th", 25);
-      \u0275\u0275text(56, "\u9810\u4F30\u6642\u6578");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(57, "th", 25);
-      \u0275\u0275text(58, "\u5BE6\u969B\u6642\u6578");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(59, "th", 27);
-      \u0275\u0275text(60, "\u4E8B\u7531");
+      \u0275\u0275elementStart(53, "th", 27);
+      \u0275\u0275text(54, "\u4E8B\u7531");
       \u0275\u0275elementEnd()()();
-      \u0275\u0275elementStart(61, "tbody");
-      \u0275\u0275repeaterCreate(62, OvertimeReport_For_63_Template, 15, 7, "tr", null, _forTrack026, false, OvertimeReport_ForEmpty_64_Template, 4, 1, "tr");
+      \u0275\u0275elementStart(55, "tbody");
+      \u0275\u0275repeaterCreate(56, OvertimeReport_For_57_Template, 15, 7, "tr", null, _forTrack026, false, OvertimeReport_ForEmpty_58_Template, 4, 1, "tr");
       \u0275\u0275elementEnd()()();
-      \u0275\u0275conditionalCreate(65, OvertimeReport_Conditional_65_Template, 8, 5, "div", 28);
+      \u0275\u0275conditionalCreate(59, OvertimeReport_Conditional_59_Template, 8, 5, "div", 28);
       \u0275\u0275elementEnd()()();
     }
     if (rf & 2) {
-      \u0275\u0275advance(14);
+      let tmp_13_0;
+      \u0275\u0275advance(7);
+      \u0275\u0275property("disabled", ctx.exporting() || ctx.records().length === 0);
+      \u0275\u0275advance(3);
+      \u0275\u0275conditional(ctx.exporting() ? 10 : 11);
+      \u0275\u0275advance(6);
+      \u0275\u0275property("ngModel", ctx.selectedEmployeeId());
+      \u0275\u0275advance(3);
+      \u0275\u0275repeater(ctx.employees());
+      \u0275\u0275advance(2);
+      \u0275\u0275property("ngModel", ctx.selectedProjectId());
+      \u0275\u0275advance(3);
+      \u0275\u0275repeater(ctx.projects());
+      \u0275\u0275advance(3);
       \u0275\u0275classProp("bg-primary", ctx.filterMode() === "day")("text-white", ctx.filterMode() === "day");
       \u0275\u0275advance(2);
       \u0275\u0275classProp("bg-primary", ctx.filterMode() === "week")("text-white", ctx.filterMode() === "week");
       \u0275\u0275advance(2);
       \u0275\u0275classProp("bg-primary", ctx.filterMode() === "month")("text-white", ctx.filterMode() === "month");
-      \u0275\u0275advance(6);
-      \u0275\u0275property("ngModel", ctx.selectedEmployeeId());
-      \u0275\u0275advance(3);
-      \u0275\u0275repeater(ctx.employees());
-      \u0275\u0275advance(5);
-      \u0275\u0275property("ngModel", ctx.selectedProjectId());
-      \u0275\u0275advance(3);
-      \u0275\u0275repeater(ctx.projects());
       \u0275\u0275advance(2);
-      \u0275\u0275conditional(ctx.filterMode() === "day" ? 37 : ctx.filterMode() === "week" ? 38 : 39);
-      \u0275\u0275advance(25);
+      \u0275\u0275conditional(ctx.filterMode() === "day" ? 33 : ctx.filterMode() === "week" ? 34 : 35);
+      \u0275\u0275advance(5);
+      \u0275\u0275conditional((tmp_13_0 = ctx.filterMode() === "week" && ctx.weekRange()) ? 38 : -1, tmp_13_0);
+      \u0275\u0275advance(18);
       \u0275\u0275repeater(ctx.records());
       \u0275\u0275advance(3);
-      \u0275\u0275conditional(ctx.totalPages() > 1 ? 65 : -1);
+      \u0275\u0275conditional(ctx.totalPages() > 1 ? 59 : -1);
     }
   }, dependencies: [CommonModule, FormsModule, NgSelectOption, \u0275NgSelectMultipleOption, DefaultValueAccessor, SelectControlValueAccessor, NgControlStatus, NgModel], encapsulation: 2 });
 };
@@ -53069,6 +53114,10 @@ var OvertimeReport = class _OvertimeReport {
       </svg>\r
       <h4 class="mb-0">\u52A0\u73ED\u7D00\u9304</h4>\r
     </div>\r
+    <button class="btn btn-outline inline-flex items-center gap-1" [disabled]="exporting() || records().length === 0" (click)="exportExcel()">\r
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#download"></use></svg>\r
+      @if (exporting()) { \u532F\u51FA\u4E2D... } @else { \u532F\u51FA Excel }\r
+    </button>\r
   </div>\r
 \r
   <div class="card border-0 shadow-sm">\r
@@ -53076,9 +53125,21 @@ var OvertimeReport = class _OvertimeReport {
 \r
       <!-- Toolbar: \u7BE9\u9078\u5217 -->\r
       <div class="px-4 py-3 border-b">\r
-        <!-- \u6642\u6BB5\u6A21\u5F0F\u5207\u63DB -->\r
-        <div class="mb-3 flex items-center gap-2 flex-wrap">\r
-          <span class="text-xs text-muted">\u6642\u6BB5\uFF1A</span>\r
+        <div class="flex flex-wrap items-center gap-2">\r
+          <select class="form-select" style="width: auto; min-width: 160px"\r
+                  [ngModel]="selectedEmployeeId()" (ngModelChange)="selectedEmployeeId.set($event)">\r
+            <option value="">\u5168\u90E8\u54E1\u5DE5</option>\r
+            @for (emp of employees(); track emp.id) {\r
+              <option [value]="emp.id">{{ emp.code }} {{ emp.name }}</option>\r
+            }\r
+          </select>\r
+          <select class="form-select" style="width: auto; min-width: 160px"\r
+                  [ngModel]="selectedProjectId()" (ngModelChange)="selectedProjectId.set($event)">\r
+            <option value="">\u5168\u90E8\u5C08\u6848</option>\r
+            @for (proj of projects(); track proj.id) {\r
+              <option [value]="proj.id">{{ proj.code }} - {{ proj.name }}</option>\r
+            }\r
+          </select>\r
           <div class="inline-flex border rounded-md overflow-hidden">\r
             <button type="button" class="px-3 py-1.5 text-sm"\r
                     [class.bg-primary]="filterMode()==='day'" [class.text-white]="filterMode()==='day'"\r
@@ -53090,74 +53151,36 @@ var OvertimeReport = class _OvertimeReport {
                     [class.bg-primary]="filterMode()==='month'" [class.text-white]="filterMode()==='month'"\r
                     (click)="filterMode.set('month')">\u6708</button>\r
           </div>\r
-        </div>\r
-        <!-- \u689D\u4EF6\u5217 -->\r
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 items-end">\r
-          <div>\r
-            <label class="text-xs text-muted mb-1 block">\u54E1\u5DE5</label>\r
-            <select class="form-control w-full" [ngModel]="selectedEmployeeId()" (ngModelChange)="selectedEmployeeId.set($event)">\r
-              <option value="">\u5168\u90E8\u54E1\u5DE5</option>\r
-              @for (emp of employees(); track emp.id) {\r
-                <option [value]="emp.id">{{ emp.code }} {{ emp.name }}</option>\r
-              }\r
-            </select>\r
-          </div>\r
-          <div>\r
-            <label class="text-xs text-muted mb-1 block">\u5C08\u6848</label>\r
-            <select class="form-control w-full" [ngModel]="selectedProjectId()" (ngModelChange)="selectedProjectId.set($event)">\r
-              <option value="">\u5168\u90E8\u5C08\u6848</option>\r
-              @for (proj of projects(); track proj.id) {\r
-                <option [value]="proj.id">{{ proj.code }}</option>\r
-              }\r
-            </select>\r
-          </div>\r
           @if (filterMode() === 'day') {\r
-            <div class="lg:col-span-2">\r
-              <label class="text-xs text-muted mb-1 block">\u65E5\u671F</label>\r
-              <input type="date" class="form-control w-full"\r
-                     [ngModel]="selectedDate()" (ngModelChange)="selectedDate.set($event)" />\r
-            </div>\r
+            <input type="date" class="form-control" style="width: auto; min-width: 150px"\r
+                   [ngModel]="selectedDate()" (ngModelChange)="selectedDate.set($event)" />\r
           } @else if (filterMode() === 'week') {\r
-            <div class="lg:col-span-2">\r
-              <label class="text-xs text-muted mb-1 block">\u9031\u6B21\uFF08\u6311\u4EFB\u4E00\u5929\u5373\u81EA\u52D5\u53D6\u6574\u9031\uFF09</label>\r
-              <div class="flex items-stretch gap-1">\r
-                <button type="button" class="btn btn-outline px-2" title="\u4E0A\u4E00\u9031" (click)="shiftWeek(-7)">\u2039</button>\r
-                <input type="date" class="form-control flex-1"\r
-                       [ngModel]="selectedWeekDate()" (ngModelChange)="selectedWeekDate.set($event)" />\r
-                <button type="button" class="btn btn-outline px-2" title="\u4E0B\u4E00\u9031" (click)="shiftWeek(7)">\u203A</button>\r
-                <button type="button" class="btn btn-outline whitespace-nowrap" title="\u56DE\u5230\u672C\u9031" (click)="resetToThisWeek()">\u672C\u9031</button>\r
-              </div>\r
-              @if (weekRange(); as r) {\r
-                <div class="text-xs text-muted mt-1">\r
-                  \u7B2C {{ r.weekNumber }} \u9031\uFF08{{ r.dateFrom }} \u4E00 ~ {{ r.dateTo }} \u65E5\uFF09\r
-                </div>\r
-              }\r
-            </div>\r
+            <button type="button" class="btn btn-outline px-2" title="\u4E0A\u4E00\u9031" (click)="shiftWeek(-7)">\u2039</button>\r
+            <input type="date" class="form-control" style="width: auto; min-width: 150px"\r
+                   [ngModel]="selectedWeekDate()" (ngModelChange)="selectedWeekDate.set($event)" />\r
+            <button type="button" class="btn btn-outline px-2" title="\u4E0B\u4E00\u9031" (click)="shiftWeek(7)">\u203A</button>\r
+            <button type="button" class="btn btn-outline whitespace-nowrap" title="\u56DE\u5230\u672C\u9031" (click)="resetToThisWeek()">\u672C\u9031</button>\r
           } @else {\r
-            <div>\r
-              <label class="text-xs text-muted mb-1 block">\u5E74\u4EFD</label>\r
-              <select class="form-control w-full" [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set($event)">\r
-                <option value="">\u5168\u90E8\u5E74\u4EFD</option>\r
-                @for (y of years(); track y) {\r
-                  <option [value]="y">{{ y }}</option>\r
-                }\r
-              </select>\r
-            </div>\r
-            <div>\r
-              <label class="text-xs text-muted mb-1 block">\u6708\u4EFD</label>\r
-              <select class="form-control w-full" [ngModel]="selectedMonth()" (ngModelChange)="selectedMonth.set($event)">\r
-                <option value="">\u5168\u90E8\u6708\u4EFD</option>\r
-                @for (m of months; track m) {\r
-                  <option [value]="m">{{ m }}\u6708</option>\r
-                }\r
-              </select>\r
-            </div>\r
+            <select class="form-select" style="width: auto; min-width: 120px"\r
+                    [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set($event)">\r
+              <option value="">\u5168\u90E8\u5E74\u4EFD</option>\r
+              @for (y of years(); track y) {\r
+                <option [value]="y">{{ y }}</option>\r
+              }\r
+            </select>\r
+            <select class="form-select" style="width: auto; min-width: 120px"\r
+                    [ngModel]="selectedMonth()" (ngModelChange)="selectedMonth.set($event)">\r
+              <option value="">\u5168\u90E8\u6708\u4EFD</option>\r
+              @for (m of months; track m) {\r
+                <option [value]="m">{{ m }}\u6708</option>\r
+              }\r
+            </select>\r
           }\r
-          <div>\r
-            <label class="text-xs text-muted mb-1 block sm:invisible">&nbsp;</label>\r
-            <button class="btn btn-primary w-full" (click)="search()">\u7BE9\u9078</button>\r
-          </div>\r
+          <button class="btn btn-primary" (click)="search()">\u7BE9\u9078</button>\r
         </div>\r
+        @if (filterMode() === 'week' && weekRange(); as r) {\r
+          <div class="text-xs text-muted mt-2">\u7B2C {{ r.weekNumber }} \u9031\uFF08{{ r.dateFrom }} \u4E00 ~ {{ r.dateTo }} \u65E5\uFF09</div>\r
+        }\r
       </div>\r
 \r
       <!-- Table -->\r
@@ -53235,165 +53258,146 @@ var OvertimeReport = class _OvertimeReport {
   }], null, null);
 })();
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(OvertimeReport, { className: "OvertimeReport", filePath: "src/app/features/admin/reports/pages/overtime-report/overtime-report.ts", lineNumber: 24 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(OvertimeReport, { className: "OvertimeReport", filePath: "src/app/features/admin/reports/pages/overtime-report/overtime-report.ts", lineNumber: 25 });
 })();
 
 // src/app/features/admin/reports/pages/payment-report/payment-report.ts
 var _forTrack027 = ($index, $item) => $item.id;
-function PaymentReport_Conditional_25_Template(rf, ctx) {
+function PaymentReport_Conditional_29_Template(rf, ctx) {
   if (rf & 1) {
     const _r1 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 18)(1, "label", 19);
-    \u0275\u0275text(2, "\u65E5\u671F");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "input", 36);
-    \u0275\u0275listener("ngModelChange", function PaymentReport_Conditional_25_Template_input_ngModelChange_3_listener($event) {
+    \u0275\u0275elementStart(0, "input", 33);
+    \u0275\u0275listener("ngModelChange", function PaymentReport_Conditional_29_Template_input_ngModelChange_0_listener($event) {
       \u0275\u0275restoreView(_r1);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.selectedDate.set($event));
     });
-    \u0275\u0275elementEnd()();
+    \u0275\u0275elementEnd();
   }
   if (rf & 2) {
     const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275advance(3);
     \u0275\u0275property("ngModel", ctx_r1.selectedDate());
   }
 }
-function PaymentReport_Conditional_26_Conditional_11_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 42);
-    \u0275\u0275text(1);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const r_r4 = ctx;
-    \u0275\u0275advance();
-    \u0275\u0275textInterpolate3(" \u7B2C ", r_r4.weekNumber, " \u9031\uFF08", r_r4.dateFrom, " \u4E00 ~ ", r_r4.dateTo, " \u65E5\uFF09 ");
-  }
-}
-function PaymentReport_Conditional_26_Template(rf, ctx) {
+function PaymentReport_Conditional_30_Template(rf, ctx) {
   if (rf & 1) {
     const _r3 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 18)(1, "label", 19);
-    \u0275\u0275text(2, "\u9031\u6B21\uFF08\u6311\u4EFB\u4E00\u5929\u5373\u81EA\u52D5\u53D6\u6574\u9031\uFF09");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div", 37)(4, "button", 38);
-    \u0275\u0275listener("click", function PaymentReport_Conditional_26_Template_button_click_4_listener() {
+    \u0275\u0275elementStart(0, "button", 34);
+    \u0275\u0275listener("click", function PaymentReport_Conditional_30_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r3);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.shiftWeek(-7));
     });
-    \u0275\u0275text(5, "\u2039");
+    \u0275\u0275text(1, "\u2039");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "input", 39);
-    \u0275\u0275listener("ngModelChange", function PaymentReport_Conditional_26_Template_input_ngModelChange_6_listener($event) {
+    \u0275\u0275elementStart(2, "input", 33);
+    \u0275\u0275listener("ngModelChange", function PaymentReport_Conditional_30_Template_input_ngModelChange_2_listener($event) {
       \u0275\u0275restoreView(_r3);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.selectedWeekDate.set($event));
     });
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "button", 40);
-    \u0275\u0275listener("click", function PaymentReport_Conditional_26_Template_button_click_7_listener() {
+    \u0275\u0275elementStart(3, "button", 35);
+    \u0275\u0275listener("click", function PaymentReport_Conditional_30_Template_button_click_3_listener() {
       \u0275\u0275restoreView(_r3);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.shiftWeek(7));
     });
-    \u0275\u0275text(8, "\u203A");
+    \u0275\u0275text(4, "\u203A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "button", 41);
-    \u0275\u0275listener("click", function PaymentReport_Conditional_26_Template_button_click_9_listener() {
+    \u0275\u0275elementStart(5, "button", 36);
+    \u0275\u0275listener("click", function PaymentReport_Conditional_30_Template_button_click_5_listener() {
       \u0275\u0275restoreView(_r3);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.resetToThisWeek());
     });
-    \u0275\u0275text(10, "\u672C\u9031");
-    \u0275\u0275elementEnd()();
-    \u0275\u0275conditionalCreate(11, PaymentReport_Conditional_26_Conditional_11_Template, 2, 3, "div", 42);
+    \u0275\u0275text(6, "\u672C\u9031");
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    let tmp_2_0;
     const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275advance(6);
+    \u0275\u0275advance(2);
     \u0275\u0275property("ngModel", ctx_r1.selectedWeekDate());
-    \u0275\u0275advance(5);
-    \u0275\u0275conditional((tmp_2_0 = ctx_r1.weekRange()) ? 11 : -1, tmp_2_0);
   }
 }
-function PaymentReport_Conditional_27_For_7_Template(rf, ctx) {
+function PaymentReport_Conditional_31_For_4_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 43);
+    \u0275\u0275elementStart(0, "option", 38);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const y_r6 = ctx.$implicit;
-    \u0275\u0275property("value", y_r6);
+    const y_r5 = ctx.$implicit;
+    \u0275\u0275property("value", y_r5);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(y_r6);
+    \u0275\u0275textInterpolate(y_r5);
   }
 }
-function PaymentReport_Conditional_27_For_15_Template(rf, ctx) {
+function PaymentReport_Conditional_31_For_9_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 43);
+    \u0275\u0275elementStart(0, "option", 38);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const m_r7 = ctx.$implicit;
-    \u0275\u0275property("value", m_r7);
+    const m_r6 = ctx.$implicit;
+    \u0275\u0275property("value", m_r6);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate1("", m_r7, "\u6708");
+    \u0275\u0275textInterpolate1("", m_r6, "\u6708");
   }
 }
-function PaymentReport_Conditional_27_Template(rf, ctx) {
+function PaymentReport_Conditional_31_Template(rf, ctx) {
   if (rf & 1) {
-    const _r5 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div")(1, "label", 19);
-    \u0275\u0275text(2, "\u5E74\u4EFD");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "select", 20);
-    \u0275\u0275listener("ngModelChange", function PaymentReport_Conditional_27_Template_select_ngModelChange_3_listener($event) {
-      \u0275\u0275restoreView(_r5);
+    const _r4 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "select", 37);
+    \u0275\u0275listener("ngModelChange", function PaymentReport_Conditional_31_Template_select_ngModelChange_0_listener($event) {
+      \u0275\u0275restoreView(_r4);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.selectedYear.set($event));
     });
-    \u0275\u0275elementStart(4, "option", 21);
-    \u0275\u0275text(5, "\u5168\u90E8\u5E74\u4EFD");
+    \u0275\u0275elementStart(1, "option", 14);
+    \u0275\u0275text(2, "\u5168\u90E8\u5E74\u4EFD");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(6, PaymentReport_Conditional_27_For_7_Template, 2, 2, "option", 43, \u0275\u0275repeaterTrackByIdentity);
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(8, "div")(9, "label", 19);
-    \u0275\u0275text(10, "\u6708\u4EFD");
+    \u0275\u0275repeaterCreate(3, PaymentReport_Conditional_31_For_4_Template, 2, 2, "option", 38, \u0275\u0275repeaterTrackByIdentity);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(11, "select", 20);
-    \u0275\u0275listener("ngModelChange", function PaymentReport_Conditional_27_Template_select_ngModelChange_11_listener($event) {
-      \u0275\u0275restoreView(_r5);
+    \u0275\u0275elementStart(5, "select", 37);
+    \u0275\u0275listener("ngModelChange", function PaymentReport_Conditional_31_Template_select_ngModelChange_5_listener($event) {
+      \u0275\u0275restoreView(_r4);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.selectedMonth.set($event));
     });
-    \u0275\u0275elementStart(12, "option", 21);
-    \u0275\u0275text(13, "\u5168\u90E8\u6708\u4EFD");
+    \u0275\u0275elementStart(6, "option", 14);
+    \u0275\u0275text(7, "\u5168\u90E8\u6708\u4EFD");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(14, PaymentReport_Conditional_27_For_15_Template, 2, 2, "option", 43, \u0275\u0275repeaterTrackByIdentity);
-    \u0275\u0275elementEnd()();
+    \u0275\u0275repeaterCreate(8, PaymentReport_Conditional_31_For_9_Template, 2, 2, "option", 38, \u0275\u0275repeaterTrackByIdentity);
+    \u0275\u0275elementEnd();
   }
   if (rf & 2) {
     const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275advance(3);
     \u0275\u0275property("ngModel", ctx_r1.selectedYear());
     \u0275\u0275advance(3);
     \u0275\u0275repeater(ctx_r1.years());
-    \u0275\u0275advance(5);
+    \u0275\u0275advance(2);
     \u0275\u0275property("ngModel", ctx_r1.selectedMonth());
     \u0275\u0275advance(3);
     \u0275\u0275repeater(ctx_r1.months);
   }
 }
-function PaymentReport_For_65_Conditional_9_Template(rf, ctx) {
+function PaymentReport_Conditional_34_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 47);
+    \u0275\u0275elementStart(0, "div", 22);
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const r_r7 = ctx;
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate3("\u7B2C ", r_r7.weekNumber, " \u9031\uFF08", r_r7.dateFrom, " \u4E00 ~ ", r_r7.dateTo, " \u65E5\uFF09");
+  }
+}
+function PaymentReport_For_57_Conditional_9_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 42);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -53403,9 +53407,9 @@ function PaymentReport_For_65_Conditional_9_Template(rf, ctx) {
     \u0275\u0275textInterpolate(row_r8.projectName);
   }
 }
-function PaymentReport_For_65_Case_16_Template(rf, ctx) {
+function PaymentReport_For_57_Case_16_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 50);
+    \u0275\u0275elementStart(0, "span", 45);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -53415,9 +53419,9 @@ function PaymentReport_For_65_Case_16_Template(rf, ctx) {
     \u0275\u0275textInterpolate(row_r8.statusLabel);
   }
 }
-function PaymentReport_For_65_Case_17_Template(rf, ctx) {
+function PaymentReport_For_57_Case_17_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 51);
+    \u0275\u0275elementStart(0, "span", 46);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -53427,9 +53431,9 @@ function PaymentReport_For_65_Case_17_Template(rf, ctx) {
     \u0275\u0275textInterpolate(row_r8.statusLabel);
   }
 }
-function PaymentReport_For_65_Case_18_Template(rf, ctx) {
+function PaymentReport_For_57_Case_18_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 52);
+    \u0275\u0275elementStart(0, "span", 47);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -53439,9 +53443,9 @@ function PaymentReport_For_65_Case_18_Template(rf, ctx) {
     \u0275\u0275textInterpolate(row_r8.statusLabel);
   }
 }
-function PaymentReport_For_65_Case_19_Template(rf, ctx) {
+function PaymentReport_For_57_Case_19_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 53);
+    \u0275\u0275elementStart(0, "span", 48);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -53451,9 +53455,9 @@ function PaymentReport_For_65_Case_19_Template(rf, ctx) {
     \u0275\u0275textInterpolate(row_r8.statusLabel);
   }
 }
-function PaymentReport_For_65_Conditional_21_Template(rf, ctx) {
+function PaymentReport_For_57_Conditional_21_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 54);
+    \u0275\u0275elementStart(0, "span", 49);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -53463,40 +53467,40 @@ function PaymentReport_For_65_Conditional_21_Template(rf, ctx) {
     \u0275\u0275textInterpolate(row_r8.paidAt);
   }
 }
-function PaymentReport_For_65_Conditional_22_Template(rf, ctx) {
+function PaymentReport_For_57_Conditional_22_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 55);
+    \u0275\u0275elementStart(0, "span", 50);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
 }
-function PaymentReport_For_65_Template(rf, ctx) {
+function PaymentReport_For_57_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 44);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 39);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td", 29)(4, "span", 45);
+    \u0275\u0275elementStart(3, "td", 26)(4, "span", 40);
     \u0275\u0275text(5);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(6, "td", 30)(7, "div", 46);
+    \u0275\u0275elementStart(6, "td", 27)(7, "div", 41);
     \u0275\u0275text(8);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(9, PaymentReport_For_65_Conditional_9_Template, 2, 1, "div", 47);
+    \u0275\u0275conditionalCreate(9, PaymentReport_For_57_Conditional_9_Template, 2, 1, "div", 42);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(10, "td", 48);
+    \u0275\u0275elementStart(10, "td", 43);
     \u0275\u0275text(11);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(12, "td", 49);
+    \u0275\u0275elementStart(12, "td", 44);
     \u0275\u0275text(13);
     \u0275\u0275pipe(14, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "td", 29);
-    \u0275\u0275conditionalCreate(16, PaymentReport_For_65_Case_16_Template, 2, 1, "span", 50)(17, PaymentReport_For_65_Case_17_Template, 2, 1, "span", 51)(18, PaymentReport_For_65_Case_18_Template, 2, 1, "span", 52)(19, PaymentReport_For_65_Case_19_Template, 2, 1, "span", 53);
+    \u0275\u0275elementStart(15, "td", 26);
+    \u0275\u0275conditionalCreate(16, PaymentReport_For_57_Case_16_Template, 2, 1, "span", 45)(17, PaymentReport_For_57_Case_17_Template, 2, 1, "span", 46)(18, PaymentReport_For_57_Case_18_Template, 2, 1, "span", 47)(19, PaymentReport_For_57_Case_19_Template, 2, 1, "span", 48);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(20, "td", 33);
-    \u0275\u0275conditionalCreate(21, PaymentReport_For_65_Conditional_21_Template, 2, 1, "span", 54)(22, PaymentReport_For_65_Conditional_22_Template, 2, 0, "span", 55);
+    \u0275\u0275elementStart(20, "td", 30);
+    \u0275\u0275conditionalCreate(21, PaymentReport_For_57_Conditional_21_Template, 2, 1, "span", 49)(22, PaymentReport_For_57_Conditional_22_Template, 2, 0, "span", 50);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(23, "td", 56);
+    \u0275\u0275elementStart(23, "td", 51);
     \u0275\u0275text(24);
     \u0275\u0275elementEnd()();
   }
@@ -53525,20 +53529,20 @@ function PaymentReport_For_65_Template(rf, ctx) {
     \u0275\u0275textInterpolate(row_r8.createdAt);
   }
 }
-function PaymentReport_ForEmpty_66_Conditional_2_Template(rf, ctx) {
+function PaymentReport_ForEmpty_58_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u8F09\u5165\u4E2D... ");
   }
 }
-function PaymentReport_ForEmpty_66_Conditional_3_Template(rf, ctx) {
+function PaymentReport_ForEmpty_58_Conditional_3_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u5C1A\u7121\u8CC7\u6599 ");
   }
 }
-function PaymentReport_ForEmpty_66_Template(rf, ctx) {
+function PaymentReport_ForEmpty_58_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 57);
-    \u0275\u0275conditionalCreate(2, PaymentReport_ForEmpty_66_Conditional_2_Template, 1, 0)(3, PaymentReport_ForEmpty_66_Conditional_3_Template, 1, 0);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 52);
+    \u0275\u0275conditionalCreate(2, PaymentReport_ForEmpty_58_Conditional_2_Template, 1, 0)(3, PaymentReport_ForEmpty_58_Conditional_3_Template, 1, 0);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -53547,19 +53551,19 @@ function PaymentReport_ForEmpty_66_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r1.loading() ? 2 : 3);
   }
 }
-function PaymentReport_Conditional_67_Template(rf, ctx) {
+function PaymentReport_Conditional_59_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tfoot")(1, "tr", 28)(2, "td", 58);
+    \u0275\u0275elementStart(0, "tfoot")(1, "tr", 25)(2, "td", 53);
     \u0275\u0275text(3, "\u5408\u8A08");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "td", 59);
+    \u0275\u0275elementStart(4, "td", 54);
     \u0275\u0275text(5, "\u5408\u8A08");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "td", 49);
+    \u0275\u0275elementStart(6, "td", 44);
     \u0275\u0275text(7);
     \u0275\u0275pipe(8, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(9, "td", 60)(10, "td", 61);
+    \u0275\u0275element(9, "td", 55)(10, "td", 56);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -53568,22 +53572,22 @@ function PaymentReport_Conditional_67_Template(rf, ctx) {
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(8, 1, ctx_r1.totalAmount(), "1.0-0"));
   }
 }
-function PaymentReport_Conditional_68_Template(rf, ctx) {
+function PaymentReport_Conditional_60_Template(rf, ctx) {
   if (rf & 1) {
     const _r9 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 35)(1, "span", 62);
+    \u0275\u0275elementStart(0, "div", 32)(1, "span", 57);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div", 63)(4, "button", 64);
-    \u0275\u0275listener("click", function PaymentReport_Conditional_68_Template_button_click_4_listener() {
+    \u0275\u0275elementStart(3, "div", 58)(4, "button", 59);
+    \u0275\u0275listener("click", function PaymentReport_Conditional_60_Template_button_click_4_listener() {
       \u0275\u0275restoreView(_r9);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.goToPage(ctx_r1.currentPage() - 1));
     });
     \u0275\u0275text(5, "\u4E0A\u4E00\u9801");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "button", 64);
-    \u0275\u0275listener("click", function PaymentReport_Conditional_68_Template_button_click_6_listener() {
+    \u0275\u0275elementStart(6, "button", 59);
+    \u0275\u0275listener("click", function PaymentReport_Conditional_60_Template_button_click_6_listener() {
       \u0275\u0275restoreView(_r9);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.goToPage(ctx_r1.currentPage() + 1));
@@ -53895,7 +53899,7 @@ var PaymentReport = class _PaymentReport {
   static \u0275fac = function PaymentReport_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _PaymentReport)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _PaymentReport, selectors: [["app-payment-report"]], decls: 69, vars: 19, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#credit-card"], [1, "mb-0"], [1, "btn", "btn-outline", "inline-flex", "items-center", "gap-1", 3, "click", "disabled"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#download"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "px-4", "py-3", "border-b"], [1, "mb-3", "flex", "items-center", "gap-2", "flex-wrap"], [1, "text-xs", "text-muted"], [1, "inline-flex", "border", "rounded-md", "overflow-hidden"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", 3, "click"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", "border-l", "border-r", 3, "click"], [1, "grid", "grid-cols-1", "sm:grid-cols-2", "lg:grid-cols-4", "gap-2", "items-end"], [1, "lg:col-span-2"], [1, "text-xs", "text-muted", "mb-1", "block"], [1, "form-control", "w-full", 3, "ngModelChange", "ngModel"], ["value", ""], ["value", "paid"], ["value", "unpaid"], [1, "text-xs", "text-muted", "mb-1", "block", "sm:invisible"], [1, "btn", "btn-primary", "w-full", 3, "click"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "text-center"], [1, "hidden", "md:table-cell"], [1, "hidden", "lg:table-cell"], [1, "text-right"], [1, "text-center", "hidden", "md:table-cell"], [1, "text-center", "hidden", "lg:table-cell"], [1, "flex", "items-center", "justify-between", "px-4", "py-3", "border-t"], ["type", "date", 1, "form-control", "w-full", 3, "ngModelChange", "ngModel"], [1, "flex", "items-stretch", "gap-1"], ["type", "button", "title", "\u4E0A\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "date", 1, "form-control", "flex-1", 3, "ngModelChange", "ngModel"], ["type", "button", "title", "\u4E0B\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "button", "title", "\u56DE\u5230\u672C\u9031", 1, "btn", "btn-outline", "whitespace-nowrap", 3, "click"], [1, "text-xs", "text-muted", "mt-1"], [3, "value"], [1, "fw-500"], [1, "badge", "bg-[--bg-base]", "text-[--text-secondary]", "small"], [1, "font-monospace", "small", "fw-500"], [1, "text-muted", "text-xs"], [1, "hidden", "lg:table-cell", "text-muted", "small", 2, "max-width", "180px", "overflow", "hidden", "text-overflow", "ellipsis", "white-space", "nowrap", 3, "title"], [1, "text-right", "fw-600"], [1, "badge", "bg-success-subtle", "text-success"], [1, "badge", "bg-warning-subtle", "text-warning-emphasis"], [1, "badge", "bg-danger-subtle", "text-danger"], [1, "badge", "bg-secondary-subtle", "text-secondary"], [1, "text-success", "small"], [1, "text-muted"], [1, "text-center", "hidden", "lg:table-cell", "text-muted", "small"], ["colspan", "8", 1, "text-center", "text-muted", "py-4"], ["colspan", "4", 1, "text-right", "fw-500", "small", "hidden", "lg:table-cell"], ["colspan", "2", 1, "text-right", "fw-500", "small", "table-cell", "lg:hidden"], ["colspan", "3", 1, "hidden", "md:table-cell"], [1, "table-cell", "md:hidden"], [1, "text-muted", "small"], [1, "flex", "gap-1"], [1, "btn", "btn-sm", "btn-outline", 3, "click", "disabled"]], template: function PaymentReport_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _PaymentReport, selectors: [["app-payment-report"]], decls: 61, vars: 20, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#credit-card"], [1, "mb-0"], [1, "btn", "btn-outline", "inline-flex", "items-center", "gap-1", 3, "click", "disabled"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#download"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "px-4", "py-3", "border-b"], [1, "flex", "flex-wrap", "items-center", "gap-2"], [1, "form-select", 2, "width", "auto", "min-width", "140px", 3, "ngModelChange", "ngModel"], ["value", ""], ["value", "paid"], ["value", "unpaid"], [1, "inline-flex", "border", "rounded-md", "overflow-hidden"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", 3, "click"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", "border-l", "border-r", 3, "click"], ["type", "date", 1, "form-control", 2, "width", "auto", "min-width", "150px", 3, "ngModel"], [1, "btn", "btn-primary", 3, "click"], [1, "text-xs", "text-muted", "mt-2"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "text-center"], [1, "hidden", "md:table-cell"], [1, "hidden", "lg:table-cell"], [1, "text-right"], [1, "text-center", "hidden", "md:table-cell"], [1, "text-center", "hidden", "lg:table-cell"], [1, "flex", "items-center", "justify-between", "px-4", "py-3", "border-t"], ["type", "date", 1, "form-control", 2, "width", "auto", "min-width", "150px", 3, "ngModelChange", "ngModel"], ["type", "button", "title", "\u4E0A\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "button", "title", "\u4E0B\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "button", "title", "\u56DE\u5230\u672C\u9031", 1, "btn", "btn-outline", "whitespace-nowrap", 3, "click"], [1, "form-select", 2, "width", "auto", "min-width", "120px", 3, "ngModelChange", "ngModel"], [3, "value"], [1, "fw-500"], [1, "badge", "bg-[--bg-base]", "text-[--text-secondary]", "small"], [1, "font-monospace", "small", "fw-500"], [1, "text-muted", "text-xs"], [1, "hidden", "lg:table-cell", "text-muted", "small", 2, "max-width", "180px", "overflow", "hidden", "text-overflow", "ellipsis", "white-space", "nowrap", 3, "title"], [1, "text-right", "fw-600"], [1, "badge", "bg-success-subtle", "text-success"], [1, "badge", "bg-warning-subtle", "text-warning-emphasis"], [1, "badge", "bg-danger-subtle", "text-danger"], [1, "badge", "bg-secondary-subtle", "text-secondary"], [1, "text-success", "small"], [1, "text-muted"], [1, "text-center", "hidden", "lg:table-cell", "text-muted", "small"], ["colspan", "8", 1, "text-center", "text-muted", "py-4"], ["colspan", "4", 1, "text-right", "fw-500", "small", "hidden", "lg:table-cell"], ["colspan", "2", 1, "text-right", "fw-500", "small", "table-cell", "lg:hidden"], ["colspan", "3", 1, "hidden", "md:table-cell"], [1, "table-cell", "md:hidden"], [1, "text-muted", "small"], [1, "flex", "gap-1"], [1, "btn", "btn-sm", "btn-outline", 3, "click", "disabled"]], template: function PaymentReport_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "div", 2);
       \u0275\u0275namespaceSVG();
@@ -53917,107 +53921,102 @@ var PaymentReport = class _PaymentReport {
       \u0275\u0275text(10);
       \u0275\u0275elementEnd()();
       \u0275\u0275namespaceHTML();
-      \u0275\u0275elementStart(11, "div", 9)(12, "div", 10)(13, "div", 11)(14, "div", 12)(15, "span", 13);
-      \u0275\u0275text(16, "\u6642\u6BB5\uFF1A");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(17, "div", 14)(18, "button", 15);
-      \u0275\u0275listener("click", function PaymentReport_Template_button_click_18_listener() {
-        return ctx.filterMode.set("day");
-      });
-      \u0275\u0275text(19, "\u65E5");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(20, "button", 16);
-      \u0275\u0275listener("click", function PaymentReport_Template_button_click_20_listener() {
-        return ctx.filterMode.set("week");
-      });
-      \u0275\u0275text(21, "\u9031");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(22, "button", 15);
-      \u0275\u0275listener("click", function PaymentReport_Template_button_click_22_listener() {
-        return ctx.filterMode.set("month");
-      });
-      \u0275\u0275text(23, "\u6708");
-      \u0275\u0275elementEnd()()();
-      \u0275\u0275elementStart(24, "div", 17);
-      \u0275\u0275conditionalCreate(25, PaymentReport_Conditional_25_Template, 4, 1, "div", 18)(26, PaymentReport_Conditional_26_Template, 12, 2, "div", 18)(27, PaymentReport_Conditional_27_Template, 16, 2);
-      \u0275\u0275elementStart(28, "div")(29, "label", 19);
-      \u0275\u0275text(30, "\u4ED8\u6B3E\u72C0\u614B");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(31, "select", 20);
-      \u0275\u0275listener("ngModelChange", function PaymentReport_Template_select_ngModelChange_31_listener($event) {
+      \u0275\u0275elementStart(11, "div", 9)(12, "div", 10)(13, "div", 11)(14, "div", 12)(15, "select", 13);
+      \u0275\u0275listener("ngModelChange", function PaymentReport_Template_select_ngModelChange_15_listener($event) {
         return ctx.selectedPaymentStatus.set($event);
       });
-      \u0275\u0275elementStart(32, "option", 21);
-      \u0275\u0275text(33, "\u5168\u90E8");
+      \u0275\u0275elementStart(16, "option", 14);
+      \u0275\u0275text(17, "\u5168\u90E8\u4ED8\u6B3E\u72C0\u614B");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(34, "option", 22);
-      \u0275\u0275text(35, "\u5DF2\u4ED8");
+      \u0275\u0275elementStart(18, "option", 15);
+      \u0275\u0275text(19, "\u5DF2\u4ED8");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(36, "option", 23);
-      \u0275\u0275text(37, "\u672A\u4ED8");
-      \u0275\u0275elementEnd()()();
-      \u0275\u0275elementStart(38, "div")(39, "label", 24);
-      \u0275\u0275text(40, "\xA0");
+      \u0275\u0275elementStart(20, "option", 16);
+      \u0275\u0275text(21, "\u672A\u4ED8");
+      \u0275\u0275elementEnd()();
+      \u0275\u0275elementStart(22, "div", 17)(23, "button", 18);
+      \u0275\u0275listener("click", function PaymentReport_Template_button_click_23_listener() {
+        return ctx.filterMode.set("day");
+      });
+      \u0275\u0275text(24, "\u65E5");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(41, "button", 25);
-      \u0275\u0275listener("click", function PaymentReport_Template_button_click_41_listener() {
+      \u0275\u0275elementStart(25, "button", 19);
+      \u0275\u0275listener("click", function PaymentReport_Template_button_click_25_listener() {
+        return ctx.filterMode.set("week");
+      });
+      \u0275\u0275text(26, "\u9031");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(27, "button", 18);
+      \u0275\u0275listener("click", function PaymentReport_Template_button_click_27_listener() {
+        return ctx.filterMode.set("month");
+      });
+      \u0275\u0275text(28, "\u6708");
+      \u0275\u0275elementEnd()();
+      \u0275\u0275conditionalCreate(29, PaymentReport_Conditional_29_Template, 1, 1, "input", 20)(30, PaymentReport_Conditional_30_Template, 7, 1)(31, PaymentReport_Conditional_31_Template, 10, 2);
+      \u0275\u0275elementStart(32, "button", 21);
+      \u0275\u0275listener("click", function PaymentReport_Template_button_click_32_listener() {
         return ctx.search();
       });
-      \u0275\u0275text(42, "\u7BE9\u9078");
-      \u0275\u0275elementEnd()()()();
-      \u0275\u0275elementStart(43, "div", 26)(44, "table", 27)(45, "thead", 28)(46, "tr")(47, "th");
-      \u0275\u0275text(48, "\u54E1\u5DE5\u59D3\u540D");
+      \u0275\u0275text(33, "\u7BE9\u9078");
+      \u0275\u0275elementEnd()();
+      \u0275\u0275conditionalCreate(34, PaymentReport_Conditional_34_Template, 2, 3, "div", 22);
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(49, "th", 29);
-      \u0275\u0275text(50, "\u8ACB\u6B3E\u985E\u578B");
+      \u0275\u0275elementStart(35, "div", 23)(36, "table", 24)(37, "thead", 25)(38, "tr")(39, "th");
+      \u0275\u0275text(40, "\u54E1\u5DE5\u59D3\u540D");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(41, "th", 26);
+      \u0275\u0275text(42, "\u8ACB\u6B3E\u985E\u578B");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(43, "th", 27);
+      \u0275\u0275text(44, "\u5C08\u6848");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(45, "th", 28);
+      \u0275\u0275text(46, "\u767C\u7968\u865F\u78BC");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(47, "th", 29);
+      \u0275\u0275text(48, "\u7E3D\u91D1\u984D");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(49, "th", 26);
+      \u0275\u0275text(50, "\u7C3D\u6838\u72C0\u614B");
       \u0275\u0275elementEnd();
       \u0275\u0275elementStart(51, "th", 30);
-      \u0275\u0275text(52, "\u5C08\u6848");
+      \u0275\u0275text(52, "\u4ED8\u6B3E\u65E5\u671F");
       \u0275\u0275elementEnd();
       \u0275\u0275elementStart(53, "th", 31);
-      \u0275\u0275text(54, "\u767C\u7968\u865F\u78BC");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(55, "th", 32);
-      \u0275\u0275text(56, "\u7E3D\u91D1\u984D");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(57, "th", 29);
-      \u0275\u0275text(58, "\u7C3D\u6838\u72C0\u614B");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(59, "th", 33);
-      \u0275\u0275text(60, "\u4ED8\u6B3E\u65E5\u671F");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(61, "th", 34);
-      \u0275\u0275text(62, "\u7533\u8ACB\u65E5\u671F");
+      \u0275\u0275text(54, "\u7533\u8ACB\u65E5\u671F");
       \u0275\u0275elementEnd()()();
-      \u0275\u0275elementStart(63, "tbody");
-      \u0275\u0275repeaterCreate(64, PaymentReport_For_65_Template, 25, 13, "tr", null, _forTrack027, false, PaymentReport_ForEmpty_66_Template, 4, 1, "tr");
+      \u0275\u0275elementStart(55, "tbody");
+      \u0275\u0275repeaterCreate(56, PaymentReport_For_57_Template, 25, 13, "tr", null, _forTrack027, false, PaymentReport_ForEmpty_58_Template, 4, 1, "tr");
       \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(67, PaymentReport_Conditional_67_Template, 11, 4, "tfoot");
+      \u0275\u0275conditionalCreate(59, PaymentReport_Conditional_59_Template, 11, 4, "tfoot");
       \u0275\u0275elementEnd()();
-      \u0275\u0275conditionalCreate(68, PaymentReport_Conditional_68_Template, 8, 5, "div", 35);
+      \u0275\u0275conditionalCreate(60, PaymentReport_Conditional_60_Template, 8, 5, "div", 32);
       \u0275\u0275elementEnd()()();
     }
     if (rf & 2) {
+      let tmp_10_0;
       \u0275\u0275advance(7);
       \u0275\u0275property("disabled", ctx.exporting() || ctx.totalCount() === 0);
       \u0275\u0275advance(3);
       \u0275\u0275textInterpolate1(" ", ctx.exporting() ? "\u532F\u51FA\u4E2D..." : "\u532F\u51FA", " ");
+      \u0275\u0275advance(5);
+      \u0275\u0275property("ngModel", ctx.selectedPaymentStatus());
       \u0275\u0275advance(8);
       \u0275\u0275classProp("bg-primary", ctx.filterMode() === "day")("text-white", ctx.filterMode() === "day");
       \u0275\u0275advance(2);
       \u0275\u0275classProp("bg-primary", ctx.filterMode() === "week")("text-white", ctx.filterMode() === "week");
       \u0275\u0275advance(2);
       \u0275\u0275classProp("bg-primary", ctx.filterMode() === "month")("text-white", ctx.filterMode() === "month");
-      \u0275\u0275advance(3);
-      \u0275\u0275conditional(ctx.filterMode() === "day" ? 25 : ctx.filterMode() === "week" ? 26 : 27);
-      \u0275\u0275advance(6);
-      \u0275\u0275property("ngModel", ctx.selectedPaymentStatus());
-      \u0275\u0275advance(33);
+      \u0275\u0275advance(2);
+      \u0275\u0275conditional(ctx.filterMode() === "day" ? 29 : ctx.filterMode() === "week" ? 30 : 31);
+      \u0275\u0275advance(5);
+      \u0275\u0275conditional((tmp_10_0 = ctx.filterMode() === "week" && ctx.weekRange()) ? 34 : -1, tmp_10_0);
+      \u0275\u0275advance(22);
       \u0275\u0275repeater(ctx.records());
       \u0275\u0275advance(3);
-      \u0275\u0275conditional(ctx.records().length > 0 ? 67 : -1);
+      \u0275\u0275conditional(ctx.records().length > 0 ? 59 : -1);
       \u0275\u0275advance();
-      \u0275\u0275conditional(ctx.totalPages() > 1 ? 68 : -1);
+      \u0275\u0275conditional(ctx.totalPages() > 1 ? 60 : -1);
     }
   }, dependencies: [CommonModule, FormsModule, NgSelectOption, \u0275NgSelectMultipleOption, DefaultValueAccessor, SelectControlValueAccessor, NgControlStatus, NgModel, DecimalPipe], encapsulation: 2 });
 };
@@ -54046,9 +54045,13 @@ var PaymentReport = class _PaymentReport {
 
       <!-- Toolbar: \u7BE9\u9078\u5217 -->
       <div class="px-4 py-3 border-b">
-        <!-- \u6642\u6BB5\u6A21\u5F0F\u5207\u63DB -->
-        <div class="mb-3 flex items-center gap-2 flex-wrap">
-          <span class="text-xs text-muted">\u6642\u6BB5\uFF1A</span>
+        <div class="flex flex-wrap items-center gap-2">
+          <select class="form-select" style="width: auto; min-width: 140px"
+                  [ngModel]="selectedPaymentStatus()" (ngModelChange)="selectedPaymentStatus.set($event)">
+            <option value="">\u5168\u90E8\u4ED8\u6B3E\u72C0\u614B</option>
+            <option value="paid">\u5DF2\u4ED8</option>
+            <option value="unpaid">\u672A\u4ED8</option>
+          </select>
           <div class="inline-flex border rounded-md overflow-hidden">
             <button type="button" class="px-3 py-1.5 text-sm"
                     [class.bg-primary]="filterMode()==='day'" [class.text-white]="filterMode()==='day'"
@@ -54060,64 +54063,36 @@ var PaymentReport = class _PaymentReport {
                     [class.bg-primary]="filterMode()==='month'" [class.text-white]="filterMode()==='month'"
                     (click)="filterMode.set('month')">\u6708</button>
           </div>
-        </div>
-        <!-- \u689D\u4EF6\u5217 -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-end">
           @if (filterMode() === 'day') {
-            <div class="lg:col-span-2">
-              <label class="text-xs text-muted mb-1 block">\u65E5\u671F</label>
-              <input type="date" class="form-control w-full"
-                     [ngModel]="selectedDate()" (ngModelChange)="selectedDate.set($event)" />
-            </div>
+            <input type="date" class="form-control" style="width: auto; min-width: 150px"
+                   [ngModel]="selectedDate()" (ngModelChange)="selectedDate.set($event)" />
           } @else if (filterMode() === 'week') {
-            <div class="lg:col-span-2">
-              <label class="text-xs text-muted mb-1 block">\u9031\u6B21\uFF08\u6311\u4EFB\u4E00\u5929\u5373\u81EA\u52D5\u53D6\u6574\u9031\uFF09</label>
-              <div class="flex items-stretch gap-1">
-                <button type="button" class="btn btn-outline px-2" title="\u4E0A\u4E00\u9031" (click)="shiftWeek(-7)">\u2039</button>
-                <input type="date" class="form-control flex-1"
-                       [ngModel]="selectedWeekDate()" (ngModelChange)="selectedWeekDate.set($event)" />
-                <button type="button" class="btn btn-outline px-2" title="\u4E0B\u4E00\u9031" (click)="shiftWeek(7)">\u203A</button>
-                <button type="button" class="btn btn-outline whitespace-nowrap" title="\u56DE\u5230\u672C\u9031" (click)="resetToThisWeek()">\u672C\u9031</button>
-              </div>
-              @if (weekRange(); as r) {
-                <div class="text-xs text-muted mt-1">
-                  \u7B2C {{ r.weekNumber }} \u9031\uFF08{{ r.dateFrom }} \u4E00 ~ {{ r.dateTo }} \u65E5\uFF09
-                </div>
-              }
-            </div>
+            <button type="button" class="btn btn-outline px-2" title="\u4E0A\u4E00\u9031" (click)="shiftWeek(-7)">\u2039</button>
+            <input type="date" class="form-control" style="width: auto; min-width: 150px"
+                   [ngModel]="selectedWeekDate()" (ngModelChange)="selectedWeekDate.set($event)" />
+            <button type="button" class="btn btn-outline px-2" title="\u4E0B\u4E00\u9031" (click)="shiftWeek(7)">\u203A</button>
+            <button type="button" class="btn btn-outline whitespace-nowrap" title="\u56DE\u5230\u672C\u9031" (click)="resetToThisWeek()">\u672C\u9031</button>
           } @else {
-            <div>
-              <label class="text-xs text-muted mb-1 block">\u5E74\u4EFD</label>
-              <select class="form-control w-full" [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set($event)">
-                <option value="">\u5168\u90E8\u5E74\u4EFD</option>
-                @for (y of years(); track y) {
-                  <option [value]="y">{{ y }}</option>
-                }
-              </select>
-            </div>
-            <div>
-              <label class="text-xs text-muted mb-1 block">\u6708\u4EFD</label>
-              <select class="form-control w-full" [ngModel]="selectedMonth()" (ngModelChange)="selectedMonth.set($event)">
-                <option value="">\u5168\u90E8\u6708\u4EFD</option>
-                @for (m of months; track m) {
-                  <option [value]="m">{{ m }}\u6708</option>
-                }
-              </select>
-            </div>
-          }
-          <div>
-            <label class="text-xs text-muted mb-1 block">\u4ED8\u6B3E\u72C0\u614B</label>
-            <select class="form-control w-full" [ngModel]="selectedPaymentStatus()" (ngModelChange)="selectedPaymentStatus.set($event)">
-              <option value="">\u5168\u90E8</option>
-              <option value="paid">\u5DF2\u4ED8</option>
-              <option value="unpaid">\u672A\u4ED8</option>
+            <select class="form-select" style="width: auto; min-width: 120px"
+                    [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set($event)">
+              <option value="">\u5168\u90E8\u5E74\u4EFD</option>
+              @for (y of years(); track y) {
+                <option [value]="y">{{ y }}</option>
+              }
             </select>
-          </div>
-          <div>
-            <label class="text-xs text-muted mb-1 block sm:invisible">&nbsp;</label>
-            <button class="btn btn-primary w-full" (click)="search()">\u7BE9\u9078</button>
-          </div>
+            <select class="form-select" style="width: auto; min-width: 120px"
+                    [ngModel]="selectedMonth()" (ngModelChange)="selectedMonth.set($event)">
+              <option value="">\u5168\u90E8\u6708\u4EFD</option>
+              @for (m of months; track m) {
+                <option [value]="m">{{ m }}\u6708</option>
+              }
+            </select>
+          }
+          <button class="btn btn-primary" (click)="search()">\u7BE9\u9078</button>
         </div>
+        @if (filterMode() === 'week' && weekRange(); as r) {
+          <div class="text-xs text-muted mt-2">\u7B2C {{ r.weekNumber }} \u9031\uFF08{{ r.dateFrom }} \u4E00 ~ {{ r.dateTo }} \u65E5\uFF09</div>
+        }
       </div>
 
       <!-- Table -->
@@ -54224,205 +54199,231 @@ var PaymentReport = class _PaymentReport {
 
 // src/app/features/admin/reports/pages/project-water-level/project-water-level.ts
 var _forTrack028 = ($index, $item) => $item.projectId;
-function ProjectWaterLevel_For_33_Conditional_4_Template(rf, ctx) {
+function ProjectWaterLevel_For_14_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275domElementStart(0, "div", 17);
+    \u0275\u0275elementStart(0, "option", 10);
     \u0275\u0275text(1);
-    \u0275\u0275domElementEnd();
+    \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const row_r2 = \u0275\u0275nextContext().$implicit;
+    const y_r1 = ctx.$implicit;
+    \u0275\u0275property("ngValue", y_r1);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(row_r2.projectName);
+    \u0275\u0275textInterpolate(y_r1);
   }
 }
-function ProjectWaterLevel_For_33_Conditional_8_Template(rf, ctx) {
+function ProjectWaterLevel_For_49_Conditional_4_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275domElementStart(0, "span", 19);
+    \u0275\u0275elementStart(0, "div", 24);
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const row_r3 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate(row_r3.projectName);
+  }
+}
+function ProjectWaterLevel_For_49_Conditional_8_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 26);
     \u0275\u0275text(1, "\u9032\u884C\u4E2D");
-    \u0275\u0275domElementEnd();
+    \u0275\u0275elementEnd();
   }
 }
-function ProjectWaterLevel_For_33_Conditional_9_Template(rf, ctx) {
+function ProjectWaterLevel_For_49_Conditional_9_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275domElementStart(0, "span", 20);
+    \u0275\u0275elementStart(0, "span", 27);
     \u0275\u0275text(1, "\u5DF2\u7D50\u6848");
-    \u0275\u0275domElementEnd();
+    \u0275\u0275elementEnd();
   }
 }
-function ProjectWaterLevel_For_33_Conditional_11_Template(rf, ctx) {
+function ProjectWaterLevel_For_49_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275domElementStart(0, "span", 21);
+    \u0275\u0275elementStart(0, "span", 28);
     \u0275\u0275text(1);
     \u0275\u0275pipe(2, "number");
-    \u0275\u0275domElementEnd();
+    \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const row_r2 = \u0275\u0275nextContext().$implicit;
+    const row_r3 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(2, 1, row_r2.contractAmount, "1.0-0"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(2, 1, row_r3.contractAmount, "1.0-0"));
   }
 }
-function ProjectWaterLevel_For_33_Conditional_12_Template(rf, ctx) {
+function ProjectWaterLevel_For_49_Conditional_12_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275domElementStart(0, "span", 22);
+    \u0275\u0275elementStart(0, "span", 29);
     \u0275\u0275text(1, "\u2014");
-    \u0275\u0275domElementEnd();
+    \u0275\u0275elementEnd();
   }
 }
-function ProjectWaterLevel_For_33_Conditional_14_Template(rf, ctx) {
+function ProjectWaterLevel_For_49_Conditional_14_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275domElementStart(0, "span", 21);
+    \u0275\u0275elementStart(0, "span", 28);
     \u0275\u0275text(1);
     \u0275\u0275pipe(2, "number");
-    \u0275\u0275domElementEnd();
+    \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const row_r2 = \u0275\u0275nextContext().$implicit;
+    const row_r3 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(2, 1, row_r2.businessAmount, "1.0-0"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(2, 1, row_r3.businessAmount, "1.0-0"));
   }
 }
-function ProjectWaterLevel_For_33_Conditional_15_Template(rf, ctx) {
+function ProjectWaterLevel_For_49_Conditional_15_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275domElementStart(0, "span", 22);
+    \u0275\u0275elementStart(0, "span", 29);
     \u0275\u0275text(1, "\u2014");
-    \u0275\u0275domElementEnd();
+    \u0275\u0275elementEnd();
   }
 }
-function ProjectWaterLevel_For_33_Conditional_27_Template(rf, ctx) {
+function ProjectWaterLevel_For_49_Conditional_27_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0);
   }
   if (rf & 2) {
-    const row_r2 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275textInterpolate1(" ", row_r2.percentage, "% ");
+    const row_r3 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275textInterpolate1(" ", row_r3.percentage, "% ");
   }
 }
-function ProjectWaterLevel_For_33_Conditional_28_Template(rf, ctx) {
+function ProjectWaterLevel_For_49_Conditional_28_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u2014 ");
   }
 }
-function ProjectWaterLevel_For_33_Conditional_34_Template(rf, ctx) {
+function ProjectWaterLevel_For_49_Conditional_34_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0);
   }
   if (rf & 2) {
-    const row_r2 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275textInterpolate1(" ", row_r2.totalPercentage, "% ");
+    const row_r3 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275textInterpolate1(" ", row_r3.totalPercentage, "% ");
   }
 }
-function ProjectWaterLevel_For_33_Conditional_35_Template(rf, ctx) {
+function ProjectWaterLevel_For_49_Conditional_35_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u2014 ");
   }
 }
-function ProjectWaterLevel_For_33_Template(rf, ctx) {
+function ProjectWaterLevel_For_49_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275domElementStart(0, "tr")(1, "td")(2, "div", 16);
+    \u0275\u0275elementStart(0, "tr")(1, "td")(2, "div", 23);
     \u0275\u0275text(3);
-    \u0275\u0275domElementEnd();
-    \u0275\u0275conditionalCreate(4, ProjectWaterLevel_For_33_Conditional_4_Template, 2, 1, "div", 17);
-    \u0275\u0275domElementEnd();
-    \u0275\u0275domElementStart(5, "td", 18);
+    \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(4, ProjectWaterLevel_For_49_Conditional_4_Template, 2, 1, "div", 24);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(5, "td", 25);
     \u0275\u0275text(6);
-    \u0275\u0275domElementEnd();
-    \u0275\u0275domElementStart(7, "td", 12);
-    \u0275\u0275conditionalCreate(8, ProjectWaterLevel_For_33_Conditional_8_Template, 2, 0, "span", 19)(9, ProjectWaterLevel_For_33_Conditional_9_Template, 2, 0, "span", 20);
-    \u0275\u0275domElementEnd();
-    \u0275\u0275domElementStart(10, "td", 13);
-    \u0275\u0275conditionalCreate(11, ProjectWaterLevel_For_33_Conditional_11_Template, 3, 4, "span", 21)(12, ProjectWaterLevel_For_33_Conditional_12_Template, 2, 0, "span", 22);
-    \u0275\u0275domElementEnd();
-    \u0275\u0275domElementStart(13, "td", 13);
-    \u0275\u0275conditionalCreate(14, ProjectWaterLevel_For_33_Conditional_14_Template, 3, 4, "span", 21)(15, ProjectWaterLevel_For_33_Conditional_15_Template, 2, 0, "span", 22);
-    \u0275\u0275domElementEnd();
-    \u0275\u0275domElementStart(16, "td", 23);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "td", 19);
+    \u0275\u0275conditionalCreate(8, ProjectWaterLevel_For_49_Conditional_8_Template, 2, 0, "span", 26)(9, ProjectWaterLevel_For_49_Conditional_9_Template, 2, 0, "span", 27);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(10, "td", 20);
+    \u0275\u0275conditionalCreate(11, ProjectWaterLevel_For_49_Conditional_11_Template, 3, 4, "span", 28)(12, ProjectWaterLevel_For_49_Conditional_12_Template, 2, 0, "span", 29);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(13, "td", 20);
+    \u0275\u0275conditionalCreate(14, ProjectWaterLevel_For_49_Conditional_14_Template, 3, 4, "span", 28)(15, ProjectWaterLevel_For_49_Conditional_15_Template, 2, 0, "span", 29);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(16, "td", 30);
     \u0275\u0275text(17);
     \u0275\u0275pipe(18, "number");
-    \u0275\u0275domElementEnd();
-    \u0275\u0275domElementStart(19, "td", 24);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(19, "td", 31);
     \u0275\u0275text(20);
     \u0275\u0275pipe(21, "number");
-    \u0275\u0275domElementEnd();
-    \u0275\u0275domElementStart(22, "td")(23, "div", 2)(24, "div", 25);
-    \u0275\u0275domElement(25, "div", 26);
-    \u0275\u0275domElementEnd();
-    \u0275\u0275domElementStart(26, "span", 27);
-    \u0275\u0275conditionalCreate(27, ProjectWaterLevel_For_33_Conditional_27_Template, 1, 1)(28, ProjectWaterLevel_For_33_Conditional_28_Template, 1, 0);
-    \u0275\u0275domElementEnd()()();
-    \u0275\u0275domElementStart(29, "td")(30, "div", 2)(31, "div", 25);
-    \u0275\u0275domElement(32, "div", 26);
-    \u0275\u0275domElementEnd();
-    \u0275\u0275domElementStart(33, "span", 27);
-    \u0275\u0275conditionalCreate(34, ProjectWaterLevel_For_33_Conditional_34_Template, 1, 1)(35, ProjectWaterLevel_For_33_Conditional_35_Template, 1, 0);
-    \u0275\u0275domElementEnd()()()();
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(22, "td")(23, "div", 2)(24, "div", 32);
+    \u0275\u0275element(25, "div", 33);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(26, "span", 34);
+    \u0275\u0275conditionalCreate(27, ProjectWaterLevel_For_49_Conditional_27_Template, 1, 1)(28, ProjectWaterLevel_For_49_Conditional_28_Template, 1, 0);
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(29, "td")(30, "div", 2)(31, "div", 32);
+    \u0275\u0275element(32, "div", 33);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(33, "span", 34);
+    \u0275\u0275conditionalCreate(34, ProjectWaterLevel_For_49_Conditional_34_Template, 1, 1)(35, ProjectWaterLevel_For_49_Conditional_35_Template, 1, 0);
+    \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
-    const row_r2 = ctx.$implicit;
-    const ctx_r0 = \u0275\u0275nextContext();
+    const row_r3 = ctx.$implicit;
+    const ctx_r1 = \u0275\u0275nextContext();
     \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate(row_r2.projectCode);
+    \u0275\u0275textInterpolate(row_r3.projectCode);
     \u0275\u0275advance();
-    \u0275\u0275conditional(row_r2.projectName ? 4 : -1);
+    \u0275\u0275conditional(row_r3.projectName ? 4 : -1);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(row_r2.departmentName);
+    \u0275\u0275textInterpolate(row_r3.departmentName);
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(row_r2.status === "active" ? 8 : 9);
+    \u0275\u0275conditional(row_r3.status === "active" ? 8 : 9);
     \u0275\u0275advance(3);
-    \u0275\u0275conditional(row_r2.contractAmount !== null ? 11 : 12);
+    \u0275\u0275conditional(row_r3.contractAmount !== null ? 11 : 12);
     \u0275\u0275advance(3);
-    \u0275\u0275conditional(row_r2.businessAmount !== null ? 14 : 15);
+    \u0275\u0275conditional(row_r3.businessAmount !== null ? 14 : 15);
     \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(18, 22, row_r2.paymentAmount, "1.0-0"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(18, 22, row_r3.paymentAmount, "1.0-0"));
     \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(21, 25, row_r2.paidAmount, "1.0-0"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(21, 25, row_r3.paidAmount, "1.0-0"));
     \u0275\u0275advance(5);
-    \u0275\u0275styleProp("width", ctx_r0.getBarWidth(row_r2.percentage))("background", ctx_r0.getBarColor(row_r2.percentage));
+    \u0275\u0275styleProp("width", ctx_r1.getBarWidth(row_r3.percentage))("background", ctx_r1.getBarColor(row_r3.percentage));
     \u0275\u0275advance();
-    \u0275\u0275styleProp("color", ctx_r0.getBarColor(row_r2.percentage));
+    \u0275\u0275styleProp("color", ctx_r1.getBarColor(row_r3.percentage));
     \u0275\u0275advance();
-    \u0275\u0275conditional(row_r2.percentage !== null ? 27 : 28);
+    \u0275\u0275conditional(row_r3.percentage !== null ? 27 : 28);
     \u0275\u0275advance(5);
-    \u0275\u0275styleProp("width", ctx_r0.getBarWidth(row_r2.totalPercentage))("background", ctx_r0.getBarColor(row_r2.totalPercentage));
+    \u0275\u0275styleProp("width", ctx_r1.getBarWidth(row_r3.totalPercentage))("background", ctx_r1.getBarColor(row_r3.totalPercentage));
     \u0275\u0275advance();
-    \u0275\u0275styleProp("color", ctx_r0.getBarColor(row_r2.totalPercentage));
+    \u0275\u0275styleProp("color", ctx_r1.getBarColor(row_r3.totalPercentage));
     \u0275\u0275advance();
-    \u0275\u0275conditional(row_r2.totalPercentage !== null ? 34 : 35);
+    \u0275\u0275conditional(row_r3.totalPercentage !== null ? 34 : 35);
   }
 }
-function ProjectWaterLevel_ForEmpty_34_Conditional_2_Template(rf, ctx) {
+function ProjectWaterLevel_ForEmpty_50_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u8F09\u5165\u4E2D... ");
   }
 }
-function ProjectWaterLevel_ForEmpty_34_Conditional_3_Template(rf, ctx) {
+function ProjectWaterLevel_ForEmpty_50_Conditional_3_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u5C1A\u7121\u8CC7\u6599 ");
   }
 }
-function ProjectWaterLevel_ForEmpty_34_Template(rf, ctx) {
+function ProjectWaterLevel_ForEmpty_50_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275domElementStart(0, "tr")(1, "td", 28);
-    \u0275\u0275conditionalCreate(2, ProjectWaterLevel_ForEmpty_34_Conditional_2_Template, 1, 0)(3, ProjectWaterLevel_ForEmpty_34_Conditional_3_Template, 1, 0);
-    \u0275\u0275domElementEnd()();
+    \u0275\u0275elementStart(0, "tr")(1, "td", 35);
+    \u0275\u0275conditionalCreate(2, ProjectWaterLevel_ForEmpty_50_Conditional_2_Template, 1, 0)(3, ProjectWaterLevel_ForEmpty_50_Conditional_3_Template, 1, 0);
+    \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    const ctx_r0 = \u0275\u0275nextContext();
+    const ctx_r1 = \u0275\u0275nextContext();
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r0.loading() ? 2 : 3);
+    \u0275\u0275conditional(ctx_r1.loading() ? 2 : 3);
   }
 }
 var ProjectWaterLevel = class _ProjectWaterLevel {
   http = inject(HttpClient);
+  projectService = inject(ProjectService);
   records = signal([], ...ngDevMode ? [{ debugName: "records" }] : []);
   loading = signal(false, ...ngDevMode ? [{ debugName: "loading" }] : []);
+  selectedYearInput;
+  selectedStatusInput;
+  yearOptions = toSignal(this.projectService.getYears(), { initialValue: [] });
+  statusLabel = PROJECT_STATUS_LABELS;
   ngOnInit() {
+    this.fetchData();
+  }
+  doSearch() {
     this.fetchData();
   }
   fetchData() {
     this.loading.set(true);
-    this.http.get(`${environment.apiUrl}/reports/project-water-level`).subscribe({
+    let params = new HttpParams();
+    if (this.selectedYearInput != null)
+      params = params.set("year", String(this.selectedYearInput));
+    if (this.selectedStatusInput)
+      params = params.set("status", this.selectedStatusInput);
+    this.http.get(`${environment.apiUrl}/reports/project-water-level`, { params }).subscribe({
       next: (res) => {
         const items = res?.data ?? res ?? [];
         this.records.set((Array.isArray(items) ? items : []).map((r) => ({
@@ -54463,58 +54464,102 @@ var ProjectWaterLevel = class _ProjectWaterLevel {
   static \u0275fac = function ProjectWaterLevel_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _ProjectWaterLevel)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ProjectWaterLevel, selectors: [["app-project-water-level"]], decls: 35, vars: 1, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#trending-up"], [1, "mb-0"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "hidden", "md:table-cell"], [1, "text-center", "hidden", "md:table-cell"], [1, "text-right"], [1, "text-right", "hidden", "lg:table-cell"], [2, "min-width", "180px"], [1, "fw-600", "font-monospace"], [1, "text-muted", "small"], [1, "hidden", "md:table-cell", "text-muted", "small"], [1, "badge", "bg-success-subtle", "text-success"], [1, "badge", "bg-secondary-subtle", "text-secondary"], [1, "fw-500"], [1, "text-muted"], [1, "text-right", "fw-500"], [1, "text-right", "hidden", "lg:table-cell", "text-muted"], [1, "grow", "rounded-full", "overflow-hidden", 2, "height", "8px", "background", "var(--bg-elevated)"], [1, "h-full", "rounded-full", "transition-all", "duration-500"], [1, "shrink-0", "text-right", "small", "fw-600", 2, "min-width", "42px"], ["colspan", "9", 1, "text-center", "text-muted", "py-4"]], template: function ProjectWaterLevel_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ProjectWaterLevel, selectors: [["app-project-water-level"]], decls: 51, vars: 7, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#trending-up"], [1, "mb-0"], [1, "card", "border-0", "shadow-sm"], [1, "px-4", "py-3", "border-b"], [1, "flex", "flex-wrap", "items-center", "gap-2"], [1, "form-select", 2, "width", "auto", "min-width", "120px", 3, "ngModelChange", "ngModel"], [3, "ngValue"], ["value", "active"], ["value", "closed"], [1, "btn", "btn-primary", 3, "click"], [1, "card-body", "p-0"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "hidden", "md:table-cell"], [1, "text-center", "hidden", "md:table-cell"], [1, "text-right"], [1, "text-right", "hidden", "lg:table-cell"], [2, "min-width", "180px"], [1, "fw-600", "font-monospace"], [1, "text-muted", "small"], [1, "hidden", "md:table-cell", "text-muted", "small"], [1, "badge", "bg-success-subtle", "text-success"], [1, "badge", "bg-secondary-subtle", "text-secondary"], [1, "fw-500"], [1, "text-muted"], [1, "text-right", "fw-500"], [1, "text-right", "hidden", "lg:table-cell", "text-muted"], [1, "grow", "rounded-full", "overflow-hidden", 2, "height", "8px", "background", "var(--bg-elevated)"], [1, "h-full", "rounded-full", "transition-all", "duration-500"], [1, "shrink-0", "text-right", "small", "fw-600", 2, "min-width", "42px"], ["colspan", "9", 1, "text-center", "text-muted", "py-4"]], template: function ProjectWaterLevel_Template(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275domElementStart(0, "div", 0)(1, "div", 1)(2, "div", 2);
+      \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "div", 2);
       \u0275\u0275namespaceSVG();
-      \u0275\u0275domElementStart(3, "svg", 3);
-      \u0275\u0275domElement(4, "use", 4);
-      \u0275\u0275domElementEnd();
+      \u0275\u0275elementStart(3, "svg", 3);
+      \u0275\u0275element(4, "use", 4);
+      \u0275\u0275elementEnd();
       \u0275\u0275namespaceHTML();
-      \u0275\u0275domElementStart(5, "h4", 5);
+      \u0275\u0275elementStart(5, "h4", 5);
       \u0275\u0275text(6, "\u5C08\u6848\u6C34\u4F4D\u8868");
-      \u0275\u0275domElementEnd()()();
-      \u0275\u0275domElementStart(7, "div", 6)(8, "div", 7)(9, "div", 8)(10, "table", 9)(11, "thead", 10)(12, "tr")(13, "th");
-      \u0275\u0275text(14, "\u5C08\u6848");
-      \u0275\u0275domElementEnd();
-      \u0275\u0275domElementStart(15, "th", 11);
-      \u0275\u0275text(16, "\u90E8\u9580");
-      \u0275\u0275domElementEnd();
-      \u0275\u0275domElementStart(17, "th", 12);
-      \u0275\u0275text(18, "\u72C0\u614B");
-      \u0275\u0275domElementEnd();
-      \u0275\u0275domElementStart(19, "th", 13);
-      \u0275\u0275text(20, "\u5951\u7D04\u91D1\u984D");
-      \u0275\u0275domElementEnd();
-      \u0275\u0275domElementStart(21, "th", 13);
-      \u0275\u0275text(22, "\u696D\u52D9\u57F7\u884C\u91D1\u984D");
-      \u0275\u0275domElementEnd();
-      \u0275\u0275domElementStart(23, "th", 13);
-      \u0275\u0275text(24, "\u5DF2\u8ACB\u6B3E");
-      \u0275\u0275domElementEnd();
-      \u0275\u0275domElementStart(25, "th", 14);
-      \u0275\u0275text(26, "\u5DF2\u4ED8\u6B3E");
-      \u0275\u0275domElementEnd();
-      \u0275\u0275domElementStart(27, "th", 15);
-      \u0275\u0275text(28, "\u696D\u52D9\u57F7\u884C\u6C34\u4F4D");
-      \u0275\u0275domElementEnd();
-      \u0275\u0275domElementStart(29, "th", 15);
-      \u0275\u0275text(30, "\u7E3D\u5C08\u6848\u6C34\u4F4D");
-      \u0275\u0275domElementEnd()()();
-      \u0275\u0275domElementStart(31, "tbody");
-      \u0275\u0275repeaterCreate(32, ProjectWaterLevel_For_33_Template, 36, 28, "tr", null, _forTrack028, false, ProjectWaterLevel_ForEmpty_34_Template, 4, 1, "tr");
-      \u0275\u0275domElementEnd()()()()()();
+      \u0275\u0275elementEnd()()();
+      \u0275\u0275elementStart(7, "div", 6)(8, "div", 7)(9, "div", 8)(10, "select", 9);
+      \u0275\u0275twoWayListener("ngModelChange", function ProjectWaterLevel_Template_select_ngModelChange_10_listener($event) {
+        \u0275\u0275twoWayBindingSet(ctx.selectedYearInput, $event) || (ctx.selectedYearInput = $event);
+        return $event;
+      });
+      \u0275\u0275elementStart(11, "option", 10);
+      \u0275\u0275text(12, "\u5168\u90E8\u5E74\u5EA6");
+      \u0275\u0275elementEnd();
+      \u0275\u0275repeaterCreate(13, ProjectWaterLevel_For_14_Template, 2, 2, "option", 10, \u0275\u0275repeaterTrackByIdentity);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(15, "select", 9);
+      \u0275\u0275twoWayListener("ngModelChange", function ProjectWaterLevel_Template_select_ngModelChange_15_listener($event) {
+        \u0275\u0275twoWayBindingSet(ctx.selectedStatusInput, $event) || (ctx.selectedStatusInput = $event);
+        return $event;
+      });
+      \u0275\u0275elementStart(16, "option", 10);
+      \u0275\u0275text(17, "\u5168\u90E8\u72C0\u614B");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(18, "option", 11);
+      \u0275\u0275text(19);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(20, "option", 12);
+      \u0275\u0275text(21);
+      \u0275\u0275elementEnd()();
+      \u0275\u0275elementStart(22, "button", 13);
+      \u0275\u0275listener("click", function ProjectWaterLevel_Template_button_click_22_listener() {
+        return ctx.doSearch();
+      });
+      \u0275\u0275text(23, "\u7BE9\u9078");
+      \u0275\u0275elementEnd()()();
+      \u0275\u0275elementStart(24, "div", 14)(25, "div", 15)(26, "table", 16)(27, "thead", 17)(28, "tr")(29, "th");
+      \u0275\u0275text(30, "\u5C08\u6848");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(31, "th", 18);
+      \u0275\u0275text(32, "\u90E8\u9580");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(33, "th", 19);
+      \u0275\u0275text(34, "\u72C0\u614B");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(35, "th", 20);
+      \u0275\u0275text(36, "\u5951\u7D04\u91D1\u984D");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(37, "th", 20);
+      \u0275\u0275text(38, "\u696D\u52D9\u57F7\u884C\u91D1\u984D");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(39, "th", 20);
+      \u0275\u0275text(40, "\u5DF2\u8ACB\u6B3E");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(41, "th", 21);
+      \u0275\u0275text(42, "\u5DF2\u4ED8\u6B3E");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(43, "th", 22);
+      \u0275\u0275text(44, "\u696D\u52D9\u57F7\u884C\u6C34\u4F4D");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(45, "th", 22);
+      \u0275\u0275text(46, "\u7E3D\u5C08\u6848\u6C34\u4F4D");
+      \u0275\u0275elementEnd()()();
+      \u0275\u0275elementStart(47, "tbody");
+      \u0275\u0275repeaterCreate(48, ProjectWaterLevel_For_49_Template, 36, 28, "tr", null, _forTrack028, false, ProjectWaterLevel_ForEmpty_50_Template, 4, 1, "tr");
+      \u0275\u0275elementEnd()()()()()();
     }
     if (rf & 2) {
-      \u0275\u0275advance(32);
+      \u0275\u0275advance(10);
+      \u0275\u0275twoWayProperty("ngModel", ctx.selectedYearInput);
+      \u0275\u0275advance();
+      \u0275\u0275property("ngValue", void 0);
+      \u0275\u0275advance(2);
+      \u0275\u0275repeater(ctx.yearOptions());
+      \u0275\u0275advance(2);
+      \u0275\u0275twoWayProperty("ngModel", ctx.selectedStatusInput);
+      \u0275\u0275advance();
+      \u0275\u0275property("ngValue", void 0);
+      \u0275\u0275advance(3);
+      \u0275\u0275textInterpolate(ctx.statusLabel["active"]);
+      \u0275\u0275advance(2);
+      \u0275\u0275textInterpolate(ctx.statusLabel["closed"]);
+      \u0275\u0275advance(27);
       \u0275\u0275repeater(ctx.records());
     }
-  }, dependencies: [CommonModule, DecimalPipe], encapsulation: 2 });
+  }, dependencies: [CommonModule, FormsModule, NgSelectOption, \u0275NgSelectMultipleOption, SelectControlValueAccessor, NgControlStatus, NgModel, DecimalPipe], encapsulation: 2 });
 };
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(ProjectWaterLevel, [{
     type: Component,
-    args: [{ selector: "app-project-water-level", imports: [CommonModule], template: `<div class="container-fluid py-3">
+    args: [{ selector: "app-project-water-level", imports: [CommonModule, FormsModule], template: `<div class="container-fluid py-3">
   <!-- Header -->
   <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
     <div class="flex items-center gap-2">
@@ -54526,6 +54571,24 @@ var ProjectWaterLevel = class _ProjectWaterLevel {
   </div>
 
   <div class="card border-0 shadow-sm">
+    <div class="px-4 py-3 border-b">
+      <div class="flex flex-wrap items-center gap-2">
+        <select class="form-select" style="width: auto; min-width: 120px"
+                [(ngModel)]="selectedYearInput">
+          <option [ngValue]="undefined">\u5168\u90E8\u5E74\u5EA6</option>
+          @for (y of yearOptions(); track y) {
+            <option [ngValue]="y">{{ y }}</option>
+          }
+        </select>
+        <select class="form-select" style="width: auto; min-width: 120px"
+                [(ngModel)]="selectedStatusInput">
+          <option [ngValue]="undefined">\u5168\u90E8\u72C0\u614B</option>
+          <option value="active">{{ statusLabel['active'] }}</option>
+          <option value="closed">{{ statusLabel['closed'] }}</option>
+        </select>
+        <button class="btn btn-primary" (click)="doSearch()">\u7BE9\u9078</button>
+      </div>
+    </div>
     <div class="card-body p-0">
 
       <!-- Table -->
@@ -54636,7 +54699,7 @@ var ProjectWaterLevel = class _ProjectWaterLevel {
   }], null, null);
 })();
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ProjectWaterLevel, { className: "ProjectWaterLevel", filePath: "src/app/features/admin/reports/pages/project-water-level/project-water-level.ts", lineNumber: 25 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ProjectWaterLevel, { className: "ProjectWaterLevel", filePath: "src/app/features/admin/reports/pages/project-water-level/project-water-level.ts", lineNumber: 29 });
 })();
 
 // src/app/features/admin/insurance-brackets/pages/insurance-bracket-list/insurance-bracket-list.ts
@@ -59331,7 +59394,7 @@ var APPROVAL_STATUS_CLASSES6 = {
   rejected: "bg-danger-subtle text-danger",
   returned: "bg-secondary-subtle text-secondary"
 };
-var ITEM_CATEGORIES3 = ["\u4EA4\u901A\u8CBB", "\u6D3B\u52D5\u8CBB", "\u8A2D\u8A08\u8CBB", "\u4EBA\u4E8B\u8CBB", "\u9910\u8CBB", "\u96DC\u652F"];
+var ITEM_CATEGORIES3 = ["\u4EA4\u901A\u8CBB", "\u6D3B\u52D5\u8CBB", "\u8A2D\u8A08\u8CBB", "\u4EBA\u4E8B\u8CBB", "\u9910\u8CBB", "\u96DC\u652F", "\u6536\u6B3E\u4EBA", "\u5EE0\u5546"];
 
 // src/app/features/admin/write-off-requests/pages/write-off-list/write-off-list.ts
 var _c025 = (a0) => [a0, "edit"];
@@ -65710,4 +65773,4 @@ xlsx/xlsx.mjs:
 xlsx/xlsx.mjs:
   (*! sheetjs (C) 2013-present SheetJS -- http://sheetjs.com *)
 */
-//# sourceMappingURL=chunk-PLWIQK46.js.map
+//# sourceMappingURL=chunk-AYLOZQ3M.js.map

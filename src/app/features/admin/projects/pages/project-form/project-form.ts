@@ -34,19 +34,21 @@ export class ProjectForm implements OnInit {
   businessPercentage = signal<number | null>(null);
   reservedAmount = signal<number | null>(null);
   reservedPercentage = signal<number | null>(null);
+  /** 實收金額（自動計算：SUM(schedules.depositAmount)） */
+  computedReceivedAmount = signal<number>(0);
 
   form = this.fb.group({
-    code:           ['', Validators.required],
-    name:           ['', Validators.required],
-    status:         ['active' as ProjectStatus, Validators.required],
-    startDate:      ['', Validators.required],
-    endDate:        [''],
-    departmentId:   [{value: null as number | null, disabled: true}, Validators.required],
-    receivedAmount: [null as number | null, [Validators.required, Validators.min(0)]],
-    contractAmount: [null as number | null, [Validators.required, Validators.min(0)]],
-    businessAmount: [null as number | null, [Validators.required, Validators.min(0)]],
-    googleDriveUrl: ['', Validators.required],
-    schedules:      this.fb.array<FormGroup>([]),
+    code:            ['', Validators.required],
+    name:            ['', Validators.required],
+    status:          ['active' as ProjectStatus, Validators.required],
+    startDate:       ['', Validators.required],
+    endDate:         [''],
+    departmentId:    [{value: null as number | null, disabled: true}, Validators.required],
+    contractAmount:  [null as number | null, [Validators.required, Validators.min(0)]],
+    businessAmount:  [null as number | null, [Validators.required, Validators.min(0)]],
+    remainingAmount: [null as number | null, [Validators.min(0)]],
+    googleDriveUrl:  ['', Validators.required],
+    schedules:       this.fb.array<FormGroup>([]),
   });
 
   get schedulesArray(): FormArray<FormGroup> {
@@ -82,6 +84,8 @@ export class ProjectForm implements OnInit {
     this.form.get('businessAmount')!.valueChanges.subscribe(() => {
       this.updateBusinessPercentage();
     });
+    // schedules 任何變動都即時重算實收金額
+    this.schedulesArray.valueChanges.subscribe(() => this.recomputeReceivedAmount());
 
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
@@ -93,21 +97,22 @@ export class ProjectForm implements OnInit {
           this.isClosed = p.status === 'closed';
           this.isReadOnly = this.isClosed || !this.auth.hasPermission('projects:write');
           this.form.patchValue({
-            code:           p.code,
-            name:           p.name,
-            status:         p.status,
-            startDate:      p.startDate ? p.startDate.substring(0, 10) : '',
-            endDate:        p.endDate ? p.endDate.substring(0, 10) : '',
-            departmentId:   p.departmentId ?? null,
-            receivedAmount: p.receivedAmount ?? null,
-            contractAmount: p.contractAmount ?? null,
-            businessAmount: p.businessAmount ?? null,
-            googleDriveUrl: p.googleDriveUrl ?? '',
+            code:            p.code,
+            name:            p.name,
+            status:          p.status,
+            startDate:       p.startDate ? p.startDate.substring(0, 10) : '',
+            endDate:         p.endDate ? p.endDate.substring(0, 10) : '',
+            departmentId:    p.departmentId ?? null,
+            contractAmount:  p.contractAmount ?? null,
+            businessAmount:  p.businessAmount ?? null,
+            remainingAmount: p.remainingAmount ?? null,
+            googleDriveUrl:  p.googleDriveUrl ?? '',
           });
 
           this.schedulesArray.clear();
           const schedules = [...(p.paymentSchedules ?? [])].sort((a, b) => a.periodNo - b.periodNo);
           schedules.forEach(s => this.schedulesArray.push(this.buildScheduleGroup(s)));
+          this.recomputeReceivedAmount();
 
           if (this.isReadOnly) this.form.disable();
           this.cdr.markForCheck();
@@ -174,6 +179,14 @@ export class ProjectForm implements OnInit {
     }
   }
 
+  private recomputeReceivedAmount() {
+    const total = this.scheduleControls.reduce((sum, g) => {
+      const v = this.toNumberOrNull(g.get('depositAmount')!.value);
+      return sum + (v ?? 0);
+    }, 0);
+    this.computedReceivedAmount.set(total);
+  }
+
   submit() {
     if (this.form.invalid || this.isReadOnly) return;
     const v = this.form.getRawValue();
@@ -203,9 +216,9 @@ export class ProjectForm implements OnInit {
       endDate:          v.endDate || undefined,
       departmentId:     v.departmentId!,
       departmentName:   dept?.name,
-      receivedAmount:   v.receivedAmount ?? undefined,
       contractAmount:   v.contractAmount ?? undefined,
       businessAmount:   v.businessAmount ?? undefined,
+      remainingAmount:  v.remainingAmount ?? undefined,
       googleDriveUrl:   v.googleDriveUrl || undefined,
       paymentSchedules: schedules,
     };

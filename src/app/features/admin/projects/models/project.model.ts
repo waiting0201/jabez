@@ -21,9 +21,10 @@ export interface Project {
   endDate?: string;
   departmentId: number;
   departmentName?: string;
-  receivedAmount?: number;    // 實收金額（原 budgetAmount）
-  contractAmount?: number;    // 契約金額（原 actualAmount）
-  businessAmount?: number;
+  receivedAmount?: number;    // 實收金額（後端衍生：SUM(ProjectPaymentSchedules.depositAmount)）
+  contractAmount?: number;    // 契約金額
+  businessAmount?: number;    // 業務執行金額
+  remainingAmount?: number;   // 剩餘金額（系統導入時的契約剩餘預算，選填）
   googleDriveUrl?: string;
   createdAt: Date;
   paymentSchedules?: ProjectPaymentSchedule[];

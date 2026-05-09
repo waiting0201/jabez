@@ -20,9 +20,13 @@
 
       <!-- Toolbar: 篩選列 -->
       <div class="px-4 py-3 border-b">
-        <!-- 時段模式切換 -->
-        <div class="mb-3 flex items-center gap-2 flex-wrap">
-          <span class="text-xs text-muted">時段：</span>
+        <div class="flex flex-wrap items-center gap-2">
+          <select class="form-select" style="width: auto; min-width: 140px"
+                  [ngModel]="selectedPaymentStatus()" (ngModelChange)="selectedPaymentStatus.set($event)">
+            <option value="">全部付款狀態</option>
+            <option value="paid">已付</option>
+            <option value="unpaid">未付</option>
+          </select>
           <div class="inline-flex border rounded-md overflow-hidden">
             <button type="button" class="px-3 py-1.5 text-sm"
                     [class.bg-primary]="filterMode()==='day'" [class.text-white]="filterMode()==='day'"
@@ -34,64 +38,36 @@
                     [class.bg-primary]="filterMode()==='month'" [class.text-white]="filterMode()==='month'"
                     (click)="filterMode.set('month')">月</button>
           </div>
-        </div>
-        <!-- 條件列 -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-end">
           @if (filterMode() === 'day') {
-            <div class="lg:col-span-2">
-              <label class="text-xs text-muted mb-1 block">日期</label>
-              <input type="date" class="form-control w-full"
-                     [ngModel]="selectedDate()" (ngModelChange)="selectedDate.set($event)" />
-            </div>
+            <input type="date" class="form-control" style="width: auto; min-width: 150px"
+                   [ngModel]="selectedDate()" (ngModelChange)="selectedDate.set($event)" />
           } @else if (filterMode() === 'week') {
-            <div class="lg:col-span-2">
-              <label class="text-xs text-muted mb-1 block">週次（挑任一天即自動取整週）</label>
-              <div class="flex items-stretch gap-1">
-                <button type="button" class="btn btn-outline px-2" title="上一週" (click)="shiftWeek(-7)">‹</button>
-                <input type="date" class="form-control flex-1"
-                       [ngModel]="selectedWeekDate()" (ngModelChange)="selectedWeekDate.set($event)" />
-                <button type="button" class="btn btn-outline px-2" title="下一週" (click)="shiftWeek(7)">›</button>
-                <button type="button" class="btn btn-outline whitespace-nowrap" title="回到本週" (click)="resetToThisWeek()">本週</button>
-              </div>
-              @if (weekRange(); as r) {
-                <div class="text-xs text-muted mt-1">
-                  第 {{ r.weekNumber }} 週（{{ r.dateFrom }} 一 ~ {{ r.dateTo }} 日）
-                </div>
-              }
-            </div>
+            <button type="button" class="btn btn-outline px-2" title="上一週" (click)="shiftWeek(-7)">‹</button>
+            <input type="date" class="form-control" style="width: auto; min-width: 150px"
+                   [ngModel]="selectedWeekDate()" (ngModelChange)="selectedWeekDate.set($event)" />
+            <button type="button" class="btn btn-outline px-2" title="下一週" (click)="shiftWeek(7)">›</button>
+            <button type="button" class="btn btn-outline whitespace-nowrap" title="回到本週" (click)="resetToThisWeek()">本週</button>
           } @else {
-            <div>
-              <label class="text-xs text-muted mb-1 block">年份</label>
-              <select class="form-control w-full" [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set($event)">
-                <option value="">全部年份</option>
-                @for (y of years(); track y) {
-                  <option [value]="y">{{ y }}</option>
-                }
-              </select>
-            </div>
-            <div>
-              <label class="text-xs text-muted mb-1 block">月份</label>
-              <select class="form-control w-full" [ngModel]="selectedMonth()" (ngModelChange)="selectedMonth.set($event)">
-                <option value="">全部月份</option>
-                @for (m of months; track m) {
-                  <option [value]="m">{{ m }}月</option>
-                }
-              </select>
-            </div>
-          }
-          <div>
-            <label class="text-xs text-muted mb-1 block">付款狀態</label>
-            <select class="form-control w-full" [ngModel]="selectedPaymentStatus()" (ngModelChange)="selectedPaymentStatus.set($event)">
-              <option value="">全部</option>
-              <option value="paid">已付</option>
-              <option value="unpaid">未付</option>
+            <select class="form-select" style="width: auto; min-width: 120px"
+                    [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set($event)">
+              <option value="">全部年份</option>
+              @for (y of years(); track y) {
+                <option [value]="y">{{ y }}</option>
+              }
             </select>
-          </div>
-          <div>
-            <label class="text-xs text-muted mb-1 block sm:invisible">&nbsp;</label>
-            <button class="btn btn-primary w-full" (click)="search()">篩選</button>
-          </div>
+            <select class="form-select" style="width: auto; min-width: 120px"
+                    [ngModel]="selectedMonth()" (ngModelChange)="selectedMonth.set($event)">
+              <option value="">全部月份</option>
+              @for (m of months; track m) {
+                <option [value]="m">{{ m }}月</option>
+              }
+            </select>
+          }
+          <button class="btn btn-primary" (click)="search()">篩選</button>
         </div>
+        @if (filterMode() === 'week' && weekRange(); as r) {
+          <div class="text-xs text-muted mt-2">第 {{ r.weekNumber }} 週（{{ r.dateFrom }} 一 ~ {{ r.dateTo }} 日）</div>
+        }
       </div>
 
       <!-- Table -->

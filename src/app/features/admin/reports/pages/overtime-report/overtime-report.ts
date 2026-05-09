@@ -2,6 +2,7 @@ import {Component, computed, inject, OnInit, signal} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {HttpClient} from '@angular/common/http';
+import * as XLSX from 'xlsx';
 import {environment} from '@/environments/environment';
 import {dayToRange, FilterMode, monthToRange, shiftDateString, snapToIsoWeek, todayString} from '@/app/features/admin/reports/utils/date-range';
 
@@ -40,7 +41,7 @@ export class OvertimeReport implements OnInit {
   employees = signal<{id: string; code: string; name: string}[]>([]);
 
   /** 專案清單 */
-  projects = signal<{id: number; code: string}[]>([]);
+  projects = signal<{id: number; code: string; name: string}[]>([]);
 
   /** 年份選項 */
   years = signal<number[]>([]);
@@ -51,6 +52,7 @@ export class OvertimeReport implements OnInit {
   /** 紀錄 */
   records = signal<OvertimeReportRow[]>([]);
   loading = signal(false);
+  exporting = signal(false);
 
   /** 分頁 */
   currentPage = signal(1);
@@ -98,6 +100,19 @@ export class OvertimeReport implements OnInit {
     this.selectedWeekDate.set(todayString());
   }
 
+  /** 匯出檔名後綴：依 mode 給友善字串 */
+  private exportSuffix(): string {
+    const mode = this.filterMode();
+    if (mode === 'day') return this.selectedDate() || '全部';
+    if (mode === 'week') {
+      const r = this.weekRange();
+      return r ? `${r.isoYear}-W${String(r.weekNumber).padStart(2, '0')}` : '全部';
+    }
+    const year = this.selectedYear() || '全部';
+    const month = this.selectedMonth() || '全部';
+    return `${year}-${String(month).padStart(2, '0')}`;
+  }
+
   loadEmployees() {
     // 套用部門 scope 過濾，避免下拉顯示無資料權限的員工
     this.http.get<any>(`${environment.apiUrl}/users/lookup?scope=department`).subscribe({
@@ -115,7 +130,7 @@ export class OvertimeReport implements OnInit {
       next: (res) => {
         const items = res?.data?.items ?? res?.items ?? res ?? [];
         this.projects.set(
-          items.map((p: any) => ({id: p.id, code: p.code}))
+          items.map((p: any) => ({id: p.id, code: p.code, name: p.name ?? ''}))
         );
       },
     });
@@ -167,6 +182,51 @@ export class OvertimeReport implements OnInit {
       error: () => {
         this.records.set([]);
         this.loading.set(false);
+      },
+    });
+  }
+
+  exportExcel() {
+    this.exporting.set(true);
+
+    const params: any = {page: 1, pageSize: 9999};
+    if (this.selectedEmployeeId()) params.employeeId = this.selectedEmployeeId();
+    if (this.selectedProjectId()) params.projectId = this.selectedProjectId();
+    const range = this.computeDateRange();
+    if (range) {
+      params.dateFrom = range.dateFrom;
+      params.dateTo = range.dateTo;
+    }
+
+    this.http.get<any>(`${environment.apiUrl}/reports/overtime`, {params}).subscribe({
+      next: (res) => {
+        const data = res?.data ?? res ?? {};
+        const items = data?.items ?? [];
+        const wsData = items.map((r: any) => {
+          const codes: string[] = r.projectCodes ?? [];
+          const names: string[] = r.projectNames ?? [];
+          const projectText = codes
+            .map((c, i) => names[i] ? `${c} ${names[i]}` : c)
+            .join('、');
+          return {
+            '員工姓名': r.employeeName ?? '—',
+            '加班日期': r.overtimeDate ? new Date(r.overtimeDate).toLocaleDateString('zh-TW') : '',
+            '專案': projectText,
+            '預估時數': r.estimatedHours != null ? Number(r.estimatedHours).toFixed(1) : '',
+            '實際時數': r.actualHours != null ? Number(r.actualHours).toFixed(1) : '',
+            '事由': r.reason ?? '',
+          };
+        });
+
+        const ws = XLSX.utils.json_to_sheet(wsData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '加班紀錄');
+
+        XLSX.writeFile(wb, `加班紀錄_${this.exportSuffix()}.xlsx`);
+        this.exporting.set(false);
+      },
+      error: () => {
+        this.exporting.set(false);
       },
     });
   }

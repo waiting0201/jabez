@@ -121,4 +121,4 @@ export interface WriteOffRecord {
 }
 
 /** 常用分類選項 */
-export const ITEM_CATEGORIES = ['交通費', '活動費', '設計費', '人事費', '餐費', '雜支'] as const;
+export const ITEM_CATEGORIES = ['交通費', '活動費', '設計費', '人事費', '餐費', '雜支', '收款人', '廠商'] as const;

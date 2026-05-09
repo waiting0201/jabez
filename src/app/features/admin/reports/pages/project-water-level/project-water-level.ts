@@ -1,7 +1,11 @@
 import {Component, inject, OnInit, signal} from '@angular/core';
 import {CommonModule} from '@angular/common';
-import {HttpClient} from '@angular/common/http';
+import {FormsModule} from '@angular/forms';
+import {HttpClient, HttpParams} from '@angular/common/http';
+import {toSignal} from '@angular/core/rxjs-interop';
 import {environment} from '@/environments/environment';
+import {ProjectService} from '../../../projects/services/project.service';
+import {PROJECT_STATUS_LABELS} from '../../../projects/models/project.model';
 
 export interface ProjectWaterLevelRow {
   projectId: number;
@@ -20,21 +24,35 @@ export interface ProjectWaterLevelRow {
 @Component({
   selector: 'app-project-water-level',
   templateUrl: './project-water-level.html',
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
 })
 export class ProjectWaterLevel implements OnInit {
   private http = inject(HttpClient);
+  private projectService = inject(ProjectService);
 
   records = signal<ProjectWaterLevelRow[]>([]);
   loading = signal(false);
+
+  selectedYearInput: number | undefined;
+  selectedStatusInput: string | undefined;
+  yearOptions = toSignal(this.projectService.getYears(), {initialValue: [] as number[]});
+  readonly statusLabel = PROJECT_STATUS_LABELS;
 
   ngOnInit() {
     this.fetchData();
   }
 
+  doSearch() {
+    this.fetchData();
+  }
+
   fetchData() {
     this.loading.set(true);
-    this.http.get<any>(`${environment.apiUrl}/reports/project-water-level`).subscribe({
+    let params = new HttpParams();
+    if (this.selectedYearInput != null) params = params.set('year', String(this.selectedYearInput));
+    if (this.selectedStatusInput) params = params.set('status', this.selectedStatusInput);
+
+    this.http.get<any>(`${environment.apiUrl}/reports/project-water-level`, {params}).subscribe({
       next: (res) => {
         const items = res?.data ?? res ?? [];
         this.records.set(

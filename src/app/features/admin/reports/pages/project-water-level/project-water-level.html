@@ -10,6 +10,24 @@
   </div>
 
   <div class="card border-0 shadow-sm">
+    <div class="px-4 py-3 border-b">
+      <div class="flex flex-wrap items-center gap-2">
+        <select class="form-select" style="width: auto; min-width: 120px"
+                [(ngModel)]="selectedYearInput">
+          <option [ngValue]="undefined">全部年度</option>
+          @for (y of yearOptions(); track y) {
+            <option [ngValue]="y">{{ y }}</option>
+          }
+        </select>
+        <select class="form-select" style="width: auto; min-width: 120px"
+                [(ngModel)]="selectedStatusInput">
+          <option [ngValue]="undefined">全部狀態</option>
+          <option value="active">{{ statusLabel['active'] }}</option>
+          <option value="closed">{{ statusLabel['closed'] }}</option>
+        </select>
+        <button class="btn btn-primary" (click)="doSearch()">篩選</button>
+      </div>
+    </div>
     <div class="card-body p-0">
 
       <!-- Table -->
