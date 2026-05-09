@@ -4,7 +4,8 @@ import {AbstractControl, FormArray, FormBuilder, FormsModule, ReactiveFormsModul
 import {DatePipe, DecimalPipe} from '@angular/common';
 import {DomSanitizer} from '@angular/platform-browser';
 import {HttpErrorResponse} from '@angular/common/http';
-import {firstValueFrom} from 'rxjs';
+import {firstValueFrom, Observable, OperatorFunction} from 'rxjs';
+import {debounceTime, distinctUntilChanged, map} from 'rxjs/operators';
 import heic2any from 'heic2any';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
@@ -20,12 +21,15 @@ import {UserService} from '../../../users/services/user.service';
 import {ApprovalService} from '../../../approvals/services/approval.service';
 import {JobTitleLookup} from '../../../job-titles/models/job-title.model';
 import {UserLookup} from '../../../users/models/user.model';
-import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
+import {VendorService} from '../../../vendors/services/vendor.service';
+import {VendorLookup} from '../../../vendors/models/vendor.model';
+import {VendorQuickAddModal} from '../../../vendors/components/vendor-quick-add-modal/vendor-quick-add-modal';
+import {NgbModal, NgbTypeahead, NgbTypeaheadSelectItemEvent} from '@ng-bootstrap/ng-bootstrap';
 
 @Component({
   selector: 'app-payment-form',
   templateUrl: './payment-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, NgbTypeahead],
 })
 export class PaymentForm implements OnInit {
   private fb           = inject(FormBuilder);
@@ -35,6 +39,7 @@ export class PaymentForm implements OnInit {
   private userSvc      = inject(UserService);
   private approvalSvc  = inject(ApprovalService);
   private taskSvc      = inject(ApprovalTaskService);
+  private vendorSvc    = inject(VendorService);
   private route        = inject(ActivatedRoute);
   private router       = inject(Router);
   private cdr          = inject(ChangeDetectorRef);
@@ -70,6 +75,50 @@ export class PaymentForm implements OnInit {
   hasDesignatedStep = false;
   jobTitles: JobTitleLookup[] = [];
   allUsers: UserLookup[] = [];
+
+  /** 廠商下拉清單（type=vendor 時顯示，僅含 IsActive 廠商） */
+  vendors = signal<VendorLookup[]>([]);
+
+  /** 廠商 typeahead 雙向綁定值（選定後為 VendorLookup，輸入過程為 string） */
+  vendorTypeaheadModel: VendorLookup | string | null = null;
+
+  /** 廠商 autocomplete 搜尋（依名稱 / 統編，最多 10 筆） */
+  vendorSearch: OperatorFunction<string, readonly VendorLookup[]> = (text$: Observable<string>) =>
+    text$.pipe(
+      debounceTime(150),
+      distinctUntilChanged(),
+      map(term => {
+        const t = (term ?? '').toString().toLowerCase().trim();
+        const list = this.vendors();
+        const filtered = t.length === 0
+          ? list
+          : list.filter(v =>
+              v.name.toLowerCase().includes(t) ||
+              (v.taxId ?? '').toLowerCase().includes(t));
+        return filtered.slice(0, 10);
+      })
+    );
+
+  /** 下拉項目顯示格式：「名稱（統編）」 */
+  vendorFormatter = (v: VendorLookup) => v.name + (v.taxId ? `（${v.taxId}）` : '');
+  /** 選中後 input 顯示格式：只顯示名稱 */
+  vendorInputFormatter = (v: VendorLookup) => v.name;
+
+  onVendorSelect(event: NgbTypeaheadSelectItemEvent) {
+    const v = event.item as VendorLookup;
+    this.form.get('vendorId')!.setValue(v.id);
+  }
+
+  /** 使用者編輯輸入框時，若文字與選中的廠商名稱不符則清空 vendorId 強迫重選 */
+  onVendorInput(event: Event) {
+    const inputVal = (event.target as HTMLInputElement).value;
+    const selectedId = this.form.get('vendorId')?.value;
+    if (!selectedId) return;
+    const selectedVendor = this.vendors().find(v => v.id === selectedId);
+    if (selectedVendor && inputVal !== this.vendorInputFormatter(selectedVendor)) {
+      this.form.get('vendorId')!.setValue(null);
+    }
+  }
 
   /** 指定審核者條目清單（多人） */
   designatedEntries: {
@@ -108,6 +157,25 @@ export class PaymentForm implements OnInit {
     return this.allUsers.find(u => u.id === userId)?.name ?? userId;
   }
 
+  /** 開啟「快速新增廠商」Modal；建立成功後將新廠商加入下拉並自動選取 */
+  openQuickAddVendor() {
+    const ref = this.modal.open(VendorQuickAddModal, {
+      centered: true,
+      backdrop: 'static',
+      keyboard: false,
+      size: 'lg',
+    });
+    ref.closed.subscribe((newVendor: VendorLookup | undefined) => {
+      if (!newVendor) return;
+      this.vendors.update(list =>
+        [...list, newVendor].sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant'))
+      );
+      this.form.get('vendorId')!.setValue(newVendor.id);
+      this.vendorTypeaheadModel = newVendor;
+      this.cdr.markForCheck();
+    });
+  }
+
   /** invoice id → File 物件（新上傳的檔案） */
   fileMap = new Map<string, File>();
 
@@ -128,6 +196,7 @@ export class PaymentForm implements OnInit {
   form = this.fb.group({
     type:      ['vendor', Validators.required],
     projectId: [null as number | null, Validators.required],
+    vendorId:  [null as number | null, Validators.required],   // 預設 type=vendor 故必填
     reason:    [''],
     invoices:  this.fb.array([]),
   });
@@ -141,6 +210,22 @@ export class PaymentForm implements OnInit {
   loadingProjects = true;
 
   ngOnInit() {
+    // 載入廠商下拉清單（lookup 端點，免 vendors:read 權限）
+    this.vendorSvc.getLookup().subscribe(v => { this.vendors.set(v); this.cdr.markForCheck(); });
+
+    // type 變化時動態切換 vendorId 的 required validator
+    this.form.get('type')!.valueChanges.subscribe(t => {
+      const c = this.form.get('vendorId')!;
+      if (t === 'vendor') {
+        c.setValidators(Validators.required);
+      } else {
+        c.clearValidators();
+        c.setValue(null);
+        this.vendorTypeaheadModel = null;
+      }
+      c.updateValueAndValidity();
+    });
+
     // 檢查簽核流程是否有「申請人指定審核」步驟（呼叫輕量端點，免 approvals:read 權限）
     this.approvalSvc.getActiveByType('payment_request').subscribe(flow => {
       this.hasDesignatedStep = flow?.steps.some(s => s.useApplicantDesignated) ?? false;
@@ -188,7 +273,17 @@ export class PaymentForm implements OnInit {
         this.estimatedPaymentDate = r.estimatedPaymentDate?.toString().slice(0, 10) ?? '';
         this.paidAt               = r.paidAt?.toString().slice(0, 10) ?? '';
         if (this.isReadOnly) this.form.disable();
-        this.form.patchValue({type: r.type, projectId: r.projectId, reason: r.reason ?? ''});
+        this.form.patchValue({type: r.type, projectId: r.projectId, reason: r.reason ?? '', vendorId: r.vendorId ?? null});
+
+        // 若請款單帶有 vendorId 但下拉中沒有（例如已停用），補回該選項以保留當前值
+        if (r.vendorId && r.vendorName && !this.vendors().some(v => v.id === r.vendorId)) {
+          this.vendors.update(list => [...list, {id: r.vendorId!, name: r.vendorName!, taxId: r.vendorTaxId}]);
+        }
+        // 同步 typeahead 顯示值
+        if (r.vendorId) {
+          const found = this.vendors().find(v => v.id === r.vendorId);
+          if (found) this.vendorTypeaheadModel = found;
+        }
         // 回填指定審核者清單
         if (r.designatedReviewers?.length) {
           this.designatedEntries = r.designatedReviewers.map(dr => ({
@@ -360,9 +455,13 @@ export class PaymentForm implements OnInit {
 
   private _buildFormData(): FormData {
     const fd = new FormData();
-    fd.append('type', this.form.get('type')!.value!);
+    const type = this.form.get('type')!.value!;
+    fd.append('type', type);
     fd.append('projectId', String(this.form.get('projectId')!.value));
     fd.append('reason', this.form.get('reason')?.value || '');
+    // vendorId：永遠帶入（含 type=vendor 必填、其他類型回傳空字串讓後端強制清空）
+    const vendorId = this.form.get('vendorId')?.value;
+    fd.append('vendorId', type === 'vendor' && vendorId ? String(vendorId) : '');
     // 指定審核者清單
     const reviewers = this.designatedEntries
       .filter(e => e.selectedUserId)

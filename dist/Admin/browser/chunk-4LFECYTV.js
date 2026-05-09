@@ -4712,6 +4712,7 @@ var ReactiveFormsModule = class _ReactiveFormsModule {
 })();
 
 export {
+  NG_VALUE_ACCESSOR,
   CheckboxControlValueAccessor,
   DefaultValueAccessor,
   Validators,
@@ -4744,4 +4745,4 @@ export {
    * License: MIT
    *)
 */
-//# sourceMappingURL=chunk-TUAOQ2AP.js.map
+//# sourceMappingURL=chunk-4LFECYTV.js.map

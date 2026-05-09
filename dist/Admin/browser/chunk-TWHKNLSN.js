@@ -9,7 +9,7 @@ import {
   ngbFocusTrap,
   ngbRunTransition,
   reflow
-} from "./chunk-QACKTNEL.js";
+} from "./chunk-W4RXF7YW.js";
 import {
   ApplicationRef,
   ChangeDetectorRef,
@@ -1042,6 +1042,10 @@ var UserService = class _UserService {
   getIdCard(fileName) {
     return this.http.get(`${environment.apiUrl}/files/id-cards/${fileName}`, { responseType: "blob" });
   }
+  /** 以 JWT 取得最高學歷證明檔（HR 權限保護） */
+  getEducationProof(fileName) {
+    return this.http.get(`${environment.apiUrl}/files/education-proofs/${fileName}`, { responseType: "blob" });
+  }
   buildFormData(data, files) {
     const fd = new FormData();
     for (const [key, value] of Object.entries(data)) {
@@ -1210,10 +1214,11 @@ var ProjectService = class _ProjectService {
 })();
 
 export {
+  NgbActiveModal,
   NgbModal,
   UserService,
   JobTitleService,
   ApprovalService,
   ProjectService
 };
-//# sourceMappingURL=chunk-O42C3MOZ.js.map
+//# sourceMappingURL=chunk-TWHKNLSN.js.map

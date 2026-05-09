@@ -1,16 +1,23 @@
 import {
+  ApplicationRef,
   DOCUMENT,
   EMPTY,
   Injectable,
   InjectionToken,
+  Injector,
+  NgZone,
   Observable,
   Subject,
+  TemplateRef,
+  ViewContainerRef,
+  afterNextRender,
   delay,
   endWith,
   filter,
   fromEvent,
   inject,
   map,
+  mergeMap,
   of,
   race,
   setClassMetadata,
@@ -1610,6 +1617,9 @@ function ngbPositioning() {
     }
   };
 }
+function toString(value) {
+  return value !== void 0 && value !== null ? `${value}` : "";
+}
 function isString(value) {
   return typeof value === "string";
 }
@@ -1618,6 +1628,9 @@ function isDefined(value) {
 }
 function isPromise(v) {
   return v && v.then;
+}
+function regExpEscape(text) {
+  return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
 }
 function closest(element, selector) {
   if (!selector) {
@@ -1644,6 +1657,9 @@ function runInZone(zone) {
       });
     });
   };
+}
+function removeAccents(str) {
+  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 function getActiveElement(root = document) {
   const activeEl = root?.activeElement;
@@ -1851,6 +1867,76 @@ var ContentRef = class {
     this.componentRef = componentRef;
   }
 };
+var PopupService = class {
+  constructor(_componentType) {
+    this._componentType = _componentType;
+    this._windowRef = null;
+    this._contentRef = null;
+    this._document = inject(DOCUMENT);
+    this._applicationRef = inject(ApplicationRef);
+    this._injector = inject(Injector);
+    this._viewContainerRef = inject(ViewContainerRef);
+    this._ngZone = inject(NgZone);
+  }
+  open(content, templateContext, animation = false) {
+    if (!this._windowRef) {
+      this._contentRef = this._getContentRef(content, templateContext);
+      this._windowRef = this._viewContainerRef.createComponent(this._componentType, {
+        injector: this._injector,
+        projectableNodes: this._contentRef.nodes
+      });
+    }
+    const {
+      nativeElement
+    } = this._windowRef.location;
+    const nextRenderSubject = new Subject();
+    afterNextRender({
+      mixedReadWrite: () => {
+        nextRenderSubject.next();
+        nextRenderSubject.complete();
+      }
+    }, {
+      injector: this._injector
+    });
+    const transition$ = nextRenderSubject.pipe(mergeMap(() => ngbRunTransition(this._ngZone, nativeElement, ({
+      classList
+    }) => classList.add("show"), {
+      animation,
+      runningTransition: "continue"
+    })));
+    return {
+      windowRef: this._windowRef,
+      transition$
+    };
+  }
+  close(animation = false) {
+    if (!this._windowRef) {
+      return of(void 0);
+    }
+    return ngbRunTransition(this._ngZone, this._windowRef.location.nativeElement, ({
+      classList
+    }) => classList.remove("show"), {
+      animation,
+      runningTransition: "stop"
+    }).pipe(tap(() => {
+      this._windowRef?.destroy();
+      this._contentRef?.viewRef?.destroy();
+      this._windowRef = null;
+      this._contentRef = null;
+    }));
+  }
+  _getContentRef(content, templateContext) {
+    if (!content) {
+      return new ContentRef([]);
+    } else if (content instanceof TemplateRef) {
+      const viewRef = content.createEmbeddedView(templateContext);
+      this._applicationRef.attachView(viewRef);
+      return new ContentRef([viewRef.rootNodes], viewRef);
+    } else {
+      return new ContentRef([[this._document.createTextNode(`${content}`)]]);
+    }
+  }
+};
 var ScrollBar = class _ScrollBar {
   constructor() {
     this._document = inject(DOCUMENT);
@@ -1969,10 +2055,13 @@ var Live = class _Live {
 export {
   NgbConfig,
   ngbPositioning,
+  toString,
   isString,
   isDefined,
   isPromise,
+  regExpEscape,
   reflow,
+  removeAccents,
   getActiveElement,
   ngbRunTransition,
   ngbCollapsingTransition,
@@ -1982,6 +2071,8 @@ export {
   ngbFocusTrap,
   addPopperOffset,
   ContentRef,
-  ScrollBar
+  PopupService,
+  ScrollBar,
+  Live
 };
-//# sourceMappingURL=chunk-QACKTNEL.js.map
+//# sourceMappingURL=chunk-W4RXF7YW.js.map

@@ -11,6 +11,8 @@ import {DepartmentList} from './departments/pages/department-list/department-lis
 import {DepartmentForm} from './departments/pages/department-form/department-form';
 import {JobTitleList} from './job-titles/pages/job-title-list/job-title-list';
 import {JobTitleForm} from './job-titles/pages/job-title-form/job-title-form';
+import {VendorList} from './vendors/pages/vendor-list/vendor-list';
+import {VendorForm} from './vendors/pages/vendor-form/vendor-form';
 import {ApprovalList} from './approvals/pages/approval-list/approval-list';
 import {ApprovalFlow} from './approvals/pages/approval-flow/approval-flow';
 import {ProjectList} from './projects/pages/project-list/project-list';
@@ -61,6 +63,11 @@ export const ADMIN_ROUTES: Routes = [
   {path: 'job-titles',           component: JobTitleList,   canActivate: [permissionGuard], data: {title: '職稱管理',   permission: 'job-titles:read'}},
   {path: 'job-titles/new',       component: JobTitleForm,   canActivate: [permissionGuard], data: {title: '新增職稱',   permission: 'job-titles:write'}},
   {path: 'job-titles/:id/edit',  component: JobTitleForm,   canActivate: [permissionGuard], data: {title: '編輯職稱',   permission: 'job-titles:write'}},
+
+  // 廠商管理
+  {path: 'vendors',              component: VendorList,     canActivate: [permissionGuard], data: {title: '廠商管理',   permission: 'vendors:read'}},
+  {path: 'vendors/new',          component: VendorForm,     canActivate: [permissionGuard], data: {title: '新增廠商',   permission: 'vendors:write'}},
+  {path: 'vendors/:id/edit',     component: VendorForm,     canActivate: [permissionGuard], data: {title: '編輯廠商',   permission: 'vendors:write'}},
 
   // 簽核管理
   {path: 'approvals',            component: ApprovalList,   canActivate: [permissionGuard], data: {title: '簽核管理',   permission: 'approvals:read'}},

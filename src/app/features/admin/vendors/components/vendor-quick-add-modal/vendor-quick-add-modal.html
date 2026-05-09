@@ -1,0 +1,69 @@
+<div class="modal-header">
+  <h5 class="modal-title flex items-center gap-2 mb-0 fw-600">
+    <svg class="sa-icon text-primary" style="stroke: currentColor">
+      <use href="/assets/icons/sprite.svg#briefcase"></use>
+    </svg>
+    新增廠商
+  </h5>
+  <button type="button" class="btn-close" (click)="cancel()" aria-label="Close"></button>
+</div>
+
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <div class="modal-body">
+    @if (errorMsg()) {
+    <div class="alert alert-danger flex items-center gap-2 mb-4 py-2" role="alert">
+      <svg class="sa-icon" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#alert-triangle"></use>
+      </svg>
+      {{ errorMsg() }}
+    </div>
+    }
+
+    <div class="row g-3">
+      <div class="col-12 col-md-8">
+        <label class="form-label fw-500">廠商名稱 <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" formControlName="name" placeholder="例如：誠品書店" autofocus>
+        @if (form.get('name')?.invalid && form.get('name')?.touched) {
+        <div class="text-danger small mt-1">請輸入廠商名稱。</div>
+        }
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="form-label fw-500">統編</label>
+        <input type="text" class="form-control" formControlName="taxId" placeholder="例如：12345678">
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="form-label fw-500">聯絡人</label>
+        <input type="text" class="form-control" formControlName="contactPerson" placeholder="姓名">
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="form-label fw-500">聯絡電話</label>
+        <input type="text" class="form-control" formControlName="phone" placeholder="例如：02-1234-5678">
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="form-label fw-500">銀行帳號</label>
+        <input type="text" class="form-control" formControlName="bankAccount" placeholder="銀行 / 分行 / 帳號">
+      </div>
+
+      <div class="col-12">
+        <label class="form-label fw-500">地址</label>
+        <input type="text" class="form-control" formControlName="address" placeholder="完整地址">
+      </div>
+
+      <div class="col-12">
+        <label class="form-label fw-500">備註</label>
+        <textarea class="form-control" formControlName="note" rows="2" placeholder="選填說明"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-footer">
+    <button type="button" class="btn btn-outline-secondary" (click)="cancel()">取消</button>
+    <button type="submit" class="btn btn-primary" [disabled]="form.invalid || saving()">
+      @if (saving()) { 儲存中… } @else { 儲存 }
+    </button>
+  </div>
+</form>

@@ -115,6 +115,13 @@ export class UserForm implements OnInit {
   idCardBackFileName  = signal<string | null>(null);
   removeIdCardBack    = signal(false);
 
+  // ── 最高學歷證明（HR Tab） ────────────────────────
+  highestEducationProofUrl      = signal<string | null>(null);
+  highestEducationProofFile     = signal<File | null>(null);
+  highestEducationProofPreview  = signal<string | null>(null);
+  highestEducationProofFileName = signal<string | null>(null);
+  removeHighestEducationProof   = signal(false);
+
   // ── 通訊地址同戶籍 ───────────────────────────────
   mailingAddressSameAsResidential = false;
 
@@ -299,6 +306,9 @@ export class UserForm implements OnInit {
     // 身分證影本 URLs
     this.idCardFrontUrl.set(p.idCardFrontUrl ?? null);
     this.idCardBackUrl.set(p.idCardBackUrl ?? null);
+
+    // 最高學歷證明 URL
+    this.highestEducationProofUrl.set(p.highestEducationProofUrl ?? null);
 
     // FormArrays
     this.educationArray.clear();
@@ -824,6 +834,59 @@ export class UserForm implements OnInit {
   }
 
   // ═══════════════════════════════════════════════
+  // 最高學歷證明
+  // ═══════════════════════════════════════════════
+  async onHighestEducationProofSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file  = input.files?.[0];
+    if (!file) return;
+    input.value = '';
+    try {
+      const compressed = await this.imageCompression.compress(file, { maxSize: 1600, quality: 0.85 });
+      if (compressed.size > MAX_FILE_BYTES) {
+        this.toastr.error('上傳照片勿超過1MB');
+        return;
+      }
+      this.highestEducationProofFile.set(compressed);
+      this.highestEducationProofFileName.set(file.name);
+      this.removeHighestEducationProof.set(false);
+      if (compressed.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = () => this.highestEducationProofPreview.set(reader.result as string);
+        reader.readAsDataURL(compressed);
+      } else {
+        this.highestEducationProofPreview.set(null);
+      }
+    } catch (err) {
+      console.error('[UserForm] 最高學歷證明處理失敗', err);
+      this.toastr.error('檔案處理失敗，請重試。', '處理失敗');
+    }
+  }
+
+  onRemoveHighestEducationProof() {
+    this.highestEducationProofFile.set(null);
+    this.highestEducationProofPreview.set(null);
+    this.highestEducationProofFileName.set(null);
+    this.removeHighestEducationProof.set(true);
+  }
+
+  viewHighestEducationProof() {
+    const url = this.highestEducationProofUrl();
+    if (!url) return;
+    const match    = url.match(/\/education-proofs\/(.+)$/);
+    const fileName = match?.[1];
+    if (!fileName) return;
+    this.userService.getEducationProof(fileName).subscribe({
+      next: blob => {
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, '_blank');
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+      },
+      error: err => this.toastr.error(err.error?.message || '無法載入最高學歷證明。', '載入失敗'),
+    });
+  }
+
+  // ═══════════════════════════════════════════════
   // 通訊地址同戶籍
   // ═══════════════════════════════════════════════
   copyResidentialToMailing() {
@@ -931,6 +994,20 @@ export class UserForm implements OnInit {
 
   get hasExistingIdCardBack(): boolean {
     return !!this.idCardBackUrl() && !this.idCardBackFile() && !this.removeIdCardBack();
+  }
+
+  get highestEducationProofDisplayName(): string | null {
+    if (this.removeHighestEducationProof()) return null;
+    const pending = this.highestEducationProofFileName();
+    if (pending) return pending;
+    const url = this.highestEducationProofUrl();
+    if (!url) return null;
+    const match = url.match(/\/([^/]+)$/);
+    return match?.[1] ?? url;
+  }
+
+  get hasExistingHighestEducationProof(): boolean {
+    return !!this.highestEducationProofUrl() && !this.highestEducationProofFile() && !this.removeHighestEducationProof();
   }
 
   // ═══════════════════════════════════════════════
@@ -1113,10 +1190,12 @@ export class UserForm implements OnInit {
     };
 
     this.profileService.upsert(userId, profilePayload, {
-      idCardFront:      this.idCardFrontFile(),
-      idCardBack:       this.idCardBackFile(),
-      removeIdCardFront: this.removeIdCardFront(),
-      removeIdCardBack:  this.removeIdCardBack(),
+      idCardFront:                 this.idCardFrontFile(),
+      idCardBack:                  this.idCardBackFile(),
+      removeIdCardFront:           this.removeIdCardFront(),
+      removeIdCardBack:            this.removeIdCardBack(),
+      highestEducationProof:       this.highestEducationProofFile(),
+      removeHighestEducationProof: this.removeHighestEducationProof(),
     }).subscribe({
       next: profile => {
         this._hrProfile = profile;

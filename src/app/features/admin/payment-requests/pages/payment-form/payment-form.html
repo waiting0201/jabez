@@ -92,6 +92,46 @@
               </div>
             </div>
 
+            @if (form.get('type')?.value === 'vendor') {
+              <div class="row g-3 mb-4">
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">廠商 <span class="text-danger">*</span></label>
+                  @if (isReadOnly) {
+                    <p class="form-control-plaintext fw-500 mb-0">
+                      @for (v of vendors(); track v.id) {
+                        @if (v.id === form.get('vendorId')?.value) {
+                          {{ v.name }}{{ v.taxId ? '（' + v.taxId + '）' : '' }}
+                        }
+                      }
+                      @if (!form.get('vendorId')?.value) { — }
+                    </p>
+                  } @else {
+                    <div class="flex gap-2">
+                      <input type="text" class="form-control"
+                             [ngbTypeahead]="vendorSearch"
+                             [resultFormatter]="vendorFormatter"
+                             [inputFormatter]="vendorInputFormatter"
+                             [editable]="false"
+                             [(ngModel)]="vendorTypeaheadModel"
+                             [ngModelOptions]="{standalone: true}"
+                             (selectItem)="onVendorSelect($event)"
+                             (input)="onVendorInput($event)"
+                             placeholder="輸入廠商名稱或統編搜尋…">
+                      <button type="button"
+                              class="btn btn-outline-primary inline-flex items-center gap-1 whitespace-nowrap"
+                              (click)="openQuickAddVendor()">
+                        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                        新增廠商
+                      </button>
+                    </div>
+                    @if (form.get('vendorId')?.invalid && form.get('vendorId')?.touched) {
+                      <div class="text-danger small mt-1">請從清單中選擇廠商；找不到時請使用「+ 新增廠商」。</div>
+                    }
+                  }
+                </div>
+              </div>
+            }
+
             <div class="mb-4">
               <label class="form-label fw-500">請款原因</label>
               @if (isReadOnly) {

@@ -9,6 +9,8 @@ export interface ProfileFileOptions {
   idCardBack?: File | null;
   removeIdCardFront?: boolean;
   removeIdCardBack?: boolean;
+  highestEducationProof?: File | null;
+  removeHighestEducationProof?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -24,8 +26,8 @@ export class EmployeeProfileService {
    * 新增或更新員工人事資料（整批替換子表）。
    * 使用 multipart/form-data：
    *   - text part `payload`：完整 HR JSON
-   *   - file parts `idCardFront` / `idCardBack`（optional）
-   *   - text parts `removeIdCardFront` / `removeIdCardBack`（boolean string）
+   *   - file parts `idCardFront` / `idCardBack` / `highestEducationProof`（optional）
+   *   - text parts `removeIdCardFront` / `removeIdCardBack` / `removeHighestEducationProof`（boolean string）
    */
   upsert(
     userId: string,
@@ -34,10 +36,12 @@ export class EmployeeProfileService {
   ): Observable<EmployeeProfileDetail> {
     const fd = new FormData();
     fd.append('payload', JSON.stringify(payload));
-    if (files?.idCardFront)       fd.append('idCardFront', files.idCardFront);
-    if (files?.idCardBack)        fd.append('idCardBack', files.idCardBack);
-    if (files?.removeIdCardFront) fd.append('removeIdCardFront', 'true');
-    if (files?.removeIdCardBack)  fd.append('removeIdCardBack', 'true');
+    if (files?.idCardFront)                fd.append('idCardFront', files.idCardFront);
+    if (files?.idCardBack)                 fd.append('idCardBack', files.idCardBack);
+    if (files?.removeIdCardFront)          fd.append('removeIdCardFront', 'true');
+    if (files?.removeIdCardBack)           fd.append('removeIdCardBack', 'true');
+    if (files?.highestEducationProof)      fd.append('highestEducationProof', files.highestEducationProof);
+    if (files?.removeHighestEducationProof) fd.append('removeHighestEducationProof', 'true');
     return this.http.put<EmployeeProfileDetail>(`${environment.apiUrl}/users/${userId}/profile`, fd);
   }
 }

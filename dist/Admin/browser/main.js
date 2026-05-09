@@ -18,7 +18,7 @@ import {
   ngbPositioning,
   ngbRunTransition,
   reflow
-} from "./chunk-QACKTNEL.js";
+} from "./chunk-W4RXF7YW.js";
 import {
   ApprovalTaskService
 } from "./chunk-TZRFZK6Q.js";
@@ -36,7 +36,7 @@ import {
   ReactiveFormsModule,
   Validators,
   ɵNgNoValidate
-} from "./chunk-TUAOQ2AP.js";
+} from "./chunk-4LFECYTV.js";
 import {
   HasPermissionDirective
 } from "./chunk-M7DGJIC4.js";
@@ -4593,6 +4593,7 @@ var menuItems = [
       { label: "\u54E1\u5DE5\u7BA1\u7406", url: "/admin/users", requiredPermission: "users:read" },
       { label: "\u90E8\u9580\u7BA1\u7406", url: "/admin/departments", requiredPermission: "departments:read" },
       { label: "\u8077\u7A31\u7BA1\u7406", url: "/admin/job-titles", requiredPermission: "job-titles:read" },
+      { label: "\u5EE0\u5546\u7BA1\u7406", url: "/admin/vendors", requiredPermission: "vendors:read" },
       { label: "\u4EBA\u4E8B\u85AA\u8CC7", url: "/admin/payroll", requiredPermission: "payroll:read" }
     ]
   },
@@ -5879,11 +5880,11 @@ var routes = [
       },
       {
         path: "admin",
-        loadChildren: () => import("./chunk-FKLZ4XOV.js").then((m) => m.ADMIN_ROUTES)
+        loadChildren: () => import("./chunk-PLWIQK46.js").then((m) => m.ADMIN_ROUTES)
       },
       {
         path: "account/change-password",
-        loadComponent: () => import("./chunk-4E3UIRDU.js").then((m) => m.ChangePassword),
+        loadComponent: () => import("./chunk-L4PKGTVP.js").then((m) => m.ChangePassword),
         data: { title: "\u4FEE\u6539\u5BC6\u78BC" }
       },
       {

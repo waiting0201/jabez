@@ -11,10 +11,11 @@ import {
 import {
   ApprovalService,
   JobTitleService,
+  NgbActiveModal,
   NgbModal,
   ProjectService,
   UserService
-} from "./chunk-O42C3MOZ.js";
+} from "./chunk-TWHKNLSN.js";
 import {
   CIS,
   FONT_FAMILY,
@@ -27,7 +28,17 @@ import {
 import {
   ApprovalTimeline
 } from "./chunk-B4OWGIJG.js";
-import "./chunk-QACKTNEL.js";
+import {
+  Live,
+  PopupService,
+  addPopperOffset,
+  isDefined,
+  ngbAutoClose,
+  ngbPositioning,
+  regExpEscape,
+  removeAccents,
+  toString
+} from "./chunk-W4RXF7YW.js";
 import {
   ApprovalTaskService
 } from "./chunk-TZRFZK6Q.js";
@@ -46,6 +57,7 @@ import {
   MaxLengthValidator,
   MaxValidator,
   MinValidator,
+  NG_VALUE_ACCESSOR,
   NgControlStatus,
   NgControlStatusGroup,
   NgModel,
@@ -57,7 +69,7 @@ import {
   Validators,
   ɵNgNoValidate,
   ɵNgSelectMultipleOption
-} from "./chunk-TUAOQ2AP.js";
+} from "./chunk-4LFECYTV.js";
 import {
   AttendanceService,
   OvertimeRequestService
@@ -94,16 +106,30 @@ import {
 import {
   AsyncPipe,
   BehaviorSubject,
+  ChangeDetectionStrategy,
   ChangeDetectorRef,
   CommonModule,
   Component,
+  DOCUMENT,
   DatePipe,
   DecimalPipe,
   DestroyRef,
+  Directive,
   EMPTY,
+  ElementRef,
+  EventEmitter,
   HttpClient,
   Injectable,
+  Injector,
+  Input,
+  NgModule,
+  NgTemplateOutlet,
+  NgZone,
+  Output,
+  Subject,
   ViewChild,
+  ViewEncapsulation,
+  afterEveryRender,
   catchError,
   combineLatest,
   computed,
@@ -113,6 +139,8 @@ import {
   environment,
   firstValueFrom,
   forkJoin,
+  forwardRef,
+  fromEvent,
   inject,
   map,
   of,
@@ -124,6 +152,8 @@ import {
   tap,
   viewChild,
   ɵsetClassDebugInfo,
+  ɵɵNgOnChangesFeature,
+  ɵɵProvidersFeature,
   ɵɵadvance,
   ɵɵattribute,
   ɵɵclassMap,
@@ -133,10 +163,16 @@ import {
   ɵɵconditionalCreate,
   ɵɵdeclareLet,
   ɵɵdefineComponent,
+  ɵɵdefineDirective,
   ɵɵdefineInjectable,
+  ɵɵdefineInjector,
+  ɵɵdefineNgModule,
   ɵɵdomElement,
+  ɵɵdomElementContainerEnd,
+  ɵɵdomElementContainerStart,
   ɵɵdomElementEnd,
   ɵɵdomElementStart,
+  ɵɵdomProperty,
   ɵɵelement,
   ɵɵelementEnd,
   ɵɵelementStart,
@@ -153,8 +189,10 @@ import {
   ɵɵpureFunction0,
   ɵɵpureFunction1,
   ɵɵpureFunction2,
+  ɵɵpureFunction3,
   ɵɵqueryAdvance,
   ɵɵreadContextLet,
+  ɵɵreference,
   ɵɵrepeater,
   ɵɵrepeaterCreate,
   ɵɵrepeaterTrackByIdentity,
@@ -706,8 +744,8 @@ var EmployeeProfileService = class _EmployeeProfileService {
    * 新增或更新員工人事資料（整批替換子表）。
    * 使用 multipart/form-data：
    *   - text part `payload`：完整 HR JSON
-   *   - file parts `idCardFront` / `idCardBack`（optional）
-   *   - text parts `removeIdCardFront` / `removeIdCardBack`（boolean string）
+   *   - file parts `idCardFront` / `idCardBack` / `highestEducationProof`（optional）
+   *   - text parts `removeIdCardFront` / `removeIdCardBack` / `removeHighestEducationProof`（boolean string）
    */
   upsert(userId, payload, files) {
     const fd = new FormData();
@@ -720,6 +758,10 @@ var EmployeeProfileService = class _EmployeeProfileService {
       fd.append("removeIdCardFront", "true");
     if (files?.removeIdCardBack)
       fd.append("removeIdCardBack", "true");
+    if (files?.highestEducationProof)
+      fd.append("highestEducationProof", files.highestEducationProof);
+    if (files?.removeHighestEducationProof)
+      fd.append("removeHighestEducationProof", "true");
     return this.http.put(`${environment.apiUrl}/users/${userId}/profile`, fd);
   }
   static \u0275fac = function EmployeeProfileService_Factory(__ngFactoryType__) {
@@ -2137,7 +2179,7 @@ function UserForm_Conditional_20_Conditional_18_Template(rf, ctx) {
 function UserForm_Conditional_20_Conditional_19_Conditional_63_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 125);
-    \u0275\u0275element(1, "img", 168);
+    \u0275\u0275element(1, "img", 170);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -2162,20 +2204,20 @@ function UserForm_Conditional_20_Conditional_19_Conditional_64_Conditional_5_Tem
 function UserForm_Conditional_20_Conditional_19_Conditional_64_Template(rf, ctx) {
   if (rf & 1) {
     const _r21 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 169);
+    \u0275\u0275elementStart(0, "div", 171);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 92);
     \u0275\u0275element(2, "use", 90);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(3, "span", 170);
+    \u0275\u0275elementStart(3, "span", 172);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
     \u0275\u0275conditionalCreate(5, UserForm_Conditional_20_Conditional_19_Conditional_64_Conditional_5_Template, 2, 0, "button", 94);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(6, "div", 85)(7, "label", 86);
     \u0275\u0275text(8, " \u66F4\u63DB ");
-    \u0275\u0275elementStart(9, "input", 171);
+    \u0275\u0275elementStart(9, "input", 173);
     \u0275\u0275listener("change", function UserForm_Conditional_20_Conditional_19_Conditional_64_Template_input_change_9_listener($event) {
       \u0275\u0275restoreView(_r21);
       const ctx_r1 = \u0275\u0275nextContext(3);
@@ -2209,7 +2251,7 @@ function UserForm_Conditional_20_Conditional_19_Conditional_65_Template(rf, ctx)
     \u0275\u0275elementEnd();
     \u0275\u0275text(3, " \u9078\u64C7\u6B63\u9762 ");
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(4, "input", 171);
+    \u0275\u0275elementStart(4, "input", 173);
     \u0275\u0275listener("change", function UserForm_Conditional_20_Conditional_19_Conditional_65_Template_input_change_4_listener($event) {
       \u0275\u0275restoreView(_r23);
       const ctx_r1 = \u0275\u0275nextContext(3);
@@ -2221,7 +2263,7 @@ function UserForm_Conditional_20_Conditional_19_Conditional_65_Template(rf, ctx)
 function UserForm_Conditional_20_Conditional_19_Conditional_69_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 125);
-    \u0275\u0275element(1, "img", 172);
+    \u0275\u0275element(1, "img", 174);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -2246,20 +2288,20 @@ function UserForm_Conditional_20_Conditional_19_Conditional_70_Conditional_5_Tem
 function UserForm_Conditional_20_Conditional_19_Conditional_70_Template(rf, ctx) {
   if (rf & 1) {
     const _r24 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 169);
+    \u0275\u0275elementStart(0, "div", 171);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 92);
     \u0275\u0275element(2, "use", 90);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(3, "span", 170);
+    \u0275\u0275elementStart(3, "span", 172);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
     \u0275\u0275conditionalCreate(5, UserForm_Conditional_20_Conditional_19_Conditional_70_Conditional_5_Template, 2, 0, "button", 94);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(6, "div", 85)(7, "label", 86);
     \u0275\u0275text(8, " \u66F4\u63DB ");
-    \u0275\u0275elementStart(9, "input", 171);
+    \u0275\u0275elementStart(9, "input", 173);
     \u0275\u0275listener("change", function UserForm_Conditional_20_Conditional_19_Conditional_70_Template_input_change_9_listener($event) {
       \u0275\u0275restoreView(_r24);
       const ctx_r1 = \u0275\u0275nextContext(3);
@@ -2293,7 +2335,7 @@ function UserForm_Conditional_20_Conditional_19_Conditional_71_Template(rf, ctx)
     \u0275\u0275elementEnd();
     \u0275\u0275text(3, " \u9078\u64C7\u53CD\u9762 ");
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(4, "input", 171);
+    \u0275\u0275elementStart(4, "input", 173);
     \u0275\u0275listener("change", function UserForm_Conditional_20_Conditional_19_Conditional_71_Template_input_change_4_listener($event) {
       \u0275\u0275restoreView(_r26);
       const ctx_r1 = \u0275\u0275nextContext(3);
@@ -2302,396 +2344,480 @@ function UserForm_Conditional_20_Conditional_19_Conditional_71_Template(rf, ctx)
     \u0275\u0275elementEnd()();
   }
 }
-function UserForm_Conditional_20_Conditional_19_For_123_Template(rf, ctx) {
+function UserForm_Conditional_20_Conditional_19_Conditional_111_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 125);
+    \u0275\u0275element(1, "img", 175);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(3);
+    \u0275\u0275advance();
+    \u0275\u0275property("src", ctx_r1.highestEducationProofPreview(), \u0275\u0275sanitizeUrl);
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_112_Conditional_5_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r28 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 96);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Conditional_112_Conditional_5_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r28);
+      const ctx_r1 = \u0275\u0275nextContext(4);
+      return \u0275\u0275resetView(ctx_r1.viewHighestEducationProof());
+    });
+    \u0275\u0275text(1, "\u6AA2\u8996");
+    \u0275\u0275elementEnd();
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_112_Template(rf, ctx) {
   if (rf & 1) {
     const _r27 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr", 140)(1, "td");
-    \u0275\u0275element(2, "input", 173);
+    \u0275\u0275elementStart(0, "div", 171);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 92);
+    \u0275\u0275element(2, "use", 90);
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(3, "span", 172);
+    \u0275\u0275text(4);
+    \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(5, UserForm_Conditional_20_Conditional_19_Conditional_112_Conditional_5_Template, 2, 0, "button", 94);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(6, "div", 85)(7, "label", 86);
+    \u0275\u0275text(8, " \u66F4\u63DB ");
+    \u0275\u0275elementStart(9, "input", 173);
+    \u0275\u0275listener("change", function UserForm_Conditional_20_Conditional_19_Conditional_112_Template_input_change_9_listener($event) {
+      \u0275\u0275restoreView(_r27);
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.onHighestEducationProofSelected($event));
+    });
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(10, "button", 88);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Conditional_112_Template_button_click_10_listener() {
+      \u0275\u0275restoreView(_r27);
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.onRemoveHighestEducationProof());
+    });
+    \u0275\u0275text(11, "\u522A\u9664");
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(3);
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate(ctx_r1.highestEducationProofDisplayName);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.hasExistingHighestEducationProof ? 5 : -1);
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_113_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r29 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "label", 86);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 17);
+    \u0275\u0275element(2, "use", 89);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3, " \u9078\u64C7\u6A94\u6848 ");
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(4, "input", 173);
+    \u0275\u0275listener("change", function UserForm_Conditional_20_Conditional_19_Conditional_113_Template_input_change_4_listener($event) {
+      \u0275\u0275restoreView(_r29);
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.onHighestEducationProofSelected($event));
+    });
+    \u0275\u0275elementEnd()();
+  }
+}
+function UserForm_Conditional_20_Conditional_19_For_131_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r30 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 142)(1, "td");
+    \u0275\u0275element(2, "input", 176);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "td");
-    \u0275\u0275element(4, "input", 174);
+    \u0275\u0275element(4, "input", 177);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "td")(6, "select", 175)(7, "option", 176);
+    \u0275\u0275elementStart(5, "td")(6, "select", 178)(7, "option", 179);
     \u0275\u0275text(8, "\u7562\u696D");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "option", 177);
+    \u0275\u0275elementStart(9, "option", 180);
     \u0275\u0275text(10, "\u8084\u696D");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(11, "td");
-    \u0275\u0275element(12, "input", 178);
+    \u0275\u0275element(12, "input", 181);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(13, "td");
-    \u0275\u0275element(14, "input", 179);
+    \u0275\u0275element(14, "input", 182);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "td")(16, "button", 180);
-    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_123_Template_button_click_16_listener() {
-      const \u0275$index_944_r28 = \u0275\u0275restoreView(_r27).$index;
+    \u0275\u0275elementStart(15, "td")(16, "button", 183);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_131_Template_button_click_16_listener() {
+      const \u0275$index_991_r31 = \u0275\u0275restoreView(_r30).$index;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.removeEducation(\u0275$index_944_r28));
+      return \u0275\u0275resetView(ctx_r1.removeEducation(\u0275$index_991_r31));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(17, "svg", 20);
-    \u0275\u0275element(18, "use", 181);
+    \u0275\u0275element(18, "use", 184);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
-    const \u0275$index_944_r28 = ctx.$index;
-    \u0275\u0275property("formGroupName", \u0275$index_944_r28);
+    const \u0275$index_991_r31 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_991_r31);
   }
 }
-function UserForm_Conditional_20_Conditional_19_Conditional_124_Template(rf, ctx) {
+function UserForm_Conditional_20_Conditional_19_Conditional_132_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 182);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 185);
     \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
     \u0275\u0275elementEnd()();
   }
 }
-function UserForm_Conditional_20_Conditional_19_Conditional_125_Template(rf, ctx) {
+function UserForm_Conditional_20_Conditional_19_Conditional_133_Template(rf, ctx) {
   if (rf & 1) {
-    const _r29 = \u0275\u0275getCurrentView();
+    const _r32 = \u0275\u0275getCurrentView();
     \u0275\u0275elementStart(0, "button", 84);
-    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Conditional_125_Template_button_click_0_listener() {
-      \u0275\u0275restoreView(_r29);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Conditional_133_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r32);
       const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.addEducation());
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 17);
-    \u0275\u0275element(2, "use", 145);
+    \u0275\u0275element(2, "use", 147);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3, " \u65B0\u589E\u5B78\u6B77 ");
     \u0275\u0275elementEnd();
   }
 }
-function UserForm_Conditional_20_Conditional_19_For_147_Template(rf, ctx) {
+function UserForm_Conditional_20_Conditional_19_For_155_Template(rf, ctx) {
   if (rf & 1) {
-    const _r30 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr", 140)(1, "td");
-    \u0275\u0275element(2, "input", 183);
+    const _r33 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 142)(1, "td");
+    \u0275\u0275element(2, "input", 186);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "td");
-    \u0275\u0275element(4, "input", 184);
+    \u0275\u0275element(4, "input", 187);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(5, "td");
-    \u0275\u0275element(6, "input", 185);
+    \u0275\u0275element(6, "input", 188);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(7, "td");
-    \u0275\u0275element(8, "input", 186);
+    \u0275\u0275element(8, "input", 189);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "td")(10, "button", 180);
-    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_147_Template_button_click_10_listener() {
-      const \u0275$index_1030_r31 = \u0275\u0275restoreView(_r30).$index;
+    \u0275\u0275elementStart(9, "td")(10, "button", 183);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_155_Template_button_click_10_listener() {
+      const \u0275$index_1077_r34 = \u0275\u0275restoreView(_r33).$index;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.removeEmployment(\u0275$index_1030_r31));
+      return \u0275\u0275resetView(ctx_r1.removeEmployment(\u0275$index_1077_r34));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(11, "svg", 20);
-    \u0275\u0275element(12, "use", 181);
+    \u0275\u0275element(12, "use", 184);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
-    const \u0275$index_1030_r31 = ctx.$index;
-    \u0275\u0275property("formGroupName", \u0275$index_1030_r31);
+    const \u0275$index_1077_r34 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1077_r34);
   }
 }
-function UserForm_Conditional_20_Conditional_19_Conditional_148_Template(rf, ctx) {
+function UserForm_Conditional_20_Conditional_19_Conditional_156_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 187);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 190);
     \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
     \u0275\u0275elementEnd()();
   }
 }
-function UserForm_Conditional_20_Conditional_19_Conditional_149_Template(rf, ctx) {
+function UserForm_Conditional_20_Conditional_19_Conditional_157_Template(rf, ctx) {
   if (rf & 1) {
-    const _r32 = \u0275\u0275getCurrentView();
+    const _r35 = \u0275\u0275getCurrentView();
     \u0275\u0275elementStart(0, "button", 84);
-    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Conditional_149_Template_button_click_0_listener() {
-      \u0275\u0275restoreView(_r32);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Conditional_157_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r35);
       const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.addEmployment());
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 17);
-    \u0275\u0275element(2, "use", 145);
+    \u0275\u0275element(2, "use", 147);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3, " \u65B0\u589E\u7D93\u6B77 ");
     \u0275\u0275elementEnd();
   }
 }
-function UserForm_Conditional_20_Conditional_19_For_171_Template(rf, ctx) {
+function UserForm_Conditional_20_Conditional_19_For_179_Template(rf, ctx) {
   if (rf & 1) {
-    const _r33 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr", 140)(1, "td");
-    \u0275\u0275element(2, "input", 188);
+    const _r36 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 142)(1, "td");
+    \u0275\u0275element(2, "input", 191);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "td");
-    \u0275\u0275element(4, "input", 189);
+    \u0275\u0275element(4, "input", 192);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(5, "td");
-    \u0275\u0275element(6, "input", 190);
+    \u0275\u0275element(6, "input", 193);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(7, "td");
-    \u0275\u0275element(8, "input", 191);
+    \u0275\u0275element(8, "input", 194);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "td")(10, "button", 180);
-    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_171_Template_button_click_10_listener() {
-      const \u0275$index_1106_r34 = \u0275\u0275restoreView(_r33).$index;
+    \u0275\u0275elementStart(9, "td")(10, "button", 183);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_179_Template_button_click_10_listener() {
+      const \u0275$index_1153_r37 = \u0275\u0275restoreView(_r36).$index;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.removeFamily(\u0275$index_1106_r34));
+      return \u0275\u0275resetView(ctx_r1.removeFamily(\u0275$index_1153_r37));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(11, "svg", 20);
-    \u0275\u0275element(12, "use", 181);
+    \u0275\u0275element(12, "use", 184);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
-    const \u0275$index_1106_r34 = ctx.$index;
-    \u0275\u0275property("formGroupName", \u0275$index_1106_r34);
+    const \u0275$index_1153_r37 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1153_r37);
   }
 }
-function UserForm_Conditional_20_Conditional_19_Conditional_172_Template(rf, ctx) {
+function UserForm_Conditional_20_Conditional_19_Conditional_180_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 187);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 190);
     \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
     \u0275\u0275elementEnd()();
   }
 }
-function UserForm_Conditional_20_Conditional_19_For_200_Template(rf, ctx) {
+function UserForm_Conditional_20_Conditional_19_For_208_Template(rf, ctx) {
   if (rf & 1) {
-    const _r35 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr", 140)(1, "td");
-    \u0275\u0275element(2, "input", 192);
+    const _r38 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 142)(1, "td");
+    \u0275\u0275element(2, "input", 195);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "td");
-    \u0275\u0275element(4, "input", 193);
+    \u0275\u0275element(4, "input", 196);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(5, "td");
-    \u0275\u0275element(6, "input", 185);
+    \u0275\u0275element(6, "input", 188);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(7, "td");
-    \u0275\u0275element(8, "input", 186);
+    \u0275\u0275element(8, "input", 189);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(9, "td");
-    \u0275\u0275element(10, "input", 194);
+    \u0275\u0275element(10, "input", 197);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(11, "td")(12, "button", 180);
-    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_200_Template_button_click_12_listener() {
-      const \u0275$index_1184_r36 = \u0275\u0275restoreView(_r35).$index;
+    \u0275\u0275elementStart(11, "td")(12, "button", 183);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_208_Template_button_click_12_listener() {
+      const \u0275$index_1231_r39 = \u0275\u0275restoreView(_r38).$index;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.removeTraining(\u0275$index_1184_r36));
+      return \u0275\u0275resetView(ctx_r1.removeTraining(\u0275$index_1231_r39));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(13, "svg", 20);
-    \u0275\u0275element(14, "use", 181);
+    \u0275\u0275element(14, "use", 184);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
-    const \u0275$index_1184_r36 = ctx.$index;
-    \u0275\u0275property("formGroupName", \u0275$index_1184_r36);
+    const \u0275$index_1231_r39 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1231_r39);
   }
 }
-function UserForm_Conditional_20_Conditional_19_Conditional_201_Template(rf, ctx) {
+function UserForm_Conditional_20_Conditional_19_Conditional_209_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 182);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 185);
     \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
     \u0275\u0275elementEnd()();
   }
 }
-function UserForm_Conditional_20_Conditional_19_For_229_Template(rf, ctx) {
+function UserForm_Conditional_20_Conditional_19_For_237_Template(rf, ctx) {
   if (rf & 1) {
-    const _r37 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr", 140)(1, "td");
-    \u0275\u0275element(2, "input", 195);
+    const _r40 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 142)(1, "td");
+    \u0275\u0275element(2, "input", 198);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td")(4, "select", 196)(5, "option", 197);
+    \u0275\u0275elementStart(3, "td")(4, "select", 199)(5, "option", 200);
     \u0275\u0275text(6, "\u4F73");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "option", 198);
+    \u0275\u0275elementStart(7, "option", 201);
     \u0275\u0275text(8, "\u53EF");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(9, "td")(10, "select", 199)(11, "option", 197);
+    \u0275\u0275elementStart(9, "td")(10, "select", 202)(11, "option", 200);
     \u0275\u0275text(12, "\u4F73");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(13, "option", 198);
+    \u0275\u0275elementStart(13, "option", 201);
     \u0275\u0275text(14, "\u53EF");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(15, "td")(16, "select", 200)(17, "option", 197);
+    \u0275\u0275elementStart(15, "td")(16, "select", 203)(17, "option", 200);
     \u0275\u0275text(18, "\u4F73");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(19, "option", 198);
+    \u0275\u0275elementStart(19, "option", 201);
     \u0275\u0275text(20, "\u53EF");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(21, "td")(22, "select", 201)(23, "option", 197);
+    \u0275\u0275elementStart(21, "td")(22, "select", 204)(23, "option", 200);
     \u0275\u0275text(24, "\u4F73");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(25, "option", 198);
+    \u0275\u0275elementStart(25, "option", 201);
     \u0275\u0275text(26, "\u53EF");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(27, "td")(28, "button", 180);
-    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_229_Template_button_click_28_listener() {
-      const \u0275$index_1266_r38 = \u0275\u0275restoreView(_r37).$index;
+    \u0275\u0275elementStart(27, "td")(28, "button", 183);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_237_Template_button_click_28_listener() {
+      const \u0275$index_1313_r41 = \u0275\u0275restoreView(_r40).$index;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.removeLanguage(\u0275$index_1266_r38));
+      return \u0275\u0275resetView(ctx_r1.removeLanguage(\u0275$index_1313_r41));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(29, "svg", 20);
-    \u0275\u0275element(30, "use", 181);
+    \u0275\u0275element(30, "use", 184);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
-    const \u0275$index_1266_r38 = ctx.$index;
-    \u0275\u0275property("formGroupName", \u0275$index_1266_r38);
+    const \u0275$index_1313_r41 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1313_r41);
   }
 }
-function UserForm_Conditional_20_Conditional_19_Conditional_230_Template(rf, ctx) {
+function UserForm_Conditional_20_Conditional_19_Conditional_238_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 182);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 185);
     \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
     \u0275\u0275elementEnd()();
   }
 }
-function UserForm_Conditional_20_Conditional_19_For_295_Template(rf, ctx) {
+function UserForm_Conditional_20_Conditional_19_For_303_Template(rf, ctx) {
   if (rf & 1) {
-    const _r39 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr", 140)(1, "td");
-    \u0275\u0275element(2, "input", 202);
+    const _r42 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 142)(1, "td");
+    \u0275\u0275element(2, "input", 205);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "td");
-    \u0275\u0275element(4, "input", 203);
+    \u0275\u0275element(4, "input", 206);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(5, "td");
-    \u0275\u0275element(6, "input", 204);
+    \u0275\u0275element(6, "input", 207);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(7, "td");
-    \u0275\u0275element(8, "input", 205);
+    \u0275\u0275element(8, "input", 208);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(9, "td");
-    \u0275\u0275element(10, "input", 206);
+    \u0275\u0275element(10, "input", 209);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(11, "td")(12, "button", 180);
-    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_295_Template_button_click_12_listener() {
-      const \u0275$index_1437_r40 = \u0275\u0275restoreView(_r39).$index;
+    \u0275\u0275elementStart(11, "td")(12, "button", 183);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_303_Template_button_click_12_listener() {
+      const \u0275$index_1484_r43 = \u0275\u0275restoreView(_r42).$index;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.removeJobTransfer(\u0275$index_1437_r40));
+      return \u0275\u0275resetView(ctx_r1.removeJobTransfer(\u0275$index_1484_r43));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(13, "svg", 20);
-    \u0275\u0275element(14, "use", 181);
+    \u0275\u0275element(14, "use", 184);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
-    const \u0275$index_1437_r40 = ctx.$index;
-    \u0275\u0275property("formGroupName", \u0275$index_1437_r40);
+    const \u0275$index_1484_r43 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1484_r43);
   }
 }
-function UserForm_Conditional_20_Conditional_19_Conditional_296_Template(rf, ctx) {
+function UserForm_Conditional_20_Conditional_19_Conditional_304_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 182);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 185);
     \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
     \u0275\u0275elementEnd()();
   }
 }
-function UserForm_Conditional_20_Conditional_19_For_320_Template(rf, ctx) {
+function UserForm_Conditional_20_Conditional_19_For_328_Template(rf, ctx) {
   if (rf & 1) {
-    const _r41 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr", 140)(1, "td");
-    \u0275\u0275element(2, "input", 202);
+    const _r44 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 142)(1, "td");
+    \u0275\u0275element(2, "input", 205);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td")(4, "select", 207)(5, "option", 208);
+    \u0275\u0275elementStart(3, "td")(4, "select", 210)(5, "option", 211);
     \u0275\u0275text(6, "\u734E\u52F5");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "option", 209);
+    \u0275\u0275elementStart(7, "option", 212);
     \u0275\u0275text(8, "\u61F2\u8655");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(9, "td");
-    \u0275\u0275element(10, "input", 210);
+    \u0275\u0275element(10, "input", 213);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(11, "td");
-    \u0275\u0275element(12, "input", 211);
+    \u0275\u0275element(12, "input", 214);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(13, "td");
-    \u0275\u0275element(14, "input", 212);
+    \u0275\u0275element(14, "input", 215);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "td")(16, "button", 180);
-    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_320_Template_button_click_16_listener() {
-      const \u0275$index_1511_r42 = \u0275\u0275restoreView(_r41).$index;
+    \u0275\u0275elementStart(15, "td")(16, "button", 183);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_328_Template_button_click_16_listener() {
+      const \u0275$index_1558_r45 = \u0275\u0275restoreView(_r44).$index;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.removeReward(\u0275$index_1511_r42));
+      return \u0275\u0275resetView(ctx_r1.removeReward(\u0275$index_1558_r45));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(17, "svg", 20);
-    \u0275\u0275element(18, "use", 181);
+    \u0275\u0275element(18, "use", 184);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
-    const \u0275$index_1511_r42 = ctx.$index;
-    \u0275\u0275property("formGroupName", \u0275$index_1511_r42);
+    const \u0275$index_1558_r45 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1558_r45);
   }
 }
-function UserForm_Conditional_20_Conditional_19_Conditional_321_Template(rf, ctx) {
+function UserForm_Conditional_20_Conditional_19_Conditional_329_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 182);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 185);
     \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
     \u0275\u0275elementEnd()();
   }
 }
-function UserForm_Conditional_20_Conditional_19_For_357_Template(rf, ctx) {
+function UserForm_Conditional_20_Conditional_19_For_365_Template(rf, ctx) {
   if (rf & 1) {
-    const _r43 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr", 140)(1, "td");
-    \u0275\u0275element(2, "input", 202);
+    const _r46 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 142)(1, "td");
+    \u0275\u0275element(2, "input", 205);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "td");
-    \u0275\u0275element(4, "input", 213);
+    \u0275\u0275element(4, "input", 216);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(5, "td");
-    \u0275\u0275element(6, "input", 214);
+    \u0275\u0275element(6, "input", 217);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(7, "td");
-    \u0275\u0275element(8, "input", 215);
+    \u0275\u0275element(8, "input", 218);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(9, "td");
-    \u0275\u0275element(10, "input", 216);
+    \u0275\u0275element(10, "input", 219);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(11, "td");
-    \u0275\u0275element(12, "input", 217);
+    \u0275\u0275element(12, "input", 220);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(13, "td");
-    \u0275\u0275element(14, "input", 218);
+    \u0275\u0275element(14, "input", 221);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(15, "td");
-    \u0275\u0275element(16, "input", 219);
+    \u0275\u0275element(16, "input", 222);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(17, "td", 220);
+    \u0275\u0275elementStart(17, "td", 223);
     \u0275\u0275text(18);
     \u0275\u0275pipe(19, "number");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(20, "td");
-    \u0275\u0275element(21, "input", 221);
+    \u0275\u0275element(21, "input", 224);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(22, "td")(23, "button", 180);
-    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_357_Template_button_click_23_listener() {
-      const \u0275$index_1609_r44 = \u0275\u0275restoreView(_r43).$index;
+    \u0275\u0275elementStart(22, "td")(23, "button", 183);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_365_Template_button_click_23_listener() {
+      const \u0275$index_1656_r47 = \u0275\u0275restoreView(_r46).$index;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.removeSalary(\u0275$index_1609_r44));
+      return \u0275\u0275resetView(ctx_r1.removeSalary(\u0275$index_1656_r47));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(24, "svg", 20);
-    \u0275\u0275element(25, "use", 181);
+    \u0275\u0275element(25, "use", 184);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
-    const ctrl_r45 = ctx.$implicit;
-    const \u0275$index_1609_r44 = ctx.$index;
+    const ctrl_r48 = ctx.$implicit;
+    const \u0275$index_1656_r47 = ctx.$index;
     const ctx_r1 = \u0275\u0275nextContext(3);
-    \u0275\u0275property("formGroupName", \u0275$index_1609_r44);
+    \u0275\u0275property("formGroupName", \u0275$index_1656_r47);
     \u0275\u0275advance(18);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(19, 2, ctx_r1.salaryRowTotal(ctrl_r45), "1.0-0"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(19, 2, ctx_r1.salaryRowTotal(ctrl_r48), "1.0-0"));
   }
 }
-function UserForm_Conditional_20_Conditional_19_Conditional_358_Template(rf, ctx) {
+function UserForm_Conditional_20_Conditional_19_Conditional_366_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 222);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 225);
     \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
     \u0275\u0275elementEnd()();
   }
@@ -2837,367 +2963,376 @@ function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
     \u0275\u0275text(104, " \u5B78\u6B77\u7D00\u9304 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(105, "div", 25)(106, "div", 136)(107, "table", 137)(108, "thead", 138)(109, "tr")(110, "th");
-    \u0275\u0275text(111, "\u5B78\u6821");
+    \u0275\u0275elementStart(105, "div", 25)(106, "div", 136)(107, "div", 137);
+    \u0275\u0275text(108, "\u6700\u9AD8\u5B78\u6B77\u8B49\u660E");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(112, "th");
-    \u0275\u0275text(113, "\u79D1\u7CFB");
+    \u0275\u0275elementStart(109, "p", 68);
+    \u0275\u0275text(110, "\u652F\u63F4 PNG\u3001JPEG \u5716\u7247\u6216 PDF\u3002\u6B64\u6587\u4EF6\u53D7\u6B0A\u9650\u4FDD\u8B77\uFF0C\u50C5\u4EBA\u4E8B\u90E8\u9580\u53EF\u67E5\u95B1\u3002\u4E0A\u50B3\u5F8C\u52FF\u8D85\u904E 1MB\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(114, "th");
-    \u0275\u0275text(115, "\u5B78\u6B77");
+    \u0275\u0275conditionalCreate(111, UserForm_Conditional_20_Conditional_19_Conditional_111_Template, 2, 1, "div", 125);
+    \u0275\u0275conditionalCreate(112, UserForm_Conditional_20_Conditional_19_Conditional_112_Template, 12, 2)(113, UserForm_Conditional_20_Conditional_19_Conditional_113_Template, 5, 0, "label", 86);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(116, "th");
-    \u0275\u0275text(117, "\u8D77\u59CB\u5E74\u6708");
+    \u0275\u0275elementStart(114, "div", 138)(115, "table", 139)(116, "thead", 140)(117, "tr")(118, "th");
+    \u0275\u0275text(119, "\u5B78\u6821");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(118, "th");
-    \u0275\u0275text(119, "\u7D50\u675F\u5E74\u6708");
+    \u0275\u0275elementStart(120, "th");
+    \u0275\u0275text(121, "\u79D1\u7CFB");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(120, "th");
+    \u0275\u0275elementStart(122, "th");
+    \u0275\u0275text(123, "\u5B78\u6B77");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(124, "th");
+    \u0275\u0275text(125, "\u8D77\u59CB\u5E74\u6708");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(126, "th");
+    \u0275\u0275text(127, "\u7D50\u675F\u5E74\u6708");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(128, "th");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(121, "tbody", 139);
-    \u0275\u0275repeaterCreate(122, UserForm_Conditional_20_Conditional_19_For_123_Template, 19, 1, "tr", 140, \u0275\u0275repeaterTrackByIndex);
-    \u0275\u0275conditionalCreate(124, UserForm_Conditional_20_Conditional_19_Conditional_124_Template, 3, 0, "tr");
+    \u0275\u0275elementStart(129, "tbody", 141);
+    \u0275\u0275repeaterCreate(130, UserForm_Conditional_20_Conditional_19_For_131_Template, 19, 1, "tr", 142, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275conditionalCreate(132, UserForm_Conditional_20_Conditional_19_Conditional_132_Template, 3, 0, "tr");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275conditionalCreate(125, UserForm_Conditional_20_Conditional_19_Conditional_125_Template, 4, 0, "button", 141);
+    \u0275\u0275conditionalCreate(133, UserForm_Conditional_20_Conditional_19_Conditional_133_Template, 4, 0, "button", 143);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(126, "div", 22)(127, "div", 23);
+    \u0275\u0275elementStart(134, "div", 22)(135, "div", 23);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(128, "svg", 107);
-    \u0275\u0275element(129, "use", 39);
+    \u0275\u0275elementStart(136, "svg", 107);
+    \u0275\u0275element(137, "use", 39);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(130, " \u7D93\u6B77\u7D00\u9304 ");
+    \u0275\u0275text(138, " \u7D93\u6B77\u7D00\u9304 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(131, "div", 25)(132, "div", 136)(133, "table", 137)(134, "thead", 138)(135, "tr")(136, "th");
-    \u0275\u0275text(137, "\u670D\u52D9\u6A5F\u95DC");
+    \u0275\u0275elementStart(139, "div", 25)(140, "div", 138)(141, "table", 139)(142, "thead", 140)(143, "tr")(144, "th");
+    \u0275\u0275text(145, "\u670D\u52D9\u6A5F\u95DC");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(138, "th");
-    \u0275\u0275text(139, "\u8077\u7A31");
+    \u0275\u0275elementStart(146, "th");
+    \u0275\u0275text(147, "\u8077\u7A31");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(140, "th");
-    \u0275\u0275text(141, "\u8D77\u59CB\u65E5");
+    \u0275\u0275elementStart(148, "th");
+    \u0275\u0275text(149, "\u8D77\u59CB\u65E5");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(142, "th");
-    \u0275\u0275text(143, "\u7D50\u675F\u65E5");
+    \u0275\u0275elementStart(150, "th");
+    \u0275\u0275text(151, "\u7D50\u675F\u65E5");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(144, "th");
+    \u0275\u0275element(152, "th");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(145, "tbody", 142);
-    \u0275\u0275repeaterCreate(146, UserForm_Conditional_20_Conditional_19_For_147_Template, 13, 1, "tr", 140, \u0275\u0275repeaterTrackByIndex);
-    \u0275\u0275conditionalCreate(148, UserForm_Conditional_20_Conditional_19_Conditional_148_Template, 3, 0, "tr");
+    \u0275\u0275elementStart(153, "tbody", 144);
+    \u0275\u0275repeaterCreate(154, UserForm_Conditional_20_Conditional_19_For_155_Template, 13, 1, "tr", 142, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275conditionalCreate(156, UserForm_Conditional_20_Conditional_19_Conditional_156_Template, 3, 0, "tr");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275conditionalCreate(149, UserForm_Conditional_20_Conditional_19_Conditional_149_Template, 4, 0, "button", 141);
+    \u0275\u0275conditionalCreate(157, UserForm_Conditional_20_Conditional_19_Conditional_157_Template, 4, 0, "button", 143);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(150, "div", 22)(151, "div", 23);
+    \u0275\u0275elementStart(158, "div", 22)(159, "div", 23);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(152, "svg", 107);
-    \u0275\u0275element(153, "use", 143);
+    \u0275\u0275elementStart(160, "svg", 107);
+    \u0275\u0275element(161, "use", 145);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(154, " \u5BB6\u5EAD\u72C0\u6CC1 ");
+    \u0275\u0275text(162, " \u5BB6\u5EAD\u72C0\u6CC1 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(155, "div", 25)(156, "div", 136)(157, "table", 137)(158, "thead", 138)(159, "tr")(160, "th");
-    \u0275\u0275text(161, "\u59D3\u540D");
+    \u0275\u0275elementStart(163, "div", 25)(164, "div", 138)(165, "table", 139)(166, "thead", 140)(167, "tr")(168, "th");
+    \u0275\u0275text(169, "\u59D3\u540D");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(162, "th");
-    \u0275\u0275text(163, "\u95DC\u4FC2");
+    \u0275\u0275elementStart(170, "th");
+    \u0275\u0275text(171, "\u95DC\u4FC2");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(164, "th");
-    \u0275\u0275text(165, "\u5E74\u9F61");
+    \u0275\u0275elementStart(172, "th");
+    \u0275\u0275text(173, "\u5E74\u9F61");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(166, "th");
-    \u0275\u0275text(167, "\u8077\u696D");
+    \u0275\u0275elementStart(174, "th");
+    \u0275\u0275text(175, "\u8077\u696D");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(168, "th");
+    \u0275\u0275element(176, "th");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(169, "tbody", 144);
-    \u0275\u0275repeaterCreate(170, UserForm_Conditional_20_Conditional_19_For_171_Template, 13, 1, "tr", 140, \u0275\u0275repeaterTrackByIndex);
-    \u0275\u0275conditionalCreate(172, UserForm_Conditional_20_Conditional_19_Conditional_172_Template, 3, 0, "tr");
+    \u0275\u0275elementStart(177, "tbody", 146);
+    \u0275\u0275repeaterCreate(178, UserForm_Conditional_20_Conditional_19_For_179_Template, 13, 1, "tr", 142, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275conditionalCreate(180, UserForm_Conditional_20_Conditional_19_Conditional_180_Template, 3, 0, "tr");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(173, "button", 84);
-    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_173_listener() {
+    \u0275\u0275elementStart(181, "button", 84);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_181_listener() {
       \u0275\u0275restoreView(_r20);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.addFamily());
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(174, "svg", 17);
-    \u0275\u0275element(175, "use", 145);
+    \u0275\u0275elementStart(182, "svg", 17);
+    \u0275\u0275element(183, "use", 147);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(176, " \u65B0\u589E\u5BB6\u5EAD\u6210\u54E1 ");
+    \u0275\u0275text(184, " \u65B0\u589E\u5BB6\u5EAD\u6210\u54E1 ");
     \u0275\u0275elementEnd()()();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(177, "div", 22)(178, "div", 23);
+    \u0275\u0275elementStart(185, "div", 22)(186, "div", 23);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(179, "svg", 107);
-    \u0275\u0275element(180, "use", 146);
+    \u0275\u0275elementStart(187, "svg", 107);
+    \u0275\u0275element(188, "use", 148);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(181, " \u5C08\u696D\u8A13\u7DF4 ");
+    \u0275\u0275text(189, " \u5C08\u696D\u8A13\u7DF4 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(182, "div", 25)(183, "div", 136)(184, "table", 137)(185, "thead", 138)(186, "tr")(187, "th");
-    \u0275\u0275text(188, "\u8A13\u7DF4\u540D\u7A31");
+    \u0275\u0275elementStart(190, "div", 25)(191, "div", 138)(192, "table", 139)(193, "thead", 140)(194, "tr")(195, "th");
+    \u0275\u0275text(196, "\u8A13\u7DF4\u540D\u7A31");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(189, "th");
-    \u0275\u0275text(190, "\u8A13\u7DF4\u6A5F\u69CB");
+    \u0275\u0275elementStart(197, "th");
+    \u0275\u0275text(198, "\u8A13\u7DF4\u6A5F\u69CB");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(191, "th");
-    \u0275\u0275text(192, "\u8D77\u59CB\u65E5");
+    \u0275\u0275elementStart(199, "th");
+    \u0275\u0275text(200, "\u8D77\u59CB\u65E5");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(193, "th");
-    \u0275\u0275text(194, "\u7D50\u675F\u65E5");
+    \u0275\u0275elementStart(201, "th");
+    \u0275\u0275text(202, "\u7D50\u675F\u65E5");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(195, "th");
-    \u0275\u0275text(196, "\u6642\u6578");
+    \u0275\u0275elementStart(203, "th");
+    \u0275\u0275text(204, "\u6642\u6578");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(197, "th");
+    \u0275\u0275element(205, "th");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(198, "tbody", 147);
-    \u0275\u0275repeaterCreate(199, UserForm_Conditional_20_Conditional_19_For_200_Template, 15, 1, "tr", 140, \u0275\u0275repeaterTrackByIndex);
-    \u0275\u0275conditionalCreate(201, UserForm_Conditional_20_Conditional_19_Conditional_201_Template, 3, 0, "tr");
+    \u0275\u0275elementStart(206, "tbody", 149);
+    \u0275\u0275repeaterCreate(207, UserForm_Conditional_20_Conditional_19_For_208_Template, 15, 1, "tr", 142, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275conditionalCreate(209, UserForm_Conditional_20_Conditional_19_Conditional_209_Template, 3, 0, "tr");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(202, "button", 84);
-    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_202_listener() {
+    \u0275\u0275elementStart(210, "button", 84);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_210_listener() {
       \u0275\u0275restoreView(_r20);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.addTraining());
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(203, "svg", 17);
-    \u0275\u0275element(204, "use", 145);
+    \u0275\u0275elementStart(211, "svg", 17);
+    \u0275\u0275element(212, "use", 147);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(205, " \u65B0\u589E\u8A13\u7DF4 ");
+    \u0275\u0275text(213, " \u65B0\u589E\u8A13\u7DF4 ");
     \u0275\u0275elementEnd()()();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(206, "div", 22)(207, "div", 23);
+    \u0275\u0275elementStart(214, "div", 22)(215, "div", 23);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(208, "svg", 107);
-    \u0275\u0275element(209, "use", 148);
+    \u0275\u0275elementStart(216, "svg", 107);
+    \u0275\u0275element(217, "use", 150);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(210, " \u8A9E\u8A00\u80FD\u529B ");
+    \u0275\u0275text(218, " \u8A9E\u8A00\u80FD\u529B ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(211, "div", 25)(212, "div", 136)(213, "table", 137)(214, "thead", 138)(215, "tr")(216, "th");
-    \u0275\u0275text(217, "\u8A9E\u8A00");
+    \u0275\u0275elementStart(219, "div", 25)(220, "div", 138)(221, "table", 139)(222, "thead", 140)(223, "tr")(224, "th");
+    \u0275\u0275text(225, "\u8A9E\u8A00");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(218, "th");
-    \u0275\u0275text(219, "\u807D");
+    \u0275\u0275elementStart(226, "th");
+    \u0275\u0275text(227, "\u807D");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(220, "th");
-    \u0275\u0275text(221, "\u8AAA");
+    \u0275\u0275elementStart(228, "th");
+    \u0275\u0275text(229, "\u8AAA");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(222, "th");
-    \u0275\u0275text(223, "\u8B80");
+    \u0275\u0275elementStart(230, "th");
+    \u0275\u0275text(231, "\u8B80");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(224, "th");
-    \u0275\u0275text(225, "\u5BEB");
+    \u0275\u0275elementStart(232, "th");
+    \u0275\u0275text(233, "\u5BEB");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(226, "th");
+    \u0275\u0275element(234, "th");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(227, "tbody", 149);
-    \u0275\u0275repeaterCreate(228, UserForm_Conditional_20_Conditional_19_For_229_Template, 31, 1, "tr", 140, \u0275\u0275repeaterTrackByIndex);
-    \u0275\u0275conditionalCreate(230, UserForm_Conditional_20_Conditional_19_Conditional_230_Template, 3, 0, "tr");
+    \u0275\u0275elementStart(235, "tbody", 151);
+    \u0275\u0275repeaterCreate(236, UserForm_Conditional_20_Conditional_19_For_237_Template, 31, 1, "tr", 142, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275conditionalCreate(238, UserForm_Conditional_20_Conditional_19_Conditional_238_Template, 3, 0, "tr");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(231, "button", 84);
-    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_231_listener() {
+    \u0275\u0275elementStart(239, "button", 84);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_239_listener() {
       \u0275\u0275restoreView(_r20);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.addLanguage());
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(232, "svg", 17);
-    \u0275\u0275element(233, "use", 145);
+    \u0275\u0275elementStart(240, "svg", 17);
+    \u0275\u0275element(241, "use", 147);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(234, " \u65B0\u589E\u8A9E\u8A00 ");
+    \u0275\u0275text(242, " \u65B0\u589E\u8A9E\u8A00 ");
     \u0275\u0275elementEnd()()();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(235, "div", 22)(236, "div", 23);
+    \u0275\u0275elementStart(243, "div", 22)(244, "div", 23);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(237, "svg", 107);
-    \u0275\u0275element(238, "use", 150);
+    \u0275\u0275elementStart(245, "svg", 107);
+    \u0275\u0275element(246, "use", 152);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(239, " \u7DCA\u6025\u806F\u7D61 / \u8CA1\u52D9 / \u5176\u4ED6 ");
+    \u0275\u0275text(247, " \u7DCA\u6025\u806F\u7D61 / \u8CA1\u52D9 / \u5176\u4ED6 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(240, "div", 25)(241, "div", 26)(242, "div", 27)(243, "label", 28);
-    \u0275\u0275text(244, "\u7DCA\u6025\u806F\u7D61\u4EBA");
+    \u0275\u0275elementStart(248, "div", 25)(249, "div", 26)(250, "div", 27)(251, "label", 28);
+    \u0275\u0275text(252, "\u7DCA\u6025\u806F\u7D61\u4EBA");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(245, "input", 151);
+    \u0275\u0275element(253, "input", 153);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(246, "div", 27)(247, "label", 28);
-    \u0275\u0275text(248, "\u7DCA\u6025\u806F\u7D61\u96FB\u8A71");
+    \u0275\u0275elementStart(254, "div", 27)(255, "label", 28);
+    \u0275\u0275text(256, "\u7DCA\u6025\u806F\u7D61\u96FB\u8A71");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(249, "input", 152);
+    \u0275\u0275element(257, "input", 154);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(250, "div", 153)(251, "label", 28);
-    \u0275\u0275text(252, "\u9280\u884C\u5C40\u865F");
+    \u0275\u0275elementStart(258, "div", 155)(259, "label", 28);
+    \u0275\u0275text(260, "\u9280\u884C\u5C40\u865F");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(253, "input", 154);
+    \u0275\u0275element(261, "input", 156);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(254, "div", 155)(255, "label", 28);
-    \u0275\u0275text(256, "\u9280\u884C\u5E33\u865F");
-    \u0275\u0275elementEnd();
-    \u0275\u0275element(257, "input", 156);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(258, "div", 45)(259, "label", 28);
-    \u0275\u0275text(260, "\u6295\u4FDD\u8D77\u65E5");
-    \u0275\u0275elementEnd();
-    \u0275\u0275element(261, "input", 157);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(262, "div", 153)(263, "label", 28);
-    \u0275\u0275text(264, "\u6276\u990A\u4EBA\u6578");
+    \u0275\u0275elementStart(262, "div", 157)(263, "label", 28);
+    \u0275\u0275text(264, "\u9280\u884C\u5E33\u865F");
     \u0275\u0275elementEnd();
     \u0275\u0275element(265, "input", 158);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(266, "div", 130)(267, "label", 28);
-    \u0275\u0275text(268, "\u5C08\u9577\u8208\u8DA3");
+    \u0275\u0275elementStart(266, "div", 45)(267, "label", 28);
+    \u0275\u0275text(268, "\u6295\u4FDD\u8D77\u65E5");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(269, "textarea", 159);
+    \u0275\u0275element(269, "input", 159);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(270, "div", 155)(271, "label", 28);
+    \u0275\u0275text(272, "\u6276\u990A\u4EBA\u6578");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(273, "input", 160);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(274, "div", 130)(275, "label", 28);
+    \u0275\u0275text(276, "\u5C08\u9577\u8208\u8DA3");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(277, "textarea", 161);
     \u0275\u0275elementEnd()()()();
-    \u0275\u0275elementStart(270, "div", 22)(271, "div", 23);
+    \u0275\u0275elementStart(278, "div", 22)(279, "div", 23);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(272, "svg", 107);
-    \u0275\u0275element(273, "use", 160);
+    \u0275\u0275elementStart(280, "svg", 107);
+    \u0275\u0275element(281, "use", 162);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(274, " \u6B77\u53F2\u7D00\u9304\u8207\u96E2\u8077\u8CC7\u8A0A ");
+    \u0275\u0275text(282, " \u6B77\u53F2\u7D00\u9304\u8207\u96E2\u8077\u8CC7\u8A0A ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(275, "div", 25)(276, "div", 161);
-    \u0275\u0275text(277, "\u8077\u52D9\u8ABF\u6574\u6B77\u53F2");
+    \u0275\u0275elementStart(283, "div", 25)(284, "div", 163);
+    \u0275\u0275text(285, "\u8077\u52D9\u8ABF\u6574\u6B77\u53F2");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(278, "div", 136)(279, "table", 137)(280, "thead", 138)(281, "tr")(282, "th");
-    \u0275\u0275text(283, "\u751F\u6548\u65E5");
+    \u0275\u0275elementStart(286, "div", 138)(287, "table", 139)(288, "thead", 140)(289, "tr")(290, "th");
+    \u0275\u0275text(291, "\u751F\u6548\u65E5");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(284, "th");
-    \u0275\u0275text(285, "\u539F\u90E8\u9580");
+    \u0275\u0275elementStart(292, "th");
+    \u0275\u0275text(293, "\u539F\u90E8\u9580");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(286, "th");
-    \u0275\u0275text(287, "\u65B0\u90E8\u9580");
+    \u0275\u0275elementStart(294, "th");
+    \u0275\u0275text(295, "\u65B0\u90E8\u9580");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(288, "th");
-    \u0275\u0275text(289, "\u539F\u8077\u7A31");
+    \u0275\u0275elementStart(296, "th");
+    \u0275\u0275text(297, "\u539F\u8077\u7A31");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(290, "th");
-    \u0275\u0275text(291, "\u65B0\u8077\u7A31");
+    \u0275\u0275elementStart(298, "th");
+    \u0275\u0275text(299, "\u65B0\u8077\u7A31");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(292, "th");
+    \u0275\u0275element(300, "th");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(293, "tbody", 162);
-    \u0275\u0275repeaterCreate(294, UserForm_Conditional_20_Conditional_19_For_295_Template, 15, 1, "tr", 140, \u0275\u0275repeaterTrackByIndex);
-    \u0275\u0275conditionalCreate(296, UserForm_Conditional_20_Conditional_19_Conditional_296_Template, 3, 0, "tr");
+    \u0275\u0275elementStart(301, "tbody", 164);
+    \u0275\u0275repeaterCreate(302, UserForm_Conditional_20_Conditional_19_For_303_Template, 15, 1, "tr", 142, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275conditionalCreate(304, UserForm_Conditional_20_Conditional_19_Conditional_304_Template, 3, 0, "tr");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(297, "button", 163);
-    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_297_listener() {
+    \u0275\u0275elementStart(305, "button", 165);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_305_listener() {
       \u0275\u0275restoreView(_r20);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.addJobTransfer());
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(298, "svg", 17);
-    \u0275\u0275element(299, "use", 145);
+    \u0275\u0275elementStart(306, "svg", 17);
+    \u0275\u0275element(307, "use", 147);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(300, " \u65B0\u589E\u8077\u52D9\u8ABF\u6574 ");
+    \u0275\u0275text(308, " \u65B0\u589E\u8077\u52D9\u8ABF\u6574 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(301, "div", 161);
-    \u0275\u0275text(302, "\u734E\u61F2\u6B77\u53F2");
+    \u0275\u0275elementStart(309, "div", 163);
+    \u0275\u0275text(310, "\u734E\u61F2\u6B77\u53F2");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(303, "div", 136)(304, "table", 137)(305, "thead", 138)(306, "tr")(307, "th");
-    \u0275\u0275text(308, "\u751F\u6548\u65E5");
+    \u0275\u0275elementStart(311, "div", 138)(312, "table", 139)(313, "thead", 140)(314, "tr")(315, "th");
+    \u0275\u0275text(316, "\u751F\u6548\u65E5");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(309, "th");
-    \u0275\u0275text(310, "\u985E\u578B");
+    \u0275\u0275elementStart(317, "th");
+    \u0275\u0275text(318, "\u985E\u578B");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(311, "th");
-    \u0275\u0275text(312, "\u985E\u5225");
+    \u0275\u0275elementStart(319, "th");
+    \u0275\u0275text(320, "\u985E\u5225");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(313, "th");
-    \u0275\u0275text(314, "\u6B21\u6578");
+    \u0275\u0275elementStart(321, "th");
+    \u0275\u0275text(322, "\u6B21\u6578");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(315, "th");
-    \u0275\u0275text(316, "\u4E8B\u7531");
+    \u0275\u0275elementStart(323, "th");
+    \u0275\u0275text(324, "\u4E8B\u7531");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(317, "th");
+    \u0275\u0275element(325, "th");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(318, "tbody", 164);
-    \u0275\u0275repeaterCreate(319, UserForm_Conditional_20_Conditional_19_For_320_Template, 19, 1, "tr", 140, \u0275\u0275repeaterTrackByIndex);
-    \u0275\u0275conditionalCreate(321, UserForm_Conditional_20_Conditional_19_Conditional_321_Template, 3, 0, "tr");
+    \u0275\u0275elementStart(326, "tbody", 166);
+    \u0275\u0275repeaterCreate(327, UserForm_Conditional_20_Conditional_19_For_328_Template, 19, 1, "tr", 142, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275conditionalCreate(329, UserForm_Conditional_20_Conditional_19_Conditional_329_Template, 3, 0, "tr");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(322, "button", 163);
-    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_322_listener() {
+    \u0275\u0275elementStart(330, "button", 165);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_330_listener() {
       \u0275\u0275restoreView(_r20);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.addReward());
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(323, "svg", 17);
-    \u0275\u0275element(324, "use", 145);
+    \u0275\u0275elementStart(331, "svg", 17);
+    \u0275\u0275element(332, "use", 147);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(325, " \u65B0\u589E\u734E\u61F2 ");
+    \u0275\u0275text(333, " \u65B0\u589E\u734E\u61F2 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(326, "div", 161);
-    \u0275\u0275text(327, "\u85AA\u8CC7\u8ABF\u6574\u6B77\u53F2");
+    \u0275\u0275elementStart(334, "div", 163);
+    \u0275\u0275text(335, "\u85AA\u8CC7\u8ABF\u6574\u6B77\u53F2");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(328, "div", 165);
-    \u0275\u0275text(329, " \u65B0\u589E / \u7DE8\u8F2F\u7D00\u9304\u4E26\u5132\u5B58\u5F8C\uFF0C\u6700\u65B0\u751F\u6548\u7D00\u9304\uFF08\u2264 \u4ECA\u65E5\uFF09\u7684\u5E95\u85AA\u6703\u81EA\u52D5\u540C\u6B65\u81F3\u54E1\u5DE5\u5E95\u85AA\u6B04\u4F4D\u3002 ");
+    \u0275\u0275elementStart(336, "div", 167);
+    \u0275\u0275text(337, " \u65B0\u589E / \u7DE8\u8F2F\u7D00\u9304\u4E26\u5132\u5B58\u5F8C\uFF0C\u6700\u65B0\u751F\u6548\u7D00\u9304\uFF08\u2264 \u4ECA\u65E5\uFF09\u7684\u5E95\u85AA\u6703\u81EA\u52D5\u540C\u6B65\u81F3\u54E1\u5DE5\u5E95\u85AA\u6B04\u4F4D\u3002 ");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(330, "div", 136)(331, "table", 137)(332, "thead", 138)(333, "tr")(334, "th");
-    \u0275\u0275text(335, "\u751F\u6548\u65E5");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(336, "th");
-    \u0275\u0275text(337, "\u5E95\u85AA");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(338, "th");
-    \u0275\u0275text(339, "\u8077\u52D9\u6D25\u8CBC");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(340, "th");
-    \u0275\u0275text(341, "\u8077\u8CAC\u6D25\u8CBC");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(342, "th");
-    \u0275\u0275text(343, "\u5176\u4ED6");
+    \u0275\u0275elementStart(338, "div", 138)(339, "table", 139)(340, "thead", 140)(341, "tr")(342, "th");
+    \u0275\u0275text(343, "\u751F\u6548\u65E5");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(344, "th");
-    \u0275\u0275text(345, "\u5DEE\u984D");
+    \u0275\u0275text(345, "\u5E95\u85AA");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(346, "th");
-    \u0275\u0275text(347, "\u6D77\u5916\u6D25\u8CBC");
+    \u0275\u0275text(347, "\u8077\u52D9\u6D25\u8CBC");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(348, "th");
-    \u0275\u0275text(349, "\u4F19\u98DF");
+    \u0275\u0275text(349, "\u8077\u8CAC\u6D25\u8CBC");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(350, "th");
-    \u0275\u0275text(351, "\u5408\u8A08");
+    \u0275\u0275text(351, "\u5176\u4ED6");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(352, "th");
-    \u0275\u0275text(353, "\u5099\u8A3B");
+    \u0275\u0275text(353, "\u5DEE\u984D");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(354, "th");
+    \u0275\u0275elementStart(354, "th");
+    \u0275\u0275text(355, "\u6D77\u5916\u6D25\u8CBC");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(356, "th");
+    \u0275\u0275text(357, "\u4F19\u98DF");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(358, "th");
+    \u0275\u0275text(359, "\u5408\u8A08");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(360, "th");
+    \u0275\u0275text(361, "\u5099\u8A3B");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(362, "th");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(355, "tbody", 166);
-    \u0275\u0275repeaterCreate(356, UserForm_Conditional_20_Conditional_19_For_357_Template, 26, 5, "tr", 140, \u0275\u0275repeaterTrackByIndex);
-    \u0275\u0275conditionalCreate(358, UserForm_Conditional_20_Conditional_19_Conditional_358_Template, 3, 0, "tr");
+    \u0275\u0275elementStart(363, "tbody", 168);
+    \u0275\u0275repeaterCreate(364, UserForm_Conditional_20_Conditional_19_For_365_Template, 26, 5, "tr", 142, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275conditionalCreate(366, UserForm_Conditional_20_Conditional_19_Conditional_366_Template, 3, 0, "tr");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(359, "button", 163);
-    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_359_listener() {
+    \u0275\u0275elementStart(367, "button", 165);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_367_listener() {
       \u0275\u0275restoreView(_r20);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.addSalary());
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(360, "svg", 17);
-    \u0275\u0275element(361, "use", 145);
+    \u0275\u0275elementStart(368, "svg", 17);
+    \u0275\u0275element(369, "use", 147);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(362, " \u65B0\u589E\u85AA\u8CC7\u7D00\u9304 ");
+    \u0275\u0275text(370, " \u65B0\u589E\u85AA\u8CC7\u7D00\u9304 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(363, "div", 161);
-    \u0275\u0275text(364, "\u96E2\u8077\u8CC7\u8A0A");
+    \u0275\u0275elementStart(371, "div", 163);
+    \u0275\u0275text(372, "\u96E2\u8077\u8CC7\u8A0A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(365, "div", 26)(366, "div", 130)(367, "label", 28);
-    \u0275\u0275text(368, "\u96E2\u8077\u539F\u56E0");
+    \u0275\u0275elementStart(373, "div", 26)(374, "div", 130)(375, "label", 28);
+    \u0275\u0275text(376, "\u96E2\u8077\u539F\u56E0");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(369, "textarea", 167);
+    \u0275\u0275element(377, "textarea", 169);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
@@ -3212,43 +3347,47 @@ function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r1.idCardBackDisplayName ? 70 : 71);
     \u0275\u0275advance(19);
     \u0275\u0275twoWayProperty("ngModel", ctx_r1.mailingAddressSameAsResidential);
-    \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(16, _c02));
-    \u0275\u0275advance(33);
+    \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(18, _c02));
+    \u0275\u0275advance(22);
+    \u0275\u0275conditional(ctx_r1.highestEducationProofPreview() ? 111 : -1);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.highestEducationProofDisplayName ? 112 : 113);
+    \u0275\u0275advance(18);
     \u0275\u0275repeater(ctx_r1.educationControls);
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r1.educationControls.length === 0 ? 124 : -1);
+    \u0275\u0275conditional(ctx_r1.educationControls.length === 0 ? 132 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.educationControls.length < 3 ? 125 : -1);
+    \u0275\u0275conditional(ctx_r1.educationControls.length < 3 ? 133 : -1);
     \u0275\u0275advance(21);
     \u0275\u0275repeater(ctx_r1.employmentControls);
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r1.employmentControls.length === 0 ? 148 : -1);
+    \u0275\u0275conditional(ctx_r1.employmentControls.length === 0 ? 156 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.employmentControls.length < 3 ? 149 : -1);
+    \u0275\u0275conditional(ctx_r1.employmentControls.length < 3 ? 157 : -1);
     \u0275\u0275advance(21);
     \u0275\u0275repeater(ctx_r1.familyControls);
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r1.familyControls.length === 0 ? 172 : -1);
+    \u0275\u0275conditional(ctx_r1.familyControls.length === 0 ? 180 : -1);
     \u0275\u0275advance(27);
     \u0275\u0275repeater(ctx_r1.trainingControls);
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r1.trainingControls.length === 0 ? 201 : -1);
+    \u0275\u0275conditional(ctx_r1.trainingControls.length === 0 ? 209 : -1);
     \u0275\u0275advance(27);
     \u0275\u0275repeater(ctx_r1.languageControls);
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r1.languageControls.length === 0 ? 230 : -1);
+    \u0275\u0275conditional(ctx_r1.languageControls.length === 0 ? 238 : -1);
     \u0275\u0275advance(64);
     \u0275\u0275repeater(ctx_r1.jobTransferControls);
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r1.jobTransferControls.length === 0 ? 296 : -1);
+    \u0275\u0275conditional(ctx_r1.jobTransferControls.length === 0 ? 304 : -1);
     \u0275\u0275advance(23);
     \u0275\u0275repeater(ctx_r1.rewardControls);
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r1.rewardControls.length === 0 ? 321 : -1);
+    \u0275\u0275conditional(ctx_r1.rewardControls.length === 0 ? 329 : -1);
     \u0275\u0275advance(35);
     \u0275\u0275repeater(ctx_r1.salaryControls);
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r1.salaryControls.length === 0 ? 358 : -1);
+    \u0275\u0275conditional(ctx_r1.salaryControls.length === 0 ? 366 : -1);
   }
 }
 function UserForm_Conditional_20_Template(rf, ctx) {
@@ -3271,7 +3410,7 @@ function UserForm_Conditional_20_Template(rf, ctx) {
     \u0275\u0275elementStart(16, "span", 104);
     \u0275\u0275text(17);
     \u0275\u0275elementEnd()()()();
-    \u0275\u0275conditionalCreate(18, UserForm_Conditional_20_Conditional_18_Template, 3, 0, "div", 105)(19, UserForm_Conditional_20_Conditional_19_Template, 370, 17);
+    \u0275\u0275conditionalCreate(18, UserForm_Conditional_20_Conditional_18_Template, 3, 0, "div", 105)(19, UserForm_Conditional_20_Conditional_19_Template, 378, 19);
     \u0275\u0275elementStart(20, "div", 70)(21, "button", 71);
     \u0275\u0275text(22, "\u5132\u5B58\u6240\u6709\u8CC7\u6599");
     \u0275\u0275elementEnd();
@@ -3296,7 +3435,7 @@ function UserForm_Conditional_20_Template(rf, ctx) {
 }
 function UserForm_Conditional_21_Conditional_21_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 231);
+    \u0275\u0275elementStart(0, "span", 234);
     \u0275\u0275text(1, "\uFF08\u8D85\u904E 3 \u53E3\uFF0C\u85AA\u8CC7\u8A08\u7B97\u4E0A\u9650 3 \u53E3\uFF09");
     \u0275\u0275elementEnd();
   }
@@ -3306,11 +3445,11 @@ function UserForm_Conditional_21_Conditional_22_Template(rf, ctx) {
     \u0275\u0275elementStart(0, "span")(1, "span", 103);
     \u0275\u0275text(2, "\u6BCF\u6708\u5065\u4FDD\u8CBB\u8A66\u7B97\uFF1A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "span", 233);
+    \u0275\u0275elementStart(3, "span", 236);
     \u0275\u0275text(4);
     \u0275\u0275pipe(5, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "span", 234);
+    \u0275\u0275elementStart(6, "span", 237);
     \u0275\u0275text(7);
     \u0275\u0275elementEnd()();
   }
@@ -3324,79 +3463,79 @@ function UserForm_Conditional_21_Conditional_22_Template(rf, ctx) {
 }
 function UserForm_Conditional_21_For_38_Template(rf, ctx) {
   if (rf & 1) {
-    const _r47 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr", 140)(1, "td");
-    \u0275\u0275element(2, "input", 188);
+    const _r50 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 142)(1, "td");
+    \u0275\u0275element(2, "input", 191);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td")(4, "select", 235)(5, "option", 236);
+    \u0275\u0275elementStart(3, "td")(4, "select", 238)(5, "option", 239);
     \u0275\u0275text(6, "\u914D\u5076");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "option", 237);
+    \u0275\u0275elementStart(7, "option", 240);
     \u0275\u0275text(8, "\u7236");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "option", 238);
+    \u0275\u0275elementStart(9, "option", 241);
     \u0275\u0275text(10, "\u6BCD");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(11, "option", 239);
+    \u0275\u0275elementStart(11, "option", 242);
     \u0275\u0275text(12, "\u5B50");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(13, "option", 240);
+    \u0275\u0275elementStart(13, "option", 243);
     \u0275\u0275text(14, "\u5973");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "option", 241);
+    \u0275\u0275elementStart(15, "option", 244);
     \u0275\u0275text(16, "\u516C\uFF08\u516C\u516C\uFF09");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(17, "option", 242);
+    \u0275\u0275elementStart(17, "option", 245);
     \u0275\u0275text(18, "\u5A46\uFF08\u5A46\u5A46\uFF09");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(19, "option", 243);
+    \u0275\u0275elementStart(19, "option", 246);
     \u0275\u0275text(20, "\u7FC1\uFF08\u5CB3\u7236\uFF09");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(21, "option", 244);
+    \u0275\u0275elementStart(21, "option", 247);
     \u0275\u0275text(22, "\u59D1\uFF08\u5CB3\u6BCD\uFF09");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(23, "option", 245);
+    \u0275\u0275elementStart(23, "option", 248);
     \u0275\u0275text(24, "\u5176\u4ED6");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(25, "td");
-    \u0275\u0275element(26, "input", 246);
+    \u0275\u0275element(26, "input", 249);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(27, "td");
-    \u0275\u0275element(28, "input", 247);
+    \u0275\u0275element(28, "input", 250);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(29, "td")(30, "button", 180);
+    \u0275\u0275elementStart(29, "td")(30, "button", 183);
     \u0275\u0275listener("click", function UserForm_Conditional_21_For_38_Template_button_click_30_listener() {
-      const \u0275$index_1772_r48 = \u0275\u0275restoreView(_r47).$index;
+      const \u0275$index_1819_r51 = \u0275\u0275restoreView(_r50).$index;
       const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.removeDependent(\u0275$index_1772_r48));
+      return \u0275\u0275resetView(ctx_r1.removeDependent(\u0275$index_1819_r51));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(31, "svg", 20);
-    \u0275\u0275element(32, "use", 181);
+    \u0275\u0275element(32, "use", 184);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
-    const \u0275$index_1772_r48 = ctx.$index;
-    \u0275\u0275property("formGroupName", \u0275$index_1772_r48);
+    const \u0275$index_1819_r51 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1819_r51);
   }
 }
 function UserForm_Conditional_21_Conditional_39_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 187);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 190);
     \u0275\u0275text(2, "\u5C1A\u7121\u7737\u5C6C");
     \u0275\u0275elementEnd()();
   }
 }
 function UserForm_Conditional_21_Template(rf, ctx) {
   if (rf & 1) {
-    const _r46 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 223)(1, "div", 224);
+    const _r49 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 226)(1, "div", 227);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(2, "svg", 225);
-    \u0275\u0275element(3, "use", 226);
+    \u0275\u0275elementStart(2, "svg", 228);
+    \u0275\u0275element(3, "use", 229);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(4, "div", 227)(5, "span", 228);
+    \u0275\u0275elementStart(4, "div", 230)(5, "span", 231);
     \u0275\u0275text(6, "\u5065\u4FDD\u7737\u5C6C\u6700\u591A\u8A08 3 \u53E3\uFF0C\u8D85\u904E 3 \u53E3\u4ECD\u6309 3 \u53E3\u8A08\u7B97\u85AA\u8CC7\u3002");
     \u0275\u0275elementEnd();
     \u0275\u0275element(7, "br");
@@ -3405,22 +3544,22 @@ function UserForm_Conditional_21_Template(rf, ctx) {
     \u0275\u0275elementStart(9, "div", 22)(10, "div", 23);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(11, "svg", 107);
-    \u0275\u0275element(12, "use", 229);
+    \u0275\u0275element(12, "use", 232);
     \u0275\u0275elementEnd();
     \u0275\u0275text(13, " \u5065\u4FDD\u7737\u5C6C\u6E05\u55AE ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(14, "div", 25)(15, "div", 230)(16, "span")(17, "span", 103);
+    \u0275\u0275elementStart(14, "div", 25)(15, "div", 233)(16, "span")(17, "span", 103);
     \u0275\u0275text(18, "\u7737\u5C6C\u4EBA\u6578\uFF1A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(19, "span", 228);
+    \u0275\u0275elementStart(19, "span", 231);
     \u0275\u0275text(20);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(21, UserForm_Conditional_21_Conditional_21_Template, 2, 0, "span", 231);
+    \u0275\u0275conditionalCreate(21, UserForm_Conditional_21_Conditional_21_Template, 2, 0, "span", 234);
     \u0275\u0275elementEnd();
     \u0275\u0275conditionalCreate(22, UserForm_Conditional_21_Conditional_22_Template, 8, 5, "span");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(23, "div", 136)(24, "table", 137)(25, "thead", 138)(26, "tr")(27, "th");
+    \u0275\u0275elementStart(23, "div", 138)(24, "table", 139)(25, "thead", 140)(26, "tr")(27, "th");
     \u0275\u0275text(28, "\u59D3\u540D");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(29, "th");
@@ -3434,19 +3573,19 @@ function UserForm_Conditional_21_Template(rf, ctx) {
     \u0275\u0275elementEnd();
     \u0275\u0275element(35, "th");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(36, "tbody", 232);
-    \u0275\u0275repeaterCreate(37, UserForm_Conditional_21_For_38_Template, 33, 1, "tr", 140, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275elementStart(36, "tbody", 235);
+    \u0275\u0275repeaterCreate(37, UserForm_Conditional_21_For_38_Template, 33, 1, "tr", 142, \u0275\u0275repeaterTrackByIndex);
     \u0275\u0275conditionalCreate(39, UserForm_Conditional_21_Conditional_39_Template, 3, 0, "tr");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(40, "button", 84);
     \u0275\u0275listener("click", function UserForm_Conditional_21_Template_button_click_40_listener() {
-      \u0275\u0275restoreView(_r46);
+      \u0275\u0275restoreView(_r49);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.addDependent());
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(41, "svg", 17);
-    \u0275\u0275element(42, "use", 145);
+    \u0275\u0275element(42, "use", 147);
     \u0275\u0275elementEnd();
     \u0275\u0275text(43, " \u65B0\u589E\u7737\u5C6C ");
     \u0275\u0275elementEnd()()();
@@ -3548,6 +3687,12 @@ var UserForm = class _UserForm {
   idCardBackPreview = signal(null, ...ngDevMode ? [{ debugName: "idCardBackPreview" }] : []);
   idCardBackFileName = signal(null, ...ngDevMode ? [{ debugName: "idCardBackFileName" }] : []);
   removeIdCardBack = signal(false, ...ngDevMode ? [{ debugName: "removeIdCardBack" }] : []);
+  // ── 最高學歷證明（HR Tab） ────────────────────────
+  highestEducationProofUrl = signal(null, ...ngDevMode ? [{ debugName: "highestEducationProofUrl" }] : []);
+  highestEducationProofFile = signal(null, ...ngDevMode ? [{ debugName: "highestEducationProofFile" }] : []);
+  highestEducationProofPreview = signal(null, ...ngDevMode ? [{ debugName: "highestEducationProofPreview" }] : []);
+  highestEducationProofFileName = signal(null, ...ngDevMode ? [{ debugName: "highestEducationProofFileName" }] : []);
+  removeHighestEducationProof = signal(false, ...ngDevMode ? [{ debugName: "removeHighestEducationProof" }] : []);
   // ── 通訊地址同戶籍 ───────────────────────────────
   mailingAddressSameAsResidential = false;
   // ── 表單 ─────────────────────────────────────────
@@ -3712,6 +3857,7 @@ var UserForm = class _UserForm {
     });
     this.idCardFrontUrl.set(p.idCardFrontUrl ?? null);
     this.idCardBackUrl.set(p.idCardBackUrl ?? null);
+    this.highestEducationProofUrl.set(p.highestEducationProofUrl ?? null);
     this.educationArray.clear();
     (p.educationRecords ?? []).forEach((r) => this.educationArray.push(this._educationGroup(r)));
     this.employmentArray.clear();
@@ -4273,6 +4419,59 @@ var UserForm = class _UserForm {
     });
   }
   // ═══════════════════════════════════════════════
+  // 最高學歷證明
+  // ═══════════════════════════════════════════════
+  async onHighestEducationProofSelected(event) {
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file)
+      return;
+    input.value = "";
+    try {
+      const compressed = await this.imageCompression.compress(file, { maxSize: 1600, quality: 0.85 });
+      if (compressed.size > MAX_FILE_BYTES) {
+        this.toastr.error("\u4E0A\u50B3\u7167\u7247\u52FF\u8D85\u904E1MB");
+        return;
+      }
+      this.highestEducationProofFile.set(compressed);
+      this.highestEducationProofFileName.set(file.name);
+      this.removeHighestEducationProof.set(false);
+      if (compressed.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onload = () => this.highestEducationProofPreview.set(reader.result);
+        reader.readAsDataURL(compressed);
+      } else {
+        this.highestEducationProofPreview.set(null);
+      }
+    } catch (err) {
+      console.error("[UserForm] \u6700\u9AD8\u5B78\u6B77\u8B49\u660E\u8655\u7406\u5931\u6557", err);
+      this.toastr.error("\u6A94\u6848\u8655\u7406\u5931\u6557\uFF0C\u8ACB\u91CD\u8A66\u3002", "\u8655\u7406\u5931\u6557");
+    }
+  }
+  onRemoveHighestEducationProof() {
+    this.highestEducationProofFile.set(null);
+    this.highestEducationProofPreview.set(null);
+    this.highestEducationProofFileName.set(null);
+    this.removeHighestEducationProof.set(true);
+  }
+  viewHighestEducationProof() {
+    const url = this.highestEducationProofUrl();
+    if (!url)
+      return;
+    const match = url.match(/\/education-proofs\/(.+)$/);
+    const fileName = match?.[1];
+    if (!fileName)
+      return;
+    this.userService.getEducationProof(fileName).subscribe({
+      next: (blob) => {
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, "_blank");
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 6e4);
+      },
+      error: (err) => this.toastr.error(err.error?.message || "\u7121\u6CD5\u8F09\u5165\u6700\u9AD8\u5B78\u6B77\u8B49\u660E\u3002", "\u8F09\u5165\u5931\u6557")
+    });
+  }
+  // ═══════════════════════════════════════════════
   // 通訊地址同戶籍
   // ═══════════════════════════════════════════════
   copyResidentialToMailing() {
@@ -4393,6 +4592,21 @@ var UserForm = class _UserForm {
   }
   get hasExistingIdCardBack() {
     return !!this.idCardBackUrl() && !this.idCardBackFile() && !this.removeIdCardBack();
+  }
+  get highestEducationProofDisplayName() {
+    if (this.removeHighestEducationProof())
+      return null;
+    const pending = this.highestEducationProofFileName();
+    if (pending)
+      return pending;
+    const url = this.highestEducationProofUrl();
+    if (!url)
+      return null;
+    const match = url.match(/\/([^/]+)$/);
+    return match?.[1] ?? url;
+  }
+  get hasExistingHighestEducationProof() {
+    return !!this.highestEducationProofUrl() && !this.highestEducationProofFile() && !this.removeHighestEducationProof();
   }
   // ═══════════════════════════════════════════════
   // 寄送帳號通知
@@ -4566,7 +4780,9 @@ var UserForm = class _UserForm {
       idCardFront: this.idCardFrontFile(),
       idCardBack: this.idCardBackFile(),
       removeIdCardFront: this.removeIdCardFront(),
-      removeIdCardBack: this.removeIdCardBack()
+      removeIdCardBack: this.removeIdCardBack(),
+      highestEducationProof: this.highestEducationProofFile(),
+      removeHighestEducationProof: this.removeHighestEducationProof()
     }).subscribe({
       next: (profile) => {
         this._hrProfile = profile;
@@ -4592,7 +4808,7 @@ var UserForm = class _UserForm {
   static \u0275fac = function UserForm_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _UserForm)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _UserForm, selectors: [["app-user-form"]], decls: 22, vars: 11, consts: [[1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6", "flex-wrap"], ["routerLink", "/admin/users", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "mb-0"], [1, "flex", "gap-2", "ms-auto", "flex-wrap"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [1, "flex", "gap-1", "mb-4"], ["type", "button", 1, "btn", "btn-sm", 3, "click"], [1, "row"], [1, "col-12", "col-xl-8"], [3, "ngSubmit", "formGroup"], ["formGroupName", "hrProfile"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", 3, "click", "disabled"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-info", 3, "click", "disabled"], [1, "inline-block", "w-4", "h-4", "border-2", "border-current", "border-t-transparent", "rounded-full", "animate-spin", "me-1"], [1, "sa-icon", "me-1"], ["href", "/assets/icons/sprite.svg#printer"], ["href", "/assets/icons/sprite.svg#mail"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "card", "border-0", "shadow-sm", "mb-4"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], ["href", "/assets/icons/sprite.svg#user"], [1, "card-body"], [1, "row", "g-3"], [1, "col-12", "col-md-6"], [1, "form-label", "fw-500"], [1, "text-danger"], ["type", "text", "formControlName", "name", "placeholder", "\u8ACB\u8F38\u5165\u59D3\u540D", 1, "form-control"], [1, "text-danger", "small", "mt-1"], ["type", "email", "formControlName", "email", "placeholder", "user@example.com", 1, "form-control"], ["type", "password", "formControlName", "password", "placeholder", "\u7559\u7A7A\u5247\u4E0D\u4FEE\u6539\uFF08\u81F3\u5C11 6 \u78BC\uFF09", 1, "form-control"], ["formControlName", "status", 1, "form-select"], ["value", "active"], ["value", "inactive"], [1, "flex", "flex-wrap", "gap-4", "mt-1"], [1, "form-check"], ["href", "/assets/icons/sprite.svg#briefcase"], ["formControlName", "departmentId", 1, "form-select"], [3, "ngValue"], ["formControlName", "jobTitleId", 1, "form-select"], ["type", "date", "formControlName", "birthday", 1, "form-control"], ["type", "date", "formControlName", "hireDate", 1, "form-control"], [1, "col-12", "col-md-4"], [1, "input-group"], [1, "input-group-text"], ["type", "number", "formControlName", "baseSalary", "placeholder", "\u4F8B\u5982\uFF1A50000", "min", "0", 1, "form-control"], ["type", "number", "formControlName", "laborInsuranceOverride", 1, "form-control", 3, "placeholder"], [1, "text-muted", "small", "mt-1"], ["type", "number", "formControlName", "healthInsuranceOverride", 1, "form-control", 3, "placeholder"], ["type", "number", "formControlName", "mealAllowance", "placeholder", "\u4F8B\u5982\uFF1A2400", "min", "0", 1, "form-control"], ["type", "number", "formControlName", "overtimePay", "placeholder", "\u4F8B\u5982\uFF1A0", "min", "0", 1, "form-control"], [1, "form-check", "mt-2"], ["type", "checkbox", "formControlName", "sendPaySlip", "id", "sendPaySlip", 1, "form-check-input"], ["for", "sendPaySlip", 1, "form-check-label"], ["type", "checkbox", "formControlName", "isIndigenous", "id", "isIndigenous", 1, "form-check-input"], ["for", "isIndigenous", 1, "form-check-label"], ["type", "checkbox", "formControlName", "isLowIncome", "id", "isLowIncome", 1, "form-check-input"], ["for", "isLowIncome", 1, "form-check-label"], ["type", "checkbox", "formControlName", "isDisabled", "id", "isDisabled", 1, "form-check-input"], ["for", "isDisabled", 1, "form-check-label"], ["type", "date", "formControlName", "resignDate", 1, "form-control"], ["formControlName", "agentUserId", 1, "form-select"], ["value", ""], [3, "value"], ["href", "/assets/icons/sprite.svg#image"], [1, "text-muted", "small", "mb-3"], ["href", "/assets/icons/sprite.svg#edit"], [1, "mt-6", "flex", "gap-2"], ["type", "submit", 1, "btn", "btn-primary"], ["routerLink", "/admin/users", 1, "btn", "btn-outline-secondary"], ["type", "radio", "name", "roleId", "formControlName", "roleId", 1, "form-check-input", 3, "id", "value"], [1, "form-check-label", 3, "for"], [1, "flex", "flex-wrap", "items-start", "gap-4", "mb-3"], [1, "relative", "w-32", "h-32", "rounded-full", "overflow-hidden", "border", "cursor-move", "select-none", "touch-none", "bg-[--bg-elevated]", 3, "pointerdown", "pointermove", "pointerup", "pointercancel"], ["alt", "\u982D\u50CF", 1, "w-full", "h-full", "object-cover", "pointer-events-none", 2, "transform-origin", "center", 3, "src"], [1, "flex-1", "min-w-[200px]"], [1, "form-label", "fw-500", "text-sm", "mb-1"], [1, "flex", "items-center", "gap-2", "mb-2"], ["type", "range", "min", "1", "max", "3", "step", "0.05", 1, "flex-1", 3, "input", "value"], [1, "text-sm", "text-muted", "w-12", "text-right"], [1, "text-muted", "small", "mb-2"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", 3, "click"], [1, "flex", "gap-2"], [1, "btn", "btn-sm", "btn-outline-primary", "cursor-pointer", "mb-0"], ["type", "file", "accept", "image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif", 1, "hidden", 3, "change"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-danger", 3, "click"], ["href", "/assets/icons/sprite.svg#upload"], ["href", "/assets/icons/sprite.svg#file-text"], [1, "flex", "items-center", "gap-2", "mb-3", "border", "rounded", "px-3", "py-2", "bg-[--bg-surface]"], [1, "sa-icon", "text-[--accent]", 2, "stroke", "currentColor"], [1, "fw-500", "text-[--text-primary]", "truncate"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "ms-auto"], ["type", "file", "accept", "image/png,image/jpeg,application/pdf", 1, "hidden", 3, "change"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "ms-auto", 3, "click"], [1, "mb-3"], [1, "border", "rounded", "p-3", "bg-white", "inline-block"], ["alt", "\u7C3D\u540D\u6A94", 1, "max-h-24", "object-contain", 3, "src"], ["type", "file", "accept", "image/png,image/jpeg,image/gif,image/webp", 1, "hidden", 3, "change"], [1, "p-3", "mb-4", "rounded", "border", "bg-[--bg-elevated]"], [1, "flex", "flex-wrap", "gap-6", "text-sm"], [1, "text-muted", "me-1"], [1, "fw-500"], [1, "flex", "items-center", "justify-center", "py-12", "text-muted"], [1, "inline-block", "w-5", "h-5", "border-2", "border-current", "border-t-transparent", "rounded-full", "animate-spin", "me-2"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["type", "text", "formControlName", "employeeNumber", "placeholder", "\u4F8B\u5982\uFF1AEMP001", 1, "form-control"], ["type", "text", "formControlName", "englishName", "placeholder", "English Name", 1, "form-control"], ["type", "text", "formControlName", "idNumber", "placeholder", "A123456789", 1, "form-control"], ["formControlName", "gender", 1, "form-select"], ["value", "M"], ["value", "F"], ["formControlName", "maritalStatus", 1, "form-select"], ["value", "single"], ["value", "married"], ["value", "divorced"], ["value", "widowed"], ["type", "text", "formControlName", "birthPlace", "placeholder", "\u4F8B\u5982\uFF1A\u53F0\u5317\u5E02", 1, "form-control"], ["type", "tel", "formControlName", "mobilePhone", "placeholder", "09xx-xxxxxx", 1, "form-control"], ["href", "/assets/icons/sprite.svg#credit-card"], [1, "text-muted", "small", "mb-4"], [1, "row", "g-4"], [1, "fw-500", "mb-2"], [1, "mb-2"], ["href", "/assets/icons/sprite.svg#home"], [1, "col-12", "col-md-8"], ["type", "text", "formControlName", "residentialAddress", "placeholder", "\u7E23\u5E02\u3001\u5340\u3001\u8DEF\u6BB5\u3001\u9580\u724C", 1, "form-control"], ["type", "tel", "formControlName", "residentialPhone", "placeholder", "02-xxxx-xxxx", 1, "form-control"], [1, "col-12"], ["type", "checkbox", "id", "mailingSameChk", 1, "form-check-input", 3, "ngModelChange", "change", "ngModel", "ngModelOptions"], ["for", "mailingSameChk", 1, "form-check-label", "small"], ["type", "text", "formControlName", "mailingAddress", "placeholder", "\u7E23\u5E02\u3001\u5340\u3001\u8DEF\u6BB5\u3001\u9580\u724C", 1, "form-control"], ["type", "tel", "formControlName", "mailingPhone", "placeholder", "02-xxxx-xxxx", 1, "form-control"], ["href", "/assets/icons/sprite.svg#book-open"], [1, "table-responsive", "mb-3"], [1, "table", "table-sm", "align-middle", "mb-0"], [1, "table-light"], ["formArrayName", "educationRecords"], [3, "formGroupName"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary"], ["formArrayName", "employmentHistoryRecords"], ["href", "/assets/icons/sprite.svg#users"], ["formArrayName", "familyMembers"], ["href", "/assets/icons/sprite.svg#plus"], ["href", "/assets/icons/sprite.svg#award"], ["formArrayName", "professionalTrainings"], ["href", "/assets/icons/sprite.svg#globe"], ["formArrayName", "languageAbilities"], ["href", "/assets/icons/sprite.svg#phone"], ["type", "text", "formControlName", "emergencyContactName", "placeholder", "\u59D3\u540D", 1, "form-control"], ["type", "tel", "formControlName", "emergencyContactPhone", "placeholder", "09xx-xxxxxx", 1, "form-control"], [1, "col-12", "col-md-3"], ["type", "text", "formControlName", "bankCode", "placeholder", "\u5C40\u865F\uFF083 \u78BC\uFF09", 1, "form-control"], [1, "col-12", "col-md-5"], ["type", "text", "formControlName", "bankAccount", "placeholder", "\u5E33\u865F", 1, "form-control"], ["type", "date", "formControlName", "insuranceStartDate", 1, "form-control"], ["type", "number", "formControlName", "dependentCount", "placeholder", "0", "min", "0", 1, "form-control"], ["formControlName", "specialties", "rows", "2", "placeholder", "\u8ACB\u586B\u5BEB\u5C08\u9577\u6216\u8208\u8DA3", 1, "form-control"], ["href", "/assets/icons/sprite.svg#clock"], [1, "fw-600", "mb-2", "text-[--text-secondary]"], ["formArrayName", "jobTransferRecords"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "mb-4", 3, "click"], ["formArrayName", "rewardPunishmentRecords"], [1, "alert", "alert-info", "py-2", "small", "mb-3"], ["formArrayName", "salaryAdjustmentRecords"], ["formControlName", "resignationReason", "rows", "3", "placeholder", "\u8ACB\u586B\u5BEB\u96E2\u8077\u539F\u56E0\uFF08\u500B\u4EBA\u56E0\u7D20\u3001\u5408\u7D04\u5230\u671F\u2026\uFF09", 1, "form-control"], ["alt", "\u8EAB\u5206\u8B49\u6B63\u9762", 1, "rounded", "border", "max-h-40", "object-contain", "w-full", 3, "src"], [1, "flex", "items-center", "gap-2", "mb-2", "border", "rounded", "px-3", "py-2", "bg-[--bg-surface]"], [1, "fw-500", "text-[--text-primary]", "truncate", "text-sm"], ["type", "file", "accept", "image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif", 1, "hidden", 3, "change"], ["alt", "\u8EAB\u5206\u8B49\u53CD\u9762", 1, "rounded", "border", "max-h-40", "object-contain", "w-full", 3, "src"], ["type", "text", "formControlName", "school", "placeholder", "\u5B78\u6821\u540D\u7A31", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "department", "placeholder", "\u79D1\u7CFB", 1, "form-control", "form-control-sm"], ["formControlName", "degree", 1, "form-select", "form-select-sm"], ["value", "graduated"], ["value", "incomplete"], ["type", "month", "formControlName", "startDate", 1, "form-control", "form-control-sm"], ["type", "month", "formControlName", "endDate", 1, "form-control", "form-control-sm"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center", 3, "click"], ["href", "/assets/icons/sprite.svg#x"], ["colspan", "6", 1, "text-center", "text-muted", "small", "py-3"], ["type", "text", "formControlName", "organization", "placeholder", "\u6A5F\u69CB\u540D\u7A31", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "jobTitle", "placeholder", "\u8077\u7A31", 1, "form-control", "form-control-sm"], ["type", "date", "formControlName", "startDate", 1, "form-control", "form-control-sm"], ["type", "date", "formControlName", "endDate", 1, "form-control", "form-control-sm"], ["colspan", "5", 1, "text-center", "text-muted", "small", "py-3"], ["type", "text", "formControlName", "name", "placeholder", "\u59D3\u540D", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "relationship", "placeholder", "\u7236/\u6BCD/\u914D\u5076\u2026", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "age", "placeholder", "\u5E74\u9F61", "min", "0", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "occupation", "placeholder", "\u8077\u696D", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "trainingName", "placeholder", "\u8A13\u7DF4\u540D\u7A31", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "trainingOrg", "placeholder", "\u6A5F\u69CB\u540D\u7A31", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "hours", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "language", "placeholder", "\u4E2D\u6587/\u82F1\u6587\u2026", 1, "form-control", "form-control-sm"], ["formControlName", "listening", 1, "form-select", "form-select-sm"], ["value", "good"], ["value", "fair"], ["formControlName", "speaking", 1, "form-select", "form-select-sm"], ["formControlName", "reading", 1, "form-select", "form-select-sm"], ["formControlName", "writing", 1, "form-select", "form-select-sm"], ["type", "date", "formControlName", "effectiveDate", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "fromDepartment", "placeholder", "\u539F\u90E8\u9580", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "toDepartment", "placeholder", "\u65B0\u90E8\u9580", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "fromJobTitle", "placeholder", "\u539F\u8077\u7A31", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "toJobTitle", "placeholder", "\u65B0\u8077\u7A31", 1, "form-control", "form-control-sm"], ["formControlName", "type", 1, "form-select", "form-select-sm"], ["value", "reward"], ["value", "punishment"], ["type", "text", "formControlName", "category", "placeholder", "\u5609\u734E/\u7533\u8AA1\u2026", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "count", "placeholder", "1", "min", "1", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "reason", "placeholder", "\u4E8B\u7531", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "baseSalary", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "80px"], ["type", "number", "formControlName", "positionAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "dutyAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "otherAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "adjustmentDifference", "placeholder", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "overseasAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "mealAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], [1, "text-end", "fw-500"], ["type", "text", "formControlName", "notes", "placeholder", "\u5099\u8A3B", 1, "form-control", "form-control-sm", 2, "min-width", "80px"], ["colspan", "11", 1, "text-center", "text-muted", "small", "py-3"], [1, "alert", "py-2", "mb-4", 2, "background", "rgba(13,110,253,0.08)"], [1, "flex", "items-start", "gap-2"], [1, "sa-icon", "mt-1", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#info"], [1, "small"], [1, "fw-600"], ["href", "/assets/icons/sprite.svg#heart"], [1, "flex", "flex-wrap", "gap-6", "mb-4", "text-sm"], [1, "text-warning", "ms-1"], ["formArrayName", "healthDependents"], [1, "fw-600", "text-primary"], [1, "text-muted", "ms-1", "small"], ["formControlName", "relationship", 1, "form-select", "form-select-sm"], ["value", "spouse"], ["value", "father"], ["value", "mother"], ["value", "son"], ["value", "daughter"], ["value", "father_in_law"], ["value", "mother_in_law"], ["value", "father_in_law_wife"], ["value", "mother_in_law_wife"], ["value", "other"], ["type", "text", "formControlName", "idNumber", "placeholder", "A123456789", 1, "form-control", "form-control-sm"], ["type", "date", "formControlName", "birthDate", 1, "form-control", "form-control-sm"]], template: function UserForm_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _UserForm, selectors: [["app-user-form"]], decls: 22, vars: 11, consts: [[1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6", "flex-wrap"], ["routerLink", "/admin/users", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "mb-0"], [1, "flex", "gap-2", "ms-auto", "flex-wrap"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [1, "flex", "gap-1", "mb-4"], ["type", "button", 1, "btn", "btn-sm", 3, "click"], [1, "row"], [1, "col-12", "col-xl-8"], [3, "ngSubmit", "formGroup"], ["formGroupName", "hrProfile"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", 3, "click", "disabled"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-info", 3, "click", "disabled"], [1, "inline-block", "w-4", "h-4", "border-2", "border-current", "border-t-transparent", "rounded-full", "animate-spin", "me-1"], [1, "sa-icon", "me-1"], ["href", "/assets/icons/sprite.svg#printer"], ["href", "/assets/icons/sprite.svg#mail"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "card", "border-0", "shadow-sm", "mb-4"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], ["href", "/assets/icons/sprite.svg#user"], [1, "card-body"], [1, "row", "g-3"], [1, "col-12", "col-md-6"], [1, "form-label", "fw-500"], [1, "text-danger"], ["type", "text", "formControlName", "name", "placeholder", "\u8ACB\u8F38\u5165\u59D3\u540D", 1, "form-control"], [1, "text-danger", "small", "mt-1"], ["type", "email", "formControlName", "email", "placeholder", "user@example.com", 1, "form-control"], ["type", "password", "formControlName", "password", "placeholder", "\u7559\u7A7A\u5247\u4E0D\u4FEE\u6539\uFF08\u81F3\u5C11 6 \u78BC\uFF09", 1, "form-control"], ["formControlName", "status", 1, "form-select"], ["value", "active"], ["value", "inactive"], [1, "flex", "flex-wrap", "gap-4", "mt-1"], [1, "form-check"], ["href", "/assets/icons/sprite.svg#briefcase"], ["formControlName", "departmentId", 1, "form-select"], [3, "ngValue"], ["formControlName", "jobTitleId", 1, "form-select"], ["type", "date", "formControlName", "birthday", 1, "form-control"], ["type", "date", "formControlName", "hireDate", 1, "form-control"], [1, "col-12", "col-md-4"], [1, "input-group"], [1, "input-group-text"], ["type", "number", "formControlName", "baseSalary", "placeholder", "\u4F8B\u5982\uFF1A50000", "min", "0", 1, "form-control"], ["type", "number", "formControlName", "laborInsuranceOverride", 1, "form-control", 3, "placeholder"], [1, "text-muted", "small", "mt-1"], ["type", "number", "formControlName", "healthInsuranceOverride", 1, "form-control", 3, "placeholder"], ["type", "number", "formControlName", "mealAllowance", "placeholder", "\u4F8B\u5982\uFF1A2400", "min", "0", 1, "form-control"], ["type", "number", "formControlName", "overtimePay", "placeholder", "\u4F8B\u5982\uFF1A0", "min", "0", 1, "form-control"], [1, "form-check", "mt-2"], ["type", "checkbox", "formControlName", "sendPaySlip", "id", "sendPaySlip", 1, "form-check-input"], ["for", "sendPaySlip", 1, "form-check-label"], ["type", "checkbox", "formControlName", "isIndigenous", "id", "isIndigenous", 1, "form-check-input"], ["for", "isIndigenous", 1, "form-check-label"], ["type", "checkbox", "formControlName", "isLowIncome", "id", "isLowIncome", 1, "form-check-input"], ["for", "isLowIncome", 1, "form-check-label"], ["type", "checkbox", "formControlName", "isDisabled", "id", "isDisabled", 1, "form-check-input"], ["for", "isDisabled", 1, "form-check-label"], ["type", "date", "formControlName", "resignDate", 1, "form-control"], ["formControlName", "agentUserId", 1, "form-select"], ["value", ""], [3, "value"], ["href", "/assets/icons/sprite.svg#image"], [1, "text-muted", "small", "mb-3"], ["href", "/assets/icons/sprite.svg#edit"], [1, "mt-6", "flex", "gap-2"], ["type", "submit", 1, "btn", "btn-primary"], ["routerLink", "/admin/users", 1, "btn", "btn-outline-secondary"], ["type", "radio", "name", "roleId", "formControlName", "roleId", 1, "form-check-input", 3, "id", "value"], [1, "form-check-label", 3, "for"], [1, "flex", "flex-wrap", "items-start", "gap-4", "mb-3"], [1, "relative", "w-32", "h-32", "rounded-full", "overflow-hidden", "border", "cursor-move", "select-none", "touch-none", "bg-[--bg-elevated]", 3, "pointerdown", "pointermove", "pointerup", "pointercancel"], ["alt", "\u982D\u50CF", 1, "w-full", "h-full", "object-cover", "pointer-events-none", 2, "transform-origin", "center", 3, "src"], [1, "flex-1", "min-w-[200px]"], [1, "form-label", "fw-500", "text-sm", "mb-1"], [1, "flex", "items-center", "gap-2", "mb-2"], ["type", "range", "min", "1", "max", "3", "step", "0.05", 1, "flex-1", 3, "input", "value"], [1, "text-sm", "text-muted", "w-12", "text-right"], [1, "text-muted", "small", "mb-2"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", 3, "click"], [1, "flex", "gap-2"], [1, "btn", "btn-sm", "btn-outline-primary", "cursor-pointer", "mb-0"], ["type", "file", "accept", "image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif", 1, "hidden", 3, "change"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-danger", 3, "click"], ["href", "/assets/icons/sprite.svg#upload"], ["href", "/assets/icons/sprite.svg#file-text"], [1, "flex", "items-center", "gap-2", "mb-3", "border", "rounded", "px-3", "py-2", "bg-[--bg-surface]"], [1, "sa-icon", "text-[--accent]", 2, "stroke", "currentColor"], [1, "fw-500", "text-[--text-primary]", "truncate"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "ms-auto"], ["type", "file", "accept", "image/png,image/jpeg,application/pdf", 1, "hidden", 3, "change"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "ms-auto", 3, "click"], [1, "mb-3"], [1, "border", "rounded", "p-3", "bg-white", "inline-block"], ["alt", "\u7C3D\u540D\u6A94", 1, "max-h-24", "object-contain", 3, "src"], ["type", "file", "accept", "image/png,image/jpeg,image/gif,image/webp", 1, "hidden", 3, "change"], [1, "p-3", "mb-4", "rounded", "border", "bg-[--bg-elevated]"], [1, "flex", "flex-wrap", "gap-6", "text-sm"], [1, "text-muted", "me-1"], [1, "fw-500"], [1, "flex", "items-center", "justify-center", "py-12", "text-muted"], [1, "inline-block", "w-5", "h-5", "border-2", "border-current", "border-t-transparent", "rounded-full", "animate-spin", "me-2"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["type", "text", "formControlName", "employeeNumber", "placeholder", "\u4F8B\u5982\uFF1AEMP001", 1, "form-control"], ["type", "text", "formControlName", "englishName", "placeholder", "English Name", 1, "form-control"], ["type", "text", "formControlName", "idNumber", "placeholder", "A123456789", 1, "form-control"], ["formControlName", "gender", 1, "form-select"], ["value", "M"], ["value", "F"], ["formControlName", "maritalStatus", 1, "form-select"], ["value", "single"], ["value", "married"], ["value", "divorced"], ["value", "widowed"], ["type", "text", "formControlName", "birthPlace", "placeholder", "\u4F8B\u5982\uFF1A\u53F0\u5317\u5E02", 1, "form-control"], ["type", "tel", "formControlName", "mobilePhone", "placeholder", "09xx-xxxxxx", 1, "form-control"], ["href", "/assets/icons/sprite.svg#credit-card"], [1, "text-muted", "small", "mb-4"], [1, "row", "g-4"], [1, "fw-500", "mb-2"], [1, "mb-2"], ["href", "/assets/icons/sprite.svg#home"], [1, "col-12", "col-md-8"], ["type", "text", "formControlName", "residentialAddress", "placeholder", "\u7E23\u5E02\u3001\u5340\u3001\u8DEF\u6BB5\u3001\u9580\u724C", 1, "form-control"], ["type", "tel", "formControlName", "residentialPhone", "placeholder", "02-xxxx-xxxx", 1, "form-control"], [1, "col-12"], ["type", "checkbox", "id", "mailingSameChk", 1, "form-check-input", 3, "ngModelChange", "change", "ngModel", "ngModelOptions"], ["for", "mailingSameChk", 1, "form-check-label", "small"], ["type", "text", "formControlName", "mailingAddress", "placeholder", "\u7E23\u5E02\u3001\u5340\u3001\u8DEF\u6BB5\u3001\u9580\u724C", 1, "form-control"], ["type", "tel", "formControlName", "mailingPhone", "placeholder", "02-xxxx-xxxx", 1, "form-control"], ["href", "/assets/icons/sprite.svg#book-open"], [1, "mb-4", "pb-4", "border-bottom"], [1, "fw-500", "mb-1"], [1, "table-responsive", "mb-3"], [1, "table", "table-sm", "align-middle", "mb-0"], [1, "table-light"], ["formArrayName", "educationRecords"], [3, "formGroupName"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary"], ["formArrayName", "employmentHistoryRecords"], ["href", "/assets/icons/sprite.svg#users"], ["formArrayName", "familyMembers"], ["href", "/assets/icons/sprite.svg#plus"], ["href", "/assets/icons/sprite.svg#award"], ["formArrayName", "professionalTrainings"], ["href", "/assets/icons/sprite.svg#globe"], ["formArrayName", "languageAbilities"], ["href", "/assets/icons/sprite.svg#phone"], ["type", "text", "formControlName", "emergencyContactName", "placeholder", "\u59D3\u540D", 1, "form-control"], ["type", "tel", "formControlName", "emergencyContactPhone", "placeholder", "09xx-xxxxxx", 1, "form-control"], [1, "col-12", "col-md-3"], ["type", "text", "formControlName", "bankCode", "placeholder", "\u5C40\u865F\uFF083 \u78BC\uFF09", 1, "form-control"], [1, "col-12", "col-md-5"], ["type", "text", "formControlName", "bankAccount", "placeholder", "\u5E33\u865F", 1, "form-control"], ["type", "date", "formControlName", "insuranceStartDate", 1, "form-control"], ["type", "number", "formControlName", "dependentCount", "placeholder", "0", "min", "0", 1, "form-control"], ["formControlName", "specialties", "rows", "2", "placeholder", "\u8ACB\u586B\u5BEB\u5C08\u9577\u6216\u8208\u8DA3", 1, "form-control"], ["href", "/assets/icons/sprite.svg#clock"], [1, "fw-600", "mb-2", "text-[--text-secondary]"], ["formArrayName", "jobTransferRecords"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "mb-4", 3, "click"], ["formArrayName", "rewardPunishmentRecords"], [1, "alert", "alert-info", "py-2", "small", "mb-3"], ["formArrayName", "salaryAdjustmentRecords"], ["formControlName", "resignationReason", "rows", "3", "placeholder", "\u8ACB\u586B\u5BEB\u96E2\u8077\u539F\u56E0\uFF08\u500B\u4EBA\u56E0\u7D20\u3001\u5408\u7D04\u5230\u671F\u2026\uFF09", 1, "form-control"], ["alt", "\u8EAB\u5206\u8B49\u6B63\u9762", 1, "rounded", "border", "max-h-40", "object-contain", "w-full", 3, "src"], [1, "flex", "items-center", "gap-2", "mb-2", "border", "rounded", "px-3", "py-2", "bg-[--bg-surface]"], [1, "fw-500", "text-[--text-primary]", "truncate", "text-sm"], ["type", "file", "accept", "image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif", 1, "hidden", 3, "change"], ["alt", "\u8EAB\u5206\u8B49\u53CD\u9762", 1, "rounded", "border", "max-h-40", "object-contain", "w-full", 3, "src"], ["alt", "\u6700\u9AD8\u5B78\u6B77\u8B49\u660E", 1, "rounded", "border", "max-h-40", "object-contain", 3, "src"], ["type", "text", "formControlName", "school", "placeholder", "\u5B78\u6821\u540D\u7A31", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "department", "placeholder", "\u79D1\u7CFB", 1, "form-control", "form-control-sm"], ["formControlName", "degree", 1, "form-select", "form-select-sm"], ["value", "graduated"], ["value", "incomplete"], ["type", "month", "formControlName", "startDate", 1, "form-control", "form-control-sm"], ["type", "month", "formControlName", "endDate", 1, "form-control", "form-control-sm"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center", 3, "click"], ["href", "/assets/icons/sprite.svg#x"], ["colspan", "6", 1, "text-center", "text-muted", "small", "py-3"], ["type", "text", "formControlName", "organization", "placeholder", "\u6A5F\u69CB\u540D\u7A31", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "jobTitle", "placeholder", "\u8077\u7A31", 1, "form-control", "form-control-sm"], ["type", "date", "formControlName", "startDate", 1, "form-control", "form-control-sm"], ["type", "date", "formControlName", "endDate", 1, "form-control", "form-control-sm"], ["colspan", "5", 1, "text-center", "text-muted", "small", "py-3"], ["type", "text", "formControlName", "name", "placeholder", "\u59D3\u540D", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "relationship", "placeholder", "\u7236/\u6BCD/\u914D\u5076\u2026", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "age", "placeholder", "\u5E74\u9F61", "min", "0", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "occupation", "placeholder", "\u8077\u696D", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "trainingName", "placeholder", "\u8A13\u7DF4\u540D\u7A31", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "trainingOrg", "placeholder", "\u6A5F\u69CB\u540D\u7A31", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "hours", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "language", "placeholder", "\u4E2D\u6587/\u82F1\u6587\u2026", 1, "form-control", "form-control-sm"], ["formControlName", "listening", 1, "form-select", "form-select-sm"], ["value", "good"], ["value", "fair"], ["formControlName", "speaking", 1, "form-select", "form-select-sm"], ["formControlName", "reading", 1, "form-select", "form-select-sm"], ["formControlName", "writing", 1, "form-select", "form-select-sm"], ["type", "date", "formControlName", "effectiveDate", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "fromDepartment", "placeholder", "\u539F\u90E8\u9580", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "toDepartment", "placeholder", "\u65B0\u90E8\u9580", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "fromJobTitle", "placeholder", "\u539F\u8077\u7A31", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "toJobTitle", "placeholder", "\u65B0\u8077\u7A31", 1, "form-control", "form-control-sm"], ["formControlName", "type", 1, "form-select", "form-select-sm"], ["value", "reward"], ["value", "punishment"], ["type", "text", "formControlName", "category", "placeholder", "\u5609\u734E/\u7533\u8AA1\u2026", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "count", "placeholder", "1", "min", "1", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "reason", "placeholder", "\u4E8B\u7531", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "baseSalary", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "80px"], ["type", "number", "formControlName", "positionAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "dutyAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "otherAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "adjustmentDifference", "placeholder", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "overseasAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "mealAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], [1, "text-end", "fw-500"], ["type", "text", "formControlName", "notes", "placeholder", "\u5099\u8A3B", 1, "form-control", "form-control-sm", 2, "min-width", "80px"], ["colspan", "11", 1, "text-center", "text-muted", "small", "py-3"], [1, "alert", "py-2", "mb-4", 2, "background", "rgba(13,110,253,0.08)"], [1, "flex", "items-start", "gap-2"], [1, "sa-icon", "mt-1", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#info"], [1, "small"], [1, "fw-600"], ["href", "/assets/icons/sprite.svg#heart"], [1, "flex", "flex-wrap", "gap-6", "mb-4", "text-sm"], [1, "text-warning", "ms-1"], ["formArrayName", "healthDependents"], [1, "fw-600", "text-primary"], [1, "text-muted", "ms-1", "small"], ["formControlName", "relationship", 1, "form-select", "form-select-sm"], ["value", "spouse"], ["value", "father"], ["value", "mother"], ["value", "son"], ["value", "daughter"], ["value", "father_in_law"], ["value", "mother_in_law"], ["value", "father_in_law_wife"], ["value", "mother_in_law_wife"], ["value", "other"], ["type", "text", "formControlName", "idNumber", "placeholder", "A123456789", 1, "form-control", "form-control-sm"], ["type", "date", "formControlName", "birthDate", 1, "form-control", "form-control-sm"]], template: function UserForm_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "a", 2);
       \u0275\u0275namespaceSVG();
@@ -5325,6 +5541,41 @@ var UserForm = class _UserForm {
                   \u5B78\u6B77\u7D00\u9304
                 </div>
                 <div class="card-body">
+                  <!-- \u6700\u9AD8\u5B78\u6B77\u8B49\u660E -->
+                  <div class="mb-4 pb-4 border-bottom">
+                    <div class="fw-500 mb-1">\u6700\u9AD8\u5B78\u6B77\u8B49\u660E</div>
+                    <p class="text-muted small mb-3">\u652F\u63F4 PNG\u3001JPEG \u5716\u7247\u6216 PDF\u3002\u6B64\u6587\u4EF6\u53D7\u6B0A\u9650\u4FDD\u8B77\uFF0C\u50C5\u4EBA\u4E8B\u90E8\u9580\u53EF\u67E5\u95B1\u3002\u4E0A\u50B3\u5F8C\u52FF\u8D85\u904E 1MB\u3002</p>
+                    @if (highestEducationProofPreview()) {
+                      <div class="mb-2">
+                        <img [src]="highestEducationProofPreview()!" alt="\u6700\u9AD8\u5B78\u6B77\u8B49\u660E" class="rounded border max-h-40 object-contain">
+                      </div>
+                    }
+                    @if (highestEducationProofDisplayName) {
+                      <div class="flex items-center gap-2 mb-2 border rounded px-3 py-2 bg-[--bg-surface]">
+                        <svg class="sa-icon text-[--accent]" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                        <span class="fw-500 text-[--text-primary] truncate text-sm">{{ highestEducationProofDisplayName }}</span>
+                        @if (hasExistingHighestEducationProof) {
+                          <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewHighestEducationProof()">\u6AA2\u8996</button>
+                        }
+                      </div>
+                      <div class="flex gap-2">
+                        <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                          \u66F4\u63DB
+                          <input type="file" class="hidden" accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                                 (change)="onHighestEducationProofSelected($event)">
+                        </label>
+                        <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveHighestEducationProof()">\u522A\u9664</button>
+                      </div>
+                    } @else {
+                      <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                        <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                        \u9078\u64C7\u6A94\u6848
+                        <input type="file" class="hidden" accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                               (change)="onHighestEducationProofSelected($event)">
+                      </label>
+                    }
+                  </div>
+
                   <div class="table-responsive mb-3">
                     <table class="table table-sm align-middle mb-0">
                       <thead class="table-light">
@@ -8287,6 +8538,567 @@ var JobTitleForm = class _JobTitleForm {
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(JobTitleForm, { className: "JobTitleForm", filePath: "src/app/features/admin/job-titles/pages/job-title-form/job-title-form.ts", lineNumber: 12 });
 })();
 
+// src/app/features/admin/vendors/services/vendor.service.ts
+var VendorService = class _VendorService {
+  http = inject(HttpClient);
+  getAll() {
+    return this.http.get(`${environment.apiUrl}/vendors`);
+  }
+  /** 輕量級廠商清單（不需 vendors:read 權限，供下拉選單用；僅回 IsActive=true） */
+  getLookup() {
+    return this.http.get(`${environment.apiUrl}/vendors/lookup`);
+  }
+  getById(id) {
+    return this.http.get(`${environment.apiUrl}/vendors/${id}`);
+  }
+  create(data) {
+    return this.http.post(`${environment.apiUrl}/vendors`, data);
+  }
+  update(id, changes) {
+    return this.http.patch(`${environment.apiUrl}/vendors/${id}`, changes);
+  }
+  delete(id) {
+    return this.http.delete(`${environment.apiUrl}/vendors/${id}`);
+  }
+  static \u0275fac = function VendorService_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _VendorService)();
+  };
+  static \u0275prov = /* @__PURE__ */ \u0275\u0275defineInjectable({ token: _VendorService, factory: _VendorService.\u0275fac, providedIn: "root" });
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(VendorService, [{
+    type: Injectable,
+    args: [{ providedIn: "root" }]
+  }], null, null);
+})();
+
+// src/app/features/admin/vendors/pages/vendor-list/vendor-list.ts
+var _c07 = (a0) => [a0, "edit"];
+var _forTrack09 = ($index, $item) => $item.id;
+function VendorList_a_7_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "a", 16);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 17);
+    \u0275\u0275element(2, "use", 18);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3, " \u65B0\u589E\u5EE0\u5546 ");
+    \u0275\u0275elementEnd();
+  }
+}
+function VendorList_For_32_Conditional_10_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 22);
+    \u0275\u0275text(1, "\u555F\u7528");
+    \u0275\u0275elementEnd();
+  }
+}
+function VendorList_For_32_Conditional_11_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 23);
+    \u0275\u0275text(1, "\u505C\u7528");
+    \u0275\u0275elementEnd();
+  }
+}
+function VendorList_For_32_a_19_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "a", 29);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 17);
+    \u0275\u0275element(2, "use", 30);
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const v_r1 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c07, v_r1.id));
+  }
+}
+function VendorList_For_32_button_20_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r2 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 31);
+    \u0275\u0275listener("click", function VendorList_For_32_button_20_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r2);
+      const v_r1 = \u0275\u0275nextContext().$implicit;
+      const ctx_r2 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r2.delete(v_r1));
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 17);
+    \u0275\u0275element(2, "use", 32);
+    \u0275\u0275elementEnd()();
+  }
+}
+function VendorList_For_32_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "tr")(1, "td", 19);
+    \u0275\u0275text(2);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "td", 20);
+    \u0275\u0275text(4);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(5, "td", 21);
+    \u0275\u0275text(6);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "td", 21);
+    \u0275\u0275text(8);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(9, "td");
+    \u0275\u0275conditionalCreate(10, VendorList_For_32_Conditional_10_Template, 2, 0, "span", 22)(11, VendorList_For_32_Conditional_11_Template, 2, 0, "span", 23);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(12, "td");
+    \u0275\u0275text(13);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(14, "td", 24);
+    \u0275\u0275text(15);
+    \u0275\u0275pipe(16, "date");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(17, "td", 25)(18, "div", 26);
+    \u0275\u0275template(19, VendorList_For_32_a_19_Template, 3, 3, "a", 27)(20, VendorList_For_32_button_20_Template, 3, 0, "button", 28);
+    \u0275\u0275elementEnd()()();
+  }
+  if (rf & 2) {
+    const v_r1 = ctx.$implicit;
+    \u0275\u0275advance(2);
+    \u0275\u0275textInterpolate(v_r1.name);
+    \u0275\u0275advance(2);
+    \u0275\u0275textInterpolate(v_r1.taxId || "\u2014");
+    \u0275\u0275advance(2);
+    \u0275\u0275textInterpolate(v_r1.contactPerson || "\u2014");
+    \u0275\u0275advance(2);
+    \u0275\u0275textInterpolate(v_r1.phone || "\u2014");
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(v_r1.isActive ? 10 : 11);
+    \u0275\u0275advance(3);
+    \u0275\u0275textInterpolate(v_r1.usageCount);
+    \u0275\u0275advance(2);
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(16, 9, v_r1.createdAt, "yyyy-MM-dd"));
+    \u0275\u0275advance(4);
+    \u0275\u0275property("appHasPermission", "vendors:write");
+    \u0275\u0275advance();
+    \u0275\u0275property("appHasPermission", "vendors:delete");
+  }
+}
+function VendorList_ForEmpty_33_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "tr")(1, "td", 33);
+    \u0275\u0275text(2, "\u5C1A\u7121\u5EE0\u5546\u8CC7\u6599\u3002");
+    \u0275\u0275elementEnd()();
+  }
+}
+var VendorList = class _VendorList {
+  vendorService = inject(VendorService);
+  toastr = inject(ToastrService);
+  refresh$ = new BehaviorSubject(void 0);
+  vendors$ = this.refresh$.pipe(switchMap(() => this.vendorService.getAll()));
+  delete(v) {
+    if (!confirm(`\u78BA\u5B9A\u8981\u522A\u9664\u5EE0\u5546\u300C${v.name}\u300D\u55CE\uFF1F`))
+      return;
+    this.vendorService.delete(v.id).subscribe({
+      next: () => {
+        this.toastr.success(`\u5DF2\u522A\u9664\u5EE0\u5546\u300C${v.name}\u300D\u3002`);
+        this.refresh$.next();
+      },
+      error: (err) => {
+        const msg = err.error?.message || "\u522A\u9664\u5931\u6557\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66\u3002";
+        this.toastr.error(msg, "\u7121\u6CD5\u522A\u9664");
+      }
+    });
+  }
+  static \u0275fac = function VendorList_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _VendorList)();
+  };
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _VendorList, selectors: [["app-vendor-list"]], decls: 35, vars: 4, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#briefcase"], [1, "mb-0"], ["routerLink", "new", "class", "btn btn-primary inline-flex items-center gap-1", 4, "appHasPermission"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "hidden", "md:table-cell"], [1, "hidden", "lg:table-cell"], [1, "hidden", "xl:table-cell"], [1, "text-right"], ["routerLink", "new", 1, "btn", "btn-primary", "inline-flex", "items-center", "gap-1"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#plus"], [1, "fw-500"], [1, "text-muted", "hidden", "md:table-cell"], [1, "text-muted", "hidden", "lg:table-cell"], [1, "badge", "bg-success-subtle", "text-success"], [1, "badge", "bg-secondary-subtle", "text-secondary"], [1, "text-muted", "small", "hidden", "xl:table-cell"], [1, "text-right", 2, "white-space", "nowrap"], [1, "flex", "justify-end", "gap-1"], ["class", "btn btn-sm btn-ghost-primary inline-flex items-center", 3, "routerLink", 4, "appHasPermission"], ["class", "btn btn-sm btn-ghost-danger inline-flex items-center", 3, "click", 4, "appHasPermission"], [1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center", 3, "routerLink"], ["href", "/assets/icons/sprite.svg#edit"], [1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center", 3, "click"], ["href", "/assets/icons/sprite.svg#trash"], ["colspan", "8", 1, "text-center", "text-muted", "py-4"]], template: function VendorList_Template(rf, ctx) {
+    if (rf & 1) {
+      \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "div", 2);
+      \u0275\u0275namespaceSVG();
+      \u0275\u0275elementStart(3, "svg", 3);
+      \u0275\u0275element(4, "use", 4);
+      \u0275\u0275elementEnd();
+      \u0275\u0275namespaceHTML();
+      \u0275\u0275elementStart(5, "h4", 5);
+      \u0275\u0275text(6, "\u5EE0\u5546\u7BA1\u7406");
+      \u0275\u0275elementEnd()();
+      \u0275\u0275template(7, VendorList_a_7_Template, 4, 0, "a", 6);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(8, "div", 7)(9, "div", 8)(10, "div", 9)(11, "table", 10)(12, "thead", 11)(13, "tr")(14, "th");
+      \u0275\u0275text(15, "\u5EE0\u5546\u540D\u7A31");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(16, "th", 12);
+      \u0275\u0275text(17, "\u7D71\u7DE8");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(18, "th", 13);
+      \u0275\u0275text(19, "\u806F\u7D61\u4EBA");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(20, "th", 13);
+      \u0275\u0275text(21, "\u96FB\u8A71");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(22, "th");
+      \u0275\u0275text(23, "\u72C0\u614B");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(24, "th");
+      \u0275\u0275text(25, "\u4F7F\u7528\u7B46\u6578");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(26, "th", 14);
+      \u0275\u0275text(27, "\u5EFA\u7ACB\u6642\u9593");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(28, "th", 15);
+      \u0275\u0275text(29, "\u64CD\u4F5C");
+      \u0275\u0275elementEnd()()();
+      \u0275\u0275elementStart(30, "tbody");
+      \u0275\u0275repeaterCreate(31, VendorList_For_32_Template, 21, 12, "tr", null, _forTrack09, false, VendorList_ForEmpty_33_Template, 3, 0, "tr");
+      \u0275\u0275pipe(34, "async");
+      \u0275\u0275elementEnd()()()()()();
+    }
+    if (rf & 2) {
+      \u0275\u0275advance(7);
+      \u0275\u0275property("appHasPermission", "vendors:write");
+      \u0275\u0275advance(24);
+      \u0275\u0275repeater(\u0275\u0275pipeBind1(34, 2, ctx.vendors$));
+    }
+  }, dependencies: [RouterLink, HasPermissionDirective, AsyncPipe, DatePipe], encapsulation: 2 });
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(VendorList, [{
+    type: Component,
+    args: [{ selector: "app-vendor-list", imports: [RouterLink, AsyncPipe, DatePipe, HasPermissionDirective], template: `<div class="container-fluid py-3">
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
+      <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#briefcase"></use>
+      </svg>
+      <h4 class="mb-0">\u5EE0\u5546\u7BA1\u7406</h4>
+    </div>
+    <a *appHasPermission="'vendors:write'" routerLink="new" class="btn btn-primary inline-flex items-center gap-1">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+      \u65B0\u589E\u5EE0\u5546
+    </a>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>\u5EE0\u5546\u540D\u7A31</th>
+              <th class="hidden md:table-cell">\u7D71\u7DE8</th>
+              <th class="hidden lg:table-cell">\u806F\u7D61\u4EBA</th>
+              <th class="hidden lg:table-cell">\u96FB\u8A71</th>
+              <th>\u72C0\u614B</th>
+              <th>\u4F7F\u7528\u7B46\u6578</th>
+              <th class="hidden xl:table-cell">\u5EFA\u7ACB\u6642\u9593</th>
+              <th class="text-right">\u64CD\u4F5C</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (v of vendors$ | async; track v.id) {
+              <tr>
+                <td class="fw-500">{{ v.name }}</td>
+                <td class="text-muted hidden md:table-cell">{{ v.taxId || '\u2014' }}</td>
+                <td class="text-muted hidden lg:table-cell">{{ v.contactPerson || '\u2014' }}</td>
+                <td class="text-muted hidden lg:table-cell">{{ v.phone || '\u2014' }}</td>
+                <td>
+                  @if (v.isActive) {
+                    <span class="badge bg-success-subtle text-success">\u555F\u7528</span>
+                  } @else {
+                    <span class="badge bg-secondary-subtle text-secondary">\u505C\u7528</span>
+                  }
+                </td>
+                <td>{{ v.usageCount }}</td>
+                <td class="text-muted small hidden xl:table-cell">{{ v.createdAt | date:'yyyy-MM-dd' }}</td>
+                <td class="text-right" style="white-space: nowrap">
+                  <div class="flex justify-end gap-1">
+                    <a *appHasPermission="'vendors:write'" [routerLink]="[v.id, 'edit']" class="btn btn-sm btn-ghost-primary inline-flex items-center">
+                      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+                    </a>
+                    <button *appHasPermission="'vendors:delete'" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(v)">
+                      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="8" class="text-center text-muted py-4">\u5C1A\u7121\u5EE0\u5546\u8CC7\u6599\u3002</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+` }]
+  }], null, null);
+})();
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(VendorList, { className: "VendorList", filePath: "src/app/features/admin/vendors/pages/vendor-list/vendor-list.ts", lineNumber: 16 });
+})();
+
+// src/app/features/admin/vendors/pages/vendor-form/vendor-form.ts
+function VendorForm_Conditional_7_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 6);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 36);
+    \u0275\u0275element(2, "use", 37);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275advance(3);
+    \u0275\u0275textInterpolate1(" ", ctx_r0.errorMsg(), " ");
+  }
+}
+function VendorForm_Conditional_24_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 20);
+    \u0275\u0275text(1, "\u8ACB\u8F38\u5165\u5EE0\u5546\u540D\u7A31\u3002");
+    \u0275\u0275elementEnd();
+  }
+}
+var VendorForm = class _VendorForm {
+  fb = inject(FormBuilder);
+  vendorService = inject(VendorService);
+  route = inject(ActivatedRoute);
+  router = inject(Router);
+  isEdit = false;
+  vendorId = 0;
+  errorMsg = signal("", ...ngDevMode ? [{ debugName: "errorMsg" }] : []);
+  form = this.fb.group({
+    name: ["", Validators.required],
+    taxId: [""],
+    phone: [""],
+    contactPerson: [""],
+    address: [""],
+    bankAccount: [""],
+    note: [""],
+    isActive: [true]
+  });
+  ngOnInit() {
+    const id = this.route.snapshot.paramMap.get("id");
+    if (id) {
+      this.isEdit = true;
+      this.vendorId = +id;
+      this.vendorService.getById(this.vendorId).subscribe((v) => {
+        if (v)
+          this.form.patchValue(v);
+      });
+    }
+  }
+  submit() {
+    if (this.form.invalid)
+      return;
+    const value = this.form.value;
+    const obs = this.isEdit ? this.vendorService.update(this.vendorId, value) : this.vendorService.create(value);
+    this.errorMsg.set("");
+    obs.subscribe({
+      next: () => this.router.navigate(["/admin/vendors"]),
+      error: (err) => {
+        this.errorMsg.set(err.error?.message || "\u5132\u5B58\u5931\u6557\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66\u3002");
+      }
+    });
+  }
+  static \u0275fac = function VendorForm_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _VendorForm)();
+  };
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _VendorForm, selectors: [["app-vendor-form"]], decls: 61, vars: 6, consts: [[1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6"], ["routerLink", "/admin/vendors", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "mb-0"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [3, "ngSubmit", "formGroup"], [1, "row", "g-4"], [1, "col-12", "col-lg-10", "col-xl-8"], [1, "card", "border-0", "shadow-sm"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#briefcase"], [1, "card-body"], [1, "row", "g-3"], [1, "col-12", "col-md-8"], [1, "form-label", "fw-500"], [1, "text-danger"], ["type", "text", "formControlName", "name", "placeholder", "\u4F8B\u5982\uFF1A\u8AA0\u54C1\u66F8\u5E97", 1, "form-control"], [1, "text-danger", "small", "mt-1"], [1, "col-12", "col-md-4"], ["type", "text", "formControlName", "taxId", "placeholder", "\u4F8B\u5982\uFF1A12345678", 1, "form-control"], ["type", "text", "formControlName", "contactPerson", "placeholder", "\u59D3\u540D", 1, "form-control"], ["type", "text", "formControlName", "phone", "placeholder", "\u4F8B\u5982\uFF1A02-1234-5678", 1, "form-control"], ["type", "text", "formControlName", "bankAccount", "placeholder", "\u9280\u884C / \u5206\u884C / \u5E33\u865F", 1, "form-control"], [1, "col-12"], ["type", "text", "formControlName", "address", "placeholder", "\u5B8C\u6574\u5730\u5740", 1, "form-control"], ["formControlName", "note", "rows", "2", "placeholder", "\u9078\u586B\u8AAA\u660E", 1, "form-control"], [1, "form-check"], ["type", "checkbox", "id", "isActive", "formControlName", "isActive", 1, "form-check-input"], ["for", "isActive", 1, "form-check-label"], [1, "text-muted", "small", "mt-1"], [1, "mt-6", "flex", "gap-2"], ["type", "submit", 1, "btn", "btn-primary", 3, "disabled"], ["routerLink", "/admin/vendors", 1, "btn", "btn-outline-secondary"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"]], template: function VendorForm_Template(rf, ctx) {
+    if (rf & 1) {
+      \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "a", 2);
+      \u0275\u0275namespaceSVG();
+      \u0275\u0275elementStart(3, "svg", 3);
+      \u0275\u0275element(4, "use", 4);
+      \u0275\u0275elementEnd()();
+      \u0275\u0275namespaceHTML();
+      \u0275\u0275elementStart(5, "h4", 5);
+      \u0275\u0275text(6);
+      \u0275\u0275elementEnd()();
+      \u0275\u0275conditionalCreate(7, VendorForm_Conditional_7_Template, 4, 1, "div", 6);
+      \u0275\u0275elementStart(8, "form", 7);
+      \u0275\u0275listener("ngSubmit", function VendorForm_Template_form_ngSubmit_8_listener() {
+        return ctx.submit();
+      });
+      \u0275\u0275elementStart(9, "div", 8)(10, "div", 9)(11, "div", 10)(12, "div", 11);
+      \u0275\u0275namespaceSVG();
+      \u0275\u0275elementStart(13, "svg", 12);
+      \u0275\u0275element(14, "use", 13);
+      \u0275\u0275elementEnd();
+      \u0275\u0275text(15, " \u5EE0\u5546\u8CC7\u8A0A ");
+      \u0275\u0275elementEnd();
+      \u0275\u0275namespaceHTML();
+      \u0275\u0275elementStart(16, "div", 14)(17, "div", 15)(18, "div", 16)(19, "label", 17);
+      \u0275\u0275text(20, "\u5EE0\u5546\u540D\u7A31 ");
+      \u0275\u0275elementStart(21, "span", 18);
+      \u0275\u0275text(22, "*");
+      \u0275\u0275elementEnd()();
+      \u0275\u0275element(23, "input", 19);
+      \u0275\u0275conditionalCreate(24, VendorForm_Conditional_24_Template, 2, 0, "div", 20);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(25, "div", 21)(26, "label", 17);
+      \u0275\u0275text(27, "\u7D71\u7DE8");
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(28, "input", 22);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(29, "div", 21)(30, "label", 17);
+      \u0275\u0275text(31, "\u806F\u7D61\u4EBA");
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(32, "input", 23);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(33, "div", 21)(34, "label", 17);
+      \u0275\u0275text(35, "\u806F\u7D61\u96FB\u8A71");
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(36, "input", 24);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(37, "div", 21)(38, "label", 17);
+      \u0275\u0275text(39, "\u9280\u884C\u5E33\u865F");
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(40, "input", 25);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(41, "div", 26)(42, "label", 17);
+      \u0275\u0275text(43, "\u5730\u5740");
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(44, "input", 27);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(45, "div", 26)(46, "label", 17);
+      \u0275\u0275text(47, "\u5099\u8A3B");
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(48, "textarea", 28);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(49, "div", 26)(50, "div", 29);
+      \u0275\u0275element(51, "input", 30);
+      \u0275\u0275elementStart(52, "label", 31);
+      \u0275\u0275text(53, "\u555F\u7528");
+      \u0275\u0275elementEnd()();
+      \u0275\u0275elementStart(54, "div", 32);
+      \u0275\u0275text(55, "\u505C\u7528\u5F8C\u5C07\u4E0D\u6703\u51FA\u73FE\u5728\u8ACB\u6B3E\u7533\u8ACB\u7684\u4E0B\u62C9\u6E05\u55AE\u4E2D\u3002");
+      \u0275\u0275elementEnd()()()()();
+      \u0275\u0275elementStart(56, "div", 33)(57, "button", 34);
+      \u0275\u0275text(58);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(59, "a", 35);
+      \u0275\u0275text(60, "\u53D6\u6D88");
+      \u0275\u0275elementEnd()()()()()();
+    }
+    if (rf & 2) {
+      let tmp_3_0;
+      \u0275\u0275advance(6);
+      \u0275\u0275textInterpolate(ctx.isEdit ? "\u7DE8\u8F2F\u5EE0\u5546" : "\u65B0\u589E\u5EE0\u5546");
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.errorMsg() ? 7 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275property("formGroup", ctx.form);
+      \u0275\u0275advance(16);
+      \u0275\u0275conditional(((tmp_3_0 = ctx.form.get("name")) == null ? null : tmp_3_0.invalid) && ((tmp_3_0 = ctx.form.get("name")) == null ? null : tmp_3_0.touched) ? 24 : -1);
+      \u0275\u0275advance(33);
+      \u0275\u0275property("disabled", ctx.form.invalid);
+      \u0275\u0275advance();
+      \u0275\u0275textInterpolate1(" ", ctx.isEdit ? "\u66F4\u65B0" : "\u5EFA\u7ACB", " ");
+    }
+  }, dependencies: [ReactiveFormsModule, \u0275NgNoValidate, DefaultValueAccessor, CheckboxControlValueAccessor, NgControlStatus, NgControlStatusGroup, FormGroupDirective, FormControlName, RouterLink], encapsulation: 2 });
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(VendorForm, [{
+    type: Component,
+    args: [{ selector: "app-vendor-form", imports: [ReactiveFormsModule, RouterLink], template: `<div class="container-fluid py-3">
+  <div class="flex items-center gap-2 mb-6">
+    <a routerLink="/admin/vendors" class="btn btn-sm btn-outline-secondary">
+      <svg class="sa-icon">
+        <use href="/assets/icons/sprite.svg#arrow-left"></use>
+      </svg>
+    </a>
+    <h4 class="mb-0">{{ isEdit ? '\u7DE8\u8F2F\u5EE0\u5546' : '\u65B0\u589E\u5EE0\u5546' }}</h4>
+  </div>
+
+  @if (errorMsg()) {
+  <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+    <svg class="sa-icon" style="stroke: currentColor">
+      <use href="/assets/icons/sprite.svg#alert-triangle"></use>
+    </svg>
+    {{ errorMsg() }}
+  </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <div class="row g-4">
+      <div class="col-12 col-lg-10 col-xl-8">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#briefcase"></use>
+            </svg>
+            \u5EE0\u5546\u8CC7\u8A0A
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-12 col-md-8">
+                <label class="form-label fw-500">\u5EE0\u5546\u540D\u7A31 <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" formControlName="name" placeholder="\u4F8B\u5982\uFF1A\u8AA0\u54C1\u66F8\u5E97">
+                @if (form.get('name')?.invalid && form.get('name')?.touched) {
+                <div class="text-danger small mt-1">\u8ACB\u8F38\u5165\u5EE0\u5546\u540D\u7A31\u3002</div>
+                }
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">\u7D71\u7DE8</label>
+                <input type="text" class="form-control" formControlName="taxId" placeholder="\u4F8B\u5982\uFF1A12345678">
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">\u806F\u7D61\u4EBA</label>
+                <input type="text" class="form-control" formControlName="contactPerson" placeholder="\u59D3\u540D">
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">\u806F\u7D61\u96FB\u8A71</label>
+                <input type="text" class="form-control" formControlName="phone" placeholder="\u4F8B\u5982\uFF1A02-1234-5678">
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">\u9280\u884C\u5E33\u865F</label>
+                <input type="text" class="form-control" formControlName="bankAccount" placeholder="\u9280\u884C / \u5206\u884C / \u5E33\u865F">
+              </div>
+
+              <div class="col-12">
+                <label class="form-label fw-500">\u5730\u5740</label>
+                <input type="text" class="form-control" formControlName="address" placeholder="\u5B8C\u6574\u5730\u5740">
+              </div>
+
+              <div class="col-12">
+                <label class="form-label fw-500">\u5099\u8A3B</label>
+                <textarea class="form-control" formControlName="note" rows="2" placeholder="\u9078\u586B\u8AAA\u660E"></textarea>
+              </div>
+
+              <div class="col-12">
+                <div class="form-check">
+                  <input type="checkbox" class="form-check-input" id="isActive" formControlName="isActive">
+                  <label class="form-check-label" for="isActive">\u555F\u7528</label>
+                </div>
+                <div class="text-muted small mt-1">\u505C\u7528\u5F8C\u5C07\u4E0D\u6703\u51FA\u73FE\u5728\u8ACB\u6B3E\u7533\u8ACB\u7684\u4E0B\u62C9\u6E05\u55AE\u4E2D\u3002</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 flex gap-2">
+          <button type="submit" class="btn btn-primary" [disabled]="form.invalid">
+            {{ isEdit ? '\u66F4\u65B0' : '\u5EFA\u7ACB' }}
+          </button>
+          <a routerLink="/admin/vendors" class="btn btn-outline-secondary">\u53D6\u6D88</a>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+` }]
+  }], null, null);
+})();
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(VendorForm, { className: "VendorForm", filePath: "src/app/features/admin/vendors/pages/vendor-form/vendor-form.ts", lineNumber: 12 });
+})();
+
 // src/app/features/admin/approvals/models/approval.model.ts
 var APPLICATION_TYPE_LABELS = {
   payment_request: "\u8ACB\u6B3E\u7533\u8ACB",
@@ -8312,8 +9124,8 @@ var APPLICATION_TYPE_CLASSES = {
 };
 
 // src/app/features/admin/approvals/pages/approval-list/approval-list.ts
-var _c07 = (a0) => [a0, "flow"];
-var _forTrack09 = ($index, $item) => $item.id;
+var _c08 = (a0) => [a0, "flow"];
+var _forTrack010 = ($index, $item) => $item.id;
 var _forTrack1 = ($index, $item) => $item.value;
 function ApprovalList_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
@@ -8537,7 +9349,7 @@ function ApprovalList_For_33_Template(rf, ctx) {
     \u0275\u0275advance(2);
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(19, 11, item_r5.createdAt, "yyyy-MM-dd"));
     \u0275\u0275advance(4);
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(14, _c07, item_r5.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(14, _c08, item_r5.id));
     \u0275\u0275advance(3);
     \u0275\u0275conditional(ctx_r0.canWrite ? 25 : -1);
   }
@@ -8668,7 +9480,7 @@ var ApprovalList = class _ApprovalList {
       \u0275\u0275text(30, "\u64CD\u4F5C");
       \u0275\u0275elementEnd()()();
       \u0275\u0275elementStart(31, "tbody");
-      \u0275\u0275repeaterCreate(32, ApprovalList_For_33_Template, 26, 16, "tr", null, _forTrack09, false, ApprovalList_ForEmpty_34_Template, 3, 0, "tr");
+      \u0275\u0275repeaterCreate(32, ApprovalList_For_33_Template, 26, 16, "tr", null, _forTrack010, false, ApprovalList_ForEmpty_34_Template, 3, 0, "tr");
       \u0275\u0275pipe(35, "async");
       \u0275\u0275elementEnd()()()()()();
     }
@@ -8843,7 +9655,7 @@ var ApprovalList = class _ApprovalList {
 })();
 
 // src/app/features/admin/approvals/pages/approval-flow/approval-flow.ts
-var _forTrack010 = ($index, $item) => $item.id;
+var _forTrack011 = ($index, $item) => $item.id;
 function ApprovalFlow_Conditional_1_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 10);
@@ -8914,7 +9726,7 @@ function ApprovalFlow_Conditional_1_Conditional_17_Conditional_25_Conditional_8_
     \u0275\u0275elementStart(0, "select", 45)(1, "option", 47);
     \u0275\u0275text(2, "\u2014 \u4E0D\u9650\u90E8\u9580 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(3, ApprovalFlow_Conditional_1_Conditional_17_Conditional_25_Conditional_8_For_4_Template, 2, 2, "option", 47, _forTrack010);
+    \u0275\u0275repeaterCreate(3, ApprovalFlow_Conditional_1_Conditional_17_Conditional_25_Conditional_8_For_4_Template, 2, 2, "option", 47, _forTrack011);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -8961,7 +9773,7 @@ function ApprovalFlow_Conditional_1_Conditional_17_Conditional_25_Template(rf, c
     \u0275\u0275elementStart(12, "select", 46)(13, "option", 47);
     \u0275\u0275text(14, "\u2014 \u4E0D\u9650\u8077\u7A31 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(15, ApprovalFlow_Conditional_1_Conditional_17_Conditional_25_For_16_Template, 2, 3, "option", 47, _forTrack010);
+    \u0275\u0275repeaterCreate(15, ApprovalFlow_Conditional_1_Conditional_17_Conditional_25_For_16_Template, 2, 3, "option", 47, _forTrack011);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -9245,7 +10057,7 @@ function ApprovalFlow_Conditional_1_Conditional_19_For_2_Template(rf, ctx) {
 function ApprovalFlow_Conditional_1_Conditional_19_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 17);
-    \u0275\u0275repeaterCreate(1, ApprovalFlow_Conditional_1_Conditional_19_For_2_Template, 13, 4, "div", 49, _forTrack010);
+    \u0275\u0275repeaterCreate(1, ApprovalFlow_Conditional_1_Conditional_19_For_2_Template, 13, 4, "div", 49, _forTrack011);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -9689,8 +10501,8 @@ var PROJECT_STATUS_CLASSES = {
 };
 
 // src/app/features/admin/projects/pages/project-list/project-list.ts
-var _c08 = (a0) => [a0, "edit"];
-var _forTrack011 = ($index, $item) => $item.id;
+var _c09 = (a0) => [a0, "edit"];
+var _forTrack012 = ($index, $item) => $item.id;
 function ProjectList_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "a", 6);
@@ -9817,7 +10629,7 @@ function ProjectList_For_57_Conditional_28_Conditional_0_Template(rf, ctx) {
   }
   if (rf & 2) {
     const project_r2 = \u0275\u0275nextContext(2).$implicit;
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c08, project_r2.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c09, project_r2.id));
   }
 }
 function ProjectList_For_57_Conditional_28_Conditional_1_Template(rf, ctx) {
@@ -9858,7 +10670,7 @@ function ProjectList_For_57_Conditional_29_Template(rf, ctx) {
   }
   if (rf & 2) {
     const project_r2 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c08, project_r2.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c09, project_r2.id));
   }
 }
 function ProjectList_For_57_Template(rf, ctx) {
@@ -10169,7 +10981,7 @@ var ProjectList = class _ProjectList {
       \u0275\u0275text(54, "\u64CD\u4F5C");
       \u0275\u0275elementEnd()()();
       \u0275\u0275elementStart(55, "tbody");
-      \u0275\u0275repeaterCreate(56, ProjectList_For_57_Template, 30, 15, "tr", null, _forTrack011, false, ProjectList_ForEmpty_58_Template, 3, 0, "tr");
+      \u0275\u0275repeaterCreate(56, ProjectList_For_57_Template, 30, 15, "tr", null, _forTrack012, false, ProjectList_ForEmpty_58_Template, 3, 0, "tr");
       \u0275\u0275elementEnd()()();
       \u0275\u0275conditionalCreate(59, ProjectList_Conditional_59_Template, 19, 13, "div", 27);
       \u0275\u0275elementEnd()()();
@@ -10394,7 +11206,7 @@ function buildPageNumbers2(current, total) {
 }
 
 // src/app/features/admin/projects/pages/project-form/project-form.ts
-var _forTrack012 = ($index, $item) => $item.id;
+var _forTrack013 = ($index, $item) => $item.id;
 function _forTrack12($index, $item) {
   let tmp_0_0;
   return (tmp_0_0 = $item.get("id")) == null ? null : tmp_0_0.value;
@@ -10930,7 +11742,7 @@ var ProjectForm = class _ProjectForm {
       \u0275\u0275elementStart(48, "select", 25)(49, "option", 26);
       \u0275\u0275text(50);
       \u0275\u0275elementEnd();
-      \u0275\u0275repeaterCreate(51, ProjectForm_For_52_Template, 2, 2, "option", 26, _forTrack012);
+      \u0275\u0275repeaterCreate(51, ProjectForm_For_52_Template, 2, 2, "option", 26, _forTrack013);
       \u0275\u0275elementEnd();
       \u0275\u0275conditionalCreate(53, ProjectForm_Conditional_53_Template, 2, 0, "div", 20);
       \u0275\u0275elementEnd()();
@@ -11391,8 +12203,8 @@ var APPROVAL_STATUS_CLASSES = {
 };
 
 // src/app/features/admin/payment-requests/pages/payment-list/payment-list.ts
-var _c09 = (a0) => [a0, "edit"];
-var _forTrack013 = ($index, $item) => $item.id;
+var _c010 = (a0) => [a0, "edit"];
+var _forTrack014 = ($index, $item) => $item.id;
 function PaymentList_a_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "a", 15);
@@ -11416,11 +12228,23 @@ function PaymentList_For_30_Conditional_7_Template(rf, ctx) {
     \u0275\u0275textInterpolate(r_r1.projectName);
   }
 }
-function PaymentList_For_30_Conditional_22_Conditional_3_Template(rf, ctx) {
+function PaymentList_For_30_Conditional_8_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 19);
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const r_r1 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate1("\u5EE0\u5546\uFF1A", r_r1.vendorName);
+  }
+}
+function PaymentList_For_30_Conditional_23_Conditional_3_Template(rf, ctx) {
   if (rf & 1) {
     const _r2 = \u0275\u0275getCurrentView();
     \u0275\u0275elementStart(0, "button", 29);
-    \u0275\u0275listener("click", function PaymentList_For_30_Conditional_22_Conditional_3_Template_button_click_0_listener() {
+    \u0275\u0275listener("click", function PaymentList_For_30_Conditional_23_Conditional_3_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r2);
       const r_r1 = \u0275\u0275nextContext(2).$implicit;
       const ctx_r2 = \u0275\u0275nextContext();
@@ -11432,24 +12256,24 @@ function PaymentList_For_30_Conditional_22_Conditional_3_Template(rf, ctx) {
     \u0275\u0275elementEnd()();
   }
 }
-function PaymentList_For_30_Conditional_22_Template(rf, ctx) {
+function PaymentList_For_30_Conditional_23_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "a", 26);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 16);
     \u0275\u0275element(2, "use", 27);
     \u0275\u0275elementEnd()();
-    \u0275\u0275conditionalCreate(3, PaymentList_For_30_Conditional_22_Conditional_3_Template, 3, 0, "button", 28);
+    \u0275\u0275conditionalCreate(3, PaymentList_For_30_Conditional_23_Conditional_3_Template, 3, 0, "button", 28);
   }
   if (rf & 2) {
     const r_r1 = \u0275\u0275nextContext().$implicit;
     const ctx_r2 = \u0275\u0275nextContext();
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c09, r_r1.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c010, r_r1.id));
     \u0275\u0275advance(3);
     \u0275\u0275conditional(ctx_r2.canDelete() && r_r1.approvalStatus === "draft" ? 3 : -1);
   }
 }
-function PaymentList_For_30_Conditional_23_Template(rf, ctx) {
+function PaymentList_For_30_Conditional_24_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "a", 25);
     \u0275\u0275namespaceSVG();
@@ -11459,7 +12283,7 @@ function PaymentList_For_30_Conditional_23_Template(rf, ctx) {
   }
   if (rf & 2) {
     const r_r1 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c09, r_r1.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c010, r_r1.id));
   }
 }
 function PaymentList_For_30_Template(rf, ctx) {
@@ -11471,23 +12295,24 @@ function PaymentList_For_30_Template(rf, ctx) {
     \u0275\u0275text(6);
     \u0275\u0275elementEnd();
     \u0275\u0275conditionalCreate(7, PaymentList_For_30_Conditional_7_Template, 2, 1, "div", 19);
+    \u0275\u0275conditionalCreate(8, PaymentList_For_30_Conditional_8_Template, 2, 1, "div", 19);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "td")(9, "span", 20);
-    \u0275\u0275text(10);
+    \u0275\u0275elementStart(9, "td")(10, "span", 20);
+    \u0275\u0275text(11);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(11, "td", 21);
-    \u0275\u0275text(12);
-    \u0275\u0275pipe(13, "number");
+    \u0275\u0275elementStart(12, "td", 21);
+    \u0275\u0275text(13);
+    \u0275\u0275pipe(14, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(14, "td")(15, "span");
-    \u0275\u0275text(16);
+    \u0275\u0275elementStart(15, "td")(16, "span");
+    \u0275\u0275text(17);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(17, "td", 22);
-    \u0275\u0275text(18);
-    \u0275\u0275pipe(19, "date");
+    \u0275\u0275elementStart(18, "td", 22);
+    \u0275\u0275text(19);
+    \u0275\u0275pipe(20, "date");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(20, "td", 23)(21, "div", 24);
-    \u0275\u0275conditionalCreate(22, PaymentList_For_30_Conditional_22_Template, 4, 4)(23, PaymentList_For_30_Conditional_23_Template, 3, 3, "a", 25);
+    \u0275\u0275elementStart(21, "td", 23)(22, "div", 24);
+    \u0275\u0275conditionalCreate(23, PaymentList_For_30_Conditional_23_Template, 4, 4)(24, PaymentList_For_30_Conditional_24_Template, 3, 3, "a", 25);
     \u0275\u0275elementEnd()()();
   }
   if (rf & 2) {
@@ -11501,18 +12326,20 @@ function PaymentList_For_30_Template(rf, ctx) {
     \u0275\u0275textInterpolate(r_r1.projectCode || "\u2014");
     \u0275\u0275advance();
     \u0275\u0275conditional(r_r1.projectName ? 7 : -1);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(r_r1.type === "vendor" && r_r1.vendorName ? 8 : -1);
     \u0275\u0275advance(3);
     \u0275\u0275textInterpolate1("", r_r1.invoices.length, " \u5F35");
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(13, 12, r_r1.totalAmount, "1.0-0"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(14, 13, r_r1.totalAmount, "1.0-0"));
     \u0275\u0275advance(3);
     \u0275\u0275classMap("badge " + ctx_r2.statusClass[r_r1.approvalStatus]);
     \u0275\u0275advance();
     \u0275\u0275textInterpolate(ctx_r2.statusLabel[r_r1.approvalStatus]);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(19, 15, r_r1.createdAt, "yyyy-MM-dd"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(20, 16, r_r1.createdAt, "yyyy-MM-dd"));
     \u0275\u0275advance(4);
-    \u0275\u0275conditional(ctx_r2.canWrite() && (r_r1.approvalStatus === "draft" || r_r1.approvalStatus === "returned") ? 22 : 23);
+    \u0275\u0275conditional(ctx_r2.canWrite() && (r_r1.approvalStatus === "draft" || r_r1.approvalStatus === "returned") ? 23 : 24);
   }
 }
 function PaymentList_ForEmpty_31_Template(rf, ctx) {
@@ -11695,7 +12522,7 @@ var PaymentList = class _PaymentList {
       \u0275\u0275text(27, "\u64CD\u4F5C");
       \u0275\u0275elementEnd()()();
       \u0275\u0275elementStart(28, "tbody");
-      \u0275\u0275repeaterCreate(29, PaymentList_For_30_Template, 24, 18, "tr", null, _forTrack013, false, PaymentList_ForEmpty_31_Template, 3, 0, "tr");
+      \u0275\u0275repeaterCreate(29, PaymentList_For_30_Template, 25, 19, "tr", null, _forTrack014, false, PaymentList_ForEmpty_31_Template, 3, 0, "tr");
       \u0275\u0275elementEnd()()();
       \u0275\u0275conditionalCreate(32, PaymentList_Conditional_32_Template, 19, 13, "div", 14);
       \u0275\u0275elementEnd()()();
@@ -11752,6 +12579,9 @@ var PaymentList = class _PaymentList {
                   <div class="font-monospace fw-500">{{ r.projectCode || '\u2014' }}</div>
                   @if (r.projectName) {
                     <div class="text-muted small">{{ r.projectName }}</div>
+                  }
+                  @if (r.type === 'vendor' && r.vendorName) {
+                    <div class="text-muted small">\u5EE0\u5546\uFF1A{{ r.vendorName }}</div>
                   }
                 </td>
                 <td>
@@ -12005,10 +12835,1015 @@ var PaymentPdfService = class _PaymentPdfService {
   }], null, null);
 })();
 
+// node_modules/@ng-bootstrap/ng-bootstrap/fesm2022/ng-bootstrap-ng-bootstrap-typeahead.mjs
+function NgbHighlight_For_1_Conditional_0_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275domElementStart(0, "span");
+    \u0275\u0275text(1);
+    \u0275\u0275domElementEnd();
+  }
+  if (rf & 2) {
+    const part_r1 = \u0275\u0275nextContext().$implicit;
+    const ctx_r1 = \u0275\u0275nextContext();
+    \u0275\u0275classMap(ctx_r1.highlightClass);
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate(part_r1);
+  }
+}
+function NgbHighlight_For_1_Conditional_1_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275domElementContainerStart(0);
+    \u0275\u0275text(1);
+    \u0275\u0275domElementContainerEnd();
+  }
+  if (rf & 2) {
+    const part_r1 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate(part_r1);
+  }
+}
+function NgbHighlight_For_1_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275conditionalCreate(0, NgbHighlight_For_1_Conditional_0_Template, 2, 3, "span", 0)(1, NgbHighlight_For_1_Conditional_1_Template, 2, 1, "ng-container");
+  }
+  if (rf & 2) {
+    const \u0275$index_1_r3 = ctx.$index;
+    \u0275\u0275conditional(\u0275$index_1_r3 % 2 !== 0 ? 0 : 1);
+  }
+}
+var _c011 = (a0, a1, a2) => ({
+  result: a0,
+  term: a1,
+  formatter: a2
+});
+function NgbTypeaheadWindow_ng_template_0_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275element(0, "ngb-highlight", 2);
+  }
+  if (rf & 2) {
+    const result_r1 = ctx.result;
+    const term_r2 = ctx.term;
+    const formatter_r3 = ctx.formatter;
+    \u0275\u0275property("result", formatter_r3(result_r1))("term", term_r2);
+  }
+}
+function NgbTypeaheadWindow_For_3_ng_template_1_Template(rf, ctx) {
+}
+function NgbTypeaheadWindow_For_3_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r4 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 3);
+    \u0275\u0275listener("mouseenter", function NgbTypeaheadWindow_For_3_Template_button_mouseenter_0_listener() {
+      const $index_r5 = \u0275\u0275restoreView(_r4).$index;
+      const ctx_r5 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r5.markActive($index_r5));
+    })("click", function NgbTypeaheadWindow_For_3_Template_button_click_0_listener() {
+      const result_r7 = \u0275\u0275restoreView(_r4).$implicit;
+      const ctx_r5 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r5.select(result_r7));
+    });
+    \u0275\u0275template(1, NgbTypeaheadWindow_For_3_ng_template_1_Template, 0, 0, "ng-template", 4);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const result_r7 = ctx.$implicit;
+    const $index_r5 = ctx.$index;
+    const ctx_r5 = \u0275\u0275nextContext();
+    const rt_r8 = \u0275\u0275reference(1);
+    \u0275\u0275classProp("active", $index_r5 === ctx_r5.activeIdx);
+    \u0275\u0275property("id", ctx_r5.id + "-" + $index_r5);
+    \u0275\u0275advance();
+    \u0275\u0275property("ngTemplateOutlet", ctx_r5.resultTemplate || rt_r8)("ngTemplateOutletContext", \u0275\u0275pureFunction3(5, _c011, result_r7, ctx_r5.term, ctx_r5.formatter));
+  }
+}
+var NgbHighlight = class _NgbHighlight {
+  constructor() {
+    this.highlightClass = "ngb-highlight";
+    this.accentSensitive = true;
+  }
+  ngOnChanges(changes) {
+    if (!this.accentSensitive && !String.prototype.normalize) {
+      console.warn("The `accentSensitive` input in `ngb-highlight` cannot be set to `false` in a browser that does not implement the `String.normalize` function. You will have to include a polyfill in your application to use this feature in the current browser.");
+      this.accentSensitive = true;
+    }
+    const result = toString(this.result);
+    const terms = Array.isArray(this.term) ? this.term : [this.term];
+    const prepareTerm = (term) => this.accentSensitive ? term : removeAccents(term);
+    const escapedTerms = terms.map((term) => regExpEscape(prepareTerm(toString(term)))).filter((term) => term);
+    const toSplit = this.accentSensitive ? result : removeAccents(result);
+    const parts = escapedTerms.length ? toSplit.split(new RegExp(`(${escapedTerms.join("|")})`, "gmi")) : [result];
+    if (this.accentSensitive) {
+      this.parts = parts;
+    } else {
+      let offset = 0;
+      this.parts = parts.map((part) => result.substring(offset, offset += part.length));
+    }
+  }
+  static {
+    this.\u0275fac = function NgbHighlight_Factory(__ngFactoryType__) {
+      return new (__ngFactoryType__ || _NgbHighlight)();
+    };
+  }
+  static {
+    this.\u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({
+      type: _NgbHighlight,
+      selectors: [["ngb-highlight"]],
+      inputs: {
+        highlightClass: "highlightClass",
+        result: "result",
+        term: "term",
+        accentSensitive: "accentSensitive"
+      },
+      features: [\u0275\u0275NgOnChangesFeature],
+      decls: 2,
+      vars: 0,
+      consts: [[3, "class"]],
+      template: function NgbHighlight_Template(rf, ctx) {
+        if (rf & 1) {
+          \u0275\u0275repeaterCreate(0, NgbHighlight_For_1_Template, 2, 1, null, null, \u0275\u0275repeaterTrackByIndex);
+        }
+        if (rf & 2) {
+          \u0275\u0275repeater(ctx.parts);
+        }
+      },
+      styles: [".ngb-highlight{font-weight:700}\n"],
+      encapsulation: 2,
+      changeDetection: 0
+    });
+  }
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(NgbHighlight, [{
+    type: Component,
+    args: [{
+      selector: "ngb-highlight",
+      changeDetection: ChangeDetectionStrategy.OnPush,
+      encapsulation: ViewEncapsulation.None,
+      template: `
+		@for (part of parts; track $index) {
+			@if ($odd) {
+				<span class="{{ highlightClass }}">{{ part }}</span>
+			} @else {
+				<ng-container>{{ part }}</ng-container>
+			}
+		}
+	`,
+      styles: [".ngb-highlight{font-weight:700}\n"]
+    }]
+  }], null, {
+    highlightClass: [{
+      type: Input
+    }],
+    result: [{
+      type: Input,
+      args: [{
+        required: true
+      }]
+    }],
+    term: [{
+      type: Input,
+      args: [{
+        required: true
+      }]
+    }],
+    accentSensitive: [{
+      type: Input
+    }]
+  });
+})();
+var NgbTypeaheadConfig = class _NgbTypeaheadConfig {
+  constructor() {
+    this.editable = true;
+    this.focusFirst = true;
+    this.selectOnExact = false;
+    this.showHint = false;
+    this.placement = ["bottom-start", "bottom-end", "top-start", "top-end"];
+    this.popperOptions = (options) => options;
+  }
+  static {
+    this.\u0275fac = function NgbTypeaheadConfig_Factory(__ngFactoryType__) {
+      return new (__ngFactoryType__ || _NgbTypeaheadConfig)();
+    };
+  }
+  static {
+    this.\u0275prov = /* @__PURE__ */ \u0275\u0275defineInjectable({
+      token: _NgbTypeaheadConfig,
+      factory: _NgbTypeaheadConfig.\u0275fac,
+      providedIn: "root"
+    });
+  }
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(NgbTypeaheadConfig, [{
+    type: Injectable,
+    args: [{
+      providedIn: "root"
+    }]
+  }], null, null);
+})();
+var NgbTypeaheadWindow = class _NgbTypeaheadWindow {
+  constructor() {
+    this.activeIdx = 0;
+    this.focusFirst = true;
+    this.formatter = toString;
+    this.selectEvent = new EventEmitter();
+    this.activeChangeEvent = new EventEmitter();
+  }
+  hasActive() {
+    return this.activeIdx > -1 && this.activeIdx < this.results.length;
+  }
+  getActive() {
+    return this.results[this.activeIdx];
+  }
+  markActive(activeIdx) {
+    this.activeIdx = activeIdx;
+    this._activeChanged();
+  }
+  next() {
+    if (this.activeIdx === this.results.length - 1) {
+      this.activeIdx = this.focusFirst ? (this.activeIdx + 1) % this.results.length : -1;
+    } else {
+      this.activeIdx++;
+    }
+    this._activeChanged();
+  }
+  prev() {
+    if (this.activeIdx < 0) {
+      this.activeIdx = this.results.length - 1;
+    } else if (this.activeIdx === 0) {
+      this.activeIdx = this.focusFirst ? this.results.length - 1 : -1;
+    } else {
+      this.activeIdx--;
+    }
+    this._activeChanged();
+  }
+  resetActive() {
+    this.activeIdx = this.focusFirst ? 0 : -1;
+    this._activeChanged();
+  }
+  select(item) {
+    this.selectEvent.emit(item);
+  }
+  ngOnInit() {
+    this.resetActive();
+  }
+  _activeChanged() {
+    this.activeChangeEvent.emit(this.activeIdx >= 0 ? this.id + "-" + this.activeIdx : void 0);
+  }
+  static {
+    this.\u0275fac = function NgbTypeaheadWindow_Factory(__ngFactoryType__) {
+      return new (__ngFactoryType__ || _NgbTypeaheadWindow)();
+    };
+  }
+  static {
+    this.\u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({
+      type: _NgbTypeaheadWindow,
+      selectors: [["ngb-typeahead-window"]],
+      hostAttrs: ["role", "listbox"],
+      hostVars: 3,
+      hostBindings: function NgbTypeaheadWindow_HostBindings(rf, ctx) {
+        if (rf & 1) {
+          \u0275\u0275listener("mousedown", function NgbTypeaheadWindow_mousedown_HostBindingHandler($event) {
+            return $event.preventDefault();
+          });
+        }
+        if (rf & 2) {
+          \u0275\u0275domProperty("id", ctx.id);
+          \u0275\u0275classMap("dropdown-menu show" + (ctx.popupClass ? " " + ctx.popupClass : ""));
+        }
+      },
+      inputs: {
+        id: "id",
+        focusFirst: "focusFirst",
+        results: "results",
+        term: "term",
+        formatter: "formatter",
+        resultTemplate: "resultTemplate",
+        popupClass: "popupClass"
+      },
+      outputs: {
+        selectEvent: "select",
+        activeChangeEvent: "activeChange"
+      },
+      exportAs: ["ngbTypeaheadWindow"],
+      decls: 4,
+      vars: 0,
+      consts: [["rt", ""], ["type", "button", "role", "option", 1, "dropdown-item", 3, "id", "active"], [3, "result", "term"], ["type", "button", "role", "option", 1, "dropdown-item", 3, "mouseenter", "click", "id"], [3, "ngTemplateOutlet", "ngTemplateOutletContext"]],
+      template: function NgbTypeaheadWindow_Template(rf, ctx) {
+        if (rf & 1) {
+          \u0275\u0275template(0, NgbTypeaheadWindow_ng_template_0_Template, 1, 2, "ng-template", null, 0, \u0275\u0275templateRefExtractor);
+          \u0275\u0275repeaterCreate(2, NgbTypeaheadWindow_For_3_Template, 2, 9, "button", 1, \u0275\u0275repeaterTrackByIndex);
+        }
+        if (rf & 2) {
+          \u0275\u0275advance(2);
+          \u0275\u0275repeater(ctx.results);
+        }
+      },
+      dependencies: [NgbHighlight, NgTemplateOutlet],
+      encapsulation: 2
+    });
+  }
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(NgbTypeaheadWindow, [{
+    type: Component,
+    args: [{
+      selector: "ngb-typeahead-window",
+      exportAs: "ngbTypeaheadWindow",
+      imports: [NgbHighlight, NgTemplateOutlet],
+      encapsulation: ViewEncapsulation.None,
+      host: {
+        "(mousedown)": "$event.preventDefault()",
+        "[class]": '"dropdown-menu show" + (popupClass ? " " + popupClass : "")',
+        role: "listbox",
+        "[id]": "id"
+      },
+      template: `
+		<ng-template #rt let-result="result" let-term="term" let-formatter="formatter">
+			<ngb-highlight [result]="formatter(result)" [term]="term" />
+		</ng-template>
+		@for (result of results; track $index) {
+			<button
+				type="button"
+				class="dropdown-item"
+				role="option"
+				[id]="id + '-' + $index"
+				[class.active]="$index === activeIdx"
+				(mouseenter)="markActive($index)"
+				(click)="select(result)"
+			>
+				<ng-template
+					[ngTemplateOutlet]="resultTemplate || rt"
+					[ngTemplateOutletContext]="{ result: result, term: term, formatter: formatter }"
+				/>
+			</button>
+		}
+	`
+    }]
+  }], null, {
+    id: [{
+      type: Input
+    }],
+    focusFirst: [{
+      type: Input
+    }],
+    results: [{
+      type: Input
+    }],
+    term: [{
+      type: Input
+    }],
+    formatter: [{
+      type: Input
+    }],
+    resultTemplate: [{
+      type: Input
+    }],
+    popupClass: [{
+      type: Input
+    }],
+    selectEvent: [{
+      type: Output,
+      args: ["select"]
+    }],
+    activeChangeEvent: [{
+      type: Output,
+      args: ["activeChange"]
+    }]
+  });
+})();
+var nextWindowId = 0;
+var NgbTypeahead = class _NgbTypeahead {
+  constructor() {
+    this._nativeElement = inject(ElementRef).nativeElement;
+    this._config = inject(NgbTypeaheadConfig);
+    this._live = inject(Live);
+    this._document = inject(DOCUMENT);
+    this._ngZone = inject(NgZone);
+    this._changeDetector = inject(ChangeDetectorRef);
+    this._injector = inject(Injector);
+    this._popupService = new PopupService(NgbTypeaheadWindow);
+    this._positioning = ngbPositioning();
+    this._subscription = null;
+    this._closed$ = new Subject();
+    this._inputValueBackup = null;
+    this._inputValueForSelectOnExact = null;
+    this._valueChanges$ = fromEvent(this._nativeElement, "input").pipe(map(($event) => $event.target.value));
+    this._resubscribeTypeahead$ = new BehaviorSubject(null);
+    this._windowRef = null;
+    this.autocomplete = "off";
+    this.container = this._config.container;
+    this.editable = this._config.editable;
+    this.focusFirst = this._config.focusFirst;
+    this.selectOnExact = this._config.selectOnExact;
+    this.showHint = this._config.showHint;
+    this.placement = this._config.placement;
+    this.popperOptions = this._config.popperOptions;
+    this.selectItem = new EventEmitter();
+    this.activeDescendant = null;
+    this.popupId = `ngb-typeahead-${nextWindowId++}`;
+    this._onTouched = () => {
+    };
+    this._onChange = (_) => {
+    };
+  }
+  ngOnInit() {
+    this._subscribeToUserInput();
+  }
+  ngOnChanges({
+    ngbTypeahead
+  }) {
+    if (ngbTypeahead && !ngbTypeahead.firstChange) {
+      this._unsubscribeFromUserInput();
+      this._subscribeToUserInput();
+    }
+  }
+  ngOnDestroy() {
+    this._closePopup();
+    this._unsubscribeFromUserInput();
+  }
+  registerOnChange(fn) {
+    this._onChange = fn;
+  }
+  registerOnTouched(fn) {
+    this._onTouched = fn;
+  }
+  writeValue(value) {
+    this._writeInputValue(this._formatItemForInput(value));
+    if (this.showHint) {
+      this._inputValueBackup = value;
+    }
+  }
+  setDisabledState(isDisabled) {
+    this._nativeElement.disabled = isDisabled;
+  }
+  /**
+   * Dismisses typeahead popup window
+   */
+  dismissPopup() {
+    if (this.isPopupOpen()) {
+      this._resubscribeTypeahead$.next(null);
+      this._closePopup();
+      if (this.showHint && this._inputValueBackup !== null) {
+        this._writeInputValue(this._inputValueBackup);
+      }
+      this._changeDetector.markForCheck();
+    }
+  }
+  /**
+   * Returns true if the typeahead popup window is displayed
+   */
+  isPopupOpen() {
+    return this._windowRef != null;
+  }
+  handleBlur() {
+    this._resubscribeTypeahead$.next(null);
+    this._onTouched();
+  }
+  handleKeyDown(event) {
+    if (!this.isPopupOpen()) {
+      return;
+    }
+    switch (event.key) {
+      case "ArrowDown":
+        event.preventDefault();
+        this._windowRef.instance.next();
+        this._showHint();
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        this._windowRef.instance.prev();
+        this._showHint();
+        break;
+      case "Enter":
+      case "Tab": {
+        const result = this._windowRef.instance.getActive();
+        if (isDefined(result)) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._selectResult(result);
+        }
+        this._closePopup();
+        break;
+      }
+    }
+  }
+  _openPopup() {
+    if (!this.isPopupOpen()) {
+      this._inputValueBackup = this._nativeElement.value;
+      const {
+        windowRef
+      } = this._popupService.open();
+      this._windowRef = windowRef;
+      this._windowRef.setInput("id", this.popupId);
+      this._windowRef.setInput("popupClass", this.popupClass);
+      this._windowRef.instance.selectEvent.subscribe((result) => this._selectResultClosePopup(result));
+      this._windowRef.instance.activeChangeEvent.subscribe((activeId) => this.activeDescendant = activeId);
+      if (this.container === "body") {
+        this._windowRef.location.nativeElement.style.zIndex = "1055";
+        this._document.body.appendChild(this._windowRef.location.nativeElement);
+      }
+      this._changeDetector.markForCheck();
+      this._ngZone.runOutsideAngular(() => {
+        if (this._windowRef) {
+          this._positioning.createPopper({
+            hostElement: this._nativeElement,
+            targetElement: this._windowRef.location.nativeElement,
+            placement: this.placement,
+            updatePopperOptions: (options) => this.popperOptions(addPopperOffset([0, 2])(options))
+          });
+          this._afterRenderRef = afterEveryRender({
+            mixedReadWrite: () => {
+              this._positioning.update();
+            }
+          }, {
+            injector: this._injector
+          });
+        }
+      });
+      ngbAutoClose(this._ngZone, this._document, "outside", () => this.dismissPopup(), this._closed$, [this._nativeElement, this._windowRef.location.nativeElement]);
+    }
+  }
+  _closePopup() {
+    this._popupService.close().subscribe(() => {
+      this._positioning.destroy();
+      this._afterRenderRef?.destroy();
+      this._closed$.next();
+      this._windowRef = null;
+      this.activeDescendant = null;
+    });
+  }
+  _selectResult(result) {
+    let defaultPrevented = false;
+    this.selectItem.emit({
+      item: result,
+      preventDefault: () => {
+        defaultPrevented = true;
+      }
+    });
+    this._resubscribeTypeahead$.next(null);
+    if (!defaultPrevented) {
+      this.writeValue(result);
+      this._onChange(result);
+    }
+  }
+  _selectResultClosePopup(result) {
+    this._selectResult(result);
+    this._closePopup();
+  }
+  _showHint() {
+    if (this.showHint && this._windowRef?.instance.hasActive() && this._inputValueBackup != null) {
+      const userInputLowerCase = this._inputValueBackup.toLowerCase();
+      const formattedVal = this._formatItemForInput(this._windowRef.instance.getActive());
+      if (userInputLowerCase === formattedVal.substring(0, this._inputValueBackup.length).toLowerCase()) {
+        this._writeInputValue(this._inputValueBackup + formattedVal.substring(this._inputValueBackup.length));
+        this._nativeElement["setSelectionRange"].apply(this._nativeElement, [this._inputValueBackup.length, formattedVal.length]);
+      } else {
+        this._writeInputValue(formattedVal);
+      }
+    }
+  }
+  _formatItemForInput(item) {
+    return item != null && this.inputFormatter ? this.inputFormatter(item) : toString(item);
+  }
+  _writeInputValue(value) {
+    this._nativeElement.value = toString(value);
+  }
+  _subscribeToUserInput() {
+    const results$ = this._valueChanges$.pipe(tap((value) => {
+      this._inputValueBackup = this.showHint ? value : null;
+      this._inputValueForSelectOnExact = this.selectOnExact ? value : null;
+      this._onChange(this.editable ? value : null);
+    }), this.ngbTypeahead ? this.ngbTypeahead : () => of([]));
+    this._subscription = this._resubscribeTypeahead$.pipe(switchMap(() => results$)).subscribe((results) => {
+      if (!results || results.length === 0) {
+        this._closePopup();
+      } else {
+        if (this.selectOnExact && results.length === 1 && this._formatItemForInput(results[0]) === this._inputValueForSelectOnExact) {
+          this._selectResult(results[0]);
+          this._closePopup();
+        } else {
+          this._openPopup();
+          this._windowRef.setInput("focusFirst", this.focusFirst);
+          this._windowRef.setInput("results", results);
+          this._windowRef.setInput("term", this._nativeElement.value);
+          if (this.resultFormatter) {
+            this._windowRef.setInput("formatter", this.resultFormatter);
+          }
+          if (this.resultTemplate) {
+            this._windowRef.setInput("resultTemplate", this.resultTemplate);
+          }
+          this._windowRef.instance.resetActive();
+          this._windowRef.changeDetectorRef.detectChanges();
+          this._showHint();
+        }
+      }
+      const count = results ? results.length : 0;
+      this._live.say(count === 0 ? "No results available" : `${count} result${count === 1 ? "" : "s"} available`);
+    });
+  }
+  _unsubscribeFromUserInput() {
+    if (this._subscription) {
+      this._subscription.unsubscribe();
+    }
+    this._subscription = null;
+  }
+  static {
+    this.\u0275fac = function NgbTypeahead_Factory(__ngFactoryType__) {
+      return new (__ngFactoryType__ || _NgbTypeahead)();
+    };
+  }
+  static {
+    this.\u0275dir = /* @__PURE__ */ \u0275\u0275defineDirective({
+      type: _NgbTypeahead,
+      selectors: [["input", "ngbTypeahead", ""]],
+      hostAttrs: ["autocapitalize", "off", "autocorrect", "off", "role", "combobox"],
+      hostVars: 7,
+      hostBindings: function NgbTypeahead_HostBindings(rf, ctx) {
+        if (rf & 1) {
+          \u0275\u0275listener("blur", function NgbTypeahead_blur_HostBindingHandler() {
+            return ctx.handleBlur();
+          })("keydown", function NgbTypeahead_keydown_HostBindingHandler($event) {
+            return ctx.handleKeyDown($event);
+          });
+        }
+        if (rf & 2) {
+          \u0275\u0275domProperty("autocomplete", ctx.autocomplete);
+          \u0275\u0275attribute("aria-autocomplete", ctx.showHint ? "both" : "list")("aria-activedescendant", ctx.activeDescendant)("aria-controls", ctx.isPopupOpen() ? ctx.popupId : null)("aria-expanded", ctx.isPopupOpen());
+          \u0275\u0275classProp("open", ctx.isPopupOpen());
+        }
+      },
+      inputs: {
+        autocomplete: "autocomplete",
+        container: "container",
+        editable: "editable",
+        focusFirst: "focusFirst",
+        inputFormatter: "inputFormatter",
+        ngbTypeahead: "ngbTypeahead",
+        resultFormatter: "resultFormatter",
+        resultTemplate: "resultTemplate",
+        selectOnExact: "selectOnExact",
+        showHint: "showHint",
+        placement: "placement",
+        popperOptions: "popperOptions",
+        popupClass: "popupClass"
+      },
+      outputs: {
+        selectItem: "selectItem"
+      },
+      exportAs: ["ngbTypeahead"],
+      features: [\u0275\u0275ProvidersFeature([{
+        provide: NG_VALUE_ACCESSOR,
+        useExisting: forwardRef(() => _NgbTypeahead),
+        multi: true
+      }]), \u0275\u0275NgOnChangesFeature]
+    });
+  }
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(NgbTypeahead, [{
+    type: Directive,
+    args: [{
+      selector: "input[ngbTypeahead]",
+      exportAs: "ngbTypeahead",
+      host: {
+        "(blur)": "handleBlur()",
+        "[class.open]": "isPopupOpen()",
+        "(keydown)": "handleKeyDown($event)",
+        "[autocomplete]": "autocomplete",
+        autocapitalize: "off",
+        autocorrect: "off",
+        role: "combobox",
+        "[attr.aria-autocomplete]": 'showHint ? "both" : "list"',
+        "[attr.aria-activedescendant]": "activeDescendant",
+        "[attr.aria-controls]": "isPopupOpen() ? popupId : null",
+        "[attr.aria-expanded]": "isPopupOpen()"
+      },
+      providers: [{
+        provide: NG_VALUE_ACCESSOR,
+        useExisting: forwardRef(() => NgbTypeahead),
+        multi: true
+      }]
+    }]
+  }], null, {
+    autocomplete: [{
+      type: Input
+    }],
+    container: [{
+      type: Input
+    }],
+    editable: [{
+      type: Input
+    }],
+    focusFirst: [{
+      type: Input
+    }],
+    inputFormatter: [{
+      type: Input
+    }],
+    ngbTypeahead: [{
+      type: Input
+    }],
+    resultFormatter: [{
+      type: Input
+    }],
+    resultTemplate: [{
+      type: Input
+    }],
+    selectOnExact: [{
+      type: Input
+    }],
+    showHint: [{
+      type: Input
+    }],
+    placement: [{
+      type: Input
+    }],
+    popperOptions: [{
+      type: Input
+    }],
+    popupClass: [{
+      type: Input
+    }],
+    selectItem: [{
+      type: Output
+    }]
+  });
+})();
+var NgbTypeaheadModule = class _NgbTypeaheadModule {
+  static {
+    this.\u0275fac = function NgbTypeaheadModule_Factory(__ngFactoryType__) {
+      return new (__ngFactoryType__ || _NgbTypeaheadModule)();
+    };
+  }
+  static {
+    this.\u0275mod = /* @__PURE__ */ \u0275\u0275defineNgModule({
+      type: _NgbTypeaheadModule,
+      imports: [NgbHighlight, NgbTypeahead],
+      exports: [NgbHighlight, NgbTypeahead]
+    });
+  }
+  static {
+    this.\u0275inj = /* @__PURE__ */ \u0275\u0275defineInjector({});
+  }
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(NgbTypeaheadModule, [{
+    type: NgModule,
+    args: [{
+      imports: [NgbHighlight, NgbTypeahead],
+      exports: [NgbHighlight, NgbTypeahead]
+    }]
+  }], null, null);
+})();
+
+// src/app/features/admin/vendors/components/vendor-quick-add-modal/vendor-quick-add-modal.ts
+function VendorQuickAddModal_Conditional_8_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 7);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 25);
+    \u0275\u0275element(2, "use", 26);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275advance(3);
+    \u0275\u0275textInterpolate1(" ", ctx_r0.errorMsg(), " ");
+  }
+}
+function VendorQuickAddModal_Conditional_16_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 13);
+    \u0275\u0275text(1, "\u8ACB\u8F38\u5165\u5EE0\u5546\u540D\u7A31\u3002");
+    \u0275\u0275elementEnd();
+  }
+}
+function VendorQuickAddModal_Conditional_45_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " \u5132\u5B58\u4E2D\u2026 ");
+  }
+}
+function VendorQuickAddModal_Conditional_46_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " \u5132\u5B58 ");
+  }
+}
+var VendorQuickAddModal = class _VendorQuickAddModal {
+  fb = inject(FormBuilder);
+  vendorService = inject(VendorService);
+  activeModal = inject(NgbActiveModal);
+  /** 由父元件傳入：在下拉沒找到時把使用者輸入的字帶進來 */
+  prefillName;
+  saving = signal(false, ...ngDevMode ? [{ debugName: "saving" }] : []);
+  errorMsg = signal("", ...ngDevMode ? [{ debugName: "errorMsg" }] : []);
+  form = this.fb.group({
+    name: ["", Validators.required],
+    taxId: [""],
+    phone: [""],
+    contactPerson: [""],
+    address: [""],
+    bankAccount: [""],
+    note: [""]
+  });
+  ngOnInit() {
+    if (this.prefillName)
+      this.form.patchValue({ name: this.prefillName });
+  }
+  submit() {
+    if (this.form.invalid || this.saving())
+      return;
+    const value = this.form.value;
+    this.errorMsg.set("");
+    this.saving.set(true);
+    this.vendorService.create(__spreadProps(__spreadValues({}, value), { isActive: true })).subscribe({
+      next: (v) => {
+        const lookup = { id: v.id, name: v.name, taxId: v.taxId };
+        this.activeModal.close(lookup);
+      },
+      error: (err) => {
+        this.saving.set(false);
+        this.errorMsg.set(err.error?.message || "\u65B0\u589E\u5EE0\u5546\u5931\u6557\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66\u3002");
+      }
+    });
+  }
+  cancel() {
+    this.activeModal.dismiss();
+  }
+  static \u0275fac = function VendorQuickAddModal_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _VendorQuickAddModal)();
+  };
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _VendorQuickAddModal, selectors: [["app-vendor-quick-add-modal"]], inputs: { prefillName: "prefillName" }, decls: 47, vars: 5, consts: [[1, "modal-header"], [1, "modal-title", "flex", "items-center", "gap-2", "mb-0", "fw-600"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#briefcase"], ["type", "button", "aria-label", "Close", 1, "btn-close", 3, "click"], [3, "ngSubmit", "formGroup"], [1, "modal-body"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-4", "py-2"], [1, "row", "g-3"], [1, "col-12", "col-md-8"], [1, "form-label", "fw-500"], [1, "text-danger"], ["type", "text", "formControlName", "name", "placeholder", "\u4F8B\u5982\uFF1A\u8AA0\u54C1\u66F8\u5E97", "autofocus", "", 1, "form-control"], [1, "text-danger", "small", "mt-1"], [1, "col-12", "col-md-4"], ["type", "text", "formControlName", "taxId", "placeholder", "\u4F8B\u5982\uFF1A12345678", 1, "form-control"], ["type", "text", "formControlName", "contactPerson", "placeholder", "\u59D3\u540D", 1, "form-control"], ["type", "text", "formControlName", "phone", "placeholder", "\u4F8B\u5982\uFF1A02-1234-5678", 1, "form-control"], ["type", "text", "formControlName", "bankAccount", "placeholder", "\u9280\u884C / \u5206\u884C / \u5E33\u865F", 1, "form-control"], [1, "col-12"], ["type", "text", "formControlName", "address", "placeholder", "\u5B8C\u6574\u5730\u5740", 1, "form-control"], ["formControlName", "note", "rows", "2", "placeholder", "\u9078\u586B\u8AAA\u660E", 1, "form-control"], [1, "modal-footer"], ["type", "button", 1, "btn", "btn-outline-secondary", 3, "click"], ["type", "submit", 1, "btn", "btn-primary", 3, "disabled"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"]], template: function VendorQuickAddModal_Template(rf, ctx) {
+    if (rf & 1) {
+      \u0275\u0275elementStart(0, "div", 0)(1, "h5", 1);
+      \u0275\u0275namespaceSVG();
+      \u0275\u0275elementStart(2, "svg", 2);
+      \u0275\u0275element(3, "use", 3);
+      \u0275\u0275elementEnd();
+      \u0275\u0275text(4, " \u65B0\u589E\u5EE0\u5546 ");
+      \u0275\u0275elementEnd();
+      \u0275\u0275namespaceHTML();
+      \u0275\u0275elementStart(5, "button", 4);
+      \u0275\u0275listener("click", function VendorQuickAddModal_Template_button_click_5_listener() {
+        return ctx.cancel();
+      });
+      \u0275\u0275elementEnd()();
+      \u0275\u0275elementStart(6, "form", 5);
+      \u0275\u0275listener("ngSubmit", function VendorQuickAddModal_Template_form_ngSubmit_6_listener() {
+        return ctx.submit();
+      });
+      \u0275\u0275elementStart(7, "div", 6);
+      \u0275\u0275conditionalCreate(8, VendorQuickAddModal_Conditional_8_Template, 4, 1, "div", 7);
+      \u0275\u0275elementStart(9, "div", 8)(10, "div", 9)(11, "label", 10);
+      \u0275\u0275text(12, "\u5EE0\u5546\u540D\u7A31 ");
+      \u0275\u0275elementStart(13, "span", 11);
+      \u0275\u0275text(14, "*");
+      \u0275\u0275elementEnd()();
+      \u0275\u0275element(15, "input", 12);
+      \u0275\u0275conditionalCreate(16, VendorQuickAddModal_Conditional_16_Template, 2, 0, "div", 13);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(17, "div", 14)(18, "label", 10);
+      \u0275\u0275text(19, "\u7D71\u7DE8");
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(20, "input", 15);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(21, "div", 14)(22, "label", 10);
+      \u0275\u0275text(23, "\u806F\u7D61\u4EBA");
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(24, "input", 16);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(25, "div", 14)(26, "label", 10);
+      \u0275\u0275text(27, "\u806F\u7D61\u96FB\u8A71");
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(28, "input", 17);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(29, "div", 14)(30, "label", 10);
+      \u0275\u0275text(31, "\u9280\u884C\u5E33\u865F");
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(32, "input", 18);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(33, "div", 19)(34, "label", 10);
+      \u0275\u0275text(35, "\u5730\u5740");
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(36, "input", 20);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(37, "div", 19)(38, "label", 10);
+      \u0275\u0275text(39, "\u5099\u8A3B");
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(40, "textarea", 21);
+      \u0275\u0275elementEnd()()();
+      \u0275\u0275elementStart(41, "div", 22)(42, "button", 23);
+      \u0275\u0275listener("click", function VendorQuickAddModal_Template_button_click_42_listener() {
+        return ctx.cancel();
+      });
+      \u0275\u0275text(43, "\u53D6\u6D88");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(44, "button", 24);
+      \u0275\u0275conditionalCreate(45, VendorQuickAddModal_Conditional_45_Template, 1, 0)(46, VendorQuickAddModal_Conditional_46_Template, 1, 0);
+      \u0275\u0275elementEnd()()();
+    }
+    if (rf & 2) {
+      let tmp_2_0;
+      \u0275\u0275advance(6);
+      \u0275\u0275property("formGroup", ctx.form);
+      \u0275\u0275advance(2);
+      \u0275\u0275conditional(ctx.errorMsg() ? 8 : -1);
+      \u0275\u0275advance(8);
+      \u0275\u0275conditional(((tmp_2_0 = ctx.form.get("name")) == null ? null : tmp_2_0.invalid) && ((tmp_2_0 = ctx.form.get("name")) == null ? null : tmp_2_0.touched) ? 16 : -1);
+      \u0275\u0275advance(28);
+      \u0275\u0275property("disabled", ctx.form.invalid || ctx.saving());
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.saving() ? 45 : 46);
+    }
+  }, dependencies: [ReactiveFormsModule, \u0275NgNoValidate, DefaultValueAccessor, NgControlStatus, NgControlStatusGroup, FormGroupDirective, FormControlName], encapsulation: 2 });
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(VendorQuickAddModal, [{
+    type: Component,
+    args: [{ selector: "app-vendor-quick-add-modal", imports: [ReactiveFormsModule], template: `<div class="modal-header">
+  <h5 class="modal-title flex items-center gap-2 mb-0 fw-600">
+    <svg class="sa-icon text-primary" style="stroke: currentColor">
+      <use href="/assets/icons/sprite.svg#briefcase"></use>
+    </svg>
+    \u65B0\u589E\u5EE0\u5546
+  </h5>
+  <button type="button" class="btn-close" (click)="cancel()" aria-label="Close"></button>
+</div>
+
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <div class="modal-body">
+    @if (errorMsg()) {
+    <div class="alert alert-danger flex items-center gap-2 mb-4 py-2" role="alert">
+      <svg class="sa-icon" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#alert-triangle"></use>
+      </svg>
+      {{ errorMsg() }}
+    </div>
+    }
+
+    <div class="row g-3">
+      <div class="col-12 col-md-8">
+        <label class="form-label fw-500">\u5EE0\u5546\u540D\u7A31 <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" formControlName="name" placeholder="\u4F8B\u5982\uFF1A\u8AA0\u54C1\u66F8\u5E97" autofocus>
+        @if (form.get('name')?.invalid && form.get('name')?.touched) {
+        <div class="text-danger small mt-1">\u8ACB\u8F38\u5165\u5EE0\u5546\u540D\u7A31\u3002</div>
+        }
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="form-label fw-500">\u7D71\u7DE8</label>
+        <input type="text" class="form-control" formControlName="taxId" placeholder="\u4F8B\u5982\uFF1A12345678">
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="form-label fw-500">\u806F\u7D61\u4EBA</label>
+        <input type="text" class="form-control" formControlName="contactPerson" placeholder="\u59D3\u540D">
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="form-label fw-500">\u806F\u7D61\u96FB\u8A71</label>
+        <input type="text" class="form-control" formControlName="phone" placeholder="\u4F8B\u5982\uFF1A02-1234-5678">
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="form-label fw-500">\u9280\u884C\u5E33\u865F</label>
+        <input type="text" class="form-control" formControlName="bankAccount" placeholder="\u9280\u884C / \u5206\u884C / \u5E33\u865F">
+      </div>
+
+      <div class="col-12">
+        <label class="form-label fw-500">\u5730\u5740</label>
+        <input type="text" class="form-control" formControlName="address" placeholder="\u5B8C\u6574\u5730\u5740">
+      </div>
+
+      <div class="col-12">
+        <label class="form-label fw-500">\u5099\u8A3B</label>
+        <textarea class="form-control" formControlName="note" rows="2" placeholder="\u9078\u586B\u8AAA\u660E"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-footer">
+    <button type="button" class="btn btn-outline-secondary" (click)="cancel()">\u53D6\u6D88</button>
+    <button type="submit" class="btn btn-primary" [disabled]="form.invalid || saving()">
+      @if (saving()) { \u5132\u5B58\u4E2D\u2026 } @else { \u5132\u5B58 }
+    </button>
+  </div>
+</form>
+` }]
+  }], null, { prefillName: [{
+    type: Input
+  }] });
+})();
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(VendorQuickAddModal, { className: "VendorQuickAddModal", filePath: "src/app/features/admin/vendors/components/vendor-quick-add-modal/vendor-quick-add-modal.ts", lineNumber: 13 });
+})();
+
 // src/app/features/admin/payment-requests/pages/payment-form/payment-form.ts
-var _c010 = ["successModal"];
+var _c012 = ["successModal"];
 var _c13 = () => ({ standalone: true });
-function _forTrack014($index, $item) {
+function _forTrack015($index, $item) {
   let tmp_0_0;
   return (tmp_0_0 = $item.get("id")) == null ? null : tmp_0_0.value;
 }
@@ -12137,7 +13972,116 @@ function PaymentForm_Conditional_42_Template(rf, ctx) {
     \u0275\u0275conditional(((tmp_6_0 = ctx_r1.form.get("projectId")) == null ? null : tmp_6_0.invalid) && ((tmp_6_0 = ctx_r1.form.get("projectId")) == null ? null : tmp_6_0.touched) ? 6 : -1);
   }
 }
-function PaymentForm_Conditional_46_Template(rf, ctx) {
+function PaymentForm_Conditional_43_Conditional_6_For_2_Conditional_0_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0);
+  }
+  if (rf & 2) {
+    const v_r4 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275textInterpolate2(" ", v_r4.name, "", v_r4.taxId ? "\uFF08" + v_r4.taxId + "\uFF09" : "", " ");
+  }
+}
+function PaymentForm_Conditional_43_Conditional_6_For_2_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275conditionalCreate(0, PaymentForm_Conditional_43_Conditional_6_For_2_Conditional_0_Template, 1, 2);
+  }
+  if (rf & 2) {
+    let tmp_13_0;
+    const v_r4 = ctx.$implicit;
+    const ctx_r1 = \u0275\u0275nextContext(3);
+    \u0275\u0275conditional(v_r4.id === ((tmp_13_0 = ctx_r1.form.get("vendorId")) == null ? null : tmp_13_0.value) ? 0 : -1);
+  }
+}
+function PaymentForm_Conditional_43_Conditional_6_Conditional_3_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " \u2014 ");
+  }
+}
+function PaymentForm_Conditional_43_Conditional_6_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "p", 61);
+    \u0275\u0275repeaterCreate(1, PaymentForm_Conditional_43_Conditional_6_For_2_Template, 1, 1, null, null, _forTrack13);
+    \u0275\u0275conditionalCreate(3, PaymentForm_Conditional_43_Conditional_6_Conditional_3_Template, 1, 0);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    let tmp_4_0;
+    const ctx_r1 = \u0275\u0275nextContext(2);
+    \u0275\u0275advance();
+    \u0275\u0275repeater(ctx_r1.vendors());
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(!((tmp_4_0 = ctx_r1.form.get("vendorId")) == null ? null : tmp_4_0.value) ? 3 : -1);
+  }
+}
+function PaymentForm_Conditional_43_Conditional_7_Conditional_6_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 60);
+    \u0275\u0275text(1, "\u8ACB\u5F9E\u6E05\u55AE\u4E2D\u9078\u64C7\u5EE0\u5546\uFF1B\u627E\u4E0D\u5230\u6642\u8ACB\u4F7F\u7528\u300C+ \u65B0\u589E\u5EE0\u5546\u300D\u3002");
+    \u0275\u0275elementEnd();
+  }
+}
+function PaymentForm_Conditional_43_Conditional_7_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r5 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 62)(1, "input", 63);
+    \u0275\u0275twoWayListener("ngModelChange", function PaymentForm_Conditional_43_Conditional_7_Template_input_ngModelChange_1_listener($event) {
+      \u0275\u0275restoreView(_r5);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      \u0275\u0275twoWayBindingSet(ctx_r1.vendorTypeaheadModel, $event) || (ctx_r1.vendorTypeaheadModel = $event);
+      return \u0275\u0275resetView($event);
+    });
+    \u0275\u0275listener("selectItem", function PaymentForm_Conditional_43_Conditional_7_Template_input_selectItem_1_listener($event) {
+      \u0275\u0275restoreView(_r5);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.onVendorSelect($event));
+    })("input", function PaymentForm_Conditional_43_Conditional_7_Template_input_input_1_listener($event) {
+      \u0275\u0275restoreView(_r5);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.onVendorInput($event));
+    });
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(2, "button", 64);
+    \u0275\u0275listener("click", function PaymentForm_Conditional_43_Conditional_7_Template_button_click_2_listener() {
+      \u0275\u0275restoreView(_r5);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.openQuickAddVendor());
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(3, "svg", 48);
+    \u0275\u0275element(4, "use", 65);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(5, " \u65B0\u589E\u5EE0\u5546 ");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275conditionalCreate(6, PaymentForm_Conditional_43_Conditional_7_Conditional_6_Template, 2, 0, "div", 60);
+  }
+  if (rf & 2) {
+    let tmp_9_0;
+    const ctx_r1 = \u0275\u0275nextContext(2);
+    \u0275\u0275advance();
+    \u0275\u0275property("ngbTypeahead", ctx_r1.vendorSearch)("resultFormatter", ctx_r1.vendorFormatter)("inputFormatter", ctx_r1.vendorInputFormatter)("editable", false);
+    \u0275\u0275twoWayProperty("ngModel", ctx_r1.vendorTypeaheadModel);
+    \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(7, _c13));
+    \u0275\u0275advance(5);
+    \u0275\u0275conditional(((tmp_9_0 = ctx_r1.form.get("vendorId")) == null ? null : tmp_9_0.invalid) && ((tmp_9_0 = ctx_r1.form.get("vendorId")) == null ? null : tmp_9_0.touched) ? 6 : -1);
+  }
+}
+function PaymentForm_Conditional_43_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 17)(1, "div", 18)(2, "label", 19);
+    \u0275\u0275text(3, "\u5EE0\u5546 ");
+    \u0275\u0275elementStart(4, "span", 20);
+    \u0275\u0275text(5, "*");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275conditionalCreate(6, PaymentForm_Conditional_43_Conditional_6_Template, 4, 1, "p", 61)(7, PaymentForm_Conditional_43_Conditional_7_Template, 7, 8);
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext();
+    \u0275\u0275advance(6);
+    \u0275\u0275conditional(ctx_r1.isReadOnly ? 6 : 7);
+  }
+}
+function PaymentForm_Conditional_47_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "p", 29);
     \u0275\u0275text(1);
@@ -12150,17 +14094,17 @@ function PaymentForm_Conditional_46_Template(rf, ctx) {
     \u0275\u0275textInterpolate(((tmp_2_0 = ctx_r1.form.get("reason")) == null ? null : tmp_2_0.value) || "\u2014");
   }
 }
-function PaymentForm_Conditional_47_Template(rf, ctx) {
+function PaymentForm_Conditional_48_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275element(0, "textarea", 30);
   }
 }
-function PaymentForm_Conditional_48_Conditional_6_Conditional_1_Template(rf, ctx) {
+function PaymentForm_Conditional_49_Conditional_6_Conditional_1_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 63)(1, "label", 19);
+    \u0275\u0275elementStart(0, "div", 68)(1, "label", 19);
     \u0275\u0275text(2, "\u9810\u8A08\u64A5\u6B3E\u65E5");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "p", 64);
+    \u0275\u0275elementStart(3, "p", 61);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd()();
   }
@@ -12170,12 +14114,12 @@ function PaymentForm_Conditional_48_Conditional_6_Conditional_1_Template(rf, ctx
     \u0275\u0275textInterpolate(ctx_r1.estimatedPaymentDate);
   }
 }
-function PaymentForm_Conditional_48_Conditional_6_Conditional_2_Template(rf, ctx) {
+function PaymentForm_Conditional_49_Conditional_6_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 63)(1, "label", 19);
+    \u0275\u0275elementStart(0, "div", 68)(1, "label", 19);
     \u0275\u0275text(2, "\u64A5\u6B3E\u65E5");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "p", 65);
+    \u0275\u0275elementStart(3, "p", 69);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd()();
   }
@@ -12185,11 +14129,11 @@ function PaymentForm_Conditional_48_Conditional_6_Conditional_2_Template(rf, ctx
     \u0275\u0275textInterpolate(ctx_r1.paidAt);
   }
 }
-function PaymentForm_Conditional_48_Conditional_6_Template(rf, ctx) {
+function PaymentForm_Conditional_49_Conditional_6_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 62);
-    \u0275\u0275conditionalCreate(1, PaymentForm_Conditional_48_Conditional_6_Conditional_1_Template, 5, 1, "div", 63);
-    \u0275\u0275conditionalCreate(2, PaymentForm_Conditional_48_Conditional_6_Conditional_2_Template, 5, 1, "div", 63);
+    \u0275\u0275elementStart(0, "div", 67);
+    \u0275\u0275conditionalCreate(1, PaymentForm_Conditional_49_Conditional_6_Conditional_1_Template, 5, 1, "div", 68);
+    \u0275\u0275conditionalCreate(2, PaymentForm_Conditional_49_Conditional_6_Conditional_2_Template, 5, 1, "div", 68);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -12200,15 +14144,15 @@ function PaymentForm_Conditional_48_Conditional_6_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r1.paidAt ? 2 : -1);
   }
 }
-function PaymentForm_Conditional_48_Template(rf, ctx) {
+function PaymentForm_Conditional_49_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 28)(1, "label", 19);
     \u0275\u0275text(2, "\u7C3D\u6838\u72C0\u614B");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div")(4, "span", 61);
+    \u0275\u0275elementStart(3, "div")(4, "span", 66);
     \u0275\u0275text(5);
     \u0275\u0275elementEnd()()();
-    \u0275\u0275conditionalCreate(6, PaymentForm_Conditional_48_Conditional_6_Template, 3, 2, "div", 62);
+    \u0275\u0275conditionalCreate(6, PaymentForm_Conditional_49_Conditional_6_Template, 3, 2, "div", 67);
   }
   if (rf & 2) {
     const ctx_r1 = \u0275\u0275nextContext();
@@ -12220,36 +14164,36 @@ function PaymentForm_Conditional_48_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r1.estimatedPaymentDate || ctx_r1.paidAt ? 6 : -1);
   }
 }
-function PaymentForm_Conditional_55_Conditional_8_Template(rf, ctx) {
+function PaymentForm_Conditional_56_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 71);
+    \u0275\u0275elementStart(0, "div", 75);
     \u0275\u0275text(1, "\u8ACB\u81F3\u5C11\u4E0A\u50B3\u4E00\u5F35\u767C\u7968\u3002");
     \u0275\u0275elementEnd();
   }
 }
-function PaymentForm_Conditional_55_Template(rf, ctx) {
+function PaymentForm_Conditional_56_Template(rf, ctx) {
   if (rf & 1) {
-    const _r4 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "label", 66);
+    const _r6 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "label", 70);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 67);
-    \u0275\u0275element(2, "use", 68);
+    \u0275\u0275elementStart(1, "svg", 71);
+    \u0275\u0275element(2, "use", 72);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(3, "span", 69);
+    \u0275\u0275elementStart(3, "span", 73);
     \u0275\u0275text(4, "\u9EDE\u64CA\u4E0A\u50B3\u767C\u7968\u5716\u6A94");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(5, "span", 59);
     \u0275\u0275text(6, "\u652F\u63F4 JPG\u3001PNG\u3001HEIC\u3001PDF\uFF0C\u53EF\u591A\u9078");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "input", 70);
-    \u0275\u0275listener("change", function PaymentForm_Conditional_55_Template_input_change_7_listener($event) {
-      \u0275\u0275restoreView(_r4);
+    \u0275\u0275elementStart(7, "input", 74);
+    \u0275\u0275listener("change", function PaymentForm_Conditional_56_Template_input_change_7_listener($event) {
+      \u0275\u0275restoreView(_r6);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.onFilesSelected($event));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275conditionalCreate(8, PaymentForm_Conditional_55_Conditional_8_Template, 2, 0, "div", 71);
+    \u0275\u0275conditionalCreate(8, PaymentForm_Conditional_56_Conditional_8_Template, 2, 0, "div", 75);
   }
   if (rf & 2) {
     const ctx_r1 = \u0275\u0275nextContext();
@@ -12257,21 +14201,21 @@ function PaymentForm_Conditional_55_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r1.showInvoiceError ? 8 : -1);
   }
 }
-function PaymentForm_Conditional_71_Template(rf, ctx) {
+function PaymentForm_Conditional_72_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275element(0, "th", 41);
   }
 }
-function PaymentForm_For_74_Conditional_3_Template(rf, ctx) {
+function PaymentForm_For_75_Conditional_3_Template(rf, ctx) {
   if (rf & 1) {
-    const _r5 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 86);
-    \u0275\u0275listener("click", function PaymentForm_For_74_Conditional_3_Template_button_click_0_listener() {
+    const _r7 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 90);
+    \u0275\u0275listener("click", function PaymentForm_For_75_Conditional_3_Template_button_click_0_listener() {
       let tmp_15_0;
-      \u0275\u0275restoreView(_r5);
-      const ctrl_r6 = \u0275\u0275nextContext().$implicit;
+      \u0275\u0275restoreView(_r7);
+      const ctrl_r8 = \u0275\u0275nextContext().$implicit;
       const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.openPreview((tmp_15_0 = ctrl_r6.get("fileName")) == null ? null : tmp_15_0.value, ((tmp_15_0 = ctrl_r6.get("previewUrl")) == null ? null : tmp_15_0.value) || ((tmp_15_0 = ctrl_r6.get("fileUrl")) == null ? null : tmp_15_0.value)));
+      return \u0275\u0275resetView(ctx_r1.openPreview((tmp_15_0 = ctrl_r8.get("fileName")) == null ? null : tmp_15_0.value, ((tmp_15_0 = ctrl_r8.get("previewUrl")) == null ? null : tmp_15_0.value) || ((tmp_15_0 = ctrl_r8.get("fileUrl")) == null ? null : tmp_15_0.value)));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 48);
@@ -12280,222 +14224,222 @@ function PaymentForm_For_74_Conditional_3_Template(rf, ctx) {
   }
   if (rf & 2) {
     let tmp_14_0;
-    const ctrl_r6 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275property("title", \u0275\u0275interpolate((tmp_14_0 = ctrl_r6.get("fileName")) == null ? null : tmp_14_0.value));
+    const ctrl_r8 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275property("title", \u0275\u0275interpolate((tmp_14_0 = ctrl_r8.get("fileName")) == null ? null : tmp_14_0.value));
   }
 }
-function PaymentForm_For_74_Conditional_4_Template(rf, ctx) {
+function PaymentForm_For_75_Conditional_4_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "span", 74);
+    \u0275\u0275element(0, "span", 78);
   }
 }
-function PaymentForm_For_74_Conditional_6_Template(rf, ctx) {
+function PaymentForm_For_75_Conditional_6_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 76);
+    \u0275\u0275elementStart(0, "span", 80);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
     let tmp_14_0;
-    const ctrl_r6 = \u0275\u0275nextContext().$implicit;
+    const ctrl_r8 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(((tmp_14_0 = ctrl_r6.get("invoiceNo")) == null ? null : tmp_14_0.value) || "\u2014");
+    \u0275\u0275textInterpolate(((tmp_14_0 = ctrl_r8.get("invoiceNo")) == null ? null : tmp_14_0.value) || "\u2014");
   }
 }
-function PaymentForm_For_74_Conditional_7_Template(rf, ctx) {
+function PaymentForm_For_75_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 77);
-    \u0275\u0275element(1, "span", 87);
+    \u0275\u0275elementStart(0, "div", 81);
+    \u0275\u0275element(1, "span", 91);
     \u0275\u0275text(2, " \u8B58\u5225\u4E2D\u2026 ");
     \u0275\u0275elementEnd();
   }
 }
-function PaymentForm_For_74_Conditional_8_Template(rf, ctx) {
+function PaymentForm_For_75_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "input", 78);
+    \u0275\u0275element(0, "input", 82);
   }
 }
-function PaymentForm_For_74_Conditional_10_Template(rf, ctx) {
+function PaymentForm_For_75_Conditional_10_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 79);
+    \u0275\u0275elementStart(0, "span", 83);
     \u0275\u0275text(1);
     \u0275\u0275pipe(2, "date");
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
     let tmp_14_0;
-    const ctrl_r6 = \u0275\u0275nextContext().$implicit;
+    const ctrl_r8 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(((tmp_14_0 = ctrl_r6.get("invoiceDate")) == null ? null : tmp_14_0.value) ? \u0275\u0275pipeBind2(2, 1, (tmp_14_0 = ctrl_r6.get("invoiceDate")) == null ? null : tmp_14_0.value, "yyyy-MM-dd") : "\u2014");
+    \u0275\u0275textInterpolate(((tmp_14_0 = ctrl_r8.get("invoiceDate")) == null ? null : tmp_14_0.value) ? \u0275\u0275pipeBind2(2, 1, (tmp_14_0 = ctrl_r8.get("invoiceDate")) == null ? null : tmp_14_0.value, "yyyy-MM-dd") : "\u2014");
   }
 }
-function PaymentForm_For_74_Conditional_11_Template(rf, ctx) {
+function PaymentForm_For_75_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 77);
-    \u0275\u0275element(1, "span", 87);
+    \u0275\u0275elementStart(0, "div", 81);
+    \u0275\u0275element(1, "span", 91);
     \u0275\u0275text(2, " \u8B58\u5225\u4E2D\u2026 ");
     \u0275\u0275elementEnd();
   }
 }
-function PaymentForm_For_74_Conditional_12_Template(rf, ctx) {
+function PaymentForm_For_75_Conditional_12_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "input", 80);
+    \u0275\u0275element(0, "input", 84);
   }
 }
-function PaymentForm_For_74_Conditional_14_Template(rf, ctx) {
+function PaymentForm_For_75_Conditional_14_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 79);
+    \u0275\u0275elementStart(0, "span", 83);
     \u0275\u0275text(1);
     \u0275\u0275pipe(2, "number");
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
     let tmp_14_0;
-    const ctrl_r6 = \u0275\u0275nextContext().$implicit;
+    const ctrl_r8 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(2, 1, (tmp_14_0 = ctrl_r6.get("amount")) == null ? null : tmp_14_0.value, "1.0-0"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(2, 1, (tmp_14_0 = ctrl_r8.get("amount")) == null ? null : tmp_14_0.value, "1.0-0"));
   }
 }
-function PaymentForm_For_74_Conditional_15_Template(rf, ctx) {
+function PaymentForm_For_75_Conditional_15_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 81);
+    \u0275\u0275elementStart(0, "div", 85);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
 }
-function PaymentForm_For_74_Conditional_16_Template(rf, ctx) {
+function PaymentForm_For_75_Conditional_16_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 82)(1, "span", 88);
+    \u0275\u0275elementStart(0, "div", 86)(1, "span", 92);
     \u0275\u0275text(2, "NT$");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(3, "input", 89);
+    \u0275\u0275element(3, "input", 93);
     \u0275\u0275elementEnd();
   }
 }
-function PaymentForm_For_74_Conditional_18_Template(rf, ctx) {
+function PaymentForm_For_75_Conditional_18_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 79);
+    \u0275\u0275elementStart(0, "span", 83);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
     let tmp_14_0;
-    const ctrl_r6 = \u0275\u0275nextContext().$implicit;
+    const ctrl_r8 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(((tmp_14_0 = ctrl_r6.get("itemName")) == null ? null : tmp_14_0.value) || "\u2014");
+    \u0275\u0275textInterpolate(((tmp_14_0 = ctrl_r8.get("itemName")) == null ? null : tmp_14_0.value) || "\u2014");
   }
 }
-function PaymentForm_For_74_Conditional_19_Template(rf, ctx) {
+function PaymentForm_For_75_Conditional_19_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 81);
+    \u0275\u0275elementStart(0, "div", 85);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
 }
-function PaymentForm_For_74_Conditional_20_Template(rf, ctx) {
+function PaymentForm_For_75_Conditional_20_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "input", 83);
+    \u0275\u0275element(0, "input", 87);
   }
 }
-function PaymentForm_For_74_Conditional_22_Template(rf, ctx) {
+function PaymentForm_For_75_Conditional_22_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 79);
+    \u0275\u0275elementStart(0, "span", 83);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
     let tmp_14_0;
-    const ctrl_r6 = \u0275\u0275nextContext().$implicit;
+    const ctrl_r8 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(((tmp_14_0 = ctrl_r6.get("note")) == null ? null : tmp_14_0.value) || "\u2014");
+    \u0275\u0275textInterpolate(((tmp_14_0 = ctrl_r8.get("note")) == null ? null : tmp_14_0.value) || "\u2014");
   }
 }
-function PaymentForm_For_74_Conditional_23_Template(rf, ctx) {
+function PaymentForm_For_75_Conditional_23_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 81);
+    \u0275\u0275elementStart(0, "div", 85);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
 }
-function PaymentForm_For_74_Conditional_24_Template(rf, ctx) {
+function PaymentForm_For_75_Conditional_24_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "input", 84);
+    \u0275\u0275element(0, "input", 88);
   }
 }
-function PaymentForm_For_74_Conditional_25_Template(rf, ctx) {
+function PaymentForm_For_75_Conditional_25_Template(rf, ctx) {
   if (rf & 1) {
-    const _r7 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "td", 85)(1, "button", 90);
-    \u0275\u0275listener("click", function PaymentForm_For_74_Conditional_25_Template_button_click_1_listener() {
-      \u0275\u0275restoreView(_r7);
-      const \u0275$index_239_r8 = \u0275\u0275nextContext().$index;
+    const _r9 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "td", 89)(1, "button", 94);
+    \u0275\u0275listener("click", function PaymentForm_For_75_Conditional_25_Template_button_click_1_listener() {
+      \u0275\u0275restoreView(_r9);
+      const \u0275$index_274_r10 = \u0275\u0275nextContext().$index;
       const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.removeInvoice(\u0275$index_239_r8));
+      return \u0275\u0275resetView(ctx_r1.removeInvoice(\u0275$index_274_r10));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 48);
-    \u0275\u0275element(3, "use", 91);
+    \u0275\u0275element(3, "use", 95);
     \u0275\u0275elementEnd()()();
   }
   if (rf & 2) {
     \u0275\u0275nextContext();
-    const isOcr_r9 = \u0275\u0275readContextLet(0);
+    const isOcr_r11 = \u0275\u0275readContextLet(0);
     \u0275\u0275advance();
-    \u0275\u0275property("disabled", isOcr_r9);
+    \u0275\u0275property("disabled", isOcr_r11);
   }
 }
-function PaymentForm_For_74_Template(rf, ctx) {
+function PaymentForm_For_75_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275declareLet(0);
-    \u0275\u0275elementStart(1, "tr", 43)(2, "td", 72);
-    \u0275\u0275conditionalCreate(3, PaymentForm_For_74_Conditional_3_Template, 3, 2, "button", 73)(4, PaymentForm_For_74_Conditional_4_Template, 1, 0, "span", 74);
+    \u0275\u0275elementStart(1, "tr", 43)(2, "td", 76);
+    \u0275\u0275conditionalCreate(3, PaymentForm_For_75_Conditional_3_Template, 3, 2, "button", 77)(4, PaymentForm_For_75_Conditional_4_Template, 1, 0, "span", 78);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "td", 75);
-    \u0275\u0275conditionalCreate(6, PaymentForm_For_74_Conditional_6_Template, 2, 1, "span", 76)(7, PaymentForm_For_74_Conditional_7_Template, 3, 0, "div", 77)(8, PaymentForm_For_74_Conditional_8_Template, 1, 0, "input", 78);
+    \u0275\u0275elementStart(5, "td", 79);
+    \u0275\u0275conditionalCreate(6, PaymentForm_For_75_Conditional_6_Template, 2, 1, "span", 80)(7, PaymentForm_For_75_Conditional_7_Template, 3, 0, "div", 81)(8, PaymentForm_For_75_Conditional_8_Template, 1, 0, "input", 82);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "td", 75);
-    \u0275\u0275conditionalCreate(10, PaymentForm_For_74_Conditional_10_Template, 3, 4, "span", 79)(11, PaymentForm_For_74_Conditional_11_Template, 3, 0, "div", 77)(12, PaymentForm_For_74_Conditional_12_Template, 1, 0, "input", 80);
+    \u0275\u0275elementStart(9, "td", 79);
+    \u0275\u0275conditionalCreate(10, PaymentForm_For_75_Conditional_10_Template, 3, 4, "span", 83)(11, PaymentForm_For_75_Conditional_11_Template, 3, 0, "div", 81)(12, PaymentForm_For_75_Conditional_12_Template, 1, 0, "input", 84);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(13, "td", 75);
-    \u0275\u0275conditionalCreate(14, PaymentForm_For_74_Conditional_14_Template, 3, 4, "span", 79)(15, PaymentForm_For_74_Conditional_15_Template, 2, 0, "div", 81)(16, PaymentForm_For_74_Conditional_16_Template, 4, 0, "div", 82);
+    \u0275\u0275elementStart(13, "td", 79);
+    \u0275\u0275conditionalCreate(14, PaymentForm_For_75_Conditional_14_Template, 3, 4, "span", 83)(15, PaymentForm_For_75_Conditional_15_Template, 2, 0, "div", 85)(16, PaymentForm_For_75_Conditional_16_Template, 4, 0, "div", 86);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(17, "td", 75);
-    \u0275\u0275conditionalCreate(18, PaymentForm_For_74_Conditional_18_Template, 2, 1, "span", 79)(19, PaymentForm_For_74_Conditional_19_Template, 2, 0, "div", 81)(20, PaymentForm_For_74_Conditional_20_Template, 1, 0, "input", 83);
+    \u0275\u0275elementStart(17, "td", 79);
+    \u0275\u0275conditionalCreate(18, PaymentForm_For_75_Conditional_18_Template, 2, 1, "span", 83)(19, PaymentForm_For_75_Conditional_19_Template, 2, 0, "div", 85)(20, PaymentForm_For_75_Conditional_20_Template, 1, 0, "input", 87);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(21, "td", 75);
-    \u0275\u0275conditionalCreate(22, PaymentForm_For_74_Conditional_22_Template, 2, 1, "span", 79)(23, PaymentForm_For_74_Conditional_23_Template, 2, 0, "div", 81)(24, PaymentForm_For_74_Conditional_24_Template, 1, 0, "input", 84);
+    \u0275\u0275elementStart(21, "td", 79);
+    \u0275\u0275conditionalCreate(22, PaymentForm_For_75_Conditional_22_Template, 2, 1, "span", 83)(23, PaymentForm_For_75_Conditional_23_Template, 2, 0, "div", 85)(24, PaymentForm_For_75_Conditional_24_Template, 1, 0, "input", 88);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(25, PaymentForm_For_74_Conditional_25_Template, 4, 1, "td", 85);
+    \u0275\u0275conditionalCreate(25, PaymentForm_For_75_Conditional_25_Template, 4, 1, "td", 89);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
     let tmp_12_0;
     let tmp_14_0;
-    const ctrl_r6 = ctx.$implicit;
-    const \u0275$index_239_r8 = ctx.$index;
+    const ctrl_r8 = ctx.$implicit;
+    const \u0275$index_274_r10 = ctx.$index;
     const ctx_r1 = \u0275\u0275nextContext();
-    const isOcr_r10 = \u0275\u0275storeLet(ctx_r1.ocrLoadingIds.has((tmp_12_0 = ctrl_r6.get("id")) == null ? null : tmp_12_0.value));
+    const isOcr_r12 = \u0275\u0275storeLet(ctx_r1.ocrLoadingIds.has((tmp_12_0 = ctrl_r8.get("id")) == null ? null : tmp_12_0.value));
     \u0275\u0275advance();
-    \u0275\u0275property("formGroupName", \u0275$index_239_r8);
+    \u0275\u0275property("formGroupName", \u0275$index_274_r10);
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(((tmp_14_0 = ctrl_r6.get("previewUrl")) == null ? null : tmp_14_0.value) || ((tmp_14_0 = ctrl_r6.get("fileUrl")) == null ? null : tmp_14_0.value) ? 3 : isOcr_r10 ? 4 : -1);
+    \u0275\u0275conditional(((tmp_14_0 = ctrl_r8.get("previewUrl")) == null ? null : tmp_14_0.value) || ((tmp_14_0 = ctrl_r8.get("fileUrl")) == null ? null : tmp_14_0.value) ? 3 : isOcr_r12 ? 4 : -1);
     \u0275\u0275advance(3);
-    \u0275\u0275conditional(ctx_r1.isReadOnly ? 6 : isOcr_r10 ? 7 : 8);
+    \u0275\u0275conditional(ctx_r1.isReadOnly ? 6 : isOcr_r12 ? 7 : 8);
     \u0275\u0275advance(4);
-    \u0275\u0275conditional(ctx_r1.isReadOnly ? 10 : isOcr_r10 ? 11 : 12);
+    \u0275\u0275conditional(ctx_r1.isReadOnly ? 10 : isOcr_r12 ? 11 : 12);
     \u0275\u0275advance(4);
-    \u0275\u0275conditional(ctx_r1.isReadOnly ? 14 : isOcr_r10 ? 15 : 16);
+    \u0275\u0275conditional(ctx_r1.isReadOnly ? 14 : isOcr_r12 ? 15 : 16);
     \u0275\u0275advance(4);
-    \u0275\u0275conditional(ctx_r1.isReadOnly ? 18 : isOcr_r10 ? 19 : 20);
+    \u0275\u0275conditional(ctx_r1.isReadOnly ? 18 : isOcr_r12 ? 19 : 20);
     \u0275\u0275advance(4);
-    \u0275\u0275conditional(ctx_r1.isReadOnly ? 22 : isOcr_r10 ? 23 : 24);
+    \u0275\u0275conditional(ctx_r1.isReadOnly ? 22 : isOcr_r12 ? 23 : 24);
     \u0275\u0275advance(3);
     \u0275\u0275conditional(!ctx_r1.isReadOnly ? 25 : -1);
   }
 }
-function PaymentForm_ForEmpty_75_Template(rf, ctx) {
+function PaymentForm_ForEmpty_76_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 92);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 96);
     \u0275\u0275text(2, "\u5C1A\u672A\u65B0\u589E\u767C\u7968");
     \u0275\u0275elementEnd()();
   }
@@ -12505,22 +14449,22 @@ function PaymentForm_ForEmpty_75_Template(rf, ctx) {
     \u0275\u0275attribute("colspan", ctx_r1.isReadOnly ? 6 : 7);
   }
 }
-function PaymentForm_Conditional_76_Conditional_8_Template(rf, ctx) {
+function PaymentForm_Conditional_77_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275element(0, "td");
   }
 }
-function PaymentForm_Conditional_76_Template(rf, ctx) {
+function PaymentForm_Conditional_77_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tfoot")(1, "tr", 35)(2, "td", 93);
+    \u0275\u0275elementStart(0, "tfoot")(1, "tr", 35)(2, "td", 97);
     \u0275\u0275text(3, "\u5408\u8A08");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "td", 94);
+    \u0275\u0275elementStart(4, "td", 98);
     \u0275\u0275text(5);
     \u0275\u0275pipe(6, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(7, "td", 95);
-    \u0275\u0275conditionalCreate(8, PaymentForm_Conditional_76_Conditional_8_Template, 1, 0, "td");
+    \u0275\u0275element(7, "td", 99);
+    \u0275\u0275conditionalCreate(8, PaymentForm_Conditional_77_Conditional_8_Template, 1, 0, "td");
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -12531,105 +14475,105 @@ function PaymentForm_Conditional_76_Template(rf, ctx) {
     \u0275\u0275conditional(!ctx_r1.isReadOnly ? 8 : -1);
   }
 }
-function PaymentForm_Conditional_77_For_9_For_7_Template(rf, ctx) {
+function PaymentForm_Conditional_78_For_9_For_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "option", 58);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const jt_r15 = ctx.$implicit;
-    \u0275\u0275property("ngValue", jt_r15.id);
+    const jt_r17 = ctx.$implicit;
+    \u0275\u0275property("ngValue", jt_r17.id);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(jt_r15.name);
+    \u0275\u0275textInterpolate(jt_r17.name);
   }
 }
-function PaymentForm_Conditional_77_For_9_For_12_Template(rf, ctx) {
+function PaymentForm_Conditional_78_For_9_For_12_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "option", 58);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const user_r16 = ctx.$implicit;
-    \u0275\u0275property("ngValue", user_r16.id);
+    const user_r18 = ctx.$implicit;
+    \u0275\u0275property("ngValue", user_r18.id);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(user_r16.name);
+    \u0275\u0275textInterpolate(user_r18.name);
   }
 }
-function PaymentForm_Conditional_77_For_9_Template(rf, ctx) {
+function PaymentForm_Conditional_78_For_9_Template(rf, ctx) {
   if (rf & 1) {
-    const _r12 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 97)(1, "span", 100);
+    const _r14 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 101)(1, "span", 103);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "select", 101);
-    \u0275\u0275twoWayListener("ngModelChange", function PaymentForm_Conditional_77_For_9_Template_select_ngModelChange_3_listener($event) {
-      const entry_r13 = \u0275\u0275restoreView(_r12).$implicit;
-      \u0275\u0275twoWayBindingSet(entry_r13.selectedJobTitleId, $event) || (entry_r13.selectedJobTitleId = $event);
+    \u0275\u0275elementStart(3, "select", 104);
+    \u0275\u0275twoWayListener("ngModelChange", function PaymentForm_Conditional_78_For_9_Template_select_ngModelChange_3_listener($event) {
+      const entry_r15 = \u0275\u0275restoreView(_r14).$implicit;
+      \u0275\u0275twoWayBindingSet(entry_r15.selectedJobTitleId, $event) || (entry_r15.selectedJobTitleId = $event);
       return \u0275\u0275resetView($event);
     });
-    \u0275\u0275listener("ngModelChange", function PaymentForm_Conditional_77_For_9_Template_select_ngModelChange_3_listener() {
-      const \u0275$index_378_r14 = \u0275\u0275restoreView(_r12).$index;
+    \u0275\u0275listener("ngModelChange", function PaymentForm_Conditional_78_For_9_Template_select_ngModelChange_3_listener() {
+      const \u0275$index_413_r16 = \u0275\u0275restoreView(_r14).$index;
       const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.onEntryJobTitleChange(\u0275$index_378_r14));
+      return \u0275\u0275resetView(ctx_r1.onEntryJobTitleChange(\u0275$index_413_r16));
     });
     \u0275\u0275elementStart(4, "option", 58);
     \u0275\u0275text(5, "\u2014 \u8077\u7A31 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(6, PaymentForm_Conditional_77_For_9_For_7_Template, 2, 2, "option", 58, _forTrack13);
+    \u0275\u0275repeaterCreate(6, PaymentForm_Conditional_78_For_9_For_7_Template, 2, 2, "option", 58, _forTrack13);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "select", 102);
-    \u0275\u0275twoWayListener("ngModelChange", function PaymentForm_Conditional_77_For_9_Template_select_ngModelChange_8_listener($event) {
-      const entry_r13 = \u0275\u0275restoreView(_r12).$implicit;
-      \u0275\u0275twoWayBindingSet(entry_r13.selectedUserId, $event) || (entry_r13.selectedUserId = $event);
+    \u0275\u0275elementStart(8, "select", 105);
+    \u0275\u0275twoWayListener("ngModelChange", function PaymentForm_Conditional_78_For_9_Template_select_ngModelChange_8_listener($event) {
+      const entry_r15 = \u0275\u0275restoreView(_r14).$implicit;
+      \u0275\u0275twoWayBindingSet(entry_r15.selectedUserId, $event) || (entry_r15.selectedUserId = $event);
       return \u0275\u0275resetView($event);
     });
     \u0275\u0275elementStart(9, "option", 58);
     \u0275\u0275text(10, "\u2014 \u4EBA\u54E1 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(11, PaymentForm_Conditional_77_For_9_For_12_Template, 2, 2, "option", 58, _forTrack13);
+    \u0275\u0275repeaterCreate(11, PaymentForm_Conditional_78_For_9_For_12_Template, 2, 2, "option", 58, _forTrack13);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(13, "button", 103);
-    \u0275\u0275listener("click", function PaymentForm_Conditional_77_For_9_Template_button_click_13_listener() {
-      const \u0275$index_378_r14 = \u0275\u0275restoreView(_r12).$index;
+    \u0275\u0275elementStart(13, "button", 106);
+    \u0275\u0275listener("click", function PaymentForm_Conditional_78_For_9_Template_button_click_13_listener() {
+      const \u0275$index_413_r16 = \u0275\u0275restoreView(_r14).$index;
       const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.removeDesignatedEntry(\u0275$index_378_r14));
+      return \u0275\u0275resetView(ctx_r1.removeDesignatedEntry(\u0275$index_413_r16));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(14, "svg", 48);
-    \u0275\u0275element(15, "use", 91);
+    \u0275\u0275element(15, "use", 95);
     \u0275\u0275elementEnd()()();
   }
   if (rf & 2) {
-    const entry_r13 = ctx.$implicit;
-    const \u0275$index_378_r14 = ctx.$index;
+    const entry_r15 = ctx.$implicit;
+    const \u0275$index_413_r16 = ctx.$index;
     const ctx_r1 = \u0275\u0275nextContext(2);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate1("", \u0275$index_378_r14 + 1, ".");
+    \u0275\u0275textInterpolate1("", \u0275$index_413_r16 + 1, ".");
     \u0275\u0275advance();
-    \u0275\u0275twoWayProperty("ngModel", entry_r13.selectedJobTitleId);
+    \u0275\u0275twoWayProperty("ngModel", entry_r15.selectedJobTitleId);
     \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(7, _c13));
     \u0275\u0275advance();
     \u0275\u0275property("ngValue", null);
     \u0275\u0275advance(2);
     \u0275\u0275repeater(ctx_r1.jobTitles);
     \u0275\u0275advance(2);
-    \u0275\u0275twoWayProperty("ngModel", entry_r13.selectedUserId);
+    \u0275\u0275twoWayProperty("ngModel", entry_r15.selectedUserId);
     \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(8, _c13));
     \u0275\u0275advance();
     \u0275\u0275property("ngValue", null);
     \u0275\u0275advance(2);
-    \u0275\u0275repeater(entry_r13.filteredUsers);
+    \u0275\u0275repeater(entry_r15.filteredUsers);
   }
 }
-function PaymentForm_Conditional_77_Template(rf, ctx) {
+function PaymentForm_Conditional_78_Template(rf, ctx) {
   if (rf & 1) {
-    const _r11 = \u0275\u0275getCurrentView();
+    const _r13 = \u0275\u0275getCurrentView();
     \u0275\u0275elementStart(0, "div", 31)(1, "div", 13);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 14);
-    \u0275\u0275element(3, "use", 96);
+    \u0275\u0275element(3, "use", 100);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u6307\u5B9A\u5BE9\u6838\u8005 ");
     \u0275\u0275elementEnd();
@@ -12637,16 +14581,16 @@ function PaymentForm_Conditional_77_Template(rf, ctx) {
     \u0275\u0275elementStart(5, "div", 16)(6, "label", 19);
     \u0275\u0275text(7, "\u6307\u5B9A\u5BE9\u6838\u8005\uFF08\u4F9D\u5E8F\u5BE9\u6838\uFF09");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(8, PaymentForm_Conditional_77_For_9_Template, 16, 9, "div", 97, \u0275\u0275repeaterTrackByIndex);
-    \u0275\u0275elementStart(10, "button", 98);
-    \u0275\u0275listener("click", function PaymentForm_Conditional_77_Template_button_click_10_listener() {
-      \u0275\u0275restoreView(_r11);
+    \u0275\u0275repeaterCreate(8, PaymentForm_Conditional_78_For_9_Template, 16, 9, "div", 101, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275elementStart(10, "button", 102);
+    \u0275\u0275listener("click", function PaymentForm_Conditional_78_Template_button_click_10_listener() {
+      \u0275\u0275restoreView(_r13);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.addDesignatedEntry());
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(11, "svg", 48);
-    \u0275\u0275element(12, "use", 99);
+    \u0275\u0275element(12, "use", 65);
     \u0275\u0275elementEnd();
     \u0275\u0275text(13, " \u65B0\u589E\u5BE9\u6838\u4EBA ");
     \u0275\u0275elementEnd()()();
@@ -12657,25 +14601,25 @@ function PaymentForm_Conditional_77_Template(rf, ctx) {
     \u0275\u0275repeater(ctx_r1.designatedEntries);
   }
 }
-function PaymentForm_Conditional_78_For_10_Template(rf, ctx) {
+function PaymentForm_Conditional_79_For_10_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "li", 79);
+    \u0275\u0275elementStart(0, "li", 83);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const entry_r17 = ctx.$implicit;
+    const entry_r19 = ctx.$implicit;
     const ctx_r1 = \u0275\u0275nextContext(2);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(ctx_r1.getUserName(entry_r17.selectedUserId));
+    \u0275\u0275textInterpolate(ctx_r1.getUserName(entry_r19.selectedUserId));
   }
 }
-function PaymentForm_Conditional_78_Template(rf, ctx) {
+function PaymentForm_Conditional_79_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 31)(1, "div", 13);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 14);
-    \u0275\u0275element(3, "use", 96);
+    \u0275\u0275element(3, "use", 100);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u6307\u5B9A\u5BE9\u6838\u8005 ");
     \u0275\u0275elementEnd();
@@ -12683,8 +14627,8 @@ function PaymentForm_Conditional_78_Template(rf, ctx) {
     \u0275\u0275elementStart(5, "div", 16)(6, "label", 19);
     \u0275\u0275text(7, "\u6307\u5B9A\u5BE9\u6838\u8005\uFF08\u4F9D\u5E8F\u5BE9\u6838\uFF09");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "ol", 104);
-    \u0275\u0275repeaterCreate(9, PaymentForm_Conditional_78_For_10_Template, 2, 1, "li", 79, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275elementStart(8, "ol", 107);
+    \u0275\u0275repeaterCreate(9, PaymentForm_Conditional_79_For_10_Template, 2, 1, "li", 83, \u0275\u0275repeaterTrackByIndex);
     \u0275\u0275elementEnd()()();
   }
   if (rf & 2) {
@@ -12693,27 +14637,27 @@ function PaymentForm_Conditional_78_Template(rf, ctx) {
     \u0275\u0275repeater(ctx_r1.designatedEntries);
   }
 }
-function PaymentForm_Conditional_80_Conditional_2_Template(rf, ctx) {
+function PaymentForm_Conditional_81_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "span", 106);
+    \u0275\u0275element(0, "span", 109);
   }
 }
-function PaymentForm_Conditional_80_Template(rf, ctx) {
+function PaymentForm_Conditional_81_Template(rf, ctx) {
   if (rf & 1) {
-    const _r18 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 45)(1, "button", 105);
-    \u0275\u0275conditionalCreate(2, PaymentForm_Conditional_80_Conditional_2_Template, 1, 0, "span", 106);
+    const _r20 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 45)(1, "button", 108);
+    \u0275\u0275conditionalCreate(2, PaymentForm_Conditional_81_Conditional_2_Template, 1, 0, "span", 109);
     \u0275\u0275text(3);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "button", 107);
-    \u0275\u0275listener("click", function PaymentForm_Conditional_80_Template_button_click_4_listener() {
-      \u0275\u0275restoreView(_r18);
+    \u0275\u0275elementStart(4, "button", 110);
+    \u0275\u0275listener("click", function PaymentForm_Conditional_81_Template_button_click_4_listener() {
+      \u0275\u0275restoreView(_r20);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.submitForApproval());
     });
     \u0275\u0275text(5, " \u9001\u51FA\u7533\u8ACB ");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "a", 108);
+    \u0275\u0275elementStart(6, "a", 111);
     \u0275\u0275text(7, "\u53D6\u6D88");
     \u0275\u0275elementEnd()();
   }
@@ -12729,12 +14673,12 @@ function PaymentForm_Conditional_80_Template(rf, ctx) {
     \u0275\u0275property("disabled", ctx_r1.form.invalid || ctx_r1.isAnyOcrPending);
   }
 }
-function PaymentForm_Conditional_81_Conditional_8_Template(rf, ctx) {
+function PaymentForm_Conditional_82_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 113);
+    \u0275\u0275elementStart(0, "div", 116);
     \u0275\u0275text(1, "\u6838\u51C6\u6642\u9593\uFF1A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(2, "div", 114);
+    \u0275\u0275elementStart(2, "div", 117);
     \u0275\u0275text(3);
     \u0275\u0275pipe(4, "date");
     \u0275\u0275elementEnd();
@@ -12745,12 +14689,12 @@ function PaymentForm_Conditional_81_Conditional_8_Template(rf, ctx) {
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(4, 1, ctx_r1.approvalTask.reviewedAt, "yyyy-MM-dd HH:mm"));
   }
 }
-function PaymentForm_Conditional_81_Conditional_9_Template(rf, ctx) {
+function PaymentForm_Conditional_82_Conditional_9_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 113);
+    \u0275\u0275elementStart(0, "div", 116);
     \u0275\u0275text(1, "\u5BE9\u6838\u610F\u898B\uFF1A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(2, "div", 115);
+    \u0275\u0275elementStart(2, "div", 118);
     \u0275\u0275text(3);
     \u0275\u0275elementEnd();
   }
@@ -12760,31 +14704,31 @@ function PaymentForm_Conditional_81_Conditional_9_Template(rf, ctx) {
     \u0275\u0275textInterpolate(ctx_r1.approvalTask.reviewNote);
   }
 }
-function PaymentForm_Conditional_81_Conditional_11_Conditional_1_Template(rf, ctx) {
+function PaymentForm_Conditional_82_Conditional_11_Conditional_1_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "span", 74);
+    \u0275\u0275element(0, "span", 78);
     \u0275\u0275text(1, " \u7522\u751F\u4E2D\u2026 ");
   }
 }
-function PaymentForm_Conditional_81_Conditional_11_Conditional_2_Template(rf, ctx) {
+function PaymentForm_Conditional_82_Conditional_11_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(0, "svg", 48);
-    \u0275\u0275element(1, "use", 117);
+    \u0275\u0275element(1, "use", 120);
     \u0275\u0275elementEnd();
     \u0275\u0275text(2, " \u5217\u5370\u8ACB\u6B3E\u55AE ");
   }
 }
-function PaymentForm_Conditional_81_Conditional_11_Template(rf, ctx) {
+function PaymentForm_Conditional_82_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
-    const _r19 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 116);
-    \u0275\u0275listener("click", function PaymentForm_Conditional_81_Conditional_11_Template_button_click_0_listener() {
-      \u0275\u0275restoreView(_r19);
+    const _r21 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 119);
+    \u0275\u0275listener("click", function PaymentForm_Conditional_82_Conditional_11_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r21);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.printPayment());
     });
-    \u0275\u0275conditionalCreate(1, PaymentForm_Conditional_81_Conditional_11_Conditional_1_Template, 2, 0)(2, PaymentForm_Conditional_81_Conditional_11_Conditional_2_Template, 3, 0);
+    \u0275\u0275conditionalCreate(1, PaymentForm_Conditional_82_Conditional_11_Conditional_1_Template, 2, 0)(2, PaymentForm_Conditional_82_Conditional_11_Conditional_2_Template, 3, 0);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -12794,9 +14738,9 @@ function PaymentForm_Conditional_81_Conditional_11_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r1.pdfService.pdfLoading() ? 1 : 2);
   }
 }
-function PaymentForm_Conditional_81_Template(rf, ctx) {
+function PaymentForm_Conditional_82_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 31)(1, "div", 109);
+    \u0275\u0275elementStart(0, "div", 31)(1, "div", 112);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 48);
     \u0275\u0275element(3, "use", 54);
@@ -12804,14 +14748,14 @@ function PaymentForm_Conditional_81_Template(rf, ctx) {
     \u0275\u0275text(4, " \u5DF2\u6838\u51C6 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "div", 16)(6, "p", 110);
+    \u0275\u0275elementStart(5, "div", 16)(6, "p", 113);
     \u0275\u0275text(7, "\u6B64\u7533\u8ACB\u5DF2\u901A\u904E\u6240\u6709\u7C3D\u6838\u6D41\u7A0B\uFF0C\u4E0D\u53EF\u518D\u4FEE\u6539\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(8, PaymentForm_Conditional_81_Conditional_8_Template, 5, 4);
-    \u0275\u0275conditionalCreate(9, PaymentForm_Conditional_81_Conditional_9_Template, 4, 1);
-    \u0275\u0275elementStart(10, "div", 111);
-    \u0275\u0275conditionalCreate(11, PaymentForm_Conditional_81_Conditional_11_Template, 3, 2, "button", 112);
-    \u0275\u0275elementStart(12, "a", 108);
+    \u0275\u0275conditionalCreate(8, PaymentForm_Conditional_82_Conditional_8_Template, 5, 4);
+    \u0275\u0275conditionalCreate(9, PaymentForm_Conditional_82_Conditional_9_Template, 4, 1);
+    \u0275\u0275elementStart(10, "div", 114);
+    \u0275\u0275conditionalCreate(11, PaymentForm_Conditional_82_Conditional_11_Template, 3, 2, "button", 115);
+    \u0275\u0275elementStart(12, "a", 111);
     \u0275\u0275text(13, "\u8FD4\u56DE\u5217\u8868");
     \u0275\u0275elementEnd()()()();
   }
@@ -12825,12 +14769,12 @@ function PaymentForm_Conditional_81_Template(rf, ctx) {
     \u0275\u0275conditional((ctx_r1.approvalTask == null ? null : ctx_r1.approvalTask.paymentDetail) ? 11 : -1);
   }
 }
-function PaymentForm_Conditional_82_Conditional_8_Template(rf, ctx) {
+function PaymentForm_Conditional_83_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 113);
+    \u0275\u0275elementStart(0, "div", 116);
     \u0275\u0275text(1, "\u62D2\u7D55\u6642\u9593\uFF1A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(2, "div", 114);
+    \u0275\u0275elementStart(2, "div", 117);
     \u0275\u0275text(3);
     \u0275\u0275pipe(4, "date");
     \u0275\u0275elementEnd();
@@ -12841,12 +14785,12 @@ function PaymentForm_Conditional_82_Conditional_8_Template(rf, ctx) {
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(4, 1, ctx_r1.approvalTask.reviewedAt, "yyyy-MM-dd HH:mm"));
   }
 }
-function PaymentForm_Conditional_82_Conditional_9_Template(rf, ctx) {
+function PaymentForm_Conditional_83_Conditional_9_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 113);
+    \u0275\u0275elementStart(0, "div", 116);
     \u0275\u0275text(1, "\u62D2\u7D55\u539F\u56E0\uFF1A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(2, "div", 115);
+    \u0275\u0275elementStart(2, "div", 118);
     \u0275\u0275text(3);
     \u0275\u0275elementEnd();
   }
@@ -12856,9 +14800,9 @@ function PaymentForm_Conditional_82_Conditional_9_Template(rf, ctx) {
     \u0275\u0275textInterpolate(ctx_r1.approvalTask.reviewNote);
   }
 }
-function PaymentForm_Conditional_82_Template(rf, ctx) {
+function PaymentForm_Conditional_83_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 31)(1, "div", 118);
+    \u0275\u0275elementStart(0, "div", 31)(1, "div", 121);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 48);
     \u0275\u0275element(3, "use", 56);
@@ -12866,12 +14810,12 @@ function PaymentForm_Conditional_82_Template(rf, ctx) {
     \u0275\u0275text(4, " \u5DF2\u62D2\u7D55 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "div", 16)(6, "p", 110);
+    \u0275\u0275elementStart(5, "div", 16)(6, "p", 113);
     \u0275\u0275text(7, "\u6B64\u7533\u8ACB\u5DF2\u88AB\u62D2\u7D55\uFF0C\u7C3D\u6838\u6D41\u7A0B\u7D42\u6B62\uFF0C\u4E0D\u53EF\u518D\u4FEE\u6539\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(8, PaymentForm_Conditional_82_Conditional_8_Template, 5, 4);
-    \u0275\u0275conditionalCreate(9, PaymentForm_Conditional_82_Conditional_9_Template, 4, 1);
-    \u0275\u0275elementStart(10, "div", 119)(11, "a", 108);
+    \u0275\u0275conditionalCreate(8, PaymentForm_Conditional_83_Conditional_8_Template, 5, 4);
+    \u0275\u0275conditionalCreate(9, PaymentForm_Conditional_83_Conditional_9_Template, 4, 1);
+    \u0275\u0275elementStart(10, "div", 122)(11, "a", 111);
     \u0275\u0275text(12, "\u8FD4\u56DE\u5217\u8868");
     \u0275\u0275elementEnd()()()();
   }
@@ -12883,49 +14827,49 @@ function PaymentForm_Conditional_82_Template(rf, ctx) {
     \u0275\u0275conditional((ctx_r1.approvalTask == null ? null : ctx_r1.approvalTask.reviewNote) ? 9 : -1);
   }
 }
-function PaymentForm_Conditional_83_Template(rf, ctx) {
+function PaymentForm_Conditional_84_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 46)(1, "a", 108);
+    \u0275\u0275elementStart(0, "div", 46)(1, "a", 111);
     \u0275\u0275text(2, "\u8FD4\u56DE\u5217\u8868");
     \u0275\u0275elementEnd()();
   }
 }
-function PaymentForm_ng_template_84_Template(rf, ctx) {
+function PaymentForm_ng_template_85_Template(rf, ctx) {
   if (rf & 1) {
-    const _r20 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 120)(1, "button", 121);
-    \u0275\u0275listener("click", function PaymentForm_ng_template_84_Template_button_click_1_listener() {
-      const modal_r21 = \u0275\u0275restoreView(_r20).$implicit;
-      return \u0275\u0275resetView(modal_r21.close());
+    const _r22 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 123)(1, "button", 124);
+    \u0275\u0275listener("click", function PaymentForm_ng_template_85_Template_button_click_1_listener() {
+      const modal_r23 = \u0275\u0275restoreView(_r22).$implicit;
+      return \u0275\u0275resetView(modal_r23.close());
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(2, "div", 122);
+    \u0275\u0275elementStart(2, "div", 125);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(3, "svg", 123);
+    \u0275\u0275elementStart(3, "svg", 126);
     \u0275\u0275element(4, "use", 54);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "h5", 124);
+    \u0275\u0275elementStart(5, "h5", 127);
     \u0275\u0275text(6, "\u7533\u8ACB\u6210\u529F");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "p", 125);
+    \u0275\u0275elementStart(7, "p", 128);
     \u0275\u0275text(8, "\u8ACB\u76E1\u65E9\u5C07\u6B63\u672C\u8CC7\u6599\u9001\u56DE\u7BA1\u7406\u8655");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(9, "div", 126)(10, "button", 127);
-    \u0275\u0275listener("click", function PaymentForm_ng_template_84_Template_button_click_10_listener() {
-      const modal_r21 = \u0275\u0275restoreView(_r20).$implicit;
-      return \u0275\u0275resetView(modal_r21.close());
+    \u0275\u0275elementStart(9, "div", 129)(10, "button", 130);
+    \u0275\u0275listener("click", function PaymentForm_ng_template_85_Template_button_click_10_listener() {
+      const modal_r23 = \u0275\u0275restoreView(_r22).$implicit;
+      return \u0275\u0275resetView(modal_r23.close());
     });
     \u0275\u0275text(11, "\u78BA\u5B9A");
     \u0275\u0275elementEnd()();
   }
 }
-function PaymentForm_Conditional_86_Template(rf, ctx) {
+function PaymentForm_Conditional_87_Template(rf, ctx) {
   if (rf & 1) {
-    const _r22 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-file-preview-modal", 128);
-    \u0275\u0275listener("closed", function PaymentForm_Conditional_86_Template_app_file_preview_modal_closed_0_listener() {
-      \u0275\u0275restoreView(_r22);
+    const _r24 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "app-file-preview-modal", 131);
+    \u0275\u0275listener("closed", function PaymentForm_Conditional_87_Template_app_file_preview_modal_closed_0_listener() {
+      \u0275\u0275restoreView(_r24);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.closePreview());
     });
@@ -12944,6 +14888,7 @@ var PaymentForm = class _PaymentForm {
   userSvc = inject(UserService);
   approvalSvc = inject(ApprovalService);
   taskSvc = inject(ApprovalTaskService);
+  vendorSvc = inject(VendorService);
   route = inject(ActivatedRoute);
   router = inject(Router);
   cdr = inject(ChangeDetectorRef);
@@ -12975,6 +14920,36 @@ var PaymentForm = class _PaymentForm {
   hasDesignatedStep = false;
   jobTitles = [];
   allUsers = [];
+  /** 廠商下拉清單（type=vendor 時顯示，僅含 IsActive 廠商） */
+  vendors = signal([], ...ngDevMode ? [{ debugName: "vendors" }] : []);
+  /** 廠商 typeahead 雙向綁定值（選定後為 VendorLookup，輸入過程為 string） */
+  vendorTypeaheadModel = null;
+  /** 廠商 autocomplete 搜尋（依名稱 / 統編，最多 10 筆） */
+  vendorSearch = (text$) => text$.pipe(debounceTime(150), distinctUntilChanged(), map((term) => {
+    const t = (term ?? "").toString().toLowerCase().trim();
+    const list = this.vendors();
+    const filtered = t.length === 0 ? list : list.filter((v) => v.name.toLowerCase().includes(t) || (v.taxId ?? "").toLowerCase().includes(t));
+    return filtered.slice(0, 10);
+  }));
+  /** 下拉項目顯示格式：「名稱（統編）」 */
+  vendorFormatter = (v) => v.name + (v.taxId ? `\uFF08${v.taxId}\uFF09` : "");
+  /** 選中後 input 顯示格式：只顯示名稱 */
+  vendorInputFormatter = (v) => v.name;
+  onVendorSelect(event) {
+    const v = event.item;
+    this.form.get("vendorId").setValue(v.id);
+  }
+  /** 使用者編輯輸入框時，若文字與選中的廠商名稱不符則清空 vendorId 強迫重選 */
+  onVendorInput(event) {
+    const inputVal = event.target.value;
+    const selectedId = this.form.get("vendorId")?.value;
+    if (!selectedId)
+      return;
+    const selectedVendor = this.vendors().find((v) => v.id === selectedId);
+    if (selectedVendor && inputVal !== this.vendorInputFormatter(selectedVendor)) {
+      this.form.get("vendorId").setValue(null);
+    }
+  }
   /** 指定審核者條目清單（多人） */
   designatedEntries = [];
   addDesignatedEntry() {
@@ -13000,6 +14975,23 @@ var PaymentForm = class _PaymentForm {
       return "\u2014";
     return this.allUsers.find((u) => u.id === userId)?.name ?? userId;
   }
+  /** 開啟「快速新增廠商」Modal；建立成功後將新廠商加入下拉並自動選取 */
+  openQuickAddVendor() {
+    const ref = this.modal.open(VendorQuickAddModal, {
+      centered: true,
+      backdrop: "static",
+      keyboard: false,
+      size: "lg"
+    });
+    ref.closed.subscribe((newVendor) => {
+      if (!newVendor)
+        return;
+      this.vendors.update((list) => [...list, newVendor].sort((a, b) => a.name.localeCompare(b.name, "zh-Hant")));
+      this.form.get("vendorId").setValue(newVendor.id);
+      this.vendorTypeaheadModel = newVendor;
+      this.cdr.markForCheck();
+    });
+  }
   /** invoice id → File 物件（新上傳的檔案） */
   fileMap = /* @__PURE__ */ new Map();
   /** IDs of invoice rows currently being OCR-processed */
@@ -13020,6 +15012,8 @@ var PaymentForm = class _PaymentForm {
   form = this.fb.group({
     type: ["vendor", Validators.required],
     projectId: [null, Validators.required],
+    vendorId: [null, Validators.required],
+    // 預設 type=vendor 故必填
     reason: [""],
     invoices: this.fb.array([])
   });
@@ -13034,6 +15028,21 @@ var PaymentForm = class _PaymentForm {
   }
   loadingProjects = true;
   ngOnInit() {
+    this.vendorSvc.getLookup().subscribe((v) => {
+      this.vendors.set(v);
+      this.cdr.markForCheck();
+    });
+    this.form.get("type").valueChanges.subscribe((t) => {
+      const c = this.form.get("vendorId");
+      if (t === "vendor") {
+        c.setValidators(Validators.required);
+      } else {
+        c.clearValidators();
+        c.setValue(null);
+        this.vendorTypeaheadModel = null;
+      }
+      c.updateValueAndValidity();
+    });
     this.approvalSvc.getActiveByType("payment_request").subscribe((flow) => {
       this.hasDesignatedStep = flow?.steps.some((s) => s.useApplicantDesignated) ?? false;
       if (this.hasDesignatedStep) {
@@ -13085,7 +15094,15 @@ var PaymentForm = class _PaymentForm {
         this.paidAt = r.paidAt?.toString().slice(0, 10) ?? "";
         if (this.isReadOnly)
           this.form.disable();
-        this.form.patchValue({ type: r.type, projectId: r.projectId, reason: r.reason ?? "" });
+        this.form.patchValue({ type: r.type, projectId: r.projectId, reason: r.reason ?? "", vendorId: r.vendorId ?? null });
+        if (r.vendorId && r.vendorName && !this.vendors().some((v) => v.id === r.vendorId)) {
+          this.vendors.update((list) => [...list, { id: r.vendorId, name: r.vendorName, taxId: r.vendorTaxId }]);
+        }
+        if (r.vendorId) {
+          const found = this.vendors().find((v) => v.id === r.vendorId);
+          if (found)
+            this.vendorTypeaheadModel = found;
+        }
         if (r.designatedReviewers?.length) {
           this.designatedEntries = r.designatedReviewers.map((dr) => ({
             stepOrder: dr.stepOrder,
@@ -13245,9 +15262,12 @@ var PaymentForm = class _PaymentForm {
   }
   _buildFormData() {
     const fd = new FormData();
-    fd.append("type", this.form.get("type").value);
+    const type = this.form.get("type").value;
+    fd.append("type", type);
     fd.append("projectId", String(this.form.get("projectId").value));
     fd.append("reason", this.form.get("reason")?.value || "");
+    const vendorId = this.form.get("vendorId")?.value;
+    fd.append("vendorId", type === "vendor" && vendorId ? String(vendorId) : "");
     const reviewers = this.designatedEntries.filter((e) => e.selectedUserId).map((e) => ({ reviewerId: e.selectedUserId, stepOrder: e.stepOrder }));
     if (reviewers.length > 0)
       fd.append("designatedReviewers", JSON.stringify(reviewers));
@@ -13293,12 +15313,12 @@ var PaymentForm = class _PaymentForm {
   };
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _PaymentForm, selectors: [["app-payment-form"]], viewQuery: function PaymentForm_Query(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275viewQuerySignal(ctx.successModal, _c010, 5);
+      \u0275\u0275viewQuerySignal(ctx.successModal, _c012, 5);
     }
     if (rf & 2) {
       \u0275\u0275queryAdvance();
     }
-  }, decls: 87, vars: 18, consts: [["successModal", ""], [1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6"], ["routerLink", "/admin/payment-requests", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "mb-0"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [1, "card", "border-0", "shadow-sm", "mb-6"], [3, "ngSubmit", "formGroup"], [1, "row", "g-4"], [1, "col-12", "col-lg-10", "col-xl-8"], [1, "card", "border-0", "shadow-sm"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#dollar-sign"], [1, "card-body"], [1, "row", "g-3", "mb-4"], [1, "col-12", "col-md-6"], [1, "form-label", "fw-500"], [1, "text-danger"], [1, "flex", "flex-wrap", "gap-4", "mt-1"], [1, "form-check"], ["type", "radio", "formControlName", "type", "value", "vendor", "id", "typeVendor", 1, "form-check-input"], ["for", "typeVendor", 1, "form-check-label"], ["type", "radio", "formControlName", "type", "value", "general", "id", "typeGeneral", 1, "form-check-input"], ["for", "typeGeneral", 1, "form-check-label"], [1, "form-control-plaintext", "fw-500", "font-monospace", "mb-0"], [1, "mb-4"], [1, "form-control-plaintext", "mb-0"], ["formControlName", "reason", "rows", "3", "placeholder", "\u8ACB\u8AAA\u660E\u8ACB\u6B3E\u539F\u56E0\u2026", 1, "form-control"], [1, "card", "border-0", "shadow-sm", "mt-6"], ["href", "/assets/icons/sprite.svg#file-text"], [1, "table-responsive"], [1, "table", "table-sm", "mb-0"], [1, "table-light"], [2, "width", "40px"], [2, "min-width", "160px"], [2, "min-width", "130px"], [2, "min-width", "120px"], [2, "min-width", "140px"], [2, "width", "48px"], ["formArrayName", "invoices"], [3, "formGroupName"], [3, "flow", "approvalRecords", "currentStepOrder", "status"], [1, "mt-6", "flex", "gap-2"], [1, "mt-6"], [3, "file"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "card-header", "bg-[rgba(13,110,253,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-primary", "py-3"], ["href", "/assets/icons/sprite.svg#clock"], [1, "card-header", "bg-[rgba(255,193,7,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-warning", "py-3"], [1, "card-header", "bg-[rgba(37,162,68,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-success", "py-3"], ["href", "/assets/icons/sprite.svg#check-circle"], [1, "card-header", "bg-[rgba(220,53,69,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-danger", "py-3"], ["href", "/assets/icons/sprite.svg#x-circle"], ["formControlName", "projectId", 1, "form-select"], [3, "ngValue"], [1, "text-muted", "small", "mt-1"], [1, "text-danger", "small", "mt-1"], [1, "badge", "rounded-pill", "px-3", "py-2"], [1, "row", "g-3", "mb-0"], [1, "col-6", "col-md-4"], [1, "form-control-plaintext", "fw-500", "mb-0"], [1, "form-control-plaintext", "fw-500", "text-success", "mb-0"], [1, "flex", "flex-col", "items-center", "justify-center", "rounded-3", "py-4", "px-4", "mb-4", "text-center", 2, "cursor", "pointer", "border", "2px dashed var(--bs-border-color)"], [1, "sa-icon", "sa-icon-2x", "text-muted", "mb-2", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#upload"], [1, "fw-500"], ["type", "file", "multiple", "", "accept", "image/*,.heic,.heif,application/pdf", 1, "hidden", 3, "change"], [1, "alert", "alert-warning", "py-2", "small", "mb-4"], [1, "align-middle", "text-center"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-secondary", "p-1", 3, "title"], ["role", "status", 1, "spinner-border", "spinner-border-sm"], [1, "align-middle"], [1, "font-monospace", "small"], [1, "flex", "items-center", "gap-2", "text-muted", "small", "py-1"], ["formControlName", "invoiceNo", "placeholder", "AB12345678", 1, "form-control", "form-control-sm", "font-monospace"], [1, "small"], ["type", "date", "formControlName", "invoiceDate", 1, "form-control", "form-control-sm"], [1, "py-1"], [1, "input-group", "input-group-sm"], ["formControlName", "itemName", "placeholder", "", 1, "form-control", "form-control-sm"], ["formControlName", "note", "placeholder", "", 1, "form-control", "form-control-sm"], [1, "text-right", "align-middle"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-secondary", "p-1", 3, "click", "title"], ["role", "status", "aria-hidden", "true", 1, "spinner-border", "spinner-border-sm"], [1, "input-group-text"], ["type", "number", "formControlName", "amount", "min", "0", "placeholder", "0", 1, "form-control", "form-control-sm"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center", 3, "click", "disabled"], ["href", "/assets/icons/sprite.svg#x"], [1, "text-center", "text-muted", "py-4", "small"], ["colspan", "3", 1, "text-right", "fw-500", "small"], [1, "fw-600"], ["colspan", "2"], ["href", "/assets/icons/sprite.svg#users"], [1, "flex", "items-center", "gap-2", "mb-2"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "mt-1", 3, "click"], ["href", "/assets/icons/sprite.svg#plus"], [1, "text-muted", "small", 2, "min-width", "1.5rem"], [1, "form-select", "form-select-sm", 2, "max-width", "160px", 3, "ngModelChange", "ngModel", "ngModelOptions"], [1, "form-select", "form-select-sm", 2, "max-width", "200px", 3, "ngModelChange", "ngModel", "ngModelOptions"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-danger", 3, "click"], [1, "mb-0", "ps-4"], ["type", "submit", 1, "btn", "btn-outline-secondary", 3, "disabled"], ["role", "status", "aria-hidden", "true", 1, "spinner-border", "spinner-border-sm", "me-1"], ["type", "button", 1, "btn", "btn-primary", 3, "click", "disabled"], ["routerLink", "/admin/payment-requests", 1, "btn", "btn-outline-secondary"], [1, "card-header", "bg-[rgba(37,162,68,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-success"], [1, "text-muted", "small", "mb-2"], [1, "mt-2", "flex", "gap-2"], ["type", "button", 1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-2", 3, "disabled"], [1, "text-muted", "small", "mb-1", "fw-500"], [1, "small", "mb-4"], [1, "border", "rounded", "p-4", "bg-[--bg-base]", "small", "mb-4"], ["type", "button", 1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-2", 3, "click", "disabled"], ["href", "/assets/icons/sprite.svg#printer"], [1, "card-header", "bg-[rgba(220,53,69,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-danger"], [1, "mt-2"], [1, "modal-header", "border-0", "pb-0"], ["type", "button", 1, "btn-close", 3, "click"], [1, "modal-body", "text-center", "py-6"], [1, "sa-icon", "sa-icon-3x", "text-success", "mb-4", 2, "stroke", "currentColor"], [1, "fw-600", "mb-2"], [1, "text-secondary", "mb-0"], [1, "modal-footer", "border-0", "justify-center", "pt-0"], ["type", "button", 1, "btn", "btn-primary", "px-6", 3, "click"], [3, "closed", "file"]], template: function PaymentForm_Template(rf, ctx) {
+  }, decls: 88, vars: 19, consts: [["successModal", ""], [1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6"], ["routerLink", "/admin/payment-requests", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "mb-0"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [1, "card", "border-0", "shadow-sm", "mb-6"], [3, "ngSubmit", "formGroup"], [1, "row", "g-4"], [1, "col-12", "col-lg-10", "col-xl-8"], [1, "card", "border-0", "shadow-sm"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#dollar-sign"], [1, "card-body"], [1, "row", "g-3", "mb-4"], [1, "col-12", "col-md-6"], [1, "form-label", "fw-500"], [1, "text-danger"], [1, "flex", "flex-wrap", "gap-4", "mt-1"], [1, "form-check"], ["type", "radio", "formControlName", "type", "value", "vendor", "id", "typeVendor", 1, "form-check-input"], ["for", "typeVendor", 1, "form-check-label"], ["type", "radio", "formControlName", "type", "value", "general", "id", "typeGeneral", 1, "form-check-input"], ["for", "typeGeneral", 1, "form-check-label"], [1, "form-control-plaintext", "fw-500", "font-monospace", "mb-0"], [1, "mb-4"], [1, "form-control-plaintext", "mb-0"], ["formControlName", "reason", "rows", "3", "placeholder", "\u8ACB\u8AAA\u660E\u8ACB\u6B3E\u539F\u56E0\u2026", 1, "form-control"], [1, "card", "border-0", "shadow-sm", "mt-6"], ["href", "/assets/icons/sprite.svg#file-text"], [1, "table-responsive"], [1, "table", "table-sm", "mb-0"], [1, "table-light"], [2, "width", "40px"], [2, "min-width", "160px"], [2, "min-width", "130px"], [2, "min-width", "120px"], [2, "min-width", "140px"], [2, "width", "48px"], ["formArrayName", "invoices"], [3, "formGroupName"], [3, "flow", "approvalRecords", "currentStepOrder", "status"], [1, "mt-6", "flex", "gap-2"], [1, "mt-6"], [3, "file"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "card-header", "bg-[rgba(13,110,253,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-primary", "py-3"], ["href", "/assets/icons/sprite.svg#clock"], [1, "card-header", "bg-[rgba(255,193,7,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-warning", "py-3"], [1, "card-header", "bg-[rgba(37,162,68,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-success", "py-3"], ["href", "/assets/icons/sprite.svg#check-circle"], [1, "card-header", "bg-[rgba(220,53,69,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-danger", "py-3"], ["href", "/assets/icons/sprite.svg#x-circle"], ["formControlName", "projectId", 1, "form-select"], [3, "ngValue"], [1, "text-muted", "small", "mt-1"], [1, "text-danger", "small", "mt-1"], [1, "form-control-plaintext", "fw-500", "mb-0"], [1, "flex", "gap-2"], ["type", "text", "placeholder", "\u8F38\u5165\u5EE0\u5546\u540D\u7A31\u6216\u7D71\u7DE8\u641C\u5C0B\u2026", 1, "form-control", 3, "ngModelChange", "selectItem", "input", "ngbTypeahead", "resultFormatter", "inputFormatter", "editable", "ngModel", "ngModelOptions"], ["type", "button", 1, "btn", "btn-outline-primary", "inline-flex", "items-center", "gap-1", "whitespace-nowrap", 3, "click"], ["href", "/assets/icons/sprite.svg#plus"], [1, "badge", "rounded-pill", "px-3", "py-2"], [1, "row", "g-3", "mb-0"], [1, "col-6", "col-md-4"], [1, "form-control-plaintext", "fw-500", "text-success", "mb-0"], [1, "flex", "flex-col", "items-center", "justify-center", "rounded-3", "py-4", "px-4", "mb-4", "text-center", 2, "cursor", "pointer", "border", "2px dashed var(--bs-border-color)"], [1, "sa-icon", "sa-icon-2x", "text-muted", "mb-2", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#upload"], [1, "fw-500"], ["type", "file", "multiple", "", "accept", "image/*,.heic,.heif,application/pdf", 1, "hidden", 3, "change"], [1, "alert", "alert-warning", "py-2", "small", "mb-4"], [1, "align-middle", "text-center"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-secondary", "p-1", 3, "title"], ["role", "status", 1, "spinner-border", "spinner-border-sm"], [1, "align-middle"], [1, "font-monospace", "small"], [1, "flex", "items-center", "gap-2", "text-muted", "small", "py-1"], ["formControlName", "invoiceNo", "placeholder", "AB12345678", 1, "form-control", "form-control-sm", "font-monospace"], [1, "small"], ["type", "date", "formControlName", "invoiceDate", 1, "form-control", "form-control-sm"], [1, "py-1"], [1, "input-group", "input-group-sm"], ["formControlName", "itemName", "placeholder", "", 1, "form-control", "form-control-sm"], ["formControlName", "note", "placeholder", "", 1, "form-control", "form-control-sm"], [1, "text-right", "align-middle"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-secondary", "p-1", 3, "click", "title"], ["role", "status", "aria-hidden", "true", 1, "spinner-border", "spinner-border-sm"], [1, "input-group-text"], ["type", "number", "formControlName", "amount", "min", "0", "placeholder", "0", 1, "form-control", "form-control-sm"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center", 3, "click", "disabled"], ["href", "/assets/icons/sprite.svg#x"], [1, "text-center", "text-muted", "py-4", "small"], ["colspan", "3", 1, "text-right", "fw-500", "small"], [1, "fw-600"], ["colspan", "2"], ["href", "/assets/icons/sprite.svg#users"], [1, "flex", "items-center", "gap-2", "mb-2"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "mt-1", 3, "click"], [1, "text-muted", "small", 2, "min-width", "1.5rem"], [1, "form-select", "form-select-sm", 2, "max-width", "160px", 3, "ngModelChange", "ngModel", "ngModelOptions"], [1, "form-select", "form-select-sm", 2, "max-width", "200px", 3, "ngModelChange", "ngModel", "ngModelOptions"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-danger", 3, "click"], [1, "mb-0", "ps-4"], ["type", "submit", 1, "btn", "btn-outline-secondary", 3, "disabled"], ["role", "status", "aria-hidden", "true", 1, "spinner-border", "spinner-border-sm", "me-1"], ["type", "button", 1, "btn", "btn-primary", 3, "click", "disabled"], ["routerLink", "/admin/payment-requests", 1, "btn", "btn-outline-secondary"], [1, "card-header", "bg-[rgba(37,162,68,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-success"], [1, "text-muted", "small", "mb-2"], [1, "mt-2", "flex", "gap-2"], ["type", "button", 1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-2", 3, "disabled"], [1, "text-muted", "small", "mb-1", "fw-500"], [1, "small", "mb-4"], [1, "border", "rounded", "p-4", "bg-[--bg-base]", "small", "mb-4"], ["type", "button", 1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-2", 3, "click", "disabled"], ["href", "/assets/icons/sprite.svg#printer"], [1, "card-header", "bg-[rgba(220,53,69,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-danger"], [1, "mt-2"], [1, "modal-header", "border-0", "pb-0"], ["type", "button", 1, "btn-close", 3, "click"], [1, "modal-body", "text-center", "py-6"], [1, "sa-icon", "sa-icon-3x", "text-success", "mb-4", 2, "stroke", "currentColor"], [1, "fw-600", "mb-2"], [1, "text-secondary", "mb-0"], [1, "modal-footer", "border-0", "justify-center", "pt-0"], ["type", "button", 1, "btn", "btn-primary", "px-6", 3, "click"], [3, "closed", "file"]], template: function PaymentForm_Template(rf, ctx) {
     if (rf & 1) {
       const _r1 = \u0275\u0275getCurrentView();
       \u0275\u0275elementStart(0, "div", 1)(1, "div", 2)(2, "a", 3);
@@ -13347,55 +15367,57 @@ var PaymentForm = class _PaymentForm {
       \u0275\u0275elementEnd()();
       \u0275\u0275conditionalCreate(41, PaymentForm_Conditional_41_Template, 2, 1, "p", 27)(42, PaymentForm_Conditional_42_Template, 7, 4);
       \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(43, "div", 28)(44, "label", 19);
-      \u0275\u0275text(45, "\u8ACB\u6B3E\u539F\u56E0");
+      \u0275\u0275conditionalCreate(43, PaymentForm_Conditional_43_Template, 8, 1, "div", 17);
+      \u0275\u0275elementStart(44, "div", 28)(45, "label", 19);
+      \u0275\u0275text(46, "\u8ACB\u6B3E\u539F\u56E0");
       \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(46, PaymentForm_Conditional_46_Template, 2, 1, "p", 29)(47, PaymentForm_Conditional_47_Template, 1, 0, "textarea", 30);
+      \u0275\u0275conditionalCreate(47, PaymentForm_Conditional_47_Template, 2, 1, "p", 29)(48, PaymentForm_Conditional_48_Template, 1, 0, "textarea", 30);
       \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(48, PaymentForm_Conditional_48_Template, 7, 4);
+      \u0275\u0275conditionalCreate(49, PaymentForm_Conditional_49_Template, 7, 4);
       \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(49, "div", 31)(50, "div", 13);
+      \u0275\u0275elementStart(50, "div", 31)(51, "div", 13);
       \u0275\u0275namespaceSVG();
-      \u0275\u0275elementStart(51, "svg", 14);
-      \u0275\u0275element(52, "use", 32);
+      \u0275\u0275elementStart(52, "svg", 14);
+      \u0275\u0275element(53, "use", 32);
       \u0275\u0275elementEnd();
-      \u0275\u0275text(53, " \u767C\u7968 ");
+      \u0275\u0275text(54, " \u767C\u7968 ");
       \u0275\u0275elementEnd();
       \u0275\u0275namespaceHTML();
-      \u0275\u0275elementStart(54, "div", 16);
-      \u0275\u0275conditionalCreate(55, PaymentForm_Conditional_55_Template, 9, 1);
-      \u0275\u0275elementStart(56, "div", 33)(57, "table", 34)(58, "thead", 35)(59, "tr");
-      \u0275\u0275element(60, "th", 36);
-      \u0275\u0275elementStart(61, "th", 37);
-      \u0275\u0275text(62, "\u767C\u7968\u865F\u78BC");
+      \u0275\u0275elementStart(55, "div", 16);
+      \u0275\u0275conditionalCreate(56, PaymentForm_Conditional_56_Template, 9, 1);
+      \u0275\u0275elementStart(57, "div", 33)(58, "table", 34)(59, "thead", 35)(60, "tr");
+      \u0275\u0275element(61, "th", 36);
+      \u0275\u0275elementStart(62, "th", 37);
+      \u0275\u0275text(63, "\u767C\u7968\u865F\u78BC");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(63, "th", 38);
-      \u0275\u0275text(64, "\u767C\u7968\u65E5\u671F");
+      \u0275\u0275elementStart(64, "th", 38);
+      \u0275\u0275text(65, "\u767C\u7968\u65E5\u671F");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(65, "th", 39);
-      \u0275\u0275text(66, "\u91D1\u984D");
+      \u0275\u0275elementStart(66, "th", 39);
+      \u0275\u0275text(67, "\u91D1\u984D");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(67, "th", 40);
-      \u0275\u0275text(68, "\u9805\u76EE");
+      \u0275\u0275elementStart(68, "th", 40);
+      \u0275\u0275text(69, "\u9805\u76EE");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(69, "th", 40);
-      \u0275\u0275text(70, "\u5099\u8A3B");
+      \u0275\u0275elementStart(70, "th", 40);
+      \u0275\u0275text(71, "\u5099\u8A3B");
       \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(71, PaymentForm_Conditional_71_Template, 1, 0, "th", 41);
+      \u0275\u0275conditionalCreate(72, PaymentForm_Conditional_72_Template, 1, 0, "th", 41);
       \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(72, "tbody", 42);
-      \u0275\u0275repeaterCreate(73, PaymentForm_For_74_Template, 26, 9, "tr", 43, _forTrack014, false, PaymentForm_ForEmpty_75_Template, 3, 1, "tr");
+      \u0275\u0275elementStart(73, "tbody", 42);
+      \u0275\u0275repeaterCreate(74, PaymentForm_For_75_Template, 26, 9, "tr", 43, _forTrack015, false, PaymentForm_ForEmpty_76_Template, 3, 1, "tr");
       \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(76, PaymentForm_Conditional_76_Template, 9, 5, "tfoot");
+      \u0275\u0275conditionalCreate(77, PaymentForm_Conditional_77_Template, 9, 5, "tfoot");
       \u0275\u0275elementEnd()()()();
-      \u0275\u0275conditionalCreate(77, PaymentForm_Conditional_77_Template, 14, 0, "div", 31)(78, PaymentForm_Conditional_78_Template, 11, 0, "div", 31);
-      \u0275\u0275element(79, "app-approval-timeline", 44);
-      \u0275\u0275conditionalCreate(80, PaymentForm_Conditional_80_Template, 8, 4, "div", 45)(81, PaymentForm_Conditional_81_Template, 14, 3, "div", 31)(82, PaymentForm_Conditional_82_Template, 13, 2, "div", 31)(83, PaymentForm_Conditional_83_Template, 3, 0, "div", 46);
+      \u0275\u0275conditionalCreate(78, PaymentForm_Conditional_78_Template, 14, 0, "div", 31)(79, PaymentForm_Conditional_79_Template, 11, 0, "div", 31);
+      \u0275\u0275element(80, "app-approval-timeline", 44);
+      \u0275\u0275conditionalCreate(81, PaymentForm_Conditional_81_Template, 8, 4, "div", 45)(82, PaymentForm_Conditional_82_Template, 14, 3, "div", 31)(83, PaymentForm_Conditional_83_Template, 13, 2, "div", 31)(84, PaymentForm_Conditional_84_Template, 3, 0, "div", 46);
       \u0275\u0275elementEnd()()()();
-      \u0275\u0275template(84, PaymentForm_ng_template_84_Template, 12, 0, "ng-template", null, 0, \u0275\u0275templateRefExtractor);
-      \u0275\u0275conditionalCreate(86, PaymentForm_Conditional_86_Template, 1, 1, "app-file-preview-modal", 47);
+      \u0275\u0275template(85, PaymentForm_ng_template_85_Template, 12, 0, "ng-template", null, 0, \u0275\u0275templateRefExtractor);
+      \u0275\u0275conditionalCreate(87, PaymentForm_Conditional_87_Template, 1, 1, "app-file-preview-modal", 47);
     }
     if (rf & 2) {
+      let tmp_6_0;
       \u0275\u0275advance(6);
       \u0275\u0275textInterpolate(ctx.isEdit ? ctx.isReadOnly ? "\u6AA2\u8996\u8ACB\u6B3E\u7533\u8ACB" : ctx.isReturned ? "\u4FEE\u6539\u8ACB\u6B3E\u7533\u8ACB" : "\u7DE8\u8F2F\u8ACB\u6B3E\u8349\u7A3F" : "\u65B0\u589E\u8ACB\u6B3E\u7533\u8ACB");
       \u0275\u0275advance();
@@ -13406,33 +15428,35 @@ var PaymentForm = class _PaymentForm {
       \u0275\u0275property("formGroup", ctx.form);
       \u0275\u0275advance(29);
       \u0275\u0275conditional(ctx.isReadOnly ? 41 : 42);
-      \u0275\u0275advance(5);
-      \u0275\u0275conditional(ctx.isReadOnly ? 46 : 47);
       \u0275\u0275advance(2);
-      \u0275\u0275conditional(ctx.isEdit ? 48 : -1);
+      \u0275\u0275conditional(((tmp_6_0 = ctx.form.get("type")) == null ? null : tmp_6_0.value) === "vendor" ? 43 : -1);
+      \u0275\u0275advance(4);
+      \u0275\u0275conditional(ctx.isReadOnly ? 47 : 48);
+      \u0275\u0275advance(2);
+      \u0275\u0275conditional(ctx.isEdit ? 49 : -1);
       \u0275\u0275advance(7);
-      \u0275\u0275conditional(!ctx.isReadOnly ? 55 : -1);
+      \u0275\u0275conditional(!ctx.isReadOnly ? 56 : -1);
       \u0275\u0275advance(16);
-      \u0275\u0275conditional(!ctx.isReadOnly ? 71 : -1);
+      \u0275\u0275conditional(!ctx.isReadOnly ? 72 : -1);
       \u0275\u0275advance(2);
       \u0275\u0275repeater(ctx.invoiceControls);
       \u0275\u0275advance(3);
-      \u0275\u0275conditional(ctx.invoiceControls.length > 0 ? 76 : -1);
+      \u0275\u0275conditional(ctx.invoiceControls.length > 0 ? 77 : -1);
       \u0275\u0275advance();
-      \u0275\u0275conditional(ctx.hasDesignatedStep && !ctx.isReadOnly ? 77 : ctx.isReadOnly && ctx.designatedEntries.length > 0 ? 78 : -1);
+      \u0275\u0275conditional(ctx.hasDesignatedStep && !ctx.isReadOnly ? 78 : ctx.isReadOnly && ctx.designatedEntries.length > 0 ? 79 : -1);
       \u0275\u0275advance(2);
       \u0275\u0275property("flow", ctx.approvalFlow)("approvalRecords", ctx.approvalRecords)("currentStepOrder", ctx.taskCurrentStepOrder)("status", ctx.taskStatus);
       \u0275\u0275advance();
-      \u0275\u0275conditional(!ctx.isReadOnly ? 80 : ctx.approvalStatus === "approved" ? 81 : ctx.approvalStatus === "rejected" ? 82 : 83);
+      \u0275\u0275conditional(!ctx.isReadOnly ? 81 : ctx.approvalStatus === "approved" ? 82 : ctx.approvalStatus === "rejected" ? 83 : 84);
       \u0275\u0275advance(6);
-      \u0275\u0275conditional(ctx.previewFile ? 86 : -1);
+      \u0275\u0275conditional(ctx.previewFile ? 87 : -1);
     }
-  }, dependencies: [ReactiveFormsModule, \u0275NgNoValidate, NgSelectOption, \u0275NgSelectMultipleOption, DefaultValueAccessor, NumberValueAccessor, SelectControlValueAccessor, RadioControlValueAccessor, NgControlStatus, NgControlStatusGroup, MinValidator, FormGroupDirective, FormControlName, FormGroupName, FormArrayName, FormsModule, NgModel, RouterLink, FilePreviewModal, ApprovalTimeline, DecimalPipe, DatePipe], encapsulation: 2 });
+  }, dependencies: [ReactiveFormsModule, \u0275NgNoValidate, NgSelectOption, \u0275NgSelectMultipleOption, DefaultValueAccessor, NumberValueAccessor, SelectControlValueAccessor, RadioControlValueAccessor, NgControlStatus, NgControlStatusGroup, MinValidator, FormGroupDirective, FormControlName, FormGroupName, FormArrayName, FormsModule, NgModel, RouterLink, FilePreviewModal, ApprovalTimeline, NgbTypeahead, DecimalPipe, DatePipe], encapsulation: 2 });
 };
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(PaymentForm, [{
     type: Component,
-    args: [{ selector: "app-payment-form", imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline], template: `<div class="container-fluid py-3">
+    args: [{ selector: "app-payment-form", imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, NgbTypeahead], template: `<div class="container-fluid py-3">
   <div class="flex items-center gap-2 mb-6">
     <a routerLink="/admin/payment-requests" class="btn btn-sm btn-outline-secondary">
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
@@ -13525,6 +15549,46 @@ var PaymentForm = class _PaymentForm {
                 }
               </div>
             </div>
+
+            @if (form.get('type')?.value === 'vendor') {
+              <div class="row g-3 mb-4">
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">\u5EE0\u5546 <span class="text-danger">*</span></label>
+                  @if (isReadOnly) {
+                    <p class="form-control-plaintext fw-500 mb-0">
+                      @for (v of vendors(); track v.id) {
+                        @if (v.id === form.get('vendorId')?.value) {
+                          {{ v.name }}{{ v.taxId ? '\uFF08' + v.taxId + '\uFF09' : '' }}
+                        }
+                      }
+                      @if (!form.get('vendorId')?.value) { \u2014 }
+                    </p>
+                  } @else {
+                    <div class="flex gap-2">
+                      <input type="text" class="form-control"
+                             [ngbTypeahead]="vendorSearch"
+                             [resultFormatter]="vendorFormatter"
+                             [inputFormatter]="vendorInputFormatter"
+                             [editable]="false"
+                             [(ngModel)]="vendorTypeaheadModel"
+                             [ngModelOptions]="{standalone: true}"
+                             (selectItem)="onVendorSelect($event)"
+                             (input)="onVendorInput($event)"
+                             placeholder="\u8F38\u5165\u5EE0\u5546\u540D\u7A31\u6216\u7D71\u7DE8\u641C\u5C0B\u2026">
+                      <button type="button"
+                              class="btn btn-outline-primary inline-flex items-center gap-1 whitespace-nowrap"
+                              (click)="openQuickAddVendor()">
+                        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                        \u65B0\u589E\u5EE0\u5546
+                      </button>
+                    </div>
+                    @if (form.get('vendorId')?.invalid && form.get('vendorId')?.touched) {
+                      <div class="text-danger small mt-1">\u8ACB\u5F9E\u6E05\u55AE\u4E2D\u9078\u64C7\u5EE0\u5546\uFF1B\u627E\u4E0D\u5230\u6642\u8ACB\u4F7F\u7528\u300C+ \u65B0\u589E\u5EE0\u5546\u300D\u3002</div>
+                    }
+                  }
+                </div>
+              </div>
+            }
 
             <div class="mb-4">
               <label class="form-label fw-500">\u8ACB\u6B3E\u539F\u56E0</label>
@@ -13896,7 +15960,7 @@ var PaymentForm = class _PaymentForm {
   }], null, { successModal: [{ type: ViewChild, args: ["successModal", { isSignal: true }] }] });
 })();
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(PaymentForm, { className: "PaymentForm", filePath: "src/app/features/admin/payment-requests/pages/payment-form/payment-form.ts", lineNumber: 30 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(PaymentForm, { className: "PaymentForm", filePath: "src/app/features/admin/payment-requests/pages/payment-form/payment-form.ts", lineNumber: 34 });
 })();
 
 // src/app/features/admin/leave-requests/models/leave-request.model.ts
@@ -14043,8 +16107,8 @@ var PAYMENT_TYPE_LABELS2 = {
 };
 
 // src/app/features/admin/approval-tasks/pages/approval-task-list/approval-task-list.ts
-var _c011 = (a0, a1) => [a0, a1, "review"];
-var _forTrack015 = ($index, $item) => $item.applicationType + $item.id;
+var _c013 = (a0, a1) => [a0, a1, "review"];
+var _forTrack016 = ($index, $item) => $item.applicationType + $item.id;
 var _forTrack14 = ($index, $item) => $item[0];
 function ApprovalTaskList_Conditional_13_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
@@ -14103,7 +16167,7 @@ function ApprovalTaskList_Conditional_14_For_10_Template(rf, ctx) {
     \u0275\u0275advance(2);
     \u0275\u0275textInterpolate(p_r4.requestNo);
     \u0275\u0275advance();
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction2(5, _c011, p_r4.applicationType, p_r4.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction2(5, _c013, p_r4.applicationType, p_r4.id));
   }
 }
 function ApprovalTaskList_Conditional_14_Template(rf, ctx) {
@@ -14127,7 +16191,7 @@ function ApprovalTaskList_Conditional_14_Template(rf, ctx) {
     \u0275\u0275text(7, "\u95DC\u9589");
     \u0275\u0275elementEnd()();
     \u0275\u0275elementStart(8, "ul", 29);
-    \u0275\u0275repeaterCreate(9, ApprovalTaskList_Conditional_14_For_10_Template, 7, 8, "li", null, _forTrack015);
+    \u0275\u0275repeaterCreate(9, ApprovalTaskList_Conditional_14_For_10_Template, 7, 8, "li", null, _forTrack016);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -14327,7 +16391,7 @@ function ApprovalTaskList_For_37_Template(rf, ctx) {
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(16, 15, t_r11.submittedAt, "yyyy-MM-dd"));
     \u0275\u0275advance(3);
     \u0275\u0275classMap("btn btn-sm inline-flex items-center " + (t_r11.status === "pending" ? "btn-ghost-primary" : "btn-ghost-secondary"));
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction2(18, _c011, t_r11.applicationType, t_r11.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction2(18, _c013, t_r11.applicationType, t_r11.id));
     \u0275\u0275advance(2);
     \u0275\u0275attribute("href", t_r11.status === "pending" ? "/assets/icons/sprite.svg#edit" : "/assets/icons/sprite.svg#eye");
   }
@@ -14626,7 +16690,9 @@ var ApprovalTaskList = class _ApprovalTaskList {
   }
   getSummary(t) {
     if (t.paymentDetail) {
-      return `${this.payTypeLabel[t.paymentDetail.paymentType]}\u30FB${t.paymentDetail.projectCode}\uFF08${t.paymentDetail.totalAmount.toLocaleString()} \u5143\uFF09`;
+      const d = t.paymentDetail;
+      const vendorPart = d.paymentType === "vendor" && d.vendorName ? `\u30FB${d.vendorName}` : "";
+      return `${this.payTypeLabel[d.paymentType]}\u30FB${d.projectCode}${vendorPart}\uFF08${d.totalAmount.toLocaleString()} \u5143\uFF09`;
     }
     if (t.leaveDetail) {
       return `${this.leaveTypeLabel[t.leaveDetail.leaveType]}\u30FB${t.leaveDetail.hours} \u5C0F\u6642`;
@@ -14711,7 +16777,7 @@ var ApprovalTaskList = class _ApprovalTaskList {
       \u0275\u0275text(34, "\u64CD\u4F5C");
       \u0275\u0275elementEnd()()();
       \u0275\u0275elementStart(35, "tbody");
-      \u0275\u0275repeaterCreate(36, ApprovalTaskList_For_37_Template, 21, 21, "tr", null, _forTrack015, false, ApprovalTaskList_ForEmpty_38_Template, 3, 2, "tr");
+      \u0275\u0275repeaterCreate(36, ApprovalTaskList_For_37_Template, 21, 21, "tr", null, _forTrack016, false, ApprovalTaskList_ForEmpty_38_Template, 3, 2, "tr");
       \u0275\u0275elementEnd()()();
       \u0275\u0275conditionalCreate(39, ApprovalTaskList_Conditional_39_Template, 19, 13, "div", 19);
       \u0275\u0275elementEnd()()();
@@ -15938,7 +18004,7 @@ var TravelWriteOffPdfService = class _TravelWriteOffPdfService {
 })();
 
 // src/app/features/admin/approval-tasks/pages/approval-task-review/approval-task-review.ts
-var _forTrack016 = ($index, $item) => $item.id;
+var _forTrack017 = ($index, $item) => $item.id;
 var _forTrack15 = ($index, $item) => $item.stepOrder;
 function ApprovalTaskReview_Conditional_1_Conditional_12_Template(rf, ctx) {
   if (rf & 1) {
@@ -15956,7 +18022,37 @@ function ApprovalTaskReview_Conditional_1_Conditional_12_Template(rf, ctx) {
     \u0275\u0275textInterpolate1(" ", ctx_r0.errorMsg(), " ");
   }
 }
+function ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_Conditional_34_Conditional_5_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 1);
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const d_r2 = \u0275\u0275nextContext(2);
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate1("\uFF08", d_r2.vendorTaxId, "\uFF09");
+  }
+}
 function ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_Conditional_34_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 28)(1, "div", 23);
+    \u0275\u0275text(2, "\u5EE0\u5546");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "span", 24);
+    \u0275\u0275text(4);
+    \u0275\u0275conditionalCreate(5, ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_Conditional_34_Conditional_5_Template, 2, 1, "span", 1);
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const d_r2 = \u0275\u0275nextContext();
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate1(" ", d_r2.vendorName || "\u2014", " ");
+    \u0275\u0275advance();
+    \u0275\u0275conditional(d_r2.vendorTaxId ? 5 : -1);
+  }
+}
+function ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_Conditional_35_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 22)(1, "div", 23);
     \u0275\u0275text(2, "\u9810\u8A08\u64A5\u6B3E\u65E5");
@@ -15972,12 +18068,12 @@ function ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_Conditional_34_T
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(5, 1, d_r2.estimatedPaymentDate, "yyyy-MM-dd"));
   }
 }
-function ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_Conditional_35_Template(rf, ctx) {
+function ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_Conditional_36_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 22)(1, "div", 23);
     \u0275\u0275text(2, "\u64A5\u6B3E\u65E5");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "span", 39);
+    \u0275\u0275elementStart(3, "span", 40);
     \u0275\u0275text(4);
     \u0275\u0275pipe(5, "date");
     \u0275\u0275elementEnd()();
@@ -15988,9 +18084,9 @@ function ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_Conditional_35_T
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(5, 1, d_r2.paidAt, "yyyy-MM-dd"));
   }
 }
-function ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_Conditional_36_Template(rf, ctx) {
+function ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_Conditional_37_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 28)(1, "div", 23);
+    \u0275\u0275elementStart(0, "div", 29)(1, "div", 23);
     \u0275\u0275text(2, "\u8ACB\u6B3E\u539F\u56E0");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "span", 24);
@@ -16003,11 +18099,11 @@ function ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_Conditional_36_T
     \u0275\u0275textInterpolate(d_r2.reason);
   }
 }
-function ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_For_60_Conditional_2_Template(rf, ctx) {
+function ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_For_61_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
     const _r3 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 45);
-    \u0275\u0275listener("click", function ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_For_60_Conditional_2_Template_button_click_0_listener() {
+    \u0275\u0275elementStart(0, "button", 46);
+    \u0275\u0275listener("click", function ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_For_61_Conditional_2_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r3);
       const inv_r4 = \u0275\u0275nextContext().$implicit;
       const ctx_r0 = \u0275\u0275nextContext(4);
@@ -16015,7 +18111,7 @@ function ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_For_60_Condition
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 14);
-    \u0275\u0275element(2, "use", 29);
+    \u0275\u0275element(2, "use", 30);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -16023,26 +18119,26 @@ function ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_For_60_Condition
     \u0275\u0275property("title", \u0275\u0275interpolate(inv_r4.fileName));
   }
 }
-function ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_For_60_Template(rf, ctx) {
+function ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_For_61_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 40);
-    \u0275\u0275conditionalCreate(2, ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_For_60_Conditional_2_Template, 3, 2, "button", 41);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 41);
+    \u0275\u0275conditionalCreate(2, ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_For_61_Conditional_2_Template, 3, 2, "button", 42);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td", 42);
+    \u0275\u0275elementStart(3, "td", 43);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "td", 43);
+    \u0275\u0275elementStart(5, "td", 44);
     \u0275\u0275text(6);
     \u0275\u0275pipe(7, "date");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "td", 44);
+    \u0275\u0275elementStart(8, "td", 45);
     \u0275\u0275text(9);
     \u0275\u0275pipe(10, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(11, "td", 43);
+    \u0275\u0275elementStart(11, "td", 44);
     \u0275\u0275text(12);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(13, "td", 43);
+    \u0275\u0275elementStart(13, "td", 44);
     \u0275\u0275text(14);
     \u0275\u0275elementEnd()();
   }
@@ -16104,46 +18200,47 @@ function ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_Template(rf, ctx
     \u0275\u0275text(32);
     \u0275\u0275pipe(33, "number");
     \u0275\u0275elementEnd()();
-    \u0275\u0275conditionalCreate(34, ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_Conditional_34_Template, 6, 4, "div", 22);
+    \u0275\u0275conditionalCreate(34, ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_Conditional_34_Template, 6, 2, "div", 28);
     \u0275\u0275conditionalCreate(35, ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_Conditional_35_Template, 6, 4, "div", 22);
-    \u0275\u0275conditionalCreate(36, ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_Conditional_36_Template, 5, 1, "div", 28);
+    \u0275\u0275conditionalCreate(36, ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_Conditional_36_Template, 6, 4, "div", 22);
+    \u0275\u0275conditionalCreate(37, ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_Conditional_37_Template, 5, 1, "div", 29);
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(37, "div", 13)(38, "div", 17);
+    \u0275\u0275elementStart(38, "div", 13)(39, "div", 17);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(39, "svg", 18);
-    \u0275\u0275element(40, "use", 29);
+    \u0275\u0275elementStart(40, "svg", 18);
+    \u0275\u0275element(41, "use", 30);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(41, " \u767C\u7968\u660E\u7D30 ");
+    \u0275\u0275text(42, " \u767C\u7968\u660E\u7D30 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(42, "div", 30)(43, "div", 31)(44, "table", 32)(45, "thead", 33)(46, "tr");
-    \u0275\u0275element(47, "th", 34);
-    \u0275\u0275elementStart(48, "th");
-    \u0275\u0275text(49, "\u767C\u7968\u865F\u78BC");
+    \u0275\u0275elementStart(43, "div", 31)(44, "div", 32)(45, "table", 33)(46, "thead", 34)(47, "tr");
+    \u0275\u0275element(48, "th", 35);
+    \u0275\u0275elementStart(49, "th");
+    \u0275\u0275text(50, "\u767C\u7968\u865F\u78BC");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(50, "th");
-    \u0275\u0275text(51, "\u767C\u7968\u65E5\u671F");
+    \u0275\u0275elementStart(51, "th");
+    \u0275\u0275text(52, "\u767C\u7968\u65E5\u671F");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(52, "th", 35);
-    \u0275\u0275text(53, "\u91D1\u984D");
+    \u0275\u0275elementStart(53, "th", 36);
+    \u0275\u0275text(54, "\u91D1\u984D");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(54, "th");
-    \u0275\u0275text(55, "\u9805\u76EE");
+    \u0275\u0275elementStart(55, "th");
+    \u0275\u0275text(56, "\u9805\u76EE");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(56, "th");
-    \u0275\u0275text(57, "\u5099\u8A3B");
+    \u0275\u0275elementStart(57, "th");
+    \u0275\u0275text(58, "\u5099\u8A3B");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(58, "tbody");
-    \u0275\u0275repeaterCreate(59, ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_For_60_Template, 15, 12, "tr", null, _forTrack016);
+    \u0275\u0275elementStart(59, "tbody");
+    \u0275\u0275repeaterCreate(60, ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_For_61_Template, 15, 12, "tr", null, _forTrack017);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(61, "tfoot")(62, "tr", 33)(63, "td", 36);
-    \u0275\u0275text(64, "\u5408\u8A08");
+    \u0275\u0275elementStart(62, "tfoot")(63, "tr", 34)(64, "td", 37);
+    \u0275\u0275text(65, "\u5408\u8A08");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(65, "td", 37);
-    \u0275\u0275text(66);
-    \u0275\u0275pipe(67, "number");
+    \u0275\u0275elementStart(66, "td", 38);
+    \u0275\u0275text(67);
+    \u0275\u0275pipe(68, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(68, "td", 38);
+    \u0275\u0275element(69, "td", 39);
     \u0275\u0275elementEnd()()()()()();
   }
   if (rf & 2) {
@@ -16157,24 +18254,26 @@ function ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_Template(rf, ctx
     \u0275\u0275advance(5);
     \u0275\u0275textInterpolate(task_r5.submittedBy);
     \u0275\u0275advance(5);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(27, 9, task_r5.submittedAt, "yyyy-MM-dd"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(27, 10, task_r5.submittedAt, "yyyy-MM-dd"));
     \u0275\u0275advance(6);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(33, 12, d_r2.totalAmount, "1.0-0"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(33, 13, d_r2.totalAmount, "1.0-0"));
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(d_r2.estimatedPaymentDate ? 34 : -1);
+    \u0275\u0275conditional(d_r2.paymentType === "vendor" ? 34 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(d_r2.paidAt ? 35 : -1);
+    \u0275\u0275conditional(d_r2.estimatedPaymentDate ? 35 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(d_r2.reason ? 36 : -1);
+    \u0275\u0275conditional(d_r2.paidAt ? 36 : -1);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(d_r2.reason ? 37 : -1);
     \u0275\u0275advance(23);
     \u0275\u0275repeater(d_r2.invoices);
     \u0275\u0275advance(7);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(67, 15, d_r2.totalAmount, "1.0-0"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(68, 16, d_r2.totalAmount, "1.0-0"));
   }
 }
 function ApprovalTaskReview_Conditional_1_Case_15_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275conditionalCreate(0, ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_Template, 69, 18);
+    \u0275\u0275conditionalCreate(0, ApprovalTaskReview_Conditional_1_Case_15_Conditional_0_Template, 70, 19);
   }
   if (rf & 2) {
     let tmp_3_0;
@@ -16187,12 +18286,12 @@ function ApprovalTaskReview_Conditional_1_Case_16_Conditional_0_Template(rf, ctx
     \u0275\u0275elementStart(0, "div", 16)(1, "div", 17);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 18);
-    \u0275\u0275element(3, "use", 46);
+    \u0275\u0275element(3, "use", 47);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u8ACB\u5047\u7533\u8ACB\u8CC7\u8A0A ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "div", 20)(6, "div", 47)(7, "div", 22)(8, "div", 23);
+    \u0275\u0275elementStart(5, "div", 20)(6, "div", 48)(7, "div", 22)(8, "div", 23);
     \u0275\u0275text(9, "\u5047\u5225");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(10, "span", 24);
@@ -16224,10 +18323,10 @@ function ApprovalTaskReview_Conditional_1_Case_16_Conditional_0_Template(rf, ctx
     \u0275\u0275text(32);
     \u0275\u0275pipe(33, "date");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(34, "div", 28)(35, "div", 23);
+    \u0275\u0275elementStart(34, "div", 29)(35, "div", 23);
     \u0275\u0275text(36, "\u8ACB\u5047\u539F\u56E0");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(37, "div", 48);
+    \u0275\u0275elementStart(37, "div", 49);
     \u0275\u0275text(38);
     \u0275\u0275elementEnd()()()()();
   }
@@ -16261,7 +18360,7 @@ function ApprovalTaskReview_Conditional_1_Case_16_Template(rf, ctx) {
 }
 function ApprovalTaskReview_Conditional_1_Case_17_Conditional_0_Conditional_12_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 50);
+    \u0275\u0275elementStart(0, "span", 51);
     \u0275\u0275text(1, "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5");
     \u0275\u0275elementEnd();
   }
@@ -16271,7 +18370,7 @@ function ApprovalTaskReview_Conditional_1_Case_17_Conditional_0_Conditional_36_T
     \u0275\u0275elementStart(0, "div", 22)(1, "div", 23);
     \u0275\u0275text(2, "\u95DC\u806F\u5C08\u6848");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "span", 51);
+    \u0275\u0275elementStart(3, "span", 52);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd()();
   }
@@ -16283,24 +18382,24 @@ function ApprovalTaskReview_Conditional_1_Case_17_Conditional_0_Conditional_36_T
 }
 function ApprovalTaskReview_Conditional_1_Case_17_Conditional_0_Conditional_54_For_24_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 43);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 44);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td", 43);
+    \u0275\u0275elementStart(3, "td", 44);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "td", 54);
+    \u0275\u0275elementStart(5, "td", 55);
     \u0275\u0275text(6);
     \u0275\u0275pipe(7, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "td", 43);
+    \u0275\u0275elementStart(8, "td", 44);
     \u0275\u0275text(9);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(10, "td", 55);
+    \u0275\u0275elementStart(10, "td", 56);
     \u0275\u0275text(11);
     \u0275\u0275pipe(12, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(13, "td", 56);
+    \u0275\u0275elementStart(13, "td", 57);
     \u0275\u0275text(14);
     \u0275\u0275elementEnd()();
   }
@@ -16325,36 +18424,36 @@ function ApprovalTaskReview_Conditional_1_Case_17_Conditional_0_Conditional_54_T
     \u0275\u0275elementStart(0, "div", 13)(1, "div", 17);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 18);
-    \u0275\u0275element(3, "use", 52);
+    \u0275\u0275element(3, "use", 53);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u51FA\u5DEE\u660E\u7D30 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "div", 30)(6, "div", 31)(7, "table", 32)(8, "thead", 33)(9, "tr")(10, "th");
+    \u0275\u0275elementStart(5, "div", 31)(6, "div", 32)(7, "table", 33)(8, "thead", 34)(9, "tr")(10, "th");
     \u0275\u0275text(11, "\u5206\u985E");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(12, "th");
     \u0275\u0275text(13, "\u9805\u76EE\u8AAA\u660E");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(14, "th", 35);
+    \u0275\u0275elementStart(14, "th", 36);
     \u0275\u0275text(15, "\u55AE\u50F9");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(16, "th");
     \u0275\u0275text(17, "\u6578\u91CF/\u55AE\u4F4D");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(18, "th", 35);
+    \u0275\u0275elementStart(18, "th", 36);
     \u0275\u0275text(19, "\u7E3D\u50F9");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(20, "th");
     \u0275\u0275text(21, "\u5099\u8A3B");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(22, "tbody");
-    \u0275\u0275repeaterCreate(23, ApprovalTaskReview_Conditional_1_Case_17_Conditional_0_Conditional_54_For_24_Template, 15, 12, "tr", null, _forTrack016);
+    \u0275\u0275repeaterCreate(23, ApprovalTaskReview_Conditional_1_Case_17_Conditional_0_Conditional_54_For_24_Template, 15, 12, "tr", null, _forTrack017);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(25, "tfoot")(26, "tr", 33)(27, "td", 53);
+    \u0275\u0275elementStart(25, "tfoot")(26, "tr", 34)(27, "td", 54);
     \u0275\u0275text(28, "\u5408\u8A08");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(29, "td", 37);
+    \u0275\u0275elementStart(29, "td", 38);
     \u0275\u0275text(30);
     \u0275\u0275pipe(31, "number");
     \u0275\u0275elementEnd();
@@ -16374,18 +18473,18 @@ function ApprovalTaskReview_Conditional_1_Case_17_Conditional_0_Template(rf, ctx
     \u0275\u0275elementStart(0, "div", 16)(1, "div", 17);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 18);
-    \u0275\u0275element(3, "use", 49);
+    \u0275\u0275element(3, "use", 50);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u51FA\u5DEE\u9810\u652F\u7533\u8ACB\u8CC7\u8A0A ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "div", 20)(6, "div", 47)(7, "div", 22)(8, "div", 23);
+    \u0275\u0275elementStart(5, "div", 20)(6, "div", 48)(7, "div", 22)(8, "div", 23);
     \u0275\u0275text(9, "\u51FA\u5DEE\u5730\u9EDE");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(10, "span", 24);
     \u0275\u0275text(11);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(12, ApprovalTaskReview_Conditional_1_Case_17_Conditional_0_Conditional_12_Template, 2, 0, "span", 50);
+    \u0275\u0275conditionalCreate(12, ApprovalTaskReview_Conditional_1_Case_17_Conditional_0_Conditional_12_Template, 2, 0, "span", 51);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(13, "div", 22)(14, "div", 23);
     \u0275\u0275text(15, "\u7533\u8ACB\u4EBA");
@@ -16429,10 +18528,10 @@ function ApprovalTaskReview_Conditional_1_Case_17_Conditional_0_Template(rf, ctx
     \u0275\u0275text(47);
     \u0275\u0275pipe(48, "date");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(49, "div", 28)(50, "div", 23);
+    \u0275\u0275elementStart(49, "div", 29)(50, "div", 23);
     \u0275\u0275text(51, "\u51FA\u5DEE\u76EE\u7684");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(52, "div", 48);
+    \u0275\u0275elementStart(52, "div", 49);
     \u0275\u0275text(53);
     \u0275\u0275elementEnd()()()()();
     \u0275\u0275conditionalCreate(54, ApprovalTaskReview_Conditional_1_Case_17_Conditional_0_Conditional_54_Template, 33, 4, "div", 13);
@@ -16479,7 +18578,7 @@ function ApprovalTaskReview_Conditional_1_Case_18_Conditional_0_Conditional_36_T
     \u0275\u0275elementStart(0, "div", 22)(1, "div", 23);
     \u0275\u0275text(2, "\u95DC\u806F\u5C08\u6848");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "span", 51);
+    \u0275\u0275elementStart(3, "span", 52);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd()();
   }
@@ -16492,7 +18591,7 @@ function ApprovalTaskReview_Conditional_1_Case_18_Conditional_0_Conditional_36_T
 function ApprovalTaskReview_Conditional_1_Case_18_Conditional_0_Conditional_42_For_29_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
     const _r10 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 45);
+    \u0275\u0275elementStart(0, "button", 46);
     \u0275\u0275listener("click", function ApprovalTaskReview_Conditional_1_Case_18_Conditional_0_Conditional_42_For_29_Conditional_2_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r10);
       const item_r11 = \u0275\u0275nextContext().$implicit;
@@ -16501,7 +18600,7 @@ function ApprovalTaskReview_Conditional_1_Case_18_Conditional_0_Conditional_42_F
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 14);
-    \u0275\u0275element(2, "use", 29);
+    \u0275\u0275element(2, "use", 30);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -16511,34 +18610,34 @@ function ApprovalTaskReview_Conditional_1_Case_18_Conditional_0_Conditional_42_F
 }
 function ApprovalTaskReview_Conditional_1_Case_18_Conditional_0_Conditional_42_For_29_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 40);
-    \u0275\u0275conditionalCreate(2, ApprovalTaskReview_Conditional_1_Case_18_Conditional_0_Conditional_42_For_29_Conditional_2_Template, 3, 2, "button", 41);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 41);
+    \u0275\u0275conditionalCreate(2, ApprovalTaskReview_Conditional_1_Case_18_Conditional_0_Conditional_42_For_29_Conditional_2_Template, 3, 2, "button", 42);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td", 58);
+    \u0275\u0275elementStart(3, "td", 59);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "td", 43);
+    \u0275\u0275elementStart(5, "td", 44);
     \u0275\u0275text(6);
     \u0275\u0275pipe(7, "date");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "td", 43);
+    \u0275\u0275elementStart(8, "td", 44);
     \u0275\u0275text(9);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(10, "td", 43);
+    \u0275\u0275elementStart(10, "td", 44);
     \u0275\u0275text(11);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(12, "td", 54);
+    \u0275\u0275elementStart(12, "td", 55);
     \u0275\u0275text(13);
     \u0275\u0275pipe(14, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "td", 43);
+    \u0275\u0275elementStart(15, "td", 44);
     \u0275\u0275text(16);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(17, "td", 55);
+    \u0275\u0275elementStart(17, "td", 56);
     \u0275\u0275text(18);
     \u0275\u0275pipe(19, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(20, "td", 56);
+    \u0275\u0275elementStart(20, "td", 57);
     \u0275\u0275text(21);
     \u0275\u0275elementEnd()();
   }
@@ -16569,13 +18668,13 @@ function ApprovalTaskReview_Conditional_1_Case_18_Conditional_0_Conditional_42_T
     \u0275\u0275elementStart(0, "div", 13)(1, "div", 17);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 18);
-    \u0275\u0275element(3, "use", 52);
+    \u0275\u0275element(3, "use", 53);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u8CBB\u7528\u660E\u7D30 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "div", 30)(6, "div", 31)(7, "table", 32)(8, "thead", 33)(9, "tr");
-    \u0275\u0275element(10, "th", 34);
+    \u0275\u0275elementStart(5, "div", 31)(6, "div", 32)(7, "table", 33)(8, "thead", 34)(9, "tr");
+    \u0275\u0275element(10, "th", 35);
     \u0275\u0275elementStart(11, "th");
     \u0275\u0275text(12, "\u767C\u7968\u865F\u78BC");
     \u0275\u0275elementEnd();
@@ -16588,25 +18687,25 @@ function ApprovalTaskReview_Conditional_1_Case_18_Conditional_0_Conditional_42_T
     \u0275\u0275elementStart(17, "th");
     \u0275\u0275text(18, "\u9805\u76EE\u8AAA\u660E");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(19, "th", 35);
+    \u0275\u0275elementStart(19, "th", 36);
     \u0275\u0275text(20, "\u55AE\u50F9");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(21, "th");
     \u0275\u0275text(22, "\u6578\u91CF/\u55AE\u4F4D");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(23, "th", 35);
+    \u0275\u0275elementStart(23, "th", 36);
     \u0275\u0275text(24, "\u7E3D\u50F9");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(25, "th");
     \u0275\u0275text(26, "\u5099\u8A3B");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(27, "tbody");
-    \u0275\u0275repeaterCreate(28, ApprovalTaskReview_Conditional_1_Case_18_Conditional_0_Conditional_42_For_29_Template, 22, 18, "tr", null, _forTrack016);
+    \u0275\u0275repeaterCreate(28, ApprovalTaskReview_Conditional_1_Case_18_Conditional_0_Conditional_42_For_29_Template, 22, 18, "tr", null, _forTrack017);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(30, "tfoot")(31, "tr", 33)(32, "td", 57);
+    \u0275\u0275elementStart(30, "tfoot")(31, "tr", 34)(32, "td", 58);
     \u0275\u0275text(33, "\u5408\u8A08");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(34, "td", 37);
+    \u0275\u0275elementStart(34, "td", 38);
     \u0275\u0275text(35);
     \u0275\u0275pipe(36, "number");
     \u0275\u0275elementEnd();
@@ -16626,18 +18725,18 @@ function ApprovalTaskReview_Conditional_1_Case_18_Conditional_0_Template(rf, ctx
     \u0275\u0275elementStart(0, "div", 16)(1, "div", 17);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 18);
-    \u0275\u0275element(3, "use", 49);
+    \u0275\u0275element(3, "use", 50);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB\u8CC7\u8A0A ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "div", 20)(6, "div", 47)(7, "div", 22)(8, "div", 23);
+    \u0275\u0275elementStart(5, "div", 20)(6, "div", 48)(7, "div", 22)(8, "div", 23);
     \u0275\u0275text(9, "\u57F7\u884C\u6D3B\u52D5\u5730\u9EDE");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(10, "span", 24);
     \u0275\u0275text(11);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(12, "span", 50);
+    \u0275\u0275elementStart(12, "span", 51);
     \u0275\u0275text(13, "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5");
     \u0275\u0275elementEnd()();
     \u0275\u0275elementStart(14, "div", 22)(15, "div", 23);
@@ -16667,10 +18766,10 @@ function ApprovalTaskReview_Conditional_1_Case_18_Conditional_0_Template(rf, ctx
     \u0275\u0275pipe(35, "date");
     \u0275\u0275elementEnd()();
     \u0275\u0275conditionalCreate(36, ApprovalTaskReview_Conditional_1_Case_18_Conditional_0_Conditional_36_Template, 5, 1, "div", 22);
-    \u0275\u0275elementStart(37, "div", 28)(38, "div", 23);
+    \u0275\u0275elementStart(37, "div", 29)(38, "div", 23);
     \u0275\u0275text(39, "\u6D3B\u52D5\u4E3B\u65E8\u53CA\u5167\u5BB9");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(40, "div", 48);
+    \u0275\u0275elementStart(40, "div", 49);
     \u0275\u0275text(41);
     \u0275\u0275elementEnd()()()()();
     \u0275\u0275conditionalCreate(42, ApprovalTaskReview_Conditional_1_Case_18_Conditional_0_Conditional_42_Template, 38, 4, "div", 13);
@@ -16720,7 +18819,7 @@ function ApprovalTaskReview_Conditional_1_Case_19_Conditional_0_Conditional_23_F
 }
 function ApprovalTaskReview_Conditional_1_Case_19_Conditional_0_Conditional_23_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 60)(1, "div", 23);
+    \u0275\u0275elementStart(0, "div", 28)(1, "div", 23);
     \u0275\u0275text(2, "\u95DC\u806F\u5C08\u6848");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "div", 61);
@@ -16738,12 +18837,12 @@ function ApprovalTaskReview_Conditional_1_Case_19_Conditional_0_Template(rf, ctx
     \u0275\u0275elementStart(0, "div", 16)(1, "div", 17);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 18);
-    \u0275\u0275element(3, "use", 59);
+    \u0275\u0275element(3, "use", 60);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u52A0\u73ED\u7533\u8ACB\u8CC7\u8A0A ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "div", 20)(6, "div", 47)(7, "div", 22)(8, "div", 23);
+    \u0275\u0275elementStart(5, "div", 20)(6, "div", 48)(7, "div", 22)(8, "div", 23);
     \u0275\u0275text(9, "\u52A0\u73ED\u65E5\u671F");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(10, "span", 24);
@@ -16762,11 +18861,11 @@ function ApprovalTaskReview_Conditional_1_Case_19_Conditional_0_Template(rf, ctx
     \u0275\u0275elementStart(21, "span", 27);
     \u0275\u0275text(22);
     \u0275\u0275elementEnd()();
-    \u0275\u0275conditionalCreate(23, ApprovalTaskReview_Conditional_1_Case_19_Conditional_0_Conditional_23_Template, 6, 0, "div", 60);
-    \u0275\u0275elementStart(24, "div", 28)(25, "div", 23);
+    \u0275\u0275conditionalCreate(23, ApprovalTaskReview_Conditional_1_Case_19_Conditional_0_Conditional_23_Template, 6, 0, "div", 28);
+    \u0275\u0275elementStart(24, "div", 29)(25, "div", 23);
     \u0275\u0275text(26, "\u52A0\u73ED\u539F\u56E0");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(27, "div", 48);
+    \u0275\u0275elementStart(27, "div", 49);
     \u0275\u0275text(28);
     \u0275\u0275elementEnd()()()()();
   }
@@ -16807,7 +18906,7 @@ function ApprovalTaskReview_Conditional_1_Case_20_Conditional_0_Conditional_45_F
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 14);
-    \u0275\u0275element(2, "use", 29);
+    \u0275\u0275element(2, "use", 30);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -16817,32 +18916,32 @@ function ApprovalTaskReview_Conditional_1_Case_20_Conditional_0_Conditional_45_F
 }
 function ApprovalTaskReview_Conditional_1_Case_20_Conditional_0_Conditional_45_For_30_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 43);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 44);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td", 43);
+    \u0275\u0275elementStart(3, "td", 44);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "td", 54);
+    \u0275\u0275elementStart(5, "td", 55);
     \u0275\u0275text(6);
     \u0275\u0275pipe(7, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "td", 43);
+    \u0275\u0275elementStart(8, "td", 44);
     \u0275\u0275text(9);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(10, "td", 55);
+    \u0275\u0275elementStart(10, "td", 56);
     \u0275\u0275text(11);
     \u0275\u0275pipe(12, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(13, "td", 54);
+    \u0275\u0275elementStart(13, "td", 55);
     \u0275\u0275text(14);
     \u0275\u0275pipe(15, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(16, "td", 54);
+    \u0275\u0275elementStart(16, "td", 55);
     \u0275\u0275text(17);
     \u0275\u0275pipe(18, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(19, "td", 56);
+    \u0275\u0275elementStart(19, "td", 57);
     \u0275\u0275text(20);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(21, "td", 64);
@@ -16876,30 +18975,30 @@ function ApprovalTaskReview_Conditional_1_Case_20_Conditional_0_Conditional_45_T
     \u0275\u0275elementStart(0, "div", 13)(1, "div", 17);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 18);
-    \u0275\u0275element(3, "use", 52);
+    \u0275\u0275element(3, "use", 53);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u9810\u652F\u660E\u7D30 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "div", 30)(6, "div", 31)(7, "table", 32)(8, "thead", 33)(9, "tr")(10, "th");
+    \u0275\u0275elementStart(5, "div", 31)(6, "div", 32)(7, "table", 33)(8, "thead", 34)(9, "tr")(10, "th");
     \u0275\u0275text(11, "\u5206\u985E");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(12, "th");
     \u0275\u0275text(13, "\u9805\u76EE\u8AAA\u660E");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(14, "th", 35);
+    \u0275\u0275elementStart(14, "th", 36);
     \u0275\u0275text(15, "\u55AE\u50F9");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(16, "th");
     \u0275\u0275text(17, "\u6578\u91CF/\u55AE\u4F4D");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(18, "th", 35);
+    \u0275\u0275elementStart(18, "th", 36);
     \u0275\u0275text(19, "\u7E3D\u50F9");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(20, "th", 35);
+    \u0275\u0275elementStart(20, "th", 36);
     \u0275\u0275text(21, "\u73FE\u91D1\u82B1\u8CBB");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(22, "th", 35);
+    \u0275\u0275elementStart(22, "th", 36);
     \u0275\u0275text(23, "\u652F\u7968\u91D1\u984D");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(24, "th");
@@ -16909,20 +19008,20 @@ function ApprovalTaskReview_Conditional_1_Case_20_Conditional_0_Conditional_45_T
     \u0275\u0275text(27, "\u6A94\u6848");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(28, "tbody");
-    \u0275\u0275repeaterCreate(29, ApprovalTaskReview_Conditional_1_Case_20_Conditional_0_Conditional_45_For_30_Template, 23, 21, "tr", null, _forTrack016);
+    \u0275\u0275repeaterCreate(29, ApprovalTaskReview_Conditional_1_Case_20_Conditional_0_Conditional_45_For_30_Template, 23, 21, "tr", null, _forTrack017);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(31, "tfoot")(32, "tr", 33)(33, "td", 53);
+    \u0275\u0275elementStart(31, "tfoot")(32, "tr", 34)(33, "td", 54);
     \u0275\u0275text(34, "\u5408\u8A08");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(35, "td", 37);
+    \u0275\u0275elementStart(35, "td", 38);
     \u0275\u0275text(36);
     \u0275\u0275pipe(37, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(38, "td", 37);
+    \u0275\u0275elementStart(38, "td", 38);
     \u0275\u0275text(39);
     \u0275\u0275pipe(40, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(41, "td", 37);
+    \u0275\u0275elementStart(41, "td", 38);
     \u0275\u0275text(42);
     \u0275\u0275pipe(43, "number");
     \u0275\u0275elementEnd();
@@ -16952,7 +19051,7 @@ function ApprovalTaskReview_Conditional_1_Case_20_Conditional_0_Template(rf, ctx
     \u0275\u0275text(4, " \u9810\u652F\u7533\u8ACB\u8CC7\u8A0A ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "div", 20)(6, "div", 47)(7, "div", 22)(8, "div", 23);
+    \u0275\u0275elementStart(5, "div", 20)(6, "div", 48)(7, "div", 22)(8, "div", 23);
     \u0275\u0275text(9, "\u9810\u652F\u55AE\u865F");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(10, "span", 25);
@@ -17092,7 +19191,7 @@ function ApprovalTaskReview_Conditional_1_Case_21_Conditional_0_Conditional_58_T
 function ApprovalTaskReview_Conditional_1_Case_21_Conditional_0_Conditional_59_For_33_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
     const _r18 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 45);
+    \u0275\u0275elementStart(0, "button", 46);
     \u0275\u0275listener("click", function ApprovalTaskReview_Conditional_1_Case_21_Conditional_0_Conditional_59_For_33_Conditional_2_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r18);
       const item_r19 = \u0275\u0275nextContext().$implicit;
@@ -17101,7 +19200,7 @@ function ApprovalTaskReview_Conditional_1_Case_21_Conditional_0_Conditional_59_F
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 14);
-    \u0275\u0275element(2, "use", 29);
+    \u0275\u0275element(2, "use", 30);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -17111,42 +19210,42 @@ function ApprovalTaskReview_Conditional_1_Case_21_Conditional_0_Conditional_59_F
 }
 function ApprovalTaskReview_Conditional_1_Case_21_Conditional_0_Conditional_59_For_33_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 40);
-    \u0275\u0275conditionalCreate(2, ApprovalTaskReview_Conditional_1_Case_21_Conditional_0_Conditional_59_For_33_Conditional_2_Template, 3, 2, "button", 41);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 41);
+    \u0275\u0275conditionalCreate(2, ApprovalTaskReview_Conditional_1_Case_21_Conditional_0_Conditional_59_For_33_Conditional_2_Template, 3, 2, "button", 42);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td", 58);
+    \u0275\u0275elementStart(3, "td", 59);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "td", 43);
+    \u0275\u0275elementStart(5, "td", 44);
     \u0275\u0275text(6);
     \u0275\u0275pipe(7, "date");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "td", 43);
+    \u0275\u0275elementStart(8, "td", 44);
     \u0275\u0275text(9);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(10, "td", 43);
+    \u0275\u0275elementStart(10, "td", 44);
     \u0275\u0275text(11);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(12, "td", 43);
+    \u0275\u0275elementStart(12, "td", 44);
     \u0275\u0275text(13);
     \u0275\u0275pipe(14, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "td", 43);
+    \u0275\u0275elementStart(15, "td", 44);
     \u0275\u0275text(16);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(17, "td", 55);
+    \u0275\u0275elementStart(17, "td", 56);
     \u0275\u0275text(18);
     \u0275\u0275pipe(19, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(20, "td", 54);
+    \u0275\u0275elementStart(20, "td", 55);
     \u0275\u0275text(21);
     \u0275\u0275pipe(22, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(23, "td", 54);
+    \u0275\u0275elementStart(23, "td", 55);
     \u0275\u0275text(24);
     \u0275\u0275pipe(25, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(26, "td", 56);
+    \u0275\u0275elementStart(26, "td", 57);
     \u0275\u0275text(27);
     \u0275\u0275elementEnd()();
   }
@@ -17181,13 +19280,13 @@ function ApprovalTaskReview_Conditional_1_Case_21_Conditional_0_Conditional_59_T
     \u0275\u0275elementStart(0, "div", 13)(1, "div", 17);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 18);
-    \u0275\u0275element(3, "use", 52);
+    \u0275\u0275element(3, "use", 53);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u6C96\u92B7\u660E\u7D30 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "div", 30)(6, "div", 31)(7, "table", 32)(8, "thead", 33)(9, "tr");
-    \u0275\u0275element(10, "th", 34);
+    \u0275\u0275elementStart(5, "div", 31)(6, "div", 32)(7, "table", 33)(8, "thead", 34)(9, "tr");
+    \u0275\u0275element(10, "th", 35);
     \u0275\u0275elementStart(11, "th");
     \u0275\u0275text(12, "\u767C\u7968\u865F\u78BC");
     \u0275\u0275elementEnd();
@@ -17206,33 +19305,33 @@ function ApprovalTaskReview_Conditional_1_Case_21_Conditional_0_Conditional_59_T
     \u0275\u0275elementStart(21, "th");
     \u0275\u0275text(22, "\u6578\u91CF/\u55AE\u4F4D");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(23, "th", 35);
+    \u0275\u0275elementStart(23, "th", 36);
     \u0275\u0275text(24, "\u7E3D\u50F9");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(25, "th", 35);
+    \u0275\u0275elementStart(25, "th", 36);
     \u0275\u0275text(26, "\u73FE\u91D1\u82B1\u8CBB");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(27, "th", 35);
+    \u0275\u0275elementStart(27, "th", 36);
     \u0275\u0275text(28, "\u652F\u7968\u91D1\u984D");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(29, "th");
     \u0275\u0275text(30, "\u5099\u8A3B");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(31, "tbody");
-    \u0275\u0275repeaterCreate(32, ApprovalTaskReview_Conditional_1_Case_21_Conditional_0_Conditional_59_For_33_Template, 28, 26, "tr", null, _forTrack016);
+    \u0275\u0275repeaterCreate(32, ApprovalTaskReview_Conditional_1_Case_21_Conditional_0_Conditional_59_For_33_Template, 28, 26, "tr", null, _forTrack017);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(34, "tfoot")(35, "tr", 33)(36, "td", 57);
+    \u0275\u0275elementStart(34, "tfoot")(35, "tr", 34)(36, "td", 58);
     \u0275\u0275text(37, "\u5408\u8A08");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(38, "td", 37);
+    \u0275\u0275elementStart(38, "td", 38);
     \u0275\u0275text(39);
     \u0275\u0275pipe(40, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(41, "td", 37);
+    \u0275\u0275elementStart(41, "td", 38);
     \u0275\u0275text(42);
     \u0275\u0275pipe(43, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(44, "td", 37);
+    \u0275\u0275elementStart(44, "td", 38);
     \u0275\u0275text(45);
     \u0275\u0275pipe(46, "number");
     \u0275\u0275elementEnd();
@@ -17256,7 +19355,7 @@ function ApprovalTaskReview_Conditional_1_Case_21_Conditional_0_Template(rf, ctx
     \u0275\u0275elementStart(0, "div", 16)(1, "div", 17);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 18);
-    \u0275\u0275element(3, "use", 29);
+    \u0275\u0275element(3, "use", 30);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u9810\u652F\u6C96\u92B7\u7533\u8ACB\u8CC7\u8A0A ");
     \u0275\u0275elementEnd();
@@ -17370,7 +19469,7 @@ function ApprovalTaskReview_Conditional_1_Case_22_Conditional_0_Conditional_35_T
     \u0275\u0275elementStart(0, "div", 22)(1, "div", 23);
     \u0275\u0275text(2, "\u95DC\u806F\u5C08\u6848");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "span", 51);
+    \u0275\u0275elementStart(3, "span", 52);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd()();
   }
@@ -17383,7 +19482,7 @@ function ApprovalTaskReview_Conditional_1_Case_22_Conditional_0_Conditional_35_T
 function ApprovalTaskReview_Conditional_1_Case_22_Conditional_0_Conditional_53_For_29_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
     const _r21 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 45);
+    \u0275\u0275elementStart(0, "button", 46);
     \u0275\u0275listener("click", function ApprovalTaskReview_Conditional_1_Case_22_Conditional_0_Conditional_53_For_29_Conditional_2_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r21);
       const item_r22 = \u0275\u0275nextContext().$implicit;
@@ -17392,7 +19491,7 @@ function ApprovalTaskReview_Conditional_1_Case_22_Conditional_0_Conditional_53_F
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 14);
-    \u0275\u0275element(2, "use", 29);
+    \u0275\u0275element(2, "use", 30);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -17402,33 +19501,33 @@ function ApprovalTaskReview_Conditional_1_Case_22_Conditional_0_Conditional_53_F
 }
 function ApprovalTaskReview_Conditional_1_Case_22_Conditional_0_Conditional_53_For_29_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 40);
-    \u0275\u0275conditionalCreate(2, ApprovalTaskReview_Conditional_1_Case_22_Conditional_0_Conditional_53_For_29_Conditional_2_Template, 3, 2, "button", 41);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 41);
+    \u0275\u0275conditionalCreate(2, ApprovalTaskReview_Conditional_1_Case_22_Conditional_0_Conditional_53_For_29_Conditional_2_Template, 3, 2, "button", 42);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td", 43);
+    \u0275\u0275elementStart(3, "td", 44);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "td", 43);
+    \u0275\u0275elementStart(5, "td", 44);
     \u0275\u0275text(6);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "td", 54);
+    \u0275\u0275elementStart(7, "td", 55);
     \u0275\u0275text(8);
     \u0275\u0275pipe(9, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(10, "td", 43);
+    \u0275\u0275elementStart(10, "td", 44);
     \u0275\u0275text(11);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(12, "td", 55);
+    \u0275\u0275elementStart(12, "td", 56);
     \u0275\u0275text(13);
     \u0275\u0275pipe(14, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "td", 56);
+    \u0275\u0275elementStart(15, "td", 57);
     \u0275\u0275text(16);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(17, "td", 58);
+    \u0275\u0275elementStart(17, "td", 59);
     \u0275\u0275text(18);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(19, "td", 43);
+    \u0275\u0275elementStart(19, "td", 44);
     \u0275\u0275text(20);
     \u0275\u0275pipe(21, "date");
     \u0275\u0275elementEnd()();
@@ -17460,26 +19559,26 @@ function ApprovalTaskReview_Conditional_1_Case_22_Conditional_0_Conditional_53_T
     \u0275\u0275elementStart(0, "div", 13)(1, "div", 17);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 18);
-    \u0275\u0275element(3, "use", 52);
+    \u0275\u0275element(3, "use", 53);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u8CBB\u7528\u660E\u7D30 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "div", 30)(6, "div", 31)(7, "table", 32)(8, "thead", 33)(9, "tr");
-    \u0275\u0275element(10, "th", 34);
+    \u0275\u0275elementStart(5, "div", 31)(6, "div", 32)(7, "table", 33)(8, "thead", 34)(9, "tr");
+    \u0275\u0275element(10, "th", 35);
     \u0275\u0275elementStart(11, "th");
     \u0275\u0275text(12, "\u5206\u985E");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(13, "th");
     \u0275\u0275text(14, "\u9805\u76EE\u8AAA\u660E");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "th", 35);
+    \u0275\u0275elementStart(15, "th", 36);
     \u0275\u0275text(16, "\u55AE\u50F9");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(17, "th");
     \u0275\u0275text(18, "\u6578\u91CF/\u55AE\u4F4D");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(19, "th", 35);
+    \u0275\u0275elementStart(19, "th", 36);
     \u0275\u0275text(20, "\u7E3D\u50F9");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(21, "th");
@@ -17492,12 +19591,12 @@ function ApprovalTaskReview_Conditional_1_Case_22_Conditional_0_Conditional_53_T
     \u0275\u0275text(26, "\u767C\u7968\u65E5\u671F");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(27, "tbody");
-    \u0275\u0275repeaterCreate(28, ApprovalTaskReview_Conditional_1_Case_22_Conditional_0_Conditional_53_For_29_Template, 22, 18, "tr", null, _forTrack016);
+    \u0275\u0275repeaterCreate(28, ApprovalTaskReview_Conditional_1_Case_22_Conditional_0_Conditional_53_For_29_Template, 22, 18, "tr", null, _forTrack017);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(30, "tfoot")(31, "tr", 33)(32, "td", 73);
+    \u0275\u0275elementStart(30, "tfoot")(31, "tr", 34)(32, "td", 73);
     \u0275\u0275text(33, "\u5408\u8A08");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(34, "td", 37);
+    \u0275\u0275elementStart(34, "td", 38);
     \u0275\u0275text(35);
     \u0275\u0275pipe(36, "number");
     \u0275\u0275elementEnd();
@@ -17517,12 +19616,12 @@ function ApprovalTaskReview_Conditional_1_Case_22_Conditional_0_Template(rf, ctx
     \u0275\u0275elementStart(0, "div", 16)(1, "div", 17);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 18);
-    \u0275\u0275element(3, "use", 49);
+    \u0275\u0275element(3, "use", 50);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB\u8CC7\u8A0A ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "div", 20)(6, "div", 47)(7, "div", 22)(8, "div", 23);
+    \u0275\u0275elementStart(5, "div", 20)(6, "div", 48)(7, "div", 22)(8, "div", 23);
     \u0275\u0275text(9, "\u51FA\u5DEE\u5730\u9EDE");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(10, "span", 24);
@@ -17570,10 +19669,10 @@ function ApprovalTaskReview_Conditional_1_Case_22_Conditional_0_Template(rf, ctx
     \u0275\u0275text(46);
     \u0275\u0275pipe(47, "date");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(48, "div", 28)(49, "div", 23);
+    \u0275\u0275elementStart(48, "div", 29)(49, "div", 23);
     \u0275\u0275text(50, "\u51FA\u5DEE\u76EE\u7684");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(51, "div", 48);
+    \u0275\u0275elementStart(51, "div", 49);
     \u0275\u0275text(52);
     \u0275\u0275elementEnd()()()()();
     \u0275\u0275conditionalCreate(53, ApprovalTaskReview_Conditional_1_Case_22_Conditional_0_Conditional_53_Template, 38, 4, "div", 13);
@@ -17690,7 +19789,7 @@ function ApprovalTaskReview_Conditional_1_Case_23_Conditional_0_Conditional_66_T
 function ApprovalTaskReview_Conditional_1_Case_23_Conditional_0_Conditional_67_For_29_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
     const _r24 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 45);
+    \u0275\u0275elementStart(0, "button", 46);
     \u0275\u0275listener("click", function ApprovalTaskReview_Conditional_1_Case_23_Conditional_0_Conditional_67_For_29_Conditional_2_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r24);
       const item_r25 = \u0275\u0275nextContext().$implicit;
@@ -17699,7 +19798,7 @@ function ApprovalTaskReview_Conditional_1_Case_23_Conditional_0_Conditional_67_F
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 14);
-    \u0275\u0275element(2, "use", 29);
+    \u0275\u0275element(2, "use", 30);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -17709,34 +19808,34 @@ function ApprovalTaskReview_Conditional_1_Case_23_Conditional_0_Conditional_67_F
 }
 function ApprovalTaskReview_Conditional_1_Case_23_Conditional_0_Conditional_67_For_29_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 40);
-    \u0275\u0275conditionalCreate(2, ApprovalTaskReview_Conditional_1_Case_23_Conditional_0_Conditional_67_For_29_Conditional_2_Template, 3, 2, "button", 41);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 41);
+    \u0275\u0275conditionalCreate(2, ApprovalTaskReview_Conditional_1_Case_23_Conditional_0_Conditional_67_For_29_Conditional_2_Template, 3, 2, "button", 42);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td", 58);
+    \u0275\u0275elementStart(3, "td", 59);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "td", 43);
+    \u0275\u0275elementStart(5, "td", 44);
     \u0275\u0275text(6);
     \u0275\u0275pipe(7, "date");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "td", 43);
+    \u0275\u0275elementStart(8, "td", 44);
     \u0275\u0275text(9);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(10, "td", 43);
+    \u0275\u0275elementStart(10, "td", 44);
     \u0275\u0275text(11);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(12, "td", 43);
+    \u0275\u0275elementStart(12, "td", 44);
     \u0275\u0275text(13);
     \u0275\u0275pipe(14, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "td", 43);
+    \u0275\u0275elementStart(15, "td", 44);
     \u0275\u0275text(16);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(17, "td", 55);
+    \u0275\u0275elementStart(17, "td", 56);
     \u0275\u0275text(18);
     \u0275\u0275pipe(19, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(20, "td", 56);
+    \u0275\u0275elementStart(20, "td", 57);
     \u0275\u0275text(21);
     \u0275\u0275elementEnd()();
   }
@@ -17767,13 +19866,13 @@ function ApprovalTaskReview_Conditional_1_Case_23_Conditional_0_Conditional_67_T
     \u0275\u0275elementStart(0, "div", 13)(1, "div", 17);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 18);
-    \u0275\u0275element(3, "use", 52);
+    \u0275\u0275element(3, "use", 53);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u6C96\u92B7\u660E\u7D30 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "div", 30)(6, "div", 31)(7, "table", 32)(8, "thead", 33)(9, "tr");
-    \u0275\u0275element(10, "th", 34);
+    \u0275\u0275elementStart(5, "div", 31)(6, "div", 32)(7, "table", 33)(8, "thead", 34)(9, "tr");
+    \u0275\u0275element(10, "th", 35);
     \u0275\u0275elementStart(11, "th");
     \u0275\u0275text(12, "\u767C\u7968\u865F\u78BC");
     \u0275\u0275elementEnd();
@@ -17792,19 +19891,19 @@ function ApprovalTaskReview_Conditional_1_Case_23_Conditional_0_Conditional_67_T
     \u0275\u0275elementStart(21, "th");
     \u0275\u0275text(22, "\u6578\u91CF/\u55AE\u4F4D");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(23, "th", 35);
+    \u0275\u0275elementStart(23, "th", 36);
     \u0275\u0275text(24, "\u7E3D\u50F9");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(25, "th");
     \u0275\u0275text(26, "\u5099\u8A3B");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(27, "tbody");
-    \u0275\u0275repeaterCreate(28, ApprovalTaskReview_Conditional_1_Case_23_Conditional_0_Conditional_67_For_29_Template, 22, 18, "tr", null, _forTrack016);
+    \u0275\u0275repeaterCreate(28, ApprovalTaskReview_Conditional_1_Case_23_Conditional_0_Conditional_67_For_29_Template, 22, 18, "tr", null, _forTrack017);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(30, "tfoot")(31, "tr", 33)(32, "td", 57);
+    \u0275\u0275elementStart(30, "tfoot")(31, "tr", 34)(32, "td", 58);
     \u0275\u0275text(33, "\u5408\u8A08");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(34, "td", 37);
+    \u0275\u0275elementStart(34, "td", 38);
     \u0275\u0275text(35);
     \u0275\u0275pipe(36, "number");
     \u0275\u0275elementEnd();
@@ -17824,7 +19923,7 @@ function ApprovalTaskReview_Conditional_1_Case_23_Conditional_0_Template(rf, ctx
     \u0275\u0275elementStart(0, "div", 16)(1, "div", 17);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 18);
-    \u0275\u0275element(3, "use", 49);
+    \u0275\u0275element(3, "use", 50);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u51FA\u5DEE\u9810\u652F\u6C96\u92B7\u7533\u8ACB\u8CC7\u8A0A ");
     \u0275\u0275elementEnd();
@@ -18138,11 +20237,11 @@ function ApprovalTaskReview_Conditional_1_Conditional_24_For_8_Template(rf, ctx)
     let tmp_15_0;
     let tmp_18_0;
     const step_r26 = ctx.$implicit;
-    const \u0275$index_1569_r28 = ctx.$index;
-    const \u0275$count_1569_r29 = ctx.$count;
+    const \u0275$index_1582_r28 = ctx.$index;
+    const \u0275$count_1582_r29 = ctx.$count;
     const task_r5 = \u0275\u0275nextContext(2);
     const ctx_r0 = \u0275\u0275nextContext();
-    \u0275\u0275classProp("mb-6", !(\u0275$index_1569_r28 === \u0275$count_1569_r29 - 1));
+    \u0275\u0275classProp("mb-6", !(\u0275$index_1582_r28 === \u0275$count_1582_r29 - 1));
     \u0275\u0275advance();
     \u0275\u0275conditional((tmp_15_0 = ctx_r0.getRecord(task_r5.approvalRecords, step_r26.stepOrder)) ? 1 : task_r5.currentStepOrder === step_r26.stepOrder && task_r5.status === "pending" ? 2 : 3, tmp_15_0);
     \u0275\u0275advance(5);
@@ -19582,7 +21681,7 @@ var ApprovalTaskReview = class _ApprovalTaskReview {
   static \u0275fac = function ApprovalTaskReview_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _ApprovalTaskReview)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ApprovalTaskReview, selectors: [["app-approval-task-review"]], decls: 5, vars: 4, consts: [[1, "container-fluid", "py-3"], [1, "text-muted"], [3, "file"], [1, "flex", "items-center", "gap-2", "mb-6"], ["routerLink", "/admin/approval-tasks", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#check-square"], [1, "mb-0"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [1, "row", "g-4"], [1, "col-12", "col-lg-10", "col-xl-8"], [1, "card", "border-0", "shadow-sm", "mt-6"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "card", "border-0", "shadow-sm"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#dollar-sign"], [1, "card-body"], [1, "row", "g-3", "mb-0"], [1, "col-6", "col-md-4"], [1, "text-muted", "small", "mb-1"], [1, "fw-500"], [1, "fw-500", "font-monospace"], [1, "text-muted", "small"], [1, "fw-600", "fs-5"], [1, "col-12"], ["href", "/assets/icons/sprite.svg#file-text"], [1, "card-body", "p-0"], [1, "table-responsive"], [1, "table", "table-sm", "mb-0"], [1, "table-light"], [2, "width", "40px"], [1, "text-right"], ["colspan", "3", 1, "text-right", "fw-500", "small"], [1, "text-right", "fw-600"], ["colspan", "2"], [1, "fw-500", "text-success"], [1, "align-middle", "text-center"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-secondary", "p-1", 3, "title"], [1, "font-monospace", "small"], [1, "small"], [1, "text-right", "fw-500"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-secondary", "p-1", 3, "click", "title"], ["href", "/assets/icons/sprite.svg#calendar"], [1, "row", "g-3"], [1, "border", "rounded", "p-4", "bg-[--bg-base]", "small"], ["href", "/assets/icons/sprite.svg#map-pin"], [1, "badge", "bg-info-subtle", "text-info", "ms-1"], [1, "font-monospace", "fw-500"], ["href", "/assets/icons/sprite.svg#list"], ["colspan", "4", 1, "text-right", "fw-500", "small"], [1, "text-right", "small"], [1, "text-right", "small", "fw-500"], [1, "small", "text-muted"], ["colspan", "7", 1, "text-right", "fw-500", "small"], [1, "small", "font-monospace"], ["href", "/assets/icons/sprite.svg#clock"], [1, "col-12", "col-md-8"], [1, "flex", "flex-wrap", "gap-1"], [1, "badge", "bg-[--bg-base]", "text-[--text-muted]", "font-monospace"], ["href", "/assets/icons/sprite.svg#credit-card"], [1, "align-middle"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-primary", "p-1", 3, "title"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-primary", "p-1", 3, "click", "title"], [1, "row", "g-3", "mb-4"], [1, "col-6", "col-md-3"], [1, "fw-600", "text-lg"], [1, "fw-600", "text-lg", "text-primary"], [1, "row", "g-3", "mt-4", "mb-0"], [1, "text-muted", "small", "mt-4", "mb-0"], ["colspan", "5", 1, "text-right", "fw-500", "small"], ["colspan", "3"], ["href", "/assets/icons/sprite.svg#git-merge"], [1, "list-none", "p-0", "mb-0"], [1, "flex", "items-start", "gap-3", 3, "mb-6"], [1, "flex", "items-start", "gap-3"], [1, "badge", "bg-primary", "rounded-circle", "flex", "items-center", "justify-center", "shrink-0", 2, "width", "28px", "height", "28px", "min-width", "28px", "font-size", ".75rem"], [1, "badge", "bg-[--bg-base]", "text-[--text-muted]", "rounded-circle", "flex", "items-center", "justify-center", "shrink-0", 2, "width", "28px", "height", "28px", "min-width", "28px", "font-size", ".75rem"], [1, "grow"], [1, "text-primary", "small", "mt-1"], [1, "badge", "bg-success", "rounded-circle", "flex", "items-center", "justify-center", "shrink-0", 2, "width", "28px", "height", "28px", "min-width", "28px", "font-size", ".85rem"], [1, "badge", "bg-danger", "rounded-circle", "flex", "items-center", "justify-center", "shrink-0", 2, "width", "28px", "height", "28px", "min-width", "28px", "font-size", ".85rem"], [1, "text-muted", "font-normal"], [1, "text-muted", "small", "mt-1"], [1, "badge", "bg-[--bg-elevated]", "text-[--accent]", "ms-1", 2, "font-size", ".7rem"], [1, "badge", "bg-[--bg-elevated]", "text-[--purple]", "ms-1", 2, "font-size", ".7rem"], [1, "text-success"], [1, "text-[--yellow]"], [1, "text-danger"], [1, "text-muted", "small", "italic", "mt-1"], [3, "ngSubmit", "formGroup"], [1, "mb-4"], [1, "form-label", "fw-500"], [1, "flex", "flex-wrap", "gap-4", "mt-1"], [1, "form-check"], ["type", "radio", "formControlName", "action", "value", "approved", "id", "actionApprove", 1, "form-check-input"], ["for", "actionApprove", 1, "form-check-label", "fw-500", "text-success"], ["type", "radio", "formControlName", "action", "value", "returned", "id", "actionReturn", 1, "form-check-input"], ["for", "actionReturn", 1, "form-check-label", "fw-500", "text-[--yellow]"], ["type", "radio", "formControlName", "action", "value", "rejected", "id", "actionReject", 1, "form-check-input"], ["for", "actionReject", 1, "form-check-label", "fw-500", "text-danger"], ["formControlName", "reviewNote", "rows", "3", "placeholder", "\u586B\u5BEB\u5BE9\u6838\u610F\u898B\uFF08\u9000\u56DE\u4FEE\u6539\u6216\u62D2\u7D55\u6642\u5FC5\u586B\uFF09...", 1, "form-control"], [1, "text-danger", "small", "mt-1"], [1, "flex", "gap-2"], ["type", "submit", 1, "btn", "btn-primary"], ["routerLink", "/admin/approval-tasks", 1, "btn", "btn-outline-secondary"], ["type", "date", "formControlName", "estimatedPaymentDate", 1, "form-control", 2, "max-width", "220px"], [1, "flex", "items-center", "gap-2", "cursor-pointer"], ["type", "checkbox", "formControlName", "closeAdvance", 1, "form-check-input"], [1, "card-header", "bg-[rgba(184,137,42,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-[--yellow]"], ["href", "/assets/icons/sprite.svg#rotate-ccw"], [1, "text-muted", "small", "mb-2"], [1, "mt-2"], [1, "text-muted", "small", "mb-1", "fw-500"], [1, "border", "rounded", "p-4", "bg-[--bg-base]", "small", "mb-4"], [1, "card-header", "bg-[rgba(37,162,68,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-success"], ["href", "/assets/icons/sprite.svg#check-circle"], [1, "border", "rounded", "p-4", "bg-[--bg-base]", "mb-4"], [1, "flex", "items-center", "gap-2", "text-success", "small", "mb-4"], [1, "mt-2", "flex", "gap-2"], ["type", "button", 1, "btn", "btn-primary", "inline-flex", "items-center", "gap-2", 3, "disabled"], ["type", "button", 1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-2", 3, "disabled"], [1, "small", "mb-4"], [1, "small", "mb-4", "text-success"], [1, "fw-500", "mb-3"], [1, "flex", "flex-wrap", "gap-6", "items-end"], [1, "form-label", "fw-500", "small"], ["type", "date", 1, "form-control", "form-control-sm", 2, "max-width", "200px", 3, "input", "value"], ["type", "button", 1, "btn", "btn-sm", "btn-primary", 3, "click"], [1, "text-success", "small", "mt-2"], [1, "text-danger", "small", "mt-2"], ["type", "number", "min", "0", "step", "1", 1, "form-control", "form-control-sm", 2, "max-width", "200px", 3, "input", "value"], [1, "fw-500", "mb-2"], [1, "text-muted", "small", "mb-3"], ["type", "button", 1, "btn", "btn-sm", "btn-primary", 3, "click", "disabled"], [1, "inline-block", "w-4", "h-4", "border-2", "border-white/30", "border-t-white", "rounded-full", "animate-spin", "me-1"], [1, "sa-icon", 2, "width", "16px", "height", "16px", "stroke", "currentColor"], ["type", "button", 1, "btn", "btn-primary", "inline-flex", "items-center", "gap-2", 3, "click", "disabled"], [1, "inline-block", "w-4", "h-4", "border-2", "border-white/30", "border-t-white", "rounded-full", "animate-spin"], ["href", "/assets/icons/sprite.svg#printer"], ["type", "button", 1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-2", 3, "click", "disabled"], [1, "inline-block", "w-4", "h-4", "border-2", "border-current/30", "border-t-current", "rounded-full", "animate-spin"], [1, "card-header", "bg-[rgba(220,53,69,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-danger"], ["href", "/assets/icons/sprite.svg#x-circle"], [3, "closed", "file"]], template: function ApprovalTaskReview_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ApprovalTaskReview, selectors: [["app-approval-task-review"]], decls: 5, vars: 4, consts: [[1, "container-fluid", "py-3"], [1, "text-muted"], [3, "file"], [1, "flex", "items-center", "gap-2", "mb-6"], ["routerLink", "/admin/approval-tasks", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#check-square"], [1, "mb-0"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [1, "row", "g-4"], [1, "col-12", "col-lg-10", "col-xl-8"], [1, "card", "border-0", "shadow-sm", "mt-6"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "card", "border-0", "shadow-sm"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#dollar-sign"], [1, "card-body"], [1, "row", "g-3", "mb-0"], [1, "col-6", "col-md-4"], [1, "text-muted", "small", "mb-1"], [1, "fw-500"], [1, "fw-500", "font-monospace"], [1, "text-muted", "small"], [1, "fw-600", "fs-5"], [1, "col-12", "col-md-8"], [1, "col-12"], ["href", "/assets/icons/sprite.svg#file-text"], [1, "card-body", "p-0"], [1, "table-responsive"], [1, "table", "table-sm", "mb-0"], [1, "table-light"], [2, "width", "40px"], [1, "text-right"], ["colspan", "3", 1, "text-right", "fw-500", "small"], [1, "text-right", "fw-600"], ["colspan", "2"], [1, "fw-500", "text-success"], [1, "align-middle", "text-center"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-secondary", "p-1", 3, "title"], [1, "font-monospace", "small"], [1, "small"], [1, "text-right", "fw-500"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-secondary", "p-1", 3, "click", "title"], ["href", "/assets/icons/sprite.svg#calendar"], [1, "row", "g-3"], [1, "border", "rounded", "p-4", "bg-[--bg-base]", "small"], ["href", "/assets/icons/sprite.svg#map-pin"], [1, "badge", "bg-info-subtle", "text-info", "ms-1"], [1, "font-monospace", "fw-500"], ["href", "/assets/icons/sprite.svg#list"], ["colspan", "4", 1, "text-right", "fw-500", "small"], [1, "text-right", "small"], [1, "text-right", "small", "fw-500"], [1, "small", "text-muted"], ["colspan", "7", 1, "text-right", "fw-500", "small"], [1, "small", "font-monospace"], ["href", "/assets/icons/sprite.svg#clock"], [1, "flex", "flex-wrap", "gap-1"], [1, "badge", "bg-[--bg-base]", "text-[--text-muted]", "font-monospace"], ["href", "/assets/icons/sprite.svg#credit-card"], [1, "align-middle"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-primary", "p-1", 3, "title"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-primary", "p-1", 3, "click", "title"], [1, "row", "g-3", "mb-4"], [1, "col-6", "col-md-3"], [1, "fw-600", "text-lg"], [1, "fw-600", "text-lg", "text-primary"], [1, "row", "g-3", "mt-4", "mb-0"], [1, "text-muted", "small", "mt-4", "mb-0"], ["colspan", "5", 1, "text-right", "fw-500", "small"], ["colspan", "3"], ["href", "/assets/icons/sprite.svg#git-merge"], [1, "list-none", "p-0", "mb-0"], [1, "flex", "items-start", "gap-3", 3, "mb-6"], [1, "flex", "items-start", "gap-3"], [1, "badge", "bg-primary", "rounded-circle", "flex", "items-center", "justify-center", "shrink-0", 2, "width", "28px", "height", "28px", "min-width", "28px", "font-size", ".75rem"], [1, "badge", "bg-[--bg-base]", "text-[--text-muted]", "rounded-circle", "flex", "items-center", "justify-center", "shrink-0", 2, "width", "28px", "height", "28px", "min-width", "28px", "font-size", ".75rem"], [1, "grow"], [1, "text-primary", "small", "mt-1"], [1, "badge", "bg-success", "rounded-circle", "flex", "items-center", "justify-center", "shrink-0", 2, "width", "28px", "height", "28px", "min-width", "28px", "font-size", ".85rem"], [1, "badge", "bg-danger", "rounded-circle", "flex", "items-center", "justify-center", "shrink-0", 2, "width", "28px", "height", "28px", "min-width", "28px", "font-size", ".85rem"], [1, "text-muted", "font-normal"], [1, "text-muted", "small", "mt-1"], [1, "badge", "bg-[--bg-elevated]", "text-[--accent]", "ms-1", 2, "font-size", ".7rem"], [1, "badge", "bg-[--bg-elevated]", "text-[--purple]", "ms-1", 2, "font-size", ".7rem"], [1, "text-success"], [1, "text-[--yellow]"], [1, "text-danger"], [1, "text-muted", "small", "italic", "mt-1"], [3, "ngSubmit", "formGroup"], [1, "mb-4"], [1, "form-label", "fw-500"], [1, "flex", "flex-wrap", "gap-4", "mt-1"], [1, "form-check"], ["type", "radio", "formControlName", "action", "value", "approved", "id", "actionApprove", 1, "form-check-input"], ["for", "actionApprove", 1, "form-check-label", "fw-500", "text-success"], ["type", "radio", "formControlName", "action", "value", "returned", "id", "actionReturn", 1, "form-check-input"], ["for", "actionReturn", 1, "form-check-label", "fw-500", "text-[--yellow]"], ["type", "radio", "formControlName", "action", "value", "rejected", "id", "actionReject", 1, "form-check-input"], ["for", "actionReject", 1, "form-check-label", "fw-500", "text-danger"], ["formControlName", "reviewNote", "rows", "3", "placeholder", "\u586B\u5BEB\u5BE9\u6838\u610F\u898B\uFF08\u9000\u56DE\u4FEE\u6539\u6216\u62D2\u7D55\u6642\u5FC5\u586B\uFF09...", 1, "form-control"], [1, "text-danger", "small", "mt-1"], [1, "flex", "gap-2"], ["type", "submit", 1, "btn", "btn-primary"], ["routerLink", "/admin/approval-tasks", 1, "btn", "btn-outline-secondary"], ["type", "date", "formControlName", "estimatedPaymentDate", 1, "form-control", 2, "max-width", "220px"], [1, "flex", "items-center", "gap-2", "cursor-pointer"], ["type", "checkbox", "formControlName", "closeAdvance", 1, "form-check-input"], [1, "card-header", "bg-[rgba(184,137,42,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-[--yellow]"], ["href", "/assets/icons/sprite.svg#rotate-ccw"], [1, "text-muted", "small", "mb-2"], [1, "mt-2"], [1, "text-muted", "small", "mb-1", "fw-500"], [1, "border", "rounded", "p-4", "bg-[--bg-base]", "small", "mb-4"], [1, "card-header", "bg-[rgba(37,162,68,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-success"], ["href", "/assets/icons/sprite.svg#check-circle"], [1, "border", "rounded", "p-4", "bg-[--bg-base]", "mb-4"], [1, "flex", "items-center", "gap-2", "text-success", "small", "mb-4"], [1, "mt-2", "flex", "gap-2"], ["type", "button", 1, "btn", "btn-primary", "inline-flex", "items-center", "gap-2", 3, "disabled"], ["type", "button", 1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-2", 3, "disabled"], [1, "small", "mb-4"], [1, "small", "mb-4", "text-success"], [1, "fw-500", "mb-3"], [1, "flex", "flex-wrap", "gap-6", "items-end"], [1, "form-label", "fw-500", "small"], ["type", "date", 1, "form-control", "form-control-sm", 2, "max-width", "200px", 3, "input", "value"], ["type", "button", 1, "btn", "btn-sm", "btn-primary", 3, "click"], [1, "text-success", "small", "mt-2"], [1, "text-danger", "small", "mt-2"], ["type", "number", "min", "0", "step", "1", 1, "form-control", "form-control-sm", 2, "max-width", "200px", 3, "input", "value"], [1, "fw-500", "mb-2"], [1, "text-muted", "small", "mb-3"], ["type", "button", 1, "btn", "btn-sm", "btn-primary", 3, "click", "disabled"], [1, "inline-block", "w-4", "h-4", "border-2", "border-white/30", "border-t-white", "rounded-full", "animate-spin", "me-1"], [1, "sa-icon", 2, "width", "16px", "height", "16px", "stroke", "currentColor"], ["type", "button", 1, "btn", "btn-primary", "inline-flex", "items-center", "gap-2", 3, "click", "disabled"], [1, "inline-block", "w-4", "h-4", "border-2", "border-white/30", "border-t-white", "rounded-full", "animate-spin"], ["href", "/assets/icons/sprite.svg#printer"], ["type", "button", 1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-2", 3, "click", "disabled"], [1, "inline-block", "w-4", "h-4", "border-2", "border-current/30", "border-t-current", "rounded-full", "animate-spin"], [1, "card-header", "bg-[rgba(220,53,69,0.08)]", "border-bottom", "flex", "items-center", "gap-2", "fw-600", "text-danger"], ["href", "/assets/icons/sprite.svg#x-circle"], [3, "closed", "file"]], template: function ApprovalTaskReview_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0);
       \u0275\u0275conditionalCreate(1, ApprovalTaskReview_Conditional_1_Template, 29, 10);
@@ -19661,6 +21760,15 @@ var ApprovalTaskReview = class _ApprovalTaskReview {
                       <div class="text-muted small mb-1">\u7E3D\u91D1\u984D</div>\r
                       <span class="fw-600 fs-5">{{ d.totalAmount | number:'1.0-0' }}</span>\r
                     </div>\r
+                    @if (d.paymentType === 'vendor') {\r
+                      <div class="col-12 col-md-8">\r
+                        <div class="text-muted small mb-1">\u5EE0\u5546</div>\r
+                        <span class="fw-500">\r
+                          {{ d.vendorName || '\u2014' }}\r
+                          @if (d.vendorTaxId) { <span class="text-muted">\uFF08{{ d.vendorTaxId }}\uFF09</span> }\r
+                        </span>\r
+                      </div>\r
+                    }\r
                     @if (d.estimatedPaymentDate) {\r
                       <div class="col-6 col-md-4">\r
                         <div class="text-muted small mb-1">\u9810\u8A08\u64A5\u6B3E\u65E5</div>\r
@@ -21049,8 +23157,8 @@ var LeaveRequestService = class _LeaveRequestService {
 })();
 
 // src/app/features/admin/leave-requests/pages/leave-request-list/leave-request-list.ts
-var _c012 = (a0) => [a0, "edit"];
-var _forTrack017 = ($index, $item) => $item.id;
+var _c014 = (a0) => [a0, "edit"];
+var _forTrack018 = ($index, $item) => $item.id;
 function LeaveRequestList_a_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "a", 16);
@@ -21090,7 +23198,7 @@ function LeaveRequestList_For_32_Conditional_22_Template(rf, ctx) {
   if (rf & 2) {
     const r_r2 = \u0275\u0275nextContext().$implicit;
     const ctx_r2 = \u0275\u0275nextContext();
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c012, r_r2.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c014, r_r2.id));
     \u0275\u0275advance(3);
     \u0275\u0275conditional(ctx_r2.canDelete() && r_r2.approvalStatus === "draft" ? 3 : -1);
   }
@@ -21105,7 +23213,7 @@ function LeaveRequestList_For_32_Conditional_23_Template(rf, ctx) {
   }
   if (rf & 2) {
     const r_r2 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c012, r_r2.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c014, r_r2.id));
   }
 }
 function LeaveRequestList_For_32_Template(rf, ctx) {
@@ -21351,7 +23459,7 @@ var LeaveRequestList = class _LeaveRequestList {
       \u0275\u0275text(29, "\u64CD\u4F5C");
       \u0275\u0275elementEnd()()();
       \u0275\u0275elementStart(30, "tbody");
-      \u0275\u0275repeaterCreate(31, LeaveRequestList_For_32_Template, 24, 21, "tr", null, _forTrack017, false, LeaveRequestList_ForEmpty_33_Template, 3, 0, "tr");
+      \u0275\u0275repeaterCreate(31, LeaveRequestList_For_32_Template, 24, 21, "tr", null, _forTrack018, false, LeaveRequestList_ForEmpty_33_Template, 3, 0, "tr");
       \u0275\u0275elementEnd()()();
       \u0275\u0275conditionalCreate(34, LeaveRequestList_Conditional_34_Template, 19, 13, "div", 15);
       \u0275\u0275elementEnd()()();
@@ -21493,8 +23601,8 @@ function buildPageNumbers5(current, total) {
 }
 
 // src/app/features/admin/leave-requests/pages/leave-request-form/leave-request-form.ts
-var _c013 = () => ({ standalone: true });
-var _forTrack018 = ($index, $item) => $item.label;
+var _c015 = () => ({ standalone: true });
+var _forTrack019 = ($index, $item) => $item.label;
 var _forTrack16 = ($index, $item) => $item.days;
 var _forTrack2 = ($index, $item) => $item.id;
 function LeaveRequestForm_Conditional_7_Template(rf, ctx) {
@@ -22517,14 +24625,14 @@ function LeaveRequestForm_Conditional_59_For_9_Template(rf, ctx) {
     \u0275\u0275textInterpolate1("", \u0275$index_665_r17 + 1, ".");
     \u0275\u0275advance();
     \u0275\u0275twoWayProperty("ngModel", entry_r16.selectedJobTitleId);
-    \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(7, _c013));
+    \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(7, _c015));
     \u0275\u0275advance();
     \u0275\u0275property("ngValue", null);
     \u0275\u0275advance(2);
     \u0275\u0275repeater(ctx_r0.jobTitles);
     \u0275\u0275advance(2);
     \u0275\u0275twoWayProperty("ngModel", entry_r16.selectedUserId);
-    \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(8, _c013));
+    \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(8, _c015));
     \u0275\u0275advance();
     \u0275\u0275property("ngValue", null);
     \u0275\u0275advance(2);
@@ -23424,7 +25532,7 @@ var LeaveRequestForm = class _LeaveRequestForm {
       \u0275\u0275text(25, "*");
       \u0275\u0275elementEnd()();
       \u0275\u0275elementStart(26, "select", 19);
-      \u0275\u0275repeaterCreate(27, LeaveRequestForm_For_28_Template, 1, 1, null, null, _forTrack018);
+      \u0275\u0275repeaterCreate(27, LeaveRequestForm_For_28_Template, 1, 1, null, null, _forTrack019);
       \u0275\u0275elementEnd();
       \u0275\u0275elementStart(29, "div", 20);
       \u0275\u0275conditionalCreate(30, LeaveRequestForm_Case_30_Template, 4, 0)(31, LeaveRequestForm_Case_31_Template, 4, 0)(32, LeaveRequestForm_Case_32_Template, 4, 0);
@@ -24053,9 +26161,9 @@ var APPROVAL_STATUS_CLASSES4 = {
 var ITEM_CATEGORIES2 = ["\u4EA4\u901A\u8CBB", "\u4F4F\u5BBF\u8CBB", "\u9910\u8CBB", "\u4EBA\u4E8B\u8CBB", "\u96DC\u652F"];
 
 // src/app/features/admin/travel-requests/pages/travel-request-list/travel-request-list.ts
-var _c014 = (a0) => [a0, "edit"];
+var _c016 = (a0) => [a0, "edit"];
 var _c14 = (a0) => [a0];
-var _forTrack019 = ($index, $item) => $item.id;
+var _forTrack020 = ($index, $item) => $item.id;
 function TravelRequestList_a_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "a", 16);
@@ -24107,7 +26215,7 @@ function TravelRequestList_For_32_Conditional_23_Template(rf, ctx) {
   if (rf & 2) {
     const r_r1 = \u0275\u0275nextContext().$implicit;
     const ctx_r2 = \u0275\u0275nextContext();
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c014, r_r1.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c016, r_r1.id));
     \u0275\u0275advance(3);
     \u0275\u0275conditional(ctx_r2.canDelete() && r_r1.approvalStatus === "draft" ? 3 : -1);
   }
@@ -24363,7 +26471,7 @@ var TravelRequestList = class _TravelRequestList {
       \u0275\u0275text(29, "\u64CD\u4F5C");
       \u0275\u0275elementEnd()()();
       \u0275\u0275elementStart(30, "tbody");
-      \u0275\u0275repeaterCreate(31, TravelRequestList_For_32_Template, 25, 20, "tr", null, _forTrack019, false, TravelRequestList_ForEmpty_33_Template, 3, 0, "tr");
+      \u0275\u0275repeaterCreate(31, TravelRequestList_For_32_Template, 25, 20, "tr", null, _forTrack020, false, TravelRequestList_ForEmpty_33_Template, 3, 0, "tr");
       \u0275\u0275elementEnd()()();
       \u0275\u0275conditionalCreate(34, TravelRequestList_Conditional_34_Template, 19, 13, "div", 15);
       \u0275\u0275elementEnd()()();
@@ -24508,9 +26616,9 @@ function buildPageNumbers6(current, total) {
 }
 
 // src/app/features/admin/travel-requests/pages/travel-request-form/travel-request-form.ts
-var _c015 = ["successModal"];
+var _c017 = ["successModal"];
 var _c15 = () => ({ standalone: true });
-var _forTrack020 = ($index, $item) => $item.id;
+var _forTrack021 = ($index, $item) => $item.id;
 function TravelRequestForm_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 7);
@@ -24972,7 +27080,7 @@ function TravelRequestForm_Conditional_93_For_10_Template(rf, ctx) {
     \u0275\u0275elementStart(4, "option", 24);
     \u0275\u0275text(5, "\u2014 \u8077\u7A31 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(6, TravelRequestForm_Conditional_93_For_10_For_7_Template, 2, 2, "option", 24, _forTrack020);
+    \u0275\u0275repeaterCreate(6, TravelRequestForm_Conditional_93_For_10_For_7_Template, 2, 2, "option", 24, _forTrack021);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(8, "select", 86);
     \u0275\u0275twoWayListener("ngModelChange", function TravelRequestForm_Conditional_93_For_10_Template_select_ngModelChange_8_listener($event) {
@@ -24983,7 +27091,7 @@ function TravelRequestForm_Conditional_93_For_10_Template(rf, ctx) {
     \u0275\u0275elementStart(9, "option", 24);
     \u0275\u0275text(10, "\u2014 \u4EBA\u54E1 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(11, TravelRequestForm_Conditional_93_For_10_For_12_Template, 2, 2, "option", 24, _forTrack020);
+    \u0275\u0275repeaterCreate(11, TravelRequestForm_Conditional_93_For_10_For_12_Template, 2, 2, "option", 24, _forTrack021);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(13, "button", 87);
     \u0275\u0275listener("click", function TravelRequestForm_Conditional_93_For_10_Template_button_click_13_listener() {
@@ -25555,7 +27663,7 @@ var TravelRequestForm = class _TravelRequestForm {
   };
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _TravelRequestForm, selectors: [["app-travel-request-form"]], viewQuery: function TravelRequestForm_Query(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275viewQuerySignal(ctx.successModal, _c015, 5);
+      \u0275\u0275viewQuerySignal(ctx.successModal, _c017, 5);
     }
     if (rf & 2) {
       \u0275\u0275queryAdvance();
@@ -25601,7 +27709,7 @@ var TravelRequestForm = class _TravelRequestForm {
       \u0275\u0275elementStart(32, "select", 23)(33, "option", 24);
       \u0275\u0275text(34);
       \u0275\u0275elementEnd();
-      \u0275\u0275repeaterCreate(35, TravelRequestForm_For_36_Template, 2, 4, "option", 24, _forTrack020);
+      \u0275\u0275repeaterCreate(35, TravelRequestForm_For_36_Template, 2, 4, "option", 24, _forTrack021);
       \u0275\u0275elementEnd();
       \u0275\u0275conditionalCreate(37, TravelRequestForm_Conditional_37_Template, 2, 0, "div", 25);
       \u0275\u0275elementEnd()();
@@ -26316,8 +28424,8 @@ var TravelPdfService = class _TravelPdfService {
 })();
 
 // src/app/features/admin/travel-requests/pages/travel-detail/travel-detail.ts
-var _c016 = (a0) => ["/admin/travel-requests", a0, "edit"];
-var _forTrack021 = ($index, $item) => $item.id;
+var _c018 = (a0) => ["/admin/travel-requests", a0, "edit"];
+var _forTrack022 = ($index, $item) => $item.id;
 function TravelDetail_Conditional_1_Conditional_9_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "span", 30);
@@ -26389,7 +28497,7 @@ function TravelDetail_Conditional_1_Conditional_12_Template(rf, ctx) {
   }
   if (rf & 2) {
     const r_r1 = \u0275\u0275nextContext();
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c016, r_r1.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c018, r_r1.id));
   }
 }
 function TravelDetail_Conditional_1_Conditional_13_Conditional_5_Template(rf, ctx) {
@@ -26544,7 +28652,7 @@ function TravelDetail_Conditional_1_Conditional_66_Template(rf, ctx) {
     \u0275\u0275text(23, "\u5099\u8A3B");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(24, "tbody");
-    \u0275\u0275repeaterCreate(25, TravelDetail_Conditional_1_Conditional_66_For_26_Template, 17, 13, "tr", null, _forTrack021);
+    \u0275\u0275repeaterCreate(25, TravelDetail_Conditional_1_Conditional_66_For_26_Template, 17, 13, "tr", null, _forTrack022);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(27, "tfoot")(28, "tr", 45)(29, "td", 47);
     \u0275\u0275text(30, "\u5408\u8A08");
@@ -27275,8 +29383,8 @@ var APPROVAL_STATUS_CLASSES5 = {
 };
 
 // src/app/features/admin/overtime-requests/pages/overtime-request-list/overtime-request-list.ts
-var _c017 = (a0) => [a0, "edit"];
-var _forTrack022 = ($index, $item) => $item.id;
+var _c019 = (a0) => [a0, "edit"];
+var _forTrack023 = ($index, $item) => $item.id;
 function OvertimeRequestList_a_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "a", 16);
@@ -27363,7 +29471,7 @@ function OvertimeRequestList_For_30_Conditional_20_Template(rf, ctx) {
   if (rf & 2) {
     const r_r2 = \u0275\u0275nextContext().$implicit;
     const ctx_r4 = \u0275\u0275nextContext();
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c017, r_r2.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c019, r_r2.id));
     \u0275\u0275advance(3);
     \u0275\u0275conditional(ctx_r4.canDelete() && r_r2.approvalStatus === "draft" ? 3 : -1);
   }
@@ -27378,7 +29486,7 @@ function OvertimeRequestList_For_30_Conditional_21_Template(rf, ctx) {
   }
   if (rf & 2) {
     const r_r2 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c017, r_r2.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c019, r_r2.id));
   }
 }
 function OvertimeRequestList_For_30_Template(rf, ctx) {
@@ -27607,7 +29715,7 @@ var OvertimeRequestList = class _OvertimeRequestList {
       \u0275\u0275text(27, "\u64CD\u4F5C");
       \u0275\u0275elementEnd()()();
       \u0275\u0275elementStart(28, "tbody");
-      \u0275\u0275repeaterCreate(29, OvertimeRequestList_For_30_Template, 22, 18, "tr", null, _forTrack022, false, OvertimeRequestList_ForEmpty_31_Template, 3, 0, "tr");
+      \u0275\u0275repeaterCreate(29, OvertimeRequestList_For_30_Template, 22, 18, "tr", null, _forTrack023, false, OvertimeRequestList_ForEmpty_31_Template, 3, 0, "tr");
       \u0275\u0275elementEnd()()();
       \u0275\u0275conditionalCreate(32, OvertimeRequestList_Conditional_32_Template, 19, 13, "div", 15);
       \u0275\u0275elementEnd()()();
@@ -27758,8 +29866,8 @@ function buildPageNumbers7(current, total) {
 }
 
 // src/app/features/admin/overtime-requests/pages/overtime-request-form/overtime-request-form.ts
-var _c018 = () => ({ standalone: true });
-var _forTrack023 = ($index, $item) => $item.id;
+var _c020 = () => ({ standalone: true });
+var _forTrack024 = ($index, $item) => $item.id;
 function OvertimeRequestForm_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 6);
@@ -27887,7 +29995,7 @@ function OvertimeRequestForm_Conditional_42_For_2_Template(rf, ctx) {
 function OvertimeRequestForm_Conditional_42_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 26);
-    \u0275\u0275repeaterCreate(1, OvertimeRequestForm_Conditional_42_For_2_Template, 4, 8, "label", 41, _forTrack023);
+    \u0275\u0275repeaterCreate(1, OvertimeRequestForm_Conditional_42_For_2_Template, 4, 8, "label", 41, _forTrack024);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -27949,7 +30057,7 @@ function OvertimeRequestForm_Conditional_50_For_10_Template(rf, ctx) {
     \u0275\u0275elementStart(4, "option", 51);
     \u0275\u0275text(5, "\u2014 \u8077\u7A31 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(6, OvertimeRequestForm_Conditional_50_For_10_For_7_Template, 2, 2, "option", 51, _forTrack023);
+    \u0275\u0275repeaterCreate(6, OvertimeRequestForm_Conditional_50_For_10_For_7_Template, 2, 2, "option", 51, _forTrack024);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(8, "select", 52);
     \u0275\u0275twoWayListener("ngModelChange", function OvertimeRequestForm_Conditional_50_For_10_Template_select_ngModelChange_8_listener($event) {
@@ -27960,7 +30068,7 @@ function OvertimeRequestForm_Conditional_50_For_10_Template(rf, ctx) {
     \u0275\u0275elementStart(9, "option", 51);
     \u0275\u0275text(10, "\u2014 \u4EBA\u54E1 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(11, OvertimeRequestForm_Conditional_50_For_10_For_12_Template, 2, 2, "option", 51, _forTrack023);
+    \u0275\u0275repeaterCreate(11, OvertimeRequestForm_Conditional_50_For_10_For_12_Template, 2, 2, "option", 51, _forTrack024);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(13, "button", 53);
     \u0275\u0275listener("click", function OvertimeRequestForm_Conditional_50_For_10_Template_button_click_13_listener() {
@@ -27981,14 +30089,14 @@ function OvertimeRequestForm_Conditional_50_For_10_Template(rf, ctx) {
     \u0275\u0275textInterpolate1("", \u0275$index_168_r7 + 1, ".");
     \u0275\u0275advance();
     \u0275\u0275twoWayProperty("ngModel", entry_r6.selectedJobTitleId);
-    \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(7, _c018));
+    \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(7, _c020));
     \u0275\u0275advance();
     \u0275\u0275property("ngValue", null);
     \u0275\u0275advance(2);
     \u0275\u0275repeater(ctx_r0.jobTitles);
     \u0275\u0275advance(2);
     \u0275\u0275twoWayProperty("ngModel", entry_r6.selectedUserId);
-    \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(8, _c018));
+    \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(8, _c020));
     \u0275\u0275advance();
     \u0275\u0275property("ngValue", null);
     \u0275\u0275advance(2);
@@ -49180,7 +51288,7 @@ var utils = {
 var version = XLSX.version;
 
 // src/app/features/admin/reports/pages/attendance-report/attendance-report.ts
-var _forTrack024 = ($index, $item) => $item.id;
+var _forTrack025 = ($index, $item) => $item.id;
 function AttendanceReport_Conditional_10_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u532F\u51FA\u4E2D... ");
@@ -50017,7 +52125,7 @@ var AttendanceReport = class _AttendanceReport {
       \u0275\u0275elementStart(30, "option", 20);
       \u0275\u0275text(31, "\u5168\u90E8\u54E1\u5DE5");
       \u0275\u0275elementEnd();
-      \u0275\u0275repeaterCreate(32, AttendanceReport_For_33_Template, 2, 3, "option", 21, _forTrack024);
+      \u0275\u0275repeaterCreate(32, AttendanceReport_For_33_Template, 2, 3, "option", 21, _forTrack025);
       \u0275\u0275elementEnd()();
       \u0275\u0275conditionalCreate(34, AttendanceReport_Conditional_34_Template, 4, 1, "div", 22)(35, AttendanceReport_Conditional_35_Template, 12, 2, "div", 22)(36, AttendanceReport_Conditional_36_Template, 16, 2);
       \u0275\u0275elementStart(37, "div")(38, "label", 23);
@@ -50057,7 +52165,7 @@ var AttendanceReport = class _AttendanceReport {
       \u0275\u0275text(63, "\u64CD\u4F5C");
       \u0275\u0275elementEnd()()();
       \u0275\u0275elementStart(64, "tbody");
-      \u0275\u0275repeaterCreate(65, AttendanceReport_For_66_Template, 24, 13, "tr", null, _forTrack024, false, AttendanceReport_ForEmpty_67_Template, 4, 1, "tr");
+      \u0275\u0275repeaterCreate(65, AttendanceReport_For_66_Template, 24, 13, "tr", null, _forTrack025, false, AttendanceReport_ForEmpty_67_Template, 4, 1, "tr");
       \u0275\u0275elementEnd()()()()()();
       \u0275\u0275conditionalCreate(68, AttendanceReport_Conditional_68_Template, 41, 8);
       \u0275\u0275conditionalCreate(69, AttendanceReport_Conditional_69_Template, 19, 3);
@@ -50371,7 +52479,7 @@ var AttendanceReport = class _AttendanceReport {
 })();
 
 // src/app/features/admin/reports/pages/overtime-report/overtime-report.ts
-var _forTrack025 = ($index, $item) => $item.id;
+var _forTrack026 = ($index, $item) => $item.id;
 function OvertimeReport_For_28_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "option", 18);
@@ -50877,7 +52985,7 @@ var OvertimeReport = class _OvertimeReport {
       \u0275\u0275elementStart(25, "option", 17);
       \u0275\u0275text(26, "\u5168\u90E8\u54E1\u5DE5");
       \u0275\u0275elementEnd();
-      \u0275\u0275repeaterCreate(27, OvertimeReport_For_28_Template, 2, 3, "option", 18, _forTrack025);
+      \u0275\u0275repeaterCreate(27, OvertimeReport_For_28_Template, 2, 3, "option", 18, _forTrack026);
       \u0275\u0275elementEnd()();
       \u0275\u0275elementStart(29, "div")(30, "label", 15);
       \u0275\u0275text(31, "\u5C08\u6848");
@@ -50889,7 +52997,7 @@ var OvertimeReport = class _OvertimeReport {
       \u0275\u0275elementStart(33, "option", 17);
       \u0275\u0275text(34, "\u5168\u90E8\u5C08\u6848");
       \u0275\u0275elementEnd();
-      \u0275\u0275repeaterCreate(35, OvertimeReport_For_36_Template, 2, 2, "option", 18, _forTrack025);
+      \u0275\u0275repeaterCreate(35, OvertimeReport_For_36_Template, 2, 2, "option", 18, _forTrack026);
       \u0275\u0275elementEnd()();
       \u0275\u0275conditionalCreate(37, OvertimeReport_Conditional_37_Template, 4, 1, "div", 19)(38, OvertimeReport_Conditional_38_Template, 12, 2, "div", 19)(39, OvertimeReport_Conditional_39_Template, 16, 2);
       \u0275\u0275elementStart(40, "div")(41, "label", 20);
@@ -50920,7 +53028,7 @@ var OvertimeReport = class _OvertimeReport {
       \u0275\u0275text(60, "\u4E8B\u7531");
       \u0275\u0275elementEnd()()();
       \u0275\u0275elementStart(61, "tbody");
-      \u0275\u0275repeaterCreate(62, OvertimeReport_For_63_Template, 15, 7, "tr", null, _forTrack025, false, OvertimeReport_ForEmpty_64_Template, 4, 1, "tr");
+      \u0275\u0275repeaterCreate(62, OvertimeReport_For_63_Template, 15, 7, "tr", null, _forTrack026, false, OvertimeReport_ForEmpty_64_Template, 4, 1, "tr");
       \u0275\u0275elementEnd()()();
       \u0275\u0275conditionalCreate(65, OvertimeReport_Conditional_65_Template, 8, 5, "div", 28);
       \u0275\u0275elementEnd()()();
@@ -51131,7 +53239,7 @@ var OvertimeReport = class _OvertimeReport {
 })();
 
 // src/app/features/admin/reports/pages/payment-report/payment-report.ts
-var _forTrack026 = ($index, $item) => $item.id;
+var _forTrack027 = ($index, $item) => $item.id;
 function PaymentReport_Conditional_25_Template(rf, ctx) {
   if (rf & 1) {
     const _r1 = \u0275\u0275getCurrentView();
@@ -51504,8 +53612,10 @@ var STATUS_LABELS = {
   rejected: "\u5DF2\u62D2\u7D55",
   returned: "\u9000\u56DE\u4FEE\u6539"
 };
+var EXPORT_WARN_THRESHOLD = 1e3;
 var PaymentReport = class _PaymentReport {
   http = inject(HttpClient);
+  toastr = inject(ToastrService);
   /** 篩選條件 */
   selectedPaymentStatus = signal("", ...ngDevMode ? [{ debugName: "selectedPaymentStatus" }] : []);
   /** 時段模式：日 / 週 / 月（預設月）*/
@@ -51578,6 +53688,13 @@ var PaymentReport = class _PaymentReport {
     const month = this.selectedMonth() || "\u5168\u90E8";
     return `${year}-${String(month).padStart(2, "0")}`;
   }
+  /** 將篩選條件轉成可讀字串（寫入 Excel 第一列摘要） */
+  filterSummaryLine() {
+    const period = `\u6642\u6BB5\uFF1A${this.exportSuffix()}`;
+    const statusLabel = { paid: "\u5DF2\u4ED8", unpaid: "\u672A\u4ED8" };
+    const status = `\u4ED8\u6B3E\u72C0\u614B\uFF1A${statusLabel[this.selectedPaymentStatus()] ?? "\u5168\u90E8"}`;
+    return `${period}\u3000${status}`;
+  }
   search() {
     this.currentPage.set(1);
     this.fetchData();
@@ -51591,9 +53708,6 @@ var PaymentReport = class _PaymentReport {
     if (paged) {
       params["page"] = this.currentPage();
       params["pageSize"] = this.pageSize;
-    } else {
-      params["page"] = 1;
-      params["pageSize"] = 9999;
     }
     const range = this.computeDateRange();
     if (range) {
@@ -51641,35 +53755,142 @@ var PaymentReport = class _PaymentReport {
       }
     });
   }
+  /** ISO 日期 (YYYY-MM-DD)，便於 Excel 排序與後續處理 */
+  toIsoDate(value) {
+    if (!value)
+      return "";
+    const d = new Date(value);
+    if (isNaN(d.getTime()))
+      return "";
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
   exportExcel() {
     this.exporting.set(true);
     const params = this.buildParams(false);
-    this.http.get(`${environment.apiUrl}/reports/payment`, { params }).subscribe({
+    this.http.get(`${environment.apiUrl}/reports/payment/export`, { params }).subscribe({
       next: (res) => {
-        const data = res?.data ?? res ?? {};
-        const items = data?.items ?? [];
-        const rows = items.map((r) => this.mapRow(r));
-        const wsData = rows.map((r) => ({
-          "\u54E1\u5DE5\u59D3\u540D": r.employeeName,
-          "\u8ACB\u6B3E\u985E\u578B": r.typeLabel,
-          "\u5C08\u6848\u4EE3\u78BC": r.projectCode,
-          "\u5C08\u6848\u540D\u7A31": r.projectName,
-          "\u767C\u7968\u865F\u78BC": r.invoiceNos,
-          "\u7E3D\u91D1\u984D": r.totalAmount,
-          "\u7C3D\u6838\u72C0\u614B": r.statusLabel,
-          "\u4ED8\u6B3E\u65E5\u671F": r.paidAt,
-          "\u7533\u8ACB\u65E5\u671F": r.createdAt
-        }));
-        const ws = utils.json_to_sheet(wsData);
-        const wb = utils.book_new();
-        utils.book_append_sheet(wb, ws, "\u8ACB\u6B3E\u7D71\u8A08");
-        writeFileSync(wb, `\u8ACB\u6B3E\u7D71\u8A08_${this.exportSuffix()}.xlsx`);
-        this.exporting.set(false);
+        try {
+          const rows = res?.data ?? res ?? [];
+          if (rows.length === 0) {
+            this.toastr.warning("\u67E5\u7121\u8CC7\u6599\u53EF\u532F\u51FA\u3002", "\u63D0\u793A");
+            this.exporting.set(false);
+            return;
+          }
+          if (rows.length > EXPORT_WARN_THRESHOLD && !confirm(`\u5373\u5C07\u532F\u51FA ${rows.length} \u7B46\u8CC7\u6599\uFF0C\u53EF\u80FD\u9700\u8981\u4E00\u4E9B\u6642\u9593\uFF0C\u662F\u5426\u7E7C\u7E8C\uFF1F`)) {
+            this.exporting.set(false);
+            return;
+          }
+          this.buildAndDownloadXlsx(rows);
+          this.toastr.success(`\u5DF2\u532F\u51FA ${rows.length} \u7B46\u8CC7\u6599\u3002`, "\u532F\u51FA\u5B8C\u6210");
+        } catch {
+          this.toastr.error("\u532F\u51FA\u6A94\u6848\u7522\u751F\u5931\u6557\u3002", "\u532F\u51FA\u5931\u6557");
+        } finally {
+          this.exporting.set(false);
+        }
       },
       error: () => {
+        this.toastr.error("\u532F\u51FA\u5931\u6557\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66\u3002", "\u932F\u8AA4");
         this.exporting.set(false);
       }
     });
+  }
+  buildAndDownloadXlsx(rows) {
+    const headers = [
+      "\u54E1\u5DE5\u59D3\u540D",
+      "\u8ACB\u6B3E\u985E\u578B",
+      "\u5C08\u6848\u4EE3\u78BC",
+      "\u5C08\u6848\u540D\u7A31",
+      "\u7C3D\u6838\u72C0\u614B",
+      "\u7533\u8ACB\u65E5\u671F",
+      "\u4ED8\u6B3E\u65E5\u671F",
+      "\u8ACB\u6B3E\u55AE\u7E3D\u91D1\u984D",
+      "\u767C\u7968\u865F\u78BC",
+      "\u54C1\u540D",
+      "\u767C\u7968\u65E5\u671F",
+      "\u767C\u7968\u91D1\u984D"
+    ];
+    const aoa = [
+      [this.filterSummaryLine()],
+      [],
+      headers
+    ];
+    let invoiceTotal = 0;
+    for (const r of rows) {
+      const amount = r.invoiceAmount ?? 0;
+      invoiceTotal += amount;
+      aoa.push([
+        r.employeeName ?? "\u2014",
+        PAYMENT_TYPE_LABELS3[r.type] ?? r.type,
+        r.projectCode ?? "\u2014",
+        r.projectName ?? "",
+        STATUS_LABELS[r.approvalStatus] ?? r.approvalStatus,
+        this.toIsoDate(r.createdAt),
+        this.toIsoDate(r.paidAt),
+        r.paymentTotalAmount ?? 0,
+        r.invoiceNo ?? "",
+        r.invoiceItemName ?? "",
+        this.toIsoDate(r.invoiceDate),
+        r.invoiceAmount ?? null
+      ]);
+    }
+    aoa.push([
+      "\u5408\u8A08",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      invoiceTotal
+    ]);
+    const ws = utils.aoa_to_sheet(aoa);
+    ws["!cols"] = [
+      { wch: 12 },
+      // 員工姓名
+      { wch: 10 },
+      // 請款類型
+      { wch: 12 },
+      // 專案代碼
+      { wch: 24 },
+      // 專案名稱
+      { wch: 10 },
+      // 簽核狀態
+      { wch: 12 },
+      // 申請日期
+      { wch: 12 },
+      // 付款日期
+      { wch: 14 },
+      // 請款單總金額
+      { wch: 14 },
+      // 發票號碼
+      { wch: 20 },
+      // 品名
+      { wch: 12 },
+      // 發票日期
+      { wch: 14 }
+      // 發票金額
+    ];
+    const headerRowIdx = 2;
+    const totalRowIdx = aoa.length - 1;
+    const numberFmt = "#,##0";
+    for (let r = headerRowIdx + 1; r <= totalRowIdx; r++) {
+      const totalCell = ws[utils.encode_cell({ r, c: 7 })];
+      if (totalCell && typeof totalCell.v === "number")
+        totalCell.z = numberFmt;
+      const invoiceCell = ws[utils.encode_cell({ r, c: 11 })];
+      if (invoiceCell && typeof invoiceCell.v === "number")
+        invoiceCell.z = numberFmt;
+    }
+    const wb = utils.book_new();
+    utils.book_append_sheet(wb, ws, "\u8ACB\u6B3E\u7D71\u8A08");
+    writeFileSync(wb, `\u8ACB\u6B3E\u7D71\u8A08_${this.exportSuffix()}.xlsx`);
   }
   static \u0275fac = function PaymentReport_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _PaymentReport)();
@@ -51769,7 +53990,7 @@ var PaymentReport = class _PaymentReport {
       \u0275\u0275text(62, "\u7533\u8ACB\u65E5\u671F");
       \u0275\u0275elementEnd()()();
       \u0275\u0275elementStart(63, "tbody");
-      \u0275\u0275repeaterCreate(64, PaymentReport_For_65_Template, 25, 13, "tr", null, _forTrack026, false, PaymentReport_ForEmpty_66_Template, 4, 1, "tr");
+      \u0275\u0275repeaterCreate(64, PaymentReport_For_65_Template, 25, 13, "tr", null, _forTrack027, false, PaymentReport_ForEmpty_66_Template, 4, 1, "tr");
       \u0275\u0275elementEnd();
       \u0275\u0275conditionalCreate(67, PaymentReport_Conditional_67_Template, 11, 4, "tfoot");
       \u0275\u0275elementEnd()();
@@ -51778,7 +53999,7 @@ var PaymentReport = class _PaymentReport {
     }
     if (rf & 2) {
       \u0275\u0275advance(7);
-      \u0275\u0275property("disabled", ctx.exporting() || ctx.records().length === 0);
+      \u0275\u0275property("disabled", ctx.exporting() || ctx.totalCount() === 0);
       \u0275\u0275advance(3);
       \u0275\u0275textInterpolate1(" ", ctx.exporting() ? "\u532F\u51FA\u4E2D..." : "\u532F\u51FA", " ");
       \u0275\u0275advance(8);
@@ -51813,7 +54034,7 @@ var PaymentReport = class _PaymentReport {
       <h4 class="mb-0">\u8ACB\u6B3E\u7D71\u8A08</h4>
     </div>
     <button class="btn btn-outline inline-flex items-center gap-1"
-            [disabled]="exporting() || records().length === 0"
+            [disabled]="exporting() || totalCount() === 0"
             (click)="exportExcel()">
       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#download"></use></svg>
       {{ exporting() ? '\u532F\u51FA\u4E2D...' : '\u532F\u51FA' }}
@@ -51998,11 +54219,11 @@ var PaymentReport = class _PaymentReport {
   }], null, null);
 })();
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(PaymentReport, { className: "PaymentReport", filePath: "src/app/features/admin/reports/pages/payment-report/payment-report.ts", lineNumber: 42 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(PaymentReport, { className: "PaymentReport", filePath: "src/app/features/admin/reports/pages/payment-report/payment-report.ts", lineNumber: 63 });
 })();
 
 // src/app/features/admin/reports/pages/project-water-level/project-water-level.ts
-var _forTrack027 = ($index, $item) => $item.projectId;
+var _forTrack028 = ($index, $item) => $item.projectId;
 function ProjectWaterLevel_For_33_Conditional_4_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275domElementStart(0, "div", 17);
@@ -52281,7 +54502,7 @@ var ProjectWaterLevel = class _ProjectWaterLevel {
       \u0275\u0275text(30, "\u7E3D\u5C08\u6848\u6C34\u4F4D");
       \u0275\u0275domElementEnd()()();
       \u0275\u0275domElementStart(31, "tbody");
-      \u0275\u0275repeaterCreate(32, ProjectWaterLevel_For_33_Template, 36, 28, "tr", null, _forTrack027, false, ProjectWaterLevel_ForEmpty_34_Template, 4, 1, "tr");
+      \u0275\u0275repeaterCreate(32, ProjectWaterLevel_For_33_Template, 36, 28, "tr", null, _forTrack028, false, ProjectWaterLevel_ForEmpty_34_Template, 4, 1, "tr");
       \u0275\u0275domElementEnd()()()()()();
     }
     if (rf & 2) {
@@ -52419,8 +54640,8 @@ var ProjectWaterLevel = class _ProjectWaterLevel {
 })();
 
 // src/app/features/admin/insurance-brackets/pages/insurance-bracket-list/insurance-bracket-list.ts
-var _c019 = (a0) => [a0, "edit"];
-var _forTrack028 = ($index, $item) => $item.id;
+var _c021 = (a0) => [a0, "edit"];
+var _forTrack029 = ($index, $item) => $item.id;
 function InsuranceBracketList_a_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "a", 13);
@@ -52442,7 +54663,7 @@ function InsuranceBracketList_For_24_a_12_Template(rf, ctx) {
   }
   if (rf & 2) {
     const b_r1 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c019, b_r1.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c021, b_r1.id));
   }
 }
 function InsuranceBracketList_For_24_button_13_Template(rf, ctx) {
@@ -52546,7 +54767,7 @@ var InsuranceBracketList = class _InsuranceBracketList {
       \u0275\u0275text(21, "\u64CD\u4F5C");
       \u0275\u0275elementEnd()()();
       \u0275\u0275elementStart(22, "tbody");
-      \u0275\u0275repeaterCreate(23, InsuranceBracketList_For_24_Template, 14, 14, "tr", null, _forTrack028, false, InsuranceBracketList_ForEmpty_25_Template, 3, 0, "tr");
+      \u0275\u0275repeaterCreate(23, InsuranceBracketList_For_24_Template, 14, 14, "tr", null, _forTrack029, false, InsuranceBracketList_ForEmpty_25_Template, 3, 0, "tr");
       \u0275\u0275pipe(26, "async");
       \u0275\u0275elementEnd()()()()()();
     }
@@ -52878,9 +55099,9 @@ var PayrollService = class _PayrollService {
 })();
 
 // src/app/features/admin/payroll/pages/payroll-list/payroll-list.ts
-var _c020 = (a0) => ["/admin/payroll", a0, "edit"];
+var _c022 = (a0) => ["/admin/payroll", a0, "edit"];
 var _c16 = (a0, a1) => ({ year: a0, month: a1 });
-var _forTrack029 = ($index, $item) => $item.employeeId;
+var _forTrack030 = ($index, $item) => $item.employeeId;
 function PayrollList_Conditional_13_Conditional_1_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275element(0, "span", 14);
@@ -52949,7 +55170,7 @@ function PayrollList_Conditional_16_For_49_a_23_Template(rf, ctx) {
   if (rf & 2) {
     const emp_r3 = \u0275\u0275nextContext().$implicit;
     const ctx_r1 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c020, emp_r3.employeeId))("queryParams", \u0275\u0275pureFunction2(4, _c16, ctx_r1.selectedYear(), ctx_r1.selectedMonth()));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c022, emp_r3.employeeId))("queryParams", \u0275\u0275pureFunction2(4, _c16, ctx_r1.selectedYear(), ctx_r1.selectedMonth()));
   }
 }
 function PayrollList_Conditional_16_For_49_Template(rf, ctx) {
@@ -53115,7 +55336,7 @@ function PayrollList_Conditional_16_Template(rf, ctx) {
     \u0275\u0275element(46, "th", 31);
     \u0275\u0275elementEnd()();
     \u0275\u0275elementStart(47, "tbody");
-    \u0275\u0275repeaterCreate(48, PayrollList_Conditional_16_For_49_Template, 24, 24, "tr", null, _forTrack029, false, PayrollList_Conditional_16_ForEmpty_50_Template, 3, 0, "tr");
+    \u0275\u0275repeaterCreate(48, PayrollList_Conditional_16_For_49_Template, 24, 24, "tr", null, _forTrack030, false, PayrollList_Conditional_16_ForEmpty_50_Template, 3, 0, "tr");
     \u0275\u0275elementEnd();
     \u0275\u0275conditionalCreate(51, PayrollList_Conditional_16_Conditional_51_Template, 22, 20, "tfoot", 26);
     \u0275\u0275elementEnd()()()();
@@ -54131,9 +56352,9 @@ var PayrollForm = class _PayrollForm {
 })();
 
 // src/app/features/admin/advance-requests/pages/advance-list/advance-list.ts
-var _c021 = (a0) => [a0, "edit"];
+var _c023 = (a0) => [a0, "edit"];
 var _c17 = (a0) => [a0];
-var _forTrack030 = ($index, $item) => $item.id;
+var _forTrack031 = ($index, $item) => $item.id;
 function AdvanceList_a_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "a", 15);
@@ -54192,7 +56413,7 @@ function AdvanceList_For_30_Conditional_22_Template(rf, ctx) {
   if (rf & 2) {
     const r_r1 = \u0275\u0275nextContext().$implicit;
     const ctx_r2 = \u0275\u0275nextContext();
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c021, r_r1.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c023, r_r1.id));
     \u0275\u0275advance(3);
     \u0275\u0275conditional(ctx_r2.canDelete() && r_r1.approvalStatus === "draft" ? 3 : -1);
   }
@@ -54443,7 +56664,7 @@ var AdvanceList = class _AdvanceList {
       \u0275\u0275text(27, "\u64CD\u4F5C");
       \u0275\u0275elementEnd()()();
       \u0275\u0275elementStart(28, "tbody");
-      \u0275\u0275repeaterCreate(29, AdvanceList_For_30_Template, 24, 17, "tr", null, _forTrack030, false, AdvanceList_ForEmpty_31_Template, 3, 0, "tr");
+      \u0275\u0275repeaterCreate(29, AdvanceList_For_30_Template, 24, 17, "tr", null, _forTrack031, false, AdvanceList_ForEmpty_31_Template, 3, 0, "tr");
       \u0275\u0275elementEnd()()();
       \u0275\u0275conditionalCreate(32, AdvanceList_Conditional_32_Template, 19, 13, "div", 14);
       \u0275\u0275elementEnd()()();
@@ -54592,9 +56813,9 @@ function buildPageNumbers8(current, total) {
 
 // src/app/features/admin/advance-requests/pages/advance-form/advance-form.ts
 var import_heic2any3 = __toESM(require_heic2any());
-var _c022 = ["successModal"];
+var _c024 = ["successModal"];
 var _c18 = () => ({ standalone: true });
-var _forTrack031 = ($index, $item) => $item.id;
+var _forTrack032 = ($index, $item) => $item.id;
 function AdvanceForm_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 7);
@@ -54692,7 +56913,7 @@ function AdvanceForm_Conditional_28_Template(rf, ctx) {
     \u0275\u0275elementStart(0, "select", 55)(1, "option", 56);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(3, AdvanceForm_Conditional_28_For_4_Template, 2, 4, "option", 56, _forTrack031);
+    \u0275\u0275repeaterCreate(3, AdvanceForm_Conditional_28_For_4_Template, 2, 4, "option", 56, _forTrack032);
     \u0275\u0275elementEnd();
     \u0275\u0275conditionalCreate(5, AdvanceForm_Conditional_28_Conditional_5_Template, 2, 0, "div", 57);
   }
@@ -55229,7 +57450,7 @@ function AdvanceForm_Conditional_87_For_10_Template(rf, ctx) {
     \u0275\u0275elementStart(4, "option", 56);
     \u0275\u0275text(5, "\u2014 \u8077\u7A31 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(6, AdvanceForm_Conditional_87_For_10_For_7_Template, 2, 2, "option", 56, _forTrack031);
+    \u0275\u0275repeaterCreate(6, AdvanceForm_Conditional_87_For_10_For_7_Template, 2, 2, "option", 56, _forTrack032);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(8, "select", 96);
     \u0275\u0275twoWayListener("ngModelChange", function AdvanceForm_Conditional_87_For_10_Template_select_ngModelChange_8_listener($event) {
@@ -55240,7 +57461,7 @@ function AdvanceForm_Conditional_87_For_10_Template(rf, ctx) {
     \u0275\u0275elementStart(9, "option", 56);
     \u0275\u0275text(10, "\u2014 \u4EBA\u54E1 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(11, AdvanceForm_Conditional_87_For_10_For_12_Template, 2, 2, "option", 56, _forTrack031);
+    \u0275\u0275repeaterCreate(11, AdvanceForm_Conditional_87_For_10_For_12_Template, 2, 2, "option", 56, _forTrack032);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(13, "button", 97);
     \u0275\u0275listener("click", function AdvanceForm_Conditional_87_For_10_Template_button_click_13_listener() {
@@ -55775,7 +57996,7 @@ var AdvanceForm = class _AdvanceForm {
   };
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _AdvanceForm, selectors: [["app-advance-form"]], viewQuery: function AdvanceForm_Query(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275viewQuerySignal(ctx.successModal, _c022, 5);
+      \u0275\u0275viewQuerySignal(ctx.successModal, _c024, 5);
     }
     if (rf & 2) {
       \u0275\u0275queryAdvance();
@@ -56324,7 +58545,7 @@ var AdvanceForm = class _AdvanceForm {
 })();
 
 // src/app/features/admin/advance-requests/pages/advance-detail/advance-detail.ts
-var _forTrack032 = ($index, $item) => $item.id;
+var _forTrack033 = ($index, $item) => $item.id;
 function AdvanceDetail_Conditional_1_Conditional_9_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "span", 36);
@@ -56729,7 +58950,7 @@ function AdvanceDetail_Conditional_1_Template(rf, ctx) {
     \u0275\u0275text(79, "\u5099\u8A3B");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(80, "tbody");
-    \u0275\u0275repeaterCreate(81, AdvanceDetail_Conditional_1_For_82_Template, 23, 21, "tr", null, _forTrack032);
+    \u0275\u0275repeaterCreate(81, AdvanceDetail_Conditional_1_For_82_Template, 23, 21, "tr", null, _forTrack033);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(83, "tfoot")(84, "tr", 31)(85, "td", 33);
     \u0275\u0275text(86, "\u5408\u8A08");
@@ -57113,9 +59334,9 @@ var APPROVAL_STATUS_CLASSES6 = {
 var ITEM_CATEGORIES3 = ["\u4EA4\u901A\u8CBB", "\u6D3B\u52D5\u8CBB", "\u8A2D\u8A08\u8CBB", "\u4EBA\u4E8B\u8CBB", "\u9910\u8CBB", "\u96DC\u652F"];
 
 // src/app/features/admin/write-off-requests/pages/write-off-list/write-off-list.ts
-var _c023 = (a0) => [a0, "edit"];
+var _c025 = (a0) => [a0, "edit"];
 var _c19 = (a0) => [a0];
-var _forTrack033 = ($index, $item) => $item.key;
+var _forTrack034 = ($index, $item) => $item.key;
 var _forTrack17 = ($index, $item) => $item.id;
 function WriteOffList_a_7_Template(rf, ctx) {
   if (rf & 1) {
@@ -57171,7 +59392,7 @@ function WriteOffList_For_30_Conditional_0_Conditional_21_Template(rf, ctx) {
     \u0275\u0275nextContext();
     const r_r1 = \u0275\u0275readContextLet(0);
     const ctx_r2 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c023, r_r1.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c025, r_r1.id));
     \u0275\u0275advance(3);
     \u0275\u0275conditional(ctx_r2.canDelete() && r_r1.approvalStatus === "draft" ? 3 : -1);
   }
@@ -57295,7 +59516,7 @@ function WriteOffList_For_30_Conditional_1_Conditional_19_For_1_Conditional_20_T
   if (rf & 2) {
     const r_r7 = \u0275\u0275nextContext().$implicit;
     const ctx_r2 = \u0275\u0275nextContext(4);
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c023, r_r7.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c025, r_r7.id));
     \u0275\u0275advance(3);
     \u0275\u0275conditional(ctx_r2.canDelete() && r_r7.approvalStatus === "draft" ? 3 : -1);
   }
@@ -57677,7 +59898,7 @@ var WriteOffList = class _WriteOffList {
       \u0275\u0275text(27, "\u64CD\u4F5C");
       \u0275\u0275elementEnd()()();
       \u0275\u0275elementStart(28, "tbody");
-      \u0275\u0275repeaterCreate(29, WriteOffList_For_30_Template, 2, 1, null, null, _forTrack033, false, WriteOffList_ForEmpty_31_Template, 3, 0, "tr");
+      \u0275\u0275repeaterCreate(29, WriteOffList_For_30_Template, 2, 1, null, null, _forTrack034, false, WriteOffList_ForEmpty_31_Template, 3, 0, "tr");
       \u0275\u0275elementEnd()()();
       \u0275\u0275conditionalCreate(32, WriteOffList_Conditional_32_Template, 22, 13, "div", 14);
       \u0275\u0275elementEnd()()();
@@ -57896,9 +60117,9 @@ function buildPageNumbers9(current, total) {
 
 // src/app/features/admin/write-off-requests/pages/write-off-form/write-off-form.ts
 var import_heic2any4 = __toESM(require_heic2any());
-var _c024 = ["successModal"];
+var _c026 = ["successModal"];
 var _c110 = () => ({ standalone: true });
-function _forTrack034($index, $item) {
+function _forTrack035($index, $item) {
   let tmp_0_0;
   return (tmp_0_0 = $item.get("id")) == null ? null : tmp_0_0.value;
 }
@@ -58901,7 +61122,7 @@ var WriteOffRequestForm = class _WriteOffRequestForm {
   };
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _WriteOffRequestForm, selectors: [["app-write-off-request-form"]], viewQuery: function WriteOffRequestForm_Query(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275viewQuerySignal(ctx.successModal, _c024, 5);
+      \u0275\u0275viewQuerySignal(ctx.successModal, _c026, 5);
     }
     if (rf & 2) {
       \u0275\u0275queryAdvance();
@@ -59016,7 +61237,7 @@ var WriteOffRequestForm = class _WriteOffRequestForm {
       \u0275\u0275element(69, "th", 40);
       \u0275\u0275elementEnd()();
       \u0275\u0275elementStart(70, "tbody", 41);
-      \u0275\u0275repeaterCreate(71, WriteOffRequestForm_For_72_Template, 39, 10, "tr", 42, _forTrack034, false, WriteOffRequestForm_ForEmpty_73_Template, 3, 0, "tr");
+      \u0275\u0275repeaterCreate(71, WriteOffRequestForm_For_72_Template, 39, 10, "tr", 42, _forTrack035, false, WriteOffRequestForm_ForEmpty_73_Template, 3, 0, "tr");
       \u0275\u0275elementEnd();
       \u0275\u0275conditionalCreate(74, WriteOffRequestForm_Conditional_74_Template, 14, 12, "tfoot");
       \u0275\u0275elementEnd()()()();
@@ -59449,8 +61670,8 @@ var WriteOffRequestForm = class _WriteOffRequestForm {
 })();
 
 // src/app/features/admin/write-off-requests/pages/write-off-detail/write-off-detail.ts
-var _c025 = (a0) => ["/admin/write-off-requests", a0, "edit"];
-var _forTrack035 = ($index, $item) => $item.id;
+var _c027 = (a0) => ["/admin/write-off-requests", a0, "edit"];
+var _forTrack036 = ($index, $item) => $item.id;
 function WriteOffRequestDetail_Conditional_1_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275element(0, "span", 11);
@@ -59519,7 +61740,7 @@ function WriteOffRequestDetail_Conditional_1_Conditional_14_Template(rf, ctx) {
   if (rf & 2) {
     const r_r5 = \u0275\u0275nextContext();
     const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(4, _c025, r_r5.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(4, _c027, r_r5.id));
     \u0275\u0275advance(4);
     \u0275\u0275property("disabled", ctx_r1.submitting());
     \u0275\u0275advance();
@@ -59877,7 +62098,7 @@ function WriteOffRequestDetail_Conditional_1_Template(rf, ctx) {
     \u0275\u0275text(102, "\u5099\u8A3B");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(103, "tbody");
-    \u0275\u0275repeaterCreate(104, WriteOffRequestDetail_Conditional_1_For_105_Template, 28, 26, "tr", null, _forTrack035);
+    \u0275\u0275repeaterCreate(104, WriteOffRequestDetail_Conditional_1_For_105_Template, 28, 26, "tr", null, _forTrack036);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(106, "tfoot")(107, "tr", 33)(108, "td", 36);
     \u0275\u0275text(109, "\u5408\u8A08");
@@ -60334,9 +62555,9 @@ var APPROVAL_STATUS_CLASSES7 = {
 var ITEM_CATEGORIES4 = ["\u4EA4\u901A\u8CBB", "\u4F4F\u5BBF\u8CBB", "\u9910\u8CBB", "\u4EBA\u4E8B\u8CBB", "\u96DC\u652F"];
 
 // src/app/features/admin/travel-write-off-requests/pages/travel-write-off-list/travel-write-off-list.ts
-var _c026 = (a0) => [a0, "edit"];
+var _c028 = (a0) => [a0, "edit"];
 var _c111 = (a0) => [a0];
-var _forTrack036 = ($index, $item) => $item.key;
+var _forTrack037 = ($index, $item) => $item.key;
 var _forTrack19 = ($index, $item) => $item.id;
 function TravelWriteOffList_a_7_Template(rf, ctx) {
   if (rf & 1) {
@@ -60379,7 +62600,7 @@ function TravelWriteOffList_For_30_Conditional_0_Conditional_19_Template(rf, ctx
     \u0275\u0275nextContext();
     const r_r2 = \u0275\u0275readContextLet(0);
     const ctx_r2 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c026, r_r2.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c028, r_r2.id));
     \u0275\u0275advance(3);
     \u0275\u0275conditional(ctx_r2.canDelete() && r_r2.approvalStatus === "draft" ? 3 : -1);
   }
@@ -60475,7 +62696,7 @@ function TravelWriteOffList_For_30_Conditional_1_Conditional_17_For_1_Conditiona
   if (rf & 2) {
     const r_r8 = \u0275\u0275nextContext().$implicit;
     const ctx_r2 = \u0275\u0275nextContext(4);
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c026, r_r8.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c028, r_r8.id));
     \u0275\u0275advance(3);
     \u0275\u0275conditional(ctx_r2.canDelete() && r_r8.approvalStatus === "draft" ? 3 : -1);
   }
@@ -60848,7 +63069,7 @@ var TravelWriteOffList = class _TravelWriteOffList {
       \u0275\u0275text(27, "\u64CD\u4F5C");
       \u0275\u0275elementEnd()()();
       \u0275\u0275elementStart(28, "tbody");
-      \u0275\u0275repeaterCreate(29, TravelWriteOffList_For_30_Template, 2, 1, null, null, _forTrack036, false, TravelWriteOffList_ForEmpty_31_Template, 3, 0, "tr");
+      \u0275\u0275repeaterCreate(29, TravelWriteOffList_For_30_Template, 2, 1, null, null, _forTrack037, false, TravelWriteOffList_ForEmpty_31_Template, 3, 0, "tr");
       \u0275\u0275elementEnd()()();
       \u0275\u0275conditionalCreate(32, TravelWriteOffList_Conditional_32_Template, 22, 13, "div", 14);
       \u0275\u0275elementEnd()()();
@@ -61052,9 +63273,9 @@ function buildPageNumbers10(current, total) {
 
 // src/app/features/admin/travel-write-off-requests/pages/travel-write-off-form/travel-write-off-form.ts
 var import_heic2any5 = __toESM(require_heic2any());
-var _c027 = ["successModal"];
+var _c029 = ["successModal"];
 var _c112 = () => ({ standalone: true });
-function _forTrack037($index, $item) {
+function _forTrack038($index, $item) {
   let tmp_0_0;
   return (tmp_0_0 = $item.get("id")) == null ? null : tmp_0_0.value;
 }
@@ -61998,7 +64219,7 @@ var TravelWriteOffForm = class _TravelWriteOffForm {
   };
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _TravelWriteOffForm, selectors: [["app-travel-write-off-form"]], viewQuery: function TravelWriteOffForm_Query(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275viewQuerySignal(ctx.successModal, _c027, 5);
+      \u0275\u0275viewQuerySignal(ctx.successModal, _c029, 5);
     }
     if (rf & 2) {
       \u0275\u0275queryAdvance();
@@ -62107,7 +64328,7 @@ var TravelWriteOffForm = class _TravelWriteOffForm {
       \u0275\u0275element(65, "th", 40);
       \u0275\u0275elementEnd()();
       \u0275\u0275elementStart(66, "tbody", 41);
-      \u0275\u0275repeaterCreate(67, TravelWriteOffForm_For_68_Template, 33, 8, "tr", 42, _forTrack037, false, TravelWriteOffForm_ForEmpty_69_Template, 3, 0, "tr");
+      \u0275\u0275repeaterCreate(67, TravelWriteOffForm_For_68_Template, 33, 8, "tr", 42, _forTrack038, false, TravelWriteOffForm_ForEmpty_69_Template, 3, 0, "tr");
       \u0275\u0275elementEnd();
       \u0275\u0275conditionalCreate(70, TravelWriteOffForm_Conditional_70_Template, 8, 4, "tfoot");
       \u0275\u0275elementEnd()()()();
@@ -62522,8 +64743,8 @@ var TravelWriteOffForm = class _TravelWriteOffForm {
 })();
 
 // src/app/features/admin/travel-write-off-requests/pages/travel-write-off-detail/travel-write-off-detail.ts
-var _c028 = (a0) => ["/admin/travel-write-off-requests", a0, "edit"];
-var _forTrack038 = ($index, $item) => $item.id;
+var _c030 = (a0) => ["/admin/travel-write-off-requests", a0, "edit"];
+var _forTrack039 = ($index, $item) => $item.id;
 function TravelWriteOffDetail_Conditional_1_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275element(0, "span", 11);
@@ -62592,7 +64813,7 @@ function TravelWriteOffDetail_Conditional_1_Conditional_14_Template(rf, ctx) {
   if (rf & 2) {
     const r_r5 = \u0275\u0275nextContext();
     const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(4, _c028, r_r5.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(4, _c030, r_r5.id));
     \u0275\u0275advance(4);
     \u0275\u0275property("disabled", ctx_r1.submitting());
     \u0275\u0275advance();
@@ -62951,7 +65172,7 @@ function TravelWriteOffDetail_Conditional_1_Template(rf, ctx) {
     \u0275\u0275text(101, "\u5099\u8A3B");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(102, "tbody");
-    \u0275\u0275repeaterCreate(103, TravelWriteOffDetail_Conditional_1_For_104_Template, 22, 18, "tr", null, _forTrack038);
+    \u0275\u0275repeaterCreate(103, TravelWriteOffDetail_Conditional_1_For_104_Template, 22, 18, "tr", null, _forTrack039);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(105, "tfoot")(106, "tr", 33)(107, "td", 36);
     \u0275\u0275text(108, "\u5408\u8A08");
@@ -63395,6 +65616,10 @@ var ADMIN_ROUTES = [
   { path: "job-titles", component: JobTitleList, canActivate: [permissionGuard], data: { title: "\u8077\u7A31\u7BA1\u7406", permission: "job-titles:read" } },
   { path: "job-titles/new", component: JobTitleForm, canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u8077\u7A31", permission: "job-titles:write" } },
   { path: "job-titles/:id/edit", component: JobTitleForm, canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u8077\u7A31", permission: "job-titles:write" } },
+  // 廠商管理
+  { path: "vendors", component: VendorList, canActivate: [permissionGuard], data: { title: "\u5EE0\u5546\u7BA1\u7406", permission: "vendors:read" } },
+  { path: "vendors/new", component: VendorForm, canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u5EE0\u5546", permission: "vendors:write" } },
+  { path: "vendors/:id/edit", component: VendorForm, canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u5EE0\u5546", permission: "vendors:write" } },
   // 簽核管理
   { path: "approvals", component: ApprovalList, canActivate: [permissionGuard], data: { title: "\u7C3D\u6838\u7BA1\u7406", permission: "approvals:read" } },
   { path: "approvals/:id/flow", component: ApprovalFlow, canActivate: [permissionGuard], data: { title: "\u7C3D\u6838\u6D41\u7A0B", permission: "approvals:read" } },
@@ -63439,16 +65664,16 @@ var ADMIN_ROUTES = [
   { path: "travel-requests/:id", component: TravelDetail, canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u9810\u652F\u7533\u8ACB\u8A73\u60C5", permission: "travel-requests:read" } },
   // 出差請款申請
   { path: "travel-payment-requests", canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-DTCMHY24.js").then((m) => m.TravelPaymentList) },
-  { path: "travel-payment-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:write" }, loadComponent: () => import("./chunk-UJIGXEF3.js").then((m) => m.TravelPaymentForm) },
-  { path: "travel-payment-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-UJIGXEF3.js").then((m) => m.TravelPaymentForm) },
+  { path: "travel-payment-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:write" }, loadComponent: () => import("./chunk-GVJSZLEO.js").then((m) => m.TravelPaymentForm) },
+  { path: "travel-payment-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-GVJSZLEO.js").then((m) => m.TravelPaymentForm) },
   { path: "travel-payment-requests/:id", canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB\u8A73\u60C5", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-FPVWO2O3.js").then((m) => m.TravelPaymentDetail) },
   // 假日執行活動申請
   { path: "holiday-travel-requests", canActivate: [permissionGuard], data: { title: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-V73RJJXO.js").then((m) => m.HolidayTravelRequestList) },
-  { path: "holiday-travel-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:write" }, loadComponent: () => import("./chunk-VEYEOZSY.js").then((m) => m.HolidayTravelRequestForm) },
-  { path: "holiday-travel-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-VEYEOZSY.js").then((m) => m.HolidayTravelRequestForm) },
+  { path: "holiday-travel-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:write" }, loadComponent: () => import("./chunk-RBQTXIAS.js").then((m) => m.HolidayTravelRequestForm) },
+  { path: "holiday-travel-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-RBQTXIAS.js").then((m) => m.HolidayTravelRequestForm) },
   { path: "holiday-travel-requests/:id", canActivate: [permissionGuard], data: { title: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB\u8A73\u60C5", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-2VNX4F4H.js").then((m) => m.HolidayTravelDetail) },
   // 行事曆管理
-  { path: "calendar-days", canActivate: [permissionGuard], data: { title: "\u884C\u4E8B\u66C6\u7BA1\u7406", permission: "calendar-days:read" }, loadComponent: () => import("./chunk-UIBKU7T2.js").then((m) => m.CalendarDayList) },
+  { path: "calendar-days", canActivate: [permissionGuard], data: { title: "\u884C\u4E8B\u66C6\u7BA1\u7406", permission: "calendar-days:read" }, loadComponent: () => import("./chunk-KOUFWBSR.js").then((m) => m.CalendarDayList) },
   // 加班申請
   { path: "overtime-requests", component: OvertimeRequestList, canActivate: [permissionGuard], data: { title: "\u52A0\u73ED\u7533\u8ACB", permission: "overtime-requests:read" } },
   { path: "overtime-requests/new", component: OvertimeRequestForm, canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u52A0\u73ED\u7533\u8ACB", permission: "overtime-requests:write" } },
@@ -63469,7 +65694,7 @@ var ADMIN_ROUTES = [
   { path: "insurance-brackets/new", component: InsuranceBracketForm, canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u52DE\u5065\u4FDD\u7D1A\u8DDD", permission: "insurance-brackets:write" } },
   { path: "insurance-brackets/:id/edit", component: InsuranceBracketForm, canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u52DE\u5065\u4FDD\u7D1A\u8DDD", permission: "insurance-brackets:write" } },
   // 打卡提醒紀錄（Superadmin only）
-  { path: "attendance-reminder-logs", canActivate: [permissionGuard], data: { title: "\u6253\u5361\u63D0\u9192\u7D00\u9304", permission: "superadmin" }, loadComponent: () => import("./chunk-ZO5RGUCJ.js").then((m) => m.AttendanceReminderLogList) },
+  { path: "attendance-reminder-logs", canActivate: [permissionGuard], data: { title: "\u6253\u5361\u63D0\u9192\u7D00\u9304", permission: "superadmin" }, loadComponent: () => import("./chunk-FS35OKIB.js").then((m) => m.AttendanceReminderLogList) },
   { path: "attendance-reminder-logs/batches/:batchId", canActivate: [permissionGuard], data: { title: "\u6253\u5361\u63D0\u9192\u6279\u6B21\u8A73\u60C5", permission: "superadmin" }, loadComponent: () => import("./chunk-EFYO2FE2.js").then((m) => m.AttendanceReminderLogDetail) },
   // 系統設定
   { path: "settings", component: Settings, canActivate: [permissionGuard], data: { title: "\u7CFB\u7D71\u8A2D\u5B9A", permission: "settings:read" } }
@@ -63485,4 +65710,4 @@ xlsx/xlsx.mjs:
 xlsx/xlsx.mjs:
   (*! sheetjs (C) 2013-present SheetJS -- http://sheetjs.com *)
 */
-//# sourceMappingURL=chunk-FKLZ4XOV.js.map
+//# sourceMappingURL=chunk-PLWIQK46.js.map

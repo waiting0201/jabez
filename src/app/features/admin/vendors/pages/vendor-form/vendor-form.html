@@ -1,0 +1,90 @@
+<div class="container-fluid py-3">
+  <div class="flex items-center gap-2 mb-6">
+    <a routerLink="/admin/vendors" class="btn btn-sm btn-outline-secondary">
+      <svg class="sa-icon">
+        <use href="/assets/icons/sprite.svg#arrow-left"></use>
+      </svg>
+    </a>
+    <h4 class="mb-0">{{ isEdit ? '編輯廠商' : '新增廠商' }}</h4>
+  </div>
+
+  @if (errorMsg()) {
+  <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+    <svg class="sa-icon" style="stroke: currentColor">
+      <use href="/assets/icons/sprite.svg#alert-triangle"></use>
+    </svg>
+    {{ errorMsg() }}
+  </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <div class="row g-4">
+      <div class="col-12 col-lg-10 col-xl-8">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#briefcase"></use>
+            </svg>
+            廠商資訊
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-12 col-md-8">
+                <label class="form-label fw-500">廠商名稱 <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" formControlName="name" placeholder="例如：誠品書店">
+                @if (form.get('name')?.invalid && form.get('name')?.touched) {
+                <div class="text-danger small mt-1">請輸入廠商名稱。</div>
+                }
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">統編</label>
+                <input type="text" class="form-control" formControlName="taxId" placeholder="例如：12345678">
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">聯絡人</label>
+                <input type="text" class="form-control" formControlName="contactPerson" placeholder="姓名">
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">聯絡電話</label>
+                <input type="text" class="form-control" formControlName="phone" placeholder="例如：02-1234-5678">
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">銀行帳號</label>
+                <input type="text" class="form-control" formControlName="bankAccount" placeholder="銀行 / 分行 / 帳號">
+              </div>
+
+              <div class="col-12">
+                <label class="form-label fw-500">地址</label>
+                <input type="text" class="form-control" formControlName="address" placeholder="完整地址">
+              </div>
+
+              <div class="col-12">
+                <label class="form-label fw-500">備註</label>
+                <textarea class="form-control" formControlName="note" rows="2" placeholder="選填說明"></textarea>
+              </div>
+
+              <div class="col-12">
+                <div class="form-check">
+                  <input type="checkbox" class="form-check-input" id="isActive" formControlName="isActive">
+                  <label class="form-check-label" for="isActive">啟用</label>
+                </div>
+                <div class="text-muted small mt-1">停用後將不會出現在請款申請的下拉清單中。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 flex gap-2">
+          <button type="submit" class="btn btn-primary" [disabled]="form.invalid">
+            {{ isEdit ? '更新' : '建立' }}
+          </button>
+          <a routerLink="/admin/vendors" class="btn btn-outline-secondary">取消</a>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

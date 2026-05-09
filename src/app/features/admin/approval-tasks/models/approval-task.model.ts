@@ -51,12 +51,16 @@ export interface PaymentTaskDetail {
   paymentRequestId: number;
   paymentType: PaymentType;
   projectCode: string;
+  projectName?: string;
   invoices: InvoiceItem[];
   totalAmount: number;
   estimatedPaymentDate?: string;
   paidAt?: string;
   reason?: string;
   paidBySignatureUrl?: string;
+  vendorId?: number;
+  vendorName?: string;
+  vendorTaxId?: string;
 }
 
 export interface LeaveTaskDetail {

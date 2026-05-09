@@ -179,6 +179,8 @@ export interface EmployeeProfileDetail {
   // 身分證影本
   idCardFrontUrl?: string | null;
   idCardBackUrl?: string | null;
+  // 最高學歷證明
+  highestEducationProofUrl?: string | null;
   // 子表
   educationRecords: EducationRecord[];
   employmentHistoryRecords: EmploymentHistoryRecord[];

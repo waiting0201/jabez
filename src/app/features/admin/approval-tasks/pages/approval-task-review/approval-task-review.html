@@ -56,6 +56,15 @@
                       <div class="text-muted small mb-1">總金額</div>
                       <span class="fw-600 fs-5">{{ d.totalAmount | number:'1.0-0' }}</span>
                     </div>
+                    @if (d.paymentType === 'vendor') {
+                      <div class="col-12 col-md-8">
+                        <div class="text-muted small mb-1">廠商</div>
+                        <span class="fw-500">
+                          {{ d.vendorName || '—' }}
+                          @if (d.vendorTaxId) { <span class="text-muted">（{{ d.vendorTaxId }}）</span> }
+                        </span>
+                      </div>
+                    }
                     @if (d.estimatedPaymentDate) {
                       <div class="col-6 col-md-4">
                         <div class="text-muted small mb-1">預計撥款日</div>

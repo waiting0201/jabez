@@ -65,5 +65,8 @@ export interface PaymentRequest {
   paidAt?: string;
   reason?: string;
   designatedReviewers?: DesignatedReviewer[];
+  vendorId?: number;
+  vendorName?: string;
+  vendorTaxId?: string;
   createdAt: Date;
 }

@@ -85,6 +85,11 @@ export class UserService {
     return this.http.get(`${environment.apiUrl}/files/id-cards/${fileName}`, {responseType: 'blob'});
   }
 
+  /** 以 JWT 取得最高學歷證明檔（HR 權限保護） */
+  getEducationProof(fileName: string): Observable<Blob> {
+    return this.http.get(`${environment.apiUrl}/files/education-proofs/${fileName}`, {responseType: 'blob'});
+  }
+
   private buildFormData(data: Record<string, any>, files?: UserFileOptions): FormData {
     const fd = new FormData();
     for (const [key, value] of Object.entries(data)) {

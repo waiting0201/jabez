@@ -231,7 +231,9 @@ export class ApprovalTaskList {
 
   getSummary(t: ApprovalTask): string {
     if (t.paymentDetail) {
-      return `${this.payTypeLabel[t.paymentDetail.paymentType]}・${t.paymentDetail.projectCode}（${t.paymentDetail.totalAmount.toLocaleString()} 元）`;
+      const d = t.paymentDetail;
+      const vendorPart = d.paymentType === 'vendor' && d.vendorName ? `・${d.vendorName}` : '';
+      return `${this.payTypeLabel[d.paymentType]}・${d.projectCode}${vendorPart}（${d.totalAmount.toLocaleString()} 元）`;
     }
     if (t.leaveDetail) {
       return `${this.leaveTypeLabel[t.leaveDetail.leaveType]}・${t.leaveDetail.hours} 小時`;

@@ -669,6 +669,41 @@
                   學歷紀錄
                 </div>
                 <div class="card-body">
+                  <!-- 最高學歷證明 -->
+                  <div class="mb-4 pb-4 border-bottom">
+                    <div class="fw-500 mb-1">最高學歷證明</div>
+                    <p class="text-muted small mb-3">支援 PNG、JPEG 圖片或 PDF。此文件受權限保護，僅人事部門可查閱。上傳後勿超過 1MB。</p>
+                    @if (highestEducationProofPreview()) {
+                      <div class="mb-2">
+                        <img [src]="highestEducationProofPreview()!" alt="最高學歷證明" class="rounded border max-h-40 object-contain">
+                      </div>
+                    }
+                    @if (highestEducationProofDisplayName) {
+                      <div class="flex items-center gap-2 mb-2 border rounded px-3 py-2 bg-[--bg-surface]">
+                        <svg class="sa-icon text-[--accent]" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                        <span class="fw-500 text-[--text-primary] truncate text-sm">{{ highestEducationProofDisplayName }}</span>
+                        @if (hasExistingHighestEducationProof) {
+                          <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewHighestEducationProof()">檢視</button>
+                        }
+                      </div>
+                      <div class="flex gap-2">
+                        <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                          更換
+                          <input type="file" class="hidden" accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                                 (change)="onHighestEducationProofSelected($event)">
+                        </label>
+                        <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveHighestEducationProof()">刪除</button>
+                      </div>
+                    } @else {
+                      <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                        <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                        選擇檔案
+                        <input type="file" class="hidden" accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                               (change)="onHighestEducationProofSelected($event)">
+                      </label>
+                    }
+                  </div>
+
                   <div class="table-responsive mb-3">
                     <table class="table table-sm align-middle mb-0">
                       <thead class="table-light">

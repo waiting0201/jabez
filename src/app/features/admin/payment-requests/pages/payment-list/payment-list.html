@@ -38,6 +38,9 @@
                   @if (r.projectName) {
                     <div class="text-muted small">{{ r.projectName }}</div>
                   }
+                  @if (r.type === 'vendor' && r.vendorName) {
+                    <div class="text-muted small">廠商：{{ r.vendorName }}</div>
+                  }
                 </td>
                 <td>
                   <span class="badge bg-secondary-subtle text-secondary">{{ r.invoices.length }} 張</span>
