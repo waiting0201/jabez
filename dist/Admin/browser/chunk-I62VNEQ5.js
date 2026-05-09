@@ -1,7 +1,6 @@
 import {
   _typeof
 } from "./chunk-7YWLATDR.js";
-import "./chunk-KWSTWQNB.js";
 
 // node_modules/fflate/esm/browser.js
 var u8 = Uint8Array;
@@ -13435,24 +13434,24 @@ E.API.PDFObject = (function() {
     return "" + r;
   }, e;
 })();
+
 export {
-  _t as AcroForm,
-  At as AcroFormAppearance,
-  vt as AcroFormButton,
-  Nt as AcroFormCheckBox,
-  dt as AcroFormChoiceField,
-  gt as AcroFormComboBox,
-  mt as AcroFormEditBox,
-  pt as AcroFormListBox,
-  xt as AcroFormPasswordField,
-  bt as AcroFormPushButton,
-  yt as AcroFormRadioButton,
-  Lt as AcroFormTextField,
-  O as GState,
-  M as ShadingPattern,
-  q as TilingPattern,
-  E as default,
-  E as jsPDF
+  O,
+  M,
+  q,
+  E,
+  dt,
+  pt,
+  gt,
+  mt,
+  vt,
+  bt,
+  yt,
+  Nt,
+  Lt,
+  xt,
+  At,
+  _t
 };
 /*! Bundled license information:
 
@@ -13608,4 +13607,4 @@ jspdf/dist/jspdf.es.min.js:
    * ====================================================================
    *)
 */
-//# sourceMappingURL=chunk-CNNENCI2.js.map
+//# sourceMappingURL=chunk-I62VNEQ5.js.map

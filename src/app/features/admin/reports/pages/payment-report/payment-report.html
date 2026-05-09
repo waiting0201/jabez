@@ -8,7 +8,7 @@
       <h4 class="mb-0">請款統計</h4>
     </div>
     <button class="btn btn-outline inline-flex items-center gap-1"
-            [disabled]="exporting() || records().length === 0"
+            [disabled]="exporting() || totalCount() === 0"
             (click)="exportExcel()">
       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#download"></use></svg>
       {{ exporting() ? '匯出中...' : '匯出' }}

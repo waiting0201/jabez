@@ -1,21 +1,36 @@
 <div class="container-fluid py-3">
-  <div class="flex items-center gap-2 mb-6">
+
+  <!-- ── 頁頭 ────────────────────────────────── -->
+  <div class="flex items-center gap-2 mb-6 flex-wrap">
     <a routerLink="/admin/users" class="btn btn-sm btn-outline-secondary">
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
     </a>
     <h4 class="mb-0">{{ isEdit ? '編輯員工' : '新增員工' }}</h4>
     @if (isEdit) {
-      <button type="button" class="btn btn-sm btn-outline-info ms-auto"
-              [disabled]="sending()"
-              (click)="sendCredentials()">
-        @if (sending()) {
-          <span class="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin me-1"></span>
-          寄送中…
-        } @else {
-          <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#mail"></use></svg>
-          寄出帳號通知
-        }
-      </button>
+      <div class="flex gap-2 ms-auto flex-wrap">
+        <button type="button" class="btn btn-sm btn-outline-secondary"
+                [disabled]="printing()"
+                (click)="printHrCard()">
+          @if (printing()) {
+            <span class="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin me-1"></span>
+            產生中…
+          } @else {
+            <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#printer"></use></svg>
+            列印人事資料卡
+          }
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-info"
+                [disabled]="sending()"
+                (click)="sendCredentials()">
+          @if (sending()) {
+            <span class="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin me-1"></span>
+            寄送中…
+          } @else {
+            <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#mail"></use></svg>
+            寄出帳號通知
+          }
+        </button>
+      </div>
     }
   </div>
 
@@ -26,329 +41,1197 @@
     </div>
   }
 
+  <!-- ── Tab 切換列 ─────────────────────────── -->
+  <div class="flex gap-1 mb-4">
+    <button type="button" class="btn btn-sm"
+            [class]="activeTab() === 'basic' ? 'btn-primary' : 'btn-outline-secondary'"
+            (click)="switchTab('basic')">員工基本資料</button>
+    <button type="button" class="btn btn-sm"
+            [class]="activeTab() === 'hr' ? 'btn-primary' : 'btn-outline-secondary'"
+            (click)="switchTab('hr')">人事資料卡</button>
+    <button type="button" class="btn btn-sm"
+            [class]="activeTab() === 'dependents' ? 'btn-primary' : 'btn-outline-secondary'"
+            (click)="switchTab('dependents')">健保眷屬</button>
+  </div>
+
   <div class="row">
     <div class="col-12 col-xl-8">
       <form [formGroup]="form" (ngSubmit)="submit()">
 
-        <!-- 基本資料 -->
-        <div class="card border-0 shadow-sm mb-4">
-          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
-            <svg class="sa-icon"><use href="/assets/icons/sprite.svg#user"></use></svg>
-            基本資料
-          </div>
-          <div class="card-body">
-            <div class="row g-3">
-              <div class="col-12 col-md-6">
-                <label class="form-label fw-500">姓名 <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" formControlName="name" placeholder="請輸入姓名">
-                @if (form.get('name')?.invalid && form.get('name')?.touched) {
-                  <div class="text-danger small mt-1">請輸入姓名。</div>
-                }
-              </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label fw-500">Email <span class="text-danger">*</span></label>
-                <input type="email" class="form-control" formControlName="email" placeholder="user@example.com">
-                @if (form.get('email')?.invalid && form.get('email')?.touched) {
-                  <div class="text-danger small mt-1">請輸入有效的電子郵件。</div>
-                }
-              </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label fw-500">密碼</label>
-                <input type="password" class="form-control" formControlName="password"
-                       placeholder="留空則不修改（至少 6 碼）">
-                @if (form.get('password')?.invalid && form.get('password')?.touched) {
-                  <div class="text-danger small mt-1">密碼至少需要 6 個字元。</div>
-                }
-              </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label fw-500">狀態</label>
-                <select class="form-select" formControlName="status">
-                  <option value="active">在職</option>
-                  <option value="inactive">離職</option>
-                </select>
-              </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label fw-500">角色 <span class="text-danger">*</span></label>
-                <div class="flex flex-wrap gap-4 mt-1">
-                  @for (role of roles(); track role.id) {
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio"
-                             name="roleId"
-                             [id]="'role-' + role.id"
-                             [value]="role.id"
-                             formControlName="roleId">
-                      <label class="form-check-label" [for]="'role-' + role.id">{{ role.name }}</label>
-                    </div>
-                  }
-                </div>
-                @if (form.get('roleId')?.invalid && form.get('roleId')?.touched) {
-                  <div class="text-danger small mt-1">請選擇角色。</div>
-                }
-              </div>
-            </div>
-          </div>
-        </div>
+        <!-- ══════════════════════════════════════
+             TAB 1：員工基本資料
+        ════════════════════════════════════════ -->
+        @if (activeTab() === 'basic') {
 
-        <!-- 員工資訊 -->
-        <div class="card border-0 shadow-sm mb-4">
-          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
-            <svg class="sa-icon"><use href="/assets/icons/sprite.svg#briefcase"></use></svg>
-            員工資訊
-          </div>
-          <div class="card-body">
-            <div class="row g-3">
-              <div class="col-12 col-md-6">
-                <label class="form-label fw-500">部門 <span class="text-danger">*</span></label>
-                <select class="form-select" formControlName="departmentId">
-                  <option [ngValue]="null">— 請選擇部門 —</option>
-                  @for (dept of departments(); track dept.id) {
-                    <option [ngValue]="dept.id">{{ dept.name }}</option>
-                  }
-                </select>
-                @if (form.get('departmentId')?.invalid && form.get('departmentId')?.touched) {
-                  <div class="text-danger small mt-1">請設定部門。</div>
-                }
-              </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label fw-500">職稱</label>
-                <select class="form-select" formControlName="jobTitleId">
-                  <option [ngValue]="null">— 未指定 —</option>
-                  @for (jt of jobTitles(); track jt.id) {
-                    <option [ngValue]="jt.id">{{ jt.name }}</option>
-                  }
-                </select>
-              </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label fw-500">生日 <span class="text-danger">*</span></label>
-                <input type="date" class="form-control" formControlName="birthday">
-                @if (form.get('birthday')?.invalid && form.get('birthday')?.touched) {
-                  <div class="text-danger small mt-1">請選擇生日。</div>
-                }
-              </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label fw-500">入職日</label>
-                <input type="date" class="form-control" formControlName="hireDate">
-              </div>
-              <div class="col-12 col-md-4">
-                <label class="form-label fw-500">底薪</label>
-                <div class="input-group">
-                  <span class="input-group-text">NT$</span>
-                  <input type="number" class="form-control" formControlName="baseSalary" placeholder="例如：50000" min="0">
-                </div>
-              </div>
-              <div class="col-12 col-md-4">
-                <label class="form-label fw-500">勞保（員工負擔）</label>
-                <div class="input-group">
-                  <span class="input-group-text">NT$</span>
-                  <input type="text" class="form-control bg-light" readonly
-                         [value]="laborInsurance() !== null ? (laborInsurance() | number:'1.0-0') : '—'">
-                </div>
-              </div>
-              <div class="col-12 col-md-4">
-                <label class="form-label fw-500">健保（員工負擔）</label>
-                <div class="input-group">
-                  <span class="input-group-text">NT$</span>
-                  <input type="text" class="form-control bg-light" readonly
-                         [value]="healthInsurance() !== null ? (healthInsurance() | number:'1.0-0') : '—'">
-                </div>
-              </div>
-              <div class="col-12 col-md-4">
-                <label class="form-label fw-500">伙食費</label>
-                <div class="input-group">
-                  <span class="input-group-text">NT$</span>
-                  <input type="number" class="form-control" formControlName="mealAllowance" placeholder="例如：2400" min="0">
-                </div>
-              </div>
-              <div class="col-12 col-md-4">
-                <label class="form-label fw-500">加班費</label>
-                <div class="input-group">
-                  <span class="input-group-text">NT$</span>
-                  <input type="number" class="form-control" formControlName="overtimePay" placeholder="例如：0" min="0">
-                </div>
-              </div>
-              <div class="col-12 col-md-4">
-                <label class="form-label fw-500">寄送薪資表</label>
-                <div class="form-check mt-2">
-                  <input class="form-check-input" type="checkbox" formControlName="sendPaySlip" id="sendPaySlip">
-                  <label class="form-check-label" for="sendPaySlip">寄送薪資明細</label>
-                </div>
-              </div>
-              <div class="col-12 col-md-4">
-                <label class="form-label fw-500">原住民身份</label>
-                <div class="form-check mt-2">
-                  <input class="form-check-input" type="checkbox" formControlName="isIndigenous" id="isIndigenous">
-                  <label class="form-check-label" for="isIndigenous">是原住民（可申請歲時祭儀假）</label>
-                </div>
-              </div>
-              <div class="col-12 col-md-4">
-                <label class="form-label fw-500">離職日</label>
-                <input type="date" class="form-control" formControlName="resignDate">
-              </div>
-              <div class="col-12 col-md-4">
-                <label class="form-label fw-500">職務代理人</label>
-                <select class="form-select" formControlName="agentUserId">
-                  <option value="">— 無代理人 —</option>
-                  @for (u of getAvailableAgents(); track u.id) {
-                    <option [value]="u.id">{{ u.name }}</option>
-                  }
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 頭像 -->
-        <div class="card border-0 shadow-sm mb-4">
-          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
-            <svg class="sa-icon"><use href="/assets/icons/sprite.svg#image"></use></svg>
-            頭像
-          </div>
-          <div class="card-body">
-            <p class="text-muted small mb-3">支援 PNG、JPEG、GIF、WebP、HEIC 圖片格式。上傳後可拖曳調整位置、滑桿縮放，圖檔會自動壓縮。<br>上傳照片勿超過1MB。</p>
-            @if (displayAvatar) {
-              <div class="flex flex-wrap items-start gap-4 mb-3">
-                <!-- 圓形預覽框（拖曳調整位置） -->
-                <div class="relative w-32 h-32 rounded-full overflow-hidden border cursor-move select-none touch-none bg-[--bg-elevated]"
-                     (pointerdown)="onAvatarPointerDown($event)"
-                     (pointermove)="onAvatarPointerMove($event)"
-                     (pointerup)="onAvatarPointerUp()"
-                     (pointercancel)="onAvatarPointerUp()">
-                  <img [src]="displayAvatar" alt="頭像"
-                       class="w-full h-full object-cover pointer-events-none"
-                       [style.objectPosition]="avatarPosX() + '% ' + avatarPosY() + '%'"
-                       [style.transform]="'scale(' + avatarScale() + ')'"
-                       style="transform-origin: center">
-                </div>
-
-                <!-- 縮放滑桿 + 重設 -->
-                <div class="flex-1 min-w-[200px]">
-                  <label class="form-label fw-500 text-sm mb-1">縮放</label>
-                  <div class="flex items-center gap-2 mb-2">
-                    <input type="range" min="1" max="3" step="0.05"
-                           [value]="avatarScale()"
-                           (input)="onAvatarScaleChange($event)"
-                           class="flex-1">
-                    <span class="text-sm text-muted w-12 text-right">{{ avatarScale() | number: '1.2-2' }}x</span>
-                  </div>
-                  <p class="text-muted small mb-2">在預覽框中按住滑鼠或手指拖曳調整位置。</p>
-                  <button type="button" class="btn btn-sm btn-outline-secondary"
-                          (click)="resetAvatarPosition()">
-                    重設位置
-                  </button>
-                </div>
-              </div>
-              <div class="flex gap-2">
-                <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
-                  更換頭像
-                  <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif"
-                         (change)="onAvatarSelected($event)">
-                </label>
-                <button type="button" class="btn btn-sm btn-outline-danger"
-                        (click)="onRemoveAvatar()">
-                  刪除頭像
-                </button>
-              </div>
-            } @else {
-              <p class="text-muted small mb-3">尚未上傳頭像，選擇檔案後將於儲存時一併上傳。</p>
-              <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
-                <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
-                選擇頭像
-                <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif"
-                       (change)="onAvatarSelected($event)">
-              </label>
-            }
-          </div>
-        </div>
-
-        <!-- 原住民證明文件（僅在勾選原住民身份時顯示） -->
-        @if (form.value.isIndigenous) {
+          <!-- 基本資料 -->
           <div class="card border-0 shadow-sm mb-4">
             <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
-              <svg class="sa-icon"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
-              原住民身份證明文件 <span class="text-danger">*</span>
+              <svg class="sa-icon"><use href="/assets/icons/sprite.svg#user"></use></svg>
+              基本資料
             </div>
             <div class="card-body">
-              <p class="text-muted small mb-3">支援 PNG、JPEG 圖片或 PDF 檔案。此文件僅供人事部門稽核，受權限保護。</p>
-              @if (indigenousProofDisplayName) {
-                <div class="flex items-center gap-2 mb-3 border rounded px-3 py-2 bg-[--bg-surface]">
-                  <svg class="sa-icon text-[--accent]" style="stroke: currentColor">
-                    <use href="/assets/icons/sprite.svg#file-text"></use>
-                  </svg>
-                  <span class="fw-500 text-[--text-primary] truncate">{{ indigenousProofDisplayName }}</span>
-                  @if (hasExistingIndigenousProof) {
-                    <button type="button" class="btn btn-sm btn-outline-secondary ms-auto"
-                            (click)="viewIndigenousProof()">
-                      檢視
-                    </button>
+              <div class="row g-3">
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">姓名 <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" formControlName="name" placeholder="請輸入姓名">
+                  @if (form.get('name')?.invalid && form.get('name')?.touched) {
+                    <div class="text-danger small mt-1">請輸入姓名。</div>
                   }
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">Email <span class="text-danger">*</span></label>
+                  <input type="email" class="form-control" formControlName="email" placeholder="user@example.com">
+                  @if (form.get('email')?.invalid && form.get('email')?.touched) {
+                    <div class="text-danger small mt-1">請輸入有效的電子郵件。</div>
+                  }
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">密碼</label>
+                  <input type="password" class="form-control" formControlName="password"
+                         placeholder="留空則不修改（至少 6 碼）">
+                  @if (form.get('password')?.invalid && form.get('password')?.touched) {
+                    <div class="text-danger small mt-1">密碼至少需要 6 個字元。</div>
+                  }
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">狀態</label>
+                  <select class="form-select" formControlName="status">
+                    <option value="active">在職</option>
+                    <option value="inactive">離職</option>
+                  </select>
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">角色 <span class="text-danger">*</span></label>
+                  <div class="flex flex-wrap gap-4 mt-1">
+                    @for (role of roles(); track role.id) {
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio"
+                               name="roleId"
+                               [id]="'role-' + role.id"
+                               [value]="role.id"
+                               formControlName="roleId">
+                        <label class="form-check-label" [for]="'role-' + role.id">{{ role.name }}</label>
+                      </div>
+                    }
+                  </div>
+                  @if (form.get('roleId')?.invalid && form.get('roleId')?.touched) {
+                    <div class="text-danger small mt-1">請選擇角色。</div>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 員工資訊 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon"><use href="/assets/icons/sprite.svg#briefcase"></use></svg>
+              員工資訊
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">部門 <span class="text-danger">*</span></label>
+                  <select class="form-select" formControlName="departmentId">
+                    <option [ngValue]="null">— 請選擇部門 —</option>
+                    @for (dept of departments(); track dept.id) {
+                      <option [ngValue]="dept.id">{{ dept.name }}</option>
+                    }
+                  </select>
+                  @if (form.get('departmentId')?.invalid && form.get('departmentId')?.touched) {
+                    <div class="text-danger small mt-1">請設定部門。</div>
+                  }
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">職稱</label>
+                  <select class="form-select" formControlName="jobTitleId">
+                    <option [ngValue]="null">— 未指定 —</option>
+                    @for (jt of jobTitles(); track jt.id) {
+                      <option [ngValue]="jt.id">{{ jt.name }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">生日 <span class="text-danger">*</span></label>
+                  <input type="date" class="form-control" formControlName="birthday">
+                  @if (form.get('birthday')?.invalid && form.get('birthday')?.touched) {
+                    <div class="text-danger small mt-1">請選擇生日。</div>
+                  }
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">入職日</label>
+                  <input type="date" class="form-control" formControlName="hireDate">
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">底薪</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="baseSalary" placeholder="例如：50000" min="0">
+                  </div>
+                </div>
+                <!-- 勞保：lookup 預設值 + 可覆寫 -->
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">勞保（員工負擔）</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="laborInsuranceOverride"
+                           [placeholder]="laborInsurance() !== null ? (laborInsurance() | number:'1.0-0') + '（級距預設）' : '—'">
+                  </div>
+                  <div class="text-muted small mt-1">留空則使用級距表預設值</div>
+                </div>
+                <!-- 健保：lookup 預設值 + 可覆寫 -->
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">健保（員工負擔）</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="healthInsuranceOverride"
+                           [placeholder]="healthInsurance() !== null ? (healthInsurance() | number:'1.0-0') + '（級距預設）' : '—'">
+                  </div>
+                  <div class="text-muted small mt-1">留空則使用級距表預設值</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">伙食費</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="mealAllowance" placeholder="例如：2400" min="0">
+                  </div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">加班費</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="overtimePay" placeholder="例如：0" min="0">
+                  </div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">寄送薪資表</label>
+                  <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" formControlName="sendPaySlip" id="sendPaySlip">
+                    <label class="form-check-label" for="sendPaySlip">寄送薪資明細</label>
+                  </div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">原住民身份</label>
+                  <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" formControlName="isIndigenous" id="isIndigenous">
+                    <label class="form-check-label" for="isIndigenous">是原住民（可申請歲時祭儀假）</label>
+                  </div>
+                </div>
+                <!-- 低收入戶 -->
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">低收入戶</label>
+                  <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" formControlName="isLowIncome" id="isLowIncome">
+                    <label class="form-check-label" for="isLowIncome">低收入戶身份</label>
+                  </div>
+                </div>
+                <!-- 殘障身份 -->
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">殘障身份</label>
+                  <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" formControlName="isDisabled" id="isDisabled">
+                    <label class="form-check-label" for="isDisabled">具殘障資格</label>
+                  </div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">離職日</label>
+                  <input type="date" class="form-control" formControlName="resignDate">
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">職務代理人</label>
+                  <select class="form-select" formControlName="agentUserId">
+                    <option value="">— 無代理人 —</option>
+                    @for (u of getAvailableAgents(); track u.id) {
+                      <option [value]="u.id">{{ u.name }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 頭像 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon"><use href="/assets/icons/sprite.svg#image"></use></svg>
+              頭像
+            </div>
+            <div class="card-body">
+              <p class="text-muted small mb-3">支援 PNG、JPEG、GIF、WebP、HEIC 圖片格式。上傳後可拖曳調整位置、滑桿縮放，圖檔會自動壓縮。<br>上傳照片勿超過1MB。</p>
+              @if (displayAvatar) {
+                <div class="flex flex-wrap items-start gap-4 mb-3">
+                  <div class="relative w-32 h-32 rounded-full overflow-hidden border cursor-move select-none touch-none bg-[--bg-elevated]"
+                       (pointerdown)="onAvatarPointerDown($event)"
+                       (pointermove)="onAvatarPointerMove($event)"
+                       (pointerup)="onAvatarPointerUp()"
+                       (pointercancel)="onAvatarPointerUp()">
+                    <img [src]="displayAvatar" alt="頭像"
+                         class="w-full h-full object-cover pointer-events-none"
+                         [style.objectPosition]="avatarPosX() + '% ' + avatarPosY() + '%'"
+                         [style.transform]="'scale(' + avatarScale() + ')'"
+                         style="transform-origin: center">
+                  </div>
+                  <div class="flex-1 min-w-[200px]">
+                    <label class="form-label fw-500 text-sm mb-1">縮放</label>
+                    <div class="flex items-center gap-2 mb-2">
+                      <input type="range" min="1" max="3" step="0.05"
+                             [value]="avatarScale()"
+                             (input)="onAvatarScaleChange($event)"
+                             class="flex-1">
+                      <span class="text-sm text-muted w-12 text-right">{{ avatarScale() | number: '1.2-2' }}x</span>
+                    </div>
+                    <p class="text-muted small mb-2">在預覽框中按住滑鼠或手指拖曳調整位置。</p>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="resetAvatarPosition()">
+                      重設位置
+                    </button>
+                  </div>
                 </div>
                 <div class="flex gap-2">
                   <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
-                    更換檔案
-                    <input type="file" class="hidden" accept="image/png,image/jpeg,application/pdf"
-                           (change)="onIndigenousProofSelected($event)">
+                    更換頭像
+                    <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif"
+                           (change)="onAvatarSelected($event)">
                   </label>
-                  <button type="button" class="btn btn-sm btn-outline-danger"
-                          (click)="onRemoveIndigenousProof()">
-                    刪除檔案
-                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveAvatar()">刪除頭像</button>
                 </div>
               } @else {
+                <p class="text-muted small mb-3">尚未上傳頭像，選擇檔案後將於儲存時一併上傳。</p>
                 <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
                   <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
-                  選擇檔案
-                  <input type="file" class="hidden" accept="image/png,image/jpeg,application/pdf"
-                         (change)="onIndigenousProofSelected($event)">
+                  選擇頭像
+                  <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif"
+                         (change)="onAvatarSelected($event)">
                 </label>
               }
             </div>
           </div>
-        }
 
-        <!-- 簽名檔 -->
-        <div class="card border-0 shadow-sm mb-4">
-          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
-            <svg class="sa-icon"><use href="/assets/icons/sprite.svg#edit"></use></svg>
-            簽名檔
-          </div>
-          <div class="card-body">
-            <p class="text-muted small mb-3">支援 PNG、JPEG、GIF、WebP 格式，建議尺寸 300×150 像素，檔案大小不超過 2MB。</p>
-            @if (displaySignature) {
-              <div class="mb-3">
-                <div class="border rounded p-3 bg-white inline-block">
-                  <img [src]="displaySignature" alt="簽名檔" class="max-h-24 object-contain">
-                </div>
+          <!-- 原住民證明文件 -->
+          @if (form.value.isIndigenous) {
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                <svg class="sa-icon"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                原住民身份證明文件 <span class="text-danger">*</span>
               </div>
-              <div class="flex gap-2">
+              <div class="card-body">
+                <p class="text-muted small mb-3">支援 PNG、JPEG 圖片或 PDF 檔案。此文件僅供人事部門稽核，受權限保護。</p>
+                @if (indigenousProofDisplayName) {
+                  <div class="flex items-center gap-2 mb-3 border rounded px-3 py-2 bg-[--bg-surface]">
+                    <svg class="sa-icon text-[--accent]" style="stroke: currentColor">
+                      <use href="/assets/icons/sprite.svg#file-text"></use>
+                    </svg>
+                    <span class="fw-500 text-[--text-primary] truncate">{{ indigenousProofDisplayName }}</span>
+                    @if (hasExistingIndigenousProof) {
+                      <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewIndigenousProof()">檢視</button>
+                    }
+                  </div>
+                  <div class="flex gap-2">
+                    <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                      更換檔案
+                      <input type="file" class="hidden" accept="image/png,image/jpeg,application/pdf"
+                             (change)="onIndigenousProofSelected($event)">
+                    </label>
+                    <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveIndigenousProof()">刪除檔案</button>
+                  </div>
+                } @else {
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                    選擇檔案
+                    <input type="file" class="hidden" accept="image/png,image/jpeg,application/pdf"
+                           (change)="onIndigenousProofSelected($event)">
+                  </label>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- 低收入戶證明文件 -->
+          @if (form.value.isLowIncome) {
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                <svg class="sa-icon"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                低收入戶證明文件
+              </div>
+              <div class="card-body">
+                <p class="text-muted small mb-3">支援 PNG、JPEG 圖片或 PDF 檔案。此文件僅供人事部門稽核，受權限保護。</p>
+                @if (lowIncomeProofDisplayName) {
+                  <div class="flex items-center gap-2 mb-3 border rounded px-3 py-2 bg-[--bg-surface]">
+                    <svg class="sa-icon text-[--accent]" style="stroke: currentColor">
+                      <use href="/assets/icons/sprite.svg#file-text"></use>
+                    </svg>
+                    <span class="fw-500 text-[--text-primary] truncate">{{ lowIncomeProofDisplayName }}</span>
+                    @if (hasExistingLowIncomeProof) {
+                      <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewLowIncomeProof()">檢視</button>
+                    }
+                  </div>
+                  <div class="flex gap-2">
+                    <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                      更換檔案
+                      <input type="file" class="hidden" accept="image/png,image/jpeg,application/pdf"
+                             (change)="onLowIncomeProofSelected($event)">
+                    </label>
+                    <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveLowIncomeProof()">刪除檔案</button>
+                  </div>
+                } @else {
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                    選擇檔案
+                    <input type="file" class="hidden" accept="image/png,image/jpeg,application/pdf"
+                           (change)="onLowIncomeProofSelected($event)">
+                  </label>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- 殘障證明文件 -->
+          @if (form.value.isDisabled) {
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                <svg class="sa-icon"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                殘障證明文件
+              </div>
+              <div class="card-body">
+                <p class="text-muted small mb-3">支援 PNG、JPEG 圖片或 PDF 檔案。此文件僅供人事部門稽核，受權限保護。</p>
+                @if (disabledProofDisplayName) {
+                  <div class="flex items-center gap-2 mb-3 border rounded px-3 py-2 bg-[--bg-surface]">
+                    <svg class="sa-icon text-[--accent]" style="stroke: currentColor">
+                      <use href="/assets/icons/sprite.svg#file-text"></use>
+                    </svg>
+                    <span class="fw-500 text-[--text-primary] truncate">{{ disabledProofDisplayName }}</span>
+                    @if (hasExistingDisabledProof) {
+                      <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewDisabledProof()">檢視</button>
+                    }
+                  </div>
+                  <div class="flex gap-2">
+                    <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                      更換檔案
+                      <input type="file" class="hidden" accept="image/png,image/jpeg,application/pdf"
+                             (change)="onDisabledProofSelected($event)">
+                    </label>
+                    <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveDisabledProof()">刪除檔案</button>
+                  </div>
+                } @else {
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                    選擇檔案
+                    <input type="file" class="hidden" accept="image/png,image/jpeg,application/pdf"
+                           (change)="onDisabledProofSelected($event)">
+                  </label>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- 簽名檔 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+              簽名檔
+            </div>
+            <div class="card-body">
+              <p class="text-muted small mb-3">支援 PNG、JPEG、GIF、WebP 格式，建議尺寸 300×150 像素，檔案大小不超過 2MB。</p>
+              @if (displaySignature) {
+                <div class="mb-3">
+                  <div class="border rounded p-3 bg-white inline-block">
+                    <img [src]="displaySignature" alt="簽名檔" class="max-h-24 object-contain">
+                  </div>
+                </div>
+                <div class="flex gap-2">
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    更換簽名檔
+                    <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp"
+                           (change)="onSignatureSelected($event)">
+                  </label>
+                  <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveSignature()">刪除簽名檔</button>
+                </div>
+              } @else {
+                <p class="text-muted small mb-3">尚未上傳簽名檔，選擇檔案後將於儲存時一併上傳。</p>
                 <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
-                  更換簽名檔
+                  <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                  選擇簽名檔
                   <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp"
                          (change)="onSignatureSelected($event)">
                 </label>
-                <button type="button" class="btn btn-sm btn-outline-danger"
-                        (click)="onRemoveSignature()">
-                  刪除簽名檔
-                </button>
+              }
+            </div>
+          </div>
+
+          <!-- 送出按鈕（Tab 1） -->
+          <div class="mt-6 flex gap-2">
+            <button type="submit" class="btn btn-primary">{{ isEdit ? '更新' : '建立' }}</button>
+            <a routerLink="/admin/users" class="btn btn-outline-secondary">取消</a>
+          </div>
+
+        } <!-- end @if basic -->
+
+        <!-- ══════════════════════════════════════
+             TAB 2：人事資料卡（formGroupName="hrProfile"）
+        ════════════════════════════════════════ -->
+        @else if (activeTab() === 'hr') {
+          <div formGroupName="hrProfile">
+
+            <!-- 員工資訊 header strip -->
+            <div class="p-3 mb-4 rounded border bg-[--bg-elevated]">
+              <div class="flex flex-wrap gap-6 text-sm">
+                <span>
+                  <span class="text-muted me-1">員工代號：</span>
+                  <span class="fw-500">{{ form.get('hrProfile.employeeNumber')?.value || '—' }}</span>
+                </span>
+                <span>
+                  <span class="text-muted me-1">姓名：</span>
+                  <span class="fw-500">{{ form.get('name')?.value || '—' }}</span>
+                </span>
+                <span>
+                  <span class="text-muted me-1">到職日：</span>
+                  <span class="fw-500">{{ form.get('hireDate')?.value || '—' }}</span>
+                </span>
+              </div>
+            </div>
+
+            @if (!hrLoaded()) {
+              <div class="flex items-center justify-center py-12 text-muted">
+                <span class="inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin me-2"></span>
+                載入人事資料中…
               </div>
             } @else {
-              <p class="text-muted small mb-3">尚未上傳簽名檔，選擇檔案後將於儲存時一併上傳。</p>
 
-              <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
-                <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
-                選擇簽名檔
-                <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp"
-                       (change)="onSignatureSelected($event)">
-              </label>
-            }
+              <!-- Card 1：基本資料補充 -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#user"></use></svg>
+                  基本資料補充
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fw-500">員工代號</label>
+                      <input type="text" class="form-control" formControlName="employeeNumber" placeholder="例如：EMP001">
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fw-500">英文名</label>
+                      <input type="text" class="form-control" formControlName="englishName" placeholder="English Name">
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fw-500">身分證號</label>
+                      <input type="text" class="form-control" formControlName="idNumber" placeholder="A123456789">
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fw-500">性別</label>
+                      <select class="form-select" formControlName="gender">
+                        <option value="">— 請選擇 —</option>
+                        <option value="M">男</option>
+                        <option value="F">女</option>
+                      </select>
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fw-500">婚姻狀況</label>
+                      <select class="form-select" formControlName="maritalStatus">
+                        <option value="">— 請選擇 —</option>
+                        <option value="single">未婚</option>
+                        <option value="married">已婚</option>
+                        <option value="divorced">離婚</option>
+                        <option value="widowed">喪偶</option>
+                      </select>
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fw-500">出生地</label>
+                      <input type="text" class="form-control" formControlName="birthPlace" placeholder="例如：台北市">
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fw-500">行動電話</label>
+                      <input type="tel" class="form-control" formControlName="mobilePhone" placeholder="09xx-xxxxxx">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 2：身分證影本 -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#credit-card"></use></svg>
+                  身分證影本
+                </div>
+                <div class="card-body">
+                  <p class="text-muted small mb-4">支援 PNG、JPEG 圖片或 PDF。此文件受權限保護，僅人事部門可查閱。上傳後勿超過 1MB。</p>
+                  <div class="row g-4">
+                    <!-- 正面 -->
+                    <div class="col-12 col-md-6">
+                      <div class="fw-500 mb-2">正面</div>
+                      @if (idCardFrontPreview()) {
+                        <div class="mb-2">
+                          <img [src]="idCardFrontPreview()!" alt="身分證正面" class="rounded border max-h-40 object-contain w-full">
+                        </div>
+                      }
+                      @if (idCardFrontDisplayName) {
+                        <div class="flex items-center gap-2 mb-2 border rounded px-3 py-2 bg-[--bg-surface]">
+                          <svg class="sa-icon text-[--accent]" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                          <span class="fw-500 text-[--text-primary] truncate text-sm">{{ idCardFrontDisplayName }}</span>
+                          @if (hasExistingIdCardFront) {
+                            <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewIdCardFront()">檢視</button>
+                          }
+                        </div>
+                        <div class="flex gap-2">
+                          <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                            更換
+                            <input type="file" class="hidden" accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                                   (change)="onIdCardFrontSelected($event)">
+                          </label>
+                          <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveIdCardFront()">刪除</button>
+                        </div>
+                      } @else {
+                        <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                          <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                          選擇正面
+                          <input type="file" class="hidden" accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                                 (change)="onIdCardFrontSelected($event)">
+                        </label>
+                      }
+                    </div>
+                    <!-- 反面 -->
+                    <div class="col-12 col-md-6">
+                      <div class="fw-500 mb-2">反面</div>
+                      @if (idCardBackPreview()) {
+                        <div class="mb-2">
+                          <img [src]="idCardBackPreview()!" alt="身分證反面" class="rounded border max-h-40 object-contain w-full">
+                        </div>
+                      }
+                      @if (idCardBackDisplayName) {
+                        <div class="flex items-center gap-2 mb-2 border rounded px-3 py-2 bg-[--bg-surface]">
+                          <svg class="sa-icon text-[--accent]" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                          <span class="fw-500 text-[--text-primary] truncate text-sm">{{ idCardBackDisplayName }}</span>
+                          @if (hasExistingIdCardBack) {
+                            <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewIdCardBack()">檢視</button>
+                          }
+                        </div>
+                        <div class="flex gap-2">
+                          <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                            更換
+                            <input type="file" class="hidden" accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                                   (change)="onIdCardBackSelected($event)">
+                          </label>
+                          <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveIdCardBack()">刪除</button>
+                        </div>
+                      } @else {
+                        <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                          <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                          選擇反面
+                          <input type="file" class="hidden" accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                                 (change)="onIdCardBackSelected($event)">
+                        </label>
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 3：戶籍 & 通訊 -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#home"></use></svg>
+                  戶籍 &amp; 通訊資訊
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-12 col-md-8">
+                      <label class="form-label fw-500">戶籍地址</label>
+                      <input type="text" class="form-control" formControlName="residentialAddress" placeholder="縣市、區、路段、門牌">
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fw-500">戶籍電話</label>
+                      <input type="tel" class="form-control" formControlName="residentialPhone" placeholder="02-xxxx-xxxx">
+                    </div>
+                    <div class="col-12">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="mailingSameChk"
+                               [(ngModel)]="mailingAddressSameAsResidential"
+                               [ngModelOptions]="{standalone: true}"
+                               (change)="copyResidentialToMailing()">
+                        <label class="form-check-label small" for="mailingSameChk">通訊地址同戶籍</label>
+                      </div>
+                    </div>
+                    <div class="col-12 col-md-8">
+                      <label class="form-label fw-500">通訊地址</label>
+                      <input type="text" class="form-control" formControlName="mailingAddress" placeholder="縣市、區、路段、門牌">
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fw-500">通訊電話</label>
+                      <input type="tel" class="form-control" formControlName="mailingPhone" placeholder="02-xxxx-xxxx">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 4：學歷紀錄 -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#book-open"></use></svg>
+                  學歷紀錄
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>學校</th>
+                          <th>科系</th>
+                          <th>學歷</th>
+                          <th>起始年月</th>
+                          <th>結束年月</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody formArrayName="educationRecords">
+                        @for (ctrl of educationControls; track $index; let i = $index) {
+                          <tr [formGroupName]="i">
+                            <td><input type="text" class="form-control form-control-sm" formControlName="school" placeholder="學校名稱"></td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="department" placeholder="科系"></td>
+                            <td>
+                              <select class="form-select form-select-sm" formControlName="degree">
+                                <option value="graduated">畢業</option>
+                                <option value="incomplete">肄業</option>
+                              </select>
+                            </td>
+                            <td><input type="month" class="form-control form-control-sm" formControlName="startDate"></td>
+                            <td><input type="month" class="form-control form-control-sm" formControlName="endDate"></td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeEducation(i)">
+                                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                        @if (educationControls.length === 0) {
+                          <tr><td colspan="6" class="text-center text-muted small py-3">尚無紀錄</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  @if (educationControls.length < 3) {
+                    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="addEducation()">
+                      <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                      新增學歷
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <!-- Card 5：經歷紀錄 -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#briefcase"></use></svg>
+                  經歷紀錄
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>服務機關</th>
+                          <th>職稱</th>
+                          <th>起始日</th>
+                          <th>結束日</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody formArrayName="employmentHistoryRecords">
+                        @for (ctrl of employmentControls; track $index; let i = $index) {
+                          <tr [formGroupName]="i">
+                            <td><input type="text" class="form-control form-control-sm" formControlName="organization" placeholder="機構名稱"></td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="jobTitle" placeholder="職稱"></td>
+                            <td><input type="date" class="form-control form-control-sm" formControlName="startDate"></td>
+                            <td><input type="date" class="form-control form-control-sm" formControlName="endDate"></td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeEmployment(i)">
+                                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                        @if (employmentControls.length === 0) {
+                          <tr><td colspan="5" class="text-center text-muted small py-3">尚無紀錄</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  @if (employmentControls.length < 3) {
+                    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="addEmployment()">
+                      <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                      新增經歷
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <!-- Card 6：家庭狀況 -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#users"></use></svg>
+                  家庭狀況
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>姓名</th>
+                          <th>關係</th>
+                          <th>年齡</th>
+                          <th>職業</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody formArrayName="familyMembers">
+                        @for (ctrl of familyControls; track $index; let i = $index) {
+                          <tr [formGroupName]="i">
+                            <td><input type="text" class="form-control form-control-sm" formControlName="name" placeholder="姓名"></td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="relationship" placeholder="父/母/配偶…"></td>
+                            <td><input type="number" class="form-control form-control-sm" formControlName="age" placeholder="年齡" min="0"></td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="occupation" placeholder="職業"></td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeFamily(i)">
+                                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                        @if (familyControls.length === 0) {
+                          <tr><td colspan="5" class="text-center text-muted small py-3">尚無紀錄</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="addFamily()">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                    新增家庭成員
+                  </button>
+                </div>
+              </div>
+
+              <!-- Card 7：專業訓練 -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#award"></use></svg>
+                  專業訓練
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>訓練名稱</th>
+                          <th>訓練機構</th>
+                          <th>起始日</th>
+                          <th>結束日</th>
+                          <th>時數</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody formArrayName="professionalTrainings">
+                        @for (ctrl of trainingControls; track $index; let i = $index) {
+                          <tr [formGroupName]="i">
+                            <td><input type="text" class="form-control form-control-sm" formControlName="trainingName" placeholder="訓練名稱"></td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="trainingOrg" placeholder="機構名稱"></td>
+                            <td><input type="date" class="form-control form-control-sm" formControlName="startDate"></td>
+                            <td><input type="date" class="form-control form-control-sm" formControlName="endDate"></td>
+                            <td><input type="number" class="form-control form-control-sm" formControlName="hours" placeholder="0" min="0"></td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeTraining(i)">
+                                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                        @if (trainingControls.length === 0) {
+                          <tr><td colspan="6" class="text-center text-muted small py-3">尚無紀錄</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="addTraining()">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                    新增訓練
+                  </button>
+                </div>
+              </div>
+
+              <!-- Card 8：語言能力 -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#globe"></use></svg>
+                  語言能力
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>語言</th>
+                          <th>聽</th>
+                          <th>說</th>
+                          <th>讀</th>
+                          <th>寫</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody formArrayName="languageAbilities">
+                        @for (ctrl of languageControls; track $index; let i = $index) {
+                          <tr [formGroupName]="i">
+                            <td><input type="text" class="form-control form-control-sm" formControlName="language" placeholder="中文/英文…"></td>
+                            <td>
+                              <select class="form-select form-select-sm" formControlName="listening">
+                                <option value="good">佳</option>
+                                <option value="fair">可</option>
+                              </select>
+                            </td>
+                            <td>
+                              <select class="form-select form-select-sm" formControlName="speaking">
+                                <option value="good">佳</option>
+                                <option value="fair">可</option>
+                              </select>
+                            </td>
+                            <td>
+                              <select class="form-select form-select-sm" formControlName="reading">
+                                <option value="good">佳</option>
+                                <option value="fair">可</option>
+                              </select>
+                            </td>
+                            <td>
+                              <select class="form-select form-select-sm" formControlName="writing">
+                                <option value="good">佳</option>
+                                <option value="fair">可</option>
+                              </select>
+                            </td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeLanguage(i)">
+                                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                        @if (languageControls.length === 0) {
+                          <tr><td colspan="6" class="text-center text-muted small py-3">尚無紀錄</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="addLanguage()">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                    新增語言
+                  </button>
+                </div>
+              </div>
+
+              <!-- Card 9：緊急聯絡 / 財務 -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#phone"></use></svg>
+                  緊急聯絡 / 財務 / 其他
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                      <label class="form-label fw-500">緊急聯絡人</label>
+                      <input type="text" class="form-control" formControlName="emergencyContactName" placeholder="姓名">
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <label class="form-label fw-500">緊急聯絡電話</label>
+                      <input type="tel" class="form-control" formControlName="emergencyContactPhone" placeholder="09xx-xxxxxx">
+                    </div>
+                    <div class="col-12 col-md-3">
+                      <label class="form-label fw-500">銀行局號</label>
+                      <input type="text" class="form-control" formControlName="bankCode" placeholder="局號（3 碼）">
+                    </div>
+                    <div class="col-12 col-md-5">
+                      <label class="form-label fw-500">銀行帳號</label>
+                      <input type="text" class="form-control" formControlName="bankAccount" placeholder="帳號">
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fw-500">投保起日</label>
+                      <input type="date" class="form-control" formControlName="insuranceStartDate">
+                    </div>
+                    <div class="col-12 col-md-3">
+                      <label class="form-label fw-500">扶養人數</label>
+                      <input type="number" class="form-control" formControlName="dependentCount" placeholder="0" min="0">
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label fw-500">專長興趣</label>
+                      <textarea class="form-control" formControlName="specialties" rows="2" placeholder="請填寫專長或興趣"></textarea>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 10：歷史紀錄與離職 -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
+                  歷史紀錄與離職資訊
+                </div>
+                <div class="card-body">
+
+                  <!-- 職務調整歷史 -->
+                  <div class="fw-600 mb-2 text-[--text-secondary]">職務調整歷史</div>
+                  <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>生效日</th>
+                          <th>原部門</th>
+                          <th>新部門</th>
+                          <th>原職稱</th>
+                          <th>新職稱</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody formArrayName="jobTransferRecords">
+                        @for (ctrl of jobTransferControls; track $index; let i = $index) {
+                          <tr [formGroupName]="i">
+                            <td><input type="date" class="form-control form-control-sm" formControlName="effectiveDate"></td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="fromDepartment" placeholder="原部門"></td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="toDepartment" placeholder="新部門"></td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="fromJobTitle" placeholder="原職稱"></td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="toJobTitle" placeholder="新職稱"></td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeJobTransfer(i)">
+                                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                        @if (jobTransferControls.length === 0) {
+                          <tr><td colspan="6" class="text-center text-muted small py-3">尚無紀錄</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-secondary mb-4" (click)="addJobTransfer()">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                    新增職務調整
+                  </button>
+
+                  <!-- 獎懲歷史 -->
+                  <div class="fw-600 mb-2 text-[--text-secondary]">獎懲歷史</div>
+                  <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>生效日</th>
+                          <th>類型</th>
+                          <th>類別</th>
+                          <th>次數</th>
+                          <th>事由</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody formArrayName="rewardPunishmentRecords">
+                        @for (ctrl of rewardControls; track $index; let i = $index) {
+                          <tr [formGroupName]="i">
+                            <td><input type="date" class="form-control form-control-sm" formControlName="effectiveDate"></td>
+                            <td>
+                              <select class="form-select form-select-sm" formControlName="type">
+                                <option value="reward">獎勵</option>
+                                <option value="punishment">懲處</option>
+                              </select>
+                            </td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="category" placeholder="嘉獎/申誡…"></td>
+                            <td><input type="number" class="form-control form-control-sm" formControlName="count" placeholder="1" min="1"></td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="reason" placeholder="事由"></td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeReward(i)">
+                                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                        @if (rewardControls.length === 0) {
+                          <tr><td colspan="6" class="text-center text-muted small py-3">尚無紀錄</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-secondary mb-4" (click)="addReward()">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                    新增獎懲
+                  </button>
+
+                  <!-- 薪資調整歷史 -->
+                  <div class="fw-600 mb-2 text-[--text-secondary]">薪資調整歷史</div>
+                  <div class="alert alert-info py-2 small mb-3">
+                    新增 / 編輯紀錄並儲存後，最新生效紀錄（≤ 今日）的底薪會自動同步至員工底薪欄位。
+                  </div>
+                  <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>生效日</th>
+                          <th>底薪</th>
+                          <th>職務津貼</th>
+                          <th>職責津貼</th>
+                          <th>其他</th>
+                          <th>差額</th>
+                          <th>海外津貼</th>
+                          <th>伙食</th>
+                          <th>合計</th>
+                          <th>備註</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody formArrayName="salaryAdjustmentRecords">
+                        @for (ctrl of salaryControls; track $index; let i = $index) {
+                          <tr [formGroupName]="i">
+                            <td><input type="date" class="form-control form-control-sm" formControlName="effectiveDate"></td>
+                            <td><input type="number" class="form-control form-control-sm" formControlName="baseSalary" placeholder="0" min="0" style="min-width: 80px"></td>
+                            <td><input type="number" class="form-control form-control-sm" formControlName="positionAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
+                            <td><input type="number" class="form-control form-control-sm" formControlName="dutyAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
+                            <td><input type="number" class="form-control form-control-sm" formControlName="otherAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
+                            <td><input type="number" class="form-control form-control-sm" formControlName="adjustmentDifference" placeholder="0" style="min-width: 70px"></td>
+                            <td><input type="number" class="form-control form-control-sm" formControlName="overseasAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
+                            <td><input type="number" class="form-control form-control-sm" formControlName="mealAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
+                            <td class="text-end fw-500">{{ salaryRowTotal(ctrl) | number:'1.0-0' }}</td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="notes" placeholder="備註" style="min-width: 80px"></td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeSalary(i)">
+                                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                        @if (salaryControls.length === 0) {
+                          <tr><td colspan="11" class="text-center text-muted small py-3">尚無紀錄</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-secondary mb-4" (click)="addSalary()">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                    新增薪資紀錄
+                  </button>
+
+                  <!-- 離職資訊 -->
+                  <div class="fw-600 mb-2 text-[--text-secondary]">離職資訊</div>
+                  <div class="row g-3">
+                    <div class="col-12">
+                      <label class="form-label fw-500">離職原因</label>
+                      <textarea class="form-control" formControlName="resignationReason" rows="3"
+                                placeholder="請填寫離職原因（個人因素、合約到期…）"></textarea>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+            } <!-- end @else (hrLoaded) -->
+
+            <!-- 儲存按鈕（HR Tab） -->
+            <div class="mt-6 flex gap-2">
+              <button type="submit" class="btn btn-primary">儲存所有資料</button>
+              <a routerLink="/admin/users" class="btn btn-outline-secondary">取消</a>
+            </div>
+
+          </div> <!-- end formGroupName="hrProfile" -->
+
+        } <!-- end @else if hr -->
+
+        <!-- ══════════════════════════════════════
+             TAB 3：健保眷屬
+        ════════════════════════════════════════ -->
+        @else if (activeTab() === 'dependents') {
+
+          <!-- 說明 banner -->
+          <div class="alert py-2 mb-4" style="background: rgba(13,110,253,0.08);">
+            <div class="flex items-start gap-2">
+              <svg class="sa-icon mt-1 text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+              <div class="small">
+                <span class="fw-600">健保眷屬最多計 3 口，超過 3 口仍按 3 口計算薪資。</span><br>
+                台灣全民健保規定：每增加 1 口眷屬，健保費 = 員工健保費 × (1 + 眷屬數，上限 3)。
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div class="mt-6 flex gap-2">
-          <button type="submit" class="btn btn-primary">
-            {{ isEdit ? '更新' : '建立' }}
-          </button>
-          <a routerLink="/admin/users" class="btn btn-outline-secondary">取消</a>
-        </div>
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#heart"></use></svg>
+              健保眷屬清單
+            </div>
+            <div class="card-body">
+
+              <!-- 眷屬數 + 健保試算 -->
+              <div class="flex flex-wrap gap-6 mb-4 text-sm">
+                <span>
+                  <span class="text-muted me-1">眷屬人數：</span>
+                  <span class="fw-600">{{ dependentsArray.length }} 人</span>
+                  @if (dependentsArray.length > 3) {
+                    <span class="text-warning ms-1">（超過 3 口，薪資計算上限 3 口）</span>
+                  }
+                </span>
+                @if (estimatedHealthInsurance !== null) {
+                  <span>
+                    <span class="text-muted me-1">每月健保費試算：</span>
+                    <span class="fw-600 text-primary">NT$ {{ estimatedHealthInsurance | number:'1.0-0' }}</span>
+                    <span class="text-muted ms-1 small">（含眷屬 {{ dependentsArray.length > 3 ? 3 : dependentsArray.length }} 口）</span>
+                  </span>
+                }
+              </div>
+
+              <div class="table-responsive mb-3">
+                <table class="table table-sm align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>姓名</th>
+                      <th>關係</th>
+                      <th>身分證號</th>
+                      <th>出生日期</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody formArrayName="healthDependents">
+                    @for (ctrl of dependentsControls; track $index; let i = $index) {
+                      <tr [formGroupName]="i">
+                        <td><input type="text" class="form-control form-control-sm" formControlName="name" placeholder="姓名"></td>
+                        <td>
+                          <select class="form-select form-select-sm" formControlName="relationship">
+                            <option value="spouse">配偶</option>
+                            <option value="father">父</option>
+                            <option value="mother">母</option>
+                            <option value="son">子</option>
+                            <option value="daughter">女</option>
+                            <option value="father_in_law">公（公公）</option>
+                            <option value="mother_in_law">婆（婆婆）</option>
+                            <option value="father_in_law_wife">翁（岳父）</option>
+                            <option value="mother_in_law_wife">姑（岳母）</option>
+                            <option value="other">其他</option>
+                          </select>
+                        </td>
+                        <td><input type="text" class="form-control form-control-sm" formControlName="idNumber" placeholder="A123456789"></td>
+                        <td><input type="date" class="form-control form-control-sm" formControlName="birthDate"></td>
+                        <td>
+                          <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeDependent(i)">
+                            <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                    @if (dependentsControls.length === 0) {
+                      <tr><td colspan="5" class="text-center text-muted small py-3">尚無眷屬</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-secondary" (click)="addDependent()">
+                <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                新增眷屬
+              </button>
+            </div>
+          </div>
+
+          <!-- 儲存按鈕（Tab 3） -->
+          <div class="mt-6 flex gap-2">
+            <button type="submit" class="btn btn-primary">儲存所有資料</button>
+            <a routerLink="/admin/users" class="btn btn-outline-secondary">取消</a>
+          </div>
+
+        } <!-- end @else if dependents -->
 
       </form>
     </div>

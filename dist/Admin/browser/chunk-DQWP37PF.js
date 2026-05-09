@@ -1,5 +1,3 @@
-import "./chunk-KWSTWQNB.js";
-
 // node_modules/jspdf-autotable/dist/jspdf.plugin.autotable.mjs
 function autoTableText(text, x, y, styles, doc) {
   styles = styles || {};
@@ -1892,17 +1890,17 @@ try {
 }
 var anyWindow;
 var jsPDF;
+
 export {
-  Cell,
-  CellHookData,
-  Column,
   HookData,
-  Row,
+  CellHookData,
   Table,
-  __createTable,
-  __drawTable,
+  Row,
+  Cell,
+  Column,
   applyPlugin,
   autoTable,
-  autoTable as default
+  __createTable,
+  __drawTable
 };
-//# sourceMappingURL=chunk-S72SRWYK.js.map
+//# sourceMappingURL=chunk-DQWP37PF.js.map

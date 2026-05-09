@@ -1014,6 +1014,10 @@ var UserService = class _UserService {
       formData.append("removeAvatar", "true");
     if (files?.removeIndigenousProof)
       formData.append("removeIndigenousProof", "true");
+    if (files?.removeLowIncomeProof)
+      formData.append("removeLowIncomeProof", "true");
+    if (files?.removeDisabledProof)
+      formData.append("removeDisabledProof", "true");
     return this.http.patch(`${environment.apiUrl}/users/${id}`, formData);
   }
   delete(id) {
@@ -1025,6 +1029,18 @@ var UserService = class _UserService {
   /** 以 JWT 取得原住民證明檔（HR 權限保護，回傳 Blob 供前端開啟） */
   getIndigenousProof(fileName) {
     return this.http.get(`${environment.apiUrl}/files/indigenous-proofs/${fileName}`, { responseType: "blob" });
+  }
+  /** 以 JWT 取得低收入戶證明檔（HR 權限保護） */
+  getLowIncomeProof(fileName) {
+    return this.http.get(`${environment.apiUrl}/files/low-income-proofs/${fileName}`, { responseType: "blob" });
+  }
+  /** 以 JWT 取得殘障證明檔（HR 權限保護） */
+  getDisabledProof(fileName) {
+    return this.http.get(`${environment.apiUrl}/files/disabled-proofs/${fileName}`, { responseType: "blob" });
+  }
+  /** 以 JWT 取得身分證影本（HR 權限保護） */
+  getIdCard(fileName) {
+    return this.http.get(`${environment.apiUrl}/files/id-cards/${fileName}`, { responseType: "blob" });
   }
   buildFormData(data, files) {
     const fd = new FormData();
@@ -1045,6 +1061,10 @@ var UserService = class _UserService {
       fd.append("avatar", files.avatarFile);
     if (files?.indigenousProofFile)
       fd.append("indigenousProof", files.indigenousProofFile);
+    if (files?.lowIncomeProofFile)
+      fd.append("lowIncomeProof", files.lowIncomeProofFile);
+    if (files?.disabledProofFile)
+      fd.append("disabledProof", files.disabledProofFile);
     return fd;
   }
   static \u0275fac = function UserService_Factory(__ngFactoryType__) {
@@ -1196,4 +1216,4 @@ export {
   ApprovalService,
   ProjectService
 };
-//# sourceMappingURL=chunk-JJKWVXDC.js.map
+//# sourceMappingURL=chunk-O42C3MOZ.js.map

@@ -32,6 +32,16 @@ export interface User {
   birthday?: Date;
   isIndigenous?: boolean;
   indigenousProofUrl?: string;
+  /** 低收入戶身份 */
+  isLowIncome?: boolean;
+  lowIncomeProofUrl?: string | null;
+  /** 殘障身份 */
+  isDisabled?: boolean;
+  disabledProofUrl?: string | null;
+  /** 健保金額手動覆寫（null = 走 lookup） */
+  healthInsuranceOverride?: number | null;
+  /** 勞保金額手動覆寫（null = 走 lookup） */
+  laborInsuranceOverride?: number | null;
   /** 頭像顯示參數（圓形裁切框內的位置 / 縮放） */
   avatarPositionX?: number;
   avatarPositionY?: number;

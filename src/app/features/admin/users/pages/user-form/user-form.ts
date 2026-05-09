@@ -2,15 +2,17 @@ import {Component, DestroyRef, inject, OnInit, signal} from '@angular/core';
 import {environment} from '../../../../../../environments/environment';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
-import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
+import {AbstractControl, FormArray, FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {DecimalPipe} from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
 import {debounceTime, distinctUntilChanged, switchMap, catchError} from 'rxjs/operators';
 import {of} from 'rxjs';
 import {ToastrService} from 'ngx-toastr';
-import heic2any from 'heic2any';
 import {AuthService} from '../../../../../core/auth/services/auth.service';
 import {UserService} from '../../services/user.service';
+import {EmployeeProfileService} from '../../services/employee-profile.service';
+import {HrProfilePdfService} from '../../services/hr-profile-pdf.service';
+import {ImageCompressionService} from '../../../../../shared/services/image-compression.service';
 import {RoleService} from '../../../roles/services/role.service';
 import {DepartmentService} from '../../../departments/services/department.service';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
@@ -19,61 +21,106 @@ import {Role} from '../../../roles/models/role.model';
 import {Department} from '../../../departments/models/department.model';
 import {JobTitle} from '../../../job-titles/models/job-title.model';
 import {User, UserStatus} from '../../models/user.model';
+import {EmployeeProfileDetail} from '../../models/employee-profile.model';
+
+const MAX_FILE_BYTES = 1 * 1024 * 1024; // 1 MB
 
 @Component({
   selector: 'app-user-form',
   templateUrl: './user-form.html',
-  imports: [ReactiveFormsModule, RouterLink, DecimalPipe],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe],
 })
 export class UserForm implements OnInit {
-  private fb              = inject(FormBuilder);
-  private userService     = inject(UserService);
-  private roleService     = inject(RoleService);
-  private deptService     = inject(DepartmentService);
-  private jtService       = inject(JobTitleService);
-  private bracketService  = inject(InsuranceBracketService);
-  private route           = inject(ActivatedRoute);
-  private router          = inject(Router);
-  private destroyRef      = inject(DestroyRef);
-  private authService     = inject(AuthService);
-  private toastr          = inject(ToastrService);
+  private fb                   = inject(FormBuilder);
+  private userService          = inject(UserService);
+  private profileService       = inject(EmployeeProfileService);
+  private hrPdfService         = inject(HrProfilePdfService);
+  private imageCompression     = inject(ImageCompressionService);
+  private roleService          = inject(RoleService);
+  private deptService          = inject(DepartmentService);
+  private jtService            = inject(JobTitleService);
+  private bracketService       = inject(InsuranceBracketService);
+  private route                = inject(ActivatedRoute);
+  private router               = inject(Router);
+  private destroyRef           = inject(DestroyRef);
+  private authService          = inject(AuthService);
+  private toastr               = inject(ToastrService);
 
   isSuperAdmin = this.authService.isSuperAdmin;
-  sending = signal(false);
-  roles       = signal<Role[]>([]);
-  departments = signal<Department[]>([]);
-  jobTitles   = signal<JobTitle[]>([]);
-  allUsers    = signal<User[]>([]);
-  isEdit = false;
-  userId = '';
-  errorMsg        = signal('');
-  laborInsurance  = signal<number | null>(null);
-  healthInsurance = signal<number | null>(null);
+  sending      = signal(false);
+  printing     = signal(false);
+  roles        = signal<Role[]>([]);
+  departments  = signal<Department[]>([]);
+  jobTitles    = signal<JobTitle[]>([]);
+  allUsers     = signal<User[]>([]);
+  isEdit       = false;
+  userId       = '';
+  errorMsg          = signal('');
+  laborInsurance    = signal<number | null>(null);
+  healthInsurance   = signal<number | null>(null);
 
-  // 簽名檔
-  signatureUrl     = signal<string | null>(null);  // 既有的遠端 URL
-  signaturePreview = signal<string | null>(null);  // 本地預覽 (data URL)
-  signatureFile    = signal<File | null>(null);     // 待上傳檔案
-  removeSignature  = signal(false);                 // 標記刪除
+  /** Tab 切換（basic / hr / dependents） */
+  activeTab = signal<'basic' | 'hr' | 'dependents'>('basic');
+  /** 是否已載入 HR profile（延遲載入） */
+  hrLoaded  = signal(false);
+  /** 儲存已載入的 HR profile 供 PDF 列印用 */
+  private _hrProfile: EmployeeProfileDetail | null = null;
+  /** 目前使用者資料（PDF 列印用） */
+  private _currentUser: User | null = null;
 
-  // 頭像
+  // ── 簽名檔 ──────────────────────────────────────
+  signatureUrl     = signal<string | null>(null);
+  signaturePreview = signal<string | null>(null);
+  signatureFile    = signal<File | null>(null);
+  removeSignature  = signal(false);
+
+  // ── 頭像 ─────────────────────────────────────────
   avatarUrl     = signal<string | null>(null);
   avatarPreview = signal<string | null>(null);
   avatarFile    = signal<File | null>(null);
   removeAvatar  = signal(false);
-  // 頭像位置 / 縮放（圓形裁切框內顯示參數）
   avatarPosX    = signal(50);
   avatarPosY    = signal(50);
   avatarScale   = signal(1);
   private avatarDragStart: { x: number; y: number; posX: number; posY: number } | null = null;
 
-  // 原住民證明文件（圖或 PDF）
+  // ── 原住民證明 ───────────────────────────────────
   indigenousProofUrl      = signal<string | null>(null);
   indigenousProofFile     = signal<File | null>(null);
-  indigenousProofFileName = signal<string | null>(null); // 上傳時保留檔名，方便 UI 顯示
+  indigenousProofFileName = signal<string | null>(null);
   removeIndigenousProof   = signal(false);
 
+  // ── 低收入戶證明 ─────────────────────────────────
+  lowIncomeProofUrl      = signal<string | null>(null);
+  lowIncomeProofFile     = signal<File | null>(null);
+  lowIncomeProofFileName = signal<string | null>(null);
+  removeLowIncomeProof   = signal(false);
+
+  // ── 殘障證明 ─────────────────────────────────────
+  disabledProofUrl      = signal<string | null>(null);
+  disabledProofFile     = signal<File | null>(null);
+  disabledProofFileName = signal<string | null>(null);
+  removeDisabledProof   = signal(false);
+
+  // ── 身分證正反面（HR Tab） ───────────────────────
+  idCardFrontUrl      = signal<string | null>(null);
+  idCardFrontFile     = signal<File | null>(null);
+  idCardFrontPreview  = signal<string | null>(null);
+  idCardFrontFileName = signal<string | null>(null);
+  removeIdCardFront   = signal(false);
+
+  idCardBackUrl       = signal<string | null>(null);
+  idCardBackFile      = signal<File | null>(null);
+  idCardBackPreview   = signal<string | null>(null);
+  idCardBackFileName  = signal<string | null>(null);
+  removeIdCardBack    = signal(false);
+
+  // ── 通訊地址同戶籍 ───────────────────────────────
+  mailingAddressSameAsResidential = false;
+
+  // ── 表單 ─────────────────────────────────────────
   form = this.fb.group({
+    // Tab 1 既有欄位
     name:         ['', Validators.required],
     email:        ['', [Validators.required, Validators.email]],
     password:     ['', Validators.minLength(6)],
@@ -90,10 +137,46 @@ export class UserForm implements OnInit {
     isIndigenous:  [false],
     agentUserId:  ['' as string],
     birthday:     ['' as string, Validators.required],
+    // Tab 1 新欄位
+    isLowIncome:              [false],
+    isDisabled:               [false],
+    healthInsuranceOverride:  [null as number | null],
+    laborInsuranceOverride:   [null as number | null],
+    // Tab 2 – HR profile
+    hrProfile: this.fb.group({
+      employeeNumber:       [''],
+      englishName:          [''],
+      idNumber:             [''],
+      gender:               [''],
+      maritalStatus:        [''],
+      birthPlace:           [''],
+      mobilePhone:          [''],
+      residentialAddress:   [''],
+      residentialPhone:     [''],
+      mailingAddress:       [''],
+      mailingPhone:         [''],
+      emergencyContactName: [''],
+      emergencyContactPhone:[''],
+      bankCode:             [''],
+      bankAccount:          [''],
+      insuranceStartDate:   [''],
+      dependentCount:       [null as number | null],
+      specialties:          [''],
+      resignationReason:    [''],
+      educationRecords:     this.fb.array([]),
+      employmentHistoryRecords: this.fb.array([]),
+      familyMembers:        this.fb.array([]),
+      professionalTrainings:this.fb.array([]),
+      languageAbilities:    this.fb.array([]),
+      jobTransferRecords:   this.fb.array([]),
+      rewardPunishmentRecords: this.fb.array([]),
+      salaryAdjustmentRecords: this.fb.array([]),
+    }),
+    // Tab 3 – 健保眷屬
+    healthDependents: this.fb.array([]),
   });
 
   ngOnInit() {
-    // 載入角色清單並加上必填驗證
     this.form.get('roleId')!.setValidators(Validators.required);
     this.form.get('roleId')!.updateValueAndValidity();
     this.roleService.getAll().subscribe({
@@ -104,7 +187,7 @@ export class UserForm implements OnInit {
     this.jtService.getAll().subscribe(j => this.jobTitles.set(j));
     this.userService.getAll().subscribe(u => this.allUsers.set(u));
 
-    // 監聽底薪變化，非同步查詢對應勞健保級距（switchMap 自動取消前次請求）
+    // 監聽底薪變化，查詢對應勞健保級距
     this.form.get('baseSalary')!.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef),
       debounceTime(500),
@@ -124,6 +207,7 @@ export class UserForm implements OnInit {
       this.isEdit = true;
       this.userService.getById(this.userId).subscribe(user => {
         if (!user) return;
+        this._currentUser = user;
         this.form.patchValue({
           ...user,
           roleId:       user.roleIds[0] ?? '',
@@ -138,6 +222,10 @@ export class UserForm implements OnInit {
           isIndigenous:  user.isIndigenous ?? false,
           agentUserId:   user.agentUserId ?? '',
           birthday:     user.birthday ? this.toDateString(user.birthday) : '',
+          isLowIncome:  user.isLowIncome ?? false,
+          isDisabled:   user.isDisabled ?? false,
+          healthInsuranceOverride: user.healthInsuranceOverride ?? null,
+          laborInsuranceOverride:  user.laborInsuranceOverride  ?? null,
         });
         this.signatureUrl.set(user.signatureUrl ?? null);
         this.avatarUrl.set(user.avatar ?? null);
@@ -145,6 +233,8 @@ export class UserForm implements OnInit {
         this.avatarPosY.set(user.avatarPositionY ?? 50);
         this.avatarScale.set(user.avatarScale ?? 1);
         this.indigenousProofUrl.set(user.indigenousProofUrl ?? null);
+        this.lowIncomeProofUrl.set(user.lowIncomeProofUrl ?? null);
+        this.disabledProofUrl.set(user.disabledProofUrl ?? null);
       });
     }
   }
@@ -157,13 +247,271 @@ export class UserForm implements OnInit {
     return new Date(d).toISOString().substring(0, 10);
   }
 
+  /** 切換 Tab；HR / 依附 Tab 第一次切換時才 lazy fetch */
+  switchTab(tab: 'basic' | 'hr' | 'dependents') {
+    if ((tab === 'hr' || tab === 'dependents') && !this.isEdit) return;
+    this.activeTab.set(tab);
+    if ((tab === 'hr' || tab === 'dependents') && !this.hrLoaded() && this.isEdit) {
+      this._loadHrProfile();
+    }
+  }
+
+  private _loadHrProfile() {
+    this.profileService.getByUserId(this.userId).subscribe({
+      next: profile => {
+        this._hrProfile = profile;
+        this._populateHrForm(profile);
+        this.hrLoaded.set(true);
+      },
+      error: err => {
+        console.error('[UserForm] 無法載入人事資料', err);
+        this.toastr.warning('人事資料載入失敗，請重新切換 Tab 重試。');
+        this.hrLoaded.set(true); // 避免無限 loading
+      },
+    });
+  }
+
+  /** 將後端 profile 回填進 FormArray + scalar 欄位 */
+  private _populateHrForm(p: EmployeeProfileDetail) {
+    const hr = this.form.get('hrProfile') as FormGroup;
+    hr.patchValue({
+      employeeNumber:        p.employeeNumber ?? '',
+      englishName:           p.englishName ?? '',
+      idNumber:              p.idNumber ?? '',
+      gender:                p.gender ?? '',
+      maritalStatus:         p.maritalStatus ?? '',
+      birthPlace:            p.birthPlace ?? '',
+      mobilePhone:           p.mobilePhone ?? '',
+      residentialAddress:    p.residentialAddress ?? '',
+      residentialPhone:      p.residentialPhone ?? '',
+      mailingAddress:        p.mailingAddress ?? '',
+      mailingPhone:          p.mailingPhone ?? '',
+      emergencyContactName:  p.emergencyContactName ?? '',
+      emergencyContactPhone: p.emergencyContactPhone ?? '',
+      bankCode:              p.bankCode ?? '',
+      bankAccount:           p.bankAccount ?? '',
+      insuranceStartDate:    p.insuranceStartDate?.slice(0, 10) ?? '',
+      dependentCount:        p.dependentCount ?? null,
+      specialties:           p.specialties ?? '',
+      resignationReason:     p.resignationReason ?? '',
+    });
+
+    // 身分證影本 URLs
+    this.idCardFrontUrl.set(p.idCardFrontUrl ?? null);
+    this.idCardBackUrl.set(p.idCardBackUrl ?? null);
+
+    // FormArrays
+    this.educationArray.clear();
+    (p.educationRecords ?? []).forEach(r => this.educationArray.push(this._educationGroup(r)));
+
+    this.employmentArray.clear();
+    (p.employmentHistoryRecords ?? []).forEach(r => this.employmentArray.push(this._employmentGroup(r)));
+
+    this.familyArray.clear();
+    (p.familyMembers ?? []).forEach(r => this.familyArray.push(this._familyGroup(r)));
+
+    this.trainingArray.clear();
+    (p.professionalTrainings ?? []).forEach(r => this.trainingArray.push(this._trainingGroup(r)));
+
+    this.languageArray.clear();
+    (p.languageAbilities ?? []).forEach(r => this.languageArray.push(this._languageGroup(r)));
+
+    this.jobTransferArray.clear();
+    (p.jobTransferRecords ?? []).forEach(r => this.jobTransferArray.push(this._jobTransferGroup(r)));
+
+    this.rewardArray.clear();
+    (p.rewardPunishmentRecords ?? []).forEach(r => this.rewardArray.push(this._rewardGroup(r)));
+
+    this.salaryArray.clear();
+    (p.salaryAdjustmentRecords ?? []).forEach(r => this.salaryArray.push(this._salaryGroup(r)));
+
+    this.dependentsArray.clear();
+    (p.healthInsuranceDependents ?? []).forEach(r => this.dependentsArray.push(this._dependentGroup(r)));
+  }
+
+  // ═══════════════════════════════════════════════
+  // FormArray getters
+  // ═══════════════════════════════════════════════
+  get educationArray(): FormArray    { return this.form.get('hrProfile.educationRecords') as FormArray; }
+  get educationControls(): AbstractControl[] { return this.educationArray.controls; }
+
+  get employmentArray(): FormArray   { return this.form.get('hrProfile.employmentHistoryRecords') as FormArray; }
+  get employmentControls(): AbstractControl[] { return this.employmentArray.controls; }
+
+  get familyArray(): FormArray       { return this.form.get('hrProfile.familyMembers') as FormArray; }
+  get familyControls(): AbstractControl[] { return this.familyArray.controls; }
+
+  get trainingArray(): FormArray     { return this.form.get('hrProfile.professionalTrainings') as FormArray; }
+  get trainingControls(): AbstractControl[] { return this.trainingArray.controls; }
+
+  get languageArray(): FormArray     { return this.form.get('hrProfile.languageAbilities') as FormArray; }
+  get languageControls(): AbstractControl[] { return this.languageArray.controls; }
+
+  get jobTransferArray(): FormArray  { return this.form.get('hrProfile.jobTransferRecords') as FormArray; }
+  get jobTransferControls(): AbstractControl[] { return this.jobTransferArray.controls; }
+
+  get rewardArray(): FormArray       { return this.form.get('hrProfile.rewardPunishmentRecords') as FormArray; }
+  get rewardControls(): AbstractControl[] { return this.rewardArray.controls; }
+
+  get salaryArray(): FormArray       { return this.form.get('hrProfile.salaryAdjustmentRecords') as FormArray; }
+  get salaryControls(): AbstractControl[] { return this.salaryArray.controls; }
+
+  get dependentsArray(): FormArray   { return this.form.get('healthDependents') as FormArray; }
+  get dependentsControls(): AbstractControl[] { return this.dependentsArray.controls; }
+
+  // ── 薪資合計試算 ──────────────────────────────
+  salaryRowTotal(ctrl: AbstractControl): number {
+    const v = ctrl.value;
+    return (+(v.baseSalary) || 0)
+      + (+(v.positionAllowance) || 0)
+      + (+(v.dutyAllowance) || 0)
+      + (+(v.otherAllowance) || 0)
+      + (+(v.adjustmentDifference) || 0)
+      + (+(v.overseasAllowance) || 0)
+      + (+(v.mealAllowance) || 0);
+  }
+
+  // ── 健保費試算（眷屬最多計 3 口） ─────────────
+  get estimatedHealthInsurance(): number | null {
+    const base = this.form.get('healthInsuranceOverride')?.value ?? this.healthInsurance();
+    if (base === null || base === undefined) return null;
+    const n    = this.dependentsArray.length;
+    const capped = Math.min(n, 3);
+    return +base * (1 + capped);
+  }
+
+  // ═══════════════════════════════════════════════
+  // FormGroup factories（仿 payment-form _invoiceGroup）
+  // ═══════════════════════════════════════════════
+  addEducation()       { if (this.educationArray.length  < 3) this.educationArray.push(this._educationGroup()); }
+  removeEducation(i: number) { this.educationArray.removeAt(i); }
+  private _educationGroup(r?: any) {
+    return this.fb.group({
+      id:         [r?.id ?? null],
+      school:     [r?.school ?? ''],
+      department: [r?.department ?? ''],
+      degree:     [r?.degree ?? 'graduated'],
+      startDate:  [r?.startDate?.slice(0, 7) ?? ''],
+      endDate:    [r?.endDate?.slice(0, 7) ?? ''],
+      order:      [r?.order ?? (this.educationArray.length + 1)],
+    });
+  }
+
+  addEmployment()       { if (this.employmentArray.length < 3) this.employmentArray.push(this._employmentGroup()); }
+  removeEmployment(i: number) { this.employmentArray.removeAt(i); }
+  private _employmentGroup(r?: any) {
+    return this.fb.group({
+      id:           [r?.id ?? null],
+      organization: [r?.organization ?? ''],
+      jobTitle:     [r?.jobTitle ?? ''],
+      startDate:    [r?.startDate?.slice(0, 10) ?? ''],
+      endDate:      [r?.endDate?.slice(0, 10) ?? ''],
+      order:        [r?.order ?? (this.employmentArray.length + 1)],
+    });
+  }
+
+  addFamily()       { this.familyArray.push(this._familyGroup()); }
+  removeFamily(i: number) { this.familyArray.removeAt(i); }
+  private _familyGroup(r?: any) {
+    return this.fb.group({
+      id:           [r?.id ?? null],
+      name:         [r?.name ?? ''],
+      relationship: [r?.relationship ?? ''],
+      age:          [r?.age ?? null],
+      occupation:   [r?.occupation ?? ''],
+    });
+  }
+
+  addTraining()       { this.trainingArray.push(this._trainingGroup()); }
+  removeTraining(i: number) { this.trainingArray.removeAt(i); }
+  private _trainingGroup(r?: any) {
+    return this.fb.group({
+      id:           [r?.id ?? null],
+      trainingName: [r?.trainingName ?? ''],
+      trainingOrg:  [r?.trainingOrg ?? ''],
+      startDate:    [r?.startDate?.slice(0, 10) ?? ''],
+      endDate:      [r?.endDate?.slice(0, 10) ?? ''],
+      hours:        [r?.hours ?? null],
+    });
+  }
+
+  addLanguage()       { this.languageArray.push(this._languageGroup()); }
+  removeLanguage(i: number) { this.languageArray.removeAt(i); }
+  private _languageGroup(r?: any) {
+    return this.fb.group({
+      id:        [r?.id ?? null],
+      language:  [r?.language ?? ''],
+      listening: [r?.listening ?? 'fair'],
+      speaking:  [r?.speaking ?? 'fair'],
+      reading:   [r?.reading ?? 'fair'],
+      writing:   [r?.writing ?? 'fair'],
+    });
+  }
+
+  addJobTransfer()       { this.jobTransferArray.push(this._jobTransferGroup()); }
+  removeJobTransfer(i: number) { this.jobTransferArray.removeAt(i); }
+  private _jobTransferGroup(r?: any) {
+    return this.fb.group({
+      id:             [r?.id ?? null],
+      effectiveDate:  [r?.effectiveDate?.slice(0, 10) ?? ''],
+      fromDepartment: [r?.fromDepartment ?? ''],
+      toDepartment:   [r?.toDepartment ?? ''],
+      fromJobTitle:   [r?.fromJobTitle ?? ''],
+      toJobTitle:     [r?.toJobTitle ?? ''],
+    });
+  }
+
+  addReward()       { this.rewardArray.push(this._rewardGroup()); }
+  removeReward(i: number) { this.rewardArray.removeAt(i); }
+  private _rewardGroup(r?: any) {
+    return this.fb.group({
+      id:            [r?.id ?? null],
+      effectiveDate: [r?.effectiveDate?.slice(0, 10) ?? ''],
+      type:          [r?.type ?? 'reward'],
+      category:      [r?.category ?? ''],
+      count:         [r?.count ?? null],
+      reason:        [r?.reason ?? ''],
+    });
+  }
+
+  addSalary()       { this.salaryArray.push(this._salaryGroup()); }
+  removeSalary(i: number) { this.salaryArray.removeAt(i); }
+  private _salaryGroup(r?: any) {
+    return this.fb.group({
+      id:                   [r?.id ?? null],
+      effectiveDate:        [r?.effectiveDate?.slice(0, 10) ?? ''],
+      baseSalary:           [r?.baseSalary ?? null],
+      positionAllowance:    [r?.positionAllowance ?? null],
+      dutyAllowance:        [r?.dutyAllowance ?? null],
+      otherAllowance:       [r?.otherAllowance ?? null],
+      adjustmentDifference: [r?.adjustmentDifference ?? null],
+      overseasAllowance:    [r?.overseasAllowance ?? null],
+      mealAllowance:        [r?.mealAllowance ?? null],
+      notes:                [r?.notes ?? ''],
+    });
+  }
+
+  addDependent()       { this.dependentsArray.push(this._dependentGroup()); }
+  removeDependent(i: number) { this.dependentsArray.removeAt(i); }
+  private _dependentGroup(r?: any) {
+    return this.fb.group({
+      id:           [r?.id ?? null],
+      name:         [r?.name ?? ''],
+      relationship: [r?.relationship ?? 'spouse'],
+      idNumber:     [r?.idNumber ?? ''],
+      birthDate:    [r?.birthDate?.slice(0, 10) ?? ''],
+    });
+  }
+
+  // ═══════════════════════════════════════════════
+  // 簽名檔
+  // ═══════════════════════════════════════════════
   onSignatureSelected(event: Event) {
     const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
+    const file  = input.files?.[0];
     if (!file) return;
     this.signatureFile.set(file);
     this.removeSignature.set(false);
-    // 本地預覽
     const reader = new FileReader();
     reader.onload = () => this.signaturePreview.set(reader.result as string);
     reader.readAsDataURL(file);
@@ -176,16 +524,17 @@ export class UserForm implements OnInit {
     this.removeSignature.set(true);
   }
 
+  // ═══════════════════════════════════════════════
+  // 頭像
+  // ═══════════════════════════════════════════════
   async onAvatarSelected(event: Event) {
     const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
+    const file  = input.files?.[0];
     if (!file) return;
     input.value = '';
-
     try {
-      const compressed = await this.compressImage(file);
-      const MAX_AVATAR_BYTES = 1 * 1024 * 1024; // 1 MB
-      if (compressed.size > MAX_AVATAR_BYTES) {
+      const compressed = await this.imageCompression.compress(file, { maxSize: 800, quality: 0.85 });
+      if (compressed.size > MAX_FILE_BYTES) {
         this.toastr.warning('上傳照片勿超過1MB');
         return;
       }
@@ -204,56 +553,11 @@ export class UserForm implements OnInit {
     this.avatarFile.set(null);
     this.avatarPreview.set(null);
     this.removeAvatar.set(true);
-    // 沒頭像就沒位置概念，重置以避免殘留套用
     this.avatarPosX.set(50);
     this.avatarPosY.set(50);
     this.avatarScale.set(1);
   }
 
-  /**
-   * 圖檔壓縮：等比縮放到 max 800x800，輸出 JPEG 0.85。
-   * iOS HEIC 走 heic2any 先轉 JPEG，再走 Canvas 縮放。
-   */
-  private async compressImage(file: File, maxSize = 800, quality = 0.85): Promise<File> {
-    let workingBlob: Blob = file;
-    if (/\.(heic|heif)$/i.test(file.name) || file.type === 'image/heic' || file.type === 'image/heif') {
-      workingBlob = await heic2any({blob: file, toType: 'image/jpeg', quality}) as Blob;
-    }
-
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(workingBlob);
-    });
-
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const i = new Image();
-      i.onload = () => resolve(i);
-      i.onerror = () => reject(new Error('Failed to load image'));
-      i.src = dataUrl;
-    });
-
-    const ratio = Math.min(maxSize / img.width, maxSize / img.height, 1);
-    const w = Math.round(img.width * ratio);
-    const h = Math.round(img.height * ratio);
-
-    const canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Canvas context unavailable');
-    ctx.drawImage(img, 0, 0, w, h);
-
-    const compressed: Blob = await new Promise((resolve, reject) =>
-      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob returned null')), 'image/jpeg', quality)
-    );
-
-    const baseName = file.name.replace(/\.[^.]+$/, '');
-    return new File([compressed], `${baseName}.jpg`, {type: 'image/jpeg'});
-  }
-
-  // ── 頭像拖曳 / 縮放 互動 ──────────────────────────
   onAvatarPointerDown(e: PointerEvent) {
     if (!this.displayAvatar) return;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -267,18 +571,15 @@ export class UserForm implements OnInit {
 
   onAvatarPointerMove(e: PointerEvent) {
     if (!this.avatarDragStart) return;
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const rect  = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const scale = this.avatarScale();
-    // 拖右 (dx>0) → 看圖更左邊 → posX 減小；scale 越高同樣像素位移百分比變化越小，視覺感受才一致
-    const dx = (e.clientX - this.avatarDragStart.x) / rect.width / scale * 100;
-    const dy = (e.clientY - this.avatarDragStart.y) / rect.height / scale * 100;
+    const dx    = (e.clientX - this.avatarDragStart.x) / rect.width  / scale * 100;
+    const dy    = (e.clientY - this.avatarDragStart.y) / rect.height / scale * 100;
     this.avatarPosX.set(Math.max(0, Math.min(100, this.avatarDragStart.posX - dx)));
     this.avatarPosY.set(Math.max(0, Math.min(100, this.avatarDragStart.posY - dy)));
   }
 
-  onAvatarPointerUp() {
-    this.avatarDragStart = null;
-  }
+  onAvatarPointerUp() { this.avatarDragStart = null; }
 
   onAvatarScaleChange(event: Event) {
     const v = parseFloat((event.target as HTMLInputElement).value);
@@ -291,9 +592,12 @@ export class UserForm implements OnInit {
     this.avatarScale.set(1);
   }
 
+  // ═══════════════════════════════════════════════
+  // 原住民證明
+  // ═══════════════════════════════════════════════
   onIndigenousProofSelected(event: Event) {
     const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
+    const file  = input.files?.[0];
     if (!file) return;
     this.indigenousProofFile.set(file);
     this.indigenousProofFileName.set(file.name);
@@ -307,65 +611,258 @@ export class UserForm implements OnInit {
     this.removeIndigenousProof.set(true);
   }
 
-  /** 以 JWT fetch 原住民證明，開新分頁檢視（受 users:read 權限保護） */
   viewIndigenousProof() {
     const url = this.indigenousProofUrl();
     if (!url) return;
-    const match = url.match(/\/indigenous-proofs\/(.+)$/);
+    const match    = url.match(/\/indigenous-proofs\/(.+)$/);
     const fileName = match?.[1];
     if (!fileName) return;
     this.userService.getIndigenousProof(fileName).subscribe({
       next: blob => {
         const objectUrl = URL.createObjectURL(blob);
         window.open(objectUrl, '_blank');
-        // 延遲釋放，避免新分頁還沒載入就被 revoke
         setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
       },
-      error: err => {
-        this.toastr.error(err.error?.message || '無法載入證明文件。', '載入失敗');
-      },
+      error: err => this.toastr.error(err.error?.message || '無法載入證明文件。', '載入失敗'),
     });
   }
 
-  /**
-   * 顯示的簽名圖片：
-   * - 本地預覽（data URL）優先，無需轉換
-   * - 既有遠端 URL：相對路徑加上 apiUrl 前綴；完整 blob URL 轉為 API 代理路徑
-   */
+  // ═══════════════════════════════════════════════
+  // 低收入戶證明
+  // ═══════════════════════════════════════════════
+  async onLowIncomeProofSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file  = input.files?.[0];
+    if (!file) return;
+    input.value = '';
+    try {
+      const compressed = await this.imageCompression.compress(file, { maxSize: 1600, quality: 0.85 });
+      if (compressed.size > MAX_FILE_BYTES) {
+        this.toastr.error('上傳照片勿超過1MB');
+        return;
+      }
+      this.lowIncomeProofFile.set(compressed);
+      this.lowIncomeProofFileName.set(file.name);
+      this.removeLowIncomeProof.set(false);
+    } catch (err) {
+      console.error('[UserForm] 低收入戶證明處理失敗', err);
+      this.toastr.error('檔案處理失敗，請重試。', '處理失敗');
+    }
+  }
+
+  onRemoveLowIncomeProof() {
+    this.lowIncomeProofFile.set(null);
+    this.lowIncomeProofFileName.set(null);
+    this.removeLowIncomeProof.set(true);
+  }
+
+  viewLowIncomeProof() {
+    const url = this.lowIncomeProofUrl();
+    if (!url) return;
+    const match    = url.match(/\/low-income-proofs\/(.+)$/);
+    const fileName = match?.[1];
+    if (!fileName) return;
+    this.userService.getLowIncomeProof(fileName).subscribe({
+      next: blob => {
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, '_blank');
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+      },
+      error: err => this.toastr.error(err.error?.message || '無法載入證明文件。', '載入失敗'),
+    });
+  }
+
+  // ═══════════════════════════════════════════════
+  // 殘障證明
+  // ═══════════════════════════════════════════════
+  async onDisabledProofSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file  = input.files?.[0];
+    if (!file) return;
+    input.value = '';
+    try {
+      const compressed = await this.imageCompression.compress(file, { maxSize: 1600, quality: 0.85 });
+      if (compressed.size > MAX_FILE_BYTES) {
+        this.toastr.error('上傳照片勿超過1MB');
+        return;
+      }
+      this.disabledProofFile.set(compressed);
+      this.disabledProofFileName.set(file.name);
+      this.removeDisabledProof.set(false);
+    } catch (err) {
+      console.error('[UserForm] 殘障證明處理失敗', err);
+      this.toastr.error('檔案處理失敗，請重試。', '處理失敗');
+    }
+  }
+
+  onRemoveDisabledProof() {
+    this.disabledProofFile.set(null);
+    this.disabledProofFileName.set(null);
+    this.removeDisabledProof.set(true);
+  }
+
+  viewDisabledProof() {
+    const url = this.disabledProofUrl();
+    if (!url) return;
+    const match    = url.match(/\/disabled-proofs\/(.+)$/);
+    const fileName = match?.[1];
+    if (!fileName) return;
+    this.userService.getDisabledProof(fileName).subscribe({
+      next: blob => {
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, '_blank');
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+      },
+      error: err => this.toastr.error(err.error?.message || '無法載入證明文件。', '載入失敗'),
+    });
+  }
+
+  // ═══════════════════════════════════════════════
+  // 身分證正面
+  // ═══════════════════════════════════════════════
+  async onIdCardFrontSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file  = input.files?.[0];
+    if (!file) return;
+    input.value = '';
+    try {
+      const compressed = await this.imageCompression.compress(file, { maxSize: 1600, quality: 0.85 });
+      if (compressed.size > MAX_FILE_BYTES) {
+        this.toastr.error('上傳照片勿超過1MB');
+        return;
+      }
+      this.idCardFrontFile.set(compressed);
+      this.idCardFrontFileName.set(file.name);
+      this.removeIdCardFront.set(false);
+      if (compressed.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = () => this.idCardFrontPreview.set(reader.result as string);
+        reader.readAsDataURL(compressed);
+      } else {
+        this.idCardFrontPreview.set(null);
+      }
+    } catch (err) {
+      console.error('[UserForm] 身分證正面處理失敗', err);
+      this.toastr.error('檔案處理失敗，請重試。', '處理失敗');
+    }
+  }
+
+  onRemoveIdCardFront() {
+    this.idCardFrontFile.set(null);
+    this.idCardFrontPreview.set(null);
+    this.idCardFrontFileName.set(null);
+    this.removeIdCardFront.set(true);
+  }
+
+  viewIdCardFront() {
+    const url = this.idCardFrontUrl();
+    if (!url) return;
+    const match    = url.match(/\/id-cards\/(.+)$/);
+    const fileName = match?.[1];
+    if (!fileName) return;
+    this.userService.getIdCard(fileName).subscribe({
+      next: blob => {
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, '_blank');
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+      },
+      error: err => this.toastr.error(err.error?.message || '無法載入身分證影本。', '載入失敗'),
+    });
+  }
+
+  // ═══════════════════════════════════════════════
+  // 身分證反面
+  // ═══════════════════════════════════════════════
+  async onIdCardBackSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file  = input.files?.[0];
+    if (!file) return;
+    input.value = '';
+    try {
+      const compressed = await this.imageCompression.compress(file, { maxSize: 1600, quality: 0.85 });
+      if (compressed.size > MAX_FILE_BYTES) {
+        this.toastr.error('上傳照片勿超過1MB');
+        return;
+      }
+      this.idCardBackFile.set(compressed);
+      this.idCardBackFileName.set(file.name);
+      this.removeIdCardBack.set(false);
+      if (compressed.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = () => this.idCardBackPreview.set(reader.result as string);
+        reader.readAsDataURL(compressed);
+      } else {
+        this.idCardBackPreview.set(null);
+      }
+    } catch (err) {
+      console.error('[UserForm] 身分證反面處理失敗', err);
+      this.toastr.error('檔案處理失敗，請重試。', '處理失敗');
+    }
+  }
+
+  onRemoveIdCardBack() {
+    this.idCardBackFile.set(null);
+    this.idCardBackPreview.set(null);
+    this.idCardBackFileName.set(null);
+    this.removeIdCardBack.set(true);
+  }
+
+  viewIdCardBack() {
+    const url = this.idCardBackUrl();
+    if (!url) return;
+    const match    = url.match(/\/id-cards\/(.+)$/);
+    const fileName = match?.[1];
+    if (!fileName) return;
+    this.userService.getIdCard(fileName).subscribe({
+      next: blob => {
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, '_blank');
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+      },
+      error: err => this.toastr.error(err.error?.message || '無法載入身分證影本。', '載入失敗'),
+    });
+  }
+
+  // ═══════════════════════════════════════════════
+  // 通訊地址同戶籍
+  // ═══════════════════════════════════════════════
+  copyResidentialToMailing() {
+    const hrGroup = this.form.get('hrProfile') as FormGroup;
+    if (this.mailingAddressSameAsResidential) {
+      hrGroup.patchValue({
+        mailingAddress: hrGroup.get('residentialAddress')?.value ?? '',
+        mailingPhone:   hrGroup.get('residentialPhone')?.value ?? '',
+      });
+    }
+  }
+
+  // ═══════════════════════════════════════════════
+  // Display getters（既有 pattern 延伸）
+  // ═══════════════════════════════════════════════
   get displaySignature(): string | null {
     if (this.removeSignature()) return null;
     const preview = this.signaturePreview();
     if (preview) return preview;
     const url = this.signatureUrl();
     if (!url) return null;
-    if (!url.startsWith('http')) {
-      return `${environment.apiUrl}/${url}`;
-    }
+    if (!url.startsWith('http')) return `${environment.apiUrl}/${url}`;
     const match = url.match(/\/signatures\/(.+)$/);
-    if (match) {
-      return `${environment.apiUrl}/files/signatures/${match[1]}`;
-    }
+    if (match) return `${environment.apiUrl}/files/signatures/${match[1]}`;
     return url;
   }
 
-  /** 顯示的頭像圖片（本地預覽優先，否則轉換既有 URL 為代理路徑） */
   get displayAvatar(): string | null {
     if (this.removeAvatar()) return null;
     const preview = this.avatarPreview();
     if (preview) return preview;
     const url = this.avatarUrl();
     if (!url) return null;
-    if (!url.startsWith('http')) {
-      return `${environment.apiUrl}/${url}`;
-    }
+    if (!url.startsWith('http')) return `${environment.apiUrl}/${url}`;
     const match = url.match(/\/avatars\/(.+)$/);
-    if (match) {
-      return `${environment.apiUrl}/files/avatars/${match[1]}`;
-    }
+    if (match) return `${environment.apiUrl}/files/avatars/${match[1]}`;
     return url;
   }
 
-  /** 原住民證明的顯示檔名（新上傳 > 既有檔名從 URL 取） */
   get indigenousProofDisplayName(): string | null {
     if (this.removeIndigenousProof()) return null;
     const pending = this.indigenousProofFileName();
@@ -376,11 +873,69 @@ export class UserForm implements OnInit {
     return match?.[1] ?? url;
   }
 
-  /** 是否已經有既有的（已上傳）原住民證明，供 UI 顯示「檢視」按鈕 */
   get hasExistingIndigenousProof(): boolean {
     return !!this.indigenousProofUrl() && !this.indigenousProofFile() && !this.removeIndigenousProof();
   }
 
+  get lowIncomeProofDisplayName(): string | null {
+    if (this.removeLowIncomeProof()) return null;
+    const pending = this.lowIncomeProofFileName();
+    if (pending) return pending;
+    const url = this.lowIncomeProofUrl();
+    if (!url) return null;
+    const match = url.match(/\/([^/]+)$/);
+    return match?.[1] ?? url;
+  }
+
+  get hasExistingLowIncomeProof(): boolean {
+    return !!this.lowIncomeProofUrl() && !this.lowIncomeProofFile() && !this.removeLowIncomeProof();
+  }
+
+  get disabledProofDisplayName(): string | null {
+    if (this.removeDisabledProof()) return null;
+    const pending = this.disabledProofFileName();
+    if (pending) return pending;
+    const url = this.disabledProofUrl();
+    if (!url) return null;
+    const match = url.match(/\/([^/]+)$/);
+    return match?.[1] ?? url;
+  }
+
+  get hasExistingDisabledProof(): boolean {
+    return !!this.disabledProofUrl() && !this.disabledProofFile() && !this.removeDisabledProof();
+  }
+
+  get idCardFrontDisplayName(): string | null {
+    if (this.removeIdCardFront()) return null;
+    const pending = this.idCardFrontFileName();
+    if (pending) return pending;
+    const url = this.idCardFrontUrl();
+    if (!url) return null;
+    const match = url.match(/\/([^/]+)$/);
+    return match?.[1] ?? url;
+  }
+
+  get hasExistingIdCardFront(): boolean {
+    return !!this.idCardFrontUrl() && !this.idCardFrontFile() && !this.removeIdCardFront();
+  }
+
+  get idCardBackDisplayName(): string | null {
+    if (this.removeIdCardBack()) return null;
+    const pending = this.idCardBackFileName();
+    if (pending) return pending;
+    const url = this.idCardBackUrl();
+    if (!url) return null;
+    const match = url.match(/\/([^/]+)$/);
+    return match?.[1] ?? url;
+  }
+
+  get hasExistingIdCardBack(): boolean {
+    return !!this.idCardBackUrl() && !this.idCardBackFile() && !this.removeIdCardBack();
+  }
+
+  // ═══════════════════════════════════════════════
+  // 寄送帳號通知
+  // ═══════════════════════════════════════════════
   sendCredentials() {
     if (!this.userId || this.sending()) return;
     this.sending.set(true);
@@ -396,13 +951,45 @@ export class UserForm implements OnInit {
     });
   }
 
+  // ═══════════════════════════════════════════════
+  // 列印人事資料卡
+  // ═══════════════════════════════════════════════
+  async printHrCard() {
+    if (this.printing()) return;
+    this.printing.set(true);
+    try {
+      // 若尚未載入，先 fetch HR profile
+      if (!this.hrLoaded() || !this._hrProfile) {
+        await new Promise<void>((resolve, reject) => {
+          this.profileService.getByUserId(this.userId).subscribe({
+            next: p => { this._hrProfile = p; this.hrLoaded.set(true); resolve(); },
+            error: reject,
+          });
+        });
+      }
+      if (!this._hrProfile || !this._currentUser) {
+        this.toastr.error('無法取得員工資料，請重試。');
+        return;
+      }
+      await this.hrPdfService.generate(this._hrProfile, this._currentUser);
+    } catch (err) {
+      console.error('[UserForm] PDF 列印失敗', err);
+      this.toastr.error('PDF 生成失敗，請稍後再試。', '列印失敗');
+    } finally {
+      this.printing.set(false);
+    }
+  }
+
+  // ═══════════════════════════════════════════════
+  // submit
+  // ═══════════════════════════════════════════════
   submit() {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
 
-    // 勾選原住民但未上傳／已刪除證明文件時，拒絕送出
+    // 原住民驗證
     if (this.form.value.isIndigenous === true) {
       const hasExisting = !!this.indigenousProofUrl() && !this.removeIndigenousProof();
       const hasNewFile  = !!this.indigenousProofFile();
@@ -412,7 +999,8 @@ export class UserForm implements OnInit {
       }
     }
 
-    const {roleId, hireDate, resignDate, departmentId, jobTitleId, agentUserId, birthday, password, ...rest} = this.form.value as any;
+    const { roleId, hireDate, resignDate, departmentId, jobTitleId, agentUserId,
+            birthday, password, hrProfile, healthDependents, ...rest } = this.form.value as any;
 
     const payload: Record<string, any> = {
       ...rest,
@@ -420,47 +1008,137 @@ export class UserForm implements OnInit {
       roleIds:      roleId ? [roleId] : [],
       departmentId: departmentId || undefined,
       jobTitleId:   jobTitleId || undefined,
-      hireDate:     hireDate   ? new Date(hireDate)   : undefined,
-      resignDate:   resignDate ? new Date(resignDate) : undefined,
+      hireDate:     hireDate    ? new Date(hireDate)    : undefined,
+      resignDate:   resignDate  ? new Date(resignDate)  : undefined,
       agentUserId:  agentUserId || undefined,
-      birthday:     birthday ? new Date(birthday) : undefined,
-      // 頭像顯示參數（僅在有頭像時送出，刪除時後端會自行重置）
+      birthday:     birthday    ? new Date(birthday)    : undefined,
       avatarPositionX: this.removeAvatar() ? undefined : this.avatarPosX(),
       avatarPositionY: this.removeAvatar() ? undefined : this.avatarPosY(),
       avatarScale:     this.removeAvatar() ? undefined : this.avatarScale(),
+      // 新欄位
+      isLowIncome:              rest.isLowIncome ?? false,
+      isDisabled:               rest.isDisabled ?? false,
+      healthInsuranceOverride:  rest.healthInsuranceOverride ?? undefined,
+      laborInsuranceOverride:   rest.laborInsuranceOverride ?? undefined,
     };
 
     const obs = this.isEdit
       ? this.userService.update(this.userId, payload, {
-          signatureFile:       this.signatureFile(),
-          avatarFile:          this.avatarFile(),
-          indigenousProofFile: this.indigenousProofFile(),
+          signatureFile:         this.signatureFile(),
+          avatarFile:            this.avatarFile(),
+          indigenousProofFile:   this.indigenousProofFile(),
+          lowIncomeProofFile:    this.lowIncomeProofFile(),
+          disabledProofFile:     this.disabledProofFile(),
           removeSignature:       this.removeSignature(),
           removeAvatar:          this.removeAvatar(),
           removeIndigenousProof: this.removeIndigenousProof(),
+          removeLowIncomeProof:  this.removeLowIncomeProof(),
+          removeDisabledProof:   this.removeDisabledProof(),
         })
       : this.userService.create(payload, {
           signatureFile:       this.signatureFile(),
           avatarFile:          this.avatarFile(),
           indigenousProofFile: this.indigenousProofFile(),
+          lowIncomeProofFile:  this.lowIncomeProofFile(),
+          disabledProofFile:   this.disabledProofFile(),
         });
+
     this.errorMsg.set('');
+
     obs.subscribe({
-      next: () => {
-        // 編輯自己時刷新 token，topbar 立即套用新頭像位置 / 縮放
-        const currentUserId = this.authService.currentUser()?.id;
-        if (this.isEdit && currentUserId === this.userId) {
-          this.authService.refreshAccessToken().subscribe({
-            next: () => this.router.navigate(['/admin/users']),
-            error: () => this.router.navigate(['/admin/users']),
-          });
-        } else {
-          this.router.navigate(['/admin/users']);
+      next: savedUser => {
+        const targetUserId = savedUser.id ?? this.userId;
+        // 編輯模式：HR Tab 已載入過才儲存（避免覆蓋未動的資料）
+        // 新增模式：一律儲存使用者剛剛在 Tab 2/3 填的內容（多此一舉但無害）
+        const shouldSaveHr = this.isEdit ? this.hrLoaded() : this._hasAnyHrInput();
+        if (shouldSaveHr && targetUserId) {
+          this._saveHrProfile(targetUserId);
+          return; // saveHrProfile 完成後再導航
         }
+        this._afterSaveNavigate();
       },
       error: (err: HttpErrorResponse) => {
         this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
       },
     });
+  }
+
+  // 新增模式判斷：使用者是否有在 Tab 2/3 輸入任何資料？
+  // 避免完全沒填卻仍打 PUT /users/{id}/profile
+  private _hasAnyHrInput(): boolean {
+    const hrVal = this.form.get('hrProfile')?.value as Record<string, unknown> | null;
+    if (hrVal) {
+      for (const v of Object.values(hrVal)) {
+        if (Array.isArray(v) ? v.length > 0 : !!v) return true;
+      }
+    }
+    if ((this.form.get('healthDependents') as FormArray).length > 0) return true;
+    if (this.idCardFrontFile() || this.idCardBackFile()) return true;
+    return false;
+  }
+
+  private _saveHrProfile(userId: string) {
+    const hrVal = this.form.get('hrProfile')!.value as any;
+    const depsVal = (this.form.get('healthDependents') as FormArray).value as any[];
+
+    const profilePayload: any = {
+      employeeNumber:        hrVal.employeeNumber || null,
+      englishName:           hrVal.englishName || null,
+      idNumber:              hrVal.idNumber || null,
+      gender:                hrVal.gender || null,
+      maritalStatus:         hrVal.maritalStatus || null,
+      birthPlace:            hrVal.birthPlace || null,
+      mobilePhone:           hrVal.mobilePhone || null,
+      residentialAddress:    hrVal.residentialAddress || null,
+      residentialPhone:      hrVal.residentialPhone || null,
+      mailingAddress:        hrVal.mailingAddress || null,
+      mailingPhone:          hrVal.mailingPhone || null,
+      emergencyContactName:  hrVal.emergencyContactName || null,
+      emergencyContactPhone: hrVal.emergencyContactPhone || null,
+      bankCode:              hrVal.bankCode || null,
+      bankAccount:           hrVal.bankAccount || null,
+      insuranceStartDate:    hrVal.insuranceStartDate || null,
+      dependentCount:        hrVal.dependentCount ?? null,
+      specialties:           hrVal.specialties || null,
+      resignationReason:     hrVal.resignationReason || null,
+      educationRecords:            hrVal.educationRecords,
+      employmentHistoryRecords:    hrVal.employmentHistoryRecords,
+      familyMembers:               hrVal.familyMembers,
+      professionalTrainings:       hrVal.professionalTrainings,
+      languageAbilities:           hrVal.languageAbilities,
+      jobTransferRecords:          hrVal.jobTransferRecords,
+      rewardPunishmentRecords:     hrVal.rewardPunishmentRecords,
+      salaryAdjustmentRecords:     hrVal.salaryAdjustmentRecords,
+      healthInsuranceDependents:   depsVal,
+    };
+
+    this.profileService.upsert(userId, profilePayload, {
+      idCardFront:      this.idCardFrontFile(),
+      idCardBack:       this.idCardBackFile(),
+      removeIdCardFront: this.removeIdCardFront(),
+      removeIdCardBack:  this.removeIdCardBack(),
+    }).subscribe({
+      next: profile => {
+        this._hrProfile = profile;
+        this._afterSaveNavigate();
+      },
+      error: (err: HttpErrorResponse) => {
+        // HR 儲存失敗不阻止主要員工資料已存成功，但顯示警告
+        this.toastr.warning(err.error?.message || '人事資料儲存失敗，基本資料已更新。');
+        this._afterSaveNavigate();
+      },
+    });
+  }
+
+  private _afterSaveNavigate() {
+    const currentUserId = this.authService.currentUser()?.id;
+    if (this.isEdit && currentUserId === this.userId) {
+      this.authService.refreshAccessToken().subscribe({
+        next:  () => this.router.navigate(['/admin/users']),
+        error: () => this.router.navigate(['/admin/users']),
+      });
+    } else {
+      this.router.navigate(['/admin/users']);
+    }
   }
 }

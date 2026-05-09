@@ -24,8 +24,8 @@ var TravelPaymentPdfService = class _TravelPaymentPdfService {
     this.pdfLoading.set(true);
     try {
       const [{ default: jsPDF }, { default: autoTable }, fonts] = await Promise.all([
-        import("./chunk-CNNENCI2.js"),
-        import("./chunk-S72SRWYK.js"),
+        import("./chunk-4QY6N5TU.js"),
+        import("./chunk-JZJ3IRCJ.js"),
         this.pdfCore.loadFonts()
       ]);
       const doc = new jsPDF("landscape", "mm", "a4");
@@ -199,4 +199,4 @@ var TravelPaymentPdfService = class _TravelPaymentPdfService {
 export {
   TravelPaymentPdfService
 };
-//# sourceMappingURL=chunk-5JGYQ54D.js.map
+//# sourceMappingURL=chunk-LKH3U6H2.js.map

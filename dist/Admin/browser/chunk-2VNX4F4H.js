@@ -69,7 +69,7 @@ var HolidayTravelPdfService = class _HolidayTravelPdfService {
     this.pdfLoading.set(true);
     try {
       const [{ default: jsPDF }, fonts] = await Promise.all([
-        import("./chunk-CNNENCI2.js"),
+        import("./chunk-4QY6N5TU.js"),
         this.pdfCore.loadFonts()
       ]);
       const doc = new jsPDF("landscape", "mm", "a4");
@@ -675,4 +675,4 @@ var HolidayTravelDetail = class _HolidayTravelDetail {
 export {
   HolidayTravelDetail
 };
-//# sourceMappingURL=chunk-MCAFP4HT.js.map
+//# sourceMappingURL=chunk-2VNX4F4H.js.map

@@ -9,12 +9,16 @@ export interface UserFileOptions {
   signatureFile?: File | null;
   avatarFile?: File | null;
   indigenousProofFile?: File | null;
+  lowIncomeProofFile?: File | null;
+  disabledProofFile?: File | null;
 }
 
 export interface UserUpdateFileOptions extends UserFileOptions {
   removeSignature?: boolean;
   removeAvatar?: boolean;
   removeIndigenousProof?: boolean;
+  removeLowIncomeProof?: boolean;
+  removeDisabledProof?: boolean;
 }
 
 @Injectable({providedIn: 'root'})
@@ -48,6 +52,8 @@ export class UserService {
     if (files?.removeSignature)        formData.append('removeSignature', 'true');
     if (files?.removeAvatar)           formData.append('removeAvatar', 'true');
     if (files?.removeIndigenousProof)  formData.append('removeIndigenousProof', 'true');
+    if (files?.removeLowIncomeProof)   formData.append('removeLowIncomeProof', 'true');
+    if (files?.removeDisabledProof)    formData.append('removeDisabledProof', 'true');
     return this.http.patch<User>(`${environment.apiUrl}/users/${id}`, formData);
   }
 
@@ -62,6 +68,21 @@ export class UserService {
   /** 以 JWT 取得原住民證明檔（HR 權限保護，回傳 Blob 供前端開啟） */
   getIndigenousProof(fileName: string): Observable<Blob> {
     return this.http.get(`${environment.apiUrl}/files/indigenous-proofs/${fileName}`, {responseType: 'blob'});
+  }
+
+  /** 以 JWT 取得低收入戶證明檔（HR 權限保護） */
+  getLowIncomeProof(fileName: string): Observable<Blob> {
+    return this.http.get(`${environment.apiUrl}/files/low-income-proofs/${fileName}`, {responseType: 'blob'});
+  }
+
+  /** 以 JWT 取得殘障證明檔（HR 權限保護） */
+  getDisabledProof(fileName: string): Observable<Blob> {
+    return this.http.get(`${environment.apiUrl}/files/disabled-proofs/${fileName}`, {responseType: 'blob'});
+  }
+
+  /** 以 JWT 取得身分證影本（HR 權限保護） */
+  getIdCard(fileName: string): Observable<Blob> {
+    return this.http.get(`${environment.apiUrl}/files/id-cards/${fileName}`, {responseType: 'blob'});
   }
 
   private buildFormData(data: Record<string, any>, files?: UserFileOptions): FormData {
@@ -79,6 +100,8 @@ export class UserService {
     if (files?.signatureFile)       fd.append('signature', files.signatureFile);
     if (files?.avatarFile)          fd.append('avatar', files.avatarFile);
     if (files?.indigenousProofFile) fd.append('indigenousProof', files.indigenousProofFile);
+    if (files?.lowIncomeProofFile)  fd.append('lowIncomeProof', files.lowIncomeProofFile);
+    if (files?.disabledProofFile)   fd.append('disabledProof', files.disabledProofFile);
     return fd;
   }
 }

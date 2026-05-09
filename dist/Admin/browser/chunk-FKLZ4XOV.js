@@ -4,7 +4,7 @@ import {
 } from "./chunk-DHHQQPKR.js";
 import {
   TravelPaymentPdfService
-} from "./chunk-5JGYQ54D.js";
+} from "./chunk-LKH3U6H2.js";
 import {
   FilePreviewModal
 } from "./chunk-GWKNDEFV.js";
@@ -14,7 +14,7 @@ import {
   NgbModal,
   ProjectService,
   UserService
-} from "./chunk-JJKWVXDC.js";
+} from "./chunk-O42C3MOZ.js";
 import {
   CIS,
   FONT_FAMILY,
@@ -62,6 +62,13 @@ import {
   AttendanceService,
   OvertimeRequestService
 } from "./chunk-WPAYQD66.js";
+import {
+  E
+} from "./chunk-I62VNEQ5.js";
+import "./chunk-7YWLATDR.js";
+import {
+  autoTable
+} from "./chunk-DQWP37PF.js";
 import {
   TravelPaymentRequestService
 } from "./chunk-WV77IOF7.js";
@@ -688,8 +695,484 @@ function buildPageNumbers(current, total) {
   return pages;
 }
 
-// src/app/features/admin/users/pages/user-form/user-form.ts
+// src/app/features/admin/users/services/employee-profile.service.ts
+var EmployeeProfileService = class _EmployeeProfileService {
+  http = inject(HttpClient);
+  /** 取得員工人事資料（含 9 個子表）。若尚未建立，後端回傳空預設值。 */
+  getByUserId(userId) {
+    return this.http.get(`${environment.apiUrl}/users/${userId}/profile`);
+  }
+  /**
+   * 新增或更新員工人事資料（整批替換子表）。
+   * 使用 multipart/form-data：
+   *   - text part `payload`：完整 HR JSON
+   *   - file parts `idCardFront` / `idCardBack`（optional）
+   *   - text parts `removeIdCardFront` / `removeIdCardBack`（boolean string）
+   */
+  upsert(userId, payload, files) {
+    const fd = new FormData();
+    fd.append("payload", JSON.stringify(payload));
+    if (files?.idCardFront)
+      fd.append("idCardFront", files.idCardFront);
+    if (files?.idCardBack)
+      fd.append("idCardBack", files.idCardBack);
+    if (files?.removeIdCardFront)
+      fd.append("removeIdCardFront", "true");
+    if (files?.removeIdCardBack)
+      fd.append("removeIdCardBack", "true");
+    return this.http.put(`${environment.apiUrl}/users/${userId}/profile`, fd);
+  }
+  static \u0275fac = function EmployeeProfileService_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _EmployeeProfileService)();
+  };
+  static \u0275prov = /* @__PURE__ */ \u0275\u0275defineInjectable({ token: _EmployeeProfileService, factory: _EmployeeProfileService.\u0275fac, providedIn: "root" });
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(EmployeeProfileService, [{
+    type: Injectable,
+    args: [{ providedIn: "root" }]
+  }], null, null);
+})();
+
+// src/app/features/admin/users/models/employee-profile.model.ts
+var GENDERS = [
+  { value: "M", label: "\u7537" },
+  { value: "F", label: "\u5973" }
+];
+var MARITAL_STATUSES = [
+  { value: "single", label: "\u672A\u5A5A" },
+  { value: "married", label: "\u5DF2\u5A5A" },
+  { value: "divorced", label: "\u96E2\u5A5A" },
+  { value: "widowed", label: "\u55AA\u5076" }
+];
+var DEGREE_OPTIONS = [
+  { value: "graduated", label: "\u7562\u696D" },
+  { value: "incomplete", label: "\u8084\u696D" }
+];
+var LANGUAGE_LEVELS = [
+  { value: "good", label: "\u4F73" },
+  { value: "fair", label: "\u53EF" }
+];
+var REWARD_PUNISHMENT_TYPES = [
+  { value: "reward", label: "\u734E\u52F5" },
+  { value: "punishment", label: "\u61F2\u8655" }
+];
+
+// src/app/features/admin/users/services/hr-profile-pdf.service.ts
+var TEXT_PRIMARY = [82, 83, 88];
+var TEXT_SECONDARY = [110, 111, 115];
+var TEXT_MUTED = [163, 150, 133];
+var FOREST = [105, 159, 52];
+var FOREST_MID = [74, 107, 58];
+var BORDER_COLOR = [221, 214, 200];
+var WHITE = [255, 255, 255];
+function val(v) {
+  if (v === null || v === void 0 || String(v).trim() === "")
+    return "\u2014";
+  return String(v);
+}
+function fmtD(d) {
+  if (!d)
+    return "\u2014";
+  return d.replace(/-/g, "/").slice(0, 10);
+}
+function fmtMoney(n) {
+  if (n === null || n === void 0)
+    return "\u2014";
+  return n.toLocaleString("zh-TW");
+}
+var HrProfilePdfService = class _HrProfilePdfService {
+  pdfCore = inject(PdfCoreService);
+  /**
+   * 產生人事資料卡 PDF（三頁 A4 直式）並開啟列印視窗。
+   */
+  async generate(profile, user) {
+    const fonts = await this.pdfCore.loadFonts();
+    const doc = new E({ orientation: "portrait", unit: "mm", format: "a4" });
+    this.pdfCore.registerFonts(doc, fonts);
+    const F = FONT_FAMILY;
+    const mx = 12;
+    const pw = 210;
+    const cw = pw - mx * 2;
+    let y = 14;
+    doc.setFont(F, "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(...CIS.forest);
+    doc.text("\u4EBA\u4E8B\u8CC7\u6599\u5361", pw / 2, y, { align: "center" });
+    y += 7;
+    doc.setFont(F, "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...TEXT_SECONDARY);
+    doc.text("\u96C5\u6BD4\u65AF\u570B\u969B\u5275\u610F\u7B56\u7565(\u80A1)\u516C\u53F8", pw / 2, y, { align: "center" });
+    y += 5;
+    doc.setDrawColor(...CIS.forest);
+    doc.setLineWidth(0.5);
+    doc.line(mx, y, pw - mx, y);
+    y += 5;
+    const genderLabel = GENDERS.find((g) => g.value === profile.gender)?.label ?? val(profile.gender);
+    const maritalLabel = MARITAL_STATUSES.find((m) => m.value === profile.maritalStatus)?.label ?? val(profile.maritalStatus);
+    const basicFields = [
+      ["\u54E1\u5DE5\u4EE3\u865F", val(profile.employeeNumber)],
+      ["\u4E2D\u6587\u59D3\u540D", val(user.name)],
+      ["\u82F1\u6587\u59D3\u540D", val(profile.englishName)],
+      ["\u90E8\u9580", val(user.departmentName)],
+      ["\u8077\u7A31", val(user.jobTitleName)],
+      ["\u5230\u8077\u65E5", user.hireDate ? fmtDate(user.hireDate) : "\u2014"],
+      ["\u751F\u65E5", user.birthday ? fmtDate(user.birthday) : "\u2014"],
+      ["\u6027\u5225", genderLabel],
+      ["\u5A5A\u59FB\u72C0\u6CC1", maritalLabel],
+      ["\u51FA\u751F\u5730", val(profile.birthPlace)],
+      ["\u8EAB\u5206\u8B49\u865F", val(profile.idNumber)],
+      ["\u884C\u52D5\u96FB\u8A71", val(profile.mobilePhone)]
+    ];
+    y = this._drawGrid(doc, mx, pw, y, basicFields, 4, F);
+    y += 4;
+    y = this._drawSection(doc, mx, y, "\u6236\u7C4D / \u901A\u8A0A\u8CC7\u8A0A", F);
+    const addrFields = [
+      ["\u6236\u7C4D\u5730\u5740", val(profile.residentialAddress)],
+      ["\u6236\u7C4D\u96FB\u8A71", val(profile.residentialPhone)],
+      ["\u901A\u8A0A\u5730\u5740", val(profile.mailingAddress)],
+      ["\u901A\u8A0A\u96FB\u8A71", val(profile.mailingPhone)]
+    ];
+    y = this._drawGrid(doc, mx, pw, y, addrFields, 2, F);
+    y += 4;
+    y = this._drawSection(doc, mx, y, "\u5B78\u6B77\u7D00\u9304", F);
+    if (profile.educationRecords.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        margin: { left: mx, right: mx },
+        styles: { font: F, fontSize: 8, cellPadding: 2, textColor: TEXT_PRIMARY },
+        headStyles: { fillColor: FOREST, textColor: WHITE, fontStyle: "bold" },
+        head: [["\u5B78\u6821", "\u79D1\u7CFB", "\u5B78\u6B77", "\u8D77\u59CB\u5E74\u6708", "\u7D50\u675F\u5E74\u6708"]],
+        body: profile.educationRecords.map((r) => [
+          val(r.school),
+          val(r.department),
+          DEGREE_OPTIONS.find((d) => d.value === r.degree)?.label ?? val(r.degree),
+          fmtD(r.startDate),
+          fmtD(r.endDate)
+        ])
+      });
+      y = doc.lastAutoTable.finalY + 4;
+    } else {
+      y = this._drawEmpty(doc, mx, y, F);
+    }
+    y = this._drawSection(doc, mx, y, "\u7D93\u6B77\u7D00\u9304", F);
+    if (profile.employmentHistoryRecords.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        margin: { left: mx, right: mx },
+        styles: { font: F, fontSize: 8, cellPadding: 2, textColor: TEXT_PRIMARY },
+        headStyles: { fillColor: FOREST, textColor: WHITE, fontStyle: "bold" },
+        head: [["\u670D\u52D9\u6A5F\u95DC", "\u8077\u7A31", "\u8D77\u59CB\u65E5\u671F", "\u7D50\u675F\u65E5\u671F"]],
+        body: profile.employmentHistoryRecords.map((r) => [
+          val(r.organization),
+          val(r.jobTitle),
+          fmtD(r.startDate),
+          fmtD(r.endDate)
+        ])
+      });
+      y = doc.lastAutoTable.finalY + 4;
+    } else {
+      y = this._drawEmpty(doc, mx, y, F);
+    }
+    y = this._drawSection(doc, mx, y, "\u5BB6\u5EAD\u72C0\u6CC1", F);
+    if (profile.familyMembers.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        margin: { left: mx, right: mx },
+        styles: { font: F, fontSize: 8, cellPadding: 2, textColor: TEXT_PRIMARY },
+        headStyles: { fillColor: FOREST, textColor: WHITE, fontStyle: "bold" },
+        head: [["\u59D3\u540D", "\u95DC\u4FC2", "\u5E74\u9F61", "\u8077\u696D"]],
+        body: profile.familyMembers.map((r) => [
+          val(r.name),
+          val(r.relationship),
+          val(r.age),
+          val(r.occupation)
+        ])
+      });
+      y = doc.lastAutoTable.finalY + 4;
+    } else {
+      y = this._drawEmpty(doc, mx, y, F);
+    }
+    y = this._drawSection(doc, mx, y, "\u5C08\u696D\u8A13\u7DF4", F);
+    if (profile.professionalTrainings.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        margin: { left: mx, right: mx },
+        styles: { font: F, fontSize: 8, cellPadding: 2, textColor: TEXT_PRIMARY },
+        headStyles: { fillColor: FOREST, textColor: WHITE, fontStyle: "bold" },
+        head: [["\u8A13\u7DF4\u540D\u7A31", "\u8A13\u7DF4\u6A5F\u69CB", "\u8D77\u59CB\u65E5\u671F", "\u7D50\u675F\u65E5\u671F", "\u6642\u6578"]],
+        body: profile.professionalTrainings.map((r) => [
+          val(r.trainingName),
+          val(r.trainingOrg),
+          fmtD(r.startDate),
+          fmtD(r.endDate),
+          val(r.hours)
+        ])
+      });
+      y = doc.lastAutoTable.finalY + 4;
+    } else {
+      y = this._drawEmpty(doc, mx, y, F);
+    }
+    y = this._drawSection(doc, mx, y, "\u8A9E\u8A00\u80FD\u529B", F);
+    if (profile.languageAbilities.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        margin: { left: mx, right: mx },
+        styles: { font: F, fontSize: 8, cellPadding: 2, textColor: TEXT_PRIMARY },
+        headStyles: { fillColor: FOREST, textColor: WHITE, fontStyle: "bold" },
+        head: [["\u8A9E\u8A00", "\u807D", "\u8AAA", "\u8B80", "\u5BEB"]],
+        body: profile.languageAbilities.map((r) => {
+          const lvl = (v) => LANGUAGE_LEVELS.find((l) => l.value === v)?.label ?? val(v);
+          return [val(r.language), lvl(r.listening), lvl(r.speaking), lvl(r.reading), lvl(r.writing)];
+        })
+      });
+      y = doc.lastAutoTable.finalY + 4;
+    } else {
+      y = this._drawEmpty(doc, mx, y, F);
+    }
+    y = this._drawSection(doc, mx, y, "\u7DCA\u6025\u806F\u7D61 / \u8CA1\u52D9 / \u5176\u4ED6", F);
+    const otherFields = [
+      ["\u7DCA\u6025\u806F\u7D61\u4EBA", val(profile.emergencyContactName)],
+      ["\u7DCA\u6025\u806F\u7D61\u96FB\u8A71", val(profile.emergencyContactPhone)],
+      ["\u9280\u884C\u5C40\u865F", val(profile.bankCode)],
+      ["\u9280\u884C\u5E33\u865F", val(profile.bankAccount)],
+      ["\u6295\u4FDD\u8D77\u65E5", fmtD(profile.insuranceStartDate)],
+      ["\u6276\u990A\u4EBA\u6578", val(profile.dependentCount)]
+    ];
+    y = this._drawGrid(doc, mx, pw, y, otherFields, 3, F);
+    if (profile.specialties) {
+      y += 3;
+      y = this._drawSection(doc, mx, y, "\u5C08\u9577\u8208\u8DA3", F);
+      doc.setFont(F, "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(...CIS.textPrimary);
+      const lines = doc.splitTextToSize(profile.specialties, cw);
+      doc.text(lines, mx, y);
+      y += lines.length * 4 + 2;
+    }
+    if (profile.resignationReason) {
+      y += 3;
+      y = this._drawSection(doc, mx, y, "\u96E2\u8077\u539F\u56E0", F);
+      doc.setFont(F, "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(...CIS.textPrimary);
+      const lines = doc.splitTextToSize(profile.resignationReason, cw);
+      doc.text(lines, mx, y);
+    }
+    doc.addPage();
+    y = 14;
+    y = this._drawPageHeader(doc, mx, pw, y, profile, user, F);
+    y = this._drawSection(doc, mx, y, "\u8077\u52D9\u8ABF\u6574\u6B77\u53F2", F);
+    if (profile.jobTransferRecords.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        margin: { left: mx, right: mx },
+        styles: { font: F, fontSize: 8, cellPadding: 2, textColor: TEXT_PRIMARY },
+        headStyles: { fillColor: FOREST, textColor: WHITE, fontStyle: "bold" },
+        head: [["\u751F\u6548\u65E5\u671F", "\u539F\u90E8\u9580", "\u65B0\u90E8\u9580", "\u539F\u8077\u7A31", "\u65B0\u8077\u7A31"]],
+        body: profile.jobTransferRecords.map((r) => [
+          fmtD(r.effectiveDate),
+          val(r.fromDepartment),
+          val(r.toDepartment),
+          val(r.fromJobTitle),
+          val(r.toJobTitle)
+        ])
+      });
+      y = doc.lastAutoTable.finalY + 6;
+    } else {
+      y = this._drawEmpty(doc, mx, y, F);
+    }
+    y = this._drawSection(doc, mx, y, "\u734E\u61F2\u6B77\u53F2", F);
+    if (profile.rewardPunishmentRecords.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        margin: { left: mx, right: mx },
+        styles: { font: F, fontSize: 8, cellPadding: 2, textColor: TEXT_PRIMARY },
+        headStyles: { fillColor: FOREST, textColor: WHITE, fontStyle: "bold" },
+        head: [["\u751F\u6548\u65E5\u671F", "\u985E\u578B", "\u985E\u5225", "\u6B21\u6578", "\u4E8B\u7531"]],
+        body: profile.rewardPunishmentRecords.map((r) => [
+          fmtD(r.effectiveDate),
+          REWARD_PUNISHMENT_TYPES.find((t) => t.value === r.type)?.label ?? val(r.type),
+          val(r.category),
+          val(r.count),
+          val(r.reason)
+        ])
+      });
+    } else {
+      this._drawEmpty(doc, mx, y, F);
+    }
+    doc.addPage();
+    y = 14;
+    y = this._drawPageHeader(doc, mx, pw, y, profile, user, F);
+    y = this._drawSection(doc, mx, y, "\u85AA\u8CC7\u8ABF\u6574\u6B77\u53F2", F);
+    if (profile.salaryAdjustmentRecords.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        margin: { left: mx, right: mx },
+        styles: { font: F, fontSize: 7, cellPadding: 1.5, textColor: TEXT_PRIMARY, halign: "right" },
+        headStyles: { fillColor: FOREST, textColor: WHITE, fontStyle: "bold", halign: "center", fontSize: 7 },
+        columnStyles: { 0: { halign: "center" }, 9: { halign: "left" } },
+        head: [["\u751F\u6548\u65E5", "\u5E95\u85AA", "\u8077\u52D9", "\u8077\u8CAC", "\u5176\u4ED6", "\u5DEE\u984D", "\u6D77\u5916", "\u4F19\u98DF", "\u5408\u8A08", "\u5099\u8A3B"]],
+        body: profile.salaryAdjustmentRecords.map((r) => [
+          fmtD(r.effectiveDate),
+          fmtMoney(r.baseSalary),
+          fmtMoney(r.positionAllowance),
+          fmtMoney(r.dutyAllowance),
+          fmtMoney(r.otherAllowance),
+          fmtMoney(r.adjustmentDifference),
+          fmtMoney(r.overseasAllowance),
+          fmtMoney(r.mealAllowance),
+          fmtMoney(r.totalAmount),
+          val(r.notes)
+        ])
+      });
+    } else {
+      this._drawEmpty(doc, mx, y, F);
+    }
+    const blob = doc.output("blob");
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 6e4);
+  }
+  // ── 私用 helpers ─────────────────────────────────────
+  /** 頁面頂部：員工代號 / 姓名 / 到職日 */
+  _drawPageHeader(doc, mx, pw, y, profile, user, F) {
+    doc.setFont(F, "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(...CIS.forest);
+    doc.text("\u4EBA\u4E8B\u8CC7\u6599\u5361", pw / 2, y, { align: "center" });
+    y += 6;
+    doc.setFont(F, "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...CIS.textPrimary);
+    const hireDateStr = user.hireDate ? fmtDate(user.hireDate) : "\u2014";
+    const hdr = `\u54E1\u5DE5\u4EE3\u865F\uFF1A${val(profile.employeeNumber)}\u3000\u3000\u59D3\u540D\uFF1A${val(user.name)}\u3000\u3000\u5230\u8077\u65E5\uFF1A${hireDateStr}`;
+    doc.text(hdr, pw / 2, y, { align: "center" });
+    y += 5;
+    doc.setDrawColor(...BORDER_COLOR);
+    doc.setLineWidth(0.3);
+    doc.line(mx, y, pw - mx, y);
+    y += 5;
+    return y;
+  }
+  /** 區段標題列 */
+  _drawSection(doc, mx, y, title, F) {
+    doc.setFont(F, "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...FOREST_MID);
+    doc.text(title, mx, y);
+    y += 1;
+    doc.setDrawColor(...BORDER_COLOR);
+    doc.setLineWidth(0.2);
+    doc.line(mx, y + 1, 210 - mx, y + 1);
+    return y + 4;
+  }
+  /** 空紀錄提示 */
+  _drawEmpty(doc, mx, y, F) {
+    doc.setFont(F, "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...TEXT_MUTED);
+    doc.text("\uFF08\u7121\u7D00\u9304\uFF09", mx, y);
+    return y + 6;
+  }
+  /**
+   * 繪製 label-value grid。
+   * @param cols  每列欄數
+   */
+  _drawGrid(doc, mx, pw, y, fields, cols, F) {
+    const cw = pw - mx * 2;
+    const colW = cw / cols;
+    const rowH = 5.5;
+    for (let i = 0; i < fields.length; i += cols) {
+      const rowFields = fields.slice(i, i + cols);
+      for (let j = 0; j < rowFields.length; j++) {
+        const [label, value] = rowFields[j];
+        const x = mx + j * colW;
+        doc.setFont(F, "bold");
+        doc.setFontSize(7.5);
+        doc.setTextColor(...TEXT_SECONDARY);
+        const labelText = label + "\uFF1A";
+        doc.text(labelText, x, y);
+        doc.setFont(F, "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(...CIS.textPrimary);
+        const offsetX = x + doc.getTextWidth(labelText);
+        const maxW = colW - doc.getTextWidth(labelText) - 1;
+        const shortVal = maxW > 5 ? doc.splitTextToSize(value, maxW)[0] ?? value : value;
+        doc.text(shortVal, offsetX, y);
+      }
+      y += rowH;
+    }
+    return y;
+  }
+  static \u0275fac = function HrProfilePdfService_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _HrProfilePdfService)();
+  };
+  static \u0275prov = /* @__PURE__ */ \u0275\u0275defineInjectable({ token: _HrProfilePdfService, factory: _HrProfilePdfService.\u0275fac, providedIn: "root" });
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(HrProfilePdfService, [{
+    type: Injectable,
+    args: [{ providedIn: "root" }]
+  }], null, null);
+})();
+
+// src/app/shared/services/image-compression.service.ts
 var import_heic2any = __toESM(require_heic2any());
+var ImageCompressionService = class _ImageCompressionService {
+  /**
+   * @param file    待處理的原始檔案
+   * @param opts    maxSize（預設 800）：長邊上限（px）；quality（預設 0.85）：JPEG 品質
+   * @returns       壓縮後的 File（PDF 直接回傳原檔）
+   */
+  async compress(file, opts) {
+    const maxSize = opts?.maxSize ?? 800;
+    const quality = opts?.quality ?? 0.85;
+    if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) {
+      return file;
+    }
+    let workingBlob = file;
+    if (/\.(heic|heif)$/i.test(file.name) || file.type === "image/heic" || file.type === "image/heif") {
+      workingBlob = await (0, import_heic2any.default)({ blob: file, toType: "image/jpeg", quality });
+    }
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(workingBlob);
+    });
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error("Failed to load image"));
+      i.src = dataUrl;
+    });
+    const ratio = Math.min(maxSize / img.width, maxSize / img.height, 1);
+    const w = Math.round(img.width * ratio);
+    const h = Math.round(img.height * ratio);
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx)
+      throw new Error("Canvas context unavailable");
+    ctx.drawImage(img, 0, 0, w, h);
+    const compressed = await new Promise((resolve, reject) => canvas.toBlob((b) => b ? resolve(b) : reject(new Error("toBlob returned null")), "image/jpeg", quality));
+    const baseName = file.name.replace(/\.[^.]+$/, "");
+    return new File([compressed], `${baseName}.jpg`, { type: "image/jpeg" });
+  }
+  static \u0275fac = function ImageCompressionService_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _ImageCompressionService)();
+  };
+  static \u0275prov = /* @__PURE__ */ \u0275\u0275defineInjectable({ token: _ImageCompressionService, factory: _ImageCompressionService.\u0275fac, providedIn: "root" });
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(ImageCompressionService, [{
+    type: Injectable,
+    args: [{ providedIn: "root" }]
+  }], null, null);
+})();
 
 // src/app/features/admin/departments/services/department.service.ts
 var DepartmentService = class _DepartmentService {
@@ -756,18 +1239,34 @@ var InsuranceBracketService = class _InsuranceBracketService {
 })();
 
 // src/app/features/admin/users/pages/user-form/user-form.ts
+var _c02 = () => ({ standalone: true });
 var _forTrack02 = ($index, $item) => $item.id;
-function UserForm_Conditional_7_Conditional_1_Template(rf, ctx) {
+function UserForm_Conditional_7_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "span", 57);
+    \u0275\u0275element(0, "span", 16);
+    \u0275\u0275text(1, " \u7522\u751F\u4E2D\u2026 ");
+  }
+}
+function UserForm_Conditional_7_Conditional_3_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(0, "svg", 17);
+    \u0275\u0275element(1, "use", 18);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(2, " \u5217\u5370\u4EBA\u4E8B\u8CC7\u6599\u5361 ");
+  }
+}
+function UserForm_Conditional_7_Conditional_5_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275element(0, "span", 16);
     \u0275\u0275text(1, " \u5BC4\u9001\u4E2D\u2026 ");
   }
 }
-function UserForm_Conditional_7_Conditional_2_Template(rf, ctx) {
+function UserForm_Conditional_7_Conditional_6_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(0, "svg", 58);
-    \u0275\u0275element(1, "use", 59);
+    \u0275\u0275elementStart(0, "svg", 17);
+    \u0275\u0275element(1, "use", 19);
     \u0275\u0275elementEnd();
     \u0275\u0275text(2, " \u5BC4\u51FA\u5E33\u865F\u901A\u77E5 ");
   }
@@ -775,28 +1274,41 @@ function UserForm_Conditional_7_Conditional_2_Template(rf, ctx) {
 function UserForm_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
     const _r1 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 56);
-    \u0275\u0275listener("click", function UserForm_Conditional_7_Template_button_click_0_listener() {
+    \u0275\u0275elementStart(0, "div", 6)(1, "button", 14);
+    \u0275\u0275listener("click", function UserForm_Conditional_7_Template_button_click_1_listener() {
+      \u0275\u0275restoreView(_r1);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.printHrCard());
+    });
+    \u0275\u0275conditionalCreate(2, UserForm_Conditional_7_Conditional_2_Template, 2, 0)(3, UserForm_Conditional_7_Conditional_3_Template, 3, 0);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(4, "button", 15);
+    \u0275\u0275listener("click", function UserForm_Conditional_7_Template_button_click_4_listener() {
       \u0275\u0275restoreView(_r1);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.sendCredentials());
     });
-    \u0275\u0275conditionalCreate(1, UserForm_Conditional_7_Conditional_1_Template, 2, 0)(2, UserForm_Conditional_7_Conditional_2_Template, 3, 0);
-    \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(5, UserForm_Conditional_7_Conditional_5_Template, 2, 0)(6, UserForm_Conditional_7_Conditional_6_Template, 3, 0);
+    \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
     const ctx_r1 = \u0275\u0275nextContext();
+    \u0275\u0275advance();
+    \u0275\u0275property("disabled", ctx_r1.printing());
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.printing() ? 2 : 3);
+    \u0275\u0275advance(2);
     \u0275\u0275property("disabled", ctx_r1.sending());
     \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.sending() ? 1 : 2);
+    \u0275\u0275conditional(ctx_r1.sending() ? 5 : 6);
   }
 }
 function UserForm_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 7);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 60);
-    \u0275\u0275element(2, "use", 61);
+    \u0275\u0275elementStart(1, "svg", 20);
+    \u0275\u0275element(2, "use", 21);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3);
     \u0275\u0275elementEnd();
@@ -807,32 +1319,32 @@ function UserForm_Conditional_8_Template(rf, ctx) {
     \u0275\u0275textInterpolate1(" ", ctx_r1.errorMsg(), " ");
   }
 }
-function UserForm_Conditional_25_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_13_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 20);
+    \u0275\u0275elementStart(0, "div", 31);
     \u0275\u0275text(1, "\u8ACB\u8F38\u5165\u59D3\u540D\u3002");
     \u0275\u0275elementEnd();
   }
 }
-function UserForm_Conditional_32_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_20_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 20);
+    \u0275\u0275elementStart(0, "div", 31);
     \u0275\u0275text(1, "\u8ACB\u8F38\u5165\u6709\u6548\u7684\u96FB\u5B50\u90F5\u4EF6\u3002");
     \u0275\u0275elementEnd();
   }
 }
-function UserForm_Conditional_37_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_25_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 20);
+    \u0275\u0275elementStart(0, "div", 31);
     \u0275\u0275text(1, "\u5BC6\u78BC\u81F3\u5C11\u9700\u8981 6 \u500B\u5B57\u5143\u3002");
     \u0275\u0275elementEnd();
   }
 }
-function UserForm_For_53_Template(rf, ctx) {
+function UserForm_Conditional_19_For_41_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 27);
-    \u0275\u0275element(1, "input", 62);
-    \u0275\u0275elementStart(2, "label", 63);
+    \u0275\u0275elementStart(0, "div", 38);
+    \u0275\u0275element(1, "input", 73);
+    \u0275\u0275elementStart(2, "label", 74);
     \u0275\u0275text(3);
     \u0275\u0275elementEnd()();
   }
@@ -846,16 +1358,16 @@ function UserForm_For_53_Template(rf, ctx) {
     \u0275\u0275textInterpolate(role_r3.name);
   }
 }
-function UserForm_Conditional_54_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_42_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 20);
+    \u0275\u0275elementStart(0, "div", 31);
     \u0275\u0275text(1, "\u8ACB\u9078\u64C7\u89D2\u8272\u3002");
     \u0275\u0275elementEnd();
   }
 }
-function UserForm_For_71_Template(rf, ctx) {
+function UserForm_Conditional_19_For_59_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 30);
+    \u0275\u0275elementStart(0, "option", 41);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -866,16 +1378,16 @@ function UserForm_For_71_Template(rf, ctx) {
     \u0275\u0275textInterpolate(dept_r4.name);
   }
 }
-function UserForm_Conditional_72_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_60_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 20);
+    \u0275\u0275elementStart(0, "div", 31);
     \u0275\u0275text(1, "\u8ACB\u8A2D\u5B9A\u90E8\u9580\u3002");
     \u0275\u0275elementEnd();
   }
 }
-function UserForm_For_80_Template(rf, ctx) {
+function UserForm_Conditional_19_For_68_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 30);
+    \u0275\u0275elementStart(0, "option", 41);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -886,16 +1398,16 @@ function UserForm_For_80_Template(rf, ctx) {
     \u0275\u0275textInterpolate(jt_r5.name);
   }
 }
-function UserForm_Conditional_87_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_75_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 20);
+    \u0275\u0275elementStart(0, "div", 31);
     \u0275\u0275text(1, "\u8ACB\u9078\u64C7\u751F\u65E5\u3002");
     \u0275\u0275elementEnd();
   }
 }
-function UserForm_For_154_Template(rf, ctx) {
+function UserForm_Conditional_19_For_160_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 49);
+    \u0275\u0275elementStart(0, "option", 66);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -906,74 +1418,74 @@ function UserForm_For_154_Template(rf, ctx) {
     \u0275\u0275textInterpolate(u_r6.name);
   }
 }
-function UserForm_Conditional_165_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_171_Template(rf, ctx) {
   if (rf & 1) {
     const _r7 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 64)(1, "div", 65);
-    \u0275\u0275listener("pointerdown", function UserForm_Conditional_165_Template_div_pointerdown_1_listener($event) {
+    \u0275\u0275elementStart(0, "div", 75)(1, "div", 76);
+    \u0275\u0275listener("pointerdown", function UserForm_Conditional_19_Conditional_171_Template_div_pointerdown_1_listener($event) {
       \u0275\u0275restoreView(_r7);
-      const ctx_r1 = \u0275\u0275nextContext();
+      const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.onAvatarPointerDown($event));
-    })("pointermove", function UserForm_Conditional_165_Template_div_pointermove_1_listener($event) {
+    })("pointermove", function UserForm_Conditional_19_Conditional_171_Template_div_pointermove_1_listener($event) {
       \u0275\u0275restoreView(_r7);
-      const ctx_r1 = \u0275\u0275nextContext();
+      const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.onAvatarPointerMove($event));
-    })("pointerup", function UserForm_Conditional_165_Template_div_pointerup_1_listener() {
+    })("pointerup", function UserForm_Conditional_19_Conditional_171_Template_div_pointerup_1_listener() {
       \u0275\u0275restoreView(_r7);
-      const ctx_r1 = \u0275\u0275nextContext();
+      const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.onAvatarPointerUp());
-    })("pointercancel", function UserForm_Conditional_165_Template_div_pointercancel_1_listener() {
+    })("pointercancel", function UserForm_Conditional_19_Conditional_171_Template_div_pointercancel_1_listener() {
       \u0275\u0275restoreView(_r7);
-      const ctx_r1 = \u0275\u0275nextContext();
+      const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.onAvatarPointerUp());
     });
-    \u0275\u0275element(2, "img", 66);
+    \u0275\u0275element(2, "img", 77);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div", 67)(4, "label", 68);
+    \u0275\u0275elementStart(3, "div", 78)(4, "label", 79);
     \u0275\u0275text(5, "\u7E2E\u653E");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "div", 69)(7, "input", 70);
-    \u0275\u0275listener("input", function UserForm_Conditional_165_Template_input_input_7_listener($event) {
+    \u0275\u0275elementStart(6, "div", 80)(7, "input", 81);
+    \u0275\u0275listener("input", function UserForm_Conditional_19_Conditional_171_Template_input_input_7_listener($event) {
       \u0275\u0275restoreView(_r7);
-      const ctx_r1 = \u0275\u0275nextContext();
+      const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.onAvatarScaleChange($event));
     });
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "span", 71);
+    \u0275\u0275elementStart(8, "span", 82);
     \u0275\u0275text(9);
     \u0275\u0275pipe(10, "number");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(11, "p", 72);
+    \u0275\u0275elementStart(11, "p", 83);
     \u0275\u0275text(12, "\u5728\u9810\u89BD\u6846\u4E2D\u6309\u4F4F\u6ED1\u9F20\u6216\u624B\u6307\u62D6\u66F3\u8ABF\u6574\u4F4D\u7F6E\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(13, "button", 73);
-    \u0275\u0275listener("click", function UserForm_Conditional_165_Template_button_click_13_listener() {
+    \u0275\u0275elementStart(13, "button", 84);
+    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_171_Template_button_click_13_listener() {
       \u0275\u0275restoreView(_r7);
-      const ctx_r1 = \u0275\u0275nextContext();
+      const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.resetAvatarPosition());
     });
     \u0275\u0275text(14, " \u91CD\u8A2D\u4F4D\u7F6E ");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(15, "div", 74)(16, "label", 75);
+    \u0275\u0275elementStart(15, "div", 85)(16, "label", 86);
     \u0275\u0275text(17, " \u66F4\u63DB\u982D\u50CF ");
-    \u0275\u0275elementStart(18, "input", 76);
-    \u0275\u0275listener("change", function UserForm_Conditional_165_Template_input_change_18_listener($event) {
+    \u0275\u0275elementStart(18, "input", 87);
+    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_171_Template_input_change_18_listener($event) {
       \u0275\u0275restoreView(_r7);
-      const ctx_r1 = \u0275\u0275nextContext();
+      const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.onAvatarSelected($event));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(19, "button", 77);
-    \u0275\u0275listener("click", function UserForm_Conditional_165_Template_button_click_19_listener() {
+    \u0275\u0275elementStart(19, "button", 88);
+    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_171_Template_button_click_19_listener() {
       \u0275\u0275restoreView(_r7);
-      const ctx_r1 = \u0275\u0275nextContext();
+      const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.onRemoveAvatar());
     });
-    \u0275\u0275text(20, " \u522A\u9664\u982D\u50CF ");
+    \u0275\u0275text(20, "\u522A\u9664\u982D\u50CF");
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext();
+    const ctx_r1 = \u0275\u0275nextContext(2);
     \u0275\u0275advance(2);
     \u0275\u0275styleProp("object-position", ctx_r1.avatarPosX() + "% " + ctx_r1.avatarPosY() + "%")("transform", "scale(" + ctx_r1.avatarScale() + ")");
     \u0275\u0275property("src", ctx_r1.displayAvatar, \u0275\u0275sanitizeUrl);
@@ -983,179 +1495,1990 @@ function UserForm_Conditional_165_Template(rf, ctx) {
     \u0275\u0275textInterpolate1("", \u0275\u0275pipeBind2(10, 7, ctx_r1.avatarScale(), "1.2-2"), "x");
   }
 }
-function UserForm_Conditional_166_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_172_Template(rf, ctx) {
   if (rf & 1) {
     const _r8 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "p", 51);
+    \u0275\u0275elementStart(0, "p", 68);
     \u0275\u0275text(1, "\u5C1A\u672A\u4E0A\u50B3\u982D\u50CF\uFF0C\u9078\u64C7\u6A94\u6848\u5F8C\u5C07\u65BC\u5132\u5B58\u6642\u4E00\u4F75\u4E0A\u50B3\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(2, "label", 75);
+    \u0275\u0275elementStart(2, "label", 86);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(3, "svg", 58);
-    \u0275\u0275element(4, "use", 78);
+    \u0275\u0275elementStart(3, "svg", 17);
+    \u0275\u0275element(4, "use", 89);
     \u0275\u0275elementEnd();
     \u0275\u0275text(5, " \u9078\u64C7\u982D\u50CF ");
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(6, "input", 76);
-    \u0275\u0275listener("change", function UserForm_Conditional_166_Template_input_change_6_listener($event) {
+    \u0275\u0275elementStart(6, "input", 87);
+    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_172_Template_input_change_6_listener($event) {
       \u0275\u0275restoreView(_r8);
-      const ctx_r1 = \u0275\u0275nextContext();
+      const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.onAvatarSelected($event));
     });
     \u0275\u0275elementEnd()();
   }
 }
-function UserForm_Conditional_167_Conditional_10_Conditional_5_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_173_Conditional_10_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
     const _r10 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 85);
-    \u0275\u0275listener("click", function UserForm_Conditional_167_Conditional_10_Conditional_5_Template_button_click_0_listener() {
+    \u0275\u0275elementStart(0, "button", 96);
+    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_173_Conditional_10_Conditional_5_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r10);
-      const ctx_r1 = \u0275\u0275nextContext(3);
+      const ctx_r1 = \u0275\u0275nextContext(4);
       return \u0275\u0275resetView(ctx_r1.viewIndigenousProof());
     });
-    \u0275\u0275text(1, " \u6AA2\u8996 ");
+    \u0275\u0275text(1, "\u6AA2\u8996");
     \u0275\u0275elementEnd();
   }
 }
-function UserForm_Conditional_167_Conditional_10_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_173_Conditional_10_Template(rf, ctx) {
   if (rf & 1) {
     const _r9 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 80);
+    \u0275\u0275elementStart(0, "div", 91);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 81);
-    \u0275\u0275element(2, "use", 79);
+    \u0275\u0275elementStart(1, "svg", 92);
+    \u0275\u0275element(2, "use", 90);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(3, "span", 82);
+    \u0275\u0275elementStart(3, "span", 93);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(5, UserForm_Conditional_167_Conditional_10_Conditional_5_Template, 2, 0, "button", 83);
+    \u0275\u0275conditionalCreate(5, UserForm_Conditional_19_Conditional_173_Conditional_10_Conditional_5_Template, 2, 0, "button", 94);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "div", 74)(7, "label", 75);
+    \u0275\u0275elementStart(6, "div", 85)(7, "label", 86);
     \u0275\u0275text(8, " \u66F4\u63DB\u6A94\u6848 ");
-    \u0275\u0275elementStart(9, "input", 84);
-    \u0275\u0275listener("change", function UserForm_Conditional_167_Conditional_10_Template_input_change_9_listener($event) {
+    \u0275\u0275elementStart(9, "input", 95);
+    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_173_Conditional_10_Template_input_change_9_listener($event) {
       \u0275\u0275restoreView(_r9);
-      const ctx_r1 = \u0275\u0275nextContext(2);
+      const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.onIndigenousProofSelected($event));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(10, "button", 77);
-    \u0275\u0275listener("click", function UserForm_Conditional_167_Conditional_10_Template_button_click_10_listener() {
+    \u0275\u0275elementStart(10, "button", 88);
+    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_173_Conditional_10_Template_button_click_10_listener() {
       \u0275\u0275restoreView(_r9);
-      const ctx_r1 = \u0275\u0275nextContext(2);
+      const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.onRemoveIndigenousProof());
     });
-    \u0275\u0275text(11, " \u522A\u9664\u6A94\u6848 ");
+    \u0275\u0275text(11, "\u522A\u9664\u6A94\u6848");
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext(2);
+    const ctx_r1 = \u0275\u0275nextContext(3);
     \u0275\u0275advance(4);
     \u0275\u0275textInterpolate(ctx_r1.indigenousProofDisplayName);
     \u0275\u0275advance();
     \u0275\u0275conditional(ctx_r1.hasExistingIndigenousProof ? 5 : -1);
   }
 }
-function UserForm_Conditional_167_Conditional_11_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_173_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
     const _r11 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "label", 75);
+    \u0275\u0275elementStart(0, "label", 86);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 58);
-    \u0275\u0275element(2, "use", 78);
+    \u0275\u0275elementStart(1, "svg", 17);
+    \u0275\u0275element(2, "use", 89);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3, " \u9078\u64C7\u6A94\u6848 ");
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(4, "input", 84);
-    \u0275\u0275listener("change", function UserForm_Conditional_167_Conditional_11_Template_input_change_4_listener($event) {
+    \u0275\u0275elementStart(4, "input", 95);
+    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_173_Conditional_11_Template_input_change_4_listener($event) {
       \u0275\u0275restoreView(_r11);
-      const ctx_r1 = \u0275\u0275nextContext(2);
+      const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.onIndigenousProofSelected($event));
     });
     \u0275\u0275elementEnd()();
   }
 }
-function UserForm_Conditional_167_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_173_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 11)(1, "div", 12);
+    \u0275\u0275elementStart(0, "div", 22)(1, "div", 23);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 3);
-    \u0275\u0275element(3, "use", 79);
+    \u0275\u0275element(3, "use", 90);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u539F\u4F4F\u6C11\u8EAB\u4EFD\u8B49\u660E\u6587\u4EF6 ");
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "span", 18);
+    \u0275\u0275elementStart(5, "span", 29);
     \u0275\u0275text(6, "*");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(7, "div", 14)(8, "p", 51);
+    \u0275\u0275elementStart(7, "div", 25)(8, "p", 68);
     \u0275\u0275text(9, "\u652F\u63F4 PNG\u3001JPEG \u5716\u7247\u6216 PDF \u6A94\u6848\u3002\u6B64\u6587\u4EF6\u50C5\u4F9B\u4EBA\u4E8B\u90E8\u9580\u7A3D\u6838\uFF0C\u53D7\u6B0A\u9650\u4FDD\u8B77\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(10, UserForm_Conditional_167_Conditional_10_Template, 12, 2)(11, UserForm_Conditional_167_Conditional_11_Template, 5, 0, "label", 75);
+    \u0275\u0275conditionalCreate(10, UserForm_Conditional_19_Conditional_173_Conditional_10_Template, 12, 2)(11, UserForm_Conditional_19_Conditional_173_Conditional_11_Template, 5, 0, "label", 86);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext();
+    const ctx_r1 = \u0275\u0275nextContext(2);
     \u0275\u0275advance(10);
     \u0275\u0275conditional(ctx_r1.indigenousProofDisplayName ? 10 : 11);
   }
 }
-function UserForm_Conditional_176_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_174_Conditional_8_Conditional_5_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r13 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 96);
+    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_174_Conditional_8_Conditional_5_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r13);
+      const ctx_r1 = \u0275\u0275nextContext(4);
+      return \u0275\u0275resetView(ctx_r1.viewLowIncomeProof());
+    });
+    \u0275\u0275text(1, "\u6AA2\u8996");
+    \u0275\u0275elementEnd();
+  }
+}
+function UserForm_Conditional_19_Conditional_174_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
     const _r12 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 86)(1, "div", 87);
-    \u0275\u0275element(2, "img", 88);
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(3, "div", 74)(4, "label", 75);
-    \u0275\u0275text(5, " \u66F4\u63DB\u7C3D\u540D\u6A94 ");
-    \u0275\u0275elementStart(6, "input", 89);
-    \u0275\u0275listener("change", function UserForm_Conditional_176_Template_input_change_6_listener($event) {
+    \u0275\u0275elementStart(0, "div", 91);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 92);
+    \u0275\u0275element(2, "use", 90);
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(3, "span", 93);
+    \u0275\u0275text(4);
+    \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(5, UserForm_Conditional_19_Conditional_174_Conditional_8_Conditional_5_Template, 2, 0, "button", 94);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(6, "div", 85)(7, "label", 86);
+    \u0275\u0275text(8, " \u66F4\u63DB\u6A94\u6848 ");
+    \u0275\u0275elementStart(9, "input", 95);
+    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_174_Conditional_8_Template_input_change_9_listener($event) {
       \u0275\u0275restoreView(_r12);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.onSignatureSelected($event));
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.onLowIncomeProofSelected($event));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(7, "button", 77);
-    \u0275\u0275listener("click", function UserForm_Conditional_176_Template_button_click_7_listener() {
+    \u0275\u0275elementStart(10, "button", 88);
+    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_174_Conditional_8_Template_button_click_10_listener() {
       \u0275\u0275restoreView(_r12);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.onRemoveSignature());
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.onRemoveLowIncomeProof());
     });
-    \u0275\u0275text(8, " \u522A\u9664\u7C3D\u540D\u6A94 ");
+    \u0275\u0275text(11, "\u522A\u9664\u6A94\u6848");
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext();
+    const ctx_r1 = \u0275\u0275nextContext(3);
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate(ctx_r1.lowIncomeProofDisplayName);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.hasExistingLowIncomeProof ? 5 : -1);
+  }
+}
+function UserForm_Conditional_19_Conditional_174_Conditional_9_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r14 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "label", 86);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 17);
+    \u0275\u0275element(2, "use", 89);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3, " \u9078\u64C7\u6A94\u6848 ");
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(4, "input", 95);
+    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_174_Conditional_9_Template_input_change_4_listener($event) {
+      \u0275\u0275restoreView(_r14);
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.onLowIncomeProofSelected($event));
+    });
+    \u0275\u0275elementEnd()();
+  }
+}
+function UserForm_Conditional_19_Conditional_174_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 22)(1, "div", 23);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(2, "svg", 3);
+    \u0275\u0275element(3, "use", 90);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(4, " \u4F4E\u6536\u5165\u6236\u8B49\u660E\u6587\u4EF6 ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(5, "div", 25)(6, "p", 68);
+    \u0275\u0275text(7, "\u652F\u63F4 PNG\u3001JPEG \u5716\u7247\u6216 PDF \u6A94\u6848\u3002\u6B64\u6587\u4EF6\u50C5\u4F9B\u4EBA\u4E8B\u90E8\u9580\u7A3D\u6838\uFF0C\u53D7\u6B0A\u9650\u4FDD\u8B77\u3002");
+    \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(8, UserForm_Conditional_19_Conditional_174_Conditional_8_Template, 12, 2)(9, UserForm_Conditional_19_Conditional_174_Conditional_9_Template, 5, 0, "label", 86);
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(2);
+    \u0275\u0275advance(8);
+    \u0275\u0275conditional(ctx_r1.lowIncomeProofDisplayName ? 8 : 9);
+  }
+}
+function UserForm_Conditional_19_Conditional_175_Conditional_8_Conditional_5_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r16 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 96);
+    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_175_Conditional_8_Conditional_5_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r16);
+      const ctx_r1 = \u0275\u0275nextContext(4);
+      return \u0275\u0275resetView(ctx_r1.viewDisabledProof());
+    });
+    \u0275\u0275text(1, "\u6AA2\u8996");
+    \u0275\u0275elementEnd();
+  }
+}
+function UserForm_Conditional_19_Conditional_175_Conditional_8_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r15 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 91);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 92);
+    \u0275\u0275element(2, "use", 90);
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(3, "span", 93);
+    \u0275\u0275text(4);
+    \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(5, UserForm_Conditional_19_Conditional_175_Conditional_8_Conditional_5_Template, 2, 0, "button", 94);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(6, "div", 85)(7, "label", 86);
+    \u0275\u0275text(8, " \u66F4\u63DB\u6A94\u6848 ");
+    \u0275\u0275elementStart(9, "input", 95);
+    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_175_Conditional_8_Template_input_change_9_listener($event) {
+      \u0275\u0275restoreView(_r15);
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.onDisabledProofSelected($event));
+    });
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(10, "button", 88);
+    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_175_Conditional_8_Template_button_click_10_listener() {
+      \u0275\u0275restoreView(_r15);
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.onRemoveDisabledProof());
+    });
+    \u0275\u0275text(11, "\u522A\u9664\u6A94\u6848");
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(3);
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate(ctx_r1.disabledProofDisplayName);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.hasExistingDisabledProof ? 5 : -1);
+  }
+}
+function UserForm_Conditional_19_Conditional_175_Conditional_9_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r17 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "label", 86);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 17);
+    \u0275\u0275element(2, "use", 89);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3, " \u9078\u64C7\u6A94\u6848 ");
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(4, "input", 95);
+    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_175_Conditional_9_Template_input_change_4_listener($event) {
+      \u0275\u0275restoreView(_r17);
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.onDisabledProofSelected($event));
+    });
+    \u0275\u0275elementEnd()();
+  }
+}
+function UserForm_Conditional_19_Conditional_175_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 22)(1, "div", 23);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(2, "svg", 3);
+    \u0275\u0275element(3, "use", 90);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(4, " \u6B98\u969C\u8B49\u660E\u6587\u4EF6 ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(5, "div", 25)(6, "p", 68);
+    \u0275\u0275text(7, "\u652F\u63F4 PNG\u3001JPEG \u5716\u7247\u6216 PDF \u6A94\u6848\u3002\u6B64\u6587\u4EF6\u50C5\u4F9B\u4EBA\u4E8B\u90E8\u9580\u7A3D\u6838\uFF0C\u53D7\u6B0A\u9650\u4FDD\u8B77\u3002");
+    \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(8, UserForm_Conditional_19_Conditional_175_Conditional_8_Template, 12, 2)(9, UserForm_Conditional_19_Conditional_175_Conditional_9_Template, 5, 0, "label", 86);
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(2);
+    \u0275\u0275advance(8);
+    \u0275\u0275conditional(ctx_r1.disabledProofDisplayName ? 8 : 9);
+  }
+}
+function UserForm_Conditional_19_Conditional_184_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r18 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 97)(1, "div", 98);
+    \u0275\u0275element(2, "img", 99);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(3, "div", 85)(4, "label", 86);
+    \u0275\u0275text(5, " \u66F4\u63DB\u7C3D\u540D\u6A94 ");
+    \u0275\u0275elementStart(6, "input", 100);
+    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_184_Template_input_change_6_listener($event) {
+      \u0275\u0275restoreView(_r18);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.onSignatureSelected($event));
+    });
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(7, "button", 88);
+    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_184_Template_button_click_7_listener() {
+      \u0275\u0275restoreView(_r18);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.onRemoveSignature());
+    });
+    \u0275\u0275text(8, "\u522A\u9664\u7C3D\u540D\u6A94");
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(2);
     \u0275\u0275advance(2);
     \u0275\u0275property("src", ctx_r1.displaySignature, \u0275\u0275sanitizeUrl);
   }
 }
-function UserForm_Conditional_177_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_185_Template(rf, ctx) {
   if (rf & 1) {
-    const _r13 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "p", 51);
+    const _r19 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "p", 68);
     \u0275\u0275text(1, "\u5C1A\u672A\u4E0A\u50B3\u7C3D\u540D\u6A94\uFF0C\u9078\u64C7\u6A94\u6848\u5F8C\u5C07\u65BC\u5132\u5B58\u6642\u4E00\u4F75\u4E0A\u50B3\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(2, "label", 75);
+    \u0275\u0275elementStart(2, "label", 86);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(3, "svg", 58);
-    \u0275\u0275element(4, "use", 78);
+    \u0275\u0275elementStart(3, "svg", 17);
+    \u0275\u0275element(4, "use", 89);
     \u0275\u0275elementEnd();
     \u0275\u0275text(5, " \u9078\u64C7\u7C3D\u540D\u6A94 ");
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(6, "input", 89);
-    \u0275\u0275listener("change", function UserForm_Conditional_177_Template_input_change_6_listener($event) {
-      \u0275\u0275restoreView(_r13);
-      const ctx_r1 = \u0275\u0275nextContext();
+    \u0275\u0275elementStart(6, "input", 100);
+    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_185_Template_input_change_6_listener($event) {
+      \u0275\u0275restoreView(_r19);
+      const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.onSignatureSelected($event));
     });
     \u0275\u0275elementEnd()();
   }
 }
+function UserForm_Conditional_19_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 22)(1, "div", 23);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(2, "svg", 3);
+    \u0275\u0275element(3, "use", 24);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(4, " \u57FA\u672C\u8CC7\u6599 ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(5, "div", 25)(6, "div", 26)(7, "div", 27)(8, "label", 28);
+    \u0275\u0275text(9, "\u59D3\u540D ");
+    \u0275\u0275elementStart(10, "span", 29);
+    \u0275\u0275text(11, "*");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275element(12, "input", 30);
+    \u0275\u0275conditionalCreate(13, UserForm_Conditional_19_Conditional_13_Template, 2, 0, "div", 31);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(14, "div", 27)(15, "label", 28);
+    \u0275\u0275text(16, "Email ");
+    \u0275\u0275elementStart(17, "span", 29);
+    \u0275\u0275text(18, "*");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275element(19, "input", 32);
+    \u0275\u0275conditionalCreate(20, UserForm_Conditional_19_Conditional_20_Template, 2, 0, "div", 31);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(21, "div", 27)(22, "label", 28);
+    \u0275\u0275text(23, "\u5BC6\u78BC");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(24, "input", 33);
+    \u0275\u0275conditionalCreate(25, UserForm_Conditional_19_Conditional_25_Template, 2, 0, "div", 31);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(26, "div", 27)(27, "label", 28);
+    \u0275\u0275text(28, "\u72C0\u614B");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(29, "select", 34)(30, "option", 35);
+    \u0275\u0275text(31, "\u5728\u8077");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(32, "option", 36);
+    \u0275\u0275text(33, "\u96E2\u8077");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(34, "div", 27)(35, "label", 28);
+    \u0275\u0275text(36, "\u89D2\u8272 ");
+    \u0275\u0275elementStart(37, "span", 29);
+    \u0275\u0275text(38, "*");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(39, "div", 37);
+    \u0275\u0275repeaterCreate(40, UserForm_Conditional_19_For_41_Template, 4, 4, "div", 38, _forTrack02);
+    \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(42, UserForm_Conditional_19_Conditional_42_Template, 2, 0, "div", 31);
+    \u0275\u0275elementEnd()()()();
+    \u0275\u0275elementStart(43, "div", 22)(44, "div", 23);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(45, "svg", 3);
+    \u0275\u0275element(46, "use", 39);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(47, " \u54E1\u5DE5\u8CC7\u8A0A ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(48, "div", 25)(49, "div", 26)(50, "div", 27)(51, "label", 28);
+    \u0275\u0275text(52, "\u90E8\u9580 ");
+    \u0275\u0275elementStart(53, "span", 29);
+    \u0275\u0275text(54, "*");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(55, "select", 40)(56, "option", 41);
+    \u0275\u0275text(57, "\u2014 \u8ACB\u9078\u64C7\u90E8\u9580 \u2014");
+    \u0275\u0275elementEnd();
+    \u0275\u0275repeaterCreate(58, UserForm_Conditional_19_For_59_Template, 2, 2, "option", 41, _forTrack02);
+    \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(60, UserForm_Conditional_19_Conditional_60_Template, 2, 0, "div", 31);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(61, "div", 27)(62, "label", 28);
+    \u0275\u0275text(63, "\u8077\u7A31");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(64, "select", 42)(65, "option", 41);
+    \u0275\u0275text(66, "\u2014 \u672A\u6307\u5B9A \u2014");
+    \u0275\u0275elementEnd();
+    \u0275\u0275repeaterCreate(67, UserForm_Conditional_19_For_68_Template, 2, 2, "option", 41, _forTrack02);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(69, "div", 27)(70, "label", 28);
+    \u0275\u0275text(71, "\u751F\u65E5 ");
+    \u0275\u0275elementStart(72, "span", 29);
+    \u0275\u0275text(73, "*");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275element(74, "input", 43);
+    \u0275\u0275conditionalCreate(75, UserForm_Conditional_19_Conditional_75_Template, 2, 0, "div", 31);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(76, "div", 27)(77, "label", 28);
+    \u0275\u0275text(78, "\u5165\u8077\u65E5");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(79, "input", 44);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(80, "div", 45)(81, "label", 28);
+    \u0275\u0275text(82, "\u5E95\u85AA");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(83, "div", 46)(84, "span", 47);
+    \u0275\u0275text(85, "NT$");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(86, "input", 48);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(87, "div", 45)(88, "label", 28);
+    \u0275\u0275text(89, "\u52DE\u4FDD\uFF08\u54E1\u5DE5\u8CA0\u64D4\uFF09");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(90, "div", 46)(91, "span", 47);
+    \u0275\u0275text(92, "NT$");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(93, "input", 49);
+    \u0275\u0275pipe(94, "number");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(95, "div", 50);
+    \u0275\u0275text(96, "\u7559\u7A7A\u5247\u4F7F\u7528\u7D1A\u8DDD\u8868\u9810\u8A2D\u503C");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(97, "div", 45)(98, "label", 28);
+    \u0275\u0275text(99, "\u5065\u4FDD\uFF08\u54E1\u5DE5\u8CA0\u64D4\uFF09");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(100, "div", 46)(101, "span", 47);
+    \u0275\u0275text(102, "NT$");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(103, "input", 51);
+    \u0275\u0275pipe(104, "number");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(105, "div", 50);
+    \u0275\u0275text(106, "\u7559\u7A7A\u5247\u4F7F\u7528\u7D1A\u8DDD\u8868\u9810\u8A2D\u503C");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(107, "div", 45)(108, "label", 28);
+    \u0275\u0275text(109, "\u4F19\u98DF\u8CBB");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(110, "div", 46)(111, "span", 47);
+    \u0275\u0275text(112, "NT$");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(113, "input", 52);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(114, "div", 45)(115, "label", 28);
+    \u0275\u0275text(116, "\u52A0\u73ED\u8CBB");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(117, "div", 46)(118, "span", 47);
+    \u0275\u0275text(119, "NT$");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(120, "input", 53);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(121, "div", 45)(122, "label", 28);
+    \u0275\u0275text(123, "\u5BC4\u9001\u85AA\u8CC7\u8868");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(124, "div", 54);
+    \u0275\u0275element(125, "input", 55);
+    \u0275\u0275elementStart(126, "label", 56);
+    \u0275\u0275text(127, "\u5BC4\u9001\u85AA\u8CC7\u660E\u7D30");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(128, "div", 45)(129, "label", 28);
+    \u0275\u0275text(130, "\u539F\u4F4F\u6C11\u8EAB\u4EFD");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(131, "div", 54);
+    \u0275\u0275element(132, "input", 57);
+    \u0275\u0275elementStart(133, "label", 58);
+    \u0275\u0275text(134, "\u662F\u539F\u4F4F\u6C11\uFF08\u53EF\u7533\u8ACB\u6B72\u6642\u796D\u5100\u5047\uFF09");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(135, "div", 45)(136, "label", 28);
+    \u0275\u0275text(137, "\u4F4E\u6536\u5165\u6236");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(138, "div", 54);
+    \u0275\u0275element(139, "input", 59);
+    \u0275\u0275elementStart(140, "label", 60);
+    \u0275\u0275text(141, "\u4F4E\u6536\u5165\u6236\u8EAB\u4EFD");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(142, "div", 45)(143, "label", 28);
+    \u0275\u0275text(144, "\u6B98\u969C\u8EAB\u4EFD");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(145, "div", 54);
+    \u0275\u0275element(146, "input", 61);
+    \u0275\u0275elementStart(147, "label", 62);
+    \u0275\u0275text(148, "\u5177\u6B98\u969C\u8CC7\u683C");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(149, "div", 45)(150, "label", 28);
+    \u0275\u0275text(151, "\u96E2\u8077\u65E5");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(152, "input", 63);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(153, "div", 45)(154, "label", 28);
+    \u0275\u0275text(155, "\u8077\u52D9\u4EE3\u7406\u4EBA");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(156, "select", 64)(157, "option", 65);
+    \u0275\u0275text(158, "\u2014 \u7121\u4EE3\u7406\u4EBA \u2014");
+    \u0275\u0275elementEnd();
+    \u0275\u0275repeaterCreate(159, UserForm_Conditional_19_For_160_Template, 2, 2, "option", 66, _forTrack02);
+    \u0275\u0275elementEnd()()()()();
+    \u0275\u0275elementStart(161, "div", 22)(162, "div", 23);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(163, "svg", 3);
+    \u0275\u0275element(164, "use", 67);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(165, " \u982D\u50CF ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(166, "div", 25)(167, "p", 68);
+    \u0275\u0275text(168, "\u652F\u63F4 PNG\u3001JPEG\u3001GIF\u3001WebP\u3001HEIC \u5716\u7247\u683C\u5F0F\u3002\u4E0A\u50B3\u5F8C\u53EF\u62D6\u66F3\u8ABF\u6574\u4F4D\u7F6E\u3001\u6ED1\u687F\u7E2E\u653E\uFF0C\u5716\u6A94\u6703\u81EA\u52D5\u58D3\u7E2E\u3002");
+    \u0275\u0275element(169, "br");
+    \u0275\u0275text(170, "\u4E0A\u50B3\u7167\u7247\u52FF\u8D85\u904E1MB\u3002");
+    \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(171, UserForm_Conditional_19_Conditional_171_Template, 21, 10)(172, UserForm_Conditional_19_Conditional_172_Template, 7, 0);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275conditionalCreate(173, UserForm_Conditional_19_Conditional_173_Template, 12, 1, "div", 22);
+    \u0275\u0275conditionalCreate(174, UserForm_Conditional_19_Conditional_174_Template, 10, 1, "div", 22);
+    \u0275\u0275conditionalCreate(175, UserForm_Conditional_19_Conditional_175_Template, 10, 1, "div", 22);
+    \u0275\u0275elementStart(176, "div", 22)(177, "div", 23);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(178, "svg", 3);
+    \u0275\u0275element(179, "use", 69);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(180, " \u7C3D\u540D\u6A94 ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(181, "div", 25)(182, "p", 68);
+    \u0275\u0275text(183, "\u652F\u63F4 PNG\u3001JPEG\u3001GIF\u3001WebP \u683C\u5F0F\uFF0C\u5EFA\u8B70\u5C3A\u5BF8 300\xD7150 \u50CF\u7D20\uFF0C\u6A94\u6848\u5927\u5C0F\u4E0D\u8D85\u904E 2MB\u3002");
+    \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(184, UserForm_Conditional_19_Conditional_184_Template, 9, 1)(185, UserForm_Conditional_19_Conditional_185_Template, 7, 0);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(186, "div", 70)(187, "button", 71);
+    \u0275\u0275text(188);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(189, "a", 72);
+    \u0275\u0275text(190, "\u53D6\u6D88");
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    let tmp_1_0;
+    let tmp_2_0;
+    let tmp_3_0;
+    let tmp_5_0;
+    let tmp_8_0;
+    let tmp_11_0;
+    const ctx_r1 = \u0275\u0275nextContext();
+    \u0275\u0275advance(13);
+    \u0275\u0275conditional(((tmp_1_0 = ctx_r1.form.get("name")) == null ? null : tmp_1_0.invalid) && ((tmp_1_0 = ctx_r1.form.get("name")) == null ? null : tmp_1_0.touched) ? 13 : -1);
+    \u0275\u0275advance(7);
+    \u0275\u0275conditional(((tmp_2_0 = ctx_r1.form.get("email")) == null ? null : tmp_2_0.invalid) && ((tmp_2_0 = ctx_r1.form.get("email")) == null ? null : tmp_2_0.touched) ? 20 : -1);
+    \u0275\u0275advance(5);
+    \u0275\u0275conditional(((tmp_3_0 = ctx_r1.form.get("password")) == null ? null : tmp_3_0.invalid) && ((tmp_3_0 = ctx_r1.form.get("password")) == null ? null : tmp_3_0.touched) ? 25 : -1);
+    \u0275\u0275advance(15);
+    \u0275\u0275repeater(ctx_r1.roles());
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(((tmp_5_0 = ctx_r1.form.get("roleId")) == null ? null : tmp_5_0.invalid) && ((tmp_5_0 = ctx_r1.form.get("roleId")) == null ? null : tmp_5_0.touched) ? 42 : -1);
+    \u0275\u0275advance(14);
+    \u0275\u0275property("ngValue", null);
+    \u0275\u0275advance(2);
+    \u0275\u0275repeater(ctx_r1.departments());
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(((tmp_8_0 = ctx_r1.form.get("departmentId")) == null ? null : tmp_8_0.invalid) && ((tmp_8_0 = ctx_r1.form.get("departmentId")) == null ? null : tmp_8_0.touched) ? 60 : -1);
+    \u0275\u0275advance(5);
+    \u0275\u0275property("ngValue", null);
+    \u0275\u0275advance(2);
+    \u0275\u0275repeater(ctx_r1.jobTitles());
+    \u0275\u0275advance(8);
+    \u0275\u0275conditional(((tmp_11_0 = ctx_r1.form.get("birthday")) == null ? null : tmp_11_0.invalid) && ((tmp_11_0 = ctx_r1.form.get("birthday")) == null ? null : tmp_11_0.touched) ? 75 : -1);
+    \u0275\u0275advance(18);
+    \u0275\u0275property("placeholder", ctx_r1.laborInsurance() !== null ? \u0275\u0275pipeBind2(94, 16, ctx_r1.laborInsurance(), "1.0-0") + "\uFF08\u7D1A\u8DDD\u9810\u8A2D\uFF09" : "\u2014");
+    \u0275\u0275advance(10);
+    \u0275\u0275property("placeholder", ctx_r1.healthInsurance() !== null ? \u0275\u0275pipeBind2(104, 19, ctx_r1.healthInsurance(), "1.0-0") + "\uFF08\u7D1A\u8DDD\u9810\u8A2D\uFF09" : "\u2014");
+    \u0275\u0275advance(56);
+    \u0275\u0275repeater(ctx_r1.getAvailableAgents());
+    \u0275\u0275advance(12);
+    \u0275\u0275conditional(ctx_r1.displayAvatar ? 171 : 172);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(ctx_r1.form.value.isIndigenous ? 173 : -1);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.form.value.isLowIncome ? 174 : -1);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.form.value.isDisabled ? 175 : -1);
+    \u0275\u0275advance(9);
+    \u0275\u0275conditional(ctx_r1.displaySignature ? 184 : 185);
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate(ctx_r1.isEdit ? "\u66F4\u65B0" : "\u5EFA\u7ACB");
+  }
+}
+function UserForm_Conditional_20_Conditional_18_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 105);
+    \u0275\u0275element(1, "span", 106);
+    \u0275\u0275text(2, " \u8F09\u5165\u4EBA\u4E8B\u8CC7\u6599\u4E2D\u2026 ");
+    \u0275\u0275elementEnd();
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_63_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 125);
+    \u0275\u0275element(1, "img", 168);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(3);
+    \u0275\u0275advance();
+    \u0275\u0275property("src", ctx_r1.idCardFrontPreview(), \u0275\u0275sanitizeUrl);
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_64_Conditional_5_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r22 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 96);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Conditional_64_Conditional_5_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r22);
+      const ctx_r1 = \u0275\u0275nextContext(4);
+      return \u0275\u0275resetView(ctx_r1.viewIdCardFront());
+    });
+    \u0275\u0275text(1, "\u6AA2\u8996");
+    \u0275\u0275elementEnd();
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_64_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r21 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 169);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 92);
+    \u0275\u0275element(2, "use", 90);
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(3, "span", 170);
+    \u0275\u0275text(4);
+    \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(5, UserForm_Conditional_20_Conditional_19_Conditional_64_Conditional_5_Template, 2, 0, "button", 94);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(6, "div", 85)(7, "label", 86);
+    \u0275\u0275text(8, " \u66F4\u63DB ");
+    \u0275\u0275elementStart(9, "input", 171);
+    \u0275\u0275listener("change", function UserForm_Conditional_20_Conditional_19_Conditional_64_Template_input_change_9_listener($event) {
+      \u0275\u0275restoreView(_r21);
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.onIdCardFrontSelected($event));
+    });
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(10, "button", 88);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Conditional_64_Template_button_click_10_listener() {
+      \u0275\u0275restoreView(_r21);
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.onRemoveIdCardFront());
+    });
+    \u0275\u0275text(11, "\u522A\u9664");
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(3);
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate(ctx_r1.idCardFrontDisplayName);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.hasExistingIdCardFront ? 5 : -1);
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_65_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r23 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "label", 86);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 17);
+    \u0275\u0275element(2, "use", 89);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3, " \u9078\u64C7\u6B63\u9762 ");
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(4, "input", 171);
+    \u0275\u0275listener("change", function UserForm_Conditional_20_Conditional_19_Conditional_65_Template_input_change_4_listener($event) {
+      \u0275\u0275restoreView(_r23);
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.onIdCardFrontSelected($event));
+    });
+    \u0275\u0275elementEnd()();
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_69_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 125);
+    \u0275\u0275element(1, "img", 172);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(3);
+    \u0275\u0275advance();
+    \u0275\u0275property("src", ctx_r1.idCardBackPreview(), \u0275\u0275sanitizeUrl);
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_70_Conditional_5_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r25 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 96);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Conditional_70_Conditional_5_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r25);
+      const ctx_r1 = \u0275\u0275nextContext(4);
+      return \u0275\u0275resetView(ctx_r1.viewIdCardBack());
+    });
+    \u0275\u0275text(1, "\u6AA2\u8996");
+    \u0275\u0275elementEnd();
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_70_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r24 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 169);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 92);
+    \u0275\u0275element(2, "use", 90);
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(3, "span", 170);
+    \u0275\u0275text(4);
+    \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(5, UserForm_Conditional_20_Conditional_19_Conditional_70_Conditional_5_Template, 2, 0, "button", 94);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(6, "div", 85)(7, "label", 86);
+    \u0275\u0275text(8, " \u66F4\u63DB ");
+    \u0275\u0275elementStart(9, "input", 171);
+    \u0275\u0275listener("change", function UserForm_Conditional_20_Conditional_19_Conditional_70_Template_input_change_9_listener($event) {
+      \u0275\u0275restoreView(_r24);
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.onIdCardBackSelected($event));
+    });
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(10, "button", 88);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Conditional_70_Template_button_click_10_listener() {
+      \u0275\u0275restoreView(_r24);
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.onRemoveIdCardBack());
+    });
+    \u0275\u0275text(11, "\u522A\u9664");
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(3);
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate(ctx_r1.idCardBackDisplayName);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.hasExistingIdCardBack ? 5 : -1);
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_71_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r26 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "label", 86);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 17);
+    \u0275\u0275element(2, "use", 89);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3, " \u9078\u64C7\u53CD\u9762 ");
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(4, "input", 171);
+    \u0275\u0275listener("change", function UserForm_Conditional_20_Conditional_19_Conditional_71_Template_input_change_4_listener($event) {
+      \u0275\u0275restoreView(_r26);
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.onIdCardBackSelected($event));
+    });
+    \u0275\u0275elementEnd()();
+  }
+}
+function UserForm_Conditional_20_Conditional_19_For_123_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r27 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 140)(1, "td");
+    \u0275\u0275element(2, "input", 173);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "td");
+    \u0275\u0275element(4, "input", 174);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(5, "td")(6, "select", 175)(7, "option", 176);
+    \u0275\u0275text(8, "\u7562\u696D");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(9, "option", 177);
+    \u0275\u0275text(10, "\u8084\u696D");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(11, "td");
+    \u0275\u0275element(12, "input", 178);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(13, "td");
+    \u0275\u0275element(14, "input", 179);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(15, "td")(16, "button", 180);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_123_Template_button_click_16_listener() {
+      const \u0275$index_944_r28 = \u0275\u0275restoreView(_r27).$index;
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.removeEducation(\u0275$index_944_r28));
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(17, "svg", 20);
+    \u0275\u0275element(18, "use", 181);
+    \u0275\u0275elementEnd()()()();
+  }
+  if (rf & 2) {
+    const \u0275$index_944_r28 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_944_r28);
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_124_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "tr")(1, "td", 182);
+    \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
+    \u0275\u0275elementEnd()();
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_125_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r29 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 84);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Conditional_125_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r29);
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.addEducation());
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 17);
+    \u0275\u0275element(2, "use", 145);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3, " \u65B0\u589E\u5B78\u6B77 ");
+    \u0275\u0275elementEnd();
+  }
+}
+function UserForm_Conditional_20_Conditional_19_For_147_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r30 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 140)(1, "td");
+    \u0275\u0275element(2, "input", 183);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "td");
+    \u0275\u0275element(4, "input", 184);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(5, "td");
+    \u0275\u0275element(6, "input", 185);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "td");
+    \u0275\u0275element(8, "input", 186);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(9, "td")(10, "button", 180);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_147_Template_button_click_10_listener() {
+      const \u0275$index_1030_r31 = \u0275\u0275restoreView(_r30).$index;
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.removeEmployment(\u0275$index_1030_r31));
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(11, "svg", 20);
+    \u0275\u0275element(12, "use", 181);
+    \u0275\u0275elementEnd()()()();
+  }
+  if (rf & 2) {
+    const \u0275$index_1030_r31 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1030_r31);
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_148_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "tr")(1, "td", 187);
+    \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
+    \u0275\u0275elementEnd()();
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_149_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r32 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 84);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Conditional_149_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r32);
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.addEmployment());
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 17);
+    \u0275\u0275element(2, "use", 145);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3, " \u65B0\u589E\u7D93\u6B77 ");
+    \u0275\u0275elementEnd();
+  }
+}
+function UserForm_Conditional_20_Conditional_19_For_171_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r33 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 140)(1, "td");
+    \u0275\u0275element(2, "input", 188);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "td");
+    \u0275\u0275element(4, "input", 189);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(5, "td");
+    \u0275\u0275element(6, "input", 190);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "td");
+    \u0275\u0275element(8, "input", 191);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(9, "td")(10, "button", 180);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_171_Template_button_click_10_listener() {
+      const \u0275$index_1106_r34 = \u0275\u0275restoreView(_r33).$index;
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.removeFamily(\u0275$index_1106_r34));
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(11, "svg", 20);
+    \u0275\u0275element(12, "use", 181);
+    \u0275\u0275elementEnd()()()();
+  }
+  if (rf & 2) {
+    const \u0275$index_1106_r34 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1106_r34);
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_172_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "tr")(1, "td", 187);
+    \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
+    \u0275\u0275elementEnd()();
+  }
+}
+function UserForm_Conditional_20_Conditional_19_For_200_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r35 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 140)(1, "td");
+    \u0275\u0275element(2, "input", 192);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "td");
+    \u0275\u0275element(4, "input", 193);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(5, "td");
+    \u0275\u0275element(6, "input", 185);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "td");
+    \u0275\u0275element(8, "input", 186);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(9, "td");
+    \u0275\u0275element(10, "input", 194);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(11, "td")(12, "button", 180);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_200_Template_button_click_12_listener() {
+      const \u0275$index_1184_r36 = \u0275\u0275restoreView(_r35).$index;
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.removeTraining(\u0275$index_1184_r36));
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(13, "svg", 20);
+    \u0275\u0275element(14, "use", 181);
+    \u0275\u0275elementEnd()()()();
+  }
+  if (rf & 2) {
+    const \u0275$index_1184_r36 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1184_r36);
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_201_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "tr")(1, "td", 182);
+    \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
+    \u0275\u0275elementEnd()();
+  }
+}
+function UserForm_Conditional_20_Conditional_19_For_229_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r37 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 140)(1, "td");
+    \u0275\u0275element(2, "input", 195);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "td")(4, "select", 196)(5, "option", 197);
+    \u0275\u0275text(6, "\u4F73");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "option", 198);
+    \u0275\u0275text(8, "\u53EF");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(9, "td")(10, "select", 199)(11, "option", 197);
+    \u0275\u0275text(12, "\u4F73");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(13, "option", 198);
+    \u0275\u0275text(14, "\u53EF");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(15, "td")(16, "select", 200)(17, "option", 197);
+    \u0275\u0275text(18, "\u4F73");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(19, "option", 198);
+    \u0275\u0275text(20, "\u53EF");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(21, "td")(22, "select", 201)(23, "option", 197);
+    \u0275\u0275text(24, "\u4F73");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(25, "option", 198);
+    \u0275\u0275text(26, "\u53EF");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(27, "td")(28, "button", 180);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_229_Template_button_click_28_listener() {
+      const \u0275$index_1266_r38 = \u0275\u0275restoreView(_r37).$index;
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.removeLanguage(\u0275$index_1266_r38));
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(29, "svg", 20);
+    \u0275\u0275element(30, "use", 181);
+    \u0275\u0275elementEnd()()()();
+  }
+  if (rf & 2) {
+    const \u0275$index_1266_r38 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1266_r38);
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_230_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "tr")(1, "td", 182);
+    \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
+    \u0275\u0275elementEnd()();
+  }
+}
+function UserForm_Conditional_20_Conditional_19_For_295_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r39 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 140)(1, "td");
+    \u0275\u0275element(2, "input", 202);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "td");
+    \u0275\u0275element(4, "input", 203);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(5, "td");
+    \u0275\u0275element(6, "input", 204);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "td");
+    \u0275\u0275element(8, "input", 205);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(9, "td");
+    \u0275\u0275element(10, "input", 206);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(11, "td")(12, "button", 180);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_295_Template_button_click_12_listener() {
+      const \u0275$index_1437_r40 = \u0275\u0275restoreView(_r39).$index;
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.removeJobTransfer(\u0275$index_1437_r40));
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(13, "svg", 20);
+    \u0275\u0275element(14, "use", 181);
+    \u0275\u0275elementEnd()()()();
+  }
+  if (rf & 2) {
+    const \u0275$index_1437_r40 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1437_r40);
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_296_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "tr")(1, "td", 182);
+    \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
+    \u0275\u0275elementEnd()();
+  }
+}
+function UserForm_Conditional_20_Conditional_19_For_320_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r41 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 140)(1, "td");
+    \u0275\u0275element(2, "input", 202);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "td")(4, "select", 207)(5, "option", 208);
+    \u0275\u0275text(6, "\u734E\u52F5");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "option", 209);
+    \u0275\u0275text(8, "\u61F2\u8655");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(9, "td");
+    \u0275\u0275element(10, "input", 210);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(11, "td");
+    \u0275\u0275element(12, "input", 211);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(13, "td");
+    \u0275\u0275element(14, "input", 212);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(15, "td")(16, "button", 180);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_320_Template_button_click_16_listener() {
+      const \u0275$index_1511_r42 = \u0275\u0275restoreView(_r41).$index;
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.removeReward(\u0275$index_1511_r42));
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(17, "svg", 20);
+    \u0275\u0275element(18, "use", 181);
+    \u0275\u0275elementEnd()()()();
+  }
+  if (rf & 2) {
+    const \u0275$index_1511_r42 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1511_r42);
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_321_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "tr")(1, "td", 182);
+    \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
+    \u0275\u0275elementEnd()();
+  }
+}
+function UserForm_Conditional_20_Conditional_19_For_357_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r43 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 140)(1, "td");
+    \u0275\u0275element(2, "input", 202);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "td");
+    \u0275\u0275element(4, "input", 213);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(5, "td");
+    \u0275\u0275element(6, "input", 214);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "td");
+    \u0275\u0275element(8, "input", 215);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(9, "td");
+    \u0275\u0275element(10, "input", 216);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(11, "td");
+    \u0275\u0275element(12, "input", 217);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(13, "td");
+    \u0275\u0275element(14, "input", 218);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(15, "td");
+    \u0275\u0275element(16, "input", 219);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(17, "td", 220);
+    \u0275\u0275text(18);
+    \u0275\u0275pipe(19, "number");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(20, "td");
+    \u0275\u0275element(21, "input", 221);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(22, "td")(23, "button", 180);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_357_Template_button_click_23_listener() {
+      const \u0275$index_1609_r44 = \u0275\u0275restoreView(_r43).$index;
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.removeSalary(\u0275$index_1609_r44));
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(24, "svg", 20);
+    \u0275\u0275element(25, "use", 181);
+    \u0275\u0275elementEnd()()()();
+  }
+  if (rf & 2) {
+    const ctrl_r45 = ctx.$implicit;
+    const \u0275$index_1609_r44 = ctx.$index;
+    const ctx_r1 = \u0275\u0275nextContext(3);
+    \u0275\u0275property("formGroupName", \u0275$index_1609_r44);
+    \u0275\u0275advance(18);
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(19, 2, ctx_r1.salaryRowTotal(ctrl_r45), "1.0-0"));
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_358_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "tr")(1, "td", 222);
+    \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
+    \u0275\u0275elementEnd()();
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r20 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 22)(1, "div", 23);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(2, "svg", 107);
+    \u0275\u0275element(3, "use", 24);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(4, " \u57FA\u672C\u8CC7\u6599\u88DC\u5145 ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(5, "div", 25)(6, "div", 26)(7, "div", 45)(8, "label", 28);
+    \u0275\u0275text(9, "\u54E1\u5DE5\u4EE3\u865F");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(10, "input", 108);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(11, "div", 45)(12, "label", 28);
+    \u0275\u0275text(13, "\u82F1\u6587\u540D");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(14, "input", 109);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(15, "div", 45)(16, "label", 28);
+    \u0275\u0275text(17, "\u8EAB\u5206\u8B49\u865F");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(18, "input", 110);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(19, "div", 45)(20, "label", 28);
+    \u0275\u0275text(21, "\u6027\u5225");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(22, "select", 111)(23, "option", 65);
+    \u0275\u0275text(24, "\u2014 \u8ACB\u9078\u64C7 \u2014");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(25, "option", 112);
+    \u0275\u0275text(26, "\u7537");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(27, "option", 113);
+    \u0275\u0275text(28, "\u5973");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(29, "div", 45)(30, "label", 28);
+    \u0275\u0275text(31, "\u5A5A\u59FB\u72C0\u6CC1");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(32, "select", 114)(33, "option", 65);
+    \u0275\u0275text(34, "\u2014 \u8ACB\u9078\u64C7 \u2014");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(35, "option", 115);
+    \u0275\u0275text(36, "\u672A\u5A5A");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(37, "option", 116);
+    \u0275\u0275text(38, "\u5DF2\u5A5A");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(39, "option", 117);
+    \u0275\u0275text(40, "\u96E2\u5A5A");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(41, "option", 118);
+    \u0275\u0275text(42, "\u55AA\u5076");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(43, "div", 45)(44, "label", 28);
+    \u0275\u0275text(45, "\u51FA\u751F\u5730");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(46, "input", 119);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(47, "div", 45)(48, "label", 28);
+    \u0275\u0275text(49, "\u884C\u52D5\u96FB\u8A71");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(50, "input", 120);
+    \u0275\u0275elementEnd()()()();
+    \u0275\u0275elementStart(51, "div", 22)(52, "div", 23);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(53, "svg", 107);
+    \u0275\u0275element(54, "use", 121);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(55, " \u8EAB\u5206\u8B49\u5F71\u672C ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(56, "div", 25)(57, "p", 122);
+    \u0275\u0275text(58, "\u652F\u63F4 PNG\u3001JPEG \u5716\u7247\u6216 PDF\u3002\u6B64\u6587\u4EF6\u53D7\u6B0A\u9650\u4FDD\u8B77\uFF0C\u50C5\u4EBA\u4E8B\u90E8\u9580\u53EF\u67E5\u95B1\u3002\u4E0A\u50B3\u5F8C\u52FF\u8D85\u904E 1MB\u3002");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(59, "div", 123)(60, "div", 27)(61, "div", 124);
+    \u0275\u0275text(62, "\u6B63\u9762");
+    \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(63, UserForm_Conditional_20_Conditional_19_Conditional_63_Template, 2, 1, "div", 125);
+    \u0275\u0275conditionalCreate(64, UserForm_Conditional_20_Conditional_19_Conditional_64_Template, 12, 2)(65, UserForm_Conditional_20_Conditional_19_Conditional_65_Template, 5, 0, "label", 86);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(66, "div", 27)(67, "div", 124);
+    \u0275\u0275text(68, "\u53CD\u9762");
+    \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(69, UserForm_Conditional_20_Conditional_19_Conditional_69_Template, 2, 1, "div", 125);
+    \u0275\u0275conditionalCreate(70, UserForm_Conditional_20_Conditional_19_Conditional_70_Template, 12, 2)(71, UserForm_Conditional_20_Conditional_19_Conditional_71_Template, 5, 0, "label", 86);
+    \u0275\u0275elementEnd()()()();
+    \u0275\u0275elementStart(72, "div", 22)(73, "div", 23);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(74, "svg", 107);
+    \u0275\u0275element(75, "use", 126);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(76, " \u6236\u7C4D & \u901A\u8A0A\u8CC7\u8A0A ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(77, "div", 25)(78, "div", 26)(79, "div", 127)(80, "label", 28);
+    \u0275\u0275text(81, "\u6236\u7C4D\u5730\u5740");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(82, "input", 128);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(83, "div", 45)(84, "label", 28);
+    \u0275\u0275text(85, "\u6236\u7C4D\u96FB\u8A71");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(86, "input", 129);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(87, "div", 130)(88, "div", 38)(89, "input", 131);
+    \u0275\u0275twoWayListener("ngModelChange", function UserForm_Conditional_20_Conditional_19_Template_input_ngModelChange_89_listener($event) {
+      \u0275\u0275restoreView(_r20);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      \u0275\u0275twoWayBindingSet(ctx_r1.mailingAddressSameAsResidential, $event) || (ctx_r1.mailingAddressSameAsResidential = $event);
+      return \u0275\u0275resetView($event);
+    });
+    \u0275\u0275listener("change", function UserForm_Conditional_20_Conditional_19_Template_input_change_89_listener() {
+      \u0275\u0275restoreView(_r20);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.copyResidentialToMailing());
+    });
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(90, "label", 132);
+    \u0275\u0275text(91, "\u901A\u8A0A\u5730\u5740\u540C\u6236\u7C4D");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(92, "div", 127)(93, "label", 28);
+    \u0275\u0275text(94, "\u901A\u8A0A\u5730\u5740");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(95, "input", 133);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(96, "div", 45)(97, "label", 28);
+    \u0275\u0275text(98, "\u901A\u8A0A\u96FB\u8A71");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(99, "input", 134);
+    \u0275\u0275elementEnd()()()();
+    \u0275\u0275elementStart(100, "div", 22)(101, "div", 23);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(102, "svg", 107);
+    \u0275\u0275element(103, "use", 135);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(104, " \u5B78\u6B77\u7D00\u9304 ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(105, "div", 25)(106, "div", 136)(107, "table", 137)(108, "thead", 138)(109, "tr")(110, "th");
+    \u0275\u0275text(111, "\u5B78\u6821");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(112, "th");
+    \u0275\u0275text(113, "\u79D1\u7CFB");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(114, "th");
+    \u0275\u0275text(115, "\u5B78\u6B77");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(116, "th");
+    \u0275\u0275text(117, "\u8D77\u59CB\u5E74\u6708");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(118, "th");
+    \u0275\u0275text(119, "\u7D50\u675F\u5E74\u6708");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(120, "th");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(121, "tbody", 139);
+    \u0275\u0275repeaterCreate(122, UserForm_Conditional_20_Conditional_19_For_123_Template, 19, 1, "tr", 140, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275conditionalCreate(124, UserForm_Conditional_20_Conditional_19_Conditional_124_Template, 3, 0, "tr");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275conditionalCreate(125, UserForm_Conditional_20_Conditional_19_Conditional_125_Template, 4, 0, "button", 141);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(126, "div", 22)(127, "div", 23);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(128, "svg", 107);
+    \u0275\u0275element(129, "use", 39);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(130, " \u7D93\u6B77\u7D00\u9304 ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(131, "div", 25)(132, "div", 136)(133, "table", 137)(134, "thead", 138)(135, "tr")(136, "th");
+    \u0275\u0275text(137, "\u670D\u52D9\u6A5F\u95DC");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(138, "th");
+    \u0275\u0275text(139, "\u8077\u7A31");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(140, "th");
+    \u0275\u0275text(141, "\u8D77\u59CB\u65E5");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(142, "th");
+    \u0275\u0275text(143, "\u7D50\u675F\u65E5");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(144, "th");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(145, "tbody", 142);
+    \u0275\u0275repeaterCreate(146, UserForm_Conditional_20_Conditional_19_For_147_Template, 13, 1, "tr", 140, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275conditionalCreate(148, UserForm_Conditional_20_Conditional_19_Conditional_148_Template, 3, 0, "tr");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275conditionalCreate(149, UserForm_Conditional_20_Conditional_19_Conditional_149_Template, 4, 0, "button", 141);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(150, "div", 22)(151, "div", 23);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(152, "svg", 107);
+    \u0275\u0275element(153, "use", 143);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(154, " \u5BB6\u5EAD\u72C0\u6CC1 ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(155, "div", 25)(156, "div", 136)(157, "table", 137)(158, "thead", 138)(159, "tr")(160, "th");
+    \u0275\u0275text(161, "\u59D3\u540D");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(162, "th");
+    \u0275\u0275text(163, "\u95DC\u4FC2");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(164, "th");
+    \u0275\u0275text(165, "\u5E74\u9F61");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(166, "th");
+    \u0275\u0275text(167, "\u8077\u696D");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(168, "th");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(169, "tbody", 144);
+    \u0275\u0275repeaterCreate(170, UserForm_Conditional_20_Conditional_19_For_171_Template, 13, 1, "tr", 140, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275conditionalCreate(172, UserForm_Conditional_20_Conditional_19_Conditional_172_Template, 3, 0, "tr");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(173, "button", 84);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_173_listener() {
+      \u0275\u0275restoreView(_r20);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.addFamily());
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(174, "svg", 17);
+    \u0275\u0275element(175, "use", 145);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(176, " \u65B0\u589E\u5BB6\u5EAD\u6210\u54E1 ");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(177, "div", 22)(178, "div", 23);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(179, "svg", 107);
+    \u0275\u0275element(180, "use", 146);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(181, " \u5C08\u696D\u8A13\u7DF4 ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(182, "div", 25)(183, "div", 136)(184, "table", 137)(185, "thead", 138)(186, "tr")(187, "th");
+    \u0275\u0275text(188, "\u8A13\u7DF4\u540D\u7A31");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(189, "th");
+    \u0275\u0275text(190, "\u8A13\u7DF4\u6A5F\u69CB");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(191, "th");
+    \u0275\u0275text(192, "\u8D77\u59CB\u65E5");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(193, "th");
+    \u0275\u0275text(194, "\u7D50\u675F\u65E5");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(195, "th");
+    \u0275\u0275text(196, "\u6642\u6578");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(197, "th");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(198, "tbody", 147);
+    \u0275\u0275repeaterCreate(199, UserForm_Conditional_20_Conditional_19_For_200_Template, 15, 1, "tr", 140, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275conditionalCreate(201, UserForm_Conditional_20_Conditional_19_Conditional_201_Template, 3, 0, "tr");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(202, "button", 84);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_202_listener() {
+      \u0275\u0275restoreView(_r20);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.addTraining());
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(203, "svg", 17);
+    \u0275\u0275element(204, "use", 145);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(205, " \u65B0\u589E\u8A13\u7DF4 ");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(206, "div", 22)(207, "div", 23);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(208, "svg", 107);
+    \u0275\u0275element(209, "use", 148);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(210, " \u8A9E\u8A00\u80FD\u529B ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(211, "div", 25)(212, "div", 136)(213, "table", 137)(214, "thead", 138)(215, "tr")(216, "th");
+    \u0275\u0275text(217, "\u8A9E\u8A00");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(218, "th");
+    \u0275\u0275text(219, "\u807D");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(220, "th");
+    \u0275\u0275text(221, "\u8AAA");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(222, "th");
+    \u0275\u0275text(223, "\u8B80");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(224, "th");
+    \u0275\u0275text(225, "\u5BEB");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(226, "th");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(227, "tbody", 149);
+    \u0275\u0275repeaterCreate(228, UserForm_Conditional_20_Conditional_19_For_229_Template, 31, 1, "tr", 140, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275conditionalCreate(230, UserForm_Conditional_20_Conditional_19_Conditional_230_Template, 3, 0, "tr");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(231, "button", 84);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_231_listener() {
+      \u0275\u0275restoreView(_r20);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.addLanguage());
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(232, "svg", 17);
+    \u0275\u0275element(233, "use", 145);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(234, " \u65B0\u589E\u8A9E\u8A00 ");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(235, "div", 22)(236, "div", 23);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(237, "svg", 107);
+    \u0275\u0275element(238, "use", 150);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(239, " \u7DCA\u6025\u806F\u7D61 / \u8CA1\u52D9 / \u5176\u4ED6 ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(240, "div", 25)(241, "div", 26)(242, "div", 27)(243, "label", 28);
+    \u0275\u0275text(244, "\u7DCA\u6025\u806F\u7D61\u4EBA");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(245, "input", 151);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(246, "div", 27)(247, "label", 28);
+    \u0275\u0275text(248, "\u7DCA\u6025\u806F\u7D61\u96FB\u8A71");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(249, "input", 152);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(250, "div", 153)(251, "label", 28);
+    \u0275\u0275text(252, "\u9280\u884C\u5C40\u865F");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(253, "input", 154);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(254, "div", 155)(255, "label", 28);
+    \u0275\u0275text(256, "\u9280\u884C\u5E33\u865F");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(257, "input", 156);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(258, "div", 45)(259, "label", 28);
+    \u0275\u0275text(260, "\u6295\u4FDD\u8D77\u65E5");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(261, "input", 157);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(262, "div", 153)(263, "label", 28);
+    \u0275\u0275text(264, "\u6276\u990A\u4EBA\u6578");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(265, "input", 158);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(266, "div", 130)(267, "label", 28);
+    \u0275\u0275text(268, "\u5C08\u9577\u8208\u8DA3");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(269, "textarea", 159);
+    \u0275\u0275elementEnd()()()();
+    \u0275\u0275elementStart(270, "div", 22)(271, "div", 23);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(272, "svg", 107);
+    \u0275\u0275element(273, "use", 160);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(274, " \u6B77\u53F2\u7D00\u9304\u8207\u96E2\u8077\u8CC7\u8A0A ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(275, "div", 25)(276, "div", 161);
+    \u0275\u0275text(277, "\u8077\u52D9\u8ABF\u6574\u6B77\u53F2");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(278, "div", 136)(279, "table", 137)(280, "thead", 138)(281, "tr")(282, "th");
+    \u0275\u0275text(283, "\u751F\u6548\u65E5");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(284, "th");
+    \u0275\u0275text(285, "\u539F\u90E8\u9580");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(286, "th");
+    \u0275\u0275text(287, "\u65B0\u90E8\u9580");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(288, "th");
+    \u0275\u0275text(289, "\u539F\u8077\u7A31");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(290, "th");
+    \u0275\u0275text(291, "\u65B0\u8077\u7A31");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(292, "th");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(293, "tbody", 162);
+    \u0275\u0275repeaterCreate(294, UserForm_Conditional_20_Conditional_19_For_295_Template, 15, 1, "tr", 140, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275conditionalCreate(296, UserForm_Conditional_20_Conditional_19_Conditional_296_Template, 3, 0, "tr");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(297, "button", 163);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_297_listener() {
+      \u0275\u0275restoreView(_r20);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.addJobTransfer());
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(298, "svg", 17);
+    \u0275\u0275element(299, "use", 145);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(300, " \u65B0\u589E\u8077\u52D9\u8ABF\u6574 ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(301, "div", 161);
+    \u0275\u0275text(302, "\u734E\u61F2\u6B77\u53F2");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(303, "div", 136)(304, "table", 137)(305, "thead", 138)(306, "tr")(307, "th");
+    \u0275\u0275text(308, "\u751F\u6548\u65E5");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(309, "th");
+    \u0275\u0275text(310, "\u985E\u578B");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(311, "th");
+    \u0275\u0275text(312, "\u985E\u5225");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(313, "th");
+    \u0275\u0275text(314, "\u6B21\u6578");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(315, "th");
+    \u0275\u0275text(316, "\u4E8B\u7531");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(317, "th");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(318, "tbody", 164);
+    \u0275\u0275repeaterCreate(319, UserForm_Conditional_20_Conditional_19_For_320_Template, 19, 1, "tr", 140, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275conditionalCreate(321, UserForm_Conditional_20_Conditional_19_Conditional_321_Template, 3, 0, "tr");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(322, "button", 163);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_322_listener() {
+      \u0275\u0275restoreView(_r20);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.addReward());
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(323, "svg", 17);
+    \u0275\u0275element(324, "use", 145);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(325, " \u65B0\u589E\u734E\u61F2 ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(326, "div", 161);
+    \u0275\u0275text(327, "\u85AA\u8CC7\u8ABF\u6574\u6B77\u53F2");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(328, "div", 165);
+    \u0275\u0275text(329, " \u65B0\u589E / \u7DE8\u8F2F\u7D00\u9304\u4E26\u5132\u5B58\u5F8C\uFF0C\u6700\u65B0\u751F\u6548\u7D00\u9304\uFF08\u2264 \u4ECA\u65E5\uFF09\u7684\u5E95\u85AA\u6703\u81EA\u52D5\u540C\u6B65\u81F3\u54E1\u5DE5\u5E95\u85AA\u6B04\u4F4D\u3002 ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(330, "div", 136)(331, "table", 137)(332, "thead", 138)(333, "tr")(334, "th");
+    \u0275\u0275text(335, "\u751F\u6548\u65E5");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(336, "th");
+    \u0275\u0275text(337, "\u5E95\u85AA");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(338, "th");
+    \u0275\u0275text(339, "\u8077\u52D9\u6D25\u8CBC");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(340, "th");
+    \u0275\u0275text(341, "\u8077\u8CAC\u6D25\u8CBC");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(342, "th");
+    \u0275\u0275text(343, "\u5176\u4ED6");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(344, "th");
+    \u0275\u0275text(345, "\u5DEE\u984D");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(346, "th");
+    \u0275\u0275text(347, "\u6D77\u5916\u6D25\u8CBC");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(348, "th");
+    \u0275\u0275text(349, "\u4F19\u98DF");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(350, "th");
+    \u0275\u0275text(351, "\u5408\u8A08");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(352, "th");
+    \u0275\u0275text(353, "\u5099\u8A3B");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(354, "th");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(355, "tbody", 166);
+    \u0275\u0275repeaterCreate(356, UserForm_Conditional_20_Conditional_19_For_357_Template, 26, 5, "tr", 140, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275conditionalCreate(358, UserForm_Conditional_20_Conditional_19_Conditional_358_Template, 3, 0, "tr");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(359, "button", 163);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_359_listener() {
+      \u0275\u0275restoreView(_r20);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.addSalary());
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(360, "svg", 17);
+    \u0275\u0275element(361, "use", 145);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(362, " \u65B0\u589E\u85AA\u8CC7\u7D00\u9304 ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(363, "div", 161);
+    \u0275\u0275text(364, "\u96E2\u8077\u8CC7\u8A0A");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(365, "div", 26)(366, "div", 130)(367, "label", 28);
+    \u0275\u0275text(368, "\u96E2\u8077\u539F\u56E0");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(369, "textarea", 167);
+    \u0275\u0275elementEnd()()()();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(2);
+    \u0275\u0275advance(63);
+    \u0275\u0275conditional(ctx_r1.idCardFrontPreview() ? 63 : -1);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.idCardFrontDisplayName ? 64 : 65);
+    \u0275\u0275advance(5);
+    \u0275\u0275conditional(ctx_r1.idCardBackPreview() ? 69 : -1);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.idCardBackDisplayName ? 70 : 71);
+    \u0275\u0275advance(19);
+    \u0275\u0275twoWayProperty("ngModel", ctx_r1.mailingAddressSameAsResidential);
+    \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(16, _c02));
+    \u0275\u0275advance(33);
+    \u0275\u0275repeater(ctx_r1.educationControls);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(ctx_r1.educationControls.length === 0 ? 124 : -1);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.educationControls.length < 3 ? 125 : -1);
+    \u0275\u0275advance(21);
+    \u0275\u0275repeater(ctx_r1.employmentControls);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(ctx_r1.employmentControls.length === 0 ? 148 : -1);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.employmentControls.length < 3 ? 149 : -1);
+    \u0275\u0275advance(21);
+    \u0275\u0275repeater(ctx_r1.familyControls);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(ctx_r1.familyControls.length === 0 ? 172 : -1);
+    \u0275\u0275advance(27);
+    \u0275\u0275repeater(ctx_r1.trainingControls);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(ctx_r1.trainingControls.length === 0 ? 201 : -1);
+    \u0275\u0275advance(27);
+    \u0275\u0275repeater(ctx_r1.languageControls);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(ctx_r1.languageControls.length === 0 ? 230 : -1);
+    \u0275\u0275advance(64);
+    \u0275\u0275repeater(ctx_r1.jobTransferControls);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(ctx_r1.jobTransferControls.length === 0 ? 296 : -1);
+    \u0275\u0275advance(23);
+    \u0275\u0275repeater(ctx_r1.rewardControls);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(ctx_r1.rewardControls.length === 0 ? 321 : -1);
+    \u0275\u0275advance(35);
+    \u0275\u0275repeater(ctx_r1.salaryControls);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(ctx_r1.salaryControls.length === 0 ? 358 : -1);
+  }
+}
+function UserForm_Conditional_20_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 13)(1, "div", 101)(2, "div", 102)(3, "span")(4, "span", 103);
+    \u0275\u0275text(5, "\u54E1\u5DE5\u4EE3\u865F\uFF1A");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(6, "span", 104);
+    \u0275\u0275text(7);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(8, "span")(9, "span", 103);
+    \u0275\u0275text(10, "\u59D3\u540D\uFF1A");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(11, "span", 104);
+    \u0275\u0275text(12);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(13, "span")(14, "span", 103);
+    \u0275\u0275text(15, "\u5230\u8077\u65E5\uFF1A");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(16, "span", 104);
+    \u0275\u0275text(17);
+    \u0275\u0275elementEnd()()()();
+    \u0275\u0275conditionalCreate(18, UserForm_Conditional_20_Conditional_18_Template, 3, 0, "div", 105)(19, UserForm_Conditional_20_Conditional_19_Template, 370, 17);
+    \u0275\u0275elementStart(20, "div", 70)(21, "button", 71);
+    \u0275\u0275text(22, "\u5132\u5B58\u6240\u6709\u8CC7\u6599");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(23, "a", 72);
+    \u0275\u0275text(24, "\u53D6\u6D88");
+    \u0275\u0275elementEnd()()();
+  }
+  if (rf & 2) {
+    let tmp_1_0;
+    let tmp_2_0;
+    let tmp_3_0;
+    const ctx_r1 = \u0275\u0275nextContext();
+    \u0275\u0275advance(7);
+    \u0275\u0275textInterpolate(((tmp_1_0 = ctx_r1.form.get("hrProfile.employeeNumber")) == null ? null : tmp_1_0.value) || "\u2014");
+    \u0275\u0275advance(5);
+    \u0275\u0275textInterpolate(((tmp_2_0 = ctx_r1.form.get("name")) == null ? null : tmp_2_0.value) || "\u2014");
+    \u0275\u0275advance(5);
+    \u0275\u0275textInterpolate(((tmp_3_0 = ctx_r1.form.get("hireDate")) == null ? null : tmp_3_0.value) || "\u2014");
+    \u0275\u0275advance();
+    \u0275\u0275conditional(!ctx_r1.hrLoaded() ? 18 : 19);
+  }
+}
+function UserForm_Conditional_21_Conditional_21_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 231);
+    \u0275\u0275text(1, "\uFF08\u8D85\u904E 3 \u53E3\uFF0C\u85AA\u8CC7\u8A08\u7B97\u4E0A\u9650 3 \u53E3\uFF09");
+    \u0275\u0275elementEnd();
+  }
+}
+function UserForm_Conditional_21_Conditional_22_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span")(1, "span", 103);
+    \u0275\u0275text(2, "\u6BCF\u6708\u5065\u4FDD\u8CBB\u8A66\u7B97\uFF1A");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "span", 233);
+    \u0275\u0275text(4);
+    \u0275\u0275pipe(5, "number");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(6, "span", 234);
+    \u0275\u0275text(7);
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(2);
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate1("NT$ ", \u0275\u0275pipeBind2(5, 2, ctx_r1.estimatedHealthInsurance, "1.0-0"));
+    \u0275\u0275advance(3);
+    \u0275\u0275textInterpolate1("\uFF08\u542B\u7737\u5C6C ", ctx_r1.dependentsArray.length > 3 ? 3 : ctx_r1.dependentsArray.length, " \u53E3\uFF09");
+  }
+}
+function UserForm_Conditional_21_For_38_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r47 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 140)(1, "td");
+    \u0275\u0275element(2, "input", 188);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "td")(4, "select", 235)(5, "option", 236);
+    \u0275\u0275text(6, "\u914D\u5076");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "option", 237);
+    \u0275\u0275text(8, "\u7236");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(9, "option", 238);
+    \u0275\u0275text(10, "\u6BCD");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(11, "option", 239);
+    \u0275\u0275text(12, "\u5B50");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(13, "option", 240);
+    \u0275\u0275text(14, "\u5973");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(15, "option", 241);
+    \u0275\u0275text(16, "\u516C\uFF08\u516C\u516C\uFF09");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(17, "option", 242);
+    \u0275\u0275text(18, "\u5A46\uFF08\u5A46\u5A46\uFF09");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(19, "option", 243);
+    \u0275\u0275text(20, "\u7FC1\uFF08\u5CB3\u7236\uFF09");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(21, "option", 244);
+    \u0275\u0275text(22, "\u59D1\uFF08\u5CB3\u6BCD\uFF09");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(23, "option", 245);
+    \u0275\u0275text(24, "\u5176\u4ED6");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(25, "td");
+    \u0275\u0275element(26, "input", 246);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(27, "td");
+    \u0275\u0275element(28, "input", 247);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(29, "td")(30, "button", 180);
+    \u0275\u0275listener("click", function UserForm_Conditional_21_For_38_Template_button_click_30_listener() {
+      const \u0275$index_1772_r48 = \u0275\u0275restoreView(_r47).$index;
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.removeDependent(\u0275$index_1772_r48));
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(31, "svg", 20);
+    \u0275\u0275element(32, "use", 181);
+    \u0275\u0275elementEnd()()()();
+  }
+  if (rf & 2) {
+    const \u0275$index_1772_r48 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1772_r48);
+  }
+}
+function UserForm_Conditional_21_Conditional_39_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "tr")(1, "td", 187);
+    \u0275\u0275text(2, "\u5C1A\u7121\u7737\u5C6C");
+    \u0275\u0275elementEnd()();
+  }
+}
+function UserForm_Conditional_21_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r46 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 223)(1, "div", 224);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(2, "svg", 225);
+    \u0275\u0275element(3, "use", 226);
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(4, "div", 227)(5, "span", 228);
+    \u0275\u0275text(6, "\u5065\u4FDD\u7737\u5C6C\u6700\u591A\u8A08 3 \u53E3\uFF0C\u8D85\u904E 3 \u53E3\u4ECD\u6309 3 \u53E3\u8A08\u7B97\u85AA\u8CC7\u3002");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(7, "br");
+    \u0275\u0275text(8, " \u53F0\u7063\u5168\u6C11\u5065\u4FDD\u898F\u5B9A\uFF1A\u6BCF\u589E\u52A0 1 \u53E3\u7737\u5C6C\uFF0C\u5065\u4FDD\u8CBB = \u54E1\u5DE5\u5065\u4FDD\u8CBB \xD7 (1 + \u7737\u5C6C\u6578\uFF0C\u4E0A\u9650 3)\u3002 ");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(9, "div", 22)(10, "div", 23);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(11, "svg", 107);
+    \u0275\u0275element(12, "use", 229);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(13, " \u5065\u4FDD\u7737\u5C6C\u6E05\u55AE ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(14, "div", 25)(15, "div", 230)(16, "span")(17, "span", 103);
+    \u0275\u0275text(18, "\u7737\u5C6C\u4EBA\u6578\uFF1A");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(19, "span", 228);
+    \u0275\u0275text(20);
+    \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(21, UserForm_Conditional_21_Conditional_21_Template, 2, 0, "span", 231);
+    \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(22, UserForm_Conditional_21_Conditional_22_Template, 8, 5, "span");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(23, "div", 136)(24, "table", 137)(25, "thead", 138)(26, "tr")(27, "th");
+    \u0275\u0275text(28, "\u59D3\u540D");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(29, "th");
+    \u0275\u0275text(30, "\u95DC\u4FC2");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(31, "th");
+    \u0275\u0275text(32, "\u8EAB\u5206\u8B49\u865F");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(33, "th");
+    \u0275\u0275text(34, "\u51FA\u751F\u65E5\u671F");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(35, "th");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(36, "tbody", 232);
+    \u0275\u0275repeaterCreate(37, UserForm_Conditional_21_For_38_Template, 33, 1, "tr", 140, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275conditionalCreate(39, UserForm_Conditional_21_Conditional_39_Template, 3, 0, "tr");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(40, "button", 84);
+    \u0275\u0275listener("click", function UserForm_Conditional_21_Template_button_click_40_listener() {
+      \u0275\u0275restoreView(_r46);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.addDependent());
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(41, "svg", 17);
+    \u0275\u0275element(42, "use", 145);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(43, " \u65B0\u589E\u7737\u5C6C ");
+    \u0275\u0275elementEnd()()();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(44, "div", 70)(45, "button", 71);
+    \u0275\u0275text(46, "\u5132\u5B58\u6240\u6709\u8CC7\u6599");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(47, "a", 72);
+    \u0275\u0275text(48, "\u53D6\u6D88");
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext();
+    \u0275\u0275advance(20);
+    \u0275\u0275textInterpolate1("", ctx_r1.dependentsArray.length, " \u4EBA");
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.dependentsArray.length > 3 ? 21 : -1);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r1.estimatedHealthInsurance !== null ? 22 : -1);
+    \u0275\u0275advance(15);
+    \u0275\u0275repeater(ctx_r1.dependentsControls);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(ctx_r1.dependentsControls.length === 0 ? 39 : -1);
+  }
+}
+var MAX_FILE_BYTES = 1 * 1024 * 1024;
 var UserForm = class _UserForm {
   fb = inject(FormBuilder);
   userService = inject(UserService);
+  profileService = inject(EmployeeProfileService);
+  hrPdfService = inject(HrProfilePdfService);
+  imageCompression = inject(ImageCompressionService);
   roleService = inject(RoleService);
   deptService = inject(DepartmentService);
   jtService = inject(JobTitleService);
@@ -1167,6 +3490,7 @@ var UserForm = class _UserForm {
   toastr = inject(ToastrService);
   isSuperAdmin = this.authService.isSuperAdmin;
   sending = signal(false, ...ngDevMode ? [{ debugName: "sending" }] : []);
+  printing = signal(false, ...ngDevMode ? [{ debugName: "printing" }] : []);
   roles = signal([], ...ngDevMode ? [{ debugName: "roles" }] : []);
   departments = signal([], ...ngDevMode ? [{ debugName: "departments" }] : []);
   jobTitles = signal([], ...ngDevMode ? [{ debugName: "jobTitles" }] : []);
@@ -1176,32 +3500,59 @@ var UserForm = class _UserForm {
   errorMsg = signal("", ...ngDevMode ? [{ debugName: "errorMsg" }] : []);
   laborInsurance = signal(null, ...ngDevMode ? [{ debugName: "laborInsurance" }] : []);
   healthInsurance = signal(null, ...ngDevMode ? [{ debugName: "healthInsurance" }] : []);
-  // 簽名檔
+  /** Tab 切換（basic / hr / dependents） */
+  activeTab = signal("basic", ...ngDevMode ? [{ debugName: "activeTab" }] : []);
+  /** 是否已載入 HR profile（延遲載入） */
+  hrLoaded = signal(false, ...ngDevMode ? [{ debugName: "hrLoaded" }] : []);
+  /** 儲存已載入的 HR profile 供 PDF 列印用 */
+  _hrProfile = null;
+  /** 目前使用者資料（PDF 列印用） */
+  _currentUser = null;
+  // ── 簽名檔 ──────────────────────────────────────
   signatureUrl = signal(null, ...ngDevMode ? [{ debugName: "signatureUrl" }] : []);
-  // 既有的遠端 URL
   signaturePreview = signal(null, ...ngDevMode ? [{ debugName: "signaturePreview" }] : []);
-  // 本地預覽 (data URL)
   signatureFile = signal(null, ...ngDevMode ? [{ debugName: "signatureFile" }] : []);
-  // 待上傳檔案
   removeSignature = signal(false, ...ngDevMode ? [{ debugName: "removeSignature" }] : []);
-  // 標記刪除
-  // 頭像
+  // ── 頭像 ─────────────────────────────────────────
   avatarUrl = signal(null, ...ngDevMode ? [{ debugName: "avatarUrl" }] : []);
   avatarPreview = signal(null, ...ngDevMode ? [{ debugName: "avatarPreview" }] : []);
   avatarFile = signal(null, ...ngDevMode ? [{ debugName: "avatarFile" }] : []);
   removeAvatar = signal(false, ...ngDevMode ? [{ debugName: "removeAvatar" }] : []);
-  // 頭像位置 / 縮放（圓形裁切框內顯示參數）
   avatarPosX = signal(50, ...ngDevMode ? [{ debugName: "avatarPosX" }] : []);
   avatarPosY = signal(50, ...ngDevMode ? [{ debugName: "avatarPosY" }] : []);
   avatarScale = signal(1, ...ngDevMode ? [{ debugName: "avatarScale" }] : []);
   avatarDragStart = null;
-  // 原住民證明文件（圖或 PDF）
+  // ── 原住民證明 ───────────────────────────────────
   indigenousProofUrl = signal(null, ...ngDevMode ? [{ debugName: "indigenousProofUrl" }] : []);
   indigenousProofFile = signal(null, ...ngDevMode ? [{ debugName: "indigenousProofFile" }] : []);
   indigenousProofFileName = signal(null, ...ngDevMode ? [{ debugName: "indigenousProofFileName" }] : []);
-  // 上傳時保留檔名，方便 UI 顯示
   removeIndigenousProof = signal(false, ...ngDevMode ? [{ debugName: "removeIndigenousProof" }] : []);
+  // ── 低收入戶證明 ─────────────────────────────────
+  lowIncomeProofUrl = signal(null, ...ngDevMode ? [{ debugName: "lowIncomeProofUrl" }] : []);
+  lowIncomeProofFile = signal(null, ...ngDevMode ? [{ debugName: "lowIncomeProofFile" }] : []);
+  lowIncomeProofFileName = signal(null, ...ngDevMode ? [{ debugName: "lowIncomeProofFileName" }] : []);
+  removeLowIncomeProof = signal(false, ...ngDevMode ? [{ debugName: "removeLowIncomeProof" }] : []);
+  // ── 殘障證明 ─────────────────────────────────────
+  disabledProofUrl = signal(null, ...ngDevMode ? [{ debugName: "disabledProofUrl" }] : []);
+  disabledProofFile = signal(null, ...ngDevMode ? [{ debugName: "disabledProofFile" }] : []);
+  disabledProofFileName = signal(null, ...ngDevMode ? [{ debugName: "disabledProofFileName" }] : []);
+  removeDisabledProof = signal(false, ...ngDevMode ? [{ debugName: "removeDisabledProof" }] : []);
+  // ── 身分證正反面（HR Tab） ───────────────────────
+  idCardFrontUrl = signal(null, ...ngDevMode ? [{ debugName: "idCardFrontUrl" }] : []);
+  idCardFrontFile = signal(null, ...ngDevMode ? [{ debugName: "idCardFrontFile" }] : []);
+  idCardFrontPreview = signal(null, ...ngDevMode ? [{ debugName: "idCardFrontPreview" }] : []);
+  idCardFrontFileName = signal(null, ...ngDevMode ? [{ debugName: "idCardFrontFileName" }] : []);
+  removeIdCardFront = signal(false, ...ngDevMode ? [{ debugName: "removeIdCardFront" }] : []);
+  idCardBackUrl = signal(null, ...ngDevMode ? [{ debugName: "idCardBackUrl" }] : []);
+  idCardBackFile = signal(null, ...ngDevMode ? [{ debugName: "idCardBackFile" }] : []);
+  idCardBackPreview = signal(null, ...ngDevMode ? [{ debugName: "idCardBackPreview" }] : []);
+  idCardBackFileName = signal(null, ...ngDevMode ? [{ debugName: "idCardBackFileName" }] : []);
+  removeIdCardBack = signal(false, ...ngDevMode ? [{ debugName: "removeIdCardBack" }] : []);
+  // ── 通訊地址同戶籍 ───────────────────────────────
+  mailingAddressSameAsResidential = false;
+  // ── 表單 ─────────────────────────────────────────
   form = this.fb.group({
+    // Tab 1 既有欄位
     name: ["", Validators.required],
     email: ["", [Validators.required, Validators.email]],
     password: ["", Validators.minLength(6)],
@@ -1217,7 +3568,44 @@ var UserForm = class _UserForm {
     sendPaySlip: [false],
     isIndigenous: [false],
     agentUserId: [""],
-    birthday: ["", Validators.required]
+    birthday: ["", Validators.required],
+    // Tab 1 新欄位
+    isLowIncome: [false],
+    isDisabled: [false],
+    healthInsuranceOverride: [null],
+    laborInsuranceOverride: [null],
+    // Tab 2 – HR profile
+    hrProfile: this.fb.group({
+      employeeNumber: [""],
+      englishName: [""],
+      idNumber: [""],
+      gender: [""],
+      maritalStatus: [""],
+      birthPlace: [""],
+      mobilePhone: [""],
+      residentialAddress: [""],
+      residentialPhone: [""],
+      mailingAddress: [""],
+      mailingPhone: [""],
+      emergencyContactName: [""],
+      emergencyContactPhone: [""],
+      bankCode: [""],
+      bankAccount: [""],
+      insuranceStartDate: [""],
+      dependentCount: [null],
+      specialties: [""],
+      resignationReason: [""],
+      educationRecords: this.fb.array([]),
+      employmentHistoryRecords: this.fb.array([]),
+      familyMembers: this.fb.array([]),
+      professionalTrainings: this.fb.array([]),
+      languageAbilities: this.fb.array([]),
+      jobTransferRecords: this.fb.array([]),
+      rewardPunishmentRecords: this.fb.array([]),
+      salaryAdjustmentRecords: this.fb.array([])
+    }),
+    // Tab 3 – 健保眷屬
+    healthDependents: this.fb.array([])
   });
   ngOnInit() {
     this.form.get("roleId").setValidators(Validators.required);
@@ -1229,7 +3617,7 @@ var UserForm = class _UserForm {
     this.deptService.getAll().subscribe((d) => this.departments.set(d));
     this.jtService.getAll().subscribe((j) => this.jobTitles.set(j));
     this.userService.getAll().subscribe((u) => this.allUsers.set(u));
-    this.form.get("baseSalary").valueChanges.pipe(takeUntilDestroyed(this.destroyRef), debounceTime(500), distinctUntilChanged(), switchMap((val) => val !== null && val > 0 ? this.bracketService.lookupBySalary(val).pipe(catchError(() => of(null))) : of(null))).subscribe((bracket) => {
+    this.form.get("baseSalary").valueChanges.pipe(takeUntilDestroyed(this.destroyRef), debounceTime(500), distinctUntilChanged(), switchMap((val2) => val2 !== null && val2 > 0 ? this.bracketService.lookupBySalary(val2).pipe(catchError(() => of(null))) : of(null))).subscribe((bracket) => {
       this.laborInsurance.set(bracket?.laborInsuranceEmployee ?? null);
       this.healthInsurance.set(bracket?.healthInsuranceEmployee ?? null);
     });
@@ -1239,6 +3627,7 @@ var UserForm = class _UserForm {
       this.userService.getById(this.userId).subscribe((user) => {
         if (!user)
           return;
+        this._currentUser = user;
         this.form.patchValue(__spreadProps(__spreadValues({}, user), {
           roleId: user.roleIds[0] ?? "",
           departmentId: user.departmentId ?? null,
@@ -1251,7 +3640,11 @@ var UserForm = class _UserForm {
           sendPaySlip: user.sendPaySlip ?? false,
           isIndigenous: user.isIndigenous ?? false,
           agentUserId: user.agentUserId ?? "",
-          birthday: user.birthday ? this.toDateString(user.birthday) : ""
+          birthday: user.birthday ? this.toDateString(user.birthday) : "",
+          isLowIncome: user.isLowIncome ?? false,
+          isDisabled: user.isDisabled ?? false,
+          healthInsuranceOverride: user.healthInsuranceOverride ?? null,
+          laborInsuranceOverride: user.laborInsuranceOverride ?? null
         }));
         this.signatureUrl.set(user.signatureUrl ?? null);
         this.avatarUrl.set(user.avatar ?? null);
@@ -1259,6 +3652,8 @@ var UserForm = class _UserForm {
         this.avatarPosY.set(user.avatarPositionY ?? 50);
         this.avatarScale.set(user.avatarScale ?? 1);
         this.indigenousProofUrl.set(user.indigenousProofUrl ?? null);
+        this.lowIncomeProofUrl.set(user.lowIncomeProofUrl ?? null);
+        this.disabledProofUrl.set(user.disabledProofUrl ?? null);
       });
     }
   }
@@ -1268,6 +3663,300 @@ var UserForm = class _UserForm {
   toDateString(d) {
     return new Date(d).toISOString().substring(0, 10);
   }
+  /** 切換 Tab；HR / 依附 Tab 第一次切換時才 lazy fetch */
+  switchTab(tab) {
+    if ((tab === "hr" || tab === "dependents") && !this.isEdit)
+      return;
+    this.activeTab.set(tab);
+    if ((tab === "hr" || tab === "dependents") && !this.hrLoaded() && this.isEdit) {
+      this._loadHrProfile();
+    }
+  }
+  _loadHrProfile() {
+    this.profileService.getByUserId(this.userId).subscribe({
+      next: (profile) => {
+        this._hrProfile = profile;
+        this._populateHrForm(profile);
+        this.hrLoaded.set(true);
+      },
+      error: (err) => {
+        console.error("[UserForm] \u7121\u6CD5\u8F09\u5165\u4EBA\u4E8B\u8CC7\u6599", err);
+        this.toastr.warning("\u4EBA\u4E8B\u8CC7\u6599\u8F09\u5165\u5931\u6557\uFF0C\u8ACB\u91CD\u65B0\u5207\u63DB Tab \u91CD\u8A66\u3002");
+        this.hrLoaded.set(true);
+      }
+    });
+  }
+  /** 將後端 profile 回填進 FormArray + scalar 欄位 */
+  _populateHrForm(p) {
+    const hr = this.form.get("hrProfile");
+    hr.patchValue({
+      employeeNumber: p.employeeNumber ?? "",
+      englishName: p.englishName ?? "",
+      idNumber: p.idNumber ?? "",
+      gender: p.gender ?? "",
+      maritalStatus: p.maritalStatus ?? "",
+      birthPlace: p.birthPlace ?? "",
+      mobilePhone: p.mobilePhone ?? "",
+      residentialAddress: p.residentialAddress ?? "",
+      residentialPhone: p.residentialPhone ?? "",
+      mailingAddress: p.mailingAddress ?? "",
+      mailingPhone: p.mailingPhone ?? "",
+      emergencyContactName: p.emergencyContactName ?? "",
+      emergencyContactPhone: p.emergencyContactPhone ?? "",
+      bankCode: p.bankCode ?? "",
+      bankAccount: p.bankAccount ?? "",
+      insuranceStartDate: p.insuranceStartDate?.slice(0, 10) ?? "",
+      dependentCount: p.dependentCount ?? null,
+      specialties: p.specialties ?? "",
+      resignationReason: p.resignationReason ?? ""
+    });
+    this.idCardFrontUrl.set(p.idCardFrontUrl ?? null);
+    this.idCardBackUrl.set(p.idCardBackUrl ?? null);
+    this.educationArray.clear();
+    (p.educationRecords ?? []).forEach((r) => this.educationArray.push(this._educationGroup(r)));
+    this.employmentArray.clear();
+    (p.employmentHistoryRecords ?? []).forEach((r) => this.employmentArray.push(this._employmentGroup(r)));
+    this.familyArray.clear();
+    (p.familyMembers ?? []).forEach((r) => this.familyArray.push(this._familyGroup(r)));
+    this.trainingArray.clear();
+    (p.professionalTrainings ?? []).forEach((r) => this.trainingArray.push(this._trainingGroup(r)));
+    this.languageArray.clear();
+    (p.languageAbilities ?? []).forEach((r) => this.languageArray.push(this._languageGroup(r)));
+    this.jobTransferArray.clear();
+    (p.jobTransferRecords ?? []).forEach((r) => this.jobTransferArray.push(this._jobTransferGroup(r)));
+    this.rewardArray.clear();
+    (p.rewardPunishmentRecords ?? []).forEach((r) => this.rewardArray.push(this._rewardGroup(r)));
+    this.salaryArray.clear();
+    (p.salaryAdjustmentRecords ?? []).forEach((r) => this.salaryArray.push(this._salaryGroup(r)));
+    this.dependentsArray.clear();
+    (p.healthInsuranceDependents ?? []).forEach((r) => this.dependentsArray.push(this._dependentGroup(r)));
+  }
+  // ═══════════════════════════════════════════════
+  // FormArray getters
+  // ═══════════════════════════════════════════════
+  get educationArray() {
+    return this.form.get("hrProfile.educationRecords");
+  }
+  get educationControls() {
+    return this.educationArray.controls;
+  }
+  get employmentArray() {
+    return this.form.get("hrProfile.employmentHistoryRecords");
+  }
+  get employmentControls() {
+    return this.employmentArray.controls;
+  }
+  get familyArray() {
+    return this.form.get("hrProfile.familyMembers");
+  }
+  get familyControls() {
+    return this.familyArray.controls;
+  }
+  get trainingArray() {
+    return this.form.get("hrProfile.professionalTrainings");
+  }
+  get trainingControls() {
+    return this.trainingArray.controls;
+  }
+  get languageArray() {
+    return this.form.get("hrProfile.languageAbilities");
+  }
+  get languageControls() {
+    return this.languageArray.controls;
+  }
+  get jobTransferArray() {
+    return this.form.get("hrProfile.jobTransferRecords");
+  }
+  get jobTransferControls() {
+    return this.jobTransferArray.controls;
+  }
+  get rewardArray() {
+    return this.form.get("hrProfile.rewardPunishmentRecords");
+  }
+  get rewardControls() {
+    return this.rewardArray.controls;
+  }
+  get salaryArray() {
+    return this.form.get("hrProfile.salaryAdjustmentRecords");
+  }
+  get salaryControls() {
+    return this.salaryArray.controls;
+  }
+  get dependentsArray() {
+    return this.form.get("healthDependents");
+  }
+  get dependentsControls() {
+    return this.dependentsArray.controls;
+  }
+  // ── 薪資合計試算 ──────────────────────────────
+  salaryRowTotal(ctrl) {
+    const v = ctrl.value;
+    return (+v.baseSalary || 0) + (+v.positionAllowance || 0) + (+v.dutyAllowance || 0) + (+v.otherAllowance || 0) + (+v.adjustmentDifference || 0) + (+v.overseasAllowance || 0) + (+v.mealAllowance || 0);
+  }
+  // ── 健保費試算（眷屬最多計 3 口） ─────────────
+  get estimatedHealthInsurance() {
+    const base = this.form.get("healthInsuranceOverride")?.value ?? this.healthInsurance();
+    if (base === null || base === void 0)
+      return null;
+    const n = this.dependentsArray.length;
+    const capped = Math.min(n, 3);
+    return +base * (1 + capped);
+  }
+  // ═══════════════════════════════════════════════
+  // FormGroup factories（仿 payment-form _invoiceGroup）
+  // ═══════════════════════════════════════════════
+  addEducation() {
+    if (this.educationArray.length < 3)
+      this.educationArray.push(this._educationGroup());
+  }
+  removeEducation(i) {
+    this.educationArray.removeAt(i);
+  }
+  _educationGroup(r) {
+    return this.fb.group({
+      id: [r?.id ?? null],
+      school: [r?.school ?? ""],
+      department: [r?.department ?? ""],
+      degree: [r?.degree ?? "graduated"],
+      startDate: [r?.startDate?.slice(0, 7) ?? ""],
+      endDate: [r?.endDate?.slice(0, 7) ?? ""],
+      order: [r?.order ?? this.educationArray.length + 1]
+    });
+  }
+  addEmployment() {
+    if (this.employmentArray.length < 3)
+      this.employmentArray.push(this._employmentGroup());
+  }
+  removeEmployment(i) {
+    this.employmentArray.removeAt(i);
+  }
+  _employmentGroup(r) {
+    return this.fb.group({
+      id: [r?.id ?? null],
+      organization: [r?.organization ?? ""],
+      jobTitle: [r?.jobTitle ?? ""],
+      startDate: [r?.startDate?.slice(0, 10) ?? ""],
+      endDate: [r?.endDate?.slice(0, 10) ?? ""],
+      order: [r?.order ?? this.employmentArray.length + 1]
+    });
+  }
+  addFamily() {
+    this.familyArray.push(this._familyGroup());
+  }
+  removeFamily(i) {
+    this.familyArray.removeAt(i);
+  }
+  _familyGroup(r) {
+    return this.fb.group({
+      id: [r?.id ?? null],
+      name: [r?.name ?? ""],
+      relationship: [r?.relationship ?? ""],
+      age: [r?.age ?? null],
+      occupation: [r?.occupation ?? ""]
+    });
+  }
+  addTraining() {
+    this.trainingArray.push(this._trainingGroup());
+  }
+  removeTraining(i) {
+    this.trainingArray.removeAt(i);
+  }
+  _trainingGroup(r) {
+    return this.fb.group({
+      id: [r?.id ?? null],
+      trainingName: [r?.trainingName ?? ""],
+      trainingOrg: [r?.trainingOrg ?? ""],
+      startDate: [r?.startDate?.slice(0, 10) ?? ""],
+      endDate: [r?.endDate?.slice(0, 10) ?? ""],
+      hours: [r?.hours ?? null]
+    });
+  }
+  addLanguage() {
+    this.languageArray.push(this._languageGroup());
+  }
+  removeLanguage(i) {
+    this.languageArray.removeAt(i);
+  }
+  _languageGroup(r) {
+    return this.fb.group({
+      id: [r?.id ?? null],
+      language: [r?.language ?? ""],
+      listening: [r?.listening ?? "fair"],
+      speaking: [r?.speaking ?? "fair"],
+      reading: [r?.reading ?? "fair"],
+      writing: [r?.writing ?? "fair"]
+    });
+  }
+  addJobTransfer() {
+    this.jobTransferArray.push(this._jobTransferGroup());
+  }
+  removeJobTransfer(i) {
+    this.jobTransferArray.removeAt(i);
+  }
+  _jobTransferGroup(r) {
+    return this.fb.group({
+      id: [r?.id ?? null],
+      effectiveDate: [r?.effectiveDate?.slice(0, 10) ?? ""],
+      fromDepartment: [r?.fromDepartment ?? ""],
+      toDepartment: [r?.toDepartment ?? ""],
+      fromJobTitle: [r?.fromJobTitle ?? ""],
+      toJobTitle: [r?.toJobTitle ?? ""]
+    });
+  }
+  addReward() {
+    this.rewardArray.push(this._rewardGroup());
+  }
+  removeReward(i) {
+    this.rewardArray.removeAt(i);
+  }
+  _rewardGroup(r) {
+    return this.fb.group({
+      id: [r?.id ?? null],
+      effectiveDate: [r?.effectiveDate?.slice(0, 10) ?? ""],
+      type: [r?.type ?? "reward"],
+      category: [r?.category ?? ""],
+      count: [r?.count ?? null],
+      reason: [r?.reason ?? ""]
+    });
+  }
+  addSalary() {
+    this.salaryArray.push(this._salaryGroup());
+  }
+  removeSalary(i) {
+    this.salaryArray.removeAt(i);
+  }
+  _salaryGroup(r) {
+    return this.fb.group({
+      id: [r?.id ?? null],
+      effectiveDate: [r?.effectiveDate?.slice(0, 10) ?? ""],
+      baseSalary: [r?.baseSalary ?? null],
+      positionAllowance: [r?.positionAllowance ?? null],
+      dutyAllowance: [r?.dutyAllowance ?? null],
+      otherAllowance: [r?.otherAllowance ?? null],
+      adjustmentDifference: [r?.adjustmentDifference ?? null],
+      overseasAllowance: [r?.overseasAllowance ?? null],
+      mealAllowance: [r?.mealAllowance ?? null],
+      notes: [r?.notes ?? ""]
+    });
+  }
+  addDependent() {
+    this.dependentsArray.push(this._dependentGroup());
+  }
+  removeDependent(i) {
+    this.dependentsArray.removeAt(i);
+  }
+  _dependentGroup(r) {
+    return this.fb.group({
+      id: [r?.id ?? null],
+      name: [r?.name ?? ""],
+      relationship: [r?.relationship ?? "spouse"],
+      idNumber: [r?.idNumber ?? ""],
+      birthDate: [r?.birthDate?.slice(0, 10) ?? ""]
+    });
+  }
+  // ═══════════════════════════════════════════════
+  // 簽名檔
+  // ═══════════════════════════════════════════════
   onSignatureSelected(event) {
     const input = event.target;
     const file = input.files?.[0];
@@ -1285,6 +3974,9 @@ var UserForm = class _UserForm {
     this.signaturePreview.set(null);
     this.removeSignature.set(true);
   }
+  // ═══════════════════════════════════════════════
+  // 頭像
+  // ═══════════════════════════════════════════════
   async onAvatarSelected(event) {
     const input = event.target;
     const file = input.files?.[0];
@@ -1292,9 +3984,8 @@ var UserForm = class _UserForm {
       return;
     input.value = "";
     try {
-      const compressed = await this.compressImage(file);
-      const MAX_AVATAR_BYTES = 1 * 1024 * 1024;
-      if (compressed.size > MAX_AVATAR_BYTES) {
+      const compressed = await this.imageCompression.compress(file, { maxSize: 800, quality: 0.85 });
+      if (compressed.size > MAX_FILE_BYTES) {
         this.toastr.warning("\u4E0A\u50B3\u7167\u7247\u52FF\u8D85\u904E1MB");
         return;
       }
@@ -1316,42 +4007,6 @@ var UserForm = class _UserForm {
     this.avatarPosY.set(50);
     this.avatarScale.set(1);
   }
-  /**
-   * 圖檔壓縮：等比縮放到 max 800x800，輸出 JPEG 0.85。
-   * iOS HEIC 走 heic2any 先轉 JPEG，再走 Canvas 縮放。
-   */
-  async compressImage(file, maxSize = 800, quality = 0.85) {
-    let workingBlob = file;
-    if (/\.(heic|heif)$/i.test(file.name) || file.type === "image/heic" || file.type === "image/heif") {
-      workingBlob = await (0, import_heic2any.default)({ blob: file, toType: "image/jpeg", quality });
-    }
-    const dataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(workingBlob);
-    });
-    const img = await new Promise((resolve, reject) => {
-      const i = new Image();
-      i.onload = () => resolve(i);
-      i.onerror = () => reject(new Error("Failed to load image"));
-      i.src = dataUrl;
-    });
-    const ratio = Math.min(maxSize / img.width, maxSize / img.height, 1);
-    const w = Math.round(img.width * ratio);
-    const h = Math.round(img.height * ratio);
-    const canvas = document.createElement("canvas");
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext("2d");
-    if (!ctx)
-      throw new Error("Canvas context unavailable");
-    ctx.drawImage(img, 0, 0, w, h);
-    const compressed = await new Promise((resolve, reject) => canvas.toBlob((b) => b ? resolve(b) : reject(new Error("toBlob returned null")), "image/jpeg", quality));
-    const baseName = file.name.replace(/\.[^.]+$/, "");
-    return new File([compressed], `${baseName}.jpg`, { type: "image/jpeg" });
-  }
-  // ── 頭像拖曳 / 縮放 互動 ──────────────────────────
   onAvatarPointerDown(e) {
     if (!this.displayAvatar)
       return;
@@ -1386,6 +4041,9 @@ var UserForm = class _UserForm {
     this.avatarPosY.set(50);
     this.avatarScale.set(1);
   }
+  // ═══════════════════════════════════════════════
+  // 原住民證明
+  // ═══════════════════════════════════════════════
   onIndigenousProofSelected(event) {
     const input = event.target;
     const file = input.files?.[0];
@@ -1401,7 +4059,6 @@ var UserForm = class _UserForm {
     this.indigenousProofFileName.set(null);
     this.removeIndigenousProof.set(true);
   }
-  /** 以 JWT fetch 原住民證明，開新分頁檢視（受 users:read 權限保護） */
   viewIndigenousProof() {
     const url = this.indigenousProofUrl();
     if (!url)
@@ -1416,16 +4073,220 @@ var UserForm = class _UserForm {
         window.open(objectUrl, "_blank");
         setTimeout(() => URL.revokeObjectURL(objectUrl), 6e4);
       },
-      error: (err) => {
-        this.toastr.error(err.error?.message || "\u7121\u6CD5\u8F09\u5165\u8B49\u660E\u6587\u4EF6\u3002", "\u8F09\u5165\u5931\u6557");
-      }
+      error: (err) => this.toastr.error(err.error?.message || "\u7121\u6CD5\u8F09\u5165\u8B49\u660E\u6587\u4EF6\u3002", "\u8F09\u5165\u5931\u6557")
     });
   }
-  /**
-   * 顯示的簽名圖片：
-   * - 本地預覽（data URL）優先，無需轉換
-   * - 既有遠端 URL：相對路徑加上 apiUrl 前綴；完整 blob URL 轉為 API 代理路徑
-   */
+  // ═══════════════════════════════════════════════
+  // 低收入戶證明
+  // ═══════════════════════════════════════════════
+  async onLowIncomeProofSelected(event) {
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file)
+      return;
+    input.value = "";
+    try {
+      const compressed = await this.imageCompression.compress(file, { maxSize: 1600, quality: 0.85 });
+      if (compressed.size > MAX_FILE_BYTES) {
+        this.toastr.error("\u4E0A\u50B3\u7167\u7247\u52FF\u8D85\u904E1MB");
+        return;
+      }
+      this.lowIncomeProofFile.set(compressed);
+      this.lowIncomeProofFileName.set(file.name);
+      this.removeLowIncomeProof.set(false);
+    } catch (err) {
+      console.error("[UserForm] \u4F4E\u6536\u5165\u6236\u8B49\u660E\u8655\u7406\u5931\u6557", err);
+      this.toastr.error("\u6A94\u6848\u8655\u7406\u5931\u6557\uFF0C\u8ACB\u91CD\u8A66\u3002", "\u8655\u7406\u5931\u6557");
+    }
+  }
+  onRemoveLowIncomeProof() {
+    this.lowIncomeProofFile.set(null);
+    this.lowIncomeProofFileName.set(null);
+    this.removeLowIncomeProof.set(true);
+  }
+  viewLowIncomeProof() {
+    const url = this.lowIncomeProofUrl();
+    if (!url)
+      return;
+    const match = url.match(/\/low-income-proofs\/(.+)$/);
+    const fileName = match?.[1];
+    if (!fileName)
+      return;
+    this.userService.getLowIncomeProof(fileName).subscribe({
+      next: (blob) => {
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, "_blank");
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 6e4);
+      },
+      error: (err) => this.toastr.error(err.error?.message || "\u7121\u6CD5\u8F09\u5165\u8B49\u660E\u6587\u4EF6\u3002", "\u8F09\u5165\u5931\u6557")
+    });
+  }
+  // ═══════════════════════════════════════════════
+  // 殘障證明
+  // ═══════════════════════════════════════════════
+  async onDisabledProofSelected(event) {
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file)
+      return;
+    input.value = "";
+    try {
+      const compressed = await this.imageCompression.compress(file, { maxSize: 1600, quality: 0.85 });
+      if (compressed.size > MAX_FILE_BYTES) {
+        this.toastr.error("\u4E0A\u50B3\u7167\u7247\u52FF\u8D85\u904E1MB");
+        return;
+      }
+      this.disabledProofFile.set(compressed);
+      this.disabledProofFileName.set(file.name);
+      this.removeDisabledProof.set(false);
+    } catch (err) {
+      console.error("[UserForm] \u6B98\u969C\u8B49\u660E\u8655\u7406\u5931\u6557", err);
+      this.toastr.error("\u6A94\u6848\u8655\u7406\u5931\u6557\uFF0C\u8ACB\u91CD\u8A66\u3002", "\u8655\u7406\u5931\u6557");
+    }
+  }
+  onRemoveDisabledProof() {
+    this.disabledProofFile.set(null);
+    this.disabledProofFileName.set(null);
+    this.removeDisabledProof.set(true);
+  }
+  viewDisabledProof() {
+    const url = this.disabledProofUrl();
+    if (!url)
+      return;
+    const match = url.match(/\/disabled-proofs\/(.+)$/);
+    const fileName = match?.[1];
+    if (!fileName)
+      return;
+    this.userService.getDisabledProof(fileName).subscribe({
+      next: (blob) => {
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, "_blank");
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 6e4);
+      },
+      error: (err) => this.toastr.error(err.error?.message || "\u7121\u6CD5\u8F09\u5165\u8B49\u660E\u6587\u4EF6\u3002", "\u8F09\u5165\u5931\u6557")
+    });
+  }
+  // ═══════════════════════════════════════════════
+  // 身分證正面
+  // ═══════════════════════════════════════════════
+  async onIdCardFrontSelected(event) {
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file)
+      return;
+    input.value = "";
+    try {
+      const compressed = await this.imageCompression.compress(file, { maxSize: 1600, quality: 0.85 });
+      if (compressed.size > MAX_FILE_BYTES) {
+        this.toastr.error("\u4E0A\u50B3\u7167\u7247\u52FF\u8D85\u904E1MB");
+        return;
+      }
+      this.idCardFrontFile.set(compressed);
+      this.idCardFrontFileName.set(file.name);
+      this.removeIdCardFront.set(false);
+      if (compressed.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onload = () => this.idCardFrontPreview.set(reader.result);
+        reader.readAsDataURL(compressed);
+      } else {
+        this.idCardFrontPreview.set(null);
+      }
+    } catch (err) {
+      console.error("[UserForm] \u8EAB\u5206\u8B49\u6B63\u9762\u8655\u7406\u5931\u6557", err);
+      this.toastr.error("\u6A94\u6848\u8655\u7406\u5931\u6557\uFF0C\u8ACB\u91CD\u8A66\u3002", "\u8655\u7406\u5931\u6557");
+    }
+  }
+  onRemoveIdCardFront() {
+    this.idCardFrontFile.set(null);
+    this.idCardFrontPreview.set(null);
+    this.idCardFrontFileName.set(null);
+    this.removeIdCardFront.set(true);
+  }
+  viewIdCardFront() {
+    const url = this.idCardFrontUrl();
+    if (!url)
+      return;
+    const match = url.match(/\/id-cards\/(.+)$/);
+    const fileName = match?.[1];
+    if (!fileName)
+      return;
+    this.userService.getIdCard(fileName).subscribe({
+      next: (blob) => {
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, "_blank");
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 6e4);
+      },
+      error: (err) => this.toastr.error(err.error?.message || "\u7121\u6CD5\u8F09\u5165\u8EAB\u5206\u8B49\u5F71\u672C\u3002", "\u8F09\u5165\u5931\u6557")
+    });
+  }
+  // ═══════════════════════════════════════════════
+  // 身分證反面
+  // ═══════════════════════════════════════════════
+  async onIdCardBackSelected(event) {
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file)
+      return;
+    input.value = "";
+    try {
+      const compressed = await this.imageCompression.compress(file, { maxSize: 1600, quality: 0.85 });
+      if (compressed.size > MAX_FILE_BYTES) {
+        this.toastr.error("\u4E0A\u50B3\u7167\u7247\u52FF\u8D85\u904E1MB");
+        return;
+      }
+      this.idCardBackFile.set(compressed);
+      this.idCardBackFileName.set(file.name);
+      this.removeIdCardBack.set(false);
+      if (compressed.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onload = () => this.idCardBackPreview.set(reader.result);
+        reader.readAsDataURL(compressed);
+      } else {
+        this.idCardBackPreview.set(null);
+      }
+    } catch (err) {
+      console.error("[UserForm] \u8EAB\u5206\u8B49\u53CD\u9762\u8655\u7406\u5931\u6557", err);
+      this.toastr.error("\u6A94\u6848\u8655\u7406\u5931\u6557\uFF0C\u8ACB\u91CD\u8A66\u3002", "\u8655\u7406\u5931\u6557");
+    }
+  }
+  onRemoveIdCardBack() {
+    this.idCardBackFile.set(null);
+    this.idCardBackPreview.set(null);
+    this.idCardBackFileName.set(null);
+    this.removeIdCardBack.set(true);
+  }
+  viewIdCardBack() {
+    const url = this.idCardBackUrl();
+    if (!url)
+      return;
+    const match = url.match(/\/id-cards\/(.+)$/);
+    const fileName = match?.[1];
+    if (!fileName)
+      return;
+    this.userService.getIdCard(fileName).subscribe({
+      next: (blob) => {
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, "_blank");
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 6e4);
+      },
+      error: (err) => this.toastr.error(err.error?.message || "\u7121\u6CD5\u8F09\u5165\u8EAB\u5206\u8B49\u5F71\u672C\u3002", "\u8F09\u5165\u5931\u6557")
+    });
+  }
+  // ═══════════════════════════════════════════════
+  // 通訊地址同戶籍
+  // ═══════════════════════════════════════════════
+  copyResidentialToMailing() {
+    const hrGroup = this.form.get("hrProfile");
+    if (this.mailingAddressSameAsResidential) {
+      hrGroup.patchValue({
+        mailingAddress: hrGroup.get("residentialAddress")?.value ?? "",
+        mailingPhone: hrGroup.get("residentialPhone")?.value ?? ""
+      });
+    }
+  }
+  // ═══════════════════════════════════════════════
+  // Display getters（既有 pattern 延伸）
+  // ═══════════════════════════════════════════════
   get displaySignature() {
     if (this.removeSignature())
       return null;
@@ -1435,16 +4296,13 @@ var UserForm = class _UserForm {
     const url = this.signatureUrl();
     if (!url)
       return null;
-    if (!url.startsWith("http")) {
+    if (!url.startsWith("http"))
       return `${environment.apiUrl}/${url}`;
-    }
     const match = url.match(/\/signatures\/(.+)$/);
-    if (match) {
+    if (match)
       return `${environment.apiUrl}/files/signatures/${match[1]}`;
-    }
     return url;
   }
-  /** 顯示的頭像圖片（本地預覽優先，否則轉換既有 URL 為代理路徑） */
   get displayAvatar() {
     if (this.removeAvatar())
       return null;
@@ -1454,16 +4312,13 @@ var UserForm = class _UserForm {
     const url = this.avatarUrl();
     if (!url)
       return null;
-    if (!url.startsWith("http")) {
+    if (!url.startsWith("http"))
       return `${environment.apiUrl}/${url}`;
-    }
     const match = url.match(/\/avatars\/(.+)$/);
-    if (match) {
+    if (match)
       return `${environment.apiUrl}/files/avatars/${match[1]}`;
-    }
     return url;
   }
-  /** 原住民證明的顯示檔名（新上傳 > 既有檔名從 URL 取） */
   get indigenousProofDisplayName() {
     if (this.removeIndigenousProof())
       return null;
@@ -1476,10 +4331,72 @@ var UserForm = class _UserForm {
     const match = url.match(/\/([^/]+)$/);
     return match?.[1] ?? url;
   }
-  /** 是否已經有既有的（已上傳）原住民證明，供 UI 顯示「檢視」按鈕 */
   get hasExistingIndigenousProof() {
     return !!this.indigenousProofUrl() && !this.indigenousProofFile() && !this.removeIndigenousProof();
   }
+  get lowIncomeProofDisplayName() {
+    if (this.removeLowIncomeProof())
+      return null;
+    const pending = this.lowIncomeProofFileName();
+    if (pending)
+      return pending;
+    const url = this.lowIncomeProofUrl();
+    if (!url)
+      return null;
+    const match = url.match(/\/([^/]+)$/);
+    return match?.[1] ?? url;
+  }
+  get hasExistingLowIncomeProof() {
+    return !!this.lowIncomeProofUrl() && !this.lowIncomeProofFile() && !this.removeLowIncomeProof();
+  }
+  get disabledProofDisplayName() {
+    if (this.removeDisabledProof())
+      return null;
+    const pending = this.disabledProofFileName();
+    if (pending)
+      return pending;
+    const url = this.disabledProofUrl();
+    if (!url)
+      return null;
+    const match = url.match(/\/([^/]+)$/);
+    return match?.[1] ?? url;
+  }
+  get hasExistingDisabledProof() {
+    return !!this.disabledProofUrl() && !this.disabledProofFile() && !this.removeDisabledProof();
+  }
+  get idCardFrontDisplayName() {
+    if (this.removeIdCardFront())
+      return null;
+    const pending = this.idCardFrontFileName();
+    if (pending)
+      return pending;
+    const url = this.idCardFrontUrl();
+    if (!url)
+      return null;
+    const match = url.match(/\/([^/]+)$/);
+    return match?.[1] ?? url;
+  }
+  get hasExistingIdCardFront() {
+    return !!this.idCardFrontUrl() && !this.idCardFrontFile() && !this.removeIdCardFront();
+  }
+  get idCardBackDisplayName() {
+    if (this.removeIdCardBack())
+      return null;
+    const pending = this.idCardBackFileName();
+    if (pending)
+      return pending;
+    const url = this.idCardBackUrl();
+    if (!url)
+      return null;
+    const match = url.match(/\/([^/]+)$/);
+    return match?.[1] ?? url;
+  }
+  get hasExistingIdCardBack() {
+    return !!this.idCardBackUrl() && !this.idCardBackFile() && !this.removeIdCardBack();
+  }
+  // ═══════════════════════════════════════════════
+  // 寄送帳號通知
+  // ═══════════════════════════════════════════════
   sendCredentials() {
     if (!this.userId || this.sending())
       return;
@@ -1495,6 +4412,41 @@ var UserForm = class _UserForm {
       }
     });
   }
+  // ═══════════════════════════════════════════════
+  // 列印人事資料卡
+  // ═══════════════════════════════════════════════
+  async printHrCard() {
+    if (this.printing())
+      return;
+    this.printing.set(true);
+    try {
+      if (!this.hrLoaded() || !this._hrProfile) {
+        await new Promise((resolve, reject) => {
+          this.profileService.getByUserId(this.userId).subscribe({
+            next: (p) => {
+              this._hrProfile = p;
+              this.hrLoaded.set(true);
+              resolve();
+            },
+            error: reject
+          });
+        });
+      }
+      if (!this._hrProfile || !this._currentUser) {
+        this.toastr.error("\u7121\u6CD5\u53D6\u5F97\u54E1\u5DE5\u8CC7\u6599\uFF0C\u8ACB\u91CD\u8A66\u3002");
+        return;
+      }
+      await this.hrPdfService.generate(this._hrProfile, this._currentUser);
+    } catch (err) {
+      console.error("[UserForm] PDF \u5217\u5370\u5931\u6557", err);
+      this.toastr.error("PDF \u751F\u6210\u5931\u6557\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66\u3002", "\u5217\u5370\u5931\u6557");
+    } finally {
+      this.printing.set(false);
+    }
+  }
+  // ═══════════════════════════════════════════════
+  // submit
+  // ═══════════════════════════════════════════════
   submit() {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -1508,7 +4460,7 @@ var UserForm = class _UserForm {
         return;
       }
     }
-    const _a = this.form.value, { roleId, hireDate, resignDate, departmentId, jobTitleId, agentUserId, birthday, password } = _a, rest = __objRest(_a, ["roleId", "hireDate", "resignDate", "departmentId", "jobTitleId", "agentUserId", "birthday", "password"]);
+    const _a = this.form.value, { roleId, hireDate, resignDate, departmentId, jobTitleId, agentUserId, birthday, password, hrProfile, healthDependents } = _a, rest = __objRest(_a, ["roleId", "hireDate", "resignDate", "departmentId", "jobTitleId", "agentUserId", "birthday", "password", "hrProfile", "healthDependents"]);
     const payload = __spreadProps(__spreadValues({}, rest), {
       password: password || void 0,
       roleIds: roleId ? [roleId] : [],
@@ -1518,45 +4470,129 @@ var UserForm = class _UserForm {
       resignDate: resignDate ? new Date(resignDate) : void 0,
       agentUserId: agentUserId || void 0,
       birthday: birthday ? new Date(birthday) : void 0,
-      // 頭像顯示參數（僅在有頭像時送出，刪除時後端會自行重置）
       avatarPositionX: this.removeAvatar() ? void 0 : this.avatarPosX(),
       avatarPositionY: this.removeAvatar() ? void 0 : this.avatarPosY(),
-      avatarScale: this.removeAvatar() ? void 0 : this.avatarScale()
+      avatarScale: this.removeAvatar() ? void 0 : this.avatarScale(),
+      // 新欄位
+      isLowIncome: rest.isLowIncome ?? false,
+      isDisabled: rest.isDisabled ?? false,
+      healthInsuranceOverride: rest.healthInsuranceOverride ?? void 0,
+      laborInsuranceOverride: rest.laborInsuranceOverride ?? void 0
     });
     const obs = this.isEdit ? this.userService.update(this.userId, payload, {
       signatureFile: this.signatureFile(),
       avatarFile: this.avatarFile(),
       indigenousProofFile: this.indigenousProofFile(),
+      lowIncomeProofFile: this.lowIncomeProofFile(),
+      disabledProofFile: this.disabledProofFile(),
       removeSignature: this.removeSignature(),
       removeAvatar: this.removeAvatar(),
-      removeIndigenousProof: this.removeIndigenousProof()
+      removeIndigenousProof: this.removeIndigenousProof(),
+      removeLowIncomeProof: this.removeLowIncomeProof(),
+      removeDisabledProof: this.removeDisabledProof()
     }) : this.userService.create(payload, {
       signatureFile: this.signatureFile(),
       avatarFile: this.avatarFile(),
-      indigenousProofFile: this.indigenousProofFile()
+      indigenousProofFile: this.indigenousProofFile(),
+      lowIncomeProofFile: this.lowIncomeProofFile(),
+      disabledProofFile: this.disabledProofFile()
     });
     this.errorMsg.set("");
     obs.subscribe({
-      next: () => {
-        const currentUserId = this.authService.currentUser()?.id;
-        if (this.isEdit && currentUserId === this.userId) {
-          this.authService.refreshAccessToken().subscribe({
-            next: () => this.router.navigate(["/admin/users"]),
-            error: () => this.router.navigate(["/admin/users"])
-          });
-        } else {
-          this.router.navigate(["/admin/users"]);
+      next: (savedUser) => {
+        const targetUserId = savedUser.id ?? this.userId;
+        const shouldSaveHr = this.isEdit ? this.hrLoaded() : this._hasAnyHrInput();
+        if (shouldSaveHr && targetUserId) {
+          this._saveHrProfile(targetUserId);
+          return;
         }
+        this._afterSaveNavigate();
       },
       error: (err) => {
         this.errorMsg.set(err.error?.message || "\u5132\u5B58\u5931\u6557\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66\u3002");
       }
     });
   }
+  // 新增模式判斷：使用者是否有在 Tab 2/3 輸入任何資料？
+  // 避免完全沒填卻仍打 PUT /users/{id}/profile
+  _hasAnyHrInput() {
+    const hrVal = this.form.get("hrProfile")?.value;
+    if (hrVal) {
+      for (const v of Object.values(hrVal)) {
+        if (Array.isArray(v) ? v.length > 0 : !!v)
+          return true;
+      }
+    }
+    if (this.form.get("healthDependents").length > 0)
+      return true;
+    if (this.idCardFrontFile() || this.idCardBackFile())
+      return true;
+    return false;
+  }
+  _saveHrProfile(userId) {
+    const hrVal = this.form.get("hrProfile").value;
+    const depsVal = this.form.get("healthDependents").value;
+    const profilePayload = {
+      employeeNumber: hrVal.employeeNumber || null,
+      englishName: hrVal.englishName || null,
+      idNumber: hrVal.idNumber || null,
+      gender: hrVal.gender || null,
+      maritalStatus: hrVal.maritalStatus || null,
+      birthPlace: hrVal.birthPlace || null,
+      mobilePhone: hrVal.mobilePhone || null,
+      residentialAddress: hrVal.residentialAddress || null,
+      residentialPhone: hrVal.residentialPhone || null,
+      mailingAddress: hrVal.mailingAddress || null,
+      mailingPhone: hrVal.mailingPhone || null,
+      emergencyContactName: hrVal.emergencyContactName || null,
+      emergencyContactPhone: hrVal.emergencyContactPhone || null,
+      bankCode: hrVal.bankCode || null,
+      bankAccount: hrVal.bankAccount || null,
+      insuranceStartDate: hrVal.insuranceStartDate || null,
+      dependentCount: hrVal.dependentCount ?? null,
+      specialties: hrVal.specialties || null,
+      resignationReason: hrVal.resignationReason || null,
+      educationRecords: hrVal.educationRecords,
+      employmentHistoryRecords: hrVal.employmentHistoryRecords,
+      familyMembers: hrVal.familyMembers,
+      professionalTrainings: hrVal.professionalTrainings,
+      languageAbilities: hrVal.languageAbilities,
+      jobTransferRecords: hrVal.jobTransferRecords,
+      rewardPunishmentRecords: hrVal.rewardPunishmentRecords,
+      salaryAdjustmentRecords: hrVal.salaryAdjustmentRecords,
+      healthInsuranceDependents: depsVal
+    };
+    this.profileService.upsert(userId, profilePayload, {
+      idCardFront: this.idCardFrontFile(),
+      idCardBack: this.idCardBackFile(),
+      removeIdCardFront: this.removeIdCardFront(),
+      removeIdCardBack: this.removeIdCardBack()
+    }).subscribe({
+      next: (profile) => {
+        this._hrProfile = profile;
+        this._afterSaveNavigate();
+      },
+      error: (err) => {
+        this.toastr.warning(err.error?.message || "\u4EBA\u4E8B\u8CC7\u6599\u5132\u5B58\u5931\u6557\uFF0C\u57FA\u672C\u8CC7\u6599\u5DF2\u66F4\u65B0\u3002");
+        this._afterSaveNavigate();
+      }
+    });
+  }
+  _afterSaveNavigate() {
+    const currentUserId = this.authService.currentUser()?.id;
+    if (this.isEdit && currentUserId === this.userId) {
+      this.authService.refreshAccessToken().subscribe({
+        next: () => this.router.navigate(["/admin/users"]),
+        error: () => this.router.navigate(["/admin/users"])
+      });
+    } else {
+      this.router.navigate(["/admin/users"]);
+    }
+  }
   static \u0275fac = function UserForm_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _UserForm)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _UserForm, selectors: [["app-user-form"]], decls: 183, vars: 24, consts: [[1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6"], ["routerLink", "/admin/users", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "mb-0"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-info", "ms-auto", 3, "disabled"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [1, "row"], [1, "col-12", "col-xl-8"], [3, "ngSubmit", "formGroup"], [1, "card", "border-0", "shadow-sm", "mb-4"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], ["href", "/assets/icons/sprite.svg#user"], [1, "card-body"], [1, "row", "g-3"], [1, "col-12", "col-md-6"], [1, "form-label", "fw-500"], [1, "text-danger"], ["type", "text", "formControlName", "name", "placeholder", "\u8ACB\u8F38\u5165\u59D3\u540D", 1, "form-control"], [1, "text-danger", "small", "mt-1"], ["type", "email", "formControlName", "email", "placeholder", "user@example.com", 1, "form-control"], ["type", "password", "formControlName", "password", "placeholder", "\u7559\u7A7A\u5247\u4E0D\u4FEE\u6539\uFF08\u81F3\u5C11 6 \u78BC\uFF09", 1, "form-control"], ["formControlName", "status", 1, "form-select"], ["value", "active"], ["value", "inactive"], [1, "flex", "flex-wrap", "gap-4", "mt-1"], [1, "form-check"], ["href", "/assets/icons/sprite.svg#briefcase"], ["formControlName", "departmentId", 1, "form-select"], [3, "ngValue"], ["formControlName", "jobTitleId", 1, "form-select"], ["type", "date", "formControlName", "birthday", 1, "form-control"], ["type", "date", "formControlName", "hireDate", 1, "form-control"], [1, "col-12", "col-md-4"], [1, "input-group"], [1, "input-group-text"], ["type", "number", "formControlName", "baseSalary", "placeholder", "\u4F8B\u5982\uFF1A50000", "min", "0", 1, "form-control"], ["type", "text", "readonly", "", 1, "form-control", "bg-light", 3, "value"], ["type", "number", "formControlName", "mealAllowance", "placeholder", "\u4F8B\u5982\uFF1A2400", "min", "0", 1, "form-control"], ["type", "number", "formControlName", "overtimePay", "placeholder", "\u4F8B\u5982\uFF1A0", "min", "0", 1, "form-control"], [1, "form-check", "mt-2"], ["type", "checkbox", "formControlName", "sendPaySlip", "id", "sendPaySlip", 1, "form-check-input"], ["for", "sendPaySlip", 1, "form-check-label"], ["type", "checkbox", "formControlName", "isIndigenous", "id", "isIndigenous", 1, "form-check-input"], ["for", "isIndigenous", 1, "form-check-label"], ["type", "date", "formControlName", "resignDate", 1, "form-control"], ["formControlName", "agentUserId", 1, "form-select"], ["value", ""], [3, "value"], ["href", "/assets/icons/sprite.svg#image"], [1, "text-muted", "small", "mb-3"], ["href", "/assets/icons/sprite.svg#edit"], [1, "mt-6", "flex", "gap-2"], ["type", "submit", 1, "btn", "btn-primary"], ["routerLink", "/admin/users", 1, "btn", "btn-outline-secondary"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-info", "ms-auto", 3, "click", "disabled"], [1, "inline-block", "w-4", "h-4", "border-2", "border-current", "border-t-transparent", "rounded-full", "animate-spin", "me-1"], [1, "sa-icon", "me-1"], ["href", "/assets/icons/sprite.svg#mail"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], ["type", "radio", "name", "roleId", "formControlName", "roleId", 1, "form-check-input", 3, "id", "value"], [1, "form-check-label", 3, "for"], [1, "flex", "flex-wrap", "items-start", "gap-4", "mb-3"], [1, "relative", "w-32", "h-32", "rounded-full", "overflow-hidden", "border", "cursor-move", "select-none", "touch-none", "bg-[--bg-elevated]", 3, "pointerdown", "pointermove", "pointerup", "pointercancel"], ["alt", "\u982D\u50CF", 1, "w-full", "h-full", "object-cover", "pointer-events-none", 2, "transform-origin", "center", 3, "src"], [1, "flex-1", "min-w-[200px]"], [1, "form-label", "fw-500", "text-sm", "mb-1"], [1, "flex", "items-center", "gap-2", "mb-2"], ["type", "range", "min", "1", "max", "3", "step", "0.05", 1, "flex-1", 3, "input", "value"], [1, "text-sm", "text-muted", "w-12", "text-right"], [1, "text-muted", "small", "mb-2"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", 3, "click"], [1, "flex", "gap-2"], [1, "btn", "btn-sm", "btn-outline-primary", "cursor-pointer", "mb-0"], ["type", "file", "accept", "image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif", 1, "hidden", 3, "change"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-danger", 3, "click"], ["href", "/assets/icons/sprite.svg#upload"], ["href", "/assets/icons/sprite.svg#file-text"], [1, "flex", "items-center", "gap-2", "mb-3", "border", "rounded", "px-3", "py-2", "bg-[--bg-surface]"], [1, "sa-icon", "text-[--accent]", 2, "stroke", "currentColor"], [1, "fw-500", "text-[--text-primary]", "truncate"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "ms-auto"], ["type", "file", "accept", "image/png,image/jpeg,application/pdf", 1, "hidden", 3, "change"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "ms-auto", 3, "click"], [1, "mb-3"], [1, "border", "rounded", "p-3", "bg-white", "inline-block"], ["alt", "\u7C3D\u540D\u6A94", 1, "max-h-24", "object-contain", 3, "src"], ["type", "file", "accept", "image/png,image/jpeg,image/gif,image/webp", 1, "hidden", 3, "change"]], template: function UserForm_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _UserForm, selectors: [["app-user-form"]], decls: 22, vars: 11, consts: [[1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6", "flex-wrap"], ["routerLink", "/admin/users", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "mb-0"], [1, "flex", "gap-2", "ms-auto", "flex-wrap"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [1, "flex", "gap-1", "mb-4"], ["type", "button", 1, "btn", "btn-sm", 3, "click"], [1, "row"], [1, "col-12", "col-xl-8"], [3, "ngSubmit", "formGroup"], ["formGroupName", "hrProfile"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", 3, "click", "disabled"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-info", 3, "click", "disabled"], [1, "inline-block", "w-4", "h-4", "border-2", "border-current", "border-t-transparent", "rounded-full", "animate-spin", "me-1"], [1, "sa-icon", "me-1"], ["href", "/assets/icons/sprite.svg#printer"], ["href", "/assets/icons/sprite.svg#mail"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "card", "border-0", "shadow-sm", "mb-4"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], ["href", "/assets/icons/sprite.svg#user"], [1, "card-body"], [1, "row", "g-3"], [1, "col-12", "col-md-6"], [1, "form-label", "fw-500"], [1, "text-danger"], ["type", "text", "formControlName", "name", "placeholder", "\u8ACB\u8F38\u5165\u59D3\u540D", 1, "form-control"], [1, "text-danger", "small", "mt-1"], ["type", "email", "formControlName", "email", "placeholder", "user@example.com", 1, "form-control"], ["type", "password", "formControlName", "password", "placeholder", "\u7559\u7A7A\u5247\u4E0D\u4FEE\u6539\uFF08\u81F3\u5C11 6 \u78BC\uFF09", 1, "form-control"], ["formControlName", "status", 1, "form-select"], ["value", "active"], ["value", "inactive"], [1, "flex", "flex-wrap", "gap-4", "mt-1"], [1, "form-check"], ["href", "/assets/icons/sprite.svg#briefcase"], ["formControlName", "departmentId", 1, "form-select"], [3, "ngValue"], ["formControlName", "jobTitleId", 1, "form-select"], ["type", "date", "formControlName", "birthday", 1, "form-control"], ["type", "date", "formControlName", "hireDate", 1, "form-control"], [1, "col-12", "col-md-4"], [1, "input-group"], [1, "input-group-text"], ["type", "number", "formControlName", "baseSalary", "placeholder", "\u4F8B\u5982\uFF1A50000", "min", "0", 1, "form-control"], ["type", "number", "formControlName", "laborInsuranceOverride", 1, "form-control", 3, "placeholder"], [1, "text-muted", "small", "mt-1"], ["type", "number", "formControlName", "healthInsuranceOverride", 1, "form-control", 3, "placeholder"], ["type", "number", "formControlName", "mealAllowance", "placeholder", "\u4F8B\u5982\uFF1A2400", "min", "0", 1, "form-control"], ["type", "number", "formControlName", "overtimePay", "placeholder", "\u4F8B\u5982\uFF1A0", "min", "0", 1, "form-control"], [1, "form-check", "mt-2"], ["type", "checkbox", "formControlName", "sendPaySlip", "id", "sendPaySlip", 1, "form-check-input"], ["for", "sendPaySlip", 1, "form-check-label"], ["type", "checkbox", "formControlName", "isIndigenous", "id", "isIndigenous", 1, "form-check-input"], ["for", "isIndigenous", 1, "form-check-label"], ["type", "checkbox", "formControlName", "isLowIncome", "id", "isLowIncome", 1, "form-check-input"], ["for", "isLowIncome", 1, "form-check-label"], ["type", "checkbox", "formControlName", "isDisabled", "id", "isDisabled", 1, "form-check-input"], ["for", "isDisabled", 1, "form-check-label"], ["type", "date", "formControlName", "resignDate", 1, "form-control"], ["formControlName", "agentUserId", 1, "form-select"], ["value", ""], [3, "value"], ["href", "/assets/icons/sprite.svg#image"], [1, "text-muted", "small", "mb-3"], ["href", "/assets/icons/sprite.svg#edit"], [1, "mt-6", "flex", "gap-2"], ["type", "submit", 1, "btn", "btn-primary"], ["routerLink", "/admin/users", 1, "btn", "btn-outline-secondary"], ["type", "radio", "name", "roleId", "formControlName", "roleId", 1, "form-check-input", 3, "id", "value"], [1, "form-check-label", 3, "for"], [1, "flex", "flex-wrap", "items-start", "gap-4", "mb-3"], [1, "relative", "w-32", "h-32", "rounded-full", "overflow-hidden", "border", "cursor-move", "select-none", "touch-none", "bg-[--bg-elevated]", 3, "pointerdown", "pointermove", "pointerup", "pointercancel"], ["alt", "\u982D\u50CF", 1, "w-full", "h-full", "object-cover", "pointer-events-none", 2, "transform-origin", "center", 3, "src"], [1, "flex-1", "min-w-[200px]"], [1, "form-label", "fw-500", "text-sm", "mb-1"], [1, "flex", "items-center", "gap-2", "mb-2"], ["type", "range", "min", "1", "max", "3", "step", "0.05", 1, "flex-1", 3, "input", "value"], [1, "text-sm", "text-muted", "w-12", "text-right"], [1, "text-muted", "small", "mb-2"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", 3, "click"], [1, "flex", "gap-2"], [1, "btn", "btn-sm", "btn-outline-primary", "cursor-pointer", "mb-0"], ["type", "file", "accept", "image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif", 1, "hidden", 3, "change"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-danger", 3, "click"], ["href", "/assets/icons/sprite.svg#upload"], ["href", "/assets/icons/sprite.svg#file-text"], [1, "flex", "items-center", "gap-2", "mb-3", "border", "rounded", "px-3", "py-2", "bg-[--bg-surface]"], [1, "sa-icon", "text-[--accent]", 2, "stroke", "currentColor"], [1, "fw-500", "text-[--text-primary]", "truncate"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "ms-auto"], ["type", "file", "accept", "image/png,image/jpeg,application/pdf", 1, "hidden", 3, "change"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "ms-auto", 3, "click"], [1, "mb-3"], [1, "border", "rounded", "p-3", "bg-white", "inline-block"], ["alt", "\u7C3D\u540D\u6A94", 1, "max-h-24", "object-contain", 3, "src"], ["type", "file", "accept", "image/png,image/jpeg,image/gif,image/webp", 1, "hidden", 3, "change"], [1, "p-3", "mb-4", "rounded", "border", "bg-[--bg-elevated]"], [1, "flex", "flex-wrap", "gap-6", "text-sm"], [1, "text-muted", "me-1"], [1, "fw-500"], [1, "flex", "items-center", "justify-center", "py-12", "text-muted"], [1, "inline-block", "w-5", "h-5", "border-2", "border-current", "border-t-transparent", "rounded-full", "animate-spin", "me-2"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["type", "text", "formControlName", "employeeNumber", "placeholder", "\u4F8B\u5982\uFF1AEMP001", 1, "form-control"], ["type", "text", "formControlName", "englishName", "placeholder", "English Name", 1, "form-control"], ["type", "text", "formControlName", "idNumber", "placeholder", "A123456789", 1, "form-control"], ["formControlName", "gender", 1, "form-select"], ["value", "M"], ["value", "F"], ["formControlName", "maritalStatus", 1, "form-select"], ["value", "single"], ["value", "married"], ["value", "divorced"], ["value", "widowed"], ["type", "text", "formControlName", "birthPlace", "placeholder", "\u4F8B\u5982\uFF1A\u53F0\u5317\u5E02", 1, "form-control"], ["type", "tel", "formControlName", "mobilePhone", "placeholder", "09xx-xxxxxx", 1, "form-control"], ["href", "/assets/icons/sprite.svg#credit-card"], [1, "text-muted", "small", "mb-4"], [1, "row", "g-4"], [1, "fw-500", "mb-2"], [1, "mb-2"], ["href", "/assets/icons/sprite.svg#home"], [1, "col-12", "col-md-8"], ["type", "text", "formControlName", "residentialAddress", "placeholder", "\u7E23\u5E02\u3001\u5340\u3001\u8DEF\u6BB5\u3001\u9580\u724C", 1, "form-control"], ["type", "tel", "formControlName", "residentialPhone", "placeholder", "02-xxxx-xxxx", 1, "form-control"], [1, "col-12"], ["type", "checkbox", "id", "mailingSameChk", 1, "form-check-input", 3, "ngModelChange", "change", "ngModel", "ngModelOptions"], ["for", "mailingSameChk", 1, "form-check-label", "small"], ["type", "text", "formControlName", "mailingAddress", "placeholder", "\u7E23\u5E02\u3001\u5340\u3001\u8DEF\u6BB5\u3001\u9580\u724C", 1, "form-control"], ["type", "tel", "formControlName", "mailingPhone", "placeholder", "02-xxxx-xxxx", 1, "form-control"], ["href", "/assets/icons/sprite.svg#book-open"], [1, "table-responsive", "mb-3"], [1, "table", "table-sm", "align-middle", "mb-0"], [1, "table-light"], ["formArrayName", "educationRecords"], [3, "formGroupName"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary"], ["formArrayName", "employmentHistoryRecords"], ["href", "/assets/icons/sprite.svg#users"], ["formArrayName", "familyMembers"], ["href", "/assets/icons/sprite.svg#plus"], ["href", "/assets/icons/sprite.svg#award"], ["formArrayName", "professionalTrainings"], ["href", "/assets/icons/sprite.svg#globe"], ["formArrayName", "languageAbilities"], ["href", "/assets/icons/sprite.svg#phone"], ["type", "text", "formControlName", "emergencyContactName", "placeholder", "\u59D3\u540D", 1, "form-control"], ["type", "tel", "formControlName", "emergencyContactPhone", "placeholder", "09xx-xxxxxx", 1, "form-control"], [1, "col-12", "col-md-3"], ["type", "text", "formControlName", "bankCode", "placeholder", "\u5C40\u865F\uFF083 \u78BC\uFF09", 1, "form-control"], [1, "col-12", "col-md-5"], ["type", "text", "formControlName", "bankAccount", "placeholder", "\u5E33\u865F", 1, "form-control"], ["type", "date", "formControlName", "insuranceStartDate", 1, "form-control"], ["type", "number", "formControlName", "dependentCount", "placeholder", "0", "min", "0", 1, "form-control"], ["formControlName", "specialties", "rows", "2", "placeholder", "\u8ACB\u586B\u5BEB\u5C08\u9577\u6216\u8208\u8DA3", 1, "form-control"], ["href", "/assets/icons/sprite.svg#clock"], [1, "fw-600", "mb-2", "text-[--text-secondary]"], ["formArrayName", "jobTransferRecords"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "mb-4", 3, "click"], ["formArrayName", "rewardPunishmentRecords"], [1, "alert", "alert-info", "py-2", "small", "mb-3"], ["formArrayName", "salaryAdjustmentRecords"], ["formControlName", "resignationReason", "rows", "3", "placeholder", "\u8ACB\u586B\u5BEB\u96E2\u8077\u539F\u56E0\uFF08\u500B\u4EBA\u56E0\u7D20\u3001\u5408\u7D04\u5230\u671F\u2026\uFF09", 1, "form-control"], ["alt", "\u8EAB\u5206\u8B49\u6B63\u9762", 1, "rounded", "border", "max-h-40", "object-contain", "w-full", 3, "src"], [1, "flex", "items-center", "gap-2", "mb-2", "border", "rounded", "px-3", "py-2", "bg-[--bg-surface]"], [1, "fw-500", "text-[--text-primary]", "truncate", "text-sm"], ["type", "file", "accept", "image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif", 1, "hidden", 3, "change"], ["alt", "\u8EAB\u5206\u8B49\u53CD\u9762", 1, "rounded", "border", "max-h-40", "object-contain", "w-full", 3, "src"], ["type", "text", "formControlName", "school", "placeholder", "\u5B78\u6821\u540D\u7A31", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "department", "placeholder", "\u79D1\u7CFB", 1, "form-control", "form-control-sm"], ["formControlName", "degree", 1, "form-select", "form-select-sm"], ["value", "graduated"], ["value", "incomplete"], ["type", "month", "formControlName", "startDate", 1, "form-control", "form-control-sm"], ["type", "month", "formControlName", "endDate", 1, "form-control", "form-control-sm"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center", 3, "click"], ["href", "/assets/icons/sprite.svg#x"], ["colspan", "6", 1, "text-center", "text-muted", "small", "py-3"], ["type", "text", "formControlName", "organization", "placeholder", "\u6A5F\u69CB\u540D\u7A31", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "jobTitle", "placeholder", "\u8077\u7A31", 1, "form-control", "form-control-sm"], ["type", "date", "formControlName", "startDate", 1, "form-control", "form-control-sm"], ["type", "date", "formControlName", "endDate", 1, "form-control", "form-control-sm"], ["colspan", "5", 1, "text-center", "text-muted", "small", "py-3"], ["type", "text", "formControlName", "name", "placeholder", "\u59D3\u540D", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "relationship", "placeholder", "\u7236/\u6BCD/\u914D\u5076\u2026", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "age", "placeholder", "\u5E74\u9F61", "min", "0", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "occupation", "placeholder", "\u8077\u696D", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "trainingName", "placeholder", "\u8A13\u7DF4\u540D\u7A31", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "trainingOrg", "placeholder", "\u6A5F\u69CB\u540D\u7A31", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "hours", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "language", "placeholder", "\u4E2D\u6587/\u82F1\u6587\u2026", 1, "form-control", "form-control-sm"], ["formControlName", "listening", 1, "form-select", "form-select-sm"], ["value", "good"], ["value", "fair"], ["formControlName", "speaking", 1, "form-select", "form-select-sm"], ["formControlName", "reading", 1, "form-select", "form-select-sm"], ["formControlName", "writing", 1, "form-select", "form-select-sm"], ["type", "date", "formControlName", "effectiveDate", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "fromDepartment", "placeholder", "\u539F\u90E8\u9580", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "toDepartment", "placeholder", "\u65B0\u90E8\u9580", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "fromJobTitle", "placeholder", "\u539F\u8077\u7A31", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "toJobTitle", "placeholder", "\u65B0\u8077\u7A31", 1, "form-control", "form-control-sm"], ["formControlName", "type", 1, "form-select", "form-select-sm"], ["value", "reward"], ["value", "punishment"], ["type", "text", "formControlName", "category", "placeholder", "\u5609\u734E/\u7533\u8AA1\u2026", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "count", "placeholder", "1", "min", "1", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "reason", "placeholder", "\u4E8B\u7531", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "baseSalary", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "80px"], ["type", "number", "formControlName", "positionAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "dutyAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "otherAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "adjustmentDifference", "placeholder", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "overseasAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "mealAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], [1, "text-end", "fw-500"], ["type", "text", "formControlName", "notes", "placeholder", "\u5099\u8A3B", 1, "form-control", "form-control-sm", 2, "min-width", "80px"], ["colspan", "11", 1, "text-center", "text-muted", "small", "py-3"], [1, "alert", "py-2", "mb-4", 2, "background", "rgba(13,110,253,0.08)"], [1, "flex", "items-start", "gap-2"], [1, "sa-icon", "mt-1", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#info"], [1, "small"], [1, "fw-600"], ["href", "/assets/icons/sprite.svg#heart"], [1, "flex", "flex-wrap", "gap-6", "mb-4", "text-sm"], [1, "text-warning", "ms-1"], ["formArrayName", "healthDependents"], [1, "fw-600", "text-primary"], [1, "text-muted", "ms-1", "small"], ["formControlName", "relationship", 1, "form-select", "form-select-sm"], ["value", "spouse"], ["value", "father"], ["value", "mother"], ["value", "son"], ["value", "daughter"], ["value", "father_in_law"], ["value", "mother_in_law"], ["value", "father_in_law_wife"], ["value", "mother_in_law_wife"], ["value", "other"], ["type", "text", "formControlName", "idNumber", "placeholder", "A123456789", 1, "form-control", "form-control-sm"], ["type", "date", "formControlName", "birthDate", 1, "form-control", "form-control-sm"]], template: function UserForm_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "a", 2);
       \u0275\u0275namespaceSVG();
@@ -1567,632 +4603,1305 @@ var UserForm = class _UserForm {
       \u0275\u0275elementStart(5, "h4", 5);
       \u0275\u0275text(6);
       \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(7, UserForm_Conditional_7_Template, 3, 2, "button", 6);
+      \u0275\u0275conditionalCreate(7, UserForm_Conditional_7_Template, 7, 4, "div", 6);
       \u0275\u0275elementEnd();
       \u0275\u0275conditionalCreate(8, UserForm_Conditional_8_Template, 4, 1, "div", 7);
-      \u0275\u0275elementStart(9, "div", 8)(10, "div", 9)(11, "form", 10);
-      \u0275\u0275listener("ngSubmit", function UserForm_Template_form_ngSubmit_11_listener() {
+      \u0275\u0275elementStart(9, "div", 8)(10, "button", 9);
+      \u0275\u0275listener("click", function UserForm_Template_button_click_10_listener() {
+        return ctx.switchTab("basic");
+      });
+      \u0275\u0275text(11, "\u54E1\u5DE5\u57FA\u672C\u8CC7\u6599");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(12, "button", 9);
+      \u0275\u0275listener("click", function UserForm_Template_button_click_12_listener() {
+        return ctx.switchTab("hr");
+      });
+      \u0275\u0275text(13, "\u4EBA\u4E8B\u8CC7\u6599\u5361");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(14, "button", 9);
+      \u0275\u0275listener("click", function UserForm_Template_button_click_14_listener() {
+        return ctx.switchTab("dependents");
+      });
+      \u0275\u0275text(15, "\u5065\u4FDD\u7737\u5C6C");
+      \u0275\u0275elementEnd()();
+      \u0275\u0275elementStart(16, "div", 10)(17, "div", 11)(18, "form", 12);
+      \u0275\u0275listener("ngSubmit", function UserForm_Template_form_ngSubmit_18_listener() {
         return ctx.submit();
       });
-      \u0275\u0275elementStart(12, "div", 11)(13, "div", 12);
-      \u0275\u0275namespaceSVG();
-      \u0275\u0275elementStart(14, "svg", 3);
-      \u0275\u0275element(15, "use", 13);
-      \u0275\u0275elementEnd();
-      \u0275\u0275text(16, " \u57FA\u672C\u8CC7\u6599 ");
-      \u0275\u0275elementEnd();
-      \u0275\u0275namespaceHTML();
-      \u0275\u0275elementStart(17, "div", 14)(18, "div", 15)(19, "div", 16)(20, "label", 17);
-      \u0275\u0275text(21, "\u59D3\u540D ");
-      \u0275\u0275elementStart(22, "span", 18);
-      \u0275\u0275text(23, "*");
-      \u0275\u0275elementEnd()();
-      \u0275\u0275element(24, "input", 19);
-      \u0275\u0275conditionalCreate(25, UserForm_Conditional_25_Template, 2, 0, "div", 20);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(26, "div", 16)(27, "label", 17);
-      \u0275\u0275text(28, "Email ");
-      \u0275\u0275elementStart(29, "span", 18);
-      \u0275\u0275text(30, "*");
-      \u0275\u0275elementEnd()();
-      \u0275\u0275element(31, "input", 21);
-      \u0275\u0275conditionalCreate(32, UserForm_Conditional_32_Template, 2, 0, "div", 20);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(33, "div", 16)(34, "label", 17);
-      \u0275\u0275text(35, "\u5BC6\u78BC");
-      \u0275\u0275elementEnd();
-      \u0275\u0275element(36, "input", 22);
-      \u0275\u0275conditionalCreate(37, UserForm_Conditional_37_Template, 2, 0, "div", 20);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(38, "div", 16)(39, "label", 17);
-      \u0275\u0275text(40, "\u72C0\u614B");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(41, "select", 23)(42, "option", 24);
-      \u0275\u0275text(43, "\u5728\u8077");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(44, "option", 25);
-      \u0275\u0275text(45, "\u96E2\u8077");
-      \u0275\u0275elementEnd()()();
-      \u0275\u0275elementStart(46, "div", 16)(47, "label", 17);
-      \u0275\u0275text(48, "\u89D2\u8272 ");
-      \u0275\u0275elementStart(49, "span", 18);
-      \u0275\u0275text(50, "*");
-      \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(51, "div", 26);
-      \u0275\u0275repeaterCreate(52, UserForm_For_53_Template, 4, 4, "div", 27, _forTrack02);
-      \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(54, UserForm_Conditional_54_Template, 2, 0, "div", 20);
+      \u0275\u0275conditionalCreate(19, UserForm_Conditional_19_Template, 191, 22)(20, UserForm_Conditional_20_Template, 25, 4, "div", 13)(21, UserForm_Conditional_21_Template, 49, 4);
       \u0275\u0275elementEnd()()()();
-      \u0275\u0275elementStart(55, "div", 11)(56, "div", 12);
-      \u0275\u0275namespaceSVG();
-      \u0275\u0275elementStart(57, "svg", 3);
-      \u0275\u0275element(58, "use", 28);
-      \u0275\u0275elementEnd();
-      \u0275\u0275text(59, " \u54E1\u5DE5\u8CC7\u8A0A ");
-      \u0275\u0275elementEnd();
-      \u0275\u0275namespaceHTML();
-      \u0275\u0275elementStart(60, "div", 14)(61, "div", 15)(62, "div", 16)(63, "label", 17);
-      \u0275\u0275text(64, "\u90E8\u9580 ");
-      \u0275\u0275elementStart(65, "span", 18);
-      \u0275\u0275text(66, "*");
-      \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(67, "select", 29)(68, "option", 30);
-      \u0275\u0275text(69, "\u2014 \u8ACB\u9078\u64C7\u90E8\u9580 \u2014");
-      \u0275\u0275elementEnd();
-      \u0275\u0275repeaterCreate(70, UserForm_For_71_Template, 2, 2, "option", 30, _forTrack02);
-      \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(72, UserForm_Conditional_72_Template, 2, 0, "div", 20);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(73, "div", 16)(74, "label", 17);
-      \u0275\u0275text(75, "\u8077\u7A31");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(76, "select", 31)(77, "option", 30);
-      \u0275\u0275text(78, "\u2014 \u672A\u6307\u5B9A \u2014");
-      \u0275\u0275elementEnd();
-      \u0275\u0275repeaterCreate(79, UserForm_For_80_Template, 2, 2, "option", 30, _forTrack02);
-      \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(81, "div", 16)(82, "label", 17);
-      \u0275\u0275text(83, "\u751F\u65E5 ");
-      \u0275\u0275elementStart(84, "span", 18);
-      \u0275\u0275text(85, "*");
-      \u0275\u0275elementEnd()();
-      \u0275\u0275element(86, "input", 32);
-      \u0275\u0275conditionalCreate(87, UserForm_Conditional_87_Template, 2, 0, "div", 20);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(88, "div", 16)(89, "label", 17);
-      \u0275\u0275text(90, "\u5165\u8077\u65E5");
-      \u0275\u0275elementEnd();
-      \u0275\u0275element(91, "input", 33);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(92, "div", 34)(93, "label", 17);
-      \u0275\u0275text(94, "\u5E95\u85AA");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(95, "div", 35)(96, "span", 36);
-      \u0275\u0275text(97, "NT$");
-      \u0275\u0275elementEnd();
-      \u0275\u0275element(98, "input", 37);
-      \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(99, "div", 34)(100, "label", 17);
-      \u0275\u0275text(101, "\u52DE\u4FDD\uFF08\u54E1\u5DE5\u8CA0\u64D4\uFF09");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(102, "div", 35)(103, "span", 36);
-      \u0275\u0275text(104, "NT$");
-      \u0275\u0275elementEnd();
-      \u0275\u0275element(105, "input", 38);
-      \u0275\u0275pipe(106, "number");
-      \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(107, "div", 34)(108, "label", 17);
-      \u0275\u0275text(109, "\u5065\u4FDD\uFF08\u54E1\u5DE5\u8CA0\u64D4\uFF09");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(110, "div", 35)(111, "span", 36);
-      \u0275\u0275text(112, "NT$");
-      \u0275\u0275elementEnd();
-      \u0275\u0275element(113, "input", 38);
-      \u0275\u0275pipe(114, "number");
-      \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(115, "div", 34)(116, "label", 17);
-      \u0275\u0275text(117, "\u4F19\u98DF\u8CBB");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(118, "div", 35)(119, "span", 36);
-      \u0275\u0275text(120, "NT$");
-      \u0275\u0275elementEnd();
-      \u0275\u0275element(121, "input", 39);
-      \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(122, "div", 34)(123, "label", 17);
-      \u0275\u0275text(124, "\u52A0\u73ED\u8CBB");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(125, "div", 35)(126, "span", 36);
-      \u0275\u0275text(127, "NT$");
-      \u0275\u0275elementEnd();
-      \u0275\u0275element(128, "input", 40);
-      \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(129, "div", 34)(130, "label", 17);
-      \u0275\u0275text(131, "\u5BC4\u9001\u85AA\u8CC7\u8868");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(132, "div", 41);
-      \u0275\u0275element(133, "input", 42);
-      \u0275\u0275elementStart(134, "label", 43);
-      \u0275\u0275text(135, "\u5BC4\u9001\u85AA\u8CC7\u660E\u7D30");
-      \u0275\u0275elementEnd()()();
-      \u0275\u0275elementStart(136, "div", 34)(137, "label", 17);
-      \u0275\u0275text(138, "\u539F\u4F4F\u6C11\u8EAB\u4EFD");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(139, "div", 41);
-      \u0275\u0275element(140, "input", 44);
-      \u0275\u0275elementStart(141, "label", 45);
-      \u0275\u0275text(142, "\u662F\u539F\u4F4F\u6C11\uFF08\u53EF\u7533\u8ACB\u6B72\u6642\u796D\u5100\u5047\uFF09");
-      \u0275\u0275elementEnd()()();
-      \u0275\u0275elementStart(143, "div", 34)(144, "label", 17);
-      \u0275\u0275text(145, "\u96E2\u8077\u65E5");
-      \u0275\u0275elementEnd();
-      \u0275\u0275element(146, "input", 46);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(147, "div", 34)(148, "label", 17);
-      \u0275\u0275text(149, "\u8077\u52D9\u4EE3\u7406\u4EBA");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(150, "select", 47)(151, "option", 48);
-      \u0275\u0275text(152, "\u2014 \u7121\u4EE3\u7406\u4EBA \u2014");
-      \u0275\u0275elementEnd();
-      \u0275\u0275repeaterCreate(153, UserForm_For_154_Template, 2, 2, "option", 49, _forTrack02);
-      \u0275\u0275elementEnd()()()()();
-      \u0275\u0275elementStart(155, "div", 11)(156, "div", 12);
-      \u0275\u0275namespaceSVG();
-      \u0275\u0275elementStart(157, "svg", 3);
-      \u0275\u0275element(158, "use", 50);
-      \u0275\u0275elementEnd();
-      \u0275\u0275text(159, " \u982D\u50CF ");
-      \u0275\u0275elementEnd();
-      \u0275\u0275namespaceHTML();
-      \u0275\u0275elementStart(160, "div", 14)(161, "p", 51);
-      \u0275\u0275text(162, "\u652F\u63F4 PNG\u3001JPEG\u3001GIF\u3001WebP\u3001HEIC \u5716\u7247\u683C\u5F0F\u3002\u4E0A\u50B3\u5F8C\u53EF\u62D6\u66F3\u8ABF\u6574\u4F4D\u7F6E\u3001\u6ED1\u687F\u7E2E\u653E\uFF0C\u5716\u6A94\u6703\u81EA\u52D5\u58D3\u7E2E\u3002");
-      \u0275\u0275element(163, "br");
-      \u0275\u0275text(164, "\u4E0A\u50B3\u7167\u7247\u52FF\u8D85\u904E1MB\u3002");
-      \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(165, UserForm_Conditional_165_Template, 21, 10)(166, UserForm_Conditional_166_Template, 7, 0);
-      \u0275\u0275elementEnd()();
-      \u0275\u0275conditionalCreate(167, UserForm_Conditional_167_Template, 12, 1, "div", 11);
-      \u0275\u0275elementStart(168, "div", 11)(169, "div", 12);
-      \u0275\u0275namespaceSVG();
-      \u0275\u0275elementStart(170, "svg", 3);
-      \u0275\u0275element(171, "use", 52);
-      \u0275\u0275elementEnd();
-      \u0275\u0275text(172, " \u7C3D\u540D\u6A94 ");
-      \u0275\u0275elementEnd();
-      \u0275\u0275namespaceHTML();
-      \u0275\u0275elementStart(173, "div", 14)(174, "p", 51);
-      \u0275\u0275text(175, "\u652F\u63F4 PNG\u3001JPEG\u3001GIF\u3001WebP \u683C\u5F0F\uFF0C\u5EFA\u8B70\u5C3A\u5BF8 300\xD7150 \u50CF\u7D20\uFF0C\u6A94\u6848\u5927\u5C0F\u4E0D\u8D85\u904E 2MB\u3002");
-      \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(176, UserForm_Conditional_176_Template, 9, 1)(177, UserForm_Conditional_177_Template, 7, 0);
-      \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(178, "div", 53)(179, "button", 54);
-      \u0275\u0275text(180);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(181, "a", 55);
-      \u0275\u0275text(182, "\u53D6\u6D88");
-      \u0275\u0275elementEnd()()()()()();
     }
     if (rf & 2) {
-      let tmp_4_0;
-      let tmp_5_0;
-      let tmp_6_0;
-      let tmp_8_0;
-      let tmp_11_0;
-      let tmp_14_0;
       \u0275\u0275advance(6);
       \u0275\u0275textInterpolate(ctx.isEdit ? "\u7DE8\u8F2F\u54E1\u5DE5" : "\u65B0\u589E\u54E1\u5DE5");
       \u0275\u0275advance();
       \u0275\u0275conditional(ctx.isEdit ? 7 : -1);
       \u0275\u0275advance();
       \u0275\u0275conditional(ctx.errorMsg() ? 8 : -1);
-      \u0275\u0275advance(3);
-      \u0275\u0275property("formGroup", ctx.form);
-      \u0275\u0275advance(14);
-      \u0275\u0275conditional(((tmp_4_0 = ctx.form.get("name")) == null ? null : tmp_4_0.invalid) && ((tmp_4_0 = ctx.form.get("name")) == null ? null : tmp_4_0.touched) ? 25 : -1);
-      \u0275\u0275advance(7);
-      \u0275\u0275conditional(((tmp_5_0 = ctx.form.get("email")) == null ? null : tmp_5_0.invalid) && ((tmp_5_0 = ctx.form.get("email")) == null ? null : tmp_5_0.touched) ? 32 : -1);
-      \u0275\u0275advance(5);
-      \u0275\u0275conditional(((tmp_6_0 = ctx.form.get("password")) == null ? null : tmp_6_0.invalid) && ((tmp_6_0 = ctx.form.get("password")) == null ? null : tmp_6_0.touched) ? 37 : -1);
-      \u0275\u0275advance(15);
-      \u0275\u0275repeater(ctx.roles());
       \u0275\u0275advance(2);
-      \u0275\u0275conditional(((tmp_8_0 = ctx.form.get("roleId")) == null ? null : tmp_8_0.invalid) && ((tmp_8_0 = ctx.form.get("roleId")) == null ? null : tmp_8_0.touched) ? 54 : -1);
-      \u0275\u0275advance(14);
-      \u0275\u0275property("ngValue", null);
+      \u0275\u0275classMap(ctx.activeTab() === "basic" ? "btn-primary" : "btn-outline-secondary");
       \u0275\u0275advance(2);
-      \u0275\u0275repeater(ctx.departments());
+      \u0275\u0275classMap(ctx.activeTab() === "hr" ? "btn-primary" : "btn-outline-secondary");
       \u0275\u0275advance(2);
-      \u0275\u0275conditional(((tmp_11_0 = ctx.form.get("departmentId")) == null ? null : tmp_11_0.invalid) && ((tmp_11_0 = ctx.form.get("departmentId")) == null ? null : tmp_11_0.touched) ? 72 : -1);
-      \u0275\u0275advance(5);
-      \u0275\u0275property("ngValue", null);
-      \u0275\u0275advance(2);
-      \u0275\u0275repeater(ctx.jobTitles());
-      \u0275\u0275advance(8);
-      \u0275\u0275conditional(((tmp_14_0 = ctx.form.get("birthday")) == null ? null : tmp_14_0.invalid) && ((tmp_14_0 = ctx.form.get("birthday")) == null ? null : tmp_14_0.touched) ? 87 : -1);
-      \u0275\u0275advance(18);
-      \u0275\u0275property("value", ctx.laborInsurance() !== null ? \u0275\u0275pipeBind2(106, 18, ctx.laborInsurance(), "1.0-0") : "\u2014");
-      \u0275\u0275advance(8);
-      \u0275\u0275property("value", ctx.healthInsurance() !== null ? \u0275\u0275pipeBind2(114, 21, ctx.healthInsurance(), "1.0-0") : "\u2014");
-      \u0275\u0275advance(40);
-      \u0275\u0275repeater(ctx.getAvailableAgents());
-      \u0275\u0275advance(12);
-      \u0275\u0275conditional(ctx.displayAvatar ? 165 : 166);
-      \u0275\u0275advance(2);
-      \u0275\u0275conditional(ctx.form.value.isIndigenous ? 167 : -1);
-      \u0275\u0275advance(9);
-      \u0275\u0275conditional(ctx.displaySignature ? 176 : 177);
+      \u0275\u0275classMap(ctx.activeTab() === "dependents" ? "btn-primary" : "btn-outline-secondary");
       \u0275\u0275advance(4);
-      \u0275\u0275textInterpolate1(" ", ctx.isEdit ? "\u66F4\u65B0" : "\u5EFA\u7ACB", " ");
+      \u0275\u0275property("formGroup", ctx.form);
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.activeTab() === "basic" ? 19 : ctx.activeTab() === "hr" ? 20 : ctx.activeTab() === "dependents" ? 21 : -1);
     }
-  }, dependencies: [ReactiveFormsModule, \u0275NgNoValidate, NgSelectOption, \u0275NgSelectMultipleOption, DefaultValueAccessor, NumberValueAccessor, CheckboxControlValueAccessor, SelectControlValueAccessor, RadioControlValueAccessor, NgControlStatus, NgControlStatusGroup, MinValidator, FormGroupDirective, FormControlName, RouterLink, DecimalPipe], encapsulation: 2 });
+  }, dependencies: [ReactiveFormsModule, \u0275NgNoValidate, NgSelectOption, \u0275NgSelectMultipleOption, DefaultValueAccessor, NumberValueAccessor, CheckboxControlValueAccessor, SelectControlValueAccessor, RadioControlValueAccessor, NgControlStatus, NgControlStatusGroup, MinValidator, FormGroupDirective, FormControlName, FormGroupName, FormArrayName, FormsModule, NgModel, RouterLink, DecimalPipe], encapsulation: 2 });
 };
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(UserForm, [{
     type: Component,
-    args: [{ selector: "app-user-form", imports: [ReactiveFormsModule, RouterLink, DecimalPipe], template: `<div class="container-fluid py-3">\r
-  <div class="flex items-center gap-2 mb-6">\r
-    <a routerLink="/admin/users" class="btn btn-sm btn-outline-secondary">\r
-      <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>\r
-    </a>\r
-    <h4 class="mb-0">{{ isEdit ? '\u7DE8\u8F2F\u54E1\u5DE5' : '\u65B0\u589E\u54E1\u5DE5' }}</h4>\r
-    @if (isEdit) {\r
-      <button type="button" class="btn btn-sm btn-outline-info ms-auto"\r
-              [disabled]="sending()"\r
-              (click)="sendCredentials()">\r
-        @if (sending()) {\r
-          <span class="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin me-1"></span>\r
-          \u5BC4\u9001\u4E2D\u2026\r
-        } @else {\r
-          <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#mail"></use></svg>\r
-          \u5BC4\u51FA\u5E33\u865F\u901A\u77E5\r
-        }\r
-      </button>\r
-    }\r
-  </div>\r
-\r
-  @if (errorMsg()) {\r
-    <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">\r
-      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>\r
-      {{ errorMsg() }}\r
-    </div>\r
-  }\r
-\r
-  <div class="row">\r
-    <div class="col-12 col-xl-8">\r
-      <form [formGroup]="form" (ngSubmit)="submit()">\r
-\r
-        <!-- \u57FA\u672C\u8CC7\u6599 -->\r
-        <div class="card border-0 shadow-sm mb-4">\r
-          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">\r
-            <svg class="sa-icon"><use href="/assets/icons/sprite.svg#user"></use></svg>\r
-            \u57FA\u672C\u8CC7\u6599\r
-          </div>\r
-          <div class="card-body">\r
-            <div class="row g-3">\r
-              <div class="col-12 col-md-6">\r
-                <label class="form-label fw-500">\u59D3\u540D <span class="text-danger">*</span></label>\r
-                <input type="text" class="form-control" formControlName="name" placeholder="\u8ACB\u8F38\u5165\u59D3\u540D">\r
-                @if (form.get('name')?.invalid && form.get('name')?.touched) {\r
-                  <div class="text-danger small mt-1">\u8ACB\u8F38\u5165\u59D3\u540D\u3002</div>\r
-                }\r
-              </div>\r
-              <div class="col-12 col-md-6">\r
-                <label class="form-label fw-500">Email <span class="text-danger">*</span></label>\r
-                <input type="email" class="form-control" formControlName="email" placeholder="user@example.com">\r
-                @if (form.get('email')?.invalid && form.get('email')?.touched) {\r
-                  <div class="text-danger small mt-1">\u8ACB\u8F38\u5165\u6709\u6548\u7684\u96FB\u5B50\u90F5\u4EF6\u3002</div>\r
-                }\r
-              </div>\r
-              <div class="col-12 col-md-6">\r
-                <label class="form-label fw-500">\u5BC6\u78BC</label>\r
-                <input type="password" class="form-control" formControlName="password"\r
-                       placeholder="\u7559\u7A7A\u5247\u4E0D\u4FEE\u6539\uFF08\u81F3\u5C11 6 \u78BC\uFF09">\r
-                @if (form.get('password')?.invalid && form.get('password')?.touched) {\r
-                  <div class="text-danger small mt-1">\u5BC6\u78BC\u81F3\u5C11\u9700\u8981 6 \u500B\u5B57\u5143\u3002</div>\r
-                }\r
-              </div>\r
-              <div class="col-12 col-md-6">\r
-                <label class="form-label fw-500">\u72C0\u614B</label>\r
-                <select class="form-select" formControlName="status">\r
-                  <option value="active">\u5728\u8077</option>\r
-                  <option value="inactive">\u96E2\u8077</option>\r
-                </select>\r
-              </div>\r
-              <div class="col-12 col-md-6">\r
-                <label class="form-label fw-500">\u89D2\u8272 <span class="text-danger">*</span></label>\r
-                <div class="flex flex-wrap gap-4 mt-1">\r
-                  @for (role of roles(); track role.id) {\r
-                    <div class="form-check">\r
-                      <input class="form-check-input" type="radio"\r
-                             name="roleId"\r
-                             [id]="'role-' + role.id"\r
-                             [value]="role.id"\r
-                             formControlName="roleId">\r
-                      <label class="form-check-label" [for]="'role-' + role.id">{{ role.name }}</label>\r
-                    </div>\r
-                  }\r
-                </div>\r
-                @if (form.get('roleId')?.invalid && form.get('roleId')?.touched) {\r
-                  <div class="text-danger small mt-1">\u8ACB\u9078\u64C7\u89D2\u8272\u3002</div>\r
-                }\r
-              </div>\r
-            </div>\r
-          </div>\r
-        </div>\r
-\r
-        <!-- \u54E1\u5DE5\u8CC7\u8A0A -->\r
-        <div class="card border-0 shadow-sm mb-4">\r
-          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">\r
-            <svg class="sa-icon"><use href="/assets/icons/sprite.svg#briefcase"></use></svg>\r
-            \u54E1\u5DE5\u8CC7\u8A0A\r
-          </div>\r
-          <div class="card-body">\r
-            <div class="row g-3">\r
-              <div class="col-12 col-md-6">\r
-                <label class="form-label fw-500">\u90E8\u9580 <span class="text-danger">*</span></label>\r
-                <select class="form-select" formControlName="departmentId">\r
-                  <option [ngValue]="null">\u2014 \u8ACB\u9078\u64C7\u90E8\u9580 \u2014</option>\r
-                  @for (dept of departments(); track dept.id) {\r
-                    <option [ngValue]="dept.id">{{ dept.name }}</option>\r
-                  }\r
-                </select>\r
-                @if (form.get('departmentId')?.invalid && form.get('departmentId')?.touched) {\r
-                  <div class="text-danger small mt-1">\u8ACB\u8A2D\u5B9A\u90E8\u9580\u3002</div>\r
-                }\r
-              </div>\r
-              <div class="col-12 col-md-6">\r
-                <label class="form-label fw-500">\u8077\u7A31</label>\r
-                <select class="form-select" formControlName="jobTitleId">\r
-                  <option [ngValue]="null">\u2014 \u672A\u6307\u5B9A \u2014</option>\r
-                  @for (jt of jobTitles(); track jt.id) {\r
-                    <option [ngValue]="jt.id">{{ jt.name }}</option>\r
-                  }\r
-                </select>\r
-              </div>\r
-              <div class="col-12 col-md-6">\r
-                <label class="form-label fw-500">\u751F\u65E5 <span class="text-danger">*</span></label>\r
-                <input type="date" class="form-control" formControlName="birthday">\r
-                @if (form.get('birthday')?.invalid && form.get('birthday')?.touched) {\r
-                  <div class="text-danger small mt-1">\u8ACB\u9078\u64C7\u751F\u65E5\u3002</div>\r
-                }\r
-              </div>\r
-              <div class="col-12 col-md-6">\r
-                <label class="form-label fw-500">\u5165\u8077\u65E5</label>\r
-                <input type="date" class="form-control" formControlName="hireDate">\r
-              </div>\r
-              <div class="col-12 col-md-4">\r
-                <label class="form-label fw-500">\u5E95\u85AA</label>\r
-                <div class="input-group">\r
-                  <span class="input-group-text">NT$</span>\r
-                  <input type="number" class="form-control" formControlName="baseSalary" placeholder="\u4F8B\u5982\uFF1A50000" min="0">\r
-                </div>\r
-              </div>\r
-              <div class="col-12 col-md-4">\r
-                <label class="form-label fw-500">\u52DE\u4FDD\uFF08\u54E1\u5DE5\u8CA0\u64D4\uFF09</label>\r
-                <div class="input-group">\r
-                  <span class="input-group-text">NT$</span>\r
-                  <input type="text" class="form-control bg-light" readonly\r
-                         [value]="laborInsurance() !== null ? (laborInsurance() | number:'1.0-0') : '\u2014'">\r
-                </div>\r
-              </div>\r
-              <div class="col-12 col-md-4">\r
-                <label class="form-label fw-500">\u5065\u4FDD\uFF08\u54E1\u5DE5\u8CA0\u64D4\uFF09</label>\r
-                <div class="input-group">\r
-                  <span class="input-group-text">NT$</span>\r
-                  <input type="text" class="form-control bg-light" readonly\r
-                         [value]="healthInsurance() !== null ? (healthInsurance() | number:'1.0-0') : '\u2014'">\r
-                </div>\r
-              </div>\r
-              <div class="col-12 col-md-4">\r
-                <label class="form-label fw-500">\u4F19\u98DF\u8CBB</label>\r
-                <div class="input-group">\r
-                  <span class="input-group-text">NT$</span>\r
-                  <input type="number" class="form-control" formControlName="mealAllowance" placeholder="\u4F8B\u5982\uFF1A2400" min="0">\r
-                </div>\r
-              </div>\r
-              <div class="col-12 col-md-4">\r
-                <label class="form-label fw-500">\u52A0\u73ED\u8CBB</label>\r
-                <div class="input-group">\r
-                  <span class="input-group-text">NT$</span>\r
-                  <input type="number" class="form-control" formControlName="overtimePay" placeholder="\u4F8B\u5982\uFF1A0" min="0">\r
-                </div>\r
-              </div>\r
-              <div class="col-12 col-md-4">\r
-                <label class="form-label fw-500">\u5BC4\u9001\u85AA\u8CC7\u8868</label>\r
-                <div class="form-check mt-2">\r
-                  <input class="form-check-input" type="checkbox" formControlName="sendPaySlip" id="sendPaySlip">\r
-                  <label class="form-check-label" for="sendPaySlip">\u5BC4\u9001\u85AA\u8CC7\u660E\u7D30</label>\r
-                </div>\r
-              </div>\r
-              <div class="col-12 col-md-4">\r
-                <label class="form-label fw-500">\u539F\u4F4F\u6C11\u8EAB\u4EFD</label>\r
-                <div class="form-check mt-2">\r
-                  <input class="form-check-input" type="checkbox" formControlName="isIndigenous" id="isIndigenous">\r
-                  <label class="form-check-label" for="isIndigenous">\u662F\u539F\u4F4F\u6C11\uFF08\u53EF\u7533\u8ACB\u6B72\u6642\u796D\u5100\u5047\uFF09</label>\r
-                </div>\r
-              </div>\r
-              <div class="col-12 col-md-4">\r
-                <label class="form-label fw-500">\u96E2\u8077\u65E5</label>\r
-                <input type="date" class="form-control" formControlName="resignDate">\r
-              </div>\r
-              <div class="col-12 col-md-4">\r
-                <label class="form-label fw-500">\u8077\u52D9\u4EE3\u7406\u4EBA</label>\r
-                <select class="form-select" formControlName="agentUserId">\r
-                  <option value="">\u2014 \u7121\u4EE3\u7406\u4EBA \u2014</option>\r
-                  @for (u of getAvailableAgents(); track u.id) {\r
-                    <option [value]="u.id">{{ u.name }}</option>\r
-                  }\r
-                </select>\r
-              </div>\r
-            </div>\r
-          </div>\r
-        </div>\r
-\r
-        <!-- \u982D\u50CF -->\r
-        <div class="card border-0 shadow-sm mb-4">\r
-          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">\r
-            <svg class="sa-icon"><use href="/assets/icons/sprite.svg#image"></use></svg>\r
-            \u982D\u50CF\r
-          </div>\r
-          <div class="card-body">\r
-            <p class="text-muted small mb-3">\u652F\u63F4 PNG\u3001JPEG\u3001GIF\u3001WebP\u3001HEIC \u5716\u7247\u683C\u5F0F\u3002\u4E0A\u50B3\u5F8C\u53EF\u62D6\u66F3\u8ABF\u6574\u4F4D\u7F6E\u3001\u6ED1\u687F\u7E2E\u653E\uFF0C\u5716\u6A94\u6703\u81EA\u52D5\u58D3\u7E2E\u3002<br>\u4E0A\u50B3\u7167\u7247\u52FF\u8D85\u904E1MB\u3002</p>\r
-            @if (displayAvatar) {\r
-              <div class="flex flex-wrap items-start gap-4 mb-3">\r
-                <!-- \u5713\u5F62\u9810\u89BD\u6846\uFF08\u62D6\u66F3\u8ABF\u6574\u4F4D\u7F6E\uFF09 -->\r
-                <div class="relative w-32 h-32 rounded-full overflow-hidden border cursor-move select-none touch-none bg-[--bg-elevated]"\r
-                     (pointerdown)="onAvatarPointerDown($event)"\r
-                     (pointermove)="onAvatarPointerMove($event)"\r
-                     (pointerup)="onAvatarPointerUp()"\r
-                     (pointercancel)="onAvatarPointerUp()">\r
-                  <img [src]="displayAvatar" alt="\u982D\u50CF"\r
-                       class="w-full h-full object-cover pointer-events-none"\r
-                       [style.objectPosition]="avatarPosX() + '% ' + avatarPosY() + '%'"\r
-                       [style.transform]="'scale(' + avatarScale() + ')'"\r
-                       style="transform-origin: center">\r
-                </div>\r
-\r
-                <!-- \u7E2E\u653E\u6ED1\u687F + \u91CD\u8A2D -->\r
-                <div class="flex-1 min-w-[200px]">\r
-                  <label class="form-label fw-500 text-sm mb-1">\u7E2E\u653E</label>\r
-                  <div class="flex items-center gap-2 mb-2">\r
-                    <input type="range" min="1" max="3" step="0.05"\r
-                           [value]="avatarScale()"\r
-                           (input)="onAvatarScaleChange($event)"\r
-                           class="flex-1">\r
-                    <span class="text-sm text-muted w-12 text-right">{{ avatarScale() | number: '1.2-2' }}x</span>\r
-                  </div>\r
-                  <p class="text-muted small mb-2">\u5728\u9810\u89BD\u6846\u4E2D\u6309\u4F4F\u6ED1\u9F20\u6216\u624B\u6307\u62D6\u66F3\u8ABF\u6574\u4F4D\u7F6E\u3002</p>\r
-                  <button type="button" class="btn btn-sm btn-outline-secondary"\r
-                          (click)="resetAvatarPosition()">\r
-                    \u91CD\u8A2D\u4F4D\u7F6E\r
-                  </button>\r
-                </div>\r
-              </div>\r
-              <div class="flex gap-2">\r
-                <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">\r
-                  \u66F4\u63DB\u982D\u50CF\r
-                  <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif"\r
-                         (change)="onAvatarSelected($event)">\r
-                </label>\r
-                <button type="button" class="btn btn-sm btn-outline-danger"\r
-                        (click)="onRemoveAvatar()">\r
-                  \u522A\u9664\u982D\u50CF\r
-                </button>\r
-              </div>\r
-            } @else {\r
-              <p class="text-muted small mb-3">\u5C1A\u672A\u4E0A\u50B3\u982D\u50CF\uFF0C\u9078\u64C7\u6A94\u6848\u5F8C\u5C07\u65BC\u5132\u5B58\u6642\u4E00\u4F75\u4E0A\u50B3\u3002</p>\r
-              <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">\r
-                <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>\r
-                \u9078\u64C7\u982D\u50CF\r
-                <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif"\r
-                       (change)="onAvatarSelected($event)">\r
-              </label>\r
-            }\r
-          </div>\r
-        </div>\r
-\r
-        <!-- \u539F\u4F4F\u6C11\u8B49\u660E\u6587\u4EF6\uFF08\u50C5\u5728\u52FE\u9078\u539F\u4F4F\u6C11\u8EAB\u4EFD\u6642\u986F\u793A\uFF09 -->\r
-        @if (form.value.isIndigenous) {\r
-          <div class="card border-0 shadow-sm mb-4">\r
-            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">\r
-              <svg class="sa-icon"><use href="/assets/icons/sprite.svg#file-text"></use></svg>\r
-              \u539F\u4F4F\u6C11\u8EAB\u4EFD\u8B49\u660E\u6587\u4EF6 <span class="text-danger">*</span>\r
-            </div>\r
-            <div class="card-body">\r
-              <p class="text-muted small mb-3">\u652F\u63F4 PNG\u3001JPEG \u5716\u7247\u6216 PDF \u6A94\u6848\u3002\u6B64\u6587\u4EF6\u50C5\u4F9B\u4EBA\u4E8B\u90E8\u9580\u7A3D\u6838\uFF0C\u53D7\u6B0A\u9650\u4FDD\u8B77\u3002</p>\r
-              @if (indigenousProofDisplayName) {\r
-                <div class="flex items-center gap-2 mb-3 border rounded px-3 py-2 bg-[--bg-surface]">\r
-                  <svg class="sa-icon text-[--accent]" style="stroke: currentColor">\r
-                    <use href="/assets/icons/sprite.svg#file-text"></use>\r
-                  </svg>\r
-                  <span class="fw-500 text-[--text-primary] truncate">{{ indigenousProofDisplayName }}</span>\r
-                  @if (hasExistingIndigenousProof) {\r
-                    <button type="button" class="btn btn-sm btn-outline-secondary ms-auto"\r
-                            (click)="viewIndigenousProof()">\r
-                      \u6AA2\u8996\r
-                    </button>\r
-                  }\r
-                </div>\r
-                <div class="flex gap-2">\r
-                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">\r
-                    \u66F4\u63DB\u6A94\u6848\r
-                    <input type="file" class="hidden" accept="image/png,image/jpeg,application/pdf"\r
-                           (change)="onIndigenousProofSelected($event)">\r
-                  </label>\r
-                  <button type="button" class="btn btn-sm btn-outline-danger"\r
-                          (click)="onRemoveIndigenousProof()">\r
-                    \u522A\u9664\u6A94\u6848\r
-                  </button>\r
-                </div>\r
-              } @else {\r
-                <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">\r
-                  <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>\r
-                  \u9078\u64C7\u6A94\u6848\r
-                  <input type="file" class="hidden" accept="image/png,image/jpeg,application/pdf"\r
-                         (change)="onIndigenousProofSelected($event)">\r
-                </label>\r
-              }\r
-            </div>\r
-          </div>\r
-        }\r
-\r
-        <!-- \u7C3D\u540D\u6A94 -->\r
-        <div class="card border-0 shadow-sm mb-4">\r
-          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">\r
-            <svg class="sa-icon"><use href="/assets/icons/sprite.svg#edit"></use></svg>\r
-            \u7C3D\u540D\u6A94\r
-          </div>\r
-          <div class="card-body">\r
-            <p class="text-muted small mb-3">\u652F\u63F4 PNG\u3001JPEG\u3001GIF\u3001WebP \u683C\u5F0F\uFF0C\u5EFA\u8B70\u5C3A\u5BF8 300\xD7150 \u50CF\u7D20\uFF0C\u6A94\u6848\u5927\u5C0F\u4E0D\u8D85\u904E 2MB\u3002</p>\r
-            @if (displaySignature) {\r
-              <div class="mb-3">\r
-                <div class="border rounded p-3 bg-white inline-block">\r
-                  <img [src]="displaySignature" alt="\u7C3D\u540D\u6A94" class="max-h-24 object-contain">\r
-                </div>\r
-              </div>\r
-              <div class="flex gap-2">\r
-                <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">\r
-                  \u66F4\u63DB\u7C3D\u540D\u6A94\r
-                  <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp"\r
-                         (change)="onSignatureSelected($event)">\r
-                </label>\r
-                <button type="button" class="btn btn-sm btn-outline-danger"\r
-                        (click)="onRemoveSignature()">\r
-                  \u522A\u9664\u7C3D\u540D\u6A94\r
-                </button>\r
-              </div>\r
-            } @else {\r
-              <p class="text-muted small mb-3">\u5C1A\u672A\u4E0A\u50B3\u7C3D\u540D\u6A94\uFF0C\u9078\u64C7\u6A94\u6848\u5F8C\u5C07\u65BC\u5132\u5B58\u6642\u4E00\u4F75\u4E0A\u50B3\u3002</p>\r
-\r
-              <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">\r
-                <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>\r
-                \u9078\u64C7\u7C3D\u540D\u6A94\r
-                <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp"\r
-                       (change)="onSignatureSelected($event)">\r
-              </label>\r
-            }\r
-          </div>\r
-        </div>\r
-\r
-        <div class="mt-6 flex gap-2">\r
-          <button type="submit" class="btn btn-primary">\r
-            {{ isEdit ? '\u66F4\u65B0' : '\u5EFA\u7ACB' }}\r
-          </button>\r
-          <a routerLink="/admin/users" class="btn btn-outline-secondary">\u53D6\u6D88</a>\r
-        </div>\r
-\r
-      </form>\r
-    </div>\r
-  </div>\r
-</div>\r
+    args: [{ selector: "app-user-form", imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe], template: `<div class="container-fluid py-3">
+
+  <!-- \u2500\u2500 \u9801\u982D \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 -->
+  <div class="flex items-center gap-2 mb-6 flex-wrap">
+    <a routerLink="/admin/users" class="btn btn-sm btn-outline-secondary">
+      <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+    </a>
+    <h4 class="mb-0">{{ isEdit ? '\u7DE8\u8F2F\u54E1\u5DE5' : '\u65B0\u589E\u54E1\u5DE5' }}</h4>
+    @if (isEdit) {
+      <div class="flex gap-2 ms-auto flex-wrap">
+        <button type="button" class="btn btn-sm btn-outline-secondary"
+                [disabled]="printing()"
+                (click)="printHrCard()">
+          @if (printing()) {
+            <span class="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin me-1"></span>
+            \u7522\u751F\u4E2D\u2026
+          } @else {
+            <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#printer"></use></svg>
+            \u5217\u5370\u4EBA\u4E8B\u8CC7\u6599\u5361
+          }
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-info"
+                [disabled]="sending()"
+                (click)="sendCredentials()">
+          @if (sending()) {
+            <span class="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin me-1"></span>
+            \u5BC4\u9001\u4E2D\u2026
+          } @else {
+            <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#mail"></use></svg>
+            \u5BC4\u51FA\u5E33\u865F\u901A\u77E5
+          }
+        </button>
+      </div>
+    }
+  </div>
+
+  @if (errorMsg()) {
+    <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+      {{ errorMsg() }}
+    </div>
+  }
+
+  <!-- \u2500\u2500 Tab \u5207\u63DB\u5217 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 -->
+  <div class="flex gap-1 mb-4">
+    <button type="button" class="btn btn-sm"
+            [class]="activeTab() === 'basic' ? 'btn-primary' : 'btn-outline-secondary'"
+            (click)="switchTab('basic')">\u54E1\u5DE5\u57FA\u672C\u8CC7\u6599</button>
+    <button type="button" class="btn btn-sm"
+            [class]="activeTab() === 'hr' ? 'btn-primary' : 'btn-outline-secondary'"
+            (click)="switchTab('hr')">\u4EBA\u4E8B\u8CC7\u6599\u5361</button>
+    <button type="button" class="btn btn-sm"
+            [class]="activeTab() === 'dependents' ? 'btn-primary' : 'btn-outline-secondary'"
+            (click)="switchTab('dependents')">\u5065\u4FDD\u7737\u5C6C</button>
+  </div>
+
+  <div class="row">
+    <div class="col-12 col-xl-8">
+      <form [formGroup]="form" (ngSubmit)="submit()">
+
+        <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+             TAB 1\uFF1A\u54E1\u5DE5\u57FA\u672C\u8CC7\u6599
+        \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
+        @if (activeTab() === 'basic') {
+
+          <!-- \u57FA\u672C\u8CC7\u6599 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon"><use href="/assets/icons/sprite.svg#user"></use></svg>
+              \u57FA\u672C\u8CC7\u6599
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">\u59D3\u540D <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" formControlName="name" placeholder="\u8ACB\u8F38\u5165\u59D3\u540D">
+                  @if (form.get('name')?.invalid && form.get('name')?.touched) {
+                    <div class="text-danger small mt-1">\u8ACB\u8F38\u5165\u59D3\u540D\u3002</div>
+                  }
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">Email <span class="text-danger">*</span></label>
+                  <input type="email" class="form-control" formControlName="email" placeholder="user@example.com">
+                  @if (form.get('email')?.invalid && form.get('email')?.touched) {
+                    <div class="text-danger small mt-1">\u8ACB\u8F38\u5165\u6709\u6548\u7684\u96FB\u5B50\u90F5\u4EF6\u3002</div>
+                  }
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">\u5BC6\u78BC</label>
+                  <input type="password" class="form-control" formControlName="password"
+                         placeholder="\u7559\u7A7A\u5247\u4E0D\u4FEE\u6539\uFF08\u81F3\u5C11 6 \u78BC\uFF09">
+                  @if (form.get('password')?.invalid && form.get('password')?.touched) {
+                    <div class="text-danger small mt-1">\u5BC6\u78BC\u81F3\u5C11\u9700\u8981 6 \u500B\u5B57\u5143\u3002</div>
+                  }
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">\u72C0\u614B</label>
+                  <select class="form-select" formControlName="status">
+                    <option value="active">\u5728\u8077</option>
+                    <option value="inactive">\u96E2\u8077</option>
+                  </select>
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">\u89D2\u8272 <span class="text-danger">*</span></label>
+                  <div class="flex flex-wrap gap-4 mt-1">
+                    @for (role of roles(); track role.id) {
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio"
+                               name="roleId"
+                               [id]="'role-' + role.id"
+                               [value]="role.id"
+                               formControlName="roleId">
+                        <label class="form-check-label" [for]="'role-' + role.id">{{ role.name }}</label>
+                      </div>
+                    }
+                  </div>
+                  @if (form.get('roleId')?.invalid && form.get('roleId')?.touched) {
+                    <div class="text-danger small mt-1">\u8ACB\u9078\u64C7\u89D2\u8272\u3002</div>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- \u54E1\u5DE5\u8CC7\u8A0A -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon"><use href="/assets/icons/sprite.svg#briefcase"></use></svg>
+              \u54E1\u5DE5\u8CC7\u8A0A
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">\u90E8\u9580 <span class="text-danger">*</span></label>
+                  <select class="form-select" formControlName="departmentId">
+                    <option [ngValue]="null">\u2014 \u8ACB\u9078\u64C7\u90E8\u9580 \u2014</option>
+                    @for (dept of departments(); track dept.id) {
+                      <option [ngValue]="dept.id">{{ dept.name }}</option>
+                    }
+                  </select>
+                  @if (form.get('departmentId')?.invalid && form.get('departmentId')?.touched) {
+                    <div class="text-danger small mt-1">\u8ACB\u8A2D\u5B9A\u90E8\u9580\u3002</div>
+                  }
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">\u8077\u7A31</label>
+                  <select class="form-select" formControlName="jobTitleId">
+                    <option [ngValue]="null">\u2014 \u672A\u6307\u5B9A \u2014</option>
+                    @for (jt of jobTitles(); track jt.id) {
+                      <option [ngValue]="jt.id">{{ jt.name }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">\u751F\u65E5 <span class="text-danger">*</span></label>
+                  <input type="date" class="form-control" formControlName="birthday">
+                  @if (form.get('birthday')?.invalid && form.get('birthday')?.touched) {
+                    <div class="text-danger small mt-1">\u8ACB\u9078\u64C7\u751F\u65E5\u3002</div>
+                  }
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">\u5165\u8077\u65E5</label>
+                  <input type="date" class="form-control" formControlName="hireDate">
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u5E95\u85AA</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="baseSalary" placeholder="\u4F8B\u5982\uFF1A50000" min="0">
+                  </div>
+                </div>
+                <!-- \u52DE\u4FDD\uFF1Alookup \u9810\u8A2D\u503C + \u53EF\u8986\u5BEB -->
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u52DE\u4FDD\uFF08\u54E1\u5DE5\u8CA0\u64D4\uFF09</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="laborInsuranceOverride"
+                           [placeholder]="laborInsurance() !== null ? (laborInsurance() | number:'1.0-0') + '\uFF08\u7D1A\u8DDD\u9810\u8A2D\uFF09' : '\u2014'">
+                  </div>
+                  <div class="text-muted small mt-1">\u7559\u7A7A\u5247\u4F7F\u7528\u7D1A\u8DDD\u8868\u9810\u8A2D\u503C</div>
+                </div>
+                <!-- \u5065\u4FDD\uFF1Alookup \u9810\u8A2D\u503C + \u53EF\u8986\u5BEB -->
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u5065\u4FDD\uFF08\u54E1\u5DE5\u8CA0\u64D4\uFF09</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="healthInsuranceOverride"
+                           [placeholder]="healthInsurance() !== null ? (healthInsurance() | number:'1.0-0') + '\uFF08\u7D1A\u8DDD\u9810\u8A2D\uFF09' : '\u2014'">
+                  </div>
+                  <div class="text-muted small mt-1">\u7559\u7A7A\u5247\u4F7F\u7528\u7D1A\u8DDD\u8868\u9810\u8A2D\u503C</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u4F19\u98DF\u8CBB</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="mealAllowance" placeholder="\u4F8B\u5982\uFF1A2400" min="0">
+                  </div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u52A0\u73ED\u8CBB</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="overtimePay" placeholder="\u4F8B\u5982\uFF1A0" min="0">
+                  </div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u5BC4\u9001\u85AA\u8CC7\u8868</label>
+                  <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" formControlName="sendPaySlip" id="sendPaySlip">
+                    <label class="form-check-label" for="sendPaySlip">\u5BC4\u9001\u85AA\u8CC7\u660E\u7D30</label>
+                  </div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u539F\u4F4F\u6C11\u8EAB\u4EFD</label>
+                  <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" formControlName="isIndigenous" id="isIndigenous">
+                    <label class="form-check-label" for="isIndigenous">\u662F\u539F\u4F4F\u6C11\uFF08\u53EF\u7533\u8ACB\u6B72\u6642\u796D\u5100\u5047\uFF09</label>
+                  </div>
+                </div>
+                <!-- \u4F4E\u6536\u5165\u6236 -->
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u4F4E\u6536\u5165\u6236</label>
+                  <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" formControlName="isLowIncome" id="isLowIncome">
+                    <label class="form-check-label" for="isLowIncome">\u4F4E\u6536\u5165\u6236\u8EAB\u4EFD</label>
+                  </div>
+                </div>
+                <!-- \u6B98\u969C\u8EAB\u4EFD -->
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u6B98\u969C\u8EAB\u4EFD</label>
+                  <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" formControlName="isDisabled" id="isDisabled">
+                    <label class="form-check-label" for="isDisabled">\u5177\u6B98\u969C\u8CC7\u683C</label>
+                  </div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u96E2\u8077\u65E5</label>
+                  <input type="date" class="form-control" formControlName="resignDate">
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u8077\u52D9\u4EE3\u7406\u4EBA</label>
+                  <select class="form-select" formControlName="agentUserId">
+                    <option value="">\u2014 \u7121\u4EE3\u7406\u4EBA \u2014</option>
+                    @for (u of getAvailableAgents(); track u.id) {
+                      <option [value]="u.id">{{ u.name }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- \u982D\u50CF -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon"><use href="/assets/icons/sprite.svg#image"></use></svg>
+              \u982D\u50CF
+            </div>
+            <div class="card-body">
+              <p class="text-muted small mb-3">\u652F\u63F4 PNG\u3001JPEG\u3001GIF\u3001WebP\u3001HEIC \u5716\u7247\u683C\u5F0F\u3002\u4E0A\u50B3\u5F8C\u53EF\u62D6\u66F3\u8ABF\u6574\u4F4D\u7F6E\u3001\u6ED1\u687F\u7E2E\u653E\uFF0C\u5716\u6A94\u6703\u81EA\u52D5\u58D3\u7E2E\u3002<br>\u4E0A\u50B3\u7167\u7247\u52FF\u8D85\u904E1MB\u3002</p>
+              @if (displayAvatar) {
+                <div class="flex flex-wrap items-start gap-4 mb-3">
+                  <div class="relative w-32 h-32 rounded-full overflow-hidden border cursor-move select-none touch-none bg-[--bg-elevated]"
+                       (pointerdown)="onAvatarPointerDown($event)"
+                       (pointermove)="onAvatarPointerMove($event)"
+                       (pointerup)="onAvatarPointerUp()"
+                       (pointercancel)="onAvatarPointerUp()">
+                    <img [src]="displayAvatar" alt="\u982D\u50CF"
+                         class="w-full h-full object-cover pointer-events-none"
+                         [style.objectPosition]="avatarPosX() + '% ' + avatarPosY() + '%'"
+                         [style.transform]="'scale(' + avatarScale() + ')'"
+                         style="transform-origin: center">
+                  </div>
+                  <div class="flex-1 min-w-[200px]">
+                    <label class="form-label fw-500 text-sm mb-1">\u7E2E\u653E</label>
+                    <div class="flex items-center gap-2 mb-2">
+                      <input type="range" min="1" max="3" step="0.05"
+                             [value]="avatarScale()"
+                             (input)="onAvatarScaleChange($event)"
+                             class="flex-1">
+                      <span class="text-sm text-muted w-12 text-right">{{ avatarScale() | number: '1.2-2' }}x</span>
+                    </div>
+                    <p class="text-muted small mb-2">\u5728\u9810\u89BD\u6846\u4E2D\u6309\u4F4F\u6ED1\u9F20\u6216\u624B\u6307\u62D6\u66F3\u8ABF\u6574\u4F4D\u7F6E\u3002</p>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="resetAvatarPosition()">
+                      \u91CD\u8A2D\u4F4D\u7F6E
+                    </button>
+                  </div>
+                </div>
+                <div class="flex gap-2">
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    \u66F4\u63DB\u982D\u50CF
+                    <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif"
+                           (change)="onAvatarSelected($event)">
+                  </label>
+                  <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveAvatar()">\u522A\u9664\u982D\u50CF</button>
+                </div>
+              } @else {
+                <p class="text-muted small mb-3">\u5C1A\u672A\u4E0A\u50B3\u982D\u50CF\uFF0C\u9078\u64C7\u6A94\u6848\u5F8C\u5C07\u65BC\u5132\u5B58\u6642\u4E00\u4F75\u4E0A\u50B3\u3002</p>
+                <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                  <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                  \u9078\u64C7\u982D\u50CF
+                  <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif"
+                         (change)="onAvatarSelected($event)">
+                </label>
+              }
+            </div>
+          </div>
+
+          <!-- \u539F\u4F4F\u6C11\u8B49\u660E\u6587\u4EF6 -->
+          @if (form.value.isIndigenous) {
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                <svg class="sa-icon"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                \u539F\u4F4F\u6C11\u8EAB\u4EFD\u8B49\u660E\u6587\u4EF6 <span class="text-danger">*</span>
+              </div>
+              <div class="card-body">
+                <p class="text-muted small mb-3">\u652F\u63F4 PNG\u3001JPEG \u5716\u7247\u6216 PDF \u6A94\u6848\u3002\u6B64\u6587\u4EF6\u50C5\u4F9B\u4EBA\u4E8B\u90E8\u9580\u7A3D\u6838\uFF0C\u53D7\u6B0A\u9650\u4FDD\u8B77\u3002</p>
+                @if (indigenousProofDisplayName) {
+                  <div class="flex items-center gap-2 mb-3 border rounded px-3 py-2 bg-[--bg-surface]">
+                    <svg class="sa-icon text-[--accent]" style="stroke: currentColor">
+                      <use href="/assets/icons/sprite.svg#file-text"></use>
+                    </svg>
+                    <span class="fw-500 text-[--text-primary] truncate">{{ indigenousProofDisplayName }}</span>
+                    @if (hasExistingIndigenousProof) {
+                      <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewIndigenousProof()">\u6AA2\u8996</button>
+                    }
+                  </div>
+                  <div class="flex gap-2">
+                    <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                      \u66F4\u63DB\u6A94\u6848
+                      <input type="file" class="hidden" accept="image/png,image/jpeg,application/pdf"
+                             (change)="onIndigenousProofSelected($event)">
+                    </label>
+                    <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveIndigenousProof()">\u522A\u9664\u6A94\u6848</button>
+                  </div>
+                } @else {
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                    \u9078\u64C7\u6A94\u6848
+                    <input type="file" class="hidden" accept="image/png,image/jpeg,application/pdf"
+                           (change)="onIndigenousProofSelected($event)">
+                  </label>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- \u4F4E\u6536\u5165\u6236\u8B49\u660E\u6587\u4EF6 -->
+          @if (form.value.isLowIncome) {
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                <svg class="sa-icon"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                \u4F4E\u6536\u5165\u6236\u8B49\u660E\u6587\u4EF6
+              </div>
+              <div class="card-body">
+                <p class="text-muted small mb-3">\u652F\u63F4 PNG\u3001JPEG \u5716\u7247\u6216 PDF \u6A94\u6848\u3002\u6B64\u6587\u4EF6\u50C5\u4F9B\u4EBA\u4E8B\u90E8\u9580\u7A3D\u6838\uFF0C\u53D7\u6B0A\u9650\u4FDD\u8B77\u3002</p>
+                @if (lowIncomeProofDisplayName) {
+                  <div class="flex items-center gap-2 mb-3 border rounded px-3 py-2 bg-[--bg-surface]">
+                    <svg class="sa-icon text-[--accent]" style="stroke: currentColor">
+                      <use href="/assets/icons/sprite.svg#file-text"></use>
+                    </svg>
+                    <span class="fw-500 text-[--text-primary] truncate">{{ lowIncomeProofDisplayName }}</span>
+                    @if (hasExistingLowIncomeProof) {
+                      <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewLowIncomeProof()">\u6AA2\u8996</button>
+                    }
+                  </div>
+                  <div class="flex gap-2">
+                    <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                      \u66F4\u63DB\u6A94\u6848
+                      <input type="file" class="hidden" accept="image/png,image/jpeg,application/pdf"
+                             (change)="onLowIncomeProofSelected($event)">
+                    </label>
+                    <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveLowIncomeProof()">\u522A\u9664\u6A94\u6848</button>
+                  </div>
+                } @else {
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                    \u9078\u64C7\u6A94\u6848
+                    <input type="file" class="hidden" accept="image/png,image/jpeg,application/pdf"
+                           (change)="onLowIncomeProofSelected($event)">
+                  </label>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- \u6B98\u969C\u8B49\u660E\u6587\u4EF6 -->
+          @if (form.value.isDisabled) {
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                <svg class="sa-icon"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                \u6B98\u969C\u8B49\u660E\u6587\u4EF6
+              </div>
+              <div class="card-body">
+                <p class="text-muted small mb-3">\u652F\u63F4 PNG\u3001JPEG \u5716\u7247\u6216 PDF \u6A94\u6848\u3002\u6B64\u6587\u4EF6\u50C5\u4F9B\u4EBA\u4E8B\u90E8\u9580\u7A3D\u6838\uFF0C\u53D7\u6B0A\u9650\u4FDD\u8B77\u3002</p>
+                @if (disabledProofDisplayName) {
+                  <div class="flex items-center gap-2 mb-3 border rounded px-3 py-2 bg-[--bg-surface]">
+                    <svg class="sa-icon text-[--accent]" style="stroke: currentColor">
+                      <use href="/assets/icons/sprite.svg#file-text"></use>
+                    </svg>
+                    <span class="fw-500 text-[--text-primary] truncate">{{ disabledProofDisplayName }}</span>
+                    @if (hasExistingDisabledProof) {
+                      <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewDisabledProof()">\u6AA2\u8996</button>
+                    }
+                  </div>
+                  <div class="flex gap-2">
+                    <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                      \u66F4\u63DB\u6A94\u6848
+                      <input type="file" class="hidden" accept="image/png,image/jpeg,application/pdf"
+                             (change)="onDisabledProofSelected($event)">
+                    </label>
+                    <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveDisabledProof()">\u522A\u9664\u6A94\u6848</button>
+                  </div>
+                } @else {
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                    \u9078\u64C7\u6A94\u6848
+                    <input type="file" class="hidden" accept="image/png,image/jpeg,application/pdf"
+                           (change)="onDisabledProofSelected($event)">
+                  </label>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- \u7C3D\u540D\u6A94 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+              \u7C3D\u540D\u6A94
+            </div>
+            <div class="card-body">
+              <p class="text-muted small mb-3">\u652F\u63F4 PNG\u3001JPEG\u3001GIF\u3001WebP \u683C\u5F0F\uFF0C\u5EFA\u8B70\u5C3A\u5BF8 300\xD7150 \u50CF\u7D20\uFF0C\u6A94\u6848\u5927\u5C0F\u4E0D\u8D85\u904E 2MB\u3002</p>
+              @if (displaySignature) {
+                <div class="mb-3">
+                  <div class="border rounded p-3 bg-white inline-block">
+                    <img [src]="displaySignature" alt="\u7C3D\u540D\u6A94" class="max-h-24 object-contain">
+                  </div>
+                </div>
+                <div class="flex gap-2">
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    \u66F4\u63DB\u7C3D\u540D\u6A94
+                    <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp"
+                           (change)="onSignatureSelected($event)">
+                  </label>
+                  <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveSignature()">\u522A\u9664\u7C3D\u540D\u6A94</button>
+                </div>
+              } @else {
+                <p class="text-muted small mb-3">\u5C1A\u672A\u4E0A\u50B3\u7C3D\u540D\u6A94\uFF0C\u9078\u64C7\u6A94\u6848\u5F8C\u5C07\u65BC\u5132\u5B58\u6642\u4E00\u4F75\u4E0A\u50B3\u3002</p>
+                <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                  <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                  \u9078\u64C7\u7C3D\u540D\u6A94
+                  <input type="file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp"
+                         (change)="onSignatureSelected($event)">
+                </label>
+              }
+            </div>
+          </div>
+
+          <!-- \u9001\u51FA\u6309\u9215\uFF08Tab 1\uFF09 -->
+          <div class="mt-6 flex gap-2">
+            <button type="submit" class="btn btn-primary">{{ isEdit ? '\u66F4\u65B0' : '\u5EFA\u7ACB' }}</button>
+            <a routerLink="/admin/users" class="btn btn-outline-secondary">\u53D6\u6D88</a>
+          </div>
+
+        } <!-- end @if basic -->
+
+        <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+             TAB 2\uFF1A\u4EBA\u4E8B\u8CC7\u6599\u5361\uFF08formGroupName="hrProfile"\uFF09
+        \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
+        @else if (activeTab() === 'hr') {
+          <div formGroupName="hrProfile">
+
+            <!-- \u54E1\u5DE5\u8CC7\u8A0A header strip -->
+            <div class="p-3 mb-4 rounded border bg-[--bg-elevated]">
+              <div class="flex flex-wrap gap-6 text-sm">
+                <span>
+                  <span class="text-muted me-1">\u54E1\u5DE5\u4EE3\u865F\uFF1A</span>
+                  <span class="fw-500">{{ form.get('hrProfile.employeeNumber')?.value || '\u2014' }}</span>
+                </span>
+                <span>
+                  <span class="text-muted me-1">\u59D3\u540D\uFF1A</span>
+                  <span class="fw-500">{{ form.get('name')?.value || '\u2014' }}</span>
+                </span>
+                <span>
+                  <span class="text-muted me-1">\u5230\u8077\u65E5\uFF1A</span>
+                  <span class="fw-500">{{ form.get('hireDate')?.value || '\u2014' }}</span>
+                </span>
+              </div>
+            </div>
+
+            @if (!hrLoaded()) {
+              <div class="flex items-center justify-center py-12 text-muted">
+                <span class="inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin me-2"></span>
+                \u8F09\u5165\u4EBA\u4E8B\u8CC7\u6599\u4E2D\u2026
+              </div>
+            } @else {
+
+              <!-- Card 1\uFF1A\u57FA\u672C\u8CC7\u6599\u88DC\u5145 -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#user"></use></svg>
+                  \u57FA\u672C\u8CC7\u6599\u88DC\u5145
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fw-500">\u54E1\u5DE5\u4EE3\u865F</label>
+                      <input type="text" class="form-control" formControlName="employeeNumber" placeholder="\u4F8B\u5982\uFF1AEMP001">
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fw-500">\u82F1\u6587\u540D</label>
+                      <input type="text" class="form-control" formControlName="englishName" placeholder="English Name">
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fw-500">\u8EAB\u5206\u8B49\u865F</label>
+                      <input type="text" class="form-control" formControlName="idNumber" placeholder="A123456789">
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fw-500">\u6027\u5225</label>
+                      <select class="form-select" formControlName="gender">
+                        <option value="">\u2014 \u8ACB\u9078\u64C7 \u2014</option>
+                        <option value="M">\u7537</option>
+                        <option value="F">\u5973</option>
+                      </select>
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fw-500">\u5A5A\u59FB\u72C0\u6CC1</label>
+                      <select class="form-select" formControlName="maritalStatus">
+                        <option value="">\u2014 \u8ACB\u9078\u64C7 \u2014</option>
+                        <option value="single">\u672A\u5A5A</option>
+                        <option value="married">\u5DF2\u5A5A</option>
+                        <option value="divorced">\u96E2\u5A5A</option>
+                        <option value="widowed">\u55AA\u5076</option>
+                      </select>
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fw-500">\u51FA\u751F\u5730</label>
+                      <input type="text" class="form-control" formControlName="birthPlace" placeholder="\u4F8B\u5982\uFF1A\u53F0\u5317\u5E02">
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fw-500">\u884C\u52D5\u96FB\u8A71</label>
+                      <input type="tel" class="form-control" formControlName="mobilePhone" placeholder="09xx-xxxxxx">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 2\uFF1A\u8EAB\u5206\u8B49\u5F71\u672C -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#credit-card"></use></svg>
+                  \u8EAB\u5206\u8B49\u5F71\u672C
+                </div>
+                <div class="card-body">
+                  <p class="text-muted small mb-4">\u652F\u63F4 PNG\u3001JPEG \u5716\u7247\u6216 PDF\u3002\u6B64\u6587\u4EF6\u53D7\u6B0A\u9650\u4FDD\u8B77\uFF0C\u50C5\u4EBA\u4E8B\u90E8\u9580\u53EF\u67E5\u95B1\u3002\u4E0A\u50B3\u5F8C\u52FF\u8D85\u904E 1MB\u3002</p>
+                  <div class="row g-4">
+                    <!-- \u6B63\u9762 -->
+                    <div class="col-12 col-md-6">
+                      <div class="fw-500 mb-2">\u6B63\u9762</div>
+                      @if (idCardFrontPreview()) {
+                        <div class="mb-2">
+                          <img [src]="idCardFrontPreview()!" alt="\u8EAB\u5206\u8B49\u6B63\u9762" class="rounded border max-h-40 object-contain w-full">
+                        </div>
+                      }
+                      @if (idCardFrontDisplayName) {
+                        <div class="flex items-center gap-2 mb-2 border rounded px-3 py-2 bg-[--bg-surface]">
+                          <svg class="sa-icon text-[--accent]" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                          <span class="fw-500 text-[--text-primary] truncate text-sm">{{ idCardFrontDisplayName }}</span>
+                          @if (hasExistingIdCardFront) {
+                            <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewIdCardFront()">\u6AA2\u8996</button>
+                          }
+                        </div>
+                        <div class="flex gap-2">
+                          <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                            \u66F4\u63DB
+                            <input type="file" class="hidden" accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                                   (change)="onIdCardFrontSelected($event)">
+                          </label>
+                          <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveIdCardFront()">\u522A\u9664</button>
+                        </div>
+                      } @else {
+                        <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                          <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                          \u9078\u64C7\u6B63\u9762
+                          <input type="file" class="hidden" accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                                 (change)="onIdCardFrontSelected($event)">
+                        </label>
+                      }
+                    </div>
+                    <!-- \u53CD\u9762 -->
+                    <div class="col-12 col-md-6">
+                      <div class="fw-500 mb-2">\u53CD\u9762</div>
+                      @if (idCardBackPreview()) {
+                        <div class="mb-2">
+                          <img [src]="idCardBackPreview()!" alt="\u8EAB\u5206\u8B49\u53CD\u9762" class="rounded border max-h-40 object-contain w-full">
+                        </div>
+                      }
+                      @if (idCardBackDisplayName) {
+                        <div class="flex items-center gap-2 mb-2 border rounded px-3 py-2 bg-[--bg-surface]">
+                          <svg class="sa-icon text-[--accent]" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                          <span class="fw-500 text-[--text-primary] truncate text-sm">{{ idCardBackDisplayName }}</span>
+                          @if (hasExistingIdCardBack) {
+                            <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewIdCardBack()">\u6AA2\u8996</button>
+                          }
+                        </div>
+                        <div class="flex gap-2">
+                          <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                            \u66F4\u63DB
+                            <input type="file" class="hidden" accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                                   (change)="onIdCardBackSelected($event)">
+                          </label>
+                          <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveIdCardBack()">\u522A\u9664</button>
+                        </div>
+                      } @else {
+                        <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                          <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                          \u9078\u64C7\u53CD\u9762
+                          <input type="file" class="hidden" accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                                 (change)="onIdCardBackSelected($event)">
+                        </label>
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 3\uFF1A\u6236\u7C4D & \u901A\u8A0A -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#home"></use></svg>
+                  \u6236\u7C4D &amp; \u901A\u8A0A\u8CC7\u8A0A
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-12 col-md-8">
+                      <label class="form-label fw-500">\u6236\u7C4D\u5730\u5740</label>
+                      <input type="text" class="form-control" formControlName="residentialAddress" placeholder="\u7E23\u5E02\u3001\u5340\u3001\u8DEF\u6BB5\u3001\u9580\u724C">
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fw-500">\u6236\u7C4D\u96FB\u8A71</label>
+                      <input type="tel" class="form-control" formControlName="residentialPhone" placeholder="02-xxxx-xxxx">
+                    </div>
+                    <div class="col-12">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="mailingSameChk"
+                               [(ngModel)]="mailingAddressSameAsResidential"
+                               [ngModelOptions]="{standalone: true}"
+                               (change)="copyResidentialToMailing()">
+                        <label class="form-check-label small" for="mailingSameChk">\u901A\u8A0A\u5730\u5740\u540C\u6236\u7C4D</label>
+                      </div>
+                    </div>
+                    <div class="col-12 col-md-8">
+                      <label class="form-label fw-500">\u901A\u8A0A\u5730\u5740</label>
+                      <input type="text" class="form-control" formControlName="mailingAddress" placeholder="\u7E23\u5E02\u3001\u5340\u3001\u8DEF\u6BB5\u3001\u9580\u724C">
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fw-500">\u901A\u8A0A\u96FB\u8A71</label>
+                      <input type="tel" class="form-control" formControlName="mailingPhone" placeholder="02-xxxx-xxxx">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 4\uFF1A\u5B78\u6B77\u7D00\u9304 -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#book-open"></use></svg>
+                  \u5B78\u6B77\u7D00\u9304
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>\u5B78\u6821</th>
+                          <th>\u79D1\u7CFB</th>
+                          <th>\u5B78\u6B77</th>
+                          <th>\u8D77\u59CB\u5E74\u6708</th>
+                          <th>\u7D50\u675F\u5E74\u6708</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody formArrayName="educationRecords">
+                        @for (ctrl of educationControls; track $index; let i = $index) {
+                          <tr [formGroupName]="i">
+                            <td><input type="text" class="form-control form-control-sm" formControlName="school" placeholder="\u5B78\u6821\u540D\u7A31"></td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="department" placeholder="\u79D1\u7CFB"></td>
+                            <td>
+                              <select class="form-select form-select-sm" formControlName="degree">
+                                <option value="graduated">\u7562\u696D</option>
+                                <option value="incomplete">\u8084\u696D</option>
+                              </select>
+                            </td>
+                            <td><input type="month" class="form-control form-control-sm" formControlName="startDate"></td>
+                            <td><input type="month" class="form-control form-control-sm" formControlName="endDate"></td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeEducation(i)">
+                                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                        @if (educationControls.length === 0) {
+                          <tr><td colspan="6" class="text-center text-muted small py-3">\u5C1A\u7121\u7D00\u9304</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  @if (educationControls.length < 3) {
+                    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="addEducation()">
+                      <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                      \u65B0\u589E\u5B78\u6B77
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <!-- Card 5\uFF1A\u7D93\u6B77\u7D00\u9304 -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#briefcase"></use></svg>
+                  \u7D93\u6B77\u7D00\u9304
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>\u670D\u52D9\u6A5F\u95DC</th>
+                          <th>\u8077\u7A31</th>
+                          <th>\u8D77\u59CB\u65E5</th>
+                          <th>\u7D50\u675F\u65E5</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody formArrayName="employmentHistoryRecords">
+                        @for (ctrl of employmentControls; track $index; let i = $index) {
+                          <tr [formGroupName]="i">
+                            <td><input type="text" class="form-control form-control-sm" formControlName="organization" placeholder="\u6A5F\u69CB\u540D\u7A31"></td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="jobTitle" placeholder="\u8077\u7A31"></td>
+                            <td><input type="date" class="form-control form-control-sm" formControlName="startDate"></td>
+                            <td><input type="date" class="form-control form-control-sm" formControlName="endDate"></td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeEmployment(i)">
+                                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                        @if (employmentControls.length === 0) {
+                          <tr><td colspan="5" class="text-center text-muted small py-3">\u5C1A\u7121\u7D00\u9304</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  @if (employmentControls.length < 3) {
+                    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="addEmployment()">
+                      <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                      \u65B0\u589E\u7D93\u6B77
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <!-- Card 6\uFF1A\u5BB6\u5EAD\u72C0\u6CC1 -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#users"></use></svg>
+                  \u5BB6\u5EAD\u72C0\u6CC1
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>\u59D3\u540D</th>
+                          <th>\u95DC\u4FC2</th>
+                          <th>\u5E74\u9F61</th>
+                          <th>\u8077\u696D</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody formArrayName="familyMembers">
+                        @for (ctrl of familyControls; track $index; let i = $index) {
+                          <tr [formGroupName]="i">
+                            <td><input type="text" class="form-control form-control-sm" formControlName="name" placeholder="\u59D3\u540D"></td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="relationship" placeholder="\u7236/\u6BCD/\u914D\u5076\u2026"></td>
+                            <td><input type="number" class="form-control form-control-sm" formControlName="age" placeholder="\u5E74\u9F61" min="0"></td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="occupation" placeholder="\u8077\u696D"></td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeFamily(i)">
+                                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                        @if (familyControls.length === 0) {
+                          <tr><td colspan="5" class="text-center text-muted small py-3">\u5C1A\u7121\u7D00\u9304</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="addFamily()">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                    \u65B0\u589E\u5BB6\u5EAD\u6210\u54E1
+                  </button>
+                </div>
+              </div>
+
+              <!-- Card 7\uFF1A\u5C08\u696D\u8A13\u7DF4 -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#award"></use></svg>
+                  \u5C08\u696D\u8A13\u7DF4
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>\u8A13\u7DF4\u540D\u7A31</th>
+                          <th>\u8A13\u7DF4\u6A5F\u69CB</th>
+                          <th>\u8D77\u59CB\u65E5</th>
+                          <th>\u7D50\u675F\u65E5</th>
+                          <th>\u6642\u6578</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody formArrayName="professionalTrainings">
+                        @for (ctrl of trainingControls; track $index; let i = $index) {
+                          <tr [formGroupName]="i">
+                            <td><input type="text" class="form-control form-control-sm" formControlName="trainingName" placeholder="\u8A13\u7DF4\u540D\u7A31"></td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="trainingOrg" placeholder="\u6A5F\u69CB\u540D\u7A31"></td>
+                            <td><input type="date" class="form-control form-control-sm" formControlName="startDate"></td>
+                            <td><input type="date" class="form-control form-control-sm" formControlName="endDate"></td>
+                            <td><input type="number" class="form-control form-control-sm" formControlName="hours" placeholder="0" min="0"></td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeTraining(i)">
+                                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                        @if (trainingControls.length === 0) {
+                          <tr><td colspan="6" class="text-center text-muted small py-3">\u5C1A\u7121\u7D00\u9304</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="addTraining()">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                    \u65B0\u589E\u8A13\u7DF4
+                  </button>
+                </div>
+              </div>
+
+              <!-- Card 8\uFF1A\u8A9E\u8A00\u80FD\u529B -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#globe"></use></svg>
+                  \u8A9E\u8A00\u80FD\u529B
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>\u8A9E\u8A00</th>
+                          <th>\u807D</th>
+                          <th>\u8AAA</th>
+                          <th>\u8B80</th>
+                          <th>\u5BEB</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody formArrayName="languageAbilities">
+                        @for (ctrl of languageControls; track $index; let i = $index) {
+                          <tr [formGroupName]="i">
+                            <td><input type="text" class="form-control form-control-sm" formControlName="language" placeholder="\u4E2D\u6587/\u82F1\u6587\u2026"></td>
+                            <td>
+                              <select class="form-select form-select-sm" formControlName="listening">
+                                <option value="good">\u4F73</option>
+                                <option value="fair">\u53EF</option>
+                              </select>
+                            </td>
+                            <td>
+                              <select class="form-select form-select-sm" formControlName="speaking">
+                                <option value="good">\u4F73</option>
+                                <option value="fair">\u53EF</option>
+                              </select>
+                            </td>
+                            <td>
+                              <select class="form-select form-select-sm" formControlName="reading">
+                                <option value="good">\u4F73</option>
+                                <option value="fair">\u53EF</option>
+                              </select>
+                            </td>
+                            <td>
+                              <select class="form-select form-select-sm" formControlName="writing">
+                                <option value="good">\u4F73</option>
+                                <option value="fair">\u53EF</option>
+                              </select>
+                            </td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeLanguage(i)">
+                                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                        @if (languageControls.length === 0) {
+                          <tr><td colspan="6" class="text-center text-muted small py-3">\u5C1A\u7121\u7D00\u9304</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="addLanguage()">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                    \u65B0\u589E\u8A9E\u8A00
+                  </button>
+                </div>
+              </div>
+
+              <!-- Card 9\uFF1A\u7DCA\u6025\u806F\u7D61 / \u8CA1\u52D9 -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#phone"></use></svg>
+                  \u7DCA\u6025\u806F\u7D61 / \u8CA1\u52D9 / \u5176\u4ED6
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                      <label class="form-label fw-500">\u7DCA\u6025\u806F\u7D61\u4EBA</label>
+                      <input type="text" class="form-control" formControlName="emergencyContactName" placeholder="\u59D3\u540D">
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <label class="form-label fw-500">\u7DCA\u6025\u806F\u7D61\u96FB\u8A71</label>
+                      <input type="tel" class="form-control" formControlName="emergencyContactPhone" placeholder="09xx-xxxxxx">
+                    </div>
+                    <div class="col-12 col-md-3">
+                      <label class="form-label fw-500">\u9280\u884C\u5C40\u865F</label>
+                      <input type="text" class="form-control" formControlName="bankCode" placeholder="\u5C40\u865F\uFF083 \u78BC\uFF09">
+                    </div>
+                    <div class="col-12 col-md-5">
+                      <label class="form-label fw-500">\u9280\u884C\u5E33\u865F</label>
+                      <input type="text" class="form-control" formControlName="bankAccount" placeholder="\u5E33\u865F">
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fw-500">\u6295\u4FDD\u8D77\u65E5</label>
+                      <input type="date" class="form-control" formControlName="insuranceStartDate">
+                    </div>
+                    <div class="col-12 col-md-3">
+                      <label class="form-label fw-500">\u6276\u990A\u4EBA\u6578</label>
+                      <input type="number" class="form-control" formControlName="dependentCount" placeholder="0" min="0">
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label fw-500">\u5C08\u9577\u8208\u8DA3</label>
+                      <textarea class="form-control" formControlName="specialties" rows="2" placeholder="\u8ACB\u586B\u5BEB\u5C08\u9577\u6216\u8208\u8DA3"></textarea>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 10\uFF1A\u6B77\u53F2\u7D00\u9304\u8207\u96E2\u8077 -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
+                  \u6B77\u53F2\u7D00\u9304\u8207\u96E2\u8077\u8CC7\u8A0A
+                </div>
+                <div class="card-body">
+
+                  <!-- \u8077\u52D9\u8ABF\u6574\u6B77\u53F2 -->
+                  <div class="fw-600 mb-2 text-[--text-secondary]">\u8077\u52D9\u8ABF\u6574\u6B77\u53F2</div>
+                  <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>\u751F\u6548\u65E5</th>
+                          <th>\u539F\u90E8\u9580</th>
+                          <th>\u65B0\u90E8\u9580</th>
+                          <th>\u539F\u8077\u7A31</th>
+                          <th>\u65B0\u8077\u7A31</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody formArrayName="jobTransferRecords">
+                        @for (ctrl of jobTransferControls; track $index; let i = $index) {
+                          <tr [formGroupName]="i">
+                            <td><input type="date" class="form-control form-control-sm" formControlName="effectiveDate"></td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="fromDepartment" placeholder="\u539F\u90E8\u9580"></td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="toDepartment" placeholder="\u65B0\u90E8\u9580"></td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="fromJobTitle" placeholder="\u539F\u8077\u7A31"></td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="toJobTitle" placeholder="\u65B0\u8077\u7A31"></td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeJobTransfer(i)">
+                                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                        @if (jobTransferControls.length === 0) {
+                          <tr><td colspan="6" class="text-center text-muted small py-3">\u5C1A\u7121\u7D00\u9304</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-secondary mb-4" (click)="addJobTransfer()">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                    \u65B0\u589E\u8077\u52D9\u8ABF\u6574
+                  </button>
+
+                  <!-- \u734E\u61F2\u6B77\u53F2 -->
+                  <div class="fw-600 mb-2 text-[--text-secondary]">\u734E\u61F2\u6B77\u53F2</div>
+                  <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>\u751F\u6548\u65E5</th>
+                          <th>\u985E\u578B</th>
+                          <th>\u985E\u5225</th>
+                          <th>\u6B21\u6578</th>
+                          <th>\u4E8B\u7531</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody formArrayName="rewardPunishmentRecords">
+                        @for (ctrl of rewardControls; track $index; let i = $index) {
+                          <tr [formGroupName]="i">
+                            <td><input type="date" class="form-control form-control-sm" formControlName="effectiveDate"></td>
+                            <td>
+                              <select class="form-select form-select-sm" formControlName="type">
+                                <option value="reward">\u734E\u52F5</option>
+                                <option value="punishment">\u61F2\u8655</option>
+                              </select>
+                            </td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="category" placeholder="\u5609\u734E/\u7533\u8AA1\u2026"></td>
+                            <td><input type="number" class="form-control form-control-sm" formControlName="count" placeholder="1" min="1"></td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="reason" placeholder="\u4E8B\u7531"></td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeReward(i)">
+                                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                        @if (rewardControls.length === 0) {
+                          <tr><td colspan="6" class="text-center text-muted small py-3">\u5C1A\u7121\u7D00\u9304</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-secondary mb-4" (click)="addReward()">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                    \u65B0\u589E\u734E\u61F2
+                  </button>
+
+                  <!-- \u85AA\u8CC7\u8ABF\u6574\u6B77\u53F2 -->
+                  <div class="fw-600 mb-2 text-[--text-secondary]">\u85AA\u8CC7\u8ABF\u6574\u6B77\u53F2</div>
+                  <div class="alert alert-info py-2 small mb-3">
+                    \u65B0\u589E / \u7DE8\u8F2F\u7D00\u9304\u4E26\u5132\u5B58\u5F8C\uFF0C\u6700\u65B0\u751F\u6548\u7D00\u9304\uFF08\u2264 \u4ECA\u65E5\uFF09\u7684\u5E95\u85AA\u6703\u81EA\u52D5\u540C\u6B65\u81F3\u54E1\u5DE5\u5E95\u85AA\u6B04\u4F4D\u3002
+                  </div>
+                  <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>\u751F\u6548\u65E5</th>
+                          <th>\u5E95\u85AA</th>
+                          <th>\u8077\u52D9\u6D25\u8CBC</th>
+                          <th>\u8077\u8CAC\u6D25\u8CBC</th>
+                          <th>\u5176\u4ED6</th>
+                          <th>\u5DEE\u984D</th>
+                          <th>\u6D77\u5916\u6D25\u8CBC</th>
+                          <th>\u4F19\u98DF</th>
+                          <th>\u5408\u8A08</th>
+                          <th>\u5099\u8A3B</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody formArrayName="salaryAdjustmentRecords">
+                        @for (ctrl of salaryControls; track $index; let i = $index) {
+                          <tr [formGroupName]="i">
+                            <td><input type="date" class="form-control form-control-sm" formControlName="effectiveDate"></td>
+                            <td><input type="number" class="form-control form-control-sm" formControlName="baseSalary" placeholder="0" min="0" style="min-width: 80px"></td>
+                            <td><input type="number" class="form-control form-control-sm" formControlName="positionAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
+                            <td><input type="number" class="form-control form-control-sm" formControlName="dutyAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
+                            <td><input type="number" class="form-control form-control-sm" formControlName="otherAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
+                            <td><input type="number" class="form-control form-control-sm" formControlName="adjustmentDifference" placeholder="0" style="min-width: 70px"></td>
+                            <td><input type="number" class="form-control form-control-sm" formControlName="overseasAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
+                            <td><input type="number" class="form-control form-control-sm" formControlName="mealAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
+                            <td class="text-end fw-500">{{ salaryRowTotal(ctrl) | number:'1.0-0' }}</td>
+                            <td><input type="text" class="form-control form-control-sm" formControlName="notes" placeholder="\u5099\u8A3B" style="min-width: 80px"></td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeSalary(i)">
+                                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                        @if (salaryControls.length === 0) {
+                          <tr><td colspan="11" class="text-center text-muted small py-3">\u5C1A\u7121\u7D00\u9304</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-secondary mb-4" (click)="addSalary()">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                    \u65B0\u589E\u85AA\u8CC7\u7D00\u9304
+                  </button>
+
+                  <!-- \u96E2\u8077\u8CC7\u8A0A -->
+                  <div class="fw-600 mb-2 text-[--text-secondary]">\u96E2\u8077\u8CC7\u8A0A</div>
+                  <div class="row g-3">
+                    <div class="col-12">
+                      <label class="form-label fw-500">\u96E2\u8077\u539F\u56E0</label>
+                      <textarea class="form-control" formControlName="resignationReason" rows="3"
+                                placeholder="\u8ACB\u586B\u5BEB\u96E2\u8077\u539F\u56E0\uFF08\u500B\u4EBA\u56E0\u7D20\u3001\u5408\u7D04\u5230\u671F\u2026\uFF09"></textarea>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+            } <!-- end @else (hrLoaded) -->
+
+            <!-- \u5132\u5B58\u6309\u9215\uFF08HR Tab\uFF09 -->
+            <div class="mt-6 flex gap-2">
+              <button type="submit" class="btn btn-primary">\u5132\u5B58\u6240\u6709\u8CC7\u6599</button>
+              <a routerLink="/admin/users" class="btn btn-outline-secondary">\u53D6\u6D88</a>
+            </div>
+
+          </div> <!-- end formGroupName="hrProfile" -->
+
+        } <!-- end @else if hr -->
+
+        <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+             TAB 3\uFF1A\u5065\u4FDD\u7737\u5C6C
+        \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
+        @else if (activeTab() === 'dependents') {
+
+          <!-- \u8AAA\u660E banner -->
+          <div class="alert py-2 mb-4" style="background: rgba(13,110,253,0.08);">
+            <div class="flex items-start gap-2">
+              <svg class="sa-icon mt-1 text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+              <div class="small">
+                <span class="fw-600">\u5065\u4FDD\u7737\u5C6C\u6700\u591A\u8A08 3 \u53E3\uFF0C\u8D85\u904E 3 \u53E3\u4ECD\u6309 3 \u53E3\u8A08\u7B97\u85AA\u8CC7\u3002</span><br>
+                \u53F0\u7063\u5168\u6C11\u5065\u4FDD\u898F\u5B9A\uFF1A\u6BCF\u589E\u52A0 1 \u53E3\u7737\u5C6C\uFF0C\u5065\u4FDD\u8CBB = \u54E1\u5DE5\u5065\u4FDD\u8CBB \xD7 (1 + \u7737\u5C6C\u6578\uFF0C\u4E0A\u9650 3)\u3002
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#heart"></use></svg>
+              \u5065\u4FDD\u7737\u5C6C\u6E05\u55AE
+            </div>
+            <div class="card-body">
+
+              <!-- \u7737\u5C6C\u6578 + \u5065\u4FDD\u8A66\u7B97 -->
+              <div class="flex flex-wrap gap-6 mb-4 text-sm">
+                <span>
+                  <span class="text-muted me-1">\u7737\u5C6C\u4EBA\u6578\uFF1A</span>
+                  <span class="fw-600">{{ dependentsArray.length }} \u4EBA</span>
+                  @if (dependentsArray.length > 3) {
+                    <span class="text-warning ms-1">\uFF08\u8D85\u904E 3 \u53E3\uFF0C\u85AA\u8CC7\u8A08\u7B97\u4E0A\u9650 3 \u53E3\uFF09</span>
+                  }
+                </span>
+                @if (estimatedHealthInsurance !== null) {
+                  <span>
+                    <span class="text-muted me-1">\u6BCF\u6708\u5065\u4FDD\u8CBB\u8A66\u7B97\uFF1A</span>
+                    <span class="fw-600 text-primary">NT$ {{ estimatedHealthInsurance | number:'1.0-0' }}</span>
+                    <span class="text-muted ms-1 small">\uFF08\u542B\u7737\u5C6C {{ dependentsArray.length > 3 ? 3 : dependentsArray.length }} \u53E3\uFF09</span>
+                  </span>
+                }
+              </div>
+
+              <div class="table-responsive mb-3">
+                <table class="table table-sm align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>\u59D3\u540D</th>
+                      <th>\u95DC\u4FC2</th>
+                      <th>\u8EAB\u5206\u8B49\u865F</th>
+                      <th>\u51FA\u751F\u65E5\u671F</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody formArrayName="healthDependents">
+                    @for (ctrl of dependentsControls; track $index; let i = $index) {
+                      <tr [formGroupName]="i">
+                        <td><input type="text" class="form-control form-control-sm" formControlName="name" placeholder="\u59D3\u540D"></td>
+                        <td>
+                          <select class="form-select form-select-sm" formControlName="relationship">
+                            <option value="spouse">\u914D\u5076</option>
+                            <option value="father">\u7236</option>
+                            <option value="mother">\u6BCD</option>
+                            <option value="son">\u5B50</option>
+                            <option value="daughter">\u5973</option>
+                            <option value="father_in_law">\u516C\uFF08\u516C\u516C\uFF09</option>
+                            <option value="mother_in_law">\u5A46\uFF08\u5A46\u5A46\uFF09</option>
+                            <option value="father_in_law_wife">\u7FC1\uFF08\u5CB3\u7236\uFF09</option>
+                            <option value="mother_in_law_wife">\u59D1\uFF08\u5CB3\u6BCD\uFF09</option>
+                            <option value="other">\u5176\u4ED6</option>
+                          </select>
+                        </td>
+                        <td><input type="text" class="form-control form-control-sm" formControlName="idNumber" placeholder="A123456789"></td>
+                        <td><input type="date" class="form-control form-control-sm" formControlName="birthDate"></td>
+                        <td>
+                          <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeDependent(i)">
+                            <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                    @if (dependentsControls.length === 0) {
+                      <tr><td colspan="5" class="text-center text-muted small py-3">\u5C1A\u7121\u7737\u5C6C</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-secondary" (click)="addDependent()">
+                <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                \u65B0\u589E\u7737\u5C6C
+              </button>
+            </div>
+          </div>
+
+          <!-- \u5132\u5B58\u6309\u9215\uFF08Tab 3\uFF09 -->
+          <div class="mt-6 flex gap-2">
+            <button type="submit" class="btn btn-primary">\u5132\u5B58\u6240\u6709\u8CC7\u6599</button>
+            <a routerLink="/admin/users" class="btn btn-outline-secondary">\u53D6\u6D88</a>
+          </div>
+
+        } <!-- end @else if dependents -->
+
+      </form>
+    </div>
+  </div>
+</div>
 ` }]
   }], null, null);
 })();
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(UserForm, { className: "UserForm", filePath: "src/app/features/admin/users/pages/user-form/user-form.ts", lineNumber: 28 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(UserForm, { className: "UserForm", filePath: "src/app/features/admin/users/pages/user-form/user-form.ts", lineNumber: 33 });
 })();
 
 // src/app/features/admin/roles/pages/role-list/role-list.ts
-var _c02 = (a0) => [a0, "edit"];
+var _c03 = (a0) => [a0, "edit"];
 var _forTrack03 = ($index, $item) => $item.id;
 function RoleList_a_7_Template(rf, ctx) {
   if (rf & 1) {
@@ -2215,7 +5924,7 @@ function RoleList_For_26_a_13_Template(rf, ctx) {
   }
   if (rf & 2) {
     const role_r1 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c02, role_r1.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c03, role_r1.id));
   }
 }
 function RoleList_For_26_button_14_Template(rf, ctx) {
@@ -2774,7 +6483,7 @@ var RoleForm = class _RoleForm {
 })();
 
 // src/app/features/admin/permissions/pages/permission-list/permission-list.ts
-var _c03 = () => [];
+var _c04 = () => [];
 var _c12 = (a0) => [a0, "edit"];
 var _forTrack05 = ($index, $item) => $item.id;
 function PermissionList_a_7_Template(rf, ctx) {
@@ -2896,7 +6605,7 @@ function PermissionList_Conditional_8_Template(rf, ctx) {
   }
   if (rf & 2) {
     const ctx_r2 = \u0275\u0275nextContext();
-    \u0275\u0275repeater(\u0275\u0275pipeBind1(3, 1, ctx_r2.modules$) ?? \u0275\u0275pureFunction0(3, _c03));
+    \u0275\u0275repeater(\u0275\u0275pipeBind1(3, 1, ctx_r2.modules$) ?? \u0275\u0275pureFunction0(3, _c04));
   }
 }
 var PermissionList = class _PermissionList {
@@ -3489,7 +7198,7 @@ var Settings = class _Settings {
 })();
 
 // src/app/features/admin/departments/pages/department-list/department-list.ts
-var _c04 = (a0) => [a0, "edit"];
+var _c05 = (a0) => [a0, "edit"];
 var _forTrack06 = ($index, $item) => $item.id;
 function DepartmentList_a_7_Template(rf, ctx) {
   if (rf & 1) {
@@ -3560,7 +7269,7 @@ function DepartmentList_For_26_a_21_Template(rf, ctx) {
   }
   if (rf & 2) {
     const dept_r1 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c04, dept_r1.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c05, dept_r1.id));
   }
 }
 function DepartmentList_For_26_button_22_Template(rf, ctx) {
@@ -4141,7 +7850,7 @@ var DepartmentForm = class _DepartmentForm {
 })();
 
 // src/app/features/admin/job-titles/pages/job-title-list/job-title-list.ts
-var _c05 = (a0) => [a0, "edit"];
+var _c06 = (a0) => [a0, "edit"];
 var _forTrack08 = ($index, $item) => $item.id;
 function JobTitleList_a_7_Template(rf, ctx) {
   if (rf & 1) {
@@ -4164,7 +7873,7 @@ function JobTitleList_For_28_a_15_Template(rf, ctx) {
   }
   if (rf & 2) {
     const jt_r1 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c05, jt_r1.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c06, jt_r1.id));
   }
 }
 function JobTitleList_For_28_button_16_Template(rf, ctx) {
@@ -4603,7 +8312,7 @@ var APPLICATION_TYPE_CLASSES = {
 };
 
 // src/app/features/admin/approvals/pages/approval-list/approval-list.ts
-var _c06 = (a0) => [a0, "flow"];
+var _c07 = (a0) => [a0, "flow"];
 var _forTrack09 = ($index, $item) => $item.id;
 var _forTrack1 = ($index, $item) => $item.value;
 function ApprovalList_Conditional_7_Template(rf, ctx) {
@@ -4828,7 +8537,7 @@ function ApprovalList_For_33_Template(rf, ctx) {
     \u0275\u0275advance(2);
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(19, 11, item_r5.createdAt, "yyyy-MM-dd"));
     \u0275\u0275advance(4);
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(14, _c06, item_r5.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(14, _c07, item_r5.id));
     \u0275\u0275advance(3);
     \u0275\u0275conditional(ctx_r0.canWrite ? 25 : -1);
   }
@@ -5980,7 +9689,7 @@ var PROJECT_STATUS_CLASSES = {
 };
 
 // src/app/features/admin/projects/pages/project-list/project-list.ts
-var _c07 = (a0) => [a0, "edit"];
+var _c08 = (a0) => [a0, "edit"];
 var _forTrack011 = ($index, $item) => $item.id;
 function ProjectList_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
@@ -6108,7 +9817,7 @@ function ProjectList_For_57_Conditional_28_Conditional_0_Template(rf, ctx) {
   }
   if (rf & 2) {
     const project_r2 = \u0275\u0275nextContext(2).$implicit;
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c07, project_r2.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c08, project_r2.id));
   }
 }
 function ProjectList_For_57_Conditional_28_Conditional_1_Template(rf, ctx) {
@@ -6149,7 +9858,7 @@ function ProjectList_For_57_Conditional_29_Template(rf, ctx) {
   }
   if (rf & 2) {
     const project_r2 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c07, project_r2.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c08, project_r2.id));
   }
 }
 function ProjectList_For_57_Template(rf, ctx) {
@@ -7012,8 +10721,8 @@ var ProjectForm = class _ProjectForm {
         this.errorMsg.set("\u8F09\u5165\u90E8\u9580\u8CC7\u6599\u5931\u6557\u3002");
       }
     });
-    this.form.get("contractAmount").valueChanges.subscribe((val) => {
-      const computed2 = val != null && val >= 0 ? Math.round(val * 0.6) : null;
+    this.form.get("contractAmount").valueChanges.subscribe((val2) => {
+      const computed2 = val2 != null && val2 >= 0 ? Math.round(val2 * 0.6) : null;
       this.form.get("businessAmount").setValue(computed2, { emitEvent: false });
       this.updateBusinessPercentage();
     });
@@ -7153,10 +10862,10 @@ var ProjectForm = class _ProjectForm {
       }
     });
   }
-  toNumberOrNull(val) {
-    if (val === null || val === void 0 || val === "")
+  toNumberOrNull(val2) {
+    if (val2 === null || val2 === void 0 || val2 === "")
       return null;
-    const n = Number(val);
+    const n = Number(val2);
     return Number.isFinite(n) ? n : null;
   }
   static \u0275fac = function ProjectForm_Factory(__ngFactoryType__) {
@@ -7682,7 +11391,7 @@ var APPROVAL_STATUS_CLASSES = {
 };
 
 // src/app/features/admin/payment-requests/pages/payment-list/payment-list.ts
-var _c08 = (a0) => [a0, "edit"];
+var _c09 = (a0) => [a0, "edit"];
 var _forTrack013 = ($index, $item) => $item.id;
 function PaymentList_a_7_Template(rf, ctx) {
   if (rf & 1) {
@@ -7735,7 +11444,7 @@ function PaymentList_For_30_Conditional_22_Template(rf, ctx) {
   if (rf & 2) {
     const r_r1 = \u0275\u0275nextContext().$implicit;
     const ctx_r2 = \u0275\u0275nextContext();
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c08, r_r1.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c09, r_r1.id));
     \u0275\u0275advance(3);
     \u0275\u0275conditional(ctx_r2.canDelete() && r_r1.approvalStatus === "draft" ? 3 : -1);
   }
@@ -7750,7 +11459,7 @@ function PaymentList_For_30_Conditional_23_Template(rf, ctx) {
   }
   if (rf & 2) {
     const r_r1 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c08, r_r1.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c09, r_r1.id));
   }
 }
 function PaymentList_For_30_Template(rf, ctx) {
@@ -8145,9 +11854,9 @@ var PaymentPdfService = class _PaymentPdfService {
       return;
     this.pdfLoading.set(true);
     try {
-      const [{ default: jsPDF }, { default: autoTable }, fonts] = await Promise.all([
-        import("./chunk-CNNENCI2.js"),
-        import("./chunk-S72SRWYK.js"),
+      const [{ default: jsPDF }, { default: autoTable2 }, fonts] = await Promise.all([
+        import("./chunk-4QY6N5TU.js"),
+        import("./chunk-JZJ3IRCJ.js"),
         this.pdfCore.loadFonts()
       ]);
       const doc = new jsPDF("portrait", "mm", "a4");
@@ -8202,7 +11911,7 @@ var PaymentPdfService = class _PaymentPdfService {
         { content: fmt3(d.totalAmount), styles: { fontStyle: "bold" } },
         ""
       ]);
-      autoTable(doc, {
+      autoTable2(doc, {
         startY: y,
         margin: { left: mx, right: mx, top: 20 },
         theme: "grid",
@@ -8297,7 +12006,7 @@ var PaymentPdfService = class _PaymentPdfService {
 })();
 
 // src/app/features/admin/payment-requests/pages/payment-form/payment-form.ts
-var _c09 = ["successModal"];
+var _c010 = ["successModal"];
 var _c13 = () => ({ standalone: true });
 function _forTrack014($index, $item) {
   let tmp_0_0;
@@ -9584,7 +13293,7 @@ var PaymentForm = class _PaymentForm {
   };
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _PaymentForm, selectors: [["app-payment-form"]], viewQuery: function PaymentForm_Query(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275viewQuerySignal(ctx.successModal, _c09, 5);
+      \u0275\u0275viewQuerySignal(ctx.successModal, _c010, 5);
     }
     if (rf & 2) {
       \u0275\u0275queryAdvance();
@@ -10334,7 +14043,7 @@ var PAYMENT_TYPE_LABELS2 = {
 };
 
 // src/app/features/admin/approval-tasks/pages/approval-task-list/approval-task-list.ts
-var _c010 = (a0, a1) => [a0, a1, "review"];
+var _c011 = (a0, a1) => [a0, a1, "review"];
 var _forTrack015 = ($index, $item) => $item.applicationType + $item.id;
 var _forTrack14 = ($index, $item) => $item[0];
 function ApprovalTaskList_Conditional_13_Conditional_5_Template(rf, ctx) {
@@ -10394,7 +14103,7 @@ function ApprovalTaskList_Conditional_14_For_10_Template(rf, ctx) {
     \u0275\u0275advance(2);
     \u0275\u0275textInterpolate(p_r4.requestNo);
     \u0275\u0275advance();
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction2(5, _c010, p_r4.applicationType, p_r4.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction2(5, _c011, p_r4.applicationType, p_r4.id));
   }
 }
 function ApprovalTaskList_Conditional_14_Template(rf, ctx) {
@@ -10618,7 +14327,7 @@ function ApprovalTaskList_For_37_Template(rf, ctx) {
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(16, 15, t_r11.submittedAt, "yyyy-MM-dd"));
     \u0275\u0275advance(3);
     \u0275\u0275classMap("btn btn-sm inline-flex items-center " + (t_r11.status === "pending" ? "btn-ghost-primary" : "btn-ghost-secondary"));
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction2(18, _c010, t_r11.applicationType, t_r11.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction2(18, _c011, t_r11.applicationType, t_r11.id));
     \u0275\u0275advance(2);
     \u0275\u0275attribute("href", t_r11.status === "pending" ? "/assets/icons/sprite.svg#edit" : "/assets/icons/sprite.svg#eye");
   }
@@ -11342,9 +15051,9 @@ var AdvancePdfService = class _AdvancePdfService {
   async printAdvanceRequest(r, submittedByName, approvalRecords = [], flow, submittedBySignatureUrl, paidBySignatureUrl, paidAt) {
     this.pdfLoading.set(true);
     try {
-      const [{ default: jsPDF }, { default: autoTable }, fonts] = await Promise.all([
-        import("./chunk-CNNENCI2.js"),
-        import("./chunk-S72SRWYK.js"),
+      const [{ default: jsPDF }, { default: autoTable2 }, fonts] = await Promise.all([
+        import("./chunk-4QY6N5TU.js"),
+        import("./chunk-JZJ3IRCJ.js"),
         this.pdfCore.loadFonts()
       ]);
       const doc = new jsPDF("landscape", "mm", "a4");
@@ -11430,7 +15139,7 @@ var AdvancePdfService = class _AdvancePdfService {
         { content: fmt(r.grandTotal), colSpan: 2, styles: { fontStyle: "bold", halign: "right" } },
         ""
       ]);
-      autoTable(doc, {
+      autoTable2(doc, {
         startY: y,
         margin: { left: mx, right: mx },
         theme: "grid",
@@ -11533,7 +15242,7 @@ var AdvancePdfService = class _AdvancePdfService {
           "",
           ""
         ]);
-        autoTable(doc, {
+        autoTable2(doc, {
           startY: y,
           margin: { left: mx, right: mx },
           theme: "grid",
@@ -11700,9 +15409,9 @@ var WriteOffPdfService = class _WriteOffPdfService {
   async printWriteOff(r, submittedByName, approvalRecords = [], flow, submittedBySignatureUrl, paidBySignatureUrl, paidAt, refundedBySignatureUrl) {
     this.pdfLoading.set(true);
     try {
-      const [{ default: jsPDF }, { default: autoTable }, fonts] = await Promise.all([
-        import("./chunk-CNNENCI2.js"),
-        import("./chunk-S72SRWYK.js"),
+      const [{ default: jsPDF }, { default: autoTable2 }, fonts] = await Promise.all([
+        import("./chunk-4QY6N5TU.js"),
+        import("./chunk-JZJ3IRCJ.js"),
         this.pdfCore.loadFonts()
       ]);
       const doc = new jsPDF("landscape", "mm", "a4");
@@ -11837,7 +15546,7 @@ var WriteOffPdfService = class _WriteOffPdfService {
           ""
         ]);
       }
-      autoTable(doc, {
+      autoTable2(doc, {
         startY: y,
         margin: { left: mx, right: mx },
         theme: "grid",
@@ -12029,9 +15738,9 @@ var TravelWriteOffPdfService = class _TravelWriteOffPdfService {
   async printTravelWriteOff(r, submittedByName, approvalRecords = [], flow, submittedBySignatureUrl) {
     this.pdfLoading.set(true);
     try {
-      const [{ default: jsPDF }, { default: autoTable }, fonts] = await Promise.all([
-        import("./chunk-CNNENCI2.js"),
-        import("./chunk-S72SRWYK.js"),
+      const [{ default: jsPDF }, { default: autoTable2 }, fonts] = await Promise.all([
+        import("./chunk-4QY6N5TU.js"),
+        import("./chunk-JZJ3IRCJ.js"),
         this.pdfCore.loadFonts()
       ]);
       const doc = new jsPDF("landscape", "mm", "a4");
@@ -12136,7 +15845,7 @@ var TravelWriteOffPdfService = class _TravelWriteOffPdfService {
         "",
         ""
       ]);
-      autoTable(doc, {
+      autoTable2(doc, {
         startY: y,
         margin: { left: mx, right: mx },
         theme: "grid",
@@ -17340,7 +21049,7 @@ var LeaveRequestService = class _LeaveRequestService {
 })();
 
 // src/app/features/admin/leave-requests/pages/leave-request-list/leave-request-list.ts
-var _c011 = (a0) => [a0, "edit"];
+var _c012 = (a0) => [a0, "edit"];
 var _forTrack017 = ($index, $item) => $item.id;
 function LeaveRequestList_a_7_Template(rf, ctx) {
   if (rf & 1) {
@@ -17381,7 +21090,7 @@ function LeaveRequestList_For_32_Conditional_22_Template(rf, ctx) {
   if (rf & 2) {
     const r_r2 = \u0275\u0275nextContext().$implicit;
     const ctx_r2 = \u0275\u0275nextContext();
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c011, r_r2.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c012, r_r2.id));
     \u0275\u0275advance(3);
     \u0275\u0275conditional(ctx_r2.canDelete() && r_r2.approvalStatus === "draft" ? 3 : -1);
   }
@@ -17396,7 +21105,7 @@ function LeaveRequestList_For_32_Conditional_23_Template(rf, ctx) {
   }
   if (rf & 2) {
     const r_r2 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c011, r_r2.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c012, r_r2.id));
   }
 }
 function LeaveRequestList_For_32_Template(rf, ctx) {
@@ -17784,7 +21493,7 @@ function buildPageNumbers5(current, total) {
 }
 
 // src/app/features/admin/leave-requests/pages/leave-request-form/leave-request-form.ts
-var _c012 = () => ({ standalone: true });
+var _c013 = () => ({ standalone: true });
 var _forTrack018 = ($index, $item) => $item.label;
 var _forTrack16 = ($index, $item) => $item.days;
 var _forTrack2 = ($index, $item) => $item.id;
@@ -18808,14 +22517,14 @@ function LeaveRequestForm_Conditional_59_For_9_Template(rf, ctx) {
     \u0275\u0275textInterpolate1("", \u0275$index_665_r17 + 1, ".");
     \u0275\u0275advance();
     \u0275\u0275twoWayProperty("ngModel", entry_r16.selectedJobTitleId);
-    \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(7, _c012));
+    \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(7, _c013));
     \u0275\u0275advance();
     \u0275\u0275property("ngValue", null);
     \u0275\u0275advance(2);
     \u0275\u0275repeater(ctx_r0.jobTitles);
     \u0275\u0275advance(2);
     \u0275\u0275twoWayProperty("ngModel", entry_r16.selectedUserId);
-    \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(8, _c012));
+    \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(8, _c013));
     \u0275\u0275advance();
     \u0275\u0275property("ngValue", null);
     \u0275\u0275advance(2);
@@ -20344,7 +24053,7 @@ var APPROVAL_STATUS_CLASSES4 = {
 var ITEM_CATEGORIES2 = ["\u4EA4\u901A\u8CBB", "\u4F4F\u5BBF\u8CBB", "\u9910\u8CBB", "\u4EBA\u4E8B\u8CBB", "\u96DC\u652F"];
 
 // src/app/features/admin/travel-requests/pages/travel-request-list/travel-request-list.ts
-var _c013 = (a0) => [a0, "edit"];
+var _c014 = (a0) => [a0, "edit"];
 var _c14 = (a0) => [a0];
 var _forTrack019 = ($index, $item) => $item.id;
 function TravelRequestList_a_7_Template(rf, ctx) {
@@ -20398,7 +24107,7 @@ function TravelRequestList_For_32_Conditional_23_Template(rf, ctx) {
   if (rf & 2) {
     const r_r1 = \u0275\u0275nextContext().$implicit;
     const ctx_r2 = \u0275\u0275nextContext();
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c013, r_r1.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c014, r_r1.id));
     \u0275\u0275advance(3);
     \u0275\u0275conditional(ctx_r2.canDelete() && r_r1.approvalStatus === "draft" ? 3 : -1);
   }
@@ -20799,7 +24508,7 @@ function buildPageNumbers6(current, total) {
 }
 
 // src/app/features/admin/travel-requests/pages/travel-request-form/travel-request-form.ts
-var _c014 = ["successModal"];
+var _c015 = ["successModal"];
 var _c15 = () => ({ standalone: true });
 var _forTrack020 = ($index, $item) => $item.id;
 function TravelRequestForm_Conditional_7_Template(rf, ctx) {
@@ -21846,7 +25555,7 @@ var TravelRequestForm = class _TravelRequestForm {
   };
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _TravelRequestForm, selectors: [["app-travel-request-form"]], viewQuery: function TravelRequestForm_Query(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275viewQuerySignal(ctx.successModal, _c014, 5);
+      \u0275\u0275viewQuerySignal(ctx.successModal, _c015, 5);
     }
     if (rf & 2) {
       \u0275\u0275queryAdvance();
@@ -22440,9 +26149,9 @@ var TravelPdfService = class _TravelPdfService {
   async printTravelRequest(r, submittedByName, approvalRecords = [], flow, submittedBySignatureUrl, reviewerSignatureUrls, paidAt, paidBySignatureUrl) {
     this.pdfLoading.set(true);
     try {
-      const [{ default: jsPDF }, { default: autoTable }, fonts] = await Promise.all([
-        import("./chunk-CNNENCI2.js"),
-        import("./chunk-S72SRWYK.js"),
+      const [{ default: jsPDF }, { default: autoTable2 }, fonts] = await Promise.all([
+        import("./chunk-4QY6N5TU.js"),
+        import("./chunk-JZJ3IRCJ.js"),
         this.pdfCore.loadFonts()
       ]);
       const doc = new jsPDF("landscape", "mm", "a4");
@@ -22516,7 +26225,7 @@ var TravelPdfService = class _TravelPdfService {
         { content: fmt(r.grandTotal), styles: { fontStyle: "bold", halign: "right" } },
         ""
       ]);
-      autoTable(doc, {
+      autoTable2(doc, {
         startY: y,
         margin: { left: mx, right: mx },
         theme: "grid",
@@ -22607,7 +26316,7 @@ var TravelPdfService = class _TravelPdfService {
 })();
 
 // src/app/features/admin/travel-requests/pages/travel-detail/travel-detail.ts
-var _c015 = (a0) => ["/admin/travel-requests", a0, "edit"];
+var _c016 = (a0) => ["/admin/travel-requests", a0, "edit"];
 var _forTrack021 = ($index, $item) => $item.id;
 function TravelDetail_Conditional_1_Conditional_9_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
@@ -22680,7 +26389,7 @@ function TravelDetail_Conditional_1_Conditional_12_Template(rf, ctx) {
   }
   if (rf & 2) {
     const r_r1 = \u0275\u0275nextContext();
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c015, r_r1.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c016, r_r1.id));
   }
 }
 function TravelDetail_Conditional_1_Conditional_13_Conditional_5_Template(rf, ctx) {
@@ -23566,7 +27275,7 @@ var APPROVAL_STATUS_CLASSES5 = {
 };
 
 // src/app/features/admin/overtime-requests/pages/overtime-request-list/overtime-request-list.ts
-var _c016 = (a0) => [a0, "edit"];
+var _c017 = (a0) => [a0, "edit"];
 var _forTrack022 = ($index, $item) => $item.id;
 function OvertimeRequestList_a_7_Template(rf, ctx) {
   if (rf & 1) {
@@ -23654,7 +27363,7 @@ function OvertimeRequestList_For_30_Conditional_20_Template(rf, ctx) {
   if (rf & 2) {
     const r_r2 = \u0275\u0275nextContext().$implicit;
     const ctx_r4 = \u0275\u0275nextContext();
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c016, r_r2.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c017, r_r2.id));
     \u0275\u0275advance(3);
     \u0275\u0275conditional(ctx_r4.canDelete() && r_r2.approvalStatus === "draft" ? 3 : -1);
   }
@@ -23669,7 +27378,7 @@ function OvertimeRequestList_For_30_Conditional_21_Template(rf, ctx) {
   }
   if (rf & 2) {
     const r_r2 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c016, r_r2.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c017, r_r2.id));
   }
 }
 function OvertimeRequestList_For_30_Template(rf, ctx) {
@@ -24049,7 +27758,7 @@ function buildPageNumbers7(current, total) {
 }
 
 // src/app/features/admin/overtime-requests/pages/overtime-request-form/overtime-request-form.ts
-var _c017 = () => ({ standalone: true });
+var _c018 = () => ({ standalone: true });
 var _forTrack023 = ($index, $item) => $item.id;
 function OvertimeRequestForm_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
@@ -24272,14 +27981,14 @@ function OvertimeRequestForm_Conditional_50_For_10_Template(rf, ctx) {
     \u0275\u0275textInterpolate1("", \u0275$index_168_r7 + 1, ".");
     \u0275\u0275advance();
     \u0275\u0275twoWayProperty("ngModel", entry_r6.selectedJobTitleId);
-    \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(7, _c017));
+    \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(7, _c018));
     \u0275\u0275advance();
     \u0275\u0275property("ngValue", null);
     \u0275\u0275advance(2);
     \u0275\u0275repeater(ctx_r0.jobTitles);
     \u0275\u0275advance(2);
     \u0275\u0275twoWayProperty("ngModel", entry_r6.selectedUserId);
-    \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(8, _c017));
+    \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(8, _c018));
     \u0275\u0275advance();
     \u0275\u0275property("ngValue", null);
     \u0275\u0275advance(2);
@@ -25543,11 +29252,11 @@ function SSF_fix_hijri(date, o) {
   if (date < 60) dow = (dow + 6) % 7;
   return dow;
 }
-function SSF_write_date(type, fmt3, val, ss0) {
-  var o = "", ss = 0, tt = 0, y = val.y, out, outl = 0;
+function SSF_write_date(type, fmt3, val2, ss0) {
+  var o = "", ss = 0, tt = 0, y = val2.y, out, outl = 0;
   switch (type) {
     case 98:
-      y = val.y + 543;
+      y = val2.y + 543;
     /* falls through */
     case 121:
       switch (fmt3.length) {
@@ -25566,35 +29275,35 @@ function SSF_write_date(type, fmt3, val, ss0) {
       switch (fmt3.length) {
         case 1:
         case 2:
-          out = val.m;
+          out = val2.m;
           outl = fmt3.length;
           break;
         case 3:
-          return months[val.m - 1][1];
+          return months[val2.m - 1][1];
         case 5:
-          return months[val.m - 1][0];
+          return months[val2.m - 1][0];
         default:
-          return months[val.m - 1][2];
+          return months[val2.m - 1][2];
       }
       break;
     case 100:
       switch (fmt3.length) {
         case 1:
         case 2:
-          out = val.d;
+          out = val2.d;
           outl = fmt3.length;
           break;
         case 3:
-          return days[val.q][0];
+          return days[val2.q][0];
         default:
-          return days[val.q][1];
+          return days[val2.q][1];
       }
       break;
     case 104:
       switch (fmt3.length) {
         case 1:
         case 2:
-          out = 1 + (val.H + 11) % 12;
+          out = 1 + (val2.H + 11) % 12;
           outl = fmt3.length;
           break;
         default:
@@ -25605,7 +29314,7 @@ function SSF_write_date(type, fmt3, val, ss0) {
       switch (fmt3.length) {
         case 1:
         case 2:
-          out = val.H;
+          out = val2.H;
           outl = fmt3.length;
           break;
         default:
@@ -25616,7 +29325,7 @@ function SSF_write_date(type, fmt3, val, ss0) {
       switch (fmt3.length) {
         case 1:
         case 2:
-          out = val.M;
+          out = val2.M;
           outl = fmt3.length;
           break;
         default:
@@ -25625,10 +29334,10 @@ function SSF_write_date(type, fmt3, val, ss0) {
       break;
     case 115:
       if (fmt3 != "s" && fmt3 != "ss" && fmt3 != ".0" && fmt3 != ".00" && fmt3 != ".000") throw "bad second format: " + fmt3;
-      if (val.u === 0 && (fmt3 == "s" || fmt3 == "ss")) return pad0(val.S, fmt3.length);
+      if (val2.u === 0 && (fmt3 == "s" || fmt3 == "ss")) return pad0(val2.S, fmt3.length);
       if (ss0 >= 2) tt = ss0 === 3 ? 1e3 : 100;
       else tt = ss0 === 1 ? 10 : 1;
-      ss = Math.round(tt * (val.S + val.u));
+      ss = Math.round(tt * (val2.S + val2.u));
       if (ss >= 60 * tt) ss = 0;
       if (fmt3 === "s") return ss === 0 ? "0" : "" + ss / tt;
       o = pad0(ss, 2 + ss0);
@@ -25638,15 +29347,15 @@ function SSF_write_date(type, fmt3, val, ss0) {
       switch (fmt3) {
         case "[h]":
         case "[hh]":
-          out = val.D * 24 + val.H;
+          out = val2.D * 24 + val2.H;
           break;
         case "[m]":
         case "[mm]":
-          out = (val.D * 24 + val.H) * 60 + val.M;
+          out = (val2.D * 24 + val2.H) * 60 + val2.M;
           break;
         case "[s]":
         case "[ss]":
-          out = ((val.D * 24 + val.H) * 60 + val.M) * 60 + Math.round(val.S + val.u);
+          out = ((val2.D * 24 + val2.H) * 60 + val2.M) * 60 + Math.round(val2.S + val2.u);
           break;
         default:
           throw "bad abstime format: " + fmt3;
@@ -25669,28 +29378,28 @@ function commaify(s) {
   return o;
 }
 var pct1 = /%/g;
-function write_num_pct(type, fmt3, val) {
+function write_num_pct(type, fmt3, val2) {
   var sfmt = fmt3.replace(pct1, ""), mul = fmt3.length - sfmt.length;
-  return write_num(type, sfmt, val * Math.pow(10, 2 * mul)) + fill("%", mul);
+  return write_num(type, sfmt, val2 * Math.pow(10, 2 * mul)) + fill("%", mul);
 }
-function write_num_cm(type, fmt3, val) {
+function write_num_cm(type, fmt3, val2) {
   var idx = fmt3.length - 1;
   while (fmt3.charCodeAt(idx - 1) === 44) --idx;
-  return write_num(type, fmt3.substr(0, idx), val / Math.pow(10, 3 * (fmt3.length - idx)));
+  return write_num(type, fmt3.substr(0, idx), val2 / Math.pow(10, 3 * (fmt3.length - idx)));
 }
-function write_num_exp(fmt3, val) {
+function write_num_exp(fmt3, val2) {
   var o;
   var idx = fmt3.indexOf("E") - fmt3.indexOf(".") - 1;
   if (fmt3.match(/^#+0.0E\+0$/)) {
-    if (val == 0) return "0.0E+0";
-    else if (val < 0) return "-" + write_num_exp(fmt3, -val);
+    if (val2 == 0) return "0.0E+0";
+    else if (val2 < 0) return "-" + write_num_exp(fmt3, -val2);
     var period = fmt3.indexOf(".");
     if (period === -1) period = fmt3.indexOf("E");
-    var ee = Math.floor(Math.log(val) * Math.LOG10E) % period;
+    var ee = Math.floor(Math.log(val2) * Math.LOG10E) % period;
     if (ee < 0) ee += period;
-    o = (val / Math.pow(10, ee)).toPrecision(idx + 1 + (period + ee) % period);
+    o = (val2 / Math.pow(10, ee)).toPrecision(idx + 1 + (period + ee) % period);
     if (o.indexOf("e") === -1) {
-      var fakee = Math.floor(Math.log(val) * Math.LOG10E);
+      var fakee = Math.floor(Math.log(val2) * Math.LOG10E);
       if (o.indexOf(".") === -1) o = o.charAt(0) + "." + o.substr(1) + "E+" + (fakee - o.length + ee);
       else o += "E+" + (fakee - ee);
       while (o.substr(0, 2) === "0.") {
@@ -25702,7 +29411,7 @@ function write_num_exp(fmt3, val) {
     o = o.replace(/^([+-]?)(\d*)\.(\d*)[Ee]/, function($$, $1, $2, $3) {
       return $1 + $2 + $3.substr(0, (period + ee) % period) + "." + $3.substr(ee) + "E";
     });
-  } else o = val.toExponential(idx);
+  } else o = val2.toExponential(idx);
   if (fmt3.match(/E\+00$/) && o.match(/e[+-]\d$/)) o = o.substr(0, o.length - 1) + "0" + o.charAt(o.length - 1);
   if (fmt3.match(/E\-/) && o.match(/e\+/)) o = o.replace(/e\+/, "e");
   return o.replace("e", "E");
@@ -25735,47 +29444,47 @@ function hashq(str) {
   }
   return o;
 }
-function rnd(val, d) {
+function rnd(val2, d) {
   var dd = Math.pow(10, d);
-  return "" + Math.round(val * dd) / dd;
+  return "" + Math.round(val2 * dd) / dd;
 }
-function dec(val, d) {
-  var _frac = val - Math.floor(val), dd = Math.pow(10, d);
+function dec(val2, d) {
+  var _frac = val2 - Math.floor(val2), dd = Math.pow(10, d);
   if (d < ("" + Math.round(_frac * dd)).length) return 0;
   return Math.round(_frac * dd);
 }
-function carry(val, d) {
-  if (d < ("" + Math.round((val - Math.floor(val)) * Math.pow(10, d))).length) {
+function carry(val2, d) {
+  if (d < ("" + Math.round((val2 - Math.floor(val2)) * Math.pow(10, d))).length) {
     return 1;
   }
   return 0;
 }
-function flr(val) {
-  if (val < 2147483647 && val > -2147483648) return "" + (val >= 0 ? val | 0 : val - 1 | 0);
-  return "" + Math.floor(val);
+function flr(val2) {
+  if (val2 < 2147483647 && val2 > -2147483648) return "" + (val2 >= 0 ? val2 | 0 : val2 - 1 | 0);
+  return "" + Math.floor(val2);
 }
-function write_num_flt(type, fmt3, val) {
+function write_num_flt(type, fmt3, val2) {
   if (type.charCodeAt(0) === 40 && !fmt3.match(closeparen)) {
     var ffmt = fmt3.replace(/\( */, "").replace(/ \)/, "").replace(/\)/, "");
-    if (val >= 0) return write_num_flt("n", ffmt, val);
-    return "(" + write_num_flt("n", ffmt, -val) + ")";
+    if (val2 >= 0) return write_num_flt("n", ffmt, val2);
+    return "(" + write_num_flt("n", ffmt, -val2) + ")";
   }
-  if (fmt3.charCodeAt(fmt3.length - 1) === 44) return write_num_cm(type, fmt3, val);
-  if (fmt3.indexOf("%") !== -1) return write_num_pct(type, fmt3, val);
-  if (fmt3.indexOf("E") !== -1) return write_num_exp(fmt3, val);
-  if (fmt3.charCodeAt(0) === 36) return "$" + write_num_flt(type, fmt3.substr(fmt3.charAt(1) == " " ? 2 : 1), val);
+  if (fmt3.charCodeAt(fmt3.length - 1) === 44) return write_num_cm(type, fmt3, val2);
+  if (fmt3.indexOf("%") !== -1) return write_num_pct(type, fmt3, val2);
+  if (fmt3.indexOf("E") !== -1) return write_num_exp(fmt3, val2);
+  if (fmt3.charCodeAt(0) === 36) return "$" + write_num_flt(type, fmt3.substr(fmt3.charAt(1) == " " ? 2 : 1), val2);
   var o;
-  var r, ri, ff, aval = Math.abs(val), sign = val < 0 ? "-" : "";
+  var r, ri, ff, aval = Math.abs(val2), sign = val2 < 0 ? "-" : "";
   if (fmt3.match(/^00+$/)) return sign + pad0r(aval, fmt3.length);
   if (fmt3.match(/^[#?]+$/)) {
-    o = pad0r(val, 0);
+    o = pad0r(val2, 0);
     if (o === "0") o = "";
     return o.length > fmt3.length ? o : hashq(fmt3.substr(0, fmt3.length - o.length)) + o;
   }
   if (r = fmt3.match(frac1)) return write_num_f1(r, aval, sign);
   if (fmt3.match(/^#+0+$/)) return sign + pad0r(aval, fmt3.length - fmt3.indexOf("0"));
   if (r = fmt3.match(dec1)) {
-    o = rnd(val, r[1].length).replace(/^([^\.]+)$/, "$1." + hashq(r[1])).replace(/\.$/, "." + hashq(r[1])).replace(/\.(\d*)$/, function($$, $1) {
+    o = rnd(val2, r[1].length).replace(/^([^\.]+)$/, "$1." + hashq(r[1])).replace(/\.$/, "." + hashq(r[1])).replace(/\.(\d*)$/, function($$, $1) {
       return "." + $1 + fill("0", hashq(
         /*::(*/
         r[1]
@@ -25789,18 +29498,18 @@ function write_num_flt(type, fmt3, val) {
   }
   if (r = fmt3.match(/^#{1,3},##0(\.?)$/)) return sign + commaify(pad0r(aval, 0));
   if (r = fmt3.match(/^#,##0\.([#0]*0)$/)) {
-    return val < 0 ? "-" + write_num_flt(type, fmt3, -val) : commaify("" + (Math.floor(val) + carry(val, r[1].length))) + "." + pad0(dec(val, r[1].length), r[1].length);
+    return val2 < 0 ? "-" + write_num_flt(type, fmt3, -val2) : commaify("" + (Math.floor(val2) + carry(val2, r[1].length))) + "." + pad0(dec(val2, r[1].length), r[1].length);
   }
-  if (r = fmt3.match(/^#,#*,#0/)) return write_num_flt(type, fmt3.replace(/^#,#*,/, ""), val);
+  if (r = fmt3.match(/^#,#*,#0/)) return write_num_flt(type, fmt3.replace(/^#,#*,/, ""), val2);
   if (r = fmt3.match(/^([0#]+)(\\?-([0#]+))+$/)) {
-    o = _strrev(write_num_flt(type, fmt3.replace(/[\\-]/g, ""), val));
+    o = _strrev(write_num_flt(type, fmt3.replace(/[\\-]/g, ""), val2));
     ri = 0;
     return _strrev(_strrev(fmt3.replace(/\\/g, "")).replace(/[0#]/g, function(x2) {
       return ri < o.length ? o.charAt(ri++) : x2 === "0" ? "0" : "";
     }));
   }
   if (fmt3.match(phone)) {
-    o = write_num_flt(type, "##########", val);
+    o = write_num_flt(type, "##########", val2);
     return "(" + o.substr(0, 3) + ") " + o.substr(3, 3) + "-" + o.substr(6);
   }
   var oa = "";
@@ -25833,60 +29542,60 @@ function write_num_flt(type, fmt3, val) {
     return sign + (ff[0] || (ff[1] ? "" : "0")) + " " + (ff[1] ? pad_(ff[1], ri) + r[2] + "/" + r[3] + rpad_(ff[2], ri) : fill(" ", 2 * ri + 1 + r[2].length + r[3].length));
   }
   if (r = fmt3.match(/^[#0?]+$/)) {
-    o = pad0r(val, 0);
+    o = pad0r(val2, 0);
     if (fmt3.length <= o.length) return o;
     return hashq(fmt3.substr(0, fmt3.length - o.length)) + o;
   }
   if (r = fmt3.match(/^([#0?]+)\.([#0]+)$/)) {
-    o = "" + val.toFixed(Math.min(r[2].length, 10)).replace(/([^0])0+$/, "$1");
+    o = "" + val2.toFixed(Math.min(r[2].length, 10)).replace(/([^0])0+$/, "$1");
     ri = o.indexOf(".");
     var lres = fmt3.indexOf(".") - ri, rres = fmt3.length - o.length - lres;
     return hashq(fmt3.substr(0, lres) + o + fmt3.substr(fmt3.length - rres));
   }
   if (r = fmt3.match(/^00,000\.([#0]*0)$/)) {
-    ri = dec(val, r[1].length);
-    return val < 0 ? "-" + write_num_flt(type, fmt3, -val) : commaify(flr(val)).replace(/^\d,\d{3}$/, "0$&").replace(/^\d*$/, function($$) {
+    ri = dec(val2, r[1].length);
+    return val2 < 0 ? "-" + write_num_flt(type, fmt3, -val2) : commaify(flr(val2)).replace(/^\d,\d{3}$/, "0$&").replace(/^\d*$/, function($$) {
       return "00," + ($$.length < 3 ? pad0(0, 3 - $$.length) : "") + $$;
     }) + "." + pad0(ri, r[1].length);
   }
   switch (fmt3) {
     case "###,##0.00":
-      return write_num_flt(type, "#,##0.00", val);
+      return write_num_flt(type, "#,##0.00", val2);
     case "###,###":
     case "##,###":
     case "#,###":
       var x = commaify(pad0r(aval, 0));
       return x !== "0" ? sign + x : "";
     case "###,###.00":
-      return write_num_flt(type, "###,##0.00", val).replace(/^0\./, ".");
+      return write_num_flt(type, "###,##0.00", val2).replace(/^0\./, ".");
     case "#,###.00":
-      return write_num_flt(type, "#,##0.00", val).replace(/^0\./, ".");
+      return write_num_flt(type, "#,##0.00", val2).replace(/^0\./, ".");
     default:
   }
   throw new Error("unsupported format |" + fmt3 + "|");
 }
-function write_num_cm2(type, fmt3, val) {
+function write_num_cm2(type, fmt3, val2) {
   var idx = fmt3.length - 1;
   while (fmt3.charCodeAt(idx - 1) === 44) --idx;
-  return write_num(type, fmt3.substr(0, idx), val / Math.pow(10, 3 * (fmt3.length - idx)));
+  return write_num(type, fmt3.substr(0, idx), val2 / Math.pow(10, 3 * (fmt3.length - idx)));
 }
-function write_num_pct2(type, fmt3, val) {
+function write_num_pct2(type, fmt3, val2) {
   var sfmt = fmt3.replace(pct1, ""), mul = fmt3.length - sfmt.length;
-  return write_num(type, sfmt, val * Math.pow(10, 2 * mul)) + fill("%", mul);
+  return write_num(type, sfmt, val2 * Math.pow(10, 2 * mul)) + fill("%", mul);
 }
-function write_num_exp2(fmt3, val) {
+function write_num_exp2(fmt3, val2) {
   var o;
   var idx = fmt3.indexOf("E") - fmt3.indexOf(".") - 1;
   if (fmt3.match(/^#+0.0E\+0$/)) {
-    if (val == 0) return "0.0E+0";
-    else if (val < 0) return "-" + write_num_exp2(fmt3, -val);
+    if (val2 == 0) return "0.0E+0";
+    else if (val2 < 0) return "-" + write_num_exp2(fmt3, -val2);
     var period = fmt3.indexOf(".");
     if (period === -1) period = fmt3.indexOf("E");
-    var ee = Math.floor(Math.log(val) * Math.LOG10E) % period;
+    var ee = Math.floor(Math.log(val2) * Math.LOG10E) % period;
     if (ee < 0) ee += period;
-    o = (val / Math.pow(10, ee)).toPrecision(idx + 1 + (period + ee) % period);
+    o = (val2 / Math.pow(10, ee)).toPrecision(idx + 1 + (period + ee) % period);
     if (!o.match(/[Ee]/)) {
-      var fakee = Math.floor(Math.log(val) * Math.LOG10E);
+      var fakee = Math.floor(Math.log(val2) * Math.LOG10E);
       if (o.indexOf(".") === -1) o = o.charAt(0) + "." + o.substr(1) + "E+" + (fakee - o.length + ee);
       else o += "E+" + (fakee - ee);
       o = o.replace(/\+-/, "-");
@@ -25894,33 +29603,33 @@ function write_num_exp2(fmt3, val) {
     o = o.replace(/^([+-]?)(\d*)\.(\d*)[Ee]/, function($$, $1, $2, $3) {
       return $1 + $2 + $3.substr(0, (period + ee) % period) + "." + $3.substr(ee) + "E";
     });
-  } else o = val.toExponential(idx);
+  } else o = val2.toExponential(idx);
   if (fmt3.match(/E\+00$/) && o.match(/e[+-]\d$/)) o = o.substr(0, o.length - 1) + "0" + o.charAt(o.length - 1);
   if (fmt3.match(/E\-/) && o.match(/e\+/)) o = o.replace(/e\+/, "e");
   return o.replace("e", "E");
 }
-function write_num_int(type, fmt3, val) {
+function write_num_int(type, fmt3, val2) {
   if (type.charCodeAt(0) === 40 && !fmt3.match(closeparen)) {
     var ffmt = fmt3.replace(/\( */, "").replace(/ \)/, "").replace(/\)/, "");
-    if (val >= 0) return write_num_int("n", ffmt, val);
-    return "(" + write_num_int("n", ffmt, -val) + ")";
+    if (val2 >= 0) return write_num_int("n", ffmt, val2);
+    return "(" + write_num_int("n", ffmt, -val2) + ")";
   }
-  if (fmt3.charCodeAt(fmt3.length - 1) === 44) return write_num_cm2(type, fmt3, val);
-  if (fmt3.indexOf("%") !== -1) return write_num_pct2(type, fmt3, val);
-  if (fmt3.indexOf("E") !== -1) return write_num_exp2(fmt3, val);
-  if (fmt3.charCodeAt(0) === 36) return "$" + write_num_int(type, fmt3.substr(fmt3.charAt(1) == " " ? 2 : 1), val);
+  if (fmt3.charCodeAt(fmt3.length - 1) === 44) return write_num_cm2(type, fmt3, val2);
+  if (fmt3.indexOf("%") !== -1) return write_num_pct2(type, fmt3, val2);
+  if (fmt3.indexOf("E") !== -1) return write_num_exp2(fmt3, val2);
+  if (fmt3.charCodeAt(0) === 36) return "$" + write_num_int(type, fmt3.substr(fmt3.charAt(1) == " " ? 2 : 1), val2);
   var o;
-  var r, ri, ff, aval = Math.abs(val), sign = val < 0 ? "-" : "";
+  var r, ri, ff, aval = Math.abs(val2), sign = val2 < 0 ? "-" : "";
   if (fmt3.match(/^00+$/)) return sign + pad0(aval, fmt3.length);
   if (fmt3.match(/^[#?]+$/)) {
-    o = "" + val;
-    if (val === 0) o = "";
+    o = "" + val2;
+    if (val2 === 0) o = "";
     return o.length > fmt3.length ? o : hashq(fmt3.substr(0, fmt3.length - o.length)) + o;
   }
   if (r = fmt3.match(frac1)) return write_num_f2(r, aval, sign);
   if (fmt3.match(/^#+0+$/)) return sign + pad0(aval, fmt3.length - fmt3.indexOf("0"));
   if (r = fmt3.match(dec1)) {
-    o = ("" + val).replace(/^([^\.]+)$/, "$1." + hashq(r[1])).replace(/\.$/, "." + hashq(r[1]));
+    o = ("" + val2).replace(/^([^\.]+)$/, "$1." + hashq(r[1])).replace(/\.$/, "." + hashq(r[1]));
     o = o.replace(/\.(\d*)$/, function($$, $1) {
       return "." + $1 + fill("0", hashq(r[1]).length - $1.length);
     });
@@ -25932,18 +29641,18 @@ function write_num_int(type, fmt3, val) {
   }
   if (r = fmt3.match(/^#{1,3},##0(\.?)$/)) return sign + commaify("" + aval);
   if (r = fmt3.match(/^#,##0\.([#0]*0)$/)) {
-    return val < 0 ? "-" + write_num_int(type, fmt3, -val) : commaify("" + val) + "." + fill("0", r[1].length);
+    return val2 < 0 ? "-" + write_num_int(type, fmt3, -val2) : commaify("" + val2) + "." + fill("0", r[1].length);
   }
-  if (r = fmt3.match(/^#,#*,#0/)) return write_num_int(type, fmt3.replace(/^#,#*,/, ""), val);
+  if (r = fmt3.match(/^#,#*,#0/)) return write_num_int(type, fmt3.replace(/^#,#*,/, ""), val2);
   if (r = fmt3.match(/^([0#]+)(\\?-([0#]+))+$/)) {
-    o = _strrev(write_num_int(type, fmt3.replace(/[\\-]/g, ""), val));
+    o = _strrev(write_num_int(type, fmt3.replace(/[\\-]/g, ""), val2));
     ri = 0;
     return _strrev(_strrev(fmt3.replace(/\\/g, "")).replace(/[0#]/g, function(x2) {
       return ri < o.length ? o.charAt(ri++) : x2 === "0" ? "0" : "";
     }));
   }
   if (fmt3.match(phone)) {
-    o = write_num_int(type, "##########", val);
+    o = write_num_int(type, "##########", val2);
     return "(" + o.substr(0, 3) + ") " + o.substr(3, 3) + "-" + o.substr(6);
   }
   var oa = "";
@@ -25976,18 +29685,18 @@ function write_num_int(type, fmt3, val) {
     return sign + (ff[0] || (ff[1] ? "" : "0")) + " " + (ff[1] ? pad_(ff[1], ri) + r[2] + "/" + r[3] + rpad_(ff[2], ri) : fill(" ", 2 * ri + 1 + r[2].length + r[3].length));
   }
   if (r = fmt3.match(/^[#0?]+$/)) {
-    o = "" + val;
+    o = "" + val2;
     if (fmt3.length <= o.length) return o;
     return hashq(fmt3.substr(0, fmt3.length - o.length)) + o;
   }
   if (r = fmt3.match(/^([#0]+)\.([#0]+)$/)) {
-    o = "" + val.toFixed(Math.min(r[2].length, 10)).replace(/([^0])0+$/, "$1");
+    o = "" + val2.toFixed(Math.min(r[2].length, 10)).replace(/([^0])0+$/, "$1");
     ri = o.indexOf(".");
     var lres = fmt3.indexOf(".") - ri, rres = fmt3.length - o.length - lres;
     return hashq(fmt3.substr(0, lres) + o + fmt3.substr(fmt3.length - rres));
   }
   if (r = fmt3.match(/^00,000\.([#0]*0)$/)) {
-    return val < 0 ? "-" + write_num_int(type, fmt3, -val) : commaify("" + val).replace(/^\d,\d{3}$/, "0$&").replace(/^\d*$/, function($$) {
+    return val2 < 0 ? "-" + write_num_int(type, fmt3, -val2) : commaify("" + val2).replace(/^\d,\d{3}$/, "0$&").replace(/^\d*$/, function($$) {
       return "00," + ($$.length < 3 ? pad0(0, 3 - $$.length) : "") + $$;
     }) + "." + pad0(0, r[1].length);
   }
@@ -25998,12 +29707,12 @@ function write_num_int(type, fmt3, val) {
       var x = commaify("" + aval);
       return x !== "0" ? sign + x : "";
     default:
-      if (fmt3.match(/\.[0#?]*$/)) return write_num_int(type, fmt3.slice(0, fmt3.lastIndexOf(".")), val) + hashq(fmt3.slice(fmt3.lastIndexOf(".")));
+      if (fmt3.match(/\.[0#?]*$/)) return write_num_int(type, fmt3.slice(0, fmt3.lastIndexOf(".")), val2) + hashq(fmt3.slice(fmt3.lastIndexOf(".")));
   }
   throw new Error("unsupported format |" + fmt3 + "|");
 }
-function write_num(type, fmt3, val) {
-  return (val | 0) === val ? write_num_int(type, fmt3, val) : write_num_flt(type, fmt3, val);
+function write_num(type, fmt3, val2) {
+  return (val2 | 0) === val2 ? write_num_int(type, fmt3, val2) : write_num_flt(type, fmt3, val2);
 }
 function SSF_split_fmt(fmt3) {
   var out = [];
@@ -26730,23 +30439,23 @@ var CFB = /* @__PURE__ */ (function _CFB() {
   function parse_dos_date(buf) {
     var hms = buf.read_shift(2) & 65535;
     var ymd = buf.read_shift(2) & 65535;
-    var val = /* @__PURE__ */ new Date();
+    var val2 = /* @__PURE__ */ new Date();
     var d = ymd & 31;
     ymd >>>= 5;
     var m = ymd & 15;
     ymd >>>= 4;
-    val.setMilliseconds(0);
-    val.setFullYear(ymd + 1980);
-    val.setMonth(m - 1);
-    val.setDate(d);
+    val2.setMilliseconds(0);
+    val2.setFullYear(ymd + 1980);
+    val2.setMonth(m - 1);
+    val2.setDate(d);
     var S = hms & 31;
     hms >>>= 5;
     var M = hms & 63;
     hms >>>= 6;
-    val.setHours(hms);
-    val.setMinutes(M);
-    val.setSeconds(S << 1);
-    return val;
+    val2.setHours(hms);
+    val2.setMinutes(M);
+    val2.setSeconds(S << 1);
+    return val2;
   }
   function parse_extra_field(blob) {
     prep_blob(blob, 0);
@@ -29093,47 +32802,47 @@ function ReadShift(size, t) {
   this.l += size;
   return o;
 }
-var __writeUInt32LE = function(b, val, idx) {
-  b[idx] = val & 255;
-  b[idx + 1] = val >>> 8 & 255;
-  b[idx + 2] = val >>> 16 & 255;
-  b[idx + 3] = val >>> 24 & 255;
+var __writeUInt32LE = function(b, val2, idx) {
+  b[idx] = val2 & 255;
+  b[idx + 1] = val2 >>> 8 & 255;
+  b[idx + 2] = val2 >>> 16 & 255;
+  b[idx + 3] = val2 >>> 24 & 255;
 };
-var __writeInt32LE = function(b, val, idx) {
-  b[idx] = val & 255;
-  b[idx + 1] = val >> 8 & 255;
-  b[idx + 2] = val >> 16 & 255;
-  b[idx + 3] = val >> 24 & 255;
+var __writeInt32LE = function(b, val2, idx) {
+  b[idx] = val2 & 255;
+  b[idx + 1] = val2 >> 8 & 255;
+  b[idx + 2] = val2 >> 16 & 255;
+  b[idx + 3] = val2 >> 24 & 255;
 };
-var __writeUInt16LE = function(b, val, idx) {
-  b[idx] = val & 255;
-  b[idx + 1] = val >>> 8 & 255;
+var __writeUInt16LE = function(b, val2, idx) {
+  b[idx] = val2 & 255;
+  b[idx + 1] = val2 >>> 8 & 255;
 };
-function WriteShift(t, val, f) {
+function WriteShift(t, val2, f) {
   var size = 0, i = 0;
   if (f === "dbcs") {
-    for (i = 0; i != val.length; ++i) __writeUInt16LE(this, val.charCodeAt(i), this.l + 2 * i);
-    size = 2 * val.length;
+    for (i = 0; i != val2.length; ++i) __writeUInt16LE(this, val2.charCodeAt(i), this.l + 2 * i);
+    size = 2 * val2.length;
   } else if (f === "sbcs") {
     if (typeof $cptable !== "undefined" && current_ansi == 874) {
-      for (i = 0; i != val.length; ++i) {
-        var cppayload = $cptable.utils.encode(current_ansi, val.charAt(i));
+      for (i = 0; i != val2.length; ++i) {
+        var cppayload = $cptable.utils.encode(current_ansi, val2.charAt(i));
         this[this.l + i] = cppayload[0];
       }
     } else {
-      val = val.replace(/[^\x00-\x7F]/g, "_");
-      for (i = 0; i != val.length; ++i) this[this.l + i] = val.charCodeAt(i) & 255;
+      val2 = val2.replace(/[^\x00-\x7F]/g, "_");
+      for (i = 0; i != val2.length; ++i) this[this.l + i] = val2.charCodeAt(i) & 255;
     }
-    size = val.length;
+    size = val2.length;
   } else if (f === "hex") {
     for (; i < t; ++i) {
-      this[this.l++] = parseInt(val.slice(2 * i, 2 * i + 2), 16) || 0;
+      this[this.l++] = parseInt(val2.slice(2 * i, 2 * i + 2), 16) || 0;
     }
     return this;
   } else if (f === "utf16le") {
     var end = Math.min(this.l + t, this.length);
-    for (i = 0; i < Math.min(val.length, t); ++i) {
-      var cc = val.charCodeAt(i);
+    for (i = 0; i < Math.min(val2.length, t); ++i) {
+      var cc = val2.charCodeAt(i);
       this[this.l++] = cc & 255;
       this[this.l++] = cc >> 8;
     }
@@ -29142,30 +32851,30 @@ function WriteShift(t, val, f) {
   } else switch (t) {
     case 1:
       size = 1;
-      this[this.l] = val & 255;
+      this[this.l] = val2 & 255;
       break;
     case 2:
       size = 2;
-      this[this.l] = val & 255;
-      val >>>= 8;
-      this[this.l + 1] = val & 255;
+      this[this.l] = val2 & 255;
+      val2 >>>= 8;
+      this[this.l + 1] = val2 & 255;
       break;
     case 3:
       size = 3;
-      this[this.l] = val & 255;
-      val >>>= 8;
-      this[this.l + 1] = val & 255;
-      val >>>= 8;
-      this[this.l + 2] = val & 255;
+      this[this.l] = val2 & 255;
+      val2 >>>= 8;
+      this[this.l + 1] = val2 & 255;
+      val2 >>>= 8;
+      this[this.l + 2] = val2 & 255;
       break;
     case 4:
       size = 4;
-      __writeUInt32LE(this, val, this.l);
+      __writeUInt32LE(this, val2, this.l);
       break;
     case 8:
       size = 8;
       if (f === "f") {
-        write_double_le(this, val, this.l);
+        write_double_le(this, val2, this.l);
         break;
       }
     /* falls through */
@@ -29173,7 +32882,7 @@ function WriteShift(t, val, f) {
       break;
     case -4:
       size = 4;
-      __writeInt32LE(this, val, this.l);
+      __writeInt32LE(this, val2, this.l);
       break;
   }
   this.l += size;
@@ -30662,16 +34371,16 @@ function write_TypedPropertyValue(type, value) {
   return bconcat([o, p]);
 }
 var XLSPSSkip = ["CodePage", "Thumbnail", "_PID_LINKBASE", "_PID_HLINKS", "SystemIdentifier", "FMTID"];
-function guess_property_type(val) {
-  switch (typeof val) {
+function guess_property_type(val2) {
+  switch (typeof val2) {
     case "boolean":
       return 11;
     case "number":
-      return (val | 0) == val ? 3 : 5;
+      return (val2 | 0) == val2 ? 3 : 5;
     case "string":
       return 31;
     case "object":
-      if (val instanceof Date) return 64;
+      if (val2 instanceof Date) return 64;
       break;
   }
   return -1;
@@ -30709,22 +34418,22 @@ function write_PropertySet(entries, RE, PIDSI) {
     if (RE && !RE[entries[i][0]]) continue;
     if (XLSPSSkip.indexOf(entries[i][0]) > -1 || PseudoPropsPairs.indexOf(entries[i][0]) > -1) continue;
     if (entries[i][1] == null) continue;
-    var val = entries[i][1], idx = 0;
+    var val2 = entries[i][1], idx = 0;
     if (RE) {
       idx = +RE[entries[i][0]];
       var pinfo = PIDSI[idx];
-      if (pinfo.p == "version" && typeof val == "string") {
-        var arr = val.split(".");
-        val = (+arr[0] << 16) + (+arr[1] || 0);
+      if (pinfo.p == "version" && typeof val2 == "string") {
+        var arr = val2.split(".");
+        val2 = (+arr[0] << 16) + (+arr[1] || 0);
       }
-      pr = write_TypedPropertyValue(pinfo.t, val);
+      pr = write_TypedPropertyValue(pinfo.t, val2);
     } else {
-      var T = guess_property_type(val);
+      var T = guess_property_type(val2);
       if (T == -1) {
         T = 31;
-        val = String(val);
+        val2 = String(val2);
       }
-      pr = write_TypedPropertyValue(T, val);
+      pr = write_TypedPropertyValue(T, val2);
     }
     prop.push(pr);
     pio = new_buf(8);
@@ -31198,16 +34907,16 @@ function write_RRTabId(n) {
   for (var i = 0; i < n; ++i) out.write_shift(2, i + 1);
   return out;
 }
-function write_BIFF2NUM(r, c, val) {
+function write_BIFF2NUM(r, c, val2) {
   var out = new_buf(15);
   write_BIFF2Cell(out, r, c);
-  out.write_shift(8, val, "f");
+  out.write_shift(8, val2, "f");
   return out;
 }
-function write_BIFF2INT(r, c, val) {
+function write_BIFF2INT(r, c, val2) {
   var out = new_buf(9);
   write_BIFF2Cell(out, r, c);
-  out.write_shift(2, val);
+  out.write_shift(2, val2);
   return out;
 }
 var DBF = /* @__PURE__ */ (function() {
@@ -31933,7 +35642,7 @@ var SYLK = /* @__PURE__ */ (function() {
       var record = rstr.replace(/;;/g, "\0").split(";").map(function(x) {
         return x.replace(/\u0000/g, ";");
       });
-      var RT = record[0], val;
+      var RT = record[0], val2;
       if (rstr.length > 0) switch (RT) {
         case "ID":
           break;
@@ -31970,17 +35679,17 @@ var SYLK = /* @__PURE__ */ (function() {
               for (j = arr.length; j <= R; ++j) arr[j] = [];
               break;
             case "K":
-              val = record[rj].slice(1);
-              if (val.charAt(0) === '"') val = val.slice(1, val.length - 1);
-              else if (val === "TRUE") val = true;
-              else if (val === "FALSE") val = false;
-              else if (!isNaN(fuzzynum(val))) {
-                val = fuzzynum(val);
-                if (next_cell_format !== null && fmt_is_date(next_cell_format)) val = numdate(val);
-              } else if (!isNaN(fuzzydate(val).getDate())) {
-                val = parseDate(val);
+              val2 = record[rj].slice(1);
+              if (val2.charAt(0) === '"') val2 = val2.slice(1, val2.length - 1);
+              else if (val2 === "TRUE") val2 = true;
+              else if (val2 === "FALSE") val2 = false;
+              else if (!isNaN(fuzzynum(val2))) {
+                val2 = fuzzynum(val2);
+                if (next_cell_format !== null && fmt_is_date(next_cell_format)) val2 = numdate(val2);
+              } else if (!isNaN(fuzzydate(val2).getDate())) {
+                val2 = parseDate(val2);
               }
-              if (typeof $cptable !== "undefined" && typeof val == "string" && (opts || {}).type != "string" && (opts || {}).codepage) val = $cptable.utils.decode(opts.codepage, val);
+              if (typeof $cptable !== "undefined" && typeof val2 == "string" && (opts || {}).type != "string" && (opts || {}).codepage) val2 = $cptable.utils.decode(opts.codepage, val2);
               C_seen_K = true;
               break;
             case "E":
@@ -32005,8 +35714,8 @@ var SYLK = /* @__PURE__ */ (function() {
               if (opts && opts.WTF) throw new Error("SYLK bad record " + rstr);
           }
           if (C_seen_K) {
-            if (arr[R][C] && arr[R][C].length == 2) arr[R][C][0] = val;
-            else arr[R][C] = val;
+            if (arr[R][C] && arr[R][C].length == 2) arr[R][C][0] = val2;
+            else arr[R][C] = val2;
             next_cell_format = null;
           }
           if (C_seen_S) {
@@ -32255,12 +35964,12 @@ var DIF = /* @__PURE__ */ (function() {
           }
           switch (cell.t) {
             case "n":
-              var val = DIF_XL ? cell.w : cell.v;
-              if (!val && cell.v != null) val = cell.v;
-              if (val == null) {
+              var val2 = DIF_XL ? cell.w : cell.v;
+              if (!val2 && cell.v != null) val2 = cell.v;
+              if (val2 == null) {
                 if (DIF_XL && cell.f && !cell.F) push_value(o, 1, 0, "=" + cell.f);
                 else push_value(o, 1, 0, "");
-              } else push_value(o, 0, val, "V");
+              } else push_value(o, 0, val2, "V");
               break;
             case "b":
               push_value(o, 0, cell.v ? 1 : 0, cell.v ? "TRUE" : "FALSE");
@@ -32700,65 +36409,65 @@ var WK_ = /* @__PURE__ */ (function() {
     }
     if (d[2] == 2) {
       o.Enum = WK1Enum;
-      lotushopper(d, function(val, R, RT) {
+      lotushopper(d, function(val2, R, RT) {
         switch (RT) {
           case 0:
-            o.vers = val;
-            if (val >= 4096) o.qpro = true;
+            o.vers = val2;
+            if (val2 >= 4096) o.qpro = true;
             break;
           case 6:
-            refguess = val;
+            refguess = val2;
             break;
           /* RANGE */
           case 204:
-            if (val) next_n = val;
+            if (val2) next_n = val2;
             break;
           /* SHEETNAMECS */
           case 222:
-            next_n = val;
+            next_n = val2;
             break;
           /* SHEETNAMELP */
           case 15:
           /* LABEL */
           case 51:
-            if (!o.qpro) val[1].v = val[1].v.slice(1);
+            if (!o.qpro) val2[1].v = val2[1].v.slice(1);
           /* falls through */
           case 13:
           /* INTEGER */
           case 14:
           /* NUMBER */
           case 16:
-            if (RT == 14 && (val[2] & 112) == 112 && (val[2] & 15) > 1 && (val[2] & 15) < 15) {
-              val[1].z = o.dateNF || table_fmt[14];
+            if (RT == 14 && (val2[2] & 112) == 112 && (val2[2] & 15) > 1 && (val2[2] & 15) < 15) {
+              val2[1].z = o.dateNF || table_fmt[14];
               if (o.cellDates) {
-                val[1].t = "d";
-                val[1].v = numdate(val[1].v);
+                val2[1].t = "d";
+                val2[1].v = numdate(val2[1].v);
               }
             }
             if (o.qpro) {
-              if (val[3] > sidx) {
+              if (val2[3] > sidx) {
                 s["!ref"] = encode_range(refguess);
                 sheets[n] = s;
                 snames.push(n);
                 s = o.dense ? [] : {};
                 refguess = { s: { r: 0, c: 0 }, e: { r: 0, c: 0 } };
-                sidx = val[3];
+                sidx = val2[3];
                 n = next_n || "Sheet" + (sidx + 1);
                 next_n = "";
               }
             }
-            var tmpcell = o.dense ? (s[val[0].r] || [])[val[0].c] : s[encode_cell(val[0])];
+            var tmpcell = o.dense ? (s[val2[0].r] || [])[val2[0].c] : s[encode_cell(val2[0])];
             if (tmpcell) {
-              tmpcell.t = val[1].t;
-              tmpcell.v = val[1].v;
-              if (val[1].z != null) tmpcell.z = val[1].z;
-              if (val[1].f != null) tmpcell.f = val[1].f;
+              tmpcell.t = val2[1].t;
+              tmpcell.v = val2[1].v;
+              if (val2[1].z != null) tmpcell.z = val2[1].z;
+              if (val2[1].f != null) tmpcell.f = val2[1].f;
               break;
             }
             if (o.dense) {
-              if (!s[val[0].r]) s[val[0].r] = [];
-              s[val[0].r][val[0].c] = val[1];
-            } else s[encode_cell(val[0])] = val[1];
+              if (!s[val2[0].r]) s[val2[0].r] = [];
+              s[val2[0].r][val2[0].c] = val2[1];
+            } else s[encode_cell(val2[0])] = val2[1];
             break;
           default:
         }
@@ -32769,14 +36478,14 @@ var WK_ = /* @__PURE__ */ (function() {
         o.qpro = true;
         d.l = 0;
       }
-      lotushopper(d, function(val, R, RT) {
+      lotushopper(d, function(val2, R, RT) {
         switch (RT) {
           case 204:
-            n = val;
+            n = val2;
             break;
           /* SHEETNAMECS */
           case 22:
-            val[1].v = val[1].v.slice(1);
+            val2[1].v = val2[1].v.slice(1);
           /* falls through */
           case 23:
           /* NUMBER17 */
@@ -32789,29 +36498,29 @@ var WK_ = /* @__PURE__ */ (function() {
           case 39:
           /* NUMBER27 */
           case 40:
-            if (val[3] > sidx) {
+            if (val2[3] > sidx) {
               s["!ref"] = encode_range(refguess);
               sheets[n] = s;
               snames.push(n);
               s = o.dense ? [] : {};
               refguess = { s: { r: 0, c: 0 }, e: { r: 0, c: 0 } };
-              sidx = val[3];
+              sidx = val2[3];
               n = "Sheet" + (sidx + 1);
             }
-            if (sheetRows > 0 && val[0].r >= sheetRows) break;
+            if (sheetRows > 0 && val2[0].r >= sheetRows) break;
             if (o.dense) {
-              if (!s[val[0].r]) s[val[0].r] = [];
-              s[val[0].r][val[0].c] = val[1];
-            } else s[encode_cell(val[0])] = val[1];
-            if (refguess.e.c < val[0].c) refguess.e.c = val[0].c;
-            if (refguess.e.r < val[0].r) refguess.e.r = val[0].r;
+              if (!s[val2[0].r]) s[val2[0].r] = [];
+              s[val2[0].r][val2[0].c] = val2[1];
+            } else s[encode_cell(val2[0])] = val2[1];
+            if (refguess.e.c < val2[0].c) refguess.e.c = val2[0].c;
+            if (refguess.e.r < val2[0].r) refguess.e.r = val2[0].r;
             break;
           case 27:
-            if (val[14e3]) realnames[val[14e3][0]] = val[14e3][1];
+            if (val2[14e3]) realnames[val2[14e3][0]] = val2[14e3][1];
             break;
           case 1537:
-            realnames[val[0]] = val[1];
-            if (val[0] == sidx) n = val[1];
+            realnames[val2[0]] = val2[1];
+            if (val2[0] == sidx) n = val2[1];
             break;
           default:
             break;
@@ -35062,48 +38771,48 @@ function parse_PtgStr(blob, length, opts) {
   return parse_ShortXLUnicodeString(blob, length - 1, opts);
 }
 function parse_SerAr(blob, biff) {
-  var val = [blob.read_shift(1)];
-  if (biff == 12) switch (val[0]) {
+  var val2 = [blob.read_shift(1)];
+  if (biff == 12) switch (val2[0]) {
     case 2:
-      val[0] = 4;
+      val2[0] = 4;
       break;
     /* SerBool */
     case 4:
-      val[0] = 16;
+      val2[0] = 16;
       break;
     /* SerErr */
     case 0:
-      val[0] = 1;
+      val2[0] = 1;
       break;
     /* SerNum */
     case 1:
-      val[0] = 2;
+      val2[0] = 2;
       break;
   }
-  switch (val[0]) {
+  switch (val2[0]) {
     case 4:
-      val[1] = parsebool(blob, 1) ? "TRUE" : "FALSE";
+      val2[1] = parsebool(blob, 1) ? "TRUE" : "FALSE";
       if (biff != 12) blob.l += 7;
       break;
     case 37:
     /* appears to be an alias */
     case 16:
-      val[1] = BErr[blob[blob.l]];
+      val2[1] = BErr[blob[blob.l]];
       blob.l += biff == 12 ? 4 : 8;
       break;
     case 0:
       blob.l += 8;
       break;
     case 1:
-      val[1] = parse_Xnum(blob, 8);
+      val2[1] = parse_Xnum(blob, 8);
       break;
     case 2:
-      val[1] = parse_XLUnicodeString2(blob, 0, { biff: biff > 0 && biff < 8 ? 2 : biff });
+      val2[1] = parse_XLUnicodeString2(blob, 0, { biff: biff > 0 && biff < 8 ? 2 : biff });
       break;
     default:
-      throw new Error("Bad SerAr: " + val[0]);
+      throw new Error("Bad SerAr: " + val2[0]);
   }
-  return val;
+  return val2;
 }
 function parse_PtgExtraMem(blob, cce, opts) {
   var count = blob.read_shift(opts.biff == 12 ? 4 : 2);
@@ -42988,17 +46697,17 @@ function write_BIFF2Cell(out, r, c) {
   out.write_shift(1, 0);
   return out;
 }
-function write_BIFF2BERR(r, c, val, t) {
+function write_BIFF2BERR(r, c, val2, t) {
   var out = new_buf(9);
   write_BIFF2Cell(out, r, c);
-  write_Bes(val, t || "b", out);
+  write_Bes(val2, t || "b", out);
   return out;
 }
-function write_BIFF2LABEL(r, c, val) {
-  var out = new_buf(8 + 2 * val.length);
+function write_BIFF2LABEL(r, c, val2) {
+  var out = new_buf(8 + 2 * val2.length);
   write_BIFF2Cell(out, r, c);
-  out.write_shift(1, val.length);
-  out.write_shift(val.length, val, "sbcs");
+  out.write_shift(1, val2.length);
+  out.write_shift(val2.length, val2, "sbcs");
   return out.l < out.length ? out.slice(0, out.l) : out;
 }
 function write_ws_biff2_cell(ba, cell, R, C) {
@@ -45059,16 +48768,16 @@ function make_json_row(sheet, r, R, cols, header, hdr, dense, o) {
     else row.__rowNum__ = R;
   }
   if (!dense || sheet[R]) for (var C = r.s.c; C <= r.e.c; ++C) {
-    var val = dense ? sheet[R][C] : sheet[cols[C] + rr];
-    if (val === void 0 || val.t === void 0) {
+    var val2 = dense ? sheet[R][C] : sheet[cols[C] + rr];
+    if (val2 === void 0 || val2.t === void 0) {
       if (defval === void 0) continue;
       if (hdr[C] != null) {
         row[hdr[C]] = defval;
       }
       continue;
     }
-    var v = val.v;
-    switch (val.t) {
+    var v = val2.v;
+    switch (val2.t) {
       case "z":
         if (v == null) break;
         continue;
@@ -45081,16 +48790,16 @@ function make_json_row(sheet, r, R, cols, header, hdr, dense, o) {
       case "n":
         break;
       default:
-        throw new Error("unrecognized type " + val.t);
+        throw new Error("unrecognized type " + val2.t);
     }
     if (hdr[C] != null) {
       if (v == null) {
-        if (val.t == "e" && v === null) row[hdr[C]] = null;
+        if (val2.t == "e" && v === null) row[hdr[C]] = null;
         else if (defval !== void 0) row[hdr[C]] = defval;
         else if (raw && v === null) row[hdr[C]] = null;
         else continue;
       } else {
-        row[hdr[C]] = raw && (val.t !== "n" || val.t === "n" && o.rawNumbers !== false) ? v : format_cell(val, v, o);
+        row[hdr[C]] = raw && (val2.t !== "n" || val2.t === "n" && o.rawNumbers !== false) ? v : format_cell(val2, v, o);
       }
       if (v != null) isempty = false;
     }
@@ -45099,7 +48808,7 @@ function make_json_row(sheet, r, R, cols, header, hdr, dense, o) {
 }
 function sheet_to_json(sheet, opts) {
   if (sheet == null || sheet["!ref"] == null) return [];
-  var val = { t: "n", v: 0 }, header = 0, offset = 1, hdr = [], v = 0, vv = "";
+  var val2 = { t: "n", v: 0 }, header = 0, offset = 1, hdr = [], v = 0, vv = "";
   var r = { s: { r: 0, c: 0 }, e: { r: 0, c: 0 } };
   var o = opts || {};
   var range = o.range != null ? o.range : sheet["!ref"];
@@ -45132,7 +48841,7 @@ function sheet_to_json(sheet, opts) {
   for (C = r.s.c; C <= r.e.c; ++C) {
     if ((colinfo[C] || {}).hidden) continue;
     cols[C] = encode_col(C);
-    val = dense ? sheet[R][C] : sheet[cols[C] + rr];
+    val2 = dense ? sheet[R][C] : sheet[cols[C] + rr];
     switch (header) {
       case 1:
         hdr[C] = C - r.s.c;
@@ -45144,8 +48853,8 @@ function sheet_to_json(sheet, opts) {
         hdr[C] = o.header[C - r.s.c];
         break;
       default:
-        if (val == null) val = { w: "__EMPTY", t: "s" };
-        vv = v = format_cell(val, null, o);
+        if (val2 == null) val2 = { w: "__EMPTY", t: "s" };
+        vv = v = format_cell(val2, null, o);
         counter = header_cnt[v] || 0;
         if (!counter) header_cnt[v] = 1;
         else {
@@ -45172,19 +48881,19 @@ function make_csv_row(sheet, r, R, cols, fs, rs, FS, o) {
   var row = [], txt = "", rr = encode_row(R);
   for (var C = r.s.c; C <= r.e.c; ++C) {
     if (!cols[C]) continue;
-    var val = o.dense ? (sheet[R] || [])[C] : sheet[cols[C] + rr];
-    if (val == null) txt = "";
-    else if (val.v != null) {
+    var val2 = o.dense ? (sheet[R] || [])[C] : sheet[cols[C] + rr];
+    if (val2 == null) txt = "";
+    else if (val2.v != null) {
       isempty = false;
-      txt = "" + (o.rawNumbers && val.t == "n" ? val.v : format_cell(val, null, o));
+      txt = "" + (o.rawNumbers && val2.t == "n" ? val2.v : format_cell(val2, null, o));
       for (var i = 0, cc = 0; i !== txt.length; ++i) if ((cc = txt.charCodeAt(i)) === fs || cc === rs || cc === 34 || o.forceQuotes) {
         txt = '"' + txt.replace(qreg, '""') + '"';
         break;
       }
       if (txt == "ID") txt = '"ID"';
-    } else if (val.f != null && !val.F) {
+    } else if (val2.f != null && !val2.F) {
       isempty = false;
-      txt = "=" + val.f;
+      txt = "=" + val2.f;
       if (txt.indexOf(",") >= 0) txt = '"' + txt.replace(qreg, '""') + '"';
     } else txt = "";
     row.push(txt);
@@ -45228,7 +48937,7 @@ function sheet_to_txt(sheet, opts) {
   return String.fromCharCode(255) + String.fromCharCode(254) + o;
 }
 function sheet_to_formulae(sheet) {
-  var y = "", x, val = "";
+  var y = "", x, val2 = "";
   if (sheet == null || sheet["!ref"] == null) return [];
   var r = safe_decode_range(sheet["!ref"]), rr = "", cols = [], C;
   var cmds = [];
@@ -45239,23 +48948,23 @@ function sheet_to_formulae(sheet) {
     for (C = r.s.c; C <= r.e.c; ++C) {
       y = cols[C] + rr;
       x = dense ? (sheet[R] || [])[C] : sheet[y];
-      val = "";
+      val2 = "";
       if (x === void 0) continue;
       else if (x.F != null) {
         y = x.F;
         if (!x.f) continue;
-        val = x.f;
+        val2 = x.f;
         if (y.indexOf(":") == -1) y = y + ":" + y;
       }
-      if (x.f != null) val = x.f;
+      if (x.f != null) val2 = x.f;
       else if (x.t == "z") continue;
-      else if (x.t == "n" && x.v != null) val = "" + x.v;
-      else if (x.t == "b") val = x.v ? "TRUE" : "FALSE";
-      else if (x.w !== void 0) val = "'" + x.w;
+      else if (x.t == "n" && x.v != null) val2 = "" + x.v;
+      else if (x.t == "b") val2 = x.v ? "TRUE" : "FALSE";
+      else if (x.w !== void 0) val2 = "'" + x.w;
       else if (x.v === void 0) continue;
-      else if (x.t == "s") val = "'" + x.v;
-      else val = "" + x.v;
-      cmds[cmds.length] = y + "=" + val;
+      else if (x.t == "s") val2 = "'" + x.v;
+      else val2 = "" + x.v;
+      cmds[cmds.length] = y + "=" + val2;
     }
   }
   return cmds;
@@ -48710,7 +52419,7 @@ var ProjectWaterLevel = class _ProjectWaterLevel {
 })();
 
 // src/app/features/admin/insurance-brackets/pages/insurance-bracket-list/insurance-bracket-list.ts
-var _c018 = (a0) => [a0, "edit"];
+var _c019 = (a0) => [a0, "edit"];
 var _forTrack028 = ($index, $item) => $item.id;
 function InsuranceBracketList_a_7_Template(rf, ctx) {
   if (rf & 1) {
@@ -48733,7 +52442,7 @@ function InsuranceBracketList_For_24_a_12_Template(rf, ctx) {
   }
   if (rf & 2) {
     const b_r1 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c018, b_r1.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c019, b_r1.id));
   }
 }
 function InsuranceBracketList_For_24_button_13_Template(rf, ctx) {
@@ -49169,7 +52878,7 @@ var PayrollService = class _PayrollService {
 })();
 
 // src/app/features/admin/payroll/pages/payroll-list/payroll-list.ts
-var _c019 = (a0) => ["/admin/payroll", a0, "edit"];
+var _c020 = (a0) => ["/admin/payroll", a0, "edit"];
 var _c16 = (a0, a1) => ({ year: a0, month: a1 });
 var _forTrack029 = ($index, $item) => $item.employeeId;
 function PayrollList_Conditional_13_Conditional_1_Template(rf, ctx) {
@@ -49240,7 +52949,7 @@ function PayrollList_Conditional_16_For_49_a_23_Template(rf, ctx) {
   if (rf & 2) {
     const emp_r3 = \u0275\u0275nextContext().$implicit;
     const ctx_r1 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c019, emp_r3.employeeId))("queryParams", \u0275\u0275pureFunction2(4, _c16, ctx_r1.selectedYear(), ctx_r1.selectedMonth()));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c020, emp_r3.employeeId))("queryParams", \u0275\u0275pureFunction2(4, _c16, ctx_r1.selectedYear(), ctx_r1.selectedMonth()));
   }
 }
 function PayrollList_Conditional_16_For_49_Template(rf, ctx) {
@@ -50422,7 +54131,7 @@ var PayrollForm = class _PayrollForm {
 })();
 
 // src/app/features/admin/advance-requests/pages/advance-list/advance-list.ts
-var _c020 = (a0) => [a0, "edit"];
+var _c021 = (a0) => [a0, "edit"];
 var _c17 = (a0) => [a0];
 var _forTrack030 = ($index, $item) => $item.id;
 function AdvanceList_a_7_Template(rf, ctx) {
@@ -50483,7 +54192,7 @@ function AdvanceList_For_30_Conditional_22_Template(rf, ctx) {
   if (rf & 2) {
     const r_r1 = \u0275\u0275nextContext().$implicit;
     const ctx_r2 = \u0275\u0275nextContext();
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c020, r_r1.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c021, r_r1.id));
     \u0275\u0275advance(3);
     \u0275\u0275conditional(ctx_r2.canDelete() && r_r1.approvalStatus === "draft" ? 3 : -1);
   }
@@ -50883,7 +54592,7 @@ function buildPageNumbers8(current, total) {
 
 // src/app/features/admin/advance-requests/pages/advance-form/advance-form.ts
 var import_heic2any3 = __toESM(require_heic2any());
-var _c021 = ["successModal"];
+var _c022 = ["successModal"];
 var _c18 = () => ({ standalone: true });
 var _forTrack031 = ($index, $item) => $item.id;
 function AdvanceForm_Conditional_7_Template(rf, ctx) {
@@ -52066,7 +55775,7 @@ var AdvanceForm = class _AdvanceForm {
   };
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _AdvanceForm, selectors: [["app-advance-form"]], viewQuery: function AdvanceForm_Query(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275viewQuerySignal(ctx.successModal, _c021, 5);
+      \u0275\u0275viewQuerySignal(ctx.successModal, _c022, 5);
     }
     if (rf & 2) {
       \u0275\u0275queryAdvance();
@@ -53404,7 +57113,7 @@ var APPROVAL_STATUS_CLASSES6 = {
 var ITEM_CATEGORIES3 = ["\u4EA4\u901A\u8CBB", "\u6D3B\u52D5\u8CBB", "\u8A2D\u8A08\u8CBB", "\u4EBA\u4E8B\u8CBB", "\u9910\u8CBB", "\u96DC\u652F"];
 
 // src/app/features/admin/write-off-requests/pages/write-off-list/write-off-list.ts
-var _c022 = (a0) => [a0, "edit"];
+var _c023 = (a0) => [a0, "edit"];
 var _c19 = (a0) => [a0];
 var _forTrack033 = ($index, $item) => $item.key;
 var _forTrack17 = ($index, $item) => $item.id;
@@ -53462,7 +57171,7 @@ function WriteOffList_For_30_Conditional_0_Conditional_21_Template(rf, ctx) {
     \u0275\u0275nextContext();
     const r_r1 = \u0275\u0275readContextLet(0);
     const ctx_r2 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c022, r_r1.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c023, r_r1.id));
     \u0275\u0275advance(3);
     \u0275\u0275conditional(ctx_r2.canDelete() && r_r1.approvalStatus === "draft" ? 3 : -1);
   }
@@ -53586,7 +57295,7 @@ function WriteOffList_For_30_Conditional_1_Conditional_19_For_1_Conditional_20_T
   if (rf & 2) {
     const r_r7 = \u0275\u0275nextContext().$implicit;
     const ctx_r2 = \u0275\u0275nextContext(4);
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c022, r_r7.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c023, r_r7.id));
     \u0275\u0275advance(3);
     \u0275\u0275conditional(ctx_r2.canDelete() && r_r7.approvalStatus === "draft" ? 3 : -1);
   }
@@ -54187,7 +57896,7 @@ function buildPageNumbers9(current, total) {
 
 // src/app/features/admin/write-off-requests/pages/write-off-form/write-off-form.ts
 var import_heic2any4 = __toESM(require_heic2any());
-var _c023 = ["successModal"];
+var _c024 = ["successModal"];
 var _c110 = () => ({ standalone: true });
 function _forTrack034($index, $item) {
   let tmp_0_0;
@@ -55192,7 +58901,7 @@ var WriteOffRequestForm = class _WriteOffRequestForm {
   };
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _WriteOffRequestForm, selectors: [["app-write-off-request-form"]], viewQuery: function WriteOffRequestForm_Query(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275viewQuerySignal(ctx.successModal, _c023, 5);
+      \u0275\u0275viewQuerySignal(ctx.successModal, _c024, 5);
     }
     if (rf & 2) {
       \u0275\u0275queryAdvance();
@@ -55740,7 +59449,7 @@ var WriteOffRequestForm = class _WriteOffRequestForm {
 })();
 
 // src/app/features/admin/write-off-requests/pages/write-off-detail/write-off-detail.ts
-var _c024 = (a0) => ["/admin/write-off-requests", a0, "edit"];
+var _c025 = (a0) => ["/admin/write-off-requests", a0, "edit"];
 var _forTrack035 = ($index, $item) => $item.id;
 function WriteOffRequestDetail_Conditional_1_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
@@ -55810,7 +59519,7 @@ function WriteOffRequestDetail_Conditional_1_Conditional_14_Template(rf, ctx) {
   if (rf & 2) {
     const r_r5 = \u0275\u0275nextContext();
     const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(4, _c024, r_r5.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(4, _c025, r_r5.id));
     \u0275\u0275advance(4);
     \u0275\u0275property("disabled", ctx_r1.submitting());
     \u0275\u0275advance();
@@ -56625,7 +60334,7 @@ var APPROVAL_STATUS_CLASSES7 = {
 var ITEM_CATEGORIES4 = ["\u4EA4\u901A\u8CBB", "\u4F4F\u5BBF\u8CBB", "\u9910\u8CBB", "\u4EBA\u4E8B\u8CBB", "\u96DC\u652F"];
 
 // src/app/features/admin/travel-write-off-requests/pages/travel-write-off-list/travel-write-off-list.ts
-var _c025 = (a0) => [a0, "edit"];
+var _c026 = (a0) => [a0, "edit"];
 var _c111 = (a0) => [a0];
 var _forTrack036 = ($index, $item) => $item.key;
 var _forTrack19 = ($index, $item) => $item.id;
@@ -56670,7 +60379,7 @@ function TravelWriteOffList_For_30_Conditional_0_Conditional_19_Template(rf, ctx
     \u0275\u0275nextContext();
     const r_r2 = \u0275\u0275readContextLet(0);
     const ctx_r2 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c025, r_r2.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c026, r_r2.id));
     \u0275\u0275advance(3);
     \u0275\u0275conditional(ctx_r2.canDelete() && r_r2.approvalStatus === "draft" ? 3 : -1);
   }
@@ -56766,7 +60475,7 @@ function TravelWriteOffList_For_30_Conditional_1_Conditional_17_For_1_Conditiona
   if (rf & 2) {
     const r_r8 = \u0275\u0275nextContext().$implicit;
     const ctx_r2 = \u0275\u0275nextContext(4);
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c025, r_r8.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c026, r_r8.id));
     \u0275\u0275advance(3);
     \u0275\u0275conditional(ctx_r2.canDelete() && r_r8.approvalStatus === "draft" ? 3 : -1);
   }
@@ -57343,7 +61052,7 @@ function buildPageNumbers10(current, total) {
 
 // src/app/features/admin/travel-write-off-requests/pages/travel-write-off-form/travel-write-off-form.ts
 var import_heic2any5 = __toESM(require_heic2any());
-var _c026 = ["successModal"];
+var _c027 = ["successModal"];
 var _c112 = () => ({ standalone: true });
 function _forTrack037($index, $item) {
   let tmp_0_0;
@@ -58289,7 +61998,7 @@ var TravelWriteOffForm = class _TravelWriteOffForm {
   };
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _TravelWriteOffForm, selectors: [["app-travel-write-off-form"]], viewQuery: function TravelWriteOffForm_Query(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275viewQuerySignal(ctx.successModal, _c026, 5);
+      \u0275\u0275viewQuerySignal(ctx.successModal, _c027, 5);
     }
     if (rf & 2) {
       \u0275\u0275queryAdvance();
@@ -58813,7 +62522,7 @@ var TravelWriteOffForm = class _TravelWriteOffForm {
 })();
 
 // src/app/features/admin/travel-write-off-requests/pages/travel-write-off-detail/travel-write-off-detail.ts
-var _c027 = (a0) => ["/admin/travel-write-off-requests", a0, "edit"];
+var _c028 = (a0) => ["/admin/travel-write-off-requests", a0, "edit"];
 var _forTrack038 = ($index, $item) => $item.id;
 function TravelWriteOffDetail_Conditional_1_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
@@ -58883,7 +62592,7 @@ function TravelWriteOffDetail_Conditional_1_Conditional_14_Template(rf, ctx) {
   if (rf & 2) {
     const r_r5 = \u0275\u0275nextContext();
     const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(4, _c027, r_r5.id));
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(4, _c028, r_r5.id));
     \u0275\u0275advance(4);
     \u0275\u0275property("disabled", ctx_r1.submitting());
     \u0275\u0275advance();
@@ -59730,14 +63439,14 @@ var ADMIN_ROUTES = [
   { path: "travel-requests/:id", component: TravelDetail, canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u9810\u652F\u7533\u8ACB\u8A73\u60C5", permission: "travel-requests:read" } },
   // 出差請款申請
   { path: "travel-payment-requests", canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-DTCMHY24.js").then((m) => m.TravelPaymentList) },
-  { path: "travel-payment-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:write" }, loadComponent: () => import("./chunk-3ZT6NHFU.js").then((m) => m.TravelPaymentForm) },
-  { path: "travel-payment-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-3ZT6NHFU.js").then((m) => m.TravelPaymentForm) },
-  { path: "travel-payment-requests/:id", canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB\u8A73\u60C5", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-RWETPPJZ.js").then((m) => m.TravelPaymentDetail) },
+  { path: "travel-payment-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:write" }, loadComponent: () => import("./chunk-UJIGXEF3.js").then((m) => m.TravelPaymentForm) },
+  { path: "travel-payment-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-UJIGXEF3.js").then((m) => m.TravelPaymentForm) },
+  { path: "travel-payment-requests/:id", canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB\u8A73\u60C5", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-FPVWO2O3.js").then((m) => m.TravelPaymentDetail) },
   // 假日執行活動申請
   { path: "holiday-travel-requests", canActivate: [permissionGuard], data: { title: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-V73RJJXO.js").then((m) => m.HolidayTravelRequestList) },
-  { path: "holiday-travel-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:write" }, loadComponent: () => import("./chunk-DAJ7DCIL.js").then((m) => m.HolidayTravelRequestForm) },
-  { path: "holiday-travel-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-DAJ7DCIL.js").then((m) => m.HolidayTravelRequestForm) },
-  { path: "holiday-travel-requests/:id", canActivate: [permissionGuard], data: { title: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB\u8A73\u60C5", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-MCAFP4HT.js").then((m) => m.HolidayTravelDetail) },
+  { path: "holiday-travel-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:write" }, loadComponent: () => import("./chunk-VEYEOZSY.js").then((m) => m.HolidayTravelRequestForm) },
+  { path: "holiday-travel-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-VEYEOZSY.js").then((m) => m.HolidayTravelRequestForm) },
+  { path: "holiday-travel-requests/:id", canActivate: [permissionGuard], data: { title: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB\u8A73\u60C5", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-2VNX4F4H.js").then((m) => m.HolidayTravelDetail) },
   // 行事曆管理
   { path: "calendar-days", canActivate: [permissionGuard], data: { title: "\u884C\u4E8B\u66C6\u7BA1\u7406", permission: "calendar-days:read" }, loadComponent: () => import("./chunk-UIBKU7T2.js").then((m) => m.CalendarDayList) },
   // 加班申請
@@ -59776,4 +63485,4 @@ xlsx/xlsx.mjs:
 xlsx/xlsx.mjs:
   (*! sheetjs (C) 2013-present SheetJS -- http://sheetjs.com *)
 */
-//# sourceMappingURL=chunk-3Y4DKJU7.js.map
+//# sourceMappingURL=chunk-FKLZ4XOV.js.map
