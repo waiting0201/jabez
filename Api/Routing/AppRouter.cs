@@ -23,6 +23,7 @@ public sealed class AppRouter(
     SettingsHandler        settings,
     DepartmentHandler      depts,
     JobTitleHandler        jobTitles,
+    VendorHandler          vendors,
     ApprovalHandler        approvals,
     ProjectHandler         projects,
     PaymentRequestHandler  paymentRequests,
@@ -98,6 +99,7 @@ public sealed class AppRouter(
             ("GET",    ["files", "low-income-proofs", var fileName]) => await files.GetLowIncomeProofAsync(fileName),
             ("GET",    ["files", "disabled-proofs", var fileName])   => await files.GetDisabledProofAsync(fileName),
             ("GET",    ["files", "id-cards", var fileName])          => await files.GetIdCardAsync(fileName),
+            ("GET",    ["files", "education-proofs", var fileName])  => await files.GetEducationProofAsync(fileName),
 
             // ── Auth ──────────────────────────────────────────────────────────
             ("POST",   ["auth", "login"])             => await auth.LoginAsync(req),
@@ -153,6 +155,15 @@ public sealed class AppRouter(
             ("PUT",    ["job-titles", var id])        => await jobTitles.UpdateAsync(req, id),
             ("PATCH",  ["job-titles", var id])        => await jobTitles.UpdateAsync(req, id),
             ("DELETE", ["job-titles", var id])        => await jobTitles.DeleteAsync(id),
+
+            // ── Vendors（廠商管理）─────────────────────────────────────────
+            ("GET",    ["vendors", "lookup"])         => await vendors.GetLookupAsync(),
+            ("GET",    ["vendors"])                   => await vendors.GetAllAsync(),
+            ("POST",   ["vendors"])                   => await vendors.CreateAsync(req),
+            ("GET",    ["vendors", var id])           => await vendors.GetByIdAsync(id),
+            ("PUT",    ["vendors", var id])           => await vendors.UpdateAsync(req, id),
+            ("PATCH",  ["vendors", var id])           => await vendors.UpdateAsync(req, id),
+            ("DELETE", ["vendors", var id])           => await vendors.DeleteAsync(id),
 
             // ── Approval Items ─────────────────────────────────────────────────
             // active：輕量級查詢，免 approvals:read 權限（必須在 var id 模式之前）
@@ -370,11 +381,12 @@ public sealed class AppRouter(
             // signatures / avatars 為公開路由（由 IsPublicRoute 攔住），此處 null 僅為保險
             ("GET", ["files", "signatures", _])         => null,
             ("GET", ["files", "avatars", _])            => null,
-            // indigenous-proofs / low-income-proofs / disabled-proofs / id-cards 屬 HR 敏感 PII，需 users:read 權限
+            // indigenous-proofs / low-income-proofs / disabled-proofs / id-cards / education-proofs 屬 HR 敏感 PII，需 users:read 權限
             ("GET", ["files", "indigenous-proofs", _])  => PermissionCodes.UsersRead,
             ("GET", ["files", "low-income-proofs", _])  => PermissionCodes.UsersRead,
             ("GET", ["files", "disabled-proofs", _])    => PermissionCodes.UsersRead,
             ("GET", ["files", "id-cards", _])           => PermissionCodes.UsersRead,
+            ("GET", ["files", "education-proofs", _])   => PermissionCodes.UsersRead,
 
             // Users（lookup 不需權限，登入即可）
             ("GET",    ["users", "lookup"])               => null,
@@ -411,6 +423,13 @@ public sealed class AppRouter(
             ("POST",   ["job-titles"])                   => PermissionCodes.JobTitlesWrite,
             ("PUT" or "PATCH", ["job-titles", _])        => PermissionCodes.JobTitlesWrite,
             ("DELETE", ["job-titles", _])                => PermissionCodes.JobTitlesDelete,
+
+            // Vendors（lookup 與 POST 不需權限：任何登入者皆可使用 quick-add）
+            ("GET",    ["vendors", "lookup"])             => null,
+            ("POST",   ["vendors"])                       => null,
+            ("GET",    ["vendors", ..])                   => PermissionCodes.VendorsRead,
+            ("PUT" or "PATCH", ["vendors", _])            => PermissionCodes.VendorsWrite,
+            ("DELETE", ["vendors", _])                    => PermissionCodes.VendorsDelete,
 
             // Approval Items + Steps
             // active：輕量級查詢，免權限（供申請表單判斷指定審核步驟用，不含敏感設定）

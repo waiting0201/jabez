@@ -185,6 +185,7 @@ Admin/src/app/
     │   ├── permissions/    # 權限管理（僅 Superadmin）
     │   ├── departments/    # 部門管理
     │   ├── job-titles/     # 職稱管理
+    │   ├── vendors/        # 廠商管理（含 vendor-quick-add-modal 元件，供請款表單即時新增）
     │   ├── approvals/      # 簽核流程設定（ApprovalItem + Steps）
     │   ├── approval-tasks/ # 待審核任務清單
     │   ├── projects/       # 專案管理
@@ -253,11 +254,12 @@ Api/
 ├── Handlers/                          # 23 個 Handler（業務邏輯）
 │   ├── AuthHandler.cs                 # 登入、刷新 Token
 │   ├── UserHandler.cs                 # 使用者 CRUD（含原住民 / 低收入 / 殘障證明 + 健保 / 勞保覆寫）
-│   ├── EmployeeProfileHandler.cs     # 員工人事資料卡 GET / PUT（multipart：HR JSON + 身分證正反面）
+│   ├── EmployeeProfileHandler.cs     # 員工人事資料卡 GET / PUT（multipart：HR JSON + 身分證正反面 + 最高學歷證明）
 │   ├── RoleHandler.cs
 │   ├── PermissionHandler.cs
 │   ├── DepartmentHandler.cs
 │   ├── JobTitleHandler.cs
+│   ├── VendorHandler.cs               # 廠商管理 CRUD（lookup 與 POST 開放任何登入者，刪除受 PaymentRequest 引用保護）
 │   ├── ApprovalHandler.cs             # ApprovalItem + Steps CRUD
 │   ├── ApprovalTaskHandler.cs         # 待審核任務查詢與審核動作
 │   ├── ProjectHandler.cs
@@ -304,6 +306,7 @@ Api/
 │       ├── RoleReadService.cs
 │       ├── DepartmentReadService.cs
 │       ├── JobTitleReadService.cs
+│       ├── VendorReadService.cs
 │       ├── ApprovalReadService.cs
 │       ├── ProjectReadService.cs
 │       ├── PaymentRequestReadService.cs

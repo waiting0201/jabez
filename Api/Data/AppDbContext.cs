@@ -13,6 +13,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<RefreshToken>   RefreshTokens   { get; set; }
     public DbSet<Department>     Departments     { get; set; }
     public DbSet<JobTitle>       JobTitles       { get; set; }
+    public DbSet<Vendor>         Vendors         { get; set; }
     public DbSet<ApprovalItem>   ApprovalItems   { get; set; }
     public DbSet<ApprovalStep>   ApprovalSteps   { get; set; }
     public DbSet<Project>                 Projects                 { get; set; }

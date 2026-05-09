@@ -121,7 +121,11 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             // 出差請款申請
             new Permission { Id = "68", Code = "travel-payment-requests:read",   Name = "瀏覽",     Module = "出差請款申請" },
             new Permission { Id = "69", Code = "travel-payment-requests:write",  Name = "新增/修改", Module = "出差請款申請" },
-            new Permission { Id = "70", Code = "travel-payment-requests:delete", Name = "刪除",     Module = "出差請款申請" }
+            new Permission { Id = "70", Code = "travel-payment-requests:delete", Name = "刪除",     Module = "出差請款申請" },
+            // 廠商管理
+            new Permission { Id = "71", Code = "vendors:read",   Name = "瀏覽",     Module = "廠商管理",   Description = "廠商管理" },
+            new Permission { Id = "72", Code = "vendors:write",  Name = "新增/修改", Module = "廠商管理",   Description = "廠商管理" },
+            new Permission { Id = "73", Code = "vendors:delete", Name = "刪除",     Module = "廠商管理",   Description = "廠商管理" }
         );
     }
 }

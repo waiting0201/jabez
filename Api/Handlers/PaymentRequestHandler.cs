@@ -80,6 +80,8 @@ public sealed class PaymentRequestHandler(
         var reason    = form["reason"].ToString();
         var invoicesJson = form["invoices"].ToString();
         var designatedReviewersJson = form["designatedReviewers"].ToString();
+        var vendorIdStr = form["vendorId"].ToString();
+        int? vendorId = int.TryParse(vendorIdStr, out var vid) ? vid : null;
         DesignatedReviewerRequest[]? designatedReviewers = null;
         if (!string.IsNullOrEmpty(designatedReviewersJson))
             designatedReviewers = JsonSerializer.Deserialize<DesignatedReviewerRequest[]>(designatedReviewersJson, JsonOpts);
@@ -89,6 +91,22 @@ public sealed class PaymentRequestHandler(
 
         if (!await db.Projects.AnyAsync(p => p.Id == projectId))
             throw AppException.NotFound("Project");
+
+        // type=vendor 時必須指定有效（且 IsActive）廠商；其他類型強制清空 vendorId
+        if (type == "vendor")
+        {
+            if (!vendorId.HasValue)
+                return new BadRequestObjectResult(ApiResponse.Fail("廠商請款必須指定廠商。"));
+            var vendor = await db.Vendors.AsNoTracking().FirstOrDefaultAsync(v => v.Id == vendorId.Value);
+            if (vendor is null)
+                return new NotFoundObjectResult(ApiResponse.Fail("指定的廠商不存在。"));
+            if (!vendor.IsActive)
+                return new BadRequestObjectResult(ApiResponse.Fail("此廠商已停用，無法選用。"));
+        }
+        else
+        {
+            vendorId = null;
+        }
 
         // 指定審核者存在性驗證
         if (designatedReviewers is { Length: > 0 })
@@ -160,6 +178,7 @@ public sealed class PaymentRequestHandler(
         {
             Type          = type,
             ProjectId     = projectId,
+            VendorId      = vendorId,
             Reason        = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim(),
             SubmittedById = submittedById,   // 強制使用 JWT 身分
             TotalAmount   = invoices.Sum(i => i.Amount),
@@ -233,6 +252,29 @@ public sealed class PaymentRequestHandler(
             if (!await db.Projects.AnyAsync(p => p.Id == projectId))
                 throw AppException.NotFound("Project");
             pr.ProjectId = projectId.Value;
+        }
+
+        // 廠商驗證與寫入：只要表單帶了 vendorId 或 type 欄位，就重新依當前 type 計算
+        if (form.ContainsKey("vendorId") || form.ContainsKey("type"))
+        {
+            var vendorIdStr = form["vendorId"].ToString();
+            int? vendorId = int.TryParse(vendorIdStr, out var vid) ? vid : null;
+
+            if (pr.Type == "vendor")
+            {
+                if (!vendorId.HasValue)
+                    return new BadRequestObjectResult(ApiResponse.Fail("廠商請款必須指定廠商。"));
+                var vendor = await db.Vendors.AsNoTracking().FirstOrDefaultAsync(v => v.Id == vendorId.Value);
+                if (vendor is null)
+                    return new NotFoundObjectResult(ApiResponse.Fail("指定的廠商不存在。"));
+                if (!vendor.IsActive && pr.VendorId != vendorId)
+                    return new BadRequestObjectResult(ApiResponse.Fail("此廠商已停用，無法選用。"));
+                pr.VendorId = vendorId;
+            }
+            else
+            {
+                pr.VendorId = null;
+            }
         }
 
         // 指定審核者整組替換（提供時才更新）

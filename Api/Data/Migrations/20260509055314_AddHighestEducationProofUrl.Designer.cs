@@ -4,6 +4,7 @@ using Jabez.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Jabez.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260509055314_AddHighestEducationProofUrl")]
+    partial class AddHighestEducationProofUrl
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2479,9 +2482,6 @@ namespace Jabez.Api.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<int?>("VendorId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
                     b.HasIndex("ApprovalItemId");
@@ -2493,8 +2493,6 @@ namespace Jabez.Api.Data.Migrations
                     b.HasIndex("ReviewedById");
 
                     b.HasIndex("SubmittedById");
-
-                    b.HasIndex("VendorId");
 
                     b.ToTable("PaymentRequests");
                 });
@@ -3080,30 +3078,6 @@ namespace Jabez.Api.Data.Migrations
                             Id = "70",
                             Code = "travel-payment-requests:delete",
                             Module = "出差請款申請",
-                            Name = "刪除"
-                        },
-                        new
-                        {
-                            Id = "71",
-                            Code = "vendors:read",
-                            Description = "廠商管理",
-                            Module = "廠商管理",
-                            Name = "瀏覽"
-                        },
-                        new
-                        {
-                            Id = "72",
-                            Code = "vendors:write",
-                            Description = "廠商管理",
-                            Module = "廠商管理",
-                            Name = "新增/修改"
-                        },
-                        new
-                        {
-                            Id = "73",
-                            Code = "vendors:delete",
-                            Description = "廠商管理",
-                            Module = "廠商管理",
                             Name = "刪除"
                         });
                 });
@@ -5697,62 +5671,6 @@ namespace Jabez.Api.Data.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Jabez.Api.Models.Entities.Vendor", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Address")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("BankAccount")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("ContactPerson")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("DATEADD(hour, 8, GETUTCDATE())");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("Note")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("Phone")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("TaxId")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TaxId")
-                        .IsUnique()
-                        .HasFilter("[TaxId] IS NOT NULL");
-
-                    b.ToTable("Vendors");
-                });
-
             modelBuilder.Entity("Jabez.Api.Models.Entities.WriteOffItem", b =>
                 {
                     b.Property<int>("Id")
@@ -6244,11 +6162,6 @@ namespace Jabez.Api.Data.Migrations
                         .HasForeignKey("SubmittedById")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Jabez.Api.Models.Entities.Vendor", "Vendor")
-                        .WithMany("PaymentRequests")
-                        .HasForeignKey("VendorId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("ApprovalItem");
 
                     b.Navigation("PaidBy");
@@ -6258,8 +6171,6 @@ namespace Jabez.Api.Data.Migrations
                     b.Navigation("ReviewedBy");
 
                     b.Navigation("SubmittedBy");
-
-                    b.Navigation("Vendor");
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.PayrollAdjustment", b =>
@@ -6742,11 +6653,6 @@ namespace Jabez.Api.Data.Migrations
                     b.Navigation("RefreshTokens");
 
                     b.Navigation("UserRoles");
-                });
-
-            modelBuilder.Entity("Jabez.Api.Models.Entities.Vendor", b =>
-                {
-                    b.Navigation("PaymentRequests");
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.WriteOffRecord", b =>

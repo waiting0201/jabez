@@ -90,6 +90,7 @@ var host = new HostBuilder()
         services.AddScoped<IRoleReadService, RoleReadService>();
         services.AddScoped<IDepartmentReadService, DepartmentReadService>();
         services.AddScoped<IJobTitleReadService, JobTitleReadService>();
+        services.AddScoped<IVendorReadService, VendorReadService>();
         services.AddScoped<IApprovalReadService, ApprovalReadService>();
         services.AddScoped<IProjectReadService, ProjectReadService>();
         services.AddScoped<IPaymentRequestReadService, PaymentRequestReadService>();
@@ -121,6 +122,7 @@ var host = new HostBuilder()
         services.AddScoped<HealthHandler>();
         services.AddScoped<DepartmentHandler>();
         services.AddScoped<JobTitleHandler>();
+        services.AddScoped<VendorHandler>();
         services.AddScoped<ApprovalHandler>();
         services.AddScoped<ProjectHandler>();
         services.AddScoped<PaymentRequestHandler>();

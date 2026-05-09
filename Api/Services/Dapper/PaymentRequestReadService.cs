@@ -13,10 +13,12 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                pr.TotalAmount, pr.ApprovalStatus, pr.EstimatedPaymentDate, pr.PaidAt,
                sub.Name AS SubmittedBy, pr.CreatedAt,
                pr.ReviewedAt, pr.ReviewNote, pr.Reason,
+               pr.VendorId, ven.Name AS VendorName, ven.TaxId AS VendorTaxId,
                ii.Id AS InvId, ii.FileName, ii.InvoiceNo, ii.Amount AS InvAmount, ii.ItemName AS InvItemName, ii.Note AS InvNote, ii.FileUrl AS InvFileUrl, ii.InvoiceDate AS InvInvoiceDate
         FROM PaymentRequests pr
         LEFT JOIN Projects proj   ON pr.ProjectId    = proj.Id
         LEFT JOIN Users   sub     ON pr.SubmittedById = sub.Id
+        LEFT JOIN Vendors ven     ON pr.VendorId      = ven.Id
         LEFT JOIN InvoiceItems ii ON ii.PaymentRequestId = pr.Id
         """;
 
@@ -343,12 +345,14 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                    pr.TotalAmount, pr.ApprovalStatus, pr.EstimatedPaymentDate, pr.PaidAt, pr.ApprovalItemId, pr.CurrentStepOrder,
                    sub.Name AS SubmittedBy, sub.SignatureUrl AS SubmittedBySignatureUrl, pr.CreatedAt, pr.ReviewedAt, pr.ReviewNote,
                    pr.Reason,
+                   pr.VendorId, ven.Name AS VendorName, ven.TaxId AS VendorTaxId,
                    paidby.SignatureUrl AS PaidBySignatureUrl,
                    ii.Id AS InvId, ii.FileName, ii.InvoiceNo, ii.Amount AS InvAmount, ii.ItemName AS InvItemName, ii.Note AS InvNote, ii.FileUrl AS InvFileUrl, ii.InvoiceDate AS InvInvoiceDate
             FROM PaymentRequests pr
             LEFT JOIN Projects proj   ON pr.ProjectId    = proj.Id
             LEFT JOIN Users   sub     ON pr.SubmittedById = sub.Id
             LEFT JOIN Users   paidby  ON pr.PaidByUserId  = paidby.Id
+            LEFT JOIN Vendors ven     ON pr.VendorId     = ven.Id
             LEFT JOIN InvoiceItems ii ON ii.PaymentRequestId = pr.Id
             {paymentWhere}
             ORDER BY pr.CreatedAt DESC, ii.Id
@@ -807,7 +811,10 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (DateTime?)x.pr.EstimatedPaymentDate,
                 (DateTime?)x.pr.PaidAt,
                 (string?)x.pr.Reason,
-                (string?)x.pr.PaidBySignatureUrl),
+                (string?)x.pr.PaidBySignatureUrl,
+                (int?)x.pr.VendorId,
+                (string?)x.pr.VendorName,
+                (string?)x.pr.VendorTaxId),
             null, null, null, null, null, null,
             GetRecords("payment_request", (int)x.pr.Id),
             GetDesignatedReviewers("payment_request", (int)x.pr.Id),
@@ -1184,6 +1191,9 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             (DateTime?)x.pr.ReviewedAt,
             (string?)x.pr.ReviewNote,
             (string?)x.pr.Reason,
-            null)); // DesignatedReviewers 以 null 回傳
+            null,                                  // DesignatedReviewers 以 null 回傳
+            (int?)x.pr.VendorId,
+            (string?)x.pr.VendorName,
+            (string?)x.pr.VendorTaxId));
     }
 }

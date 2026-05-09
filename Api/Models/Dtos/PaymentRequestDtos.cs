@@ -53,7 +53,10 @@ public sealed record PaymentRequestDto(
     DateTime?        ReviewedAt,
     string?          ReviewNote,
     string?          Reason = null,
-    DesignatedReviewerDto[]? DesignatedReviewers = null);
+    DesignatedReviewerDto[]? DesignatedReviewers = null,
+    int?             VendorId    = null,
+    string?          VendorName  = null,
+    string?          VendorTaxId = null);
 
 public sealed record CreatePaymentRequestRequest(
     string              Type,
@@ -127,7 +130,10 @@ public sealed record PaymentTaskDetailDto(
     DateTime?        EstimatedPaymentDate,
     DateTime?        PaidAt,
     string?          Reason = null,
-    string?          PaidBySignatureUrl = null);
+    string?          PaidBySignatureUrl = null,
+    int?             VendorId    = null,
+    string?          VendorName  = null,
+    string?          VendorTaxId = null);
 
 public sealed record LeaveTaskDetailDto(
     int      LeaveRequestId,

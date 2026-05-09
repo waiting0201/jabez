@@ -119,6 +119,9 @@ public sealed record EmployeeProfileDetailDto(
     string? IdCardFrontUrl,
     string? IdCardBackUrl,
 
+    // 最高學歷證明 URL（走 /files/education-proofs/ 代理）
+    string? HighestEducationProofUrl,
+
     // 9 個子表
     EducationRecordDto[]         EducationRecords,
     EmploymentHistoryRecordDto[] EmploymentHistoryRecords,

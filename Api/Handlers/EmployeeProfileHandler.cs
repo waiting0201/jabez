@@ -24,6 +24,9 @@ public sealed class EmployeeProfileHandler(
     private const string IdCardContainer = "id-cards";
     private static readonly string[] AllowedIdCardTypes = ["image/png", "image/jpeg", "application/pdf"];
 
+    private const string EducationProofContainer = "education-proofs";
+    private static readonly string[] AllowedEducationProofTypes = ["image/png", "image/jpeg", "application/pdf"];
+
     // GET /users/{id}/profile
     public async Task<IActionResult> GetByUserIdAsync(HttpRequest req, string id)
     {
@@ -169,6 +172,41 @@ public sealed class EmployeeProfileHandler(
                         await TryDeleteBlobByUrlAsync(IdCardContainer, profile.IdCardBackUrl);
 
                     profile.IdCardBackUrl = newUrl;
+                }
+            }
+
+            // ── 4. 最高學歷證明 Blob 處理 ─────────────────────────────────────
+            if (form["removeHighestEducationProof"] == "true")
+            {
+                await TryDeleteBlobByUrlAsync(EducationProofContainer, profile.HighestEducationProofUrl);
+                profile.HighestEducationProofUrl = null;
+            }
+            else
+            {
+                var proofFile = form.Files.GetFile("highestEducationProof");
+                if (proofFile is not null && proofFile.Length > 0)
+                {
+                    if (proofFile.Length > 1 * 1024 * 1024)
+                        throw AppException.BadRequest("上傳照片勿超過1MB");
+
+                    string? actualType;
+                    using (var peek = proofFile.OpenReadStream())
+                        actualType = await FileSignatureValidator.DetectAsync(peek);
+
+                    if (actualType is null || !AllowedEducationProofTypes.Contains(actualType))
+                        throw AppException.BadRequest("最高學歷證明僅支援 PNG、JPEG 圖片或 PDF 格式。");
+
+                    var ext      = Path.GetExtension(proofFile.FileName);
+                    var blobName = $"{userId}_education{ext}";
+                    var newUrl   = $"files/{EducationProofContainer}/{blobName}";
+
+                    using (var stream = proofFile.OpenReadStream())
+                        await blob.UploadAsync(EducationProofContainer, blobName, stream, actualType);
+
+                    if (!string.Equals(profile.HighestEducationProofUrl, newUrl, StringComparison.OrdinalIgnoreCase))
+                        await TryDeleteBlobByUrlAsync(EducationProofContainer, profile.HighestEducationProofUrl);
+
+                    profile.HighestEducationProofUrl = newUrl;
                 }
             }
 

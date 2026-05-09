@@ -656,6 +656,69 @@ private toastr = inject(ToastrService);
 
 ---
 
+## 11.5 Quick-Add Modal Pattern（下拉旁即時新增）
+
+當下拉選單（lookup endpoint）對應的主檔資料**可能不齊全**，且使用者在當下表單就會需要新增（例如請款表單選不到廠商）時，採用此 pattern：在下拉旁加「+ 新增 XXX」按鈕，開啟 NgbModal 收集主檔欄位，儲存成功後**自動回填**到下拉。
+
+### 11.5.1 已採用的 Quick-Add
+
+| 父表單 | 主檔 | 元件 |
+|---|---|---|
+| `payment-form` 廠商請款 | `Vendor` | `vendors/components/vendor-quick-add-modal/` |
+
+### 11.5.2 元件結構
+
+- 獨立 standalone Component（**不與 routed form 共用**），檔名 `<resource>-quick-add-modal.{ts,html}`
+- 注入 `NgbActiveModal`，由父元件透過 `NgbModal.open(MyModal, {...})` 開啟
+- 表單欄位精簡：只收**最必要**的主檔欄位（其他可選欄位之後到管理頁編輯）
+- `@Input() prefillName?: string`（選用）：父元件可把使用者於下拉輸入的字串帶入名稱欄
+- `submit()` 成功 → `activeModal.close(<LookupDto>)`，失敗 → 顯示 `errorMsg` 並保留表單
+- `cancel()` → `activeModal.dismiss()`
+
+### 11.5.3 父元件接收
+
+```typescript
+openQuickAddVendor() {
+  const ref = this.modal.open(VendorQuickAddModal, {
+    centered: true, backdrop: 'static', keyboard: false, size: 'lg',
+  });
+  ref.closed.subscribe((newVendor: VendorLookup | undefined) => {
+    if (!newVendor) return;
+    this.vendors.update(list =>
+      [...list, newVendor].sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant'))
+    );
+    this.form.get('vendorId')!.setValue(newVendor.id);
+  });
+}
+```
+
+### 11.5.4 觸發按鈕樣式
+
+下拉選單與按鈕並排（`flex gap-2`）：
+
+```html
+<div class="flex gap-2">
+  <select class="form-select" formControlName="vendorId">…</select>
+  <button type="button"
+          class="btn btn-outline-primary inline-flex items-center gap-1 whitespace-nowrap"
+          (click)="openQuickAddVendor()">
+    <svg class="sa-icon"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+    新增廠商
+  </button>
+</div>
+```
+
+### 11.5.5 後端權限取捨
+
+Quick-add 的 `POST /<resource>` 端點通常會把 admin CRUD 權限（如 `vendors:write`）強加給請款人。**判斷規則**：
+
+- 若主檔對「資料品質」要求高（如部門 / 角色） → 維持 `:write` 權限門檻、按鈕用 `*appHasPermission` 隱藏
+- 若主檔本來就由請款人實務上產生（如廠商） → POST 端點 `null`（任何登入者皆可），**所有列表/編輯 / 刪除仍要權限**
+
+> 詳見 [docs/backend-design.md §13 輕量讀取端點模式](backend-design.md#13-輕量讀取端點模式lightweight-lookup-pattern)。
+
+---
+
 ## 12. 檔案上傳規範
 
 ### 12.1 標準上傳區塊
@@ -717,7 +780,7 @@ async onFileSelected(event: Event) {
 |---|---|---|
 | Avatar（頭像） | 1 MB | 800 |
 | 簽名檔 | 1 MB | 800 |
-| 證明文件（原住民 / 低收入 / 殘障 / 身分證） | 1 MB | 1600 |
+| 證明文件（原住民 / 低收入 / 殘障 / 身分證 / 最高學歷） | 1 MB | 1600 |
 | 發票 | 1 MB | 1600 |
 
 ### 12.4 file proxy 端點
@@ -730,6 +793,7 @@ async onFileSelected(event: Event) {
 | `/files/low-income-proofs/{fileName}` | low-income-proofs |
 | `/files/disabled-proofs/{fileName}` | disabled-proofs |
 | `/files/id-cards/{fileName}` | id-cards |
+| `/files/education-proofs/{fileName}` | education-proofs |
 
 不敏感者（簽名、頭像）走公開路由：`/files/signatures/{fileName}` / `/files/avatars/{fileName}`。
 

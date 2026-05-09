@@ -46,6 +46,9 @@ public class EmployeeProfile
     public string? IdCardFrontUrl { get; set; }
     public string? IdCardBackUrl  { get; set; }
 
+    // 最高學歷證明（走授權 file proxy：GET /files/education-proofs/{fileName}，需 users:read）
+    public string? HighestEducationProofUrl { get; set; }
+
     public DateTime CreatedAt { get; set; } = Clock.Now;
     public DateTime UpdatedAt { get; set; } = Clock.Now;
 

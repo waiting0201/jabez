@@ -33,6 +33,11 @@ public class PaymentRequestConfiguration : IEntityTypeConfiguration<PaymentReque
                .HasForeignKey(pr => pr.ProjectId)
                .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasOne(pr => pr.Vendor)
+               .WithMany(v => v.PaymentRequests)
+               .HasForeignKey(pr => pr.VendorId)
+               .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasOne(pr => pr.ApprovalItem)
                .WithMany(a => a.PaymentRequests)
                .HasForeignKey(pr => pr.ApprovalItemId)

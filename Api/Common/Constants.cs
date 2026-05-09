@@ -19,6 +19,9 @@ public static class PermissionCodes
     public const string JobTitlesRead     = "job-titles:read";
     public const string JobTitlesWrite    = "job-titles:write";
     public const string JobTitlesDelete   = "job-titles:delete";
+    public const string VendorsRead       = "vendors:read";
+    public const string VendorsWrite      = "vendors:write";
+    public const string VendorsDelete     = "vendors:delete";
     public const string ApprovalsRead          = "approvals:read";
     public const string ApprovalsWrite         = "approvals:write";
     public const string ApprovalsDelete        = "approvals:delete";

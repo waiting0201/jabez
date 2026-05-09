@@ -17,6 +17,7 @@ public sealed class FileHandler(IBlobStorageService blob, ILogger<FileHandler> l
     private const string LowIncomeProofContainer   = "low-income-proofs";
     private const string DisabledProofContainer    = "disabled-proofs";
     private const string IdCardContainer           = "id-cards";
+    private const string EducationProofContainer   = "education-proofs";
 
     /// <summary>
     /// 代理讀取簽名檔圖片。
@@ -65,6 +66,14 @@ public sealed class FileHandler(IBlobStorageService blob, ILogger<FileHandler> l
     /// </summary>
     public Task<IActionResult> GetIdCardAsync(string fileName)
         => GetFileAsync(IdCardContainer, fileName, IsImageOrPdf);
+
+    /// <summary>
+    /// 代理讀取最高學歷證明文件（圖片或 PDF）。
+    /// 路由：GET /files/education-proofs/{fileName}
+    /// 此端點需要 JWT + users:read 權限（HR 敏感 PII，僅人事管理員可檢視）。
+    /// </summary>
+    public Task<IActionResult> GetEducationProofAsync(string fileName)
+        => GetFileAsync(EducationProofContainer, fileName, IsImageOrPdf);
 
     private Task<IActionResult> GetImageAsync(string container, string fileName)
         => GetFileAsync(container, fileName, IsImage);

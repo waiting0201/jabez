@@ -40,6 +40,17 @@
 | GET/POST | `/job-titles` | 職稱列表 / 新增 |
 | GET/PUT/PATCH/DELETE | `/job-titles/{id}` | 職稱 CRUD |
 
+## 廠商管理
+
+| Method | Path | 說明 |
+|--------|------|------|
+| GET | `/vendors/lookup` | **輕量端點**：免 `vendors:read` 權限，僅回 `IsActive=true` 的 `{id, name, taxId}`，供請款申請下拉清單 |
+| GET | `/vendors` | 廠商列表（含使用筆數，需 `vendors:read`） |
+| POST | `/vendors` | 新增廠商（**任何登入者皆可，無需權限**，配合請款表單即時新增 UX） |
+| GET | `/vendors/{id}` | 取得廠商（需 `vendors:read`） |
+| PUT/PATCH | `/vendors/{id}` | 更新廠商（需 `vendors:write`，含 IsActive 軟停用） |
+| DELETE | `/vendors/{id}` | 刪除廠商（需 `vendors:delete`；若已被請款單引用會回 400，須改用停用） |
+
 ## 簽核流程
 
 | Method | Path | 說明 |
@@ -71,8 +82,8 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET/POST | `/payment-requests` | 請款列表 / 新增（預設 draft） |
-| GET/PUT/PATCH/DELETE | `/payment-requests/{id}` | 請款 CRUD |
+| GET/POST | `/payment-requests` | 請款列表 / 新增（預設 draft，multipart 含 `vendorId` — 當 `type=vendor` 時必填且必須是 IsActive=true 的廠商） |
+| GET/PUT/PATCH/DELETE | `/payment-requests/{id}` | 請款 CRUD（DTO 含 `vendorId / vendorName / vendorTaxId`） |
 | PATCH | `/payment-requests/{id}/submit` | 送出請款申請（draft → pending） |
 | PATCH | `/payment-requests/{id}/payment-date` | 更新撥款日期（財務體系部門：AC/FIN/Jabez HQ/CEO） |
 | GET/POST | `/leave-requests` | 請假列表 / 新增（預設 draft） |
@@ -196,6 +207,7 @@
 | GET | `/files/low-income-proofs/{fileName}` | 低收入證明文件代理（需 `users:read`，HR 敏感 PII） |
 | GET | `/files/disabled-proofs/{fileName}` | 殘障證明文件代理（需 `users:read`，HR 敏感 PII） |
 | GET | `/files/id-cards/{fileName}` | 身分證影本代理（需 `users:read`，HR 敏感 PII） |
+| GET | `/files/education-proofs/{fileName}` | 最高學歷證明代理（需 `users:read`，HR 敏感 PII） |
 
 ## 員工人事資料卡（HR Profile）
 
