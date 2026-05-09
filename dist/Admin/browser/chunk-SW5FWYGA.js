@@ -7208,8 +7208,8 @@ function Settings_Conditional_6_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 5);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 28);
-    \u0275\u0275element(2, "use", 30);
+    \u0275\u0275elementStart(1, "svg", 34);
+    \u0275\u0275element(2, "use", 36);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3);
     \u0275\u0275elementEnd();
@@ -7224,8 +7224,8 @@ function Settings_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 6);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 28);
-    \u0275\u0275element(2, "use", 31);
+    \u0275\u0275elementStart(1, "svg", 34);
+    \u0275\u0275element(2, "use", 37);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3, " \u8A2D\u5B9A\u5DF2\u5132\u5B58\u6210\u529F\u3002 ");
     \u0275\u0275elementEnd();
@@ -7247,7 +7247,9 @@ var Settings = class _Settings {
     siteUrl: ["https://admin.jabez.com", Validators.required],
     workStartTime: ["09:00", Validators.required],
     workEndTime: ["18:00", Validators.required],
-    monthlyOvertimeLimit: [46, [Validators.required, Validators.min(0), Validators.max(200)]]
+    monthlyOvertimeLimit: [46, [Validators.required, Validators.min(0), Validators.max(200)]],
+    approvalEmailEnabled: [true],
+    approvalLineEnabled: [true]
   });
   ngOnInit() {
     this.settingsService.get().subscribe((s) => this.form.patchValue(s));
@@ -7269,7 +7271,7 @@ var Settings = class _Settings {
   static \u0275fac = function Settings_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _Settings)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _Settings, selectors: [["app-settings"]], decls: 56, vars: 5, consts: [[1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#settings"], [1, "mb-0"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], ["role", "alert", 1, "alert", "alert-success", "flex", "items-center", "gap-2", "mb-6", "py-2"], [3, "ngSubmit", "formGroup"], [1, "row", "g-4"], [1, "col-12", "col-md-6", "col-xl-4"], [1, "card", "border-0", "shadow-sm"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#globe"], [1, "card-body"], [1, "form-label", "fw-500"], [1, "text-danger"], ["type", "url", "formControlName", "siteUrl", "placeholder", "https://admin.jabez.com", 1, "form-control"], [1, "text-muted", "small", "mt-1"], ["href", "/assets/icons/sprite.svg#clock"], [1, "mb-4"], ["type", "time", "formControlName", "workStartTime", 1, "form-control"], ["type", "time", "formControlName", "workEndTime", 1, "form-control"], [1, "text-muted", "font-normal"], ["type", "number", "formControlName", "monthlyOvertimeLimit", "min", "0", "max", "200", 1, "form-control"], [1, "text-danger", "small", "mt-1"], [1, "mt-6", "flex", "gap-2"], ["type", "submit", 1, "btn", "btn-primary", "inline-flex", "items-center", "gap-1", 3, "disabled"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#save"], ["href", "/assets/icons/sprite.svg#alert-triangle"], ["href", "/assets/icons/sprite.svg#check-circle"]], template: function Settings_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _Settings, selectors: [["app-settings"]], decls: 77, vars: 5, consts: [[1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#settings"], [1, "mb-0"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], ["role", "alert", 1, "alert", "alert-success", "flex", "items-center", "gap-2", "mb-6", "py-2"], [3, "ngSubmit", "formGroup"], [1, "row", "g-4"], [1, "col-12", "col-md-6", "col-xl-4"], [1, "card", "border-0", "shadow-sm"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#globe"], [1, "card-body"], [1, "form-label", "fw-500"], [1, "text-danger"], ["type", "url", "formControlName", "siteUrl", "placeholder", "https://admin.jabez.com", 1, "form-control"], [1, "text-muted", "small", "mt-1"], ["href", "/assets/icons/sprite.svg#clock"], [1, "mb-4"], ["type", "time", "formControlName", "workStartTime", 1, "form-control"], ["type", "time", "formControlName", "workEndTime", 1, "form-control"], [1, "text-muted", "font-normal"], ["type", "number", "formControlName", "monthlyOvertimeLimit", "min", "0", "max", "200", 1, "form-control"], [1, "text-danger", "small", "mt-1"], ["href", "/assets/icons/sprite.svg#bell"], [1, "form-check"], ["type", "checkbox", "id", "approvalEmailEnabled", "formControlName", "approvalEmailEnabled", 1, "form-check-input"], ["for", "approvalEmailEnabled", 1, "form-check-label", "fw-500"], ["type", "checkbox", "id", "approvalLineEnabled", "formControlName", "approvalLineEnabled", 1, "form-check-input"], ["for", "approvalLineEnabled", 1, "form-check-label", "fw-500"], [1, "mt-6", "flex", "gap-2"], ["type", "submit", 1, "btn", "btn-primary", "inline-flex", "items-center", "gap-1", 3, "disabled"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#save"], ["href", "/assets/icons/sprite.svg#alert-triangle"], ["href", "/assets/icons/sprite.svg#check-circle"]], template: function Settings_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1);
       \u0275\u0275namespaceSVG();
@@ -7332,13 +7334,37 @@ var Settings = class _Settings {
       \u0275\u0275elementEnd()();
       \u0275\u0275element(49, "input", 24);
       \u0275\u0275conditionalCreate(50, Settings_Conditional_50_Template, 2, 0, "div", 25);
-      \u0275\u0275elementEnd()()()()();
-      \u0275\u0275elementStart(51, "div", 26)(52, "button", 27);
+      \u0275\u0275elementEnd()()()();
+      \u0275\u0275elementStart(51, "div", 9)(52, "div", 10)(53, "div", 11);
       \u0275\u0275namespaceSVG();
-      \u0275\u0275elementStart(53, "svg", 28);
-      \u0275\u0275element(54, "use", 29);
+      \u0275\u0275elementStart(54, "svg", 12);
+      \u0275\u0275element(55, "use", 26);
       \u0275\u0275elementEnd();
-      \u0275\u0275text(55, " \u5132\u5B58\u8A2D\u5B9A ");
+      \u0275\u0275text(56, " \u901A\u77E5\u8A2D\u5B9A ");
+      \u0275\u0275elementEnd();
+      \u0275\u0275namespaceHTML();
+      \u0275\u0275elementStart(57, "div", 14)(58, "div", 20)(59, "div", 27);
+      \u0275\u0275element(60, "input", 28);
+      \u0275\u0275elementStart(61, "label", 29);
+      \u0275\u0275text(62, "\u5BC4\u9001\u5BE9\u6838\u901A\u77E5 Email");
+      \u0275\u0275elementEnd()();
+      \u0275\u0275elementStart(63, "div", 18);
+      \u0275\u0275text(64, "\u95DC\u9589\u5F8C\u4E0D\u518D\u5BC4\u9001\uFF1A\u5F85\u5BE9\u6838 / \u5BE9\u6838\u7D50\u679C / \u64A5\u6B3E / \u9000\u6B3E / \u8CA1\u52D9\u901A\u77E5\u4FE1\u3002");
+      \u0275\u0275elementEnd()();
+      \u0275\u0275elementStart(65, "div", 4)(66, "div", 27);
+      \u0275\u0275element(67, "input", 30);
+      \u0275\u0275elementStart(68, "label", 31);
+      \u0275\u0275text(69, "\u63A8\u64AD\u5BE9\u6838\u901A\u77E5 LINE");
+      \u0275\u0275elementEnd()();
+      \u0275\u0275elementStart(70, "div", 18);
+      \u0275\u0275text(71, "\u7BC4\u570D\u540C\u4E0A\uFF1B\u4E0D\u5F71\u97FF\u5E33\u865F\u901A\u77E5 / \u85AA\u8CC7\u660E\u7D30 / \u6253\u5361\u63D0\u9192\u3002");
+      \u0275\u0275elementEnd()()()()()();
+      \u0275\u0275elementStart(72, "div", 32)(73, "button", 33);
+      \u0275\u0275namespaceSVG();
+      \u0275\u0275elementStart(74, "svg", 34);
+      \u0275\u0275element(75, "use", 35);
+      \u0275\u0275elementEnd();
+      \u0275\u0275text(76, " \u5132\u5B58\u8A2D\u5B9A ");
       \u0275\u0275elementEnd()()()();
     }
     if (rf & 2) {
@@ -7351,10 +7377,10 @@ var Settings = class _Settings {
       \u0275\u0275property("formGroup", ctx.form);
       \u0275\u0275advance(42);
       \u0275\u0275conditional(((tmp_3_0 = ctx.form.get("monthlyOvertimeLimit")) == null ? null : tmp_3_0.invalid) && ((tmp_3_0 = ctx.form.get("monthlyOvertimeLimit")) == null ? null : tmp_3_0.touched) ? 50 : -1);
-      \u0275\u0275advance(2);
+      \u0275\u0275advance(23);
       \u0275\u0275property("disabled", ctx.form.invalid);
     }
-  }, dependencies: [ReactiveFormsModule, \u0275NgNoValidate, DefaultValueAccessor, NumberValueAccessor, NgControlStatus, NgControlStatusGroup, MinValidator, MaxValidator, FormGroupDirective, FormControlName], encapsulation: 2 });
+  }, dependencies: [ReactiveFormsModule, \u0275NgNoValidate, DefaultValueAccessor, NumberValueAccessor, CheckboxControlValueAccessor, NgControlStatus, NgControlStatusGroup, MinValidator, MaxValidator, FormGroupDirective, FormControlName], encapsulation: 2 });
 };
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(Settings, [{
@@ -7424,6 +7450,33 @@ var Settings = class _Settings {
               @if (form.get('monthlyOvertimeLimit')?.invalid && form.get('monthlyOvertimeLimit')?.touched) {
                 <div class="text-danger small mt-1">\u8ACB\u8F38\u5165 0 \u5230 200 \u4E4B\u9593\u7684\u6578\u503C\u3002</div>
               }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#bell"></use>
+            </svg>
+            \u901A\u77E5\u8A2D\u5B9A
+          </div>
+          <div class="card-body">
+            <div class="mb-4">
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="approvalEmailEnabled" formControlName="approvalEmailEnabled">
+                <label class="form-check-label fw-500" for="approvalEmailEnabled">\u5BC4\u9001\u5BE9\u6838\u901A\u77E5 Email</label>
+              </div>
+              <div class="text-muted small mt-1">\u95DC\u9589\u5F8C\u4E0D\u518D\u5BC4\u9001\uFF1A\u5F85\u5BE9\u6838 / \u5BE9\u6838\u7D50\u679C / \u64A5\u6B3E / \u9000\u6B3E / \u8CA1\u52D9\u901A\u77E5\u4FE1\u3002</div>
+            </div>
+            <div class="mb-0">
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="approvalLineEnabled" formControlName="approvalLineEnabled">
+                <label class="form-check-label fw-500" for="approvalLineEnabled">\u63A8\u64AD\u5BE9\u6838\u901A\u77E5 LINE</label>
+              </div>
+              <div class="text-muted small mt-1">\u7BC4\u570D\u540C\u4E0A\uFF1B\u4E0D\u5F71\u97FF\u5E33\u865F\u901A\u77E5 / \u85AA\u8CC7\u660E\u7D30 / \u6253\u5361\u63D0\u9192\u3002</div>
             </div>
           </div>
         </div>
@@ -65773,4 +65826,4 @@ xlsx/xlsx.mjs:
 xlsx/xlsx.mjs:
   (*! sheetjs (C) 2013-present SheetJS -- http://sheetjs.com *)
 */
-//# sourceMappingURL=chunk-AYLOZQ3M.js.map
+//# sourceMappingURL=chunk-SW5FWYGA.js.map

@@ -38,11 +38,6 @@ export class ChangePassword {
       return;
     }
 
-    if (currentPassword === newPassword) {
-      this.toastr.error('新密碼不可與舊密碼相同。');
-      return;
-    }
-
     this.submitting.set(true);
     this.auth.changePassword(currentPassword, newPassword).subscribe({
       next: () => {

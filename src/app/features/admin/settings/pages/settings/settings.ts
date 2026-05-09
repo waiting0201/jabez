@@ -20,6 +20,8 @@ export class Settings implements OnInit {
     workStartTime:        ['09:00', Validators.required],
     workEndTime:          ['18:00', Validators.required],
     monthlyOvertimeLimit: [46, [Validators.required, Validators.min(0), Validators.max(200)]],
+    approvalEmailEnabled: [true],
+    approvalLineEnabled:  [true],
   });
 
   ngOnInit() {

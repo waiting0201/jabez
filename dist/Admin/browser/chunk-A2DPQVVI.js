@@ -86,10 +86,6 @@ var ChangePassword = class _ChangePassword {
       this.toastr.error("\u65B0\u5BC6\u78BC\u8207\u78BA\u8A8D\u5BC6\u78BC\u4E0D\u4E00\u81F4\u3002");
       return;
     }
-    if (currentPassword === newPassword) {
-      this.toastr.error("\u65B0\u5BC6\u78BC\u4E0D\u53EF\u8207\u820A\u5BC6\u78BC\u76F8\u540C\u3002");
-      return;
-    }
     this.submitting.set(true);
     this.auth.changePassword(currentPassword, newPassword).subscribe({
       next: () => {
@@ -295,4 +291,4 @@ var ChangePassword = class _ChangePassword {
 export {
   ChangePassword
 };
-//# sourceMappingURL=chunk-L4PKGTVP.js.map
+//# sourceMappingURL=chunk-A2DPQVVI.js.map
