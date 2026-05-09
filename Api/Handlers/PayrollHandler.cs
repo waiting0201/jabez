@@ -154,9 +154,14 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
             <tr><td style="padding:8px 12px">其他加項{(emp.OtherAdditionNote is not null ? $"（{emp.OtherAdditionNote}）" : "")}</td><td style="padding:8px 12px;text-align:right">{fmt(emp.OtherAddition)}</td></tr>
             """;
 
+        // 健保費標籤：有眷屬時加注說明，最多計至 3 口
+        var healthLabel = emp.CappedDependentCount > 0
+            ? $"健保費（員工負擔，含健保眷屬 {emp.CappedDependentCount} 口）"
+            : "健保費（員工負擔）";
+
         var deductionRows = $"""
             <tr><td style="padding:8px 12px">勞保費（員工負擔）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.LaborInsurance)}</td></tr>
-            <tr style="background:#FDF5F5"><td style="padding:8px 12px">健保費（員工負擔）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.HealthInsurance)}</td></tr>
+            <tr style="background:#FDF5F5"><td style="padding:8px 12px">{healthLabel}</td><td style="padding:8px 12px;text-align:right">{fmt(emp.HealthInsurance)}</td></tr>
             """;
         if (emp.PersonalLeaveDays > 0)
             deductionRows += $"""

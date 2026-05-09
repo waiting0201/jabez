@@ -37,6 +37,29 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         """;
 
     /// <summary>
+    /// 匯出用 SQL：LEFT JOIN InvoiceItems，一張發票一列；無發票仍輸出一列（ii.* 全為 null）。
+    /// </summary>
+    private const string ExportBaseSql = """
+        SELECT pr.Id            AS PaymentRequestId,
+               u.Name           AS EmployeeName,
+               pr.Type,
+               proj.Code        AS ProjectCode,
+               proj.Name        AS ProjectName,
+               pr.ApprovalStatus,
+               pr.CreatedAt,
+               pr.PaidAt,
+               pr.TotalAmount   AS PaymentTotalAmount,
+               ii.InvoiceNo,
+               ii.ItemName      AS InvoiceItemName,
+               ii.InvoiceDate,
+               ii.Amount        AS InvoiceAmount
+        FROM PaymentRequests pr
+        JOIN Users     u    ON pr.SubmittedById = u.Id
+        JOIN Projects  proj ON pr.ProjectId    = proj.Id
+        LEFT JOIN InvoiceItems ii ON ii.PaymentRequestId = pr.Id
+        """;
+
+    /// <summary>
     /// 依 scope 產生「申請人部門」過濾片段（前綴 " AND "）。
     /// SeeAll → 空字串；AllowedIds 為空 → " AND 1=0"；否則 " AND u.DepartmentId IN @AllowedDeptIds"
     /// </summary>
@@ -48,16 +71,17 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         return " AND u.DepartmentId IN @AllowedDeptIds";
     }
 
-    public async Task<PagedResult<PaymentReportDto>> GetPagedAsync(
+    /// <summary>
+    /// 共用 WHERE 組裝：排除草稿 + 部門 scope + 日期區間 + 付款狀態。
+    /// </summary>
+    private static string BuildWhereAndParameters(
         ProjectAccessScope scope,
-        int page, int pageSize,
-        DateOnly? dateFrom = null, DateOnly? dateTo = null, string? paymentStatus = null)
+        DateOnly? dateFrom,
+        DateOnly? dateTo,
+        string? paymentStatus,
+        DynamicParameters parameters)
     {
-        // 排除草稿狀態的基礎 WHERE，僅回傳已送出的申請
         var where = new StringBuilder(" WHERE pr.ApprovalStatus != 'draft'");
-        var parameters = new DynamicParameters();
-        parameters.Add("Skip", (page - 1) * pageSize);
-        parameters.Add("Take", pageSize);
 
         where.Append(BuildDeptScopeFilter(scope, parameters));
 
@@ -84,7 +108,19 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
             where.Append(" AND pr.PaidAt IS NULL");
         }
 
-        var whereClause = where.ToString();
+        return where.ToString();
+    }
+
+    public async Task<PagedResult<PaymentReportDto>> GetPagedAsync(
+        ProjectAccessScope scope,
+        int page, int pageSize,
+        DateOnly? dateFrom = null, DateOnly? dateTo = null, string? paymentStatus = null)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("Skip", (page - 1) * pageSize);
+        parameters.Add("Take", pageSize);
+
+        var whereClause = BuildWhereAndParameters(scope, dateFrom, dateTo, paymentStatus, parameters);
 
         var countSql = CountFromSql + whereClause;
         int total = await db.ExecuteScalarAsync<int>(countSql, parameters);
@@ -98,6 +134,20 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         Func<dynamic, PaymentReportDto> mapFn = MapRow;
         return new PagedResult<PaymentReportDto>(
             rows.Select(mapFn), total, page, pageSize, Math.Max(1, totalPages));
+    }
+
+    public async Task<List<PaymentExportRowDto>> GetExportRowsAsync(
+        ProjectAccessScope scope,
+        DateOnly? dateFrom = null, DateOnly? dateTo = null, string? paymentStatus = null)
+    {
+        var parameters = new DynamicParameters();
+        var whereClause = BuildWhereAndParameters(scope, dateFrom, dateTo, paymentStatus, parameters);
+
+        var sql = ExportBaseSql + whereClause +
+            " ORDER BY pr.CreatedAt DESC, pr.Id DESC, ii.Id ASC";
+
+        var rows = await db.QueryAsync<PaymentExportRowDto>(sql, parameters);
+        return rows.AsList();
     }
 
     /// <summary>將 dynamic 列映射至 PaymentReportDto，處理 STRING_AGG 結果拆分</summary>

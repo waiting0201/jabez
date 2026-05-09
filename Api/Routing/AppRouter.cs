@@ -45,7 +45,8 @@ public sealed class AppRouter(
     LineHandler                     line,
     TravelPaymentRequestHandler     travelPaymentRequests,
     AttendanceReminderAdminHandler  attendanceReminderAdmin,
-    AttendanceReminderLogHandler    attendanceReminderLogs)
+    AttendanceReminderLogHandler    attendanceReminderLogs,
+    EmployeeProfileHandler          employeeProfile)
 {
     public async Task<IActionResult> RouteAsync(HttpRequest req, string route)
     {
@@ -94,6 +95,9 @@ public sealed class AppRouter(
             ("GET",    ["files", "signatures", var fileName])        => await files.GetSignatureAsync(fileName),
             ("GET",    ["files", "avatars", var fileName])           => await files.GetAvatarAsync(fileName),
             ("GET",    ["files", "indigenous-proofs", var fileName]) => await files.GetIndigenousProofAsync(fileName),
+            ("GET",    ["files", "low-income-proofs", var fileName]) => await files.GetLowIncomeProofAsync(fileName),
+            ("GET",    ["files", "disabled-proofs", var fileName])   => await files.GetDisabledProofAsync(fileName),
+            ("GET",    ["files", "id-cards", var fileName])          => await files.GetIdCardAsync(fileName),
 
             // ── Auth ──────────────────────────────────────────────────────────
             ("POST",   ["auth", "login"])             => await auth.LoginAsync(req),
@@ -105,6 +109,9 @@ public sealed class AppRouter(
             ("GET",    ["users"])                     => await users.GetAllAsync(req),
             ("POST",   ["users"])                     => await users.CreateAsync(req),
             ("POST",   ["users", var id, "send-credentials"]) => await users.SendCredentialsAsync(id),
+            // 人事資料卡：必須在 ["users", var id] catch-all 之前
+            ("GET",    ["users", var id, "profile"])  => await employeeProfile.GetByUserIdAsync(req, id),
+            ("PUT",    ["users", var id, "profile"])  => await employeeProfile.UpsertAsync(req, id),
             ("GET",    ["users", var id])             => await users.GetByIdAsync(id),
             ("PUT",    ["users", var id])             => await users.UpdateAsync(req, id),
             ("PATCH",  ["users", var id])             => await users.UpdateAsync(req, id),
@@ -306,6 +313,7 @@ public sealed class AppRouter(
 
             // ── Reports ─────────────────────────────────────────────────────────
             ("GET",    ["reports", "overtime"])                    => await overtimeReport.GetAllAsync(req),
+            ("GET",    ["reports", "payment", "export"])           => await paymentReport.GetExportAsync(req),
             ("GET",    ["reports", "payment"])                     => await paymentReport.GetAllAsync(req),
             ("GET",    ["reports", "project-water-level"])         => await projectWaterLevel.GetAllAsync(req),
 
@@ -360,13 +368,19 @@ public sealed class AppRouter(
         {
             // Files
             // signatures / avatars 為公開路由（由 IsPublicRoute 攔住），此處 null 僅為保險
-            ("GET", ["files", "signatures", _])        => null,
-            ("GET", ["files", "avatars", _])           => null,
-            // indigenous-proofs 屬 HR 敏感 PII，需 users:read 權限
-            ("GET", ["files", "indigenous-proofs", _]) => PermissionCodes.UsersRead,
+            ("GET", ["files", "signatures", _])         => null,
+            ("GET", ["files", "avatars", _])            => null,
+            // indigenous-proofs / low-income-proofs / disabled-proofs / id-cards 屬 HR 敏感 PII，需 users:read 權限
+            ("GET", ["files", "indigenous-proofs", _])  => PermissionCodes.UsersRead,
+            ("GET", ["files", "low-income-proofs", _])  => PermissionCodes.UsersRead,
+            ("GET", ["files", "disabled-proofs", _])    => PermissionCodes.UsersRead,
+            ("GET", ["files", "id-cards", _])           => PermissionCodes.UsersRead,
 
             // Users（lookup 不需權限，登入即可）
             ("GET",    ["users", "lookup"])               => null,
+            // 人事資料卡：GET 需 users:read，PUT 需 users:write
+            ("GET",    ["users", _, "profile"])           => PermissionCodes.UsersRead,
+            ("PUT",    ["users", _, "profile"])           => PermissionCodes.UsersWrite,
             ("GET",    ["users", ..])                    => PermissionCodes.UsersRead,
             ("POST",   ["users"])                        => PermissionCodes.UsersWrite,
             ("POST",   ["users", _, "send-credentials"]) => PermissionCodes.UsersWrite,
@@ -524,6 +538,7 @@ public sealed class AppRouter(
 
             // Reports
             ("GET",    ["reports", "overtime"])                    => PermissionCodes.ReportsOvertimeRead,
+            ("GET",    ["reports", "payment", "export"])           => PermissionCodes.ReportsPaymentRead,
             ("GET",    ["reports", "payment"])                     => PermissionCodes.ReportsPaymentRead,
             ("GET",    ["reports", "project-water-level"])         => PermissionCodes.ReportsProjectWaterLevelRead,
 

@@ -1,0 +1,930 @@
+# Jabez 前端設計規範
+
+本文件彙整 Jabez Admin 前端的視覺與互動設計規範。**新功能開發或修改頁面前，務必先參考本文件取得對齊樣式**；若與本文件衝突則以本文件為準（CLAUDE.md 同步引用本文件）。
+
+---
+
+## 1. 技術棧
+
+| 項目 | 規格 | 備註 |
+|---|---|---|
+| 框架 | Angular 21.1 | Standalone Component 為唯一寫法，禁止 NgModule |
+| 語言 | TypeScript 5.9 | strict mode 全開 |
+| 樣式 | Tailwind CSS v4 + SCSS（component-scoped only） | 主入口 [Admin/src/tailwind.css](../Admin/src/tailwind.css) |
+| 狀態管理 | Angular Signals | 禁止用 BehaviorSubject 管 component state |
+| 表格 | @tanstack/angular-table | 列表頁一律使用 |
+| 圖表 | ApexCharts (ng-apexcharts) | 報表頁使用 |
+| 通知 | ngx-toastr | 禁止自製 alert/modal 替代 |
+| PDF 匯出 | jsPDF + jspdf-autotable | 中文字型走 [pdf-core.service.ts](../Admin/src/app/shared/services/pdf-core.service.ts) |
+| 圖檔壓縮 | [image-compression.service.ts](../Admin/src/app/shared/services/image-compression.service.ts) | HEIC→JPEG / Canvas resize / JPEG quality；PDF passthrough |
+| Icon | SVG sprite | `<svg class="sa-icon"><use href="/assets/icons/sprite.svg#NAME"></use></svg>` |
+| Modal / Dropdown | @ng-bootstrap | 僅用其行為，CSS class 在 tailwind.css `@layer components` |
+
+> **禁止引入**：Bootstrap 5、node-waves、其他 CSS 框架。
+
+### 1.1 樣式檔案結構
+
+| 檔案 | 內容 |
+|---|---|
+| [Admin/src/tailwind.css](../Admin/src/tailwind.css) | 主入口：`@layer base / components / utilities`；CIS design tokens；layout vars (`--app-header-height: 5rem`、`--menu-width: 18rem` 等) |
+| [Admin/src/styles.scss](../Admin/src/styles.scss) | 僅 `@use 'ngx-toastr/toastr.css';` 一行 |
+| `assets/icons/sprite.svg` | SVG sprite 集中管理；新 icon 從 [Feather Icons](https://feathericons.com/) 加入 |
+
+### 1.2 歷史脈絡（重要）
+
+- **2026-02 Bootstrap 5 完整移除**：Bootstrap 5 + node-waves 從 `package.json` 整批 remove；SmartAdmin theme assets 已刪除（`src/assets/sass/`、`src/assets/webfonts/smartadmin/`、`src/assets/css/`）
+- **@ng-bootstrap 仍保留**：僅用其 JS 行為元件（`NgbDropdown` / `NgbModal` / `NgbOffcanvas` / `NgbCollapse`）；對應 CSS class 名稱已在 [tailwind.css](../Admin/src/tailwind.css) `@layer components` 重新定義，視覺與行為解耦
+- **Bootstrap → Tailwind 間距對照**（移轉舊 component 時用）：Bootstrap `m-3` (1rem) → Tailwind `m-4`；Bootstrap `m-4` (1.5rem) → Tailwind `m-6`
+- **App entry 變動**：[Admin/src/app/app.ts](../Admin/src/app/app.ts) 已移除 `Waves.attach` / `Waves.init`（node-waves 已刪除）
+
+---
+
+## 2. CIS 色彩系統
+
+設計 token 全數定義於 [Admin/src/tailwind.css](../Admin/src/tailwind.css) 的 `:root`，PDF 用 RGB 常數位於 `payroll-list.ts` 等 PDF service 的 `CIS` 物件。
+
+### 品牌主色
+
+| Token | 色碼 | 用途 |
+|---|---|---|
+| `--forest` | `#699F34` | 品牌綠：按鈕、表頭、PDF 裝飾線 |
+| `--forest-mid` | `#4A6B3A` | hover 狀態、次要強調 |
+| `--forest-light` | `#6B8F5E` | 輔助綠 |
+
+### 中性色 / 強調色
+
+| Token | 色碼 | 用途 |
+|---|---|---|
+| `--text-primary` | `#525358` | 正文、標題 |
+| `--text-secondary` | `#6E6F73` | 標籤、次要文字 |
+| `--text-muted` | `#A39685` | 註解、浮水印 |
+| `--accent` | `#8C7355` | 連結、焦點框 |
+| `--accent-muted` | `#735E42` | 深棕變體 |
+
+### 語意色
+
+| Token | 色碼 | 用途 |
+|---|---|---|
+| `--green` | `#4A6B3A` | success |
+| `--yellow` | `#B8892A` | warning |
+| `--red` | `#A04040` | error / 扣款 |
+| `--purple` | `#7C5E8C` | info |
+
+### 背景 / 邊框
+
+| Token | 色碼 | 用途 |
+|---|---|---|
+| `--bg-base` | `#F5F2ED` | 頁面底色 |
+| `--bg-surface` | `#FDFAF5` | 卡片、面板 |
+| `--bg-elevated` | `#EDE9E1` | 提升區塊 |
+| `--border` | `#DDD6C8` | 邊框 |
+
+### 側欄
+
+| Token | 色碼 | 用途 |
+|---|---|---|
+| `--sidebar-bg` | `#699F34` | 側欄背景（品牌綠） |
+| `--sidebar-surface` | `#5B8E2D` | 深一階（子選單底） |
+| `--sidebar-hover` | `#78AD42` | hover 回饋 |
+| `--sidebar-text` | `rgba(255,255,255,0.92)` | 選單文字 |
+| `--sidebar-text-dim` | `rgba(255,255,255,0.58)` | 分類標題 |
+
+### Logo
+
+| 檔案 | 格式 | 用途 |
+|---|---|---|
+| `assets/img/logo.png` | PNG（透明背景、直式） | 網頁 UI、Topbar、Login 頁 |
+| `assets/img/logo.jpg` | JPG（橫式含公司全名） | PDF 薪資明細表抬頭 |
+
+---
+
+## 3. 頁面排版
+
+### 容器寬度
+
+外層一律 `container-fluid py-3`，col 外層包 `<div class="row g-4">`。**所有 `col` 必須包含 `col-12` 基礎以確保手機全寬。**
+
+### RWD 注意事項
+
+- 所有 `col` **必須**包含 `col-12` 基礎（mobile-first 全寬）
+- 明細表格外層 **必須**包 `<div class="table-responsive">`，確保手機可橫向捲動
+- 詳情頁頁頭使用 `flex flex-wrap`，避免按鈕擠成一團
+- 同一列多個按鈕需加 `flex-wrap gap-2` 讓窄螢幕自動換行
+
+| 頁面類型 | RWD 寬度 | 範例 |
+|---|---|---|
+| A. 簡單主檔 | `col-12 col-lg-8 col-xl-6` | department / job-title / permission / insurance-bracket / project |
+| B. 複雜主檔 | `col-12 col-xl-8` | user / role / payroll |
+| C. 申請表（無明細） | `col-12 col-lg-10 col-xl-8` | leave-request / overtime-request |
+| C. 申請表（有明細） | `col-12 col-xl-10` | payment / travel / advance / write-off |
+| D. 詳情頁 | `col-12 col-xl-10` | advance-detail / write-off-detail |
+| E. 審核頁 | `col-12 col-lg-10 col-xl-8` | approval-task-review |
+| G. 設定頁 | `col-12 col-md-6 col-xl-4`（多欄並排） | settings |
+
+### 頁頭結構
+
+**主檔 / 申請表單（簡單型）：**
+
+```html
+<div class="flex items-center gap-2 mb-6">
+  <a routerLink="/admin/<list>" class="btn btn-sm btn-outline-secondary">
+    <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+  </a>
+  <h4 class="mb-0">{{ title }}</h4>
+</div>
+```
+
+**詳情頁 / 含狀態的頁面（含 badge + 操作按鈕）：**
+
+```html
+<div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+  <div class="flex items-center gap-2 flex-wrap">
+    <a routerLink="/admin/<list>" class="btn btn-sm btn-outline-secondary">
+      <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+    </a>
+    <h4 class="mb-0">{{ title }} {{ requestNo }}</h4>
+    <span [class]="'badge ' + statusClass">{{ statusLabel }}</span>
+  </div>
+  <div class="flex flex-wrap gap-2">
+    <!-- 操作按鈕 -->
+  </div>
+</div>
+```
+
+### 錯誤訊息列
+
+```html
+@if (errorMsg()) {
+  <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+    <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+    {{ errorMsg() }}
+  </div>
+}
+```
+
+---
+
+## 4. 卡片元件
+
+所有區塊用統一卡片樣式。**禁止自製 panel / box**。
+
+### 標準卡片
+
+```html
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+    <svg class="sa-icon text-primary" style="stroke: currentColor">
+      <use href="/assets/icons/sprite.svg#ICON"></use>
+    </svg>
+    卡片標題
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <!-- 表單欄位 / 內容 -->
+    </div>
+  </div>
+</div>
+```
+
+關鍵：
+- `border-0 shadow-sm` — 無邊框、淡陰影
+- `card-header` 必含 icon（左）+ 標題（右），`fw-600`
+- 連續多張卡片之間 `mb-4`，最後一張不加 margin
+- 卡片內 row gutter `g-3`；外層 layout row gutter `g-4`
+
+### 卡片分組與排序
+
+**一般申請表單（payment / leave / travel / overtime / advance）：**
+
+1. 狀態提示卡（條件式，唯讀時顯示）
+2. 基本資訊卡（所有表單欄位 + 備註）
+3. 明細表格卡（如有：發票/費用/預算）
+4. **指定審核者卡（獨立卡片，icon `#users`）**
+5. 簽核流程（`<app-approval-timeline>`）
+
+**沖銷申請表單（write-off / travel-write-off）：**
+
+1. 主單選擇卡
+2. 上傳發票卡
+3. 花費明細表格卡
+4. 沖銷備註卡
+5. **指定審核者卡（獨立卡片）**
+
+> 指定審核者一律為**獨立卡片**，不得內嵌於其他卡片中。
+
+---
+
+## 5. Tab UI（Pill Button Pattern）
+
+**禁止使用 ng-bootstrap NgbNav**。一律使用 Tailwind pill button：
+
+### 標準 Tab 結構
+
+參考 [approval-task-list.html](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-list/approval-task-list.html) 與 [user-form.html:45-57](../Admin/src/app/features/admin/users/pages/user-form/user-form.html#L45-L57)：
+
+```html
+<div class="flex gap-1 mb-4">
+  <button type="button" class="btn btn-sm"
+          [class]="activeTab() === 'tab1' ? 'btn-primary' : 'btn-outline-secondary'"
+          (click)="switchTab('tab1')">頁籤 1</button>
+  <button type="button" class="btn btn-sm"
+          [class]="activeTab() === 'tab2' ? 'btn-primary' : 'btn-outline-secondary'"
+          (click)="switchTab('tab2')">頁籤 2</button>
+</div>
+
+@if (activeTab() === 'tab1') {
+  <!-- Tab 1 內容 -->
+} @else if (activeTab() === 'tab2') {
+  <!-- Tab 2 內容 -->
+}
+```
+
+### TS 端
+
+```typescript
+activeTab = signal<'tab1' | 'tab2'>('tab1');
+switchTab(tab: 'tab1' | 'tab2') {
+  this.activeTab.set(tab);
+  // optional: lazy load
+}
+```
+
+### 多 Tab 共用同一 form 的場景
+
+當多 Tab 同屬一張表單（user-form 為例），三個 Tab 共用同一個 `<form>` 與單次 `(ngSubmit)`，切 tab 不丟資料：
+
+```html
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <!-- tab 切換列 -->
+  <div class="flex gap-1 mb-4">...</div>
+
+  @if (activeTab() === 'basic') { <!-- Tab 1 卡片 --> }
+  @else if (activeTab() === 'hr') { <!-- Tab 2 卡片 --> }
+  @else if (activeTab() === 'dependents') { <!-- Tab 3 卡片 --> }
+
+  <!-- submit / cancel 按鈕 -->
+</form>
+```
+
+---
+
+## 6. 表單規範
+
+### 欄位排版
+
+```html
+<div class="row g-3">
+  <div class="col-12 col-md-6">
+    <label class="form-label fw-500">姓名 <span class="text-danger">*</span></label>
+    <input type="text" class="form-control" formControlName="name" placeholder="請輸入姓名">
+    @if (form.get('name')?.invalid && form.get('name')?.touched) {
+      <div class="text-danger small mt-1">請輸入姓名。</div>
+    }
+  </div>
+</div>
+```
+
+關鍵：
+- Label 用 `form-label fw-500`，必填以 `<span class="text-danger">*</span>` 標示
+- 卡片內 row gutter `g-3`
+- 欄位之間 `mb-4`，最後一個 `mb-0`
+- 卡片之間 `mt-6`
+- 錯誤訊息：`text-danger small mt-1`，僅當 `invalid && touched` 顯示
+
+### 欄位寬度（col-md-N）
+
+| 欄位類型 | 寬度 |
+|---|---|
+| 短文字（姓名 / Email） | `col-12 col-md-6` |
+| 長文字（地址 / 備註） | `col-12` |
+| 短數字（年齡 / 數量） | `col-12 col-md-3` |
+| 中數字（金額） | `col-12 col-md-4` |
+| 日期 / 下拉 | `col-12 col-md-6` |
+| 三欄並排（如年/月/日） | `col-12 col-md-4` |
+
+### 控件樣式
+
+| 控件 | class |
+|---|---|
+| Input | `form-control` |
+| Select | `form-select` |
+| Textarea | `form-control`（自動多行） |
+| Checkbox | `form-check-input`（外包 `form-check`） |
+| Radio | `form-check-input`（外包 `form-check`，name 統一）|
+| 小尺寸（明細表格內） | 加 `form-control-sm` / `form-select-sm` |
+
+### Radio 群組範例
+
+```html
+<label class="form-label fw-500">角色 <span class="text-danger">*</span></label>
+<div class="flex flex-wrap gap-4 mt-1">
+  @for (role of roles(); track role.id) {
+    <div class="form-check">
+      <input class="form-check-input" type="radio"
+             name="roleId"
+             [id]="'role-' + role.id"
+             [value]="role.id"
+             formControlName="roleId">
+      <label class="form-check-label" [for]="'role-' + role.id">{{ role.name }}</label>
+    </div>
+  }
+</div>
+```
+
+### 條件式欄位
+
+當欄位依其他欄位狀態決定是否顯示，使用 `@if` 控制流：
+
+```html
+@if (form.value.isIndigenous === true) {
+  <div class="col-12">
+    <label class="form-label fw-500">原住民證明文件</label>
+    <!-- 上傳區塊 -->
+  </div>
+}
+```
+
+---
+
+## 7. 明細列表（FormArray）
+
+明細列表（發票項目、費用明細、HR 多筆紀錄等）一律以 `<table>` + `FormArray` 實作。
+
+### 7.1 表格結構
+
+```html
+<div class="table-responsive">
+  <table class="table table-sm align-middle mb-0">
+    <thead class="table-light">
+      <tr>
+        <th class="w-10">#</th>
+        <th>欄位 1</th>
+        <th>欄位 2</th>
+        <th class="text-right w-12">金額</th>
+        <th class="w-10"></th>  <!-- 刪除按鈕欄 -->
+      </tr>
+    </thead>
+    <tbody>
+      @for (item of itemArray.controls; track $index; let i = $index) {
+        <tr [formGroup]="$any(item)">
+          <td class="align-middle">{{ i + 1 }}</td>
+          <td>
+            <input type="text" class="form-control form-control-sm" formControlName="field1">
+          </td>
+          <td>
+            <input type="text" class="form-control form-control-sm" formControlName="field2">
+          </td>
+          <td class="text-right">
+            <input type="number" class="form-control form-control-sm text-right" formControlName="amount">
+          </td>
+          <td class="text-right align-middle">
+            <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center"
+                    (click)="removeItem(i)">
+              <svg class="sa-icon" style="stroke:currentColor">
+                <use href="/assets/icons/sprite.svg#x"></use>
+              </svg>
+            </button>
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="5" class="text-center text-muted py-4 small">尚無明細，請點擊「新增」</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+<button type="button" class="btn btn-sm btn-outline-primary inline-flex items-center mt-3"
+        (click)="addItem()">
+  <svg class="sa-icon me-1" style="stroke:currentColor">
+    <use href="/assets/icons/sprite.svg#plus"></use>
+  </svg>
+  新增
+</button>
+```
+
+### 7.2 ⚠ 刪除按鈕標準（**重要**）
+
+> **2026-05-09 起，所有明細列表的刪除按鈕一律統一為以下 pattern**。
+> 範例參考：[travel-payment-form.html:285-288](../Admin/src/app/features/admin/travel-payment-requests/pages/travel-payment-form/travel-payment-form.html#L285-L288)、[user-form.html](../Admin/src/app/features/admin/users/pages/user-form/user-form.html)（HR Tab 9 個明細）
+
+```html
+<button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center"
+        (click)="removeXxx(i)">
+  <svg class="sa-icon" style="stroke:currentColor">
+    <use href="/assets/icons/sprite.svg#x"></use>
+  </svg>
+</button>
+```
+
+特徵：
+- Class **必為** `btn btn-sm btn-ghost-danger inline-flex items-center`（**禁用** `btn-outline-danger`、`btn-danger`）
+- Icon **必為** `sprite.svg#x`（**禁用** `#trash`、`#trash-2`、`#delete`）
+- SVG 一律加 `style="stroke:currentColor"`，確保 ghost-danger 紅色生效
+- **純 icon-only**（無文字），靠 `aria-label` 或 tooltip 提供無障礙語意（若需要）
+
+### 7.3 與其他「刪除按鈕」的差異
+
+| 用途 | 樣式 | 範例 |
+|---|---|---|
+| 明細列表 row 刪除（icon-only） | `btn-ghost-danger` + `#x` | 上方 7.2 |
+| 上傳檔案區塊「刪除檔案」（文字按鈕） | `btn-outline-danger` + 純文字 | `<button class="btn btn-sm btn-outline-danger">刪除頭像</button>` |
+| 列表頁刪除主檔（破壞性，需確認） | `btn-danger` + 圖示 + 文字 | 通常配合 confirm modal |
+
+> **常見錯誤**：誤把明細刪除做成 `btn-outline-danger` + 文字「刪除」，視覺過於搶眼。明細刪除應**低調**（ghost）。
+
+### 7.4 TS 端 FormArray pattern
+
+參考 [payment-form.ts:128-260](../Admin/src/app/features/admin/payment-requests/pages/payment-form/payment-form.ts)：
+
+```typescript
+form = this.fb.group({
+  // ... 其他欄位
+  invoices: this.fb.array([]),
+});
+
+get invoiceArray(): FormArray { return this.form.get('invoices') as FormArray; }
+get invoiceControls(): AbstractControl[] { return this.invoiceArray.controls; }
+
+private _invoiceGroup(item?: { id?: string; field1: string; amount: number }) {
+  return this.fb.group({
+    id:     [item?.id ?? null],
+    field1: [item?.field1 ?? '', Validators.required],
+    amount: [item?.amount ?? 0,  Validators.min(0)],
+  });
+}
+
+addItem() { this.invoiceArray.push(this._invoiceGroup()); }
+removeItem(i: number) { this.invoiceArray.removeAt(i); }
+```
+
+### 7.5 載入後資料回填
+
+```typescript
+loadData(items: Item[]) {
+  this.invoiceArray.clear();
+  items.forEach(it => this.invoiceArray.push(this._invoiceGroup(it)));
+}
+```
+
+---
+
+## 8. 按鈕規範
+
+### 8.1 顏色語意
+
+| 用途 | Class | 範例 |
+|---|---|---|
+| 主要動作（送出 / 建立 / 更新） | `btn btn-primary` | 「建立」「更新」「送出申請」 |
+| 次要動作（取消 / 返回） | `btn btn-outline-secondary` | 「取消」「返回列表」 |
+| 危險動作（刪除主檔） | `btn btn-danger` | 「刪除員工」 |
+| 明細刪除（icon-only） | `btn btn-ghost-danger inline-flex items-center` | FormArray row 移除 |
+| 文字刪除（檔案上傳區塊） | `btn btn-outline-danger` | 「刪除頭像」 |
+| 補強提示動作 | `btn btn-outline-info` | 「寄出帳號通知」 |
+| 編輯（warning 語意） | `btn btn-warning` | 「編輯」 |
+
+### 8.2 按鈕尺寸
+
+| 場景 | Class |
+|---|---|
+| 預設大小（表單底部主按鈕） | （不加 size class）|
+| 卡片內次要按鈕 | `btn-sm` |
+| 表格 row 內按鈕 | `btn-sm` |
+| 大型 Hero CTA | `btn-lg`（少用）|
+
+### 8.3 主要按鈕位置
+
+**主檔表單底部：**
+
+```html
+<div class="mt-6 flex gap-2">
+  <button type="submit" class="btn btn-primary">{{ isEdit ? '更新' : '建立' }}</button>
+  <a routerLink="/admin/<list>" class="btn btn-outline-secondary">取消</a>
+</div>
+```
+
+**申請表單底部（編輯模式）：**
+
+```html
+<div class="mt-6 flex gap-2">
+  <button type="submit" class="btn btn-outline-secondary">{{ isEdit ? '儲存' : '儲存草稿' }}</button>
+  <button type="button" class="btn btn-primary" (click)="submitForApproval()">送出申請</button>
+  <a routerLink="/admin/<list>" class="btn btn-outline-secondary">取消</a>
+</div>
+```
+
+**申請表單底部（唯讀模式）：**
+
+```html
+<div class="mt-6">
+  <a routerLink="/admin/<list>" class="btn btn-outline-secondary">返回列表</a>
+</div>
+```
+
+### 8.4 載入中狀態
+
+按鈕呼叫非同步動作時，使用 `[disabled]` + spinner：
+
+```html
+<button type="button" class="btn btn-primary"
+        [disabled]="submitting()"
+        (click)="submit()">
+  @if (submitting()) {
+    <span class="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin me-1"></span>
+    處理中…
+  } @else {
+    送出
+  }
+</button>
+```
+
+---
+
+## 9. 狀態提示卡
+
+申請類頁面在送出後或唯讀模式顯示。**使用 `@if/@else if` 鏈式**，不用 `@switch`。
+
+| 狀態 | 背景色 | 文字色 | Icon |
+|---|---|---|---|
+| pending | `bg-[rgba(13,110,253,0.08)]` | `text-primary` | `#clock` |
+| returned | `bg-[rgba(255,193,7,0.08)]` | `text-warning` | `#alert-triangle` |
+| approved | `bg-[rgba(37,162,68,0.08)]` | `text-success` | `#check-circle` |
+| rejected | `bg-[rgba(220,53,69,0.08)]` | `text-danger` | `#x-circle` |
+
+文案統一：「此申請{狀態描述}，不可再修改。」
+
+範例：
+
+```html
+@if (status === 'pending') {
+  <div class="card border-0 shadow-sm mb-4 bg-[rgba(13,110,253,0.08)]">
+    <div class="card-body flex items-center gap-2 text-primary">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
+      此申請審核中，不可再修改。
+    </div>
+  </div>
+} @else if (status === 'approved') {
+  <!-- ... -->
+}
+```
+
+---
+
+## 10. Icon 系統
+
+### 10.1 SVG Sprite
+
+所有 icon 統一從 `/assets/icons/sprite.svg` 引用。**禁止**直接內嵌 SVG path、引入 Font Awesome / Material Icons / Lucide。
+
+```html
+<svg class="sa-icon"><use href="/assets/icons/sprite.svg#NAME"></use></svg>
+```
+
+### 10.2 sa-icon 樣式
+
+```css
+/* 預設於 tailwind.css */
+.sa-icon {
+  width: 1em;
+  height: 1em;
+  stroke-width: 1.75;
+  fill: none;
+  stroke: currentColor;
+}
+```
+
+實際渲染色彩跟隨 `currentColor`（即父元素的 `color`）。當父元素未控制顏色（例如 `btn-ghost-danger` 在 hover 才變色），明確 inline `style="stroke:currentColor"` 確保兼容。
+
+### 10.3 常用 Icon 對照表
+
+| 用途 | sprite name |
+|---|---|
+| 返回 / 上一頁 | `arrow-left` |
+| 新增 | `plus` |
+| 刪除（明細）| `x` |
+| 編輯 | `edit-3` 或 `pencil` |
+| 儲存 | `save` |
+| 上傳 | `upload` |
+| 下載 | `download` |
+| 列印 | `printer` |
+| 發送 / Email | `mail` |
+| 警告 | `alert-triangle` |
+| 錯誤 | `x-circle` |
+| 成功 | `check-circle` |
+| 資訊 | `info` |
+| 鐘 / 等待 | `clock` |
+| 使用者 | `user` |
+| 多人 | `users` |
+| 部門 / 公司 | `briefcase` 或 `building` |
+| 文件 | `file-text` |
+| 信用卡 / ID | `credit-card` |
+| 地圖 | `map-pin` |
+| 相機 | `camera` |
+| 設定 | `settings` |
+| 搜尋 | `search` |
+| 篩選 | `filter` |
+
+> 加新 icon 前先檢查 sprite.svg 是否已存在；不在則從 [Feather Icons](https://feathericons.com/) 抓 SVG 加入 sprite。
+
+---
+
+## 11. 通知（Toastr）
+
+統一使用 `ngx-toastr`，**不得自製 alert / modal 替代**。
+
+### 11.1 注入
+
+```typescript
+private toastr = inject(ToastrService);
+```
+
+### 11.2 使用
+
+| 類型 | API | 用途 |
+|---|---|---|
+| 成功 | `toastr.success(msg)` | 「儲存成功」「已送出」 |
+| 錯誤 | `toastr.error(msg)` | 「儲存失敗，請稍後再試」 |
+| 警告 | `toastr.warning(msg)` | 「人事資料儲存失敗，基本資料已更新」 |
+| 資訊 | `toastr.info(msg)` | 一般提示 |
+
+### 11.3 訊息文案
+
+- 結尾用「。」
+- 錯誤訊息應給出**可行動建議**：「請稍後再試」「請聯絡管理員」
+- 不要洩漏技術細節（HTTP status / SQL error 等）
+
+---
+
+## 12. 檔案上傳規範
+
+### 12.1 標準上傳區塊
+
+```html
+<div class="col-12">
+  <label class="form-label fw-500">上傳檔案</label>
+  @if (filePreview()) {
+    <div class="mb-3">
+      <img [src]="filePreview()" alt="預覽" class="max-h-48 rounded border">
+    </div>
+    <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveFile()">刪除檔案</button>
+  } @else {
+    <input type="file" class="form-control" accept="image/*,.pdf,.heic,.heif"
+           (change)="onFileSelected($event)">
+    <div class="text-muted small mt-1">支援 JPG / PNG / HEIC / PDF，最大 1 MB</div>
+  }
+</div>
+```
+
+### 12.2 檔案壓縮（必要）
+
+**所有圖檔上傳一律走** [image-compression.service.ts](../Admin/src/app/shared/services/image-compression.service.ts)：
+
+```typescript
+private imageCompression = inject(ImageCompressionService);
+
+async onFileSelected(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+
+  const compressed = await this.imageCompression.compress(file, {
+    maxSize: 1600,    // 證件 / 證明文件用 1600；avatar 用 800
+    quality: 0.85,
+  });
+
+  if (compressed.size > 1024 * 1024) {
+    this.toastr.error('上傳照片勿超過1MB');
+    return;
+  }
+
+  this.fileSignal.set(compressed);
+  // 產生本地預覽
+  const reader = new FileReader();
+  reader.onload = () => this.previewSignal.set(reader.result as string);
+  reader.readAsDataURL(compressed);
+}
+```
+
+行為：
+- PDF（mime/副檔名）→ 直接回原檔不處理
+- HEIC / HEIF → 走 heic2any 轉 JPEG
+- 其餘圖檔 → Canvas 等比縮放至 maxSize × maxSize 內 + 輸出 JPEG quality
+
+### 12.3 大小規範
+
+| 檔案類型 | 上限 | maxSize 建議 |
+|---|---|---|
+| Avatar（頭像） | 1 MB | 800 |
+| 簽名檔 | 1 MB | 800 |
+| 證明文件（原住民 / 低收入 / 殘障 / 身分證） | 1 MB | 1600 |
+| 發票 | 1 MB | 1600 |
+
+### 12.4 file proxy 端點
+
+需 `users:read` 權限的敏感 PII（HR 證明文件）一律走授權代理：
+
+| 端點 | 容器 |
+|---|---|
+| `/files/indigenous-proofs/{fileName}` | indigenous-proofs |
+| `/files/low-income-proofs/{fileName}` | low-income-proofs |
+| `/files/disabled-proofs/{fileName}` | disabled-proofs |
+| `/files/id-cards/{fileName}` | id-cards |
+
+不敏感者（簽名、頭像）走公開路由：`/files/signatures/{fileName}` / `/files/avatars/{fileName}`。
+
+---
+
+## 13. 路由與 Lazy Loading
+
+所有 feature 在 `app.routes.ts` 用 `loadComponent` / `loadChildren` lazy load：
+
+```typescript
+{
+  path: 'admin/users',
+  canActivate: [authGuard, permissionGuard],
+  data: { permission: 'users:read' },
+  loadChildren: () => import('./features/admin/users/users.routes').then(m => m.routes),
+},
+```
+
+### Feature 目錄結構
+
+每個 feature 一律三層：
+
+```
+features/admin/<feature>/
+├── models/        # interface / enum / 常數
+├── pages/         # component（含 .ts / .html / .scss optional）
+└── services/      # HTTP service / 業務 helper
+```
+
+---
+
+## 14. 服務層 / HTTP
+
+### 14.1 Component 禁止直接注入 HttpClient
+
+所有 HTTP 一律封裝於 `features/<feature>/services/<feature>.service.ts`：
+
+```typescript
+@Injectable({ providedIn: 'root' })
+export class UserService {
+  private http = inject(HttpClient);
+  private base = `${environment.apiUrl}/users`;
+
+  getAll(): Observable<User[]> {
+    return this.http.get<ApiResponse<User[]>>(this.base).pipe(map(r => r.data));
+  }
+  // ...
+}
+```
+
+### 14.2 ApiResponse 解包
+
+所有 API 回應格式為 `ApiResponse<T> = { success, message, data }`，由 `core/auth/interceptors/api-response.interceptor.ts` 集中解包；service 直接 return data。
+
+### 14.3 multipart/form-data
+
+帶檔案的 API 一律用 FormData：
+
+```typescript
+upsert(userId: string, payload: ProfileRequest, files: { idCardFront?: File | null; ... }) {
+  const fd = new FormData();
+  fd.append('payload', JSON.stringify(payload));
+  if (files.idCardFront) fd.append('idCardFront', files.idCardFront);
+  if (files.removeIdCardFront) fd.append('removeIdCardFront', 'true');
+  return this.http.put<ApiResponse<ProfileDetail>>(`${this.base}/${userId}/profile`, fd);
+}
+```
+
+---
+
+## 15. State Management
+
+### 15.1 Signal-only
+
+Component 內部狀態 **一律使用 Signal**：
+
+```typescript
+loading = signal(false);
+items   = signal<Item[]>([]);
+error   = signal<string | null>(null);
+
+readonly itemCount = computed(() => this.items().length);
+```
+
+### 15.2 禁止 BehaviorSubject 管 component state
+
+只有跨多 component 的 reactive stream 可使用 RxJS Subject（少見）。
+
+### 15.3 跨 component 狀態
+
+跨 feature 共享狀態（如 AuthService）放在 `core/`，用 Signal + 公開 readonly 訪問：
+
+```typescript
+@Injectable({ providedIn: 'root' })
+export class AuthService {
+  private _user = signal<User | null>(null);
+  readonly user = this._user.asReadonly();
+  readonly isSuperAdmin = computed(() => this._user()?.isSuperAdmin === true);
+
+  setUser(u: User) { this._user.set(u); }
+}
+```
+
+---
+
+## 16. 控制流（@if / @for / @switch）
+
+**禁止** `*ngIf` / `*ngFor` / `*ngSwitch`。一律使用 Angular 17+ 內建控制流：
+
+| 結構指令 | 控制流 |
+|---|---|
+| `*ngIf="cond"` | `@if (cond) { ... }` |
+| `*ngIf; else` | `@if (cond) { ... } @else { ... }` |
+| `*ngFor="let x of list"` | `@for (x of list; track x.id) { ... } @empty { ... }` |
+| `*ngSwitch` | `@switch (value) { @case ('a') { ... } @default { ... } }` |
+
+### track 必填
+
+`@for` **必須**指定 `track`：物件用 `track item.id`，純值用 `track $index`。
+
+---
+
+## 17. 命名規範
+
+| 對象 | 規則 | 範例 |
+|---|---|---|
+| TypeScript 變數 / 函式 | camelCase | `getUserList`, `isActive` |
+| Class 名 | PascalCase | `UserForm`, `EmployeeProfileService` |
+| Interface | PascalCase（不加 `I` 前綴） | `User`, `EmployeeProfile` |
+| 檔名 | kebab-case | `user-form.ts`, `employee-profile.service.ts` |
+| CSS class | kebab-case | `card-header`, `btn-ghost-danger` |
+| Sprite icon name | kebab-case | `arrow-left`, `check-circle` |
+
+### Component 三件組
+
+| 檔案 | 寫法 |
+|---|---|
+| TypeScript | `<feature>-<form\|list\|detail>.ts`（class `XxxForm` / `XxxList`） |
+| Template | `<同名>.html` |
+| SCSS（可選） | `<同名>.scss` — 僅當 Tailwind utility 不夠時 |
+
+---
+
+## 18. 連結引用（Markdown）
+
+template / 文件中引用其他檔案時，使用相對路徑 markdown link：
+
+```markdown
+- 檔案：[user-form.ts](../Admin/src/app/features/admin/users/pages/user-form/user-form.ts)
+- 行號：[user-form.ts:217](../Admin/src/app/features/admin/users/pages/user-form/user-form.ts#L217)
+- 行範圍：[user-form.ts:217-253](../Admin/src/app/features/admin/users/pages/user-form/user-form.ts#L217-L253)
+- 目錄：[users/](../Admin/src/app/features/admin/users/)
+```
+
+**禁止** 使用 backtick `` `code` `` 或 HTML tag 包檔名。
+
+---
+
+## 19. 一致性 Checklist（Code Review 用）
+
+新增頁面 / PR 提交前自我檢查：
+
+### 結構
+- [ ] 使用 Standalone Component（`standalone: true`）
+- [ ] 三層目錄 `models/` `pages/` `services/`
+- [ ] 路由用 `loadComponent` / `loadChildren` lazy load
+
+### 狀態 / 服務
+- [ ] Component 用 `signal()` 不用 `BehaviorSubject`
+- [ ] 用 `inject()` 注入，不用 constructor injection
+- [ ] HTTP 封裝在 service，component 不注入 `HttpClient`
+
+### 樣式
+- [ ] 所有 utility 來自 Tailwind 或 `@layer components`
+- [ ] **未引入** Bootstrap、Font Awesome、Material UI 等
+- [ ] icon 用 `<svg class="sa-icon">` + sprite，未內嵌路徑
+- [ ] 通知用 `ngx-toastr`，未自製 alert / modal
+
+### 排版
+- [ ] 容器寬度遵循 §3 表格
+- [ ] 卡片用 `card border-0 shadow-sm`，header 含 icon + 標題
+- [ ] 卡片之間 `mb-4`，最後一張無 margin
+- [ ] 控制流用 `@if` / `@for`，未用 `*ngIf` / `*ngFor`
+- [ ] `@for` 都加 `track`
+
+### 表單
+- [ ] Label 用 `form-label fw-500`，必填加紅星
+- [ ] 錯誤訊息僅在 `invalid && touched` 時顯示
+- [ ] FormArray 明細的刪除按鈕用 §7.2 標準（`btn-ghost-danger` + `#x`）
+
+### 檔案上傳
+- [ ] 圖檔走 `imageCompression.compress()` 壓縮
+- [ ] Size 上限 1 MB，超過時 toastr.error 提示
+- [ ] HR 敏感 PII 走授權 file proxy
+
+### 命名
+- [ ] 檔名 kebab-case，class PascalCase
+- [ ] interface 不加 `I` 前綴

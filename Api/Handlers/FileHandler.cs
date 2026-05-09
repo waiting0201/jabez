@@ -14,6 +14,9 @@ public sealed class FileHandler(IBlobStorageService blob, ILogger<FileHandler> l
     private const string SignatureContainer        = "signatures";
     private const string AvatarContainer           = "avatars";
     private const string IndigenousProofContainer  = "indigenous-proofs";
+    private const string LowIncomeProofContainer   = "low-income-proofs";
+    private const string DisabledProofContainer    = "disabled-proofs";
+    private const string IdCardContainer           = "id-cards";
 
     /// <summary>
     /// 代理讀取簽名檔圖片。
@@ -38,6 +41,30 @@ public sealed class FileHandler(IBlobStorageService blob, ILogger<FileHandler> l
     /// </summary>
     public Task<IActionResult> GetIndigenousProofAsync(string fileName)
         => GetFileAsync(IndigenousProofContainer, fileName, IsImageOrPdf);
+
+    /// <summary>
+    /// 代理讀取低收入戶證明文件（圖片或 PDF）。
+    /// 路由：GET /files/low-income-proofs/{fileName}
+    /// 此端點需要 JWT + users:read 權限（HR 敏感 PII，僅人事管理員可檢視）。
+    /// </summary>
+    public Task<IActionResult> GetLowIncomeProofAsync(string fileName)
+        => GetFileAsync(LowIncomeProofContainer, fileName, IsImageOrPdf);
+
+    /// <summary>
+    /// 代理讀取身心障礙手冊證明文件（圖片或 PDF）。
+    /// 路由：GET /files/disabled-proofs/{fileName}
+    /// 此端點需要 JWT + users:read 權限（HR 敏感 PII，僅人事管理員可檢視）。
+    /// </summary>
+    public Task<IActionResult> GetDisabledProofAsync(string fileName)
+        => GetFileAsync(DisabledProofContainer, fileName, IsImageOrPdf);
+
+    /// <summary>
+    /// 代理讀取身分證影本（圖片或 PDF）。
+    /// 路由：GET /files/id-cards/{fileName}
+    /// 此端點需要 JWT + users:read 權限（HR 敏感 PII，僅人事管理員可檢視）。
+    /// </summary>
+    public Task<IActionResult> GetIdCardAsync(string fileName)
+        => GetFileAsync(IdCardContainer, fileName, IsImageOrPdf);
 
     private Task<IActionResult> GetImageAsync(string container, string fileName)
         => GetFileAsync(container, fileName, IsImage);

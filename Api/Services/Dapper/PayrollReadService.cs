@@ -13,11 +13,14 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
         var prevMonthFirstDay = firstDay.AddMonths(-1);   // 假日活動獎金：歸屬於上個月 EndDate 的申請
 
         // 1. 查詢所有在職員工（有底薪、未離職或離職日在該月之後）
+        //    同時取出健保眷屬人數（HealthInsuranceDependents）與保費覆蓋欄位
         const string employeeSql = """
             SELECT u.Id AS EmployeeId, u.Name AS EmployeeName,
                    u.Email, u.SendPaySlip,
                    d.Name AS DepartmentName, jt.Name AS JobTitleName,
-                   u.HireDate, u.BaseSalary, u.MealAllowance, u.OvertimePay
+                   u.HireDate, u.BaseSalary, u.MealAllowance, u.OvertimePay,
+                   u.HealthInsuranceOverride, u.LaborInsuranceOverride,
+                   (SELECT COUNT(*) FROM HealthInsuranceDependents WHERE UserId = u.Id) AS DependentCount
             FROM Users u
             LEFT JOIN Departments d  ON u.DepartmentId = d.Id
             LEFT JOIN JobTitles jt   ON u.JobTitleId = jt.Id
@@ -139,19 +142,29 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             var bracket = brackets.FirstOrDefault(b => (decimal)b.SalaryBracket >= baseSalary)
                        ?? brackets.LastOrDefault();
 
+            decimal baseHealthIns = bracket is not null ? (decimal)bracket.HealthInsuranceEmployee : 0m;
             decimal fullLaborIns  = bracket is not null ? (decimal)bracket.LaborInsuranceEmployee  : 0m;
-            decimal healthIns     = bracket is not null ? (decimal)bracket.HealthInsuranceEmployee : 0m;
+
+            // 若員工有個別覆蓋值，以覆蓋值取代級距值（低收入戶 / 身心障礙補貼場景）
+            decimal overrideHealth = (decimal?)emp.HealthInsuranceOverride ?? baseHealthIns;
+            decimal overrideLabor  = (decimal?)emp.LaborInsuranceOverride  ?? fullLaborIns;
+
+            // 健保眷屬加成：健保費 × (1 + min(眷屬人數, 3))
+            // 最多計至 3 口眷屬，超過 3 口仍以 3 計
+            int  dependentCount  = (int)emp.DependentCount;
+            int  cappedN         = Math.Min(dependentCount, 3);
+            decimal healthIns    = Math.Round(overrideHealth * (1 + cappedN), 0);
 
             // 入職首月：勞保費按加保天數比例計算（月勞保費 ÷ 30 × 當月加保天數）
             // 健保費：入職當月收全月，不按比例
-            decimal laborIns = fullLaborIns;
+            decimal laborIns = overrideLabor;
             DateTime? hireDate = (DateTime?)emp.HireDate;
             if (hireDate.HasValue
                 && hireDate.Value.Year == year
                 && hireDate.Value.Month == month)
             {
                 int insuredDays = (lastDay - hireDate.Value).Days + 1;
-                laborIns = Math.Round(fullLaborIns / 30m * insuredDays, 0);
+                laborIns = Math.Round(overrideLabor / 30m * insuredDays, 0);
             }
 
             // 事假扣薪：日薪 × 事假天數（不給薪）；天數 = SUM(Hours) / 8，保留小數
@@ -210,7 +223,9 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 otherDeductionNote,
                 note,
                 netSalary,
-                leaveDetails.TryGetValue(empId, out var ld) ? ld : null));
+                leaveDetails.TryGetValue(empId, out var ld) ? ld : null,
+                dependentCount,
+                cappedN));
         }
 
         return new MonthlyPayrollDto(

@@ -27,7 +27,9 @@ public sealed record EmployeePayrollDto(
     string?   OtherDeductionNote,
     string?   Note,
     decimal   NetSalary,
-    LeaveDetailDto[]? LeaveDetails = null);
+    LeaveDetailDto[]? LeaveDetails     = null,
+    int               DependentCount   = 0,
+    int               CappedDependentCount = 0);
 
 /// <summary>請假明細（用於薪資頁面顯示）</summary>
 public sealed record LeaveDetailDto(

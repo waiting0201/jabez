@@ -28,7 +28,13 @@ public sealed record UserDto(
     string?   IndigenousProofUrl = null,
     decimal   AvatarPositionX = 50m,
     decimal   AvatarPositionY = 50m,
-    decimal   AvatarScale     = 1m);
+    decimal   AvatarScale     = 1m,
+    bool      IsLowIncome    = false,
+    string?   LowIncomeProofUrl  = null,
+    bool      IsDisabled     = false,
+    string?   DisabledProofUrl   = null,
+    decimal?  HealthInsuranceOverride = null,
+    decimal?  LaborInsuranceOverride  = null);
 
 public sealed record CreateUserRequest(
     string    Name,
@@ -47,7 +53,11 @@ public sealed record CreateUserRequest(
     bool      SendPaySlip   = false,
     Guid?     AgentUserId  = null,
     DateTime? Birthday     = null,
-    bool      IsIndigenous = false);
+    bool      IsIndigenous = false,
+    bool      IsLowIncome  = false,
+    bool      IsDisabled   = false,
+    decimal?  HealthInsuranceOverride = null,
+    decimal?  LaborInsuranceOverride  = null);
 
 /// <summary>輕量級使用者資料（供指定審核者下拉選單用，不需 users:read 權限）</summary>
 public sealed record UserLookupDto(
@@ -73,4 +83,8 @@ public sealed record UpdateUserRequest(
     bool?      SendPaySlip,
     Guid?      AgentUserId,
     DateTime?  Birthday,
-    bool?      IsIndigenous);
+    bool?      IsIndigenous,
+    bool?      IsLowIncome  = null,
+    bool?      IsDisabled   = null,
+    decimal?   HealthInsuranceOverride = null,
+    decimal?   LaborInsuranceOverride  = null);

@@ -42,6 +42,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<TravelPaymentRequestItem>   TravelPaymentRequestItems  { get; set; }
     public DbSet<AttendanceReminderLog>      AttendanceReminderLogs     { get; set; }
 
+    // HR 人事資料卡（1:1 EmployeeProfile + 9 子表）
+    public DbSet<EmployeeProfile>           EmployeeProfiles            { get; set; }
+    public DbSet<EducationRecord>           EducationRecords            { get; set; }
+    public DbSet<EmploymentHistoryRecord>   EmploymentHistoryRecords    { get; set; }
+    public DbSet<FamilyMember>             FamilyMembers               { get; set; }
+    public DbSet<ProfessionalTraining>     ProfessionalTrainings       { get; set; }
+    public DbSet<LanguageAbility>          LanguageAbilities           { get; set; }
+    public DbSet<JobTransferRecord>        JobTransferRecords          { get; set; }
+    public DbSet<RewardPunishmentRecord>   RewardPunishmentRecords     { get; set; }
+    public DbSet<SalaryAdjustmentRecord>   SalaryAdjustmentRecords     { get; set; }
+    public DbSet<HealthInsuranceDependent> HealthInsuranceDependents   { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // 自動套用 Configurations/ 下所有 IEntityTypeConfiguration<T>

@@ -26,6 +26,9 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.IndigenousProofUrl,
                 u.LineUserId, u.LineLinkedAt,
                 u.AvatarPositionX, u.AvatarPositionY, u.AvatarScale,
+                u.IsLowIncome, u.LowIncomeProofUrl,
+                u.IsDisabled, u.DisabledProofUrl,
+                u.HealthInsuranceOverride, u.LaborInsuranceOverride,
                 r.Id AS RoleId
             FROM Users u
             LEFT JOIN UserRoles ur  ON u.Id = ur.UserId
@@ -51,7 +54,11 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             string? IndigenousProofUrl,
             string? LineUserId, DateTime? LineLinkedAt,
             decimal AvatarPositionX, decimal AvatarPositionY, decimal AvatarScale,
-            DateTime CreatedAt, List<string> RoleIds)>();
+            DateTime CreatedAt,
+            bool IsLowIncome, string? LowIncomeProofUrl,
+            bool IsDisabled, string? DisabledProofUrl,
+            decimal? HealthInsuranceOverride, decimal? LaborInsuranceOverride,
+            List<string> RoleIds)>();
 
         foreach (var row in rows)
         {
@@ -70,7 +77,11 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     (string?)row.IndigenousProofUrl,
                     (string?)row.LineUserId, (DateTime?)row.LineLinkedAt,
                     (decimal)row.AvatarPositionX, (decimal)row.AvatarPositionY, (decimal)row.AvatarScale,
-                    (DateTime)row.CreatedAt, []);
+                    (DateTime)row.CreatedAt,
+                    (bool)row.IsLowIncome, (string?)row.LowIncomeProofUrl,
+                    (bool)row.IsDisabled, (string?)row.DisabledProofUrl,
+                    (decimal?)row.HealthInsuranceOverride, (decimal?)row.LaborInsuranceOverride,
+                    []);
 
             if (row.RoleId is not null)
                 dict[id].RoleIds.Add((string)row.RoleId);
@@ -90,7 +101,10 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.IsIndigenous,
             kv.Value.LineUserId, kv.Value.LineLinkedAt,
             kv.Value.IndigenousProofUrl,
-            kv.Value.AvatarPositionX, kv.Value.AvatarPositionY, kv.Value.AvatarScale));
+            kv.Value.AvatarPositionX, kv.Value.AvatarPositionY, kv.Value.AvatarScale,
+            kv.Value.IsLowIncome, kv.Value.LowIncomeProofUrl,
+            kv.Value.IsDisabled, kv.Value.DisabledProofUrl,
+            kv.Value.HealthInsuranceOverride, kv.Value.LaborInsuranceOverride));
     }
 
     /// <summary>輕量級使用者清單（供指定審核者下拉選單，不需 users:read 權限）</summary>
@@ -146,6 +160,9 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.IndigenousProofUrl,
                 u.LineUserId, u.LineLinkedAt,
                 u.AvatarPositionX, u.AvatarPositionY, u.AvatarScale,
+                u.IsLowIncome, u.LowIncomeProofUrl,
+                u.IsDisabled, u.DisabledProofUrl,
+                u.HealthInsuranceOverride, u.LaborInsuranceOverride,
                 r.Id AS RoleId
             FROM Users u
             INNER JOIN PagedIds pid ON u.Id = pid.Id
@@ -172,7 +189,11 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             string? IndigenousProofUrl,
             string? LineUserId, DateTime? LineLinkedAt,
             decimal AvatarPositionX, decimal AvatarPositionY, decimal AvatarScale,
-            DateTime CreatedAt, List<string> RoleIds)>();
+            DateTime CreatedAt,
+            bool IsLowIncome, string? LowIncomeProofUrl,
+            bool IsDisabled, string? DisabledProofUrl,
+            decimal? HealthInsuranceOverride, decimal? LaborInsuranceOverride,
+            List<string> RoleIds)>();
 
         foreach (var row in rows)
         {
@@ -191,7 +212,11 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     (string?)row.IndigenousProofUrl,
                     (string?)row.LineUserId, (DateTime?)row.LineLinkedAt,
                     (decimal)row.AvatarPositionX, (decimal)row.AvatarPositionY, (decimal)row.AvatarScale,
-                    (DateTime)row.CreatedAt, []);
+                    (DateTime)row.CreatedAt,
+                    (bool)row.IsLowIncome, (string?)row.LowIncomeProofUrl,
+                    (bool)row.IsDisabled, (string?)row.DisabledProofUrl,
+                    (decimal?)row.HealthInsuranceOverride, (decimal?)row.LaborInsuranceOverride,
+                    []);
 
             if (row.RoleId is not null)
                 dict[id].RoleIds.Add((string)row.RoleId);
@@ -211,7 +236,10 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.IsIndigenous,
             kv.Value.LineUserId, kv.Value.LineLinkedAt,
             kv.Value.IndigenousProofUrl,
-            kv.Value.AvatarPositionX, kv.Value.AvatarPositionY, kv.Value.AvatarScale));
+            kv.Value.AvatarPositionX, kv.Value.AvatarPositionY, kv.Value.AvatarScale,
+            kv.Value.IsLowIncome, kv.Value.LowIncomeProofUrl,
+            kv.Value.IsDisabled, kv.Value.DisabledProofUrl,
+            kv.Value.HealthInsuranceOverride, kv.Value.LaborInsuranceOverride));
 
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
         return new PagedResult<UserDto>(items, total, page, pageSize, Math.Max(1, totalPages));
@@ -232,6 +260,9 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.IndigenousProofUrl,
                 u.LineUserId, u.LineLinkedAt,
                 u.AvatarPositionX, u.AvatarPositionY, u.AvatarScale,
+                u.IsLowIncome, u.LowIncomeProofUrl,
+                u.IsDisabled, u.DisabledProofUrl,
+                u.HealthInsuranceOverride, u.LaborInsuranceOverride,
                 r.Id AS RoleId
             FROM Users u
             LEFT JOIN UserRoles ur  ON u.Id = ur.UserId
@@ -263,7 +294,10 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 (bool)row.IsIndigenous,
                 (string?)row.LineUserId, (DateTime?)row.LineLinkedAt,
                 (string?)row.IndigenousProofUrl,
-                (decimal)row.AvatarPositionX, (decimal)row.AvatarPositionY, (decimal)row.AvatarScale);
+                (decimal)row.AvatarPositionX, (decimal)row.AvatarPositionY, (decimal)row.AvatarScale,
+                (bool)row.IsLowIncome, (string?)row.LowIncomeProofUrl,
+                (bool)row.IsDisabled, (string?)row.DisabledProofUrl,
+                (decimal?)row.HealthInsuranceOverride, (decimal?)row.LaborInsuranceOverride);
 
             if (row.RoleId is not null)
                 roleIds.Add((string)row.RoleId);

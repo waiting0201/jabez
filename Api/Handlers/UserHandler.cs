@@ -63,10 +63,14 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
     private const string SignatureContainer        = "signatures";
     private const string AvatarContainer           = "avatars";
     private const string IndigenousProofContainer  = "indigenous-proofs";
+    private const string LowIncomeProofContainer   = "low-income-proofs";
+    private const string DisabledProofContainer    = "disabled-proofs";
+    private const string IdCardContainer           = "id-cards";
 
     private static readonly string[] AllowedSignatureTypes       = ["image/png", "image/jpeg", "image/gif", "image/webp"];
     private static readonly string[] AllowedAvatarTypes          = ["image/png", "image/jpeg", "image/gif", "image/webp"];
     private static readonly string[] AllowedIndigenousProofTypes = ["image/png", "image/jpeg", "application/pdf"];
+    private static readonly string[] AllowedProofTypes           = ["image/png", "image/jpeg", "application/pdf"];
 
     /// <summary>
     /// 處理檔案上傳的共用邏輯（新增/更新共用）。
@@ -179,6 +183,26 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         => HandleFileUploadAsync(files, "indigenousProof", IndigenousProofContainer, AllowedIndigenousProofTypes,
             "原住民證明文件僅支援 PNG、JPEG 圖片或 PDF 格式。", userId, existingUrl);
 
+    private Task<string?> HandleLowIncomeProofUploadAsync(IFormFileCollection files, Guid userId, string? existingUrl)
+    {
+        const long ProofMaxBytes = 1 * 1024 * 1024; // 1 MB
+        var file = files.GetFile("lowIncomeProof");
+        if (file is not null && file.Length > ProofMaxBytes)
+            throw AppException.BadRequest("上傳照片勿超過1MB");
+        return HandleFileUploadAsync(files, "lowIncomeProof", LowIncomeProofContainer, AllowedProofTypes,
+            "低收入戶證明文件僅支援 PNG、JPEG 圖片或 PDF 格式。", userId, existingUrl);
+    }
+
+    private Task<string?> HandleDisabledProofUploadAsync(IFormFileCollection files, Guid userId, string? existingUrl)
+    {
+        const long ProofMaxBytes = 1 * 1024 * 1024; // 1 MB
+        var file = files.GetFile("disabledProof");
+        if (file is not null && file.Length > ProofMaxBytes)
+            throw AppException.BadRequest("上傳照片勿超過1MB");
+        return HandleFileUploadAsync(files, "disabledProof", DisabledProofContainer, AllowedProofTypes,
+            "殘障身份證明文件僅支援 PNG、JPEG 圖片或 PDF 格式。", userId, existingUrl);
+    }
+
     // POST /api/users
     public async Task<IActionResult> CreateAsync(HttpRequest req)
     {
@@ -237,6 +261,10 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             AgentUserId   = Guid.TryParse(form["agentUserId"], out var aid) && aid != Guid.Empty ? aid : null,
             Birthday     = birthday,
             IsIndigenous = form["isIndigenous"] == "true",
+            IsLowIncome  = form["isLowIncome"] == "true",
+            IsDisabled   = form["isDisabled"] == "true",
+            HealthInsuranceOverride = decimal.TryParse(form["healthInsuranceOverride"], out var hio) ? hio : null,
+            LaborInsuranceOverride  = decimal.TryParse(form["laborInsuranceOverride"],  out var lio) ? lio : null,
             AvatarPositionX = ParseAvatarPosition(form["avatarPositionX"], 50m),
             AvatarPositionY = ParseAvatarPosition(form["avatarPositionY"], 50m),
             AvatarScale     = ParseAvatarScale(form["avatarScale"], 1m),
@@ -244,7 +272,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             UpdatedAt    = Clock.Now,
         };
 
-        // 處理檔案上傳：簽名檔、頭像、原住民證明
+        // 處理檔案上傳：簽名檔、頭像、原住民證明、低收入證明、殘障證明
         user.SignatureUrl = await HandleSignatureUploadAsync(form.Files, userId, null);
         user.Avatar       = await HandleAvatarUploadAsync(form.Files, userId, null);
 
@@ -253,6 +281,20 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             user.IndigenousProofUrl = await HandleIndigenousProofUploadAsync(form.Files, userId, null);
             if (user.IndigenousProofUrl is null)
                 throw AppException.BadRequest("勾選原住民身分時必須上傳證明文件。");
+        }
+
+        if (user.IsLowIncome)
+        {
+            user.LowIncomeProofUrl = await HandleLowIncomeProofUploadAsync(form.Files, userId, null);
+            if (user.LowIncomeProofUrl is null)
+                throw AppException.BadRequest("勾選低收入戶時必須上傳證明文件。");
+        }
+
+        if (user.IsDisabled)
+        {
+            user.DisabledProofUrl = await HandleDisabledProofUploadAsync(form.Files, userId, null);
+            if (user.DisabledProofUrl is null)
+                throw AppException.BadRequest("勾選殘障身份時必須上傳證明文件。");
         }
 
         db.Users.Add(user);
@@ -323,6 +365,14 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             user.Birthday = DateTime.TryParse(form["birthday"], out var bd) ? bd : null;
         if (form.ContainsKey("isIndigenous"))
             user.IsIndigenous = form["isIndigenous"] == "true";
+        if (form.ContainsKey("isLowIncome"))
+            user.IsLowIncome = form["isLowIncome"] == "true";
+        if (form.ContainsKey("isDisabled"))
+            user.IsDisabled = form["isDisabled"] == "true";
+        if (form.ContainsKey("healthInsuranceOverride"))
+            user.HealthInsuranceOverride = decimal.TryParse(form["healthInsuranceOverride"], out var hio) ? hio : null;
+        if (form.ContainsKey("laborInsuranceOverride"))
+            user.LaborInsuranceOverride = decimal.TryParse(form["laborInsuranceOverride"], out var lio) ? lio : null;
 
         // 處理簽名檔：removeSignature=true 表示刪除
         if (form["removeSignature"] == "true")
@@ -381,6 +431,48 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         if (user.IsIndigenous && string.IsNullOrEmpty(user.IndigenousProofUrl))
             throw AppException.BadRequest("勾選原住民身分時必須上傳證明文件。");
 
+        // 處理低收入戶證明：
+        // 1. 若 IsLowIncome 由 true → false：自動刪除證明檔
+        // 2. 若 removeLowIncomeProof=true：刪除
+        // 3. 否則依上傳檔案覆寫
+        // 4. 最後檢查：IsLowIncome=true 時必須有證明檔
+        if (!user.IsLowIncome)
+        {
+            await DeleteBlobByUrlAsync(LowIncomeProofContainer, user.LowIncomeProofUrl);
+            user.LowIncomeProofUrl = null;
+        }
+        else if (form["removeLowIncomeProof"] == "true")
+        {
+            await DeleteBlobByUrlAsync(LowIncomeProofContainer, user.LowIncomeProofUrl);
+            user.LowIncomeProofUrl = null;
+        }
+        else
+        {
+            user.LowIncomeProofUrl = await HandleLowIncomeProofUploadAsync(form.Files, guid, user.LowIncomeProofUrl);
+        }
+
+        if (user.IsLowIncome && string.IsNullOrEmpty(user.LowIncomeProofUrl))
+            throw AppException.BadRequest("勾選低收入戶時必須上傳證明文件。");
+
+        // 處理殘障身份證明（同上模式）
+        if (!user.IsDisabled)
+        {
+            await DeleteBlobByUrlAsync(DisabledProofContainer, user.DisabledProofUrl);
+            user.DisabledProofUrl = null;
+        }
+        else if (form["removeDisabledProof"] == "true")
+        {
+            await DeleteBlobByUrlAsync(DisabledProofContainer, user.DisabledProofUrl);
+            user.DisabledProofUrl = null;
+        }
+        else
+        {
+            user.DisabledProofUrl = await HandleDisabledProofUploadAsync(form.Files, guid, user.DisabledProofUrl);
+        }
+
+        if (user.IsDisabled && string.IsNullOrEmpty(user.DisabledProofUrl))
+            throw AppException.BadRequest("勾選殘障身份時必須上傳證明文件。");
+
         user.UpdatedAt = Clock.Now;
 
         // 更新 Roles
@@ -412,10 +504,17 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             throw AppException.Forbidden("Cannot delete the system super admin account.");
 
         // 先記下需清理的 Blob URL（DB 刪除後就拿不到了）；
-        // IndigenousProofUrl 屬 PII，不清理會造成已離職員工的個資長期殘留在 Storage
-        var avatarUrl    = user.Avatar;
-        var signatureUrl = user.SignatureUrl;
-        var proofUrl     = user.IndigenousProofUrl;
+        // 各類 PII 證明文件不清理會造成已離職員工的個資長期殘留在 Storage
+        var avatarUrl         = user.Avatar;
+        var signatureUrl      = user.SignatureUrl;
+        var proofUrl          = user.IndigenousProofUrl;
+        var lowIncomeUrl      = user.LowIncomeProofUrl;
+        var disabledUrl       = user.DisabledProofUrl;
+
+        // EmployeeProfile 身分證正反面需先從 DB 讀取，因 EF Cascade 會連帶刪除
+        var profile = await db.EmployeeProfiles.AsNoTracking().FirstOrDefaultAsync(p => p.UserId == guid);
+        var idCardFrontUrl = profile?.IdCardFrontUrl;
+        var idCardBackUrl  = profile?.IdCardBackUrl;
 
         db.Users.Remove(user);
         await db.SaveChangesAsync();
@@ -424,6 +523,10 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         await TryDeleteBlobAsync(AvatarContainer, avatarUrl);
         await TryDeleteBlobAsync(SignatureContainer, signatureUrl);
         await TryDeleteBlobAsync(IndigenousProofContainer, proofUrl);
+        await TryDeleteBlobAsync(LowIncomeProofContainer, lowIncomeUrl);
+        await TryDeleteBlobAsync(DisabledProofContainer, disabledUrl);
+        await TryDeleteBlobAsync(IdCardContainer, idCardFrontUrl);
+        await TryDeleteBlobAsync(IdCardContainer, idCardBackUrl);
 
         return new OkObjectResult(ApiResponse.Ok($"User '{id}' deleted."));
     }

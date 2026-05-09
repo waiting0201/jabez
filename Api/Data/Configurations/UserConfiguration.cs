@@ -46,6 +46,26 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.IndigenousProofUrl)
                .HasMaxLength(500);
 
+        // 低收入 / 殘障身份
+        builder.Property(u => u.IsLowIncome)
+               .HasDefaultValue(false);
+
+        builder.Property(u => u.LowIncomeProofUrl)
+               .HasMaxLength(500);
+
+        builder.Property(u => u.IsDisabled)
+               .HasDefaultValue(false);
+
+        builder.Property(u => u.DisabledProofUrl)
+               .HasMaxLength(500);
+
+        // 健保 / 勞保金額手動覆寫
+        builder.Property(u => u.HealthInsuranceOverride)
+               .HasColumnType("decimal(18,2)");
+
+        builder.Property(u => u.LaborInsuranceOverride)
+               .HasColumnType("decimal(18,2)");
+
         builder.Property(u => u.Status)
                .IsRequired()
                .HasMaxLength(20)
