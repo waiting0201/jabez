@@ -11,7 +11,10 @@ public sealed class ProjectReadService(IDbConnection db) : IProjectReadService
     private const string SelectSql = """
         SELECT p.Id, p.Code, p.Name, p.Status, p.StartDate, p.EndDate,
                p.DepartmentId, d.Name AS DepartmentName,
-               p.ReceivedAmount, p.ContractAmount, p.BusinessAmount,
+               ISNULL((SELECT SUM(s.DepositAmount)
+                       FROM ProjectPaymentSchedules s
+                       WHERE s.ProjectId = p.Id), 0) AS ReceivedAmount,
+               p.ContractAmount, p.BusinessAmount, p.RemainingAmount,
                p.GoogleDriveUrl, p.CreatedAt
         FROM Projects p
         LEFT JOIN Departments d ON p.DepartmentId = d.Id
@@ -130,6 +133,7 @@ public sealed class ProjectReadService(IDbConnection db) : IProjectReadService
         (decimal?)row.ReceivedAmount,
         (decimal?)row.ContractAmount,
         (decimal?)row.BusinessAmount,
+        (decimal?)row.RemainingAmount,
         (string?)row.GoogleDriveUrl,
         (DateTime)row.CreatedAt,
         schedules ?? []);

@@ -9,9 +9,9 @@ public class Project
     public DateTime  StartDate       { get; set; }
     public DateTime? EndDate         { get; set; }
     public int       DepartmentId    { get; set; }
-    public decimal?  ReceivedAmount  { get; set; }   // 實收金額（原 BudgetAmount）
-    public decimal?  ContractAmount  { get; set; }   // 契約金額（原 ActualAmount）
-    public decimal?  BusinessAmount  { get; set; }
+    public decimal?  ContractAmount  { get; set; }   // 契約金額
+    public decimal?  BusinessAmount  { get; set; }   // 業務執行金額
+    public decimal?  RemainingAmount { get; set; }   // 剩餘金額（系統導入時的契約剩餘預算）
     public string?   GoogleDriveUrl  { get; set; }
     public DateTime  CreatedAt       { get; set; }
 

@@ -81,19 +81,22 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader, 
         if (await db.Projects.AnyAsync(p => p.Code == body.Code))
             throw AppException.Conflict($"Project code '{body.Code}' is already in use.");
 
+        if (ValidateRemainingAmount(body.RemainingAmount, body.ContractAmount) is { } createErr)
+            return new BadRequestObjectResult(ApiResponse.Fail(createErr));
+
         var project = new Project
         {
-            Code           = body.Code.Trim(),
-            Name           = body.Name.Trim(),
-            Status         = body.Status ?? "active",
-            StartDate      = body.StartDate,
-            EndDate        = body.EndDate,
-            DepartmentId   = body.DepartmentId,
-            ReceivedAmount = body.ReceivedAmount,
-            ContractAmount = body.ContractAmount,
-            BusinessAmount = body.BusinessAmount,
-            GoogleDriveUrl = body.GoogleDriveUrl,
-            CreatedAt      = Clock.Now,
+            Code            = body.Code.Trim(),
+            Name            = body.Name.Trim(),
+            Status          = body.Status ?? "active",
+            StartDate       = body.StartDate,
+            EndDate         = body.EndDate,
+            DepartmentId    = body.DepartmentId,
+            ContractAmount  = body.ContractAmount,
+            BusinessAmount  = body.BusinessAmount,
+            RemainingAmount = body.RemainingAmount,
+            GoogleDriveUrl  = body.GoogleDriveUrl,
+            CreatedAt       = Clock.Now,
         };
 
         if (body.PaymentSchedules is { Count: > 0 })
@@ -145,9 +148,17 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader, 
                 return new BadRequestObjectResult(ApiResponse.Fail("指定的部門不存在。"));
             project.DepartmentId = body.DepartmentId.Value;
         }
-        if (body.ReceivedAmount.HasValue)     project.ReceivedAmount = body.ReceivedAmount;
         if (body.ContractAmount.HasValue)     project.ContractAmount = body.ContractAmount;
         if (body.BusinessAmount.HasValue)     project.BusinessAmount = body.BusinessAmount;
+
+        // 剩餘金額：以「合併後的契約金額」為比較基準（若本次有送 ContractAmount 用新值，否則用既有值）
+        var effectiveContract = body.ContractAmount ?? project.ContractAmount;
+        if (body.RemainingAmount.HasValue)
+        {
+            if (ValidateRemainingAmount(body.RemainingAmount, effectiveContract) is { } updateErr)
+                return new BadRequestObjectResult(ApiResponse.Fail(updateErr));
+            project.RemainingAmount = body.RemainingAmount;
+        }
         if (body.GoogleDriveUrl is not null)  project.GoogleDriveUrl = body.GoogleDriveUrl;
 
         // 請款期別明細：全量 Replace（刪除舊資料後依 payload 重建）
@@ -190,6 +201,15 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader, 
         await db.SaveChangesAsync();
 
         return new OkObjectResult(ApiResponse.Ok($"Project '{id}' deleted."));
+    }
+
+    /// <summary>剩餘金額驗證：負值或大於契約金額皆視為無效。回傳錯誤訊息（null = 通過）</summary>
+    private static string? ValidateRemainingAmount(decimal? remaining, decimal? contract)
+    {
+        if (!remaining.HasValue) return null;
+        if (remaining.Value < 0) return "剩餘金額不可為負數。";
+        if (contract.HasValue && remaining.Value > contract.Value) return "剩餘金額不可大於契約金額。";
+        return null;
     }
 
     /// <summary>把 DTO 轉成 Entity；若有 ProjectId（更新情境）一併填入</summary>

@@ -162,6 +162,124 @@
 }
 ```
 
+### 報表 / 列表搜尋列（Toolbar Filter Pattern）
+
+> **單一真相來源**：所有報表（出缺勤紀錄、加班紀錄、請款統計、專案水位表…）與需要多條件篩選的列表頁，**搜尋列一律採用此緊湊單列樣式**。**禁止再使用** 雙列 grid + 欄位上方 label 的舊版佈局。
+
+#### 結構規則
+
+- 容器：`<div class="px-4 py-3 border-b">` 放在卡片 `card-body p-0` 內最上方
+- 內層：**單一**橫列 `<div class="flex flex-wrap items-center gap-2">`，所有控件依「**篩選欄位 → 時段模式 pill → 日期/年月控件 → 篩選按鈕**」順序排列
+- **不得**使用欄位上方 `<label>`、不得使用 grid 佈局、不得多列堆疊（週期區間提示除外，見下）
+- 全部 select 用 `class="form-select"`、日期 input 用 `class="form-control"`，**統一**搭配 inline 寬度：
+
+  ```html
+  style="width: auto; min-width: 120px"   <!-- 一般 select（年份/月份/狀態）-->
+  style="width: auto; min-width: 140px"   <!-- 中等 select（付款狀態類）-->
+  style="width: auto; min-width: 160px"   <!-- 較長 select（員工/專案）-->
+  style="width: auto; min-width: 150px"   <!-- 日期 input -->
+  ```
+
+- 篩選按鈕固定為 `<button class="btn btn-primary" (click)="search()">篩選</button>`，**不**加 `w-full`
+
+#### 時段模式 pill（日 / 週 / 月）
+
+```html
+<div class="inline-flex border rounded-md overflow-hidden">
+  <button type="button" class="px-3 py-1.5 text-sm"
+          [class.bg-primary]="filterMode()==='day'" [class.text-white]="filterMode()==='day'"
+          (click)="filterMode.set('day')">日</button>
+  <button type="button" class="px-3 py-1.5 text-sm border-l border-r"
+          [class.bg-primary]="filterMode()==='week'" [class.text-white]="filterMode()==='week'"
+          (click)="filterMode.set('week')">週</button>
+  <button type="button" class="px-3 py-1.5 text-sm"
+          [class.bg-primary]="filterMode()==='month'" [class.text-white]="filterMode()==='month'"
+          (click)="filterMode.set('month')">月</button>
+</div>
+```
+
+- 不需要的頁面（如專案水位表）省略整個 pill
+- **禁止**前面加「時段：」label
+
+#### 週模式：左右翻頁 + 本週
+
+```html
+<button type="button" class="btn btn-outline px-2" title="上一週" (click)="shiftWeek(-7)">‹</button>
+<input type="date" class="form-control" style="width: auto; min-width: 150px"
+       [ngModel]="selectedWeekDate()" (ngModelChange)="selectedWeekDate.set($event)" />
+<button type="button" class="btn btn-outline px-2" title="下一週" (click)="shiftWeek(7)">›</button>
+<button type="button" class="btn btn-outline whitespace-nowrap" title="回到本週" (click)="resetToThisWeek()">本週</button>
+```
+
+#### 週次區間提示
+
+放在主橫列**外**、`px-4 py-3 border-b` 容器內、僅 week 模式顯示：
+
+```html
+@if (filterMode() === 'week' && weekRange(); as r) {
+  <div class="text-xs text-muted mt-2">第 {{ r.weekNumber }} 週（{{ r.dateFrom }} 一 ~ {{ r.dateTo }} 日）</div>
+}
+```
+
+#### 完整骨架範例
+
+```html
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+
+    <div class="px-4 py-3 border-b">
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- 1. 頁面專屬篩選（員工 / 專案 / 狀態 …）-->
+        <select class="form-select" style="width: auto; min-width: 160px"
+                [ngModel]="selectedEmployeeId()" (ngModelChange)="selectedEmployeeId.set($event)">
+          <option value="">全部員工</option>
+          @for (emp of employees(); track emp.id) {
+            <option [value]="emp.id">{{ emp.code }} {{ emp.name }}</option>
+          }
+        </select>
+
+        <!-- 2. 時段模式 pill（不需要時可省略）-->
+        <div class="inline-flex border rounded-md overflow-hidden">
+          <button type="button" class="px-3 py-1.5 text-sm"
+                  [class.bg-primary]="filterMode()==='day'" [class.text-white]="filterMode()==='day'"
+                  (click)="filterMode.set('day')">日</button>
+          <!-- 週 / 月 同上 -->
+        </div>
+
+        <!-- 3. 依 mode 顯示日期 / 年月 -->
+        @if (filterMode() === 'day') {
+          <input type="date" class="form-control" style="width: auto; min-width: 150px"
+                 [ngModel]="selectedDate()" (ngModelChange)="selectedDate.set($event)" />
+        } @else if (filterMode() === 'week') {
+          <!-- 上週 / 日期 / 下週 / 本週 -->
+        } @else {
+          <select class="form-select" style="width: auto; min-width: 120px" ...>年份</select>
+          <select class="form-select" style="width: auto; min-width: 120px" ...>月份</select>
+        }
+
+        <!-- 4. 篩選按鈕（最後）-->
+        <button class="btn btn-primary" (click)="search()">篩選</button>
+      </div>
+
+      @if (filterMode() === 'week' && weekRange(); as r) {
+        <div class="text-xs text-muted mt-2">第 {{ r.weekNumber }} 週（{{ r.dateFrom }} 一 ~ {{ r.dateTo }} 日）</div>
+      }
+    </div>
+
+    <!-- 表格 / 分頁 -->
+  </div>
+</div>
+```
+
+#### 已套用此 pattern 的頁面
+
+- [專案水位表](../Admin/src/app/features/admin/reports/pages/project-water-level/project-water-level.html) — 不需時段切換，最簡形式
+- [出缺勤紀錄](../Admin/src/app/features/admin/reports/pages/attendance-report/attendance-report.html) — 員工 + 時段
+- [加班紀錄](../Admin/src/app/features/admin/reports/pages/overtime-report/overtime-report.html) — 員工 + 專案 + 時段
+- [請款統計](../Admin/src/app/features/admin/reports/pages/payment-report/payment-report.html) — 付款狀態 + 時段
+
+> 新增報表 / 多條件列表頁時，**必須**先讀其中一份（推薦：加班紀錄，覆蓋最完整）作為範本，依此規範佈局，禁止自行設計 toolbar 樣式。
+
 ---
 
 ## 4. 卡片元件
@@ -978,6 +1096,7 @@ template / 文件中引用其他檔案時，使用相對路徑 markdown link：
 - [ ] 卡片之間 `mb-4`，最後一張無 margin
 - [ ] 控制流用 `@if` / `@for`，未用 `*ngIf` / `*ngFor`
 - [ ] `@for` 都加 `track`
+- [ ] 報表 / 多條件列表頁的搜尋列遵循 §3「報表 / 列表搜尋列（Toolbar Filter Pattern）」：單列 `flex flex-wrap`、無欄位 label、inline 寬度 select、`btn-primary` 篩選按鈕
 
 ### 表單
 - [ ] Label 用 `form-label fw-500`，必填加紅星

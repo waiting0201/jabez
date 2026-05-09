@@ -18,7 +18,10 @@ public sealed class ProjectWaterLevelHandler(
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
         var scope = await access.ResolveAsync(req.HttpContext.User);
-        var result = await reader.GetAllAsync(scope);
+        int? year = int.TryParse(req.Query["year"], out var y) ? y : null;
+        string? status = req.Query["status"];
+        if (string.IsNullOrWhiteSpace(status)) status = null;
+        var result = await reader.GetAllAsync(scope, year, status);
         return new OkObjectResult(ApiResponse.Ok(result));
     }
 }

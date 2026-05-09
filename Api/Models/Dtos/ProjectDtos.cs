@@ -9,9 +9,10 @@ public sealed record ProjectDto(
     DateTime? EndDate,
     int      DepartmentId,
     string?  DepartmentName,
-    decimal? ReceivedAmount,
+    decimal? ReceivedAmount,        // 衍生計算值：SUM(ProjectPaymentSchedules.DepositAmount)
     decimal? ContractAmount,
     decimal? BusinessAmount,
+    decimal? RemainingAmount,       // 剩餘金額（系統導入時的契約剩餘預算，非必填）
     string?  GoogleDriveUrl,
     DateTime CreatedAt,
     IReadOnlyList<ProjectPaymentScheduleDto> PaymentSchedules);
@@ -43,12 +44,12 @@ public sealed record CreateProjectRequest(
     string   Name,
     DateTime StartDate,
     int      DepartmentId,
-    DateTime? EndDate        = null,
-    string?  Status         = null,
-    decimal? ReceivedAmount = null,
-    decimal? ContractAmount = null,
-    decimal? BusinessAmount = null,
-    string?  GoogleDriveUrl = null,
+    DateTime? EndDate         = null,
+    string?  Status           = null,
+    decimal? ContractAmount   = null,
+    decimal? BusinessAmount   = null,
+    decimal? RemainingAmount  = null,
+    string?  GoogleDriveUrl   = null,
     IReadOnlyList<ProjectPaymentScheduleRequest>? PaymentSchedules = null);
 
 public sealed record UpdateProjectRequest(
@@ -58,8 +59,8 @@ public sealed record UpdateProjectRequest(
     DateTime? StartDate,
     DateTime? EndDate,
     int?      DepartmentId,
-    decimal?  ReceivedAmount,
     decimal?  ContractAmount,
     decimal?  BusinessAmount,
+    decimal?  RemainingAmount,
     string?   GoogleDriveUrl,
     IReadOnlyList<ProjectPaymentScheduleRequest>? PaymentSchedules);
