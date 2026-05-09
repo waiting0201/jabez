@@ -125,7 +125,9 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             // 廠商管理
             new Permission { Id = "71", Code = "vendors:read",   Name = "瀏覽",     Module = "廠商管理",   Description = "廠商管理" },
             new Permission { Id = "72", Code = "vendors:write",  Name = "新增/修改", Module = "廠商管理",   Description = "廠商管理" },
-            new Permission { Id = "73", Code = "vendors:delete", Name = "刪除",     Module = "廠商管理",   Description = "廠商管理" }
+            new Permission { Id = "73", Code = "vendors:delete", Name = "刪除",     Module = "廠商管理",   Description = "廠商管理" },
+            // LINE 整合
+            new Permission { Id = "74", Code = "line-quota:read", Name = "推播用量查詢", Module = "LINE 整合", Description = "查看 LINE Messaging API 月度推播用量（Dashboard 顯示）" }
         );
     }
 }

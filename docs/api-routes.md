@@ -195,7 +195,7 @@
 |--------|------|------|
 | GET | `/payroll?year=YYYY&month=MM` | 月薪計算（動態計算，不存 DB） |
 
-## LINE 綁定
+## LINE 綁定 / 推播用量
 
 | Method | Path | 說明 |
 |--------|------|------|
@@ -203,6 +203,7 @@
 | POST | `/line/bind` | 用 OAuth code 換取 LINE userId 並綁定 |
 | POST | `/line/unbind` | 解除 LINE 綁定 |
 | GET | `/line/binding-status` | 查詢當前用戶 LINE 綁定狀態 |
+| GET | `/line/quota` | 查詢 LINE Messaging API 月度推播用量（`type` / `limit` / `used` / `remaining`），需 `line-quota:read` 權限；Dashboard「LINE 推播用量」卡片使用 |
 
 ## 檔案代理（Blob Storage）
 

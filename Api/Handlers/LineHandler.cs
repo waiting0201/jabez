@@ -100,6 +100,19 @@ public sealed class LineHandler(
             new LineBindingStatusDto(false, null, false)));
     }
 
+    /// <summary>GET /line/quota — 查詢 LINE Messaging API 月度推播用量（已用 / 上限）。
+    /// 權限：line-quota:read（由 AppRouter.GetRequiredPermission 守門；Superadmin 自動通過）。
+    /// LINE API 失敗時回傳 success=false，前端顯示「載入中…」即可，不影響其他功能。</summary>
+    public async Task<IActionResult> GetQuotaAsync(HttpRequest req)
+    {
+        var quota = await lineService.GetMessageQuotaAsync();
+        if (quota is null)
+            return new ObjectResult(ApiResponse.Fail("無法取得 LINE 用量資訊（Token 無效或 LINE API 暫時不可用）。"))
+            { StatusCode = StatusCodes.Status502BadGateway };
+
+        return new OkObjectResult(ApiResponse.Ok(quota));
+    }
+
     /// <summary>GET /line/binding-status — 查詢當前用戶的 LINE 綁定狀態。</summary>
     public async Task<IActionResult> GetStatusAsync(HttpRequest req)
     {

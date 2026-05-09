@@ -353,6 +353,7 @@ public sealed class AppRouter(
             ("POST",   ["line", "bind"])             => await line.BindAsync(req),
             ("POST",   ["line", "unbind"])            => await line.UnbindAsync(req),
             ("GET",    ["line", "binding-status"])    => await line.GetStatusAsync(req),
+            ("GET",    ["line", "quota"])             => await line.GetQuotaAsync(req),
 
             // ── 404 ────────────────────────────────────────────────────────────
             _ => new NotFoundObjectResult(
@@ -564,6 +565,9 @@ public sealed class AppRouter(
             // Approval Tasks — 指定審核者不需要全域審核權限，改由 Handler 內部依步驟類型判斷
             // GET: 任何已登入使用者可查詢（SQL 已依職稱/指定審核過濾）
             // PATCH review: ReviewAsync 內部對非 UseApplicantDesignated 步驟仍要求 ApprovalTasksWrite
+
+            // LINE — bind / unbind / binding-status 為個人帳號操作，登入即可；quota 屬機敏營運資訊，需 line-quota:read
+            ("GET",    ["line", "quota"])                => PermissionCodes.LineQuotaRead,
 
             _ => null
         };

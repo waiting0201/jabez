@@ -276,7 +276,7 @@ Api/
 │   ├── AttendanceHandler.cs           # 打卡（上班/下班/加班開始/加班結束）
 │   ├── InsuranceBracketHandler.cs    # 勞健保級距 CRUD
 │   ├── PayrollHandler.cs             # 人事薪資查詢（月薪計算）
-│   ├── LineHandler.cs                # LINE 帳號綁定/解綁
+│   ├── LineHandler.cs                # LINE 帳號綁定/解綁 + 月度推播用量查詢（line-quota:read）
 │   ├── AttendanceReminderAdminHandler.cs # 打卡提醒手動觸發（Superadmin，除錯用）
 │   ├── AttendanceReminderLogHandler.cs   # 打卡提醒推播紀錄查詢（Superadmin）
 │   ├── SettingsHandler.cs
@@ -298,7 +298,7 @@ Api/
 │   ├── EscalationService.cs           # 簽核升級邏輯（上層部門主管遞迴 + 代理人）
 │   ├── EscalationResult.cs            # 升級結果 record
 │   ├── ILineService.cs               # LINE API 操作介面
-│   ├── LineService.cs                # LINE Platform REST API 封裝（token 換取 + 推播；回 PushResult）
+│   ├── LineService.cs                # LINE Platform REST API 封裝（token 換取 + 推播 + 月度 quota 查詢）
 │   ├── PushResult.cs                 # LINE 推播結果 record（含 ErrorCategory 分類）
 │   ├── LineFlexMessageBuilder.cs     # 6 種簽核通知 + 打卡提醒的 LINE Flex Message 模板
 │   ├── IAttendanceReminderService.cs # 打卡提醒服務介面

@@ -1,3 +1,5 @@
+using Jabez.Api.Models.Dtos;
+
 namespace Jabez.Api.Services;
 
 /// <summary>LINE Platform API 操作介面。</summary>
@@ -17,4 +19,10 @@ public interface ILineService
     /// 200 = 是好友（推播可用）；404 = 未加好友或已封鎖（推播不可用）。
     /// </summary>
     Task<bool> IsBotFriendAsync(string lineUserId);
+
+    /// <summary>
+    /// 查詢本月 LINE Messaging API 推播用量（同時呼叫 quota + consumption 兩支 API 並合併）。
+    /// 任一 API 失敗時回傳 null（caller 自行決定顯示方式）。
+    /// </summary>
+    Task<LineQuotaDto?> GetMessageQuotaAsync();
 }

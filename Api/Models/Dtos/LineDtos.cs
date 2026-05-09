@@ -8,3 +8,7 @@ public sealed record LineBindingStatusDto(bool IsBound, DateTime? LineLinkedAt, 
 
 /// <summary>LINE OAuth bind-url 回應。</summary>
 public sealed record LineBindUrlDto(string Url, string State);
+
+/// <summary>LINE 推播用量回應。
+/// Type=limited 時 Limit/Remaining 有值；Type=none（無上限方案）時皆為 null。</summary>
+public sealed record LineQuotaDto(string Type, int? Limit, int Used, int? Remaining);

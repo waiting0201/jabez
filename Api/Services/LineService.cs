@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Jabez.Api.Models.Dtos;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -180,6 +181,74 @@ public sealed class LineService : ILineService
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _messagingAccessToken);
         return await _http.SendAsync(request);
+    }
+
+    /// <inheritdoc />
+    public async Task<LineQuotaDto?> GetMessageQuotaAsync()
+    {
+        // 並行打 quota + consumption（兩支獨立 API，互不依賴），降低 Dashboard 載入延遲
+        var quotaTask       = SendQuotaRequestAsync("https://api.line.me/v2/bot/message/quota");
+        var consumptionTask = SendQuotaRequestAsync("https://api.line.me/v2/bot/message/quota/consumption");
+
+        try
+        {
+            await Task.WhenAll(quotaTask, consumptionTask);
+        }
+        catch
+        {
+            // 個別 task 的例外（network / timeout）已在 SendQuotaRequestAsync 內 log，這裡只需 fail-open 回 null
+            return null;
+        }
+
+        var quotaJson       = quotaTask.Result;
+        var consumptionJson = consumptionTask.Result;
+        if (quotaJson is null || consumptionJson is null) return null;
+
+        try
+        {
+            // quota: { "type": "limited" | "none", "value": <int> }
+            var type = quotaJson.Value.GetProperty("type").GetString() ?? "none";
+            int? limit = type == "limited" && quotaJson.Value.TryGetProperty("value", out var v) && v.ValueKind == JsonValueKind.Number
+                ? v.GetInt32()
+                : null;
+
+            // consumption: { "totalUsage": <int> }
+            int used = consumptionJson.Value.TryGetProperty("totalUsage", out var u) && u.ValueKind == JsonValueKind.Number
+                ? u.GetInt32()
+                : 0;
+
+            int? remaining = limit.HasValue ? Math.Max(0, limit.Value - used) : null;
+            return new LineQuotaDto(type, limit, used, remaining);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "LINE quota response 解析失敗");
+            return null;
+        }
+    }
+
+    /// <summary>共用 quota / consumption 取得邏輯。失敗時 log 並回 null（不丟例外）。</summary>
+    private async Task<JsonElement?> SendQuotaRequestAsync(string url)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _messagingAccessToken);
+
+            var resp = await _http.SendAsync(request);
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                _logger.LogWarning("LINE quota 查詢失敗：Url={Url} Status={Status} Body={Body}", url, resp.StatusCode, body);
+                return null;
+            }
+            return await resp.Content.ReadFromJsonAsync<JsonElement>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "LINE quota 查詢例外：Url={Url}", url);
+            return null;
+        }
     }
 
     /// <inheritdoc />
