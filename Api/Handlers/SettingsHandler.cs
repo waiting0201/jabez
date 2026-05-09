@@ -48,6 +48,8 @@ public sealed class SettingsHandler(AppDbContext db)
         if (body.WorkStartTime            is not null) entity.WorkStartTime            = body.WorkStartTime;
         if (body.WorkEndTime              is not null) entity.WorkEndTime              = body.WorkEndTime;
         if (body.MonthlyOvertimeLimit     is not null) entity.MonthlyOvertimeLimit     = body.MonthlyOvertimeLimit.Value;
+        if (body.ApprovalEmailEnabled     is not null) entity.ApprovalEmailEnabled     = body.ApprovalEmailEnabled.Value;
+        if (body.ApprovalLineEnabled      is not null) entity.ApprovalLineEnabled      = body.ApprovalLineEnabled.Value;
 
         await db.SaveChangesAsync();
 
@@ -68,5 +70,7 @@ public sealed class SettingsHandler(AppDbContext db)
         MaintenanceMessage:       e.MaintenanceMessage,
         WorkStartTime:            e.WorkStartTime,
         WorkEndTime:              e.WorkEndTime,
-        MonthlyOvertimeLimit:     e.MonthlyOvertimeLimit);
+        MonthlyOvertimeLimit:     e.MonthlyOvertimeLimit,
+        ApprovalEmailEnabled:     e.ApprovalEmailEnabled,
+        ApprovalLineEnabled:      e.ApprovalLineEnabled);
 }

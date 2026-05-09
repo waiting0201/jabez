@@ -41,6 +41,8 @@ public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting
             WorkStartTime            = "09:00",
             WorkEndTime              = "18:00",
             MonthlyOvertimeLimit     = 46,
+            ApprovalEmailEnabled     = true,
+            ApprovalLineEnabled      = true,
         });
     }
 }

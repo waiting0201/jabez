@@ -12,6 +12,12 @@
 | POST | `/auth/login` | 登入取得 JWT |
 | POST | `/auth/refresh` | 刷新 Token |
 
+## 認證（需 JWT）
+
+| Method | Path | 說明 |
+|--------|------|------|
+| POST | `/auth/change-password` | 已登入使用者修改密碼（驗證舊密碼後更新，並清除 `MustChangePassword` 旗標） |
+
 ## 使用者管理
 
 | Method | Path | 說明 |
@@ -21,6 +27,7 @@
 | GET | `/users/{id}` | 取得單一使用者 |
 | PUT/PATCH | `/users/{id}` | 更新使用者 |
 | DELETE | `/users/{id}` | 刪除使用者 |
+| POST | `/users/{id}/send-credentials` | 寄送帳號通知信並設置 `MustChangePassword = true`（預設密碼為生日 yyyyMMdd） |
 
 ## 角色與權限（僅 Superadmin）
 

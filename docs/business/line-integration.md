@@ -32,15 +32,18 @@
 
 `LineService.PushMessageAsync` 會偵測 LINE 回應 body，若發現「未加好友 / 已封鎖」錯誤，會以 `LogError` 明確記錄原因（其他錯誤維持 warning），方便排查。
 
-**8 種推播類型**：
+**9 種推播類型**：
 1. `BuildReviewerMessage` — 待審核通知
 2. `BuildApplicantResultMessage` — 審核結果（核准/退回/拒絕）
 3. `BuildSpecificReviewerMessage` — 指定/升級/代理審核者通知
-4. `BuildFinanceDeptMessage` — 財務撥款通知
+4. `BuildFinanceDeptMessage` — 財務撥款通知（最終核准請款 / 預支 / 出差預支 / 出差請款 時觸發）
 5. `BuildRefundMessage` — 預支沖銷超額通知
 6. `BuildTravelRefundMessage` — 出差沖銷超額通知
 7. `BuildApplicantPaidMessage` — 撥款完成通知申請人（請款 / 預支 / 出差預支 / 出差請款）
 8. `BuildApplicantRefundedMessage` — 退款完成通知申請人（預支 / 出差預支）
+9. `BuildAttendanceReminderMessage` — 上下班打卡提醒（cron 觸發，不受簽核通知開關影響）
+
+> **完整 Email × LINE 對照、開關控制範圍** → [notifications.md](notifications.md)
 
 ## 涉及元件
 
@@ -79,6 +82,7 @@
 
 ## 跨業務關聯
 
+- **完整通知清單（Email + LINE 對照、系統開關）** → [notifications.md](notifications.md)
 - **打卡提醒透過 LINE 推播**（含失敗分類） → [attendance-reminder.md](attendance-reminder.md)
 - **簽核通知觸發時機（撥款 / 退款 / 待審 / 結果）** → [approval-flow.md](approval-flow.md)
 - **API 端點清單**（4 個 LINE 端點） → [api-routes.md §LINE 綁定](../api-routes.md#line-綁定)

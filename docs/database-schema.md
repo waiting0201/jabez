@@ -42,7 +42,7 @@
 | `RequestDesignatedReviewer` | 申請人指定審核者清單（多人依序審核） |
 | `AttendanceRecord` | 出勤打卡紀錄（每人每天一筆，含 GPS） |
 | `AttendanceReminderLog` | 打卡提醒推播紀錄（BatchId 串聯同一次 tick；含 batchStart 紀錄、ErrorCategory 失敗分類、HttpStatusCode、DurationMs；Snapshot 欄位保留歷史） |
-| `SystemSetting` | 系統設定 |
+| `SystemSetting` | 系統設定（含站台 / 工時 / 通知）。`ApprovalEmailEnabled` / `ApprovalLineEnabled` 控制全域簽核通知開關（不影響帳號通知 / 薪資明細 / 打卡提醒） |
 | `InsuranceBracket` | 勞健保級距（投保級距、員工負擔勞保、員工負擔健保） |
 | `EmployeeProfile` | 員工人事資料卡 1:1 對 User（PK=UserId）；含員工代號 / 英文名 / 身分證號 / 性別 / 婚姻 / 出生地 / 行動電話 / 戶籍 / 通訊 / 緊急聯絡 / 銀行帳號 / 投保起日 / 扶養人 / 專長興趣 / 離職原因 / 身分證正反面影本 / 最高學歷證明 URL |
 | `EducationRecord` | 學歷紀錄（最高 / 次之 / 次之，校名 / 科系 / 畢肄業 / 起迄） |

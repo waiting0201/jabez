@@ -24,4 +24,10 @@ public class SystemSetting
     public string WorkStartTime            { get; set; } = "09:00";
     public string WorkEndTime              { get; set; } = "18:00";
     public int    MonthlyOvertimeLimit     { get; set; } = 46;
+
+    // ── 通知設定 ─────────────────────────────────────────────
+    /// <summary>是否寄送簽核流程相關 Email（待審核 / 結果 / 撥款 / 退款 / 財務）。</summary>
+    public bool   ApprovalEmailEnabled     { get; set; } = true;
+    /// <summary>是否推播簽核流程相關 LINE 訊息（範圍同 Email）。</summary>
+    public bool   ApprovalLineEnabled      { get; set; } = true;
 }

@@ -35,11 +35,44 @@
 - Superadmin 無法被編輯或刪除（API 端強制阻擋）
 - Mock login：dev 模式使用 `sa@system.local` 取得 Superadmin mock JWT
 
-## 預設密碼規則
+## 密碼規則
 
-- **新增使用者** → 預設密碼為使用者出生日期 `yyyyMMdd`（首次登入應強制改密碼，`User.MustChangePassword`）
+### 預設密碼
+
+- **新增使用者** → 預設密碼為使用者出生日期 `yyyyMMdd`（八碼數字）；建立時不會自動標記強制改密碼
 - **Seed Superadmin** → `Admin@123`（正式環境必須立即變更）
-- 雜湊用 BCrypt（[BCrypt.Net-Next](https://github.com/BcryptNet/bcrypt.net) NuGet）
+- 雜湊演算法：BCrypt（[BCrypt.Net-Next](https://github.com/BcryptNet/bcrypt.net) NuGet）
+
+### 修改密碼的觸發條件
+
+系統目前**僅有兩種**觸發修改密碼的情境：
+
+1. **使用者主動修改**
+   - 入口：頂部 Profile Dropdown → 「修改密碼」
+   - 路由：`/account/change-password`（無 `forced` 參數）
+   - 必須已登入（`authGuard`）
+
+2. **強制更換密碼（首次登入）**
+   - 觸發點：管理員在使用者管理頁面執行「寄出帳號通知信」（[UserHandler.cs](../Api/Handlers/UserHandler.cs) `SendCredentialsAsync`）
+   - 流程：
+     1. 後端設 `User.MustChangePassword = true`，並寄發帳號通知信（不在信中明文揭露密碼，僅告知「預設密碼為生日 yyyyMMdd」推導規則）
+     2. 員工以預設密碼登入，`/auth/login` 回應中夾帶 `must_change_password: true`
+     3. 前端登入頁 ([login.ts](../Admin/src/app/features/auth/pages/login/login.ts)) 偵測該旗標，強制導至 `/account/change-password?forced=1`
+     4. 修改成功後，後端自動把 `MustChangePassword` 改回 `false`
+
+> 寄通知信前後端會檢查使用者是否填有生日，否則拒絕操作（無生日 → 無法生成預設密碼）。
+
+### 修改密碼的驗證規則
+
+| 規則 | 強制位置 | 備註 |
+|------|---------|------|
+| 舊密碼、新密碼皆為必填 | 前端 + 後端 | 後端缺欄位回 400 |
+| 新密碼最少 **6 碼** | 前端 `Validators.minLength(6)` + 後端 [AuthHandler.cs](../Api/Handlers/AuthHandler.cs) `ChangePasswordAsync` | |
+| 舊密碼必須正確（BCrypt.Verify） | 後端 | 錯誤回 400「舊密碼不正確。」 |
+| 新密碼與確認密碼必須相同 | 前端 | 後端不檢查 |
+| **新密碼可與舊密碼相同** | — | 系統不阻擋使用者把新密碼設為與舊密碼相同（前後端皆無此驗證） |
+
+> 目前**未實作**：密碼複雜度（英數混用 / 大小寫 / 特殊字元）、密碼歷史檢查、密碼定期過期、忘記密碼 / 重設密碼流程。
 
 ## API 端點
 
@@ -47,6 +80,8 @@
 |--------|------|------|
 | POST | `/auth/login` | 登入取得 JWT（公開路由） |
 | POST | `/auth/refresh` | 刷新 Token（公開路由） |
+| POST | `/auth/change-password` | 已登入使用者修改密碼（需 JWT） |
+| POST | `/users/{id}/send-credentials` | 管理員寄帳號通知信並設置 `MustChangePassword = true` |
 
 完整 API 路由清單見 [api-routes.md](api-routes.md)。
 

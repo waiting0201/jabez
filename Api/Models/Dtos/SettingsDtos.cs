@@ -14,7 +14,9 @@ public sealed record SystemSettingsDto(
     string MaintenanceMessage,
     string WorkStartTime,
     string WorkEndTime,
-    int    MonthlyOvertimeLimit);
+    int    MonthlyOvertimeLimit,
+    bool   ApprovalEmailEnabled,
+    bool   ApprovalLineEnabled);
 
 public sealed record UpdateSettingsRequest(
     string? SiteName                 = null,
@@ -30,4 +32,6 @@ public sealed record UpdateSettingsRequest(
     string? MaintenanceMessage       = null,
     string? WorkStartTime            = null,
     string? WorkEndTime              = null,
-    int?    MonthlyOvertimeLimit     = null);
+    int?    MonthlyOvertimeLimit     = null,
+    bool?   ApprovalEmailEnabled     = null,
+    bool?   ApprovalLineEnabled      = null);

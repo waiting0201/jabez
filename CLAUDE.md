@@ -18,7 +18,7 @@
 │   ├── api-routes.md        # API 路由清單
 │   ├── database-schema.md   # 34 個 entity 清單
 │   ├── authentication.md    # JWT 規格 / 登入流程 / Superadmin
-│   └── business/            # 業務功能（10 個檔，每業務一檔）
+│   └── business/            # 業務功能（11 個檔，每業務一檔）
 │       ├── application-forms.md      # 9 種申請表類型總覽
 │       ├── leave-rules.md            # 請假規則
 │       ├── approval-flow.md          # 請款簽核流程
@@ -28,7 +28,8 @@
 │       ├── line-integration.md       # LINE 整合
 │       ├── attendance-reminder.md    # 打卡提醒
 │       ├── payroll-formula.md        # 薪資公式
-│       └── hr-profile.md             # 員工人事資料卡
+│       ├── hr-profile.md             # 員工人事資料卡
+│       └── notifications.md          # 通知系統清單（Email + LINE）
 └── Jabez.sln       # Visual Studio 方案檔
 ```
 
@@ -138,6 +139,7 @@ Bug 修復：
 - [attendance-reminder.md](docs/business/attendance-reminder.md) — TimerTrigger 打卡提醒 + 推播紀錄持久化
 - [payroll-formula.md](docs/business/payroll-formula.md) — 薪資 7 條公式 + 健保眷屬計算
 - [hr-profile.md](docs/business/hr-profile.md) — 員工人事資料卡（3 Tab + 9 子表 + 整批替換）
+- [notifications.md](docs/business/notifications.md) — 通知系統清單（9 種 Email + 9 種 LINE Flex Message + 系統開關 + 打卡提醒）
 
 ---
 
@@ -473,7 +475,7 @@ hotfix/*      # 緊急修復
 4. **[docs/frontend-design.md](docs/frontend-design.md)**：**只要前端的視覺 / 互動規範有任何調整**（新 pattern、按鈕樣式、icon 用法、表單佈局、明細列表、Tab 結構、檔案上傳流程、設計 token 增減等），**必須同步更新**該文件對應章節
 5. **[docs/backend-design.md](docs/backend-design.md)**：**只要後端的技術規範有任何調整**（新 Handler / Service 模式、DTO 命名、Dapper / EF Core 用法、Router 機制、JWT / 時區 / 檔案上傳規範、命名規則等），**必須同步更新**該文件對應章節
 6. **對應業務 / 參考檔**：
-   - 業務變動 → `docs/business/<對應>.md`（例如新增請假規則 → `leave-rules.md`、改簽核流程 → `approval-flow.md`、新通知類型 → `line-integration.md`）
+   - 業務變動 → `docs/business/<對應>.md`（例如新增請假規則 → `leave-rules.md`、改簽核流程 → `approval-flow.md`、新通知類型 → `notifications.md` + `line-integration.md`）
    - API 路由變動 → [docs/api-routes.md](docs/api-routes.md)
    - 資料表 / Entity 變動 → [docs/database-schema.md](docs/database-schema.md)
    - 認證機制變動 → [docs/authentication.md](docs/authentication.md)
@@ -486,6 +488,7 @@ hotfix/*      # 緊急修復
 > - 資料表 entity 清單 → [docs/database-schema.md](docs/database-schema.md)
 > - 認證機制 → [docs/authentication.md](docs/authentication.md)
 > - 業務功能 → [docs/business/](docs/business/) 對應檔
+> - 通知系統清單（Email + LINE） → [docs/business/notifications.md](docs/business/notifications.md)
 > - 業務導讀 / 文件導航 → CLAUDE.md（本檔）
 
 ### UI 樣式一致性 / 頁面排版規範

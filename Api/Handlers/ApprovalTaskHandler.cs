@@ -917,6 +917,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                         setReviewed();
                         await notifier.NotifyApplicantAsync(applicationType, applicationId,
                             applicantId.Value, "approved", reviewNote);
+                        if (IsFinanceApplicationType(applicationType))
+                            await notifier.NotifyFinanceDeptAsync(applicationId, applicantId.Value, applicationType);
                         return;
                     }
 
@@ -950,8 +952,12 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 setReviewed();
                 // 通知申請人：已核准
                 if (applicantId.HasValue)
+                {
                     await notifier.NotifyApplicantAsync(applicationType, applicationId,
                         applicantId.Value, "approved", reviewNote);
+                    if (IsFinanceApplicationType(applicationType))
+                        await notifier.NotifyFinanceDeptAsync(applicationId, applicantId.Value, applicationType);
+                }
             }
         }
         else if (action == "returned")
@@ -1116,4 +1122,14 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         var task = await reader.GetApprovalTaskByIdAsync(intId, "travel_write_off");
         return new OkObjectResult(ApiResponse.Ok(task, "出差申請已結案。"));
     }
+
+    /// <summary>
+    /// 判斷申請類型是否屬於財務撥款範疇（最終核准後需通知財務部進行撥款作業）。
+    /// 排除：leave / overtime / write_off / travel_write_off（沖銷類撥款已在預支階段完成，超額另由 Refund 通知處理）。
+    /// </summary>
+    private static bool IsFinanceApplicationType(string applicationType) =>
+        applicationType is "payment_request"
+                        or "advance"
+                        or "travel"
+                        or "travel_payment";
 }

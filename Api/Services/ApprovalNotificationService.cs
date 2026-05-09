@@ -32,6 +32,8 @@ public sealed class ApprovalNotificationService(
         {
             if (approvalItemId is null) return;
 
+            var (emailEnabled, lineEnabled) = await ReadNotificationFlagsAsync();
+
             var step = await db.ApprovalSteps
                 .AsNoTracking()
                 .FirstOrDefaultAsync(s => s.ApprovalItemId == approvalItemId && s.StepOrder == targetStepOrder);
@@ -92,9 +94,11 @@ public sealed class ApprovalNotificationService(
                 var siteUrl2 = await GetSiteUrlAsync();
                 var linkUrl2 = BuildReviewUrl(siteUrl2, applicationType, applicationId);
                 var body2    = BuildReviewerEmail(designatedReviewer.Name, applicantName, label2, applicationId, summary2, targetStepOrder, linkUrl2);
-                await emailService.SendAsync(designatedReviewer.Email!, subject2, body2);
+                if (emailEnabled)
+                    await emailService.SendAsync(designatedReviewer.Email!, subject2, body2);
                 await PushLineByEmailAsync(designatedReviewer.Email!,
-                    LineFlexMessageBuilder.BuildSpecificReviewerMessage(applicantName, label2, applicationId, summary2, "指定審核", linkUrl2));
+                    LineFlexMessageBuilder.BuildSpecificReviewerMessage(applicantName, label2, applicationId, summary2, "指定審核", linkUrl2),
+                    lineEnabled);
                 logger.LogInformation("已寄送指定審核通知：{Email}（{AppType} #{Id}）", designatedReviewer.Email, applicationType, applicationId);
                 return;
             }
@@ -178,9 +182,10 @@ public sealed class ApprovalNotificationService(
             foreach (var r in reviewers)
             {
                 var body = BuildReviewerEmail(r.Name, applicantName, label, applicationId, summary, targetStepOrder, linkUrl);
-                await emailService.SendAsync(r.Email!, subject, body);
+                if (emailEnabled)
+                    await emailService.SendAsync(r.Email!, subject, body);
 
-                if (lineMap.TryGetValue(r.Email!, out var lineUid))
+                if (lineEnabled && lineMap.TryGetValue(r.Email!, out var lineUid))
                 {
                     try
                     {
@@ -206,6 +211,8 @@ public sealed class ApprovalNotificationService(
     {
         try
         {
+            var (emailEnabled, lineEnabled) = await ReadNotificationFlagsAsync();
+
             var applicant = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == applicantId);
             if (applicant is null || string.IsNullOrEmpty(applicant.Email)) return;
 
@@ -231,9 +238,11 @@ public sealed class ApprovalNotificationService(
             var subject = $"[{tag}] 您的{label} #{applicationId} {tag}";
             var body    = BuildApplicantEmail(applicant.Name, label, applicationId, summary, desc, reviewNote, linkUrl, linkText);
 
-            await emailService.SendAsync(applicant.Email, subject, body);
+            if (emailEnabled)
+                await emailService.SendAsync(applicant.Email, subject, body);
             await PushLineByUserIdAsync(applicantId,
-                LineFlexMessageBuilder.BuildApplicantResultMessage(label, applicationId, action, reviewNote, linkUrl));
+                LineFlexMessageBuilder.BuildApplicantResultMessage(label, applicationId, action, reviewNote, linkUrl),
+                lineEnabled);
             logger.LogInformation("已寄送結果通知：{Email}（{AppType} #{Id} → {Action}）",
                 applicant.Email, applicationType, applicationId, action);
         }
@@ -250,6 +259,8 @@ public sealed class ApprovalNotificationService(
     {
         try
         {
+            var (emailEnabled, lineEnabled) = await ReadNotificationFlagsAsync();
+
             // 跨步驟同人去重：被通知者若已在歷史中審過，跳過通知（自動代簽由 ProcessReviewAsync 處理）
             var approvedIds = await GetApprovedReviewerIdsAsync(applicationType, applicationId);
             if (approvedIds.Contains(reviewerId))
@@ -272,10 +283,12 @@ public sealed class ApprovalNotificationService(
             var linkUrl = BuildReviewUrl(siteUrl, applicationType, applicationId);
             var body    = BuildReviewerEmail(reviewer.Name, applicantName, label, applicationId, summary, 1, linkUrl);
 
-            await emailService.SendAsync(reviewer.Email, subject, body);
+            if (emailEnabled)
+                await emailService.SendAsync(reviewer.Email, subject, body);
             var suffix = isDelegate ? "代理審核" : "升級審核";
             await PushLineByUserIdAsync(reviewerId,
-                LineFlexMessageBuilder.BuildSpecificReviewerMessage(applicantName, label, applicationId, summary, suffix, linkUrl));
+                LineFlexMessageBuilder.BuildSpecificReviewerMessage(applicantName, label, applicationId, summary, suffix, linkUrl),
+                lineEnabled);
             logger.LogInformation("已寄送升級審核通知：{Email}（{AppType} #{Id}）", reviewer.Email, applicationType, applicationId);
         }
         catch (Exception ex)
@@ -289,6 +302,8 @@ public sealed class ApprovalNotificationService(
     {
         try
         {
+            var (emailEnabled, lineEnabled) = await ReadNotificationFlagsAsync();
+
             var applicant = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == applicantId);
             var applicantName = applicant?.Name ?? "未知";
             var summary = await GetSummaryAsync(applicationType, applicationId);
@@ -327,9 +342,10 @@ public sealed class ApprovalNotificationService(
             foreach (var r in recipients)
             {
                 var body = BuildFinanceDeptEmail(r.Name, applicantName, applicationId, summary, linkUrl, label);
-                await emailService.SendAsync(r.Email!, subject, body);
+                if (emailEnabled)
+                    await emailService.SendAsync(r.Email!, subject, body);
 
-                if (finLineMap.TryGetValue(r.Email!, out var lineUid))
+                if (lineEnabled && finLineMap.TryGetValue(r.Email!, out var lineUid))
                 {
                     try
                     {
@@ -353,6 +369,8 @@ public sealed class ApprovalNotificationService(
     {
         try
         {
+            var (emailEnabled, lineEnabled) = await ReadNotificationFlagsAsync();
+
             var applicant = advance.SubmittedById.HasValue
                 ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == advance.SubmittedById.Value)
                 : null;
@@ -387,9 +405,10 @@ public sealed class ApprovalNotificationService(
             {
                 var body = BuildRefundEmail(r.Name, applicantName, advance.Id, advance.RequestNo,
                     advance.GrandTotal, refundAmount, linkUrl);
-                await emailService.SendAsync(r.Email!, subject, body);
+                if (emailEnabled)
+                    await emailService.SendAsync(r.Email!, subject, body);
 
-                if (refundLineMap.TryGetValue(r.Email!, out var lineUid))
+                if (lineEnabled && refundLineMap.TryGetValue(r.Email!, out var lineUid))
                 {
                     try
                     {
@@ -414,6 +433,8 @@ public sealed class ApprovalNotificationService(
     {
         try
         {
+            var (emailEnabled, lineEnabled) = await ReadNotificationFlagsAsync();
+
             var applicant = travel.EmployeeId.HasValue
                 ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == travel.EmployeeId.Value)
                 : null;
@@ -448,9 +469,10 @@ public sealed class ApprovalNotificationService(
             {
                 var body = BuildTravelRefundEmail(r.Name, applicantName, travel.Id,
                     travel.Destination, travel.GrandTotal, refundAmount, linkUrl);
-                await emailService.SendAsync(r.Email!, subject, body);
+                if (emailEnabled)
+                    await emailService.SendAsync(r.Email!, subject, body);
 
-                if (trvLineMap.TryGetValue(r.Email!, out var lineUid))
+                if (lineEnabled && trvLineMap.TryGetValue(r.Email!, out var lineUid))
                 {
                     try
                     {
@@ -476,6 +498,8 @@ public sealed class ApprovalNotificationService(
     {
         try
         {
+            var (emailEnabled, lineEnabled) = await ReadNotificationFlagsAsync();
+
             var applicant = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == applicantId);
             if (applicant is null || string.IsNullOrEmpty(applicant.Email)) return;
 
@@ -487,9 +511,11 @@ public sealed class ApprovalNotificationService(
             var subject = $"[已撥款] 您的{label} #{applicationId} 已撥款 — {amount:N0} 元";
             var body    = BuildApplicantPaidEmail(applicant.Name, label, applicationId, summary, amount, paidAt, linkUrl);
 
-            await emailService.SendAsync(applicant.Email, subject, body);
+            if (emailEnabled)
+                await emailService.SendAsync(applicant.Email, subject, body);
             await PushLineByUserIdAsync(applicantId,
-                LineFlexMessageBuilder.BuildApplicantPaidMessage(label, applicationId, amount, paidAt, linkUrl));
+                LineFlexMessageBuilder.BuildApplicantPaidMessage(label, applicationId, amount, paidAt, linkUrl),
+                lineEnabled);
             logger.LogInformation("已寄送撥款完成通知：{Email}（{AppType} #{Id}）",
                 applicant.Email, applicationType, applicationId);
         }
@@ -505,6 +531,8 @@ public sealed class ApprovalNotificationService(
     {
         try
         {
+            var (emailEnabled, lineEnabled) = await ReadNotificationFlagsAsync();
+
             var applicant = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == applicantId);
             if (applicant is null || string.IsNullOrEmpty(applicant.Email)) return;
 
@@ -516,9 +544,11 @@ public sealed class ApprovalNotificationService(
             var subject = $"[已退款] 您的{label} #{applicationId} 退款已匯款 — {refundAmount:N0} 元";
             var body    = BuildApplicantRefundedEmail(applicant.Name, label, applicationId, summary, refundAmount, refundedAt, linkUrl);
 
-            await emailService.SendAsync(applicant.Email, subject, body);
+            if (emailEnabled)
+                await emailService.SendAsync(applicant.Email, subject, body);
             await PushLineByUserIdAsync(applicantId,
-                LineFlexMessageBuilder.BuildApplicantRefundedMessage(label, applicationId, refundAmount, refundedAt, linkUrl));
+                LineFlexMessageBuilder.BuildApplicantRefundedMessage(label, applicationId, refundAmount, refundedAt, linkUrl),
+                lineEnabled);
             logger.LogInformation("已寄送退款完成通知：{Email}（{AppType} #{Id}）",
                 applicant.Email, applicationType, applicationId);
         }
@@ -701,9 +731,10 @@ public sealed class ApprovalNotificationService(
 
     // ── LINE 推播輔助 ──────────────────────────────────────────────────────────
 
-    /// <summary>根據 Email 查找 LineUserId 並推播（找不到或失敗靜默忽略）。</summary>
-    private async Task PushLineByEmailAsync(string email, object flexMessage)
+    /// <summary>根據 Email 查找 LineUserId 並推播（找不到或失敗靜默忽略）。enabled=false 時跳過。</summary>
+    private async Task PushLineByEmailAsync(string email, object flexMessage, bool enabled)
     {
+        if (!enabled) return;
         try
         {
             var lineUserId = await db.Users.AsNoTracking()
@@ -719,9 +750,10 @@ public sealed class ApprovalNotificationService(
         }
     }
 
-    /// <summary>根據 UserId 查找 LineUserId 並推播（找不到或失敗靜默忽略）。</summary>
-    private async Task PushLineByUserIdAsync(Guid userId, object flexMessage)
+    /// <summary>根據 UserId 查找 LineUserId 並推播（找不到或失敗靜默忽略）。enabled=false 時跳過。</summary>
+    private async Task PushLineByUserIdAsync(Guid userId, object flexMessage, bool enabled)
     {
+        if (!enabled) return;
         try
         {
             var lineUserId = await db.Users.AsNoTracking()
@@ -735,6 +767,16 @@ public sealed class ApprovalNotificationService(
         {
             logger.LogWarning(ex, "LINE 推播失敗（by userId）：{UserId}", userId);
         }
+    }
+
+    /// <summary>讀取系統開關（簽核通知 Email / LINE 是否啟用）。預設皆 true。</summary>
+    private async Task<(bool emailEnabled, bool lineEnabled)> ReadNotificationFlagsAsync()
+    {
+        var s = await db.SystemSettings.AsNoTracking()
+            .OrderBy(x => x.Id)
+            .Select(x => new { x.ApprovalEmailEnabled, x.ApprovalLineEnabled })
+            .FirstOrDefaultAsync();
+        return (s?.ApprovalEmailEnabled ?? true, s?.ApprovalLineEnabled ?? true);
     }
 
     // ── Email HTML 模板 ───────────────────────────────────────────────────────
