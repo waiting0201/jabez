@@ -66,7 +66,8 @@ export class PaymentPdfService {
       };
 
       const submitDate = fmtDT(task.submittedAt);
-      lv('受款人：', task.submittedBy, mx, y, true);
+      const payerLabel = d.paymentType === 'vendor' ? '請款人：' : '受款人：';
+      lv(payerLabel, task.submittedBy, mx, y, true);
       lv('申請日期：', submitDate, pw - mx - 55, y, true);
 
       // ── 明細表格 ──
