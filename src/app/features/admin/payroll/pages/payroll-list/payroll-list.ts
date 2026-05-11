@@ -46,6 +46,15 @@ export class PayrollList implements OnInit {
 
   employees = computed(() => this.payroll()?.employees ?? []);
 
+  /** 5 種加給總計（職務 + 主管 + 其他 + 調整差額 + 外派） */
+  totalAllowances(p: MonthlyPayroll): number {
+    return p.totalPositionAllowance
+         + p.totalDutyAllowance
+         + p.totalOtherAllowance
+         + p.totalAdjustmentDifference
+         + p.totalOverseasAllowance;
+  }
+
   onMonthChange(value: string) {
     const [y, m] = value.split('-').map(Number);
     if (y && m) {

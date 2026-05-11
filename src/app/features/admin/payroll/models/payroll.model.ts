@@ -25,6 +25,13 @@ export interface EmployeePayroll {
   note: string | null;
   netSalary: number;
   leaveDetails?: LeaveDetail[];
+  /** 5 種加給（同步自最新生效 SalaryAdjustmentRecord，計入 NetSalary） */
+  positionAllowance: number;
+  dutyAllowance: number;
+  /** 後端 DTO 名為 OtherAllowanceAmount 以避開與舊欄位衝突 */
+  otherAllowanceAmount: number;
+  adjustmentDifference: number;
+  overseasAllowance: number;
 }
 
 export interface LeaveDetail {
@@ -49,6 +56,11 @@ export interface MonthlyPayroll {
   totalSickLeaveDeduction: number;
   totalOtherDeduction: number;
   totalNetSalary: number;
+  totalPositionAllowance: number;
+  totalDutyAllowance: number;
+  totalOtherAllowance: number;
+  totalAdjustmentDifference: number;
+  totalOverseasAllowance: number;
 }
 
 export interface PayrollAdjustment {

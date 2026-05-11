@@ -47,7 +47,7 @@
 
   @if (payroll(); as p) {
     <!-- Summary Cards -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
       <div class="card border-0 shadow-sm text-center py-3">
         <div class="text-muted small">員工人數</div>
         <div class="fw-600 text-lg">{{ p.employees.length }}</div>
@@ -55,6 +55,10 @@
       <div class="card border-0 shadow-sm text-center py-3">
         <div class="text-muted small">底薪總計</div>
         <div class="fw-600 text-lg">{{ p.totalBaseSalary | number:'1.0-0' }}</div>
+      </div>
+      <div class="card border-0 shadow-sm text-center py-3">
+        <div class="text-muted small">加給總計</div>
+        <div class="fw-600 text-lg">{{ totalAllowances(p) | number:'1.0-0' }}</div>
       </div>
       <div class="card border-0 shadow-sm text-center py-3">
         <div class="text-muted small">假日津貼總計</div>

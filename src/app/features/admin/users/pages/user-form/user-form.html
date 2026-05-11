@@ -203,6 +203,47 @@
                     <input type="number" class="form-control" formControlName="overtimePay" placeholder="例如：0" min="0">
                   </div>
                 </div>
+                <!-- 5 種加給：自動同步自最新生效 SalaryAdjustmentRecord，亦可手動覆寫 -->
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">職務加給</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="positionAllowance" placeholder="例如：0" min="0">
+                  </div>
+                  <div class="text-muted small mt-1">由人事資料卡最新薪資紀錄同步</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">主管加給</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="dutyAllowance" placeholder="例如：0" min="0">
+                  </div>
+                  <div class="text-muted small mt-1">由人事資料卡最新薪資紀錄同步</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">其他加給</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="otherAllowance" placeholder="例如：0" min="0">
+                  </div>
+                  <div class="text-muted small mt-1">由人事資料卡最新薪資紀錄同步</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">調整差額</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="adjustmentDifference" placeholder="例如：0">
+                  </div>
+                  <div class="text-muted small mt-1">由人事資料卡最新薪資紀錄同步</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">外派加給</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="overseasAllowance" placeholder="例如：0" min="0">
+                  </div>
+                  <div class="text-muted small mt-1">由人事資料卡最新薪資紀錄同步</div>
+                </div>
                 <div class="col-12 col-md-4">
                   <label class="form-label fw-500">寄送薪資表</label>
                   <div class="form-check mt-2">
@@ -1099,7 +1140,7 @@
                   <!-- 薪資調整歷史 -->
                   <div class="fw-600 mb-2 text-[--text-secondary]">薪資調整歷史</div>
                   <div class="alert alert-info py-2 small mb-3">
-                    新增 / 編輯紀錄並儲存後，最新生效紀錄（≤ 今日）的底薪會自動同步至員工底薪欄位。
+                    新增 / 編輯紀錄並儲存後，最新生效紀錄（≤ 今日）的底薪、伙食費會自動同步至員工基本資料的對應欄位。
                   </div>
                   <div class="table-responsive mb-3">
                     <table class="table table-sm align-middle mb-0">

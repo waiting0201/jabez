@@ -149,6 +149,12 @@ export class UserForm implements OnInit {
     isDisabled:               [false],
     healthInsuranceOverride:  [null as number | null],
     laborInsuranceOverride:   [null as number | null],
+    // 加給（同步自最新薪資調整紀錄，可手動覆寫）
+    positionAllowance:        [null as number | null],
+    dutyAllowance:            [null as number | null],
+    otherAllowance:           [null as number | null],
+    adjustmentDifference:     [null as number | null],
+    overseasAllowance:        [null as number | null],
     // Tab 2 – HR profile
     hrProfile: this.fb.group({
       employeeNumber:       [''],
@@ -233,6 +239,11 @@ export class UserForm implements OnInit {
           isDisabled:   user.isDisabled ?? false,
           healthInsuranceOverride: user.healthInsuranceOverride ?? null,
           laborInsuranceOverride:  user.laborInsuranceOverride  ?? null,
+          positionAllowance:       user.positionAllowance       ?? null,
+          dutyAllowance:           user.dutyAllowance           ?? null,
+          otherAllowance:          user.otherAllowance          ?? null,
+          adjustmentDifference:    user.adjustmentDifference    ?? null,
+          overseasAllowance:       user.overseasAllowance       ?? null,
         });
         this.signatureUrl.set(user.signatureUrl ?? null);
         this.avatarUrl.set(user.avatar ?? null);
@@ -1109,6 +1120,12 @@ export class UserForm implements OnInit {
       isDisabled:               rest.isDisabled ?? false,
       healthInsuranceOverride:  rest.healthInsuranceOverride ?? undefined,
       laborInsuranceOverride:   rest.laborInsuranceOverride ?? undefined,
+      // 加給（5 種）
+      positionAllowance:        rest.positionAllowance        ?? undefined,
+      dutyAllowance:            rest.dutyAllowance            ?? undefined,
+      otherAllowance:           rest.otherAllowance           ?? undefined,
+      adjustmentDifference:     rest.adjustmentDifference     ?? undefined,
+      overseasAllowance:        rest.overseasAllowance        ?? undefined,
     };
 
     const obs = this.isEdit

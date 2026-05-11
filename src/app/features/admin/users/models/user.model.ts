@@ -42,6 +42,12 @@ export interface User {
   healthInsuranceOverride?: number | null;
   /** 勞保金額手動覆寫（null = 走 lookup） */
   laborInsuranceOverride?: number | null;
+  /** 加給（自動同步自最新生效 SalaryAdjustmentRecord，可手動覆寫） */
+  positionAllowance?: number | null;
+  dutyAllowance?: number | null;
+  otherAllowance?: number | null;
+  adjustmentDifference?: number | null;
+  overseasAllowance?: number | null;
   /** 頭像顯示參數（圓形裁切框內的位置 / 縮放） */
   avatarPositionX?: number;
   avatarPositionY?: number;
