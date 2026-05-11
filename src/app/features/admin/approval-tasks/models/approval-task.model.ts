@@ -61,6 +61,10 @@ export interface PaymentTaskDetail {
   vendorId?: number;
   vendorName?: string;
   vendorTaxId?: string;
+  vendorContactPerson?: string;
+  vendorPhone?: string;
+  vendorBankAccount?: string;
+  vendorAddress?: string;
 }
 
 export interface LeaveTaskDetail {

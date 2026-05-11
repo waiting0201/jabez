@@ -124,6 +124,47 @@ export class PaymentPdfService {
         body: bodyRows,
       });
 
+      // ── 受款人資訊（僅廠商請款顯示）──
+      if (d.paymentType === 'vendor') {
+        const dash = (v?: string | null) => (v?.trim() || '—');
+        const vendorTableY = (doc as any).lastAutoTable.finalY + 6;
+        autoTable(doc, {
+          startY: vendorTableY,
+          margin: {left: mx, right: mx, top: 20},
+          theme: 'grid',
+          styles: {
+            font: F,
+            fontSize: 9,
+            textColor: [...CIS.textPrimary],
+            lineColor: [...CIS.border],
+            lineWidth: 0.3,
+            cellPadding: {top: 3, bottom: 3, left: 4, right: 4},
+          },
+          headStyles: {
+            font: F,
+            fillColor: [...CIS.forest],
+            textColor: 255,
+            fontSize: 9.5,
+            fontStyle: 'bold',
+            halign: 'center',
+            cellPadding: {top: 4, bottom: 4, left: 4, right: 4},
+          },
+          columnStyles: {
+            0: {cellWidth: cw * 0.14, fontStyle: 'bold', halign: 'right', fillColor: [248, 250, 247]},
+            1: {cellWidth: cw * 0.36},
+            2: {cellWidth: cw * 0.14, fontStyle: 'bold', halign: 'right', fillColor: [248, 250, 247]},
+            3: {cellWidth: cw * 0.36},
+          },
+          head: [[{content: '受款人資訊', colSpan: 4, styles: {halign: 'center'}}]],
+          body: [
+            ['廠商名稱', dash(d.vendorName), '統　　編', dash(d.vendorTaxId)],
+            ['聯　絡　人', dash(d.vendorContactPerson), '聯絡電話', dash(d.vendorPhone)],
+            ['帳戶資料', {content: dash(d.vendorBankAccount), colSpan: 3} as any],
+            ['公司地址', {content: dash(d.vendorAddress), colSpan: 3} as any],
+          ],
+        });
+      }
+
       // ── 預計撥款日 / 撥款日 ──
       const tableEndY = (doc as any).lastAutoTable.finalY;
       y = tableEndY + 8;
