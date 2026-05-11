@@ -52,6 +52,17 @@
 
 ---
 
+## 請款單頂端人員標籤
+
+請款單 PDF 標題下方第一列左側顯示申請人姓名，標籤依 `paymentDetail.paymentType` 切換：
+
+| `paymentType` | 標籤 | 理由 |
+|---|---|---|
+| `vendor`（廠商請款） | **請款人：** | 實際受款人是廠商（顯示於下方「受款人資訊」區塊），這位是提出請款的員工 |
+| 其他（`general` / `travel` / `business_trip`） | **受款人：** | 員工本人即為受款人 |
+
+實作位置：[payment-pdf.service.ts](../../Admin/src/app/features/admin/payment-requests/services/payment-pdf.service.ts) `printPaymentRequest()` 內的 `payerLabel` 判斷。
+
 ## 請款單受款人資訊（廠商請款專用）
 
 請款單 PDF（[payment-pdf.service.ts](../../Admin/src/app/features/admin/payment-requests/services/payment-pdf.service.ts)）當 `paymentDetail.paymentType === 'vendor'` 時，會在明細表格下方、撥款日列上方額外渲染「受款人資訊」區塊：

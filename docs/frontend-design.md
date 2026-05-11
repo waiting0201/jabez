@@ -687,6 +687,30 @@ loadData(items: Item[]) {
 }
 ```
 
+### 9.1 列表雙徽章模式（審核狀態 + 業務狀態）
+
+列表頁的「簽核狀態」欄當需要同時呈現**審核進度**與**後續業務進度**時，採雙徽章排版：
+
+- 左：審核狀態徽章（沿用 `APPROVAL_STATUS_CLASSES`）
+- 右：業務狀態徽章（透過 component method 計算，只在特定 `approvalStatus` 下出現）
+
+包在 `<div class="flex flex-wrap items-center gap-1">` 中，窄螢幕會自動換行；不顯示第二徽章時版面不變。
+
+**已採用範例：**
+
+| 列表 | 業務狀態 | 觸發條件 |
+|---|---|---|
+| [advance-list](../Admin/src/app/features/admin/advance-requests/pages/advance-list/advance-list.html) | `已結案` | `isClosed === true` |
+| [payment-list](../Admin/src/app/features/admin/payment-requests/pages/payment-list/payment-list.html) | `待撥款` / `已撥款` | `approvalStatus ∈ {pending, approved}`，再依 `paidAt` 是否填入決定 |
+
+業務狀態徽章建議色：
+
+| 語意 | class |
+|---|---|
+| 進行中 / 待處理 | `bg-warning-subtle text-warning-emphasis` |
+| 完成 / 已結束 | `bg-primary-subtle text-primary`（CIS 森林綠，與 success 綠形成深淺差別） |
+| 中性附註 | `bg-secondary-subtle text-secondary` |
+
 ---
 
 ## 10. Icon 系統
