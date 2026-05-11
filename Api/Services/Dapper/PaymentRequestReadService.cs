@@ -346,6 +346,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                    sub.Name AS SubmittedBy, sub.SignatureUrl AS SubmittedBySignatureUrl, pr.CreatedAt, pr.ReviewedAt, pr.ReviewNote,
                    pr.Reason,
                    pr.VendorId, ven.Name AS VendorName, ven.TaxId AS VendorTaxId,
+                   ven.ContactPerson AS VendorContactPerson, ven.Phone AS VendorPhone,
+                   ven.BankAccount AS VendorBankAccount, ven.Address AS VendorAddress,
                    paidby.SignatureUrl AS PaidBySignatureUrl,
                    ii.Id AS InvId, ii.FileName, ii.InvoiceNo, ii.Amount AS InvAmount, ii.ItemName AS InvItemName, ii.Note AS InvNote, ii.FileUrl AS InvFileUrl, ii.InvoiceDate AS InvInvoiceDate
             FROM PaymentRequests pr
@@ -814,7 +816,11 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (string?)x.pr.PaidBySignatureUrl,
                 (int?)x.pr.VendorId,
                 (string?)x.pr.VendorName,
-                (string?)x.pr.VendorTaxId),
+                (string?)x.pr.VendorTaxId,
+                (string?)x.pr.VendorContactPerson,
+                (string?)x.pr.VendorPhone,
+                (string?)x.pr.VendorBankAccount,
+                (string?)x.pr.VendorAddress),
             null, null, null, null, null, null,
             GetRecords("payment_request", (int)x.pr.Id),
             GetDesignatedReviewers("payment_request", (int)x.pr.Id),

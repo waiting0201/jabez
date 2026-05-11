@@ -52,6 +52,31 @@
 
 ---
 
+## 請款單受款人資訊（廠商請款專用）
+
+請款單 PDF（[payment-pdf.service.ts](../../Admin/src/app/features/admin/payment-requests/services/payment-pdf.service.ts)）當 `paymentDetail.paymentType === 'vendor'` 時，會在明細表格下方、撥款日列上方額外渲染「受款人資訊」區塊：
+
+| 欄位 | 來源（Vendor 實體） |
+|------|--------------------|
+| 廠商名稱 | `Name` |
+| 統編     | `TaxId` |
+| 聯絡人   | `ContactPerson` |
+| 聯絡電話 | `Phone` |
+| 帳戶資料 | `BankAccount`（存摺封面圖不嵌入） |
+| 公司地址 | `Address` |
+
+空值統一顯示「—」。其他請款類型（`travel` / `general` / `business_trip`）**不**渲染此區塊，版面保持原狀。
+
+資料管線：
+
+| 層級 | 檔案 |
+|------|------|
+| SQL JOIN | [PaymentRequestReadService.cs](../../Api/Services/Dapper/PaymentRequestReadService.cs) `paymentSql` 已 JOIN `Vendors`，新增 4 個欄位（ContactPerson / Phone / BankAccount / Address）|
+| DTO      | [PaymentRequestDtos.cs](../../Api/Models/Dtos/PaymentRequestDtos.cs) `PaymentTaskDetailDto` |
+| 前端 model | [approval-task.model.ts](../../Admin/src/app/features/admin/approval-tasks/models/approval-task.model.ts) `PaymentTaskDetail` |
+
+---
+
 ## 跨業務關聯
 
 - **簽核流程主軸**（簽核步驟、狀態、指定審核） → [approval-flow.md](approval-flow.md)

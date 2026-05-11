@@ -131,9 +131,13 @@ public sealed record PaymentTaskDetailDto(
     DateTime?        PaidAt,
     string?          Reason = null,
     string?          PaidBySignatureUrl = null,
-    int?             VendorId    = null,
-    string?          VendorName  = null,
-    string?          VendorTaxId = null);
+    int?             VendorId             = null,
+    string?          VendorName           = null,
+    string?          VendorTaxId          = null,
+    string?          VendorContactPerson  = null,
+    string?          VendorPhone          = null,
+    string?          VendorBankAccount    = null,
+    string?          VendorAddress        = null);
 
 public sealed record LeaveTaskDetailDto(
     int      LeaveRequestId,
