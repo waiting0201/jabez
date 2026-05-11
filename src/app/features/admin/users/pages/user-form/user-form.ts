@@ -463,7 +463,7 @@ export class UserForm implements OnInit {
   private _jobTransferGroup(r?: any) {
     return this.fb.group({
       id:             [r?.id ?? null],
-      effectiveDate:  [r?.effectiveDate?.slice(0, 10) ?? ''],
+      effectiveDate:  [r?.effectiveDate?.slice(0, 10) ?? '', Validators.required],
       fromDepartment: [r?.fromDepartment ?? ''],
       toDepartment:   [r?.toDepartment ?? ''],
       fromJobTitle:   [r?.fromJobTitle ?? ''],
@@ -476,7 +476,7 @@ export class UserForm implements OnInit {
   private _rewardGroup(r?: any) {
     return this.fb.group({
       id:            [r?.id ?? null],
-      effectiveDate: [r?.effectiveDate?.slice(0, 10) ?? ''],
+      effectiveDate: [r?.effectiveDate?.slice(0, 10) ?? '', Validators.required],
       type:          [r?.type ?? 'reward'],
       category:      [r?.category ?? ''],
       count:         [r?.count ?? null],
@@ -489,7 +489,7 @@ export class UserForm implements OnInit {
   private _salaryGroup(r?: any) {
     return this.fb.group({
       id:                   [r?.id ?? null],
-      effectiveDate:        [r?.effectiveDate?.slice(0, 10) ?? ''],
+      effectiveDate:        [r?.effectiveDate?.slice(0, 10) ?? '', Validators.required],
       baseSalary:           [r?.baseSalary ?? null],
       positionAllowance:    [r?.positionAllowance ?? null],
       dutyAllowance:        [r?.dutyAllowance ?? null],
@@ -1061,6 +1061,18 @@ export class UserForm implements OnInit {
   // submit
   // ═══════════════════════════════════════════════
   submit() {
+    // HR 子表「生效日期」必填驗證（職務調動 / 獎懲 / 薪資調整）
+    // 後端 DTO 的 EffectiveDate 為非 nullable DateTime，未填會讓 JSON 反序列化失敗。
+    // 在送出前主動檢查並將 user 帶到 HR Tab，給予明確訊息，避免出現「請求內容格式不正確」。
+    const hrMissing = this._findMissingHrEffectiveDates();
+    if (hrMissing) {
+      this.activeTab.set('hr');
+      this.form.markAllAsTouched();
+      this.errorMsg.set(hrMissing);
+      this.toastr.warning(hrMissing, '人事資料未完成');
+      return;
+    }
+
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -1154,9 +1166,38 @@ export class UserForm implements OnInit {
     return false;
   }
 
+  /**
+   * 找出未填生效日期的 HR 子表（職務調動 / 獎懲 / 薪資調整）。
+   * 回傳 null 代表全部 OK；回傳字串代表錯誤訊息（供 errorMsg + toastr）。
+   * 後端 DTO 的 EffectiveDate 是非 nullable DateTime，沒填會 JSON 反序列化失敗。
+   */
+  private _findMissingHrEffectiveDates(): string | null {
+    const missing: string[] = [];
+    const has = (arr: FormArray) =>
+      arr.controls.some(c => !c.get('effectiveDate')?.value);
+    if (has(this.jobTransferArray)) missing.push('職務調動');
+    if (has(this.rewardArray))      missing.push('獎懲');
+    if (has(this.salaryArray))      missing.push('薪資調整');
+    if (missing.length === 0) return null;
+    return `請填寫 ${missing.join('、')} 的「生效日期」，或刪除未使用的列。`;
+  }
+
   private _saveHrProfile(userId: string) {
     const hrVal = this.form.get('hrProfile')!.value as any;
     const depsVal = (this.form.get('healthDependents') as FormArray).value as any[];
+
+    // 薪資紀錄補上 totalAmount（後端 DTO 為非 nullable decimal，表單未提供 → 由各項加總補上）
+    const salaries = (hrVal.salaryAdjustmentRecords as any[] ?? []).map(r => ({
+      ...r,
+      totalAmount:
+        (r.baseSalary           ?? 0) +
+        (r.positionAllowance    ?? 0) +
+        (r.dutyAllowance        ?? 0) +
+        (r.otherAllowance       ?? 0) +
+        (r.adjustmentDifference ?? 0) +
+        (r.overseasAllowance    ?? 0) +
+        (r.mealAllowance        ?? 0),
+    }));
 
     const profilePayload: any = {
       employeeNumber:        hrVal.employeeNumber || null,
@@ -1185,7 +1226,7 @@ export class UserForm implements OnInit {
       languageAbilities:           hrVal.languageAbilities,
       jobTransferRecords:          hrVal.jobTransferRecords,
       rewardPunishmentRecords:     hrVal.rewardPunishmentRecords,
-      salaryAdjustmentRecords:     hrVal.salaryAdjustmentRecords,
+      salaryAdjustmentRecords:     salaries,
       healthInsuranceDependents:   depsVal,
     };
 

@@ -1022,7 +1022,10 @@
                       <tbody formArrayName="jobTransferRecords">
                         @for (ctrl of jobTransferControls; track $index; let i = $index) {
                           <tr [formGroupName]="i">
-                            <td><input type="date" class="form-control form-control-sm" formControlName="effectiveDate"></td>
+                            <td>
+                              <input type="date" class="form-control form-control-sm" formControlName="effectiveDate"
+                                     [class.is-invalid]="ctrl.get('effectiveDate')?.invalid && ctrl.get('effectiveDate')?.touched">
+                            </td>
                             <td><input type="text" class="form-control form-control-sm" formControlName="fromDepartment" placeholder="原部門"></td>
                             <td><input type="text" class="form-control form-control-sm" formControlName="toDepartment" placeholder="新部門"></td>
                             <td><input type="text" class="form-control form-control-sm" formControlName="fromJobTitle" placeholder="原職稱"></td>
@@ -1062,7 +1065,10 @@
                       <tbody formArrayName="rewardPunishmentRecords">
                         @for (ctrl of rewardControls; track $index; let i = $index) {
                           <tr [formGroupName]="i">
-                            <td><input type="date" class="form-control form-control-sm" formControlName="effectiveDate"></td>
+                            <td>
+                              <input type="date" class="form-control form-control-sm" formControlName="effectiveDate"
+                                     [class.is-invalid]="ctrl.get('effectiveDate')?.invalid && ctrl.get('effectiveDate')?.touched">
+                            </td>
                             <td>
                               <select class="form-select form-select-sm" formControlName="type">
                                 <option value="reward">獎勵</option>
@@ -1115,7 +1121,10 @@
                       <tbody formArrayName="salaryAdjustmentRecords">
                         @for (ctrl of salaryControls; track $index; let i = $index) {
                           <tr [formGroupName]="i">
-                            <td><input type="date" class="form-control form-control-sm" formControlName="effectiveDate"></td>
+                            <td>
+                              <input type="date" class="form-control form-control-sm" formControlName="effectiveDate"
+                                     [class.is-invalid]="ctrl.get('effectiveDate')?.invalid && ctrl.get('effectiveDate')?.touched">
+                            </td>
                             <td><input type="number" class="form-control form-control-sm" formControlName="baseSalary" placeholder="0" min="0" style="min-width: 80px"></td>
                             <td><input type="number" class="form-control form-control-sm" formControlName="positionAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
                             <td><input type="number" class="form-control form-control-sm" formControlName="dutyAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
