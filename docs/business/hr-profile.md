@@ -13,7 +13,7 @@
 - **Tab 2 / 3 lazy load**：第一次切到才呼叫 `GET /users/{id}/profile`；新增模式（尚未建立員工）兩個 Tab disabled
 - **整批替換**：PUT 把 9 張子表（學歷 / 經歷 / 家庭 / 訓練 / 語言 / 職務調整 / 獎懲 / 薪資調整 / 健保眷屬）整批 `ExecuteDelete` 後 INSERT 新傳入清單
 - **最高學歷證明**：與身分證影本同 multipart 機制，附在 `EmployeeProfile` 主表（`HighestEducationProofUrl`，非每筆學歷各掛附件），blob 命名 `{userId}_education{ext}`，前端使用 `ImageCompressionService.compress` 壓縮（圖片 maxSize=1600 quality=0.85；PDF passthrough），1MB 上限
-- **薪資自動同步**：插入完所有 `SalaryAdjustmentRecord` 後，找 `EffectiveDate <= 今日(Asia/Taipei)` 中 `EffectiveDate` 最大的那一筆，把該筆 `BaseSalary` 寫回 `User.BaseSalary`；無符合則不變
+- **薪資自動同步**：插入完所有 `SalaryAdjustmentRecord` 後，找 `EffectiveDate <= 今日(Asia/Taipei)` 中 `EffectiveDate` 最大的那一筆，把該筆 7 個金額欄位寫回 `User`：`BaseSalary`、`MealAllowance`、`PositionAllowance`（職務加給）、`DutyAllowance`（主管加給）、`OtherAllowance`（其他加給）、`AdjustmentDifference`（調整差額）、`OverseasAllowance`（外派加給）；無符合則不變。同步後人事薪資計算自動納入。
 - **2 寸彩照**：hr.doc 上「黏貼 2 吋彩照」欄位**不做**（也不重用 `User.Avatar`）
 - **PDF 列印**：編輯頁 header 提供「列印人事資料卡」按鈕，呼叫 [hr-profile-pdf.service.ts](../../Admin/src/app/features/admin/users/services/hr-profile-pdf.service.ts) 輸出三頁 A4 PDF（純前端 jsPDF）
 
@@ -35,7 +35,7 @@
 ## 跨業務關聯
 
 - **健保眷屬數影響薪資公式（最多計 3 口）** → [payroll-formula.md](payroll-formula.md)
-- **薪資調整紀錄同步 BaseSalary** → [payroll-formula.md](payroll-formula.md)
+- **薪資調整紀錄同步 7 個薪資欄位（底薪 / 伙食費 + 5 加給） → User → Payroll 完整連動規則 + 加 / 改 / 刪欄位 Checklist** → [payroll-formula.md §薪資欄位連動規則](payroll-formula.md#薪資欄位連動規則重要--避免遺忘)
 - **健保 / 勞保覆寫值優先級 fallback 級距表** → [payroll-formula.md](payroll-formula.md)
 - **HR Tab 9 張子表整批替換流程**（後端 transaction 寫入） → [backend-design.md §6.2 EF Core 寫入](../backend-design.md#62-ef-core-寫入)
 - **multipart upload + Blob 條件式刪除** → [backend-design.md §12 檔案上傳](../backend-design.md#12-檔案上傳multipart--blob)

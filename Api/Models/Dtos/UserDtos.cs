@@ -34,7 +34,13 @@ public sealed record UserDto(
     bool      IsDisabled     = false,
     string?   DisabledProofUrl   = null,
     decimal?  HealthInsuranceOverride = null,
-    decimal?  LaborInsuranceOverride  = null);
+    decimal?  LaborInsuranceOverride  = null,
+    // 加給（與 BaseSalary / MealAllowance 同：自動同步自最新 SalaryAdjustmentRecord，亦可手動覆寫）
+    decimal?  PositionAllowance    = null,
+    decimal?  DutyAllowance        = null,
+    decimal?  OtherAllowance       = null,
+    decimal?  AdjustmentDifference = null,
+    decimal?  OverseasAllowance    = null);
 
 public sealed record CreateUserRequest(
     string    Name,
@@ -57,7 +63,12 @@ public sealed record CreateUserRequest(
     bool      IsLowIncome  = false,
     bool      IsDisabled   = false,
     decimal?  HealthInsuranceOverride = null,
-    decimal?  LaborInsuranceOverride  = null);
+    decimal?  LaborInsuranceOverride  = null,
+    decimal?  PositionAllowance    = null,
+    decimal?  DutyAllowance        = null,
+    decimal?  OtherAllowance       = null,
+    decimal?  AdjustmentDifference = null,
+    decimal?  OverseasAllowance    = null);
 
 /// <summary>輕量級使用者資料（供指定審核者下拉選單用，不需 users:read 權限）</summary>
 public sealed record UserLookupDto(
@@ -87,4 +98,9 @@ public sealed record UpdateUserRequest(
     bool?      IsLowIncome  = null,
     bool?      IsDisabled   = null,
     decimal?   HealthInsuranceOverride = null,
-    decimal?   LaborInsuranceOverride  = null);
+    decimal?   LaborInsuranceOverride  = null,
+    decimal?   PositionAllowance    = null,
+    decimal?   DutyAllowance        = null,
+    decimal?   OtherAllowance       = null,
+    decimal?   AdjustmentDifference = null,
+    decimal?   OverseasAllowance    = null);

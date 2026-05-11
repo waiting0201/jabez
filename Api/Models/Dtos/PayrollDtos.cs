@@ -29,7 +29,13 @@ public sealed record EmployeePayrollDto(
     decimal   NetSalary,
     LeaveDetailDto[]? LeaveDetails     = null,
     int               DependentCount   = 0,
-    int               CappedDependentCount = 0);
+    int               CappedDependentCount = 0,
+    // 加給（自動同步自最新 SalaryAdjustmentRecord，計入 NetSalary 的加項）
+    decimal   PositionAllowance    = 0m,
+    decimal   DutyAllowance        = 0m,
+    decimal   OtherAllowanceAmount = 0m,
+    decimal   AdjustmentDifference = 0m,
+    decimal   OverseasAllowance    = 0m);
 
 /// <summary>請假明細（用於薪資頁面顯示）</summary>
 public sealed record LeaveDetailDto(
@@ -53,7 +59,12 @@ public sealed record MonthlyPayrollDto(
     decimal TotalPersonalLeaveDeduction,
     decimal TotalSickLeaveDeduction,
     decimal TotalOtherDeduction,
-    decimal TotalNetSalary);
+    decimal TotalNetSalary,
+    decimal TotalPositionAllowance    = 0m,
+    decimal TotalDutyAllowance        = 0m,
+    decimal TotalOtherAllowance       = 0m,
+    decimal TotalAdjustmentDifference = 0m,
+    decimal TotalOverseasAllowance    = 0m);
 
 /// <summary>薪資調整新增/更新請求</summary>
 public sealed record PayrollAdjustmentRequest(

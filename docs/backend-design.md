@@ -363,19 +363,18 @@ db.Users.Add(user);
 await db.SaveChangesAsync();
 
 // Transaction（多 entity 一致性）
-using var tx = await db.Database.BeginTransactionAsync();
-try
+// AppDbContext 啟用 EnableRetryOnFailure，直接 BeginTransactionAsync() 會被
+// SqlServerRetryingExecutionStrategy 阻擋；必須用 CreateExecutionStrategy 包裝整批操作。
+var strategy = db.Database.CreateExecutionStrategy();
+await strategy.ExecuteAsync(async () =>
 {
+    await using var tx = await db.Database.BeginTransactionAsync();
     await db.SalaryAdjustmentRecords.Where(s => s.UserId == userId).ExecuteDeleteAsync();
     await db.SalaryAdjustmentRecords.AddRangeAsync(newRecords);
     await db.SaveChangesAsync();
     await tx.CommitAsync();
-}
-catch
-{
-    await tx.RollbackAsync();
-    throw;
-}
+    // await using：未 Commit 即離開 scope（含例外）會自動 Rollback。
+});
 ```
 
 ---

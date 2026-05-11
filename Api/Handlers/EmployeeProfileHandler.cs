@@ -75,10 +75,12 @@ public sealed class EmployeeProfileHandler(
             return new BadRequestObjectResult(ApiResponse.Fail("請求內容格式不正確。"));
         }
 
-        // 開啟 EF Core transaction，確保整批替換的原子性
-        await using var tx = await db.Database.BeginTransactionAsync();
-        try
+        // 使用 ExecutionStrategy 包裝 transaction：DbContext 啟用 EnableRetryOnFailure
+        // 後直接呼叫 BeginTransactionAsync 會被阻擋，須透過 strategy 執行整批替換的原子性操作。
+        var strategy = db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
         {
+            await using var tx = await db.Database.BeginTransactionAsync();
             // ── 1. Upsert EmployeeProfile（主表）─────────────────────────────
             var profile = await db.EmployeeProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
             bool isNew  = profile is null;
@@ -314,7 +316,8 @@ public sealed class EmployeeProfileHandler(
             await db.SaveChangesAsync();
 
             // ── 5. 薪資同步：找 EffectiveDate <= 今日（Asia/Taipei）的最新薪資紀錄 ──
-            // 取得 EffectiveDate 最大（最新有效）的薪資調整紀錄，同步 User.BaseSalary
+            // 取得 EffectiveDate 最大（最新有效）的薪資調整紀錄，同步至 User 的 7 個薪資欄位
+            // （底薪 + 6 種加給）；無符合不變。
             var today = Clock.Now.Date;
             var latestSalary = salaryEntities
                 .Where(s => s.EffectiveDate.Date <= today)
@@ -323,18 +326,20 @@ public sealed class EmployeeProfileHandler(
 
             if (latestSalary is not null)
             {
-                user.BaseSalary = latestSalary.BaseSalary;
-                user.UpdatedAt  = now;
+                user.BaseSalary           = latestSalary.BaseSalary;
+                user.MealAllowance        = latestSalary.MealAllowance;
+                user.PositionAllowance    = latestSalary.PositionAllowance;
+                user.DutyAllowance        = latestSalary.DutyAllowance;
+                user.OtherAllowance       = latestSalary.OtherAllowance;
+                user.AdjustmentDifference = latestSalary.AdjustmentDifference;
+                user.OverseasAllowance    = latestSalary.OverseasAllowance;
+                user.UpdatedAt            = now;
                 await db.SaveChangesAsync();
             }
 
             await tx.CommitAsync();
-        }
-        catch
-        {
-            await tx.RollbackAsync();
-            throw;
-        }
+            // await using var tx：未 Commit 即離開 scope（含例外）會自動 Rollback。
+        });
 
         var dto = await reader.GetByUserIdAsync(userId);
         return new OkObjectResult(ApiResponse.Ok(dto, "人事資料卡已更新。"));

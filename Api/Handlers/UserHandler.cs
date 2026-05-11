@@ -265,6 +265,11 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             IsDisabled   = form["isDisabled"] == "true",
             HealthInsuranceOverride = decimal.TryParse(form["healthInsuranceOverride"], out var hio) ? hio : null,
             LaborInsuranceOverride  = decimal.TryParse(form["laborInsuranceOverride"],  out var lio) ? lio : null,
+            PositionAllowance    = decimal.TryParse(form["positionAllowance"],    out var pa)  ? pa  : null,
+            DutyAllowance        = decimal.TryParse(form["dutyAllowance"],        out var da)  ? da  : null,
+            OtherAllowance       = decimal.TryParse(form["otherAllowance"],       out var oa)  ? oa  : null,
+            AdjustmentDifference = decimal.TryParse(form["adjustmentDifference"], out var ad)  ? ad  : null,
+            OverseasAllowance    = decimal.TryParse(form["overseasAllowance"],    out var oea) ? oea : null,
             AvatarPositionX = ParseAvatarPosition(form["avatarPositionX"], 50m),
             AvatarPositionY = ParseAvatarPosition(form["avatarPositionY"], 50m),
             AvatarScale     = ParseAvatarScale(form["avatarScale"], 1m),
@@ -373,6 +378,16 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             user.HealthInsuranceOverride = decimal.TryParse(form["healthInsuranceOverride"], out var hio) ? hio : null;
         if (form.ContainsKey("laborInsuranceOverride"))
             user.LaborInsuranceOverride = decimal.TryParse(form["laborInsuranceOverride"], out var lio) ? lio : null;
+        if (form.ContainsKey("positionAllowance"))
+            user.PositionAllowance = decimal.TryParse(form["positionAllowance"], out var pa) ? pa : null;
+        if (form.ContainsKey("dutyAllowance"))
+            user.DutyAllowance = decimal.TryParse(form["dutyAllowance"], out var da) ? da : null;
+        if (form.ContainsKey("otherAllowance"))
+            user.OtherAllowance = decimal.TryParse(form["otherAllowance"], out var oa) ? oa : null;
+        if (form.ContainsKey("adjustmentDifference"))
+            user.AdjustmentDifference = decimal.TryParse(form["adjustmentDifference"], out var ad) ? ad : null;
+        if (form.ContainsKey("overseasAllowance"))
+            user.OverseasAllowance = decimal.TryParse(form["overseasAllowance"], out var oea) ? oea : null;
 
         // 處理簽名檔：removeSignature=true 表示刪除
         if (form["removeSignature"] == "true")

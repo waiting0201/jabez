@@ -138,21 +138,51 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
     {
         var fmt = (decimal n) => n.ToString("N0");
         var hireDateStr = emp.HireDate?.ToString("yyyy/MM/dd") ?? "---";
-        var totalEarnings = emp.BaseSalary + emp.MealAllowance + emp.OvertimePay + emp.HolidayAllowance + emp.OtherAddition;
+        var totalEarnings = emp.BaseSalary + emp.MealAllowance + emp.OvertimePay
+                          + emp.PositionAllowance + emp.DutyAllowance + emp.OtherAllowanceAmount
+                          + emp.AdjustmentDifference + emp.OverseasAllowance
+                          + emp.HolidayAllowance + emp.OtherAddition;
         var totalDeductions = emp.LaborInsurance + emp.HealthInsurance
                             + emp.PersonalLeaveDeduction + emp.SickLeaveDeduction
                             + emp.OtherDeduction;
 
+        // 動態加項列：有值才顯示，斑馬色維持
         var earningsRows = $"""
             <tr><td style="padding:8px 12px">底薪</td><td style="padding:8px 12px;text-align:right">{fmt(emp.BaseSalary)}</td></tr>
             <tr style="background:#FDFAF5"><td style="padding:8px 12px">伙食費</td><td style="padding:8px 12px;text-align:right">{fmt(emp.MealAllowance)}</td></tr>
             <tr><td style="padding:8px 12px">加班費</td><td style="padding:8px 12px;text-align:right">{fmt(emp.OvertimePay)}</td></tr>
-            <tr style="background:#FDFAF5"><td style="padding:8px 12px">假日津貼（{emp.HolidayTravelDays} 天）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.HolidayAllowance)}</td></tr>
             """;
-        if (emp.OtherAddition > 0)
+        // 5 種加給（值為 0 不顯示）
+        var allowanceRows = new (string Label, decimal Value)[]
+        {
+            ("職務加給", emp.PositionAllowance),
+            ("主管加給", emp.DutyAllowance),
+            ("其他加給", emp.OtherAllowanceAmount),
+            ("調整差額", emp.AdjustmentDifference),
+            ("外派加給", emp.OverseasAllowance),
+        };
+        int rowIdx = 3; // 已有 底薪/伙食/加班 3 列
+        foreach (var (label, value) in allowanceRows)
+        {
+            if (value == 0m) continue;
+            var bg = rowIdx % 2 == 1 ? " style=\"background:#FDFAF5\"" : "";
             earningsRows += $"""
-            <tr><td style="padding:8px 12px">其他加項{(emp.OtherAdditionNote is not null ? $"（{emp.OtherAdditionNote}）" : "")}</td><td style="padding:8px 12px;text-align:right">{fmt(emp.OtherAddition)}</td></tr>
+            <tr{bg}><td style="padding:8px 12px">{label}</td><td style="padding:8px 12px;text-align:right">{fmt(value)}</td></tr>
             """;
+            rowIdx++;
+        }
+        var holidayBg = rowIdx % 2 == 1 ? " style=\"background:#FDFAF5\"" : "";
+        earningsRows += $"""
+            <tr{holidayBg}><td style="padding:8px 12px">假日津貼（{emp.HolidayTravelDays} 天）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.HolidayAllowance)}</td></tr>
+            """;
+        rowIdx++;
+        if (emp.OtherAddition > 0)
+        {
+            var addBg = rowIdx % 2 == 1 ? " style=\"background:#FDFAF5\"" : "";
+            earningsRows += $"""
+            <tr{addBg}><td style="padding:8px 12px">其他加項{(emp.OtherAdditionNote is not null ? $"（{emp.OtherAdditionNote}）" : "")}</td><td style="padding:8px 12px;text-align:right">{fmt(emp.OtherAddition)}</td></tr>
+            """;
+        }
 
         // 健保費標籤：有眷屬時加注說明，最多計至 3 口
         var healthLabel = emp.CappedDependentCount > 0

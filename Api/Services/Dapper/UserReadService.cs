@@ -29,6 +29,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.IsLowIncome, u.LowIncomeProofUrl,
                 u.IsDisabled, u.DisabledProofUrl,
                 u.HealthInsuranceOverride, u.LaborInsuranceOverride,
+                u.PositionAllowance, u.DutyAllowance, u.OtherAllowance,
+                u.AdjustmentDifference, u.OverseasAllowance,
                 r.Id AS RoleId
             FROM Users u
             LEFT JOIN UserRoles ur  ON u.Id = ur.UserId
@@ -58,6 +60,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             bool IsLowIncome, string? LowIncomeProofUrl,
             bool IsDisabled, string? DisabledProofUrl,
             decimal? HealthInsuranceOverride, decimal? LaborInsuranceOverride,
+            decimal? PositionAllowance, decimal? DutyAllowance, decimal? OtherAllowance,
+            decimal? AdjustmentDifference, decimal? OverseasAllowance,
             List<string> RoleIds)>();
 
         foreach (var row in rows)
@@ -81,6 +85,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     (bool)row.IsLowIncome, (string?)row.LowIncomeProofUrl,
                     (bool)row.IsDisabled, (string?)row.DisabledProofUrl,
                     (decimal?)row.HealthInsuranceOverride, (decimal?)row.LaborInsuranceOverride,
+                    (decimal?)row.PositionAllowance, (decimal?)row.DutyAllowance, (decimal?)row.OtherAllowance,
+                    (decimal?)row.AdjustmentDifference, (decimal?)row.OverseasAllowance,
                     []);
 
             if (row.RoleId is not null)
@@ -104,7 +110,9 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.AvatarPositionX, kv.Value.AvatarPositionY, kv.Value.AvatarScale,
             kv.Value.IsLowIncome, kv.Value.LowIncomeProofUrl,
             kv.Value.IsDisabled, kv.Value.DisabledProofUrl,
-            kv.Value.HealthInsuranceOverride, kv.Value.LaborInsuranceOverride));
+            kv.Value.HealthInsuranceOverride, kv.Value.LaborInsuranceOverride,
+            kv.Value.PositionAllowance, kv.Value.DutyAllowance, kv.Value.OtherAllowance,
+            kv.Value.AdjustmentDifference, kv.Value.OverseasAllowance));
     }
 
     /// <summary>輕量級使用者清單（供指定審核者下拉選單，不需 users:read 權限）</summary>
@@ -163,6 +171,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.IsLowIncome, u.LowIncomeProofUrl,
                 u.IsDisabled, u.DisabledProofUrl,
                 u.HealthInsuranceOverride, u.LaborInsuranceOverride,
+                u.PositionAllowance, u.DutyAllowance, u.OtherAllowance,
+                u.AdjustmentDifference, u.OverseasAllowance,
                 r.Id AS RoleId
             FROM Users u
             INNER JOIN PagedIds pid ON u.Id = pid.Id
@@ -193,6 +203,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             bool IsLowIncome, string? LowIncomeProofUrl,
             bool IsDisabled, string? DisabledProofUrl,
             decimal? HealthInsuranceOverride, decimal? LaborInsuranceOverride,
+            decimal? PositionAllowance, decimal? DutyAllowance, decimal? OtherAllowance,
+            decimal? AdjustmentDifference, decimal? OverseasAllowance,
             List<string> RoleIds)>();
 
         foreach (var row in rows)
@@ -216,6 +228,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     (bool)row.IsLowIncome, (string?)row.LowIncomeProofUrl,
                     (bool)row.IsDisabled, (string?)row.DisabledProofUrl,
                     (decimal?)row.HealthInsuranceOverride, (decimal?)row.LaborInsuranceOverride,
+                    (decimal?)row.PositionAllowance, (decimal?)row.DutyAllowance, (decimal?)row.OtherAllowance,
+                    (decimal?)row.AdjustmentDifference, (decimal?)row.OverseasAllowance,
                     []);
 
             if (row.RoleId is not null)
@@ -239,7 +253,9 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.AvatarPositionX, kv.Value.AvatarPositionY, kv.Value.AvatarScale,
             kv.Value.IsLowIncome, kv.Value.LowIncomeProofUrl,
             kv.Value.IsDisabled, kv.Value.DisabledProofUrl,
-            kv.Value.HealthInsuranceOverride, kv.Value.LaborInsuranceOverride));
+            kv.Value.HealthInsuranceOverride, kv.Value.LaborInsuranceOverride,
+            kv.Value.PositionAllowance, kv.Value.DutyAllowance, kv.Value.OtherAllowance,
+            kv.Value.AdjustmentDifference, kv.Value.OverseasAllowance));
 
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
         return new PagedResult<UserDto>(items, total, page, pageSize, Math.Max(1, totalPages));
@@ -263,6 +279,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.IsLowIncome, u.LowIncomeProofUrl,
                 u.IsDisabled, u.DisabledProofUrl,
                 u.HealthInsuranceOverride, u.LaborInsuranceOverride,
+                u.PositionAllowance, u.DutyAllowance, u.OtherAllowance,
+                u.AdjustmentDifference, u.OverseasAllowance,
                 r.Id AS RoleId
             FROM Users u
             LEFT JOIN UserRoles ur  ON u.Id = ur.UserId
@@ -297,7 +315,9 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 (decimal)row.AvatarPositionX, (decimal)row.AvatarPositionY, (decimal)row.AvatarScale,
                 (bool)row.IsLowIncome, (string?)row.LowIncomeProofUrl,
                 (bool)row.IsDisabled, (string?)row.DisabledProofUrl,
-                (decimal?)row.HealthInsuranceOverride, (decimal?)row.LaborInsuranceOverride);
+                (decimal?)row.HealthInsuranceOverride, (decimal?)row.LaborInsuranceOverride,
+                (decimal?)row.PositionAllowance, (decimal?)row.DutyAllowance, (decimal?)row.OtherAllowance,
+                (decimal?)row.AdjustmentDifference, (decimal?)row.OverseasAllowance);
 
             if (row.RoleId is not null)
                 roleIds.Add((string)row.RoleId);

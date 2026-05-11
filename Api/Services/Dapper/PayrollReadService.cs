@@ -19,6 +19,8 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                    u.Email, u.SendPaySlip,
                    d.Name AS DepartmentName, jt.Name AS JobTitleName,
                    u.HireDate, u.BaseSalary, u.MealAllowance, u.OvertimePay,
+                   u.PositionAllowance, u.DutyAllowance, u.OtherAllowance,
+                   u.AdjustmentDifference, u.OverseasAllowance,
                    u.HealthInsuranceOverride, u.LaborInsuranceOverride,
                    (SELECT COUNT(*) FROM HealthInsuranceDependents WHERE UserId = u.Id) AS DependentCount
             FROM Users u
@@ -131,6 +133,11 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             decimal baseSalary     = (decimal)emp.BaseSalary;
             decimal mealAllowance  = (decimal?)emp.MealAllowance ?? 0m;
             decimal overtimePay    = (decimal?)emp.OvertimePay ?? 0m;
+            decimal positionAllow  = (decimal?)emp.PositionAllowance    ?? 0m;
+            decimal dutyAllow      = (decimal?)emp.DutyAllowance        ?? 0m;
+            decimal otherAllow     = (decimal?)emp.OtherAllowance       ?? 0m;
+            decimal adjDiff        = (decimal?)emp.AdjustmentDifference ?? 0m;
+            decimal overseasAllow  = (decimal?)emp.OverseasAllowance    ?? 0m;
             decimal dailySalary    = Math.Round(baseSalary / 30m, 0);
 
             int holidayDays = travelDays.TryGetValue((Guid)emp.EmployeeId, out var days) ? days : 0;
@@ -192,6 +199,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             }
 
             decimal netSalary = baseSalary + mealAllowance + overtimePay
+                              + positionAllow + dutyAllow + otherAllow + adjDiff + overseasAllow
                               + holidayAllowance + otherAddition
                               - laborIns - healthIns
                               - personalDeduction - sickDeduction
@@ -225,7 +233,12 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 netSalary,
                 leaveDetails.TryGetValue(empId, out var ld) ? ld : null,
                 dependentCount,
-                cappedN));
+                cappedN,
+                positionAllow,
+                dutyAllow,
+                otherAllow,
+                adjDiff,
+                overseasAllow));
         }
 
         return new MonthlyPayrollDto(
@@ -240,6 +253,11 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             results.Sum(r => r.PersonalLeaveDeduction),
             results.Sum(r => r.SickLeaveDeduction),
             results.Sum(r => r.OtherDeduction),
-            results.Sum(r => r.NetSalary));
+            results.Sum(r => r.NetSalary),
+            results.Sum(r => r.PositionAllowance),
+            results.Sum(r => r.DutyAllowance),
+            results.Sum(r => r.OtherAllowanceAmount),
+            results.Sum(r => r.AdjustmentDifference),
+            results.Sum(r => r.OverseasAllowance));
     }
 }
