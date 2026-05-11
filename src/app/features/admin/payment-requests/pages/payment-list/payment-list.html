@@ -47,7 +47,12 @@
                 </td>
                 <td class="text-right fw-500">{{ r.totalAmount | number:'1.0-0' }}</td>
                 <td>
-                  <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
+                  <div class="flex flex-wrap items-center gap-1">
+                    <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
+                    @if (paymentState(r); as ps) {
+                      <span [class]="'badge ' + paymentStateClass[ps]">{{ paymentStateLabel[ps] }}</span>
+                    }
+                  </div>
                 </td>
                 <td class="text-muted small hidden lg:table-cell">{{ r.createdAt | date:'yyyy-MM-dd' }}</td>
                 <td class="text-right" style="white-space: nowrap">

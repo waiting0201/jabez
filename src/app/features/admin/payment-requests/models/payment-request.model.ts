@@ -15,7 +15,7 @@ export const PAYMENT_TYPE_CLASSES: Record<PaymentType, string> = {
 
 export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
   draft:    '草稿',
-  pending:  '待審核',
+  pending:  '待核准',
   approved: '已核准',
   rejected: '已拒絕',
   returned: '退回修改',
@@ -27,6 +27,18 @@ export const APPROVAL_STATUS_CLASSES: Record<ApprovalStatus, string> = {
   approved: 'bg-success-subtle text-success',
   rejected: 'bg-danger-subtle text-danger',
   returned: 'bg-secondary-subtle text-secondary',
+};
+
+export type PaymentState = 'unpaid' | 'paid';
+
+export const PAYMENT_STATE_LABELS: Record<PaymentState, string> = {
+  unpaid: '待撥款',
+  paid:   '已撥款',
+};
+
+export const PAYMENT_STATE_CLASSES: Record<PaymentState, string> = {
+  unpaid: 'bg-warning-subtle text-warning-emphasis',
+  paid:   'bg-primary-subtle text-primary',
 };
 
 export interface InvoiceItem {

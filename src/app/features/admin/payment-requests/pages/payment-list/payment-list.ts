@@ -5,9 +5,10 @@ import {toSignal, toObservable} from '@angular/core/rxjs-interop';
 import {switchMap} from 'rxjs/operators';
 import {PaymentRequestService} from '../../services/payment-request.service';
 import {
-  PaymentRequest,
+  PaymentRequest, PaymentState,
   PAYMENT_TYPE_LABELS, PAYMENT_TYPE_CLASSES,
   APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES,
+  PAYMENT_STATE_LABELS, PAYMENT_STATE_CLASSES,
 } from '../../models/payment-request.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
 import {AuthService} from '@core/auth/services/auth.service';
@@ -49,6 +50,13 @@ export class PaymentList {
   readonly typeClass    = PAYMENT_TYPE_CLASSES;
   readonly statusLabel  = APPROVAL_STATUS_LABELS;
   readonly statusClass  = APPROVAL_STATUS_CLASSES;
+  readonly paymentStateLabel = PAYMENT_STATE_LABELS;
+  readonly paymentStateClass = PAYMENT_STATE_CLASSES;
+
+  paymentState(r: PaymentRequest): PaymentState | null {
+    if (r.approvalStatus !== 'pending' && r.approvalStatus !== 'approved') return null;
+    return r.paidAt ? 'paid' : 'unpaid';
+  }
 
   delete(r: PaymentRequest) {
     if (confirm(`確定要刪除此請款申請嗎？`)) {
