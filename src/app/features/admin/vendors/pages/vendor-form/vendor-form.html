@@ -29,17 +29,29 @@
           </div>
           <div class="card-body">
             <div class="row g-3">
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">統編 <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" formControlName="taxId"
+                       placeholder="例如：12345678"
+                       maxlength="8" inputmode="numeric"
+                       (blur)="onTaxIdBlur()">
+                @if (form.get('taxId')?.touched && form.get('taxId')?.errors?.['required']) {
+                <div class="text-danger small mt-1">請輸入統編。</div>
+                }
+                @if (form.get('taxId')?.touched && form.get('taxId')?.errors?.['pattern']) {
+                <div class="text-danger small mt-1">統編須為 8 位數字。</div>
+                }
+                @if (looking()) {
+                <div class="text-muted small mt-1">查詢中…</div>
+                }
+              </div>
+
               <div class="col-12 col-md-8">
                 <label class="form-label fw-500">廠商名稱 <span class="text-danger">*</span></label>
                 <input type="text" class="form-control" formControlName="name" placeholder="例如：誠品書店">
                 @if (form.get('name')?.invalid && form.get('name')?.touched) {
                 <div class="text-danger small mt-1">請輸入廠商名稱。</div>
                 }
-              </div>
-
-              <div class="col-12 col-md-4">
-                <label class="form-label fw-500">統編</label>
-                <input type="text" class="form-control" formControlName="taxId" placeholder="例如：12345678">
               </div>
 
               <div class="col-12 col-md-4">
@@ -63,6 +75,45 @@
               </div>
 
               <div class="col-12">
+                <label class="form-label fw-500">存摺封面</label>
+                <div class="text-muted small mb-2">支援 PNG、JPEG 圖片或 PDF，上傳後勿超過 1MB（選填）。</div>
+                @if (bankBookImagePreview()) {
+                  <div class="mb-2">
+                    <img [src]="bankBookImagePreview()!" alt="存摺封面預覽"
+                         class="rounded border max-h-40 object-contain">
+                  </div>
+                }
+                @if (bankBookDisplayName()) {
+                  <div class="flex items-center gap-2 mb-2 border rounded px-3 py-2 bg-[--bg-surface]">
+                    <svg class="sa-icon text-[--accent]" style="stroke: currentColor">
+                      <use href="/assets/icons/sprite.svg#file-text"></use>
+                    </svg>
+                    <span class="fw-500 text-[--text-primary] truncate text-sm">{{ bankBookDisplayName() }}</span>
+                    @if (hasExistingBankBook()) {
+                      <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewBankBookImage()">檢視</button>
+                    }
+                  </div>
+                  <div class="flex gap-2">
+                    <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                      更換
+                      <input type="file" class="hidden"
+                             accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                             (change)="onBankBookImageSelected($event)">
+                    </label>
+                    <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveBankBookImage()">刪除</button>
+                  </div>
+                } @else {
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                    選擇存摺封面
+                    <input type="file" class="hidden"
+                           accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                           (change)="onBankBookImageSelected($event)">
+                  </label>
+                }
+              </div>
+
+              <div class="col-12">
                 <label class="form-label fw-500">備註</label>
                 <textarea class="form-control" formControlName="note" rows="2" placeholder="選填說明"></textarea>
               </div>
@@ -79,8 +130,8 @@
         </div>
 
         <div class="mt-6 flex gap-2">
-          <button type="submit" class="btn btn-primary" [disabled]="form.invalid">
-            {{ isEdit ? '更新' : '建立' }}
+          <button type="submit" class="btn btn-primary" [disabled]="form.invalid || saving()">
+            @if (saving()) { 儲存中… } @else { {{ isEdit ? '更新' : '建立' }} }
           </button>
           <a routerLink="/admin/vendors" class="btn btn-outline-secondary">取消</a>
         </div>

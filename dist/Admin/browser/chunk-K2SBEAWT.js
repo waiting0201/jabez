@@ -1385,8 +1385,8 @@ function UserForm_Conditional_19_Conditional_25_Template(rf, ctx) {
 function UserForm_Conditional_19_For_41_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 38);
-    \u0275\u0275element(1, "input", 73);
-    \u0275\u0275elementStart(2, "label", 74);
+    \u0275\u0275element(1, "input", 78);
+    \u0275\u0275elementStart(2, "label", 79);
     \u0275\u0275text(3);
     \u0275\u0275elementEnd()();
   }
@@ -1447,9 +1447,9 @@ function UserForm_Conditional_19_Conditional_75_Template(rf, ctx) {
     \u0275\u0275elementEnd();
   }
 }
-function UserForm_Conditional_19_For_160_Template(rf, ctx) {
+function UserForm_Conditional_19_For_205_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 66);
+    \u0275\u0275elementStart(0, "option", 71);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -1460,65 +1460,65 @@ function UserForm_Conditional_19_For_160_Template(rf, ctx) {
     \u0275\u0275textInterpolate(u_r6.name);
   }
 }
-function UserForm_Conditional_19_Conditional_171_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_216_Template(rf, ctx) {
   if (rf & 1) {
     const _r7 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 75)(1, "div", 76);
-    \u0275\u0275listener("pointerdown", function UserForm_Conditional_19_Conditional_171_Template_div_pointerdown_1_listener($event) {
+    \u0275\u0275elementStart(0, "div", 80)(1, "div", 81);
+    \u0275\u0275listener("pointerdown", function UserForm_Conditional_19_Conditional_216_Template_div_pointerdown_1_listener($event) {
       \u0275\u0275restoreView(_r7);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.onAvatarPointerDown($event));
-    })("pointermove", function UserForm_Conditional_19_Conditional_171_Template_div_pointermove_1_listener($event) {
+    })("pointermove", function UserForm_Conditional_19_Conditional_216_Template_div_pointermove_1_listener($event) {
       \u0275\u0275restoreView(_r7);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.onAvatarPointerMove($event));
-    })("pointerup", function UserForm_Conditional_19_Conditional_171_Template_div_pointerup_1_listener() {
+    })("pointerup", function UserForm_Conditional_19_Conditional_216_Template_div_pointerup_1_listener() {
       \u0275\u0275restoreView(_r7);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.onAvatarPointerUp());
-    })("pointercancel", function UserForm_Conditional_19_Conditional_171_Template_div_pointercancel_1_listener() {
+    })("pointercancel", function UserForm_Conditional_19_Conditional_216_Template_div_pointercancel_1_listener() {
       \u0275\u0275restoreView(_r7);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.onAvatarPointerUp());
     });
-    \u0275\u0275element(2, "img", 77);
+    \u0275\u0275element(2, "img", 82);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div", 78)(4, "label", 79);
+    \u0275\u0275elementStart(3, "div", 83)(4, "label", 84);
     \u0275\u0275text(5, "\u7E2E\u653E");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "div", 80)(7, "input", 81);
-    \u0275\u0275listener("input", function UserForm_Conditional_19_Conditional_171_Template_input_input_7_listener($event) {
+    \u0275\u0275elementStart(6, "div", 85)(7, "input", 86);
+    \u0275\u0275listener("input", function UserForm_Conditional_19_Conditional_216_Template_input_input_7_listener($event) {
       \u0275\u0275restoreView(_r7);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.onAvatarScaleChange($event));
     });
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "span", 82);
+    \u0275\u0275elementStart(8, "span", 87);
     \u0275\u0275text(9);
     \u0275\u0275pipe(10, "number");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(11, "p", 83);
+    \u0275\u0275elementStart(11, "p", 88);
     \u0275\u0275text(12, "\u5728\u9810\u89BD\u6846\u4E2D\u6309\u4F4F\u6ED1\u9F20\u6216\u624B\u6307\u62D6\u66F3\u8ABF\u6574\u4F4D\u7F6E\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(13, "button", 84);
-    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_171_Template_button_click_13_listener() {
+    \u0275\u0275elementStart(13, "button", 89);
+    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_216_Template_button_click_13_listener() {
       \u0275\u0275restoreView(_r7);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.resetAvatarPosition());
     });
     \u0275\u0275text(14, " \u91CD\u8A2D\u4F4D\u7F6E ");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(15, "div", 85)(16, "label", 86);
+    \u0275\u0275elementStart(15, "div", 90)(16, "label", 91);
     \u0275\u0275text(17, " \u66F4\u63DB\u982D\u50CF ");
-    \u0275\u0275elementStart(18, "input", 87);
-    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_171_Template_input_change_18_listener($event) {
+    \u0275\u0275elementStart(18, "input", 92);
+    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_216_Template_input_change_18_listener($event) {
       \u0275\u0275restoreView(_r7);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.onAvatarSelected($event));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(19, "button", 88);
-    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_171_Template_button_click_19_listener() {
+    \u0275\u0275elementStart(19, "button", 93);
+    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_216_Template_button_click_19_listener() {
       \u0275\u0275restoreView(_r7);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.onRemoveAvatar());
@@ -1537,21 +1537,21 @@ function UserForm_Conditional_19_Conditional_171_Template(rf, ctx) {
     \u0275\u0275textInterpolate1("", \u0275\u0275pipeBind2(10, 7, ctx_r1.avatarScale(), "1.2-2"), "x");
   }
 }
-function UserForm_Conditional_19_Conditional_172_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_217_Template(rf, ctx) {
   if (rf & 1) {
     const _r8 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "p", 68);
+    \u0275\u0275elementStart(0, "p", 73);
     \u0275\u0275text(1, "\u5C1A\u672A\u4E0A\u50B3\u982D\u50CF\uFF0C\u9078\u64C7\u6A94\u6848\u5F8C\u5C07\u65BC\u5132\u5B58\u6642\u4E00\u4F75\u4E0A\u50B3\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(2, "label", 86);
+    \u0275\u0275elementStart(2, "label", 91);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(3, "svg", 17);
-    \u0275\u0275element(4, "use", 89);
+    \u0275\u0275element(4, "use", 94);
     \u0275\u0275elementEnd();
     \u0275\u0275text(5, " \u9078\u64C7\u982D\u50CF ");
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(6, "input", 87);
-    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_172_Template_input_change_6_listener($event) {
+    \u0275\u0275elementStart(6, "input", 92);
+    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_217_Template_input_change_6_listener($event) {
       \u0275\u0275restoreView(_r8);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.onAvatarSelected($event));
@@ -1559,11 +1559,11 @@ function UserForm_Conditional_19_Conditional_172_Template(rf, ctx) {
     \u0275\u0275elementEnd()();
   }
 }
-function UserForm_Conditional_19_Conditional_173_Conditional_10_Conditional_5_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_218_Conditional_10_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
     const _r10 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 96);
-    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_173_Conditional_10_Conditional_5_Template_button_click_0_listener() {
+    \u0275\u0275elementStart(0, "button", 101);
+    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_218_Conditional_10_Conditional_5_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r10);
       const ctx_r1 = \u0275\u0275nextContext(4);
       return \u0275\u0275resetView(ctx_r1.viewIndigenousProof());
@@ -1572,31 +1572,31 @@ function UserForm_Conditional_19_Conditional_173_Conditional_10_Conditional_5_Te
     \u0275\u0275elementEnd();
   }
 }
-function UserForm_Conditional_19_Conditional_173_Conditional_10_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_218_Conditional_10_Template(rf, ctx) {
   if (rf & 1) {
     const _r9 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 91);
+    \u0275\u0275elementStart(0, "div", 96);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 92);
-    \u0275\u0275element(2, "use", 90);
+    \u0275\u0275elementStart(1, "svg", 97);
+    \u0275\u0275element(2, "use", 95);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(3, "span", 93);
+    \u0275\u0275elementStart(3, "span", 98);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(5, UserForm_Conditional_19_Conditional_173_Conditional_10_Conditional_5_Template, 2, 0, "button", 94);
+    \u0275\u0275conditionalCreate(5, UserForm_Conditional_19_Conditional_218_Conditional_10_Conditional_5_Template, 2, 0, "button", 99);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "div", 85)(7, "label", 86);
+    \u0275\u0275elementStart(6, "div", 90)(7, "label", 91);
     \u0275\u0275text(8, " \u66F4\u63DB\u6A94\u6848 ");
-    \u0275\u0275elementStart(9, "input", 95);
-    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_173_Conditional_10_Template_input_change_9_listener($event) {
+    \u0275\u0275elementStart(9, "input", 100);
+    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_218_Conditional_10_Template_input_change_9_listener($event) {
       \u0275\u0275restoreView(_r9);
       const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.onIndigenousProofSelected($event));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(10, "button", 88);
-    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_173_Conditional_10_Template_button_click_10_listener() {
+    \u0275\u0275elementStart(10, "button", 93);
+    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_218_Conditional_10_Template_button_click_10_listener() {
       \u0275\u0275restoreView(_r9);
       const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.onRemoveIndigenousProof());
@@ -1612,18 +1612,18 @@ function UserForm_Conditional_19_Conditional_173_Conditional_10_Template(rf, ctx
     \u0275\u0275conditional(ctx_r1.hasExistingIndigenousProof ? 5 : -1);
   }
 }
-function UserForm_Conditional_19_Conditional_173_Conditional_11_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_218_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
     const _r11 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "label", 86);
+    \u0275\u0275elementStart(0, "label", 91);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 17);
-    \u0275\u0275element(2, "use", 89);
+    \u0275\u0275element(2, "use", 94);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3, " \u9078\u64C7\u6A94\u6848 ");
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(4, "input", 95);
-    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_173_Conditional_11_Template_input_change_4_listener($event) {
+    \u0275\u0275elementStart(4, "input", 100);
+    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_218_Conditional_11_Template_input_change_4_listener($event) {
       \u0275\u0275restoreView(_r11);
       const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.onIndigenousProofSelected($event));
@@ -1631,22 +1631,22 @@ function UserForm_Conditional_19_Conditional_173_Conditional_11_Template(rf, ctx
     \u0275\u0275elementEnd()();
   }
 }
-function UserForm_Conditional_19_Conditional_173_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_218_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 22)(1, "div", 23);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 3);
-    \u0275\u0275element(3, "use", 90);
+    \u0275\u0275element(3, "use", 95);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u539F\u4F4F\u6C11\u8EAB\u4EFD\u8B49\u660E\u6587\u4EF6 ");
     \u0275\u0275namespaceHTML();
     \u0275\u0275elementStart(5, "span", 29);
     \u0275\u0275text(6, "*");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(7, "div", 25)(8, "p", 68);
+    \u0275\u0275elementStart(7, "div", 25)(8, "p", 73);
     \u0275\u0275text(9, "\u652F\u63F4 PNG\u3001JPEG \u5716\u7247\u6216 PDF \u6A94\u6848\u3002\u6B64\u6587\u4EF6\u50C5\u4F9B\u4EBA\u4E8B\u90E8\u9580\u7A3D\u6838\uFF0C\u53D7\u6B0A\u9650\u4FDD\u8B77\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(10, UserForm_Conditional_19_Conditional_173_Conditional_10_Template, 12, 2)(11, UserForm_Conditional_19_Conditional_173_Conditional_11_Template, 5, 0, "label", 86);
+    \u0275\u0275conditionalCreate(10, UserForm_Conditional_19_Conditional_218_Conditional_10_Template, 12, 2)(11, UserForm_Conditional_19_Conditional_218_Conditional_11_Template, 5, 0, "label", 91);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -1655,11 +1655,11 @@ function UserForm_Conditional_19_Conditional_173_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r1.indigenousProofDisplayName ? 10 : 11);
   }
 }
-function UserForm_Conditional_19_Conditional_174_Conditional_8_Conditional_5_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_219_Conditional_8_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
     const _r13 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 96);
-    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_174_Conditional_8_Conditional_5_Template_button_click_0_listener() {
+    \u0275\u0275elementStart(0, "button", 101);
+    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_219_Conditional_8_Conditional_5_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r13);
       const ctx_r1 = \u0275\u0275nextContext(4);
       return \u0275\u0275resetView(ctx_r1.viewLowIncomeProof());
@@ -1668,31 +1668,31 @@ function UserForm_Conditional_19_Conditional_174_Conditional_8_Conditional_5_Tem
     \u0275\u0275elementEnd();
   }
 }
-function UserForm_Conditional_19_Conditional_174_Conditional_8_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_219_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
     const _r12 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 91);
+    \u0275\u0275elementStart(0, "div", 96);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 92);
-    \u0275\u0275element(2, "use", 90);
+    \u0275\u0275elementStart(1, "svg", 97);
+    \u0275\u0275element(2, "use", 95);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(3, "span", 93);
+    \u0275\u0275elementStart(3, "span", 98);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(5, UserForm_Conditional_19_Conditional_174_Conditional_8_Conditional_5_Template, 2, 0, "button", 94);
+    \u0275\u0275conditionalCreate(5, UserForm_Conditional_19_Conditional_219_Conditional_8_Conditional_5_Template, 2, 0, "button", 99);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "div", 85)(7, "label", 86);
+    \u0275\u0275elementStart(6, "div", 90)(7, "label", 91);
     \u0275\u0275text(8, " \u66F4\u63DB\u6A94\u6848 ");
-    \u0275\u0275elementStart(9, "input", 95);
-    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_174_Conditional_8_Template_input_change_9_listener($event) {
+    \u0275\u0275elementStart(9, "input", 100);
+    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_219_Conditional_8_Template_input_change_9_listener($event) {
       \u0275\u0275restoreView(_r12);
       const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.onLowIncomeProofSelected($event));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(10, "button", 88);
-    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_174_Conditional_8_Template_button_click_10_listener() {
+    \u0275\u0275elementStart(10, "button", 93);
+    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_219_Conditional_8_Template_button_click_10_listener() {
       \u0275\u0275restoreView(_r12);
       const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.onRemoveLowIncomeProof());
@@ -1708,18 +1708,18 @@ function UserForm_Conditional_19_Conditional_174_Conditional_8_Template(rf, ctx)
     \u0275\u0275conditional(ctx_r1.hasExistingLowIncomeProof ? 5 : -1);
   }
 }
-function UserForm_Conditional_19_Conditional_174_Conditional_9_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_219_Conditional_9_Template(rf, ctx) {
   if (rf & 1) {
     const _r14 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "label", 86);
+    \u0275\u0275elementStart(0, "label", 91);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 17);
-    \u0275\u0275element(2, "use", 89);
+    \u0275\u0275element(2, "use", 94);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3, " \u9078\u64C7\u6A94\u6848 ");
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(4, "input", 95);
-    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_174_Conditional_9_Template_input_change_4_listener($event) {
+    \u0275\u0275elementStart(4, "input", 100);
+    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_219_Conditional_9_Template_input_change_4_listener($event) {
       \u0275\u0275restoreView(_r14);
       const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.onLowIncomeProofSelected($event));
@@ -1727,20 +1727,20 @@ function UserForm_Conditional_19_Conditional_174_Conditional_9_Template(rf, ctx)
     \u0275\u0275elementEnd()();
   }
 }
-function UserForm_Conditional_19_Conditional_174_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_219_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 22)(1, "div", 23);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 3);
-    \u0275\u0275element(3, "use", 90);
+    \u0275\u0275element(3, "use", 95);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u4F4E\u6536\u5165\u6236\u8B49\u660E\u6587\u4EF6 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "div", 25)(6, "p", 68);
+    \u0275\u0275elementStart(5, "div", 25)(6, "p", 73);
     \u0275\u0275text(7, "\u652F\u63F4 PNG\u3001JPEG \u5716\u7247\u6216 PDF \u6A94\u6848\u3002\u6B64\u6587\u4EF6\u50C5\u4F9B\u4EBA\u4E8B\u90E8\u9580\u7A3D\u6838\uFF0C\u53D7\u6B0A\u9650\u4FDD\u8B77\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(8, UserForm_Conditional_19_Conditional_174_Conditional_8_Template, 12, 2)(9, UserForm_Conditional_19_Conditional_174_Conditional_9_Template, 5, 0, "label", 86);
+    \u0275\u0275conditionalCreate(8, UserForm_Conditional_19_Conditional_219_Conditional_8_Template, 12, 2)(9, UserForm_Conditional_19_Conditional_219_Conditional_9_Template, 5, 0, "label", 91);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -1749,11 +1749,11 @@ function UserForm_Conditional_19_Conditional_174_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r1.lowIncomeProofDisplayName ? 8 : 9);
   }
 }
-function UserForm_Conditional_19_Conditional_175_Conditional_8_Conditional_5_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_220_Conditional_8_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
     const _r16 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 96);
-    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_175_Conditional_8_Conditional_5_Template_button_click_0_listener() {
+    \u0275\u0275elementStart(0, "button", 101);
+    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_220_Conditional_8_Conditional_5_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r16);
       const ctx_r1 = \u0275\u0275nextContext(4);
       return \u0275\u0275resetView(ctx_r1.viewDisabledProof());
@@ -1762,31 +1762,31 @@ function UserForm_Conditional_19_Conditional_175_Conditional_8_Conditional_5_Tem
     \u0275\u0275elementEnd();
   }
 }
-function UserForm_Conditional_19_Conditional_175_Conditional_8_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_220_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
     const _r15 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 91);
+    \u0275\u0275elementStart(0, "div", 96);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 92);
-    \u0275\u0275element(2, "use", 90);
+    \u0275\u0275elementStart(1, "svg", 97);
+    \u0275\u0275element(2, "use", 95);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(3, "span", 93);
+    \u0275\u0275elementStart(3, "span", 98);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(5, UserForm_Conditional_19_Conditional_175_Conditional_8_Conditional_5_Template, 2, 0, "button", 94);
+    \u0275\u0275conditionalCreate(5, UserForm_Conditional_19_Conditional_220_Conditional_8_Conditional_5_Template, 2, 0, "button", 99);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "div", 85)(7, "label", 86);
+    \u0275\u0275elementStart(6, "div", 90)(7, "label", 91);
     \u0275\u0275text(8, " \u66F4\u63DB\u6A94\u6848 ");
-    \u0275\u0275elementStart(9, "input", 95);
-    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_175_Conditional_8_Template_input_change_9_listener($event) {
+    \u0275\u0275elementStart(9, "input", 100);
+    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_220_Conditional_8_Template_input_change_9_listener($event) {
       \u0275\u0275restoreView(_r15);
       const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.onDisabledProofSelected($event));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(10, "button", 88);
-    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_175_Conditional_8_Template_button_click_10_listener() {
+    \u0275\u0275elementStart(10, "button", 93);
+    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_220_Conditional_8_Template_button_click_10_listener() {
       \u0275\u0275restoreView(_r15);
       const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.onRemoveDisabledProof());
@@ -1802,18 +1802,18 @@ function UserForm_Conditional_19_Conditional_175_Conditional_8_Template(rf, ctx)
     \u0275\u0275conditional(ctx_r1.hasExistingDisabledProof ? 5 : -1);
   }
 }
-function UserForm_Conditional_19_Conditional_175_Conditional_9_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_220_Conditional_9_Template(rf, ctx) {
   if (rf & 1) {
     const _r17 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "label", 86);
+    \u0275\u0275elementStart(0, "label", 91);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 17);
-    \u0275\u0275element(2, "use", 89);
+    \u0275\u0275element(2, "use", 94);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3, " \u9078\u64C7\u6A94\u6848 ");
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(4, "input", 95);
-    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_175_Conditional_9_Template_input_change_4_listener($event) {
+    \u0275\u0275elementStart(4, "input", 100);
+    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_220_Conditional_9_Template_input_change_4_listener($event) {
       \u0275\u0275restoreView(_r17);
       const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.onDisabledProofSelected($event));
@@ -1821,20 +1821,20 @@ function UserForm_Conditional_19_Conditional_175_Conditional_9_Template(rf, ctx)
     \u0275\u0275elementEnd()();
   }
 }
-function UserForm_Conditional_19_Conditional_175_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_220_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 22)(1, "div", 23);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(2, "svg", 3);
-    \u0275\u0275element(3, "use", 90);
+    \u0275\u0275element(3, "use", 95);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u6B98\u969C\u8B49\u660E\u6587\u4EF6 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "div", 25)(6, "p", 68);
+    \u0275\u0275elementStart(5, "div", 25)(6, "p", 73);
     \u0275\u0275text(7, "\u652F\u63F4 PNG\u3001JPEG \u5716\u7247\u6216 PDF \u6A94\u6848\u3002\u6B64\u6587\u4EF6\u50C5\u4F9B\u4EBA\u4E8B\u90E8\u9580\u7A3D\u6838\uFF0C\u53D7\u6B0A\u9650\u4FDD\u8B77\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(8, UserForm_Conditional_19_Conditional_175_Conditional_8_Template, 12, 2)(9, UserForm_Conditional_19_Conditional_175_Conditional_9_Template, 5, 0, "label", 86);
+    \u0275\u0275conditionalCreate(8, UserForm_Conditional_19_Conditional_220_Conditional_8_Template, 12, 2)(9, UserForm_Conditional_19_Conditional_220_Conditional_9_Template, 5, 0, "label", 91);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -1843,23 +1843,23 @@ function UserForm_Conditional_19_Conditional_175_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r1.disabledProofDisplayName ? 8 : 9);
   }
 }
-function UserForm_Conditional_19_Conditional_184_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_229_Template(rf, ctx) {
   if (rf & 1) {
     const _r18 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 97)(1, "div", 98);
-    \u0275\u0275element(2, "img", 99);
+    \u0275\u0275elementStart(0, "div", 102)(1, "div", 103);
+    \u0275\u0275element(2, "img", 104);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(3, "div", 85)(4, "label", 86);
+    \u0275\u0275elementStart(3, "div", 90)(4, "label", 91);
     \u0275\u0275text(5, " \u66F4\u63DB\u7C3D\u540D\u6A94 ");
-    \u0275\u0275elementStart(6, "input", 100);
-    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_184_Template_input_change_6_listener($event) {
+    \u0275\u0275elementStart(6, "input", 105);
+    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_229_Template_input_change_6_listener($event) {
       \u0275\u0275restoreView(_r18);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.onSignatureSelected($event));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(7, "button", 88);
-    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_184_Template_button_click_7_listener() {
+    \u0275\u0275elementStart(7, "button", 93);
+    \u0275\u0275listener("click", function UserForm_Conditional_19_Conditional_229_Template_button_click_7_listener() {
       \u0275\u0275restoreView(_r18);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.onRemoveSignature());
@@ -1873,21 +1873,21 @@ function UserForm_Conditional_19_Conditional_184_Template(rf, ctx) {
     \u0275\u0275property("src", ctx_r1.displaySignature, \u0275\u0275sanitizeUrl);
   }
 }
-function UserForm_Conditional_19_Conditional_185_Template(rf, ctx) {
+function UserForm_Conditional_19_Conditional_230_Template(rf, ctx) {
   if (rf & 1) {
     const _r19 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "p", 68);
+    \u0275\u0275elementStart(0, "p", 73);
     \u0275\u0275text(1, "\u5C1A\u672A\u4E0A\u50B3\u7C3D\u540D\u6A94\uFF0C\u9078\u64C7\u6A94\u6848\u5F8C\u5C07\u65BC\u5132\u5B58\u6642\u4E00\u4F75\u4E0A\u50B3\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(2, "label", 86);
+    \u0275\u0275elementStart(2, "label", 91);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(3, "svg", 17);
-    \u0275\u0275element(4, "use", 89);
+    \u0275\u0275element(4, "use", 94);
     \u0275\u0275elementEnd();
     \u0275\u0275text(5, " \u9078\u64C7\u7C3D\u540D\u6A94 ");
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(6, "input", 100);
-    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_185_Template_input_change_6_listener($event) {
+    \u0275\u0275elementStart(6, "input", 105);
+    \u0275\u0275listener("change", function UserForm_Conditional_19_Conditional_230_Template_input_change_6_listener($event) {
       \u0275\u0275restoreView(_r19);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.onSignatureSelected($event));
@@ -2036,86 +2036,141 @@ function UserForm_Conditional_19_Template(rf, ctx) {
     \u0275\u0275element(120, "input", 53);
     \u0275\u0275elementEnd()();
     \u0275\u0275elementStart(121, "div", 45)(122, "label", 28);
-    \u0275\u0275text(123, "\u5BC4\u9001\u85AA\u8CC7\u8868");
+    \u0275\u0275text(123, "\u8077\u52D9\u52A0\u7D66");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(124, "div", 54);
-    \u0275\u0275element(125, "input", 55);
-    \u0275\u0275elementStart(126, "label", 56);
-    \u0275\u0275text(127, "\u5BC4\u9001\u85AA\u8CC7\u660E\u7D30");
+    \u0275\u0275elementStart(124, "div", 46)(125, "span", 47);
+    \u0275\u0275text(126, "NT$");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(127, "input", 54);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(128, "div", 50);
+    \u0275\u0275text(129, "\u7531\u4EBA\u4E8B\u8CC7\u6599\u5361\u6700\u65B0\u85AA\u8CC7\u7D00\u9304\u540C\u6B65");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(130, "div", 45)(131, "label", 28);
+    \u0275\u0275text(132, "\u4E3B\u7BA1\u52A0\u7D66");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(133, "div", 46)(134, "span", 47);
+    \u0275\u0275text(135, "NT$");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(136, "input", 55);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(137, "div", 50);
+    \u0275\u0275text(138, "\u7531\u4EBA\u4E8B\u8CC7\u6599\u5361\u6700\u65B0\u85AA\u8CC7\u7D00\u9304\u540C\u6B65");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(139, "div", 45)(140, "label", 28);
+    \u0275\u0275text(141, "\u5176\u4ED6\u52A0\u7D66");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(142, "div", 46)(143, "span", 47);
+    \u0275\u0275text(144, "NT$");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(145, "input", 56);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(146, "div", 50);
+    \u0275\u0275text(147, "\u7531\u4EBA\u4E8B\u8CC7\u6599\u5361\u6700\u65B0\u85AA\u8CC7\u7D00\u9304\u540C\u6B65");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(148, "div", 45)(149, "label", 28);
+    \u0275\u0275text(150, "\u8ABF\u6574\u5DEE\u984D");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(151, "div", 46)(152, "span", 47);
+    \u0275\u0275text(153, "NT$");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(154, "input", 57);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(155, "div", 50);
+    \u0275\u0275text(156, "\u7531\u4EBA\u4E8B\u8CC7\u6599\u5361\u6700\u65B0\u85AA\u8CC7\u7D00\u9304\u540C\u6B65");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(157, "div", 45)(158, "label", 28);
+    \u0275\u0275text(159, "\u5916\u6D3E\u52A0\u7D66");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(160, "div", 46)(161, "span", 47);
+    \u0275\u0275text(162, "NT$");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(163, "input", 58);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(164, "div", 50);
+    \u0275\u0275text(165, "\u7531\u4EBA\u4E8B\u8CC7\u6599\u5361\u6700\u65B0\u85AA\u8CC7\u7D00\u9304\u540C\u6B65");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(166, "div", 45)(167, "label", 28);
+    \u0275\u0275text(168, "\u5BC4\u9001\u85AA\u8CC7\u8868");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(169, "div", 59);
+    \u0275\u0275element(170, "input", 60);
+    \u0275\u0275elementStart(171, "label", 61);
+    \u0275\u0275text(172, "\u5BC4\u9001\u85AA\u8CC7\u660E\u7D30");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(128, "div", 45)(129, "label", 28);
-    \u0275\u0275text(130, "\u539F\u4F4F\u6C11\u8EAB\u4EFD");
+    \u0275\u0275elementStart(173, "div", 45)(174, "label", 28);
+    \u0275\u0275text(175, "\u539F\u4F4F\u6C11\u8EAB\u4EFD");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(131, "div", 54);
-    \u0275\u0275element(132, "input", 57);
-    \u0275\u0275elementStart(133, "label", 58);
-    \u0275\u0275text(134, "\u662F\u539F\u4F4F\u6C11\uFF08\u53EF\u7533\u8ACB\u6B72\u6642\u796D\u5100\u5047\uFF09");
+    \u0275\u0275elementStart(176, "div", 59);
+    \u0275\u0275element(177, "input", 62);
+    \u0275\u0275elementStart(178, "label", 63);
+    \u0275\u0275text(179, "\u662F\u539F\u4F4F\u6C11\uFF08\u53EF\u7533\u8ACB\u6B72\u6642\u796D\u5100\u5047\uFF09");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(135, "div", 45)(136, "label", 28);
-    \u0275\u0275text(137, "\u4F4E\u6536\u5165\u6236");
+    \u0275\u0275elementStart(180, "div", 45)(181, "label", 28);
+    \u0275\u0275text(182, "\u4F4E\u6536\u5165\u6236");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(138, "div", 54);
-    \u0275\u0275element(139, "input", 59);
-    \u0275\u0275elementStart(140, "label", 60);
-    \u0275\u0275text(141, "\u4F4E\u6536\u5165\u6236\u8EAB\u4EFD");
+    \u0275\u0275elementStart(183, "div", 59);
+    \u0275\u0275element(184, "input", 64);
+    \u0275\u0275elementStart(185, "label", 65);
+    \u0275\u0275text(186, "\u4F4E\u6536\u5165\u6236\u8EAB\u4EFD");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(142, "div", 45)(143, "label", 28);
-    \u0275\u0275text(144, "\u6B98\u969C\u8EAB\u4EFD");
+    \u0275\u0275elementStart(187, "div", 45)(188, "label", 28);
+    \u0275\u0275text(189, "\u6B98\u969C\u8EAB\u4EFD");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(145, "div", 54);
-    \u0275\u0275element(146, "input", 61);
-    \u0275\u0275elementStart(147, "label", 62);
-    \u0275\u0275text(148, "\u5177\u6B98\u969C\u8CC7\u683C");
+    \u0275\u0275elementStart(190, "div", 59);
+    \u0275\u0275element(191, "input", 66);
+    \u0275\u0275elementStart(192, "label", 67);
+    \u0275\u0275text(193, "\u5177\u6B98\u969C\u8CC7\u683C");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(149, "div", 45)(150, "label", 28);
-    \u0275\u0275text(151, "\u96E2\u8077\u65E5");
+    \u0275\u0275elementStart(194, "div", 45)(195, "label", 28);
+    \u0275\u0275text(196, "\u96E2\u8077\u65E5");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(152, "input", 63);
+    \u0275\u0275element(197, "input", 68);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(153, "div", 45)(154, "label", 28);
-    \u0275\u0275text(155, "\u8077\u52D9\u4EE3\u7406\u4EBA");
+    \u0275\u0275elementStart(198, "div", 45)(199, "label", 28);
+    \u0275\u0275text(200, "\u8077\u52D9\u4EE3\u7406\u4EBA");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(156, "select", 64)(157, "option", 65);
-    \u0275\u0275text(158, "\u2014 \u7121\u4EE3\u7406\u4EBA \u2014");
+    \u0275\u0275elementStart(201, "select", 69)(202, "option", 70);
+    \u0275\u0275text(203, "\u2014 \u7121\u4EE3\u7406\u4EBA \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(159, UserForm_Conditional_19_For_160_Template, 2, 2, "option", 66, _forTrack02);
+    \u0275\u0275repeaterCreate(204, UserForm_Conditional_19_For_205_Template, 2, 2, "option", 71, _forTrack02);
     \u0275\u0275elementEnd()()()()();
-    \u0275\u0275elementStart(161, "div", 22)(162, "div", 23);
+    \u0275\u0275elementStart(206, "div", 22)(207, "div", 23);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(163, "svg", 3);
-    \u0275\u0275element(164, "use", 67);
+    \u0275\u0275elementStart(208, "svg", 3);
+    \u0275\u0275element(209, "use", 72);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(165, " \u982D\u50CF ");
+    \u0275\u0275text(210, " \u982D\u50CF ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(166, "div", 25)(167, "p", 68);
-    \u0275\u0275text(168, "\u652F\u63F4 PNG\u3001JPEG\u3001GIF\u3001WebP\u3001HEIC \u5716\u7247\u683C\u5F0F\u3002\u4E0A\u50B3\u5F8C\u53EF\u62D6\u66F3\u8ABF\u6574\u4F4D\u7F6E\u3001\u6ED1\u687F\u7E2E\u653E\uFF0C\u5716\u6A94\u6703\u81EA\u52D5\u58D3\u7E2E\u3002");
-    \u0275\u0275element(169, "br");
-    \u0275\u0275text(170, "\u4E0A\u50B3\u7167\u7247\u52FF\u8D85\u904E1MB\u3002");
+    \u0275\u0275elementStart(211, "div", 25)(212, "p", 73);
+    \u0275\u0275text(213, "\u652F\u63F4 PNG\u3001JPEG\u3001GIF\u3001WebP\u3001HEIC \u5716\u7247\u683C\u5F0F\u3002\u4E0A\u50B3\u5F8C\u53EF\u62D6\u66F3\u8ABF\u6574\u4F4D\u7F6E\u3001\u6ED1\u687F\u7E2E\u653E\uFF0C\u5716\u6A94\u6703\u81EA\u52D5\u58D3\u7E2E\u3002");
+    \u0275\u0275element(214, "br");
+    \u0275\u0275text(215, "\u4E0A\u50B3\u7167\u7247\u52FF\u8D85\u904E1MB\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(171, UserForm_Conditional_19_Conditional_171_Template, 21, 10)(172, UserForm_Conditional_19_Conditional_172_Template, 7, 0);
+    \u0275\u0275conditionalCreate(216, UserForm_Conditional_19_Conditional_216_Template, 21, 10)(217, UserForm_Conditional_19_Conditional_217_Template, 7, 0);
     \u0275\u0275elementEnd()();
-    \u0275\u0275conditionalCreate(173, UserForm_Conditional_19_Conditional_173_Template, 12, 1, "div", 22);
-    \u0275\u0275conditionalCreate(174, UserForm_Conditional_19_Conditional_174_Template, 10, 1, "div", 22);
-    \u0275\u0275conditionalCreate(175, UserForm_Conditional_19_Conditional_175_Template, 10, 1, "div", 22);
-    \u0275\u0275elementStart(176, "div", 22)(177, "div", 23);
+    \u0275\u0275conditionalCreate(218, UserForm_Conditional_19_Conditional_218_Template, 12, 1, "div", 22);
+    \u0275\u0275conditionalCreate(219, UserForm_Conditional_19_Conditional_219_Template, 10, 1, "div", 22);
+    \u0275\u0275conditionalCreate(220, UserForm_Conditional_19_Conditional_220_Template, 10, 1, "div", 22);
+    \u0275\u0275elementStart(221, "div", 22)(222, "div", 23);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(178, "svg", 3);
-    \u0275\u0275element(179, "use", 69);
+    \u0275\u0275elementStart(223, "svg", 3);
+    \u0275\u0275element(224, "use", 74);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(180, " \u7C3D\u540D\u6A94 ");
+    \u0275\u0275text(225, " \u7C3D\u540D\u6A94 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(181, "div", 25)(182, "p", 68);
-    \u0275\u0275text(183, "\u652F\u63F4 PNG\u3001JPEG\u3001GIF\u3001WebP \u683C\u5F0F\uFF0C\u5EFA\u8B70\u5C3A\u5BF8 300\xD7150 \u50CF\u7D20\uFF0C\u6A94\u6848\u5927\u5C0F\u4E0D\u8D85\u904E 2MB\u3002");
+    \u0275\u0275elementStart(226, "div", 25)(227, "p", 73);
+    \u0275\u0275text(228, "\u652F\u63F4 PNG\u3001JPEG\u3001GIF\u3001WebP \u683C\u5F0F\uFF0C\u5EFA\u8B70\u5C3A\u5BF8 300\xD7150 \u50CF\u7D20\uFF0C\u6A94\u6848\u5927\u5C0F\u4E0D\u8D85\u904E 2MB\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(184, UserForm_Conditional_19_Conditional_184_Template, 9, 1)(185, UserForm_Conditional_19_Conditional_185_Template, 7, 0);
+    \u0275\u0275conditionalCreate(229, UserForm_Conditional_19_Conditional_229_Template, 9, 1)(230, UserForm_Conditional_19_Conditional_230_Template, 7, 0);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(186, "div", 70)(187, "button", 71);
-    \u0275\u0275text(188);
+    \u0275\u0275elementStart(231, "div", 75)(232, "button", 76);
+    \u0275\u0275text(233);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(189, "a", 72);
-    \u0275\u0275text(190, "\u53D6\u6D88");
+    \u0275\u0275elementStart(234, "a", 77);
+    \u0275\u0275text(235, "\u53D6\u6D88");
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -2152,34 +2207,34 @@ function UserForm_Conditional_19_Template(rf, ctx) {
     \u0275\u0275property("placeholder", ctx_r1.laborInsurance() !== null ? \u0275\u0275pipeBind2(94, 16, ctx_r1.laborInsurance(), "1.0-0") + "\uFF08\u7D1A\u8DDD\u9810\u8A2D\uFF09" : "\u2014");
     \u0275\u0275advance(10);
     \u0275\u0275property("placeholder", ctx_r1.healthInsurance() !== null ? \u0275\u0275pipeBind2(104, 19, ctx_r1.healthInsurance(), "1.0-0") + "\uFF08\u7D1A\u8DDD\u9810\u8A2D\uFF09" : "\u2014");
-    \u0275\u0275advance(56);
+    \u0275\u0275advance(101);
     \u0275\u0275repeater(ctx_r1.getAvailableAgents());
     \u0275\u0275advance(12);
-    \u0275\u0275conditional(ctx_r1.displayAvatar ? 171 : 172);
+    \u0275\u0275conditional(ctx_r1.displayAvatar ? 216 : 217);
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r1.form.value.isIndigenous ? 173 : -1);
+    \u0275\u0275conditional(ctx_r1.form.value.isIndigenous ? 218 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.form.value.isLowIncome ? 174 : -1);
+    \u0275\u0275conditional(ctx_r1.form.value.isLowIncome ? 219 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.form.value.isDisabled ? 175 : -1);
+    \u0275\u0275conditional(ctx_r1.form.value.isDisabled ? 220 : -1);
     \u0275\u0275advance(9);
-    \u0275\u0275conditional(ctx_r1.displaySignature ? 184 : 185);
+    \u0275\u0275conditional(ctx_r1.displaySignature ? 229 : 230);
     \u0275\u0275advance(4);
     \u0275\u0275textInterpolate(ctx_r1.isEdit ? "\u66F4\u65B0" : "\u5EFA\u7ACB");
   }
 }
 function UserForm_Conditional_20_Conditional_18_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 105);
-    \u0275\u0275element(1, "span", 106);
+    \u0275\u0275elementStart(0, "div", 110);
+    \u0275\u0275element(1, "span", 111);
     \u0275\u0275text(2, " \u8F09\u5165\u4EBA\u4E8B\u8CC7\u6599\u4E2D\u2026 ");
     \u0275\u0275elementEnd();
   }
 }
 function UserForm_Conditional_20_Conditional_19_Conditional_63_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 125);
-    \u0275\u0275element(1, "img", 170);
+    \u0275\u0275elementStart(0, "div", 130);
+    \u0275\u0275element(1, "img", 175);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -2191,7 +2246,7 @@ function UserForm_Conditional_20_Conditional_19_Conditional_63_Template(rf, ctx)
 function UserForm_Conditional_20_Conditional_19_Conditional_64_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
     const _r22 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 96);
+    \u0275\u0275elementStart(0, "button", 101);
     \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Conditional_64_Conditional_5_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r22);
       const ctx_r1 = \u0275\u0275nextContext(4);
@@ -2204,27 +2259,27 @@ function UserForm_Conditional_20_Conditional_19_Conditional_64_Conditional_5_Tem
 function UserForm_Conditional_20_Conditional_19_Conditional_64_Template(rf, ctx) {
   if (rf & 1) {
     const _r21 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 171);
+    \u0275\u0275elementStart(0, "div", 176);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 92);
-    \u0275\u0275element(2, "use", 90);
+    \u0275\u0275elementStart(1, "svg", 97);
+    \u0275\u0275element(2, "use", 95);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(3, "span", 172);
+    \u0275\u0275elementStart(3, "span", 177);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(5, UserForm_Conditional_20_Conditional_19_Conditional_64_Conditional_5_Template, 2, 0, "button", 94);
+    \u0275\u0275conditionalCreate(5, UserForm_Conditional_20_Conditional_19_Conditional_64_Conditional_5_Template, 2, 0, "button", 99);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "div", 85)(7, "label", 86);
+    \u0275\u0275elementStart(6, "div", 90)(7, "label", 91);
     \u0275\u0275text(8, " \u66F4\u63DB ");
-    \u0275\u0275elementStart(9, "input", 173);
+    \u0275\u0275elementStart(9, "input", 178);
     \u0275\u0275listener("change", function UserForm_Conditional_20_Conditional_19_Conditional_64_Template_input_change_9_listener($event) {
       \u0275\u0275restoreView(_r21);
       const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.onIdCardFrontSelected($event));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(10, "button", 88);
+    \u0275\u0275elementStart(10, "button", 93);
     \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Conditional_64_Template_button_click_10_listener() {
       \u0275\u0275restoreView(_r21);
       const ctx_r1 = \u0275\u0275nextContext(3);
@@ -2244,14 +2299,14 @@ function UserForm_Conditional_20_Conditional_19_Conditional_64_Template(rf, ctx)
 function UserForm_Conditional_20_Conditional_19_Conditional_65_Template(rf, ctx) {
   if (rf & 1) {
     const _r23 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "label", 86);
+    \u0275\u0275elementStart(0, "label", 91);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 17);
-    \u0275\u0275element(2, "use", 89);
+    \u0275\u0275element(2, "use", 94);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3, " \u9078\u64C7\u6B63\u9762 ");
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(4, "input", 173);
+    \u0275\u0275elementStart(4, "input", 178);
     \u0275\u0275listener("change", function UserForm_Conditional_20_Conditional_19_Conditional_65_Template_input_change_4_listener($event) {
       \u0275\u0275restoreView(_r23);
       const ctx_r1 = \u0275\u0275nextContext(3);
@@ -2262,8 +2317,8 @@ function UserForm_Conditional_20_Conditional_19_Conditional_65_Template(rf, ctx)
 }
 function UserForm_Conditional_20_Conditional_19_Conditional_69_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 125);
-    \u0275\u0275element(1, "img", 174);
+    \u0275\u0275elementStart(0, "div", 130);
+    \u0275\u0275element(1, "img", 179);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -2275,7 +2330,7 @@ function UserForm_Conditional_20_Conditional_19_Conditional_69_Template(rf, ctx)
 function UserForm_Conditional_20_Conditional_19_Conditional_70_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
     const _r25 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 96);
+    \u0275\u0275elementStart(0, "button", 101);
     \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Conditional_70_Conditional_5_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r25);
       const ctx_r1 = \u0275\u0275nextContext(4);
@@ -2288,27 +2343,27 @@ function UserForm_Conditional_20_Conditional_19_Conditional_70_Conditional_5_Tem
 function UserForm_Conditional_20_Conditional_19_Conditional_70_Template(rf, ctx) {
   if (rf & 1) {
     const _r24 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 171);
+    \u0275\u0275elementStart(0, "div", 176);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 92);
-    \u0275\u0275element(2, "use", 90);
+    \u0275\u0275elementStart(1, "svg", 97);
+    \u0275\u0275element(2, "use", 95);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(3, "span", 172);
+    \u0275\u0275elementStart(3, "span", 177);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(5, UserForm_Conditional_20_Conditional_19_Conditional_70_Conditional_5_Template, 2, 0, "button", 94);
+    \u0275\u0275conditionalCreate(5, UserForm_Conditional_20_Conditional_19_Conditional_70_Conditional_5_Template, 2, 0, "button", 99);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "div", 85)(7, "label", 86);
+    \u0275\u0275elementStart(6, "div", 90)(7, "label", 91);
     \u0275\u0275text(8, " \u66F4\u63DB ");
-    \u0275\u0275elementStart(9, "input", 173);
+    \u0275\u0275elementStart(9, "input", 178);
     \u0275\u0275listener("change", function UserForm_Conditional_20_Conditional_19_Conditional_70_Template_input_change_9_listener($event) {
       \u0275\u0275restoreView(_r24);
       const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.onIdCardBackSelected($event));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(10, "button", 88);
+    \u0275\u0275elementStart(10, "button", 93);
     \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Conditional_70_Template_button_click_10_listener() {
       \u0275\u0275restoreView(_r24);
       const ctx_r1 = \u0275\u0275nextContext(3);
@@ -2328,14 +2383,14 @@ function UserForm_Conditional_20_Conditional_19_Conditional_70_Template(rf, ctx)
 function UserForm_Conditional_20_Conditional_19_Conditional_71_Template(rf, ctx) {
   if (rf & 1) {
     const _r26 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "label", 86);
+    \u0275\u0275elementStart(0, "label", 91);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 17);
-    \u0275\u0275element(2, "use", 89);
+    \u0275\u0275element(2, "use", 94);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3, " \u9078\u64C7\u53CD\u9762 ");
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(4, "input", 173);
+    \u0275\u0275elementStart(4, "input", 178);
     \u0275\u0275listener("change", function UserForm_Conditional_20_Conditional_19_Conditional_71_Template_input_change_4_listener($event) {
       \u0275\u0275restoreView(_r26);
       const ctx_r1 = \u0275\u0275nextContext(3);
@@ -2346,8 +2401,8 @@ function UserForm_Conditional_20_Conditional_19_Conditional_71_Template(rf, ctx)
 }
 function UserForm_Conditional_20_Conditional_19_Conditional_111_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 125);
-    \u0275\u0275element(1, "img", 175);
+    \u0275\u0275elementStart(0, "div", 130);
+    \u0275\u0275element(1, "img", 180);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -2359,7 +2414,7 @@ function UserForm_Conditional_20_Conditional_19_Conditional_111_Template(rf, ctx
 function UserForm_Conditional_20_Conditional_19_Conditional_112_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
     const _r28 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 96);
+    \u0275\u0275elementStart(0, "button", 101);
     \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Conditional_112_Conditional_5_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r28);
       const ctx_r1 = \u0275\u0275nextContext(4);
@@ -2372,27 +2427,27 @@ function UserForm_Conditional_20_Conditional_19_Conditional_112_Conditional_5_Te
 function UserForm_Conditional_20_Conditional_19_Conditional_112_Template(rf, ctx) {
   if (rf & 1) {
     const _r27 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 171);
+    \u0275\u0275elementStart(0, "div", 176);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 92);
-    \u0275\u0275element(2, "use", 90);
+    \u0275\u0275elementStart(1, "svg", 97);
+    \u0275\u0275element(2, "use", 95);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(3, "span", 172);
+    \u0275\u0275elementStart(3, "span", 177);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(5, UserForm_Conditional_20_Conditional_19_Conditional_112_Conditional_5_Template, 2, 0, "button", 94);
+    \u0275\u0275conditionalCreate(5, UserForm_Conditional_20_Conditional_19_Conditional_112_Conditional_5_Template, 2, 0, "button", 99);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "div", 85)(7, "label", 86);
+    \u0275\u0275elementStart(6, "div", 90)(7, "label", 91);
     \u0275\u0275text(8, " \u66F4\u63DB ");
-    \u0275\u0275elementStart(9, "input", 173);
+    \u0275\u0275elementStart(9, "input", 178);
     \u0275\u0275listener("change", function UserForm_Conditional_20_Conditional_19_Conditional_112_Template_input_change_9_listener($event) {
       \u0275\u0275restoreView(_r27);
       const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.onHighestEducationProofSelected($event));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(10, "button", 88);
+    \u0275\u0275elementStart(10, "button", 93);
     \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Conditional_112_Template_button_click_10_listener() {
       \u0275\u0275restoreView(_r27);
       const ctx_r1 = \u0275\u0275nextContext(3);
@@ -2412,14 +2467,14 @@ function UserForm_Conditional_20_Conditional_19_Conditional_112_Template(rf, ctx
 function UserForm_Conditional_20_Conditional_19_Conditional_113_Template(rf, ctx) {
   if (rf & 1) {
     const _r29 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "label", 86);
+    \u0275\u0275elementStart(0, "label", 91);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 17);
-    \u0275\u0275element(2, "use", 89);
+    \u0275\u0275element(2, "use", 94);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3, " \u9078\u64C7\u6A94\u6848 ");
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(4, "input", 173);
+    \u0275\u0275elementStart(4, "input", 178);
     \u0275\u0275listener("change", function UserForm_Conditional_20_Conditional_19_Conditional_113_Template_input_change_4_listener($event) {
       \u0275\u0275restoreView(_r29);
       const ctx_r1 = \u0275\u0275nextContext(3);
@@ -2431,43 +2486,43 @@ function UserForm_Conditional_20_Conditional_19_Conditional_113_Template(rf, ctx
 function UserForm_Conditional_20_Conditional_19_For_131_Template(rf, ctx) {
   if (rf & 1) {
     const _r30 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr", 142)(1, "td");
-    \u0275\u0275element(2, "input", 176);
+    \u0275\u0275elementStart(0, "tr", 147)(1, "td");
+    \u0275\u0275element(2, "input", 181);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "td");
-    \u0275\u0275element(4, "input", 177);
+    \u0275\u0275element(4, "input", 182);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "td")(6, "select", 178)(7, "option", 179);
+    \u0275\u0275elementStart(5, "td")(6, "select", 183)(7, "option", 184);
     \u0275\u0275text(8, "\u7562\u696D");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "option", 180);
+    \u0275\u0275elementStart(9, "option", 185);
     \u0275\u0275text(10, "\u8084\u696D");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(11, "td");
-    \u0275\u0275element(12, "input", 181);
+    \u0275\u0275element(12, "input", 186);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(13, "td");
-    \u0275\u0275element(14, "input", 182);
+    \u0275\u0275element(14, "input", 187);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "td")(16, "button", 183);
+    \u0275\u0275elementStart(15, "td")(16, "button", 188);
     \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_131_Template_button_click_16_listener() {
-      const \u0275$index_991_r31 = \u0275\u0275restoreView(_r30).$index;
+      const \u0275$index_1066_r31 = \u0275\u0275restoreView(_r30).$index;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.removeEducation(\u0275$index_991_r31));
+      return \u0275\u0275resetView(ctx_r1.removeEducation(\u0275$index_1066_r31));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(17, "svg", 20);
-    \u0275\u0275element(18, "use", 184);
+    \u0275\u0275element(18, "use", 189);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
-    const \u0275$index_991_r31 = ctx.$index;
-    \u0275\u0275property("formGroupName", \u0275$index_991_r31);
+    const \u0275$index_1066_r31 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1066_r31);
   }
 }
 function UserForm_Conditional_20_Conditional_19_Conditional_132_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 185);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 190);
     \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
     \u0275\u0275elementEnd()();
   }
@@ -2475,7 +2530,7 @@ function UserForm_Conditional_20_Conditional_19_Conditional_132_Template(rf, ctx
 function UserForm_Conditional_20_Conditional_19_Conditional_133_Template(rf, ctx) {
   if (rf & 1) {
     const _r32 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 84);
+    \u0275\u0275elementStart(0, "button", 89);
     \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Conditional_133_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r32);
       const ctx_r1 = \u0275\u0275nextContext(3);
@@ -2483,7 +2538,7 @@ function UserForm_Conditional_20_Conditional_19_Conditional_133_Template(rf, ctx
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 17);
-    \u0275\u0275element(2, "use", 147);
+    \u0275\u0275element(2, "use", 152);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3, " \u65B0\u589E\u5B78\u6B77 ");
     \u0275\u0275elementEnd();
@@ -2492,62 +2547,7 @@ function UserForm_Conditional_20_Conditional_19_Conditional_133_Template(rf, ctx
 function UserForm_Conditional_20_Conditional_19_For_155_Template(rf, ctx) {
   if (rf & 1) {
     const _r33 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr", 142)(1, "td");
-    \u0275\u0275element(2, "input", 186);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td");
-    \u0275\u0275element(4, "input", 187);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "td");
-    \u0275\u0275element(6, "input", 188);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "td");
-    \u0275\u0275element(8, "input", 189);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "td")(10, "button", 183);
-    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_155_Template_button_click_10_listener() {
-      const \u0275$index_1077_r34 = \u0275\u0275restoreView(_r33).$index;
-      const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.removeEmployment(\u0275$index_1077_r34));
-    });
-    \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(11, "svg", 20);
-    \u0275\u0275element(12, "use", 184);
-    \u0275\u0275elementEnd()()()();
-  }
-  if (rf & 2) {
-    const \u0275$index_1077_r34 = ctx.$index;
-    \u0275\u0275property("formGroupName", \u0275$index_1077_r34);
-  }
-}
-function UserForm_Conditional_20_Conditional_19_Conditional_156_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 190);
-    \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
-    \u0275\u0275elementEnd()();
-  }
-}
-function UserForm_Conditional_20_Conditional_19_Conditional_157_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r35 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 84);
-    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Conditional_157_Template_button_click_0_listener() {
-      \u0275\u0275restoreView(_r35);
-      const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.addEmployment());
-    });
-    \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 17);
-    \u0275\u0275element(2, "use", 147);
-    \u0275\u0275elementEnd();
-    \u0275\u0275text(3, " \u65B0\u589E\u7D93\u6B77 ");
-    \u0275\u0275elementEnd();
-  }
-}
-function UserForm_Conditional_20_Conditional_19_For_179_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r36 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr", 142)(1, "td");
+    \u0275\u0275elementStart(0, "tr", 147)(1, "td");
     \u0275\u0275element(2, "input", 191);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "td");
@@ -2559,25 +2559,80 @@ function UserForm_Conditional_20_Conditional_19_For_179_Template(rf, ctx) {
     \u0275\u0275elementStart(7, "td");
     \u0275\u0275element(8, "input", 194);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "td")(10, "button", 183);
-    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_179_Template_button_click_10_listener() {
-      const \u0275$index_1153_r37 = \u0275\u0275restoreView(_r36).$index;
+    \u0275\u0275elementStart(9, "td")(10, "button", 188);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_155_Template_button_click_10_listener() {
+      const \u0275$index_1152_r34 = \u0275\u0275restoreView(_r33).$index;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.removeFamily(\u0275$index_1153_r37));
+      return \u0275\u0275resetView(ctx_r1.removeEmployment(\u0275$index_1152_r34));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(11, "svg", 20);
-    \u0275\u0275element(12, "use", 184);
+    \u0275\u0275element(12, "use", 189);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
-    const \u0275$index_1153_r37 = ctx.$index;
-    \u0275\u0275property("formGroupName", \u0275$index_1153_r37);
+    const \u0275$index_1152_r34 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1152_r34);
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_156_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "tr")(1, "td", 195);
+    \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
+    \u0275\u0275elementEnd()();
+  }
+}
+function UserForm_Conditional_20_Conditional_19_Conditional_157_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r35 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 89);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Conditional_157_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r35);
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.addEmployment());
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 17);
+    \u0275\u0275element(2, "use", 152);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3, " \u65B0\u589E\u7D93\u6B77 ");
+    \u0275\u0275elementEnd();
+  }
+}
+function UserForm_Conditional_20_Conditional_19_For_179_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r36 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 147)(1, "td");
+    \u0275\u0275element(2, "input", 196);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "td");
+    \u0275\u0275element(4, "input", 197);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(5, "td");
+    \u0275\u0275element(6, "input", 198);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "td");
+    \u0275\u0275element(8, "input", 199);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(9, "td")(10, "button", 188);
+    \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_179_Template_button_click_10_listener() {
+      const \u0275$index_1228_r37 = \u0275\u0275restoreView(_r36).$index;
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.removeFamily(\u0275$index_1228_r37));
+    });
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(11, "svg", 20);
+    \u0275\u0275element(12, "use", 189);
+    \u0275\u0275elementEnd()()()();
+  }
+  if (rf & 2) {
+    const \u0275$index_1228_r37 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1228_r37);
   }
 }
 function UserForm_Conditional_20_Conditional_19_Conditional_180_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 190);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 195);
     \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
     \u0275\u0275elementEnd()();
   }
@@ -2585,40 +2640,40 @@ function UserForm_Conditional_20_Conditional_19_Conditional_180_Template(rf, ctx
 function UserForm_Conditional_20_Conditional_19_For_208_Template(rf, ctx) {
   if (rf & 1) {
     const _r38 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr", 142)(1, "td");
-    \u0275\u0275element(2, "input", 195);
+    \u0275\u0275elementStart(0, "tr", 147)(1, "td");
+    \u0275\u0275element(2, "input", 200);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "td");
-    \u0275\u0275element(4, "input", 196);
+    \u0275\u0275element(4, "input", 201);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(5, "td");
-    \u0275\u0275element(6, "input", 188);
+    \u0275\u0275element(6, "input", 193);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(7, "td");
-    \u0275\u0275element(8, "input", 189);
+    \u0275\u0275element(8, "input", 194);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(9, "td");
-    \u0275\u0275element(10, "input", 197);
+    \u0275\u0275element(10, "input", 202);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(11, "td")(12, "button", 183);
+    \u0275\u0275elementStart(11, "td")(12, "button", 188);
     \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_208_Template_button_click_12_listener() {
-      const \u0275$index_1231_r39 = \u0275\u0275restoreView(_r38).$index;
+      const \u0275$index_1306_r39 = \u0275\u0275restoreView(_r38).$index;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.removeTraining(\u0275$index_1231_r39));
+      return \u0275\u0275resetView(ctx_r1.removeTraining(\u0275$index_1306_r39));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(13, "svg", 20);
-    \u0275\u0275element(14, "use", 184);
+    \u0275\u0275element(14, "use", 189);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
-    const \u0275$index_1231_r39 = ctx.$index;
-    \u0275\u0275property("formGroupName", \u0275$index_1231_r39);
+    const \u0275$index_1306_r39 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1306_r39);
   }
 }
 function UserForm_Conditional_20_Conditional_19_Conditional_209_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 185);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 190);
     \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
     \u0275\u0275elementEnd()();
   }
@@ -2626,52 +2681,52 @@ function UserForm_Conditional_20_Conditional_19_Conditional_209_Template(rf, ctx
 function UserForm_Conditional_20_Conditional_19_For_237_Template(rf, ctx) {
   if (rf & 1) {
     const _r40 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr", 142)(1, "td");
-    \u0275\u0275element(2, "input", 198);
+    \u0275\u0275elementStart(0, "tr", 147)(1, "td");
+    \u0275\u0275element(2, "input", 203);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td")(4, "select", 199)(5, "option", 200);
+    \u0275\u0275elementStart(3, "td")(4, "select", 204)(5, "option", 205);
     \u0275\u0275text(6, "\u4F73");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "option", 201);
+    \u0275\u0275elementStart(7, "option", 206);
     \u0275\u0275text(8, "\u53EF");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(9, "td")(10, "select", 202)(11, "option", 200);
+    \u0275\u0275elementStart(9, "td")(10, "select", 207)(11, "option", 205);
     \u0275\u0275text(12, "\u4F73");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(13, "option", 201);
+    \u0275\u0275elementStart(13, "option", 206);
     \u0275\u0275text(14, "\u53EF");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(15, "td")(16, "select", 203)(17, "option", 200);
+    \u0275\u0275elementStart(15, "td")(16, "select", 208)(17, "option", 205);
     \u0275\u0275text(18, "\u4F73");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(19, "option", 201);
+    \u0275\u0275elementStart(19, "option", 206);
     \u0275\u0275text(20, "\u53EF");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(21, "td")(22, "select", 204)(23, "option", 200);
+    \u0275\u0275elementStart(21, "td")(22, "select", 209)(23, "option", 205);
     \u0275\u0275text(24, "\u4F73");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(25, "option", 201);
+    \u0275\u0275elementStart(25, "option", 206);
     \u0275\u0275text(26, "\u53EF");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(27, "td")(28, "button", 183);
+    \u0275\u0275elementStart(27, "td")(28, "button", 188);
     \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_237_Template_button_click_28_listener() {
-      const \u0275$index_1313_r41 = \u0275\u0275restoreView(_r40).$index;
+      const \u0275$index_1388_r41 = \u0275\u0275restoreView(_r40).$index;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.removeLanguage(\u0275$index_1313_r41));
+      return \u0275\u0275resetView(ctx_r1.removeLanguage(\u0275$index_1388_r41));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(29, "svg", 20);
-    \u0275\u0275element(30, "use", 184);
+    \u0275\u0275element(30, "use", 189);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
-    const \u0275$index_1313_r41 = ctx.$index;
-    \u0275\u0275property("formGroupName", \u0275$index_1313_r41);
+    const \u0275$index_1388_r41 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1388_r41);
   }
 }
 function UserForm_Conditional_20_Conditional_19_Conditional_238_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 185);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 190);
     \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
     \u0275\u0275elementEnd()();
   }
@@ -2679,145 +2734,156 @@ function UserForm_Conditional_20_Conditional_19_Conditional_238_Template(rf, ctx
 function UserForm_Conditional_20_Conditional_19_For_303_Template(rf, ctx) {
   if (rf & 1) {
     const _r42 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr", 142)(1, "td");
-    \u0275\u0275element(2, "input", 205);
+    \u0275\u0275elementStart(0, "tr", 147)(1, "td");
+    \u0275\u0275element(2, "input", 210);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "td");
-    \u0275\u0275element(4, "input", 206);
+    \u0275\u0275element(4, "input", 211);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(5, "td");
-    \u0275\u0275element(6, "input", 207);
+    \u0275\u0275element(6, "input", 212);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(7, "td");
-    \u0275\u0275element(8, "input", 208);
+    \u0275\u0275element(8, "input", 213);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(9, "td");
-    \u0275\u0275element(10, "input", 209);
+    \u0275\u0275element(10, "input", 214);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(11, "td")(12, "button", 183);
+    \u0275\u0275elementStart(11, "td")(12, "button", 188);
     \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_303_Template_button_click_12_listener() {
-      const \u0275$index_1484_r43 = \u0275\u0275restoreView(_r42).$index;
+      const \u0275$index_1559_r43 = \u0275\u0275restoreView(_r42).$index;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.removeJobTransfer(\u0275$index_1484_r43));
+      return \u0275\u0275resetView(ctx_r1.removeJobTransfer(\u0275$index_1559_r43));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(13, "svg", 20);
-    \u0275\u0275element(14, "use", 184);
+    \u0275\u0275element(14, "use", 189);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
-    const \u0275$index_1484_r43 = ctx.$index;
-    \u0275\u0275property("formGroupName", \u0275$index_1484_r43);
+    let tmp_14_0;
+    const ctrl_r44 = ctx.$implicit;
+    const \u0275$index_1559_r43 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1559_r43);
+    \u0275\u0275advance(2);
+    \u0275\u0275classProp("is-invalid", ((tmp_14_0 = ctrl_r44.get("effectiveDate")) == null ? null : tmp_14_0.invalid) && ((tmp_14_0 = ctrl_r44.get("effectiveDate")) == null ? null : tmp_14_0.touched));
   }
 }
 function UserForm_Conditional_20_Conditional_19_Conditional_304_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 185);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 190);
     \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
     \u0275\u0275elementEnd()();
   }
 }
 function UserForm_Conditional_20_Conditional_19_For_328_Template(rf, ctx) {
   if (rf & 1) {
-    const _r44 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr", 142)(1, "td");
-    \u0275\u0275element(2, "input", 205);
+    const _r45 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 147)(1, "td");
+    \u0275\u0275element(2, "input", 210);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td")(4, "select", 210)(5, "option", 211);
+    \u0275\u0275elementStart(3, "td")(4, "select", 215)(5, "option", 216);
     \u0275\u0275text(6, "\u734E\u52F5");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "option", 212);
+    \u0275\u0275elementStart(7, "option", 217);
     \u0275\u0275text(8, "\u61F2\u8655");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(9, "td");
-    \u0275\u0275element(10, "input", 213);
+    \u0275\u0275element(10, "input", 218);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(11, "td");
-    \u0275\u0275element(12, "input", 214);
+    \u0275\u0275element(12, "input", 219);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(13, "td");
-    \u0275\u0275element(14, "input", 215);
+    \u0275\u0275element(14, "input", 220);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "td")(16, "button", 183);
+    \u0275\u0275elementStart(15, "td")(16, "button", 188);
     \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_328_Template_button_click_16_listener() {
-      const \u0275$index_1558_r45 = \u0275\u0275restoreView(_r44).$index;
+      const \u0275$index_1633_r46 = \u0275\u0275restoreView(_r45).$index;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.removeReward(\u0275$index_1558_r45));
+      return \u0275\u0275resetView(ctx_r1.removeReward(\u0275$index_1633_r46));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(17, "svg", 20);
-    \u0275\u0275element(18, "use", 184);
+    \u0275\u0275element(18, "use", 189);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
-    const \u0275$index_1558_r45 = ctx.$index;
-    \u0275\u0275property("formGroupName", \u0275$index_1558_r45);
+    let tmp_14_0;
+    const ctrl_r47 = ctx.$implicit;
+    const \u0275$index_1633_r46 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1633_r46);
+    \u0275\u0275advance(2);
+    \u0275\u0275classProp("is-invalid", ((tmp_14_0 = ctrl_r47.get("effectiveDate")) == null ? null : tmp_14_0.invalid) && ((tmp_14_0 = ctrl_r47.get("effectiveDate")) == null ? null : tmp_14_0.touched));
   }
 }
 function UserForm_Conditional_20_Conditional_19_Conditional_329_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 185);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 190);
     \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
     \u0275\u0275elementEnd()();
   }
 }
 function UserForm_Conditional_20_Conditional_19_For_365_Template(rf, ctx) {
   if (rf & 1) {
-    const _r46 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr", 142)(1, "td");
-    \u0275\u0275element(2, "input", 205);
+    const _r48 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 147)(1, "td");
+    \u0275\u0275element(2, "input", 210);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "td");
-    \u0275\u0275element(4, "input", 216);
+    \u0275\u0275element(4, "input", 221);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(5, "td");
-    \u0275\u0275element(6, "input", 217);
+    \u0275\u0275element(6, "input", 222);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(7, "td");
-    \u0275\u0275element(8, "input", 218);
+    \u0275\u0275element(8, "input", 223);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(9, "td");
-    \u0275\u0275element(10, "input", 219);
+    \u0275\u0275element(10, "input", 224);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(11, "td");
-    \u0275\u0275element(12, "input", 220);
+    \u0275\u0275element(12, "input", 225);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(13, "td");
-    \u0275\u0275element(14, "input", 221);
+    \u0275\u0275element(14, "input", 226);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(15, "td");
-    \u0275\u0275element(16, "input", 222);
+    \u0275\u0275element(16, "input", 227);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(17, "td", 223);
+    \u0275\u0275elementStart(17, "td", 228);
     \u0275\u0275text(18);
     \u0275\u0275pipe(19, "number");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(20, "td");
-    \u0275\u0275element(21, "input", 224);
+    \u0275\u0275element(21, "input", 229);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(22, "td")(23, "button", 183);
+    \u0275\u0275elementStart(22, "td")(23, "button", 188);
     \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_For_365_Template_button_click_23_listener() {
-      const \u0275$index_1656_r47 = \u0275\u0275restoreView(_r46).$index;
+      const \u0275$index_1731_r49 = \u0275\u0275restoreView(_r48).$index;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.removeSalary(\u0275$index_1656_r47));
+      return \u0275\u0275resetView(ctx_r1.removeSalary(\u0275$index_1731_r49));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(24, "svg", 20);
-    \u0275\u0275element(25, "use", 184);
+    \u0275\u0275element(25, "use", 189);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
-    const ctrl_r48 = ctx.$implicit;
-    const \u0275$index_1656_r47 = ctx.$index;
+    let tmp_14_0;
+    const ctrl_r50 = ctx.$implicit;
+    const \u0275$index_1731_r49 = ctx.$index;
     const ctx_r1 = \u0275\u0275nextContext(3);
-    \u0275\u0275property("formGroupName", \u0275$index_1656_r47);
-    \u0275\u0275advance(18);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(19, 2, ctx_r1.salaryRowTotal(ctrl_r48), "1.0-0"));
+    \u0275\u0275property("formGroupName", \u0275$index_1731_r49);
+    \u0275\u0275advance(2);
+    \u0275\u0275classProp("is-invalid", ((tmp_14_0 = ctrl_r50.get("effectiveDate")) == null ? null : tmp_14_0.invalid) && ((tmp_14_0 = ctrl_r50.get("effectiveDate")) == null ? null : tmp_14_0.touched));
+    \u0275\u0275advance(16);
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(19, 4, ctx_r1.salaryRowTotal(ctrl_r50), "1.0-0"));
   }
 }
 function UserForm_Conditional_20_Conditional_19_Conditional_366_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 225);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 230);
     \u0275\u0275text(2, "\u5C1A\u7121\u7D00\u9304");
     \u0275\u0275elementEnd()();
   }
@@ -2827,7 +2893,7 @@ function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
     const _r20 = \u0275\u0275getCurrentView();
     \u0275\u0275elementStart(0, "div", 22)(1, "div", 23);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(2, "svg", 107);
+    \u0275\u0275elementStart(2, "svg", 112);
     \u0275\u0275element(3, "use", 24);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u57FA\u672C\u8CC7\u6599\u88DC\u5145 ");
@@ -2836,100 +2902,100 @@ function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
     \u0275\u0275elementStart(5, "div", 25)(6, "div", 26)(7, "div", 45)(8, "label", 28);
     \u0275\u0275text(9, "\u54E1\u5DE5\u4EE3\u865F");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(10, "input", 108);
+    \u0275\u0275element(10, "input", 113);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(11, "div", 45)(12, "label", 28);
     \u0275\u0275text(13, "\u82F1\u6587\u540D");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(14, "input", 109);
+    \u0275\u0275element(14, "input", 114);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(15, "div", 45)(16, "label", 28);
     \u0275\u0275text(17, "\u8EAB\u5206\u8B49\u865F");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(18, "input", 110);
+    \u0275\u0275element(18, "input", 115);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(19, "div", 45)(20, "label", 28);
     \u0275\u0275text(21, "\u6027\u5225");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(22, "select", 111)(23, "option", 65);
+    \u0275\u0275elementStart(22, "select", 116)(23, "option", 70);
     \u0275\u0275text(24, "\u2014 \u8ACB\u9078\u64C7 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(25, "option", 112);
+    \u0275\u0275elementStart(25, "option", 117);
     \u0275\u0275text(26, "\u7537");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(27, "option", 113);
+    \u0275\u0275elementStart(27, "option", 118);
     \u0275\u0275text(28, "\u5973");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(29, "div", 45)(30, "label", 28);
     \u0275\u0275text(31, "\u5A5A\u59FB\u72C0\u6CC1");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(32, "select", 114)(33, "option", 65);
+    \u0275\u0275elementStart(32, "select", 119)(33, "option", 70);
     \u0275\u0275text(34, "\u2014 \u8ACB\u9078\u64C7 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(35, "option", 115);
+    \u0275\u0275elementStart(35, "option", 120);
     \u0275\u0275text(36, "\u672A\u5A5A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(37, "option", 116);
+    \u0275\u0275elementStart(37, "option", 121);
     \u0275\u0275text(38, "\u5DF2\u5A5A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(39, "option", 117);
+    \u0275\u0275elementStart(39, "option", 122);
     \u0275\u0275text(40, "\u96E2\u5A5A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(41, "option", 118);
+    \u0275\u0275elementStart(41, "option", 123);
     \u0275\u0275text(42, "\u55AA\u5076");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(43, "div", 45)(44, "label", 28);
     \u0275\u0275text(45, "\u51FA\u751F\u5730");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(46, "input", 119);
+    \u0275\u0275element(46, "input", 124);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(47, "div", 45)(48, "label", 28);
     \u0275\u0275text(49, "\u884C\u52D5\u96FB\u8A71");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(50, "input", 120);
+    \u0275\u0275element(50, "input", 125);
     \u0275\u0275elementEnd()()()();
     \u0275\u0275elementStart(51, "div", 22)(52, "div", 23);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(53, "svg", 107);
-    \u0275\u0275element(54, "use", 121);
+    \u0275\u0275elementStart(53, "svg", 112);
+    \u0275\u0275element(54, "use", 126);
     \u0275\u0275elementEnd();
     \u0275\u0275text(55, " \u8EAB\u5206\u8B49\u5F71\u672C ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(56, "div", 25)(57, "p", 122);
+    \u0275\u0275elementStart(56, "div", 25)(57, "p", 127);
     \u0275\u0275text(58, "\u652F\u63F4 PNG\u3001JPEG \u5716\u7247\u6216 PDF\u3002\u6B64\u6587\u4EF6\u53D7\u6B0A\u9650\u4FDD\u8B77\uFF0C\u50C5\u4EBA\u4E8B\u90E8\u9580\u53EF\u67E5\u95B1\u3002\u4E0A\u50B3\u5F8C\u52FF\u8D85\u904E 1MB\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(59, "div", 123)(60, "div", 27)(61, "div", 124);
+    \u0275\u0275elementStart(59, "div", 128)(60, "div", 27)(61, "div", 129);
     \u0275\u0275text(62, "\u6B63\u9762");
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(63, UserForm_Conditional_20_Conditional_19_Conditional_63_Template, 2, 1, "div", 125);
-    \u0275\u0275conditionalCreate(64, UserForm_Conditional_20_Conditional_19_Conditional_64_Template, 12, 2)(65, UserForm_Conditional_20_Conditional_19_Conditional_65_Template, 5, 0, "label", 86);
+    \u0275\u0275conditionalCreate(63, UserForm_Conditional_20_Conditional_19_Conditional_63_Template, 2, 1, "div", 130);
+    \u0275\u0275conditionalCreate(64, UserForm_Conditional_20_Conditional_19_Conditional_64_Template, 12, 2)(65, UserForm_Conditional_20_Conditional_19_Conditional_65_Template, 5, 0, "label", 91);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(66, "div", 27)(67, "div", 124);
+    \u0275\u0275elementStart(66, "div", 27)(67, "div", 129);
     \u0275\u0275text(68, "\u53CD\u9762");
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(69, UserForm_Conditional_20_Conditional_19_Conditional_69_Template, 2, 1, "div", 125);
-    \u0275\u0275conditionalCreate(70, UserForm_Conditional_20_Conditional_19_Conditional_70_Template, 12, 2)(71, UserForm_Conditional_20_Conditional_19_Conditional_71_Template, 5, 0, "label", 86);
+    \u0275\u0275conditionalCreate(69, UserForm_Conditional_20_Conditional_19_Conditional_69_Template, 2, 1, "div", 130);
+    \u0275\u0275conditionalCreate(70, UserForm_Conditional_20_Conditional_19_Conditional_70_Template, 12, 2)(71, UserForm_Conditional_20_Conditional_19_Conditional_71_Template, 5, 0, "label", 91);
     \u0275\u0275elementEnd()()()();
     \u0275\u0275elementStart(72, "div", 22)(73, "div", 23);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(74, "svg", 107);
-    \u0275\u0275element(75, "use", 126);
+    \u0275\u0275elementStart(74, "svg", 112);
+    \u0275\u0275element(75, "use", 131);
     \u0275\u0275elementEnd();
     \u0275\u0275text(76, " \u6236\u7C4D & \u901A\u8A0A\u8CC7\u8A0A ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(77, "div", 25)(78, "div", 26)(79, "div", 127)(80, "label", 28);
+    \u0275\u0275elementStart(77, "div", 25)(78, "div", 26)(79, "div", 132)(80, "label", 28);
     \u0275\u0275text(81, "\u6236\u7C4D\u5730\u5740");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(82, "input", 128);
+    \u0275\u0275element(82, "input", 133);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(83, "div", 45)(84, "label", 28);
     \u0275\u0275text(85, "\u6236\u7C4D\u96FB\u8A71");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(86, "input", 129);
+    \u0275\u0275element(86, "input", 134);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(87, "div", 130)(88, "div", 38)(89, "input", 131);
+    \u0275\u0275elementStart(87, "div", 135)(88, "div", 38)(89, "input", 136);
     \u0275\u0275twoWayListener("ngModelChange", function UserForm_Conditional_20_Conditional_19_Template_input_ngModelChange_89_listener($event) {
       \u0275\u0275restoreView(_r20);
       const ctx_r1 = \u0275\u0275nextContext(2);
@@ -2942,37 +3008,37 @@ function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
       return \u0275\u0275resetView(ctx_r1.copyResidentialToMailing());
     });
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(90, "label", 132);
+    \u0275\u0275elementStart(90, "label", 137);
     \u0275\u0275text(91, "\u901A\u8A0A\u5730\u5740\u540C\u6236\u7C4D");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(92, "div", 127)(93, "label", 28);
+    \u0275\u0275elementStart(92, "div", 132)(93, "label", 28);
     \u0275\u0275text(94, "\u901A\u8A0A\u5730\u5740");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(95, "input", 133);
+    \u0275\u0275element(95, "input", 138);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(96, "div", 45)(97, "label", 28);
     \u0275\u0275text(98, "\u901A\u8A0A\u96FB\u8A71");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(99, "input", 134);
+    \u0275\u0275element(99, "input", 139);
     \u0275\u0275elementEnd()()()();
     \u0275\u0275elementStart(100, "div", 22)(101, "div", 23);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(102, "svg", 107);
-    \u0275\u0275element(103, "use", 135);
+    \u0275\u0275elementStart(102, "svg", 112);
+    \u0275\u0275element(103, "use", 140);
     \u0275\u0275elementEnd();
     \u0275\u0275text(104, " \u5B78\u6B77\u7D00\u9304 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(105, "div", 25)(106, "div", 136)(107, "div", 137);
+    \u0275\u0275elementStart(105, "div", 25)(106, "div", 141)(107, "div", 142);
     \u0275\u0275text(108, "\u6700\u9AD8\u5B78\u6B77\u8B49\u660E");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(109, "p", 68);
+    \u0275\u0275elementStart(109, "p", 73);
     \u0275\u0275text(110, "\u652F\u63F4 PNG\u3001JPEG \u5716\u7247\u6216 PDF\u3002\u6B64\u6587\u4EF6\u53D7\u6B0A\u9650\u4FDD\u8B77\uFF0C\u50C5\u4EBA\u4E8B\u90E8\u9580\u53EF\u67E5\u95B1\u3002\u4E0A\u50B3\u5F8C\u52FF\u8D85\u904E 1MB\u3002");
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(111, UserForm_Conditional_20_Conditional_19_Conditional_111_Template, 2, 1, "div", 125);
-    \u0275\u0275conditionalCreate(112, UserForm_Conditional_20_Conditional_19_Conditional_112_Template, 12, 2)(113, UserForm_Conditional_20_Conditional_19_Conditional_113_Template, 5, 0, "label", 86);
+    \u0275\u0275conditionalCreate(111, UserForm_Conditional_20_Conditional_19_Conditional_111_Template, 2, 1, "div", 130);
+    \u0275\u0275conditionalCreate(112, UserForm_Conditional_20_Conditional_19_Conditional_112_Template, 12, 2)(113, UserForm_Conditional_20_Conditional_19_Conditional_113_Template, 5, 0, "label", 91);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(114, "div", 138)(115, "table", 139)(116, "thead", 140)(117, "tr")(118, "th");
+    \u0275\u0275elementStart(114, "div", 143)(115, "table", 144)(116, "thead", 145)(117, "tr")(118, "th");
     \u0275\u0275text(119, "\u5B78\u6821");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(120, "th");
@@ -2989,21 +3055,21 @@ function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
     \u0275\u0275elementEnd();
     \u0275\u0275element(128, "th");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(129, "tbody", 141);
-    \u0275\u0275repeaterCreate(130, UserForm_Conditional_20_Conditional_19_For_131_Template, 19, 1, "tr", 142, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275elementStart(129, "tbody", 146);
+    \u0275\u0275repeaterCreate(130, UserForm_Conditional_20_Conditional_19_For_131_Template, 19, 1, "tr", 147, \u0275\u0275repeaterTrackByIndex);
     \u0275\u0275conditionalCreate(132, UserForm_Conditional_20_Conditional_19_Conditional_132_Template, 3, 0, "tr");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275conditionalCreate(133, UserForm_Conditional_20_Conditional_19_Conditional_133_Template, 4, 0, "button", 143);
+    \u0275\u0275conditionalCreate(133, UserForm_Conditional_20_Conditional_19_Conditional_133_Template, 4, 0, "button", 148);
     \u0275\u0275elementEnd()();
     \u0275\u0275elementStart(134, "div", 22)(135, "div", 23);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(136, "svg", 107);
+    \u0275\u0275elementStart(136, "svg", 112);
     \u0275\u0275element(137, "use", 39);
     \u0275\u0275elementEnd();
     \u0275\u0275text(138, " \u7D93\u6B77\u7D00\u9304 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(139, "div", 25)(140, "div", 138)(141, "table", 139)(142, "thead", 140)(143, "tr")(144, "th");
+    \u0275\u0275elementStart(139, "div", 25)(140, "div", 143)(141, "table", 144)(142, "thead", 145)(143, "tr")(144, "th");
     \u0275\u0275text(145, "\u670D\u52D9\u6A5F\u95DC");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(146, "th");
@@ -3017,21 +3083,21 @@ function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
     \u0275\u0275elementEnd();
     \u0275\u0275element(152, "th");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(153, "tbody", 144);
-    \u0275\u0275repeaterCreate(154, UserForm_Conditional_20_Conditional_19_For_155_Template, 13, 1, "tr", 142, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275elementStart(153, "tbody", 149);
+    \u0275\u0275repeaterCreate(154, UserForm_Conditional_20_Conditional_19_For_155_Template, 13, 1, "tr", 147, \u0275\u0275repeaterTrackByIndex);
     \u0275\u0275conditionalCreate(156, UserForm_Conditional_20_Conditional_19_Conditional_156_Template, 3, 0, "tr");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275conditionalCreate(157, UserForm_Conditional_20_Conditional_19_Conditional_157_Template, 4, 0, "button", 143);
+    \u0275\u0275conditionalCreate(157, UserForm_Conditional_20_Conditional_19_Conditional_157_Template, 4, 0, "button", 148);
     \u0275\u0275elementEnd()();
     \u0275\u0275elementStart(158, "div", 22)(159, "div", 23);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(160, "svg", 107);
-    \u0275\u0275element(161, "use", 145);
+    \u0275\u0275elementStart(160, "svg", 112);
+    \u0275\u0275element(161, "use", 150);
     \u0275\u0275elementEnd();
     \u0275\u0275text(162, " \u5BB6\u5EAD\u72C0\u6CC1 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(163, "div", 25)(164, "div", 138)(165, "table", 139)(166, "thead", 140)(167, "tr")(168, "th");
+    \u0275\u0275elementStart(163, "div", 25)(164, "div", 143)(165, "table", 144)(166, "thead", 145)(167, "tr")(168, "th");
     \u0275\u0275text(169, "\u59D3\u540D");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(170, "th");
@@ -3045,11 +3111,11 @@ function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
     \u0275\u0275elementEnd();
     \u0275\u0275element(176, "th");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(177, "tbody", 146);
-    \u0275\u0275repeaterCreate(178, UserForm_Conditional_20_Conditional_19_For_179_Template, 13, 1, "tr", 142, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275elementStart(177, "tbody", 151);
+    \u0275\u0275repeaterCreate(178, UserForm_Conditional_20_Conditional_19_For_179_Template, 13, 1, "tr", 147, \u0275\u0275repeaterTrackByIndex);
     \u0275\u0275conditionalCreate(180, UserForm_Conditional_20_Conditional_19_Conditional_180_Template, 3, 0, "tr");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(181, "button", 84);
+    \u0275\u0275elementStart(181, "button", 89);
     \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_181_listener() {
       \u0275\u0275restoreView(_r20);
       const ctx_r1 = \u0275\u0275nextContext(2);
@@ -3057,20 +3123,20 @@ function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(182, "svg", 17);
-    \u0275\u0275element(183, "use", 147);
+    \u0275\u0275element(183, "use", 152);
     \u0275\u0275elementEnd();
     \u0275\u0275text(184, " \u65B0\u589E\u5BB6\u5EAD\u6210\u54E1 ");
     \u0275\u0275elementEnd()()();
     \u0275\u0275namespaceHTML();
     \u0275\u0275elementStart(185, "div", 22)(186, "div", 23);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(187, "svg", 107);
-    \u0275\u0275element(188, "use", 148);
+    \u0275\u0275elementStart(187, "svg", 112);
+    \u0275\u0275element(188, "use", 153);
     \u0275\u0275elementEnd();
     \u0275\u0275text(189, " \u5C08\u696D\u8A13\u7DF4 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(190, "div", 25)(191, "div", 138)(192, "table", 139)(193, "thead", 140)(194, "tr")(195, "th");
+    \u0275\u0275elementStart(190, "div", 25)(191, "div", 143)(192, "table", 144)(193, "thead", 145)(194, "tr")(195, "th");
     \u0275\u0275text(196, "\u8A13\u7DF4\u540D\u7A31");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(197, "th");
@@ -3087,11 +3153,11 @@ function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
     \u0275\u0275elementEnd();
     \u0275\u0275element(205, "th");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(206, "tbody", 149);
-    \u0275\u0275repeaterCreate(207, UserForm_Conditional_20_Conditional_19_For_208_Template, 15, 1, "tr", 142, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275elementStart(206, "tbody", 154);
+    \u0275\u0275repeaterCreate(207, UserForm_Conditional_20_Conditional_19_For_208_Template, 15, 1, "tr", 147, \u0275\u0275repeaterTrackByIndex);
     \u0275\u0275conditionalCreate(209, UserForm_Conditional_20_Conditional_19_Conditional_209_Template, 3, 0, "tr");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(210, "button", 84);
+    \u0275\u0275elementStart(210, "button", 89);
     \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_210_listener() {
       \u0275\u0275restoreView(_r20);
       const ctx_r1 = \u0275\u0275nextContext(2);
@@ -3099,20 +3165,20 @@ function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(211, "svg", 17);
-    \u0275\u0275element(212, "use", 147);
+    \u0275\u0275element(212, "use", 152);
     \u0275\u0275elementEnd();
     \u0275\u0275text(213, " \u65B0\u589E\u8A13\u7DF4 ");
     \u0275\u0275elementEnd()()();
     \u0275\u0275namespaceHTML();
     \u0275\u0275elementStart(214, "div", 22)(215, "div", 23);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(216, "svg", 107);
-    \u0275\u0275element(217, "use", 150);
+    \u0275\u0275elementStart(216, "svg", 112);
+    \u0275\u0275element(217, "use", 155);
     \u0275\u0275elementEnd();
     \u0275\u0275text(218, " \u8A9E\u8A00\u80FD\u529B ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(219, "div", 25)(220, "div", 138)(221, "table", 139)(222, "thead", 140)(223, "tr")(224, "th");
+    \u0275\u0275elementStart(219, "div", 25)(220, "div", 143)(221, "table", 144)(222, "thead", 145)(223, "tr")(224, "th");
     \u0275\u0275text(225, "\u8A9E\u8A00");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(226, "th");
@@ -3129,11 +3195,11 @@ function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
     \u0275\u0275elementEnd();
     \u0275\u0275element(234, "th");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(235, "tbody", 151);
-    \u0275\u0275repeaterCreate(236, UserForm_Conditional_20_Conditional_19_For_237_Template, 31, 1, "tr", 142, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275elementStart(235, "tbody", 156);
+    \u0275\u0275repeaterCreate(236, UserForm_Conditional_20_Conditional_19_For_237_Template, 31, 1, "tr", 147, \u0275\u0275repeaterTrackByIndex);
     \u0275\u0275conditionalCreate(238, UserForm_Conditional_20_Conditional_19_Conditional_238_Template, 3, 0, "tr");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(239, "button", 84);
+    \u0275\u0275elementStart(239, "button", 89);
     \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_239_listener() {
       \u0275\u0275restoreView(_r20);
       const ctx_r1 = \u0275\u0275nextContext(2);
@@ -3141,15 +3207,15 @@ function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(240, "svg", 17);
-    \u0275\u0275element(241, "use", 147);
+    \u0275\u0275element(241, "use", 152);
     \u0275\u0275elementEnd();
     \u0275\u0275text(242, " \u65B0\u589E\u8A9E\u8A00 ");
     \u0275\u0275elementEnd()()();
     \u0275\u0275namespaceHTML();
     \u0275\u0275elementStart(243, "div", 22)(244, "div", 23);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(245, "svg", 107);
-    \u0275\u0275element(246, "use", 152);
+    \u0275\u0275elementStart(245, "svg", 112);
+    \u0275\u0275element(246, "use", 157);
     \u0275\u0275elementEnd();
     \u0275\u0275text(247, " \u7DCA\u6025\u806F\u7D61 / \u8CA1\u52D9 / \u5176\u4ED6 ");
     \u0275\u0275elementEnd();
@@ -3157,50 +3223,50 @@ function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
     \u0275\u0275elementStart(248, "div", 25)(249, "div", 26)(250, "div", 27)(251, "label", 28);
     \u0275\u0275text(252, "\u7DCA\u6025\u806F\u7D61\u4EBA");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(253, "input", 153);
+    \u0275\u0275element(253, "input", 158);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(254, "div", 27)(255, "label", 28);
     \u0275\u0275text(256, "\u7DCA\u6025\u806F\u7D61\u96FB\u8A71");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(257, "input", 154);
+    \u0275\u0275element(257, "input", 159);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(258, "div", 155)(259, "label", 28);
+    \u0275\u0275elementStart(258, "div", 160)(259, "label", 28);
     \u0275\u0275text(260, "\u9280\u884C\u5C40\u865F");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(261, "input", 156);
+    \u0275\u0275element(261, "input", 161);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(262, "div", 157)(263, "label", 28);
+    \u0275\u0275elementStart(262, "div", 162)(263, "label", 28);
     \u0275\u0275text(264, "\u9280\u884C\u5E33\u865F");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(265, "input", 158);
+    \u0275\u0275element(265, "input", 163);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(266, "div", 45)(267, "label", 28);
     \u0275\u0275text(268, "\u6295\u4FDD\u8D77\u65E5");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(269, "input", 159);
+    \u0275\u0275element(269, "input", 164);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(270, "div", 155)(271, "label", 28);
+    \u0275\u0275elementStart(270, "div", 160)(271, "label", 28);
     \u0275\u0275text(272, "\u6276\u990A\u4EBA\u6578");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(273, "input", 160);
+    \u0275\u0275element(273, "input", 165);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(274, "div", 130)(275, "label", 28);
+    \u0275\u0275elementStart(274, "div", 135)(275, "label", 28);
     \u0275\u0275text(276, "\u5C08\u9577\u8208\u8DA3");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(277, "textarea", 161);
+    \u0275\u0275element(277, "textarea", 166);
     \u0275\u0275elementEnd()()()();
     \u0275\u0275elementStart(278, "div", 22)(279, "div", 23);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(280, "svg", 107);
-    \u0275\u0275element(281, "use", 162);
+    \u0275\u0275elementStart(280, "svg", 112);
+    \u0275\u0275element(281, "use", 167);
     \u0275\u0275elementEnd();
     \u0275\u0275text(282, " \u6B77\u53F2\u7D00\u9304\u8207\u96E2\u8077\u8CC7\u8A0A ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(283, "div", 25)(284, "div", 163);
+    \u0275\u0275elementStart(283, "div", 25)(284, "div", 168);
     \u0275\u0275text(285, "\u8077\u52D9\u8ABF\u6574\u6B77\u53F2");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(286, "div", 138)(287, "table", 139)(288, "thead", 140)(289, "tr")(290, "th");
+    \u0275\u0275elementStart(286, "div", 143)(287, "table", 144)(288, "thead", 145)(289, "tr")(290, "th");
     \u0275\u0275text(291, "\u751F\u6548\u65E5");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(292, "th");
@@ -3217,11 +3283,11 @@ function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
     \u0275\u0275elementEnd();
     \u0275\u0275element(300, "th");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(301, "tbody", 164);
-    \u0275\u0275repeaterCreate(302, UserForm_Conditional_20_Conditional_19_For_303_Template, 15, 1, "tr", 142, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275elementStart(301, "tbody", 169);
+    \u0275\u0275repeaterCreate(302, UserForm_Conditional_20_Conditional_19_For_303_Template, 15, 3, "tr", 147, \u0275\u0275repeaterTrackByIndex);
     \u0275\u0275conditionalCreate(304, UserForm_Conditional_20_Conditional_19_Conditional_304_Template, 3, 0, "tr");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(305, "button", 165);
+    \u0275\u0275elementStart(305, "button", 170);
     \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_305_listener() {
       \u0275\u0275restoreView(_r20);
       const ctx_r1 = \u0275\u0275nextContext(2);
@@ -3229,15 +3295,15 @@ function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(306, "svg", 17);
-    \u0275\u0275element(307, "use", 147);
+    \u0275\u0275element(307, "use", 152);
     \u0275\u0275elementEnd();
     \u0275\u0275text(308, " \u65B0\u589E\u8077\u52D9\u8ABF\u6574 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(309, "div", 163);
+    \u0275\u0275elementStart(309, "div", 168);
     \u0275\u0275text(310, "\u734E\u61F2\u6B77\u53F2");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(311, "div", 138)(312, "table", 139)(313, "thead", 140)(314, "tr")(315, "th");
+    \u0275\u0275elementStart(311, "div", 143)(312, "table", 144)(313, "thead", 145)(314, "tr")(315, "th");
     \u0275\u0275text(316, "\u751F\u6548\u65E5");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(317, "th");
@@ -3254,11 +3320,11 @@ function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
     \u0275\u0275elementEnd();
     \u0275\u0275element(325, "th");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(326, "tbody", 166);
-    \u0275\u0275repeaterCreate(327, UserForm_Conditional_20_Conditional_19_For_328_Template, 19, 1, "tr", 142, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275elementStart(326, "tbody", 171);
+    \u0275\u0275repeaterCreate(327, UserForm_Conditional_20_Conditional_19_For_328_Template, 19, 3, "tr", 147, \u0275\u0275repeaterTrackByIndex);
     \u0275\u0275conditionalCreate(329, UserForm_Conditional_20_Conditional_19_Conditional_329_Template, 3, 0, "tr");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(330, "button", 165);
+    \u0275\u0275elementStart(330, "button", 170);
     \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_330_listener() {
       \u0275\u0275restoreView(_r20);
       const ctx_r1 = \u0275\u0275nextContext(2);
@@ -3266,18 +3332,18 @@ function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(331, "svg", 17);
-    \u0275\u0275element(332, "use", 147);
+    \u0275\u0275element(332, "use", 152);
     \u0275\u0275elementEnd();
     \u0275\u0275text(333, " \u65B0\u589E\u734E\u61F2 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(334, "div", 163);
+    \u0275\u0275elementStart(334, "div", 168);
     \u0275\u0275text(335, "\u85AA\u8CC7\u8ABF\u6574\u6B77\u53F2");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(336, "div", 167);
-    \u0275\u0275text(337, " \u65B0\u589E / \u7DE8\u8F2F\u7D00\u9304\u4E26\u5132\u5B58\u5F8C\uFF0C\u6700\u65B0\u751F\u6548\u7D00\u9304\uFF08\u2264 \u4ECA\u65E5\uFF09\u7684\u5E95\u85AA\u6703\u81EA\u52D5\u540C\u6B65\u81F3\u54E1\u5DE5\u5E95\u85AA\u6B04\u4F4D\u3002 ");
+    \u0275\u0275elementStart(336, "div", 172);
+    \u0275\u0275text(337, " \u65B0\u589E / \u7DE8\u8F2F\u7D00\u9304\u4E26\u5132\u5B58\u5F8C\uFF0C\u6700\u65B0\u751F\u6548\u7D00\u9304\uFF08\u2264 \u4ECA\u65E5\uFF09\u7684\u5E95\u85AA\u3001\u4F19\u98DF\u8CBB\u6703\u81EA\u52D5\u540C\u6B65\u81F3\u54E1\u5DE5\u57FA\u672C\u8CC7\u6599\u7684\u5C0D\u61C9\u6B04\u4F4D\u3002 ");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(338, "div", 138)(339, "table", 139)(340, "thead", 140)(341, "tr")(342, "th");
+    \u0275\u0275elementStart(338, "div", 143)(339, "table", 144)(340, "thead", 145)(341, "tr")(342, "th");
     \u0275\u0275text(343, "\u751F\u6548\u65E5");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(344, "th");
@@ -3309,11 +3375,11 @@ function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
     \u0275\u0275elementEnd();
     \u0275\u0275element(362, "th");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(363, "tbody", 168);
-    \u0275\u0275repeaterCreate(364, UserForm_Conditional_20_Conditional_19_For_365_Template, 26, 5, "tr", 142, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275elementStart(363, "tbody", 173);
+    \u0275\u0275repeaterCreate(364, UserForm_Conditional_20_Conditional_19_For_365_Template, 26, 7, "tr", 147, \u0275\u0275repeaterTrackByIndex);
     \u0275\u0275conditionalCreate(366, UserForm_Conditional_20_Conditional_19_Conditional_366_Template, 3, 0, "tr");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(367, "button", 165);
+    \u0275\u0275elementStart(367, "button", 170);
     \u0275\u0275listener("click", function UserForm_Conditional_20_Conditional_19_Template_button_click_367_listener() {
       \u0275\u0275restoreView(_r20);
       const ctx_r1 = \u0275\u0275nextContext(2);
@@ -3321,18 +3387,18 @@ function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(368, "svg", 17);
-    \u0275\u0275element(369, "use", 147);
+    \u0275\u0275element(369, "use", 152);
     \u0275\u0275elementEnd();
     \u0275\u0275text(370, " \u65B0\u589E\u85AA\u8CC7\u7D00\u9304 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(371, "div", 163);
+    \u0275\u0275elementStart(371, "div", 168);
     \u0275\u0275text(372, "\u96E2\u8077\u8CC7\u8A0A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(373, "div", 26)(374, "div", 130)(375, "label", 28);
+    \u0275\u0275elementStart(373, "div", 26)(374, "div", 135)(375, "label", 28);
     \u0275\u0275text(376, "\u96E2\u8077\u539F\u56E0");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(377, "textarea", 169);
+    \u0275\u0275element(377, "textarea", 174);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
@@ -3392,29 +3458,29 @@ function UserForm_Conditional_20_Conditional_19_Template(rf, ctx) {
 }
 function UserForm_Conditional_20_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 13)(1, "div", 101)(2, "div", 102)(3, "span")(4, "span", 103);
+    \u0275\u0275elementStart(0, "div", 13)(1, "div", 106)(2, "div", 107)(3, "span")(4, "span", 108);
     \u0275\u0275text(5, "\u54E1\u5DE5\u4EE3\u865F\uFF1A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "span", 104);
+    \u0275\u0275elementStart(6, "span", 109);
     \u0275\u0275text(7);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(8, "span")(9, "span", 103);
+    \u0275\u0275elementStart(8, "span")(9, "span", 108);
     \u0275\u0275text(10, "\u59D3\u540D\uFF1A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(11, "span", 104);
+    \u0275\u0275elementStart(11, "span", 109);
     \u0275\u0275text(12);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(13, "span")(14, "span", 103);
+    \u0275\u0275elementStart(13, "span")(14, "span", 108);
     \u0275\u0275text(15, "\u5230\u8077\u65E5\uFF1A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(16, "span", 104);
+    \u0275\u0275elementStart(16, "span", 109);
     \u0275\u0275text(17);
     \u0275\u0275elementEnd()()()();
-    \u0275\u0275conditionalCreate(18, UserForm_Conditional_20_Conditional_18_Template, 3, 0, "div", 105)(19, UserForm_Conditional_20_Conditional_19_Template, 378, 19);
-    \u0275\u0275elementStart(20, "div", 70)(21, "button", 71);
+    \u0275\u0275conditionalCreate(18, UserForm_Conditional_20_Conditional_18_Template, 3, 0, "div", 110)(19, UserForm_Conditional_20_Conditional_19_Template, 378, 19);
+    \u0275\u0275elementStart(20, "div", 75)(21, "button", 76);
     \u0275\u0275text(22, "\u5132\u5B58\u6240\u6709\u8CC7\u6599");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(23, "a", 72);
+    \u0275\u0275elementStart(23, "a", 77);
     \u0275\u0275text(24, "\u53D6\u6D88");
     \u0275\u0275elementEnd()()();
   }
@@ -3435,21 +3501,21 @@ function UserForm_Conditional_20_Template(rf, ctx) {
 }
 function UserForm_Conditional_21_Conditional_21_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 234);
+    \u0275\u0275elementStart(0, "span", 239);
     \u0275\u0275text(1, "\uFF08\u8D85\u904E 3 \u53E3\uFF0C\u85AA\u8CC7\u8A08\u7B97\u4E0A\u9650 3 \u53E3\uFF09");
     \u0275\u0275elementEnd();
   }
 }
 function UserForm_Conditional_21_Conditional_22_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span")(1, "span", 103);
+    \u0275\u0275elementStart(0, "span")(1, "span", 108);
     \u0275\u0275text(2, "\u6BCF\u6708\u5065\u4FDD\u8CBB\u8A66\u7B97\uFF1A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "span", 236);
+    \u0275\u0275elementStart(3, "span", 241);
     \u0275\u0275text(4);
     \u0275\u0275pipe(5, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "span", 237);
+    \u0275\u0275elementStart(6, "span", 242);
     \u0275\u0275text(7);
     \u0275\u0275elementEnd()();
   }
@@ -3463,79 +3529,79 @@ function UserForm_Conditional_21_Conditional_22_Template(rf, ctx) {
 }
 function UserForm_Conditional_21_For_38_Template(rf, ctx) {
   if (rf & 1) {
-    const _r50 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr", 142)(1, "td");
-    \u0275\u0275element(2, "input", 191);
+    const _r52 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 147)(1, "td");
+    \u0275\u0275element(2, "input", 196);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td")(4, "select", 238)(5, "option", 239);
+    \u0275\u0275elementStart(3, "td")(4, "select", 243)(5, "option", 244);
     \u0275\u0275text(6, "\u914D\u5076");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "option", 240);
+    \u0275\u0275elementStart(7, "option", 245);
     \u0275\u0275text(8, "\u7236");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "option", 241);
+    \u0275\u0275elementStart(9, "option", 246);
     \u0275\u0275text(10, "\u6BCD");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(11, "option", 242);
+    \u0275\u0275elementStart(11, "option", 247);
     \u0275\u0275text(12, "\u5B50");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(13, "option", 243);
+    \u0275\u0275elementStart(13, "option", 248);
     \u0275\u0275text(14, "\u5973");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "option", 244);
+    \u0275\u0275elementStart(15, "option", 249);
     \u0275\u0275text(16, "\u516C\uFF08\u516C\u516C\uFF09");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(17, "option", 245);
+    \u0275\u0275elementStart(17, "option", 250);
     \u0275\u0275text(18, "\u5A46\uFF08\u5A46\u5A46\uFF09");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(19, "option", 246);
+    \u0275\u0275elementStart(19, "option", 251);
     \u0275\u0275text(20, "\u7FC1\uFF08\u5CB3\u7236\uFF09");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(21, "option", 247);
+    \u0275\u0275elementStart(21, "option", 252);
     \u0275\u0275text(22, "\u59D1\uFF08\u5CB3\u6BCD\uFF09");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(23, "option", 248);
+    \u0275\u0275elementStart(23, "option", 253);
     \u0275\u0275text(24, "\u5176\u4ED6");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(25, "td");
-    \u0275\u0275element(26, "input", 249);
+    \u0275\u0275element(26, "input", 254);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(27, "td");
-    \u0275\u0275element(28, "input", 250);
+    \u0275\u0275element(28, "input", 255);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(29, "td")(30, "button", 183);
+    \u0275\u0275elementStart(29, "td")(30, "button", 188);
     \u0275\u0275listener("click", function UserForm_Conditional_21_For_38_Template_button_click_30_listener() {
-      const \u0275$index_1819_r51 = \u0275\u0275restoreView(_r50).$index;
+      const \u0275$index_1894_r53 = \u0275\u0275restoreView(_r52).$index;
       const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.removeDependent(\u0275$index_1819_r51));
+      return \u0275\u0275resetView(ctx_r1.removeDependent(\u0275$index_1894_r53));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(31, "svg", 20);
-    \u0275\u0275element(32, "use", 184);
+    \u0275\u0275element(32, "use", 189);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
-    const \u0275$index_1819_r51 = ctx.$index;
-    \u0275\u0275property("formGroupName", \u0275$index_1819_r51);
+    const \u0275$index_1894_r53 = ctx.$index;
+    \u0275\u0275property("formGroupName", \u0275$index_1894_r53);
   }
 }
 function UserForm_Conditional_21_Conditional_39_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 190);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 195);
     \u0275\u0275text(2, "\u5C1A\u7121\u7737\u5C6C");
     \u0275\u0275elementEnd()();
   }
 }
 function UserForm_Conditional_21_Template(rf, ctx) {
   if (rf & 1) {
-    const _r49 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 226)(1, "div", 227);
+    const _r51 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 231)(1, "div", 232);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(2, "svg", 228);
-    \u0275\u0275element(3, "use", 229);
+    \u0275\u0275elementStart(2, "svg", 233);
+    \u0275\u0275element(3, "use", 234);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(4, "div", 230)(5, "span", 231);
+    \u0275\u0275elementStart(4, "div", 235)(5, "span", 236);
     \u0275\u0275text(6, "\u5065\u4FDD\u7737\u5C6C\u6700\u591A\u8A08 3 \u53E3\uFF0C\u8D85\u904E 3 \u53E3\u4ECD\u6309 3 \u53E3\u8A08\u7B97\u85AA\u8CC7\u3002");
     \u0275\u0275elementEnd();
     \u0275\u0275element(7, "br");
@@ -3543,23 +3609,23 @@ function UserForm_Conditional_21_Template(rf, ctx) {
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(9, "div", 22)(10, "div", 23);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(11, "svg", 107);
-    \u0275\u0275element(12, "use", 232);
+    \u0275\u0275elementStart(11, "svg", 112);
+    \u0275\u0275element(12, "use", 237);
     \u0275\u0275elementEnd();
     \u0275\u0275text(13, " \u5065\u4FDD\u7737\u5C6C\u6E05\u55AE ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(14, "div", 25)(15, "div", 233)(16, "span")(17, "span", 103);
+    \u0275\u0275elementStart(14, "div", 25)(15, "div", 238)(16, "span")(17, "span", 108);
     \u0275\u0275text(18, "\u7737\u5C6C\u4EBA\u6578\uFF1A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(19, "span", 231);
+    \u0275\u0275elementStart(19, "span", 236);
     \u0275\u0275text(20);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(21, UserForm_Conditional_21_Conditional_21_Template, 2, 0, "span", 234);
+    \u0275\u0275conditionalCreate(21, UserForm_Conditional_21_Conditional_21_Template, 2, 0, "span", 239);
     \u0275\u0275elementEnd();
     \u0275\u0275conditionalCreate(22, UserForm_Conditional_21_Conditional_22_Template, 8, 5, "span");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(23, "div", 138)(24, "table", 139)(25, "thead", 140)(26, "tr")(27, "th");
+    \u0275\u0275elementStart(23, "div", 143)(24, "table", 144)(25, "thead", 145)(26, "tr")(27, "th");
     \u0275\u0275text(28, "\u59D3\u540D");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(29, "th");
@@ -3573,27 +3639,27 @@ function UserForm_Conditional_21_Template(rf, ctx) {
     \u0275\u0275elementEnd();
     \u0275\u0275element(35, "th");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(36, "tbody", 235);
-    \u0275\u0275repeaterCreate(37, UserForm_Conditional_21_For_38_Template, 33, 1, "tr", 142, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275elementStart(36, "tbody", 240);
+    \u0275\u0275repeaterCreate(37, UserForm_Conditional_21_For_38_Template, 33, 1, "tr", 147, \u0275\u0275repeaterTrackByIndex);
     \u0275\u0275conditionalCreate(39, UserForm_Conditional_21_Conditional_39_Template, 3, 0, "tr");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(40, "button", 84);
+    \u0275\u0275elementStart(40, "button", 89);
     \u0275\u0275listener("click", function UserForm_Conditional_21_Template_button_click_40_listener() {
-      \u0275\u0275restoreView(_r49);
+      \u0275\u0275restoreView(_r51);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.addDependent());
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(41, "svg", 17);
-    \u0275\u0275element(42, "use", 147);
+    \u0275\u0275element(42, "use", 152);
     \u0275\u0275elementEnd();
     \u0275\u0275text(43, " \u65B0\u589E\u7737\u5C6C ");
     \u0275\u0275elementEnd()()();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(44, "div", 70)(45, "button", 71);
+    \u0275\u0275elementStart(44, "div", 75)(45, "button", 76);
     \u0275\u0275text(46, "\u5132\u5B58\u6240\u6709\u8CC7\u6599");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(47, "a", 72);
+    \u0275\u0275elementStart(47, "a", 77);
     \u0275\u0275text(48, "\u53D6\u6D88");
     \u0275\u0275elementEnd()();
   }
@@ -3719,6 +3785,12 @@ var UserForm = class _UserForm {
     isDisabled: [false],
     healthInsuranceOverride: [null],
     laborInsuranceOverride: [null],
+    // 加給（同步自最新薪資調整紀錄，可手動覆寫）
+    positionAllowance: [null],
+    dutyAllowance: [null],
+    otherAllowance: [null],
+    adjustmentDifference: [null],
+    overseasAllowance: [null],
     // Tab 2 – HR profile
     hrProfile: this.fb.group({
       employeeNumber: [""],
@@ -3789,7 +3861,12 @@ var UserForm = class _UserForm {
           isLowIncome: user.isLowIncome ?? false,
           isDisabled: user.isDisabled ?? false,
           healthInsuranceOverride: user.healthInsuranceOverride ?? null,
-          laborInsuranceOverride: user.laborInsuranceOverride ?? null
+          laborInsuranceOverride: user.laborInsuranceOverride ?? null,
+          positionAllowance: user.positionAllowance ?? null,
+          dutyAllowance: user.dutyAllowance ?? null,
+          otherAllowance: user.otherAllowance ?? null,
+          adjustmentDifference: user.adjustmentDifference ?? null,
+          overseasAllowance: user.overseasAllowance ?? null
         }));
         this.signatureUrl.set(user.signatureUrl ?? null);
         this.avatarUrl.set(user.avatar ?? null);
@@ -4042,7 +4119,7 @@ var UserForm = class _UserForm {
   _jobTransferGroup(r) {
     return this.fb.group({
       id: [r?.id ?? null],
-      effectiveDate: [r?.effectiveDate?.slice(0, 10) ?? ""],
+      effectiveDate: [r?.effectiveDate?.slice(0, 10) ?? "", Validators.required],
       fromDepartment: [r?.fromDepartment ?? ""],
       toDepartment: [r?.toDepartment ?? ""],
       fromJobTitle: [r?.fromJobTitle ?? ""],
@@ -4058,7 +4135,7 @@ var UserForm = class _UserForm {
   _rewardGroup(r) {
     return this.fb.group({
       id: [r?.id ?? null],
-      effectiveDate: [r?.effectiveDate?.slice(0, 10) ?? ""],
+      effectiveDate: [r?.effectiveDate?.slice(0, 10) ?? "", Validators.required],
       type: [r?.type ?? "reward"],
       category: [r?.category ?? ""],
       count: [r?.count ?? null],
@@ -4074,7 +4151,7 @@ var UserForm = class _UserForm {
   _salaryGroup(r) {
     return this.fb.group({
       id: [r?.id ?? null],
-      effectiveDate: [r?.effectiveDate?.slice(0, 10) ?? ""],
+      effectiveDate: [r?.effectiveDate?.slice(0, 10) ?? "", Validators.required],
       baseSalary: [r?.baseSalary ?? null],
       positionAllowance: [r?.positionAllowance ?? null],
       dutyAllowance: [r?.dutyAllowance ?? null],
@@ -4662,6 +4739,14 @@ var UserForm = class _UserForm {
   // submit
   // ═══════════════════════════════════════════════
   submit() {
+    const hrMissing = this._findMissingHrEffectiveDates();
+    if (hrMissing) {
+      this.activeTab.set("hr");
+      this.form.markAllAsTouched();
+      this.errorMsg.set(hrMissing);
+      this.toastr.warning(hrMissing, "\u4EBA\u4E8B\u8CC7\u6599\u672A\u5B8C\u6210");
+      return;
+    }
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -4691,7 +4776,13 @@ var UserForm = class _UserForm {
       isLowIncome: rest.isLowIncome ?? false,
       isDisabled: rest.isDisabled ?? false,
       healthInsuranceOverride: rest.healthInsuranceOverride ?? void 0,
-      laborInsuranceOverride: rest.laborInsuranceOverride ?? void 0
+      laborInsuranceOverride: rest.laborInsuranceOverride ?? void 0,
+      // 加給（5 種）
+      positionAllowance: rest.positionAllowance ?? void 0,
+      dutyAllowance: rest.dutyAllowance ?? void 0,
+      otherAllowance: rest.otherAllowance ?? void 0,
+      adjustmentDifference: rest.adjustmentDifference ?? void 0,
+      overseasAllowance: rest.overseasAllowance ?? void 0
     });
     const obs = this.isEdit ? this.userService.update(this.userId, payload, {
       signatureFile: this.signatureFile(),
@@ -4743,9 +4834,30 @@ var UserForm = class _UserForm {
       return true;
     return false;
   }
+  /**
+   * 找出未填生效日期的 HR 子表（職務調動 / 獎懲 / 薪資調整）。
+   * 回傳 null 代表全部 OK；回傳字串代表錯誤訊息（供 errorMsg + toastr）。
+   * 後端 DTO 的 EffectiveDate 是非 nullable DateTime，沒填會 JSON 反序列化失敗。
+   */
+  _findMissingHrEffectiveDates() {
+    const missing = [];
+    const has = (arr) => arr.controls.some((c) => !c.get("effectiveDate")?.value);
+    if (has(this.jobTransferArray))
+      missing.push("\u8077\u52D9\u8ABF\u52D5");
+    if (has(this.rewardArray))
+      missing.push("\u734E\u61F2");
+    if (has(this.salaryArray))
+      missing.push("\u85AA\u8CC7\u8ABF\u6574");
+    if (missing.length === 0)
+      return null;
+    return `\u8ACB\u586B\u5BEB ${missing.join("\u3001")} \u7684\u300C\u751F\u6548\u65E5\u671F\u300D\uFF0C\u6216\u522A\u9664\u672A\u4F7F\u7528\u7684\u5217\u3002`;
+  }
   _saveHrProfile(userId) {
     const hrVal = this.form.get("hrProfile").value;
     const depsVal = this.form.get("healthDependents").value;
+    const salaries = (hrVal.salaryAdjustmentRecords ?? []).map((r) => __spreadProps(__spreadValues({}, r), {
+      totalAmount: (r.baseSalary ?? 0) + (r.positionAllowance ?? 0) + (r.dutyAllowance ?? 0) + (r.otherAllowance ?? 0) + (r.adjustmentDifference ?? 0) + (r.overseasAllowance ?? 0) + (r.mealAllowance ?? 0)
+    }));
     const profilePayload = {
       employeeNumber: hrVal.employeeNumber || null,
       englishName: hrVal.englishName || null,
@@ -4773,7 +4885,7 @@ var UserForm = class _UserForm {
       languageAbilities: hrVal.languageAbilities,
       jobTransferRecords: hrVal.jobTransferRecords,
       rewardPunishmentRecords: hrVal.rewardPunishmentRecords,
-      salaryAdjustmentRecords: hrVal.salaryAdjustmentRecords,
+      salaryAdjustmentRecords: salaries,
       healthInsuranceDependents: depsVal
     };
     this.profileService.upsert(userId, profilePayload, {
@@ -4808,7 +4920,7 @@ var UserForm = class _UserForm {
   static \u0275fac = function UserForm_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _UserForm)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _UserForm, selectors: [["app-user-form"]], decls: 22, vars: 11, consts: [[1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6", "flex-wrap"], ["routerLink", "/admin/users", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "mb-0"], [1, "flex", "gap-2", "ms-auto", "flex-wrap"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [1, "flex", "gap-1", "mb-4"], ["type", "button", 1, "btn", "btn-sm", 3, "click"], [1, "row"], [1, "col-12", "col-xl-8"], [3, "ngSubmit", "formGroup"], ["formGroupName", "hrProfile"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", 3, "click", "disabled"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-info", 3, "click", "disabled"], [1, "inline-block", "w-4", "h-4", "border-2", "border-current", "border-t-transparent", "rounded-full", "animate-spin", "me-1"], [1, "sa-icon", "me-1"], ["href", "/assets/icons/sprite.svg#printer"], ["href", "/assets/icons/sprite.svg#mail"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "card", "border-0", "shadow-sm", "mb-4"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], ["href", "/assets/icons/sprite.svg#user"], [1, "card-body"], [1, "row", "g-3"], [1, "col-12", "col-md-6"], [1, "form-label", "fw-500"], [1, "text-danger"], ["type", "text", "formControlName", "name", "placeholder", "\u8ACB\u8F38\u5165\u59D3\u540D", 1, "form-control"], [1, "text-danger", "small", "mt-1"], ["type", "email", "formControlName", "email", "placeholder", "user@example.com", 1, "form-control"], ["type", "password", "formControlName", "password", "placeholder", "\u7559\u7A7A\u5247\u4E0D\u4FEE\u6539\uFF08\u81F3\u5C11 6 \u78BC\uFF09", 1, "form-control"], ["formControlName", "status", 1, "form-select"], ["value", "active"], ["value", "inactive"], [1, "flex", "flex-wrap", "gap-4", "mt-1"], [1, "form-check"], ["href", "/assets/icons/sprite.svg#briefcase"], ["formControlName", "departmentId", 1, "form-select"], [3, "ngValue"], ["formControlName", "jobTitleId", 1, "form-select"], ["type", "date", "formControlName", "birthday", 1, "form-control"], ["type", "date", "formControlName", "hireDate", 1, "form-control"], [1, "col-12", "col-md-4"], [1, "input-group"], [1, "input-group-text"], ["type", "number", "formControlName", "baseSalary", "placeholder", "\u4F8B\u5982\uFF1A50000", "min", "0", 1, "form-control"], ["type", "number", "formControlName", "laborInsuranceOverride", 1, "form-control", 3, "placeholder"], [1, "text-muted", "small", "mt-1"], ["type", "number", "formControlName", "healthInsuranceOverride", 1, "form-control", 3, "placeholder"], ["type", "number", "formControlName", "mealAllowance", "placeholder", "\u4F8B\u5982\uFF1A2400", "min", "0", 1, "form-control"], ["type", "number", "formControlName", "overtimePay", "placeholder", "\u4F8B\u5982\uFF1A0", "min", "0", 1, "form-control"], [1, "form-check", "mt-2"], ["type", "checkbox", "formControlName", "sendPaySlip", "id", "sendPaySlip", 1, "form-check-input"], ["for", "sendPaySlip", 1, "form-check-label"], ["type", "checkbox", "formControlName", "isIndigenous", "id", "isIndigenous", 1, "form-check-input"], ["for", "isIndigenous", 1, "form-check-label"], ["type", "checkbox", "formControlName", "isLowIncome", "id", "isLowIncome", 1, "form-check-input"], ["for", "isLowIncome", 1, "form-check-label"], ["type", "checkbox", "formControlName", "isDisabled", "id", "isDisabled", 1, "form-check-input"], ["for", "isDisabled", 1, "form-check-label"], ["type", "date", "formControlName", "resignDate", 1, "form-control"], ["formControlName", "agentUserId", 1, "form-select"], ["value", ""], [3, "value"], ["href", "/assets/icons/sprite.svg#image"], [1, "text-muted", "small", "mb-3"], ["href", "/assets/icons/sprite.svg#edit"], [1, "mt-6", "flex", "gap-2"], ["type", "submit", 1, "btn", "btn-primary"], ["routerLink", "/admin/users", 1, "btn", "btn-outline-secondary"], ["type", "radio", "name", "roleId", "formControlName", "roleId", 1, "form-check-input", 3, "id", "value"], [1, "form-check-label", 3, "for"], [1, "flex", "flex-wrap", "items-start", "gap-4", "mb-3"], [1, "relative", "w-32", "h-32", "rounded-full", "overflow-hidden", "border", "cursor-move", "select-none", "touch-none", "bg-[--bg-elevated]", 3, "pointerdown", "pointermove", "pointerup", "pointercancel"], ["alt", "\u982D\u50CF", 1, "w-full", "h-full", "object-cover", "pointer-events-none", 2, "transform-origin", "center", 3, "src"], [1, "flex-1", "min-w-[200px]"], [1, "form-label", "fw-500", "text-sm", "mb-1"], [1, "flex", "items-center", "gap-2", "mb-2"], ["type", "range", "min", "1", "max", "3", "step", "0.05", 1, "flex-1", 3, "input", "value"], [1, "text-sm", "text-muted", "w-12", "text-right"], [1, "text-muted", "small", "mb-2"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", 3, "click"], [1, "flex", "gap-2"], [1, "btn", "btn-sm", "btn-outline-primary", "cursor-pointer", "mb-0"], ["type", "file", "accept", "image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif", 1, "hidden", 3, "change"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-danger", 3, "click"], ["href", "/assets/icons/sprite.svg#upload"], ["href", "/assets/icons/sprite.svg#file-text"], [1, "flex", "items-center", "gap-2", "mb-3", "border", "rounded", "px-3", "py-2", "bg-[--bg-surface]"], [1, "sa-icon", "text-[--accent]", 2, "stroke", "currentColor"], [1, "fw-500", "text-[--text-primary]", "truncate"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "ms-auto"], ["type", "file", "accept", "image/png,image/jpeg,application/pdf", 1, "hidden", 3, "change"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "ms-auto", 3, "click"], [1, "mb-3"], [1, "border", "rounded", "p-3", "bg-white", "inline-block"], ["alt", "\u7C3D\u540D\u6A94", 1, "max-h-24", "object-contain", 3, "src"], ["type", "file", "accept", "image/png,image/jpeg,image/gif,image/webp", 1, "hidden", 3, "change"], [1, "p-3", "mb-4", "rounded", "border", "bg-[--bg-elevated]"], [1, "flex", "flex-wrap", "gap-6", "text-sm"], [1, "text-muted", "me-1"], [1, "fw-500"], [1, "flex", "items-center", "justify-center", "py-12", "text-muted"], [1, "inline-block", "w-5", "h-5", "border-2", "border-current", "border-t-transparent", "rounded-full", "animate-spin", "me-2"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["type", "text", "formControlName", "employeeNumber", "placeholder", "\u4F8B\u5982\uFF1AEMP001", 1, "form-control"], ["type", "text", "formControlName", "englishName", "placeholder", "English Name", 1, "form-control"], ["type", "text", "formControlName", "idNumber", "placeholder", "A123456789", 1, "form-control"], ["formControlName", "gender", 1, "form-select"], ["value", "M"], ["value", "F"], ["formControlName", "maritalStatus", 1, "form-select"], ["value", "single"], ["value", "married"], ["value", "divorced"], ["value", "widowed"], ["type", "text", "formControlName", "birthPlace", "placeholder", "\u4F8B\u5982\uFF1A\u53F0\u5317\u5E02", 1, "form-control"], ["type", "tel", "formControlName", "mobilePhone", "placeholder", "09xx-xxxxxx", 1, "form-control"], ["href", "/assets/icons/sprite.svg#credit-card"], [1, "text-muted", "small", "mb-4"], [1, "row", "g-4"], [1, "fw-500", "mb-2"], [1, "mb-2"], ["href", "/assets/icons/sprite.svg#home"], [1, "col-12", "col-md-8"], ["type", "text", "formControlName", "residentialAddress", "placeholder", "\u7E23\u5E02\u3001\u5340\u3001\u8DEF\u6BB5\u3001\u9580\u724C", 1, "form-control"], ["type", "tel", "formControlName", "residentialPhone", "placeholder", "02-xxxx-xxxx", 1, "form-control"], [1, "col-12"], ["type", "checkbox", "id", "mailingSameChk", 1, "form-check-input", 3, "ngModelChange", "change", "ngModel", "ngModelOptions"], ["for", "mailingSameChk", 1, "form-check-label", "small"], ["type", "text", "formControlName", "mailingAddress", "placeholder", "\u7E23\u5E02\u3001\u5340\u3001\u8DEF\u6BB5\u3001\u9580\u724C", 1, "form-control"], ["type", "tel", "formControlName", "mailingPhone", "placeholder", "02-xxxx-xxxx", 1, "form-control"], ["href", "/assets/icons/sprite.svg#book-open"], [1, "mb-4", "pb-4", "border-bottom"], [1, "fw-500", "mb-1"], [1, "table-responsive", "mb-3"], [1, "table", "table-sm", "align-middle", "mb-0"], [1, "table-light"], ["formArrayName", "educationRecords"], [3, "formGroupName"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary"], ["formArrayName", "employmentHistoryRecords"], ["href", "/assets/icons/sprite.svg#users"], ["formArrayName", "familyMembers"], ["href", "/assets/icons/sprite.svg#plus"], ["href", "/assets/icons/sprite.svg#award"], ["formArrayName", "professionalTrainings"], ["href", "/assets/icons/sprite.svg#globe"], ["formArrayName", "languageAbilities"], ["href", "/assets/icons/sprite.svg#phone"], ["type", "text", "formControlName", "emergencyContactName", "placeholder", "\u59D3\u540D", 1, "form-control"], ["type", "tel", "formControlName", "emergencyContactPhone", "placeholder", "09xx-xxxxxx", 1, "form-control"], [1, "col-12", "col-md-3"], ["type", "text", "formControlName", "bankCode", "placeholder", "\u5C40\u865F\uFF083 \u78BC\uFF09", 1, "form-control"], [1, "col-12", "col-md-5"], ["type", "text", "formControlName", "bankAccount", "placeholder", "\u5E33\u865F", 1, "form-control"], ["type", "date", "formControlName", "insuranceStartDate", 1, "form-control"], ["type", "number", "formControlName", "dependentCount", "placeholder", "0", "min", "0", 1, "form-control"], ["formControlName", "specialties", "rows", "2", "placeholder", "\u8ACB\u586B\u5BEB\u5C08\u9577\u6216\u8208\u8DA3", 1, "form-control"], ["href", "/assets/icons/sprite.svg#clock"], [1, "fw-600", "mb-2", "text-[--text-secondary]"], ["formArrayName", "jobTransferRecords"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "mb-4", 3, "click"], ["formArrayName", "rewardPunishmentRecords"], [1, "alert", "alert-info", "py-2", "small", "mb-3"], ["formArrayName", "salaryAdjustmentRecords"], ["formControlName", "resignationReason", "rows", "3", "placeholder", "\u8ACB\u586B\u5BEB\u96E2\u8077\u539F\u56E0\uFF08\u500B\u4EBA\u56E0\u7D20\u3001\u5408\u7D04\u5230\u671F\u2026\uFF09", 1, "form-control"], ["alt", "\u8EAB\u5206\u8B49\u6B63\u9762", 1, "rounded", "border", "max-h-40", "object-contain", "w-full", 3, "src"], [1, "flex", "items-center", "gap-2", "mb-2", "border", "rounded", "px-3", "py-2", "bg-[--bg-surface]"], [1, "fw-500", "text-[--text-primary]", "truncate", "text-sm"], ["type", "file", "accept", "image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif", 1, "hidden", 3, "change"], ["alt", "\u8EAB\u5206\u8B49\u53CD\u9762", 1, "rounded", "border", "max-h-40", "object-contain", "w-full", 3, "src"], ["alt", "\u6700\u9AD8\u5B78\u6B77\u8B49\u660E", 1, "rounded", "border", "max-h-40", "object-contain", 3, "src"], ["type", "text", "formControlName", "school", "placeholder", "\u5B78\u6821\u540D\u7A31", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "department", "placeholder", "\u79D1\u7CFB", 1, "form-control", "form-control-sm"], ["formControlName", "degree", 1, "form-select", "form-select-sm"], ["value", "graduated"], ["value", "incomplete"], ["type", "month", "formControlName", "startDate", 1, "form-control", "form-control-sm"], ["type", "month", "formControlName", "endDate", 1, "form-control", "form-control-sm"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center", 3, "click"], ["href", "/assets/icons/sprite.svg#x"], ["colspan", "6", 1, "text-center", "text-muted", "small", "py-3"], ["type", "text", "formControlName", "organization", "placeholder", "\u6A5F\u69CB\u540D\u7A31", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "jobTitle", "placeholder", "\u8077\u7A31", 1, "form-control", "form-control-sm"], ["type", "date", "formControlName", "startDate", 1, "form-control", "form-control-sm"], ["type", "date", "formControlName", "endDate", 1, "form-control", "form-control-sm"], ["colspan", "5", 1, "text-center", "text-muted", "small", "py-3"], ["type", "text", "formControlName", "name", "placeholder", "\u59D3\u540D", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "relationship", "placeholder", "\u7236/\u6BCD/\u914D\u5076\u2026", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "age", "placeholder", "\u5E74\u9F61", "min", "0", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "occupation", "placeholder", "\u8077\u696D", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "trainingName", "placeholder", "\u8A13\u7DF4\u540D\u7A31", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "trainingOrg", "placeholder", "\u6A5F\u69CB\u540D\u7A31", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "hours", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "language", "placeholder", "\u4E2D\u6587/\u82F1\u6587\u2026", 1, "form-control", "form-control-sm"], ["formControlName", "listening", 1, "form-select", "form-select-sm"], ["value", "good"], ["value", "fair"], ["formControlName", "speaking", 1, "form-select", "form-select-sm"], ["formControlName", "reading", 1, "form-select", "form-select-sm"], ["formControlName", "writing", 1, "form-select", "form-select-sm"], ["type", "date", "formControlName", "effectiveDate", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "fromDepartment", "placeholder", "\u539F\u90E8\u9580", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "toDepartment", "placeholder", "\u65B0\u90E8\u9580", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "fromJobTitle", "placeholder", "\u539F\u8077\u7A31", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "toJobTitle", "placeholder", "\u65B0\u8077\u7A31", 1, "form-control", "form-control-sm"], ["formControlName", "type", 1, "form-select", "form-select-sm"], ["value", "reward"], ["value", "punishment"], ["type", "text", "formControlName", "category", "placeholder", "\u5609\u734E/\u7533\u8AA1\u2026", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "count", "placeholder", "1", "min", "1", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "reason", "placeholder", "\u4E8B\u7531", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "baseSalary", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "80px"], ["type", "number", "formControlName", "positionAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "dutyAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "otherAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "adjustmentDifference", "placeholder", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "overseasAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "mealAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], [1, "text-end", "fw-500"], ["type", "text", "formControlName", "notes", "placeholder", "\u5099\u8A3B", 1, "form-control", "form-control-sm", 2, "min-width", "80px"], ["colspan", "11", 1, "text-center", "text-muted", "small", "py-3"], [1, "alert", "py-2", "mb-4", 2, "background", "rgba(13,110,253,0.08)"], [1, "flex", "items-start", "gap-2"], [1, "sa-icon", "mt-1", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#info"], [1, "small"], [1, "fw-600"], ["href", "/assets/icons/sprite.svg#heart"], [1, "flex", "flex-wrap", "gap-6", "mb-4", "text-sm"], [1, "text-warning", "ms-1"], ["formArrayName", "healthDependents"], [1, "fw-600", "text-primary"], [1, "text-muted", "ms-1", "small"], ["formControlName", "relationship", 1, "form-select", "form-select-sm"], ["value", "spouse"], ["value", "father"], ["value", "mother"], ["value", "son"], ["value", "daughter"], ["value", "father_in_law"], ["value", "mother_in_law"], ["value", "father_in_law_wife"], ["value", "mother_in_law_wife"], ["value", "other"], ["type", "text", "formControlName", "idNumber", "placeholder", "A123456789", 1, "form-control", "form-control-sm"], ["type", "date", "formControlName", "birthDate", 1, "form-control", "form-control-sm"]], template: function UserForm_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _UserForm, selectors: [["app-user-form"]], decls: 22, vars: 11, consts: [[1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6", "flex-wrap"], ["routerLink", "/admin/users", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "mb-0"], [1, "flex", "gap-2", "ms-auto", "flex-wrap"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [1, "flex", "gap-1", "mb-4"], ["type", "button", 1, "btn", "btn-sm", 3, "click"], [1, "row"], [1, "col-12", "col-xl-8"], [3, "ngSubmit", "formGroup"], ["formGroupName", "hrProfile"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", 3, "click", "disabled"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-info", 3, "click", "disabled"], [1, "inline-block", "w-4", "h-4", "border-2", "border-current", "border-t-transparent", "rounded-full", "animate-spin", "me-1"], [1, "sa-icon", "me-1"], ["href", "/assets/icons/sprite.svg#printer"], ["href", "/assets/icons/sprite.svg#mail"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "card", "border-0", "shadow-sm", "mb-4"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], ["href", "/assets/icons/sprite.svg#user"], [1, "card-body"], [1, "row", "g-3"], [1, "col-12", "col-md-6"], [1, "form-label", "fw-500"], [1, "text-danger"], ["type", "text", "formControlName", "name", "placeholder", "\u8ACB\u8F38\u5165\u59D3\u540D", 1, "form-control"], [1, "text-danger", "small", "mt-1"], ["type", "email", "formControlName", "email", "placeholder", "user@example.com", 1, "form-control"], ["type", "password", "formControlName", "password", "placeholder", "\u7559\u7A7A\u5247\u4E0D\u4FEE\u6539\uFF08\u81F3\u5C11 6 \u78BC\uFF09", 1, "form-control"], ["formControlName", "status", 1, "form-select"], ["value", "active"], ["value", "inactive"], [1, "flex", "flex-wrap", "gap-4", "mt-1"], [1, "form-check"], ["href", "/assets/icons/sprite.svg#briefcase"], ["formControlName", "departmentId", 1, "form-select"], [3, "ngValue"], ["formControlName", "jobTitleId", 1, "form-select"], ["type", "date", "formControlName", "birthday", 1, "form-control"], ["type", "date", "formControlName", "hireDate", 1, "form-control"], [1, "col-12", "col-md-4"], [1, "input-group"], [1, "input-group-text"], ["type", "number", "formControlName", "baseSalary", "placeholder", "\u4F8B\u5982\uFF1A50000", "min", "0", 1, "form-control"], ["type", "number", "formControlName", "laborInsuranceOverride", 1, "form-control", 3, "placeholder"], [1, "text-muted", "small", "mt-1"], ["type", "number", "formControlName", "healthInsuranceOverride", 1, "form-control", 3, "placeholder"], ["type", "number", "formControlName", "mealAllowance", "placeholder", "\u4F8B\u5982\uFF1A2400", "min", "0", 1, "form-control"], ["type", "number", "formControlName", "overtimePay", "placeholder", "\u4F8B\u5982\uFF1A0", "min", "0", 1, "form-control"], ["type", "number", "formControlName", "positionAllowance", "placeholder", "\u4F8B\u5982\uFF1A0", "min", "0", 1, "form-control"], ["type", "number", "formControlName", "dutyAllowance", "placeholder", "\u4F8B\u5982\uFF1A0", "min", "0", 1, "form-control"], ["type", "number", "formControlName", "otherAllowance", "placeholder", "\u4F8B\u5982\uFF1A0", "min", "0", 1, "form-control"], ["type", "number", "formControlName", "adjustmentDifference", "placeholder", "\u4F8B\u5982\uFF1A0", 1, "form-control"], ["type", "number", "formControlName", "overseasAllowance", "placeholder", "\u4F8B\u5982\uFF1A0", "min", "0", 1, "form-control"], [1, "form-check", "mt-2"], ["type", "checkbox", "formControlName", "sendPaySlip", "id", "sendPaySlip", 1, "form-check-input"], ["for", "sendPaySlip", 1, "form-check-label"], ["type", "checkbox", "formControlName", "isIndigenous", "id", "isIndigenous", 1, "form-check-input"], ["for", "isIndigenous", 1, "form-check-label"], ["type", "checkbox", "formControlName", "isLowIncome", "id", "isLowIncome", 1, "form-check-input"], ["for", "isLowIncome", 1, "form-check-label"], ["type", "checkbox", "formControlName", "isDisabled", "id", "isDisabled", 1, "form-check-input"], ["for", "isDisabled", 1, "form-check-label"], ["type", "date", "formControlName", "resignDate", 1, "form-control"], ["formControlName", "agentUserId", 1, "form-select"], ["value", ""], [3, "value"], ["href", "/assets/icons/sprite.svg#image"], [1, "text-muted", "small", "mb-3"], ["href", "/assets/icons/sprite.svg#edit"], [1, "mt-6", "flex", "gap-2"], ["type", "submit", 1, "btn", "btn-primary"], ["routerLink", "/admin/users", 1, "btn", "btn-outline-secondary"], ["type", "radio", "name", "roleId", "formControlName", "roleId", 1, "form-check-input", 3, "id", "value"], [1, "form-check-label", 3, "for"], [1, "flex", "flex-wrap", "items-start", "gap-4", "mb-3"], [1, "relative", "w-32", "h-32", "rounded-full", "overflow-hidden", "border", "cursor-move", "select-none", "touch-none", "bg-[--bg-elevated]", 3, "pointerdown", "pointermove", "pointerup", "pointercancel"], ["alt", "\u982D\u50CF", 1, "w-full", "h-full", "object-cover", "pointer-events-none", 2, "transform-origin", "center", 3, "src"], [1, "flex-1", "min-w-[200px]"], [1, "form-label", "fw-500", "text-sm", "mb-1"], [1, "flex", "items-center", "gap-2", "mb-2"], ["type", "range", "min", "1", "max", "3", "step", "0.05", 1, "flex-1", 3, "input", "value"], [1, "text-sm", "text-muted", "w-12", "text-right"], [1, "text-muted", "small", "mb-2"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", 3, "click"], [1, "flex", "gap-2"], [1, "btn", "btn-sm", "btn-outline-primary", "cursor-pointer", "mb-0"], ["type", "file", "accept", "image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif", 1, "hidden", 3, "change"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-danger", 3, "click"], ["href", "/assets/icons/sprite.svg#upload"], ["href", "/assets/icons/sprite.svg#file-text"], [1, "flex", "items-center", "gap-2", "mb-3", "border", "rounded", "px-3", "py-2", "bg-[--bg-surface]"], [1, "sa-icon", "text-[--accent]", 2, "stroke", "currentColor"], [1, "fw-500", "text-[--text-primary]", "truncate"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "ms-auto"], ["type", "file", "accept", "image/png,image/jpeg,application/pdf", 1, "hidden", 3, "change"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "ms-auto", 3, "click"], [1, "mb-3"], [1, "border", "rounded", "p-3", "bg-white", "inline-block"], ["alt", "\u7C3D\u540D\u6A94", 1, "max-h-24", "object-contain", 3, "src"], ["type", "file", "accept", "image/png,image/jpeg,image/gif,image/webp", 1, "hidden", 3, "change"], [1, "p-3", "mb-4", "rounded", "border", "bg-[--bg-elevated]"], [1, "flex", "flex-wrap", "gap-6", "text-sm"], [1, "text-muted", "me-1"], [1, "fw-500"], [1, "flex", "items-center", "justify-center", "py-12", "text-muted"], [1, "inline-block", "w-5", "h-5", "border-2", "border-current", "border-t-transparent", "rounded-full", "animate-spin", "me-2"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["type", "text", "formControlName", "employeeNumber", "placeholder", "\u4F8B\u5982\uFF1AEMP001", 1, "form-control"], ["type", "text", "formControlName", "englishName", "placeholder", "English Name", 1, "form-control"], ["type", "text", "formControlName", "idNumber", "placeholder", "A123456789", 1, "form-control"], ["formControlName", "gender", 1, "form-select"], ["value", "M"], ["value", "F"], ["formControlName", "maritalStatus", 1, "form-select"], ["value", "single"], ["value", "married"], ["value", "divorced"], ["value", "widowed"], ["type", "text", "formControlName", "birthPlace", "placeholder", "\u4F8B\u5982\uFF1A\u53F0\u5317\u5E02", 1, "form-control"], ["type", "tel", "formControlName", "mobilePhone", "placeholder", "09xx-xxxxxx", 1, "form-control"], ["href", "/assets/icons/sprite.svg#credit-card"], [1, "text-muted", "small", "mb-4"], [1, "row", "g-4"], [1, "fw-500", "mb-2"], [1, "mb-2"], ["href", "/assets/icons/sprite.svg#home"], [1, "col-12", "col-md-8"], ["type", "text", "formControlName", "residentialAddress", "placeholder", "\u7E23\u5E02\u3001\u5340\u3001\u8DEF\u6BB5\u3001\u9580\u724C", 1, "form-control"], ["type", "tel", "formControlName", "residentialPhone", "placeholder", "02-xxxx-xxxx", 1, "form-control"], [1, "col-12"], ["type", "checkbox", "id", "mailingSameChk", 1, "form-check-input", 3, "ngModelChange", "change", "ngModel", "ngModelOptions"], ["for", "mailingSameChk", 1, "form-check-label", "small"], ["type", "text", "formControlName", "mailingAddress", "placeholder", "\u7E23\u5E02\u3001\u5340\u3001\u8DEF\u6BB5\u3001\u9580\u724C", 1, "form-control"], ["type", "tel", "formControlName", "mailingPhone", "placeholder", "02-xxxx-xxxx", 1, "form-control"], ["href", "/assets/icons/sprite.svg#book-open"], [1, "mb-4", "pb-4", "border-bottom"], [1, "fw-500", "mb-1"], [1, "table-responsive", "mb-3"], [1, "table", "table-sm", "align-middle", "mb-0"], [1, "table-light"], ["formArrayName", "educationRecords"], [3, "formGroupName"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary"], ["formArrayName", "employmentHistoryRecords"], ["href", "/assets/icons/sprite.svg#users"], ["formArrayName", "familyMembers"], ["href", "/assets/icons/sprite.svg#plus"], ["href", "/assets/icons/sprite.svg#award"], ["formArrayName", "professionalTrainings"], ["href", "/assets/icons/sprite.svg#globe"], ["formArrayName", "languageAbilities"], ["href", "/assets/icons/sprite.svg#phone"], ["type", "text", "formControlName", "emergencyContactName", "placeholder", "\u59D3\u540D", 1, "form-control"], ["type", "tel", "formControlName", "emergencyContactPhone", "placeholder", "09xx-xxxxxx", 1, "form-control"], [1, "col-12", "col-md-3"], ["type", "text", "formControlName", "bankCode", "placeholder", "\u5C40\u865F\uFF083 \u78BC\uFF09", 1, "form-control"], [1, "col-12", "col-md-5"], ["type", "text", "formControlName", "bankAccount", "placeholder", "\u5E33\u865F", 1, "form-control"], ["type", "date", "formControlName", "insuranceStartDate", 1, "form-control"], ["type", "number", "formControlName", "dependentCount", "placeholder", "0", "min", "0", 1, "form-control"], ["formControlName", "specialties", "rows", "2", "placeholder", "\u8ACB\u586B\u5BEB\u5C08\u9577\u6216\u8208\u8DA3", 1, "form-control"], ["href", "/assets/icons/sprite.svg#clock"], [1, "fw-600", "mb-2", "text-[--text-secondary]"], ["formArrayName", "jobTransferRecords"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "mb-4", 3, "click"], ["formArrayName", "rewardPunishmentRecords"], [1, "alert", "alert-info", "py-2", "small", "mb-3"], ["formArrayName", "salaryAdjustmentRecords"], ["formControlName", "resignationReason", "rows", "3", "placeholder", "\u8ACB\u586B\u5BEB\u96E2\u8077\u539F\u56E0\uFF08\u500B\u4EBA\u56E0\u7D20\u3001\u5408\u7D04\u5230\u671F\u2026\uFF09", 1, "form-control"], ["alt", "\u8EAB\u5206\u8B49\u6B63\u9762", 1, "rounded", "border", "max-h-40", "object-contain", "w-full", 3, "src"], [1, "flex", "items-center", "gap-2", "mb-2", "border", "rounded", "px-3", "py-2", "bg-[--bg-surface]"], [1, "fw-500", "text-[--text-primary]", "truncate", "text-sm"], ["type", "file", "accept", "image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif", 1, "hidden", 3, "change"], ["alt", "\u8EAB\u5206\u8B49\u53CD\u9762", 1, "rounded", "border", "max-h-40", "object-contain", "w-full", 3, "src"], ["alt", "\u6700\u9AD8\u5B78\u6B77\u8B49\u660E", 1, "rounded", "border", "max-h-40", "object-contain", 3, "src"], ["type", "text", "formControlName", "school", "placeholder", "\u5B78\u6821\u540D\u7A31", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "department", "placeholder", "\u79D1\u7CFB", 1, "form-control", "form-control-sm"], ["formControlName", "degree", 1, "form-select", "form-select-sm"], ["value", "graduated"], ["value", "incomplete"], ["type", "month", "formControlName", "startDate", 1, "form-control", "form-control-sm"], ["type", "month", "formControlName", "endDate", 1, "form-control", "form-control-sm"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center", 3, "click"], ["href", "/assets/icons/sprite.svg#x"], ["colspan", "6", 1, "text-center", "text-muted", "small", "py-3"], ["type", "text", "formControlName", "organization", "placeholder", "\u6A5F\u69CB\u540D\u7A31", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "jobTitle", "placeholder", "\u8077\u7A31", 1, "form-control", "form-control-sm"], ["type", "date", "formControlName", "startDate", 1, "form-control", "form-control-sm"], ["type", "date", "formControlName", "endDate", 1, "form-control", "form-control-sm"], ["colspan", "5", 1, "text-center", "text-muted", "small", "py-3"], ["type", "text", "formControlName", "name", "placeholder", "\u59D3\u540D", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "relationship", "placeholder", "\u7236/\u6BCD/\u914D\u5076\u2026", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "age", "placeholder", "\u5E74\u9F61", "min", "0", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "occupation", "placeholder", "\u8077\u696D", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "trainingName", "placeholder", "\u8A13\u7DF4\u540D\u7A31", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "trainingOrg", "placeholder", "\u6A5F\u69CB\u540D\u7A31", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "hours", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "language", "placeholder", "\u4E2D\u6587/\u82F1\u6587\u2026", 1, "form-control", "form-control-sm"], ["formControlName", "listening", 1, "form-select", "form-select-sm"], ["value", "good"], ["value", "fair"], ["formControlName", "speaking", 1, "form-select", "form-select-sm"], ["formControlName", "reading", 1, "form-select", "form-select-sm"], ["formControlName", "writing", 1, "form-select", "form-select-sm"], ["type", "date", "formControlName", "effectiveDate", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "fromDepartment", "placeholder", "\u539F\u90E8\u9580", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "toDepartment", "placeholder", "\u65B0\u90E8\u9580", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "fromJobTitle", "placeholder", "\u539F\u8077\u7A31", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "toJobTitle", "placeholder", "\u65B0\u8077\u7A31", 1, "form-control", "form-control-sm"], ["formControlName", "type", 1, "form-select", "form-select-sm"], ["value", "reward"], ["value", "punishment"], ["type", "text", "formControlName", "category", "placeholder", "\u5609\u734E/\u7533\u8AA1\u2026", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "count", "placeholder", "1", "min", "1", 1, "form-control", "form-control-sm"], ["type", "text", "formControlName", "reason", "placeholder", "\u4E8B\u7531", 1, "form-control", "form-control-sm"], ["type", "number", "formControlName", "baseSalary", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "80px"], ["type", "number", "formControlName", "positionAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "dutyAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "otherAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "adjustmentDifference", "placeholder", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "overseasAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], ["type", "number", "formControlName", "mealAllowance", "placeholder", "0", "min", "0", 1, "form-control", "form-control-sm", 2, "min-width", "70px"], [1, "text-end", "fw-500"], ["type", "text", "formControlName", "notes", "placeholder", "\u5099\u8A3B", 1, "form-control", "form-control-sm", 2, "min-width", "80px"], ["colspan", "11", 1, "text-center", "text-muted", "small", "py-3"], [1, "alert", "py-2", "mb-4", 2, "background", "rgba(13,110,253,0.08)"], [1, "flex", "items-start", "gap-2"], [1, "sa-icon", "mt-1", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#info"], [1, "small"], [1, "fw-600"], ["href", "/assets/icons/sprite.svg#heart"], [1, "flex", "flex-wrap", "gap-6", "mb-4", "text-sm"], [1, "text-warning", "ms-1"], ["formArrayName", "healthDependents"], [1, "fw-600", "text-primary"], [1, "text-muted", "ms-1", "small"], ["formControlName", "relationship", 1, "form-select", "form-select-sm"], ["value", "spouse"], ["value", "father"], ["value", "mother"], ["value", "son"], ["value", "daughter"], ["value", "father_in_law"], ["value", "mother_in_law"], ["value", "father_in_law_wife"], ["value", "mother_in_law_wife"], ["value", "other"], ["type", "text", "formControlName", "idNumber", "placeholder", "A123456789", 1, "form-control", "form-control-sm"], ["type", "date", "formControlName", "birthDate", 1, "form-control", "form-control-sm"]], template: function UserForm_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "a", 2);
       \u0275\u0275namespaceSVG();
@@ -4844,7 +4956,7 @@ var UserForm = class _UserForm {
       \u0275\u0275listener("ngSubmit", function UserForm_Template_form_ngSubmit_18_listener() {
         return ctx.submit();
       });
-      \u0275\u0275conditionalCreate(19, UserForm_Conditional_19_Template, 191, 22)(20, UserForm_Conditional_20_Template, 25, 4, "div", 13)(21, UserForm_Conditional_21_Template, 49, 4);
+      \u0275\u0275conditionalCreate(19, UserForm_Conditional_19_Template, 236, 22)(20, UserForm_Conditional_20_Template, 25, 4, "div", 13)(21, UserForm_Conditional_21_Template, 49, 4);
       \u0275\u0275elementEnd()()()();
     }
     if (rf & 2) {
@@ -5074,6 +5186,47 @@ var UserForm = class _UserForm {
                     <span class="input-group-text">NT$</span>
                     <input type="number" class="form-control" formControlName="overtimePay" placeholder="\u4F8B\u5982\uFF1A0" min="0">
                   </div>
+                </div>
+                <!-- 5 \u7A2E\u52A0\u7D66\uFF1A\u81EA\u52D5\u540C\u6B65\u81EA\u6700\u65B0\u751F\u6548 SalaryAdjustmentRecord\uFF0C\u4EA6\u53EF\u624B\u52D5\u8986\u5BEB -->
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u8077\u52D9\u52A0\u7D66</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="positionAllowance" placeholder="\u4F8B\u5982\uFF1A0" min="0">
+                  </div>
+                  <div class="text-muted small mt-1">\u7531\u4EBA\u4E8B\u8CC7\u6599\u5361\u6700\u65B0\u85AA\u8CC7\u7D00\u9304\u540C\u6B65</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u4E3B\u7BA1\u52A0\u7D66</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="dutyAllowance" placeholder="\u4F8B\u5982\uFF1A0" min="0">
+                  </div>
+                  <div class="text-muted small mt-1">\u7531\u4EBA\u4E8B\u8CC7\u6599\u5361\u6700\u65B0\u85AA\u8CC7\u7D00\u9304\u540C\u6B65</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u5176\u4ED6\u52A0\u7D66</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="otherAllowance" placeholder="\u4F8B\u5982\uFF1A0" min="0">
+                  </div>
+                  <div class="text-muted small mt-1">\u7531\u4EBA\u4E8B\u8CC7\u6599\u5361\u6700\u65B0\u85AA\u8CC7\u7D00\u9304\u540C\u6B65</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u8ABF\u6574\u5DEE\u984D</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="adjustmentDifference" placeholder="\u4F8B\u5982\uFF1A0">
+                  </div>
+                  <div class="text-muted small mt-1">\u7531\u4EBA\u4E8B\u8CC7\u6599\u5361\u6700\u65B0\u85AA\u8CC7\u7D00\u9304\u540C\u6B65</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">\u5916\u6D3E\u52A0\u7D66</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="overseasAllowance" placeholder="\u4F8B\u5982\uFF1A0" min="0">
+                  </div>
+                  <div class="text-muted small mt-1">\u7531\u4EBA\u4E8B\u8CC7\u6599\u5361\u6700\u65B0\u85AA\u8CC7\u7D00\u9304\u540C\u6B65</div>
                 </div>
                 <div class="col-12 col-md-4">
                   <label class="form-label fw-500">\u5BC4\u9001\u85AA\u8CC7\u8868</label>
@@ -5894,7 +6047,10 @@ var UserForm = class _UserForm {
                       <tbody formArrayName="jobTransferRecords">
                         @for (ctrl of jobTransferControls; track $index; let i = $index) {
                           <tr [formGroupName]="i">
-                            <td><input type="date" class="form-control form-control-sm" formControlName="effectiveDate"></td>
+                            <td>
+                              <input type="date" class="form-control form-control-sm" formControlName="effectiveDate"
+                                     [class.is-invalid]="ctrl.get('effectiveDate')?.invalid && ctrl.get('effectiveDate')?.touched">
+                            </td>
                             <td><input type="text" class="form-control form-control-sm" formControlName="fromDepartment" placeholder="\u539F\u90E8\u9580"></td>
                             <td><input type="text" class="form-control form-control-sm" formControlName="toDepartment" placeholder="\u65B0\u90E8\u9580"></td>
                             <td><input type="text" class="form-control form-control-sm" formControlName="fromJobTitle" placeholder="\u539F\u8077\u7A31"></td>
@@ -5934,7 +6090,10 @@ var UserForm = class _UserForm {
                       <tbody formArrayName="rewardPunishmentRecords">
                         @for (ctrl of rewardControls; track $index; let i = $index) {
                           <tr [formGroupName]="i">
-                            <td><input type="date" class="form-control form-control-sm" formControlName="effectiveDate"></td>
+                            <td>
+                              <input type="date" class="form-control form-control-sm" formControlName="effectiveDate"
+                                     [class.is-invalid]="ctrl.get('effectiveDate')?.invalid && ctrl.get('effectiveDate')?.touched">
+                            </td>
                             <td>
                               <select class="form-select form-select-sm" formControlName="type">
                                 <option value="reward">\u734E\u52F5</option>
@@ -5965,7 +6124,7 @@ var UserForm = class _UserForm {
                   <!-- \u85AA\u8CC7\u8ABF\u6574\u6B77\u53F2 -->
                   <div class="fw-600 mb-2 text-[--text-secondary]">\u85AA\u8CC7\u8ABF\u6574\u6B77\u53F2</div>
                   <div class="alert alert-info py-2 small mb-3">
-                    \u65B0\u589E / \u7DE8\u8F2F\u7D00\u9304\u4E26\u5132\u5B58\u5F8C\uFF0C\u6700\u65B0\u751F\u6548\u7D00\u9304\uFF08\u2264 \u4ECA\u65E5\uFF09\u7684\u5E95\u85AA\u6703\u81EA\u52D5\u540C\u6B65\u81F3\u54E1\u5DE5\u5E95\u85AA\u6B04\u4F4D\u3002
+                    \u65B0\u589E / \u7DE8\u8F2F\u7D00\u9304\u4E26\u5132\u5B58\u5F8C\uFF0C\u6700\u65B0\u751F\u6548\u7D00\u9304\uFF08\u2264 \u4ECA\u65E5\uFF09\u7684\u5E95\u85AA\u3001\u4F19\u98DF\u8CBB\u6703\u81EA\u52D5\u540C\u6B65\u81F3\u54E1\u5DE5\u57FA\u672C\u8CC7\u6599\u7684\u5C0D\u61C9\u6B04\u4F4D\u3002
                   </div>
                   <div class="table-responsive mb-3">
                     <table class="table table-sm align-middle mb-0">
@@ -5987,7 +6146,10 @@ var UserForm = class _UserForm {
                       <tbody formArrayName="salaryAdjustmentRecords">
                         @for (ctrl of salaryControls; track $index; let i = $index) {
                           <tr [formGroupName]="i">
-                            <td><input type="date" class="form-control form-control-sm" formControlName="effectiveDate"></td>
+                            <td>
+                              <input type="date" class="form-control form-control-sm" formControlName="effectiveDate"
+                                     [class.is-invalid]="ctrl.get('effectiveDate')?.invalid && ctrl.get('effectiveDate')?.touched">
+                            </td>
                             <td><input type="number" class="form-control form-control-sm" formControlName="baseSalary" placeholder="0" min="0" style="min-width: 80px"></td>
                             <td><input type="number" class="form-control form-control-sm" formControlName="positionAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
                             <td><input type="number" class="form-control form-control-sm" formControlName="dutyAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
@@ -8601,17 +8763,37 @@ var VendorService = class _VendorService {
   getLookup() {
     return this.http.get(`${environment.apiUrl}/vendors/lookup`);
   }
+  /** 以統編查詢 GCIS 公司登記資料（任何登入者可用） */
+  lookupByTaxId(taxId) {
+    const params = new HttpParams().set("taxId", taxId);
+    return this.http.get(`${environment.apiUrl}/vendors/lookup-by-tax-id`, { params });
+  }
   getById(id) {
     return this.http.get(`${environment.apiUrl}/vendors/${id}`);
   }
-  create(data) {
-    return this.http.post(`${environment.apiUrl}/vendors`, data);
+  create(payload, files) {
+    const fd = this.buildFormData(payload, files);
+    return this.http.post(`${environment.apiUrl}/vendors`, fd);
   }
-  update(id, changes) {
-    return this.http.patch(`${environment.apiUrl}/vendors/${id}`, changes);
+  update(id, payload, files) {
+    const fd = this.buildFormData(payload, files);
+    return this.http.patch(`${environment.apiUrl}/vendors/${id}`, fd);
   }
   delete(id) {
     return this.http.delete(`${environment.apiUrl}/vendors/${id}`);
+  }
+  /** 透過授權代理讀取存摺封面（需 JWT） */
+  getBankBookImage(fileName) {
+    return this.http.get(`${environment.apiUrl}/files/vendor-passbooks/${fileName}`, { responseType: "blob" });
+  }
+  buildFormData(payload, files) {
+    const fd = new FormData();
+    fd.append("payload", JSON.stringify(payload));
+    if (files?.bankBookImage)
+      fd.append("bankBookImage", files.bankBookImage);
+    if (files?.removeBankBookImage)
+      fd.append("removeBankBookImage", "true");
+    return fd;
   }
   static \u0275fac = function VendorService_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _VendorService)();
@@ -8894,8 +9076,8 @@ function VendorForm_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 6);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 36);
-    \u0275\u0275element(2, "use", 37);
+    \u0275\u0275elementStart(1, "svg", 39);
+    \u0275\u0275element(2, "use", 40);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3);
     \u0275\u0275elementEnd();
@@ -8909,21 +9091,162 @@ function VendorForm_Conditional_7_Template(rf, ctx) {
 function VendorForm_Conditional_24_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 20);
+    \u0275\u0275text(1, "\u8ACB\u8F38\u5165\u7D71\u7DE8\u3002");
+    \u0275\u0275elementEnd();
+  }
+}
+function VendorForm_Conditional_25_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 20);
+    \u0275\u0275text(1, "\u7D71\u7DE8\u9808\u70BA 8 \u4F4D\u6578\u5B57\u3002");
+    \u0275\u0275elementEnd();
+  }
+}
+function VendorForm_Conditional_26_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 21);
+    \u0275\u0275text(1, "\u67E5\u8A62\u4E2D\u2026");
+    \u0275\u0275elementEnd();
+  }
+}
+function VendorForm_Conditional_33_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 20);
     \u0275\u0275text(1, "\u8ACB\u8F38\u5165\u5EE0\u5546\u540D\u7A31\u3002");
     \u0275\u0275elementEnd();
   }
 }
+function VendorForm_Conditional_55_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 30);
+    \u0275\u0275element(1, "img", 41);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275advance();
+    \u0275\u0275property("src", ctx_r0.bankBookImagePreview(), \u0275\u0275sanitizeUrl);
+  }
+}
+function VendorForm_Conditional_56_Conditional_5_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r3 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 50);
+    \u0275\u0275listener("click", function VendorForm_Conditional_56_Conditional_5_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r3);
+      const ctx_r0 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r0.viewBankBookImage());
+    });
+    \u0275\u0275text(1, "\u6AA2\u8996");
+    \u0275\u0275elementEnd();
+  }
+}
+function VendorForm_Conditional_56_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r2 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 42);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 43);
+    \u0275\u0275element(2, "use", 44);
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(3, "span", 45);
+    \u0275\u0275text(4);
+    \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(5, VendorForm_Conditional_56_Conditional_5_Template, 2, 0, "button", 46);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(6, "div", 47)(7, "label", 31);
+    \u0275\u0275text(8, " \u66F4\u63DB ");
+    \u0275\u0275elementStart(9, "input", 48);
+    \u0275\u0275listener("change", function VendorForm_Conditional_56_Template_input_change_9_listener($event) {
+      \u0275\u0275restoreView(_r2);
+      const ctx_r0 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r0.onBankBookImageSelected($event));
+    });
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(10, "button", 49);
+    \u0275\u0275listener("click", function VendorForm_Conditional_56_Template_button_click_10_listener() {
+      \u0275\u0275restoreView(_r2);
+      const ctx_r0 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r0.onRemoveBankBookImage());
+    });
+    \u0275\u0275text(11, "\u522A\u9664");
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate(ctx_r0.bankBookDisplayName());
+    \u0275\u0275advance();
+    \u0275\u0275conditional(ctx_r0.hasExistingBankBook() ? 5 : -1);
+  }
+}
+function VendorForm_Conditional_57_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r4 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "label", 31);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 51);
+    \u0275\u0275element(2, "use", 52);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3, " \u9078\u64C7\u5B58\u647A\u5C01\u9762 ");
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(4, "input", 48);
+    \u0275\u0275listener("change", function VendorForm_Conditional_57_Template_input_change_4_listener($event) {
+      \u0275\u0275restoreView(_r4);
+      const ctx_r0 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r0.onBankBookImageSelected($event));
+    });
+    \u0275\u0275elementEnd()();
+  }
+}
+function VendorForm_Conditional_71_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " \u5132\u5B58\u4E2D\u2026 ");
+  }
+}
+function VendorForm_Conditional_72_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0);
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275textInterpolate1(" ", ctx_r0.isEdit ? "\u66F4\u65B0" : "\u5EFA\u7ACB", " ");
+  }
+}
+var MAX_FILE_BYTES2 = 1 * 1024 * 1024;
 var VendorForm = class _VendorForm {
   fb = inject(FormBuilder);
   vendorService = inject(VendorService);
   route = inject(ActivatedRoute);
   router = inject(Router);
+  toastr = inject(ToastrService);
+  imageCompression = inject(ImageCompressionService);
   isEdit = false;
   vendorId = 0;
   errorMsg = signal("", ...ngDevMode ? [{ debugName: "errorMsg" }] : []);
+  saving = signal(false, ...ngDevMode ? [{ debugName: "saving" }] : []);
+  looking = signal(false, ...ngDevMode ? [{ debugName: "looking" }] : []);
+  // 存摺封面：5 個 signal（沿用 user-form 模式）
+  bankBookImageUrl = signal(null, ...ngDevMode ? [{ debugName: "bankBookImageUrl" }] : []);
+  bankBookImageFile = signal(null, ...ngDevMode ? [{ debugName: "bankBookImageFile" }] : []);
+  bankBookImagePreview = signal(null, ...ngDevMode ? [{ debugName: "bankBookImagePreview" }] : []);
+  bankBookImageFileName = signal(null, ...ngDevMode ? [{ debugName: "bankBookImageFileName" }] : []);
+  removeBankBookImage = signal(false, ...ngDevMode ? [{ debugName: "removeBankBookImage" }] : []);
+  hasExistingBankBook = computed(() => !!this.bankBookImageUrl() && !this.bankBookImageFile() && !this.removeBankBookImage(), ...ngDevMode ? [{ debugName: "hasExistingBankBook" }] : []);
+  bankBookDisplayName = computed(() => {
+    if (this.bankBookImageFileName())
+      return this.bankBookImageFileName();
+    if (this.hasExistingBankBook()) {
+      const url = this.bankBookImageUrl();
+      const match = url.match(/\/vendor-passbooks\/(.+)$/);
+      return match?.[1] ?? "\u5B58\u647A\u5C01\u9762";
+    }
+    return null;
+  }, ...ngDevMode ? [{ debugName: "bankBookDisplayName" }] : []);
   form = this.fb.group({
+    taxId: ["", [Validators.required, Validators.pattern(/^\d{8}$/)]],
     name: ["", Validators.required],
-    taxId: [""],
     phone: [""],
     contactPerson: [""],
     address: [""],
@@ -8937,20 +9260,117 @@ var VendorForm = class _VendorForm {
       this.isEdit = true;
       this.vendorId = +id;
       this.vendorService.getById(this.vendorId).subscribe((v) => {
-        if (v)
-          this.form.patchValue(v);
+        if (!v)
+          return;
+        this.form.patchValue(v);
+        this.bankBookImageUrl.set(v.bankBookImageUrl ?? null);
       });
     }
   }
+  /** 統編失焦自動查詢公司資料（GCIS Open Data） */
+  onTaxIdBlur() {
+    const taxIdCtrl = this.form.controls.taxId;
+    const taxId = (taxIdCtrl.value ?? "").trim();
+    if (!taxId || taxIdCtrl.invalid)
+      return;
+    if (this.looking())
+      return;
+    this.looking.set(true);
+    this.vendorService.lookupByTaxId(taxId).subscribe({
+      next: (result) => {
+        this.looking.set(false);
+        const patch = {};
+        if (!this.form.controls.name.value)
+          patch.name = result.name;
+        if (!this.form.controls.address.value && result.address)
+          patch.address = result.address;
+        if (!this.form.controls.contactPerson.value && result.contactPerson)
+          patch.contactPerson = result.contactPerson;
+        if (Object.keys(patch).length === 0) {
+          this.toastr.info("\u5DF2\u67E5\u5230\u516C\u53F8\u8CC7\u6599\uFF0C\u4F46\u6B04\u4F4D\u7686\u5DF2\u586B\u5BEB\uFF0C\u672A\u8986\u5BEB\u3002");
+        } else {
+          this.form.patchValue(patch);
+          this.toastr.success("\u5DF2\u81EA\u52D5\u5E36\u5165\u5EE0\u5546\u8CC7\u6599");
+        }
+      },
+      error: (err) => {
+        this.looking.set(false);
+        if (err.status === 404) {
+          this.toastr.info("\u67E5\u7121\u6B64\u7D71\u7DE8\u8CC7\u6599\uFF0C\u8ACB\u624B\u52D5\u586B\u5BEB\u5EE0\u5546\u540D\u7A31");
+        } else {
+          this.toastr.error(err.error?.message || "\u67E5\u8A62\u5931\u6557\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66");
+        }
+      }
+    });
+  }
+  async onBankBookImageSelected(event) {
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file)
+      return;
+    input.value = "";
+    try {
+      const compressed = await this.imageCompression.compress(file, { maxSize: 1600, quality: 0.85 });
+      if (compressed.size > MAX_FILE_BYTES2) {
+        this.toastr.error("\u4E0A\u50B3\u7167\u7247\u52FF\u8D85\u904E1MB");
+        return;
+      }
+      this.bankBookImageFile.set(compressed);
+      this.bankBookImageFileName.set(file.name);
+      this.removeBankBookImage.set(false);
+      if (compressed.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onload = () => this.bankBookImagePreview.set(reader.result);
+        reader.readAsDataURL(compressed);
+      } else {
+        this.bankBookImagePreview.set(null);
+      }
+    } catch (err) {
+      console.error("[VendorForm] \u5B58\u647A\u5C01\u9762\u8655\u7406\u5931\u6557", err);
+      this.toastr.error("\u6A94\u6848\u8655\u7406\u5931\u6557\uFF0C\u8ACB\u91CD\u8A66\u3002", "\u8655\u7406\u5931\u6557");
+    }
+  }
+  onRemoveBankBookImage() {
+    this.bankBookImageFile.set(null);
+    this.bankBookImagePreview.set(null);
+    this.bankBookImageFileName.set(null);
+    this.removeBankBookImage.set(true);
+  }
+  viewBankBookImage() {
+    const url = this.bankBookImageUrl();
+    if (!url)
+      return;
+    const match = url.match(/\/vendor-passbooks\/(.+)$/);
+    const fileName = match?.[1];
+    if (!fileName)
+      return;
+    this.vendorService.getBankBookImage(fileName).subscribe({
+      next: (blob) => {
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, "_blank");
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 6e4);
+      },
+      error: (err) => this.toastr.error(err.error?.message || "\u7121\u6CD5\u8F09\u5165\u5B58\u647A\u5C01\u9762\u3002", "\u8F09\u5165\u5931\u6557")
+    });
+  }
   submit() {
-    if (this.form.invalid)
+    if (this.form.invalid || this.saving())
       return;
     const value = this.form.value;
-    const obs = this.isEdit ? this.vendorService.update(this.vendorId, value) : this.vendorService.create(value);
+    const files = {
+      bankBookImage: this.bankBookImageFile() ?? void 0,
+      removeBankBookImage: this.removeBankBookImage()
+    };
     this.errorMsg.set("");
+    this.saving.set(true);
+    const obs = this.isEdit ? this.vendorService.update(this.vendorId, value, files) : this.vendorService.create(value, files);
     obs.subscribe({
-      next: () => this.router.navigate(["/admin/vendors"]),
+      next: () => {
+        this.toastr.success(this.isEdit ? "\u5EE0\u5546\u5DF2\u66F4\u65B0" : "\u5EE0\u5546\u5DF2\u5EFA\u7ACB");
+        this.router.navigate(["/admin/vendors"]);
+      },
       error: (err) => {
+        this.saving.set(false);
         this.errorMsg.set(err.error?.message || "\u5132\u5B58\u5931\u6557\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66\u3002");
       }
     });
@@ -8958,7 +9378,7 @@ var VendorForm = class _VendorForm {
   static \u0275fac = function VendorForm_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _VendorForm)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _VendorForm, selectors: [["app-vendor-form"]], decls: 61, vars: 6, consts: [[1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6"], ["routerLink", "/admin/vendors", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "mb-0"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [3, "ngSubmit", "formGroup"], [1, "row", "g-4"], [1, "col-12", "col-lg-10", "col-xl-8"], [1, "card", "border-0", "shadow-sm"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#briefcase"], [1, "card-body"], [1, "row", "g-3"], [1, "col-12", "col-md-8"], [1, "form-label", "fw-500"], [1, "text-danger"], ["type", "text", "formControlName", "name", "placeholder", "\u4F8B\u5982\uFF1A\u8AA0\u54C1\u66F8\u5E97", 1, "form-control"], [1, "text-danger", "small", "mt-1"], [1, "col-12", "col-md-4"], ["type", "text", "formControlName", "taxId", "placeholder", "\u4F8B\u5982\uFF1A12345678", 1, "form-control"], ["type", "text", "formControlName", "contactPerson", "placeholder", "\u59D3\u540D", 1, "form-control"], ["type", "text", "formControlName", "phone", "placeholder", "\u4F8B\u5982\uFF1A02-1234-5678", 1, "form-control"], ["type", "text", "formControlName", "bankAccount", "placeholder", "\u9280\u884C / \u5206\u884C / \u5E33\u865F", 1, "form-control"], [1, "col-12"], ["type", "text", "formControlName", "address", "placeholder", "\u5B8C\u6574\u5730\u5740", 1, "form-control"], ["formControlName", "note", "rows", "2", "placeholder", "\u9078\u586B\u8AAA\u660E", 1, "form-control"], [1, "form-check"], ["type", "checkbox", "id", "isActive", "formControlName", "isActive", 1, "form-check-input"], ["for", "isActive", 1, "form-check-label"], [1, "text-muted", "small", "mt-1"], [1, "mt-6", "flex", "gap-2"], ["type", "submit", 1, "btn", "btn-primary", 3, "disabled"], ["routerLink", "/admin/vendors", 1, "btn", "btn-outline-secondary"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"]], template: function VendorForm_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _VendorForm, selectors: [["app-vendor-form"]], decls: 75, vars: 11, consts: [[1, "container-fluid", "py-3"], [1, "flex", "items-center", "gap-2", "mb-6"], ["routerLink", "/admin/vendors", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "mb-0"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [3, "ngSubmit", "formGroup"], [1, "row", "g-4"], [1, "col-12", "col-lg-10", "col-xl-8"], [1, "card", "border-0", "shadow-sm"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#briefcase"], [1, "card-body"], [1, "row", "g-3"], [1, "col-12", "col-md-4"], [1, "form-label", "fw-500"], [1, "text-danger"], ["type", "text", "formControlName", "taxId", "placeholder", "\u4F8B\u5982\uFF1A12345678", "maxlength", "8", "inputmode", "numeric", 1, "form-control", 3, "blur"], [1, "text-danger", "small", "mt-1"], [1, "text-muted", "small", "mt-1"], [1, "col-12", "col-md-8"], ["type", "text", "formControlName", "name", "placeholder", "\u4F8B\u5982\uFF1A\u8AA0\u54C1\u66F8\u5E97", 1, "form-control"], ["type", "text", "formControlName", "contactPerson", "placeholder", "\u59D3\u540D", 1, "form-control"], ["type", "text", "formControlName", "phone", "placeholder", "\u4F8B\u5982\uFF1A02-1234-5678", 1, "form-control"], ["type", "text", "formControlName", "bankAccount", "placeholder", "\u9280\u884C / \u5206\u884C / \u5E33\u865F", 1, "form-control"], [1, "col-12"], ["type", "text", "formControlName", "address", "placeholder", "\u5B8C\u6574\u5730\u5740", 1, "form-control"], [1, "text-muted", "small", "mb-2"], [1, "mb-2"], [1, "btn", "btn-sm", "btn-outline-primary", "cursor-pointer", "mb-0"], ["formControlName", "note", "rows", "2", "placeholder", "\u9078\u586B\u8AAA\u660E", 1, "form-control"], [1, "form-check"], ["type", "checkbox", "id", "isActive", "formControlName", "isActive", 1, "form-check-input"], ["for", "isActive", 1, "form-check-label"], [1, "mt-6", "flex", "gap-2"], ["type", "submit", 1, "btn", "btn-primary", 3, "disabled"], ["routerLink", "/admin/vendors", 1, "btn", "btn-outline-secondary"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], ["alt", "\u5B58\u647A\u5C01\u9762\u9810\u89BD", 1, "rounded", "border", "max-h-40", "object-contain", 3, "src"], [1, "flex", "items-center", "gap-2", "mb-2", "border", "rounded", "px-3", "py-2", "bg-[--bg-surface]"], [1, "sa-icon", "text-[--accent]", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#file-text"], [1, "fw-500", "text-[--text-primary]", "truncate", "text-sm"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "ms-auto"], [1, "flex", "gap-2"], ["type", "file", "accept", "image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif", 1, "hidden", 3, "change"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-danger", 3, "click"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-secondary", "ms-auto", 3, "click"], [1, "sa-icon", "me-1"], ["href", "/assets/icons/sprite.svg#upload"]], template: function VendorForm_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "a", 2);
       \u0275\u0275namespaceSVG();
@@ -8983,60 +9403,80 @@ var VendorForm = class _VendorForm {
       \u0275\u0275elementEnd();
       \u0275\u0275namespaceHTML();
       \u0275\u0275elementStart(16, "div", 14)(17, "div", 15)(18, "div", 16)(19, "label", 17);
-      \u0275\u0275text(20, "\u5EE0\u5546\u540D\u7A31 ");
+      \u0275\u0275text(20, "\u7D71\u7DE8 ");
       \u0275\u0275elementStart(21, "span", 18);
       \u0275\u0275text(22, "*");
       \u0275\u0275elementEnd()();
-      \u0275\u0275element(23, "input", 19);
+      \u0275\u0275elementStart(23, "input", 19);
+      \u0275\u0275listener("blur", function VendorForm_Template_input_blur_23_listener() {
+        return ctx.onTaxIdBlur();
+      });
+      \u0275\u0275elementEnd();
       \u0275\u0275conditionalCreate(24, VendorForm_Conditional_24_Template, 2, 0, "div", 20);
+      \u0275\u0275conditionalCreate(25, VendorForm_Conditional_25_Template, 2, 0, "div", 20);
+      \u0275\u0275conditionalCreate(26, VendorForm_Conditional_26_Template, 2, 0, "div", 21);
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(25, "div", 21)(26, "label", 17);
-      \u0275\u0275text(27, "\u7D71\u7DE8");
-      \u0275\u0275elementEnd();
-      \u0275\u0275element(28, "input", 22);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(29, "div", 21)(30, "label", 17);
-      \u0275\u0275text(31, "\u806F\u7D61\u4EBA");
-      \u0275\u0275elementEnd();
-      \u0275\u0275element(32, "input", 23);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(33, "div", 21)(34, "label", 17);
-      \u0275\u0275text(35, "\u806F\u7D61\u96FB\u8A71");
-      \u0275\u0275elementEnd();
-      \u0275\u0275element(36, "input", 24);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(37, "div", 21)(38, "label", 17);
-      \u0275\u0275text(39, "\u9280\u884C\u5E33\u865F");
-      \u0275\u0275elementEnd();
-      \u0275\u0275element(40, "input", 25);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(41, "div", 26)(42, "label", 17);
-      \u0275\u0275text(43, "\u5730\u5740");
-      \u0275\u0275elementEnd();
-      \u0275\u0275element(44, "input", 27);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(45, "div", 26)(46, "label", 17);
-      \u0275\u0275text(47, "\u5099\u8A3B");
-      \u0275\u0275elementEnd();
-      \u0275\u0275element(48, "textarea", 28);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(49, "div", 26)(50, "div", 29);
-      \u0275\u0275element(51, "input", 30);
-      \u0275\u0275elementStart(52, "label", 31);
-      \u0275\u0275text(53, "\u555F\u7528");
+      \u0275\u0275elementStart(27, "div", 22)(28, "label", 17);
+      \u0275\u0275text(29, "\u5EE0\u5546\u540D\u7A31 ");
+      \u0275\u0275elementStart(30, "span", 18);
+      \u0275\u0275text(31, "*");
       \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(54, "div", 32);
-      \u0275\u0275text(55, "\u505C\u7528\u5F8C\u5C07\u4E0D\u6703\u51FA\u73FE\u5728\u8ACB\u6B3E\u7533\u8ACB\u7684\u4E0B\u62C9\u6E05\u55AE\u4E2D\u3002");
-      \u0275\u0275elementEnd()()()()();
-      \u0275\u0275elementStart(56, "div", 33)(57, "button", 34);
-      \u0275\u0275text(58);
+      \u0275\u0275element(32, "input", 23);
+      \u0275\u0275conditionalCreate(33, VendorForm_Conditional_33_Template, 2, 0, "div", 20);
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(59, "a", 35);
-      \u0275\u0275text(60, "\u53D6\u6D88");
+      \u0275\u0275elementStart(34, "div", 16)(35, "label", 17);
+      \u0275\u0275text(36, "\u806F\u7D61\u4EBA");
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(37, "input", 24);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(38, "div", 16)(39, "label", 17);
+      \u0275\u0275text(40, "\u806F\u7D61\u96FB\u8A71");
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(41, "input", 25);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(42, "div", 16)(43, "label", 17);
+      \u0275\u0275text(44, "\u9280\u884C\u5E33\u865F");
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(45, "input", 26);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(46, "div", 27)(47, "label", 17);
+      \u0275\u0275text(48, "\u5730\u5740");
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(49, "input", 28);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(50, "div", 27)(51, "label", 17);
+      \u0275\u0275text(52, "\u5B58\u647A\u5C01\u9762");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(53, "div", 29);
+      \u0275\u0275text(54, "\u652F\u63F4 PNG\u3001JPEG \u5716\u7247\u6216 PDF\uFF0C\u4E0A\u50B3\u5F8C\u52FF\u8D85\u904E 1MB\uFF08\u9078\u586B\uFF09\u3002");
+      \u0275\u0275elementEnd();
+      \u0275\u0275conditionalCreate(55, VendorForm_Conditional_55_Template, 2, 1, "div", 30);
+      \u0275\u0275conditionalCreate(56, VendorForm_Conditional_56_Template, 12, 2)(57, VendorForm_Conditional_57_Template, 5, 0, "label", 31);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(58, "div", 27)(59, "label", 17);
+      \u0275\u0275text(60, "\u5099\u8A3B");
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(61, "textarea", 32);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(62, "div", 27)(63, "div", 33);
+      \u0275\u0275element(64, "input", 34);
+      \u0275\u0275elementStart(65, "label", 35);
+      \u0275\u0275text(66, "\u555F\u7528");
+      \u0275\u0275elementEnd()();
+      \u0275\u0275elementStart(67, "div", 21);
+      \u0275\u0275text(68, "\u505C\u7528\u5F8C\u5C07\u4E0D\u6703\u51FA\u73FE\u5728\u8ACB\u6B3E\u7533\u8ACB\u7684\u4E0B\u62C9\u6E05\u55AE\u4E2D\u3002");
+      \u0275\u0275elementEnd()()()()();
+      \u0275\u0275elementStart(69, "div", 36)(70, "button", 37);
+      \u0275\u0275conditionalCreate(71, VendorForm_Conditional_71_Template, 1, 0)(72, VendorForm_Conditional_72_Template, 1, 1);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(73, "a", 38);
+      \u0275\u0275text(74, "\u53D6\u6D88");
       \u0275\u0275elementEnd()()()()()();
     }
     if (rf & 2) {
       let tmp_3_0;
+      let tmp_4_0;
+      let tmp_6_0;
       \u0275\u0275advance(6);
       \u0275\u0275textInterpolate(ctx.isEdit ? "\u7DE8\u8F2F\u5EE0\u5546" : "\u65B0\u589E\u5EE0\u5546");
       \u0275\u0275advance();
@@ -9044,13 +9484,23 @@ var VendorForm = class _VendorForm {
       \u0275\u0275advance();
       \u0275\u0275property("formGroup", ctx.form);
       \u0275\u0275advance(16);
-      \u0275\u0275conditional(((tmp_3_0 = ctx.form.get("name")) == null ? null : tmp_3_0.invalid) && ((tmp_3_0 = ctx.form.get("name")) == null ? null : tmp_3_0.touched) ? 24 : -1);
-      \u0275\u0275advance(33);
-      \u0275\u0275property("disabled", ctx.form.invalid);
+      \u0275\u0275conditional(((tmp_3_0 = ctx.form.get("taxId")) == null ? null : tmp_3_0.touched) && ((tmp_3_0 = ctx.form.get("taxId")) == null ? null : tmp_3_0.errors == null ? null : tmp_3_0.errors["required"]) ? 24 : -1);
       \u0275\u0275advance();
-      \u0275\u0275textInterpolate1(" ", ctx.isEdit ? "\u66F4\u65B0" : "\u5EFA\u7ACB", " ");
+      \u0275\u0275conditional(((tmp_4_0 = ctx.form.get("taxId")) == null ? null : tmp_4_0.touched) && ((tmp_4_0 = ctx.form.get("taxId")) == null ? null : tmp_4_0.errors == null ? null : tmp_4_0.errors["pattern"]) ? 25 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.looking() ? 26 : -1);
+      \u0275\u0275advance(7);
+      \u0275\u0275conditional(((tmp_6_0 = ctx.form.get("name")) == null ? null : tmp_6_0.invalid) && ((tmp_6_0 = ctx.form.get("name")) == null ? null : tmp_6_0.touched) ? 33 : -1);
+      \u0275\u0275advance(22);
+      \u0275\u0275conditional(ctx.bankBookImagePreview() ? 55 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.bankBookDisplayName() ? 56 : 57);
+      \u0275\u0275advance(14);
+      \u0275\u0275property("disabled", ctx.form.invalid || ctx.saving());
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.saving() ? 71 : 72);
     }
-  }, dependencies: [ReactiveFormsModule, \u0275NgNoValidate, DefaultValueAccessor, CheckboxControlValueAccessor, NgControlStatus, NgControlStatusGroup, FormGroupDirective, FormControlName, RouterLink], encapsulation: 2 });
+  }, dependencies: [ReactiveFormsModule, \u0275NgNoValidate, DefaultValueAccessor, CheckboxControlValueAccessor, NgControlStatus, NgControlStatusGroup, MaxLengthValidator, FormGroupDirective, FormControlName, RouterLink], encapsulation: 2 });
 };
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(VendorForm, [{
@@ -9086,17 +9536,29 @@ var VendorForm = class _VendorForm {
           </div>
           <div class="card-body">
             <div class="row g-3">
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">\u7D71\u7DE8 <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" formControlName="taxId"
+                       placeholder="\u4F8B\u5982\uFF1A12345678"
+                       maxlength="8" inputmode="numeric"
+                       (blur)="onTaxIdBlur()">
+                @if (form.get('taxId')?.touched && form.get('taxId')?.errors?.['required']) {
+                <div class="text-danger small mt-1">\u8ACB\u8F38\u5165\u7D71\u7DE8\u3002</div>
+                }
+                @if (form.get('taxId')?.touched && form.get('taxId')?.errors?.['pattern']) {
+                <div class="text-danger small mt-1">\u7D71\u7DE8\u9808\u70BA 8 \u4F4D\u6578\u5B57\u3002</div>
+                }
+                @if (looking()) {
+                <div class="text-muted small mt-1">\u67E5\u8A62\u4E2D\u2026</div>
+                }
+              </div>
+
               <div class="col-12 col-md-8">
                 <label class="form-label fw-500">\u5EE0\u5546\u540D\u7A31 <span class="text-danger">*</span></label>
                 <input type="text" class="form-control" formControlName="name" placeholder="\u4F8B\u5982\uFF1A\u8AA0\u54C1\u66F8\u5E97">
                 @if (form.get('name')?.invalid && form.get('name')?.touched) {
                 <div class="text-danger small mt-1">\u8ACB\u8F38\u5165\u5EE0\u5546\u540D\u7A31\u3002</div>
                 }
-              </div>
-
-              <div class="col-12 col-md-4">
-                <label class="form-label fw-500">\u7D71\u7DE8</label>
-                <input type="text" class="form-control" formControlName="taxId" placeholder="\u4F8B\u5982\uFF1A12345678">
               </div>
 
               <div class="col-12 col-md-4">
@@ -9120,6 +9582,45 @@ var VendorForm = class _VendorForm {
               </div>
 
               <div class="col-12">
+                <label class="form-label fw-500">\u5B58\u647A\u5C01\u9762</label>
+                <div class="text-muted small mb-2">\u652F\u63F4 PNG\u3001JPEG \u5716\u7247\u6216 PDF\uFF0C\u4E0A\u50B3\u5F8C\u52FF\u8D85\u904E 1MB\uFF08\u9078\u586B\uFF09\u3002</div>
+                @if (bankBookImagePreview()) {
+                  <div class="mb-2">
+                    <img [src]="bankBookImagePreview()!" alt="\u5B58\u647A\u5C01\u9762\u9810\u89BD"
+                         class="rounded border max-h-40 object-contain">
+                  </div>
+                }
+                @if (bankBookDisplayName()) {
+                  <div class="flex items-center gap-2 mb-2 border rounded px-3 py-2 bg-[--bg-surface]">
+                    <svg class="sa-icon text-[--accent]" style="stroke: currentColor">
+                      <use href="/assets/icons/sprite.svg#file-text"></use>
+                    </svg>
+                    <span class="fw-500 text-[--text-primary] truncate text-sm">{{ bankBookDisplayName() }}</span>
+                    @if (hasExistingBankBook()) {
+                      <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewBankBookImage()">\u6AA2\u8996</button>
+                    }
+                  </div>
+                  <div class="flex gap-2">
+                    <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                      \u66F4\u63DB
+                      <input type="file" class="hidden"
+                             accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                             (change)="onBankBookImageSelected($event)">
+                    </label>
+                    <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveBankBookImage()">\u522A\u9664</button>
+                  </div>
+                } @else {
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                    \u9078\u64C7\u5B58\u647A\u5C01\u9762
+                    <input type="file" class="hidden"
+                           accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                           (change)="onBankBookImageSelected($event)">
+                  </label>
+                }
+              </div>
+
+              <div class="col-12">
                 <label class="form-label fw-500">\u5099\u8A3B</label>
                 <textarea class="form-control" formControlName="note" rows="2" placeholder="\u9078\u586B\u8AAA\u660E"></textarea>
               </div>
@@ -9136,8 +9637,8 @@ var VendorForm = class _VendorForm {
         </div>
 
         <div class="mt-6 flex gap-2">
-          <button type="submit" class="btn btn-primary" [disabled]="form.invalid">
-            {{ isEdit ? '\u66F4\u65B0' : '\u5EFA\u7ACB' }}
+          <button type="submit" class="btn btn-primary" [disabled]="form.invalid || saving()">
+            @if (saving()) { \u5132\u5B58\u4E2D\u2026 } @else { {{ isEdit ? '\u66F4\u65B0' : '\u5EFA\u7ACB' }} }
           </button>
           <a routerLink="/admin/vendors" class="btn btn-outline-secondary">\u53D6\u6D88</a>
         </div>
@@ -9149,7 +9650,7 @@ var VendorForm = class _VendorForm {
   }], null, null);
 })();
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(VendorForm, { className: "VendorForm", filePath: "src/app/features/admin/vendors/pages/vendor-form/vendor-form.ts", lineNumber: 12 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(VendorForm, { className: "VendorForm", filePath: "src/app/features/admin/vendors/pages/vendor-form/vendor-form.ts", lineNumber: 16 });
 })();
 
 // src/app/features/admin/approvals/models/approval.model.ts
@@ -13694,8 +14195,8 @@ function VendorQuickAddModal_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 7);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 25);
-    \u0275\u0275element(2, "use", 26);
+    \u0275\u0275elementStart(1, "svg", 29);
+    \u0275\u0275element(2, "use", 30);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3);
     \u0275\u0275elementEnd();
@@ -13709,31 +14210,105 @@ function VendorQuickAddModal_Conditional_8_Template(rf, ctx) {
 function VendorQuickAddModal_Conditional_16_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 13);
+    \u0275\u0275text(1, "\u8ACB\u8F38\u5165\u7D71\u7DE8\u3002");
+    \u0275\u0275elementEnd();
+  }
+}
+function VendorQuickAddModal_Conditional_17_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 13);
+    \u0275\u0275text(1, "\u7D71\u7DE8\u9808\u70BA 8 \u4F4D\u6578\u5B57\u3002");
+    \u0275\u0275elementEnd();
+  }
+}
+function VendorQuickAddModal_Conditional_18_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 14);
+    \u0275\u0275text(1, "\u67E5\u8A62\u4E2D\u2026");
+    \u0275\u0275elementEnd();
+  }
+}
+function VendorQuickAddModal_Conditional_25_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 13);
     \u0275\u0275text(1, "\u8ACB\u8F38\u5165\u5EE0\u5546\u540D\u7A31\u3002");
     \u0275\u0275elementEnd();
   }
 }
-function VendorQuickAddModal_Conditional_45_Template(rf, ctx) {
+function VendorQuickAddModal_Conditional_47_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r2 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 23);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 31);
+    \u0275\u0275element(2, "use", 32);
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(3, "span", 33);
+    \u0275\u0275text(4);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(5, "button", 34);
+    \u0275\u0275listener("click", function VendorQuickAddModal_Conditional_47_Template_button_click_5_listener() {
+      \u0275\u0275restoreView(_r2);
+      const ctx_r0 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r0.onRemoveBankBookImage());
+    });
+    \u0275\u0275text(6, "\u79FB\u9664");
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate(ctx_r0.bankBookImageFileName());
+  }
+}
+function VendorQuickAddModal_Conditional_48_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r3 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "label", 24);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 35);
+    \u0275\u0275element(2, "use", 36);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3, " \u9078\u64C7\u5B58\u647A\u5C01\u9762 ");
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(4, "input", 37);
+    \u0275\u0275listener("change", function VendorQuickAddModal_Conditional_48_Template_input_change_4_listener($event) {
+      \u0275\u0275restoreView(_r3);
+      const ctx_r0 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r0.onBankBookImageSelected($event));
+    });
+    \u0275\u0275elementEnd()();
+  }
+}
+function VendorQuickAddModal_Conditional_57_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u5132\u5B58\u4E2D\u2026 ");
   }
 }
-function VendorQuickAddModal_Conditional_46_Template(rf, ctx) {
+function VendorQuickAddModal_Conditional_58_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u5132\u5B58 ");
   }
 }
+var MAX_FILE_BYTES3 = 1 * 1024 * 1024;
 var VendorQuickAddModal = class _VendorQuickAddModal {
   fb = inject(FormBuilder);
   vendorService = inject(VendorService);
+  toastr = inject(ToastrService);
+  imageCompression = inject(ImageCompressionService);
   activeModal = inject(NgbActiveModal);
   /** 由父元件傳入：在下拉沒找到時把使用者輸入的字帶進來 */
   prefillName;
   saving = signal(false, ...ngDevMode ? [{ debugName: "saving" }] : []);
+  looking = signal(false, ...ngDevMode ? [{ debugName: "looking" }] : []);
   errorMsg = signal("", ...ngDevMode ? [{ debugName: "errorMsg" }] : []);
+  bankBookImageFile = signal(null, ...ngDevMode ? [{ debugName: "bankBookImageFile" }] : []);
+  bankBookImageFileName = signal(null, ...ngDevMode ? [{ debugName: "bankBookImageFileName" }] : []);
+  hasBankBook = computed(() => !!this.bankBookImageFile(), ...ngDevMode ? [{ debugName: "hasBankBook" }] : []);
   form = this.fb.group({
+    taxId: ["", [Validators.required, Validators.pattern(/^\d{8}$/)]],
     name: ["", Validators.required],
-    taxId: [""],
     phone: [""],
     contactPerson: [""],
     address: [""],
@@ -13744,13 +14319,72 @@ var VendorQuickAddModal = class _VendorQuickAddModal {
     if (this.prefillName)
       this.form.patchValue({ name: this.prefillName });
   }
+  onTaxIdBlur() {
+    const taxIdCtrl = this.form.controls.taxId;
+    const taxId = (taxIdCtrl.value ?? "").trim();
+    if (!taxId || taxIdCtrl.invalid)
+      return;
+    if (this.looking())
+      return;
+    this.looking.set(true);
+    this.vendorService.lookupByTaxId(taxId).subscribe({
+      next: (result) => {
+        this.looking.set(false);
+        const patch = {};
+        if (!this.form.controls.name.value)
+          patch.name = result.name;
+        if (!this.form.controls.address.value && result.address)
+          patch.address = result.address;
+        if (!this.form.controls.contactPerson.value && result.contactPerson)
+          patch.contactPerson = result.contactPerson;
+        if (Object.keys(patch).length === 0) {
+          this.toastr.info("\u5DF2\u67E5\u5230\u516C\u53F8\u8CC7\u6599\uFF0C\u4F46\u6B04\u4F4D\u7686\u5DF2\u586B\u5BEB\uFF0C\u672A\u8986\u5BEB\u3002");
+        } else {
+          this.form.patchValue(patch);
+          this.toastr.success("\u5DF2\u81EA\u52D5\u5E36\u5165\u5EE0\u5546\u8CC7\u6599");
+        }
+      },
+      error: (err) => {
+        this.looking.set(false);
+        if (err.status === 404) {
+          this.toastr.info("\u67E5\u7121\u6B64\u7D71\u7DE8\u8CC7\u6599\uFF0C\u8ACB\u624B\u52D5\u586B\u5BEB\u5EE0\u5546\u540D\u7A31");
+        } else {
+          this.toastr.error(err.error?.message || "\u67E5\u8A62\u5931\u6557\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66");
+        }
+      }
+    });
+  }
+  async onBankBookImageSelected(event) {
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file)
+      return;
+    input.value = "";
+    try {
+      const compressed = await this.imageCompression.compress(file, { maxSize: 1600, quality: 0.85 });
+      if (compressed.size > MAX_FILE_BYTES3) {
+        this.toastr.error("\u4E0A\u50B3\u7167\u7247\u52FF\u8D85\u904E1MB");
+        return;
+      }
+      this.bankBookImageFile.set(compressed);
+      this.bankBookImageFileName.set(file.name);
+    } catch (err) {
+      console.error("[VendorQuickAddModal] \u5B58\u647A\u5C01\u9762\u8655\u7406\u5931\u6557", err);
+      this.toastr.error("\u6A94\u6848\u8655\u7406\u5931\u6557\uFF0C\u8ACB\u91CD\u8A66\u3002", "\u8655\u7406\u5931\u6557");
+    }
+  }
+  onRemoveBankBookImage() {
+    this.bankBookImageFile.set(null);
+    this.bankBookImageFileName.set(null);
+  }
   submit() {
     if (this.form.invalid || this.saving())
       return;
-    const value = this.form.value;
+    const value = __spreadProps(__spreadValues({}, this.form.value), { isActive: true });
+    const files = { bankBookImage: this.bankBookImageFile() ?? void 0 };
     this.errorMsg.set("");
     this.saving.set(true);
-    this.vendorService.create(__spreadProps(__spreadValues({}, value), { isActive: true })).subscribe({
+    this.vendorService.create(value, files).subscribe({
       next: (v) => {
         const lookup = { id: v.id, name: v.name, taxId: v.taxId };
         this.activeModal.close(lookup);
@@ -13767,7 +14401,7 @@ var VendorQuickAddModal = class _VendorQuickAddModal {
   static \u0275fac = function VendorQuickAddModal_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _VendorQuickAddModal)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _VendorQuickAddModal, selectors: [["app-vendor-quick-add-modal"]], inputs: { prefillName: "prefillName" }, decls: 47, vars: 5, consts: [[1, "modal-header"], [1, "modal-title", "flex", "items-center", "gap-2", "mb-0", "fw-600"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#briefcase"], ["type", "button", "aria-label", "Close", 1, "btn-close", 3, "click"], [3, "ngSubmit", "formGroup"], [1, "modal-body"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-4", "py-2"], [1, "row", "g-3"], [1, "col-12", "col-md-8"], [1, "form-label", "fw-500"], [1, "text-danger"], ["type", "text", "formControlName", "name", "placeholder", "\u4F8B\u5982\uFF1A\u8AA0\u54C1\u66F8\u5E97", "autofocus", "", 1, "form-control"], [1, "text-danger", "small", "mt-1"], [1, "col-12", "col-md-4"], ["type", "text", "formControlName", "taxId", "placeholder", "\u4F8B\u5982\uFF1A12345678", 1, "form-control"], ["type", "text", "formControlName", "contactPerson", "placeholder", "\u59D3\u540D", 1, "form-control"], ["type", "text", "formControlName", "phone", "placeholder", "\u4F8B\u5982\uFF1A02-1234-5678", 1, "form-control"], ["type", "text", "formControlName", "bankAccount", "placeholder", "\u9280\u884C / \u5206\u884C / \u5E33\u865F", 1, "form-control"], [1, "col-12"], ["type", "text", "formControlName", "address", "placeholder", "\u5B8C\u6574\u5730\u5740", 1, "form-control"], ["formControlName", "note", "rows", "2", "placeholder", "\u9078\u586B\u8AAA\u660E", 1, "form-control"], [1, "modal-footer"], ["type", "button", 1, "btn", "btn-outline-secondary", 3, "click"], ["type", "submit", 1, "btn", "btn-primary", 3, "disabled"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"]], template: function VendorQuickAddModal_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _VendorQuickAddModal, selectors: [["app-vendor-quick-add-modal"]], inputs: { prefillName: "prefillName" }, decls: 59, vars: 9, consts: [[1, "modal-header"], [1, "modal-title", "flex", "items-center", "gap-2", "mb-0", "fw-600"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#briefcase"], ["type", "button", "aria-label", "Close", 1, "btn-close", 3, "click"], [3, "ngSubmit", "formGroup"], [1, "modal-body"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-4", "py-2"], [1, "row", "g-3"], [1, "col-12", "col-md-4"], [1, "form-label", "fw-500"], [1, "text-danger"], ["type", "text", "formControlName", "taxId", "placeholder", "\u4F8B\u5982\uFF1A12345678", "maxlength", "8", "inputmode", "numeric", "autofocus", "", 1, "form-control", 3, "blur"], [1, "text-danger", "small", "mt-1"], [1, "text-muted", "small", "mt-1"], [1, "col-12", "col-md-8"], ["type", "text", "formControlName", "name", "placeholder", "\u4F8B\u5982\uFF1A\u8AA0\u54C1\u66F8\u5E97", 1, "form-control"], ["type", "text", "formControlName", "contactPerson", "placeholder", "\u59D3\u540D", 1, "form-control"], ["type", "text", "formControlName", "phone", "placeholder", "\u4F8B\u5982\uFF1A02-1234-5678", 1, "form-control"], ["type", "text", "formControlName", "bankAccount", "placeholder", "\u9280\u884C / \u5206\u884C / \u5E33\u865F", 1, "form-control"], [1, "col-12"], ["type", "text", "formControlName", "address", "placeholder", "\u5B8C\u6574\u5730\u5740", 1, "form-control"], [1, "text-muted", "small"], [1, "flex", "items-center", "gap-2", "border", "rounded", "px-3", "py-2", "bg-[--bg-surface]"], [1, "btn", "btn-sm", "btn-outline-primary", "cursor-pointer", "mb-0"], ["formControlName", "note", "rows", "2", "placeholder", "\u9078\u586B\u8AAA\u660E", 1, "form-control"], [1, "modal-footer"], ["type", "button", 1, "btn", "btn-outline-secondary", 3, "click"], ["type", "submit", 1, "btn", "btn-primary", 3, "disabled"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "sa-icon", "text-[--accent]", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#file-text"], [1, "fw-500", "text-[--text-primary]", "truncate", "text-sm"], ["type", "button", 1, "btn", "btn-sm", "btn-outline-danger", "ms-auto", 3, "click"], [1, "sa-icon", "me-1"], ["href", "/assets/icons/sprite.svg#upload"], ["type", "file", "accept", "image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif", 1, "hidden", 3, "change"]], template: function VendorQuickAddModal_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "h5", 1);
       \u0275\u0275namespaceSVG();
@@ -13789,67 +14423,93 @@ var VendorQuickAddModal = class _VendorQuickAddModal {
       \u0275\u0275elementStart(7, "div", 6);
       \u0275\u0275conditionalCreate(8, VendorQuickAddModal_Conditional_8_Template, 4, 1, "div", 7);
       \u0275\u0275elementStart(9, "div", 8)(10, "div", 9)(11, "label", 10);
-      \u0275\u0275text(12, "\u5EE0\u5546\u540D\u7A31 ");
+      \u0275\u0275text(12, "\u7D71\u7DE8 ");
       \u0275\u0275elementStart(13, "span", 11);
       \u0275\u0275text(14, "*");
       \u0275\u0275elementEnd()();
-      \u0275\u0275element(15, "input", 12);
+      \u0275\u0275elementStart(15, "input", 12);
+      \u0275\u0275listener("blur", function VendorQuickAddModal_Template_input_blur_15_listener() {
+        return ctx.onTaxIdBlur();
+      });
+      \u0275\u0275elementEnd();
       \u0275\u0275conditionalCreate(16, VendorQuickAddModal_Conditional_16_Template, 2, 0, "div", 13);
+      \u0275\u0275conditionalCreate(17, VendorQuickAddModal_Conditional_17_Template, 2, 0, "div", 13);
+      \u0275\u0275conditionalCreate(18, VendorQuickAddModal_Conditional_18_Template, 2, 0, "div", 14);
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(17, "div", 14)(18, "label", 10);
-      \u0275\u0275text(19, "\u7D71\u7DE8");
-      \u0275\u0275elementEnd();
-      \u0275\u0275element(20, "input", 15);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(21, "div", 14)(22, "label", 10);
-      \u0275\u0275text(23, "\u806F\u7D61\u4EBA");
-      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(19, "div", 15)(20, "label", 10);
+      \u0275\u0275text(21, "\u5EE0\u5546\u540D\u7A31 ");
+      \u0275\u0275elementStart(22, "span", 11);
+      \u0275\u0275text(23, "*");
+      \u0275\u0275elementEnd()();
       \u0275\u0275element(24, "input", 16);
+      \u0275\u0275conditionalCreate(25, VendorQuickAddModal_Conditional_25_Template, 2, 0, "div", 13);
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(25, "div", 14)(26, "label", 10);
-      \u0275\u0275text(27, "\u806F\u7D61\u96FB\u8A71");
+      \u0275\u0275elementStart(26, "div", 9)(27, "label", 10);
+      \u0275\u0275text(28, "\u806F\u7D61\u4EBA");
       \u0275\u0275elementEnd();
-      \u0275\u0275element(28, "input", 17);
+      \u0275\u0275element(29, "input", 17);
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(29, "div", 14)(30, "label", 10);
-      \u0275\u0275text(31, "\u9280\u884C\u5E33\u865F");
+      \u0275\u0275elementStart(30, "div", 9)(31, "label", 10);
+      \u0275\u0275text(32, "\u806F\u7D61\u96FB\u8A71");
       \u0275\u0275elementEnd();
-      \u0275\u0275element(32, "input", 18);
+      \u0275\u0275element(33, "input", 18);
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(33, "div", 19)(34, "label", 10);
-      \u0275\u0275text(35, "\u5730\u5740");
+      \u0275\u0275elementStart(34, "div", 9)(35, "label", 10);
+      \u0275\u0275text(36, "\u9280\u884C\u5E33\u865F");
       \u0275\u0275elementEnd();
-      \u0275\u0275element(36, "input", 20);
+      \u0275\u0275element(37, "input", 19);
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(37, "div", 19)(38, "label", 10);
-      \u0275\u0275text(39, "\u5099\u8A3B");
+      \u0275\u0275elementStart(38, "div", 20)(39, "label", 10);
+      \u0275\u0275text(40, "\u5730\u5740");
       \u0275\u0275elementEnd();
-      \u0275\u0275element(40, "textarea", 21);
+      \u0275\u0275element(41, "input", 21);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(42, "div", 20)(43, "label", 10);
+      \u0275\u0275text(44, "\u5B58\u647A\u5C01\u9762 ");
+      \u0275\u0275elementStart(45, "span", 22);
+      \u0275\u0275text(46, "\uFF08\u9078\u586B\uFF0C1MB \u5167\uFF09");
+      \u0275\u0275elementEnd()();
+      \u0275\u0275conditionalCreate(47, VendorQuickAddModal_Conditional_47_Template, 7, 1, "div", 23)(48, VendorQuickAddModal_Conditional_48_Template, 5, 0, "label", 24);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(49, "div", 20)(50, "label", 10);
+      \u0275\u0275text(51, "\u5099\u8A3B");
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(52, "textarea", 25);
       \u0275\u0275elementEnd()()();
-      \u0275\u0275elementStart(41, "div", 22)(42, "button", 23);
-      \u0275\u0275listener("click", function VendorQuickAddModal_Template_button_click_42_listener() {
+      \u0275\u0275elementStart(53, "div", 26)(54, "button", 27);
+      \u0275\u0275listener("click", function VendorQuickAddModal_Template_button_click_54_listener() {
         return ctx.cancel();
       });
-      \u0275\u0275text(43, "\u53D6\u6D88");
+      \u0275\u0275text(55, "\u53D6\u6D88");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(44, "button", 24);
-      \u0275\u0275conditionalCreate(45, VendorQuickAddModal_Conditional_45_Template, 1, 0)(46, VendorQuickAddModal_Conditional_46_Template, 1, 0);
+      \u0275\u0275elementStart(56, "button", 28);
+      \u0275\u0275conditionalCreate(57, VendorQuickAddModal_Conditional_57_Template, 1, 0)(58, VendorQuickAddModal_Conditional_58_Template, 1, 0);
       \u0275\u0275elementEnd()()();
     }
     if (rf & 2) {
       let tmp_2_0;
+      let tmp_3_0;
+      let tmp_5_0;
       \u0275\u0275advance(6);
       \u0275\u0275property("formGroup", ctx.form);
       \u0275\u0275advance(2);
       \u0275\u0275conditional(ctx.errorMsg() ? 8 : -1);
       \u0275\u0275advance(8);
-      \u0275\u0275conditional(((tmp_2_0 = ctx.form.get("name")) == null ? null : tmp_2_0.invalid) && ((tmp_2_0 = ctx.form.get("name")) == null ? null : tmp_2_0.touched) ? 16 : -1);
-      \u0275\u0275advance(28);
+      \u0275\u0275conditional(((tmp_2_0 = ctx.form.get("taxId")) == null ? null : tmp_2_0.touched) && ((tmp_2_0 = ctx.form.get("taxId")) == null ? null : tmp_2_0.errors == null ? null : tmp_2_0.errors["required"]) ? 16 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275conditional(((tmp_3_0 = ctx.form.get("taxId")) == null ? null : tmp_3_0.touched) && ((tmp_3_0 = ctx.form.get("taxId")) == null ? null : tmp_3_0.errors == null ? null : tmp_3_0.errors["pattern"]) ? 17 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.looking() ? 18 : -1);
+      \u0275\u0275advance(7);
+      \u0275\u0275conditional(((tmp_5_0 = ctx.form.get("name")) == null ? null : tmp_5_0.invalid) && ((tmp_5_0 = ctx.form.get("name")) == null ? null : tmp_5_0.touched) ? 25 : -1);
+      \u0275\u0275advance(22);
+      \u0275\u0275conditional(ctx.hasBankBook() ? 47 : 48);
+      \u0275\u0275advance(9);
       \u0275\u0275property("disabled", ctx.form.invalid || ctx.saving());
       \u0275\u0275advance();
-      \u0275\u0275conditional(ctx.saving() ? 45 : 46);
+      \u0275\u0275conditional(ctx.saving() ? 57 : 58);
     }
-  }, dependencies: [ReactiveFormsModule, \u0275NgNoValidate, DefaultValueAccessor, NgControlStatus, NgControlStatusGroup, FormGroupDirective, FormControlName], encapsulation: 2 });
+  }, dependencies: [ReactiveFormsModule, \u0275NgNoValidate, DefaultValueAccessor, NgControlStatus, NgControlStatusGroup, MaxLengthValidator, FormGroupDirective, FormControlName], encapsulation: 2 });
 };
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(VendorQuickAddModal, [{
@@ -13876,17 +14536,30 @@ var VendorQuickAddModal = class _VendorQuickAddModal {
     }
 
     <div class="row g-3">
-      <div class="col-12 col-md-8">
-        <label class="form-label fw-500">\u5EE0\u5546\u540D\u7A31 <span class="text-danger">*</span></label>
-        <input type="text" class="form-control" formControlName="name" placeholder="\u4F8B\u5982\uFF1A\u8AA0\u54C1\u66F8\u5E97" autofocus>
-        @if (form.get('name')?.invalid && form.get('name')?.touched) {
-        <div class="text-danger small mt-1">\u8ACB\u8F38\u5165\u5EE0\u5546\u540D\u7A31\u3002</div>
+      <div class="col-12 col-md-4">
+        <label class="form-label fw-500">\u7D71\u7DE8 <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" formControlName="taxId"
+               placeholder="\u4F8B\u5982\uFF1A12345678"
+               maxlength="8" inputmode="numeric"
+               autofocus
+               (blur)="onTaxIdBlur()">
+        @if (form.get('taxId')?.touched && form.get('taxId')?.errors?.['required']) {
+        <div class="text-danger small mt-1">\u8ACB\u8F38\u5165\u7D71\u7DE8\u3002</div>
+        }
+        @if (form.get('taxId')?.touched && form.get('taxId')?.errors?.['pattern']) {
+        <div class="text-danger small mt-1">\u7D71\u7DE8\u9808\u70BA 8 \u4F4D\u6578\u5B57\u3002</div>
+        }
+        @if (looking()) {
+        <div class="text-muted small mt-1">\u67E5\u8A62\u4E2D\u2026</div>
         }
       </div>
 
-      <div class="col-12 col-md-4">
-        <label class="form-label fw-500">\u7D71\u7DE8</label>
-        <input type="text" class="form-control" formControlName="taxId" placeholder="\u4F8B\u5982\uFF1A12345678">
+      <div class="col-12 col-md-8">
+        <label class="form-label fw-500">\u5EE0\u5546\u540D\u7A31 <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" formControlName="name" placeholder="\u4F8B\u5982\uFF1A\u8AA0\u54C1\u66F8\u5E97">
+        @if (form.get('name')?.invalid && form.get('name')?.touched) {
+        <div class="text-danger small mt-1">\u8ACB\u8F38\u5165\u5EE0\u5546\u540D\u7A31\u3002</div>
+        }
       </div>
 
       <div class="col-12 col-md-4">
@@ -13910,6 +14583,27 @@ var VendorQuickAddModal = class _VendorQuickAddModal {
       </div>
 
       <div class="col-12">
+        <label class="form-label fw-500">\u5B58\u647A\u5C01\u9762 <span class="text-muted small">\uFF08\u9078\u586B\uFF0C1MB \u5167\uFF09</span></label>
+        @if (hasBankBook()) {
+          <div class="flex items-center gap-2 border rounded px-3 py-2 bg-[--bg-surface]">
+            <svg class="sa-icon text-[--accent]" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#file-text"></use>
+            </svg>
+            <span class="fw-500 text-[--text-primary] truncate text-sm">{{ bankBookImageFileName() }}</span>
+            <button type="button" class="btn btn-sm btn-outline-danger ms-auto" (click)="onRemoveBankBookImage()">\u79FB\u9664</button>
+          </div>
+        } @else {
+          <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+            <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+            \u9078\u64C7\u5B58\u647A\u5C01\u9762
+            <input type="file" class="hidden"
+                   accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                   (change)="onBankBookImageSelected($event)">
+          </label>
+        }
+      </div>
+
+      <div class="col-12">
         <label class="form-label fw-500">\u5099\u8A3B</label>
         <textarea class="form-control" formControlName="note" rows="2" placeholder="\u9078\u586B\u8AAA\u660E"></textarea>
       </div>
@@ -13929,7 +14623,7 @@ var VendorQuickAddModal = class _VendorQuickAddModal {
   }] });
 })();
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(VendorQuickAddModal, { className: "VendorQuickAddModal", filePath: "src/app/features/admin/vendors/components/vendor-quick-add-modal/vendor-quick-add-modal.ts", lineNumber: 13 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(VendorQuickAddModal, { className: "VendorQuickAddModal", filePath: "src/app/features/admin/vendors/components/vendor-quick-add-modal/vendor-quick-add-modal.ts", lineNumber: 17 });
 })();
 
 // src/app/features/admin/payment-requests/pages/payment-form/payment-form.ts
@@ -55275,7 +55969,7 @@ function PayrollList_Conditional_15_Template(rf, ctx) {
     \u0275\u0275elementEnd();
   }
 }
-function PayrollList_Conditional_16_For_49_a_23_Template(rf, ctx) {
+function PayrollList_Conditional_16_For_55_a_23_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "a", 39);
     \u0275\u0275namespaceSVG();
@@ -55289,7 +55983,7 @@ function PayrollList_Conditional_16_For_49_a_23_Template(rf, ctx) {
     \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c022, emp_r3.employeeId))("queryParams", \u0275\u0275pureFunction2(4, _c16, ctx_r1.selectedYear(), ctx_r1.selectedMonth()));
   }
 }
-function PayrollList_Conditional_16_For_49_Template(rf, ctx) {
+function PayrollList_Conditional_16_For_55_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "tr")(1, "td", 32);
     \u0275\u0275text(2);
@@ -55321,7 +56015,7 @@ function PayrollList_Conditional_16_For_49_Template(rf, ctx) {
     \u0275\u0275pipe(21, "number");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(22, "td", 37);
-    \u0275\u0275template(23, PayrollList_Conditional_16_For_49_a_23_Template, 3, 7, "a", 38);
+    \u0275\u0275template(23, PayrollList_Conditional_16_For_55_a_23_Template, 3, 7, "a", 38);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -55346,14 +56040,14 @@ function PayrollList_Conditional_16_For_49_Template(rf, ctx) {
     \u0275\u0275property("appHasPermission", "payroll:write");
   }
 }
-function PayrollList_Conditional_16_ForEmpty_50_Template(rf, ctx) {
+function PayrollList_Conditional_16_ForEmpty_56_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "tr")(1, "td", 41);
     \u0275\u0275text(2, " \u5C1A\u7121\u85AA\u8CC7\u8CC7\u6599\u3002\u8ACB\u78BA\u8A8D\u54E1\u5DE5\u662F\u5426\u5DF2\u8A2D\u5B9A\u5E95\u85AA\u3002 ");
     \u0275\u0275elementEnd()();
   }
 }
-function PayrollList_Conditional_16_Conditional_51_Template(rf, ctx) {
+function PayrollList_Conditional_16_Conditional_57_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "tfoot", 26)(1, "tr", 42)(2, "td");
     \u0275\u0275text(3, "\u5408\u8A08");
@@ -55412,49 +56106,56 @@ function PayrollList_Conditional_16_Template(rf, ctx) {
     \u0275\u0275pipe(11, "number");
     \u0275\u0275elementEnd()();
     \u0275\u0275elementStart(12, "div", 18)(13, "div", 19);
-    \u0275\u0275text(14, "\u5047\u65E5\u6D25\u8CBC\u7E3D\u8A08");
+    \u0275\u0275text(14, "\u52A0\u7D66\u7E3D\u8A08");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(15, "div", 20);
     \u0275\u0275text(16);
     \u0275\u0275pipe(17, "number");
     \u0275\u0275elementEnd()();
     \u0275\u0275elementStart(18, "div", 18)(19, "div", 19);
-    \u0275\u0275text(20, "\u5BE6\u9818\u7E3D\u8A08");
+    \u0275\u0275text(20, "\u5047\u65E5\u6D25\u8CBC\u7E3D\u8A08");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(21, "div", 21);
+    \u0275\u0275elementStart(21, "div", 20);
     \u0275\u0275text(22);
     \u0275\u0275pipe(23, "number");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(24, "div", 18)(25, "div", 19);
+    \u0275\u0275text(26, "\u5BE6\u9818\u7E3D\u8A08");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(27, "div", 21);
+    \u0275\u0275text(28);
+    \u0275\u0275pipe(29, "number");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(24, "div", 22)(25, "div", 23)(26, "div", 24)(27, "table", 25)(28, "thead", 26)(29, "tr")(30, "th");
-    \u0275\u0275text(31, "\u54E1\u5DE5\u59D3\u540D");
+    \u0275\u0275elementStart(30, "div", 22)(31, "div", 23)(32, "div", 24)(33, "table", 25)(34, "thead", 26)(35, "tr")(36, "th");
+    \u0275\u0275text(37, "\u54E1\u5DE5\u59D3\u540D");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(32, "th", 27);
-    \u0275\u0275text(33, "\u90E8\u9580");
+    \u0275\u0275elementStart(38, "th", 27);
+    \u0275\u0275text(39, "\u90E8\u9580");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(34, "th", 28);
-    \u0275\u0275text(35, "\u8077\u7A31");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(36, "th", 29);
-    \u0275\u0275text(37, "\u5E95\u85AA");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(38, "th", 29);
-    \u0275\u0275text(39, "\u5047\u65E5\u6D25\u8CBC");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(40, "th", 29);
-    \u0275\u0275text(41, "\u52DE\u4FDD\u8CBB");
+    \u0275\u0275elementStart(40, "th", 28);
+    \u0275\u0275text(41, "\u8077\u7A31");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(42, "th", 29);
-    \u0275\u0275text(43, "\u5065\u4FDD\u8CBB");
+    \u0275\u0275text(43, "\u5E95\u85AA");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(44, "th", 30);
-    \u0275\u0275text(45, "\u5BE6\u9818\u85AA\u6C34");
+    \u0275\u0275elementStart(44, "th", 29);
+    \u0275\u0275text(45, "\u5047\u65E5\u6D25\u8CBC");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(46, "th", 31);
+    \u0275\u0275elementStart(46, "th", 29);
+    \u0275\u0275text(47, "\u52DE\u4FDD\u8CBB");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(48, "th", 29);
+    \u0275\u0275text(49, "\u5065\u4FDD\u8CBB");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(50, "th", 30);
+    \u0275\u0275text(51, "\u5BE6\u9818\u85AA\u6C34");
+    \u0275\u0275elementEnd();
+    \u0275\u0275element(52, "th", 31);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(47, "tbody");
-    \u0275\u0275repeaterCreate(48, PayrollList_Conditional_16_For_49_Template, 24, 24, "tr", null, _forTrack030, false, PayrollList_Conditional_16_ForEmpty_50_Template, 3, 0, "tr");
+    \u0275\u0275elementStart(53, "tbody");
+    \u0275\u0275repeaterCreate(54, PayrollList_Conditional_16_For_55_Template, 24, 24, "tr", null, _forTrack030, false, PayrollList_Conditional_16_ForEmpty_56_Template, 3, 0, "tr");
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(51, PayrollList_Conditional_16_Conditional_51_Template, 22, 20, "tfoot", 26);
+    \u0275\u0275conditionalCreate(57, PayrollList_Conditional_16_Conditional_57_Template, 22, 20, "tfoot", 26);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
@@ -55463,15 +56164,17 @@ function PayrollList_Conditional_16_Template(rf, ctx) {
     \u0275\u0275advance(5);
     \u0275\u0275textInterpolate(p_r4.employees.length);
     \u0275\u0275advance(5);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(11, 6, p_r4.totalBaseSalary, "1.0-0"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(11, 7, p_r4.totalBaseSalary, "1.0-0"));
     \u0275\u0275advance(6);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(17, 9, p_r4.totalHolidayAllowance, "1.0-0"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(17, 10, ctx_r1.totalAllowances(p_r4), "1.0-0"));
     \u0275\u0275advance(6);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(23, 12, p_r4.totalNetSalary, "1.0-0"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(23, 13, p_r4.totalHolidayAllowance, "1.0-0"));
+    \u0275\u0275advance(6);
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(29, 16, p_r4.totalNetSalary, "1.0-0"));
     \u0275\u0275advance(26);
     \u0275\u0275repeater(ctx_r1.employees());
     \u0275\u0275advance(3);
-    \u0275\u0275conditional(ctx_r1.employees().length > 0 ? 51 : -1);
+    \u0275\u0275conditional(ctx_r1.employees().length > 0 ? 57 : -1);
   }
 }
 var PayrollList = class _PayrollList {
@@ -55500,6 +56203,10 @@ var PayrollList = class _PayrollList {
   payroll = signal(null, ...ngDevMode ? [{ debugName: "payroll" }] : []);
   errorMsg = signal("", ...ngDevMode ? [{ debugName: "errorMsg" }] : []);
   employees = computed(() => this.payroll()?.employees ?? [], ...ngDevMode ? [{ debugName: "employees" }] : []);
+  /** 5 種加給總計（職務 + 主管 + 其他 + 調整差額 + 外派） */
+  totalAllowances(p) {
+    return p.totalPositionAllowance + p.totalDutyAllowance + p.totalOtherAllowance + p.totalAdjustmentDifference + p.totalOverseasAllowance;
+  }
   onMonthChange(value) {
     const [y, m] = value.split("-").map(Number);
     if (y && m) {
@@ -55549,7 +56256,7 @@ var PayrollList = class _PayrollList {
   static \u0275fac = function PayrollList_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _PayrollList)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _PayrollList, selectors: [["app-payroll-list"]], decls: 17, vars: 5, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#dollar-sign"], [1, "mb-0"], ["type", "month", 1, "form-control", 2, "width", "180px", 3, "change", "value"], [1, "btn", "btn-primary", "inline-flex", "items-center", "gap-1", 3, "click"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#search"], [1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-1", 3, "disabled"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [1, "text-center", "py-4", "text-muted"], [1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-1", 3, "click", "disabled"], [1, "inline-block", "w-4", "h-4", "border-2", "border-current", "border-t-transparent", "rounded-full", "animate-spin"], ["href", "/assets/icons/sprite.svg#mail"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "grid", "grid-cols-2", "md:grid-cols-4", "gap-3", "mb-6"], [1, "card", "border-0", "shadow-sm", "text-center", "py-3"], [1, "text-muted", "small"], [1, "fw-600", "text-lg"], [1, "fw-600", "text-lg", "text-primary"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "hidden", "md:table-cell"], [1, "hidden", "lg:table-cell"], [1, "text-right"], [1, "text-right", "fw-600"], [1, "text-center", 2, "width", "60px"], [1, "fw-500"], [1, "hidden", "md:table-cell", "text-muted"], [1, "hidden", "lg:table-cell", "text-muted"], [1, "text-right", "text-danger"], [1, "text-right", "fw-600", "text-primary"], [1, "text-right", 2, "white-space", "nowrap"], ["class", "btn btn-sm btn-ghost-primary inline-flex items-center", 3, "routerLink", "queryParams", 4, "appHasPermission"], [1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center", 3, "routerLink", "queryParams"], ["href", "/assets/icons/sprite.svg#edit"], ["colspan", "9", 1, "text-center", "text-muted", "py-4"], [1, "fw-600"], [1, "text-right", "text-primary"]], template: function PayrollList_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _PayrollList, selectors: [["app-payroll-list"]], decls: 17, vars: 5, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#dollar-sign"], [1, "mb-0"], ["type", "month", 1, "form-control", 2, "width", "180px", 3, "change", "value"], [1, "btn", "btn-primary", "inline-flex", "items-center", "gap-1", 3, "click"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#search"], [1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-1", 3, "disabled"], ["role", "alert", 1, "alert", "alert-danger", "flex", "items-center", "gap-2", "mb-6", "py-2"], [1, "text-center", "py-4", "text-muted"], [1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-1", 3, "click", "disabled"], [1, "inline-block", "w-4", "h-4", "border-2", "border-current", "border-t-transparent", "rounded-full", "animate-spin"], ["href", "/assets/icons/sprite.svg#mail"], ["href", "/assets/icons/sprite.svg#alert-triangle"], [1, "grid", "grid-cols-2", "md:grid-cols-5", "gap-3", "mb-6"], [1, "card", "border-0", "shadow-sm", "text-center", "py-3"], [1, "text-muted", "small"], [1, "fw-600", "text-lg"], [1, "fw-600", "text-lg", "text-primary"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "hidden", "md:table-cell"], [1, "hidden", "lg:table-cell"], [1, "text-right"], [1, "text-right", "fw-600"], [1, "text-center", 2, "width", "60px"], [1, "fw-500"], [1, "hidden", "md:table-cell", "text-muted"], [1, "hidden", "lg:table-cell", "text-muted"], [1, "text-right", "text-danger"], [1, "text-right", "fw-600", "text-primary"], [1, "text-right", 2, "white-space", "nowrap"], ["class", "btn btn-sm btn-ghost-primary inline-flex items-center", 3, "routerLink", "queryParams", 4, "appHasPermission"], [1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center", 3, "routerLink", "queryParams"], ["href", "/assets/icons/sprite.svg#edit"], ["colspan", "9", 1, "text-center", "text-muted", "py-4"], [1, "fw-600"], [1, "text-right", "text-primary"]], template: function PayrollList_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "div", 2);
       \u0275\u0275namespaceSVG();
@@ -55579,7 +56286,7 @@ var PayrollList = class _PayrollList {
       \u0275\u0275elementEnd()();
       \u0275\u0275conditionalCreate(14, PayrollList_Conditional_14_Template, 4, 1, "div", 11);
       \u0275\u0275conditionalCreate(15, PayrollList_Conditional_15_Template, 2, 0, "div", 12);
-      \u0275\u0275conditionalCreate(16, PayrollList_Conditional_16_Template, 52, 15);
+      \u0275\u0275conditionalCreate(16, PayrollList_Conditional_16_Template, 58, 19);
       \u0275\u0275elementEnd();
     }
     if (rf & 2) {
@@ -55649,7 +56356,7 @@ var PayrollList = class _PayrollList {
 \r
   @if (payroll(); as p) {\r
     <!-- Summary Cards -->\r
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">\r
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">\r
       <div class="card border-0 shadow-sm text-center py-3">\r
         <div class="text-muted small">\u54E1\u5DE5\u4EBA\u6578</div>\r
         <div class="fw-600 text-lg">{{ p.employees.length }}</div>\r
@@ -55657,6 +56364,10 @@ var PayrollList = class _PayrollList {
       <div class="card border-0 shadow-sm text-center py-3">\r
         <div class="text-muted small">\u5E95\u85AA\u7E3D\u8A08</div>\r
         <div class="fw-600 text-lg">{{ p.totalBaseSalary | number:'1.0-0' }}</div>\r
+      </div>\r
+      <div class="card border-0 shadow-sm text-center py-3">\r
+        <div class="text-muted small">\u52A0\u7D66\u7E3D\u8A08</div>\r
+        <div class="fw-600 text-lg">{{ totalAllowances(p) | number:'1.0-0' }}</div>\r
       </div>\r
       <div class="card border-0 shadow-sm text-center py-3">\r
         <div class="text-muted small">\u5047\u65E5\u6D25\u8CBC\u7E3D\u8A08</div>\r
@@ -55766,7 +56477,87 @@ function PayrollForm_Conditional_10_Template(rf, ctx) {
     \u0275\u0275elementEnd();
   }
 }
-function PayrollForm_Conditional_11_Conditional_85_Template(rf, ctx) {
+function PayrollForm_Conditional_11_Conditional_50_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "tr")(1, "td", 25);
+    \u0275\u0275text(2, "\u8077\u52D9\u52A0\u7D66");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "td", 26);
+    \u0275\u0275text(4);
+    \u0275\u0275pipe(5, "number");
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const e_r3 = \u0275\u0275nextContext();
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(5, 1, e_r3.positionAllowance, "1.0-0"));
+  }
+}
+function PayrollForm_Conditional_11_Conditional_51_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "tr")(1, "td", 25);
+    \u0275\u0275text(2, "\u4E3B\u7BA1\u52A0\u7D66");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "td", 26);
+    \u0275\u0275text(4);
+    \u0275\u0275pipe(5, "number");
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const e_r3 = \u0275\u0275nextContext();
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(5, 1, e_r3.dutyAllowance, "1.0-0"));
+  }
+}
+function PayrollForm_Conditional_11_Conditional_52_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "tr")(1, "td", 25);
+    \u0275\u0275text(2, "\u5176\u4ED6\u52A0\u7D66");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "td", 26);
+    \u0275\u0275text(4);
+    \u0275\u0275pipe(5, "number");
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const e_r3 = \u0275\u0275nextContext();
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(5, 1, e_r3.otherAllowanceAmount, "1.0-0"));
+  }
+}
+function PayrollForm_Conditional_11_Conditional_53_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "tr")(1, "td", 25);
+    \u0275\u0275text(2, "\u8ABF\u6574\u5DEE\u984D");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "td", 26);
+    \u0275\u0275text(4);
+    \u0275\u0275pipe(5, "number");
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const e_r3 = \u0275\u0275nextContext();
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(5, 1, e_r3.adjustmentDifference, "1.0-0"));
+  }
+}
+function PayrollForm_Conditional_11_Conditional_54_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "tr")(1, "td", 25);
+    \u0275\u0275text(2, "\u5916\u6D3E\u52A0\u7D66");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "td", 26);
+    \u0275\u0275text(4);
+    \u0275\u0275pipe(5, "number");
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const e_r3 = \u0275\u0275nextContext();
+    \u0275\u0275advance(4);
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(5, 1, e_r3.overseasAllowance, "1.0-0"));
+  }
+}
+function PayrollForm_Conditional_11_Conditional_90_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "tr")(1, "td", 25);
     \u0275\u0275text(2);
@@ -55786,7 +56577,7 @@ function PayrollForm_Conditional_11_Conditional_85_Template(rf, ctx) {
     \u0275\u0275textInterpolate1("-", \u0275\u0275pipeBind2(7, 9, e_r3.personalLeaveDeduction, "1.0-0"));
   }
 }
-function PayrollForm_Conditional_11_Conditional_86_Template(rf, ctx) {
+function PayrollForm_Conditional_11_Conditional_91_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "tr")(1, "td", 25);
     \u0275\u0275text(2);
@@ -55806,7 +56597,7 @@ function PayrollForm_Conditional_11_Conditional_86_Template(rf, ctx) {
     \u0275\u0275textInterpolate1("-", \u0275\u0275pipeBind2(7, 9, e_r3.sickLeaveDeduction, "1.0-0"));
   }
 }
-function PayrollForm_Conditional_11_Conditional_87_For_17_Template(rf, ctx) {
+function PayrollForm_Conditional_11_Conditional_92_For_17_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "tr")(1, "td", 56);
     \u0275\u0275text(2);
@@ -55831,7 +56622,7 @@ function PayrollForm_Conditional_11_Conditional_87_For_17_Template(rf, ctx) {
     \u0275\u0275textInterpolate(ctx_r0.formatLeaveDuration(ld_r4.leaveType, ld_r4.hours));
   }
 }
-function PayrollForm_Conditional_11_Conditional_87_Template(rf, ctx) {
+function PayrollForm_Conditional_11_Conditional_92_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 13)(1, "div", 52);
     \u0275\u0275namespaceSVG();
@@ -55851,7 +56642,7 @@ function PayrollForm_Conditional_11_Conditional_87_Template(rf, ctx) {
     \u0275\u0275text(14, "\u671F\u9593");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(15, "tbody");
-    \u0275\u0275repeaterCreate(16, PayrollForm_Conditional_11_Conditional_87_For_17_Template, 9, 10, "tr", null, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275repeaterCreate(16, PayrollForm_Conditional_11_Conditional_92_For_17_Template, 9, 10, "tr", null, \u0275\u0275repeaterTrackByIndex);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
@@ -55860,13 +56651,13 @@ function PayrollForm_Conditional_11_Conditional_87_Template(rf, ctx) {
     \u0275\u0275repeater(e_r3.leaveDetails);
   }
 }
-function PayrollForm_Conditional_11_Conditional_141_Template(rf, ctx) {
+function PayrollForm_Conditional_11_Conditional_146_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275element(0, "span", 57);
     \u0275\u0275text(1, " \u5132\u5B58\u4E2D\u2026 ");
   }
 }
-function PayrollForm_Conditional_11_Conditional_142_Template(rf, ctx) {
+function PayrollForm_Conditional_11_Conditional_147_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u5132\u5B58 ");
   }
@@ -55930,123 +56721,128 @@ function PayrollForm_Conditional_11_Template(rf, ctx) {
     \u0275\u0275text(48);
     \u0275\u0275pipe(49, "number");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(50, "tr")(51, "td", 25);
-    \u0275\u0275text(52, "\u65E5\u85AA\uFF08\u5E95\u85AA \xF7 30\uFF09");
+    \u0275\u0275conditionalCreate(50, PayrollForm_Conditional_11_Conditional_50_Template, 6, 4, "tr");
+    \u0275\u0275conditionalCreate(51, PayrollForm_Conditional_11_Conditional_51_Template, 6, 4, "tr");
+    \u0275\u0275conditionalCreate(52, PayrollForm_Conditional_11_Conditional_52_Template, 6, 4, "tr");
+    \u0275\u0275conditionalCreate(53, PayrollForm_Conditional_11_Conditional_53_Template, 6, 4, "tr");
+    \u0275\u0275conditionalCreate(54, PayrollForm_Conditional_11_Conditional_54_Template, 6, 4, "tr");
+    \u0275\u0275elementStart(55, "tr")(56, "td", 25);
+    \u0275\u0275text(57, "\u65E5\u85AA\uFF08\u5E95\u85AA \xF7 30\uFF09");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(53, "td", 27);
-    \u0275\u0275text(54);
-    \u0275\u0275pipe(55, "number");
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(56, "tr")(57, "td", 25);
-    \u0275\u0275text(58, "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u5929\u6578");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(59, "td", 26);
-    \u0275\u0275text(60);
+    \u0275\u0275elementStart(58, "td", 27);
+    \u0275\u0275text(59);
+    \u0275\u0275pipe(60, "number");
     \u0275\u0275elementEnd()();
     \u0275\u0275elementStart(61, "tr")(62, "td", 25);
-    \u0275\u0275text(63, "\u5047\u65E5\u6D25\u8CBC");
+    \u0275\u0275text(63, "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u5929\u6578");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(64, "td", 26);
     \u0275\u0275text(65);
-    \u0275\u0275pipe(66, "number");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(67, "tr", 21)(68, "td", 28)(69, "span", 23);
-    \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(70, "svg", 10);
-    \u0275\u0275element(71, "use", 29);
+    \u0275\u0275elementStart(66, "tr")(67, "td", 25);
+    \u0275\u0275text(68, "\u5047\u65E5\u6D25\u8CBC");
     \u0275\u0275elementEnd();
-    \u0275\u0275text(72, " \u6263\u6B3E\u9805\u76EE ");
+    \u0275\u0275elementStart(69, "td", 26);
+    \u0275\u0275text(70);
+    \u0275\u0275pipe(71, "number");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(72, "tr", 21)(73, "td", 28)(74, "span", 23);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(75, "svg", 10);
+    \u0275\u0275element(76, "use", 29);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(77, " \u6263\u6B3E\u9805\u76EE ");
     \u0275\u0275elementEnd()()();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(73, "tr")(74, "td", 25);
-    \u0275\u0275text(75, "\u52DE\u4FDD\u8CBB\uFF08\u54E1\u5DE5\u8CA0\u64D4\uFF09");
+    \u0275\u0275elementStart(78, "tr")(79, "td", 25);
+    \u0275\u0275text(80, "\u52DE\u4FDD\u8CBB\uFF08\u54E1\u5DE5\u8CA0\u64D4\uFF09");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(76, "td", 30);
-    \u0275\u0275text(77);
-    \u0275\u0275pipe(78, "number");
+    \u0275\u0275elementStart(81, "td", 30);
+    \u0275\u0275text(82);
+    \u0275\u0275pipe(83, "number");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(79, "tr")(80, "td", 25);
-    \u0275\u0275text(81, "\u5065\u4FDD\u8CBB\uFF08\u54E1\u5DE5\u8CA0\u64D4\uFF09");
+    \u0275\u0275elementStart(84, "tr")(85, "td", 25);
+    \u0275\u0275text(86, "\u5065\u4FDD\u8CBB\uFF08\u54E1\u5DE5\u8CA0\u64D4\uFF09");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(82, "td", 30);
-    \u0275\u0275text(83);
-    \u0275\u0275pipe(84, "number");
+    \u0275\u0275elementStart(87, "td", 30);
+    \u0275\u0275text(88);
+    \u0275\u0275pipe(89, "number");
     \u0275\u0275elementEnd()();
-    \u0275\u0275conditionalCreate(85, PayrollForm_Conditional_11_Conditional_85_Template, 8, 12, "tr");
-    \u0275\u0275conditionalCreate(86, PayrollForm_Conditional_11_Conditional_86_Template, 8, 12, "tr");
+    \u0275\u0275conditionalCreate(90, PayrollForm_Conditional_11_Conditional_90_Template, 8, 12, "tr");
+    \u0275\u0275conditionalCreate(91, PayrollForm_Conditional_11_Conditional_91_Template, 8, 12, "tr");
     \u0275\u0275elementEnd()()()();
-    \u0275\u0275conditionalCreate(87, PayrollForm_Conditional_11_Conditional_87_Template, 18, 0, "div", 13);
-    \u0275\u0275elementStart(88, "form", 31);
-    \u0275\u0275listener("ngSubmit", function PayrollForm_Conditional_11_Template_form_ngSubmit_88_listener() {
+    \u0275\u0275conditionalCreate(92, PayrollForm_Conditional_11_Conditional_92_Template, 18, 0, "div", 13);
+    \u0275\u0275elementStart(93, "form", 31);
+    \u0275\u0275listener("ngSubmit", function PayrollForm_Conditional_11_Template_form_ngSubmit_93_listener() {
       \u0275\u0275restoreView(_r2);
       const ctx_r0 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r0.submit());
     });
-    \u0275\u0275elementStart(89, "div", 13)(90, "div", 14);
+    \u0275\u0275elementStart(94, "div", 13)(95, "div", 14);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(91, "svg", 10);
-    \u0275\u0275element(92, "use", 24);
+    \u0275\u0275elementStart(96, "svg", 10);
+    \u0275\u0275element(97, "use", 24);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(93, " \u5176\u4ED6\u52A0\u9805 ");
+    \u0275\u0275text(98, " \u5176\u4ED6\u52A0\u9805 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(94, "div", 32)(95, "div", 33)(96, "div", 34)(97, "label", 35);
-    \u0275\u0275text(98, "\u5176\u4ED6\u52A0\u9805\u91D1\u984D");
+    \u0275\u0275elementStart(99, "div", 32)(100, "div", 33)(101, "div", 34)(102, "label", 35);
+    \u0275\u0275text(103, "\u5176\u4ED6\u52A0\u9805\u91D1\u984D");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(99, "div", 36)(100, "span", 37);
-    \u0275\u0275text(101, "NT$");
+    \u0275\u0275elementStart(104, "div", 36)(105, "span", 37);
+    \u0275\u0275text(106, "NT$");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(102, "input", 38);
+    \u0275\u0275element(107, "input", 38);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(103, "div", 39)(104, "label", 35);
-    \u0275\u0275text(105, "\u52A0\u9805\u8AAA\u660E");
+    \u0275\u0275elementStart(108, "div", 39)(109, "label", 35);
+    \u0275\u0275text(110, "\u52A0\u9805\u8AAA\u660E");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(106, "input", 40);
+    \u0275\u0275element(111, "input", 40);
     \u0275\u0275elementEnd()()()();
-    \u0275\u0275elementStart(107, "div", 13)(108, "div", 14);
+    \u0275\u0275elementStart(112, "div", 13)(113, "div", 14);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(109, "svg", 10);
-    \u0275\u0275element(110, "use", 29);
+    \u0275\u0275elementStart(114, "svg", 10);
+    \u0275\u0275element(115, "use", 29);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(111, " \u5176\u4ED6\u6263\u9805 ");
+    \u0275\u0275text(116, " \u5176\u4ED6\u6263\u9805 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(112, "div", 32)(113, "div", 33)(114, "div", 34)(115, "label", 35);
-    \u0275\u0275text(116, "\u5176\u4ED6\u6263\u9805\u91D1\u984D");
+    \u0275\u0275elementStart(117, "div", 32)(118, "div", 33)(119, "div", 34)(120, "label", 35);
+    \u0275\u0275text(121, "\u5176\u4ED6\u6263\u9805\u91D1\u984D");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(117, "div", 36)(118, "span", 37);
-    \u0275\u0275text(119, "NT$");
+    \u0275\u0275elementStart(122, "div", 36)(123, "span", 37);
+    \u0275\u0275text(124, "NT$");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(120, "input", 41);
+    \u0275\u0275element(125, "input", 41);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(121, "div", 39)(122, "label", 35);
-    \u0275\u0275text(123, "\u6263\u9805\u8AAA\u660E");
+    \u0275\u0275elementStart(126, "div", 39)(127, "label", 35);
+    \u0275\u0275text(128, "\u6263\u9805\u8AAA\u660E");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(124, "input", 42);
+    \u0275\u0275element(129, "input", 42);
     \u0275\u0275elementEnd()()()();
-    \u0275\u0275elementStart(125, "div", 13)(126, "div", 14);
+    \u0275\u0275elementStart(130, "div", 13)(131, "div", 14);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(127, "svg", 10);
-    \u0275\u0275element(128, "use", 43);
+    \u0275\u0275elementStart(132, "svg", 10);
+    \u0275\u0275element(133, "use", 43);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(129, " \u5099\u8A3B ");
+    \u0275\u0275text(134, " \u5099\u8A3B ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(130, "div", 32);
-    \u0275\u0275element(131, "textarea", 44);
+    \u0275\u0275elementStart(135, "div", 32);
+    \u0275\u0275element(136, "textarea", 44);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(132, "div", 45)(133, "div", 46)(134, "div", 47);
-    \u0275\u0275text(135, "\u5BE6\u9818\u85AA\u8CC7");
+    \u0275\u0275elementStart(137, "div", 45)(138, "div", 46)(139, "div", 47);
+    \u0275\u0275text(140, "\u5BE6\u9818\u85AA\u8CC7");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(136, "div", 48);
-    \u0275\u0275text(137);
-    \u0275\u0275pipe(138, "number");
+    \u0275\u0275elementStart(141, "div", 48);
+    \u0275\u0275text(142);
+    \u0275\u0275pipe(143, "number");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(139, "div", 49)(140, "button", 50);
-    \u0275\u0275conditionalCreate(141, PayrollForm_Conditional_11_Conditional_141_Template, 2, 0)(142, PayrollForm_Conditional_11_Conditional_142_Template, 1, 0);
+    \u0275\u0275elementStart(144, "div", 49)(145, "button", 50);
+    \u0275\u0275conditionalCreate(146, PayrollForm_Conditional_11_Conditional_146_Template, 2, 0)(147, PayrollForm_Conditional_11_Conditional_147_Template, 1, 0);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(143, "a", 51);
-    \u0275\u0275text(144, "\u53D6\u6D88");
+    \u0275\u0275elementStart(148, "a", 51);
+    \u0275\u0275text(149, "\u53D6\u6D88");
     \u0275\u0275elementEnd()()()()();
   }
   if (rf & 2) {
@@ -56057,37 +56853,47 @@ function PayrollForm_Conditional_11_Template(rf, ctx) {
     \u0275\u0275advance(5);
     \u0275\u0275textInterpolate2("", e_r3.departmentName || "---", " / ", e_r3.jobTitleName || "---");
     \u0275\u0275advance(5);
-    \u0275\u0275textInterpolate(e_r3.hireDate ? \u0275\u0275pipeBind2(25, 20, e_r3.hireDate, "yyyy/MM/dd") : "---");
+    \u0275\u0275textInterpolate(e_r3.hireDate ? \u0275\u0275pipeBind2(25, 25, e_r3.hireDate, "yyyy/MM/dd") : "---");
     \u0275\u0275advance(12);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(37, 23, e_r3.baseSalary, "1.0-0"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(37, 28, e_r3.baseSalary, "1.0-0"));
     \u0275\u0275advance(6);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(43, 26, e_r3.mealAllowance, "1.0-0"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(43, 31, e_r3.mealAllowance, "1.0-0"));
     \u0275\u0275advance(6);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(49, 29, e_r3.overtimePay, "1.0-0"));
-    \u0275\u0275advance(6);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(55, 32, e_r3.dailySalary, "1.0-0"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(49, 34, e_r3.overtimePay, "1.0-0"));
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(e_r3.positionAllowance ? 50 : -1);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(e_r3.dutyAllowance ? 51 : -1);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(e_r3.otherAllowanceAmount ? 52 : -1);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(e_r3.adjustmentDifference ? 53 : -1);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(e_r3.overseasAllowance ? 54 : -1);
+    \u0275\u0275advance(5);
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(60, 37, e_r3.dailySalary, "1.0-0"));
     \u0275\u0275advance(6);
     \u0275\u0275textInterpolate1("", e_r3.holidayTravelDays, " \u5929");
     \u0275\u0275advance(5);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(66, 35, e_r3.holidayAllowance, "1.0-0"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(71, 40, e_r3.holidayAllowance, "1.0-0"));
     \u0275\u0275advance(12);
-    \u0275\u0275textInterpolate1("-", \u0275\u0275pipeBind2(78, 38, e_r3.laborInsurance, "1.0-0"));
+    \u0275\u0275textInterpolate1("-", \u0275\u0275pipeBind2(83, 43, e_r3.laborInsurance, "1.0-0"));
     \u0275\u0275advance(6);
-    \u0275\u0275textInterpolate1("-", \u0275\u0275pipeBind2(84, 41, e_r3.healthInsurance, "1.0-0"));
+    \u0275\u0275textInterpolate1("-", \u0275\u0275pipeBind2(89, 46, e_r3.healthInsurance, "1.0-0"));
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(e_r3.personalLeaveDays > 0 ? 85 : -1);
+    \u0275\u0275conditional(e_r3.personalLeaveDays > 0 ? 90 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(e_r3.sickLeaveDays > 0 ? 86 : -1);
+    \u0275\u0275conditional(e_r3.sickLeaveDays > 0 ? 91 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(e_r3.leaveDetails && e_r3.leaveDetails.length > 0 ? 87 : -1);
+    \u0275\u0275conditional(e_r3.leaveDetails && e_r3.leaveDetails.length > 0 ? 92 : -1);
     \u0275\u0275advance();
     \u0275\u0275property("formGroup", ctx_r0.form);
     \u0275\u0275advance(49);
-    \u0275\u0275textInterpolate1("NT$ ", \u0275\u0275pipeBind2(138, 44, ctx_r0.previewNet(), "1.0-0"));
+    \u0275\u0275textInterpolate1("NT$ ", \u0275\u0275pipeBind2(143, 49, ctx_r0.previewNet(), "1.0-0"));
     \u0275\u0275advance(3);
     \u0275\u0275property("disabled", ctx_r0.saving());
     \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r0.saving() ? 141 : 142);
+    \u0275\u0275conditional(ctx_r0.saving() ? 146 : 147);
     \u0275\u0275advance(2);
     \u0275\u0275property("routerLink", ctx_r0.backLink());
   }
@@ -56210,7 +57016,7 @@ var PayrollForm = class _PayrollForm {
       \u0275\u0275elementEnd()();
       \u0275\u0275conditionalCreate(9, PayrollForm_Conditional_9_Template, 4, 1, "div", 7);
       \u0275\u0275conditionalCreate(10, PayrollForm_Conditional_10_Template, 2, 0, "div", 8);
-      \u0275\u0275conditionalCreate(11, PayrollForm_Conditional_11_Template, 145, 47, "div", 9);
+      \u0275\u0275conditionalCreate(11, PayrollForm_Conditional_11_Template, 150, 52, "div", 9);
       \u0275\u0275elementEnd();
     }
     if (rf & 2) {
@@ -56297,6 +57103,37 @@ var PayrollForm = class _PayrollForm {
                   <td class="ps-6">\u52A0\u73ED\u8CBB</td>\r
                   <td class="text-right pe-4">{{ e.overtimePay | number:'1.0-0' }}</td>\r
                 </tr>\r
+                <!-- 5 \u7A2E\u52A0\u7D66\uFF1A\u6709\u503C\u624D\u986F\u793A -->\r
+                @if (e.positionAllowance) {\r
+                  <tr>\r
+                    <td class="ps-6">\u8077\u52D9\u52A0\u7D66</td>\r
+                    <td class="text-right pe-4">{{ e.positionAllowance | number:'1.0-0' }}</td>\r
+                  </tr>\r
+                }\r
+                @if (e.dutyAllowance) {\r
+                  <tr>\r
+                    <td class="ps-6">\u4E3B\u7BA1\u52A0\u7D66</td>\r
+                    <td class="text-right pe-4">{{ e.dutyAllowance | number:'1.0-0' }}</td>\r
+                  </tr>\r
+                }\r
+                @if (e.otherAllowanceAmount) {\r
+                  <tr>\r
+                    <td class="ps-6">\u5176\u4ED6\u52A0\u7D66</td>\r
+                    <td class="text-right pe-4">{{ e.otherAllowanceAmount | number:'1.0-0' }}</td>\r
+                  </tr>\r
+                }\r
+                @if (e.adjustmentDifference) {\r
+                  <tr>\r
+                    <td class="ps-6">\u8ABF\u6574\u5DEE\u984D</td>\r
+                    <td class="text-right pe-4">{{ e.adjustmentDifference | number:'1.0-0' }}</td>\r
+                  </tr>\r
+                }\r
+                @if (e.overseasAllowance) {\r
+                  <tr>\r
+                    <td class="ps-6">\u5916\u6D3E\u52A0\u7D66</td>\r
+                    <td class="text-right pe-4">{{ e.overseasAllowance | number:'1.0-0' }}</td>\r
+                  </tr>\r
+                }\r
                 <tr>\r
                   <td class="ps-6">\u65E5\u85AA\uFF08\u5E95\u85AA \xF7 30\uFF09</td>\r
                   <td class="text-right pe-4 text-muted">{{ e.dailySalary | number:'1.0-0' }}</td>\r
@@ -65826,4 +66663,4 @@ xlsx/xlsx.mjs:
 xlsx/xlsx.mjs:
   (*! sheetjs (C) 2013-present SheetJS -- http://sheetjs.com *)
 */
-//# sourceMappingURL=chunk-SW5FWYGA.js.map
+//# sourceMappingURL=chunk-K2SBEAWT.js.map
