@@ -29,6 +29,9 @@ public class VendorConfiguration : IEntityTypeConfiguration<Vendor>
         builder.Property(v => v.BankAccount)
                .HasMaxLength(100);
 
+        builder.Property(v => v.BankBookImageUrl)
+               .HasMaxLength(500);
+
         builder.Property(v => v.Note)
                .HasMaxLength(500);
 

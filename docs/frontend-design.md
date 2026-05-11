@@ -915,6 +915,47 @@ async onFileSelected(event: Event) {
 
 不敏感者（簽名、頭像）走公開路由：`/files/signatures/{fileName}` / `/files/avatars/{fileName}`。
 
+廠商存摺封面（`/files/vendor-passbooks/{fileName}` → `vendor-passbooks` 容器）為**一般檔，需 JWT 但免特殊權限**：透過 `HttpClient` 走 Blob 代理（auth interceptor 自動附 Bearer），與 PII 同樣以 `URL.createObjectURL` 在新分頁開啟。
+
+### 12.5 外部 API 即時查詢欄位（blur 觸發 pattern）
+
+某些欄位（如統編 → 廠商名稱）可在 blur 時打 API 自動帶入相關欄位，提升輸入速度。標準作法：
+
+```typescript
+onTaxIdBlur() {
+  const taxIdCtrl = this.form.controls.taxId;
+  const taxId     = (taxIdCtrl.value ?? '').trim();
+  if (!taxId || taxIdCtrl.invalid) return;     // 格式不符不發 API
+  if (this.looking()) return;                  // 防止重複觸發
+
+  this.looking.set(true);
+  this.vendorService.lookupByTaxId(taxId).subscribe({
+    next: result => {
+      this.looking.set(false);
+      // 只填空欄位，避免覆寫使用者已輸入內容
+      const patch: any = {};
+      if (!this.form.controls.name.value)    patch.name    = result.name;
+      if (!this.form.controls.address.value) patch.address = result.address;
+      Object.keys(patch).length === 0
+        ? this.toastr.info('已查到資料，但欄位皆已填寫，未覆寫。')
+        : (this.form.patchValue(patch), this.toastr.success('已自動帶入'));
+    },
+    error: (err: HttpErrorResponse) => {
+      this.looking.set(false);
+      err.status === 404
+        ? this.toastr.info('查無資料，請手動填寫')
+        : this.toastr.error('查詢失敗，請稍後再試');
+    },
+  });
+}
+```
+
+原則：
+- 先驗證格式（pattern validator）通過再打 API，避免無效查詢
+- 同一輪查詢進行中以 signal 旗標擋住重複觸發
+- **不覆寫**使用者已填寫欄位（patch 前檢查 value）
+- 三態 toast：成功 / 查無資料 / 系統錯誤
+
 ---
 
 ## 13. 路由與 Lazy Loading

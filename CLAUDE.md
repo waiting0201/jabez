@@ -187,7 +187,7 @@ Admin/src/app/
     │   ├── permissions/    # 權限管理（僅 Superadmin）
     │   ├── departments/    # 部門管理
     │   ├── job-titles/     # 職稱管理
-    │   ├── vendors/        # 廠商管理（含 vendor-quick-add-modal 元件，供請款表單即時新增）
+    │   ├── vendors/        # 廠商管理（含 vendor-quick-add-modal；統編 blur 自動帶出 GCIS 公司資料；含存摺封面上傳）
     │   ├── approvals/      # 簽核流程設定（ApprovalItem + Steps）
     │   ├── approval-tasks/ # 待審核任務清單
     │   ├── projects/       # 專案管理
@@ -261,7 +261,7 @@ Api/
 │   ├── PermissionHandler.cs
 │   ├── DepartmentHandler.cs
 │   ├── JobTitleHandler.cs
-│   ├── VendorHandler.cs               # 廠商管理 CRUD（lookup 與 POST 開放任何登入者，刪除受 PaymentRequest 引用保護）
+│   ├── VendorHandler.cs               # 廠商管理 CRUD（multipart 支援存摺封面上傳；lookup / lookup-by-tax-id / POST 開放任何登入者；刪除受 PaymentRequest 引用保護）
 │   ├── ApprovalHandler.cs             # ApprovalItem + Steps CRUD
 │   ├── ApprovalTaskHandler.cs         # 待審核任務查詢與審核動作
 │   ├── ProjectHandler.cs
@@ -303,6 +303,8 @@ Api/
 │   ├── LineFlexMessageBuilder.cs     # 6 種簽核通知 + 打卡提醒的 LINE Flex Message 模板
 │   ├── IAttendanceReminderService.cs # 打卡提醒服務介面
 │   ├── AttendanceReminderService.cs  # 打卡提醒協調：判斷時點、過濾對象、推播 LINE
+│   ├── IGcisService.cs               # 政府開放資料 GCIS 商工登記查詢介面
+│   ├── GcisService.cs                # GCIS Open Data REST API 包裝（以統編查公司名稱 / 地址 / 負責人）
 │   └── Dapper/                        # Dapper 讀取服務（含 EmployeeProfileReadService）
 │       ├── UserReadService.cs
 │       ├── RoleReadService.cs

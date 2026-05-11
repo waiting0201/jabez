@@ -8,7 +8,7 @@ public sealed class VendorReadService(IDbConnection db) : IVendorReadService
 {
     private const string BaseSelect = """
         SELECT v.Id, v.Name, v.TaxId, v.Phone, v.ContactPerson, v.Address,
-               v.BankAccount, v.Note, v.IsActive, v.CreatedAt,
+               v.BankAccount, v.BankBookImageUrl, v.Note, v.IsActive, v.CreatedAt,
                COUNT(pr.Id) AS UsageCount
         FROM Vendors v
         LEFT JOIN PaymentRequests pr ON pr.VendorId = v.Id
@@ -19,7 +19,7 @@ public sealed class VendorReadService(IDbConnection db) : IVendorReadService
         const string sql = $"""
             {BaseSelect}
             GROUP BY v.Id, v.Name, v.TaxId, v.Phone, v.ContactPerson, v.Address,
-                     v.BankAccount, v.Note, v.IsActive, v.CreatedAt
+                     v.BankAccount, v.BankBookImageUrl, v.Note, v.IsActive, v.CreatedAt
             ORDER BY v.Name
             """;
 
@@ -33,6 +33,7 @@ public sealed class VendorReadService(IDbConnection db) : IVendorReadService
             (string?)row.ContactPerson,
             (string?)row.Address,
             (string?)row.BankAccount,
+            (string?)row.BankBookImageUrl,
             (string?)row.Note,
             (bool)row.IsActive,
             (int)row.UsageCount,
@@ -52,7 +53,7 @@ public sealed class VendorReadService(IDbConnection db) : IVendorReadService
             {BaseSelect}
             WHERE v.Id = @Id
             GROUP BY v.Id, v.Name, v.TaxId, v.Phone, v.ContactPerson, v.Address,
-                     v.BankAccount, v.Note, v.IsActive, v.CreatedAt
+                     v.BankAccount, v.BankBookImageUrl, v.Note, v.IsActive, v.CreatedAt
             """;
 
         var row = await db.QueryFirstOrDefaultAsync<dynamic>(sql, new { Id = id });
@@ -66,6 +67,7 @@ public sealed class VendorReadService(IDbConnection db) : IVendorReadService
             (string?)row.ContactPerson,
             (string?)row.Address,
             (string?)row.BankAccount,
+            (string?)row.BankBookImageUrl,
             (string?)row.Note,
             (bool)row.IsActive,
             (int)row.UsageCount,

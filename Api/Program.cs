@@ -71,6 +71,15 @@ var host = new HostBuilder()
             c.Timeout = TimeSpan.FromSeconds(10);
         });
 
+        // ── GCIS Service（HttpClient 注入）─────────────────────────────
+        // 政府開放資料商工登記公示資料查詢；以統編查公司名稱 / 地址 / 負責人。
+        // 8s timeout：查不到不快取，回 404 讓使用者手動填寫即可。
+        services.AddHttpClient<IGcisService, GcisService>(c =>
+        {
+            c.BaseAddress = new Uri("https://data.gcis.nat.gov.tw/");
+            c.Timeout     = TimeSpan.FromSeconds(8);
+        });
+
         // ── 簽核通知服務（Scoped，依賴 AppDbContext）──────────────────────
         services.AddScoped<IApprovalNotificationService, ApprovalNotificationService>();
 

@@ -16,7 +16,7 @@
 | 資料庫 | SQL Server | 本地 `JabezDb`（連線字串於 [Api/local.settings.json](../Api/local.settings.json)） |
 | 認證 | JWT Bearer Token (HS256) | 由 [JwtService.cs](../Api/Services/JwtService.cs) 簽發 |
 | 路由 | 單一入口 RouterFunction → AppRouter | C# 12 List Pattern dispatch |
-| Blob | Azure Storage（本地 Azurite） | 容器：`avatars` / `signatures` / `indigenous-proofs` / `low-income-proofs` / `disabled-proofs` / `id-cards` / `invoices` |
+| Blob | Azure Storage（本地 Azurite） | 容器：`avatars` / `signatures` / `indigenous-proofs` / `low-income-proofs` / `disabled-proofs` / `id-cards` / `education-proofs` / `invoices` / `vendor-passbooks` |
 | LINE | Messaging API + Login API | 簽核通知 + 打卡提醒 |
 | Email | Microsoft Graph API | 簽核通知 / 帳號通知 / 薪資明細 |
 | 例外處理 | `Middleware/ExceptionMiddleware.cs` | 統一捕捉 `AppException` 與未預期例外，回 `ApiResponse<T>` |
@@ -621,7 +621,9 @@ var allowedSignatures = new Dictionary<string, byte[][]>
 | `low-income-proofs` | 低收入證明 | 授權 `users:read` |
 | `disabled-proofs` | 殘障證明 | 授權 `users:read` |
 | `id-cards` | 身分證影本 | 授權 `users:read` |
+| `education-proofs` | 最高學歷證明 | 授權 `users:read` |
 | `invoices` | 發票檔 | 授權 |
+| `vendor-passbooks` | 廠商存摺封面 | **登入即可** `/files/vendor-passbooks/{fileName}`（一般檔，與 avatars/signatures 同層） |
 
 ### 12.5 條件式刪除
 
@@ -636,6 +638,43 @@ if (oldUser.IsIndigenous && !dto.IsIndigenous && !string.IsNullOrEmpty(oldUser.I
 ```
 
 DELETE entity 時，相關 Blob 全部一起刪。
+
+### 12.6 外部 API 整合（IHttpClientFactory + Service 注入）
+
+對外部 REST API（如 LINE Messaging API、GCIS 政府開放資料、Azure Document Intelligence）一律走 typed-client 模式：
+
+```csharp
+// Program.cs
+services.AddHttpClient<IGcisService, GcisService>(c =>
+{
+    c.BaseAddress = new Uri("https://data.gcis.nat.gov.tw/");
+    c.Timeout     = TimeSpan.FromSeconds(8);   // 顯式 timeout，避免拖累 Function
+});
+```
+
+```csharp
+// GcisService.cs
+public sealed class GcisService(HttpClient http, ILogger<GcisService> logger) : IGcisService
+{
+    public async Task<VendorTaxIdLookupResponse?> LookupByTaxIdAsync(string taxId, CancellationToken ct = default)
+    {
+        try
+        {
+            using var response = await http.GetAsync(url, ct);
+            if (!response.IsSuccessStatusCode) return null;
+            // 解析 JSON…
+        }
+        catch (TaskCanceledException) { /* timeout → null */ }
+        catch (Exception ex) { logger.LogError(ex, "..."); return null; }
+    }
+}
+```
+
+設計原則：
+- **顯式 timeout**：預設 100s 對 Function 太長，依 API 特性設 5–10s。
+- **失敗回 null**：外部 API timeout / 5xx / 解析失敗一律回 null，由呼叫端 Handler 轉成 404 + toast，避免外部錯誤往上層擴散。
+- **介面 + 實作分離**：`IGcisService` / `GcisService`，方便測試 mock。
+- **不快取**：除非有明確業務需求，否則查詢即時（避免外部資料變更與本地快取不同步）。
 
 ---
 
@@ -652,6 +691,7 @@ DELETE entity 時，相關 Blob 全部一起刪。
 | `GET /approval-items/active?type=<applicationType>` | `GET /approval-items`（需 `approvals:read`） | 申請表判斷流程是否含 `useApplicantDesignated` 步驟 |
 | `GET /job-titles/lookup` | `GET /job-titles`（需 `job-titles:read`） | 申請表「指定審核者」職稱下拉 |
 | `GET /vendors/lookup` | `GET /vendors`（需 `vendors:read`） | 請款表單「廠商」下拉，僅回 `IsActive=true` |
+| `GET /vendors/lookup-by-tax-id?taxId=XXXXXXXX` | — | 以統編查 GCIS 公司登記資料，自動帶出廠商名稱 / 地址 / 負責人；任何登入者可用 |
 | `POST /vendors` *(無需權限)* | — | 請款表單 quick-add modal：任何登入者皆可新建廠商，避免後台 CRUD 權限被強加給請款人 |
 | `GET /files/signatures/{fileName}` / `/files/avatars/{fileName}` | — | 簽名檔 / 頭像 Blob 代理（公開路由） |
 

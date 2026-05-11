@@ -18,7 +18,7 @@
 | `RefreshToken` | Refresh Token 儲存 |
 | `Department` | 部門主檔（含 ParentId 階層、**CanSeeAll / CanViewSiblings / CanViewDescendants / CanViewParent 四個可見性旗標**） |
 | `JobTitle` | 職稱主檔 |
-| `Vendor` | 廠商主檔（Name、TaxId 統編 unique-filter index、Phone、ContactPerson、Address、BankAccount、Note、IsActive、CreatedAt；被 PaymentRequest.VendorId 引用，FK OnDelete=Restrict 限引用中不可刪） |
+| `Vendor` | 廠商主檔（Name、TaxId 統編 unique-filter index、Phone、ContactPerson、Address、BankAccount、BankBookImageUrl 存摺封面 proxy 路徑、Note、IsActive、CreatedAt；被 PaymentRequest.VendorId 引用，FK OnDelete=Restrict 限引用中不可刪） |
 | `ApprovalItem` | 簽核流程項目 |
 | `ApprovalStep` | 簽核流程步驟（含 UseDirectSupervisor、UseApplicantDesignated） |
 | `ApprovalRecord` | 簽核動作記錄（含 OnBehalfOfUserId 代理標記、IsEscalated 升級標記） |

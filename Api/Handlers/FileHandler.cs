@@ -18,6 +18,7 @@ public sealed class FileHandler(IBlobStorageService blob, ILogger<FileHandler> l
     private const string DisabledProofContainer    = "disabled-proofs";
     private const string IdCardContainer           = "id-cards";
     private const string EducationProofContainer   = "education-proofs";
+    private const string VendorPassbookContainer   = "vendor-passbooks";
 
     /// <summary>
     /// 代理讀取簽名檔圖片。
@@ -74,6 +75,14 @@ public sealed class FileHandler(IBlobStorageService blob, ILogger<FileHandler> l
     /// </summary>
     public Task<IActionResult> GetEducationProofAsync(string fileName)
         => GetFileAsync(EducationProofContainer, fileName, IsImageOrPdf);
+
+    /// <summary>
+    /// 代理讀取廠商存摺封面（圖片或 PDF）。
+    /// 路由：GET /files/vendor-passbooks/{fileName}
+    /// 此端點需要 JWT，但不需特殊權限（一般檔案，與 avatars / signatures 同層）。
+    /// </summary>
+    public Task<IActionResult> GetVendorPassbookAsync(string fileName)
+        => GetFileAsync(VendorPassbookContainer, fileName, IsImageOrPdf);
 
     private Task<IActionResult> GetImageAsync(string container, string fileName)
         => GetFileAsync(container, fileName, IsImage);

@@ -100,6 +100,7 @@ public sealed class AppRouter(
             ("GET",    ["files", "disabled-proofs", var fileName])   => await files.GetDisabledProofAsync(fileName),
             ("GET",    ["files", "id-cards", var fileName])          => await files.GetIdCardAsync(fileName),
             ("GET",    ["files", "education-proofs", var fileName])  => await files.GetEducationProofAsync(fileName),
+            ("GET",    ["files", "vendor-passbooks", var fileName])  => await files.GetVendorPassbookAsync(fileName),
 
             // ── Auth ──────────────────────────────────────────────────────────
             ("POST",   ["auth", "login"])             => await auth.LoginAsync(req),
@@ -157,7 +158,8 @@ public sealed class AppRouter(
             ("DELETE", ["job-titles", var id])        => await jobTitles.DeleteAsync(id),
 
             // ── Vendors（廠商管理）─────────────────────────────────────────
-            ("GET",    ["vendors", "lookup"])         => await vendors.GetLookupAsync(),
+            ("GET",    ["vendors", "lookup"])              => await vendors.GetLookupAsync(),
+            ("GET",    ["vendors", "lookup-by-tax-id"])    => await vendors.LookupByTaxIdAsync(req),
             ("GET",    ["vendors"])                   => await vendors.GetAllAsync(),
             ("POST",   ["vendors"])                   => await vendors.CreateAsync(req),
             ("GET",    ["vendors", var id])           => await vendors.GetByIdAsync(id),
@@ -388,6 +390,8 @@ public sealed class AppRouter(
             ("GET", ["files", "disabled-proofs", _])    => PermissionCodes.UsersRead,
             ("GET", ["files", "id-cards", _])           => PermissionCodes.UsersRead,
             ("GET", ["files", "education-proofs", _])   => PermissionCodes.UsersRead,
+            // vendor-passbooks 為一般檔案（任何登入者皆可讀，與 avatars / signatures 同層）
+            ("GET", ["files", "vendor-passbooks", _])   => null,
 
             // Users（lookup 不需權限，登入即可）
             ("GET",    ["users", "lookup"])               => null,
@@ -427,6 +431,7 @@ public sealed class AppRouter(
 
             // Vendors（lookup 與 POST 不需權限：任何登入者皆可使用 quick-add）
             ("GET",    ["vendors", "lookup"])             => null,
+            ("GET",    ["vendors", "lookup-by-tax-id"])   => null,
             ("POST",   ["vendors"])                       => null,
             ("GET",    ["vendors", ..])                   => PermissionCodes.VendorsRead,
             ("PUT" or "PATCH", ["vendors", _])            => PermissionCodes.VendorsWrite,

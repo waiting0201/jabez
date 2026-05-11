@@ -8,6 +8,7 @@ public sealed record VendorDto(
     string?  ContactPerson,
     string?  Address,
     string?  BankAccount,
+    string?  BankBookImageUrl,
     string?  Note,
     bool     IsActive,
     int      UsageCount,
@@ -38,3 +39,10 @@ public sealed record UpdateVendorRequest(
     string? BankAccount,
     string? Note,
     bool?   IsActive);
+
+/// <summary>GCIS 統編查詢回應（廠商名稱、地址、負責人）</summary>
+public sealed record VendorTaxIdLookupResponse(
+    string  TaxId,
+    string  Name,
+    string? Address,
+    string? ContactPerson);
