@@ -10,6 +10,7 @@ import {
   TASK_STATUS_LABELS, TASK_STATUS_CLASSES,
   APPLICATION_TYPE_LABELS, APPLICATION_TYPE_CLASSES,
   PAYMENT_TYPE_LABELS, LEAVE_TYPE_LABELS,
+  PAYMENT_STATE_LABELS, PAYMENT_STATE_CLASSES,
   ApprovalTask,
 } from '../../models/approval-task.model';
 import {ApplicationType} from '../../../approvals/models/approval.model';
@@ -175,56 +176,39 @@ export class ApprovalTaskList {
   readonly leaveTypeLabel = LEAVE_TYPE_LABELS;
 
   /**
-   * 取得已核准簽核作業的款項狀態（第二個 badge）。
-   * - 撥款類（payment_request / advance / travel / holiday_travel）：看 paidAt
+   * 取得已核准或審核中簽核作業的款項狀態（第二個 badge）。
+   * status gate 與請款列表 paymentState() 一致：pending 或 approved 才顯示。
+   * - 撥款類（payment_request / advance / travel / travel_payment）：看對應 detail 的 paidAt
    * - 退款類（write_off / travel_write_off）：僅超支時適用，看 refundedAt
-   * - 其他（leave / overtime）：無款項概念，回傳 null
+   * - 其他（leave / overtime / holiday_travel）：無款項概念，回傳 null
    */
   getPaymentBadge(t: ApprovalTask): { label: string; cls: string } | null {
-    if (t.status !== 'approved') return null;
+    if (t.status !== 'pending' && t.status !== 'approved') return null;
+
+    const paidBadge = (isPaid: boolean) => isPaid
+      ? { label: PAYMENT_STATE_LABELS.paid,   cls: PAYMENT_STATE_CLASSES.paid }
+      : { label: PAYMENT_STATE_LABELS.unpaid, cls: PAYMENT_STATE_CLASSES.unpaid };
 
     const type = t.applicationType;
-    if (type === 'payment_request') {
-      return t.paymentDetail?.paidAt
-        ? { label: '款項已完成', cls: 'bg-success-subtle text-success' }
-        : { label: '款項待處理', cls: 'bg-warning-subtle text-warning-emphasis' };
-    }
-    if (type === 'advance') {
-      return t.advanceDetail?.paidAt
-        ? { label: '款項已完成', cls: 'bg-success-subtle text-success' }
-        : { label: '款項待處理', cls: 'bg-warning-subtle text-warning-emphasis' };
-    }
-    if (type === 'travel') {
-      return t.travelDetail?.paidAt
-        ? { label: '款項已完成', cls: 'bg-success-subtle text-success' }
-        : { label: '款項待處理', cls: 'bg-warning-subtle text-warning-emphasis' };
-    }
+    if (type === 'payment_request')  return paidBadge(!!t.paymentDetail?.paidAt);
+    if (type === 'advance')          return paidBadge(!!t.advanceDetail?.paidAt);
+    if (type === 'travel')           return paidBadge(!!t.travelDetail?.paidAt);
     // holiday_travel：津貼隨次月薪資發放、不走撥款流程，故不顯示款項 badge
-    if (type === 'holiday_travel') {
-      return null;
-    }
-    if (type === 'travel_payment') {
-      return t.travelPaymentDetail?.paidAt
-        ? { label: '款項已完成', cls: 'bg-success-subtle text-success' }
-        : { label: '款項待處理', cls: 'bg-warning-subtle text-warning-emphasis' };
-    }
+    if (type === 'holiday_travel')   return null;
+    if (type === 'travel_payment')   return paidBadge(!!t.travelPaymentDetail?.paidAt);
     if (type === 'write_off') {
       const d = t.writeOffDetail;
       if (!d) return null;
       const overspent = (d.advanceGrandTotal - d.otherWrittenOffTotal - d.grandTotal) < 0;
       if (!overspent) return null;
-      return d.refundedAt
-        ? { label: '款項已完成', cls: 'bg-success-subtle text-success' }
-        : { label: '款項待處理', cls: 'bg-warning-subtle text-warning-emphasis' };
+      return paidBadge(!!d.refundedAt);
     }
     if (type === 'travel_write_off') {
       const d = t.travelWriteOffDetail;
       if (!d) return null;
       const overspent = (d.travelGrandTotal - d.otherWrittenOffTotal - d.grandTotal) < 0;
       if (!overspent) return null;
-      return d.refundedAt
-        ? { label: '款項已完成', cls: 'bg-success-subtle text-success' }
-        : { label: '款項待處理', cls: 'bg-warning-subtle text-warning-emphasis' };
+      return paidBadge(!!d.refundedAt);
     }
     return null;
   }

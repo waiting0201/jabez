@@ -12782,7 +12782,7 @@ var PAYMENT_TYPE_CLASSES = {
 };
 var APPROVAL_STATUS_LABELS = {
   draft: "\u8349\u7A3F",
-  pending: "\u5F85\u5BE9\u6838",
+  pending: "\u5F85\u6838\u51C6",
   approved: "\u5DF2\u6838\u51C6",
   rejected: "\u5DF2\u62D2\u7D55",
   returned: "\u9000\u56DE\u4FEE\u6539"
@@ -12793,6 +12793,14 @@ var APPROVAL_STATUS_CLASSES = {
   approved: "bg-success-subtle text-success",
   rejected: "bg-danger-subtle text-danger",
   returned: "bg-secondary-subtle text-secondary"
+};
+var PAYMENT_STATE_LABELS = {
+  unpaid: "\u5F85\u64A5\u6B3E",
+  paid: "\u5DF2\u64A5\u6B3E"
+};
+var PAYMENT_STATE_CLASSES = {
+  unpaid: "bg-warning-subtle text-warning-emphasis",
+  paid: "bg-primary-subtle text-primary"
 };
 
 // src/app/features/admin/payment-requests/pages/payment-list/payment-list.ts
@@ -12833,30 +12841,44 @@ function PaymentList_For_30_Conditional_8_Template(rf, ctx) {
     \u0275\u0275textInterpolate1("\u5EE0\u5546\uFF1A", r_r1.vendorName);
   }
 }
-function PaymentList_For_30_Conditional_23_Conditional_3_Template(rf, ctx) {
+function PaymentList_For_30_Conditional_19_Template(rf, ctx) {
   if (rf & 1) {
-    const _r2 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 29);
-    \u0275\u0275listener("click", function PaymentList_For_30_Conditional_23_Conditional_3_Template_button_click_0_listener() {
-      \u0275\u0275restoreView(_r2);
+    \u0275\u0275elementStart(0, "span");
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ps_r2 = ctx;
+    const ctx_r2 = \u0275\u0275nextContext(2);
+    \u0275\u0275classMap("badge " + ctx_r2.paymentStateClass[ps_r2]);
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate(ctx_r2.paymentStateLabel[ps_r2]);
+  }
+}
+function PaymentList_For_30_Conditional_25_Conditional_3_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r4 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 31);
+    \u0275\u0275listener("click", function PaymentList_For_30_Conditional_25_Conditional_3_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r4);
       const r_r1 = \u0275\u0275nextContext(2).$implicit;
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.delete(r_r1));
     });
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 16);
-    \u0275\u0275element(2, "use", 30);
+    \u0275\u0275element(2, "use", 32);
     \u0275\u0275elementEnd()();
   }
 }
-function PaymentList_For_30_Conditional_23_Template(rf, ctx) {
+function PaymentList_For_30_Conditional_25_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "a", 26);
+    \u0275\u0275elementStart(0, "a", 28);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 16);
-    \u0275\u0275element(2, "use", 27);
+    \u0275\u0275element(2, "use", 29);
     \u0275\u0275elementEnd()();
-    \u0275\u0275conditionalCreate(3, PaymentList_For_30_Conditional_23_Conditional_3_Template, 3, 0, "button", 28);
+    \u0275\u0275conditionalCreate(3, PaymentList_For_30_Conditional_25_Conditional_3_Template, 3, 0, "button", 30);
   }
   if (rf & 2) {
     const r_r1 = \u0275\u0275nextContext().$implicit;
@@ -12866,12 +12888,12 @@ function PaymentList_For_30_Conditional_23_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r2.canDelete() && r_r1.approvalStatus === "draft" ? 3 : -1);
   }
 }
-function PaymentList_For_30_Conditional_24_Template(rf, ctx) {
+function PaymentList_For_30_Conditional_26_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "a", 25);
+    \u0275\u0275elementStart(0, "a", 27);
     \u0275\u0275namespaceSVG();
     \u0275\u0275elementStart(1, "svg", 16);
-    \u0275\u0275element(2, "use", 31);
+    \u0275\u0275element(2, "use", 33);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -12897,18 +12919,21 @@ function PaymentList_For_30_Template(rf, ctx) {
     \u0275\u0275text(13);
     \u0275\u0275pipe(14, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "td")(16, "span");
-    \u0275\u0275text(17);
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(18, "td", 22);
-    \u0275\u0275text(19);
-    \u0275\u0275pipe(20, "date");
+    \u0275\u0275elementStart(15, "td")(16, "div", 22)(17, "span");
+    \u0275\u0275text(18);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(21, "td", 23)(22, "div", 24);
-    \u0275\u0275conditionalCreate(23, PaymentList_For_30_Conditional_23_Template, 4, 4)(24, PaymentList_For_30_Conditional_24_Template, 3, 3, "a", 25);
+    \u0275\u0275conditionalCreate(19, PaymentList_For_30_Conditional_19_Template, 2, 3, "span", 23);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(20, "td", 24);
+    \u0275\u0275text(21);
+    \u0275\u0275pipe(22, "date");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(23, "td", 25)(24, "div", 26);
+    \u0275\u0275conditionalCreate(25, PaymentList_For_30_Conditional_25_Template, 4, 4)(26, PaymentList_For_30_Conditional_26_Template, 3, 3, "a", 27);
     \u0275\u0275elementEnd()()();
   }
   if (rf & 2) {
+    let tmp_19_0;
     const r_r1 = ctx.$implicit;
     const ctx_r2 = \u0275\u0275nextContext();
     \u0275\u0275advance(2);
@@ -12924,98 +12949,100 @@ function PaymentList_For_30_Template(rf, ctx) {
     \u0275\u0275advance(3);
     \u0275\u0275textInterpolate1("", r_r1.invoices.length, " \u5F35");
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(14, 13, r_r1.totalAmount, "1.0-0"));
-    \u0275\u0275advance(3);
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(14, 14, r_r1.totalAmount, "1.0-0"));
+    \u0275\u0275advance(4);
     \u0275\u0275classMap("badge " + ctx_r2.statusClass[r_r1.approvalStatus]);
     \u0275\u0275advance();
     \u0275\u0275textInterpolate(ctx_r2.statusLabel[r_r1.approvalStatus]);
+    \u0275\u0275advance();
+    \u0275\u0275conditional((tmp_19_0 = ctx_r2.paymentState(r_r1)) ? 19 : -1, tmp_19_0);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(20, 16, r_r1.createdAt, "yyyy-MM-dd"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(22, 17, r_r1.createdAt, "yyyy-MM-dd"));
     \u0275\u0275advance(4);
-    \u0275\u0275conditional(ctx_r2.canWrite() && (r_r1.approvalStatus === "draft" || r_r1.approvalStatus === "returned") ? 23 : 24);
+    \u0275\u0275conditional(ctx_r2.canWrite() && (r_r1.approvalStatus === "draft" || r_r1.approvalStatus === "returned") ? 25 : 26);
   }
 }
 function PaymentList_ForEmpty_31_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 32);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 34);
     \u0275\u0275text(2, "\u5C1A\u7121\u8ACB\u6B3E\u7533\u8ACB\u3002");
     \u0275\u0275elementEnd()();
   }
 }
 function PaymentList_Conditional_32_For_15_Conditional_0_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "li", 40)(1, "span", 42);
+    \u0275\u0275elementStart(0, "li", 42)(1, "span", 44);
     \u0275\u0275text(2, "\u2026");
     \u0275\u0275elementEnd()();
   }
 }
 function PaymentList_Conditional_32_For_15_Conditional_1_Template(rf, ctx) {
   if (rf & 1) {
-    const _r5 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "li", 38)(1, "button", 39);
+    const _r6 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "li", 40)(1, "button", 41);
     \u0275\u0275listener("click", function PaymentList_Conditional_32_For_15_Conditional_1_Template_button_click_1_listener() {
-      \u0275\u0275restoreView(_r5);
-      const p_r6 = \u0275\u0275nextContext().$implicit;
+      \u0275\u0275restoreView(_r6);
+      const p_r7 = \u0275\u0275nextContext().$implicit;
       const ctx_r2 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r2.goTo(p_r6));
+      return \u0275\u0275resetView(ctx_r2.goTo(p_r7));
     });
     \u0275\u0275text(2);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    const p_r6 = \u0275\u0275nextContext().$implicit;
+    const p_r7 = \u0275\u0275nextContext().$implicit;
     const ctx_r2 = \u0275\u0275nextContext(2);
-    \u0275\u0275classProp("active", p_r6 === ctx_r2.page());
+    \u0275\u0275classProp("active", p_r7 === ctx_r2.page());
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(p_r6);
+    \u0275\u0275textInterpolate(p_r7);
   }
 }
 function PaymentList_Conditional_32_For_15_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275conditionalCreate(0, PaymentList_Conditional_32_For_15_Conditional_0_Template, 3, 0, "li", 40)(1, PaymentList_Conditional_32_For_15_Conditional_1_Template, 3, 3, "li", 41);
+    \u0275\u0275conditionalCreate(0, PaymentList_Conditional_32_For_15_Conditional_0_Template, 3, 0, "li", 42)(1, PaymentList_Conditional_32_For_15_Conditional_1_Template, 3, 3, "li", 43);
   }
   if (rf & 2) {
-    const p_r6 = ctx.$implicit;
-    \u0275\u0275conditional(p_r6 === -1 ? 0 : 1);
+    const p_r7 = ctx.$implicit;
+    \u0275\u0275conditional(p_r7 === -1 ? 0 : 1);
   }
 }
 function PaymentList_Conditional_32_Template(rf, ctx) {
   if (rf & 1) {
-    const _r4 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 14)(1, "span", 33);
+    const _r5 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 14)(1, "span", 35);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div", 34)(4, "button", 35);
+    \u0275\u0275elementStart(3, "div", 36)(4, "button", 37);
     \u0275\u0275listener("click", function PaymentList_Conditional_32_Template_button_click_4_listener() {
-      \u0275\u0275restoreView(_r4);
+      \u0275\u0275restoreView(_r5);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.prev());
     });
     \u0275\u0275text(5, "\u2039");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "span", 36);
+    \u0275\u0275elementStart(6, "span", 38);
     \u0275\u0275text(7);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "button", 35);
+    \u0275\u0275elementStart(8, "button", 37);
     \u0275\u0275listener("click", function PaymentList_Conditional_32_Template_button_click_8_listener() {
-      \u0275\u0275restoreView(_r4);
+      \u0275\u0275restoreView(_r5);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.next());
     });
     \u0275\u0275text(9, "\u203A");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(10, "ul", 37)(11, "li", 38)(12, "button", 39);
+    \u0275\u0275elementStart(10, "ul", 39)(11, "li", 40)(12, "button", 41);
     \u0275\u0275listener("click", function PaymentList_Conditional_32_Template_button_click_12_listener() {
-      \u0275\u0275restoreView(_r4);
+      \u0275\u0275restoreView(_r5);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.prev());
     });
     \u0275\u0275text(13, "\u2039");
     \u0275\u0275elementEnd()();
     \u0275\u0275repeaterCreate(14, PaymentList_Conditional_32_For_15_Template, 2, 1, null, null, \u0275\u0275repeaterTrackByIdentity);
-    \u0275\u0275elementStart(16, "li", 38)(17, "button", 39);
+    \u0275\u0275elementStart(16, "li", 40)(17, "button", 41);
     \u0275\u0275listener("click", function PaymentList_Conditional_32_Template_button_click_17_listener() {
-      \u0275\u0275restoreView(_r4);
+      \u0275\u0275restoreView(_r5);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.next());
     });
@@ -13072,6 +13099,13 @@ var PaymentList = class _PaymentList {
   typeClass = PAYMENT_TYPE_CLASSES;
   statusLabel = APPROVAL_STATUS_LABELS;
   statusClass = APPROVAL_STATUS_CLASSES;
+  paymentStateLabel = PAYMENT_STATE_LABELS;
+  paymentStateClass = PAYMENT_STATE_CLASSES;
+  paymentState(r) {
+    if (r.approvalStatus !== "pending" && r.approvalStatus !== "approved")
+      return null;
+    return r.paidAt ? "paid" : "unpaid";
+  }
   delete(r) {
     if (confirm(`\u78BA\u5B9A\u8981\u522A\u9664\u6B64\u8ACB\u6B3E\u7533\u8ACB\u55CE\uFF1F`)) {
       this.service.delete(r.id).subscribe(() => this.refresh.update((v) => v + 1));
@@ -13080,7 +13114,7 @@ var PaymentList = class _PaymentList {
   static \u0275fac = function PaymentList_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _PaymentList)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _PaymentList, selectors: [["app-payment-list"]], decls: 33, vars: 3, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#dollar-sign"], [1, "mb-0"], ["routerLink", "new", "class", "btn btn-primary inline-flex items-center gap-1", 4, "appHasPermission"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "text-right"], [1, "hidden", "lg:table-cell"], [1, "flex", "flex-col", "gap-2", "sm:flex-row", "sm:items-center", "sm:justify-between", "px-4", "py-3", "border-t"], ["routerLink", "new", 1, "btn", "btn-primary", "inline-flex", "items-center", "gap-1"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#plus"], [1, "font-monospace", "fw-500"], [1, "text-muted", "small"], [1, "badge", "bg-secondary-subtle", "text-secondary"], [1, "text-right", "fw-500"], [1, "text-muted", "small", "hidden", "lg:table-cell"], [1, "text-right", 2, "white-space", "nowrap"], [1, "flex", "justify-end", "gap-1"], ["title", "\u6AA2\u8996", 1, "btn", "btn-sm", "btn-ghost-secondary", "inline-flex", "items-center", 3, "routerLink"], ["title", "\u7DE8\u8F2F", 1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center", 3, "routerLink"], ["href", "/assets/icons/sprite.svg#edit"], ["title", "\u522A\u9664", 1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center"], ["title", "\u522A\u9664", 1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center", 3, "click"], ["href", "/assets/icons/sprite.svg#trash"], ["href", "/assets/icons/sprite.svg#eye"], ["colspan", "7", 1, "text-center", "text-muted", "py-4"], [1, "text-muted", "small", "text-center", "sm:text-left"], [1, "flex", "sm:hidden", "items-center", "gap-1"], [1, "page-link", "rounded", 3, "click"], [1, "px-2", "text-sm"], [1, "hidden", "sm:flex", "pagination", "mb-0"], [1, "page-item"], [1, "page-link", 3, "click"], [1, "page-item", "disabled"], [1, "page-item", 3, "active"], [1, "page-link"]], template: function PaymentList_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _PaymentList, selectors: [["app-payment-list"]], decls: 33, vars: 3, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#dollar-sign"], [1, "mb-0"], ["routerLink", "new", "class", "btn btn-primary inline-flex items-center gap-1", 4, "appHasPermission"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "text-right"], [1, "hidden", "lg:table-cell"], [1, "flex", "flex-col", "gap-2", "sm:flex-row", "sm:items-center", "sm:justify-between", "px-4", "py-3", "border-t"], ["routerLink", "new", 1, "btn", "btn-primary", "inline-flex", "items-center", "gap-1"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#plus"], [1, "font-monospace", "fw-500"], [1, "text-muted", "small"], [1, "badge", "bg-secondary-subtle", "text-secondary"], [1, "text-right", "fw-500"], [1, "flex", "flex-wrap", "items-center", "gap-1"], [3, "class"], [1, "text-muted", "small", "hidden", "lg:table-cell"], [1, "text-right", 2, "white-space", "nowrap"], [1, "flex", "justify-end", "gap-1"], ["title", "\u6AA2\u8996", 1, "btn", "btn-sm", "btn-ghost-secondary", "inline-flex", "items-center", 3, "routerLink"], ["title", "\u7DE8\u8F2F", 1, "btn", "btn-sm", "btn-ghost-primary", "inline-flex", "items-center", 3, "routerLink"], ["href", "/assets/icons/sprite.svg#edit"], ["title", "\u522A\u9664", 1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center"], ["title", "\u522A\u9664", 1, "btn", "btn-sm", "btn-ghost-danger", "inline-flex", "items-center", 3, "click"], ["href", "/assets/icons/sprite.svg#trash"], ["href", "/assets/icons/sprite.svg#eye"], ["colspan", "7", 1, "text-center", "text-muted", "py-4"], [1, "text-muted", "small", "text-center", "sm:text-left"], [1, "flex", "sm:hidden", "items-center", "gap-1"], [1, "page-link", "rounded", 3, "click"], [1, "px-2", "text-sm"], [1, "hidden", "sm:flex", "pagination", "mb-0"], [1, "page-item"], [1, "page-link", 3, "click"], [1, "page-item", "disabled"], [1, "page-item", 3, "active"], [1, "page-link"]], template: function PaymentList_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "div", 2);
       \u0275\u0275namespaceSVG();
@@ -13115,7 +13149,7 @@ var PaymentList = class _PaymentList {
       \u0275\u0275text(27, "\u64CD\u4F5C");
       \u0275\u0275elementEnd()()();
       \u0275\u0275elementStart(28, "tbody");
-      \u0275\u0275repeaterCreate(29, PaymentList_For_30_Template, 25, 19, "tr", null, _forTrack014, false, PaymentList_ForEmpty_31_Template, 3, 0, "tr");
+      \u0275\u0275repeaterCreate(29, PaymentList_For_30_Template, 27, 20, "tr", null, _forTrack014, false, PaymentList_ForEmpty_31_Template, 3, 0, "tr");
       \u0275\u0275elementEnd()()();
       \u0275\u0275conditionalCreate(32, PaymentList_Conditional_32_Template, 19, 13, "div", 14);
       \u0275\u0275elementEnd()()();
@@ -13182,7 +13216,12 @@ var PaymentList = class _PaymentList {
                 </td>
                 <td class="text-right fw-500">{{ r.totalAmount | number:'1.0-0' }}</td>
                 <td>
-                  <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
+                  <div class="flex flex-wrap items-center gap-1">
+                    <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
+                    @if (paymentState(r); as ps) {
+                      <span [class]="'badge ' + paymentStateClass[ps]">{{ paymentStateLabel[ps] }}</span>
+                    }
+                  </div>
                 </td>
                 <td class="text-muted small hidden lg:table-cell">{{ r.createdAt | date:'yyyy-MM-dd' }}</td>
                 <td class="text-right" style="white-space: nowrap">
@@ -13246,7 +13285,7 @@ var PaymentList = class _PaymentList {
   }], null, null);
 })();
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(PaymentList, { className: "PaymentList", filePath: "src/app/features/admin/payment-requests/pages/payment-list/payment-list.ts", lineNumber: 21 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(PaymentList, { className: "PaymentList", filePath: "src/app/features/admin/payment-requests/pages/payment-list/payment-list.ts", lineNumber: 22 });
 })();
 function buildPageNumbers3(current, total) {
   if (total <= 9)
@@ -13318,7 +13357,8 @@ var PaymentPdfService = class _PaymentPdfService {
         doc.setFont(F, "normal");
       };
       const submitDate = fmtDT(task.submittedAt);
-      lv("\u53D7\u6B3E\u4EBA\uFF1A", task.submittedBy, mx, y, true);
+      const payerLabel = d.paymentType === "vendor" ? "\u8ACB\u6B3E\u4EBA\uFF1A" : "\u53D7\u6B3E\u4EBA\uFF1A";
+      lv(payerLabel, task.submittedBy, mx, y, true);
       lv("\u7533\u8ACB\u65E5\u671F\uFF1A", submitDate, pw - mx - 55, y, true);
       y += 8;
       const invoices = d.invoices || [];
@@ -13376,6 +13416,45 @@ var PaymentPdfService = class _PaymentPdfService {
         head: [["\u6848 \u865F", "\u767C\u7968\u865F\u78BC", "\u9805\u3000\u3000\u76EE", "\u91D1\u3000\u984D", "\u5099\u3000\u8A3B"]],
         body: bodyRows
       });
+      if (d.paymentType === "vendor") {
+        const dash = (v) => v?.trim() || "\u2014";
+        const vendorTableY = doc.lastAutoTable.finalY + 6;
+        autoTable2(doc, {
+          startY: vendorTableY,
+          margin: { left: mx, right: mx, top: 20 },
+          theme: "grid",
+          styles: {
+            font: F,
+            fontSize: 9,
+            textColor: [...CIS.textPrimary],
+            lineColor: [...CIS.border],
+            lineWidth: 0.3,
+            cellPadding: { top: 3, bottom: 3, left: 4, right: 4 }
+          },
+          headStyles: {
+            font: F,
+            fillColor: [...CIS.forest],
+            textColor: 255,
+            fontSize: 9.5,
+            fontStyle: "bold",
+            halign: "center",
+            cellPadding: { top: 4, bottom: 4, left: 4, right: 4 }
+          },
+          columnStyles: {
+            0: { cellWidth: cw * 0.14, fontStyle: "bold", halign: "right", fillColor: [248, 250, 247] },
+            1: { cellWidth: cw * 0.36 },
+            2: { cellWidth: cw * 0.14, fontStyle: "bold", halign: "right", fillColor: [248, 250, 247] },
+            3: { cellWidth: cw * 0.36 }
+          },
+          head: [[{ content: "\u53D7\u6B3E\u4EBA\u8CC7\u8A0A", colSpan: 4, styles: { halign: "center" } }]],
+          body: [
+            ["\u5EE0\u5546\u540D\u7A31", dash(d.vendorName), "\u7D71\u3000\u3000\u7DE8", dash(d.vendorTaxId)],
+            ["\u806F\u3000\u7D61\u3000\u4EBA", dash(d.vendorContactPerson), "\u806F\u7D61\u96FB\u8A71", dash(d.vendorPhone)],
+            ["\u5E33\u6236\u8CC7\u6599", { content: dash(d.vendorBankAccount), colSpan: 3 }],
+            ["\u516C\u53F8\u5730\u5740", { content: dash(d.vendorAddress), colSpan: 3 }]
+          ]
+        });
+      }
       const tableEndY = doc.lastAutoTable.finalY;
       y = tableEndY + 8;
       doc.setFont(F, "normal");
@@ -16874,18 +16953,8 @@ var APPROVAL_STATUS_CLASSES2 = {
 };
 
 // src/app/features/admin/approval-tasks/models/approval-task.model.ts
-var TASK_STATUS_LABELS = {
-  pending: "\u5F85\u5BE9\u6838",
-  approved: "\u5DF2\u6838\u51C6",
-  rejected: "\u5DF2\u62D2\u7D55",
-  returned: "\u9000\u56DE\u4FEE\u6539"
-};
-var TASK_STATUS_CLASSES = {
-  pending: "bg-warning-subtle text-warning-emphasis",
-  approved: "bg-success-subtle text-success",
-  rejected: "bg-danger-subtle text-danger",
-  returned: "bg-secondary-subtle text-secondary"
-};
+var TASK_STATUS_LABELS = APPROVAL_STATUS_LABELS;
+var TASK_STATUS_CLASSES = APPROVAL_STATUS_CLASSES;
 var PAYMENT_TYPE_LABELS2 = {
   vendor: "\u5EE0\u5546\u8ACB\u6B3E",
   general: "\u4E00\u822C\u8ACB\u6B3E",
@@ -17430,30 +17499,27 @@ var ApprovalTaskList = class _ApprovalTaskList {
   payTypeLabel = PAYMENT_TYPE_LABELS2;
   leaveTypeLabel = LEAVE_TYPE_LABELS;
   /**
-   * 取得已核准簽核作業的款項狀態（第二個 badge）。
-   * - 撥款類（payment_request / advance / travel / holiday_travel）：看 paidAt
+   * 取得已核准或審核中簽核作業的款項狀態（第二個 badge）。
+   * status gate 與請款列表 paymentState() 一致：pending 或 approved 才顯示。
+   * - 撥款類（payment_request / advance / travel / travel_payment）：看對應 detail 的 paidAt
    * - 退款類（write_off / travel_write_off）：僅超支時適用，看 refundedAt
-   * - 其他（leave / overtime）：無款項概念，回傳 null
+   * - 其他（leave / overtime / holiday_travel）：無款項概念，回傳 null
    */
   getPaymentBadge(t) {
-    if (t.status !== "approved")
+    if (t.status !== "pending" && t.status !== "approved")
       return null;
+    const paidBadge = (isPaid) => isPaid ? { label: PAYMENT_STATE_LABELS.paid, cls: PAYMENT_STATE_CLASSES.paid } : { label: PAYMENT_STATE_LABELS.unpaid, cls: PAYMENT_STATE_CLASSES.unpaid };
     const type = t.applicationType;
-    if (type === "payment_request") {
-      return t.paymentDetail?.paidAt ? { label: "\u6B3E\u9805\u5DF2\u5B8C\u6210", cls: "bg-success-subtle text-success" } : { label: "\u6B3E\u9805\u5F85\u8655\u7406", cls: "bg-warning-subtle text-warning-emphasis" };
-    }
-    if (type === "advance") {
-      return t.advanceDetail?.paidAt ? { label: "\u6B3E\u9805\u5DF2\u5B8C\u6210", cls: "bg-success-subtle text-success" } : { label: "\u6B3E\u9805\u5F85\u8655\u7406", cls: "bg-warning-subtle text-warning-emphasis" };
-    }
-    if (type === "travel") {
-      return t.travelDetail?.paidAt ? { label: "\u6B3E\u9805\u5DF2\u5B8C\u6210", cls: "bg-success-subtle text-success" } : { label: "\u6B3E\u9805\u5F85\u8655\u7406", cls: "bg-warning-subtle text-warning-emphasis" };
-    }
-    if (type === "holiday_travel") {
+    if (type === "payment_request")
+      return paidBadge(!!t.paymentDetail?.paidAt);
+    if (type === "advance")
+      return paidBadge(!!t.advanceDetail?.paidAt);
+    if (type === "travel")
+      return paidBadge(!!t.travelDetail?.paidAt);
+    if (type === "holiday_travel")
       return null;
-    }
-    if (type === "travel_payment") {
-      return t.travelPaymentDetail?.paidAt ? { label: "\u6B3E\u9805\u5DF2\u5B8C\u6210", cls: "bg-success-subtle text-success" } : { label: "\u6B3E\u9805\u5F85\u8655\u7406", cls: "bg-warning-subtle text-warning-emphasis" };
-    }
+    if (type === "travel_payment")
+      return paidBadge(!!t.travelPaymentDetail?.paidAt);
     if (type === "write_off") {
       const d = t.writeOffDetail;
       if (!d)
@@ -17461,7 +17527,7 @@ var ApprovalTaskList = class _ApprovalTaskList {
       const overspent = d.advanceGrandTotal - d.otherWrittenOffTotal - d.grandTotal < 0;
       if (!overspent)
         return null;
-      return d.refundedAt ? { label: "\u6B3E\u9805\u5DF2\u5B8C\u6210", cls: "bg-success-subtle text-success" } : { label: "\u6B3E\u9805\u5F85\u8655\u7406", cls: "bg-warning-subtle text-warning-emphasis" };
+      return paidBadge(!!d.refundedAt);
     }
     if (type === "travel_write_off") {
       const d = t.travelWriteOffDetail;
@@ -17470,7 +17536,7 @@ var ApprovalTaskList = class _ApprovalTaskList {
       const overspent = d.travelGrandTotal - d.otherWrittenOffTotal - d.grandTotal < 0;
       if (!overspent)
         return null;
-      return d.refundedAt ? { label: "\u6B3E\u9805\u5DF2\u5B8C\u6210", cls: "bg-success-subtle text-success" } : { label: "\u6B3E\u9805\u5F85\u8655\u7406", cls: "bg-warning-subtle text-warning-emphasis" };
+      return paidBadge(!!d.refundedAt);
     }
     return null;
   }
@@ -17804,7 +17870,7 @@ var ApprovalTaskList = class _ApprovalTaskList {
   }], null, null);
 })();
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ApprovalTaskList, { className: "ApprovalTaskList", filePath: "src/app/features/admin/approval-tasks/pages/approval-task-list/approval-task-list.ts", lineNumber: 27 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ApprovalTaskList, { className: "ApprovalTaskList", filePath: "src/app/features/admin/approval-tasks/pages/approval-task-list/approval-task-list.ts", lineNumber: 28 });
 })();
 function buildPageNumbers4(current, total) {
   if (total <= 9)
@@ -66663,4 +66729,4 @@ xlsx/xlsx.mjs:
 xlsx/xlsx.mjs:
   (*! sheetjs (C) 2013-present SheetJS -- http://sheetjs.com *)
 */
-//# sourceMappingURL=chunk-K2SBEAWT.js.map
+//# sourceMappingURL=chunk-2W2GJR2N.js.map

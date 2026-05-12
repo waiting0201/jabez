@@ -1,23 +1,18 @@
-import {PaymentType, InvoiceItem} from '../../payment-requests/models/payment-request.model';
+import {
+  PaymentType, InvoiceItem,
+  APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES,
+  PAYMENT_STATE_LABELS, PAYMENT_STATE_CLASSES,
+} from '../../payment-requests/models/payment-request.model';
 import {LeaveType, LEAVE_TYPE_LABELS} from '../../leave-requests/models/leave-request.model';
 import {ApplicationType, APPLICATION_TYPE_LABELS, APPLICATION_TYPE_CLASSES} from '../../approvals/models/approval.model';
 import {TravelPaymentRequestItem} from '../../travel-payment-requests/models/travel-payment-request.model';
 
 export type TaskStatus = 'pending' | 'approved' | 'rejected' | 'returned';
 
-export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
-  pending:  '待審核',
-  approved: '已核准',
-  rejected: '已拒絕',
-  returned: '退回修改',
-};
-
-export const TASK_STATUS_CLASSES: Record<TaskStatus, string> = {
-  pending:  'bg-warning-subtle text-warning-emphasis',
-  approved: 'bg-success-subtle text-success',
-  rejected: 'bg-danger-subtle text-danger',
-  returned: 'bg-secondary-subtle text-secondary',
-};
+// 直接重用請款列表的 mapping 作為單一真相來源（pending 自動顯示為「待核准」與請款列表一致）
+// 註：APPROVAL_STATUS_LABELS 多 'draft' key 不影響使用 — TaskStatus 是 ApprovalStatus 的子集
+export const TASK_STATUS_LABELS  = APPROVAL_STATUS_LABELS;
+export const TASK_STATUS_CLASSES = APPROVAL_STATUS_CLASSES;
 
 export const PAYMENT_TYPE_LABELS: Record<PaymentType, string> = {
   vendor:        '廠商請款',
@@ -28,6 +23,8 @@ export const PAYMENT_TYPE_LABELS: Record<PaymentType, string> = {
 export {LEAVE_TYPE_LABELS};
 
 export {APPLICATION_TYPE_LABELS, APPLICATION_TYPE_CLASSES};
+
+export {PAYMENT_STATE_LABELS, PAYMENT_STATE_CLASSES};
 
 // ── Detail interfaces ────────────────────────────────────────────────────────
 
