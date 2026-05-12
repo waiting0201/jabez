@@ -702,6 +702,7 @@ loadData(items: Item[]) {
 |---|---|---|
 | [advance-list](../Admin/src/app/features/admin/advance-requests/pages/advance-list/advance-list.html) | `已結案` | `isClosed === true` |
 | [payment-list](../Admin/src/app/features/admin/payment-requests/pages/payment-list/payment-list.html) | `待撥款` / `已撥款` | `approvalStatus ∈ {pending, approved}`，再依 `paidAt` 是否填入決定 |
+| [approval-task-list](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-list/approval-task-list.html) | `待撥款` / `已撥款` | `status ∈ {pending, approved}`，per-type 取 `paymentDetail.paidAt / advanceDetail.paidAt / …`；write_off / travel_write_off 僅超支才顯示；leave / overtime / holiday_travel 永不顯示 |
 
 業務狀態徽章建議色：
 
@@ -710,6 +711,23 @@ loadData(items: Item[]) {
 | 進行中 / 待處理 | `bg-warning-subtle text-warning-emphasis` |
 | 完成 / 已結束 | `bg-primary-subtle text-primary`（CIS 森林綠，與 success 綠形成深淺差別） |
 | 中性附註 | `bg-secondary-subtle text-secondary` |
+
+### 9.2 跨列表一致性原則（**重要**）
+
+**同一筆資料在不同列表頁出現時，審核狀態 + 業務狀態徽章的 label / CSS / status gate 必須完全一致**，否則使用者會看到同一筆東西呈現不同文字或顏色。
+
+**Single Source of Truth 規則：**
+
+1. **審核狀態 mapping**：只在 [payment-request.model.ts](../Admin/src/app/features/admin/payment-requests/models/payment-request.model.ts) 定義 `APPROVAL_STATUS_LABELS` / `APPROVAL_STATUS_CLASSES`。其他 feature model（如 [approval-task.model.ts](../Admin/src/app/features/admin/approval-tasks/models/approval-task.model.ts) 的 `TASK_STATUS_LABELS / TASK_STATUS_CLASSES`）以**直接賦值 re-export** 共用，禁止重複定義。
+2. **業務狀態 mapping**（撥款 / 退款 / 結案 etc.）：同上，在來源 feature model 定義 `XXX_STATE_LABELS` / `XXX_STATE_CLASSES`，其他列表 re-export 使用。例如 `PAYMENT_STATE_LABELS` / `PAYMENT_STATE_CLASSES` 來自 payment-request.model。
+3. **status gate（顯示時機）**：跨列表顯示同一筆資料的業務狀態徽章時，gate 條件必須一致。例如撥款徽章在 `payment-list` 是 `approvalStatus ∈ {pending, approved}`；簽核作業列表也須同樣 gate（即使 `pending` 在「待審核 tab」也要顯示「待撥款」黃徽章）。
+4. **per-type 業務規則例外**：簽核作業列表因彙整多種申請類型，可保留 per-type 業務條件（如 write_off / travel_write_off 需「超支」才顯示徽章、holiday_travel 永不顯示等），但**徽章本身的 label/CSS 仍套用共用 mapping**。
+
+**Code Review 檢查點：**
+
+- [ ] 新增列表頁顯示審核狀態徽章 → 是否從 `payment-request.model` import `APPROVAL_STATUS_LABELS / CLASSES`？（禁止自行另寫一份）
+- [ ] 新增「待撥款 / 已撥款」徽章 → 是否從 `payment-request.model` import `PAYMENT_STATE_LABELS / CLASSES`？
+- [ ] 同一筆資料的 status gate 條件是否與既有列表一致？
 
 ---
 
