@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/shared/directives/has-permission.directive.ts"],
-  "sourcesContent": ["import {Directive, inject, Input, TemplateRef, ViewContainerRef} from '@angular/core';\r\nimport {AuthService} from '@core/auth/services/auth.service';\r\n\r\n@Directive({\r\n  selector: '[appHasPermission]',\r\n})\r\nexport class HasPermissionDirective {\r\n  private templateRef = inject(TemplateRef<unknown>);\r\n  private viewContainer = inject(ViewContainerRef);\r\n  private authService = inject(AuthService);\r\n\r\n  @Input() set appHasPermission(permission: string | undefined) {\r\n    this.viewContainer.clear();\r\n    if (!permission || this.authService.hasPermission(permission)) {\r\n      this.viewContainer.createEmbeddedView(this.templateRef);\r\n    }\r\n  }\r\n}\r\n"],
-  "mappings": ";;;;;;;;;;;;;;AAMM,IAAO,yBAAP,MAAO,wBAAsB;EACzB,cAAc,OAAO,WAAoB;EACzC,gBAAgB,OAAO,gBAAgB;EACvC,cAAc,OAAO,WAAW;EAExC,IAAa,iBAAiB,YAA8B;AAC1D,SAAK,cAAc,MAAK;AACxB,QAAI,CAAC,cAAc,KAAK,YAAY,cAAc,UAAU,GAAG;AAC7D,WAAK,cAAc,mBAAmB,KAAK,WAAW;IACxD;EACF;;qCAVW,yBAAsB;EAAA;yEAAtB,yBAAsB,WAAA,CAAA,CAAA,IAAA,oBAAA,EAAA,CAAA,GAAA,QAAA,EAAA,kBAAA,mBAAA,EAAA,CAAA;;;sEAAtB,wBAAsB,CAAA;UAHlC;WAAU;MACT,UAAU;KACX;;UAME;;;",
-  "names": []
-}
