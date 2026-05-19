@@ -12,7 +12,7 @@ export class Settings implements OnInit {
   private fb = inject(FormBuilder);
   private settingsService = inject(SettingsService);
 
-  saved = false;
+  saved = signal(false);
   errorMsg = signal('');
 
   form = this.fb.group({
@@ -33,8 +33,8 @@ export class Settings implements OnInit {
     this.errorMsg.set('');
     this.settingsService.save(this.form.value as any).subscribe({
       next: () => {
-        this.saved = true;
-        setTimeout(() => this.saved = false, 3000);
+        this.saved.set(true);
+        setTimeout(() => this.saved.set(false), 3000);
       },
       error: (err: HttpErrorResponse) => {
         this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
