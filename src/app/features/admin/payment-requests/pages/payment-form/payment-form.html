@@ -3,7 +3,12 @@
     <a routerLink="/admin/payment-requests" class="btn btn-sm btn-outline-secondary">
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
     </a>
-    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視請款申請' : (isReturned ? '修改請款申請' : '編輯請款草稿')) : '新增請款申請' }}</h4>
+    <h4 class="mb-0">
+      {{ isEdit ? (isReadOnly ? '檢視請款申請' : (isReturned ? '修改請款申請' : '編輯請款草稿')) : '新增請款申請' }}
+      @if (isEdit && requestNo) {
+        <span class="font-monospace text-muted ml-2">{{ requestNo }}</span>
+      }
+    </h4>
   </div>
 
   @if (errorMsg()) {

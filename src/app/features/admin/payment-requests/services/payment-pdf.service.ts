@@ -50,6 +50,13 @@ export class PaymentPdfService {
       doc.setTextColor(...CIS.forest);
       doc.text(pdfTitle, pw / 2, y, {align: 'center'});
 
+      // ── 單號（右上角）──
+      doc.setFont(F, 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(...CIS.textMuted);
+      doc.text(`單號：${d.requestNo}`, pw - mx, y, {align: 'right'});
+      doc.setTextColor(...CIS.textPrimary);
+
       // ── 受款人 / 申請日期 ──
       y += 12;
       doc.setFont(F, 'normal');
@@ -225,7 +232,7 @@ export class PaymentPdfService {
       doc.setLineWidth(0.8);
       doc.line(mx, bottomY + 1.5, pw - mx, bottomY + 1.5);
 
-      doc.save(`請款單-${d.projectCode}-${task.id}.pdf`);
+      doc.save(`請款單-${d.requestNo}.pdf`);
     } finally {
       this.pdfLoading.set(false);
     }

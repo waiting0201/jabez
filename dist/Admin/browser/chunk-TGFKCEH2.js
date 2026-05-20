@@ -1,7 +1,7 @@
 import {
   PAYMENT_INSTALLMENT_STATUS_CLASSES,
   PAYMENT_INSTALLMENT_STATUS_LABELS
-} from "./chunk-KP52QFLC.js";
+} from "./chunk-PU6FMTIB.js";
 import {
   Component,
   DatePipe,
@@ -294,4 +294,4 @@ var InstallmentsTable = class _InstallmentsTable {
 export {
   InstallmentsTable
 };
-//# sourceMappingURL=chunk-QRTEGJBM.js.map
+//# sourceMappingURL=chunk-TGFKCEH2.js.map

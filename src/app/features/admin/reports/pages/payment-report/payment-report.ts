@@ -25,6 +25,7 @@ const EXPORT_WARN_THRESHOLD = 1000;
 
 export interface PaymentReportRow {
   id: number;
+  requestNo: string;
   employeeName: string;
   type: string;
   typeLabel: string;
@@ -41,6 +42,7 @@ export interface PaymentReportRow {
 /** 對應後端 PaymentExportRowDto：一張發票一列 */
 interface PaymentExportRow {
   paymentRequestId: number;
+  requestNo: string;
   employeeName: string;
   type: string;
   projectCode: string;
@@ -181,6 +183,7 @@ export class PaymentReport implements OnInit {
   private mapRow(r: any): PaymentReportRow {
     return {
       id: r.id,
+      requestNo: r.requestNo ?? '',
       employeeName: r.employeeName ?? '—',
       type: r.type,
       typeLabel: PAYMENT_TYPE_LABELS[r.type] ?? r.type,
@@ -268,7 +271,7 @@ export class PaymentReport implements OnInit {
 
   private buildAndDownloadXlsx(rows: PaymentExportRow[]) {
     const headers = [
-      '員工姓名', '請款類型', '專案代碼', '專案名稱', '簽核狀態',
+      '單號', '員工姓名', '請款類型', '專案代碼', '專案名稱', '簽核狀態',
       '申請日期', '付款日期', '請款單總金額',
       '發票號碼', '品名', '發票日期', '發票金額',
     ];
@@ -285,6 +288,7 @@ export class PaymentReport implements OnInit {
       const amount = r.invoiceAmount ?? 0;
       invoiceTotal += amount;
       aoa.push([
+        r.requestNo ?? '',
         r.employeeName ?? '—',
         PAYMENT_TYPE_LABELS[r.type] ?? r.type,
         r.projectCode ?? '—',
@@ -302,13 +306,14 @@ export class PaymentReport implements OnInit {
 
     // 末列：合計（請款單總額會跨多列重複，為避免誤導，僅顯示發票金額合計）
     aoa.push([
-      '合計', '', '', '', '', '', '', '', '', '', '', invoiceTotal,
+      '合計', '', '', '', '', '', '', '', '', '', '', '', invoiceTotal,
     ]);
 
     const ws = XLSX.utils.aoa_to_sheet(aoa);
 
     // 欄寬（單位：字元）— 對應 headers 順序
     ws['!cols'] = [
+      { wch: 18 }, // 單號
       { wch: 12 }, // 員工姓名
       { wch: 10 }, // 請款類型
       { wch: 12 }, // 專案代碼
@@ -323,14 +328,14 @@ export class PaymentReport implements OnInit {
       { wch: 14 }, // 發票金額
     ];
 
-    // 金額欄千分位格式（H 欄=請款單總金額、L 欄=發票金額）
+    // 金額欄千分位格式（I 欄=請款單總金額、M 欄=發票金額）— 新增單號後欄位整體右移 1
     const headerRowIdx = 2; // 第 3 列（0-based 2）
     const totalRowIdx = aoa.length - 1; // 末列為合計
     const numberFmt = '#,##0';
     for (let r = headerRowIdx + 1; r <= totalRowIdx; r++) {
-      const totalCell = ws[XLSX.utils.encode_cell({ r, c: 7 })];
+      const totalCell = ws[XLSX.utils.encode_cell({ r, c: 8 })];
       if (totalCell && typeof totalCell.v === 'number') totalCell.z = numberFmt;
-      const invoiceCell = ws[XLSX.utils.encode_cell({ r, c: 11 })];
+      const invoiceCell = ws[XLSX.utils.encode_cell({ r, c: 12 })];
       if (invoiceCell && typeof invoiceCell.v === 'number') invoiceCell.z = numberFmt;
     }
 

@@ -57,6 +57,13 @@ export class TravelPaymentPdfService {
       doc.setTextColor(...CIS.forest);
       doc.text('出 差 請 款 申 請 單', pw / 2, y, { align: 'center' });
 
+      // ── 單號（右上角）──
+      doc.setFont(F, 'normal');
+      doc.setFontSize(9.5);
+      doc.setTextColor(...CIS.textMuted);
+      doc.text(`單號：${r.requestNo}`, pw - mx, y, { align: 'right' });
+      doc.setTextColor(...CIS.textPrimary);
+
       // ── 表頭資訊 ──
       y += 10;
       doc.setFont(F, 'normal');
@@ -204,7 +211,7 @@ export class TravelPaymentPdfService {
       doc.setLineWidth(0.8);
       doc.line(mx, y + 1.5, pw - mx, y + 1.5);
 
-      doc.save(`出差請款申請單-${r.id}.pdf`);
+      doc.save(`出差請款申請單-${r.requestNo}.pdf`);
     } finally {
       this.pdfLoading.set(false);
     }

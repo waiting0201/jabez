@@ -62,6 +62,8 @@ export class PaymentForm implements OnInit {
   /** 檢視模式時顯示的專案編號與名稱 */
   projectCode = '';
   projectName = '';
+  /** 編輯/檢視時顯示的單號（PR-yyyyMMdd-NNN） */
+  requestNo = '';
   estimatedPaymentDate = '';
   paidAt = '';
 
@@ -275,6 +277,7 @@ export class PaymentForm implements OnInit {
         this.isReadOnly     = r.approvalStatus !== 'draft' && r.approvalStatus !== 'returned';
         this.projectCode    = r.projectCode ?? '';
         this.projectName    = r.projectName ?? '';
+        this.requestNo      = r.requestNo ?? '';
         this.estimatedPaymentDate = r.estimatedPaymentDate?.toString().slice(0, 10) ?? '';
         this.paidAt               = r.paidAt?.toString().slice(0, 10) ?? '';
         this.installments         = r.installments ?? null;
