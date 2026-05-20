@@ -91,7 +91,7 @@ export const menuItems: MenuItemType[] = [
   },
   {
     icon: '/assets/icons/sprite.svg#credit-card',
-    label: '請款統計',
+    label: '款項統計',
     url: '/admin/reports/payment',
     requiredPermission: 'reports-payment:read',
   },
