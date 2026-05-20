@@ -6,7 +6,7 @@
 
 本地開發連線字串於 [Api/local.settings.json](../Api/local.settings.json)；遠端 Azure SQL 連線字串記在 memory `reference_azure_sql.md`（敏感資訊不入版控）。
 
-## 35 個資料表實體
+## 40 個資料表實體
 
 | 實體 | 說明 |
 |------|------|
@@ -42,7 +42,12 @@
 | `RequestDesignatedReviewer` | 申請人指定審核者清單（多人依序審核） |
 | `AttendanceRecord` | 出勤打卡紀錄（每人每天一筆，含 GPS） |
 | `AttendanceReminderLog` | 打卡提醒推播紀錄（BatchId 串聯同一次 tick；含 batchStart 紀錄、ErrorCategory 失敗分類、HttpStatusCode、DurationMs；Snapshot 欄位保留歷史） |
-| `SystemSetting` | 系統設定（含站台 / 工時 / 通知）。`ApprovalEmailEnabled` / `ApprovalLineEnabled` 控制全域簽核通知開關（不影響帳號通知 / 薪資明細 / 打卡提醒） |
+| `PaymentReminderLog` | 撥款日將屆提醒推播紀錄（BatchId 串聯同一次 tick；TriggerSource auto/manual；ReminderDateTaipei 用於同日去重；Status: success/failure/batchStart/skipped_already_sent；FinanceUserId 推播對象） |
+| `SystemSetting` | 系統設定（含站台 / 工時 / 通知 / 撥款提醒）。`ApprovalEmailEnabled` / `ApprovalLineEnabled` 控制全域簽核通知開關（不影響帳號通知 / 薪資明細 / 打卡提醒）。`PaymentReminderDaysBefore` 控制撥款日將屆提醒提前天數（預設 3 天，0-30） |
+| `PaymentRequestInstallment` | 請款分期撥款明細（多筆）：InstallmentNo / ExpectedDate / PaidAt / Amount / Note / PaidByUserId。每筆 PaidAt null→value 觸發一次「已撥款」通知（含 N/M 期）|
+| `AdvanceRequestInstallment` | 預支分期撥款明細（同上結構，FK→AdvanceRequest）|
+| `TravelRequestInstallment` | 出差預支分期撥款明細（同上結構，FK→TravelRequest）|
+| `TravelPaymentRequestInstallment` | 出差請款分期撥款明細（同上結構，FK→TravelPaymentRequest）|
 | `InsuranceBracket` | 勞健保級距（投保級距、員工負擔勞保、員工負擔健保） |
 | `EmployeeProfile` | 員工人事資料卡 1:1 對 User（PK=UserId）；含員工代號 / 英文名 / 身分證號 / 性別 / 婚姻 / 出生地 / 行動電話 / 戶籍 / 通訊 / 緊急聯絡 / 銀行帳號 / 投保起日 / 扶養人 / 專長興趣 / 離職原因 / 身分證正反面影本 / 最高學歷證明 URL |
 | `EducationRecord` | 學歷紀錄（最高 / 次之 / 次之，校名 / 科系 / 畢肄業 / 起迄） |

@@ -55,6 +55,8 @@ public sealed record TravelPaymentRequestDto(
     DateTime? EstimatedPaymentDate     = null,
     DateTime? PaidAt                   = null,
     TravelPaymentRequestItemDto[]?  Items               = null,
-    DesignatedReviewerDto[]?        DesignatedReviewers = null);
+    DesignatedReviewerDto[]?        DesignatedReviewers = null,
+    InstallmentDto[]?               Installments        = null,
+    string?                         PaymentStatus       = null);
 
 // Note: Create/Update 接收 multipart/form-data，於 Handler 內直接從 form 讀取欄位，故不再需要 Create/Update Request DTO。

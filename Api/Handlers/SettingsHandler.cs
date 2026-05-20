@@ -50,6 +50,7 @@ public sealed class SettingsHandler(AppDbContext db)
         if (body.MonthlyOvertimeLimit     is not null) entity.MonthlyOvertimeLimit     = body.MonthlyOvertimeLimit.Value;
         if (body.ApprovalEmailEnabled     is not null) entity.ApprovalEmailEnabled     = body.ApprovalEmailEnabled.Value;
         if (body.ApprovalLineEnabled      is not null) entity.ApprovalLineEnabled      = body.ApprovalLineEnabled.Value;
+        if (body.PaymentReminderDaysBefore is not null) entity.PaymentReminderDaysBefore = Math.Clamp(body.PaymentReminderDaysBefore.Value, 0, 30);
 
         await db.SaveChangesAsync();
 
@@ -72,5 +73,6 @@ public sealed class SettingsHandler(AppDbContext db)
         WorkEndTime:              e.WorkEndTime,
         MonthlyOvertimeLimit:     e.MonthlyOvertimeLimit,
         ApprovalEmailEnabled:     e.ApprovalEmailEnabled,
-        ApprovalLineEnabled:      e.ApprovalLineEnabled);
+        ApprovalLineEnabled:      e.ApprovalLineEnabled,
+        PaymentReminderDaysBefore: e.PaymentReminderDaysBefore);
 }

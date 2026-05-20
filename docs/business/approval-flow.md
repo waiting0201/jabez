@@ -32,25 +32,53 @@ draft → pending → approved / returned / rejected
 2. **通知申請人**：信件主旨 `[已核准] 請款申請 #XX`
 3. **通知財務部全員**：信件主旨 `[可撥款] 請款申請 #XX 已核准`
 
-財務部收到通知後，透過 `PATCH /payment-requests/{id}/payment-date` 填入：
-- `EstimatedPaymentDate`：預計撥款日
-- `PaidAt`：實際撥款日
+### 分期撥款（Installments，2026-05 新增）
 
-> 此端點僅限**財務體系部門**（部門 Code ∈ AC / FIN / Jabez HQ / CEO，定義於 `Api/Common/Constants.cs` `DepartmentCodes.FinancialAndAbove`）或 **Superadmin** 操作。同樣規則套用於 `/advance-requests/{id}/payment-date`、`/travel-requests/{id}/payment-date`、`/travel-payment-requests/{id}/payment-date`、`/holiday-travel-requests/{id}/payment-date`，以及預支結案 / 出差結案端點。
+4 種申請類型（payment_request / advance / travel / travel_payment）支援**多筆分期撥款**：
+
+- **新 endpoint**：`PATCH /{type}-requests/{id}/installments`（取代舊單筆 `/payment-date`，舊 endpoint 兩階段過渡期暫時保留）
+- **DTO**：`UpsertInstallmentsRequest { installments[], approvalStatus? }`，每筆 `{ id?, installmentNo, expectedDate, paidAt?, amount, note? }`
+- **驗證**（`InstallmentValidator`）：
+  - 序號 1-based 連續無斷號
+  - SUM(amount) == 申請總額（PaymentRequest.TotalAmount / 其他三者的 GrandTotal）容忍 0.01 浮點誤差
+  - **已 PaidAt 列保護**：ExpectedDate / Amount / PaidAt 三欄全鎖死、不可刪除
+  - 未撥列完全可改可刪
+- **每筆 PaidAt null→value 觸發一次通知**：`NotifyApplicantPaidAsync` 加 `installmentNo` / `totalInstallments` 參數，Email + LINE Flex 標題附「（第 N/M 期）」
+- **同步父表 cache**：Handler 在每次 upsert 時同步寫回父表 `EstimatedPaymentDate`（=MAX ExpectedDate）/ `PaidAt`（全數撥畢時=MAX PaidAt，否則 null）/ `PaidByUserId`，沿用舊「已撥款」判斷
+- **三態 status**（`PaymentInstallmentStatus` enum）：
+  - `Unpaid`：installments 為空或所有 PaidAt 為 null
+  - `PartiallyPaid`：部分 PaidAt 有值
+  - `FullyPaid`：所有 PaidAt 都有值
+
+> 此端點仍限**財務體系部門**（部門 Code ∈ AC / FIN / Jabez HQ / CEO，`DepartmentCodes.FinancialAndAbove`）或 **Superadmin** 操作。
+
+### 撥款日將屆提醒（PaymentReminderFunction，2026-05 新增）
+
+每日 09:00 (Taipei) `TimerTrigger` 自動執行：
+- 撈出所有「PaidAt 為空 + ExpectedDate ≤ 今天+N 天」的 installments（4 種申請類型 UNION）
+- N 由 `SystemSetting.PaymentReminderDaysBefore` 控制（預設 3，0-30）
+- 對**財務體系部門全員**各推一則彙整通知（Email + LINE，沿用 `ApprovalEmailEnabled` + `ApprovalLineEnabled` 開關）
+- 同日同人去重（`PaymentReminderLog` 記錄 success 後當日不再推）
+- 手動觸發：Superadmin 可從 `/admin/payment-reminder-logs` 頁面或 `POST /api/admin/payment-reminder/run` 觸發
+- cron 由 `PaymentReminderCron` app setting 控制（預設 `0 0 1 * * *`，即 UTC 01:00 = Taipei 09:00）
+
+### 舊 endpoint（過渡期保留）
+
+財務部仍可透過 `PATCH /payment-requests/{id}/payment-date` 填入單筆 `EstimatedPaymentDate` / `PaidAt`（適用 advance / travel / travel_payment / holiday_travel）。
 
 ### 撥款 / 退款完成通知申請人
 
-當財務在以上端點將 `PaidAt`（或預支沖銷 / 出差沖銷的 `RefundedAt`）從 `null` → 有值時，系統自動同時透過 **Email + LINE Flex Message** 通知申請人：
+當財務將 `PaidAt`（或預支沖銷 / 出差沖銷的 `RefundedAt`）從 `null` → 有值時，系統自動同時透過 **Email + LINE Flex Message** 通知申請人：
 
 | 觸發欄位轉換 | 適用申請類型 | 通知方法 |
 |---|---|---|
-| `PaidAt`（null → 有值） | payment_request / advance / travel / travel_payment | `NotifyApplicantPaidAsync` |
+| installment.`PaidAt`（null → 有值） | payment_request / advance / travel / travel_payment | `NotifyApplicantPaidAsync`（含 N/M 期）|
 | `RefundedAt`（null → 有值） | advance / travel | `NotifyApplicantRefundedAsync` |
 
-- **僅首次轉換**：之後若調整撥款日或退款日不會重發（避免騷擾）。
+- **分期情境**：每填一筆 PaidAt 都推一次通知（含「第 N/M 期」），不只首次。
 - **Email + LINE 雙軌**：與其他簽核通知一致；申請人未綁定 LINE 仍會收到 Email。
-- **LINE Flex 模板**：`BuildApplicantPaidMessage` / `BuildApplicantRefundedMessage`（品牌綠 #4A6B3A，列出申請編號 / 金額 / 日期）。
-- **金額來源**：撥款用 `TotalAmount` (payment) 或 `GrandTotal` (travel/advance/travel_payment)；退款用 `RefundedAmount`。
+- **LINE Flex 模板**：`BuildApplicantPaidMessage` / `BuildApplicantRefundedMessage`（品牌綠 #4A6B3A，列出申請編號 / 金額 / 日期 / 期數）。
+- **金額來源**：撥款分期用 `installment.Amount`；退款用 `RefundedAmount`。
 
 ## 批次核准（全選核准）
 

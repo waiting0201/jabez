@@ -494,7 +494,8 @@ public sealed class ApprovalNotificationService(
 
     /// <inheritdoc />
     public async Task NotifyApplicantPaidAsync(
-        string applicationType, int applicationId, Guid applicantId, decimal amount, DateTime paidAt)
+        string applicationType, int applicationId, Guid applicantId, decimal amount, DateTime paidAt,
+        int? installmentNo = null, int? totalInstallments = null)
     {
         try
         {
@@ -508,16 +509,21 @@ public sealed class ApprovalNotificationService(
             var siteUrl = await GetSiteUrlAsync();
             var linkUrl = BuildReviewUrl(siteUrl, applicationType, applicationId);
 
-            var subject = $"[已撥款] 您的{label} #{applicationId} 已撥款 — {amount:N0} 元";
-            var body    = BuildApplicantPaidEmail(applicant.Name, label, applicationId, summary, amount, paidAt, linkUrl);
+            // 分期撥款時主旨附「第 N/M 期」
+            var installmentSuffix = installmentNo.HasValue && totalInstallments.HasValue
+                ? $"（第 {installmentNo}/{totalInstallments} 期）"
+                : "";
+
+            var subject = $"[已撥款] 您的{label} #{applicationId} 已撥款 — {amount:N0} 元{installmentSuffix}";
+            var body    = BuildApplicantPaidEmail(applicant.Name, label, applicationId, summary, amount, paidAt, linkUrl, installmentNo, totalInstallments);
 
             if (emailEnabled)
                 await emailService.SendAsync(applicant.Email, subject, body);
             await PushLineByUserIdAsync(applicantId,
-                LineFlexMessageBuilder.BuildApplicantPaidMessage(label, applicationId, amount, paidAt, linkUrl),
+                LineFlexMessageBuilder.BuildApplicantPaidMessage(label, applicationId, amount, paidAt, linkUrl, installmentNo, totalInstallments),
                 lineEnabled);
-            logger.LogInformation("已寄送撥款完成通知：{Email}（{AppType} #{Id}）",
-                applicant.Email, applicationType, applicationId);
+            logger.LogInformation("已寄送撥款完成通知：{Email}（{AppType} #{Id}{Suffix}）",
+                applicant.Email, applicationType, applicationId, installmentSuffix);
         }
         catch (Exception ex)
         {
@@ -556,6 +562,95 @@ public sealed class ApprovalNotificationService(
         {
             logger.LogWarning(ex, "寄送退款完成通知失敗：{AppType} #{Id}", applicationType, applicationId);
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<(bool EmailSent, bool LineSent, string? ErrorMessage)> NotifyFinanceUpcomingPaymentsAsync(
+        Guid financeUserId,
+        IReadOnlyList<(string AppType, string AppLabel, int ApplicationId, string Applicant, DateTime ExpectedDate, decimal Amount)> items)
+    {
+        try
+        {
+            if (items.Count == 0) return (false, false, "no items");
+
+            var (emailEnabled, lineEnabled) = await ReadNotificationFlagsAsync();
+            var financeUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == financeUserId);
+            if (financeUser is null) return (false, false, "finance user not found");
+
+            var siteUrl = await GetSiteUrlAsync();
+            var linkUrl = $"{siteUrl}/admin/approval-tasks";  // 暫導至待審任務清單；之後可改為專用待撥清單頁
+
+            var subject = $"[撥款提醒] 您有 {items.Count} 筆預計撥款日將屆";
+            var emailBody = BuildUpcomingPaymentsEmail(financeUser.Name, items, linkUrl);
+
+            bool emailSent = false;
+            if (emailEnabled && !string.IsNullOrEmpty(financeUser.Email))
+            {
+                await emailService.SendAsync(financeUser.Email, subject, emailBody);
+                emailSent = true;
+            }
+
+            bool lineSent = false;
+            if (lineEnabled)
+            {
+                var flexItems = items
+                    .Select(i => (i.AppLabel, i.ApplicationId, i.Applicant, i.ExpectedDate, i.Amount))
+                    .ToList()
+                    .AsReadOnly();
+                var flex = LineFlexMessageBuilder.BuildUpcomingPaymentsMessage(financeUser.Name, items.Count, flexItems, linkUrl);
+                await PushLineByUserIdAsync(financeUserId, flex, lineEnabled);
+                lineSent = true;
+            }
+
+            logger.LogInformation("已寄送撥款日將屆提醒：{Name}（{Count} 筆，email={Email}, line={Line}）",
+                financeUser.Name, items.Count, emailSent, lineSent);
+            return (emailSent, lineSent, null);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "寄送撥款日將屆提醒失敗：FinanceUser={Id}", financeUserId);
+            return (false, false, ex.Message);
+        }
+    }
+
+    private static string BuildUpcomingPaymentsEmail(
+        string financeUserName,
+        IReadOnlyList<(string AppType, string AppLabel, int ApplicationId, string Applicant, DateTime ExpectedDate, decimal Amount)> items,
+        string linkUrl)
+    {
+        var rows = string.Join("", items.Select((i, idx) => $"""
+              <tr style="background:{(idx % 2 == 0 ? "#EDE9E1" : "#F5F2ED")};">
+                <td style="padding:8px 12px;color:#525358;">{i.ExpectedDate:yyyy-MM-dd}</td>
+                <td style="padding:8px 12px;color:#525358;">{i.AppLabel}</td>
+                <td style="padding:8px 12px;color:#525358;font-weight:600;">#{i.ApplicationId}</td>
+                <td style="padding:8px 12px;color:#525358;">{i.Applicant}</td>
+                <td style="padding:8px 12px;color:#B8892A;font-weight:600;text-align:right;">{i.Amount:N0} 元</td>
+              </tr>
+            """));
+        return $"""
+        <div style="font-family:'Microsoft JhengHei','Segoe UI',sans-serif;max-width:680px;margin:0 auto;">
+          <div style="background:#B8892A;padding:16px 24px;border-radius:8px 8px 0 0;">
+            <h2 style="color:#fff;margin:0;font-size:18px;">撥款日將屆提醒</h2>
+          </div>
+          <div style="background:#F5F2ED;padding:24px;border-radius:0 0 8px 8px;">
+            <p style="color:#525358;margin:0 0 16px;">{financeUserName} 您好，</p>
+            <p style="color:#525358;margin:0 0 16px;">您負責的撥款作業中，下列 <strong>{items.Count}</strong> 筆預計撥款日即將到期，請及早安排撥款。</p>
+            <table style="width:100%;border-collapse:collapse;margin:0 0 16px;font-size:14px;">
+              <thead><tr style="background:#4A6B3A;color:#fff;">
+                <th style="padding:8px 12px;text-align:left;">預計撥款日</th>
+                <th style="padding:8px 12px;text-align:left;">申請類型</th>
+                <th style="padding:8px 12px;text-align:left;">編號</th>
+                <th style="padding:8px 12px;text-align:left;">申請人</th>
+                <th style="padding:8px 12px;text-align:right;">金額</th>
+              </tr></thead>
+              <tbody>{rows}</tbody>
+            </table>
+            {BuildButtonHtml(linkUrl, "前往撥款作業")}
+            <hr style="border:none;border-top:1px solid #DDD6C8;margin:16px 0;" />
+            <p style="color:#A39685;font-size:12px;margin:0;">此信件由系統自動寄發，請勿直接回覆。</p>
+          </div>
+        </div>
+        """;
     }
 
     // ── 取得申請摘要 ──────────────────────────────────────────────────────────
@@ -926,17 +1021,30 @@ public sealed class ApprovalNotificationService(
 
     private static string BuildApplicantPaidEmail(
         string applicantName, string label, int applicationId, string summary,
-        decimal amount, DateTime paidAt, string linkUrl)
+        decimal amount, DateTime paidAt, string linkUrl,
+        int? installmentNo = null, int? totalInstallments = null)
     {
+        var installmentLabel = installmentNo.HasValue && totalInstallments.HasValue
+            ? $"第 {installmentNo}/{totalInstallments} 期"
+            : "";
+        var titleSuffix = string.IsNullOrEmpty(installmentLabel) ? "" : $"（{installmentLabel}）";
+        var installmentRow = string.IsNullOrEmpty(installmentLabel)
+            ? ""
+            : $"""
+              <tr>
+                <td style="padding: 8px 12px; color: #6E6F73;">撥款期數</td>
+                <td style="padding: 8px 12px; color: #525358; font-weight: 600;">{installmentLabel}</td>
+              </tr>
+            """;
         return $"""
         <div style="font-family: 'Microsoft JhengHei', 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: #4A6B3A; padding: 16px 24px; border-radius: 8px 8px 0 0;">
-            <h2 style="color: #fff; margin: 0; font-size: 18px;">{label}已撥款</h2>
+            <h2 style="color: #fff; margin: 0; font-size: 18px;">{label}已撥款{titleSuffix}</h2>
           </div>
           <div style="background: #F5F2ED; padding: 24px; border-radius: 0 0 8px 8px;">
             <p style="color: #525358; margin: 0 0 16px;">{applicantName} 您好，</p>
             <p style="color: #525358; margin: 0 0 16px;">
-              您的<strong>{label} #{applicationId}</strong> 已由財務完成撥款作業，款項已撥付。
+              您的<strong>{label} #{applicationId}</strong> 已由財務完成撥款作業，款項已撥付{titleSuffix}。
             </p>
             <table style="width: 100%; border-collapse: collapse; margin: 0 0 16px;">
               <tr>
@@ -947,6 +1055,7 @@ public sealed class ApprovalNotificationService(
                 <td style="padding: 8px 12px; color: #6E6F73;">申請摘要</td>
                 <td style="padding: 8px 12px; color: #525358;">{summary}</td>
               </tr>
+              {installmentRow}
               <tr>
                 <td style="padding: 8px 12px; color: #6E6F73;">撥款金額</td>
                 <td style="padding: 8px 12px; color: #4A6B3A; font-weight: 600;">{amount:N0} 元</td>

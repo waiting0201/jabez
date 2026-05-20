@@ -25,7 +25,7 @@ public class TravelRequest
     public DateTime? ClosedAt    { get; set; }
     public Guid?     ClosedById  { get; set; }
 
-    // 撥款欄位
+    // 撥款 cache 欄位（兩階段過渡用，主要資料在 Installments；Handler 寫入時同步更新）
     public DateTime? EstimatedPaymentDate    { get; set; }
     public DateTime? PaidAt                  { get; set; }
     public Guid?     PaidByUserId            { get; set; }
@@ -38,14 +38,15 @@ public class TravelRequest
     public Guid?     RefundedByUserId        { get; set; }
 
     // Navigation
-    public User?         Employee           { get; set; }
-    public User?         ReviewedBy         { get; set; }
-    public User?         PaidBy             { get; set; }
-    public User?         RefundedBy         { get; set; }
-    public ApprovalItem? ApprovalItem       { get; set; }
-    public Project?      Project            { get; set; }
-    public User?         ClosedBy           { get; set; }
-    public ICollection<TravelRequestItem>        Items        { get; set; } = [];
+    public User?                                  Employee     { get; set; }
+    public User?                                  ReviewedBy   { get; set; }
+    public User?                                  PaidBy       { get; set; }
+    public User?                                  RefundedBy   { get; set; }
+    public ApprovalItem?                          ApprovalItem { get; set; }
+    public Project?                               Project      { get; set; }
+    public User?                                  ClosedBy     { get; set; }
+    public ICollection<TravelRequestItem>         Items        { get; set; } = [];
     public ICollection<TravelRequestParticipant>  Participants { get; set; } = [];
     public ICollection<TravelWriteOffRecord>      WriteOffs    { get; set; } = [];
+    public ICollection<TravelRequestInstallment>  Installments { get; set; } = [];
 }

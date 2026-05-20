@@ -94,7 +94,8 @@
 | GET/POST | `/payment-requests` | 請款列表 / 新增（預設 draft，multipart 含 `vendorId` — 當 `type=vendor` 時必填且必須是 IsActive=true 的廠商） |
 | GET/PUT/PATCH/DELETE | `/payment-requests/{id}` | 請款 CRUD（DTO 含 `vendorId / vendorName / vendorTaxId`） |
 | PATCH | `/payment-requests/{id}/submit` | 送出請款申請（draft → pending） |
-| PATCH | `/payment-requests/{id}/payment-date` | 更新撥款日期（財務體系部門：AC/FIN/Jabez HQ/CEO） |
+| PATCH | `/payment-requests/{id}/payment-date` | 更新撥款日期（財務體系部門：AC/FIN/Jabez HQ/CEO，**舊單筆 endpoint**，過渡期保留）|
+| PATCH | `/payment-requests/{id}/installments` | **新分期撥款 endpoint**：upsert 一或多筆撥款明細（SUM 嚴格驗證 = TotalAmount；已撥款列鎖定不可改不可刪；每筆 PaidAt null→value 觸發一次「已撥款」通知含 N/M 期） |
 | GET/POST | `/leave-requests` | 請假列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/leave-requests/{id}` | 請假 CRUD |
 | PATCH | `/leave-requests/{id}/submit` | 送出請假申請（draft → pending） |
@@ -111,12 +112,14 @@
 | GET/POST | `/travel-payment-requests` | 出差請款申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/travel-payment-requests/{id}` | 出差請款申請 CRUD |
 | PATCH | `/travel-payment-requests/{id}/submit` | 送出出差請款申請（draft → pending） |
-| PATCH | `/travel-payment-requests/{id}/payment-date` | 更新撥款日期（財務體系部門：AC/FIN/Jabez HQ/CEO） |
+| PATCH | `/travel-payment-requests/{id}/payment-date` | 更新撥款日期（財務體系部門：AC/FIN/Jabez HQ/CEO，舊單筆 endpoint）|
+| PATCH | `/travel-payment-requests/{id}/installments` | 新分期撥款 endpoint（同 PaymentRequest 行為） |
 | GET | `/holiday-travel-requests` | 假日執行活動申請列表（共用 TravelRequest，`IsHolidayTravel=true`） |
 | POST | `/holiday-travel-requests` | 新增假日執行活動申請（預設 draft，無 Items 與發票明細） |
 | GET/PUT/PATCH/DELETE | `/holiday-travel-requests/{id}` | 假日執行活動申請 CRUD |
 | PATCH | `/holiday-travel-requests/{id}/submit` | 送出假日執行活動申請（draft → pending） |
-| PATCH | `/holiday-travel-requests/{id}/payment-date` | 更新撥款日期（財務體系部門：AC/FIN/Jabez HQ/CEO） |
+| PATCH | `/holiday-travel-requests/{id}/payment-date` | 更新撥款日期（財務體系部門：AC/FIN/Jabez HQ/CEO，舊單筆 endpoint）|
+| PATCH | `/holiday-travel-requests/{id}/installments` | 新分期撥款 endpoint（同 PaymentRequest 行為） |
 | GET | `/holiday-travel-requests/count-holidays?startDate=...&endDate=...` | 計算指定區間內的假日天數（用於計算假日津貼） |
 | GET/POST | `/overtime-requests` | 加班申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/overtime-requests/{id}` | 加班申請 CRUD |
@@ -124,7 +127,9 @@
 | GET/POST | `/advance-requests` | 預支申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/advance-requests/{id}` | 預支申請 CRUD |
 | PATCH | `/advance-requests/{id}/submit` | 送出預支申請（draft → pending） |
-| PATCH | `/advance-requests/{id}/payment-date` | 更新撥款日期（財務體系部門：AC/FIN/Jabez HQ/CEO） |
+| PATCH | `/advance-requests/{id}/payment-date` | 更新撥款日期（財務體系部門：AC/FIN/Jabez HQ/CEO，舊單筆 endpoint）|
+| PATCH | `/advance-requests/{id}/installments` | 新分期撥款 endpoint（同 PaymentRequest 行為） |
+| PATCH | `/travel-requests/{id}/installments` | 新分期撥款 endpoint（同 PaymentRequest 行為） |
 
 ## 預支沖銷申請
 
@@ -176,8 +181,12 @@
 | GET | `/admin/attendance-reminder-logs/stats` | 統計卡資料（今日推播數 / 失敗數 / 批次 tick 數 + 最近 7 天趨勢） |
 | GET | `/admin/attendance-reminder-logs/batches/{batchId}` | 同一批次（同一次 tick）所有紀錄，含 batchStart |
 | GET | `/admin/attendance-reminder-logs/{id}` | 單筆紀錄詳情 |
+| POST | `/admin/payment-reminder/run` | 手動觸發撥款日將屆提醒（除錯用，回傳 `batchId/upcomingItemCount/financeUserCount/successCount/skippedAlreadySent/failureCount`） |
+| GET | `/admin/payment-reminder-logs` | 撥款提醒推播紀錄列表（分頁 + 篩選：日期區間、結果、觸發來源、財務人員）|
 
-> 自動排程由 `AttendanceReminderFunction`（TimerTrigger，每分鐘）執行，不透過 HTTP 觸發；POST `run` 端點僅供本地/Production 驗證。
+> 自動排程：
+> - `AttendanceReminderFunction`（TimerTrigger）執行打卡提醒，cron 由 `AttendanceReminderCron` 控制
+> - `PaymentReminderFunction`（TimerTrigger）每日 09:00 (Taipei) 執行撥款日將屆提醒，cron 由 `PaymentReminderCron` 控制；提前天數由 `SystemSetting.PaymentReminderDaysBefore` 控制（預設 3 天）；推播給財務體系部門（AC/FIN/Jabez HQ/CEO）全員，沿用 `ApprovalEmailEnabled` + `ApprovalLineEnabled` 開關
 > 所有 GET 紀錄查詢端點透過 `AppRouter.IsSuperAdminRoute` 守門，僅 Superadmin 可見。
 
 ## 勞健保級距

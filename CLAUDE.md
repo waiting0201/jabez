@@ -203,7 +203,8 @@ Admin/src/app/
     │   ├── insurance-brackets/ # 勞健保級距維護
     │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出）
     │   ├── attendance-reminder-logs/ # 打卡提醒推播紀錄（僅 Superadmin）
-    │   └── settings/       # 系統設定
+    │   ├── payment-reminder-logs/ # 撥款提醒推播紀錄 + 手動觸發（僅 Superadmin）
+    │   └── settings/       # 系統設定（含 PaymentReminderDaysBefore 撥款提醒天數）
     └── error/
         └── pages/ (error-403, error-404, error-500)
 ```
@@ -250,7 +251,8 @@ export const environment = {
 Api/
 ├── Functions/
 │   ├── RouterFunction.cs              # HttpTrigger，catch-all route {*route}
-│   └── AttendanceReminderFunction.cs  # TimerTrigger：限定 7-9 / 16-18 Taipei 時段每分鐘檢查上下班前 2 分鐘，命中則 LINE 推播；cron 由 `AttendanceReminderCron` app setting 控制
+│   ├── AttendanceReminderFunction.cs  # TimerTrigger：限定 7-9 / 16-18 Taipei 時段每分鐘檢查上下班前 2 分鐘，命中則 LINE 推播；cron 由 `AttendanceReminderCron` app setting 控制
+│   └── PaymentReminderFunction.cs     # TimerTrigger：每日 09:00 Taipei 跑撥款日將屆提醒；cron 由 `PaymentReminderCron` 控制；提前天數讀 `SystemSetting.PaymentReminderDaysBefore`，推給財務體系部門全員
 ├── Routing/
 │   └── AppRouter.cs                   # C# 12 List Pattern 路由分派器
 ├── Handlers/                          # 23 個 Handler（業務邏輯）
@@ -279,6 +281,7 @@ Api/
 │   ├── LineHandler.cs                # LINE 帳號綁定/解綁 + 月度推播用量查詢（line-quota:read）
 │   ├── AttendanceReminderAdminHandler.cs # 打卡提醒手動觸發（Superadmin，除錯用）
 │   ├── AttendanceReminderLogHandler.cs   # 打卡提醒推播紀錄查詢（Superadmin）
+│   ├── PaymentReminderLogHandler.cs      # 撥款提醒推播紀錄查詢 + 手動觸發（Superadmin）
 │   ├── SettingsHandler.cs
 │   └── HealthHandler.cs
 ├── Middleware/
@@ -289,8 +292,8 @@ Api/
 │   ├── Configurations/                # EF Core 實體對應設定（31 個，新增 EmployeeProfile + 9 張子表 + 健保眷屬）
 │   └── Migrations/                    # EF Core Migration 檔案
 ├── Models/
-│   ├── Entities/                      # 32 個資料庫實體（新增 EmployeeProfile / EducationRecord / EmploymentHistoryRecord / FamilyMember / ProfessionalTraining / LanguageAbility / JobTransferRecord / RewardPunishmentRecord / SalaryAdjustmentRecord / HealthInsuranceDependent）
-│   └── Dtos/                          # 18 個 DTO 檔案（新增 EmployeeProfileDtos）
+│   ├── Entities/                      # 40 個資料庫實體（新增 EmployeeProfile / EducationRecord / EmploymentHistoryRecord / FamilyMember / ProfessionalTraining / LanguageAbility / JobTransferRecord / RewardPunishmentRecord / SalaryAdjustmentRecord / HealthInsuranceDependent / **4 個分期撥款表 PaymentRequestInstallment / AdvanceRequestInstallment / TravelRequestInstallment / TravelPaymentRequestInstallment** / **PaymentReminderLog**）
+│   └── Dtos/                          # 19 個 DTO 檔案（新增 EmployeeProfileDtos / **InstallmentDtos**）
 ├── Services/
 │   ├── IJwtService.cs
 │   ├── JwtService.cs                  # HS256 JWT 產生與驗證
@@ -303,6 +306,10 @@ Api/
 │   ├── LineFlexMessageBuilder.cs     # 6 種簽核通知 + 打卡提醒的 LINE Flex Message 模板
 │   ├── IAttendanceReminderService.cs # 打卡提醒服務介面
 │   ├── AttendanceReminderService.cs  # 打卡提醒協調：判斷時點、過濾對象、推播 LINE
+│   ├── IPaymentReminderService.cs    # 撥款提醒服務介面
+│   ├── PaymentReminderService.cs     # 撥款日將屆提醒：撈 4 種待撥 installments、過濾財務部、推 LINE+Email、寫 PaymentReminderLog（同日去重）
+│   ├── InstallmentValidator.cs       # 分期撥款共用驗證：序號連續 / SUM == 總額 / 已撥款列保護
+│   ├── InstallmentUpsertResult.cs    # UpsertInstallments 結果 record
 │   ├── IGcisService.cs               # 政府開放資料 GCIS 商工登記查詢介面
 │   ├── GcisService.cs                # GCIS Open Data REST API 包裝（以統編查公司名稱 / 地址 / 負責人）
 │   └── Dapper/                        # Dapper 讀取服務（含 EmployeeProfileReadService）
@@ -326,6 +333,8 @@ Api/
 │       ├── AttendanceReminderLogReadService.cs
 │       ├── InsuranceBracketReadService.cs
 │       ├── EmployeeProfileReadService.cs   # 一次 QueryMultiple 讀回 EmployeeProfile + 9 張子表
+│       ├── InstallmentReadService.cs       # 共用：依父表 ID 撈 4 種 installments + JOIN User SignatureUrl + 三態 status 計算
+│       ├── PaymentReminderReadService.cs   # UNION 4 種 installments，撈 PaidAt 為空且 ExpectedDate 在 N 天內的紀錄
 │       └── PayrollReadService.cs           # 月薪計算（含健保眷屬數 + 覆寫值 fallback）
 ├── Common/
 │   ├── ApiResponse.cs                 # 統一回應格式 ApiResponse<T>
@@ -549,3 +558,21 @@ hotfix/*      # 緊急修復
 
 > **後端**：[docs/backend-design.md](docs/backend-design.md)（§4 Handler / §5 DTO / §6 Dapper vs EF Core / §10 ApiResponse / §15 命名 / §17 Checklist / §18 一致性原則）
 > **前端**：[docs/frontend-design.md](docs/frontend-design.md)（§17 命名 / §19 Checklist）
+
+---
+
+## 技術負債（Tech Debt）TODO
+
+### 分期撥款兩階段策略 — Phase 2 DROP 父表欄位
+
+2026-05 上線「分期撥款」採**兩階段過渡策略**：
+
+- **Phase 1（已完成）**：4 個父表（PaymentRequest / AdvanceRequest / TravelRequest / TravelPaymentRequest）的 `EstimatedPaymentDate` / `PaidAt` / `PaidByUserId` 欄位**保留作為 cache**，Handler 在每次 upsert installments 時同步寫回；既有 SQL 查詢（如 list filter「已撥款 = PaidAt IS NOT NULL」）與 PDF 出納簽名章邏輯不必動。
+- **Phase 2（未來）**：當所有 list 查詢、簽名章、舊 endpoint 都改完，再做一次 migration 把 4 個父表的 3 個 cache 欄位整批 DROP，改完全依賴 `Installments` 集合判斷三態 status。
+
+執行 Phase 2 前的檢查清單：
+1. 確認所有舊 `PATCH /{type}-requests/{id}/payment-date` endpoint 已無 frontend 呼叫（grep 全 codebase）
+2. 確認 ReadService 的 list filter 已改為從 `XxxInstallments` 子查詢推算
+3. 確認 4 份 PDF service 的出納簽名章邏輯改為從 `installments[]` 取 last paid（目前是讀父表 cache）
+4. 寫新 migration `RemovePaymentDateCacheFromParents`：對 4 張父表 DROP EstimatedPaymentDate / PaidAt / PaidByUserId（含 FK 與 index）
+5. 同時更新 entity、EF Configuration、4 個 Handler 的同步寫回邏輯（整段刪除）

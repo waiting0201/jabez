@@ -36,13 +36,20 @@ public interface IApprovalNotificationService
     /// <summary>出差沖銷結案時，若沖銷累計超過出差金額，通知財務部需匯款差額。</summary>
     Task NotifyFinanceTravelRefundAsync(Models.Entities.TravelRequest travel, decimal refundAmount);
 
-    /// <summary>財務確認撥款（PaidAt 從 null → 有值）後，通知申請人款項已撥付。</summary>
+    /// <summary>
+    /// 財務確認撥款（PaidAt 從 null → 有值）後，通知申請人款項已撥付。
+    /// 分期撥款情境下，每筆 installment 各自呼叫一次，標題會附「第 N/M 期」。
+    /// </summary>
+    /// <param name="installmentNo">當為分期撥款的單筆通知時的期數（null = 單筆 / 整單通知）</param>
+    /// <param name="totalInstallments">總期數（與 installmentNo 配對使用）</param>
     Task NotifyApplicantPaidAsync(
         string   applicationType,
         int      applicationId,
         Guid     applicantId,
         decimal  amount,
-        DateTime paidAt);
+        DateTime paidAt,
+        int?     installmentNo      = null,
+        int?     totalInstallments  = null);
 
     /// <summary>財務確認退款（RefundedAt 從 null → 有值）後，通知申請人退款已匯款。</summary>
     Task NotifyApplicantRefundedAsync(
@@ -51,4 +58,12 @@ public interface IApprovalNotificationService
         Guid     applicantId,
         decimal  refundAmount,
         DateTime refundedAt);
+
+    /// <summary>
+    /// 撥款日將屆提醒 — 對單一財務人員推一則彙整通知（LINE + Email）。
+    /// 由 TimerTrigger 每日跑時呼叫。回傳 (emailSent, lineSent) 與失敗訊息（若有）。
+    /// </summary>
+    Task<(bool EmailSent, bool LineSent, string? ErrorMessage)> NotifyFinanceUpcomingPaymentsAsync(
+        Guid financeUserId,
+        IReadOnlyList<(string AppType, string AppLabel, int ApplicationId, string Applicant, DateTime ExpectedDate, decimal Amount)> items);
 }

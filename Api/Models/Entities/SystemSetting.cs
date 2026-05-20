@@ -30,4 +30,8 @@ public class SystemSetting
     public bool   ApprovalEmailEnabled     { get; set; } = true;
     /// <summary>是否推播簽核流程相關 LINE 訊息（範圍同 Email）。</summary>
     public bool   ApprovalLineEnabled      { get; set; } = true;
+
+    // ── 撥款提醒設定（TimerTrigger 用）──────────────────────
+    /// <summary>預計撥款日提前提醒天數（預設 3 天；範圍 0 = 當日, 1-30）。</summary>
+    public int    PaymentReminderDaysBefore { get; set; } = 3;
 }
