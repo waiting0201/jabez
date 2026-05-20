@@ -15,8 +15,7 @@ export interface ProjectWaterLevelRow {
   departmentName: string;
   contractAmount: number | null;
   businessAmount: number | null;
-  paymentAmount: number;
-  paidAmount: number;
+  disbursedAmount: number;
   percentage: number | null;
   totalPercentage: number | null;
 }
@@ -64,8 +63,7 @@ export class ProjectWaterLevel implements OnInit {
             departmentName: r.departmentName ?? '—',
             contractAmount: r.contractAmount,
             businessAmount: r.businessAmount,
-            paymentAmount: r.paymentAmount ?? 0,
-            paidAmount: r.paidAmount ?? 0,
+            disbursedAmount: r.disbursedAmount ?? 0,
             percentage: r.percentage,
             totalPercentage: r.totalPercentage,
           }))
