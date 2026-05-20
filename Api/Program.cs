@@ -124,6 +124,7 @@ var host = new HostBuilder()
         services.AddScoped<IInstallmentReadService, InstallmentReadService>();
         services.AddScoped<IPaymentReminderReadService, PaymentReminderReadService>();
         services.AddScoped<IPaymentReminderService, PaymentReminderService>();
+        services.AddScoped<INotificationReadService, NotificationReadService>();
 
         // ── Handlers（Scoped，依賴 DbContext）────────────────────────────
         services.AddScoped<AuthHandler>();
@@ -160,6 +161,7 @@ var host = new HostBuilder()
         services.AddScoped<AttendanceReminderLogHandler>();
         services.AddScoped<PaymentReminderLogHandler>();
         services.AddScoped<EmployeeProfileHandler>();
+        services.AddScoped<NotificationHandler>();
 
         // ── Router（Scoped）──────────────────────────────────────────────
         services.AddScoped<AppRouter>();

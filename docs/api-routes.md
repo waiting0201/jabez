@@ -203,6 +203,12 @@
 |--------|------|------|
 | GET | `/payroll?year=YYYY&month=MM` | 月薪計算（動態計算，不存 DB） |
 
+## 當前使用者聚合資訊（Me）
+
+| Method | Path | 說明 |
+|--------|------|------|
+| GET | `/me/notification-counts` | 鈴噹通知件數聚合：回 `{approvals, myRequests}`，兩段皆為 9 種申請類型 → 件數的 dictionary。`approvals` 走 reviewer 過濾，`myRequests` 統計當前使用者送出且狀態為 `pending` / `returned` 的件數。登入即可呼叫 |
+
 ## LINE 綁定 / 推播用量
 
 | Method | Path | 說明 |

@@ -48,7 +48,8 @@ public sealed class AppRouter(
     AttendanceReminderAdminHandler  attendanceReminderAdmin,
     AttendanceReminderLogHandler    attendanceReminderLogs,
     PaymentReminderLogHandler       paymentReminderLogs,
-    EmployeeProfileHandler          employeeProfile)
+    EmployeeProfileHandler          employeeProfile,
+    NotificationHandler             notifications)
 {
     public async Task<IActionResult> RouteAsync(HttpRequest req, string route)
     {
@@ -354,6 +355,9 @@ public sealed class AppRouter(
             // ── 撥款提醒：Superadmin 手動觸發 + log 查詢 ─────────────────────────
             ("POST",   ["admin", "payment-reminder", "run"])                     => await paymentReminderLogs.ManualRunAsync(req),
             ("GET",    ["admin", "payment-reminder-logs"])                       => await paymentReminderLogs.GetPagedAsync(req),
+
+            // ── Me（當前使用者聚合資訊）────────────────────────────────────
+            ("GET",    ["me", "notification-counts"]) => await notifications.GetMyCountsAsync(req),
 
             // ── LINE 綁定 ─────────────────────────────────────────────────────
             ("GET",    ["line", "bind-url"])         => await line.GetBindUrlAsync(req),
