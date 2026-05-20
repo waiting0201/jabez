@@ -25,12 +25,12 @@
 | `EscalationOverride` | 升級審核指派（記錄被指派的升級/代理審核者，審核完成後清除） |
 | `Project` | 專案主檔（含 **DepartmentId 必填**、ContractAmount 契約金額、BusinessAmount 業務執行金額、RemainingAmount 剩餘金額（系統導入時剩餘預算，選填）；實收金額為衍生值，由 `SUM(ProjectPaymentSchedules.DepositAmount)` 即時計算） |
 | `ProjectPaymentSchedule` | 專案請款期別明細（一期一筆：請款/發票/入帳日期與金額、扣款備註；扣款金額 = 發票 − 入帳，前端計算不存 DB） |
-| `PaymentRequest` | 請款申請（含 `VendorId` nullable FK：當 Type=`vendor` 時必填且必須是 IsActive=true 的廠商；其他類型強制為 null） |
+| `PaymentRequest` | 請款申請（含 `RequestNo` 單號 `PR-yyyyMMdd-NNN` unique index、`VendorId` nullable FK：當 Type=`vendor` 時必填且必須是 IsActive=true 的廠商；其他類型強制為 null） |
 | `InvoiceItem` | 請款明細（發票項目） |
 | `LeaveRequest` | 請假申請（含 BereavementRelationship 喪假親屬關係） |
-| `TravelRequest` | 出差預支申請（含 IsHolidayTravel、IsClosed 結案、GrandTotal 明細合計；事後走沖銷流程）。當 `IsHolidayTravel=true`（假日執行活動）時不含 Items 與發票明細，僅記錄活動地點/期間/參與人員 |
+| `TravelRequest` | 出差預支申請（含 `RequestNo` 單號 unique index：`IsHolidayTravel=false` → `TR-yyyyMMdd-NNN`、`IsHolidayTravel=true` → `HTR-yyyyMMdd-NNN`，per-prefix-per-day 序號池；含 IsHolidayTravel、IsClosed 結案、GrandTotal 明細合計；事後走沖銷流程）。當 `IsHolidayTravel=true`（假日執行活動）時不含 Items 與發票明細，僅記錄活動地點/期間/參與人員 |
 | `TravelRequestItem` | 出差預支明細（交通費、住宿費、餐費、雜支）；假日執行活動不使用 |
-| `TravelPaymentRequest` | 出差請款申請（員工代墊後直接請款，無沖銷流程；含 EstimatedPaymentDate/PaidAt 撥款欄位） |
+| `TravelPaymentRequest` | 出差請款申請（含 `RequestNo` 單號 `TPR-yyyyMMdd-NNN` unique index；員工代墊後直接請款，無沖銷流程；含 EstimatedPaymentDate/PaidAt 撥款欄位） |
 | `TravelPaymentRequestItem` | 出差請款明細（交通費、住宿費、餐費、雜支，含發票號碼、發票日期、發票檔案上傳；上傳走 multipart + Azure Blob `invoices` container，前端支援拖放、OCR 自動辨識、HEIC/PDF） |
 | `OvertimeRequest` | 加班申請（走簽核流程） |
 | `AdvanceRequest` | 預支申請 |

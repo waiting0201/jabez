@@ -10,6 +10,13 @@ public class TravelPaymentRequestConfiguration : IEntityTypeConfiguration<Travel
     {
         builder.HasKey(t => t.Id);
 
+        builder.Property(t => t.RequestNo)
+               .IsRequired()
+               .HasMaxLength(50);
+
+        builder.HasIndex(t => t.RequestNo)
+               .IsUnique();
+
         builder.Property(t => t.Destination)
                .IsRequired()
                .HasMaxLength(200);

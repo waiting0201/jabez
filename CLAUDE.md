@@ -267,12 +267,12 @@ Api/
 │   ├── ApprovalHandler.cs             # ApprovalItem + Steps CRUD
 │   ├── ApprovalTaskHandler.cs         # 待審核任務查詢與審核動作
 │   ├── ProjectHandler.cs
-│   ├── PaymentRequestHandler.cs
+│   ├── PaymentRequestHandler.cs       # 請款申請 CRUD（單號 PR-yyyyMMdd-NNN）
 │   ├── LeaveRequestHandler.cs
-│   ├── TravelRequestHandler.cs        # 出差預支申請 CRUD（預支後沖銷）
-│   ├── TravelPaymentRequestHandler.cs # 出差請款申請 CRUD（小額代墊直接請款）
+│   ├── TravelRequestHandler.cs        # 出差預支申請 CRUD（單號 TR-yyyyMMdd-NNN；假日執行活動為 HTR-yyyyMMdd-NNN；預支後沖銷）
+│   ├── TravelPaymentRequestHandler.cs # 出差請款申請 CRUD（單號 TPR-yyyyMMdd-NNN；小額代墊直接請款）
 │   ├── OvertimeRequestHandler.cs      # 加班申請 CRUD
-│   ├── AdvanceRequestHandler.cs       # 預支申請 CRUD
+│   ├── AdvanceRequestHandler.cs       # 預支申請 CRUD（單號 ADV-yyyyMMdd-NNN）
 │   ├── WriteOffRequestHandler.cs      # 預支沖銷申請 CRUD（獨立簽核流程）
 │   ├── TravelWriteOffRequestHandler.cs # 出差預支沖銷申請 CRUD（獨立簽核流程）
 │   ├── AttendanceHandler.cs           # 打卡（上班/下班/加班開始/加班結束）

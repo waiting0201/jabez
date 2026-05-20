@@ -37,6 +37,7 @@ public sealed record ParticipantDto(Guid UserId, string UserName, int SortOrder)
 
 public sealed record TravelRequestDto(
     int       Id,
+    string    RequestNo,
     string    EmployeeName,
     string    Destination,
     DateTime  StartDate,

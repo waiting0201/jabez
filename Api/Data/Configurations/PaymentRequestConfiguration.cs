@@ -10,6 +10,13 @@ public class PaymentRequestConfiguration : IEntityTypeConfiguration<PaymentReque
     {
         builder.HasKey(pr => pr.Id);
 
+        builder.Property(pr => pr.RequestNo)
+               .IsRequired()
+               .HasMaxLength(50);
+
+        builder.HasIndex(pr => pr.RequestNo)
+               .IsUnique();
+
         builder.Property(pr => pr.Type)
                .IsRequired()
                .HasMaxLength(20);

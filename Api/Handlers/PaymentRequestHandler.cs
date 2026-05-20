@@ -121,6 +121,21 @@ public sealed class PaymentRequestHandler(
         if (invoices is null || invoices.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one invoice is required."));
 
+        // 產生請款單號：PR-yyyyMMdd-NNN（唯一索引保護並發）
+        var today = Clock.Now;
+        var prefix = $"PR-{today:yyyyMMdd}-";
+        var maxNo = await db.PaymentRequests
+            .Where(p => p.RequestNo.StartsWith(prefix))
+            .MaxAsync(p => (string?)p.RequestNo);
+        int seq = 1;
+        if (maxNo is not null)
+        {
+            var seqStr = maxNo[prefix.Length..];
+            if (int.TryParse(seqStr, out var parsed))
+                seq = parsed + 1;
+        }
+        var requestNo = $"{prefix}{seq:D3}";
+
         // 批次內重複檢查
         var duplicatesInBatch = invoices
             .GroupBy(i => i.InvoiceNo)
@@ -176,6 +191,7 @@ public sealed class PaymentRequestHandler(
 
         var pr = new PaymentRequest
         {
+            RequestNo     = requestNo,
             Type          = type,
             ProjectId     = projectId,
             VendorId      = vendorId,
@@ -183,7 +199,7 @@ public sealed class PaymentRequestHandler(
             SubmittedById = submittedById,   // 強制使用 JWT 身分
             TotalAmount   = invoices.Sum(i => i.Amount),
             ApprovalStatus = "draft",
-            CreatedAt     = Clock.Now,
+            CreatedAt     = today,
         };
         pr.InvoiceItems = invoiceItems;
 

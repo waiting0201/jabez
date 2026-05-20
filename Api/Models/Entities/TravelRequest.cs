@@ -3,6 +3,7 @@ namespace Jabez.Api.Models.Entities;
 public class TravelRequest
 {
     public int      Id              { get; set; }
+    public string   RequestNo       { get; set; } = string.Empty; // TR-yyyyMMdd-NNN（IsHolidayTravel=true 時為 HTR-yyyyMMdd-NNN）
     public Guid?    EmployeeId      { get; set; }
     public int?     ApprovalItemId  { get; set; }
     public string   Destination     { get; set; } = string.Empty;

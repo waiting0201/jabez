@@ -118,6 +118,21 @@ public sealed class TravelPaymentRequestHandler(
         if (itemRequests is null || itemRequests.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
 
+        // 產生出差請款單號：TPR-yyyyMMdd-NNN（唯一索引保護並發）
+        var today = Clock.Now;
+        var prefix = $"TPR-{today:yyyyMMdd}-";
+        var maxNo = await db.TravelPaymentRequests
+            .Where(t => t.RequestNo.StartsWith(prefix))
+            .MaxAsync(t => (string?)t.RequestNo);
+        int seq = 1;
+        if (maxNo is not null)
+        {
+            var seqStr = maxNo[prefix.Length..];
+            if (int.TryParse(seqStr, out var parsed))
+                seq = parsed + 1;
+        }
+        var requestNo = $"{prefix}{seq:D3}";
+
         // 指定審核者
         DesignatedReviewerRequest[]? designatedReviewers = null;
         var drJson = form["designatedReviewers"].ToString();
@@ -168,6 +183,7 @@ public sealed class TravelPaymentRequestHandler(
 
         var request = new TravelPaymentRequest
         {
+            RequestNo       = requestNo,
             EmployeeId      = employeeId,
             ApprovalItemId  = approvalItemId,
             Destination     = destination,
@@ -177,7 +193,7 @@ public sealed class TravelPaymentRequestHandler(
             Purpose         = purpose,
             ProjectId       = projectId,
             ApprovalStatus  = "draft",
-            CreatedAt       = Clock.Now,
+            CreatedAt       = today,
             Items           = entityItems,
         };
         db.TravelPaymentRequests.Add(request);

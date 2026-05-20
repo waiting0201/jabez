@@ -2,6 +2,22 @@
 
 系統共有 **9 種申請表**，依用途分為三類。每種申請表都走簽核流程（詳見 [approval-flow.md](approval-flow.md)）。
 
+## 單號（RequestNo）對照
+
+6 種金錢相關申請表均有單號，格式 `{PREFIX}-yyyyMMdd-NNN`（per-prefix-per-day 序號池，於 Handler `CreateAsync` 產生，由 unique index 保護並發）：
+
+| 申請表 | 前綴 | 範例 |
+|--------|------|------|
+| 請款申請 PaymentRequest | `PR-` | `PR-20260520-001` |
+| 預支申請 AdvanceRequest | `ADV-` | `ADV-20260520-001` |
+| 出差請款申請 TravelPaymentRequest | `TPR-` | `TPR-20260520-001` |
+| 出差預支申請 TravelRequest（`IsHolidayTravel=false`） | `TR-` | `TR-20260520-001` |
+| 假日執行活動申請 TravelRequest（`IsHolidayTravel=true`） | `HTR-` | `HTR-20260520-001` |
+| 預支沖銷申請 WriteOffRecord | `WO-` | `WO-20260520-001` |
+| 出差預支沖銷申請 TravelWriteOffRecord | `TWO-` | `TWO-20260520-001` |
+
+> 請假 / 加班無單號（僅以 GUID Id 識別）。
+
 ## 一般申請表（5 種）
 
 | # | 申請表 | 前端路徑 | API Prefix / RequestType | 自審分組 | 流程特性 |
