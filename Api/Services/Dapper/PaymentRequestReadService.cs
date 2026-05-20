@@ -329,24 +329,33 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         }
 
         // ── 撥款/退款狀態篩選（僅在已核准頁籤且有 paymentStatus 時生效）───
-        // 改從子表 installments 推算（Phase 2 已移除父表 cache）：
-        //   paid       = 已全數撥款（有 installments 且所有 PaidAt 都非 null）
-        //   unpaid/其他 = 尚未全撥（無 installments 或仍有 PaidAt 為空）
+        // 改從子表 installments 推算（Phase 2 已移除父表 cache），對應三態：
+        //   paid    = 已全數撥款（有 installments 且所有 PaidAt 都非 null）
+        //   partial = 部分撥款（至少一期 PaidAt 非 null，且至少一期 PaidAt 為 null）
+        //   unpaid  = 尚未開始撥款（無 installments，或所有 PaidAt 都為 null）
         bool hasPaymentFilter = !string.IsNullOrEmpty(paymentStatus) && !filterId.HasValue;
         string PaymentStatusClause(string parentAlias, string installmentTable, string fkCol)
         {
             if (!hasPaymentFilter) return "";
-            return paymentStatus == "paid"
-                ? $" AND EXISTS (SELECT 1 FROM {installmentTable} ix WHERE ix.{fkCol} = {parentAlias}.Id)" +
-                  $" AND NOT EXISTS (SELECT 1 FROM {installmentTable} ix WHERE ix.{fkCol} = {parentAlias}.Id AND ix.PaidAt IS NULL)"
-                : $" AND (NOT EXISTS (SELECT 1 FROM {installmentTable} ix WHERE ix.{fkCol} = {parentAlias}.Id)" +
-                  $"      OR EXISTS (SELECT 1 FROM {installmentTable} ix WHERE ix.{fkCol} = {parentAlias}.Id AND ix.PaidAt IS NULL))";
+            return paymentStatus switch
+            {
+                "paid"    => $" AND EXISTS (SELECT 1 FROM {installmentTable} ix WHERE ix.{fkCol} = {parentAlias}.Id)" +
+                             $" AND NOT EXISTS (SELECT 1 FROM {installmentTable} ix WHERE ix.{fkCol} = {parentAlias}.Id AND ix.PaidAt IS NULL)",
+                "partial" => $" AND EXISTS (SELECT 1 FROM {installmentTable} ix WHERE ix.{fkCol} = {parentAlias}.Id AND ix.PaidAt IS NOT NULL)" +
+                             $" AND EXISTS (SELECT 1 FROM {installmentTable} ix WHERE ix.{fkCol} = {parentAlias}.Id AND ix.PaidAt IS NULL)",
+                _         => $" AND (NOT EXISTS (SELECT 1 FROM {installmentTable} ix WHERE ix.{fkCol} = {parentAlias}.Id)" +
+                             $"      OR NOT EXISTS (SELECT 1 FROM {installmentTable} ix WHERE ix.{fkCol} = {parentAlias}.Id AND ix.PaidAt IS NOT NULL))",
+            };
         }
 
-        /// <summary>退款狀態篩選（沖銷類用）：仍以父表 RefundedAt 欄位判斷，未拆分到 installments</summary>
+        /// <summary>
+        /// 退款狀態篩選（沖銷類用）：仍以父表 RefundedAt 欄位判斷兩態。
+        /// 沖銷類沒有分期，遇 paymentStatus=partial 時整批 short-circuit（不顯示任何沖銷案件）。
+        /// </summary>
         string RefundStatusClause(string refundedAtColumn)
         {
             if (!hasPaymentFilter) return "";
+            if (paymentStatus == "partial") return " AND 1=0";
             return paymentStatus == "paid"
                 ? $" AND {refundedAtColumn} IS NOT NULL"
                 : $" AND {refundedAtColumn} IS NULL";

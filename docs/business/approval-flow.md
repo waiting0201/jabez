@@ -48,7 +48,12 @@ draft → pending → approved / returned / rejected
   - `Unpaid`：installments 為空或所有 PaidAt 為 null
   - `PartiallyPaid`：部分 PaidAt 有值
   - `FullyPaid`：所有 PaidAt 都有值
-- **List filter「已撥款 / 未撥款」**：[PaymentRequestReadService](../../Api/Services/Dapper/PaymentRequestReadService.cs) 的 `PaymentStatusClause` 用 `EXISTS / NOT EXISTS` 子查詢 `XxxInstallments`
+- **List filter 三態**：[PaymentRequestReadService](../../Api/Services/Dapper/PaymentRequestReadService.cs) 的 `PaymentStatusClause` 用 `EXISTS / NOT EXISTS` 子查詢 `XxxInstallments` 對應三態：
+  - `paid` = 有 installments 且所有 PaidAt 非 null（FullyPaid）
+  - `partial` = 至少一期 PaidAt 非 null 且至少一期 PaidAt 為 null（PartiallyPaid）
+  - `unpaid` = 無 installments 或所有 PaidAt 為 null（Unpaid）
+  - 簽核作業 → 已核准 Tab 的篩選按鈕對應：`全部` / `尚未撥款` (`unpaid`) / `部分撥款` (`partial`) / `全部撥款` (`paid`)
+  - 沖銷類（write_off / travel_write_off）退款仍以父表 `RefundedAt` 兩態判斷；遇 `paymentStatus=partial` 時整批 `1=0` 短路（沖銷無分期概念）
 - **PDF 出納簽名章**：取 `installments[]` 中最後一期已撥款者的 `PaidBySignatureUrl` + `PaidAt`
 
 ### 撥款明細編輯 UI 限制（[approval-task-review](../../Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/)）
