@@ -43,6 +43,7 @@ export const ITEM_CATEGORIES = ['交通費', '住宿費', '餐費', '人事費',
 
 export interface TravelRequest {
   id: number;
+  requestNo: string;
   employeeId?: string;
   approvalItemId?: number;
   destination: string;

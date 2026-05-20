@@ -4574,7 +4574,7 @@ var menuItems = [
   },
   {
     icon: "/assets/icons/sprite.svg#credit-card",
-    label: "\u8ACB\u6B3E\u7D71\u8A08",
+    label: "\u6B3E\u9805\u7D71\u8A08",
     url: "/admin/reports/payment",
     requiredPermission: "reports-payment:read"
   },
@@ -5886,7 +5886,7 @@ var routes = [
       },
       {
         path: "admin",
-        loadChildren: () => import("./chunk-HNF4VY3E.js").then((m) => m.ADMIN_ROUTES)
+        loadChildren: () => import("./chunk-WTXAQSS3.js").then((m) => m.ADMIN_ROUTES)
       },
       {
         path: "account/change-password",

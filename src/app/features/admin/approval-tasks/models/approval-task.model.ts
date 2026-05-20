@@ -91,6 +91,7 @@ export interface ApprovalFlow {
 
 export interface PaymentTaskDetail {
   paymentRequestId: number;
+  requestNo: string;
   paymentType: PaymentType;
   projectCode: string;
   projectName?: string;
@@ -147,6 +148,7 @@ export interface HolidayAllowance {
 
 export interface TravelTaskDetail {
   travelRequestId: number;
+  requestNo: string;
   destination: string;
   startDate: Date;
   endDate: Date;
@@ -304,6 +306,7 @@ export interface TravelWriteOffTaskDetail {
 
 export interface TravelPaymentTaskDetail {
   travelPaymentRequestId: number;
+  requestNo: string;
   destination: string;
   startDate: Date;
   endDate: Date;

@@ -1,13 +1,13 @@
 import {
   TravelPaymentPdfService
-} from "./chunk-2JQHRQAB.js";
+} from "./chunk-LEIMTTZ3.js";
 import {
   FilePreviewModal
 } from "./chunk-GWKNDEFV.js";
 import "./chunk-II2TI2JG.js";
 import {
   InstallmentsTable
-} from "./chunk-QRTEGJBM.js";
+} from "./chunk-TGFKCEH2.js";
 import {
   ApprovalTimeline
 } from "./chunk-B4OWGIJG.js";
@@ -17,11 +17,11 @@ import {
 import {
   APPROVAL_STATUS_CLASSES,
   APPROVAL_STATUS_LABELS
-} from "./chunk-LBNMAGIZ.js";
+} from "./chunk-7EWNPPQY.js";
 import {
   TravelPaymentRequestService
 } from "./chunk-JB2CXS62.js";
-import "./chunk-KP52QFLC.js";
+import "./chunk-PU6FMTIB.js";
 import {
   ActivatedRoute,
   Router,
@@ -62,7 +62,6 @@ import {
   ɵɵrestoreView,
   ɵɵtext,
   ɵɵtextInterpolate,
-  ɵɵtextInterpolate1,
   ɵɵtextInterpolate2
 } from "./chunk-IFQ7CN6S.js";
 import "./chunk-KWSTWQNB.js";
@@ -70,29 +69,29 @@ import "./chunk-KWSTWQNB.js";
 // src/app/features/admin/travel-payment-requests/pages/travel-payment-detail/travel-payment-detail.ts
 var _c0 = (a0) => ["/admin/travel-payment-requests", a0, "edit"];
 var _forTrack0 = ($index, $item) => $item.id;
-function TravelPaymentDetail_Conditional_1_Conditional_10_Conditional_1_Template(rf, ctx) {
+function TravelPaymentDetail_Conditional_1_Conditional_12_Conditional_1_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "span", 34);
+    \u0275\u0275element(0, "span", 35);
   }
 }
-function TravelPaymentDetail_Conditional_1_Conditional_10_Conditional_2_Template(rf, ctx) {
+function TravelPaymentDetail_Conditional_1_Conditional_12_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(0, "svg", 13);
-    \u0275\u0275element(1, "use", 35);
+    \u0275\u0275elementStart(0, "svg", 14);
+    \u0275\u0275element(1, "use", 36);
     \u0275\u0275elementEnd();
   }
 }
-function TravelPaymentDetail_Conditional_1_Conditional_10_Template(rf, ctx) {
+function TravelPaymentDetail_Conditional_1_Conditional_12_Template(rf, ctx) {
   if (rf & 1) {
     const _r1 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 33);
-    \u0275\u0275listener("click", function TravelPaymentDetail_Conditional_1_Conditional_10_Template_button_click_0_listener() {
+    \u0275\u0275elementStart(0, "button", 34);
+    \u0275\u0275listener("click", function TravelPaymentDetail_Conditional_1_Conditional_12_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r1);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.printRequest());
     });
-    \u0275\u0275conditionalCreate(1, TravelPaymentDetail_Conditional_1_Conditional_10_Conditional_1_Template, 1, 0, "span", 34)(2, TravelPaymentDetail_Conditional_1_Conditional_10_Conditional_2_Template, 2, 0, ":svg:svg", 13);
+    \u0275\u0275conditionalCreate(1, TravelPaymentDetail_Conditional_1_Conditional_12_Conditional_1_Template, 1, 0, "span", 35)(2, TravelPaymentDetail_Conditional_1_Conditional_12_Conditional_2_Template, 2, 0, ":svg:svg", 14);
     \u0275\u0275text(3, " \u5217\u5370 PDF ");
     \u0275\u0275elementEnd();
   }
@@ -103,12 +102,12 @@ function TravelPaymentDetail_Conditional_1_Conditional_10_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r1.pdfLoading() ? 1 : 2);
   }
 }
-function TravelPaymentDetail_Conditional_1_Conditional_11_Template(rf, ctx) {
+function TravelPaymentDetail_Conditional_1_Conditional_13_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "a", 11);
+    \u0275\u0275elementStart(0, "a", 12);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 13);
-    \u0275\u0275element(2, "use", 36);
+    \u0275\u0275elementStart(1, "svg", 14);
+    \u0275\u0275element(2, "use", 37);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3, " \u7DE8\u8F2F ");
     \u0275\u0275elementEnd();
@@ -118,42 +117,42 @@ function TravelPaymentDetail_Conditional_1_Conditional_11_Template(rf, ctx) {
     \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(1, _c0, r_r3.id));
   }
 }
-function TravelPaymentDetail_Conditional_1_Conditional_12_Conditional_5_Template(rf, ctx) {
+function TravelPaymentDetail_Conditional_1_Conditional_14_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "span", 34);
+    \u0275\u0275element(0, "span", 35);
   }
 }
-function TravelPaymentDetail_Conditional_1_Conditional_12_Conditional_6_Template(rf, ctx) {
+function TravelPaymentDetail_Conditional_1_Conditional_14_Conditional_6_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(0, "svg", 13);
-    \u0275\u0275element(1, "use", 40);
+    \u0275\u0275elementStart(0, "svg", 14);
+    \u0275\u0275element(1, "use", 41);
     \u0275\u0275elementEnd();
   }
 }
-function TravelPaymentDetail_Conditional_1_Conditional_12_Template(rf, ctx) {
+function TravelPaymentDetail_Conditional_1_Conditional_14_Template(rf, ctx) {
   if (rf & 1) {
     const _r4 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 37);
-    \u0275\u0275listener("click", function TravelPaymentDetail_Conditional_1_Conditional_12_Template_button_click_0_listener() {
+    \u0275\u0275elementStart(0, "button", 38);
+    \u0275\u0275listener("click", function TravelPaymentDetail_Conditional_1_Conditional_14_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r4);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.submitRequest());
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 13);
-    \u0275\u0275element(2, "use", 38);
+    \u0275\u0275elementStart(1, "svg", 14);
+    \u0275\u0275element(2, "use", 39);
     \u0275\u0275elementEnd();
     \u0275\u0275text(3, " \u9001\u51FA\u7533\u8ACB ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(4, "button", 39);
-    \u0275\u0275listener("click", function TravelPaymentDetail_Conditional_1_Conditional_12_Template_button_click_4_listener() {
+    \u0275\u0275elementStart(4, "button", 40);
+    \u0275\u0275listener("click", function TravelPaymentDetail_Conditional_1_Conditional_14_Template_button_click_4_listener() {
       \u0275\u0275restoreView(_r4);
       const ctx_r1 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r1.deleteRequest());
     });
-    \u0275\u0275conditionalCreate(5, TravelPaymentDetail_Conditional_1_Conditional_12_Conditional_5_Template, 1, 0, "span", 34)(6, TravelPaymentDetail_Conditional_1_Conditional_12_Conditional_6_Template, 2, 0, ":svg:svg", 13);
+    \u0275\u0275conditionalCreate(5, TravelPaymentDetail_Conditional_1_Conditional_14_Conditional_5_Template, 1, 0, "span", 35)(6, TravelPaymentDetail_Conditional_1_Conditional_14_Conditional_6_Template, 2, 0, ":svg:svg", 14);
     \u0275\u0275text(7, " \u522A\u9664 ");
     \u0275\u0275elementEnd();
   }
@@ -165,12 +164,12 @@ function TravelPaymentDetail_Conditional_1_Conditional_12_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r1.deleting() ? 5 : 6);
   }
 }
-function TravelPaymentDetail_Conditional_1_Conditional_55_Template(rf, ctx) {
+function TravelPaymentDetail_Conditional_1_Conditional_57_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 26)(1, "div", 24);
+    \u0275\u0275elementStart(0, "div", 27)(1, "div", 25);
     \u0275\u0275text(2, "\u95DC\u806F\u5C08\u6848");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div", 41);
+    \u0275\u0275elementStart(3, "div", 42);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd()();
   }
@@ -180,19 +179,19 @@ function TravelPaymentDetail_Conditional_1_Conditional_55_Template(rf, ctx) {
     \u0275\u0275textInterpolate2("", r_r3.projectCode, "", r_r3.projectName ? " - " + r_r3.projectName : "");
   }
 }
-function TravelPaymentDetail_Conditional_1_Conditional_68_For_31_Conditional_2_Template(rf, ctx) {
+function TravelPaymentDetail_Conditional_1_Conditional_70_For_31_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
     const _r5 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 58);
-    \u0275\u0275listener("click", function TravelPaymentDetail_Conditional_1_Conditional_68_For_31_Conditional_2_Template_button_click_0_listener() {
+    \u0275\u0275elementStart(0, "button", 59);
+    \u0275\u0275listener("click", function TravelPaymentDetail_Conditional_1_Conditional_70_For_31_Conditional_2_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r5);
       const item_r6 = \u0275\u0275nextContext().$implicit;
       const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.openPreview(item_r6.fileName || "\u767C\u7968", item_r6.fileUrl));
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 13);
-    \u0275\u0275element(2, "use", 59);
+    \u0275\u0275elementStart(1, "svg", 14);
+    \u0275\u0275element(2, "use", 60);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -200,38 +199,38 @@ function TravelPaymentDetail_Conditional_1_Conditional_68_For_31_Conditional_2_T
     \u0275\u0275property("title", \u0275\u0275interpolate(item_r6.fileName));
   }
 }
-function TravelPaymentDetail_Conditional_1_Conditional_68_For_31_Template(rf, ctx) {
+function TravelPaymentDetail_Conditional_1_Conditional_70_For_31_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 51);
-    \u0275\u0275conditionalCreate(2, TravelPaymentDetail_Conditional_1_Conditional_68_For_31_Conditional_2_Template, 3, 2, "button", 52);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 52);
+    \u0275\u0275conditionalCreate(2, TravelPaymentDetail_Conditional_1_Conditional_70_For_31_Conditional_2_Template, 3, 2, "button", 53);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td", 53);
+    \u0275\u0275elementStart(3, "td", 54);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "td", 53);
+    \u0275\u0275elementStart(5, "td", 54);
     \u0275\u0275text(6);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "td", 53);
+    \u0275\u0275elementStart(7, "td", 54);
     \u0275\u0275text(8);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "td", 54);
+    \u0275\u0275elementStart(9, "td", 55);
     \u0275\u0275text(10);
     \u0275\u0275pipe(11, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(12, "td", 53);
+    \u0275\u0275elementStart(12, "td", 54);
     \u0275\u0275text(13);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(14, "td", 55);
+    \u0275\u0275elementStart(14, "td", 56);
     \u0275\u0275text(15);
     \u0275\u0275pipe(16, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(17, "td", 56);
+    \u0275\u0275elementStart(17, "td", 57);
     \u0275\u0275text(18);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(19, "td", 57);
+    \u0275\u0275elementStart(19, "td", 58);
     \u0275\u0275text(20);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(21, "td", 53);
+    \u0275\u0275elementStart(21, "td", 54);
     \u0275\u0275text(22);
     \u0275\u0275pipe(23, "date");
     \u0275\u0275elementEnd()();
@@ -260,18 +259,18 @@ function TravelPaymentDetail_Conditional_1_Conditional_68_For_31_Template(rf, ct
     \u0275\u0275textInterpolate(item_r6.invoiceDate ? \u0275\u0275pipeBind2(23, 16, item_r6.invoiceDate, "yyyy-MM-dd") : "\u2014");
   }
 }
-function TravelPaymentDetail_Conditional_1_Conditional_68_Template(rf, ctx) {
+function TravelPaymentDetail_Conditional_1_Conditional_70_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 17)(1, "div", 18);
+    \u0275\u0275elementStart(0, "div", 18)(1, "div", 19);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(2, "svg", 19);
-    \u0275\u0275element(3, "use", 14);
+    \u0275\u0275elementStart(2, "svg", 20);
+    \u0275\u0275element(3, "use", 15);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u8CBB\u7528\u660E\u7D30 ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "div", 42)(6, "div", 43)(7, "table", 44)(8, "thead", 45)(9, "tr");
-    \u0275\u0275element(10, "th", 46);
+    \u0275\u0275elementStart(5, "div", 43)(6, "div", 44)(7, "table", 45)(8, "thead", 46)(9, "tr");
+    \u0275\u0275element(10, "th", 47);
     \u0275\u0275elementStart(11, "th");
     \u0275\u0275text(12, "\u5206\u985E");
     \u0275\u0275elementEnd();
@@ -281,13 +280,13 @@ function TravelPaymentDetail_Conditional_1_Conditional_68_Template(rf, ctx) {
     \u0275\u0275elementStart(15, "th");
     \u0275\u0275text(16, "\u9805\u76EE\u8AAA\u660E");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(17, "th", 47);
+    \u0275\u0275elementStart(17, "th", 48);
     \u0275\u0275text(18, "\u55AE\u50F9");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(19, "th");
     \u0275\u0275text(20, "\u6578\u91CF/\u55AE\u4F4D");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(21, "th", 47);
+    \u0275\u0275elementStart(21, "th", 48);
     \u0275\u0275text(22, "\u7E3D\u50F9");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(23, "th");
@@ -300,16 +299,16 @@ function TravelPaymentDetail_Conditional_1_Conditional_68_Template(rf, ctx) {
     \u0275\u0275text(28, "\u767C\u7968\u65E5\u671F");
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(29, "tbody");
-    \u0275\u0275repeaterCreate(30, TravelPaymentDetail_Conditional_1_Conditional_68_For_31_Template, 24, 19, "tr", null, _forTrack0);
+    \u0275\u0275repeaterCreate(30, TravelPaymentDetail_Conditional_1_Conditional_70_For_31_Template, 24, 19, "tr", null, _forTrack0);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(32, "tfoot")(33, "tr", 45)(34, "td", 48);
+    \u0275\u0275elementStart(32, "tfoot")(33, "tr", 46)(34, "td", 49);
     \u0275\u0275text(35, "\u5408\u8A08");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(36, "td", 49);
+    \u0275\u0275elementStart(36, "td", 50);
     \u0275\u0275text(37);
     \u0275\u0275pipe(38, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(39, "td", 50);
+    \u0275\u0275element(39, "td", 51);
     \u0275\u0275elementEnd()()()()()();
   }
   if (rf & 2) {
@@ -320,12 +319,12 @@ function TravelPaymentDetail_Conditional_1_Conditional_68_Template(rf, ctx) {
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(38, 1, r_r3.grandTotal, "1.0-0"));
   }
 }
-function TravelPaymentDetail_Conditional_1_Conditional_69_Conditional_7_Template(rf, ctx) {
+function TravelPaymentDetail_Conditional_1_Conditional_71_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 26)(1, "div", 24);
+    \u0275\u0275elementStart(0, "div", 27)(1, "div", 25);
     \u0275\u0275text(2, "\u9810\u8A08\u64A5\u6B3E\u65E5");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div", 27);
+    \u0275\u0275elementStart(3, "div", 28);
     \u0275\u0275text(4);
     \u0275\u0275pipe(5, "date");
     \u0275\u0275elementEnd()();
@@ -336,18 +335,18 @@ function TravelPaymentDetail_Conditional_1_Conditional_69_Conditional_7_Template
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(5, 1, r_r3.estimatedPaymentDate, "yyyy-MM-dd"));
   }
 }
-function TravelPaymentDetail_Conditional_1_Conditional_69_Conditional_8_Template(rf, ctx) {
+function TravelPaymentDetail_Conditional_1_Conditional_71_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 26)(1, "div", 24);
+    \u0275\u0275elementStart(0, "div", 27)(1, "div", 25);
     \u0275\u0275text(2, "\u64A5\u6B3E\u65E5");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div", 63);
+    \u0275\u0275elementStart(3, "div", 64);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(4, "svg", 64);
-    \u0275\u0275element(5, "use", 65);
+    \u0275\u0275elementStart(4, "svg", 65);
+    \u0275\u0275element(5, "use", 66);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(6, "span", 66);
+    \u0275\u0275elementStart(6, "span", 67);
     \u0275\u0275text(7);
     \u0275\u0275pipe(8, "date");
     \u0275\u0275elementEnd()()();
@@ -358,29 +357,29 @@ function TravelPaymentDetail_Conditional_1_Conditional_69_Conditional_8_Template
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(8, 1, r_r3.paidAt, "yyyy-MM-dd"));
   }
 }
-function TravelPaymentDetail_Conditional_1_Conditional_69_Conditional_9_Template(rf, ctx) {
+function TravelPaymentDetail_Conditional_1_Conditional_71_Conditional_9_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 26)(1, "div", 24);
+    \u0275\u0275elementStart(0, "div", 27)(1, "div", 25);
     \u0275\u0275text(2, "\u64A5\u6B3E\u65E5");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "span", 24);
+    \u0275\u0275elementStart(3, "span", 25);
     \u0275\u0275text(4, "\u5C1A\u672A\u64A5\u6B3E");
     \u0275\u0275elementEnd()();
   }
 }
-function TravelPaymentDetail_Conditional_1_Conditional_69_Template(rf, ctx) {
+function TravelPaymentDetail_Conditional_1_Conditional_71_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 17)(1, "div", 18);
+    \u0275\u0275elementStart(0, "div", 18)(1, "div", 19);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(2, "svg", 60);
-    \u0275\u0275element(3, "use", 61);
+    \u0275\u0275elementStart(2, "svg", 61);
+    \u0275\u0275element(3, "use", 62);
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " \u64A5\u6B3E\u8CC7\u8A0A ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(5, "div", 21)(6, "div", 62);
-    \u0275\u0275conditionalCreate(7, TravelPaymentDetail_Conditional_1_Conditional_69_Conditional_7_Template, 6, 4, "div", 26);
-    \u0275\u0275conditionalCreate(8, TravelPaymentDetail_Conditional_1_Conditional_69_Conditional_8_Template, 9, 4, "div", 26)(9, TravelPaymentDetail_Conditional_1_Conditional_69_Conditional_9_Template, 5, 0, "div", 26);
+    \u0275\u0275elementStart(5, "div", 22)(6, "div", 63);
+    \u0275\u0275conditionalCreate(7, TravelPaymentDetail_Conditional_1_Conditional_71_Conditional_7_Template, 6, 4, "div", 27);
+    \u0275\u0275conditionalCreate(8, TravelPaymentDetail_Conditional_1_Conditional_71_Conditional_8_Template, 9, 4, "div", 27)(9, TravelPaymentDetail_Conditional_1_Conditional_71_Conditional_9_Template, 5, 0, "div", 27);
     \u0275\u0275elementEnd()()();
   }
   if (rf & 2) {
@@ -391,10 +390,10 @@ function TravelPaymentDetail_Conditional_1_Conditional_69_Template(rf, ctx) {
     \u0275\u0275conditional(r_r3.paidAt ? 8 : r_r3.estimatedPaymentDate ? 9 : -1);
   }
 }
-function TravelPaymentDetail_Conditional_1_Conditional_70_Template(rf, ctx) {
+function TravelPaymentDetail_Conditional_1_Conditional_72_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 31);
-    \u0275\u0275element(1, "app-installments-table", 67);
+    \u0275\u0275elementStart(0, "div", 32);
+    \u0275\u0275element(1, "app-installments-table", 68);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -403,9 +402,9 @@ function TravelPaymentDetail_Conditional_1_Conditional_70_Template(rf, ctx) {
     \u0275\u0275property("installmentsInput", r_r3.installments)("paymentStatus", r_r3.paymentStatus)("totalAmount", r_r3.grandTotal);
   }
 }
-function TravelPaymentDetail_Conditional_1_Conditional_71_Template(rf, ctx) {
+function TravelPaymentDetail_Conditional_1_Conditional_73_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "app-approval-timeline", 32);
+    \u0275\u0275element(0, "app-approval-timeline", 33);
   }
   if (rf & 2) {
     const task_r7 = ctx;
@@ -421,124 +420,126 @@ function TravelPaymentDetail_Conditional_1_Template(rf, ctx) {
     \u0275\u0275elementEnd()();
     \u0275\u0275namespaceHTML();
     \u0275\u0275elementStart(5, "h4", 8);
-    \u0275\u0275text(6);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "span");
+    \u0275\u0275text(6, "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB ");
+    \u0275\u0275elementStart(7, "span", 9);
     \u0275\u0275text(8);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(9, "div", 9);
-    \u0275\u0275conditionalCreate(10, TravelPaymentDetail_Conditional_1_Conditional_10_Template, 4, 2, "button", 10);
-    \u0275\u0275conditionalCreate(11, TravelPaymentDetail_Conditional_1_Conditional_11_Template, 4, 3, "a", 11);
-    \u0275\u0275conditionalCreate(12, TravelPaymentDetail_Conditional_1_Conditional_12_Template, 8, 2);
-    \u0275\u0275elementStart(13, "a", 12);
+    \u0275\u0275elementStart(9, "span");
+    \u0275\u0275text(10);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275elementStart(11, "div", 10);
+    \u0275\u0275conditionalCreate(12, TravelPaymentDetail_Conditional_1_Conditional_12_Template, 4, 2, "button", 11);
+    \u0275\u0275conditionalCreate(13, TravelPaymentDetail_Conditional_1_Conditional_13_Template, 4, 3, "a", 12);
+    \u0275\u0275conditionalCreate(14, TravelPaymentDetail_Conditional_1_Conditional_14_Template, 8, 2);
+    \u0275\u0275elementStart(15, "a", 13);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(14, "svg", 13);
-    \u0275\u0275element(15, "use", 14);
+    \u0275\u0275elementStart(16, "svg", 14);
+    \u0275\u0275element(17, "use", 15);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(16, " \u8FD4\u56DE\u5217\u8868 ");
+    \u0275\u0275text(18, " \u8FD4\u56DE\u5217\u8868 ");
     \u0275\u0275elementEnd()()();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(17, "div", 15)(18, "div", 16)(19, "div", 17)(20, "div", 18);
+    \u0275\u0275elementStart(19, "div", 16)(20, "div", 17)(21, "div", 18)(22, "div", 19);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(21, "svg", 19);
-    \u0275\u0275element(22, "use", 20);
+    \u0275\u0275elementStart(23, "svg", 20);
+    \u0275\u0275element(24, "use", 21);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(23, " \u51FA\u5DEE\u8CC7\u8A0A ");
+    \u0275\u0275text(25, " \u51FA\u5DEE\u8CC7\u8A0A ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(24, "div", 21)(25, "div", 22)(26, "div", 23)(27, "div", 24);
-    \u0275\u0275text(28, "\u51FA\u5DEE\u5730\u9EDE");
+    \u0275\u0275elementStart(26, "div", 22)(27, "div", 23)(28, "div", 24)(29, "div", 25);
+    \u0275\u0275text(30, "\u51FA\u5DEE\u5730\u9EDE");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(29, "div", 25);
-    \u0275\u0275text(30);
+    \u0275\u0275elementStart(31, "div", 26);
+    \u0275\u0275text(32);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(31, "div", 26)(32, "div", 24);
-    \u0275\u0275text(33, "\u7533\u8ACB\u65E5\u671F");
+    \u0275\u0275elementStart(33, "div", 27)(34, "div", 25);
+    \u0275\u0275text(35, "\u7533\u8ACB\u65E5\u671F");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(34, "div", 27);
-    \u0275\u0275text(35);
-    \u0275\u0275pipe(36, "date");
+    \u0275\u0275elementStart(36, "div", 28);
+    \u0275\u0275text(37);
+    \u0275\u0275pipe(38, "date");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(37, "div", 26)(38, "div", 24);
-    \u0275\u0275text(39, "\u7533\u8ACB\u4EBA");
+    \u0275\u0275elementStart(39, "div", 27)(40, "div", 25);
+    \u0275\u0275text(41, "\u7533\u8ACB\u4EBA");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(40, "div", 27);
-    \u0275\u0275text(41);
+    \u0275\u0275elementStart(42, "div", 28);
+    \u0275\u0275text(43);
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(42, "div", 22)(43, "div", 26)(44, "div", 24);
-    \u0275\u0275text(45, "\u958B\u59CB\u65E5\u671F");
+    \u0275\u0275elementStart(44, "div", 23)(45, "div", 27)(46, "div", 25);
+    \u0275\u0275text(47, "\u958B\u59CB\u65E5\u671F");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(46, "div", 27);
-    \u0275\u0275text(47);
-    \u0275\u0275pipe(48, "date");
+    \u0275\u0275elementStart(48, "div", 28);
+    \u0275\u0275text(49);
+    \u0275\u0275pipe(50, "date");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(49, "div", 26)(50, "div", 24);
-    \u0275\u0275text(51, "\u7D50\u675F\u65E5\u671F");
+    \u0275\u0275elementStart(51, "div", 27)(52, "div", 25);
+    \u0275\u0275text(53, "\u7D50\u675F\u65E5\u671F");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(52, "div", 27);
-    \u0275\u0275text(53);
-    \u0275\u0275pipe(54, "date");
+    \u0275\u0275elementStart(54, "div", 28);
+    \u0275\u0275text(55);
+    \u0275\u0275pipe(56, "date");
     \u0275\u0275elementEnd()();
-    \u0275\u0275conditionalCreate(55, TravelPaymentDetail_Conditional_1_Conditional_55_Template, 5, 2, "div", 26);
-    \u0275\u0275elementStart(56, "div", 26)(57, "div", 24);
-    \u0275\u0275text(58, "\u91D1\u984D\u5408\u8A08");
+    \u0275\u0275conditionalCreate(57, TravelPaymentDetail_Conditional_1_Conditional_57_Template, 5, 2, "div", 27);
+    \u0275\u0275elementStart(58, "div", 27)(59, "div", 25);
+    \u0275\u0275text(60, "\u91D1\u984D\u5408\u8A08");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(59, "div", 28);
-    \u0275\u0275text(60);
-    \u0275\u0275pipe(61, "number");
+    \u0275\u0275elementStart(61, "div", 29);
+    \u0275\u0275text(62);
+    \u0275\u0275pipe(63, "number");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(62, "div", 29)(63, "div", 30)(64, "div", 24);
-    \u0275\u0275text(65, "\u51FA\u5DEE\u76EE\u7684");
+    \u0275\u0275elementStart(64, "div", 30)(65, "div", 31)(66, "div", 25);
+    \u0275\u0275text(67, "\u51FA\u5DEE\u76EE\u7684");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(66, "div", 27);
-    \u0275\u0275text(67);
+    \u0275\u0275elementStart(68, "div", 28);
+    \u0275\u0275text(69);
     \u0275\u0275elementEnd()()()()();
-    \u0275\u0275conditionalCreate(68, TravelPaymentDetail_Conditional_1_Conditional_68_Template, 40, 4, "div", 17);
-    \u0275\u0275conditionalCreate(69, TravelPaymentDetail_Conditional_1_Conditional_69_Template, 10, 2, "div", 17);
-    \u0275\u0275conditionalCreate(70, TravelPaymentDetail_Conditional_1_Conditional_70_Template, 2, 3, "div", 31);
-    \u0275\u0275conditionalCreate(71, TravelPaymentDetail_Conditional_1_Conditional_71_Template, 1, 4, "app-approval-timeline", 32);
+    \u0275\u0275conditionalCreate(70, TravelPaymentDetail_Conditional_1_Conditional_70_Template, 40, 4, "div", 18);
+    \u0275\u0275conditionalCreate(71, TravelPaymentDetail_Conditional_1_Conditional_71_Template, 10, 2, "div", 18);
+    \u0275\u0275conditionalCreate(72, TravelPaymentDetail_Conditional_1_Conditional_72_Template, 2, 3, "div", 32);
+    \u0275\u0275conditionalCreate(73, TravelPaymentDetail_Conditional_1_Conditional_73_Template, 1, 4, "app-approval-timeline", 33);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
     let tmp_19_0;
     const r_r3 = ctx;
     const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275advance(6);
-    \u0275\u0275textInterpolate1("\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB\u8A73\u60C5 #", r_r3.id);
+    \u0275\u0275advance(8);
+    \u0275\u0275textInterpolate(r_r3.requestNo);
     \u0275\u0275advance();
     \u0275\u0275classMap("badge " + ctx_r1.statusClass[r_r3.approvalStatus]);
     \u0275\u0275advance();
     \u0275\u0275textInterpolate(ctx_r1.statusLabel[r_r3.approvalStatus]);
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(r_r3.approvalStatus === "approved" ? 10 : -1);
+    \u0275\u0275conditional(r_r3.approvalStatus === "approved" ? 12 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(r_r3.approvalStatus === "draft" || r_r3.approvalStatus === "returned" ? 11 : -1);
+    \u0275\u0275conditional(r_r3.approvalStatus === "draft" || r_r3.approvalStatus === "returned" ? 13 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(r_r3.approvalStatus === "draft" ? 12 : -1);
+    \u0275\u0275conditional(r_r3.approvalStatus === "draft" ? 14 : -1);
     \u0275\u0275advance(18);
     \u0275\u0275textInterpolate(r_r3.destination);
     \u0275\u0275advance(5);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(36, 19, r_r3.createdAt, "yyyy-MM-dd"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(38, 19, r_r3.createdAt, "yyyy-MM-dd"));
     \u0275\u0275advance(6);
     \u0275\u0275textInterpolate(r_r3.employeeName || "\u2014");
     \u0275\u0275advance(6);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(48, 22, r_r3.startDate, "yyyy-MM-dd"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(50, 22, r_r3.startDate, "yyyy-MM-dd"));
     \u0275\u0275advance(6);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(54, 25, r_r3.endDate, "yyyy-MM-dd"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(56, 25, r_r3.endDate, "yyyy-MM-dd"));
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(r_r3.projectCode || r_r3.projectName ? 55 : -1);
+    \u0275\u0275conditional(r_r3.projectCode || r_r3.projectName ? 57 : -1);
     \u0275\u0275advance(5);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(61, 28, r_r3.grandTotal, "1.0-0"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(63, 28, r_r3.grandTotal, "1.0-0"));
     \u0275\u0275advance(7);
     \u0275\u0275textInterpolate(r_r3.purpose);
     \u0275\u0275advance();
-    \u0275\u0275conditional(r_r3.items && r_r3.items.length > 0 ? 68 : -1);
+    \u0275\u0275conditional(r_r3.items && r_r3.items.length > 0 ? 70 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(r_r3.estimatedPaymentDate || r_r3.paidAt ? 69 : -1);
+    \u0275\u0275conditional(r_r3.estimatedPaymentDate || r_r3.paidAt ? 71 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(r_r3.installments && r_r3.installments.length > 0 ? 70 : -1);
+    \u0275\u0275conditional(r_r3.installments && r_r3.installments.length > 0 ? 72 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional((tmp_19_0 = ctx_r1.approvalTask()) ? 71 : -1, tmp_19_0);
+    \u0275\u0275conditional((tmp_19_0 = ctx_r1.approvalTask()) ? 73 : -1, tmp_19_0);
   }
 }
 function TravelPaymentDetail_Conditional_2_Template(rf, ctx) {
@@ -551,7 +552,7 @@ function TravelPaymentDetail_Conditional_2_Template(rf, ctx) {
 function TravelPaymentDetail_Conditional_3_Template(rf, ctx) {
   if (rf & 1) {
     const _r8 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-file-preview-modal", 68);
+    \u0275\u0275elementStart(0, "app-file-preview-modal", 69);
     \u0275\u0275listener("closed", function TravelPaymentDetail_Conditional_3_Template_app_file_preview_modal_closed_0_listener() {
       \u0275\u0275restoreView(_r8);
       const ctx_r1 = \u0275\u0275nextContext();
@@ -629,10 +630,10 @@ var TravelPaymentDetail = class _TravelPaymentDetail {
   static \u0275fac = function TravelPaymentDetail_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _TravelPaymentDetail)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _TravelPaymentDetail, selectors: [["app-travel-payment-detail"]], decls: 4, vars: 2, consts: [[1, "container-fluid", "py-3"], [1, "text-center", "py-6", "text-muted"], [3, "file"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2", "flex-wrap"], ["routerLink", "/admin/travel-payment-requests", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "mb-0"], [1, "flex", "flex-wrap", "gap-2"], [1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-1", 3, "disabled"], [1, "btn", "btn-outline-primary", "inline-flex", "items-center", "gap-1", 3, "routerLink"], ["routerLink", "/admin/travel-payment-requests", 1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-1"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#list"], [1, "row", "g-4"], [1, "col-12", "col-xl-10"], [1, "card", "border-0", "shadow-sm", "mb-6"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#map-pin"], [1, "card-body"], [1, "row", "g-3", "mb-4"], [1, "col-12", "col-md-6"], [1, "text-muted", "small"], [1, "fw-600"], [1, "col-6", "col-md-3"], [1, "fw-500"], [1, "fw-600", "text-lg"], [1, "row", "g-3", "mb-0"], [1, "col-12"], [1, "mb-6"], [3, "flow", "approvalRecords", "currentStepOrder", "status"], [1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-1", 3, "click", "disabled"], ["role", "status", 1, "spinner-border", "spinner-border-sm"], ["href", "/assets/icons/sprite.svg#printer"], ["href", "/assets/icons/sprite.svg#edit"], [1, "btn", "btn-primary", "inline-flex", "items-center", "gap-1", 3, "click"], ["href", "/assets/icons/sprite.svg#send"], [1, "btn", "btn-outline-danger", "inline-flex", "items-center", "gap-1", 3, "click", "disabled"], ["href", "/assets/icons/sprite.svg#trash-2"], [1, "fw-500", "font-monospace"], [1, "card-body", "p-0"], [1, "table-responsive"], [1, "table", "table-sm", "mb-0"], [1, "table-light"], [2, "width", "40px"], [1, "text-right"], ["colspan", "6", 1, "text-right", "fw-500", "small"], [1, "text-right", "fw-600"], ["colspan", "3"], [1, "align-middle", "text-center"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-secondary", "p-1", 3, "title"], [1, "small"], [1, "text-right", "small"], [1, "text-right", "small", "fw-500"], [1, "small", "text-muted"], [1, "small", "font-monospace"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-secondary", "p-1", 3, "click", "title"], ["href", "/assets/icons/sprite.svg#file-text"], [1, "sa-icon", "text-muted", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#credit-card"], [1, "row", "g-3"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", 2, "color", "var(--green)", "stroke", "currentColor", "width", "16px", "height", "16px"], ["href", "/assets/icons/sprite.svg#check-circle"], [1, "fw-500", 2, "color", "var(--green)"], [3, "installmentsInput", "paymentStatus", "totalAmount"], [3, "closed", "file"]], template: function TravelPaymentDetail_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _TravelPaymentDetail, selectors: [["app-travel-payment-detail"]], decls: 4, vars: 2, consts: [[1, "container-fluid", "py-3"], [1, "text-center", "py-6", "text-muted"], [3, "file"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2", "flex-wrap"], ["routerLink", "/admin/travel-payment-requests", 1, "btn", "btn-sm", "btn-outline-secondary"], [1, "sa-icon"], ["href", "/assets/icons/sprite.svg#arrow-left"], [1, "mb-0"], [1, "font-monospace", "text-muted"], [1, "flex", "flex-wrap", "gap-2"], [1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-1", 3, "disabled"], [1, "btn", "btn-outline-primary", "inline-flex", "items-center", "gap-1", 3, "routerLink"], ["routerLink", "/admin/travel-payment-requests", 1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-1"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#list"], [1, "row", "g-4"], [1, "col-12", "col-xl-10"], [1, "card", "border-0", "shadow-sm", "mb-6"], [1, "card-header", "bg-transparent", "border-bottom", "flex", "items-center", "gap-2", "fw-600"], [1, "sa-icon", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#map-pin"], [1, "card-body"], [1, "row", "g-3", "mb-4"], [1, "col-12", "col-md-6"], [1, "text-muted", "small"], [1, "fw-600"], [1, "col-6", "col-md-3"], [1, "fw-500"], [1, "fw-600", "text-lg"], [1, "row", "g-3", "mb-0"], [1, "col-12"], [1, "mb-6"], [3, "flow", "approvalRecords", "currentStepOrder", "status"], [1, "btn", "btn-outline-secondary", "inline-flex", "items-center", "gap-1", 3, "click", "disabled"], ["role", "status", 1, "spinner-border", "spinner-border-sm"], ["href", "/assets/icons/sprite.svg#printer"], ["href", "/assets/icons/sprite.svg#edit"], [1, "btn", "btn-primary", "inline-flex", "items-center", "gap-1", 3, "click"], ["href", "/assets/icons/sprite.svg#send"], [1, "btn", "btn-outline-danger", "inline-flex", "items-center", "gap-1", 3, "click", "disabled"], ["href", "/assets/icons/sprite.svg#trash-2"], [1, "fw-500", "font-monospace"], [1, "card-body", "p-0"], [1, "table-responsive"], [1, "table", "table-sm", "mb-0"], [1, "table-light"], [2, "width", "40px"], [1, "text-right"], ["colspan", "6", 1, "text-right", "fw-500", "small"], [1, "text-right", "fw-600"], ["colspan", "3"], [1, "align-middle", "text-center"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-secondary", "p-1", 3, "title"], [1, "small"], [1, "text-right", "small"], [1, "text-right", "small", "fw-500"], [1, "small", "text-muted"], [1, "small", "font-monospace"], ["type", "button", 1, "btn", "btn-sm", "btn-ghost-secondary", "p-1", 3, "click", "title"], ["href", "/assets/icons/sprite.svg#file-text"], [1, "sa-icon", "text-muted", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#credit-card"], [1, "row", "g-3"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", 2, "color", "var(--green)", "stroke", "currentColor", "width", "16px", "height", "16px"], ["href", "/assets/icons/sprite.svg#check-circle"], [1, "fw-500", 2, "color", "var(--green)"], [3, "installmentsInput", "paymentStatus", "totalAmount"], [3, "closed", "file"]], template: function TravelPaymentDetail_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0);
-      \u0275\u0275conditionalCreate(1, TravelPaymentDetail_Conditional_1_Template, 72, 31)(2, TravelPaymentDetail_Conditional_2_Template, 2, 0, "div", 1);
+      \u0275\u0275conditionalCreate(1, TravelPaymentDetail_Conditional_1_Template, 74, 31)(2, TravelPaymentDetail_Conditional_2_Template, 2, 0, "div", 1);
       \u0275\u0275elementEnd();
       \u0275\u0275conditionalCreate(3, TravelPaymentDetail_Conditional_3_Template, 1, 1, "app-file-preview-modal", 2);
     }
@@ -655,7 +656,7 @@ var TravelPaymentDetail = class _TravelPaymentDetail {
         <a routerLink="/admin/travel-payment-requests" class="btn btn-sm btn-outline-secondary">
           <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
         </a>
-        <h4 class="mb-0">\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB\u8A73\u60C5 #{{ r.id }}</h4>
+        <h4 class="mb-0">\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB <span class="font-monospace text-muted">{{ r.requestNo }}</span></h4>
         <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
       </div>
       <div class="flex flex-wrap gap-2">
@@ -896,4 +897,4 @@ var TravelPaymentDetail = class _TravelPaymentDetail {
 export {
   TravelPaymentDetail
 };
-//# sourceMappingURL=chunk-AE47QFV2.js.map
+//# sourceMappingURL=chunk-UQFYAMJM.js.map

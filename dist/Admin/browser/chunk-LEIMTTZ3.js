@@ -50,6 +50,11 @@ var TravelPaymentPdfService = class _TravelPaymentPdfService {
       doc.setFontSize(16);
       doc.setTextColor(...CIS.forest);
       doc.text("\u51FA \u5DEE \u8ACB \u6B3E \u7533 \u8ACB \u55AE", pw / 2, y, { align: "center" });
+      doc.setFont(F, "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(...CIS.textMuted);
+      doc.text(`\u55AE\u865F\uFF1A${r.requestNo}`, pw - mx, y, { align: "right" });
+      doc.setTextColor(...CIS.textPrimary);
       y += 10;
       doc.setFont(F, "normal");
       doc.setFontSize(9.5);
@@ -194,7 +199,7 @@ var TravelPaymentPdfService = class _TravelPaymentPdfService {
       doc.line(mx, y, pw - mx, y);
       doc.setLineWidth(0.8);
       doc.line(mx, y + 1.5, pw - mx, y + 1.5);
-      doc.save(`\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB\u55AE-${r.id}.pdf`);
+      doc.save(`\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB\u55AE-${r.requestNo}.pdf`);
     } finally {
       this.pdfLoading.set(false);
     }
@@ -225,4 +230,4 @@ var TravelPaymentPdfService = class _TravelPaymentPdfService {
 export {
   TravelPaymentPdfService
 };
-//# sourceMappingURL=chunk-2JQHRQAB.js.map
+//# sourceMappingURL=chunk-LEIMTTZ3.js.map

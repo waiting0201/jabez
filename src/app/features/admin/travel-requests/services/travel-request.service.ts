@@ -22,7 +22,7 @@ export class TravelRequestService {
     return this.http.get<TravelRequest>(`${environment.apiUrl}/travel-requests/${id}`);
   }
 
-  create(data: Omit<TravelRequest, 'id' | 'createdAt' | 'approvalStatus'>): Observable<TravelRequest> {
+  create(data: Omit<TravelRequest, 'id' | 'requestNo' | 'createdAt' | 'approvalStatus'>): Observable<TravelRequest> {
     return this.http.post<TravelRequest>(`${environment.apiUrl}/travel-requests`, data);
   }
 

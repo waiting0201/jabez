@@ -5,7 +5,7 @@
         <a routerLink="/admin/holiday-travel-requests" class="btn btn-sm btn-outline-secondary">
           <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
         </a>
-        <h4 class="mb-0">假日執行活動申請 #{{ r.id }}</h4>
+        <h4 class="mb-0">假日執行活動申請 <span class="font-monospace text-muted">{{ r.requestNo }}</span></h4>
         <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
       </div>
       <div class="flex flex-wrap gap-2">

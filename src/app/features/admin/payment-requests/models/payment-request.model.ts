@@ -65,6 +65,7 @@ export interface DesignatedReviewer {
 
 export interface PaymentRequest {
   id: number;
+  requestNo: string;
   employeeId?: string;
   type: PaymentType;
   projectId: number;
