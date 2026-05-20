@@ -2,6 +2,7 @@ namespace Jabez.Api.Models.Dtos;
 
 public sealed record PaymentReportDto(
     int       Id,
+    string    RequestNo,
     string    EmployeeName,
     string    Type,
     string    ProjectCode,
@@ -18,6 +19,7 @@ public sealed record PaymentReportDto(
 /// </summary>
 public sealed record PaymentExportRowDto(
     int       PaymentRequestId,
+    string    RequestNo,
     string    EmployeeName,
     string    Type,
     string    ProjectCode,

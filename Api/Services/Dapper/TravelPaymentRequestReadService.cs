@@ -8,7 +8,7 @@ namespace Jabez.Api.Services.Dapper;
 public sealed class TravelPaymentRequestReadService(IDbConnection db, IInstallmentReadService installments) : ITravelPaymentRequestReadService
 {
     private const string BaseSql = """
-        SELECT tpr.Id, u.Name AS EmployeeName,
+        SELECT tpr.Id, tpr.RequestNo, u.Name AS EmployeeName,
                tpr.Destination, tpr.StartDate, tpr.EndDate,
                tpr.GrandTotal, tpr.Purpose,
                tpr.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
@@ -121,6 +121,7 @@ public sealed class TravelPaymentRequestReadService(IDbConnection db, IInstallme
             TravelPaymentRequestItemDto[]? items = x.items.Count > 0 ? [.. x.items] : null;
             return new TravelPaymentRequestDto(
                 (int)tpr.Id,
+                (string)tpr.RequestNo,
                 (string?)tpr.EmployeeName ?? "—",
                 (string)tpr.Destination,
                 (DateTime)tpr.StartDate,

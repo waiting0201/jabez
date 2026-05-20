@@ -11,6 +11,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
 {
     private const string BaseSql = """
         SELECT pr.Id,
+               pr.RequestNo,
                u.Name  AS EmployeeName,
                pr.Type,
                proj.Code AS ProjectCode,
@@ -41,6 +42,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
     /// </summary>
     private const string ExportBaseSql = """
         SELECT pr.Id            AS PaymentRequestId,
+               pr.RequestNo,
                u.Name           AS EmployeeName,
                pr.Type,
                proj.Code        AS ProjectCode,
@@ -161,6 +163,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
 
         return new PaymentReportDto(
             Id:             (int)row.Id,
+            RequestNo:      (string)row.RequestNo,
             EmployeeName:   (string?)row.EmployeeName ?? "—",
             Type:           (string)row.Type,
             ProjectCode:    (string?)row.ProjectCode ?? "—",

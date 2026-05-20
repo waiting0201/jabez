@@ -39,6 +39,7 @@ public sealed record InvoiceItemRequest(
 
 public sealed record PaymentRequestDto(
     int              Id,
+    string           RequestNo,
     string           Type,
     int              ProjectId,
     string           ProjectCode,
@@ -124,6 +125,7 @@ public sealed record ApprovalFlowDto(
 
 public sealed record PaymentTaskDetailDto(
     int              PaymentRequestId,
+    string           RequestNo,
     string           PaymentType,
     string           ProjectCode,
     string           ProjectName,
@@ -160,6 +162,7 @@ public sealed record HolidayAllowanceDto(
 
 public sealed record TravelTaskDetailDto(
     int       TravelRequestId,
+    string    RequestNo,
     string    Destination,
     DateTime  StartDate,
     DateTime  EndDate,
@@ -192,6 +195,7 @@ public sealed record OvertimeTaskDetailDto(
 /// <summary>出差請款申請審核任務詳情 DTO</summary>
 public sealed record TravelPaymentTaskDetailDto(
     int       TravelPaymentRequestId,
+    string    RequestNo,
     string    Destination,
     DateTime  StartDate,
     DateTime  EndDate,

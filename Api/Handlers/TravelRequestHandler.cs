@@ -109,8 +109,12 @@ public sealed class TravelRequestHandler(
             SortOrder = i.SortOrder > 0 ? i.SortOrder : idx,
         }).ToList();
 
+        var today = Clock.Now;
+        var requestNo = await GenerateRequestNoAsync("TR-", today);
+
         var travelRequest = new TravelRequest
         {
+            RequestNo       = requestNo,
             EmployeeId      = employeeId,   // 強制使用 JWT 身分，忽略 body.EmployeeId
             ApprovalItemId  = body.ApprovalItemId,
             Destination     = body.Destination,
@@ -121,7 +125,7 @@ public sealed class TravelRequestHandler(
             ProjectId       = body.ProjectId,
             IsHolidayTravel = false,
             ApprovalStatus  = "draft",
-            CreatedAt       = Clock.Now,
+            CreatedAt       = today,
             Items           = items,
         };
         db.TravelRequests.Add(travelRequest);
@@ -191,8 +195,12 @@ public sealed class TravelRequestHandler(
                 return new BadRequestObjectResult(ApiResponse.Fail("一或多位出差參與者不存在。"));
         }
 
+        var today = Clock.Now;
+        var requestNo = await GenerateRequestNoAsync("HTR-", today);
+
         var travelRequest = new TravelRequest
         {
+            RequestNo       = requestNo,
             EmployeeId      = employeeId,
             Destination     = destination,
             StartDate       = startDate,
@@ -202,7 +210,7 @@ public sealed class TravelRequestHandler(
             ProjectId       = projectId,
             IsHolidayTravel = true,
             ApprovalStatus  = "draft",
-            CreatedAt       = Clock.Now,
+            CreatedAt       = today,
             Items           = new List<TravelRequestItem>(),
         };
         db.TravelRequests.Add(travelRequest);
@@ -858,5 +866,22 @@ public sealed class TravelRequestHandler(
         if (!Guid.TryParse(userIdStr, out var userId))
             throw AppException.Unauthorized("Invalid token claims.");
         return userId;
+    }
+
+    /// <summary>產生出差/假日活動單號：{prefix}yyyyMMdd-NNN（per-prefix-per-day 序號池，唯一索引保護並發）</summary>
+    private async Task<string> GenerateRequestNoAsync(string prefix, DateTime today)
+    {
+        var full = $"{prefix}{today:yyyyMMdd}-";
+        var maxNo = await db.TravelRequests
+            .Where(t => t.RequestNo.StartsWith(full))
+            .MaxAsync(t => (string?)t.RequestNo);
+        int seq = 1;
+        if (maxNo is not null)
+        {
+            var seqStr = maxNo[full.Length..];
+            if (int.TryParse(seqStr, out var parsed))
+                seq = parsed + 1;
+        }
+        return $"{full}{seq:D3}";
     }
 }

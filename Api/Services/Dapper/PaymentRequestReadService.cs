@@ -9,7 +9,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 {
     // ── 通用 JOIN SQL ─────────────────────────────────────────────────────────
     private const string BaseSql = """
-        SELECT pr.Id, pr.Type, pr.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
+        SELECT pr.Id, pr.RequestNo, pr.Type, pr.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                pr.TotalAmount, pr.ApprovalStatus, pr.EstimatedPaymentDate, pr.PaidAt,
                sub.Name AS SubmittedBy, pr.CreatedAt,
                pr.ReviewedAt, pr.ReviewNote, pr.Reason,
@@ -356,7 +356,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         string travelPaymentWhere   = !TypeAllowed("travel_payment") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(travelPaymentIdWhere,   "") : BuildWhere("", StepMatchClause("tpr", "tpru", "travel_payment")) + PaymentStatusClause("tpr.PaidAt"));
 
         var paymentSql = $"""
-            SELECT pr.Id, pr.Type AS PaymentType, proj.Code AS ProjectCode, proj.Name AS ProjectName,
+            SELECT pr.Id, pr.RequestNo, pr.Type AS PaymentType, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    pr.TotalAmount, pr.ApprovalStatus, pr.EstimatedPaymentDate, pr.PaidAt, pr.ApprovalItemId, pr.CurrentStepOrder,
                    sub.Name AS SubmittedBy, sub.SignatureUrl AS SubmittedBySignatureUrl, pr.CreatedAt, pr.ReviewedAt, pr.ReviewNote,
                    pr.Reason,
@@ -386,7 +386,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             """;
 
         var travelSql = $"""
-            SELECT tr.Id, tr.Destination, tr.StartDate, tr.EndDate,
+            SELECT tr.Id, tr.RequestNo, tr.Destination, tr.StartDate, tr.EndDate,
                    tr.GrandTotal, tr.Purpose, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    tr.IsHolidayTravel,
                    tr.EstimatedPaymentDate, tr.PaidAt, tr.EstimatedRefundDate, tr.RefundedAt,
@@ -404,7 +404,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         // 假日執行活動申請（IsHolidayTravel = 1），獨立 ApplicationType = "holiday_travel"
         // ApplicantId / ApplicantBaseSalary 用於計算申請人本人的假日津貼
         var holidayTravelSql = $"""
-            SELECT tr.Id, tr.Destination, tr.StartDate, tr.EndDate,
+            SELECT tr.Id, tr.RequestNo, tr.Destination, tr.StartDate, tr.EndDate,
                    tr.GrandTotal, tr.Purpose, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    tr.IsHolidayTravel, tr.HolidayDays,
                    tr.EstimatedPaymentDate, tr.PaidAt, tr.EstimatedRefundDate, tr.RefundedAt,
@@ -507,7 +507,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             """;
 
         var travelPaymentSql = $"""
-            SELECT tpr.Id, tpr.Destination, tpr.StartDate, tpr.EndDate,
+            SELECT tpr.Id, tpr.RequestNo, tpr.Destination, tpr.StartDate, tpr.EndDate,
                    tpr.GrandTotal, tpr.Purpose, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    tpr.EstimatedPaymentDate, tpr.PaidAt,
                    tpr.ApprovalStatus, tpr.ApprovalItemId, tpr.CurrentStepOrder,
@@ -838,7 +838,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         var paymentTasks = paymentGrouped.Values.Select(x => new ApprovalTaskDto(
             (int)x.pr.Id,
             "payment_request",
-            $"請款申請 #{x.pr.Id}（{x.pr.ProjectCode}）",
+            $"請款申請 {x.pr.RequestNo}（{x.pr.ProjectCode}）",
             (string?)x.pr.SubmittedBy ?? "—",
             (DateTime)x.pr.CreatedAt,
             (string)x.pr.ApprovalStatus,
@@ -848,6 +848,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             GetFlow("payment_request"),
             new PaymentTaskDetailDto(
                 (int)x.pr.Id,
+                (string)x.pr.RequestNo,
                 (string)x.pr.PaymentType,
                 (string)x.pr.ProjectCode,
                 (string)x.pr.ProjectName,
@@ -900,7 +901,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         var travelTasks = travelRows.Select(row => new ApprovalTaskDto(
             (int)row.Id,
             "travel",
-            $"出差申請 #{row.Id}（{row.Destination}）",
+            $"出差申請 {row.RequestNo}（{row.Destination}）",
             (string?)row.SubmittedBy ?? "—",
             (DateTime)row.CreatedAt,
             (string)row.ApprovalStatus,
@@ -912,6 +913,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             null,
             new TravelTaskDetailDto(
                 (int)row.Id,
+                (string)row.RequestNo,
                 (string)row.Destination,
                 (DateTime)row.StartDate,
                 (DateTime)row.EndDate,
@@ -939,7 +941,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         var holidayTravelTasks = holidayTravelRows.Select(row => new ApprovalTaskDto(
             (int)row.Id,
             "holiday_travel",
-            $"假日執行活動申請 #{row.Id}（{row.Destination}）",
+            $"假日執行活動申請 {row.RequestNo}（{row.Destination}）",
             (string?)row.SubmittedBy ?? "—",
             (DateTime)row.CreatedAt,
             (string)row.ApprovalStatus,
@@ -951,6 +953,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             null,
             new TravelTaskDetailDto(
                 (int)row.Id,
+                (string)row.RequestNo,
                 (string)row.Destination,
                 (DateTime)row.StartDate,
                 (DateTime)row.EndDate,
@@ -1176,7 +1179,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         var travelPaymentTasks = travelPaymentRows.Select(row => new ApprovalTaskDto(
             (int)row.Id,
             "travel_payment",
-            $"出差請款申請 #{row.Id}（{row.Destination}）",
+            $"出差請款申請 {row.RequestNo}（{row.Destination}）",
             (string?)row.SubmittedBy ?? "—",
             (DateTime)row.CreatedAt,
             (string)row.ApprovalStatus,
@@ -1190,6 +1193,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             (string?)row.SubmittedBySignatureUrl,
             new TravelPaymentTaskDetailDto(
                 (int)row.Id,
+                (string)row.RequestNo,
                 (string)row.Destination,
                 (DateTime)row.StartDate,
                 (DateTime)row.EndDate,
@@ -1239,6 +1243,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 
         return dict.Values.Select(x => new PaymentRequestDto(
             (int)x.pr.Id,
+            (string)x.pr.RequestNo,
             (string)x.pr.Type,
             (int)x.pr.ProjectId,
             (string)x.pr.ProjectCode,
