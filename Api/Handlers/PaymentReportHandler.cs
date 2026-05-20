@@ -7,8 +7,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Jabez.Api.Handlers;
 
 /// <summary>
-/// GET /reports/payment        → 請款統計報表（分頁）
-/// GET /reports/payment/export → 請款統計匯出（不分頁、一張發票一列）
+/// GET /reports/payment        → 款項統計報表（分頁）
+/// GET /reports/payment/export → 款項統計匯出（不分頁、一張發票一列）
 /// </summary>
 public sealed class PaymentReportHandler(IPaymentReportReadService reader, IProjectAccessResolver access)
 {

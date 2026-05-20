@@ -169,8 +169,8 @@
 |--------|------|------|
 | GET | `/attendances` | 出缺勤紀錄列表（共用上方出勤打卡端點，篩選參數：`employeeId / dateFrom / dateTo`） |
 | GET | `/reports/overtime` | 加班紀錄報表（已核准的加班申請 + 實際打卡時數，篩選參數：`employeeId / projectId / dateFrom / dateTo`） |
-| GET | `/reports/payment` | 請款統計報表（已送出的請款申請，篩選參數：`dateFrom / dateTo / paymentStatus`；`pr.CreatedAt` 為 DATETIME，`dateTo` 用 `< DATEADD(day, 1, @DateTo)` 半開區間涵蓋當日 23:59:59） |
-| GET | `/reports/payment/export` | 請款統計匯出（不分頁、**一張發票一列**：`LEFT JOIN InvoiceItems`，無發票的請款仍輸出 1 列；篩選參數同上；權限同 `/reports/payment`） |
+| GET | `/reports/payment` | 款項統計報表（已送出的請款申請，篩選參數：`dateFrom / dateTo / paymentStatus`；`pr.CreatedAt` 為 DATETIME，`dateTo` 用 `< DATEADD(day, 1, @DateTo)` 半開區間涵蓋當日 23:59:59） |
+| GET | `/reports/payment/export` | 款項統計匯出（不分頁、**一張發票一列**：`LEFT JOIN InvoiceItems`，無發票的請款仍輸出 1 列；篩選參數同上；權限同 `/reports/payment`） |
 
 ## 打卡提醒（手動觸發 + 紀錄查詢，僅 Superadmin）
 

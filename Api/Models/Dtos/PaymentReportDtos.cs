@@ -13,7 +13,7 @@ public sealed record PaymentReportDto(
     DateTime  CreatedAt);
 
 /// <summary>
-/// 請款統計匯出列：一張發票一列。
+/// 款項統計匯出列：一張發票一列。
 /// 一張請款單若有 N 張發票 → 展開為 N 列；無發票（如業務員公出）→ 1 列，發票欄位皆為 null。
 /// </summary>
 public sealed record PaymentExportRowDto(

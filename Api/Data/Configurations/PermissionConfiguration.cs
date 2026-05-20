@@ -96,7 +96,7 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             new Permission { Id = "66", Code = "payroll:write",                    Name = "新增/修改", Module = "人事薪資" },
             // Reports
             new Permission { Id = "48", Code = "reports-overtime:read",            Name = "加班紀錄",   Module = "Reports" },
-            new Permission { Id = "49", Code = "reports-payment:read",             Name = "請款統計",   Module = "Reports" },
+            new Permission { Id = "49", Code = "reports-payment:read",             Name = "款項統計",   Module = "Reports" },
             new Permission { Id = "50", Code = "reports-project-water-level:read", Name = "專案水位表", Module = "Reports" },
             // 預支申請
             new Permission { Id = "51", Code = "advance-requests:read",   Name = "瀏覽",     Module = "預支申請" },

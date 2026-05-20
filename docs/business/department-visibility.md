@@ -1,6 +1,6 @@
 # 部門可見性規則（原「專案可見性規則」）
 
-部門可見性規則最早為「專案清單」設計，後擴充至**員工資料相關報表**（出缺勤紀錄、加班紀錄、請款統計、報表員工下拉）。底層由 `IProjectAccessResolver` 解析 `ProjectAccessScope(SeeAll, AllowedDepartmentIds)`，名稱保留「Project」字眼但**語意已是通用部門 scope**，套用於兩類過濾欄位：
+部門可見性規則最早為「專案清單」設計，後擴充至**員工資料相關報表**（出缺勤紀錄、加班紀錄、款項統計、報表員工下拉）。底層由 `IProjectAccessResolver` 解析 `ProjectAccessScope(SeeAll, AllowedDepartmentIds)`，名稱保留「Project」字眼但**語意已是通用部門 scope**，套用於兩類過濾欄位：
 - `Project.DepartmentId`（專案歸屬部門）
 - `User.DepartmentId`（員工 / 申請人歸屬部門）
 
@@ -33,8 +33,8 @@
 **過濾鍵：`User.DepartmentId`（員工 / 申請人歸屬部門）**
 - `GET /attendances`（出缺勤紀錄報表，JOIN `Users` 後過濾；支援 `dateFrom / dateTo` 區間篩選）
 - `GET /reports/overtime`（加班紀錄報表，JOIN `Users` 後過濾；支援 `dateFrom / dateTo` 區間篩選）
-- `GET /reports/payment`（請款統計報表，JOIN `Users` 後過濾；支援 `dateFrom / dateTo` 區間篩選）
-- `GET /reports/payment/export`（請款統計匯出 = 一張發票一列，與 `/reports/payment` 共用同一 `BuildWhereAndParameters`，部門 scope 過濾邏輯一致）
+- `GET /reports/payment`（款項統計報表，JOIN `Users` 後過濾；支援 `dateFrom / dateTo` 區間篩選）
+- `GET /reports/payment/export`（款項統計匯出 = 一張發票一列，與 `/reports/payment` 共用同一 `BuildWhereAndParameters`，部門 scope 過濾邏輯一致）
 - `GET /users/lookup?scope=department`（報表員工下拉，**不帶 `scope` 參數時維持原行為，回傳全公司**）
 
 ## 前置必要條件（資料完整性）
