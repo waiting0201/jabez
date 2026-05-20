@@ -13,13 +13,13 @@ import {
   ɵNgNoValidate
 } from "./chunk-4LFECYTV.js";
 import {
-  AuthService
-} from "./chunk-ZSGTQ3YJ.js";
-import {
   ActivatedRoute,
   Router
 } from "./chunk-DUW2WF5C.js";
 import "./chunk-JDEYLUO2.js";
+import {
+  AuthService
+} from "./chunk-ZSGTQ3YJ.js";
 import {
   Component,
   inject,
@@ -291,4 +291,4 @@ var ChangePassword = class _ChangePassword {
 export {
   ChangePassword
 };
-//# sourceMappingURL=chunk-FM6FTAB4.js.map
+//# sourceMappingURL=chunk-A2DPQVVI.js.map

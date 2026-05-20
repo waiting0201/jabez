@@ -1,10 +1,11 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
-import {BehaviorSubject, Observable} from 'rxjs';
-import {map, switchMap, tap} from 'rxjs/operators';
+import {Observable} from 'rxjs';
+import {switchMap, map} from 'rxjs/operators';
 import {ApprovalTask, TaskStatus} from '../models/approval-task.model';
 import {ApplicationType} from '../../approvals/models/approval.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
+import {NotificationService} from '../../notifications/services/notification.service';
 import {environment} from '@/environments/environment';
 
 /** 批次核准後需補填撥款/退款日的提醒 */
@@ -30,19 +31,7 @@ export interface BatchApproveResult {
 @Injectable({providedIn: 'root'})
 export class ApprovalTaskService {
   private http = inject(HttpClient);
-  private items$ = new BehaviorSubject<ApprovalTask[]>([]);
-
-  pendingCount$ = this.items$.pipe(map(tasks => tasks.length));
-
-  /** 拉取所有待審核任務（解包 PagedResult），更新 items$ 供 pendingCount$ 使用 */
-  getAll(): Observable<ApprovalTask[]> {
-    return this.http.get<PagedResult<ApprovalTask>>(`${environment.apiUrl}/approval-tasks`, {
-      params: {page: 1, pageSize: 100, status: 'pending'},
-    }).pipe(
-      map(result => result.items ?? []),
-      tap(items => this.items$.next(items)),
-    );
-  }
+  private notification = inject(NotificationService);
 
   getPaged(page: number, pageSize: number, status?: string, paymentStatus?: string, applicationType?: string): Observable<PagedResult<ApprovalTask>> {
     const params: Record<string, any> = {page, pageSize};
@@ -64,7 +53,7 @@ export class ApprovalTaskService {
       `${environment.apiUrl}/approval-tasks/${applicationType}/${id}/review`,
       {action, reviewNote, applicationType, estimatedRefundDate, refundedAt, closeAdvance},
     ).pipe(
-      switchMap(updated => this.getAll().pipe(map(() => updated))),
+      switchMap(updated => this.notification.refresh().pipe(map(() => updated))),
     );
   }
 
@@ -83,7 +72,7 @@ export class ApprovalTaskService {
       `${environment.apiUrl}/approval-tasks/batch-approve`,
       { items },
     ).pipe(
-      switchMap(result => this.getAll().pipe(map(() => result))),
+      switchMap(result => this.notification.refresh().pipe(map(() => result))),
     );
   }
 }

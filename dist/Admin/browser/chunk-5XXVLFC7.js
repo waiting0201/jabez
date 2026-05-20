@@ -67,9 +67,6 @@ import {
   OvertimeRequestService
 } from "./chunk-WPAYQD66.js";
 import {
-  AuthService
-} from "./chunk-ZSGTQ3YJ.js";
-import {
   E
 } from "./chunk-I62VNEQ5.js";
 import "./chunk-7YWLATDR.js";
@@ -96,10 +93,8 @@ import {
 } from "./chunk-346USOMS.js";
 import {
   InstallmentsTable
-} from "./chunk-KNQM2RNK.js";
+} from "./chunk-425NIRMS.js";
 import {
-  APPLICATION_TYPE_CLASSES,
-  APPLICATION_TYPE_LABELS,
   APPROVAL_STATUS_CLASSES,
   APPROVAL_STATUS_CLASSES2,
   APPROVAL_STATUS_LABELS,
@@ -122,13 +117,16 @@ import {
   TASK_STATUS_CLASSES,
   TASK_STATUS_LABELS,
   formatLeaveDuration
-} from "./chunk-YGQK3CZP.js";
+} from "./chunk-R66XVPRW.js";
 import {
+  ApprovalTaskService,
   ApprovalTimeline
-} from "./chunk-B4OWGIJG.js";
+} from "./chunk-3IB3AC7O.js";
 import {
-  ApprovalTaskService
-} from "./chunk-HXO5P7BO.js";
+  APPLICATION_TYPE_CLASSES,
+  APPLICATION_TYPE_LABELS
+} from "./chunk-PKXTA7WQ.js";
+import "./chunk-U6NS4RSC.js";
 import {
   ActivatedRoute,
   Router,
@@ -137,6 +135,9 @@ import {
 import {
   DomSanitizer
 } from "./chunk-JDEYLUO2.js";
+import {
+  AuthService
+} from "./chunk-ZSGTQ3YJ.js";
 import {
   AsyncPipe,
   BehaviorSubject,
@@ -55190,9 +55191,9 @@ function ProjectWaterLevel_For_14_Template(rf, ctx) {
     \u0275\u0275textInterpolate(y_r1);
   }
 }
-function ProjectWaterLevel_For_49_Conditional_4_Template(rf, ctx) {
+function ProjectWaterLevel_For_47_Conditional_4_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 24);
+    \u0275\u0275elementStart(0, "div", 23);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -55202,23 +55203,23 @@ function ProjectWaterLevel_For_49_Conditional_4_Template(rf, ctx) {
     \u0275\u0275textInterpolate(row_r3.projectName);
   }
 }
-function ProjectWaterLevel_For_49_Conditional_8_Template(rf, ctx) {
+function ProjectWaterLevel_For_47_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 26);
+    \u0275\u0275elementStart(0, "span", 25);
     \u0275\u0275text(1, "\u9032\u884C\u4E2D");
     \u0275\u0275elementEnd();
   }
 }
-function ProjectWaterLevel_For_49_Conditional_9_Template(rf, ctx) {
+function ProjectWaterLevel_For_47_Conditional_9_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 27);
+    \u0275\u0275elementStart(0, "span", 26);
     \u0275\u0275text(1, "\u5DF2\u7D50\u6848");
     \u0275\u0275elementEnd();
   }
 }
-function ProjectWaterLevel_For_49_Conditional_11_Template(rf, ctx) {
+function ProjectWaterLevel_For_47_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 28);
+    \u0275\u0275elementStart(0, "span", 27);
     \u0275\u0275text(1);
     \u0275\u0275pipe(2, "number");
     \u0275\u0275elementEnd();
@@ -55229,16 +55230,16 @@ function ProjectWaterLevel_For_49_Conditional_11_Template(rf, ctx) {
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(2, 1, row_r3.contractAmount, "1.0-0"));
   }
 }
-function ProjectWaterLevel_For_49_Conditional_12_Template(rf, ctx) {
+function ProjectWaterLevel_For_47_Conditional_12_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 29);
+    \u0275\u0275elementStart(0, "span", 28);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
 }
-function ProjectWaterLevel_For_49_Conditional_14_Template(rf, ctx) {
+function ProjectWaterLevel_For_47_Conditional_14_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 28);
+    \u0275\u0275elementStart(0, "span", 27);
     \u0275\u0275text(1);
     \u0275\u0275pipe(2, "number");
     \u0275\u0275elementEnd();
@@ -55249,14 +55250,14 @@ function ProjectWaterLevel_For_49_Conditional_14_Template(rf, ctx) {
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(2, 1, row_r3.businessAmount, "1.0-0"));
   }
 }
-function ProjectWaterLevel_For_49_Conditional_15_Template(rf, ctx) {
+function ProjectWaterLevel_For_47_Conditional_15_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 29);
+    \u0275\u0275elementStart(0, "span", 28);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
 }
-function ProjectWaterLevel_For_49_Conditional_27_Template(rf, ctx) {
+function ProjectWaterLevel_For_47_Conditional_24_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0);
   }
@@ -55265,12 +55266,12 @@ function ProjectWaterLevel_For_49_Conditional_27_Template(rf, ctx) {
     \u0275\u0275textInterpolate1(" ", row_r3.percentage, "% ");
   }
 }
-function ProjectWaterLevel_For_49_Conditional_28_Template(rf, ctx) {
+function ProjectWaterLevel_For_47_Conditional_25_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u2014 ");
   }
 }
-function ProjectWaterLevel_For_49_Conditional_34_Template(rf, ctx) {
+function ProjectWaterLevel_For_47_Conditional_31_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0);
   }
@@ -55279,49 +55280,45 @@ function ProjectWaterLevel_For_49_Conditional_34_Template(rf, ctx) {
     \u0275\u0275textInterpolate1(" ", row_r3.totalPercentage, "% ");
   }
 }
-function ProjectWaterLevel_For_49_Conditional_35_Template(rf, ctx) {
+function ProjectWaterLevel_For_47_Conditional_32_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u2014 ");
   }
 }
-function ProjectWaterLevel_For_49_Template(rf, ctx) {
+function ProjectWaterLevel_For_47_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td")(2, "div", 23);
+    \u0275\u0275elementStart(0, "tr")(1, "td")(2, "div", 22);
     \u0275\u0275text(3);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(4, ProjectWaterLevel_For_49_Conditional_4_Template, 2, 1, "div", 24);
+    \u0275\u0275conditionalCreate(4, ProjectWaterLevel_For_47_Conditional_4_Template, 2, 1, "div", 23);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "td", 25);
+    \u0275\u0275elementStart(5, "td", 24);
     \u0275\u0275text(6);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(7, "td", 19);
-    \u0275\u0275conditionalCreate(8, ProjectWaterLevel_For_49_Conditional_8_Template, 2, 0, "span", 26)(9, ProjectWaterLevel_For_49_Conditional_9_Template, 2, 0, "span", 27);
+    \u0275\u0275conditionalCreate(8, ProjectWaterLevel_For_47_Conditional_8_Template, 2, 0, "span", 25)(9, ProjectWaterLevel_For_47_Conditional_9_Template, 2, 0, "span", 26);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(10, "td", 20);
-    \u0275\u0275conditionalCreate(11, ProjectWaterLevel_For_49_Conditional_11_Template, 3, 4, "span", 28)(12, ProjectWaterLevel_For_49_Conditional_12_Template, 2, 0, "span", 29);
+    \u0275\u0275conditionalCreate(11, ProjectWaterLevel_For_47_Conditional_11_Template, 3, 4, "span", 27)(12, ProjectWaterLevel_For_47_Conditional_12_Template, 2, 0, "span", 28);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(13, "td", 20);
-    \u0275\u0275conditionalCreate(14, ProjectWaterLevel_For_49_Conditional_14_Template, 3, 4, "span", 28)(15, ProjectWaterLevel_For_49_Conditional_15_Template, 2, 0, "span", 29);
+    \u0275\u0275conditionalCreate(14, ProjectWaterLevel_For_47_Conditional_14_Template, 3, 4, "span", 27)(15, ProjectWaterLevel_For_47_Conditional_15_Template, 2, 0, "span", 28);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(16, "td", 30);
+    \u0275\u0275elementStart(16, "td", 29);
     \u0275\u0275text(17);
     \u0275\u0275pipe(18, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(19, "td", 31);
-    \u0275\u0275text(20);
-    \u0275\u0275pipe(21, "number");
+    \u0275\u0275elementStart(19, "td")(20, "div", 2)(21, "div", 30);
+    \u0275\u0275element(22, "div", 31);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(22, "td")(23, "div", 2)(24, "div", 32);
-    \u0275\u0275element(25, "div", 33);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(26, "span", 34);
-    \u0275\u0275conditionalCreate(27, ProjectWaterLevel_For_49_Conditional_27_Template, 1, 1)(28, ProjectWaterLevel_For_49_Conditional_28_Template, 1, 0);
+    \u0275\u0275elementStart(23, "span", 32);
+    \u0275\u0275conditionalCreate(24, ProjectWaterLevel_For_47_Conditional_24_Template, 1, 1)(25, ProjectWaterLevel_For_47_Conditional_25_Template, 1, 0);
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(29, "td")(30, "div", 2)(31, "div", 32);
-    \u0275\u0275element(32, "div", 33);
+    \u0275\u0275elementStart(26, "td")(27, "div", 2)(28, "div", 30);
+    \u0275\u0275element(29, "div", 31);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(33, "span", 34);
-    \u0275\u0275conditionalCreate(34, ProjectWaterLevel_For_49_Conditional_34_Template, 1, 1)(35, ProjectWaterLevel_For_49_Conditional_35_Template, 1, 0);
+    \u0275\u0275elementStart(30, "span", 32);
+    \u0275\u0275conditionalCreate(31, ProjectWaterLevel_For_47_Conditional_31_Template, 1, 1)(32, ProjectWaterLevel_For_47_Conditional_32_Template, 1, 0);
     \u0275\u0275elementEnd()()()();
   }
   if (rf & 2) {
@@ -55340,37 +55337,35 @@ function ProjectWaterLevel_For_49_Template(rf, ctx) {
     \u0275\u0275advance(3);
     \u0275\u0275conditional(row_r3.businessAmount !== null ? 14 : 15);
     \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(18, 22, row_r3.paymentAmount, "1.0-0"));
-    \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(21, 25, row_r3.paidAmount, "1.0-0"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(18, 21, row_r3.disbursedAmount, "1.0-0"));
     \u0275\u0275advance(5);
     \u0275\u0275styleProp("width", ctx_r1.getBarWidth(row_r3.percentage))("background", ctx_r1.getBarColor(row_r3.percentage));
     \u0275\u0275advance();
     \u0275\u0275styleProp("color", ctx_r1.getBarColor(row_r3.percentage));
     \u0275\u0275advance();
-    \u0275\u0275conditional(row_r3.percentage !== null ? 27 : 28);
+    \u0275\u0275conditional(row_r3.percentage !== null ? 24 : 25);
     \u0275\u0275advance(5);
     \u0275\u0275styleProp("width", ctx_r1.getBarWidth(row_r3.totalPercentage))("background", ctx_r1.getBarColor(row_r3.totalPercentage));
     \u0275\u0275advance();
     \u0275\u0275styleProp("color", ctx_r1.getBarColor(row_r3.totalPercentage));
     \u0275\u0275advance();
-    \u0275\u0275conditional(row_r3.totalPercentage !== null ? 34 : 35);
+    \u0275\u0275conditional(row_r3.totalPercentage !== null ? 31 : 32);
   }
 }
-function ProjectWaterLevel_ForEmpty_50_Conditional_2_Template(rf, ctx) {
+function ProjectWaterLevel_ForEmpty_48_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u8F09\u5165\u4E2D... ");
   }
 }
-function ProjectWaterLevel_ForEmpty_50_Conditional_3_Template(rf, ctx) {
+function ProjectWaterLevel_ForEmpty_48_Conditional_3_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u5C1A\u7121\u8CC7\u6599 ");
   }
 }
-function ProjectWaterLevel_ForEmpty_50_Template(rf, ctx) {
+function ProjectWaterLevel_ForEmpty_48_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 35);
-    \u0275\u0275conditionalCreate(2, ProjectWaterLevel_ForEmpty_50_Conditional_2_Template, 1, 0)(3, ProjectWaterLevel_ForEmpty_50_Conditional_3_Template, 1, 0);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 33);
+    \u0275\u0275conditionalCreate(2, ProjectWaterLevel_ForEmpty_48_Conditional_2_Template, 1, 0)(3, ProjectWaterLevel_ForEmpty_48_Conditional_3_Template, 1, 0);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -55412,8 +55407,7 @@ var ProjectWaterLevel = class _ProjectWaterLevel {
           departmentName: r.departmentName ?? "\u2014",
           contractAmount: r.contractAmount,
           businessAmount: r.businessAmount,
-          paymentAmount: r.paymentAmount ?? 0,
-          paidAmount: r.paidAmount ?? 0,
+          disbursedAmount: r.disbursedAmount ?? 0,
           percentage: r.percentage,
           totalPercentage: r.totalPercentage
         })));
@@ -55442,7 +55436,7 @@ var ProjectWaterLevel = class _ProjectWaterLevel {
   static \u0275fac = function ProjectWaterLevel_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _ProjectWaterLevel)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ProjectWaterLevel, selectors: [["app-project-water-level"]], decls: 51, vars: 7, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#trending-up"], [1, "mb-0"], [1, "card", "border-0", "shadow-sm"], [1, "px-4", "py-3", "border-b"], [1, "flex", "flex-wrap", "items-center", "gap-2"], [1, "form-select", 2, "width", "auto", "min-width", "120px", 3, "ngModelChange", "ngModel"], [3, "ngValue"], ["value", "active"], ["value", "closed"], [1, "btn", "btn-primary", 3, "click"], [1, "card-body", "p-0"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "hidden", "md:table-cell"], [1, "text-center", "hidden", "md:table-cell"], [1, "text-right"], [1, "text-right", "hidden", "lg:table-cell"], [2, "min-width", "180px"], [1, "fw-600", "font-monospace"], [1, "text-muted", "small"], [1, "hidden", "md:table-cell", "text-muted", "small"], [1, "badge", "bg-success-subtle", "text-success"], [1, "badge", "bg-secondary-subtle", "text-secondary"], [1, "fw-500"], [1, "text-muted"], [1, "text-right", "fw-500"], [1, "text-right", "hidden", "lg:table-cell", "text-muted"], [1, "grow", "rounded-full", "overflow-hidden", 2, "height", "8px", "background", "var(--bg-elevated)"], [1, "h-full", "rounded-full", "transition-all", "duration-500"], [1, "shrink-0", "text-right", "small", "fw-600", 2, "min-width", "42px"], ["colspan", "9", 1, "text-center", "text-muted", "py-4"]], template: function ProjectWaterLevel_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ProjectWaterLevel, selectors: [["app-project-water-level"]], decls: 49, vars: 7, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#trending-up"], [1, "mb-0"], [1, "card", "border-0", "shadow-sm"], [1, "px-4", "py-3", "border-b"], [1, "flex", "flex-wrap", "items-center", "gap-2"], [1, "form-select", 2, "width", "auto", "min-width", "120px", 3, "ngModelChange", "ngModel"], [3, "ngValue"], ["value", "active"], ["value", "closed"], [1, "btn", "btn-primary", 3, "click"], [1, "card-body", "p-0"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "hidden", "md:table-cell"], [1, "text-center", "hidden", "md:table-cell"], [1, "text-right"], [2, "min-width", "180px"], [1, "fw-600", "font-monospace"], [1, "text-muted", "small"], [1, "hidden", "md:table-cell", "text-muted", "small"], [1, "badge", "bg-success-subtle", "text-success"], [1, "badge", "bg-secondary-subtle", "text-secondary"], [1, "fw-500"], [1, "text-muted"], [1, "text-right", "fw-500"], [1, "grow", "rounded-full", "overflow-hidden", 2, "height", "8px", "background", "var(--bg-elevated)"], [1, "h-full", "rounded-full", "transition-all", "duration-500"], [1, "shrink-0", "text-right", "small", "fw-600", 2, "min-width", "42px"], ["colspan", "8", 1, "text-center", "text-muted", "py-4"]], template: function ProjectWaterLevel_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "div", 2);
       \u0275\u0275namespaceSVG();
@@ -55499,19 +55493,16 @@ var ProjectWaterLevel = class _ProjectWaterLevel {
       \u0275\u0275text(38, "\u696D\u52D9\u57F7\u884C\u91D1\u984D");
       \u0275\u0275elementEnd();
       \u0275\u0275elementStart(39, "th", 20);
-      \u0275\u0275text(40, "\u5DF2\u8ACB\u6B3E");
+      \u0275\u0275text(40, "\u5DF2\u52D5\u652F");
       \u0275\u0275elementEnd();
       \u0275\u0275elementStart(41, "th", 21);
-      \u0275\u0275text(42, "\u5DF2\u4ED8\u6B3E");
+      \u0275\u0275text(42, "\u696D\u52D9\u57F7\u884C\u6C34\u4F4D");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(43, "th", 22);
-      \u0275\u0275text(44, "\u696D\u52D9\u57F7\u884C\u6C34\u4F4D");
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(45, "th", 22);
-      \u0275\u0275text(46, "\u7E3D\u5C08\u6848\u6C34\u4F4D");
+      \u0275\u0275elementStart(43, "th", 21);
+      \u0275\u0275text(44, "\u7E3D\u5C08\u6848\u6C34\u4F4D");
       \u0275\u0275elementEnd()()();
-      \u0275\u0275elementStart(47, "tbody");
-      \u0275\u0275repeaterCreate(48, ProjectWaterLevel_For_49_Template, 36, 28, "tr", null, _forTrack028, false, ProjectWaterLevel_ForEmpty_50_Template, 4, 1, "tr");
+      \u0275\u0275elementStart(45, "tbody");
+      \u0275\u0275repeaterCreate(46, ProjectWaterLevel_For_47_Template, 33, 24, "tr", null, _forTrack028, false, ProjectWaterLevel_ForEmpty_48_Template, 4, 1, "tr");
       \u0275\u0275elementEnd()()()()()();
     }
     if (rf & 2) {
@@ -55529,7 +55520,7 @@ var ProjectWaterLevel = class _ProjectWaterLevel {
       \u0275\u0275textInterpolate(ctx.statusLabel["active"]);
       \u0275\u0275advance(2);
       \u0275\u0275textInterpolate(ctx.statusLabel["closed"]);
-      \u0275\u0275advance(27);
+      \u0275\u0275advance(25);
       \u0275\u0275repeater(ctx.records());
     }
   }, dependencies: [CommonModule, FormsModule, NgSelectOption, \u0275NgSelectMultipleOption, SelectControlValueAccessor, NgControlStatus, NgModel, DecimalPipe], encapsulation: 2 });
@@ -55579,8 +55570,7 @@ var ProjectWaterLevel = class _ProjectWaterLevel {
               <th class="text-center hidden md:table-cell">\u72C0\u614B</th>
               <th class="text-right">\u5951\u7D04\u91D1\u984D</th>
               <th class="text-right">\u696D\u52D9\u57F7\u884C\u91D1\u984D</th>
-              <th class="text-right">\u5DF2\u8ACB\u6B3E</th>
-              <th class="text-right hidden lg:table-cell">\u5DF2\u4ED8\u6B3E</th>
+              <th class="text-right">\u5DF2\u52D5\u652F</th>
               <th style="min-width: 180px">\u696D\u52D9\u57F7\u884C\u6C34\u4F4D</th>
               <th style="min-width: 180px">\u7E3D\u5C08\u6848\u6C34\u4F4D</th>
             </tr>
@@ -55616,8 +55606,7 @@ var ProjectWaterLevel = class _ProjectWaterLevel {
                     <span class="text-muted">\u2014</span>
                   }
                 </td>
-                <td class="text-right fw-500">{{ row.paymentAmount | number:'1.0-0' }}</td>
-                <td class="text-right hidden lg:table-cell text-muted">{{ row.paidAmount | number:'1.0-0' }}</td>
+                <td class="text-right fw-500">{{ row.disbursedAmount | number:'1.0-0' }}</td>
                 <td>
                   <div class="flex items-center gap-2">
                     <div class="grow rounded-full overflow-hidden" style="height: 8px; background: var(--bg-elevated)">
@@ -55657,7 +55646,7 @@ var ProjectWaterLevel = class _ProjectWaterLevel {
               </tr>
             } @empty {
               <tr>
-                <td colspan="9" class="text-center text-muted py-4">
+                <td colspan="8" class="text-center text-muted py-4">
                   @if (loading()) {
                     \u8F09\u5165\u4E2D...
                   } @else {
@@ -55677,7 +55666,7 @@ var ProjectWaterLevel = class _ProjectWaterLevel {
   }], null, null);
 })();
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ProjectWaterLevel, { className: "ProjectWaterLevel", filePath: "src/app/features/admin/reports/pages/project-water-level/project-water-level.ts", lineNumber: 29 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ProjectWaterLevel, { className: "ProjectWaterLevel", filePath: "src/app/features/admin/reports/pages/project-water-level/project-water-level.ts", lineNumber: 28 });
 })();
 
 // src/app/features/admin/insurance-brackets/pages/insurance-bracket-list/insurance-bracket-list.ts
@@ -66809,7 +66798,7 @@ var ADMIN_ROUTES = [
   { path: "payment-requests", component: PaymentList, canActivate: [permissionGuard], data: { title: "\u8ACB\u6B3E\u7533\u8ACB", permission: "payment-requests:read" } },
   { path: "payment-requests/new", component: PaymentForm, canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u8ACB\u6B3E\u7533\u8ACB", permission: "payment-requests:write" } },
   { path: "payment-requests/:id/edit", component: PaymentForm, canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u8ACB\u6B3E\u7533\u8ACB", permission: "payment-requests:read" } },
-  { path: "payment-requests/:id", canActivate: [permissionGuard], data: { title: "\u8ACB\u6B3E\u7533\u8ACB\u8A73\u60C5", permission: "payment-requests:read" }, loadComponent: () => import("./chunk-77N7BFQ7.js").then((m) => m.PaymentDetail) },
+  { path: "payment-requests/:id", canActivate: [permissionGuard], data: { title: "\u8ACB\u6B3E\u7533\u8ACB\u8A73\u60C5", permission: "payment-requests:read" }, loadComponent: () => import("./chunk-J3BIZQWW.js").then((m) => m.PaymentDetail) },
   // 預支申請
   { path: "advance-requests", component: AdvanceList, canActivate: [permissionGuard], data: { title: "\u9810\u652F\u7533\u8ACB", permission: "advance-requests:read" } },
   { path: "advance-requests/new", component: AdvanceForm, canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u9810\u652F\u7533\u8ACB", permission: "advance-requests:write" } },
@@ -66835,17 +66824,17 @@ var ADMIN_ROUTES = [
   { path: "travel-requests/:id/edit", component: TravelRequestForm, canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u51FA\u5DEE\u9810\u652F\u7533\u8ACB", permission: "travel-requests:read" } },
   { path: "travel-requests/:id", component: TravelDetail, canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u9810\u652F\u7533\u8ACB\u8A73\u60C5", permission: "travel-requests:read" } },
   // 出差請款申請
-  { path: "travel-payment-requests", canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-YXDP6BQB.js").then((m) => m.TravelPaymentList) },
-  { path: "travel-payment-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:write" }, loadComponent: () => import("./chunk-3PXKLC7X.js").then((m) => m.TravelPaymentForm) },
-  { path: "travel-payment-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-3PXKLC7X.js").then((m) => m.TravelPaymentForm) },
-  { path: "travel-payment-requests/:id", canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB\u8A73\u60C5", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-6ZHG6OO2.js").then((m) => m.TravelPaymentDetail) },
+  { path: "travel-payment-requests", canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-IN2AFF24.js").then((m) => m.TravelPaymentList) },
+  { path: "travel-payment-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:write" }, loadComponent: () => import("./chunk-OC46AP4E.js").then((m) => m.TravelPaymentForm) },
+  { path: "travel-payment-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-OC46AP4E.js").then((m) => m.TravelPaymentForm) },
+  { path: "travel-payment-requests/:id", canActivate: [permissionGuard], data: { title: "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB\u8A73\u60C5", permission: "travel-payment-requests:read" }, loadComponent: () => import("./chunk-66NLGPKM.js").then((m) => m.TravelPaymentDetail) },
   // 假日執行活動申請
-  { path: "holiday-travel-requests", canActivate: [permissionGuard], data: { title: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-XEXI5WMI.js").then((m) => m.HolidayTravelRequestList) },
-  { path: "holiday-travel-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:write" }, loadComponent: () => import("./chunk-RFSWRPPJ.js").then((m) => m.HolidayTravelRequestForm) },
-  { path: "holiday-travel-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-RFSWRPPJ.js").then((m) => m.HolidayTravelRequestForm) },
-  { path: "holiday-travel-requests/:id", canActivate: [permissionGuard], data: { title: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB\u8A73\u60C5", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-AZZ2Y7M7.js").then((m) => m.HolidayTravelDetail) },
+  { path: "holiday-travel-requests", canActivate: [permissionGuard], data: { title: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-CKRMOAAX.js").then((m) => m.HolidayTravelRequestList) },
+  { path: "holiday-travel-requests/new", canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:write" }, loadComponent: () => import("./chunk-MP3QTVMH.js").then((m) => m.HolidayTravelRequestForm) },
+  { path: "holiday-travel-requests/:id/edit", canActivate: [permissionGuard], data: { title: "\u7DE8\u8F2F\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-MP3QTVMH.js").then((m) => m.HolidayTravelRequestForm) },
+  { path: "holiday-travel-requests/:id", canActivate: [permissionGuard], data: { title: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB\u8A73\u60C5", permission: "holiday-travel-requests:read" }, loadComponent: () => import("./chunk-CRCDMRMF.js").then((m) => m.HolidayTravelDetail) },
   // 行事曆管理
-  { path: "calendar-days", canActivate: [permissionGuard], data: { title: "\u884C\u4E8B\u66C6\u7BA1\u7406", permission: "calendar-days:read" }, loadComponent: () => import("./chunk-MTOAWTSY.js").then((m) => m.CalendarDayList) },
+  { path: "calendar-days", canActivate: [permissionGuard], data: { title: "\u884C\u4E8B\u66C6\u7BA1\u7406", permission: "calendar-days:read" }, loadComponent: () => import("./chunk-KOUFWBSR.js").then((m) => m.CalendarDayList) },
   // 加班申請
   { path: "overtime-requests", component: OvertimeRequestList, canActivate: [permissionGuard], data: { title: "\u52A0\u73ED\u7533\u8ACB", permission: "overtime-requests:read" } },
   { path: "overtime-requests/new", component: OvertimeRequestForm, canActivate: [permissionGuard], data: { title: "\u65B0\u589E\u52A0\u73ED\u7533\u8ACB", permission: "overtime-requests:write" } },
@@ -66884,4 +66873,4 @@ xlsx/xlsx.mjs:
 xlsx/xlsx.mjs:
   (*! sheetjs (C) 2013-present SheetJS -- http://sheetjs.com *)
 */
-//# sourceMappingURL=chunk-7XS4LVRF.js.map
+//# sourceMappingURL=chunk-5XXVLFC7.js.map
