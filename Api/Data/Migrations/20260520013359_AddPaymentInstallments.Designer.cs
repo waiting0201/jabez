@@ -4,6 +4,7 @@ using Jabez.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Jabez.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260520013359_AddPaymentInstallments")]
+    partial class AddPaymentInstallments
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2465,88 +2468,6 @@ namespace Jabez.Api.Data.Migrations
                     b.ToTable("OvertimeRequests");
                 });
 
-            modelBuilder.Entity("Jabez.Api.Models.Entities.PaymentReminderLog", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<Guid>("BatchId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
-
-                    b.Property<int?>("DurationMs")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ErrorCategory")
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<string>("ErrorMessage")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<Guid?>("FinanceUserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int?>("HttpStatusCode")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ItemCount")
-                        .HasColumnType("int");
-
-                    b.Property<string>("LineUserIdSnapshot")
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<DateOnly>("ReminderDateTaipei")
-                        .HasColumnType("date");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<DateTime>("TickedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("TickedAtTaipei")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("TriggerSource")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)");
-
-                    b.Property<Guid?>("TriggeredByUserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("UserNameSnapshot")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BatchId")
-                        .HasDatabaseName("IX_PaymentReminderLogs_BatchId");
-
-                    b.HasIndex("TriggeredByUserId");
-
-                    b.HasIndex("FinanceUserId", "ReminderDateTaipei")
-                        .HasDatabaseName("IX_PaymentReminderLogs_FinanceUser_Date");
-
-                    b.HasIndex("ReminderDateTaipei", "Status")
-                        .HasDatabaseName("IX_PaymentReminderLogs_Date_Status");
-
-                    b.ToTable("PaymentReminderLogs");
-                });
-
             modelBuilder.Entity("Jabez.Api.Models.Entities.PaymentRequest", b =>
                 {
                     b.Property<int>("Id")
@@ -4852,9 +4773,6 @@ namespace Jabez.Api.Data.Migrations
                     b.Property<int>("MonthlyOvertimeLimit")
                         .HasColumnType("int");
 
-                    b.Property<int>("PaymentReminderDaysBefore")
-                        .HasColumnType("int");
-
                     b.Property<bool>("RequireEmailVerification")
                         .HasColumnType("bit");
 
@@ -4907,7 +4825,6 @@ namespace Jabez.Api.Data.Migrations
                             MaintenanceMessage = "System is under maintenance. Please try again later.",
                             MaintenanceMode = false,
                             MonthlyOvertimeLimit = 46,
-                            PaymentReminderDaysBefore = 3,
                             RequireEmailVerification = true,
                             SessionTimeoutMinutes = 60,
                             SiteDescription = "Enterprise administration portal",
@@ -6537,23 +6454,6 @@ namespace Jabez.Api.Data.Migrations
                     b.Navigation("Employee");
 
                     b.Navigation("ReviewedBy");
-                });
-
-            modelBuilder.Entity("Jabez.Api.Models.Entities.PaymentReminderLog", b =>
-                {
-                    b.HasOne("Jabez.Api.Models.Entities.User", "FinanceUser")
-                        .WithMany()
-                        .HasForeignKey("FinanceUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Jabez.Api.Models.Entities.User", "TriggeredByUser")
-                        .WithMany()
-                        .HasForeignKey("TriggeredByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("FinanceUser");
-
-                    b.Navigation("TriggeredByUser");
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.PaymentRequest", b =>

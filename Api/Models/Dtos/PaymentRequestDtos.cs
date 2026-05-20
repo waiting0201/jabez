@@ -56,7 +56,9 @@ public sealed record PaymentRequestDto(
     DesignatedReviewerDto[]? DesignatedReviewers = null,
     int?             VendorId    = null,
     string?          VendorName  = null,
-    string?          VendorTaxId = null);
+    string?          VendorTaxId = null,
+    InstallmentDto[]? Installments = null,
+    string?          PaymentStatus = null);
 
 public sealed record CreatePaymentRequestRequest(
     string              Type,
@@ -137,7 +139,9 @@ public sealed record PaymentTaskDetailDto(
     string?          VendorContactPerson  = null,
     string?          VendorPhone          = null,
     string?          VendorBankAccount    = null,
-    string?          VendorAddress        = null);
+    string?          VendorAddress        = null,
+    InstallmentDto[]? Installments        = null,
+    string?          PaymentStatus        = null);   // Unpaid | PartiallyPaid | FullyPaid
 
 public sealed record LeaveTaskDetailDto(
     int      LeaveRequestId,
@@ -171,7 +175,9 @@ public sealed record TravelTaskDetailDto(
     int?      HolidayDays = null,
     TravelRequestItemDto[] Items = null!,
     string?   PaidBySignatureUrl = null,
-    HolidayAllowanceDto[]? HolidayAllowances = null)
+    HolidayAllowanceDto[]? HolidayAllowances = null,
+    InstallmentDto[]? Installments = null,
+    string?   PaymentStatus = null)
 {
     public TravelRequestItemDto[] Items { get; init; } = Items ?? Array.Empty<TravelRequestItemDto>();
 }
@@ -196,7 +202,9 @@ public sealed record TravelPaymentTaskDetailDto(
     DateTime? EstimatedPaymentDate,
     DateTime? PaidAt,
     TravelPaymentRequestItemDto[] Items = null!,
-    string?   PaidBySignatureUrl = null)
+    string?   PaidBySignatureUrl = null,
+    InstallmentDto[]? Installments = null,
+    string?   PaymentStatus = null)
 {
     public TravelPaymentRequestItemDto[] Items { get; init; } = Items ?? Array.Empty<TravelPaymentRequestItemDto>();
 }

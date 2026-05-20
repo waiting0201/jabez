@@ -5,7 +5,7 @@ using System.Data;
 
 namespace Jabez.Api.Services.Dapper;
 
-public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceRequestReadService
+public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentReadService installments) : IAdvanceRequestReadService
 {
     private const string BaseSql = """
         SELECT ar.Id, ar.RequestNo, ar.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
@@ -51,8 +51,12 @@ public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceReques
             : Enumerable.Empty<dynamic>();
 
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
+        var dtos = GroupToAdvanceRequests(rows, writeOffSummaries).ToList();
+        var idsForInst = dtos.Select(d => d.Id).ToList();
+        var instDict = await installments.GetByParentIdsAsync(InstallmentParentTable.AdvanceRequest, idsForInst);
+        var withStatus = dtos.Select(d => d with { PaymentStatus = installments.ComputeStatus(instDict.GetValueOrDefault(d.Id, [])) });
         return new PagedResult<AdvanceRequestDto>(
-            GroupToAdvanceRequests(rows, writeOffSummaries),
+            withStatus,
             total, page, pageSize, Math.Max(1, totalPages));
     }
 
@@ -104,10 +108,16 @@ public sealed class AdvanceRequestReadService(IDbConnection db) : IAdvanceReques
         var woDetailRows = await db.QueryAsync<dynamic>(woDetailSql, new { Id = id });
         var writeOffRecords = GroupToWriteOffRecords(woDetailRows);
 
+        // 載入分期撥款明細
+        var instDict = await installments.GetByParentIdsAsync(InstallmentParentTable.AdvanceRequest, new[] { id });
+        var instList = instDict.GetValueOrDefault(id, []);
+
         return dto with
         {
             DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null,
             WriteOffRecords = writeOffRecords.Length > 0 ? writeOffRecords : null,
+            Installments = instList.Count > 0 ? instList.ToArray() : null,
+            PaymentStatus = installments.ComputeStatus(instList),
         };
     }
 

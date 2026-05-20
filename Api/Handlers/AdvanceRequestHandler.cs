@@ -579,6 +579,123 @@ public sealed class AdvanceRequestHandler(
         return new OkObjectResult(ApiResponse.Ok(new { ar.Id, ar.EstimatedPaymentDate, ar.PaidAt, ar.EstimatedRefundDate, ar.RefundedAt, ar.RefundedAmount }, msg));
     }
 
+    /// <summary>
+    /// 新增 / 更新預支撥款分期明細（同步維護父表 cache）。
+    /// 僅財務體系部門或 Superadmin 可操作。
+    /// 每筆新填入 PaidAt 的 installment 觸發一次「已撥款」通知。
+    /// </summary>
+    public async Task<IActionResult> UpsertInstallmentsAsync(HttpRequest req, string id)
+    {
+        if (!int.TryParse(id, out var intId))
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid ID format."));
+
+        var principal = await jwtService.ValidateRequestAsync(req);
+        if (principal is null)
+            return new UnauthorizedObjectResult(ApiResponse.Fail("Unauthorized."));
+
+        var userIdStr = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return new UnauthorizedObjectResult(ApiResponse.Fail("Invalid token claims."));
+
+        var user = await db.Users.AsNoTracking().Include(u => u.Department).FirstOrDefaultAsync(u => u.Id == userId);
+        if (user is null)
+            return new UnauthorizedObjectResult(ApiResponse.Fail("User not found."));
+        if (!user.IsSuperAdmin && !DepartmentCodes.FinancialAndAbove.Contains(user.Department?.Code ?? ""))
+            throw AppException.Forbidden("僅財務體系部門或 Superadmin 可設定撥款明細。");
+
+        var ar = await db.AdvanceRequests
+                         .Include(a => a.Installments)
+                         .FirstOrDefaultAsync(a => a.Id == intId)
+                 ?? throw AppException.NotFound("AdvanceRequest");
+
+        if (ar.ApprovalStatus != "approved")
+            return new BadRequestObjectResult(ApiResponse.Fail("只有已核准的預支申請可以設定撥款明細。"));
+
+        var body = await req.ReadFromJsonAsync<UpsertInstallmentsRequest>(JsonOpts);
+        if (body is null)
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
+
+        var existingSnap = ar.Installments
+            .Select(i => (i.Id, i.InstallmentNo, i.ExpectedDate, i.PaidAt, i.Amount))
+            .ToList();
+        InstallmentValidator.Validate(body.Installments, ar.GrandTotal, existingSnap);
+
+        var nowUtc = DateTime.UtcNow;
+        var taipeiTz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Taipei");
+        var nowTaipei = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, taipeiTz);
+        var newlyPaid = new List<NewlyPaidInstallment>();
+        var inputIds = body.Installments.Where(i => i.Id.HasValue).Select(i => i.Id!.Value).ToHashSet();
+
+        var toRemove = ar.Installments.Where(e => !inputIds.Contains(e.Id)).ToList();
+        foreach (var r in toRemove)
+            db.AdvanceRequestInstallments.Remove(r);
+
+        foreach (var input in body.Installments)
+        {
+            if (input.Id.HasValue)
+            {
+                var existing = ar.Installments.FirstOrDefault(e => e.Id == input.Id.Value)
+                    ?? throw AppException.BadRequest($"找不到要更新的撥款列 Id={input.Id.Value}。");
+
+                var wasPaidNull = !existing.PaidAt.HasValue;
+                existing.InstallmentNo = input.InstallmentNo;
+                existing.ExpectedDate  = input.ExpectedDate.Date;
+                existing.Amount        = input.Amount;
+                existing.Note          = input.Note;
+                if (input.PaidAt.HasValue)
+                {
+                    existing.PaidAt = input.PaidAt.Value.Date + nowTaipei.TimeOfDay;
+                    if (wasPaidNull)
+                    {
+                        existing.PaidByUserId = userId;
+                        newlyPaid.Add(new(existing.InstallmentNo, existing.PaidAt.Value, existing.Amount, body.Installments.Count));
+                    }
+                }
+                existing.UpdatedAt = nowUtc;
+            }
+            else
+            {
+                var ins = new AdvanceRequestInstallment
+                {
+                    AdvanceRequestId = ar.Id,
+                    InstallmentNo    = input.InstallmentNo,
+                    ExpectedDate     = input.ExpectedDate.Date,
+                    Amount           = input.Amount,
+                    Note             = input.Note,
+                    CreatedAt        = nowUtc,
+                    UpdatedAt        = nowUtc,
+                };
+                if (input.PaidAt.HasValue)
+                {
+                    ins.PaidAt = input.PaidAt.Value.Date + nowTaipei.TimeOfDay;
+                    ins.PaidByUserId = userId;
+                    newlyPaid.Add(new(ins.InstallmentNo, ins.PaidAt.Value, ins.Amount, body.Installments.Count));
+                }
+                db.AdvanceRequestInstallments.Add(ins);
+            }
+        }
+
+        var cacheInput = body.Installments
+            .Select(i => (i.ExpectedDate, PaidAt: i.PaidAt.HasValue ? i.PaidAt.Value.Date + nowTaipei.TimeOfDay : (DateTime?)null))
+            .ToList();
+        var (cacheEstimated, cachePaidAt, _) = InstallmentValidator.ComputeCache(cacheInput);
+        ar.EstimatedPaymentDate = cacheEstimated;
+        ar.PaidAt = cachePaidAt;
+        ar.PaidByUserId = cachePaidAt.HasValue ? userId : null;
+
+        await db.SaveChangesAsync();
+
+        if (ar.SubmittedById.HasValue)
+            foreach (var np in newlyPaid)
+                await notifier.NotifyApplicantPaidAsync(
+                    "advance", ar.Id, ar.SubmittedById.Value, np.Amount, np.PaidAt,
+                    installmentNo: np.InstallmentNo, totalInstallments: np.TotalInstallments);
+
+        return new OkObjectResult(ApiResponse.Ok(
+            new { ar.Id, ar.EstimatedPaymentDate, ar.PaidAt, InstallmentCount = body.Installments.Count },
+            $"已更新 {body.Installments.Count} 筆撥款明細。"));
+    }
+
     // ── Helper ──────────────────────────────────────────────────────────────
 
     private async Task<Guid> GetUserIdAsync(HttpRequest req)

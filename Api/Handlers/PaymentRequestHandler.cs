@@ -629,6 +629,136 @@ public sealed class PaymentRequestHandler(
         return new OkObjectResult(ApiResponse.Ok(new { pr.Id, pr.ApprovalStatus, pr.EstimatedPaymentDate, pr.PaidAt }, "已更新。"));
     }
 
+    /// <summary>
+    /// 新增 / 更新分期撥款明細（4 種申請類型共用語意）。
+    /// 僅財務體系部門或 Superadmin 可操作。
+    /// 同步維護父表 EstimatedPaymentDate / PaidAt / PaidByUserId cache 欄位（兩階段過渡）。
+    /// 每筆新填入 PaidAt 的 installment 觸發一次「已撥款」通知（含 N/M 期）。
+    /// </summary>
+    public async Task<IActionResult> UpsertInstallmentsAsync(HttpRequest req, string id)
+    {
+        if (!int.TryParse(id, out var intId))
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid ID format."));
+
+        var principal = await jwtService.ValidateRequestAsync(req);
+        if (principal is null)
+            return new UnauthorizedObjectResult(ApiResponse.Fail("Unauthorized."));
+
+        var userIdStr = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return new UnauthorizedObjectResult(ApiResponse.Fail("Invalid token claims."));
+
+        var user = await db.Users.AsNoTracking().Include(u => u.Department).FirstOrDefaultAsync(u => u.Id == userId);
+        if (user is null)
+            return new UnauthorizedObjectResult(ApiResponse.Fail("User not found."));
+        if (!user.IsSuperAdmin && !DepartmentCodes.FinancialAndAbove.Contains(user.Department?.Code ?? ""))
+            throw AppException.Forbidden("僅財務體系部門或 Superadmin 可設定撥款明細。");
+
+        var pr = await db.PaymentRequests
+                         .Include(p => p.Installments)
+                         .FirstOrDefaultAsync(p => p.Id == intId)
+                 ?? throw AppException.NotFound("PaymentRequest");
+
+        var body = await req.ReadFromJsonAsync<UpsertInstallmentsRequest>(JsonOpts);
+        if (body is null)
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
+
+        // 共用驗證
+        var existingSnap = pr.Installments
+            .Select(i => (i.Id, i.InstallmentNo, i.ExpectedDate, i.PaidAt, i.Amount))
+            .ToList();
+        InstallmentValidator.Validate(body.Installments, pr.TotalAmount, existingSnap);
+
+        // Diff
+        var nowUtc = DateTime.UtcNow;
+        var taipeiTz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Taipei");
+        var nowTaipei = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, taipeiTz);
+        var newlyPaid = new List<NewlyPaidInstallment>();
+        var inputIds = body.Installments.Where(i => i.Id.HasValue).Select(i => i.Id!.Value).ToHashSet();
+
+        // 1. delete：existing 中 inputs 沒帶 Id 的（已驗證已撥款不會落到此處）
+        var toRemove = pr.Installments.Where(e => !inputIds.Contains(e.Id)).ToList();
+        foreach (var r in toRemove)
+            db.PaymentRequestInstallments.Remove(r);
+
+        // 2. update + insert
+        foreach (var input in body.Installments)
+        {
+            if (input.Id.HasValue)
+            {
+                var existing = pr.Installments.FirstOrDefault(e => e.Id == input.Id.Value)
+                    ?? throw AppException.BadRequest($"找不到要更新的撥款列 Id={input.Id.Value}。");
+
+                var wasPaidNull = !existing.PaidAt.HasValue;
+                existing.InstallmentNo = input.InstallmentNo;
+                existing.ExpectedDate  = input.ExpectedDate.Date;
+                existing.Amount        = input.Amount;
+                existing.Note          = input.Note;
+                if (input.PaidAt.HasValue)
+                {
+                    existing.PaidAt = input.PaidAt.Value.Date + nowTaipei.TimeOfDay;
+                    if (wasPaidNull)
+                    {
+                        existing.PaidByUserId = userId;
+                        newlyPaid.Add(new(existing.InstallmentNo, existing.PaidAt.Value, existing.Amount, body.Installments.Count));
+                    }
+                }
+                existing.UpdatedAt = nowUtc;
+            }
+            else
+            {
+                var ins = new PaymentRequestInstallment
+                {
+                    PaymentRequestId = pr.Id,
+                    InstallmentNo    = input.InstallmentNo,
+                    ExpectedDate     = input.ExpectedDate.Date,
+                    Amount           = input.Amount,
+                    Note             = input.Note,
+                    CreatedAt        = nowUtc,
+                    UpdatedAt        = nowUtc,
+                };
+                if (input.PaidAt.HasValue)
+                {
+                    ins.PaidAt = input.PaidAt.Value.Date + nowTaipei.TimeOfDay;
+                    ins.PaidByUserId = userId;
+                    newlyPaid.Add(new(ins.InstallmentNo, ins.PaidAt.Value, ins.Amount, body.Installments.Count));
+                }
+                db.PaymentRequestInstallments.Add(ins);
+            }
+        }
+
+        // 3. 同步父表 cache
+        var cacheInput = body.Installments
+            .Select(i => (i.ExpectedDate, PaidAt: i.PaidAt.HasValue ? i.PaidAt.Value.Date + nowTaipei.TimeOfDay : (DateTime?)null))
+            .ToList();
+        var (cacheEstimated, cachePaidAt, _) = InstallmentValidator.ComputeCache(cacheInput);
+        pr.EstimatedPaymentDate = cacheEstimated;
+        pr.PaidAt = cachePaidAt;
+        pr.PaidByUserId = cachePaidAt.HasValue ? userId : null;
+
+        // 4. 狀態（可選）
+        if (!string.IsNullOrWhiteSpace(body.ApprovalStatus))
+        {
+            var allowed = new[] { "draft", "pending", "approved", "returned", "rejected" };
+            if (!allowed.Contains(body.ApprovalStatus))
+                return new BadRequestObjectResult(ApiResponse.Fail($"不合法的狀態值：{body.ApprovalStatus}"));
+            pr.ApprovalStatus = body.ApprovalStatus;
+        }
+
+        await db.SaveChangesAsync();
+
+        // 5. 逐筆通知
+        if (pr.SubmittedById.HasValue)
+            foreach (var np in newlyPaid)
+                await notifier.NotifyApplicantPaidAsync(
+                    "payment_request", pr.Id, pr.SubmittedById.Value, np.Amount, np.PaidAt,
+                    installmentNo: np.InstallmentNo, totalInstallments: np.TotalInstallments);
+
+        return new OkObjectResult(ApiResponse.Ok(
+            new { pr.Id, pr.ApprovalStatus, pr.EstimatedPaymentDate, pr.PaidAt, InstallmentCount = body.Installments.Count },
+            $"已更新 {body.Installments.Count} 筆撥款明細。"));
+    }
+
     // ── Helper ──────────────────────────────────────────────────────────────────
 
     /// <summary>從 JWT Bearer Token 取出 sub claim 作為使用者 GUID</summary>

@@ -5,7 +5,7 @@ using System.Data;
 
 namespace Jabez.Api.Services.Dapper;
 
-public sealed class TravelRequestReadService(IDbConnection db) : ITravelRequestReadService
+public sealed class TravelRequestReadService(IDbConnection db, IInstallmentReadService installments) : ITravelRequestReadService
 {
     private const string BaseSql = """
         SELECT tr.Id, u.Name AS EmployeeName,
@@ -56,8 +56,12 @@ public sealed class TravelRequestReadService(IDbConnection db) : ITravelRequestR
         int total = await db.ExecuteScalarAsync<int>(countSql, parameters);
         var rows = await db.QueryAsync<dynamic>(sql, parameters);
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
+        var dtos = GroupToTravelRequests(rows).ToList();
+        var idsForInst = dtos.Select(d => d.Id).ToList();
+        var instDict = await installments.GetByParentIdsAsync(InstallmentParentTable.TravelRequest, idsForInst);
+        var withStatus = dtos.Select(d => d with { PaymentStatus = installments.ComputeStatus(instDict.GetValueOrDefault(d.Id, [])) });
         return new PagedResult<TravelRequestDto>(
-            GroupToTravelRequests(rows),
+            withStatus,
             total, page, pageSize, Math.Max(1, totalPages));
     }
 
@@ -101,10 +105,15 @@ public sealed class TravelRequestReadService(IDbConnection db) : ITravelRequestR
             (string)r.UserName,
             (int)r.SortOrder)).ToArray();
 
+        var instDict = await installments.GetByParentIdsAsync(InstallmentParentTable.TravelRequest, new[] { id });
+        var instList = instDict.GetValueOrDefault(id, []);
+
         return dto with
         {
             DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null,
             Participants        = participants.Length > 0 ? participants : null,
+            Installments        = instList.Count > 0 ? instList.ToArray() : null,
+            PaymentStatus       = installments.ComputeStatus(instList),
         };
     }
 

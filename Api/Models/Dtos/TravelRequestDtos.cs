@@ -65,7 +65,9 @@ public sealed record TravelRequestDto(
     DateTime?                    EstimatedRefundDate  = null,
     DateTime?                    RefundedAt           = null,
     int                          HolidayDays          = 0,
-    ParticipantDto[]?            Participants         = null);
+    ParticipantDto[]?            Participants         = null,
+    InstallmentDto[]?            Installments         = null,
+    string?                      PaymentStatus        = null);
 
 public sealed record CreateTravelRequestRequest(
     Guid?    EmployeeId,

@@ -5,7 +5,7 @@ using System.Data;
 
 namespace Jabez.Api.Services.Dapper;
 
-public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentRequestReadService
+public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentReadService installments) : IPaymentRequestReadService
 {
     // ── 通用 JOIN SQL ─────────────────────────────────────────────────────────
     private const string BaseSql = """
@@ -47,7 +47,12 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         int total = await db.ExecuteScalarAsync<int>(countSql, new { UserId = userId, Skip = (page - 1) * pageSize, Take = pageSize });
         var rows = await db.QueryAsync<dynamic>(sql, new { UserId = userId, Skip = (page - 1) * pageSize, Take = pageSize });
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
-        return new PagedResult<PaymentRequestDto>(GroupToPaymentRequests(rows), total, page, pageSize, Math.Max(1, totalPages));
+        var dtos = GroupToPaymentRequests(rows).ToList();
+        // 為列表頁注入 paymentStatus 三態 badge（不附完整 installments 陣列以節省 payload）
+        var ids = dtos.Select(d => d.Id).ToList();
+        var instDict = await installments.GetByParentIdsAsync(InstallmentParentTable.PaymentRequest, ids);
+        var withStatus = dtos.Select(d => d with { PaymentStatus = installments.ComputeStatus(instDict.GetValueOrDefault(d.Id, [])) });
+        return new PagedResult<PaymentRequestDto>(withStatus, total, page, pageSize, Math.Max(1, totalPages));
     }
 
     public async Task<PaymentRequestDto?> GetByIdAsync(int id)
@@ -76,7 +81,15 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             (DateTime?)r.ReviewedAt,
             (string?)r.Comment)).ToArray();
 
-        return dto with { DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null };
+        var instDict = await installments.GetByParentIdsAsync(InstallmentParentTable.PaymentRequest, new[] { id });
+        var instList = instDict.GetValueOrDefault(id, []);
+
+        return dto with
+        {
+            DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null,
+            Installments        = instList.Count > 0 ? instList.ToArray() : null,
+            PaymentStatus       = installments.ComputeStatus(instList),
+        };
     }
 
     // ── ApprovalTask（彙總 PaymentRequest + LeaveRequest + TravelRequest + OvertimeRequest）──
@@ -90,13 +103,15 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
             await FetchAllAsync(reviewerJobTitleId: reviewerJobTitleId, reviewerDepartmentId: reviewerDepartmentId,
                                 statusFilter: status, reviewerUserId: reviewerUserId, paymentStatus: paymentStatus,
                                 applicationType: applicationType);
-        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants);
+        var instDicts = await LoadInstallmentsAsync(payments, advances, travels, holidayTravels, travelPayments);
+        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, instDicts);
     }
 
     public async Task<ApprovalTaskDto?> GetApprovalTaskByIdAsync(int id, string applicationType)
     {
         var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants) = await FetchAllAsync(id, applicationType);
-        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants)
+        var instDicts = await LoadInstallmentsAsync(payments, advances, travels, holidayTravels, travelPayments);
+        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, instDicts)
             .FirstOrDefault(t => t.Id == id && t.ApplicationType == applicationType);
     }
 
@@ -621,7 +636,34 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         return (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, flows, records, designatedRows, writeOffItemRows, advanceItemRows, travelItemRows, travelWriteOffItemRows, travelPaymentItemRows, holidayParticipantRows);
     }
 
-    private static IEnumerable<ApprovalTaskDto> BuildApprovalTasks(
+    /// <summary>給 BuildApprovalTasks 用的 installments 集合（依父表分組）</summary>
+    private sealed record InstallmentDicts(
+        Dictionary<int, List<InstallmentDto>> Payment,
+        Dictionary<int, List<InstallmentDto>> Advance,
+        Dictionary<int, List<InstallmentDto>> Travel,
+        Dictionary<int, List<InstallmentDto>> TravelPayment);
+
+    private async Task<InstallmentDicts> LoadInstallmentsAsync(
+        IEnumerable<dynamic> paymentRows,
+        IEnumerable<dynamic> advanceRows,
+        IEnumerable<dynamic> travelRows,
+        IEnumerable<dynamic> holidayTravelRows,
+        IEnumerable<dynamic> travelPaymentRows)
+    {
+        var paymentIds       = paymentRows.Select(r => (int)r.Id).Distinct().ToList();
+        var advanceIds       = advanceRows.Select(r => (int)r.Id).Distinct().ToList();
+        var travelIds        = travelRows.Select(r => (int)r.Id).Concat(holidayTravelRows.Select(r => (int)r.Id)).Distinct().ToList();
+        var travelPaymentIds = travelPaymentRows.Select(r => (int)r.Id).Distinct().ToList();
+
+        var paymentInst       = await installments.GetByParentIdsAsync(InstallmentParentTable.PaymentRequest,       paymentIds);
+        var advanceInst       = await installments.GetByParentIdsAsync(InstallmentParentTable.AdvanceRequest,       advanceIds);
+        var travelInst        = await installments.GetByParentIdsAsync(InstallmentParentTable.TravelRequest,        travelIds);
+        var travelPaymentInst = await installments.GetByParentIdsAsync(InstallmentParentTable.TravelPaymentRequest, travelPaymentIds);
+
+        return new InstallmentDicts(paymentInst, advanceInst, travelInst, travelPaymentInst);
+    }
+
+    private IEnumerable<ApprovalTaskDto> BuildApprovalTasks(
         IEnumerable<dynamic> paymentRows,
         IEnumerable<dynamic> leaveRows,
         IEnumerable<dynamic> travelRows,
@@ -639,7 +681,8 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
         IEnumerable<dynamic> travelItemRows,
         IEnumerable<dynamic> travelWriteOffItemRows,
         IEnumerable<dynamic> travelPaymentItemRows,
-        IEnumerable<dynamic> holidayParticipantRows)
+        IEnumerable<dynamic> holidayParticipantRows,
+        InstallmentDicts instDicts)
     {
         // Build designated reviewer lookup keyed by (RequestType, RequestId)
         var drDict = new Dictionary<(string, int), List<DesignatedReviewerDto>>();
@@ -820,7 +863,9 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (string?)x.pr.VendorContactPerson,
                 (string?)x.pr.VendorPhone,
                 (string?)x.pr.VendorBankAccount,
-                (string?)x.pr.VendorAddress),
+                (string?)x.pr.VendorAddress,
+                instDicts.Payment.TryGetValue((int)x.pr.Id, out var prInst) ? [.. prInst] : null,
+                installments.ComputeStatus(instDicts.Payment.GetValueOrDefault((int)x.pr.Id, []))),
             null, null, null, null, null, null,
             GetRecords("payment_request", (int)x.pr.Id),
             GetDesignatedReviewers("payment_request", (int)x.pr.Id),
@@ -881,7 +926,10 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (DateTime?)row.RefundedAt,
                 null,
                 GetTravelItems((int)row.Id),
-                (string?)row.PaidBySignatureUrl),
+                (string?)row.PaidBySignatureUrl,
+                null,
+                instDicts.Travel.TryGetValue((int)row.Id, out var trInst) ? [.. trInst] : null,
+                installments.ComputeStatus(instDicts.Travel.GetValueOrDefault((int)row.Id, []))),
             null, null, null, null,
             GetRecords("travel", (int)row.Id),
             GetDesignatedReviewers("travel", (int)row.Id),
@@ -923,7 +971,9 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                     (Guid)row.ApplicantId,
                     (string?)row.SubmittedBy ?? "—",
                     (decimal?)row.ApplicantBaseSalary,
-                    (int?)row.HolidayDays ?? 0)),
+                    (int?)row.HolidayDays ?? 0),
+                instDicts.Travel.TryGetValue((int)row.Id, out var htInst) ? [.. htInst] : null,
+                installments.ComputeStatus(instDicts.Travel.GetValueOrDefault((int)row.Id, []))),
             null, null, null, null,
             GetRecords("holiday_travel", (int)row.Id),
             GetDesignatedReviewers("holiday_travel", (int)row.Id),
@@ -978,7 +1028,11 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (DateTime?)row.EstimatedRefundDate,
                 (DateTime?)row.RefundedAt,
                 GetAdvanceItems((int)row.Id),
-                (string?)row.PaidBySignatureUrl),
+                (string?)row.PaidBySignatureUrl,
+                null,
+                null,
+                instDicts.Advance.TryGetValue((int)row.Id, out var advInst) ? [.. advInst] : null,
+                installments.ComputeStatus(instDicts.Advance.GetValueOrDefault((int)row.Id, []))),
             null, null,
             GetRecords("advance", (int)row.Id),
             GetDesignatedReviewers("advance", (int)row.Id),
@@ -1146,7 +1200,9 @@ public sealed class PaymentRequestReadService(IDbConnection db) : IPaymentReques
                 (DateTime?)row.EstimatedPaymentDate,
                 (DateTime?)row.PaidAt,
                 GetTravelPaymentItems((int)row.Id),
-                (string?)row.PaidBySignatureUrl)));
+                (string?)row.PaidBySignatureUrl,
+                instDicts.TravelPayment.TryGetValue((int)row.Id, out var tpInst) ? [.. tpInst] : null,
+                installments.ComputeStatus(instDicts.TravelPayment.GetValueOrDefault((int)row.Id, [])))));
 
         return paymentTasks
             .Concat(leaveTasks)

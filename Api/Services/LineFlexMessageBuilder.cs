@@ -119,6 +119,30 @@ public static class LineFlexMessageBuilder
             buttonUrl: linkUrl);
     }
 
+    /// <summary>撥款日將屆提醒 — 推送給財務人員的彙整通知（最多列前 5 筆）。</summary>
+    public static object BuildUpcomingPaymentsMessage(
+        string financeUserName,
+        int    itemCount,
+        IReadOnlyList<(string AppLabel, int ApplicationId, string Applicant, DateTime ExpectedDate, decimal Amount)> items,
+        string linkUrl)
+    {
+        var rows = new List<(string, string)> { ("收件人", financeUserName), ("待撥筆數", $"{itemCount} 筆") };
+        // 限制至多 5 筆，第 6 筆起以「⋯」表示
+        var preview = items.Take(5).ToList();
+        foreach (var (label, id, applicant, date, amount) in preview)
+            rows.Add(($"{date:MM/dd}", $"{label} #{id} {applicant} {amount:N0}元"));
+        if (items.Count > preview.Count)
+            rows.Add(("⋯", $"另有 {items.Count - preview.Count} 筆，前往列表查看完整清單"));
+
+        return BuildBubble(
+            altText:     $"[撥款提醒] 您有 {itemCount} 筆預計撥款日將屆",
+            headerColor: WarningBrown,
+            headerText:  "撥款日將屆提醒",
+            rows:        rows.ToArray(),
+            buttonLabel: "查看待撥清單",
+            buttonUrl:   linkUrl);
+    }
+
     /// <summary>打卡提醒 — 上班/下班前 N 分鐘推播給員工。</summary>
     public static object BuildAttendanceReminderMessage(
         string reminderType, string userName, int minutesUntil, string workTime, string linkUrl)
@@ -147,21 +171,30 @@ public static class LineFlexMessageBuilder
             buttonUrl:   linkUrl);
     }
 
-    /// <summary>撥款完成通知 — 通知申請人款項已撥付。</summary>
+    /// <summary>撥款完成通知 — 通知申請人款項已撥付。分期撥款情境下，標題附「第 N/M 期」。</summary>
     public static object BuildApplicantPaidMessage(
-        string label, int applicationId, decimal amount, DateTime paidAt, string linkUrl)
+        string label, int applicationId, decimal amount, DateTime paidAt, string linkUrl,
+        int? installmentNo = null, int? totalInstallments = null)
     {
+        var installmentLabel = installmentNo.HasValue && totalInstallments.HasValue
+            ? $"第 {installmentNo}/{totalInstallments} 期"
+            : "";
+        var titleSuffix = string.IsNullOrEmpty(installmentLabel) ? "" : $"（{installmentLabel}）";
+        var rows = new List<(string, string)>
+        {
+            ("申請類型", label),
+            ("申請編號", $"#{applicationId}"),
+        };
+        if (!string.IsNullOrEmpty(installmentLabel))
+            rows.Add(("撥款期數", installmentLabel));
+        rows.Add(("撥款金額", $"{amount:N0} 元"));
+        rows.Add(("撥款日期", paidAt.ToString("yyyy-MM-dd")));
+
         return BuildBubble(
-            altText: $"[已撥款] 您的{label} #{applicationId} 已撥款 — {amount:N0} 元",
+            altText: $"[已撥款] 您的{label} #{applicationId} 已撥款 — {amount:N0} 元{titleSuffix}",
             headerColor: SuccessGreen,
-            headerText: $"{label}已撥款",
-            rows: new[]
-            {
-                ("申請類型", label),
-                ("申請編號", $"#{applicationId}"),
-                ("撥款金額", $"{amount:N0} 元"),
-                ("撥款日期", paidAt.ToString("yyyy-MM-dd")),
-            },
+            headerText: $"{label}已撥款{titleSuffix}",
+            rows: rows.ToArray(),
             buttonLabel: "查看詳情",
             buttonUrl: linkUrl);
     }

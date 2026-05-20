@@ -22,16 +22,17 @@ public class TravelPaymentRequest
     public string?  ReviewNote      { get; set; }
     public DateTime CreatedAt       { get; set; }
 
-    // 撥款欄位（財務部填寫，參考 PaymentRequest 模式）
+    // 撥款 cache 欄位（兩階段過渡用，主要資料在 Installments；Handler 寫入時同步更新）
     public DateTime? EstimatedPaymentDate { get; set; }
     public DateTime? PaidAt               { get; set; }
     public Guid?     PaidByUserId         { get; set; }
 
     // Navigation
-    public User?         Employee     { get; set; }
-    public User?         ReviewedBy   { get; set; }
-    public User?         PaidBy       { get; set; }
-    public ApprovalItem? ApprovalItem { get; set; }
-    public Project?      Project      { get; set; }
-    public ICollection<TravelPaymentRequestItem> Items { get; set; } = [];
+    public User?                                         Employee     { get; set; }
+    public User?                                         ReviewedBy   { get; set; }
+    public User?                                         PaidBy       { get; set; }
+    public ApprovalItem?                                 ApprovalItem { get; set; }
+    public Project?                                      Project      { get; set; }
+    public ICollection<TravelPaymentRequestItem>         Items        { get; set; } = [];
+    public ICollection<TravelPaymentRequestInstallment>  Installments { get; set; } = [];
 }

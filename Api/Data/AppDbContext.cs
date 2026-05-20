@@ -42,6 +42,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<TravelPaymentRequest>       TravelPaymentRequests      { get; set; }
     public DbSet<TravelPaymentRequestItem>   TravelPaymentRequestItems  { get; set; }
     public DbSet<AttendanceReminderLog>      AttendanceReminderLogs     { get; set; }
+    public DbSet<PaymentReminderLog>         PaymentReminderLogs        { get; set; }
+
+    // 分期撥款
+    public DbSet<PaymentRequestInstallment>      PaymentRequestInstallments      { get; set; }
+    public DbSet<AdvanceRequestInstallment>      AdvanceRequestInstallments      { get; set; }
+    public DbSet<TravelRequestInstallment>       TravelRequestInstallments       { get; set; }
+    public DbSet<TravelPaymentRequestInstallment> TravelPaymentRequestInstallments { get; set; }
 
     // HR 人事資料卡（1:1 EmployeeProfile + 9 子表）
     public DbSet<EmployeeProfile>           EmployeeProfiles            { get; set; }
