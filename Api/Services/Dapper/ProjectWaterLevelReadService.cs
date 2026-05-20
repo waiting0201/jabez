@@ -8,8 +8,13 @@ namespace Jabez.Api.Services.Dapper;
 public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWaterLevelReadService
 {
     /// <summary>
-    /// 查詢所有有非 draft 請款紀錄的專案，計算請款金額、已付款金額及佔業務執行金額百分比。
-    /// Percentage 在 C# 端計算，避免 SQL 端除零問題。
+    /// 查詢有「已動支」金額的專案，計算動支金額佔業務執行金額 / 契約金額百分比。
+    /// 已動支 = 四種支出來源加總：
+    ///   (1) 請款已撥分期金額（PaymentRequest 非 draft + PaymentRequestInstallment.PaidAt IS NOT NULL）
+    ///   (2) 已核准預支沖銷 GrandTotal（透過 AdvanceRequest.ProjectId 回扣專案）
+    ///   (3) 出差請款已撥分期金額（TravelPaymentRequest 非 draft + Installment.PaidAt IS NOT NULL）
+    ///   (4) 已核准出差沖銷 GrandTotal（透過 TravelRequest.ProjectId 回扣專案）
+    /// Percentage 在 C# 端計算，避免 SQL 端除零問題；DisbursedAmount = 0 的專案在 C# 過濾掉。
     /// 套用 CLAUDE.md「部門可見性規則」：可見範圍由 IProjectAccessResolver 決定（Superadmin / CanSeeAll → SeeAll；其他依 CanViewSiblings / CanViewDescendants 旗標聯集）。
     /// </summary>
     public async Task<IEnumerable<ProjectWaterLevelDto>> GetAllAsync(ProjectAccessScope scope, int? year = null, string? status = null)
@@ -42,9 +47,10 @@ public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWat
 
         var scopeClause = conditions.Count > 0 ? " WHERE " + string.Join(" AND ", conditions) : "";
 
-        // PaidAmount 從 installments 子表累計：每個 PaymentRequest 取「已撥的 installments 金額加總」
-        // 與舊「PaidAt IS NOT NULL THEN TotalAmount」相比，分期撥款情境下更精準（部分撥款也計入實際金額）
-        // 使用 OUTER APPLY 預算 per-PR 已撥金額，外層 SUM 才能正確聚合（SQL Server 不允許 SUM 直接包 SUM 子查詢）
+        // 4 個 OUTER APPLY 各自預先聚合一種支出來源，每個專案得到 4 個獨立金額再相加。
+        // OUTER APPLY 保證即使該來源無資料也回傳 NULL（外層用 ISNULL → 0）。
+        // - 請款 / 出差請款：採已撥（PaidAt IS NOT NULL）的 installments 金額（部分撥款情境精準）
+        // - 預支沖銷 / 出差沖銷：採 ApprovalStatus = 'approved' 的 GrandTotal（沒有 installments）
         var sql = $"""
             SELECT p.Id          AS ProjectId,
                    p.Code        AS ProjectCode,
@@ -54,20 +60,43 @@ public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWat
                    p.ContractAmount,
                    p.BusinessAmount,
                    p.RemainingAmount,
-                   ISNULL(SUM(pr.TotalAmount), 0) AS PaymentAmount,
-                   ISNULL(SUM(paid.Amount), 0)    AS PaidAmount
+                   ISNULL(pr_paid.Amount,  0) AS PrPaidAmount,
+                   ISNULL(wo.Amount,       0) AS WriteOffAmount,
+                   ISNULL(tpr_paid.Amount, 0) AS TprPaidAmount,
+                   ISNULL(two.Amount,      0) AS TravelWriteOffAmount
             FROM   Projects p
-            LEFT JOIN Departments      d  ON p.DepartmentId = d.Id
-            LEFT JOIN PaymentRequests  pr ON pr.ProjectId   = p.Id
-                                         AND pr.ApprovalStatus != 'draft'
+            LEFT JOIN Departments d ON p.DepartmentId = d.Id
             OUTER APPLY (
               SELECT SUM(i.Amount) AS Amount
-              FROM PaymentRequestInstallments i
-              WHERE i.PaymentRequestId = pr.Id AND i.PaidAt IS NOT NULL
-            ) paid
+              FROM   PaymentRequests pr
+              JOIN   PaymentRequestInstallments i ON i.PaymentRequestId = pr.Id
+              WHERE  pr.ProjectId = p.Id
+                AND  pr.ApprovalStatus <> 'draft'
+                AND  i.PaidAt IS NOT NULL
+            ) pr_paid
+            OUTER APPLY (
+              SELECT SUM(w.GrandTotal) AS Amount
+              FROM   WriteOffRecords w
+              JOIN   AdvanceRequests a ON w.AdvanceRequestId = a.Id
+              WHERE  a.ProjectId = p.Id
+                AND  w.ApprovalStatus = 'approved'
+            ) wo
+            OUTER APPLY (
+              SELECT SUM(i.Amount) AS Amount
+              FROM   TravelPaymentRequests tpr
+              JOIN   TravelPaymentRequestInstallments i ON i.TravelPaymentRequestId = tpr.Id
+              WHERE  tpr.ProjectId = p.Id
+                AND  tpr.ApprovalStatus <> 'draft'
+                AND  i.PaidAt IS NOT NULL
+            ) tpr_paid
+            OUTER APPLY (
+              SELECT SUM(w.GrandTotal) AS Amount
+              FROM   TravelWriteOffRecords w
+              JOIN   TravelRequests t ON w.TravelRequestId = t.Id
+              WHERE  t.ProjectId = p.Id
+                AND  w.ApprovalStatus = 'approved'
+            ) two
             {scopeClause}
-            GROUP BY p.Id, p.Code, p.Name, p.Status, d.Name, p.ContractAmount, p.BusinessAmount, p.RemainingAmount
-            HAVING SUM(pr.TotalAmount) > 0
             ORDER BY p.Code
             """;
 
@@ -75,8 +104,12 @@ public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWat
 
         return rows.Select(row =>
         {
-            decimal paymentAmount = (decimal)row.PaymentAmount;
-            decimal paidAmount    = (decimal)row.PaidAmount;
+            decimal prPaid          = (decimal)row.PrPaidAmount;
+            decimal writeOff        = (decimal)row.WriteOffAmount;
+            decimal tprPaid         = (decimal)row.TprPaidAmount;
+            decimal travelWriteOff  = (decimal)row.TravelWriteOffAmount;
+            decimal disbursed       = prPaid + writeOff + tprPaid + travelWriteOff;
+
             decimal? contractAmount  = row.ContractAmount  is null ? null : (decimal?)row.ContractAmount;
             decimal? businessAmount  = row.BusinessAmount  is null ? null : (decimal?)row.BusinessAmount;
             decimal? remainingAmount = row.RemainingAmount is null ? null : (decimal?)row.RemainingAmount;
@@ -89,11 +122,11 @@ public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWat
 
             // 在 C# 端計算百分比，防止 SQL 端除零例外
             decimal? percentage = (businessAmount.HasValue && businessAmount.Value > 0)
-                ? Math.Round(paymentAmount / businessAmount.Value * 100, 1)
+                ? Math.Round(disbursed / businessAmount.Value * 100, 1)
                 : null;
 
             decimal? totalPercentage = (contractAmount.HasValue && contractAmount.Value > 0)
-                ? Math.Round((paymentAmount + preImportUsed) / contractAmount.Value * 100, 1)
+                ? Math.Round((disbursed + preImportUsed) / contractAmount.Value * 100, 1)
                 : null;
 
             return new ProjectWaterLevelDto(
@@ -105,11 +138,10 @@ public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWat
                 ContractAmount:      contractAmount,
                 BusinessAmount:      businessAmount,
                 RemainingAmount:     remainingAmount,
-                PaymentAmount:       paymentAmount,
-                PaidAmount:          paidAmount,
+                DisbursedAmount:     disbursed,
                 PreImportUsedAmount: preImportUsed,
                 Percentage:          percentage,
                 TotalPercentage:     totalPercentage);
-        });
+        }).Where(dto => dto.DisbursedAmount > 0);
     }
 }
