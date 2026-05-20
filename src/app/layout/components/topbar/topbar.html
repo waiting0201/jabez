@@ -9,20 +9,6 @@
 
 </div>
 
-@if (hasApprovalPermission) {
-  @if (pendingCount$ | async; as count) {
-    @if (count > 0) {
-      <a routerLink="/admin/approval-tasks"
-         class="btn btn-system position-relative no-arrow"
-         aria-label="待簽核作業"
-         title="待簽核 {{ count }} 件">
-        <span class="badge badge-icon pos-top pos-end bg-danger">{{ count }}</span>
-        <svg class="sa-icon sa-icon-2x">
-          <use href="/assets/icons/sprite.svg#bell"></use>
-        </svg>
-      </a>
-    }
-  }
-}
+<app-notification-dropdown/>
 
 <app-profile-dropdown/>

@@ -40,8 +40,7 @@
               <th class="text-center hidden md:table-cell">狀態</th>
               <th class="text-right">契約金額</th>
               <th class="text-right">業務執行金額</th>
-              <th class="text-right">已請款</th>
-              <th class="text-right hidden lg:table-cell">已付款</th>
+              <th class="text-right">已動支</th>
               <th style="min-width: 180px">業務執行水位</th>
               <th style="min-width: 180px">總專案水位</th>
             </tr>
@@ -77,8 +76,7 @@
                     <span class="text-muted">—</span>
                   }
                 </td>
-                <td class="text-right fw-500">{{ row.paymentAmount | number:'1.0-0' }}</td>
-                <td class="text-right hidden lg:table-cell text-muted">{{ row.paidAmount | number:'1.0-0' }}</td>
+                <td class="text-right fw-500">{{ row.disbursedAmount | number:'1.0-0' }}</td>
                 <td>
                   <div class="flex items-center gap-2">
                     <div class="grow rounded-full overflow-hidden" style="height: 8px; background: var(--bg-elevated)">
@@ -118,7 +116,7 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="9" class="text-center text-muted py-4">
+                <td colspan="8" class="text-center text-muted py-4">
                   @if (loading()) {
                     載入中...
                   } @else {

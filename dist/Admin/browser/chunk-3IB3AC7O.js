@@ -1,15 +1,25 @@
 import {
+  NotificationService
+} from "./chunk-U6NS4RSC.js";
+import {
   Component,
   DatePipe,
+  HttpClient,
+  Injectable,
   Input,
+  environment,
+  inject,
   input,
+  map,
   setClassMetadata,
+  switchMap,
   ɵsetClassDebugInfo,
   ɵɵadvance,
   ɵɵclassProp,
   ɵɵconditional,
   ɵɵconditionalCreate,
   ɵɵdefineComponent,
+  ɵɵdefineInjectable,
   ɵɵdomElement,
   ɵɵdomElementEnd,
   ɵɵdomElementStart,
@@ -361,7 +371,51 @@ var ApprovalTimeline = class _ApprovalTimeline {
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ApprovalTimeline, { className: "ApprovalTimeline", filePath: "src/app/shared/components/approval-timeline.ts", lineNumber: 85 });
 })();
 
-export {
-  ApprovalTimeline
+// src/app/features/admin/approval-tasks/services/approval-task.service.ts
+var ApprovalTaskService = class _ApprovalTaskService {
+  http = inject(HttpClient);
+  notification = inject(NotificationService);
+  getPaged(page, pageSize, status, paymentStatus, applicationType) {
+    const params = { page, pageSize };
+    if (status)
+      params["status"] = status;
+    if (paymentStatus)
+      params["paymentStatus"] = paymentStatus;
+    if (applicationType)
+      params["applicationType"] = applicationType;
+    return this.http.get(`${environment.apiUrl}/approval-tasks`, { params });
+  }
+  getById(id, applicationType) {
+    const path = applicationType ? `${environment.apiUrl}/approval-tasks/${applicationType}/${id}` : `${environment.apiUrl}/approval-tasks/${id}`;
+    return this.http.get(path);
+  }
+  review(id, applicationType, action, reviewNote, estimatedRefundDate, refundedAt, closeAdvance) {
+    return this.http.patch(`${environment.apiUrl}/approval-tasks/${applicationType}/${id}/review`, { action, reviewNote, applicationType, estimatedRefundDate, refundedAt, closeAdvance }).pipe(switchMap((updated) => this.notification.refresh().pipe(map(() => updated))));
+  }
+  closeCase(id, applicationType) {
+    return this.http.patch(`${environment.apiUrl}/approval-tasks/${applicationType}/${id}/close`, {});
+  }
+  /**
+   * 批次核准多筆待審申請。僅支援 approved 動作，撥款類不會自動填撥款日。
+   * 每筆獨立驗證權限，失敗者回報於 failed；最終 approved 且需補填撥款/退款日者列於 pendingPayment。
+   */
+  batchApprove(items) {
+    return this.http.post(`${environment.apiUrl}/approval-tasks/batch-approve`, { items }).pipe(switchMap((result) => this.notification.refresh().pipe(map(() => result))));
+  }
+  static \u0275fac = function ApprovalTaskService_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _ApprovalTaskService)();
+  };
+  static \u0275prov = /* @__PURE__ */ \u0275\u0275defineInjectable({ token: _ApprovalTaskService, factory: _ApprovalTaskService.\u0275fac, providedIn: "root" });
 };
-//# sourceMappingURL=chunk-B4OWGIJG.js.map
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(ApprovalTaskService, [{
+    type: Injectable,
+    args: [{ providedIn: "root" }]
+  }], null, null);
+})();
+
+export {
+  ApprovalTimeline,
+  ApprovalTaskService
+};
+//# sourceMappingURL=chunk-3IB3AC7O.js.map

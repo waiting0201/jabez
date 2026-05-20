@@ -1,357 +1,153 @@
-import { Component } from '@angular/core';
-import {notifications} from '@layouts/components/topbar/components/data';
-import {NgbDropdownModule, NgbNavModule} from '@ng-bootstrap/ng-bootstrap';
-import {SimplebarAngularModule} from 'simplebar-angular';
+import {Component, computed, inject} from '@angular/core';
+import {Router} from '@angular/router';
+import {NgbDropdownModule} from '@ng-bootstrap/ng-bootstrap';
+import {NotificationService} from '@features/admin/notifications/services/notification.service';
+import {AuthService} from '@core/auth/services/auth.service';
+import {ApplicationType, APPLICATION_TYPE_LABELS} from '@features/admin/approvals/models/approval.model';
+
+/** 申請類型 → 列表頁路由 */
+const TYPE_ROUTES: Record<ApplicationType, string> = {
+  payment_request:  '/admin/payment-requests',
+  leave:            '/admin/leave-requests',
+  travel:           '/admin/travel-requests',
+  overtime:         '/admin/overtime-requests',
+  advance:          '/admin/advance-requests',
+  write_off:        '/admin/write-off-requests',
+  travel_write_off: '/admin/travel-write-off-requests',
+  holiday_travel:   '/admin/holiday-travel-requests',
+  travel_payment:   '/admin/travel-payment-requests',
+};
+
+/** 申請類型 → 對應的 read 權限代碼（同 admin.routes.ts 內的 permission） */
+const TYPE_PERMISSIONS: Record<ApplicationType, string> = {
+  payment_request:  'payment-requests:read',
+  leave:            'leave-requests:read',
+  travel:           'travel-requests:read',
+  overtime:         'overtime-requests:read',
+  advance:          'advance-requests:read',
+  write_off:        'write-off-requests:read',
+  travel_write_off: 'travel-write-off-requests:read',
+  holiday_travel:   'holiday-travel-requests:read',
+  travel_payment:   'travel-payment-requests:read',
+};
+
+/** 固定排列順序（與設計討論一致） */
+const TYPE_ORDER: ApplicationType[] = [
+  'payment_request',
+  'advance',
+  'write_off',
+  'travel',
+  'travel_payment',
+  'travel_write_off',
+  'holiday_travel',
+  'leave',
+  'overtime',
+];
 
 @Component({
   selector: 'app-notification-dropdown',
-  imports: [NgbNavModule, NgbDropdownModule, SimplebarAngularModule],
+  imports: [NgbDropdownModule],
   template: `
-    <div ngbDropdown class="inline-block">
-      <button
-        data-bs-toggle="dropdown"
-        ngbDropdownToggle
-        class="btn btn-system no-arrow"
-        aria-label="Open Notifications"
-      >
-        <span class="badge badge-icon pos-top pos-end">{{ allNotifications.length }}</span>
+    <div ngbDropdown (openChange)="onOpenChange($event)">
+      <button type="button" ngbDropdownToggle
+              class="btn btn-system position-relative no-arrow"
+              aria-label="通知"
+              [title]="totalCount() > 0 ? ('共 ' + totalCount() + ' 件待辦') : '沒有待辦事項'">
+        @if (totalCount() > 0) {
+          <span class="badge badge-icon pos-top pos-end bg-danger">{{ totalCount() }}</span>
+        }
         <svg class="sa-icon sa-icon-2x">
           <use href="/assets/icons/sprite.svg#bell"></use>
         </svg>
       </button>
 
-      <div ngbDropdownMenu class="dropdown-menu-animated dropdown-xl dropdown-menu-end p-0">
-        <div class="notification-header rounded-top mb-2">
-          <h4 class="m-0">
-            {{ allNotifications.length }} New <small class="mb-0 opacity-80">User Notifications</small>
-          </h4>
-        </div>
+      <div ngbDropdownMenu class="dropdown-menu dropdown-menu-end dropdown-menu-animated" style="min-width: 260px">
+        @let approvalSum = approvalTotal();
+        @let myRequestTypes = visibleMyRequestTypes();
+        @let showApprovalSection = hasApprovalPermission() && approvalSum > 0;
 
-        <ul ngbNav #nav="ngbNav" [(activeId)]="activeTab" class="nav nav-tabs nav-tabs-clean" role="tablist">
-          <li [ngbNavItem]="0">
-            <ng-template ngbNavContent>
-              <div class="flex h-100">
-                <div class="px-4 flex flex-col items-center justify-center">
+        @if (showApprovalSection) {
+          <div class="dropdown-header">待我簽核</div>
+          <a class="dropdown-item"
+             style="justify-content: space-between"
+             (click)="navigateApproval($event)">
+            <span>簽核作業</span>
+            <span class="badge bg-danger">{{ approvalSum }}</span>
+          </a>
+        }
 
-                  <svg class="sa-icon sa-icon-5x sa-icon-primary">
-                    <use href="/assets/icons/sprite.svg#arrow-up-circle"></use>
-                  </svg>
-                  <span class="text-center fw-300" style="font-size: 1.25rem;">
-                        Select a tab above
-                    </span>
-                  <div class="mb-0 py-4 text-center fs-md fw-300 text-muted">
-                    This blank page helps protect your privacy.
-                    To change this default message, <a href="#">update your settings</a>.
-                  </div>
-                </div>
-              </div>
-            </ng-template>
-          </li>
+        @if (showApprovalSection && myRequestTypes.length > 0) {
+          <div class="dropdown-divider"></div>
+        }
 
-          <li [ngbNavItem]="1">
-            <a ngbNavLink class="px-4 fs-md fw-500">Messages</a>
-            <ng-template ngbNavContent>
-              <ngx-simplebar style="height: 100%">
-                <ul class="notification">
-                  @for (item of allNotifications; track $index) {
-                    <li
-                      class="alert alert-dismissable"
-                      [class.unread]="item.unread"
-                    >
-                      <div class="flex items-center">
-                    <span class="status me-2" [class]="'status-' + item.statusVariant">
-                                <span class="profile-image rounded-circle inline-block"
-                                      [style.backgroundImage]="'url(' + item.avatar + ')'"></span>
-                    </span>
-                        <span class="flex flex-col flex-1 ms-1">
-                                <span class="name">{{ item.name }}</span>
-                                <span class="msg-a fs-sm">{{ item.description }}</span>
-                                <span class="fs-nano text-muted mt-1">{{ item.time }}</span>
-                        </span>
-                      </div>
-                      <button type="button" class="btn-close" (click)="removeNotification($index)"
-                              aria-label="Close" data-bs-dismiss="alert"></button>
-                    </li>
-                  }
-                </ul>
+        @if (myRequestTypes.length > 0) {
+          <div class="dropdown-header">我的申請</div>
+          @for (type of myRequestTypes; track type) {
+            <a class="dropdown-item"
+               [class.disabled]="!canAccess(type)"
+               style="justify-content: space-between"
+               (click)="navigate(type, $event)">
+              <span>{{ labels[type] }}</span>
+              <span class="badge bg-warning">{{ myRequestCount(type) }}</span>
+            </a>
+          }
+        }
 
-                @if (allNotifications.length === 0) {
-                  <div class="notification-empty-msg my-6 pt-6 text-center">
-                    <svg class="sa-icon sa-icon-5x sa-icon-primary">
-                      <use href="/assets/icons/sprite.svg#coffee"></use>
-                    </svg>
-                    <span>No new messages</span>
-                  </div>
-                }
-              </ngx-simplebar>
-            </ng-template>
-          </li>
-
-          <li [ngbNavItem]="2">
-            <a ngbNavLink class="px-4 fs-md fw-500">Feeds</a>
-            <ng-template ngbNavContent>
-              <ngx-simplebar style="height: 100%">
-                <ul class="notification">
-                  <li class="unread alert alert-dismissable">
-                    <div class="flex items-center show-child-on-hover">
-                            <span class="flex flex-col flex-1">
-                                <span class="name flex items-center">Administrator <span
-                                  class="badge bg-success fw-n ms-1">UPDATE</span></span>
-                                <span class="msg-a fs-sm">
-                                    System updated to version <strong>5.0</strong> <a href="buildnotes.html">(build notes)</a>
-                                </span>
-                                <span class="fs-nano text-muted mt-1">5 mins ago</span>
-                            </span>
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                  </li>
-                  <li class="alert alert-dismissable">
-                    <div class="flex items-center show-child-on-hover">
-                      <div class="flex flex-col flex-1">
-                                <span class="name">
-                                    Adison Lee <span class="fw-300 inline">replied to your video <a href="#"
-                                                                                                      class="fw-400"> Cancer Drug</a> </span>
-                                </span>
-                        <span class="msg-a fs-sm mt-2">Bring to the table win-win survival strategies to ensure proactive domination. At the end of the day...</span>
-                        <span class="fs-nano text-muted mt-1">10 minutes ago</span>
-                      </div>
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                  </li>
-                  <li class="alert alert-dismissable">
-                    <div class="flex items-center show-child-on-hover">
-                      <div class="flex flex-col flex-1">
-                                <span class="name">
-                                    Troy Norman'<span class="fw-300">s new connections</span>
-                                </span>
-                        <div class="fs-sm flex items-center mt-2">
-                          <span class="profile-image-md ms-1 rounded-circle inline-block"
-                                [style.background-image]="'url(/assets/img/demo/avatars/avatar-a.png)'"
-                                style="background-size: cover;"></span>
-                          <span class="profile-image-md ms-1 rounded-circle inline-block"
-                                [style.background-image]="'url(/assets/img/demo/avatars/avatar-b.png)'"
-                                style=" background-size: cover;"></span>
-                          <span class="profile-image-md ms-1 rounded-circle inline-block"
-                                [style.background-image]="'url(/assets/img/demo/avatars/avatar-c.png)'"
-                                style="background-size: cover;"></span>
-                          <span class="profile-image-md ms-1 rounded-circle inline-block"
-                                [style.background-image]="'url(/assets/img/demo/avatars/avatar-e.png)'"
-                                style="background-size: cover;"></span>
-                          <div data-hasmore="+3" class="rounded-circle profile-image-md ms-1">
-                            <span class="profile-image-md ms-1 rounded-circle inline-block"
-                                  [style.background-image]="'url(/assets/img/demo/avatars/avatar-h.png)'"
-                                  style="background-size: cover;"></span>
-                          </div>
-                        </div>
-                        <span class="fs-nano text-muted mt-1">55 minutes ago</span>
-                      </div>
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                  </li>
-                  <li class="alert alert-dismissable">
-                    <div class="flex items-center show-child-on-hover">
-                      <div class="flex flex-col flex-1">
-                        <span class="name">Dr John Cook <span class="fw-300">sent a <span
-                          class="text-danger">new signal</span></span></span>
-                        <span class="msg-a fs-sm mt-2">Nanotechnology immersion along the information highway will close the loop on focusing solely on the bottom line.</span>
-                        <span class="fs-nano text-muted mt-1">10 minutes ago</span>
-                      </div>
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                  </li>
-                  <li class="alert alert-dismissable">
-                    <div class="flex items-center show-child-on-hover">
-                      <div class="flex flex-col flex-1">
-                        <span class="name">Lab Images <span class="fw-300">were updated!</span></span>
-                        <div class="fs-sm flex items-center mt-1">
-                          <a href="javascript:void(0)" class="ms-1 mt-1" title="Cell A-0012">
-                            <span class="block img-share"
-                                  [style.background-image]="'url(/assets/img/thumbs/pic-7.png)'"
-                                  style="background-size: cover;"></span>
-                          </a>
-                          <a href="javascript:void(0)" class="ms-1 mt-1" title="Patient A-473 saliva">
-                            <span class="block img-share"
-                                  [style.background-image]="'url(/assets/img/thumbs/pic-8.png)'"
-                                  style="background-size: cover;"></span>
-                          </a>
-                          <a href="javascript:void(0)" class="ms-1 mt-1" title="Patient A-473 blood cells">
-                            <span class="block img-share"
-                                  [style.background-image]="'url(/assets/img/thumbs/pic-11.png)'"
-                                  style="background-size: cover;"></span>
-                          </a>
-                          <a href="javascript:void(0)" class="ms-1 mt-1" title="Patient A-473 Membrane O.C">
-                            <span class="block img-share"
-                                  [style.background-image]="'url(/assets/img/thumbs/pic-12.png)'"
-                                  style="background-size: cover;"></span>
-                          </a>
-                        </div>
-                        <span class="fs-nano text-muted mt-1">55 minutes ago</span>
-                      </div>
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                  </li>
-                  <li class="alert alert-dismissable">
-                    <div class="flex items-center show-child-on-hover">
-                      <div class="flex flex-col flex-1 w-full">
-                        <div class="name mb-2"> Lisa Lamar<span class="fw-300"> updated project</span>
-                        </div>
-                        <div class="row fs-b fw-300">
-                          <div class="col text-left"> Progress</div>
-                          <div class="col text-right fw-500"> 45%</div>
-                        </div>
-                        <div class="progress progress-sm flex mt-1">
-                          <span class="progress-bar bg-primary progress-bar-striped" role="progressbar"
-                                style="width: 45%" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100"></span>
-                        </div>
-                        <span class="fs-nano text-muted mt-1">2 hrs ago</span>
-                      </div>
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                  </li>
-                </ul>
-              </ngx-simplebar>
-            </ng-template>
-          </li>
-
-          <li [ngbNavItem]="3">
-            <a ngbNavLink class="px-4 fs-md fw-500">Events</a>
-            <ng-template ngbNavContent>
-
-              <div class="flex flex-col h-100">
-                <div class="h-auto">
-                  <table class="table-calendar m-0 w-full h-full border-0">
-                    <tr>
-                      <th colspan="7" class="pt-3 pb-2 px-3 text-center">
-                        <div class="js-get-date h6 fw-600 mb-2">Fake Day, October 15th, 2090</div>
-                      </th>
-                    </tr>
-                    <tr class="text-center">
-                      <th>Sun</th>
-                      <th>Mon</th>
-                      <th>Tue</th>
-                      <th>Wed</th>
-                      <th>Thu</th>
-                      <th>Fri</th>
-                      <th>Sat</th>
-                    </tr>
-                    <tr>
-                      <td class="text-muted bg-faded">30</td>
-                      <td>1</td>
-                      <td>2</td>
-                      <td>3</td>
-                      <td>4</td>
-                      <td>5</td>
-                      <td>
-                        <svg class="sa-icon sa-icon-warning m-1 position-absolute pos-left pos-top"
-                             style="--sa-icon-size: 0.85rem; --sa-fill-opacity: 0.5;">
-                          <use href="/assets/icons/sprite.svg#star"></use>
-                        </svg>
-                        6
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>7</td>
-                      <td>8</td>
-                      <td>9</td>
-                      <td class="bg-primary-600 text-white pattern-0">10</td>
-                      <td>11</td>
-                      <td>12</td>
-                      <td>13</td>
-                    </tr>
-                    <tr>
-                      <td>14</td>
-                      <td>15</td>
-                      <td>16</td>
-                      <td>17</td>
-                      <td>18</td>
-                      <td>19</td>
-                      <td>20</td>
-                    </tr>
-                    <tr>
-                      <td>21</td>
-                      <td>
-                        <svg class="sa-icon sa-icon-info m-1 position-absolute pos-left pos-top"
-                             style="--sa-icon-size: 0.85rem; --sa-fill-opacity: 0.5;">
-                          <use href="/assets/icons/sprite.svg#shield"></use>
-                        </svg>
-                        22
-                      </td>
-                      <td>23</td>
-                      <td>24</td>
-                      <td>25</td>
-                      <td>26</td>
-                      <td>27</td>
-                    </tr>
-                    <tr>
-                      <td>28</td>
-                      <td>29</td>
-                      <td>30</td>
-                      <td>31</td>
-                      <td class="text-muted bg-faded">1</td>
-                      <td class="text-muted bg-faded">2</td>
-                      <td class="text-muted bg-faded">3</td>
-                    </tr>
-                  </table>
-                </div>
-                <ngx-simplebar style="max-height: 130px">
-                  <div class="flex-1  shadow-inset-3 h-100">
-                    <div class="p-2">
-                      <div class="flex items-center text-left mb-4">
-                        <div
-                          class="width-5 text-primary align-self-start table-calendar-appointment-date fw-300 text-center">
-                          15
-                        </div>
-                        <div class="flex-1">
-                          <div class="flex flex-col">
-                                    <span class="l-h-n fs-md fw-500">
-                                        October 2020
-                                    </span>
-                            <span class="l-h-n fs-nano fw-400 text-secondary">
-                                        Monday
-                                    </span>
-                          </div>
-                          <div class="flex flex-col gap-2 mt-2">
-                            <div>
-                              <strong>2:30PM</strong> - Doctor's appointment
-                            </div>
-                            <div>
-                              <strong>3:30PM</strong> - Report overview
-                            </div>
-                            <div>
-                              <strong>4:30PM</strong> - Meeting with Donnah V.
-                            </div>
-                            <div>
-                              <strong>5:30PM</strong> - Late Lunch
-                            </div>
-                            <div>
-                              <strong>6:30PM</strong> - Report Compression
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </ngx-simplebar>
-              </div>
-            </ng-template>
-          </li>
-        </ul>
-        <div [ngbNavOutlet]="nav" class="tab-content tab-notification">
-        </div>
-        <div class="py-2 px-3 block rounded-bottom text-right">
-          <a href="#" class="fs-xs fw-500 ml-auto">view all notifications</a>
-        </div>
+        @if (!showApprovalSection && myRequestTypes.length === 0) {
+          <div class="px-4 py-3 text-sm" style="color: var(--text-muted)">
+            目前沒有待辦事項
+          </div>
+        }
       </div>
     </div>
-
   `,
-  styles: ``
+  styles: ``,
 })
 export class NotificationDropdown {
-  allNotifications = notifications;
-  activeTab = 0;
+  private notification = inject(NotificationService);
+  private auth         = inject(AuthService);
+  private router       = inject(Router);
 
-  removeNotification(index: number) {
-    this.allNotifications.splice(index, 1);
+  readonly types  = TYPE_ORDER;
+  readonly labels = APPLICATION_TYPE_LABELS;
+
+  readonly totalCount = this.notification.totalCount;
+  readonly hasApprovalPermission = computed(() => this.auth.hasPermission('approval-tasks:read'));
+
+  /** 待我簽核：彙總所有類型件數成單一「簽核作業」項目 */
+  readonly approvalTotal = computed(() => {
+    const counts = this.notification.approvalCounts();
+    return Object.values(counts).reduce((a, b) => a + (b ?? 0), 0);
+  });
+
+  /** 只列出有件數的類型；無件數類型不顯示 */
+  readonly visibleMyRequestTypes = computed<ApplicationType[]>(() => {
+    const counts = this.notification.myRequestCounts();
+    return TYPE_ORDER.filter(t => (counts[t] ?? 0) > 0);
+  });
+
+  myRequestCount(type: ApplicationType): number {
+    return this.notification.myRequestCounts()[type] ?? 0;
+  }
+
+  canAccess(type: ApplicationType): boolean {
+    return this.auth.hasPermission(TYPE_PERMISSIONS[type]);
+  }
+
+  onOpenChange(open: boolean) {
+    if (open) {
+      this.notification.refresh().subscribe();
+    }
+  }
+
+  navigate(type: ApplicationType, event: Event) {
+    event.preventDefault();
+    if (!this.canAccess(type)) return;
+    this.router.navigateByUrl(TYPE_ROUTES[type]);
+  }
+
+  navigateApproval(event: Event) {
+    event.preventDefault();
+    this.router.navigateByUrl('/admin/approval-tasks');
   }
 }

@@ -1,0 +1,29 @@
+// src/app/features/admin/approvals/models/approval.model.ts
+var APPLICATION_TYPE_LABELS = {
+  payment_request: "\u8ACB\u6B3E\u7533\u8ACB",
+  leave: "\u8ACB\u5047\u7533\u8ACB",
+  travel: "\u51FA\u5DEE\u9810\u652F\u7533\u8ACB",
+  overtime: "\u52A0\u73ED\u7533\u8ACB",
+  advance: "\u9810\u652F\u7533\u8ACB",
+  write_off: "\u9810\u652F\u6C96\u92B7\u7533\u8ACB",
+  travel_write_off: "\u51FA\u5DEE\u9810\u652F\u6C96\u92B7\u7533\u8ACB",
+  holiday_travel: "\u5047\u65E5\u57F7\u884C\u6D3B\u52D5\u7533\u8ACB",
+  travel_payment: "\u51FA\u5DEE\u8ACB\u6B3E\u7533\u8ACB"
+};
+var APPLICATION_TYPE_CLASSES = {
+  payment_request: "bg-info-subtle text-info",
+  leave: "bg-success-subtle text-success",
+  travel: "bg-primary-subtle text-primary",
+  overtime: "bg-warning-subtle text-warning-emphasis",
+  advance: "bg-purple-subtle text-purple",
+  write_off: "bg-teal-subtle text-teal",
+  travel_write_off: "bg-cyan-subtle text-cyan",
+  holiday_travel: "bg-indigo-subtle text-indigo",
+  travel_payment: "bg-orange-subtle text-orange"
+};
+
+export {
+  APPLICATION_TYPE_LABELS,
+  APPLICATION_TYPE_CLASSES
+};
+//# sourceMappingURL=chunk-PKXTA7WQ.js.map

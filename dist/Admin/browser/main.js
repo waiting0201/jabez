@@ -38,11 +38,11 @@ import {
   ɵNgNoValidate
 } from "./chunk-4LFECYTV.js";
 import {
-  AuthService
-} from "./chunk-ZSGTQ3YJ.js";
+  APPLICATION_TYPE_LABELS
+} from "./chunk-PKXTA7WQ.js";
 import {
-  ApprovalTaskService
-} from "./chunk-HXO5P7BO.js";
+  NotificationService
+} from "./chunk-U6NS4RSC.js";
 import {
   ActivatedRoute,
   NavigationEnd,
@@ -57,8 +57,10 @@ import {
   bootstrapApplication
 } from "./chunk-JDEYLUO2.js";
 import {
+  AuthService
+} from "./chunk-ZSGTQ3YJ.js";
+import {
   ApplicationRef,
-  AsyncPipe,
   BehaviorSubject,
   CUSTOM_ELEMENTS_SCHEMA,
   ChangeDetectionStrategy,
@@ -132,6 +134,7 @@ import {
   ɵɵconditional,
   ɵɵconditionalCreate,
   ɵɵcontentQuery,
+  ɵɵdeclareLet,
   ɵɵdefineComponent,
   ɵɵdefineDirective,
   ɵɵdefineInjectable,
@@ -152,14 +155,11 @@ import {
   ɵɵgetCurrentView,
   ɵɵgetInheritedFactory,
   ɵɵinject,
-  ɵɵinterpolate1,
   ɵɵlistener,
   ɵɵloadQuery,
   ɵɵnamespaceHTML,
   ɵɵnamespaceSVG,
   ɵɵnextContext,
-  ɵɵpipe,
-  ɵɵpipeBind1,
   ɵɵprojection,
   ɵɵprojectionDef,
   ɵɵproperty,
@@ -168,14 +168,17 @@ import {
   ɵɵpureFunction2,
   ɵɵpureFunction3,
   ɵɵqueryRefresh,
+  ɵɵreadContextLet,
   ɵɵreference,
   ɵɵrepeater,
   ɵɵrepeaterCreate,
+  ɵɵrepeaterTrackByIdentity,
   ɵɵrepeaterTrackByIndex,
   ɵɵresetView,
   ɵɵrestoreView,
   ɵɵsanitizeHtml,
   ɵɵsanitizeUrl,
+  ɵɵstoreLet,
   ɵɵstyleProp,
   ɵɵtemplate,
   ɵɵtemplateRefExtractor,
@@ -3842,75 +3845,297 @@ var ProfileDropdown = class _ProfileDropdown {
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ProfileDropdown, { className: "ProfileDropdown", filePath: "src/app/layout/components/topbar/components/profile-dropdown.ts", lineNumber: 114 });
 })();
 
-// src/app/layout/components/topbar/topbar.ts
-function Topbar_Conditional_4_Conditional_0_Conditional_0_Template(rf, ctx) {
+// src/app/layout/components/topbar/components/notification-dropdown.ts
+function NotificationDropdown_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "a", 1)(1, "span", 2);
-    \u0275\u0275text(2);
+    \u0275\u0275elementStart(0, "span", 2);
+    \u0275\u0275text(1);
     \u0275\u0275elementEnd();
-    \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(3, "svg", 3);
-    \u0275\u0275element(4, "use", 4);
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext();
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate(ctx_r1.totalCount());
+  }
+}
+function NotificationDropdown_Conditional_8_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r3 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 8);
+    \u0275\u0275text(1, "\u5F85\u6211\u7C3D\u6838");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(2, "a", 9);
+    \u0275\u0275listener("click", function NotificationDropdown_Conditional_8_Template_a_click_2_listener($event) {
+      \u0275\u0275restoreView(_r3);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.navigateApproval($event));
+    });
+    \u0275\u0275elementStart(3, "span");
+    \u0275\u0275text(4, "\u7C3D\u6838\u4F5C\u696D");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(5, "span", 10);
+    \u0275\u0275text(6);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    const count_r1 = \u0275\u0275nextContext();
-    \u0275\u0275property("title", \u0275\u0275interpolate1("\u5F85\u7C3D\u6838 ", count_r1, " \u4EF6"));
+    \u0275\u0275nextContext();
+    const approvalSum_r4 = \u0275\u0275readContextLet(6);
+    \u0275\u0275advance(6);
+    \u0275\u0275textInterpolate(approvalSum_r4);
+  }
+}
+function NotificationDropdown_Conditional_9_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275element(0, "div", 6);
+  }
+}
+function NotificationDropdown_Conditional_10_For_3_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r5 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "a", 9);
+    \u0275\u0275listener("click", function NotificationDropdown_Conditional_10_For_3_Template_a_click_0_listener($event) {
+      const type_r6 = \u0275\u0275restoreView(_r5).$implicit;
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.navigate(type_r6, $event));
+    });
+    \u0275\u0275elementStart(1, "span");
+    \u0275\u0275text(2);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "span", 12);
+    \u0275\u0275text(4);
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const type_r6 = ctx.$implicit;
+    const ctx_r1 = \u0275\u0275nextContext(2);
+    \u0275\u0275classProp("disabled", !ctx_r1.canAccess(type_r6));
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(count_r1);
+    \u0275\u0275textInterpolate(ctx_r1.labels[type_r6]);
+    \u0275\u0275advance(2);
+    \u0275\u0275textInterpolate(ctx_r1.myRequestCount(type_r6));
   }
 }
-function Topbar_Conditional_4_Conditional_0_Template(rf, ctx) {
+function NotificationDropdown_Conditional_10_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275conditionalCreate(0, Topbar_Conditional_4_Conditional_0_Conditional_0_Template, 5, 3, "a", 1);
+    \u0275\u0275elementStart(0, "div", 8);
+    \u0275\u0275text(1, "\u6211\u7684\u7533\u8ACB");
+    \u0275\u0275elementEnd();
+    \u0275\u0275repeaterCreate(2, NotificationDropdown_Conditional_10_For_3_Template, 5, 4, "a", 11, \u0275\u0275repeaterTrackByIdentity);
   }
   if (rf & 2) {
-    \u0275\u0275conditional(ctx > 0 ? 0 : -1);
+    \u0275\u0275nextContext();
+    const myRequestTypes_r7 = \u0275\u0275readContextLet(7);
+    \u0275\u0275advance(2);
+    \u0275\u0275repeater(myRequestTypes_r7);
   }
 }
-function Topbar_Conditional_4_Template(rf, ctx) {
+function NotificationDropdown_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275conditionalCreate(0, Topbar_Conditional_4_Conditional_0_Template, 1, 1);
-    \u0275\u0275pipe(1, "async");
-  }
-  if (rf & 2) {
-    let tmp_1_0;
-    const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275conditional((tmp_1_0 = \u0275\u0275pipeBind1(1, 1, ctx_r1.pendingCount$)) ? 0 : -1, tmp_1_0);
+    \u0275\u0275elementStart(0, "div", 7);
+    \u0275\u0275text(1, " \u76EE\u524D\u6C92\u6709\u5F85\u8FA6\u4E8B\u9805 ");
+    \u0275\u0275elementEnd();
   }
 }
-var Topbar = class _Topbar {
-  approvalTaskService = inject(ApprovalTaskService);
-  authService = inject(AuthService);
-  pendingCount$ = this.approvalTaskService.pendingCount$;
-  hasApprovalPermission = this.authService.hasPermission("approval-tasks:read");
-  ngOnInit() {
-    if (this.hasApprovalPermission) {
-      this.approvalTaskService.getAll().subscribe();
+var TYPE_ROUTES = {
+  payment_request: "/admin/payment-requests",
+  leave: "/admin/leave-requests",
+  travel: "/admin/travel-requests",
+  overtime: "/admin/overtime-requests",
+  advance: "/admin/advance-requests",
+  write_off: "/admin/write-off-requests",
+  travel_write_off: "/admin/travel-write-off-requests",
+  holiday_travel: "/admin/holiday-travel-requests",
+  travel_payment: "/admin/travel-payment-requests"
+};
+var TYPE_PERMISSIONS = {
+  payment_request: "payment-requests:read",
+  leave: "leave-requests:read",
+  travel: "travel-requests:read",
+  overtime: "overtime-requests:read",
+  advance: "advance-requests:read",
+  write_off: "write-off-requests:read",
+  travel_write_off: "travel-write-off-requests:read",
+  holiday_travel: "holiday-travel-requests:read",
+  travel_payment: "travel-payment-requests:read"
+};
+var TYPE_ORDER = [
+  "payment_request",
+  "advance",
+  "write_off",
+  "travel",
+  "travel_payment",
+  "travel_write_off",
+  "holiday_travel",
+  "leave",
+  "overtime"
+];
+var NotificationDropdown = class _NotificationDropdown {
+  notification = inject(NotificationService);
+  auth = inject(AuthService);
+  router = inject(Router);
+  types = TYPE_ORDER;
+  labels = APPLICATION_TYPE_LABELS;
+  totalCount = this.notification.totalCount;
+  hasApprovalPermission = computed(() => this.auth.hasPermission("approval-tasks:read"), ...ngDevMode ? [{ debugName: "hasApprovalPermission" }] : []);
+  /** 待我簽核：彙總所有類型件數成單一「簽核作業」項目 */
+  approvalTotal = computed(() => {
+    const counts = this.notification.approvalCounts();
+    return Object.values(counts).reduce((a, b) => a + (b ?? 0), 0);
+  }, ...ngDevMode ? [{ debugName: "approvalTotal" }] : []);
+  /** 只列出有件數的類型；無件數類型不顯示 */
+  visibleMyRequestTypes = computed(() => {
+    const counts = this.notification.myRequestCounts();
+    return TYPE_ORDER.filter((t) => (counts[t] ?? 0) > 0);
+  }, ...ngDevMode ? [{ debugName: "visibleMyRequestTypes" }] : []);
+  myRequestCount(type) {
+    return this.notification.myRequestCounts()[type] ?? 0;
+  }
+  canAccess(type) {
+    return this.auth.hasPermission(TYPE_PERMISSIONS[type]);
+  }
+  onOpenChange(open) {
+    if (open) {
+      this.notification.refresh().subscribe();
     }
   }
+  navigate(type, event) {
+    event.preventDefault();
+    if (!this.canAccess(type))
+      return;
+    this.router.navigateByUrl(TYPE_ROUTES[type]);
+  }
+  navigateApproval(event) {
+    event.preventDefault();
+    this.router.navigateByUrl("/admin/approval-tasks");
+  }
+  static \u0275fac = function NotificationDropdown_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _NotificationDropdown)();
+  };
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _NotificationDropdown, selectors: [["app-notification-dropdown"]], decls: 12, vars: 8, consts: [["ngbDropdown", "", 3, "openChange"], ["type", "button", "ngbDropdownToggle", "", "aria-label", "\u901A\u77E5", 1, "btn", "btn-system", "position-relative", "no-arrow", 3, "title"], [1, "badge", "badge-icon", "pos-top", "pos-end", "bg-danger"], [1, "sa-icon", "sa-icon-2x"], ["href", "/assets/icons/sprite.svg#bell"], ["ngbDropdownMenu", "", 1, "dropdown-menu", "dropdown-menu-end", "dropdown-menu-animated", 2, "min-width", "260px"], [1, "dropdown-divider"], [1, "px-4", "py-3", "text-sm", 2, "color", "var(--text-muted)"], [1, "dropdown-header"], [1, "dropdown-item", 2, "justify-content", "space-between", 3, "click"], [1, "badge", "bg-danger"], [1, "dropdown-item", 2, "justify-content", "space-between", 3, "disabled"], [1, "badge", "bg-warning"]], template: function NotificationDropdown_Template(rf, ctx) {
+    if (rf & 1) {
+      const _r1 = \u0275\u0275getCurrentView();
+      \u0275\u0275elementStart(0, "div", 0);
+      \u0275\u0275listener("openChange", function NotificationDropdown_Template_div_openChange_0_listener($event) {
+        \u0275\u0275restoreView(_r1);
+        return \u0275\u0275resetView(ctx.onOpenChange($event));
+      });
+      \u0275\u0275elementStart(1, "button", 1);
+      \u0275\u0275conditionalCreate(2, NotificationDropdown_Conditional_2_Template, 2, 1, "span", 2);
+      \u0275\u0275namespaceSVG();
+      \u0275\u0275elementStart(3, "svg", 3);
+      \u0275\u0275element(4, "use", 4);
+      \u0275\u0275elementEnd()();
+      \u0275\u0275namespaceHTML();
+      \u0275\u0275elementStart(5, "div", 5);
+      \u0275\u0275declareLet(6)(7);
+      \u0275\u0275conditionalCreate(8, NotificationDropdown_Conditional_8_Template, 7, 1);
+      \u0275\u0275conditionalCreate(9, NotificationDropdown_Conditional_9_Template, 1, 0, "div", 6);
+      \u0275\u0275conditionalCreate(10, NotificationDropdown_Conditional_10_Template, 4, 0);
+      \u0275\u0275conditionalCreate(11, NotificationDropdown_Conditional_11_Template, 2, 0, "div", 7);
+      \u0275\u0275elementEnd()();
+    }
+    if (rf & 2) {
+      \u0275\u0275advance();
+      \u0275\u0275property("title", ctx.totalCount() > 0 ? "\u5171 " + ctx.totalCount() + " \u4EF6\u5F85\u8FA6" : "\u6C92\u6709\u5F85\u8FA6\u4E8B\u9805");
+      \u0275\u0275advance();
+      \u0275\u0275conditional(ctx.totalCount() > 0 ? 2 : -1);
+      \u0275\u0275advance(4);
+      const approvalSum_r8 = \u0275\u0275storeLet(ctx.approvalTotal());
+      \u0275\u0275advance();
+      const myRequestTypes_r9 = \u0275\u0275storeLet(ctx.visibleMyRequestTypes());
+      const showApprovalSection_r10 = ctx.hasApprovalPermission() && approvalSum_r8 > 0;
+      \u0275\u0275advance();
+      \u0275\u0275conditional(showApprovalSection_r10 ? 8 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275conditional(showApprovalSection_r10 && myRequestTypes_r9.length > 0 ? 9 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275conditional(myRequestTypes_r9.length > 0 ? 10 : -1);
+      \u0275\u0275advance();
+      \u0275\u0275conditional(!showApprovalSection_r10 && myRequestTypes_r9.length === 0 ? 11 : -1);
+    }
+  }, dependencies: [NgbDropdownModule, NgbDropdown, NgbDropdownToggle, NgbDropdownMenu], encapsulation: 2 });
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(NotificationDropdown, [{
+    type: Component,
+    args: [{ selector: "app-notification-dropdown", imports: [NgbDropdownModule], template: `
+    <div ngbDropdown (openChange)="onOpenChange($event)">
+      <button type="button" ngbDropdownToggle
+              class="btn btn-system position-relative no-arrow"
+              aria-label="\u901A\u77E5"
+              [title]="totalCount() > 0 ? ('\u5171 ' + totalCount() + ' \u4EF6\u5F85\u8FA6') : '\u6C92\u6709\u5F85\u8FA6\u4E8B\u9805'">
+        @if (totalCount() > 0) {
+          <span class="badge badge-icon pos-top pos-end bg-danger">{{ totalCount() }}</span>
+        }
+        <svg class="sa-icon sa-icon-2x">
+          <use href="/assets/icons/sprite.svg#bell"></use>
+        </svg>
+      </button>
+
+      <div ngbDropdownMenu class="dropdown-menu dropdown-menu-end dropdown-menu-animated" style="min-width: 260px">
+        @let approvalSum = approvalTotal();
+        @let myRequestTypes = visibleMyRequestTypes();
+        @let showApprovalSection = hasApprovalPermission() && approvalSum > 0;
+
+        @if (showApprovalSection) {
+          <div class="dropdown-header">\u5F85\u6211\u7C3D\u6838</div>
+          <a class="dropdown-item"
+             style="justify-content: space-between"
+             (click)="navigateApproval($event)">
+            <span>\u7C3D\u6838\u4F5C\u696D</span>
+            <span class="badge bg-danger">{{ approvalSum }}</span>
+          </a>
+        }
+
+        @if (showApprovalSection && myRequestTypes.length > 0) {
+          <div class="dropdown-divider"></div>
+        }
+
+        @if (myRequestTypes.length > 0) {
+          <div class="dropdown-header">\u6211\u7684\u7533\u8ACB</div>
+          @for (type of myRequestTypes; track type) {
+            <a class="dropdown-item"
+               [class.disabled]="!canAccess(type)"
+               style="justify-content: space-between"
+               (click)="navigate(type, $event)">
+              <span>{{ labels[type] }}</span>
+              <span class="badge bg-warning">{{ myRequestCount(type) }}</span>
+            </a>
+          }
+        }
+
+        @if (!showApprovalSection && myRequestTypes.length === 0) {
+          <div class="px-4 py-3 text-sm" style="color: var(--text-muted)">
+            \u76EE\u524D\u6C92\u6709\u5F85\u8FA6\u4E8B\u9805
+          </div>
+        }
+      </div>
+    </div>
+  ` }]
+  }], null, null);
+})();
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(NotificationDropdown, { className: "NotificationDropdown", filePath: "src/app/layout/components/topbar/components/notification-dropdown.ts", lineNumber: 106 });
+})();
+
+// src/app/layout/components/topbar/topbar.ts
+var Topbar = class _Topbar {
   static \u0275fac = function Topbar_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _Topbar)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _Topbar, selectors: [["app-topbar"]], decls: 6, vars: 1, consts: [[1, "flex", "grow", "mr-auto", "items-center"], ["routerLink", "/admin/approval-tasks", "aria-label", "\u5F85\u7C3D\u6838\u4F5C\u696D", 1, "btn", "btn-system", "position-relative", "no-arrow", 3, "title"], [1, "badge", "badge-icon", "pos-top", "pos-end", "bg-danger"], [1, "sa-icon", "sa-icon-2x"], ["href", "/assets/icons/sprite.svg#bell"]], template: function Topbar_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _Topbar, selectors: [["app-topbar"]], decls: 6, vars: 0, consts: [[1, "flex", "grow", "mr-auto", "items-center"]], template: function Topbar_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0);
       \u0275\u0275element(1, "app-app-logo")(2, "app-toggle-mobile-menu")(3, "app-toggle-sidenav");
       \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(4, Topbar_Conditional_4_Template, 2, 3);
-      \u0275\u0275element(5, "app-profile-dropdown");
-    }
-    if (rf & 2) {
-      \u0275\u0275advance(4);
-      \u0275\u0275conditional(ctx.hasApprovalPermission ? 4 : -1);
+      \u0275\u0275element(4, "app-notification-dropdown")(5, "app-profile-dropdown");
     }
   }, dependencies: [
     AppLogo,
     ToggleSidenav,
     ToggleMobileMenu,
-    ProfileDropdown,
-    RouterLink,
-    AsyncPipe
+    NotificationDropdown,
+    ProfileDropdown
   ], encapsulation: 2 });
 };
 (() => {
@@ -3920,14 +4145,13 @@ var Topbar = class _Topbar {
       AppLogo,
       ToggleSidenav,
       ToggleMobileMenu,
-      ProfileDropdown,
-      AsyncPipe,
-      RouterLink
-    ], template: '<div class="flex grow mr-auto items-center">\n\n    <app-app-logo/>\n\n\n  <app-toggle-mobile-menu/>\n\n  <app-toggle-sidenav/>\n\n</div>\n\n@if (hasApprovalPermission) {\n  @if (pendingCount$ | async; as count) {\n    @if (count > 0) {\n      <a routerLink="/admin/approval-tasks"\n         class="btn btn-system position-relative no-arrow"\n         aria-label="\u5F85\u7C3D\u6838\u4F5C\u696D"\n         title="\u5F85\u7C3D\u6838 {{ count }} \u4EF6">\n        <span class="badge badge-icon pos-top pos-end bg-danger">{{ count }}</span>\n        <svg class="sa-icon sa-icon-2x">\n          <use href="/assets/icons/sprite.svg#bell"></use>\n        </svg>\n      </a>\n    }\n  }\n}\n\n<app-profile-dropdown/>\n' }]
+      NotificationDropdown,
+      ProfileDropdown
+    ], template: '<div class="flex grow mr-auto items-center">\n\n    <app-app-logo/>\n\n\n  <app-toggle-mobile-menu/>\n\n  <app-toggle-sidenav/>\n\n</div>\n\n<app-notification-dropdown/>\n\n<app-profile-dropdown/>\n' }]
   }], null, null);
 })();
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(Topbar, { className: "Topbar", filePath: "src/app/layout/components/topbar/topbar.ts", lineNumber: 24 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(Topbar, { className: "Topbar", filePath: "src/app/layout/components/topbar/topbar.ts", lineNumber: 20 });
 })();
 
 // src/app/shared/utils/layout-utils.ts
@@ -4685,6 +4909,10 @@ var Sidenav = class _Sidenav {
 
 // src/app/layout/main-layout/main-layout.ts
 var MainLayout = class _MainLayout {
+  notification = inject(NotificationService);
+  ngOnInit() {
+    this.notification.refresh().subscribe();
+  }
   static \u0275fac = function MainLayout_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _MainLayout)();
   };
@@ -4717,7 +4945,7 @@ var MainLayout = class _MainLayout {
   }], null, null);
 })();
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(MainLayout, { className: "MainLayout", filePath: "src/app/layout/main-layout/main-layout.ts", lineNumber: 18 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(MainLayout, { className: "MainLayout", filePath: "src/app/layout/main-layout/main-layout.ts", lineNumber: 19 });
 })();
 
 // src/app/layout/auth-layout/auth-layout.ts
@@ -5886,11 +6114,11 @@ var routes = [
       },
       {
         path: "admin",
-        loadChildren: () => import("./chunk-7XS4LVRF.js").then((m) => m.ADMIN_ROUTES)
+        loadChildren: () => import("./chunk-5XXVLFC7.js").then((m) => m.ADMIN_ROUTES)
       },
       {
         path: "account/change-password",
-        loadComponent: () => import("./chunk-FM6FTAB4.js").then((m) => m.ChangePassword),
+        loadComponent: () => import("./chunk-A2DPQVVI.js").then((m) => m.ChangePassword),
         data: { title: "\u4FEE\u6539\u5BC6\u78BC" }
       },
       {
