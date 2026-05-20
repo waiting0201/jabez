@@ -18,10 +18,6 @@ public class AdvanceRequest
     public DateTime? ReviewedAt        { get; set; }
     public string?   ReviewNote        { get; set; }
     public Guid?     ReviewedById      { get; set; }
-    // 撥款 cache 欄位（兩階段過渡用，主要資料在 Installments；Handler 寫入時同步更新）
-    public DateTime? EstimatedPaymentDate { get; set; }
-    public DateTime? PaidAt            { get; set; }
-    public Guid?     PaidByUserId      { get; set; }
 
     public DateTime  CreatedAt         { get; set; }
 
@@ -42,7 +38,6 @@ public class AdvanceRequest
     public ApprovalItem?                            ApprovalItem { get; set; }
     public User?                                    SubmittedBy  { get; set; }
     public User?                                    ReviewedBy   { get; set; }
-    public User?                                    PaidBy       { get; set; }
     public User?                                    ClosedBy     { get; set; }
     public User?                                    RefundedBy   { get; set; }
     public ICollection<AdvanceRequestItem>          Items        { get; set; } = [];

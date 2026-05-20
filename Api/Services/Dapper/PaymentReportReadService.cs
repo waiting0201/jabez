@@ -9,7 +9,19 @@ namespace Jabez.Api.Services.Dapper;
 
 public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportReadService
 {
-    private const string BaseSql = """
+    /// <summary>
+    /// 撥款日推算（沿襲舊 pr.PaidAt 語意）：全撥完 → MAX(installment.PaidAt)，否則 NULL。
+    /// 用 CASE 配 EXISTS / NOT EXISTS，避免子查詢回傳多列。
+    /// </summary>
+    private const string PaidAtSubquery = """
+        CASE
+          WHEN NOT EXISTS (SELECT 1 FROM PaymentRequestInstallments i WHERE i.PaymentRequestId = pr.Id) THEN NULL
+          WHEN EXISTS (SELECT 1 FROM PaymentRequestInstallments i WHERE i.PaymentRequestId = pr.Id AND i.PaidAt IS NULL) THEN NULL
+          ELSE (SELECT MAX(i.PaidAt) FROM PaymentRequestInstallments i WHERE i.PaymentRequestId = pr.Id)
+        END
+        """;
+
+    private static readonly string BaseSql = $"""
         SELECT pr.Id,
                pr.RequestNo,
                u.Name  AS EmployeeName,
@@ -21,7 +33,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                 WHERE PaymentRequestId = pr.Id) AS InvoiceNos,
                pr.TotalAmount,
                pr.ApprovalStatus,
-               pr.PaidAt,
+               {PaidAtSubquery} AS PaidAt,
                pr.CreatedAt
         FROM PaymentRequests pr
         JOIN Users   u    ON pr.SubmittedById = u.Id
@@ -40,7 +52,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
     /// <summary>
     /// 匯出用 SQL：LEFT JOIN InvoiceItems，一張發票一列；無發票仍輸出一列（ii.* 全為 null）。
     /// </summary>
-    private const string ExportBaseSql = """
+    private static readonly string ExportBaseSql = $"""
         SELECT pr.Id            AS PaymentRequestId,
                pr.RequestNo,
                u.Name           AS EmployeeName,
@@ -49,7 +61,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                proj.Name        AS ProjectName,
                pr.ApprovalStatus,
                pr.CreatedAt,
-               pr.PaidAt,
+               {PaidAtSubquery} AS PaidAt,
                pr.TotalAmount   AS PaymentTotalAmount,
                ii.InvoiceNo,
                ii.ItemName      AS InvoiceItemName,
@@ -100,14 +112,16 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
             parameters.Add("DateTo", dateTo.Value.ToDateTime(TimeOnly.MinValue));
         }
 
-        // paymentStatus: 'paid' → PaidAt IS NOT NULL；'unpaid' → PaidAt IS NULL
+        // paymentStatus: 'paid' → 全部撥完（有 installments 且無 PaidAt 為 null）；'unpaid' → 反之
         if (paymentStatus == "paid")
         {
-            where.Append(" AND pr.PaidAt IS NOT NULL");
+            where.Append(" AND EXISTS (SELECT 1 FROM PaymentRequestInstallments i WHERE i.PaymentRequestId = pr.Id)");
+            where.Append(" AND NOT EXISTS (SELECT 1 FROM PaymentRequestInstallments i WHERE i.PaymentRequestId = pr.Id AND i.PaidAt IS NULL)");
         }
         else if (paymentStatus == "unpaid")
         {
-            where.Append(" AND pr.PaidAt IS NULL");
+            where.Append(" AND (NOT EXISTS (SELECT 1 FROM PaymentRequestInstallments i WHERE i.PaymentRequestId = pr.Id)");
+            where.Append("      OR EXISTS (SELECT 1 FROM PaymentRequestInstallments i WHERE i.PaymentRequestId = pr.Id AND i.PaidAt IS NULL))");
         }
 
         return where.ToString();

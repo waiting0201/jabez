@@ -10,7 +10,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
     // ── 通用 JOIN SQL ─────────────────────────────────────────────────────────
     private const string BaseSql = """
         SELECT pr.Id, pr.RequestNo, pr.Type, pr.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
-               pr.TotalAmount, pr.ApprovalStatus, pr.EstimatedPaymentDate, pr.PaidAt,
+               pr.TotalAmount, pr.ApprovalStatus,
                sub.Name AS SubmittedBy, pr.CreatedAt,
                pr.ReviewedAt, pr.ReviewNote, pr.Reason,
                pr.VendorId, ven.Name AS VendorName, ven.TaxId AS VendorTaxId,
@@ -329,13 +329,27 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         }
 
         // ── 撥款/退款狀態篩選（僅在已核准頁籤且有 paymentStatus 時生效）───
+        // 改從子表 installments 推算（Phase 2 已移除父表 cache）：
+        //   paid       = 已全數撥款（有 installments 且所有 PaidAt 都非 null）
+        //   unpaid/其他 = 尚未全撥（無 installments 或仍有 PaidAt 為空）
         bool hasPaymentFilter = !string.IsNullOrEmpty(paymentStatus) && !filterId.HasValue;
-        string PaymentStatusClause(string paidAtColumn)
+        string PaymentStatusClause(string parentAlias, string installmentTable, string fkCol)
         {
             if (!hasPaymentFilter) return "";
             return paymentStatus == "paid"
-                ? $" AND {paidAtColumn} IS NOT NULL"
-                : $" AND {paidAtColumn} IS NULL";
+                ? $" AND EXISTS (SELECT 1 FROM {installmentTable} ix WHERE ix.{fkCol} = {parentAlias}.Id)" +
+                  $" AND NOT EXISTS (SELECT 1 FROM {installmentTable} ix WHERE ix.{fkCol} = {parentAlias}.Id AND ix.PaidAt IS NULL)"
+                : $" AND (NOT EXISTS (SELECT 1 FROM {installmentTable} ix WHERE ix.{fkCol} = {parentAlias}.Id)" +
+                  $"      OR EXISTS (SELECT 1 FROM {installmentTable} ix WHERE ix.{fkCol} = {parentAlias}.Id AND ix.PaidAt IS NULL))";
+        }
+
+        /// <summary>退款狀態篩選（沖銷類用）：仍以父表 RefundedAt 欄位判斷，未拆分到 installments</summary>
+        string RefundStatusClause(string refundedAtColumn)
+        {
+            if (!hasPaymentFilter) return "";
+            return paymentStatus == "paid"
+                ? $" AND {refundedAtColumn} IS NOT NULL"
+                : $" AND {refundedAtColumn} IS NULL";
         }
 
         // ── 類型篩選（已核准頁籤可選擇單一申請類型；按 ID 查詢時略過）───
@@ -344,31 +358,29 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         bool TypeAllowed(string thisType) => !hasTypeFilter || applicationType == thisType;
 
         // 按 ID 查詢時不套用審核者過濾（StepMatchClause），只用 ID 條件
-        string paymentWhere       = !TypeAllowed("payment_request") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(paymentIdWhere,       "") : BuildWhere("", StepMatchClause("pr",  "sub",  "payment_request")) + PaymentStatusClause("pr.PaidAt"));
+        string paymentWhere       = !TypeAllowed("payment_request") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(paymentIdWhere,       "") : BuildWhere("", StepMatchClause("pr",  "sub",  "payment_request")) + PaymentStatusClause("pr",  "PaymentRequestInstallments",      "PaymentRequestId"));
         string leaveWhere         = !TypeAllowed("leave") || hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(leaveIdWhere,         "") : BuildWhere("", StepMatchClause("lr",  "u",    "leave")));
-        string travelWhere        = !TypeAllowed("travel") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(travelIdWhere,        "") + " AND tr.IsHolidayTravel = 0" : BuildWhere("tr.IsHolidayTravel = 0", StepMatchClause("tr",  "u",    "travel")) + PaymentStatusClause("tr.PaidAt"));
+        string travelWhere        = !TypeAllowed("travel") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(travelIdWhere,        "") + " AND tr.IsHolidayTravel = 0" : BuildWhere("tr.IsHolidayTravel = 0", StepMatchClause("tr",  "u",    "travel")) + PaymentStatusClause("tr",  "TravelRequestInstallments",       "TravelRequestId"));
         // 假日執行活動津貼隨次月薪資發放、不走撥款流程，故套用「已撥款 / 未撥款」篩選時與 leave/overtime 一致直接排除
         string holidayTravelWhere = !TypeAllowed("holiday_travel") || hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(holidayTravelIdWhere, "") + " AND tr.IsHolidayTravel = 1" : BuildWhere("tr.IsHolidayTravel = 1", StepMatchClause("tr",  "u",    "holiday_travel")));
         string overtimeWhere      = !TypeAllowed("overtime") || hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(overtimeIdWhere,      "") : BuildWhere("", StepMatchClause("ot",  "u",    "overtime")));
-        string advanceWhere       = !TypeAllowed("advance") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(advanceIdWhere,       "") : BuildWhere("", StepMatchClause("adv", "asub", "advance")) + PaymentStatusClause("adv.PaidAt"));
-        string writeOffWhere      = !TypeAllowed("write_off") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(writeOffIdWhere,      "") : BuildWhere("", StepMatchClause("wo",  "wsub", "write_off")) + PaymentStatusClause("arx.RefundedAt"));
-        string travelWriteOffWhere  = !TypeAllowed("travel_write_off") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(travelWriteOffIdWhere,  "") : BuildWhere("", StepMatchClause("two", "trsub", "travel_write_off")) + PaymentStatusClause("trx.RefundedAt"));
-        string travelPaymentWhere   = !TypeAllowed("travel_payment") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(travelPaymentIdWhere,   "") : BuildWhere("", StepMatchClause("tpr", "tpru", "travel_payment")) + PaymentStatusClause("tpr.PaidAt"));
+        string advanceWhere       = !TypeAllowed("advance") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(advanceIdWhere,       "") : BuildWhere("", StepMatchClause("adv", "asub", "advance")) + PaymentStatusClause("adv", "AdvanceRequestInstallments",      "AdvanceRequestId"));
+        string writeOffWhere      = !TypeAllowed("write_off") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(writeOffIdWhere,      "") : BuildWhere("", StepMatchClause("wo",  "wsub", "write_off")) + RefundStatusClause("arx.RefundedAt"));
+        string travelWriteOffWhere  = !TypeAllowed("travel_write_off") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(travelWriteOffIdWhere,  "") : BuildWhere("", StepMatchClause("two", "trsub", "travel_write_off")) + RefundStatusClause("trx.RefundedAt"));
+        string travelPaymentWhere   = !TypeAllowed("travel_payment") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(travelPaymentIdWhere,   "") : BuildWhere("", StepMatchClause("tpr", "tpru", "travel_payment")) + PaymentStatusClause("tpr", "TravelPaymentRequestInstallments", "TravelPaymentRequestId"));
 
         var paymentSql = $"""
             SELECT pr.Id, pr.RequestNo, pr.Type AS PaymentType, proj.Code AS ProjectCode, proj.Name AS ProjectName,
-                   pr.TotalAmount, pr.ApprovalStatus, pr.EstimatedPaymentDate, pr.PaidAt, pr.ApprovalItemId, pr.CurrentStepOrder,
+                   pr.TotalAmount, pr.ApprovalStatus, pr.ApprovalItemId, pr.CurrentStepOrder,
                    sub.Name AS SubmittedBy, sub.SignatureUrl AS SubmittedBySignatureUrl, pr.CreatedAt, pr.ReviewedAt, pr.ReviewNote,
                    pr.Reason,
                    pr.VendorId, ven.Name AS VendorName, ven.TaxId AS VendorTaxId,
                    ven.ContactPerson AS VendorContactPerson, ven.Phone AS VendorPhone,
                    ven.BankAccount AS VendorBankAccount, ven.Address AS VendorAddress,
-                   paidby.SignatureUrl AS PaidBySignatureUrl,
                    ii.Id AS InvId, ii.FileName, ii.InvoiceNo, ii.Amount AS InvAmount, ii.ItemName AS InvItemName, ii.Note AS InvNote, ii.FileUrl AS InvFileUrl, ii.InvoiceDate AS InvInvoiceDate
             FROM PaymentRequests pr
             LEFT JOIN Projects proj   ON pr.ProjectId    = proj.Id
             LEFT JOIN Users   sub     ON pr.SubmittedById = sub.Id
-            LEFT JOIN Users   paidby  ON pr.PaidByUserId  = paidby.Id
             LEFT JOIN Vendors ven     ON pr.VendorId     = ven.Id
             LEFT JOIN InvoiceItems ii ON ii.PaymentRequestId = pr.Id
             {paymentWhere}
@@ -389,13 +401,11 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             SELECT tr.Id, tr.RequestNo, tr.Destination, tr.StartDate, tr.EndDate,
                    tr.GrandTotal, tr.Purpose, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    tr.IsHolidayTravel,
-                   tr.EstimatedPaymentDate, tr.PaidAt, tr.EstimatedRefundDate, tr.RefundedAt,
+                   tr.EstimatedRefundDate, tr.RefundedAt,
                    tr.ApprovalStatus, tr.ApprovalItemId, tr.CurrentStepOrder,
-                   u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, tr.CreatedAt, tr.ReviewedAt, tr.ReviewNote,
-                   trpaidby.SignatureUrl AS PaidBySignatureUrl
+                   u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, tr.CreatedAt, tr.ReviewedAt, tr.ReviewNote
             FROM TravelRequests tr
             LEFT JOIN Users u          ON tr.EmployeeId  = u.Id
-            LEFT JOIN Users trpaidby   ON tr.PaidByUserId = trpaidby.Id
             LEFT JOIN Projects proj    ON tr.ProjectId   = proj.Id
             {travelWhere}
             ORDER BY tr.CreatedAt DESC
@@ -407,14 +417,12 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             SELECT tr.Id, tr.RequestNo, tr.Destination, tr.StartDate, tr.EndDate,
                    tr.GrandTotal, tr.Purpose, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    tr.IsHolidayTravel, tr.HolidayDays,
-                   tr.EstimatedPaymentDate, tr.PaidAt, tr.EstimatedRefundDate, tr.RefundedAt,
+                   tr.EstimatedRefundDate, tr.RefundedAt,
                    tr.ApprovalStatus, tr.ApprovalItemId, tr.CurrentStepOrder,
                    tr.EmployeeId AS ApplicantId, u.BaseSalary AS ApplicantBaseSalary,
-                   u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, tr.CreatedAt, tr.ReviewedAt, tr.ReviewNote,
-                   trpaidby.SignatureUrl AS PaidBySignatureUrl
+                   u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, tr.CreatedAt, tr.ReviewedAt, tr.ReviewNote
             FROM TravelRequests tr
             LEFT JOIN Users u          ON tr.EmployeeId  = u.Id
-            LEFT JOIN Users trpaidby   ON tr.PaidByUserId = trpaidby.Id
             LEFT JOIN Projects proj    ON tr.ProjectId   = proj.Id
             {holidayTravelWhere}
             ORDER BY tr.CreatedAt DESC
@@ -435,13 +443,11 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             SELECT adv.Id, adv.RequestNo, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    adv.ActivityName, adv.GrandTotal,
                    adv.ApprovalStatus, adv.ApprovalItemId, adv.CurrentStepOrder,
-                   adv.EstimatedPaymentDate, adv.PaidAt, adv.EstimatedRefundDate, adv.RefundedAt,
-                   asub.Name AS SubmittedBy, asub.SignatureUrl AS SubmittedBySignatureUrl, adv.CreatedAt, adv.ReviewedAt, adv.ReviewNote,
-                   advpaidby.SignatureUrl AS PaidBySignatureUrl
+                   adv.EstimatedRefundDate, adv.RefundedAt,
+                   asub.Name AS SubmittedBy, asub.SignatureUrl AS SubmittedBySignatureUrl, adv.CreatedAt, adv.ReviewedAt, adv.ReviewNote
             FROM AdvanceRequests adv
             LEFT JOIN Projects proj      ON adv.ProjectId    = proj.Id
             LEFT JOIN Users   asub       ON adv.SubmittedById = asub.Id
-            LEFT JOIN Users   advpaidby  ON adv.PaidByUserId  = advpaidby.Id
             {advanceWhere}
             ORDER BY adv.CreatedAt DESC
             """;
@@ -462,14 +468,12 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                            WHERE w2.AdvanceRequestId = wo.AdvanceRequestId
                              AND w2.ApprovalStatus = 'approved'
                              AND w2.Id < wo.Id), 0) AS OtherWrittenOffTotal,
-                   wopaidby.SignatureUrl AS PaidBySignatureUrl,
                    worefundby.SignatureUrl AS RefundedBySignatureUrl,
                    arx.IsClosed AS AdvanceIsClosed
             FROM WriteOffRecords wo
             JOIN AdvanceRequests arx  ON wo.AdvanceRequestId = arx.Id
             LEFT JOIN Projects proj   ON arx.ProjectId       = proj.Id
             LEFT JOIN Users   wsub    ON wo.SubmittedById    = wsub.Id
-            LEFT JOIN Users   wopaidby ON arx.PaidByUserId   = wopaidby.Id
             LEFT JOIN Users   worefundby ON arx.RefundedByUserId = worefundby.Id
             {writeOffWhere}
             ORDER BY wo.CreatedAt DESC
@@ -493,14 +497,12 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                            WHERE tw2.TravelRequestId = two.TravelRequestId
                              AND tw2.ApprovalStatus = 'approved'
                              AND tw2.Id < two.Id), 0) AS OtherWrittenOffTotal,
-                   twopaidby.SignatureUrl AS PaidBySignatureUrl,
                    tworefundby.SignatureUrl AS RefundedBySignatureUrl,
                    trx.IsClosed AS TravelIsClosed
             FROM TravelWriteOffRecords two
             JOIN TravelRequests trx    ON two.TravelRequestId = trx.Id
             LEFT JOIN Projects proj    ON trx.ProjectId       = proj.Id
             LEFT JOIN Users   trsub    ON two.SubmittedById   = trsub.Id
-            LEFT JOIN Users   twopaidby ON trx.PaidByUserId   = twopaidby.Id
             LEFT JOIN Users   tworefundby ON trx.RefundedByUserId = tworefundby.Id
             {travelWriteOffWhere}
             ORDER BY two.CreatedAt DESC
@@ -509,13 +511,10 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         var travelPaymentSql = $"""
             SELECT tpr.Id, tpr.RequestNo, tpr.Destination, tpr.StartDate, tpr.EndDate,
                    tpr.GrandTotal, tpr.Purpose, proj.Code AS ProjectCode, proj.Name AS ProjectName,
-                   tpr.EstimatedPaymentDate, tpr.PaidAt,
                    tpr.ApprovalStatus, tpr.ApprovalItemId, tpr.CurrentStepOrder,
-                   tpru.Name AS SubmittedBy, tpru.SignatureUrl AS SubmittedBySignatureUrl, tpr.CreatedAt, tpr.ReviewedAt, tpr.ReviewNote,
-                   tprpaidby.SignatureUrl AS PaidBySignatureUrl
+                   tpru.Name AS SubmittedBy, tpru.SignatureUrl AS SubmittedBySignatureUrl, tpr.CreatedAt, tpr.ReviewedAt, tpr.ReviewNote
             FROM TravelPaymentRequests tpr
             LEFT JOIN Users   tpru       ON tpr.EmployeeId   = tpru.Id
-            LEFT JOIN Users   tprpaidby  ON tpr.PaidByUserId = tprpaidby.Id
             LEFT JOIN Projects proj      ON tpr.ProjectId    = proj.Id
             {travelPaymentWhere}
             ORDER BY tpr.CreatedAt DESC
@@ -854,10 +853,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (string)x.pr.ProjectName,
                 [.. x.invoices],
                 (decimal)x.pr.TotalAmount,
-                (DateTime?)x.pr.EstimatedPaymentDate,
-                (DateTime?)x.pr.PaidAt,
                 (string?)x.pr.Reason,
-                (string?)x.pr.PaidBySignatureUrl,
                 (int?)x.pr.VendorId,
                 (string?)x.pr.VendorName,
                 (string?)x.pr.VendorTaxId,
@@ -922,13 +918,10 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (string?)row.ProjectCode,
                 (string?)row.ProjectName,
                 (bool)row.IsHolidayTravel,
-                (DateTime?)row.EstimatedPaymentDate,
-                (DateTime?)row.PaidAt,
                 (DateTime?)row.EstimatedRefundDate,
                 (DateTime?)row.RefundedAt,
                 null,
                 GetTravelItems((int)row.Id),
-                (string?)row.PaidBySignatureUrl,
                 null,
                 instDicts.Travel.TryGetValue((int)row.Id, out var trInst) ? [.. trInst] : null,
                 installments.ComputeStatus(instDicts.Travel.GetValueOrDefault((int)row.Id, []))),
@@ -962,13 +955,10 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (string?)row.ProjectCode,
                 (string?)row.ProjectName,
                 (bool)row.IsHolidayTravel,
-                (DateTime?)row.EstimatedPaymentDate,
-                (DateTime?)row.PaidAt,
                 (DateTime?)row.EstimatedRefundDate,
                 (DateTime?)row.RefundedAt,
                 (int?)row.HolidayDays,
                 GetTravelItems((int)row.Id),
-                (string?)row.PaidBySignatureUrl,
                 BuildHolidayAllowances(
                     (int)row.Id,
                     (Guid)row.ApplicantId,
@@ -1026,12 +1016,9 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (string)row.ProjectName,
                 (string)row.ActivityName,
                 (decimal)row.GrandTotal,
-                (DateTime?)row.EstimatedPaymentDate,
-                (DateTime?)row.PaidAt,
                 (DateTime?)row.EstimatedRefundDate,
                 (DateTime?)row.RefundedAt,
                 GetAdvanceItems((int)row.Id),
-                (string?)row.PaidBySignatureUrl,
                 null,
                 null,
                 instDicts.Advance.TryGetValue((int)row.Id, out var advInst) ? [.. advInst] : null,
@@ -1089,7 +1076,6 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (DateTime?)row.AdvanceRefundedAt,
                 (decimal)row.AdvanceGrandTotal,
                 (decimal)row.OtherWrittenOffTotal,
-                (string?)row.PaidBySignatureUrl,
                 (string?)row.RefundedBySignatureUrl,
                 (bool)row.AdvanceIsClosed,
                 (decimal?)row.AdvanceRefundAmount,
@@ -1166,7 +1152,6 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (DateTime?)row.TravelRefundedAt,
                 (decimal)row.TravelGrandTotal,
                 (decimal)row.OtherWrittenOffTotal,
-                (string?)row.PaidBySignatureUrl,
                 (string?)row.RefundedBySignatureUrl,
                 (bool)row.TravelIsClosed,
                 (decimal?)row.TravelRefundAmount,
@@ -1201,10 +1186,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (string)row.Purpose,
                 (string?)row.ProjectCode,
                 (string?)row.ProjectName,
-                (DateTime?)row.EstimatedPaymentDate,
-                (DateTime?)row.PaidAt,
                 GetTravelPaymentItems((int)row.Id),
-                (string?)row.PaidBySignatureUrl,
                 instDicts.TravelPayment.TryGetValue((int)row.Id, out var tpInst) ? [.. tpInst] : null,
                 installments.ComputeStatus(instDicts.TravelPayment.GetValueOrDefault((int)row.Id, [])))));
 
@@ -1253,8 +1235,6 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             (string)x.pr.ApprovalStatus,
             (string?)x.pr.SubmittedBy,
             (DateTime)x.pr.CreatedAt,
-            (DateTime?)x.pr.EstimatedPaymentDate,
-            (DateTime?)x.pr.PaidAt,
             (DateTime?)x.pr.ReviewedAt,
             (string?)x.pr.ReviewNote,
             (string?)x.pr.Reason,

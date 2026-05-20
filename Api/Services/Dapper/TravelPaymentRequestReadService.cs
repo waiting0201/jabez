@@ -14,7 +14,6 @@ public sealed class TravelPaymentRequestReadService(IDbConnection db, IInstallme
                tpr.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                tpr.ApprovalStatus, tpr.CreatedAt, tpr.ReviewedAt, tpr.ReviewNote,
                tpr.ApprovalItemId, tpr.CurrentStepOrder, tpr.ReviewedById,
-               tpr.EstimatedPaymentDate, tpr.PaidAt,
                ti.Id AS ItemId, ti.Category, ti.SeqNo, ti.ItemName,
                ti.UnitPrice, ti.Quantity, ti.TotalPrice,
                ti.Note AS ItemNote, ti.SortOrder,
@@ -138,8 +137,6 @@ public sealed class TravelPaymentRequestReadService(IDbConnection db, IInstallme
                 ApprovalItemId:       (int?)tpr.ApprovalItemId,
                 CurrentStepOrder:     (int?)tpr.CurrentStepOrder,
                 ReviewedById:         (Guid?)tpr.ReviewedById,
-                EstimatedPaymentDate: (DateTime?)tpr.EstimatedPaymentDate,
-                PaidAt:               (DateTime?)tpr.PaidAt,
                 Items:                items);
         });
     }

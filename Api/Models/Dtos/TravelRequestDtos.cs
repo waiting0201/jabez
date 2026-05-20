@@ -61,8 +61,6 @@ public sealed record TravelRequestDto(
     DateTime?                    ClosedAt            = null,
     decimal?                     RefundAmount         = null,
     decimal?                     RefundedAmount       = null,
-    DateTime?                    EstimatedPaymentDate = null,
-    DateTime?                    PaidAt               = null,
     DateTime?                    EstimatedRefundDate  = null,
     DateTime?                    RefundedAt           = null,
     int                          HolidayDays          = 0,

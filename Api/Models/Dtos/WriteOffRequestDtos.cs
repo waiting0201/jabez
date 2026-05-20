@@ -62,7 +62,6 @@ public sealed record WriteOffTaskDetailDto(
     DateTime?          RefundedAt = null,
     decimal            AdvanceGrandTotal = 0,
     decimal            OtherWrittenOffTotal = 0,
-    string?            PaidBySignatureUrl = null,
     string?            RefundedBySignatureUrl = null,
     bool               AdvanceIsClosed = false,
     decimal?           AdvanceRefundAmount = null,

@@ -26,11 +26,6 @@ public class TravelRequest
     public DateTime? ClosedAt    { get; set; }
     public Guid?     ClosedById  { get; set; }
 
-    // 撥款 cache 欄位（兩階段過渡用，主要資料在 Installments；Handler 寫入時同步更新）
-    public DateTime? EstimatedPaymentDate    { get; set; }
-    public DateTime? PaidAt                  { get; set; }
-    public Guid?     PaidByUserId            { get; set; }
-
     // 退還差額（沖銷累計超過出差金額時需匯款）
     public decimal?  RefundAmount            { get; set; }
     public decimal?  RefundedAmount          { get; set; }
@@ -41,7 +36,6 @@ public class TravelRequest
     // Navigation
     public User?                                  Employee     { get; set; }
     public User?                                  ReviewedBy   { get; set; }
-    public User?                                  PaidBy       { get; set; }
     public User?                                  RefundedBy   { get; set; }
     public ApprovalItem?                          ApprovalItem { get; set; }
     public Project?                               Project      { get; set; }

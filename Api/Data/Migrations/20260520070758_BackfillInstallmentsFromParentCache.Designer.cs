@@ -4,6 +4,7 @@ using Jabez.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Jabez.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260520070758_BackfillInstallmentsFromParentCache")]
+    partial class BackfillInstallmentsFromParentCache
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -73,6 +76,9 @@ namespace Jabez.Api.Data.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(1);
 
+                    b.Property<DateTime?>("EstimatedPaymentDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime?>("EstimatedRefundDate")
                         .HasColumnType("datetime2");
 
@@ -83,6 +89,12 @@ namespace Jabez.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("PaidByUserId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("ProjectId")
                         .HasColumnType("int");
@@ -122,6 +134,8 @@ namespace Jabez.Api.Data.Migrations
                     b.HasIndex("ApprovalItemId");
 
                     b.HasIndex("ClosedById");
+
+                    b.HasIndex("PaidByUserId");
 
                     b.HasIndex("ProjectId");
 
@@ -2562,6 +2576,15 @@ namespace Jabez.Api.Data.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(1);
 
+                    b.Property<DateTime?>("EstimatedPaymentDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("PaidByUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<int>("ProjectId")
                         .HasColumnType("int");
 
@@ -2600,6 +2623,8 @@ namespace Jabez.Api.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ApprovalItemId");
+
+                    b.HasIndex("PaidByUserId");
 
                     b.HasIndex("ProjectId");
 
@@ -4942,8 +4967,17 @@ namespace Jabez.Api.Data.Migrations
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("EstimatedPaymentDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<decimal>("GrandTotal")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("PaidByUserId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int?>("ProjectId")
                         .HasColumnType("int");
@@ -4976,6 +5010,8 @@ namespace Jabez.Api.Data.Migrations
                     b.HasIndex("ApprovalItemId");
 
                     b.HasIndex("EmployeeId");
+
+                    b.HasIndex("PaidByUserId");
 
                     b.HasIndex("ProjectId");
 
@@ -5142,6 +5178,9 @@ namespace Jabez.Api.Data.Migrations
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("EstimatedPaymentDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime?>("EstimatedRefundDate")
                         .HasColumnType("datetime2");
 
@@ -5162,6 +5201,12 @@ namespace Jabez.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("PaidByUserId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int?>("ProjectId")
                         .HasColumnType("int");
@@ -5208,6 +5253,8 @@ namespace Jabez.Api.Data.Migrations
                     b.HasIndex("ClosedById");
 
                     b.HasIndex("EmployeeId");
+
+                    b.HasIndex("PaidByUserId");
 
                     b.HasIndex("ProjectId");
 
@@ -6198,6 +6245,11 @@ namespace Jabez.Api.Data.Migrations
                         .HasForeignKey("ClosedById")
                         .OnDelete(DeleteBehavior.NoAction);
 
+                    b.HasOne("Jabez.Api.Models.Entities.User", "PaidBy")
+                        .WithMany()
+                        .HasForeignKey("PaidByUserId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("Jabez.Api.Models.Entities.Project", "Project")
                         .WithMany("AdvanceRequests")
                         .HasForeignKey("ProjectId")
@@ -6222,6 +6274,8 @@ namespace Jabez.Api.Data.Migrations
                     b.Navigation("ApprovalItem");
 
                     b.Navigation("ClosedBy");
+
+                    b.Navigation("PaidBy");
 
                     b.Navigation("Project");
 
@@ -6536,6 +6590,11 @@ namespace Jabez.Api.Data.Migrations
                         .HasForeignKey("ApprovalItemId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Jabez.Api.Models.Entities.User", "PaidBy")
+                        .WithMany()
+                        .HasForeignKey("PaidByUserId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("Jabez.Api.Models.Entities.Project", "Project")
                         .WithMany("PaymentRequests")
                         .HasForeignKey("ProjectId")
@@ -6558,6 +6617,8 @@ namespace Jabez.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("ApprovalItem");
+
+                    b.Navigation("PaidBy");
 
                     b.Navigation("Project");
 
@@ -6711,6 +6772,11 @@ namespace Jabez.Api.Data.Migrations
                         .HasForeignKey("EmployeeId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Jabez.Api.Models.Entities.User", "PaidBy")
+                        .WithMany()
+                        .HasForeignKey("PaidByUserId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("Jabez.Api.Models.Entities.Project", "Project")
                         .WithMany()
                         .HasForeignKey("ProjectId")
@@ -6724,6 +6790,8 @@ namespace Jabez.Api.Data.Migrations
                     b.Navigation("ApprovalItem");
 
                     b.Navigation("Employee");
+
+                    b.Navigation("PaidBy");
 
                     b.Navigation("Project");
 
@@ -6776,6 +6844,11 @@ namespace Jabez.Api.Data.Migrations
                         .HasForeignKey("EmployeeId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Jabez.Api.Models.Entities.User", "PaidBy")
+                        .WithMany()
+                        .HasForeignKey("PaidByUserId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("Jabez.Api.Models.Entities.Project", "Project")
                         .WithMany()
                         .HasForeignKey("ProjectId")
@@ -6796,6 +6869,8 @@ namespace Jabez.Api.Data.Migrations
                     b.Navigation("ClosedBy");
 
                     b.Navigation("Employee");
+
+                    b.Navigation("PaidBy");
 
                     b.Navigation("Project");
 

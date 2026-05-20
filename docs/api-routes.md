@@ -94,8 +94,7 @@
 | GET/POST | `/payment-requests` | 請款列表 / 新增（預設 draft，multipart 含 `vendorId` — 當 `type=vendor` 時必填且必須是 IsActive=true 的廠商） |
 | GET/PUT/PATCH/DELETE | `/payment-requests/{id}` | 請款 CRUD（DTO 含 `vendorId / vendorName / vendorTaxId`） |
 | PATCH | `/payment-requests/{id}/submit` | 送出請款申請（draft → pending） |
-| PATCH | `/payment-requests/{id}/payment-date` | 更新撥款日期（財務體系部門：AC/FIN/Jabez HQ/CEO，**舊單筆 endpoint**，過渡期保留）|
-| PATCH | `/payment-requests/{id}/installments` | **新分期撥款 endpoint**：upsert 一或多筆撥款明細（SUM 嚴格驗證 = TotalAmount；已撥款列鎖定不可改不可刪；每筆 PaidAt null→value 觸發一次「已撥款」通知含 N/M 期） |
+| PATCH | `/payment-requests/{id}/installments` | upsert 一或多筆撥款明細（SUM 嚴格驗證 = TotalAmount；已撥款列鎖定不可改不可刪；每筆 PaidAt null→value 觸發一次「已撥款」通知含 N/M 期；僅財務體系部門：AC/FIN/Jabez HQ/CEO） |
 | GET/POST | `/leave-requests` | 請假列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/leave-requests/{id}` | 請假 CRUD |
 | PATCH | `/leave-requests/{id}/submit` | 送出請假申請（draft → pending） |
@@ -112,14 +111,12 @@
 | GET/POST | `/travel-payment-requests` | 出差請款申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/travel-payment-requests/{id}` | 出差請款申請 CRUD |
 | PATCH | `/travel-payment-requests/{id}/submit` | 送出出差請款申請（draft → pending） |
-| PATCH | `/travel-payment-requests/{id}/payment-date` | 更新撥款日期（財務體系部門：AC/FIN/Jabez HQ/CEO，舊單筆 endpoint）|
-| PATCH | `/travel-payment-requests/{id}/installments` | 新分期撥款 endpoint（同 PaymentRequest 行為） |
+| PATCH | `/travel-payment-requests/{id}/installments` | upsert 分期撥款（同 PaymentRequest 行為） |
 | GET | `/holiday-travel-requests` | 假日執行活動申請列表（共用 TravelRequest，`IsHolidayTravel=true`） |
 | POST | `/holiday-travel-requests` | 新增假日執行活動申請（預設 draft，無 Items 與發票明細） |
 | GET/PUT/PATCH/DELETE | `/holiday-travel-requests/{id}` | 假日執行活動申請 CRUD |
 | PATCH | `/holiday-travel-requests/{id}/submit` | 送出假日執行活動申請（draft → pending） |
-| PATCH | `/holiday-travel-requests/{id}/payment-date` | 更新撥款日期（財務體系部門：AC/FIN/Jabez HQ/CEO，舊單筆 endpoint）|
-| PATCH | `/holiday-travel-requests/{id}/installments` | 新分期撥款 endpoint（同 PaymentRequest 行為） |
+| PATCH | `/holiday-travel-requests/{id}/installments` | upsert 分期撥款（同 PaymentRequest 行為） |
 | GET | `/holiday-travel-requests/count-holidays?startDate=...&endDate=...` | 計算指定區間內的假日天數（用於計算假日津貼） |
 | GET/POST | `/overtime-requests` | 加班申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/overtime-requests/{id}` | 加班申請 CRUD |
@@ -127,9 +124,8 @@
 | GET/POST | `/advance-requests` | 預支申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/advance-requests/{id}` | 預支申請 CRUD |
 | PATCH | `/advance-requests/{id}/submit` | 送出預支申請（draft → pending） |
-| PATCH | `/advance-requests/{id}/payment-date` | 更新撥款日期（財務體系部門：AC/FIN/Jabez HQ/CEO，舊單筆 endpoint）|
-| PATCH | `/advance-requests/{id}/installments` | 新分期撥款 endpoint（同 PaymentRequest 行為） |
-| PATCH | `/travel-requests/{id}/installments` | 新分期撥款 endpoint（同 PaymentRequest 行為） |
+| PATCH | `/advance-requests/{id}/installments` | upsert 分期撥款（同 PaymentRequest 行為） |
+| PATCH | `/travel-requests/{id}/installments` | upsert 分期撥款（同 PaymentRequest 行為） |
 
 ## 預支沖銷申請
 

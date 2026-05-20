@@ -30,7 +30,7 @@
 | `LeaveRequest` | 請假申請（含 BereavementRelationship 喪假親屬關係） |
 | `TravelRequest` | 出差預支申請（含 `RequestNo` 單號 unique index：`IsHolidayTravel=false` → `TR-yyyyMMdd-NNN`、`IsHolidayTravel=true` → `HTR-yyyyMMdd-NNN`，per-prefix-per-day 序號池；含 IsHolidayTravel、IsClosed 結案、GrandTotal 明細合計；事後走沖銷流程）。當 `IsHolidayTravel=true`（假日執行活動）時不含 Items 與發票明細，僅記錄活動地點/期間/參與人員 |
 | `TravelRequestItem` | 出差預支明細（交通費、住宿費、餐費、雜支）；假日執行活動不使用 |
-| `TravelPaymentRequest` | 出差請款申請（含 `RequestNo` 單號 `TPR-yyyyMMdd-NNN` unique index；員工代墊後直接請款，無沖銷流程；含 EstimatedPaymentDate/PaidAt 撥款欄位） |
+| `TravelPaymentRequest` | 出差請款申請（含 `RequestNo` 單號 `TPR-yyyyMMdd-NNN` unique index；員工代墊後直接請款，無沖銷流程；撥款資料統一由 `TravelPaymentRequestInstallment[]` 表達，父表無 cache 欄位） |
 | `TravelPaymentRequestItem` | 出差請款明細（交通費、住宿費、餐費、雜支，含發票號碼、發票日期、發票檔案上傳；上傳走 multipart + Azure Blob `invoices` container，前端支援拖放、OCR 自動辨識、HEIC/PDF） |
 | `OvertimeRequest` | 加班申請（走簽核流程） |
 | `AdvanceRequest` | 預支申請 |

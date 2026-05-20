@@ -49,11 +49,6 @@ public class TravelPaymentRequestConfiguration : IEntityTypeConfiguration<Travel
                .HasForeignKey(t => t.ReviewedById)
                .OnDelete(DeleteBehavior.NoAction);
 
-        builder.HasOne(t => t.PaidBy)
-               .WithMany()
-               .HasForeignKey(t => t.PaidByUserId)
-               .OnDelete(DeleteBehavior.NoAction);
-
         builder.HasOne(t => t.ApprovalItem)
                .WithMany(a => a.TravelPaymentRequests)
                .HasForeignKey(t => t.ApprovalItemId)
