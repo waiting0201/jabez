@@ -60,12 +60,6 @@ export class ApprovalTaskReview implements OnInit {
   errorMsg = signal('');
   showNoteError = false;
 
-  /** 已核准後：財務部/Superadmin 可更新撥款日 */
-  canUpdatePaymentDate = computed(() => this.auth.isSuperAdmin() || this.auth.isFinanceDept());
-  paymentDateForm = {estimatedPaymentDate: '', paidAt: '', refundedAmount: ''};
-  paymentDateMsg   = signal('');
-  paymentDateError = signal('');
-
   // ── 分期撥款 form（4 種申請類型共用）─────────────────────────────────────────
   /** 分期撥款明細表單 — 每列 {id?, expectedDate, paidAt, amount, note} */
   installmentsForm = this.fb.array<FormGroup<{
@@ -130,8 +124,8 @@ export class ApprovalTaskReview implements OnInit {
   form = this.fb.group({
     action:               ['approved', Validators.required],
     reviewNote:           [''],
-    estimatedPaymentDate: [''],
-    paidAt:               [''],
+    estimatedRefundDate:  [''],
+    refundedAt:           [''],
     closeAdvance:         [false],
   });
 
@@ -142,36 +136,6 @@ export class ApprovalTaskReview implements OnInit {
       tap(task => {
         if (!task) return;
         this.taskStatus.set(task.status);
-        if (task.paymentDetail) {
-          this.paymentDateForm.estimatedPaymentDate = task.paymentDetail.estimatedPaymentDate?.toString().slice(0, 10) ?? '';
-          this.paymentDateForm.paidAt = task.paymentDetail.paidAt?.toString().slice(0, 10) ?? '';
-        }
-        if (task.advanceDetail) {
-          this.paymentDateForm.estimatedPaymentDate = task.advanceDetail.estimatedPaymentDate?.toString().slice(0, 10) ?? '';
-          this.paymentDateForm.paidAt = task.advanceDetail.paidAt?.toString().slice(0, 10) ?? '';
-        }
-        if (task.travelDetail) {
-          this.paymentDateForm.estimatedPaymentDate = task.travelDetail.estimatedPaymentDate?.toString().slice(0, 10) ?? '';
-          this.paymentDateForm.paidAt = task.travelDetail.paidAt?.toString().slice(0, 10) ?? '';
-        }
-        if (task.travelPaymentDetail) {
-          this.paymentDateForm.estimatedPaymentDate = task.travelPaymentDetail.estimatedPaymentDate?.toString().slice(0, 10) ?? '';
-          this.paymentDateForm.paidAt = task.travelPaymentDetail.paidAt?.toString().slice(0, 10) ?? '';
-        }
-        if (task.writeOffDetail) {
-          this.paymentDateForm.estimatedPaymentDate = task.writeOffDetail.estimatedRefundDate?.toString().slice(0, 10) ?? '';
-          this.paymentDateForm.paidAt = task.writeOffDetail.refundedAt?.toString().slice(0, 10) ?? '';
-          this.paymentDateForm.refundedAmount = task.writeOffDetail.advanceRefundedAmount != null
-            ? String(task.writeOffDetail.advanceRefundedAmount)
-            : '';
-        }
-        if (task.travelWriteOffDetail) {
-          this.paymentDateForm.estimatedPaymentDate = task.travelWriteOffDetail.estimatedRefundDate?.toString().slice(0, 10) ?? '';
-          this.paymentDateForm.paidAt = task.travelWriteOffDetail.refundedAt?.toString().slice(0, 10) ?? '';
-          this.paymentDateForm.refundedAmount = task.travelWriteOffDetail.travelRefundedAmount != null
-            ? String(task.travelWriteOffDetail.travelRefundedAmount)
-            : '';
-        }
         this.initInstallmentsForm(task);
       }),
       catchError((err: HttpErrorResponse) => {
@@ -263,7 +227,7 @@ export class ApprovalTaskReview implements OnInit {
       id:           this.fb.control<number | null>(v.id ?? null),
       expectedDate: this.fb.nonNullable.control(v.expectedDate, Validators.required),
       paidAt:       this.fb.nonNullable.control(v.paidAt),
-      amount:       this.fb.nonNullable.control(v.amount, [Validators.required, Validators.min(0)]),
+      amount:       this.fb.nonNullable.control(v.amount, [Validators.required, Validators.min(1)]),
       note:         this.fb.nonNullable.control(v.note),
     });
   }
@@ -274,14 +238,15 @@ export class ApprovalTaskReview implements OnInit {
     return id != null && this.installmentLockedIds.has(id);
   }
 
-  /** 加一列（自動推算 installmentNo = 目前列數 + 1，金額為剩餘缺口）*/
+  /** 加一列（自動推算 installmentNo = 目前列數 + 1，金額為剩餘缺口；SUM ≥ 總額時不執行）*/
   addInstallmentRow(task: ApprovalTask) {
+    if (!this.canAddInstallmentRow(task)) return;
     const remaining = this.getInstallmentTotal(task) - this.installmentsSum();
     this.installmentsForm.push(this.buildInstallmentRow({
       installmentNo: this.installmentsForm.length + 1,
       expectedDate: '',
       paidAt: '',
-      amount: Math.max(0, remaining),
+      amount: Math.max(1, remaining),
       note: '',
     }));
   }
@@ -301,6 +266,28 @@ export class ApprovalTaskReview implements OnInit {
   /** SUM 是否等於申請總額（容忍 0.01 浮點誤差）*/
   isInstallmentsSumValid(task: ApprovalTask): boolean {
     return Math.abs(this.installmentsSum() - this.getInstallmentTotal(task)) <= 0.01;
+  }
+
+  /** 取得除了 index 列以外其他列的金額加總（用於計算單期 max）*/
+  installmentsSumExcludingRow(index: number): number {
+    return this.installmentsForm.controls.reduce((acc, c, i) =>
+      i === index ? acc : acc + (Number(c.get('amount')?.value) || 0), 0);
+  }
+
+  /** 某列金額 input 的 max：剩餘額度（總額 − 其他列已填）*/
+  installmentRowMax(task: ApprovalTask, index: number): number {
+    return this.getInstallmentTotal(task) - this.installmentsSumExcludingRow(index);
+  }
+
+  /** 是否可新增一期：SUM < 申請總額（≥ 時禁用以避免新增 0 元空期）；FullyPaid 後也禁用 */
+  canAddInstallmentRow(task: ApprovalTask): boolean {
+    if (this.isFullyPaid(task)) return false;
+    return this.installmentsSum() < this.getInstallmentTotal(task) - 0.01;
+  }
+
+  /** 是否已全數撥款（FullyPaid）— 所有列都鎖定，無可修改 */
+  isFullyPaid(task: ApprovalTask): boolean {
+    return this.getPaymentStatus(task) === 'FullyPaid';
   }
 
   /** 送出 upsert（4 種類型各自 dispatch 到對應 service）*/
@@ -418,108 +405,6 @@ export class ApprovalTaskReview implements OnInit {
     });
   }
 
-  /** 判斷已核准後是否可編輯撥款日：Superadmin、或曾審核過財務部步驟的使用者 */
-  canEditPaymentDate(task: ApprovalTask): boolean {
-    if (this.auth.isSuperAdmin()) return true;
-    if (!task.flow || !task.approvalRecords?.length) return false;
-    // 找出流程中所有財務部步驟（以部門代碼 'FIN' 判斷）的 stepOrder
-    const financeStepOrders = task.flow.steps
-      .filter(s => s.departmentCode === 'FIN')
-      .map(s => s.stepOrder);
-    if (!financeStepOrders.length) return false;
-    // 檢查當前使用者是否審核過這些步驟
-    const userName = this.auth.currentUser()?.name;
-    return task.approvalRecords.some(
-      r => financeStepOrders.includes(r.stepOrder) && r.reviewedBy === userName
-    );
-  }
-
-  /** 更新已核准請款/預支的撥款日期 */
-  updatePaymentDate(task: ApprovalTask) {
-    const {estimatedPaymentDate, paidAt, refundedAmount} = this.paymentDateForm;
-    const parsedRefunded = refundedAmount.trim() === '' ? null : Number(refundedAmount);
-    if (parsedRefunded != null && (!Number.isFinite(parsedRefunded) || parsedRefunded < 0)) {
-      this.paymentDateError.set('退款金額必須為非負數字。');
-      return;
-    }
-    if (!estimatedPaymentDate && !paidAt && parsedRefunded == null) return;
-    this.paymentDateMsg.set('');
-    this.paymentDateError.set('');
-
-    let update$: Observable<any>;
-    let successMsg: string;
-    if (task.travelPaymentDetail) {
-      update$ = this.travelPaymentService.updatePaymentDate(
-        task.travelPaymentDetail.travelPaymentRequestId,
-        {
-          estimatedPaymentDate: estimatedPaymentDate || undefined,
-          paidAt: paidAt || undefined,
-        },
-      );
-      successMsg = '撥款日期已更新。';
-    } else if (task.travelWriteOffDetail) {
-      // 出差沖銷：更新關聯的出差申請退款日與退款金額
-      update$ = this.travelService.updatePaymentDate(
-        task.travelWriteOffDetail.travelRequestId,
-        undefined, undefined,
-        estimatedPaymentDate || undefined,
-        paidAt || undefined,
-        parsedRefunded,
-      );
-      successMsg = '退款資訊已更新。';
-    } else if (task.writeOffDetail) {
-      // 預支沖銷：更新關聯的預支申請退款日與退款金額
-      update$ = this.advanceService.updatePaymentDate(
-        task.writeOffDetail.advanceRequestId,
-        undefined, undefined,
-        estimatedPaymentDate || undefined,
-        paidAt || undefined,
-        parsedRefunded,
-      );
-      successMsg = '退款資訊已更新。';
-    } else if (task.advanceDetail) {
-      update$ = this.advanceService.updatePaymentDate(
-        task.advanceDetail.advanceRequestId,
-        estimatedPaymentDate || undefined,
-        paidAt || undefined,
-      );
-      successMsg = '撥款日期已更新。';
-    } else if (task.travelDetail) {
-      update$ = this.travelService.updatePaymentDate(
-        task.travelDetail.travelRequestId,
-        estimatedPaymentDate || undefined,
-        paidAt || undefined,
-      );
-      successMsg = '撥款日期已更新。';
-    } else if (task.paymentDetail) {
-      update$ = this.paymentService.updatePaymentDate(
-        task.paymentDetail.paymentRequestId,
-        estimatedPaymentDate || undefined,
-        paidAt || undefined,
-      );
-      successMsg = '撥款日期已更新。';
-    } else {
-      return;
-    }
-
-    update$.subscribe({
-      next: () => {
-        this.paymentDateMsg.set(successMsg);
-        // 重新載入任務資料以反映更新
-        this.task$ = this.service.getById(this.taskId, this.applicationType).pipe(
-          tap(t => { if (t) this.taskStatus.set(t.status); }),
-          catchError((err: HttpErrorResponse) => {
-            this.errorMsg.set(err.error?.message || '載入簽核作業失敗。');
-            return EMPTY;
-          }),
-        );
-      },
-      error: (err: HttpErrorResponse) => {
-        this.paymentDateError.set(err.error?.message || '更新撥款日期失敗。');
-      },
-    });
-  }
-
   /** 列印請款單 PDF */
   printPaymentPdf(task: ApprovalTask) {
     this.paymentPdfService.printPaymentRequest(task);
@@ -536,8 +421,6 @@ export class ApprovalTaskReview implements OnInit {
           task.approvalRecords ?? [],
           task.flow,
           task.submittedBySignatureUrl,
-          task.advanceDetail?.paidBySignatureUrl,
-          task.advanceDetail?.paidAt,
         );
       },
       error: () => {
@@ -557,7 +440,6 @@ export class ApprovalTaskReview implements OnInit {
           task.approvalRecords ?? [],
           task.flow,
           task.submittedBySignatureUrl,
-          task.writeOffDetail?.paidBySignatureUrl,
           task.writeOffDetail?.refundedAt,
           task.writeOffDetail?.refundedBySignatureUrl,
         );
@@ -580,8 +462,6 @@ export class ApprovalTaskReview implements OnInit {
           task.flow,
           task.submittedBySignatureUrl,
           undefined,
-          task.travelPaymentDetail?.paidAt,
-          task.travelPaymentDetail?.paidBySignatureUrl,
         );
       },
       error: () => {
@@ -618,8 +498,8 @@ export class ApprovalTaskReview implements OnInit {
     if (this.taskStatus() !== 'pending') return;
     const action = this.form.value.action as TaskStatus;
     const note   = this.form.value.reviewNote?.trim() ?? '';
-    const estimatedPaymentDate = this.form.value.estimatedPaymentDate || undefined;
-    const paidAt = this.form.value.paidAt || undefined;
+    const estimatedRefundDate = this.form.value.estimatedRefundDate || undefined;
+    const refundedAt = this.form.value.refundedAt || undefined;
     const closeAdvance = this.form.value.closeAdvance ?? false;
     if ((action === 'rejected' || action === 'returned') && !note) {
       this.showNoteError = true;
@@ -627,7 +507,7 @@ export class ApprovalTaskReview implements OnInit {
     }
     this.showNoteError = false;
     this.errorMsg.set('');
-    this.service.review(this.taskId, this.applicationType, action, note, estimatedPaymentDate, paidAt, closeAdvance).subscribe({
+    this.service.review(this.taskId, this.applicationType, action, note, estimatedRefundDate, refundedAt, closeAdvance).subscribe({
       next: () => this.router.navigate(['/admin/approval-tasks']),
       error: (err: HttpErrorResponse) => {
         this.errorMsg.set(err.error?.message || '審核失敗，請稍後再試。');

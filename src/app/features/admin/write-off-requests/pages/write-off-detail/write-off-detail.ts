@@ -79,7 +79,7 @@ export class WriteOffRequestDetail implements OnInit {
   printWriteOff() {
     const r = this.request();
     const t = this.approvalTask();
-    if (r) this.pdfService.printWriteOff(r, r.submittedBy ?? '', t?.approvalRecords ?? [], t?.flow, t?.submittedBySignatureUrl, t?.writeOffDetail?.paidBySignatureUrl, t?.writeOffDetail?.refundedAt, t?.writeOffDetail?.refundedBySignatureUrl);
+    if (r) this.pdfService.printWriteOff(r, r.submittedBy ?? '', t?.approvalRecords ?? [], t?.flow, t?.submittedBySignatureUrl, t?.writeOffDetail?.refundedAt, t?.writeOffDetail?.refundedBySignatureUrl);
   }
 
   /** 刪除申請（僅 draft） */

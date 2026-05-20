@@ -62,10 +62,11 @@ export class PaymentList {
 
   paymentState(r: PaymentRequest): PaymentState | null {
     if (r.approvalStatus !== 'pending' && r.approvalStatus !== 'approved') return null;
-    return r.paidAt ? 'paid' : 'unpaid';
+    // 從子表 installments 推算：FullyPaid → paid，其他（含無 installments）→ unpaid
+    return r.paymentStatus === 'FullyPaid' ? 'paid' : 'unpaid';
   }
 
-  /** 分期撥款三態 badge（核准後才顯示，與 paymentState 二態並存供過渡期參考）*/
+  /** 分期撥款三態 badge（核准後才顯示）*/
   installmentStatusOf(r: PaymentRequest): PaymentInstallmentStatus | null {
     if (r.approvalStatus !== 'approved') return null;
     return r.paymentStatus ?? null;

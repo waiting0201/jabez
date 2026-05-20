@@ -1,7 +1,7 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
-import {TravelPaymentRequest, UpdatePaymentDateRequest} from '../models/travel-payment-request.model';
+import {TravelPaymentRequest} from '../models/travel-payment-request.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {UpsertInstallmentsRequest} from '../../approval-tasks/models/approval-task.model';
 import {environment} from '@/environments/environment';
@@ -35,17 +35,9 @@ export class TravelPaymentRequestService {
     return this.http.patch<TravelPaymentRequest>(`${environment.apiUrl}/travel-payment-requests/${id}/submit`, {});
   }
 
-  /** 更新撥款日期（核准後財務部操作） */
-  updatePaymentDate(id: number, req: UpdatePaymentDateRequest): Observable<any> {
-    return this.http.patch(`${environment.apiUrl}/travel-payment-requests/${id}/payment-date`, {
-      estimatedPaymentDate: req.estimatedPaymentDate || null,
-      paidAt: req.paidAt || null,
-    });
-  }
-
   /** 新增/更新分期撥款明細（4 種申請類型共用語意；僅財務部/Superadmin）*/
-  upsertInstallments(id: number, body: UpsertInstallmentsRequest): Observable<{id: number; estimatedPaymentDate?: string; paidAt?: string; installmentCount: number}> {
-    return this.http.patch<{id: number; estimatedPaymentDate?: string; paidAt?: string; installmentCount: number}>(
+  upsertInstallments(id: number, body: UpsertInstallmentsRequest): Observable<{id: number; installmentCount: number}> {
+    return this.http.patch<{id: number; installmentCount: number}>(
       `${environment.apiUrl}/travel-payment-requests/${id}/installments`,
       body,
     );

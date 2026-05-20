@@ -74,8 +74,6 @@ export interface PaymentRequest {
   invoices: InvoiceItem[];
   totalAmount: number;
   approvalStatus: ApprovalStatus;
-  estimatedPaymentDate?: string;
-  paidAt?: string;
   reason?: string;
   designatedReviewers?: DesignatedReviewer[];
   vendorId?: number;

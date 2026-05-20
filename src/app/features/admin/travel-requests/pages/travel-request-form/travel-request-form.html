@@ -303,14 +303,12 @@
           </div>
         }
 
-        <!-- 分期撥款明細（核准後才會有資料；read-only）-->
+        <!-- 撥款明細（核准後才會有資料；read-only）-->
         @if (installments && installments.length > 0) {
-          <div class="mt-6">
-            <app-installments-table
-              [installmentsInput]="installments"
-              [paymentStatus]="paymentStatus ?? undefined"
-              [totalAmount]="loadedGrandTotal" />
-          </div>
+          <app-installments-table
+            [installmentsInput]="installments"
+            [paymentStatus]="paymentStatus ?? undefined"
+            [totalAmount]="loadedGrandTotal" />
         }
 
         <!-- 簽核流程時間軸 -->
@@ -321,7 +319,7 @@
           [status]="taskStatus" />
 
         <!-- 結案退款資訊 -->
-        @if (existingRequest && (existingRequest.isClosed || existingRequest.refundAmount || existingRequest.estimatedPaymentDate || existingRequest.refundedAt)) {
+        @if (existingRequest && (existingRequest.isClosed || existingRequest.refundAmount || existingRequest.estimatedRefundDate || existingRequest.refundedAt)) {
           <div class="card border-0 shadow-sm mt-6">
             <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
               <svg class="sa-icon text-muted" style="stroke: currentColor">
@@ -349,10 +347,10 @@
                     <div class="fw-600" style="color: var(--red)">${{ existingRequest.refundAmount | number:'1.0-0' }}</div>
                   </div>
                 }
-                @if (existingRequest.estimatedPaymentDate) {
+                @if (existingRequest.estimatedRefundDate) {
                   <div class="col-6 col-md-3">
                     <div class="text-muted small">預計退款日</div>
-                    <div class="fw-500">{{ existingRequest.estimatedPaymentDate | date:'yyyy-MM-dd' }}</div>
+                    <div class="fw-500">{{ existingRequest.estimatedRefundDate | date:'yyyy-MM-dd' }}</div>
                   </div>
                 }
                 @if (existingRequest.refundedAt) {

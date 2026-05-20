@@ -17,8 +17,6 @@ export class TravelPaymentPdfService {
     flow?: ApprovalFlow,
     submittedBySignatureUrl?: string,
     reviewerSignatureUrls?: Map<string, string>,
-    paidAt?: string,
-    paidBySignatureUrl?: string,
   ) {
     this.pdfLoading.set(true);
     try {
@@ -178,7 +176,7 @@ export class TravelPaymentPdfService {
             3: {cellWidth: cw * 0.18, halign: 'right'},
             4: {cellWidth: cw * 0.38},
           },
-          head: [[{content: '分期撥款明細', colSpan: 5, styles: {halign: 'center'}}], ['期數', '預計撥款日', '實際撥款日', '金　額', '備　註']],
+          head: [[{content: '撥款明細', colSpan: 5, styles: {halign: 'center'}}], ['期數', '預計撥款日', '實際撥款日', '金　額', '備　註']],
           body: r.installments.map(ins => [
             String(ins.installmentNo),
             ins.expectedDate ? fmtDT(ins.expectedDate).split(' ')[0] : '—',
@@ -189,8 +187,7 @@ export class TravelPaymentPdfService {
         });
         y = (doc as any).lastAutoTable.finalY + 4;
       } else {
-        lv('預計撥款日：', r.estimatedPaymentDate ? fmtDT(r.estimatedPaymentDate).split(' ')[0] : '—', mx, y, true);
-        lv('撥  款  日：', r.paidAt ? fmtDT(r.paidAt).split(' ')[0] : '—', pw - mx - 55, y, true);
+        lv('撥款資訊：', '尚未排定撥款', mx, y, true);
       }
 
       // ── 簽名欄 ──
@@ -199,7 +196,9 @@ export class TravelPaymentPdfService {
       if (y + 35 > ph - 15) { doc.addPage(); y = 20; }
 
       const submitDate = r.createdAt ? fmtDT(r.createdAt) : '';
-      const signBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, submitDate, '申請者', paidAt, paidBySignatureUrl);
+      // 出納簽名取最後一期已撥款者（若有）
+      const lastPaid = r.installments?.filter(i => i.paidAt).slice(-1)[0];
+      const signBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, submitDate, '申請者', lastPaid?.paidAt, lastPaid?.paidBySignatureUrl);
       const sigMap = await this.pdfCore.loadSignatureImages(signBlocks);
       this.pdfCore.drawSignatureBlock(doc, mx, pw, cw, y, signBlocks, sigMap);
 

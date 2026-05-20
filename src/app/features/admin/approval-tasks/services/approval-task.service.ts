@@ -59,10 +59,10 @@ export class ApprovalTaskService {
     return this.http.get<ApprovalTask>(path);
   }
 
-  review(id: number, applicationType: string, action: TaskStatus, reviewNote: string, estimatedPaymentDate?: string, paidAt?: string, closeAdvance?: boolean): Observable<ApprovalTask> {
+  review(id: number, applicationType: string, action: TaskStatus, reviewNote: string, estimatedRefundDate?: string, refundedAt?: string, closeAdvance?: boolean): Observable<ApprovalTask> {
     return this.http.patch<ApprovalTask>(
       `${environment.apiUrl}/approval-tasks/${applicationType}/${id}/review`,
-      {action, reviewNote, applicationType, estimatedPaymentDate, paidAt, closeAdvance},
+      {action, reviewNote, applicationType, estimatedRefundDate, refundedAt, closeAdvance},
     ).pipe(
       switchMap(updated => this.getAll().pipe(map(() => updated))),
     );

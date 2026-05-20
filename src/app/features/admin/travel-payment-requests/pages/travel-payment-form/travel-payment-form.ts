@@ -1,7 +1,7 @@
 import {ChangeDetectorRef, Component, inject, OnInit, signal, TemplateRef, viewChild} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {AbstractControl, FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
-import {DatePipe, DecimalPipe} from '@angular/common';
+import {DecimalPipe} from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
 import {DomSanitizer} from '@angular/platform-browser';
 import {firstValueFrom} from 'rxjs';
@@ -26,7 +26,7 @@ import {UserLookup} from '../../../users/models/user.model';
 @Component({
   selector: 'app-travel-payment-form',
   templateUrl: './travel-payment-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, FilePreviewModal, InstallmentsTable],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, ApprovalTimeline, FilePreviewModal, InstallmentsTable],
 })
 export class TravelPaymentForm implements OnInit {
   private fb             = inject(FormBuilder);

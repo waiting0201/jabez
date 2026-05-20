@@ -57,10 +57,6 @@ export interface AdvanceRequest {
   approvalStatus: ApprovalStatus;
   submittedBy?: string;
   createdAt: string;
-  /** 預計撥款日 */
-  estimatedPaymentDate?: string;
-  /** 實際撥款日 */
-  paidAt?: string;
   reviewedAt?: string;
   reviewNote?: string;
   designatedReviewers?: DesignatedReviewer[];

@@ -88,13 +88,19 @@
                   [class]="paymentStatus() === 'unpaid' ? 'btn-outline-primary' : 'btn-outline-secondary'"
                   (click)="setPaymentStatus('unpaid')">
             <svg class="sa-icon me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
-            未撥款/未退款
+            尚未撥款
+          </button>
+          <button class="btn btn-sm"
+                  [class]="paymentStatus() === 'partial' ? 'btn-outline-primary' : 'btn-outline-secondary'"
+                  (click)="setPaymentStatus('partial')">
+            <svg class="sa-icon me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#pie-chart"></use></svg>
+            部分撥款
           </button>
           <button class="btn btn-sm"
                   [class]="paymentStatus() === 'paid' ? 'btn-outline-primary' : 'btn-outline-secondary'"
                   (click)="setPaymentStatus('paid')">
             <svg class="sa-icon me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#check-circle"></use></svg>
-            已撥款/已退款
+            全部撥款
           </button>
         </div>
       }
@@ -165,8 +171,9 @@
                   {{ activeTab() === 'pending' ? '目前沒有待審核的簽核作業。'
                      : activeTab() === 'rejected' ? '目前沒有已拒絕的簽核作業。'
                      : applicationTypeFilter() ? '目前沒有此類型的已核准簽核作業。'
-                     : paymentStatus() === 'unpaid' ? '目前沒有未撥款/未退款的已核准簽核作業。'
-                     : paymentStatus() === 'paid' ? '目前沒有已撥款/已退款的已核准簽核作業。'
+                     : paymentStatus() === 'unpaid' ? '目前沒有尚未撥款的已核准簽核作業。'
+                     : paymentStatus() === 'partial' ? '目前沒有部分撥款的已核准簽核作業。'
+                     : paymentStatus() === 'paid' ? '目前沒有全部撥款的已核准簽核作業。'
                      : '目前沒有已核准的簽核作業。' }}
                 </td>
               </tr>

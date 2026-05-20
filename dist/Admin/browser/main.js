@@ -2,6 +2,9 @@ import {
   LineService
 } from "./chunk-3U7ZN6EP.js";
 import {
+  HasPermissionDirective
+} from "./chunk-M7DGJIC4.js";
+import {
   ContentRef,
   FOCUSABLE_ELEMENTS_SELECTOR,
   NgbConfig,
@@ -20,9 +23,6 @@ import {
   reflow
 } from "./chunk-W4RXF7YW.js";
 import {
-  ApprovalTaskService
-} from "./chunk-TZRFZK6Q.js";
-import {
   ToastrService,
   provideToastr
 } from "./chunk-X3EGCDLG.js";
@@ -38,8 +38,11 @@ import {
   ɵNgNoValidate
 } from "./chunk-4LFECYTV.js";
 import {
-  HasPermissionDirective
-} from "./chunk-M7DGJIC4.js";
+  AuthService
+} from "./chunk-ZSGTQ3YJ.js";
+import {
+  ApprovalTaskService
+} from "./chunk-HXO5P7BO.js";
 import {
   ActivatedRoute,
   NavigationEnd,
@@ -53,9 +56,6 @@ import {
   Title,
   bootstrapApplication
 } from "./chunk-JDEYLUO2.js";
-import {
-  AuthService
-} from "./chunk-ZSGTQ3YJ.js";
 import {
   ApplicationRef,
   AsyncPipe,
@@ -5886,11 +5886,11 @@ var routes = [
       },
       {
         path: "admin",
-        loadChildren: () => import("./chunk-WTXAQSS3.js").then((m) => m.ADMIN_ROUTES)
+        loadChildren: () => import("./chunk-7XS4LVRF.js").then((m) => m.ADMIN_ROUTES)
       },
       {
         path: "account/change-password",
-        loadComponent: () => import("./chunk-A2DPQVVI.js").then((m) => m.ChangePassword),
+        loadComponent: () => import("./chunk-FM6FTAB4.js").then((m) => m.ChangePassword),
         data: { title: "\u4FEE\u6539\u5BC6\u78BC" }
       },
       {
