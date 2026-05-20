@@ -207,6 +207,16 @@
       </div>
     }
 
+    <!-- 分期撥款明細（核准後才會有資料；read-only）-->
+    @if (r.installments && r.installments.length > 0) {
+      <div class="mb-6">
+        <app-installments-table
+          [installmentsInput]="r.installments"
+          [paymentStatus]="r.paymentStatus"
+          [totalAmount]="r.grandTotal" />
+      </div>
+    }
+
     <!-- 簽核流程時間軸 -->
     @if (approvalTask(); as task) {
       <app-approval-timeline

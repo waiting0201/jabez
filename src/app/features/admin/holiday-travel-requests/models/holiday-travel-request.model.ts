@@ -57,4 +57,9 @@ export interface HolidayTravelRequest {
   createdAt: Date;
   reviewedAt?: Date;
   reviewNote?: string;
+  /** 申請總額（由後端計算 SUM(items.totalPrice)）*/
+  grandTotal?: number;
+  // 分期撥款（共用 InstallmentDto / PaymentInstallmentStatus 定義於 approval-tasks model）
+  installments?: import('../../approval-tasks/models/approval-task.model').InstallmentDto[];
+  paymentStatus?: import('../../approval-tasks/models/approval-task.model').PaymentInstallmentStatus;
 }

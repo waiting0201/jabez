@@ -9,11 +9,12 @@ import {ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
 import {TravelPaymentRequest, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/travel-payment-request.model';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
+import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 
 @Component({
   selector: 'app-travel-payment-detail',
   templateUrl: './travel-payment-detail.html',
-  imports: [RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, FilePreviewModal],
+  imports: [RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, FilePreviewModal, InstallmentsTable],
 })
 export class TravelPaymentDetail implements OnInit {
   private service = inject(TravelPaymentRequestService);

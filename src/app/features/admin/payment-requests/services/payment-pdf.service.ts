@@ -166,17 +166,45 @@ export class PaymentPdfService {
         });
       }
 
-      // ── 預計撥款日 / 撥款日 ──
+      // ── 撥款明細（分期撥款表，若無 installments 則 fallback 顯示單筆預計/實際撥款日）──
       const tableEndY = (doc as any).lastAutoTable.finalY;
-      y = tableEndY + 8;
+      y = tableEndY + 6;
       doc.setFont(F, 'normal');
       doc.setFontSize(10);
       doc.setTextColor(...CIS.textPrimary);
-      lv('預計撥款日：', d.estimatedPaymentDate ? fmtDT(d.estimatedPaymentDate).split(' ')[0] : '—', mx, y, true);
-      lv('撥  款  日：', d.paidAt ? fmtDT(d.paidAt).split(' ')[0] : '—', pw - mx - 55, y, true);
+
+      if (d.installments && d.installments.length > 0) {
+        autoTable(doc, {
+          startY: y,
+          margin: {left: mx, right: mx, top: 20},
+          theme: 'grid',
+          styles: {font: F, fontSize: 9, textColor: [...CIS.textPrimary], lineColor: [...CIS.border], lineWidth: 0.3, cellPadding: {top: 3, bottom: 3, left: 4, right: 4}},
+          headStyles: {font: F, fillColor: [...CIS.forest], textColor: 255, fontSize: 9.5, fontStyle: 'bold', halign: 'center', cellPadding: {top: 4, bottom: 4, left: 4, right: 4}},
+          columnStyles: {
+            0: {cellWidth: cw * 0.08, halign: 'center'},
+            1: {cellWidth: cw * 0.18, halign: 'center'},
+            2: {cellWidth: cw * 0.18, halign: 'center'},
+            3: {cellWidth: cw * 0.18, halign: 'right'},
+            4: {cellWidth: cw * 0.38},
+          },
+          head: [[{content: '分期撥款明細', colSpan: 5, styles: {halign: 'center'}}], ['期數', '預計撥款日', '實際撥款日', '金　額', '備　註']],
+          body: d.installments.map(ins => [
+            String(ins.installmentNo),
+            ins.expectedDate ? fmtDT(ins.expectedDate).split(' ')[0] : '—',
+            ins.paidAt ? fmtDT(ins.paidAt).split(' ')[0] : '尚未撥款',
+            fmt(ins.amount),
+            ins.note || '',
+          ]),
+        });
+        y = (doc as any).lastAutoTable.finalY + 6;
+      } else {
+        lv('預計撥款日：', d.estimatedPaymentDate ? fmtDT(d.estimatedPaymentDate).split(' ')[0] : '—', mx, y, true);
+        lv('撥  款  日：', d.paidAt ? fmtDT(d.paidAt).split(' ')[0] : '—', pw - mx - 55, y, true);
+        y += 6;
+      }
 
       // ── 簽名欄 ──
-      y += 12;
+      y += 6;
 
       const signBlocks = this._buildSignBlocks(task, submitDate);
       const sigImageMap = await this.pdfCore.loadSignatureImages(signBlocks);

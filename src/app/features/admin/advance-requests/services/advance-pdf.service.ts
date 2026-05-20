@@ -157,14 +157,40 @@ export class AdvancePdfService {
       // ── 沖銷紀錄表格（按次展開） ──
       y = (doc as any).lastAutoTable.finalY + 6;
 
-      // ── 預計撥款日 / 撥款日 ──
+      // ── 撥款明細（分期撥款表，若無 installments 則 fallback 顯示單筆）──
       y += 2;
       doc.setFont(F, 'normal');
       doc.setFontSize(10);
       doc.setTextColor(...CIS.textPrimary);
-      lv('預計撥款日：', r.estimatedPaymentDate ? fmtDT(r.estimatedPaymentDate).split(' ')[0] : '—', mx, y, true);
-      lv('撥  款  日：', r.paidAt ? fmtDT(r.paidAt).split(' ')[0] : '—', pw - mx - 55, y, true);
-      y += 6;
+      if (r.installments && r.installments.length > 0) {
+        autoTable(doc, {
+          startY: y,
+          margin: {left: mx, right: mx, top: 20},
+          theme: 'grid',
+          styles: {font: F, fontSize: 9, textColor: [...CIS.textPrimary], lineColor: [...CIS.border], lineWidth: 0.3, cellPadding: {top: 3, bottom: 3, left: 4, right: 4}},
+          headStyles: {font: F, fillColor: [...CIS.forest], textColor: 255, fontSize: 9.5, fontStyle: 'bold', halign: 'center', cellPadding: {top: 4, bottom: 4, left: 4, right: 4}},
+          columnStyles: {
+            0: {cellWidth: cw * 0.08, halign: 'center'},
+            1: {cellWidth: cw * 0.18, halign: 'center'},
+            2: {cellWidth: cw * 0.18, halign: 'center'},
+            3: {cellWidth: cw * 0.18, halign: 'right'},
+            4: {cellWidth: cw * 0.38},
+          },
+          head: [[{content: '分期撥款明細', colSpan: 5, styles: {halign: 'center'}}], ['期數', '預計撥款日', '實際撥款日', '金　額', '備　註']],
+          body: r.installments.map(ins => [
+            String(ins.installmentNo),
+            ins.expectedDate ? fmtDT(ins.expectedDate).split(' ')[0] : '—',
+            ins.paidAt ? fmtDT(ins.paidAt).split(' ')[0] : '尚未撥款',
+            ins.amount.toLocaleString('zh-TW'),
+            ins.note || '',
+          ]),
+        });
+        y = (doc as any).lastAutoTable.finalY + 6;
+      } else {
+        lv('預計撥款日：', r.estimatedPaymentDate ? fmtDT(r.estimatedPaymentDate).split(' ')[0] : '—', mx, y, true);
+        lv('撥  款  日：', r.paidAt ? fmtDT(r.paidAt).split(' ')[0] : '—', pw - mx - 55, y, true);
+        y += 6;
+      }
 
       const woRecords = r.writeOffRecords || [];
       for (const wo of woRecords) {

@@ -11,16 +11,17 @@ import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
 import {ApprovalService} from '../../../approvals/services/approval.service';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
-import {ApprovalFlow, ApprovalRecord} from '../../../approval-tasks/models/approval-task.model';
+import {ApprovalFlow, ApprovalRecord, InstallmentDto, PaymentInstallmentStatus} from '../../../approval-tasks/models/approval-task.model';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
+import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 import {JobTitleLookup} from '../../../job-titles/models/job-title.model';
 import {UserLookup} from '../../../users/models/user.model';
 
 @Component({
   selector: 'app-travel-request-form',
   templateUrl: './travel-request-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, ApprovalTimeline],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, InstallmentsTable],
 })
 export class TravelRequestForm implements OnInit {
   private fb          = inject(FormBuilder);
@@ -54,6 +55,11 @@ export class TravelRequestForm implements OnInit {
   approvalRecords: ApprovalRecord[] = [];
   taskCurrentStepOrder = 0;
   taskStatus = '';
+
+  /** 分期撥款（read-only 顯示用，財務排定後申請人可查看）*/
+  installments: InstallmentDto[] | null = null;
+  paymentStatus: PaymentInstallmentStatus | null = null;
+  loadedGrandTotal = 0;
 
   /** 指定審核者相關 */
   hasDesignatedStep = false;
@@ -159,6 +165,9 @@ export class TravelRequestForm implements OnInit {
         this.isDraft    = r.approvalStatus === 'draft';
         this.isReturned = r.approvalStatus === 'returned';
         this.isReadOnly = r.approvalStatus !== 'draft' && r.approvalStatus !== 'returned';
+        this.installments    = r.installments ?? null;
+        this.paymentStatus   = r.paymentStatus ?? null;
+        this.loadedGrandTotal = r.grandTotal ?? 0;
         this.form.patchValue({
           destination:     r.destination,
           startDate: r.startDate instanceof Date

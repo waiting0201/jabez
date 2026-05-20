@@ -49,7 +49,9 @@
                 <td>
                   <div class="flex flex-wrap items-center gap-1">
                     <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
-                    @if (paymentState(r); as ps) {
+                    @if (installmentStatusOf(r); as ist) {
+                      <span [class]="'badge ' + installmentStatusClass[ist]">{{ installmentStatusLabel[ist] }}</span>
+                    } @else if (paymentState(r); as ps) {
                       <span [class]="'badge ' + paymentStateClass[ps]">{{ paymentStateLabel[ps] }}</span>
                     }
                   </div>

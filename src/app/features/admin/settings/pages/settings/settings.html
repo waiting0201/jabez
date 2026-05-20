@@ -84,12 +84,17 @@
               </div>
               <div class="text-muted small mt-1">關閉後不再寄送：待審核 / 審核結果 / 撥款 / 退款 / 財務通知信。</div>
             </div>
-            <div class="mb-0">
+            <div class="mb-4">
               <div class="form-check">
                 <input type="checkbox" class="form-check-input" id="approvalLineEnabled" formControlName="approvalLineEnabled">
                 <label class="form-check-label fw-500" for="approvalLineEnabled">推播審核通知 LINE</label>
               </div>
               <div class="text-muted small mt-1">範圍同上；不影響帳號通知 / 薪資明細 / 打卡提醒。</div>
+            </div>
+            <div class="mb-0">
+              <label class="form-label fw-500" for="paymentReminderDaysBefore">撥款日將屆提前提醒天數</label>
+              <input type="number" class="form-control" id="paymentReminderDaysBefore" formControlName="paymentReminderDaysBefore" min="0" max="30" style="max-width: 160px">
+              <div class="text-muted small mt-1">每日 09:00 自動掃描；提前 N 天內的未撥款明細會推播給財務部全員（Email + LINE，沿用上方開關）。</div>
             </div>
           </div>
         </div>

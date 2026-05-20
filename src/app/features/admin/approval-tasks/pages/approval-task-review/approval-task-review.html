@@ -1042,11 +1042,67 @@
                     </div>
                   </div>
                 </div>
-                @if ((applicationType === 'payment_request' || applicationType === 'advance' || applicationType === 'travel' || applicationType === 'travel_payment' || applicationType === 'write_off' || applicationType === 'travel_write_off') && canSetPaymentDate(task)) {
+                @if (isInstallmentApp(task) && canSetPaymentDate(task)) {
+                  <!-- 分期撥款明細（payment_request / advance / travel / travel_payment）— 財務簽核當下填預計撥款日 + 各期金額 -->
                   <div class="mb-4">
-                    <label class="form-label fw-500">{{ (applicationType === 'payment_request' || applicationType === 'advance' || applicationType === 'travel' || applicationType === 'travel_payment') ? '預計撥款日' : '預計退款日' }}</label>
-                    <input type="date" class="form-control" formControlName="estimatedPaymentDate"
-                           style="max-width: 220px">
+                    <div class="flex items-center justify-between mb-3">
+                      <label class="form-label fw-500 mb-0">分期撥款明細
+                        <span class="text-muted small fw-400">（申請總額：{{ getInstallmentTotal(task) | number:'1.0-2' }} 元）</span>
+                      </label>
+                      <button type="button" class="btn btn-sm btn-outline-secondary" (click)="addInstallmentRow(task)">
+                        + 新增一期
+                      </button>
+                    </div>
+                    <div class="border rounded overflow-hidden">
+                      <table class="table table-sm mb-0 small">
+                        <thead class="bg-[--bg-base]">
+                          <tr>
+                            <th class="text-center" style="width: 60px">期數</th>
+                            <th style="width: 160px">預計撥款日</th>
+                            <th style="width: 160px">金額</th>
+                            <th>備註</th>
+                            <th class="text-center" style="width: 60px"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (row of installmentsForm.controls; track $index; let i = $index) {
+                            <tr [formGroup]="row">
+                              <td class="text-center align-middle">{{ i + 1 }}</td>
+                              <td><input type="date" class="form-control form-control-sm" formControlName="expectedDate"></td>
+                              <td><input type="number" class="form-control form-control-sm text-right" formControlName="amount" min="0" step="1"></td>
+                              <td><input type="text" class="form-control form-control-sm" formControlName="note" placeholder="（選填）"></td>
+                              <td class="text-center align-middle">
+                                @if (installmentsForm.controls.length > 1) {
+                                  <button type="button" class="btn btn-sm btn-link text-danger p-0" (click)="removeInstallmentRow(i)" title="刪除">⨯</button>
+                                }
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                        <tfoot class="bg-[--bg-base]">
+                          <tr>
+                            <td class="text-center fw-500" colspan="2">加總</td>
+                            <td class="text-right fw-500"
+                                [class.text-danger]="!isInstallmentsSumValid(task)"
+                                [class.text-success]="isInstallmentsSumValid(task)">
+                              {{ installmentsSum() | number:'1.0-2' }} 元
+                            </td>
+                            <td colspan="2" class="small text-muted">
+                              @if (!isInstallmentsSumValid(task)) {
+                                <span class="text-danger">⚠ 各筆金額加總需等於申請總額（{{ getInstallmentTotal(task) | number:'1.0-2' }} 元）</span>
+                              }
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                    <div class="text-muted small mt-2">提示：核准後可在「設定撥款日期」區塊回來修改未撥款的列或填入實際撥款日。</div>
+                  </div>
+                } @else if ((applicationType === 'write_off' || applicationType === 'travel_write_off') && canSetPaymentDate(task)) {
+                  <!-- 沖銷類仍維持單一預計退款日 -->
+                  <div class="mb-4">
+                    <label class="form-label fw-500">預計退款日</label>
+                    <input type="date" class="form-control" formControlName="estimatedPaymentDate" style="max-width: 220px">
                   </div>
                 }
                 <div class="mb-4">
@@ -1194,38 +1250,128 @@
                 <div class="text-muted small mb-1 fw-500">退款金額：</div>
                 <div class="small mb-4">${{ task.travelWriteOffDetail!.travelRefundedAmount | number:'1.0-0' }}</div>
               }
-              @if ((task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'travel' || task.applicationType === 'travel_payment' || task.applicationType === 'write_off' || task.applicationType === 'travel_write_off') && (canUpdatePaymentDate() || canEditPaymentDate(task)) && !(task.paymentDetail?.paidAt || task.advanceDetail?.paidAt || task.travelDetail?.paidAt || task.travelPaymentDetail?.paidAt || task.writeOffDetail?.refundedAt || task.travelWriteOffDetail?.refundedAt) && (task.applicationType !== 'write_off' || isWriteOffOverspent(task)) && (task.applicationType !== 'travel_write_off' || isTravelWriteOffOverspent(task))) {
+              <!-- 已核准後的撥款明細管理：分期表（payment_request / advance / travel / travel_payment）-->
+              @if (isInstallmentApp(task) && (canUpdatePaymentDate() || canEditPaymentDate(task))) {
                 <div class="border rounded p-4 bg-[--bg-base] mb-4">
-                  <div class="fw-500 mb-3">{{ (task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'travel' || task.applicationType === 'travel_payment') ? '設定撥款日期' : '設定退款日期' }}</div>
+                  <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                    <div class="fw-500">
+                      設定撥款明細
+                      @if (getPaymentStatus(task); as st) {
+                        <span class="badge ml-2" [class]="getStatusBadgeClass(st)">{{ getStatusBadgeLabel(st) }}</span>
+                      }
+                      <span class="text-muted small fw-400 ml-2">（申請總額：{{ getInstallmentTotal(task) | number:'1.0-2' }} 元）</span>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="addInstallmentRow(task)">+ 新增一期</button>
+                  </div>
+                  <div class="border rounded overflow-hidden bg-white">
+                    <table class="table table-sm mb-0 small">
+                      <thead class="bg-[--bg-base]">
+                        <tr>
+                          <th class="text-center" style="width: 60px">期數</th>
+                          <th style="width: 160px">預計撥款日</th>
+                          <th style="width: 160px">實際撥款日</th>
+                          <th style="width: 140px">金額</th>
+                          <th>備註</th>
+                          <th class="text-center" style="width: 60px"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (row of installmentsForm.controls; track $index; let i = $index) {
+                          <tr [formGroup]="row" [class.bg-[--bg-base]]="isInstallmentLocked(row)">
+                            <td class="text-center align-middle">
+                              {{ i + 1 }}
+                              @if (isInstallmentLocked(row)) {
+                                <div class="text-success" style="font-size:10px">已撥</div>
+                              }
+                            </td>
+                            <td>
+                              <input type="date" class="form-control form-control-sm" formControlName="expectedDate"
+                                     [attr.readonly]="isInstallmentLocked(row) ? true : null"
+                                     [class.bg-light]="isInstallmentLocked(row)">
+                            </td>
+                            <td>
+                              <input type="date" class="form-control form-control-sm" formControlName="paidAt"
+                                     [attr.readonly]="isInstallmentLocked(row) ? true : null"
+                                     [class.bg-light]="isInstallmentLocked(row)">
+                            </td>
+                            <td>
+                              <input type="number" min="0" step="1" class="form-control form-control-sm text-right" formControlName="amount"
+                                     [attr.readonly]="isInstallmentLocked(row) ? true : null"
+                                     [class.bg-light]="isInstallmentLocked(row)">
+                            </td>
+                            <td>
+                              <input type="text" class="form-control form-control-sm" formControlName="note" placeholder="（選填）">
+                            </td>
+                            <td class="text-center align-middle">
+                              @if (!isInstallmentLocked(row) && installmentsForm.controls.length > 1) {
+                                <button type="button" class="btn btn-sm btn-link text-danger p-0" (click)="removeInstallmentRow(i)" title="刪除此期">⨯</button>
+                              }
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                      <tfoot class="bg-[--bg-base]">
+                        <tr>
+                          <td class="text-center fw-500" colspan="3">加總</td>
+                          <td class="text-right fw-500"
+                              [class.text-danger]="!isInstallmentsSumValid(task)"
+                              [class.text-success]="isInstallmentsSumValid(task)">
+                            {{ installmentsSum() | number:'1.0-2' }} 元
+                          </td>
+                          <td colspan="2" class="small text-muted">
+                            @if (!isInstallmentsSumValid(task)) {
+                              <span class="text-danger">⚠ 各筆金額加總需等於 {{ getInstallmentTotal(task) | number:'1.0-2' }} 元</span>
+                            }
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                  <div class="text-muted small mt-2">
+                    已填入實際撥款日的列會自動鎖定金額與日期，且觸發 LINE/Email「已撥款（第 N/M 期）」通知；備註隨時可改。
+                  </div>
+                  <div class="mt-3 flex gap-2">
+                    <button type="button" class="btn btn-sm btn-primary"
+                            [disabled]="!isInstallmentsSumValid(task)"
+                            (click)="submitInstallments(task)">儲存撥款明細</button>
+                  </div>
+                  @if (installmentsMsg()) {
+                    <div class="text-success small mt-2">{{ installmentsMsg() }}</div>
+                  }
+                  @if (installmentsError()) {
+                    <div class="text-danger small mt-2">{{ installmentsError() }}</div>
+                  }
+                </div>
+              }
+              <!-- 沖銷類：原有單筆 paymentDateForm 流程（write_off / travel_write_off）-->
+              @if ((task.applicationType === 'write_off' || task.applicationType === 'travel_write_off') && (canUpdatePaymentDate() || canEditPaymentDate(task)) && !(task.writeOffDetail?.refundedAt || task.travelWriteOffDetail?.refundedAt) && (task.applicationType !== 'write_off' || isWriteOffOverspent(task)) && (task.applicationType !== 'travel_write_off' || isTravelWriteOffOverspent(task))) {
+                <div class="border rounded p-4 bg-[--bg-base] mb-4">
+                  <div class="fw-500 mb-3">設定退款日期</div>
                   <div class="flex flex-wrap gap-6 items-end">
                     <div>
-                      <label class="form-label fw-500 small">{{ (task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'travel' || task.applicationType === 'travel_payment') ? '預計撥款日' : '預計退款日' }}</label>
+                      <label class="form-label fw-500 small">預計退款日</label>
                       <input type="date" class="form-control form-control-sm"
                              [value]="paymentDateForm.estimatedPaymentDate"
                              (input)="paymentDateForm.estimatedPaymentDate = $any($event.target).value"
                              style="max-width: 200px">
                     </div>
                     <div>
-                      <label class="form-label fw-500 small">{{ (task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'travel' || task.applicationType === 'travel_payment') ? '撥款日' : '退款日' }}</label>
+                      <label class="form-label fw-500 small">退款日</label>
                       <input type="date" class="form-control form-control-sm"
                              [value]="paymentDateForm.paidAt"
                              (input)="paymentDateForm.paidAt = $any($event.target).value"
                              style="max-width: 200px">
-                      <div class="text-muted small mt-1">{{ (task.applicationType === 'payment_request' || task.applicationType === 'advance' || task.applicationType === 'travel' || task.applicationType === 'travel_payment') ? '填寫後表示此筆申請已撥款' : '填寫後表示退款已完成' }}</div>
+                      <div class="text-muted small mt-1">填寫後表示退款已完成</div>
                     </div>
-                    @if (task.applicationType === 'write_off' || task.applicationType === 'travel_write_off') {
-                      <div>
-                        <label class="form-label fw-500 small">退款金額</label>
-                        <input type="number" min="0" step="1" class="form-control form-control-sm"
-                               [value]="paymentDateForm.refundedAmount"
-                               (input)="paymentDateForm.refundedAmount = $any($event.target).value"
-                               style="max-width: 200px">
-                        <div class="text-muted small mt-1">財務實際退還差額</div>
-                      </div>
-                    }
-                    <button type="button" class="btn btn-sm btn-primary" (click)="updatePaymentDate(task)">
-                      儲存
-                    </button>
+                    <div>
+                      <label class="form-label fw-500 small">退款金額</label>
+                      <input type="number" min="0" step="1" class="form-control form-control-sm"
+                             [value]="paymentDateForm.refundedAmount"
+                             (input)="paymentDateForm.refundedAmount = $any($event.target).value"
+                             style="max-width: 200px">
+                      <div class="text-muted small mt-1">財務實際退還差額</div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-primary" (click)="updatePaymentDate(task)">儲存</button>
                   </div>
                   @if (paymentDateMsg()) {
                     <div class="text-success small mt-2">{{ paymentDateMsg() }}</div>

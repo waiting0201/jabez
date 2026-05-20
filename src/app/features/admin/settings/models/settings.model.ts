@@ -18,4 +18,6 @@ export interface SystemSettings {
   // 通知設定
   approvalEmailEnabled: boolean; // 是否寄送簽核流程相關 Email
   approvalLineEnabled: boolean;  // 是否推播簽核流程相關 LINE 訊息
+  // 撥款提醒
+  paymentReminderDaysBefore: number; // 預計撥款日提前提醒天數（0-30，預設 3）
 }

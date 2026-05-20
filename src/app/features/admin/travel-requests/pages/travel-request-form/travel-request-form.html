@@ -303,6 +303,16 @@
           </div>
         }
 
+        <!-- 分期撥款明細（核准後才會有資料；read-only）-->
+        @if (installments && installments.length > 0) {
+          <div class="mt-6">
+            <app-installments-table
+              [installmentsInput]="installments"
+              [paymentStatus]="paymentStatus ?? undefined"
+              [totalAmount]="loadedGrandTotal" />
+          </div>
+        }
+
         <!-- 簽核流程時間軸 -->
         <app-approval-timeline
           [flow]="approvalFlow"

@@ -7,11 +7,12 @@ import {ApprovalTaskService} from '../../../approval-tasks/services/approval-tas
 import {ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
 import {HolidayTravelRequest, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/holiday-travel-request.model';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
+import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 
 @Component({
   selector: 'app-holiday-travel-detail',
   templateUrl: './holiday-travel-detail.html',
-  imports: [RouterLink, DatePipe, ApprovalTimeline],
+  imports: [RouterLink, DatePipe, ApprovalTimeline, InstallmentsTable],
 })
 export class HolidayTravelDetail implements OnInit {
   private service     = inject(HolidayTravelRequestService);

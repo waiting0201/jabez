@@ -80,6 +80,9 @@ export interface AdvanceRequest {
   refundedAt?: string;
   /** 沖銷紀錄含明細（僅 GetById 回傳，PDF 列印用） */
   writeOffRecords?: WriteOffRecord[];
+  // 分期撥款（共用 InstallmentDto / PaymentInstallmentStatus 定義於 approval-tasks model）
+  installments?: import('../../approval-tasks/models/approval-task.model').InstallmentDto[];
+  paymentStatus?: import('../../approval-tasks/models/approval-task.model').PaymentInstallmentStatus;
 }
 
 export interface WriteOffSummary {

@@ -16,12 +16,13 @@ export class Settings implements OnInit {
   errorMsg = signal('');
 
   form = this.fb.group({
-    siteUrl:              ['https://admin.jabez.com', Validators.required],
-    workStartTime:        ['09:00', Validators.required],
-    workEndTime:          ['18:00', Validators.required],
-    monthlyOvertimeLimit: [46, [Validators.required, Validators.min(0), Validators.max(200)]],
-    approvalEmailEnabled: [true],
-    approvalLineEnabled:  [true],
+    siteUrl:                  ['https://admin.jabez.com', Validators.required],
+    workStartTime:            ['09:00', Validators.required],
+    workEndTime:              ['18:00', Validators.required],
+    monthlyOvertimeLimit:     [46, [Validators.required, Validators.min(0), Validators.max(200)]],
+    approvalEmailEnabled:     [true],
+    approvalLineEnabled:      [true],
+    paymentReminderDaysBefore: [3, [Validators.required, Validators.min(0), Validators.max(30)]],
   });
 
   ngOnInit() {

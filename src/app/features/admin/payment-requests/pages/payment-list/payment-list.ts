@@ -10,6 +10,11 @@ import {
   APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES,
   PAYMENT_STATE_LABELS, PAYMENT_STATE_CLASSES,
 } from '../../models/payment-request.model';
+import {
+  PAYMENT_INSTALLMENT_STATUS_LABELS,
+  PAYMENT_INSTALLMENT_STATUS_CLASSES,
+  PaymentInstallmentStatus,
+} from '../../../approval-tasks/models/approval-task.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
 import {AuthService} from '@core/auth/services/auth.service';
 import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
@@ -52,10 +57,18 @@ export class PaymentList {
   readonly statusClass  = APPROVAL_STATUS_CLASSES;
   readonly paymentStateLabel = PAYMENT_STATE_LABELS;
   readonly paymentStateClass = PAYMENT_STATE_CLASSES;
+  readonly installmentStatusLabel = PAYMENT_INSTALLMENT_STATUS_LABELS;
+  readonly installmentStatusClass = PAYMENT_INSTALLMENT_STATUS_CLASSES;
 
   paymentState(r: PaymentRequest): PaymentState | null {
     if (r.approvalStatus !== 'pending' && r.approvalStatus !== 'approved') return null;
     return r.paidAt ? 'paid' : 'unpaid';
+  }
+
+  /** 分期撥款三態 badge（核准後才顯示，與 paymentState 二態並存供過渡期參考）*/
+  installmentStatusOf(r: PaymentRequest): PaymentInstallmentStatus | null {
+    if (r.approvalStatus !== 'approved') return null;
+    return r.paymentStatus ?? null;
   }
 
   delete(r: PaymentRequest) {
