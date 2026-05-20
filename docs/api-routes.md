@@ -165,8 +165,8 @@
 |--------|------|------|
 | GET | `/attendances` | 出缺勤紀錄列表（共用上方出勤打卡端點，篩選參數：`employeeId / dateFrom / dateTo`） |
 | GET | `/reports/overtime` | 加班紀錄報表（已核准的加班申請 + 實際打卡時數，篩選參數：`employeeId / projectId / dateFrom / dateTo`） |
-| GET | `/reports/payment` | 款項統計報表（已送出的請款申請，篩選參數：`dateFrom / dateTo / paymentStatus`；`pr.CreatedAt` 為 DATETIME，`dateTo` 用 `< DATEADD(day, 1, @DateTo)` 半開區間涵蓋當日 23:59:59） |
-| GET | `/reports/payment/export` | 款項統計匯出（不分頁、**一張發票一列**：`LEFT JOIN InvoiceItems`，無發票的請款仍輸出 1 列；篩選參數同上；權限同 `/reports/payment`） |
+| GET | `/reports/payment` | 款項統計報表（依類別查詢 6 種付款相關申請）。**必填** `category`（白名單：`payment` / `advance` / `writeoff` / `travel-payment` / `travel` / `travel-writeoff`，未帶或不合法 → 400）。篩選參數：`dateFrom / dateTo / paymentStatus`；`{主表}.CreatedAt` 為 DATETIME，`dateTo` 用 `< DATEADD(day, 1, @DateTo)` 半開區間涵蓋當日 23:59:59。沖銷類無 installments，`paymentStatus` 被忽略。權限：`reports-payment:read`，**不**需要各別 `xxx-requests:read`。 |
+| GET | `/reports/payment/export` | 款項統計匯出（不分頁、**一列一明細**：主表 LEFT JOIN 對應子表（InvoiceItems / AdvanceRequestItems / WriteOffItems / TravelPaymentRequestItems / TravelRequestItems / TravelWriteOffItems），無明細仍輸出 1 列）；參數同上；前端依 `category` 對應右側 4 欄表頭（請款/沖銷/出差類別 → 發票號碼/品名/發票日期/金額；預支 → 類別/品名/數量/金額）。 |
 
 ## 打卡提醒（手動觸發 + 紀錄查詢，僅 Superadmin）
 
