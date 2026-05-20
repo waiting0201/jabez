@@ -22,6 +22,13 @@
       <div class="px-4 py-3 border-b">
         <div class="flex flex-wrap items-center gap-2">
           <select class="form-select" style="width: auto; min-width: 140px"
+                  [ngModel]="selectedCategory()" (ngModelChange)="selectedCategory.set($event)">
+            <option value="">請選擇類別</option>
+            @for (opt of categoryOptions; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
+          <select class="form-select" style="width: auto; min-width: 140px"
                   [ngModel]="selectedPaymentStatus()" (ngModelChange)="selectedPaymentStatus.set($event)">
             <option value="">全部付款狀態</option>
             <option value="paid">已付</option>
@@ -70,68 +77,94 @@
         }
       </div>
 
-      <!-- Table -->
+      <!-- Table（多筆明細各自一列，同筆的請款層欄位僅在第一列顯示） -->
       <div class="table-responsive">
-        <table class="table table-hover mb-0">
+        <table class="table table-hover mb-0 payment-report-table">
           <thead class="table-light">
             <tr>
               <th>單號</th>
               <th>員工姓名</th>
-              <th class="text-center">請款類型</th>
+              <th class="hidden lg:table-cell text-center">類型</th>
               <th class="hidden md:table-cell">專案</th>
-              <th class="hidden lg:table-cell">發票號碼</th>
-              <th class="text-right">總金額</th>
+              <th>{{ itemHeaders()[0] || '—' }}</th>
+              <th>{{ itemHeaders()[1] || '品名' }}</th>
+              <th class="hidden md:table-cell">{{ itemHeaders()[2] || '—' }}</th>
+              <th class="text-right">{{ itemHeaders()[3] || '金額' }}</th>
+              <th class="text-right hidden md:table-cell">總金額</th>
               <th class="text-center">簽核狀態</th>
               <th class="text-center hidden md:table-cell">付款日期</th>
               <th class="text-center hidden lg:table-cell">申請日期</th>
             </tr>
           </thead>
           <tbody>
-            @for (row of records(); track row.id) {
-              <tr>
-                <td class="font-monospace small">{{ row.requestNo }}</td>
-                <td class="fw-500">{{ row.employeeName }}</td>
-                <td class="text-center">
-                  <span class="badge bg-[--bg-base] text-[--text-secondary] small">{{ row.typeLabel }}</span>
+            @for (fr of flatRows(); track fr.key) {
+              <tr [class.row-group-start]="fr.isFirstRow">
+                <td class="font-monospace small">
+                  @if (fr.isFirstRow) { {{ fr.record.requestNo }} }
                 </td>
-                <td class="hidden md:table-cell">
-                  <div class="font-monospace small fw-500">{{ row.projectCode }}</div>
-                  @if (row.projectName) {
-                    <div class="text-muted text-xs">{{ row.projectName }}</div>
+                <td class="fw-500">
+                  @if (fr.isFirstRow) { {{ fr.record.employeeName }} }
+                </td>
+                <td class="hidden lg:table-cell text-center">
+                  @if (fr.isFirstRow) {
+                    <span class="badge bg-[--bg-base] text-[--text-secondary] small">{{ fr.record.typeLabel }}</span>
                   }
                 </td>
-                <td class="hidden lg:table-cell text-muted small" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="row.invoiceNos">{{ row.invoiceNos || '—' }}</td>
-                <td class="text-right fw-600">{{ row.totalAmount | number:'1.0-0' }}</td>
+                <td class="hidden md:table-cell">
+                  @if (fr.isFirstRow) {
+                    <div class="font-monospace small fw-500">{{ fr.record.projectCode }}</div>
+                    @if (fr.record.projectName) {
+                      <div class="text-muted text-xs">{{ fr.record.projectName }}</div>
+                    }
+                  }
+                </td>
+                <td class="text-muted small">{{ fr.item?.col1 || '—' }}</td>
+                <td class="small">{{ fr.item?.itemName || '—' }}</td>
+                <td class="hidden md:table-cell text-muted small">{{ itemCol3Display(fr.item) || '—' }}</td>
+                <td class="text-right">
+                  @if (fr.item?.amount != null) { {{ fr.item?.amount | number:'1.0-0' }} } @else { — }
+                </td>
+                <td class="text-right fw-600 hidden md:table-cell">
+                  @if (fr.isFirstRow) { {{ fr.record.totalAmount | number:'1.0-0' }} }
+                </td>
                 <td class="text-center">
-                  @switch (row.approvalStatus) {
-                    @case ('approved') {
-                      <span class="badge bg-success-subtle text-success">{{ row.statusLabel }}</span>
-                    }
-                    @case ('pending') {
-                      <span class="badge bg-warning-subtle text-warning-emphasis">{{ row.statusLabel }}</span>
-                    }
-                    @case ('rejected') {
-                      <span class="badge bg-danger-subtle text-danger">{{ row.statusLabel }}</span>
-                    }
-                    @default {
-                      <span class="badge bg-secondary-subtle text-secondary">{{ row.statusLabel }}</span>
+                  @if (fr.isFirstRow) {
+                    @switch (fr.record.approvalStatus) {
+                      @case ('approved') {
+                        <span class="badge bg-success-subtle text-success">{{ fr.record.statusLabel }}</span>
+                      }
+                      @case ('pending') {
+                        <span class="badge bg-warning-subtle text-warning-emphasis">{{ fr.record.statusLabel }}</span>
+                      }
+                      @case ('rejected') {
+                        <span class="badge bg-danger-subtle text-danger">{{ fr.record.statusLabel }}</span>
+                      }
+                      @default {
+                        <span class="badge bg-secondary-subtle text-secondary">{{ fr.record.statusLabel }}</span>
+                      }
                     }
                   }
                 </td>
                 <td class="text-center hidden md:table-cell">
-                  @if (row.paidAt) {
-                    <span class="text-success small">{{ row.paidAt }}</span>
-                  } @else {
-                    <span class="text-muted">—</span>
+                  @if (fr.isFirstRow) {
+                    @if (fr.record.paidAt) {
+                      <span class="text-success small">{{ fr.record.paidAt }}</span>
+                    } @else {
+                      <span class="text-muted">—</span>
+                    }
                   }
                 </td>
-                <td class="text-center hidden lg:table-cell text-muted small">{{ row.createdAt }}</td>
+                <td class="text-center hidden lg:table-cell text-muted small">
+                  @if (fr.isFirstRow) { {{ fr.record.createdAt }} }
+                </td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="9" class="text-center text-muted py-4">
+                <td colspan="12" class="text-center text-muted py-4">
                   @if (loading()) {
                     載入中...
+                  } @else if (!selectedCategory()) {
+                    請先選擇類別並按下「篩選」
                   } @else {
                     尚無資料
                   }
@@ -142,11 +175,10 @@
           @if (records().length > 0) {
             <tfoot>
               <tr class="table-light">
-                <td colspan="5" class="text-right fw-500 small hidden lg:table-cell">合計</td>
-                <td colspan="3" class="text-right fw-500 small table-cell lg:hidden">合計</td>
-                <td class="text-right fw-600">{{ totalAmount() | number:'1.0-0' }}</td>
-                <td colspan="3" class="hidden md:table-cell"></td>
-                <td class="table-cell md:hidden"></td>
+                <td colspan="7" class="text-right fw-500 small">合計</td>
+                <td class="text-right fw-600">{{ itemTotal() | number:'1.0-0' }}</td>
+                <td class="text-right fw-600 hidden md:table-cell">{{ totalAmount() | number:'1.0-0' }}</td>
+                <td colspan="3"></td>
               </tr>
             </tfoot>
           }

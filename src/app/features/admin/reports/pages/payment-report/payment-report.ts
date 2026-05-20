@@ -7,10 +7,26 @@ import {environment} from '@/environments/environment';
 import {dayToRange, FilterMode, monthToRange, shiftDateString, snapToIsoWeek, todayString} from '@/app/features/admin/reports/utils/date-range';
 import * as XLSX from 'xlsx';
 
+/** 6 個類別 — 與後端 PaymentReportReadService 常數對應 */
+export const CATEGORY_OPTIONS = [
+  { value: 'payment',         label: '請款' },
+  { value: 'advance',         label: '預支' },
+  { value: 'writeoff',        label: '預支沖銷' },
+  { value: 'travel-payment',  label: '出差請款' },
+  { value: 'travel',          label: '出差預支' },
+  { value: 'travel-writeoff', label: '出差預支沖銷' },
+] as const;
+
+/** PaymentRequest 子類型 → 中文 label */
 const PAYMENT_TYPE_LABELS: Record<string, string> = {
-  vendor:        '廠商請款',
-  general:       '一般請款',
-  business_trip: '員工公出請款',
+  vendor:          '廠商請款',
+  general:         '一般請款',
+  business_trip:   '員工公出請款',
+  advance:         '預支',
+  writeoff:        '預支沖銷',
+  'travel-payment': '出差請款',
+  travel:          '出差預支',
+  'travel-writeoff': '出差預支沖銷',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -20,8 +36,26 @@ const STATUS_LABELS: Record<string, string> = {
   returned: '退回修改',
 };
 
+/** 匯出 Excel 右側 4 欄表頭 — 依類別決定 */
+const ITEM_HEADERS: Record<string, [string, string, string, string]> = {
+  'payment':          ['發票號碼', '品名', '發票日期', '發票金額'],
+  'advance':          ['類別',     '品名', '數量',     '金額'],
+  'writeoff':         ['發票號碼', '品名', '發票日期', '金額'],
+  'travel-payment':   ['發票號碼', '品名', '發票日期', '發票金額'],
+  'travel':           ['發票號碼', '品名', '發票日期', '金額'],
+  'travel-writeoff':  ['發票號碼', '品名', '發票日期', '金額'],
+};
+
 /** 匯出筆數預警門檻：超過時先 confirm 再匯出 */
 const EXPORT_WARN_THRESHOLD = 1000;
+
+export interface PaymentReportItem {
+  col1: string | null;        // 發票號碼 or 類別
+  itemName: string | null;    // 品名
+  col3Text: string | null;    // 數量（字串）— advance 專用
+  col3Date: string | null;    // 發票日期 — 其他類別
+  amount: number | null;      // 明細金額
+}
 
 export interface PaymentReportRow {
   id: number;
@@ -37,11 +71,20 @@ export interface PaymentReportRow {
   statusLabel: string;
   paidAt: string;
   createdAt: string;
+  items: PaymentReportItem[];
 }
 
-/** 對應後端 PaymentExportRowDto：一張發票一列 */
+/** 用於在 table 展開為「主表 row × items」多列；isFirstRow=true 時才輸出請款層欄位 */
+export interface FlatPaymentRow {
+  key: string;
+  record: PaymentReportRow;
+  item: PaymentReportItem | null;
+  isFirstRow: boolean;
+}
+
+/** 對應後端 PaymentExportRowDto */
 interface PaymentExportRow {
-  paymentRequestId: number;
+  parentId: number;
   requestNo: string;
   employeeName: string;
   type: string;
@@ -51,20 +94,30 @@ interface PaymentExportRow {
   createdAt: string;
   paidAt: string | null;
   paymentTotalAmount: number;
-  invoiceNo: string | null;
-  invoiceItemName: string | null;
-  invoiceDate: string | null;
-  invoiceAmount: number | null;
+  itemCol1: string | null;
+  itemName: string | null;
+  itemCol3Text: string | null;
+  itemCol3Date: string | null;
+  itemAmount: number | null;
 }
 
 @Component({
   selector: 'app-payment-report',
   templateUrl: './payment-report.html',
+  styles: [`
+    /* 同筆主表的多列：第一列加上分隔線；後續列移除 td 上下分隔，視覺合併為一組 */
+    .payment-report-table tbody tr.row-group-start td { border-top: 2px solid var(--bs-border-color, #dee2e6); }
+    .payment-report-table tbody tr:not(.row-group-start) td { border-top: 0; }
+  `],
   imports: [CommonModule, FormsModule],
 })
 export class PaymentReport implements OnInit {
   private http   = inject(HttpClient);
   private toastr = inject(ToastrService);
+
+  /** 類別下拉選單 */
+  readonly categoryOptions = CATEGORY_OPTIONS;
+  selectedCategory = signal<string>('');
 
   /** 篩選條件 */
   selectedPaymentStatus = signal('');
@@ -97,6 +150,38 @@ export class PaymentReport implements OnInit {
   /** 合計 */
   totalAmount = signal(0);
 
+  /** advance 類別：明細第 3 欄為「數量」（字串）；其他類別為「發票日期」 */
+  isAdvanceCategory = computed(() => this.selectedCategory() === 'advance');
+
+  /** 明細 4 欄表頭（依類別決定） */
+  itemHeaders = computed<readonly [string, string, string, string]>(() => {
+    return ITEM_HEADERS[this.selectedCategory()] ?? ['', '', '', ''] as any;
+  });
+
+  /** 攤平：每筆主表 × items → 多列 FlatPaymentRow（無 items 仍輸出 1 列） */
+  flatRows = computed<FlatPaymentRow[]>(() => {
+    const result: FlatPaymentRow[] = [];
+    for (const r of this.records()) {
+      if (!r.items || r.items.length === 0) {
+        result.push({ key: `${r.id}-0`, record: r, item: null, isFirstRow: true });
+      } else {
+        r.items.forEach((item, idx) => {
+          result.push({ key: `${r.id}-${idx}`, record: r, item, isFirstRow: idx === 0 });
+        });
+      }
+    }
+    return result;
+  });
+
+  /** 明細金額合計（跨全部 items） */
+  itemTotal = computed(() => {
+    let sum = 0;
+    for (const r of this.records()) {
+      for (const it of (r.items ?? [])) sum += it.amount ?? 0;
+    }
+    return sum;
+  });
+
   ngOnInit() {
     const now = new Date();
     const currentYear = now.getFullYear();
@@ -106,7 +191,7 @@ export class PaymentReport implements OnInit {
     const today = todayString(now);
     this.selectedDate.set(today);
     this.selectedWeekDate.set(today);
-    this.search();
+    // 不自動 search()：類別未選不打 API
   }
 
   /** 週模式 snap 結果（含週號 / 起訖日） */
@@ -147,15 +232,24 @@ export class PaymentReport implements OnInit {
     return `${year}-${String(month).padStart(2, '0')}`;
   }
 
+  private categoryLabel(): string {
+    return CATEGORY_OPTIONS.find(o => o.value === this.selectedCategory())?.label ?? '—';
+  }
+
   /** 將篩選條件轉成可讀字串（寫入 Excel 第一列摘要） */
   private filterSummaryLine(): string {
+    const cat = `類別：${this.categoryLabel()}`;
     const period = `時段：${this.exportSuffix()}`;
     const statusLabel: Record<string, string> = { paid: '已付', unpaid: '未付' };
     const status = `付款狀態：${statusLabel[this.selectedPaymentStatus()] ?? '全部'}`;
-    return `${period}　${status}`;
+    return `${cat}　${period}　${status}`;
   }
 
   search() {
+    if (!this.selectedCategory()) {
+      this.toastr.warning('請先選擇類別', '提示');
+      return;
+    }
     this.currentPage.set(1);
     this.fetchData();
   }
@@ -167,6 +261,7 @@ export class PaymentReport implements OnInit {
 
   private buildParams(paged = true): Record<string, string | number> {
     const params: Record<string, string | number> = {};
+    params['category'] = this.selectedCategory();
     if (paged) {
       params['page'] = this.currentPage();
       params['pageSize'] = this.pageSize;
@@ -181,6 +276,13 @@ export class PaymentReport implements OnInit {
   }
 
   private mapRow(r: any): PaymentReportRow {
+    const items: PaymentReportItem[] = (r.items ?? []).map((it: any) => ({
+      col1: it.col1 ?? null,
+      itemName: it.itemName ?? null,
+      col3Text: it.col3Text ?? null,
+      col3Date: it.col3Date ?? null,
+      amount: it.amount ?? null,
+    }));
     return {
       id: r.id,
       requestNo: r.requestNo ?? '',
@@ -195,7 +297,15 @@ export class PaymentReport implements OnInit {
       statusLabel: STATUS_LABELS[r.approvalStatus] ?? r.approvalStatus,
       paidAt: r.paidAt ? new Date(r.paidAt).toLocaleDateString('zh-TW') : '',
       createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString('zh-TW') : '',
+      items,
     };
+  }
+
+  /** 顯示明細日期：advance 類別取 col3Text（數量），其他取 col3Date 格式化 */
+  itemCol3Display(item: PaymentReportItem | null): string {
+    if (!item) return '';
+    if (this.isAdvanceCategory()) return item.col3Text ?? '';
+    return item.col3Date ? new Date(item.col3Date).toLocaleDateString('zh-TW') : '';
   }
 
   private fetchData() {
@@ -234,6 +344,10 @@ export class PaymentReport implements OnInit {
   }
 
   exportExcel() {
+    if (!this.selectedCategory()) {
+      this.toastr.warning('請先選擇類別', '提示');
+      return;
+    }
     this.exporting.set(true);
     const params = this.buildParams(false);
 
@@ -270,10 +384,13 @@ export class PaymentReport implements OnInit {
   }
 
   private buildAndDownloadXlsx(rows: PaymentExportRow[]) {
+    const category = this.selectedCategory();
+    const itemHeaders = ITEM_HEADERS[category] ?? ['', '', '', ''];
+
     const headers = [
-      '單號', '員工姓名', '請款類型', '專案代碼', '專案名稱', '簽核狀態',
-      '申請日期', '付款日期', '請款單總金額',
-      '發票號碼', '品名', '發票日期', '發票金額',
+      '單號', '員工姓名', '類型', '專案代碼', '專案名稱', '簽核狀態',
+      '申請日期', '付款日期', '單據總金額',
+      ...itemHeaders,
     ];
 
     // 第 1 列：篩選條件摘要；第 2 列空；第 3 列：表頭；第 4 列起：資料
@@ -283,30 +400,45 @@ export class PaymentReport implements OnInit {
       headers,
     ];
 
-    let invoiceTotal = 0;
+    // 請款層欄位去重：同筆只在第一列輸出；同時記錄各筆 totalAmount 以利合計
+    let lastParentId: number | null = null;
+    const perRequestTotals = new Map<number, number>();
+    const isAdvance = category === 'advance';
+
     for (const r of rows) {
-      const amount = r.invoiceAmount ?? 0;
-      invoiceTotal += amount;
+      const isFirstRow = r.parentId !== lastParentId;
+      if (isFirstRow) {
+        lastParentId = r.parentId;
+        perRequestTotals.set(r.parentId, r.paymentTotalAmount ?? 0);
+      }
+
+      const itemCol3 = isAdvance
+        ? (r.itemCol3Text ?? '')
+        : this.toIsoDate(r.itemCol3Date);
+
       aoa.push([
-        r.requestNo ?? '',
-        r.employeeName ?? '—',
-        PAYMENT_TYPE_LABELS[r.type] ?? r.type,
-        r.projectCode ?? '—',
-        r.projectName ?? '',
-        STATUS_LABELS[r.approvalStatus] ?? r.approvalStatus,
-        this.toIsoDate(r.createdAt),
-        this.toIsoDate(r.paidAt),
-        r.paymentTotalAmount ?? 0,
-        r.invoiceNo ?? '',
-        r.invoiceItemName ?? '',
-        this.toIsoDate(r.invoiceDate),
-        r.invoiceAmount ?? null,
+        isFirstRow ? (r.requestNo ?? '') : '',
+        isFirstRow ? (r.employeeName ?? '—') : '',
+        isFirstRow ? (PAYMENT_TYPE_LABELS[r.type] ?? r.type) : '',
+        isFirstRow ? (r.projectCode ?? '—') : '',
+        isFirstRow ? (r.projectName ?? '') : '',
+        isFirstRow ? (STATUS_LABELS[r.approvalStatus] ?? r.approvalStatus) : '',
+        isFirstRow ? this.toIsoDate(r.createdAt) : '',
+        isFirstRow ? this.toIsoDate(r.paidAt) : '',
+        isFirstRow ? (r.paymentTotalAmount ?? 0) : '',
+        // 明細層 4 欄永遠輸出
+        r.itemCol1 ?? '',
+        r.itemName ?? '',
+        itemCol3,
+        r.itemAmount ?? null,
       ]);
     }
 
-    // 末列：合計（請款單總額會跨多列重複，為避免誤導，僅顯示發票金額合計）
+    // 合計列：單據總金額 = 跨主表 sum（已去重）；明細金額 = 全部加總
+    const requestTotal = Array.from(perRequestTotals.values()).reduce((sum, v) => sum + v, 0);
+    const itemTotal = rows.reduce((sum, r) => sum + (r.itemAmount ?? 0), 0);
     aoa.push([
-      '合計', '', '', '', '', '', '', '', '', '', '', '', invoiceTotal,
+      '合計', '', '', '', '', '', '', '', requestTotal, '', '', '', itemTotal,
     ]);
 
     const ws = XLSX.utils.aoa_to_sheet(aoa);
@@ -315,32 +447,32 @@ export class PaymentReport implements OnInit {
     ws['!cols'] = [
       { wch: 18 }, // 單號
       { wch: 12 }, // 員工姓名
-      { wch: 10 }, // 請款類型
+      { wch: 12 }, // 類型
       { wch: 12 }, // 專案代碼
       { wch: 24 }, // 專案名稱
       { wch: 10 }, // 簽核狀態
       { wch: 12 }, // 申請日期
       { wch: 12 }, // 付款日期
-      { wch: 14 }, // 請款單總金額
-      { wch: 14 }, // 發票號碼
+      { wch: 14 }, // 單據總金額
+      { wch: 14 }, // 明細 Col1
       { wch: 20 }, // 品名
-      { wch: 12 }, // 發票日期
-      { wch: 14 }, // 發票金額
+      { wch: 12 }, // 明細 Col3
+      { wch: 14 }, // 明細金額
     ];
 
-    // 金額欄千分位格式（I 欄=請款單總金額、M 欄=發票金額）— 新增單號後欄位整體右移 1
-    const headerRowIdx = 2; // 第 3 列（0-based 2）
-    const totalRowIdx = aoa.length - 1; // 末列為合計
+    // 金額欄千分位格式（I 欄=單據總金額、M 欄=明細金額）
+    const headerRowIdx = 2;
+    const totalRowIdx = aoa.length - 1;
     const numberFmt = '#,##0';
     for (let r = headerRowIdx + 1; r <= totalRowIdx; r++) {
       const totalCell = ws[XLSX.utils.encode_cell({ r, c: 8 })];
       if (totalCell && typeof totalCell.v === 'number') totalCell.z = numberFmt;
-      const invoiceCell = ws[XLSX.utils.encode_cell({ r, c: 12 })];
-      if (invoiceCell && typeof invoiceCell.v === 'number') invoiceCell.z = numberFmt;
+      const itemCell = ws[XLSX.utils.encode_cell({ r, c: 12 })];
+      if (itemCell && typeof itemCell.v === 'number') itemCell.z = numberFmt;
     }
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '款項統計');
-    XLSX.writeFile(wb, `款項統計_${this.exportSuffix()}.xlsx`);
+    XLSX.writeFile(wb, `款項統計_${this.categoryLabel()}_${this.exportSuffix()}.xlsx`);
   }
 }

@@ -16763,7 +16763,7 @@ function ApprovalTaskList_Conditional_15_Conditional_6_Template(rf, ctx) {
     \u0275\u0275elementStart(4, "svg", 21);
     \u0275\u0275element(5, "use", 36);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(6, " \u672A\u64A5\u6B3E/\u672A\u9000\u6B3E ");
+    \u0275\u0275text(6, " \u5C1A\u672A\u64A5\u6B3E ");
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
     \u0275\u0275elementStart(7, "button", 6);
@@ -16789,7 +16789,7 @@ function ApprovalTaskList_Conditional_15_Conditional_6_Template(rf, ctx) {
     \u0275\u0275elementStart(12, "svg", 21);
     \u0275\u0275element(13, "use", 22);
     \u0275\u0275elementEnd();
-    \u0275\u0275text(14, " \u5DF2\u64A5\u6B3E/\u5DF2\u9000\u6B3E ");
+    \u0275\u0275text(14, " \u5168\u90E8\u64A5\u6B3E ");
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -16949,7 +16949,7 @@ function ApprovalTaskList_ForEmpty_38_Template(rf, ctx) {
     \u0275\u0275advance();
     \u0275\u0275attribute("colspan", ctx_r1.activeTab() === "pending" && ctx_r1.canBatchApprove() ? 7 : 6);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate1(" ", ctx_r1.activeTab() === "pending" ? "\u76EE\u524D\u6C92\u6709\u5F85\u5BE9\u6838\u7684\u7C3D\u6838\u4F5C\u696D\u3002" : ctx_r1.activeTab() === "rejected" ? "\u76EE\u524D\u6C92\u6709\u5DF2\u62D2\u7D55\u7684\u7C3D\u6838\u4F5C\u696D\u3002" : ctx_r1.applicationTypeFilter() ? "\u76EE\u524D\u6C92\u6709\u6B64\u985E\u578B\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002" : ctx_r1.paymentStatus() === "unpaid" ? "\u76EE\u524D\u6C92\u6709\u672A\u64A5\u6B3E/\u672A\u9000\u6B3E\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002" : ctx_r1.paymentStatus() === "partial" ? "\u76EE\u524D\u6C92\u6709\u90E8\u5206\u64A5\u6B3E\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002" : ctx_r1.paymentStatus() === "paid" ? "\u76EE\u524D\u6C92\u6709\u5DF2\u64A5\u6B3E/\u5DF2\u9000\u6B3E\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002" : "\u76EE\u524D\u6C92\u6709\u5DF2\u6838\u51C6\u7684\u7C3D\u6838\u4F5C\u696D\u3002", " ");
+    \u0275\u0275textInterpolate1(" ", ctx_r1.activeTab() === "pending" ? "\u76EE\u524D\u6C92\u6709\u5F85\u5BE9\u6838\u7684\u7C3D\u6838\u4F5C\u696D\u3002" : ctx_r1.activeTab() === "rejected" ? "\u76EE\u524D\u6C92\u6709\u5DF2\u62D2\u7D55\u7684\u7C3D\u6838\u4F5C\u696D\u3002" : ctx_r1.applicationTypeFilter() ? "\u76EE\u524D\u6C92\u6709\u6B64\u985E\u578B\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002" : ctx_r1.paymentStatus() === "unpaid" ? "\u76EE\u524D\u6C92\u6709\u5C1A\u672A\u64A5\u6B3E\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002" : ctx_r1.paymentStatus() === "partial" ? "\u76EE\u524D\u6C92\u6709\u90E8\u5206\u64A5\u6B3E\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002" : ctx_r1.paymentStatus() === "paid" ? "\u76EE\u524D\u6C92\u6709\u5168\u90E8\u64A5\u6B3E\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002" : "\u76EE\u524D\u6C92\u6709\u5DF2\u6838\u51C6\u7684\u7C3D\u6838\u4F5C\u696D\u3002", " ");
   }
 }
 function ApprovalTaskList_Conditional_39_For_15_Conditional_0_Template(rf, ctx) {
@@ -17441,7 +17441,7 @@ var ApprovalTaskList = class _ApprovalTaskList {
                   [class]="paymentStatus() === 'unpaid' ? 'btn-outline-primary' : 'btn-outline-secondary'"\r
                   (click)="setPaymentStatus('unpaid')">\r
             <svg class="sa-icon me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>\r
-            \u672A\u64A5\u6B3E/\u672A\u9000\u6B3E\r
+            \u5C1A\u672A\u64A5\u6B3E\r
           </button>\r
           <button class="btn btn-sm"\r
                   [class]="paymentStatus() === 'partial' ? 'btn-outline-primary' : 'btn-outline-secondary'"\r
@@ -17453,7 +17453,7 @@ var ApprovalTaskList = class _ApprovalTaskList {
                   [class]="paymentStatus() === 'paid' ? 'btn-outline-primary' : 'btn-outline-secondary'"\r
                   (click)="setPaymentStatus('paid')">\r
             <svg class="sa-icon me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#check-circle"></use></svg>\r
-            \u5DF2\u64A5\u6B3E/\u5DF2\u9000\u6B3E\r
+            \u5168\u90E8\u64A5\u6B3E\r
           </button>\r
         </div>\r
       }\r
@@ -17524,9 +17524,9 @@ var ApprovalTaskList = class _ApprovalTaskList {
                   {{ activeTab() === 'pending' ? '\u76EE\u524D\u6C92\u6709\u5F85\u5BE9\u6838\u7684\u7C3D\u6838\u4F5C\u696D\u3002'\r
                      : activeTab() === 'rejected' ? '\u76EE\u524D\u6C92\u6709\u5DF2\u62D2\u7D55\u7684\u7C3D\u6838\u4F5C\u696D\u3002'\r
                      : applicationTypeFilter() ? '\u76EE\u524D\u6C92\u6709\u6B64\u985E\u578B\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002'\r
-                     : paymentStatus() === 'unpaid' ? '\u76EE\u524D\u6C92\u6709\u672A\u64A5\u6B3E/\u672A\u9000\u6B3E\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002'\r
+                     : paymentStatus() === 'unpaid' ? '\u76EE\u524D\u6C92\u6709\u5C1A\u672A\u64A5\u6B3E\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002'\r
                      : paymentStatus() === 'partial' ? '\u76EE\u524D\u6C92\u6709\u90E8\u5206\u64A5\u6B3E\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002'\r
-                     : paymentStatus() === 'paid' ? '\u76EE\u524D\u6C92\u6709\u5DF2\u64A5\u6B3E/\u5DF2\u9000\u6B3E\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002'\r
+                     : paymentStatus() === 'paid' ? '\u76EE\u524D\u6C92\u6709\u5168\u90E8\u64A5\u6B3E\u7684\u5DF2\u6838\u51C6\u7C3D\u6838\u4F5C\u696D\u3002'\r
                      : '\u76EE\u524D\u6C92\u6709\u5DF2\u6838\u51C6\u7684\u7C3D\u6838\u4F5C\u696D\u3002' }}\r
                 </td>\r
               </tr>\r
@@ -53944,358 +53944,500 @@ var OvertimeReport = class _OvertimeReport {
 })();
 
 // src/app/features/admin/reports/pages/payment-report/payment-report.ts
-var _forTrack027 = ($index, $item) => $item.id;
-function PaymentReport_Conditional_29_Template(rf, ctx) {
+var _forTrack027 = ($index, $item) => $item.value;
+var _forTrack17 = ($index, $item) => $item.key;
+function PaymentReport_For_19_Template(rf, ctx) {
   if (rf & 1) {
-    const _r1 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "input", 33);
-    \u0275\u0275listener("ngModelChange", function PaymentReport_Conditional_29_Template_input_ngModelChange_0_listener($event) {
-      \u0275\u0275restoreView(_r1);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.selectedDate.set($event));
+    \u0275\u0275elementStart(0, "option", 15);
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const opt_r1 = ctx.$implicit;
+    \u0275\u0275property("value", opt_r1.value);
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate(opt_r1.label);
+  }
+}
+function PaymentReport_Conditional_34_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r2 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "input", 36);
+    \u0275\u0275listener("ngModelChange", function PaymentReport_Conditional_34_Template_input_ngModelChange_0_listener($event) {
+      \u0275\u0275restoreView(_r2);
+      const ctx_r2 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r2.selectedDate.set($event));
     });
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275property("ngModel", ctx_r1.selectedDate());
+    const ctx_r2 = \u0275\u0275nextContext();
+    \u0275\u0275property("ngModel", ctx_r2.selectedDate());
   }
 }
-function PaymentReport_Conditional_30_Template(rf, ctx) {
+function PaymentReport_Conditional_35_Template(rf, ctx) {
   if (rf & 1) {
-    const _r3 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 34);
-    \u0275\u0275listener("click", function PaymentReport_Conditional_30_Template_button_click_0_listener() {
-      \u0275\u0275restoreView(_r3);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.shiftWeek(-7));
+    const _r4 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 37);
+    \u0275\u0275listener("click", function PaymentReport_Conditional_35_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r4);
+      const ctx_r2 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r2.shiftWeek(-7));
     });
     \u0275\u0275text(1, "\u2039");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(2, "input", 33);
-    \u0275\u0275listener("ngModelChange", function PaymentReport_Conditional_30_Template_input_ngModelChange_2_listener($event) {
-      \u0275\u0275restoreView(_r3);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.selectedWeekDate.set($event));
+    \u0275\u0275elementStart(2, "input", 36);
+    \u0275\u0275listener("ngModelChange", function PaymentReport_Conditional_35_Template_input_ngModelChange_2_listener($event) {
+      \u0275\u0275restoreView(_r4);
+      const ctx_r2 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r2.selectedWeekDate.set($event));
     });
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "button", 35);
-    \u0275\u0275listener("click", function PaymentReport_Conditional_30_Template_button_click_3_listener() {
-      \u0275\u0275restoreView(_r3);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.shiftWeek(7));
+    \u0275\u0275elementStart(3, "button", 38);
+    \u0275\u0275listener("click", function PaymentReport_Conditional_35_Template_button_click_3_listener() {
+      \u0275\u0275restoreView(_r4);
+      const ctx_r2 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r2.shiftWeek(7));
     });
     \u0275\u0275text(4, "\u203A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "button", 36);
-    \u0275\u0275listener("click", function PaymentReport_Conditional_30_Template_button_click_5_listener() {
-      \u0275\u0275restoreView(_r3);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.resetToThisWeek());
+    \u0275\u0275elementStart(5, "button", 39);
+    \u0275\u0275listener("click", function PaymentReport_Conditional_35_Template_button_click_5_listener() {
+      \u0275\u0275restoreView(_r4);
+      const ctx_r2 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r2.resetToThisWeek());
     });
     \u0275\u0275text(6, "\u672C\u9031");
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext();
+    const ctx_r2 = \u0275\u0275nextContext();
     \u0275\u0275advance(2);
-    \u0275\u0275property("ngModel", ctx_r1.selectedWeekDate());
+    \u0275\u0275property("ngModel", ctx_r2.selectedWeekDate());
   }
 }
-function PaymentReport_Conditional_31_For_4_Template(rf, ctx) {
+function PaymentReport_Conditional_36_For_4_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 38);
+    \u0275\u0275elementStart(0, "option", 15);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const y_r5 = ctx.$implicit;
-    \u0275\u0275property("value", y_r5);
+    const y_r6 = ctx.$implicit;
+    \u0275\u0275property("value", y_r6);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(y_r5);
+    \u0275\u0275textInterpolate(y_r6);
   }
 }
-function PaymentReport_Conditional_31_For_9_Template(rf, ctx) {
+function PaymentReport_Conditional_36_For_9_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 38);
+    \u0275\u0275elementStart(0, "option", 15);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const m_r6 = ctx.$implicit;
-    \u0275\u0275property("value", m_r6);
+    const m_r7 = ctx.$implicit;
+    \u0275\u0275property("value", m_r7);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate1("", m_r6, "\u6708");
+    \u0275\u0275textInterpolate1("", m_r7, "\u6708");
   }
 }
-function PaymentReport_Conditional_31_Template(rf, ctx) {
+function PaymentReport_Conditional_36_Template(rf, ctx) {
   if (rf & 1) {
-    const _r4 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "select", 37);
-    \u0275\u0275listener("ngModelChange", function PaymentReport_Conditional_31_Template_select_ngModelChange_0_listener($event) {
-      \u0275\u0275restoreView(_r4);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.selectedYear.set($event));
+    const _r5 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "select", 40);
+    \u0275\u0275listener("ngModelChange", function PaymentReport_Conditional_36_Template_select_ngModelChange_0_listener($event) {
+      \u0275\u0275restoreView(_r5);
+      const ctx_r2 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r2.selectedYear.set($event));
     });
     \u0275\u0275elementStart(1, "option", 14);
     \u0275\u0275text(2, "\u5168\u90E8\u5E74\u4EFD");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(3, PaymentReport_Conditional_31_For_4_Template, 2, 2, "option", 38, \u0275\u0275repeaterTrackByIdentity);
+    \u0275\u0275repeaterCreate(3, PaymentReport_Conditional_36_For_4_Template, 2, 2, "option", 15, \u0275\u0275repeaterTrackByIdentity);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "select", 37);
-    \u0275\u0275listener("ngModelChange", function PaymentReport_Conditional_31_Template_select_ngModelChange_5_listener($event) {
-      \u0275\u0275restoreView(_r4);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.selectedMonth.set($event));
+    \u0275\u0275elementStart(5, "select", 40);
+    \u0275\u0275listener("ngModelChange", function PaymentReport_Conditional_36_Template_select_ngModelChange_5_listener($event) {
+      \u0275\u0275restoreView(_r5);
+      const ctx_r2 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r2.selectedMonth.set($event));
     });
     \u0275\u0275elementStart(6, "option", 14);
     \u0275\u0275text(7, "\u5168\u90E8\u6708\u4EFD");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(8, PaymentReport_Conditional_31_For_9_Template, 2, 2, "option", 38, \u0275\u0275repeaterTrackByIdentity);
+    \u0275\u0275repeaterCreate(8, PaymentReport_Conditional_36_For_9_Template, 2, 2, "option", 15, \u0275\u0275repeaterTrackByIdentity);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275property("ngModel", ctx_r1.selectedYear());
+    const ctx_r2 = \u0275\u0275nextContext();
+    \u0275\u0275property("ngModel", ctx_r2.selectedYear());
     \u0275\u0275advance(3);
-    \u0275\u0275repeater(ctx_r1.years());
+    \u0275\u0275repeater(ctx_r2.years());
     \u0275\u0275advance(2);
-    \u0275\u0275property("ngModel", ctx_r1.selectedMonth());
+    \u0275\u0275property("ngModel", ctx_r2.selectedMonth());
     \u0275\u0275advance(3);
-    \u0275\u0275repeater(ctx_r1.months);
+    \u0275\u0275repeater(ctx_r2.months);
   }
 }
-function PaymentReport_Conditional_34_Template(rf, ctx) {
+function PaymentReport_Conditional_39_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 22);
+    \u0275\u0275elementStart(0, "div", 23);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const r_r7 = ctx;
+    const r_r8 = ctx;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate3("\u7B2C ", r_r7.weekNumber, " \u9031\uFF08", r_r7.dateFrom, " \u4E00 ~ ", r_r7.dateTo, " \u65E5\uFF09");
+    \u0275\u0275textInterpolate3("\u7B2C ", r_r8.weekNumber, " \u9031\uFF08", r_r8.dateFrom, " \u4E00 ~ ", r_r8.dateTo, " \u65E5\uFF09");
   }
 }
-function PaymentReport_For_59_Conditional_11_Template(rf, ctx) {
+function PaymentReport_For_70_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 43);
+    \u0275\u0275text(0);
+  }
+  if (rf & 2) {
+    const fr_r9 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275textInterpolate1(" ", fr_r9.record.requestNo, " ");
+  }
+}
+function PaymentReport_For_70_Conditional_4_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0);
+  }
+  if (rf & 2) {
+    const fr_r9 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275textInterpolate1(" ", fr_r9.record.employeeName, " ");
+  }
+}
+function PaymentReport_For_70_Conditional_6_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 43);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const row_r8 = \u0275\u0275nextContext().$implicit;
+    const fr_r9 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(row_r8.projectName);
+    \u0275\u0275textInterpolate(fr_r9.record.typeLabel);
   }
 }
-function PaymentReport_For_59_Case_18_Template(rf, ctx) {
+function PaymentReport_For_70_Conditional_8_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 46);
+    \u0275\u0275elementStart(0, "div", 50);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const row_r8 = \u0275\u0275nextContext().$implicit;
+    const fr_r9 = \u0275\u0275nextContext(2).$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(row_r8.statusLabel);
+    \u0275\u0275textInterpolate(fr_r9.record.projectName);
   }
 }
-function PaymentReport_For_59_Case_19_Template(rf, ctx) {
+function PaymentReport_For_70_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 47);
+    \u0275\u0275elementStart(0, "div", 49);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
+    \u0275\u0275conditionalCreate(2, PaymentReport_For_70_Conditional_8_Conditional_2_Template, 2, 1, "div", 50);
   }
   if (rf & 2) {
-    const row_r8 = \u0275\u0275nextContext().$implicit;
+    const fr_r9 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(row_r8.statusLabel);
+    \u0275\u0275textInterpolate(fr_r9.record.projectCode);
+    \u0275\u0275advance();
+    \u0275\u0275conditional(fr_r9.record.projectName ? 2 : -1);
   }
 }
-function PaymentReport_For_59_Case_20_Template(rf, ctx) {
+function PaymentReport_For_70_Conditional_16_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 48);
-    \u0275\u0275text(1);
-    \u0275\u0275elementEnd();
+    \u0275\u0275text(0);
+    \u0275\u0275pipe(1, "number");
   }
   if (rf & 2) {
-    const row_r8 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275advance();
-    \u0275\u0275textInterpolate(row_r8.statusLabel);
+    const fr_r9 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275textInterpolate1(" ", \u0275\u0275pipeBind2(1, 1, fr_r9.item == null ? null : fr_r9.item.amount, "1.0-0"), " ");
   }
 }
-function PaymentReport_For_59_Case_21_Template(rf, ctx) {
+function PaymentReport_For_70_Conditional_17_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 49);
-    \u0275\u0275text(1);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const row_r8 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275advance();
-    \u0275\u0275textInterpolate(row_r8.statusLabel);
+    \u0275\u0275text(0, " \u2014 ");
   }
 }
-function PaymentReport_For_59_Conditional_23_Template(rf, ctx) {
+function PaymentReport_For_70_Conditional_19_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 50);
-    \u0275\u0275text(1);
-    \u0275\u0275elementEnd();
+    \u0275\u0275text(0);
+    \u0275\u0275pipe(1, "number");
   }
   if (rf & 2) {
-    const row_r8 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275advance();
-    \u0275\u0275textInterpolate(row_r8.paidAt);
+    const fr_r9 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275textInterpolate1(" ", \u0275\u0275pipeBind2(1, 1, fr_r9.record.totalAmount, "1.0-0"), " ");
   }
 }
-function PaymentReport_For_59_Conditional_24_Template(rf, ctx) {
+function PaymentReport_For_70_Conditional_21_Case_0_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "span", 51);
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const fr_r9 = \u0275\u0275nextContext(2).$implicit;
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate(fr_r9.record.statusLabel);
+  }
+}
+function PaymentReport_For_70_Conditional_21_Case_1_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 52);
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const fr_r9 = \u0275\u0275nextContext(2).$implicit;
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate(fr_r9.record.statusLabel);
+  }
+}
+function PaymentReport_For_70_Conditional_21_Case_2_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 53);
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const fr_r9 = \u0275\u0275nextContext(2).$implicit;
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate(fr_r9.record.statusLabel);
+  }
+}
+function PaymentReport_For_70_Conditional_21_Case_3_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 54);
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const fr_r9 = \u0275\u0275nextContext(2).$implicit;
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate(fr_r9.record.statusLabel);
+  }
+}
+function PaymentReport_For_70_Conditional_21_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275conditionalCreate(0, PaymentReport_For_70_Conditional_21_Case_0_Template, 2, 1, "span", 51)(1, PaymentReport_For_70_Conditional_21_Case_1_Template, 2, 1, "span", 52)(2, PaymentReport_For_70_Conditional_21_Case_2_Template, 2, 1, "span", 53)(3, PaymentReport_For_70_Conditional_21_Case_3_Template, 2, 1, "span", 54);
+  }
+  if (rf & 2) {
+    let tmp_11_0;
+    const fr_r9 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275conditional((tmp_11_0 = fr_r9.record.approvalStatus) === "approved" ? 0 : tmp_11_0 === "pending" ? 1 : tmp_11_0 === "rejected" ? 2 : 3);
+  }
+}
+function PaymentReport_For_70_Conditional_23_Conditional_0_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 55);
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const fr_r9 = \u0275\u0275nextContext(2).$implicit;
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate(fr_r9.record.paidAt);
+  }
+}
+function PaymentReport_For_70_Conditional_23_Conditional_1_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 56);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
 }
-function PaymentReport_For_59_Template(rf, ctx) {
+function PaymentReport_For_70_Conditional_23_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 39);
-    \u0275\u0275text(2);
+    \u0275\u0275conditionalCreate(0, PaymentReport_For_70_Conditional_23_Conditional_0_Template, 2, 1, "span", 55)(1, PaymentReport_For_70_Conditional_23_Conditional_1_Template, 2, 0, "span", 56);
+  }
+  if (rf & 2) {
+    const fr_r9 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275conditional(fr_r9.record.paidAt ? 0 : 1);
+  }
+}
+function PaymentReport_For_70_Conditional_25_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0);
+  }
+  if (rf & 2) {
+    const fr_r9 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275textInterpolate1(" ", fr_r9.record.createdAt, " ");
+  }
+}
+function PaymentReport_For_70_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "tr")(1, "td", 41);
+    \u0275\u0275conditionalCreate(2, PaymentReport_For_70_Conditional_2_Template, 1, 1);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td", 40);
-    \u0275\u0275text(4);
+    \u0275\u0275elementStart(3, "td", 42);
+    \u0275\u0275conditionalCreate(4, PaymentReport_For_70_Conditional_4_Template, 1, 1);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "td", 26)(6, "span", 41);
-    \u0275\u0275text(7);
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(8, "td", 27)(9, "div", 42);
+    \u0275\u0275elementStart(5, "td", 27);
+    \u0275\u0275conditionalCreate(6, PaymentReport_For_70_Conditional_6_Template, 2, 1, "span", 43);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "td", 28);
+    \u0275\u0275conditionalCreate(8, PaymentReport_For_70_Conditional_8_Template, 3, 2);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(9, "td", 44);
     \u0275\u0275text(10);
     \u0275\u0275elementEnd();
-    \u0275\u0275conditionalCreate(11, PaymentReport_For_59_Conditional_11_Template, 2, 1, "div", 43);
+    \u0275\u0275elementStart(11, "td", 45);
+    \u0275\u0275text(12);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(12, "td", 44);
-    \u0275\u0275text(13);
+    \u0275\u0275elementStart(13, "td", 46);
+    \u0275\u0275text(14);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(14, "td", 45);
-    \u0275\u0275text(15);
-    \u0275\u0275pipe(16, "number");
+    \u0275\u0275elementStart(15, "td", 29);
+    \u0275\u0275conditionalCreate(16, PaymentReport_For_70_Conditional_16_Template, 2, 4)(17, PaymentReport_For_70_Conditional_17_Template, 1, 0);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(17, "td", 26);
-    \u0275\u0275conditionalCreate(18, PaymentReport_For_59_Case_18_Template, 2, 1, "span", 46)(19, PaymentReport_For_59_Case_19_Template, 2, 1, "span", 47)(20, PaymentReport_For_59_Case_20_Template, 2, 1, "span", 48)(21, PaymentReport_For_59_Case_21_Template, 2, 1, "span", 49);
+    \u0275\u0275elementStart(18, "td", 47);
+    \u0275\u0275conditionalCreate(19, PaymentReport_For_70_Conditional_19_Template, 2, 4);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(22, "td", 30);
-    \u0275\u0275conditionalCreate(23, PaymentReport_For_59_Conditional_23_Template, 2, 1, "span", 50)(24, PaymentReport_For_59_Conditional_24_Template, 2, 0, "span", 51);
+    \u0275\u0275elementStart(20, "td", 31);
+    \u0275\u0275conditionalCreate(21, PaymentReport_For_70_Conditional_21_Template, 4, 1);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(25, "td", 52);
-    \u0275\u0275text(26);
+    \u0275\u0275elementStart(22, "td", 32);
+    \u0275\u0275conditionalCreate(23, PaymentReport_For_70_Conditional_23_Template, 2, 1);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(24, "td", 48);
+    \u0275\u0275conditionalCreate(25, PaymentReport_For_70_Conditional_25_Template, 1, 1);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    let tmp_18_0;
-    const row_r8 = ctx.$implicit;
+    const fr_r9 = ctx.$implicit;
+    const ctx_r2 = \u0275\u0275nextContext();
+    \u0275\u0275classProp("row-group-start", fr_r9.isFirstRow);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(row_r8.requestNo);
+    \u0275\u0275conditional(fr_r9.isFirstRow ? 2 : -1);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(row_r8.employeeName);
-    \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate(row_r8.typeLabel);
-    \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate(row_r8.projectCode);
-    \u0275\u0275advance();
-    \u0275\u0275conditional(row_r8.projectName ? 11 : -1);
-    \u0275\u0275advance();
-    \u0275\u0275property("title", row_r8.invoiceNos);
-    \u0275\u0275advance();
-    \u0275\u0275textInterpolate(row_r8.invoiceNos || "\u2014");
+    \u0275\u0275conditional(fr_r9.isFirstRow ? 4 : -1);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(16, 11, row_r8.totalAmount, "1.0-0"));
+    \u0275\u0275conditional(fr_r9.isFirstRow ? 6 : -1);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(fr_r9.isFirstRow ? 8 : -1);
+    \u0275\u0275advance(2);
+    \u0275\u0275textInterpolate((fr_r9.item == null ? null : fr_r9.item.col1) || "\u2014");
+    \u0275\u0275advance(2);
+    \u0275\u0275textInterpolate((fr_r9.item == null ? null : fr_r9.item.itemName) || "\u2014");
+    \u0275\u0275advance(2);
+    \u0275\u0275textInterpolate(ctx_r2.itemCol3Display(fr_r9.item) || "\u2014");
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional((fr_r9.item == null ? null : fr_r9.item.amount) != null ? 16 : 17);
     \u0275\u0275advance(3);
-    \u0275\u0275conditional((tmp_18_0 = row_r8.approvalStatus) === "approved" ? 18 : tmp_18_0 === "pending" ? 19 : tmp_18_0 === "rejected" ? 20 : 21);
-    \u0275\u0275advance(5);
-    \u0275\u0275conditional(row_r8.paidAt ? 23 : 24);
-    \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate(row_r8.createdAt);
+    \u0275\u0275conditional(fr_r9.isFirstRow ? 19 : -1);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(fr_r9.isFirstRow ? 21 : -1);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(fr_r9.isFirstRow ? 23 : -1);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(fr_r9.isFirstRow ? 25 : -1);
   }
 }
-function PaymentReport_ForEmpty_60_Conditional_2_Template(rf, ctx) {
+function PaymentReport_ForEmpty_71_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u8F09\u5165\u4E2D... ");
   }
 }
-function PaymentReport_ForEmpty_60_Conditional_3_Template(rf, ctx) {
+function PaymentReport_ForEmpty_71_Conditional_3_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " \u8ACB\u5148\u9078\u64C7\u985E\u5225\u4E26\u6309\u4E0B\u300C\u7BE9\u9078\u300D ");
+  }
+}
+function PaymentReport_ForEmpty_71_Conditional_4_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0, " \u5C1A\u7121\u8CC7\u6599 ");
   }
 }
-function PaymentReport_ForEmpty_60_Template(rf, ctx) {
+function PaymentReport_ForEmpty_71_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 53);
-    \u0275\u0275conditionalCreate(2, PaymentReport_ForEmpty_60_Conditional_2_Template, 1, 0)(3, PaymentReport_ForEmpty_60_Conditional_3_Template, 1, 0);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 57);
+    \u0275\u0275conditionalCreate(2, PaymentReport_ForEmpty_71_Conditional_2_Template, 1, 0)(3, PaymentReport_ForEmpty_71_Conditional_3_Template, 1, 0)(4, PaymentReport_ForEmpty_71_Conditional_4_Template, 1, 0);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext();
+    const ctx_r2 = \u0275\u0275nextContext();
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r1.loading() ? 2 : 3);
+    \u0275\u0275conditional(ctx_r2.loading() ? 2 : !ctx_r2.selectedCategory() ? 3 : 4);
   }
 }
-function PaymentReport_Conditional_61_Template(rf, ctx) {
+function PaymentReport_Conditional_72_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tfoot")(1, "tr", 25)(2, "td", 54);
+    \u0275\u0275elementStart(0, "tfoot")(1, "tr", 26)(2, "td", 58);
     \u0275\u0275text(3, "\u5408\u8A08");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "td", 55);
-    \u0275\u0275text(5, "\u5408\u8A08");
+    \u0275\u0275elementStart(4, "td", 59);
+    \u0275\u0275text(5);
+    \u0275\u0275pipe(6, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "td", 45);
-    \u0275\u0275text(7);
-    \u0275\u0275pipe(8, "number");
+    \u0275\u0275elementStart(7, "td", 47);
+    \u0275\u0275text(8);
+    \u0275\u0275pipe(9, "number");
     \u0275\u0275elementEnd();
-    \u0275\u0275element(9, "td", 56)(10, "td", 57);
+    \u0275\u0275element(10, "td", 60);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275advance(7);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(8, 1, ctx_r1.totalAmount(), "1.0-0"));
+    const ctx_r2 = \u0275\u0275nextContext();
+    \u0275\u0275advance(5);
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(6, 2, ctx_r2.itemTotal(), "1.0-0"));
+    \u0275\u0275advance(3);
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(9, 5, ctx_r2.totalAmount(), "1.0-0"));
   }
 }
-function PaymentReport_Conditional_62_Template(rf, ctx) {
+function PaymentReport_Conditional_73_Template(rf, ctx) {
   if (rf & 1) {
-    const _r9 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 32)(1, "span", 58);
+    const _r10 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 35)(1, "span", 44);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div", 59)(4, "button", 60);
-    \u0275\u0275listener("click", function PaymentReport_Conditional_62_Template_button_click_4_listener() {
-      \u0275\u0275restoreView(_r9);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.goToPage(ctx_r1.currentPage() - 1));
+    \u0275\u0275elementStart(3, "div", 61)(4, "button", 62);
+    \u0275\u0275listener("click", function PaymentReport_Conditional_73_Template_button_click_4_listener() {
+      \u0275\u0275restoreView(_r10);
+      const ctx_r2 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r2.goToPage(ctx_r2.currentPage() - 1));
     });
     \u0275\u0275text(5, "\u4E0A\u4E00\u9801");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "button", 60);
-    \u0275\u0275listener("click", function PaymentReport_Conditional_62_Template_button_click_6_listener() {
-      \u0275\u0275restoreView(_r9);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.goToPage(ctx_r1.currentPage() + 1));
+    \u0275\u0275elementStart(6, "button", 62);
+    \u0275\u0275listener("click", function PaymentReport_Conditional_73_Template_button_click_6_listener() {
+      \u0275\u0275restoreView(_r10);
+      const ctx_r2 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r2.goToPage(ctx_r2.currentPage() + 1));
     });
     \u0275\u0275text(7, "\u4E0B\u4E00\u9801");
     \u0275\u0275elementEnd()()();
   }
   if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext();
+    const ctx_r2 = \u0275\u0275nextContext();
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate3("\u5171 ", ctx_r1.totalCount(), " \u7B46\uFF0C\u7B2C ", ctx_r1.currentPage(), " / ", ctx_r1.totalPages(), " \u9801");
+    \u0275\u0275textInterpolate3("\u5171 ", ctx_r2.totalCount(), " \u7B46\uFF0C\u7B2C ", ctx_r2.currentPage(), " / ", ctx_r2.totalPages(), " \u9801");
     \u0275\u0275advance(2);
-    \u0275\u0275property("disabled", ctx_r1.currentPage() <= 1);
+    \u0275\u0275property("disabled", ctx_r2.currentPage() <= 1);
     \u0275\u0275advance(2);
-    \u0275\u0275property("disabled", ctx_r1.currentPage() >= ctx_r1.totalPages());
+    \u0275\u0275property("disabled", ctx_r2.currentPage() >= ctx_r2.totalPages());
   }
 }
+var CATEGORY_OPTIONS = [
+  { value: "payment", label: "\u8ACB\u6B3E" },
+  { value: "advance", label: "\u9810\u652F" },
+  { value: "writeoff", label: "\u9810\u652F\u6C96\u92B7" },
+  { value: "travel-payment", label: "\u51FA\u5DEE\u8ACB\u6B3E" },
+  { value: "travel", label: "\u51FA\u5DEE\u9810\u652F" },
+  { value: "travel-writeoff", label: "\u51FA\u5DEE\u9810\u652F\u6C96\u92B7" }
+];
 var PAYMENT_TYPE_LABELS3 = {
   vendor: "\u5EE0\u5546\u8ACB\u6B3E",
   general: "\u4E00\u822C\u8ACB\u6B3E",
-  business_trip: "\u54E1\u5DE5\u516C\u51FA\u8ACB\u6B3E"
+  business_trip: "\u54E1\u5DE5\u516C\u51FA\u8ACB\u6B3E",
+  advance: "\u9810\u652F",
+  writeoff: "\u9810\u652F\u6C96\u92B7",
+  "travel-payment": "\u51FA\u5DEE\u8ACB\u6B3E",
+  travel: "\u51FA\u5DEE\u9810\u652F",
+  "travel-writeoff": "\u51FA\u5DEE\u9810\u652F\u6C96\u92B7"
 };
 var STATUS_LABELS = {
   pending: "\u5F85\u5BE9\u6838",
@@ -54303,10 +54445,21 @@ var STATUS_LABELS = {
   rejected: "\u5DF2\u62D2\u7D55",
   returned: "\u9000\u56DE\u4FEE\u6539"
 };
+var ITEM_HEADERS = {
+  "payment": ["\u767C\u7968\u865F\u78BC", "\u54C1\u540D", "\u767C\u7968\u65E5\u671F", "\u767C\u7968\u91D1\u984D"],
+  "advance": ["\u985E\u5225", "\u54C1\u540D", "\u6578\u91CF", "\u91D1\u984D"],
+  "writeoff": ["\u767C\u7968\u865F\u78BC", "\u54C1\u540D", "\u767C\u7968\u65E5\u671F", "\u91D1\u984D"],
+  "travel-payment": ["\u767C\u7968\u865F\u78BC", "\u54C1\u540D", "\u767C\u7968\u65E5\u671F", "\u767C\u7968\u91D1\u984D"],
+  "travel": ["\u767C\u7968\u865F\u78BC", "\u54C1\u540D", "\u767C\u7968\u65E5\u671F", "\u91D1\u984D"],
+  "travel-writeoff": ["\u767C\u7968\u865F\u78BC", "\u54C1\u540D", "\u767C\u7968\u65E5\u671F", "\u91D1\u984D"]
+};
 var EXPORT_WARN_THRESHOLD = 1e3;
 var PaymentReport = class _PaymentReport {
   http = inject(HttpClient);
   toastr = inject(ToastrService);
+  /** 類別下拉選單 */
+  categoryOptions = CATEGORY_OPTIONS;
+  selectedCategory = signal("", ...ngDevMode ? [{ debugName: "selectedCategory" }] : []);
   /** 篩選條件 */
   selectedPaymentStatus = signal("", ...ngDevMode ? [{ debugName: "selectedPaymentStatus" }] : []);
   /** 時段模式：日 / 週 / 月（預設月）*/
@@ -54331,6 +54484,35 @@ var PaymentReport = class _PaymentReport {
   pageSize = 20;
   /** 合計 */
   totalAmount = signal(0, ...ngDevMode ? [{ debugName: "totalAmount" }] : []);
+  /** advance 類別：明細第 3 欄為「數量」（字串）；其他類別為「發票日期」 */
+  isAdvanceCategory = computed(() => this.selectedCategory() === "advance", ...ngDevMode ? [{ debugName: "isAdvanceCategory" }] : []);
+  /** 明細 4 欄表頭（依類別決定） */
+  itemHeaders = computed(() => {
+    return ITEM_HEADERS[this.selectedCategory()] ?? ["", "", "", ""];
+  }, ...ngDevMode ? [{ debugName: "itemHeaders" }] : []);
+  /** 攤平：每筆主表 × items → 多列 FlatPaymentRow（無 items 仍輸出 1 列） */
+  flatRows = computed(() => {
+    const result = [];
+    for (const r of this.records()) {
+      if (!r.items || r.items.length === 0) {
+        result.push({ key: `${r.id}-0`, record: r, item: null, isFirstRow: true });
+      } else {
+        r.items.forEach((item, idx) => {
+          result.push({ key: `${r.id}-${idx}`, record: r, item, isFirstRow: idx === 0 });
+        });
+      }
+    }
+    return result;
+  }, ...ngDevMode ? [{ debugName: "flatRows" }] : []);
+  /** 明細金額合計（跨全部 items） */
+  itemTotal = computed(() => {
+    let sum = 0;
+    for (const r of this.records()) {
+      for (const it of r.items ?? [])
+        sum += it.amount ?? 0;
+    }
+    return sum;
+  }, ...ngDevMode ? [{ debugName: "itemTotal" }] : []);
   ngOnInit() {
     const now = /* @__PURE__ */ new Date();
     const currentYear = now.getFullYear();
@@ -54340,7 +54522,6 @@ var PaymentReport = class _PaymentReport {
     const today = todayString(now);
     this.selectedDate.set(today);
     this.selectedWeekDate.set(today);
-    this.search();
   }
   /** 週模式 snap 結果（含週號 / 起訖日） */
   weekRange = computed(() => snapToIsoWeek(this.selectedWeekDate()), ...ngDevMode ? [{ debugName: "weekRange" }] : []);
@@ -54379,14 +54560,22 @@ var PaymentReport = class _PaymentReport {
     const month = this.selectedMonth() || "\u5168\u90E8";
     return `${year}-${String(month).padStart(2, "0")}`;
   }
+  categoryLabel() {
+    return CATEGORY_OPTIONS.find((o) => o.value === this.selectedCategory())?.label ?? "\u2014";
+  }
   /** 將篩選條件轉成可讀字串（寫入 Excel 第一列摘要） */
   filterSummaryLine() {
+    const cat = `\u985E\u5225\uFF1A${this.categoryLabel()}`;
     const period = `\u6642\u6BB5\uFF1A${this.exportSuffix()}`;
     const statusLabel = { paid: "\u5DF2\u4ED8", unpaid: "\u672A\u4ED8" };
     const status = `\u4ED8\u6B3E\u72C0\u614B\uFF1A${statusLabel[this.selectedPaymentStatus()] ?? "\u5168\u90E8"}`;
-    return `${period}\u3000${status}`;
+    return `${cat}\u3000${period}\u3000${status}`;
   }
   search() {
+    if (!this.selectedCategory()) {
+      this.toastr.warning("\u8ACB\u5148\u9078\u64C7\u985E\u5225", "\u63D0\u793A");
+      return;
+    }
     this.currentPage.set(1);
     this.fetchData();
   }
@@ -54396,6 +54585,7 @@ var PaymentReport = class _PaymentReport {
   }
   buildParams(paged = true) {
     const params = {};
+    params["category"] = this.selectedCategory();
     if (paged) {
       params["page"] = this.currentPage();
       params["pageSize"] = this.pageSize;
@@ -54410,6 +54600,13 @@ var PaymentReport = class _PaymentReport {
     return params;
   }
   mapRow(r) {
+    const items = (r.items ?? []).map((it) => ({
+      col1: it.col1 ?? null,
+      itemName: it.itemName ?? null,
+      col3Text: it.col3Text ?? null,
+      col3Date: it.col3Date ?? null,
+      amount: it.amount ?? null
+    }));
     return {
       id: r.id,
       requestNo: r.requestNo ?? "",
@@ -54423,8 +54620,17 @@ var PaymentReport = class _PaymentReport {
       approvalStatus: r.approvalStatus,
       statusLabel: STATUS_LABELS[r.approvalStatus] ?? r.approvalStatus,
       paidAt: r.paidAt ? new Date(r.paidAt).toLocaleDateString("zh-TW") : "",
-      createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString("zh-TW") : ""
+      createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString("zh-TW") : "",
+      items
     };
+  }
+  /** 顯示明細日期：advance 類別取 col3Text（數量），其他取 col3Date 格式化 */
+  itemCol3Display(item) {
+    if (!item)
+      return "";
+    if (this.isAdvanceCategory())
+      return item.col3Text ?? "";
+    return item.col3Date ? new Date(item.col3Date).toLocaleDateString("zh-TW") : "";
   }
   fetchData() {
     this.loading.set(true);
@@ -54460,6 +54666,10 @@ var PaymentReport = class _PaymentReport {
     return `${yyyy}-${mm}-${dd}`;
   }
   exportExcel() {
+    if (!this.selectedCategory()) {
+      this.toastr.warning("\u8ACB\u5148\u9078\u64C7\u985E\u5225", "\u63D0\u793A");
+      return;
+    }
     this.exporting.set(true);
     const params = this.buildParams(false);
     this.http.get(`${environment.apiUrl}/reports/payment/export`, { params }).subscribe({
@@ -54490,46 +54700,54 @@ var PaymentReport = class _PaymentReport {
     });
   }
   buildAndDownloadXlsx(rows) {
+    const category = this.selectedCategory();
+    const itemHeaders = ITEM_HEADERS[category] ?? ["", "", "", ""];
     const headers = [
       "\u55AE\u865F",
       "\u54E1\u5DE5\u59D3\u540D",
-      "\u8ACB\u6B3E\u985E\u578B",
+      "\u985E\u578B",
       "\u5C08\u6848\u4EE3\u78BC",
       "\u5C08\u6848\u540D\u7A31",
       "\u7C3D\u6838\u72C0\u614B",
       "\u7533\u8ACB\u65E5\u671F",
       "\u4ED8\u6B3E\u65E5\u671F",
-      "\u8ACB\u6B3E\u55AE\u7E3D\u91D1\u984D",
-      "\u767C\u7968\u865F\u78BC",
-      "\u54C1\u540D",
-      "\u767C\u7968\u65E5\u671F",
-      "\u767C\u7968\u91D1\u984D"
+      "\u55AE\u64DA\u7E3D\u91D1\u984D",
+      ...itemHeaders
     ];
     const aoa = [
       [this.filterSummaryLine()],
       [],
       headers
     ];
-    let invoiceTotal = 0;
+    let lastParentId = null;
+    const perRequestTotals = /* @__PURE__ */ new Map();
+    const isAdvance = category === "advance";
     for (const r of rows) {
-      const amount = r.invoiceAmount ?? 0;
-      invoiceTotal += amount;
+      const isFirstRow = r.parentId !== lastParentId;
+      if (isFirstRow) {
+        lastParentId = r.parentId;
+        perRequestTotals.set(r.parentId, r.paymentTotalAmount ?? 0);
+      }
+      const itemCol3 = isAdvance ? r.itemCol3Text ?? "" : this.toIsoDate(r.itemCol3Date);
       aoa.push([
-        r.requestNo ?? "",
-        r.employeeName ?? "\u2014",
-        PAYMENT_TYPE_LABELS3[r.type] ?? r.type,
-        r.projectCode ?? "\u2014",
-        r.projectName ?? "",
-        STATUS_LABELS[r.approvalStatus] ?? r.approvalStatus,
-        this.toIsoDate(r.createdAt),
-        this.toIsoDate(r.paidAt),
-        r.paymentTotalAmount ?? 0,
-        r.invoiceNo ?? "",
-        r.invoiceItemName ?? "",
-        this.toIsoDate(r.invoiceDate),
-        r.invoiceAmount ?? null
+        isFirstRow ? r.requestNo ?? "" : "",
+        isFirstRow ? r.employeeName ?? "\u2014" : "",
+        isFirstRow ? PAYMENT_TYPE_LABELS3[r.type] ?? r.type : "",
+        isFirstRow ? r.projectCode ?? "\u2014" : "",
+        isFirstRow ? r.projectName ?? "" : "",
+        isFirstRow ? STATUS_LABELS[r.approvalStatus] ?? r.approvalStatus : "",
+        isFirstRow ? this.toIsoDate(r.createdAt) : "",
+        isFirstRow ? this.toIsoDate(r.paidAt) : "",
+        isFirstRow ? r.paymentTotalAmount ?? 0 : "",
+        // 明細層 4 欄永遠輸出
+        r.itemCol1 ?? "",
+        r.itemName ?? "",
+        itemCol3,
+        r.itemAmount ?? null
       ]);
     }
+    const requestTotal = Array.from(perRequestTotals.values()).reduce((sum, v) => sum + v, 0);
+    const itemTotal = rows.reduce((sum, r) => sum + (r.itemAmount ?? 0), 0);
     aoa.push([
       "\u5408\u8A08",
       "",
@@ -54539,11 +54757,11 @@ var PaymentReport = class _PaymentReport {
       "",
       "",
       "",
+      requestTotal,
       "",
       "",
       "",
-      "",
-      invoiceTotal
+      itemTotal
     ]);
     const ws = utils.aoa_to_sheet(aoa);
     ws["!cols"] = [
@@ -54551,8 +54769,8 @@ var PaymentReport = class _PaymentReport {
       // 單號
       { wch: 12 },
       // 員工姓名
-      { wch: 10 },
-      // 請款類型
+      { wch: 12 },
+      // 類型
       { wch: 12 },
       // 專案代碼
       { wch: 24 },
@@ -54564,15 +54782,15 @@ var PaymentReport = class _PaymentReport {
       { wch: 12 },
       // 付款日期
       { wch: 14 },
-      // 請款單總金額
+      // 單據總金額
       { wch: 14 },
-      // 發票號碼
+      // 明細 Col1
       { wch: 20 },
       // 品名
       { wch: 12 },
-      // 發票日期
+      // 明細 Col3
       { wch: 14 }
-      // 發票金額
+      // 明細金額
     ];
     const headerRowIdx = 2;
     const totalRowIdx = aoa.length - 1;
@@ -54581,18 +54799,18 @@ var PaymentReport = class _PaymentReport {
       const totalCell = ws[utils.encode_cell({ r, c: 8 })];
       if (totalCell && typeof totalCell.v === "number")
         totalCell.z = numberFmt;
-      const invoiceCell = ws[utils.encode_cell({ r, c: 12 })];
-      if (invoiceCell && typeof invoiceCell.v === "number")
-        invoiceCell.z = numberFmt;
+      const itemCell = ws[utils.encode_cell({ r, c: 12 })];
+      if (itemCell && typeof itemCell.v === "number")
+        itemCell.z = numberFmt;
     }
     const wb = utils.book_new();
     utils.book_append_sheet(wb, ws, "\u6B3E\u9805\u7D71\u8A08");
-    writeFileSync(wb, `\u6B3E\u9805\u7D71\u8A08_${this.exportSuffix()}.xlsx`);
+    writeFileSync(wb, `\u6B3E\u9805\u7D71\u8A08_${this.categoryLabel()}_${this.exportSuffix()}.xlsx`);
   }
   static \u0275fac = function PaymentReport_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _PaymentReport)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _PaymentReport, selectors: [["app-payment-report"]], decls: 63, vars: 20, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#credit-card"], [1, "mb-0"], [1, "btn", "btn-outline", "inline-flex", "items-center", "gap-1", 3, "click", "disabled"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#download"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "px-4", "py-3", "border-b"], [1, "flex", "flex-wrap", "items-center", "gap-2"], [1, "form-select", 2, "width", "auto", "min-width", "140px", 3, "ngModelChange", "ngModel"], ["value", ""], ["value", "paid"], ["value", "unpaid"], [1, "inline-flex", "border", "rounded-md", "overflow-hidden"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", 3, "click"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", "border-l", "border-r", 3, "click"], ["type", "date", 1, "form-control", 2, "width", "auto", "min-width", "150px", 3, "ngModel"], [1, "btn", "btn-primary", 3, "click"], [1, "text-xs", "text-muted", "mt-2"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0"], [1, "table-light"], [1, "text-center"], [1, "hidden", "md:table-cell"], [1, "hidden", "lg:table-cell"], [1, "text-right"], [1, "text-center", "hidden", "md:table-cell"], [1, "text-center", "hidden", "lg:table-cell"], [1, "flex", "items-center", "justify-between", "px-4", "py-3", "border-t"], ["type", "date", 1, "form-control", 2, "width", "auto", "min-width", "150px", 3, "ngModelChange", "ngModel"], ["type", "button", "title", "\u4E0A\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "button", "title", "\u4E0B\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "button", "title", "\u56DE\u5230\u672C\u9031", 1, "btn", "btn-outline", "whitespace-nowrap", 3, "click"], [1, "form-select", 2, "width", "auto", "min-width", "120px", 3, "ngModelChange", "ngModel"], [3, "value"], [1, "font-monospace", "small"], [1, "fw-500"], [1, "badge", "bg-[--bg-base]", "text-[--text-secondary]", "small"], [1, "font-monospace", "small", "fw-500"], [1, "text-muted", "text-xs"], [1, "hidden", "lg:table-cell", "text-muted", "small", 2, "max-width", "180px", "overflow", "hidden", "text-overflow", "ellipsis", "white-space", "nowrap", 3, "title"], [1, "text-right", "fw-600"], [1, "badge", "bg-success-subtle", "text-success"], [1, "badge", "bg-warning-subtle", "text-warning-emphasis"], [1, "badge", "bg-danger-subtle", "text-danger"], [1, "badge", "bg-secondary-subtle", "text-secondary"], [1, "text-success", "small"], [1, "text-muted"], [1, "text-center", "hidden", "lg:table-cell", "text-muted", "small"], ["colspan", "9", 1, "text-center", "text-muted", "py-4"], ["colspan", "5", 1, "text-right", "fw-500", "small", "hidden", "lg:table-cell"], ["colspan", "3", 1, "text-right", "fw-500", "small", "table-cell", "lg:hidden"], ["colspan", "3", 1, "hidden", "md:table-cell"], [1, "table-cell", "md:hidden"], [1, "text-muted", "small"], [1, "flex", "gap-1"], [1, "btn", "btn-sm", "btn-outline", 3, "click", "disabled"]], template: function PaymentReport_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _PaymentReport, selectors: [["app-payment-report"]], decls: 74, vars: 25, consts: [[1, "container-fluid", "py-3"], [1, "flex", "flex-wrap", "items-center", "justify-between", "gap-2", "mb-6"], [1, "flex", "items-center", "gap-2"], [1, "sa-icon", "sa-icon-2x", "text-primary", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#credit-card"], [1, "mb-0"], [1, "btn", "btn-outline", "inline-flex", "items-center", "gap-1", 3, "click", "disabled"], [1, "sa-icon", 2, "stroke", "currentColor"], ["href", "/assets/icons/sprite.svg#download"], [1, "card", "border-0", "shadow-sm"], [1, "card-body", "p-0"], [1, "px-4", "py-3", "border-b"], [1, "flex", "flex-wrap", "items-center", "gap-2"], [1, "form-select", 2, "width", "auto", "min-width", "140px", 3, "ngModelChange", "ngModel"], ["value", ""], [3, "value"], ["value", "paid"], ["value", "unpaid"], [1, "inline-flex", "border", "rounded-md", "overflow-hidden"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", 3, "click"], ["type", "button", 1, "px-3", "py-1.5", "text-sm", "border-l", "border-r", 3, "click"], ["type", "date", 1, "form-control", 2, "width", "auto", "min-width", "150px", 3, "ngModel"], [1, "btn", "btn-primary", 3, "click"], [1, "text-xs", "text-muted", "mt-2"], [1, "table-responsive"], [1, "table", "table-hover", "mb-0", "payment-report-table"], [1, "table-light"], [1, "hidden", "lg:table-cell", "text-center"], [1, "hidden", "md:table-cell"], [1, "text-right"], [1, "text-right", "hidden", "md:table-cell"], [1, "text-center"], [1, "text-center", "hidden", "md:table-cell"], [1, "text-center", "hidden", "lg:table-cell"], [3, "row-group-start"], [1, "flex", "items-center", "justify-between", "px-4", "py-3", "border-t"], ["type", "date", 1, "form-control", 2, "width", "auto", "min-width", "150px", 3, "ngModelChange", "ngModel"], ["type", "button", "title", "\u4E0A\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "button", "title", "\u4E0B\u4E00\u9031", 1, "btn", "btn-outline", "px-2", 3, "click"], ["type", "button", "title", "\u56DE\u5230\u672C\u9031", 1, "btn", "btn-outline", "whitespace-nowrap", 3, "click"], [1, "form-select", 2, "width", "auto", "min-width", "120px", 3, "ngModelChange", "ngModel"], [1, "font-monospace", "small"], [1, "fw-500"], [1, "badge", "bg-[--bg-base]", "text-[--text-secondary]", "small"], [1, "text-muted", "small"], [1, "small"], [1, "hidden", "md:table-cell", "text-muted", "small"], [1, "text-right", "fw-600", "hidden", "md:table-cell"], [1, "text-center", "hidden", "lg:table-cell", "text-muted", "small"], [1, "font-monospace", "small", "fw-500"], [1, "text-muted", "text-xs"], [1, "badge", "bg-success-subtle", "text-success"], [1, "badge", "bg-warning-subtle", "text-warning-emphasis"], [1, "badge", "bg-danger-subtle", "text-danger"], [1, "badge", "bg-secondary-subtle", "text-secondary"], [1, "text-success", "small"], [1, "text-muted"], ["colspan", "12", 1, "text-center", "text-muted", "py-4"], ["colspan", "7", 1, "text-right", "fw-500", "small"], [1, "text-right", "fw-600"], ["colspan", "3"], [1, "flex", "gap-1"], [1, "btn", "btn-sm", "btn-outline", 3, "click", "disabled"]], template: function PaymentReport_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "div", 2);
       \u0275\u0275namespaceSVG();
@@ -54616,86 +54834,108 @@ var PaymentReport = class _PaymentReport {
       \u0275\u0275namespaceHTML();
       \u0275\u0275elementStart(11, "div", 9)(12, "div", 10)(13, "div", 11)(14, "div", 12)(15, "select", 13);
       \u0275\u0275listener("ngModelChange", function PaymentReport_Template_select_ngModelChange_15_listener($event) {
-        return ctx.selectedPaymentStatus.set($event);
+        return ctx.selectedCategory.set($event);
       });
       \u0275\u0275elementStart(16, "option", 14);
-      \u0275\u0275text(17, "\u5168\u90E8\u4ED8\u6B3E\u72C0\u614B");
+      \u0275\u0275text(17, "\u8ACB\u9078\u64C7\u985E\u5225");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(18, "option", 15);
-      \u0275\u0275text(19, "\u5DF2\u4ED8");
+      \u0275\u0275repeaterCreate(18, PaymentReport_For_19_Template, 2, 2, "option", 15, _forTrack027);
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(20, "option", 16);
-      \u0275\u0275text(21, "\u672A\u4ED8");
+      \u0275\u0275elementStart(20, "select", 13);
+      \u0275\u0275listener("ngModelChange", function PaymentReport_Template_select_ngModelChange_20_listener($event) {
+        return ctx.selectedPaymentStatus.set($event);
+      });
+      \u0275\u0275elementStart(21, "option", 14);
+      \u0275\u0275text(22, "\u5168\u90E8\u4ED8\u6B3E\u72C0\u614B");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(23, "option", 16);
+      \u0275\u0275text(24, "\u5DF2\u4ED8");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(25, "option", 17);
+      \u0275\u0275text(26, "\u672A\u4ED8");
       \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(22, "div", 17)(23, "button", 18);
-      \u0275\u0275listener("click", function PaymentReport_Template_button_click_23_listener() {
+      \u0275\u0275elementStart(27, "div", 18)(28, "button", 19);
+      \u0275\u0275listener("click", function PaymentReport_Template_button_click_28_listener() {
         return ctx.filterMode.set("day");
       });
-      \u0275\u0275text(24, "\u65E5");
+      \u0275\u0275text(29, "\u65E5");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(25, "button", 19);
-      \u0275\u0275listener("click", function PaymentReport_Template_button_click_25_listener() {
+      \u0275\u0275elementStart(30, "button", 20);
+      \u0275\u0275listener("click", function PaymentReport_Template_button_click_30_listener() {
         return ctx.filterMode.set("week");
       });
-      \u0275\u0275text(26, "\u9031");
+      \u0275\u0275text(31, "\u9031");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(27, "button", 18);
-      \u0275\u0275listener("click", function PaymentReport_Template_button_click_27_listener() {
+      \u0275\u0275elementStart(32, "button", 19);
+      \u0275\u0275listener("click", function PaymentReport_Template_button_click_32_listener() {
         return ctx.filterMode.set("month");
       });
-      \u0275\u0275text(28, "\u6708");
+      \u0275\u0275text(33, "\u6708");
       \u0275\u0275elementEnd()();
-      \u0275\u0275conditionalCreate(29, PaymentReport_Conditional_29_Template, 1, 1, "input", 20)(30, PaymentReport_Conditional_30_Template, 7, 1)(31, PaymentReport_Conditional_31_Template, 10, 2);
-      \u0275\u0275elementStart(32, "button", 21);
-      \u0275\u0275listener("click", function PaymentReport_Template_button_click_32_listener() {
+      \u0275\u0275conditionalCreate(34, PaymentReport_Conditional_34_Template, 1, 1, "input", 21)(35, PaymentReport_Conditional_35_Template, 7, 1)(36, PaymentReport_Conditional_36_Template, 10, 2);
+      \u0275\u0275elementStart(37, "button", 22);
+      \u0275\u0275listener("click", function PaymentReport_Template_button_click_37_listener() {
         return ctx.search();
       });
-      \u0275\u0275text(33, "\u7BE9\u9078");
+      \u0275\u0275text(38, "\u7BE9\u9078");
       \u0275\u0275elementEnd()();
-      \u0275\u0275conditionalCreate(34, PaymentReport_Conditional_34_Template, 2, 3, "div", 22);
+      \u0275\u0275conditionalCreate(39, PaymentReport_Conditional_39_Template, 2, 3, "div", 23);
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(35, "div", 23)(36, "table", 24)(37, "thead", 25)(38, "tr")(39, "th");
-      \u0275\u0275text(40, "\u55AE\u865F");
+      \u0275\u0275elementStart(40, "div", 24)(41, "table", 25)(42, "thead", 26)(43, "tr")(44, "th");
+      \u0275\u0275text(45, "\u55AE\u865F");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(41, "th");
-      \u0275\u0275text(42, "\u54E1\u5DE5\u59D3\u540D");
+      \u0275\u0275elementStart(46, "th");
+      \u0275\u0275text(47, "\u54E1\u5DE5\u59D3\u540D");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(43, "th", 26);
-      \u0275\u0275text(44, "\u8ACB\u6B3E\u985E\u578B");
+      \u0275\u0275elementStart(48, "th", 27);
+      \u0275\u0275text(49, "\u985E\u578B");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(45, "th", 27);
-      \u0275\u0275text(46, "\u5C08\u6848");
+      \u0275\u0275elementStart(50, "th", 28);
+      \u0275\u0275text(51, "\u5C08\u6848");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(47, "th", 28);
-      \u0275\u0275text(48, "\u767C\u7968\u865F\u78BC");
+      \u0275\u0275elementStart(52, "th");
+      \u0275\u0275text(53);
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(49, "th", 29);
-      \u0275\u0275text(50, "\u7E3D\u91D1\u984D");
+      \u0275\u0275elementStart(54, "th");
+      \u0275\u0275text(55);
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(51, "th", 26);
-      \u0275\u0275text(52, "\u7C3D\u6838\u72C0\u614B");
+      \u0275\u0275elementStart(56, "th", 28);
+      \u0275\u0275text(57);
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(53, "th", 30);
-      \u0275\u0275text(54, "\u4ED8\u6B3E\u65E5\u671F");
+      \u0275\u0275elementStart(58, "th", 29);
+      \u0275\u0275text(59);
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(55, "th", 31);
-      \u0275\u0275text(56, "\u7533\u8ACB\u65E5\u671F");
+      \u0275\u0275elementStart(60, "th", 30);
+      \u0275\u0275text(61, "\u7E3D\u91D1\u984D");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(62, "th", 31);
+      \u0275\u0275text(63, "\u7C3D\u6838\u72C0\u614B");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(64, "th", 32);
+      \u0275\u0275text(65, "\u4ED8\u6B3E\u65E5\u671F");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(66, "th", 33);
+      \u0275\u0275text(67, "\u7533\u8ACB\u65E5\u671F");
       \u0275\u0275elementEnd()()();
-      \u0275\u0275elementStart(57, "tbody");
-      \u0275\u0275repeaterCreate(58, PaymentReport_For_59_Template, 27, 14, "tr", null, _forTrack027, false, PaymentReport_ForEmpty_60_Template, 4, 1, "tr");
+      \u0275\u0275elementStart(68, "tbody");
+      \u0275\u0275repeaterCreate(69, PaymentReport_For_70_Template, 26, 14, "tr", 34, _forTrack17, false, PaymentReport_ForEmpty_71_Template, 5, 1, "tr");
       \u0275\u0275elementEnd();
-      \u0275\u0275conditionalCreate(61, PaymentReport_Conditional_61_Template, 11, 4, "tfoot");
+      \u0275\u0275conditionalCreate(72, PaymentReport_Conditional_72_Template, 11, 8, "tfoot");
       \u0275\u0275elementEnd()();
-      \u0275\u0275conditionalCreate(62, PaymentReport_Conditional_62_Template, 8, 5, "div", 32);
+      \u0275\u0275conditionalCreate(73, PaymentReport_Conditional_73_Template, 8, 5, "div", 35);
       \u0275\u0275elementEnd()()();
     }
     if (rf & 2) {
-      let tmp_10_0;
+      let tmp_12_0;
       \u0275\u0275advance(7);
       \u0275\u0275property("disabled", ctx.exporting() || ctx.totalCount() === 0);
       \u0275\u0275advance(3);
       \u0275\u0275textInterpolate1(" ", ctx.exporting() ? "\u532F\u51FA\u4E2D..." : "\u532F\u51FA", " ");
       \u0275\u0275advance(5);
+      \u0275\u0275property("ngModel", ctx.selectedCategory());
+      \u0275\u0275advance(3);
+      \u0275\u0275repeater(ctx.categoryOptions);
+      \u0275\u0275advance(2);
       \u0275\u0275property("ngModel", ctx.selectedPaymentStatus());
       \u0275\u0275advance(8);
       \u0275\u0275classProp("bg-primary", ctx.filterMode() === "day")("text-white", ctx.filterMode() === "day");
@@ -54704,17 +54944,25 @@ var PaymentReport = class _PaymentReport {
       \u0275\u0275advance(2);
       \u0275\u0275classProp("bg-primary", ctx.filterMode() === "month")("text-white", ctx.filterMode() === "month");
       \u0275\u0275advance(2);
-      \u0275\u0275conditional(ctx.filterMode() === "day" ? 29 : ctx.filterMode() === "week" ? 30 : 31);
+      \u0275\u0275conditional(ctx.filterMode() === "day" ? 34 : ctx.filterMode() === "week" ? 35 : 36);
       \u0275\u0275advance(5);
-      \u0275\u0275conditional((tmp_10_0 = ctx.filterMode() === "week" && ctx.weekRange()) ? 34 : -1, tmp_10_0);
-      \u0275\u0275advance(24);
-      \u0275\u0275repeater(ctx.records());
+      \u0275\u0275conditional((tmp_12_0 = ctx.filterMode() === "week" && ctx.weekRange()) ? 39 : -1, tmp_12_0);
+      \u0275\u0275advance(14);
+      \u0275\u0275textInterpolate(ctx.itemHeaders()[0] || "\u2014");
+      \u0275\u0275advance(2);
+      \u0275\u0275textInterpolate(ctx.itemHeaders()[1] || "\u54C1\u540D");
+      \u0275\u0275advance(2);
+      \u0275\u0275textInterpolate(ctx.itemHeaders()[2] || "\u2014");
+      \u0275\u0275advance(2);
+      \u0275\u0275textInterpolate(ctx.itemHeaders()[3] || "\u91D1\u984D");
+      \u0275\u0275advance(10);
+      \u0275\u0275repeater(ctx.flatRows());
       \u0275\u0275advance(3);
-      \u0275\u0275conditional(ctx.records().length > 0 ? 61 : -1);
+      \u0275\u0275conditional(ctx.records().length > 0 ? 72 : -1);
       \u0275\u0275advance();
-      \u0275\u0275conditional(ctx.totalPages() > 1 ? 62 : -1);
+      \u0275\u0275conditional(ctx.totalPages() > 1 ? 73 : -1);
     }
-  }, dependencies: [CommonModule, FormsModule, NgSelectOption, \u0275NgSelectMultipleOption, DefaultValueAccessor, SelectControlValueAccessor, NgControlStatus, NgModel, DecimalPipe], encapsulation: 2 });
+  }, dependencies: [CommonModule, FormsModule, NgSelectOption, \u0275NgSelectMultipleOption, DefaultValueAccessor, SelectControlValueAccessor, NgControlStatus, NgModel, DecimalPipe], styles: ['@charset "UTF-8";\n\n\n\n.payment-report-table[_ngcontent-%COMP%]   tbody[_ngcontent-%COMP%]   tr.row-group-start[_ngcontent-%COMP%]   td[_ngcontent-%COMP%] {\n  border-top: 2px solid var(--bs-border-color, #dee2e6);\n}\n.payment-report-table[_ngcontent-%COMP%]   tbody[_ngcontent-%COMP%]   tr[_ngcontent-%COMP%]:not(.row-group-start)   td[_ngcontent-%COMP%] {\n  border-top: 0;\n}\n/*# sourceMappingURL=payment-report.css.map */'] });
 };
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(PaymentReport, [{
@@ -54742,6 +54990,13 @@ var PaymentReport = class _PaymentReport {
       <!-- Toolbar: \u7BE9\u9078\u5217 -->
       <div class="px-4 py-3 border-b">
         <div class="flex flex-wrap items-center gap-2">
+          <select class="form-select" style="width: auto; min-width: 140px"
+                  [ngModel]="selectedCategory()" (ngModelChange)="selectedCategory.set($event)">
+            <option value="">\u8ACB\u9078\u64C7\u985E\u5225</option>
+            @for (opt of categoryOptions; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
           <select class="form-select" style="width: auto; min-width: 140px"
                   [ngModel]="selectedPaymentStatus()" (ngModelChange)="selectedPaymentStatus.set($event)">
             <option value="">\u5168\u90E8\u4ED8\u6B3E\u72C0\u614B</option>
@@ -54791,68 +55046,94 @@ var PaymentReport = class _PaymentReport {
         }
       </div>
 
-      <!-- Table -->
+      <!-- Table\uFF08\u591A\u7B46\u660E\u7D30\u5404\u81EA\u4E00\u5217\uFF0C\u540C\u7B46\u7684\u8ACB\u6B3E\u5C64\u6B04\u4F4D\u50C5\u5728\u7B2C\u4E00\u5217\u986F\u793A\uFF09 -->
       <div class="table-responsive">
-        <table class="table table-hover mb-0">
+        <table class="table table-hover mb-0 payment-report-table">
           <thead class="table-light">
             <tr>
               <th>\u55AE\u865F</th>
               <th>\u54E1\u5DE5\u59D3\u540D</th>
-              <th class="text-center">\u8ACB\u6B3E\u985E\u578B</th>
+              <th class="hidden lg:table-cell text-center">\u985E\u578B</th>
               <th class="hidden md:table-cell">\u5C08\u6848</th>
-              <th class="hidden lg:table-cell">\u767C\u7968\u865F\u78BC</th>
-              <th class="text-right">\u7E3D\u91D1\u984D</th>
+              <th>{{ itemHeaders()[0] || '\u2014' }}</th>
+              <th>{{ itemHeaders()[1] || '\u54C1\u540D' }}</th>
+              <th class="hidden md:table-cell">{{ itemHeaders()[2] || '\u2014' }}</th>
+              <th class="text-right">{{ itemHeaders()[3] || '\u91D1\u984D' }}</th>
+              <th class="text-right hidden md:table-cell">\u7E3D\u91D1\u984D</th>
               <th class="text-center">\u7C3D\u6838\u72C0\u614B</th>
               <th class="text-center hidden md:table-cell">\u4ED8\u6B3E\u65E5\u671F</th>
               <th class="text-center hidden lg:table-cell">\u7533\u8ACB\u65E5\u671F</th>
             </tr>
           </thead>
           <tbody>
-            @for (row of records(); track row.id) {
-              <tr>
-                <td class="font-monospace small">{{ row.requestNo }}</td>
-                <td class="fw-500">{{ row.employeeName }}</td>
-                <td class="text-center">
-                  <span class="badge bg-[--bg-base] text-[--text-secondary] small">{{ row.typeLabel }}</span>
+            @for (fr of flatRows(); track fr.key) {
+              <tr [class.row-group-start]="fr.isFirstRow">
+                <td class="font-monospace small">
+                  @if (fr.isFirstRow) { {{ fr.record.requestNo }} }
                 </td>
-                <td class="hidden md:table-cell">
-                  <div class="font-monospace small fw-500">{{ row.projectCode }}</div>
-                  @if (row.projectName) {
-                    <div class="text-muted text-xs">{{ row.projectName }}</div>
+                <td class="fw-500">
+                  @if (fr.isFirstRow) { {{ fr.record.employeeName }} }
+                </td>
+                <td class="hidden lg:table-cell text-center">
+                  @if (fr.isFirstRow) {
+                    <span class="badge bg-[--bg-base] text-[--text-secondary] small">{{ fr.record.typeLabel }}</span>
                   }
                 </td>
-                <td class="hidden lg:table-cell text-muted small" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="row.invoiceNos">{{ row.invoiceNos || '\u2014' }}</td>
-                <td class="text-right fw-600">{{ row.totalAmount | number:'1.0-0' }}</td>
+                <td class="hidden md:table-cell">
+                  @if (fr.isFirstRow) {
+                    <div class="font-monospace small fw-500">{{ fr.record.projectCode }}</div>
+                    @if (fr.record.projectName) {
+                      <div class="text-muted text-xs">{{ fr.record.projectName }}</div>
+                    }
+                  }
+                </td>
+                <td class="text-muted small">{{ fr.item?.col1 || '\u2014' }}</td>
+                <td class="small">{{ fr.item?.itemName || '\u2014' }}</td>
+                <td class="hidden md:table-cell text-muted small">{{ itemCol3Display(fr.item) || '\u2014' }}</td>
+                <td class="text-right">
+                  @if (fr.item?.amount != null) { {{ fr.item?.amount | number:'1.0-0' }} } @else { \u2014 }
+                </td>
+                <td class="text-right fw-600 hidden md:table-cell">
+                  @if (fr.isFirstRow) { {{ fr.record.totalAmount | number:'1.0-0' }} }
+                </td>
                 <td class="text-center">
-                  @switch (row.approvalStatus) {
-                    @case ('approved') {
-                      <span class="badge bg-success-subtle text-success">{{ row.statusLabel }}</span>
-                    }
-                    @case ('pending') {
-                      <span class="badge bg-warning-subtle text-warning-emphasis">{{ row.statusLabel }}</span>
-                    }
-                    @case ('rejected') {
-                      <span class="badge bg-danger-subtle text-danger">{{ row.statusLabel }}</span>
-                    }
-                    @default {
-                      <span class="badge bg-secondary-subtle text-secondary">{{ row.statusLabel }}</span>
+                  @if (fr.isFirstRow) {
+                    @switch (fr.record.approvalStatus) {
+                      @case ('approved') {
+                        <span class="badge bg-success-subtle text-success">{{ fr.record.statusLabel }}</span>
+                      }
+                      @case ('pending') {
+                        <span class="badge bg-warning-subtle text-warning-emphasis">{{ fr.record.statusLabel }}</span>
+                      }
+                      @case ('rejected') {
+                        <span class="badge bg-danger-subtle text-danger">{{ fr.record.statusLabel }}</span>
+                      }
+                      @default {
+                        <span class="badge bg-secondary-subtle text-secondary">{{ fr.record.statusLabel }}</span>
+                      }
                     }
                   }
                 </td>
                 <td class="text-center hidden md:table-cell">
-                  @if (row.paidAt) {
-                    <span class="text-success small">{{ row.paidAt }}</span>
-                  } @else {
-                    <span class="text-muted">\u2014</span>
+                  @if (fr.isFirstRow) {
+                    @if (fr.record.paidAt) {
+                      <span class="text-success small">{{ fr.record.paidAt }}</span>
+                    } @else {
+                      <span class="text-muted">\u2014</span>
+                    }
                   }
                 </td>
-                <td class="text-center hidden lg:table-cell text-muted small">{{ row.createdAt }}</td>
+                <td class="text-center hidden lg:table-cell text-muted small">
+                  @if (fr.isFirstRow) { {{ fr.record.createdAt }} }
+                </td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="9" class="text-center text-muted py-4">
+                <td colspan="12" class="text-center text-muted py-4">
                   @if (loading()) {
                     \u8F09\u5165\u4E2D...
+                  } @else if (!selectedCategory()) {
+                    \u8ACB\u5148\u9078\u64C7\u985E\u5225\u4E26\u6309\u4E0B\u300C\u7BE9\u9078\u300D
                   } @else {
                     \u5C1A\u7121\u8CC7\u6599
                   }
@@ -54863,11 +55144,10 @@ var PaymentReport = class _PaymentReport {
           @if (records().length > 0) {
             <tfoot>
               <tr class="table-light">
-                <td colspan="5" class="text-right fw-500 small hidden lg:table-cell">\u5408\u8A08</td>
-                <td colspan="3" class="text-right fw-500 small table-cell lg:hidden">\u5408\u8A08</td>
-                <td class="text-right fw-600">{{ totalAmount() | number:'1.0-0' }}</td>
-                <td colspan="3" class="hidden md:table-cell"></td>
-                <td class="table-cell md:hidden"></td>
+                <td colspan="7" class="text-right fw-500 small">\u5408\u8A08</td>
+                <td class="text-right fw-600">{{ itemTotal() | number:'1.0-0' }}</td>
+                <td class="text-right fw-600 hidden md:table-cell">{{ totalAmount() | number:'1.0-0' }}</td>
+                <td colspan="3"></td>
               </tr>
             </tfoot>
           }
@@ -54888,11 +55168,11 @@ var PaymentReport = class _PaymentReport {
     </div>
   </div>
 </div>
-` }]
+`, styles: ['@charset "UTF-8";\n\n/* angular:styles/component:scss;dea576cfe70b29d2326f66ce8c17daeaa6a0a7c990774939235ec0ba454699cc;/Users/tim/webapps/Jabez/Admin/src/app/features/admin/reports/pages/payment-report/payment-report.ts */\n.payment-report-table tbody tr.row-group-start td {\n  border-top: 2px solid var(--bs-border-color, #dee2e6);\n}\n.payment-report-table tbody tr:not(.row-group-start) td {\n  border-top: 0;\n}\n/*# sourceMappingURL=payment-report.css.map */\n'] }]
   }], null, null);
 })();
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(PaymentReport, { className: "PaymentReport", filePath: "src/app/features/admin/reports/pages/payment-report/payment-report.ts", lineNumber: 65 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(PaymentReport, { className: "PaymentReport", filePath: "src/app/features/admin/reports/pages/payment-report/payment-report.ts", lineNumber: 114 });
 })();
 
 // src/app/features/admin/reports/pages/project-water-level/project-water-level.ts
@@ -60228,7 +60508,7 @@ var ITEM_CATEGORIES3 = ["\u4EA4\u901A\u8CBB", "\u6D3B\u52D5\u8CBB", "\u8A2D\u8A0
 var _c025 = (a0) => [a0, "edit"];
 var _c110 = (a0) => [a0];
 var _forTrack034 = ($index, $item) => $item.key;
-var _forTrack17 = ($index, $item) => $item.id;
+var _forTrack18 = ($index, $item) => $item.id;
 function WriteOffList_a_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "a", 15);
@@ -60478,7 +60758,7 @@ function WriteOffList_For_30_Conditional_1_Conditional_19_For_1_Template(rf, ctx
 }
 function WriteOffList_For_30_Conditional_1_Conditional_19_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275repeaterCreate(0, WriteOffList_For_30_Conditional_1_Conditional_19_For_1_Template, 22, 16, "tr", 41, _forTrack17);
+    \u0275\u0275repeaterCreate(0, WriteOffList_For_30_Conditional_1_Conditional_19_For_1_Template, 22, 16, "tr", 41, _forTrack18);
   }
   if (rf & 2) {
     const g_r4 = \u0275\u0275nextContext(2).$implicit;
@@ -61014,7 +61294,7 @@ function _forTrack035($index, $item) {
   let tmp_0_0;
   return (tmp_0_0 = $item.get("id")) == null ? null : tmp_0_0.value;
 }
-var _forTrack18 = ($index, $item) => $item.id;
+var _forTrack19 = ($index, $item) => $item.id;
 function WriteOffRequestForm_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 7);
@@ -61167,7 +61447,7 @@ function WriteOffRequestForm_Conditional_15_Conditional_5_Template(rf, ctx) {
     \u0275\u0275elementStart(2, "option", 64);
     \u0275\u0275text(3, "-- \u8ACB\u9078\u64C7\u5DF2\u64A5\u6B3E\u7684\u9810\u652F\u55AE --");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(4, WriteOffRequestForm_Conditional_15_Conditional_5_For_5_Template, 2, 4, "option", 64, _forTrack18);
+    \u0275\u0275repeaterCreate(4, WriteOffRequestForm_Conditional_15_Conditional_5_For_5_Template, 2, 4, "option", 64, _forTrack19);
     \u0275\u0275elementEnd();
     \u0275\u0275conditionalCreate(6, WriteOffRequestForm_Conditional_15_Conditional_5_Conditional_6_Template, 18, 16);
     \u0275\u0275elementEnd();
@@ -61508,7 +61788,7 @@ function WriteOffRequestForm_Conditional_75_For_7_Template(rf, ctx) {
     \u0275\u0275elementStart(4, "option", 64);
     \u0275\u0275text(5, "\u2014 \u8077\u7A31 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(6, WriteOffRequestForm_Conditional_75_For_7_For_7_Template, 2, 2, "option", 64, _forTrack18);
+    \u0275\u0275repeaterCreate(6, WriteOffRequestForm_Conditional_75_For_7_For_7_Template, 2, 2, "option", 64, _forTrack19);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(8, "select", 97);
     \u0275\u0275twoWayListener("ngModelChange", function WriteOffRequestForm_Conditional_75_For_7_Template_select_ngModelChange_8_listener($event) {
@@ -61519,7 +61799,7 @@ function WriteOffRequestForm_Conditional_75_For_7_Template(rf, ctx) {
     \u0275\u0275elementStart(9, "option", 64);
     \u0275\u0275text(10, "\u2014 \u4EBA\u54E1 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(11, WriteOffRequestForm_Conditional_75_For_7_For_12_Template, 2, 2, "option", 64, _forTrack18);
+    \u0275\u0275repeaterCreate(11, WriteOffRequestForm_Conditional_75_For_7_For_12_Template, 2, 2, "option", 64, _forTrack19);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(13, "button", 98);
     \u0275\u0275listener("click", function WriteOffRequestForm_Conditional_75_For_7_Template_button_click_13_listener() {
@@ -63449,7 +63729,7 @@ var ITEM_CATEGORIES4 = ["\u4EA4\u901A\u8CBB", "\u4F4F\u5BBF\u8CBB", "\u9910\u8CB
 var _c028 = (a0) => [a0, "edit"];
 var _c112 = (a0) => [a0];
 var _forTrack037 = ($index, $item) => $item.key;
-var _forTrack19 = ($index, $item) => $item.id;
+var _forTrack110 = ($index, $item) => $item.id;
 function TravelWriteOffList_a_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "a", 15);
@@ -63654,7 +63934,7 @@ function TravelWriteOffList_For_30_Conditional_1_Conditional_17_For_1_Template(r
 }
 function TravelWriteOffList_For_30_Conditional_1_Conditional_17_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275repeaterCreate(0, TravelWriteOffList_For_30_Conditional_1_Conditional_17_For_1_Template, 20, 15, "tr", 41, _forTrack19);
+    \u0275\u0275repeaterCreate(0, TravelWriteOffList_For_30_Conditional_1_Conditional_17_For_1_Template, 20, 15, "tr", 41, _forTrack110);
   }
   if (rf & 2) {
     const g_r4 = \u0275\u0275nextContext(2).$implicit;
@@ -64170,7 +64450,7 @@ function _forTrack038($index, $item) {
   let tmp_0_0;
   return (tmp_0_0 = $item.get("id")) == null ? null : tmp_0_0.value;
 }
-var _forTrack110 = ($index, $item) => $item.id;
+var _forTrack111 = ($index, $item) => $item.id;
 function TravelWriteOffForm_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 7);
@@ -64324,7 +64604,7 @@ function TravelWriteOffForm_Conditional_15_Conditional_5_Template(rf, ctx) {
     \u0275\u0275elementStart(2, "option", 64);
     \u0275\u0275text(3, "-- \u8ACB\u9078\u64C7\u5DF2\u6838\u51C6\u7684\u51FA\u5DEE\u55AE --");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(4, TravelWriteOffForm_Conditional_15_Conditional_5_For_5_Template, 3, 10, "option", 64, _forTrack110);
+    \u0275\u0275repeaterCreate(4, TravelWriteOffForm_Conditional_15_Conditional_5_For_5_Template, 3, 10, "option", 64, _forTrack111);
     \u0275\u0275elementEnd();
     \u0275\u0275conditionalCreate(6, TravelWriteOffForm_Conditional_15_Conditional_5_Conditional_6_Template, 18, 16);
     \u0275\u0275elementEnd();
@@ -64619,7 +64899,7 @@ function TravelWriteOffForm_Conditional_71_For_7_Template(rf, ctx) {
     \u0275\u0275elementStart(4, "option", 64);
     \u0275\u0275text(5, "\u2014 \u8077\u7A31 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(6, TravelWriteOffForm_Conditional_71_For_7_For_7_Template, 2, 2, "option", 64, _forTrack110);
+    \u0275\u0275repeaterCreate(6, TravelWriteOffForm_Conditional_71_For_7_For_7_Template, 2, 2, "option", 64, _forTrack111);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(8, "select", 95);
     \u0275\u0275twoWayListener("ngModelChange", function TravelWriteOffForm_Conditional_71_For_7_Template_select_ngModelChange_8_listener($event) {
@@ -64630,7 +64910,7 @@ function TravelWriteOffForm_Conditional_71_For_7_Template(rf, ctx) {
     \u0275\u0275elementStart(9, "option", 64);
     \u0275\u0275text(10, "\u2014 \u4EBA\u54E1 \u2014");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(11, TravelWriteOffForm_Conditional_71_For_7_For_12_Template, 2, 2, "option", 64, _forTrack110);
+    \u0275\u0275repeaterCreate(11, TravelWriteOffForm_Conditional_71_For_7_For_12_Template, 2, 2, "option", 64, _forTrack111);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(13, "button", 96);
     \u0275\u0275listener("click", function TravelWriteOffForm_Conditional_71_For_7_Template_button_click_13_listener() {
@@ -66604,4 +66884,4 @@ xlsx/xlsx.mjs:
 xlsx/xlsx.mjs:
   (*! sheetjs (C) 2013-present SheetJS -- http://sheetjs.com *)
 */
-//# sourceMappingURL=chunk-ZVUCCMGV.js.map
+//# sourceMappingURL=chunk-7XS4LVRF.js.map
