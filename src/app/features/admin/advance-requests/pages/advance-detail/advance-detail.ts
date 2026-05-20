@@ -7,11 +7,12 @@ import {ApprovalTaskService} from '../../../approval-tasks/services/approval-tas
 import {ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
 import {AdvanceRequest, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/advance-request.model';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
+import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 
 @Component({
   selector: 'app-advance-detail',
   templateUrl: './advance-detail.html',
-  imports: [RouterLink, DecimalPipe, DatePipe, ApprovalTimeline],
+  imports: [RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, InstallmentsTable],
 })
 export class AdvanceDetail implements OnInit {
   private service = inject(AdvanceRequestService);

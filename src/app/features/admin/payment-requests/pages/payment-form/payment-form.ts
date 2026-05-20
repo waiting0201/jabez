@@ -9,8 +9,9 @@ import {debounceTime, distinctUntilChanged, map} from 'rxjs/operators';
 import heic2any from 'heic2any';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
+import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
-import {ApprovalFlow, ApprovalRecord, ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
+import {ApprovalFlow, ApprovalRecord, ApprovalTask, InstallmentDto, PaymentInstallmentStatus} from '../../../approval-tasks/models/approval-task.model';
 import {PaymentRequestService} from '../../services/payment-request.service';
 import {PaymentPdfService} from '../../services/payment-pdf.service';
 import {ProjectService} from '../../../projects/services/project.service';
@@ -29,7 +30,7 @@ import {NgbModal, NgbTypeahead, NgbTypeaheadSelectItemEvent} from '@ng-bootstrap
 @Component({
   selector: 'app-payment-form',
   templateUrl: './payment-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, NgbTypeahead],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, NgbTypeahead, InstallmentsTable],
 })
 export class PaymentForm implements OnInit {
   private fb           = inject(FormBuilder);
@@ -70,6 +71,10 @@ export class PaymentForm implements OnInit {
   taskCurrentStepOrder = 0;
   taskStatus = '';
   approvalTask: ApprovalTask | null = null;
+  // 分期撥款（read-only 顯示用，財務排定後申請人可查看）
+  installments: InstallmentDto[] | null = null;
+  paymentStatus: PaymentInstallmentStatus | null = null;
+  loadedTotalAmount = 0;
 
   /** 指定審核者相關 */
   hasDesignatedStep = false;
@@ -272,6 +277,9 @@ export class PaymentForm implements OnInit {
         this.projectName    = r.projectName ?? '';
         this.estimatedPaymentDate = r.estimatedPaymentDate?.toString().slice(0, 10) ?? '';
         this.paidAt               = r.paidAt?.toString().slice(0, 10) ?? '';
+        this.installments         = r.installments ?? null;
+        this.paymentStatus        = r.paymentStatus ?? null;
+        this.loadedTotalAmount    = r.totalAmount ?? 0;
         if (this.isReadOnly) this.form.disable();
         this.form.patchValue({type: r.type, projectId: r.projectId, reason: r.reason ?? '', vendorId: r.vendorId ?? null});
 

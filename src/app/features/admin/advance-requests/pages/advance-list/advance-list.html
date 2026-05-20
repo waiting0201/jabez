@@ -42,6 +42,9 @@
                 <td>
                   <div class="flex flex-wrap items-center gap-1">
                     <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
+                    @if (installmentStatusOf(r); as ist) {
+                      <span [class]="'badge ' + installmentStatusClass[ist]">{{ installmentStatusLabel[ist] }}</span>
+                    }
                     @if (r.isClosed) {
                       <span class="badge bg-elevated text-secondary">已結案</span>
                     }

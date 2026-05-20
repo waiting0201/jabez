@@ -8,6 +8,11 @@ import {
   TravelPaymentRequest,
   APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES,
 } from '../../models/travel-payment-request.model';
+import {
+  PAYMENT_INSTALLMENT_STATUS_LABELS,
+  PAYMENT_INSTALLMENT_STATUS_CLASSES,
+  PaymentInstallmentStatus,
+} from '../../../approval-tasks/models/approval-task.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
 import {AuthService} from '@core/auth/services/auth.service';
 import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
@@ -46,6 +51,14 @@ export class TravelPaymentList {
 
   readonly statusLabel = APPROVAL_STATUS_LABELS;
   readonly statusClass = APPROVAL_STATUS_CLASSES;
+  readonly installmentStatusLabel = PAYMENT_INSTALLMENT_STATUS_LABELS;
+  readonly installmentStatusClass = PAYMENT_INSTALLMENT_STATUS_CLASSES;
+
+  /** 分期撥款三態 badge（核准後才顯示）*/
+  installmentStatusOf(r: TravelPaymentRequest): PaymentInstallmentStatus | null {
+    if (r.approvalStatus !== 'approved') return null;
+    return r.paymentStatus ?? null;
+  }
 
   delete(r: TravelPaymentRequest) {
     if (confirm(`確定要刪除此出差請款申請嗎？`)) {

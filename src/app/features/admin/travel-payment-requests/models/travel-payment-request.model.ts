@@ -70,6 +70,9 @@ export interface TravelPaymentRequest {
   estimatedPaymentDate?: string;
   /** 實際撥款日 */
   paidAt?: string;
+  // 分期撥款（共用 InstallmentDto / PaymentInstallmentStatus 定義於 approval-tasks model）
+  installments?: import('../../approval-tasks/models/approval-task.model').InstallmentDto[];
+  paymentStatus?: import('../../approval-tasks/models/approval-task.model').PaymentInstallmentStatus;
 }
 
 export interface UpdatePaymentDateRequest {

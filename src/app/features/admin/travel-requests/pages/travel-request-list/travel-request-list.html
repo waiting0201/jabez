@@ -43,7 +43,12 @@
                   }
                 </td>
                 <td>
-                  <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
+                  <div class="flex flex-wrap items-center gap-1">
+                    <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
+                    @if (installmentStatusOf(r); as ist) {
+                      <span [class]="'badge ' + installmentStatusClass[ist]">{{ installmentStatusLabel[ist] }}</span>
+                    }
+                  </div>
                 </td>
                 <td class="text-right" style="white-space: nowrap">
                   <div class="flex justify-end gap-1">

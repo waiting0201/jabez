@@ -3,6 +3,7 @@ import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
 import {TravelPaymentRequest, UpdatePaymentDateRequest} from '../models/travel-payment-request.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
+import {UpsertInstallmentsRequest} from '../../approval-tasks/models/approval-task.model';
 import {environment} from '@/environments/environment';
 
 @Injectable({providedIn: 'root'})
@@ -40,5 +41,13 @@ export class TravelPaymentRequestService {
       estimatedPaymentDate: req.estimatedPaymentDate || null,
       paidAt: req.paidAt || null,
     });
+  }
+
+  /** 新增/更新分期撥款明細（4 種申請類型共用語意；僅財務部/Superadmin）*/
+  upsertInstallments(id: number, body: UpsertInstallmentsRequest): Observable<{id: number; estimatedPaymentDate?: string; paidAt?: string; installmentCount: number}> {
+    return this.http.patch<{id: number; estimatedPaymentDate?: string; paidAt?: string; installmentCount: number}>(
+      `${environment.apiUrl}/travel-payment-requests/${id}/installments`,
+      body,
+    );
   }
 }

@@ -163,6 +163,9 @@ export const ADMIN_ROUTES: Routes = [
   {path: 'attendance-reminder-logs',                  canActivate: [permissionGuard], data: {title: '打卡提醒紀錄',     permission: 'superadmin'}, loadComponent: () => import('./attendance-reminder-logs/pages/attendance-reminder-log-list/attendance-reminder-log-list').then(m => m.AttendanceReminderLogList)},
   {path: 'attendance-reminder-logs/batches/:batchId', canActivate: [permissionGuard], data: {title: '打卡提醒批次詳情', permission: 'superadmin'}, loadComponent: () => import('./attendance-reminder-logs/pages/attendance-reminder-log-detail/attendance-reminder-log-detail').then(m => m.AttendanceReminderLogDetail)},
 
+  // 撥款提醒紀錄（Superadmin only）
+  {path: 'payment-reminder-logs', canActivate: [permissionGuard], data: {title: '撥款提醒紀錄', permission: 'superadmin'}, loadComponent: () => import('./payment-reminder-logs/pages/payment-reminder-log-list/payment-reminder-log-list').then(m => m.PaymentReminderLogList)},
+
   // 系統設定
   {path: 'settings',             component: Settings,       canActivate: [permissionGuard], data: {title: '系統設定',   permission: 'settings:read'}},
 ];

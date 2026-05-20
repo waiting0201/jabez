@@ -12,9 +12,10 @@ import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
 import {ApprovalService} from '../../../approvals/services/approval.service';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
-import {ApprovalFlow, ApprovalRecord} from '../../../approval-tasks/models/approval-task.model';
+import {ApprovalFlow, ApprovalRecord, InstallmentDto, PaymentInstallmentStatus} from '../../../approval-tasks/models/approval-task.model';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
+import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {JobTitleLookup} from '../../../job-titles/models/job-title.model';
 import {UserLookup} from '../../../users/models/user.model';
@@ -23,7 +24,7 @@ import heic2any from 'heic2any';
 @Component({
   selector: 'app-advance-form',
   templateUrl: './advance-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, ApprovalTimeline, FilePreviewModal],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, ApprovalTimeline, FilePreviewModal, InstallmentsTable],
 })
 export class AdvanceForm implements OnInit {
   private fb             = inject(FormBuilder);
@@ -61,6 +62,11 @@ export class AdvanceForm implements OnInit {
   approvalRecords: ApprovalRecord[] = [];
   taskCurrentStepOrder = 0;
   taskStatus = '';
+
+  /** 分期撥款（read-only 顯示用，財務排定後申請人可查看）*/
+  installments: InstallmentDto[] | null = null;
+  paymentStatus: PaymentInstallmentStatus | null = null;
+  loadedGrandTotal = 0;
 
   /** 指定審核者相關 */
   hasDesignatedStep = false;
@@ -173,6 +179,9 @@ export class AdvanceForm implements OnInit {
           activityPeriod: r.activityPeriod,
           advanceDate:    r.advanceDate?.toString().slice(0, 10),
         });
+        this.installments    = r.installments ?? null;
+        this.paymentStatus   = r.paymentStatus ?? null;
+        this.loadedGrandTotal = r.grandTotal ?? 0;
         // 回填指定審核者清單
         if (r.designatedReviewers?.length) {
           this.designatedEntries = r.designatedReviewers.map(dr => ({

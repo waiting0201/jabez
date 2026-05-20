@@ -152,6 +152,12 @@ export const menuItems: MenuItemType[] = [
     requiredPermission: 'superadmin',
   },
   {
+    icon: '/assets/icons/sprite.svg#bell',
+    label: '撥款提醒紀錄',
+    url: '/admin/payment-reminder-logs',
+    requiredPermission: 'superadmin',
+  },
+  {
     icon: '/assets/icons/sprite.svg#settings',
     label: '系統設定',
     url: '/admin/settings',

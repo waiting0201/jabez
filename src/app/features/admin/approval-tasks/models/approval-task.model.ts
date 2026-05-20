@@ -26,6 +26,51 @@ export {APPLICATION_TYPE_LABELS, APPLICATION_TYPE_CLASSES};
 
 export {PAYMENT_STATE_LABELS, PAYMENT_STATE_CLASSES};
 
+// ── Installments（分期撥款，4 種申請類型共用）────────────────────────────────────
+
+/** 撥款 status 三態（後端 PaymentInstallmentStatus 對應）*/
+export type PaymentInstallmentStatus = 'Unpaid' | 'PartiallyPaid' | 'FullyPaid';
+
+export const PAYMENT_INSTALLMENT_STATUS_LABELS: Record<PaymentInstallmentStatus, string> = {
+  Unpaid:        '未撥款',
+  PartiallyPaid: '部分撥款',
+  FullyPaid:     '已全數撥款',
+};
+
+export const PAYMENT_INSTALLMENT_STATUS_CLASSES: Record<PaymentInstallmentStatus, string> = {
+  Unpaid:        'bg-secondary',
+  PartiallyPaid: 'bg-warning',
+  FullyPaid:     'bg-success',
+};
+
+/** 分期撥款明細（顯示用 DTO）*/
+export interface InstallmentDto {
+  id: number;
+  installmentNo: number;
+  expectedDate: string;
+  paidAt?: string;
+  amount: number;
+  note?: string;
+  paidByUserId?: string;
+  paidByName?: string;
+  paidBySignatureUrl?: string;
+}
+
+/** 分期撥款輸入（upsert request）— Id 缺省表示新增列 */
+export interface InstallmentInput {
+  id?: number;
+  installmentNo: number;
+  expectedDate: string;
+  paidAt?: string;
+  amount: number;
+  note?: string;
+}
+
+export interface UpsertInstallmentsRequest {
+  installments: InstallmentInput[];
+  approvalStatus?: string;
+}
+
 // ── Detail interfaces ────────────────────────────────────────────────────────
 
 export interface ApprovalFlowStep {
@@ -62,6 +107,8 @@ export interface PaymentTaskDetail {
   vendorPhone?: string;
   vendorBankAccount?: string;
   vendorAddress?: string;
+  installments?: InstallmentDto[];
+  paymentStatus?: PaymentInstallmentStatus;
 }
 
 export interface LeaveTaskDetail {
@@ -121,6 +168,8 @@ export interface TravelTaskDetail {
   paidBySignatureUrl?: string;
   /** 假日活動每位人員津貼預估（僅 isHolidayTravel=true 時提供） */
   holidayAllowances?: HolidayAllowance[];
+  installments?: InstallmentDto[];
+  paymentStatus?: PaymentInstallmentStatus;
 }
 
 export interface OvertimeTaskDetail {
@@ -163,6 +212,8 @@ export interface AdvanceTaskDetail {
   refundedAt?: string;
   items: AdvanceTaskDetailItem[];
   paidBySignatureUrl?: string;
+  installments?: InstallmentDto[];
+  paymentStatus?: PaymentInstallmentStatus;
 }
 
 export interface WriteOffTaskDetailItem {
@@ -264,6 +315,8 @@ export interface TravelPaymentTaskDetail {
   paidAt?: string;
   items: TravelPaymentRequestItem[];
   paidBySignatureUrl?: string;
+  installments?: InstallmentDto[];
+  paymentStatus?: PaymentInstallmentStatus;
 }
 
 // ── ApprovalRecord ───────────────────────────────────────────────────────────
