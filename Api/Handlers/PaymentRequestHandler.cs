@@ -579,76 +579,9 @@ public sealed class PaymentRequestHandler(
         return new OkObjectResult(ApiResponse.Ok(dto, msg));
     }
 
-    /// <summary>更新已核准請款的撥款日期（僅財務部或 Superadmin）</summary>
-    public async Task<IActionResult> UpdatePaymentDateAsync(HttpRequest req, string id)
-    {
-        if (!int.TryParse(id, out var intId))
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid ID format."));
-
-        var principal = await jwtService.ValidateRequestAsync(req);
-        if (principal is null)
-            return new UnauthorizedObjectResult(ApiResponse.Fail("Unauthorized."));
-
-        var userIdStr = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        if (!Guid.TryParse(userIdStr, out var userId))
-            return new UnauthorizedObjectResult(ApiResponse.Fail("Invalid token claims."));
-
-        // 查詢操作者，確認是否財務部成員或 Superadmin
-        var user = await db.Users.AsNoTracking().Include(u => u.Department).FirstOrDefaultAsync(u => u.Id == userId);
-        if (user is null)
-            return new UnauthorizedObjectResult(ApiResponse.Fail("User not found."));
-
-        // 財務體系部門（AC/FIN/Jabez HQ/CEO）或 Superadmin 可更新撥款日
-        if (!user.IsSuperAdmin && !DepartmentCodes.FinancialAndAbove.Contains(user.Department?.Code ?? ""))
-            throw AppException.Forbidden("僅財務體系部門或 Superadmin 可更新撥款日。");
-
-        var pr = await db.PaymentRequests.FindAsync(intId)
-            ?? throw AppException.NotFound("PaymentRequest");
-
-        // paidAt 已有值 → 鎖定，不可再修改
-        if (pr.PaidAt.HasValue)
-            return new BadRequestObjectResult(ApiResponse.Fail("此請款已撥款，無法再修改。"));
-
-        var body = await req.ReadFromJsonAsync<UpdatePaymentDateRequest>();
-        if (body is null)
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
-
-        // 偵測撥款狀態轉換（null → 有值）
-        var wasPaidNull = !pr.PaidAt.HasValue;
-
-        if (body.EstimatedPaymentDate.HasValue)
-            pr.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
-        if (body.PaidAt.HasValue)
-        {
-            var taipeiTz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Taipei");
-            var nowTaipei = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, taipeiTz);
-            pr.PaidAt = body.PaidAt.Value.Date + nowTaipei.TimeOfDay;
-            pr.PaidByUserId = userId;
-        }
-
-        // 更新狀態（僅允許合法狀態值）
-        if (!string.IsNullOrWhiteSpace(body.ApprovalStatus))
-        {
-            var allowed = new[] { "draft", "pending", "approved", "returned", "rejected" };
-            if (!allowed.Contains(body.ApprovalStatus))
-                return new BadRequestObjectResult(ApiResponse.Fail($"不合法的狀態值：{body.ApprovalStatus}"));
-            pr.ApprovalStatus = body.ApprovalStatus;
-        }
-
-        await db.SaveChangesAsync();
-
-        // 首次撥款（null → 有值）→ 通知申請人
-        if (wasPaidNull && pr.PaidAt.HasValue && pr.SubmittedById.HasValue)
-            await notifier.NotifyApplicantPaidAsync(
-                "payment_request", pr.Id, pr.SubmittedById.Value, pr.TotalAmount, pr.PaidAt.Value);
-
-        return new OkObjectResult(ApiResponse.Ok(new { pr.Id, pr.ApprovalStatus, pr.EstimatedPaymentDate, pr.PaidAt }, "已更新。"));
-    }
-
     /// <summary>
     /// 新增 / 更新分期撥款明細（4 種申請類型共用語意）。
     /// 僅財務體系部門或 Superadmin 可操作。
-    /// 同步維護父表 EstimatedPaymentDate / PaidAt / PaidByUserId cache 欄位（兩階段過渡）。
     /// 每筆新填入 PaidAt 的 installment 觸發一次「已撥款」通知（含 N/M 期）。
     /// </summary>
     public async Task<IActionResult> UpsertInstallmentsAsync(HttpRequest req, string id)
@@ -743,16 +676,7 @@ public sealed class PaymentRequestHandler(
             }
         }
 
-        // 3. 同步父表 cache
-        var cacheInput = body.Installments
-            .Select(i => (i.ExpectedDate, PaidAt: i.PaidAt.HasValue ? i.PaidAt.Value.Date + nowTaipei.TimeOfDay : (DateTime?)null))
-            .ToList();
-        var (cacheEstimated, cachePaidAt, _) = InstallmentValidator.ComputeCache(cacheInput);
-        pr.EstimatedPaymentDate = cacheEstimated;
-        pr.PaidAt = cachePaidAt;
-        pr.PaidByUserId = cachePaidAt.HasValue ? userId : null;
-
-        // 4. 狀態（可選）
+        // 3. 狀態（可選）
         if (!string.IsNullOrWhiteSpace(body.ApprovalStatus))
         {
             var allowed = new[] { "draft", "pending", "approved", "returned", "rejected" };
@@ -763,7 +687,7 @@ public sealed class PaymentRequestHandler(
 
         await db.SaveChangesAsync();
 
-        // 5. 逐筆通知
+        // 4. 逐筆通知
         if (pr.SubmittedById.HasValue)
             foreach (var np in newlyPaid)
                 await notifier.NotifyApplicantPaidAsync(
@@ -771,7 +695,7 @@ public sealed class PaymentRequestHandler(
                     installmentNo: np.InstallmentNo, totalInstallments: np.TotalInstallments);
 
         return new OkObjectResult(ApiResponse.Ok(
-            new { pr.Id, pr.ApprovalStatus, pr.EstimatedPaymentDate, pr.PaidAt, InstallmentCount = body.Installments.Count },
+            new { pr.Id, pr.ApprovalStatus, InstallmentCount = body.Installments.Count },
             $"已更新 {body.Installments.Count} 筆撥款明細。"));
     }
 

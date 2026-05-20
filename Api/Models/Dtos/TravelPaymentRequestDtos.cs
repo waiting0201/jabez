@@ -53,8 +53,6 @@ public sealed record TravelPaymentRequestDto(
     int?      ApprovalItemId           = null,
     int?      CurrentStepOrder         = null,
     Guid?     ReviewedById             = null,
-    DateTime? EstimatedPaymentDate     = null,
-    DateTime? PaidAt                   = null,
     TravelPaymentRequestItemDto[]?  Items               = null,
     DesignatedReviewerDto[]?        DesignatedReviewers = null,
     InstallmentDto[]?               Installments        = null,

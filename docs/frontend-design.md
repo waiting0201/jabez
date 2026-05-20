@@ -586,6 +586,69 @@ loadData(items: Item[]) {
 }
 ```
 
+### 7.6 撥款明細（InstallmentsTable 共用元件 + 編輯版）
+
+4 種有撥款的申請類型（請款 / 預支 / 出差預支 / 出差請款）共用以下 UI 模式：
+
+#### 唯讀顯示版本（[`<app-installments-table>`](../Admin/src/app/shared/components/installments-table.ts)）
+
+申請表單頁、詳情頁、列表頁皆引用此共用元件。**樣式對齊其他 detail 卡片**：
+
+```html
+<div class="card border-0 shadow-sm mb-6">
+  <div class="card-header bg-transparent border-bottom flex items-center justify-between gap-2 fw-600 flex-wrap">
+    <div class="flex items-center gap-2 flex-wrap">
+      <svg class="sa-icon text-primary"><use href="...#credit-card"></use></svg>
+      撥款明細
+      <span class="badge ..."><!-- Unpaid / PartiallyPaid / FullyPaid --></span>
+      <span class="text-muted small">已撥 X / Y 期</span>
+    </div>
+    <div class="text-muted small">撥款總額：已撥 / 總額 元</div>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm mb-0"><!-- thead.table-light --></table>
+    </div>
+  </div>
+</div>
+```
+
+**欄位**：期數 / 預計撥款日 / 實際撥款日 / 金額 / 備註 / 狀態（badge bg-success「已撥」or bg-secondary「未撥」）。已撥列底色加深（`bg-[--bg-base]`）。
+
+**呼叫端**（一律不需外層 `mb-*` wrapper，元件內已含 `mb-6`）：
+```html
+<app-installments-table
+  [installmentsInput]="r.installments"
+  [paymentStatus]="r.paymentStatus"
+  [totalAmount]="r.totalAmount" />
+```
+
+#### 編輯版本（[approval-task-review](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/)）
+
+於簽核審核頁內部實作（不抽元件，因含複雜表單與後端 dispatch 邏輯）。同時出現在 2 個區塊：
+- **待審核（pending）**：核准前財務簽核時的計劃用 form
+- **已核准（approved）**：核准後財務回來填撥款日 / 金額 / 備註
+
+UI 行為規範（4 種申請類型一致）：
+
+| 元件 | 規則 |
+|------|------|
+| **「+ 新增一期」按鈕** | `SUM(已填金額) ≥ 申請總額` 或 `paymentStatus = 'FullyPaid'` 時禁用 |
+| **「儲存撥款明細」按鈕** | `SUM ≠ 申請總額` 或 `paymentStatus = 'FullyPaid'` 時禁用 |
+| **金額 input** | `min="1" step="1"`（整數，≥ 1）；`[attr.max]="installmentRowMax(task, i)"` 動態 = 申請總額 − 其他列已填 |
+| **預計撥款日 / 實際撥款日 / 金額 / 備註 input** | 已撥款列（`isInstallmentLocked(row)`）：`[attr.readonly]="true"` + `[class.bg-light]="true"` |
+| **刪除按鈕（⨯）** | 已撥款列：完全隱藏；只剩 1 列時也隱藏 |
+| **剩餘額度 hint** | 在標題列顯示「剩餘 X 元」，即時反映 `申請總額 − installmentsSum()` |
+
+**Helpers 命名**（4 種申請類型共用）：
+- `canAddInstallmentRow(task)` — 是否可新增
+- `isInstallmentsSumValid(task)` — SUM 是否等於申請總額
+- `isFullyPaid(task)` — 是否全撥完
+- `installmentRowMax(task, index)` — 單列金額 max（剩餘額度）
+- `isInstallmentLocked(row)` — 列是否已鎖定
+
+> 後端 `InstallmentValidator.Validate` 提供等同的伺服端防線（序號連續、SUM == 總額、已撥款列保護），前端為 UX，後端為強制驗證。
+
 ---
 
 ## 8. 按鈕規範

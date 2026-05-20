@@ -648,78 +648,8 @@ public sealed class TravelRequestHandler(
         return new OkObjectResult(ApiResponse.Ok(dto, msg));
     }
 
-    // ── 更新撥款日（僅財務部/Superadmin）──────────────────────────────────────
-
-    public async Task<IActionResult> UpdatePaymentDateAsync(HttpRequest req, string id)
-    {
-        if (!int.TryParse(id, out var intId))
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid ID format."));
-
-        var principal = await jwtService.ValidateRequestAsync(req);
-        if (principal is null)
-            return new UnauthorizedObjectResult(ApiResponse.Fail("Unauthorized."));
-
-        var userIdStr = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        if (!Guid.TryParse(userIdStr, out var userId))
-            return new UnauthorizedObjectResult(ApiResponse.Fail("Invalid token claims."));
-
-        var user = await db.Users.AsNoTracking().Include(u => u.Department).FirstOrDefaultAsync(u => u.Id == userId);
-        if (user is null)
-            return new UnauthorizedObjectResult(ApiResponse.Fail("User not found."));
-
-        if (!user.IsSuperAdmin && !DepartmentCodes.FinancialAndAbove.Contains(user.Department?.Code ?? ""))
-            throw AppException.Forbidden("僅財務體系部門或 Superadmin 可更新撥款日。");
-
-        var tr = await db.TravelRequests.FindAsync(intId)
-            ?? throw AppException.NotFound("TravelRequest");
-
-        if (tr.ApprovalStatus != "approved")
-            return new BadRequestObjectResult(ApiResponse.Fail("只有已核准的出差申請可以設定撥款日。"));
-
-        var body = await req.ReadFromJsonAsync<UpdatePaymentDateRequest>();
-        if (body is null)
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
-
-        // 偵測撥款 / 退款狀態轉換（null → 有值）
-        var wasPaidNull     = !tr.PaidAt.HasValue;
-        var wasRefundedNull = !tr.RefundedAt.HasValue;
-
-        if (body.EstimatedPaymentDate.HasValue)
-            tr.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
-        if (body.PaidAt.HasValue)
-        {
-            tr.PaidAt = body.PaidAt.Value;
-            tr.PaidByUserId = userId;
-        }
-        if (body.EstimatedRefundDate.HasValue)
-            tr.EstimatedRefundDate = body.EstimatedRefundDate.Value;
-        if (body.RefundedAt.HasValue)
-        {
-            tr.RefundedAt = body.RefundedAt.Value;
-            tr.RefundedByUserId = userId;
-        }
-        if (body.RefundedAmount.HasValue)
-            tr.RefundedAmount = body.RefundedAmount.Value;
-
-        await db.SaveChangesAsync();
-
-        // 首次撥款 / 退款（null → 有值）→ 通知申請人
-        if (tr.EmployeeId.HasValue)
-        {
-            if (wasPaidNull && tr.PaidAt.HasValue)
-                await notifier.NotifyApplicantPaidAsync(
-                    "travel", tr.Id, tr.EmployeeId.Value, tr.GrandTotal, tr.PaidAt.Value);
-            if (wasRefundedNull && tr.RefundedAt.HasValue && tr.RefundedAmount.HasValue)
-                await notifier.NotifyApplicantRefundedAsync(
-                    "travel", tr.Id, tr.EmployeeId.Value, tr.RefundedAmount.Value, tr.RefundedAt.Value);
-        }
-
-        var msg = (body.EstimatedRefundDate.HasValue || body.RefundedAt.HasValue || body.RefundedAmount.HasValue) ? "退款資訊已更新。" : "撥款日期已更新。";
-        return new OkObjectResult(ApiResponse.Ok(new { tr.Id, tr.EstimatedPaymentDate, tr.PaidAt, tr.EstimatedRefundDate, tr.RefundedAt, tr.RefundedAmount }, msg));
-    }
-
     /// <summary>
-    /// 新增 / 更新出差撥款分期明細（同步維護父表 cache）。
+    /// 新增 / 更新出差撥款分期明細。
     /// 僅財務體系部門或 Superadmin 可操作。
     /// 每筆新填入 PaidAt 的 installment 觸發一次「已撥款」通知。
     /// </summary>
@@ -814,14 +744,6 @@ public sealed class TravelRequestHandler(
             }
         }
 
-        var cacheInput = body.Installments
-            .Select(i => (i.ExpectedDate, PaidAt: i.PaidAt.HasValue ? i.PaidAt.Value.Date + nowTaipei.TimeOfDay : (DateTime?)null))
-            .ToList();
-        var (cacheEstimated, cachePaidAt, _) = InstallmentValidator.ComputeCache(cacheInput);
-        tr.EstimatedPaymentDate = cacheEstimated;
-        tr.PaidAt = cachePaidAt;
-        tr.PaidByUserId = cachePaidAt.HasValue ? userId : null;
-
         await db.SaveChangesAsync();
 
         if (tr.EmployeeId.HasValue)
@@ -831,7 +753,7 @@ public sealed class TravelRequestHandler(
                     installmentNo: np.InstallmentNo, totalInstallments: np.TotalInstallments);
 
         return new OkObjectResult(ApiResponse.Ok(
-            new { tr.Id, tr.EstimatedPaymentDate, tr.PaidAt, InstallmentCount = body.Installments.Count },
+            new { tr.Id, InstallmentCount = body.Installments.Count },
             $"已更新 {body.Installments.Count} 筆撥款明細。"));
     }
 

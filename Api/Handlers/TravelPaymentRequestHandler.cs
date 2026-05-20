@@ -21,7 +21,6 @@ namespace Jabez.Api.Handlers;
 /// PATCH  /travel-payment-requests/{id}      → 部分更新（同上）
 /// DELETE /travel-payment-requests/{id}      → 刪除（僅 draft 才允許）
 /// PATCH  /travel-payment-requests/{id}/submit       → 送出（draft → pending）
-/// PATCH  /travel-payment-requests/{id}/payment-date → 更新撥款日（僅財務部/Superadmin）
 /// </summary>
 public sealed class TravelPaymentRequestHandler(
     AppDbContext db,
@@ -543,62 +542,8 @@ public sealed class TravelPaymentRequestHandler(
         return new OkObjectResult(ApiResponse.Ok(dto, msg));
     }
 
-    /// <summary>更新撥款日（僅財務部/Superadmin）</summary>
-    public async Task<IActionResult> UpdatePaymentDateAsync(HttpRequest req, string id)
-    {
-        if (!int.TryParse(id, out var intId))
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid ID format."));
-
-        var principal = await jwtService.ValidateRequestAsync(req);
-        if (principal is null)
-            return new UnauthorizedObjectResult(ApiResponse.Fail("Unauthorized."));
-
-        var userIdStr = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        if (!Guid.TryParse(userIdStr, out var userId))
-            return new UnauthorizedObjectResult(ApiResponse.Fail("Invalid token claims."));
-
-        var user = await db.Users.AsNoTracking().Include(u => u.Department).FirstOrDefaultAsync(u => u.Id == userId);
-        if (user is null)
-            return new UnauthorizedObjectResult(ApiResponse.Fail("User not found."));
-
-        if (!user.IsSuperAdmin && !DepartmentCodes.FinancialAndAbove.Contains(user.Department?.Code ?? ""))
-            throw AppException.Forbidden("僅財務體系部門或 Superadmin 可更新撥款日。");
-
-        var tpr = await db.TravelPaymentRequests.FindAsync(intId)
-            ?? throw AppException.NotFound("TravelPaymentRequest");
-
-        if (tpr.ApprovalStatus != "approved")
-            return new BadRequestObjectResult(ApiResponse.Fail("只有已核准的出差請款申請可以設定撥款日。"));
-
-        var body = await req.ReadFromJsonAsync<UpdatePaymentDateRequest>();
-        if (body is null)
-            return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
-
-        // 偵測撥款狀態轉換（null → 有值）
-        var wasPaidNull = !tpr.PaidAt.HasValue;
-
-        if (body.EstimatedPaymentDate.HasValue)
-            tpr.EstimatedPaymentDate = body.EstimatedPaymentDate.Value;
-        if (body.PaidAt.HasValue)
-        {
-            tpr.PaidAt        = body.PaidAt.Value;
-            tpr.PaidByUserId  = userId;
-        }
-
-        await db.SaveChangesAsync();
-
-        // 首次撥款（null → 有值）→ 通知申請人
-        if (wasPaidNull && tpr.PaidAt.HasValue && tpr.EmployeeId.HasValue)
-            await notifier.NotifyApplicantPaidAsync(
-                "travel_payment", tpr.Id, tpr.EmployeeId.Value, tpr.GrandTotal, tpr.PaidAt.Value);
-
-        return new OkObjectResult(ApiResponse.Ok(
-            new { tpr.Id, tpr.EstimatedPaymentDate, tpr.PaidAt },
-            "撥款日期已更新。"));
-    }
-
     /// <summary>
-    /// 新增 / 更新出差請款撥款分期明細（同步維護父表 cache）。
+    /// 新增 / 更新出差請款撥款分期明細。
     /// 僅財務體系部門或 Superadmin 可操作。
     /// 每筆新填入 PaidAt 的 installment 觸發一次「已撥款」通知。
     /// </summary>
@@ -693,14 +638,6 @@ public sealed class TravelPaymentRequestHandler(
             }
         }
 
-        var cacheInput = body.Installments
-            .Select(i => (i.ExpectedDate, PaidAt: i.PaidAt.HasValue ? i.PaidAt.Value.Date + nowTaipei.TimeOfDay : (DateTime?)null))
-            .ToList();
-        var (cacheEstimated, cachePaidAt, _) = InstallmentValidator.ComputeCache(cacheInput);
-        tpr.EstimatedPaymentDate = cacheEstimated;
-        tpr.PaidAt = cachePaidAt;
-        tpr.PaidByUserId = cachePaidAt.HasValue ? userId : null;
-
         await db.SaveChangesAsync();
 
         if (tpr.EmployeeId.HasValue)
@@ -710,7 +647,7 @@ public sealed class TravelPaymentRequestHandler(
                     installmentNo: np.InstallmentNo, totalInstallments: np.TotalInstallments);
 
         return new OkObjectResult(ApiResponse.Ok(
-            new { tpr.Id, tpr.EstimatedPaymentDate, tpr.PaidAt, InstallmentCount = body.Installments.Count },
+            new { tpr.Id, InstallmentCount = body.Installments.Count },
             $"已更新 {body.Installments.Count} 筆撥款明細。"));
     }
 

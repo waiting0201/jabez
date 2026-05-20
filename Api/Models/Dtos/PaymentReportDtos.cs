@@ -1,5 +1,9 @@
 namespace Jabez.Api.Models.Dtos;
 
+/// <summary>
+/// 款項統計列表列。每筆主表附帶 Items 子表明細（無明細時為空陣列）。
+/// 前端以 Items 展開為多列：請款層欄位只顯示在第一列，明細層欄位每列獨立。
+/// </summary>
 public sealed record PaymentReportDto(
     int       Id,
     string    RequestNo,
@@ -11,14 +15,27 @@ public sealed record PaymentReportDto(
     decimal   TotalAmount,
     string    ApprovalStatus,
     DateTime? PaidAt,
-    DateTime  CreatedAt);
+    DateTime  CreatedAt,
+    List<PaymentReportItemDto> Items);
 
 /// <summary>
-/// 款項統計匯出列：一張發票一列。
-/// 一張請款單若有 N 張發票 → 展開為 N 列；無發票（如業務員公出）→ 1 列，發票欄位皆為 null。
+/// 款項統計明細列（4 欄語意依 category 由前端對應）：
+/// - payment / writeoff / travel-payment / travel / travel-writeoff → Col1=發票號碼、Col3Date=發票日期
+/// - advance → Col1=類別、Col3Text=數量(字串)
+/// </summary>
+public sealed record PaymentReportItemDto(
+    string?   Col1,
+    string?   ItemName,
+    string?   Col3Text,
+    DateTime? Col3Date,
+    decimal?  Amount);
+
+/// <summary>
+/// 款項統計匯出列：主表 LEFT JOIN 子表，一列一明細。
+/// ItemCol1 / ItemName / ItemCol3 / ItemAmount 4 欄語意依 category 由前端對應表頭。
 /// </summary>
 public sealed record PaymentExportRowDto(
-    int       PaymentRequestId,
+    int       ParentId,
     string    RequestNo,
     string    EmployeeName,
     string    Type,
@@ -28,7 +45,8 @@ public sealed record PaymentExportRowDto(
     DateTime  CreatedAt,
     DateTime? PaidAt,
     decimal   PaymentTotalAmount,
-    string?   InvoiceNo,
-    string?   InvoiceItemName,
-    DateTime? InvoiceDate,
-    decimal?  InvoiceAmount);
+    string?   ItemCol1,
+    string?   ItemName,
+    string?   ItemCol3Text,
+    DateTime? ItemCol3Date,
+    decimal?  ItemAmount);

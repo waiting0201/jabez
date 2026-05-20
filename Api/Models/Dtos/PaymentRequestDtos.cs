@@ -49,8 +49,6 @@ public sealed record PaymentRequestDto(
     string           ApprovalStatus,
     string?          SubmittedBy,
     DateTime         CreatedAt,
-    DateTime?        EstimatedPaymentDate,
-    DateTime?        PaidAt,
     DateTime?        ReviewedAt,
     string?          ReviewNote,
     string?          Reason = null,
@@ -75,15 +73,6 @@ public sealed record UpdatePaymentRequestRequest(
     string?             Reason = null,
     DesignatedReviewerRequest[]? DesignatedReviewers = null);
 
-// 更新撥款日與狀態（財務部或 Superadmin 專用，paidAt 未填入前皆可修改）
-public sealed record UpdatePaymentDateRequest(
-    DateTime? EstimatedPaymentDate,
-    DateTime? PaidAt,
-    string?   ApprovalStatus,
-    DateTime? EstimatedRefundDate = null,
-    DateTime? RefundedAt = null,
-    decimal?  RefundedAmount = null);
-
 // 退還差額匯款日期
 public sealed record RefundDateRequest(DateTime? RefundedAt);
 
@@ -92,9 +81,9 @@ public sealed record ReviewPaymentRequestRequest(
     string    Action,           // "approved" | "returned" | "rejected"
     string?   ReviewNote,
     string    ApplicationType,  // "payment_request" | "leave" | "travel" | "overtime" | "advance" | "write_off"
-    DateTime? EstimatedPaymentDate,  // 預計撥款日（僅請款/預支申請使用）
-    DateTime? PaidAt,                // 撥款日（僅請款/預支申請使用）
-    bool?     CloseAdvance);         // 預支結案（僅沖銷申請的財務部步驟使用）
+    DateTime? EstimatedRefundDate,  // 預支 / 出差沖銷時填入：上層預支 / 出差申請的預計退款日
+    DateTime? RefundedAt,           // 預支 / 出差沖銷時填入：上層預支 / 出差申請的實際退款日
+    bool?     CloseAdvance);        // 預支結案（僅沖銷申請的財務部步驟使用）
 
 public sealed record ApprovalRecordDto(
     int      StepOrder,
@@ -131,10 +120,7 @@ public sealed record PaymentTaskDetailDto(
     string           ProjectName,
     InvoiceItemDto[] Invoices,
     decimal          TotalAmount,
-    DateTime?        EstimatedPaymentDate,
-    DateTime?        PaidAt,
     string?          Reason = null,
-    string?          PaidBySignatureUrl = null,
     int?             VendorId             = null,
     string?          VendorName           = null,
     string?          VendorTaxId          = null,
@@ -171,13 +157,10 @@ public sealed record TravelTaskDetailDto(
     string?   ProjectCode,
     string?   ProjectName,
     bool      IsHolidayTravel,
-    DateTime? EstimatedPaymentDate,
-    DateTime? PaidAt,
     DateTime? EstimatedRefundDate,
     DateTime? RefundedAt,
     int?      HolidayDays = null,
     TravelRequestItemDto[] Items = null!,
-    string?   PaidBySignatureUrl = null,
     HolidayAllowanceDto[]? HolidayAllowances = null,
     InstallmentDto[]? Installments = null,
     string?   PaymentStatus = null)
@@ -203,10 +186,7 @@ public sealed record TravelPaymentTaskDetailDto(
     string    Purpose,
     string?   ProjectCode,
     string?   ProjectName,
-    DateTime? EstimatedPaymentDate,
-    DateTime? PaidAt,
     TravelPaymentRequestItemDto[] Items = null!,
-    string?   PaidBySignatureUrl = null,
     InstallmentDto[]? Installments = null,
     string?   PaymentStatus = null)
 {

@@ -200,7 +200,6 @@ public sealed class AppRouter(
             ("GET",    ["payment-requests"])                       => await paymentRequests.GetAllAsync(req),
             ("POST",   ["payment-requests"])                       => await paymentRequests.CreateAsync(req),
             ("PATCH",  ["payment-requests", var id, "submit"])        => await paymentRequests.SubmitAsync(req, id),
-            ("PATCH",  ["payment-requests", var id, "payment-date"]) => await paymentRequests.UpdatePaymentDateAsync(req, id),
             ("PATCH",  ["payment-requests", var id, "installments"])  => await paymentRequests.UpsertInstallmentsAsync(req, id),
             ("GET",    ["payment-requests", var id])               => await paymentRequests.GetByIdAsync(req, id),
             ("PUT",    ["payment-requests", var id])               => await paymentRequests.UpdateAsync(req, id),
@@ -211,7 +210,6 @@ public sealed class AppRouter(
             ("GET",    ["advance-requests"])                                    => await advanceRequests.GetAllAsync(req),
             ("POST",   ["advance-requests"])                                   => await advanceRequests.CreateAsync(req),
             ("PATCH",  ["advance-requests", var id, "submit"])                 => await advanceRequests.SubmitAsync(req, id),
-            ("PATCH",  ["advance-requests", var id, "payment-date"])           => await advanceRequests.UpdatePaymentDateAsync(req, id),
             ("PATCH",  ["advance-requests", var id, "installments"])           => await advanceRequests.UpsertInstallmentsAsync(req, id),
             ("GET",    ["advance-requests", var id])                           => await advanceRequests.GetByIdAsync(req, id),
             ("PUT",    ["advance-requests", var id])                           => await advanceRequests.UpdateAsync(req, id),
@@ -232,7 +230,6 @@ public sealed class AppRouter(
             ("GET",    ["travel-payment-requests"])                                    => await travelPaymentRequests.GetAllAsync(req),
             ("POST",   ["travel-payment-requests"])                                    => await travelPaymentRequests.CreateAsync(req),
             ("PATCH",  ["travel-payment-requests", var id, "submit"])                  => await travelPaymentRequests.SubmitAsync(req, id),
-            ("PATCH",  ["travel-payment-requests", var id, "payment-date"])            => await travelPaymentRequests.UpdatePaymentDateAsync(req, id),
             ("PATCH",  ["travel-payment-requests", var id, "installments"])            => await travelPaymentRequests.UpsertInstallmentsAsync(req, id),
             ("GET",    ["travel-payment-requests", var id])                            => await travelPaymentRequests.GetByIdAsync(req, id),
             ("PUT",    ["travel-payment-requests", var id])                            => await travelPaymentRequests.UpdateAsync(req, id),
@@ -254,7 +251,6 @@ public sealed class AppRouter(
             ("GET",    ["holiday-travel-requests"])                        => await travelRequests.GetAllAsync(req, isHolidayTravel: true),
             ("POST",   ["holiday-travel-requests"])                        => await travelRequests.CreateAsync(req, isHolidayTravel: true),
             ("PATCH",  ["holiday-travel-requests", var id, "submit"])      => await travelRequests.SubmitAsync(req, id, isHolidayTravel: true),
-            ("PATCH",  ["holiday-travel-requests", var id, "payment-date"])=> await travelRequests.UpdatePaymentDateAsync(req, id),
             ("PATCH",  ["holiday-travel-requests", var id, "installments"]) => await travelRequests.UpsertInstallmentsAsync(req, id),
             ("GET",    ["holiday-travel-requests", var id])                => await travelRequests.GetByIdAsync(req, id),
             ("PUT",    ["holiday-travel-requests", var id])                => await travelRequests.UpdateAsync(req, id, isHolidayTravel: true),
@@ -289,7 +285,6 @@ public sealed class AppRouter(
             ("GET",    ["travel-requests"])                        => await travelRequests.GetAllAsync(req),
             ("POST",   ["travel-requests"])                        => await travelRequests.CreateAsync(req),
             ("PATCH",  ["travel-requests", var id, "submit"])        => await travelRequests.SubmitAsync(req, id),
-            ("PATCH",  ["travel-requests", var id, "payment-date"]) => await travelRequests.UpdatePaymentDateAsync(req, id),
             ("PATCH",  ["travel-requests", var id, "installments"])  => await travelRequests.UpsertInstallmentsAsync(req, id),
             ("GET",    ["travel-requests", var id])                => await travelRequests.GetByIdAsync(req, id),
             ("PUT",    ["travel-requests", var id])                => await travelRequests.UpdateAsync(req, id),
@@ -473,7 +468,6 @@ public sealed class AppRouter(
             ("POST",   ["payment-requests"])             => PermissionCodes.PaymentRequestsWrite,
             ("PUT",    ["payment-requests", _])          => PermissionCodes.PaymentRequestsWrite,
             ("PATCH",  ["payment-requests", _, "submit"])       => PermissionCodes.PaymentRequestsWrite,
-            ("PATCH",  ["payment-requests", _, "payment-date"]) => PermissionCodes.PaymentRequestsWrite,
             ("PATCH",  ["payment-requests", _, "installments"]) => PermissionCodes.PaymentRequestsWrite,
             ("PATCH",  ["payment-requests", _])                 => PermissionCodes.PaymentRequestsWrite,
             ("DELETE", ["payment-requests", _])          => PermissionCodes.PaymentRequestsDelete,
@@ -483,9 +477,7 @@ public sealed class AppRouter(
             ("POST",   ["advance-requests"])             => PermissionCodes.AdvanceRequestsWrite,
             ("PUT",    ["advance-requests", _])          => PermissionCodes.AdvanceRequestsWrite,
             ("PATCH",  ["advance-requests", _, "submit"])       => PermissionCodes.AdvanceRequestsWrite,
-            ("PATCH",  ["advance-requests", _, "payment-date"]) => PermissionCodes.AdvanceRequestsWrite,
             ("PATCH",  ["advance-requests", _, "installments"]) => PermissionCodes.AdvanceRequestsWrite,
-            ("PATCH",  ["advance-requests", _, "refund-date"])  => PermissionCodes.AdvanceRequestsWrite,
             ("PATCH",  ["advance-requests", _])                 => PermissionCodes.AdvanceRequestsWrite,
             ("DELETE", ["advance-requests", _])          => PermissionCodes.AdvanceRequestsDelete,
 
@@ -502,7 +494,6 @@ public sealed class AppRouter(
             ("POST",   ["travel-payment-requests"])                   => PermissionCodes.TravelPaymentRequestsWrite,
             ("PUT",    ["travel-payment-requests", _])                => PermissionCodes.TravelPaymentRequestsWrite,
             ("PATCH",  ["travel-payment-requests", _, "submit"])      => PermissionCodes.TravelPaymentRequestsWrite,
-            ("PATCH",  ["travel-payment-requests", _, "payment-date"]) => PermissionCodes.TravelPaymentRequestsWrite,
             ("PATCH",  ["travel-payment-requests", _, "installments"]) => PermissionCodes.TravelPaymentRequestsWrite,
             ("PATCH",  ["travel-payment-requests", _])                => PermissionCodes.TravelPaymentRequestsWrite,
             ("DELETE", ["travel-payment-requests", _])                => PermissionCodes.TravelPaymentRequestsDelete,
@@ -520,7 +511,6 @@ public sealed class AppRouter(
             ("POST",   ["holiday-travel-requests"])                => PermissionCodes.HolidayTravelRequestsWrite,
             ("PUT",    ["holiday-travel-requests", _])             => PermissionCodes.HolidayTravelRequestsWrite,
             ("PATCH",  ["holiday-travel-requests", _, "submit"])   => PermissionCodes.HolidayTravelRequestsWrite,
-            ("PATCH",  ["holiday-travel-requests", _, "payment-date"]) => PermissionCodes.HolidayTravelRequestsWrite,
             ("PATCH",  ["holiday-travel-requests", _, "installments"]) => PermissionCodes.HolidayTravelRequestsWrite,
             ("PATCH",  ["holiday-travel-requests", _])             => PermissionCodes.HolidayTravelRequestsWrite,
             ("DELETE", ["holiday-travel-requests", _])             => PermissionCodes.HolidayTravelRequestsDelete,
@@ -546,7 +536,6 @@ public sealed class AppRouter(
             ("POST",   ["travel-requests"])              => PermissionCodes.TravelRequestsWrite,
             ("PUT",    ["travel-requests", _])           => PermissionCodes.TravelRequestsWrite,
             ("PATCH",  ["travel-requests", _, "submit"]) => PermissionCodes.TravelRequestsWrite,
-            ("PATCH",  ["travel-requests", _, "payment-date"]) => PermissionCodes.TravelRequestsWrite,
             ("PATCH",  ["travel-requests", _, "installments"]) => PermissionCodes.TravelRequestsWrite,
             ("PATCH",  ["travel-requests", _])           => PermissionCodes.TravelRequestsWrite,
             ("DELETE", ["travel-requests", _])           => PermissionCodes.TravelRequestsDelete,
@@ -606,15 +595,10 @@ public sealed class AppRouter(
     /// </summary>
     private static bool IsFinanceOrSuperAdminRoute(string method, string[] segments) =>
         (method, segments) is
-            ("PATCH", ["payment-requests",         _, "payment-date"]) or
             ("PATCH", ["payment-requests",         _, "installments"]) or
-            ("PATCH", ["advance-requests",         _, "payment-date"]) or
             ("PATCH", ["advance-requests",         _, "installments"]) or
-            ("PATCH", ["travel-requests",          _, "payment-date"]) or
             ("PATCH", ["travel-requests",          _, "installments"]) or
-            ("PATCH", ["travel-payment-requests",  _, "payment-date"]) or
             ("PATCH", ["travel-payment-requests",  _, "installments"]) or
-            ("PATCH", ["holiday-travel-requests",  _, "payment-date"]) or
             ("PATCH", ["holiday-travel-requests",  _, "installments"]);
 
     /// <summary>檢查是否為 Superadmin，否則拋出 403</summary>

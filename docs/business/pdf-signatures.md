@@ -33,8 +33,8 @@
 
 | PDF 類型 | 含出納 | 出納簽名來源 |
 |---|---|---|
-| 請款 / 預支 / 出差預支 / 出差請款 | ✓ | `paidBy` + `paidAt` |
-| 預支沖銷 | ✓ | `refundedBy` ?? `paidBy` + `paidAt` |
+| 請款 / 預支 / 出差預支 / 出差請款 | ✓ | `installments[]` 取**最後一期已撥款**的 `PaidByUserId` + `PaidAt`（從子表推算，父表已無 cache）|
+| 預支沖銷 | ✓ | `refundedBy` + `refundedAt`（沖銷對應的預支父表 RefundedByUserId / RefundedAt）|
 | 出差預支沖銷 / 假日執行活動 | ✗ | — |
 
 申請者欄永遠在最右，標籤為 `請款人`（payment）或 `申請者`（其他）。

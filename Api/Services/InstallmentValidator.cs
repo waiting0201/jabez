@@ -52,37 +52,4 @@ public static class InstallmentValidator
                 throw AppException.BadRequest($"第 {paidRow.InstallmentNo} 期已撥款，撥款日不可修改。");
         }
     }
-
-    /// <summary>計算父表撥款 cache 欄位（過渡用，兩階段策略）</summary>
-    public static (DateTime? EstimatedPaymentDate, DateTime? PaidAt, PaymentInstallmentStatus Status) ComputeCache(
-        IReadOnlyList<(DateTime ExpectedDate, DateTime? PaidAt)> installments)
-    {
-        if (installments.Count == 0)
-            return (null, null, PaymentInstallmentStatus.Unpaid);
-
-        // EstimatedPaymentDate = MAX(ExpectedDate)
-        var estimated = installments.Max(i => i.ExpectedDate);
-
-        // 全數撥畢時 PaidAt = MAX(PaidAt)，否則 null（沿用舊邏輯，配合既有「已撥款 = PaidAt IS NOT NULL」判斷）
-        var paidCount = installments.Count(i => i.PaidAt.HasValue);
-        DateTime? paidAt;
-        PaymentInstallmentStatus status;
-        if (paidCount == 0)
-        {
-            paidAt = null;
-            status = PaymentInstallmentStatus.Unpaid;
-        }
-        else if (paidCount < installments.Count)
-        {
-            paidAt = null;
-            status = PaymentInstallmentStatus.PartiallyPaid;
-        }
-        else
-        {
-            paidAt = installments.Max(i => i.PaidAt);
-            status = PaymentInstallmentStatus.FullyPaid;
-        }
-
-        return (estimated, paidAt, status);
-    }
 }

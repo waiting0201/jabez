@@ -42,6 +42,9 @@ public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWat
 
         var scopeClause = conditions.Count > 0 ? " WHERE " + string.Join(" AND ", conditions) : "";
 
+        // PaidAmount 從 installments 子表累計：每個 PaymentRequest 取「已撥的 installments 金額加總」
+        // 與舊「PaidAt IS NOT NULL THEN TotalAmount」相比，分期撥款情境下更精準（部分撥款也計入實際金額）
+        // 使用 OUTER APPLY 預算 per-PR 已撥金額，外層 SUM 才能正確聚合（SQL Server 不允許 SUM 直接包 SUM 子查詢）
         var sql = $"""
             SELECT p.Id          AS ProjectId,
                    p.Code        AS ProjectCode,
@@ -51,12 +54,17 @@ public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWat
                    p.ContractAmount,
                    p.BusinessAmount,
                    p.RemainingAmount,
-                   ISNULL(SUM(pr.TotalAmount), 0)                                              AS PaymentAmount,
-                   ISNULL(SUM(CASE WHEN pr.PaidAt IS NOT NULL THEN pr.TotalAmount ELSE 0 END), 0) AS PaidAmount
+                   ISNULL(SUM(pr.TotalAmount), 0) AS PaymentAmount,
+                   ISNULL(SUM(paid.Amount), 0)    AS PaidAmount
             FROM   Projects p
             LEFT JOIN Departments      d  ON p.DepartmentId = d.Id
             LEFT JOIN PaymentRequests  pr ON pr.ProjectId   = p.Id
                                          AND pr.ApprovalStatus != 'draft'
+            OUTER APPLY (
+              SELECT SUM(i.Amount) AS Amount
+              FROM PaymentRequestInstallments i
+              WHERE i.PaymentRequestId = pr.Id AND i.PaidAt IS NOT NULL
+            ) paid
             {scopeClause}
             GROUP BY p.Id, p.Code, p.Name, p.Status, d.Name, p.ContractAmount, p.BusinessAmount, p.RemainingAmount
             HAVING SUM(pr.TotalAmount) > 0

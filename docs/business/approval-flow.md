@@ -32,25 +32,50 @@ draft → pending → approved / returned / rejected
 2. **通知申請人**：信件主旨 `[已核准] 請款申請 #XX`
 3. **通知財務部全員**：信件主旨 `[可撥款] 請款申請 #XX 已核准`
 
-### 分期撥款（Installments，2026-05 新增）
+### 分期撥款（Installments，2026-05 上線；2026-05 Phase 2 完成）
 
-4 種申請類型（payment_request / advance / travel / travel_payment）支援**多筆分期撥款**：
+4 種申請類型（payment_request / advance / travel / travel_payment）支援**多筆分期撥款**，撥款資料**單一真相**＝子表 `XxxInstallment[]`：
 
-- **新 endpoint**：`PATCH /{type}-requests/{id}/installments`（取代舊單筆 `/payment-date`，舊 endpoint 兩階段過渡期暫時保留）
+- **唯一 endpoint**：`PATCH /{type}-requests/{id}/installments`（舊 `/payment-date` 已於 Phase 2 移除）
 - **DTO**：`UpsertInstallmentsRequest { installments[], approvalStatus? }`，每筆 `{ id?, installmentNo, expectedDate, paidAt?, amount, note? }`
-- **驗證**（`InstallmentValidator`）：
+- **驗證**（`InstallmentValidator.Validate`）：
   - 序號 1-based 連續無斷號
   - SUM(amount) == 申請總額（PaymentRequest.TotalAmount / 其他三者的 GrandTotal）容忍 0.01 浮點誤差
   - **已 PaidAt 列保護**：ExpectedDate / Amount / PaidAt 三欄全鎖死、不可刪除
   - 未撥列完全可改可刪
 - **每筆 PaidAt null→value 觸發一次通知**：`NotifyApplicantPaidAsync` 加 `installmentNo` / `totalInstallments` 參數，Email + LINE Flex 標題附「（第 N/M 期）」
-- **同步父表 cache**：Handler 在每次 upsert 時同步寫回父表 `EstimatedPaymentDate`（=MAX ExpectedDate）/ `PaidAt`（全數撥畢時=MAX PaidAt，否則 null）/ `PaidByUserId`，沿用舊「已撥款」判斷
 - **三態 status**（`PaymentInstallmentStatus` enum）：
   - `Unpaid`：installments 為空或所有 PaidAt 為 null
   - `PartiallyPaid`：部分 PaidAt 有值
   - `FullyPaid`：所有 PaidAt 都有值
+- **List filter 三態**：[PaymentRequestReadService](../../Api/Services/Dapper/PaymentRequestReadService.cs) 的 `PaymentStatusClause` 用 `EXISTS / NOT EXISTS` 子查詢 `XxxInstallments` 對應三態：
+  - `paid` = 有 installments 且所有 PaidAt 非 null（FullyPaid）
+  - `partial` = 至少一期 PaidAt 非 null 且至少一期 PaidAt 為 null（PartiallyPaid）
+  - `unpaid` = 無 installments 或所有 PaidAt 為 null（Unpaid）
+  - 簽核作業 → 已核准 Tab 的篩選按鈕對應：`全部` / `尚未撥款` (`unpaid`) / `部分撥款` (`partial`) / `全部撥款` (`paid`)
+  - 沖銷類（write_off / travel_write_off）退款仍以父表 `RefundedAt` 兩態判斷；遇 `paymentStatus=partial` 時整批 `1=0` 短路（沖銷無分期概念）
+- **PDF 出納簽名章**：取 `installments[]` 中最後一期已撥款者的 `PaidBySignatureUrl` + `PaidAt`
+
+### 撥款明細編輯 UI 限制（[approval-task-review](../../Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/)）
+
+簽核作業頁同時在 2 個區塊提供撥款明細編輯（待審核 = 計劃用、已核准 = 實際維護）。前端規則：
+
+| 元件 | 禁用條件 |
+|------|---------|
+| **「+ 新增一期」按鈕** | `SUM(已填金額) ≥ 申請總額`（容忍 0.01）**或** `paymentStatus = 'FullyPaid'`。避免新增 0 元空期或讓 SUM 超過總額。 |
+| **「儲存撥款明細」按鈕** | `SUM ≠ 申請總額`（容忍 0.01）**或** `paymentStatus = 'FullyPaid'`。FullyPaid 時所有列鎖定，無可儲存內容。 |
+| **金額 input** | `min="1" step="1"`（整數，不可 0 或負）；`max = 申請總額 − 其他列已填金額`（剩餘額度）。已撥款列：`readonly` + 灰底。 |
+| **預計撥款日 / 實際撥款日 input** | 已撥款列：`readonly` + 灰底。 |
+| **備註 input** | 已撥款列：`readonly` + 灰底（避免修改歷史紀錄）。 |
+| **刪除按鈕（⨯）** | 已撥款列：完全隱藏。只剩 1 列時也隱藏（避免清空）。 |
+
+標題列顯示「剩餘 X 元」hint 即時反映 `申請總額 − installmentsSum()`，配合按鈕禁用狀態給使用者明確視覺回饋。
+
+> 上述限制由 helpers `canAddInstallmentRow / isInstallmentsSumValid / isFullyPaid / installmentRowMax / isInstallmentLocked` 統一掌控；後端 `InstallmentValidator.Validate` 提供等同的伺服端防線。
 
 > 此端點仍限**財務體系部門**（部門 Code ∈ AC / FIN / Jabez HQ / CEO，`DepartmentCodes.FinancialAndAbove`）或 **Superadmin** 操作。
+
+歷史：原採兩階段過渡，Phase 1 父表保留 `EstimatedPaymentDate` / `PaidAt` / `PaidByUserId` 作 cache 由 Handler 同步寫回。2026-05 Phase 2 由 [BackfillInstallmentsFromParentCache](../../Api/Data/Migrations/) → [RemovePaymentDateCacheFromParents](../../Api/Data/Migrations/) 兩個 migration 拆除父表 cache。
 
 ### 撥款日將屆提醒（PaymentReminderFunction，2026-05 新增）
 
@@ -61,10 +86,6 @@ draft → pending → approved / returned / rejected
 - 同日同人去重（`PaymentReminderLog` 記錄 success 後當日不再推）
 - 手動觸發：Superadmin 可從 `/admin/payment-reminder-logs` 頁面或 `POST /api/admin/payment-reminder/run` 觸發
 - cron 由 `PaymentReminderCron` app setting 控制（預設 `0 0 1 * * *`，即 UTC 01:00 = Taipei 09:00）
-
-### 舊 endpoint（過渡期保留）
-
-財務部仍可透過 `PATCH /payment-requests/{id}/payment-date` 填入單筆 `EstimatedPaymentDate` / `PaidAt`（適用 advance / travel / travel_payment / holiday_travel）。
 
 ### 撥款 / 退款完成通知申請人
 
@@ -87,7 +108,7 @@ draft → pending → approved / returned / rejected
 - **動作限定**：僅支援 `approved`；退回/拒絕仍須進入詳情頁個別操作。
 - **權限獨立**：批次核准為獨立權限，不依賴 `approval-tasks:write`；未擁有此權限者按鈕不顯示，後端亦回 403。
 - **逐筆驗證**：每筆仍經過 `AuthorizeStepAsync`（職稱/部門/指定/升級），失敗者回報於 `failed` 清單，不中斷其他項目。
-- **撥款類留空**：批次核准 payment_request / advance 時 `EstimatedPaymentDate`、`PaidAt` 留空，後端回傳 `pendingPayment` 清單，前端以 banner 提示使用者「前往補填」撥款/退款日。
+- **撥款類留空**：批次核准 payment_request / advance / travel / travel_payment 時不會建立 installments，後端回傳 `pendingPayment` 清單（檢查條件：無 installments 或仍有 PaidAt 為空），前端以 banner 提示使用者「前往補填撥款明細」。
 - **沖銷結案不觸發**：批次核准不會設定 `CloseAdvance`；沖銷結案仍須於詳情頁或獨立結案端點操作。
 
 ## 自審跳過規則（僅限請款）

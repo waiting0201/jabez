@@ -204,6 +204,7 @@ Admin/src/app/
     │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出）
     │   ├── attendance-reminder-logs/ # 打卡提醒推播紀錄（僅 Superadmin）
     │   ├── payment-reminder-logs/ # 撥款提醒推播紀錄 + 手動觸發（僅 Superadmin）
+    │   ├── reports/        # 報表（出缺勤 / 加班 / 款項統計 / 專案水位）；款項統計 1 個 endpoint 支援 6 個類別 dropdown（請款 / 預支 / 預支沖銷 / 出差請款 / 出差預支 / 出差預支沖銷），權限只看 `reports-payment:read`，不需各別 `xxx-requests:read`
     │   └── settings/       # 系統設定（含 PaymentReminderDaysBefore 撥款提醒天數）
     └── error/
         └── pages/ (error-403, error-404, error-500)
@@ -561,18 +562,21 @@ hotfix/*      # 緊急修復
 
 ---
 
-## 技術負債（Tech Debt）TODO
+## 分期撥款（單一真相 = installments）
 
-### 分期撥款兩階段策略 — Phase 2 DROP 父表欄位
+2026-05 上線「分期撥款」，4 種申請類型（PaymentRequest / AdvanceRequest / TravelRequest / TravelPaymentRequest）的撥款資料**統一由子表 `XxxInstallment[]`** 表達：
 
-2026-05 上線「分期撥款」採**兩階段過渡策略**：
+- **撥款狀態**：由 [InstallmentReadService.ComputeStatus](Api/Services/Dapper/InstallmentReadService.cs) 計算三態（`Unpaid` / `PartiallyPaid` / `FullyPaid`），全部從子表推算
+- **List filter「已撥款 / 未撥款」**：[PaymentRequestReadService](Api/Services/Dapper/PaymentRequestReadService.cs) 的 `PaymentStatusClause` 用 `EXISTS / NOT EXISTS` 子查詢 `XxxInstallments`
+- **PDF 出納簽名章**：4 個 PDF service 取 `installments[]` 最後一期已撥款者的 `PaidBySignatureUrl` + `PaidAt`
+- **撥款日期更新**：唯一入口 `PATCH /{type}-requests/{id}/installments`（upsert installments），舊 `PATCH /{type}-requests/{id}/payment-date` 已移除
+- **撥款提醒**：[PaymentReminderService](Api/Services/PaymentReminderService.cs) UNION 4 種 installments 推算
+- **唯讀顯示**：[`<app-installments-table>`](Admin/src/app/shared/components/installments-table.ts) 共用元件（card 結構，跟其他 detail 卡片一致），4 種申請的 detail / form 頁皆引用
+- **編輯 UI 限制**（[approval-task-review](Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/)）：
+  - 「+ 新增一期」：`SUM ≥ 總額` 或 `FullyPaid` 時禁用
+  - 「儲存撥款明細」：`SUM ≠ 總額` 或 `FullyPaid` 時禁用
+  - 金額 input：`min=1`，`max=剩餘額度`（總額 − 其他列已填）
+  - 已撥款列：4 欄位（預計撥款日 / 實際撥款日 / 金額 / 備註）全 readonly + 灰底；刪除按鈕隱藏
+  - 後端 `InstallmentValidator.Validate` 提供等同驗證（序號連續 / SUM == 總額 / 已撥款列保護）
 
-- **Phase 1（已完成）**：4 個父表（PaymentRequest / AdvanceRequest / TravelRequest / TravelPaymentRequest）的 `EstimatedPaymentDate` / `PaidAt` / `PaidByUserId` 欄位**保留作為 cache**，Handler 在每次 upsert installments 時同步寫回；既有 SQL 查詢（如 list filter「已撥款 = PaidAt IS NOT NULL」）與 PDF 出納簽名章邏輯不必動。
-- **Phase 2（未來）**：當所有 list 查詢、簽名章、舊 endpoint 都改完，再做一次 migration 把 4 個父表的 3 個 cache 欄位整批 DROP，改完全依賴 `Installments` 集合判斷三態 status。
-
-執行 Phase 2 前的檢查清單：
-1. 確認所有舊 `PATCH /{type}-requests/{id}/payment-date` endpoint 已無 frontend 呼叫（grep 全 codebase）
-2. 確認 ReadService 的 list filter 已改為從 `XxxInstallments` 子查詢推算
-3. 確認 4 份 PDF service 的出納簽名章邏輯改為從 `installments[]` 取 last paid（目前是讀父表 cache）
-4. 寫新 migration `RemovePaymentDateCacheFromParents`：對 4 張父表 DROP EstimatedPaymentDate / PaidAt / PaidByUserId（含 FK 與 index）
-5. 同時更新 entity、EF Configuration、4 個 Handler 的同步寫回邏輯（整段刪除）
+歷史：原採兩階段過渡策略，Phase 1 父表保留 `EstimatedPaymentDate` / `PaidAt` / `PaidByUserId` 作 cache；2026-05 Phase 2 完成，DROP 4 張父表的 3 個 cache 欄位 + FK + Index，由 [BackfillInstallmentsFromParentCache](Api/Data/Migrations/) 與 [RemovePaymentDateCacheFromParents](Api/Data/Migrations/) 兩個 migration 串接執行。
