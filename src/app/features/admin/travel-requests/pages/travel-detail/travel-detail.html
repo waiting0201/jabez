@@ -209,30 +209,6 @@
               </div>
             }
 
-            @if (r.estimatedPaymentDate) {
-              <div class="col-6 col-md-3">
-                <div class="text-muted small">預計撥款日</div>
-                <div class="fw-500">{{ r.estimatedPaymentDate | date:'yyyy-MM-dd' }}</div>
-              </div>
-            }
-
-            @if (r.paidAt) {
-              <div class="col-6 col-md-3">
-                <div class="text-muted small">撥款日</div>
-                <div class="flex items-center gap-2">
-                  <svg class="sa-icon" style="color: var(--green); stroke: currentColor; width: 16px; height: 16px">
-                    <use href="/assets/icons/sprite.svg#check-circle"></use>
-                  </svg>
-                  <span class="fw-500" style="color: var(--green)">{{ r.paidAt | date:'yyyy-MM-dd' }}</span>
-                </div>
-              </div>
-            } @else if (r.estimatedPaymentDate) {
-              <div class="col-6 col-md-3">
-                <div class="text-muted small">撥款日</div>
-                <span class="text-muted small">尚未撥款</span>
-              </div>
-            }
-
             @if (r.estimatedRefundDate) {
               <div class="col-6 col-md-3">
                 <div class="text-muted small">預計退款日</div>
@@ -262,15 +238,11 @@
       </div>
     }
 
-    <!-- 分期撥款明細（核准後才會有資料；read-only）-->
-    @if (r.installments && r.installments.length > 0) {
-      <div class="mb-6">
-        <app-installments-table
-          [installmentsInput]="r.installments"
-          [paymentStatus]="r.paymentStatus"
-          [totalAmount]="r.grandTotal" />
-      </div>
-    }
+    <!-- 撥款明細（核准後才會有資料；read-only）-->
+    <app-installments-table
+      [installmentsInput]="r.installments"
+      [paymentStatus]="r.paymentStatus"
+      [totalAmount]="r.grandTotal" />
 
     <!-- 簽核流程時間軸 -->
     @if (approvalTask(); as task) {

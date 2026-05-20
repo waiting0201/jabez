@@ -46,17 +46,9 @@ export class PaymentRequestService {
     return this.http.post<{invoiceNo: string; amount: number; invoiceDate: string; docType: 'invoice' | 'ticket'}>(`${environment.apiUrl}/invoice-ocr`, fd);
   }
 
-  /** 更新已核准請款的撥款日期（僅財務部/Superadmin）— 舊單筆 endpoint，2-stage 過渡期保留 */
-  updatePaymentDate(id: number, estimatedPaymentDate?: string, paidAt?: string): Observable<{id: number; estimatedPaymentDate?: string; paidAt?: string}> {
-    return this.http.patch<{id: number; estimatedPaymentDate?: string; paidAt?: string}>(
-      `${environment.apiUrl}/payment-requests/${id}/payment-date`,
-      {estimatedPaymentDate: estimatedPaymentDate || null, paidAt: paidAt || null},
-    );
-  }
-
   /** 新增/更新分期撥款明細（4 種申請類型共用語意；僅財務部/Superadmin）*/
-  upsertInstallments(id: number, body: UpsertInstallmentsRequest): Observable<{id: number; estimatedPaymentDate?: string; paidAt?: string; installmentCount: number}> {
-    return this.http.patch<{id: number; estimatedPaymentDate?: string; paidAt?: string; installmentCount: number}>(
+  upsertInstallments(id: number, body: UpsertInstallmentsRequest): Observable<{id: number; installmentCount: number}> {
+    return this.http.patch<{id: number; installmentCount: number}>(
       `${environment.apiUrl}/payment-requests/${id}/installments`,
       body,
     );

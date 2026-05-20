@@ -10,7 +10,7 @@ export class AdvancePdfService {
   private pdfCore = inject(PdfCoreService);
 
   /** 列印經費預支申請表 */
-  async printAdvanceRequest(r: AdvanceRequest, submittedByName: string, approvalRecords: ApprovalRecord[] = [], flow?: ApprovalFlow, submittedBySignatureUrl?: string, paidBySignatureUrl?: string, paidAt?: string) {
+  async printAdvanceRequest(r: AdvanceRequest, submittedByName: string, approvalRecords: ApprovalRecord[] = [], flow?: ApprovalFlow, submittedBySignatureUrl?: string) {
     this.pdfLoading.set(true);
     try {
       const [{ default: jsPDF }, { default: autoTable }, fonts] = await Promise.all([
@@ -176,7 +176,7 @@ export class AdvancePdfService {
             3: {cellWidth: cw * 0.18, halign: 'right'},
             4: {cellWidth: cw * 0.38},
           },
-          head: [[{content: '分期撥款明細', colSpan: 5, styles: {halign: 'center'}}], ['期數', '預計撥款日', '實際撥款日', '金　額', '備　註']],
+          head: [[{content: '撥款明細', colSpan: 5, styles: {halign: 'center'}}], ['期數', '預計撥款日', '實際撥款日', '金　額', '備　註']],
           body: r.installments.map(ins => [
             String(ins.installmentNo),
             ins.expectedDate ? fmtDT(ins.expectedDate).split(' ')[0] : '—',
@@ -187,8 +187,7 @@ export class AdvancePdfService {
         });
         y = (doc as any).lastAutoTable.finalY + 6;
       } else {
-        lv('預計撥款日：', r.estimatedPaymentDate ? fmtDT(r.estimatedPaymentDate).split(' ')[0] : '—', mx, y, true);
-        lv('撥  款  日：', r.paidAt ? fmtDT(r.paidAt).split(' ')[0] : '—', pw - mx - 55, y, true);
+        lv('撥款資訊：', '尚未排定撥款', mx, y, true);
         y += 6;
       }
 
@@ -318,7 +317,9 @@ export class AdvancePdfService {
 
       y += 8;
       const advSubmitDate = r.createdAt ? fmtDT(r.createdAt) : '';
-      const advSignBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, advSubmitDate, '申請者', paidBySignatureUrl, paidAt);
+      // 出納簽名取最後一期已撥款者（若有）
+      const lastPaid = r.installments?.filter(i => i.paidAt).slice(-1)[0];
+      const advSignBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, advSubmitDate, '申請者', lastPaid?.paidBySignatureUrl, lastPaid?.paidAt);
       const advSigMap = await this.pdfCore.loadSignatureImages(advSignBlocks);
       this.pdfCore.drawSignatureBlock(doc, mx, pw, cw, y, advSignBlocks, advSigMap);
 

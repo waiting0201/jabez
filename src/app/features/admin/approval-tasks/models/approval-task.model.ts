@@ -97,10 +97,7 @@ export interface PaymentTaskDetail {
   projectName?: string;
   invoices: InvoiceItem[];
   totalAmount: number;
-  estimatedPaymentDate?: string;
-  paidAt?: string;
   reason?: string;
-  paidBySignatureUrl?: string;
   vendorId?: number;
   vendorName?: string;
   vendorTaxId?: string;
@@ -159,15 +156,10 @@ export interface TravelTaskDetail {
   /** 假日天數（僅假日執行活動使用） */
   holidayDays?: number;
   items: TravelTaskDetailItem[];
-  /** 預計撥款日 */
-  estimatedPaymentDate?: string;
-  /** 實際撥款日 */
-  paidAt?: string;
   /** 預計退款日（沖銷退還差額） */
   estimatedRefundDate?: string;
   /** 差額退款完成時間 */
   refundedAt?: string;
-  paidBySignatureUrl?: string;
   /** 假日活動每位人員津貼預估（僅 isHolidayTravel=true 時提供） */
   holidayAllowances?: HolidayAllowance[];
   installments?: InstallmentDto[];
@@ -204,16 +196,11 @@ export interface AdvanceTaskDetail {
   projectCode: string;
   activityName: string;
   grandTotal: number;
-  /** 預計撥款日 */
-  estimatedPaymentDate?: string;
-  /** 實際撥款日 */
-  paidAt?: string;
   /** 預計退款日（沖銷退還差額） */
   estimatedRefundDate?: string;
   /** 差額退款完成時間 */
   refundedAt?: string;
   items: AdvanceTaskDetailItem[];
-  paidBySignatureUrl?: string;
   installments?: InstallmentDto[];
   paymentStatus?: PaymentInstallmentStatus;
 }
@@ -252,7 +239,6 @@ export interface WriteOffTaskDetail {
   refundedAt?: string;
   advanceGrandTotal: number;
   otherWrittenOffTotal: number;
-  paidBySignatureUrl?: string;
   refundedBySignatureUrl?: string;
   advanceIsClosed?: boolean;
   /** 關聯預支單的應退差額（系統自動計算） */
@@ -295,7 +281,6 @@ export interface TravelWriteOffTaskDetail {
   /** 預計退款日（改自 estimatedPaymentDate） */
   estimatedRefundDate?: string;
   refundedAt?: string;
-  paidBySignatureUrl?: string;
   refundedBySignatureUrl?: string;
   travelIsClosed?: boolean;
   /** 關聯出差單的應退差額（系統自動計算） */
@@ -314,10 +299,7 @@ export interface TravelPaymentTaskDetail {
   purpose: string;
   projectCode?: string;
   projectName?: string;
-  estimatedPaymentDate?: string;
-  paidAt?: string;
   items: TravelPaymentRequestItem[];
-  paidBySignatureUrl?: string;
   installments?: InstallmentDto[];
   paymentStatus?: PaymentInstallmentStatus;
 }

@@ -178,7 +178,7 @@ export class ApprovalTaskList {
   /**
    * 取得已核准或審核中簽核作業的款項狀態（第二個 badge）。
    * status gate 與請款列表 paymentState() 一致：pending 或 approved 才顯示。
-   * - 撥款類（payment_request / advance / travel / travel_payment）：看對應 detail 的 paidAt
+   * - 撥款類（payment_request / advance / travel / travel_payment）：依 paymentStatus 三態（Unpaid/PartiallyPaid/FullyPaid）映射為已撥/未撥
    * - 退款類（write_off / travel_write_off）：僅超支時適用，看 refundedAt
    * - 其他（leave / overtime / holiday_travel）：無款項概念，回傳 null
    */
@@ -189,13 +189,16 @@ export class ApprovalTaskList {
       ? { label: PAYMENT_STATE_LABELS.paid,   cls: PAYMENT_STATE_CLASSES.paid }
       : { label: PAYMENT_STATE_LABELS.unpaid, cls: PAYMENT_STATE_CLASSES.unpaid };
 
+    // 從 paymentStatus 三態映射為兩態（FullyPaid → 已撥 / 其他 → 未撥）
+    const installmentPaid = (status?: string) => status === 'FullyPaid';
+
     const type = t.applicationType;
-    if (type === 'payment_request')  return paidBadge(!!t.paymentDetail?.paidAt);
-    if (type === 'advance')          return paidBadge(!!t.advanceDetail?.paidAt);
-    if (type === 'travel')           return paidBadge(!!t.travelDetail?.paidAt);
+    if (type === 'payment_request')  return paidBadge(installmentPaid(t.paymentDetail?.paymentStatus));
+    if (type === 'advance')          return paidBadge(installmentPaid(t.advanceDetail?.paymentStatus));
+    if (type === 'travel')           return paidBadge(installmentPaid(t.travelDetail?.paymentStatus));
     // holiday_travel：津貼隨次月薪資發放、不走撥款流程，故不顯示款項 badge
     if (type === 'holiday_travel')   return null;
-    if (type === 'travel_payment')   return paidBadge(!!t.travelPaymentDetail?.paidAt);
+    if (type === 'travel_payment')   return paidBadge(installmentPaid(t.travelPaymentDetail?.paymentStatus));
     if (type === 'write_off') {
       const d = t.writeOffDetail;
       if (!d) return null;

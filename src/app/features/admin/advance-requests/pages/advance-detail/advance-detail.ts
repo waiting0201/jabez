@@ -42,6 +42,6 @@ export class AdvanceDetail implements OnInit {
   printAdvance() {
     const r = this.request();
     const t = this.approvalTask();
-    if (r) this.pdfService.printAdvanceRequest(r, r.submittedBy ?? '', t?.approvalRecords ?? [], t?.flow, t?.submittedBySignatureUrl, t?.advanceDetail?.paidBySignatureUrl, t?.advanceDetail?.paidAt);
+    if (r) this.pdfService.printAdvanceRequest(r, r.submittedBy ?? '', t?.approvalRecords ?? [], t?.flow, t?.submittedBySignatureUrl);
   }
 }

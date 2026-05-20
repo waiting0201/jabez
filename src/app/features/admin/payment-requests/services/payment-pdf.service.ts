@@ -194,7 +194,7 @@ export class PaymentPdfService {
             3: {cellWidth: cw * 0.18, halign: 'right'},
             4: {cellWidth: cw * 0.38},
           },
-          head: [[{content: '分期撥款明細', colSpan: 5, styles: {halign: 'center'}}], ['期數', '預計撥款日', '實際撥款日', '金　額', '備　註']],
+          head: [[{content: '撥款明細', colSpan: 5, styles: {halign: 'center'}}], ['期數', '預計撥款日', '實際撥款日', '金　額', '備　註']],
           body: d.installments.map(ins => [
             String(ins.installmentNo),
             ins.expectedDate ? fmtDT(ins.expectedDate).split(' ')[0] : '—',
@@ -205,8 +205,7 @@ export class PaymentPdfService {
         });
         y = (doc as any).lastAutoTable.finalY + 6;
       } else {
-        lv('預計撥款日：', d.estimatedPaymentDate ? fmtDT(d.estimatedPaymentDate).split(' ')[0] : '—', mx, y, true);
-        lv('撥  款  日：', d.paidAt ? fmtDT(d.paidAt).split(' ')[0] : '—', pw - mx - 55, y, true);
+        lv('撥款資訊：', '尚未排定撥款', mx, y, true);
         y += 6;
       }
 
@@ -246,10 +245,14 @@ export class PaymentPdfService {
       submittedBySignatureUrl: task.submittedBySignatureUrl,
       submitDate,
       applicantLabel: '請款人',
-      cashier: {
-        paidBySignatureUrl: task.paymentDetail?.paidBySignatureUrl,
-        paidAt: task.paymentDetail?.paidAt,
-      },
+      cashier: (() => {
+        // 出納簽名取最後一期已撥款者（若有）
+        const lastPaid = task.paymentDetail?.installments?.filter(i => i.paidAt).slice(-1)[0];
+        return {
+          paidBySignatureUrl: lastPaid?.paidBySignatureUrl,
+          paidAt: lastPaid?.paidAt,
+        };
+      })(),
     });
   }
 }

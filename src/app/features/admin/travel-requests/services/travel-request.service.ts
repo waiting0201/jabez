@@ -39,20 +39,9 @@ export class TravelRequestService {
     return this.http.patch<TravelRequest>(`${environment.apiUrl}/travel-requests/${id}/submit`, {});
   }
 
-  /** 更新撥款日期（核准後財務部操作） */
-  updatePaymentDate(id: number, estimatedPaymentDate?: string, paidAt?: string, estimatedRefundDate?: string, refundedAt?: string, refundedAmount?: number | null): Observable<any> {
-    return this.http.patch(`${environment.apiUrl}/travel-requests/${id}/payment-date`, {
-      estimatedPaymentDate: estimatedPaymentDate || null,
-      paidAt: paidAt || null,
-      estimatedRefundDate: estimatedRefundDate || null,
-      refundedAt: refundedAt || null,
-      refundedAmount: refundedAmount ?? null,
-    });
-  }
-
   /** 新增/更新分期撥款明細（4 種申請類型共用語意；僅財務部/Superadmin）*/
-  upsertInstallments(id: number, body: UpsertInstallmentsRequest): Observable<{id: number; estimatedPaymentDate?: string; paidAt?: string; installmentCount: number}> {
-    return this.http.patch<{id: number; estimatedPaymentDate?: string; paidAt?: string; installmentCount: number}>(
+  upsertInstallments(id: number, body: UpsertInstallmentsRequest): Observable<{id: number; installmentCount: number}> {
+    return this.http.patch<{id: number; installmentCount: number}>(
       `${environment.apiUrl}/travel-requests/${id}/installments`,
       body,
     );

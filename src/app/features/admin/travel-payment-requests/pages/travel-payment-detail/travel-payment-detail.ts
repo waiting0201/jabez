@@ -62,9 +62,6 @@ export class TravelPaymentDetail implements OnInit {
         t?.approvalRecords ?? [],
         t?.flow,
         t?.submittedBySignatureUrl,
-        undefined,
-        r.paidAt,
-        t?.travelPaymentDetail?.paidBySignatureUrl,
       );
     }
   }

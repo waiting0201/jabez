@@ -37,6 +37,8 @@ export interface SignCashierInfo {
   paidAt?: string | Date | null;
   /** 退款處理人簽名（沖銷類用，優先於 paidBy） */
   refundedBySignatureUrl?: string;
+  /** 退款日期（沖銷類用，優先於 paidAt） */
+  refundedAt?: string | Date | null;
 }
 
 /** buildDynamicSignBlocks 主要參數 */
@@ -135,10 +137,11 @@ export function buildDynamicSignBlocks(opts: BuildDynamicSignBlocksOptions): Sig
 
   // 4. 出納欄
   if (cashier) {
+    const cashierDate = cashier.refundedAt ?? cashier.paidAt;
     ordered.push({
       label: '出納',
       signatureUrl: cashier.refundedBySignatureUrl ?? cashier.paidBySignatureUrl,
-      date: cashier.paidAt ? fmtDT(cashier.paidAt as Date | string) : '',
+      date: cashierDate ? fmtDT(cashierDate as Date | string) : '',
     });
   }
 

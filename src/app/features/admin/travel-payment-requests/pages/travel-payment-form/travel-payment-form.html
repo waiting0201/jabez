@@ -373,52 +373,12 @@
           </div>
         }
 
-        <!-- 撥款資訊（已核准時顯示） -->
-        @if (existingRequest && (existingRequest.estimatedPaymentDate || existingRequest.paidAt)) {
-          <div class="card border-0 shadow-sm mt-6">
-            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
-              <svg class="sa-icon text-muted" style="stroke: currentColor">
-                <use href="/assets/icons/sprite.svg#credit-card"></use>
-              </svg>
-              撥款資訊
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                @if (existingRequest.estimatedPaymentDate) {
-                  <div class="col-6 col-md-3">
-                    <div class="text-muted small">預計撥款日</div>
-                    <div class="fw-500">{{ existingRequest.estimatedPaymentDate | date:'yyyy-MM-dd' }}</div>
-                  </div>
-                }
-                @if (existingRequest.paidAt) {
-                  <div class="col-6 col-md-3">
-                    <div class="text-muted small">撥款日</div>
-                    <div class="flex items-center gap-1">
-                      <svg class="sa-icon" style="color: var(--green); stroke: currentColor; width: 16px; height: 16px">
-                        <use href="/assets/icons/sprite.svg#check-circle"></use>
-                      </svg>
-                      <span class="fw-500" style="color: var(--green)">{{ existingRequest.paidAt | date:'yyyy-MM-dd' }}</span>
-                    </div>
-                  </div>
-                } @else if (existingRequest.estimatedPaymentDate) {
-                  <div class="col-6 col-md-3">
-                    <div class="text-muted small">撥款日</div>
-                    <span class="text-muted small">尚未撥款</span>
-                  </div>
-                }
-              </div>
-            </div>
-          </div>
-        }
-
-        <!-- 分期撥款明細（核准後才會有資料；read-only）-->
+        <!-- 撥款明細（核准後才會有資料；read-only）-->
         @if (installments && installments.length > 0) {
-          <div class="mt-6">
-            <app-installments-table
-              [installmentsInput]="installments"
-              [paymentStatus]="paymentStatus ?? undefined"
-              [totalAmount]="loadedGrandTotal" />
-          </div>
+          <app-installments-table
+            [installmentsInput]="installments"
+            [paymentStatus]="paymentStatus ?? undefined"
+            [totalAmount]="loadedGrandTotal" />
         }
 
         <!-- 簽核流程時間軸 -->

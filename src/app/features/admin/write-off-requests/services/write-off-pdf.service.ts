@@ -10,7 +10,7 @@ export class WriteOffPdfService {
   private pdfCore = inject(PdfCoreService);
 
   /** 列印預支沖銷申請表 */
-  async printWriteOff(r: WriteOffRequest, submittedByName: string, approvalRecords: ApprovalRecord[] = [], flow?: ApprovalFlow, submittedBySignatureUrl?: string, paidBySignatureUrl?: string, paidAt?: string, refundedBySignatureUrl?: string) {
+  async printWriteOff(r: WriteOffRequest, submittedByName: string, approvalRecords: ApprovalRecord[] = [], flow?: ApprovalFlow, submittedBySignatureUrl?: string, refundedAt?: string, refundedBySignatureUrl?: string) {
     this.pdfLoading.set(true);
     try {
       const [{ default: jsPDF }, { default: autoTable }, fonts] = await Promise.all([
@@ -223,7 +223,7 @@ export class WriteOffPdfService {
 
       y += 8;
       const submitDate = r.createdAt ? fmtDT(r.createdAt) : '';
-      const signBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, submitDate, '申請者', paidBySignatureUrl, paidAt, refundedBySignatureUrl);
+      const signBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, submitDate, '申請者', refundedAt, refundedBySignatureUrl);
       const sigMap = await this.pdfCore.loadSignatureImages(signBlocks);
       this.pdfCore.drawSignatureBlock(doc, mx, pw, cw, y, signBlocks, sigMap);
 
@@ -248,8 +248,7 @@ export class WriteOffPdfService {
     submittedBySignatureUrl: string | undefined,
     submitDate: string,
     applicantLabel: string,
-    paidBySignatureUrl?: string,
-    paidAt?: string,
+    refundedAt?: string,
     refundedBySignatureUrl?: string,
   ): SignBlock[] {
     return buildDynamicSignBlocks({
@@ -258,7 +257,7 @@ export class WriteOffPdfService {
       submittedBySignatureUrl,
       submitDate,
       applicantLabel,
-      cashier: { paidBySignatureUrl, paidAt, refundedBySignatureUrl },
+      cashier: { refundedAt, refundedBySignatureUrl },
     });
   }
 }

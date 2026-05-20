@@ -90,6 +90,7 @@ export const ADMIN_ROUTES: Routes = [
   {path: 'payment-requests',             component: PaymentList, canActivate: [permissionGuard], data: {title: '請款申請',       permission: 'payment-requests:read'}},
   {path: 'payment-requests/new',         component: PaymentForm, canActivate: [permissionGuard], data: {title: '新增請款申請',   permission: 'payment-requests:write'}},
   {path: 'payment-requests/:id/edit',    component: PaymentForm, canActivate: [permissionGuard], data: {title: '編輯請款申請',   permission: 'payment-requests:read'}},
+  {path: 'payment-requests/:id',         canActivate: [permissionGuard], data: {title: '請款申請詳情', permission: 'payment-requests:read'}, loadComponent: () => import('./payment-requests/pages/payment-detail/payment-detail').then(m => m.PaymentDetail)},
 
   // 預支申請
   {path: 'advance-requests',             component: AdvanceList,   canActivate: [permissionGuard], data: {title: '預支申請',       permission: 'advance-requests:read'}},
