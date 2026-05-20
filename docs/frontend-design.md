@@ -164,7 +164,7 @@
 
 ### 報表 / 列表搜尋列（Toolbar Filter Pattern）
 
-> **單一真相來源**：所有報表（出缺勤紀錄、加班紀錄、請款統計、專案水位表…）與需要多條件篩選的列表頁，**搜尋列一律採用此緊湊單列樣式**。**禁止再使用** 雙列 grid + 欄位上方 label 的舊版佈局。
+> **單一真相來源**：所有報表（出缺勤紀錄、加班紀錄、款項統計、專案水位表…）與需要多條件篩選的列表頁，**搜尋列一律採用此緊湊單列樣式**。**禁止再使用** 雙列 grid + 欄位上方 label 的舊版佈局。
 
 #### 結構規則
 
@@ -276,7 +276,7 @@
 - [專案水位表](../Admin/src/app/features/admin/reports/pages/project-water-level/project-water-level.html) — 不需時段切換，最簡形式
 - [出缺勤紀錄](../Admin/src/app/features/admin/reports/pages/attendance-report/attendance-report.html) — 員工 + 時段
 - [加班紀錄](../Admin/src/app/features/admin/reports/pages/overtime-report/overtime-report.html) — 員工 + 專案 + 時段
-- [請款統計](../Admin/src/app/features/admin/reports/pages/payment-report/payment-report.html) — 付款狀態 + 時段
+- [款項統計](../Admin/src/app/features/admin/reports/pages/payment-report/payment-report.html) — 付款狀態 + 時段
 
 > 新增報表 / 多條件列表頁時，**必須**先讀其中一份（推薦：加班紀錄，覆蓋最完整）作為範本，依此規範佈局，禁止自行設計 toolbar 樣式。
 
