@@ -167,6 +167,7 @@
 | GET | `/reports/overtime` | 加班紀錄報表（已核准的加班申請 + 實際打卡時數，篩選參數：`employeeId / projectId / dateFrom / dateTo`） |
 | GET | `/reports/payment` | 款項統計報表（依類別查詢 6 種付款相關申請）。**必填** `category`（白名單：`payment` / `advance` / `writeoff` / `travel-payment` / `travel` / `travel-writeoff`，未帶或不合法 → 400）。篩選參數：`dateFrom / dateTo / paymentStatus`；`{主表}.CreatedAt` 為 DATETIME，`dateTo` 用 `< DATEADD(day, 1, @DateTo)` 半開區間涵蓋當日 23:59:59。沖銷類無 installments，`paymentStatus` 被忽略。權限：`reports-payment:read`，**不**需要各別 `xxx-requests:read`。 |
 | GET | `/reports/payment/export` | 款項統計匯出（不分頁、**一列一明細**：主表 LEFT JOIN 對應子表（InvoiceItems / AdvanceRequestItems / WriteOffItems / TravelPaymentRequestItems / TravelRequestItems / TravelWriteOffItems），無明細仍輸出 1 列）；參數同上；前端依 `category` 對應右側 4 欄表頭（請款/沖銷/出差類別 → 發票號碼/品名/發票日期/金額；預支 → 類別/品名/數量/金額）。 |
+| GET | `/reports/project-water-level` | 專案水位表。回傳 `DisbursedAmount` = 四種支出加總：① 請款已撥分期（PaymentRequest 非 draft + Installment.PaidAt 非 null）② 已核准預支沖銷 GrandTotal（透過 AdvanceRequest.ProjectId）③ 出差請款已撥分期 ④ 已核准出差沖銷 GrandTotal（透過 TravelRequest.ProjectId）。`Percentage` / `TotalPercentage` 皆以 `DisbursedAmount` 計算；`DisbursedAmount = 0` 的專案不回傳。篩選參數：`year / status`；套用部門可見性。權限：`reports-project-water-level:read`。 |
 
 ## 打卡提醒（手動觸發 + 紀錄查詢，僅 Superadmin）
 
@@ -201,6 +202,12 @@
 | Method | Path | 說明 |
 |--------|------|------|
 | GET | `/payroll?year=YYYY&month=MM` | 月薪計算（動態計算，不存 DB） |
+
+## 當前使用者聚合資訊（Me）
+
+| Method | Path | 說明 |
+|--------|------|------|
+| GET | `/me/notification-counts` | 鈴噹通知件數聚合：回 `{approvals, myRequests}`，兩段皆為 9 種申請類型 → 件數的 dictionary。`approvals` 走 reviewer 過濾，`myRequests` 統計當前使用者送出且狀態為 `pending` / `returned` 的件數。登入即可呼叫 |
 
 ## LINE 綁定 / 推播用量
 
