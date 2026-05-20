@@ -11,6 +11,8 @@ import {
   APPLICATION_TYPE_LABELS, APPLICATION_TYPE_CLASSES,
   PAYMENT_TYPE_LABELS, LEAVE_TYPE_LABELS,
   PAYMENT_STATE_LABELS, PAYMENT_STATE_CLASSES,
+  PAYMENT_INSTALLMENT_STATUS_LABELS, PAYMENT_INSTALLMENT_STATUS_CLASSES,
+  PaymentInstallmentStatus,
   ApprovalTask,
 } from '../../models/approval-task.model';
 import {ApplicationType} from '../../../approvals/models/approval.model';
@@ -42,7 +44,7 @@ export class ApprovalTaskList {
 
   readonly PAGE_SIZE = 20;
   activeTab = signal<'pending' | 'approved' | 'rejected'>('pending');
-  paymentStatus = signal<'' | 'paid' | 'unpaid'>('');
+  paymentStatus = signal<'' | 'paid' | 'unpaid' | 'partial'>('');
   applicationTypeFilter = signal<'' | ApplicationType>('');
   page = signal(1);
 
@@ -69,7 +71,7 @@ export class ApprovalTaskList {
     this.selectedKeys.set(new Set());
   }
 
-  setPaymentStatus(status: '' | 'paid' | 'unpaid') {
+  setPaymentStatus(status: '' | 'paid' | 'unpaid' | 'partial') {
     this.paymentStatus.set(status);
     this.page.set(1);
   }
@@ -178,40 +180,42 @@ export class ApprovalTaskList {
   /**
    * 取得已核准或審核中簽核作業的款項狀態（第二個 badge）。
    * status gate 與請款列表 paymentState() 一致：pending 或 approved 才顯示。
-   * - 撥款類（payment_request / advance / travel / travel_payment）：依 paymentStatus 三態（Unpaid/PartiallyPaid/FullyPaid）映射為已撥/未撥
-   * - 退款類（write_off / travel_write_off）：僅超支時適用，看 refundedAt
+   * - 撥款類（payment_request / advance / travel / travel_payment）：依 paymentStatus 三態（Unpaid / PartiallyPaid / FullyPaid）對應灰 / 黃 / 綠
+   * - 退款類（write_off / travel_write_off）：僅超支時適用，看 refundedAt 兩態
    * - 其他（leave / overtime / holiday_travel）：無款項概念，回傳 null
    */
   getPaymentBadge(t: ApprovalTask): { label: string; cls: string } | null {
     if (t.status !== 'pending' && t.status !== 'approved') return null;
 
-    const paidBadge = (isPaid: boolean) => isPaid
+    const installmentBadge = (status?: string) => {
+      const s = (status as PaymentInstallmentStatus | undefined) ?? 'Unpaid';
+      return { label: PAYMENT_INSTALLMENT_STATUS_LABELS[s], cls: PAYMENT_INSTALLMENT_STATUS_CLASSES[s] };
+    };
+
+    const refundBadge = (isRefunded: boolean) => isRefunded
       ? { label: PAYMENT_STATE_LABELS.paid,   cls: PAYMENT_STATE_CLASSES.paid }
       : { label: PAYMENT_STATE_LABELS.unpaid, cls: PAYMENT_STATE_CLASSES.unpaid };
 
-    // 從 paymentStatus 三態映射為兩態（FullyPaid → 已撥 / 其他 → 未撥）
-    const installmentPaid = (status?: string) => status === 'FullyPaid';
-
     const type = t.applicationType;
-    if (type === 'payment_request')  return paidBadge(installmentPaid(t.paymentDetail?.paymentStatus));
-    if (type === 'advance')          return paidBadge(installmentPaid(t.advanceDetail?.paymentStatus));
-    if (type === 'travel')           return paidBadge(installmentPaid(t.travelDetail?.paymentStatus));
+    if (type === 'payment_request')  return installmentBadge(t.paymentDetail?.paymentStatus);
+    if (type === 'advance')          return installmentBadge(t.advanceDetail?.paymentStatus);
+    if (type === 'travel')           return installmentBadge(t.travelDetail?.paymentStatus);
     // holiday_travel：津貼隨次月薪資發放、不走撥款流程，故不顯示款項 badge
     if (type === 'holiday_travel')   return null;
-    if (type === 'travel_payment')   return paidBadge(installmentPaid(t.travelPaymentDetail?.paymentStatus));
+    if (type === 'travel_payment')   return installmentBadge(t.travelPaymentDetail?.paymentStatus);
     if (type === 'write_off') {
       const d = t.writeOffDetail;
       if (!d) return null;
       const overspent = (d.advanceGrandTotal - d.otherWrittenOffTotal - d.grandTotal) < 0;
       if (!overspent) return null;
-      return paidBadge(!!d.refundedAt);
+      return refundBadge(!!d.refundedAt);
     }
     if (type === 'travel_write_off') {
       const d = t.travelWriteOffDetail;
       if (!d) return null;
       const overspent = (d.travelGrandTotal - d.otherWrittenOffTotal - d.grandTotal) < 0;
       if (!overspent) return null;
-      return paidBadge(!!d.refundedAt);
+      return refundBadge(!!d.refundedAt);
     }
     return null;
   }
