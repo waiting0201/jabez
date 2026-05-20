@@ -335,7 +335,7 @@ export class PaymentReport implements OnInit {
     }
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '請款統計');
-    XLSX.writeFile(wb, `請款統計_${this.exportSuffix()}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, '款項統計');
+    XLSX.writeFile(wb, `款項統計_${this.exportSuffix()}.xlsx`);
   }
 }
