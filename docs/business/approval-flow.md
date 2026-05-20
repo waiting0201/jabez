@@ -51,6 +51,23 @@ draft → pending → approved / returned / rejected
 - **List filter「已撥款 / 未撥款」**：[PaymentRequestReadService](../../Api/Services/Dapper/PaymentRequestReadService.cs) 的 `PaymentStatusClause` 用 `EXISTS / NOT EXISTS` 子查詢 `XxxInstallments`
 - **PDF 出納簽名章**：取 `installments[]` 中最後一期已撥款者的 `PaidBySignatureUrl` + `PaidAt`
 
+### 撥款明細編輯 UI 限制（[approval-task-review](../../Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/)）
+
+簽核作業頁同時在 2 個區塊提供撥款明細編輯（待審核 = 計劃用、已核准 = 實際維護）。前端規則：
+
+| 元件 | 禁用條件 |
+|------|---------|
+| **「+ 新增一期」按鈕** | `SUM(已填金額) ≥ 申請總額`（容忍 0.01）**或** `paymentStatus = 'FullyPaid'`。避免新增 0 元空期或讓 SUM 超過總額。 |
+| **「儲存撥款明細」按鈕** | `SUM ≠ 申請總額`（容忍 0.01）**或** `paymentStatus = 'FullyPaid'`。FullyPaid 時所有列鎖定，無可儲存內容。 |
+| **金額 input** | `min="1" step="1"`（整數，不可 0 或負）；`max = 申請總額 − 其他列已填金額`（剩餘額度）。已撥款列：`readonly` + 灰底。 |
+| **預計撥款日 / 實際撥款日 input** | 已撥款列：`readonly` + 灰底。 |
+| **備註 input** | 已撥款列：`readonly` + 灰底（避免修改歷史紀錄）。 |
+| **刪除按鈕（⨯）** | 已撥款列：完全隱藏。只剩 1 列時也隱藏（避免清空）。 |
+
+標題列顯示「剩餘 X 元」hint 即時反映 `申請總額 − installmentsSum()`，配合按鈕禁用狀態給使用者明確視覺回饋。
+
+> 上述限制由 helpers `canAddInstallmentRow / isInstallmentsSumValid / isFullyPaid / installmentRowMax / isInstallmentLocked` 統一掌控；後端 `InstallmentValidator.Validate` 提供等同的伺服端防線。
+
 > 此端點仍限**財務體系部門**（部門 Code ∈ AC / FIN / Jabez HQ / CEO，`DepartmentCodes.FinancialAndAbove`）或 **Superadmin** 操作。
 
 歷史：原採兩階段過渡，Phase 1 父表保留 `EstimatedPaymentDate` / `PaidAt` / `PaidByUserId` 作 cache 由 Handler 同步寫回。2026-05 Phase 2 由 [BackfillInstallmentsFromParentCache](../../Api/Data/Migrations/) → [RemovePaymentDateCacheFromParents](../../Api/Data/Migrations/) 兩個 migration 拆除父表 cache。

@@ -25,15 +25,15 @@
 | `EscalationOverride` | 升級審核指派（記錄被指派的升級/代理審核者，審核完成後清除） |
 | `Project` | 專案主檔（含 **DepartmentId 必填**、ContractAmount 契約金額、BusinessAmount 業務執行金額、RemainingAmount 剩餘金額（系統導入時剩餘預算，選填）；實收金額為衍生值，由 `SUM(ProjectPaymentSchedules.DepositAmount)` 即時計算） |
 | `ProjectPaymentSchedule` | 專案請款期別明細（一期一筆：請款/發票/入帳日期與金額、扣款備註；扣款金額 = 發票 − 入帳，前端計算不存 DB） |
-| `PaymentRequest` | 請款申請（含 `RequestNo` 單號 `PR-yyyyMMdd-NNN` unique index、`VendorId` nullable FK：當 Type=`vendor` 時必填且必須是 IsActive=true 的廠商；其他類型強制為 null） |
+| `PaymentRequest` | 請款申請（含 `RequestNo` 單號 `PR-yyyyMMdd-NNN` unique index、`VendorId` nullable FK：當 Type=`vendor` 時必填且必須是 IsActive=true 的廠商；其他類型強制為 null；撥款資料統一由 `PaymentRequestInstallment[]` 表達，父表無 cache 欄位） |
 | `InvoiceItem` | 請款明細（發票項目） |
 | `LeaveRequest` | 請假申請（含 BereavementRelationship 喪假親屬關係） |
-| `TravelRequest` | 出差預支申請（含 `RequestNo` 單號 unique index：`IsHolidayTravel=false` → `TR-yyyyMMdd-NNN`、`IsHolidayTravel=true` → `HTR-yyyyMMdd-NNN`，per-prefix-per-day 序號池；含 IsHolidayTravel、IsClosed 結案、GrandTotal 明細合計；事後走沖銷流程）。當 `IsHolidayTravel=true`（假日執行活動）時不含 Items 與發票明細，僅記錄活動地點/期間/參與人員 |
+| `TravelRequest` | 出差預支申請（含 `RequestNo` 單號 unique index：`IsHolidayTravel=false` → `TR-yyyyMMdd-NNN`、`IsHolidayTravel=true` → `HTR-yyyyMMdd-NNN`，per-prefix-per-day 序號池；含 IsHolidayTravel、IsClosed 結案、GrandTotal 明細合計、`EstimatedRefundDate / RefundedAt / RefundedByUserId` 退款欄位（沖銷超支才用）；撥款資料統一由 `TravelRequestInstallment[]` 表達，父表無撥款 cache 欄位；事後走沖銷流程）。當 `IsHolidayTravel=true`（假日執行活動）時不含 Items 與發票明細，僅記錄活動地點/期間/參與人員 |
 | `TravelRequestItem` | 出差預支明細（交通費、住宿費、餐費、雜支）；假日執行活動不使用 |
 | `TravelPaymentRequest` | 出差請款申請（含 `RequestNo` 單號 `TPR-yyyyMMdd-NNN` unique index；員工代墊後直接請款，無沖銷流程；撥款資料統一由 `TravelPaymentRequestInstallment[]` 表達，父表無 cache 欄位） |
 | `TravelPaymentRequestItem` | 出差請款明細（交通費、住宿費、餐費、雜支，含發票號碼、發票日期、發票檔案上傳；上傳走 multipart + Azure Blob `invoices` container，前端支援拖放、OCR 自動辨識、HEIC/PDF） |
 | `OvertimeRequest` | 加班申請（走簽核流程） |
-| `AdvanceRequest` | 預支申請 |
+| `AdvanceRequest` | 預支申請（含 `EstimatedRefundDate / RefundedAt / RefundedByUserId` 退款欄位、`RefundAmount / RefundedAmount` 退款金額；撥款資料統一由 `AdvanceRequestInstallment[]` 表達，父表無撥款 cache 欄位） |
 | `AdvanceRequestItem` | 預支明細 |
 | `WriteOffRecord` | 預支沖銷申請（獨立簽核流程，關聯 AdvanceRequest，含 ApprovalStatus/CurrentStepOrder） |
 | `WriteOffItem` | 沖銷明細（含發票號碼、檔案上傳） |
@@ -44,10 +44,10 @@
 | `AttendanceReminderLog` | 打卡提醒推播紀錄（BatchId 串聯同一次 tick；含 batchStart 紀錄、ErrorCategory 失敗分類、HttpStatusCode、DurationMs；Snapshot 欄位保留歷史） |
 | `PaymentReminderLog` | 撥款日將屆提醒推播紀錄（BatchId 串聯同一次 tick；TriggerSource auto/manual；ReminderDateTaipei 用於同日去重；Status: success/failure/batchStart/skipped_already_sent；FinanceUserId 推播對象） |
 | `SystemSetting` | 系統設定（含站台 / 工時 / 通知 / 撥款提醒）。`ApprovalEmailEnabled` / `ApprovalLineEnabled` 控制全域簽核通知開關（不影響帳號通知 / 薪資明細 / 打卡提醒）。`PaymentReminderDaysBefore` 控制撥款日將屆提醒提前天數（預設 3 天，0-30） |
-| `PaymentRequestInstallment` | 請款分期撥款明細（多筆）：InstallmentNo / ExpectedDate / PaidAt / Amount / Note / PaidByUserId。每筆 PaidAt null→value 觸發一次「已撥款」通知（含 N/M 期）|
-| `AdvanceRequestInstallment` | 預支分期撥款明細（同上結構，FK→AdvanceRequest）|
-| `TravelRequestInstallment` | 出差預支分期撥款明細（同上結構，FK→TravelRequest）|
-| `TravelPaymentRequestInstallment` | 出差請款分期撥款明細（同上結構，FK→TravelPaymentRequest）|
+| `PaymentRequestInstallment` | 請款撥款明細（多筆，與父表 1:N）：`InstallmentNo` 1-based 連續、`ExpectedDate` 預計撥款日（必填）、`PaidAt` 實際撥款日（null = 未撥）、`Amount` 金額（>= 1）、`Note` 備註、`PaidByUserId` 撥款人 FK→Users。**驗證**（InstallmentValidator）：序號連續無斷號、`SUM(Amount) == 父表 TotalAmount`（容忍 0.01）、已撥款列保護（PaidAt 有值時 ExpectedDate/Amount/PaidAt 不可改、不可刪）。每筆 PaidAt null→value 觸發一次「已撥款」通知（含 N/M 期） |
+| `AdvanceRequestInstallment` | 預支撥款明細（同上結構，FK→AdvanceRequest，SUM 對應父表 GrandTotal）|
+| `TravelRequestInstallment` | 出差預支撥款明細（同上結構，FK→TravelRequest，SUM 對應父表 GrandTotal）|
+| `TravelPaymentRequestInstallment` | 出差請款撥款明細（同上結構，FK→TravelPaymentRequest，SUM 對應父表 GrandTotal）|
 | `InsuranceBracket` | 勞健保級距（投保級距、員工負擔勞保、員工負擔健保） |
 | `EmployeeProfile` | 員工人事資料卡 1:1 對 User（PK=UserId）；含員工代號 / 英文名 / 身分證號 / 性別 / 婚姻 / 出生地 / 行動電話 / 戶籍 / 通訊 / 緊急聯絡 / 銀行帳號 / 投保起日 / 扶養人 / 專長興趣 / 離職原因 / 身分證正反面影本 / 最高學歷證明 URL |
 | `EducationRecord` | 學歷紀錄（最高 / 次之 / 次之，校名 / 科系 / 畢肄業 / 起迄） |

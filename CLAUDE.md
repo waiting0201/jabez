@@ -570,5 +570,12 @@ hotfix/*      # 緊急修復
 - **PDF 出納簽名章**：4 個 PDF service 取 `installments[]` 最後一期已撥款者的 `PaidBySignatureUrl` + `PaidAt`
 - **撥款日期更新**：唯一入口 `PATCH /{type}-requests/{id}/installments`（upsert installments），舊 `PATCH /{type}-requests/{id}/payment-date` 已移除
 - **撥款提醒**：[PaymentReminderService](Api/Services/PaymentReminderService.cs) UNION 4 種 installments 推算
+- **唯讀顯示**：[`<app-installments-table>`](Admin/src/app/shared/components/installments-table.ts) 共用元件（card 結構，跟其他 detail 卡片一致），4 種申請的 detail / form 頁皆引用
+- **編輯 UI 限制**（[approval-task-review](Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/)）：
+  - 「+ 新增一期」：`SUM ≥ 總額` 或 `FullyPaid` 時禁用
+  - 「儲存撥款明細」：`SUM ≠ 總額` 或 `FullyPaid` 時禁用
+  - 金額 input：`min=1`，`max=剩餘額度`（總額 − 其他列已填）
+  - 已撥款列：4 欄位（預計撥款日 / 實際撥款日 / 金額 / 備註）全 readonly + 灰底；刪除按鈕隱藏
+  - 後端 `InstallmentValidator.Validate` 提供等同驗證（序號連續 / SUM == 總額 / 已撥款列保護）
 
 歷史：原採兩階段過渡策略，Phase 1 父表保留 `EstimatedPaymentDate` / `PaidAt` / `PaidByUserId` 作 cache；2026-05 Phase 2 完成，DROP 4 張父表的 3 個 cache 欄位 + FK + Index，由 [BackfillInstallmentsFromParentCache](Api/Data/Migrations/) 與 [RemovePaymentDateCacheFromParents](Api/Data/Migrations/) 兩個 migration 串接執行。
