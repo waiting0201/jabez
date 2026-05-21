@@ -388,9 +388,9 @@ export class PaymentReport implements OnInit {
     const itemHeaders = ITEM_HEADERS[category] ?? ['', '', '', ''];
 
     const headers = [
-      '單號', '員工姓名', '類型', '專案代碼', '專案名稱', '簽核狀態',
-      '申請日期', '付款日期', '單據總金額',
+      '單號', '員工姓名', '類型', '專案',
       ...itemHeaders,
+      '總金額', '簽核狀態', '付款日期', '申請日期',
     ];
 
     // 第 1 列：篩選條件摘要；第 2 列空；第 3 列：表頭；第 4 列起：資料
@@ -416,29 +416,36 @@ export class PaymentReport implements OnInit {
         ? (r.itemCol3Text ?? '')
         : this.toIsoDate(r.itemCol3Date);
 
+      const projectCombined = isFirstRow
+        ? [r.projectCode ?? '—', r.projectName ?? ''].filter(v => v !== '').join('\n')
+        : '';
+
       aoa.push([
         isFirstRow ? (r.requestNo ?? '') : '',
         isFirstRow ? (r.employeeName ?? '—') : '',
         isFirstRow ? (PAYMENT_TYPE_LABELS[r.type] ?? r.type) : '',
-        isFirstRow ? (r.projectCode ?? '—') : '',
-        isFirstRow ? (r.projectName ?? '') : '',
-        isFirstRow ? (STATUS_LABELS[r.approvalStatus] ?? r.approvalStatus) : '',
-        isFirstRow ? this.toIsoDate(r.createdAt) : '',
-        isFirstRow ? this.toIsoDate(r.paidAt) : '',
-        isFirstRow ? (r.paymentTotalAmount ?? 0) : '',
+        projectCombined,
         // 明細層 4 欄永遠輸出
         r.itemCol1 ?? '',
         r.itemName ?? '',
         itemCol3,
         r.itemAmount ?? null,
+        // 後段主表欄位（同筆只在第一列）
+        isFirstRow ? (r.paymentTotalAmount ?? 0) : '',
+        isFirstRow ? (STATUS_LABELS[r.approvalStatus] ?? r.approvalStatus) : '',
+        isFirstRow ? this.toIsoDate(r.paidAt) : '',
+        isFirstRow ? this.toIsoDate(r.createdAt) : '',
       ]);
     }
 
-    // 合計列：單據總金額 = 跨主表 sum（已去重）；明細金額 = 全部加總
+    // 合計列：對齊 UI tfoot（colspan=7 合計 → 明細金額 → 總金額 → colspan=3 空白）
     const requestTotal = Array.from(perRequestTotals.values()).reduce((sum, v) => sum + v, 0);
     const itemTotal = rows.reduce((sum, r) => sum + (r.itemAmount ?? 0), 0);
     aoa.push([
-      '合計', '', '', '', '', '', '', '', requestTotal, '', '', '', itemTotal,
+      '合計', '', '', '', '', '', '',
+      itemTotal,        // col 8 = 明細金額合計
+      requestTotal,     // col 9 = 單據總金額（去重）
+      '', '', '',
     ]);
 
     const ws = XLSX.utils.aoa_to_sheet(aoa);
@@ -448,27 +455,34 @@ export class PaymentReport implements OnInit {
       { wch: 18 }, // 單號
       { wch: 12 }, // 員工姓名
       { wch: 12 }, // 類型
-      { wch: 12 }, // 專案代碼
-      { wch: 24 }, // 專案名稱
-      { wch: 10 }, // 簽核狀態
-      { wch: 12 }, // 申請日期
-      { wch: 12 }, // 付款日期
-      { wch: 14 }, // 單據總金額
+      { wch: 24 }, // 專案（多行：代碼 + 名稱）
       { wch: 14 }, // 明細 Col1
       { wch: 20 }, // 品名
       { wch: 12 }, // 明細 Col3
       { wch: 14 }, // 明細金額
+      { wch: 14 }, // 總金額
+      { wch: 10 }, // 簽核狀態
+      { wch: 12 }, // 付款日期
+      { wch: 12 }, // 申請日期
     ];
 
-    // 金額欄千分位格式（I 欄=單據總金額、M 欄=明細金額）
+    // 金額欄千分位格式（H 欄 c=7 明細金額、I 欄 c=8 總金額）
     const headerRowIdx = 2;
     const totalRowIdx = aoa.length - 1;
     const numberFmt = '#,##0';
     for (let r = headerRowIdx + 1; r <= totalRowIdx; r++) {
+      const itemCell = ws[XLSX.utils.encode_cell({ r, c: 7 })];
+      if (itemCell && typeof itemCell.v === 'number') itemCell.z = numberFmt;
       const totalCell = ws[XLSX.utils.encode_cell({ r, c: 8 })];
       if (totalCell && typeof totalCell.v === 'number') totalCell.z = numberFmt;
-      const itemCell = ws[XLSX.utils.encode_cell({ r, c: 12 })];
-      if (itemCell && typeof itemCell.v === 'number') itemCell.z = numberFmt;
+    }
+
+    // 「專案」欄（c=3）自動換行（含 code\nname 兩行）
+    for (let r = headerRowIdx + 1; r < totalRowIdx; r++) {
+      const cell = ws[XLSX.utils.encode_cell({ r, c: 3 })];
+      if (cell) {
+        cell.s = { ...(cell.s ?? {}), alignment: { wrapText: true, vertical: 'top' } };
+      }
     }
 
     const wb = XLSX.utils.book_new();

@@ -6114,7 +6114,7 @@ var routes = [
       },
       {
         path: "admin",
-        loadChildren: () => import("./chunk-5XXVLFC7.js").then((m) => m.ADMIN_ROUTES)
+        loadChildren: () => import("./chunk-Y5H4TDA2.js").then((m) => m.ADMIN_ROUTES)
       },
       {
         path: "account/change-password",
