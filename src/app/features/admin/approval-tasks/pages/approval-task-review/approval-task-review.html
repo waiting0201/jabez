@@ -571,16 +571,18 @@
                   @if (d.advanceIsClosed && (d.advanceGrandTotal - d.otherWrittenOffTotal - d.grandTotal) < 0) {
                     <div class="row g-3 mt-4 mb-0">
                       <div class="col-6 col-md-3">
-                        <div class="text-muted small mb-1">預計退款日</div>
+                        <div class="text-muted small mb-1">預計撥款日</div>
                         <span class="fw-500">{{ d.estimatedRefundDate ? (d.estimatedRefundDate | date:'yyyy-MM-dd') : '尚未設定' }}</span>
+                        <div class="text-muted small mt-1">沖銷金額超過預支金額時，公司預計撥付差額給員工的日期</div>
                       </div>
                       <div class="col-6 col-md-3">
-                        <div class="text-muted small mb-1">退款日</div>
-                        <span class="fw-500" [class.text-success]="d.refundedAt">{{ d.refundedAt ? (d.refundedAt | date:'yyyy-MM-dd') : '尚未退款' }}</span>
+                        <div class="text-muted small mb-1">撥款日</div>
+                        <span class="fw-500" [class.text-success]="d.refundedAt">{{ d.refundedAt ? (d.refundedAt | date:'yyyy-MM-dd') : '尚未撥款' }}</span>
+                        <div class="text-muted small mt-1">公司實際撥付差額給員工的日期</div>
                       </div>
                       @if (d.advanceRefundedAmount != null) {
                         <div class="col-6 col-md-3">
-                          <div class="text-muted small mb-1">退款金額</div>
+                          <div class="text-muted small mb-1">撥款金額</div>
                           <span class="fw-500">${{ d.advanceRefundedAmount | number:'1.0-0' }}</span>
                         </div>
                       }
@@ -834,16 +836,18 @@
                   @if (d.travelIsClosed && (d.travelGrandTotal - d.otherWrittenOffTotal - d.grandTotal) < 0) {
                     <div class="row g-3 mt-4 mb-0">
                       <div class="col-6 col-md-3">
-                        <div class="text-muted small mb-1">預計退款日</div>
+                        <div class="text-muted small mb-1">預計撥款日</div>
                         <span class="fw-500">{{ d.estimatedRefundDate ? (d.estimatedRefundDate | date:'yyyy-MM-dd') : '尚未設定' }}</span>
+                        <div class="text-muted small mt-1">沖銷金額超過預支金額時，公司預計撥付差額給員工的日期</div>
                       </div>
                       <div class="col-6 col-md-3">
-                        <div class="text-muted small mb-1">退款日</div>
-                        <span class="fw-500" [class.text-success]="d.refundedAt">{{ d.refundedAt ? (d.refundedAt | date:'yyyy-MM-dd') : '尚未退款' }}</span>
+                        <div class="text-muted small mb-1">撥款日</div>
+                        <span class="fw-500" [class.text-success]="d.refundedAt">{{ d.refundedAt ? (d.refundedAt | date:'yyyy-MM-dd') : '尚未撥款' }}</span>
+                        <div class="text-muted small mt-1">公司實際撥付差額給員工的日期</div>
                       </div>
                       @if (d.travelRefundedAmount != null) {
                         <div class="col-6 col-md-3">
-                          <div class="text-muted small mb-1">退款金額</div>
+                          <div class="text-muted small mb-1">撥款金額</div>
                           <span class="fw-500">${{ d.travelRefundedAmount | number:'1.0-0' }}</span>
                         </div>
                       }
@@ -1086,10 +1090,11 @@
                     <div class="text-muted small mt-2">提示：核准撥款類申請時撥款明細必填（加總須等於申請總額）；核准後可在「設定撥款日期」區塊回來修改未撥款的列或填入實際撥款日。</div>
                   </div>
                 } @else if ((applicationType === 'write_off' || applicationType === 'travel_write_off') && canSetPaymentDate(task)) {
-                  <!-- 沖銷類仍維持單一預計退款日 -->
+                  <!-- 沖銷類仍維持單一預計撥款日 -->
                   <div class="mb-4">
-                    <label class="form-label fw-500">預計退款日</label>
+                    <label class="form-label fw-500">預計撥款日</label>
                     <input type="date" class="form-control" formControlName="estimatedRefundDate" style="max-width: 220px">
+                    <div class="text-muted small mt-1">沖銷金額超過預支金額時，公司預計撥付差額給員工的日期</div>
                   </div>
                 }
                 <div class="mb-4">
@@ -1182,27 +1187,27 @@
                 <div class="small mb-4 text-success">{{ task.travelDetail!.refundedAt | date:'yyyy-MM-dd' }}</div>
               }
               @if (task.applicationType === 'write_off' && task.writeOffDetail?.estimatedRefundDate) {
-                <div class="text-muted small mb-1 fw-500">預計退款日：</div>
+                <div class="text-muted small mb-1 fw-500">預計撥款日：</div>
                 <div class="small mb-4">{{ task.writeOffDetail!.estimatedRefundDate | date:'yyyy-MM-dd' }}</div>
               }
               @if (task.applicationType === 'write_off' && task.writeOffDetail?.refundedAt) {
-                <div class="text-muted small mb-1 fw-500">退款日：</div>
+                <div class="text-muted small mb-1 fw-500">撥款日：</div>
                 <div class="small mb-4 text-success">{{ task.writeOffDetail!.refundedAt | date:'yyyy-MM-dd' }}</div>
               }
               @if (task.applicationType === 'write_off' && task.writeOffDetail?.advanceRefundedAmount != null) {
-                <div class="text-muted small mb-1 fw-500">退款金額：</div>
+                <div class="text-muted small mb-1 fw-500">撥款金額：</div>
                 <div class="small mb-4">${{ task.writeOffDetail!.advanceRefundedAmount | number:'1.0-0' }}</div>
               }
               @if (task.applicationType === 'travel_write_off' && task.travelWriteOffDetail?.estimatedRefundDate) {
-                <div class="text-muted small mb-1 fw-500">預計退款日：</div>
+                <div class="text-muted small mb-1 fw-500">預計撥款日：</div>
                 <div class="small mb-4">{{ task.travelWriteOffDetail!.estimatedRefundDate | date:'yyyy-MM-dd' }}</div>
               }
               @if (task.applicationType === 'travel_write_off' && task.travelWriteOffDetail?.refundedAt) {
-                <div class="text-muted small mb-1 fw-500">退款日：</div>
+                <div class="text-muted small mb-1 fw-500">撥款日：</div>
                 <div class="small mb-4 text-success">{{ task.travelWriteOffDetail!.refundedAt | date:'yyyy-MM-dd' }}</div>
               }
               @if (task.applicationType === 'travel_write_off' && task.travelWriteOffDetail?.travelRefundedAmount != null) {
-                <div class="text-muted small mb-1 fw-500">退款金額：</div>
+                <div class="text-muted small mb-1 fw-500">撥款金額：</div>
                 <div class="small mb-4">${{ task.travelWriteOffDetail!.travelRefundedAmount | number:'1.0-0' }}</div>
               }
               <!-- 已核准後的撥款明細管理：分期表（payment_request / advance / travel / travel_payment）-->

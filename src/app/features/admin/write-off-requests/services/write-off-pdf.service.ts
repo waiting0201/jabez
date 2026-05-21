@@ -145,7 +145,7 @@ export class WriteOffPdfService {
       }
       if (refundedAmount > 0) {
         bodyRows.push([
-          { content: '實際退款', colSpan: 6, styles: { halign: 'right' } },
+          { content: '實際撥款', colSpan: 6, styles: { halign: 'right' } },
           { content: fmt(refundedAmount), colSpan: 2, styles: { halign: 'right' } },
           '',
           '',
@@ -160,14 +160,14 @@ export class WriteOffPdfService {
       if (r.advanceIsClosed && (r.advanceGrandTotal - totalWrittenOff) < 0) {
         const fmtDate = (v?: string) => v ? new Date(v).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Taipei' }) : '尚未設定';
         bodyRows.push([
-          { content: '預計退款日', colSpan: 6, styles: { halign: 'right' } },
+          { content: '預計撥款日', colSpan: 6, styles: { halign: 'right' } },
           { content: fmtDate(r.estimatedRefundDate), colSpan: 2, styles: { halign: 'right' } },
           '',
           '',
         ]);
         bodyRows.push([
-          { content: '退款日', colSpan: 6, styles: { halign: 'right' } },
-          { content: r.refundedAt ? fmtDate(r.refundedAt) : '尚未退款', colSpan: 2, styles: { halign: 'right' } },
+          { content: '撥款日', colSpan: 6, styles: { halign: 'right' } },
+          { content: r.refundedAt ? fmtDate(r.refundedAt) : '尚未撥款', colSpan: 2, styles: { halign: 'right' } },
           '',
           '',
         ]);

@@ -113,16 +113,18 @@
         @if (r.travelIsClosed && (r.travelGrandTotal - r.travelWrittenOffTotal - r.grandTotal) < 0) {
           <div class="row g-3 mb-4">
             <div class="col-6 col-md-3">
-              <div class="text-muted small">預計退款日</div>
+              <div class="text-muted small">預計撥款日</div>
               <div class="fw-500">{{ r.estimatedRefundDate ? (r.estimatedRefundDate | date:'yyyy-MM-dd') : '尚未設定' }}</div>
+              <div class="text-muted small mt-1">沖銷金額超過預支金額時，公司預計撥付差額給員工的日期</div>
             </div>
             <div class="col-6 col-md-3">
-              <div class="text-muted small">退款日</div>
-              <div class="fw-500" [class.text-success]="r.refundedAt">{{ r.refundedAt ? (r.refundedAt | date:'yyyy-MM-dd') : '尚未退款' }}</div>
+              <div class="text-muted small">撥款日</div>
+              <div class="fw-500" [class.text-success]="r.refundedAt">{{ r.refundedAt ? (r.refundedAt | date:'yyyy-MM-dd') : '尚未撥款' }}</div>
+              <div class="text-muted small mt-1">公司實際撥付差額給員工的日期</div>
             </div>
             @if (r.travelRefundedAmount != null) {
               <div class="col-6 col-md-3">
-                <div class="text-muted small">退款金額</div>
+                <div class="text-muted small">撥款金額</div>
                 <div class="fw-500">${{ r.travelRefundedAmount | number:'1.0-0' }}</div>
               </div>
             }
