@@ -7,8 +7,9 @@ import {environment} from '@/environments/environment';
 import {dayToRange, FilterMode, monthToRange, shiftDateString, snapToIsoWeek, todayString} from '@/app/features/admin/reports/utils/date-range';
 import * as XLSX from 'xlsx';
 
-/** 6 個類別 — 與後端 PaymentReportReadService 常數對應 */
+/** 類別 — 與後端 PaymentReportReadService 常數對應（all = 全部，6 種 UNION） */
 export const CATEGORY_OPTIONS = [
+  { value: 'all',             label: '全部' },
   { value: 'payment',         label: '請款' },
   { value: 'advance',         label: '預支' },
   { value: 'writeoff',        label: '預支沖銷' },
@@ -36,8 +37,9 @@ const STATUS_LABELS: Record<string, string> = {
   returned: '退回修改',
 };
 
-/** 匯出 Excel 右側 4 欄表頭 — 依類別決定 */
+/** 匯出 Excel 右側 4 欄表頭 — 依類別決定（all 用通用表頭，混合 6 種類別） */
 const ITEM_HEADERS: Record<string, [string, string, string, string]> = {
+  'all':              ['發票號碼/類別', '品名', '發票日期/數量', '金額'],
   'payment':          ['發票號碼', '品名', '發票日期', '發票金額'],
   'advance':          ['類別',     '品名', '數量',     '金額'],
   'writeoff':         ['發票號碼', '品名', '發票日期', '金額'],
@@ -150,9 +152,6 @@ export class PaymentReport implements OnInit {
   /** 合計 */
   totalAmount = signal(0);
 
-  /** advance 類別：明細第 3 欄為「數量」（字串）；其他類別為「發票日期」 */
-  isAdvanceCategory = computed(() => this.selectedCategory() === 'advance');
-
   /** 明細 4 欄表頭（依類別決定） */
   itemHeaders = computed<readonly [string, string, string, string]>(() => {
     return ITEM_HEADERS[this.selectedCategory()] ?? ['', '', '', ''] as any;
@@ -163,10 +162,10 @@ export class PaymentReport implements OnInit {
     const result: FlatPaymentRow[] = [];
     for (const r of this.records()) {
       if (!r.items || r.items.length === 0) {
-        result.push({ key: `${r.id}-0`, record: r, item: null, isFirstRow: true });
+        result.push({ key: `${r.type}-${r.id}-0`, record: r, item: null, isFirstRow: true });
       } else {
         r.items.forEach((item, idx) => {
-          result.push({ key: `${r.id}-${idx}`, record: r, item, isFirstRow: idx === 0 });
+          result.push({ key: `${r.type}-${r.id}-${idx}`, record: r, item, isFirstRow: idx === 0 });
         });
       }
     }
@@ -301,10 +300,11 @@ export class PaymentReport implements OnInit {
     };
   }
 
-  /** 顯示明細日期：advance 類別取 col3Text（數量），其他取 col3Date 格式化 */
+  /** 顯示明細第 3 欄：依每筆 item 決定 — 有 col3Text（數量，advance）優先，否則 col3Date（發票日期）格式化。
+   *  per-item 判斷讓「全部」類別可在同表混合呈現 advance 與其他類別。 */
   itemCol3Display(item: PaymentReportItem | null): string {
     if (!item) return '';
-    if (this.isAdvanceCategory()) return item.col3Text ?? '';
+    if (item.col3Text) return item.col3Text;
     return item.col3Date ? new Date(item.col3Date).toLocaleDateString('zh-TW') : '';
   }
 
@@ -370,13 +370,15 @@ export class PaymentReport implements OnInit {
 
           this.buildAndDownloadXlsx(rows);
           this.toastr.success(`已匯出 ${rows.length} 筆資料。`, '匯出完成');
-        } catch {
+        } catch (e) {
+          console.error('export xlsx failed', e);
           this.toastr.error('匯出檔案產生失敗。', '匯出失敗');
         } finally {
           this.exporting.set(false);
         }
       },
-      error: () => {
+      error: (err) => {
+        console.error('export api failed', err);
         this.toastr.error('匯出失敗，請稍後再試。', '錯誤');
         this.exporting.set(false);
       },
@@ -400,21 +402,21 @@ export class PaymentReport implements OnInit {
       headers,
     ];
 
-    // 請款層欄位去重：同筆只在第一列輸出；同時記錄各筆 totalAmount 以利合計
-    let lastParentId: number | null = null;
-    const perRequestTotals = new Map<number, number>();
-    const isAdvance = category === 'advance';
+    // 請款層欄位去重：同筆只在第一列輸出；同時記錄各筆 totalAmount 以利合計。
+    // 去重 key 用複合字串（type + parentId），避免「全部」UNION 後跨表相同 parentId 相鄰被誤併。
+    let lastKey: string | null = null;
+    const perRequestTotals = new Map<string, number>();
 
     for (const r of rows) {
-      const isFirstRow = r.parentId !== lastParentId;
+      const rowKey = `${r.type}-${r.parentId}`;
+      const isFirstRow = rowKey !== lastKey;
       if (isFirstRow) {
-        lastParentId = r.parentId;
-        perRequestTotals.set(r.parentId, r.paymentTotalAmount ?? 0);
+        lastKey = rowKey;
+        perRequestTotals.set(rowKey, r.paymentTotalAmount ?? 0);
       }
 
-      const itemCol3 = isAdvance
-        ? (r.itemCol3Text ?? '')
-        : this.toIsoDate(r.itemCol3Date);
+      // per-row：有 col3Text（數量）優先，否則 col3Date（發票日期）—— 對單一類別等效，對 all 可混合
+      const itemCol3 = r.itemCol3Text ?? this.toIsoDate(r.itemCol3Date);
 
       const projectCombined = isFirstRow
         ? [r.projectCode ?? '—', r.projectName ?? ''].filter(v => v !== '').join('\n')
