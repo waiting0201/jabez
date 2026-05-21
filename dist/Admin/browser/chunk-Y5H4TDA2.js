@@ -54707,13 +54707,12 @@ var PaymentReport = class _PaymentReport {
       "\u55AE\u865F",
       "\u54E1\u5DE5\u59D3\u540D",
       "\u985E\u578B",
-      "\u5C08\u6848\u4EE3\u78BC",
-      "\u5C08\u6848\u540D\u7A31",
+      "\u5C08\u6848",
+      ...itemHeaders,
+      "\u7E3D\u91D1\u984D",
       "\u7C3D\u6838\u72C0\u614B",
-      "\u7533\u8ACB\u65E5\u671F",
       "\u4ED8\u6B3E\u65E5\u671F",
-      "\u55AE\u64DA\u7E3D\u91D1\u984D",
-      ...itemHeaders
+      "\u7533\u8ACB\u65E5\u671F"
     ];
     const aoa = [
       [this.filterSummaryLine()],
@@ -54730,21 +54729,22 @@ var PaymentReport = class _PaymentReport {
         perRequestTotals.set(r.parentId, r.paymentTotalAmount ?? 0);
       }
       const itemCol3 = isAdvance ? r.itemCol3Text ?? "" : this.toIsoDate(r.itemCol3Date);
+      const projectCombined = isFirstRow ? [r.projectCode ?? "\u2014", r.projectName ?? ""].filter((v) => v !== "").join("\n") : "";
       aoa.push([
         isFirstRow ? r.requestNo ?? "" : "",
         isFirstRow ? r.employeeName ?? "\u2014" : "",
         isFirstRow ? PAYMENT_TYPE_LABELS3[r.type] ?? r.type : "",
-        isFirstRow ? r.projectCode ?? "\u2014" : "",
-        isFirstRow ? r.projectName ?? "" : "",
-        isFirstRow ? STATUS_LABELS[r.approvalStatus] ?? r.approvalStatus : "",
-        isFirstRow ? this.toIsoDate(r.createdAt) : "",
-        isFirstRow ? this.toIsoDate(r.paidAt) : "",
-        isFirstRow ? r.paymentTotalAmount ?? 0 : "",
+        projectCombined,
         // 明細層 4 欄永遠輸出
         r.itemCol1 ?? "",
         r.itemName ?? "",
         itemCol3,
-        r.itemAmount ?? null
+        r.itemAmount ?? null,
+        // 後段主表欄位（同筆只在第一列）
+        isFirstRow ? r.paymentTotalAmount ?? 0 : "",
+        isFirstRow ? STATUS_LABELS[r.approvalStatus] ?? r.approvalStatus : "",
+        isFirstRow ? this.toIsoDate(r.paidAt) : "",
+        isFirstRow ? this.toIsoDate(r.createdAt) : ""
       ]);
     }
     const requestTotal = Array.from(perRequestTotals.values()).reduce((sum, v) => sum + v, 0);
@@ -54757,12 +54757,13 @@ var PaymentReport = class _PaymentReport {
       "",
       "",
       "",
-      "",
+      itemTotal,
+      // col 8 = 明細金額合計
       requestTotal,
+      // col 9 = 單據總金額（去重）
       "",
       "",
-      "",
-      itemTotal
+      ""
     ]);
     const ws = utils.aoa_to_sheet(aoa);
     ws["!cols"] = [
@@ -54772,37 +54773,41 @@ var PaymentReport = class _PaymentReport {
       // 員工姓名
       { wch: 12 },
       // 類型
-      { wch: 12 },
-      // 專案代碼
       { wch: 24 },
-      // 專案名稱
-      { wch: 10 },
-      // 簽核狀態
-      { wch: 12 },
-      // 申請日期
-      { wch: 12 },
-      // 付款日期
-      { wch: 14 },
-      // 單據總金額
+      // 專案（多行：代碼 + 名稱）
       { wch: 14 },
       // 明細 Col1
       { wch: 20 },
       // 品名
       { wch: 12 },
       // 明細 Col3
-      { wch: 14 }
+      { wch: 14 },
       // 明細金額
+      { wch: 14 },
+      // 總金額
+      { wch: 10 },
+      // 簽核狀態
+      { wch: 12 },
+      // 付款日期
+      { wch: 12 }
+      // 申請日期
     ];
     const headerRowIdx = 2;
     const totalRowIdx = aoa.length - 1;
     const numberFmt = "#,##0";
     for (let r = headerRowIdx + 1; r <= totalRowIdx; r++) {
+      const itemCell = ws[utils.encode_cell({ r, c: 7 })];
+      if (itemCell && typeof itemCell.v === "number")
+        itemCell.z = numberFmt;
       const totalCell = ws[utils.encode_cell({ r, c: 8 })];
       if (totalCell && typeof totalCell.v === "number")
         totalCell.z = numberFmt;
-      const itemCell = ws[utils.encode_cell({ r, c: 12 })];
-      if (itemCell && typeof itemCell.v === "number")
-        itemCell.z = numberFmt;
+    }
+    for (let r = headerRowIdx + 1; r < totalRowIdx; r++) {
+      const cell = ws[utils.encode_cell({ r, c: 3 })];
+      if (cell) {
+        cell.s = __spreadProps(__spreadValues({}, cell.s ?? {}), { alignment: { wrapText: true, vertical: "top" } });
+      }
     }
     const wb = utils.book_new();
     utils.book_append_sheet(wb, ws, "\u6B3E\u9805\u7D71\u8A08");
@@ -66873,4 +66878,4 @@ xlsx/xlsx.mjs:
 xlsx/xlsx.mjs:
   (*! sheetjs (C) 2013-present SheetJS -- http://sheetjs.com *)
 */
-//# sourceMappingURL=chunk-5XXVLFC7.js.map
+//# sourceMappingURL=chunk-Y5H4TDA2.js.map
