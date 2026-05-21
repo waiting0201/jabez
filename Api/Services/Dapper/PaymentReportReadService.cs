@@ -18,9 +18,11 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
     public const string CategoryTravelPayment  = "travel-payment";
     public const string CategoryTravel         = "travel";
     public const string CategoryTravelWriteOff = "travel-writeoff";
+    public const string CategoryAll            = "all";
 
     public static readonly string[] AllCategories =
     [
+        CategoryAll,
         CategoryPayment, CategoryAdvance, CategoryWriteOff,
         CategoryTravelPayment, CategoryTravel, CategoryTravelWriteOff
     ];
@@ -29,15 +31,24 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
     // 共用：dept scope filter
     // ========================================================================
     /// <summary>
-    /// 依 scope 產生「申請人部門」過濾片段（前綴 " AND "）。
+    /// 依 scope 產生「申請人部門」過濾片段字串（前綴 " AND "）。不負責加參數。
     /// userAlias 由各 query 指定（例：u / submitter）。
     /// </summary>
-    private static string BuildDeptScopeFilter(ProjectAccessScope scope, DynamicParameters parameters, string userAlias = "u")
+    private static string DeptScopeClause(ProjectAccessScope scope, string userAlias = "u")
     {
         if (scope.SeeAll) return "";
         if (scope.AllowedDepartmentIds.Count == 0) return " AND 1=0";
-        parameters.Add("AllowedDeptIds", scope.AllowedDepartmentIds);
         return $" AND {userAlias}.DepartmentId IN @AllowedDeptIds";
+    }
+
+    /// <summary>
+    /// 單一類別用：產生 dept filter 片段並加上 @AllowedDeptIds 參數。
+    /// </summary>
+    private static string BuildDeptScopeFilter(ProjectAccessScope scope, DynamicParameters parameters, string userAlias = "u")
+    {
+        if (!scope.SeeAll && scope.AllowedDepartmentIds.Count > 0)
+            parameters.Add("AllowedDeptIds", scope.AllowedDepartmentIds);
+        return DeptScopeClause(scope, userAlias);
     }
 
     // ========================================================================
@@ -56,6 +67,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
             CategoryTravelPayment  => GetTravelPaymentPagedAsync(scope, page, pageSize, dateFrom, dateTo, paymentStatus),
             CategoryTravel         => GetTravelPagedAsync(scope, page, pageSize, dateFrom, dateTo, paymentStatus),
             CategoryTravelWriteOff => GetTravelWriteOffPagedAsync(scope, page, pageSize, dateFrom, dateTo, paymentStatus),
+            CategoryAll            => GetAllPagedAsync(scope, page, pageSize, dateFrom, dateTo, paymentStatus),
             _ => throw new AppException("不支援的類別", 400),
         };
 
@@ -71,6 +83,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
             CategoryTravelPayment  => GetTravelPaymentExportAsync(scope, dateFrom, dateTo, paymentStatus),
             CategoryTravel         => GetTravelExportAsync(scope, dateFrom, dateTo, paymentStatus),
             CategoryTravelWriteOff => GetTravelWriteOffExportAsync(scope, dateFrom, dateTo, paymentStatus),
+            CategoryAll            => GetAllExportAsync(scope, dateFrom, dateTo, paymentStatus),
             _ => throw new AppException("不支援的類別", 400),
         };
 
@@ -79,30 +92,23 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
     // ========================================================================
 
     /// <summary>
-    /// 用主表 alias + 子表 installments 名稱 + parentFk 組裝日期 / 付款狀態 where。
+    /// 用主表 alias + 子表 installments 名稱 + parentFk 組裝日期 / 付款狀態 where 片段字串（不負責加參數）。
     /// </summary>
     /// <param name="parentAlias">主表 alias（如 "pr"、"adv"）</param>
     /// <param name="dateCol">主表日期欄位（多為 "CreatedAt"）</param>
     /// <param name="installmentsTable">分期撥款子表名（如 "PaymentRequestInstallments"），null 表示無 installments</param>
     /// <param name="installmentsFk">分期撥款子表 FK 欄位（如 "PaymentRequestId"），null 表示無 installments</param>
-    private static string BuildDateAndPaymentStatus(
+    private static string DateAndPaymentStatusClause(
         DateOnly? dateFrom, DateOnly? dateTo, string? paymentStatus,
-        DynamicParameters parameters,
         string parentAlias, string dateCol,
         string? installmentsTable, string? installmentsFk)
     {
         var where = new StringBuilder();
 
         if (dateFrom.HasValue)
-        {
             where.Append($" AND {parentAlias}.{dateCol} >= @DateFrom");
-            parameters.Add("DateFrom", dateFrom.Value.ToDateTime(TimeOnly.MinValue));
-        }
         if (dateTo.HasValue)
-        {
             where.Append($" AND {parentAlias}.{dateCol} < DATEADD(day, 1, @DateTo)");
-            parameters.Add("DateTo", dateTo.Value.ToDateTime(TimeOnly.MinValue));
-        }
 
         if (string.IsNullOrEmpty(paymentStatus)) return where.ToString();
         if (installmentsTable == null || installmentsFk == null) return where.ToString();  // 沖銷類無 installments，忽略
@@ -121,6 +127,20 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
     }
 
     /// <summary>
+    /// 單一類別用：產生日期 / 付款狀態 where 片段並加上 @DateFrom / @DateTo 參數。
+    /// </summary>
+    private static string BuildDateAndPaymentStatus(
+        DateOnly? dateFrom, DateOnly? dateTo, string? paymentStatus,
+        DynamicParameters parameters,
+        string parentAlias, string dateCol,
+        string? installmentsTable, string? installmentsFk)
+    {
+        if (dateFrom.HasValue) parameters.Add("DateFrom", dateFrom.Value.ToDateTime(TimeOnly.MinValue));
+        if (dateTo.HasValue)   parameters.Add("DateTo", dateTo.Value.ToDateTime(TimeOnly.MinValue));
+        return DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, parentAlias, dateCol, installmentsTable, installmentsFk);
+    }
+
+    /// <summary>
     /// 撥款日推算 CASE 子句：全撥完 → MAX(PaidAt)，否則 NULL；無 installments 表 → 永遠 NULL。
     /// </summary>
     private static string PaidAtCase(string parentAlias, string? installmentsTable, string? installmentsFk)
@@ -134,6 +154,270 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
             END
             """;
     }
+
+    // ========================================================================
+    // Paged 主查詢 core（SELECT...FROM...{where}，不含 ORDER BY / OFFSET）。
+    // 12 欄固定順序（含 SourceCategory），供單一類別與 'all' UNION 共用。
+    // ========================================================================
+    private static string PaymentPagedCore(string where, string paidAt) => $"""
+        SELECT pr.Id,
+               pr.RequestNo,
+               u.Name AS EmployeeName,
+               pr.Type,
+               proj.Code AS ProjectCode,
+               proj.Name AS ProjectName,
+               (SELECT STRING_AGG(InvoiceNo, ',') FROM InvoiceItems WHERE PaymentRequestId = pr.Id) AS InvoiceNos,
+               pr.TotalAmount,
+               pr.ApprovalStatus,
+               {paidAt} AS PaidAt,
+               pr.CreatedAt,
+               'payment' AS SourceCategory
+        FROM PaymentRequests pr
+        JOIN Users   u    ON pr.SubmittedById = u.Id
+        JOIN Projects proj ON pr.ProjectId    = proj.Id
+        {where}
+        """;
+
+    private static string AdvancePagedCore(string where, string paidAt) => $"""
+        SELECT adv.Id,
+               adv.RequestNo,
+               u.Name         AS EmployeeName,
+               'advance'      AS Type,
+               proj.Code      AS ProjectCode,
+               proj.Name      AS ProjectName,
+               NULL           AS InvoiceNos,
+               adv.GrandTotal AS TotalAmount,
+               adv.ApprovalStatus,
+               {paidAt}       AS PaidAt,
+               adv.CreatedAt,
+               'advance'      AS SourceCategory
+        FROM AdvanceRequests adv
+        JOIN Users    u    ON adv.SubmittedById = u.Id
+        JOIN Projects proj ON adv.ProjectId    = proj.Id
+        {where}
+        """;
+
+    private static string WriteOffPagedCore(string where) => $"""
+        SELECT wo.Id,
+               wo.RequestNo,
+               u.Name         AS EmployeeName,
+               'writeoff'     AS Type,
+               proj.Code      AS ProjectCode,
+               proj.Name      AS ProjectName,
+               (SELECT STRING_AGG(InvoiceNo, ',') FROM WriteOffItems WHERE WriteOffRecordId = wo.Id AND InvoiceNo IS NOT NULL) AS InvoiceNos,
+               wo.GrandTotal  AS TotalAmount,
+               wo.ApprovalStatus,
+               adv.RefundedAt AS PaidAt,
+               wo.CreatedAt,
+               'writeoff'     AS SourceCategory
+        FROM WriteOffRecords wo
+        JOIN Users           u    ON wo.SubmittedById = u.Id
+        JOIN AdvanceRequests adv  ON wo.AdvanceRequestId = adv.Id
+        JOIN Projects        proj ON adv.ProjectId    = proj.Id
+        {where}
+        """;
+
+    private static string TravelPaymentPagedCore(string where, string paidAt) => $"""
+        SELECT tpr.Id,
+               tpr.RequestNo,
+               u.Name         AS EmployeeName,
+               'travel-payment' AS Type,
+               ISNULL(proj.Code, '') AS ProjectCode,
+               ISNULL(proj.Name, '') AS ProjectName,
+               (SELECT STRING_AGG(InvoiceNo, ',') FROM TravelPaymentRequestItems WHERE TravelPaymentRequestId = tpr.Id AND InvoiceNo IS NOT NULL) AS InvoiceNos,
+               tpr.GrandTotal AS TotalAmount,
+               tpr.ApprovalStatus,
+               {paidAt}       AS PaidAt,
+               tpr.CreatedAt,
+               'travel-payment' AS SourceCategory
+        FROM TravelPaymentRequests tpr
+        JOIN Users         u    ON tpr.EmployeeId = u.Id
+        LEFT JOIN Projects proj ON tpr.ProjectId  = proj.Id
+        {where}
+        """;
+
+    private static string TravelPagedCore(string where, string paidAt) => $"""
+        SELECT tr.Id,
+               tr.RequestNo,
+               u.Name         AS EmployeeName,
+               'travel'       AS Type,
+               ISNULL(proj.Code, '') AS ProjectCode,
+               ISNULL(proj.Name, '') AS ProjectName,
+               (SELECT STRING_AGG(InvoiceNo, ',') FROM TravelRequestItems WHERE TravelRequestId = tr.Id AND InvoiceNo IS NOT NULL) AS InvoiceNos,
+               tr.GrandTotal  AS TotalAmount,
+               tr.ApprovalStatus,
+               {paidAt}       AS PaidAt,
+               tr.CreatedAt,
+               'travel'       AS SourceCategory
+        FROM TravelRequests tr
+        JOIN Users         u    ON tr.EmployeeId = u.Id
+        LEFT JOIN Projects proj ON tr.ProjectId  = proj.Id
+        {where}
+        """;
+
+    private static string TravelWriteOffPagedCore(string where) => $"""
+        SELECT two.Id,
+               two.RequestNo,
+               u.Name         AS EmployeeName,
+               'travel-writeoff' AS Type,
+               ISNULL(proj.Code, '') AS ProjectCode,
+               ISNULL(proj.Name, '') AS ProjectName,
+               (SELECT STRING_AGG(InvoiceNo, ',') FROM TravelWriteOffItems WHERE TravelWriteOffRecordId = two.Id AND InvoiceNo IS NOT NULL) AS InvoiceNos,
+               two.GrandTotal AS TotalAmount,
+               two.ApprovalStatus,
+               tr.RefundedAt  AS PaidAt,
+               two.CreatedAt,
+               'travel-writeoff' AS SourceCategory
+        FROM TravelWriteOffRecords two
+        JOIN Users          u    ON two.SubmittedById = u.Id
+        JOIN TravelRequests tr   ON two.TravelRequestId = tr.Id
+        LEFT JOIN Projects  proj ON tr.ProjectId  = proj.Id
+        {where}
+        """;
+
+    // ========================================================================
+    // Export 主查詢 core（SELECT...FROM...{where}，不含 ORDER BY）。
+    // 15 欄固定順序（PaymentExportRowDto），供單一類別與 'all' UNION 共用。
+    // ========================================================================
+    private static string PaymentExportCore(string where, string paidAt) => $"""
+        SELECT pr.Id          AS ParentId,
+               pr.RequestNo,
+               u.Name         AS EmployeeName,
+               pr.Type,
+               proj.Code      AS ProjectCode,
+               proj.Name      AS ProjectName,
+               pr.ApprovalStatus,
+               pr.CreatedAt,
+               {paidAt}       AS PaidAt,
+               pr.TotalAmount AS PaymentTotalAmount,
+               ii.InvoiceNo   AS ItemCol1,
+               ii.ItemName    AS ItemName,
+               CAST(NULL AS NVARCHAR(50)) AS ItemCol3Text,
+               ii.InvoiceDate AS ItemCol3Date,
+               ii.Amount      AS ItemAmount
+        FROM PaymentRequests pr
+        JOIN Users     u    ON pr.SubmittedById = u.Id
+        JOIN Projects  proj ON pr.ProjectId    = proj.Id
+        LEFT JOIN InvoiceItems ii ON ii.PaymentRequestId = pr.Id
+        {where}
+        """;
+
+    private static string AdvanceExportCore(string where, string paidAt) => $"""
+        SELECT adv.Id         AS ParentId,
+               adv.RequestNo,
+               u.Name         AS EmployeeName,
+               'advance'      AS Type,
+               proj.Code      AS ProjectCode,
+               proj.Name      AS ProjectName,
+               adv.ApprovalStatus,
+               adv.CreatedAt,
+               {paidAt}       AS PaidAt,
+               adv.GrandTotal AS PaymentTotalAmount,
+               item.Category  AS ItemCol1,
+               item.ItemName  AS ItemName,
+               item.Quantity  AS ItemCol3Text,
+               CAST(NULL AS DATETIME) AS ItemCol3Date,
+               item.TotalPrice AS ItemAmount
+        FROM AdvanceRequests adv
+        JOIN Users     u    ON adv.SubmittedById = u.Id
+        JOIN Projects  proj ON adv.ProjectId    = proj.Id
+        LEFT JOIN AdvanceRequestItems item ON item.AdvanceRequestId = adv.Id
+        {where}
+        """;
+
+    private static string WriteOffExportCore(string where) => $"""
+        SELECT wo.Id          AS ParentId,
+               wo.RequestNo,
+               u.Name         AS EmployeeName,
+               'writeoff'     AS Type,
+               proj.Code      AS ProjectCode,
+               proj.Name      AS ProjectName,
+               wo.ApprovalStatus,
+               wo.CreatedAt,
+               adv.RefundedAt AS PaidAt,
+               wo.GrandTotal  AS PaymentTotalAmount,
+               item.InvoiceNo AS ItemCol1,
+               item.ItemName  AS ItemName,
+               CAST(NULL AS NVARCHAR(50)) AS ItemCol3Text,
+               item.InvoiceDate AS ItemCol3Date,
+               item.TotalPrice  AS ItemAmount
+        FROM WriteOffRecords wo
+        JOIN Users           u    ON wo.SubmittedById = u.Id
+        JOIN AdvanceRequests adv  ON wo.AdvanceRequestId = adv.Id
+        JOIN Projects        proj ON adv.ProjectId    = proj.Id
+        LEFT JOIN WriteOffItems item ON item.WriteOffRecordId = wo.Id
+        {where}
+        """;
+
+    private static string TravelPaymentExportCore(string where, string paidAt) => $"""
+        SELECT tpr.Id          AS ParentId,
+               tpr.RequestNo,
+               u.Name           AS EmployeeName,
+               'travel-payment' AS Type,
+               ISNULL(proj.Code, '') AS ProjectCode,
+               ISNULL(proj.Name, '') AS ProjectName,
+               tpr.ApprovalStatus,
+               tpr.CreatedAt,
+               {paidAt}         AS PaidAt,
+               tpr.GrandTotal   AS PaymentTotalAmount,
+               item.InvoiceNo   AS ItemCol1,
+               item.ItemName    AS ItemName,
+               CAST(NULL AS NVARCHAR(50)) AS ItemCol3Text,
+               item.InvoiceDate AS ItemCol3Date,
+               item.TotalPrice  AS ItemAmount
+        FROM TravelPaymentRequests tpr
+        JOIN Users         u    ON tpr.EmployeeId = u.Id
+        LEFT JOIN Projects proj ON tpr.ProjectId  = proj.Id
+        LEFT JOIN TravelPaymentRequestItems item ON item.TravelPaymentRequestId = tpr.Id
+        {where}
+        """;
+
+    private static string TravelExportCore(string where, string paidAt) => $"""
+        SELECT tr.Id          AS ParentId,
+               tr.RequestNo,
+               u.Name           AS EmployeeName,
+               'travel'         AS Type,
+               ISNULL(proj.Code, '') AS ProjectCode,
+               ISNULL(proj.Name, '') AS ProjectName,
+               tr.ApprovalStatus,
+               tr.CreatedAt,
+               {paidAt}         AS PaidAt,
+               tr.GrandTotal    AS PaymentTotalAmount,
+               item.InvoiceNo   AS ItemCol1,
+               item.ItemName    AS ItemName,
+               CAST(NULL AS NVARCHAR(50)) AS ItemCol3Text,
+               item.InvoiceDate AS ItemCol3Date,
+               item.TotalPrice  AS ItemAmount
+        FROM TravelRequests tr
+        JOIN Users         u    ON tr.EmployeeId = u.Id
+        LEFT JOIN Projects proj ON tr.ProjectId  = proj.Id
+        LEFT JOIN TravelRequestItems item ON item.TravelRequestId = tr.Id
+        {where}
+        """;
+
+    private static string TravelWriteOffExportCore(string where) => $"""
+        SELECT two.Id         AS ParentId,
+               two.RequestNo,
+               u.Name           AS EmployeeName,
+               'travel-writeoff' AS Type,
+               ISNULL(proj.Code, '') AS ProjectCode,
+               ISNULL(proj.Name, '') AS ProjectName,
+               two.ApprovalStatus,
+               two.CreatedAt,
+               tr.RefundedAt    AS PaidAt,
+               two.GrandTotal   AS PaymentTotalAmount,
+               item.InvoiceNo   AS ItemCol1,
+               item.ItemName    AS ItemName,
+               CAST(NULL AS NVARCHAR(50)) AS ItemCol3Text,
+               item.InvoiceDate AS ItemCol3Date,
+               item.TotalPrice  AS ItemAmount
+        FROM TravelWriteOffRecords two
+        JOIN Users          u    ON two.SubmittedById = u.Id
+        JOIN TravelRequests tr   ON two.TravelRequestId = tr.Id
+        LEFT JOIN Projects  proj ON tr.ProjectId  = proj.Id
+        LEFT JOIN TravelWriteOffItems item ON item.TravelWriteOffRecordId = two.Id
+        {where}
+        """;
 
     // ========================================================================
     // 1) PaymentRequest 請款
@@ -161,27 +445,11 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
             """;
         int total = await db.ExecuteScalarAsync<int>(countSql, parameters);
 
-        var sql = $"""
-            SELECT pr.Id,
-                   pr.RequestNo,
-                   u.Name AS EmployeeName,
-                   pr.Type,
-                   proj.Code AS ProjectCode,
-                   proj.Name AS ProjectName,
-                   (SELECT STRING_AGG(InvoiceNo, ',') FROM InvoiceItems WHERE PaymentRequestId = pr.Id) AS InvoiceNos,
-                   pr.TotalAmount,
-                   pr.ApprovalStatus,
-                   {paidAt} AS PaidAt,
-                   pr.CreatedAt
-            FROM PaymentRequests pr
-            JOIN Users   u    ON pr.SubmittedById = u.Id
-            JOIN Projects proj ON pr.ProjectId    = proj.Id
-            {where}
-            ORDER BY pr.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
-            """;
+        var sql = PaymentPagedCore(where.ToString(), paidAt)
+            + "\nORDER BY pr.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
 
         var rows = (await db.QueryAsync<dynamic>(sql, parameters)).ToList();
-        var dtos = rows.Select(MapPaymentRow).ToList();
+        var dtos = rows.Select(r => (PaymentReportDto)MapPaymentRow(r)).ToList();
         return await AttachItemsAsync(CategoryPayment, dtos, total, page, pageSize);
     }
 
@@ -196,29 +464,8 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
 
         var paidAt = PaidAtCase("pr", "PaymentRequestInstallments", "PaymentRequestId");
 
-        var sql = $"""
-            SELECT pr.Id          AS ParentId,
-                   pr.RequestNo,
-                   u.Name         AS EmployeeName,
-                   pr.Type,
-                   proj.Code      AS ProjectCode,
-                   proj.Name      AS ProjectName,
-                   pr.ApprovalStatus,
-                   pr.CreatedAt,
-                   {paidAt}       AS PaidAt,
-                   pr.TotalAmount AS PaymentTotalAmount,
-                   ii.InvoiceNo   AS ItemCol1,
-                   ii.ItemName    AS ItemName,
-                   NULL           AS ItemCol3Text,
-                   ii.InvoiceDate AS ItemCol3Date,
-                   ii.Amount      AS ItemAmount
-            FROM PaymentRequests pr
-            JOIN Users     u    ON pr.SubmittedById = u.Id
-            JOIN Projects  proj ON pr.ProjectId    = proj.Id
-            LEFT JOIN InvoiceItems ii ON ii.PaymentRequestId = pr.Id
-            {where}
-            ORDER BY pr.CreatedAt DESC, pr.Id DESC, ii.Id ASC
-            """;
+        var sql = PaymentExportCore(where.ToString(), paidAt)
+            + "\nORDER BY pr.CreatedAt DESC, pr.Id DESC, ii.Id ASC";
 
         return (await db.QueryAsync<PaymentExportRowDto>(sql, parameters)).AsList();
     }
@@ -249,27 +496,11 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
             """;
         int total = await db.ExecuteScalarAsync<int>(countSql, parameters);
 
-        var sql = $"""
-            SELECT adv.Id,
-                   adv.RequestNo,
-                   u.Name         AS EmployeeName,
-                   'advance'      AS Type,
-                   proj.Code      AS ProjectCode,
-                   proj.Name      AS ProjectName,
-                   NULL           AS InvoiceNos,
-                   adv.GrandTotal AS TotalAmount,
-                   adv.ApprovalStatus,
-                   {paidAt}       AS PaidAt,
-                   adv.CreatedAt
-            FROM AdvanceRequests adv
-            JOIN Users    u    ON adv.SubmittedById = u.Id
-            JOIN Projects proj ON adv.ProjectId    = proj.Id
-            {where}
-            ORDER BY adv.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
-            """;
+        var sql = AdvancePagedCore(where.ToString(), paidAt)
+            + "\nORDER BY adv.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
 
         var rows = (await db.QueryAsync<dynamic>(sql, parameters)).ToList();
-        var dtos = rows.Select(MapPaymentRow).ToList();
+        var dtos = rows.Select(r => (PaymentReportDto)MapPaymentRow(r)).ToList();
         return await AttachItemsAsync(CategoryAdvance, dtos, total, page, pageSize);
     }
 
@@ -285,29 +516,8 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         var paidAt = PaidAtCase("adv", "AdvanceRequestInstallments", "AdvanceRequestId");
 
         // 預支：item 4 欄 = 類別 / 品名 / 數量(string) / 金額
-        var sql = $"""
-            SELECT adv.Id         AS ParentId,
-                   adv.RequestNo,
-                   u.Name         AS EmployeeName,
-                   'advance'      AS Type,
-                   proj.Code      AS ProjectCode,
-                   proj.Name      AS ProjectName,
-                   adv.ApprovalStatus,
-                   adv.CreatedAt,
-                   {paidAt}       AS PaidAt,
-                   adv.GrandTotal AS PaymentTotalAmount,
-                   item.Category  AS ItemCol1,
-                   item.ItemName  AS ItemName,
-                   item.Quantity  AS ItemCol3Text,
-                   NULL           AS ItemCol3Date,
-                   item.TotalPrice AS ItemAmount
-            FROM AdvanceRequests adv
-            JOIN Users     u    ON adv.SubmittedById = u.Id
-            JOIN Projects  proj ON adv.ProjectId    = proj.Id
-            LEFT JOIN AdvanceRequestItems item ON item.AdvanceRequestId = adv.Id
-            {where}
-            ORDER BY adv.CreatedAt DESC, adv.Id DESC, item.SortOrder ASC, item.Id ASC
-            """;
+        var sql = AdvanceExportCore(where.ToString(), paidAt)
+            + "\nORDER BY adv.CreatedAt DESC, adv.Id DESC, item.SortOrder ASC, item.Id ASC";
 
         return (await db.QueryAsync<PaymentExportRowDto>(sql, parameters)).AsList();
     }
@@ -337,28 +547,11 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
             """;
         int total = await db.ExecuteScalarAsync<int>(countSql, parameters);
 
-        var sql = $"""
-            SELECT wo.Id,
-                   wo.RequestNo,
-                   u.Name         AS EmployeeName,
-                   'writeoff'     AS Type,
-                   proj.Code      AS ProjectCode,
-                   proj.Name      AS ProjectName,
-                   (SELECT STRING_AGG(InvoiceNo, ',') FROM WriteOffItems WHERE WriteOffRecordId = wo.Id AND InvoiceNo IS NOT NULL) AS InvoiceNos,
-                   wo.GrandTotal  AS TotalAmount,
-                   wo.ApprovalStatus,
-                   adv.RefundedAt AS PaidAt,
-                   wo.CreatedAt
-            FROM WriteOffRecords wo
-            JOIN Users           u    ON wo.SubmittedById = u.Id
-            JOIN AdvanceRequests adv  ON wo.AdvanceRequestId = adv.Id
-            JOIN Projects        proj ON adv.ProjectId    = proj.Id
-            {where}
-            ORDER BY wo.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
-            """;
+        var sql = WriteOffPagedCore(where.ToString())
+            + "\nORDER BY wo.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
 
         var rows = (await db.QueryAsync<dynamic>(sql, parameters)).ToList();
-        var dtos = rows.Select(MapPaymentRow).ToList();
+        var dtos = rows.Select(r => (PaymentReportDto)MapPaymentRow(r)).ToList();
         return await AttachItemsAsync(CategoryWriteOff, dtos, total, page, pageSize);
     }
 
@@ -371,30 +564,8 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         where.Append(BuildDateAndPaymentStatus(dateFrom, dateTo, paymentStatus, parameters,
             "wo", "CreatedAt", installmentsTable: null, installmentsFk: null));
 
-        var sql = $"""
-            SELECT wo.Id          AS ParentId,
-                   wo.RequestNo,
-                   u.Name         AS EmployeeName,
-                   'writeoff'     AS Type,
-                   proj.Code      AS ProjectCode,
-                   proj.Name      AS ProjectName,
-                   wo.ApprovalStatus,
-                   wo.CreatedAt,
-                   adv.RefundedAt AS PaidAt,
-                   wo.GrandTotal  AS PaymentTotalAmount,
-                   item.InvoiceNo AS ItemCol1,
-                   item.ItemName  AS ItemName,
-                   NULL           AS ItemCol3Text,
-                   item.InvoiceDate AS ItemCol3Date,
-                   item.TotalPrice  AS ItemAmount
-            FROM WriteOffRecords wo
-            JOIN Users           u    ON wo.SubmittedById = u.Id
-            JOIN AdvanceRequests adv  ON wo.AdvanceRequestId = adv.Id
-            JOIN Projects        proj ON adv.ProjectId    = proj.Id
-            LEFT JOIN WriteOffItems item ON item.WriteOffRecordId = wo.Id
-            {where}
-            ORDER BY wo.CreatedAt DESC, wo.Id DESC, item.SortOrder ASC, item.Id ASC
-            """;
+        var sql = WriteOffExportCore(where.ToString())
+            + "\nORDER BY wo.CreatedAt DESC, wo.Id DESC, item.SortOrder ASC, item.Id ASC";
 
         return (await db.QueryAsync<PaymentExportRowDto>(sql, parameters)).AsList();
     }
@@ -425,27 +596,11 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
             """;
         int total = await db.ExecuteScalarAsync<int>(countSql, parameters);
 
-        var sql = $"""
-            SELECT tpr.Id,
-                   tpr.RequestNo,
-                   u.Name         AS EmployeeName,
-                   'travel-payment' AS Type,
-                   ISNULL(proj.Code, '') AS ProjectCode,
-                   ISNULL(proj.Name, '') AS ProjectName,
-                   (SELECT STRING_AGG(InvoiceNo, ',') FROM TravelPaymentRequestItems WHERE TravelPaymentRequestId = tpr.Id AND InvoiceNo IS NOT NULL) AS InvoiceNos,
-                   tpr.GrandTotal AS TotalAmount,
-                   tpr.ApprovalStatus,
-                   {paidAt}       AS PaidAt,
-                   tpr.CreatedAt
-            FROM TravelPaymentRequests tpr
-            JOIN Users         u    ON tpr.EmployeeId = u.Id
-            LEFT JOIN Projects proj ON tpr.ProjectId  = proj.Id
-            {where}
-            ORDER BY tpr.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
-            """;
+        var sql = TravelPaymentPagedCore(where.ToString(), paidAt)
+            + "\nORDER BY tpr.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
 
         var rows = (await db.QueryAsync<dynamic>(sql, parameters)).ToList();
-        var dtos = rows.Select(MapPaymentRow).ToList();
+        var dtos = rows.Select(r => (PaymentReportDto)MapPaymentRow(r)).ToList();
         return await AttachItemsAsync(CategoryTravelPayment, dtos, total, page, pageSize);
     }
 
@@ -460,29 +615,8 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
 
         var paidAt = PaidAtCase("tpr", "TravelPaymentRequestInstallments", "TravelPaymentRequestId");
 
-        var sql = $"""
-            SELECT tpr.Id          AS ParentId,
-                   tpr.RequestNo,
-                   u.Name           AS EmployeeName,
-                   'travel-payment' AS Type,
-                   ISNULL(proj.Code, '') AS ProjectCode,
-                   ISNULL(proj.Name, '') AS ProjectName,
-                   tpr.ApprovalStatus,
-                   tpr.CreatedAt,
-                   {paidAt}         AS PaidAt,
-                   tpr.GrandTotal   AS PaymentTotalAmount,
-                   item.InvoiceNo   AS ItemCol1,
-                   item.ItemName    AS ItemName,
-                   NULL             AS ItemCol3Text,
-                   item.InvoiceDate AS ItemCol3Date,
-                   item.TotalPrice  AS ItemAmount
-            FROM TravelPaymentRequests tpr
-            JOIN Users         u    ON tpr.EmployeeId = u.Id
-            LEFT JOIN Projects proj ON tpr.ProjectId  = proj.Id
-            LEFT JOIN TravelPaymentRequestItems item ON item.TravelPaymentRequestId = tpr.Id
-            {where}
-            ORDER BY tpr.CreatedAt DESC, tpr.Id DESC, item.SortOrder ASC, item.Id ASC
-            """;
+        var sql = TravelPaymentExportCore(where.ToString(), paidAt)
+            + "\nORDER BY tpr.CreatedAt DESC, tpr.Id DESC, item.SortOrder ASC, item.Id ASC";
 
         return (await db.QueryAsync<PaymentExportRowDto>(sql, parameters)).AsList();
     }
@@ -513,27 +647,11 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
             """;
         int total = await db.ExecuteScalarAsync<int>(countSql, parameters);
 
-        var sql = $"""
-            SELECT tr.Id,
-                   tr.RequestNo,
-                   u.Name         AS EmployeeName,
-                   'travel'       AS Type,
-                   ISNULL(proj.Code, '') AS ProjectCode,
-                   ISNULL(proj.Name, '') AS ProjectName,
-                   (SELECT STRING_AGG(InvoiceNo, ',') FROM TravelRequestItems WHERE TravelRequestId = tr.Id AND InvoiceNo IS NOT NULL) AS InvoiceNos,
-                   tr.GrandTotal  AS TotalAmount,
-                   tr.ApprovalStatus,
-                   {paidAt}       AS PaidAt,
-                   tr.CreatedAt
-            FROM TravelRequests tr
-            JOIN Users         u    ON tr.EmployeeId = u.Id
-            LEFT JOIN Projects proj ON tr.ProjectId  = proj.Id
-            {where}
-            ORDER BY tr.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
-            """;
+        var sql = TravelPagedCore(where.ToString(), paidAt)
+            + "\nORDER BY tr.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
 
         var rows = (await db.QueryAsync<dynamic>(sql, parameters)).ToList();
-        var dtos = rows.Select(MapPaymentRow).ToList();
+        var dtos = rows.Select(r => (PaymentReportDto)MapPaymentRow(r)).ToList();
         return await AttachItemsAsync(CategoryTravel, dtos, total, page, pageSize);
     }
 
@@ -548,29 +666,8 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
 
         var paidAt = PaidAtCase("tr", "TravelRequestInstallments", "TravelRequestId");
 
-        var sql = $"""
-            SELECT tr.Id          AS ParentId,
-                   tr.RequestNo,
-                   u.Name           AS EmployeeName,
-                   'travel'         AS Type,
-                   ISNULL(proj.Code, '') AS ProjectCode,
-                   ISNULL(proj.Name, '') AS ProjectName,
-                   tr.ApprovalStatus,
-                   tr.CreatedAt,
-                   {paidAt}         AS PaidAt,
-                   tr.GrandTotal    AS PaymentTotalAmount,
-                   item.InvoiceNo   AS ItemCol1,
-                   item.ItemName    AS ItemName,
-                   NULL             AS ItemCol3Text,
-                   item.InvoiceDate AS ItemCol3Date,
-                   item.TotalPrice  AS ItemAmount
-            FROM TravelRequests tr
-            JOIN Users         u    ON tr.EmployeeId = u.Id
-            LEFT JOIN Projects proj ON tr.ProjectId  = proj.Id
-            LEFT JOIN TravelRequestItems item ON item.TravelRequestId = tr.Id
-            {where}
-            ORDER BY tr.CreatedAt DESC, tr.Id DESC, item.SortOrder ASC, item.Id ASC
-            """;
+        var sql = TravelExportCore(where.ToString(), paidAt)
+            + "\nORDER BY tr.CreatedAt DESC, tr.Id DESC, item.SortOrder ASC, item.Id ASC";
 
         return (await db.QueryAsync<PaymentExportRowDto>(sql, parameters)).AsList();
     }
@@ -600,28 +697,11 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
             """;
         int total = await db.ExecuteScalarAsync<int>(countSql, parameters);
 
-        var sql = $"""
-            SELECT two.Id,
-                   two.RequestNo,
-                   u.Name         AS EmployeeName,
-                   'travel-writeoff' AS Type,
-                   ISNULL(proj.Code, '') AS ProjectCode,
-                   ISNULL(proj.Name, '') AS ProjectName,
-                   (SELECT STRING_AGG(InvoiceNo, ',') FROM TravelWriteOffItems WHERE TravelWriteOffRecordId = two.Id AND InvoiceNo IS NOT NULL) AS InvoiceNos,
-                   two.GrandTotal AS TotalAmount,
-                   two.ApprovalStatus,
-                   tr.RefundedAt  AS PaidAt,
-                   two.CreatedAt
-            FROM TravelWriteOffRecords two
-            JOIN Users          u    ON two.SubmittedById = u.Id
-            JOIN TravelRequests tr   ON two.TravelRequestId = tr.Id
-            LEFT JOIN Projects  proj ON tr.ProjectId  = proj.Id
-            {where}
-            ORDER BY two.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
-            """;
+        var sql = TravelWriteOffPagedCore(where.ToString())
+            + "\nORDER BY two.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
 
         var rows = (await db.QueryAsync<dynamic>(sql, parameters)).ToList();
-        var dtos = rows.Select(MapPaymentRow).ToList();
+        var dtos = rows.Select(r => (PaymentReportDto)MapPaymentRow(r)).ToList();
         return await AttachItemsAsync(CategoryTravelWriteOff, dtos, total, page, pageSize);
     }
 
@@ -634,30 +714,118 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         where.Append(BuildDateAndPaymentStatus(dateFrom, dateTo, paymentStatus, parameters,
             "two", "CreatedAt", installmentsTable: null, installmentsFk: null));
 
-        var sql = $"""
-            SELECT two.Id         AS ParentId,
-                   two.RequestNo,
-                   u.Name           AS EmployeeName,
-                   'travel-writeoff' AS Type,
-                   ISNULL(proj.Code, '') AS ProjectCode,
-                   ISNULL(proj.Name, '') AS ProjectName,
-                   two.ApprovalStatus,
-                   two.CreatedAt,
-                   tr.RefundedAt    AS PaidAt,
-                   two.GrandTotal   AS PaymentTotalAmount,
-                   item.InvoiceNo   AS ItemCol1,
-                   item.ItemName    AS ItemName,
-                   NULL             AS ItemCol3Text,
-                   item.InvoiceDate AS ItemCol3Date,
-                   item.TotalPrice  AS ItemAmount
-            FROM TravelWriteOffRecords two
-            JOIN Users          u    ON two.SubmittedById = u.Id
-            JOIN TravelRequests tr   ON two.TravelRequestId = tr.Id
-            LEFT JOIN Projects  proj ON tr.ProjectId  = proj.Id
-            LEFT JOIN TravelWriteOffItems item ON item.TravelWriteOffRecordId = two.Id
-            {where}
-            ORDER BY two.CreatedAt DESC, two.Id DESC, item.SortOrder ASC, item.Id ASC
-            """;
+        var sql = TravelWriteOffExportCore(where.ToString())
+            + "\nORDER BY two.CreatedAt DESC, two.Id DESC, item.SortOrder ASC, item.Id ASC";
+
+        return (await db.QueryAsync<PaymentExportRowDto>(sql, parameters)).AsList();
+    }
+
+    // ========================================================================
+    // 7) 全部（all）：6 種類別 UNION ALL，分頁 / 匯出共用一組參數
+    // ========================================================================
+    /// <summary>
+    /// 'all' 用：建 6 個類別 paged core 的 UNION ALL 字串；shared 參數（@DateFrom / @DateTo / @AllowedDeptIds）已於外部加入一次。
+    /// 6 個 core 的 user table alias 皆為 u，故 dept filter 子句通用。
+    /// </summary>
+    private static string BuildAllPagedUnion(ProjectAccessScope scope, DateOnly? dateFrom, DateOnly? dateTo, string? paymentStatus)
+    {
+        string dept = DeptScopeClause(scope);
+        return string.Join("\nUNION ALL\n", new[]
+        {
+            PaymentPagedCore(
+                $" WHERE pr.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "pr", "CreatedAt", "PaymentRequestInstallments", "PaymentRequestId")}",
+                PaidAtCase("pr", "PaymentRequestInstallments", "PaymentRequestId")),
+            AdvancePagedCore(
+                $" WHERE adv.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "adv", "CreatedAt", "AdvanceRequestInstallments", "AdvanceRequestId")}",
+                PaidAtCase("adv", "AdvanceRequestInstallments", "AdvanceRequestId")),
+            WriteOffPagedCore(
+                $" WHERE wo.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "wo", "CreatedAt", null, null)}"),
+            TravelPaymentPagedCore(
+                $" WHERE tpr.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "tpr", "CreatedAt", "TravelPaymentRequestInstallments", "TravelPaymentRequestId")}",
+                PaidAtCase("tpr", "TravelPaymentRequestInstallments", "TravelPaymentRequestId")),
+            TravelPagedCore(
+                $" WHERE tr.ApprovalStatus != 'draft' AND tr.IsHolidayTravel = 0{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "tr", "CreatedAt", "TravelRequestInstallments", "TravelRequestId")}",
+                PaidAtCase("tr", "TravelRequestInstallments", "TravelRequestId")),
+            TravelWriteOffPagedCore(
+                $" WHERE two.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "two", "CreatedAt", null, null)}"),
+        });
+    }
+
+    private static string BuildAllExportUnion(ProjectAccessScope scope, DateOnly? dateFrom, DateOnly? dateTo, string? paymentStatus)
+    {
+        string dept = DeptScopeClause(scope);
+        return string.Join("\nUNION ALL\n", new[]
+        {
+            PaymentExportCore(
+                $" WHERE pr.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "pr", "CreatedAt", "PaymentRequestInstallments", "PaymentRequestId")}",
+                PaidAtCase("pr", "PaymentRequestInstallments", "PaymentRequestId")),
+            AdvanceExportCore(
+                $" WHERE adv.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "adv", "CreatedAt", "AdvanceRequestInstallments", "AdvanceRequestId")}",
+                PaidAtCase("adv", "AdvanceRequestInstallments", "AdvanceRequestId")),
+            WriteOffExportCore(
+                $" WHERE wo.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "wo", "CreatedAt", null, null)}"),
+            TravelPaymentExportCore(
+                $" WHERE tpr.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "tpr", "CreatedAt", "TravelPaymentRequestInstallments", "TravelPaymentRequestId")}",
+                PaidAtCase("tpr", "TravelPaymentRequestInstallments", "TravelPaymentRequestId")),
+            TravelExportCore(
+                $" WHERE tr.ApprovalStatus != 'draft' AND tr.IsHolidayTravel = 0{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "tr", "CreatedAt", "TravelRequestInstallments", "TravelRequestId")}",
+                PaidAtCase("tr", "TravelRequestInstallments", "TravelRequestId")),
+            TravelWriteOffExportCore(
+                $" WHERE two.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "two", "CreatedAt", null, null)}"),
+        });
+    }
+
+    /// <summary>'all' 共用參數：分頁 / 匯出皆需的 @DateFrom / @DateTo / @AllowedDeptIds（各加一次）。</summary>
+    private static void AddSharedAllParams(DynamicParameters parameters, ProjectAccessScope scope, DateOnly? dateFrom, DateOnly? dateTo)
+    {
+        if (dateFrom.HasValue) parameters.Add("DateFrom", dateFrom.Value.ToDateTime(TimeOnly.MinValue));
+        if (dateTo.HasValue)   parameters.Add("DateTo", dateTo.Value.ToDateTime(TimeOnly.MinValue));
+        if (!scope.SeeAll && scope.AllowedDepartmentIds.Count > 0)
+            parameters.Add("AllowedDeptIds", scope.AllowedDepartmentIds);
+    }
+
+    private async Task<PagedResult<PaymentReportDto>> GetAllPagedAsync(
+        ProjectAccessScope scope, int page, int pageSize,
+        DateOnly? dateFrom, DateOnly? dateTo, string? paymentStatus)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("Skip", (page - 1) * pageSize);
+        parameters.Add("Take", pageSize);
+        AddSharedAllParams(parameters, scope, dateFrom, dateTo);
+
+        var union = BuildAllPagedUnion(scope, dateFrom, dateTo, paymentStatus);
+
+        var countSql = $"SELECT COUNT(*) FROM (\n{union}\n) t";
+        int total = await db.ExecuteScalarAsync<int>(countSql, parameters);
+
+        var dataSql = $"SELECT * FROM (\n{union}\n) t ORDER BY t.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
+        var rows = (await db.QueryAsync<dynamic>(dataSql, parameters)).ToList();
+
+        // 依 SourceCategory 分組撈各自子表明細（組內 Id 唯一，跨表 Id 碰撞不影響）
+        var paired = rows.Select(r => ((string)r.SourceCategory, dto: (PaymentReportDto)MapPaymentRow(r))).ToList();
+        var withItems = new List<PaymentReportDto>();
+        foreach (var grp in paired.GroupBy(p => p.Item1))
+        {
+            var ids = grp.Select(p => p.dto.Id).ToList();
+            var byParent = await FetchItemsByCategoryAsync(grp.Key, ids);
+            foreach (var (_, dto) in grp)
+                withItems.Add(dto with { Items = byParent.GetValueOrDefault(dto.Id, []) });
+        }
+        // 分組打亂了 union 的 CreatedAt DESC 次序，重新排序回該頁順序
+        withItems = withItems.OrderByDescending(d => d.CreatedAt).ToList();
+
+        int totalPages = (int)Math.Ceiling((double)total / pageSize);
+        return new PagedResult<PaymentReportDto>(withItems, total, page, pageSize, Math.Max(1, totalPages));
+    }
+
+    private async Task<List<PaymentExportRowDto>> GetAllExportAsync(
+        ProjectAccessScope scope, DateOnly? dateFrom, DateOnly? dateTo, string? paymentStatus)
+    {
+        var parameters = new DynamicParameters();
+        AddSharedAllParams(parameters, scope, dateFrom, dateTo);
+
+        var union = BuildAllExportUnion(scope, dateFrom, dateTo, paymentStatus);
+        var sql = $"SELECT * FROM (\n{union}\n) t ORDER BY t.CreatedAt DESC, t.ParentId DESC";
 
         return (await db.QueryAsync<PaymentExportRowDto>(sql, parameters)).AsList();
     }

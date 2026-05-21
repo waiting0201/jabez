@@ -204,7 +204,7 @@ Admin/src/app/
     │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出）
     │   ├── attendance-reminder-logs/ # 打卡提醒推播紀錄（僅 Superadmin）
     │   ├── payment-reminder-logs/ # 撥款提醒推播紀錄 + 手動觸發（僅 Superadmin）
-    │   ├── reports/        # 報表（出缺勤 / 加班 / 款項統計 / 專案水位）；款項統計 1 個 endpoint 支援 6 個類別 dropdown（請款 / 預支 / 預支沖銷 / 出差請款 / 出差預支 / 出差預支沖銷），權限只看 `reports-payment:read`，不需各別 `xxx-requests:read`
+    │   ├── reports/        # 報表（出缺勤 / 加班 / 款項統計 / 專案水位）；款項統計 1 個 endpoint 支援 全部 + 6 個類別 dropdown（全部 / 請款 / 預支 / 預支沖銷 / 出差請款 / 出差預支 / 出差預支沖銷；「全部」為 6 種 UNION ALL），權限只看 `reports-payment:read`，不需各別 `xxx-requests:read`
     │   └── settings/       # 系統設定（含 PaymentReminderDaysBefore 撥款提醒天數）
     └── error/
         └── pages/ (error-403, error-404, error-500)
