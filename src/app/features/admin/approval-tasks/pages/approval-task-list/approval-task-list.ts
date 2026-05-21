@@ -246,12 +246,23 @@ export class ApprovalTaskList {
       return `${dateStr}・${t.overtimeDetail.estimatedHours} 小時・${t.overtimeDetail.reason}`;
     }
     if (t.advanceDetail) {
-      return `${t.advanceDetail.requestNo}・${t.advanceDetail.activityName}（${t.advanceDetail.grandTotal.toLocaleString()} 元）`;
+      return `${t.advanceDetail.activityName}（${t.advanceDetail.grandTotal.toLocaleString()} 元）`;
     }
     if (t.travelPaymentDetail) {
       return `${t.travelPaymentDetail.destination}（${t.travelPaymentDetail.grandTotal.toLocaleString()} 元）`;
     }
     return '—';
+  }
+
+  /** 取得申請單號（無單號類型如請假 / 加班回空字串）*/
+  getRequestNo(t: ApprovalTask): string {
+    return t.paymentDetail?.requestNo
+        ?? t.travelDetail?.requestNo
+        ?? t.advanceDetail?.requestNo
+        ?? t.travelPaymentDetail?.requestNo
+        ?? t.writeOffDetail?.requestNo
+        ?? t.travelWriteOffDetail?.requestNo
+        ?? '';
   }
 }
 

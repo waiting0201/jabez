@@ -494,7 +494,7 @@ export class ApprovalTaskReview implements OnInit {
     return items.reduce((acc, item) => acc + (item[field] as unknown as number), 0);
   }
 
-  submit() {
+  submit(task: ApprovalTask) {
     if (this.taskStatus() !== 'pending') return;
     const action = this.form.value.action as TaskStatus;
     const note   = this.form.value.reviewNote?.trim() ?? '';
@@ -506,8 +506,32 @@ export class ApprovalTaskReview implements OnInit {
       return;
     }
     this.showNoteError = false;
+
+    // 撥款類 + 財務步驟核准：撥款明細必填，與審核一起送出
+    let installments: InstallmentInput[] | undefined;
+    if (action === 'approved' && this.isInstallmentApp(task) && this.canSetPaymentDate(task)) {
+      this.installmentsError.set('');
+      if (!this.isInstallmentsSumValid(task)) {
+        this.installmentsError.set(`各筆金額加總（${this.installmentsSum().toFixed(2)}）需等於申請總額（${this.getInstallmentTotal(task).toFixed(2)}）。`);
+        return;
+      }
+      if (this.installmentsForm.invalid) {
+        this.installmentsError.set('請填妥所有預計撥款日與金額。');
+        this.installmentsForm.markAllAsTouched();
+        return;
+      }
+      installments = this.installmentsForm.controls.map((row, idx) => ({
+        id:            row.get('id')!.value ?? undefined,
+        installmentNo: idx + 1,
+        expectedDate:  row.get('expectedDate')!.value,
+        paidAt:        row.get('paidAt')!.value || undefined,
+        amount:        Number(row.get('amount')!.value),
+        note:          row.get('note')!.value || undefined,
+      }));
+    }
+
     this.errorMsg.set('');
-    this.service.review(this.taskId, this.applicationType, action, note, estimatedRefundDate, refundedAt, closeAdvance).subscribe({
+    this.service.review(this.taskId, this.applicationType, action, note, estimatedRefundDate, refundedAt, closeAdvance, installments).subscribe({
       next: () => this.router.navigate(['/admin/approval-tasks']),
       error: (err: HttpErrorResponse) => {
         this.errorMsg.set(err.error?.message || '審核失敗，請稍後再試。');

@@ -2,7 +2,7 @@ import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
 import {switchMap, map} from 'rxjs/operators';
-import {ApprovalTask, TaskStatus} from '../models/approval-task.model';
+import {ApprovalTask, TaskStatus, InstallmentInput} from '../models/approval-task.model';
 import {ApplicationType} from '../../approvals/models/approval.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {NotificationService} from '../../notifications/services/notification.service';
@@ -48,10 +48,10 @@ export class ApprovalTaskService {
     return this.http.get<ApprovalTask>(path);
   }
 
-  review(id: number, applicationType: string, action: TaskStatus, reviewNote: string, estimatedRefundDate?: string, refundedAt?: string, closeAdvance?: boolean): Observable<ApprovalTask> {
+  review(id: number, applicationType: string, action: TaskStatus, reviewNote: string, estimatedRefundDate?: string, refundedAt?: string, closeAdvance?: boolean, installments?: InstallmentInput[]): Observable<ApprovalTask> {
     return this.http.patch<ApprovalTask>(
       `${environment.apiUrl}/approval-tasks/${applicationType}/${id}/review`,
-      {action, reviewNote, applicationType, estimatedRefundDate, refundedAt, closeAdvance},
+      {action, reviewNote, applicationType, estimatedRefundDate, refundedAt, closeAdvance, installments},
     ).pipe(
       switchMap(updated => this.notification.refresh().pipe(map(() => updated))),
     );

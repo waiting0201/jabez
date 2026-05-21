@@ -122,6 +122,7 @@
                 </th>
               }
               <th>類型</th>
+              <th>單號</th>
               <th>申請人</th>
               <th class="hidden md:table-cell">摘要</th>
               <th>狀態</th>
@@ -145,6 +146,7 @@
                     {{ appTypeLabel[t.applicationType] }}
                   </span>
                 </td>
+                <td class="font-monospace small">{{ getRequestNo(t) || '—' }}</td>
                 <td class="fw-500">{{ t.submittedBy }}</td>
                 <td class="text-muted small hidden md:table-cell">{{ getSummary(t) }}</td>
                 <td>
@@ -167,7 +169,7 @@
               </tr>
             } @empty {
               <tr>
-                <td [attr.colspan]="(activeTab() === 'pending' && canBatchApprove()) ? 7 : 6" class="text-center text-muted py-4">
+                <td [attr.colspan]="(activeTab() === 'pending' && canBatchApprove()) ? 8 : 7" class="text-center text-muted py-4">
                   {{ activeTab() === 'pending' ? '目前沒有待審核的簽核作業。'
                      : activeTab() === 'rejected' ? '目前沒有已拒絕的簽核作業。'
                      : applicationTypeFilter() ? '目前沒有此類型的已核准簽核作業。'
