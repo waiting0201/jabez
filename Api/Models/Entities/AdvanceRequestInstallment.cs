@@ -1,6 +1,6 @@
 namespace Jabez.Api.Models.Entities;
 
-public class AdvanceRequestInstallment
+public class AdvanceRequestInstallment : IInstallmentEntity
 {
     public int       Id               { get; set; }
     public int       AdvanceRequestId { get; set; }

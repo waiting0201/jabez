@@ -36,8 +36,12 @@ draft → pending → approved / returned / rejected
 
 4 種申請類型（payment_request / advance / travel / travel_payment）支援**多筆分期撥款**，撥款資料**單一真相**＝子表 `XxxInstallment[]`：
 
-- **唯一 endpoint**：`PATCH /{type}-requests/{id}/installments`（舊 `/payment-date` 已於 Phase 2 移除）
+- **填寫時機**：財務（FIN）步驟**核准當下**即填預計撥款日 + 各期金額，透過 `PATCH /approval-tasks/{appType}/{id}/review` 的 `installments` 欄位**與審核同交易原子寫入**；此時撥款明細**必填**（加總須 == 申請總額，否則不可核准）。核准後仍可在「設定撥款明細」區塊透過獨立 endpoint 修改未撥列 / 填實際撥款日。
+  - 例外：`holiday_travel`（假日執行活動）不在 review 流程填撥款明細，僅走核准後的獨立 endpoint。
+  - 批次核准不填撥款明細，最終 approved 後由「待補撥款」提醒（`BuildPendingPaymentReminderAsync`）追蹤。
+- **獨立 endpoint**：`PATCH /{type}-requests/{id}/installments`（舊 `/payment-date` 已於 Phase 2 移除）；**僅 ApprovalStatus == approved 可呼叫**（4 種一致；review 路徑因在核准同交易內寫入故不經此守衛）
 - **DTO**：`UpsertInstallmentsRequest { installments[], approvalStatus? }`，每筆 `{ id?, installmentNo, expectedDate, paidAt?, amount, note? }`
+- **持久化核心共用**：`InstallmentUpsertService.Apply`（validate + diff，**不 SaveChanges**，交易邊界交呼叫端）— 獨立 endpoint 與 review 原子寫入共用同一份邏輯；4 種子表實作 `IInstallmentEntity` 介面以泛型化
 - **驗證**（`InstallmentValidator.Validate`）：
   - 序號 1-based 連續無斷號
   - SUM(amount) == 申請總額（PaymentRequest.TotalAmount / 其他三者的 GrandTotal）容忍 0.01 浮點誤差

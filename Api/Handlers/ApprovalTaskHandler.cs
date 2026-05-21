@@ -160,7 +160,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         await ReviewOneEntityAsync(
             applicationType, intId, reviewer, reviewerId,
             body.Action, body.ReviewNote,
-            body.EstimatedRefundDate, body.RefundedAt, body.CloseAdvance);
+            body.EstimatedRefundDate, body.RefundedAt, body.CloseAdvance,
+            body.Installments);
 
         var task = await reader.GetApprovalTaskByIdAsync(intId, applicationType);
         return new OkObjectResult(ApiResponse.Ok(task, $"Request {body.Action}."));
@@ -250,13 +251,15 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         string?   reviewNote,
         DateTime? estimatedRefundDate,
         DateTime? refundedAt,
-        bool?     closeAdvance)
+        bool?     closeAdvance,
+        List<InstallmentInput>? installments = null)
     {
         switch (applicationType)
         {
             case "payment_request":
             {
-                var pr = await db.PaymentRequests.FindAsync(intId)
+                var pr = await db.PaymentRequests.Include(p => p.Installments)
+                    .FirstOrDefaultAsync(p => p.Id == intId)
                     ?? throw AppException.NotFound("PaymentRequest");
                 if (pr.ApprovalStatus != "pending")
                     throw AppException.BadRequest("Only pending payment requests can be reviewed.");
@@ -265,11 +268,20 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == pr.SubmittedById.Value)
                     : null;
                 await AuthorizeStepAsync(pr.ApprovalItemId, pr.CurrentStepOrder, reviewer, prApplicant?.DepartmentId, "payment_request", pr.Id, prApplicant?.JobTitleId);
+                var prReviewedStepOrder = pr.CurrentStepOrder;
                 await ProcessReviewAsync("payment_request", pr.Id, pr.CurrentStepOrder,
                     pr.ApprovalItemId, action, reviewNote, reviewerId, pr.SubmittedById,
                     setStatus:     s  => pr.ApprovalStatus   = s,
                     incrementStep: () => pr.CurrentStepOrder++,
                     setReviewed:   () => { pr.ReviewedAt = Clock.Now; pr.ReviewedById = reviewerId; pr.ReviewNote = reviewNote?.Trim(); });
+                // 財務步驟核准時：撥款明細必填，與審核同交易原子寫入
+                if (action == "approved" && await IsFinanceStepAsync(pr.ApprovalItemId, prReviewedStepOrder, reviewer))
+                {
+                    if (installments is null || installments.Count == 0)
+                        throw AppException.BadRequest("財務核准撥款類申請時，必須填寫撥款明細。");
+                    InstallmentUpsertService.Apply(db, pr.Installments, installments, pr.TotalAmount, reviewerId,
+                        () => new PaymentRequestInstallment { PaymentRequestId = pr.Id });
+                }
                 await db.SaveChangesAsync();
                 break;
             }
@@ -294,7 +306,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             }
             case "travel":
             {
-                var tr = await db.TravelRequests.FindAsync(intId)
+                var tr = await db.TravelRequests.Include(t => t.Installments)
+                    .FirstOrDefaultAsync(t => t.Id == intId)
                     ?? throw AppException.NotFound("TravelRequest");
                 if (tr.ApprovalStatus != "pending")
                     throw AppException.BadRequest("Only pending travel requests can be reviewed.");
@@ -303,11 +316,20 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == tr.EmployeeId.Value)
                     : null;
                 await AuthorizeStepAsync(tr.ApprovalItemId, tr.CurrentStepOrder, reviewer, trApplicant?.DepartmentId, "travel", tr.Id, trApplicant?.JobTitleId);
+                var trReviewedStepOrder = tr.CurrentStepOrder;
                 await ProcessReviewAsync("travel", tr.Id, tr.CurrentStepOrder,
                     tr.ApprovalItemId, action, reviewNote, reviewerId, tr.EmployeeId,
                     setStatus:     s  => tr.ApprovalStatus   = s,
                     incrementStep: () => tr.CurrentStepOrder++,
                     setReviewed:   () => { tr.ReviewedAt = Clock.Now; tr.ReviewedById = reviewerId; tr.ReviewNote = reviewNote?.Trim(); });
+                // 財務步驟核准時：撥款明細必填，與審核同交易原子寫入
+                if (action == "approved" && await IsFinanceStepAsync(tr.ApprovalItemId, trReviewedStepOrder, reviewer))
+                {
+                    if (installments is null || installments.Count == 0)
+                        throw AppException.BadRequest("財務核准撥款類申請時，必須填寫撥款明細。");
+                    InstallmentUpsertService.Apply(db, tr.Installments, installments, tr.GrandTotal, reviewerId,
+                        () => new TravelRequestInstallment { TravelRequestId = tr.Id });
+                }
                 await db.SaveChangesAsync();
                 break;
             }
@@ -351,7 +373,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             }
             case "advance":
             {
-                var adv = await db.AdvanceRequests.FindAsync(intId)
+                var adv = await db.AdvanceRequests.Include(a => a.Installments)
+                    .FirstOrDefaultAsync(a => a.Id == intId)
                     ?? throw AppException.NotFound("AdvanceRequest");
                 if (adv.ApprovalStatus != "pending")
                     throw AppException.BadRequest("Only pending advance requests can be reviewed.");
@@ -360,11 +383,20 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == adv.SubmittedById.Value)
                     : null;
                 await AuthorizeStepAsync(adv.ApprovalItemId, adv.CurrentStepOrder, reviewer, advApplicant?.DepartmentId, "advance", adv.Id, advApplicant?.JobTitleId);
+                var advReviewedStepOrder = adv.CurrentStepOrder;
                 await ProcessReviewAsync("advance", adv.Id, adv.CurrentStepOrder,
                     adv.ApprovalItemId, action, reviewNote, reviewerId, adv.SubmittedById,
                     setStatus:     s  => adv.ApprovalStatus   = s,
                     incrementStep: () => adv.CurrentStepOrder++,
                     setReviewed:   () => { adv.ReviewedAt = Clock.Now; adv.ReviewedById = reviewerId; adv.ReviewNote = reviewNote?.Trim(); });
+                // 財務步驟核准時：撥款明細必填，與審核同交易原子寫入
+                if (action == "approved" && await IsFinanceStepAsync(adv.ApprovalItemId, advReviewedStepOrder, reviewer))
+                {
+                    if (installments is null || installments.Count == 0)
+                        throw AppException.BadRequest("財務核准撥款類申請時，必須填寫撥款明細。");
+                    InstallmentUpsertService.Apply(db, adv.Installments, installments, adv.GrandTotal, reviewerId,
+                        () => new AdvanceRequestInstallment { AdvanceRequestId = adv.Id });
+                }
                 await db.SaveChangesAsync();
                 break;
             }
@@ -476,7 +508,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             }
             case "travel_payment":
             {
-                var tpr = await db.TravelPaymentRequests.FindAsync(intId)
+                var tpr = await db.TravelPaymentRequests.Include(t => t.Installments)
+                    .FirstOrDefaultAsync(t => t.Id == intId)
                     ?? throw AppException.NotFound("TravelPaymentRequest");
                 if (tpr.ApprovalStatus != "pending")
                     throw AppException.BadRequest("Only pending travel payment requests can be reviewed.");
@@ -485,17 +518,40 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == tpr.EmployeeId.Value)
                     : null;
                 await AuthorizeStepAsync(tpr.ApprovalItemId, tpr.CurrentStepOrder, reviewer, tprApplicant?.DepartmentId, "travel_payment", tpr.Id, tprApplicant?.JobTitleId);
+                var tprReviewedStepOrder = tpr.CurrentStepOrder;
                 await ProcessReviewAsync("travel_payment", tpr.Id, tpr.CurrentStepOrder,
                     tpr.ApprovalItemId, action, reviewNote, reviewerId, tpr.EmployeeId,
                     setStatus:     s  => tpr.ApprovalStatus   = s,
                     incrementStep: () => tpr.CurrentStepOrder++,
                     setReviewed:   () => { tpr.ReviewedAt = Clock.Now; tpr.ReviewedById = reviewerId; tpr.ReviewNote = reviewNote?.Trim(); });
+                // 財務步驟核准時：撥款明細必填，與審核同交易原子寫入
+                if (action == "approved" && await IsFinanceStepAsync(tpr.ApprovalItemId, tprReviewedStepOrder, reviewer))
+                {
+                    if (installments is null || installments.Count == 0)
+                        throw AppException.BadRequest("財務核准撥款類申請時，必須填寫撥款明細。");
+                    InstallmentUpsertService.Apply(db, tpr.Installments, installments, tpr.GrandTotal, reviewerId,
+                        () => new TravelPaymentRequestInstallment { TravelPaymentRequestId = tpr.Id });
+                }
                 await db.SaveChangesAsync();
                 break;
             }
             default:
                 throw AppException.BadRequest("Unknown application type.");
         }
+    }
+
+    /// <summary>
+    /// 判斷指定步驟是否為財務部步驟（撥款明細的填寫節點）。Superadmin 視同財務。
+    /// 與沖銷結案的步驟判定（Department.Code == "FIN"）一致。
+    /// </summary>
+    private async Task<bool> IsFinanceStepAsync(int? approvalItemId, int stepOrder, User reviewer)
+    {
+        if (reviewer.IsSuperAdmin) return true;
+        if (!approvalItemId.HasValue) return false;
+        var step = await db.ApprovalSteps.AsNoTracking()
+            .Include(s => s.Department)
+            .FirstOrDefaultAsync(s => s.ApprovalItemId == approvalItemId.Value && s.StepOrder == stepOrder);
+        return step?.Department?.Code == "FIN";
     }
 
     /// <summary>

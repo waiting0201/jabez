@@ -377,6 +377,12 @@ await strategy.ExecuteAsync(async () =>
 });
 ```
 
+### 6.3 跨流程共用寫入核心（不 SaveChanges 的 helper）
+
+當同一段寫入邏輯被多個入口共用、且需與呼叫端的其他寫入**同交易**時，把「validate + diff + 套用變更」抽成 static helper，**內部只 `db.Add/Remove` 與改 tracked entity，不呼叫 `SaveChangesAsync`**，交易邊界交由呼叫端決定。
+
+範例：[InstallmentUpsertService.Apply](../Api/Services/InstallmentUpsertService.cs)（分期撥款）— 4 個獨立 `PATCH /{type}-requests/{id}/installments` endpoint 與 `ApprovalTaskHandler` 的「財務核准當下原子寫入撥款明細」共用同一份持久化邏輯。4 種子表透過 [IInstallmentEntity](../Api/Models/Entities/IInstallmentEntity.cs) 介面 + `Func<TEntity>` create factory 泛型化（FK 由 factory 設定，其餘欄位由 helper 填）。
+
 ---
 
 ## 7. EF Core Configuration
