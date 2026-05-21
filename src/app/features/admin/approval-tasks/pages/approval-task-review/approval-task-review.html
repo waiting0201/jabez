@@ -37,6 +37,10 @@
                 <div class="card-body">
                   <div class="row g-3 mb-0">
                     <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">請款單號</div>
+                      <span class="fw-500 font-monospace">{{ d.requestNo }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
                       <div class="text-muted small mb-1">請款類型</div>
                       <span class="fw-500">{{ payTypeLabel[d.paymentType] }}</span>
                     </div>
@@ -177,6 +181,10 @@
                 <div class="card-body">
                   <div class="row g-3">
                     <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">出差單號</div>
+                      <span class="fw-500 font-monospace">{{ d.requestNo }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
                       <div class="text-muted small mb-1">出差地點</div>
                       <span class="fw-500">{{ d.destination }}</span>
                       @if (d.isHolidayTravel) {
@@ -269,6 +277,10 @@
                 </div>
                 <div class="card-body">
                   <div class="row g-3">
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">單號</div>
+                      <span class="fw-500 font-monospace">{{ d.requestNo }}</span>
+                    </div>
                     <div class="col-6 col-md-4">
                       <div class="text-muted small mb-1">執行活動地點</div>
                       <span class="fw-500">{{ d.destination }}</span>
@@ -658,6 +670,10 @@
                 <div class="card-body">
                   <div class="row g-3">
                     <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">出差請款單號</div>
+                      <span class="fw-500 font-monospace">{{ d.requestNo }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
                       <div class="text-muted small mb-1">出差地點</div>
                       <span class="fw-500">{{ d.destination }}</span>
                     </div>
@@ -988,7 +1004,7 @@
               審核
             </div>
             <div class="card-body">
-              <form [formGroup]="form" (ngSubmit)="submit()">
+              <form [formGroup]="form" (ngSubmit)="submit(task)">
                 <div class="mb-4">
                   <label class="form-label fw-500">審核結果 <span class="text-danger">*</span></label>
                   <div class="flex flex-wrap gap-4 mt-1">
@@ -1010,7 +1026,7 @@
                   <!-- 撥款明細（payment_request / advance / travel / travel_payment）— 財務簽核當下填預計撥款日 + 各期金額 -->
                   <div class="mb-4">
                     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-                      <label class="form-label fw-500 mb-0">撥款明細
+                      <label class="form-label fw-500 mb-0">撥款明細 <span class="text-danger">*</span>
                         <span class="text-muted small fw-400">（申請總額：{{ getInstallmentTotal(task) | number:'1.0-2' }} 元）</span>
                         <span class="text-muted small fw-400 ml-2">剩餘 {{ getInstallmentTotal(task) - installmentsSum() | number:'1.0-2' }} 元</span>
                       </label>
@@ -1064,7 +1080,10 @@
                         </tfoot>
                       </table>
                     </div>
-                    <div class="text-muted small mt-2">提示：核准後可在「設定撥款日期」區塊回來修改未撥款的列或填入實際撥款日。</div>
+                    @if (installmentsError()) {
+                      <div class="text-danger small mt-2">{{ installmentsError() }}</div>
+                    }
+                    <div class="text-muted small mt-2">提示：核准撥款類申請時撥款明細必填（加總須等於申請總額）；核准後可在「設定撥款日期」區塊回來修改未撥款的列或填入實際撥款日。</div>
                   </div>
                 } @else if ((applicationType === 'write_off' || applicationType === 'travel_write_off') && canSetPaymentDate(task)) {
                   <!-- 沖銷類仍維持單一預計退款日 -->
