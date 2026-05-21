@@ -68,6 +68,19 @@
 
 ---
 
+## 發票號碼重複檢查規則
+
+含發票明細的申請（請款 `PaymentRequest`、預支沖銷 `WriteOffRecord`、出差沖銷 `TravelWriteOffRecord`）在建立 / 更新時，會對明細層級的發票號碼做重複檢查：
+
+- **批次內去重**：同一張單的多筆明細不可有相同發票號碼。
+- **跨表唯一性**：跨請款 + 沖銷各表全系統唯一（排除已拒絕申請；更新時排除自身明細）。
+
+**例外（手打中文文字排除）**：發票號碼欄位若**含中文 / CJK 字**（如手打「收據」「領據」等非統一發票），視為手打文字，**排除於上述兩項重複檢查之外**——同一張單或跨單填多筆「收據」皆可送出。純英數的真正統一發票（如 `AB12345678`）仍維持重複檢查。判定邏輯見 [InvoiceNoHelper.IsManualText](../../Api/Common/InvoiceNoHelper.cs)。
+
+> 出差請款 `TravelPaymentRequest` / 出差預支 `TravelRequest` / 預支 `AdvanceRequest` 目前無發票重複檢查。
+
+---
+
 ## 跨業務關聯
 
 - **簽核流程主軸**（含批次核准 / 自審 / 上層級 / 指定審核 / 跨步驟去重）→ [approval-flow.md](approval-flow.md)

@@ -136,8 +136,13 @@ public sealed class PaymentRequestHandler(
         }
         var requestNo = $"{prefix}{seq:D3}";
 
+        // 發票號碼含中文 / CJK 者（如「收據」「領據」）視為手打文字，排除於重複檢查之外
+        var checkableInvoices = invoices
+            .Where(i => !InvoiceNoHelper.IsManualText(i.InvoiceNo))
+            .ToList();
+
         // 批次內重複檢查
-        var duplicatesInBatch = invoices
+        var duplicatesInBatch = checkableInvoices
             .GroupBy(i => i.InvoiceNo)
             .Where(g => g.Count() > 1)
             .Select(g => g.Key)
@@ -146,21 +151,24 @@ public sealed class PaymentRequestHandler(
             throw AppException.Conflict($"發票號碼重複：{string.Join(", ", duplicatesInBatch)}");
 
         // 資料庫唯一性檢查（排除已拒絕的請款單，並跨沖銷表檢查）
-        var invoiceNos = invoices.Select(i => i.InvoiceNo).ToList();
-        var existInInvoice = await db.InvoiceItems
-            .Where(ii => invoiceNos.Contains(ii.InvoiceNo)
-                      && ii.PaymentRequest.ApprovalStatus != "rejected")
-            .Select(ii => ii.InvoiceNo)
-            .Distinct()
-            .ToListAsync();
-        var existInWriteOff = await db.Set<WriteOffItem>()
-            .Where(wi => invoiceNos.Contains(wi.InvoiceNo!))
-            .Select(wi => wi.InvoiceNo!)
-            .Distinct()
-            .ToListAsync();
-        var existingNos = existInInvoice.Union(existInWriteOff).Distinct().ToList();
-        if (existingNos.Count > 0)
-            throw AppException.Conflict($"發票號碼已存在：{string.Join(", ", existingNos)}");
+        var invoiceNos = checkableInvoices.Select(i => i.InvoiceNo).ToList();
+        if (invoiceNos.Count > 0)
+        {
+            var existInInvoice = await db.InvoiceItems
+                .Where(ii => invoiceNos.Contains(ii.InvoiceNo)
+                          && ii.PaymentRequest.ApprovalStatus != "rejected")
+                .Select(ii => ii.InvoiceNo)
+                .Distinct()
+                .ToListAsync();
+            var existInWriteOff = await db.Set<WriteOffItem>()
+                .Where(wi => invoiceNos.Contains(wi.InvoiceNo!))
+                .Select(wi => wi.InvoiceNo!)
+                .Distinct()
+                .ToListAsync();
+            var existingNos = existInInvoice.Union(existInWriteOff).Distinct().ToList();
+            if (existingNos.Count > 0)
+                throw AppException.Conflict($"發票號碼已存在：{string.Join(", ", existingNos)}");
+        }
 
         // 上傳檔案至 Blob Storage
         var files = form.Files.GetFiles("files");
@@ -327,8 +335,13 @@ public sealed class PaymentRequestHandler(
             if (invoices is null || invoices.Length == 0)
                 return new BadRequestObjectResult(ApiResponse.Fail("At least one invoice is required."));
 
+            // 發票號碼含中文 / CJK 者（如「收據」「領據」）視為手打文字，排除於重複檢查之外
+            var checkableInvoices = invoices
+                .Where(i => !InvoiceNoHelper.IsManualText(i.InvoiceNo))
+                .ToList();
+
             // 批次內重複檢查
-            var duplicatesInBatch = invoices
+            var duplicatesInBatch = checkableInvoices
                 .GroupBy(i => i.InvoiceNo)
                 .Where(g => g.Count() > 1)
                 .Select(g => g.Key)
@@ -337,22 +350,25 @@ public sealed class PaymentRequestHandler(
                 throw AppException.Conflict($"發票號碼重複：{string.Join(", ", duplicatesInBatch)}");
 
             // 資料庫唯一性檢查（排除自己目前的發票 + 已拒絕的請款單，並跨沖銷表檢查）
-            var invoiceNos = invoices.Select(i => i.InvoiceNo).ToList();
-            var existInInvoice = await db.InvoiceItems
-                .Where(ii => invoiceNos.Contains(ii.InvoiceNo)
-                          && ii.PaymentRequestId != intId
-                          && ii.PaymentRequest.ApprovalStatus != "rejected")
-                .Select(ii => ii.InvoiceNo)
-                .Distinct()
-                .ToListAsync();
-            var existInWriteOff = await db.Set<WriteOffItem>()
-                .Where(wi => invoiceNos.Contains(wi.InvoiceNo!))
-                .Select(wi => wi.InvoiceNo!)
-                .Distinct()
-                .ToListAsync();
-            var existingNos = existInInvoice.Union(existInWriteOff).Distinct().ToList();
-            if (existingNos.Count > 0)
-                throw AppException.Conflict($"發票號碼已存在：{string.Join(", ", existingNos)}");
+            var invoiceNos = checkableInvoices.Select(i => i.InvoiceNo).ToList();
+            if (invoiceNos.Count > 0)
+            {
+                var existInInvoice = await db.InvoiceItems
+                    .Where(ii => invoiceNos.Contains(ii.InvoiceNo)
+                              && ii.PaymentRequestId != intId
+                              && ii.PaymentRequest.ApprovalStatus != "rejected")
+                    .Select(ii => ii.InvoiceNo)
+                    .Distinct()
+                    .ToListAsync();
+                var existInWriteOff = await db.Set<WriteOffItem>()
+                    .Where(wi => invoiceNos.Contains(wi.InvoiceNo!))
+                    .Select(wi => wi.InvoiceNo!)
+                    .Distinct()
+                    .ToListAsync();
+                var existingNos = existInInvoice.Union(existInWriteOff).Distinct().ToList();
+                if (existingNos.Count > 0)
+                    throw AppException.Conflict($"發票號碼已存在：{string.Join(", ", existingNos)}");
+            }
 
             // 收集舊 FileUrl（稍後比對，刪除不再使用的 blob）
             var oldFileUrls = pr.InvoiceItems
@@ -608,73 +624,17 @@ public sealed class PaymentRequestHandler(
                          .FirstOrDefaultAsync(p => p.Id == intId)
                  ?? throw AppException.NotFound("PaymentRequest");
 
+        if (pr.ApprovalStatus != "approved")
+            return new BadRequestObjectResult(ApiResponse.Fail("只有已核准的請款申請可以設定撥款明細。"));
+
         var body = await req.ReadFromJsonAsync<UpsertInstallmentsRequest>(JsonOpts);
         if (body is null)
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
 
-        // 共用驗證
-        var existingSnap = pr.Installments
-            .Select(i => (i.Id, i.InstallmentNo, i.ExpectedDate, i.PaidAt, i.Amount))
-            .ToList();
-        InstallmentValidator.Validate(body.Installments, pr.TotalAmount, existingSnap);
-
-        // Diff
-        var nowUtc = DateTime.UtcNow;
-        var taipeiTz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Taipei");
-        var nowTaipei = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, taipeiTz);
-        var newlyPaid = new List<NewlyPaidInstallment>();
-        var inputIds = body.Installments.Where(i => i.Id.HasValue).Select(i => i.Id!.Value).ToHashSet();
-
-        // 1. delete：existing 中 inputs 沒帶 Id 的（已驗證已撥款不會落到此處）
-        var toRemove = pr.Installments.Where(e => !inputIds.Contains(e.Id)).ToList();
-        foreach (var r in toRemove)
-            db.PaymentRequestInstallments.Remove(r);
-
-        // 2. update + insert
-        foreach (var input in body.Installments)
-        {
-            if (input.Id.HasValue)
-            {
-                var existing = pr.Installments.FirstOrDefault(e => e.Id == input.Id.Value)
-                    ?? throw AppException.BadRequest($"找不到要更新的撥款列 Id={input.Id.Value}。");
-
-                var wasPaidNull = !existing.PaidAt.HasValue;
-                existing.InstallmentNo = input.InstallmentNo;
-                existing.ExpectedDate  = input.ExpectedDate.Date;
-                existing.Amount        = input.Amount;
-                existing.Note          = input.Note;
-                if (input.PaidAt.HasValue)
-                {
-                    existing.PaidAt = input.PaidAt.Value.Date + nowTaipei.TimeOfDay;
-                    if (wasPaidNull)
-                    {
-                        existing.PaidByUserId = userId;
-                        newlyPaid.Add(new(existing.InstallmentNo, existing.PaidAt.Value, existing.Amount, body.Installments.Count));
-                    }
-                }
-                existing.UpdatedAt = nowUtc;
-            }
-            else
-            {
-                var ins = new PaymentRequestInstallment
-                {
-                    PaymentRequestId = pr.Id,
-                    InstallmentNo    = input.InstallmentNo,
-                    ExpectedDate     = input.ExpectedDate.Date,
-                    Amount           = input.Amount,
-                    Note             = input.Note,
-                    CreatedAt        = nowUtc,
-                    UpdatedAt        = nowUtc,
-                };
-                if (input.PaidAt.HasValue)
-                {
-                    ins.PaidAt = input.PaidAt.Value.Date + nowTaipei.TimeOfDay;
-                    ins.PaidByUserId = userId;
-                    newlyPaid.Add(new(ins.InstallmentNo, ins.PaidAt.Value, ins.Amount, body.Installments.Count));
-                }
-                db.PaymentRequestInstallments.Add(ins);
-            }
-        }
+        // 共用 validate + diff（不 SaveChanges）
+        var newlyPaid = InstallmentUpsertService.Apply(
+            db, pr.Installments, body.Installments, pr.TotalAmount, userId,
+            () => new PaymentRequestInstallment { PaymentRequestId = pr.Id });
 
         // 3. 狀態（可選）
         if (!string.IsNullOrWhiteSpace(body.ApprovalStatus))

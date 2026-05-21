@@ -1,6 +1,6 @@
 namespace Jabez.Api.Models.Entities;
 
-public class TravelRequestInstallment
+public class TravelRequestInstallment : IInstallmentEntity
 {
     public int       Id              { get; set; }
     public int       TravelRequestId { get; set; }

@@ -83,7 +83,8 @@ public sealed record ReviewPaymentRequestRequest(
     string    ApplicationType,  // "payment_request" | "leave" | "travel" | "overtime" | "advance" | "write_off"
     DateTime? EstimatedRefundDate,  // 預支 / 出差沖銷時填入：上層預支 / 出差申請的預計退款日
     DateTime? RefundedAt,           // 預支 / 出差沖銷時填入：上層預支 / 出差申請的實際退款日
-    bool?     CloseAdvance);        // 預支結案（僅沖銷申請的財務部步驟使用）
+    bool?     CloseAdvance,         // 預支結案（僅沖銷申請的財務部步驟使用）
+    List<InstallmentInput>? Installments = null);  // 撥款類於財務步驟核准時一併送出的撥款明細（與審核同交易原子寫入）
 
 public sealed record ApprovalRecordDto(
     int      StepOrder,

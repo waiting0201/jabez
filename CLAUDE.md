@@ -310,6 +310,7 @@ Api/
 │   ├── IPaymentReminderService.cs    # 撥款提醒服務介面
 │   ├── PaymentReminderService.cs     # 撥款日將屆提醒：撈 4 種待撥 installments、過濾財務部、推 LINE+Email、寫 PaymentReminderLog（同日去重）
 │   ├── InstallmentValidator.cs       # 分期撥款共用驗證：序號連續 / SUM == 總額 / 已撥款列保護
+│   ├── InstallmentUpsertService.cs   # 分期撥款共用 upsert 核心（validate+diff，不 SaveChanges）；獨立 endpoint 與「財務核准當下原子寫入」共用；以 IInstallmentEntity 泛型化
 │   ├── InstallmentUpsertResult.cs    # UpsertInstallments 結果 record
 │   ├── IGcisService.cs               # 政府開放資料 GCIS 商工登記查詢介面
 │   ├── GcisService.cs                # GCIS Open Data REST API 包裝（以統編查公司名稱 / 地址 / 負責人）
@@ -569,7 +570,9 @@ hotfix/*      # 緊急修復
 - **撥款狀態**：由 [InstallmentReadService.ComputeStatus](Api/Services/Dapper/InstallmentReadService.cs) 計算三態（`Unpaid` / `PartiallyPaid` / `FullyPaid`），全部從子表推算
 - **List filter「已撥款 / 未撥款」**：[PaymentRequestReadService](Api/Services/Dapper/PaymentRequestReadService.cs) 的 `PaymentStatusClause` 用 `EXISTS / NOT EXISTS` 子查詢 `XxxInstallments`
 - **PDF 出納簽名章**：4 個 PDF service 取 `installments[]` 最後一期已撥款者的 `PaidBySignatureUrl` + `PaidAt`
-- **撥款日期更新**：唯一入口 `PATCH /{type}-requests/{id}/installments`（upsert installments），舊 `PATCH /{type}-requests/{id}/payment-date` 已移除
+- **撥款明細寫入兩個入口（共用 [InstallmentUpsertService.Apply](Api/Services/InstallmentUpsertService.cs)）**：
+  - 財務**核准當下**：`PATCH /approval-tasks/{appType}/{id}/review` 帶 `installments`，與審核同交易原子寫入；財務（FIN）步驟核准撥款類時**必填**（holiday_travel 除外、批次核准除外）
+  - 核准**後**修改 / 填實際撥款日：`PATCH /{type}-requests/{id}/installments`（**僅 approved**），舊 `PATCH /{type}-requests/{id}/payment-date` 已移除
 - **撥款提醒**：[PaymentReminderService](Api/Services/PaymentReminderService.cs) UNION 4 種 installments 推算
 - **唯讀顯示**：[`<app-installments-table>`](Admin/src/app/shared/components/installments-table.ts) 共用元件（card 結構，跟其他 detail 卡片一致），4 種申請的 detail / form 頁皆引用
 - **編輯 UI 限制**（[approval-task-review](Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/)）：

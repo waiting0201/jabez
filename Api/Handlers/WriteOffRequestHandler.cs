@@ -571,8 +571,10 @@ public sealed class WriteOffRequestHandler(
         WriteOffItemMetadata[] items,
         int? excludeWriteOffRecordId)
     {
+        // 發票號碼含中文 / CJK 者（如「收據」「領據」）視為手打文字，排除於重複檢查之外
         var invoiceNos = items
-            .Where(i => !string.IsNullOrWhiteSpace(i.InvoiceNo))
+            .Where(i => !string.IsNullOrWhiteSpace(i.InvoiceNo)
+                     && !InvoiceNoHelper.IsManualText(i.InvoiceNo))
             .Select(i => i.InvoiceNo!)
             .ToList();
 

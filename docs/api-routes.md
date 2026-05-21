@@ -77,7 +77,7 @@
 |--------|------|------|
 | GET | `/approval-tasks` | 待審核任務列表 |
 | GET | `/approval-tasks/{id}` | 取得任務詳情 |
-| PATCH | `/approval-tasks/{appType}/{id}/review` | 審核（核准 / 退回） |
+| PATCH | `/approval-tasks/{appType}/{id}/review` | 審核（核准 / 退回 / 拒絕）。body 可帶 `installments`：當為撥款類（payment_request / advance / travel / travel_payment）且**財務（FIN）步驟核准**時，撥款明細**必填**（加總須 == 申請總額），與審核動作同交易原子寫入。非財務步驟 / 非撥款類 / holiday_travel 不收 installments；批次核准不收。 |
 | POST | `/approval-tasks/batch-approve` | 批次核准多筆待審申請（僅 approved 動作，需 `approval-tasks:batch-approve` 權限；撥款/退款日留空，完成後以提醒清單回傳需補填者） |
 
 ## 專案管理
@@ -94,7 +94,7 @@
 | GET/POST | `/payment-requests` | 請款列表 / 新增（預設 draft，multipart 含 `vendorId` — 當 `type=vendor` 時必填且必須是 IsActive=true 的廠商） |
 | GET/PUT/PATCH/DELETE | `/payment-requests/{id}` | 請款 CRUD（DTO 含 `vendorId / vendorName / vendorTaxId`） |
 | PATCH | `/payment-requests/{id}/submit` | 送出請款申請（draft → pending） |
-| PATCH | `/payment-requests/{id}/installments` | upsert 一或多筆撥款明細（SUM 嚴格驗證 = TotalAmount；已撥款列鎖定不可改不可刪；每筆 PaidAt null→value 觸發一次「已撥款」通知含 N/M 期；僅財務體系部門：AC/FIN/Jabez HQ/CEO） |
+| PATCH | `/payment-requests/{id}/installments` | upsert 一或多筆撥款明細（**僅 ApprovalStatus == approved**；SUM 嚴格驗證 = TotalAmount；已撥款列鎖定不可改不可刪；每筆 PaidAt null→value 觸發一次「已撥款」通知含 N/M 期；僅財務體系部門：AC/FIN/Jabez HQ/CEO）。validate+diff 持久化核心由 `InstallmentUpsertService.Apply` 共用（與審核時原子寫入同一份邏輯）。 |
 | GET/POST | `/leave-requests` | 請假列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/leave-requests/{id}` | 請假 CRUD |
 | PATCH | `/leave-requests/{id}/submit` | 送出請假申請（draft → pending） |

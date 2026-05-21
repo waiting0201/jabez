@@ -578,65 +578,10 @@ public sealed class TravelPaymentRequestHandler(
         if (body is null)
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
 
-        var existingSnap = tpr.Installments
-            .Select(i => (i.Id, i.InstallmentNo, i.ExpectedDate, i.PaidAt, i.Amount))
-            .ToList();
-        InstallmentValidator.Validate(body.Installments, tpr.GrandTotal, existingSnap);
-
-        var nowUtc = DateTime.UtcNow;
-        var taipeiTz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Taipei");
-        var nowTaipei = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, taipeiTz);
-        var newlyPaid = new List<NewlyPaidInstallment>();
-        var inputIds = body.Installments.Where(i => i.Id.HasValue).Select(i => i.Id!.Value).ToHashSet();
-
-        var toRemove = tpr.Installments.Where(e => !inputIds.Contains(e.Id)).ToList();
-        foreach (var r in toRemove)
-            db.TravelPaymentRequestInstallments.Remove(r);
-
-        foreach (var input in body.Installments)
-        {
-            if (input.Id.HasValue)
-            {
-                var existing = tpr.Installments.FirstOrDefault(e => e.Id == input.Id.Value)
-                    ?? throw AppException.BadRequest($"找不到要更新的撥款列 Id={input.Id.Value}。");
-
-                var wasPaidNull = !existing.PaidAt.HasValue;
-                existing.InstallmentNo = input.InstallmentNo;
-                existing.ExpectedDate  = input.ExpectedDate.Date;
-                existing.Amount        = input.Amount;
-                existing.Note          = input.Note;
-                if (input.PaidAt.HasValue)
-                {
-                    existing.PaidAt = input.PaidAt.Value.Date + nowTaipei.TimeOfDay;
-                    if (wasPaidNull)
-                    {
-                        existing.PaidByUserId = userId;
-                        newlyPaid.Add(new(existing.InstallmentNo, existing.PaidAt.Value, existing.Amount, body.Installments.Count));
-                    }
-                }
-                existing.UpdatedAt = nowUtc;
-            }
-            else
-            {
-                var ins = new TravelPaymentRequestInstallment
-                {
-                    TravelPaymentRequestId = tpr.Id,
-                    InstallmentNo          = input.InstallmentNo,
-                    ExpectedDate           = input.ExpectedDate.Date,
-                    Amount                 = input.Amount,
-                    Note                   = input.Note,
-                    CreatedAt              = nowUtc,
-                    UpdatedAt              = nowUtc,
-                };
-                if (input.PaidAt.HasValue)
-                {
-                    ins.PaidAt = input.PaidAt.Value.Date + nowTaipei.TimeOfDay;
-                    ins.PaidByUserId = userId;
-                    newlyPaid.Add(new(ins.InstallmentNo, ins.PaidAt.Value, ins.Amount, body.Installments.Count));
-                }
-                db.TravelPaymentRequestInstallments.Add(ins);
-            }
-        }
+        // 共用 validate + diff（不 SaveChanges）
+        var newlyPaid = InstallmentUpsertService.Apply(
+            db, tpr.Installments, body.Installments, tpr.GrandTotal, userId,
+            () => new TravelPaymentRequestInstallment { TravelPaymentRequestId = tpr.Id });
 
         await db.SaveChangesAsync();
 
