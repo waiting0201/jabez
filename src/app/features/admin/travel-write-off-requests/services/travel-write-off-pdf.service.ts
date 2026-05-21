@@ -131,7 +131,7 @@ export class TravelWriteOffPdfService {
       }
       if (refundedAmount > 0) {
         bodyRows.push([
-          { content: '實際退款', colSpan: 5, styles: { halign: 'right' } },
+          { content: '實際撥款', colSpan: 5, styles: { halign: 'right' } },
           { content: fmt(refundedAmount), styles: { halign: 'right' } },
           '',
           '',
