@@ -531,8 +531,77 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         var idCardFrontUrl = profile?.IdCardFrontUrl;
         var idCardBackUrl  = profile?.IdCardBackUrl;
 
+        // ── 硬刪除前清洗所有對 Users 的 NO_ACTION 外鍵（否則 DB 會擋住刪除）─────────────
+        // CASCADE 外鍵（EmployeeProfile + 9 子表 / AttendanceRecords / RefreshTokens / UserRoles /
+        //   PayrollAdjustments / SalaryAdjustmentRecords）由 DB 自動連帶刪除；
+        // SET NULL 外鍵（各申請單 SubmittedById / EmployeeId）由 DB 自動設 NULL；
+        // 以下手動處理剩餘的 NO_ACTION 外鍵，全部包在交易內確保原子性。
+        await using var tx = await db.Database.BeginTransactionAsync();
+
+        // (1) 主體即該員的列 → 直接刪除（含不可為 NULL 的 ReviewerId / 該員自己的提醒紀錄）
+        await db.RequestDesignatedReviewers.Where(r => r.ReviewerId == guid).ExecuteDeleteAsync();
+        await db.EscalationOverrides.Where(o => o.ReviewerId == guid).ExecuteDeleteAsync();
+        await db.ApprovalRecords.Where(r => r.ReviewedById == guid).ExecuteDeleteAsync();
+        await db.TravelRequestParticipants.Where(p => p.UserId == guid).ExecuteDeleteAsync();
+        await db.AttendanceReminderLogs.Where(l => l.UserId == guid).ExecuteDeleteAsync();
+        await db.PaymentReminderLogs.Where(l => l.FinanceUserId == guid).ExecuteDeleteAsync();
+
+        // (2) 屬於其他單據、僅將該員列為審核者 / 撥款者 / 代理人 / 觸發者 → 設 NULL，保留單據本體
+        await db.ApprovalRecords.Where(r => r.OnBehalfOfUserId == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.OnBehalfOfUserId, (Guid?)null));
+        await db.EscalationOverrides.Where(o => o.OnBehalfOfUserId == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(o => o.OnBehalfOfUserId, (Guid?)null));
+        await db.AttendanceReminderLogs.Where(l => l.TriggeredByUserId == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(l => l.TriggeredByUserId, (Guid?)null));
+        await db.PaymentReminderLogs.Where(l => l.TriggeredByUserId == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(l => l.TriggeredByUserId, (Guid?)null));
+        await db.Users.Where(u => u.AgentUserId == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.AgentUserId, (Guid?)null));
+
+        await db.PaymentRequests.Where(x => x.ReviewedById == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.ReviewedById, (Guid?)null));
+        await db.LeaveRequests.Where(x => x.ReviewedById == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.ReviewedById, (Guid?)null));
+        await db.OvertimeRequests.Where(x => x.ReviewedById == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.ReviewedById, (Guid?)null));
+        await db.TravelPaymentRequests.Where(x => x.ReviewedById == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.ReviewedById, (Guid?)null));
+
+        await db.AdvanceRequests.Where(x => x.ReviewedById == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.ReviewedById, (Guid?)null));
+        await db.AdvanceRequests.Where(x => x.ClosedById == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.ClosedById, (Guid?)null));
+        await db.AdvanceRequests.Where(x => x.RefundedByUserId == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.RefundedByUserId, (Guid?)null));
+
+        await db.TravelRequests.Where(x => x.ReviewedById == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.ReviewedById, (Guid?)null));
+        await db.TravelRequests.Where(x => x.ClosedById == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.ClosedById, (Guid?)null));
+        await db.TravelRequests.Where(x => x.RefundedByUserId == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.RefundedByUserId, (Guid?)null));
+
+        await db.WriteOffRecords.Where(x => x.SubmittedById == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.SubmittedById, (Guid?)null));
+        await db.WriteOffRecords.Where(x => x.ReviewedById == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.ReviewedById, (Guid?)null));
+        await db.TravelWriteOffRecords.Where(x => x.SubmittedById == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.SubmittedById, (Guid?)null));
+        await db.TravelWriteOffRecords.Where(x => x.ReviewedById == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.ReviewedById, (Guid?)null));
+
+        await db.PaymentRequestInstallments.Where(x => x.PaidByUserId == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.PaidByUserId, (Guid?)null));
+        await db.AdvanceRequestInstallments.Where(x => x.PaidByUserId == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.PaidByUserId, (Guid?)null));
+        await db.TravelRequestInstallments.Where(x => x.PaidByUserId == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.PaidByUserId, (Guid?)null));
+        await db.TravelPaymentRequestInstallments.Where(x => x.PaidByUserId == guid)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.PaidByUserId, (Guid?)null));
+
         db.Users.Remove(user);
         await db.SaveChangesAsync();
+        await tx.CommitAsync();
 
         // DB 刪除完成後再清理 Blob：失敗不影響使用者刪除結果（孤兒檔案下次手動清理即可）
         await TryDeleteBlobAsync(AvatarContainer, avatarUrl);
