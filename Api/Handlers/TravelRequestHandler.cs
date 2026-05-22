@@ -469,6 +469,15 @@ public sealed class TravelRequestHandler(
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel requests can be deleted.");
 
+        // 一併清除此申請單的審核流程足跡（多型關聯無 FK，須手動刪除，否則殘留列會擋住使用者刪除）
+        var appType = item.IsHolidayTravel ? "holiday_travel" : "travel";
+        db.ApprovalRecords.RemoveRange(
+            await db.ApprovalRecords.Where(r => r.ApplicationType == appType && r.ApplicationId == item.Id).ToListAsync());
+        db.EscalationOverrides.RemoveRange(
+            await db.EscalationOverrides.Where(o => o.ApplicationType == appType && o.ApplicationId == item.Id).ToListAsync());
+        db.RequestDesignatedReviewers.RemoveRange(
+            await db.RequestDesignatedReviewers.Where(r => r.RequestType == appType && r.RequestId == item.Id).ToListAsync());
+
         db.TravelRequests.Remove(item);
         await db.SaveChangesAsync();
 

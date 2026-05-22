@@ -443,6 +443,24 @@ builder.HasOne<User>()
 builder.HasIndex(e => new { e.UserId, e.Order });  // 子表常需依 UserId 撈
 ```
 
+### 7.5 刪除主檔時的 NO_ACTION 外鍵清洗
+
+刪除 `User`（或其他被多表引用的主檔）時，指向它的外鍵分三類：
+
+| delete 行為 | 處理 | 範例 |
+|---|---|---|
+| `Cascade` | DB 自動連帶刪除 | EmployeeProfile + 子表 / AttendanceRecords / UserRoles |
+| `SetNull` | DB 自動設 NULL | 各申請單 `SubmittedById` / `EmployeeId` |
+| `NoAction` | **會擋住刪除，須在 Handler 手動清洗** | 審核 / 撥款 / 代理 / 提醒 log 等欄位 |
+
+`NoAction` 外鍵的清洗原則（見 [UserHandler.DeleteAsync](../Api/Handlers/UserHandler.cs)，用 `ExecuteDeleteAsync` / `ExecuteUpdateAsync` 包 `BeginTransactionAsync`）：
+- **列的主體即被刪主檔**（如 `RequestDesignatedReviewers.ReviewerId`、不可為 NULL 的欄位）→ `ExecuteDeleteAsync` 刪列
+- **列屬於其他單據、僅將主檔列為審核者 / 撥款者 / 代理人**（可為 NULL）→ `ExecuteUpdateAsync(SetProperty(..., (Guid?)null))` 設 NULL，保留單據本體
+
+> 用 `sys.foreign_keys` 查 `delete_referential_action_desc` 可列出全部引用。**新增任何指向某主檔的 `NoAction` 外鍵時，必須同步補進該主檔 Delete 的清洗清單**，否則日後刪不掉主檔。
+>
+> 多型關聯（如 `RequestDesignatedReviewer` / `ApprovalRecord` 用 `RequestType+RequestId` 對應 9 種申請父表）**沒有真 FK**，刪父表時 EF Cascade 不處理，須在各申請 Handler 的 `DeleteAsync` 手動 `RemoveRange`。
+
 ---
 
 ## 8. Migration
