@@ -1040,8 +1040,8 @@
                         + 新增一期
                       </button>
                     </div>
-                    <div class="border rounded overflow-hidden">
-                      <table class="table table-sm mb-0 small">
+                    <div class="border rounded overflow-x-auto">
+                      <table class="table table-sm mb-0 small" style="min-width: 640px">
                         <thead class="bg-[--bg-base]">
                           <tr>
                             <th class="text-center" style="width: 60px">期數</th>
@@ -1226,8 +1226,8 @@
                             [disabled]="!canAddInstallmentRow(task)"
                             (click)="addInstallmentRow(task)">+ 新增一期</button>
                   </div>
-                  <div class="border rounded overflow-hidden bg-white">
-                    <table class="table table-sm mb-0 small">
+                  <div class="border rounded overflow-x-auto bg-white">
+                    <table class="table table-sm mb-0 small" style="min-width: 760px">
                       <thead class="bg-[--bg-base]">
                         <tr>
                           <th class="text-center" style="width: 60px">期數</th>
