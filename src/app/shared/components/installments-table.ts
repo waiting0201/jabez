@@ -39,7 +39,7 @@ import {
         </div>
         <div class="card-body p-0">
           <div class="table-responsive">
-            <table class="table table-sm mb-0">
+            <table class="table table-sm mb-0" style="min-width: 720px">
               <thead class="table-light">
                 <tr>
                   <th class="text-center" style="width: 60px">期數</th>
