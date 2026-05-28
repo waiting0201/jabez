@@ -1,11 +1,23 @@
 import { MenuItemType } from '@core/layout/models/layout.model';
 
 export const menuItems: MenuItemType[] = [
-  { label: '主選單', isTitle: true },
+  { label: '出勤管理', isTitle: true },
   {
     icon: '/assets/icons/sprite.svg#clock',
     label: '打卡',
     url: '/dashboard',
+  },
+  {
+    icon: '/assets/icons/sprite.svg#calendar',
+    label: '請假申請',
+    url: '/admin/leave-requests',
+    requiredPermission: 'leave-requests:read',
+  },
+  {
+    icon: '/assets/icons/sprite.svg#zap',
+    label: '加班申請',
+    url: '/admin/overtime-requests',
+    requiredPermission: 'overtime-requests:read',
   },
 
   { label: '業務管理', isTitle: true },
@@ -34,12 +46,6 @@ export const menuItems: MenuItemType[] = [
     requiredPermission: 'write-off-requests:read',
   },
   {
-    icon: '/assets/icons/sprite.svg#calendar',
-    label: '請假申請',
-    url: '/admin/leave-requests',
-    requiredPermission: 'leave-requests:read',
-  },
-  {
     icon: '/assets/icons/sprite.svg#map-pin',
     label: '出差請款申請',
     url: '/admin/travel-payment-requests',
@@ -62,12 +68,6 @@ export const menuItems: MenuItemType[] = [
     label: '假日執行活動申請',
     url: '/admin/holiday-travel-requests',
     requiredPermission: 'holiday-travel-requests:read',
-  },
-  {
-    icon: '/assets/icons/sprite.svg#zap',
-    label: '加班申請',
-    url: '/admin/overtime-requests',
-    requiredPermission: 'overtime-requests:read',
   },
   {
     icon: '/assets/icons/sprite.svg#check-square',
