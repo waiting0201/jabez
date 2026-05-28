@@ -216,7 +216,7 @@ export class HrProfilePdfService {
     const otherFields: [string, string][] = [
       ['緊急聯絡人',   val(profile.emergencyContactName)],
       ['緊急聯絡電話', val(profile.emergencyContactPhone)],
-      ['銀行局號',     val(profile.bankCode)],
+      ['銀行分行',     val(profile.bankCode)],
       ['銀行帳號',     val(profile.bankAccount)],
       ['投保起日',     fmtD(profile.insuranceStartDate)],
       ['扶養人數',     val(profile.dependentCount)],
