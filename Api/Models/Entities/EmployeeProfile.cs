@@ -31,7 +31,7 @@ public class EmployeeProfile
     public string? EmergencyContactPhone { get; set; }
 
     // 銀行帳號
-    public string? BankCode    { get; set; }   // 銀行局號
+    public string? BankCode    { get; set; }   // 銀行分行
     public string? BankAccount { get; set; }   // 銀行帳號
 
     // 保險與扶養
