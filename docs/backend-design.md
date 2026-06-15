@@ -835,6 +835,16 @@ Line__LoginChannelId              ↔ IConfiguration["Line:LoginChannelId"]
 
 直接在 Function App → Configuration → Application Settings 設定，名稱與 `local.settings.json` 相同（雙底線格式）。
 
+### 16.4 一次性 Seeder 工具（Startup Hook 模式）
+
+需一次性灌資料時（如批次匯入既有員工人事卡），比照 `Program.cs` 既有 `HolidayBlobCleanup` 寫法：在 `host.MigrateAsync()` 後的 `using (scope)` 區塊內，以**環境旗標**保護呼叫一個 `static RunAsync(AppDbContext, IBlobStorageService, IConfiguration)` 工具（獨立 try/catch 不阻擋啟動），重用已注入的 DI（DbContext / Blob / BCrypt / Clock），免另開 console 專案。
+
+- 範例：[Api/Data/Seed/EmployeeImporter.cs](../Api/Data/Seed/EmployeeImporter.cs)（讀 `employee-import.json` → User + EmployeeProfile + 子表 + 附件）。旗標 `RUN_EMPLOYEE_IMPORT=true` 觸發、`IMPORT_UPLOAD_FILES` 控制附件是否實際上 blob、`EMPLOYEE_IMPORT_SOURCE_DIR` 指來源夾。
+- 因 DbContext 啟用 `EnableRetryOnFailure`，每筆須包 `CreateExecutionStrategy() + BeginTransactionAsync()`（同 §4 Handler 規範）。
+- 去重採 **upsert**（Email 或唯一業務鍵命中即覆蓋 update-in-place、子表 `ExecuteDelete` 後重建），確保可重跑不重複。
+- 民國/西元日期解析共用 [RocDateParser](../Api/Data/Seed/RocDateParser.cs)（年 ≤ 150 視民國 +1911）。
+- 旗標預設 `false`；`local.settings.json` 不進版控、`CopyToPublishDirectory=Never`，旗標不會帶到 prod。
+
 ---
 
 ## 17. Coding Style Checklist（每次撰寫前自我檢查）

@@ -48,5 +48,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>Never</CopyToPublishDirectory>
     </None>
+    <!-- 一次性員工匯入資料檔：需複製到輸出目錄供 EmployeeImporter 讀取 -->
+    <None Update="Data/Seed/employee-import.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>
