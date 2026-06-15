@@ -291,7 +291,8 @@ Api/
 │   ├── AppDbContext.cs                # EF Core DbContext（含 Migration 自動套用）
 │   ├── AppDbContextFactory.cs         # 用於 CLI Migration
 │   ├── Configurations/                # EF Core 實體對應設定（31 個，新增 EmployeeProfile + 9 張子表 + 健保眷屬）
-│   └── Migrations/                    # EF Core Migration 檔案
+│   ├── Migrations/                    # EF Core Migration 檔案
+│   └── Seed/                          # 一次性員工人事資料匯入工具（EmployeeImporter + RocDateParser + EmployeeImportDtos + employee-import.json；RUN_EMPLOYEE_IMPORT 旗標觸發，IMPORT_UPLOAD_FILES 控制附件上傳）
 ├── Models/
 │   ├── Entities/                      # 40 個資料庫實體（新增 EmployeeProfile / EducationRecord / EmploymentHistoryRecord / FamilyMember / ProfessionalTraining / LanguageAbility / JobTransferRecord / RewardPunishmentRecord / SalaryAdjustmentRecord / HealthInsuranceDependent / **4 個分期撥款表 PaymentRequestInstallment / AdvanceRequestInstallment / TravelRequestInstallment / TravelPaymentRequestInstallment** / **PaymentReminderLog**）
 │   └── Dtos/                          # 19 個 DTO 檔案（新增 EmployeeProfileDtos / **InstallmentDtos**）

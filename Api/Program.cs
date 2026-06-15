@@ -187,6 +187,22 @@ using (var scope = host.Services.CreateScope())
     {
         Console.Error.WriteLine($"[HolidayBlobCleanup] skipped due to error: {ex.Message}");
     }
+
+    // 一次性員工人事資料匯入：RUN_EMPLOYEE_IMPORT=true 才執行（跑完切回 false）。
+    // 附件實際上傳另由 IMPORT_UPLOAD_FILES 控制；單步失敗不阻擋 Functions 啟動。
+    var importCfg = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
+    if (string.Equals(importCfg["RUN_EMPLOYEE_IMPORT"], "true", StringComparison.OrdinalIgnoreCase))
+    {
+        try
+        {
+            await Jabez.Api.Data.Seed.EmployeeImporter.RunAsync(
+                db, scope.ServiceProvider.GetRequiredService<IBlobStorageService>(), importCfg);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[EmployeeImporter] skipped due to error: {ex.Message}");
+        }
+    }
 }
 
 await host.RunAsync();
