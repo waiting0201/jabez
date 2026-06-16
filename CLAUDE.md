@@ -130,7 +130,7 @@ Bug 修復：
 
 ### 業務功能（docs/business/）
 - [application-forms.md](docs/business/application-forms.md) — 9 種申請表類型總覽 + 流程關係 + holiday vs travel 差異
-- [leave-rules.md](docs/business/leave-rules.md) — 請假規則（15 種假別 / 時間單位 / 年假 / 喪假 / 補休 / 重疊驗證）
+- [leave-rules.md](docs/business/leave-rules.md) — 請假規則（16 種假別 / 時間單位 / 年假 / 喪假 / 補休 / 生理假 / 重疊驗證）
 - [approval-flow.md](docs/business/approval-flow.md) — 請款簽核流程（簽核步驟 / 批次核准 / 自審 / 上層級 / 指定審核 / 跨步驟去重）
 - [approval-escalation.md](docs/business/approval-escalation.md) — 簽核升級機制（找上層部門主管 + 代理人）
 - [pdf-signatures.md](docs/business/pdf-signatures.md) — 7 個 PDF 動態簽名欄規則
@@ -383,7 +383,7 @@ dotnet ef database update               # 套用 Migration
 
 ## 請假規則
 
-> **詳見** [docs/business/leave-rules.md](docs/business/leave-rules.md)（15 種假別、時間單位、年假、喪假、補休、重疊驗證）
+> **詳見** [docs/business/leave-rules.md](docs/business/leave-rules.md)（16 種假別、時間單位、年假、喪假、補休、生理假、重疊驗證）
 
 ---
 

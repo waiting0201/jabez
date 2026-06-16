@@ -101,6 +101,7 @@
 | GET | `/leave-requests/compensatory-hours` | 查詢可補休時數（總加班 − 已補休） |
 | GET | `/leave-requests/annual-quota` | 查詢年假額度（依 HireDate 計算年資） |
 | GET | `/leave-requests/ceremonial-quota` | 查詢歲時祭儀假額度（僅原住民，每年 3 天，跨年歸零） |
+| GET | `/leave-requests/menstrual-quota` | 查詢生理假配額（限女性，回 `isFemale` + 每月 1 天 / 全年 12 天） |
 | GET | `/leave-requests/marriage-quota` | 查詢婚假配額（上限 8 天，不限年度） |
 | GET | `/leave-requests/maternity-status` | 查詢產假狀態（是否已有活躍申請） |
 | GET | `/leave-requests/bereavement-quota?relationship={rel}` | 查詢喪假配額（依親屬關係 3/6/8 天） |

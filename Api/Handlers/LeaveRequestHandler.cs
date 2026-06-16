@@ -32,7 +32,7 @@ public sealed class LeaveRequestHandler(
         ["annual", "personal", "sick", "compensatory", "marriage", "bereavement",
          "official", "maternity", "miscarriage_3m", "miscarriage_2to3m",
          "miscarriage_under2m", "prenatal_checkup", "paternity",
-         "ceremonial_festival", "senior_executive"];
+         "ceremonial_festival", "senior_executive", "menstrual"];
 
     /// <summary>各假別時間單位對應</summary>
     private static readonly Dictionary<string, LeaveTimeUnit> TimeUnitMap = new()
@@ -52,6 +52,7 @@ public sealed class LeaveRequestHandler(
         ["miscarriage_3m"]      = LeaveTimeUnit.Day,
         ["miscarriage_2to3m"]   = LeaveTimeUnit.Day,
         ["miscarriage_under2m"] = LeaveTimeUnit.Day,
+        ["menstrual"]           = LeaveTimeUnit.Day,
     };
 
     /// <summary>高階主管假可申請之最高職級（JobTitle.Level 數字越小層級越高）</summary>
@@ -169,6 +170,10 @@ public sealed class LeaveRequestHandler(
             if (applicant?.IsIndigenous != true)
                 return new BadRequestObjectResult(ApiResponse.Fail("僅原住民身份之員工可申請歲時祭儀假。"));
         }
+
+        // 生理假：限女性身份（前置檢查；ValidateLeaveQuotaAsync 會在 submit 時再次驗證）
+        if (body.LeaveType == "menstrual" && !await IsFemaleAsync(employeeId))
+            return new BadRequestObjectResult(ApiResponse.Fail("僅女性員工可申請生理假。"));
 
         // 產假：禁止重複活躍申請（一次請完制）
         if (body.LeaveType == "maternity")
@@ -366,6 +371,10 @@ public sealed class LeaveRequestHandler(
                 return new BadRequestObjectResult(ApiResponse.Fail("僅原住民身份之員工可申請歲時祭儀假。"));
         }
 
+        // 生理假：限女性身份（與 CreateAsync 保持一致）
+        if (effectiveLeaveType == "menstrual" && !await IsFemaleAsync(item.EmployeeId ?? Guid.Empty))
+            return new BadRequestObjectResult(ApiResponse.Fail("僅女性員工可申請生理假。"));
+
         var unit = GetTimeUnit(effectiveLeaveType);
 
         // 產假：自動填充 56 天，不論 client 傳入
@@ -554,6 +563,48 @@ public sealed class LeaveRequestHandler(
             usedDays = Math.Round(usedDays, 1),
             availableDays = Math.Round(Math.Max(0, totalDays - usedDays), 1),
             isIndigenous = true,
+        }));
+    }
+
+    /// <summary>查詢當前使用者的生理假配額（限女性，每月 1 天、全年 12 天）</summary>
+    public async Task<IActionResult> GetMenstrualQuotaAsync(HttpRequest req)
+    {
+        var userId = await GetUserIdAsync(req);
+        bool isFemale = await IsFemaleAsync(userId);
+        if (!isFemale)
+        {
+            return new OkObjectResult(ApiResponse.Ok(new
+            {
+                isFemale = false,
+                annualTotalDays = 0,
+                annualUsedDays = 0m,
+                annualAvailableDays = 0m,
+                monthlyTotalDays = 0,
+                monthlyUsedDays = 0m,
+                monthlyAvailableDays = 0m,
+                message = "僅女性員工可申請生理假。",
+            }));
+        }
+
+        const int annualTotalDays = 12;
+        const int monthlyTotalDays = 1;
+        var now = Clock.Now;
+
+        var annualUsedHours = await GetUsedHoursAsync(userId, "menstrual", 0, now.Year);
+        var annualUsedDays = annualUsedHours / 8m;
+
+        var monthlyUsedHours = await GetUsedHoursInMonthAsync(userId, "menstrual", 0, now.Year, now.Month);
+        var monthlyUsedDays = monthlyUsedHours / 8m;
+
+        return new OkObjectResult(ApiResponse.Ok(new
+        {
+            isFemale = true,
+            annualTotalDays,
+            annualUsedDays = Math.Round(annualUsedDays, 1),
+            annualAvailableDays = Math.Round(Math.Max(0, annualTotalDays - annualUsedDays), 1),
+            monthlyTotalDays,
+            monthlyUsedDays = Math.Round(monthlyUsedDays, 1),
+            monthlyAvailableDays = Math.Round(Math.Max(0, monthlyTotalDays - monthlyUsedDays), 1),
         }));
     }
 
@@ -915,6 +966,25 @@ public sealed class LeaveRequestHandler(
             return null;
         }
 
+        // 生理假：限女性，每月 1 天（8h）、全年 12 天（96h）上限
+        if (item.LeaveType == "menstrual")
+        {
+            if (!await IsFemaleAsync(userId))
+                return "僅女性員工可申請生理假。";
+
+            // 月上限（依申請起始日所屬年月）
+            var monthUsed = await GetUsedHoursInMonthAsync(userId, "menstrual", item.Id, item.StartDate.Year, item.StartDate.Month);
+            if (monthUsed + item.Hours > 8m)
+                return $"生理假每月上限 1 天。{item.StartDate:yyyy/MM} 已使用 {Math.Round(monthUsed / 8m, 1)} 天，本次申請 {Math.Round(item.Hours / 8m, 1)} 天。";
+
+            // 年上限
+            var yearUsed = await GetUsedHoursAsync(userId, "menstrual", item.Id, item.StartDate.Year);
+            if (yearUsed + item.Hours > 96m)
+                return $"生理假全年上限 12 天。{item.StartDate.Year} 年已使用 {Math.Round(yearUsed / 8m, 1)} 天，本次申請 {Math.Round(item.Hours / 8m, 1)} 天。";
+
+            return null;
+        }
+
         // 有固定天數上限的假別
         if (LeaveTypeDaysLimit.TryGetValue(item.LeaveType, out var limit))
         {
@@ -955,6 +1025,27 @@ public sealed class LeaveRequestHandler(
 
         // personal / sick / official / compensatory：無天數上限或由其他邏輯驗證
         return null;
+    }
+
+    /// <summary>檢查員工性別是否為女性（生理假限定）；性別存於 EmployeeProfile.Gender（"M"/"F"）</summary>
+    private async Task<bool> IsFemaleAsync(Guid userId) =>
+        await db.EmployeeProfiles.AsNoTracking()
+            .Where(p => p.UserId == userId)
+            .Select(p => p.Gender)
+            .FirstOrDefaultAsync() == "F";
+
+    /// <summary>查詢指定月份已使用時數（排除當前申請，依 StartDate 落於該年月）</summary>
+    private async Task<decimal> GetUsedHoursInMonthAsync(Guid userId, string leaveType, int excludeId, int year, int month)
+    {
+        var startOfMonth = new DateTime(year, month, 1);
+        var endOfMonth = startOfMonth.AddMonths(1);
+        return await db.LeaveRequests
+            .Where(l => l.EmployeeId == userId
+                     && l.LeaveType == leaveType
+                     && l.Id != excludeId
+                     && (l.ApprovalStatus == "approved" || l.ApprovalStatus == "pending")
+                     && l.StartDate >= startOfMonth && l.StartDate < endOfMonth)
+            .SumAsync(l => l.Hours);
     }
 
     /// <summary>查詢已使用時數（排除當前申請，可選按年度過濾）</summary>
@@ -1019,6 +1110,7 @@ public sealed class LeaveRequestHandler(
         "paternity"          => "陪產假",
         "ceremonial_festival"=> "歲時祭儀假",
         "senior_executive"   => "高階主管假",
+        "menstrual"          => "生理假",
         _                    => leaveType,
     };
 

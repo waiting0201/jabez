@@ -272,6 +272,7 @@ public sealed class AppRouter(
             ("GET",    ["leave-requests", "compensatory-hours"])  => await leaveRequests.GetCompensatoryHoursAsync(req),
             ("GET",    ["leave-requests", "annual-quota"])        => await leaveRequests.GetAnnualQuotaAsync(req),
             ("GET",    ["leave-requests", "ceremonial-quota"])    => await leaveRequests.GetCeremonialQuotaAsync(req),
+            ("GET",    ["leave-requests", "menstrual-quota"])     => await leaveRequests.GetMenstrualQuotaAsync(req),
             ("GET",    ["leave-requests", "marriage-quota"])      => await leaveRequests.GetMarriageQuotaAsync(req),
             ("GET",    ["leave-requests", "maternity-status"])    => await leaveRequests.GetMaternityStatusAsync(req),
             ("GET",    ["leave-requests", "bereavement-quota"])   => await leaveRequests.GetBereavementQuotaAsync(req),

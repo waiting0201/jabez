@@ -23,7 +23,7 @@
 | # | 申請表 | 前端路徑 | API Prefix / RequestType | 自審分組 | 流程特性 |
 |---|--------|----------|--------------------------|---------|---------|
 | 1 | 請款申請 | `/admin/payment-requests` | `/payment-requests` / `payment_request` | **Group B 首位跳過** | 一般費用請款（含發票明細）；走簽核 + 撥款。**Type=`vendor` 時必須選擇 `Vendor` 主檔（廠商管理 `/admin/vendors`），找不到時可從表單即時新增** |
-| 2 | 請假申請 | `/admin/leave-requests` | `/leave-requests` / `leave` | **Group A 全程禁止** | 15 種假別；走簽核（無撥款） |
+| 2 | 請假申請 | `/admin/leave-requests` | `/leave-requests` / `leave` | **Group A 全程禁止** | 16 種假別；走簽核（無撥款） |
 | 3 | 加班申請 | `/admin/overtime-requests` | `/overtime-requests` / `overtime` | **Group A 全程禁止** | 加班預申請；走簽核（無撥款） |
 | 4 | 預支申請 | `/admin/advance-requests` | `/advance-requests` / `advance` | **Group B 首位跳過** | 費用預支；走簽核 + 撥款，**事後須沖銷** |
 | 5 | 出差預支申請 | `/admin/travel-requests` | `/travel-requests` / `travel` | **Group A 全程禁止** | 出差預支款項；走簽核 + 撥款，**事後走沖銷流程** |
@@ -85,7 +85,7 @@
 
 - **簽核流程主軸**（含批次核准 / 自審 / 上層級 / 指定審核 / 跨步驟去重）→ [approval-flow.md](approval-flow.md)
 - **簽核升級機制**（找上層部門主管 + 代理人）→ [approval-escalation.md](approval-escalation.md)
-- **請假 15 種假別細則** → [leave-rules.md](leave-rules.md)
+- **請假 16 種假別細則** → [leave-rules.md](leave-rules.md)
 - **PDF 簽名欄規則** → [pdf-signatures.md](pdf-signatures.md)
 - **假日執行活動的假日津貼計算** → [payroll-formula.md](payroll-formula.md)
 - **API 端點清單** → [api-routes.md](../api-routes.md)
