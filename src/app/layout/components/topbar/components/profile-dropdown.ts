@@ -43,6 +43,13 @@ import {environment} from '@/environments/environment';
           </div>
         </div>
 
+        <a class="dropdown-item" routerLink="/account/my-profile">
+          <svg class="sa-icon" style="width:1rem;height:1rem;stroke:currentColor">
+            <use href="/assets/icons/sprite.svg#user"></use>
+          </svg>
+          <span class="font-medium">個人資訊</span>
+        </a>
+
         <a class="dropdown-item" routerLink="/account/change-password">
           <svg class="sa-icon" style="width:1rem;height:1rem;stroke:currentColor">
             <use href="/assets/icons/sprite.svg#lock"></use>
