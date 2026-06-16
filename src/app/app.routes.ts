@@ -31,6 +31,11 @@ export const routes: Routes = [
         loadChildren: () => import('./features/admin/admin.routes').then(m => m.ADMIN_ROUTES),
       },
       {
+        path: 'account/my-profile',
+        loadComponent: () => import('./features/account/pages/my-profile/my-profile').then(m => m.MyProfile),
+        data: {title: '個人資訊'},
+      },
+      {
         path: 'account/change-password',
         loadComponent: () => import('./features/account/pages/change-password/change-password').then(m => m.ChangePassword),
         data: {title: '修改密碼'},
