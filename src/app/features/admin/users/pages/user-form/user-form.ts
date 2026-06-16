@@ -262,7 +262,12 @@ export class UserForm implements OnInit {
   }
 
   private toDateString(d: Date): string {
-    return new Date(d).toISOString().substring(0, 10);
+    // 以本地時區取 YYYY-MM-DD，避免 toISOString() 轉 UTC（台北 +8）造成日期少一天
+    const dt = new Date(d);
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const day = String(dt.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   }
 
   /** 切換 Tab；HR / 依附 Tab 第一次切換時才 lazy fetch */
