@@ -4,7 +4,8 @@ export type LeaveType =
   | 'maternity' | 'miscarriage_3m' | 'miscarriage_2to3m' | 'miscarriage_under2m'
   | 'prenatal_checkup' | 'paternity'
   | 'ceremonial_festival'
-  | 'senior_executive';
+  | 'senior_executive'
+  | 'menstrual';
 
 /** 時間單位：小時 / 半天(4hr) / 整天(8hr) */
 export type LeaveTimeUnit = 'hour' | 'half_day' | 'day';
@@ -27,6 +28,7 @@ export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
   bereavement:         '喪假',
   ceremonial_festival: '歲時祭儀假',
   senior_executive:    '高階主管假',
+  menstrual:           '生理假',
 };
 
 /**
@@ -51,6 +53,7 @@ export const LEAVE_TIME_UNIT: Record<LeaveType, LeaveTimeUnit> = {
   miscarriage_3m:      'day',
   miscarriage_2to3m:   'day',
   miscarriage_under2m: 'day',
+  menstrual:           'day',
 };
 
 /** 格式化時數顯示（依單位） */
@@ -78,6 +81,7 @@ export const LEAVE_TYPE_CLASSES: Record<LeaveType, string> = {
   bereavement:         'bg-[rgba(82,83,88,0.12)] text-[#525358]',
   ceremonial_festival: 'bg-[rgba(140,115,85,0.12)] text-[#8C7355]',
   senior_executive:    'bg-[rgba(105,159,52,0.12)] text-[#4A6B3A]',
+  menstrual:           'bg-[rgba(160,64,64,0.12)] text-[#A04040]',
 };
 
 /** 假別分組（供下拉選單 optgroup 使用） */
@@ -87,6 +91,8 @@ export const LEAVE_TYPE_GROUPS: { label: string; types: LeaveType[] }[] = [
   { label: '產假類別', types: ['maternity', 'miscarriage_3m', 'miscarriage_2to3m', 'miscarriage_under2m', 'prenatal_checkup', 'paternity'] },
   { label: '喪假',     types: ['bereavement'] },
   { label: '其他假別', types: ['ceremonial_festival'] },
+  // 生理假僅女性可見（實際顯示由前端依女性身分過濾）
+  { label: '生理假',   types: ['menstrual'] },
   // 高階主管假僅協理以上可見（實際顯示由前端依 auth.isSeniorExecutive() 過濾）
   { label: '高階主管假', types: ['senior_executive'] },
 ];
@@ -101,6 +107,7 @@ export const LEAVE_TYPE_DAYS_LIMIT: Partial<Record<LeaveType, number>> = {
   prenatal_checkup:    7,
   paternity:           7,
   ceremonial_festival: 3,
+  menstrual:           12,
 };
 
 // ── 喪假親屬關係 ──
@@ -204,6 +211,18 @@ export interface CeremonialQuota {
   usedDays: number;
   availableDays: number;
   isIndigenous: boolean;
+  message?: string;
+}
+
+/** 生理假配額（限女性，每月 1 天、全年 12 天） */
+export interface MenstrualQuota {
+  isFemale: boolean;
+  annualTotalDays: number;
+  annualUsedDays: number;
+  annualAvailableDays: number;
+  monthlyTotalDays: number;
+  monthlyUsedDays: number;
+  monthlyAvailableDays: number;
   message?: string;
 }
 

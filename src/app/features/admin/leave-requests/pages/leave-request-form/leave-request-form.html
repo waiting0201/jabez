@@ -61,7 +61,8 @@
               <select class="form-select" formControlName="leaveType" style="max-width: 320px">
                 @for (group of leaveTypeGroups; track group.label) {
                   @if ((group.label !== '高階主管假' || isSeniorExecutive())
-                       && (group.label !== '其他假別' || isIndigenousUser())) {
+                       && (group.label !== '其他假別' || isIndigenousUser())
+                       && (group.label !== '生理假' || isFemaleEmployee())) {
                     <optgroup [label]="group.label">
                       @for (type of group.types; track type) {
                         <option [value]="type">{{ leaveTypeLabels[type] }}</option>
@@ -223,10 +224,39 @@
                 }
               }
 
+              <!-- 生理假 -->
+              @if (selectedLeaveType === 'menstrual') {
+                <div class="alert alert-warning flex items-center gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                  <span class="small">
+                    生理假：<strong>每月 1 天</strong>、<strong>全年 12 天</strong>，一次請一天，全部<strong>按天數扣除半薪</strong>。
+                    <span class="text-muted ms-1">（全年累計超過 3 天的部分併入病假計算）</span>
+                  </span>
+                </div>
+                @if (menstrualQuota(); as q) {
+                  @if (!q.isFemale) {
+                    <div class="alert alert-danger flex items-center gap-2 py-2 mt-2 mb-0">
+                      <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                      <span class="small">{{ q.message || '僅女性員工可申請生理假。' }}</span>
+                    </div>
+                  } @else {
+                    <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                      <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+                      <span class="small">
+                        本月剩餘：<strong class="text-primary">{{ q.monthlyAvailableDays }}</strong> 天
+                        <span class="text-muted ms-2">｜全年已用：{{ q.annualUsedDays }} 天</span>
+                        <span class="ms-2">｜全年剩餘：<strong class="text-primary">{{ q.annualAvailableDays }}</strong> 天</span>
+                      </span>
+                    </div>
+                  }
+                }
+              }
+
               <!-- 其他有上限的假別提示 -->
               @if (currentDaysLimit !== null && selectedLeaveType !== 'bereavement' && selectedLeaveType !== 'annual'
                 && selectedLeaveType !== 'compensatory' && selectedLeaveType !== 'ceremonial_festival'
-                && selectedLeaveType !== 'marriage' && selectedLeaveType !== 'maternity') {
+                && selectedLeaveType !== 'marriage' && selectedLeaveType !== 'maternity'
+                && selectedLeaveType !== 'menstrual') {
                 <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
                   <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
                   <span class="small">

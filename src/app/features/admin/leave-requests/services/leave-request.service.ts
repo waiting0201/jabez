@@ -4,6 +4,7 @@ import {Observable} from 'rxjs';
 import {
   LeaveRequest, AnnualQuota, CompensatoryHours, CeremonialQuota,
   MarriageQuota, MaternityStatus, BereavementQuota, SeniorExecutiveEligibility,
+  MenstrualQuota,
 } from '../models/leave-request.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {environment} from '@/environments/environment';
@@ -54,6 +55,11 @@ export class LeaveRequestService {
   /** 查詢當前使用者的歲時祭儀假額度（僅原住民） */
   getCeremonialQuota(): Observable<CeremonialQuota> {
     return this.http.get<CeremonialQuota>(`${environment.apiUrl}/leave-requests/ceremonial-quota`);
+  }
+
+  /** 查詢當前使用者的生理假配額（限女性，每月 1 天、全年 12 天） */
+  getMenstrualQuota(): Observable<MenstrualQuota> {
+    return this.http.get<MenstrualQuota>(`${environment.apiUrl}/leave-requests/menstrual-quota`);
   }
 
   /** 查詢當前使用者的婚假配額（上限 8 天） */

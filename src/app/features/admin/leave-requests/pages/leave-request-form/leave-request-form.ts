@@ -7,6 +7,7 @@ import {LeaveRequestService} from '../../services/leave-request.service';
 import {
   LeaveType, ApprovalStatus, AnnualQuota, CompensatoryHours, CeremonialQuota,
   MarriageQuota, MaternityStatus, BereavementQuota, SeniorExecutiveEligibility,
+  MenstrualQuota,
   APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES,
   LEAVE_TYPE_GROUPS, LEAVE_TYPE_LABELS, LEAVE_TYPE_DAYS_LIMIT, LEAVE_TIME_UNIT,
   BEREAVEMENT_GROUPS, BEREAVEMENT_RELATIONSHIP_LABELS, BEREAVEMENT_DAYS,
@@ -110,6 +111,9 @@ export class LeaveRequestForm implements OnInit {
 
   /** 高階主管假適用性 */
   seniorExecEligibility = signal<SeniorExecutiveEligibility | null>(null);
+
+  /** 生理假配額（限女性；亦用於下拉過濾） */
+  menstrualQuota = signal<MenstrualQuota | null>(null);
 
   /**
    * 是否為協理以上（決定高階主管假選項是否顯示）
@@ -332,6 +336,8 @@ export class LeaveRequestForm implements OnInit {
     this.loadSeniorExecEligibility();
     // 預載歲時祭儀假額度以判斷使用者是否為原住民身份（用於下拉過濾）
     this.loadCeremonialQuota();
+    // 預載生理假配額以判斷使用者是否為女性身份（用於下拉過濾）
+    this.loadMenstrualQuota();
 
     // 監聽假別變化（載入既有資料期間跳過，避免 patch / disable 觸發的 valueChanges 把日期清掉）
     this.form.get('leaveType')?.valueChanges.subscribe(type => {
@@ -485,6 +491,7 @@ export class LeaveRequestForm implements OnInit {
     if (type === 'ceremonial_festival') this.loadCeremonialQuota();
     if (type === 'marriage') this.loadMarriageQuota();
     if (type === 'maternity') this.loadMaternityStatus();
+    if (type === 'menstrual') this.loadMenstrualQuota();
   }
 
   /** 載入既有資料時手動套用 leaveType 對應的驗證規則與配額載入（取代被 guard 跳過的 valueChanges 副作用） */
@@ -499,6 +506,7 @@ export class LeaveRequestForm implements OnInit {
     if (type === 'ceremonial_festival') this.loadCeremonialQuota();
     if (type === 'marriage') this.loadMarriageQuota();
     if (type === 'maternity') this.loadMaternityStatus();
+    if (type === 'menstrual') this.loadMenstrualQuota();
   }
 
   /** 補休時數是否足夠 */
@@ -525,6 +533,33 @@ export class LeaveRequestForm implements OnInit {
     if (this.selectedLeaveType !== 'ceremonial_festival') return false;
     const q = this.ceremonialQuota();
     return q !== null && !q.isIndigenous;
+  }
+
+  /**
+   * 申請人是否為女性（用於下拉選單過濾生理假選項）
+   * - Superadmin 一律通過（可代任何員工建立）
+   * - 否則依 menstrualQuota.isFemale 判斷
+   * - 尚未載入時預設 false（保守：先不顯示，載入後再揭露）
+   */
+  readonly isFemaleEmployee = computed<boolean>(() => {
+    if (this.auth.isSuperAdmin()) return true;
+    return this.menstrualQuota()?.isFemale === true;
+  });
+
+  /** 生理假：申請人非女性則不可申請 */
+  get isMenstrualNotAllowed(): boolean {
+    if (this.selectedLeaveType !== 'menstrual') return false;
+    const q = this.menstrualQuota();
+    return q !== null && !q.isFemale;
+  }
+
+  /** 生理假：是否超過當月上限（1 天）或全年上限（12 天） */
+  get isMenstrualExceeded(): boolean {
+    if (this.selectedLeaveType !== 'menstrual') return false;
+    const q = this.menstrualQuota();
+    if (!q || !q.isFemale) return false;
+    const requestDays = this.calculatedHours / 8;
+    return requestDays > q.monthlyAvailableDays || requestDays > q.annualAvailableDays;
   }
 
   /** 產假：已有活躍申請則不可再送 */
@@ -570,6 +605,8 @@ export class LeaveRequestForm implements OnInit {
     if (this.isSeniorExecBlocked) return false;
     if (this.isMarriageExceeded) return false;
     if (this.isBereavementExceeded) return false;
+    if (this.isMenstrualNotAllowed) return false;
+    if (this.isMenstrualExceeded) return false;
     return true;
   }
 
@@ -579,6 +616,10 @@ export class LeaveRequestForm implements OnInit {
     // 後端 CreateAsync / UpdateAsync 已擋；前端保險擋一次避免空跑
     if (this.isCeremonialNotAllowed) {
       this.errorMsg.set('僅原住民身份之員工可申請歲時祭儀假。');
+      return;
+    }
+    if (this.isMenstrualNotAllowed) {
+      this.errorMsg.set('僅女性員工可申請生理假。');
       return;
     }
     const payload = this._buildPayload();
@@ -616,6 +657,14 @@ export class LeaveRequestForm implements OnInit {
     }
     if (this.isSeniorExecBlocked) {
       this.errorMsg.set('高階主管假僅限協理（含）以上職級申請。');
+      return;
+    }
+    if (this.isMenstrualNotAllowed) {
+      this.errorMsg.set('僅女性員工可申請生理假。');
+      return;
+    }
+    if (this.isMenstrualExceeded) {
+      this.errorMsg.set('生理假超過上限（每月 1 天、全年 12 天）。');
       return;
     }
     // 流程含「申請人指定審核」步驟時，至少需要 1 位指定審核者（fail-fast，避免送出後才被後端擋下）
@@ -694,6 +743,12 @@ export class LeaveRequestForm implements OnInit {
   private loadSeniorExecEligibility() {
     this.service.getSeniorExecutiveEligibility().subscribe({
       next: data => this.seniorExecEligibility.set(data),
+    });
+  }
+
+  private loadMenstrualQuota() {
+    this.service.getMenstrualQuota().subscribe({
+      next: data => this.menstrualQuota.set(data),
     });
   }
 
