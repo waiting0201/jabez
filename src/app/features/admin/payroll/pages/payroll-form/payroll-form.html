@@ -135,6 +135,12 @@
                     <td class="text-right pe-4 text-danger">-{{ e.sickLeaveDeduction | number:'1.0-0' }}</td>
                   </tr>
                 }
+                @if (e.menstrualLeaveDays > 0) {
+                  <tr>
+                    <td class="ps-6">生理假扣薪（{{ e.menstrualLeaveDays | number:'1.0-2' }} 天 = {{ e.menstrualLeaveDays * 8 | number:'1.0-1' }} 小時 × 半薪）</td>
+                    <td class="text-right pe-4 text-danger">-{{ e.menstrualLeaveDeduction | number:'1.0-0' }}</td>
+                  </tr>
+                }
               </tbody>
             </table>
           </div>

@@ -45,7 +45,7 @@ export class PayrollForm implements OnInit {
     return e.baseSalary + e.mealAllowance + e.overtimePay
          + e.holidayAllowance + otherAdd
          - e.laborInsurance - e.healthInsurance
-         - e.personalLeaveDeduction - e.sickLeaveDeduction
+         - e.personalLeaveDeduction - e.sickLeaveDeduction - e.menstrualLeaveDeduction
          - otherDed;
   });
 

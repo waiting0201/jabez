@@ -20,6 +20,8 @@ export interface EmployeePayroll {
   personalLeaveDeduction: number;
   sickLeaveDays: number;
   sickLeaveDeduction: number;
+  menstrualLeaveDays: number;
+  menstrualLeaveDeduction: number;
   otherDeduction: number;
   otherDeductionNote: string | null;
   note: string | null;
