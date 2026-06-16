@@ -26,4 +26,5 @@ public class PaymentRequest
     public User?                                    ReviewedBy   { get; set; }
     public ICollection<InvoiceItem>                 InvoiceItems { get; set; } = [];
     public ICollection<PaymentRequestInstallment>   Installments { get; set; } = [];
+    public ICollection<PaymentRequestAttachment>    Attachments  { get; set; } = [];
 }

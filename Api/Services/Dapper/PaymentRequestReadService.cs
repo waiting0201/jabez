@@ -84,11 +84,22 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         var instDict = await installments.GetByParentIdsAsync(InstallmentParentTable.PaymentRequest, new[] { id });
         var instList = instDict.GetValueOrDefault(id, []);
 
+        // 整單批次附件（獨立查詢，避免與 invoices JOIN 笛卡兒相乘）
+        const string attSql = """
+            SELECT Id, FileName, FileUrl
+            FROM PaymentRequestAttachments
+            WHERE PaymentRequestId = @Id
+            ORDER BY SortOrder
+            """;
+        var attRows = await db.QueryAsync<dynamic>(attSql, new { Id = id });
+        var attachments = attRows.Select(r => new AttachmentDto((int)r.Id, (string)r.FileName, (string?)r.FileUrl)).ToArray();
+
         return dto with
         {
             DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null,
             Installments        = instList.Count > 0 ? instList.ToArray() : null,
             PaymentStatus       = installments.ComputeStatus(instList),
+            Attachments         = attachments.Length > 0 ? attachments : null,
         };
     }
 
@@ -104,14 +115,18 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                                 statusFilter: status, reviewerUserId: reviewerUserId, paymentStatus: paymentStatus,
                                 applicationType: applicationType);
         var instDicts = await LoadInstallmentsAsync(payments, advances, travels, holidayTravels, travelPayments);
-        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, instDicts);
+        var paymentAttachments  = await LoadPaymentAttachmentsAsync();
+        var writeOffAttachments = await LoadWriteOffAttachmentsAsync();
+        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, instDicts, paymentAttachments, writeOffAttachments);
     }
 
     public async Task<ApprovalTaskDto?> GetApprovalTaskByIdAsync(int id, string applicationType)
     {
         var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants) = await FetchAllAsync(id, applicationType);
         var instDicts = await LoadInstallmentsAsync(payments, advances, travels, holidayTravels, travelPayments);
-        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, instDicts)
+        var paymentAttachments  = await LoadPaymentAttachmentsAsync();
+        var writeOffAttachments = await LoadWriteOffAttachmentsAsync();
+        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, instDicts, paymentAttachments, writeOffAttachments)
             .FirstOrDefault(t => t.Id == id && t.ApplicationType == applicationType);
     }
 
@@ -671,6 +686,36 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         return new InstallmentDicts(paymentInst, advanceInst, travelInst, travelPaymentInst);
     }
 
+    /// <summary>整單批次附件（請款）依 PaymentRequestId 分組，供審核任務 mapper 取用</summary>
+    private async Task<Dictionary<int, List<AttachmentDto>>> LoadPaymentAttachmentsAsync()
+    {
+        const string sql = "SELECT Id, PaymentRequestId, FileName, FileUrl FROM PaymentRequestAttachments ORDER BY PaymentRequestId, SortOrder";
+        var rows = await db.QueryAsync<dynamic>(sql);
+        var dict = new Dictionary<int, List<AttachmentDto>>();
+        foreach (var r in rows)
+        {
+            int pid = (int)r.PaymentRequestId;
+            if (!dict.ContainsKey(pid)) dict[pid] = [];
+            dict[pid].Add(new AttachmentDto((int)r.Id, (string)r.FileName, (string?)r.FileUrl));
+        }
+        return dict;
+    }
+
+    /// <summary>整單批次附件（沖銷）依 WriteOffRecordId 分組，供審核任務 mapper 取用</summary>
+    private async Task<Dictionary<int, List<AttachmentDto>>> LoadWriteOffAttachmentsAsync()
+    {
+        const string sql = "SELECT Id, WriteOffRecordId, FileName, FileUrl FROM WriteOffAttachments ORDER BY WriteOffRecordId, SortOrder";
+        var rows = await db.QueryAsync<dynamic>(sql);
+        var dict = new Dictionary<int, List<AttachmentDto>>();
+        foreach (var r in rows)
+        {
+            int woId = (int)r.WriteOffRecordId;
+            if (!dict.ContainsKey(woId)) dict[woId] = [];
+            dict[woId].Add(new AttachmentDto((int)r.Id, (string)r.FileName, (string?)r.FileUrl));
+        }
+        return dict;
+    }
+
     private IEnumerable<ApprovalTaskDto> BuildApprovalTasks(
         IEnumerable<dynamic> paymentRows,
         IEnumerable<dynamic> leaveRows,
@@ -690,8 +735,14 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         IEnumerable<dynamic> travelWriteOffItemRows,
         IEnumerable<dynamic> travelPaymentItemRows,
         IEnumerable<dynamic> holidayParticipantRows,
-        InstallmentDicts instDicts)
+        InstallmentDicts instDicts,
+        Dictionary<int, List<AttachmentDto>> paymentAttachments,
+        Dictionary<int, List<AttachmentDto>> writeOffAttachments)
     {
+        AttachmentDto[]? GetPaymentAttachments(int id) =>
+            paymentAttachments.TryGetValue(id, out var a) && a.Count > 0 ? [.. a] : null;
+        AttachmentDto[]? GetWriteOffAttachments(int id) =>
+            writeOffAttachments.TryGetValue(id, out var a) && a.Count > 0 ? [.. a] : null;
         // Build designated reviewer lookup keyed by (RequestType, RequestId)
         var drDict = new Dictionary<(string, int), List<DesignatedReviewerDto>>();
         foreach (var row in designatedRows)
@@ -871,7 +922,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (string?)x.pr.VendorBankAccount,
                 (string?)x.pr.VendorAddress,
                 instDicts.Payment.TryGetValue((int)x.pr.Id, out var prInst) ? [.. prInst] : null,
-                installments.ComputeStatus(instDicts.Payment.GetValueOrDefault((int)x.pr.Id, []))),
+                installments.ComputeStatus(instDicts.Payment.GetValueOrDefault((int)x.pr.Id, [])),
+                GetPaymentAttachments((int)x.pr.Id)),
             null, null, null, null, null, null,
             GetRecords("payment_request", (int)x.pr.Id),
             GetDesignatedReviewers("payment_request", (int)x.pr.Id),
@@ -1088,7 +1140,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (string?)row.RefundedBySignatureUrl,
                 (bool)row.AdvanceIsClosed,
                 (decimal?)row.AdvanceRefundAmount,
-                (decimal?)row.AdvanceRefundedAmount),
+                (decimal?)row.AdvanceRefundedAmount,
+                GetWriteOffAttachments((int)row.Id)),
             null,
             GetRecords("write_off", (int)row.Id),
             GetDesignatedReviewers("write_off", (int)row.Id),

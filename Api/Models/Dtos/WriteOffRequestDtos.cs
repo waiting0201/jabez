@@ -29,7 +29,8 @@ public sealed record WriteOffRequestDto(
     DateTime?                 EstimatedRefundDate = null,
     DateTime?                 RefundedAt = null,
     decimal?                  AdvanceRefundAmount = null,
-    decimal?                  AdvanceRefundedAmount = null);
+    decimal?                  AdvanceRefundedAmount = null,
+    AttachmentDto[]?          Attachments = null);
 
 // ── Request DTOs ──────────────────────────────────────────────────────────────
 
@@ -65,4 +66,5 @@ public sealed record WriteOffTaskDetailDto(
     string?            RefundedBySignatureUrl = null,
     bool               AdvanceIsClosed = false,
     decimal?           AdvanceRefundAmount = null,
-    decimal?           AdvanceRefundedAmount = null);
+    decimal?           AdvanceRefundedAmount = null,
+    AttachmentDto[]?   Attachments = null);

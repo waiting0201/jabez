@@ -20,6 +20,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ProjectPaymentSchedule>  ProjectPaymentSchedules  { get; set; }
     public DbSet<PaymentRequest> PaymentRequests { get; set; }
     public DbSet<InvoiceItem>    InvoiceItems    { get; set; }
+    public DbSet<PaymentRequestAttachment> PaymentRequestAttachments { get; set; }
     public DbSet<LeaveRequest>   LeaveRequests   { get; set; }
     public DbSet<TravelRequest>     TravelRequests     { get; set; }
     public DbSet<TravelRequestItem> TravelRequestItems { get; set; }
@@ -33,6 +34,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AdvanceRequestItem>   AdvanceRequestItems   { get; set; }
     public DbSet<WriteOffRecord>       WriteOffRecords       { get; set; }
     public DbSet<WriteOffItem>         WriteOffItems         { get; set; }
+    public DbSet<WriteOffAttachment>   WriteOffAttachments   { get; set; }
     public DbSet<TravelWriteOffRecord> TravelWriteOffRecords { get; set; }
     public DbSet<TravelWriteOffItem>   TravelWriteOffItems   { get; set; }
     public DbSet<PayrollAdjustment>    PayrollAdjustments    { get; set; }

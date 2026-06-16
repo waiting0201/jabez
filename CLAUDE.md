@@ -191,14 +191,14 @@ Admin/src/app/
     │   ├── approvals/      # 簽核流程設定（ApprovalItem + Steps）
     │   ├── approval-tasks/ # 待審核任務清單
     │   ├── projects/       # 專案管理
-    │   ├── payment-requests/  # 請款申請
+    │   ├── payment-requests/  # 請款申請（一般請款 type=general 明細下方含整單批次附件上傳，共用 shared/components/attachments-upload）
     │   ├── leave-requests/    # 請假申請
     │   ├── travel-payment-requests/ # 出差請款申請（小額已代墊直接請款，無沖銷）
     │   ├── travel-requests/   # 出差預支申請（走沖銷流程）
     │   ├── holiday-travel-requests/ # 假日執行活動申請（共用 TravelRequest entity，IsHolidayTravel=true，計入假日津貼）
     │   ├── overtime-requests/ # 加班申請（走簽核流程）
     │   ├── advance-requests/  # 預支申請
-    │   ├── write-off-requests/ # 預支沖銷申請（獨立簽核流程）
+    │   ├── write-off-requests/ # 預支沖銷申請（獨立簽核流程；明細下方含整單批次附件上傳，共用 shared/components/attachments-upload）
     │   ├── travel-write-off-requests/ # 出差預支沖銷申請（獨立簽核流程）
     │   ├── insurance-brackets/ # 勞健保級距維護
     │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出）
@@ -294,7 +294,7 @@ Api/
 │   ├── Migrations/                    # EF Core Migration 檔案
 │   └── Seed/                          # 一次性員工人事資料匯入工具（EmployeeImporter + RocDateParser + EmployeeImportDtos + employee-import.json；RUN_EMPLOYEE_IMPORT 旗標觸發，IMPORT_UPLOAD_FILES 控制附件上傳）
 ├── Models/
-│   ├── Entities/                      # 40 個資料庫實體（新增 EmployeeProfile / EducationRecord / EmploymentHistoryRecord / FamilyMember / ProfessionalTraining / LanguageAbility / JobTransferRecord / RewardPunishmentRecord / SalaryAdjustmentRecord / HealthInsuranceDependent / **4 個分期撥款表 PaymentRequestInstallment / AdvanceRequestInstallment / TravelRequestInstallment / TravelPaymentRequestInstallment** / **PaymentReminderLog**）
+│   ├── Entities/                      # 42 個資料庫實體（新增 EmployeeProfile / EducationRecord / EmploymentHistoryRecord / FamilyMember / ProfessionalTraining / LanguageAbility / JobTransferRecord / RewardPunishmentRecord / SalaryAdjustmentRecord / HealthInsuranceDependent / **4 個分期撥款表 PaymentRequestInstallment / AdvanceRequestInstallment / TravelRequestInstallment / TravelPaymentRequestInstallment** / **PaymentReminderLog** / **整單批次附件 PaymentRequestAttachment / WriteOffAttachment**）
 │   └── Dtos/                          # 19 個 DTO 檔案（新增 EmployeeProfileDtos / **InstallmentDtos**）
 ├── Services/
 │   ├── IJwtService.cs
@@ -342,6 +342,7 @@ Api/
 ├── Common/
 │   ├── ApiResponse.cs                 # 統一回應格式 ApiResponse<T>
 │   ├── AppException.cs                # 自定義例外
+│   ├── AttachmentProcessor.cs         # 整單批次附件共用：multipart 解析 + magic-byte 驗證 + 上傳 request-attachments（一般請款 / 預支沖銷共用）
 │   └── Constants.cs
 ├── host.json
 ├── local.settings.json                # 本地開發設定（不進版控）

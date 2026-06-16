@@ -211,6 +211,21 @@ public sealed class PaymentRequestHandler(
         };
         pr.InvoiceItems = invoiceItems;
 
+        // 整單批次附件（照片 / PDF）— 一般請款才會帶入；其他類型前端送空陣列
+        var attachmentsJson = form["attachments"].ToString();
+        if (!string.IsNullOrEmpty(attachmentsJson))
+        {
+            var attMetas    = JsonSerializer.Deserialize<AttachmentProcessor.AttachmentMetadata[]>(attachmentsJson, JsonOpts) ?? [];
+            var attFiles    = form.Files.GetFiles("attachmentFiles");
+            var resolvedAtt = await AttachmentProcessor.ResolveAsync(attMetas, attFiles, blob);
+            pr.Attachments  = resolvedAtt.Select((a, i) => new PaymentRequestAttachment
+            {
+                FileName  = a.FileName,
+                FileUrl   = a.FileUrl,
+                SortOrder = i,
+            }).ToList();
+        }
+
         db.PaymentRequests.Add(pr);
         await db.SaveChangesAsync();
 
@@ -242,8 +257,8 @@ public sealed class PaymentRequestHandler(
 
         var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         var pr = currentUser?.IsSuperAdmin == true
-            ? await db.PaymentRequests.Include(x => x.InvoiceItems).FirstOrDefaultAsync(x => x.Id == intId)
-            : await db.PaymentRequests.Include(x => x.InvoiceItems).FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
+            ? await db.PaymentRequests.Include(x => x.InvoiceItems).Include(x => x.Attachments).FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.PaymentRequests.Include(x => x.InvoiceItems).Include(x => x.Attachments).FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
         if (pr is null) throw AppException.NotFound("PaymentRequest");
 
         if (pr.ApprovalStatus != "draft" && pr.ApprovalStatus != "returned")
@@ -326,6 +341,25 @@ public sealed class PaymentRequestHandler(
                         StepOrder   = r.StepOrder,
                     }));
             }
+        }
+
+        // 整單批次附件整組替換（提供 attachments 欄位才更新；blob 待主交易存檔後再清理）
+        var removedAttachmentBlobs = new List<string>();
+        if (form.ContainsKey("attachments"))
+        {
+            var attMetas    = JsonSerializer.Deserialize<AttachmentProcessor.AttachmentMetadata[]>(form["attachments"].ToString(), JsonOpts) ?? [];
+            var attFiles    = form.Files.GetFiles("attachmentFiles");
+            var oldAttUrls  = pr.Attachments.Where(a => !string.IsNullOrEmpty(a.FileUrl)).Select(a => a.FileUrl!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var resolvedAtt = await AttachmentProcessor.ResolveAsync(attMetas, attFiles, blob);
+            var newAttUrls  = resolvedAtt.Where(a => !string.IsNullOrEmpty(a.FileUrl)).Select(a => a.FileUrl!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            db.PaymentRequestAttachments.RemoveRange(pr.Attachments);
+            pr.Attachments = resolvedAtt.Select((a, i) => new PaymentRequestAttachment
+            {
+                FileName  = a.FileName,
+                FileUrl   = a.FileUrl,
+                SortOrder = i,
+            }).ToList();
+            removedAttachmentBlobs = oldAttUrls.Except(newAttUrls).ToList();
         }
 
         var invoicesJson = form["invoices"].ToString();
@@ -427,6 +461,14 @@ public sealed class PaymentRequestHandler(
             await db.SaveChangesAsync();
         }
 
+        // 刪除不再使用的附件 blob（主交易存檔後才清理，避免孤兒資料）
+        foreach (var url in removedAttachmentBlobs)
+        {
+            var blobName = blob.ExtractBlobName(url, AttachmentProcessor.ContainerName);
+            if (blobName is not null)
+                await blob.DeleteAsync(AttachmentProcessor.ContainerName, blobName);
+        }
+
         var dto = await reader.GetByIdAsync(pr.Id);
         return new OkObjectResult(ApiResponse.Ok(dto, "Payment request updated."));
     }
@@ -439,16 +481,20 @@ public sealed class PaymentRequestHandler(
 
         var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         var pr = currentUser?.IsSuperAdmin == true
-            ? await db.PaymentRequests.Include(x => x.InvoiceItems).FirstOrDefaultAsync(x => x.Id == intId)
-            : await db.PaymentRequests.Include(x => x.InvoiceItems).FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
+            ? await db.PaymentRequests.Include(x => x.InvoiceItems).Include(x => x.Attachments).FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.PaymentRequests.Include(x => x.InvoiceItems).Include(x => x.Attachments).FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
         if (pr is null) throw AppException.NotFound("PaymentRequest");
 
         if (pr.ApprovalStatus != "draft" && pr.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned payment requests can be deleted.");
 
-        // 收集要刪除的 blob
+        // 收集要刪除的 blob（發票 + 整單附件）
         var blobNames = pr.InvoiceItems
             .Select(ii => blob.ExtractBlobName(ii.FileUrl, ContainerName))
+            .Where(n => n is not null)
+            .ToList();
+        var attachmentBlobNames = pr.Attachments
+            .Select(a => blob.ExtractBlobName(a.FileUrl, AttachmentProcessor.ContainerName))
             .Where(n => n is not null)
             .ToList();
 
@@ -466,6 +512,8 @@ public sealed class PaymentRequestHandler(
         // 刪除 blob files
         foreach (var name in blobNames)
             await blob.DeleteAsync(ContainerName, name!);
+        foreach (var name in attachmentBlobNames)
+            await blob.DeleteAsync(AttachmentProcessor.ContainerName, name!);
 
         return new OkObjectResult(ApiResponse.Ok($"Payment request '{id}' deleted."));
     }

@@ -17,6 +17,14 @@ public sealed record DesignatedReviewerRequest(
     Guid ReviewerId,
     int  StepOrder);
 
+// ── 整單批次附件共用 DTO（照片 / PDF）────────────────────────────────────────
+
+/// <summary>整單批次附件回應 DTO（請款一般請款 / 預支沖銷共用）</summary>
+public sealed record AttachmentDto(
+    int     Id,
+    string  FileName,
+    string? FileUrl);
+
 // ── Invoice DTOs ──────────────────────────────────────────────────────────────
 
 public sealed record InvoiceItemDto(
@@ -57,7 +65,8 @@ public sealed record PaymentRequestDto(
     string?          VendorName  = null,
     string?          VendorTaxId = null,
     InstallmentDto[]? Installments = null,
-    string?          PaymentStatus = null);
+    string?          PaymentStatus = null,
+    AttachmentDto[]? Attachments = null);
 
 public sealed record CreatePaymentRequestRequest(
     string              Type,
@@ -130,7 +139,8 @@ public sealed record PaymentTaskDetailDto(
     string?          VendorBankAccount    = null,
     string?          VendorAddress        = null,
     InstallmentDto[]? Installments        = null,
-    string?          PaymentStatus        = null);   // Unpaid | PartiallyPaid | FullyPaid
+    string?          PaymentStatus        = null,   // Unpaid | PartiallyPaid | FullyPaid
+    AttachmentDto[]? Attachments          = null);
 
 public sealed record LeaveTaskDetailDto(
     int      LeaveRequestId,

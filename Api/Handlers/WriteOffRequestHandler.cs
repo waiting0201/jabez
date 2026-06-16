@@ -217,6 +217,21 @@ public sealed class WriteOffRequestHandler(
         };
         wo.Items = writeOffItems;
 
+        // 整單批次附件（照片 / PDF）
+        var attachmentsJson = form["attachments"].ToString();
+        if (!string.IsNullOrEmpty(attachmentsJson))
+        {
+            var attMetas    = JsonSerializer.Deserialize<AttachmentProcessor.AttachmentMetadata[]>(attachmentsJson, JsonOpts) ?? [];
+            var attFiles    = form.Files.GetFiles("attachmentFiles");
+            var resolvedAtt = await AttachmentProcessor.ResolveAsync(attMetas, attFiles, blob);
+            wo.Attachments  = resolvedAtt.Select((a, i) => new WriteOffAttachment
+            {
+                FileName  = a.FileName,
+                FileUrl   = a.FileUrl,
+                SortOrder = i,
+            }).ToList();
+        }
+
         db.WriteOffRecords.Add(wo);
         await db.SaveChangesAsync();
 
@@ -249,8 +264,8 @@ public sealed class WriteOffRequestHandler(
 
         var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         var wo = currentUser?.IsSuperAdmin == true
-            ? await db.WriteOffRecords.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId)
-            : await db.WriteOffRecords.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
+            ? await db.WriteOffRecords.Include(x => x.Items).Include(x => x.Attachments).FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.WriteOffRecords.Include(x => x.Items).Include(x => x.Attachments).FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
         if (wo is null) throw AppException.NotFound("WriteOffRecord");
 
         if (wo.ApprovalStatus != "draft" && wo.ApprovalStatus != "returned")
@@ -296,6 +311,25 @@ public sealed class WriteOffRequestHandler(
                         }));
                 }
             }
+        }
+
+        // 整單批次附件整組替換（提供 attachments 欄位才更新；blob 待主交易存檔後再清理）
+        var removedAttachmentBlobs = new List<string>();
+        if (form.ContainsKey("attachments"))
+        {
+            var attMetas    = JsonSerializer.Deserialize<AttachmentProcessor.AttachmentMetadata[]>(form["attachments"].ToString(), JsonOpts) ?? [];
+            var attFiles    = form.Files.GetFiles("attachmentFiles");
+            var oldAttUrls  = wo.Attachments.Where(a => !string.IsNullOrEmpty(a.FileUrl)).Select(a => a.FileUrl!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var resolvedAtt = await AttachmentProcessor.ResolveAsync(attMetas, attFiles, blob);
+            var newAttUrls  = resolvedAtt.Where(a => !string.IsNullOrEmpty(a.FileUrl)).Select(a => a.FileUrl!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            db.WriteOffAttachments.RemoveRange(wo.Attachments);
+            wo.Attachments = resolvedAtt.Select((a, i) => new WriteOffAttachment
+            {
+                FileName  = a.FileName,
+                FileUrl   = a.FileUrl,
+                SortOrder = i,
+            }).ToList();
+            removedAttachmentBlobs = oldAttUrls.Except(newAttUrls).ToList();
         }
 
         // 更新沖銷明細（提供時才更新）
@@ -377,6 +411,14 @@ public sealed class WriteOffRequestHandler(
             await db.SaveChangesAsync();
         }
 
+        // 刪除不再使用的附件 blob（主交易存檔後才清理，避免孤兒資料）
+        foreach (var url in removedAttachmentBlobs)
+        {
+            var blobName = blob.ExtractBlobName(url, AttachmentProcessor.ContainerName);
+            if (blobName is not null)
+                await blob.DeleteAsync(AttachmentProcessor.ContainerName, blobName);
+        }
+
         var dto = await reader.GetByIdAsync(wo.Id);
         return new OkObjectResult(ApiResponse.Ok(dto, "Write-off request updated."));
     }
@@ -392,16 +434,20 @@ public sealed class WriteOffRequestHandler(
 
         var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         var wo = currentUser?.IsSuperAdmin == true
-            ? await db.WriteOffRecords.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId)
-            : await db.WriteOffRecords.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
+            ? await db.WriteOffRecords.Include(x => x.Items).Include(x => x.Attachments).FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.WriteOffRecords.Include(x => x.Items).Include(x => x.Attachments).FirstOrDefaultAsync(x => x.Id == intId && x.SubmittedById == userId);
         if (wo is null) throw AppException.NotFound("WriteOffRecord");
 
         if (wo.ApprovalStatus != "draft" && wo.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned write-off requests can be deleted.");
 
-        // 收集要刪除的 blob
+        // 收集要刪除的 blob（沖銷明細發票 + 整單附件）
         var blobNames = wo.Items
             .Select(i => blob.ExtractBlobName(i.FileUrl, ContainerName))
+            .Where(n => n is not null)
+            .ToList();
+        var attachmentBlobNames = wo.Attachments
+            .Select(a => blob.ExtractBlobName(a.FileUrl, AttachmentProcessor.ContainerName))
             .Where(n => n is not null)
             .ToList();
 
@@ -419,6 +465,8 @@ public sealed class WriteOffRequestHandler(
         // 刪除 blob files（在 DB 刪除後才清理，避免孤兒資料）
         foreach (var name in blobNames)
             await blob.DeleteAsync(ContainerName, name!);
+        foreach (var name in attachmentBlobNames)
+            await blob.DeleteAsync(AttachmentProcessor.ContainerName, name!);
 
         return new OkObjectResult(ApiResponse.Ok($"Write-off request '{id}' deleted."));
     }
