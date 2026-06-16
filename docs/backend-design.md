@@ -16,7 +16,7 @@
 | 資料庫 | SQL Server | 本地 `JabezDb`（連線字串於 [Api/local.settings.json](../Api/local.settings.json)） |
 | 認證 | JWT Bearer Token (HS256) | 由 [JwtService.cs](../Api/Services/JwtService.cs) 簽發 |
 | 路由 | 單一入口 RouterFunction → AppRouter | C# 12 List Pattern dispatch |
-| Blob | Azure Storage（本地 Azurite） | 容器：`avatars` / `signatures` / `indigenous-proofs` / `low-income-proofs` / `disabled-proofs` / `id-cards` / `education-proofs` / `invoices` / `vendor-passbooks` |
+| Blob | Azure Storage（本地 Azurite） | 容器：`avatars` / `signatures` / `indigenous-proofs` / `low-income-proofs` / `disabled-proofs` / `id-cards` / `education-proofs` / `invoices` / `vendor-passbooks` / `request-attachments` |
 | LINE | Messaging API + Login API | 簽核通知 + 打卡提醒 |
 | Email | Microsoft Graph API | 簽核通知 / 帳號通知 / 薪資明細 |
 | 例外處理 | `Middleware/ExceptionMiddleware.cs` | 統一捕捉 `AppException` 與未預期例外，回 `ApiResponse<T>` |
@@ -648,6 +648,7 @@ var allowedSignatures = new Dictionary<string, byte[][]>
 | `education-proofs` | 最高學歷證明 | 授權 `users:read` |
 | `invoices` | 發票檔 | 授權 |
 | `vendor-passbooks` | 廠商存摺封面 | **登入即可** `/files/vendor-passbooks/{fileName}`（一般檔，與 avatars/signatures 同層） |
+| `request-attachments` | 整單批次附件（一般請款 / 預支沖銷的照片或 PDF） | 授權 |
 
 ### 12.5 條件式刪除
 
@@ -662,6 +663,17 @@ if (oldUser.IsIndigenous && !dto.IsIndigenous && !string.IsNullOrEmpty(oldUser.I
 ```
 
 DELETE entity 時，相關 Blob 全部一起刪。
+
+### 12.7 整單批次附件（共用 AttachmentProcessor）
+
+一般請款（`PaymentRequest`，type=general）與預支沖銷（`WriteOffRecord`）支援**整單層級**批次附件（照片 / PDF），存於專屬子表 `PaymentRequestAttachment` / `WriteOffAttachment`（真實 FK + Cascade delete），統一走 [`AttachmentProcessor`](../Api/Common/AttachmentProcessor.cs)：
+
+- **multipart 欄位**（與明細列檔案的 `files` 區隔）：
+  - `attachments`（JSON）：`AttachmentMetadata[] { FileName, FileUrl, FileIndex }`；既有檔保留 `FileUrl`，新檔以 `FileIndex` 對應檔案部分
+  - `attachmentFiles`：實際檔案（順序與 `FileIndex` 一致）
+- **驗證**：`AttachmentProcessor.ResolveAsync` 以 `FileSignatureValidator` magic-byte 驗證（允許 PNG/JPEG/GIF/WebP/HEIC/AVIF/PDF）、單檔 ≤ 10MB（前端已壓縮，此為安全網），上傳至 `request-attachments`
+- **Create/Update/Delete**：Update 時 `attachments` 欄位缺席＝不更新，存在＝整組替換（保留既有 URL、上傳新檔、`RemoveRange` 舊列、比對刪除孤兒 blob）；一般請款切換 type 離開 general 時前端送空陣列以清空；Delete 收集附件 blob 一併刪除
+- **顯示**：`PaymentRequestReadService` / `WriteOffRequestReadService` 以**獨立查詢**（避免與明細 JOIN 笛卡兒相乘）回傳 `AttachmentDto[]`，填入 `PaymentRequestDto` / `WriteOffRequestDto` / `PaymentTaskDetailDto` / `WriteOffTaskDetailDto`
 
 ### 12.6 外部 API 整合（IHttpClientFactory + Service 注入）
 

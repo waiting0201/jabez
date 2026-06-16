@@ -88,7 +88,21 @@ public sealed class WriteOffRequestReadService(IDbConnection db) : IWriteOffRequ
             (DateTime?)r.ReviewedAt,
             (string?)r.Comment)).ToArray();
 
-        return dto with { DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null };
+        // 整單批次附件（獨立查詢，避免與 items JOIN 笛卡兒相乘）
+        const string attSql = """
+            SELECT Id, FileName, FileUrl
+            FROM WriteOffAttachments
+            WHERE WriteOffRecordId = @RequestId
+            ORDER BY SortOrder
+            """;
+        var attRows = await db.QueryAsync<dynamic>(attSql, new { RequestId = id });
+        var attachments = attRows.Select(r => new AttachmentDto((int)r.Id, (string)r.FileName, (string?)r.FileUrl)).ToArray();
+
+        return dto with
+        {
+            DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null,
+            Attachments         = attachments.Length > 0 ? attachments : null,
+        };
     }
 
     // ── Grouping helpers ─────────────────────────────────────────────────────
