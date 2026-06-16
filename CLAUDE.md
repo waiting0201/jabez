@@ -181,6 +181,9 @@ Admin/src/app/
     │   └── pages/dashboard/
     ├── auth/
     │   └── pages/ (login, register, forgot-password, lock-screen, two-factor)
+    ├── account/             # 員工自助（change-password / line-bind-callback / my-profile）
+    │   ├── services/my-profile.service.ts   # 呼叫 /me/user + /me/profile + /me/files（自助唯讀）
+    │   └── pages/my-profile/                # 「個人資訊」唯讀頁：比照管理頁 3 Tab（含薪資）全唯讀，avatar 下拉進入
     ├── admin/
     │   ├── users/          # 使用者管理（user-form 含 3 Tab：員工基本資料 / 人事資料卡 / 健保眷屬；含 employee-profile.service / hr-profile-pdf.service / 9 組 FormArray）
     │   ├── roles/          # 角色管理（僅 Superadmin）
@@ -258,8 +261,8 @@ Api/
 │   └── AppRouter.cs                   # C# 12 List Pattern 路由分派器
 ├── Handlers/                          # 23 個 Handler（業務邏輯）
 │   ├── AuthHandler.cs                 # 登入、刷新 Token
-│   ├── UserHandler.cs                 # 使用者 CRUD（含原住民 / 低收入 / 殘障證明 + 健保 / 勞保覆寫）
-│   ├── EmployeeProfileHandler.cs     # 員工人事資料卡 GET / PUT（multipart：HR JSON + 身分證正反面 + 最高學歷證明）
+│   ├── UserHandler.cs                 # 使用者 CRUD（含原住民 / 低收入 / 殘障證明 + 健保 / 勞保覆寫）；GetMineAsync = GET /me/user 員工讀自己（免 users:read）
+│   ├── EmployeeProfileHandler.cs     # 員工人事資料卡 GET / PUT（multipart：HR JSON + 身分證正反面 + 最高學歷證明）；GetMineAsync = GET /me/profile 員工讀自己（免 users:read）
 │   ├── RoleHandler.cs
 │   ├── PermissionHandler.cs
 │   ├── DepartmentHandler.cs
@@ -450,6 +453,8 @@ dotnet ef database update               # 套用 Migration
 ## 輕量讀取端點模式（Public Lookup Pattern）
 
 > **詳見** [docs/backend-design.md §13 輕量讀取端點模式](docs/backend-design.md#13-輕量讀取端點模式lightweight-lookup-pattern)（已採用清單、設計原則、何時新增、歷史教訓）
+>
+> 衍生的「**自己讀自己**」(self / me) 模式（員工讀自己完整資料含薪資 / PII，免 `users:read`）見 [§13.4](docs/backend-design.md#134-自己讀自己模式self--me-endpoints)：`GET /me/user`、`GET /me/profile`、`GET /me/files/{container}/{fileName}`（白名單容器 + userId 前綴檢查）。
 
 ---
 

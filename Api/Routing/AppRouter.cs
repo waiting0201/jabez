@@ -359,7 +359,12 @@ public sealed class AppRouter(
             ("GET",    ["admin", "payment-reminder-logs"])                       => await paymentReminderLogs.GetPagedAsync(req),
 
             // ── Me（當前使用者聚合資訊）────────────────────────────────────
+            // 注意路由次序：具體路徑（notification-counts / user / profile / files）必須在 catch-all 之前
             ("GET",    ["me", "notification-counts"]) => await notifications.GetMyCountsAsync(req),
+            // 員工自助唯讀端點（登入即可，不需任何管理權限）
+            ("GET",    ["me", "user"])                                    => await users.GetMineAsync(req),
+            ("GET",    ["me", "profile"])                                 => await employeeProfile.GetMineAsync(req),
+            ("GET",    ["me", "files", var container, var fileName])      => await files.GetMineAsync(req, container, fileName),
 
             // ── LINE 綁定 ─────────────────────────────────────────────────────
             ("GET",    ["line", "bind-url"])         => await line.GetBindUrlAsync(req),

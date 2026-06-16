@@ -1,7 +1,9 @@
 using Jabez.Api.Common;
 using Jabez.Api.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace Jabez.Api.Handlers;
 
@@ -92,6 +94,54 @@ public sealed class FileHandler(IBlobStorageService blob, ILogger<FileHandler> l
     /// </summary>
     public Task<IActionResult> GetVendorIdCardAsync(string fileName)
         => GetFileAsync(VendorIdCardContainer, fileName, IsImageOrPdf);
+
+    // 員工可自助存取的 Blob 容器白名單（PII 類，但限制為「讀自己的」）
+    private static readonly HashSet<string> SelfServiceContainers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "id-cards",
+        "education-proofs",
+        "indigenous-proofs",
+        "low-income-proofs",
+        "disabled-proofs",
+        "avatars",
+        "signatures",
+    };
+
+    /// <summary>
+    /// 員工自助讀取自己的 PII 檔案。
+    /// 路由：GET /me/files/{container}/{fileName}
+    /// 此端點需要 JWT（登入即可），不需 users:read 等管理權限。
+    /// 安全機制：
+    ///   1. 白名單容器（SelfServiceContainers）：不在白名單一律 404，避免員工竄改 container 讀他人資料。
+    ///   2. fileName 前綴必須以自身 userId 開頭（後接 '.' 或 '_'），避免員工竄改 fileName 讀其他人的檔案。
+    ///   3. blob 命名規則（由上傳端保證）：
+    ///        avatars / signatures / proofs  = {userId}{ext}
+    ///        id-cards                       = {userId}_front{ext} / {userId}_back{ext}
+    ///        education-proofs               = {userId}_education{ext}
+    /// </summary>
+    public async Task<IActionResult> GetMineAsync(HttpRequest req, string container, string fileName)
+    {
+        // 從 AppRouter 已驗證並寫入的 principal 取 userId
+        var userIdStr = req.HttpContext.User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return new UnauthorizedObjectResult(ApiResponse.Fail("Unauthorized.", "Invalid token claims."));
+
+        // 白名單容器檢查
+        if (!SelfServiceContainers.Contains(container))
+            return new NotFoundObjectResult(ApiResponse.Fail("File not found."));
+
+        // fileName 安全前綴檢查：必須以自身 userId 開頭（後接 '.' 或 '_'）
+        // 範例合法：{guid}.png、{guid}_front.jpg、{guid}_back.pdf、{guid}_education.pdf
+        var prefix = userId.ToString();
+        var afterPrefix = fileName.Length > prefix.Length ? fileName[prefix.Length] : '\0';
+        if (!fileName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            || (afterPrefix != '.' && afterPrefix != '_'))
+        {
+            return new ObjectResult(ApiResponse.Fail("存取被拒。")) { StatusCode = 403 };
+        }
+
+        return await GetFileAsync(container, fileName, IsImageOrPdf);
+    }
 
     private Task<IActionResult> GetImageAsync(string container, string fileName)
         => GetFileAsync(container, fileName, IsImage);

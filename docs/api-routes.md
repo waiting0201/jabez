@@ -210,6 +210,9 @@
 | Method | Path | 說明 |
 |--------|------|------|
 | GET | `/me/notification-counts` | 鈴噹通知件數聚合：回 `{approvals, myRequests}`，兩段皆為 9 種申請類型 → 件數的 dictionary。`approvals` 走 reviewer 過濾，`myRequests` 統計當前使用者送出且狀態為 `pending` / `returned` 的件數。登入即可呼叫 |
+| GET | `/me/user` | 員工查看**自己**的帳號資料（回傳與 `/users/{id}` 同型別 `UserDetailDto`，含薪資 / 加給 / 勞健保覆寫 / 各證明檔 URL / 頭像 / 簽名 / 部門 / 職稱）。從 JWT `sub` 取自身 id，**登入即可，不需 `users:read`**。供「個人資訊」唯讀頁用 |
+| GET | `/me/profile` | 員工查看**自己**的人事資料卡（回傳與 `/users/{id}/profile` 同型別 `EmployeeProfileDetailDto`，含 9 張子表 + 健保眷屬）。**登入即可，不需 `users:read`** |
+| GET | `/me/files/{container}/{fileName}` | 員工自助讀取**自己的** PII 檔案代理。白名單容器：`id-cards` / `education-proofs` / `indigenous-proofs` / `low-income-proofs` / `disabled-proofs` / `avatars` / `signatures`；非白名單回 404。安全機制：`fileName` 必須以自身 `userId` 開頭（後接 `.` 或 `_`），否則 403，避免員工竄改 fileName 讀他人檔案。**登入即可，不需 `users:read`**（管理端 `/files/<container>` 仍需 `users:read`） |
 
 ## LINE 綁定 / 推播用量
 
@@ -239,6 +242,8 @@
 |--------|------|------|
 | GET | `/users/{id}/profile` | 取得員工人事資料卡（EmployeeProfile + 9 張子表）。Profile 不存在時回傳預設空殼 |
 | PUT | `/users/{id}/profile` | 整批更新員工人事資料卡（multipart：`payload` JSON + `idCardFront` / `idCardBack` 檔案 + `removeIdCardFront` / `removeIdCardBack` 旗標）。9 張子表整批替換；薪資調整紀錄會自動同步「最新生效底薪」回 `User.BaseSalary` |
+
+> 員工要查看**自己**的人事資料卡（唯讀，免 `users:read`）改走 [`/me/profile` + `/me/user` + `/me/files`](#當前使用者聚合資訊me)（避免管理權限強加到一般員工）。
 
 ## 其他
 
