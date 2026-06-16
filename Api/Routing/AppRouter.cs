@@ -103,6 +103,7 @@ public sealed class AppRouter(
             ("GET",    ["files", "id-cards", var fileName])          => await files.GetIdCardAsync(fileName),
             ("GET",    ["files", "education-proofs", var fileName])  => await files.GetEducationProofAsync(fileName),
             ("GET",    ["files", "vendor-passbooks", var fileName])  => await files.GetVendorPassbookAsync(fileName),
+            ("GET",    ["files", "vendor-id-cards", var fileName])   => await files.GetVendorIdCardAsync(fileName),
 
             // ── Auth ──────────────────────────────────────────────────────────
             ("POST",   ["auth", "login"])             => await auth.LoginAsync(req),
@@ -402,6 +403,8 @@ public sealed class AppRouter(
             ("GET", ["files", "education-proofs", _])   => PermissionCodes.UsersRead,
             // vendor-passbooks 為一般檔案（任何登入者皆可讀，與 avatars / signatures 同層）
             ("GET", ["files", "vendor-passbooks", _])   => null,
+            // vendor-id-cards 屬敏感 PII（個人工作室身分證），需 vendors:read
+            ("GET", ["files", "vendor-id-cards", _])    => PermissionCodes.VendorsRead,
 
             // Users（lookup 不需權限，登入即可）
             ("GET",    ["users", "lookup"])               => null,

@@ -17,6 +17,9 @@ public class VendorConfiguration : IEntityTypeConfiguration<Vendor>
         builder.Property(v => v.TaxId)
                .HasMaxLength(20);
 
+        builder.Property(v => v.IdNumber)
+               .HasMaxLength(20);
+
         builder.Property(v => v.Phone)
                .HasMaxLength(50);
 
@@ -32,6 +35,12 @@ public class VendorConfiguration : IEntityTypeConfiguration<Vendor>
         builder.Property(v => v.BankBookImageUrl)
                .HasMaxLength(500);
 
+        builder.Property(v => v.IdCardFrontUrl)
+               .HasMaxLength(500);
+
+        builder.Property(v => v.IdCardBackUrl)
+               .HasMaxLength(500);
+
         builder.Property(v => v.Note)
                .HasMaxLength(500);
 
@@ -45,5 +54,10 @@ public class VendorConfiguration : IEntityTypeConfiguration<Vendor>
         builder.HasIndex(v => v.TaxId)
                .IsUnique()
                .HasFilter("[TaxId] IS NOT NULL");
+
+        // 身分證字號 unique（允許 NULL，但非 NULL 時必須唯一）
+        builder.HasIndex(v => v.IdNumber)
+               .IsUnique()
+               .HasFilter("[IdNumber] IS NOT NULL");
     }
 }
