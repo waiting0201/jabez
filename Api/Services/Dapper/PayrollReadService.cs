@@ -82,10 +82,22 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                    SUM(lr.Hours) AS TotalHours
             FROM LeaveRequests lr
             WHERE lr.ApprovalStatus = 'approved'
-              AND lr.LeaveType IN ('personal', 'sick')
+              AND lr.LeaveType IN ('personal', 'sick', 'menstrual')
               AND lr.StartDate <= @LastDay
               AND lr.EndDate   >= @FirstDay
             GROUP BY lr.EmployeeId, lr.LeaveType
+            """;
+
+        // 5b. 查詢「本年度、本月之前」已核准生理假時數（依 StartDate 歸年月）
+        //     用於判斷年度前 3 天（24h）純生理假額度是否已用罄；超過部分併入病假計算
+        const string priorMenstrualSql = """
+            SELECT lr.EmployeeId, SUM(lr.Hours) AS TotalHours
+            FROM LeaveRequests lr
+            WHERE lr.ApprovalStatus = 'approved'
+              AND lr.LeaveType = 'menstrual'
+              AND lr.StartDate >= @YearFirstDay
+              AND lr.StartDate <  @FirstDay
+            GROUP BY lr.EmployeeId
             """;
 
         // 6. 查詢該月所有已核准的請假明細（全假別）
@@ -115,6 +127,11 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
         var leaveDaysMap = new Dictionary<(Guid, string), decimal>();
         foreach (var lr in leaveRecords)
             leaveDaysMap[((Guid)lr.EmployeeId, (string)lr.LeaveType)] = (decimal)lr.TotalHours / 8m;
+
+        // 本年度本月之前已用生理假時數：Dictionary<EmployeeId, PriorHours>
+        var yearFirstDay = new DateTime(year, 1, 1);
+        var priorMenstrualMap = (await db.QueryAsync<dynamic>(priorMenstrualSql, new { YearFirstDay = yearFirstDay, FirstDay = firstDay }))
+            .ToDictionary(r => (Guid)r.EmployeeId, r => (decimal)r.TotalHours);
 
         // 請假明細：Dictionary<EmployeeId, LeaveDetailDto[]>
         var leaveDetails = (await db.QueryAsync<dynamic>(leaveDetailSql, new { FirstDay = firstDay, LastDay = lastDay }))
@@ -179,8 +196,21 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             decimal personalDays = leaveDaysMap.TryGetValue((empId, "personal"), out var pd) ? pd : 0m;
             decimal personalDeduction = Math.Round(dailySalary * personalDays, 0);
 
+            // 生理假：本月時數中，本年度前 3 天（24h）為純生理假，超過部分併入病假計算（兩者皆半薪）
+            //   pureThisMonth = min(本月生理假時數, max(0, 24 - 本年度本月前已用生理假時數))
+            decimal menstrualHoursThisMonth = (leaveDaysMap.TryGetValue((empId, "menstrual"), out var md) ? md : 0m) * 8m;
+            decimal priorMenstrualHours     = priorMenstrualMap.TryGetValue(empId, out var pm) ? pm : 0m;
+            const decimal annualPureCapHours = 24m;   // 3 天
+            decimal pureMenstrualHours = Math.Min(menstrualHoursThisMonth, Math.Max(0m, annualPureCapHours - priorMenstrualHours));
+            decimal mergedToSickHours  = menstrualHoursThisMonth - pureMenstrualHours;
+
+            // 生理假扣薪（純生理假部分）：日薪 × 0.5 × 天數（半薪）
+            decimal menstrualDays = pureMenstrualHours / 8m;
+            decimal menstrualDeduction = Math.Round(dailySalary * 0.5m * menstrualDays, 0);
+
             // 病假扣薪：日薪 × 0.5 × 病假天數（半薪）；天數 = SUM(Hours) / 8
-            decimal sickDays = leaveDaysMap.TryGetValue((empId, "sick"), out var sd) ? sd : 0m;
+            //   超過 3 天的生理假時數併入病假天數一同計算
+            decimal sickDays = (leaveDaysMap.TryGetValue((empId, "sick"), out var sd) ? sd : 0m) + mergedToSickHours / 8m;
             decimal sickDeduction = Math.Round(dailySalary * 0.5m * sickDays, 0);
 
             // 其他加項 / 其他扣項
@@ -202,7 +232,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                               + positionAllow + dutyAllow + otherAllow + adjDiff + overseasAllow
                               + holidayAllowance + otherAddition
                               - laborIns - healthIns
-                              - personalDeduction - sickDeduction
+                              - personalDeduction - sickDeduction - menstrualDeduction
                               - otherDeduction;
 
             results.Add(new EmployeePayrollDto(
@@ -227,6 +257,8 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 personalDeduction,
                 sickDays,
                 sickDeduction,
+                menstrualDays,
+                menstrualDeduction,
                 otherDeduction,
                 otherDeductionNote,
                 note,
@@ -252,6 +284,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             results.Sum(r => r.HealthInsurance),
             results.Sum(r => r.PersonalLeaveDeduction),
             results.Sum(r => r.SickLeaveDeduction),
+            results.Sum(r => r.MenstrualLeaveDeduction),
             results.Sum(r => r.OtherDeduction),
             results.Sum(r => r.NetSalary),
             results.Sum(r => r.PositionAllowance),

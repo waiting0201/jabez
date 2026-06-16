@@ -143,7 +143,7 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
                           + emp.AdjustmentDifference + emp.OverseasAllowance
                           + emp.HolidayAllowance + emp.OtherAddition;
         var totalDeductions = emp.LaborInsurance + emp.HealthInsurance
-                            + emp.PersonalLeaveDeduction + emp.SickLeaveDeduction
+                            + emp.PersonalLeaveDeduction + emp.SickLeaveDeduction + emp.MenstrualLeaveDeduction
                             + emp.OtherDeduction;
 
         // 動態加項列：有值才顯示，斑馬色維持
@@ -200,6 +200,10 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
         if (emp.SickLeaveDays > 0)
             deductionRows += $"""
             <tr style="background:#FDF5F5"><td style="padding:8px 12px">病假扣薪（{Math.Round(emp.SickLeaveDays, 2)} 天 = {Math.Round(emp.SickLeaveDays * 8m, 1)} 小時 × 半薪）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.SickLeaveDeduction)}</td></tr>
+            """;
+        if (emp.MenstrualLeaveDays > 0)
+            deductionRows += $"""
+            <tr style="background:#FDF5F5"><td style="padding:8px 12px">生理假扣薪（{Math.Round(emp.MenstrualLeaveDays, 2)} 天 = {Math.Round(emp.MenstrualLeaveDays * 8m, 1)} 小時 × 半薪）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.MenstrualLeaveDeduction)}</td></tr>
             """;
         if (emp.OtherDeduction > 0)
             deductionRows += $"""

@@ -1,8 +1,8 @@
 # 請假規則
 
-本文件定義 Jabez 的請假業務規則：15 種假別、時間單位、年假 / 喪假 / 補休額度、天數上限驗證、日期重疊驗證、人事薪資整合。
+本文件定義 Jabez 的請假業務規則：16 種假別、時間單位、年假 / 喪假 / 補休額度、天數上限驗證、日期重疊驗證、人事薪資整合。
 
-## 假別一覽（15 種）
+## 假別一覽（16 種）
 
 | # | 假別 | LeaveType | 時間單位 | 天數上限 | 薪資影響 |
 |---|------|-----------|---------|---------|---------|
@@ -21,6 +21,7 @@
 | 13 | 喪假 | `bereavement` | 天 | 依親屬關係（3/6/8 天） | 有薪 |
 | 14 | 歲時祭儀假 | `ceremonial_festival` | 天 | 3 天/年（跨年歸零，**限原住民**） | 有薪 |
 | 15 | 高階主管假 | `senior_executive` | 半天 | **無上限** | **不扣任何項目**（協理以上專用，`JobTitle.Level ≤ 3`） |
+| 16 | 生理假 | `menstrual` | 天（一次請一天） | 每月 1 天、全年 12 天（**限女性**） | 按天數扣除半薪（前 3 天/年純生理假，超過併入病假） |
 
 ## 時間單位規則
 
@@ -30,7 +31,7 @@
 |------|------|---------|---------|
 | 小時 (`hour`) | 自然小時（**整點**） | `datetime-local` 整點步進（分鐘僅 00） | 事假、病假、產檢假、陪產假 |
 | 半天 (`half_day`) | 4 小時 = 半天 | 日期 + 上午/下午 選擇 | 年假、補休、高階主管假 |
-| 整天 (`day`) | 8 小時 = 1 天 | 起迄日期選擇 | 公假、婚假、產假、喪假、歲時祭儀假、流產假系列 |
+| 整天 (`day`) | 8 小時 = 1 天 | 起迄日期選擇 | 公假、婚假、產假、喪假、歲時祭儀假、流產假系列、生理假 |
 
 - **產假特例**：選擇起始日後，結束日自動填為起始日 + 55 天（共 56 天），總時數固定 448 小時。法規為一次請完，禁止重複活躍申請（同 `EmployeeId` 存在 `pending` / `approved` 產假）。
 - **補休扣除**：申請 1 個半天（4 小時）→ 從可補休時數池扣 4 小時。
@@ -85,6 +86,18 @@
 - 可補休時數 = 已核准加班申請 `EstimatedHours` 合計 − 已送出/已核准補休假 `Hours` 合計
 - API 端點：`GET /leave-requests/compensatory-hours`
 
+## 生理假規則（限女性）
+
+- **資格限定**：僅 `EmployeeProfile.Gender == "F"` 之員工可申請（性別存於人事資料卡，不在 JWT、不在 User）。前後端皆驗證：
+  - 前端：依 `GET /leave-requests/menstrual-quota` 回傳的 `isFemale` 過濾下拉選單（比照歲時祭儀假以 `isIndigenous` 過濾的模式）。
+  - 後端：`CreateAsync` / `UpdateAsync` 前置檢查 + `ValidateLeaveQuotaAsync`（submit）再次驗證。
+- **時間單位**：整天（8 小時 = 1 天），**一次請一天**（每月上限 1 天即受此限制）。
+- **每月上限**：1 天（8 小時）；依申請起始日所屬「年月」累計。
+- **全年上限**：12 天（96 小時）；依申請起始日所屬「年度」累計。兩者皆硬性擋件。
+- **薪資（半薪）**：全部按天數扣除半薪（`日薪 × 0.5 × 天數`）。
+- **併入病假**：全年累計**前 3 天（24 小時）為純生理假**（薪資列「生理假扣薪」）；**超過 3 天的部分併入病假計算**（薪資併入「病假扣薪」）。因兩者皆半薪，淨薪不變，差異僅在扣款項目的歸類。薪資模組以「本年度本月之前已用生理假時數」判斷前 3 天額度是否用罄（詳見 [payroll-formula.md](payroll-formula.md)）。
+- **API 端點**：`GET /leave-requests/menstrual-quota`（回 `isFemale` + 月/年配額）。
+
 ## 請假申請步驟
 
 ```
@@ -109,10 +122,12 @@
 | `LeaveRequestReadService.GetOverlappingRequestsAsync()` | Dapper：查詢同員工 datetime 區間相交申請 |
 | `OverlappingLeaveRequestDto` | 重疊衝突 DTO（內部用） |
 | `LeaveRequestHandler.GetAnnualQuotaAsync()` | 年假額度 API |
+| `LeaveRequestHandler.GetMenstrualQuotaAsync()` | 生理假配額 API（`isFemale` + 月/年配額） |
+| `LeaveRequestHandler.IsFemaleAsync()` | 查 `EmployeeProfile.Gender == "F"`（生理假限定） |
 | `LeaveRequestHandler.CalculateAnnualLeaveDays()` | 年資 → 年假天數計算 |
 | `PayrollReadService` | 新增查詢該月所有請假明細 |
 | `PayrollHandler.BuildLeaveDetailSection()` | 薪資明細信件請假紀錄 HTML |
-| 前端 `leave-request.model.ts` | 15 種假別定義、喪假關係常數、天數上限常數 |
+| 前端 `leave-request.model.ts` | 16 種假別定義、喪假關係常數、天數上限常數、`MenstrualQuota` |
 | 前端 `leave-request-form` | 假別下拉選單（分群組）、條件式欄位、額度提示 |
 | 前端 `payroll-form` | 本月請假紀錄表格 |
 
