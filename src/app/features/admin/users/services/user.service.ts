@@ -97,7 +97,12 @@ export class UserService {
       if (Array.isArray(value)) {
         value.forEach(v => fd.append(key, String(v)));
       } else if (value instanceof Date) {
-        fd.append(key, value.toISOString());
+        // 生日 / 到職日 / 離職日皆為純日期，以本地時區序列化為 YYYY-MM-DD，
+        // 避免 toISOString() 轉 UTC（台北 +8）造成日期少一天
+        const y = value.getFullYear();
+        const m = String(value.getMonth() + 1).padStart(2, '0');
+        const d = String(value.getDate()).padStart(2, '0');
+        fd.append(key, `${y}-${m}-${d}`);
       } else {
         fd.append(key, String(value));
       }
