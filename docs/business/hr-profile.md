@@ -32,6 +32,15 @@
 
 ---
 
+## 員工自助唯讀檢視（個人資訊）
+
+員工從右上角 avatar 下拉選單的「個人資訊」進入唯讀頁 [my-profile](../../Admin/src/app/features/account/pages/my-profile/)，比照管理頁三分頁排版（員工基本資料含薪資 / 人事資料卡 / 健保眷屬），但**全唯讀、無任何輸入框 / 上傳 / 儲存**。
+
+- **資料來源（自助端點，登入即可、免 `users:read`）**：`GET /me/user`（基本 + 薪資）、`GET /me/profile`（人事資料卡 + 9 子表 + 健保眷屬）、`GET /me/files/{container}/{fileName}`（自己的 PII 檔案）。
+- **為何不重用 `/users/{id}` 系列**：那需 `users:read`，一般員工沒有 → 走 self/me 模式，見 [backend-design.md §13.4](../backend-design.md#134-自己讀自己模式self--me-endpoints)。
+- **檔案顯示**：簽名 / 頭像走公開 `/files/`（`<img src>` 直接顯示）；身分證影本 / 學歷證明 / 三種證明走 `/me/files` blob 下載後開新分頁（`<img>` 無法帶 token）。
+- **路由**：`/account/my-profile`，lazy load，僅 `authGuard`（不掛 permission guard）。
+
 ## 跨業務關聯
 
 - **健保眷屬數影響薪資公式（最多計 3 口）** → [payroll-formula.md](payroll-formula.md)

@@ -7,11 +7,25 @@ using Jabez.Api.Services.Dapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace Jabez.Api.Handlers;
 
 public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmailService emailService, IBlobStorageService blob, IProjectAccessResolver access)
 {
+    // GET /me/user → 當前使用者自助查詢自己的完整個人資料（登入即可，不需 users:read）
+    public async Task<IActionResult> GetMineAsync(HttpRequest req)
+    {
+        var userIdStr = req.HttpContext.User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return new UnauthorizedObjectResult(ApiResponse.Fail("Unauthorized.", "Invalid token claims."));
+
+        var user = await reader.GetByIdAsync(userId);
+        return user is null
+            ? new NotFoundObjectResult(ApiResponse.Fail("User not found."))
+            : new OkObjectResult(ApiResponse.Ok(user));
+    }
+
     // GET /api/users/lookup            → 全公司輕量清單（指定審核者下拉用）
     // GET /api/users/lookup?scope=department → 套用部門 scope 過濾（報表頁員工下拉用）
     public async Task<IActionResult> GetLookupAsync(HttpRequest req)

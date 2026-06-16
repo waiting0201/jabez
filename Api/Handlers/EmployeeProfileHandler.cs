@@ -7,6 +7,7 @@ using Jabez.Api.Services.Dapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.IdentityModel.Tokens.Jwt;
 using System.Text.Json;
 
 namespace Jabez.Api.Handlers;
@@ -26,6 +27,18 @@ public sealed class EmployeeProfileHandler(
 
     private const string EducationProofContainer = "education-proofs";
     private static readonly string[] AllowedEducationProofTypes = ["image/png", "image/jpeg", "application/pdf"];
+
+    // GET /me/profile → 員工自助查詢自己的人事資料卡（登入即可，不需 users:read）
+    public async Task<IActionResult> GetMineAsync(HttpRequest req)
+    {
+        var userIdStr = req.HttpContext.User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return new UnauthorizedObjectResult(ApiResponse.Fail("Unauthorized.", "Invalid token claims."));
+
+        // 自助端點允許員工讀自己的人事資料卡；Superadmin 讀自己也無妨（其人事資料卡通常不存在，回 null 即可）
+        var dto = await reader.GetByUserIdAsync(userId);
+        return new OkObjectResult(ApiResponse.Ok(dto));
+    }
 
     // GET /users/{id}/profile
     public async Task<IActionResult> GetByUserIdAsync(HttpRequest req, string id)

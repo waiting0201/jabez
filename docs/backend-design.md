@@ -730,8 +730,23 @@ public sealed class GcisService(HttpClient http, ILogger<GcisService> logger) : 
 | `GET /vendors/lookup-by-tax-id?taxId=XXXXXXXX` | — | 以統編查 GCIS 公司登記資料，自動帶出廠商名稱 / 地址 / 負責人；任何登入者可用 |
 | `POST /vendors` *(無需權限)* | — | 請款表單 quick-add modal：任何登入者皆可新建廠商，避免後台 CRUD 權限被強加給請款人 |
 | `GET /files/signatures/{fileName}` / `/files/avatars/{fileName}` | — | 簽名檔 / 頭像 Blob 代理（公開路由） |
+| `GET /me/user` | `GET /users/{id}`（需 `users:read`） | 「個人資訊」唯讀頁：員工查看自己的帳號資料（從 JWT `sub` 取自身 id） |
+| `GET /me/profile` | `GET /users/{id}/profile`（需 `users:read`） | 「個人資訊」唯讀頁：員工查看自己的人事資料卡 + 健保眷屬 |
+| `GET /me/files/{container}/{fileName}` | `GET /files/<PII container>/{fileName}`（需 `users:read`） | 「個人資訊」唯讀頁：員工讀自己的 PII 檔案，見下方 §13.4 |
 
-> HR 敏感 PII（`/files/indigenous-proofs/`、`/files/low-income-proofs/`、`/files/disabled-proofs/`、`/files/id-cards/`）**不**走輕量模式，仍需 `users:read`。
+> HR 敏感 PII（`/files/indigenous-proofs/`、`/files/low-income-proofs/`、`/files/disabled-proofs/`、`/files/id-cards/`、`/files/education-proofs/`）的**管理端**代理**不**走輕量模式，仍需 `users:read`；員工要讀**自己的** PII 改走 `/me/files/{container}/{fileName}`（§13.4）。
+
+### 13.4 「自己讀自己」模式（Self / Me Endpoints）
+
+當員工要查看**自己的**完整資料（含薪資、PII 檔案）時，不能放寬管理端權限，否則會洩漏他人資料。改採 **`me` 自助端點**：從 JWT `sub` claim 取當前 userId，只回傳 / 服務該 userId 的資料。
+
+- **取得 userId**：Router 在驗證後已將 principal 寫入 `req.HttpContext.User`（[AppRouter.cs](../Api/Routing/AppRouter.cs) line ~87）；Handler 以 `req.HttpContext.User.FindFirst(JwtRegisteredClaimNames.Sub)` 取出，解析失敗回 401。複用既有 Read Service（如 `reader.GetByIdAsync(userId)` / `EmployeeProfileReadService.GetByUserIdAsync(userId)`），不需新 DTO / Migration。
+- **PII 檔案自助代理** [`FileHandler.GetMineAsync`](../Api/Handlers/FileHandler.cs)：
+  1. **白名單容器**：`SelfServiceContainers`（id-cards / education-proofs / 三種 proofs / avatars / signatures），不在白名單一律 404。
+  2. **前綴檢查**：所有 blob 命名都以 `{userId}` 開頭（`{userId}{ext}` / `{userId}_front{ext}` / `{userId}_education{ext}`…），驗證 `fileName` 以自身 `userId` 開頭且後接 `.` 或 `_`，否則 403 — 防止員工竄改 `fileName` 讀他人檔案（GUID 定長 + 分隔符，無前綴包含風險）。
+  3. 通過後複用既有私有 `GetFileAsync`（blob 串流 + Content-Type 驗證）。
+- **權限對應**：`me` 路由在 `GetRequiredPermission` 無對應項，落到 `_ => null`（登入即可），且不在 `IsPublicRoute`（強制 JWT）。
+- **前端對應**：`<img src>` 不能帶 Authorization header，故簽名 / 頭像（公開容器）走公開 `/files/...`；其餘 PII 改以 HttpClient 下載 blob（interceptor 帶 token）再 `URL.createObjectURL` 顯示 / 開新分頁。
 
 ### 13.2 設計原則
 

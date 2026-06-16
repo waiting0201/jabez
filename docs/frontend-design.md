@@ -1023,6 +1023,11 @@ async onFileSelected(event: Event) {
 
 廠商存摺封面（`/files/vendor-passbooks/{fileName}` → `vendor-passbooks` 容器）為**一般檔，需 JWT 但免特殊權限**：透過 `HttpClient` 走 Blob 代理（auth interceptor 自動附 Bearer），與 PII 同樣以 `URL.createObjectURL` 在新分頁開啟。
 
+> **鐵則：需 JWT 的檔案不可直接放 `<img [src]>`。** `<img>` / `<a href>` 無法帶 Authorization header，會 401 破圖。
+> - **公開容器**（signatures / avatars）→ 直接 `<img [src]="apiUrl + '/files/...'">`。
+> - **需 token 的容器**（PII、vendor-passbooks、以及員工自助 `/me/files/...`）→ 一律 `HttpClient` 下載 Blob（interceptor 帶 token）→ `URL.createObjectURL` 設給 `<img>` 或 `window.open` 開新分頁。
+> 員工「個人資訊」唯讀頁 [my-profile](../Admin/src/app/features/account/pages/my-profile/) 即依此規則：簽名 / 頭像走公開 `/files/`，身分證 / 學歷 / 三證明走 `/me/files/` blob 下載。
+
 ### 12.5b 整單批次附件（共用元件）
 
 一般請款 / 預支沖銷表單明細下方支援批次上傳照片或文件，使用兩個共用元件：
