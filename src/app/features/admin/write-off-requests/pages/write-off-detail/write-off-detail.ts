@@ -10,11 +10,12 @@ import {ApprovalTaskService} from '../../../approval-tasks/services/approval-tas
 import {ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
 import {WriteOffRequest, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/write-off-request.model';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
+import {AttachmentsList} from '../../../../../shared/components/attachments-list';
 
 @Component({
   selector: 'app-write-off-request-detail',
   templateUrl: './write-off-detail.html',
-  imports: [RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline],
+  imports: [RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, AttachmentsList],
 })
 export class WriteOffRequestDetail implements OnInit {
   private service     = inject(WriteOffRequestService);

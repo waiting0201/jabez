@@ -170,6 +170,21 @@
       </div>
     }
 
+    <!-- 附件 -->
+    @if (r.attachments && r.attachments.length > 0) {
+      <div class="card border-0 shadow-sm mb-6">
+        <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+          <svg class="sa-icon text-primary" style="stroke: currentColor">
+            <use href="/assets/icons/sprite.svg#paperclip"></use>
+          </svg>
+          附件
+        </div>
+        <div class="card-body">
+          <app-attachments-list [attachments]="r.attachments" />
+        </div>
+      </div>
+    }
+
     <!-- 撥款明細（核准後才會有資料；read-only）-->
     <app-installments-table
       [installmentsInput]="r.installments"

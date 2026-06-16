@@ -89,6 +89,13 @@ export interface ApprovalFlow {
   steps: ApprovalFlowStep[];
 }
 
+/** 整單批次附件（照片 / PDF），請款一般請款 / 預支沖銷共用 */
+export interface AttachmentItem {
+  id: number;
+  fileName: string;
+  fileUrl?: string;
+}
+
 export interface PaymentTaskDetail {
   paymentRequestId: number;
   requestNo: string;
@@ -107,6 +114,7 @@ export interface PaymentTaskDetail {
   vendorAddress?: string;
   installments?: InstallmentDto[];
   paymentStatus?: PaymentInstallmentStatus;
+  attachments?: AttachmentItem[];
 }
 
 export interface LeaveTaskDetail {
@@ -245,6 +253,7 @@ export interface WriteOffTaskDetail {
   advanceRefundAmount?: number;
   /** 關聯預支單的實際退款金額（財務手動填入） */
   advanceRefundedAmount?: number;
+  attachments?: AttachmentItem[];
 }
 
 export interface TravelWriteOffTaskDetailItem {

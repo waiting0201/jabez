@@ -314,6 +314,11 @@
           </div>
         </div>
 
+        <!-- 附件（僅一般請款） -->
+        @if (form.get('type')?.value === 'general') {
+          <app-attachments-upload [existing]="loadedAttachments" [disabled]="isReadOnly" />
+        }
+
         <!-- 指定審核者 -->
         @if (hasDesignatedStep && !isReadOnly) {
           <div class="card border-0 shadow-sm mt-6">

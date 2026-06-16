@@ -8,6 +8,8 @@ import {firstValueFrom} from 'rxjs';
 import heic2any from 'heic2any';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
+import {AttachmentsUpload} from '../../../../../shared/components/attachments-upload';
+import {AttachmentItem} from '../../../approval-tasks/models/approval-task.model';
 import {WriteOffRequestService} from '../../services/write-off-request.service';
 import {PaymentRequestService} from '../../../payment-requests/services/payment-request.service';
 import {AdvanceSummary, ITEM_CATEGORIES} from '../../models/write-off-request.model';
@@ -20,7 +22,7 @@ import {UserLookup} from '../../../users/models/user.model';
 @Component({
   selector: 'app-write-off-request-form',
   templateUrl: './write-off-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, FilePreviewModal],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, FilePreviewModal, AttachmentsUpload],
 })
 export class WriteOffRequestForm implements OnInit {
   private fb             = inject(FormBuilder);
@@ -34,7 +36,11 @@ export class WriteOffRequestForm implements OnInit {
   private cdr            = inject(ChangeDetectorRef);
   private modal          = inject(NgbModal);
   successModal = viewChild<TemplateRef<any>>('successModal');
+  attachmentsUpload = viewChild(AttachmentsUpload);
   private sanitizer      = inject(DomSanitizer);
+
+  /** 編輯模式回填的既有附件 */
+  loadedAttachments: AttachmentItem[] = [];
 
   /** undefined = 新增模式；數值 = 編輯模式（預支沖銷申請 ID） */
   editId: number | null = null;
@@ -172,6 +178,7 @@ export class WriteOffRequestForm implements OnInit {
         this.editModeAdvanceGrandTotal      = r.advanceGrandTotal;
         this.editModeAdvanceWrittenOffTotal  = r.advanceWrittenOffTotal;
         this.form.patchValue({note: r.note ?? ''});
+        this.loadedAttachments = r.attachments ?? [];
         // 回填指定審核者清單
         if (r.designatedReviewers?.length) {
           this.designatedEntries = r.designatedReviewers.map(dr => ({
@@ -416,6 +423,11 @@ export class WriteOffRequestForm implements OnInit {
     }
 
     fd.append('items', JSON.stringify(itemsMeta));
+
+    // 整單批次附件
+    const att = this.attachmentsUpload();
+    fd.append('attachments', JSON.stringify(att ? att.getMeta() : []));
+    if (att) att.getNewFiles().forEach(f => fd.append('attachmentFiles', f, f.name));
     return fd;
   }
 

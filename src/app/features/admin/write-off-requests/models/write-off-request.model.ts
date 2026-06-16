@@ -74,6 +74,8 @@ export interface WriteOffRequest {
   advanceRefundAmount?: number;
   /** 關聯預支單的實際退款金額（財務手動填入） */
   advanceRefundedAmount?: number;
+  /** 整單批次附件（照片 / PDF） */
+  attachments?: import('../../approval-tasks/models/approval-task.model').AttachmentItem[];
 }
 
 /** AdvanceRequest summary for dropdown selection */

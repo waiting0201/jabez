@@ -10,11 +10,12 @@ import {PaymentRequest, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, PAYMENT
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
+import {AttachmentsList} from '../../../../../shared/components/attachments-list';
 
 @Component({
   selector: 'app-payment-detail',
   templateUrl: './payment-detail.html',
-  imports: [RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, FilePreviewModal, InstallmentsTable],
+  imports: [RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, FilePreviewModal, InstallmentsTable, AttachmentsList],
 })
 export class PaymentDetail implements OnInit {
   private service = inject(PaymentRequestService);
