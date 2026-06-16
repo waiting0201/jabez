@@ -18,8 +18,8 @@
         <table class="table table-hover mb-0">
           <thead class="table-light">
             <tr>
-              <th>廠商名稱</th>
-              <th class="hidden md:table-cell">統編</th>
+              <th>廠商名稱 / 外包顧問</th>
+              <th class="hidden md:table-cell">統編 / 身分證字號</th>
               <th class="hidden lg:table-cell">聯絡人</th>
               <th class="hidden lg:table-cell">電話</th>
               <th>狀態</th>
@@ -32,7 +32,7 @@
             @for (v of vendors$ | async; track v.id) {
               <tr>
                 <td class="fw-500">{{ v.name }}</td>
-                <td class="text-muted hidden md:table-cell">{{ v.taxId || '—' }}</td>
+                <td class="text-muted hidden md:table-cell">{{ v.taxId || v.idNumber || '—' }}</td>
                 <td class="text-muted hidden lg:table-cell">{{ v.contactPerson || '—' }}</td>
                 <td class="text-muted hidden lg:table-cell">{{ v.phone || '—' }}</td>
                 <td>

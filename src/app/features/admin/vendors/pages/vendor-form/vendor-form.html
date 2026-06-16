@@ -30,16 +30,33 @@
           <div class="card-body">
             <div class="row g-3">
               <div class="col-12 col-md-4">
-                <label class="form-label fw-500">統編 <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" formControlName="taxId"
+                <label class="form-label fw-500">統編 / 身分證字號 <span class="text-danger">*</span></label>
+                <div class="flex gap-4 mb-2 mt-1">
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" id="idTypeTax" name="identifierType"
+                           [checked]="identifierType() === 'taxId'" (change)="setIdentifierType('taxId')">
+                    <label class="form-check-label" for="idTypeTax">統編</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" id="idTypeId" name="identifierType"
+                           [checked]="identifierType() === 'idNumber'" (change)="setIdentifierType('idNumber')">
+                    <label class="form-check-label" for="idTypeId">身分證字號</label>
+                  </div>
+                </div>
+                @if (identifierType() === 'taxId') {
+                <input type="text" class="form-control" formControlName="identifier"
                        placeholder="例如：12345678"
                        maxlength="8" inputmode="numeric"
                        (blur)="onTaxIdBlur()">
-                @if (form.get('taxId')?.touched && form.get('taxId')?.errors?.['required']) {
-                <div class="text-danger small mt-1">請輸入統編。</div>
+                } @else {
+                <input type="text" class="form-control" formControlName="identifier"
+                       placeholder="例如：A123456789" maxlength="10">
                 }
-                @if (form.get('taxId')?.touched && form.get('taxId')?.errors?.['pattern']) {
-                <div class="text-danger small mt-1">統編須為 8 位數字。</div>
+                @if (form.get('identifier')?.touched && form.get('identifier')?.errors?.['required']) {
+                <div class="text-danger small mt-1">請輸入{{ identifierType() === 'taxId' ? '統編' : '身分證字號' }}。</div>
+                }
+                @if (form.get('identifier')?.touched && form.get('identifier')?.errors?.['pattern']) {
+                <div class="text-danger small mt-1">{{ identifierType() === 'taxId' ? '統編須為 8 位數字。' : '身分證字號格式不正確（1 碼英文 + 9 碼數字）。' }}</div>
                 }
                 @if (looking()) {
                 <div class="text-muted small mt-1">查詢中…</div>
@@ -47,8 +64,8 @@
               </div>
 
               <div class="col-12 col-md-8">
-                <label class="form-label fw-500">廠商名稱 <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" formControlName="name" placeholder="例如：誠品書店">
+                <label class="form-label fw-500">廠商名稱 / 外包顧問 <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" formControlName="name" placeholder="例如：誠品書店 / 王小明">
                 @if (form.get('name')?.invalid && form.get('name')?.touched) {
                 <div class="text-danger small mt-1">請輸入廠商名稱。</div>
                 }
@@ -74,9 +91,83 @@
                 <input type="text" class="form-control" formControlName="address" placeholder="完整地址">
               </div>
 
+              @if (identifierType() === 'idNumber') {
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">身分證正面 <span class="text-danger">*</span></label>
+                <div class="text-muted small mb-2">支援 PNG、JPEG 圖片或 PDF，上傳後勿超過 1MB。</div>
+                @if (idCardFrontPreview()) {
+                  <div class="mb-2">
+                    <img [src]="idCardFrontPreview()!" alt="身分證正面預覽"
+                         class="rounded border max-h-40 object-contain">
+                  </div>
+                }
+                @if (idCardFrontDisplayName()) {
+                  <div class="flex items-center gap-2 mb-2 border rounded px-3 py-2 bg-[--bg-surface]">
+                    <svg class="sa-icon text-[--accent]" style="stroke: currentColor">
+                      <use href="/assets/icons/sprite.svg#file-text"></use>
+                    </svg>
+                    <span class="fw-500 text-[--text-primary] truncate text-sm">{{ idCardFrontDisplayName() }}</span>
+                    @if (hasExistingIdCardFront()) {
+                      <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewIdCardFront()">檢視</button>
+                    }
+                  </div>
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    更換
+                    <input type="file" class="hidden"
+                           accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                           (change)="onIdCardFrontSelected($event)">
+                  </label>
+                } @else {
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                    選擇身分證正面
+                    <input type="file" class="hidden"
+                           accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                           (change)="onIdCardFrontSelected($event)">
+                  </label>
+                }
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">身分證反面 <span class="text-danger">*</span></label>
+                <div class="text-muted small mb-2">支援 PNG、JPEG 圖片或 PDF，上傳後勿超過 1MB。</div>
+                @if (idCardBackPreview()) {
+                  <div class="mb-2">
+                    <img [src]="idCardBackPreview()!" alt="身分證反面預覽"
+                         class="rounded border max-h-40 object-contain">
+                  </div>
+                }
+                @if (idCardBackDisplayName()) {
+                  <div class="flex items-center gap-2 mb-2 border rounded px-3 py-2 bg-[--bg-surface]">
+                    <svg class="sa-icon text-[--accent]" style="stroke: currentColor">
+                      <use href="/assets/icons/sprite.svg#file-text"></use>
+                    </svg>
+                    <span class="fw-500 text-[--text-primary] truncate text-sm">{{ idCardBackDisplayName() }}</span>
+                    @if (hasExistingIdCardBack()) {
+                      <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewIdCardBack()">檢視</button>
+                    }
+                  </div>
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    更換
+                    <input type="file" class="hidden"
+                           accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                           (change)="onIdCardBackSelected($event)">
+                  </label>
+                } @else {
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                    選擇身分證反面
+                    <input type="file" class="hidden"
+                           accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                           (change)="onIdCardBackSelected($event)">
+                  </label>
+                }
+              </div>
+              }
+
               <div class="col-12">
-                <label class="form-label fw-500">存摺封面</label>
-                <div class="text-muted small mb-2">支援 PNG、JPEG 圖片或 PDF，上傳後勿超過 1MB（選填）。</div>
+                <label class="form-label fw-500">存摺封面 <span class="text-danger">*</span></label>
+                <div class="text-muted small mb-2">支援 PNG、JPEG 圖片或 PDF，上傳後勿超過 1MB。</div>
                 @if (bankBookImagePreview()) {
                   <div class="mb-2">
                     <img [src]="bankBookImagePreview()!" alt="存摺封面預覽"
@@ -93,15 +184,12 @@
                       <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewBankBookImage()">檢視</button>
                     }
                   </div>
-                  <div class="flex gap-2">
-                    <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
-                      更換
-                      <input type="file" class="hidden"
-                             accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
-                             (change)="onBankBookImageSelected($event)">
-                    </label>
-                    <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveBankBookImage()">刪除</button>
-                  </div>
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    更換
+                    <input type="file" class="hidden"
+                           accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                           (change)="onBankBookImageSelected($event)">
+                  </label>
                 } @else {
                   <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
                     <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>

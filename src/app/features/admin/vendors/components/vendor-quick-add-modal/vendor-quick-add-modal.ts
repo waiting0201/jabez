@@ -3,11 +3,13 @@ import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {HttpErrorResponse} from '@angular/common/http';
 import {NgbActiveModal} from '@ng-bootstrap/ng-bootstrap';
 import {ToastrService} from 'ngx-toastr';
-import {VendorService, VendorFormPayload} from '../../services/vendor.service';
+import {VendorService, VendorFormPayload, VendorFileOptions} from '../../services/vendor.service';
 import {Vendor, VendorLookup} from '../../models/vendor.model';
 import {ImageCompressionService} from '../../../../../shared/services/image-compression.service';
 
 const MAX_FILE_BYTES = 1 * 1024 * 1024;
+
+type IdentifierType = 'taxId' | 'idNumber';
 
 @Component({
   selector: 'app-vendor-quick-add-modal',
@@ -28,13 +30,22 @@ export class VendorQuickAddModal implements OnInit {
   looking  = signal(false);
   errorMsg = signal('');
 
+  identifierType = signal<IdentifierType>('taxId');
+
   bankBookImageFile     = signal<File | null>(null);
   bankBookImageFileName = signal<string | null>(null);
-
   hasBankBook = computed(() => !!this.bankBookImageFile());
 
+  idCardFrontFile     = signal<File | null>(null);
+  idCardFrontFileName = signal<string | null>(null);
+  hasIdCardFront = computed(() => !!this.idCardFrontFile());
+
+  idCardBackFile     = signal<File | null>(null);
+  idCardBackFileName = signal<string | null>(null);
+  hasIdCardBack = computed(() => !!this.idCardBackFile());
+
   form = this.fb.group({
-    taxId:         ['', [Validators.required, Validators.pattern(/^\d{8}$/)]],
+    identifier:    ['', [Validators.required, Validators.pattern(/^\d{8}$/)]],
     name:          ['', Validators.required],
     phone:         [''],
     contactPerson: [''],
@@ -47,10 +58,20 @@ export class VendorQuickAddModal implements OnInit {
     if (this.prefillName) this.form.patchValue({name: this.prefillName});
   }
 
+  setIdentifierType(type: IdentifierType) {
+    this.identifierType.set(type);
+    const ctrl = this.form.controls.identifier;
+    ctrl.setValidators(type === 'taxId'
+      ? [Validators.required, Validators.pattern(/^\d{8}$/)]
+      : [Validators.required, Validators.pattern(/^[A-Za-z][0-9]{9}$/)]);
+    ctrl.updateValueAndValidity();
+  }
+
   onTaxIdBlur() {
-    const taxIdCtrl = this.form.controls.taxId;
-    const taxId     = (taxIdCtrl.value ?? '').trim();
-    if (!taxId || taxIdCtrl.invalid) return;
+    if (this.identifierType() !== 'taxId') return;
+    const ctrl  = this.form.controls.identifier;
+    const taxId = (ctrl.value ?? '').trim();
+    if (!taxId || ctrl.invalid) return;
     if (this.looking()) return;
 
     this.looking.set(true);
@@ -82,7 +103,35 @@ export class VendorQuickAddModal implements OnInit {
     });
   }
 
-  async onBankBookImageSelected(event: Event) {
+  onBankBookImageSelected(event: Event) {
+    this.pickInto(event, this.bankBookImageFile, this.bankBookImageFileName);
+  }
+  onRemoveBankBookImage() {
+    this.bankBookImageFile.set(null);
+    this.bankBookImageFileName.set(null);
+  }
+
+  onIdCardFrontSelected(event: Event) {
+    this.pickInto(event, this.idCardFrontFile, this.idCardFrontFileName);
+  }
+  onRemoveIdCardFront() {
+    this.idCardFrontFile.set(null);
+    this.idCardFrontFileName.set(null);
+  }
+
+  onIdCardBackSelected(event: Event) {
+    this.pickInto(event, this.idCardBackFile, this.idCardBackFileName);
+  }
+  onRemoveIdCardBack() {
+    this.idCardBackFile.set(null);
+    this.idCardBackFileName.set(null);
+  }
+
+  private async pickInto(
+    event: Event,
+    fileSig: ReturnType<typeof signal<File | null>>,
+    nameSig: ReturnType<typeof signal<string | null>>,
+  ) {
     const input = event.target as HTMLInputElement;
     const file  = input.files?.[0];
     if (!file) return;
@@ -93,29 +142,58 @@ export class VendorQuickAddModal implements OnInit {
         this.toastr.error('上傳照片勿超過1MB');
         return;
       }
-      this.bankBookImageFile.set(compressed);
-      this.bankBookImageFileName.set(file.name);
+      fileSig.set(compressed);
+      nameSig.set(file.name);
     } catch (err) {
-      console.error('[VendorQuickAddModal] 存摺封面處理失敗', err);
+      console.error('[VendorQuickAddModal] 檔案處理失敗', err);
       this.toastr.error('檔案處理失敗，請重試。', '處理失敗');
     }
   }
 
-  onRemoveBankBookImage() {
-    this.bankBookImageFile.set(null);
-    this.bankBookImageFileName.set(null);
-  }
-
   submit() {
-    if (this.form.invalid || this.saving()) return;
-    const value: VendorFormPayload = {...(this.form.value as VendorFormPayload), isActive: true};
-    const files = {bankBookImage: this.bankBookImageFile() ?? undefined};
+    if (this.form.invalid || this.saving()) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    const type  = this.identifierType();
+    const idVal = (this.form.controls.identifier.value ?? '').trim();
+
+    // 存摺封面為必填
+    if (!this.bankBookImageFile()) {
+      this.toastr.error('請上傳存摺封面。');
+      return;
+    }
+
+    // 個人工作室須備齊身分證正反面
+    if (type === 'idNumber' && (!this.idCardFrontFile() || !this.idCardBackFile())) {
+      this.toastr.error('請上傳身分證正反面。');
+      return;
+    }
+
+    const base = this.form.value;
+    const value: VendorFormPayload = {
+      name:          base.name!.trim(),
+      taxId:         type === 'taxId'    ? idVal : null,
+      idNumber:      type === 'idNumber' ? idVal.toUpperCase() : null,
+      phone:         base.phone ?? null,
+      contactPerson: base.contactPerson ?? null,
+      address:       base.address ?? null,
+      bankAccount:   base.bankAccount ?? null,
+      note:          base.note ?? null,
+      isActive:      true,
+    };
+    const files: VendorFileOptions = {
+      bankBookImage: this.bankBookImageFile() ?? undefined,
+      idCardFront:   this.idCardFrontFile() ?? undefined,
+      idCardBack:    this.idCardBackFile() ?? undefined,
+    };
 
     this.errorMsg.set('');
     this.saving.set(true);
     this.vendorService.create(value, files).subscribe({
       next: (v: Vendor) => {
-        const lookup: VendorLookup = {id: v.id, name: v.name, taxId: v.taxId};
+        const lookup: VendorLookup = {id: v.id, name: v.name, taxId: v.taxId, idNumber: v.idNumber};
         this.activeModal.close(lookup);
       },
       error: (err: HttpErrorResponse) => {

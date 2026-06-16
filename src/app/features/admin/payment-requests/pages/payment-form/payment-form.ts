@@ -87,7 +87,7 @@ export class PaymentForm implements OnInit {
   /** 廠商 typeahead 雙向綁定值（選定後為 VendorLookup，輸入過程為 string） */
   vendorTypeaheadModel: VendorLookup | string | null = null;
 
-  /** 廠商 autocomplete 搜尋（依名稱 / 統編，最多 10 筆） */
+  /** 廠商 autocomplete 搜尋（依名稱 / 統編 / 身分證字號，最多 10 筆） */
   vendorSearch: OperatorFunction<string, readonly VendorLookup[]> = (text$: Observable<string>) =>
     text$.pipe(
       debounceTime(150),
@@ -99,13 +99,17 @@ export class PaymentForm implements OnInit {
           ? list
           : list.filter(v =>
               v.name.toLowerCase().includes(t) ||
-              (v.taxId ?? '').toLowerCase().includes(t));
+              (v.taxId ?? '').toLowerCase().includes(t) ||
+              (v.idNumber ?? '').toLowerCase().includes(t));
         return filtered.slice(0, 10);
       })
     );
 
-  /** 下拉項目顯示格式：「名稱（統編）」 */
-  vendorFormatter = (v: VendorLookup) => v.name + (v.taxId ? `（${v.taxId}）` : '');
+  /** 下拉項目顯示格式：「名稱（統編或身分證字號）」 */
+  vendorFormatter = (v: VendorLookup) => {
+    const code = v.taxId ?? v.idNumber;
+    return v.name + (code ? `（${code}）` : '');
+  };
   /** 選中後 input 顯示格式：只顯示名稱 */
   vendorInputFormatter = (v: VendorLookup) => v.name;
 
