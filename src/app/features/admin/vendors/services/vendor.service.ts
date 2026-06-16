@@ -7,6 +7,7 @@ import {environment} from '@/environments/environment';
 export interface VendorFormPayload {
   name: string;
   taxId?: string | null;
+  idNumber?: string | null;
   phone?: string | null;
   contactPerson?: string | null;
   address?: string | null;
@@ -18,6 +19,10 @@ export interface VendorFormPayload {
 export interface VendorFileOptions {
   bankBookImage?: File | null;
   removeBankBookImage?: boolean;
+  idCardFront?: File | null;
+  removeIdCardFront?: boolean;
+  idCardBack?: File | null;
+  removeIdCardBack?: boolean;
 }
 
 @Injectable({providedIn: 'root'})
@@ -62,11 +67,20 @@ export class VendorService {
     return this.http.get(`${environment.apiUrl}/files/vendor-passbooks/${fileName}`, {responseType: 'blob'});
   }
 
+  /** 透過授權代理讀取身分證影本（需 JWT + vendors:read） */
+  getIdCardImage(fileName: string): Observable<Blob> {
+    return this.http.get(`${environment.apiUrl}/files/vendor-id-cards/${fileName}`, {responseType: 'blob'});
+  }
+
   private buildFormData(payload: object, files?: VendorFileOptions): FormData {
     const fd = new FormData();
     fd.append('payload', JSON.stringify(payload));
     if (files?.bankBookImage)       fd.append('bankBookImage', files.bankBookImage);
     if (files?.removeBankBookImage) fd.append('removeBankBookImage', 'true');
+    if (files?.idCardFront)         fd.append('idCardFront', files.idCardFront);
+    if (files?.removeIdCardFront)   fd.append('removeIdCardFront', 'true');
+    if (files?.idCardBack)          fd.append('idCardBack', files.idCardBack);
+    if (files?.removeIdCardBack)    fd.append('removeIdCardBack', 'true');
     return fd;
   }
 }

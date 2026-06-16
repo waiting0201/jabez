@@ -105,7 +105,7 @@
                     <p class="form-control-plaintext fw-500 mb-0">
                       @for (v of vendors(); track v.id) {
                         @if (v.id === form.get('vendorId')?.value) {
-                          {{ v.name }}{{ v.taxId ? '（' + v.taxId + '）' : '' }}
+                          {{ v.name }}{{ (v.taxId ?? v.idNumber) ? '（' + (v.taxId ?? v.idNumber) + '）' : '' }}
                         }
                       }
                       @if (!form.get('vendorId')?.value) { — }

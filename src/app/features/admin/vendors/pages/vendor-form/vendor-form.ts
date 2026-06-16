@@ -3,10 +3,12 @@ import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {HttpErrorResponse} from '@angular/common/http';
 import {ToastrService} from 'ngx-toastr';
-import {VendorService, VendorFormPayload} from '../../services/vendor.service';
+import {VendorService, VendorFormPayload, VendorFileOptions} from '../../services/vendor.service';
 import {ImageCompressionService} from '../../../../../shared/services/image-compression.service';
 
 const MAX_FILE_BYTES = 1 * 1024 * 1024; // 1 MB
+
+type IdentifierType = 'taxId' | 'idNumber';
 
 @Component({
   selector: 'app-vendor-form',
@@ -26,6 +28,9 @@ export class VendorForm implements OnInit {
   errorMsg = signal('');
   saving   = signal(false);
   looking  = signal(false);
+
+  // 識別碼類型：統編（公司） / 身分證字號（個人工作室）
+  identifierType = signal<IdentifierType>('taxId');
 
   // 存摺封面：5 個 signal（沿用 user-form 模式）
   bankBookImageUrl       = signal<string | null>(null);
@@ -47,8 +52,46 @@ export class VendorForm implements OnInit {
     return null;
   });
 
+  // 身分證正面
+  idCardFrontUrl       = signal<string | null>(null);
+  idCardFrontFile      = signal<File | null>(null);
+  idCardFrontPreview   = signal<string | null>(null);
+  idCardFrontFileName  = signal<string | null>(null);
+  removeIdCardFront    = signal(false);
+
+  hasExistingIdCardFront = computed(() =>
+    !!this.idCardFrontUrl() && !this.idCardFrontFile() && !this.removeIdCardFront());
+
+  idCardFrontDisplayName = computed(() => {
+    if (this.idCardFrontFileName()) return this.idCardFrontFileName();
+    if (this.hasExistingIdCardFront()) {
+      const match = this.idCardFrontUrl()!.match(/\/vendor-id-cards\/(.+)$/);
+      return match?.[1] ?? '身分證正面';
+    }
+    return null;
+  });
+
+  // 身分證反面
+  idCardBackUrl       = signal<string | null>(null);
+  idCardBackFile      = signal<File | null>(null);
+  idCardBackPreview   = signal<string | null>(null);
+  idCardBackFileName  = signal<string | null>(null);
+  removeIdCardBack    = signal(false);
+
+  hasExistingIdCardBack = computed(() =>
+    !!this.idCardBackUrl() && !this.idCardBackFile() && !this.removeIdCardBack());
+
+  idCardBackDisplayName = computed(() => {
+    if (this.idCardBackFileName()) return this.idCardBackFileName();
+    if (this.hasExistingIdCardBack()) {
+      const match = this.idCardBackUrl()!.match(/\/vendor-id-cards\/(.+)$/);
+      return match?.[1] ?? '身分證反面';
+    }
+    return null;
+  });
+
   form = this.fb.group({
-    taxId:         ['', [Validators.required, Validators.pattern(/^\d{8}$/)]],
+    identifier:    ['', [Validators.required, Validators.pattern(/^\d{8}$/)]],
     name:          ['', Validators.required],
     phone:         [''],
     contactPerson: [''],
@@ -65,17 +108,40 @@ export class VendorForm implements OnInit {
       this.vendorId = +id;
       this.vendorService.getById(this.vendorId).subscribe(v => {
         if (!v) return;
-        this.form.patchValue(v);
+        this.setIdentifierType(v.idNumber ? 'idNumber' : 'taxId');
+        this.form.patchValue({
+          identifier:    v.idNumber ?? v.taxId ?? '',
+          name:          v.name,
+          phone:         v.phone ?? '',
+          contactPerson: v.contactPerson ?? '',
+          address:       v.address ?? '',
+          bankAccount:   v.bankAccount ?? '',
+          note:          v.note ?? '',
+          isActive:      v.isActive,
+        });
         this.bankBookImageUrl.set(v.bankBookImageUrl ?? null);
+        this.idCardFrontUrl.set(v.idCardFrontUrl ?? null);
+        this.idCardBackUrl.set(v.idCardBackUrl ?? null);
       });
     }
   }
 
-  /** 統編失焦自動查詢公司資料（GCIS Open Data） */
+  /** 切換識別碼類型並調整驗證規則（統編 8 碼 / 身分證 1 英文字 + 9 數字） */
+  setIdentifierType(type: IdentifierType) {
+    this.identifierType.set(type);
+    const ctrl = this.form.controls.identifier;
+    ctrl.setValidators(type === 'taxId'
+      ? [Validators.required, Validators.pattern(/^\d{8}$/)]
+      : [Validators.required, Validators.pattern(/^[A-Za-z][0-9]{9}$/)]);
+    ctrl.updateValueAndValidity();
+  }
+
+  /** 統編失焦自動查詢公司資料（GCIS Open Data；僅統編類型） */
   onTaxIdBlur() {
-    const taxIdCtrl = this.form.controls.taxId;
-    const taxId     = (taxIdCtrl.value ?? '').trim();
-    if (!taxId || taxIdCtrl.invalid) return;
+    if (this.identifierType() !== 'taxId') return;
+    const ctrl  = this.form.controls.identifier;
+    const taxId = (ctrl.value ?? '').trim();
+    if (!taxId || ctrl.invalid) return;
     if (this.looking()) return;
 
     this.looking.set(true);
@@ -108,31 +174,14 @@ export class VendorForm implements OnInit {
     });
   }
 
+  // ── 存摺封面 ──────────────────────────────────────────────
   async onBankBookImageSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const file  = input.files?.[0];
+    const file = await this.pickCompressed(event);
     if (!file) return;
-    input.value = '';
-    try {
-      const compressed = await this.imageCompression.compress(file, {maxSize: 1600, quality: 0.85});
-      if (compressed.size > MAX_FILE_BYTES) {
-        this.toastr.error('上傳照片勿超過1MB');
-        return;
-      }
-      this.bankBookImageFile.set(compressed);
-      this.bankBookImageFileName.set(file.name);
-      this.removeBankBookImage.set(false);
-      if (compressed.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = () => this.bankBookImagePreview.set(reader.result as string);
-        reader.readAsDataURL(compressed);
-      } else {
-        this.bankBookImagePreview.set(null);
-      }
-    } catch (err) {
-      console.error('[VendorForm] 存摺封面處理失敗', err);
-      this.toastr.error('檔案處理失敗，請重試。', '處理失敗');
-    }
+    this.bankBookImageFile.set(file.compressed);
+    this.bankBookImageFileName.set(file.name);
+    this.removeBankBookImage.set(false);
+    this.bankBookImagePreview.set(file.preview);
   }
 
   onRemoveBankBookImage() {
@@ -143,27 +192,140 @@ export class VendorForm implements OnInit {
   }
 
   viewBankBookImage() {
-    const url = this.bankBookImageUrl();
-    if (!url) return;
-    const match    = url.match(/\/vendor-passbooks\/(.+)$/);
-    const fileName = match?.[1];
+    const fileName = this.bankBookImageUrl()?.match(/\/vendor-passbooks\/(.+)$/)?.[1];
     if (!fileName) return;
-    this.vendorService.getBankBookImage(fileName).subscribe({
+    this.openBlob(this.vendorService.getBankBookImage(fileName), '無法載入存摺封面。');
+  }
+
+  // ── 身分證正面 ────────────────────────────────────────────
+  async onIdCardFrontSelected(event: Event) {
+    const file = await this.pickCompressed(event);
+    if (!file) return;
+    this.idCardFrontFile.set(file.compressed);
+    this.idCardFrontFileName.set(file.name);
+    this.removeIdCardFront.set(false);
+    this.idCardFrontPreview.set(file.preview);
+  }
+
+  onRemoveIdCardFront() {
+    this.idCardFrontFile.set(null);
+    this.idCardFrontPreview.set(null);
+    this.idCardFrontFileName.set(null);
+    this.removeIdCardFront.set(true);
+  }
+
+  viewIdCardFront() {
+    const fileName = this.idCardFrontUrl()?.match(/\/vendor-id-cards\/(.+)$/)?.[1];
+    if (!fileName) return;
+    this.openBlob(this.vendorService.getIdCardImage(fileName), '無法載入身分證正面。');
+  }
+
+  // ── 身分證反面 ────────────────────────────────────────────
+  async onIdCardBackSelected(event: Event) {
+    const file = await this.pickCompressed(event);
+    if (!file) return;
+    this.idCardBackFile.set(file.compressed);
+    this.idCardBackFileName.set(file.name);
+    this.removeIdCardBack.set(false);
+    this.idCardBackPreview.set(file.preview);
+  }
+
+  onRemoveIdCardBack() {
+    this.idCardBackFile.set(null);
+    this.idCardBackPreview.set(null);
+    this.idCardBackFileName.set(null);
+    this.removeIdCardBack.set(true);
+  }
+
+  viewIdCardBack() {
+    const fileName = this.idCardBackUrl()?.match(/\/vendor-id-cards\/(.+)$/)?.[1];
+    if (!fileName) return;
+    this.openBlob(this.vendorService.getIdCardImage(fileName), '無法載入身分證反面。');
+  }
+
+  // ── 共用：壓縮選檔 + 開啟 blob ─────────────────────────────
+  private async pickCompressed(event: Event): Promise<{compressed: File; name: string; preview: string | null} | null> {
+    const input = event.target as HTMLInputElement;
+    const file  = input.files?.[0];
+    if (!file) return null;
+    input.value = '';
+    try {
+      const compressed = await this.imageCompression.compress(file, {maxSize: 1600, quality: 0.85});
+      if (compressed.size > MAX_FILE_BYTES) {
+        this.toastr.error('上傳照片勿超過1MB');
+        return null;
+      }
+      let preview: string | null = null;
+      if (compressed.type.startsWith('image/')) {
+        preview = await new Promise<string>(resolve => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(compressed);
+        });
+      }
+      return {compressed, name: file.name, preview};
+    } catch (err) {
+      console.error('[VendorForm] 檔案處理失敗', err);
+      this.toastr.error('檔案處理失敗，請重試。', '處理失敗');
+      return null;
+    }
+  }
+
+  private openBlob(obs: ReturnType<VendorService['getBankBookImage']>, errMsg: string) {
+    obs.subscribe({
       next: blob => {
         const objectUrl = URL.createObjectURL(blob);
         window.open(objectUrl, '_blank');
         setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
       },
-      error: err => this.toastr.error(err.error?.message || '無法載入存摺封面。', '載入失敗'),
+      error: err => this.toastr.error(err.error?.message || errMsg, '載入失敗'),
     });
   }
 
   submit() {
-    if (this.form.invalid || this.saving()) return;
-    const value = this.form.value as VendorFormPayload;
-    const files = {
+    if (this.form.invalid || this.saving()) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    const type  = this.identifierType();
+    const idVal = (this.form.controls.identifier.value ?? '').trim();
+
+    // 存摺封面為必填
+    if (!this.bankBookImageFile() && !this.hasExistingBankBook()) {
+      this.toastr.error('請上傳存摺封面。');
+      return;
+    }
+
+    // 個人工作室須備齊身分證正反面
+    if (type === 'idNumber') {
+      const frontOk = !!this.idCardFrontFile() || this.hasExistingIdCardFront();
+      const backOk  = !!this.idCardBackFile()  || this.hasExistingIdCardBack();
+      if (!frontOk || !backOk) {
+        this.toastr.error('請上傳身分證正反面。');
+        return;
+      }
+    }
+
+    const base = this.form.value;
+    const value: VendorFormPayload = {
+      name:          base.name!.trim(),
+      taxId:         type === 'taxId'    ? idVal : null,
+      idNumber:      type === 'idNumber' ? idVal.toUpperCase() : null,
+      phone:         base.phone ?? null,
+      contactPerson: base.contactPerson ?? null,
+      address:       base.address ?? null,
+      bankAccount:   base.bankAccount ?? null,
+      note:          base.note ?? null,
+      isActive:      base.isActive ?? true,
+    };
+    const files: VendorFileOptions = {
       bankBookImage:       this.bankBookImageFile() ?? undefined,
       removeBankBookImage: this.removeBankBookImage(),
+      idCardFront:         this.idCardFrontFile() ?? undefined,
+      removeIdCardFront:   this.removeIdCardFront(),
+      idCardBack:          this.idCardBackFile() ?? undefined,
+      removeIdCardBack:    this.removeIdCardBack(),
     };
 
     this.errorMsg.set('');

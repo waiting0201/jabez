@@ -3,17 +3,21 @@ export interface VendorLookup {
   id: number;
   name: string;
   taxId?: string;
+  idNumber?: string;
 }
 
 export interface Vendor {
   id: number;
   name: string;
   taxId?: string;
+  idNumber?: string;
   phone?: string;
   contactPerson?: string;
   address?: string;
   bankAccount?: string;
   bankBookImageUrl?: string;
+  idCardFrontUrl?: string;
+  idCardBackUrl?: string;
   note?: string;
   isActive: boolean;
   usageCount: number;
