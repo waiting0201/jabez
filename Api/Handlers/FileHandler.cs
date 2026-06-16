@@ -19,6 +19,7 @@ public sealed class FileHandler(IBlobStorageService blob, ILogger<FileHandler> l
     private const string IdCardContainer           = "id-cards";
     private const string EducationProofContainer   = "education-proofs";
     private const string VendorPassbookContainer   = "vendor-passbooks";
+    private const string VendorIdCardContainer     = "vendor-id-cards";
 
     /// <summary>
     /// 代理讀取簽名檔圖片。
@@ -83,6 +84,14 @@ public sealed class FileHandler(IBlobStorageService blob, ILogger<FileHandler> l
     /// </summary>
     public Task<IActionResult> GetVendorPassbookAsync(string fileName)
         => GetFileAsync(VendorPassbookContainer, fileName, IsImageOrPdf);
+
+    /// <summary>
+    /// 代理讀取廠商身分證影本（圖片或 PDF；個人工作室 / 外包顧問）。
+    /// 路由：GET /files/vendor-id-cards/{fileName}
+    /// 此端點需要 JWT + vendors:read 權限（身分證屬敏感 PII，僅廠商管理者可檢視）。
+    /// </summary>
+    public Task<IActionResult> GetVendorIdCardAsync(string fileName)
+        => GetFileAsync(VendorIdCardContainer, fileName, IsImageOrPdf);
 
     private Task<IActionResult> GetImageAsync(string container, string fileName)
         => GetFileAsync(container, fileName, IsImage);

@@ -4,11 +4,14 @@ public sealed record VendorDto(
     int      Id,
     string   Name,
     string?  TaxId,
+    string?  IdNumber,
     string?  Phone,
     string?  ContactPerson,
     string?  Address,
     string?  BankAccount,
     string?  BankBookImageUrl,
+    string?  IdCardFrontUrl,
+    string?  IdCardBackUrl,
     string?  Note,
     bool     IsActive,
     int      UsageCount,
@@ -18,11 +21,13 @@ public sealed record VendorDto(
 public sealed record VendorLookupDto(
     int     Id,
     string  Name,
-    string? TaxId);
+    string? TaxId,
+    string? IdNumber);
 
 public sealed record CreateVendorRequest(
     string  Name,
     string? TaxId         = null,
+    string? IdNumber      = null,
     string? Phone         = null,
     string? ContactPerson = null,
     string? Address       = null,
@@ -33,6 +38,7 @@ public sealed record CreateVendorRequest(
 public sealed record UpdateVendorRequest(
     string? Name,
     string? TaxId,
+    string? IdNumber,
     string? Phone,
     string? ContactPerson,
     string? Address,

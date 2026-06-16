@@ -187,7 +187,7 @@ Admin/src/app/
     │   ├── permissions/    # 權限管理（僅 Superadmin）
     │   ├── departments/    # 部門管理
     │   ├── job-titles/     # 職稱管理
-    │   ├── vendors/        # 廠商管理（含 vendor-quick-add-modal；統編 blur 自動帶出 GCIS 公司資料；含存摺封面上傳）
+    │   ├── vendors/        # 廠商管理（含 vendor-quick-add-modal；統編/身分證字號類型切換，統編 blur 自動帶出 GCIS 公司資料；個人工作室上傳身分證正反面；存摺封面必填）
     │   ├── approvals/      # 簽核流程設定（ApprovalItem + Steps）
     │   ├── approval-tasks/ # 待審核任務清單
     │   ├── projects/       # 專案管理
@@ -264,7 +264,7 @@ Api/
 │   ├── PermissionHandler.cs
 │   ├── DepartmentHandler.cs
 │   ├── JobTitleHandler.cs
-│   ├── VendorHandler.cs               # 廠商管理 CRUD（multipart 支援存摺封面上傳；lookup / lookup-by-tax-id / POST 開放任何登入者；刪除受 PaymentRequest 引用保護）
+│   ├── VendorHandler.cs               # 廠商管理 CRUD（multipart 支援存摺封面（必填）/ 身分證正反面上傳；統編與身分證字號擇一；lookup / lookup-by-tax-id / POST 開放任何登入者；刪除受 PaymentRequest 引用保護）
 │   ├── ApprovalHandler.cs             # ApprovalItem + Steps CRUD
 │   ├── ApprovalTaskHandler.cs         # 待審核任務查詢與審核動作
 │   ├── ProjectHandler.cs

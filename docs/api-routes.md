@@ -51,14 +51,15 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/vendors/lookup` | **輕量端點**：免 `vendors:read` 權限，僅回 `IsActive=true` 的 `{id, name, taxId}`，供請款申請下拉清單 |
+| GET | `/vendors/lookup` | **輕量端點**：免 `vendors:read` 權限，僅回 `IsActive=true` 的 `{id, name, taxId, idNumber}`，供請款申請下拉清單 |
 | GET | `/vendors/lookup-by-tax-id?taxId=XXXXXXXX` | **輕量端點**：以統編查 GCIS 公司登記資料，回 `{taxId, name, address, contactPerson}`，免 `vendors:read`，僅需登入 |
 | GET | `/vendors` | 廠商列表（含使用筆數，需 `vendors:read`） |
-| POST | `/vendors` | 新增廠商（**multipart**：text part `payload` JSON + optional file part `bankBookImage` 存摺封面；**任何登入者皆可，無需權限**） |
-| GET | `/vendors/{id}` | 取得廠商（需 `vendors:read`，回應含 `bankBookImageUrl`） |
-| PUT/PATCH | `/vendors/{id}` | 更新廠商（**multipart**：text part `payload` + optional `bankBookImage` file / `removeBankBookImage` text flag；需 `vendors:write`） |
-| DELETE | `/vendors/{id}` | 刪除廠商（需 `vendors:delete`；若已被請款單引用會回 400，須改用停用；連同存摺封面 blob 一併刪除） |
+| POST | `/vendors` | 新增廠商（**multipart**：text part `payload` JSON + 檔案 `bankBookImage`（**必填**）/ `idCardFront` / `idCardBack`；統編與身分證字號擇一，填身分證字號時正反面必傳；**任何登入者皆可，無需權限**） |
+| GET | `/vendors/{id}` | 取得廠商（需 `vendors:read`，回應含 `idNumber` / `bankBookImageUrl` / `idCardFrontUrl` / `idCardBackUrl`） |
+| PUT/PATCH | `/vendors/{id}` | 更新廠商（**multipart**：text part `payload` + 檔案 `bankBookImage` / `idCardFront` / `idCardBack` 與 remove 旗標 `removeBankBookImage` / `removeIdCardFront` / `removeIdCardBack`；存摺封面為必填、身分證字號廠商須備齊正反面；需 `vendors:write`） |
+| DELETE | `/vendors/{id}` | 刪除廠商（需 `vendors:delete`；若已被請款單引用會回 400，須改用停用；連同存摺封面與身分證影本 blob 一併刪除） |
 | GET | `/files/vendor-passbooks/{fileName}` | 廠商存摺封面代理（需 JWT，免特殊權限，與 avatars/signatures 同層的一般檔案） |
+| GET | `/files/vendor-id-cards/{fileName}` | 廠商身分證影本代理（需 JWT + `vendors:read`，屬敏感 PII） |
 
 ## 簽核流程
 
