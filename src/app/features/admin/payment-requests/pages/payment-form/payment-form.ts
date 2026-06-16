@@ -10,6 +10,8 @@ import heic2any from 'heic2any';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
+import {AttachmentsUpload} from '../../../../../shared/components/attachments-upload';
+import {AttachmentItem} from '../../../approval-tasks/models/approval-task.model';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
 import {ApprovalFlow, ApprovalRecord, ApprovalTask, InstallmentDto, PaymentInstallmentStatus} from '../../../approval-tasks/models/approval-task.model';
 import {PaymentRequestService} from '../../services/payment-request.service';
@@ -30,7 +32,7 @@ import {NgbModal, NgbTypeahead, NgbTypeaheadSelectItemEvent} from '@ng-bootstrap
 @Component({
   selector: 'app-payment-form',
   templateUrl: './payment-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, NgbTypeahead, InstallmentsTable],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, NgbTypeahead, InstallmentsTable, AttachmentsUpload],
 })
 export class PaymentForm implements OnInit {
   private fb           = inject(FormBuilder);
@@ -49,6 +51,10 @@ export class PaymentForm implements OnInit {
   pdfService           = inject(PaymentPdfService);
 
   successModal = viewChild<TemplateRef<any>>('successModal');
+  attachmentsUpload = viewChild(AttachmentsUpload);
+
+  /** 編輯模式回填的既有附件（僅一般請款） */
+  loadedAttachments: AttachmentItem[] = [];
 
   projects: Project[] = [];
   isEdit     = false;
@@ -283,6 +289,7 @@ export class PaymentForm implements OnInit {
         this.installments         = r.installments ?? null;
         this.paymentStatus        = r.paymentStatus ?? null;
         this.loadedTotalAmount    = r.totalAmount ?? 0;
+        this.loadedAttachments    = r.attachments ?? [];
         if (this.isReadOnly) this.form.disable();
         this.form.patchValue({type: r.type, projectId: r.projectId, reason: r.reason ?? '', vendorId: r.vendorId ?? null});
 
@@ -503,6 +510,14 @@ export class PaymentForm implements OnInit {
     }
 
     fd.append('invoices', JSON.stringify(invoicesMeta));
+
+    // 整單批次附件：僅一般請款帶入；其他類型送空陣列讓後端清空（切換類型不殘留）
+    const att = this.attachmentsUpload();
+    const attMeta = (type === 'general' && att) ? att.getMeta() : [];
+    fd.append('attachments', JSON.stringify(attMeta));
+    if (type === 'general' && att) {
+      att.getNewFiles().forEach(f => fd.append('attachmentFiles', f, f.name));
+    }
     return fd;
   }
 

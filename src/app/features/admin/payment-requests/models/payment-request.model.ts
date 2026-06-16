@@ -83,4 +83,6 @@ export interface PaymentRequest {
   // 分期撥款（共用 InstallmentDto / PaymentInstallmentStatus 定義於 approval-tasks model）
   installments?: import('../../approval-tasks/models/approval-task.model').InstallmentDto[];
   paymentStatus?: import('../../approval-tasks/models/approval-task.model').PaymentInstallmentStatus;
+  // 整單批次附件（照片 / PDF），僅一般請款使用
+  attachments?: import('../../approval-tasks/models/approval-task.model').AttachmentItem[];
 }

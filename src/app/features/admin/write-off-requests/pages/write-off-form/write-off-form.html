@@ -265,6 +265,9 @@
       </div>
     </div>
 
+    <!-- 附件 -->
+    <app-attachments-upload [existing]="loadedAttachments" />
+
     <!-- 指定審核者（多人清單） -->
     @if (hasDesignatedStep) {
       <div class="card border-0 shadow-sm mt-6">
