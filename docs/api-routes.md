@@ -251,6 +251,7 @@
 |--------|------|------|
 | GET | `/settings` | 取得系統設定 |
 | PATCH | `/settings` | 更新系統設定 |
+| POST | `/invoice-ocr` | 發票 / 收據 / 交通票根 OCR 辨識（multipart 欄位 `file`，後端透過 Google Gemini API）。**一張圖可包含多張，回傳 `data` 為陣列**（每張一筆 `{docType, invoiceNo, amount, invoiceDate}`，無辨識結果回 `[]`）。登入即可用，不需特殊權限 |
 
 ---
 
