@@ -11,7 +11,8 @@ using System.Text.RegularExpressions;
 namespace Jabez.Api.Handlers;
 
 /// <summary>
-/// 發票 OCR Handler：接收圖片並透過 Google Gemini API 辨識台灣統一發票號碼與金額。
+/// 發票 OCR Handler：接收圖片並透過 Google Gemini API 辨識台灣統一發票 / 收據 / 交通票根。
+/// 同一張圖片或 PDF 可包含多張，回傳結果為陣列（每張一筆）。
 /// </summary>
 public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrHandler> logger)
 {
@@ -36,6 +37,7 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
     /// <summary>
     /// POST /invoice-ocr
     /// 接收 multipart/form-data（欄位 "file"），呼叫 Gemini API 辨識發票資訊。
+    /// 回傳 ApiResponse&lt;OcrResult[]&gt;（一張圖可辨識出多筆）。
     /// </summary>
     public async Task<IActionResult> RecognizeAsync(HttpRequest req)
     {
@@ -107,11 +109,12 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
 
         // ── 5. 組建 Gemini API 請求 ──────────────────────────────────────────
         var prompt = """
-            請辨識這張圖片或 PDF，它可能是以下其中一種：
+            請辨識這張圖片或 PDF，找出其中**所有**的發票 / 收據 / 交通票根（同一張圖片或 PDF 可能同時包含多張，請逐一辨識，不要遺漏）。
+            每一張各為以下其中一種：
             A. 台灣統一發票 / 收據
             B. 交通票根（高鐵、台鐵、捷運、客運、機票 / 登機證、計程車收據、停車費收據、ETC 通行費等）
 
-            請依下列規則提取 4 個欄位，並以 JSON 格式回覆（不要加任何其他文字、不要 markdown）：
+            請為每一張各提取 4 個欄位，組成一個 JSON 物件，所有物件放入一個 JSON 陣列回覆（不要加任何其他文字、不要 markdown）：
 
             - docType：文件類型
               * 若為 A 類（統一發票 / 收據）：填 "invoice"
@@ -133,9 +136,10 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
 
             找不到的欄位：字串欄位填空字串 ""、金額填 0。
             無法判別文件類型時：docType 填 "invoice"。
+            若整張圖片完全沒有任何發票 / 收據 / 票根，請回傳空陣列 []。
 
-            回覆格式（僅此一行 JSON，無任何多餘文字）：
-            {"docType": "invoice|ticket", "invoiceNo": "...", "amount": 0, "invoiceDate": "YYYY-MM-DD 或空字串"}
+            回覆格式（僅此一行 JSON 陣列，無任何多餘文字）：
+            [{"docType": "invoice|ticket", "invoiceNo": "...", "amount": 0, "invoiceDate": "YYYY-MM-DD 或空字串"}]
             """;
 
         var requestBody = new
@@ -210,20 +214,20 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
 
         var cleanedText = CleanJsonText(rawText);
 
-        OcrResult ocrResult;
+        OcrResult[] ocrResults;
         try
         {
-            ocrResult = JsonSerializer.Deserialize<OcrResult>(cleanedText, CamelOpts)
-                        ?? new OcrResult(string.Empty, 0, string.Empty);
+            ocrResults = JsonSerializer.Deserialize<OcrResult[]>(cleanedText, CamelOpts)
+                        ?? [];
         }
         catch
         {
-            ocrResult = FallbackExtract(rawText);
+            ocrResults = FallbackExtract(rawText);
         }
 
-        ocrResult = NormalizeInvoiceNo(ocrResult);
+        ocrResults = [.. ocrResults.Select(NormalizeInvoiceNo)];
 
-        return new OkObjectResult(ApiResponse.Ok(ocrResult, "發票辨識成功。"));
+        return new OkObjectResult(ApiResponse.Ok(ocrResults, "發票辨識成功。"));
     }
 
     // ── 私有輔助方法 ──────────────────────────────────────────────────────────
@@ -255,8 +259,29 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
         return r;
     }
 
-    /// <summary>JSON 解析失敗時的備援萃取</summary>
-    private static OcrResult FallbackExtract(string text)
+    /// <summary>
+    /// JSON 解析失敗時的備援萃取：嘗試從文字中切出每一個 JSON 物件 {...} 各別萃取；
+    /// 切不出物件時，退而對整段文字做單筆萃取。完全抽不到內容則回傳空陣列。
+    /// </summary>
+    private static OcrResult[] FallbackExtract(string text)
+    {
+        var blocks = Regex.Matches(text, @"\{[^{}]*\}")
+                          .Select(m => m.Value)
+                          .ToList();
+
+        var sources = blocks.Count > 0 ? blocks : [text];
+
+        var results = sources
+            .Select(ExtractOne)
+            .Where(r => r is not null)
+            .Select(r => r!)
+            .ToArray();
+
+        return results;
+    }
+
+    /// <summary>從單一文字片段萃取一筆 OcrResult；完全無有效內容時回傳 null。</summary>
+    private static OcrResult? ExtractOne(string text)
     {
         var invoiceNo = string.Empty;
         decimal amount = 0;
@@ -305,6 +330,10 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
                 invoiceDate = $"{adYear:D4}-{month:D2}-{day:D2}";
             }
         }
+
+        // 完全沒有任何有效欄位則視為無辨識結果
+        if (string.IsNullOrEmpty(invoiceNo) && amount == 0 && string.IsNullOrEmpty(invoiceDate))
+            return null;
 
         return new OcrResult(invoiceNo, amount, invoiceDate, docType);
     }
