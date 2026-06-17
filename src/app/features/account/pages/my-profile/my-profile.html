@@ -692,8 +692,8 @@
               <div class="flex flex-wrap gap-6 mb-4 text-sm">
                 <span>
                   <span class="text-muted me-1">眷屬人數：</span>
-                  <span class="fw-600">{{ (p.healthInsuranceDependents ?? []).length }} 人</span>
-                  @if ((p.healthInsuranceDependents ?? []).length > 3) {
+                  <span class="fw-600">{{ p.healthInsuranceDependents.length }} 人</span>
+                  @if (p.healthInsuranceDependents.length > 3) {
                     <span class="text-warning ms-1">（超過 3 口，薪資計算上限 3 口）</span>
                   }
                 </span>
@@ -701,7 +701,7 @@
                   <span>
                     <span class="text-muted me-1">每月健保費試算：</span>
                     <span class="fw-600 text-primary">NT$ {{ estimatedHealthInsurance | number:'1.0-0' }}</span>
-                    <span class="text-muted ms-1 small">（含眷屬 {{ (p.healthInsuranceDependents ?? []).length > 3 ? 3 : (p.healthInsuranceDependents ?? []).length }} 口）</span>
+                    <span class="text-muted ms-1 small">（含眷屬 {{ p.healthInsuranceDependents.length > 3 ? 3 : p.healthInsuranceDependents.length }} 口）</span>
                   </span>
                 }
               </div>
