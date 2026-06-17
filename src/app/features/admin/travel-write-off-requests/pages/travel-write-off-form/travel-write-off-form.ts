@@ -251,20 +251,33 @@ export class TravelWriteOffForm implements OnInit {
       return {id, file};
     });
 
-    // OCR 辨識（並行）
+    // OCR 辨識（並行；一張圖可辨識出多筆 → 展開多列）
     await Promise.all(entries.map(async ({id, file}) => {
       try {
-        const result = await firstValueFrom(this.paymentService.ocrInvoice(file));
+        const results = await firstValueFrom(this.paymentService.ocrInvoice(file));
         const idx = this.itemArray.controls.findIndex(c => c.get('id')?.value === id);
-        if (idx >= 0) {
+        // 第 1 筆填入 placeholder 列；第 2..N 筆各新增一列（共用同一檔案，各存一份複本）
+        if (results.length >= 1 && idx >= 0) {
           this.itemArray.controls[idx].patchValue({
-            invoiceNo:   result.invoiceNo ?? '',
-            invoiceDate: result.invoiceDate ?? '',
-            unitPrice:   result.amount ?? 0,
-            totalPrice:  result.amount ?? 0,
+            invoiceNo:   results[0].invoiceNo ?? '',
+            invoiceDate: results[0].invoiceDate ?? '',
+            unitPrice:   results[0].amount ?? 0,
+            totalPrice:  results[0].amount ?? 0,
             quantity:    '1式',
-            ...(result.docType === 'ticket' ? { note: '票號' } : {}),
+            ...(results[0].docType === 'ticket' ? { note: '票號' } : {}),
           });
+        }
+        for (const item of results.slice(1)) {
+          const newId      = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const previewUrl = URL.createObjectURL(file);
+          const amount     = item.amount ?? 0;
+          this.fileMap.set(newId, file);
+          const group = this._itemGroup(
+            newId, file.name, 0, '', amount, '1式', amount,
+            item.docType === 'ticket' ? '票號' : '', this.itemArray.length, previewUrl,
+          );
+          group.patchValue({invoiceNo: item.invoiceNo ?? '', invoiceDate: item.invoiceDate ?? ''});
+          this.itemArray.push(group);
         }
       } catch {
         // OCR 失敗 — 保留空白欄位
