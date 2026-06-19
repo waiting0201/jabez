@@ -1,4 +1,4 @@
-import {Component, OnInit, inject} from '@angular/core';
+import {Component, OnDestroy, OnInit, inject} from '@angular/core';
 import {RouterOutlet} from "@angular/router";
 import {Footer} from '../components/footer/footer';
 import {Topbar} from '@layouts/components/topbar/topbar';
@@ -16,10 +16,15 @@ import {NotificationService} from '@features/admin/notifications/services/notifi
   templateUrl: './main-layout.html',
   styles: ``
 })
-export class MainLayout implements OnInit {
+export class MainLayout implements OnInit, OnDestroy {
   private notification = inject(NotificationService);
 
   ngOnInit() {
-    this.notification.refresh().subscribe();
+    // 啟動鈴鐺 60 秒輪詢（內部首次即 refresh）；分頁切到背景時自動暫停發送
+    this.notification.startPolling();
+  }
+
+  ngOnDestroy() {
+    this.notification.stopPolling();
   }
 }
