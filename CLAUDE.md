@@ -194,7 +194,7 @@ Admin/src/app/
     │   ├── approvals/      # 簽核流程設定（ApprovalItem + Steps）
     │   ├── approval-tasks/ # 待審核任務清單
     │   ├── projects/       # 專案管理
-    │   ├── payment-requests/  # 請款申請（一般請款 type=general 明細下方含整單批次附件上傳，共用 shared/components/attachments-upload）
+    │   ├── payment-requests/  # 請款申請（廠商請款 type=vendor / 一般請款 type=general 明細下方皆含整單批次附件上傳，共用 shared/components/attachments-upload）
     │   ├── leave-requests/    # 請假申請
     │   ├── travel-payment-requests/ # 出差請款申請（小額已代墊直接請款，無沖銷）
     │   ├── travel-requests/   # 出差預支申請（走沖銷流程）

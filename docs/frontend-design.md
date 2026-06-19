@@ -1005,7 +1005,7 @@ async onFileSelected(event: Event) {
 | 簽名檔 | 1 MB | 800 |
 | 證明文件（原住民 / 低收入 / 殘障 / 身分證 / 最高學歷） | 1 MB | 1600 |
 | 發票 | 1 MB | 1600 |
-| 整單批次附件（一般請款 / 預支沖銷） | 10 MB（後端安全網） | 1600（圖片自動壓縮，PDF 不壓） |
+| 整單批次附件（請款（廠商 / 一般）/ 預支沖銷） | 10 MB（後端安全網） | 1600（圖片自動壓縮，PDF 不壓） |
 
 ### 12.4 file proxy 端點
 
@@ -1030,9 +1030,9 @@ async onFileSelected(event: Event) {
 
 ### 12.5b 整單批次附件（共用元件）
 
-一般請款 / 預支沖銷表單明細下方支援批次上傳照片或文件，使用兩個共用元件：
+請款（廠商請款 / 一般請款）/ 預支沖銷表單明細下方支援批次上傳照片或文件，使用兩個共用元件：
 
-- [`<app-attachments-upload>`](../Admin/src/app/shared/components/attachments-upload.ts)（可編輯）：`[existing]` 帶入既有附件、`[disabled]` 控制唯讀；內部自管新增 / 既有 / 刪除狀態，圖片以 `ImageCompressionService`（maxSize 1600）壓縮。父表單透過 `viewChild(AttachmentsUpload)` 取得實例，於 `_buildFormData()` 呼叫 `getMeta()`（JSON → `attachments` 欄位）與 `getNewFiles()`（檔案 → `attachmentFiles` 欄位）。一般請款於 `type !== 'general'` 時送空陣列以清空。
+- [`<app-attachments-upload>`](../Admin/src/app/shared/components/attachments-upload.ts)（可編輯）：`[existing]` 帶入既有附件、`[disabled]` 控制唯讀；內部自管新增 / 既有 / 刪除狀態，圖片以 `ImageCompressionService`（maxSize 1600）壓縮。父表單透過 `viewChild(AttachmentsUpload)` 取得實例，於 `_buildFormData()` 呼叫 `getMeta()`（JSON → `attachments` 欄位）與 `getNewFiles()`（檔案 → `attachmentFiles` 欄位）。請款兩種 type（vendor / general）皆帶附件。
 - [`<app-attachments-list>`](../Admin/src/app/shared/components/attachments-list.ts)（唯讀）：`[attachments]` 帶入；用於申請詳情頁與簽核審核頁，逐項顯示檔名 + 檢視（共用 `FilePreviewModal`）。
 
 ### 12.5c 發票 OCR 上傳（一檔可展開多列）
