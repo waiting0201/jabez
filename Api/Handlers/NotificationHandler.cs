@@ -57,10 +57,16 @@ public sealed class NotificationHandler(
         // ── myRequests 段：我送出且狀態為 pending / returned 的件數 ──
         var myRequestCounts = await notificationReader.GetMyRequestCountsByTypeAsync(userId);
 
+        // ── recentApprovals 段：我送出且最近 10 分鐘內被核准的單（供前端比對時間戳跳 toast）──
+        // 窗口取 10 分鐘，安全大於前端 60 秒輪詢間隔；去重由前端以 ApprovedAt 處理
+        var recentApprovals = await notificationReader.GetRecentApprovedMyRequestsAsync(
+            userId, Clock.Now.AddMinutes(-10));
+
         // 確保 9 種類型 key 都存在（缺值補 0），方便前端固定排列
         var result = new NotificationCountsDto(
-            Approvals:  FillMissingTypes(approvalCounts),
-            MyRequests: FillMissingTypes(myRequestCounts));
+            Approvals:       FillMissingTypes(approvalCounts),
+            MyRequests:      FillMissingTypes(myRequestCounts),
+            RecentApprovals: recentApprovals);
 
         return new OkObjectResult(ApiResponse.Ok(result));
     }

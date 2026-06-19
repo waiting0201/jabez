@@ -23,6 +23,19 @@
 - **Email**：直接呼叫 SMTP（同步）。失敗以 `LogWarning` 紀錄，不影響業務流程。
 - **LINE**：失敗以 `LogWarning`/`LogError` 紀錄；`PushResult.ErrorCategory` 分類「未加好友」/「已封鎖」/「其他」。Email 與 LINE 失敗互不影響。
 
+### 站內鈴鐺（即時輪詢 + Toast）
+
+除 Email / LINE 外，前端右上角鈴鐺提供**站內準即時通知**：
+
+- **資料來源**：`GET /me/notification-counts` 回 `{approvals, myRequests, recentApprovals}`。
+- **輪詢**：前端 `NotificationService.startPolling()`（由 `MainLayout` 啟停）每 **60 秒**呼叫一次更新 signal；鈴鐺紅點與 dropdown 明細同步更新（Angular signal 精準更新，**畫面不刷新**）。分頁切到背景（`document.hidden`）時**暫停發送**以省 Azure Functions 請求，切回前景立即補抓一次。
+- **Toast（ngx-toastr）**：比對基準後跳出兩種提示：
+  - **待我簽核增加** → `您有 N 件新的待簽核`（純前端比對 `approvals` 總和增量，零後端依賴）。
+  - **我的單被核准** → `您有 N 件申請已核准`。因 `myRequests`（pending/returned）偵測不到核准（核准是離開 pending），後端 `recentApprovals` 額外回傳「最近 10 分鐘內被核准的我的單」`[{type, id, approvedAt}]`（`NotificationReadService.GetRecentApprovedMyRequestsAsync`：9 種父表 `ApprovalStatus='approved'` JOIN 多型 `ApprovalRecords` 取核准時間）。前端以 `localStorage` 記錄最後已提示 `approvedAt` 去重，**後端無狀態、無「已讀」資料表**。
+- **首次** refresh 只設基準不跳 toast，避免登入瞬間洗版。
+
+> 涉及檔案：`Admin/.../notifications/services/notification.service.ts`、`Admin/.../layout/main-layout/main-layout.ts`、`Api/Handlers/NotificationHandler.cs`、`Api/Services/Dapper/NotificationReadService.cs`、`Api/Models/Dtos/NotificationDtos.cs`。
+
 ---
 
 ## 2. 系統開關
