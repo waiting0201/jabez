@@ -523,11 +523,11 @@ export class PaymentForm implements OnInit {
 
     fd.append('invoices', JSON.stringify(invoicesMeta));
 
-    // 整單批次附件：僅一般請款帶入；其他類型送空陣列讓後端清空（切換類型不殘留）
+    // 整單批次附件：廠商請款 / 一般請款皆帶入
     const att = this.attachmentsUpload();
-    const attMeta = (type === 'general' && att) ? att.getMeta() : [];
+    const attMeta = att ? att.getMeta() : [];
     fd.append('attachments', JSON.stringify(attMeta));
-    if (type === 'general' && att) {
+    if (att) {
       att.getNewFiles().forEach(f => fd.append('attachmentFiles', f, f.name));
     }
     return fd;

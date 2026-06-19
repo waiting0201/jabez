@@ -314,10 +314,8 @@
           </div>
         </div>
 
-        <!-- 附件（僅一般請款） -->
-        @if (form.get('type')?.value === 'general') {
-          <app-attachments-upload [existing]="loadedAttachments" [disabled]="isReadOnly" />
-        }
+        <!-- 附件（廠商請款 / 一般請款皆可） -->
+        <app-attachments-upload [existing]="loadedAttachments" [disabled]="isReadOnly" />
 
         <!-- 指定審核者 -->
         @if (hasDesignatedStep && !isReadOnly) {
