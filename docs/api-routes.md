@@ -209,7 +209,7 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/me/notification-counts` | 鈴噹通知件數聚合：回 `{approvals, myRequests}`，兩段皆為 9 種申請類型 → 件數的 dictionary。`approvals` 走 reviewer 過濾，`myRequests` 統計當前使用者送出且狀態為 `pending` / `returned` 的件數。登入即可呼叫 |
+| GET | `/me/notification-counts` | 鈴噹通知件數聚合：回 `{approvals, myRequests, recentApprovals}`。`approvals` / `myRequests` 為 9 種申請類型 → 件數的 dictionary（前者走 reviewer 過濾，後者統計當前使用者送出且狀態為 `pending` / `returned` 的件數）。`recentApprovals` 為當前使用者「最近 10 分鐘內被核准」的單清單 `[{type, id, approvedAt}]`，供前端輪詢時比對時間戳跳「已核准」toast（後端無狀態，去重由前端 localStorage 處理）。登入即可呼叫；前端每 60 秒輪詢（分頁背景暫停） |
 | GET | `/me/user` | 員工查看**自己**的帳號資料（回傳與 `/users/{id}` 同型別 `UserDetailDto`，含薪資 / 加給 / 勞健保覆寫 / 各證明檔 URL / 頭像 / 簽名 / 部門 / 職稱）。從 JWT `sub` 取自身 id，**登入即可，不需 `users:read`**。供「個人資訊」唯讀頁用 |
 | GET | `/me/profile` | 員工查看**自己**的人事資料卡（回傳與 `/users/{id}/profile` 同型別 `EmployeeProfileDetailDto`，含 9 張子表 + 健保眷屬）。**登入即可，不需 `users:read`** |
 | GET | `/me/files/{container}/{fileName}` | 員工自助讀取**自己的** PII 檔案代理。白名單容器：`id-cards` / `education-proofs` / `indigenous-proofs` / `low-income-proofs` / `disabled-proofs` / `avatars` / `signatures`；非白名單回 404。安全機制：`fileName` 必須以自身 `userId` 開頭（後接 `.` 或 `_`），否則 403，避免員工竄改 fileName 讀他人檔案。**登入即可，不需 `users:read`**（管理端 `/files/<container>` 仍需 `users:read`） |

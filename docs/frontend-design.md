@@ -1190,6 +1190,15 @@ export class AuthService {
 }
 ```
 
+### 15.4 背景輪詢 + Toast Pattern（鈴鐺通知）
+
+需要「準即時」更新但不導入 WebSocket / SignalR 時，用 root service 定時輪詢更新 signal（畫面不刷新），並在偵測到變化時跳 toast。範本：`NotificationService`（`features/admin/notifications/services/notification.service.ts`）。
+
+- **輪詢**：`rxjs` `timer(0, INTERVAL_MS).subscribe(...)`，由畫面殼層（`MainLayout`）`ngOnInit` 啟動、`ngOnDestroy` 取消（`startPolling()` / `stopPolling()`）。
+- **省請求**：每 tick 先判 `if (document.hidden) return;` 跳過發送；監聽 `visibilitychange`，切回前景立即補抓一次。
+- **Toast 去重**：service 內保留比對基準（`private prevXxx` / `localStorage`），**首次** refresh 只設基準不跳 toast；toast 邏輯統一寫在 `refresh()` 的 `tap` 內，使輪詢 / 開 dropdown / 自送單後共用同一比對而天然去重。
+- 間隔常數抽成 module 級 `const`（如 `POLL_INTERVAL_MS = 60_000`），勿散落魔術數字。
+
 ---
 
 ## 16. 控制流（@if / @for / @switch）
