@@ -12,6 +12,10 @@ export interface OcrItem {
   amount: number;
   invoiceDate: string;
   docType: 'invoice' | 'ticket';
+  /** 買方抬頭（統一發票買受人）；交通票根為空字串 */
+  buyerName: string;
+  /** 買方統編（統一發票買受人）；交通票根為空字串 */
+  buyerTaxId: string;
 }
 
 @Injectable({providedIn: 'root'})

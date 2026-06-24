@@ -290,6 +290,14 @@
                         </td>
                       }
                     </tr>
+                    @if (!isReadOnly && invoiceWarnings.has(ctrl.get('id')?.value)) {
+                      <tr>
+                        <td colspan="7" class="text-danger small py-1 ps-3 border-0">
+                          <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                          {{ invoiceWarnings.get(ctrl.get('id')?.value) }}
+                        </td>
+                      </tr>
+                    }
                   } @empty {
                     <tr>
                       <td [attr.colspan]="isReadOnly ? 6 : 7" class="text-center text-muted py-4 small">尚未新增發票</td>
