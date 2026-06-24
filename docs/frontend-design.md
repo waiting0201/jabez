@@ -1048,8 +1048,25 @@ async onFileSelected(event: Event) {
    - 陣列為空（沒辨識到）→ placeholder 留空供手動輸入。
 4. `docType==='ticket'` 時各表單套用各自規則（`note='票號'`、出差請款另帶 `category='交通費'`）；金額帶入 `unitPrice/totalPrice`（+ 預支沖銷 `cashAmount`）、`quantity='1式'`。
 5. `isAnyOcrPending` 控制送出按鈕禁用，存檔組 FormData 的逐列 `fileMap.get(id)` → `append('files')` 迴圈不變。
+6. **買方抬頭/統編驗證**：OCR 結果含 `buyerName`/`buyerTaxId`，填值後對 `docType==='invoice'` 的列呼叫共用工具 [`validateInvoiceBuyer`](../Admin/src/app/shared/utils/invoice-buyer-validator.ts) 比對公司白名單（4 組抬頭＋統編）。不符時 `invoiceWarnings.set(rowId, msg)`（`invoiceWarnings = new Map<string,string>()`，key = 列 id），刪列時一併 `delete`。**警告僅顯示、不阻擋送出、不持久化**。
 
 > 多張擠在一張照片時辨識準確度較低，各列辨識後仍需人工核對（欄位皆可手動修改）。
+
+#### 明細列下方警告列 pattern
+
+在 `@for` 的明細 `<tr>` **之後**，插入一條條件式警告列（沿用既有錯誤樣式 `text-danger small` + `alert-triangle` icon），`colspan` 取該表實際欄數（請款 7 / 出差請款 11 / 預支沖銷 12 / 出差預支沖銷 10）；有 readonly 模式者加 `!isReadOnly` 守衛：
+
+```html
+</tr>
+@if (invoiceWarnings.has(ctrl.get('id')?.value)) {
+  <tr>
+    <td colspan="<欄數>" class="text-danger small py-1 ps-3 border-0">
+      <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+      {{ invoiceWarnings.get(ctrl.get('id')?.value) }}
+    </td>
+  </tr>
+}
+```
 
 ### 12.5 外部 API 即時查詢欄位（blur 觸發 pattern）
 
