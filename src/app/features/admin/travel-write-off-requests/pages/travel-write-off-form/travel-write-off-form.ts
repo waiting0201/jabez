@@ -9,7 +9,8 @@ import heic2any from 'heic2any';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {TravelWriteOffRequestService} from '../../services/travel-write-off-request.service';
-import {PaymentRequestService} from '../../../payment-requests/services/payment-request.service';
+import {PaymentRequestService, OcrItem} from '../../../payment-requests/services/payment-request.service';
+import {validateInvoiceBuyer} from '../../../../../shared/utils/invoice-buyer-validator';
 import {TravelSummary, ITEM_CATEGORIES} from '../../models/travel-write-off-request.model';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
@@ -109,6 +110,17 @@ export class TravelWriteOffForm implements OnInit {
   /** IDs of rows currently being OCR-processed */
   ocrLoadingIds = new Set<string>();
   get isAnyOcrPending(): boolean { return this.ocrLoadingIds.size > 0; }
+
+  /** 發票買方抬頭/統編驗證警告（key = 列 id，value = 警告訊息）；僅供顯示，不阻擋送出 */
+  invoiceWarnings = new Map<string, string>();
+
+  /** OCR 填值後驗證買方抬頭/統編（僅統一發票）；不符則記錄該列警告 */
+  private _checkBuyer(rowId: string, item: OcrItem) {
+    if (item.docType !== 'invoice') { this.invoiceWarnings.delete(rowId); return; }
+    const r = validateInvoiceBuyer(item.buyerName ?? '', item.buyerTaxId ?? '');
+    if (r.level === 'warn') this.invoiceWarnings.set(rowId, r.message!);
+    else this.invoiceWarnings.delete(rowId);
+  }
 
   /** File preview modal */
   previewFile: PreviewFileData | null = null;
@@ -229,6 +241,7 @@ export class TravelWriteOffForm implements OnInit {
     const url = ctrl.get('previewUrl')?.value as string;
     if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
     this.fileMap.delete(id);
+    this.invoiceWarnings.delete(id);
     this.itemArray.removeAt(i);
   }
 
@@ -266,6 +279,7 @@ export class TravelWriteOffForm implements OnInit {
             quantity:    '1式',
             ...(results[0].docType === 'ticket' ? { note: '票號' } : {}),
           });
+          this._checkBuyer(id, results[0]);
         }
         for (const item of results.slice(1)) {
           const newId      = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -278,6 +292,7 @@ export class TravelWriteOffForm implements OnInit {
           );
           group.patchValue({invoiceNo: item.invoiceNo ?? '', invoiceDate: item.invoiceDate ?? ''});
           this.itemArray.push(group);
+          this._checkBuyer(newId, item);
         }
       } catch {
         // OCR 失敗 — 保留空白欄位

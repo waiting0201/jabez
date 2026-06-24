@@ -7,7 +7,8 @@ import {DomSanitizer} from '@angular/platform-browser';
 import {firstValueFrom} from 'rxjs';
 import heic2any from 'heic2any';
 import {TravelPaymentRequestService} from '../../services/travel-payment-request.service';
-import {PaymentRequestService} from '../../../payment-requests/services/payment-request.service';
+import {PaymentRequestService, OcrItem} from '../../../payment-requests/services/payment-request.service';
+import {validateInvoiceBuyer} from '../../../../../shared/utils/invoice-buyer-validator';
 import {ProjectService} from '../../../projects/services/project.service';
 import {Project} from '../../../projects/models/project.model';
 import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, ITEM_CATEGORIES, DesignatedReviewer, TravelPaymentRequest} from '../../models/travel-payment-request.model';
@@ -50,6 +51,17 @@ export class TravelPaymentForm implements OnInit {
   /** 正在 OCR 辨識中的列 ID */
   ocrLoadingIds = new Set<string>();
   get isAnyOcrPending(): boolean { return this.ocrLoadingIds.size > 0; }
+
+  /** 發票買方抬頭/統編驗證警告（key = 列 id，value = 警告訊息）；僅供顯示，不阻擋送出 */
+  invoiceWarnings = new Map<string, string>();
+
+  /** OCR 填值後驗證買方抬頭/統編（僅統一發票）；不符則記錄該列警告 */
+  private _checkBuyer(rowId: string, item: OcrItem) {
+    if (item.docType !== 'invoice') { this.invoiceWarnings.delete(rowId); return; }
+    const r = validateInvoiceBuyer(item.buyerName ?? '', item.buyerTaxId ?? '');
+    if (r.level === 'warn') this.invoiceWarnings.set(rowId, r.message!);
+    else this.invoiceWarnings.delete(rowId);
+  }
 
   /** 檔案預覽 modal */
   previewFile: PreviewFileData | null = null;
@@ -254,6 +266,7 @@ export class TravelPaymentForm implements OnInit {
     const url  = ctrl.get('previewUrl')?.value as string;
     if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
     this.fileMap.delete(id);
+    this.invoiceWarnings.delete(id);
     this.itemArray.removeAt(i);
   }
 
@@ -294,6 +307,7 @@ export class TravelPaymentForm implements OnInit {
             quantity:    '1式',
             ...(results[0].docType === 'ticket' ? { note: '票號', category: '交通費' } : {}),
           });
+          this._checkBuyer(id, results[0]);
         }
         for (const item of results.slice(1)) {
           const newId      = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -306,6 +320,7 @@ export class TravelPaymentForm implements OnInit {
             isTicket ? '票號' : '', item.invoiceNo ?? '', item.invoiceDate ?? '',
             this.itemArray.length, previewUrl,
           ));
+          this._checkBuyer(newId, item);
         }
       } catch {
         // OCR 失敗 — 保留空白欄位
