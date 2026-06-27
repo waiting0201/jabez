@@ -19,6 +19,8 @@ public sealed record ApprovalItemDto(
     string?           Description,
     bool              IsActive,
     string?           ApplicationType,
+    int?              DepartmentId,
+    string?           DepartmentName,
     ApprovalStepDto[] Steps,
     DateTime          CreatedAt);
 
@@ -37,14 +39,16 @@ public sealed record CreateApprovalItemRequest(
     string  Code,
     string? Description     = null,
     bool    IsActive        = true,
-    string? ApplicationType = null);
+    string? ApplicationType = null,
+    int?    DepartmentId    = null);
 
 public sealed record UpdateApprovalItemRequest(
     string?  Name,
     string?  Code,
     string?  Description,
     bool?    IsActive,
-    string?  ApplicationType);
+    string?  ApplicationType,
+    int?     DepartmentId);
 
 public sealed record CreateApprovalStepRequest(
     int     StepOrder,

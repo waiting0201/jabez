@@ -514,18 +514,13 @@ public sealed class WriteOffRequestHandler(
             }
         }
 
-        // 自動關聯簽核流程（依 ApplicationType 查找啟用的流程）
+        var submitter = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+
+        // 自動關聯簽核流程（依申請人部門挑流程：部門專屬優先，否則退回通用預設）
         if (wo.ApprovalItemId is null)
-        {
-            var flow = await db.ApprovalItems
-                .AsNoTracking()
-                .FirstOrDefaultAsync(ai => ai.ApplicationType == RequestType && ai.IsActive);
-            if (flow is not null)
-                wo.ApprovalItemId = flow.Id;
-        }
+            wo.ApprovalItemId = await approvalFlow.ResolveApprovalItemIdAsync(RequestType, submitter?.DepartmentId);
 
         // Superadmin 無部門歸屬，直接自動核准
-        var submitter = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         if (submitter?.IsSuperAdmin == true)
         {
             wo.ApprovalStatus   = "approved";

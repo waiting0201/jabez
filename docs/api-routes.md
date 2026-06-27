@@ -65,8 +65,8 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/approval-items/active?type=<applicationType>` | **輕量摘要：免 `approvals:read` 權限**，回傳該類型啟用流程 `{id, applicationType, steps:[{stepOrder, useApplicantDesignated}]}`，供申請表單判斷是否顯示「指定審核者」欄位 |
-| GET/POST | `/approval-items` | 簽核項目列表 / 新增（需 `approvals:read` / `approvals:write`） |
+| GET | `/approval-items/active?type=<applicationType>` | **輕量摘要：免 `approvals:read` 權限**，回傳「**呼叫者部門實際會走**」的啟用流程 `{id, applicationType, steps:[{stepOrder, useApplicantDesignated}]}`（部門專屬優先，否則退回通用預設；部門由 JWT `department_id` 解析），供申請表單判斷是否顯示「指定審核者」欄位 |
+| GET/POST | `/approval-items` | 簽核項目列表 / 新增（需 `approvals:read` / `approvals:write`；body 含 `departmentId?` 部門維度，唯一性以 `(applicationType, departmentId)` 判定） |
 | GET/PUT/PATCH/DELETE | `/approval-items/{id}` | 簽核項目 CRUD |
 | POST | `/approval-items/{id}/steps` | 新增簽核步驟 |
 | PUT/PATCH | `/approval-items/{id}/steps/{stepId}` | 更新簽核步驟 |

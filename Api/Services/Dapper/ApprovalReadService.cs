@@ -12,22 +12,27 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
         return BuildDtos(rows);
     }
 
-    public async Task<ApprovalFlowSummaryDto?> GetActiveByTypeAsync(string applicationType)
+    public async Task<ApprovalFlowSummaryDto?> GetActiveByTypeAsync(string applicationType, int? departmentId)
     {
         // 僅讀取「是否含 UseApplicantDesignated 步驟」所需最小欄位；
         // 故意不 JOIN Departments / JobTitles，避免敏感設定外洩給未授權呼叫者。
-        // 一個 ApplicationType 至多對應一個啟用流程（CreateAsync/UpdateAsync 已強制唯一），
-        // 但可能有多筆 step，故用 QueryAsync 後手動聚合。
+        // 同一 ApplicationType 可能有多個流程（各部門專屬 + 一個通用預設），
+        // 故先以子查詢挑出「呼叫者部門實際會走」的那一筆（部門專屬優先，否則退回通用預設），再取其 steps。
         const string sql = """
             SELECT ai.Id, ai.ApplicationType,
                    s.StepOrder, s.UseApplicantDesignated
             FROM ApprovalItems ai
             LEFT JOIN ApprovalSteps s ON ai.Id = s.ApprovalItemId
-            WHERE ai.ApplicationType = @Type AND ai.IsActive = 1
+            WHERE ai.Id = (
+                SELECT TOP 1 ai2.Id FROM ApprovalItems ai2
+                WHERE ai2.ApplicationType = @Type AND ai2.IsActive = 1
+                  AND (ai2.DepartmentId = @DepartmentId OR ai2.DepartmentId IS NULL)
+                ORDER BY CASE WHEN ai2.DepartmentId IS NULL THEN 1 ELSE 0 END
+            )
             ORDER BY s.StepOrder
             """;
 
-        var rows = (await db.QueryAsync<dynamic>(sql, new { Type = applicationType })).ToList();
+        var rows = (await db.QueryAsync<dynamic>(sql, new { Type = applicationType, DepartmentId = departmentId })).ToList();
 
         if (rows.Count == 0) return null;
 
@@ -48,11 +53,12 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
     public async Task<ApprovalItemDto?> GetByIdAsync(int id)
     {
         const string sql = """
-            SELECT ai.Id, ai.Name, ai.Code, ai.Description, ai.IsActive, ai.ApplicationType, ai.CreatedAt,
-                   s.Id AS StepId, s.StepOrder, s.DepartmentId, d.Name AS DepartmentName,
+            SELECT ai.Id, ai.Name, ai.Code, ai.Description, ai.IsActive, ai.ApplicationType, ai.DepartmentId, dd.Name AS ItemDepartmentName, ai.CreatedAt,
+                   s.Id AS StepId, s.StepOrder, s.DepartmentId AS StepDepartmentId, d.Name AS DepartmentName,
                    s.JobTitleId, j.Name AS JobTitleName,
                    s.UseApplicantDepartment, s.UseDirectSupervisor, s.UseApplicantDesignated, s.Note
             FROM ApprovalItems ai
+            LEFT JOIN Departments dd  ON ai.DepartmentId = dd.Id
             LEFT JOIN ApprovalSteps s ON ai.Id = s.ApprovalItemId
             LEFT JOIN Departments d   ON s.DepartmentId = d.Id
             LEFT JOIN JobTitles j     ON s.JobTitleId = j.Id
@@ -67,11 +73,12 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
     private async Task<IEnumerable<dynamic>> QueryAllRowsAsync()
     {
         const string sql = """
-            SELECT ai.Id, ai.Name, ai.Code, ai.Description, ai.IsActive, ai.ApplicationType, ai.CreatedAt,
-                   s.Id AS StepId, s.StepOrder, s.DepartmentId, d.Name AS DepartmentName,
+            SELECT ai.Id, ai.Name, ai.Code, ai.Description, ai.IsActive, ai.ApplicationType, ai.DepartmentId, dd.Name AS ItemDepartmentName, ai.CreatedAt,
+                   s.Id AS StepId, s.StepOrder, s.DepartmentId AS StepDepartmentId, d.Name AS DepartmentName,
                    s.JobTitleId, j.Name AS JobTitleName,
                    s.UseApplicantDepartment, s.UseDirectSupervisor, s.UseApplicantDesignated, s.Note
             FROM ApprovalItems ai
+            LEFT JOIN Departments dd  ON ai.DepartmentId = dd.Id
             LEFT JOIN ApprovalSteps s ON ai.Id = s.ApprovalItemId
             LEFT JOIN Departments d   ON s.DepartmentId = d.Id
             LEFT JOIN JobTitles j     ON s.JobTitleId = j.Id
@@ -83,20 +90,20 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
 
     private static IEnumerable<ApprovalItemDto> BuildDtos(IEnumerable<dynamic> rows)
     {
-        var dict = new Dictionary<int, (string Name, string Code, string? Desc, bool IsActive, string? AppType, DateTime CreatedAt, List<ApprovalStepDto> Steps)>();
+        var dict = new Dictionary<int, (string Name, string Code, string? Desc, bool IsActive, string? AppType, int? DeptId, string? DeptName, DateTime CreatedAt, List<ApprovalStepDto> Steps)>();
 
         foreach (var row in rows)
         {
             int id = (int)row.Id;
             if (!dict.ContainsKey(id))
-                dict[id] = ((string)row.Name, (string)row.Code, (string?)row.Description, (bool)row.IsActive, (string?)row.ApplicationType, (DateTime)row.CreatedAt, []);
+                dict[id] = ((string)row.Name, (string)row.Code, (string?)row.Description, (bool)row.IsActive, (string?)row.ApplicationType, (int?)row.DepartmentId, (string?)row.ItemDepartmentName, (DateTime)row.CreatedAt, []);
 
             if (row.StepId is not null)
             {
                 dict[id].Steps.Add(new ApprovalStepDto(
                     (int)row.StepId,
                     (int)row.StepOrder,
-                    (int?)row.DepartmentId,
+                    (int?)row.StepDepartmentId,
                     (string?)row.DepartmentName,
                     (int?)row.JobTitleId,
                     (string?)row.JobTitleName,
@@ -114,6 +121,8 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
             kv.Value.Desc,
             kv.Value.IsActive,
             kv.Value.AppType,
+            kv.Value.DeptId,
+            kv.Value.DeptName,
             kv.Value.Steps.ToArray(),
             kv.Value.CreatedAt));
     }

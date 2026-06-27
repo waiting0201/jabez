@@ -24,10 +24,15 @@ public class ApprovalItemConfiguration : IEntityTypeConfiguration<ApprovalItem>
         builder.Property(a => a.ApplicationType)
                .HasMaxLength(30);
 
-        // Only one flow per application type
-        builder.HasIndex(a => a.ApplicationType)
+        // 每個 (申請類型, 部門) 至多一個流程；DepartmentId 為 null 代表該類型的通用預設流程
+        builder.HasIndex(a => new { a.ApplicationType, a.DepartmentId })
                .IsUnique()
                .HasFilter("[ApplicationType] IS NOT NULL");
+
+        builder.HasOne(a => a.Department)
+               .WithMany()
+               .HasForeignKey(a => a.DepartmentId)
+               .OnDelete(DeleteBehavior.SetNull);
 
         builder.Property(a => a.Description)
                .HasMaxLength(500);

@@ -2,6 +2,7 @@ using Jabez.Api.Common;
 using Jabez.Api.Data;
 using Jabez.Api.Models.Dtos;
 using Jabez.Api.Models.Entities;
+using Jabez.Api.Services;
 using Jabez.Api.Services.Dapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Jabez.Api.Handlers;
 
-public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader)
+public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader, IJwtService jwtService)
 {
     // ── Approval Items ───────────────────────────────────────────────────
 
@@ -29,7 +30,11 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
         if (string.IsNullOrWhiteSpace(type))
             return new BadRequestObjectResult(ApiResponse.Fail("Query parameter 'type' is required."));
 
-        var flow = await reader.GetActiveByTypeAsync(type);
+        // 依呼叫者部門解析「實際會走的流程」：部門專屬優先，否則退回通用預設
+        var principal = await jwtService.ValidateRequestAsync(req);
+        int? departmentId = int.TryParse(principal?.FindFirst("department_id")?.Value, out var deptId) ? deptId : null;
+
+        var flow = await reader.GetActiveByTypeAsync(type, departmentId);
         return new OkObjectResult(ApiResponse.Ok(flow));
     }
 
@@ -57,8 +62,8 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
             throw AppException.Conflict($"Approval item code '{body.Code}' already exists.");
 
         if (body.ApplicationType is not null &&
-            await db.ApprovalItems.AnyAsync(a => a.ApplicationType == body.ApplicationType))
-            throw AppException.Conflict($"An approval flow for application type '{body.ApplicationType}' already exists.");
+            await db.ApprovalItems.AnyAsync(a => a.ApplicationType == body.ApplicationType && a.DepartmentId == body.DepartmentId))
+            throw AppException.Conflict($"An approval flow for application type '{body.ApplicationType}' (department {body.DepartmentId?.ToString() ?? "預設"}) already exists.");
 
         var item = new ApprovalItem
         {
@@ -67,6 +72,7 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
             Description     = body.Description,
             IsActive        = body.IsActive,
             ApplicationType = body.ApplicationType,
+            DepartmentId    = body.DepartmentId,
             CreatedAt       = Clock.Now,
         };
         db.ApprovalItems.Add(item);
@@ -100,11 +106,14 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
 
         if (body.ApplicationType is not null)
         {
+            // ApplicationType 與 DepartmentId 同屬「流程身分」，一併更新並以 (類型, 部門) 組合判重。
+            // 編輯表單一律帶完整值；DepartmentId 為 null 代表通用預設流程。
             var conflictType = body.ApplicationType == "" ? null : body.ApplicationType;
             if (conflictType is not null &&
-                await db.ApprovalItems.AnyAsync(a => a.ApplicationType == conflictType && a.Id != intId))
-                throw AppException.Conflict($"An approval flow for application type '{conflictType}' already exists.");
+                await db.ApprovalItems.AnyAsync(a => a.ApplicationType == conflictType && a.DepartmentId == body.DepartmentId && a.Id != intId))
+                throw AppException.Conflict($"An approval flow for application type '{conflictType}' (department {body.DepartmentId?.ToString() ?? "預設"}) already exists.");
             item.ApplicationType = conflictType;
+            item.DepartmentId    = body.DepartmentId;
         }
 
         await db.SaveChangesAsync();

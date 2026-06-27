@@ -13,6 +13,30 @@
 | Step 3 | 財務部主管(JT=4) | 填入預計撥款日，核決及撥款 |
 | Step 4 | 總監(JT=5, 總監室) | 最終核決 |
 
+## 依部門挑流程（部門專屬 + 通用 fallback，2026-06 新增）
+
+`ApprovalItem` 新增 `DepartmentId`（nullable）欄位，讓**同一申請類型可同時存在多個流程**：
+
+- `DepartmentId == null` → 該申請類型的**通用預設流程**（fallback，每類型至多一個）
+- `DepartmentId == X` → **部門 X 專屬流程**（每 (類型, 部門) 至多一個）
+- 唯一索引由「`ApplicationType` 唯一」改為「`(ApplicationType, DepartmentId)` filtered unique」；FK→Department `OnDelete=SetNull`（部門刪除時該流程自動退回為通用預設）。
+
+**送單挑流程**：8 個 `*RequestHandler.SubmitAsync` 在首次送出（`ApprovalItemId is null`）時呼叫共用 helper [ApprovalFlowService.ResolveApprovalItemIdAsync](../../Api/Services/ApprovalFlowService.cs)`(applicationType, applicantDepartmentId)`：
+
+```
+優先：ApplicationType == type && IsActive && DepartmentId == 申請人部門
+否則：ApplicationType == type && IsActive && DepartmentId == null（通用預設）
+皆無：ApprovalItemId 保持 null（等同無簽核流程）
+```
+
+- 申請人部門取自 `submitter.DepartmentId`（送出者本人）。Superadmin 無部門 → 落到通用預設（但 Superadmin 另有自動核准捷徑，通常不經此）。
+- **退回重送不重挑**：`ApprovalItemId` 僅在首次送出解析，之後沿用，確保流程一致。
+- **步驟解析 / 待審清單不受影響**：`ResolveStartingStepAsync` 與 `StepMatchClause` 讀的是申請單上已存的 `ApprovalItemId`，與「哪個流程」解耦，天然相容。
+- **`GET /approval-items/active`**（申請表單偵測指定審核步驟用）同樣部門感知：以 JWT `department_id` 套用相同 fallback，回傳「呼叫者實際會走」的流程，由 [ApprovalReadService.GetActiveByTypeAsync](../../Api/Services/Dapper/ApprovalReadService.cs) 子查詢挑單一流程後聚合 steps。
+- **設定頁**（[approval-list](../../Admin/src/app/features/admin/approvals/pages/approval-list/)）新增「適用部門」下拉（含「通用（預設）」= null），列表多一欄顯示部門；建立 / 編輯以 `(類型, 部門)` 判重，後端重複回 409。
+
+> 典型用法：步驟結構大致相同、只差某一關審核主管時，**複製通用預設流程 → 改那一關的部門 / 職稱 → 綁定該部門**即可。
+
 ## 狀態流轉
 
 ```
