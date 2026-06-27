@@ -16,13 +16,50 @@ public sealed class ApprovalFlowService(
 {
     public async Task<int?> ResolveApprovalItemIdAsync(string applicationType, int? applicantDepartmentId)
     {
-        return await db.ApprovalItems
+        // 部門階層繼承：優先序＝申請人部門 > 最近祖先部門（沿 ParentId 逐層往上）> 通用預設(null)。
+        // 子部門未設專屬流程時，會自動沿用最近一層有設定流程的上層部門。
+        var chain = await BuildDepartmentChainAsync(applicantDepartmentId);
+
+        var candidates = await db.ApprovalItems
             .AsNoTracking()
             .Where(ai => ai.ApplicationType == applicationType && ai.IsActive
-                && (ai.DepartmentId == applicantDepartmentId || ai.DepartmentId == null))
-            .OrderByDescending(ai => ai.DepartmentId)   // 非 null（部門專屬）排在 null（通用預設）之前
-            .Select(ai => (int?)ai.Id)
-            .FirstOrDefaultAsync();
+                && (ai.DepartmentId == null || chain.Contains(ai.DepartmentId.Value)))
+            .Select(ai => new { ai.Id, ai.DepartmentId })
+            .ToListAsync();
+
+        if (candidates.Count == 0)
+            return null;
+
+        // 距離越近越優先：自身=0、父=1…；通用預設(null)排最後。
+        return candidates
+            .OrderBy(c => c.DepartmentId is null ? int.MaxValue : chain.IndexOf(c.DepartmentId.Value))
+            .Select(c => (int?)c.Id)
+            .First();
+    }
+
+    /// <summary>
+    /// 建立部門階層鏈：由指定部門逐層沿 ParentId 往上，回傳 [自身, 父, 祖父, …]（順序＝由近到遠）。
+    /// departmentId 為 null 時回傳空清單。內含 visited 防止部門循環。
+    /// </summary>
+    private async Task<List<int>> BuildDepartmentChainAsync(int? departmentId)
+    {
+        var chain = new List<int>();
+        if (departmentId is null)
+            return chain;
+
+        // 部門表筆數少，一次載入 (Id, ParentId) 在記憶體往上走，避免逐層 round-trip。
+        var parentMap = await db.Departments
+            .AsNoTracking()
+            .Select(d => new { d.Id, d.ParentId })
+            .ToDictionaryAsync(d => d.Id, d => d.ParentId);
+
+        int? current = departmentId;
+        while (current is not null && !chain.Contains(current.Value))
+        {
+            chain.Add(current.Value);
+            current = parentMap.TryGetValue(current.Value, out var parent) ? parent : null;
+        }
+        return chain;
     }
 
     public async Task<(int startStep, bool autoApproved, EscalationResult? escalation)>
