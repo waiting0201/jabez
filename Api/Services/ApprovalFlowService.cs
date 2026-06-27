@@ -14,6 +14,17 @@ public sealed class ApprovalFlowService(
     AppDbContext db,
     IEscalationService escalationService) : IApprovalFlowService
 {
+    public async Task<int?> ResolveApprovalItemIdAsync(string applicationType, int? applicantDepartmentId)
+    {
+        return await db.ApprovalItems
+            .AsNoTracking()
+            .Where(ai => ai.ApplicationType == applicationType && ai.IsActive
+                && (ai.DepartmentId == applicantDepartmentId || ai.DepartmentId == null))
+            .OrderByDescending(ai => ai.DepartmentId)   // 非 null（部門專屬）排在 null（通用預設）之前
+            .Select(ai => (int?)ai.Id)
+            .FirstOrDefaultAsync();
+    }
+
     public async Task<(int startStep, bool autoApproved, EscalationResult? escalation)>
         ResolveStartingStepAsync(int? approvalItemId, Guid applicantId, string applicationType,
             IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers = null)

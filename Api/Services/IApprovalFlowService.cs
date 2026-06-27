@@ -26,6 +26,14 @@ public interface IApprovalFlowService
             IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers = null);
 
     /// <summary>
+    /// 依申請人部門挑選啟用中的簽核流程：優先回傳該部門專屬流程，
+    /// 找不到時退回該申請類型的通用預設流程（DepartmentId == null）。皆無則回 null。
+    /// </summary>
+    /// <param name="applicationType">申請類型：payment_request | leave | travel | overtime | advance | write_off | travel_write_off | travel_payment | holiday_travel</param>
+    /// <param name="applicantDepartmentId">申請人部門 ID（可為 null）</param>
+    Task<int?> ResolveApprovalItemIdAsync(string applicationType, int? applicantDepartmentId);
+
+    /// <summary>
     /// 從指定步驟開始，跳過所有找不到審核者或「應自動跳過」的步驟。
     /// 自動跳過條件（任一成立）：
     ///   (A) 解析後的審核者池被 approvedReviewerIds 完全覆蓋，且代簽人為「總監」（JobTitle.Level == 1）

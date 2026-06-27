@@ -426,18 +426,13 @@ public sealed class AdvanceRequestHandler(
             }
         }
 
-        // 自動關聯簽核流程
+        var submitter = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+
+        // 自動關聯簽核流程（依申請人部門挑流程：部門專屬優先，否則退回通用預設）
         if (ar.ApprovalItemId is null)
-        {
-            var flow = await db.ApprovalItems
-                .AsNoTracking()
-                .FirstOrDefaultAsync(ai => ai.ApplicationType == "advance" && ai.IsActive);
-            if (flow is not null)
-                ar.ApprovalItemId = flow.Id;
-        }
+            ar.ApprovalItemId = await approvalFlow.ResolveApprovalItemIdAsync("advance", submitter?.DepartmentId);
 
         // Superadmin 直接自動核准
-        var submitter = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         if (submitter?.IsSuperAdmin == true)
         {
             ar.ApprovalStatus   = "approved";

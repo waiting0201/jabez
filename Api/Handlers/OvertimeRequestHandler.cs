@@ -269,15 +269,9 @@ public sealed class OvertimeRequestHandler(
             return new OkObjectResult(ApiResponse.Ok(saDto, "Overtime request auto-approved."));
         }
 
-        // 自動關聯簽核流程（依 ApplicationType 查找啟用的流程）
+        // 自動關聯簽核流程（依申請人部門挑流程：部門專屬優先，否則退回通用預設）
         if (item.ApprovalItemId is null)
-        {
-            var flow = await db.ApprovalItems
-                .AsNoTracking()
-                .FirstOrDefaultAsync(ai => ai.ApplicationType == "overtime" && ai.IsActive);
-            if (flow is not null)
-                item.ApprovalItemId = flow.Id;
-        }
+            item.ApprovalItemId = await approvalFlow.ResolveApprovalItemIdAsync("overtime", submitter?.DepartmentId);
 
         // 若流程中有 UseApplicantDesignated 步驟，必須有指定審核者
         if (item.ApprovalItemId.HasValue)

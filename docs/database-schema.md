@@ -19,7 +19,7 @@
 | `Department` | 部門主檔（含 ParentId 階層、**CanSeeAll / CanViewSiblings / CanViewDescendants / CanViewParent 四個可見性旗標**） |
 | `JobTitle` | 職稱主檔 |
 | `Vendor` | 廠商主檔（Name 廠商名稱/外包顧問、TaxId 統編 unique-filter index、IdNumber 身分證字號 unique-filter index（個人工作室，與 TaxId 擇一）、Phone、ContactPerson、Address、BankAccount、BankBookImageUrl 存摺封面 proxy 路徑（必填）、IdCardFrontUrl/IdCardBackUrl 身分證正反面 proxy 路徑、Note、IsActive、CreatedAt；被 PaymentRequest.VendorId 引用，FK OnDelete=Restrict 限引用中不可刪） |
-| `ApprovalItem` | 簽核流程項目 |
+| `ApprovalItem` | 簽核流程項目（含 **DepartmentId 部門維度**：null = 該 ApplicationType 通用預設流程，非 null = 某部門專屬流程；唯一索引為 `(ApplicationType, DepartmentId)` filtered unique，FK→Department OnDelete=SetNull） |
 | `ApprovalStep` | 簽核流程步驟（含 UseDirectSupervisor、UseApplicantDesignated） |
 | `ApprovalRecord` | 簽核動作記錄（含 OnBehalfOfUserId 代理標記、IsEscalated 升級標記） |
 | `EscalationOverride` | 升級審核指派（記錄被指派的升級/代理審核者，審核完成後清除） |

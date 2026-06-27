@@ -10,9 +10,11 @@ public class ApprovalItem
     public string?  Description { get; set; }
     public bool     IsActive        { get; set; } = true;
     public string?  ApplicationType { get; set; } // "payment_request" | "leave" | "travel" | "overtime" | null
+    public int?     DepartmentId    { get; set; } // null = 該申請類型的通用預設流程；非 null = 某部門專屬流程
     public DateTime CreatedAt       { get; set; } = Clock.Now;
 
     // Navigation
+    public Department?                 Department     { get; set; }
     public ICollection<ApprovalStep>   Steps          { get; set; } = [];
     public ICollection<PaymentRequest> PaymentRequests { get; set; } = [];
     public ICollection<LeaveRequest>   LeaveRequests  { get; set; } = [];
