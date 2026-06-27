@@ -4,7 +4,10 @@ import {AsyncPipe, DatePipe} from '@angular/common';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {HttpErrorResponse} from '@angular/common/http';
 import {BehaviorSubject, switchMap} from 'rxjs';
+import {take} from 'rxjs';
 import {ApprovalService} from '../../services/approval.service';
+import {DepartmentService} from '../../../departments/services/department.service';
+import {Department} from '../../../departments/models/department.model';
 import {AuthService} from '@core/auth/services/auth.service';
 
 import {
@@ -19,8 +22,11 @@ import {
 })
 export class ApprovalList {
   private approvalService = inject(ApprovalService);
+  private deptService = inject(DepartmentService);
   private authService = inject(AuthService);
   private fb = inject(FormBuilder);
+
+  departments: Department[] = [];
 
   readonly canWrite  = this.authService.hasPermission('approvals:write');
   readonly canDelete = this.authService.hasPermission('approvals:delete');
@@ -51,19 +57,24 @@ export class ApprovalList {
     description:     [''],
     isActive:        [true],
     applicationType: ['' as ApplicationType | ''],
+    departmentId:    [null as number | null],
   });
+
+  constructor() {
+    this.deptService.getAll().pipe(take(1)).subscribe(d => this.departments = d);
+  }
 
   openCreate() {
     this.editItem = null;
     this.errorMsg.set('');
-    this.form.reset({isActive: true, applicationType: ''});
+    this.form.reset({isActive: true, applicationType: '', departmentId: null});
     this.showForm = true;
   }
 
   openEdit(item: ApprovalItem) {
     this.editItem = item;
     this.errorMsg.set('');
-    this.form.patchValue({...item, applicationType: item.applicationType ?? ''});
+    this.form.patchValue({...item, applicationType: item.applicationType ?? '', departmentId: item.departmentId ?? null});
     this.showForm = true;
   }
 
@@ -71,9 +82,12 @@ export class ApprovalList {
     this.showForm = false;
   }
 
+  // 同一 (申請類型, 部門) 至多一個流程；故依目前選取的部門判斷此類型是否已被佔用。
+  // departmentId 為 null 代表「通用預設」流程。
   isTypeDisabled(value: ApplicationType | '', items: ApprovalItem[]): boolean {
     if (!value) return false;
-    return items.some(i => i.applicationType === value && i.id !== this.editItem?.id);
+    const deptId = this.form.get('departmentId')?.value ?? null;
+    return items.some(i => i.applicationType === value && (i.departmentId ?? null) === deptId && i.id !== this.editItem?.id);
   }
 
   submit() {
@@ -82,6 +96,7 @@ export class ApprovalList {
     const data = {
       ...raw,
       applicationType: raw.applicationType || undefined,
+      departmentId: raw.departmentId ?? null,
     };
     const obs = this.editItem
       ? this.approvalService.update(this.editItem.id, data)

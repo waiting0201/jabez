@@ -28,11 +28,11 @@ export class ApprovalService {
     return this.http.get<ApprovalItem>(`${environment.apiUrl}/approval-items/${id}`);
   }
 
-  create(data: Pick<ApprovalItem, 'name' | 'code' | 'description' | 'isActive' | 'applicationType'>): Observable<ApprovalItem> {
+  create(data: Pick<ApprovalItem, 'name' | 'code' | 'description' | 'isActive' | 'applicationType' | 'departmentId'>): Observable<ApprovalItem> {
     return this.http.post<ApprovalItem>(`${environment.apiUrl}/approval-items`, data);
   }
 
-  update(id: number, changes: Partial<Pick<ApprovalItem, 'name' | 'code' | 'description' | 'isActive' | 'applicationType'>>): Observable<ApprovalItem> {
+  update(id: number, changes: Partial<Pick<ApprovalItem, 'name' | 'code' | 'description' | 'isActive' | 'applicationType' | 'departmentId'>>): Observable<ApprovalItem> {
     return this.http.patch<ApprovalItem>(`${environment.apiUrl}/approval-items/${id}`, changes);
   }
 

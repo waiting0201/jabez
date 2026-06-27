@@ -44,6 +44,8 @@ export interface ApprovalItem {
   description?: string;
   isActive: boolean;
   applicationType?: ApplicationType;
+  departmentId?: number;     // null/undefined = 該類型的通用預設流程；有值 = 某部門專屬流程
+  departmentName?: string;
   steps: ApprovalStep[];
   createdAt: Date;
 }
