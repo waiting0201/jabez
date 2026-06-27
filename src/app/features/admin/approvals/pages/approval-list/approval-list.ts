@@ -63,7 +63,7 @@ export class ApprovalList {
     {value: 'overtime',        label: '加班申請'},
     {value: 'advance',         label: '預支申請'},
     {value: 'write_off',       label: '預支沖銷申請'},
-    {value: 'travel_write_off', label: '出差沖銷申請'},
+    {value: 'travel_write_off', label: '出差預支沖銷申請'},
     {value: 'holiday_travel',   label: '假日執行活動申請'},
     {value: 'travel_payment',   label: '出差請款申請'},
   ];
