@@ -13,7 +13,7 @@
 | Step 3 | 財務部主管(JT=4) | 填入預計撥款日，核決及撥款 |
 | Step 4 | 總監(JT=5, 總監室) | 最終核決 |
 
-## 依部門挑流程（部門專屬 + 通用 fallback，2026-06 新增）
+## 依部門挑流程（部門專屬 + 階層繼承 + 通用 fallback，2026-06 新增）
 
 `ApprovalItem` 新增 `DepartmentId`（nullable）欄位，讓**同一申請類型可同時存在多個流程**：
 
@@ -24,11 +24,14 @@
 **送單挑流程**：8 個 `*RequestHandler.SubmitAsync` 在首次送出（`ApprovalItemId is null`）時呼叫共用 helper [ApprovalFlowService.ResolveApprovalItemIdAsync](../../Api/Services/ApprovalFlowService.cs)`(applicationType, applicantDepartmentId)`：
 
 ```
-優先：ApplicationType == type && IsActive && DepartmentId == 申請人部門
-否則：ApplicationType == type && IsActive && DepartmentId == null（通用預設）
-皆無：ApprovalItemId 保持 null（等同無簽核流程）
+優先序（由高到低，取最先命中者）：
+  1. DepartmentId == 申請人部門（自身專屬流程）
+  2. DepartmentId == 最近祖先部門（沿 Department.ParentId 逐層往上，距離越近越優先）
+  3. DepartmentId == null（通用預設）
+  皆無：ApprovalItemId 保持 null（等同無簽核流程）
 ```
 
+- **部門階層繼承（2026-06 強化）**：子部門未設專屬流程時，會**自動沿用最近一層有設定流程的上層部門**，不必為每個子部門各複製一份。例如「營運管理部」設了流程、其下三個子部門未設，則三個子部門送單時自動套用營運管理部的流程；某子部門若另設了自己的專屬流程，則以子部門自身的為準（距離 0 最優先）。實作以 `ParentId` 建立部門鏈（EF 版記憶體往上走、Dapper `/active` 版用遞迴 CTE），兩處優先序必須一致。
 - 申請人部門取自 `submitter.DepartmentId`（送出者本人）。Superadmin 無部門 → 落到通用預設（但 Superadmin 另有自動核准捷徑，通常不經此）。
 - **退回重送不重挑**：`ApprovalItemId` 僅在首次送出解析，之後沿用，確保流程一致。
 - **步驟解析 / 待審清單不受影響**：`ResolveStartingStepAsync` 與 `StepMatchClause` 讀的是申請單上已存的 `ApprovalItemId`，與「哪個流程」解耦，天然相容。
@@ -36,6 +39,7 @@
 - **設定頁**（[approval-list](../../Admin/src/app/features/admin/approvals/pages/approval-list/)）新增「適用部門」下拉（含「通用（預設）」= null），列表多一欄顯示部門；建立 / 編輯以 `(類型, 部門)` 判重，後端重複回 409。
 
 > 典型用法：步驟結構大致相同、只差某一關審核主管時，**複製通用預設流程 → 改那一關的部門 / 職稱 → 綁定該部門**即可。
+> 一個父部門帶多個子部門時，**只需在父部門設一份流程**，子部門即自動繼承（除非子部門自設專屬流程覆蓋）。
 
 ## 狀態流轉
 

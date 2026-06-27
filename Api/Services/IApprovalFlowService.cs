@@ -26,8 +26,8 @@ public interface IApprovalFlowService
             IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers = null);
 
     /// <summary>
-    /// 依申請人部門挑選啟用中的簽核流程：優先回傳該部門專屬流程，
-    /// 找不到時退回該申請類型的通用預設流程（DepartmentId == null）。皆無則回 null。
+    /// 依申請人部門挑選啟用中的簽核流程。優先序＝申請人部門 > 最近祖先部門（沿 ParentId 逐層往上）> 通用預設(null)。
+    /// 子部門未設專屬流程時，自動沿用最近一層有設定流程的上層部門；皆無則退回通用預設，仍無則回 null。
     /// </summary>
     /// <param name="applicationType">申請類型：payment_request | leave | travel | overtime | advance | write_off | travel_write_off | travel_payment | holiday_travel</param>
     /// <param name="applicantDepartmentId">申請人部門 ID（可為 null）</param>
