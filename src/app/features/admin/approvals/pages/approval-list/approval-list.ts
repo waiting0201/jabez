@@ -65,6 +65,7 @@ export class ApprovalList {
     {value: 'write_off',       label: '預支沖銷申請'},
     {value: 'travel_write_off', label: '出差沖銷申請'},
     {value: 'holiday_travel',   label: '假日執行活動申請'},
+    {value: 'travel_payment',   label: '出差請款申請'},
   ];
 
   form = this.fb.group({
