@@ -3,7 +3,7 @@ import {RouterLink} from '@angular/router';
 import {AsyncPipe, DatePipe} from '@angular/common';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {HttpErrorResponse} from '@angular/common/http';
-import {BehaviorSubject, switchMap} from 'rxjs';
+import {BehaviorSubject, switchMap, map} from 'rxjs';
 import {take} from 'rxjs';
 import {ApprovalService} from '../../services/approval.service';
 import {DepartmentService} from '../../../departments/services/department.service';
@@ -31,8 +31,24 @@ export class ApprovalList {
   readonly canWrite  = this.authService.hasPermission('approvals:write');
   readonly canDelete = this.authService.hasPermission('approvals:delete');
 
+  // 列表依「申請類型」分組排序，使同類型相鄰；類型順序比照下方 appTypeOptions（通用無類型者排最後）。
+  private readonly typeOrder: ApplicationType[] =
+    Object.keys(APPLICATION_TYPE_LABELS) as ApplicationType[];
+
   private refresh$ = new BehaviorSubject<void>(undefined);
-  items$ = this.refresh$.pipe(switchMap(() => this.approvalService.getAll()));
+  items$ = this.refresh$.pipe(
+    switchMap(() => this.approvalService.getAll()),
+    map(items => [...items].sort((a, b) => {
+      const ta = a.applicationType ? this.typeOrder.indexOf(a.applicationType) : Number.MAX_SAFE_INTEGER;
+      const tb = b.applicationType ? this.typeOrder.indexOf(b.applicationType) : Number.MAX_SAFE_INTEGER;
+      if (ta !== tb) return ta - tb;
+      // 同類型內：通用預設流程（無部門）排前，其餘依部門名稱、再依 id。
+      const da = a.departmentId ?? -1, dbb = b.departmentId ?? -1;
+      if ((da === -1) !== (dbb === -1)) return da === -1 ? -1 : 1;
+      const cmp = (a.departmentName ?? '').localeCompare(b.departmentName ?? '', 'zh-Hant');
+      return cmp !== 0 ? cmp : a.id - b.id;
+    })),
+  );
   showForm = false;
   editItem: ApprovalItem | null = null;
   errorMsg = signal('');
