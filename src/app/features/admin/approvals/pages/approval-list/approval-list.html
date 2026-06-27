@@ -43,17 +43,26 @@
                   <div class="text-danger small mt-1">請輸入代碼。</div>
                 }
               </div>
-              <div class="col-12 col-md-3">
+              <div class="col-12 col-md-2">
                 <label class="form-label fw-500">描述</label>
                 <input type="text" class="form-control" formControlName="description" placeholder="選填說明">
               </div>
-              <div class="col-12 col-md-3">
+              <div class="col-12 col-md-2">
                 <label class="form-label fw-500">適用類型</label>
                 <select class="form-select" formControlName="applicationType">
                   @for (opt of appTypeOptions; track opt.value) {
                     <option [value]="opt.value" [disabled]="isTypeDisabled(opt.value, items)">
                       {{ opt.label }}{{ isTypeDisabled(opt.value, items) ? '（已設定）' : '' }}
                     </option>
+                  }
+                </select>
+              </div>
+              <div class="col-12 col-md-2">
+                <label class="form-label fw-500">適用部門</label>
+                <select class="form-select" formControlName="departmentId">
+                  <option [ngValue]="null">通用（預設）</option>
+                  @for (d of departments; track d.id) {
+                    <option [ngValue]="d.id">{{ d.name }}</option>
                   }
                 </select>
               </div>
@@ -86,6 +95,7 @@
               <th>項目名稱</th>
               <th>代碼</th>
               <th class="hidden md:table-cell">適用類型</th>
+              <th class="hidden md:table-cell">適用部門</th>
               <th class="hidden xl:table-cell">描述</th>
               <th>步驟數</th>
               <th>狀態</th>
@@ -105,6 +115,13 @@
                     </span>
                   } @else {
                     <span class="text-muted small">通用</span>
+                  }
+                </td>
+                <td class="hidden md:table-cell">
+                  @if (item.departmentName) {
+                    <span class="badge bg-secondary-subtle text-secondary">{{ item.departmentName }}</span>
+                  } @else {
+                    <span class="text-muted small">通用（預設）</span>
                   }
                 </td>
                 <td class="text-muted hidden xl:table-cell">{{ item.description || '—' }}</td>
@@ -139,7 +156,7 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="8" class="text-center text-muted py-4">尚無簽核項目。</td>
+                <td colspan="9" class="text-center text-muted py-4">尚無簽核項目。</td>
               </tr>
             }
           </tbody>
