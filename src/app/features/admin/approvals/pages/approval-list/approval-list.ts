@@ -59,7 +59,7 @@ export class ApprovalList {
     {value: '',                label: '通用（不綁定）'},
     {value: 'payment_request', label: '請款申請'},
     {value: 'leave',           label: '請假申請'},
-    {value: 'travel',          label: '出差申請'},
+    {value: 'travel',          label: '出差預支申請'},
     {value: 'overtime',        label: '加班申請'},
     {value: 'advance',         label: '預支申請'},
     {value: 'write_off',       label: '預支沖銷申請'},
