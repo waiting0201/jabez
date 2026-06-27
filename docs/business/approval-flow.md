@@ -19,7 +19,7 @@
 
 - `DepartmentId == null` → 該申請類型的**通用預設流程**（fallback，每類型至多一個）
 - `DepartmentId == X` → **部門 X 專屬流程**（每 (類型, 部門) 至多一個）
-- 唯一索引由「`ApplicationType` 唯一」改為「`(ApplicationType, DepartmentId)` filtered unique」；FK→Department `OnDelete=SetNull`（部門刪除時該流程自動退回為通用預設）。
+- 唯一索引由「`ApplicationType` 唯一」改為「`(ApplicationType, DepartmentId)` 唯一」，且帶過濾條件 `HasFilter("[ApplicationType] IS NOT NULL")`（僅在 `ApplicationType` 非 null 時檢查唯一性）；FK→Department `OnDelete=SetNull`（部門刪除時該流程自動退回為通用預設）。
 
 **送單挑流程**：8 個 `*RequestHandler.SubmitAsync` 在首次送出（`ApprovalItemId is null`）時呼叫共用 helper [ApprovalFlowService.ResolveApprovalItemIdAsync](../../Api/Services/ApprovalFlowService.cs)`(applicationType, applicantDepartmentId)`：
 
@@ -32,6 +32,7 @@
 ```
 
 - **部門階層繼承（2026-06 強化）**：子部門未設專屬流程時，會**自動沿用最近一層有設定流程的上層部門**，不必為每個子部門各複製一份。例如「營運管理部」設了流程、其下三個子部門未設，則三個子部門送單時自動套用營運管理部的流程；某子部門若另設了自己的專屬流程，則以子部門自身的為準（距離 0 最優先）。實作以 `ParentId` 建立部門鏈（EF 版記憶體往上走、Dapper `/active` 版用遞迴 CTE），兩處優先序必須一致。
+  - **距離計算**：EF 版用 `chain.IndexOf(DepartmentId)`（索引 0 = 自身部門最優先，越大越遠，通用預設取 `int.MaxValue` 墊底）；Dapper 版用遞迴 CTE 的 `Depth` 欄位（`Depth=0` 自身，越大越遠，通用預設取 `2147483647` 墊底）。兩者邏輯等價。
 - 申請人部門取自 `submitter.DepartmentId`（送出者本人）。Superadmin 無部門 → 落到通用預設（但 Superadmin 另有自動核准捷徑，通常不經此）。
 - **退回重送不重挑**：`ApprovalItemId` 僅在首次送出解析，之後沿用，確保流程一致。
 - **步驟解析 / 待審清單不受影響**：`ResolveStartingStepAsync` 與 `StepMatchClause` 讀的是申請單上已存的 `ApprovalItemId`，與「哪個流程」解耦，天然相容。
