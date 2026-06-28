@@ -1,0 +1,439 @@
+<div class="container-fluid py-3">
+  <div class="flex items-center gap-2 mb-6">
+    <a routerLink="/admin/travel-payment-requests" class="btn btn-sm btn-outline-secondary">
+      <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+    </a>
+    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視出差請款申請' : (isReturned ? '修改出差請款申請' : '編輯出差請款草稿')) : '新增出差請款申請' }}</h4>
+  </div>
+
+  @if (errorMsg()) {
+    <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+      {{ errorMsg() }}
+    </div>
+  }
+
+  @if (isReadOnly && approvalStatus === 'pending') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(13,110,253,0.08)] border-bottom flex items-center gap-2 fw-600 text-primary py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
+        此申請審核中，不可再修改。
+      </div>
+    </div>
+  } @else if (approvalStatus === 'returned') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(255,193,7,0.08)] border-bottom flex items-center gap-2 fw-600 text-warning py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+        此申請已被退回，請修改後重新送出。
+      </div>
+    </div>
+  } @else if (isReadOnly && approvalStatus === 'approved') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(37,162,68,0.08)] border-bottom flex items-center gap-2 fw-600 text-success py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#check-circle"></use></svg>
+        此申請已核准，不可再修改。
+      </div>
+    </div>
+  } @else if (isReadOnly && approvalStatus === 'rejected') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(220,53,69,0.08)] border-bottom flex items-center gap-2 fw-600 text-danger py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#x-circle"></use></svg>
+        此申請已被拒絕，不可再修改。
+      </div>
+    </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <div class="row g-4">
+      <div class="col-12 col-xl-10">
+
+        <!-- 出差資訊 -->
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#map-pin"></use>
+            </svg>
+            出差資訊
+          </div>
+          <div class="card-body">
+
+            <div class="row g-3 mb-4">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">出差地點 <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" formControlName="destination" placeholder="例如：台南、台中">
+                @if (form.get('destination')?.invalid && form.get('destination')?.touched) {
+                  <div class="text-danger small mt-1">請填寫出差地點。</div>
+                }
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">關聯專案（選填）</label>
+                <select class="form-select" formControlName="projectId">
+                  <option [ngValue]="null">{{ loadingProjects ? '載入中…' : '— 不關聯專案 —' }}</option>
+                  @for (p of projects; track p.id) {
+                    <option [ngValue]="p.id">{{ p.code }} - {{ p.name }}{{ p.departmentName ? '（' + p.departmentName + '）' : '' }}</option>
+                  }
+                </select>
+                @if (!loadingProjects && projects.length === 0) {
+                  <div class="text-muted small mt-1">您目前可申請的專案清單為空，請聯絡主管或確認部門設定。</div>
+                }
+              </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">出發日期 <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" formControlName="startDate">
+                @if (form.get('startDate')?.invalid && form.get('startDate')?.touched) {
+                  <div class="text-danger small mt-1">請選擇出發日期。</div>
+                }
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">返回日期 <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" formControlName="endDate">
+                @if (form.get('endDate')?.invalid && form.get('endDate')?.touched) {
+                  <div class="text-danger small mt-1">請選擇返回日期。</div>
+                }
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-500">出差目的 <span class="text-danger">*</span></label>
+              <textarea class="form-control" formControlName="purpose" rows="3"
+                        placeholder="請填寫出差目的..."></textarea>
+              @if (form.get('purpose')?.invalid && form.get('purpose')?.touched) {
+                <div class="text-danger small mt-1">請填寫出差目的。</div>
+              }
+            </div>
+
+            @if (isEdit) {
+              <div class="mb-4">
+                <label class="form-label fw-500">簽核狀態</label>
+                <div>
+                  <span class="badge rounded-pill px-3 py-2" [class]="statusClass[approvalStatus]">
+                    {{ statusLabel[approvalStatus] }}
+                  </span>
+                </div>
+              </div>
+            }
+
+          </div>
+        </div>
+
+        <!-- 上傳發票 -->
+        @if (!isReadOnly) {
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon text-primary" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#upload"></use>
+              </svg>
+              上傳發票
+            </div>
+            <div class="card-body">
+              <label class="flex flex-col items-center justify-center rounded-3 py-4 px-4 mb-0 text-center"
+                     style="cursor:pointer; border: 2px dashed var(--bs-border-color);">
+                <svg class="sa-icon sa-icon-2x text-muted mb-2" style="stroke: currentColor">
+                  <use href="/assets/icons/sprite.svg#upload"></use>
+                </svg>
+                <span class="fw-500">點擊上傳發票圖檔</span>
+                <span class="text-muted small mt-1">支援 JPG、PNG、HEIC、PDF，可多選。上傳後自動新增明細行並辨識發票資訊</span>
+                <input type="file" class="hidden" multiple accept="image/*,.heic,.heif,application/pdf"
+                       (change)="onFilesSelected($event)">
+              </label>
+            </div>
+          </div>
+        }
+
+        <!-- 費用明細（含發票欄位） -->
+        <div class="card border-0 shadow-sm mt-6">
+          <div class="card-header bg-transparent border-bottom flex items-center justify-between">
+            <div class="flex items-center gap-2 fw-600">
+              <svg class="sa-icon text-primary" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#file-text"></use>
+              </svg>
+              費用明細
+            </div>
+            @if (!isReadOnly) {
+              <button type="button" class="btn btn-sm btn-outline-primary inline-flex items-center gap-1" (click)="addItem()">
+                <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                手動新增行
+              </button>
+            }
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-sm mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width:40px"></th>
+                    <th style="min-width:100px">分類</th>
+                    <th style="min-width:60px">項次</th>
+                    <th style="min-width:160px">項目說明</th>
+                    <th style="min-width:100px">單價</th>
+                    <th style="min-width:80px">數量/單位</th>
+                    <th style="min-width:100px">總價</th>
+                    <th style="min-width:100px">備註</th>
+                    <th style="min-width:120px">發票號碼</th>
+                    <th style="min-width:120px">發票日期</th>
+                    @if (!isReadOnly) {
+                      <th style="width:48px"></th>
+                    }
+                  </tr>
+                </thead>
+                <tbody formArrayName="items">
+                  @for (ctrl of itemControls; track ctrl.get('id')?.value; let i = $index) {
+                    @let isOcr = ocrLoadingIds.has(ctrl.get('id')?.value);
+                    <tr [formGroupName]="i">
+                      <td class="align-middle text-center">
+                        @if (ctrl.get('previewUrl')?.value || ctrl.get('fileUrl')?.value) {
+                          <button type="button" class="btn btn-sm btn-ghost-secondary p-1"
+                                  (click)="openPreview(ctrl.get('fileName')?.value, ctrl.get('previewUrl')?.value || ctrl.get('fileUrl')?.value)"
+                                  title="{{ ctrl.get('fileName')?.value }}">
+                            <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                          </button>
+                        } @else if (isOcr) {
+                          <span class="spinner-border spinner-border-sm" role="status"></span>
+                        }
+                      </td>
+                      <td class="align-middle">
+                        @if (isReadOnly) {
+                          <span class="small">{{ ctrl.get('category')?.value }}</span>
+                        } @else {
+                          <select class="form-select form-select-sm" formControlName="category">
+                            <option value="">選擇</option>
+                            @for (cat of categories; track cat) {
+                              <option [value]="cat">{{ cat }}</option>
+                            }
+                          </select>
+                        }
+                      </td>
+                      <td class="align-middle">
+                        @if (isReadOnly) {
+                          <span class="small">{{ ctrl.get('seqNo')?.value }}</span>
+                        } @else {
+                          <input type="number" class="form-control form-control-sm" formControlName="seqNo" min="1" style="width:60px">
+                        }
+                      </td>
+                      <td class="align-middle">
+                        @if (isReadOnly) {
+                          <span class="small">{{ ctrl.get('itemName')?.value }}</span>
+                        } @else {
+                          <input class="form-control form-control-sm" formControlName="itemName" placeholder="項目說明">
+                        }
+                      </td>
+                      <td class="align-middle">
+                        @if (isReadOnly) {
+                          <span class="small">{{ ctrl.get('unitPrice')?.value | number:'1.0-0' }}</span>
+                        } @else if (isOcr) {
+                          <div class="py-1 text-muted small">—</div>
+                        } @else {
+                          <input type="number" class="form-control form-control-sm" formControlName="unitPrice" min="0"
+                                 (input)="calcTotal(ctrl)">
+                        }
+                      </td>
+                      <td class="align-middle">
+                        @if (isReadOnly) {
+                          <span class="small">{{ ctrl.get('quantity')?.value }}</span>
+                        } @else if (isOcr) {
+                          <div class="py-1 text-muted small">—</div>
+                        } @else {
+                          <input class="form-control form-control-sm" formControlName="quantity" placeholder="如：1式"
+                                 (input)="calcTotal(ctrl)">
+                        }
+                      </td>
+                      <td class="align-middle">
+                        @if (isReadOnly) {
+                          <span class="small fw-500">{{ ctrl.get('totalPrice')?.value | number:'1.0-0' }}</span>
+                        } @else if (isOcr) {
+                          <div class="py-1 text-muted small">—</div>
+                        } @else {
+                          <input type="number" class="form-control form-control-sm" formControlName="totalPrice" min="0">
+                        }
+                      </td>
+                      <td class="align-middle">
+                        @if (isReadOnly) {
+                          <span class="small">{{ ctrl.get('note')?.value || '—' }}</span>
+                        } @else {
+                          <input class="form-control form-control-sm" formControlName="note" placeholder="">
+                        }
+                      </td>
+                      <td class="align-middle">
+                        @if (isReadOnly) {
+                          <span class="small font-monospace">{{ ctrl.get('invoiceNo')?.value || '—' }}</span>
+                        } @else if (isOcr) {
+                          <div class="flex items-center gap-1 text-muted small py-1">
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                            識別中…
+                          </div>
+                        } @else {
+                          <input class="form-control form-control-sm font-monospace" formControlName="invoiceNo" placeholder="AB-12345678">
+                        }
+                      </td>
+                      <td class="align-middle">
+                        @if (isReadOnly) {
+                          <span class="small">{{ ctrl.get('invoiceDate')?.value || '—' }}</span>
+                        } @else if (isOcr) {
+                          <div class="flex items-center gap-1 text-muted small py-1">
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                            識別中…
+                          </div>
+                        } @else {
+                          <input type="date" class="form-control form-control-sm" formControlName="invoiceDate">
+                        }
+                      </td>
+                      @if (!isReadOnly) {
+                        <td class="text-right align-middle">
+                          <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center"
+                                  [disabled]="isOcr" (click)="removeItem(i)">
+                            <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                          </button>
+                        </td>
+                      }
+                    </tr>
+                    @if (!isReadOnly && invoiceWarnings.has(ctrl.get('id')?.value)) {
+                      <tr>
+                        <td colspan="11" class="text-danger small py-1 ps-3 border-0">
+                          <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                          {{ invoiceWarnings.get(ctrl.get('id')?.value) }}
+                        </td>
+                      </tr>
+                    }
+                  } @empty {
+                    <tr>
+                      <td [attr.colspan]="isReadOnly ? 10 : 11" class="text-center text-muted py-4 small">請上傳發票圖檔，或點擊「手動新增行」</td>
+                    </tr>
+                  }
+                </tbody>
+                @if (itemControls.length > 0) {
+                  <tfoot>
+                    <tr class="table-light">
+                      <td colspan="6" class="text-right fw-500 small">合計</td>
+                      <td class="fw-600">{{ grandTotal | number:'1.0-0' }}</td>
+                      <td colspan="3"></td>
+                      @if (!isReadOnly) { <td></td> }
+                    </tr>
+                  </tfoot>
+                }
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 指定審核者 -->
+        @if (hasDesignatedStep && !isReadOnly) {
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon text-primary" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#users"></use>
+              </svg>
+              指定審核者
+            </div>
+            <div class="card-body">
+              <div class="mb-0">
+                <label class="form-label fw-500">指定審核者（依序審核）</label>
+                @for (entry of designatedEntries; track $index; let i = $index) {
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="text-muted small" style="min-width:1.5rem">{{ i + 1 }}.</span>
+                    <select class="form-select form-select-sm" style="max-width:160px"
+                            [(ngModel)]="entry.selectedJobTitleId" [ngModelOptions]="{standalone: true}"
+                            (ngModelChange)="onEntryJobTitleChange(i)">
+                      <option [ngValue]="null">— 職稱 —</option>
+                      @for (jt of jobTitles; track jt.id) {
+                        <option [ngValue]="jt.id">{{ jt.name }}</option>
+                      }
+                    </select>
+                    <select class="form-select form-select-sm" style="max-width:200px"
+                            [(ngModel)]="entry.selectedUserId" [ngModelOptions]="{standalone: true}">
+                      <option [ngValue]="null">— 人員 —</option>
+                      @for (user of entry.filteredUsers; track user.id) {
+                        <option [ngValue]="user.id">{{ user.name }}</option>
+                      }
+                    </select>
+                    <button type="button" class="btn btn-sm btn-ghost-danger" (click)="removeDesignatedEntry(i)">
+                      <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                    </button>
+                  </div>
+                }
+                <button type="button" class="btn btn-sm btn-outline-secondary mt-1" (click)="addDesignatedEntry()">
+                  <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                  新增審核人
+                </button>
+              </div>
+            </div>
+          </div>
+        } @else if (isReadOnly && designatedEntries.length > 0) {
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon text-primary" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#users"></use>
+              </svg>
+              指定審核者
+            </div>
+            <div class="card-body">
+              <div class="mb-0">
+                <label class="form-label fw-500">指定審核者（依序審核）</label>
+                <ol class="mb-0 ps-4">
+                  @for (entry of designatedEntries; track $index) {
+                    <li class="small">{{ getUserName(entry.selectedUserId) }}</li>
+                  }
+                </ol>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- 撥款明細（核准後才會有資料；read-only）-->
+        @if (installments && installments.length > 0) {
+          <app-installments-table
+            [installmentsInput]="installments"
+            [paymentStatus]="paymentStatus ?? undefined"
+            [totalAmount]="loadedGrandTotal" />
+        }
+
+        <!-- 簽核流程時間軸 -->
+        <app-approval-timeline
+          [flow]="approvalFlow"
+          [approvalRecords]="approvalRecords"
+          [currentStepOrder]="taskCurrentStepOrder"
+          [status]="taskStatus" />
+
+        @if (!isReadOnly) {
+          <div class="mt-6 flex gap-2">
+            <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid || itemArray.length === 0">
+              {{ isEdit ? '儲存' : '儲存草稿' }}
+            </button>
+            <button type="button" class="btn btn-primary" [disabled]="form.invalid || itemArray.length === 0"
+                    (click)="submitForApproval()">
+              送出申請
+            </button>
+            <a routerLink="/admin/travel-payment-requests" class="btn btn-outline-secondary">取消</a>
+          </div>
+        } @else {
+          <div class="mt-6">
+            <a routerLink="/admin/travel-payment-requests" class="btn btn-outline-secondary">返回列表</a>
+          </div>
+        }
+
+      </div>
+    </div>
+  </form>
+</div>
+
+@if (previewFile) {
+  <app-file-preview-modal [file]="previewFile" (closed)="closePreview()" />
+}
+
+<ng-template #successModal let-modal>
+  <div class="modal-header border-0 pb-0">
+    <button type="button" class="btn-close" (click)="modal.close()"></button>
+  </div>
+  <div class="modal-body text-center py-6">
+    <svg class="sa-icon sa-icon-3x text-success mb-4" style="stroke: currentColor">
+      <use href="/assets/icons/sprite.svg#check-circle"></use>
+    </svg>
+    <h5 class="fw-600 mb-2">申請成功</h5>
+    <p class="text-secondary mb-0">請盡早將正本資料送回管理處</p>
+  </div>
+  <div class="modal-footer border-0 justify-center pt-0">
+    <button type="button" class="btn btn-primary px-6" (click)="modal.close()">確定</button>
+  </div>
+</ng-template>

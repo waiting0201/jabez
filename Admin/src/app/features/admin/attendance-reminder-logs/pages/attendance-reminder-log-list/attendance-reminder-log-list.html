@@ -1,0 +1,230 @@
+<div class="container-fluid py-3">
+
+  <!-- Header -->
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
+      <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#bell"></use>
+      </svg>
+      <h4 class="mb-0">打卡提醒紀錄</h4>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button class="btn btn-sm btn-outline" [disabled]="triggering()" (click)="triggerNow('clockIn')">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#play"></use></svg>
+        手動觸發上班提醒
+      </button>
+      <button class="btn btn-sm btn-outline" [disabled]="triggering()" (click)="triggerNow('clockOut')">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#play"></use></svg>
+        手動觸發下班提醒
+      </button>
+    </div>
+  </div>
+
+  <p class="text-muted small mb-4">
+    自動排程於台北時區 7-9、16-18 時段每分鐘檢查；命中上下班前 2 分鐘觸發。週末與已打卡 / 請假涵蓋目標時刻者自動排除。
+  </p>
+
+  <!-- Stats Cards -->
+  @if (stats(); as s) {
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small mb-1">今日已推播</div>
+          <div class="text-success" style="font-size: 1.75rem; font-weight: 700">{{ s.todayPushed }}</div>
+        </div>
+      </div>
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small mb-1">今日失敗</div>
+          <div class="text-danger" style="font-size: 1.75rem; font-weight: 700">{{ s.todayFailed }}</div>
+        </div>
+      </div>
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small mb-1">今日批次 tick 數</div>
+          <div style="font-size: 1.75rem; font-weight: 700">{{ s.todayBatchTicks }}</div>
+          <div class="text-muted small mt-1">＝排程被觸發次數（即使 0 對象）</div>
+        </div>
+      </div>
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small mb-2">最近 7 天趨勢</div>
+          @if (s.last7Days.length === 0) {
+            <div class="text-muted small">尚無資料</div>
+          } @else {
+            <div class="flex items-end gap-1" style="height: 48px">
+              @for (d of s.last7Days; track d.day) {
+                <div class="flex flex-col items-center" style="flex: 1; min-width: 12px"
+                     [title]="d.day + ' 成功 ' + d.pushed + ' / 失敗 ' + d.failed">
+                  <div style="width: 100%; background: var(--forest); border-radius: 2px 2px 0 0"
+                       [style.height.px]="(d.pushed * 40) / maxBar()"></div>
+                  <div style="width: 100%; background: var(--red); border-radius: 0 0 2px 2px"
+                       [style.height.px]="(d.failed * 40) / maxBar()"></div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+
+      <!-- Filters -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 px-4 py-3 border-b items-end">
+        <div>
+          <label class="text-xs text-muted mb-1 block">起日</label>
+          <input type="date" class="form-control w-full" [ngModel]="fromDate()" (ngModelChange)="fromDate.set($event)" />
+        </div>
+        <div>
+          <label class="text-xs text-muted mb-1 block">迄日</label>
+          <input type="date" class="form-control w-full" [ngModel]="toDate()" (ngModelChange)="toDate.set($event)" />
+        </div>
+        <div>
+          <label class="text-xs text-muted mb-1 block">提醒類型</label>
+          <select class="form-control w-full" [ngModel]="reminderType()" (ngModelChange)="reminderType.set($event)">
+            <option value="">全部</option>
+            <option value="clockIn">上班提醒</option>
+            <option value="clockOut">下班提醒</option>
+            <option value="batchStart">批次啟動</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-muted mb-1 block">結果</label>
+          <select class="form-control w-full" [ngModel]="status()" (ngModelChange)="status.set($event)">
+            <option value="">全部</option>
+            <option value="success">成功</option>
+            <option value="failure">失敗</option>
+            <option value="batchStart">批次啟動</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-muted mb-1 block">失敗原因</label>
+          <select class="form-control w-full" [ngModel]="errorCategory()" (ngModelChange)="errorCategory.set($event)">
+            <option value="">全部</option>
+            <option value="not_friend">未加好友</option>
+            <option value="token_invalid">Token 失效</option>
+            <option value="rate_limited">速率限制 (429)</option>
+            <option value="network_error">網路錯誤</option>
+            <option value="unknown">其他錯誤</option>
+            <option value="system_error">系統例外</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-muted mb-1 block">觸發來源</label>
+          <select class="form-control w-full" [ngModel]="triggerSource()" (ngModelChange)="triggerSource.set($event)">
+            <option value="">全部</option>
+            <option value="auto">自動排程</option>
+            <option value="manual">手動觸發</option>
+          </select>
+        </div>
+        <div class="flex gap-2 sm:col-span-2 lg:col-span-2">
+          <button class="btn btn-primary flex-1" (click)="search()">篩選</button>
+          <button class="btn btn-outline flex-1" (click)="resetFilters()">重設</button>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>時間</th>
+              <th class="text-center">類型</th>
+              <th>對象</th>
+              <th class="text-center hidden md:table-cell">目標時刻</th>
+              <th class="text-center hidden md:table-cell">觸發</th>
+              <th class="text-center">結果</th>
+              <th class="hidden lg:table-cell">失敗原因</th>
+              <th class="text-center hidden xl:table-cell">HTTP</th>
+              <th class="text-right hidden xl:table-cell">耗時</th>
+              <th class="text-center">批次</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of records(); track row.id) {
+              <tr>
+                <td class="font-monospace small">{{ formatTaipei(row.tickedAtTaipei) }}</td>
+                <td class="text-center">
+                  <span class="badge bg-[--bg-base] text-[--text-secondary] small">
+                    {{ reminderTypeLabels[row.reminderType] }}
+                  </span>
+                </td>
+                <td class="fw-500">
+                  @if (row.reminderType === 'batchStart') {
+                    <span class="text-muted">— 批次啟動 ({{ row.userNameSnapshot }})</span>
+                  } @else {
+                    {{ row.userName ?? row.userNameSnapshot ?? '—' }}
+                  }
+                </td>
+                <td class="text-center hidden md:table-cell font-monospace small">{{ row.targetTimeTaipei }}</td>
+                <td class="text-center hidden md:table-cell small">
+                  @if (row.triggerSource === 'manual') {
+                    <span class="badge bg-warning-subtle text-warning-emphasis"
+                          [title]="row.triggeredByName ? '由 ' + row.triggeredByName + ' 觸發' : ''">
+                      {{ triggerSourceLabels[row.triggerSource] }}
+                    </span>
+                  } @else {
+                    <span class="text-muted">{{ triggerSourceLabels[row.triggerSource] }}</span>
+                  }
+                </td>
+                <td class="text-center">
+                  @switch (row.status) {
+                    @case ('success') {
+                      <span class="badge bg-success-subtle text-success">成功</span>
+                    }
+                    @case ('failure') {
+                      <span class="badge bg-danger-subtle text-danger">失敗</span>
+                    }
+                    @case ('batchStart') {
+                      <span class="badge bg-secondary-subtle text-secondary">批次</span>
+                    }
+                  }
+                </td>
+                <td class="hidden lg:table-cell small">
+                  @if (row.errorCategory) {
+                    <span class="text-danger" [title]="row.errorMessage ?? ''">
+                      {{ errorCategoryLabels[row.errorCategory] }}
+                    </span>
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
+                <td class="text-center hidden xl:table-cell text-muted small">{{ row.httpStatusCode ?? '—' }}</td>
+                <td class="text-right hidden xl:table-cell text-muted small">
+                  {{ row.durationMs !== null && row.durationMs !== undefined ? row.durationMs + 'ms' : '—' }}
+                </td>
+                <td class="text-center">
+                  <a [routerLink]="['/admin/attendance-reminder-logs/batches', row.batchId]"
+                     class="font-monospace small text-primary" [title]="row.batchId">
+                    {{ shortBatchId(row.batchId) }}
+                  </a>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="10" class="text-center text-muted py-4">
+                  @if (loading()) { 載入中... } @else { 尚無資料 }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      @if (totalPages() > 1) {
+        <div class="flex items-center justify-between px-4 py-3 border-t">
+          <span class="text-muted small">共 {{ totalCount() }} 筆，第 {{ currentPage() }} / {{ totalPages() }} 頁</span>
+          <div class="flex gap-1">
+            <button class="btn btn-sm btn-outline" [disabled]="currentPage() <= 1" (click)="goToPage(currentPage() - 1)">上一頁</button>
+            <button class="btn btn-sm btn-outline" [disabled]="currentPage() >= totalPages()" (click)="goToPage(currentPage() + 1)">下一頁</button>
+          </div>
+        </div>
+      }
+
+    </div>
+  </div>
+</div>

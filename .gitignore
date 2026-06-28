@@ -18,6 +18,10 @@ __queuestorage__/
 # Angular CLI cache
 .angular/
 
+# Angular（攤平後 Admin 為一般資料夾，依賴與 build 產物不進版控）
+Admin/node_modules/
+Admin/dist/
+
 # TypeScript incremental compilation
 *.tsbuildinfo
 

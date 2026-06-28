@@ -1,0 +1,44 @@
+export type ApprovalStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'returned';
+
+export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
+  draft:    '草稿',
+  pending:  '待審核',
+  approved: '已核准',
+  rejected: '已拒絕',
+  returned: '退回修改',
+};
+
+export const APPROVAL_STATUS_CLASSES: Record<ApprovalStatus, string> = {
+  draft:    'bg-blue-subtle text-blue-emphasis',
+  pending:  'bg-warning-subtle text-warning-emphasis',
+  approved: 'bg-success-subtle text-success',
+  rejected: 'bg-danger-subtle text-danger',
+  returned: 'bg-secondary-subtle text-secondary',
+};
+
+export interface DesignatedReviewer {
+  id?: number;
+  reviewerId: string;
+  reviewerName?: string;
+  stepOrder: number;
+  status?: string;       // pending | approved | returned
+  reviewedAt?: string;
+  comment?: string;
+}
+
+export interface OvertimeRequest {
+  id: number;
+  employeeId?: string;
+  approvalItemId?: number;
+  overtimeDate: Date;
+  projectIds?: number[];
+  projectCodes?: string[];
+  projectNames?: string[];
+  estimatedHours: number;
+  reason: string;
+  approvalStatus: ApprovalStatus;
+  designatedReviewers?: DesignatedReviewer[];
+  createdAt: Date;
+  reviewedAt?: Date;
+  reviewNote?: string;
+}

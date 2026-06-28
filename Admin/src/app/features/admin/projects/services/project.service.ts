@@ -1,0 +1,49 @@
+import {Injectable, inject} from '@angular/core';
+import {HttpClient} from '@angular/common/http';
+import {Observable} from 'rxjs';
+import {Project} from '../models/project.model';
+import {PagedResult} from '../../../../shared/models/paged-result.model';
+import {environment} from '@/environments/environment';
+
+@Injectable({providedIn: 'root'})
+export class ProjectService {
+  private http = inject(HttpClient);
+
+  getAll(): Observable<Project[]> {
+    return this.http.get<Project[]>(`${environment.apiUrl}/projects`);
+  }
+
+  /** 取得未結案專案（不需 ProjectsRead 權限） */
+  getActive(): Observable<Project[]> {
+    return this.http.get<Project[]>(`${environment.apiUrl}/projects/active`);
+  }
+
+  getPaged(page: number, pageSize: number, search?: string, year?: number, status?: string): Observable<PagedResult<Project>> {
+    const params: Record<string, string | number> = {page, pageSize};
+    if (search) params['search'] = search;
+    if (year) params['year'] = year;
+    if (status) params['status'] = status;
+    return this.http.get<PagedResult<Project>>(`${environment.apiUrl}/projects`, {params});
+  }
+
+  /** 取得所有年度（依 StartDate 年份去重） */
+  getYears(): Observable<number[]> {
+    return this.http.get<number[]>(`${environment.apiUrl}/projects/years`);
+  }
+
+  getById(id: number): Observable<Project> {
+    return this.http.get<Project>(`${environment.apiUrl}/projects/${id}`);
+  }
+
+  create(data: Omit<Project, 'id' | 'createdAt'>): Observable<Project> {
+    return this.http.post<Project>(`${environment.apiUrl}/projects`, data);
+  }
+
+  update(id: number, changes: Partial<Project>): Observable<Project> {
+    return this.http.patch<Project>(`${environment.apiUrl}/projects/${id}`, changes);
+  }
+
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.apiUrl}/projects/${id}`);
+  }
+}

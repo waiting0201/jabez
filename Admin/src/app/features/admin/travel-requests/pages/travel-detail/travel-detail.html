@@ -1,0 +1,262 @@
+<div class="container-fluid py-3">
+  @if (request(); as r) {
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+      <div class="flex items-center gap-2 flex-wrap">
+        <a routerLink="/admin/travel-requests" class="btn btn-sm btn-outline-secondary">
+          <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+        </a>
+        <h4 class="mb-0">出差預支申請 <span class="font-monospace text-muted">{{ r.requestNo }}</span></h4>
+        <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
+        @if (r.isClosed) {
+          <span class="badge bg-elevated text-secondary">
+            已結案
+            @if (r.closedAt) {
+              <span class="fw-400">（{{ r.closedAt | date:'yyyy-MM-dd' }}）</span>
+            }
+          </span>
+        }
+      </div>
+      <div class="flex flex-wrap gap-2">
+        @if (r.approvalStatus === 'approved') {
+          <button class="btn btn-outline-secondary inline-flex items-center gap-1"
+                  (click)="printTravel()" [disabled]="pdfLoading()">
+            @if (pdfLoading()) {
+              <span class="spinner-border spinner-border-sm" role="status"></span>
+            } @else {
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#printer"></use></svg>
+            }
+            列印出差表
+          </button>
+        }
+        @if (r.approvalStatus === 'draft' || r.approvalStatus === 'returned') {
+          <a [routerLink]="['/admin/travel-requests', r.id, 'edit']"
+             class="btn btn-outline-primary inline-flex items-center gap-1">
+            <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+            編輯
+          </a>
+        }
+        @if (r.approvalStatus === 'draft') {
+          <button class="btn btn-primary inline-flex items-center gap-1" (click)="submitRequest()">
+            <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#send"></use></svg>
+            送出申請
+          </button>
+          <button class="btn btn-outline-danger inline-flex items-center gap-1"
+                  (click)="deleteRequest()" [disabled]="deleting()">
+            @if (deleting()) {
+              <span class="spinner-border spinner-border-sm" role="status"></span>
+            } @else {
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash-2"></use></svg>
+            }
+            刪除
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="row g-4">
+    <div class="col-12 col-xl-10">
+
+    <!-- 出差資訊 -->
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+        <svg class="sa-icon text-primary" style="stroke: currentColor">
+          <use href="/assets/icons/sprite.svg#map-pin"></use>
+        </svg>
+        出差資訊
+      </div>
+      <div class="card-body">
+        <div class="row g-3 mb-4">
+          <div class="col-12 col-md-6">
+            <div class="text-muted small">出差地點</div>
+            <div class="fw-600">{{ r.destination }}</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">假日執行活動</div>
+            <div>
+              @if (r.isHolidayTravel) {
+                <span class="badge bg-info-subtle text-info">假日執行活動</span>
+              } @else {
+                <span class="text-muted small">否</span>
+              }
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">申請日期</div>
+            <div class="fw-500">{{ r.createdAt | date:'yyyy-MM-dd' }}</div>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">開始日期</div>
+            <div class="fw-500">{{ r.startDate | date:'yyyy-MM-dd' }}</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">結束日期</div>
+            <div class="fw-500">{{ r.endDate | date:'yyyy-MM-dd' }}</div>
+          </div>
+          @if (r.projectCode || r.projectName) {
+            <div class="col-6 col-md-3">
+              <div class="text-muted small">關聯專案</div>
+              <div class="fw-500 font-monospace">{{ r.projectCode }}{{ r.projectName ? ' - ' + r.projectName : '' }}</div>
+            </div>
+          }
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">金額合計</div>
+            <div class="fw-600 text-lg">{{ r.grandTotal | number:'1.0-0' }}</div>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-0">
+          <div class="col-12">
+            <div class="text-muted small">出差目的</div>
+            <div class="fw-500">{{ r.purpose }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 費用明細 -->
+    @if (r.items && r.items.length > 0) {
+      <div class="card border-0 shadow-sm mb-6">
+        <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+          <svg class="sa-icon text-primary" style="stroke: currentColor">
+            <use href="/assets/icons/sprite.svg#list"></use>
+          </svg>
+          費用明細
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>分類</th>
+                  <th>項次</th>
+                  <th>項目說明</th>
+                  <th class="text-right">單價</th>
+                  <th>數量/單位</th>
+                  <th class="text-right">總價</th>
+                  <th>備註</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of r.items; track item.id) {
+                  <tr>
+                    <td class="small">{{ item.category }}</td>
+                    <td class="small">{{ item.seqNo }}</td>
+                    <td class="small">{{ item.itemName }}</td>
+                    <td class="text-right small">{{ item.unitPrice | number:'1.0-0' }}</td>
+                    <td class="small">{{ item.quantity }}</td>
+                    <td class="text-right small fw-500">{{ item.totalPrice | number:'1.0-0' }}</td>
+                    <td class="small text-muted">{{ item.note || '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+              <tfoot>
+                <tr class="table-light">
+                  <td colspan="5" class="text-right fw-500 small">合計</td>
+                  <td class="text-right fw-600">{{ r.grandTotal | number:'1.0-0' }}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- 結案與退款資訊（isClosed 或有 refundAmount 時顯示） -->
+    @if (r.isClosed || (r.refundAmount != null && r.refundAmount > 0)) {
+      <div class="card border-0 shadow-sm mb-6">
+        <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+          <svg class="sa-icon text-muted" style="stroke: currentColor">
+            <use href="/assets/icons/sprite.svg#check-circle"></use>
+          </svg>
+          結案資訊
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+
+            <!-- 結案狀態 -->
+            @if (r.isClosed) {
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">結案狀態</div>
+                <div class="fw-500">
+                  <span class="badge bg-elevated text-secondary">已結案</span>
+                </div>
+              </div>
+              @if (r.closedAt) {
+                <div class="col-6 col-md-3">
+                  <div class="text-muted small">結案時間</div>
+                  <div class="fw-500">{{ r.closedAt | date:'yyyy-MM-dd' }}</div>
+                </div>
+              }
+            }
+
+            <!-- 差額退款 -->
+            @if (r.refundAmount != null && r.refundAmount > 0) {
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">應退還差額</div>
+                <div class="fw-600 text-lg" style="color: var(--red)">
+                  ${{ r.refundAmount | number:'1.0-0' }}
+                </div>
+              </div>
+            }
+            @if (r.refundedAmount != null) {
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">實際退款金額</div>
+                <div class="fw-600 text-lg">${{ r.refundedAmount | number:'1.0-0' }}</div>
+              </div>
+            }
+
+            @if (r.estimatedRefundDate) {
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">預計退款日</div>
+                <div class="fw-500">{{ r.estimatedRefundDate | date:'yyyy-MM-dd' }}</div>
+              </div>
+            }
+
+            @if (r.refundedAt) {
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">退款日</div>
+                <div class="flex items-center gap-2">
+                  <svg class="sa-icon" style="color: var(--green); stroke: currentColor; width: 16px; height: 16px">
+                    <use href="/assets/icons/sprite.svg#check-circle"></use>
+                  </svg>
+                  <span class="fw-500" style="color: var(--green)">{{ r.refundedAt | date:'yyyy-MM-dd' }}</span>
+                </div>
+              </div>
+            } @else if (r.refundAmount != null && r.refundAmount > 0) {
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">退款日</div>
+                <span class="text-muted small">尚未退款</span>
+              </div>
+            }
+
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- 撥款明細（核准後才會有資料；read-only）-->
+    <app-installments-table
+      [installmentsInput]="r.installments"
+      [paymentStatus]="r.paymentStatus"
+      [totalAmount]="r.grandTotal" />
+
+    <!-- 簽核流程時間軸 -->
+    @if (approvalTask(); as task) {
+      <app-approval-timeline
+        [flow]="task.flow ?? null"
+        [approvalRecords]="task.approvalRecords"
+        [currentStepOrder]="task.currentStepOrder"
+        [status]="task.status" />
+    }
+
+    </div>
+    </div>
+
+  } @else {
+    <div class="text-center py-6 text-muted">載入中…</div>
+  }
+</div>

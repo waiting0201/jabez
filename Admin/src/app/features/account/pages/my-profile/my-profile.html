@@ -1,0 +1,736 @@
+<div class="container-fluid py-3">
+
+  <!-- 頁頭 -->
+  <div class="flex items-center gap-2 mb-6">
+    <h4 class="mb-0">個人資訊</h4>
+    <span class="badge bg-secondary ms-2 small">唯讀</span>
+  </div>
+
+  @if (errorMsg()) {
+    <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+      {{ errorMsg() }}
+    </div>
+  }
+
+  <!-- Tab 切換列（pill button pattern） -->
+  <div class="flex gap-1 mb-4">
+    <button type="button" class="btn btn-sm"
+            [class]="activeTab() === 'basic' ? 'btn-primary' : 'btn-outline-secondary'"
+            (click)="switchTab('basic')">員工基本資料</button>
+    <button type="button" class="btn btn-sm"
+            [class]="activeTab() === 'hr' ? 'btn-primary' : 'btn-outline-secondary'"
+            (click)="switchTab('hr')">人事資料卡</button>
+    <button type="button" class="btn btn-sm"
+            [class]="activeTab() === 'dependents' ? 'btn-primary' : 'btn-outline-secondary'"
+            (click)="switchTab('dependents')">健保眷屬</button>
+  </div>
+
+  <div class="row">
+    <div class="col-12 col-xl-8">
+
+      <!-- ══════════════ TAB 1：員工基本資料 ══════════════ -->
+      @if (activeTab() === 'basic') {
+        @if (loading()) {
+          <div class="flex items-center justify-center py-12 text-muted">
+            <span class="inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin me-2"></span>
+            載入中…
+          </div>
+        } @else if (user(); as u) {
+
+          <!-- 基本資料卡 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#user"></use></svg>
+              基本資料
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-12 col-md-6">
+                  <div class="form-label fw-500 text-muted small">姓名</div>
+                  <div class="fw-500">{{ u.name || '—' }}</div>
+                </div>
+                <div class="col-12 col-md-6">
+                  <div class="form-label fw-500 text-muted small">Email</div>
+                  <div>{{ u.email || '—' }}</div>
+                </div>
+                <div class="col-12 col-md-6">
+                  <div class="form-label fw-500 text-muted small">狀態</div>
+                  <div>
+                    @if (u.status === 'active') {
+                      <span class="badge bg-success">在職</span>
+                    } @else {
+                      <span class="badge bg-secondary">離職</span>
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 員工資訊卡 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#briefcase"></use></svg>
+              員工資訊
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-12 col-md-6">
+                  <div class="form-label fw-500 text-muted small">部門</div>
+                  <div>{{ u.departmentName || '—' }}</div>
+                </div>
+                <div class="col-12 col-md-6">
+                  <div class="form-label fw-500 text-muted small">職稱</div>
+                  <div>{{ u.jobTitleName || '—' }}</div>
+                </div>
+                <div class="col-12 col-md-6">
+                  <div class="form-label fw-500 text-muted small">生日</div>
+                  <div>{{ u.birthday ? (u.birthday | date:'yyyy-MM-dd') : '—' }}</div>
+                </div>
+                <div class="col-12 col-md-6">
+                  <div class="form-label fw-500 text-muted small">到職日</div>
+                  <div>{{ u.hireDate ? (u.hireDate | date:'yyyy-MM-dd') : '—' }}</div>
+                </div>
+                <div class="col-12 col-md-6">
+                  <div class="form-label fw-500 text-muted small">離職日</div>
+                  <div>{{ u.resignDate ? (u.resignDate | date:'yyyy-MM-dd') : '—' }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 薪資與保險卡 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#credit-card"></use></svg>
+              薪資與保險
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">底薪</div>
+                  <div>{{ u.baseSalary != null ? ('NT$ ' + (u.baseSalary | number:'1.0-0')) : '—' }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">伙食費</div>
+                  <div>{{ u.mealAllowance != null ? ('NT$ ' + (u.mealAllowance | number:'1.0-0')) : '—' }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">加班費</div>
+                  <div>{{ u.overtimePay != null ? ('NT$ ' + (u.overtimePay | number:'1.0-0')) : '—' }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">勞保（員工負擔）</div>
+                  <div>{{ u.laborInsuranceOverride != null ? ('NT$ ' + (u.laborInsuranceOverride | number:'1.0-0')) : '—（依級距）' }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">健保（員工負擔）</div>
+                  <div>{{ u.healthInsuranceOverride != null ? ('NT$ ' + (u.healthInsuranceOverride | number:'1.0-0')) : '—（依級距）' }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">職務加給</div>
+                  <div>{{ u.positionAllowance != null ? ('NT$ ' + (u.positionAllowance | number:'1.0-0')) : '—' }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">主管加給</div>
+                  <div>{{ u.dutyAllowance != null ? ('NT$ ' + (u.dutyAllowance | number:'1.0-0')) : '—' }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">其他加給</div>
+                  <div>{{ u.otherAllowance != null ? ('NT$ ' + (u.otherAllowance | number:'1.0-0')) : '—' }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">調整差額</div>
+                  <div>{{ u.adjustmentDifference != null ? ('NT$ ' + (u.adjustmentDifference | number:'1.0-0')) : '—' }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">外派加給</div>
+                  <div>{{ u.overseasAllowance != null ? ('NT$ ' + (u.overseasAllowance | number:'1.0-0')) : '—' }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 身分資格卡 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+              身分資格
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">原住民身份</div>
+                  <div>{{ u.isIndigenous ? '是' : '否' }}</div>
+                </div>
+                @if (u.isIndigenous && u.indigenousProofUrl) {
+                  <div class="col-12 col-md-8">
+                    <div class="form-label fw-500 text-muted small">原住民證明文件</div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="viewFile(u.indigenousProofUrl)">
+                      <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                      檢視
+                    </button>
+                  </div>
+                }
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">低收入戶</div>
+                  <div>{{ u.isLowIncome ? '是' : '否' }}</div>
+                </div>
+                @if (u.isLowIncome && u.lowIncomeProofUrl) {
+                  <div class="col-12 col-md-8">
+                    <div class="form-label fw-500 text-muted small">低收入戶證明文件</div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="viewFile(u.lowIncomeProofUrl)">
+                      <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                      檢視
+                    </button>
+                  </div>
+                }
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">殘障身份</div>
+                  <div>{{ u.isDisabled ? '是' : '否' }}</div>
+                </div>
+                @if (u.isDisabled && u.disabledProofUrl) {
+                  <div class="col-12 col-md-8">
+                    <div class="form-label fw-500 text-muted small">殘障證明文件</div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="viewFile(u.disabledProofUrl)">
+                      <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                      檢視
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- 頭像與簽名卡 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#image"></use></svg>
+              頭像與簽名
+            </div>
+            <div class="card-body">
+              <div class="row g-4">
+                <div class="col-12 col-md-6">
+                  <div class="form-label fw-500 text-muted small mb-2">頭像</div>
+                  @if (avatarUrl()) {
+                    <div class="w-24 h-24 rounded-full overflow-hidden border">
+                      <img [src]="avatarUrl()"
+                           class="w-full h-full object-cover"
+                           [style.objectPosition]="avatarPosX() + '% ' + avatarPosY() + '%'"
+                           [style.transform]="avatarScale() === 1 ? '' : ('scale(' + avatarScale() + ')')"
+                           style="transform-origin: center"
+                           alt="頭像">
+                    </div>
+                  } @else {
+                    <div class="text-muted small">尚未上傳頭像</div>
+                  }
+                </div>
+                <div class="col-12 col-md-6">
+                  <div class="form-label fw-500 text-muted small mb-2">簽名檔</div>
+                  @if (u.signatureUrl) {
+                    <div class="flex flex-col gap-2">
+                      <div class="border rounded p-3 bg-white inline-block">
+                        <img [src]="signatureDisplayUrl(u.signatureUrl)"
+                             alt="簽名檔" class="max-h-24 object-contain">
+                      </div>
+                      <button type="button" class="btn btn-sm btn-outline-secondary w-fit" (click)="viewFile(u.signatureUrl)">
+                        <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                        在新分頁開啟
+                      </button>
+                    </div>
+                  } @else {
+                    <div class="text-muted small">尚未上傳簽名檔</div>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+
+        }
+      }
+
+      <!-- ══════════════ TAB 2：人事資料卡 ══════════════ -->
+      @else if (activeTab() === 'hr') {
+        @if (hrLoading()) {
+          <div class="flex items-center justify-center py-12 text-muted">
+            <span class="inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin me-2"></span>
+            載入人事資料中…
+          </div>
+        } @else if (profile(); as p) {
+
+          <!-- 員工資訊 header strip -->
+          <div class="p-3 mb-4 rounded border bg-[--bg-elevated]">
+            <div class="flex flex-wrap gap-6 text-sm">
+              <span>
+                <span class="text-muted me-1">員工代號：</span>
+                <span class="fw-500">{{ p.employeeNumber || '—' }}</span>
+              </span>
+              <span>
+                <span class="text-muted me-1">姓名：</span>
+                <span class="fw-500">{{ user()?.name || '—' }}</span>
+              </span>
+              <span>
+                <span class="text-muted me-1">到職日：</span>
+                <span class="fw-500">{{ user()?.hireDate ? (user()!.hireDate | date:'yyyy-MM-dd') : '—' }}</span>
+              </span>
+            </div>
+          </div>
+
+          <!-- Card 1：基本資料補充 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#user"></use></svg>
+              基本資料補充
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">員工代號</div>
+                  <div>{{ p.employeeNumber || '—' }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">英文名</div>
+                  <div>{{ p.englishName || '—' }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">身分證號</div>
+                  <div>{{ p.idNumber || '—' }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">性別</div>
+                  <div>{{ p.gender === 'M' ? '男' : p.gender === 'F' ? '女' : '—' }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">婚姻狀況</div>
+                  <div>{{ maritalStatusLabel(p.maritalStatus) }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">出生地</div>
+                  <div>{{ p.birthPlace || '—' }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">行動電話</div>
+                  <div>{{ p.mobilePhone || '—' }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2：身分證影本 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#credit-card"></use></svg>
+              身分證影本
+            </div>
+            <div class="card-body">
+              <div class="row g-4">
+                <div class="col-12 col-md-6">
+                  <div class="fw-500 mb-2">正面</div>
+                  @if (p.idCardFrontUrl) {
+                    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="viewFile(p.idCardFrontUrl)">
+                      <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                      檢視正面
+                    </button>
+                  } @else {
+                    <div class="text-muted small">尚未上傳</div>
+                  }
+                </div>
+                <div class="col-12 col-md-6">
+                  <div class="fw-500 mb-2">反面</div>
+                  @if (p.idCardBackUrl) {
+                    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="viewFile(p.idCardBackUrl)">
+                      <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                      檢視反面
+                    </button>
+                  } @else {
+                    <div class="text-muted small">尚未上傳</div>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3：戶籍 & 通訊 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#home"></use></svg>
+              戶籍 &amp; 通訊資訊
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-12 col-md-8">
+                  <div class="form-label fw-500 text-muted small">戶籍地址</div>
+                  <div>{{ p.residentialAddress || '—' }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">戶籍電話</div>
+                  <div>{{ p.residentialPhone || '—' }}</div>
+                </div>
+                <div class="col-12 col-md-8">
+                  <div class="form-label fw-500 text-muted small">通訊地址</div>
+                  <div>{{ p.mailingAddress || '—' }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">通訊電話</div>
+                  <div>{{ p.mailingPhone || '—' }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 4：學歷紀錄 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#book-open"></use></svg>
+              學歷紀錄
+            </div>
+            <div class="card-body">
+              @if (p.highestEducationProofUrl) {
+                <div class="mb-4 pb-4 border-bottom">
+                  <div class="fw-500 mb-2">最高學歷證明</div>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="viewFile(p.highestEducationProofUrl)">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                    檢視文件
+                  </button>
+                </div>
+              }
+              <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                  <thead class="table-light">
+                    <tr><th>學校</th><th>科系</th><th>學歷</th><th>起始年月</th><th>結束年月</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (r of p.educationRecords; track r.id ?? $index) {
+                      <tr>
+                        <td>{{ r.school }}</td>
+                        <td>{{ r.department }}</td>
+                        <td>{{ r.degree === 'graduated' ? '畢業' : '肄業' }}</td>
+                        <td>{{ r.startDate?.slice(0,7) || '—' }}</td>
+                        <td>{{ r.endDate?.slice(0,7) || '—' }}</td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="5" class="text-center text-muted small py-3">尚無紀錄</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 5：經歷紀錄 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#briefcase"></use></svg>
+              經歷紀錄
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                  <thead class="table-light">
+                    <tr><th>服務機關</th><th>職稱</th><th>起始日</th><th>結束日</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (r of p.employmentHistoryRecords; track r.id ?? $index) {
+                      <tr>
+                        <td>{{ r.organization }}</td>
+                        <td>{{ r.jobTitle }}</td>
+                        <td>{{ r.startDate?.slice(0,10) || '—' }}</td>
+                        <td>{{ r.endDate?.slice(0,10) || '—' }}</td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="4" class="text-center text-muted small py-3">尚無紀錄</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 6：家庭狀況 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#users"></use></svg>
+              家庭狀況
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                  <thead class="table-light">
+                    <tr><th>姓名</th><th>關係</th><th>年齡</th><th>職業</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (r of p.familyMembers; track r.id ?? $index) {
+                      <tr>
+                        <td>{{ r.name }}</td>
+                        <td>{{ r.relationship }}</td>
+                        <td>{{ r.age ?? '—' }}</td>
+                        <td>{{ r.occupation || '—' }}</td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="4" class="text-center text-muted small py-3">尚無紀錄</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 7：專業訓練 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#award"></use></svg>
+              專業訓練
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                  <thead class="table-light">
+                    <tr><th>訓練名稱</th><th>訓練機構</th><th>起始日</th><th>結束日</th><th>時數</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (r of p.professionalTrainings; track r.id ?? $index) {
+                      <tr>
+                        <td>{{ r.trainingName }}</td>
+                        <td>{{ r.trainingOrg }}</td>
+                        <td>{{ r.startDate?.slice(0,10) || '—' }}</td>
+                        <td>{{ r.endDate?.slice(0,10) || '—' }}</td>
+                        <td>{{ r.hours ?? '—' }}</td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="5" class="text-center text-muted small py-3">尚無紀錄</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 8：語言能力 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#globe"></use></svg>
+              語言能力
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                  <thead class="table-light">
+                    <tr><th>語言</th><th>聽</th><th>說</th><th>讀</th><th>寫</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (r of p.languageAbilities; track r.id ?? $index) {
+                      <tr>
+                        <td>{{ r.language }}</td>
+                        <td>{{ r.listening === 'good' ? '佳' : '可' }}</td>
+                        <td>{{ r.speaking === 'good' ? '佳' : '可' }}</td>
+                        <td>{{ r.reading === 'good' ? '佳' : '可' }}</td>
+                        <td>{{ r.writing === 'good' ? '佳' : '可' }}</td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="5" class="text-center text-muted small py-3">尚無紀錄</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 9：緊急聯絡 / 財務 / 其他 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#phone"></use></svg>
+              緊急聯絡 / 財務 / 其他
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-12 col-md-6">
+                  <div class="form-label fw-500 text-muted small">緊急聯絡人</div>
+                  <div>{{ p.emergencyContactName || '—' }}</div>
+                </div>
+                <div class="col-12 col-md-6">
+                  <div class="form-label fw-500 text-muted small">緊急聯絡電話</div>
+                  <div>{{ p.emergencyContactPhone || '—' }}</div>
+                </div>
+                <div class="col-12 col-md-3">
+                  <div class="form-label fw-500 text-muted small">銀行分行</div>
+                  <div>{{ p.bankCode || '—' }}</div>
+                </div>
+                <div class="col-12 col-md-5">
+                  <div class="form-label fw-500 text-muted small">銀行帳號</div>
+                  <div>{{ p.bankAccount || '—' }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="form-label fw-500 text-muted small">投保起日</div>
+                  <div>{{ p.insuranceStartDate?.slice(0,10) || '—' }}</div>
+                </div>
+                <div class="col-12 col-md-3">
+                  <div class="form-label fw-500 text-muted small">扶養人數</div>
+                  <div>{{ p.dependentCount ?? '—' }}</div>
+                </div>
+                <div class="col-12">
+                  <div class="form-label fw-500 text-muted small">專長興趣</div>
+                  <div>{{ p.specialties || '—' }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 10：歷史紀錄與離職資訊 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
+              歷史紀錄與離職資訊
+            </div>
+            <div class="card-body">
+
+              <div class="fw-600 mb-2 text-[--text-secondary]">職務調整歷史</div>
+              <div class="table-responsive mb-4">
+                <table class="table table-sm align-middle mb-0">
+                  <thead class="table-light">
+                    <tr><th>生效日</th><th>原部門</th><th>新部門</th><th>原職稱</th><th>新職稱</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (r of p.jobTransferRecords; track r.id ?? $index) {
+                      <tr>
+                        <td>{{ r.effectiveDate?.slice(0,10) || '—' }}</td>
+                        <td>{{ r.fromDepartment }}</td>
+                        <td>{{ r.toDepartment }}</td>
+                        <td>{{ r.fromJobTitle }}</td>
+                        <td>{{ r.toJobTitle }}</td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="5" class="text-center text-muted small py-3">尚無紀錄</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="fw-600 mb-2 text-[--text-secondary]">獎懲歷史</div>
+              <div class="table-responsive mb-4">
+                <table class="table table-sm align-middle mb-0">
+                  <thead class="table-light">
+                    <tr><th>生效日</th><th>類型</th><th>類別</th><th>次數</th><th>事由</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (r of p.rewardPunishmentRecords; track r.id ?? $index) {
+                      <tr>
+                        <td>{{ r.effectiveDate?.slice(0,10) || '—' }}</td>
+                        <td>{{ r.type === 'reward' ? '獎勵' : '懲處' }}</td>
+                        <td>{{ r.category }}</td>
+                        <td>{{ r.count ?? '—' }}</td>
+                        <td>{{ r.reason }}</td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="5" class="text-center text-muted small py-3">尚無紀錄</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="fw-600 mb-2 text-[--text-secondary]">薪資調整歷史</div>
+              <div class="table-responsive mb-4">
+                <table class="table table-sm align-middle mb-0">
+                  <thead class="table-light">
+                    <tr><th>生效日</th><th>底薪</th><th>職務</th><th>主管</th><th>其他</th><th>差額</th><th>海外</th><th>伙食</th><th>合計</th><th>備註</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (r of p.salaryAdjustmentRecords; track r.id ?? $index) {
+                      <tr>
+                        <td>{{ r.effectiveDate?.slice(0,10) || '—' }}</td>
+                        <td class="text-end">{{ r.baseSalary != null ? (r.baseSalary | number:'1.0-0') : '—' }}</td>
+                        <td class="text-end">{{ r.positionAllowance != null ? (r.positionAllowance | number:'1.0-0') : '—' }}</td>
+                        <td class="text-end">{{ r.dutyAllowance != null ? (r.dutyAllowance | number:'1.0-0') : '—' }}</td>
+                        <td class="text-end">{{ r.otherAllowance != null ? (r.otherAllowance | number:'1.0-0') : '—' }}</td>
+                        <td class="text-end">{{ r.adjustmentDifference != null ? (r.adjustmentDifference | number:'1.0-0') : '—' }}</td>
+                        <td class="text-end">{{ r.overseasAllowance != null ? (r.overseasAllowance | number:'1.0-0') : '—' }}</td>
+                        <td class="text-end">{{ r.mealAllowance != null ? (r.mealAllowance | number:'1.0-0') : '—' }}</td>
+                        <td class="text-end fw-500">{{ r.totalAmount != null ? (r.totalAmount | number:'1.0-0') : (salaryRowTotal(r) | number:'1.0-0') }}</td>
+                        <td>{{ r.notes || '—' }}</td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="10" class="text-center text-muted small py-3">尚無紀錄</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="fw-600 mb-2 text-[--text-secondary]">離職資訊</div>
+              <div>{{ p.resignationReason || '—' }}</div>
+
+            </div>
+          </div>
+
+        }
+      }
+
+      <!-- ══════════════ TAB 3：健保眷屬 ══════════════ -->
+      @else if (activeTab() === 'dependents') {
+        @if (hrLoading()) {
+          <div class="flex items-center justify-center py-12 text-muted">
+            <span class="inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin me-2"></span>
+            載入中…
+          </div>
+        } @else if (profile(); as p) {
+
+          <div class="alert py-2 mb-4" style="background: rgba(13,110,253,0.08);">
+            <div class="flex items-start gap-2">
+              <svg class="sa-icon mt-1 text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+              <div class="small">
+                <span class="fw-600">健保眷屬最多計 3 口，超過 3 口仍按 3 口計算。</span><br>
+                台灣全民健保規定：每增加 1 口眷屬，健保費 = 員工健保費 × (1 + 眷屬數，上限 3)。
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#heart"></use></svg>
+              健保眷屬清單
+            </div>
+            <div class="card-body">
+              <div class="flex flex-wrap gap-6 mb-4 text-sm">
+                <span>
+                  <span class="text-muted me-1">眷屬人數：</span>
+                  <span class="fw-600">{{ p.healthInsuranceDependents.length }} 人</span>
+                  @if (p.healthInsuranceDependents.length > 3) {
+                    <span class="text-warning ms-1">（超過 3 口，薪資計算上限 3 口）</span>
+                  }
+                </span>
+                @if (estimatedHealthInsurance !== null) {
+                  <span>
+                    <span class="text-muted me-1">每月健保費試算：</span>
+                    <span class="fw-600 text-primary">NT$ {{ estimatedHealthInsurance | number:'1.0-0' }}</span>
+                    <span class="text-muted ms-1 small">（含眷屬 {{ p.healthInsuranceDependents.length > 3 ? 3 : p.healthInsuranceDependents.length }} 口）</span>
+                  </span>
+                }
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                  <thead class="table-light">
+                    <tr><th>姓名</th><th>關係</th><th>身分證號</th><th>出生日期</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (r of p.healthInsuranceDependents; track r.id ?? $index) {
+                      <tr>
+                        <td>{{ r.name }}</td>
+                        <td>{{ dependentRelLabel(r.relationship) }}</td>
+                        <td>{{ r.idNumber || '—' }}</td>
+                        <td>{{ r.birthDate?.slice(0,10) || '—' }}</td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="4" class="text-center text-muted small py-3">尚無眷屬</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        }
+      }
+
+    </div>
+  </div>
+</div>

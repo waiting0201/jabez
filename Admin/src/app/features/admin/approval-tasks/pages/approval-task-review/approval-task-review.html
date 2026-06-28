@@ -1,0 +1,1478 @@
+<div class="container-fluid py-3">
+  @if (task$ | async; as task) {
+
+    <!-- Page Header -->
+    <div class="flex items-center gap-2 mb-6">
+      <a routerLink="/admin/approval-tasks" class="btn btn-sm btn-outline-secondary">
+        <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+      </a>
+      <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#check-square"></use>
+      </svg>
+      <h4 class="mb-0">簽核審核</h4>
+      <span [class]="'badge ' + appTypeClass[task.applicationType]">{{ appTypeLabel[task.applicationType] }}</span>
+      <span [class]="'badge ' + statusClass[task.status]">{{ statusLabel[task.status] }}</span>
+    </div>
+
+    @if (errorMsg()) {
+      <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+        {{ errorMsg() }}
+      </div>
+    }
+
+    <div class="row g-4">
+      <div class="col-12 col-lg-10 col-xl-8">
+
+        <!-- ── 申請資訊（依類型切換）────────────────────────────── -->
+        @switch (task.applicationType) {
+
+          @case ('payment_request') {
+            @if (task.paymentDetail; as d) {
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#dollar-sign"></use></svg>
+                  請款申請資訊
+                </div>
+                <div class="card-body">
+                  <div class="row g-3 mb-0">
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">請款單號</div>
+                      <span class="fw-500 font-monospace">{{ d.requestNo }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">請款類型</div>
+                      <span class="fw-500">{{ payTypeLabel[d.paymentType] }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">專案編號</div>
+                      <span class="fw-500 font-monospace">{{ d.projectCode }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">申請人</div>
+                      <span class="fw-500">{{ task.submittedBy }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">申請時間</div>
+                      <span class="text-muted small">{{ task.submittedAt | date:'yyyy-MM-dd' }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">總金額</div>
+                      <span class="fw-600 fs-5">{{ d.totalAmount | number:'1.0-0' }}</span>
+                    </div>
+                    @if (d.paymentType === 'vendor') {
+                      <div class="col-12 col-md-8">
+                        <div class="text-muted small mb-1">廠商</div>
+                        <span class="fw-500">
+                          {{ d.vendorName || '—' }}
+                          @if (d.vendorTaxId) { <span class="text-muted">（{{ d.vendorTaxId }}）</span> }
+                        </span>
+                      </div>
+                    }
+                    @if (d.reason) {
+                      <div class="col-12">
+                        <div class="text-muted small mb-1">請款原因</div>
+                        <span class="fw-500">{{ d.reason }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              </div>
+
+              <!-- 發票明細 -->
+              <div class="card border-0 shadow-sm mt-6">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                  發票明細
+                </div>
+                <div class="card-body p-0">
+                  <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th style="width:40px"></th>
+                          <th>發票號碼</th>
+                          <th>發票日期</th>
+                          <th class="text-right">金額</th>
+                          <th>項目</th>
+                          <th>備註</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (inv of d.invoices; track inv.id) {
+                          <tr>
+                            <td class="align-middle text-center">
+                              @if (inv.previewUrl || inv.fileUrl) {
+                                <button type="button" class="btn btn-sm btn-ghost-secondary p-1"
+                                        (click)="openPreview(inv.fileName, inv.previewUrl || inv.fileUrl!)"
+                                        title="{{ inv.fileName }}">
+                                  <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                                </button>
+                              }
+                            </td>
+                            <td class="font-monospace small">{{ inv.invoiceNo }}</td>
+                            <td class="small">{{ inv.invoiceDate ? (inv.invoiceDate | date:'yyyy-MM-dd') : '—' }}</td>
+                            <td class="text-right fw-500">{{ inv.amount | number:'1.0-0' }}</td>
+                            <td class="small">{{ inv.itemName || '—' }}</td>
+                            <td class="small">{{ inv.note || '—' }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                      <tfoot>
+                        <tr class="table-light">
+                          <td colspan="3" class="text-right fw-500 small">合計</td>
+                          <td class="text-right fw-600">{{ d.totalAmount | number:'1.0-0' }}</td>
+                          <td colspan="2"></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              @if (d.attachments && d.attachments.length > 0) {
+                <div class="card border-0 shadow-sm mt-6">
+                  <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                    <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#paperclip"></use></svg>
+                    附件
+                  </div>
+                  <div class="card-body">
+                    <app-attachments-list [attachments]="d.attachments" />
+                  </div>
+                </div>
+              }
+            }
+          }
+
+          @case ('leave') {
+            @if (task.leaveDetail; as d) {
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#calendar"></use></svg>
+                  請假申請資訊
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">假別</div>
+                      <span class="fw-500">{{ leaveTypeLabel[d.leaveType] }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">申請人</div>
+                      <span class="fw-500">{{ task.submittedBy }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">期間</div>
+                      <span class="fw-600 fs-5">{{ formatLeaveDuration(d.leaveType, d.hours) }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">開始日期</div>
+                      <span class="text-muted small">{{ d.startDate | date:'yyyy-MM-dd' }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">結束日期</div>
+                      <span class="text-muted small">{{ d.endDate | date:'yyyy-MM-dd' }}</span>
+                    </div>
+                    <div class="col-12">
+                      <div class="text-muted small mb-1">請假原因</div>
+                      <div class="border rounded p-4 bg-[--bg-base] small">{{ d.reason }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
+          }
+
+          @case ('travel') {
+            @if (task.travelDetail; as d) {
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
+                  出差預支申請資訊
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">出差單號</div>
+                      <span class="fw-500 font-monospace">{{ d.requestNo }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">出差地點</div>
+                      <span class="fw-500">{{ d.destination }}</span>
+                      @if (d.isHolidayTravel) {
+                        <span class="badge bg-info-subtle text-info ms-1">假日執行活動</span>
+                      }
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">申請人</div>
+                      <span class="fw-500">{{ task.submittedBy }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">金額</div>
+                      <span class="fw-600 fs-5">{{ d.grandTotal | number:'1.0-0' }} 元</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">出發日期</div>
+                      <span class="text-muted small">{{ d.startDate | date:'yyyy-MM-dd' }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">返回日期</div>
+                      <span class="text-muted small">{{ d.endDate | date:'yyyy-MM-dd' }}</span>
+                    </div>
+                    @if (d.projectCode) {
+                      <div class="col-6 col-md-4">
+                        <div class="text-muted small mb-1">關聯專案</div>
+                        <span class="font-monospace fw-500">{{ d.projectCode }}</span>
+                      </div>
+                    }
+                    <div class="col-12">
+                      <div class="text-muted small mb-1">出差目的</div>
+                      <div class="border rounded p-4 bg-[--bg-base] small">{{ d.purpose }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 出差明細 -->
+              @if (d.items && d.items.length > 0) {
+                <div class="card border-0 shadow-sm mt-6">
+                  <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                    <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#list"></use></svg>
+                    出差明細
+                  </div>
+                  <div class="card-body p-0">
+                    <div class="table-responsive">
+                      <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                          <tr>
+                            <th>分類</th>
+                            <th>項目說明</th>
+                            <th class="text-right">單價</th>
+                            <th>數量/單位</th>
+                            <th class="text-right">總價</th>
+                            <th>備註</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (item of d.items; track item.id) {
+                            <tr>
+                              <td class="small">{{ item.category }}</td>
+                              <td class="small">{{ item.itemName }}</td>
+                              <td class="text-right small">{{ item.unitPrice | number:'1.0-0' }}</td>
+                              <td class="small">{{ item.quantity }}</td>
+                              <td class="text-right small fw-500">{{ item.totalPrice | number:'1.0-0' }}</td>
+                              <td class="small text-muted">{{ item.note || '—' }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                        <tfoot>
+                          <tr class="table-light">
+                            <td colspan="4" class="text-right fw-500 small">合計</td>
+                            <td class="text-right fw-600">{{ d.grandTotal | number:'1.0-0' }}</td>
+                            <td></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              }
+            }
+          }
+
+          @case ('holiday_travel') {
+            @if (task.travelDetail; as d) {
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
+                  假日執行活動申請資訊
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">單號</div>
+                      <span class="fw-500 font-monospace">{{ d.requestNo }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">執行活動地點</div>
+                      <span class="fw-500">{{ d.destination }}</span>
+                      <span class="badge bg-info-subtle text-info ms-1">假日執行活動</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">申請人</div>
+                      <span class="fw-500">{{ task.submittedBy }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">假日天數</div>
+                      <span class="fw-500">{{ d.holidayDays != null ? d.holidayDays + ' 天' : '—' }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">開始日期</div>
+                      <span class="text-muted small">{{ d.startDate | date:'yyyy-MM-dd' }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">結束日期</div>
+                      <span class="text-muted small">{{ d.endDate | date:'yyyy-MM-dd' }}</span>
+                    </div>
+                    @if (d.projectCode) {
+                      <div class="col-6 col-md-4">
+                        <div class="text-muted small mb-1">關聯專案</div>
+                        <span class="font-monospace fw-500">{{ d.projectCode }}</span>
+                      </div>
+                    }
+                    <div class="col-12">
+                      <div class="text-muted small mb-1">活動主旨及內容</div>
+                      <div class="border rounded p-4 bg-[--bg-base] small">{{ d.purpose }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 出差明細 -->
+              @if (d.items && d.items.length > 0) {
+                <div class="card border-0 shadow-sm mt-6">
+                  <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                    <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#list"></use></svg>
+                    費用明細
+                  </div>
+                  <div class="card-body p-0">
+                    <div class="table-responsive">
+                      <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                          <tr>
+                            <th style="width:40px"></th>
+                            <th>發票號碼</th>
+                            <th>發票日期</th>
+                            <th>分類</th>
+                            <th>項目說明</th>
+                            <th class="text-right">單價</th>
+                            <th>數量/單位</th>
+                            <th class="text-right">總價</th>
+                            <th>備註</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (item of d.items; track item.id) {
+                            <tr>
+                              <td class="align-middle text-center">
+                                @if (item.fileUrl) {
+                                  <button type="button" class="btn btn-sm btn-ghost-secondary p-1"
+                                          (click)="openPreview(item.fileName || '發票', item.fileUrl!)"
+                                          title="{{ item.fileName }}">
+                                    <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                                  </button>
+                                }
+                              </td>
+                              <td class="small font-monospace">{{ item.invoiceNo || '—' }}</td>
+                              <td class="small">{{ item.invoiceDate ? (item.invoiceDate | date:'yyyy-MM-dd') : '—' }}</td>
+                              <td class="small">{{ item.category }}</td>
+                              <td class="small">{{ item.itemName }}</td>
+                              <td class="text-right small">{{ item.unitPrice | number:'1.0-0' }}</td>
+                              <td class="small">{{ item.quantity }}</td>
+                              <td class="text-right small fw-500">{{ item.totalPrice | number:'1.0-0' }}</td>
+                              <td class="small text-muted">{{ item.note || '—' }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                        <tfoot>
+                          <tr class="table-light">
+                            <td colspan="7" class="text-right fw-500 small">合計</td>
+                            <td class="text-right fw-600">{{ d.grandTotal | number:'1.0-0' }}</td>
+                            <td></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              }
+            }
+          }
+
+          @case ('overtime') {
+            @if (task.overtimeDetail; as d) {
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
+                  加班申請資訊
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">加班日期</div>
+                      <span class="fw-500">{{ d.overtimeDate | date:'yyyy-MM-dd' }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">申請人</div>
+                      <span class="fw-500">{{ task.submittedBy }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">預計加班時數</div>
+                      <span class="fw-600 fs-5">{{ d.estimatedHours }} 小時</span>
+                    </div>
+                    @if (d.projectCodes && d.projectCodes.length > 0) {
+                      <div class="col-12 col-md-8">
+                        <div class="text-muted small mb-1">關聯專案</div>
+                        <div class="flex flex-wrap gap-1">
+                          @for (code of d.projectCodes; track code) {
+                            <span class="badge bg-[--bg-base] text-[--text-muted] font-monospace">{{ code }}</span>
+                          }
+                        </div>
+                      </div>
+                    }
+                    <div class="col-12">
+                      <div class="text-muted small mb-1">加班原因</div>
+                      <div class="border rounded p-4 bg-[--bg-base] small">{{ d.reason }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
+          }
+
+          @case ('advance') {
+            @if (task.advanceDetail; as d) {
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#credit-card"></use></svg>
+                  預支申請資訊
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">預支單號</div>
+                      <span class="fw-500 font-monospace">{{ d.requestNo }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">專案編號</div>
+                      <span class="fw-500 font-monospace">{{ d.projectCode }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">申請人</div>
+                      <span class="fw-500">{{ task.submittedBy }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">活動名稱</div>
+                      <span class="fw-500">{{ d.activityName }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">預支金額</div>
+                      <span class="fw-600 fs-5">{{ d.grandTotal | number:'1.0-0' }} 元</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 預支明細 -->
+              @if (d.items && d.items.length > 0) {
+                <div class="card border-0 shadow-sm mt-6">
+                  <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                    <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#list"></use></svg>
+                    預支明細
+                  </div>
+                  <div class="card-body p-0">
+                    <div class="table-responsive">
+                      <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                          <tr>
+                            <th>分類</th>
+                            <th>項目說明</th>
+                            <th class="text-right">單價</th>
+                            <th>數量/單位</th>
+                            <th class="text-right">總價</th>
+                            <th class="text-right">現金花費</th>
+                            <th class="text-right">支票金額</th>
+                            <th>備註</th>
+                            <th>檔案</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (item of d.items; track item.id) {
+                            <tr>
+                              <td class="small">{{ item.category }}</td>
+                              <td class="small">{{ item.itemName }}</td>
+                              <td class="text-right small">{{ item.unitPrice | number:'1.0-0' }}</td>
+                              <td class="small">{{ item.quantity }}</td>
+                              <td class="text-right small fw-500">{{ item.totalPrice | number:'1.0-0' }}</td>
+                              <td class="text-right small">{{ item.cashAmount | number:'1.0-0' }}</td>
+                              <td class="text-right small">{{ item.checkAmount | number:'1.0-0' }}</td>
+                              <td class="small text-muted">{{ item.note || '—' }}</td>
+                              <td class="align-middle">
+                                @if (item.fileUrl) {
+                                  <button type="button" class="btn btn-sm btn-ghost-primary p-1"
+                                          (click)="openPreview(item.fileName || '檔案', item.fileUrl)"
+                                          [title]="item.fileName">
+                                    <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                                  </button>
+                                }
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                        <tfoot>
+                          <tr class="table-light">
+                            <td colspan="4" class="text-right fw-500 small">合計</td>
+                            <td class="text-right fw-600">{{ d.grandTotal | number:'1.0-0' }}</td>
+                            <td class="text-right fw-600">{{ sumField(d.items, 'cashAmount') | number:'1.0-0' }}</td>
+                            <td class="text-right fw-600">{{ sumField(d.items, 'checkAmount') | number:'1.0-0' }}</td>
+                            <td></td>
+                            <td></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              }
+            }
+          }
+
+          @case ('write_off') {
+            @if (task.writeOffDetail; as d) {
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                  預支沖銷申請資訊
+                </div>
+                <div class="card-body">
+                  <div class="row g-3 mb-4">
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">沖銷單號</div>
+                      <span class="fw-500 font-monospace">{{ d.requestNo }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">關聯預支單號</div>
+                      <span class="fw-500 font-monospace">{{ d.advanceRequestNo }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">申請人</div>
+                      <span class="fw-500">{{ task.submittedBy }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">專案編號</div>
+                      <span class="fw-500 font-monospace">{{ d.projectCode }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">專案名稱</div>
+                      <span class="fw-500">{{ d.projectName }}</span>
+                    </div>
+                  </div>
+
+                  <!-- 沖銷金額摘要 -->
+                  <div class="row g-3 mb-0">
+                    <div class="col-6 col-md-3">
+                      <div class="text-muted small mb-1">預支金額</div>
+                      <span class="fw-600 text-lg">{{ d.advanceGrandTotal | number:'1.0-0' }}</span>
+                    </div>
+                    <div class="col-6 col-md-3">
+                      <div class="text-muted small mb-1">前次已沖銷</div>
+                      <span class="fw-600 text-lg">{{ d.otherWrittenOffTotal | number:'1.0-0' }}</span>
+                    </div>
+                    <div class="col-6 col-md-3">
+                      <div class="text-muted small mb-1">本次沖銷</div>
+                      <span class="fw-600 text-lg text-primary">{{ d.grandTotal | number:'1.0-0' }}</span>
+                    </div>
+                    <div class="col-6 col-md-3">
+                      <div class="text-muted small mb-1">待沖銷餘額</div>
+                      <span class="fw-600 text-lg" [class]="(d.advanceGrandTotal - d.otherWrittenOffTotal - d.grandTotal + (d.advanceRefundedAmount ?? 0)) >= 0 ? 'text-green' : 'text-red'">
+                        {{ d.advanceGrandTotal - d.otherWrittenOffTotal - d.grandTotal + (d.advanceRefundedAmount ?? 0) | number:'1.0-0' }}
+                      </span>
+                    </div>
+                  </div>
+
+                  @if (d.advanceIsClosed && (d.advanceGrandTotal - d.otherWrittenOffTotal - d.grandTotal) < 0) {
+                    <div class="row g-3 mt-4 mb-0">
+                      <div class="col-6 col-md-3">
+                        <div class="text-muted small mb-1">預計撥款日</div>
+                        <span class="fw-500">{{ d.estimatedRefundDate ? (d.estimatedRefundDate | date:'yyyy-MM-dd') : '尚未設定' }}</span>
+                        <div class="text-muted small mt-1">沖銷金額超過預支金額時，公司預計撥付差額給員工的日期</div>
+                      </div>
+                      <div class="col-6 col-md-3">
+                        <div class="text-muted small mb-1">撥款日</div>
+                        <span class="fw-500" [class.text-success]="d.refundedAt">{{ d.refundedAt ? (d.refundedAt | date:'yyyy-MM-dd') : '尚未撥款' }}</span>
+                        <div class="text-muted small mt-1">公司實際撥付差額給員工的日期</div>
+                      </div>
+                      @if (d.advanceRefundedAmount != null) {
+                        <div class="col-6 col-md-3">
+                          <div class="text-muted small mb-1">撥款金額</div>
+                          <span class="fw-500">${{ d.advanceRefundedAmount | number:'1.0-0' }}</span>
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  @if (d.note) {
+                    <div class="text-muted small mt-4 mb-0">備註：{{ d.note }}</div>
+                  }
+                </div>
+              </div>
+
+              <!-- 沖銷明細 -->
+              @if (d.items.length > 0) {
+                <div class="card border-0 shadow-sm mt-6">
+                  <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                    <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#list"></use></svg>
+                    沖銷明細
+                  </div>
+                  <div class="card-body p-0">
+                    <div class="table-responsive">
+                      <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                          <tr>
+                            <th style="width:40px"></th>
+                            <th>發票號碼</th>
+                            <th>發票日期</th>
+                            <th>分類</th>
+                            <th>項目說明</th>
+                            <th>單價</th>
+                            <th>數量/單位</th>
+                            <th class="text-right">總價</th>
+                            <th class="text-right">現金花費</th>
+                            <th class="text-right">支票金額</th>
+                            <th>備註</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (item of d.items; track item.id) {
+                            <tr>
+                              <td class="align-middle text-center">
+                                @if (item.fileUrl) {
+                                  <button type="button" class="btn btn-sm btn-ghost-secondary p-1"
+                                          (click)="openPreview(item.fileName || '發票', item.fileUrl!)"
+                                          title="{{ item.fileName }}">
+                                    <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                                  </button>
+                                }
+                              </td>
+                              <td class="small font-monospace">{{ item.invoiceNo || '—' }}</td>
+                              <td class="small">{{ item.invoiceDate ? (item.invoiceDate | date:'yyyy-MM-dd') : '—' }}</td>
+                              <td class="small">{{ item.category }}</td>
+                              <td class="small">{{ item.itemName }}</td>
+                              <td class="small">{{ item.unitPrice | number:'1.0-0' }}</td>
+                              <td class="small">{{ item.quantity }}</td>
+                              <td class="text-right small fw-500">{{ item.totalPrice | number:'1.0-0' }}</td>
+                              <td class="text-right small">{{ item.cashAmount | number:'1.0-0' }}</td>
+                              <td class="text-right small">{{ item.checkAmount | number:'1.0-0' }}</td>
+                              <td class="small text-muted">{{ item.note || '—' }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                        <tfoot>
+                          <tr class="table-light">
+                            <td colspan="7" class="text-right fw-500 small">合計</td>
+                            <td class="text-right fw-600">{{ d.grandTotal | number:'1.0-0' }}</td>
+                            <td class="text-right fw-600">{{ d.cashTotal | number:'1.0-0' }}</td>
+                            <td class="text-right fw-600">{{ d.checkTotal | number:'1.0-0' }}</td>
+                            <td></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              @if (d.attachments && d.attachments.length > 0) {
+                <div class="card border-0 shadow-sm mt-6">
+                  <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                    <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#paperclip"></use></svg>
+                    附件
+                  </div>
+                  <div class="card-body">
+                    <app-attachments-list [attachments]="d.attachments" />
+                  </div>
+                </div>
+              }
+            }
+          }
+
+          @case ('travel_payment') {
+            @if (task.travelPaymentDetail; as d) {
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
+                  出差請款申請資訊
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">出差請款單號</div>
+                      <span class="fw-500 font-monospace">{{ d.requestNo }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">出差地點</div>
+                      <span class="fw-500">{{ d.destination }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">申請人</div>
+                      <span class="fw-500">{{ task.submittedBy }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">金額</div>
+                      <span class="fw-600 fs-5">{{ d.grandTotal | number:'1.0-0' }} 元</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">出發日期</div>
+                      <span class="text-muted small">{{ d.startDate | date:'yyyy-MM-dd' }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">返回日期</div>
+                      <span class="text-muted small">{{ d.endDate | date:'yyyy-MM-dd' }}</span>
+                    </div>
+                    @if (d.projectCode) {
+                      <div class="col-6 col-md-4">
+                        <div class="text-muted small mb-1">關聯專案</div>
+                        <span class="font-monospace fw-500">{{ d.projectCode }}</span>
+                      </div>
+                    }
+                    <div class="col-12">
+                      <div class="text-muted small mb-1">出差目的</div>
+                      <div class="border rounded p-4 bg-[--bg-base] small">{{ d.purpose }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 費用明細 -->
+              @if (d.items && d.items.length > 0) {
+                <div class="card border-0 shadow-sm mt-6">
+                  <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                    <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#list"></use></svg>
+                    費用明細
+                  </div>
+                  <div class="card-body p-0">
+                    <div class="table-responsive">
+                      <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                          <tr>
+                            <th style="width:40px"></th>
+                            <th>分類</th>
+                            <th>項目說明</th>
+                            <th class="text-right">單價</th>
+                            <th>數量/單位</th>
+                            <th class="text-right">總價</th>
+                            <th>備註</th>
+                            <th>發票號碼</th>
+                            <th>發票日期</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (item of d.items; track item.id) {
+                            <tr>
+                              <td class="align-middle text-center">
+                                @if (item.fileUrl) {
+                                  <button type="button" class="btn btn-sm btn-ghost-secondary p-1"
+                                          (click)="openPreview(item.fileName || '發票', item.fileUrl!)"
+                                          title="{{ item.fileName }}">
+                                    <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                                  </button>
+                                }
+                              </td>
+                              <td class="small">{{ item.category }}</td>
+                              <td class="small">{{ item.itemName }}</td>
+                              <td class="text-right small">{{ item.unitPrice | number:'1.0-0' }}</td>
+                              <td class="small">{{ item.quantity }}</td>
+                              <td class="text-right small fw-500">{{ item.totalPrice | number:'1.0-0' }}</td>
+                              <td class="small text-muted">{{ item.note || '—' }}</td>
+                              <td class="small font-monospace">{{ item.invoiceNo || '—' }}</td>
+                              <td class="small">{{ item.invoiceDate ? (item.invoiceDate | date:'yyyy-MM-dd') : '—' }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                        <tfoot>
+                          <tr class="table-light">
+                            <td colspan="5" class="text-right fw-500 small">合計</td>
+                            <td class="text-right fw-600">{{ d.grandTotal | number:'1.0-0' }}</td>
+                            <td colspan="3"></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              }
+            }
+          }
+
+          @case ('travel_write_off') {
+            @if (task.travelWriteOffDetail; as d) {
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
+                  出差預支沖銷申請資訊
+                </div>
+                <div class="card-body">
+                  <div class="row g-3 mb-4">
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">沖銷單號</div>
+                      <span class="fw-500 font-monospace">{{ d.requestNo }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">關聯出差單號</div>
+                      <span class="fw-500 font-monospace">{{ d.travelRequestNo }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">申請人</div>
+                      <span class="fw-500">{{ task.submittedBy }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">目的地</div>
+                      <span class="fw-500">{{ d.destination }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">出差期間</div>
+                      <span class="fw-500">{{ d.startDate | date:'yyyy-MM-dd' }} ~ {{ d.endDate | date:'yyyy-MM-dd' }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">出差目的</div>
+                      <span class="fw-500">{{ d.purpose }}</span>
+                    </div>
+                    @if (d.projectCode) {
+                      <div class="col-6 col-md-4">
+                        <div class="text-muted small mb-1">專案編號</div>
+                        <span class="fw-500 font-monospace">{{ d.projectCode }}</span>
+                      </div>
+                    }
+                  </div>
+
+                  <!-- 沖銷金額摘要 -->
+                  <div class="row g-3 mb-0">
+                    <div class="col-6 col-md-3">
+                      <div class="text-muted small mb-1">出差金額</div>
+                      <span class="fw-600 text-lg">{{ d.travelGrandTotal | number:'1.0-0' }}</span>
+                    </div>
+                    <div class="col-6 col-md-3">
+                      <div class="text-muted small mb-1">前次已沖銷</div>
+                      <span class="fw-600 text-lg">{{ d.otherWrittenOffTotal | number:'1.0-0' }}</span>
+                    </div>
+                    <div class="col-6 col-md-3">
+                      <div class="text-muted small mb-1">本次沖銷</div>
+                      <span class="fw-600 text-lg text-primary">{{ d.grandTotal | number:'1.0-0' }}</span>
+                    </div>
+                    <div class="col-6 col-md-3">
+                      <div class="text-muted small mb-1">待沖銷餘額</div>
+                      <span class="fw-600 text-lg" [class]="(d.travelGrandTotal - d.otherWrittenOffTotal - d.grandTotal + (d.travelRefundedAmount ?? 0)) >= 0 ? 'text-green' : 'text-red'">
+                        {{ d.travelGrandTotal - d.otherWrittenOffTotal - d.grandTotal + (d.travelRefundedAmount ?? 0) | number:'1.0-0' }}
+                      </span>
+                    </div>
+                  </div>
+
+                  @if (d.travelIsClosed && (d.travelGrandTotal - d.otherWrittenOffTotal - d.grandTotal) < 0) {
+                    <div class="row g-3 mt-4 mb-0">
+                      <div class="col-6 col-md-3">
+                        <div class="text-muted small mb-1">預計撥款日</div>
+                        <span class="fw-500">{{ d.estimatedRefundDate ? (d.estimatedRefundDate | date:'yyyy-MM-dd') : '尚未設定' }}</span>
+                        <div class="text-muted small mt-1">沖銷金額超過預支金額時，公司預計撥付差額給員工的日期</div>
+                      </div>
+                      <div class="col-6 col-md-3">
+                        <div class="text-muted small mb-1">撥款日</div>
+                        <span class="fw-500" [class.text-success]="d.refundedAt">{{ d.refundedAt ? (d.refundedAt | date:'yyyy-MM-dd') : '尚未撥款' }}</span>
+                        <div class="text-muted small mt-1">公司實際撥付差額給員工的日期</div>
+                      </div>
+                      @if (d.travelRefundedAmount != null) {
+                        <div class="col-6 col-md-3">
+                          <div class="text-muted small mb-1">撥款金額</div>
+                          <span class="fw-500">${{ d.travelRefundedAmount | number:'1.0-0' }}</span>
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  @if (d.note) {
+                    <div class="text-muted small mt-4 mb-0">備註：{{ d.note }}</div>
+                  }
+                </div>
+              </div>
+
+              <!-- 沖銷明細 -->
+              @if (d.items.length > 0) {
+                <div class="card border-0 shadow-sm mt-6">
+                  <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                    <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#list"></use></svg>
+                    沖銷明細
+                  </div>
+                  <div class="card-body p-0">
+                    <div class="table-responsive">
+                      <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                          <tr>
+                            <th style="width:40px"></th>
+                            <th>發票號碼</th>
+                            <th>發票日期</th>
+                            <th>分類</th>
+                            <th>項目說明</th>
+                            <th>單價</th>
+                            <th>數量/單位</th>
+                            <th class="text-right">總價</th>
+                            <th>備註</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (item of d.items; track item.id) {
+                            <tr>
+                              <td class="align-middle text-center">
+                                @if (item.fileUrl) {
+                                  <button type="button" class="btn btn-sm btn-ghost-secondary p-1"
+                                          (click)="openPreview(item.fileName || '發票', item.fileUrl!)"
+                                          title="{{ item.fileName }}">
+                                    <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                                  </button>
+                                }
+                              </td>
+                              <td class="small font-monospace">{{ item.invoiceNo || '—' }}</td>
+                              <td class="small">{{ item.invoiceDate ? (item.invoiceDate | date:'yyyy-MM-dd') : '—' }}</td>
+                              <td class="small">{{ item.category }}</td>
+                              <td class="small">{{ item.itemName }}</td>
+                              <td class="small">{{ item.unitPrice | number:'1.0-0' }}</td>
+                              <td class="small">{{ item.quantity }}</td>
+                              <td class="text-right small fw-500">{{ item.totalPrice | number:'1.0-0' }}</td>
+                              <td class="small text-muted">{{ item.note || '—' }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                        <tfoot>
+                          <tr class="table-light">
+                            <td colspan="7" class="text-right fw-500 small">合計</td>
+                            <td class="text-right fw-600">{{ d.grandTotal | number:'1.0-0' }}</td>
+                            <td></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              }
+            }
+          }
+
+        }
+
+        <!-- ── 簽核流程時間軸 ────────────────────────────────────── -->
+        @if (task.flow) {
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#git-merge"></use></svg>
+              簽核流程
+            </div>
+            <div class="card-body">
+              <ol class="list-none p-0 mb-0">
+                @for (step of task.flow.steps; track step.stepOrder; let last = $last) {
+                  <li class="flex items-start gap-3" [class.mb-6]="!last">
+                    <!-- 步驟圓圈 -->
+                    @if (getRecord(task.approvalRecords, step.stepOrder); as rec) {
+                      @if (rec.action === 'approved') {
+                        <span class="badge bg-success rounded-circle flex items-center justify-center shrink-0"
+                              style="width:28px;height:28px;min-width:28px;font-size:.85rem">✓</span>
+                      } @else {
+                        <span class="badge bg-danger rounded-circle flex items-center justify-center shrink-0"
+                              style="width:28px;height:28px;min-width:28px;font-size:.85rem">✗</span>
+                      }
+                    } @else if (task.currentStepOrder === step.stepOrder && task.status === 'pending') {
+                      <span class="badge bg-primary rounded-circle flex items-center justify-center shrink-0"
+                            style="width:28px;height:28px;min-width:28px;font-size:.75rem">{{ step.stepOrder }}</span>
+                    } @else {
+                      <span class="badge bg-[--bg-base] text-[--text-muted] rounded-circle flex items-center justify-center shrink-0"
+                            style="width:28px;height:28px;min-width:28px;font-size:.75rem">{{ step.stepOrder }}</span>
+                    }
+                    <!-- 步驟內容 -->
+                    <div class="grow">
+                      <div class="fw-500">
+                        @if (step.useApplicantDesignated) {
+                          指定審核
+                        } @else if (step.useDirectSupervisor) {
+                          上層級
+                        } @else {
+                          {{ step.jobTitleName || '—' }}
+                          @if (step.departmentName) {
+                            <span class="text-muted font-normal">（{{ step.departmentName }}）</span>
+                          }
+                        }
+                      </div>
+                      @if (step.note) {
+                        <div class="text-muted small">{{ step.note }}</div>
+                      }
+                      @if (getRecord(task.approvalRecords, step.stepOrder); as rec) {
+                        <div class="text-muted small mt-1">
+                          {{ rec.reviewedBy }}
+                          @if (rec.isEscalated && rec.onBehalfOf) {
+                            <span class="badge bg-[--bg-elevated] text-[--accent] ms-1" style="font-size:.7rem">代理 {{ rec.onBehalfOf }}</span>
+                          } @else if (rec.isEscalated) {
+                            <span class="badge bg-[--bg-elevated] text-[--purple] ms-1" style="font-size:.7rem">升級審核</span>
+                          }
+                          · {{ rec.reviewedAt | date:'yyyy-MM-dd' }} ·
+                          @if (rec.action === 'approved') {
+                            <span class="text-success">已核准</span>
+                          } @else if (rec.action === 'returned') {
+                            <span class="text-[--yellow]">退回修改</span>
+                          } @else {
+                            <span class="text-danger">已拒絕</span>
+                          }
+                        </div>
+                        @if (rec.reviewNote) {
+                          <div class="text-muted small italic mt-1">「{{ rec.reviewNote }}」</div>
+                        }
+                      } @else if (task.currentStepOrder === step.stepOrder && task.status === 'pending') {
+                        <div class="text-primary small mt-1">審核中…</div>
+                      }
+                    </div>
+                  </li>
+                }
+              </ol>
+            </div>
+          </div>
+        }
+
+        <!-- ── 審核區塊 ──────────────────────────────────────────── -->
+        @if (task.status === 'pending') {
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon text-primary" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#check-square"></use>
+              </svg>
+              審核
+            </div>
+            <div class="card-body">
+              <form [formGroup]="form" (ngSubmit)="submit(task)">
+                <div class="mb-4">
+                  <label class="form-label fw-500">審核結果 <span class="text-danger">*</span></label>
+                  <div class="flex flex-wrap gap-4 mt-1">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" formControlName="action" value="approved" id="actionApprove">
+                      <label class="form-check-label fw-500 text-success" for="actionApprove">核准</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" formControlName="action" value="returned" id="actionReturn">
+                      <label class="form-check-label fw-500 text-[--yellow]" for="actionReturn">退回修改</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" formControlName="action" value="rejected" id="actionReject">
+                      <label class="form-check-label fw-500 text-danger" for="actionReject">拒絕（終止）</label>
+                    </div>
+                  </div>
+                </div>
+                @if (isInstallmentApp(task) && canSetPaymentDate(task)) {
+                  <!-- 撥款明細（payment_request / advance / travel / travel_payment）— 財務簽核當下填預計撥款日 + 各期金額 -->
+                  <div class="mb-4">
+                    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                      <label class="form-label fw-500 mb-0">撥款明細 <span class="text-danger">*</span>
+                        <span class="text-muted small fw-400">（申請總額：{{ getInstallmentTotal(task) | number:'1.0-2' }} 元）</span>
+                        <span class="text-muted small fw-400 ml-2">剩餘 {{ getInstallmentTotal(task) - installmentsSum() | number:'1.0-2' }} 元</span>
+                      </label>
+                      <button type="button" class="btn btn-sm btn-outline-secondary"
+                              [disabled]="!canAddInstallmentRow(task)"
+                              (click)="addInstallmentRow(task)">
+                        + 新增一期
+                      </button>
+                    </div>
+                    <div class="border rounded overflow-x-auto">
+                      <table class="table table-sm mb-0 small" style="min-width: 640px">
+                        <thead class="bg-[--bg-base]">
+                          <tr>
+                            <th class="text-center" style="width: 60px">期數</th>
+                            <th style="width: 160px">預計撥款日</th>
+                            <th style="width: 160px">金額</th>
+                            <th>備註</th>
+                            <th class="text-center" style="width: 60px"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (row of installmentsForm.controls; track $index; let i = $index) {
+                            <tr [formGroup]="row">
+                              <td class="text-center align-middle">{{ i + 1 }}</td>
+                              <td><input type="date" class="form-control form-control-sm" formControlName="expectedDate"></td>
+                              <td><input type="number" class="form-control form-control-sm text-right" formControlName="amount"
+                                         min="1" step="1" [attr.max]="installmentRowMax(task, i)"></td>
+                              <td><input type="text" class="form-control form-control-sm" formControlName="note" placeholder="（選填）"></td>
+                              <td class="text-center align-middle">
+                                @if (installmentsForm.controls.length > 1) {
+                                  <button type="button" class="btn btn-sm btn-link text-danger p-0" (click)="removeInstallmentRow(i)" title="刪除">⨯</button>
+                                }
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                        <tfoot class="bg-[--bg-base]">
+                          <tr>
+                            <td class="text-center fw-500" colspan="2">加總</td>
+                            <td class="text-right fw-500"
+                                [class.text-danger]="!isInstallmentsSumValid(task)"
+                                [class.text-success]="isInstallmentsSumValid(task)">
+                              {{ installmentsSum() | number:'1.0-2' }} 元
+                            </td>
+                            <td colspan="2" class="small text-muted">
+                              @if (!isInstallmentsSumValid(task)) {
+                                <span class="text-danger">⚠ 各筆金額加總需等於申請總額（{{ getInstallmentTotal(task) | number:'1.0-2' }} 元）</span>
+                              }
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                    @if (installmentsError()) {
+                      <div class="text-danger small mt-2">{{ installmentsError() }}</div>
+                    }
+                    <div class="text-muted small mt-2">提示：核准撥款類申請時撥款明細必填（加總須等於申請總額）；核准後可在「設定撥款日期」區塊回來修改未撥款的列或填入實際撥款日。</div>
+                  </div>
+                } @else if ((applicationType === 'write_off' || applicationType === 'travel_write_off') && canSetPaymentDate(task)) {
+                  <!-- 沖銷類仍維持單一預計撥款日 -->
+                  <div class="mb-4">
+                    <label class="form-label fw-500">預計撥款日</label>
+                    <input type="date" class="form-control" formControlName="estimatedRefundDate" style="max-width: 220px">
+                    <div class="text-muted small mt-1">沖銷金額超過預支金額時，公司預計撥付差額給員工的日期</div>
+                  </div>
+                }
+                <div class="mb-4">
+                  <label class="form-label fw-500">
+                    審核意見
+                    @if (form.get('action')?.value === 'rejected' || form.get('action')?.value === 'returned') {
+                      <span class="text-danger">*</span>
+                    }
+                  </label>
+                  <textarea class="form-control" formControlName="reviewNote" rows="3"
+                            placeholder="填寫審核意見（退回修改或拒絕時必填）..."></textarea>
+                  @if (showNoteError) {
+                    <div class="text-danger small mt-1">退回修改或拒絕時請填寫原因。</div>
+                  }
+                </div>
+                @if (canCloseAdvance(task)) {
+                  <div class="mb-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" formControlName="closeAdvance" class="form-check-input">
+                      <span class="fw-500">預支結案</span>
+                    </label>
+                    <div class="text-muted small mt-1">勾選後，核准時將同步關閉關聯的預支申請。</div>
+                  </div>
+                }
+                @if (canCloseTravelRequest(task)) {
+                  <div class="mb-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" formControlName="closeAdvance" class="form-check-input">
+                      <span class="fw-500">出差結案</span>
+                    </label>
+                    <div class="text-muted small mt-1">勾選後，核准時將同步關閉關聯的出差預支申請。</div>
+                  </div>
+                }
+                <div class="flex gap-2">
+                  <button type="submit" class="btn btn-primary">提交審核</button>
+                  <a routerLink="/admin/approval-tasks" class="btn btn-outline-secondary">取消</a>
+                </div>
+              </form>
+            </div>
+          </div>
+        } @else if (task.status === 'returned') {
+          <!-- 退回修改 -->
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-[rgba(184,137,42,0.08)] border-bottom flex items-center gap-2 fw-600 text-[--yellow]">
+              <svg class="sa-icon" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#rotate-ccw"></use>
+              </svg>
+              退回修改
+            </div>
+            <div class="card-body">
+              <p class="text-muted small mb-2">此申請已退回，待申請人修改後重新送出。</p>
+              @if (task.reviewNote) {
+                <div class="text-muted small mb-1 fw-500">退回原因：</div>
+                <div class="border rounded p-4 bg-[--bg-base] small mb-4">{{ task.reviewNote }}</div>
+              }
+              <div class="mt-2">
+                <a routerLink="/admin/approval-tasks" class="btn btn-outline-secondary">返回列表</a>
+              </div>
+            </div>
+          </div>
+        } @else if (task.status === 'approved') {
+          <!-- 已核准 -->
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-[rgba(37,162,68,0.08)] border-bottom flex items-center gap-2 fw-600 text-success">
+              <svg class="sa-icon" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#check-circle"></use>
+              </svg>
+              已核准
+            </div>
+            <div class="card-body">
+              <p class="text-muted small mb-2">此申請已通過所有簽核流程，不可再修改。</p>
+              @if (task.reviewedAt) {
+                <div class="text-muted small mb-1 fw-500">核准時間：</div>
+                <div class="small mb-4">{{ task.reviewedAt | date:'yyyy-MM-dd HH:mm' }}</div>
+              }
+              @if (task.applicationType === 'advance' && task.advanceDetail?.estimatedRefundDate) {
+                <div class="text-muted small mb-1 fw-500">預計退款日：</div>
+                <div class="small mb-4">{{ task.advanceDetail!.estimatedRefundDate | date:'yyyy-MM-dd' }}</div>
+              }
+              @if (task.applicationType === 'advance' && task.advanceDetail?.refundedAt) {
+                <div class="text-muted small mb-1 fw-500">退款日：</div>
+                <div class="small mb-4 text-success">{{ task.advanceDetail!.refundedAt | date:'yyyy-MM-dd' }}</div>
+              }
+              @if (task.applicationType === 'travel' && task.travelDetail?.estimatedRefundDate) {
+                <div class="text-muted small mb-1 fw-500">預計退款日：</div>
+                <div class="small mb-4">{{ task.travelDetail!.estimatedRefundDate | date:'yyyy-MM-dd' }}</div>
+              }
+              @if (task.applicationType === 'travel' && task.travelDetail?.refundedAt) {
+                <div class="text-muted small mb-1 fw-500">退款日：</div>
+                <div class="small mb-4 text-success">{{ task.travelDetail!.refundedAt | date:'yyyy-MM-dd' }}</div>
+              }
+              @if (task.applicationType === 'write_off' && task.writeOffDetail?.estimatedRefundDate) {
+                <div class="text-muted small mb-1 fw-500">預計撥款日：</div>
+                <div class="small mb-4">{{ task.writeOffDetail!.estimatedRefundDate | date:'yyyy-MM-dd' }}</div>
+              }
+              @if (task.applicationType === 'write_off' && task.writeOffDetail?.refundedAt) {
+                <div class="text-muted small mb-1 fw-500">撥款日：</div>
+                <div class="small mb-4 text-success">{{ task.writeOffDetail!.refundedAt | date:'yyyy-MM-dd' }}</div>
+              }
+              @if (task.applicationType === 'write_off' && task.writeOffDetail?.advanceRefundedAmount != null) {
+                <div class="text-muted small mb-1 fw-500">撥款金額：</div>
+                <div class="small mb-4">${{ task.writeOffDetail!.advanceRefundedAmount | number:'1.0-0' }}</div>
+              }
+              @if (task.applicationType === 'travel_write_off' && task.travelWriteOffDetail?.estimatedRefundDate) {
+                <div class="text-muted small mb-1 fw-500">預計撥款日：</div>
+                <div class="small mb-4">{{ task.travelWriteOffDetail!.estimatedRefundDate | date:'yyyy-MM-dd' }}</div>
+              }
+              @if (task.applicationType === 'travel_write_off' && task.travelWriteOffDetail?.refundedAt) {
+                <div class="text-muted small mb-1 fw-500">撥款日：</div>
+                <div class="small mb-4 text-success">{{ task.travelWriteOffDetail!.refundedAt | date:'yyyy-MM-dd' }}</div>
+              }
+              @if (task.applicationType === 'travel_write_off' && task.travelWriteOffDetail?.travelRefundedAmount != null) {
+                <div class="text-muted small mb-1 fw-500">撥款金額：</div>
+                <div class="small mb-4">${{ task.travelWriteOffDetail!.travelRefundedAmount | number:'1.0-0' }}</div>
+              }
+              <!-- 已核准後的撥款明細管理：分期表（payment_request / advance / travel / travel_payment）-->
+              @if (isInstallmentApp(task) && canSetPaymentDate(task)) {
+                <div class="border rounded p-4 bg-[--bg-base] mb-4">
+                  <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                    <div class="fw-500">
+                      設定撥款明細
+                      @if (getPaymentStatus(task); as st) {
+                        <span class="badge ml-2" [class]="getStatusBadgeClass(st)">{{ getStatusBadgeLabel(st) }}</span>
+                      }
+                      <span class="text-muted small fw-400 ml-2">（申請總額：{{ getInstallmentTotal(task) | number:'1.0-2' }} 元）</span>
+                      <span class="text-muted small fw-400 ml-2">剩餘 {{ getInstallmentTotal(task) - installmentsSum() | number:'1.0-2' }} 元</span>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                            [disabled]="!canAddInstallmentRow(task)"
+                            (click)="addInstallmentRow(task)">+ 新增一期</button>
+                  </div>
+                  <div class="border rounded overflow-x-auto bg-white">
+                    <table class="table table-sm mb-0 small" style="min-width: 760px">
+                      <thead class="bg-[--bg-base]">
+                        <tr>
+                          <th class="text-center" style="width: 60px">期數</th>
+                          <th style="width: 160px">預計撥款日</th>
+                          <th style="width: 160px">實際撥款日</th>
+                          <th style="width: 140px">金額</th>
+                          <th>備註</th>
+                          <th class="text-center" style="width: 60px"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (row of installmentsForm.controls; track $index; let i = $index) {
+                          <tr [formGroup]="row" [class.bg-[--bg-base]]="isInstallmentLocked(row)">
+                            <td class="text-center align-middle">
+                              {{ i + 1 }}
+                              @if (isInstallmentLocked(row)) {
+                                <div class="text-success" style="font-size:10px">已撥</div>
+                              }
+                            </td>
+                            <td>
+                              <input type="date" class="form-control form-control-sm" formControlName="expectedDate"
+                                     [attr.readonly]="isInstallmentLocked(row) ? true : null"
+                                     [class.bg-light]="isInstallmentLocked(row)">
+                            </td>
+                            <td>
+                              <input type="date" class="form-control form-control-sm" formControlName="paidAt"
+                                     [attr.readonly]="isInstallmentLocked(row) ? true : null"
+                                     [class.bg-light]="isInstallmentLocked(row)">
+                            </td>
+                            <td>
+                              <input type="number" min="1" step="1" class="form-control form-control-sm text-right" formControlName="amount"
+                                     [attr.max]="isInstallmentLocked(row) ? null : installmentRowMax(task, i)"
+                                     [attr.readonly]="isInstallmentLocked(row) ? true : null"
+                                     [class.bg-light]="isInstallmentLocked(row)">
+                            </td>
+                            <td>
+                              <input type="text" class="form-control form-control-sm" formControlName="note" placeholder="（選填）"
+                                     [attr.readonly]="isInstallmentLocked(row) ? true : null"
+                                     [class.bg-light]="isInstallmentLocked(row)">
+                            </td>
+                            <td class="text-center align-middle">
+                              @if (!isInstallmentLocked(row) && installmentsForm.controls.length > 1) {
+                                <button type="button" class="btn btn-sm btn-link text-danger p-0" (click)="removeInstallmentRow(i)" title="刪除此期">⨯</button>
+                              }
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                      <tfoot class="bg-[--bg-base]">
+                        <tr>
+                          <td class="text-center fw-500" colspan="3">加總</td>
+                          <td class="text-right fw-500"
+                              [class.text-danger]="!isInstallmentsSumValid(task)"
+                              [class.text-success]="isInstallmentsSumValid(task)">
+                            {{ installmentsSum() | number:'1.0-2' }} 元
+                          </td>
+                          <td colspan="2" class="small text-muted">
+                            @if (!isInstallmentsSumValid(task)) {
+                              <span class="text-danger">⚠ 各筆金額加總需等於 {{ getInstallmentTotal(task) | number:'1.0-2' }} 元</span>
+                            }
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                  <div class="text-muted small mt-2">
+                    已填入實際撥款日的列會自動鎖定金額與日期，且觸發 LINE/Email「已撥款（第 N/M 期）」通知；備註隨時可改。
+                  </div>
+                  <div class="mt-3 flex gap-2">
+                    <button type="button" class="btn btn-sm btn-primary"
+                            [disabled]="!isInstallmentsSumValid(task) || isFullyPaid(task)"
+                            (click)="submitInstallments(task)">儲存撥款明細</button>
+                  </div>
+                  @if (installmentsMsg()) {
+                    <div class="text-success small mt-2">{{ installmentsMsg() }}</div>
+                  }
+                  @if (installmentsError()) {
+                    <div class="text-danger small mt-2">{{ installmentsError() }}</div>
+                  }
+                </div>
+              }
+              @if (canCloseAfterApproval(task)) {
+                <div class="border rounded p-4 bg-[--bg-base] mb-4">
+                  <div class="fw-500 mb-2">
+                    {{ task.applicationType === 'write_off' ? '預支結案' : '出差結案' }}
+                  </div>
+                  <p class="text-muted small mb-3">
+                    {{ task.applicationType === 'write_off'
+                      ? '此沖銷申請已核准，點擊下方按鈕可結案關閉關聯的預支申請。'
+                      : '此沖銷申請已核准，點擊下方按鈕可結案關閉關聯的出差預支申請。' }}
+                  </p>
+                  <button type="button" class="btn btn-sm btn-primary" [disabled]="closeCaseLoading()" (click)="closeCase(task)">
+                    @if (closeCaseLoading()) {
+                      <span class="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin me-1"></span>
+                      處理中…
+                    } @else {
+                      {{ task.applicationType === 'write_off' ? '預支結案' : '出差結案' }}
+                    }
+                  </button>
+                </div>
+              } @else if (isClosedAfterApproval(task)) {
+                <div class="flex items-center gap-2 text-success small mb-4">
+                  <svg class="sa-icon" style="width:16px;height:16px;stroke:currentColor">
+                    <use href="/assets/icons/sprite.svg#check-circle"></use>
+                  </svg>
+                  {{ task.applicationType === 'write_off' ? '預支申請已結案' : '出差預支申請已結案' }}
+                </div>
+              }
+              @if (task.reviewNote) {
+                <div class="text-muted small mb-1 fw-500">審核意見：</div>
+                <div class="border rounded p-4 bg-[--bg-base] small mb-4">{{ task.reviewNote }}</div>
+              }
+              <div class="mt-2 flex gap-2">
+                @if (task.applicationType === 'payment_request' && task.paymentDetail) {
+                  <button type="button" class="btn btn-primary inline-flex items-center gap-2"
+                          [disabled]="paymentPdfService.pdfLoading()" (click)="printPaymentPdf(task)">
+                    @if (paymentPdfService.pdfLoading()) {
+                      <span class="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                      產生中…
+                    } @else {
+                      <svg class="sa-icon" style="width:16px;height:16px;stroke:currentColor">
+                        <use href="/assets/icons/sprite.svg#printer"></use>
+                      </svg>
+                      列印請款單
+                    }
+                  </button>
+                }
+                @if (task.applicationType === 'advance' && task.advanceDetail && task.status === 'approved') {
+                  <button type="button" class="btn btn-outline-secondary inline-flex items-center gap-2"
+                          [disabled]="advancePdfService.pdfLoading()" (click)="printAdvancePdf(task)">
+                    @if (advancePdfService.pdfLoading()) {
+                      <span class="inline-block w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin"></span>
+                      產生中…
+                    } @else {
+                      <svg class="sa-icon" style="width:16px;height:16px;stroke:currentColor">
+                        <use href="/assets/icons/sprite.svg#printer"></use>
+                      </svg>
+                      列印預支單
+                    }
+                  </button>
+                }
+                @if (task.applicationType === 'write_off' && task.writeOffDetail && task.status === 'approved') {
+                  <button type="button" class="btn btn-outline-secondary inline-flex items-center gap-2"
+                          [disabled]="writeOffPdfService.pdfLoading()" (click)="printWriteOffPdf(task)">
+                    @if (writeOffPdfService.pdfLoading()) {
+                      <span class="inline-block w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin"></span>
+                      產生中…
+                    } @else {
+                      <svg class="sa-icon" style="width:16px;height:16px;stroke:currentColor">
+                        <use href="/assets/icons/sprite.svg#printer"></use>
+                      </svg>
+                      列印沖銷單
+                    }
+                  </button>
+                }
+                @if (task.applicationType === 'travel_write_off' && task.travelWriteOffDetail && task.status === 'approved') {
+                  <button type="button" class="btn btn-outline-secondary inline-flex items-center gap-2"
+                          [disabled]="travelWriteOffPdfService.pdfLoading()" (click)="printTravelWriteOffPdf(task)">
+                    @if (travelWriteOffPdfService.pdfLoading()) {
+                      <span class="inline-block w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin"></span>
+                      產生中…
+                    } @else {
+                      <svg class="sa-icon" style="width:16px;height:16px;stroke:currentColor">
+                        <use href="/assets/icons/sprite.svg#printer"></use>
+                      </svg>
+                      列印出差沖銷單
+                    }
+                  </button>
+                }
+                @if (task.applicationType === 'travel_payment' && task.travelPaymentDetail && task.status === 'approved') {
+                  <button type="button" class="btn btn-outline-secondary inline-flex items-center gap-2"
+                          [disabled]="travelPaymentPdfService.pdfLoading()" (click)="printTravelPaymentPdf(task)">
+                    @if (travelPaymentPdfService.pdfLoading()) {
+                      <span class="inline-block w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin"></span>
+                      產生中…
+                    } @else {
+                      <svg class="sa-icon" style="width:16px;height:16px;stroke:currentColor">
+                        <use href="/assets/icons/sprite.svg#printer"></use>
+                      </svg>
+                      列印出差請款單
+                    }
+                  </button>
+                }
+                <a routerLink="/admin/approval-tasks" class="btn btn-outline-secondary">返回列表</a>
+              </div>
+            </div>
+          </div>
+        } @else if (task.status === 'rejected') {
+          <!-- 已拒絕 -->
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-[rgba(220,53,69,0.08)] border-bottom flex items-center gap-2 fw-600 text-danger">
+              <svg class="sa-icon" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#x-circle"></use>
+              </svg>
+              已拒絕
+            </div>
+            <div class="card-body">
+              <p class="text-muted small mb-2">此申請已被拒絕，簽核流程終止，不可再修改。</p>
+              @if (task.reviewedAt) {
+                <div class="text-muted small mb-1 fw-500">拒絕時間：</div>
+                <div class="small mb-4">{{ task.reviewedAt | date:'yyyy-MM-dd HH:mm' }}</div>
+              }
+              @if (task.reviewNote) {
+                <div class="text-muted small mb-1 fw-500">拒絕原因：</div>
+                <div class="border rounded p-4 bg-[--bg-base] small mb-4">{{ task.reviewNote }}</div>
+              }
+              <div class="mt-2 flex gap-2">
+                <a routerLink="/admin/approval-tasks" class="btn btn-outline-secondary">返回列表</a>
+              </div>
+            </div>
+          </div>
+        }
+
+      </div>
+    </div>
+
+  } @else {
+    <p class="text-muted">找不到此簽核作業。</p>
+  }
+</div>
+
+@if (previewFile) {
+  <app-file-preview-modal [file]="previewFile" (closed)="closePreview()" />
+}

@@ -1,0 +1,114 @@
+<div class="container-fluid py-3">
+  <div class="flex items-center gap-2 mb-6">
+    <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+      <use href="/assets/icons/sprite.svg#settings"></use>
+    </svg>
+    <h4 class="mb-0">系統設定</h4>
+  </div>
+
+  @if (errorMsg()) {
+    <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+      {{ errorMsg() }}
+    </div>
+  }
+  @if (saved()) {
+    <div class="alert alert-success flex items-center gap-2 mb-6 py-2" role="alert">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#check-circle"></use></svg>
+      設定已儲存成功。
+    </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <div class="row g-4">
+
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#globe"></use>
+            </svg>
+            站台設定
+          </div>
+          <div class="card-body">
+            <div class="mb-0">
+              <label class="form-label fw-500">網站網址 <span class="text-danger">*</span></label>
+              <input type="url" class="form-control" formControlName="siteUrl" placeholder="https://admin.jabez.com">
+              <div class="text-muted small mt-1">通知信件中的連結會使用此網址。</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#clock"></use>
+            </svg>
+            工作時間
+          </div>
+          <div class="card-body">
+            <div class="mb-4">
+              <label class="form-label fw-500">上班時間 <span class="text-danger">*</span></label>
+              <input type="time" class="form-control" formControlName="workStartTime">
+            </div>
+            <div class="mb-4">
+              <label class="form-label fw-500">下班時間 <span class="text-danger">*</span></label>
+              <input type="time" class="form-control" formControlName="workEndTime">
+            </div>
+            <div class="mb-0">
+              <label class="form-label fw-500">每月加班時數限制 <span class="text-muted font-normal">（小時）</span></label>
+              <input type="number" class="form-control" formControlName="monthlyOvertimeLimit" min="0" max="200">
+              @if (form.get('monthlyOvertimeLimit')?.invalid && form.get('monthlyOvertimeLimit')?.touched) {
+                <div class="text-danger small mt-1">請輸入 0 到 200 之間的數值。</div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#bell"></use>
+            </svg>
+            通知設定
+          </div>
+          <div class="card-body">
+            <div class="mb-4">
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="approvalEmailEnabled" formControlName="approvalEmailEnabled">
+                <label class="form-check-label fw-500" for="approvalEmailEnabled">寄送審核通知 Email</label>
+              </div>
+              <div class="text-muted small mt-1">關閉後不再寄送：待審核 / 審核結果 / 撥款 / 退款 / 財務通知信。</div>
+            </div>
+            <div class="mb-4">
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="approvalLineEnabled" formControlName="approvalLineEnabled">
+                <label class="form-check-label fw-500" for="approvalLineEnabled">推播審核通知 LINE</label>
+              </div>
+              <div class="text-muted small mt-1">範圍同上；不影響帳號通知 / 薪資明細 / 打卡提醒。</div>
+            </div>
+            <div class="mb-0">
+              <label class="form-label fw-500" for="paymentReminderDaysBefore">撥款日將屆提前提醒天數</label>
+              <input type="number" class="form-control" id="paymentReminderDaysBefore" formControlName="paymentReminderDaysBefore" min="0" max="30" style="max-width: 160px">
+              <div class="text-muted small mt-1">每日 09:00 自動掃描；提前 N 天內的未撥款明細會推播給財務部全員（Email + LINE，沿用上方開關）。</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="mt-6 flex gap-2">
+      <button type="submit" class="btn btn-primary inline-flex items-center gap-1"
+              [disabled]="form.invalid">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#save"></use></svg>
+        儲存設定
+      </button>
+    </div>
+
+  </form>
+</div>
