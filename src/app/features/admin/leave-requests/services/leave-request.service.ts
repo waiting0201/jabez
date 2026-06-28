@@ -4,7 +4,7 @@ import {Observable} from 'rxjs';
 import {
   LeaveRequest, AnnualQuota, CompensatoryHours, CeremonialQuota,
   MarriageQuota, MaternityStatus, BereavementQuota, SeniorExecutiveEligibility,
-  MenstrualQuota,
+  SeniorExecutiveQuota, MenstrualQuota,
 } from '../models/leave-request.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {environment} from '@/environments/environment';
@@ -82,5 +82,10 @@ export class LeaveRequestService {
   /** 查詢當前使用者高階主管假適用性（JobTitle.Level ≤ 3） */
   getSeniorExecutiveEligibility(): Observable<SeniorExecutiveEligibility> {
     return this.http.get<SeniorExecutiveEligibility>(`${environment.apiUrl}/leave-requests/senior-executive-eligibility`);
+  }
+
+  /** 查詢當前使用者高階主管假額度（每年 20 天，曆年歸零） */
+  getSeniorExecutiveQuota(): Observable<SeniorExecutiveQuota> {
+    return this.http.get<SeniorExecutiveQuota>(`${environment.apiUrl}/leave-requests/senior-executive-quota`);
   }
 }

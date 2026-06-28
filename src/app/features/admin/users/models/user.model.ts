@@ -27,6 +27,8 @@ export interface User {
   mealAllowance?: number;
   overtimePay?: number;
   sendPaySlip?: boolean;
+  /** 期初補休時數（系統上線前累計，116/6/30 到期歸零） */
+  compensatoryOpeningHours?: number;
   agentUserId?: string;
   agentName?: string;
   birthday?: Date;

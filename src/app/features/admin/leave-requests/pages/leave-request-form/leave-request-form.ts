@@ -7,7 +7,7 @@ import {LeaveRequestService} from '../../services/leave-request.service';
 import {
   LeaveType, ApprovalStatus, AnnualQuota, CompensatoryHours, CeremonialQuota,
   MarriageQuota, MaternityStatus, BereavementQuota, SeniorExecutiveEligibility,
-  MenstrualQuota,
+  SeniorExecutiveQuota, MenstrualQuota,
   APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES,
   LEAVE_TYPE_GROUPS, LEAVE_TYPE_LABELS, LEAVE_TYPE_DAYS_LIMIT, LEAVE_TIME_UNIT,
   BEREAVEMENT_GROUPS, BEREAVEMENT_RELATIONSHIP_LABELS, BEREAVEMENT_DAYS,
@@ -111,6 +111,10 @@ export class LeaveRequestForm implements OnInit {
 
   /** 高階主管假適用性 */
   seniorExecEligibility = signal<SeniorExecutiveEligibility | null>(null);
+
+  /** 高階主管假額度（每年 20 天，曆年歸零） */
+  seniorExecQuota = signal<SeniorExecutiveQuota | null>(null);
+  seniorExecQuotaLoading = signal(false);
 
   /** 生理假配額（限女性；亦用於下拉過濾） */
   menstrualQuota = signal<MenstrualQuota | null>(null);
@@ -492,6 +496,7 @@ export class LeaveRequestForm implements OnInit {
     if (type === 'marriage') this.loadMarriageQuota();
     if (type === 'maternity') this.loadMaternityStatus();
     if (type === 'menstrual') this.loadMenstrualQuota();
+    if (type === 'senior_executive') this.loadSeniorExecQuota();
   }
 
   /** 載入既有資料時手動套用 leaveType 對應的驗證規則與配額載入（取代被 guard 跳過的 valueChanges 副作用） */
@@ -507,6 +512,7 @@ export class LeaveRequestForm implements OnInit {
     if (type === 'marriage') this.loadMarriageQuota();
     if (type === 'maternity') this.loadMaternityStatus();
     if (type === 'menstrual') this.loadMenstrualQuota();
+    if (type === 'senior_executive') this.loadSeniorExecQuota();
   }
 
   /** 補休時數是否足夠 */
@@ -576,6 +582,15 @@ export class LeaveRequestForm implements OnInit {
     return this.selectedLeaveType === 'senior_executive' && !this.isSeniorExecutive();
   }
 
+  /** 高階主管假：是否超過每年 20 天額度 */
+  get isSeniorExecExceeded(): boolean {
+    if (this.selectedLeaveType !== 'senior_executive') return false;
+    const q = this.seniorExecQuota();
+    if (!q || !q.isEligible) return false;
+    const requestDays = this.calculatedHours / 8;
+    return requestDays > q.availableDays;
+  }
+
   /** 婚假：是否已超過上限 */
   get isMarriageExceeded(): boolean {
     if (this.selectedLeaveType !== 'marriage') return false;
@@ -603,6 +618,7 @@ export class LeaveRequestForm implements OnInit {
     if (this.isCeremonialNotAllowed) return false;
     if (this.isMaternityBlocked) return false;
     if (this.isSeniorExecBlocked) return false;
+    if (this.isSeniorExecExceeded) return false;
     if (this.isMarriageExceeded) return false;
     if (this.isBereavementExceeded) return false;
     if (this.isMenstrualNotAllowed) return false;
@@ -657,6 +673,11 @@ export class LeaveRequestForm implements OnInit {
     }
     if (this.isSeniorExecBlocked) {
       this.errorMsg.set('高階主管假僅限協理（含）以上職級申請。');
+      return;
+    }
+    if (this.isSeniorExecExceeded) {
+      const q = this.seniorExecQuota()!;
+      this.errorMsg.set(`高階主管假額度不足。每年上限 ${q.totalDays} 天，已使用 ${q.usedDays} 天，可用 ${q.availableDays} 天。`);
       return;
     }
     if (this.isMenstrualNotAllowed) {
@@ -731,6 +752,14 @@ export class LeaveRequestForm implements OnInit {
   private loadMaternityStatus() {
     this.service.getMaternityStatus().subscribe({
       next: data => this.maternityStatus.set(data),
+    });
+  }
+
+  private loadSeniorExecQuota() {
+    this.seniorExecQuotaLoading.set(true);
+    this.service.getSeniorExecutiveQuota().subscribe({
+      next: data => { this.seniorExecQuota.set(data); this.seniorExecQuotaLoading.set(false); },
+      error: () => this.seniorExecQuotaLoading.set(false),
     });
   }
 
