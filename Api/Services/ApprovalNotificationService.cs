@@ -21,6 +21,7 @@ public sealed class ApprovalNotificationService(
         ["write_off"]       = "預支沖銷申請",
         ["travel_write_off"] = "出差預支沖銷申請",
         ["travel_payment"]  = "出差請款申請",
+        ["pre_review"]      = "預審申請",
     };
 
     /// <inheritdoc />

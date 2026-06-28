@@ -38,6 +38,8 @@ public sealed class AppRouter(
     PaymentReportHandler   paymentReport,
     ProjectWaterLevelHandler projectWaterLevel,
     InvoiceOcrHandler      invoiceOcr,
+    QuoteOcrHandler        quoteOcr,
+    PreReviewRequestHandler preReviewRequests,
     AdvanceRequestHandler           advanceRequests,
     WriteOffRequestHandler          writeOffRequests,
     TravelWriteOffRequestHandler    travelWriteOffRequests,
@@ -197,6 +199,18 @@ public sealed class AppRouter(
 
             // ── Invoice OCR ────────────────────────────────────────────────────
             ("POST",   ["invoice-ocr"])                            => await invoiceOcr.RecognizeAsync(req),
+
+            // ── Quote OCR（報價單辨識，登入即可）──────────────────────────────────
+            ("POST",   ["quote-ocr"])                              => await quoteOcr.RecognizeAsync(req),
+
+            // ── Pre-Review Requests（預審申請）─────────────────────────────────────
+            ("GET",    ["pre-review-requests"])                       => await preReviewRequests.GetAllAsync(req),
+            ("POST",   ["pre-review-requests"])                       => await preReviewRequests.CreateAsync(req),
+            ("PATCH",  ["pre-review-requests", var id, "submit"])     => await preReviewRequests.SubmitAsync(req, id),
+            ("GET",    ["pre-review-requests", var id])               => await preReviewRequests.GetByIdAsync(req, id),
+            ("PUT",    ["pre-review-requests", var id])               => await preReviewRequests.UpdateAsync(req, id),
+            ("PATCH",  ["pre-review-requests", var id])               => await preReviewRequests.UpdateAsync(req, id),
+            ("DELETE", ["pre-review-requests", var id])               => await preReviewRequests.DeleteAsync(req, id),
 
             // ── Payment Requests ───────────────────────────────────────────────
             ("GET",    ["payment-requests"])                       => await paymentRequests.GetAllAsync(req),
@@ -476,6 +490,17 @@ public sealed class AppRouter(
 
             // Invoice OCR（登入即可使用，不需特殊權限）
             ("POST",   ["invoice-ocr"])                              => null,
+
+            // Quote OCR（登入即可使用，不需特殊權限）
+            ("POST",   ["quote-ocr"])                                => null,
+
+            // Pre-Review Requests（預審申請）
+            ("GET",    ["pre-review-requests", ..])          => PermissionCodes.PreReviewRequestsRead,
+            ("POST",   ["pre-review-requests"])              => PermissionCodes.PreReviewRequestsWrite,
+            ("PUT",    ["pre-review-requests", _])           => PermissionCodes.PreReviewRequestsWrite,
+            ("PATCH",  ["pre-review-requests", _, "submit"]) => PermissionCodes.PreReviewRequestsWrite,
+            ("PATCH",  ["pre-review-requests", _])           => PermissionCodes.PreReviewRequestsWrite,
+            ("DELETE", ["pre-review-requests", _])           => PermissionCodes.PreReviewRequestsDelete,
 
             // Payment Requests
             ("GET",    ["payment-requests", ..])         => PermissionCodes.PaymentRequestsRead,

@@ -4,6 +4,7 @@ using Jabez.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Jabez.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260628110019_AddPreReviewRequest")]
+    partial class AddPreReviewRequest
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -3350,10 +3353,6 @@ namespace Jabez.Api.Data.Migrations
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<string>("FileName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -3437,11 +3436,6 @@ namespace Jabez.Api.Data.Migrations
 
                     b.Property<Guid?>("SubmittedById")
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<decimal>("TaxAmount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("decimal(18,2)")
-                        .HasDefaultValue(0m);
 
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("decimal(18,2)");

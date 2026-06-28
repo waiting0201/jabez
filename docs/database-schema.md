@@ -6,7 +6,7 @@
 
 本地開發連線字串於 [Api/local.settings.json](../Api/local.settings.json)；遠端 Azure SQL 連線字串記在 memory `reference_azure_sql.md`（敏感資訊不入版控）。
 
-## 42 個資料表實體
+## 45 個資料表實體
 
 | 實體 | 說明 |
 |------|------|
@@ -28,6 +28,9 @@
 | `PaymentRequest` | 請款申請（含 `RequestNo` 單號 `PR-yyyyMMdd-NNN` unique index、`VendorId` nullable FK：當 Type=`vendor` 時必填且必須是 IsActive=true 的廠商；其他類型強制為 null；撥款資料統一由 `PaymentRequestInstallment[]` 表達，父表無 cache 欄位） |
 | `InvoiceItem` | 請款明細（發票項目） |
 | `PaymentRequestAttachment` | 一般請款整單批次附件（照片 / PDF，FK Cascade，存 `request-attachments`） |
+| `PreReviewRequest` | 預審申請（事前預審：實際花費前送類似請款的單據走簽核，含報價單 / 品項 / 金額；含 `RequestNo` 單號 `PRV-yyyyMMdd-NNN` unique index；**無撥款流程、金額不計入款項統計報表**） |
+| `PreReviewItem` | 預審品項明細（ItemCategory 品項類別、ItemName、Amount、Note、ItemDate、FileName / FileUrl 報價單檔，存 `quotes` container） |
+| `PreReviewRequestAttachment` | 預審申請整單批次附件（照片 / PDF，FK Cascade，存 `request-attachments`） |
 | `LeaveRequest` | 請假申請（含 BereavementRelationship 喪假親屬關係） |
 | `TravelRequest` | 出差預支申請（含 `RequestNo` 單號 unique index：`IsHolidayTravel=false` → `TR-yyyyMMdd-NNN`、`IsHolidayTravel=true` → `HTR-yyyyMMdd-NNN`，per-prefix-per-day 序號池；含 IsHolidayTravel、IsClosed 結案、GrandTotal 明細合計、`EstimatedRefundDate / RefundedAt / RefundedByUserId` 退款欄位（沖銷超支才用）；撥款資料統一由 `TravelRequestInstallment[]` 表達，父表無撥款 cache 欄位；事後走沖銷流程）。當 `IsHolidayTravel=true`（假日執行活動）時不含 Items 與發票明細，僅記錄活動地點/期間/參與人員 |
 | `TravelRequestItem` | 出差預支明細（交通費、住宿費、餐費、雜支）；假日執行活動不使用 |

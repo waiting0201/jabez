@@ -1,0 +1,219 @@
+<div class="container-fluid py-3">
+  @if (request(); as r) {
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+      <div class="flex items-center gap-2 flex-wrap">
+        <a routerLink="/admin/pre-review-requests" class="btn btn-sm btn-outline-secondary">
+          <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+        </a>
+        <h4 class="mb-0">預審申請 <span class="font-monospace text-muted">{{ r.requestNo }}</span></h4>
+        <span [class]="'badge ' + typeClass[r.type]">{{ typeLabel[r.type] }}</span>
+        <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        @if (r.approvalStatus === 'approved' && approvalTask()) {
+          <button class="btn btn-outline-secondary inline-flex items-center gap-1"
+                  (click)="printRequest()" [disabled]="pdfLoading()">
+            @if (pdfLoading()) {
+              <span class="spinner-border spinner-border-sm" role="status"></span>
+            } @else {
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#printer"></use></svg>
+            }
+            列印預審單
+          </button>
+        }
+        @if (r.approvalStatus === 'draft' || r.approvalStatus === 'returned') {
+          <a [routerLink]="['/admin/pre-review-requests', r.id, 'edit']"
+             class="btn btn-outline-primary inline-flex items-center gap-1">
+            <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+            編輯
+          </a>
+        }
+        @if (r.approvalStatus === 'draft') {
+          <button class="btn btn-primary inline-flex items-center gap-1" (click)="submitRequest()">
+            <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#send"></use></svg>
+            送出申請
+          </button>
+          <button class="btn btn-outline-danger inline-flex items-center gap-1"
+                  (click)="deleteRequest()" [disabled]="deleting()">
+            @if (deleting()) {
+              <span class="spinner-border spinner-border-sm" role="status"></span>
+            } @else {
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash-2"></use></svg>
+            }
+            刪除
+          </button>
+        }
+        <a routerLink="/admin/pre-review-requests" class="btn btn-outline-secondary inline-flex items-center gap-1">
+          <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#list"></use></svg>
+          返回列表
+        </a>
+      </div>
+    </div>
+
+    <div class="row g-4">
+    <div class="col-12 col-xl-10">
+
+    <!-- 預審資訊 -->
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+        <svg class="sa-icon text-primary" style="stroke: currentColor">
+          <use href="/assets/icons/sprite.svg#search"></use>
+        </svg>
+        預審資訊
+      </div>
+      <div class="card-body">
+        <div class="row g-3 mb-0">
+          <div class="col-12 col-md-6">
+            <div class="text-muted small">關聯專案</div>
+            <div class="fw-500 font-monospace">{{ r.projectCode }}{{ r.projectName ? ' - ' + r.projectName : '' }}</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">申請日期</div>
+            <div class="fw-500">{{ r.createdAt | date:'yyyy-MM-dd' }}</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">預算總額</div>
+            <div class="fw-600 text-lg">{{ r.totalAmount | number:'1.0-0' }}</div>
+          </div>
+          @if (approvalTask(); as t) {
+            <div class="col-6 col-md-3">
+              <div class="text-muted small">申請人</div>
+              <div class="fw-500">{{ t.submittedBy || '—' }}</div>
+            </div>
+          }
+          @if (r.reason) {
+            <div class="col-12">
+              <div class="text-muted small">預審說明</div>
+              <div class="fw-500">{{ r.reason }}</div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- 廠商資訊（協力廠商 / 設計師 皆顯示） -->
+    @if (r.type === 'vendor' || r.type === 'designer') {
+      <div class="card border-0 shadow-sm mb-6">
+        <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+          <svg class="sa-icon text-primary" style="stroke: currentColor">
+            <use href="/assets/icons/sprite.svg#briefcase"></use>
+          </svg>
+          受款廠商
+        </div>
+        <div class="card-body">
+          <div class="row g-3 mb-0">
+            <div class="col-12 col-md-6">
+              <div class="text-muted small">廠商名稱</div>
+              <div class="fw-500">{{ r.vendorName || '—' }}</div>
+            </div>
+            <div class="col-12 col-md-6">
+              <div class="text-muted small">統一編號</div>
+              <div class="fw-500 font-monospace">{{ r.vendorTaxId || '—' }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- 報價單品項 -->
+    @if (r.items && r.items.length > 0) {
+      <div class="card border-0 shadow-sm mb-6">
+        <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+          <svg class="sa-icon text-primary" style="stroke: currentColor">
+            <use href="/assets/icons/sprite.svg#file-text"></use>
+          </svg>
+          報價單品項
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th style="width:40px"></th>
+                  <th>品項類別</th>
+                  <th>日期</th>
+                  <th>項目</th>
+                  <th>說明</th>
+                  <th class="text-right">金額</th>
+                  <th>備註</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of r.items; track item.id) {
+                  <tr>
+                    <td class="align-middle text-center">
+                      @if (item.fileUrl) {
+                        <button type="button" class="btn btn-sm btn-ghost-secondary p-1"
+                                (click)="openPreview(item.fileName || '報價單', item.fileUrl!)"
+                                title="{{ item.fileName }}">
+                          <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                        </button>
+                      }
+                    </td>
+                    <td class="small">{{ item.itemCategory || '—' }}</td>
+                    <td class="small">{{ item.itemDate ? (item.itemDate | date:'yyyy-MM-dd') : '—' }}</td>
+                    <td class="small">{{ item.itemName || '—' }}</td>
+                    <td class="small">{{ item.description || '—' }}</td>
+                    <td class="text-right small fw-500">{{ item.amount | number:'1.0-0' }}</td>
+                    <td class="small text-muted">{{ item.note || '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+              <tfoot>
+                <tr class="table-light">
+                  <td colspan="5" class="text-right fw-500 small">未稅小計</td>
+                  <td class="text-right fw-600">{{ r.totalAmount | number:'1.0-0' }}</td>
+                  <td></td>
+                </tr>
+                <tr class="table-light">
+                  <td colspan="5" class="text-right fw-500 small">稅金</td>
+                  <td class="text-right fw-500">{{ (r.taxAmount ?? 0) | number:'1.0-0' }}</td>
+                  <td></td>
+                </tr>
+                <tr class="table-light">
+                  <td colspan="5" class="text-right fw-600 small">含稅總計</td>
+                  <td class="text-right fw-700 text-[--forest]">{{ (r.totalAmount + (r.taxAmount ?? 0)) | number:'1.0-0' }}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- 附件 -->
+    @if (r.attachments && r.attachments.length > 0) {
+      <div class="card border-0 shadow-sm mb-6">
+        <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+          <svg class="sa-icon text-primary" style="stroke: currentColor">
+            <use href="/assets/icons/sprite.svg#paperclip"></use>
+          </svg>
+          附件
+        </div>
+        <div class="card-body">
+          <app-attachments-list [attachments]="r.attachments" />
+        </div>
+      </div>
+    }
+
+    <!-- 簽核流程時間軸 -->
+    @if (approvalTask(); as task) {
+      <app-approval-timeline
+        [flow]="task.flow ?? null"
+        [approvalRecords]="task.approvalRecords"
+        [currentStepOrder]="task.currentStepOrder"
+        [status]="task.status" />
+    }
+
+    </div>
+    </div>
+
+  } @else {
+    <div class="text-center py-6 text-muted">載入中…</div>
+  }
+</div>
+
+@if (previewFile) {
+  <app-file-preview-modal [file]="previewFile" (closed)="closePreview()" />
+}

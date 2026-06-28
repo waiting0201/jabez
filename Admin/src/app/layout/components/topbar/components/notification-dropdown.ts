@@ -16,6 +16,7 @@ const TYPE_ROUTES: Record<ApplicationType, string> = {
   travel_write_off: '/admin/travel-write-off-requests',
   holiday_travel:   '/admin/holiday-travel-requests',
   travel_payment:   '/admin/travel-payment-requests',
+  pre_review:       '/admin/pre-review-requests',
 };
 
 /** 申請類型 → 對應的 read 權限代碼（同 admin.routes.ts 內的 permission） */
@@ -29,6 +30,7 @@ const TYPE_PERMISSIONS: Record<ApplicationType, string> = {
   travel_write_off: 'travel-write-off-requests:read',
   holiday_travel:   'holiday-travel-requests:read',
   travel_payment:   'travel-payment-requests:read',
+  pre_review:       'pre-review-requests:read',
 };
 
 /** 固定排列順序（與設計討論一致） */
@@ -42,6 +44,7 @@ const TYPE_ORDER: ApplicationType[] = [
   'holiday_travel',
   'leave',
   'overtime',
+  'pre_review',
 ];
 
 @Component({

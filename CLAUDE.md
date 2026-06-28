@@ -195,6 +195,7 @@ Admin/src/app/
     │   ├── approval-tasks/ # 待審核任務清單
     │   ├── projects/       # 專案管理
     │   ├── payment-requests/  # 請款申請（廠商請款 type=vendor / 一般請款 type=general 明細下方皆含整單批次附件上傳，共用 shared/components/attachments-upload）
+    │   ├── pre-review-requests/ # 預審申請（事前預審，clone 自請款；無撥款、不計入報表；品項類別下拉 + 報價單 OCR；含 pre-review-pdf.service 列印合併所有上傳檔）
     │   ├── leave-requests/    # 請假申請
     │   ├── travel-payment-requests/ # 出差請款申請（小額已代墊直接請款，無沖銷）
     │   ├── travel-requests/   # 出差預支申請（走沖銷流程）
@@ -259,7 +260,7 @@ Api/
 │   └── PaymentReminderFunction.cs     # TimerTrigger：每日 09:00 Taipei 跑撥款日將屆提醒；cron 由 `PaymentReminderCron` 控制；提前天數讀 `SystemSetting.PaymentReminderDaysBefore`，推給財務體系部門全員
 ├── Routing/
 │   └── AppRouter.cs                   # C# 12 List Pattern 路由分派器
-├── Handlers/                          # 23 個 Handler（業務邏輯）
+├── Handlers/                          # 25 個 Handler（業務邏輯）
 │   ├── AuthHandler.cs                 # 登入、刷新 Token
 │   ├── UserHandler.cs                 # 使用者 CRUD（含原住民 / 低收入 / 殘障證明 + 健保 / 勞保覆寫）；GetMineAsync = GET /me/user 員工讀自己（免 users:read）
 │   ├── EmployeeProfileHandler.cs     # 員工人事資料卡 GET / PUT（multipart：HR JSON + 身分證正反面 + 最高學歷證明）；GetMineAsync = GET /me/profile 員工讀自己（免 users:read）
@@ -272,6 +273,8 @@ Api/
 │   ├── ApprovalTaskHandler.cs         # 待審核任務查詢與審核動作
 │   ├── ProjectHandler.cs
 │   ├── PaymentRequestHandler.cs       # 請款申請 CRUD（單號 PR-yyyyMMdd-NNN）
+│   ├── PreReviewRequestHandler.cs     # 預審申請 CRUD + Submit（單號 PRV-yyyyMMdd-NNN；報價單上傳 blob container=quotes；無 installments、不計入報表）
+│   ├── QuoteOcrHandler.cs             # 報價單 OCR（POST /quote-ocr，回傳品項列表 itemName/amount/note）
 │   ├── LeaveRequestHandler.cs
 │   ├── TravelRequestHandler.cs        # 出差預支申請 CRUD（單號 TR-yyyyMMdd-NNN；假日執行活動為 HTR-yyyyMMdd-NNN；預支後沖銷）
 │   ├── TravelPaymentRequestHandler.cs # 出差請款申請 CRUD（單號 TPR-yyyyMMdd-NNN；小額代墊直接請款）
@@ -293,12 +296,12 @@ Api/
 ├── Data/
 │   ├── AppDbContext.cs                # EF Core DbContext（含 Migration 自動套用）
 │   ├── AppDbContextFactory.cs         # 用於 CLI Migration
-│   ├── Configurations/                # EF Core 實體對應設定（31 個，新增 EmployeeProfile + 9 張子表 + 健保眷屬）
+│   ├── Configurations/                # EF Core 實體對應設定（34 個，新增 EmployeeProfile + 9 張子表 + 健保眷屬 + PreReviewRequest / PreReviewItem / PreReviewRequestAttachment）
 │   ├── Migrations/                    # EF Core Migration 檔案
 │   └── Seed/                          # 一次性員工人事資料匯入工具（EmployeeImporter + RocDateParser + EmployeeImportDtos + employee-import.json；RUN_EMPLOYEE_IMPORT 旗標觸發，IMPORT_UPLOAD_FILES 控制附件上傳）
 ├── Models/
-│   ├── Entities/                      # 42 個資料庫實體（新增 EmployeeProfile / EducationRecord / EmploymentHistoryRecord / FamilyMember / ProfessionalTraining / LanguageAbility / JobTransferRecord / RewardPunishmentRecord / SalaryAdjustmentRecord / HealthInsuranceDependent / **4 個分期撥款表 PaymentRequestInstallment / AdvanceRequestInstallment / TravelRequestInstallment / TravelPaymentRequestInstallment** / **PaymentReminderLog** / **整單批次附件 PaymentRequestAttachment / WriteOffAttachment**）
-│   └── Dtos/                          # 19 個 DTO 檔案（新增 EmployeeProfileDtos / **InstallmentDtos**）
+│   ├── Entities/                      # 45 個資料庫實體（新增 EmployeeProfile / EducationRecord / EmploymentHistoryRecord / FamilyMember / ProfessionalTraining / LanguageAbility / JobTransferRecord / RewardPunishmentRecord / SalaryAdjustmentRecord / HealthInsuranceDependent / **4 個分期撥款表 PaymentRequestInstallment / AdvanceRequestInstallment / TravelRequestInstallment / TravelPaymentRequestInstallment** / **PaymentReminderLog** / **整單批次附件 PaymentRequestAttachment / WriteOffAttachment** / **預審申請 PreReviewRequest / PreReviewItem / PreReviewRequestAttachment**）
+│   └── Dtos/                          # 20 個 DTO 檔案（新增 EmployeeProfileDtos / **InstallmentDtos** / **PreReviewRequestDtos**）
 ├── Services/
 │   ├── IJwtService.cs
 │   ├── JwtService.cs                  # HS256 JWT 產生與驗證
@@ -327,6 +330,7 @@ Api/
 │       ├── ApprovalReadService.cs
 │       ├── ProjectReadService.cs
 │       ├── PaymentRequestReadService.cs
+│       ├── PreReviewRequestReadService.cs
 │       ├── LeaveRequestReadService.cs
 │       ├── TravelRequestReadService.cs
 │       ├── TravelPaymentRequestReadService.cs

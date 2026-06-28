@@ -147,6 +147,15 @@
 | GET/PUT/PATCH/DELETE | `/travel-write-off-requests/{id}` | 出差預支沖銷申請 CRUD |
 | PATCH | `/travel-write-off-requests/{id}/submit` | 送出出差預支沖銷申請（draft → pending） |
 
+## 預審申請
+
+| Method | Path | 說明 |
+|--------|------|------|
+| GET/POST | `/pre-review-requests` | 預審申請列表 / 新增（預設 draft，multipart 含品項與報價單檔上傳，blob container = `quotes`；單號 `PRV-yyyyMMdd-NNN`） |
+| GET/PUT/PATCH/DELETE | `/pre-review-requests/{id}` | 預審申請 CRUD（明細含品項類別 / 品項名稱 / 金額 / 備註 / 日期 / 報價單檔；**無撥款流程、不計入款項統計報表**） |
+| PATCH | `/pre-review-requests/{id}/submit` | 送出預審申請（draft → pending） |
+| POST | `/quote-ocr` | 報價單 OCR 辨識（multipart，後端透過 Google Gemini API），回傳品項列表 `{itemName, amount, note}`，供前端自動展開明細。登入即可用，不需特殊權限 |
+
 ## 出勤打卡
 
 | Method | Path | 說明 |

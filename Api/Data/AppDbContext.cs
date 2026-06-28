@@ -52,6 +52,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<TravelRequestInstallment>       TravelRequestInstallments       { get; set; }
     public DbSet<TravelPaymentRequestInstallment> TravelPaymentRequestInstallments { get; set; }
 
+    // 預審申請
+    public DbSet<PreReviewRequest>           PreReviewRequests           { get; set; }
+    public DbSet<PreReviewItem>              PreReviewItems              { get; set; }
+    public DbSet<PreReviewRequestAttachment> PreReviewRequestAttachments { get; set; }
+
     // HR 人事資料卡（1:1 EmployeeProfile + 9 子表）
     public DbSet<EmployeeProfile>           EmployeeProfiles            { get; set; }
     public DbSet<EducationRecord>           EducationRecords            { get; set; }

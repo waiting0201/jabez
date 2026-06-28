@@ -86,6 +86,12 @@ export const ADMIN_ROUTES: Routes = [
   {path: 'projects/new',         component: ProjectForm,    canActivate: [permissionGuard], data: {title: '新增專案',       permission: 'projects:write'}},
   {path: 'projects/:id/edit',    component: ProjectForm,    canActivate: [permissionGuard], data: {title: '檢視專案',       permission: 'projects:read'}},
 
+  // 預審申請
+  {path: 'pre-review-requests',          canActivate: [permissionGuard], data: {title: '預審申請',       permission: 'pre-review-requests:read'  }, loadComponent: () => import('./pre-review-requests/pages/pre-review-list/pre-review-list').then(m => m.PreReviewList)},
+  {path: 'pre-review-requests/new',      canActivate: [permissionGuard], data: {title: '新增預審申請',   permission: 'pre-review-requests:write' }, loadComponent: () => import('./pre-review-requests/pages/pre-review-form/pre-review-form').then(m => m.PreReviewForm)},
+  {path: 'pre-review-requests/:id/edit', canActivate: [permissionGuard], data: {title: '編輯預審申請',   permission: 'pre-review-requests:read'  }, loadComponent: () => import('./pre-review-requests/pages/pre-review-form/pre-review-form').then(m => m.PreReviewForm)},
+  {path: 'pre-review-requests/:id',      canActivate: [permissionGuard], data: {title: '預審申請詳情',   permission: 'pre-review-requests:read'  }, loadComponent: () => import('./pre-review-requests/pages/pre-review-detail/pre-review-detail').then(m => m.PreReviewDetail)},
+
   // 請款申請
   {path: 'payment-requests',             component: PaymentList, canActivate: [permissionGuard], data: {title: '請款申請',       permission: 'payment-requests:read'}},
   {path: 'payment-requests/new',         component: PaymentForm, canActivate: [permissionGuard], data: {title: '新增請款申請',   permission: 'payment-requests:write'}},

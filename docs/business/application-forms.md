@@ -1,14 +1,15 @@
 # 申請表類型總覽
 
-系統共有 **9 種申請表**，依用途分為三類。每種申請表都走簽核流程（詳見 [approval-flow.md](approval-flow.md)）。
+系統共有 **10 種申請表**，依用途分為四類。每種申請表都走簽核流程（詳見 [approval-flow.md](approval-flow.md)）。
 
 ## 單號（RequestNo）對照
 
-6 種金錢相關申請表均有單號，格式 `{PREFIX}-yyyyMMdd-NNN`（per-prefix-per-day 序號池，於 Handler `CreateAsync` 產生，由 unique index 保護並發）：
+7 種金錢相關申請表均有單號，格式 `{PREFIX}-yyyyMMdd-NNN`（per-prefix-per-day 序號池，於 Handler `CreateAsync` 產生，由 unique index 保護並發）：
 
 | 申請表 | 前綴 | 範例 |
 |--------|------|------|
 | 請款申請 PaymentRequest | `PR-` | `PR-20260520-001` |
+| 預審申請 PreReviewRequest | `PRV-` | `PRV-20260520-001` |
 | 預支申請 AdvanceRequest | `ADV-` | `ADV-20260520-001` |
 | 出差請款申請 TravelPaymentRequest | `TPR-` | `TPR-20260520-001` |
 | 出差預支申請 TravelRequest（`IsHolidayTravel=false`） | `TR-` | `TR-20260520-001` |
@@ -42,7 +43,13 @@
 | 8 | 預支沖銷申請 | `/admin/write-off-requests` | `/write-off-requests` / `write_off` | **Group B 首位跳過** | 沖銷預支申請（含發票上傳）；獨立簽核流程，可能產生退款；**明細下方可批次上傳整單附件（照片 / PDF）** |
 | 9 | 出差預支沖銷申請 | `/admin/travel-write-off-requests` | `/travel-write-off-requests` / `travel_write_off` | **Group B 首位跳過** | 沖銷出差預支申請；獨立簽核流程，可能產生退款 |
 
-> **自審分組說明**：所有 9 種申請表均支援指定審核者（`UseApplicantDesignated`）模式，但對「申請人本身排入指定審核者清單」的處理方式分為兩組。詳見 [approval-flow.md §申請人指定審核模式](approval-flow.md#申請人指定審核模式useapplicantdesignated)。
+## 預審類申請表（1 種）
+
+| # | 申請表 | 前端路徑 | API Prefix / RequestType | 自審分組 | 流程特性 |
+|---|--------|----------|--------------------------|---------|---------|
+| 10 | 預審申請 | `/admin/pre-review-requests` | `/pre-review-requests` / `pre_review` | **Group B 首位跳過** | 事前預審：實際花費前送類似請款的單據（含報價單 / 品項 / 金額）走簽核取得核准。**金額不計入任何統計報表**（刻意不加入款項統計 UNION）、**無撥款流程**（無分期撥款 / 撥款日 / 撥款狀態 / 財務撥款必填）。品項含**品項類別下拉**（活動硬體 / 設計師 / 製作產品 / 採購產品 / 採購庶務 / 其他，「其他」可自訂鍵入）；報價單上傳支援 **OCR 自動辨識**（`POST /quote-ocr`）；PDF 列印**合併所有上傳檔**（報價單圖檔 + 附件）成單一 PDF |
+
+> **自審分組說明**：所有 10 種申請表均支援指定審核者（`UseApplicantDesignated`）模式，但對「申請人本身排入指定審核者清單」的處理方式分為兩組。詳見 [approval-flow.md §申請人指定審核模式](approval-flow.md#申請人指定審核模式useapplicantdesignated)。
 
 ## 流程關係圖
 
@@ -51,6 +58,7 @@
 出差預支申請    ──→  出差預支沖銷申請（事後沖銷）
 出差請款申請    ──→  （無沖銷，小額代墊直接請款）
 請款 / 加班 / 請假 / 假日執行活動  ──→  獨立流程，無沖銷
+預審申請        ──→  獨立流程，無撥款、不計入報表
 ```
 
 ## 假日執行活動 vs 出差預支 差異

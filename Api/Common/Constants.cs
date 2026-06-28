@@ -72,6 +72,9 @@ public static class PermissionCodes
     public const string TravelPaymentRequestsWrite   = "travel-payment-requests:write";
     public const string TravelPaymentRequestsDelete  = "travel-payment-requests:delete";
     public const string LineQuotaRead                = "line-quota:read";
+    public const string PreReviewRequestsRead        = "pre-review-requests:read";
+    public const string PreReviewRequestsWrite       = "pre-review-requests:write";
+    public const string PreReviewRequestsDelete      = "pre-review-requests:delete";
 }
 
 public static class RoleNames
