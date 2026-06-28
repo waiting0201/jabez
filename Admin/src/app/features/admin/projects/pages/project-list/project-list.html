@@ -1,0 +1,168 @@
+<div class="container-fluid py-3">
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
+      <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#folder"></use>
+      </svg>
+      <h4 class="mb-0">專案管理</h4>
+    </div>
+    @if (canWrite()) {
+      <a routerLink="new" class="btn btn-primary inline-flex items-center gap-1">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+        新增專案
+      </a>
+    }
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="px-4 py-3 border-b">
+      <div class="flex flex-wrap items-center gap-2">
+        <select class="form-select" style="width: auto; min-width: 120px"
+                [(ngModel)]="selectedYearInput">
+          <option [ngValue]="undefined">全部年度</option>
+          @for (y of yearOptions(); track y) {
+            <option [ngValue]="y">{{ y }}</option>
+          }
+        </select>
+        <select class="form-select" style="width: auto; min-width: 120px"
+                [(ngModel)]="selectedStatusInput">
+          <option [ngValue]="undefined">全部狀態</option>
+          <option value="active">{{ statusLabel['active'] }}</option>
+          <option value="closed">{{ statusLabel['closed'] }}</option>
+        </select>
+        <div class="flex items-center gap-2" style="max-width: 420px">
+          <div class="relative flex-1">
+            <svg class="sa-icon absolute left-3 top-1/2 -translate-y-1/2 text-muted" style="stroke: currentColor; width: 16px; height: 16px">
+              <use href="/assets/icons/sprite.svg#search"></use>
+            </svg>
+            <input type="text" class="form-control ps-9" placeholder="搜尋編號或專案名稱…"
+                   [(ngModel)]="searchInput" (keydown.enter)="doSearch()">
+          </div>
+          <button class="btn btn-primary" (click)="doSearch()">篩選</button>
+        </div>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>編號</th>
+              <th>專案名稱</th>
+              <th>狀態</th>
+              <th>部門</th>
+              <th class="hidden md:table-cell">開始日期</th>
+              <th class="text-right">實收金額</th>
+              <th class="text-right">契約金額</th>
+              <th class="text-right">業務執行金額</th>
+              <th class="hidden lg:table-cell">Google Drive</th>
+              <th class="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (project of pagedProjects(); track project.id) {
+              <tr>
+                <td class="fw-500 font-monospace">{{ project.code }}</td>
+                <td>{{ project.name }}</td>
+                <td>
+                  <span [class]="'badge ' + statusClass[project.status]">{{ statusLabel[project.status] }}</span>
+                </td>
+                <td>
+                  @if (project.departmentName) {
+                    <span class="badge bg-primary-subtle text-primary">{{ project.departmentName }}</span>
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
+                <td class="hidden md:table-cell">{{ project.startDate | date:'yyyy/MM/dd' }}</td>
+                <td class="text-right">
+                  @if (project.receivedAmount != null) {
+                    {{ project.receivedAmount | number:'1.0-0' }}
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
+                <td class="text-right">
+                  @if (project.contractAmount != null) {
+                    {{ project.contractAmount | number:'1.0-0' }}
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
+                <td class="text-right">
+                  @if (project.businessAmount != null) {
+                    {{ project.businessAmount | number:'1.0-0' }}
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
+                <td class="hidden lg:table-cell">
+                  @if (project.googleDriveUrl) {
+                    <a [href]="project.googleDriveUrl" target="_blank" rel="noopener"
+                       class="inline-flex items-center gap-1 text-decoration-none text-muted small">
+                      <svg class="sa-icon" style="stroke:currentColor;width:14px;height:14px"><use href="/assets/icons/sprite.svg#external-link"></use></svg>
+                      開啟
+                    </a>
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
+                <td class="text-right" style="white-space: nowrap">
+                  <div class="flex justify-end gap-1">
+                    @if (project.status !== 'closed' && (canWrite() || canDelete())) {
+                      @if (canWrite()) {
+                        <a [routerLink]="[project.id, 'edit']" class="btn btn-sm btn-ghost-primary inline-flex items-center" title="編輯">
+                          <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+                        </a>
+                      }
+                      @if (canDelete()) {
+                        <button class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(project)" title="刪除">
+                          <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
+                        </button>
+                      }
+                    } @else {
+                      <a [routerLink]="[project.id, 'edit']" class="btn btn-sm btn-ghost-secondary inline-flex items-center" title="檢視">
+                        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#eye"></use></svg>
+                      </a>
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="10" class="text-center text-muted py-4">尚無專案資料。</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (totalPages() > 1) {
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t">
+          <span class="text-muted small text-center sm:text-left">共 {{ totalCount() }} 筆，第 {{ page() }} / {{ totalPages() }} 頁</span>
+          <div class="flex sm:hidden items-center gap-1">
+            <button class="page-link rounded" [class.disabled]="page() === 1" (click)="prev()">‹</button>
+            <span class="px-2 text-sm">{{ page() }} / {{ totalPages() }}</span>
+            <button class="page-link rounded" [class.disabled]="page() === totalPages()" (click)="next()">›</button>
+          </div>
+          <ul class="hidden sm:flex pagination mb-0">
+            <li class="page-item" [class.disabled]="page() === 1">
+              <button class="page-link" (click)="prev()">‹</button>
+            </li>
+            @for (p of pageNumbers(); track p) {
+              @if (p === -1) {
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+              } @else {
+                <li class="page-item" [class.active]="p === page()">
+                  <button class="page-link" (click)="goTo(p)">{{ p }}</button>
+                </li>
+              }
+            }
+            <li class="page-item" [class.disabled]="page() === totalPages()">
+              <button class="page-link" (click)="next()">›</button>
+            </li>
+          </ul>
+        </div>
+      }
+    </div>
+  </div>
+</div>

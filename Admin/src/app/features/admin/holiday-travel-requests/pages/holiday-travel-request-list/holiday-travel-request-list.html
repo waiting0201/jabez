@@ -1,0 +1,112 @@
+<div class="container-fluid py-3">
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
+      <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#sun"></use>
+      </svg>
+      <h4 class="mb-0">假日執行活動申請</h4>
+    </div>
+    <a *appHasPermission="'holiday-travel-requests:write'" routerLink="new" class="btn btn-primary inline-flex items-center gap-1">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+      新增申請
+    </a>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>單號</th>
+              <th>執行活動地點</th>
+              <th>開始日期</th>
+              <th>結束日期</th>
+              <th class="text-right">假日天數</th>
+              <th class="hidden md:table-cell">活動主旨</th>
+              <th class="hidden lg:table-cell">專案</th>
+              <th>狀態</th>
+              <th class="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of pagedRequests(); track r.id) {
+              <tr>
+                <td class="font-monospace small">{{ r.requestNo }}</td>
+                <td class="fw-500">{{ r.destination }}</td>
+                <td class="text-muted small">{{ r.startDate | date:'yyyy-MM-dd' }}</td>
+                <td class="text-muted small">{{ r.endDate | date:'yyyy-MM-dd' }}</td>
+                <td class="text-right small">
+                  @if (r.holidayDays != null) {
+                    <span class="fw-500">{{ r.holidayDays }} 天</span>
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
+                <td class="text-muted small hidden md:table-cell">{{ r.purpose }}</td>
+                <td class="hidden lg:table-cell">
+                  <div class="font-monospace small fw-500">{{ r.projectCode || '—' }}</div>
+                  @if (r.projectName) {
+                    <div class="text-muted small">{{ r.projectName }}</div>
+                  }
+                </td>
+                <td>
+                  <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
+                </td>
+                <td class="text-right" style="white-space: nowrap">
+                  <div class="flex justify-end gap-1">
+                    @if (canWrite() && (r.approvalStatus === 'draft' || r.approvalStatus === 'returned')) {
+                      <a [routerLink]="[r.id, 'edit']" class="btn btn-sm btn-ghost-primary inline-flex items-center" title="編輯">
+                        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+                      </a>
+                      @if (canDelete() && r.approvalStatus === 'draft') {
+                        <button class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(r)" title="刪除">
+                          <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
+                        </button>
+                      }
+                    } @else {
+                      <a [routerLink]="[r.id]" class="btn btn-sm btn-ghost-secondary inline-flex items-center" title="檢視">
+                        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#eye"></use></svg>
+                      </a>
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="9" class="text-center text-muted py-4">尚無假日執行活動申請。</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (totalPages() > 1) {
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t">
+          <span class="text-muted small text-center sm:text-left">共 {{ totalCount() }} 筆，第 {{ page() }} / {{ totalPages() }} 頁</span>
+          <div class="flex sm:hidden items-center gap-1">
+            <button class="page-link rounded" [class.disabled]="page() === 1" (click)="prev()">‹</button>
+            <span class="px-2 text-sm">{{ page() }} / {{ totalPages() }}</span>
+            <button class="page-link rounded" [class.disabled]="page() === totalPages()" (click)="next()">›</button>
+          </div>
+          <ul class="hidden sm:flex pagination mb-0">
+            <li class="page-item" [class.disabled]="page() === 1">
+              <button class="page-link" (click)="prev()">‹</button>
+            </li>
+            @for (p of pageNumbers(); track p) {
+              @if (p === -1) {
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+              } @else {
+                <li class="page-item" [class.active]="p === page()">
+                  <button class="page-link" (click)="goTo(p)">{{ p }}</button>
+                </li>
+              }
+            }
+            <li class="page-item" [class.disabled]="page() === totalPages()">
+              <button class="page-link" (click)="next()">›</button>
+            </li>
+          </ul>
+        </div>
+      }
+    </div>
+  </div>
+</div>

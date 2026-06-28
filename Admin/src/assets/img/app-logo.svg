@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+    <symbol id="custom-logo" viewBox="0 0 100 32">
+      <path d="M22.63 16C22.63 24.28 18.79 31 14.05 31C9.31 31 5.47 24.28 5.47 16C5.47 7.72 9.31 1 14.05 1C18.79 1 22.63 7.72 22.63 16Z" stroke="currentColor" stroke-width="1.5" style="stroke: var(--logo-color); fill: var(--logo-color-fill)"/>
+      <path d="M18.41 24.41C11.63 28.57 4.17 28.34 1.76 23.91C-0.66 19.48 2.89 12.51 9.68 8.35C16.47 4.19 23.93 4.42 26.34 8.85C28.75 13.28 25.2 20.25 18.41 24.41Z" stroke="currentColor" stroke-width="1.5" style="stroke: var(--logo-color); fill: var(--logo-color-fill)"/>
+      <path d="M18.41 8.35C25.2 12.51 28.75 19.48 26.34 23.91C23.93 28.34 16.47 28.57 9.68 24.41C2.89 20.25 -0.66 13.28 1.76 8.85C4.17 4.42 11.63 4.19 18.41 8.35Z" stroke="currentColor" stroke-width="1.5" style="stroke: var(--logo-color); fill: var(--logo-color-fill)"/>
+      <circle cx="14.0467" cy="16.5173" r="4.01435" fill="none" stroke="currentColor" style="stroke: var(--logo-color); fill: var(--logo-color-fill)"/>
+      <text x="38" y="23" font-family="'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif" font-size="19" font-weight="700" fill="currentColor">Jabez</text>
+    </symbol>
+</svg>

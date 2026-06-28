@@ -1,0 +1,554 @@
+<div class="container-fluid py-3">
+  <div class="flex items-center gap-2 mb-6">
+    <a routerLink="/admin/leave-requests" class="btn btn-sm btn-outline-secondary">
+      <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+    </a>
+    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視請假申請' : (isReturned ? '修改請假申請' : '編輯請假草稿')) : '新增請假申請' }}</h4>
+  </div>
+
+  @if (errorMsg()) {
+    <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+      {{ errorMsg() }}
+    </div>
+  }
+
+  @if (isReadOnly && approvalStatus === 'pending') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(13,110,253,0.08)] border-bottom flex items-center gap-2 fw-600 text-primary py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
+        此申請審核中，不可再修改。
+      </div>
+    </div>
+  } @else if (approvalStatus === 'returned') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(255,193,7,0.08)] border-bottom flex items-center gap-2 fw-600 text-warning py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+        此申請已被退回，請修改後重新送出。
+      </div>
+    </div>
+  } @else if (isReadOnly && approvalStatus === 'approved') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(37,162,68,0.08)] border-bottom flex items-center gap-2 fw-600 text-success py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#check-circle"></use></svg>
+        此申請已核准，不可再修改。
+      </div>
+    </div>
+  } @else if (isReadOnly && approvalStatus === 'rejected') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(220,53,69,0.08)] border-bottom flex items-center gap-2 fw-600 text-danger py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#x-circle"></use></svg>
+        此申請已被拒絕，不可再修改。
+      </div>
+    </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <div class="row g-4">
+      <div class="col-12 col-lg-10 col-xl-8">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#calendar"></use>
+            </svg>
+            請假資訊
+          </div>
+          <div class="card-body">
+
+            <!-- 假別選擇（下拉選單分群組；高階主管假僅協理以上可見） -->
+            <div class="mb-4">
+              <label class="form-label fw-500">假別 <span class="text-danger">*</span></label>
+              <select class="form-select" formControlName="leaveType" style="max-width: 320px">
+                @for (group of leaveTypeGroups; track group.label) {
+                  @if ((group.label !== '高階主管假' || isSeniorExecutive())
+                       && (group.label !== '其他假別' || isIndigenousUser())
+                       && (group.label !== '生理假' || isFemaleEmployee())) {
+                    <optgroup [label]="group.label">
+                      @for (type of group.types; track type) {
+                        <option [value]="type">{{ leaveTypeLabels[type] }}</option>
+                      }
+                    </optgroup>
+                  }
+                }
+              </select>
+
+              <!-- 當前單位提示 -->
+              <div class="text-muted small mt-1">
+                @switch (selectedUnit) {
+                  @case ('hour') { 時間單位：<strong>小時（整點）</strong>，下拉只顯示整點 }
+                  @case ('half_day') { 時間單位：<strong>半天</strong>（4 小時） }
+                  @case ('day') { 時間單位：<strong>整天</strong>（8 小時） }
+                }
+              </div>
+
+              <!-- 年假額度提示 -->
+              @if (selectedLeaveType === 'annual') {
+                <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
+                  @if (annualQuotaLoading()) {
+                    <span class="small">載入中...</span>
+                  } @else if (annualQuota(); as quota) {
+                    @if (quota.message) {
+                      <span class="small text-muted">{{ quota.message }}</span>
+                    } @else {
+                      <span class="small">
+                        年資：<strong>{{ quota.seniorityYears }} 年 {{ quota.seniorityMonths }} 個月</strong>
+                        <span class="text-muted ms-2">｜年假額度：<strong>{{ quota.totalDays }}</strong> 天</span>
+                        <span class="text-muted ms-2">｜已使用：{{ quota.usedDays }} 天</span>
+                        <span class="ms-2">｜剩餘：<strong class="text-primary">{{ quota.availableDays }}</strong> 天</span>
+                      </span>
+                    }
+                  } @else {
+                    <span class="small text-muted">無法取得年假額度資料</span>
+                  }
+                </div>
+              }
+
+              <!-- 事假扣薪提示 -->
+              @if (selectedLeaveType === 'personal') {
+                <div class="alert alert-warning flex items-center gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                  <span class="small">按小時計，事假按天數扣除全額薪資</span>
+                </div>
+              }
+
+              <!-- 病假扣薪提示 -->
+              @if (selectedLeaveType === 'sick') {
+                <div class="alert alert-warning flex items-center gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                  <span class="small">按小時計，病假按天數扣除半薪</span>
+                </div>
+              }
+
+              <!-- 補休時數提示 -->
+              @if (selectedLeaveType === 'compensatory') {
+                <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
+                  @if (compensatoryLoading()) {
+                    <span class="small">載入中...</span>
+                  } @else if (compensatoryHours(); as h) {
+                    <span class="small">
+                      合計可補休：<strong class="text-primary">{{ h.availableHours }} 小時</strong>
+                      <span class="text-muted ms-2">（= {{ h.availableHours / 4 | number:'1.0-1' }} 個半天）</span>
+                      @if (h.openingExpired) {
+                        <span class="text-muted ms-2">｜舊補休 <strong>已到期歸零</strong></span>
+                      } @else {
+                        <span class="text-muted ms-2">｜舊補休剩餘 {{ h.openingRemaining }} 小時（116/6/30 到期）</span>
+                      }
+                      <span class="text-muted ms-2">｜系統加班補休 {{ h.totalOvertimeHours - (h.usedCompensatoryHours > h.openingHours ? h.usedCompensatoryHours - h.openingHours : 0) }} 小時</span>
+                      <span class="text-muted ms-2">｜半天扣除 4 小時</span>
+                    </span>
+                  } @else {
+                    <span class="small text-muted">無法取得補休時數資料</span>
+                  }
+                </div>
+              }
+
+              <!-- 公假提示 -->
+              @if (selectedLeaveType === 'official') {
+                <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+                  <span class="small">公假（教召／選舉／出庭）以天計算，<strong>不扣薪</strong>。</span>
+                </div>
+              }
+
+              <!-- 婚假配額 -->
+              @if (selectedLeaveType === 'marriage') {
+                <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+                  @if (marriageQuota(); as q) {
+                    <span class="small">
+                      婚假上限：<strong>{{ q.maxDays }}</strong> 天（可不連續）
+                      <span class="text-muted ms-2">｜已請：{{ q.usedDays }} 天</span>
+                      <span class="ms-2">｜剩餘：<strong class="text-primary">{{ q.remainingDays }}</strong> 天</span>
+                    </span>
+                  } @else {
+                    <span class="small text-muted">載入中...</span>
+                  }
+                </div>
+              }
+
+              <!-- 產假狀態 -->
+              @if (selectedLeaveType === 'maternity') {
+                <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+                  <span class="small">產假為法定一次請完：選擇起始日，系統自動計算 <strong>56 天</strong>。</span>
+                </div>
+                @if (maternityStatus()?.hasActiveRequest && maternityStatus()?.activeRequestId !== requestId) {
+                  <div class="alert alert-danger flex items-center gap-2 py-2 mt-2 mb-0">
+                    <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                    <span class="small">
+                      已有未完成或進行中的產假申請
+                      @if (maternityStatus()?.startDate) {
+                        <span class="text-muted ms-1">（{{ maternityStatus()!.startDate | date:'yyyy-MM-dd' }} ~ {{ maternityStatus()!.endDate | date:'yyyy-MM-dd' }}，狀態：{{ getStatusLabel(maternityStatus()!.approvalStatus) }}）</span>
+                      }
+                    </span>
+                  </div>
+                }
+              }
+
+              <!-- 歲時祭儀假 -->
+              @if (selectedLeaveType === 'ceremonial_festival') {
+                @if (ceremonialLoading()) {
+                  <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                    <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
+                    <span class="small">載入中...</span>
+                  </div>
+                } @else if (ceremonialQuota(); as quota) {
+                  @if (!quota.isIndigenous) {
+                    <div class="alert alert-danger flex items-center gap-2 py-2 mt-2 mb-0">
+                      <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                      <span class="small">{{ quota.message || '僅原住民身份之員工可申請歲時祭儀假。' }}</span>
+                    </div>
+                  } @else {
+                    <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                      <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+                      <span class="small">
+                        歲時祭儀假：<strong>{{ quota.totalDays }}</strong> 天／年
+                        <span class="text-muted ms-2">｜已使用：{{ quota.usedDays }} 天</span>
+                        <span class="ms-2">｜剩餘：<strong class="text-primary">{{ quota.availableDays }}</strong> 天</span>
+                        <span class="text-muted ms-2">（跨年歸零）</span>
+                      </span>
+                    </div>
+                  }
+                }
+              }
+
+              <!-- 高階主管假提示 -->
+              @if (selectedLeaveType === 'senior_executive') {
+                <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+                  <span class="small">
+                    高階主管假：以半天為單位，<strong>不扣任何項目</strong>、<strong>每年 20 天</strong>，當年度未用完歸零、隔年重新給予。
+                  </span>
+                </div>
+                @if (!isSeniorExecutive()) {
+                  <div class="alert alert-danger flex items-center gap-2 py-2 mt-2 mb-0">
+                    <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                    <span class="small">僅限協理（含）以上職級申請。</span>
+                  </div>
+                } @else {
+                  <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                    <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
+                    @if (seniorExecQuotaLoading()) {
+                      <span class="small">載入中...</span>
+                    } @else if (seniorExecQuota(); as q) {
+                      <span class="small">
+                        年度額度：<strong>{{ q.totalDays }}</strong> 天
+                        <span class="text-muted ms-2">｜已使用：{{ q.usedDays }} 天</span>
+                        <span class="ms-2">｜剩餘：<strong class="text-primary">{{ q.availableDays }}</strong> 天</span>
+                      </span>
+                    } @else {
+                      <span class="small text-muted">無法取得高階主管假額度資料</span>
+                    }
+                  </div>
+                }
+              }
+
+              <!-- 生理假 -->
+              @if (selectedLeaveType === 'menstrual') {
+                <div class="alert alert-warning flex items-center gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                  <span class="small">
+                    生理假：<strong>每月 1 天</strong>、<strong>全年 12 天</strong>，一次請一天，全部<strong>按天數扣除半薪</strong>。
+                    <span class="text-muted ms-1">（全年累計超過 3 天的部分併入病假計算）</span>
+                  </span>
+                </div>
+                @if (menstrualQuota(); as q) {
+                  @if (!q.isFemale) {
+                    <div class="alert alert-danger flex items-center gap-2 py-2 mt-2 mb-0">
+                      <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                      <span class="small">{{ q.message || '僅女性員工可申請生理假。' }}</span>
+                    </div>
+                  } @else {
+                    <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                      <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+                      <span class="small">
+                        本月剩餘：<strong class="text-primary">{{ q.monthlyAvailableDays }}</strong> 天
+                        <span class="text-muted ms-2">｜全年已用：{{ q.annualUsedDays }} 天</span>
+                        <span class="ms-2">｜全年剩餘：<strong class="text-primary">{{ q.annualAvailableDays }}</strong> 天</span>
+                      </span>
+                    </div>
+                  }
+                }
+              }
+
+              <!-- 其他有上限的假別提示 -->
+              @if (currentDaysLimit !== null && selectedLeaveType !== 'bereavement' && selectedLeaveType !== 'annual'
+                && selectedLeaveType !== 'compensatory' && selectedLeaveType !== 'ceremonial_festival'
+                && selectedLeaveType !== 'marriage' && selectedLeaveType !== 'maternity'
+                && selectedLeaveType !== 'menstrual') {
+                <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+                  <span class="small">
+                    {{ leaveTypeLabels[selectedLeaveType] }}上限：<strong>{{ currentDaysLimit }} 天</strong>
+                    @if (selectedUnit === 'hour') {
+                      <span class="text-muted">（= {{ currentDaysLimit * 8 }} 小時）</span>
+                    }
+                  </span>
+                </div>
+              }
+            </div>
+
+            <!-- 喪假親屬關係 -->
+            @if (selectedLeaveType === 'bereavement') {
+              <div class="mb-4">
+                <label class="form-label fw-500">親屬關係 <span class="text-danger">*</span></label>
+                <select class="form-select" formControlName="bereavementRelationship" style="max-width: 320px">
+                  <option value="">— 請選擇 —</option>
+                  @for (group of bereavementGroups; track group.days) {
+                    <optgroup [label]="group.days + ' 天'">
+                      @for (rel of group.relationships; track rel) {
+                        <option [value]="rel">{{ bereavementLabels[rel] }}</option>
+                      }
+                    </optgroup>
+                  }
+                </select>
+                @if (form.get('bereavementRelationship')?.invalid && form.get('bereavementRelationship')?.touched) {
+                  <div class="text-danger small mt-1">請選擇親屬關係。</div>
+                }
+                @if (bereavementQuota(); as q) {
+                  <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                    <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+                    <span class="small">
+                      此親屬關係上限：<strong>{{ q.maxDays }}</strong> 天
+                      <span class="text-muted ms-2">｜已請：{{ q.usedDays }} 天</span>
+                      <span class="ms-2">｜剩餘：<strong class="text-primary">{{ q.remainingDays }}</strong> 天</span>
+                    </span>
+                  </div>
+                } @else if (currentDaysLimit !== null) {
+                  <div class="text-muted small mt-1">喪假上限：<strong>{{ currentDaysLimit }} 天</strong></div>
+                }
+              </div>
+            }
+
+            <!-- Hour 模式：日期 + 整點小時下拉 -->
+            @if (selectedUnit === 'hour') {
+              <div class="row g-3 mb-4">
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">開始日期 <span class="text-danger">*</span></label>
+                  <div class="flex gap-2">
+                    <input type="date" class="form-control" formControlName="startDate">
+                    <select class="form-select" formControlName="startHour" style="max-width:120px">
+                      @for (h of hourOptions; track h) {
+                        <option [ngValue]="h">{{ formatHour(h) }}</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">結束日期 <span class="text-danger">*</span></label>
+                  <div class="flex gap-2">
+                    <input type="date" class="form-control" formControlName="endDate">
+                    <select class="form-select" formControlName="endHour" style="max-width:120px">
+                      @for (h of hourOptions; track h) {
+                        <option [ngValue]="h">{{ formatHour(h) }}</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <label class="form-label fw-500">時數</label>
+                  <div class="form-control bg-[var(--bg-elevated)]" style="pointer-events: none">{{ calculatedDisplay }}</div>
+                </div>
+              </div>
+            }
+
+            <!-- 產假：只選起始日，結束日自動 -->
+            @if (selectedLeaveType === 'maternity') {
+              <div class="row g-3 mb-4">
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">起始日 <span class="text-danger">*</span></label>
+                  <input type="date" class="form-control" formControlName="startDate">
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">結束日（自動）</label>
+                  <div class="form-control bg-[var(--bg-elevated)]" style="pointer-events: none">
+                    {{ maternityEndDate ?? '—' }}
+                  </div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">天數</label>
+                  <div class="form-control bg-[var(--bg-elevated)]" style="pointer-events: none">{{ calculatedDisplay }}</div>
+                </div>
+              </div>
+            }
+
+            <!-- Day 模式：整天 -->
+            @if (selectedUnit === 'day' && selectedLeaveType !== 'maternity') {
+              <div class="row g-3 mb-4">
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">開始日期 <span class="text-danger">*</span></label>
+                  <input type="date" class="form-control" formControlName="startDate">
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">結束日期 <span class="text-danger">*</span></label>
+                  <input type="date" class="form-control" formControlName="endDate">
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">天數</label>
+                  <div class="form-control bg-[var(--bg-elevated)]" style="pointer-events: none">{{ calculatedDisplay }}</div>
+                </div>
+              </div>
+            }
+
+            <!-- HalfDay 模式：日期 + 時段 -->
+            @if (selectedUnit === 'half_day') {
+              <div class="row g-3 mb-4">
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">開始日期 <span class="text-danger">*</span></label>
+                  <div class="flex gap-2">
+                    <input type="date" class="form-control" formControlName="startDate">
+                    <select class="form-select" formControlName="startSlot" style="max-width:180px">
+                      <option value="am">上午（從 08:00）</option>
+                      <option value="pm">下午（從 13:00）</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">結束日期 <span class="text-danger">*</span></label>
+                  <div class="flex gap-2">
+                    <input type="date" class="form-control" formControlName="endDate">
+                    <select class="form-select" formControlName="endSlot" style="max-width:180px">
+                      <option value="am">上午（至 12:00）</option>
+                      <option value="pm">下午（至 17:00）</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <label class="form-label fw-500">合計</label>
+                  <div class="form-control bg-[var(--bg-elevated)]" style="pointer-events: none">
+                    {{ calculatedDisplay }}
+                    <span class="text-muted small ms-2">（半天 = 4 小時，整天 = 8 小時）</span>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- 結束時間早於開始時間警示 -->
+            @if (isTimeRangeInvalid) {
+              <div class="alert alert-danger flex items-center gap-2 py-2 mb-4">
+                <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                <span class="small">結束時間必須晚於開始時間，請檢查日期與時段設定。</span>
+              </div>
+            }
+
+            <!-- 超額警示 -->
+            @if (isCompensatoryExceeded) {
+              <div class="alert alert-danger flex items-center gap-2 py-2 mb-4">
+                <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                <span class="small">補休時數不足，可用 {{ compensatoryHours()!.availableHours }} 小時（申請 {{ calculatedHours }} 小時）。</span>
+              </div>
+            }
+            @if (isMarriageExceeded && marriageQuota(); as q) {
+              <div class="alert alert-danger flex items-center gap-2 py-2 mb-4">
+                <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                <span class="small">婚假剩餘 {{ q.remainingDays }} 天，本次申請 {{ calculatedHours / 8 | number:'1.0-1' }} 天已超過上限。</span>
+              </div>
+            }
+            @if (isBereavementExceeded && bereavementQuota(); as q) {
+              <div class="alert alert-danger flex items-center gap-2 py-2 mb-4">
+                <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                <span class="small">喪假剩餘 {{ q.remainingDays }} 天（{{ getBereavementLabel(q.relationship) }}），本次申請 {{ calculatedHours / 8 | number:'1.0-1' }} 天已超過上限。</span>
+              </div>
+            }
+            @if (isSeniorExecExceeded && seniorExecQuota(); as q) {
+              <div class="alert alert-danger flex items-center gap-2 py-2 mb-4">
+                <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                <span class="small">高階主管假剩餘 {{ q.availableDays }} 天，本次申請 {{ calculatedHours / 8 | number:'1.0-1' }} 天已超過每年 {{ q.totalDays }} 天上限。</span>
+              </div>
+            }
+
+            <div class="mb-0">
+              <label class="form-label fw-500">請假原因 <span class="text-danger">*</span></label>
+              <textarea class="form-control" formControlName="reason" rows="3" placeholder="請填寫請假原因..."></textarea>
+              @if (form.get('reason')?.invalid && form.get('reason')?.touched) {
+                <div class="text-danger small mt-1">請填寫請假原因。</div>
+              }
+            </div>
+
+          </div>
+        </div>
+
+        <!-- 指定審核者 -->
+        @if (hasDesignatedStep && !isReadOnly) {
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#users"></use></svg>
+              指定審核者
+            </div>
+            <div class="card-body">
+              <label class="form-label fw-500">指定審核者（依序審核）</label>
+              @for (entry of designatedEntries; track $index; let i = $index) {
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-muted small" style="min-width:1.5rem">{{ i + 1 }}.</span>
+                  <select class="form-select form-select-sm" style="max-width:160px"
+                          [(ngModel)]="entry.selectedJobTitleId" [ngModelOptions]="{standalone: true}"
+                          (ngModelChange)="onEntryJobTitleChange(i)">
+                    <option [ngValue]="null">— 職稱 —</option>
+                    @for (jt of jobTitles; track jt.id) {
+                      <option [ngValue]="jt.id">{{ jt.name }}</option>
+                    }
+                  </select>
+                  <select class="form-select form-select-sm" style="max-width:200px"
+                          [(ngModel)]="entry.selectedUserId" [ngModelOptions]="{standalone: true}">
+                    <option [ngValue]="null">— 人員 —</option>
+                    @for (user of entry.filteredUsers; track user.id) {
+                      <option [ngValue]="user.id">{{ user.name }}</option>
+                    }
+                  </select>
+                  <button type="button" class="btn btn-sm btn-ghost-danger" (click)="removeDesignatedEntry(i)">
+                    <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                  </button>
+                </div>
+              }
+              <button type="button" class="btn btn-sm btn-outline-secondary mt-1" (click)="addDesignatedEntry()">
+                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                新增審核人
+              </button>
+            </div>
+          </div>
+        } @else if (isReadOnly && designatedEntries.length > 0) {
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#users"></use></svg>
+              指定審核者
+            </div>
+            <div class="card-body">
+              <label class="form-label fw-500">指定審核者（依序審核）</label>
+              <ol class="mb-0 ps-4">
+                @for (entry of designatedEntries; track $index) {
+                  <li class="small">{{ getUserName(entry.selectedUserId) }}</li>
+                }
+              </ol>
+            </div>
+          </div>
+        }
+
+        <!-- 簽核流程時間軸 -->
+        <app-approval-timeline
+          [flow]="approvalFlow"
+          [approvalRecords]="approvalRecords"
+          [currentStepOrder]="taskCurrentStepOrder"
+          [status]="taskStatus" />
+
+        @if (!isReadOnly) {
+          <div class="mt-6 flex gap-2">
+            <button type="submit" class="btn btn-outline-secondary" [disabled]="!canSubmit">
+              {{ isEdit ? '儲存' : '儲存草稿' }}
+            </button>
+            <button type="button" class="btn btn-primary" [disabled]="!canSubmit" (click)="submitForApproval()">
+              送出申請
+            </button>
+            <a routerLink="/admin/leave-requests" class="btn btn-outline-secondary">取消</a>
+          </div>
+        } @else {
+          <div class="mt-6">
+            <a routerLink="/admin/leave-requests" class="btn btn-outline-secondary">返回列表</a>
+          </div>
+        }
+
+      </div>
+    </div>
+  </form>
+</div>

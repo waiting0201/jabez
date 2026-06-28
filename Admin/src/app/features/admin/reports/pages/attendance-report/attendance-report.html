@@ -1,0 +1,246 @@
+<div class="container-fluid py-3">
+  <!-- Header -->
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
+      <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#bar-chart-2"></use>
+      </svg>
+      <h4 class="mb-0">出缺勤紀錄</h4>
+    </div>
+    <button class="btn btn-outline inline-flex items-center gap-1" [disabled]="exporting() || records().length === 0" (click)="exportExcel()">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#download"></use></svg>
+      @if (exporting()) { 匯出中... } @else { 匯出 Excel }
+    </button>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+
+      <!-- Toolbar: 篩選列 -->
+      <div class="px-4 py-3 border-b">
+        <div class="flex flex-wrap items-center gap-2">
+          <select class="form-select" style="width: auto; min-width: 160px"
+                  [ngModel]="selectedEmployeeId()" (ngModelChange)="selectedEmployeeId.set($event)">
+            <option value="">全部員工</option>
+            @for (emp of employees(); track emp.id) {
+              <option [value]="emp.id">{{ emp.code }} {{ emp.name }}</option>
+            }
+          </select>
+          <div class="inline-flex border rounded-md overflow-hidden">
+            <button type="button" class="px-3 py-1.5 text-sm"
+                    [class.bg-primary]="filterMode()==='day'" [class.text-white]="filterMode()==='day'"
+                    (click)="filterMode.set('day')">日</button>
+            <button type="button" class="px-3 py-1.5 text-sm border-l border-r"
+                    [class.bg-primary]="filterMode()==='week'" [class.text-white]="filterMode()==='week'"
+                    (click)="filterMode.set('week')">週</button>
+            <button type="button" class="px-3 py-1.5 text-sm"
+                    [class.bg-primary]="filterMode()==='month'" [class.text-white]="filterMode()==='month'"
+                    (click)="filterMode.set('month')">月</button>
+          </div>
+          @if (filterMode() === 'day') {
+            <input type="date" class="form-control" style="width: auto; min-width: 150px"
+                   [ngModel]="selectedDate()" (ngModelChange)="selectedDate.set($event)" />
+          } @else if (filterMode() === 'week') {
+            <button type="button" class="btn btn-outline px-2" title="上一週" (click)="shiftWeek(-7)">‹</button>
+            <input type="date" class="form-control" style="width: auto; min-width: 150px"
+                   [ngModel]="selectedWeekDate()" (ngModelChange)="selectedWeekDate.set($event)" />
+            <button type="button" class="btn btn-outline px-2" title="下一週" (click)="shiftWeek(7)">›</button>
+            <button type="button" class="btn btn-outline whitespace-nowrap" title="回到本週" (click)="resetToThisWeek()">本週</button>
+          } @else {
+            <select class="form-select" style="width: auto; min-width: 120px"
+                    [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set($event)">
+              <option value="">全部年份</option>
+              @for (y of years(); track y) {
+                <option [value]="y">{{ y }}</option>
+              }
+            </select>
+            <select class="form-select" style="width: auto; min-width: 120px"
+                    [ngModel]="selectedMonth()" (ngModelChange)="selectedMonth.set($event)">
+              <option value="">全部月份</option>
+              @for (m of months; track m) {
+                <option [value]="m">{{ m }}月</option>
+              }
+            </select>
+          }
+          <button class="btn btn-primary" (click)="search()">篩選</button>
+        </div>
+        @if (filterMode() === 'week' && weekRange(); as r) {
+          <div class="text-xs text-muted mt-2">第 {{ r.weekNumber }} 週（{{ r.dateFrom }} 一 ~ {{ r.dateTo }} 日）</div>
+        }
+      </div>
+
+      <!-- Table -->
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>員工姓名</th>
+              <th class="text-center">日期</th>
+              <th class="text-center hidden md:table-cell">請假</th>
+              <th class="text-center hidden md:table-cell">請假時間</th>
+              <th class="text-center">上班時間</th>
+              <th class="text-center">下班時間</th>
+              <th class="text-center hidden lg:table-cell">加班開始</th>
+              <th class="text-center hidden lg:table-cell">加班結束</th>
+              <th class="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of records(); track row.id) {
+              <tr>
+                <td class="fw-500">{{ row.employeeName }}</td>
+                <td class="text-center text-muted small">{{ row.recordDate }}</td>
+                <td class="text-center hidden md:table-cell">{{ row.leaveType }}</td>
+                <td class="text-center text-muted small hidden md:table-cell">{{ row.leaveTime }}</td>
+                <td class="text-center">
+                  {{ row.clockInTime }}
+                  @if (row.clockInLatitude != null && row.clockInLongitude != null) {
+                    <button class="btn btn-sm btn-ghost-primary inline-flex items-center p-0 ms-1" title="查看打卡位置" (click)="openMap('上班打卡', row.clockInLatitude!, row.clockInLongitude!)">
+                      <svg class="sa-icon sa-icon-1x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
+                    </button>
+                  }
+                </td>
+                <td class="text-center">
+                  {{ row.clockOutTime }}
+                  @if (row.clockOutLatitude != null && row.clockOutLongitude != null) {
+                    <button class="btn btn-sm btn-ghost-primary inline-flex items-center p-0 ms-1" title="查看打卡位置" (click)="openMap('下班打卡', row.clockOutLatitude!, row.clockOutLongitude!)">
+                      <svg class="sa-icon sa-icon-1x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
+                    </button>
+                  }
+                </td>
+                <td class="text-center hidden lg:table-cell">
+                  {{ row.overtimeStartTime }}
+                  @if (row.overtimeStartLatitude != null && row.overtimeStartLongitude != null) {
+                    <button class="btn btn-sm btn-ghost-primary inline-flex items-center p-0 ms-1" title="查看打卡位置" (click)="openMap('加班開始', row.overtimeStartLatitude!, row.overtimeStartLongitude!)">
+                      <svg class="sa-icon sa-icon-1x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
+                    </button>
+                  }
+                </td>
+                <td class="text-center hidden lg:table-cell">
+                  {{ row.overtimeEndTime }}
+                  @if (row.overtimeEndLatitude != null && row.overtimeEndLongitude != null) {
+                    <button class="btn btn-sm btn-ghost-primary inline-flex items-center p-0 ms-1" title="查看打卡位置" (click)="openMap('加班結束', row.overtimeEndLatitude!, row.overtimeEndLongitude!)">
+                      <svg class="sa-icon sa-icon-1x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
+                    </button>
+                  }
+                </td>
+                <td class="text-right" style="white-space: nowrap">
+                  <div class="flex justify-end gap-1">
+                    @if (row.id) {
+                      <button class="btn btn-sm btn-ghost-primary inline-flex items-center" title="編輯" (click)="openEdit(row)">
+                        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="9" class="text-center text-muted py-4">
+                  @if (loading()) {
+                    載入中...
+                  } @else {
+                    尚無資料
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- 編輯 Modal -->
+@if (editingRecord(); as record) {
+  <div class="modal-backdrop" (click)="closeEdit()"></div>
+  <div class="modal show" style="display: block" (click)="closeEdit()">
+    <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">編輯出缺勤紀錄</h5>
+          <button type="button" class="btn-close" (click)="closeEdit()"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <span class="text-muted text-sm">員工：</span>
+            <span class="fw-500">{{ record.employeeName }}</span>
+            <span class="text-muted text-sm ms-3">日期：</span>
+            <span>{{ record.recordDate }}</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="form-label">上班時間</label>
+              <input type="time" class="form-control"
+                     [ngModel]="editForm().clockIn"
+                     (ngModelChange)="editForm.set({...editForm(), clockIn: $event})">
+            </div>
+            <div>
+              <label class="form-label">下班時間</label>
+              <input type="time" class="form-control"
+                     [ngModel]="editForm().clockOut"
+                     (ngModelChange)="editForm.set({...editForm(), clockOut: $event})">
+            </div>
+            <div>
+              <label class="form-label">加班開始</label>
+              <input type="time" class="form-control"
+                     [ngModel]="editForm().overtimeStart"
+                     (ngModelChange)="editForm.set({...editForm(), overtimeStart: $event})">
+            </div>
+            <div>
+              <label class="form-label">加班結束</label>
+              <input type="time" class="form-control"
+                     [ngModel]="editForm().overtimeEnd"
+                     (ngModelChange)="editForm.set({...editForm(), overtimeEnd: $event})">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" (click)="closeEdit()">取消</button>
+          <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="saveEdit()">
+            @if (saving()) {
+              儲存中...
+            } @else {
+              儲存
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- 地圖 Modal -->
+@if (mapModal(); as map) {
+  <div class="modal-backdrop" (click)="closeMap()"></div>
+  <div class="modal show" style="display: block" (click)="closeMap()">
+    <div class="modal-dialog modal-lg modal-dialog-centered" (click)="$event.stopPropagation()">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title inline-flex items-center gap-1">
+            <svg class="sa-icon sa-icon-1x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
+            {{ map.label }} 位置
+          </h5>
+          <button type="button" class="btn-close" (click)="closeMap()"></button>
+        </div>
+        <div class="modal-body p-0">
+          <iframe
+            [src]="mapIframeUrl()"
+            width="100%" height="450" style="border:0; display:block;" loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            allowfullscreen></iframe>
+        </div>
+        <div class="modal-footer">
+          <a class="btn btn-primary" [href]="'https://www.google.com/maps?q=' + map.lat + ',' + map.lng" target="_blank" rel="noopener">
+            <svg class="sa-icon sa-icon-1x me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#external-link"></use></svg>
+            在 Google Maps 中開啟
+          </a>
+          <button type="button" class="btn btn-outline" (click)="closeMap()">關閉</button>
+        </div>
+      </div>
+    </div>
+  </div>
+}

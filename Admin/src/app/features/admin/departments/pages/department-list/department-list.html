@@ -1,0 +1,85 @@
+<div class="container-fluid py-3">
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
+      <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#git-branch"></use>
+      </svg>
+      <h4 class="mb-0">部門管理</h4>
+    </div>
+    <a *appHasPermission="'departments:write'" routerLink="new" class="btn btn-primary inline-flex items-center gap-1">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+      新增部門
+    </a>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>部門名稱</th>
+              <th class="hidden sm:table-cell">代碼</th>
+              <th class="hidden md:table-cell">描述</th>
+              <th>人數</th>
+              <th class="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (dept of departments$ | async; track dept.id) {
+              <tr>
+                <td class="fw-500">
+                  <span class="inline-flex items-center">
+                    @if (dept.depth > 0) {
+                      <span class="inline-block" [style.width.rem]="dept.depth * 1.5"></span>
+                      <span class="text-muted me-1.5 text-sm">└</span>
+                    }
+                    @if (dept.hasChildren) {
+                      <svg class="sa-icon sa-icon-sm me-1 text-primary" style="stroke: currentColor">
+                        <use href="/assets/icons/sprite.svg#folder"></use>
+                      </svg>
+                    }
+                    {{ dept.name }}
+                  </span>
+                </td>
+                <td class="text-muted hidden sm:table-cell"><code>{{ dept.code ?? '—' }}</code></td>
+                <td class="text-muted hidden md:table-cell">{{ dept.description ?? '—' }}</td>
+                <td>
+                  <div class="flex flex-wrap items-center gap-1">
+                    <span class="badge bg-info">{{ dept.employeeCount }} 人</span>
+                    @if (dept.canSeeAll) {
+                      <span class="badge bg-primary" title="成員可見全公司所有部門資料">全部可見</span>
+                    }
+                    @if (dept.canViewSiblings) {
+                      <span class="badge bg-success" title="成員可見同 ParentId 兄弟部門資料">同層可見</span>
+                    }
+                    @if (dept.canViewParent) {
+                      <span class="badge bg-secondary" title="成員可見直接父部門（不遞迴祖先）資料">父層可見</span>
+                    }
+                    @if (dept.canViewDescendants) {
+                      <span class="badge bg-warning" title="成員可見此部門及所有遞迴下層子部門資料">下層可見</span>
+                    }
+                  </div>
+                </td>
+                <td class="text-right" style="white-space: nowrap">
+                  <div class="flex justify-end gap-1">
+                    <a *appHasPermission="'departments:write'" [routerLink]="[dept.id, 'edit']" class="btn btn-sm btn-ghost-primary inline-flex items-center">
+                      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+                    </a>
+                    <button *appHasPermission="'departments:delete'" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(dept)">
+                      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="text-center text-muted py-4">尚無部門資料。</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

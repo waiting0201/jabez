@@ -1,0 +1,147 @@
+<div class="container-fluid py-3">
+  @if (request(); as r) {
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+      <div class="flex items-center gap-2 flex-wrap">
+        <a routerLink="/admin/holiday-travel-requests" class="btn btn-sm btn-outline-secondary">
+          <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+        </a>
+        <h4 class="mb-0">假日執行活動申請 <span class="font-monospace text-muted">{{ r.requestNo }}</span></h4>
+        <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        @if (r.approvalStatus === 'approved') {
+          <button class="btn btn-outline-secondary inline-flex items-center gap-1"
+                  (click)="printHolidayTravel()" [disabled]="pdfLoading()">
+            @if (pdfLoading()) {
+              <span class="spinner-border spinner-border-sm" role="status"></span>
+            } @else {
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#printer"></use></svg>
+            }
+            列印申請單
+          </button>
+        }
+        @if (r.approvalStatus === 'draft' || r.approvalStatus === 'returned') {
+          <a [routerLink]="['/admin/holiday-travel-requests', r.id, 'edit']"
+             class="btn btn-outline-primary inline-flex items-center gap-1">
+            <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+            編輯
+          </a>
+        }
+        @if (r.approvalStatus === 'draft') {
+          <button class="btn btn-primary inline-flex items-center gap-1" (click)="submitRequest()">
+            <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#send"></use></svg>
+            送出申請
+          </button>
+          <button class="btn btn-outline-danger inline-flex items-center gap-1"
+                  (click)="deleteRequest()" [disabled]="deleting()">
+            @if (deleting()) {
+              <span class="spinner-border spinner-border-sm" role="status"></span>
+            } @else {
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash-2"></use></svg>
+            }
+            刪除
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="row g-4">
+    <div class="col-12 col-xl-10">
+
+    <!-- 活動基本資訊 -->
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+        <svg class="sa-icon text-primary" style="stroke: currentColor">
+          <use href="/assets/icons/sprite.svg#sun"></use>
+        </svg>
+        活動基本資訊
+      </div>
+      <div class="card-body">
+        <div class="row g-3 mb-4">
+          <div class="col-12 col-md-6">
+            <div class="text-muted small">執行活動地點</div>
+            <div class="fw-600">{{ r.destination }}</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">假日天數</div>
+            <div>
+              @if (r.holidayDays != null) {
+                <span class="fw-600" style="color: var(--forest)">{{ r.holidayDays }} 天</span>
+              } @else {
+                <span class="text-muted small">—</span>
+              }
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">申請日期</div>
+            <div class="fw-500">{{ r.createdAt | date:'yyyy-MM-dd' }}</div>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">開始日期</div>
+            <div class="fw-500">{{ r.startDate | date:'yyyy-MM-dd' }}</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">結束日期</div>
+            <div class="fw-500">{{ r.endDate | date:'yyyy-MM-dd' }}</div>
+          </div>
+          @if (r.projectCode || r.projectName) {
+            <div class="col-6 col-md-3">
+              <div class="text-muted small">關聯專案</div>
+              <div class="fw-500 font-monospace">{{ r.projectCode }}{{ r.projectName ? ' - ' + r.projectName : '' }}</div>
+            </div>
+          }
+        </div>
+
+        <div class="row g-3 mb-0">
+          <div class="col-12">
+            <div class="text-muted small">活動主旨及內容</div>
+            <div class="fw-500">{{ r.purpose }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 參與執行人員 -->
+    @if (r.participants && r.participants.length > 0) {
+      <div class="card border-0 shadow-sm mb-6">
+        <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+          <svg class="sa-icon text-primary" style="stroke: currentColor">
+            <use href="/assets/icons/sprite.svg#users"></use>
+          </svg>
+          參與執行人員
+        </div>
+        <div class="card-body">
+          <ol class="mb-0 ps-4">
+            @for (p of r.participants; track p.userId) {
+              <li class="small fw-500">{{ p.userName || p.userId }}</li>
+            }
+          </ol>
+        </div>
+      </div>
+    }
+
+    <!-- 撥款明細（核准後才會有資料；read-only）-->
+    <app-installments-table
+      [installmentsInput]="r.installments"
+      [paymentStatus]="r.paymentStatus"
+      [totalAmount]="r.grandTotal ?? 0" />
+
+    <!-- 簽核流程時間軸 -->
+    @if (approvalTask(); as task) {
+      <app-approval-timeline
+        [flow]="task.flow ?? null"
+        [approvalRecords]="task.approvalRecords"
+        [currentStepOrder]="task.currentStepOrder"
+        [status]="task.status" />
+    }
+
+    </div>
+    </div>
+
+  } @else {
+    <div class="text-center py-6 text-muted">載入中…</div>
+  }
+</div>

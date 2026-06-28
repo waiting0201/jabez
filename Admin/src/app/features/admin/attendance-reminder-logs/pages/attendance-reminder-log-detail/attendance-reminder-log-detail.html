@@ -1,0 +1,123 @@
+<div class="container-fluid py-3">
+
+  <!-- Header -->
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2 flex-wrap">
+      <a routerLink="/admin/attendance-reminder-logs" class="btn btn-sm btn-outline-secondary">
+        <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+      </a>
+      <h4 class="mb-0">打卡提醒批次詳情</h4>
+      <span class="badge bg-secondary-subtle text-secondary font-monospace small" [title]="batchId()">
+        {{ batchId().substring(0, 8) }}
+      </span>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="text-center text-muted py-4">載入中...</div>
+  } @else if (rows().length === 0) {
+    <div class="alert alert-warning">找不到此批次的紀錄。</div>
+  } @else {
+
+    <!-- 批次摘要 -->
+    @if (batchStart(); as bs) {
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+          <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+          批次摘要
+        </div>
+        <div class="card-body">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <div class="text-muted small mb-1">觸發時間</div>
+              <div class="fw-500 font-monospace">{{ formatTaipei(bs.tickedAtTaipei) }}</div>
+            </div>
+            <div>
+              <div class="text-muted small mb-1">目標時刻</div>
+              <div class="fw-500 font-monospace">{{ bs.targetTimeTaipei }}</div>
+            </div>
+            <div>
+              <div class="text-muted small mb-1">觸發來源</div>
+              <div class="fw-500">
+                {{ triggerSourceLabels[bs.triggerSource] }}
+                @if (bs.triggeredByName) {
+                  <span class="text-muted small">（{{ bs.triggeredByName }}）</span>
+                }
+              </div>
+            </div>
+            <div>
+              <div class="text-muted small mb-1">推播結果</div>
+              <div class="fw-500">
+                <span class="text-success">成功 {{ pushedCount() }}</span>
+                <span class="text-muted mx-1">/</span>
+                <span class="text-danger">失敗 {{ failedCount() }}</span>
+                <span class="text-muted mx-1">/</span>
+                <span>共 {{ pushes().length }} 人</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- 推播明細 -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+        <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#users"></use></svg>
+        推播對象明細（{{ pushes().length }} 人）
+      </div>
+      <div class="card-body p-0">
+        @if (pushes().length === 0) {
+          <div class="text-center text-muted py-4">此批次無推播對象（recipientCount = 0）。</div>
+        } @else {
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>對象</th>
+                  <th class="font-monospace">LINE userId</th>
+                  <th class="text-center">結果</th>
+                  <th>失敗原因</th>
+                  <th class="text-center">HTTP</th>
+                  <th class="text-right">耗時</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of pushes(); track row.id) {
+                  <tr>
+                    <td class="fw-500">{{ row.userName ?? row.userNameSnapshot ?? '—' }}</td>
+                    <td class="font-monospace small text-muted">
+                      {{ row.lineUserIdSnapshot ? (row.lineUserIdSnapshot.substring(0, 12) + '…') : '—' }}
+                    </td>
+                    <td class="text-center">
+                      @if (row.status === 'success') {
+                        <span class="badge bg-success-subtle text-success">成功</span>
+                      } @else {
+                        <span class="badge bg-danger-subtle text-danger">失敗</span>
+                      }
+                    </td>
+                    <td class="small">
+                      @if (row.errorCategory) {
+                        <span class="text-danger fw-500">{{ errorCategoryLabels[row.errorCategory] }}</span>
+                        @if (row.errorMessage) {
+                          <div class="text-muted" style="word-break: break-all">{{ row.errorMessage }}</div>
+                        }
+                      } @else {
+                        <span class="text-muted">—</span>
+                      }
+                    </td>
+                    <td class="text-center text-muted small">{{ row.httpStatusCode ?? '—' }}</td>
+                    <td class="text-right text-muted small">
+                      {{ row.durationMs !== null && row.durationMs !== undefined ? row.durationMs + 'ms' : '—' }}
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+</div>

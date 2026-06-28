@@ -1,0 +1,229 @@
+<div class="container-fluid py-3">
+  <div class="flex items-center gap-2 mb-6">
+    <a routerLink="/admin/vendors" class="btn btn-sm btn-outline-secondary">
+      <svg class="sa-icon">
+        <use href="/assets/icons/sprite.svg#arrow-left"></use>
+      </svg>
+    </a>
+    <h4 class="mb-0">{{ isEdit ? '編輯廠商' : '新增廠商' }}</h4>
+  </div>
+
+  @if (errorMsg()) {
+  <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+    <svg class="sa-icon" style="stroke: currentColor">
+      <use href="/assets/icons/sprite.svg#alert-triangle"></use>
+    </svg>
+    {{ errorMsg() }}
+  </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <div class="row g-4">
+      <div class="col-12 col-lg-10 col-xl-8">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#briefcase"></use>
+            </svg>
+            廠商資訊
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">統編 / 身分證字號 <span class="text-danger">*</span></label>
+                <div class="flex gap-4 mb-2 mt-1">
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" id="idTypeTax" name="identifierType"
+                           [checked]="identifierType() === 'taxId'" (change)="setIdentifierType('taxId')">
+                    <label class="form-check-label" for="idTypeTax">統編</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" id="idTypeId" name="identifierType"
+                           [checked]="identifierType() === 'idNumber'" (change)="setIdentifierType('idNumber')">
+                    <label class="form-check-label" for="idTypeId">身分證字號</label>
+                  </div>
+                </div>
+                @if (identifierType() === 'taxId') {
+                <input type="text" class="form-control" formControlName="identifier"
+                       placeholder="例如：12345678"
+                       maxlength="8" inputmode="numeric"
+                       (blur)="onTaxIdBlur()">
+                } @else {
+                <input type="text" class="form-control" formControlName="identifier"
+                       placeholder="例如：A123456789" maxlength="10">
+                }
+                @if (form.get('identifier')?.touched && form.get('identifier')?.errors?.['required']) {
+                <div class="text-danger small mt-1">請輸入{{ identifierType() === 'taxId' ? '統編' : '身分證字號' }}。</div>
+                }
+                @if (form.get('identifier')?.touched && form.get('identifier')?.errors?.['pattern']) {
+                <div class="text-danger small mt-1">{{ identifierType() === 'taxId' ? '統編須為 8 位數字。' : '身分證字號格式不正確（1 碼英文 + 9 碼數字）。' }}</div>
+                }
+                @if (looking()) {
+                <div class="text-muted small mt-1">查詢中…</div>
+                }
+              </div>
+
+              <div class="col-12 col-md-8">
+                <label class="form-label fw-500">廠商名稱 / 外包顧問 <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" formControlName="name" placeholder="例如：誠品書店 / 王小明">
+                @if (form.get('name')?.invalid && form.get('name')?.touched) {
+                <div class="text-danger small mt-1">請輸入廠商名稱。</div>
+                }
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">聯絡人</label>
+                <input type="text" class="form-control" formControlName="contactPerson" placeholder="姓名">
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">聯絡電話</label>
+                <input type="text" class="form-control" formControlName="phone" placeholder="例如：02-1234-5678">
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">銀行帳號</label>
+                <input type="text" class="form-control" formControlName="bankAccount" placeholder="銀行 / 分行 / 帳號">
+              </div>
+
+              <div class="col-12">
+                <label class="form-label fw-500">地址</label>
+                <input type="text" class="form-control" formControlName="address" placeholder="完整地址">
+              </div>
+
+              @if (identifierType() === 'idNumber') {
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">身分證正面 <span class="text-danger">*</span></label>
+                <div class="text-muted small mb-2">支援 PNG、JPEG 圖片或 PDF，上傳後勿超過 1MB。</div>
+                @if (idCardFrontPreview()) {
+                  <div class="mb-2">
+                    <img [src]="idCardFrontPreview()!" alt="身分證正面預覽"
+                         class="rounded border max-h-40 object-contain">
+                  </div>
+                }
+                @if (idCardFrontDisplayName()) {
+                  <div class="flex items-center gap-2 mb-2 border rounded px-3 py-2 bg-[--bg-surface]">
+                    <svg class="sa-icon text-[--accent]" style="stroke: currentColor">
+                      <use href="/assets/icons/sprite.svg#file-text"></use>
+                    </svg>
+                    <span class="fw-500 text-[--text-primary] truncate text-sm">{{ idCardFrontDisplayName() }}</span>
+                    @if (hasExistingIdCardFront()) {
+                      <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewIdCardFront()">檢視</button>
+                    }
+                  </div>
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    更換
+                    <input type="file" class="hidden"
+                           accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                           (change)="onIdCardFrontSelected($event)">
+                  </label>
+                } @else {
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                    選擇身分證正面
+                    <input type="file" class="hidden"
+                           accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                           (change)="onIdCardFrontSelected($event)">
+                  </label>
+                }
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">身分證反面 <span class="text-danger">*</span></label>
+                <div class="text-muted small mb-2">支援 PNG、JPEG 圖片或 PDF，上傳後勿超過 1MB。</div>
+                @if (idCardBackPreview()) {
+                  <div class="mb-2">
+                    <img [src]="idCardBackPreview()!" alt="身分證反面預覽"
+                         class="rounded border max-h-40 object-contain">
+                  </div>
+                }
+                @if (idCardBackDisplayName()) {
+                  <div class="flex items-center gap-2 mb-2 border rounded px-3 py-2 bg-[--bg-surface]">
+                    <svg class="sa-icon text-[--accent]" style="stroke: currentColor">
+                      <use href="/assets/icons/sprite.svg#file-text"></use>
+                    </svg>
+                    <span class="fw-500 text-[--text-primary] truncate text-sm">{{ idCardBackDisplayName() }}</span>
+                    @if (hasExistingIdCardBack()) {
+                      <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewIdCardBack()">檢視</button>
+                    }
+                  </div>
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    更換
+                    <input type="file" class="hidden"
+                           accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                           (change)="onIdCardBackSelected($event)">
+                  </label>
+                } @else {
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                    選擇身分證反面
+                    <input type="file" class="hidden"
+                           accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                           (change)="onIdCardBackSelected($event)">
+                  </label>
+                }
+              </div>
+              }
+
+              <div class="col-12">
+                <label class="form-label fw-500">存摺封面 <span class="text-danger">*</span></label>
+                <div class="text-muted small mb-2">支援 PNG、JPEG 圖片或 PDF，上傳後勿超過 1MB。</div>
+                @if (bankBookImagePreview()) {
+                  <div class="mb-2">
+                    <img [src]="bankBookImagePreview()!" alt="存摺封面預覽"
+                         class="rounded border max-h-40 object-contain">
+                  </div>
+                }
+                @if (bankBookDisplayName()) {
+                  <div class="flex items-center gap-2 mb-2 border rounded px-3 py-2 bg-[--bg-surface]">
+                    <svg class="sa-icon text-[--accent]" style="stroke: currentColor">
+                      <use href="/assets/icons/sprite.svg#file-text"></use>
+                    </svg>
+                    <span class="fw-500 text-[--text-primary] truncate text-sm">{{ bankBookDisplayName() }}</span>
+                    @if (hasExistingBankBook()) {
+                      <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewBankBookImage()">檢視</button>
+                    }
+                  </div>
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    更換
+                    <input type="file" class="hidden"
+                           accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                           (change)="onBankBookImageSelected($event)">
+                  </label>
+                } @else {
+                  <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                    選擇存摺封面
+                    <input type="file" class="hidden"
+                           accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                           (change)="onBankBookImageSelected($event)">
+                  </label>
+                }
+              </div>
+
+              <div class="col-12">
+                <label class="form-label fw-500">備註</label>
+                <textarea class="form-control" formControlName="note" rows="2" placeholder="選填說明"></textarea>
+              </div>
+
+              <div class="col-12">
+                <div class="form-check">
+                  <input type="checkbox" class="form-check-input" id="isActive" formControlName="isActive">
+                  <label class="form-check-label" for="isActive">啟用</label>
+                </div>
+                <div class="text-muted small mt-1">停用後將不會出現在請款申請的下拉清單中。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 flex gap-2">
+          <button type="submit" class="btn btn-primary" [disabled]="form.invalid || saving()">
+            @if (saving()) { 儲存中… } @else { {{ isEdit ? '更新' : '建立' }} }
+          </button>
+          <a routerLink="/admin/vendors" class="btn btn-outline-secondary">取消</a>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

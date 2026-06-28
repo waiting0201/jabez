@@ -1,0 +1,351 @@
+<div class="container-fluid py-3">
+  <div class="flex items-center gap-2 mb-6">
+    <a routerLink="/admin/travel-write-off-requests" class="btn btn-sm btn-outline-secondary">
+      <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+    </a>
+    <h4 class="mb-0">{{ isEdit ? '編輯出差預支沖銷申請' : '新增出差預支沖銷申請' }}</h4>
+  </div>
+
+  @if (errorMsg()) {
+    <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+      {{ errorMsg() }}
+    </div>
+  }
+
+  <!-- 出差單選擇（新增模式）/ 出差單資訊（編輯模式） -->
+  <div class="card border-0 shadow-sm mb-6">
+    <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+      <svg class="sa-icon text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#map-pin"></use>
+      </svg>
+      出差單
+    </div>
+    <div class="card-body">
+      @if (isEdit) {
+        <!-- 編輯模式：唯讀顯示出差單資訊 -->
+        <div class="grid grid-cols-4 gap-4">
+          <div>
+            <div class="text-muted small">出差單號</div>
+            <div class="fw-500 font-monospace">{{ editModeTravelNo }}</div>
+            <div class="text-muted small mt-2">目的地</div>
+            <div class="fw-500">{{ editModeDestination }}</div>
+            <div class="text-muted small mt-2">出差期間</div>
+            <div class="fw-500">{{ editModeDateRange }}</div>
+          </div>
+          <div class="bg-elevated rounded-lg px-4 py-2 text-sm">
+            <div class="text-muted small">出差金額</div>
+            <div class="fw-600">{{ editModeTravelGrandTotal | number:'1.0-0' }}</div>
+          </div>
+          <div class="bg-elevated rounded-lg px-4 py-2 text-sm">
+            <div class="text-muted small">已沖銷</div>
+            <div class="fw-600 text-accent">{{ editModeTravelWrittenOffTotal | number:'1.0-0' }}</div>
+          </div>
+          <div class="bg-elevated rounded-lg px-4 py-2 text-sm">
+            <div class="text-muted small">待沖銷</div>
+            <div class="fw-600" [class.text-success]="editModeTravelGrandTotal - editModeTravelWrittenOffTotal > 0"
+                 [class.text-danger]="editModeTravelGrandTotal - editModeTravelWrittenOffTotal < 0">
+              {{ editModeTravelGrandTotal - editModeTravelWrittenOffTotal | number:'1.0-0' }}
+            </div>
+          </div>
+        </div>
+      } @else {
+        <!-- 新增模式：下拉選擇已核准出差單 -->
+        <label class="form-label fw-500">選擇出差單 <span class="text-danger">*</span></label>
+        @if (loadingTravels) {
+          <div class="text-muted small py-2">載入中…</div>
+        } @else {
+          <div class="grid grid-cols-4 gap-4 items-start">
+            <select class="form-select" [(ngModel)]="selectedTravelId" [ngModelOptions]="{standalone: true}">
+              <option [ngValue]="null">-- 請選擇已核准的出差單 --</option>
+              @for (tr of travelRequests(); track tr.id) {
+                <option [ngValue]="tr.id">
+                  #{{ tr.id }} {{ tr.destination }}{{ tr.isHolidayTravel ? ' [假日]' : '' }} ({{ tr.startDate.slice(0,10) }} ~ {{ tr.endDate.slice(0,10) }}) — {{ tr.grandTotal | number:'1.0-0' }} 元
+                </option>
+              }
+            </select>
+            @if (selectedTravel; as travel) {
+              <div class="bg-elevated rounded-lg px-4 py-2 text-sm">
+                <div class="text-muted small">出差金額</div>
+                <div class="fw-600">{{ travel.grandTotal | number:'1.0-0' }}</div>
+              </div>
+              <div class="bg-elevated rounded-lg px-4 py-2 text-sm">
+                <div class="text-muted small">已沖銷</div>
+                <div class="fw-600 text-accent">{{ travel.writtenOffTotal | number:'1.0-0' }}</div>
+              </div>
+              <div class="bg-elevated rounded-lg px-4 py-2 text-sm">
+                <div class="text-muted small">待沖銷</div>
+                <div class="fw-600" [class.text-success]="travel.grandTotal - travel.writtenOffTotal > 0"
+                     [class.text-danger]="travel.grandTotal - travel.writtenOffTotal < 0">
+                  {{ travel.grandTotal - travel.writtenOffTotal | number:'1.0-0' }}
+                </div>
+              </div>
+            }
+          </div>
+          @if (travelRequests().length === 0) {
+            <div class="text-muted small mt-2">目前無可沖銷的出差單（需已核准）。</div>
+          }
+        }
+      }
+    </div>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="save()">
+  <div class="row g-4">
+  <div class="col-12 col-xl-10">
+
+    <!-- 發票上傳區 -->
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+        <svg class="sa-icon text-primary" style="stroke: currentColor">
+          <use href="/assets/icons/sprite.svg#upload"></use>
+        </svg>
+        上傳發票
+      </div>
+      <div class="card-body">
+        <label class="flex flex-col items-center justify-center rounded-3 py-4 px-4 mb-0 text-center"
+               style="cursor:pointer; border: 2px dashed var(--bs-border-color);">
+          <svg class="sa-icon sa-icon-2x text-muted mb-2" style="stroke: currentColor">
+            <use href="/assets/icons/sprite.svg#upload"></use>
+          </svg>
+          <span class="fw-500">點擊上傳發票圖檔</span>
+          <span class="text-muted small mt-1">支援 JPG、PNG、HEIC、PDF，可多選。上傳後自動新增沖銷明細行</span>
+          <input type="file" class="hidden" multiple accept="image/*,.heic,.heif,application/pdf"
+                 (change)="onFilesSelected($event)">
+        </label>
+      </div>
+    </div>
+
+    <!-- 沖銷明細 -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent border-bottom flex items-center justify-between">
+        <div class="flex items-center gap-2 fw-600">
+          <svg class="sa-icon text-primary" style="stroke: currentColor">
+            <use href="/assets/icons/sprite.svg#file-text"></use>
+          </svg>
+          實際花費明細
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-primary inline-flex items-center gap-1"
+                (click)="addItem()">
+          <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+          手動新增行
+        </button>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="width:40px"></th>
+                <th style="min-width:140px">發票號碼</th>
+                <th style="min-width:130px">發票日期</th>
+                <th style="min-width:100px">分類</th>
+                <th style="min-width:160px">項目說明</th>
+                <th style="min-width:130px">單價</th>
+                <th style="min-width:80px">數量/單位</th>
+                <th style="min-width:130px">總價</th>
+                <th style="min-width:100px">備註</th>
+                <th style="width:48px"></th>
+              </tr>
+            </thead>
+            <tbody formArrayName="items">
+              @for (ctrl of itemControls; track ctrl.get('id')?.value; let i = $index) {
+                @let isOcr = ocrLoadingIds.has(ctrl.get('id')?.value);
+                <tr [formGroupName]="i">
+                  <td class="align-middle text-center">
+                    @if (ctrl.get('previewUrl')?.value || ctrl.get('fileUrl')?.value) {
+                      <button type="button" class="btn btn-sm btn-ghost-secondary p-1"
+                              (click)="openPreview(ctrl.get('fileName')?.value, ctrl.get('previewUrl')?.value || ctrl.get('fileUrl')?.value)"
+                              title="{{ ctrl.get('fileName')?.value }}">
+                        <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                      </button>
+                    } @else if (isOcr) {
+                      <span class="spinner-border spinner-border-sm" role="status"></span>
+                    }
+                  </td>
+                  <td class="align-middle">
+                    @if (isOcr) {
+                      <div class="flex items-center gap-1 text-muted small py-1">
+                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                        識別中…
+                      </div>
+                    } @else {
+                      <input class="form-control form-control-sm font-monospace" formControlName="invoiceNo" placeholder="AB12345678">
+                    }
+                  </td>
+                  <td class="align-middle">
+                    @if (isOcr) {
+                      <div class="flex items-center gap-1 text-muted small py-1">
+                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                        識別中…
+                      </div>
+                    } @else {
+                      <input type="date" class="form-control form-control-sm" formControlName="invoiceDate">
+                    }
+                  </td>
+                  <td class="align-middle">
+                    <select class="form-select form-select-sm" formControlName="category">
+                      <option value="">選擇</option>
+                      @for (cat of categories; track cat) {
+                        <option [value]="cat">{{ cat }}</option>
+                      }
+                    </select>
+                  </td>
+                  <td class="align-middle">
+                    <input class="form-control form-control-sm" formControlName="itemName" placeholder="項目說明">
+                  </td>
+                  <td class="align-middle">
+                    @if (isOcr) {
+                      <div class="py-1 text-muted small">—</div>
+                    } @else {
+                      <input type="number" class="form-control form-control-sm" formControlName="unitPrice" min="0"
+                             (input)="calcTotal(ctrl)">
+                    }
+                  </td>
+                  <td class="align-middle">
+                    @if (isOcr) {
+                      <div class="py-1 text-muted small">—</div>
+                    } @else {
+                      <input class="form-control form-control-sm" formControlName="quantity" placeholder="如：1式"
+                             (input)="calcTotal(ctrl)">
+                    }
+                  </td>
+                  <td class="align-middle">
+                    @if (isOcr) {
+                      <div class="py-1 text-muted small">—</div>
+                    } @else {
+                      <input type="number" class="form-control form-control-sm" formControlName="totalPrice" min="0">
+                    }
+                  </td>
+                  <td class="align-middle">
+                    <input class="form-control form-control-sm" formControlName="note" placeholder="">
+                  </td>
+                  <td class="text-right align-middle">
+                    <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center"
+                            [disabled]="isOcr" (click)="removeItem(i)">
+                      <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                    </button>
+                  </td>
+                </tr>
+                @if (invoiceWarnings.has(ctrl.get('id')?.value)) {
+                  <tr>
+                    <td colspan="10" class="text-danger small py-1 ps-3 border-0">
+                      <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                      {{ invoiceWarnings.get(ctrl.get('id')?.value) }}
+                    </td>
+                  </tr>
+                }
+              } @empty {
+                <tr>
+                  <td colspan="10" class="text-center text-muted py-4 small">請上傳發票圖檔，或點擊「手動新增行」</td>
+                </tr>
+              }
+            </tbody>
+            @if (itemControls.length > 0) {
+              <tfoot>
+                <tr class="table-light">
+                  <td colspan="7" class="text-right fw-500 small">合計</td>
+                  <td class="fw-600">{{ grandTotal | number:'1.0-0' }}</td>
+                  <td colspan="2"></td>
+                </tr>
+              </tfoot>
+            }
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 指定審核者（多人清單） -->
+    @if (hasDesignatedStep) {
+      <div class="card border-0 shadow-sm mt-6">
+        <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+          <svg class="sa-icon text-primary" style="stroke: currentColor">
+            <use href="/assets/icons/sprite.svg#users"></use>
+          </svg>
+          指定審核者（依序審核）
+        </div>
+        <div class="card-body">
+          @for (entry of designatedEntries; track $index; let i = $index) {
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-muted small" style="min-width:1.5rem">{{ i + 1 }}.</span>
+              <select class="form-select form-select-sm" style="max-width:160px"
+                      [(ngModel)]="entry.selectedJobTitleId" [ngModelOptions]="{standalone: true}"
+                      (ngModelChange)="onEntryJobTitleChange(i)">
+                <option [ngValue]="null">— 職稱 —</option>
+                @for (jt of jobTitles; track jt.id) {
+                  <option [ngValue]="jt.id">{{ jt.name }}</option>
+                }
+              </select>
+              <select class="form-select form-select-sm" style="max-width:200px"
+                      [(ngModel)]="entry.selectedUserId" [ngModelOptions]="{standalone: true}">
+                <option [ngValue]="null">— 人員 —</option>
+                @for (user of entry.filteredUsers; track user.id) {
+                  <option [ngValue]="user.id">{{ user.name }}</option>
+                }
+              </select>
+              <button type="button" class="btn btn-sm btn-ghost-danger" (click)="removeDesignatedEntry(i)">
+                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+              </button>
+            </div>
+          }
+          <button type="button" class="btn btn-sm btn-outline-secondary mt-1" (click)="addDesignatedEntry()">
+            <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+            新增審核人
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- 備註 -->
+    <div class="card border-0 shadow-sm mt-6">
+      <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+        <svg class="sa-icon text-primary" style="stroke: currentColor">
+          <use href="/assets/icons/sprite.svg#edit-3"></use>
+        </svg>
+        沖銷備註
+      </div>
+      <div class="card-body">
+        <textarea class="form-control" formControlName="note" rows="2" placeholder="選填"></textarea>
+      </div>
+    </div>
+
+    <div class="mt-6 flex gap-2">
+      <button type="submit" class="btn btn-outline-secondary"
+              [disabled]="itemArray.length === 0 || isAnyOcrPending || (!isEdit && !selectedTravelId)">
+        {{ isEdit ? '儲存' : '儲存草稿' }}
+      </button>
+      <button type="button" class="btn btn-primary"
+              [disabled]="itemArray.length === 0 || isAnyOcrPending || (!isEdit && !selectedTravelId)"
+              (click)="submitForApproval()">
+        @if (isAnyOcrPending) {
+          <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        }
+        送出申請
+      </button>
+      <a routerLink="/admin/travel-write-off-requests" class="btn btn-outline-secondary">取消</a>
+    </div>
+
+  </div>
+  </div>
+  </form>
+</div>
+
+@if (previewFile) {
+  <app-file-preview-modal [file]="previewFile" (closed)="closePreview()" />
+}
+
+<ng-template #successModal let-modal>
+  <div class="modal-header border-0 pb-0">
+    <button type="button" class="btn-close" (click)="modal.close()"></button>
+  </div>
+  <div class="modal-body text-center py-6">
+    <svg class="sa-icon sa-icon-3x text-success mb-4" style="stroke: currentColor">
+      <use href="/assets/icons/sprite.svg#check-circle"></use>
+    </svg>
+    <h5 class="fw-600 mb-2">申請成功</h5>
+    <p class="text-secondary mb-0">請盡早將正本資料送回管理處</p>
+  </div>
+  <div class="modal-footer border-0 justify-center pt-0">
+    <button type="button" class="btn btn-primary px-6" (click)="modal.close()">確定</button>
+  </div>
+</ng-template>

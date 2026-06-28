@@ -1,0 +1,266 @@
+<div class="container-fluid py-3">
+  <!-- Header -->
+  <div class="flex items-center gap-2 mb-6">
+    <a [routerLink]="backLink()" class="btn btn-sm btn-outline-secondary">
+      <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+    </a>
+    <h4 class="mb-0">薪資調整</h4>
+    <span class="text-muted ms-1">{{ periodLabel() }}</span>
+  </div>
+
+  @if (errorMsg()) {
+    <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+      {{ errorMsg() }}
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="text-center py-4 text-muted">載入中...</div>
+  }
+
+  @if (emp(); as e) {
+    <div class="row">
+      <div class="col-12 col-xl-8">
+
+        <!-- 員工薪資摘要（唯讀） -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon"><use href="/assets/icons/sprite.svg#dollar-sign"></use></svg>
+            薪資明細
+          </div>
+          <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+              <tbody>
+                <tr>
+                  <td class="fw-500 ps-4" style="width:40%">員工姓名</td>
+                  <td class="fw-600">{{ e.employeeName }}</td>
+                </tr>
+                <tr>
+                  <td class="fw-500 ps-4">部門 / 職稱</td>
+                  <td>{{ e.departmentName || '---' }} / {{ e.jobTitleName || '---' }}</td>
+                </tr>
+                <tr>
+                  <td class="fw-500 ps-4">到職日</td>
+                  <td>{{ e.hireDate ? (e.hireDate | date:'yyyy/MM/dd') : '---' }}</td>
+                </tr>
+                <tr class="table-light">
+                  <td colspan="2" class="fw-600 ps-4 text-primary">
+                    <span class="inline-flex items-center gap-1">
+                      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus-circle"></use></svg>
+                      應發項目
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="ps-6">底薪</td>
+                  <td class="text-right pe-4">{{ e.baseSalary | number:'1.0-0' }}</td>
+                </tr>
+                <tr>
+                  <td class="ps-6">伙食費</td>
+                  <td class="text-right pe-4">{{ e.mealAllowance | number:'1.0-0' }}</td>
+                </tr>
+                <tr>
+                  <td class="ps-6">加班費</td>
+                  <td class="text-right pe-4">{{ e.overtimePay | number:'1.0-0' }}</td>
+                </tr>
+                <!-- 5 種加給：有值才顯示 -->
+                @if (e.positionAllowance) {
+                  <tr>
+                    <td class="ps-6">職務加給</td>
+                    <td class="text-right pe-4">{{ e.positionAllowance | number:'1.0-0' }}</td>
+                  </tr>
+                }
+                @if (e.dutyAllowance) {
+                  <tr>
+                    <td class="ps-6">主管加給</td>
+                    <td class="text-right pe-4">{{ e.dutyAllowance | number:'1.0-0' }}</td>
+                  </tr>
+                }
+                @if (e.otherAllowanceAmount) {
+                  <tr>
+                    <td class="ps-6">其他加給</td>
+                    <td class="text-right pe-4">{{ e.otherAllowanceAmount | number:'1.0-0' }}</td>
+                  </tr>
+                }
+                @if (e.adjustmentDifference) {
+                  <tr>
+                    <td class="ps-6">調整差額</td>
+                    <td class="text-right pe-4">{{ e.adjustmentDifference | number:'1.0-0' }}</td>
+                  </tr>
+                }
+                @if (e.overseasAllowance) {
+                  <tr>
+                    <td class="ps-6">外派加給</td>
+                    <td class="text-right pe-4">{{ e.overseasAllowance | number:'1.0-0' }}</td>
+                  </tr>
+                }
+                <tr>
+                  <td class="ps-6">日薪（底薪 ÷ 30）</td>
+                  <td class="text-right pe-4 text-muted">{{ e.dailySalary | number:'1.0-0' }}</td>
+                </tr>
+                <tr>
+                  <td class="ps-6">假日執行活動天數</td>
+                  <td class="text-right pe-4">{{ e.holidayTravelDays }} 天</td>
+                </tr>
+                <tr>
+                  <td class="ps-6">假日津貼</td>
+                  <td class="text-right pe-4">{{ e.holidayAllowance | number:'1.0-0' }}</td>
+                </tr>
+                <tr class="table-light">
+                  <td colspan="2" class="fw-600 ps-4 text-danger">
+                    <span class="inline-flex items-center gap-1">
+                      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#minus-circle"></use></svg>
+                      扣款項目
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="ps-6">勞保費（員工負擔）</td>
+                  <td class="text-right pe-4 text-danger">-{{ e.laborInsurance | number:'1.0-0' }}</td>
+                </tr>
+                <tr>
+                  <td class="ps-6">健保費（員工負擔）</td>
+                  <td class="text-right pe-4 text-danger">-{{ e.healthInsurance | number:'1.0-0' }}</td>
+                </tr>
+                @if (e.personalLeaveDays > 0) {
+                  <tr>
+                    <td class="ps-6">事假扣薪（{{ e.personalLeaveDays | number:'1.0-2' }} 天 = {{ e.personalLeaveDays * 8 | number:'1.0-1' }} 小時）</td>
+                    <td class="text-right pe-4 text-danger">-{{ e.personalLeaveDeduction | number:'1.0-0' }}</td>
+                  </tr>
+                }
+                @if (e.sickLeaveDays > 0) {
+                  <tr>
+                    <td class="ps-6">病假扣薪（{{ e.sickLeaveDays | number:'1.0-2' }} 天 = {{ e.sickLeaveDays * 8 | number:'1.0-1' }} 小時 × 半薪）</td>
+                    <td class="text-right pe-4 text-danger">-{{ e.sickLeaveDeduction | number:'1.0-0' }}</td>
+                  </tr>
+                }
+                @if (e.menstrualLeaveDays > 0) {
+                  <tr>
+                    <td class="ps-6">生理假扣薪（{{ e.menstrualLeaveDays | number:'1.0-2' }} 天 = {{ e.menstrualLeaveDays * 8 | number:'1.0-1' }} 小時 × 半薪）</td>
+                    <td class="text-right pe-4 text-danger">-{{ e.menstrualLeaveDeduction | number:'1.0-0' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 本月請假紀錄 -->
+        @if (e.leaveDetails && e.leaveDetails.length > 0) {
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600 text-[#7C5E8C]">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#calendar"></use></svg>
+              本月請假紀錄
+            </div>
+            <div class="card-body p-0">
+              <table class="table table-sm mb-0">
+                <thead>
+                  <tr class="bg-[var(--bg-elevated)]">
+                    <th class="ps-4">假別</th>
+                    <th>期間</th>
+                    <th class="text-right pe-4">期間</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (ld of e.leaveDetails; track $index) {
+                    <tr>
+                      <td class="ps-4">{{ getLeaveTypeLabel(ld.leaveType) }}</td>
+                      <td>{{ ld.startDate | date:'MM/dd HH:mm' }} ~ {{ ld.endDate | date:'MM/dd HH:mm' }}</td>
+                      <td class="text-right pe-4">{{ formatLeaveDuration(ld.leaveType, ld.hours) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        }
+
+        <!-- 可編輯：其他加項 + 其他扣項 + 備註 -->
+        <form [formGroup]="form" (ngSubmit)="submit()">
+
+          <!-- 其他加項 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus-circle"></use></svg>
+              其他加項
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-12 col-md-5">
+                  <label class="form-label fw-500">其他加項金額</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="otherAddition" min="0" placeholder="0">
+                  </div>
+                </div>
+                <div class="col-12 col-md-7">
+                  <label class="form-label fw-500">加項說明</label>
+                  <input type="text" class="form-control" formControlName="otherAdditionNote"
+                         placeholder="例如：績效獎金、交通補貼...">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 其他扣項 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#minus-circle"></use></svg>
+              其他扣項
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-12 col-md-5">
+                  <label class="form-label fw-500">其他扣項金額</label>
+                  <div class="input-group">
+                    <span class="input-group-text">NT$</span>
+                    <input type="number" class="form-control" formControlName="otherDeduction" min="0" placeholder="0">
+                  </div>
+                </div>
+                <div class="col-12 col-md-7">
+                  <label class="form-label fw-500">扣項說明</label>
+                  <input type="text" class="form-control" formControlName="otherDeductionNote"
+                         placeholder="例如：代扣所得稅、借支扣款...">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 備註 -->
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+              備註
+            </div>
+            <div class="card-body">
+              <textarea class="form-control" formControlName="note" rows="3"
+                        placeholder="其他備註事項（會顯示在薪資條上）"></textarea>
+            </div>
+          </div>
+
+          <!-- 實領薪資預覽 -->
+          <div class="card border-0 shadow-sm mb-4 bg-primary text-white">
+            <div class="card-body flex items-center justify-between py-4 px-6">
+              <div class="fw-500 text-lg">實領薪資</div>
+              <div class="fw-600 text-2xl">NT$ {{ previewNet() | number:'1.0-0' }}</div>
+            </div>
+          </div>
+
+          <div class="flex gap-2">
+            <button type="submit" class="btn btn-primary" [disabled]="saving()">
+              @if (saving()) {
+                <span class="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin me-1"></span>
+                儲存中…
+              } @else {
+                儲存
+              }
+            </button>
+            <a [routerLink]="backLink()" class="btn btn-outline-secondary">取消</a>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  }
+</div>

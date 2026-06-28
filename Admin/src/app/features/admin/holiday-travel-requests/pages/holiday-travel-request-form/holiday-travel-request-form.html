@@ -1,0 +1,297 @@
+<div class="container-fluid py-3">
+  <div class="flex items-center gap-2 mb-6">
+    <a routerLink="/admin/holiday-travel-requests" class="btn btn-sm btn-outline-secondary">
+      <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+    </a>
+    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視假日執行活動申請' : (isReturned ? '修改假日執行活動申請' : '編輯假日執行活動草稿')) : '新增假日執行活動申請' }}</h4>
+  </div>
+
+  @if (errorMsg()) {
+    <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+      {{ errorMsg() }}
+    </div>
+  }
+
+  <!-- 狀態提示卡 -->
+  @if (isReadOnly && approvalStatus === 'pending') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(13,110,253,0.08)] border-bottom flex items-center gap-2 fw-600 text-primary py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
+        此申請審核中，不可再修改。
+      </div>
+    </div>
+  } @else if (approvalStatus === 'returned') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(255,193,7,0.08)] border-bottom flex items-center gap-2 fw-600 text-warning py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+        此申請已被退回，請修改後重新送出。
+      </div>
+    </div>
+  } @else if (isReadOnly && approvalStatus === 'approved') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(37,162,68,0.08)] border-bottom flex items-center gap-2 fw-600 text-success py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#check-circle"></use></svg>
+        此申請已核准，不可再修改。
+      </div>
+    </div>
+  } @else if (isReadOnly && approvalStatus === 'rejected') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(220,53,69,0.08)] border-bottom flex items-center gap-2 fw-600 text-danger py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#x-circle"></use></svg>
+        此申請已被拒絕，不可再修改。
+      </div>
+    </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <div class="row g-4">
+      <div class="col-12 col-lg-10 col-xl-8">
+
+        <!-- 活動基本資訊 -->
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#sun"></use>
+            </svg>
+            活動基本資訊
+          </div>
+          <div class="card-body">
+
+            <div class="row g-3 mb-4">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">執行活動地點 <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" formControlName="destination" placeholder="例如：台南、台中">
+                @if (form.get('destination')?.invalid && form.get('destination')?.touched) {
+                  <div class="text-danger small mt-1">請填寫執行活動地點。</div>
+                }
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500">關聯專案（選填）</label>
+                <select class="form-select" formControlName="projectId">
+                  <option [ngValue]="null">{{ loadingProjects ? '載入中…' : '— 不關聯專案 —' }}</option>
+                  @for (p of projects; track p.id) {
+                    <option [ngValue]="p.id">{{ p.code }} - {{ p.name }}{{ p.departmentName ? '（' + p.departmentName + '）' : '' }}</option>
+                  }
+                </select>
+                @if (!loadingProjects && projects.length === 0) {
+                  <div class="text-muted small mt-1">您目前可申請的專案清單為空，請聯絡主管或確認部門設定。</div>
+                }
+              </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">開始日期 <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" formControlName="startDate" (change)="onDateChange()">
+                @if (form.get('startDate')?.invalid && form.get('startDate')?.touched) {
+                  <div class="text-danger small mt-1">請選擇開始日期。</div>
+                }
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">結束日期 <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" formControlName="endDate" (change)="onDateChange()">
+                @if (form.get('endDate')?.invalid && form.get('endDate')?.touched) {
+                  <div class="text-danger small mt-1">請選擇結束日期。</div>
+                }
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">假日天數</label>
+                <div class="form-control bg-elevated text-muted" style="cursor: default">
+                  @if (holidayDaysLoading()) {
+                    <span class="spinner-border spinner-border-sm me-1" role="status"></span> 查詢中…
+                  } @else if (holidayDaysNoCalendar()) {
+                    <span class="text-warning">行事曆資料尚未匯入</span>
+                  } @else if (holidayDays() !== null) {
+                    <span class="fw-500" style="color: var(--forest)">{{ holidayDays() }} 天</span>
+                  } @else {
+                    <span>— 請先選擇日期</span>
+                  }
+                </div>
+                <div class="text-muted small mt-1">系統依行事曆資料自動計算</div>
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-500">活動主旨及內容 <span class="text-danger">*</span></label>
+              <textarea class="form-control" formControlName="purpose" rows="3"
+                        placeholder="請填寫活動主旨及內容..."></textarea>
+              @if (form.get('purpose')?.invalid && form.get('purpose')?.touched) {
+                <div class="text-danger small mt-1">請填寫活動主旨及內容。</div>
+              }
+            </div>
+
+            @if (isEdit) {
+              <div class="mb-0">
+                <label class="form-label fw-500">簽核狀態</label>
+                <div>
+                  <span class="badge rounded-pill px-3 py-2" [class]="statusClass[approvalStatus]">
+                    {{ statusLabel[approvalStatus] }}
+                  </span>
+                </div>
+              </div>
+            }
+
+          </div>
+        </div>
+
+        <!-- 參與執行人員 -->
+        <div class="card border-0 shadow-sm mt-6">
+          <div class="card-header bg-transparent border-bottom flex items-center justify-between">
+            <div class="flex items-center gap-2 fw-600">
+              <svg class="sa-icon text-primary" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#users"></use>
+              </svg>
+              參與執行人員
+            </div>
+            @if (!isReadOnly) {
+              <button type="button" class="btn btn-sm btn-outline-primary inline-flex items-center gap-1"
+                      (click)="addParticipant()">
+                <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                新增人員
+              </button>
+            }
+          </div>
+          <div class="card-body">
+            @if (participantEntries.length === 0) {
+              <div class="text-muted small">
+                @if (isReadOnly) { 無參與執行人員記錄。} @else { 點擊「新增人員」新增參與執行人員。}
+              </div>
+            } @else {
+              @for (entry of participantEntries; track $index; let i = $index) {
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-muted small" style="min-width:1.5rem">{{ i + 1 }}.</span>
+                  @if (isReadOnly) {
+                    <span class="small fw-500">{{ getUserName(entry.selectedUserId) }}</span>
+                  } @else {
+                    <select class="form-select form-select-sm" style="max-width:240px"
+                            [(ngModel)]="entry.selectedUserId" [ngModelOptions]="{standalone: true}">
+                      <option [ngValue]="null">— 選擇人員 —</option>
+                      @for (user of allUsers; track user.id) {
+                        <option [ngValue]="user.id">{{ user.name }}</option>
+                      }
+                    </select>
+                    <button type="button" class="btn btn-sm btn-ghost-danger" (click)="removeParticipant(i)">
+                      <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                    </button>
+                  }
+                </div>
+              }
+            }
+          </div>
+        </div>
+
+        <!-- 指定審核者（有設定指定步驟時才顯示） -->
+        @if (hasDesignatedStep && !isReadOnly) {
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon text-primary" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#users"></use>
+              </svg>
+              指定審核者
+            </div>
+            <div class="card-body">
+              <div class="mb-0">
+                <label class="form-label fw-500">指定審核者（依序審核）</label>
+                @for (entry of designatedEntries; track $index; let i = $index) {
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="text-muted small" style="min-width:1.5rem">{{ i + 1 }}.</span>
+                    <select class="form-select form-select-sm" style="max-width:160px"
+                            [(ngModel)]="entry.selectedJobTitleId" [ngModelOptions]="{standalone: true}"
+                            (ngModelChange)="onEntryJobTitleChange(i)">
+                      <option [ngValue]="null">— 職稱 —</option>
+                      @for (jt of jobTitles; track jt.id) {
+                        <option [ngValue]="jt.id">{{ jt.name }}</option>
+                      }
+                    </select>
+                    <select class="form-select form-select-sm" style="max-width:200px"
+                            [(ngModel)]="entry.selectedUserId" [ngModelOptions]="{standalone: true}">
+                      <option [ngValue]="null">— 人員 —</option>
+                      @for (user of entry.filteredUsers; track user.id) {
+                        <option [ngValue]="user.id">{{ user.name }}</option>
+                      }
+                    </select>
+                    <button type="button" class="btn btn-sm btn-ghost-danger" (click)="removeDesignatedEntry(i)">
+                      <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                    </button>
+                  </div>
+                }
+                <button type="button" class="btn btn-sm btn-outline-secondary mt-1" (click)="addDesignatedEntry()">
+                  <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                  新增審核人
+                </button>
+              </div>
+            </div>
+          </div>
+        } @else if (isReadOnly && designatedEntries.length > 0) {
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon text-primary" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#users"></use>
+              </svg>
+              指定審核者
+            </div>
+            <div class="card-body">
+              <label class="form-label fw-500">指定審核者（依序審核）</label>
+              <ol class="mb-0 ps-4">
+                @for (entry of designatedEntries; track $index) {
+                  <li class="small">{{ getUserName(entry.selectedUserId) }}</li>
+                }
+              </ol>
+            </div>
+          </div>
+        }
+
+        <!-- 簽核流程時間軸 -->
+        <app-approval-timeline
+          [flow]="approvalFlow"
+          [approvalRecords]="approvalRecords"
+          [currentStepOrder]="taskCurrentStepOrder"
+          [status]="taskStatus" />
+
+        <!-- 底部按鈕 -->
+        @if (!isReadOnly) {
+          <div class="mt-6 flex gap-2">
+            <button type="submit" class="btn btn-outline-secondary"
+                    [disabled]="disabledReason !== null">
+              {{ isEdit ? '儲存' : '儲存草稿' }}
+            </button>
+            <button type="button" class="btn btn-primary"
+                    [disabled]="disabledReason !== null"
+                    (click)="submitForApproval()">
+              送出申請
+            </button>
+            <a routerLink="/admin/holiday-travel-requests" class="btn btn-outline-secondary">取消</a>
+          </div>
+          @if (disabledReason; as reason) {
+            <div class="text-warning small mt-2 flex items-center gap-1">
+              <svg class="sa-icon shrink-0" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+              {{ reason }}
+            </div>
+          }
+        } @else {
+          <div class="mt-6">
+            <a routerLink="/admin/holiday-travel-requests" class="btn btn-outline-secondary">返回列表</a>
+          </div>
+        }
+
+      </div>
+    </div>
+  </form>
+</div>
+
+<ng-template #successModal let-modal>
+  <div class="modal-header border-0 pb-0">
+    <button type="button" class="btn-close" (click)="modal.close()"></button>
+  </div>
+  <div class="modal-body text-center py-6">
+    <svg class="sa-icon sa-icon-3x text-success mb-4" style="stroke: currentColor">
+      <use href="/assets/icons/sprite.svg#check-circle"></use>
+    </svg>
+    <h5 class="fw-600 mb-2">申請成功</h5>
+    <p class="text-secondary mb-0">請盡早將正本資料送回管理處</p>
+  </div>
+  <div class="modal-footer border-0 justify-center pt-0">
+    <button type="button" class="btn btn-primary px-6" (click)="modal.close()">確定</button>
+  </div>
+</ng-template>
