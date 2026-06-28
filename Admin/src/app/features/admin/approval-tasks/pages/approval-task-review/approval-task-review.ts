@@ -19,6 +19,7 @@ import {TravelWriteOffRequestService} from '../../../travel-write-off-requests/s
 import {TravelWriteOffPdfService} from '../../../travel-write-off-requests/services/travel-write-off-pdf.service';
 import {TravelPaymentRequestService} from '../../../travel-payment-requests/services/travel-payment-request.service';
 import {TravelPaymentPdfService} from '../../../travel-payment-requests/services/travel-payment-pdf.service';
+import {PreReviewPdfService} from '../../../pre-review-requests/services/pre-review-pdf.service';
 import {ApprovalTaskService} from '../../services/approval-task.service';
 import {
   ApprovalTask, ApprovalRecord, TaskStatus,
@@ -48,6 +49,7 @@ export class ApprovalTaskReview implements OnInit {
   protected travelWriteOffPdfService  = inject(TravelWriteOffPdfService);
   private travelPaymentService        = inject(TravelPaymentRequestService);
   protected travelPaymentPdfService   = inject(TravelPaymentPdfService);
+  protected preReviewPdfService       = inject(PreReviewPdfService);
   private auth              = inject(AuthService);
   private route             = inject(ActivatedRoute);
   private router            = inject(Router);
@@ -488,6 +490,11 @@ export class ApprovalTaskReview implements OnInit {
         this.errorMsg.set('載入出差沖銷申請資料失敗，無法匯出 PDF。');
       },
     });
+  }
+
+  printPreReviewPdf(task: ApprovalTask) {
+    if (!task.preReviewDetail || task.status !== 'approved') return;
+    this.preReviewPdfService.printPreReviewRequest(task);
   }
 
   /** 計算陣列中指定數值欄位的加總 */

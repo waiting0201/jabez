@@ -125,6 +125,7 @@ var host = new HostBuilder()
         services.AddScoped<IPaymentReminderReadService, PaymentReminderReadService>();
         services.AddScoped<IPaymentReminderService, PaymentReminderService>();
         services.AddScoped<INotificationReadService, NotificationReadService>();
+        services.AddScoped<IPreReviewRequestReadService, PreReviewRequestReadService>();
 
         // ── Handlers（Scoped，依賴 DbContext）────────────────────────────
         services.AddScoped<AuthHandler>();
@@ -150,6 +151,8 @@ var host = new HostBuilder()
         services.AddScoped<PaymentReportHandler>();
         services.AddScoped<ProjectWaterLevelHandler>();
         services.AddScoped<InvoiceOcrHandler>();
+        services.AddScoped<QuoteOcrHandler>();
+        services.AddScoped<PreReviewRequestHandler>();
         services.AddScoped<AdvanceRequestHandler>();
         services.AddScoped<WriteOffRequestHandler>();
         services.AddScoped<TravelWriteOffRequestHandler>();

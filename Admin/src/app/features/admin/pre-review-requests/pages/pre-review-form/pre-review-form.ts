@@ -1,0 +1,552 @@
+import {ChangeDetectorRef, Component, inject, OnInit, signal, TemplateRef, viewChild} from '@angular/core';
+import {ActivatedRoute, Router, RouterLink} from '@angular/router';
+import {AbstractControl, FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
+import {DatePipe, DecimalPipe} from '@angular/common';
+import {DomSanitizer} from '@angular/platform-browser';
+import {HttpErrorResponse} from '@angular/common/http';
+import {firstValueFrom, Observable, OperatorFunction} from 'rxjs';
+import {debounceTime, distinctUntilChanged, map} from 'rxjs/operators';
+import heic2any from 'heic2any';
+import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
+import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
+import {AttachmentsUpload} from '../../../../../shared/components/attachments-upload';
+import {AttachmentItem} from '../../../approval-tasks/models/approval-task.model';
+import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
+import {ApprovalFlow, ApprovalRecord, ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
+import {PreReviewRequestService, QuoteOcrItem} from '../../services/pre-review-request.service';
+import {PreReviewPdfService} from '../../services/pre-review-pdf.service';
+import {ProjectService} from '../../../projects/services/project.service';
+import {Project} from '../../../projects/models/project.model';
+import {PaymentType, ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, DesignatedReviewer, ITEM_CATEGORIES, ItemCategory} from '../../models/pre-review-request.model';
+import {JobTitleService} from '../../../job-titles/services/job-title.service';
+import {UserService} from '../../../users/services/user.service';
+import {ApprovalService} from '../../../approvals/services/approval.service';
+import {JobTitleLookup} from '../../../job-titles/models/job-title.model';
+import {UserLookup} from '../../../users/models/user.model';
+import {VendorService} from '../../../vendors/services/vendor.service';
+import {VendorLookup} from '../../../vendors/models/vendor.model';
+import {VendorQuickAddModal} from '../../../vendors/components/vendor-quick-add-modal/vendor-quick-add-modal';
+import {NgbModal, NgbTypeahead, NgbTypeaheadSelectItemEvent} from '@ng-bootstrap/ng-bootstrap';
+
+@Component({
+  selector: 'app-pre-review-form',
+  templateUrl: './pre-review-form.html',
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, NgbTypeahead, AttachmentsUpload],
+})
+export class PreReviewForm implements OnInit {
+  private fb           = inject(FormBuilder);
+  private service      = inject(PreReviewRequestService);
+  private projects$    = inject(ProjectService);
+  private jobTitleSvc  = inject(JobTitleService);
+  private userSvc      = inject(UserService);
+  private approvalSvc  = inject(ApprovalService);
+  private taskSvc      = inject(ApprovalTaskService);
+  private vendorSvc    = inject(VendorService);
+  private route        = inject(ActivatedRoute);
+  private router       = inject(Router);
+  private cdr          = inject(ChangeDetectorRef);
+  private sanitizer    = inject(DomSanitizer);
+  private modal        = inject(NgbModal);
+  pdfService           = inject(PreReviewPdfService);
+
+  successModal      = viewChild<TemplateRef<any>>('successModal');
+  attachmentsUpload = viewChild(AttachmentsUpload);
+
+  /** 編輯模式回填的既有附件 */
+  loadedAttachments: AttachmentItem[] = [];
+
+  projects: Project[] = [];
+  isEdit     = false;
+  isReturned = false;
+  isReadOnly = false;
+  requestId  = 0;
+  showItemsError = false;
+  errorMsg = signal('');
+  approvalStatus: ApprovalStatus = 'draft';
+  isDraft    = true;
+  projectCode = '';
+  projectName = '';
+  requestNo   = '';
+
+  /** 簽核流程時間軸 */
+  approvalFlow: ApprovalFlow | null = null;
+  approvalRecords: ApprovalRecord[] = [];
+  taskCurrentStepOrder = 0;
+  taskStatus = '';
+  approvalTask: ApprovalTask | null = null;
+
+  /** 指定審核者相關 */
+  hasDesignatedStep = false;
+  jobTitles: JobTitleLookup[] = [];
+  allUsers: UserLookup[] = [];
+
+  /** 廠商下拉清單 */
+  vendors = signal<VendorLookup[]>([]);
+  vendorTypeaheadModel: VendorLookup | string | null = null;
+
+  /** 品項類別常數 */
+  readonly itemCategories: ItemCategory[] = [...ITEM_CATEGORIES];
+
+  vendorSearch: OperatorFunction<string, readonly VendorLookup[]> = (text$: Observable<string>) =>
+    text$.pipe(
+      debounceTime(150),
+      distinctUntilChanged(),
+      map(term => {
+        const t = (term ?? '').toString().toLowerCase().trim();
+        const list = this.vendors();
+        const filtered = t.length === 0
+          ? list
+          : list.filter(v =>
+              v.name.toLowerCase().includes(t) ||
+              (v.taxId ?? '').toLowerCase().includes(t) ||
+              (v.idNumber ?? '').toLowerCase().includes(t));
+        return filtered.slice(0, 10);
+      })
+    );
+
+  vendorFormatter = (v: VendorLookup) => {
+    const code = v.taxId ?? v.idNumber;
+    return v.name + (code ? `（${code}）` : '');
+  };
+  vendorInputFormatter = (v: VendorLookup) => v.name;
+
+  onVendorSelect(event: NgbTypeaheadSelectItemEvent) {
+    const v = event.item as VendorLookup;
+    this.form.get('vendorId')!.setValue(v.id);
+  }
+
+  onVendorInput(event: Event) {
+    const inputVal = (event.target as HTMLInputElement).value;
+    const selectedId = this.form.get('vendorId')?.value;
+    if (!selectedId) return;
+    const selectedVendor = this.vendors().find(v => v.id === selectedId);
+    if (selectedVendor && inputVal !== this.vendorInputFormatter(selectedVendor)) {
+      this.form.get('vendorId')!.setValue(null);
+    }
+  }
+
+  designatedEntries: {
+    stepOrder: number;
+    selectedJobTitleId: number | null;
+    selectedUserId: string | null;
+    filteredUsers: UserLookup[];
+  }[] = [];
+
+  addDesignatedEntry() {
+    const nextOrder = this.designatedEntries.length + 1;
+    this.designatedEntries.push({
+      stepOrder: nextOrder,
+      selectedJobTitleId: null,
+      selectedUserId: null,
+      filteredUsers: [],
+    });
+  }
+
+  removeDesignatedEntry(i: number) {
+    this.designatedEntries.splice(i, 1);
+    this.designatedEntries.forEach((e, idx) => e.stepOrder = idx + 1);
+  }
+
+  onEntryJobTitleChange(i: number) {
+    const e = this.designatedEntries[i];
+    e.filteredUsers = e.selectedJobTitleId
+      ? this.allUsers.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active')
+      : [];
+    e.selectedUserId = null;
+  }
+
+  getUserName(userId: string | null): string {
+    if (!userId) return '—';
+    return this.allUsers.find(u => u.id === userId)?.name ?? userId;
+  }
+
+  openQuickAddVendor() {
+    const ref = this.modal.open(VendorQuickAddModal, {
+      centered: true,
+      backdrop: 'static',
+      keyboard: false,
+      size: 'lg',
+    });
+    ref.closed.subscribe((newVendor: VendorLookup | undefined) => {
+      if (!newVendor) return;
+      this.vendors.update(list =>
+        [...list, newVendor].sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant'))
+      );
+      this.form.get('vendorId')!.setValue(newVendor.id);
+      this.vendorTypeaheadModel = newVendor;
+      this.cdr.markForCheck();
+    });
+  }
+
+  /** item id → File 物件（新上傳的檔案） */
+  fileMap = new Map<string, File>();
+
+  /** IDs of item rows currently being OCR-processed */
+  ocrLoadingIds = new Set<string>();
+  get isAnyOcrPending(): boolean { return this.ocrLoadingIds.size > 0; }
+
+  /** File preview modal state */
+  previewFile: PreviewFileData | null = null;
+  openPreview(name: string, url: string) {
+    this.previewFile = {name, url, safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(url)};
+  }
+  closePreview() { this.previewFile = null; }
+
+  readonly statusLabel = APPROVAL_STATUS_LABELS;
+  readonly statusClass = APPROVAL_STATUS_CLASSES;
+
+  form = this.fb.group({
+    type:      ['vendor', Validators.required],
+    projectId: [null as number | null, Validators.required],
+    vendorId:  [null as number | null, Validators.required],
+    reason:    [''],
+    taxAmount: [0],
+    items:     this.fb.array([]),
+  });
+
+  get itemArray(): FormArray { return this.form.get('items') as FormArray; }
+  get itemControls(): AbstractControl[] { return this.itemArray.controls; }
+  get totalAmount(): number {
+    return this.itemArray.controls.reduce((sum, c) => sum + (+(c.get('amount')?.value) || 0), 0);
+  }
+  get grandTotal(): number {
+    const tax = this.form.get('taxAmount');
+    return this.totalAmount + (tax ? (+(tax.value ?? 0) || 0) : 0);
+  }
+
+  loadingProjects = true;
+
+  ngOnInit() {
+    this.vendorSvc.getLookup().subscribe(v => { this.vendors.set(v); this.cdr.markForCheck(); });
+
+    // 協力廠商 / 設計師 皆須選擇廠商，vendorId 永遠必填（初始化已設定），切換類型不清空
+
+    this.approvalSvc.getActiveByType('pre_review').subscribe(flow => {
+      this.hasDesignatedStep = flow?.steps.some(s => s.useApplicantDesignated) ?? false;
+      if (this.hasDesignatedStep) {
+        this.jobTitleSvc.getLookup().subscribe({next: jts => { this.jobTitles = jts; }});
+        this.userSvc.getLookup().subscribe({
+          next: users => {
+            this.allUsers = users;
+            this.designatedEntries.forEach(e => {
+              if (!e.selectedJobTitleId && e.selectedUserId) {
+                e.selectedJobTitleId = users.find(u => u.id === e.selectedUserId)?.jobTitleId ?? null;
+              }
+              if (e.selectedJobTitleId) {
+                e.filteredUsers = users.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active');
+              }
+            });
+            this.cdr.markForCheck();
+          },
+        });
+      }
+      this.cdr.markForCheck();
+    });
+
+    this.projects$.getActive().subscribe({
+      next: p => {
+        this.projects = p;
+        this.loadingProjects = false;
+        this.cdr.markForCheck();
+      },
+      error: () => { this.loadingProjects = false; this.errorMsg.set('載入專案資料失敗。'); },
+    });
+
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) {
+      this.isEdit    = true;
+      this.requestId = +id;
+      this.service.getById(this.requestId).subscribe(r => {
+        if (!r) return;
+        this.approvalStatus = r.approvalStatus;
+        this.isDraft        = r.approvalStatus === 'draft';
+        this.isReturned     = r.approvalStatus === 'returned';
+        this.isReadOnly     = r.approvalStatus !== 'draft' && r.approvalStatus !== 'returned';
+        this.projectCode    = r.projectCode ?? '';
+        this.projectName    = r.projectName ?? '';
+        this.requestNo      = r.requestNo ?? '';
+        this.loadedAttachments = r.attachments ?? [];
+        if (this.isReadOnly) this.form.disable();
+        this.form.patchValue({type: r.type, projectId: r.projectId, reason: r.reason ?? '', vendorId: r.vendorId ?? null, taxAmount: r.taxAmount ?? 0});
+
+        if (r.vendorId && r.vendorName && !this.vendors().some(v => v.id === r.vendorId)) {
+          this.vendors.update(list => [...list, {id: r.vendorId!, name: r.vendorName!, taxId: r.vendorTaxId}]);
+        }
+        if (r.vendorId) {
+          const found = this.vendors().find(v => v.id === r.vendorId);
+          if (found) this.vendorTypeaheadModel = found;
+        }
+        if (r.designatedReviewers?.length) {
+          this.designatedEntries = r.designatedReviewers.map(dr => ({
+            stepOrder: dr.stepOrder,
+            selectedJobTitleId: this.allUsers.find(u => u.id === dr.reviewerId)?.jobTitleId ?? null,
+            selectedUserId: dr.reviewerId,
+            filteredUsers: [],
+          }));
+          if (this.allUsers.length > 0) {
+            this.designatedEntries.forEach(e => {
+              if (e.selectedJobTitleId) {
+                e.filteredUsers = this.allUsers.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active');
+              }
+            });
+          }
+        }
+        // 回填品項列（品項類別需判斷 preset 或 其他）
+        r.items.forEach(item => {
+          const isPreset = (ITEM_CATEGORIES as readonly string[]).includes(item.itemCategory ?? '');
+          const categorySelect = isPreset ? (item.itemCategory ?? '') : '其他';
+          const categoryCustom = isPreset ? '' : (item.itemCategory ?? '');
+          this.itemArray.push(this._itemGroup(
+            String(item.id),
+            item.fileName,
+            categorySelect,
+            categoryCustom,
+            item.itemName ?? '',
+            item.amount,
+            item.fileUrl ?? '',
+            item.fileUrl ?? '',
+            item.note ?? '',
+            item.itemDate?.toString().slice(0, 10) ?? '',
+            item.description ?? '',
+          ));
+        });
+        if (r.approvalStatus !== 'draft') {
+          this.taskSvc.getById(this.requestId, 'pre_review').subscribe({
+            next: task => {
+              this.approvalTask = task;
+              this.approvalFlow = task.flow ?? null;
+              this.approvalRecords = task.approvalRecords ?? [];
+              this.taskCurrentStepOrder = task.currentStepOrder;
+              this.taskStatus = task.status;
+              this.cdr.markForCheck();
+            },
+          });
+        }
+        this.cdr.markForCheck();
+      });
+    }
+  }
+
+  async onFilesSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+
+    const rawFiles = Array.from(input.files);
+    input.value = '';
+    this.showItemsError = false;
+
+    const files = await Promise.all(rawFiles.map(f => this._convertHeicIfNeeded(f)));
+
+    const entries = files.map(file => {
+      const id         = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const previewUrl = URL.createObjectURL(file);
+      this.ocrLoadingIds.add(id);
+      this.fileMap.set(id, file);
+      this.itemArray.push(this._itemGroup(id, file.name, '', '', '', 0, previewUrl));
+      return {id, file};
+    });
+
+    // OCR 識別報價單品項
+    await Promise.all(entries.map(async ({id, file}) => {
+      try {
+        const results = await firstValueFrom(this.service.quoteOcr(file));
+        const idx = this.itemArray.controls.findIndex(c => c.get('id')?.value === id);
+        // 第 1 筆填入 placeholder；第 2..N 筆各新增一列（共用同一檔案）
+        if (results.length >= 1 && idx >= 0) {
+          this.itemArray.controls[idx].patchValue({
+            itemName: results[0].itemName ?? '',
+            amount:   results[0].amount ?? 0,
+            note:     results[0].note ?? '',
+          });
+        }
+        for (const item of results.slice(1)) {
+          const newId      = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const previewUrl = URL.createObjectURL(file);
+          this.fileMap.set(newId, file);
+          this.itemArray.push(this._itemGroup(
+            newId, file.name, '', '',
+            item.itemName ?? '', item.amount ?? 0,
+            previewUrl, '', item.note ?? '', '',
+          ));
+        }
+      } catch {
+        // OCR 失敗 — 保留空列供手動輸入
+      } finally {
+        this.ocrLoadingIds.delete(id);
+        this.cdr.markForCheck();
+      }
+    }));
+  }
+
+  private async _convertHeicIfNeeded(file: File): Promise<File> {
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.heic') && !name.endsWith('.heif')) return file;
+    try {
+      const blob = await heic2any({blob: file, toType: 'image/jpeg', quality: 0.85}) as Blob;
+      const jpegName = file.name.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg');
+      return new File([blob], jpegName, {type: 'image/jpeg'});
+    } catch {
+      return file;
+    }
+  }
+
+  removeItem(i: number) {
+    const ctrl = this.itemArray.at(i);
+    const id   = ctrl.get('id')?.value as string;
+    const url  = ctrl.get('previewUrl')?.value as string;
+    if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
+    this.fileMap.delete(id);
+    this.itemArray.removeAt(i);
+  }
+
+  /** 儲存（草稿或更新） */
+  save() {
+    if (this.form.invalid) return;
+    if (this.itemArray.length === 0) {this.showItemsError = true; return;}
+    this.showItemsError = false;
+    const fd = this._buildFormData();
+    const obs = this.isEdit
+      ? this.service.updateWithFiles(this.requestId, fd)
+      : this.service.createWithFiles(fd);
+    this.errorMsg.set('');
+    obs.subscribe({
+      next: saved => {
+        if (!this.isEdit) this.requestId = saved.id;
+        this.router.navigate(['/admin/pre-review-requests']);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+      },
+    });
+  }
+
+  /** 列印預審單 PDF */
+  printPreReview() {
+    if (this.approvalTask) this.pdfService.printPreReviewRequest(this.approvalTask);
+  }
+
+  /** 送出申請（先儲存再將狀態改為 pending） */
+  submitForApproval() {
+    if (this.form.invalid) return;
+    if (this.itemArray.length === 0) {this.showItemsError = true; return;}
+    this.showItemsError = false;
+    if (this.hasDesignatedStep) {
+      const validEntries = this.designatedEntries.filter(e => e.selectedUserId);
+      if (validEntries.length === 0) {
+        this.errorMsg.set('此簽核流程包含申請人指定審核步驟，請於下方「指定審核者」區塊新增至少 1 位審核者。');
+        return;
+      }
+    }
+    const fd = this._buildFormData();
+    const save$ = this.isEdit
+      ? this.service.updateWithFiles(this.requestId, fd)
+      : this.service.createWithFiles(fd);
+    this.errorMsg.set('');
+    save$.subscribe({
+      next: saved => {
+        this.service.submit(saved.id).subscribe({
+          next: () => {
+            const tpl = this.successModal();
+            if (tpl) {
+              const ref = this.modal.open(tpl, {centered: true, backdrop: 'static', keyboard: false});
+              ref.result
+                .then(() => this.router.navigate(['/admin/pre-review-requests']))
+                .catch(() => this.router.navigate(['/admin/pre-review-requests']));
+            } else {
+              this.router.navigate(['/admin/pre-review-requests']);
+            }
+          },
+          error: (err: HttpErrorResponse) => {
+            this.errorMsg.set(err.error?.message || '送出失敗，請稍後再試。');
+          },
+        });
+      },
+      error: (err: HttpErrorResponse) => {
+        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+      },
+    });
+  }
+
+  private _buildFormData(): FormData {
+    const fd   = new FormData();
+    const type = this.form.get('type')!.value!;
+    fd.append('type', type);
+    fd.append('projectId', String(this.form.get('projectId')!.value));
+    fd.append('reason', this.form.get('reason')?.value || '');
+    const vendorId = this.form.get('vendorId')?.value;
+    fd.append('vendorId', vendorId ? String(vendorId) : '');
+
+    const taxCtrl = this.form.get('taxAmount');
+    fd.append('taxAmount', String(taxCtrl ? (+(taxCtrl.value ?? 0) || 0) : 0));
+
+    const reviewers = this.designatedEntries
+      .filter(e => e.selectedUserId)
+      .map(e => ({reviewerId: e.selectedUserId!, stepOrder: e.stepOrder}));
+    if (reviewers.length > 0) fd.append('designatedReviewers', JSON.stringify(reviewers));
+
+    const itemsMeta: any[] = [];
+    let fileIndex = 0;
+
+    for (const ctrl of this.itemArray.controls) {
+      const id   = ctrl.get('id')?.value;
+      const file = this.fileMap.get(id);
+      // 解析品項類別：categorySelect === '其他' 時取 categoryCustom
+      const categorySelect = ctrl.get('categorySelect')?.value ?? '';
+      const categoryCustom = ctrl.get('categoryCustom')?.value ?? '';
+      const itemCategory   = categorySelect === '其他' ? categoryCustom : categorySelect;
+      const meta = {
+        fileName:     ctrl.get('fileName')?.value,
+        itemCategory: itemCategory || null,
+        itemDate:     ctrl.get('itemDate')?.value || null,
+        amount:       +(ctrl.get('amount')?.value || 0),
+        itemName:     ctrl.get('itemName')?.value || null,
+        description:  ctrl.get('description')?.value || null,
+        note:         ctrl.get('note')?.value || null,
+        fileUrl:      ctrl.get('fileUrl')?.value || null,
+        fileIndex:    file ? fileIndex : -1,
+      };
+      if (file) {
+        fd.append('files', file, file.name);
+        fileIndex++;
+      }
+      itemsMeta.push(meta);
+    }
+    fd.append('items', JSON.stringify(itemsMeta));
+
+    const att     = this.attachmentsUpload();
+    const attMeta = att ? att.getMeta() : [];
+    fd.append('attachments', JSON.stringify(attMeta));
+    if (att) {
+      att.getNewFiles().forEach(f => fd.append('attachmentFiles', f, f.name));
+    }
+    return fd;
+  }
+
+  private _itemGroup(
+    id: string,
+    fileName: string,
+    categorySelect: string,
+    categoryCustom: string,
+    itemName: string,
+    amount: number,
+    previewUrl = '',
+    fileUrl = '',
+    note = '',
+    itemDate = '',
+    description = '',
+  ) {
+    return this.fb.group({
+      id:             [id],
+      fileName:       [fileName],
+      categorySelect: [categorySelect],
+      categoryCustom: [categoryCustom],
+      itemDate:       [itemDate],
+      amount:         [amount, [Validators.required, Validators.min(0)]],
+      itemName:       [itemName],
+      description:    [description],
+      note:           [note],
+      previewUrl:     [previewUrl],
+      fileUrl:        [fileUrl],
+    });
+  }
+}

@@ -50,7 +50,8 @@
             "allowedCommonJsDependencies": [
               "heic2any",
               "vanta/dist/vanta.halo.min",
-              "xlsx"
+              "xlsx",
+              "pako"
             ]
           },
           "configurations": {

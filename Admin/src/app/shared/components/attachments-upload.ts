@@ -39,6 +39,9 @@ interface AttachmentEntry {
             </svg>
             <span class="fw-500">點擊上傳附件（照片或文件）</span>
             <span class="text-muted small mt-1">支援 JPG、PNG、HEIC、PDF，可多選；圖片會自動壓縮</span>
+            @if (hint()) {
+              <span class="text-muted small mt-1">{{ hint() }}</span>
+            }
             <input type="file" class="hidden" multiple accept="image/*,.heic,.heif,application/pdf"
                    (change)="onFilesSelected($event)">
           </label>
@@ -79,6 +82,8 @@ export class AttachmentsUpload {
   existing = input<AttachmentItem[] | null | undefined>(null);
   /** 唯讀（檢視）時隱藏上傳與刪除 */
   disabled = input<boolean>(false);
+  /** 上傳區塊下方的提示文字（選填；留空則不顯示） */
+  hint = input<string>('');
 
   private imageCompression = inject(ImageCompressionService);
   private sanitizer        = inject(DomSanitizer);

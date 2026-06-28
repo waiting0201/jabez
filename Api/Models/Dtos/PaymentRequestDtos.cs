@@ -206,7 +206,7 @@ public sealed record TravelPaymentTaskDetailDto(
 
 public sealed record ApprovalTaskDto(
     int                         Id,
-    string                      ApplicationType,   // "payment_request" | "leave" | "travel" | "overtime" | "advance" | "write_off" | "travel_write_off" | "travel_payment"
+    string                      ApplicationType,   // "payment_request" | "leave" | "travel" | "overtime" | "advance" | "write_off" | "travel_write_off" | "travel_payment" | "pre_review"
     string                      Title,
     string                      SubmittedBy,
     DateTime                    SubmittedAt,
@@ -225,4 +225,5 @@ public sealed record ApprovalTaskDto(
     ApprovalRecordDto[]         ApprovalRecords,
     DesignatedReviewerDto[]?    DesignatedReviewers     = null,
     string?                     SubmittedBySignatureUrl = null,
-    TravelPaymentTaskDetailDto? TravelPaymentDetail     = null);  // 出差請款申請詳情
+    TravelPaymentTaskDetailDto? TravelPaymentDetail     = null,   // 出差請款申請詳情
+    PreReviewTaskDetailDto?     PreReviewDetail         = null);  // 預審申請詳情

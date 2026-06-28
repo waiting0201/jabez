@@ -28,6 +28,12 @@ export const menuItems: MenuItemType[] = [
     requiredPermission: 'projects:read',
   },
   {
+    icon: '/assets/icons/sprite.svg#search',
+    label: '預審申請',
+    url: '/admin/pre-review-requests',
+    requiredPermission: 'pre-review-requests:read',
+  },
+  {
     icon: '/assets/icons/sprite.svg#dollar-sign',
     label: '請款申請',
     url: '/admin/payment-requests',

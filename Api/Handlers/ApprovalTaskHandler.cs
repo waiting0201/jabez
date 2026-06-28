@@ -20,7 +20,7 @@ namespace Jabez.Api.Handlers;
 public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadService reader, IJwtService jwtService, IApprovalNotificationService notifier, IApprovalFlowService approvalFlow)
 {
     private static readonly HashSet<string> ValidActions  = ["approved", "returned", "rejected"];
-    public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "travel", "overtime", "advance", "write_off", "travel_write_off", "holiday_travel", "travel_payment"];
+    public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "travel", "overtime", "advance", "write_off", "travel_write_off", "holiday_travel", "travel_payment", "pre_review"];
 
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
@@ -532,6 +532,26 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     InstallmentUpsertService.Apply(db, tpr.Installments, installments, tpr.GrandTotal, reviewerId,
                         () => new TravelPaymentRequestInstallment { TravelPaymentRequestId = tpr.Id });
                 }
+                await db.SaveChangesAsync();
+                break;
+            }
+            case "pre_review":
+            {
+                var prv = await db.PreReviewRequests.FindAsync(intId)
+                    ?? throw AppException.NotFound("PreReviewRequest");
+                if (prv.ApprovalStatus != "pending")
+                    throw AppException.BadRequest("Only pending pre-review requests can be reviewed.");
+
+                var prvApplicant = prv.SubmittedById.HasValue
+                    ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == prv.SubmittedById.Value)
+                    : null;
+                await AuthorizeStepAsync(prv.ApprovalItemId, prv.CurrentStepOrder, reviewer, prvApplicant?.DepartmentId, "pre_review", prv.Id, prvApplicant?.JobTitleId);
+                await ProcessReviewAsync("pre_review", prv.Id, prv.CurrentStepOrder,
+                    prv.ApprovalItemId, action, reviewNote, reviewerId, prv.SubmittedById,
+                    setStatus:     s  => prv.ApprovalStatus   = s,
+                    incrementStep: () => prv.CurrentStepOrder++,
+                    setReviewed:   () => { prv.ReviewedAt = Clock.Now; prv.ReviewedById = reviewerId; prv.ReviewNote = reviewNote?.Trim(); });
+                // 預審申請無撥款流程，無需 installments 處理
                 await db.SaveChangesAsync();
                 break;
             }

@@ -6,6 +6,7 @@ import {
 import {LeaveType, LEAVE_TYPE_LABELS} from '../../leave-requests/models/leave-request.model';
 import {ApplicationType, APPLICATION_TYPE_LABELS, APPLICATION_TYPE_CLASSES} from '../../approvals/models/approval.model';
 import {TravelPaymentRequestItem} from '../../travel-payment-requests/models/travel-payment-request.model';
+import {PreReviewItem} from '../../pre-review-requests/models/pre-review-request.model';
 
 export type TaskStatus = 'pending' | 'approved' | 'rejected' | 'returned';
 
@@ -313,6 +314,22 @@ export interface TravelPaymentTaskDetail {
   paymentStatus?: PaymentInstallmentStatus;
 }
 
+export interface PreReviewTaskDetail {
+  preReviewRequestId: number;
+  requestNo: string;
+  paymentType: 'vendor' | 'designer';
+  projectCode: string;
+  projectName?: string;
+  items: PreReviewItem[];
+  totalAmount: number;
+  taxAmount?: number;     // 稅金（手動輸入）
+  reason?: string;
+  vendorId?: number;
+  vendorName?: string;
+  vendorTaxId?: string;
+  attachments?: AttachmentItem[];
+}
+
 // ── ApprovalRecord ───────────────────────────────────────────────────────────
 
 export interface ApprovalRecord {
@@ -348,6 +365,7 @@ export interface ApprovalTask {
   writeOffDetail?: WriteOffTaskDetail;
   travelWriteOffDetail?: TravelWriteOffTaskDetail;
   travelPaymentDetail?: TravelPaymentTaskDetail;
+  preReviewDetail?: PreReviewTaskDetail;
   approvalRecords: ApprovalRecord[];
   submittedBySignatureUrl?: string;  // 申請人簽名檔 URL
 }
