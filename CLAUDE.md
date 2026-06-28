@@ -11,7 +11,7 @@
 ```
 /
 ├── Admin/          # 前端 Angular 21 應用程式
-├── Api/            # 後端 Azure Functions .NET 9 API
+├── Api/            # 後端 Azure Functions .NET 10 API
 ├── docs/           # 設計與規範文件
 │   ├── frontend-design.md   # 前端設計規範（CIS 色彩、卡片、Tab、明細列表、按鈕、icon、表單、檔案上傳…）
 │   ├── backend-design.md    # 後端設計規範（Handler、DTO、Dapper、EF Core、Router、JWT、時區、檔案上傳…）
@@ -245,7 +245,7 @@ export const environment = {
 
 ---
 
-## 後端：Api（Azure Functions .NET 9）
+## 後端：Api（Azure Functions .NET 10）
 
 > **設計規範與技術棧詳見** [docs/backend-design.md](docs/backend-design.md)（Handler / DTO / Dapper / EF Core / Router / JWT / 時區 / 檔案上傳 / 命名 / Code Review Checklist 一律統一定義於該文件）
 
