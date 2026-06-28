@@ -278,6 +278,7 @@ public sealed class AppRouter(
             ("GET",    ["leave-requests", "maternity-status"])    => await leaveRequests.GetMaternityStatusAsync(req),
             ("GET",    ["leave-requests", "bereavement-quota"])   => await leaveRequests.GetBereavementQuotaAsync(req),
             ("GET",    ["leave-requests", "senior-executive-eligibility"]) => await leaveRequests.GetSeniorExecutiveEligibilityAsync(req),
+            ("GET",    ["leave-requests", "senior-executive-quota"]) => await leaveRequests.GetSeniorExecutiveQuotaAsync(req),
             ("PATCH",  ["leave-requests", var id, "submit"])      => await leaveRequests.SubmitAsync(req, id),
             ("GET",    ["leave-requests", var id])                 => await leaveRequests.GetByIdAsync(req, id),
             ("PUT",    ["leave-requests", var id])                 => await leaveRequests.UpdateAsync(req, id),

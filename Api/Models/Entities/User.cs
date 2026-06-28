@@ -34,6 +34,11 @@ public class User
     public decimal?  AdjustmentDifference { get; set; }   // 調整差額
     public decimal?  OverseasAllowance    { get; set; }   // 外派加給
     public bool      SendPaySlip     { get; set; }   // 是否寄送薪資表
+
+    // 期初補休時數：系統上線前（115/1~6/30）以紙本累計、匯入系統的補休時數；
+    // 設定於 116/6/30 前未休完即歸零（到期日為固定常數，見 LeaveRequestHandler.CompensatoryOpeningExpiry）
+    public decimal   CompensatoryOpeningHours { get; set; } = 0m;
+
     public Guid?     AgentUserId     { get; set; }
     public DateTime? Birthday        { get; set; }
     public bool      IsIndigenous    { get; set; }   // 是否為原住民（影響歲時祭儀假申請）

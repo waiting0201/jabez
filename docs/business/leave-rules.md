@@ -9,7 +9,7 @@
 | 1 | 年假(特休假) | `annual` | 半天 | 依年資（3~30 天） | 有薪 |
 | 2 | 事假 | `personal` | 小時 | 無上限 | 按天數扣除全額薪資 |
 | 3 | 病假 | `sick` | 小時 | 無上限 | 按天數扣除半薪 |
-| 4 | 補休 | `compensatory` | 半天（扣 4 小時/半天） | 依加班時數 | 有薪 |
+| 4 | 補休 | `compensatory` | 半天（扣 4 小時/半天） | 期初匯入 + 依加班時數 | 有薪 |
 | 5 | 公假 | `official` | 天 | 無上限 | 有薪 |
 | 6 | 婚假 | `marriage` | 天 | 8 天（可不連續） | 有薪 |
 | 7 | 產假 | `maternity` | 天（**選起始日、自動填 56 天**） | 56 天 | 有薪 |
@@ -20,7 +20,7 @@
 | 12 | 陪產假 | `paternity` | 小時 | 7 天 | 有薪 |
 | 13 | 喪假 | `bereavement` | 天 | 依親屬關係（3/6/8 天） | 有薪 |
 | 14 | 歲時祭儀假 | `ceremonial_festival` | 天 | 3 天/年（跨年歸零，**限原住民**） | 有薪 |
-| 15 | 高階主管假 | `senior_executive` | 半天 | **無上限** | **不扣任何項目**（協理以上專用，`JobTitle.Level ≤ 3`） |
+| 15 | 高階主管假 | `senior_executive` | 半天 | **每年 20 天**（曆年歸零） | **不扣任何項目**（協理以上專用，`JobTitle.Level ≤ 3`） |
 | 16 | 生理假 | `menstrual` | 天（一次請一天） | 每月 1 天、全年 12 天（**限女性**） | 按天數扣除半薪（前 3 天/年純生理假，超過併入病假） |
 
 ## 時間單位規則
@@ -36,6 +36,7 @@
 - **產假特例**：選擇起始日後，結束日自動填為起始日 + 55 天（共 56 天），總時數固定 448 小時。法規為一次請完，禁止重複活躍申請（同 `EmployeeId` 存在 `pending` / `approved` 產假）。
 - **補休扣除**：申請 1 個半天（4 小時）→ 從可補休時數池扣 4 小時。
 - **高階主管假權限閘門**：前後端皆檢查 `JobTitle.Level ≤ 3`；前端透過 JWT `job_title_level` claim 判斷選項可見性，後端在 `CreateAsync` / `UpdateAsync` / `SubmitAsync` 各階段驗證。
+- **高階主管假額度**：協理以上每年 20 天（曆年 1/1~12/31），當年度未用完歸零、隔年重新給予 20 天。比照年假動態計算（不儲存、不排程，按 `StartDate` 年度過濾）。額度上限驗證於 `ValidateLeaveQuotaAsync` 的 `senior_executive` 分支；API 端點 `GET /leave-requests/senior-executive-quota` 回 `totalDays` / `usedDays` / `availableDays`。
 - **分鐘限制（小時單位）**：僅允許 `:00`（`step="3600"` 秒 = 整點步進），前後端皆驗證時數為整數倍。
 
 ## 年假額度規則（依年資）
@@ -83,8 +84,13 @@
 ## 補休規則
 
 - 依系統統計之加班工時扣抵
-- 可補休時數 = 已核准加班申請 `EstimatedHours` 合計 − 已送出/已核准補休假 `Hours` 合計
-- API 端點：`GET /leave-requests/compensatory-hours`
+- **可補休時數來源兩塊**：
+  1. **期初匯入餘額**（`User.CompensatoryOpeningHours`）：系統上線前（115/1~6/30）以紙本累計、由使用者管理頁手動輸入；**須於 116/6/30（含）前休完，逾期未休部分歸零作廢**。到期日為固定常數 `LeaveRequestHandler.CompensatoryOpeningExpiry`（2027-06-30）。
+  2. **系統加班補休**：07/01 起系統內已核准加班申請 `EstimatedHours` 合計；**不到期**。
+- **可補休時數計算**（FIFO：補休先消耗期初餘額，期初到期後其未用部分作廢）：
+  - 到期前：`可用 = 期初 + 系統加班 − 已用補休`
+  - 到期後：`可用 = 系統加班 − max(0, 已用補休 − 期初)`（期初未用部分作廢）
+- API 端點：`GET /leave-requests/compensatory-hours`（回 `openingHours` / `openingRemaining` / `openingExpiry` / `openingExpired` / `totalOvertimeHours` / `usedCompensatoryHours` / `availableHours`）。
 
 ## 生理假規則（限女性）
 

@@ -58,6 +58,15 @@ public sealed class LeaveRequestHandler(
     /// <summary>高階主管假可申請之最高職級（JobTitle.Level 數字越小層級越高）</summary>
     private const int SeniorExecMaxLevel = 3;
 
+    /// <summary>高階主管假每年額度（天）：協理以上每年 20 天，曆年未用完歸零、隔年重新給予</summary>
+    private const int SeniorExecutiveAnnualDays = 20;
+
+    /// <summary>
+    /// 期初補休時數（User.CompensatoryOpeningHours）到期日：系統上線前累計的補休須於此日前休完，
+    /// 未休完即歸零作廢；此後系統內加班核准產生的補休不受此限制。全員一致故採固定常數。
+    /// </summary>
+    private static readonly DateTime CompensatoryOpeningExpiry = new(2027, 6, 30, 23, 59, 59);
+
     /// <summary>產假固定天數（法規為一次請完）</summary>
     private const int MaternityDays = 56;
 
@@ -457,30 +466,67 @@ public sealed class LeaveRequestHandler(
         return new OkObjectResult(ApiResponse.Ok($"Leave request '{id}' deleted."));
     }
 
-    /// <summary>查詢當前使用者的可補休時數（總加班時數 - 已補休時數）</summary>
-    public async Task<IActionResult> GetCompensatoryHoursAsync(HttpRequest req)
-    {
-        var userId = await GetUserIdAsync(req);
+    /// <summary>補休時數明細（期初匯入 + 系統加班 - 已補休，含期初到期歸零）</summary>
+    private readonly record struct CompensatoryBreakdown(
+        decimal OpeningHours,      // 期初匯入（系統上線前累計）
+        decimal OpeningRemaining,  // 舊補休剩餘（期初未消耗部分；到期後為 0）
+        decimal OvertimeHours,     // 系統核准加班可補休時數
+        decimal UsedHours,         // 已送出（pending/approved）補休
+        decimal AvailableHours,    // 合計可用
+        bool    OpeningExpired);   // 期初是否已到期
 
-        // 總加班時數：已核准的加班申請 EstimatedHours 合計
-        var totalOvertimeHours = await db.OvertimeRequests
+    /// <summary>
+    /// 計算指定使用者的補休時數明細。
+    /// FIFO：補休先消耗期初餘額，期初到期後其未用部分作廢，只剩系統加班可補休。
+    /// </summary>
+    private async Task<CompensatoryBreakdown> ComputeCompensatoryAsync(Guid userId)
+    {
+        var opening = await db.Users.AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => u.CompensatoryOpeningHours)
+            .FirstOrDefaultAsync();
+
+        // 系統核准加班時數（07/01 後申請；不到期）
+        var earned = await db.OvertimeRequests
             .Where(o => o.EmployeeId == userId && o.ApprovalStatus == "approved")
             .SumAsync(o => o.EstimatedHours);
 
         // 已補休時數：已送出（pending / approved）的補休假 Hours 合計
-        var usedCompensatoryHours = await db.LeaveRequests
+        var used = await db.LeaveRequests
             .Where(l => l.EmployeeId == userId
                      && l.LeaveType == "compensatory"
                      && (l.ApprovalStatus == "approved" || l.ApprovalStatus == "pending"))
             .SumAsync(l => l.Hours);
 
-        var available = totalOvertimeHours - usedCompensatoryHours;
+        bool expired = Clock.Now > CompensatoryOpeningExpiry;
+
+        // 期初剩餘（未消耗部分）；到期後作廢為 0
+        var openingRemaining = expired ? 0m : Math.Max(0m, opening - Math.Min(used, opening));
+
+        // 合計可用：到期前 = 期初 + 加班 - 已用；到期後 = 加班 - 超出期初的已用部分（期初未用作廢）
+        var available = expired
+            ? earned - Math.Max(0m, used - opening)
+            : opening + earned - used;
+        available = available < 0 ? 0m : available;
+
+        return new CompensatoryBreakdown(opening, openingRemaining, earned, used, available, expired);
+    }
+
+    /// <summary>查詢當前使用者的可補休時數（期初匯入 + 系統加班 - 已補休；期初 116/6/30 到期歸零）</summary>
+    public async Task<IActionResult> GetCompensatoryHoursAsync(HttpRequest req)
+    {
+        var userId = await GetUserIdAsync(req);
+        var b = await ComputeCompensatoryAsync(userId);
 
         return new OkObjectResult(ApiResponse.Ok(new
         {
-            totalOvertimeHours,
-            usedCompensatoryHours,
-            availableHours = available < 0 ? 0 : available,
+            openingHours          = b.OpeningHours,       // 期初匯入
+            openingRemaining      = b.OpeningRemaining,   // 舊補休剩餘
+            openingExpiry         = CompensatoryOpeningExpiry,
+            openingExpired        = b.OpeningExpired,
+            totalOvertimeHours    = b.OvertimeHours,      // 系統加班可補休
+            usedCompensatoryHours = b.UsedHours,
+            availableHours        = b.AvailableHours,     // 合計可用
         }));
     }
 
@@ -682,6 +728,35 @@ public sealed class LeaveRequestHandler(
         return new OkObjectResult(ApiResponse.Ok(new SeniorExecutiveEligibilityDto(eligible, level)));
     }
 
+    /// <summary>查詢當前使用者的高階主管假額度（每年 20 天，曆年歸零；僅協理以上 / Superadmin）</summary>
+    public async Task<IActionResult> GetSeniorExecutiveQuotaAsync(HttpRequest req)
+    {
+        var userId = await GetUserIdAsync(req);
+
+        var eligibilityError = await CheckSeniorExecutiveEligibilityAsync(userId);
+        if (eligibilityError is not null)
+            return new OkObjectResult(ApiResponse.Ok(new
+            {
+                totalDays = 0,
+                usedDays = 0m,
+                availableDays = 0m,
+                isEligible = false,
+                message = eligibilityError,
+            }));
+
+        var now = Clock.Now;
+        var usedHours = await GetUsedHoursAsync(userId, "senior_executive", 0, now.Year);
+        var usedDays = usedHours / 8m;
+
+        return new OkObjectResult(ApiResponse.Ok(new
+        {
+            totalDays = SeniorExecutiveAnnualDays,
+            usedDays = Math.Round(usedDays, 1),
+            availableDays = Math.Round(Math.Max(0, SeniorExecutiveAnnualDays - usedDays), 1),
+            isEligible = true,
+        }));
+    }
+
     /// <summary>檢查使用者是否符合高階主管假資格，回傳錯誤訊息或 null（Superadmin 一律通過）</summary>
     private async Task<string?> CheckSeniorExecutiveEligibilityAsync(Guid userId)
     {
@@ -696,22 +771,9 @@ public sealed class LeaveRequestHandler(
         return null;
     }
 
-    /// <summary>計算指定使用者可用的補休時數</summary>
+    /// <summary>計算指定使用者可用的補休時數（含期初匯入餘額與到期歸零）</summary>
     private async Task<decimal> GetAvailableCompensatoryHoursAsync(Guid userId)
-    {
-        var totalOvertimeHours = await db.OvertimeRequests
-            .Where(o => o.EmployeeId == userId && o.ApprovalStatus == "approved")
-            .SumAsync(o => o.EstimatedHours);
-
-        var usedCompensatoryHours = await db.LeaveRequests
-            .Where(l => l.EmployeeId == userId
-                     && l.LeaveType == "compensatory"
-                     && (l.ApprovalStatus == "approved" || l.ApprovalStatus == "pending"))
-            .SumAsync(l => l.Hours);
-
-        var available = totalOvertimeHours - usedCompensatoryHours;
-        return available < 0 ? 0 : available;
-    }
+        => (await ComputeCompensatoryAsync(userId)).AvailableHours;
 
     /// <summary>送出申請（draft → pending）</summary>
     public async Task<IActionResult> SubmitAsync(HttpRequest req, string id)
@@ -942,6 +1004,16 @@ public sealed class LeaveRequestHandler(
             if (totalUsedDays > totalDays)
                 return $"年假額度不足。上限 {totalDays} 天，已使用 {Math.Round(usedHours / 8m, 1)} 天，本次申請 {Math.Round(item.Hours / 8m, 1)} 天。";
 
+            return null;
+        }
+
+        // 高階主管假：協理以上每年 20 天（曆年歸零）；資格另由 CheckSeniorExecutiveEligibilityAsync 驗證
+        if (item.LeaveType == "senior_executive")
+        {
+            var usedHours = await GetUsedHoursAsync(userId, "senior_executive", item.Id, now.Year);
+            var totalUsedDays = (usedHours + item.Hours) / 8m;
+            if (totalUsedDays > SeniorExecutiveAnnualDays)
+                return $"高階主管假額度不足。每年上限 {SeniorExecutiveAnnualDays} 天，{now.Year} 年已使用 {Math.Round(usedHours / 8m, 1)} 天，本次申請 {Math.Round(item.Hours / 8m, 1)} 天。";
             return null;
         }
 

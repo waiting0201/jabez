@@ -96,6 +96,11 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.BaseSalary)
                .HasColumnType("decimal(18,2)");
 
+        // 期初補休時數（系統上線前累計，116/6/30 到期歸零）
+        builder.Property(u => u.CompensatoryOpeningHours)
+               .HasColumnType("decimal(18,2)")
+               .HasDefaultValue(0m);
+
         builder.HasOne(u => u.Department)
                .WithMany(d => d.Users)
                .HasForeignKey(u => u.DepartmentId)

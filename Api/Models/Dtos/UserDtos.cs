@@ -40,7 +40,9 @@ public sealed record UserDto(
     decimal?  DutyAllowance        = null,
     decimal?  OtherAllowance       = null,
     decimal?  AdjustmentDifference = null,
-    decimal?  OverseasAllowance    = null);
+    decimal?  OverseasAllowance    = null,
+    // 期初補休時數（系統上線前累計，116/6/30 到期歸零）
+    decimal   CompensatoryOpeningHours = 0m);
 
 public sealed record CreateUserRequest(
     string    Name,
