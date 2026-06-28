@@ -99,7 +99,7 @@
 | GET/POST | `/leave-requests` | 請假列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/leave-requests/{id}` | 請假 CRUD |
 | PATCH | `/leave-requests/{id}/submit` | 送出請假申請（draft → pending） |
-| GET | `/leave-requests/compensatory-hours` | 查詢可補休時數（總加班 − 已補休） |
+| GET | `/leave-requests/compensatory-hours` | 查詢可補休時數（期初匯入 + 系統加班 − 已補休；期初 116/6/30 到期歸零） |
 | GET | `/leave-requests/annual-quota` | 查詢年假額度（依 HireDate 計算年資） |
 | GET | `/leave-requests/ceremonial-quota` | 查詢歲時祭儀假額度（僅原住民，每年 3 天，跨年歸零） |
 | GET | `/leave-requests/menstrual-quota` | 查詢生理假配額（限女性，回 `isFemale` + 每月 1 天 / 全年 12 天） |
@@ -107,6 +107,7 @@
 | GET | `/leave-requests/maternity-status` | 查詢產假狀態（是否已有活躍申請） |
 | GET | `/leave-requests/bereavement-quota?relationship={rel}` | 查詢喪假配額（依親屬關係 3/6/8 天） |
 | GET | `/leave-requests/senior-executive-eligibility` | 查詢高階主管假適用性（JobTitle.Level ≤ 3） |
+| GET | `/leave-requests/senior-executive-quota` | 查詢高階主管假額度（每年 20 天，曆年歸零） |
 | GET/POST | `/travel-requests` | 出差預支申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/travel-requests/{id}` | 出差預支申請 CRUD |
 | PATCH | `/travel-requests/{id}/submit` | 送出出差預支申請（draft → pending） |
