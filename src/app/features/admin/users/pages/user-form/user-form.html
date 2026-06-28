@@ -245,6 +245,14 @@
                   <div class="text-muted small mt-1">由人事資料卡最新薪資紀錄同步</div>
                 </div>
                 <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">期初補休時數</label>
+                  <div class="input-group">
+                    <input type="number" class="form-control" formControlName="compensatoryOpeningHours" placeholder="例如：16" min="0" step="0.5">
+                    <span class="input-group-text">小時</span>
+                  </div>
+                  <div class="text-muted small mt-1">系統上線前累計之補休，須於 116/6/30 前休完，逾期歸零</div>
+                </div>
+                <div class="col-12 col-md-4">
                   <label class="form-label fw-500">寄送薪資表</label>
                   <div class="form-check mt-2">
                     <input class="form-check-input" type="checkbox" formControlName="sendPaySlip" id="sendPaySlip">

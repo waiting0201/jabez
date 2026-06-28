@@ -201,8 +201,18 @@ export interface AnnualQuota {
 }
 
 export interface CompensatoryHours {
+  /** 期初匯入時數（系統上線前累計） */
+  openingHours: number;
+  /** 舊補休剩餘（期初未消耗部分；到期後為 0） */
+  openingRemaining: number;
+  /** 期初到期日（116/6/30） */
+  openingExpiry: string;
+  /** 期初是否已到期 */
+  openingExpired: boolean;
+  /** 系統核准加班可補休時數 */
   totalOvertimeHours: number;
   usedCompensatoryHours: number;
+  /** 合計可用 */
   availableHours: number;
 }
 
@@ -254,4 +264,13 @@ export interface BereavementQuota {
 export interface SeniorExecutiveEligibility {
   isEligible: boolean;
   jobTitleLevel?: number;
+}
+
+/** 高階主管假額度（每年 20 天，曆年歸零） */
+export interface SeniorExecutiveQuota {
+  totalDays: number;
+  usedDays: number;
+  availableDays: number;
+  isEligible: boolean;
+  message?: string;
 }
