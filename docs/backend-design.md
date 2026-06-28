@@ -1,6 +1,6 @@
 # Jabez 後端設計規範
 
-本文件彙整 Jabez API（Azure Functions .NET 9）的技術架構與寫作規範。**新增功能或修改後端前，必須先讀本文件確認 Handler / DTO / ReadService / Router / Migration 等規範**；與本文件衝突時以本文件為準（CLAUDE.md 同步引用本文件）。
+本文件彙整 Jabez API（Azure Functions .NET 10）的技術架構與寫作規範。**新增功能或修改後端前，必須先讀本文件確認 Handler / DTO / ReadService / Router / Migration 等規範**；與本文件衝突時以本文件為準（CLAUDE.md 同步引用本文件）。
 
 > 業務邏輯（簽核流程、請假規則、薪資公式、部門可見性、LINE / 打卡提醒等）仍記載於 [CLAUDE.md](../CLAUDE.md)；本文件**只規範技術層面**。
 
@@ -11,7 +11,7 @@
 | 項目 | 規格 | 備註 |
 |---|---|---|
 | 平台 | Azure Functions v4 — **Isolated Worker Model** | 非 In-Process |
-| 框架 | .NET 9 | C# 12 List Pattern 廣泛使用 |
+| 框架 | .NET 10 | C# 12 List Pattern 廣泛使用 |
 | ORM | EF Core（寫入 + Migration）+ Dapper（讀取） | 二選一規則見 §6 |
 | 資料庫 | SQL Server | 本地 `JabezDb`（連線字串於 [Api/local.settings.json](../Api/local.settings.json)） |
 | 認證 | JWT Bearer Token (HS256) | 由 [JwtService.cs](../Api/Services/JwtService.cs) 簽發 |
