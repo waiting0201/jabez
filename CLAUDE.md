@@ -474,14 +474,20 @@ dotnet ef database update               # 套用 Migration
 
 ---
 
-## Git 分支策略
+## Git 分支策略與部署（單一 repo，分支即環境）
+
+> 2026-06 已移除 Admin submodule，攤平為**單一 git repo**（`Admin/` 為一般資料夾）。前端 + 後端皆由**分支觸發的 GitHub Actions** 自動部署，不再有 submodule pointer / 手動部署流程。
 
 ```
-main          # 正式環境
-develop       # 開發整合
-feature/*     # 功能開發（feature/payment-request）
-hotfix/*      # 緊急修復
+staging       # 測試環境（push → kind-pebble SWA + jabez-api-staging）
+master        # 正式環境（push → victorious-field SWA + jabez-api）
 ```
+
+- **remote**：`Remote_GitHub`（`waiting0201/jabez`，部署來源）＋ `Remote_NAS`（離線備份）；同一分支可推兩個 remote
+- **前端**：`.github/workflows/azure-static-web-apps-{kind-pebble,victorious-field}-*.yml`（`working-directory: Admin`、`app_location: Admin/dist/Admin/browser`）
+- **後端**：`.github/workflows/api-deploy.yml`（`paths: Api/**`；依分支選 `jabez-api-staging` / `jabez-api`，需 GitHub secrets `AZURE_FUNCTIONAPP_PUBLISH_PROFILE_STAGING` / `_PROD`）
+- **發版**：`staging` 驗證 → merge 進 `master` → push `master` 觸發正式部署
+- `Api/local.settings.json` 永不進版控（含密鑰；歷史已用 filter-repo 清洗，archive/pre-flatten-* 分支保留攤平前內容）
 
 ---
 
