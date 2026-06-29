@@ -114,13 +114,7 @@ public sealed class OvertimeRequestHandler(
         if (body.DesignatedReviewers is { Length: > 0 })
         {
             db.RequestDesignatedReviewers.AddRange(
-                body.DesignatedReviewers.OrderBy(r => r.StepOrder).Select(r => new RequestDesignatedReviewer
-                {
-                    RequestType = "overtime",
-                    RequestId   = item.Id,
-                    ReviewerId  = r.ReviewerId,
-                    StepOrder   = r.StepOrder,
-                }));
+                DesignatedReviewerHelper.BuildEntities("overtime", item.Id, body.DesignatedReviewers));
             await db.SaveChangesAsync();
         }
 
@@ -164,13 +158,7 @@ public sealed class OvertimeRequestHandler(
             if (body.DesignatedReviewers.Length > 0)
             {
                 db.RequestDesignatedReviewers.AddRange(
-                    body.DesignatedReviewers.Select(r => new RequestDesignatedReviewer
-                    {
-                        RequestType = "overtime",
-                        RequestId   = intId,
-                        ReviewerId  = r.ReviewerId,
-                        StepOrder   = r.StepOrder,
-                    }));
+                    DesignatedReviewerHelper.BuildEntities("overtime", intId, body.DesignatedReviewers));
             }
         }
 
@@ -273,27 +261,12 @@ public sealed class OvertimeRequestHandler(
         if (item.ApprovalItemId is null)
             item.ApprovalItemId = await approvalFlow.ResolveApprovalItemIdAsync("overtime", submitter?.DepartmentId);
 
-        // 若流程中有 UseApplicantDesignated 步驟，必須有指定審核者
-        if (item.ApprovalItemId.HasValue)
-        {
-            bool hasDesignatedStep = await db.ApprovalSteps.AsNoTracking()
-                .AnyAsync(s => s.ApprovalItemId == item.ApprovalItemId && s.UseApplicantDesignated);
-            if (hasDesignatedStep)
-            {
-                bool hasReviewers = await db.RequestDesignatedReviewers
-                    .AnyAsync(r => r.RequestType == "overtime" && r.RequestId == item.Id);
-                if (!hasReviewers)
-                    return new BadRequestObjectResult(ApiResponse.Fail("此簽核流程包含申請人指定審核步驟，請提供指定審核者。"));
-            }
-        }
+        // 正規化各 designee 所屬步驟並驗證每個指定審核步驟皆有審核者
+        await DesignatedReviewerHelper.ValidateAndNormalizeAsync(db, "overtime", item.Id, item.ApprovalItemId);
+        await db.SaveChangesAsync();
 
-        // 查詢指定審核者清單傳給 ResolveStartingStepAsync
-        var designatedReviewers = await db.RequestDesignatedReviewers
-            .AsNoTracking()
-            .Where(r => r.RequestType == "overtime" && r.RequestId == item.Id)
-            .OrderBy(r => r.StepOrder)
-            .Select(r => new DesignatedReviewerRequest(r.ReviewerId, r.StepOrder))
-            .ToListAsync();
+        // 查詢指定審核者清單傳給 ResolveStartingStepAsync（含 ApprovalStepOrder 綁定步驟）
+        var designatedReviewers = await DesignatedReviewerHelper.ReadForFlowAsync(db, "overtime", item.Id);
 
         // 解析審核步驟（含升級審核邏輯）
         var (startStep, autoApproved, escalation) =
@@ -344,7 +317,8 @@ public sealed class OvertimeRequestHandler(
                 {
                     var firstReviewer = await db.RequestDesignatedReviewers
                         .AsNoTracking()
-                        .Where(r => r.RequestType == "overtime" && r.RequestId == item.Id && r.Status == "pending")
+                        .Where(r => r.RequestType == "overtime" && r.RequestId == item.Id
+                                 && r.ApprovalStepOrder == startStep && r.Status == "pending")
                         .OrderBy(r => r.StepOrder)
                         .FirstOrDefaultAsync();
                     if (firstReviewer is not null)

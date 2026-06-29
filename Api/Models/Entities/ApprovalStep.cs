@@ -12,6 +12,7 @@ public class ApprovalStep
     public bool     UseApplicantDepartment { get; set; } = false;
     public bool     UseDirectSupervisor    { get; set; } = false;
     public bool     UseApplicantDesignated { get; set; } = false;
+    public bool     DesignatedRequiresDepartment { get; set; } = false; // 僅 UseApplicantDesignated=true 時有意義：此步驟需先選部門再選人
     public string?  Note           { get; set; }
     public DateTime CreatedAt      { get; set; } = Clock.Now;
 

@@ -38,13 +38,14 @@ export class ApprovalFlow implements OnInit {
   editStep: ApprovalStep | null = null;
 
   stepForm = this.fb.group({
-    stepOrder:              [1, [Validators.required, Validators.min(1)]],
-    departmentId:           [null as number | null],
-    jobTitleId:             [null as number | null],
-    useApplicantDepartment: [false],
-    useDirectSupervisor:    [false],
-    useApplicantDesignated: [false],
-    note:                   [''],
+    stepOrder:                    [1, [Validators.required, Validators.min(1)]],
+    departmentId:                 [null as number | null],
+    jobTitleId:                   [null as number | null],
+    useApplicantDepartment:       [false],
+    useDirectSupervisor:          [false],
+    useApplicantDesignated:       [false],
+    designatedRequiresDepartment: [false],
+    note:                         [''],
   });
 
   ngOnInit() {
@@ -57,20 +58,21 @@ export class ApprovalFlow implements OnInit {
   openAddStep() {
     this.editStep = null;
     const nextOrder = (this.item$.getValue()?.steps.length ?? 0) + 1;
-    this.stepForm.reset({stepOrder: nextOrder, departmentId: null, jobTitleId: null, useApplicantDepartment: false, useDirectSupervisor: false, useApplicantDesignated: false, note: ''});
+    this.stepForm.reset({stepOrder: nextOrder, departmentId: null, jobTitleId: null, useApplicantDepartment: false, useDirectSupervisor: false, useApplicantDesignated: false, designatedRequiresDepartment: false, note: ''});
     this.showStepForm = true;
   }
 
   openEditStep(step: ApprovalStep) {
     this.editStep = step;
     this.stepForm.patchValue({
-      stepOrder:              step.stepOrder,
-      departmentId:           step.departmentId ?? null,
-      jobTitleId:             step.jobTitleId ?? null,
-      useApplicantDepartment: step.useApplicantDepartment ?? false,
-      useDirectSupervisor:    step.useDirectSupervisor ?? false,
-      useApplicantDesignated: step.useApplicantDesignated ?? false,
-      note:                   step.note ?? '',
+      stepOrder:                    step.stepOrder,
+      departmentId:                 step.departmentId ?? null,
+      jobTitleId:                   step.jobTitleId ?? null,
+      useApplicantDepartment:       step.useApplicantDepartment ?? false,
+      useDirectSupervisor:          step.useDirectSupervisor ?? false,
+      useApplicantDesignated:       step.useApplicantDesignated ?? false,
+      designatedRequiresDepartment: step.designatedRequiresDepartment ?? false,
+      note:                         step.note ?? '',
     });
     this.showStepForm = true;
   }
@@ -97,6 +99,9 @@ export class ApprovalFlow implements OnInit {
     const checked = this.stepForm.value.useApplicantDesignated;
     if (checked) {
       this.stepForm.patchValue({departmentId: null, jobTitleId: null, useApplicantDepartment: false, useDirectSupervisor: false});
+    }
+    if (!checked) {
+      this.stepForm.patchValue({designatedRequiresDepartment: false});
     }
   }
 
@@ -128,15 +133,16 @@ export class ApprovalFlow implements OnInit {
     const jtName   = jtId   ? this.jobTitles.find(j => j.id === jtId)?.name   : undefined;
 
     const stepData = {
-      stepOrder:              v.stepOrder!,
-      departmentId:           deptId,
-      departmentName:         deptName,
-      jobTitleId:             jtId,
-      jobTitleName:           jtName,
-      useApplicantDepartment: !isSpecialMode && (useDirectSupervisor || useAppDept),
-      useDirectSupervisor:    !useApplicantDesignated && useDirectSupervisor,
+      stepOrder:                    v.stepOrder!,
+      departmentId:                 deptId,
+      departmentName:               deptName,
+      jobTitleId:                   jtId,
+      jobTitleName:                 jtName,
+      useApplicantDepartment:       !isSpecialMode && (useDirectSupervisor || useAppDept),
+      useDirectSupervisor:          !useApplicantDesignated && useDirectSupervisor,
       useApplicantDesignated,
-      note:                   v.note ?? '',
+      designatedRequiresDepartment: useApplicantDesignated ? (v.designatedRequiresDepartment ?? false) : false,
+      note:                         v.note ?? '',
     };
 
     const obs = this.editStep

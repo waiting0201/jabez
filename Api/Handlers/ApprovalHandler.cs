@@ -179,6 +179,8 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
             UseApplicantDepartment  = !body.UseApplicantDesignated && (body.UseDirectSupervisor || body.UseApplicantDepartment),
             UseDirectSupervisor     = !body.UseApplicantDesignated && body.UseDirectSupervisor,
             UseApplicantDesignated  = body.UseApplicantDesignated,
+            // 僅 UseApplicantDesignated 時此旗標有意義（此步驟需先選部門再選人）
+            DesignatedRequiresDepartment = body.UseApplicantDesignated && body.DesignatedRequiresDepartment,
             Note                    = body.Note,
             CreatedAt               = Clock.Now,
         };
@@ -209,6 +211,7 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
         if (body.DepartmentId.HasValue)              step.DepartmentId            = body.DepartmentId == 0 ? null : body.DepartmentId;
         if (body.JobTitleId.HasValue)                step.JobTitleId              = body.JobTitleId   == 0 ? null : body.JobTitleId;
         if (body.Note        is not null)            step.Note                    = body.Note;
+        if (body.DesignatedRequiresDepartment.HasValue) step.DesignatedRequiresDepartment = body.DesignatedRequiresDepartment.Value;
 
         // 三種模式互斥，以最後設定的模式為準
         if (step.UseApplicantDesignated)
@@ -234,6 +237,10 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
             if (body.UseApplicantDesignated == false)
                 step.UseApplicantDesignated = false;
         }
+
+        // DesignatedRequiresDepartment 僅在指定審核模式下有意義
+        if (!step.UseApplicantDesignated)
+            step.DesignatedRequiresDepartment = false;
 
         if (!step.UseApplicantDesignated && !step.UseDirectSupervisor && step.UseApplicantDepartment)
         {

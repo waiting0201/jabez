@@ -691,7 +691,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
 
         if (step is null) return;
 
-        // ── UseApplicantDesignated 模式：查詢 RequestDesignatedReviewers 找當前 pending 最小 StepOrder 的審核者 ──
+        // ── UseApplicantDesignated 模式：查詢「本步驟」的 RequestDesignatedReviewers，找當前 pending 最小 StepOrder 的審核者 ──
         if (step.UseApplicantDesignated)
         {
             if (applicationType is not null && applicationId.HasValue)
@@ -700,6 +700,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     .AsNoTracking()
                     .Where(r => r.RequestType == applicationType
                              && r.RequestId == applicationId.Value
+                             && r.ApprovalStepOrder == currentStepOrder
                              && r.Status == "pending")
                     .OrderBy(r => r.StepOrder)
                     .Select(r => r.ReviewerId)
@@ -819,10 +820,11 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
 
             if (currentStepDef?.UseApplicantDesignated == true)
             {
-                // 更新當前 pending 且 StepOrder 最小的指定審核者狀態為 approved
+                // 更新本步驟內 pending 且 StepOrder 最小的指定審核者狀態為 approved
                 var currentDesignated = await db.RequestDesignatedReviewers
                     .Where(r => r.RequestType == applicationType
                              && r.RequestId == applicationId
+                             && r.ApprovalStepOrder == currentStepOrder
                              && r.Status == "pending")
                     .OrderBy(r => r.StepOrder)
                     .FirstOrDefaultAsync();
@@ -851,13 +853,14 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     var nextDesignated = await db.RequestDesignatedReviewers
                         .Where(r => r.RequestType == applicationType
                                  && r.RequestId == applicationId
+                                 && r.ApprovalStepOrder == currentStepOrder
                                  && r.Status == "pending"
                                  && r.StepOrder > currentStepOrderDR)
                         .OrderBy(r => r.StepOrder)
                         .FirstOrDefaultAsync();
 
                     if (nextDesignated is null)
-                        break; // 沒有下一位，跳出 → 推進到下一 ApprovalStep
+                        break; // 本步驟已無下一位，跳出 → 推進到下一 ApprovalStep
 
                     if (approvedIdsForDesignated.Contains(nextDesignated.ReviewerId))
                     {
@@ -913,8 +916,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     var drList = await db.RequestDesignatedReviewers
                         .AsNoTracking()
                         .Where(r => r.RequestType == applicationType && r.RequestId == applicationId)
-                        .OrderBy(r => r.StepOrder)
-                        .Select(r => new DesignatedReviewerRequest(r.ReviewerId, r.StepOrder))
+                        .OrderBy(r => r.ApprovalStepOrder).ThenBy(r => r.StepOrder)
+                        .Select(r => new DesignatedReviewerRequest(r.ReviewerId, r.StepOrder, r.ApprovalStepOrder, r.SelectedDepartmentId))
                         .ToListAsync();
 
                     // 取得歷史已審者集合（含當下 reviewer 與 designated while-loop 中已自動代簽者）
@@ -969,12 +972,13 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                             IsEscalated     = false,
                         });
 
-                        // designated step 整步跳過時，把整個申請的 pending designee 都設為 approved
+                        // designated step 整步跳過時，只把「被跳過的那個步驟」的 pending designee 設為 approved
                         if (skipped.IsApplicantDesignated)
                         {
                             var stepPendingDesignees = await db.RequestDesignatedReviewers
                                 .Where(r => r.RequestType == applicationType
                                          && r.RequestId == applicationId
+                                         && r.ApprovalStepOrder == skipped.StepOrder
                                          && r.Status == "pending")
                                 .ToListAsync();
                             foreach (var d in stepPendingDesignees)
@@ -1051,6 +1055,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 var currentDesignatedForReturn = await db.RequestDesignatedReviewers
                     .Where(r => r.RequestType == applicationType
                              && r.RequestId == applicationId
+                             && r.ApprovalStepOrder == currentStepOrder
                              && r.Status == "pending")
                     .OrderBy(r => r.StepOrder)
                     .FirstOrDefaultAsync();

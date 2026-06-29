@@ -77,7 +77,8 @@ public sealed record UserLookupDto(
     Guid    Id,
     string  Name,
     int?    JobTitleId,
-    string  Status);
+    string  Status,
+    int?    DepartmentId = null);
 
 public sealed record UpdateUserRequest(
     string?    Name,

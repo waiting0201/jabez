@@ -5,6 +5,7 @@ export interface UserLookup {
   id: string;
   name: string;
   jobTitleId?: number;
+  departmentId?: number;
   status: string;
 }
 
