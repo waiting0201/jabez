@@ -1,6 +1,7 @@
-import {Component, inject, signal} from '@angular/core';
+import {Component, computed, inject, signal} from '@angular/core';
+import {toSignal} from '@angular/core/rxjs-interop';
 import {RouterLink} from '@angular/router';
-import {AsyncPipe, DatePipe} from '@angular/common';
+import {DatePipe} from '@angular/common';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {HttpErrorResponse} from '@angular/common/http';
 import {BehaviorSubject, switchMap, map} from 'rxjs';
@@ -18,7 +19,7 @@ import {
 @Component({
   selector: 'app-approval-list',
   templateUrl: './approval-list.html',
-  imports: [RouterLink, AsyncPipe, DatePipe, ReactiveFormsModule],
+  imports: [RouterLink, DatePipe, ReactiveFormsModule],
 })
 export class ApprovalList {
   private approvalService = inject(ApprovalService);
@@ -36,7 +37,7 @@ export class ApprovalList {
     Object.keys(APPLICATION_TYPE_LABELS) as ApplicationType[];
 
   private refresh$ = new BehaviorSubject<void>(undefined);
-  items$ = this.refresh$.pipe(
+  private items$ = this.refresh$.pipe(
     switchMap(() => this.approvalService.getAll()),
     map(items => [...items].sort((a, b) => {
       const ta = a.applicationType ? this.typeOrder.indexOf(a.applicationType) : Number.MAX_SAFE_INTEGER;
@@ -49,6 +50,33 @@ export class ApprovalList {
       return cmp !== 0 ? cmp : a.id - b.id;
     })),
   );
+  // 全集（已排序）；inline 表單唯一性判斷與部門頁籤皆吃此全集。
+  itemsSig = toSignal(this.items$, {initialValue: [] as ApprovalItem[]});
+
+  // Tab 切換：'all'=全部、'generic'=通用（預設）、number=部門 id。
+  activeTab = signal<number | 'all' | 'generic'>('all');
+
+  // 部門頁籤：自清單中實際出現過的部門去重，依部門名稱排序（只顯示有流程的部門）。
+  tabDepartments = computed(() => {
+    const map = new Map<number, string>();
+    for (const it of this.itemsSig()) {
+      if (it.departmentId != null) map.set(it.departmentId, it.departmentName ?? '');
+    }
+    return [...map.entries()]
+      .map(([id, name]) => ({id, name}))
+      .sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant'));
+  });
+
+  // 目前 Tab 過濾後的清單（排序沿用 items$，不變）。
+  visibleItems = computed(() => {
+    const tab = this.activeTab();
+    return this.itemsSig().filter(it => {
+      if (tab === 'all') return true;
+      if (tab === 'generic') return it.departmentId == null;
+      return it.departmentId === tab;
+    });
+  });
+
   showForm = false;
   editItem: ApprovalItem | null = null;
   errorMsg = signal('');
@@ -98,6 +126,10 @@ export class ApprovalList {
 
   closeForm() {
     this.showForm = false;
+  }
+
+  switchTab(tab: number | 'all' | 'generic') {
+    this.activeTab.set(tab);
   }
 
   // 同一 (申請類型, 部門) 至多一個流程；故依目前選取的部門判斷此類型是否已被佔用。
