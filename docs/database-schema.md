@@ -20,7 +20,7 @@
 | `JobTitle` | 職稱主檔 |
 | `Vendor` | 廠商主檔（Name 廠商名稱/外包顧問、TaxId 統編 unique-filter index、IdNumber 身分證字號 unique-filter index（個人工作室，與 TaxId 擇一）、Phone、ContactPerson、Address、BankAccount、BankBookImageUrl 存摺封面 proxy 路徑（必填）、IdCardFrontUrl/IdCardBackUrl 身分證正反面 proxy 路徑、Note、IsActive、CreatedAt；被 PaymentRequest.VendorId 引用，FK OnDelete=Restrict 限引用中不可刪） |
 | `ApprovalItem` | 簽核流程項目（含 **DepartmentId 部門維度**：null = 該 ApplicationType 通用預設流程，非 null = 某部門專屬流程；唯一索引為 `(ApplicationType, DepartmentId)`，過濾條件 `ApplicationType IS NOT NULL`，FK→Department OnDelete=SetNull） |
-| `ApprovalStep` | 簽核流程步驟（含 UseDirectSupervisor、UseApplicantDesignated） |
+| `ApprovalStep` | 簽核流程步驟（含 UseDirectSupervisor、UseApplicantDesignated、**DesignatedRequiresDepartment**「指定審核步驟需先選部門再選人」，僅 UseApplicantDesignated 時有意義） |
 | `ApprovalRecord` | 簽核動作記錄（含 OnBehalfOfUserId 代理標記、IsEscalated 升級標記） |
 | `EscalationOverride` | 升級審核指派（記錄被指派的升級/代理審核者，審核完成後清除） |
 | `Project` | 專案主檔（含 **DepartmentId 必填**、ContractAmount 契約金額、BusinessAmount 業務執行金額、RemainingAmount 剩餘金額（系統導入時剩餘預算，選填）；實收金額為衍生值，由 `SUM(ProjectPaymentSchedules.DepositAmount)` 即時計算） |
@@ -44,7 +44,7 @@
 | `WriteOffAttachment` | 預支沖銷整單批次附件（照片 / PDF，FK Cascade，存 `request-attachments`） |
 | `TravelWriteOffRecord` | 出差預支沖銷申請（獨立簽核流程，關聯 TravelRequest） |
 | `TravelWriteOffItem` | 出差預支沖銷明細（含發票號碼、檔案上傳） |
-| `RequestDesignatedReviewer` | 申請人指定審核者清單（多人依序審核） |
+| `RequestDesignatedReviewer` | 申請人指定審核者清單（多人依序審核；**ApprovalStepOrder** 綁定所屬 designated 步驟，支援一條流程多個指定步驟；**SelectedDepartmentId** 記錄第二步選的部門；唯一索引 `(RequestType, RequestId, ApprovalStepOrder, ReviewerId)`） |
 | `AttendanceRecord` | 出勤打卡紀錄（每人每天一筆，含 GPS） |
 | `AttendanceReminderLog` | 打卡提醒推播紀錄（BatchId 串聯同一次 tick；含 batchStart 紀錄、ErrorCategory 失敗分類、HttpStatusCode、DurationMs；Snapshot 欄位保留歷史） |
 | `PaymentReminderLog` | 撥款日將屆提醒推播紀錄（BatchId 串聯同一次 tick；TriggerSource auto/manual；ReminderDateTaipei 用於同日去重；Status: success/failure/batchStart/skipped_already_sent；FinanceUserId 推播對象） |

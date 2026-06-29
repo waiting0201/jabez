@@ -194,14 +194,18 @@ draft → pending → approved / returned / rejected
 | `RequestType` | `payment_request` / `leave` / `travel` / `overtime` / `advance` / `write_off` |
 | `RequestId` | 關聯申請單 ID |
 | `ReviewerId` | 審核者 User ID |
-| `StepOrder` | 審核順序（1, 2, 3...），依序逐一通過 |
+| `ApprovalStepOrder` | **此 designee 所屬的 `ApprovalStep.StepOrder`**（區分同一申請的多個 designated 步驟）|
+| `StepOrder` | **同一步驟內**的審核次序（1, 2, 3...），依序逐一通過 |
+| `SelectedDepartmentId` | 第二步「先選部門→再選人」時申請人選的部門（僅記錄 / 回填用，授權不使用）|
 | `Status` | `pending` / `approved` / `returned` |
 | `ReviewedAt` | 審核時間 |
 | `Comment` | 審核備注 |
 
 **流程設計：**
-- Step 1 為 `UseApplicantDesignated=true`：走指定審核者多人順序流程
-- Step 2+ 回歸現有固定流程（固定部門+職稱、UseDirectSupervisor 等）
+- 一條流程**可有多個 `UseApplicantDesignated` 步驟**，每筆 designee 以 `ApprovalStepOrder` 綁定所屬步驟，引擎所有 designee 查詢一律以「當前 `CurrentStepOrder`」過濾（[ApprovalTaskHandler](../../Api/Handlers/ApprovalTaskHandler.cs) `AuthorizeStepAsync` / `ProcessReviewAsync` 整步跳過 / returned；[ApprovalFlowService](../../Api/Services/ApprovalFlowService.cs) `ResolveStartingStepAsync` / `SkipUnreviewableStepsAsync` / `ResolveReviewerPoolAsync`），不會跨步驟混淆或誤核准。
+- **第二步「先選部門→再選人」**：當某 designated step 設 `DesignatedRequiresDepartment=true`（[ApprovalStep](../../Api/Models/Entities/ApprovalStep.cs) 新旗標，僅 `UseApplicantDesignated=true` 時有意義），前端送單該步改為「先選部門→篩出該部門的人→選一位」；後端仍只存 `ReviewerId`，`SelectedDepartmentId` 僅供回填 / 稽核。
+- 一般情境：Step 1 為 `UseApplicantDesignated=true` 指定審核，Step 2+ 回歸固定流程（固定部門+職稱、UseDirectSupervisor 等）。
+- 送單建立 / 讀取 / 正規化 designee 由共用 [DesignatedReviewerHelper](../../Api/Common/DesignatedReviewerHelper.cs)（`BuildEntities` / `ReadForFlowAsync` / `ValidateAndNormalizeAsync`）統一處理：舊 payload 未帶 `ApprovalStepOrder`（=0）且流程只有一個 designated step 時自動補成該 step 的 StepOrder（向後相容）。
 
 **規則：**
 - 送出（submit）時，如果流程中有 `UseApplicantDesignated` 步驟，`designatedReviewers` 清單必填且至少 1 人。守門落在三層：
@@ -217,7 +221,8 @@ draft → pending → approved / returned / rejected
 - 退回時：當前等待審核者狀態設為 `returned`，重送時所有指定審核者重置為 `pending`
 - **刪除申請單時連帶清除審核足跡**：`RequestDesignatedReviewer` / `ApprovalRecord` / `EscalationOverride` 皆以多型 `RequestType(ApplicationType) + RequestId(ApplicationId)` 關聯父表、**無真正 FK**，EF Cascade 不會處理。故 8 個 `*RequestHandler.DeleteAsync`（草稿 / 退回才可刪）在 `Remove(申請單)` 前須以同一 `RequestType` 字串 `RemoveRange` 這三張表的對應列，否則殘留列會以 `OnDelete(NoAction)` 的 `ReviewerId` / `ReviewedById` 外鍵長期掛在 `Users`，導致日後**無法刪除該使用者**
 - 此模式與 `UseDirectSupervisor`、`UseApplicantDepartment` 互斥（每個 ApprovalStep 擇一使用）
-- 一個流程建議只有一個 `UseApplicantDesignated` 步驟
+- 一條流程**可有多個 `UseApplicantDesignated` 步驟**（每步申請人各自指定、依序簽核；以 `ApprovalStepOrder` 隔離）。整步跳過只影響「被跳過的那一步」的 designee，不會誤核准其他 designated 步驟。
+- 唯一索引為 `(RequestType, RequestId, ApprovalStepOrder, ReviewerId)`：允許不同步驟指定同一人，但同一步驟內不可重複指定同一人。
 
 **存取控制（`GET /approval-tasks/{type}/{id}`）：**
 - Superadmin：可查看所有

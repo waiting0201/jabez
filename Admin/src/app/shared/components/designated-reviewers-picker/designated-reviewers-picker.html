@@ -1,0 +1,76 @@
+@for (group of groups; track group.designatedStep.stepOrder; let last = $last) {
+  <div [class.mb-4]="!last">
+    @if (groups.length > 1) {
+      <div class="fw-500 text-muted small mb-2">
+        指定審核者（步驟 {{ group.designatedStep.stepOrder }}）
+      </div>
+    }
+
+    @for (entry of group.entries; track entry.rowIndex; let i = $index) {
+      <div class="flex items-center gap-2 mb-2">
+        <span class="text-muted small" style="min-width:1.5rem">{{ i + 1 }}.</span>
+
+        @if (group.designatedStep.designatedRequiresDepartment) {
+          <!-- 需選部門模式：先部門再人 -->
+          <select class="form-select form-select-sm" style="max-width:180px"
+                  [(ngModel)]="entry.selectedDepartmentId"
+                  [ngModelOptions]="{standalone: true}"
+                  (ngModelChange)="onDeptChange(entry)">
+            <option [ngValue]="null">— 部門 —</option>
+            @for (dept of departments; track dept.id) {
+              <option [ngValue]="dept.id">{{ dept.name }}</option>
+            }
+          </select>
+          <select class="form-select form-select-sm" style="max-width:200px"
+                  [(ngModel)]="entry.selectedUserId"
+                  [ngModelOptions]="{standalone: true}"
+                  (ngModelChange)="onUserChange()">
+            <option [ngValue]="null">— 人員 —</option>
+            @for (user of entry.departmentFilteredUsers; track user.id) {
+              <option [ngValue]="user.id">{{ user.name }}</option>
+            }
+          </select>
+        } @else {
+          <!-- 一般模式：先職稱再人 -->
+          <select class="form-select form-select-sm" style="max-width:160px"
+                  [(ngModel)]="entry.selectedJobTitleId"
+                  [ngModelOptions]="{standalone: true}"
+                  (ngModelChange)="onJobTitleChange(entry)">
+            <option [ngValue]="null">— 職稱 —</option>
+            @for (jt of jobTitles; track jt.id) {
+              <option [ngValue]="jt.id">{{ jt.name }}</option>
+            }
+          </select>
+          <select class="form-select form-select-sm" style="max-width:200px"
+                  [(ngModel)]="entry.selectedUserId"
+                  [ngModelOptions]="{standalone: true}"
+                  (ngModelChange)="onUserChange()">
+            <option [ngValue]="null">— 人員 —</option>
+            @for (user of entry.filteredUsers; track user.id) {
+              <option [ngValue]="user.id">{{ user.name }}</option>
+            }
+          </select>
+        }
+
+        <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center"
+                (click)="removeEntry(group, i)">
+          <svg class="sa-icon" style="stroke:currentColor">
+            <use href="/assets/icons/sprite.svg#x"></use>
+          </svg>
+        </button>
+      </div>
+    }
+
+    <button type="button" class="btn btn-sm btn-outline-secondary mt-1"
+            (click)="addEntry(group)">
+      <svg class="sa-icon" style="stroke:currentColor">
+        <use href="/assets/icons/sprite.svg#plus"></use>
+      </svg>
+      新增審核人
+    </button>
+  </div>
+
+  @if (!last) {
+    <hr class="my-4">
+  }
+}

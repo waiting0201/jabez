@@ -194,16 +194,8 @@ public sealed class PreReviewRequestHandler(
         // 儲存指定審核者
         if (designatedReviewers is { Length: > 0 })
         {
-            var rdrs = designatedReviewers
-                .OrderBy(r => r.StepOrder)
-                .Select(r => new RequestDesignatedReviewer
-                {
-                    RequestType = "pre_review",
-                    RequestId   = pr.Id,
-                    ReviewerId  = r.ReviewerId,
-                    StepOrder   = r.StepOrder,
-                }).ToList();
-            db.RequestDesignatedReviewers.AddRange(rdrs);
+            db.RequestDesignatedReviewers.AddRange(
+                DesignatedReviewerHelper.BuildEntities("pre_review", pr.Id, designatedReviewers));
             await db.SaveChangesAsync();
         }
 
@@ -291,13 +283,7 @@ public sealed class PreReviewRequestHandler(
             if (updateDesignatedReviewers.Length > 0)
             {
                 db.RequestDesignatedReviewers.AddRange(
-                    updateDesignatedReviewers.Select(r => new RequestDesignatedReviewer
-                    {
-                        RequestType = "pre_review",
-                        RequestId   = intId,
-                        ReviewerId  = r.ReviewerId,
-                        StepOrder   = r.StepOrder,
-                    }));
+                    DesignatedReviewerHelper.BuildEntities("pre_review", intId, updateDesignatedReviewers));
             }
         }
 
@@ -502,27 +488,12 @@ public sealed class PreReviewRequestHandler(
             return new OkObjectResult(ApiResponse.Ok(saDto, "Pre-review request auto-approved."));
         }
 
-        // 若流程中有 UseApplicantDesignated 步驟，必須有指定審核者
-        if (pr.ApprovalItemId.HasValue)
-        {
-            bool hasDesignatedStep = await db.ApprovalSteps.AsNoTracking()
-                .AnyAsync(s => s.ApprovalItemId == pr.ApprovalItemId && s.UseApplicantDesignated);
-            if (hasDesignatedStep)
-            {
-                bool hasReviewers = await db.RequestDesignatedReviewers
-                    .AnyAsync(r => r.RequestType == "pre_review" && r.RequestId == pr.Id);
-                if (!hasReviewers)
-                    return new BadRequestObjectResult(ApiResponse.Fail("此簽核流程包含申請人指定審核步驟，請提供指定審核者。"));
-            }
-        }
+        // 正規化各 designee 所屬步驟並驗證每個指定審核步驟皆有審核者
+        await DesignatedReviewerHelper.ValidateAndNormalizeAsync(db, "pre_review", pr.Id, pr.ApprovalItemId);
+        await db.SaveChangesAsync();
 
-        // 查詢指定審核者清單傳給 ResolveStartingStepAsync
-        var designatedReviewers = await db.RequestDesignatedReviewers
-            .AsNoTracking()
-            .Where(r => r.RequestType == "pre_review" && r.RequestId == pr.Id)
-            .OrderBy(r => r.StepOrder)
-            .Select(r => new DesignatedReviewerRequest(r.ReviewerId, r.StepOrder))
-            .ToListAsync();
+        // 查詢指定審核者清單傳給 ResolveStartingStepAsync（含 ApprovalStepOrder 綁定步驟）
+        var designatedReviewers = await DesignatedReviewerHelper.ReadForFlowAsync(db, "pre_review", pr.Id);
 
         // 自動跳過「申請人即審核者」的步驟
         var (startStep, autoApproved, _) = await approvalFlow.ResolveStartingStepAsync(
@@ -555,7 +526,8 @@ public sealed class PreReviewRequestHandler(
             {
                 var firstReviewer = await db.RequestDesignatedReviewers
                     .AsNoTracking()
-                    .Where(r => r.RequestType == "pre_review" && r.RequestId == pr.Id && r.Status == "pending")
+                    .Where(r => r.RequestType == "pre_review" && r.RequestId == pr.Id
+                             && r.ApprovalStepOrder == startStep && r.Status == "pending")
                     .OrderBy(r => r.StepOrder)
                     .FirstOrDefaultAsync();
                 if (firstReviewer is not null)

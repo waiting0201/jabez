@@ -330,6 +330,13 @@
 
 > 指定審核者一律為**獨立卡片**，不得內嵌於其他卡片中。
 
+**指定審核者共用元件（[`<app-designated-reviewers-picker>`](../Admin/src/app/shared/components/designated-reviewers-picker/designated-reviewers-picker.ts)）：**
+- 一條流程可有**多個**「申請人指定審核」步驟；元件依流程的 designated steps（`useApplicantDesignated=true`）分組，每步一個區塊。
+- Inputs：`designatedSteps`（含 `stepOrder` / `designatedRequiresDepartment`）、`users`（`UserLookup`，含 `departmentId` / `jobTitleId`）、`jobTitles`、`departments`、`initial`（編輯回填的 `DesignatedReviewer[]`，含 `approvalStepOrder` / `selectedDepartmentId`）。
+- 每區塊可多列（可新增 / 刪除）：`designatedRequiresDepartment=false` → 「先選職稱→再選人」；`designatedRequiresDepartment=true` → 「先選部門→依部門篩人→選人」。
+- Output `change`：`DesignatedReviewerPayload[]`（`reviewerId` / `stepOrder` 列序 / `approvalStepOrder` 所屬步驟 / `selectedDepartmentId`）；**ngOnChanges 重建群組後會立即 emit**，確保編輯回填未互動也有 payload（送出 / 驗證才不會誤判為空）。
+- 父表單（範本 [payment-form](../Admin/src/app/features/admin/payment-requests/pages/payment-form/payment-form.ts)）以 `(change)` 存 payload，`_buildFormData()` 直接 `JSON.stringify` 進 `designatedReviewers` 欄位；送出驗證「每個 designated step 至少 1 位」。
+
 ---
 
 ## 5. Tab UI（Pill Button Pattern）

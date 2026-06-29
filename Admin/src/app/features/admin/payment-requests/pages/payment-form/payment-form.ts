@@ -5,12 +5,13 @@ import {DatePipe, DecimalPipe} from '@angular/common';
 import {DomSanitizer} from '@angular/platform-browser';
 import {HttpErrorResponse} from '@angular/common/http';
 import {firstValueFrom, Observable, OperatorFunction} from 'rxjs';
-import {debounceTime, distinctUntilChanged, map} from 'rxjs/operators';
+import {debounceTime, distinctUntilChanged, map, take} from 'rxjs/operators';
 import heic2any from 'heic2any';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 import {AttachmentsUpload} from '../../../../../shared/components/attachments-upload';
+import {DesignatedReviewersPicker, DesignatedReviewerPayload} from '../../../../../shared/components/designated-reviewers-picker/designated-reviewers-picker';
 import {AttachmentItem} from '../../../approval-tasks/models/approval-task.model';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
 import {ApprovalFlow, ApprovalRecord, ApprovalTask, InstallmentDto, PaymentInstallmentStatus} from '../../../approval-tasks/models/approval-task.model';
@@ -23,8 +24,11 @@ import {PaymentType, ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLA
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
 import {ApprovalService} from '../../../approvals/services/approval.service';
+import {DepartmentService} from '../../../departments/services/department.service';
 import {JobTitleLookup} from '../../../job-titles/models/job-title.model';
 import {UserLookup} from '../../../users/models/user.model';
+import {ApprovalFlowStepSummary} from '../../../approvals/models/approval.model';
+import {Department} from '../../../departments/models/department.model';
 import {VendorService} from '../../../vendors/services/vendor.service';
 import {VendorLookup} from '../../../vendors/models/vendor.model';
 import {VendorQuickAddModal} from '../../../vendors/components/vendor-quick-add-modal/vendor-quick-add-modal';
@@ -33,7 +37,7 @@ import {NgbModal, NgbTypeahead, NgbTypeaheadSelectItemEvent} from '@ng-bootstrap
 @Component({
   selector: 'app-payment-form',
   templateUrl: './payment-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, NgbTypeahead, InstallmentsTable, AttachmentsUpload],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, NgbTypeahead, InstallmentsTable, AttachmentsUpload, DesignatedReviewersPicker],
 })
 export class PaymentForm implements OnInit {
   private fb           = inject(FormBuilder);
@@ -42,6 +46,7 @@ export class PaymentForm implements OnInit {
   private jobTitleSvc  = inject(JobTitleService);
   private userSvc      = inject(UserService);
   private approvalSvc  = inject(ApprovalService);
+  private deptSvc      = inject(DepartmentService);
   private taskSvc      = inject(ApprovalTaskService);
   private vendorSvc    = inject(VendorService);
   private route        = inject(ActivatedRoute);
@@ -85,8 +90,17 @@ export class PaymentForm implements OnInit {
 
   /** 指定審核者相關 */
   hasDesignatedStep = false;
+  /** 流程中所有 useApplicantDesignated=true 的步驟（傳給 picker） */
+  designatedSteps: ApprovalFlowStepSummary[] = [];
   jobTitles: JobTitleLookup[] = [];
   allUsers: UserLookup[] = [];
+  departments: Department[] = [];
+  /** 編輯回填給 picker 的 initial（含 approvalStepOrder / selectedDepartmentId） */
+  pickerInitial: DesignatedReviewer[] = [];
+  /** picker 每次 change 後存放最新 payload，送出時使用 */
+  private _pickerPayload: DesignatedReviewerPayload[] = [];
+  /** 唯讀模式下顯示的已指定審核者（從 DTO 取得） */
+  readonlyDesignatedReviewers: DesignatedReviewer[] = [];
 
   /** 廠商下拉清單（type=vendor 時顯示，僅含 IsActive 廠商） */
   vendors = signal<VendorLookup[]>([]);
@@ -134,43 +148,6 @@ export class PaymentForm implements OnInit {
     if (selectedVendor && inputVal !== this.vendorInputFormatter(selectedVendor)) {
       this.form.get('vendorId')!.setValue(null);
     }
-  }
-
-  /** 指定審核者條目清單（多人） */
-  designatedEntries: {
-    stepOrder: number;
-    selectedJobTitleId: number | null;
-    selectedUserId: string | null;
-    filteredUsers: UserLookup[];
-  }[] = [];
-
-  addDesignatedEntry() {
-    const nextOrder = this.designatedEntries.length + 1;
-    this.designatedEntries.push({
-      stepOrder: nextOrder,
-      selectedJobTitleId: null,
-      selectedUserId: null,
-      filteredUsers: [],
-    });
-  }
-
-  removeDesignatedEntry(i: number) {
-    this.designatedEntries.splice(i, 1);
-    // 重新排序 stepOrder
-    this.designatedEntries.forEach((e, idx) => e.stepOrder = idx + 1);
-  }
-
-  onEntryJobTitleChange(i: number) {
-    const e = this.designatedEntries[i];
-    e.filteredUsers = e.selectedJobTitleId
-      ? this.allUsers.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active')
-      : [];
-    e.selectedUserId = null;
-  }
-
-  getUserName(userId: string | null): string {
-    if (!userId) return '—';
-    return this.allUsers.find(u => u.id === userId)?.name ?? userId;
   }
 
   /** 開啟「快速新增廠商」Modal；建立成功後將新廠商加入下拉並自動選取 */
@@ -255,24 +232,23 @@ export class PaymentForm implements OnInit {
 
     // 檢查簽核流程是否有「申請人指定審核」步驟（呼叫輕量端點，免 approvals:read 權限）
     this.approvalSvc.getActiveByType('payment_request').subscribe(flow => {
-      this.hasDesignatedStep = flow?.steps.some(s => s.useApplicantDesignated) ?? false;
+      const designated = (flow?.steps ?? []).filter(s => s.useApplicantDesignated);
+      this.hasDesignatedStep = designated.length > 0;
+      this.designatedSteps = designated;
+
       if (this.hasDesignatedStep) {
-        this.jobTitleSvc.getLookup().subscribe({ next: jts => { this.jobTitles = jts; } });
+        // 載入職稱與使用者（所有 designated step 共用）
+        this.jobTitleSvc.getLookup().pipe(take(1)).subscribe(jts => { this.jobTitles = jts; });
         this.userSvc.getLookup().subscribe({
-          next: users => {
-            this.allUsers = users;
-            // allUsers 載入後補填 selectedJobTitleId 與 filteredUsers
-            this.designatedEntries.forEach(e => {
-              if (!e.selectedJobTitleId && e.selectedUserId) {
-                e.selectedJobTitleId = users.find(u => u.id === e.selectedUserId)?.jobTitleId ?? null;
-              }
-              if (e.selectedJobTitleId) {
-                e.filteredUsers = users.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active');
-              }
-            });
-            this.cdr.markForCheck();
-          },
+          next: users => { this.allUsers = users; this.cdr.markForCheck(); },
         });
+        // 若有任何 step 需選部門，則載入部門清單
+        if (designated.some(s => s.designatedRequiresDepartment)) {
+          this.deptSvc.getAll().pipe(take(1)).subscribe(d => {
+            this.departments = d;
+            this.cdr.markForCheck();
+          });
+        }
       }
       this.cdr.markForCheck();
     });
@@ -285,6 +261,7 @@ export class PaymentForm implements OnInit {
       },
       error: () => { this.loadingProjects = false; this.errorMsg.set('載入專案資料失敗。'); },
     });
+
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.isEdit = true;
@@ -314,23 +291,13 @@ export class PaymentForm implements OnInit {
           const found = this.vendors().find(v => v.id === r.vendorId);
           if (found) this.vendorTypeaheadModel = found;
         }
-        // 回填指定審核者清單
+
+        // 回填指定審核者：唯讀模式與編輯模式皆由 pickerInitial 傳給 picker
         if (r.designatedReviewers?.length) {
-          this.designatedEntries = r.designatedReviewers.map(dr => ({
-            stepOrder: dr.stepOrder,
-            selectedJobTitleId: this.allUsers.find(u => u.id === dr.reviewerId)?.jobTitleId ?? null,
-            selectedUserId: dr.reviewerId,
-            filteredUsers: [],  // allUsers 載入後再補填
-          }));
-          // 若 allUsers 已載入則立即補填 filteredUsers
-          if (this.allUsers.length > 0) {
-            this.designatedEntries.forEach(e => {
-              if (e.selectedJobTitleId) {
-                e.filteredUsers = this.allUsers.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active');
-              }
-            });
-          }
+          this.readonlyDesignatedReviewers = r.designatedReviewers;
+          this.pickerInitial = r.designatedReviewers;
         }
+
         r.invoices.forEach(inv => this.invoiceArray.push(
           this._invoiceGroup(String(inv.id), inv.fileName, inv.invoiceNo, inv.amount, inv.fileUrl ?? '', inv.fileUrl ?? '', inv.itemName ?? '', inv.note ?? '', inv.invoiceDate?.toString().slice(0, 10) ?? '')
         ));
@@ -350,6 +317,17 @@ export class PaymentForm implements OnInit {
         this.cdr.markForCheck();
       });
     }
+  }
+
+  /** picker change 事件：每次使用者操作時更新最新 payload */
+  onPickerChange(payload: DesignatedReviewerPayload[]) {
+    this._pickerPayload = payload;
+  }
+
+  /** 取得審核者的顯示名稱（唯讀模式用） */
+  getUserName(userId: string | null): string {
+    if (!userId) return '—';
+    return this.allUsers.find(u => u.id === userId)?.name ?? userId;
   }
 
   async onFilesSelected(event: Event) {
@@ -461,12 +439,14 @@ export class PaymentForm implements OnInit {
     if (this.form.invalid) return;
     if (this.invoiceArray.length === 0) {this.showInvoiceError = true; return;}
     this.showInvoiceError = false;
-    // 流程含「申請人指定審核」步驟時，至少需要 1 位指定審核者（fail-fast，避免送出後才被後端擋下）
+    // 流程含「申請人指定審核」步驟時，每個 designated step 至少需要 1 位指定審核者
     if (this.hasDesignatedStep) {
-      const validEntries = this.designatedEntries.filter(e => e.selectedUserId);
-      if (validEntries.length === 0) {
-        this.errorMsg.set('此簽核流程包含申請人指定審核步驟，請於下方「指定審核者」區塊新增至少 1 位審核者。');
-        return;
+      for (const step of this.designatedSteps) {
+        const hasForStep = this._pickerPayload.some(p => p.approvalStepOrder === step.stepOrder);
+        if (!hasForStep) {
+          this.errorMsg.set(`此簽核流程的步驟 ${step.stepOrder} 包含申請人指定審核，請新增至少 1 位審核者。`);
+          return;
+        }
       }
     }
     const fd = this._buildFormData();
@@ -507,11 +487,11 @@ export class PaymentForm implements OnInit {
     // vendorId：永遠帶入（含 type=vendor 必填、其他類型回傳空字串讓後端強制清空）
     const vendorId = this.form.get('vendorId')?.value;
     fd.append('vendorId', type === 'vendor' && vendorId ? String(vendorId) : '');
-    // 指定審核者清單
-    const reviewers = this.designatedEntries
-      .filter(e => e.selectedUserId)
-      .map(e => ({ reviewerId: e.selectedUserId!, stepOrder: e.stepOrder }));
-    if (reviewers.length > 0) fd.append('designatedReviewers', JSON.stringify(reviewers));
+
+    // 指定審核者清單（從 picker payload 組成，含 approvalStepOrder 與 selectedDepartmentId）
+    if (this._pickerPayload.length > 0) {
+      fd.append('designatedReviewers', JSON.stringify(this._pickerPayload));
+    }
 
     const invoicesMeta: any[] = [];
     let fileIndex = 0;

@@ -10,12 +10,17 @@ public sealed record DesignatedReviewerDto(
     int       StepOrder,
     string    Status,        // "pending" | "approved" | "returned"
     DateTime? ReviewedAt,
-    string?   Comment);
+    string?   Comment,
+    int       ApprovalStepOrder = 0,   // 所屬 designated 步驟（ApprovalStep.StepOrder）
+    int?      SelectedDepartmentId = null,
+    string?   SelectedDepartmentName = null);
 
 /// <summary>指定審核者請求 DTO（用於 Create/Update/Submit）</summary>
 public sealed record DesignatedReviewerRequest(
     Guid ReviewerId,
-    int  StepOrder);
+    int  StepOrder,
+    int  ApprovalStepOrder = 0,        // 所屬 designated 步驟；舊 payload 未帶＝0，由 Helper 補成唯一 designated step
+    int? SelectedDepartmentId = null);
 
 // ── 整單批次附件共用 DTO（照片 / PDF）────────────────────────────────────────
 

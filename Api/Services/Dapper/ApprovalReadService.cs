@@ -30,7 +30,7 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
                 WHERE d.ParentId IS NOT NULL
             )
             SELECT ai.Id, ai.ApplicationType,
-                   s.StepOrder, s.UseApplicantDesignated
+                   s.StepOrder, s.UseApplicantDesignated, s.DesignatedRequiresDepartment
             FROM ApprovalItems ai
             LEFT JOIN ApprovalSteps s ON ai.Id = s.ApprovalItemId
             WHERE ai.Id = (
@@ -52,7 +52,8 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
             .Where(r => r.StepOrder is not null)
             .Select(r => new ApprovalFlowStepSummaryDto(
                 (int)r.StepOrder,
-                (bool)(r.UseApplicantDesignated ?? false)))
+                (bool)(r.UseApplicantDesignated ?? false),
+                (bool)(r.DesignatedRequiresDepartment ?? false)))
             .ToArray();
 
         return new ApprovalFlowSummaryDto(
@@ -67,7 +68,7 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
             SELECT ai.Id, ai.Name, ai.Code, ai.Description, ai.IsActive, ai.ApplicationType, ai.DepartmentId, dd.Name AS ItemDepartmentName, ai.CreatedAt,
                    s.Id AS StepId, s.StepOrder, s.DepartmentId AS StepDepartmentId, d.Name AS DepartmentName,
                    s.JobTitleId, j.Name AS JobTitleName,
-                   s.UseApplicantDepartment, s.UseDirectSupervisor, s.UseApplicantDesignated, s.Note
+                   s.UseApplicantDepartment, s.UseDirectSupervisor, s.UseApplicantDesignated, s.DesignatedRequiresDepartment, s.Note
             FROM ApprovalItems ai
             LEFT JOIN Departments dd  ON ai.DepartmentId = dd.Id
             LEFT JOIN ApprovalSteps s ON ai.Id = s.ApprovalItemId
@@ -87,7 +88,7 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
             SELECT ai.Id, ai.Name, ai.Code, ai.Description, ai.IsActive, ai.ApplicationType, ai.DepartmentId, dd.Name AS ItemDepartmentName, ai.CreatedAt,
                    s.Id AS StepId, s.StepOrder, s.DepartmentId AS StepDepartmentId, d.Name AS DepartmentName,
                    s.JobTitleId, j.Name AS JobTitleName,
-                   s.UseApplicantDepartment, s.UseDirectSupervisor, s.UseApplicantDesignated, s.Note
+                   s.UseApplicantDepartment, s.UseDirectSupervisor, s.UseApplicantDesignated, s.DesignatedRequiresDepartment, s.Note
             FROM ApprovalItems ai
             LEFT JOIN Departments dd  ON ai.DepartmentId = dd.Id
             LEFT JOIN ApprovalSteps s ON ai.Id = s.ApprovalItemId
@@ -121,7 +122,8 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
                     (bool)row.UseApplicantDepartment,
                     (bool)(row.UseDirectSupervisor ?? false),
                     (bool)(row.UseApplicantDesignated ?? false),
-                    (string?)row.Note));
+                    (string?)row.Note,
+                    (bool)(row.DesignatedRequiresDepartment ?? false)));
             }
         }
 

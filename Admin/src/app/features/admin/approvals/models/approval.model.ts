@@ -36,6 +36,7 @@ export interface ApprovalStep {
   useApplicantDepartment?: boolean;
   useDirectSupervisor?: boolean;
   useApplicantDesignated?: boolean;
+  designatedRequiresDepartment?: boolean;
   note?: string;
 }
 
@@ -62,4 +63,5 @@ export interface ApprovalFlowSummary {
 export interface ApprovalFlowStepSummary {
   stepOrder: number;
   useApplicantDesignated: boolean;
+  designatedRequiresDepartment: boolean;
 }

@@ -10,7 +10,8 @@ public sealed record ApprovalStepDto(
     bool    UseApplicantDepartment,
     bool    UseDirectSupervisor,
     bool    UseApplicantDesignated,
-    string? Note);
+    string? Note,
+    bool    DesignatedRequiresDepartment = false);
 
 public sealed record ApprovalItemDto(
     int               Id,
@@ -32,7 +33,8 @@ public sealed record ApprovalFlowSummaryDto(
 
 public sealed record ApprovalFlowStepSummaryDto(
     int  StepOrder,
-    bool UseApplicantDesignated);
+    bool UseApplicantDesignated,
+    bool DesignatedRequiresDepartment = false);
 
 public sealed record CreateApprovalItemRequest(
     string  Name,
@@ -52,12 +54,13 @@ public sealed record UpdateApprovalItemRequest(
 
 public sealed record CreateApprovalStepRequest(
     int     StepOrder,
-    int?    DepartmentId              = null,
-    int?    JobTitleId                = null,
-    bool    UseApplicantDepartment    = false,
-    bool    UseDirectSupervisor       = false,
-    bool    UseApplicantDesignated    = false,
-    string? Note                      = null);
+    int?    DepartmentId                 = null,
+    int?    JobTitleId                   = null,
+    bool    UseApplicantDepartment       = false,
+    bool    UseDirectSupervisor          = false,
+    bool    UseApplicantDesignated       = false,
+    string? Note                         = null,
+    bool    DesignatedRequiresDepartment = false);
 
 public sealed record UpdateApprovalStepRequest(
     int?     StepOrder,
@@ -66,4 +69,5 @@ public sealed record UpdateApprovalStepRequest(
     bool?    UseApplicantDepartment,
     bool?    UseDirectSupervisor,
     bool?    UseApplicantDesignated,
-    string?  Note);
+    string?  Note,
+    bool?    DesignatedRequiresDepartment = null);

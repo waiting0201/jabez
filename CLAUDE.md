@@ -269,7 +269,7 @@ Api/
 │   ├── DepartmentHandler.cs
 │   ├── JobTitleHandler.cs
 │   ├── VendorHandler.cs               # 廠商管理 CRUD（multipart 支援存摺封面（必填）/ 身分證正反面上傳；統編與身分證字號擇一；lookup / lookup-by-tax-id / POST 開放任何登入者；刪除受 PaymentRequest 引用保護）
-│   ├── ApprovalHandler.cs             # ApprovalItem + Steps CRUD（ApprovalItem 含 DepartmentId 部門維度；唯一性以 (ApplicationType, DepartmentId) 判定；/active 依呼叫者部門解析流程，優先序：自身部門 > 最近祖先部門（沿 ParentId 往上）> 通用預設）
+│   ├── ApprovalHandler.cs             # ApprovalItem + Steps CRUD（ApprovalItem 含 DepartmentId 部門維度；唯一性以 (ApplicationType, DepartmentId) 判定；/active 依呼叫者部門解析流程，優先序：自身部門 > 最近祖先部門（沿 ParentId 往上）> 通用預設）；Step 含 DesignatedRequiresDepartment（指定審核步驟可設「需先選部門再選人」，支援一條流程多個指定步驟）
 │   ├── ApprovalTaskHandler.cs         # 待審核任務查詢與審核動作
 │   ├── ProjectHandler.cs
 │   ├── PaymentRequestHandler.cs       # 請款申請 CRUD（單號 PR-yyyyMMdd-NNN）
@@ -350,6 +350,7 @@ Api/
 │   ├── ApiResponse.cs                 # 統一回應格式 ApiResponse<T>
 │   ├── AppException.cs                # 自定義例外
 │   ├── AttachmentProcessor.cs         # 整單批次附件共用：multipart 解析 + magic-byte 驗證 + 上傳 request-attachments（一般請款 / 預支沖銷共用）
+│   ├── DesignatedReviewerHelper.cs    # 申請人指定審核者共用：BuildEntities / ReadForFlowAsync / ValidateAndNormalizeAsync（一條流程多個指定步驟，以 ApprovalStepOrder 綁定步驟；9 種申請類型共用）
 │   └── Constants.cs
 ├── host.json
 ├── local.settings.json                # 本地開發設定（不進版控）

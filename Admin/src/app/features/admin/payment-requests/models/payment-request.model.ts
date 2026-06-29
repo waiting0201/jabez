@@ -58,6 +58,8 @@ export interface DesignatedReviewer {
   reviewerId: string;
   reviewerName?: string;
   stepOrder: number;
+  approvalStepOrder?: number;           // 此 designee 屬於哪個 designated step 的 stepOrder
+  selectedDepartmentId?: number | null; // 需選部門時的選定部門
   status?: string;       // pending | approved | returned
   reviewedAt?: string;
   comment?: string;

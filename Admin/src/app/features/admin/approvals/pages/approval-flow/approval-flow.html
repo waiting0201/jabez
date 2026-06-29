@@ -66,6 +66,14 @@
                   <span class="fw-500">申請人指定審核</span>
                   <span class="text-muted">— 申請人在表單中選擇指定審核者</span>
                 </label>
+                @if (stepForm.value.useApplicantDesignated) {
+                  <label class="flex items-center gap-1.5 cursor-pointer text-sm ms-4">
+                    <input type="checkbox" class="form-check-input m-0"
+                           formControlName="designatedRequiresDepartment">
+                    <span class="fw-500">此步驟需先選部門再選人</span>
+                    <span class="text-muted">— 申請人先選部門，再從該部門的人員中指定</span>
+                  </label>
+                }
               </div>
 
               @if (!stepForm.value.useDirectSupervisor && !stepForm.value.useApplicantDesignated) {
@@ -155,6 +163,12 @@
                         <svg class="sa-icon" style="width:12px;height:12px;flex-shrink:0;stroke:currentColor"><use href="/assets/icons/sprite.svg#user-check"></use></svg>
                         申請人指定
                       </span>
+                      @if (step.useApplicantDesignated && step.designatedRequiresDepartment) {
+                        <span class="badge bg-secondary-subtle text-secondary inline-flex items-center gap-1" style="white-space:nowrap">
+                          <svg class="sa-icon" style="width:12px;height:12px;flex-shrink:0;stroke:currentColor"><use href="/assets/icons/sprite.svg#building"></use></svg>
+                          需選部門
+                        </span>
+                      }
                     } @else if (step.useDirectSupervisor) {
                       <span class="badge bg-purple-subtle text-purple inline-flex items-center gap-1" style="white-space:nowrap">
                         <svg class="sa-icon" style="width:12px;height:12px;flex-shrink:0;stroke:currentColor"><use href="/assets/icons/sprite.svg#arrow-up"></use></svg>

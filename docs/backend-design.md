@@ -383,6 +383,8 @@ await strategy.ExecuteAsync(async () =>
 
 範例：[InstallmentUpsertService.Apply](../Api/Services/InstallmentUpsertService.cs)（分期撥款）— 4 個獨立 `PATCH /{type}-requests/{id}/installments` endpoint 與 `ApprovalTaskHandler` 的「財務核准當下原子寫入撥款明細」共用同一份持久化邏輯。4 種子表透過 [IInstallmentEntity](../Api/Models/Entities/IInstallmentEntity.cs) 介面 + `Func<TEntity>` create factory 泛型化（FK 由 factory 設定，其餘欄位由 helper 填）。
 
+範例：[DesignatedReviewerHelper](../Api/Common/DesignatedReviewerHelper.cs)（申請人指定審核者）— 9 種申請類型的 `SubmitAsync` / `Create` / `Update` 共用 `BuildEntities`（由請求建實體）/ `ReadForFlowAsync`（讀回傳給 `ResolveStartingStepAsync`）/ `ValidateAndNormalizeAsync`（送單時把未綁定的 `ApprovalStepOrder=0` 正規化成唯一 designated step 的 StepOrder，並驗證每個指定步驟皆有 designee）。`ValidateAndNormalizeAsync` 只改 tracked entity，呼叫端隨後 `SaveChanges`。一條流程多個 `UseApplicantDesignated` 步驟時，每筆 designee 以 `ApprovalStepOrder` 綁定步驟，引擎所有 designee 查詢一律加 `ApprovalStepOrder == CurrentStepOrder`（[ApprovalTaskHandler](../Api/Handlers/ApprovalTaskHandler.cs) / [ApprovalFlowService](../Api/Services/ApprovalFlowService.cs) / [PaymentRequestReadService](../Api/Services/Dapper/PaymentRequestReadService.cs) StepMatch 三者條件須同步）。
+
 ---
 
 ## 7. EF Core Configuration

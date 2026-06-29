@@ -65,11 +65,13 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         // 額外查詢指定審核者（GetByIdAsync 才需要，列表查詢不包含）
         const string drSql = """
             SELECT rdr.Id, rdr.ReviewerId, u.Name AS ReviewerName,
-                   rdr.StepOrder, rdr.Status, rdr.ReviewedAt, rdr.Comment
+                   rdr.StepOrder, rdr.Status, rdr.ReviewedAt, rdr.Comment,
+                   rdr.ApprovalStepOrder, rdr.SelectedDepartmentId, d.Name AS SelectedDepartmentName
             FROM RequestDesignatedReviewers rdr
             JOIN Users u ON rdr.ReviewerId = u.Id
+            LEFT JOIN Departments d ON rdr.SelectedDepartmentId = d.Id
             WHERE rdr.RequestType = 'payment_request' AND rdr.RequestId = @RequestId
-            ORDER BY rdr.StepOrder
+            ORDER BY rdr.ApprovalStepOrder, rdr.StepOrder
             """;
         var drRows = await db.QueryAsync<dynamic>(drSql, new { RequestId = id });
         var designatedReviewers = drRows.Select(r => new DesignatedReviewerDto(
@@ -79,7 +81,10 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             (int)r.StepOrder,
             (string)r.Status,
             (DateTime?)r.ReviewedAt,
-            (string?)r.Comment)).ToArray();
+            (string?)r.Comment,
+            (int)r.ApprovalStepOrder,
+            (int?)r.SelectedDepartmentId,
+            (string?)r.SelectedDepartmentName)).ToArray();
 
         var instDict = await installments.GetByParentIdsAsync(InstallmentParentTable.PaymentRequest, new[] { id });
         var instList = instDict.GetValueOrDefault(id, []);
@@ -304,12 +309,14 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                         AND rdr.RequestId = {alias}.Id
                         AND rdr.ReviewerId = @ReviewerUserId
                         AND rdr.Status = 'pending'
+                        AND rdr.ApprovalStepOrder = {alias}.CurrentStepOrder
                         AND rdr.StepOrder = (
                           SELECT MIN(rdr2.StepOrder)
                           FROM RequestDesignatedReviewers rdr2
                           WHERE rdr2.RequestType = '{appType}'
                             AND rdr2.RequestId = {alias}.Id
                             AND rdr2.Status = 'pending'
+                            AND rdr2.ApprovalStepOrder = {alias}.CurrentStepOrder
                         )
                     )
                 )

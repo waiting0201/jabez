@@ -92,10 +92,12 @@ public sealed class ApprovalFlowService(
             // ── UseApplicantDesignated 模式：審核者是申請人指定的人 ──
             if (step.UseApplicantDesignated)
             {
-                // 取第一位指定審核者（min StepOrder）的 ReviewerId 進行判斷
-                var firstReviewer = designatedReviewers?
+                // 僅取「屬於本步驟」的指定審核者（以 ApprovalStepOrder 綁定），再取 min StepOrder 的第 1 位判斷
+                var stepReviewers = designatedReviewers?
+                    .Where(r => r.ApprovalStepOrder == step.StepOrder)
                     .OrderBy(r => r.StepOrder)
-                    .FirstOrDefault();
+                    .ToList();
+                var firstReviewer = stepReviewers?.FirstOrDefault();
 
                 // 自審規則分兩組：
                 //   Group A 全程禁止自審（任一位置為申請人即報錯）：leave / travel / overtime / travel_payment
@@ -103,7 +105,7 @@ public sealed class ApprovalFlowService(
                 // 此處先處理 Group A：當 applicationType 不在 Group B 名單內 → 套用 Group A 規則
                 if (applicationType is not ("payment_request" or "advance" or "write_off" or "travel_write_off" or "holiday_travel" or "pre_review"))
                 {
-                    bool anyIsSelf = designatedReviewers?.Any(r => r.ReviewerId == applicantId) ?? false;
+                    bool anyIsSelf = stepReviewers?.Any(r => r.ReviewerId == applicantId) ?? false;
                     if (anyIsSelf)
                         throw AppException.BadRequest("指定審核者不能是申請人本人。");
                 }
@@ -304,6 +306,7 @@ public sealed class ApprovalFlowService(
             if (step.UseApplicantDesignated)
             {
                 var firstReviewer = designatedReviewers?
+                    .Where(r => r.ApprovalStepOrder == step.StepOrder)
                     .OrderBy(r => r.StepOrder)
                     .FirstOrDefault();
                 hasReviewer = firstReviewer is not null && firstReviewer.ReviewerId != applicantId;
@@ -409,11 +412,11 @@ public sealed class ApprovalFlowService(
         IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers,
         int directSupervisorRank)
     {
-        // ── UseApplicantDesignated：該 step 內所有 designee（依 designatedReviewers 順序） ──
+        // ── UseApplicantDesignated：該 step 內所有 designee（以 ApprovalStepOrder 綁定本步驟） ──
         if (step.UseApplicantDesignated)
         {
             return designatedReviewers?
-                .Where(r => r.ReviewerId != applicant.Id)
+                .Where(r => r.ApprovalStepOrder == step.StepOrder && r.ReviewerId != applicant.Id)
                 .Select(r => r.ReviewerId)
                 .Distinct()
                 .Take(50)

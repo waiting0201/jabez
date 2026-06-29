@@ -21,11 +21,11 @@ public class RequestDesignatedReviewerConfiguration : IEntityTypeConfiguration<R
             .HasForeignKey(x => x.ReviewerId)
             .OnDelete(DeleteBehavior.NoAction);
 
-        // 複合索引：同一申請單的同一審核者不可重複
-        builder.HasIndex(x => new { x.RequestType, x.RequestId, x.ReviewerId })
+        // 複合索引：同一申請單的同一步驟內同一審核者不可重複（允許跨步驟指定同一人）
+        builder.HasIndex(x => new { x.RequestType, x.RequestId, x.ApprovalStepOrder, x.ReviewerId })
             .IsUnique();
 
-        // 查詢用索引：快速找到某申請單的所有指定審核者
-        builder.HasIndex(x => new { x.RequestType, x.RequestId, x.StepOrder });
+        // 查詢用索引：快速找到某申請單某步驟的所有指定審核者
+        builder.HasIndex(x => new { x.RequestType, x.RequestId, x.ApprovalStepOrder, x.StepOrder });
     }
 }

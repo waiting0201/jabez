@@ -239,13 +239,7 @@ public sealed class WriteOffRequestHandler(
         if (designatedReviewers is { Length: > 0 })
         {
             db.RequestDesignatedReviewers.AddRange(
-                designatedReviewers.OrderBy(r => r.StepOrder).Select(r => new RequestDesignatedReviewer
-                {
-                    RequestType = RequestType,
-                    RequestId   = wo.Id,
-                    ReviewerId  = r.ReviewerId,
-                    StepOrder   = r.StepOrder,
-                }));
+                DesignatedReviewerHelper.BuildEntities(RequestType, wo.Id, designatedReviewers));
             await db.SaveChangesAsync();
         }
 
@@ -302,13 +296,7 @@ public sealed class WriteOffRequestHandler(
                 if (updateDesignatedReviewers.Length > 0)
                 {
                     db.RequestDesignatedReviewers.AddRange(
-                        updateDesignatedReviewers.Select(r => new RequestDesignatedReviewer
-                        {
-                            RequestType = RequestType,
-                            RequestId   = intId,
-                            ReviewerId  = r.ReviewerId,
-                            StepOrder   = r.StepOrder,
-                        }));
+                        DesignatedReviewerHelper.BuildEntities(RequestType, intId, updateDesignatedReviewers));
                 }
             }
         }
@@ -533,27 +521,12 @@ public sealed class WriteOffRequestHandler(
             return new OkObjectResult(ApiResponse.Ok(saDto, "Write-off request auto-approved."));
         }
 
-        // 若流程中有 UseApplicantDesignated 步驟，必須有指定審核者
-        if (wo.ApprovalItemId.HasValue)
-        {
-            bool hasDesignatedStep = await db.ApprovalSteps.AsNoTracking()
-                .AnyAsync(s => s.ApprovalItemId == wo.ApprovalItemId && s.UseApplicantDesignated);
-            if (hasDesignatedStep)
-            {
-                bool hasReviewers = await db.RequestDesignatedReviewers
-                    .AnyAsync(r => r.RequestType == RequestType && r.RequestId == wo.Id);
-                if (!hasReviewers)
-                    return new BadRequestObjectResult(ApiResponse.Fail("此簽核流程包含申請人指定審核步驟，請提供指定審核者。"));
-            }
-        }
+        // 正規化各 designee 所屬步驟並驗證每個指定審核步驟皆有審核者
+        await DesignatedReviewerHelper.ValidateAndNormalizeAsync(db, RequestType, wo.Id, wo.ApprovalItemId);
+        await db.SaveChangesAsync();
 
-        // 查詢指定審核者清單傳給 ResolveStartingStepAsync
-        var designatedReviewers = await db.RequestDesignatedReviewers
-            .AsNoTracking()
-            .Where(r => r.RequestType == RequestType && r.RequestId == wo.Id)
-            .OrderBy(r => r.StepOrder)
-            .Select(r => new DesignatedReviewerRequest(r.ReviewerId, r.StepOrder))
-            .ToListAsync();
+        // 查詢指定審核者清單傳給 ResolveStartingStepAsync（含 ApprovalStepOrder 綁定步驟）
+        var designatedReviewers = await DesignatedReviewerHelper.ReadForFlowAsync(db, RequestType, wo.Id);
 
         // 自審跳過邏輯（與請款、預支一致，不升級）
         var (startStep, autoApproved, _) = await approvalFlow.ResolveStartingStepAsync(
@@ -587,7 +560,8 @@ public sealed class WriteOffRequestHandler(
             {
                 var firstReviewer = await db.RequestDesignatedReviewers
                     .AsNoTracking()
-                    .Where(r => r.RequestType == RequestType && r.RequestId == wo.Id && r.Status == "pending")
+                    .Where(r => r.RequestType == RequestType && r.RequestId == wo.Id
+                             && r.ApprovalStepOrder == startStep && r.Status == "pending")
                     .OrderBy(r => r.StepOrder)
                     .FirstOrDefaultAsync();
                 if (firstReviewer is not null)
