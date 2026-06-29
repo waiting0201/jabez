@@ -153,7 +153,7 @@
                 <td class="text-muted small hidden lg:table-cell">{{ item.createdAt | date:'yyyy-MM-dd' }}</td>
                 <td class="text-right" style="white-space: nowrap">
                   <div class="flex justify-end gap-1">
-                    <a [routerLink]="[item.id, 'flow']"
+                    <a [routerLink]="[item.id, 'flow']" queryParamsHandling="preserve"
                        class="btn btn-sm btn-ghost-info inline-flex items-center"
                        title="管理流程">
                       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#git-merge"></use></svg>

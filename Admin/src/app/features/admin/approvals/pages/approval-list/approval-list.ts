@@ -1,6 +1,6 @@
 import {Component, computed, inject, signal} from '@angular/core';
 import {toSignal} from '@angular/core/rxjs-interop';
-import {RouterLink} from '@angular/router';
+import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {DatePipe} from '@angular/common';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {HttpErrorResponse} from '@angular/common/http';
@@ -25,6 +25,8 @@ export class ApprovalList {
   private approvalService = inject(ApprovalService);
   private deptService = inject(DepartmentService);
   private authService = inject(AuthService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private fb = inject(FormBuilder);
 
   departments: Department[] = [];
@@ -54,7 +56,8 @@ export class ApprovalList {
   itemsSig = toSignal(this.items$, {initialValue: [] as ApprovalItem[]});
 
   // Tab 切換：'all'=全部、'generic'=通用（預設）、number=部門 id。
-  activeTab = signal<number | 'all' | 'generic'>('all');
+  // 以網址 query param `tab` 記住分頁，進入流程管理再返回時可停留在原分頁。
+  activeTab = signal<number | 'all' | 'generic'>(this.parseTab(this.route.snapshot.queryParamMap.get('tab')));
 
   // 部門頁籤：自清單中實際出現過的部門去重，依部門名稱排序（只顯示有流程的部門）。
   tabDepartments = computed(() => {
@@ -130,6 +133,19 @@ export class ApprovalList {
 
   switchTab(tab: number | 'all' | 'generic') {
     this.activeTab.set(tab);
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {tab: tab === 'all' ? null : tab},
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  // 將 query param 還原成 activeTab 值；數字字串轉部門 id，其餘比照預設 'all'。
+  private parseTab(raw: string | null): number | 'all' | 'generic' {
+    if (raw === 'generic') return 'generic';
+    if (raw && /^\d+$/.test(raw)) return Number(raw);
+    return 'all';
   }
 
   // 同一 (申請類型, 部門) 至多一個流程；故依目前選取的部門判斷此類型是否已被佔用。
