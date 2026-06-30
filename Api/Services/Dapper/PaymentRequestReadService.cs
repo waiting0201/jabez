@@ -585,7 +585,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             """;
 
         const string flowSql = """
-            SELECT ai.Id AS FlowId, ai.Name AS FlowName, ai.ApplicationType,
+            SELECT ai.Id AS FlowId, ai.Name AS FlowName, ai.ApplicationType, ai.DepartmentId AS FlowDepartmentId,
                    s.StepOrder, d.Name AS DepartmentName, d.Code AS DepartmentCode, j.Name AS JobTitleName,
                    s.UseDirectSupervisor, s.UseApplicantDesignated, s.Note
             FROM ApprovalItems ai
@@ -825,16 +825,17 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         DesignatedReviewerDto[]? GetDesignatedReviewers(string appType, int id) =>
             drDict.TryGetValue((appType, id), out var drs) && drs.Count > 0 ? [.. drs] : null;
 
-        // Build flow lookup keyed by ApplicationType
-        var flowDict = new Dictionary<string, (int Id, string Name, List<ApprovalFlowStepDto> Steps)>();
+        // Build flow lookup keyed by ApprovalItem.Id（= 申請列的 ApprovalItemId）。
+        // 同一 ApplicationType 可能有多個流程（各部門專屬 + 通用預設），故不可用 ApplicationType 當 key
+        // 否則會把多個 ApprovalItem 的 steps 合併到同一條流程，造成簽核流程重複顯示。
+        var flowById = new Dictionary<int, (string Name, string? AppType, int? DeptId, List<ApprovalFlowStepDto> Steps)>();
         foreach (var row in flowRows)
         {
-            string? appType = (string?)row.ApplicationType;
-            if (string.IsNullOrEmpty(appType)) continue;
-            if (!flowDict.ContainsKey(appType))
-                flowDict[appType] = ((int)row.FlowId, (string)row.FlowName, []);
+            int flowId = (int)row.FlowId;
+            if (!flowById.ContainsKey(flowId))
+                flowById[flowId] = ((string)row.FlowName, (string?)row.ApplicationType, (int?)row.FlowDepartmentId, []);
             if (row.StepOrder is not null)
-                flowDict[appType].Steps.Add(new ApprovalFlowStepDto(
+                flowById[flowId].Steps.Add(new ApprovalFlowStepDto(
                     (int)row.StepOrder,
                     (string?)row.DepartmentName,
                     (string?)row.DepartmentCode,
@@ -844,10 +845,25 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                     (string?)row.Note));
         }
 
-        ApprovalFlowDto? GetFlow(string appType) =>
-            flowDict.TryGetValue(appType, out var f)
-                ? new ApprovalFlowDto(f.Id, f.Name, [.. f.Steps])
-                : null;
+        // 每個 ApplicationType 的後備流程：申請列未帶 ApprovalItemId（理論上不應發生）時採用，
+        // 優先取通用預設（DepartmentId 為 null），否則取該類型最小 Id 的流程，避免顯示空白。
+        var fallbackFlowIdByType = new Dictionary<string, int>();
+        foreach (var kv in flowById.OrderBy(k => k.Key))
+        {
+            string? appType = kv.Value.AppType;
+            if (string.IsNullOrEmpty(appType)) continue;
+            if (!fallbackFlowIdByType.ContainsKey(appType) || kv.Value.DeptId is null)
+                fallbackFlowIdByType[appType] = kv.Key;
+        }
+
+        ApprovalFlowDto? GetFlow(string appType, int? approvalItemId)
+        {
+            if (approvalItemId is int id && flowById.TryGetValue(id, out var f))
+                return new ApprovalFlowDto(id, f.Name, [.. f.Steps]);
+            if (fallbackFlowIdByType.TryGetValue(appType, out var fid) && flowById.TryGetValue(fid, out var ff))
+                return new ApprovalFlowDto(fid, ff.Name, [.. ff.Steps]);
+            return null;
+        }
 
         // Build approval record lookup keyed by (ApplicationType, ApplicationId)
         var recordDict = new Dictionary<(string, int), List<ApprovalRecordDto>>();
@@ -966,7 +982,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             (int)x.pr.CurrentStepOrder,
             (DateTime?)x.pr.ReviewedAt,
             (string?)x.pr.ReviewNote,
-            GetFlow("payment_request"),
+            GetFlow("payment_request", (int?)x.pr.ApprovalItemId),
             new PaymentTaskDetailDto(
                 (int)x.pr.Id,
                 (string)x.pr.RequestNo,
@@ -1002,7 +1018,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             (int)row.CurrentStepOrder,
             (DateTime?)row.ReviewedAt,
             (string?)row.ReviewNote,
-            GetFlow("leave"),
+            GetFlow("leave", (int?)row.ApprovalItemId),
             null,
             new LeaveTaskDetailDto(
                 (int)row.Id,
@@ -1027,7 +1043,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             (int)row.CurrentStepOrder,
             (DateTime?)row.ReviewedAt,
             (string?)row.ReviewNote,
-            GetFlow("travel"),
+            GetFlow("travel", (int?)row.ApprovalItemId),
             null,
             null,
             new TravelTaskDetailDto(
@@ -1064,7 +1080,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             (int)row.CurrentStepOrder,
             (DateTime?)row.ReviewedAt,
             (string?)row.ReviewNote,
-            GetFlow("holiday_travel"),
+            GetFlow("holiday_travel", (int?)row.ApprovalItemId),
             null,
             null,
             new TravelTaskDetailDto(
@@ -1106,7 +1122,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             (int)row.CurrentStepOrder,
             (DateTime?)row.ReviewedAt,
             (string?)row.ReviewNote,
-            GetFlow("overtime"),
+            GetFlow("overtime", (int?)row.ApprovalItemId),
             null, null, null,
             new OvertimeTaskDetailDto(
                 (int)row.Id,
@@ -1130,7 +1146,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             (int)row.CurrentStepOrder,
             (DateTime?)row.ReviewedAt,
             (string?)row.ReviewNote,
-            GetFlow("advance"),
+            GetFlow("advance", (int?)row.ApprovalItemId),
             null, null, null, null,
             new AdvanceTaskDetailDto(
                 (int)row.Id,
@@ -1181,7 +1197,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             (int)row.CurrentStepOrder,
             (DateTime?)row.ReviewedAt,
             (string?)row.ReviewNote,
-            GetFlow("write_off"),
+            GetFlow("write_off", (int?)row.ApprovalItemId),
             null, null, null, null, null,
             new WriteOffTaskDetailDto(
                 (int)row.Id,
@@ -1256,7 +1272,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             (int)row.CurrentStepOrder,
             (DateTime?)row.ReviewedAt,
             (string?)row.ReviewNote,
-            GetFlow("travel_write_off"),
+            GetFlow("travel_write_off", (int?)row.ApprovalItemId),
             null, null, null, null, null, null,
             new TravelWriteOffTaskDetailDto(
                 (int)row.Id,
@@ -1295,7 +1311,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             (int)row.CurrentStepOrder,
             (DateTime?)row.ReviewedAt,
             (string?)row.ReviewNote,
-            GetFlow("travel_payment"),
+            GetFlow("travel_payment", (int?)row.ApprovalItemId),
             null, null, null, null, null, null, null,
             GetRecords("travel_payment", (int)row.Id),
             GetDesignatedReviewers("travel_payment", (int)row.Id),
@@ -1347,7 +1363,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             (int)row.CurrentStepOrder,
             (DateTime?)row.ReviewedAt,
             (string?)row.ReviewNote,
-            GetFlow("pre_review"),
+            GetFlow("pre_review", (int?)row.ApprovalItemId),
             null, null, null, null, null, null, null,
             GetRecords("pre_review", (int)row.Id),
             GetDesignatedReviewers("pre_review", (int)row.Id),

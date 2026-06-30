@@ -51,7 +51,7 @@
 | `Department.CanViewSiblings` | Entity 旗標，勾選後可見同 ParentId 兄弟部門 |
 | `Department.CanViewDescendants` | Entity 旗標，勾選後可見本部門 + 所有遞迴下層子部門 |
 | `Department.CanViewParent` | Entity 旗標，勾選後可見直接父部門（不遞迴祖先）；頂層部門啟用時不擴展 |
-| `Api/Common/Constants.cs` `DepartmentCodes.FinancialAndAbove` | 財務體系部門 Code 集合，**僅供「撥款 / 退款 / 結案 / 批次核准」業務操作權限使用**，不再參與可見性判定 |
+| `Api/Common/Constants.cs` `DepartmentCodes.FinancialAndAbove` | 財務體系部門 Code 集合，**僅供「撥款 / 退款 / 結案 / 批次核准」業務操作權限使用**，不再參與可見性判定。同時涵蓋舊短碼（`AC` / `FIN` / `Jabez HQ` / `CEO`）與 2026 改制後英文全名碼（`Accounting Department` / `Financial Management Department` / `Office of the Director`），改組織不致失效；前端對應 `approval-task-list.ts` 的 `PAYMENT_FILTER_DEPT_CODES`，兩處須同步 |
 | `Api/Services/IProjectAccessResolver` + `ProjectAccessResolver` | 解析 ClaimsPrincipal + DB 旗標 → `ProjectAccessScope(SeeAll, AllowedDepartmentIds)` |
 | `ProjectAccessResolver.GetDescendantIdsAsync` | 載入全部 Departments 後在記憶體 DFS 遍歷取得遞迴後代 Id；含 visited HashSet 防呆循環依賴 |
 | `Api/Services/Dapper/ProjectReadService` | 四個讀取方法皆依 scope 組合 WHERE（`DepartmentId IN @AllowedIds` 或 `1=0`） |

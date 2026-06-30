@@ -441,10 +441,19 @@
             </button>
             <button type="button" class="btn btn-primary" [disabled]="form.invalid || isAnyOcrPending"
                     (click)="submitForApproval()">
+              @if (isAnyOcrPending) {
+                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+              }
               送出申請
             </button>
             <a routerLink="/admin/pre-review-requests" class="btn btn-outline-secondary">取消</a>
           </div>
+          @if (isAnyOcrPending) {
+            <div class="text-muted small mt-2">
+              <svg class="sa-icon" style="stroke: currentColor; width:1rem; height:1rem"><use href="/assets/icons/sprite.svg#info"></use></svg>
+              報價單辨識中，請稍候…辨識完成後即可送出。
+            </div>
+          }
         } @else if (approvalStatus === 'approved') {
           <!-- 已核准 -->
           <div class="card border-0 shadow-sm mt-6">
