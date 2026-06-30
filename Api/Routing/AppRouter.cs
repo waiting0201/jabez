@@ -106,6 +106,9 @@ public sealed class AppRouter(
             ("GET",    ["files", "education-proofs", var fileName])  => await files.GetEducationProofAsync(fileName),
             ("GET",    ["files", "vendor-passbooks", var fileName])  => await files.GetVendorPassbookAsync(fileName),
             ("GET",    ["files", "vendor-id-cards", var fileName])   => await files.GetVendorIdCardAsync(fileName),
+            // quotes / request-attachments 的 blob name 含日期子路徑（yyyy/MM/{guid}{ext}），需以 slice pattern 接多段
+            ("GET",    ["files", "quotes", .. var quotePath])             => await files.GetQuoteAsync(string.Join("/", quotePath)),
+            ("GET",    ["files", "request-attachments", .. var attPath]) => await files.GetRequestAttachmentAsync(string.Join("/", attPath)),
 
             // ── Auth ──────────────────────────────────────────────────────────
             ("POST",   ["auth", "login"])             => await auth.LoginAsync(req),
@@ -425,6 +428,9 @@ public sealed class AppRouter(
             ("GET", ["files", "vendor-passbooks", _])   => null,
             // vendor-id-cards 屬敏感 PII（個人工作室身分證），需 vendors:read
             ("GET", ["files", "vendor-id-cards", _])    => PermissionCodes.VendorsRead,
+            // quotes（報價單）/ request-attachments（整單附件）為一般業務檔案（任何登入者皆可讀，與 vendor-passbooks 同層）
+            ("GET", ["files", "quotes", ..])            => null,
+            ("GET", ["files", "request-attachments", ..]) => null,
 
             // Users（lookup 不需權限，登入即可）
             ("GET",    ["users", "lookup"])               => null,

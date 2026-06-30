@@ -1030,17 +1030,21 @@ async onFileSelected(event: Event) {
 
 廠商存摺封面（`/files/vendor-passbooks/{fileName}` → `vendor-passbooks` 容器）為**一般檔，需 JWT 但免特殊權限**：透過 `HttpClient` 走 Blob 代理（auth interceptor 自動附 Bearer），與 PII 同樣以 `URL.createObjectURL` 在新分頁開啟。
 
-> **鐵則：需 JWT 的檔案不可直接放 `<img [src]>`。** `<img>` / `<a href>` 無法帶 Authorization header，會 401 破圖。
+報價單（`quotes`）與整單批次附件（`request-attachments`）同為**一般檔，需 JWT 但免特殊權限**，但 blob name 含日期子路徑（`yyyy/MM/{guid}{ext}`），代理路由為 `/files/quotes/{*path}` / `/files/request-attachments/{*path}`（多段）。DB 存的是原始私有 blob URL，前端取用前**一律先過** [`resolveFileProxyUrl()`](../Admin/src/app/shared/services/pdf-core.service.ts)（把原始 blob URL 轉成代理路徑），再經 HttpClient（帶 JWT）下載。
+
+> **鐵則：需 JWT 的檔案不可直接放 `<img [src]>` 或 `<iframe [src]>`。** `<img>` / `<a href>` / `<iframe>` 無法帶 Authorization header，會 401 破圖。
 > - **公開容器**（signatures / avatars）→ 直接 `<img [src]="apiUrl + '/files/...'">`。
-> - **需 token 的容器**（PII、vendor-passbooks、以及員工自助 `/me/files/...`）→ 一律 `HttpClient` 下載 Blob（interceptor 帶 token）→ `URL.createObjectURL` 設給 `<img>` 或 `window.open` 開新分頁。
+> - **需 token 的容器**（PII、vendor-passbooks、quotes、request-attachments、以及員工自助 `/me/files/...`）→ 一律 `HttpClient` 下載 Blob（interceptor 帶 token）→ `URL.createObjectURL` 設給 `<img>` / `<iframe>` 或 `window.open` 開新分頁。
 > 員工「個人資訊」唯讀頁 [my-profile](../Admin/src/app/features/account/pages/my-profile/) 即依此規則：簽名 / 頭像走公開 `/files/`，身分證 / 學歷 / 三證明走 `/me/files/` blob 下載。
+>
+> **`FilePreviewModal` 預覽私有檔案**：modal 的 iframe / img 同樣不帶 JWT，故報價單 / 整單附件的「檢視」一律改用共用 [`FilePreviewLoader`](../Admin/src/app/shared/services/file-preview-loader.ts)（`resolveFileProxyUrl` → `HttpClient` 取 blob → `createObjectURL` → 回傳 `PreviewFileData`，關閉時 `revoke`），**不可**把原始 blob URL 直接丟進 modal。**歷史教訓（2026-06）**：預審 PDF 合併上傳檔曾因直接 `fetch()` 私有 blob URL 而 403 / CORS 靜默失敗（檔案沒被合併進去）；詳情頁 / 簽核頁的預覽亦同病，皆改走代理修正。
 
 ### 12.5b 整單批次附件（共用元件）
 
 請款（廠商請款 / 一般請款）/ 預支沖銷表單明細下方支援批次上傳照片或文件，使用兩個共用元件：
 
 - [`<app-attachments-upload>`](../Admin/src/app/shared/components/attachments-upload.ts)（可編輯）：`[existing]` 帶入既有附件、`[disabled]` 控制唯讀；內部自管新增 / 既有 / 刪除狀態，圖片以 `ImageCompressionService`（maxSize 1600）壓縮。父表單透過 `viewChild(AttachmentsUpload)` 取得實例，於 `_buildFormData()` 呼叫 `getMeta()`（JSON → `attachments` 欄位）與 `getNewFiles()`（檔案 → `attachmentFiles` 欄位）。請款兩種 type（vendor / general）皆帶附件。
-- [`<app-attachments-list>`](../Admin/src/app/shared/components/attachments-list.ts)（唯讀）：`[attachments]` 帶入；用於申請詳情頁與簽核審核頁，逐項顯示檔名 + 檢視（共用 `FilePreviewModal`）。
+- [`<app-attachments-list>`](../Admin/src/app/shared/components/attachments-list.ts)（唯讀）：`[attachments]` 帶入；用於申請詳情頁與簽核審核頁，逐項顯示檔名 + 檢視。附件存於私有 `request-attachments` 容器，「檢視」透過 [`FilePreviewLoader`](../Admin/src/app/shared/services/file-preview-loader.ts) 走 JWT 代理抓 blob 後再交 `FilePreviewModal`（見 §12.4 鐵則）。
 
 ### 12.5c 發票 OCR 上傳（一檔可展開多列）
 
