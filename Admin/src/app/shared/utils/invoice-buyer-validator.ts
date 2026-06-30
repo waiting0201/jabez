@@ -54,16 +54,18 @@ const titleCompatible = (entryTitle: string, ocrTitle: string): boolean => {
 
 /**
  * 驗證發票買方抬頭與統編是否為公司合法的 4 組之一。統編為主要錨點（8 碼數字較可靠）。
- * - 統編為空（讀不到）→ warn（請手動確認，手寫發票常見）
- * - 統編符合某組 + 抬頭相容（或讀不到）→ ok
+ * - 抬頭與統編「需皆讀得到」才判斷；任一缺漏（含收銀機 / 二聯式 / 手寫發票讀不全）→ ok（不警告）
+ * - 統編符合某組 + 抬頭相容 → ok
  * - 統編符合某組但抬頭明顯為他家公司 → warn（抬頭與統編不符）
  * - 統編不在 4 組內 → warn（統編不正確）
  */
 export function validateInvoiceBuyer(buyerName: string, buyerTaxId: string): InvoiceBuyerResult {
   const taxId = normalizeTaxId(buyerTaxId);
+  const title = normalizeTitle(buyerName);
 
-  if (!taxId) {
-    return { level: 'warn', message: '無法辨識買方統編，請手動確認。' };
+  // 抬頭與統編需皆讀得到才判斷；任一缺漏 → 無從判斷，不跳警告
+  if (!taxId || !title) {
+    return { level: 'ok' };
   }
 
   const byTaxId = VALID_INVOICE_BUYERS.find((b) => b.taxId === taxId);
