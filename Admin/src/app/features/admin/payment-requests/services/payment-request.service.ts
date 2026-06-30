@@ -1,6 +1,6 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
-import {Observable} from 'rxjs';
+import {Observable, timeout} from 'rxjs';
 import {PaymentRequest} from '../models/payment-request.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {UpsertInstallmentsRequest} from '../../approval-tasks/models/approval-task.model';
@@ -51,11 +51,16 @@ export class PaymentRequestService {
     return this.http.patch<PaymentRequest>(`${environment.apiUrl}/payment-requests/${id}/submit`, {});
   }
 
-  /** 發票 / 交通票根 OCR 辨識（後端透過 Google Gemini API）；一張圖可辨識出多筆，回傳陣列 */
+  /**
+   * 發票 / 交通票根 OCR 辨識（後端透過 Google Gemini API）；一張圖可辨識出多筆，回傳陣列。
+   * 加 45 秒前端逾時（後端 Gemini 呼叫上限 30 秒）作為安全網：避免請求卡住時上傳列的
+   * OCR pending 狀態無法解除、連帶把 `isAnyOcrPending` 控制的「送出 / 儲存」按鈕永久鎖住。
+   */
   ocrInvoice(file: File): Observable<OcrItem[]> {
     const fd = new FormData();
     fd.append('file', file, file.name);
-    return this.http.post<OcrItem[]>(`${environment.apiUrl}/invoice-ocr`, fd);
+    return this.http.post<OcrItem[]>(`${environment.apiUrl}/invoice-ocr`, fd)
+      .pipe(timeout(45000));
   }
 
   /** 新增/更新分期撥款明細（4 種申請類型共用語意；僅財務部/Superadmin）*/

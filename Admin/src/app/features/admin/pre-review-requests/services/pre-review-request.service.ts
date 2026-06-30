@@ -1,6 +1,6 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
-import {Observable} from 'rxjs';
+import {Observable, timeout} from 'rxjs';
 import {PreReviewRequest} from '../models/pre-review-request.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {environment} from '@/environments/environment';
@@ -45,10 +45,15 @@ export class PreReviewRequestService {
     return this.http.patch<PreReviewRequest>(`${environment.apiUrl}/pre-review-requests/${id}/submit`, {});
   }
 
-  /** 報價單 OCR 辨識（後端透過 Google Gemini API）；一張圖可辨識出多筆品項，回傳陣列 */
+  /**
+   * 報價單 OCR 辨識（後端透過 Google Gemini API）；一張圖可辨識出多筆品項，回傳陣列。
+   * 加 45 秒前端逾時（後端 Gemini 呼叫上限 30 秒）作為安全網：避免請求卡住時
+   * 上傳列的 OCR pending 狀態一直無法解除、連帶把「送出 / 儲存」按鈕永久鎖住。
+   */
   quoteOcr(file: File): Observable<QuoteOcrItem[]> {
     const fd = new FormData();
     fd.append('file', file, file.name);
-    return this.http.post<QuoteOcrItem[]>(`${environment.apiUrl}/quote-ocr`, fd);
+    return this.http.post<QuoteOcrItem[]>(`${environment.apiUrl}/quote-ocr`, fd)
+      .pipe(timeout(45000));
   }
 }

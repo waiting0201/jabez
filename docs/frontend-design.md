@@ -1054,8 +1054,8 @@ async onFileSelected(event: Event) {
    - 第 1 筆 patch 進 placeholder 那列；第 2..N 筆**各 push 一新列**，新列產生新 `id`、`fileMap.set(newId, file)` **指向同一個 File 物件**（→ 存檔時各 append 一份複本，N 列各存一份檔案）。
    - 陣列為空（沒辨識到）→ placeholder 留空供手動輸入。
 4. `docType==='ticket'` 時各表單套用各自規則（`note='票號'`、出差請款另帶 `category='交通費'`）；金額帶入 `unitPrice/totalPrice`（+ 預支沖銷 `cashAmount`）、`quantity='1式'`。
-5. `isAnyOcrPending` 控制送出按鈕禁用，存檔組 FormData 的逐列 `fileMap.get(id)` → `append('files')` 迴圈不變。
-6. **買方抬頭/統編驗證**：OCR 結果含 `buyerName`/`buyerTaxId`，填值後對 `docType==='invoice'` 的列呼叫共用工具 [`validateInvoiceBuyer`](../Admin/src/app/shared/utils/invoice-buyer-validator.ts) 比對公司白名單（4 組抬頭＋統編）。**抬頭與統編需皆讀得到才判斷，任一缺漏即跳過不驗**（收銀機 / 二聯式 / 手寫讀不全）。不符時 `invoiceWarnings.set(rowId, msg)`（`invoiceWarnings = new Map<string,string>()`，key = 列 id），刪列時一併 `delete`。**警告僅顯示、不阻擋送出、不持久化**。警告列以 `<span class="inline-flex items-center gap-1">` 包 `sa-icon sa-icon-1x`（alert-triangle）＋訊息，**icon 與文字同一行**。
+5. `isAnyOcrPending` 控制送出按鈕禁用，存檔組 FormData 的逐列 `fileMap.get(id)` → `append('files')` 迴圈不變。**OCR 呼叫務必加前端逾時**（`.pipe(timeout(45000))`，略大於後端 Gemini 30 秒上限），否則請求卡住時 `ocrLoadingIds` 永不清除、`isAnyOcrPending` 恆為 true，會把「送出 / 儲存」按鈕**永久鎖住**且畫面無提示。同時 OCR 進行中**須在按鈕區顯示「辨識中…請稍候」hint**（避免使用者誤以為按鈕壞掉）。
+6. **買方抬頭/統編驗證**：OCR 結果含 `buyerName`/`buyerTaxId`，填值後對 `docType==='invoice'` 的列呼叫共用工具 [`validateInvoiceBuyer`](../Admin/src/app/shared/utils/invoice-buyer-validator.ts) 比對公司白名單（5 組抬頭＋統編）。**抬頭與統編需皆讀得到才判斷，任一缺漏即跳過不驗**（收銀機 / 二聯式 / 手寫讀不全）。不符時 `invoiceWarnings.set(rowId, msg)`（`invoiceWarnings = new Map<string,string>()`，key = 列 id），刪列時一併 `delete`。**警告僅顯示、不阻擋送出、不持久化**。警告列以 `<span class="inline-flex items-center gap-1">` 包 `sa-icon sa-icon-1x`（alert-triangle）＋訊息，**icon 與文字同一行**。
 
 > 多張擠在一張照片時辨識準確度較低，各列辨識後仍需人工核對（欄位皆可手動修改）。
 
