@@ -37,6 +37,7 @@
 - **退回重送不重挑**：`ApprovalItemId` 僅在首次送出解析，之後沿用，確保流程一致。
 - **步驟解析 / 待審清單不受影響**：`ResolveStartingStepAsync` 與 `StepMatchClause` 讀的是申請單上已存的 `ApprovalItemId`，與「哪個流程」解耦，天然相容。
 - **`GET /approval-items/active`**（申請表單偵測指定審核步驟用）同樣部門感知：以 JWT `department_id` 套用相同 fallback，回傳「呼叫者實際會走」的流程，由 [ApprovalReadService.GetActiveByTypeAsync](../../Api/Services/Dapper/ApprovalReadService.cs) 子查詢挑單一流程後聚合 steps。
+- **審核任務 / 詳情頁顯示的簽核流程**：[PaymentRequestReadService](../../Api/Services/Dapper/PaymentRequestReadService.cs) 的 flow lookup **以 `ApprovalItem.Id` 為 key（對應申請列已存的 `ApprovalItemId`）**，而非以 `ApplicationType` 為 key——否則同一類型有多個流程（部門專屬 + 通用預設）時會把各 `ApprovalItem` 的 steps 合併到同一條流程，造成 review 頁簽核流程**重複顯示**。每張申請只顯示自己送單時解析到的那條流程；`ApprovalItemId` 為空（理論上不應發生）時退回該類型通用預設（無則取最小 Id）。
 - **設定頁**（[approval-list](../../Admin/src/app/features/admin/approvals/pages/approval-list/)）新增「適用部門」下拉（含「通用（預設）」= null），列表多一欄顯示部門；建立 / 編輯以 `(類型, 部門)` 判重，後端重複回 409。
 
 > 典型用法：步驟結構大致相同、只差某一關審核主管時，**複製通用預設流程 → 改那一關的部門 / 職稱 → 綁定該部門**即可。
@@ -106,7 +107,7 @@ draft → pending → approved / returned / rejected
 
 > 上述限制由 helpers `canAddInstallmentRow / isInstallmentsSumValid / isFullyPaid / installmentRowMax / isInstallmentLocked` 統一掌控；後端 `InstallmentValidator.Validate` 提供等同的伺服端防線。
 
-> 此端點仍限**財務體系部門**（部門 Code ∈ AC / FIN / Jabez HQ / CEO，`DepartmentCodes.FinancialAndAbove`）或 **Superadmin** 操作。
+> 此端點仍限**財務體系部門**（部門 Code ∈ AC / FIN / Jabez HQ / CEO，或 2026 改制後英文全名碼 Accounting Department / Financial Management Department / Office of the Director；見 `DepartmentCodes.FinancialAndAbove`）或 **Superadmin** 操作。
 
 歷史：原採兩階段過渡，Phase 1 父表保留 `EstimatedPaymentDate` / `PaidAt` / `PaidByUserId` 作 cache 由 Handler 同步寫回。2026-05 Phase 2 由 [BackfillInstallmentsFromParentCache](../../Api/Data/Migrations/) → [RemovePaymentDateCacheFromParents](../../Api/Data/Migrations/) 兩個 migration 拆除父表 cache。
 
@@ -302,6 +303,6 @@ draft → pending → approved / returned / rejected
 - **加班 / 請假 / 出差升級機制**（找上層部門主管 + 代理人） → [approval-escalation.md](approval-escalation.md)
 - **核決後的 PDF 簽名欄渲染** → [pdf-signatures.md](pdf-signatures.md)
 - **撥款 / 退款日 LINE 通知模板** → [line-integration.md](line-integration.md)
-- **撥款日端點權限**（部門 Code AC/FIN/Jabez HQ/CEO） → [department-visibility.md](department-visibility.md)
+- **撥款日端點權限**（部門 Code AC/FIN/Jabez HQ/CEO，或改制後英文全名碼） → [department-visibility.md](department-visibility.md)
 - **API 端點清單** → [api-routes.md §審核任務](../api-routes.md#審核任務)
 - **Entity（ApprovalItem / Step / Record / Override / RequestDesignatedReviewer）** → [database-schema.md](../database-schema.md)
