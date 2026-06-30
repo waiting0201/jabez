@@ -17,19 +17,7 @@ import {
 } from '../../models/approval-task.model';
 import {ApplicationType} from '../../../approvals/models/approval.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
-import {AuthService} from '../../../../../core/auth/services/auth.service';
-
-/**
- * 可看到撥款/退款篩選的部門代碼：總監室、財務管理部、會計室。
- * 同時涵蓋舊短碼與 2026 改制後的英文全名碼（避免改組織就失效）。
- * 須與後端 Constants.cs 的 DepartmentCodes.FinancialAndAbove 同步。
- */
-const PAYMENT_FILTER_DEPT_CODES = new Set([
-  'CEO', 'FIN', 'AC',                   // 舊短碼
-  'Office of the Director',             // 總監室
-  'Financial Management Department',    // 財務管理部
-  'Accounting Department',              // 會計室
-]);
+import {AuthService, FINANCIAL_AND_ABOVE_DEPT_CODES} from '../../../../../core/auth/services/auth.service';
 
 @Component({
   selector: 'app-approval-task-list',
@@ -43,7 +31,7 @@ export class ApprovalTaskList {
 
   /** Superadmin 或總監室/財務部/會計部才顯示撥款/退款子篩選 */
   canSeePaymentFilter = computed(() =>
-    this.auth.isSuperAdmin() || PAYMENT_FILTER_DEPT_CODES.has(this.auth.departmentCode() ?? '')
+    this.auth.isSuperAdmin() || FINANCIAL_AND_ABOVE_DEPT_CODES.has(this.auth.departmentCode() ?? '')
   );
 
   /** 是否具備全選核准權限（待審核 tab 才啟用 UI） */

@@ -28,6 +28,20 @@ export interface AutoClockOutInfo {
   dates: string[];
 }
 
+/**
+ * 財務體系部門 Code（須與後端 Constants.cs 的 DepartmentCodes.FinancialAndAbove 同步）：
+ * 成員可執行撥款 / 退款 / 結案 / 批次核准等業務操作，亦顯示撥款/退款子篩選。
+ * 含舊短碼與 2026 改制後英文全名，避免改組織就失效。
+ * 注意：此為「使用者撥款權限」廣集合（含 CEO/總監/HQ/會計），與「財務撥款步驟」窄集合
+ *（approval-task-review.ts 的 FINANCE_STEP_DEPT_CODES，只財務管理部）用途不同，勿混用。
+ */
+export const FINANCIAL_AND_ABOVE_DEPT_CODES = new Set([
+  'CEO', 'FIN', 'AC', 'Jabez HQ',       // 舊短碼
+  'Office of the Director',             // 總監室
+  'Financial Management Department',    // 財務管理部
+  'Accounting Department',              // 會計室
+]);
+
 export interface AutoOvertimeEndInfo {
   count: number;
   dates: string[];
@@ -142,8 +156,10 @@ export class AuthService {
     return level !== null && level <= 3;
   });
 
-  /** 是否為財務部（signal），以部門代碼 'FIN' 判斷 */
-  isFinanceDept = computed<boolean>(() => this.departmentCode() === 'FIN');
+  /** 是否屬財務體系部門（signal）：以 FINANCIAL_AND_ABOVE_DEPT_CODES 判斷，對齊後端結案/撥款授權 */
+  isFinanceDept = computed<boolean>(() =>
+    FINANCIAL_AND_ABOVE_DEPT_CODES.has(this.departmentCode() ?? ''),
+  );
 
   get token(): string | null {
     return this._token();

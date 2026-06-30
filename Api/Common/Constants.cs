@@ -116,4 +116,18 @@ public static class DepartmentCodes
             FinanceEn,
             ExecutiveEn,
         };
+
+    /// <summary>
+    /// 財務撥款步驟專用：簽核流程中「填撥款日 / 撥款明細 / 結案」的財務節點所綁定之部門 Code。
+    /// 僅財務管理部（舊短碼 FIN + 改制後英文全名 FinanceEn），刻意不含 CEO / 總監 / HQ / 會計，
+    /// 避免把上層核准步驟誤判為撥款填寫節點而擋住簽核。
+    /// 前端對應判定見 approval-task-review.ts 的 FINANCE_STEP_DEPT_CODES（canSetPaymentDate /
+    /// canCloseAdvance / canCloseTravelRequest），兩處須同步。
+    /// </summary>
+    public static readonly IReadOnlySet<string> FinanceStep =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            Finance,
+            FinanceEn,
+        };
 }

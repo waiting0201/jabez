@@ -562,7 +562,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
 
     /// <summary>
     /// 判斷指定步驟是否為財務部步驟（撥款明細的填寫節點）。Superadmin 視同財務。
-    /// 與沖銷結案的步驟判定（Department.Code == "FIN"）一致。
+    /// 與沖銷結案的步驟判定一致；以 DepartmentCodes.FinanceStep 比對（含改制後英文全名），
+    /// 避免組織改制後步驟綁定的部門 Code 改變導致判定失效。
     /// </summary>
     private async Task<bool> IsFinanceStepAsync(int? approvalItemId, int stepOrder, User reviewer)
     {
@@ -571,7 +572,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         var step = await db.ApprovalSteps.AsNoTracking()
             .Include(s => s.Department)
             .FirstOrDefaultAsync(s => s.ApprovalItemId == approvalItemId.Value && s.StepOrder == stepOrder);
-        return step?.Department?.Code == "FIN";
+        return step?.Department?.Code is { } code && DepartmentCodes.FinanceStep.Contains(code);
     }
 
     /// <summary>
