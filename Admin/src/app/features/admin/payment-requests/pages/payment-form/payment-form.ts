@@ -410,7 +410,11 @@ export class PaymentForm implements OnInit {
 
   /** 儲存（草稿或更新，不改變狀態） */
   save() {
-    if (this.form.invalid) return;
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      this.errorMsg.set('尚有必填欄位未填寫，請檢查紅字標示的欄位後再儲存。');
+      return;
+    }
     if (this.invoiceArray.length === 0) {this.showInvoiceError = true; return;}
     this.showInvoiceError = false;
     const fd = this._buildFormData();
@@ -436,7 +440,11 @@ export class PaymentForm implements OnInit {
 
   /** 送出申請（先儲存再將狀態改為 pending） */
   submitForApproval() {
-    if (this.form.invalid) return;
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      this.errorMsg.set('尚有必填欄位未填寫，請檢查紅字標示的欄位後再送出。');
+      return;
+    }
     if (this.invoiceArray.length === 0) {this.showInvoiceError = true; return;}
     this.showInvoiceError = false;
     // 流程含「申請人指定審核」步驟時，每個 designated step 至少需要 1 位指定審核者
