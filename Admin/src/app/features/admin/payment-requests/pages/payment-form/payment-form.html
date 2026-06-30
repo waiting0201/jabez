@@ -293,8 +293,10 @@
                     @if (!isReadOnly && invoiceWarnings.has(ctrl.get('id')?.value)) {
                       <tr>
                         <td colspan="7" class="text-danger small py-1 ps-3 border-0">
-                          <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
-                          {{ invoiceWarnings.get(ctrl.get('id')?.value) }}
+                          <span class="inline-flex items-center gap-1">
+                            <svg class="sa-icon sa-icon-1x" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                            {{ invoiceWarnings.get(ctrl.get('id')?.value) }}
+                          </span>
                         </td>
                       </tr>
                     }
