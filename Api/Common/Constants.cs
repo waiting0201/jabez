@@ -95,8 +95,15 @@ public static class DepartmentCodes
     public const string HQAdmin    = "Jabez HQ";   // 雅比斯總公司管理部
     public const string Executive  = "CEO";        // 總監室
 
+    // 2026 組織改制後新的部門代碼（Code 改為英文全名）。舊短碼一併保留以相容尚未改制的環境。
+    public const string AccountingEn = "Accounting Department";            // 會計室（財務管理部下）
+    public const string FinanceEn    = "Financial Management Department";  // 財務管理部
+    public const string ExecutiveEn  = "Office of the Director";           // 總監室
+
     /// <summary>
     /// 財務 / 管理 / 總監級部門：成員可執行撥款日 / 退款日 / 結案 / 批次核准等業務操作。
+    /// 同時涵蓋舊短碼（CEO/FIN/AC/Jabez HQ）與改制後英文全名碼，避免改組織就失效。
+    /// 前端對應清單見 approval-task-list.ts 的 PAYMENT_FILTER_DEPT_CODES，兩處須同步。
     /// </summary>
     public static readonly IReadOnlySet<string> FinancialAndAbove =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -105,5 +112,8 @@ public static class DepartmentCodes
             Finance,
             HQAdmin,
             Executive,
+            AccountingEn,
+            FinanceEn,
+            ExecutiveEn,
         };
 }
