@@ -1,6 +1,6 @@
 import {ChangeDetectionStrategy, Component, inject, input} from '@angular/core';
-import {DomSanitizer} from '@angular/platform-browser';
 import {FilePreviewModal, PreviewFileData} from './file-preview-modal';
+import {FilePreviewLoader} from '../services/file-preview-loader';
 import {AttachmentItem} from '../../features/admin/approval-tasks/models/approval-task.model';
 
 /**
@@ -38,16 +38,20 @@ import {AttachmentItem} from '../../features/admin/approval-tasks/models/approva
 export class AttachmentsList {
   attachments = input<AttachmentItem[] | null | undefined>(null);
 
-  private sanitizer = inject(DomSanitizer);
+  private previewLoader = inject(FilePreviewLoader);
 
   isImage(name: string): boolean {
     return /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(name);
   }
 
   previewFile: PreviewFileData | null = null;
-  openPreview(a: AttachmentItem) {
-    const url = a.fileUrl ?? '';
-    this.previewFile = {name: a.fileName, url, safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(url)};
+  async openPreview(a: AttachmentItem) {
+    if (!a.fileUrl) return;
+    // 私有容器（request-attachments）需透過 JWT 代理抓 blob，不能直接把 blob URL 丟進 iframe
+    this.previewFile = await this.previewLoader.load(a.fileUrl, a.fileName);
   }
-  closePreview() { this.previewFile = null; }
+  closePreview() {
+    this.previewLoader.revoke(this.previewFile);
+    this.previewFile = null;
+  }
 }

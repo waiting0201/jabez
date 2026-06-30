@@ -6,6 +6,7 @@ import {HttpErrorResponse} from '@angular/common/http';
 import {DomSanitizer} from '@angular/platform-browser';
 import {EMPTY, Observable, catchError, tap} from 'rxjs';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
+import {FilePreviewLoader} from '../../../../../shared/services/file-preview-loader';
 import {AttachmentsList} from '../../../../../shared/components/attachments-list';
 import {AuthService} from '../../../../../core/auth/services/auth.service';
 import {PaymentRequestService} from '../../../payment-requests/services/payment-request.service';
@@ -61,6 +62,7 @@ export class ApprovalTaskReview implements OnInit {
   private router            = inject(Router);
   private fb                = inject(FormBuilder);
   private sanitizer         = inject(DomSanitizer);
+  private previewLoader     = inject(FilePreviewLoader);
 
   task$!: Observable<ApprovalTask | undefined>;
   taskId = 0;
@@ -116,7 +118,15 @@ export class ApprovalTaskReview implements OnInit {
   openPreview(name: string, url: string) {
     this.previewFile = {name, url, safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(url)};
   }
-  closePreview() { this.previewFile = null; }
+  /** 私有容器（quotes 報價單 / request-attachments）需透過 JWT 代理抓 blob，不能直接丟進 iframe */
+  async openProxyPreview(name: string, url: string) {
+    if (!url) return;
+    this.previewFile = await this.previewLoader.load(url, name);
+  }
+  closePreview() {
+    this.previewLoader.revoke(this.previewFile);
+    this.previewFile = null;
+  }
 
   readonly statusLabel    = TASK_STATUS_LABELS;
   readonly statusClass    = TASK_STATUS_CLASSES;

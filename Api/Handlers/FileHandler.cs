@@ -22,6 +22,8 @@ public sealed class FileHandler(IBlobStorageService blob, ILogger<FileHandler> l
     private const string EducationProofContainer   = "education-proofs";
     private const string VendorPassbookContainer   = "vendor-passbooks";
     private const string VendorIdCardContainer     = "vendor-id-cards";
+    private const string QuotesContainer           = "quotes";
+    private const string RequestAttachmentContainer = "request-attachments";
 
     /// <summary>
     /// 代理讀取簽名檔圖片。
@@ -95,6 +97,24 @@ public sealed class FileHandler(IBlobStorageService blob, ILogger<FileHandler> l
     public Task<IActionResult> GetVendorIdCardAsync(string fileName)
         => GetFileAsync(VendorIdCardContainer, fileName, IsImageOrPdf);
 
+    /// <summary>
+    /// 代理讀取預審 / 請款品項報價單（圖片或 PDF）。
+    /// 路由：GET /files/quotes/{*path}
+    /// 此端點需要 JWT，但不需特殊權限（一般業務檔案，與 avatars / signatures 同層）。
+    /// blob 命名為 yyyy/MM/{guid}{ext}（含 '/'），故走允許子路徑的取檔核心。
+    /// </summary>
+    public Task<IActionResult> GetQuoteAsync(string path)
+        => GetSubPathFileAsync(QuotesContainer, path, IsImageOrPdf);
+
+    /// <summary>
+    /// 代理讀取整單批次附件（圖片或 PDF；一般請款 / 預支沖銷 / 預審 共用）。
+    /// 路由：GET /files/request-attachments/{*path}
+    /// 此端點需要 JWT，但不需特殊權限（一般業務檔案，與 avatars / signatures 同層）。
+    /// blob 命名為 yyyy/MM/{guid}{ext}（含 '/'），故走允許子路徑的取檔核心。
+    /// </summary>
+    public Task<IActionResult> GetRequestAttachmentAsync(string path)
+        => GetSubPathFileAsync(RequestAttachmentContainer, path, IsImageOrPdf);
+
     // 員工可自助存取的 Blob 容器白名單（PII 類，但限制為「讀自己的」）
     private static readonly HashSet<string> SelfServiceContainers = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -145,6 +165,34 @@ public sealed class FileHandler(IBlobStorageService blob, ILogger<FileHandler> l
 
     private Task<IActionResult> GetImageAsync(string container, string fileName)
         => GetFileAsync(container, fileName, IsImage);
+
+    /// <summary>
+    /// 共用代理（允許多段子路徑）：用於 blob name 含日期子路徑（yyyy/MM/{guid}{ext}）的容器。
+    /// 與 <see cref="GetFileAsync"/> 行為一致，差別在於檔名驗證允許 '/'（仍阻擋 '..' / '\' / 控制字元 / 空白）。
+    /// </summary>
+    private async Task<IActionResult> GetSubPathFileAsync(string container, string path, Func<string, bool> isAllowed)
+    {
+        if (!IsSafeSubPath(path))
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid file name."));
+
+        var result = await blob.DownloadAsync(container, path);
+        if (result is null)
+            return new NotFoundObjectResult(ApiResponse.Fail("File not found."));
+
+        var (content, contentType) = result.Value;
+
+        if (!isAllowed(contentType))
+        {
+            logger.LogError(
+                "Blob 內含預期外的 Content-Type：container={Container} blob={Blob} contentType={Type} — 上傳路徑應已擋下，請檢查資料完整性。",
+                container, path, contentType);
+            await content.DisposeAsync();
+            return new ObjectResult(ApiResponse.Fail("檔案格式不符預期，請聯絡系統管理員。"))
+                { StatusCode = 500 };
+        }
+
+        return new FileStreamResult(content, contentType);
+    }
 
     /// <summary>
     /// 共用代理：取出 Blob 後驗證 Content-Type 是否在預期清單。
@@ -203,9 +251,32 @@ public sealed class FileHandler(IBlobStorageService blob, ILogger<FileHandler> l
         return !ContainsTraversal(fileName) && !ContainsTraversal(decoded);
     }
 
+    // 子路徑版（允許 '/'，用於 blob name 含日期目錄的容器）
+    // 仍阻擋 '..' 序列、反斜線、控制字元與空白，避免路徑穿越攻擊
+    private static bool IsSafeSubPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return false;
+
+        string decoded;
+        try
+        {
+            decoded = Uri.UnescapeDataString(path);
+        }
+        catch
+        {
+            return false;
+        }
+
+        return !ContainsSubPathTraversal(path) && !ContainsSubPathTraversal(decoded);
+    }
+
     private static bool ContainsTraversal(string value) =>
         value.Contains('/')
-        || value.Contains('\\')
+        || ContainsSubPathTraversal(value);
+
+    private static bool ContainsSubPathTraversal(string value) =>
+        value.Contains('\\')
         || value.Contains("..", StringComparison.Ordinal)
         || value.Contains('\0')
         || value.Any(char.IsControl);

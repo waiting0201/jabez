@@ -245,6 +245,8 @@
 | GET | `/files/disabled-proofs/{fileName}` | 殘障證明文件代理（需 `users:read`，HR 敏感 PII） |
 | GET | `/files/id-cards/{fileName}` | 身分證影本代理（需 `users:read`，HR 敏感 PII） |
 | GET | `/files/education-proofs/{fileName}` | 最高學歷證明代理（需 `users:read`，HR 敏感 PII） |
+| GET | `/files/quotes/{*path}` | 報價單代理（需 JWT，免特殊權限，與 vendor-passbooks 同層的一般業務檔案；blob name 含日期子路徑 `yyyy/MM/{guid}{ext}`，故 path 為多段） |
+| GET | `/files/request-attachments/{*path}` | 整單批次附件代理（需 JWT，免特殊權限；一般請款 / 預支沖銷 / 預審 共用；blob name 含日期子路徑，path 為多段） |
 
 ## 員工人事資料卡（HR Profile）
 

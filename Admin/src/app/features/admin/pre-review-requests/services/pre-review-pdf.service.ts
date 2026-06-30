@@ -3,7 +3,7 @@ import {HttpClient} from '@angular/common/http';
 import {firstValueFrom} from 'rxjs';
 import {ApprovalTask} from '../../approval-tasks/models/approval-task.model';
 import {PreReviewTaskDetail} from '../../approval-tasks/models/approval-task.model';
-import {PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, buildDynamicSignBlocks} from '../../../../shared/services/pdf-core.service';
+import {PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, buildDynamicSignBlocks, resolveFileProxyUrl} from '../../../../shared/services/pdf-core.service';
 import {environment} from '@/environments/environment';
 
 @Injectable({providedIn: 'root'})
@@ -225,15 +225,17 @@ export class PreReviewPdfService {
       const mergedPdf = await PDFDocument.load(formPdfBytes);
 
       // 收集所有需要合併的檔案 URL（先品項圖檔，再附件）
+      // 私有容器（quotes / request-attachments）的原始 blob URL 需轉為 JWT 代理路徑，
+      // 否則 _fetchFileBytes 直接 fetch 會 403 / CORS 而被靜默略過。
       const fileEntries: {url: string; fileName: string}[] = [];
       for (const item of items) {
         if (item.fileUrl) {
-          fileEntries.push({url: item.fileUrl, fileName: item.fileName});
+          fileEntries.push({url: resolveFileProxyUrl(item.fileUrl), fileName: item.fileName});
         }
       }
       for (const att of d.attachments ?? []) {
         if (att.fileUrl) {
-          fileEntries.push({url: att.fileUrl, fileName: att.fileName});
+          fileEntries.push({url: resolveFileProxyUrl(att.fileUrl), fileName: att.fileName});
         }
       }
 

@@ -190,6 +190,21 @@ export function resolveSignatureUrl(url: string): string {
   return url;
 }
 
+/**
+ * 將私有容器（quotes 報價單 / request-attachments 整單附件）的原始 blob URL
+ * 轉為後端 JWT 代理路徑，避免前端直接 fetch / iframe 私有 blob 遭 403 或 CORS。
+ * blob name 含日期子路徑（yyyy/MM/{guid}{ext}），故保留斜線。
+ * 非這兩個容器（或非完整 blob URL）則原樣回傳。
+ */
+export function resolveFileProxyUrl(url: string): string {
+  if (!url) return url;
+  const match = url.match(/\/(quotes|request-attachments)\/(.+)$/);
+  if (match) {
+    return `${environment.apiUrl}/files/${match[1]}/${match[2]}`;
+  }
+  return url;
+}
+
 /** 格式化日期時間（保證日期與時間之間有空格） */
 export function fmtDT(val: string | Date): string {
   const d = new Date(val);

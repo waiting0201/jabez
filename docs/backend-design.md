@@ -16,7 +16,7 @@
 | 資料庫 | SQL Server | 本地 `JabezDb`（連線字串於 [Api/local.settings.json](../Api/local.settings.json)） |
 | 認證 | JWT Bearer Token (HS256) | 由 [JwtService.cs](../Api/Services/JwtService.cs) 簽發 |
 | 路由 | 單一入口 RouterFunction → AppRouter | C# 12 List Pattern dispatch |
-| Blob | Azure Storage（本地 Azurite） | 容器：`avatars` / `signatures` / `indigenous-proofs` / `low-income-proofs` / `disabled-proofs` / `id-cards` / `education-proofs` / `invoices` / `vendor-passbooks` / `request-attachments` |
+| Blob | Azure Storage（本地 Azurite） | 容器：`avatars` / `signatures` / `indigenous-proofs` / `low-income-proofs` / `disabled-proofs` / `id-cards` / `education-proofs` / `invoices` / `vendor-passbooks` / `request-attachments` / `quotes` |
 | LINE | Messaging API + Login API | 簽核通知 + 打卡提醒 |
 | Email | Microsoft Graph API | 簽核通知 / 帳號通知 / 薪資明細 |
 | 例外處理 | `Middleware/ExceptionMiddleware.cs` | 統一捕捉 `AppException` 與未預期例外，回 `ApiResponse<T>` |
@@ -650,7 +650,10 @@ var allowedSignatures = new Dictionary<string, byte[][]>
 | `education-proofs` | 最高學歷證明 | 授權 `users:read` |
 | `invoices` | 發票檔 | 授權 |
 | `vendor-passbooks` | 廠商存摺封面 | **登入即可** `/files/vendor-passbooks/{fileName}`（一般檔，與 avatars/signatures 同層） |
-| `request-attachments` | 整單批次附件（請款（廠商 / 一般）/ 預支沖銷的照片或 PDF） | 授權 |
+| `quotes` | 報價單（預審 / 請款品項） | **登入即可** `/files/quotes/{*path}`（一般業務檔；blob name 含日期子路徑 `yyyy/MM/{guid}{ext}`，代理需以 slice pattern 接多段並用 `IsSafeSubPath` 放行 `/`） |
+| `request-attachments` | 整單批次附件（請款（廠商 / 一般）/ 預支沖銷 / 預審的照片或 PDF） | **登入即可** `/files/request-attachments/{*path}`（同 quotes，blob name 含日期子路徑） |
+
+> **歷史教訓（2026-06）**：`quotes` / `request-attachments` 為私有容器（`PublicAccessType.None`），DB 存的是**無 SAS 的原始 blob URL**。前端若直接 `fetch()` / iframe 這些 URL 會 403 / CORS——預審 PDF 合併上傳檔曾因此**靜默失敗**（`_fetchFileBytes` 回 null 略過）。修正方式：(1) 後端補上述兩個代理路由（blob name 含 `/`，需 slice pattern + `IsSafeSubPath`，**不可**放寬既有 `IsSafeFileName`）；(2) 前端以 `resolveFileProxyUrl()`（[pdf-core.service.ts](../Admin/src/app/shared/services/pdf-core.service.ts)）把原始 blob URL 轉成代理路徑後再經 HttpClient（帶 JWT）取用。
 
 ### 12.5 條件式刪除
 
