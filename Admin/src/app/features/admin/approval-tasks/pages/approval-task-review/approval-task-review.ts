@@ -31,6 +31,12 @@ import {
 } from '../../models/approval-task.model';
 import {LeaveType, formatLeaveDuration} from '../../../leave-requests/models/leave-request.model';
 
+/**
+ * 財務撥款步驟的部門 Code（須與後端 DepartmentCodes.FinanceStep 同步）：
+ * 僅財務管理部，含舊短碼 'FIN' 與改制後英文全名，避免組織改制後判定失效。
+ */
+const FINANCE_STEP_DEPT_CODES = new Set(['FIN', 'Financial Management Department']);
+
 @Component({
   selector: 'app-approval-task-review',
   templateUrl: './approval-task-review.html',
@@ -346,7 +352,7 @@ export class ApprovalTaskReview implements OnInit {
     if (this.auth.isSuperAdmin()) return true;
     if (!task.flow) return false;
     const step = task.flow.steps.find(s => s.stepOrder === task.currentStepOrder);
-    return step?.departmentCode === 'FIN';
+    return !!step?.departmentCode && FINANCE_STEP_DEPT_CODES.has(step.departmentCode);
   }
 
   /** 判斷是否顯示「預支結案」checkbox：預支沖銷申請 (write_off) 且當前步驟為財務部 */
@@ -355,7 +361,7 @@ export class ApprovalTaskReview implements OnInit {
     if (this.auth.isSuperAdmin()) return true;
     if (!task.flow) return false;
     const step = task.flow.steps.find(s => s.stepOrder === task.currentStepOrder);
-    return step?.departmentCode === 'FIN';
+    return !!step?.departmentCode && FINANCE_STEP_DEPT_CODES.has(step.departmentCode);
   }
 
   /** 判斷是否顯示「出差結案」checkbox：出差沖銷申請 (travel_write_off) 且當前步驟為財務部 */
@@ -364,7 +370,7 @@ export class ApprovalTaskReview implements OnInit {
     if (this.auth.isSuperAdmin()) return true;
     if (!task.flow) return false;
     const step = task.flow.steps.find(s => s.stepOrder === task.currentStepOrder);
-    return step?.departmentCode === 'FIN';
+    return !!step?.departmentCode && FINANCE_STEP_DEPT_CODES.has(step.departmentCode);
   }
 
   /** 判斷已核准的沖銷申請是否可結案：財務部或 Superadmin，且關聯的預支/出差未結案 */
