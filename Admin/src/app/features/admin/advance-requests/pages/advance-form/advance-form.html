@@ -146,7 +146,9 @@
                         @if (isReadOnly) {
                           <span class="small">{{ ctrl.get('category')?.value }}</span>
                         } @else {
-                          <select class="form-select form-select-sm" formControlName="category">
+                          <select class="form-select form-select-sm"
+                                  [class.is-invalid]="ctrl.get('category')?.invalid && ctrl.get('category')?.touched"
+                                  formControlName="category">
                             <option value="">選擇</option>
                             @for (cat of categories; track cat) {
                               <option [value]="cat">{{ cat }}</option>
@@ -165,14 +167,18 @@
                         @if (isReadOnly) {
                           <span class="small">{{ ctrl.get('itemName')?.value }}</span>
                         } @else {
-                          <input class="form-control form-control-sm" formControlName="itemName" placeholder="項目說明">
+                          <input class="form-control form-control-sm"
+                                 [class.is-invalid]="ctrl.get('itemName')?.invalid && ctrl.get('itemName')?.touched"
+                                 formControlName="itemName" placeholder="項目說明">
                         }
                       </td>
                       <td class="align-middle">
                         @if (isReadOnly) {
                           <span class="small">{{ ctrl.get('unitPrice')?.value | number:'1.0-0' }}</span>
                         } @else {
-                          <input type="number" class="form-control form-control-sm" formControlName="unitPrice" min="0"
+                          <input type="number" class="form-control form-control-sm"
+                                 [class.is-invalid]="ctrl.get('unitPrice')?.invalid && ctrl.get('unitPrice')?.touched"
+                                 formControlName="unitPrice" min="0"
                                  (input)="calcTotal(ctrl)">
                         }
                       </td>
@@ -180,7 +186,9 @@
                         @if (isReadOnly) {
                           <span class="small">{{ ctrl.get('quantity')?.value }}</span>
                         } @else {
-                          <input class="form-control form-control-sm" formControlName="quantity" placeholder="如：1式"
+                          <input class="form-control form-control-sm"
+                                 [class.is-invalid]="ctrl.get('quantity')?.invalid && ctrl.get('quantity')?.touched"
+                                 formControlName="quantity" placeholder="如：1式"
                                  (input)="calcTotal(ctrl)">
                         }
                       </td>

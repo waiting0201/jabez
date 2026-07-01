@@ -333,7 +333,16 @@ export class TravelPaymentForm implements OnInit {
 
   /** 儲存（草稿或更新，不改變狀態） */
   save() {
-    if (this.form.invalid || this.itemArray.length === 0 || this.isReadOnly || this.isAnyOcrPending) return;
+    if (this.isReadOnly || this.isAnyOcrPending) return;
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      this.errorMsg.set('尚有必填欄位未填寫，請檢查紅字標示的欄位後再儲存。');
+      return;
+    }
+    if (this.itemArray.length === 0) {
+      this.errorMsg.set('請至少新增一筆明細。');
+      return;
+    }
     const fd = this._buildFormData();
     this.errorMsg.set('');
     const obs = this.isEdit
@@ -352,7 +361,16 @@ export class TravelPaymentForm implements OnInit {
 
   /** 送出申請（先儲存再將狀態改為 pending） */
   submitForApproval() {
-    if (this.form.invalid || this.itemArray.length === 0 || this.isReadOnly || this.isAnyOcrPending) return;
+    if (this.isReadOnly || this.isAnyOcrPending) return;
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      this.errorMsg.set('尚有必填欄位未填寫，請檢查紅字標示的欄位後再送出。');
+      return;
+    }
+    if (this.itemArray.length === 0) {
+      this.errorMsg.set('請至少新增一筆明細。');
+      return;
+    }
     // 流程含「申請人指定審核」步驟時，每個 designated step 至少需要 1 位指定審核者（被抑制者除外）
     if (this.hasDesignatedStep) {
       for (const step of this.designatedSteps) {

@@ -287,6 +287,7 @@
                           <div class="input-group input-group-sm">
                             <span class="input-group-text">NT$</span>
                             <input type="number" class="form-control form-control-sm"
+                                   [class.is-invalid]="ctrl.get('amount')?.invalid && ctrl.get('amount')?.touched"
                                    formControlName="amount" min="0" placeholder="0">
                           </div>
                         }
