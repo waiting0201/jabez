@@ -357,9 +357,15 @@ export class ApprovalTaskReview implements OnInit {
     });
   }
 
-  /** 判斷當前簽核步驟是否為財務部，或登入者為 Superadmin */
+  /**
+   * 判斷是否可設定撥款明細：
+   * - 待審核：須輪到財務簽核步驟（currentStepOrder 指向財務部步驟）
+   * - 已核准：currentStepOrder 已停在流程最後一步（可能非財務，如總監室），
+   *   改比對登入者自身部門是否屬財務體系，對齊後端 UpsertInstallmentsAsync 的權限判斷
+   */
   canSetPaymentDate(task: ApprovalTask): boolean {
     if (this.auth.isSuperAdmin()) return true;
+    if (task.status === 'approved') return this.auth.isFinanceDept();
     if (!task.flow) return false;
     const step = task.flow.steps.find(s => s.stepOrder === task.currentStepOrder);
     return !!step?.departmentCode && FINANCE_STEP_DEPT_CODES.has(step.departmentCode);
