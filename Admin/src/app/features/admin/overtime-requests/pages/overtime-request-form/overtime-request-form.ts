@@ -19,10 +19,12 @@ import {DepartmentService} from '../../../departments/services/department.servic
 import {Department} from '../../../departments/models/department.model';
 import {ApprovalFlowStepSummary} from '../../../approvals/models/approval.model';
 
+import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+
 @Component({
   selector: 'app-overtime-request-form',
   templateUrl: './overtime-request-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, ApprovalTimeline, DesignatedReviewersPicker],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, ApprovalTimeline, DesignatedReviewersPicker, ScrollIntoViewDirective],
 })
 export class OvertimeRequestForm implements OnInit {
   private fb          = inject(FormBuilder);

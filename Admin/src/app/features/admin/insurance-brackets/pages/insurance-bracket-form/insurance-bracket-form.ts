@@ -5,10 +5,12 @@ import {HttpErrorResponse} from '@angular/common/http';
 import {InsuranceBracketService} from '../../services/insurance-bracket.service';
 import {ToastrService} from 'ngx-toastr';
 
+import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+
 @Component({
   selector: 'app-insurance-bracket-form',
   templateUrl: './insurance-bracket-form.html',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, ScrollIntoViewDirective],
 })
 export class InsuranceBracketForm implements OnInit {
   private fb = inject(FormBuilder);

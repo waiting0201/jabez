@@ -4,10 +4,12 @@ import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {HttpErrorResponse} from '@angular/common/http';
 import {JobTitleService} from '../../services/job-title.service';
 
+import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+
 @Component({
   selector: 'app-job-title-form',
   templateUrl: './job-title-form.html',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, ScrollIntoViewDirective],
 })
 export class JobTitleForm implements OnInit {
   private fb = inject(FormBuilder);

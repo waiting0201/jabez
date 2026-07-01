@@ -12,10 +12,12 @@ import {AuthService} from '@core/auth/services/auth.service';
 import {Department} from '../../../departments/models/department.model';
 import {JobTitle} from '../../../job-titles/models/job-title.model';
 
+import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+
 @Component({
   selector: 'app-approval-flow',
   templateUrl: './approval-flow.html',
-  imports: [RouterLink, AsyncPipe, ReactiveFormsModule],
+  imports: [RouterLink, AsyncPipe, ReactiveFormsModule, ScrollIntoViewDirective],
 })
 export class ApprovalFlow implements OnInit {
   private route = inject(ActivatedRoute);

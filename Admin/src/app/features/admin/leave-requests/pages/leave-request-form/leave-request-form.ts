@@ -29,10 +29,12 @@ import {ApprovalFlowStepSummary} from '../../../approvals/models/approval.model'
 
 type HalfDaySlot = 'am' | 'pm';
 
+import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+
 @Component({
   selector: 'app-leave-request-form',
   templateUrl: './leave-request-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, ApprovalTimeline, DatePipe, DecimalPipe, DesignatedReviewersPicker],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, ApprovalTimeline, DatePipe, DecimalPipe, DesignatedReviewersPicker, ScrollIntoViewDirective],
 })
 export class LeaveRequestForm implements OnInit {
   private fb          = inject(FormBuilder);

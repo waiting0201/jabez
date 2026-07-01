@@ -5,10 +5,12 @@ import {HttpErrorResponse} from '@angular/common/http';
 import {DepartmentService} from '../../services/department.service';
 import {Department} from '../../models/department.model';
 
+import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+
 @Component({
   selector: 'app-department-form',
   templateUrl: './department-form.html',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, ScrollIntoViewDirective],
 })
 export class DepartmentForm implements OnInit {
   private fb = inject(FormBuilder);

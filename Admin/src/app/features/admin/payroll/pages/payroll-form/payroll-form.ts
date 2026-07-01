@@ -7,10 +7,12 @@ import {PayrollService} from '../../services/payroll.service';
 import {EmployeePayroll} from '../../models/payroll.model';
 import {LEAVE_TYPE_LABELS, LeaveType, formatLeaveDuration} from '../../../leave-requests/models/leave-request.model';
 
+import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+
 @Component({
   selector: 'app-payroll-form',
   templateUrl: './payroll-form.html',
-  imports: [ReactiveFormsModule, RouterLink, DatePipe, DecimalPipe],
+  imports: [ReactiveFormsModule, RouterLink, DatePipe, DecimalPipe, ScrollIntoViewDirective],
 })
 export class PayrollForm implements OnInit {
   private fb      = inject(FormBuilder);

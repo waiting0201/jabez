@@ -3,10 +3,12 @@ import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {HttpErrorResponse} from '@angular/common/http';
 import {SettingsService} from '../../services/settings.service';
 
+import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+
 @Component({
   selector: 'app-settings',
   templateUrl: './settings.html',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, ScrollIntoViewDirective],
 })
 export class Settings implements OnInit {
   private fb = inject(FormBuilder);

@@ -155,12 +155,14 @@
 
 ```html
 @if (errorMsg()) {
-  <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+  <div appScrollIntoView class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
     <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
     {{ errorMsg() }}
   </div>
 }
 ```
+
+**`appScrollIntoView` 必加**（[shared/directives/scroll-into-view.directive.ts](../Admin/src/app/shared/directives/scroll-into-view.directive.ts)）：這個錯誤列固定顯示在頁面最上方，但送出/儲存按鈕通常在表單很下面；沒有這個指令，使用者捲到底點送出、驗證沒過時訊息跳在頂部使用者看不到，會誤以為「按了沒反應」（2026-07 數位研發部請款申請回報過此問題）。此指令掛載時自動 `scrollIntoView({behavior:'smooth', block:'start'})`，全站表單頁（不含列表頁）一律加上。
 
 ### 報表 / 列表搜尋列（Toolbar Filter Pattern）
 
@@ -1320,6 +1322,7 @@ template / 文件中引用其他檔案時，使用相對路徑 markdown link：
 - [ ] Label 用 `form-label fw-500`，必填加紅星
 - [ ] 錯誤訊息僅在 `invalid && touched` 時顯示
 - [ ] FormArray 明細的刪除按鈕用 §7.2 標準（`btn-ghost-danger` + `#x`）
+- [ ] 頁首 `errorMsg` 錯誤列加 `appScrollIntoView`（§6「錯誤訊息列」），驗證失敗才不會跳訊息在使用者看不到的地方
 
 ### 檔案上傳
 - [ ] 圖檔走 `imageCompression.compress()` 壓縮
