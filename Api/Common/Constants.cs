@@ -122,7 +122,8 @@ public static class DepartmentCodes
     /// 僅財務管理部（舊短碼 FIN + 改制後英文全名 FinanceEn），刻意不含 CEO / 總監 / HQ / 會計，
     /// 避免把上層核准步驟誤判為撥款填寫節點而擋住簽核。
     /// 前端對應判定見 approval-task-review.ts 的 FINANCE_STEP_DEPT_CODES（canSetPaymentDate /
-    /// canCloseAdvance / canCloseTravelRequest），兩處須同步。
+    /// canCloseAdvance / canCloseTravelRequest）與 approval-task-list.ts 的 FINANCE_STEP_DEPT_CODES
+    /// （總監待簽核 tab 可見性），三處須同步。
     /// </summary>
     public static readonly IReadOnlySet<string> FinanceStep =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase)

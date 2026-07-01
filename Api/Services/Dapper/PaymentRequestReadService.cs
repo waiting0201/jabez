@@ -195,6 +195,20 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         // appType:   用於 "approved" 模式查詢 ApprovalRecords 時區分申請類型（字串常數，非 SQL 參數，已知安全值）
         string StepMatchClause(string alias, string userAlias, string appType)
         {
+            // 「總監待簽核」：目前步驟卡在總監（JobTitle.Level=1）且尚未核准，不受審核者職稱/部門限制
+            // （財務管理部專用檢視，權限已在 ApprovalTaskHandler.GetAllAsync 擋過，此處僅過濾資料）
+            if (statusFilter == "director_pending")
+                return $"""
+                  {alias}.ApprovalStatus = 'pending'
+                  AND EXISTS (
+                    SELECT 1 FROM ApprovalSteps sDir
+                    JOIN JobTitles jtDir ON jtDir.Id = sDir.JobTitleId
+                    WHERE sDir.ApprovalItemId = {alias}.ApprovalItemId
+                      AND sDir.StepOrder = {alias}.CurrentStepOrder
+                      AND jtDir.Level = 1
+                  )
+                  """;
+
             // Superadmin without status param: show all except draft
             if (superAdminDefault) return $"{alias}.ApprovalStatus <> 'draft'";
 

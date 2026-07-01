@@ -27,9 +27,11 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         // 依審核者職稱過濾，讓每個人只看到「當前步驟符合自己職稱」的待審申請
         // status 參數：pending（待審）、approved（已核准），空值沿用既有行為
         var principal = await jwtService.ValidateRequestAsync(req);
-        int?  jobTitleId    = null;
-        int?  deptId        = null;
-        Guid? reviewerUserId = null;
+        int?    jobTitleId      = null;
+        int?    deptId          = null;
+        Guid?   reviewerUserId  = null;
+        bool    callerIsSuperAdmin = false;
+        string? callerDeptCode  = null;
 
         if (principal is not null)
         {
@@ -37,12 +39,14 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             if (Guid.TryParse(userIdStr, out var userId))
             {
                 reviewerUserId = userId;
-                var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+                var user = await db.Users.AsNoTracking().Include(u => u.Department).FirstOrDefaultAsync(u => u.Id == userId);
                 if (user is not null && !user.IsSuperAdmin)
                 {
                     jobTitleId = user.JobTitleId;
                     deptId     = user.DepartmentId;
                 }
+                callerIsSuperAdmin = user?.IsSuperAdmin ?? false;
+                callerDeptCode     = user?.Department?.Code;
             }
         }
 
@@ -52,6 +56,10 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         string? paymentStatus = req.Query["paymentStatus"].ToString() is { Length: > 0 } ps2 ? ps2 : null;
         // 類型篩選：須為 ValidAppTypes 之一，否則忽略
         string? applicationType = req.Query["applicationType"].ToString() is { Length: > 0 } at && ValidAppTypes.Contains(at) ? at : null;
+
+        // 「總監待簽核」（僅剩總監步驟未簽核）僅財務管理部或 Superadmin 可查看
+        if (status == "director_pending" && !callerIsSuperAdmin && !DepartmentCodes.FinanceStep.Contains(callerDeptCode ?? ""))
+            return new ObjectResult(ApiResponse.Fail("僅財務管理部或 Superadmin 可查看總監待簽核清單。")) { StatusCode = 403 };
 
         var allTasks = (await reader.GetApprovalTasksAsync(jobTitleId, deptId, status, reviewerUserId, paymentStatus, applicationType)).ToList();
         int total = allTasks.Count;

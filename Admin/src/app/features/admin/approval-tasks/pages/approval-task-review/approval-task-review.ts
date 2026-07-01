@@ -33,7 +33,8 @@ import {
 import {LeaveType, formatLeaveDuration} from '../../../leave-requests/models/leave-request.model';
 
 /**
- * 財務撥款步驟的部門 Code（須與後端 DepartmentCodes.FinanceStep 同步）：
+ * 財務撥款步驟的部門 Code（須與後端 DepartmentCodes.FinanceStep、
+ * approval-task-list.ts 的 FINANCE_STEP_DEPT_CODES 三處同步）：
  * 僅財務管理部，含舊短碼 'FIN' 與改制後英文全名，避免組織改制後判定失效。
  */
 const FINANCE_STEP_DEPT_CODES = new Set(['FIN', 'Financial Management Department']);
