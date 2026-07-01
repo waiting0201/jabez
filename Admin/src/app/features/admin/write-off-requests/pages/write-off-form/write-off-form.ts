@@ -290,10 +290,14 @@ export class WriteOffRequestForm implements OnInit {
           group.patchValue({invoiceNo: item.invoiceNo ?? '', invoiceDate: item.invoiceDate ?? ''});
           this.itemArray.push(group);
           this._checkBuyer(newId, item);
+          this.itemArray.at(this.itemArray.length - 1).markAllAsTouched();
         }
       } catch {
         // OCR 失敗 — 保留空白欄位
       } finally {
+        // OCR 辨識完成（無論成功或失敗）立即標記該列 touched，讓漏填的必填欄位馬上顯示紅框，
+        // 避免使用者不知道表單無效、送出按鈕鎖住卻找不到原因
+        this.itemArray.controls.find(c => c.get('id')?.value === id)?.markAllAsTouched();
         this.ocrLoadingIds.delete(id);
         this.cdr.markForCheck();
       }

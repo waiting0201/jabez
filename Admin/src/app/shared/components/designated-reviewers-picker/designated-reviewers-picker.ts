@@ -52,7 +52,8 @@ export class DesignatedReviewersPicker implements OnChanges {
   @Input() departments: Department[] = [];
   @Input() initial: DesignatedReviewer[] = [];
 
-  @Output() change = new EventEmitter<DesignatedReviewerPayload[]>();
+  // 命名避開原生 DOM 事件名稱（zoneless 全域事件代理下曾誤路由到原生 change 事件，見 docs/frontend-design.md §12.6）
+  @Output() reviewersChange = new EventEmitter<DesignatedReviewerPayload[]>();
   /** 被抑制（部門最高層級 → 自動略過）的指定步驟 stepOrder 清單，供父元件驗證時排除 */
   @Output() suppressedStepsChange = new EventEmitter<number[]>();
 
@@ -215,7 +216,7 @@ export class DesignatedReviewersPicker implements OnChanges {
   private _emitChange() {
     this.firstStepComplete = this.groups[0]?.entries.some(e => !!e.selectedUserId) ?? false;
     this.topLevelSuppressed = this._computeTopLevelSuppressed();
-    this.change.emit(this._buildPayload());
+    this.reviewersChange.emit(this._buildPayload());
     this.suppressedStepsChange.emit(this._suppressedStepOrders());
   }
 

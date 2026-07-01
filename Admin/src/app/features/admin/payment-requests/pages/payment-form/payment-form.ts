@@ -154,6 +154,12 @@ export class PaymentForm implements OnInit {
     }
   }
 
+  /** 廠商輸入框失焦：未選定廠商（含 typeahead editable=false 自動清空文字）時立即標記 touched，
+   * 讓「請從清單中選擇廠商」提示馬上顯示，不必等到點送出才發現 */
+  onVendorBlur() {
+    if (!this.form.get('vendorId')?.value) this.form.get('vendorId')!.markAsTouched();
+  }
+
   /** 開啟「快速新增廠商」Modal；建立成功後將新廠商加入下拉並自動選取 */
   openQuickAddVendor() {
     const ref = this.modal.open(VendorQuickAddModal, {
@@ -384,10 +390,14 @@ export class PaymentForm implements OnInit {
             item.docType === 'ticket' ? '票號' : '', item.invoiceDate ?? '',
           ));
           this._checkBuyer(newId, item);
+          this.invoiceArray.at(this.invoiceArray.length - 1).markAllAsTouched();
         }
       } catch {
         // OCR failed — leave fields empty for manual entry
       } finally {
+        // OCR 辨識完成（無論成功或失敗）立即標記該列 touched，讓漏填的必填欄位（如發票號碼）馬上顯示紅框，
+        // 避免使用者不知道表單無效、送出按鈕鎖住卻找不到原因
+        this.invoiceArray.controls.find(c => c.get('id')?.value === id)?.markAllAsTouched();
         this.ocrLoadingIds.delete(id);
         this.cdr.markForCheck();
       }
