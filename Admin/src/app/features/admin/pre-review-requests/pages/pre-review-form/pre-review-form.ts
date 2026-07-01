@@ -382,7 +382,11 @@ export class PreReviewForm implements OnInit {
 
   /** 儲存（草稿或更新） */
   save() {
-    if (this.form.invalid) return;
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      this.errorMsg.set('尚有必填欄位未填寫，請檢查紅字標示的欄位後再儲存。');
+      return;
+    }
     if (this.itemArray.length === 0) {this.showItemsError = true; return;}
     this.showItemsError = false;
     const fd = this._buildFormData();
@@ -408,7 +412,11 @@ export class PreReviewForm implements OnInit {
 
   /** 送出申請（先儲存再將狀態改為 pending） */
   submitForApproval() {
-    if (this.form.invalid) return;
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      this.errorMsg.set('尚有必填欄位未填寫，請檢查紅字標示的欄位後再送出。');
+      return;
+    }
     if (this.itemArray.length === 0) {this.showItemsError = true; return;}
     this.showItemsError = false;
     if (this.hasDesignatedStep) {
