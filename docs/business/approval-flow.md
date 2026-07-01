@@ -146,6 +146,14 @@ draft → pending → approved / returned / rejected
 - **撥款類留空**：批次核准 payment_request / advance / travel / travel_payment 時不會建立 installments，後端回傳 `pendingPayment` 清單（檢查條件：無 installments 或仍有 PaidAt 為空），前端以 banner 提示使用者「前往補填撥款明細」。
 - **沖銷結案不觸發**：批次核准不會設定 `CloseAdvance`；沖銷結案仍須於詳情頁或獨立結案端點操作。
 
+## 總監待簽核（2026-07 新增）
+
+簽核作業列表新增第 4 個頁籤「總監待簽核」，讓財務管理部提前掌握「只差總監一步就核准」的申請，方便主動追蹤撥款進度。
+
+- **可見範圍**：僅財務管理部（`DepartmentCodes.FinanceStep` = 舊短碼 `FIN` + 改制後英文全名 `Financial Management Department`）或 Superadmin 可見此頁籤；其他部門呼叫 `GET /approval-tasks?status=director_pending` 一律回 403。前端以 `approval-task-list.ts` 的 `canSeeDirectorPendingTab` 控制頁籤顯示，權限判定同時存在後端（防止繞過 UI 直接打 API）。
+- **匹配條件**：`ApprovalStatus = 'pending'` 且目前卡在的步驟（`CurrentStepOrder` 對應的 `ApprovalStep`）其 `JobTitleId` 對應的 `JobTitle.Level == 1`（即總監），不受呼叫者本身職稱/部門限制（因為財務管理部並非該步驟審核者，僅是檢視）。實作於 [PaymentRequestReadService.StepMatchClause](../../Api/Services/Dapper/PaymentRequestReadService.cs) 的 `director_pending` 分支，涵蓋全部 9 種申請類型（與待審核/已核准/已拒絕頁籤一致）。
+- **僅供檢視**：此頁籤內的申請單仍只能由總監本人（或 Superadmin）實際核准；財務管理部人員點擊進入詳情頁為唯讀（前端固定顯示查看圖示，不顯示可編輯的鉛筆圖示），送出審核動作仍會被 `AuthorizeStepAsync` 擋下。
+
 ## 自審跳過規則（僅限請款）
 
 當申請人本身符合某步驟的審核者條件時（例如部門主管送出自己部門的請款），該步驟**自動跳過**（視為已通過），不觸發升級機制。若所有步驟都被跳過，申請**自動核准**。

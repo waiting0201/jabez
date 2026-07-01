@@ -23,6 +23,13 @@
             (click)="switchTab('rejected')">
       已拒絕
     </button>
+    @if (canSeeDirectorPendingTab()) {
+      <button class="btn btn-sm"
+              [class]="activeTab() === 'director_pending' ? 'btn-primary' : 'btn-outline-secondary'"
+              (click)="switchTab('director_pending')">
+        總監待簽核
+      </button>
+    }
   </div>
 
   <!-- 全選核准：待審核頁籤且具權限時顯示 -->
@@ -160,9 +167,9 @@
                 <td class="text-muted small hidden lg:table-cell">{{ t.submittedAt | date:'yyyy-MM-dd' }}</td>
                 <td class="text-right" style="white-space: nowrap">
                   <a [routerLink]="[t.applicationType, t.id, 'review']"
-                     [class]="'btn btn-sm inline-flex items-center ' + (t.status === 'pending' ? 'btn-ghost-primary' : 'btn-ghost-secondary')">
+                     [class]="'btn btn-sm inline-flex items-center ' + (t.status === 'pending' && activeTab() !== 'director_pending' ? 'btn-ghost-primary' : 'btn-ghost-secondary')">
                     <svg class="sa-icon" style="stroke: currentColor">
-                      <use [attr.href]="t.status === 'pending' ? '/assets/icons/sprite.svg#edit' : '/assets/icons/sprite.svg#eye'"></use>
+                      <use [attr.href]="t.status === 'pending' && activeTab() !== 'director_pending' ? '/assets/icons/sprite.svg#edit' : '/assets/icons/sprite.svg#eye'"></use>
                     </svg>
                   </a>
                 </td>
@@ -172,6 +179,7 @@
                 <td [attr.colspan]="(activeTab() === 'pending' && canBatchApprove()) ? 8 : 7" class="text-center text-muted py-4">
                   {{ activeTab() === 'pending' ? '目前沒有待審核的簽核作業。'
                      : activeTab() === 'rejected' ? '目前沒有已拒絕的簽核作業。'
+                     : activeTab() === 'director_pending' ? '目前沒有僅剩總監待簽核的簽核作業。'
                      : applicationTypeFilter() ? '目前沒有此類型的已核准簽核作業。'
                      : paymentStatus() === 'unpaid' ? '目前沒有尚未撥款的已核准簽核作業。'
                      : paymentStatus() === 'partial' ? '目前沒有部分撥款的已核准簽核作業。'
