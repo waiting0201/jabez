@@ -121,6 +121,7 @@
                              [ngModelOptions]="{standalone: true}"
                              (selectItem)="onVendorSelect($event)"
                              (input)="onVendorInput($event)"
+                             (blur)="onVendorBlur()"
                              placeholder="輸入廠商名稱或統編搜尋…">
                       <button type="button"
                               class="btn btn-outline-primary inline-flex items-center gap-1 whitespace-nowrap"
@@ -345,7 +346,7 @@
                 [jobTitles]="jobTitles"
                 [departments]="departments"
                 [initial]="pickerInitial"
-                (change)="onPickerChange($event)"
+                (reviewersChange)="onPickerChange($event)"
                 (suppressedStepsChange)="onSuppressedSteps($event)" />
             </div>
           </div>

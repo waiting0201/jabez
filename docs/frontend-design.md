@@ -336,14 +336,14 @@
 - 一條流程可有**多個**「申請人指定審核」步驟；元件依流程的 designated steps（`useApplicantDesignated=true`）分組，每步一個區塊。
 - Inputs：`designatedSteps`（含 `stepOrder` / `designatedRequiresDepartment`）、`users`（`UserLookup`，含 `departmentId` / `jobTitleId`）、`jobTitles`、`departments`、`initial`（編輯回填的 `DesignatedReviewer[]`，含 `approvalStepOrder` / `selectedDepartmentId`）。
 - 每區塊可多列（可新增 / 刪除）：`designatedRequiresDepartment=false` → 「先選職稱→再選人」；`designatedRequiresDepartment=true` → 「先選部門→依部門篩人→選人」。
-- Output `change`：`DesignatedReviewerPayload[]`（`reviewerId` / `stepOrder` 列序 / `approvalStepOrder` 所屬步驟 / `selectedDepartmentId`）；**ngOnChanges 重建群組後會立即 emit**，確保編輯回填未互動也有 payload（送出 / 驗證才不會誤判為空）。
+- Output `reviewersChange`：`DesignatedReviewerPayload[]`（`reviewerId` / `stepOrder` 列序 / `approvalStepOrder` 所屬步驟 / `selectedDepartmentId`）；**ngOnChanges 重建群組後會立即 emit**，確保編輯回填未互動也有 payload（送出 / 驗證才不會誤判為空）。**命名刻意避開原生 `change` 事件**（見 §17 命名規範說明），舊名 `change` 曾在 zoneless 全域事件代理下偶發收到原生 Event 物件導致 `TypeError`。
 - Output `suppressedStepsChange`：`number[]`，回報被抑制（部門最高層級 → 自動略過）的指定步驟 `stepOrder`；父表單送出驗證時對這些步驟**不要求**審核者。
 - **多步驟連動行為（三項）**：
   1. **連動閘控**：第一個指定步驟未選好前，其後步驟下拉 / 新增鈕 disabled（提示「請先完成第一個指定審核步驟」）。
   2. **部門帶入**（僅 `designatedRequiresDepartment=true`）：第一個步驟所選部門自動帶入其後步驟部門下拉；使用者手動改過的列（`deptManuallyChanged`）不覆寫。
   3. **部門最高層級自動略過**：第一個步驟（部門模式）首列選到「所選部門中 `UserLookup.jobTitleLevel` 最小」的人 → 其後步驟整組 disable + 顯示「已指定部門最高層級，後續指定審核步驟將自動略過」，且 `_buildPayload()` 不輸出被抑制步驟（後端為權威判定）。
-- **9 種申請表單一律使用此共用元件**（不再各自實作）；`UserLookup` 需含 `jobTitleLevel`（由 `GET /users/lookup` 提供）。
-- 父表單（範本 [payment-form](../Admin/src/app/features/admin/payment-requests/pages/payment-form/payment-form.ts)）以 `(change)` 存 payload、`(suppressedStepsChange)` 存被抑制步驟；`_buildFormData()` 直接 `JSON.stringify` 進 `designatedReviewers` 欄位；送出驗證「每個 designated step 至少 1 位（被抑制者除外）」。
+- **9 種申請表單 + 預審申請共 10 個表單一律使用此共用元件**（不再各自實作）；`UserLookup` 需含 `jobTitleLevel`（由 `GET /users/lookup` 提供）。
+- 父表單（範本 [payment-form](../Admin/src/app/features/admin/payment-requests/pages/payment-form/payment-form.ts)）以 `(reviewersChange)` 存 payload、`(suppressedStepsChange)` 存被抑制步驟；`_buildFormData()` 直接 `JSON.stringify` 進 `designatedReviewers` 欄位；送出驗證「每個 designated step 至少 1 位（被抑制者除外）」。
 
 ---
 
@@ -1056,9 +1056,9 @@ async onFileSelected(event: Event) {
 
 ### 12.5c 發票 OCR 上傳（一檔可展開多列）
 
-請款 / 預支沖銷 / 出差請款 / 出差預支沖銷四個表單的明細，上傳發票 / 票根時走 OCR 自動辨識帶入欄位。共用 [`PaymentRequestService.ocrInvoice`](../Admin/src/app/features/admin/payment-requests/services/payment-request.service.ts)（`POST /invoice-ocr`，後端 Google Gemini）。
+請款 / 預審申請 / 預支沖銷 / 出差請款 / 出差預支沖銷五個表單的明細，上傳發票 / 票根時走 OCR 自動辨識帶入欄位。共用 [`PaymentRequestService.ocrInvoice`](../Admin/src/app/features/admin/payment-requests/services/payment-request.service.ts)（`POST /invoice-ocr`，後端 Google Gemini；預審申請走 `QuoteOcrHandler` 的 `quoteOcr`）。
 
-`onFilesSelected` 流程（四個表單同一 pattern）：
+`onFilesSelected` 流程（五個表單同一 pattern）：
 
 1. 多選檔案 → 逐檔 `_convertHeicIfNeeded`（iPhone HEIC/HEIF → JPEG）。
 2. 每檔先 push **一列 loading placeholder**（`ocrLoadingIds.add(id)` + `fileMap.set(id, file)` + `URL.createObjectURL` 預覽），即時回饋。
@@ -1067,7 +1067,8 @@ async onFileSelected(event: Event) {
    - 陣列為空（沒辨識到）→ placeholder 留空供手動輸入。
 4. `docType==='ticket'` 時各表單套用各自規則（`note='票號'`、出差請款另帶 `category='交通費'`）；金額帶入 `unitPrice/totalPrice`（+ 預支沖銷 `cashAmount`）、`quantity='1式'`。
 5. `isAnyOcrPending` 控制送出按鈕禁用，存檔組 FormData 的逐列 `fileMap.get(id)` → `append('files')` 迴圈不變。**OCR 呼叫務必加前端逾時**（`.pipe(timeout(45000))`，略大於後端 Gemini 30 秒上限），否則請求卡住時 `ocrLoadingIds` 永不清除、`isAnyOcrPending` 恆為 true，會把「送出 / 儲存」按鈕**永久鎖住**且畫面無提示。同時 OCR 進行中**須在按鈕區顯示「辨識中…請稍候」hint**（避免使用者誤以為按鈕壞掉）。
-6. **買方抬頭/統編驗證**：OCR 結果含 `buyerName`/`buyerTaxId`，填值後對 `docType==='invoice'` 的列呼叫共用工具 [`validateInvoiceBuyer`](../Admin/src/app/shared/utils/invoice-buyer-validator.ts) 比對公司白名單（5 組抬頭＋統編）。**抬頭與統編需皆讀得到才判斷，任一缺漏即跳過不驗**（收銀機 / 二聯式 / 手寫讀不全）。不符時 `invoiceWarnings.set(rowId, msg)`（`invoiceWarnings = new Map<string,string>()`，key = 列 id），刪列時一併 `delete`。**警告僅顯示、不阻擋送出、不持久化**。警告列以 `<span class="inline-flex items-center gap-1">` 包 `sa-icon sa-icon-1x`（alert-triangle）＋訊息，**icon 與文字同一行**。
+6. **OCR 結算後（成功或失敗皆同）該列必須立即 `markAllAsTouched()`**（`finally` 區塊，依 `id` 找回該列 `FormGroup`；多列展開時每個新 push 的列也各自呼叫一次）。原因：`invoiceNo`/`itemName` 等必填欄位的紅框顯示條件是 `control.invalid && control.touched`，若 OCR 沒辨識到值導致欄位留白，使用者從未手動點過該欄位就不會顯示 `touched`，欄位不會顯示紅框、按鈕卻已因 `form.invalid` 鎖住——使用者完全看不出原因。五個共用此 OCR pattern 的表單（請款 / 預審申請 / 預支沖銷 / 出差請款 / 出差預支沖銷）皆須套用此規則，不可只修其中一個。
+7. **買方抬頭/統編驗證**：OCR 結果含 `buyerName`/`buyerTaxId`，填值後對 `docType==='invoice'` 的列呼叫共用工具 [`validateInvoiceBuyer`](../Admin/src/app/shared/utils/invoice-buyer-validator.ts) 比對公司白名單（5 組抬頭＋統編）。**抬頭與統編需皆讀得到才判斷，任一缺漏即跳過不驗**（收銀機 / 二聯式 / 手寫讀不全）。不符時 `invoiceWarnings.set(rowId, msg)`（`invoiceWarnings = new Map<string,string>()`，key = 列 id），刪列時一併 `delete`。**警告僅顯示、不阻擋送出、不持久化**。警告列以 `<span class="inline-flex items-center gap-1">` 包 `sa-icon sa-icon-1x`（alert-triangle）＋訊息，**icon 與文字同一行**。
 
 > 多張擠在一張照片時辨識準確度較低，各列辨識後仍需人工核對（欄位皆可手動修改）。
 
@@ -1264,6 +1265,9 @@ export class AuthService {
 | 檔名 | kebab-case | `user-form.ts`, `employee-profile.service.ts` |
 | CSS class | kebab-case | `card-header`, `btn-ghost-danger` |
 | Sprite icon name | kebab-case | `arrow-left`, `check-circle` |
+| 自訂元件 `@Output()` 名稱 | **禁止**與原生 DOM 事件同名（`change`/`click`/`input`/`focus`/`blur`/`submit`…） | `reviewersChange`（不可用 `change`） |
+
+> **為何 `@Output()` 不能同名原生事件**：本專案用 `provideZonelessChangeDetection()`（見 [app.config.ts](../Admin/src/app/app.config.ts)）。曾發生 [`designated-reviewers-picker`](../Admin/src/app/shared/components/designated-reviewers-picker/designated-reviewers-picker.ts) 的 `@Output() change` 與內部原生 `<select>` 的 `change` 事件同名，zoneless 全域事件代理下父層 `(change)="onPickerChange($event)"` 偶發收到原生 `Event` 物件而非元件真正 emit 的資料，造成 `TypeError: xxx.some is not a function`。修正方式：改名為 `reviewersChange`（或依語意加動詞尾綴，如 `selectionChange`、`valueChange`），10 個共用此元件的申請表單 binding 需同步改名。**新元件命名 `@Output()` 時一律避開原生事件名稱**，不可只用單一表單驗證過就視為安全。
 
 ### Component 三件組
 

@@ -153,6 +153,12 @@ export class PreReviewForm implements OnInit {
     }
   }
 
+  /** 廠商輸入框失焦：未選定廠商（含 typeahead editable=false 自動清空文字）時立即標記 touched，
+   * 讓「請從清單中選擇廠商」提示馬上顯示，不必等到點送出才發現 */
+  onVendorBlur() {
+    if (!this.form.get('vendorId')?.value) this.form.get('vendorId')!.markAsTouched();
+  }
+
   getUserName(userId: string | null): string {
     if (!userId) return '—';
     return this.allUsers.find(u => u.id === userId)?.name ?? userId;
@@ -351,10 +357,14 @@ export class PreReviewForm implements OnInit {
             item.itemName ?? '', item.amount ?? 0,
             previewUrl, '', item.note ?? '', '',
           ));
+          this.itemArray.at(this.itemArray.length - 1).markAllAsTouched();
         }
       } catch {
         // OCR 失敗 — 保留空列供手動輸入
       } finally {
+        // OCR 辨識完成（無論成功或失敗）立即標記該列 touched，讓漏填的必填欄位馬上顯示紅框，
+        // 避免使用者不知道表單無效、送出按鈕鎖住卻找不到原因
+        this.itemArray.controls.find(c => c.get('id')?.value === id)?.markAllAsTouched();
         this.ocrLoadingIds.delete(id);
         this.cdr.markForCheck();
       }
