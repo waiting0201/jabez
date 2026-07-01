@@ -385,6 +385,8 @@ await strategy.ExecuteAsync(async () =>
 
 範例：[DesignatedReviewerHelper](../Api/Common/DesignatedReviewerHelper.cs)（申請人指定審核者）— 9 種申請類型的 `SubmitAsync` / `Create` / `Update` 共用 `BuildEntities`（由請求建實體）/ `ReadForFlowAsync`（讀回傳給 `ResolveStartingStepAsync`）/ `ValidateAndNormalizeAsync`（送單時把未綁定的 `ApprovalStepOrder=0` 正規化成唯一 designated step 的 StepOrder，並驗證每個指定步驟皆有 designee）。`ValidateAndNormalizeAsync` 只改 tracked entity，呼叫端隨後 `SaveChanges`。一條流程多個 `UseApplicantDesignated` 步驟時，每筆 designee 以 `ApprovalStepOrder` 綁定步驟，引擎所有 designee 查詢一律加 `ApprovalStepOrder == CurrentStepOrder`（[ApprovalTaskHandler](../Api/Handlers/ApprovalTaskHandler.cs) / [ApprovalFlowService](../Api/Services/ApprovalFlowService.cs) / [PaymentRequestReadService](../Api/Services/Dapper/PaymentRequestReadService.cs) StepMatch 三者條件須同步）。
 
+**部門最高層級抑制（單一真相）**：同檔 `GetSuppressedDesignatedStepOrdersAsync(db, approvalItemId, designatedReviewers)` 為送單驗證與簽核解析共用的判定 — 若第一個指定步驟為 `DesignatedRequiresDepartment=true` 且其首位 designee ＝所選部門（`SelectedDepartmentId`）中 active／非 superadmin／有職稱者最高職稱（min `JobTitle.Level`）本人 → 回傳其後所有指定步驟 StepOrder 為「被抑制」集合。三處呼叫：`ValidateAndNormalizeAsync`（被抑制步驟不要求 designee）、`ResolveStartingStepAsync` 與 `SkipUnreviewableStepsAsync`（被抑制步驟走「乾淨跳過、不寫代簽」）。判定放靜態 helper 而非 `ApprovalFlowService` 私有方法，是為了讓 static 的 `ValidateAndNormalizeAsync` 也能共用同一份邏輯。
+
 ---
 
 ## 7. EF Core Configuration
@@ -727,7 +729,7 @@ public sealed class GcisService(HttpClient http, ILogger<GcisService> logger) : 
 
 | 輕量端點 | 對應的權限端點 | 用途 |
 |---|---|---|
-| `GET /users/lookup` | `GET /users`（需 `users:read`） | 申請表「指定審核者」、人員下拉 |
+| `GET /users/lookup` | `GET /users`（需 `users:read`） | 申請表「指定審核者」、人員下拉；回傳含 `jobTitleLevel`（供「部門最高層級」判定，數字越小越高） |
 | `GET /projects/active` | `GET /projects`（需 `projects:read`） | 申請表「專案」下拉，僅回傳 `active` 狀態 |
 | `GET /approval-items/active?type=<applicationType>` | `GET /approval-items`（需 `approvals:read`） | 申請表判斷流程是否含 `useApplicantDesignated` 步驟 |
 | `GET /job-titles/lookup` | `GET /job-titles`（需 `job-titles:read`） | 申請表「指定審核者」職稱下拉 |

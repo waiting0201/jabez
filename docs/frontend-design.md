@@ -335,7 +335,13 @@
 - Inputs：`designatedSteps`（含 `stepOrder` / `designatedRequiresDepartment`）、`users`（`UserLookup`，含 `departmentId` / `jobTitleId`）、`jobTitles`、`departments`、`initial`（編輯回填的 `DesignatedReviewer[]`，含 `approvalStepOrder` / `selectedDepartmentId`）。
 - 每區塊可多列（可新增 / 刪除）：`designatedRequiresDepartment=false` → 「先選職稱→再選人」；`designatedRequiresDepartment=true` → 「先選部門→依部門篩人→選人」。
 - Output `change`：`DesignatedReviewerPayload[]`（`reviewerId` / `stepOrder` 列序 / `approvalStepOrder` 所屬步驟 / `selectedDepartmentId`）；**ngOnChanges 重建群組後會立即 emit**，確保編輯回填未互動也有 payload（送出 / 驗證才不會誤判為空）。
-- 父表單（範本 [payment-form](../Admin/src/app/features/admin/payment-requests/pages/payment-form/payment-form.ts)）以 `(change)` 存 payload，`_buildFormData()` 直接 `JSON.stringify` 進 `designatedReviewers` 欄位；送出驗證「每個 designated step 至少 1 位」。
+- Output `suppressedStepsChange`：`number[]`，回報被抑制（部門最高層級 → 自動略過）的指定步驟 `stepOrder`；父表單送出驗證時對這些步驟**不要求**審核者。
+- **多步驟連動行為（三項）**：
+  1. **連動閘控**：第一個指定步驟未選好前，其後步驟下拉 / 新增鈕 disabled（提示「請先完成第一個指定審核步驟」）。
+  2. **部門帶入**（僅 `designatedRequiresDepartment=true`）：第一個步驟所選部門自動帶入其後步驟部門下拉；使用者手動改過的列（`deptManuallyChanged`）不覆寫。
+  3. **部門最高層級自動略過**：第一個步驟（部門模式）首列選到「所選部門中 `UserLookup.jobTitleLevel` 最小」的人 → 其後步驟整組 disable + 顯示「已指定部門最高層級，後續指定審核步驟將自動略過」，且 `_buildPayload()` 不輸出被抑制步驟（後端為權威判定）。
+- **9 種申請表單一律使用此共用元件**（不再各自實作）；`UserLookup` 需含 `jobTitleLevel`（由 `GET /users/lookup` 提供）。
+- 父表單（範本 [payment-form](../Admin/src/app/features/admin/payment-requests/pages/payment-form/payment-form.ts)）以 `(change)` 存 payload、`(suppressedStepsChange)` 存被抑制步驟；`_buildFormData()` 直接 `JSON.stringify` 進 `designatedReviewers` 欄位；送出驗證「每個 designated step 至少 1 位（被抑制者除外）」。
 
 ---
 

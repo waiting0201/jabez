@@ -14,11 +14,15 @@ import {ApprovalFlow, ApprovalRecord} from '../../../approval-tasks/models/appro
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {JobTitleLookup} from '../../../job-titles/models/job-title.model';
 import {UserLookup} from '../../../users/models/user.model';
+import {DesignatedReviewersPicker, DesignatedReviewerPayload} from '../../../../../shared/components/designated-reviewers-picker/designated-reviewers-picker';
+import {DepartmentService} from '../../../departments/services/department.service';
+import {Department} from '../../../departments/models/department.model';
+import {ApprovalFlowStepSummary} from '../../../approvals/models/approval.model';
 
 @Component({
   selector: 'app-overtime-request-form',
   templateUrl: './overtime-request-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, ApprovalTimeline],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, ApprovalTimeline, DesignatedReviewersPicker],
 })
 export class OvertimeRequestForm implements OnInit {
   private fb          = inject(FormBuilder);
@@ -28,6 +32,7 @@ export class OvertimeRequestForm implements OnInit {
   private userSvc     = inject(UserService);
   private approvalSvc = inject(ApprovalService);
   private taskSvc     = inject(ApprovalTaskService);
+  private deptSvc     = inject(DepartmentService);
   private route       = inject(ActivatedRoute);
   private router      = inject(Router);
   private cdr         = inject(ChangeDetectorRef);
@@ -56,38 +61,28 @@ export class OvertimeRequestForm implements OnInit {
 
   /** 指定審核者相關 */
   hasDesignatedStep = false;
+  /** 流程中所有 useApplicantDesignated=true 的步驟（傳給 picker） */
+  designatedSteps: ApprovalFlowStepSummary[] = [];
   jobTitles: JobTitleLookup[] = [];
   allUsers: UserLookup[] = [];
+  departments: Department[] = [];
+  /** 編輯回填給 picker 的 initial（含 approvalStepOrder / selectedDepartmentId） */
+  pickerInitial: DesignatedReviewer[] = [];
+  /** 唯讀模式下顯示的已指定審核者 */
+  readonlyDesignatedReviewers: DesignatedReviewer[] = [];
+  /** picker 每次 change 後存放最新 payload，送出時使用 */
+  private _pickerPayload: DesignatedReviewerPayload[] = [];
+  /** 被抑制（部門最高層級 → 自動略過）的指定步驟 stepOrder，驗證時排除 */
+  private _suppressedSteps: number[] = [];
 
-  /** 指定審核者條目清單（多人） */
-  designatedEntries: {
-    stepOrder: number;
-    selectedJobTitleId: number | null;
-    selectedUserId: string | null;
-    filteredUsers: UserLookup[];
-  }[] = [];
-
-  addDesignatedEntry() {
-    const nextOrder = this.designatedEntries.length + 1;
-    this.designatedEntries.push({
-      stepOrder: nextOrder,
-      selectedJobTitleId: null,
-      selectedUserId: null,
-      filteredUsers: [],
-    });
+  /** picker change 事件：每次使用者操作時更新最新 payload */
+  onPickerChange(payload: DesignatedReviewerPayload[]) {
+    this._pickerPayload = payload;
   }
 
-  removeDesignatedEntry(i: number) {
-    this.designatedEntries.splice(i, 1);
-    this.designatedEntries.forEach((e, idx) => e.stepOrder = idx + 1);
-  }
-
-  onEntryJobTitleChange(i: number) {
-    const e = this.designatedEntries[i];
-    e.filteredUsers = e.selectedJobTitleId
-      ? this.allUsers.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active')
-      : [];
-    e.selectedUserId = null;
+  /** picker 回報被抑制（部門最高層級 → 自動略過）的指定步驟 */
+  onSuppressedSteps(stepOrders: number[]) {
+    this._suppressedSteps = stepOrders;
   }
 
   getUserName(userId: string | null): string {
@@ -109,23 +104,16 @@ export class OvertimeRequestForm implements OnInit {
   ngOnInit() {
     // 檢查簽核流程是否有「申請人指定審核」步驟（呼叫輕量端點，免 approvals:read 權限）
     this.approvalSvc.getActiveByType('overtime').subscribe(flow => {
-      this.hasDesignatedStep = flow?.steps.some(s => s.useApplicantDesignated) ?? false;
+      const designated = (flow?.steps ?? []).filter(s => s.useApplicantDesignated);
+      this.hasDesignatedStep = designated.length > 0;
+      this.designatedSteps = designated;
+
       if (this.hasDesignatedStep) {
-        this.jobTitleSvc.getLookup().subscribe({ next: jts => { this.jobTitles = jts; } });
-        this.userSvc.getLookup().subscribe({
-          next: users => {
-            this.allUsers = users;
-            this.designatedEntries.forEach(e => {
-              if (!e.selectedJobTitleId && e.selectedUserId) {
-                e.selectedJobTitleId = users.find(u => u.id === e.selectedUserId)?.jobTitleId ?? null;
-              }
-              if (e.selectedJobTitleId) {
-                e.filteredUsers = users.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active');
-              }
-            });
-            this.cdr.markForCheck();
-          },
-        });
+        this.jobTitleSvc.getLookup().subscribe({ next: jts => { this.jobTitles = jts; this.cdr.markForCheck(); } });
+        this.userSvc.getLookup().subscribe({ next: users => { this.allUsers = users; this.cdr.markForCheck(); } });
+        if (designated.some(s => s.designatedRequiresDepartment)) {
+          this.deptSvc.getAll().subscribe({ next: d => { this.departments = d; this.cdr.markForCheck(); } });
+        }
       }
       this.cdr.markForCheck();
     });
@@ -164,21 +152,10 @@ export class OvertimeRequestForm implements OnInit {
             c + (r.projectNames?.[i] ? ' - ' + r.projectNames[i] : '')
           );
         }
-        // 回填指定審核者清單
+        // 回填指定審核者：唯讀模式與編輯模式皆由 pickerInitial 傳給 picker
         if (r.designatedReviewers?.length) {
-          this.designatedEntries = r.designatedReviewers.map(dr => ({
-            stepOrder: dr.stepOrder,
-            selectedJobTitleId: this.allUsers.find(u => u.id === dr.reviewerId)?.jobTitleId ?? null,
-            selectedUserId: dr.reviewerId,
-            filteredUsers: [],
-          }));
-          if (this.allUsers.length > 0) {
-            this.designatedEntries.forEach(e => {
-              if (e.selectedJobTitleId) {
-                e.filteredUsers = this.allUsers.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active');
-              }
-            });
-          }
+          this.pickerInitial = r.designatedReviewers;
+          this.readonlyDesignatedReviewers = r.designatedReviewers;
         }
         if (this.isReadOnly) this.form.disable();
         // 非草稿時載入簽核流程
@@ -231,10 +208,13 @@ export class OvertimeRequestForm implements OnInit {
     if (this.form.invalid || this.isReadOnly) return;
     // 流程含「申請人指定審核」步驟時，至少需要 1 位指定審核者（fail-fast，避免送出後才被後端擋下）
     if (this.hasDesignatedStep) {
-      const validEntries = this.designatedEntries.filter(e => e.selectedUserId);
-      if (validEntries.length === 0) {
-        this.errorMsg.set('此簽核流程包含申請人指定審核步驟，請於下方「指定審核者」區塊新增至少 1 位審核者。');
-        return;
+      for (const step of this.designatedSteps) {
+        if (this._suppressedSteps.includes(step.stepOrder)) continue;
+        const hasForStep = this._pickerPayload.some(p => p.approvalStepOrder === step.stepOrder);
+        if (!hasForStep) {
+          this.errorMsg.set(`此簽核流程的步驟 ${step.stepOrder} 包含申請人指定審核，請新增至少 1 位審核者。`);
+          return;
+        }
       }
     }
     const payload = this._buildPayload();
@@ -261,9 +241,7 @@ export class OvertimeRequestForm implements OnInit {
     const v = this.form.value;
     const ids = Array.from(this.selectedProjectIds);
     const codes = ids.map(id => this.projects.find(p => p.id === id)?.code).filter(Boolean) as string[];
-    const reviewers = this.designatedEntries
-      .filter(e => e.selectedUserId)
-      .map(e => ({ reviewerId: e.selectedUserId!, stepOrder: e.stepOrder }));
+    const reviewers = this._pickerPayload;
     return {
       overtimeDate:         new Date(v.overtimeDate!),
       projectIds:           ids.length > 0 ? ids : undefined,

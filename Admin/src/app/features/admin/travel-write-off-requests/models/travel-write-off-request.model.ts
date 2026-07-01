@@ -40,6 +40,8 @@ export interface DesignatedReviewer {
   status?: string;
   reviewedAt?: string;
   comment?: string;
+  approvalStepOrder?: number;           // 此 designee 屬於哪個 designated step 的 stepOrder
+  selectedDepartmentId?: number | null; // 需選部門時的選定部門
 }
 
 export interface TravelWriteOffRequest {

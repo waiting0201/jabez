@@ -78,7 +78,8 @@ public sealed record UserLookupDto(
     string  Name,
     int?    JobTitleId,
     string  Status,
-    int?    DepartmentId = null);
+    int?    DepartmentId  = null,
+    int?    JobTitleLevel = null);
 
 public sealed record UpdateUserRequest(
     string?    Name,

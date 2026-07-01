@@ -85,11 +85,82 @@ public static class DesignatedReviewerHelper
             }
         }
 
-        // 每個 designated step 至少要有一位 designee
+        // 被抑制的指定步驟（首個指定步驟＝所選部門最高職稱 → 其後指定步驟不需選人）不列入必填檢查。
+        // 注意：須在上方正規化（補齊 ApprovalStepOrder==0）之後才判定，否則第一步首位 designee 綁定抓不到。
+        var normalized = designees
+            .Select(d => new DesignatedReviewerRequest(d.ReviewerId, d.StepOrder, d.ApprovalStepOrder, d.SelectedDepartmentId))
+            .ToList();
+        var suppressed = await GetSuppressedDesignatedStepOrdersAsync(db, approvalItemId.Value, normalized);
+
+        // 每個 designated step 至少要有一位 designee（被抑制者除外）
         foreach (var stepOrder in designatedStepOrders)
         {
+            if (suppressed.Contains(stepOrder))
+                continue;
             if (!designees.Any(d => d.ApprovalStepOrder == stepOrder))
                 throw AppException.BadRequest("此簽核流程包含申請人指定審核步驟，請提供指定審核者。");
         }
+    }
+
+    /// <summary>
+    /// 回傳「被抑制的指定審核步驟 StepOrder 集合」。
+    /// 條件：第一個 UseApplicantDesignated 步驟為 DesignatedRequiresDepartment=true，
+    /// 且該步驟首位 designee（min StepOrder）＝其 SelectedDepartmentId 部門中
+    /// active、非 superadmin、有職稱者的最高職稱（min JobTitle.Level）本人。
+    /// 成立 → 回傳「第一個指定步驟之後的所有指定步驟 StepOrder」；不成立 → 空集合。
+    /// 為送單驗證與簽核解析（ResolveStartingStepAsync / SkipUnreviewableStepsAsync）共用的單一真相。
+    /// 註：判定池以 Status=="active" 較嚴謹（既有 FindNthSuperiorLevel 僅濾 !IsSuperAdmin）；
+    /// 抑制只會讓後續步驟被乾淨跳過，不影響其他授權判斷。
+    /// </summary>
+    public static async Task<HashSet<int>> GetSuppressedDesignatedStepOrdersAsync(
+        AppDbContext db, int approvalItemId,
+        IReadOnlyList<DesignatedReviewerRequest> designatedReviewers)
+    {
+        var designatedSteps = await db.ApprovalSteps
+            .AsNoTracking()
+            .Where(s => s.ApprovalItemId == approvalItemId && s.UseApplicantDesignated)
+            .OrderBy(s => s.StepOrder)
+            .Select(s => new { s.StepOrder, s.DesignatedRequiresDepartment })
+            .ToListAsync();
+
+        // 沒有「之後的步驟」可抑制，或第一步非「先選部門」模式 → 不抑制
+        if (designatedSteps.Count < 2) return [];
+        var first = designatedSteps[0];
+        if (!first.DesignatedRequiresDepartment) return [];
+
+        // 第一步首位 designee（min StepOrder）；缺人或無部門 → 保守不抑制
+        var firstDesignee = designatedReviewers
+            .Where(r => r.ApprovalStepOrder == first.StepOrder)
+            .OrderBy(r => r.StepOrder)
+            .FirstOrDefault();
+        if (firstDesignee is null || firstDesignee.SelectedDepartmentId is null) return [];
+
+        var deptId = firstDesignee.SelectedDepartmentId.Value;
+
+        // 該部門 active、非 superadmin、有職稱者的最高職稱 Level（min）；空池得 null
+        var deptMinLevel = await db.Users.AsNoTracking()
+            .Where(u => u.DepartmentId == deptId
+                && u.Status == "active"
+                && !u.IsSuperAdmin
+                && u.JobTitle != null)
+            .Select(u => (int?)u.JobTitle!.Level)
+            .MinAsync();
+        if (deptMinLevel is null) return [];
+
+        // 被指定者本人：須 active、非 superadmin、確實在該部門、職稱 Level 等於部門最高
+        var reviewer = await db.Users.AsNoTracking()
+            .Include(u => u.JobTitle)
+            .FirstOrDefaultAsync(u => u.Id == firstDesignee.ReviewerId);
+
+        bool isTopOfDept =
+            reviewer is not null
+            && reviewer.Status == "active"
+            && !reviewer.IsSuperAdmin
+            && reviewer.DepartmentId == deptId
+            && reviewer.JobTitle is not null
+            && reviewer.JobTitle.Level == deptMinLevel.Value;
+        if (!isTopOfDept) return [];
+
+        return designatedSteps.Skip(1).Select(s => s.StepOrder).ToHashSet();
     }
 }

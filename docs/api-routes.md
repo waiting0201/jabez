@@ -23,6 +23,7 @@
 | Method | Path | 說明 |
 |--------|------|------|
 | GET | `/users` | 取得使用者列表 |
+| GET | `/users/lookup` | **輕量端點**：免 `users:read`，回 `{id, name, jobTitleId, status, departmentId, jobTitleLevel}`，供指定審核者下拉與「部門最高層級」判定（`jobTitleLevel` 數字越小越高） |
 | POST | `/users` | 新增使用者 |
 | GET | `/users/{id}` | 取得單一使用者 |
 | PUT/PATCH | `/users/{id}` | 更新使用者 |

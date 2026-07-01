@@ -99,6 +99,8 @@ export class PaymentForm implements OnInit {
   pickerInitial: DesignatedReviewer[] = [];
   /** picker 每次 change 後存放最新 payload，送出時使用 */
   private _pickerPayload: DesignatedReviewerPayload[] = [];
+  /** 被抑制（部門最高層級 → 自動略過）的指定步驟 stepOrder，驗證時排除 */
+  private _suppressedSteps: number[] = [];
   /** 唯讀模式下顯示的已指定審核者（從 DTO 取得） */
   readonlyDesignatedReviewers: DesignatedReviewer[] = [];
 
@@ -324,6 +326,11 @@ export class PaymentForm implements OnInit {
     this._pickerPayload = payload;
   }
 
+  /** picker 回報被抑制（部門最高層級 → 自動略過）的指定步驟 */
+  onSuppressedSteps(stepOrders: number[]) {
+    this._suppressedSteps = stepOrders;
+  }
+
   /** 取得審核者的顯示名稱（唯讀模式用） */
   getUserName(userId: string | null): string {
     if (!userId) return '—';
@@ -447,9 +454,10 @@ export class PaymentForm implements OnInit {
     }
     if (this.invoiceArray.length === 0) {this.showInvoiceError = true; return;}
     this.showInvoiceError = false;
-    // 流程含「申請人指定審核」步驟時，每個 designated step 至少需要 1 位指定審核者
+    // 流程含「申請人指定審核」步驟時，每個 designated step 至少需要 1 位指定審核者（被抑制者除外）
     if (this.hasDesignatedStep) {
       for (const step of this.designatedSteps) {
+        if (this._suppressedSteps.includes(step.stepOrder)) continue;
         const hasForStep = this._pickerPayload.some(p => p.approvalStepOrder === step.stepOrder);
         if (!hasForStep) {
           this.errorMsg.set(`此簽核流程的步驟 ${step.stepOrder} 包含申請人指定審核，請新增至少 1 位審核者。`);

@@ -85,6 +85,11 @@ public sealed class ApprovalFlowService(
         if (applicant is null)
             return (1, false, null);
 
+        // 被抑制的指定步驟（首個指定步驟＝所選部門最高職稱 → 其後指定步驟自動跳過）
+        var suppressed = designatedReviewers is { Count: > 0 }
+            ? await DesignatedReviewerHelper.GetSuppressedDesignatedStepOrdersAsync(db, approvalItemId.Value, designatedReviewers)
+            : new HashSet<int>();
+
         int currentStep = 1;
         int directSupervisorRank = 0; // 追蹤目前是第幾個上層級步驟（0-based）
         foreach (var step in steps)
@@ -92,6 +97,12 @@ public sealed class ApprovalFlowService(
             // ── UseApplicantDesignated 模式：審核者是申請人指定的人 ──
             if (step.UseApplicantDesignated)
             {
+                // 被抑制 → 乾淨跳過（不進 firstReviewer==null 的 throw 分支）
+                if (suppressed.Contains(step.StepOrder))
+                {
+                    currentStep++;
+                    continue;
+                }
                 // 僅取「屬於本步驟」的指定審核者（以 ApprovalStepOrder 綁定），再取 min StepOrder 的第 1 位判斷
                 var stepReviewers = designatedReviewers?
                     .Where(r => r.ApprovalStepOrder == step.StepOrder)
@@ -289,6 +300,11 @@ public sealed class ApprovalFlowService(
         if (applicant is null)
             return (fromStepOrder, false, emptySkipped);
 
+        // 被抑制的指定步驟（首個指定步驟＝所選部門最高職稱 → 其後指定步驟自動跳過）
+        var suppressed = designatedReviewers is { Count: > 0 }
+            ? await DesignatedReviewerHelper.GetSuppressedDesignatedStepOrdersAsync(db, approvalItemId.Value, designatedReviewers)
+            : new HashSet<int>();
+
         // 直接迭代 StepOrder >= fromStepOrder 的步驟（處理稀疏 StepOrder）
         var remainingSteps = steps.Where(s => s.StepOrder >= fromStepOrder).ToList();
 
@@ -305,11 +321,19 @@ public sealed class ApprovalFlowService(
             bool hasReviewer;
             if (step.UseApplicantDesignated)
             {
-                var firstReviewer = designatedReviewers?
-                    .Where(r => r.ApprovalStepOrder == step.StepOrder)
-                    .OrderBy(r => r.StepOrder)
-                    .FirstOrDefault();
-                hasReviewer = firstReviewer is not null && firstReviewer.ReviewerId != applicantId;
+                if (suppressed.Contains(step.StepOrder))
+                {
+                    // 被抑制 → 視為無審核者，走乾淨跳過（不寫代簽）
+                    hasReviewer = false;
+                }
+                else
+                {
+                    var firstReviewer = designatedReviewers?
+                        .Where(r => r.ApprovalStepOrder == step.StepOrder)
+                        .OrderBy(r => r.StepOrder)
+                        .FirstOrDefault();
+                    hasReviewer = firstReviewer is not null && firstReviewer.ReviewerId != applicantId;
+                }
             }
             else if (step.UseDirectSupervisor)
             {
