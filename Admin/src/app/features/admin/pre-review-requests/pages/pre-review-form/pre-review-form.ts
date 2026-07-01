@@ -21,17 +21,21 @@ import {PaymentType, ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLA
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
 import {ApprovalService} from '../../../approvals/services/approval.service';
+import {DepartmentService} from '../../../departments/services/department.service';
+import {Department} from '../../../departments/models/department.model';
+import {ApprovalFlowStepSummary} from '../../../approvals/models/approval.model';
 import {JobTitleLookup} from '../../../job-titles/models/job-title.model';
 import {UserLookup} from '../../../users/models/user.model';
 import {VendorService} from '../../../vendors/services/vendor.service';
 import {VendorLookup} from '../../../vendors/models/vendor.model';
 import {VendorQuickAddModal} from '../../../vendors/components/vendor-quick-add-modal/vendor-quick-add-modal';
 import {NgbModal, NgbTypeahead, NgbTypeaheadSelectItemEvent} from '@ng-bootstrap/ng-bootstrap';
+import {DesignatedReviewersPicker, DesignatedReviewerPayload} from '../../../../../shared/components/designated-reviewers-picker/designated-reviewers-picker';
 
 @Component({
   selector: 'app-pre-review-form',
   templateUrl: './pre-review-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, NgbTypeahead, AttachmentsUpload],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, NgbTypeahead, AttachmentsUpload, DesignatedReviewersPicker],
 })
 export class PreReviewForm implements OnInit {
   private fb           = inject(FormBuilder);
@@ -40,6 +44,7 @@ export class PreReviewForm implements OnInit {
   private jobTitleSvc  = inject(JobTitleService);
   private userSvc      = inject(UserService);
   private approvalSvc  = inject(ApprovalService);
+  private deptSvc      = inject(DepartmentService);
   private taskSvc      = inject(ApprovalTaskService);
   private vendorSvc    = inject(VendorService);
   private route        = inject(ActivatedRoute);
@@ -77,8 +82,29 @@ export class PreReviewForm implements OnInit {
 
   /** 指定審核者相關 */
   hasDesignatedStep = false;
+  /** 流程中所有 useApplicantDesignated=true 的步驟（傳給 picker） */
+  designatedSteps: ApprovalFlowStepSummary[] = [];
   jobTitles: JobTitleLookup[] = [];
   allUsers: UserLookup[] = [];
+  departments: Department[] = [];
+  /** 編輯回填給 picker 的 initial（含 approvalStepOrder / selectedDepartmentId） */
+  pickerInitial: DesignatedReviewer[] = [];
+  /** picker 每次 change 後存放最新 payload，送出時使用 */
+  private _pickerPayload: DesignatedReviewerPayload[] = [];
+  /** 被抑制（部門最高層級 → 自動略過）的指定步驟 stepOrder，驗證時排除 */
+  private _suppressedSteps: number[] = [];
+  /** 唯讀模式下顯示的已指定審核者（從 DTO 取得） */
+  readonlyDesignatedReviewers: DesignatedReviewer[] = [];
+
+  /** picker change 事件：每次使用者操作時更新最新 payload */
+  onPickerChange(payload: DesignatedReviewerPayload[]) {
+    this._pickerPayload = payload;
+  }
+
+  /** picker 回報被抑制（部門最高層級 → 自動略過）的指定步驟 */
+  onSuppressedSteps(stepOrders: number[]) {
+    this._suppressedSteps = stepOrders;
+  }
 
   /** 廠商下拉清單 */
   vendors = signal<VendorLookup[]>([]);
@@ -123,36 +149,6 @@ export class PreReviewForm implements OnInit {
     if (selectedVendor && inputVal !== this.vendorInputFormatter(selectedVendor)) {
       this.form.get('vendorId')!.setValue(null);
     }
-  }
-
-  designatedEntries: {
-    stepOrder: number;
-    selectedJobTitleId: number | null;
-    selectedUserId: string | null;
-    filteredUsers: UserLookup[];
-  }[] = [];
-
-  addDesignatedEntry() {
-    const nextOrder = this.designatedEntries.length + 1;
-    this.designatedEntries.push({
-      stepOrder: nextOrder,
-      selectedJobTitleId: null,
-      selectedUserId: null,
-      filteredUsers: [],
-    });
-  }
-
-  removeDesignatedEntry(i: number) {
-    this.designatedEntries.splice(i, 1);
-    this.designatedEntries.forEach((e, idx) => e.stepOrder = idx + 1);
-  }
-
-  onEntryJobTitleChange(i: number) {
-    const e = this.designatedEntries[i];
-    e.filteredUsers = e.selectedJobTitleId
-      ? this.allUsers.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active')
-      : [];
-    e.selectedUserId = null;
   }
 
   getUserName(userId: string | null): string {
@@ -222,23 +218,18 @@ export class PreReviewForm implements OnInit {
     // 協力廠商 / 設計師 皆須選擇廠商，vendorId 永遠必填（初始化已設定），切換類型不清空
 
     this.approvalSvc.getActiveByType('pre_review').subscribe(flow => {
-      this.hasDesignatedStep = flow?.steps.some(s => s.useApplicantDesignated) ?? false;
+      const designated = (flow?.steps ?? []).filter(s => s.useApplicantDesignated);
+      this.hasDesignatedStep = designated.length > 0;
+      this.designatedSteps = designated;
+
       if (this.hasDesignatedStep) {
-        this.jobTitleSvc.getLookup().subscribe({next: jts => { this.jobTitles = jts; }});
+        this.jobTitleSvc.getLookup().subscribe({ next: jts => { this.jobTitles = jts; this.cdr.markForCheck(); } });
         this.userSvc.getLookup().subscribe({
-          next: users => {
-            this.allUsers = users;
-            this.designatedEntries.forEach(e => {
-              if (!e.selectedJobTitleId && e.selectedUserId) {
-                e.selectedJobTitleId = users.find(u => u.id === e.selectedUserId)?.jobTitleId ?? null;
-              }
-              if (e.selectedJobTitleId) {
-                e.filteredUsers = users.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active');
-              }
-            });
-            this.cdr.markForCheck();
-          },
+          next: users => { this.allUsers = users; this.cdr.markForCheck(); },
         });
+        if (designated.some(s => s.designatedRequiresDepartment)) {
+          this.deptSvc.getAll().subscribe({ next: d => { this.departments = d; this.cdr.markForCheck(); } });
+        }
       }
       this.cdr.markForCheck();
     });
@@ -276,20 +267,10 @@ export class PreReviewForm implements OnInit {
           const found = this.vendors().find(v => v.id === r.vendorId);
           if (found) this.vendorTypeaheadModel = found;
         }
+        // 回填指定審核者：唯讀模式與編輯模式皆由 pickerInitial 傳給 picker
         if (r.designatedReviewers?.length) {
-          this.designatedEntries = r.designatedReviewers.map(dr => ({
-            stepOrder: dr.stepOrder,
-            selectedJobTitleId: this.allUsers.find(u => u.id === dr.reviewerId)?.jobTitleId ?? null,
-            selectedUserId: dr.reviewerId,
-            filteredUsers: [],
-          }));
-          if (this.allUsers.length > 0) {
-            this.designatedEntries.forEach(e => {
-              if (e.selectedJobTitleId) {
-                e.filteredUsers = this.allUsers.filter(u => u.jobTitleId === e.selectedJobTitleId && u.status === 'active');
-              }
-            });
-          }
+          this.pickerInitial = r.designatedReviewers;
+          this.readonlyDesignatedReviewers = r.designatedReviewers;
         }
         // 回填品項列（品項類別需判斷 preset 或 其他）
         r.items.forEach(item => {
@@ -431,10 +412,13 @@ export class PreReviewForm implements OnInit {
     if (this.itemArray.length === 0) {this.showItemsError = true; return;}
     this.showItemsError = false;
     if (this.hasDesignatedStep) {
-      const validEntries = this.designatedEntries.filter(e => e.selectedUserId);
-      if (validEntries.length === 0) {
-        this.errorMsg.set('此簽核流程包含申請人指定審核步驟，請於下方「指定審核者」區塊新增至少 1 位審核者。');
-        return;
+      for (const step of this.designatedSteps) {
+        if (this._suppressedSteps.includes(step.stepOrder)) continue;
+        const hasForStep = this._pickerPayload.some(p => p.approvalStepOrder === step.stepOrder);
+        if (!hasForStep) {
+          this.errorMsg.set(`此簽核流程的步驟 ${step.stepOrder} 包含申請人指定審核，請新增至少 1 位審核者。`);
+          return;
+        }
       }
     }
     const fd = this._buildFormData();
@@ -479,10 +463,10 @@ export class PreReviewForm implements OnInit {
     const taxCtrl = this.form.get('taxAmount');
     fd.append('taxAmount', String(taxCtrl ? (+(taxCtrl.value ?? 0) || 0) : 0));
 
-    const reviewers = this.designatedEntries
-      .filter(e => e.selectedUserId)
-      .map(e => ({reviewerId: e.selectedUserId!, stepOrder: e.stepOrder}));
-    if (reviewers.length > 0) fd.append('designatedReviewers', JSON.stringify(reviewers));
+    // 指定審核者清單（從 picker payload 組成，含 approvalStepOrder 與 selectedDepartmentId）
+    if (this._pickerPayload.length > 0) {
+      fd.append('designatedReviewers', JSON.stringify(this._pickerPayload));
+    }
 
     const itemsMeta: any[] = [];
     let fileIndex = 0;

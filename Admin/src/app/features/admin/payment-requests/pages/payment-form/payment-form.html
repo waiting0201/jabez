@@ -345,7 +345,8 @@
                 [jobTitles]="jobTitles"
                 [departments]="departments"
                 [initial]="pickerInitial"
-                (change)="onPickerChange($event)" />
+                (change)="onPickerChange($event)"
+                (suppressedStepsChange)="onSuppressedSteps($event)" />
             </div>
           </div>
         } @else if (isReadOnly && readonlyDesignatedReviewers.length > 0) {

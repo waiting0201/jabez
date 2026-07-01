@@ -209,9 +209,19 @@ draft → pending → approved / returned / rejected
 - 一般情境：Step 1 為 `UseApplicantDesignated=true` 指定審核，Step 2+ 回歸固定流程（固定部門+職稱、UseDirectSupervisor 等）。
 - 送單建立 / 讀取 / 正規化 designee 由共用 [DesignatedReviewerHelper](../../Api/Common/DesignatedReviewerHelper.cs)（`BuildEntities` / `ReadForFlowAsync` / `ValidateAndNormalizeAsync`）統一處理：舊 payload 未帶 `ApprovalStepOrder`（=0）且流程只有一個 designated step 時自動補成該 step 的 StepOrder（向後相容）。
 
+**多個指定步驟的前端連動（共用元件 [DesignatedReviewersPicker](../../Admin/src/app/shared/components/designated-reviewers-picker/designated-reviewers-picker.ts)，9 種申請表單統一使用）：**
+- **連動閘控**：第一個指定步驟未選好審核者前，其後所有指定步驟的下拉 / 新增鈕 disabled。
+- **部門帶入**（僅 `DesignatedRequiresDepartment=true`）：第一個指定步驟選的部門，自動帶入其後指定步驟的部門下拉（申請人手動改過的列不覆寫）。
+- **部門最高層級自動略過（req3）**：第一個指定步驟（先選部門模式）若選到「所選部門中 `JobTitle.Level` 最小（最高職稱）」的人，其後所有指定步驟前端 disable + 不送出、後端亦自動略過。部門最高層級判定所需的 `JobTitleLevel` 由輕量端點 `GET /users/lookup` 附帶回傳。
+
+**部門最高層級抑制（後端權威判定，單一真相）：**
+- [DesignatedReviewerHelper.GetSuppressedDesignatedStepOrdersAsync](../../Api/Common/DesignatedReviewerHelper.cs)：若第一個指定步驟為 `DesignatedRequiresDepartment=true`，且其首位 designee（min `StepOrder`）＝其 `SelectedDepartmentId` 部門中 active、非 superadmin、有職稱者的最高職稱（min `Level`）本人 → 回傳「其後所有指定步驟 StepOrder」為被抑制集合。
+- `ValidateAndNormalizeAsync` 對被抑制步驟**不再要求**指定審核者；`ResolveStartingStepAsync` / `SkipUnreviewableStepsAsync` 對被抑制步驟走「乾淨跳過（不寫代簽 ApprovalRecord）」。
+- 防誤抑制守門：第一步非部門模式 / 首位沒選人 / 無 `SelectedDepartmentId` / 被指定者不在該部門 / 部門無合格人員 → 皆不抑制。
+
 **規則：**
 - 送出（submit）時，如果流程中有 `UseApplicantDesignated` 步驟，`designatedReviewers` 清單必填且至少 1 人。守門落在三層：
-  - **前端 fail-fast**：9 個申請表單的 `submitForApproval()` 在 `form.invalid` 檢查後立即驗證 `hasDesignatedStep && designatedEntries.filter(e => e.selectedUserId).length === 0`，缺漏即顯示錯誤訊息不送 HTTP request
+  - **前端 fail-fast**：9 種申請表單（皆用共用 `DesignatedReviewersPicker`）的 `submitForApproval()` 在 `form.invalid` 檢查後，逐一驗證每個指定步驟 `designatedSteps` 是否有對應審核者（`_pickerPayload.some(p => p.approvalStepOrder === step.stepOrder)`），**被抑制步驟（`_suppressedSteps`）除外**，缺漏即顯示錯誤不送 HTTP request
   - **後端 Handler 守門**：8 個 `*RequestHandler.SubmitAsync`（覆蓋 9 種申請類型，holiday-travel 與 travel 共用 `TravelRequestHandler`）在呼叫 `ResolveStartingStepAsync` 前先查 `ApprovalSteps` + `RequestDesignatedReviewers`，缺漏回 `BadRequest("此簽核流程包含申請人指定審核步驟，請提供指定審核者。")`
   - **`ApprovalFlowService` defense-in-depth**：[ApprovalFlowService.cs](../../Api/Services/ApprovalFlowService.cs) 在處理 `UseApplicantDesignated` 步驟時若 `designatedReviewers` 為 null/空，會 throw `AppException.BadRequest`（與 Handler 訊息一致），確保未來新增第 10 種申請類型若忘記抄 Handler 守門也不會無聲產生孤兒申請
 - 依 `StepOrder` 升序逐一審核，前一人核准後才輪到下一人

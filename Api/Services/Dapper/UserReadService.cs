@@ -123,10 +123,11 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
     public async Task<IEnumerable<UserLookupDto>> GetLookupAsync()
     {
         const string sql = """
-            SELECT Id, Name, JobTitleId, Status, DepartmentId
-            FROM Users
-            WHERE IsSuperAdmin = 0
-            ORDER BY Name
+            SELECT u.Id, u.Name, u.JobTitleId, u.Status, u.DepartmentId, j.Level AS JobTitleLevel
+            FROM Users u
+            LEFT JOIN JobTitles j ON u.JobTitleId = j.Id
+            WHERE u.IsSuperAdmin = 0
+            ORDER BY u.Name
             """;
 
         return await db.QueryAsync<UserLookupDto>(sql);
@@ -142,11 +143,12 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
         if (scope.AllowedDepartmentIds.Count == 0) return [];
 
         const string sql = """
-            SELECT Id, Name, JobTitleId, Status, DepartmentId
-            FROM Users
-            WHERE IsSuperAdmin = 0
-              AND DepartmentId IN @AllowedDeptIds
-            ORDER BY Name
+            SELECT u.Id, u.Name, u.JobTitleId, u.Status, u.DepartmentId, j.Level AS JobTitleLevel
+            FROM Users u
+            LEFT JOIN JobTitles j ON u.JobTitleId = j.Id
+            WHERE u.IsSuperAdmin = 0
+              AND u.DepartmentId IN @AllowedDeptIds
+            ORDER BY u.Name
             """;
 
         return await db.QueryAsync<UserLookupDto>(sql, new { AllowedDeptIds = scope.AllowedDepartmentIds });

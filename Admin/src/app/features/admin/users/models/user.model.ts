@@ -7,6 +7,8 @@ export interface UserLookup {
   jobTitleId?: number;
   departmentId?: number;
   status: string;
+  /** 職稱層級（數字越小越高；供指定審核者判斷「部門最高層級」用） */
+  jobTitleLevel?: number;
 }
 
 export interface User {
