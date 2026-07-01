@@ -4,10 +4,12 @@ import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {HttpErrorResponse} from '@angular/common/http';
 import {PermissionService} from '../../services/permission.service';
 
+import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+
 @Component({
   selector: 'app-permission-form',
   templateUrl: './permission-form.html',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, ScrollIntoViewDirective],
 })
 export class PermissionForm implements OnInit {
   private fb = inject(FormBuilder);

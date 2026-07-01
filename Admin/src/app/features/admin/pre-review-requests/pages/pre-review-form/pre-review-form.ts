@@ -32,10 +32,12 @@ import {VendorQuickAddModal} from '../../../vendors/components/vendor-quick-add-
 import {NgbModal, NgbTypeahead, NgbTypeaheadSelectItemEvent} from '@ng-bootstrap/ng-bootstrap';
 import {DesignatedReviewersPicker, DesignatedReviewerPayload} from '../../../../../shared/components/designated-reviewers-picker/designated-reviewers-picker';
 
+import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+
 @Component({
   selector: 'app-pre-review-form',
   templateUrl: './pre-review-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, NgbTypeahead, AttachmentsUpload, DesignatedReviewersPicker],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, NgbTypeahead, AttachmentsUpload, DesignatedReviewersPicker, ScrollIntoViewDirective],
 })
 export class PreReviewForm implements OnInit {
   private fb           = inject(FormBuilder);

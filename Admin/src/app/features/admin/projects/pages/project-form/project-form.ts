@@ -9,10 +9,12 @@ import {DepartmentService} from '../../../departments/services/department.servic
 import {Department} from '../../../departments/models/department.model';
 import {AuthService} from '../../../../../core/auth/services/auth.service';
 
+import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+
 @Component({
   selector: 'app-project-form',
   templateUrl: './project-form.html',
-  imports: [ReactiveFormsModule, RouterLink, DecimalPipe],
+  imports: [ReactiveFormsModule, RouterLink, DecimalPipe, ScrollIntoViewDirective],
 })
 export class ProjectForm implements OnInit {
   private fb = inject(FormBuilder);

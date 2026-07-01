@@ -25,10 +25,12 @@ import {EmployeeProfileDetail} from '../../models/employee-profile.model';
 
 const MAX_FILE_BYTES = 1 * 1024 * 1024; // 1 MB
 
+import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+
 @Component({
   selector: 'app-user-form',
   templateUrl: './user-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, ScrollIntoViewDirective],
 })
 export class UserForm implements OnInit {
   private fb                   = inject(FormBuilder);

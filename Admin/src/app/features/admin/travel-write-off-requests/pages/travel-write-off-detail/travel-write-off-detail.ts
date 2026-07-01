@@ -11,10 +11,12 @@ import {ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
 import {TravelWriteOffRequest, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/travel-write-off-request.model';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 
+import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+
 @Component({
   selector: 'app-travel-write-off-detail',
   templateUrl: './travel-write-off-detail.html',
-  imports: [RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline],
+  imports: [RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, ScrollIntoViewDirective],
 })
 export class TravelWriteOffDetail implements OnInit {
   private service     = inject(TravelWriteOffRequestService);

@@ -10,10 +10,12 @@ const MAX_FILE_BYTES = 1 * 1024 * 1024; // 1 MB
 
 type IdentifierType = 'taxId' | 'idNumber';
 
+import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+
 @Component({
   selector: 'app-vendor-form',
   templateUrl: './vendor-form.html',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, ScrollIntoViewDirective],
 })
 export class VendorForm implements OnInit {
   private fb               = inject(FormBuilder);

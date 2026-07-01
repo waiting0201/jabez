@@ -22,10 +22,12 @@ import {UserLookup} from '../../../users/models/user.model';
 import {ApprovalFlowStepSummary} from '../../../approvals/models/approval.model';
 import {Department} from '../../../departments/models/department.model';
 
+import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+
 @Component({
   selector: 'app-travel-write-off-form',
   templateUrl: './travel-write-off-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, FilePreviewModal, DesignatedReviewersPicker],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, FilePreviewModal, DesignatedReviewersPicker, ScrollIntoViewDirective],
 })
 export class TravelWriteOffForm implements OnInit {
   private fb             = inject(FormBuilder);

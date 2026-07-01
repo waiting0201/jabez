@@ -8,10 +8,12 @@ import {PermissionService} from '../../../permissions/services/permission.servic
 import {Permission} from '../../../permissions/models/permission.model';
 import {AuthService} from '../../../../../core/auth/services/auth.service';
 
+import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+
 @Component({
   selector: 'app-role-form',
   templateUrl: './role-form.html',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, ScrollIntoViewDirective],
 })
 export class RoleForm implements OnInit {
   private fb = inject(FormBuilder);
