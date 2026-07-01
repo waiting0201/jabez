@@ -39,6 +39,7 @@
 
 每次收到任務時：
 
+- **對話回應**：無論任務類型，一律使用**繁體中文**回應使用者
 - **UI / 前端任務**：必須優先啟動 `frontend-design` skill，並先讀 [docs/frontend-design.md](docs/frontend-design.md) 確認排版、卡片、明細列表、按鈕等規範後再進行設計或實作
 - **後端任務**：先讀 [docs/backend-design.md](docs/backend-design.md) 確認 Handler / DTO / Dapper / EF Core / Router 規範後再實作
 
@@ -56,9 +57,6 @@
 - 修正差異後重新截圖
 - **至少進行 2 輪比對**
 - 直到看不出差異或使用者喊停為止
-
-### CLAUDE的對話內容：
-- 使用繁體中文
 
 ## Debug重要注意事項
 
