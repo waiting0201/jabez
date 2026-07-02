@@ -66,6 +66,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.LaborInsuranceOverride)
                .HasColumnType("decimal(18,2)");
 
+        // 勞退自提率（%，0~6 整數，業務層驗證，DB 層留彈性）
+        builder.Property(u => u.LaborPensionSelfContributionRate)
+               .HasPrecision(5, 2);
+
         builder.Property(u => u.Status)
                .IsRequired()
                .HasMaxLength(20)

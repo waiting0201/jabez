@@ -152,6 +152,8 @@ export class UserForm implements OnInit {
     isDisabled:               [false],
     healthInsuranceOverride:  [null as number | null],
     laborInsuranceOverride:   [null as number | null],
+    laborPensionSelfContributionRate: [null as number | null,
+      [Validators.min(0), Validators.max(6), Validators.pattern(/^\d+$/)]],
     // 加給（同步自最新薪資調整紀錄，可手動覆寫）
     positionAllowance:        [null as number | null],
     dutyAllowance:            [null as number | null],
@@ -243,6 +245,7 @@ export class UserForm implements OnInit {
           isDisabled:   user.isDisabled ?? false,
           healthInsuranceOverride: user.healthInsuranceOverride ?? null,
           laborInsuranceOverride:  user.laborInsuranceOverride  ?? null,
+          laborPensionSelfContributionRate: user.laborPensionSelfContributionRate ?? null,
           positionAllowance:       user.positionAllowance       ?? null,
           dutyAllowance:           user.dutyAllowance           ?? null,
           otherAllowance:          user.otherAllowance          ?? null,
@@ -408,6 +411,14 @@ export class UserForm implements OnInit {
     const n    = this.dependentsArray.length;
     const capped = Math.min(n, 3);
     return +base * (1 + capped);
+  }
+
+  // ── 勞退自提試算（底薪 × 自提率%，四捨五入） ─────
+  get estimatedLaborPensionDeduction(): number | null {
+    const rate = this.form.get('laborPensionSelfContributionRate')?.value;
+    const base = this.form.get('baseSalary')?.value;
+    if (!rate || !base) return null;
+    return Math.round((+base * +rate) / 100);
   }
 
   // ═══════════════════════════════════════════════
@@ -1129,6 +1140,7 @@ export class UserForm implements OnInit {
       isDisabled:               rest.isDisabled ?? false,
       healthInsuranceOverride:  rest.healthInsuranceOverride ?? undefined,
       laborInsuranceOverride:   rest.laborInsuranceOverride ?? undefined,
+      laborPensionSelfContributionRate: rest.laborPensionSelfContributionRate ?? undefined,
       // 加給（5 種）
       positionAllowance:        rest.positionAllowance        ?? undefined,
       dutyAllowance:            rest.dutyAllowance            ?? undefined,

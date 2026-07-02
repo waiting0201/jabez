@@ -47,6 +47,8 @@ export interface User {
   healthInsuranceOverride?: number | null;
   /** 勞保金額手動覆寫（null = 走 lookup） */
   laborInsuranceOverride?: number | null;
+  /** 勞退自提率（%，0~6 整數，null = 0%，直接欄位、非覆寫） */
+  laborPensionSelfContributionRate?: number | null;
   /** 加給（自動同步自最新生效 SalaryAdjustmentRecord，可手動覆寫） */
   positionAllowance?: number | null;
   dutyAllowance?: number | null;

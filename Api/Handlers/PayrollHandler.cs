@@ -144,7 +144,7 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
                           + emp.HolidayAllowance + emp.OtherAddition;
         var totalDeductions = emp.LaborInsurance + emp.HealthInsurance
                             + emp.PersonalLeaveDeduction + emp.SickLeaveDeduction + emp.MenstrualLeaveDeduction
-                            + emp.OtherDeduction;
+                            + emp.OtherDeduction + emp.LaborPensionSelfDeduction;
 
         // 動態加項列：有值才顯示，斑馬色維持
         var earningsRows = $"""
@@ -208,6 +208,10 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
         if (emp.OtherDeduction > 0)
             deductionRows += $"""
             <tr><td style="padding:8px 12px">其他扣項{(emp.OtherDeductionNote is not null ? $"（{emp.OtherDeductionNote}）" : "")}</td><td style="padding:8px 12px;text-align:right">{fmt(emp.OtherDeduction)}</td></tr>
+            """;
+        if (emp.LaborPensionSelfDeduction > 0)
+            deductionRows += $"""
+            <tr style="background:#FDF5F5"><td style="padding:8px 12px">勞工退休金自提（{emp.LaborPensionSelfContributionRate?.ToString("0.##") ?? "0"}%）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.LaborPensionSelfDeduction)}</td></tr>
             """;
 
         var noteSection = string.IsNullOrWhiteSpace(emp.Note) ? "" : $"""

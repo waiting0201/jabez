@@ -22,6 +22,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                    u.PositionAllowance, u.DutyAllowance, u.OtherAllowance,
                    u.AdjustmentDifference, u.OverseasAllowance,
                    u.HealthInsuranceOverride, u.LaborInsuranceOverride,
+                   u.LaborPensionSelfContributionRate,
                    (SELECT COUNT(*) FROM HealthInsuranceDependents WHERE UserId = u.Id) AS DependentCount
             FROM Users u
             LEFT JOIN Departments d  ON u.DepartmentId = d.Id
@@ -173,6 +174,9 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             decimal overrideHealth = (decimal?)emp.HealthInsuranceOverride ?? baseHealthIns;
             decimal overrideLabor  = (decimal?)emp.LaborInsuranceOverride  ?? fullLaborIns;
 
+            // 勞退自提率（%，非覆寫、無 lookup，直接乘底薪算扣款）
+            decimal? laborPensionRate = (decimal?)emp.LaborPensionSelfContributionRate;
+
             // 健保眷屬加成：健保費 × (1 + min(眷屬人數, 3))
             // 最多計至 3 口眷屬，超過 3 口仍以 3 計
             int  dependentCount  = (int)emp.DependentCount;
@@ -228,12 +232,16 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 note               = (string?)adj.Note;
             }
 
+            // 勞退自提扣款 = 底薪 × 自提率%，四捨五入至整數（比照勞健保費公式）
+            decimal laborPensionSelfDeduction = Math.Round(baseSalary * (laborPensionRate ?? 0m) / 100m, 0);
+
             decimal netSalary = baseSalary + mealAllowance + overtimePay
                               + positionAllow + dutyAllow + otherAllow + adjDiff + overseasAllow
                               + holidayAllowance + otherAddition
                               - laborIns - healthIns
                               - personalDeduction - sickDeduction - menstrualDeduction
-                              - otherDeduction;
+                              - otherDeduction
+                              - laborPensionSelfDeduction;
 
             results.Add(new EmployeePayrollDto(
                 empId,
@@ -270,7 +278,9 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 dutyAllow,
                 otherAllow,
                 adjDiff,
-                overseasAllow));
+                overseasAllow,
+                laborPensionRate,
+                laborPensionSelfDeduction));
         }
 
         return new MonthlyPayrollDto(
@@ -291,6 +301,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             results.Sum(r => r.DutyAllowance),
             results.Sum(r => r.OtherAllowanceAmount),
             results.Sum(r => r.AdjustmentDifference),
-            results.Sum(r => r.OverseasAllowance));
+            results.Sum(r => r.OverseasAllowance),
+            results.Sum(r => r.LaborPensionSelfDeduction));
     }
 }

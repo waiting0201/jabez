@@ -37,7 +37,10 @@ public sealed record EmployeePayrollDto(
     decimal   DutyAllowance        = 0m,
     decimal   OtherAllowanceAmount = 0m,
     decimal   AdjustmentDifference = 0m,
-    decimal   OverseasAllowance    = 0m);
+    decimal   OverseasAllowance    = 0m,
+    // 勞退自提（%，直接欄位、非覆寫，計入 NetSalary 的扣項）
+    decimal?  LaborPensionSelfContributionRate = null,
+    decimal   LaborPensionSelfDeduction        = 0m);
 
 /// <summary>請假明細（用於薪資頁面顯示）</summary>
 public sealed record LeaveDetailDto(
@@ -67,7 +70,8 @@ public sealed record MonthlyPayrollDto(
     decimal TotalDutyAllowance        = 0m,
     decimal TotalOtherAllowance       = 0m,
     decimal TotalAdjustmentDifference = 0m,
-    decimal TotalOverseasAllowance    = 0m);
+    decimal TotalOverseasAllowance    = 0m,
+    decimal TotalLaborPensionSelfDeduction = 0m);
 
 /// <summary>薪資調整新增/更新請求</summary>
 public sealed record PayrollAdjustmentRequest(

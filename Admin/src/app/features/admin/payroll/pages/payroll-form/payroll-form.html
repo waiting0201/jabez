@@ -141,6 +141,12 @@
                     <td class="text-right pe-4 text-danger">-{{ e.menstrualLeaveDeduction | number:'1.0-0' }}</td>
                   </tr>
                 }
+                @if (e.laborPensionSelfDeduction > 0) {
+                  <tr>
+                    <td class="ps-6">勞工退休金自提（{{ e.laborPensionSelfContributionRate }}%）</td>
+                    <td class="text-right pe-4 text-danger">-{{ e.laborPensionSelfDeduction | number:'1.0-0' }}</td>
+                  </tr>
+                }
               </tbody>
             </table>
           </div>

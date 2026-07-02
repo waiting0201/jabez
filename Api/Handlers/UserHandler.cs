@@ -178,6 +178,17 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         return Math.Clamp(v, 1m, 3m);
     }
 
+    /// <summary>解析勞退自提比例：0-6 之整數，超出範圍拋 400；空值/無法解析視為 null（0%）。</summary>
+    private static decimal? ParseLaborPensionRate(Microsoft.Extensions.Primitives.StringValues raw)
+    {
+        var text = raw.ToString();
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        if (!decimal.TryParse(text, out var rate)) return null;
+        if (rate != Math.Floor(rate) || rate < 0m || rate > 6m)
+            throw AppException.BadRequest("勞退自提比例僅能為 0~6 之整數。");
+        return rate;
+    }
+
     private Task<string?> HandleSignatureUploadAsync(IFormFileCollection files, Guid userId, string? existingUrl)
         => HandleFileUploadAsync(files, "signature", SignatureContainer, AllowedSignatureTypes,
             "僅支援 PNG、JPEG、GIF、WebP 圖片格式。", userId, existingUrl);
@@ -280,6 +291,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             IsDisabled   = form["isDisabled"] == "true",
             HealthInsuranceOverride = decimal.TryParse(form["healthInsuranceOverride"], out var hio) ? hio : null,
             LaborInsuranceOverride  = decimal.TryParse(form["laborInsuranceOverride"],  out var lio) ? lio : null,
+            LaborPensionSelfContributionRate = ParseLaborPensionRate(form["laborPensionSelfContributionRate"]),
             PositionAllowance    = decimal.TryParse(form["positionAllowance"],    out var pa)  ? pa  : null,
             DutyAllowance        = decimal.TryParse(form["dutyAllowance"],        out var da)  ? da  : null,
             OtherAllowance       = decimal.TryParse(form["otherAllowance"],       out var oa)  ? oa  : null,
@@ -395,6 +407,8 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             user.HealthInsuranceOverride = decimal.TryParse(form["healthInsuranceOverride"], out var hio) ? hio : null;
         if (form.ContainsKey("laborInsuranceOverride"))
             user.LaborInsuranceOverride = decimal.TryParse(form["laborInsuranceOverride"], out var lio) ? lio : null;
+        if (form.ContainsKey("laborPensionSelfContributionRate"))
+            user.LaborPensionSelfContributionRate = ParseLaborPensionRate(form["laborPensionSelfContributionRate"]);
         if (form.ContainsKey("positionAllowance"))
             user.PositionAllowance = decimal.TryParse(form["positionAllowance"], out var pa) ? pa : null;
         if (form.ContainsKey("dutyAllowance"))
