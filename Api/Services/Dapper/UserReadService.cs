@@ -32,6 +32,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.PositionAllowance, u.DutyAllowance, u.OtherAllowance,
                 u.AdjustmentDifference, u.OverseasAllowance,
                 u.CompensatoryOpeningHours,
+                u.LaborPensionSelfContributionRate,
                 r.Id AS RoleId
             FROM Users u
             LEFT JOIN UserRoles ur  ON u.Id = ur.UserId
@@ -64,6 +65,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             decimal? PositionAllowance, decimal? DutyAllowance, decimal? OtherAllowance,
             decimal? AdjustmentDifference, decimal? OverseasAllowance,
             decimal CompensatoryOpeningHours,
+            decimal? LaborPensionSelfContributionRate,
             List<string> RoleIds)>();
 
         foreach (var row in rows)
@@ -90,6 +92,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     (decimal?)row.PositionAllowance, (decimal?)row.DutyAllowance, (decimal?)row.OtherAllowance,
                     (decimal?)row.AdjustmentDifference, (decimal?)row.OverseasAllowance,
                     (decimal)row.CompensatoryOpeningHours,
+                    (decimal?)row.LaborPensionSelfContributionRate,
                     []);
 
             if (row.RoleId is not null)
@@ -116,7 +119,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.HealthInsuranceOverride, kv.Value.LaborInsuranceOverride,
             kv.Value.PositionAllowance, kv.Value.DutyAllowance, kv.Value.OtherAllowance,
             kv.Value.AdjustmentDifference, kv.Value.OverseasAllowance,
-            kv.Value.CompensatoryOpeningHours));
+            kv.Value.CompensatoryOpeningHours,
+            kv.Value.LaborPensionSelfContributionRate));
     }
 
     /// <summary>輕量級使用者清單（供指定審核者下拉選單，不需 users:read 權限）</summary>
@@ -180,6 +184,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.PositionAllowance, u.DutyAllowance, u.OtherAllowance,
                 u.AdjustmentDifference, u.OverseasAllowance,
                 u.CompensatoryOpeningHours,
+                u.LaborPensionSelfContributionRate,
                 r.Id AS RoleId
             FROM Users u
             INNER JOIN PagedIds pid ON u.Id = pid.Id
@@ -213,6 +218,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             decimal? PositionAllowance, decimal? DutyAllowance, decimal? OtherAllowance,
             decimal? AdjustmentDifference, decimal? OverseasAllowance,
             decimal CompensatoryOpeningHours,
+            decimal? LaborPensionSelfContributionRate,
             List<string> RoleIds)>();
 
         foreach (var row in rows)
@@ -239,6 +245,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     (decimal?)row.PositionAllowance, (decimal?)row.DutyAllowance, (decimal?)row.OtherAllowance,
                     (decimal?)row.AdjustmentDifference, (decimal?)row.OverseasAllowance,
                     (decimal)row.CompensatoryOpeningHours,
+                    (decimal?)row.LaborPensionSelfContributionRate,
                     []);
 
             if (row.RoleId is not null)
@@ -265,7 +272,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.HealthInsuranceOverride, kv.Value.LaborInsuranceOverride,
             kv.Value.PositionAllowance, kv.Value.DutyAllowance, kv.Value.OtherAllowance,
             kv.Value.AdjustmentDifference, kv.Value.OverseasAllowance,
-            kv.Value.CompensatoryOpeningHours));
+            kv.Value.CompensatoryOpeningHours,
+            kv.Value.LaborPensionSelfContributionRate));
 
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
         return new PagedResult<UserDto>(items, total, page, pageSize, Math.Max(1, totalPages));
@@ -292,6 +300,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.PositionAllowance, u.DutyAllowance, u.OtherAllowance,
                 u.AdjustmentDifference, u.OverseasAllowance,
                 u.CompensatoryOpeningHours,
+                u.LaborPensionSelfContributionRate,
                 r.Id AS RoleId
             FROM Users u
             LEFT JOIN UserRoles ur  ON u.Id = ur.UserId
@@ -329,7 +338,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 (decimal?)row.HealthInsuranceOverride, (decimal?)row.LaborInsuranceOverride,
                 (decimal?)row.PositionAllowance, (decimal?)row.DutyAllowance, (decimal?)row.OtherAllowance,
                 (decimal?)row.AdjustmentDifference, (decimal?)row.OverseasAllowance,
-                (decimal)row.CompensatoryOpeningHours);
+                (decimal)row.CompensatoryOpeningHours,
+                (decimal?)row.LaborPensionSelfContributionRate);
 
             if (row.RoleId is not null)
                 roleIds.Add((string)row.RoleId);

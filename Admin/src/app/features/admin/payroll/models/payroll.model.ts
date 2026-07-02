@@ -34,6 +34,9 @@ export interface EmployeePayroll {
   otherAllowanceAmount: number;
   adjustmentDifference: number;
   overseasAllowance: number;
+  /** 勞退自提率（%，null = 0%，直接欄位、非覆寫） */
+  laborPensionSelfContributionRate: number | null;
+  laborPensionSelfDeduction: number;
 }
 
 export interface LeaveDetail {
@@ -63,6 +66,7 @@ export interface MonthlyPayroll {
   totalOtherAllowance: number;
   totalAdjustmentDifference: number;
   totalOverseasAllowance: number;
+  totalLaborPensionSelfDeduction: number;
 }
 
 export interface PayrollAdjustment {

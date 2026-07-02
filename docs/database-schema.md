@@ -10,7 +10,7 @@
 
 | 實體 | 說明 |
 |------|------|
-| `User` | 使用者（含 DepartmentId、JobTitleId、IsSuperAdmin、LineUserId、IsIndigenous / IsLowIncome / IsDisabled 三個身份旗標、Avatar、SignatureUrl、IndigenousProofUrl / LowIncomeProofUrl / DisabledProofUrl 三個證明檔、HealthInsuranceOverride / LaborInsuranceOverride 兩個健保 / 勞保覆寫值、CompensatoryOpeningHours 期初補休時數（系統上線前累計，116/6/30 到期歸零）） |
+| `User` | 使用者（含 DepartmentId、JobTitleId、IsSuperAdmin、LineUserId、IsIndigenous / IsLowIncome / IsDisabled 三個身份旗標、Avatar、SignatureUrl、IndigenousProofUrl / LowIncomeProofUrl / DisabledProofUrl 三個證明檔、HealthInsuranceOverride / LaborInsuranceOverride 兩個健保 / 勞保覆寫值、LaborPensionSelfContributionRate 勞退自提率（%，0~6 整數，null=0%）、CompensatoryOpeningHours 期初補休時數（系統上線前累計，116/6/30 到期歸零）） |
 | `Role` | 角色定義 |
 | `Permission` | 權限代碼 |
 | `UserRole` | 使用者 ↔ 角色（Junction） |

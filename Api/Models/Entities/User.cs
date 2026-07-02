@@ -53,6 +53,9 @@ public class User
     public decimal? HealthInsuranceOverride { get; set; }
     public decimal? LaborInsuranceOverride  { get; set; }
 
+    // 勞退自提率（%，員工自願提撥；null = 0%，非覆寫、無 lookup，直接乘底薪算扣款）
+    public decimal? LaborPensionSelfContributionRate { get; set; }
+
     // 超管旗標：不受角色/權限異動影響，永遠擁有全系統存取權
     public bool IsSuperAdmin { get; set; } = false;
 
