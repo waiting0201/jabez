@@ -105,6 +105,8 @@ public static class DesignatedReviewerHelper
     /// <summary>
     /// 回傳「被抑制的指定審核步驟 StepOrder 集合」。
     /// 條件：第一個 UseApplicantDesignated 步驟為 DesignatedRequiresDepartment=true，
+    /// 該步驟所選部門屬於 DepartmentCodes.DesignatedTopLevelSuppression（僅
+    /// Operations Department / Brand Department(疆界地域美學) 適用此規則，2026-07 限定），
     /// 且該步驟首位 designee（min StepOrder）＝其 SelectedDepartmentId 部門中
     /// active、非 superadmin、有職稱者的最高職稱（min JobTitle.Level）本人。
     /// 成立 → 回傳「第一個指定步驟之後的所有指定步驟 StepOrder」；不成立 → 空集合。
@@ -136,6 +138,15 @@ public static class DesignatedReviewerHelper
         if (firstDesignee is null || firstDesignee.SelectedDepartmentId is null) return [];
 
         var deptId = firstDesignee.SelectedDepartmentId.Value;
+
+        // 僅限定部門（Operations Department / Brand Department(疆界地域美學)）才適用自動略過；
+        // 其餘部門一律不抑制，維持申請人逐一指定所有指定審核步驟。
+        var deptCode = await db.Departments.AsNoTracking()
+            .Where(d => d.Id == deptId)
+            .Select(d => d.Code)
+            .FirstOrDefaultAsync();
+        if (deptCode is null || !DepartmentCodes.DesignatedTopLevelSuppression.Contains(deptCode))
+            return [];
 
         // 該部門 active、非 superadmin、有職稱者的最高職稱 Level（min）；空池得 null
         var deptMinLevel = await db.Users.AsNoTracking()

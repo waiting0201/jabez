@@ -131,4 +131,17 @@ public static class DepartmentCodes
             Finance,
             FinanceEn,
         };
+
+    /// <summary>
+    /// 指定審核者「部門最高層級自動略過」限定部門（2026-07 新增）：
+    /// 僅當第一個指定審核步驟（先選部門模式）選的部門屬於此集合時，
+    /// 首位指定人若為該部門職稱最高者，才會自動略過其後的指定審核步驟；其餘部門一律不抑制。
+    /// 前端對應清單見 designated-reviewers-picker.ts 的 DESIGNATED_TOP_LEVEL_SUPPRESSION_DEPT_CODES，兩處須同步。
+    /// </summary>
+    public static readonly IReadOnlySet<string> DesignatedTopLevelSuppression =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Operations Department",
+            "Brand Department(疆界地域美學)",
+        };
 }
