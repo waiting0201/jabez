@@ -33,3 +33,6 @@ Api/local.settings.json
 
 # 一次性員工匯入資料（含真實個資：身分證號/地址/家庭/眷屬 — 絕不進版控）
 Api/Data/Seed/employee-import.json
+.azurite/debug.log
+.gitignore
+.azurite/azurite.out.log

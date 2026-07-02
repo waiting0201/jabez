@@ -220,12 +220,13 @@ draft → pending → approved / returned / rejected
 **多個指定步驟的前端連動（共用元件 [DesignatedReviewersPicker](../../Admin/src/app/shared/components/designated-reviewers-picker/designated-reviewers-picker.ts)，9 種申請表單統一使用）：**
 - **連動閘控**：第一個指定步驟未選好審核者前，其後所有指定步驟的下拉 / 新增鈕 disabled。
 - **部門帶入**（僅 `DesignatedRequiresDepartment=true`）：第一個指定步驟選的部門，自動帶入其後指定步驟的部門下拉（申請人手動改過的列不覆寫）。
-- **部門最高層級自動略過（req3）**：第一個指定步驟（先選部門模式）若選到「所選部門中 `JobTitle.Level` 最小（最高職稱）」的人，其後所有指定步驟前端 disable + 不送出、後端亦自動略過。部門最高層級判定所需的 `JobTitleLevel` 由輕量端點 `GET /users/lookup` 附帶回傳。
+- **部門最高層級自動略過（req3，2026-07 限定僅 2 個部門適用）**：第一個指定步驟（先選部門模式）選的部門若屬於 `DESIGNATED_TOP_LEVEL_SUPPRESSION_DEPT_CODES`（**Operations Department**（營運管理及發展部）／ **Brand Department(疆界地域美學)**（品牌事業部），比對部門 `Code`），且選到「所選部門中 `JobTitle.Level` 最小（最高職稱）」的人，其後所有指定步驟前端 disable + 不送出、後端亦自動略過；其餘部門一律不抑制，申請人仍須逐一指定每個步驟。部門最高層級判定所需的 `JobTitleLevel` 由輕量端點 `GET /users/lookup` 附帶回傳，部門 `Code` 取自 `GET /departments`。
 
 **部門最高層級抑制（後端權威判定，單一真相）：**
-- [DesignatedReviewerHelper.GetSuppressedDesignatedStepOrdersAsync](../../Api/Common/DesignatedReviewerHelper.cs)：若第一個指定步驟為 `DesignatedRequiresDepartment=true`，且其首位 designee（min `StepOrder`）＝其 `SelectedDepartmentId` 部門中 active、非 superadmin、有職稱者的最高職稱（min `Level`）本人 → 回傳「其後所有指定步驟 StepOrder」為被抑制集合。
+- [DesignatedReviewerHelper.GetSuppressedDesignatedStepOrdersAsync](../../Api/Common/DesignatedReviewerHelper.cs)：若第一個指定步驟為 `DesignatedRequiresDepartment=true`，且其 `SelectedDepartmentId` 對應部門的 `Code` 屬於 `DepartmentCodes.DesignatedTopLevelSuppression`（Operations Department / Brand Department(疆界地域美學)），且其首位 designee（min `StepOrder`）＝該部門中 active、非 superadmin、有職稱者的最高職稱（min `Level`）本人 → 回傳「其後所有指定步驟 StepOrder」為被抑制集合。
 - `ValidateAndNormalizeAsync` 對被抑制步驟**不再要求**指定審核者；`ResolveStartingStepAsync` / `SkipUnreviewableStepsAsync` 對被抑制步驟走「乾淨跳過（不寫代簽 ApprovalRecord）」。
-- 防誤抑制守門：第一步非部門模式 / 首位沒選人 / 無 `SelectedDepartmentId` / 被指定者不在該部門 / 部門無合格人員 → 皆不抑制。
+- 防誤抑制守門：第一步非部門模式 / 首位沒選人 / 無 `SelectedDepartmentId` / 部門不在限定清單內 / 被指定者不在該部門 / 部門無合格人員 → 皆不抑制。
+- **前後端須同步**：後端 `DepartmentCodes.DesignatedTopLevelSuppression`（[Constants.cs](../../Api/Common/Constants.cs)）與前端 `DESIGNATED_TOP_LEVEL_SUPPRESSION_DEPT_CODES`（designated-reviewers-picker.ts），兩處部門 Code 清單須一致。
 
 **規則：**
 - 送出（submit）時，如果流程中有 `UseApplicantDesignated` 步驟，`designatedReviewers` 清單必填且至少 1 人。守門落在三層：

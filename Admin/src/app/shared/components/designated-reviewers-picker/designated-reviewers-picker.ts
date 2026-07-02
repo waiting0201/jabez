@@ -6,6 +6,15 @@ import {Department} from '../../../features/admin/departments/models/department.
 import {ApprovalFlowStepSummary} from '../../../features/admin/approvals/models/approval.model';
 import {DesignatedReviewer} from '../../../features/admin/payment-requests/models/payment-request.model';
 
+/**
+ * 指定審核者「部門最高層級自動略過」限定部門（2026-07 新增）。
+ * 須與後端 Constants.cs 的 DepartmentCodes.DesignatedTopLevelSuppression 同步。
+ */
+const DESIGNATED_TOP_LEVEL_SUPPRESSION_DEPT_CODES = new Set([
+  'Operations Department',
+  'Brand Department(疆界地域美學)',
+]);
+
 export interface DesignatedReviewerPayload {
   reviewerId: string;
   /** 該 designated step 區塊內的列次序（1, 2, 3…） */
@@ -193,7 +202,10 @@ export class DesignatedReviewersPicker implements OnChanges {
     }
   }
 
-  /** req3：步驟一（部門模式）首位是否選到所選部門最高職稱（Level 最小） */
+  /**
+   * req3：步驟一（部門模式）首位是否選到所選部門最高職稱（Level 最小）。
+   * 僅限定部門（Operations Department / Brand Department(疆界地域美學)）才適用，其餘部門不抑制。
+   */
   private _computeTopLevelSuppressed(): boolean {
     const g0 = this.groups[0];
     if (!g0?.designatedStep.designatedRequiresDepartment) return false;
@@ -201,6 +213,9 @@ export class DesignatedReviewersPicker implements OnChanges {
     if (!e0?.selectedUserId || e0.selectedDepartmentId == null) return false;
 
     const deptId = e0.selectedDepartmentId;
+    const deptCode = this.departments.find(d => d.id === deptId)?.code;
+    if (!deptCode || !DESIGNATED_TOP_LEVEL_SUPPRESSION_DEPT_CODES.has(deptCode)) return false;
+
     const deptUsers = this.users.filter(u =>
       u.departmentId === deptId && u.status === 'active' && u.jobTitleLevel != null);
     if (deptUsers.length === 0) return false;
