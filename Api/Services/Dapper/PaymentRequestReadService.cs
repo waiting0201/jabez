@@ -614,11 +614,13 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                    u.Name AS ReviewedBy, ar.ReviewedAt, ar.ReviewNote,
                    obu.Name AS OnBehalfOf, ar.IsEscalated,
                    u.SignatureUrl AS ReviewerSignatureUrl,
-                   jt.Name AS ReviewerJobTitle
+                   jt.Name AS ReviewerJobTitle,
+                   dep.Name AS ReviewerDepartmentName
             FROM ApprovalRecords ar
-            LEFT JOIN Users u      ON ar.ReviewedById     = u.Id
-            LEFT JOIN Users obu    ON ar.OnBehalfOfUserId = obu.Id
-            LEFT JOIN JobTitles jt ON u.JobTitleId        = jt.Id
+            LEFT JOIN Users u        ON ar.ReviewedById     = u.Id
+            LEFT JOIN Users obu      ON ar.OnBehalfOfUserId = obu.Id
+            LEFT JOIN JobTitles jt   ON u.JobTitleId        = jt.Id
+            LEFT JOIN Departments dep ON u.DepartmentId     = dep.Id
             ORDER BY ar.ApplicationType, ar.ApplicationId, ar.StepOrder
             """;
 
@@ -895,7 +897,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (string?)row.OnBehalfOf,
                 (bool)(row.IsEscalated ?? false),
                 (string?)row.ReviewerSignatureUrl,
-                (string?)row.ReviewerJobTitle));
+                (string?)row.ReviewerJobTitle,
+                (string?)row.ReviewerDepartmentName));
         }
 
         ApprovalRecordDto[] GetRecords(string appType, int id) =>

@@ -342,6 +342,7 @@ export interface ApprovalRecord {
   isEscalated: boolean;   // 是否為升級審核
   reviewerSignatureUrl?: string;  // 審核者簽名檔 URL
   reviewerJobTitle?: string;      // 審核者職稱（PDF 簽名欄判定總監等特殊角色用）
+  reviewerDepartmentName?: string; // 審核者部門（指定審核步驟顯示用，區分同名審核者）
 }
 
 // ── ApprovalTask (polymorphic) ───────────────────────────────────────────────

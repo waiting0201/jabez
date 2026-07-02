@@ -53,6 +53,9 @@ import {ApprovalFlow, ApprovalRecord} from '../../features/admin/approval-tasks/
                   @if (getRecord(step.stepOrder); as rec) {
                     <div class="text-muted small mt-1">
                       {{ rec.reviewedBy }}
+                      @if (step.useApplicantDesignated && (rec.reviewerDepartmentName || rec.reviewerJobTitle)) {
+                        <span class="text-muted">（{{ rec.reviewerDepartmentName }}{{ rec.reviewerDepartmentName && rec.reviewerJobTitle ? ' · ' : '' }}{{ rec.reviewerJobTitle }}）</span>
+                      }
                       @if (rec.isEscalated && rec.onBehalfOf) {
                         <span class="badge bg-[--bg-elevated] text-[--accent] ms-1" style="font-size:.7rem">代理 {{ rec.onBehalfOf }}</span>
                       } @else if (rec.isEscalated) {
