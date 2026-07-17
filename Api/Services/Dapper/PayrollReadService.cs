@@ -47,8 +47,8 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                   AND tr.EndDate >= @PrevMonthFirstDay
                   AND tr.EndDate <  @CurrMonthFirstDay
                 UNION ALL
-                -- 參與執行人員的假日天數
-                SELECT p.UserId AS EmployeeId, tr.HolidayDays
+                -- 參與執行人員的假日天數（有勾選參與日期者取個人假日天數；NULL=全程參與，沿用整單）
+                SELECT p.UserId AS EmployeeId, COALESCE(p.HolidayDays, tr.HolidayDays) AS HolidayDays
                 FROM TravelRequestParticipants p
                 JOIN TravelRequests tr ON p.TravelRequestId = tr.Id
                 WHERE tr.IsHolidayTravel = 1

@@ -6,7 +6,7 @@
 
 本地開發連線字串於 [Api/local.settings.json](../Api/local.settings.json)；遠端 Azure SQL 連線字串記在 memory `reference_azure_sql.md`（敏感資訊不入版控）。
 
-## 45 個資料表實體
+## 47 個資料表實體
 
 | 實體 | 說明 |
 |------|------|
@@ -34,6 +34,8 @@
 | `LeaveRequest` | 請假申請（含 BereavementRelationship 喪假親屬關係） |
 | `TravelRequest` | 出差預支申請（含 `RequestNo` 單號 unique index：`IsHolidayTravel=false` → `TR-yyyyMMdd-NNN`、`IsHolidayTravel=true` → `HTR-yyyyMMdd-NNN`，per-prefix-per-day 序號池；含 IsHolidayTravel、IsClosed 結案、GrandTotal 明細合計、`EstimatedRefundDate / RefundedAt / RefundedByUserId` 退款欄位（沖銷超支才用）；撥款資料統一由 `TravelRequestInstallment[]` 表達，父表無撥款 cache 欄位；事後走沖銷流程）。當 `IsHolidayTravel=true`（假日執行活動）時不含 Items 與發票明細，僅記錄活動地點/期間/參與人員 |
 | `TravelRequestItem` | 出差預支明細（交通費、住宿費、餐費、雜支）；假日執行活動不使用 |
+| `TravelRequestParticipant` | 假日執行活動參與執行人員（UserId + SortOrder；唯一索引 `(TravelRequestId, UserId)`；**HolidayDays int?** 個人假日天數：NULL=全程參與沿用整單 HolidayDays，有值=Submit 時依個人參與日期權威計算的快照） |
+| `TravelRequestParticipantDate` | 參與人員個別參與日期（一列一天，可不連續；FK → TravelRequestParticipant Cascade；唯一索引 `(TravelRequestParticipantId, Date)`；無任何列＝全程參與） |
 | `TravelPaymentRequest` | 出差請款申請（含 `RequestNo` 單號 `TPR-yyyyMMdd-NNN` unique index；員工代墊後直接請款，無沖銷流程；撥款資料統一由 `TravelPaymentRequestInstallment[]` 表達，父表無 cache 欄位） |
 | `TravelPaymentRequestItem` | 出差請款明細（交通費、住宿費、餐費、雜支，含發票號碼、發票日期、發票檔案上傳；上傳走 multipart + Azure Blob `invoices` container，前端支援拖放、OCR 自動辨識、HEIC/PDF） |
 | `OvertimeRequest` | 加班申請（走簽核流程） |

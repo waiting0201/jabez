@@ -94,14 +94,37 @@ export class HolidayTravelPdfService {
       y += 6;
       lv('活動主旨及內容：', r.purpose || '', mx, y);
 
-      // ── 參與執行人員 ──
+      // ── 參與執行人員（有勾選參與日期者附註日期；未列日期＝全程參與）──
       if (r.participants && r.participants.length > 0) {
         y += 6;
         const names = r.participants
           .sort((a, b) => a.sortOrder - b.sortOrder)
-          .map(p => p.userName || p.userId)
+          .map(p => {
+            const name = p.userName || p.userId;
+            const dates = (p.dates ?? []).map(d => {
+              const [, m, day] = String(d).slice(0, 10).split('-');
+              return `${+m}/${+day}`;
+            });
+            return dates.length > 0 ? `${name}（${dates.join('、')}）` : name;
+          })
           .join('、');
-        lv('參與執行人員：', names, mx, y);
+        const label = '參與執行人員：';
+        doc.setFont(F, 'normal');
+        const lw = doc.getTextWidth(label);
+        const lines: string[] = doc.splitTextToSize(names, cw - lw);
+        doc.text(label, mx, y);
+        lines.forEach((line, idx) => doc.text(line, mx + lw, y + idx * 5));
+        y += (lines.length - 1) * 5;
+
+        const hasAnyDates = r.participants.some(p => p.dates?.length);
+        if (hasAnyDates) {
+          y += 5;
+          doc.setFontSize(8);
+          doc.setTextColor(...CIS.textMuted);
+          doc.text('未列參與日期者為全程參與。', mx + lw, y);
+          doc.setFontSize(9.5);
+          doc.setTextColor(...CIS.textPrimary);
+        }
       }
 
       // ── 簽名欄 ──

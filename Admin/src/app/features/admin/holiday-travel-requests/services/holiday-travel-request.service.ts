@@ -40,8 +40,8 @@ export class HolidayTravelRequestService {
   }
 
   /** 查詢日期範圍內的假日天數（依行事曆資料） */
-  countHolidays(startDate: string, endDate: string): Observable<{holidayDays: number | null; hasCalendarData: boolean}> {
-    return this.http.get<{holidayDays: number | null; hasCalendarData: boolean}>(
+  countHolidays(startDate: string, endDate: string): Observable<{holidayDays: number | null; hasCalendarData: boolean; holidayDates?: string[]}> {
+    return this.http.get<{holidayDays: number | null; hasCalendarData: boolean; holidayDates?: string[]}>(
       `${environment.apiUrl}/holiday-travel-requests/count-holidays`, {params: {startDate, endDate}});
   }
 

@@ -153,27 +153,64 @@
             }
           </div>
           <div class="card-body">
+            @if (!isReadOnly) {
+              <div class="text-muted small mb-3">
+                每位人員可勾選實際參與日期（可不連續）；<span class="fw-500">未勾選日期者視為全程參與</span>。
+              </div>
+              @if (chipsTooLong()) {
+                <div class="text-warning small mb-3 flex items-center gap-1">
+                  <svg class="sa-icon shrink-0" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                  活動期間過長，無法逐日設定參與日期，所有人員視為全程參與。
+                </div>
+              }
+            }
             @if (participantEntries.length === 0) {
               <div class="text-muted small">
                 @if (isReadOnly) { 無參與執行人員記錄。} @else { 點擊「新增人員」新增參與執行人員。}
               </div>
             } @else {
-              @for (entry of participantEntries; track $index; let i = $index) {
-                <div class="flex items-center gap-2 mb-2">
-                  <span class="text-muted small" style="min-width:1.5rem">{{ i + 1 }}.</span>
-                  @if (isReadOnly) {
-                    <span class="small fw-500">{{ getUserName(entry.selectedUserId) }}</span>
-                  } @else {
-                    <select class="form-select form-select-sm" style="max-width:240px"
-                            [(ngModel)]="entry.selectedUserId" [ngModelOptions]="{standalone: true}">
-                      <option [ngValue]="null">— 選擇人員 —</option>
-                      @for (user of allUsers; track user.id) {
-                        <option [ngValue]="user.id">{{ user.name }}</option>
+              @for (entry of participantEntries; track $index; let i = $index; let last = $last) {
+                <div [class.mb-4]="!last">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-muted small" style="min-width:1.5rem">{{ i + 1 }}.</span>
+                    @if (isReadOnly) {
+                      <span class="small fw-500">{{ getUserName(entry.selectedUserId) }}</span>
+                      @if (entry.selectedDates.length > 0) {
+                        <span class="text-muted small">參與日期：{{ formatDates(entry) }}（{{ participantSummary(entry) }}）</span>
+                      } @else {
+                        <span class="text-muted small">全程參與</span>
                       }
-                    </select>
-                    <button type="button" class="btn btn-sm btn-ghost-danger" (click)="removeParticipant(i)">
-                      <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
-                    </button>
+                    } @else {
+                      <select class="form-select form-select-sm" style="max-width:240px"
+                              [(ngModel)]="entry.selectedUserId" [ngModelOptions]="{standalone: true}">
+                        <option [ngValue]="null">— 選擇人員 —</option>
+                        @for (user of allUsers; track user.id) {
+                          <option [ngValue]="user.id">{{ user.name }}</option>
+                        }
+                      </select>
+                      <span class="text-muted small">{{ participantSummary(entry) }}</span>
+                      <button type="button" class="btn btn-sm btn-ghost-danger" (click)="removeParticipant(i)">
+                        <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                      </button>
+                    }
+                  </div>
+                  @if (!isReadOnly && !chipsTooLong()) {
+                    <div class="flex flex-wrap gap-1 mt-2" style="padding-left:1.5rem">
+                      @if (dayChips().length === 0) {
+                        <span class="text-muted small">請先選擇活動期間</span>
+                      } @else {
+                        @for (chip of dayChips(); track chip.date) {
+                          <button type="button" class="btn btn-sm rounded-pill"
+                                  [class.btn-danger]="chip.isHoliday && isDateSelected(entry, chip.date)"
+                                  [class.btn-outline-danger]="chip.isHoliday && !isDateSelected(entry, chip.date)"
+                                  [class.btn-primary]="!chip.isHoliday && isDateSelected(entry, chip.date)"
+                                  [class.btn-outline-secondary]="!chip.isHoliday && !isDateSelected(entry, chip.date)"
+                                  (click)="toggleDate(entry, chip.date)">
+                            {{ chip.label }}@if (chip.isHoliday) { <span class="ms-1">假</span> }
+                          </button>
+                        }
+                      }
+                    </div>
                   }
                 </div>
               }

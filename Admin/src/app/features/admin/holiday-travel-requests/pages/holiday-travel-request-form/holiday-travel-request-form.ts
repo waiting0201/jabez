@@ -66,6 +66,13 @@ export class HolidayTravelRequestForm implements OnInit {
   holidayDaysLoading = signal(false);
   holidayDaysNoCalendar = signal(false);
 
+  /** 活動期間內的假日日期集合（yyyy-MM-dd，供參與日期 chips 標示） */
+  holidayDateSet = signal<Set<string>>(new Set());
+  /** 參與日期 chips（依活動期間逐日產生） */
+  dayChips = signal<{date: string; label: string; isHoliday: boolean}[]>([]);
+  /** 活動期間超過上限（92 天）時停用逐日勾選，所有人員視為全程參與 */
+  chipsTooLong = signal(false);
+
   /** 簽核流程時間軸 */
   approvalFlow: ApprovalFlow | null = null;
   approvalRecords: ApprovalRecord[] = [];
@@ -88,10 +95,11 @@ export class HolidayTravelRequestForm implements OnInit {
   /** 被抑制（部門最高層級 → 自動略過）的指定步驟 stepOrder，驗證時排除 */
   private _suppressedSteps: number[] = [];
 
-  /** 參與執行人員清單 */
+  /** 參與執行人員清單（selectedDates 空陣列＝全程參與） */
   participantEntries: {
     sortOrder: number;
     selectedUserId: string | null;
+    selectedDates: string[];
   }[] = [];
 
   readonly statusLabel = APPROVAL_STATUS_LABELS;
@@ -120,11 +128,13 @@ export class HolidayTravelRequestForm implements OnInit {
     return null;
   }
 
-  /** 日期變更時查詢假日天數 */
+  /** 日期變更時查詢假日天數，並重建參與日期 chips */
   onDateChange() {
     const v = this.form.value;
     if (!v.startDate || !v.endDate) {
       this.holidayDays.set(null);
+      this.holidayDateSet.set(new Set());
+      this.rebuildDayChips();
       return;
     }
     this.holidayDaysLoading.set(true);
@@ -134,12 +144,88 @@ export class HolidayTravelRequestForm implements OnInit {
         this.holidayDays.set(res.holidayDays);
         this.holidayDaysNoCalendar.set(!res.hasCalendarData);
         this.holidayDaysLoading.set(false);
+        this.holidayDateSet.set(new Set(res.holidayDates ?? []));
+        this.rebuildDayChips();
       },
       error: () => {
         this.holidayDays.set(null);
         this.holidayDaysLoading.set(false);
+        this.holidayDateSet.set(new Set());
+        this.rebuildDayChips();
       },
     });
+  }
+
+  /** 依活動期間逐日產生 chips，並剪除各參與人員落出期間的已勾日期 */
+  private rebuildDayChips() {
+    const v = this.form.value;
+    if (!v.startDate || !v.endDate) {
+      this.dayChips.set([]);
+      this.chipsTooLong.set(false);
+      return;
+    }
+    const start = new Date(v.startDate + 'T00:00:00');
+    const end   = new Date(v.endDate + 'T00:00:00');
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
+      this.dayChips.set([]);
+      this.chipsTooLong.set(false);
+      return;
+    }
+    const days = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+    if (days > 92) {
+      this.chipsTooLong.set(true);
+      this.dayChips.set([]);
+      this.participantEntries.forEach(e => e.selectedDates = []);
+      return;
+    }
+    this.chipsTooLong.set(false);
+    const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+    const holidaySet = this.holidayDateSet();
+    const chips: {date: string; label: string; isHoliday: boolean}[] = [];
+    for (let i = 0; i < days; i++) {
+      const d = new Date(start.getTime() + i * 86400000);
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      chips.push({date: iso, label: `${d.getMonth() + 1}/${d.getDate()}(${weekdays[d.getDay()]})`, isHoliday: holidaySet.has(iso)});
+    }
+    this.dayChips.set(chips);
+    const valid = new Set(chips.map(c => c.date));
+    this.participantEntries.forEach(e => e.selectedDates = e.selectedDates.filter(d => valid.has(d)));
+  }
+
+  /** 勾選/取消勾選參與日期 */
+  toggleDate(entry: {selectedDates: string[]}, date: string) {
+    const idx = entry.selectedDates.indexOf(date);
+    if (idx >= 0) entry.selectedDates.splice(idx, 1);
+    else {
+      entry.selectedDates.push(date);
+      entry.selectedDates.sort();
+    }
+  }
+
+  isDateSelected(entry: {selectedDates: string[]}, date: string): boolean {
+    return entry.selectedDates.includes(date);
+  }
+
+  /** 該列摘要：已選 N 天（假日 M 天）/ 全程參與（假日 X 天） */
+  participantSummary(entry: {selectedDates: string[]}): string {
+    if (entry.selectedDates.length === 0) {
+      const total = this.holidayDays();
+      return total !== null ? `全程參與（假日 ${total} 天）` : '全程參與';
+    }
+    if (this.holidayDaysNoCalendar()) return `已選 ${entry.selectedDates.length} 天`;
+    const holidaySet = this.holidayDateSet();
+    const holidayCount = entry.selectedDates.filter(d => holidaySet.has(d)).length;
+    return `已選 ${entry.selectedDates.length} 天（假日 ${holidayCount} 天）`;
+  }
+
+  /** 唯讀顯示：M/d 格式日期清單（頓號分隔） */
+  formatDates(entry: {selectedDates: string[]}): string {
+    return entry.selectedDates
+      .map(date => {
+        const [, m, d] = date.split('-');
+        return `${+m}/${+d}`;
+      })
+      .join('、');
   }
 
   // ── 指定審核者操作 ──
@@ -163,7 +249,7 @@ export class HolidayTravelRequestForm implements OnInit {
 
   addParticipant() {
     const nextOrder = this.participantEntries.length + 1;
-    this.participantEntries.push({sortOrder: nextOrder, selectedUserId: null});
+    this.participantEntries.push({sortOrder: nextOrder, selectedUserId: null, selectedDates: []});
   }
 
   removeParticipant(i: number) {
@@ -230,11 +316,15 @@ export class HolidayTravelRequestForm implements OnInit {
         // 回填日期後查詢假日天數
         this.onDateChange();
 
-        // 回填參與執行人員
+        // 回填參與執行人員（dates 正規化為 yyyy-MM-dd）
         if (r.participants?.length) {
           this.participantEntries = r.participants
             .sort((a, b) => a.sortOrder - b.sortOrder)
-            .map(p => ({sortOrder: p.sortOrder, selectedUserId: p.userId}));
+            .map(p => ({
+              sortOrder: p.sortOrder,
+              selectedUserId: p.userId,
+              selectedDates: (p.dates ?? []).map(d => String(d).slice(0, 10)).sort(),
+            }));
         }
 
         // 回填指定審核者：唯讀模式與編輯模式皆由 pickerInitial 傳給 picker
@@ -339,10 +429,10 @@ export class HolidayTravelRequestForm implements OnInit {
       if (project?.code) fd.append('projectCode', project.code);
     }
 
-    // 參與執行人員
+    // 參與執行人員（dates 空陣列＝全程參與）
     const participants = this.participantEntries
       .filter(e => e.selectedUserId)
-      .map(e => ({userId: e.selectedUserId!, sortOrder: e.sortOrder}));
+      .map(e => ({userId: e.selectedUserId!, sortOrder: e.sortOrder, dates: e.selectedDates}));
     if (participants.length > 0) {
       fd.append('participants', JSON.stringify(participants));
     }

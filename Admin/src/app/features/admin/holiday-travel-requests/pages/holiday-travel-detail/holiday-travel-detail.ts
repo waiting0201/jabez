@@ -5,7 +5,7 @@ import {HolidayTravelRequestService} from '../../services/holiday-travel-request
 import {HolidayTravelPdfService} from '../../services/holiday-travel-pdf.service';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
 import {ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
-import {HolidayTravelRequest, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/holiday-travel-request.model';
+import {HolidayTravelRequest, TravelParticipant, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/holiday-travel-request.model';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 
@@ -40,6 +40,16 @@ export class HolidayTravelDetail implements OnInit {
   }
 
   get pdfLoading() { return this.pdfService.pdfLoading; }
+
+  /** 參與人員個人參與日期（M/d 頓號分隔；無日期＝全程參與，回空字串） */
+  participantDates(p: TravelParticipant): string {
+    return (p.dates ?? [])
+      .map(d => {
+        const [, m, day] = String(d).slice(0, 10).split('-');
+        return `${+m}/${+day}`;
+      })
+      .join('、');
+  }
 
   printHolidayTravel() {
     const r = this.request();

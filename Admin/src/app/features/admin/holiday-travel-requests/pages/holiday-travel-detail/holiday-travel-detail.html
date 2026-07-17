@@ -116,9 +116,19 @@
         <div class="card-body">
           <ol class="mb-0 ps-4">
             @for (p of r.participants; track p.userId) {
-              <li class="small fw-500">{{ p.userName || p.userId }}</li>
+              <li class="small fw-500">
+                {{ p.userName || p.userId }}
+                @if (p.dates?.length) {
+                  <span class="text-muted fw-normal">
+                    參與日期：{{ participantDates(p) }}@if (p.holidayDays != null) {（假日 {{ p.holidayDays }} 天）}
+                  </span>
+                } @else {
+                  <span class="text-muted fw-normal">全程參與</span>
+                }
+              </li>
             }
           </ol>
+          <div class="text-muted small mt-2">未列參與日期者為全程參與。</div>
         </div>
       </div>
     }

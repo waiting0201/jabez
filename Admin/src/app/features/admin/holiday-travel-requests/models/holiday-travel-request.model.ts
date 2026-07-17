@@ -33,6 +33,10 @@ export interface TravelParticipant {
   userId: string;
   userName?: string;
   sortOrder: number;
+  /** 個人參與日期（yyyy-MM-dd；空/未提供＝全程參與） */
+  dates?: string[];
+  /** 個人假日天數（Submit 時後端計算；null＝全程參與，沿用整單 holidayDays） */
+  holidayDays?: number | null;
 }
 
 export interface HolidayTravelRequest {

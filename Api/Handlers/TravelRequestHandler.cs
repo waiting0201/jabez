@@ -187,6 +187,10 @@ public sealed class TravelRequestHandler(
             var existCount = await db.Users.AsNoTracking().CountAsync(u => participantIds.Contains(u.Id));
             if (existCount != participantIds.Count)
                 return new BadRequestObjectResult(ApiResponse.Fail("一或多位出差參與者不存在。"));
+
+            var dateError = ValidateParticipantDates(participants, startDate, endDate);
+            if (dateError is not null)
+                return new BadRequestObjectResult(ApiResponse.Fail(dateError));
         }
 
         var today = Clock.Now;
@@ -218,16 +222,14 @@ public sealed class TravelRequestHandler(
             await db.SaveChangesAsync();
         }
 
-        // 儲存參與者
+        // 儲存參與者（含個人參與日期；HolidayDays 為草稿估算，Submit 時權威重算）
         if (participants is { Length: > 0 })
         {
+            var (hasCalendarData, holidaySet) = participants.Any(p => p.Dates is { Length: > 0 })
+                ? await GetHolidaySetAsync(startDate, endDate)
+                : (false, new HashSet<DateTime>());
             db.TravelRequestParticipants.AddRange(
-                participants.Select(p => new TravelRequestParticipant
-                {
-                    TravelRequestId = travelRequest.Id,
-                    UserId          = p.UserId,
-                    SortOrder       = p.SortOrder,
-                }));
+                BuildParticipantEntities(travelRequest.Id, participants, holidaySet, hasCalendarData));
             await db.SaveChangesAsync();
         }
 
@@ -319,8 +321,8 @@ public sealed class TravelRequestHandler(
 
         var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         var item = currentUser?.IsSuperAdmin == true
-            ? await db.TravelRequests.Include(x => x.Items).Include(x => x.Participants).FirstOrDefaultAsync(x => x.Id == intId)
-            : await db.TravelRequests.Include(x => x.Items).Include(x => x.Participants).FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
+            ? await db.TravelRequests.Include(x => x.Items).Include(x => x.Participants).ThenInclude(p => p.Dates).FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.TravelRequests.Include(x => x.Items).Include(x => x.Participants).ThenInclude(p => p.Dates).FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
         if (item is null) throw AppException.NotFound("TravelRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
@@ -379,7 +381,7 @@ public sealed class TravelRequestHandler(
             }
         }
 
-        // 參與者整組替換
+        // 參與者整組替換（含個人參與日期；HolidayDays 為草稿估算，Submit 時權威重算）
         var pJson = form["participants"].ToString();
         if (!string.IsNullOrEmpty(pJson))
         {
@@ -390,17 +392,39 @@ public sealed class TravelRequestHandler(
                 var existCount = await db.Users.AsNoTracking().CountAsync(u => participantIds.Contains(u.Id));
                 if (existCount != participantIds.Count)
                     return new BadRequestObjectResult(ApiResponse.Fail("一或多位出差參與者不存在。"));
+
+                var dateError = ValidateParticipantDates(participants, item.StartDate, item.EndDate);
+                if (dateError is not null)
+                    return new BadRequestObjectResult(ApiResponse.Fail(dateError));
             }
             db.TravelRequestParticipants.RemoveRange(item.Participants);
             if (participants is { Length: > 0 })
             {
+                var (hasCalendarData, holidaySet) = participants.Any(p => p.Dates is { Length: > 0 })
+                    ? await GetHolidaySetAsync(item.StartDate, item.EndDate)
+                    : (false, new HashSet<DateTime>());
                 db.TravelRequestParticipants.AddRange(
-                    participants.Select(p => new TravelRequestParticipant
-                    {
-                        TravelRequestId = intId,
-                        UserId          = p.UserId,
-                        SortOrder       = p.SortOrder,
-                    }));
+                    BuildParticipantEntities(intId, participants, holidaySet, hasCalendarData));
+            }
+        }
+        else if (datesChanged && item.Participants.Any(p => p.Dates.Count > 0))
+        {
+            // 防禦分支：未重送 participants 但活動期間變更 → 剪除落出新區間的日期並重算個人假日天數
+            var (hasCalendarData, holidaySet) = await GetHolidaySetAsync(item.StartDate, item.EndDate);
+            foreach (var p in item.Participants)
+            {
+                if (p.Dates.Count == 0) continue;
+                var outOfRange = p.Dates
+                    .Where(d => d.Date < item.StartDate.Date || d.Date > item.EndDate.Date)
+                    .ToList();
+                if (outOfRange.Count > 0)
+                {
+                    db.TravelRequestParticipantDates.RemoveRange(outOfRange);
+                    foreach (var d in outOfRange) p.Dates.Remove(d);
+                }
+                p.HolidayDays = p.Dates.Count == 0
+                    ? null
+                    : (hasCalendarData ? p.Dates.Count(d => holidaySet.Contains(d.Date.Date)) : 0);
             }
         }
 
@@ -495,6 +519,32 @@ public sealed class TravelRequestHandler(
                 return new BadRequestObjectResult(ApiResponse.Fail($"行事曆資料尚未匯入（{item.StartDate:yyyy/MM/dd} ~ {item.EndDate:yyyy/MM/dd}），請聯絡管理員匯入後再送出。"));
 
             item.HolidayDays = await calendarDayReader.CountHolidaysAsync(item.StartDate, item.EndDate);
+
+            // 參與人員個人假日天數權威重算（有勾選參與日期者 = 勾選日中屬假日的天數；未勾選 = NULL 全程參與）
+            var participantsWithDates = await db.TravelRequestParticipants
+                .Include(p => p.Dates)
+                .Where(p => p.TravelRequestId == item.Id)
+                .ToListAsync();
+            if (participantsWithDates.Any(p => p.Dates.Count > 0))
+            {
+                var holidayDates = await calendarDayReader.GetHolidayDatesAsync(item.StartDate, item.EndDate);
+                var holidaySet = holidayDates.Select(d => d.Date).ToHashSet();
+                foreach (var p in participantsWithDates)
+                {
+                    // 防禦性剔除落出活動期間的日期（正常流程 Update 已剪除）
+                    var outOfRange = p.Dates
+                        .Where(d => d.Date < item.StartDate.Date || d.Date > item.EndDate.Date)
+                        .ToList();
+                    if (outOfRange.Count > 0)
+                    {
+                        db.TravelRequestParticipantDates.RemoveRange(outOfRange);
+                        foreach (var d in outOfRange) p.Dates.Remove(d);
+                    }
+                    p.HolidayDays = p.Dates.Count == 0
+                        ? null
+                        : p.Dates.Count(d => holidaySet.Contains(d.Date.Date));
+                }
+            }
         }
 
         // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
@@ -684,8 +734,13 @@ public sealed class TravelRequestHandler(
             return new OkObjectResult(ApiResponse.Ok(new { holidayDays = (int?)null, hasCalendarData = false },
                 "行事曆資料尚未匯入。"));
 
-        var count = await calendarDayReader.CountHolidaysAsync(startDate, endDate);
-        return new OkObjectResult(ApiResponse.Ok(new { holidayDays = count, hasCalendarData = true }));
+        var holidayDates = await calendarDayReader.GetHolidayDatesAsync(startDate, endDate);
+        return new OkObjectResult(ApiResponse.Ok(new
+        {
+            holidayDays = holidayDates.Count,
+            hasCalendarData = true,
+            holidayDates = holidayDates.Select(d => d.ToString("yyyy-MM-dd")).ToArray(),
+        }));
     }
 
     // ── Helper ──────────────────────────────────────────────────────────────────
@@ -698,6 +753,53 @@ public sealed class TravelRequestHandler(
         if (!Guid.TryParse(userIdStr, out var userId))
             throw AppException.Unauthorized("Invalid token claims.");
         return userId;
+    }
+
+    /// <summary>驗證參與人員的參與日期必須落在活動期間內；回傳錯誤訊息（null = 通過）</summary>
+    private static string? ValidateParticipantDates(ParticipantRequest[] participants, DateTime startDate, DateTime endDate)
+    {
+        var hasOutOfRange = participants.Any(p => p.Dates is { Length: > 0 } &&
+            p.Dates.Any(d => d.Date < startDate.Date || d.Date > endDate.Date));
+        return hasOutOfRange ? "參與日期必須落在活動期間內。" : null;
+    }
+
+    /// <summary>
+    /// 建立參與人員 entity（含參與日期子集合）。
+    /// 日期正規化（.Date）+ 去重 + 排序；HolidayDays：無勾選日期 = NULL（全程參與），
+    /// 有勾選 = 與行事曆假日交集數（行事曆缺資料時先存 0，Submit 時權威重算）。
+    /// </summary>
+    private static List<TravelRequestParticipant> BuildParticipantEntities(
+        int travelRequestId, ParticipantRequest[] participants,
+        HashSet<DateTime> holidaySet, bool hasCalendarData)
+    {
+        return participants.Select(p =>
+        {
+            var dates = (p.Dates ?? Array.Empty<DateTime>())
+                .Select(d => d.Date)
+                .Distinct()
+                .OrderBy(d => d)
+                .ToList();
+            return new TravelRequestParticipant
+            {
+                TravelRequestId = travelRequestId,
+                UserId          = p.UserId,
+                SortOrder       = p.SortOrder,
+                HolidayDays     = dates.Count == 0
+                    ? null
+                    : (hasCalendarData ? dates.Count(holidaySet.Contains) : 0),
+                Dates           = dates.Select(d => new TravelRequestParticipantDate { Date = d }).ToList(),
+            };
+        }).ToList();
+    }
+
+    /// <summary>撈取活動期間內的假日集合（僅在有參與者勾選日期時查詢；回傳 hasCalendarData + 假日 Set）</summary>
+    private async Task<(bool HasCalendarData, HashSet<DateTime> HolidaySet)> GetHolidaySetAsync(
+        DateTime startDate, DateTime endDate)
+    {
+        var hasData = await calendarDayReader.HasDataForRangeAsync(startDate, endDate);
+        if (!hasData) return (false, new HashSet<DateTime>());
+        var dates = await calendarDayReader.GetHolidayDatesAsync(startDate, endDate);
+        return (true, dates.Select(d => d.Date).ToHashSet());
     }
 
     /// <summary>產生出差/假日活動單號：{prefix}yyyyMMdd-NNN（per-prefix-per-day 序號池，唯一索引保護並發）</summary>
