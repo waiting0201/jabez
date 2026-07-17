@@ -100,7 +100,7 @@
             @if (form.get('type')?.value === 'vendor' || form.get('type')?.value === 'designer') {
               <div class="row g-3 mb-4">
                 <div class="col-12 col-md-6">
-                  <label class="form-label fw-500">廠商 <span class="text-danger">*</span></label>
+                  <label class="form-label fw-500">{{ form.get('type')?.value === 'designer' ? '設計師資訊' : '廠商資訊' }} <span class="text-danger">*</span></label>
                   @if (isReadOnly) {
                     <p class="form-control-plaintext fw-500 mb-0">
                       @for (v of vendors(); track v.id) {
