@@ -109,8 +109,9 @@ public sealed record ApprovalRecordDto(
     string?  OnBehalfOf,      // 代理審核：代替誰審核（null 表示非代理）
     bool     IsEscalated,     // 是否為升級審核
     string?  ReviewerSignatureUrl = null,   // 審核者簽名檔 URL
-    string?  ReviewerJobTitle    = null,    // 審核者職稱（PDF 簽名欄判定總監等特殊角色用）
-    string?  ReviewerDepartmentName = null);// 審核者部門（指定審核步驟顯示用，區分同名審核者）
+    string?  ReviewerJobTitle    = null,    // 審核者職稱（顯示用）
+    string?  ReviewerDepartmentName = null, // 審核者部門（指定審核步驟顯示用，區分同名審核者）
+    int?     ReviewerJobTitleLevel = null); // 審核者職稱層級（PDF 簽名欄判定總監 Level=1 用，避免依賴職稱名稱）
 
 // ── ApprovalTask 多型 DTOs ─────────────────────────────────────────────────
 
@@ -121,7 +122,8 @@ public sealed record ApprovalFlowStepDto(
     string? JobTitleName,
     bool    UseDirectSupervisor,
     bool    UseApplicantDesignated,
-    string? Note);
+    string? Note,
+    int?    JobTitleLevel = null); // 職稱層級（PDF 簽名欄判定總監 Level=1 用，避免依賴職稱名稱）
 
 public sealed record ApprovalFlowDto(
     int                  Id,

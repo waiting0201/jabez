@@ -12,7 +12,9 @@ export interface SignBlock {
 export interface SignFlowStep {
   stepOrder: number;
   departmentName?: string;
+  departmentCode?: string;
   jobTitleName?: string;
+  jobTitleLevel?: number;
   useDirectSupervisor?: boolean;
   useApplicantDesignated?: boolean;
   note?: string;
@@ -29,6 +31,7 @@ export interface SignRecord {
   reviewedAt?: Date | string | null;
   reviewerSignatureUrl?: string;
   reviewerJobTitle?: string;
+  reviewerJobTitleLevel?: number;
 }
 
 /** buildDynamicSignBlocks 出納欄資訊（請款 / 預支 / 出差請款 PDF 才傳） */
@@ -51,10 +54,38 @@ export interface BuildDynamicSignBlocksOptions {
   cashier?: SignCashierInfo;
 }
 
+/** 總監職稱層級（JobTitle.Level = 1，與後端簽核邏輯一致；勿依賴職稱名稱） */
+const DIRECTOR_JOB_TITLE_LEVEL = 1;
+
+/** 總監室部門代碼（與 auth.service.ts 撥款權限部門代碼一致） */
+const OFFICE_OF_DIRECTOR_DEPT_CODE = 'Office of the Director';
+
+/**
+ * step 是否為總監步驟。
+ * 優先以 JobTitle.Level / Department.Code 判定（改名不受影響）；
+ * Level / Code 缺值時（舊資料）才 fallback 名稱比對。
+ */
+function isDirectorStep(step: SignFlowStep): boolean {
+  const byJobTitle = step.jobTitleLevel != null
+    ? step.jobTitleLevel === DIRECTOR_JOB_TITLE_LEVEL
+    : !!step.jobTitleName?.includes('總監');
+  const byDepartment = step.departmentCode
+    ? step.departmentCode === OFFICE_OF_DIRECTOR_DEPT_CODE
+    : !!step.departmentName?.includes('總監');
+  return byJobTitle || byDepartment;
+}
+
+/** record 審核者是否為總監（優先以 Level 判定，缺值時 fallback 名稱比對） */
+function isDirectorReviewer(r: SignRecord): boolean {
+  return r.reviewerJobTitleLevel != null
+    ? r.reviewerJobTitleLevel === DIRECTOR_JOB_TITLE_LEVEL
+    : !!r.reviewerJobTitle?.includes('總監');
+}
+
 /** step → 簽名欄 label */
 function resolveStepLabel(step: SignFlowStep): string {
   if (step.useDirectSupervisor) return '上層級';
-  if (step.jobTitleName?.includes('總監') || step.departmentName?.includes('總監')) return '總監核准';
+  if (isDirectorStep(step)) return '總監核准';
   if (step.departmentName?.includes('財務')) return '財務部簽核';
   if (step.departmentName?.includes('會計')) return '會計';
   return step.note || step.departmentName || step.jobTitleName || `Step ${step.stepOrder}`;
@@ -66,7 +97,7 @@ function resolveStepLabel(step: SignFlowStep): string {
  * - 每個非 useApplicantDesignated step 各一格，依 stepOrder 反轉後排列
  * - 「總監核准」一律 hoist 到最左，不論 flow 中總監步驟的 stepOrder
  * - 指定簽核步驟（useApplicantDesignated）不獨立佔欄位
- * - 例外：若指定簽核紀錄裡有人職稱含「總監」：
+ * - 例外：若指定簽核紀錄裡有人職稱層級為總監（JobTitle.Level=1）：
  *   - flow 沒有總監步驟 → 加「總監核准」欄至最左
  *   - flow 已有總監步驟 → 額外加「總監（指定）」欄並列在「總監核准」右側（即使同人簽兩次，兩格皆顯示）
  * - 出納欄（如有）緊接在 step 欄位之後、申請者欄之前
@@ -103,7 +134,7 @@ export function buildDynamicSignBlocks(opts: BuildDynamicSignBlocksOptions): Sig
   const designatedStep = steps.find(s => s.useApplicantDesignated);
   if (designatedStep) {
     const designatedDirectors = records.filter(r =>
-      r.stepOrder === designatedStep.stepOrder && r.reviewerJobTitle?.includes('總監')
+      r.stepOrder === designatedStep.stepOrder && isDirectorReviewer(r)
     );
     const designatedDirector = designatedDirectors.at(-1);
 

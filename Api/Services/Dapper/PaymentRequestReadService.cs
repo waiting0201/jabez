@@ -600,7 +600,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 
         const string flowSql = """
             SELECT ai.Id AS FlowId, ai.Name AS FlowName, ai.ApplicationType, ai.DepartmentId AS FlowDepartmentId,
-                   s.StepOrder, d.Name AS DepartmentName, d.Code AS DepartmentCode, j.Name AS JobTitleName,
+                   s.StepOrder, d.Name AS DepartmentName, d.Code AS DepartmentCode, j.Name AS JobTitleName, j.Level AS JobTitleLevel,
                    s.UseDirectSupervisor, s.UseApplicantDesignated, s.Note
             FROM ApprovalItems ai
             LEFT JOIN ApprovalSteps s ON s.ApprovalItemId = ai.Id
@@ -614,7 +614,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                    u.Name AS ReviewedBy, ar.ReviewedAt, ar.ReviewNote,
                    obu.Name AS OnBehalfOf, ar.IsEscalated,
                    u.SignatureUrl AS ReviewerSignatureUrl,
-                   jt.Name AS ReviewerJobTitle,
+                   jt.Name AS ReviewerJobTitle, jt.Level AS ReviewerJobTitleLevel,
                    dep.Name AS ReviewerDepartmentName
             FROM ApprovalRecords ar
             LEFT JOIN Users u        ON ar.ReviewedById     = u.Id
@@ -858,7 +858,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                     (string?)row.JobTitleName,
                     (bool)(row.UseDirectSupervisor ?? false),
                     (bool)(row.UseApplicantDesignated ?? false),
-                    (string?)row.Note));
+                    (string?)row.Note,
+                    (int?)row.JobTitleLevel));
         }
 
         // 每個 ApplicationType 的後備流程：申請列未帶 ApprovalItemId（理論上不應發生）時採用，
@@ -898,7 +899,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (bool)(row.IsEscalated ?? false),
                 (string?)row.ReviewerSignatureUrl,
                 (string?)row.ReviewerJobTitle,
-                (string?)row.ReviewerDepartmentName));
+                (string?)row.ReviewerDepartmentName,
+                (int?)row.ReviewerJobTitleLevel));
         }
 
         ApprovalRecordDto[] GetRecords(string appType, int id) =>

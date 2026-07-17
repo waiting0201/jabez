@@ -79,6 +79,7 @@ export interface ApprovalFlowStep {
   departmentName?: string;
   departmentCode?: string;
   jobTitleName?: string;
+  jobTitleLevel?: number;  // 職稱層級（PDF 簽名欄判定總監 Level=1 用，避免依賴職稱名稱）
   useDirectSupervisor?: boolean;
   useApplicantDesignated?: boolean;
   note?: string;
@@ -341,7 +342,8 @@ export interface ApprovalRecord {
   onBehalfOf?: string;    // 代理審核：代替誰審核
   isEscalated: boolean;   // 是否為升級審核
   reviewerSignatureUrl?: string;  // 審核者簽名檔 URL
-  reviewerJobTitle?: string;      // 審核者職稱（PDF 簽名欄判定總監等特殊角色用）
+  reviewerJobTitle?: string;      // 審核者職稱（顯示用）
+  reviewerJobTitleLevel?: number; // 審核者職稱層級（PDF 簽名欄判定總監 Level=1 用，避免依賴職稱名稱）
   reviewerDepartmentName?: string; // 審核者部門（指定審核步驟顯示用，區分同名審核者）
 }
 
