@@ -29,9 +29,10 @@ public sealed record TravelRequestItemRequest(
 
 // ── 參與者 DTO ────────────────────────────────────────────────────────────
 
-public sealed record ParticipantRequest(Guid UserId, int SortOrder);
+public sealed record ParticipantRequest(Guid UserId, int SortOrder, DateTime[]? Dates = null);
 
-public sealed record ParticipantDto(Guid UserId, string UserName, int SortOrder);
+public sealed record ParticipantDto(Guid UserId, string UserName, int SortOrder,
+                                    DateTime[]? Dates = null, int? HolidayDays = null);
 
 // ── 主申請單 DTO ────────────────────────────────────────────────────────────
 

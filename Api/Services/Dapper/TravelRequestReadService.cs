@@ -91,19 +91,31 @@ public sealed class TravelRequestReadService(IDbConnection db, IInstallmentReadS
             (DateTime?)r.ReviewedAt,
             (string?)r.Comment)).ToArray();
 
-        // 額外查詢出差參與者（假日執行活動才需要，但統一回傳）
+        // 額外查詢出差參與者（假日執行活動才需要，但統一回傳；LEFT JOIN 個人參與日期後以 trp.Id 分組）
         const string participantSql = """
-            SELECT trp.UserId, u.Name AS UserName, trp.SortOrder
+            SELECT trp.Id, trp.UserId, u.Name AS UserName, trp.SortOrder, trp.HolidayDays, d.Date
             FROM TravelRequestParticipants trp
             JOIN Users u ON trp.UserId = u.Id
+            LEFT JOIN TravelRequestParticipantDates d ON d.TravelRequestParticipantId = trp.Id
             WHERE trp.TravelRequestId = @TravelRequestId
-            ORDER BY trp.SortOrder
+            ORDER BY trp.SortOrder, d.Date
             """;
         var participantRows = await db.QueryAsync<dynamic>(participantSql, new { TravelRequestId = id });
-        var participants = participantRows.Select(r => new ParticipantDto(
-            (Guid)r.UserId,
-            (string)r.UserName,
-            (int)r.SortOrder)).ToArray();
+        var participants = participantRows
+            .GroupBy(r => (int)r.Id)
+            .Select(g =>
+            {
+                var first = g.First();
+                var dates = g.Where(r => r.Date is not null).Select(r => (DateTime)r.Date).ToArray();
+                return new ParticipantDto(
+                    (Guid)first.UserId,
+                    (string)first.UserName,
+                    (int)first.SortOrder,
+                    dates.Length > 0 ? dates : null,
+                    (int?)first.HolidayDays);
+            })
+            .OrderBy(p => p.SortOrder)
+            .ToArray();
 
         var instDict = await installments.GetByParentIdsAsync(InstallmentParentTable.TravelRequest, new[] { id });
         var instList = instDict.GetValueOrDefault(id, []);

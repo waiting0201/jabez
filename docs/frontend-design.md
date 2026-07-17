@@ -477,6 +477,34 @@ switchTab(tab: 'tab1' | 'tab2') {
 }
 ```
 
+### 日期多選 chips（逐日勾選）
+
+在有限日期區間內做**多選、可不連續**的日期勾選時（如假日執行活動的參與人員參與日期），以 `btn btn-sm rounded-pill` toggle 按鈕逐日產生 chips，不用多個 `<input type="date">`：
+
+```html
+<div class="flex flex-wrap gap-1 mt-2">
+  @for (chip of dayChips(); track chip.date) {
+    <button type="button" class="btn btn-sm rounded-pill"
+            [class.btn-danger]="chip.isHoliday && isDateSelected(entry, chip.date)"
+            [class.btn-outline-danger]="chip.isHoliday && !isDateSelected(entry, chip.date)"
+            [class.btn-primary]="!chip.isHoliday && isDateSelected(entry, chip.date)"
+            [class.btn-outline-secondary]="!chip.isHoliday && !isDateSelected(entry, chip.date)"
+            (click)="toggleDate(entry, chip.date)">
+      {{ chip.label }}@if (chip.isHoliday) { <span class="ms-1">假</span> }
+    </button>
+  }
+</div>
+```
+
+關鍵：
+- chips 由區間逐日產生（signal），label 格式 `M/d(週X)`；區間變更時重建並**剪除已勾選但落出新區間的日期**
+- 特殊日（假日）用 danger 系列標示並附「假」字；一般日用 primary（選取）/ outline-secondary（未選）
+- 「未勾選＝預設行為」（如全程參與）時，卡片上方需固定註記說明，每列附即時 summary（`text-muted small`，如「已選 N 天（假日 M 天）」）
+- 防呆：區間超過 **92 天**時停用 chips 並顯示警告文字（`text-warning small`），視為預設行為
+- 唯讀模式改為純文字顯示已勾日期清單（`M/d、M/d`）或預設行為文字
+
+實例：`holiday-travel-request-form.html` 參與執行人員卡片。
+
 ---
 
 ## 7. 明細列表（FormArray）
