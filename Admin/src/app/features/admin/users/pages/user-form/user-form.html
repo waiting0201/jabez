@@ -1050,6 +1050,39 @@
                       <label class="form-label fw-500">銀行帳號</label>
                       <input type="text" class="form-control" formControlName="bankAccount" placeholder="帳號">
                     </div>
+                    <div class="col-12">
+                      <div class="fw-500 mb-1">存摺封面</div>
+                      <p class="text-muted small mb-3">支援 PNG、JPEG 圖片或 PDF。此文件受權限保護，僅人事部門可查閱。上傳後勿超過 1MB。</p>
+                      @if (bankBookImagePreview()) {
+                        <div class="mb-2">
+                          <img [src]="bankBookImagePreview()!" alt="存摺封面" class="rounded border max-h-40 object-contain">
+                        </div>
+                      }
+                      @if (bankBookDisplayName) {
+                        <div class="flex items-center gap-2 mb-2 border rounded px-3 py-2 bg-[--bg-surface]">
+                          <svg class="sa-icon text-[--accent]" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                          <span class="fw-500 text-[--text-primary] truncate text-sm">{{ bankBookDisplayName }}</span>
+                          @if (hasExistingBankBook) {
+                            <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewBankBook()">檢視</button>
+                          }
+                        </div>
+                        <div class="flex gap-2">
+                          <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                            更換
+                            <input type="file" class="hidden" accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                                   (change)="onBankBookSelected($event)">
+                          </label>
+                          <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveBankBook()">刪除</button>
+                        </div>
+                      } @else {
+                        <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                          <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                          選擇檔案
+                          <input type="file" class="hidden" accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                                 (change)="onBankBookSelected($event)">
+                        </label>
+                      }
+                    </div>
                     <div class="col-12 col-md-4">
                       <label class="form-label fw-500">投保起日</label>
                       <input type="date" class="form-control" formControlName="insuranceStartDate">

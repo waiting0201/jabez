@@ -11,6 +11,8 @@ export interface ProfileFileOptions {
   removeIdCardBack?: boolean;
   highestEducationProof?: File | null;
   removeHighestEducationProof?: boolean;
+  bankBookImage?: File | null;
+  removeBankBook?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -26,8 +28,8 @@ export class EmployeeProfileService {
    * 新增或更新員工人事資料（整批替換子表）。
    * 使用 multipart/form-data：
    *   - text part `payload`：完整 HR JSON
-   *   - file parts `idCardFront` / `idCardBack` / `highestEducationProof`（optional）
-   *   - text parts `removeIdCardFront` / `removeIdCardBack` / `removeHighestEducationProof`（boolean string）
+   *   - file parts `idCardFront` / `idCardBack` / `highestEducationProof` / `bankBookImage`（optional）
+   *   - text parts `removeIdCardFront` / `removeIdCardBack` / `removeHighestEducationProof` / `removeBankBook`（boolean string）
    */
   upsert(
     userId: string,
@@ -42,6 +44,8 @@ export class EmployeeProfileService {
     if (files?.removeIdCardBack)           fd.append('removeIdCardBack', 'true');
     if (files?.highestEducationProof)      fd.append('highestEducationProof', files.highestEducationProof);
     if (files?.removeHighestEducationProof) fd.append('removeHighestEducationProof', 'true');
+    if (files?.bankBookImage)              fd.append('bankBookImage', files.bankBookImage);
+    if (files?.removeBankBook)             fd.append('removeBankBook', 'true');
     return this.http.put<EmployeeProfileDetail>(`${environment.apiUrl}/users/${userId}/profile`, fd);
   }
 }

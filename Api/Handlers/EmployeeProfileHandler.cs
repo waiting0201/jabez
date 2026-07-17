@@ -28,6 +28,9 @@ public sealed class EmployeeProfileHandler(
     private const string EducationProofContainer = "education-proofs";
     private static readonly string[] AllowedEducationProofTypes = ["image/png", "image/jpeg", "application/pdf"];
 
+    private const string PassbookContainer = "passbooks";
+    private static readonly string[] AllowedPassbookTypes = ["image/png", "image/jpeg", "application/pdf"];
+
     // GET /me/profile → 員工自助查詢自己的人事資料卡（登入即可，不需 users:read）
     public async Task<IActionResult> GetMineAsync(HttpRequest req)
     {
@@ -222,6 +225,41 @@ public sealed class EmployeeProfileHandler(
                         await TryDeleteBlobByUrlAsync(EducationProofContainer, profile.HighestEducationProofUrl);
 
                     profile.HighestEducationProofUrl = newUrl;
+                }
+            }
+
+            // ── 5. 存摺封面 Blob 處理 ─────────────────────────────────────────
+            if (form["removeBankBook"] == "true")
+            {
+                await TryDeleteBlobByUrlAsync(PassbookContainer, profile.BankBookImageUrl);
+                profile.BankBookImageUrl = null;
+            }
+            else
+            {
+                var bankBookFile = form.Files.GetFile("bankBookImage");
+                if (bankBookFile is not null && bankBookFile.Length > 0)
+                {
+                    if (bankBookFile.Length > 1 * 1024 * 1024)
+                        throw AppException.BadRequest("上傳照片勿超過1MB");
+
+                    string? actualType;
+                    using (var peek = bankBookFile.OpenReadStream())
+                        actualType = await FileSignatureValidator.DetectAsync(peek);
+
+                    if (actualType is null || !AllowedPassbookTypes.Contains(actualType))
+                        throw AppException.BadRequest("存摺封面僅支援 PNG、JPEG 圖片或 PDF 格式。");
+
+                    var ext      = Path.GetExtension(bankBookFile.FileName);
+                    var blobName = $"{userId}_passbook{ext}";
+                    var newUrl   = $"files/{PassbookContainer}/{blobName}";
+
+                    using (var stream = bankBookFile.OpenReadStream())
+                        await blob.UploadAsync(PassbookContainer, blobName, stream, actualType);
+
+                    if (!string.Equals(profile.BankBookImageUrl, newUrl, StringComparison.OrdinalIgnoreCase))
+                        await TryDeleteBlobByUrlAsync(PassbookContainer, profile.BankBookImageUrl);
+
+                    profile.BankBookImageUrl = newUrl;
                 }
             }
 

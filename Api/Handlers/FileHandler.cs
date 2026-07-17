@@ -20,6 +20,7 @@ public sealed class FileHandler(IBlobStorageService blob, ILogger<FileHandler> l
     private const string DisabledProofContainer    = "disabled-proofs";
     private const string IdCardContainer           = "id-cards";
     private const string EducationProofContainer   = "education-proofs";
+    private const string PassbookContainer         = "passbooks";
     private const string VendorPassbookContainer   = "vendor-passbooks";
     private const string VendorIdCardContainer     = "vendor-id-cards";
     private const string QuotesContainer           = "quotes";
@@ -82,6 +83,14 @@ public sealed class FileHandler(IBlobStorageService blob, ILogger<FileHandler> l
         => GetFileAsync(EducationProofContainer, fileName, IsImageOrPdf);
 
     /// <summary>
+    /// 代理讀取員工存摺封面（圖片或 PDF）。
+    /// 路由：GET /files/passbooks/{fileName}
+    /// 此端點需要 JWT + users:read 權限（HR 敏感 PII，僅人事管理員可檢視）。
+    /// </summary>
+    public Task<IActionResult> GetPassbookAsync(string fileName)
+        => GetFileAsync(PassbookContainer, fileName, IsImageOrPdf);
+
+    /// <summary>
     /// 代理讀取廠商存摺封面（圖片或 PDF）。
     /// 路由：GET /files/vendor-passbooks/{fileName}
     /// 此端點需要 JWT，但不需特殊權限（一般檔案，與 avatars / signatures 同層）。
@@ -120,6 +129,7 @@ public sealed class FileHandler(IBlobStorageService blob, ILogger<FileHandler> l
     {
         "id-cards",
         "education-proofs",
+        "passbooks",
         "indigenous-proofs",
         "low-income-proofs",
         "disabled-proofs",
@@ -138,6 +148,7 @@ public sealed class FileHandler(IBlobStorageService blob, ILogger<FileHandler> l
     ///        avatars / signatures / proofs  = {userId}{ext}
     ///        id-cards                       = {userId}_front{ext} / {userId}_back{ext}
     ///        education-proofs               = {userId}_education{ext}
+    ///        passbooks                      = {userId}_passbook{ext}
     /// </summary>
     public async Task<IActionResult> GetMineAsync(HttpRequest req, string container, string fileName)
     {

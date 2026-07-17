@@ -71,6 +71,9 @@ public class EmployeeProfileConfiguration : IEntityTypeConfiguration<EmployeePro
         builder.Property(p => p.HighestEducationProofUrl)
                .HasMaxLength(500);
 
+        builder.Property(p => p.BankBookImageUrl)
+               .HasMaxLength(500);
+
         builder.Property(p => p.CreatedAt)
                .HasDefaultValueSql("DATEADD(hour, 8, GETUTCDATE())");
 

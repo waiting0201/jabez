@@ -181,6 +181,8 @@ export interface EmployeeProfileDetail {
   idCardBackUrl?: string | null;
   // 最高學歷證明
   highestEducationProofUrl?: string | null;
+  // 存摺封面
+  bankBookImageUrl?: string | null;
   // 子表
   educationRecords: EducationRecord[];
   employmentHistoryRecords: EmploymentHistoryRecord[];

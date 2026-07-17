@@ -560,6 +560,15 @@
                   <div class="form-label fw-500 text-muted small">銀行帳號</div>
                   <div>{{ p.bankAccount || '—' }}</div>
                 </div>
+                @if (p.bankBookImageUrl) {
+                  <div class="col-12">
+                    <div class="form-label fw-500 text-muted small">存摺封面</div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="viewFile(p.bankBookImageUrl)">
+                      <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                      檢視文件
+                    </button>
+                  </div>
+                }
                 <div class="col-12 col-md-4">
                   <div class="form-label fw-500 text-muted small">投保起日</div>
                   <div>{{ p.insuranceStartDate?.slice(0,10) || '—' }}</div>

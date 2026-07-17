@@ -19,7 +19,7 @@ public sealed class EmployeeProfileReadService(IDbConnection db) : IEmployeeProf
                    EmergencyContactName, EmergencyContactPhone,
                    BankCode, BankAccount, InsuranceStartDate, DependentCount,
                    Specialties, ResignationReason, IdCardFrontUrl, IdCardBackUrl,
-                   HighestEducationProofUrl
+                   HighestEducationProofUrl, BankBookImageUrl
             FROM EmployeeProfiles
             WHERE UserId = @UserId;
 
@@ -114,6 +114,8 @@ public sealed class EmployeeProfileReadService(IDbConnection db) : IEmployeeProf
             IdCardBackUrl:  (string?)profile?.IdCardBackUrl,
 
             HighestEducationProofUrl: (string?)profile?.HighestEducationProofUrl,
+
+            BankBookImageUrl: (string?)profile?.BankBookImageUrl,
 
             EducationRecords: educationRows.Select(r => new EducationRecordDto(
                 (Guid?)r.Id, (string)r.School, (string?)r.Department,

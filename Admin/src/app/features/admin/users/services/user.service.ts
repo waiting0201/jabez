@@ -90,6 +90,11 @@ export class UserService {
     return this.http.get(`${environment.apiUrl}/files/education-proofs/${fileName}`, {responseType: 'blob'});
   }
 
+  /** 以 JWT 取得存摺封面檔（HR 權限保護） */
+  getPassbook(fileName: string): Observable<Blob> {
+    return this.http.get(`${environment.apiUrl}/files/passbooks/${fileName}`, {responseType: 'blob'});
+  }
+
   private buildFormData(data: Record<string, any>, files?: UserFileOptions): FormData {
     const fd = new FormData();
     for (const [key, value] of Object.entries(data)) {

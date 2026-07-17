@@ -16,7 +16,7 @@
 | 資料庫 | SQL Server | 本地 `JabezDb`（連線字串於 [Api/local.settings.json](../Api/local.settings.json)） |
 | 認證 | JWT Bearer Token (HS256) | 由 [JwtService.cs](../Api/Services/JwtService.cs) 簽發 |
 | 路由 | 單一入口 RouterFunction → AppRouter | C# 12 List Pattern dispatch |
-| Blob | Azure Storage（本地 Azurite） | 容器：`avatars` / `signatures` / `indigenous-proofs` / `low-income-proofs` / `disabled-proofs` / `id-cards` / `education-proofs` / `invoices` / `vendor-passbooks` / `request-attachments` / `quotes` |
+| Blob | Azure Storage（本地 Azurite） | 容器：`avatars` / `signatures` / `indigenous-proofs` / `low-income-proofs` / `disabled-proofs` / `id-cards` / `education-proofs` / `passbooks` / `invoices` / `vendor-passbooks` / `request-attachments` / `quotes` |
 | LINE | Messaging API + Login API | 簽核通知 + 打卡提醒 |
 | Email | Microsoft Graph API | 簽核通知 / 帳號通知 / 薪資明細 |
 | 例外處理 | `Middleware/ExceptionMiddleware.cs` | 統一捕捉 `AppException` 與未預期例外，回 `ApiResponse<T>` |
@@ -650,6 +650,7 @@ var allowedSignatures = new Dictionary<string, byte[][]>
 | `disabled-proofs` | 殘障證明 | 授權 `users:read` |
 | `id-cards` | 身分證影本 | 授權 `users:read` |
 | `education-proofs` | 最高學歷證明 | 授權 `users:read` |
+| `passbooks` | 員工存摺封面 | 授權 `users:read` |
 | `invoices` | 發票檔 | 授權 |
 | `vendor-passbooks` | 廠商存摺封面 | **登入即可** `/files/vendor-passbooks/{fileName}`（一般檔，與 avatars/signatures 同層） |
 | `quotes` | 報價單（預審 / 請款品項） | **登入即可** `/files/quotes/{*path}`（一般業務檔；blob name 含日期子路徑 `yyyy/MM/{guid}{ext}`，代理需以 slice pattern 接多段並用 `IsSafeSubPath` 放行 `/`） |
@@ -741,7 +742,7 @@ public sealed class GcisService(HttpClient http, ILogger<GcisService> logger) : 
 | `GET /me/profile` | `GET /users/{id}/profile`（需 `users:read`） | 「個人資訊」唯讀頁：員工查看自己的人事資料卡 + 健保眷屬 |
 | `GET /me/files/{container}/{fileName}` | `GET /files/<PII container>/{fileName}`（需 `users:read`） | 「個人資訊」唯讀頁：員工讀自己的 PII 檔案，見下方 §13.4 |
 
-> HR 敏感 PII（`/files/indigenous-proofs/`、`/files/low-income-proofs/`、`/files/disabled-proofs/`、`/files/id-cards/`、`/files/education-proofs/`）的**管理端**代理**不**走輕量模式，仍需 `users:read`；員工要讀**自己的** PII 改走 `/me/files/{container}/{fileName}`（§13.4）。
+> HR 敏感 PII（`/files/indigenous-proofs/`、`/files/low-income-proofs/`、`/files/disabled-proofs/`、`/files/id-cards/`、`/files/education-proofs/`、`/files/passbooks/`）的**管理端**代理**不**走輕量模式，仍需 `users:read`；員工要讀**自己的** PII 改走 `/me/files/{container}/{fileName}`（§13.4）。
 
 ### 13.4 「自己讀自己」模式（Self / Me Endpoints）
 
@@ -749,8 +750,8 @@ public sealed class GcisService(HttpClient http, ILogger<GcisService> logger) : 
 
 - **取得 userId**：Router 在驗證後已將 principal 寫入 `req.HttpContext.User`（[AppRouter.cs](../Api/Routing/AppRouter.cs) line ~87）；Handler 以 `req.HttpContext.User.FindFirst(JwtRegisteredClaimNames.Sub)` 取出，解析失敗回 401。複用既有 Read Service（如 `reader.GetByIdAsync(userId)` / `EmployeeProfileReadService.GetByUserIdAsync(userId)`），不需新 DTO / Migration。
 - **PII 檔案自助代理** [`FileHandler.GetMineAsync`](../Api/Handlers/FileHandler.cs)：
-  1. **白名單容器**：`SelfServiceContainers`（id-cards / education-proofs / 三種 proofs / avatars / signatures），不在白名單一律 404。
-  2. **前綴檢查**：所有 blob 命名都以 `{userId}` 開頭（`{userId}{ext}` / `{userId}_front{ext}` / `{userId}_education{ext}`…），驗證 `fileName` 以自身 `userId` 開頭且後接 `.` 或 `_`，否則 403 — 防止員工竄改 `fileName` 讀他人檔案（GUID 定長 + 分隔符，無前綴包含風險）。
+  1. **白名單容器**：`SelfServiceContainers`（id-cards / education-proofs / passbooks / 三種 proofs / avatars / signatures），不在白名單一律 404。
+  2. **前綴檢查**：所有 blob 命名都以 `{userId}` 開頭（`{userId}{ext}` / `{userId}_front{ext}` / `{userId}_education{ext}` / `{userId}_passbook{ext}`…），驗證 `fileName` 以自身 `userId` 開頭且後接 `.` 或 `_`，否則 403 — 防止員工竄改 `fileName` 讀他人檔案（GUID 定長 + 分隔符，無前綴包含風險）。
   3. 通過後複用既有私有 `GetFileAsync`（blob 串流 + Content-Type 驗證）。
 - **權限對應**：`me` 路由在 `GetRequiredPermission` 無對應項，落到 `_ => null`（登入即可），且不在 `IsPublicRoute`（強制 JWT）。
 - **前端對應**：`<img src>` 不能帶 Authorization header，故簽名 / 頭像（公開容器）走公開 `/files/...`；其餘 PII 改以 HttpClient 下載 blob（interceptor 帶 token）再 `URL.createObjectURL` 顯示 / 開新分頁。
