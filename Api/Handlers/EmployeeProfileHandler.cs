@@ -31,6 +31,13 @@ public sealed class EmployeeProfileHandler(
     private const string PassbookContainer = "passbooks";
     private static readonly string[] AllowedPassbookTypes = ["image/png", "image/jpeg", "application/pdf"];
 
+    // 寬鬆日期解析：Safari 不支援 <input type="month">，學歷等年月欄位可能為手打字串（見 FlexibleDateTimeJsonConverter）
+    private static readonly JsonSerializerOptions PayloadJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        Converters = { new FlexibleDateTimeConverter(), new FlexibleNullableDateTimeConverter() },
+    };
+
     // GET /me/profile → 員工自助查詢自己的人事資料卡（登入即可，不需 users:read）
     public async Task<IActionResult> GetMineAsync(HttpRequest req)
     {
@@ -82,13 +89,13 @@ public sealed class EmployeeProfileHandler(
         EmployeeProfileUpsertRequest payload;
         try
         {
-            payload = JsonSerializer.Deserialize<EmployeeProfileUpsertRequest>(payloadJson,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+            payload = JsonSerializer.Deserialize<EmployeeProfileUpsertRequest>(payloadJson, PayloadJsonOptions)
                 ?? throw new JsonException("payload is null");
         }
-        catch (JsonException)
+        catch (JsonException ex)
         {
-            return new BadRequestObjectResult(ApiResponse.Fail("請求內容格式不正確。"));
+            // 帶回欄位層級細節（如「無法解析日期格式：xxx」+ JSON path），方便前端 / 使用者定位問題欄位
+            return new BadRequestObjectResult(ApiResponse.Fail("請求內容格式不正確。", ex.Message));
         }
 
         // 使用 ExecutionStrategy 包裝 transaction：DbContext 啟用 EnableRetryOnFailure

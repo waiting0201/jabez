@@ -1178,6 +1178,16 @@ export class UserForm implements OnInit {
       return;
     }
 
+    // 學歷起訖年月格式驗證（Safari 的 month 輸入框允許任意文字）
+    const eduInvalid = this._findInvalidEducationMonths();
+    if (eduInvalid) {
+      this.activeTab.set('hr');
+      this.form.markAllAsTouched();
+      this.errorMsg.set(eduInvalid);
+      this.toastr.warning(eduInvalid, '人事資料未完成');
+      return;
+    }
+
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -1294,12 +1304,36 @@ export class UserForm implements OnInit {
     return `請填寫 ${missing.join('、')} 的「生效日期」，或刪除未使用的列。`;
   }
 
+  /**
+   * 學歷「起訖年月」格式檢查。
+   * Safari 不支援 <input type="month">（退化為純文字框），使用者可能輸入任意文字；
+   * 在送出前主動驗證並給予明確訊息，避免後端回傳籠統的「請求內容格式不正確」。
+   */
+  private _findInvalidEducationMonths(): string | null {
+    const ok = (v: string | null) => {
+      const s = (v ?? '').trim();
+      return !s || /^\d{4}[-/.]\d{1,2}([-/.]\d{1,2})?$/.test(s);
+    };
+    const bad = this.educationArray.controls.some(c =>
+      !ok(c.get('startDate')?.value) || !ok(c.get('endDate')?.value));
+    if (!bad) return null;
+    return '學歷「起始 / 結束年月」格式不正確，請以「YYYY-MM」格式填寫（例：2020-09）。';
+  }
+
   private _saveHrProfile(userId: string) {
     const hrVal = this.form.get('hrProfile')!.value as any;
     const depsVal = (this.form.get('healthDependents') as FormArray).value as any[];
 
     // 日期正規化（後端 DTO 為 DateTime?，空字串或 yyyy-MM 會 JSON 反序列化失敗）
-    const monthToDate = (v: string | null) => v ? `${v}-01` : null;   // 學歷用 type="month" → 補日
+    // 學歷起訖用 type="month"（值為 yyyy-MM）；Safari 不支援 month 會退化成純文字框，
+    // 使用者可能手打 2020/09、2020.9、2020-9-1 等格式 → 統一正規化為 yyyy-MM-dd
+    const monthToDate = (v: string | null) => {
+      const s = (v ?? '').trim();
+      if (!s) return null;
+      const m = s.match(/^(\d{4})[-/.](\d{1,2})(?:[-/.](\d{1,2}))?$/);
+      if (!m) return s;   // 無法解析 → 原樣送出，交由後端寬鬆日期解析嘗試
+      return `${m[1]}-${m[2].padStart(2, '0')}-${(m[3] ?? '1').padStart(2, '0')}`;
+    };
     const dateOrNull  = (v: string | null) => v || null;              // 空字串 → null
 
     const educations = (hrVal.educationRecords as any[] ?? []).map(r => ({
@@ -1318,9 +1352,21 @@ export class UserForm implements OnInit {
       endDate:   dateOrNull(r.endDate),
     }));
 
+    // 獎懲「次數」與健保眷屬「出生日期」：後端 DTO 為非 nullable int / DateTime?，
+    // 留空會 JSON 反序列化失敗 → 次數未填以 1 計、日期空字串轉 null
+    const rewards = (hrVal.rewardPunishmentRecords as any[] ?? []).map(r => ({
+      ...r,
+      count: r.count ?? 1,
+    }));
+    const dependents = (depsVal ?? []).map(r => ({
+      ...r,
+      birthDate: dateOrNull(r.birthDate),
+    }));
+
     // 薪資紀錄補上 totalAmount（後端 DTO 為非 nullable decimal，表單未提供 → 由各項加總補上）
     const salaries = (hrVal.salaryAdjustmentRecords as any[] ?? []).map(r => ({
       ...r,
+      baseSalary: r.baseSalary ?? 0,
       totalAmount:
         (r.baseSalary           ?? 0) +
         (r.positionAllowance    ?? 0) +
@@ -1357,9 +1403,9 @@ export class UserForm implements OnInit {
       professionalTrainings:       trainings,
       languageAbilities:           hrVal.languageAbilities,
       jobTransferRecords:          hrVal.jobTransferRecords,
-      rewardPunishmentRecords:     hrVal.rewardPunishmentRecords,
+      rewardPunishmentRecords:     rewards,
       salaryAdjustmentRecords:     salaries,
-      healthInsuranceDependents:   depsVal,
+      healthInsuranceDependents:   dependents,
     };
 
     this.profileService.upsert(userId, profilePayload, {
