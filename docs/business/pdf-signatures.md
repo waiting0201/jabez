@@ -8,7 +8,7 @@
 2. **欄位順序**：建立後反轉 → 最高 stepOrder 在最左、最低在最右（最後簽核者位於申請者左側）。**「總監」一律排在最左**：當總監僅來自指定簽核（情境 C）時，仍會推到最左；flow 與指定皆有總監（情境 D/E）時，「總監核准」在最左、「總監（指定）」緊接其右
 3. **Label 由 step 推斷**（依序判定，`resolveStepLabel`）：
    - `useDirectSupervisor=true` → `上層級`
-   - `jobTitleName` 或 `departmentName` 含「總監」→ `總監核准`
+   - 總監步驟（`isDirectorStep`）→ `總監核准`。判定優先用 `jobTitleLevel === 1` 或 `departmentCode === 'Office of the Director'`（職稱/部門**改名不受影響**）；Level / Code 缺值時（舊資料）才 fallback 名稱含「總監」
    - `departmentName` 含「財務」→ `財務部簽核`
    - `departmentName` 含「會計」→ `會計`
    - 其他 → `note` || `departmentName` || `jobTitleName` || `Step N`
@@ -16,7 +16,7 @@
 
 ## 指定簽核者（`useApplicantDesignated`）特殊處理
 
-指定簽核步驟本身**不**獨立佔欄位。例外：若指定簽核紀錄裡有人職稱含「總監」：
+指定簽核步驟本身**不**獨立佔欄位。例外：若指定簽核紀錄裡有人為總監（`isDirectorReviewer`：優先用 `reviewerJobTitleLevel === 1` 判定，缺值時 fallback 職稱名稱含「總監」）：
 
 | 情境 | flow 有總監步驟 | 指定簽核含總監 | 結果 |
 |---|---|---|---|
