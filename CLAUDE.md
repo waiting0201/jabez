@@ -261,7 +261,7 @@ Api/
 ├── Handlers/                          # 25 個 Handler（業務邏輯）
 │   ├── AuthHandler.cs                 # 登入、刷新 Token
 │   ├── UserHandler.cs                 # 使用者 CRUD（含原住民 / 低收入 / 殘障證明 + 健保 / 勞保覆寫）；GetMineAsync = GET /me/user 員工讀自己（免 users:read）
-│   ├── EmployeeProfileHandler.cs     # 員工人事資料卡 GET / PUT（multipart：HR JSON + 身分證正反面 + 最高學歷證明）；GetMineAsync = GET /me/profile 員工讀自己（免 users:read）
+│   ├── EmployeeProfileHandler.cs     # 員工人事資料卡 GET / PUT（multipart：HR JSON + 身分證正反面 + 最高學歷證明 + 存摺封面）；GetMineAsync = GET /me/profile 員工讀自己（免 users:read）
 │   ├── RoleHandler.cs
 │   ├── PermissionHandler.cs
 │   ├── DepartmentHandler.cs

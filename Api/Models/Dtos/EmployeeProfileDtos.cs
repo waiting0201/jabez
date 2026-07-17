@@ -122,6 +122,9 @@ public sealed record EmployeeProfileDetailDto(
     // 最高學歷證明 URL（走 /files/education-proofs/ 代理）
     string? HighestEducationProofUrl,
 
+    // 存摺封面 URL（走 /files/passbooks/ 代理）
+    string? BankBookImageUrl,
+
     // 9 個子表
     EducationRecordDto[]         EducationRecords,
     EmploymentHistoryRecordDto[] EmploymentHistoryRecords,

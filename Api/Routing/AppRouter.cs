@@ -104,6 +104,7 @@ public sealed class AppRouter(
             ("GET",    ["files", "disabled-proofs", var fileName])   => await files.GetDisabledProofAsync(fileName),
             ("GET",    ["files", "id-cards", var fileName])          => await files.GetIdCardAsync(fileName),
             ("GET",    ["files", "education-proofs", var fileName])  => await files.GetEducationProofAsync(fileName),
+            ("GET",    ["files", "passbooks", var fileName])         => await files.GetPassbookAsync(fileName),
             ("GET",    ["files", "vendor-passbooks", var fileName])  => await files.GetVendorPassbookAsync(fileName),
             ("GET",    ["files", "vendor-id-cards", var fileName])   => await files.GetVendorIdCardAsync(fileName),
             // quotes / request-attachments 的 blob name 含日期子路徑（yyyy/MM/{guid}{ext}），需以 slice pattern 接多段
@@ -418,12 +419,13 @@ public sealed class AppRouter(
             // signatures / avatars 為公開路由（由 IsPublicRoute 攔住），此處 null 僅為保險
             ("GET", ["files", "signatures", _])         => null,
             ("GET", ["files", "avatars", _])            => null,
-            // indigenous-proofs / low-income-proofs / disabled-proofs / id-cards / education-proofs 屬 HR 敏感 PII，需 users:read 權限
+            // indigenous-proofs / low-income-proofs / disabled-proofs / id-cards / education-proofs / passbooks 屬 HR 敏感 PII，需 users:read 權限
             ("GET", ["files", "indigenous-proofs", _])  => PermissionCodes.UsersRead,
             ("GET", ["files", "low-income-proofs", _])  => PermissionCodes.UsersRead,
             ("GET", ["files", "disabled-proofs", _])    => PermissionCodes.UsersRead,
             ("GET", ["files", "id-cards", _])           => PermissionCodes.UsersRead,
             ("GET", ["files", "education-proofs", _])   => PermissionCodes.UsersRead,
+            ("GET", ["files", "passbooks", _])          => PermissionCodes.UsersRead,
             // vendor-passbooks 為一般檔案（任何登入者皆可讀，與 avatars / signatures 同層）
             ("GET", ["files", "vendor-passbooks", _])   => null,
             // vendor-id-cards 屬敏感 PII（個人工作室身分證），需 vendors:read

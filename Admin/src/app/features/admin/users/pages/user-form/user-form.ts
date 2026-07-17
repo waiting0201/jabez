@@ -124,6 +124,12 @@ export class UserForm implements OnInit {
   highestEducationProofFileName = signal<string | null>(null);
   removeHighestEducationProof   = signal(false);
 
+  bankBookImageUrl      = signal<string | null>(null);
+  bankBookImageFile     = signal<File | null>(null);
+  bankBookImagePreview  = signal<string | null>(null);
+  bankBookImageFileName = signal<string | null>(null);
+  removeBankBook        = signal(false);
+
   // ── 通訊地址同戶籍 ───────────────────────────────
   mailingAddressSameAsResidential = false;
 
@@ -332,6 +338,7 @@ export class UserForm implements OnInit {
 
     // 最高學歷證明 URL
     this.highestEducationProofUrl.set(p.highestEducationProofUrl ?? null);
+    this.bankBookImageUrl.set(p.bankBookImageUrl ?? null);
 
     // FormArrays
     this.educationArray.clear();
@@ -918,6 +925,59 @@ export class UserForm implements OnInit {
   }
 
   // ═══════════════════════════════════════════════
+  // 存摺封面
+  // ═══════════════════════════════════════════════
+  async onBankBookSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file  = input.files?.[0];
+    if (!file) return;
+    input.value = '';
+    try {
+      const compressed = await this.imageCompression.compress(file, { maxSize: 1600, quality: 0.85 });
+      if (compressed.size > MAX_FILE_BYTES) {
+        this.toastr.error('上傳照片勿超過1MB');
+        return;
+      }
+      this.bankBookImageFile.set(compressed);
+      this.bankBookImageFileName.set(file.name);
+      this.removeBankBook.set(false);
+      if (compressed.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = () => this.bankBookImagePreview.set(reader.result as string);
+        reader.readAsDataURL(compressed);
+      } else {
+        this.bankBookImagePreview.set(null);
+      }
+    } catch (err) {
+      console.error('[UserForm] 存摺封面處理失敗', err);
+      this.toastr.error('檔案處理失敗，請重試。', '處理失敗');
+    }
+  }
+
+  onRemoveBankBook() {
+    this.bankBookImageFile.set(null);
+    this.bankBookImagePreview.set(null);
+    this.bankBookImageFileName.set(null);
+    this.removeBankBook.set(true);
+  }
+
+  viewBankBook() {
+    const url = this.bankBookImageUrl();
+    if (!url) return;
+    const match    = url.match(/\/passbooks\/(.+)$/);
+    const fileName = match?.[1];
+    if (!fileName) return;
+    this.userService.getPassbook(fileName).subscribe({
+      next: blob => {
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, '_blank');
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+      },
+      error: err => this.toastr.error(err.error?.message || '無法載入存摺封面。', '載入失敗'),
+    });
+  }
+
+  // ═══════════════════════════════════════════════
   // 通訊地址同戶籍
   // ═══════════════════════════════════════════════
   copyResidentialToMailing() {
@@ -1039,6 +1099,20 @@ export class UserForm implements OnInit {
 
   get hasExistingHighestEducationProof(): boolean {
     return !!this.highestEducationProofUrl() && !this.highestEducationProofFile() && !this.removeHighestEducationProof();
+  }
+
+  get bankBookDisplayName(): string | null {
+    if (this.removeBankBook()) return null;
+    const pending = this.bankBookImageFileName();
+    if (pending) return pending;
+    const url = this.bankBookImageUrl();
+    if (!url) return null;
+    const match = url.match(/\/([^/]+)$/);
+    return match?.[1] ?? url;
+  }
+
+  get hasExistingBankBook(): boolean {
+    return !!this.bankBookImageUrl() && !this.bankBookImageFile() && !this.removeBankBook();
   }
 
   // ═══════════════════════════════════════════════
@@ -1295,6 +1369,8 @@ export class UserForm implements OnInit {
       removeIdCardBack:            this.removeIdCardBack(),
       highestEducationProof:       this.highestEducationProofFile(),
       removeHighestEducationProof: this.removeHighestEducationProof(),
+      bankBookImage:               this.bankBookImageFile(),
+      removeBankBook:              this.removeBankBook(),
     }).subscribe({
       next: profile => {
         this._hrProfile = profile;
