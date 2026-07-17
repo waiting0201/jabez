@@ -1224,6 +1224,26 @@ export class UserForm implements OnInit {
     const hrVal = this.form.get('hrProfile')!.value as any;
     const depsVal = (this.form.get('healthDependents') as FormArray).value as any[];
 
+    // 日期正規化（後端 DTO 為 DateTime?，空字串或 yyyy-MM 會 JSON 反序列化失敗）
+    const monthToDate = (v: string | null) => v ? `${v}-01` : null;   // 學歷用 type="month" → 補日
+    const dateOrNull  = (v: string | null) => v || null;              // 空字串 → null
+
+    const educations = (hrVal.educationRecords as any[] ?? []).map(r => ({
+      ...r,
+      startDate: monthToDate(r.startDate),
+      endDate:   monthToDate(r.endDate),
+    }));
+    const employments = (hrVal.employmentHistoryRecords as any[] ?? []).map(r => ({
+      ...r,
+      startDate: dateOrNull(r.startDate),
+      endDate:   dateOrNull(r.endDate),
+    }));
+    const trainings = (hrVal.professionalTrainings as any[] ?? []).map(r => ({
+      ...r,
+      startDate: dateOrNull(r.startDate),
+      endDate:   dateOrNull(r.endDate),
+    }));
+
     // 薪資紀錄補上 totalAmount（後端 DTO 為非 nullable decimal，表單未提供 → 由各項加總補上）
     const salaries = (hrVal.salaryAdjustmentRecords as any[] ?? []).map(r => ({
       ...r,
@@ -1257,10 +1277,10 @@ export class UserForm implements OnInit {
       dependentCount:        hrVal.dependentCount ?? null,
       specialties:           hrVal.specialties || null,
       resignationReason:     hrVal.resignationReason || null,
-      educationRecords:            hrVal.educationRecords,
-      employmentHistoryRecords:    hrVal.employmentHistoryRecords,
+      educationRecords:            educations,
+      employmentHistoryRecords:    employments,
       familyMembers:               hrVal.familyMembers,
-      professionalTrainings:       hrVal.professionalTrainings,
+      professionalTrainings:       trainings,
       languageAbilities:           hrVal.languageAbilities,
       jobTransferRecords:          hrVal.jobTransferRecords,
       rewardPunishmentRecords:     hrVal.rewardPunishmentRecords,
