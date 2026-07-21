@@ -731,7 +731,7 @@ public sealed class GcisService(HttpClient http, ILogger<GcisService> logger) : 
 | 輕量端點 | 對應的權限端點 | 用途 |
 |---|---|---|
 | `GET /users/lookup` | `GET /users`（需 `users:read`） | 申請表「指定審核者」、人員下拉；回傳含 `jobTitleLevel`（供「部門最高層級」判定，數字越小越高） |
-| `GET /projects/active` | `GET /projects`（需 `projects:read`） | 申請表「專案」下拉，僅回傳 `active` 狀態 |
+| `GET /projects/active` | `GET /projects`（需 `projects:read`） | 申請表「專案」下拉，僅回傳 `active` 狀態；預設依使用者部門可見範圍過濾。帶 `?all=true` 時不過濾部門，回傳全部 `active` 專案（供加班申請等跨部門支援情境瀏覽用） |
 | `GET /approval-items/active?type=<applicationType>` | `GET /approval-items`（需 `approvals:read`） | 申請表判斷流程是否含 `useApplicantDesignated` 步驟 |
 | `GET /job-titles/lookup` | `GET /job-titles`（需 `job-titles:read`） | 申請表「指定審核者」職稱下拉 |
 | `GET /vendors/lookup` | `GET /vendors`（需 `vendors:read`） | 請款表單「廠商」下拉，僅回 `IsActive=true` |

@@ -18,6 +18,11 @@ export class ProjectService {
     return this.http.get<Project[]>(`${environment.apiUrl}/projects/active`);
   }
 
+  /** 取得全部未結案專案（不過濾部門，不需 ProjectsRead 權限；供加班等跨部門支援情境瀏覽用） */
+  getActiveAll(): Observable<Project[]> {
+    return this.http.get<Project[]>(`${environment.apiUrl}/projects/active`, {params: {all: 'true'}});
+  }
+
   getPaged(page: number, pageSize: number, search?: string, year?: number, status?: string): Observable<PagedResult<Project>> {
     const params: Record<string, string | number> = {page, pageSize};
     if (search) params['search'] = search;
