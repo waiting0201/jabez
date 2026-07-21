@@ -433,6 +433,36 @@
               </div>
             }
 
+            <!-- 實際請假日清單（扣除國定假日與六日） -->
+            @if (workingDaysResult(); as wd) {
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body py-3">
+                  <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+                    <span class="fw-500 text-sm">實際請假日（已扣除國定假日與六日）</span>
+                    <span class="badge bg-success-subtle text-success">共 {{ wd.workingDays }} 天</span>
+                  </div>
+                  @if (wd.workingDates.length > 0) {
+                    <div class="flex flex-wrap gap-1.5">
+                      @for (d of wd.workingDates; track d) {
+                        <span class="badge bg-primary-subtle text-primary">{{ d | date:'MM/dd' }}</span>
+                      }
+                    </div>
+                    @if (wd.holidayDates.length > 0) {
+                      <div class="text-muted small mt-2">已扣除 {{ wd.holidayDates.length }} 天假日（國定假日與六日）</div>
+                    }
+                  } @else {
+                    <span class="text-danger small">此區間全為國定假日或六日，無可請假的工作日。</span>
+                  }
+                  @if (!wd.hasCalendarData) {
+                    <div class="alert alert-warning flex items-center gap-2 py-2 mt-2 mb-0">
+                      <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                      <span class="small">尚未匯入該年度行事曆，目前僅扣除六日；國定假日需由管理者匯入行事曆後才會扣除（送出時會要求匯入）。</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
             <!-- 超額警示 -->
             @if (isCompensatoryExceeded) {
               <div class="alert alert-danger flex items-center gap-2 py-2 mb-4">
@@ -458,6 +488,22 @@
                 <span class="small">高階主管假剩餘 {{ q.availableDays }} 天，本次申請 {{ calculatedHours / 8 | number:'1.0-1' }} 天已超過每年 {{ q.totalDays }} 天上限。</span>
               </div>
             }
+
+            <!-- 職務代理人 -->
+            <div class="mb-4">
+              <label class="form-label fw-500">職務代理人</label>
+              @if (isReadOnly) {
+                <div class="form-control bg-[var(--bg-elevated)]" style="pointer-events: none">{{ getUserName(form.get('agentUserId')?.value ?? null) }}</div>
+              } @else {
+                <select class="form-select" formControlName="agentUserId">
+                  <option [ngValue]="null">— 無代理人 —</option>
+                  @for (u of agentCandidates; track u.id) {
+                    <option [ngValue]="u.id">{{ u.name }}</option>
+                  }
+                </select>
+                <div class="text-muted small mt-1">請假期間代理您職務的同仁（僅記錄並通知，不參與簽核）。</div>
+              }
+            </div>
 
             <div class="mb-0">
               <label class="form-label fw-500">請假原因 <span class="text-danger">*</span></label>

@@ -566,6 +566,46 @@ public sealed class ApprovalNotificationService(
     }
 
     /// <inheritdoc />
+    public async Task NotifyLeaveAgentAsync(int leaveRequestId)
+    {
+        try
+        {
+            var lr = await db.LeaveRequests.AsNoTracking().FirstOrDefaultAsync(x => x.Id == leaveRequestId);
+            if (lr?.AgentUserId is null) return;
+
+            var (emailEnabled, _) = await ReadNotificationFlagsAsync();
+            if (!emailEnabled) return;
+
+            var agent = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == lr.AgentUserId);
+            if (agent is null || string.IsNullOrEmpty(agent.Email)) return;
+
+            var applicant = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == lr.EmployeeId);
+            var applicantName = applicant?.Name ?? "同仁";
+            var period  = $"{lr.StartDate:yyyy/MM/dd} ~ {lr.EndDate:yyyy/MM/dd}";
+            var siteUrl = await GetSiteUrlAsync();
+
+            var subject = $"[職務代理] 您被指定為 {applicantName} 的職務代理人";
+            var body = $"""
+                <p>{agent.Name} 您好，</p>
+                <p>{applicantName} 已提出請假申請，並指定您於下列期間擔任職務代理人：</p>
+                <ul>
+                  <li>請假期間：{period}</li>
+                  <li>事由：{System.Net.WebUtility.HtmlEncode(lr.Reason)}</li>
+                </ul>
+                <p>請留意於該期間協助代理相關職務。此通知僅供知會，您不需要於系統中進行任何簽核動作。</p>
+                {BuildButtonHtml($"{siteUrl}/admin/leave-requests", "前往請假管理")}
+                """;
+
+            await emailService.SendAsync(agent.Email, subject, body);
+            logger.LogInformation("已通知職務代理人：{Email}（Leave #{Id}）", agent.Email, leaveRequestId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "通知職務代理人失敗：Leave #{Id}", leaveRequestId);
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<(bool EmailSent, bool LineSent, string? ErrorMessage)> NotifyFinanceUpcomingPaymentsAsync(
         Guid financeUserId,
         IReadOnlyList<(string AppType, string AppLabel, int ApplicationId, string Applicant, DateTime ExpectedDate, decimal Amount)> items)

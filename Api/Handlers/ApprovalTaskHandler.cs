@@ -961,10 +961,19 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                             supervisorIds.Add(id);
                     }
 
+                    // 請假依天數分流（MinDays 門檻）：帶入申請天數（Hours/8）供跳過 MinDays > 天數的步驟；其他類型不套用
+                    decimal? requestDays = applicationType == "leave"
+                        ? await db.LeaveRequests.AsNoTracking()
+                            .Where(l => l.Id == applicationId)
+                            .Select(l => (decimal?)(l.Hours / 8m))
+                            .FirstOrDefaultAsync()
+                        : null;
+
                     var (resolvedStep, allSkipped, skippedSteps) = await approvalFlow
                         .SkipUnreviewableStepsAsync(approvalItemId, applicantId.Value, nextStep, drList,
                             approvedIds, applicationType, applicationId,
-                            supervisorIds: supervisorIds, priorStepOrder: currentStepOrder);
+                            supervisorIds: supervisorIds, priorStepOrder: currentStepOrder,
+                            requestDays: requestDays);
 
                     // 對被自動跳過的 step 寫代簽 ApprovalRecord（PDF / 簽核時間軸需要）
                     foreach (var skipped in skippedSteps)

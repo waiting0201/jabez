@@ -17,7 +17,9 @@ public sealed record LeaveRequestDto(
     Guid?     ReviewedById         = null,
     string?   BereavementRelationship = null,
     DesignatedReviewerDto[]? DesignatedReviewers = null,
-    string?   TimeUnit             = null);
+    string?   TimeUnit             = null,
+    Guid?     AgentUserId          = null,
+    string?   AgentName            = null);
 
 public sealed record CreateLeaveRequestRequest(
     Guid?    EmployeeId,
@@ -28,6 +30,7 @@ public sealed record CreateLeaveRequestRequest(
     decimal  Hours                = 1m,
     string   Reason               = "",
     string?  BereavementRelationship = null,
+    Guid?    AgentUserId          = null,
     DesignatedReviewerRequest[]? DesignatedReviewers = null);
 
 public sealed record UpdateLeaveRequestRequest(
@@ -37,6 +40,7 @@ public sealed record UpdateLeaveRequestRequest(
     decimal?  Hours,
     string?   Reason,
     string?   BereavementRelationship = null,
+    Guid?     AgentUserId          = null,
     DesignatedReviewerRequest[]? DesignatedReviewers = null);
 
 /// <summary>婚假配額回應</summary>
@@ -64,6 +68,13 @@ public sealed record BereavementQuotaDto(
 public sealed record SeniorExecutiveEligibilityDto(
     bool IsEligible,
     int? JobTitleLevel);
+
+/// <summary>請假日 / 假日計算回應（扣除國定假日與六日後的實際請假日清單）</summary>
+public sealed record WorkingDaysDto(
+    bool                    HasCalendarData,
+    IReadOnlyList<DateTime> HolidayDates,
+    IReadOnlyList<DateTime> WorkingDates,
+    int                     WorkingDays);
 
 /// <summary>重疊請假申請（內部用，組合衝突錯誤訊息）</summary>
 public sealed record OverlappingLeaveRequestDto(

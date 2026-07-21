@@ -74,13 +74,19 @@
 | 8 | `NotifyFinanceTravelRefundAsync` | `[需匯款] 出差申請 #{id} 沖銷超額 — 差額 {金額} 元` | financial 部全員 | 出差沖銷核准且金額超過出差金額 | `ApprovalTaskHandler.CloseTravelRequestAsync` |
 | 9 | `NotifyFinanceUpcomingPaymentsAsync` | `[撥款提醒] 您有 N 筆預計撥款日將屆` | 財務體系部門（AC/FIN/Jabez HQ/CEO）全員 | 每日 09:00 (Taipei) TimerTrigger 自動跑，或 Superadmin 手動觸發 | `PaymentReminderService` + `PaymentReminderFunction` |
 
-### 3.2 帳號通知（1 種）
+### 3.2 職務代理人通知（1 種，2026-07 新增）
+
+| # | 來源 | 主旨 | 收件人 | 觸發時機 |
+|---|------|------|--------|---------|
+| 11 | `ApprovalNotificationService.NotifyLeaveAgentAsync` | `[職務代理] 您被指定為 {申請人} 的職務代理人` | 請假申請指定的 `AgentUserId`（職務代理人） | 請假**送出時**（含 Superadmin 自動核准）；僅知會、不參與簽核。受 `ApprovalEmailEnabled` 開關；目前僅 Email。 |
+
+### 3.3 帳號通知（1 種）
 
 | # | 來源 | 主旨 | 收件人 | 觸發時機 |
 |---|------|------|--------|---------|
 | 9 | `UserHandler.SendCredentialsAsync` | `帳號通知 — 請登入並修改密碼` | 新員工 Email | 管理員手動點擊「寄出帳號通知」（密碼重設為生日 yyyyMMdd、`MustChangePassword=true`） |
 
-### 3.3 薪資明細（1 種）
+### 3.4 薪資明細（1 種）
 
 | # | 來源 | 主旨 | 收件人 | 觸發時機 |
 |---|------|------|--------|---------|

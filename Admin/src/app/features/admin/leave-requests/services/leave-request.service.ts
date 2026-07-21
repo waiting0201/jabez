@@ -4,7 +4,7 @@ import {Observable} from 'rxjs';
 import {
   LeaveRequest, AnnualQuota, CompensatoryHours, CeremonialQuota,
   MarriageQuota, MaternityStatus, BereavementQuota, SeniorExecutiveEligibility,
-  SeniorExecutiveQuota, MenstrualQuota,
+  SeniorExecutiveQuota, MenstrualQuota, WorkingDaysResult,
 } from '../models/leave-request.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {environment} from '@/environments/environment';
@@ -87,5 +87,12 @@ export class LeaveRequestService {
   /** 查詢當前使用者高階主管假額度（每年 20 天，曆年歸零） */
   getSeniorExecutiveQuota(): Observable<SeniorExecutiveQuota> {
     return this.http.get<SeniorExecutiveQuota>(`${environment.apiUrl}/leave-requests/senior-executive-quota`);
+  }
+
+  /** 依起迄日計算扣除國定假日與六日後的實際請假日清單與天數（工作日型假別才扣假日） */
+  getWorkingDays(start: string, end: string, leaveType: string): Observable<WorkingDaysResult> {
+    return this.http.get<WorkingDaysResult>(`${environment.apiUrl}/leave-requests/working-days`, {
+      params: {start, end, leaveType},
+    });
   }
 }

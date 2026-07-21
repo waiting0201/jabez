@@ -56,6 +56,14 @@ export const LEAVE_TIME_UNIT: Record<LeaveType, LeaveTimeUnit> = {
   menstrual:           'day',
 };
 
+/**
+ * 工作日型假別：天數以「扣除國定假日與六日後的實際工作日」計算（顯示請假日清單）。
+ * 產假 / 婚假 / 喪假 / 流產假系列 / 歲時祭儀 / 生理假等依法為「連續日曆天」，不在此清單、不扣假日。
+ * 須與後端 LeaveRequestHandler.WorkingDayLeaveTypes 保持同步。
+ */
+export const WORKING_DAY_LEAVE_TYPES: LeaveType[] =
+  ['annual', 'personal', 'sick', 'compensatory', 'official', 'senior_executive'];
+
 /** 格式化時數顯示（依單位） */
 export function formatLeaveDuration(leaveType: LeaveType, hours: number): string {
   const unit = LEAVE_TIME_UNIT[leaveType];
@@ -188,9 +196,19 @@ export interface LeaveRequest {
   approvalStatus: ApprovalStatus;
   bereavementRelationship?: string;
   designatedReviewers?: DesignatedReviewer[];
+  agentUserId?: string | null;   // 職務代理人（記錄 + 通知，不參與簽核）
+  agentName?: string;
   createdAt: string;
   reviewedAt?: string;
   reviewNote?: string;
+}
+
+/** working-days 端點回應：扣除國定假日與六日後的實際請假日清單 */
+export interface WorkingDaysResult {
+  hasCalendarData: boolean;   // 該區間是否已匯入行事曆（false 時僅扣六日、國定假未扣）
+  holidayDates: string[];     // 被扣除的假日
+  workingDates: string[];     // 實際請假日
+  workingDays: number;        // 實際請假天數
 }
 
 export interface AnnualQuota {

@@ -110,7 +110,12 @@
                   </select>
                 </div>
               }
-              <div class="col-12 col-md-6">
+              <div class="col-6 col-md-2">
+                <label class="form-label fw-500">適用天數門檻</label>
+                <input type="number" class="form-control" formControlName="minDays" min="1" step="1" placeholder="不限">
+                <div class="text-muted small mt-1">留空＝一律適用；填 N＝申請天數 ≥ N 才納入（請假用）</div>
+              </div>
+              <div class="col-12 col-md-4">
                 <label class="form-label fw-500">步驟說明</label>
                 <input type="text" class="form-control" formControlName="note" placeholder="選填說明">
               </div>
@@ -192,6 +197,12 @@
                           {{ step.jobTitleName }}
                         </span>
                       }
+                    }
+                    @if (step.minDays) {
+                      <span class="badge bg-teal-subtle text-teal inline-flex items-center gap-1" style="white-space:nowrap">
+                        <svg class="sa-icon" style="width:12px;height:12px;flex-shrink:0;stroke:currentColor"><use href="/assets/icons/sprite.svg#calendar"></use></svg>
+                        ≥ {{ step.minDays }} 天適用
+                      </span>
                     }
                     @if (step.note) {
                       <span class="text-muted small">{{ step.note }}</span>

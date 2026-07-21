@@ -11,7 +11,8 @@ public sealed record ApprovalStepDto(
     bool    UseDirectSupervisor,
     bool    UseApplicantDesignated,
     string? Note,
-    bool    DesignatedRequiresDepartment = false);
+    bool    DesignatedRequiresDepartment = false,
+    int?    MinDays                      = null);
 
 public sealed record ApprovalItemDto(
     int               Id,
@@ -60,7 +61,8 @@ public sealed record CreateApprovalStepRequest(
     bool    UseDirectSupervisor          = false,
     bool    UseApplicantDesignated       = false,
     string? Note                         = null,
-    bool    DesignatedRequiresDepartment = false);
+    bool    DesignatedRequiresDepartment = false,
+    int?    MinDays                      = null);
 
 public sealed record UpdateApprovalStepRequest(
     int?     StepOrder,
@@ -70,4 +72,5 @@ public sealed record UpdateApprovalStepRequest(
     bool?    UseDirectSupervisor,
     bool?    UseApplicantDesignated,
     string?  Note,
-    bool?    DesignatedRequiresDepartment = null);
+    bool?    DesignatedRequiresDepartment = null,
+    int?     MinDays                      = null);

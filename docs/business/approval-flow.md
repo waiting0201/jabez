@@ -154,6 +154,23 @@ draft → pending → approved / returned / rejected
 - **匹配條件**：`ApprovalStatus = 'pending'` 且目前卡在的步驟（`CurrentStepOrder` 對應的 `ApprovalStep`）其 `JobTitleId` 對應的 `JobTitle.Level == 1`（即總監），不受呼叫者本身職稱/部門限制（因為財務管理部並非該步驟審核者，僅是檢視）。實作於 [PaymentRequestReadService.StepMatchClause](../../Api/Services/Dapper/PaymentRequestReadService.cs) 的 `director_pending` 分支，涵蓋全部 9 種申請類型（與待審核/已核准/已拒絕頁籤一致）。
 - **僅供檢視**：此頁籤內的申請單仍只能由總監本人（或 Superadmin）實際核准；財務管理部人員點擊進入詳情頁為唯讀（前端固定顯示查看圖示，不顯示可編輯的鉛筆圖示），送出審核動作仍會被 `AuthorizeStepAsync` 擋下。
 
+## 依請假天數決定簽核關卡（MinDays 門檻，2026-07 新增）
+
+`ApprovalStep` 新增 `MinDays`（nullable int）欄位，讓**簽核步驟可依申請天數動態納入 / 略過**：
+
+- `MinDays == null` → **一律納入**（既有步驟與其他 8 種申請完全不受影響）。
+- `MinDays == N` → **僅當申請天數 ≥ N 才納入**此步驟，否則視為不存在（乾淨略過、不寫代簽）。
+- **天數來源**：目前僅**請假**傳入 `requestDays = Hours / 8`（已扣假日後的工作日）；其餘申請類型不傳（`requestDays=null`），MinDays 無作用。
+- **實作單一真相＝引擎兩處**（[ApprovalFlowService](../../Api/Services/ApprovalFlowService.cs)）：
+  - `ResolveStartingStepAsync`（送出解析起始步驟）與 `SkipUnreviewableStepsAsync`（核准後推進下一步）各接受 `decimal? requestDays`，`requestDays` 非 null 時先過濾 `MinDays > requestDays` 的步驟。
+  - `ResolveStartingStepAsync` 以 `currentStep++` 逐步略過（維持位置計數與 StepOrder 對齊）；`SkipUnreviewableStepsAsync` 為 StepOrder-based，直接整批 `FilterStepsByMinDays` 移除。
+  - 呼叫端：[LeaveRequestHandler.SubmitAsync](../../Api/Handlers/LeaveRequestHandler.cs) 傳 `item.Hours/8m`；[ApprovalTaskHandler.ProcessReviewAsync](../../Api/Handlers/ApprovalTaskHandler.cs) 對 leave 傳 `leaveRequest.Hours/8m`。
+- **Dapper 待審 / 簽核清單無需改**：跳過的步驟已由 `CurrentStepOrder` 推進帶過，`StepMatchClause` 只比對 `CurrentStepOrder`。
+- **邊界**：`MinDays=3` 代表「天數 ≥ 3 才納入」；剛好 3 天走完整鏈，符合「三天以上要總監」。
+- **設定頁**（[approval-flow](../../Admin/src/app/features/admin/approvals/pages/approval-flow/)）每步新增「適用天數門檻」數字輸入（留空＝一律適用），步驟列以「≥ N 天適用」badge 標示。
+- **典型請假配置**：Step1 單位主管（`UseApplicantDepartment`，門檻空）→ Step2 部門最高主管（`UseDirectSupervisor`，門檻 3）→ Step3 總監（固定 `JobTitle.Level=1`，門檻 3）。`UseDirectSupervisor` 解析的是「申請人上一層」，若組織需「部門絕對最高主管」可改為固定職稱。
+- **已知簡化**：簽核詳情頁時間軸目前顯示流程定義的全部步驟；< 3 天的單雖只走 Step1 即核准，時間軸仍列出 Step2/3（設定頁以 badge 標示「≥N天適用」），未做 per-request 隱藏。
+
 ## 自審跳過規則（僅限請款）
 
 當申請人本身符合某步驟的審核者條件時（例如部門主管送出自己部門的請款），該步驟**自動跳過**（視為已通過），不觸發升級機制。若所有步驟都被跳過，申請**自動核准**。

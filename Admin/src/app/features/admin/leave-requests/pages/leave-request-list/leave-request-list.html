@@ -37,7 +37,12 @@
                 <td class="text-muted small">{{ r.startDate | date:'yyyy-MM-dd HH:mm' }}</td>
                 <td class="text-muted small">{{ r.endDate | date:'yyyy-MM-dd HH:mm' }}</td>
                 <td class="text-right fw-500">{{ formatDuration(r.leaveType, r.hours) }}</td>
-                <td class="text-muted small hidden md:table-cell">{{ r.reason }}</td>
+                <td class="text-muted small hidden md:table-cell">
+                  {{ r.reason }}
+                  @if (r.agentName) {
+                    <div class="text-muted" style="font-size:.75rem">代理人：{{ r.agentName }}</div>
+                  }
+                </td>
                 <td>
                   <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
                 </td>

@@ -109,6 +109,7 @@
 | GET | `/leave-requests/bereavement-quota?relationship={rel}` | 查詢喪假配額（依親屬關係 3/6/8 天） |
 | GET | `/leave-requests/senior-executive-eligibility` | 查詢高階主管假適用性（JobTitle.Level ≤ 3） |
 | GET | `/leave-requests/senior-executive-quota` | 查詢高階主管假額度（每年 20 天，曆年歸零） |
+| GET | `/leave-requests/working-days?start=&end=&leaveType=` | 計算扣除國定假日與六日後的實際請假日清單與天數（工作日型假別才扣假日；任何登入者可呼叫，免 `calendar-days:read`；回 `hasCalendarData / holidayDates[] / workingDates[] / workingDays`） |
 | GET/POST | `/travel-requests` | 出差預支申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/travel-requests/{id}` | 出差預支申請 CRUD |
 | PATCH | `/travel-requests/{id}/submit` | 送出出差預支申請（draft → pending） |

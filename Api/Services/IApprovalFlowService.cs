@@ -16,6 +16,7 @@ public interface IApprovalFlowService
     /// <param name="applicantId">申請人 User ID</param>
     /// <param name="applicationType">申請類型：overtime | leave | travel | payment_request | advance</param>
     /// <param name="designatedReviewers">申請人指定的審核者清單（UseApplicantDesignated 步驟使用）</param>
+    /// <param name="requestDays">申請天數（目前僅請假傳入 Hours/8）；非 null 時會過濾掉 MinDays > requestDays 的步驟，null＝不套用天數門檻</param>
     /// <returns>
     /// startStep: 應開始的步驟序號
     /// autoApproved: 是否全部步驟都被跳過而自動核准
@@ -23,7 +24,8 @@ public interface IApprovalFlowService
     /// </returns>
     Task<(int startStep, bool autoApproved, EscalationResult? escalation)>
         ResolveStartingStepAsync(int? approvalItemId, Guid applicantId, string applicationType,
-            IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers = null);
+            IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers = null,
+            decimal? requestDays = null);
 
     /// <summary>
     /// 依申請人部門挑選啟用中的簽核流程。優先序＝申請人部門 > 最近祖先部門（沿 ParentId 逐層往上）> 通用預設(null)。
@@ -43,6 +45,7 @@ public interface IApprovalFlowService
     /// </summary>
     /// <param name="supervisorIds">「總監（Level=1）」歷史已審者集合；用於條件 (A)。可為 null。</param>
     /// <param name="priorStepOrder">上一個有審核紀錄的 step；用於條件 (B) 相鄰判定。連鎖跳過時內部會自動更新。可為 null。</param>
+    /// <param name="requestDays">申請天數（目前僅請假傳入 Hours/8）；非 null 時會過濾掉 MinDays > requestDays 的步驟，null＝不套用天數門檻</param>
     Task<(int nextStep, bool allSkipped, IReadOnlyList<SkippedStepInfo> skippedSteps)>
         SkipUnreviewableStepsAsync(int? approvalItemId, Guid applicantId, int fromStepOrder,
             IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers = null,
@@ -50,7 +53,8 @@ public interface IApprovalFlowService
             string? applicationType = null,
             int? applicationId = null,
             IReadOnlySet<Guid>? supervisorIds = null,
-            int? priorStepOrder = null);
+            int? priorStepOrder = null,
+            decimal? requestDays = null);
 
     /// <summary>
     /// 取得此申請「最近一次 returned 之後」所有 approved 的審核者 Id（去重 HashSet）。

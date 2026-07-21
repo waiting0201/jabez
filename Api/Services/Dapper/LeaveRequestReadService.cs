@@ -12,9 +12,10 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
                lr.LeaveType, lr.StartDate, lr.EndDate, lr.Hours, lr.Reason,
                lr.ApprovalStatus, lr.CreatedAt, lr.ReviewedAt, lr.ReviewNote,
                lr.ApprovalItemId, lr.CurrentStepOrder, lr.ReviewedById,
-               lr.BereavementRelationship
+               lr.BereavementRelationship, lr.AgentUserId, ag.Name AS AgentName
         FROM LeaveRequests lr
-        LEFT JOIN Users u ON lr.EmployeeId = u.Id
+        LEFT JOIN Users u  ON lr.EmployeeId  = u.Id
+        LEFT JOIN Users ag ON lr.AgentUserId = ag.Id
         """;
 
     public async Task<IEnumerable<LeaveRequestDto>> GetAllAsync()
@@ -109,7 +110,9 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
             CurrentStepOrder:        (int?)row.CurrentStepOrder,
             ReviewedById:            (Guid?)row.ReviewedById,
             BereavementRelationship: (string?)row.BereavementRelationship,
-            TimeUnit:                GetTimeUnitString(leaveType));
+            TimeUnit:                GetTimeUnitString(leaveType),
+            AgentUserId:             (Guid?)row.AgentUserId,
+            AgentName:               (string?)row.AgentName);
     }
 
     /// <summary>依假別取得時間單位字串（與 LeaveRequestHandler 保持一致）</summary>

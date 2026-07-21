@@ -47,6 +47,7 @@ export class ApprovalFlow implements OnInit {
     useDirectSupervisor:          [false],
     useApplicantDesignated:       [false],
     designatedRequiresDepartment: [false],
+    minDays:                      [null as number | null],
     note:                         [''],
   });
 
@@ -60,7 +61,7 @@ export class ApprovalFlow implements OnInit {
   openAddStep() {
     this.editStep = null;
     const nextOrder = (this.item$.getValue()?.steps.length ?? 0) + 1;
-    this.stepForm.reset({stepOrder: nextOrder, departmentId: null, jobTitleId: null, useApplicantDepartment: false, useDirectSupervisor: false, useApplicantDesignated: false, designatedRequiresDepartment: false, note: ''});
+    this.stepForm.reset({stepOrder: nextOrder, departmentId: null, jobTitleId: null, useApplicantDepartment: false, useDirectSupervisor: false, useApplicantDesignated: false, designatedRequiresDepartment: false, minDays: null, note: ''});
     this.showStepForm = true;
   }
 
@@ -74,6 +75,7 @@ export class ApprovalFlow implements OnInit {
       useDirectSupervisor:          step.useDirectSupervisor ?? false,
       useApplicantDesignated:       step.useApplicantDesignated ?? false,
       designatedRequiresDepartment: step.designatedRequiresDepartment ?? false,
+      minDays:                      step.minDays ?? null,
       note:                         step.note ?? '',
     });
     this.showStepForm = true;
@@ -144,6 +146,7 @@ export class ApprovalFlow implements OnInit {
       useDirectSupervisor:          !useApplicantDesignated && useDirectSupervisor,
       useApplicantDesignated,
       designatedRequiresDepartment: useApplicantDesignated ? (v.designatedRequiresDepartment ?? false) : false,
+      minDays:                      v.minDays && v.minDays > 0 ? v.minDays : null,
       note:                         v.note ?? '',
     };
 
