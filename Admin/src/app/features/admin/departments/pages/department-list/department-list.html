@@ -20,7 +20,7 @@
             <tr>
               <th>部門名稱</th>
               <th class="hidden sm:table-cell">代碼</th>
-              <th class="hidden md:table-cell">描述</th>
+              <th class="hidden md:table-cell">人員</th>
               <th>人數</th>
               <th class="text-right">操作</th>
             </tr>
@@ -43,7 +43,7 @@
                   </span>
                 </td>
                 <td class="text-muted hidden sm:table-cell"><code>{{ dept.code ?? '—' }}</code></td>
-                <td class="text-muted hidden md:table-cell">{{ dept.description ?? '—' }}</td>
+                <td class="text-muted hidden md:table-cell">{{ dept.employeeNames || '—' }}</td>
                 <td>
                   <div class="flex flex-wrap items-center gap-1">
                     <span class="badge bg-info">{{ dept.employeeCount }} 人</span>
