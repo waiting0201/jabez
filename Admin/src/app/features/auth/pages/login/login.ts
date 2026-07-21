@@ -37,7 +37,7 @@ import { AuthService } from '@core/auth/services/auth.service';
           </div>
 
           <h2 class="left-heading">紮根成長，<br>一切從這裡開始。</h2>
-          <p class="left-sub">Jabez 管理平台讓您輕鬆掌握每一個環節，<br>讓品牌在土壤中穩健蔓延。</p>
+          <p class="left-sub">Jabez 企業管理流程平台</p>
 
           <div class="left-features">
             <div class="left-feature">
@@ -50,7 +50,7 @@ import { AuthService } from '@core/auth/services/auth.service';
             </div>
             <div class="left-feature">
               <span class="lf-dot"></span>
-              <span>角色權限細粒度控管</span>
+              <span>角色與權限管理</span>
             </div>
           </div>
         </div>
