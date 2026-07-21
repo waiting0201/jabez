@@ -104,11 +104,37 @@
 - **併入病假**：全年累計**前 3 天（24 小時）為純生理假**（薪資列「生理假扣薪」）；**超過 3 天的部分併入病假計算**（薪資併入「病假扣薪」）。因兩者皆半薪，淨薪不變，差異僅在扣款項目的歸類。薪資模組以「本年度本月之前已用生理假時數」判斷前 3 天額度是否用罄（詳見 [payroll-formula.md](payroll-formula.md)）。
 - **API 端點**：`GET /leave-requests/menstrual-quota`（回 `isFemale` + 月/年配額）。
 
+## 扣除假日計算天數（2026-07 新增）
+
+**工作日型假別**選定起迄日後，系統扣除**國定假日與六日**，只計算實際工作日，並在表單即時列出「實際請假日清單」與天數。
+
+- **適用假別（工作日型）**：`annual`（年假）/ `personal`（事假）/ `sick`（病假）/ `compensatory`（補休）/ `official`（公假）/ `senior_executive`（高階主管假）。集合同步於後端 `LeaveRequestHandler.WorkingDayLeaveTypes` 與前端 `WORKING_DAY_LEAVE_TYPES`（[leave-request.model.ts](../../Admin/src/app/features/admin/leave-requests/models/leave-request.model.ts)）。
+- **不適用假別（法定連續日曆天，不扣假日）**：產假 / 婚假 / 喪假 / 流產假系列 / 歲時祭儀 / 生理假——依法以連續日曆天計，扣六日會算錯。
+- **假日來源＝唯一權威 `CalendarDays` 表**：台灣政府行事曆匯入時 `IsHoliday=true` 已同時涵蓋**六日 + 國定假**、補班六為工作日（`IsHoliday=false`）。透過 [CalendarDayReadService](../../Api/Services/Dapper/CalendarDayReadService.cs) 的 `GetHolidayDatesAsync` / `HasDataForRangeAsync` 讀取（與出差假日活動共用）。
+- **前端顯示**：[leave-request-form](../../Admin/src/app/features/admin/leave-requests/pages/leave-request-form/) 於 day / half_day 工作日型假別選好起迄日後呼叫輕量端點 `GET /leave-requests/working-days?start=&end=&leaveType=`（免 `calendar-days:read`），列出逐日 chip + 合計天數；行事曆未匯入時退回僅扣六日並提示。
+- **後端權威重算**：`Day` 單位工作日型假別（如公假）於 Create / Update / **Submit** 以工作日數 × 8 覆寫 `Hours`；**Submit 時強制要求行事曆已匯入**（缺資料擋件並提示匯入），確保後續天數門檻分流與天數上限驗證皆以正確工作日為準。`half_day` 工作日型假別由前端以 working-days 端點計算後送出（後端沿用既有「HalfDay 信任 client」原則）；`hour` 單位（事假 / 病假時薪型，多為當日時段）不扣假日。
+
+## 依請假天數決定簽核關卡（2026-07 新增）
+
+請假簽核流程可**依申請天數**動態決定關卡：**< 3 天只需單位主管；≥ 3 天需 單位主管 + 部門最高主管 + 總監**。以簽核步驟的**天數門檻 `ApprovalStep.MinDays`** 實作（詳見 [approval-flow.md §天數門檻](approval-flow.md#依請假天數決定簽核關卡minday-門檻2026-07-新增)）：
+
+- 天數＝`Hours / 8`（已扣假日後的工作日）。`MinDays=null` 的步驟一律納入；`MinDays=N` 的步驟僅當天數 ≥ N 才納入，否則乾淨略過。
+- 請假流程建議配置：Step1 單位主管（`UseApplicantDepartment`，MinDays 空）→ Step2 部門最高主管（`UseDirectSupervisor`，MinDays=3）→ Step3 總監（固定 `JobTitle.Level=1`，MinDays=3）。
+- 角色由既有模式對應，可於「簽核流程設定」頁自行調整每關的部門 / 職稱 / 天數門檻。
+
+## 職務代理人（2026-07 新增）
+
+請假表單可指定**職務代理人**（記錄 + 通知，**不參與簽核**）：
+
+- 欄位 `LeaveRequest.AgentUserId`（nullable，FK→Users `OnDelete=NoAction`；刪除使用者時由 `UserHandler.DeleteAsync` 清洗設 NULL）。
+- 前端下拉選項取自輕量端點 `GET /users/lookup`（在職者、排除本人）；列表 / 詳情顯示代理人姓名。
+- 送出時（含 Superadmin 自動核准）以 Email 通知代理人「您被指定為 XXX 的職務代理人」（[ApprovalNotificationService.NotifyLeaveAgentAsync](../../Api/Services/ApprovalNotificationService.cs)，沿用 `ApprovalEmailEnabled` 開關）。
+
 ## 請假申請步驟
 
 ```
-請假申請 → 選擇假別 → 填入開始/結束時間 → 請假原因 → 指定審核人
-如需多層級審核：新增審核人順序等同審核順序
+請假申請 → 選擇假別 → 填入開始/結束時間（工作日型顯示扣假日後請假日清單）→ 職務代理人 → 請假原因 → 指定審核人
+依天數決定關卡：< 3 天單位主管；≥ 3 天 單位主管 + 部門最高主管 + 總監
 ```
 
 ## 人事薪資頁面整合

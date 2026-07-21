@@ -64,7 +64,8 @@ public sealed class ApprovalFlowService(
 
     public async Task<(int startStep, bool autoApproved, EscalationResult? escalation)>
         ResolveStartingStepAsync(int? approvalItemId, Guid applicantId, string applicationType,
-            IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers = null)
+            IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers = null,
+            decimal? requestDays = null)
     {
         // 註：初次送出無 approved 紀錄，毋需歷史比對，保持既有「自審 + 升級」邏輯。
         if (approvalItemId is null)
@@ -94,6 +95,14 @@ public sealed class ApprovalFlowService(
         int directSupervisorRank = 0; // 追蹤目前是第幾個上層級步驟（0-based）
         foreach (var step in steps)
         {
+            // ── 天數門檻（目前僅請假傳 requestDays）：MinDays > 申請天數 → 乾淨跳過此步驟 ──
+            // 以 currentStep++ 跳過（與其他略過模式一致），維持 currentStep 與 StepOrder 對齊。
+            if (StepBelowMinDays(step, requestDays))
+            {
+                currentStep++;
+                continue;
+            }
+
             // ── UseApplicantDesignated 模式：審核者是申請人指定的人 ──
             if (step.UseApplicantDesignated)
             {
@@ -278,7 +287,8 @@ public sealed class ApprovalFlowService(
             string? applicationType = null,
             int? applicationId = null,
             IReadOnlySet<Guid>? supervisorIds = null,
-            int? priorStepOrder = null)
+            int? priorStepOrder = null,
+            decimal? requestDays = null)
     {
         var emptySkipped = Array.Empty<SkippedStepInfo>();
 
@@ -290,6 +300,10 @@ public sealed class ApprovalFlowService(
             .Where(s => s.ApprovalItemId == approvalItemId)
             .OrderBy(s => s.StepOrder)
             .ToListAsync();
+
+        // 天數門檻過濾（目前僅請假傳 requestDays）：MinDays > 申請天數的步驟視為不存在。
+        // 本方法全程以 StepOrder 為準（非位置計數），故可安全地整批移除被過濾步驟。
+        steps = FilterStepsByMinDays(steps, requestDays);
 
         if (steps.Count == 0)
             return (fromStepOrder, false, emptySkipped);
@@ -483,6 +497,20 @@ public sealed class ApprovalFlowService(
             .Take(50)
             .ToListAsync();
     }
+
+    /// <summary>
+    /// 天數門檻判定：此步驟是否因「MinDays > 申請天數」而不該納入。
+    /// requestDays 為 null（未提供天數，如非請假類型）→ 一律不套用門檻（回 false）。
+    /// </summary>
+    private static bool StepBelowMinDays(Models.Entities.ApprovalStep step, decimal? requestDays)
+        => requestDays.HasValue && step.MinDays.HasValue && requestDays.Value < step.MinDays.Value;
+
+    /// <summary>移除所有 MinDays > requestDays 的步驟（乾淨略過，等同該步驟不存在）。</summary>
+    private static List<Models.Entities.ApprovalStep> FilterStepsByMinDays(
+        List<Models.Entities.ApprovalStep> steps, decimal? requestDays)
+        => requestDays.HasValue
+            ? steps.Where(s => !StepBelowMinDays(s, requestDays)).ToList()
+            : steps;
 
     /// <summary>判斷申請人是否符合此步驟的審核者條件（即「自己審自己」）</summary>
     private static bool IsApplicantTheReviewer(Models.Entities.ApprovalStep step, Models.Entities.User applicant)

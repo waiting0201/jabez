@@ -13,6 +13,7 @@ public class ApprovalStep
     public bool     UseDirectSupervisor    { get; set; } = false;
     public bool     UseApplicantDesignated { get; set; } = false;
     public bool     DesignatedRequiresDepartment { get; set; } = false; // 僅 UseApplicantDesignated=true 時有意義：此步驟需先選部門再選人
+    public int?     MinDays        { get; set; }                        // 適用天數門檻：null＝一律納入；有值時僅當申請天數 >= MinDays 才納入此步驟（目前供請假依天數分流）
     public string?  Note           { get; set; }
     public DateTime CreatedAt      { get; set; } = Clock.Now;
 

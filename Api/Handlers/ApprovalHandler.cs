@@ -181,6 +181,7 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
             UseApplicantDesignated  = body.UseApplicantDesignated,
             // 僅 UseApplicantDesignated 時此旗標有意義（此步驟需先選部門再選人）
             DesignatedRequiresDepartment = body.UseApplicantDesignated && body.DesignatedRequiresDepartment,
+            MinDays                 = body.MinDays is > 0 ? body.MinDays : null,
             Note                    = body.Note,
             CreatedAt               = Clock.Now,
         };
@@ -212,6 +213,8 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
         if (body.JobTitleId.HasValue)                step.JobTitleId              = body.JobTitleId   == 0 ? null : body.JobTitleId;
         if (body.Note        is not null)            step.Note                    = body.Note;
         if (body.DesignatedRequiresDepartment.HasValue) step.DesignatedRequiresDepartment = body.DesignatedRequiresDepartment.Value;
+        // MinDays：編輯表單一律帶完整值，直接覆寫（<=0 或未填視為無門檻 null）
+        step.MinDays = body.MinDays is > 0 ? body.MinDays : null;
 
         // 三種模式互斥，以最後設定的模式為準
         if (step.UseApplicantDesignated)

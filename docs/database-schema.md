@@ -20,7 +20,7 @@
 | `JobTitle` | 職稱主檔 |
 | `Vendor` | 廠商主檔（Name 廠商名稱/外包顧問、TaxId 統編 unique-filter index、IdNumber 身分證字號 unique-filter index（個人工作室，與 TaxId 擇一）、Phone、ContactPerson、Address、BankAccount、BankBookImageUrl 存摺封面 proxy 路徑（必填）、IdCardFrontUrl/IdCardBackUrl 身分證正反面 proxy 路徑、Note、IsActive、CreatedAt；被 PaymentRequest.VendorId 引用，FK OnDelete=Restrict 限引用中不可刪） |
 | `ApprovalItem` | 簽核流程項目（含 **DepartmentId 部門維度**：null = 該 ApplicationType 通用預設流程，非 null = 某部門專屬流程；唯一索引為 `(ApplicationType, DepartmentId)`，過濾條件 `ApplicationType IS NOT NULL`，FK→Department OnDelete=SetNull） |
-| `ApprovalStep` | 簽核流程步驟（含 UseDirectSupervisor、UseApplicantDesignated、**DesignatedRequiresDepartment**「指定審核步驟需先選部門再選人」，僅 UseApplicantDesignated 時有意義） |
+| `ApprovalStep` | 簽核流程步驟（含 UseDirectSupervisor、UseApplicantDesignated、**DesignatedRequiresDepartment**「指定審核步驟需先選部門再選人」，僅 UseApplicantDesignated 時有意義；**MinDays** 天數門檻 nullable，`null`＝一律納入、`N`＝申請天數 ≥ N 才納入此步驟，目前供請假依天數分流） |
 | `ApprovalRecord` | 簽核動作記錄（含 OnBehalfOfUserId 代理標記、IsEscalated 升級標記） |
 | `EscalationOverride` | 升級審核指派（記錄被指派的升級/代理審核者，審核完成後清除） |
 | `Project` | 專案主檔（含 **DepartmentId 必填**、ContractAmount 契約金額、BusinessAmount 業務執行金額、RemainingAmount 剩餘金額（系統導入時剩餘預算，選填）；實收金額為衍生值，由 `SUM(ProjectPaymentSchedules.DepositAmount)` 即時計算） |
@@ -31,7 +31,7 @@
 | `PreReviewRequest` | 預審申請（事前預審：實際花費前送類似請款的單據走簽核，含報價單 / 品項 / 金額；含 `RequestNo` 單號 `PRV-yyyyMMdd-NNN` unique index；**無撥款流程、金額不計入款項統計報表**） |
 | `PreReviewItem` | 預審品項明細（ItemCategory 品項類別、ItemName、Amount、Note、ItemDate、FileName / FileUrl 報價單檔，存 `quotes` container） |
 | `PreReviewRequestAttachment` | 預審申請整單批次附件（照片 / PDF，FK Cascade，存 `request-attachments`） |
-| `LeaveRequest` | 請假申請（含 BereavementRelationship 喪假親屬關係） |
+| `LeaveRequest` | 請假申請（含 BereavementRelationship 喪假親屬關係、**AgentUserId** 職務代理人 FK→Users `OnDelete=NoAction`，記錄 + 通知不參與簽核） |
 | `TravelRequest` | 出差預支申請（含 `RequestNo` 單號 unique index：`IsHolidayTravel=false` → `TR-yyyyMMdd-NNN`、`IsHolidayTravel=true` → `HTR-yyyyMMdd-NNN`，per-prefix-per-day 序號池；含 IsHolidayTravel、IsClosed 結案、GrandTotal 明細合計、`EstimatedRefundDate / RefundedAt / RefundedByUserId` 退款欄位（沖銷超支才用）；撥款資料統一由 `TravelRequestInstallment[]` 表達，父表無撥款 cache 欄位；事後走沖銷流程）。當 `IsHolidayTravel=true`（假日執行活動）時不含 Items 與發票明細，僅記錄活動地點/期間/參與人員 |
 | `TravelRequestItem` | 出差預支明細（交通費、住宿費、餐費、雜支）；假日執行活動不使用 |
 | `TravelRequestParticipant` | 假日執行活動參與執行人員（UserId + SortOrder；唯一索引 `(TravelRequestId, UserId)`；**HolidayDays int?** 個人假日天數：NULL=全程參與沿用整單 HolidayDays，有值=Submit 時依個人參與日期權威計算的快照） |

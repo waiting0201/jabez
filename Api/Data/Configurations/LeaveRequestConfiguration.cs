@@ -45,6 +45,12 @@ public class LeaveRequestConfiguration : IEntityTypeConfiguration<LeaveRequest>
                .HasForeignKey(l => l.ReviewedById)
                .OnDelete(DeleteBehavior.NoAction);
 
+        // 職務代理人（記錄 + 通知，不參與簽核）；NoAction 避免多重級聯路徑，刪除使用者時由 UserHandler 清洗設 NULL
+        builder.HasOne(l => l.AgentUser)
+               .WithMany()
+               .HasForeignKey(l => l.AgentUserId)
+               .OnDelete(DeleteBehavior.NoAction);
+
         builder.HasOne(l => l.ApprovalItem)
                .WithMany(a => a.LeaveRequests)
                .HasForeignKey(l => l.ApprovalItemId)

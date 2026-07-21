@@ -16,10 +16,12 @@ public class LeaveRequest
     public DateTime? ReviewedAt   { get; set; }
     public string?  ReviewNote     { get; set; }
     public string?  BereavementRelationship { get; set; }  // 喪假親屬關係
+    public Guid?    AgentUserId    { get; set; }  // 職務代理人（記錄 + 通知，不參與簽核）
     public DateTime CreatedAt      { get; set; }
 
     // Navigation
     public User?         Employee           { get; set; }
     public User?         ReviewedBy         { get; set; }
+    public User?         AgentUser          { get; set; }
     public ApprovalItem? ApprovalItem       { get; set; }
 }

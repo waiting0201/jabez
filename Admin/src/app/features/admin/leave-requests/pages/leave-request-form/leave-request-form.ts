@@ -11,7 +11,7 @@ import {
   APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES,
   LEAVE_TYPE_GROUPS, LEAVE_TYPE_LABELS, LEAVE_TYPE_DAYS_LIMIT, LEAVE_TIME_UNIT,
   BEREAVEMENT_GROUPS, BEREAVEMENT_RELATIONSHIP_LABELS, BEREAVEMENT_DAYS,
-  BereavementRelationship,
+  BereavementRelationship, WORKING_DAY_LEAVE_TYPES, WorkingDaysResult,
 } from '../../models/leave-request.model';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
@@ -129,6 +129,9 @@ export class LeaveRequestForm implements OnInit {
   /** 生理假配額（限女性；亦用於下拉過濾） */
   menstrualQuota = signal<MenstrualQuota | null>(null);
 
+  /** 扣除國定假日與六日後的實際請假日清單（工作日型 day/half_day 假別，選好起迄日後即時查詢） */
+  workingDaysResult = signal<WorkingDaysResult | null>(null);
+
   /**
    * 是否為協理以上（決定高階主管假選項是否顯示）
    * - Superadmin 一律通過
@@ -156,6 +159,7 @@ export class LeaveRequestForm implements OnInit {
     // HalfDay 模式：時段
     startSlot:               ['am' as HalfDaySlot],
     endSlot:                 ['pm' as HalfDaySlot],
+    agentUserId:             [null as string | null],   // 職務代理人（記錄 + 通知，不參與簽核）
     reason:                  ['', Validators.required],
   });
 
@@ -208,6 +212,12 @@ export class LeaveRequestForm implements OnInit {
 
     if (type === 'maternity') {
       return this.form.get('startDate')?.value ? 448 : 0;
+    }
+
+    // 工作日型 day / half_day 假別：若已取得扣假日後的請假日清單，改以工作日計算（排除國定假日與六日）
+    const wd = this.workingDaysResult();
+    if (wd && unit !== 'hour' && WORKING_DAY_LEAVE_TYPES.includes(type)) {
+      return this.computeWorkingDayHours(wd);
     }
 
     if (unit === 'hour') {
@@ -320,6 +330,11 @@ export class LeaveRequestForm implements OnInit {
     return this.allUsers.find(u => u.id === userId)?.name ?? userId;
   }
 
+  /** 職務代理人候選清單（在職者） */
+  get agentCandidates(): UserLookup[] {
+    return this.allUsers.filter(u => u.status === 'active');
+  }
+
   /** 取得簽核狀態標籤（安全索引） */
   getStatusLabel(status: string | undefined | null): string {
     if (!status) return '';
@@ -355,6 +370,17 @@ export class LeaveRequestForm implements OnInit {
       }
     });
 
+    // 監聽起迄日 / 半天時段變化 → 重新查詢扣除假日後的請假日清單
+    for (const ctrl of ['startDate', 'endDate', 'startSlot', 'endSlot']) {
+      this.form.get(ctrl)?.valueChanges.subscribe(() => {
+        if (this.isLoadingExisting) return;
+        this.refreshWorkingDays();
+      });
+    }
+
+    // 職務代理人下拉需要全體使用者清單（免 users:read，用輕量 lookup），與指定審核者共用
+    this.userSvc.getLookup().subscribe({ next: users => { this.allUsers = users; this.cdr.markForCheck(); } });
+
     // 檢查簽核流程是否有「申請人指定審核」步驟（呼叫輕量端點，免 approvals:read 權限）
     this.approvalSvc.getActiveByType('leave').subscribe(flow => {
       const designated = (flow?.steps ?? []).filter(s => s.useApplicantDesignated);
@@ -363,7 +389,6 @@ export class LeaveRequestForm implements OnInit {
 
       if (this.hasDesignatedStep) {
         this.jobTitleSvc.getLookup().subscribe({ next: jts => { this.jobTitles = jts; this.cdr.markForCheck(); } });
-        this.userSvc.getLookup().subscribe({ next: users => { this.allUsers = users; this.cdr.markForCheck(); } });
         if (designated.some(s => s.designatedRequiresDepartment)) {
           this.deptSvc.getAll().subscribe({ next: d => { this.departments = d; this.cdr.markForCheck(); } });
         }
@@ -389,6 +414,7 @@ export class LeaveRequestForm implements OnInit {
           const baseValues = {
             leaveType:               r.leaveType,
             bereavementRelationship: r.bereavementRelationship ?? '',
+            agentUserId:             r.agentUserId ?? null,
             reason:                  r.reason,
           };
           if (unit === 'hour') {
@@ -457,6 +483,7 @@ export class LeaveRequestForm implements OnInit {
   private onLeaveTypeChange(type: LeaveType) {
     // 切換時清空共用日期欄位，避免前一模式的殘留值
     this.form.patchValue({startDate: '', endDate: ''}, {emitEvent: false});
+    this.workingDaysResult.set(null); // 日期已清空，重置請假日清單
 
     // 喪假：bereavementRelationship 必填
     if (type === 'bereavement') {
@@ -492,6 +519,54 @@ export class LeaveRequestForm implements OnInit {
     if (type === 'maternity') this.loadMaternityStatus();
     if (type === 'menstrual') this.loadMenstrualQuota();
     if (type === 'senior_executive') this.loadSeniorExecQuota();
+    // 回填既有起迄日後，重新計算扣除假日的請假日清單
+    this.refreshWorkingDays();
+  }
+
+  /**
+   * 重新查詢「扣除國定假日與六日後的實際請假日清單」。
+   * 僅工作日型 day / half_day 假別需要（hour 單位為當日時段、法定連續日曆天假別不扣假日）。
+   */
+  private refreshWorkingDays() {
+    const type = this.selectedLeaveType;
+    const unit = this.selectedUnit;
+    if (!WORKING_DAY_LEAVE_TYPES.includes(type) || unit === 'hour') {
+      this.workingDaysResult.set(null);
+      return;
+    }
+    const start = this.form.get('startDate')?.value;
+    const end   = this.form.get('endDate')?.value;
+    if (!start || !end || new Date(end) < new Date(start)) {
+      this.workingDaysResult.set(null);
+      return;
+    }
+    this.service.getWorkingDays(start, end, type).subscribe({
+      next: res => { this.workingDaysResult.set(res); this.cdr.markForCheck(); },
+      error: () => { this.workingDaysResult.set(null); },
+    });
+  }
+
+  /**
+   * 工作日型 day / half_day 假別：以扣除假日後的請假日清單計算時數。
+   * day → 工作日數 × 8；half_day → 首/末工作日套用上午/下午時段，中間整天 8 小時。
+   */
+  private computeWorkingDayHours(res: WorkingDaysResult): number {
+    const dates = res.workingDates;
+    if (dates.length === 0) return 0;
+    if (this.selectedUnit === 'day') return dates.length * 8;
+
+    // half_day
+    const startSlot = this.form.get('startSlot')?.value as HalfDaySlot;
+    const endSlot   = this.form.get('endSlot')?.value as HalfDaySlot;
+    if (dates.length === 1) {
+      if (startSlot === 'am' && endSlot === 'am') return 4;
+      if (startSlot === 'am' && endSlot === 'pm') return 8;
+      if (startSlot === 'pm' && endSlot === 'pm') return 4;
+      return 0; // pm → am 單日無效
+    }
+    const startHrs = startSlot === 'am' ? 8 : 4;
+    const endHrs   = endSlot   === 'pm' ? 8 : 4;
+    return startHrs + (dates.length - 2) * 8 + endHrs;
   }
 
   /** 補休時數是否足夠 */
@@ -807,6 +882,7 @@ export class LeaveRequestForm implements OnInit {
       endDate:                 endDateStr,
       hours,
       reason:                  v.reason!,
+      agentUserId:             v.agentUserId || null,
       designatedReviewers:     reviewers.length > 0 ? reviewers : undefined,
     };
   }

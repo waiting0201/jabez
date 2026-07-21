@@ -37,6 +37,7 @@ export interface ApprovalStep {
   useDirectSupervisor?: boolean;
   useApplicantDesignated?: boolean;
   designatedRequiresDepartment?: boolean;
+  minDays?: number | null;   // 適用天數門檻：null/undefined = 一律適用；有值時僅當申請天數 >= minDays 才納入（目前供請假依天數分流）
   note?: string;
 }
 

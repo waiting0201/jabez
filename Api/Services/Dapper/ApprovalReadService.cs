@@ -68,7 +68,7 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
             SELECT ai.Id, ai.Name, ai.Code, ai.Description, ai.IsActive, ai.ApplicationType, ai.DepartmentId, dd.Name AS ItemDepartmentName, ai.CreatedAt,
                    s.Id AS StepId, s.StepOrder, s.DepartmentId AS StepDepartmentId, d.Name AS DepartmentName,
                    s.JobTitleId, j.Name AS JobTitleName,
-                   s.UseApplicantDepartment, s.UseDirectSupervisor, s.UseApplicantDesignated, s.DesignatedRequiresDepartment, s.Note
+                   s.UseApplicantDepartment, s.UseDirectSupervisor, s.UseApplicantDesignated, s.DesignatedRequiresDepartment, s.MinDays, s.Note
             FROM ApprovalItems ai
             LEFT JOIN Departments dd  ON ai.DepartmentId = dd.Id
             LEFT JOIN ApprovalSteps s ON ai.Id = s.ApprovalItemId
@@ -88,7 +88,7 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
             SELECT ai.Id, ai.Name, ai.Code, ai.Description, ai.IsActive, ai.ApplicationType, ai.DepartmentId, dd.Name AS ItemDepartmentName, ai.CreatedAt,
                    s.Id AS StepId, s.StepOrder, s.DepartmentId AS StepDepartmentId, d.Name AS DepartmentName,
                    s.JobTitleId, j.Name AS JobTitleName,
-                   s.UseApplicantDepartment, s.UseDirectSupervisor, s.UseApplicantDesignated, s.DesignatedRequiresDepartment, s.Note
+                   s.UseApplicantDepartment, s.UseDirectSupervisor, s.UseApplicantDesignated, s.DesignatedRequiresDepartment, s.MinDays, s.Note
             FROM ApprovalItems ai
             LEFT JOIN Departments dd  ON ai.DepartmentId = dd.Id
             LEFT JOIN ApprovalSteps s ON ai.Id = s.ApprovalItemId
@@ -123,7 +123,8 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
                     (bool)(row.UseDirectSupervisor ?? false),
                     (bool)(row.UseApplicantDesignated ?? false),
                     (string?)row.Note,
-                    (bool)(row.DesignatedRequiresDepartment ?? false)));
+                    (bool)(row.DesignatedRequiresDepartment ?? false),
+                    (int?)row.MinDays));
             }
         }
 

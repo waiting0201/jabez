@@ -11,6 +11,9 @@ public interface IApprovalNotificationService
         int    targetStepOrder,
         Guid   applicantId);
 
+    /// <summary>請假送出後，通知被指定的職務代理人（僅記錄 + 通知，不參與簽核）。</summary>
+    Task NotifyLeaveAgentAsync(int leaveRequestId);
+
     /// <summary>通知申請人審核結果（核准/退回/拒絕）。</summary>
     Task NotifyApplicantAsync(
         string  applicationType,

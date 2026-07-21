@@ -26,13 +26,22 @@ public sealed class LeaveRequestHandler(
     ILeaveRequestReadService reader,
     IJwtService jwtService,
     IApprovalNotificationService notifier,
-    IApprovalFlowService approvalFlow)
+    IApprovalFlowService approvalFlow,
+    ICalendarDayReadService calendarReader)
 {
     private static readonly HashSet<string> ValidLeaveTypes =
         ["annual", "personal", "sick", "compensatory", "marriage", "bereavement",
          "official", "maternity", "miscarriage_3m", "miscarriage_2to3m",
          "miscarriage_under2m", "prenatal_checkup", "paternity",
          "ceremonial_festival", "senior_executive", "menstrual"];
+
+    /// <summary>
+    /// 工作日型假別：天數以「扣除國定假日與六日後的實際工作日」計算（前端顯示請假日清單、後端 Day 單位權威重算）。
+    /// 產假 / 婚假 / 喪假 / 流產假系列 / 歲時祭儀 / 生理假等依法為「連續日曆天」，不在此清單、不扣假日。
+    /// 前端 WORKING_DAY_LEAVE_TYPES 須與此保持同步。
+    /// </summary>
+    private static readonly HashSet<string> WorkingDayLeaveTypes =
+        ["annual", "personal", "sick", "compensatory", "official", "senior_executive"];
 
     /// <summary>各假別時間單位對應</summary>
     private static readonly Dictionary<string, LeaveTimeUnit> TimeUnitMap = new()
@@ -139,6 +148,69 @@ public sealed class LeaveRequestHandler(
         return new OkObjectResult(ApiResponse.Ok(item));
     }
 
+    /// <summary>
+    /// 依起迄日回傳「扣除國定假日與六日後的實際請假日清單與天數」（供表單即時顯示）。
+    /// 工作日型假別才扣假日；法定連續日曆天假別回整段日曆天。任何登入者可呼叫（免 calendar-days:read）。
+    /// GET /leave-requests/working-days?start=&amp;end=&amp;leaveType=
+    /// </summary>
+    public async Task<IActionResult> GetWorkingDaysAsync(HttpRequest req)
+    {
+        await GetUserIdAsync(req); // 僅需登入身分
+
+        if (!DateTime.TryParse(req.Query["start"], out var start) ||
+            !DateTime.TryParse(req.Query["end"], out var end))
+            return new BadRequestObjectResult(ApiResponse.Fail("請提供有效的 start / end 日期。"));
+        if (end.Date < start.Date)
+            return new BadRequestObjectResult(ApiResponse.Fail("結束日不得早於開始日。"));
+        if ((end.Date - start.Date).Days > 366)
+            return new BadRequestObjectResult(ApiResponse.Fail("日期區間過長。"));
+
+        var leaveType = req.Query["leaveType"].ToString();
+
+        // 非工作日型假別（法定連續日曆天，如產假 / 婚假 / 喪假）→ 不扣假日，整段日曆天皆為請假日
+        if (!string.IsNullOrEmpty(leaveType) && !WorkingDayLeaveTypes.Contains(leaveType))
+        {
+            var all = EnumerateDates(start.Date, end.Date).ToList();
+            return new OkObjectResult(ApiResponse.Ok(new WorkingDaysDto(true, [], all, all.Count)));
+        }
+
+        var (hasData, holidays, working) = await ComputeWorkingDatesAsync(start, end);
+        return new OkObjectResult(ApiResponse.Ok(new WorkingDaysDto(hasData, holidays, working, working.Count)));
+    }
+
+    private static IEnumerable<DateTime> EnumerateDates(DateTime start, DateTime end)
+    {
+        for (var d = start.Date; d <= end.Date; d = d.AddDays(1))
+            yield return d;
+    }
+
+    /// <summary>
+    /// 計算 [start, end] 內的請假日 / 假日清單。
+    /// 行事曆有資料 → 以 CalendarDay.IsHoliday（已含六日 + 國定假、補班六為工作日）為準；
+    /// 無資料 → 退回以星期六日判定（僅扣六日，國定假需匯入行事曆才會扣）。
+    /// </summary>
+    private async Task<(bool hasData, List<DateTime> holidays, List<DateTime> working)>
+        ComputeWorkingDatesAsync(DateTime start, DateTime end)
+    {
+        var s = start.Date;
+        var e = end.Date;
+        var hasData = await calendarReader.HasDataForRangeAsync(s, e);
+        var holidaySet = hasData
+            ? (await calendarReader.GetHolidayDatesAsync(s, e)).Select(d => d.Date).ToHashSet()
+            : [];
+
+        var holidays = new List<DateTime>();
+        var working  = new List<DateTime>();
+        foreach (var d in EnumerateDates(s, e))
+        {
+            bool isHoliday = hasData
+                ? holidaySet.Contains(d)
+                : d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+            if (isHoliday) holidays.Add(d); else working.Add(d);
+        }
+        return (hasData, holidays, working);
+    }
+
     public async Task<IActionResult> CreateAsync(HttpRequest req)
     {
         // BUG-04: EmployeeId 由 JWT 中的 sub claim 決定，不信任客戶端傳入的值
@@ -238,6 +310,14 @@ public sealed class LeaveRequestHandler(
             },
         };
 
+        // 工作日型 Day 假別（如公假）：扣除國定假日與六日，天數以實際工作日計。
+        // 草稿階段行事曆若尚無資料 → 退回原始日曆天（送出時會強制要求行事曆並權威重算）。
+        if (unit == LeaveTimeUnit.Day && WorkingDayLeaveTypes.Contains(body.LeaveType))
+        {
+            var (_, _, working) = await ComputeWorkingDatesAsync(effectiveStart, effectiveEnd);
+            hours = working.Count * 8m;
+        }
+
         if (hours <= 0)
             return new BadRequestObjectResult(ApiResponse.Fail("時數必須大於 0。"));
         if (unit == LeaveTimeUnit.HalfDay && hours % 4m != 0m)
@@ -271,6 +351,7 @@ public sealed class LeaveRequestHandler(
             Hours                   = hours,
             Reason                  = body.Reason,
             BereavementRelationship = body.LeaveType == "bereavement" ? body.BereavementRelationship : null,
+            AgentUserId             = body.AgentUserId == employeeId ? null : body.AgentUserId,  // 代理人不可為本人
             ApprovalStatus          = "draft",
             CreatedAt               = Clock.Now,
         };
@@ -340,6 +421,9 @@ public sealed class LeaveRequestHandler(
         if (body.EndDate.HasValue)   item.EndDate   = body.EndDate.Value;
         if (body.Reason is not null) item.Reason    = body.Reason;
 
+        // 職務代理人更新（表單一律帶完整值；不可為本人）
+        item.AgentUserId = body.AgentUserId == item.EmployeeId ? null : body.AgentUserId;
+
         // 喪假親屬關係更新
         var effectiveLeaveType = item.LeaveType;
         if (effectiveLeaveType == "bereavement")
@@ -403,6 +487,12 @@ public sealed class LeaveRequestHandler(
                 LeaveTimeUnit.Day     => ((item.EndDate.Date - item.StartDate.Date).Days + 1) * 8m,
                 _                     => (decimal)(item.EndDate - item.StartDate).TotalHours,
             };
+            // 工作日型 Day 假別：扣除國定假日與六日，天數以實際工作日計（草稿階段無行事曆資料則退回原始日曆天）
+            if (unit == LeaveTimeUnit.Day && WorkingDayLeaveTypes.Contains(effectiveLeaveType))
+            {
+                var (_, _, working) = await ComputeWorkingDatesAsync(item.StartDate, item.EndDate);
+                recalcHours = working.Count * 8m;
+            }
             if (recalcHours <= 0)
                 return new BadRequestObjectResult(ApiResponse.Fail("時數必須大於 0。"));
             if (unit == LeaveTimeUnit.HalfDay && recalcHours % 4m != 0m)
@@ -791,6 +881,19 @@ public sealed class LeaveRequestHandler(
                 return new BadRequestObjectResult(ApiResponse.Fail(eligError));
         }
 
+        // 工作日型 Day 假別（如公假）：送出時強制要求行事曆已匯入並權威重算 Hours（扣國定假日與六日）。
+        // 確保後續 requestDays（Hours/8）分流與天數上限驗證皆以正確工作日為準。
+        if (GetTimeUnit(item.LeaveType) == LeaveTimeUnit.Day && WorkingDayLeaveTypes.Contains(item.LeaveType))
+        {
+            var (hasData, _, working) = await ComputeWorkingDatesAsync(item.StartDate, item.EndDate);
+            if (!hasData)
+                return new BadRequestObjectResult(ApiResponse.Fail(
+                    $"尚未匯入 {item.StartDate:yyyy} 年行事曆，無法計算扣除假日後的請假天數，請先於「行事曆設定」匯入。"));
+            if (working.Count == 0)
+                return new BadRequestObjectResult(ApiResponse.Fail("此區間全為國定假日或六日，無可請假的工作日。"));
+            item.Hours = working.Count * 8m;
+        }
+
         // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
         if (item.ApprovalStatus == "returned")
         {
@@ -846,6 +949,7 @@ public sealed class LeaveRequestHandler(
             item.ReviewedById     = userId;
             item.ReviewNote       = "系統自動核准（Superadmin）";
             await db.SaveChangesAsync();
+            await notifier.NotifyLeaveAgentAsync(item.Id);
             var saDto = await reader.GetByIdAsync(item.Id);
             return new OkObjectResult(ApiResponse.Ok(saDto, "Leave request auto-approved."));
         }
@@ -861,9 +965,11 @@ public sealed class LeaveRequestHandler(
         // 查詢指定審核者清單傳給 ResolveStartingStepAsync（含 ApprovalStepOrder 綁定步驟）
         var designatedReviewers = await DesignatedReviewerHelper.ReadForFlowAsync(db, "leave", item.Id);
 
-        // 解析審核步驟（含升級審核邏輯）
+        // 解析審核步驟（含升級審核邏輯）；帶入申請天數（Hours/8）供 MinDays 天數門檻分流
+        // （例：<3 天只走單位主管；≥3 天含部門最高主管 + 總監）
         var (startStep, autoApproved, escalation) =
-            await approvalFlow.ResolveStartingStepAsync(item.ApprovalItemId, userId, "leave", designatedReviewers);
+            await approvalFlow.ResolveStartingStepAsync(item.ApprovalItemId, userId, "leave", designatedReviewers,
+                requestDays: item.Hours / 8m);
 
         if (autoApproved)
         {
@@ -922,6 +1028,9 @@ public sealed class LeaveRequestHandler(
                     await notifier.NotifyReviewersAsync("leave", item.Id, item.ApprovalItemId, startStep, userId);
             }
         }
+
+        // 通知職務代理人（若有指定；僅知會、不參與簽核）
+        await notifier.NotifyLeaveAgentAsync(item.Id);
 
         var dto = await reader.GetByIdAsync(item.Id);
         var msg = autoApproved ? "Leave request auto-approved." : "Leave request submitted.";
