@@ -54,8 +54,8 @@ export class OvertimeRequestForm implements OnInit {
   taskCurrentStepOrder = 0;
   taskStatus = '';
 
-  /** 已勾選的專案 ID 集合 */
-  selectedProjectIds = new Set<number>();
+  /** 已選取的專案 ID（單選；null 為未選） */
+  selectedProjectId: number | null = null;
   /** 檢視模式時顯示的專案編號 */
   displayProjectCodes: string[] = [];
   /** 檢視模式時顯示的專案編號 + 名稱（code - name） */
@@ -120,7 +120,7 @@ export class OvertimeRequestForm implements OnInit {
       this.cdr.markForCheck();
     });
 
-    this.projects$.getActive().subscribe({
+    this.projects$.getActiveAll().subscribe({
       next: p => {
         this.projects = p;
         this.loadingProjects = false;
@@ -145,8 +145,8 @@ export class OvertimeRequestForm implements OnInit {
           estimatedHours: r.estimatedHours,
           reason:         r.reason,
         });
-        if (r.projectIds) {
-          r.projectIds.forEach(id => this.selectedProjectIds.add(id));
+        if (r.projectIds?.length) {
+          this.selectedProjectId = r.projectIds[0];
         }
         if (r.projectCodes) {
           this.displayProjectCodes = r.projectCodes;
@@ -177,13 +177,10 @@ export class OvertimeRequestForm implements OnInit {
     }
   }
 
-  toggleProject(projectId: number) {
+  selectProject(projectId: number) {
     if (this.isReadOnly) return;
-    if (this.selectedProjectIds.has(projectId)) {
-      this.selectedProjectIds.delete(projectId);
-    } else {
-      this.selectedProjectIds.add(projectId);
-    }
+    // 再次點擊已選取者 → 取消選取（可清空）
+    this.selectedProjectId = this.selectedProjectId === projectId ? null : projectId;
   }
 
   /** 儲存（草稿或更新，不改變狀態） */
@@ -241,7 +238,7 @@ export class OvertimeRequestForm implements OnInit {
 
   private _buildPayload() {
     const v = this.form.value;
-    const ids = Array.from(this.selectedProjectIds);
+    const ids = this.selectedProjectId != null ? [this.selectedProjectId] : [];
     const codes = ids.map(id => this.projects.find(p => p.id === id)?.code).filter(Boolean) as string[];
     const reviewers = this._pickerPayload;
     return {

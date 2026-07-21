@@ -73,22 +73,22 @@
             </div>
 
             <div class="mb-4">
-              <label class="form-label fw-500">關聯專案（可多選）</label>
+              <label class="form-label fw-500">關聯專案（單選）</label>
               @if (isReadOnly) {
                 <p class="form-control-plaintext fw-500 font-monospace mb-0">{{ displayProjectLabels.join(', ') || '—' }}</p>
               } @else if (loadingProjects) {
                 <p class="text-muted small mb-0">載入中…</p>
               } @else if (projects.length === 0) {
-                <p class="text-muted small mb-0">您目前可申請的專案清單為空，請聯絡主管或確認部門設定。</p>
+                <p class="text-muted small mb-0">目前無可選專案，請聯絡主管或確認部門設定。</p>
               } @else {
                 <div class="flex flex-wrap gap-2">
                   @for (p of projects; track p.id) {
                     <label class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer"
-                           [class.border-primary]="selectedProjectIds.has(p.id)"
-                           [class.bg-primary-subtle]="selectedProjectIds.has(p.id)">
-                      <input type="checkbox" class="form-check-input m-0"
-                             [checked]="selectedProjectIds.has(p.id)"
-                             (change)="toggleProject(p.id)">
+                           [class.border-primary]="selectedProjectId === p.id"
+                           [class.bg-primary-subtle]="selectedProjectId === p.id">
+                      <input type="radio" class="form-check-input m-0" name="project"
+                             [checked]="selectedProjectId === p.id"
+                             (click)="selectProject(p.id)">
                       <span class="small fw-500">{{ p.code }} - {{ p.name }}{{ p.departmentName ? '（' + p.departmentName + '）' : '' }}</span>
                     </label>
                   }
@@ -118,6 +118,10 @@
               指定審核者
             </div>
             <div class="card-body">
+              <div class="alert alert-info flex items-center gap-2 py-2 mb-4">
+                <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+                <span class="small">如支援其他部門專案，第一位審核者請填寫「該專案協理」，第二位審核者請選擇「自部門協理」。</span>
+              </div>
               <app-designated-reviewers-picker
                 [designatedSteps]="designatedSteps"
                 [users]="allUsers"

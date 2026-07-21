@@ -198,7 +198,7 @@ Admin/src/app/
     │   ├── travel-payment-requests/ # 出差請款申請（小額已代墊直接請款，無沖銷）
     │   ├── travel-requests/   # 出差預支申請（走沖銷流程）
     │   ├── holiday-travel-requests/ # 假日執行活動申請（共用 TravelRequest entity，IsHolidayTravel=true，計入假日津貼；參與人員可逐日勾選個人參與日期，未勾選＝全程參與）
-    │   ├── overtime-requests/ # 加班申請（走簽核流程）
+    │   ├── overtime-requests/ # 加班申請（走簽核流程；關聯專案改單選 radio 且可瀏覽全部未結案專案 /projects/active?all=true 支援跨部門；指定審核者卡片加註「跨部門支援時第一審核者填該專案協理、第二審核者選自部門協理」）
     │   ├── advance-requests/  # 預支申請
     │   ├── write-off-requests/ # 預支沖銷申請（獨立簽核流程；明細下方含整單批次附件上傳，共用 shared/components/attachments-upload）
     │   ├── travel-write-off-requests/ # 出差預支沖銷申請（獨立簽核流程）

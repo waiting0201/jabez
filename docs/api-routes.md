@@ -87,6 +87,7 @@
 | Method | Path | 說明 |
 |--------|------|------|
 | GET/POST | `/projects` | 專案列表 / 新增 |
+| GET | `/projects/active` | 未結案專案下拉（輕量端點，免 `projects:read`）；預設依部門可見範圍過濾，帶 `?all=true` 不過濾（加班申請跨部門支援用） |
 | GET/PUT/PATCH/DELETE | `/projects/{id}` | 專案 CRUD |
 
 ## 請款 / 請假 / 出差 / 加班 / 預支申請
