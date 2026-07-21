@@ -13,7 +13,12 @@ public sealed class DepartmentReadService(IDbConnection db) : IDepartmentReadSer
                    p.Name AS ParentName, d.SortOrder,
                    d.CanViewSiblings, d.CanSeeAll, d.CanViewDescendants, d.CanViewParent,
                    d.CreatedAt,
-                   COUNT(u.Id) AS EmployeeCount
+                   COUNT(u.Id) AS EmployeeCount,
+                   (SELECT STRING_AGG(u2.Name, ', ') WITHIN GROUP (ORDER BY ISNULL(jt2.Level, 2147483647), u2.Name)
+                      FROM Users u2
+                      LEFT JOIN JobTitles jt2 ON u2.JobTitleId = jt2.Id
+                      WHERE u2.DepartmentId = d.Id
+                        AND u2.IsSuperAdmin = 0) AS EmployeeNames
             FROM Departments d
             LEFT JOIN Departments p ON d.ParentId = p.Id
             LEFT JOIN Users u       ON u.DepartmentId = d.Id
@@ -37,7 +42,8 @@ public sealed class DepartmentReadService(IDbConnection db) : IDepartmentReadSer
             (bool)row.CanViewDescendants,
             (bool)row.CanViewParent,
             (int)row.EmployeeCount,
-            (DateTime)row.CreatedAt));
+            (DateTime)row.CreatedAt,
+            (string?)row.EmployeeNames));
     }
 
     public async Task<DepartmentDto?> GetByIdAsync(int id)
@@ -47,7 +53,12 @@ public sealed class DepartmentReadService(IDbConnection db) : IDepartmentReadSer
                    p.Name AS ParentName, d.SortOrder,
                    d.CanViewSiblings, d.CanSeeAll, d.CanViewDescendants, d.CanViewParent,
                    d.CreatedAt,
-                   COUNT(u.Id) AS EmployeeCount
+                   COUNT(u.Id) AS EmployeeCount,
+                   (SELECT STRING_AGG(u2.Name, ', ') WITHIN GROUP (ORDER BY ISNULL(jt2.Level, 2147483647), u2.Name)
+                      FROM Users u2
+                      LEFT JOIN JobTitles jt2 ON u2.JobTitleId = jt2.Id
+                      WHERE u2.DepartmentId = d.Id
+                        AND u2.IsSuperAdmin = 0) AS EmployeeNames
             FROM Departments d
             LEFT JOIN Departments p ON d.ParentId = p.Id
             LEFT JOIN Users u       ON u.DepartmentId = d.Id
@@ -72,6 +83,7 @@ public sealed class DepartmentReadService(IDbConnection db) : IDepartmentReadSer
             (bool)row.CanViewDescendants,
             (bool)row.CanViewParent,
             (int)row.EmployeeCount,
-            (DateTime)row.CreatedAt);
+            (DateTime)row.CreatedAt,
+            (string?)row.EmployeeNames);
     }
 }

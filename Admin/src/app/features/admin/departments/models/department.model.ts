@@ -11,5 +11,6 @@ export interface Department {
   canViewDescendants: boolean;
   canViewParent: boolean;
   employeeCount: number;
+  employeeNames?: string;
   createdAt: Date;
 }

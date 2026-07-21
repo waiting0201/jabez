@@ -13,7 +13,8 @@ public sealed record DepartmentDto(
     bool     CanViewDescendants,
     bool     CanViewParent,
     int      EmployeeCount,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string?  EmployeeNames);
 
 public sealed record CreateDepartmentRequest(
     string  Name,
