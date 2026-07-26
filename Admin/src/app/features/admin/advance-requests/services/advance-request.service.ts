@@ -43,6 +43,23 @@ export class AdvanceRequestService {
     );
   }
 
+  // ── 追加預支批次 ──────────────────────────────────────────────────────────
+
+  /** 新增追加預支批次並直接送簽（僅已核准且未結案、無進行中追加的預支單）*/
+  createSupplement(id: number, formData: FormData): Observable<AdvanceRequest> {
+    return this.http.post<AdvanceRequest>(`${this.base}/${id}/supplements`, formData);
+  }
+
+  /** 編輯被退回的追加批次（不送簽，之後另外呼叫 submit）*/
+  updateSupplement(id: number, roundNo: number, formData: FormData): Observable<AdvanceRequest> {
+    return this.http.patch<AdvanceRequest>(`${this.base}/${id}/supplements/${roundNo}`, formData);
+  }
+
+  /** 放棄追加批次：原預支單還原為已核准 */
+  deleteSupplement(id: number, roundNo: number): Observable<AdvanceRequest> {
+    return this.http.delete<AdvanceRequest>(`${this.base}/${id}/supplements/${roundNo}`);
+  }
+
   // ── 沖銷 ──────────────────────────────────────────────────────────────────
 
   getWriteOffs(id: number): Observable<WriteOffRecord[]> {

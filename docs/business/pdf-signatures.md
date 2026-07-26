@@ -13,6 +13,7 @@
    - `departmentName` 含「會計」→ `會計`
    - 其他 → `note` || `departmentName` || `jobTitleName` || `Step N`
 4. **未審核的 step 渲染為空欄**（保留位置）
+5. **簽核批次過濾（`roundNo`，2026-07 新增）**：`buildDynamicSignBlocks` 進入點先以 `opts.roundNo ?? 1` 過濾 `records`（`(r.roundNo ?? 1) === roundNo`）。**追加預支**時同一張單會有多輪簽核紀錄併存，不過濾的話 `records.find(r => r.stepOrder === …)` 永遠取到第 1 輪 → **PDF 會印出前一輪的簽章與日期**。`AdvancePdfService` 傳入 `r.currentRoundNo`；其餘 6 個 PDF 不傳（預設 1，行為不變）
 
 ## 指定簽核者（`useApplicantDesignated`）特殊處理
 

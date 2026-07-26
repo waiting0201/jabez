@@ -15,12 +15,14 @@ public interface IApprovalNotificationService
     Task NotifyLeaveAgentAsync(int leaveRequestId);
 
     /// <summary>通知申請人審核結果（核准/退回/拒絕）。</summary>
+    /// <param name="contextLabel">附加在申請類型名稱後的說明（追加預支用，如「（第 2 次追加）」）。</param>
     Task NotifyApplicantAsync(
         string  applicationType,
         int     applicationId,
         Guid    applicantId,
         string  action,
-        string? reviewNote);
+        string? reviewNote,
+        string? contextLabel = null);
 
     /// <summary>通知指定的升級審核者有新的待審申請。</summary>
     Task NotifySpecificReviewerAsync(

@@ -129,8 +129,11 @@
 | PATCH | `/overtime-requests/{id}/submit` | 送出加班申請（draft → pending） |
 | GET/POST | `/advance-requests` | 預支申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/advance-requests/{id}` | 預支申請 CRUD |
-| PATCH | `/advance-requests/{id}/submit` | 送出預支申請（draft → pending） |
-| PATCH | `/advance-requests/{id}/installments` | upsert 分期撥款（同 PaymentRequest 行為） |
+| PATCH | `/advance-requests/{id}/submit` | 送出預支申請（draft → pending）；追加批次被退回後也走此端點重送 |
+| POST | `/advance-requests/{id}/supplements` | **新增追加預支批次並直接送簽**（無草稿階段）。僅 `approved && !IsClosed && 無進行中追加`；multipart 帶 `advanceDate` / `reason` / `items` / `files`；明細寫入 `RoundNo = CurrentRoundNo + 1`，併入父單總額後重跑同一份 advance 簽核流程 |
+| PATCH | `/advance-requests/{id}/supplements/{roundNo}` | 編輯被退回的追加批次（僅 `returned` 且 `roundNo == CurrentRoundNo`）；只替換該批次明細，不送簽 |
+| DELETE | `/advance-requests/{id}/supplements/{roundNo}` | 放棄追加批次（僅 `returned` 且 `roundNo == CurrentRoundNo`）；刪該批次明細/Blob/簽核紀錄，父單還原為 `approved` |
+| PATCH | `/advance-requests/{id}/installments` | upsert 分期撥款（同 PaymentRequest 行為）；追加核准後 SUM 須等於**新**總額 |
 | PATCH | `/travel-requests/{id}/installments` | upsert 分期撥款（同 PaymentRequest 行為） |
 
 ## 預支沖銷申請

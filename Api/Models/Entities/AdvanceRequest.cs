@@ -14,6 +14,9 @@ public class AdvanceRequest
     public decimal   GrandTotal        { get; set; }
     public string    ApprovalStatus    { get; set; } = "draft";
     public int       CurrentStepOrder  { get; set; } = 1;
+    /// <summary>最新（已建立）的預支批次號。1 = 僅原始預支；&gt; 1 = 已有追加批次。
+    /// 「有進行中的追加」＝ CurrentRoundNo &gt; 1 且 ApprovalStatus 為 pending / returned。</summary>
+    public int       CurrentRoundNo    { get; set; } = 1;
     public Guid?     SubmittedById     { get; set; }
     public DateTime? ReviewedAt        { get; set; }
     public string?   ReviewNote        { get; set; }
@@ -43,4 +46,5 @@ public class AdvanceRequest
     public ICollection<AdvanceRequestItem>          Items        { get; set; } = [];
     public ICollection<WriteOffRecord>              WriteOffs    { get; set; } = [];
     public ICollection<AdvanceRequestInstallment>   Installments { get; set; } = [];
+    public ICollection<AdvanceRequestSupplement>    Supplements  { get; set; } = [];
 }

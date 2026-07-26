@@ -11,6 +11,7 @@ import {AttachmentsList} from '../../../../../shared/components/attachments-list
 import {AuthService} from '../../../../../core/auth/services/auth.service';
 import {PaymentRequestService} from '../../../payment-requests/services/payment-request.service';
 import {AdvanceRequestService} from '../../../advance-requests/services/advance-request.service';
+import {roundLabel} from '../../../advance-requests/models/advance-request.model';
 import {AdvancePdfService} from '../../../advance-requests/services/advance-pdf.service';
 import {WriteOffRequestService} from '../../../write-off-requests/services/write-off-request.service';
 import {WriteOffPdfService} from '../../../write-off-requests/services/write-off-pdf.service';
@@ -301,15 +302,13 @@ export class ApprovalTaskReview implements OnInit {
     return this.getInstallmentTotal(task) - this.installmentsSumExcludingRow(index);
   }
 
-  /** 是否可新增一期：SUM < 申請總額（≥ 時禁用以避免新增 0 元空期）；FullyPaid 後也禁用 */
+  /**
+   * 是否可新增一期：SUM < 申請總額（≥ 時禁用以避免新增 0 元空期）。
+   * 不可再加上 FullyPaid 判斷 —— 預支追加後總額會變大，
+   * 原本已全額撥款的單仍需補一期把新增金額排入，否則湊不到 SUM==總額 而卡死簽核。
+   */
   canAddInstallmentRow(task: ApprovalTask): boolean {
-    if (this.isFullyPaid(task)) return false;
     return this.installmentsSum() < this.getInstallmentTotal(task) - 0.01;
-  }
-
-  /** 是否已全數撥款（FullyPaid）— 所有列都鎖定，無可修改 */
-  isFullyPaid(task: ApprovalTask): boolean {
-    return this.getPaymentStatus(task) === 'FullyPaid';
   }
 
   /** 送出 upsert（4 種類型各自 dispatch 到對應 service）*/
@@ -525,6 +524,14 @@ export class ApprovalTaskReview implements OnInit {
   /** 計算陣列中指定數值欄位的加總 */
   sumField<T>(items: T[], field: keyof T): number {
     return items.reduce((acc, item) => acc + (item[field] as unknown as number), 0);
+  }
+
+  /** 追加預支批次標籤（與詳情頁 / PDF 共用同一份定義） */
+  readonly roundLabel = roundLabel;
+
+  /** 明細列是否為該批次第一列（同批次第二列起批次欄留白） */
+  isFirstOfRound(items: {roundNo: number}[], index: number): boolean {
+    return index === 0 || items[index - 1].roundNo !== items[index].roundNo;
   }
 
   submit(task: ApprovalTask) {

@@ -26,7 +26,7 @@
 | 1 | 請款申請 | `/admin/payment-requests` | `/payment-requests` / `payment_request` | **Group B 首位跳過** | 一般費用請款（含發票明細）；走簽核 + 撥款。**Type=`vendor` 時必須選擇 `Vendor` 主檔（廠商管理 `/admin/vendors`），找不到時可從表單即時新增**；**Type=`general`（一般請款）明細下方可批次上傳整單附件（照片 / PDF）** |
 | 2 | 請假申請 | `/admin/leave-requests` | `/leave-requests` / `leave` | **Group A 全程禁止** | 16 種假別；走簽核（無撥款） |
 | 3 | 加班申請 | `/admin/overtime-requests` | `/overtime-requests` / `overtime` | **Group A 全程禁止** | 加班預申請；走簽核（無撥款） |
-| 4 | 預支申請 | `/admin/advance-requests` | `/advance-requests` / `advance` | **Group B 首位跳過** | 費用預支；走簽核 + 撥款，**事後須沖銷** |
+| 4 | 預支申請 | `/admin/advance-requests` | `/advance-requests` / `advance` | **Group B 首位跳過** | 費用預支；走簽核 + 撥款，**事後須沖銷**；支援**追加預支**（已核准單可再加批次，重跑同一份簽核流程，見 [approval-flow.md](approval-flow.md#追加預支重跑簽核2026-07-新增)） |
 | 5 | 出差預支申請 | `/admin/travel-requests` | `/travel-requests` / `travel` | **Group A 全程禁止** | 出差預支款項；走簽核 + 撥款，**事後走沖銷流程** |
 
 ## 出差類申請表（2 種）
@@ -54,7 +54,8 @@
 ## 流程關係圖
 
 ```
-預支申請        ──→  預支沖銷申請（事後沖銷）
+預支申請  ──(可多次追加，同一張單)──→  第 2/3/… 次追加批次（重跑簽核）
+預支申請        ──→  預支沖銷申請（事後沖銷；沖銷基準 = 含追加的總額）
 出差預支申請    ──→  出差預支沖銷申請（事後沖銷）
 出差請款申請    ──→  （無沖銷，小額代墊直接請款）
 請款 / 加班 / 請假 / 假日執行活動  ──→  獨立流程，無沖銷

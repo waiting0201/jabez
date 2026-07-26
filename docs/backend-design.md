@@ -385,6 +385,8 @@ await strategy.ExecuteAsync(async () =>
 
 範例：[DesignatedReviewerHelper](../Api/Common/DesignatedReviewerHelper.cs)（申請人指定審核者）— 9 種申請類型的 `SubmitAsync` / `Create` / `Update` 共用 `BuildEntities`（由請求建實體）/ `ReadForFlowAsync`（讀回傳給 `ResolveStartingStepAsync`）/ `ValidateAndNormalizeAsync`（送單時把未綁定的 `ApprovalStepOrder=0` 正規化成唯一 designated step 的 StepOrder，並驗證每個指定步驟皆有 designee）。`ValidateAndNormalizeAsync` 只改 tracked entity，呼叫端隨後 `SaveChanges`。一條流程多個 `UseApplicantDesignated` 步驟時，每筆 designee 以 `ApprovalStepOrder` 綁定步驟，引擎所有 designee 查詢一律加 `ApprovalStepOrder == CurrentStepOrder`（[ApprovalTaskHandler](../Api/Handlers/ApprovalTaskHandler.cs) / [ApprovalFlowService](../Api/Services/ApprovalFlowService.cs) / [PaymentRequestReadService](../Api/Services/Dapper/PaymentRequestReadService.cs) StepMatch 三者條件須同步）。
 
+範例：[AdvanceSupplementService.RollbackAsync](../Api/Services/AdvanceSupplementService.cs)（追加預支回滾）— 「駁回」（`ApprovalTaskHandler` advance 分支）與「主動放棄」（`DELETE /advance-requests/{id}/supplements/{n}`）兩個入口共用。回傳需在 `SaveChanges` **之後**刪除的 blob 名稱清單（blob 刪除不可進 DB 交易，失敗也不該讓交易 rollback）。⚠️ 由駁回進來時，本次駁回的 `ApprovalRecord` 還在 ChangeTracker 尚未寫入 DB，`Where(...).ToListAsync()` 抓不到，必須另外掃 `ChangeTracker.Entries<T>()` 把 `Added` 狀態的同批次紀錄 `Detach`，否則 SaveChanges 會留下指向已刪除批次的孤兒紀錄。
+
 **部門最高層級抑制（單一真相）**：同檔 `GetSuppressedDesignatedStepOrdersAsync(db, approvalItemId, designatedReviewers)` 為送單驗證與簽核解析共用的判定 — 若第一個指定步驟為 `DesignatedRequiresDepartment=true` 且其首位 designee ＝所選部門（`SelectedDepartmentId`）中 active／非 superadmin／有職稱者最高職稱（min `JobTitle.Level`）本人 → 回傳其後所有指定步驟 StepOrder 為「被抑制」集合。三處呼叫：`ValidateAndNormalizeAsync`（被抑制步驟不要求 designee）、`ResolveStartingStepAsync` 與 `SkipUnreviewableStepsAsync`（被抑制步驟走「乾淨跳過、不寫代簽」）。判定放靜態 helper 而非 `ApprovalFlowService` 私有方法，是為了讓 static 的 `ValidateAndNormalizeAsync` 也能共用同一份邏輯。
 
 ---
@@ -772,6 +774,26 @@ public sealed class GcisService(HttpClient http, ILogger<GcisService> logger) : 
 - **修法**：[AppRouter.cs](../Api/Routing/AppRouter.cs) 加 `("GET", ["<resource>", "<sub>"]) => null` 路由 + Handler + Reader，前端改呼叫此端點
 
 > **歷史教訓**（2026-05）：所有 9 種申請表單的「指定審核者」欄位都呼叫 `GET /approval-items`（需 `approvals:read`），導致無此權限的員工看不到欄位。最後以 `GET /approval-items/active?type=` 解決。Code Review 看到一般員工頁面呼叫 admin CRUD 端點，要立刻警覺。
+
+---
+
+## 13.5 父單多批次（Round）模式
+
+**目前唯一採用者：追加預支**（[AdvanceRequestHandler](../Api/Handlers/AdvanceRequestHandler.cs) + [AdvanceSupplementService](../Api/Services/AdvanceSupplementService.cs)）。當「已核准的單需要再追加內容，且追加要重跑簽核、金額要併回原單」時採用此模式，而非開一種新申請類型。
+
+**設計原則：**
+
+1. **批次表只存 ≥2**：Round 1 就是父單本身（父單的 `AdvanceDate` + `RoundNo=1` 的明細），批次表只存追加批次 → 零資料重複、migration 免 backfill。
+2. **批次表不存金額**：各批次金額一律由 `SUM(子表 WHERE RoundNo = N)` 推導（同 CLAUDE.md「分期撥款單一真相」精神）。父表的 `GrandTotal` 是全批次加總，仍保留（撥款驗證、沖銷餘額、報表都吃它）。
+3. **`CurrentRoundNo` 用 NOT NULL DEFAULT 1，不要用 nullable「PendingRoundNo」**：nullable 版本在「批次核准後歸 null」時會退化成 1，讓 SQL 去重子查詢比對到錯誤批次。
+4. **回滾快照**：批次表帶 `Prev*` 欄位快照父單送出前的核准狀態（`CurrentStepOrder / ReviewedAt / ReviewedById / ReviewNote`），駁回時原樣還原 —— 不要試圖從歷史紀錄推導。
+5. **`ApprovalRecord.RoundNo` 為多型共用欄位**：`DEFAULT 1` 讓其餘 9 種申請與既有資料自動相容。
+6. **⚠️ 新增批次時重算父表總額，不可 `ar.Items.Concat(newItems)`**：`db.AddRange` 後 EF 的 change-tracker fixup 會把 newItems 補進 `ar.Items`，直接 Concat 會**重複計算**。一律寫 `ar.Items.Where(i => i.RoundNo != roundNo).Concat(newItems)`。
+7. **「此人已審過」的判定一律加批次條件**：見 [approval-flow.md 追加預支重跑簽核](business/approval-flow.md#追加預支重跑簽核2026-07-新增) 列出的四處；批次由 `AdvanceSupplementService.ResolveCurrentRoundAsync(db, appType, appId)` 解析（非 advance 恆回 1）。**新增任何「查 ApprovalRecords 判斷是否已審」的程式碼時，必須加進該清單。**
+8. **父單編輯 / 刪除守門**：有進行中批次時（`CurrentRoundNo > 1 && status ∈ {pending, returned}`）禁止整單 `PATCH` / `DELETE` —— 批次被退回時父單狀態是 `returned`，不擋的話申請人可以改掉甚至刪掉已核准、已撥款的原始內容。
+9. **必須提供「放棄批次」出路**：否則批次被退回而申請人不想改時，整張單會永久凍結（不能沖銷、不能結案、不能刪）。
+
+**Dapper 讀取**：批次清單另起一段查詢，與明細在 C# 端合併（[AdvanceRequestReadService.BuildRounds](../Api/Services/Dapper/AdvanceRequestReadService.cs)，`internal static` 讓 `PaymentRequestReadService` 組簽核作業頁資料時共用同一份組裝邏輯）。明細 SQL 的 `ORDER BY` 一律加 `RoundNo` 於 `SortOrder` 之前，否則不同批次的明細會交錯。
 
 ---
 

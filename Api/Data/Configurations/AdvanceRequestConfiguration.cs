@@ -33,6 +33,9 @@ public class AdvanceRequestConfiguration : IEntityTypeConfiguration<AdvanceReque
         builder.Property(a => a.CurrentStepOrder)
                .HasDefaultValue(1);
 
+        builder.Property(a => a.CurrentRoundNo)
+               .HasDefaultValue(1);
+
         builder.Property(a => a.CashTotal)
                .HasColumnType("decimal(18,2)");
 

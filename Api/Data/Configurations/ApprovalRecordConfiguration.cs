@@ -18,6 +18,9 @@ public class ApprovalRecordConfiguration : IEntityTypeConfiguration<ApprovalReco
 
         builder.Property(x => x.IsEscalated).HasDefaultValue(false);
 
+        // 僅 advance 追加預支會 > 1，其餘申請類型恆為 1（既有資料由 DEFAULT 1 自動相容）
+        builder.Property(x => x.RoundNo).HasDefaultValue(1);
+
         builder.HasOne(x => x.ReviewedBy)
             .WithMany()
             .HasForeignKey(x => x.ReviewedById)

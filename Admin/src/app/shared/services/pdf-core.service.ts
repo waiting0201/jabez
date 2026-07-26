@@ -32,6 +32,8 @@ export interface SignRecord {
   reviewerSignatureUrl?: string;
   reviewerJobTitle?: string;
   reviewerJobTitleLevel?: number;
+  /** 簽核批次（僅預支追加會 > 1；未提供視為 1）*/
+  roundNo?: number;
 }
 
 /** buildDynamicSignBlocks 出納欄資訊（請款 / 預支 / 出差請款 PDF 才傳） */
@@ -52,6 +54,11 @@ export interface BuildDynamicSignBlocksOptions {
   submitDate: string;
   applicantLabel: string;
   cashier?: SignCashierInfo;
+  /**
+   * 只採計此批次的簽核紀錄（預支追加用）。未提供時視為 1。
+   * 不過濾的話，追加後兩輪紀錄併存，find(stepOrder) 會取到前一輪，PDF 會印出錯誤的簽章與日期。
+   */
+  roundNo?: number;
 }
 
 /** 總監職稱層級（JobTitle.Level = 1，與後端簽核邏輯一致；勿依賴職稱名稱） */
@@ -104,7 +111,11 @@ function resolveStepLabel(step: SignFlowStep): string {
  * - 申請者欄永遠在最右
  */
 export function buildDynamicSignBlocks(opts: BuildDynamicSignBlocksOptions): SignBlock[] {
-  const { flow, records, submittedBySignatureUrl, submitDate, applicantLabel, cashier } = opts;
+  const { flow, submittedBySignatureUrl, submitDate, applicantLabel, cashier } = opts;
+
+  // 只取本批次的簽核紀錄：預支追加後兩輪紀錄併存，未過濾會印出前一輪的簽章
+  const targetRound = opts.roundNo ?? 1;
+  const records = opts.records.filter(r => (r.roundNo ?? 1) === targetRound);
 
   const steps = (flow?.steps ?? []).slice().sort((a, b) => a.stepOrder - b.stepOrder);
 

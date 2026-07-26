@@ -102,6 +102,9 @@ export const ADMIN_ROUTES: Routes = [
   {path: 'advance-requests',             component: AdvanceList,   canActivate: [permissionGuard], data: {title: '預支申請',       permission: 'advance-requests:read'}},
   {path: 'advance-requests/new',         component: AdvanceForm,   canActivate: [permissionGuard], data: {title: '新增預支申請',   permission: 'advance-requests:write'}},
   {path: 'advance-requests/:id/edit',    component: AdvanceForm,   canActivate: [permissionGuard], data: {title: '編輯預支申請',   permission: 'advance-requests:write'}},
+  // 追加預支批次（須排在 :id 之前，Angular 路由先到先配）
+  {path: 'advance-requests/:id/supplements/new',          component: AdvanceForm, canActivate: [permissionGuard], data: {title: '新增追加預支', permission: 'advance-requests:write', mode: 'supplement'}},
+  {path: 'advance-requests/:id/supplements/:round/edit',  component: AdvanceForm, canActivate: [permissionGuard], data: {title: '編輯追加預支', permission: 'advance-requests:write', mode: 'supplement'}},
   {path: 'advance-requests/:id',         component: AdvanceDetail, canActivate: [permissionGuard], data: {title: '預支申請詳情',   permission: 'advance-requests:read'}},
 
   // 沖銷申請

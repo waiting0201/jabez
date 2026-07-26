@@ -186,6 +186,8 @@ export interface OvertimeTaskDetail {
 
 export interface AdvanceTaskDetailItem {
   id: number;
+  /** 所屬預支批次（1 = 原始預支，≥2 = 第N次追加） */
+  roundNo: number;
   category: string;
   seqNo: number;
   itemName: string;
@@ -213,6 +215,10 @@ export interface AdvanceTaskDetail {
   items: AdvanceTaskDetailItem[];
   installments?: InstallmentDto[];
   paymentStatus?: PaymentInstallmentStatus;
+  /** 各預支批次（含 Round 1 原始預支）；共用 advance-requests model 的 AdvanceRound */
+  rounds?: import('../../advance-requests/models/advance-request.model').AdvanceRound[];
+  /** 本次送簽的批次號；> 1 表示正在簽核追加批次 */
+  currentRoundNo: number;
 }
 
 export interface WriteOffTaskDetailItem {
@@ -345,6 +351,7 @@ export interface ApprovalRecord {
   reviewerJobTitle?: string;      // 審核者職稱（顯示用）
   reviewerJobTitleLevel?: number; // 審核者職稱層級（PDF 簽名欄判定總監 Level=1 用，避免依賴職稱名稱）
   reviewerDepartmentName?: string; // 審核者部門（指定審核步驟顯示用，區分同名審核者）
+  roundNo?: number;                // 簽核批次（僅 advance 追加預支會 > 1；舊資料視為 1）
 }
 
 // ── ApprovalTask (polymorphic) ───────────────────────────────────────────────

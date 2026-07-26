@@ -17,7 +17,7 @@ namespace Jabez.Api.Handlers;
 /// GET   /approval-tasks/{id}                               → 單筆
 /// PATCH /approval-tasks/{applicationType}/{id}/review      → 多步驟審核（核准 / 退回修改 / 拒絕）
 /// </summary>
-public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadService reader, IJwtService jwtService, IApprovalNotificationService notifier, IApprovalFlowService approvalFlow)
+public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadService reader, IJwtService jwtService, IApprovalNotificationService notifier, IApprovalFlowService approvalFlow, IBlobStorageService blob)
 {
     private static readonly HashSet<string> ValidActions  = ["approved", "returned", "rejected"];
     public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "travel", "overtime", "advance", "write_off", "travel_write_off", "holiday_travel", "travel_payment", "pre_review"];
@@ -392,11 +392,13 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     : null;
                 await AuthorizeStepAsync(adv.ApprovalItemId, adv.CurrentStepOrder, reviewer, advApplicant?.DepartmentId, "advance", adv.Id, advApplicant?.JobTitleId);
                 var advReviewedStepOrder = adv.CurrentStepOrder;
+                var advRoundNo = adv.CurrentRoundNo;
                 await ProcessReviewAsync("advance", adv.Id, adv.CurrentStepOrder,
                     adv.ApprovalItemId, action, reviewNote, reviewerId, adv.SubmittedById,
                     setStatus:     s  => adv.ApprovalStatus   = s,
                     incrementStep: () => adv.CurrentStepOrder++,
-                    setReviewed:   () => { adv.ReviewedAt = Clock.Now; adv.ReviewedById = reviewerId; adv.ReviewNote = reviewNote?.Trim(); });
+                    setReviewed:   () => { adv.ReviewedAt = Clock.Now; adv.ReviewedById = reviewerId; adv.ReviewNote = reviewNote?.Trim(); },
+                    roundNo:       advRoundNo);
                 // 財務步驟核准時：撥款明細必填，與審核同交易原子寫入
                 if (action == "approved" && await IsFinanceStepAsync(adv.ApprovalItemId, advReviewedStepOrder, reviewer))
                 {
@@ -405,7 +407,14 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     InstallmentUpsertService.Apply(db, adv.Installments, installments, adv.GrandTotal, reviewerId,
                         () => new AdvanceRequestInstallment { AdvanceRequestId = adv.Id });
                 }
+
+                // 追加批次被拒絕：刪除該批次並把父單還原成送出追加之前的已核准狀態
+                List<string> advRollbackBlobs = [];
+                if (action == "rejected" && advRoundNo > 1)
+                    advRollbackBlobs = await AdvanceSupplementService.RollbackAsync(db, blob, adv);
+
                 await db.SaveChangesAsync();
+                await AdvanceSupplementService.DeleteBlobsAsync(blob, advRollbackBlobs);
                 break;
             }
             case "write_off":
@@ -668,15 +677,20 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         // 已審過則不允許再次審核（總監絕不重審，留一道兜底）。非總監放寬以對齊 SkipUnreviewableStepsAsync 的限縮邏輯。
         if (applicationType is not null && applicationId.HasValue)
         {
+            // 追加預支：只看本批次的紀錄，否則第 1 輪審過的總監在追加輪會被誤擋
+            var roundNo = await AdvanceSupplementService.ResolveCurrentRoundAsync(db, applicationType, applicationId);
+
             var lastReturnedAt = await db.ApprovalRecords.AsNoTracking()
                 .Where(r => r.ApplicationType == applicationType
                          && r.ApplicationId == applicationId.Value
+                         && r.RoundNo == roundNo
                          && r.Action == "returned")
                 .MaxAsync(r => (DateTime?)r.ReviewedAt) ?? DateTime.MinValue;
 
             bool alreadyApproved = await db.ApprovalRecords.AsNoTracking()
                 .AnyAsync(r => r.ApplicationType == applicationType
                             && r.ApplicationId == applicationId.Value
+                            && r.RoundNo == roundNo
                             && r.Action == "approved"
                             && r.ReviewedById == reviewer.Id
                             && r.ReviewedAt > lastReturnedAt);
@@ -793,8 +807,13 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         string applicationType, int applicationId, int currentStepOrder,
         int? approvalItemId, string action, string? reviewNote, Guid reviewerId, Guid? applicantId,
         Action<string> setStatus, Action incrementStep, Action setReviewed,
-        Action<int>? setStepOrder = null)
+        Action<int>? setStepOrder = null, int roundNo = 1)
     {
+        // 追加預支：通知申請人時標明是哪個批次；被拒絕時額外說明原單維持核准
+        string? contextLabel = roundNo > 1
+            ? (action == "rejected" ? $"（第 {roundNo} 次追加；原預支單維持核准）" : $"（第 {roundNo} 次追加）")
+            : null;
+
         // 查詢升級審核指派（若有）
         var escalation = await db.EscalationOverrides
             .FirstOrDefaultAsync(e => e.ApplicationType == applicationType
@@ -807,6 +826,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             ApplicationType  = applicationType,
             ApplicationId    = applicationId,
             StepOrder        = currentStepOrder,
+            RoundNo          = roundNo,
             Action           = action,
             ReviewedById     = reviewerId,
             ReviewedAt       = Clock.Now,
@@ -883,6 +903,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                             ApplicationType  = applicationType,
                             ApplicationId    = applicationId,
                             StepOrder        = currentStepOrder,
+                            RoundNo          = roundNo,
                             Action           = "approved",
                             ReviewedById     = nextDesignated.ReviewerId,
                             ReviewedAt       = Clock.Now,
@@ -983,6 +1004,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                             ApplicationType = applicationType,
                             ApplicationId   = applicationId,
                             StepOrder       = skipped.StepOrder,
+                            RoundNo         = roundNo,
                             Action          = "approved",
                             ReviewedById    = skipped.ProxyApproverId,
                             ReviewedAt      = Clock.Now,
@@ -1054,7 +1076,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 if (applicantId.HasValue)
                 {
                     await notifier.NotifyApplicantAsync(applicationType, applicationId,
-                        applicantId.Value, "approved", reviewNote);
+                        applicantId.Value, "approved", reviewNote, contextLabel);
                     if (IsFinanceApplicationType(applicationType))
                         await notifier.NotifyFinanceDeptAsync(applicationId, applicantId.Value, applicationType);
                 }
@@ -1091,7 +1113,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             // 通知申請人：已退回
             if (applicantId.HasValue)
                 await notifier.NotifyApplicantAsync(applicationType, applicationId,
-                    applicantId.Value, "returned", reviewNote);
+                    applicantId.Value, "returned", reviewNote, contextLabel);
         }
         else // rejected
         {
@@ -1100,7 +1122,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             // 通知申請人：已拒絕
             if (applicantId.HasValue)
                 await notifier.NotifyApplicantAsync(applicationType, applicationId,
-                    applicantId.Value, "rejected", reviewNote);
+                    applicantId.Value, "rejected", reviewNote, contextLabel);
         }
     }
 

@@ -30,7 +30,12 @@
           <tbody>
             @for (r of pagedRequests(); track r.id) {
               <tr>
-                <td class="fw-500 font-monospace">{{ r.requestNo }}</td>
+                <td class="fw-500 font-monospace">
+                  {{ r.requestNo }}
+                  @if (r.currentRoundNo > 1) {
+                    <span class="badge bg-blue-subtle text-blue-emphasis ms-1" style="font-size:.7rem">含追加</span>
+                  }
+                </td>
                 <td>
                   <div class="font-monospace fw-500">{{ r.projectCode || '—' }}</div>
                   @if (r.projectName) {

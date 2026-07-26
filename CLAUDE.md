@@ -129,7 +129,7 @@ Bug 修復：
 ### 業務功能（docs/business/）
 - [application-forms.md](docs/business/application-forms.md) — 9 種申請表類型總覽 + 流程關係 + holiday vs travel 差異
 - [leave-rules.md](docs/business/leave-rules.md) — 請假規則（16 種假別 / 時間單位 / 年假 / 喪假 / 補休 / 生理假 / 重疊驗證）
-- [approval-flow.md](docs/business/approval-flow.md) — 請款簽核流程（簽核步驟 / 批次核准 / 自審 / 上層級 / 指定審核 / 跨步驟去重）
+- [approval-flow.md](docs/business/approval-flow.md) — 請款簽核流程（簽核步驟 / 批次核准 / 自審 / 上層級 / 指定審核 / 跨步驟去重 / **追加預支重跑簽核**）
 - [approval-escalation.md](docs/business/approval-escalation.md) — 簽核升級機制（找上層部門主管 + 代理人）
 - [pdf-signatures.md](docs/business/pdf-signatures.md) — 7 個 PDF 動態簽名欄規則
 - [department-visibility.md](docs/business/department-visibility.md) — 部門可見性 ProjectAccessScope
@@ -199,7 +199,7 @@ Admin/src/app/
     │   ├── travel-requests/   # 出差預支申請（走沖銷流程）
     │   ├── holiday-travel-requests/ # 假日執行活動申請（共用 TravelRequest entity，IsHolidayTravel=true，計入假日津貼；參與人員可逐日勾選個人參與日期，未勾選＝全程參與）
     │   ├── overtime-requests/ # 加班申請（走簽核流程；關聯專案改單選 radio 且可瀏覽全部未結案專案 /projects/active?all=true 支援跨部門；指定審核者卡片加註「跨部門支援時第一審核者填該專案協理、第二審核者選自部門協理」）
-    │   ├── advance-requests/  # 預支申請
+    │   ├── advance-requests/  # 預支申請（已核准單可新增「追加預支」批次：/:id/supplements/new 與 /:id/supplements/:round/edit 共用 advance-form 的追加模式；詳情頁預支日期改為批次清單、費用明細加「批次」欄；共用 roundLabel() 為批次標籤單一真相）
     │   ├── write-off-requests/ # 預支沖銷申請（獨立簽核流程；明細下方含整單批次附件上傳，共用 shared/components/attachments-upload）
     │   ├── travel-write-off-requests/ # 出差預支沖銷申請（獨立簽核流程）
     │   ├── insurance-brackets/ # 勞健保級距維護
@@ -277,7 +277,7 @@ Api/
 │   ├── TravelRequestHandler.cs        # 出差預支申請 CRUD（單號 TR-yyyyMMdd-NNN；假日執行活動為 HTR-yyyyMMdd-NNN；預支後沖銷）
 │   ├── TravelPaymentRequestHandler.cs # 出差請款申請 CRUD（單號 TPR-yyyyMMdd-NNN；小額代墊直接請款）
 │   ├── OvertimeRequestHandler.cs      # 加班申請 CRUD
-│   ├── AdvanceRequestHandler.cs       # 預支申請 CRUD（單號 ADV-yyyyMMdd-NNN）
+│   ├── AdvanceRequestHandler.cs       # 預支申請 CRUD（單號 ADV-yyyyMMdd-NNN）＋**追加預支批次**（POST/PATCH/DELETE /advance-requests/{id}/supplements[/{roundNo}]；新增即送簽、無草稿階段；有進行中批次時禁止整單編輯/刪除）
 │   ├── WriteOffRequestHandler.cs      # 預支沖銷申請 CRUD（獨立簽核流程）
 │   ├── TravelWriteOffRequestHandler.cs # 出差預支沖銷申請 CRUD（獨立簽核流程）
 │   ├── AttendanceHandler.cs           # 打卡（上班/下班/加班開始/加班結束）
@@ -298,7 +298,7 @@ Api/
 │   ├── Migrations/                    # EF Core Migration 檔案
 │   └── Seed/                          # 一次性員工人事資料匯入工具（EmployeeImporter + RocDateParser + EmployeeImportDtos + employee-import.json；RUN_EMPLOYEE_IMPORT 旗標觸發，IMPORT_UPLOAD_FILES 控制附件上傳）
 ├── Models/
-│   ├── Entities/                      # 47 個資料庫實體（新增 **TravelRequestParticipantDate 參與人員個別參與日期** / EmployeeProfile / EducationRecord / EmploymentHistoryRecord / FamilyMember / ProfessionalTraining / LanguageAbility / JobTransferRecord / RewardPunishmentRecord / SalaryAdjustmentRecord / HealthInsuranceDependent / **4 個分期撥款表 PaymentRequestInstallment / AdvanceRequestInstallment / TravelRequestInstallment / TravelPaymentRequestInstallment** / **PaymentReminderLog** / **整單批次附件 PaymentRequestAttachment / WriteOffAttachment** / **預審申請 PreReviewRequest / PreReviewItem / PreReviewRequestAttachment**）
+│   ├── Entities/                      # 48 個資料庫實體（新增 **追加預支批次 AdvanceRequestSupplement**（只存 RoundNo≥2，Round 1 = 父單本身）/ **TravelRequestParticipantDate 參與人員個別參與日期** / EmployeeProfile / EducationRecord / EmploymentHistoryRecord / FamilyMember / ProfessionalTraining / LanguageAbility / JobTransferRecord / RewardPunishmentRecord / SalaryAdjustmentRecord / HealthInsuranceDependent / **4 個分期撥款表 PaymentRequestInstallment / AdvanceRequestInstallment / TravelRequestInstallment / TravelPaymentRequestInstallment** / **PaymentReminderLog** / **整單批次附件 PaymentRequestAttachment / WriteOffAttachment** / **預審申請 PreReviewRequest / PreReviewItem / PreReviewRequestAttachment**）
 │   └── Dtos/                          # 20 個 DTO 檔案（新增 EmployeeProfileDtos / **InstallmentDtos** / **PreReviewRequestDtos**）
 ├── Services/
 │   ├── IJwtService.cs
@@ -316,6 +316,7 @@ Api/
 │   ├── PaymentReminderService.cs     # 撥款日將屆提醒：撈 4 種待撥 installments、過濾財務部、推 LINE+Email、寫 PaymentReminderLog（同日去重）
 │   ├── InstallmentValidator.cs       # 分期撥款共用驗證：序號連續 / SUM == 總額 / 已撥款列保護
 │   ├── InstallmentUpsertService.cs   # 分期撥款共用 upsert 核心（validate+diff，不 SaveChanges）；獨立 endpoint 與「財務核准當下原子寫入」共用；以 IInstallmentEntity 泛型化
+│   ├── AdvanceSupplementService.cs   # 追加預支共用：RollbackAsync（駁回 / 主動放棄兩入口共用，還原父單快照）＋ ResolveCurrentRoundAsync（「此人已審過」四處判定的批次範圍解析，非 advance 恆回 1）
 │   ├── InstallmentUpsertResult.cs    # UpsertInstallments 結果 record
 │   ├── IGcisService.cs               # 政府開放資料 GCIS 商工登記查詢介面
 │   ├── GcisService.cs                # GCIS Open Data REST API 包裝（以統編查公司名稱 / 地址 / 負責人）
@@ -593,10 +594,11 @@ master        # 正式環境（push → victorious-field SWA + jabez-api）
 - **撥款提醒**：[PaymentReminderService](Api/Services/PaymentReminderService.cs) UNION 4 種 installments 推算
 - **唯讀顯示**：[`<app-installments-table>`](Admin/src/app/shared/components/installments-table.ts) 共用元件（card 結構，跟其他 detail 卡片一致），4 種申請的 detail / form 頁皆引用
 - **編輯 UI 限制**（[approval-task-review](Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/)）：
-  - 「+ 新增一期」：`SUM ≥ 總額` 或 `FullyPaid` 時禁用
-  - 「儲存撥款明細」：`SUM ≠ 總額` 或 `FullyPaid` 時禁用
+  - 「+ 新增一期」：`SUM ≥ 總額` 時禁用（**2026-07 移除 `FullyPaid` 條件**：追加預支後總額變大，原已全額撥款的單必須能補期，否則湊不到 `SUM == 總額` 而卡死簽核）
+  - 「儲存撥款明細」：`SUM ≠ 總額` 時禁用（同上）
   - 金額 input：`min=1`，`max=剩餘額度`（總額 − 其他列已填）
   - 已撥款列：4 欄位（預計撥款日 / 實際撥款日 / 金額 / 備註）全 readonly + 灰底；刪除按鈕隱藏
   - 後端 `InstallmentValidator.Validate` 提供等同驗證（序號連續 / SUM == 總額 / 已撥款列保護）
+- **追加預支的影響**：預支追加核准後 `GrandTotal` 變大，`SUM(installments)` 須等於**新**總額 —— 已撥款列鎖定，財務**補一期**新增金額；`FullyPaid` 會因此變回 `PartiallyPaid`（見 [docs/business/approval-flow.md](docs/business/approval-flow.md#追加預支重跑簽核2026-07-新增)）
 
 歷史：原採兩階段過渡策略，Phase 1 父表保留 `EstimatedPaymentDate` / `PaidAt` / `PaidByUserId` 作 cache；2026-05 Phase 2 完成，DROP 4 張父表的 3 個 cache 欄位 + FK + Index，由 [BackfillInstallmentsFromParentCache](Api/Data/Migrations/) 與 [RemovePaymentDateCacheFromParents](Api/Data/Migrations/) 兩個 migration 串接執行。

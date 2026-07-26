@@ -230,6 +230,9 @@ public sealed class AppRouter(
             ("GET",    ["advance-requests"])                                    => await advanceRequests.GetAllAsync(req),
             ("POST",   ["advance-requests"])                                   => await advanceRequests.CreateAsync(req),
             ("PATCH",  ["advance-requests", var id, "submit"])                 => await advanceRequests.SubmitAsync(req, id),
+            ("POST",   ["advance-requests", var id, "supplements"])            => await advanceRequests.CreateSupplementAsync(req, id),
+            ("PATCH",  ["advance-requests", var id, "supplements", var round]) => await advanceRequests.UpdateSupplementAsync(req, id, round),
+            ("DELETE", ["advance-requests", var id, "supplements", var round]) => await advanceRequests.DeleteSupplementAsync(req, id, round),
             ("PATCH",  ["advance-requests", var id, "installments"])           => await advanceRequests.UpsertInstallmentsAsync(req, id),
             ("GET",    ["advance-requests", var id])                           => await advanceRequests.GetByIdAsync(req, id),
             ("PUT",    ["advance-requests", var id])                           => await advanceRequests.UpdateAsync(req, id),
@@ -526,6 +529,10 @@ public sealed class AppRouter(
             ("PUT",    ["advance-requests", _])          => PermissionCodes.AdvanceRequestsWrite,
             ("PATCH",  ["advance-requests", _, "submit"])       => PermissionCodes.AdvanceRequestsWrite,
             ("PATCH",  ["advance-requests", _, "installments"]) => PermissionCodes.AdvanceRequestsWrite,
+            // 追加預支批次：新增 / 編輯 / 放棄皆屬「修改自己的申請單」，一律 Write（DELETE 不用 Delete 權限）
+            ("POST",   ["advance-requests", _, "supplements"])     => PermissionCodes.AdvanceRequestsWrite,
+            ("PATCH",  ["advance-requests", _, "supplements", _])  => PermissionCodes.AdvanceRequestsWrite,
+            ("DELETE", ["advance-requests", _, "supplements", _])  => PermissionCodes.AdvanceRequestsWrite,
             ("PATCH",  ["advance-requests", _])                 => PermissionCodes.AdvanceRequestsWrite,
             ("DELETE", ["advance-requests", _])          => PermissionCodes.AdvanceRequestsDelete,
 

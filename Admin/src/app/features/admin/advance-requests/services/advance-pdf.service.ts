@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { AdvanceRequest, APPROVAL_STATUS_LABELS, ApprovalStatus } from '../models/advance-request.model';
+import { AdvanceRequest, APPROVAL_STATUS_LABELS, ApprovalStatus, roundLabel } from '../models/advance-request.model';
 import { ApprovalRecord, ApprovalFlow } from '../../approval-tasks/models/approval-task.model';
 import { PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, fmt, buildDynamicSignBlocks } from '../../../../shared/services/pdf-core.service';
 
@@ -70,7 +70,20 @@ export class AdvancePdfService {
       lv('案號：', r.projectCode, pw - mx - 50, y, true);
 
       y += 6;
-      lv('預支日期：', advDate, mx, y);
+      // 預支日期：有追加批次時逐批列出「第N次追加：日期　金額」，並在最後標示預支總額
+      const rounds = r.rounds ?? [];
+      if (rounds.length > 1) {
+        rounds.forEach((rd, idx) => {
+          const d = rd.advanceDate ? new Date(rd.advanceDate).toLocaleDateString('zh-TW') : '';
+          lv(idx === 0 ? '預支日期：' : '　　　　　',
+             `${roundLabel(rd.roundNo)}　${d}　${fmt(rd.grandTotal)}元${rd.reason ? `（${rd.reason}）` : ''}`,
+             mx, y);
+          y += 5.5;
+        });
+        lv('預支總額：', `${fmt(r.grandTotal)}元`, mx, y, true);
+      } else {
+        lv('預支日期：', advDate, mx, y);
+      }
 
       y += 6;
       const projectName = r.activityName || '';
@@ -85,13 +98,18 @@ export class AdvancePdfService {
       y += 8;
       const items = r.items || [];
 
-      // 建立表格資料：按分類分組
+      // 建立表格資料：按批次 + 分類分組（同批次 / 同分類第二列起留白）
       const bodyRows: any[][] = [];
       let lastCategory = '';
+      let lastRound = 0;
       for (const item of items) {
+        const roundCell = item.roundNo === lastRound ? '' : roundLabel(item.roundNo);
+        if (item.roundNo !== lastRound) lastCategory = '';   // 換批次時分類重新顯示
+        lastRound = item.roundNo;
         const cat = item.category === lastCategory ? '' : item.category;
         lastCategory = item.category;
         bodyRows.push([
+          roundCell,
           cat,
           item.seqNo.toString(),
           item.itemName,
@@ -104,21 +122,21 @@ export class AdvancePdfService {
         ]);
       }
 
-      // 合計列
+      // 合計列（批次欄使合併寬度 +1）
       bodyRows.push([
-        { content: '預 支 現 金 數', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: '預 支 現 金 數', colSpan: 7, styles: { halign: 'right', fontStyle: 'bold' } },
         { content: fmt(r.cashTotal), styles: { fontStyle: 'bold', halign: 'right' } },
         '',
         '',
       ]);
       bodyRows.push([
-        { content: '月結支票金額', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: '月結支票金額', colSpan: 7, styles: { halign: 'right', fontStyle: 'bold' } },
         '',
         { content: r.checkTotal > 0 ? fmt(r.checkTotal) : '', styles: { fontStyle: 'bold', halign: 'right' } },
         '',
       ]);
       bodyRows.push([
-        { content: '總計', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: '總計', colSpan: 7, styles: { halign: 'right', fontStyle: 'bold' } },
         { content: fmt(r.grandTotal), colSpan: 2, styles: { fontStyle: 'bold', halign: 'right' } },
         '',
       ]);
@@ -140,17 +158,18 @@ export class AdvancePdfService {
           cellPadding: { top: 3, bottom: 3, left: 3, right: 3 },
         },
         columnStyles: {
-          0: { cellWidth: cw * 0.08, halign: 'center' },  // 分類
-          1: { cellWidth: cw * 0.04, halign: 'center' },  // 項次
-          2: { cellWidth: cw * 0.22 },                      // 項目(說明)
-          3: { cellWidth: cw * 0.10, halign: 'right' },     // 單價
-          4: { cellWidth: cw * 0.08, halign: 'center' },    // 數量/單位
-          5: { cellWidth: cw * 0.10, halign: 'right' },     // 總價
-          6: { cellWidth: cw * 0.12, halign: 'right' },     // 現金(預支)
-          7: { cellWidth: cw * 0.12, halign: 'right' },     // 支票(月結算)
-          8: { cellWidth: cw * 0.14 },                      // 備註
+          0: { cellWidth: cw * 0.08, halign: 'center' },     // 批次
+          1: { cellWidth: cw * 0.07, halign: 'center' },     // 分類
+          2: { cellWidth: cw * 0.04, halign: 'center' },     // 項次
+          3: { cellWidth: cw * 0.19 },                       // 項目(說明)
+          4: { cellWidth: cw * 0.09, halign: 'right' },      // 單價
+          5: { cellWidth: cw * 0.07, halign: 'center' },     // 數量/單位
+          6: { cellWidth: cw * 0.09, halign: 'right' },      // 總價
+          7: { cellWidth: cw * 0.11, halign: 'right' },      // 現金(預支)
+          8: { cellWidth: cw * 0.11, halign: 'right' },      // 支票(月結算)
+          9: { cellWidth: cw * 0.15 },                       // 備註
         },
-        head: [['分類', '項次', '項目(說明)', '單價', '數量/\n單位', '總價', '現金\n(預支)', '支票\n(月結算)', '備註']],
+        head: [['批次', '分類', '項次', '項目(說明)', '單價', '數量/\n單位', '總價', '現金\n(預支)', '支票\n(月結算)', '備註']],
         body: bodyRows,
       });
 
@@ -319,7 +338,8 @@ export class AdvancePdfService {
       const advSubmitDate = r.createdAt ? fmtDT(r.createdAt) : '';
       // 出納簽名取最後一期已撥款者（若有）
       const lastPaid = r.installments?.filter(i => i.paidAt).slice(-1)[0];
-      const advSignBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, advSubmitDate, '申請者', lastPaid?.paidBySignatureUrl, lastPaid?.paidAt);
+      // 追加後兩輪簽核紀錄併存，必須指定批次，否則簽名欄會印出前一輪的簽章
+      const advSignBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, advSubmitDate, '申請者', lastPaid?.paidBySignatureUrl, lastPaid?.paidAt, r.currentRoundNo ?? 1);
       const advSigMap = await this.pdfCore.loadSignatureImages(advSignBlocks);
       this.pdfCore.drawSignatureBlock(doc, mx, pw, cw, y, advSignBlocks, advSigMap);
 
@@ -346,6 +366,7 @@ export class AdvancePdfService {
     applicantLabel: string,
     paidBySignatureUrl?: string,
     paidAt?: string,
+    roundNo = 1,
   ): SignBlock[] {
     return buildDynamicSignBlocks({
       flow,
@@ -354,6 +375,7 @@ export class AdvancePdfService {
       submitDate,
       applicantLabel,
       cashier: { paidBySignatureUrl, paidAt },
+      roundNo,
     });
   }
 }

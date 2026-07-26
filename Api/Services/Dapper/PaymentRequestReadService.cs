@@ -115,7 +115,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         string? status = null, Guid? reviewerUserId = null, string? paymentStatus = null,
         string? applicationType = null)
     {
-        var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants) =
+        var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants) =
             await FetchAllAsync(reviewerJobTitleId: reviewerJobTitleId, reviewerDepartmentId: reviewerDepartmentId,
                                 statusFilter: status, reviewerUserId: reviewerUserId, paymentStatus: paymentStatus,
                                 applicationType: applicationType);
@@ -123,17 +123,17 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         var paymentAttachments   = await LoadPaymentAttachmentsAsync();
         var writeOffAttachments  = await LoadWriteOffAttachmentsAsync();
         var preReviewAttachments = await LoadPreReviewAttachmentsAsync();
-        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, instDicts, paymentAttachments, writeOffAttachments, preReviewAttachments);
+        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, instDicts, paymentAttachments, writeOffAttachments, preReviewAttachments);
     }
 
     public async Task<ApprovalTaskDto?> GetApprovalTaskByIdAsync(int id, string applicationType)
     {
-        var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants) = await FetchAllAsync(id, applicationType);
+        var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants) = await FetchAllAsync(id, applicationType);
         var instDicts = await LoadInstallmentsAsync(payments, advances, travels, holidayTravels, travelPayments);
         var paymentAttachments   = await LoadPaymentAttachmentsAsync();
         var writeOffAttachments  = await LoadWriteOffAttachmentsAsync();
         var preReviewAttachments = await LoadPreReviewAttachmentsAsync();
-        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, instDicts, paymentAttachments, writeOffAttachments, preReviewAttachments)
+        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, instDicts, paymentAttachments, writeOffAttachments, preReviewAttachments)
             .FirstOrDefault(t => t.Id == id && t.ApplicationType == applicationType);
     }
 
@@ -161,6 +161,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         IEnumerable<dynamic> designatedRows,
         IEnumerable<dynamic> writeOffItems,
         IEnumerable<dynamic> advanceItems,
+        IEnumerable<dynamic> advanceSupplements,
         IEnumerable<dynamic> travelItems,
         IEnumerable<dynamic> travelWriteOffItems,
         IEnumerable<dynamic> travelPaymentItems,
@@ -351,11 +352,13 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                     AND arDup.ApplicationId = {alias}.Id
                     AND arDup.ReviewedById = @ReviewerUserId
                     AND arDup.Action = 'approved'
+                    {(appType == "advance" ? $"AND arDup.RoundNo = {alias}.CurrentRoundNo" : "")}
                     AND arDup.ReviewedAt > ISNULL(
                       (SELECT MAX(arRet.ReviewedAt) FROM ApprovalRecords arRet
                        WHERE arRet.ApplicationType = '{appType}'
                          AND arRet.ApplicationId = {alias}.Id
-                         AND arRet.Action = 'returned'),
+                         AND arRet.Action = 'returned'
+                         {(appType == "advance" ? $"AND arRet.RoundNo = {alias}.CurrentRoundNo" : "")}),
                       '0001-01-01'
                     )
                 )
@@ -493,8 +496,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 
         var advanceSql = $"""
             SELECT adv.Id, adv.RequestNo, proj.Code AS ProjectCode, proj.Name AS ProjectName,
-                   adv.ActivityName, adv.GrandTotal,
-                   adv.ApprovalStatus, adv.ApprovalItemId, adv.CurrentStepOrder,
+                   adv.ActivityName, adv.GrandTotal, adv.AdvanceDate,
+                   adv.ApprovalStatus, adv.ApprovalItemId, adv.CurrentStepOrder, adv.CurrentRoundNo,
                    adv.EstimatedRefundDate, adv.RefundedAt,
                    asub.Name AS SubmittedBy, asub.SignatureUrl AS SubmittedBySignatureUrl, adv.CreatedAt, adv.ReviewedAt, adv.ReviewNote
             FROM AdvanceRequests adv
@@ -610,7 +613,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             """;
 
         const string recordSql = """
-            SELECT ar.ApplicationType, ar.ApplicationId, ar.StepOrder, ar.Action,
+            SELECT ar.ApplicationType, ar.ApplicationId, ar.StepOrder, ar.RoundNo, ar.Action,
                    u.Name AS ReviewedBy, ar.ReviewedAt, ar.ReviewNote,
                    obu.Name AS OnBehalfOf, ar.IsEscalated,
                    u.SignatureUrl AS ReviewerSignatureUrl,
@@ -664,13 +667,21 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         var writeOffItemRows = await db.QueryAsync<dynamic>(writeOffItemsSql);
 
         const string advanceItemsSql = """
-            SELECT ai.Id, ai.AdvanceRequestId, ai.Category, ai.SeqNo, ai.ItemName,
+            SELECT ai.Id, ai.AdvanceRequestId, ai.RoundNo, ai.Category, ai.SeqNo, ai.ItemName,
                    ai.UnitPrice, ai.Quantity, ai.TotalPrice, ai.CashAmount, ai.CheckAmount,
                    ai.Note, ai.SortOrder, ai.FileName, ai.FileUrl
             FROM AdvanceRequestItems ai
-            ORDER BY ai.AdvanceRequestId, ai.SortOrder
+            ORDER BY ai.AdvanceRequestId, ai.RoundNo, ai.SortOrder
             """;
         var advanceItemRows = await db.QueryAsync<dynamic>(advanceItemsSql);
+
+        // 追加預支批次（RoundNo ≥ 2；Round 1 = 父單本身）
+        const string advanceSupplementsSql = """
+            SELECT s.AdvanceRequestId, s.RoundNo, s.AdvanceDate, s.Reason
+            FROM AdvanceRequestSupplements s
+            ORDER BY s.AdvanceRequestId, s.RoundNo
+            """;
+        var advanceSupplementRows = await db.QueryAsync<dynamic>(advanceSupplementsSql);
 
         const string travelItemsSql = """
             SELECT ti.Id, ti.TravelRequestId, ti.Category, ti.SeqNo, ti.ItemName,
@@ -714,7 +725,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             """;
         var holidayParticipantRows = await db.QueryAsync<dynamic>(holidayParticipantsSql);
 
-        return (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItemRows, flows, records, designatedRows, writeOffItemRows, advanceItemRows, travelItemRows, travelWriteOffItemRows, travelPaymentItemRows, holidayParticipantRows);
+        return (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItemRows, flows, records, designatedRows, writeOffItemRows, advanceItemRows, advanceSupplementRows, travelItemRows, travelWriteOffItemRows, travelPaymentItemRows, holidayParticipantRows);
     }
 
     /// <summary>給 BuildApprovalTasks 用的 installments 集合（依父表分組）</summary>
@@ -806,6 +817,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         IEnumerable<dynamic> designatedRows,
         IEnumerable<dynamic> writeOffItemRows,
         IEnumerable<dynamic> advanceItemRows,
+        IEnumerable<dynamic> advanceSupplementRows,
         IEnumerable<dynamic> travelItemRows,
         IEnumerable<dynamic> travelWriteOffItemRows,
         IEnumerable<dynamic> travelPaymentItemRows,
@@ -900,7 +912,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (string?)row.ReviewerSignatureUrl,
                 (string?)row.ReviewerJobTitle,
                 (string?)row.ReviewerDepartmentName,
-                (int?)row.ReviewerJobTitleLevel));
+                (int?)row.ReviewerJobTitleLevel,
+                (int)(row.RoundNo ?? 1)));
         }
 
         ApprovalRecordDto[] GetRecords(string appType, int id) =>
@@ -918,11 +931,26 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (decimal)ai.UnitPrice, (string)ai.Quantity, (decimal)ai.TotalPrice,
                 (decimal)ai.CashAmount, (decimal)ai.CheckAmount,
                 (string?)ai.Note, (int)ai.SortOrder,
-                (string?)ai.FileName, (string?)ai.FileUrl));
+                (string?)ai.FileName, (string?)ai.FileUrl,
+                (int)ai.RoundNo));
         }
 
         AdvanceRequestItemDto[] GetAdvanceItems(int id) =>
             advItemDict.TryGetValue(id, out var items) ? [.. items] : [];
+
+        // 追加預支批次 lookup keyed by AdvanceRequestId（Round 1 由父單 AdvanceDate 合成）
+        var advSupplementDict = new Dictionary<int, List<dynamic>>();
+        foreach (var s in advanceSupplementRows)
+        {
+            int advId = (int)s.AdvanceRequestId;
+            if (!advSupplementDict.ContainsKey(advId))
+                advSupplementDict[advId] = [];
+            advSupplementDict[advId].Add(s);
+        }
+
+        AdvanceRoundDto[] GetAdvanceRounds(int id, DateTime advanceDate) =>
+            AdvanceRequestReadService.BuildRounds(
+                advanceDate, advSupplementDict.GetValueOrDefault(id, []), GetAdvanceItems(id));
 
         // Travel request items lookup keyed by TravelRequestId
         var travelItemDict = new Dictionary<int, List<TravelRequestItemDto>>();
@@ -1180,7 +1208,9 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 null,
                 null,
                 instDicts.Advance.TryGetValue((int)row.Id, out var advInst) ? [.. advInst] : null,
-                installments.ComputeStatus(instDicts.Advance.GetValueOrDefault((int)row.Id, []))),
+                installments.ComputeStatus(instDicts.Advance.GetValueOrDefault((int)row.Id, [])),
+                GetAdvanceRounds((int)row.Id, (DateTime)row.AdvanceDate),
+                (int)row.CurrentRoundNo),
             null, null,
             GetRecords("advance", (int)row.Id),
             GetDesignatedReviewers("advance", (int)row.Id),

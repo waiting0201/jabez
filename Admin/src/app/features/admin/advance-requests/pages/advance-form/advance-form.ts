@@ -1,13 +1,13 @@
 import {ChangeDetectorRef, Component, inject, OnInit, signal, TemplateRef, viewChild} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {AbstractControl, FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
-import {DecimalPipe} from '@angular/common';
+import {DatePipe, DecimalPipe} from '@angular/common';
 import {DomSanitizer} from '@angular/platform-browser';
 import {HttpErrorResponse} from '@angular/common/http';
 import {AdvanceRequestService} from '../../services/advance-request.service';
 import {ProjectService} from '../../../projects/services/project.service';
 import {Project} from '../../../projects/models/project.model';
-import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, ITEM_CATEGORIES, DesignatedReviewer} from '../../models/advance-request.model';
+import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, ITEM_CATEGORIES, DesignatedReviewer, AdvanceRound, roundLabel} from '../../models/advance-request.model';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
 import {ApprovalService} from '../../../approvals/services/approval.service';
@@ -30,7 +30,7 @@ import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.direc
 @Component({
   selector: 'app-advance-form',
   templateUrl: './advance-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, ApprovalTimeline, FilePreviewModal, InstallmentsTable, DesignatedReviewersPicker, ScrollIntoViewDirective],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, FilePreviewModal, InstallmentsTable, DesignatedReviewersPicker, ScrollIntoViewDirective],
 })
 export class AdvanceForm implements OnInit {
   private fb             = inject(FormBuilder);
@@ -54,6 +54,15 @@ export class AdvanceForm implements OnInit {
   isReadOnly = false;
   isReturned = false;
   requestId  = 0;
+
+  /** 追加預支模式：掛在已核准預支單上新增 / 編輯一個追加批次 */
+  isSupplement    = false;
+  /** 追加批次號；0 = 新增追加（尚未建立），> 0 = 編輯已退回的該批次 */
+  supplementRound = 0;
+  /** 原預支單既有批次（唯讀對照用） */
+  parentRounds: AdvanceRound[] = [];
+  parentGrandTotal = 0;
+  readonly roundLabel = roundLabel;
   errorMsg   = signal('');
   approvalStatus: ApprovalStatus = 'draft';
   projectCode = '';
@@ -114,8 +123,15 @@ export class AdvanceForm implements OnInit {
     activityName:   ['', Validators.required],
     activityPeriod: ['', Validators.required],
     advanceDate:    ['', Validators.required],
+    reason:         [''],   // 僅追加模式使用
     items:          this.fb.array([]),
   });
+
+  /** 追加模式沿用原單的指定審核者，不重新挑人 */
+  get showDesignatedPicker(): boolean { return this.hasDesignatedStep && !this.isSupplement; }
+
+  /** 本次追加金額（明細加總）與追加後總額 */
+  get supplementAfterTotal(): number { return this.parentGrandTotal + this.grandTotal; }
 
   get itemArray(): FormArray { return this.form.get('items') as FormArray; }
   get itemControls(): AbstractControl[] { return this.itemArray.controls; }
@@ -153,6 +169,10 @@ export class AdvanceForm implements OnInit {
       next: p => { this.projects = p; this.loadingProjects = false; this.cdr.markForCheck(); },
       error: () => { this.loadingProjects = false; this.errorMsg.set('載入專案資料失敗。'); },
     });
+    this.isSupplement = this.route.snapshot.data['mode'] === 'supplement';
+    const roundParam = this.route.snapshot.paramMap.get('round');
+    this.supplementRound = roundParam ? +roundParam : 0;
+
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.isEdit = true;
@@ -161,7 +181,9 @@ export class AdvanceForm implements OnInit {
         if (!r) return;
         this.approvalStatus = r.approvalStatus;
         this.isReturned = r.approvalStatus === 'returned';
-        this.isReadOnly = r.approvalStatus !== 'draft' && r.approvalStatus !== 'returned';
+        // 追加模式編輯的是追加批次，父單狀態不決定唯讀
+        this.isReadOnly = !this.isSupplement
+          && r.approvalStatus !== 'draft' && r.approvalStatus !== 'returned';
         this.projectCode = r.projectCode ?? '';
         this.projectName = r.projectName ?? '';
         if (this.isReadOnly) this.form.disable();
@@ -179,6 +201,22 @@ export class AdvanceForm implements OnInit {
           this.pickerInitial = r.designatedReviewers;
           this.readonlyDesignatedReviewers = r.designatedReviewers;
         }
+
+        if (this.isSupplement) {
+          this._initSupplement(r.rounds ?? [], r.grandTotal ?? 0);
+          // 只載入本批次明細；新增追加時為空白
+          r.items
+            .filter(item => item.roundNo === this.supplementRound)
+            .forEach((item, idx) => this.itemArray.push(this._itemGroup(
+              item.category, item.seqNo, item.itemName, item.unitPrice,
+              item.quantity, item.totalPrice, item.cashAmount, item.checkAmount,
+              item.note ?? '', idx, item.fileName ?? '', item.fileUrl ?? ''
+            )));
+          if (this.itemArray.length === 0) this.addItem();
+          this.cdr.markForCheck();
+          return;
+        }
+
         r.items.forEach((item, idx) => this.itemArray.push(this._itemGroup(
           item.category, item.seqNo, item.itemName, item.unitPrice,
           item.quantity, item.totalPrice, item.cashAmount, item.checkAmount,
@@ -198,6 +236,32 @@ export class AdvanceForm implements OnInit {
         }
         this.cdr.markForCheck();
       });
+    }
+  }
+
+  /**
+   * 追加模式初始化：專案 / 活動欄位沿用原單且不可改，
+   * advanceDate 改為「本批次的預支日期」，並算出扣除本批次後的原總額。
+   */
+  private _initSupplement(rounds: AdvanceRound[], grandTotal: number) {
+    this.form.get('projectId')!.disable();
+    this.form.get('activityName')!.disable();
+    this.form.get('activityPeriod')!.disable();
+
+    this.parentRounds = rounds;
+
+    if (this.supplementRound > 0) {
+      // 編輯已退回的批次：父單總額已含本批次，須扣除後才是「原預支總額」
+      const cur = rounds.find(x => x.roundNo === this.supplementRound);
+      this.parentGrandTotal = grandTotal - (cur?.grandTotal ?? 0);
+      this.form.patchValue({
+        advanceDate: cur?.advanceDate?.toString().slice(0, 10) ?? '',
+        reason:      cur?.reason ?? '',
+      });
+    } else {
+      this.parentGrandTotal = grandTotal;
+      this.supplementRound = (rounds.at(-1)?.roundNo ?? 1) + 1;
+      this.form.patchValue({advanceDate: '', reason: ''});
     }
   }
 
@@ -282,11 +346,19 @@ export class AdvanceForm implements OnInit {
       this.errorMsg.set('請至少新增一筆明細。');
       return;
     }
+    this.errorMsg.set('');
+    // 追加模式：只有「編輯已退回批次」可儲存不送簽（新增追加一律建立即送簽）
+    if (this.isSupplement) {
+      this.service.updateSupplement(this.requestId, this.supplementRound, this._buildSupplementFormData()).subscribe({
+        next: () => this.router.navigate(['/admin/advance-requests', this.requestId]),
+        error: (err: HttpErrorResponse) => this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。'),
+      });
+      return;
+    }
     const fd = this._buildFormData();
     const obs = this.isEdit
       ? this.service.updateWithFiles(this.requestId, fd)
       : this.service.createWithFiles(fd);
-    this.errorMsg.set('');
     obs.subscribe({
       next: saved => {
         if (!this.isEdit) this.requestId = saved.id;
@@ -308,6 +380,11 @@ export class AdvanceForm implements OnInit {
       this.errorMsg.set('請至少新增一筆明細。');
       return;
     }
+    this.errorMsg.set('');
+    if (this.isSupplement) {
+      this._submitSupplement();
+      return;
+    }
     // 流程含「申請人指定審核」步驟時，每個 designated step 至少需要 1 位指定審核者（被抑制者除外）
     if (this.hasDesignatedStep) {
       for (const step of this.designatedSteps) {
@@ -323,25 +400,49 @@ export class AdvanceForm implements OnInit {
     const save$ = this.isEdit
       ? this.service.updateWithFiles(this.requestId, fd)
       : this.service.createWithFiles(fd);
-    this.errorMsg.set('');
     save$.subscribe({
       next: saved => {
         this.service.submit(saved.id).subscribe({
-          next: () => {
-            const tpl = this.successModal();
-            if (tpl) {
-              const ref = this.modal.open(tpl, { centered: true, backdrop: 'static', keyboard: false });
-              ref.result.then(() => this.router.navigate(['/admin/advance-requests']))
-                        .catch(() => this.router.navigate(['/admin/advance-requests']));
-            } else {
-              this.router.navigate(['/admin/advance-requests']);
-            }
-          },
+          next: () => this._onSubmitted(['/admin/advance-requests']),
           error: (err: HttpErrorResponse) => this.errorMsg.set(err.error?.message || '送出失敗。'),
         });
       },
       error: (err: HttpErrorResponse) => this.errorMsg.set(err.error?.message || '儲存失敗。'),
     });
+  }
+
+  /**
+   * 送出追加批次。
+   * 新增：POST supplements 一步建立並送簽（後端同交易併入總額 + 重跑簽核流程）。
+   * 編輯（已退回）：先更新批次明細，再走既有 submit 重送。
+   */
+  private _submitSupplement() {
+    const fd = this._buildSupplementFormData();
+    const done = () => this._onSubmitted(['/admin/advance-requests', this.requestId]);
+
+    if (this.supplementRound > 0 && this.isReturned) {
+      this.service.updateSupplement(this.requestId, this.supplementRound, fd).subscribe({
+        next: () => this.service.submit(this.requestId).subscribe({
+          next: done,
+          error: (err: HttpErrorResponse) => this.errorMsg.set(err.error?.message || '送出失敗。'),
+        }),
+        error: (err: HttpErrorResponse) => this.errorMsg.set(err.error?.message || '儲存失敗。'),
+      });
+      return;
+    }
+
+    this.service.createSupplement(this.requestId, fd).subscribe({
+      next: done,
+      error: (err: HttpErrorResponse) => this.errorMsg.set(err.error?.message || '送出失敗。'),
+    });
+  }
+
+  private _onSubmitted(target: unknown[]) {
+    const tpl = this.successModal();
+    if (!tpl) { this.router.navigate(target); return; }
+    const ref = this.modal.open(tpl, { centered: true, backdrop: 'static', keyboard: false });
+    ref.result.then(() => this.router.navigate(target))
+              .catch(() => this.router.navigate(target));
   }
 
   private _buildFormData(): FormData {
@@ -356,6 +457,21 @@ export class AdvanceForm implements OnInit {
       fd.append('designatedReviewers', JSON.stringify(this._pickerPayload));
     }
 
+    this._appendItems(fd);
+    return fd;
+  }
+
+  /** 追加批次 payload：只帶本批次的預支日期 / 原因 / 明細（專案與活動沿用原單） */
+  private _buildSupplementFormData(): FormData {
+    const fd = new FormData();
+    fd.append('advanceDate', this.form.get('advanceDate')?.value || '');
+    fd.append('reason', this.form.get('reason')?.value || '');
+    this._appendItems(fd);
+    return fd;
+  }
+
+  /** 將明細列與檔案寫入 FormData（一般申請與追加批次共用） */
+  private _appendItems(fd: FormData) {
     const itemsMeta: any[] = [];
     let fileIndex = 0;
 
@@ -384,7 +500,6 @@ export class AdvanceForm implements OnInit {
       itemsMeta.push(meta);
     }
     fd.append('items', JSON.stringify(itemsMeta));
-    return fd;
   }
 
   private _itemGroup(

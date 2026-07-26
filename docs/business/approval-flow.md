@@ -281,6 +281,51 @@ draft → pending → approved / returned / rejected
 | `ApprovalTaskHandler.GetByIdAsync()` | 單筆查詢含存取控制 |
 | 前端各申請表單 | 動態新增/刪除/排序多位指定審核者 UI |
 
+## 追加預支重跑簽核（2026-07 新增）
+
+**僅預支申請（advance）適用。** 已核准的預支單可再新增「追加批次」，追加明細掛在**同一張單**上（不是獨立子單），送出後整張單重跑同一份 advance 簽核流程。
+
+### 資料模型
+
+- `AdvanceRequestItem.RoundNo`：所屬批次（1 = 原始預支，≥2 = 第 N 次追加）
+- `AdvanceRequest.CurrentRoundNo`：最新已建立的批次號。**「有進行中的追加」＝ `CurrentRoundNo > 1 && ApprovalStatus ∈ {pending, returned}`**
+- `AdvanceRequestSupplement`：只存 `RoundNo ≥ 2` 的批次（日期 / 原因 / 回滾快照）。Round 1 即父單本身，零資料重複；各批次金額一律由該批次明細加總推導，不存金額欄位
+- `ApprovalRecord.RoundNo`：簽核紀錄所屬批次（其餘 9 種申請恆為 1）
+
+### 狀態流轉
+
+```
+approved ──(POST supplements：建立批次 + 併入總額 + 直接送簽)──→ pending
+pending  ──核准──→ approved（CurrentRoundNo 維持在新批次）
+pending  ──退回──→ returned ──(PATCH supplements/{n} 改明細 → PATCH submit)──→ pending
+pending  ──拒絕──→ **回滾**：刪該批次明細/Blob/簽核紀錄 → 還原快照 → approved（CurrentRoundNo−1）
+returned ──(DELETE supplements/{n} 主動放棄)──→ 同上回滾
+```
+
+「拒絕」不會讓整張已核准（甚至已撥款）的預支單變成 rejected —— 只有該追加批次被撤銷，父單的 `ApprovalStatus / CurrentStepOrder / ReviewedAt / ReviewedById / ReviewNote` 由 `AdvanceRequestSupplement.Prev*` 快照原樣還原。回滾實作見 [AdvanceSupplementService.RollbackAsync](../../Api/Services/AdvanceSupplementService.cs)（駁回時本次拒絕紀錄尚在 ChangeTracker，需另外 Detach 才不會留下孤兒）。
+
+### 金額 / 撥款 / 沖銷連動
+
+- **送簽當下即併入 `GrandTotal`**（不是核准時）。因為財務步驟核准要寫 `installments` 且 `SUM == GrandTotal`，而財務不一定是最後一關
+- 追加核准後 `SUM(installments)` 須等於**新**總額：已撥款列鎖定不可改，財務**補一期**新增金額。原本 `FullyPaid` 的單追加後會變回 `PartiallyPaid`
+- **追加簽核期間父單不是 `approved` → 該期間無法新增或送出沖銷**（`GET /write-off-requests/available-advances` 自動排除；`POST` / `PATCH` / `submit` 三處皆有守門，避免對變動中的總額沖銷）
+- 追加核准後，沖銷「待沖銷」= 新總額 − 已沖銷
+
+### 守門
+
+| 情境 | 行為 |
+|---|---|
+| 非 `approved` / 已結案 / 已有進行中追加 → 新增追加 | 400 |
+| 有進行中追加 → 整單 `PATCH` / `DELETE` | 400「此預支申請有進行中的追加批次，請先處理追加批次。」**必要**：不擋的話申請人可在追加被退回時改掉甚至刪掉已撥款的原始明細 |
+| 非 `returned` 或非最新批次 → 編輯 / 放棄追加批次 | 400 |
+| 追加簽核期間 → 沖銷新增 / 編輯 / 送簽 | 400 |
+
+### 通知
+
+追加情境下 approved / returned / rejected 三種結果通知，申請類型名稱後會加註批次（`NotifyApplicantAsync` 的 `contextLabel` 參數）；拒絕另加「原預支單維持核准」，避免申請人誤以為整張單被否決。
+
+---
+
 ## 跨步驟同人去重（限縮：總監 OR 相鄰 step）
 
 > **2026-05 規則限縮**：原本「全歷史」去重對所有審核者生效，過於激進；非總監若在跨多個 step 後再回到同一審核者，可能是流程設計需要分階段把關。新規則只對「總監 (`JobTitle.Level == 1`)」或「相鄰 step 同人」自動跳過 + 代簽，其餘場景要求重新審核。
@@ -312,6 +357,15 @@ draft → pending → approved / returned / rejected
 **代理審核**：以 `ReviewedById`（實際點按者）為去重依據，`OnBehalfOfUserId`（受代理人）不算已審。
 
 **退回重送 → 歷史清零**：以 `ApprovalRecords` 中最近一次 `Action='returned'` 的 `ReviewedAt` 當分隔線，僅計入該時點之後的 approved 紀錄。退回前審過的人重送後仍須再審。不需新增 schema、不影響稽核軌跡（紀錄全保留）。
+
+**追加預支 → 以批次為範圍（2026-07 新增）**：advance 追加時前一輪的 `ApprovalRecords` 仍在，若「已審過」判定不限定批次，會造成三個嚴重後果 —— ①第 1 輪審過的總監在追加輪看不到也不能審（整單卡死）②所有步驟被自動跳過導致追加未經審核就核准 ③應收通知的審核者被跳過。因此**下列四處判定一律加上 `RoundNo == 該申請目前的 CurrentRoundNo`**，批次由 [AdvanceSupplementService.ResolveCurrentRoundAsync](../../Api/Services/AdvanceSupplementService.cs) 解析（非 advance 恆回 1，行為與過去完全相同）：
+
+| 位置 | 用途 |
+|---|---|
+| `PaymentRequestReadService.StepMatchClause` | 待審清單去重 |
+| `ApprovalTaskHandler.AuthorizeStepAsync` | 重複 PATCH 防呆 |
+| `ApprovalFlowService.GetApprovedReviewerIdsAsync` / `GetApprovedSupervisorIdsAsync` | 自動跳過 + 代簽判定 |
+| `ApprovalNotificationService.GetApprovedReviewerIdsAsync` | 通知去重 |
 
 **升級審核排除**：[EscalationService.FindManagerInDepartmentAsync](../../Api/Services/EscalationService.cs) 的 `excludeUserIds` 語義改為「總監（Level=1）已審者」。實務上 escalation 鏈停在總監前，此調整理論上影響極小，但維持與 `SkipUnreviewableStepsAsync` 邏輯一致。
 
