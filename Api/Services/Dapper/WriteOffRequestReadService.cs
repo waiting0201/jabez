@@ -5,7 +5,7 @@ using System.Data;
 
 namespace Jabez.Api.Services.Dapper;
 
-public sealed class WriteOffRequestReadService(IDbConnection db) : IWriteOffRequestReadService
+public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentReadService installments) : IWriteOffRequestReadService
 {
     // 預支沖銷申請主查詢：WriteOffRecords 關聯 AdvanceRequests、Projects、Users、WriteOffItems
     private const string BaseSql = """
@@ -30,12 +30,15 @@ public sealed class WriteOffRequestReadService(IDbConnection db) : IWriteOffRequ
                wi.CashAmount AS ItemCash, wi.CheckAmount AS ItemCheck,
                wi.Note AS ItemNote, wi.InvoiceNo AS ItemInvoiceNo,
                wi.FileName AS ItemFileName, wi.FileUrl AS ItemFileUrl, wi.SortOrder,
-               wi.InvoiceDate AS ItemInvoiceDate
+               wi.InvoiceDate AS ItemInvoiceDate,
+               wi.CheckPaid AS ItemCheckPaid, wi.CheckPaidAt AS ItemCheckPaidAt,
+               cpb.Name AS ItemCheckPaidBy
         FROM WriteOffRecords wo
         LEFT JOIN AdvanceRequests ar ON wo.AdvanceRequestId = ar.Id
         LEFT JOIN Projects proj      ON ar.ProjectId        = proj.Id
         LEFT JOIN Users sub          ON wo.SubmittedById    = sub.Id
         LEFT JOIN WriteOffItems wi   ON wi.WriteOffRecordId = wo.Id
+        LEFT JOIN Users cpb          ON wi.CheckPaidById    = cpb.Id
         """;
 
     public async Task<PagedResult<WriteOffRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null)
@@ -98,11 +101,83 @@ public sealed class WriteOffRequestReadService(IDbConnection db) : IWriteOffRequ
         var attRows = await db.QueryAsync<dynamic>(attSql, new { RequestId = id });
         var attachments = attRows.Select(r => new AttachmentDto((int)r.Id, (string)r.FileName, (string?)r.FileUrl)).ToArray();
 
+        // 預支批次 + 各次沖銷 + 分期撥款（獨立查詢，避免與 items JOIN 造成笛卡兒相乘）
+        var advanceRounds   = await GetAdvanceRoundsAsync(dto.AdvanceRequestId);
+        var writeOffHistory = await GetWriteOffHistoryAsync(dto.AdvanceRequestId, id);
+        var refundDue       = WriteOffRefundCalculator.Calculate(
+            dto.AdvanceGrandTotal, dto.AdvanceWrittenOffTotal, dto.GrandTotal);
+
+        var ownInst = (await installments.GetByParentIdsAsync(InstallmentParentTable.WriteOffRecord, [id]))
+                      .GetValueOrDefault(id, []);
+        var advInst = (await installments.GetByParentIdsAsync(InstallmentParentTable.AdvanceRequest, [dto.AdvanceRequestId]))
+                      .GetValueOrDefault(dto.AdvanceRequestId, []);
+
         return dto with
         {
-            DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null,
-            Attachments         = attachments.Length > 0 ? attachments : null,
+            DesignatedReviewers  = designatedReviewers.Length > 0 ? designatedReviewers : null,
+            Attachments          = attachments.Length > 0 ? attachments : null,
+            AdvanceRounds        = advanceRounds,
+            WriteOffHistory      = writeOffHistory,
+            RefundDue            = refundDue,
+            Installments         = ownInst.Count > 0 ? [.. ownInst] : null,
+            PaymentStatus        = installments.ComputeStatus(ownInst),
+            AdvanceInstallments  = advInst.Count > 0 ? [.. advInst] : null,
+            AdvancePaymentStatus = installments.ComputeStatus(advInst),
         };
+    }
+
+    // ── 批次金額檢視 helpers ─────────────────────────────────────────────────
+
+    /// <summary>關聯預支單的各預支批次（含追加）；批次組裝規則與 GET /advance-requests/{id} 共用同一份實作。</summary>
+    private async Task<AdvanceRoundDto[]> GetAdvanceRoundsAsync(int advanceRequestId)
+    {
+        const string headSql = "SELECT AdvanceDate FROM AdvanceRequests WHERE Id = @Id";
+        var advanceDate = await db.ExecuteScalarAsync<DateTime?>(headSql, new { Id = advanceRequestId });
+        if (advanceDate is null) return [];
+
+        const string itemSql = """
+            SELECT Id, Category, SeqNo, ItemName, UnitPrice, Quantity, TotalPrice,
+                   CashAmount, CheckAmount, Note, SortOrder, FileName, FileUrl, RoundNo
+            FROM AdvanceRequestItems
+            WHERE AdvanceRequestId = @Id
+            ORDER BY RoundNo, SortOrder, Id
+            """;
+        var itemRows = await db.QueryAsync<dynamic>(itemSql, new { Id = advanceRequestId });
+        var items = itemRows.Select(r => new AdvanceRequestItemDto(
+            (int)r.Id, (string)r.Category, (int)r.SeqNo, (string)r.ItemName,
+            (decimal)r.UnitPrice, (string)r.Quantity, (decimal)r.TotalPrice,
+            (decimal)r.CashAmount, (decimal)r.CheckAmount, (string?)r.Note, (int)r.SortOrder,
+            (string?)r.FileName, (string?)r.FileUrl, (int)r.RoundNo)).ToList();
+
+        const string supSql = """
+            SELECT RoundNo, AdvanceDate, Reason
+            FROM AdvanceRequestSupplements
+            WHERE AdvanceRequestId = @Id
+            ORDER BY RoundNo
+            """;
+        var supRows = await db.QueryAsync<dynamic>(supSql, new { Id = advanceRequestId });
+
+        return AdvanceRequestReadService.BuildRounds(advanceDate.Value, supRows, items);
+    }
+
+    /// <summary>同一張預支單底下的各次沖銷（含本單；已拒絕的不列入）。</summary>
+    private async Task<WriteOffRoundDto[]> GetWriteOffHistoryAsync(int advanceRequestId, int currentId)
+    {
+        const string sql = """
+            SELECT Id, WriteOffNo, RequestNo, GrandTotal, ApprovalStatus, CreatedAt
+            FROM WriteOffRecords
+            WHERE AdvanceRequestId = @AdvanceRequestId AND ApprovalStatus <> 'rejected'
+            ORDER BY WriteOffNo, Id
+            """;
+        var rows = await db.QueryAsync<dynamic>(sql, new { AdvanceRequestId = advanceRequestId });
+        return [.. rows.Select(r => new WriteOffRoundDto(
+            (int)r.Id,
+            (int)r.WriteOffNo,
+            (string)r.RequestNo,
+            (decimal)r.GrandTotal,
+            (string)r.ApprovalStatus,
+            (DateTime)r.CreatedAt,
+            (int)r.Id == currentId))];
     }
 
     // ── Grouping helpers ─────────────────────────────────────────────────────
@@ -131,7 +206,10 @@ public sealed class WriteOffRequestReadService(IDbConnection db) : IWriteOffRequ
                     (string?)row.ItemFileName,
                     (string?)row.ItemFileUrl,
                     (int)row.SortOrder,
-                    (DateTime?)row.ItemInvoiceDate));
+                    (DateTime?)row.ItemInvoiceDate,
+                    (bool)row.ItemCheckPaid,
+                    (DateTime?)row.ItemCheckPaidAt,
+                    (string?)row.ItemCheckPaidBy));
         }
 
         return dict.Values.Select(x => new WriteOffRequestDto(

@@ -244,6 +244,8 @@ public sealed class AppRouter(
             ("GET",    ["write-off-requests"])                                  => await writeOffRequests.GetAllAsync(req),
             ("POST",   ["write-off-requests"])                                 => await writeOffRequests.CreateAsync(req),
             ("PATCH",  ["write-off-requests", var id, "submit"])               => await writeOffRequests.SubmitAsync(req, id),
+            ("PATCH",  ["write-off-requests", var id, "installments"])         => await writeOffRequests.UpsertInstallmentsAsync(req, id),
+            ("PATCH",  ["write-off-requests", var id, "check-payments"])       => await writeOffRequests.UpdateCheckPaymentsAsync(req, id),
             ("GET",    ["write-off-requests", var id])                         => await writeOffRequests.GetByIdAsync(req, id),
             ("PUT",    ["write-off-requests", var id])                         => await writeOffRequests.UpdateAsync(req, id),
             ("PATCH",  ["write-off-requests", var id])                         => await writeOffRequests.UpdateAsync(req, id),
@@ -541,6 +543,8 @@ public sealed class AppRouter(
             ("POST",   ["write-off-requests"])                  => PermissionCodes.WriteOffRequestsWrite,
             ("PUT",    ["write-off-requests", _])               => PermissionCodes.WriteOffRequestsWrite,
             ("PATCH",  ["write-off-requests", _, "submit"])     => PermissionCodes.WriteOffRequestsWrite,
+            ("PATCH",  ["write-off-requests", _, "installments"])   => PermissionCodes.WriteOffRequestsWrite,
+            ("PATCH",  ["write-off-requests", _, "check-payments"]) => PermissionCodes.WriteOffRequestsWrite,
             ("PATCH",  ["write-off-requests", _])               => PermissionCodes.WriteOffRequestsWrite,
             ("DELETE", ["write-off-requests", _])               => PermissionCodes.WriteOffRequestsDelete,
 
@@ -654,7 +658,9 @@ public sealed class AppRouter(
             ("PATCH", ["advance-requests",         _, "installments"]) or
             ("PATCH", ["travel-requests",          _, "installments"]) or
             ("PATCH", ["travel-payment-requests",  _, "installments"]) or
-            ("PATCH", ["holiday-travel-requests",  _, "installments"]);
+            ("PATCH", ["holiday-travel-requests",  _, "installments"]) or
+            ("PATCH", ["write-off-requests",       _, "installments"]) or
+            ("PATCH", ["write-off-requests",       _, "check-payments"]);
 
     /// <summary>檢查是否為 Superadmin，否則拋出 403</summary>
     private static void RequireSuperAdmin(ClaimsPrincipal principal)

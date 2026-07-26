@@ -53,6 +53,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AdvanceRequestInstallment>      AdvanceRequestInstallments      { get; set; }
     public DbSet<TravelRequestInstallment>       TravelRequestInstallments       { get; set; }
     public DbSet<TravelPaymentRequestInstallment> TravelPaymentRequestInstallments { get; set; }
+    public DbSet<WriteOffInstallment>            WriteOffInstallments            { get; set; }
 
     // 預審申請
     public DbSet<PreReviewRequest>           PreReviewRequests           { get; set; }

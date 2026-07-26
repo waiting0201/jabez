@@ -64,7 +64,7 @@ draft → pending → approved / returned / rejected
 
 ### 分期撥款（Installments，2026-05 上線；2026-05 Phase 2 完成）
 
-4 種申請類型（payment_request / advance / travel / travel_payment）支援**多筆分期撥款**，撥款資料**單一真相**＝子表 `XxxInstallment[]`：
+**5 種**申請類型（payment_request / advance / travel / travel_payment / **write_off**）支援**多筆分期撥款**，撥款資料**單一真相**＝子表 `XxxInstallment[]`（沖銷差額分期為 2026-07 新增，規則見下方「預支沖銷差額分期撥款」）：
 
 - **填寫時機**：財務撥款步驟**核准當下**即填預計撥款日 + 各期金額，透過 `PATCH /approval-tasks/{appType}/{id}/review` 的 `installments` 欄位**與審核同交易原子寫入**；此時撥款明細**必填**（加總須 == 申請總額，否則不可核准）。核准後仍可在「設定撥款明細」區塊透過獨立 endpoint 修改未撥列 / 填實際撥款日。
   - **「財務撥款步驟」判定**：看**該簽核步驟綁定的部門 Code** 是否屬財務管理部（後端 `DepartmentCodes.FinanceStep` = `{FIN, Financial Management Department}`，即舊短碼 + 改制後英文全名；Superadmin 視同）。刻意**只含財務管理部、不含 CEO / 總監 / HQ / 會計**，避免上層核准步驟被誤判為撥款填寫節點而擋住簽核。同一判定用於 `IsFinanceStepAsync`（後端撥款明細必填）與前端 `FINANCE_STEP_DEPT_CODES`（`canSetPaymentDate` 顯示撥款表單 / `canCloseAdvance` / `canCloseTravelRequest` 結案 checkbox），**前後端兩處須同步**。注意此「步驟判定」與「使用者撥款權限判定」`DepartmentCodes.FinancialAndAbove`（含 CEO/總監/HQ/會計）是**兩個不同集合**。
@@ -72,7 +72,7 @@ draft → pending → approved / returned / rejected
   - 批次核准不填撥款明細，最終 approved 後由「待補撥款」提醒（`BuildPendingPaymentReminderAsync`）追蹤。
 - **獨立 endpoint**：`PATCH /{type}-requests/{id}/installments`（舊 `/payment-date` 已於 Phase 2 移除）；**僅 ApprovalStatus == approved 可呼叫**（4 種一致；review 路徑因在核准同交易內寫入故不經此守衛）
 - **DTO**：`UpsertInstallmentsRequest { installments[], approvalStatus? }`，每筆 `{ id?, installmentNo, expectedDate, paidAt?, amount, note? }`
-- **持久化核心共用**：`InstallmentUpsertService.Apply`（validate + diff，**不 SaveChanges**，交易邊界交呼叫端）— 獨立 endpoint 與 review 原子寫入共用同一份邏輯；4 種子表實作 `IInstallmentEntity` 介面以泛型化
+- **持久化核心共用**：`InstallmentUpsertService.Apply`（validate + diff，**不 SaveChanges**，交易邊界交呼叫端）— 獨立 endpoint 與 review 原子寫入共用同一份邏輯；5 種子表實作 `IInstallmentEntity` 介面以泛型化
 - **驗證**（`InstallmentValidator.Validate`）：
   - 序號 1-based 連續無斷號
   - SUM(amount) == 申請總額（PaymentRequest.TotalAmount / 其他三者的 GrandTotal）容忍 0.01 浮點誤差
@@ -88,8 +88,42 @@ draft → pending → approved / returned / rejected
   - `partial` = 至少一期 PaidAt 非 null 且至少一期 PaidAt 為 null（PartiallyPaid）
   - `unpaid` = 無 installments 或所有 PaidAt 為 null（Unpaid）
   - 簽核作業 → 已核准 Tab 的篩選按鈕對應：`全部` / `尚未撥款` (`unpaid`) / `部分撥款` (`partial`) / `全部撥款` (`paid`)
-  - 沖銷類（write_off / travel_write_off）退款仍以父表 `RefundedAt` 兩態判斷；遇 `paymentStatus=partial` 時整批 `1=0` 短路（沖銷無分期概念）
+  - 出差沖銷（travel_write_off）退款仍以父表 `RefundedAt` 兩態判斷；遇 `paymentStatus=partial` 時整批 `1=0` 短路。**預支沖銷（write_off）自 2026-07 起改走分期**，列表 filter 尚未接上分期三態（另案）
 - **PDF 出納簽名章**：取 `installments[]` 中最後一期已撥款者的 `PaidBySignatureUrl` + `PaidAt`
+
+### 預支沖銷差額分期撥款（2026-07 新增）
+
+沖銷金額累計超過預支總額時，公司需補撥差額給員工。原本只有 `AdvanceRequest` 上單一組 `EstimatedRefundDate / RefundedAt`，**無法分次撥款**；改為第 5 種分期子表 `WriteOffInstallment`（FK → `WriteOffRecord`）。
+
+**應撥總額 `RefundDue`**（[WriteOffRefundCalculator](../../Api/Common/WriteOffRefundCalculator.cs)，前端同一份公式在 `write-off-request.model.ts` 的 `calcRefundDue()`）：
+
+```
+RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
+          − max(0, 前次已沖銷            − 預支總額)
+```
+
+以「增額」而非「總超支」計算 —— 每張沖銷單各自算得出、彼此不重疊，加總即等於整張預支單的超支總額，**不必等結案**。
+
+範例（預支 10,000）：
+
+| | 本次沖銷 | 累計 | RefundDue |
+|---|---|---|---|
+| 第 1 次沖銷 | 12,000 | 12,000 | **2,000** |
+| 第 2 次沖銷 | 3,000 | 15,000 | **3,000** |
+| | | | 合計 5,000 = 總超支 |
+
+**規則**：
+
+- **財務核准當下必填**（`RefundDue > 0` 時）：走既有的 `PATCH /approval-tasks/write_off/{id}/review` 的 `installments` 欄位，與審核同交易原子寫入。`RefundDue = 0`（未超支）則不要求、UI 也不顯示撥款區塊
+- **核准後修改**：`PATCH /write-off-requests/{id}/installments`（僅 approved、限財務體系 / Superadmin）
+- 驗證、已撥款列保護、每期 `PaidAt` null→value 觸發「已撥款（第 N/M 期）」通知，皆與其他 4 種一致
+- **出差預支沖銷（travel_write_off）不在此範圍**，仍維持單一預計撥款日
+
+**簽核頁同步維護預支單撥款明細**：預支沖銷簽核頁另設「關聯預支單撥款明細」區塊，直接讀寫 `PATCH /advance-requests/{id}/installments`，與預支申請單完全同步（同一份資料，不是複本）。
+
+**支票已支付註記**：支票由公司**直接付給廠商**，不是撥給員工的錢，因此不進撥款分期；改由沖銷明細的 `CheckPaid` 勾選註記，`PATCH /write-off-requests/{id}/check-payments`（限財務體系 / Superadmin，pending 或 approved 皆可，`CheckAmount = 0` 的明細不可勾）。撥款明細的加總基準**維持含支票的整單金額**，未因此改變。
+
+**舊資料 backfill**：migration `AddWriteOffInstallmentsAndCheckPaid` 把既有 `AdvanceRequest.RefundAmount > 0` 且有退款日的資料，寫成該預支單**最後一張已核准沖銷單**的第 1 期。
 
 ### 撥款明細編輯 UI 限制（[approval-task-review](../../Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/)）
 

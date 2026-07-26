@@ -1,8 +1,8 @@
 namespace Jabez.Api.Models.Entities;
 
 /// <summary>
-/// 4 種分期撥款子表（PaymentRequestInstallment / AdvanceRequestInstallment /
-/// TravelRequestInstallment / TravelPaymentRequestInstallment）共用的可寫欄位介面，
+/// 5 種分期撥款子表（PaymentRequestInstallment / AdvanceRequestInstallment /
+/// TravelRequestInstallment / TravelPaymentRequestInstallment / WriteOffInstallment）共用的可寫欄位介面，
 /// 供 <see cref="Jabez.Api.Services.InstallmentUpsertService"/> 以泛型方式統一 upsert。
 /// </summary>
 public interface IInstallmentEntity

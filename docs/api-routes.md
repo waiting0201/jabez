@@ -144,6 +144,8 @@
 | GET/POST | `/write-off-requests` | 預支沖銷申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/write-off-requests/{id}` | 預支沖銷申請 CRUD |
 | PATCH | `/write-off-requests/{id}/submit` | 送出預支沖銷申請（draft → pending） |
+| PATCH | `/write-off-requests/{id}/installments` | 沖銷差額撥款分期 upsert（**僅 approved**、限財務體系 / Superadmin；`SUM(Amount)` 須等於 `RefundDue`＝本次沖銷造成的超支增額；`RefundDue = 0` 時回 400） |
+| PATCH | `/write-off-requests/{id}/check-payments` | 沖銷明細「支票金額已支付」註記（限財務體系 / Superadmin；pending 或 approved 皆可；`CheckAmount = 0` 的明細不可勾） |
 
 ## 出差預支沖銷申請
 

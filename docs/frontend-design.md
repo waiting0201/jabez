@@ -695,13 +695,22 @@ loadData(items: Item[]) {
   [totalAmount]="r.totalAmount" />
 ```
 
-#### 編輯版本（[approval-task-review](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/)）
+#### 編輯版本（[`<app-installments-editor>`](../Admin/src/app/shared/components/installments-editor.ts)）
 
-於簽核審核頁內部實作（不抽元件，因含複雜表單與後端 dispatch 邏輯）。同時出現在 2 個區塊：
-- **待審核（pending）**：核准前財務簽核時的計劃用 form
-- **已核准（approved）**：核准後財務回來填撥款日 / 金額 / 備註
+**2026-07 抽出為共用元件**（原本寫在 approval-task-review 內部）。抽離原因：預支沖銷簽核頁需要**同一頁放兩個編輯器**（本單的差額撥款 + 關聯預支單的撥款明細），單一 `installmentsForm` 無法支撐。
 
-UI 行為規範（4 種申請類型一致）：
+兩種 `mode`：
+
+| mode | 使用時機 | 差異 |
+|------|---------|------|
+| `review` | 待審核（pending）財務簽核當下 | 無「實際撥款日」欄、無儲存鈕；由外層審核表單於送出時一併帶出（`viewChild` → `editor.value()` / `editor.valid()`） |
+| `manage` | 已核准（approved）後回來管理 | 多「實際撥款日」欄與「儲存撥款明細」按鈕，`(save)` 輸出 `InstallmentInput[]` 由父層 dispatch 到對應 service |
+
+主要 input：`totalAmount`（應撥總額）/ `installments` / `title` / `totalLabel` / `hint` / `required` / `statusLabel` / `statusClass` / `message` / `error`。
+
+> **預支沖銷的 `totalAmount` 不是整單金額**，而是 `refundDue`＝本次沖銷造成的超支增額（後端 `WriteOffRefundCalculator` 算好帶回）。`refundDue = 0` 時整個撥款區塊不顯示。
+
+UI 行為規範（5 種申請類型一致）：
 
 | 元件 | 規則 |
 |------|------|
@@ -712,15 +721,42 @@ UI 行為規範（4 種申請類型一致）：
 | **刪除按鈕（⨯）** | 已撥款列：完全隱藏；只剩 1 列時也隱藏 |
 | **剩餘額度 hint** | 在標題列顯示「剩餘 X 元」，即時反映 `申請總額 − installmentsSum()` |
 
-**Helpers 命名**（4 種申請類型共用）：
-- `canAddInstallmentRow(task)` — 是否可新增
-- `isInstallmentsSumValid(task)` — SUM 是否等於申請總額
-- `installmentRowMax(task, index)` — 單列金額 max（剩餘額度）
-- `isInstallmentLocked(row)` — 列是否已鎖定
+**元件內部 helpers 命名**：
+- `canAddRow()` — 是否可新增
+- `sumValid()` — SUM 是否等於應撥總額
+- `rowMax(index)` — 單列金額 max（剩餘額度）
+- `isLocked(row)` — 列是否已鎖定
+
+**父層取值 API**（`review` mode 由外層表單送出時用）：`value()` / `valid()` / `sum()` / `markAllAsTouched()`。
 
 > ⚠️ **禁止用 `paymentStatus === 'FullyPaid'` 當禁用條件**（2026-07 移除）：**追加預支**核准後申請總額會變大，原本 FullyPaid 的單必須能補一期把新增金額排入。若沿用 FullyPaid 鎖定，財務端湊不到 `SUM == 總額`，而後端在財務步驟又強制必填撥款明細 → **整張單卡死無法核准**。已撥款列的保護改由 `isInstallmentLocked(row)`（欄位 readonly + 隱藏刪除鈕）與後端 `InstallmentValidator` 負責，兩者已足夠。
 
 > 後端 `InstallmentValidator.Validate` 提供等同的伺服端防線（序號連續、SUM == 總額、已撥款列不可刪不可改），前端為 UX，後端為強制驗證。
+
+### 7.7 沖銷金額摘要（[`<app-write-off-summary>`](../Admin/src/app/shared/components/write-off-summary.ts)）
+
+預支沖銷的「沖銷資訊」卡片金額區，**詳情頁與簽核頁共用同一份呈現**（2026-07 取代原本兩處各自硬寫的 4 格摘要）。
+
+版面：左右兩張小表 + 下方餘額列。
+
+| 區塊 | 內容 |
+|------|------|
+| 左：**預支批次** | 第 1 次 / 第 2 次…（`AdvanceRequestItem.RoundNo`，標籤共用 [`roundLabel()`](../Admin/src/app/features/admin/advance-requests/models/advance-request.model.ts)）+ 預支日期 + 金額，footer 為「預支加總」 |
+| 右：**已沖銷** | 第 1/2/3… 次沖銷（`WriteOffRecord.WriteOffNo`）+ 單號 + 金額，本單標 `本單` badge 並套底色，footer 為「已沖銷加總」 |
+| 下：**餘額列** | 本次沖銷 / 待沖銷餘額（負數為 `text-red`）/ 本次應撥差額（`refundDue > 0` 才顯示） |
+
+Input：`advanceRounds` / `writeOffHistory` / `currentGrandTotal` / `refundDue`。加總一律由陣列 `reduce` 推導，不吃任何快取欄位。
+
+### 7.8 支票已支付欄（預支沖銷明細）
+
+支票由公司**直接付給廠商**，不是撥給員工的錢，因此不進撥款分期，改以沖銷明細的勾選註記。
+
+- 簽核頁（財務體系 / Superadmin，單子 pending 或 approved）：checkbox，變更即呼叫 `PATCH /write-off-requests/{id}/check-payments`，樂觀更新不重載整頁
+- 簽核頁（其他角色）/ 詳情頁：唯讀顯示 `✓`（`title` 帶勾選日期與勾選人）或 `—`
+- `checkAmount === 0` 的列一律顯示 `—` 且不可勾（後端同步擋下）
+- 表尾統計：`已支付 N / M 筆`
+
+> ⚠️ 沖銷單被**退回修改**後申請人重填明細時，`UpdateAsync` 會整批取代 items，支票支付註記將被清空。實務上退回發生在財務核准前，可接受。
 
 ---
 

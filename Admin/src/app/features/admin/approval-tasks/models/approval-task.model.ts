@@ -236,6 +236,22 @@ export interface WriteOffTaskDetailItem {
   invoiceDate?: string;
   fileName?: string;
   fileUrl?: string;
+  /** 支票已由公司直接付給廠商（財務勾選）*/
+  checkPaid?: boolean;
+  checkPaidAt?: string;
+  checkPaidBy?: string;
+}
+
+/** 同一張預支單底下的第 N 次沖銷 */
+export interface WriteOffRound {
+  id: number;
+  writeOffNo: number;
+  requestNo: string;
+  grandTotal: number;
+  approvalStatus: string;
+  createdAt: string;
+  /** 是否為目前檢視中的這張沖銷單 */
+  isCurrent: boolean;
 }
 
 export interface WriteOffTaskDetail {
@@ -262,6 +278,18 @@ export interface WriteOffTaskDetail {
   /** 關聯預支單的實際退款金額（財務手動填入） */
   advanceRefundedAmount?: number;
   attachments?: AttachmentItem[];
+  /** 關聯預支單的各預支批次（含追加）*/
+  advanceRounds?: import('../../advance-requests/models/advance-request.model').AdvanceRound[];
+  /** 同一預支單底下各次沖銷 */
+  writeOffHistory?: WriteOffRound[];
+  /** 本次沖銷造成的超支增額 = 公司應補撥金額（後端 WriteOffRefundCalculator 算好帶回）*/
+  refundDue?: number;
+  /** 本沖銷單的差額撥款分期（SUM 須等於 refundDue）*/
+  installments?: InstallmentDto[];
+  paymentStatus?: PaymentInstallmentStatus;
+  /** 關聯預支單的撥款分期（簽核頁可編輯，與預支申請單同步）*/
+  advanceInstallments?: InstallmentDto[];
+  advancePaymentStatus?: PaymentInstallmentStatus;
 }
 
 export interface TravelWriteOffTaskDetailItem {

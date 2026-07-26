@@ -82,55 +82,31 @@
           </div>
         </div>
 
-        <!-- 沖銷金額摘要 -->
-        <div class="row g-3 mb-4">
-          <div class="col-6 col-md-3">
-            <div class="text-muted small">預支金額</div>
-            <div class="fw-600 text-lg">{{ r.advanceGrandTotal | number:'1.0-0' }}</div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="text-muted small">前次已沖銷</div>
-            <div class="fw-600 text-lg">{{ r.advanceWrittenOffTotal | number:'1.0-0' }}</div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="text-muted small">本次沖銷</div>
-            <div class="fw-600 text-lg text-primary">{{ r.grandTotal | number:'1.0-0' }}</div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="text-muted small">待沖銷餘額</div>
-            <div class="fw-600 text-lg" [class]="(r.advanceGrandTotal - r.advanceWrittenOffTotal - r.grandTotal + (r.advanceRefundedAmount ?? 0)) >= 0 ? 'text-green' : 'text-red'">
-              {{ r.advanceGrandTotal - r.advanceWrittenOffTotal - r.grandTotal + (r.advanceRefundedAmount ?? 0) | number:'1.0-0' }}
-            </div>
-          </div>
-        </div>
-
-        @if (r.advanceIsClosed && (r.advanceGrandTotal - r.advanceWrittenOffTotal - r.grandTotal) < 0) {
-          <div class="row g-3 mb-4">
-            <div class="col-6 col-md-3">
-              <div class="text-muted small">預計撥款日</div>
-              <div class="fw-500">{{ r.estimatedRefundDate ? (r.estimatedRefundDate | date:'yyyy-MM-dd') : '尚未設定' }}</div>
-              <div class="text-muted small mt-1">沖銷金額超過預支金額時，公司預計撥付差額給員工的日期</div>
-            </div>
-            <div class="col-6 col-md-3">
-              <div class="text-muted small">撥款日</div>
-              <div class="fw-500" [class.text-success]="r.refundedAt">{{ r.refundedAt ? (r.refundedAt | date:'yyyy-MM-dd') : '尚未撥款' }}</div>
-              <div class="text-muted small mt-1">公司實際撥付差額給員工的日期</div>
-            </div>
-            @if (r.advanceRefundedAmount != null) {
-              <div class="col-6 col-md-3">
-                <div class="text-muted small">撥款金額</div>
-                <div class="fw-500">${{ r.advanceRefundedAmount | number:'1.0-0' }}</div>
-              </div>
-            }
-          </div>
-        }
+        <!-- 沖銷金額摘要：預支各批次 + 各次沖銷 + 待沖銷餘額 / 應撥差額 -->
+        <app-write-off-summary
+          [advanceRounds]="r.advanceRounds"
+          [writeOffHistory]="r.writeOffHistory"
+          [currentGrandTotal]="r.grandTotal"
+          [refundDue]="r.refundDue ?? 0" />
 
         @if (r.note) {
-          <div class="text-muted small mb-0">備註：{{ r.note }}</div>
+          <div class="text-muted small mt-4 mb-0">備註：{{ r.note }}</div>
         }
 
       </div>
     </div>
+
+    <!-- 本次沖銷差額撥款明細（僅超支時才有資料；read-only）-->
+    <app-installments-table
+      [installmentsInput]="r.installments"
+      [paymentStatus]="r.paymentStatus"
+      [totalAmount]="r.refundDue" />
+
+    <!-- 關聯預支單撥款明細（read-only 對照）-->
+    <app-installments-table
+      [installmentsInput]="r.advanceInstallments"
+      [paymentStatus]="r.advancePaymentStatus"
+      [totalAmount]="r.advanceGrandTotal" />
 
     <!-- 沖銷明細 -->
     <div class="card border-0 shadow-sm mb-6">
@@ -155,6 +131,7 @@
                 <th class="text-right">總價</th>
                 <th class="text-right">現金花費</th>
                 <th class="text-right">支票金額</th>
+                <th class="text-center" style="width:110px">支票已支付</th>
                 <th>備註</th>
               </tr>
             </thead>
@@ -179,6 +156,14 @@
                   <td class="text-right small fw-500">{{ item.totalPrice | number:'1.0-0' }}</td>
                   <td class="text-right small">{{ item.cashAmount | number:'1.0-0' }}</td>
                   <td class="text-right small">{{ item.checkAmount | number:'1.0-0' }}</td>
+                  <td class="text-center align-middle small">
+                    @if (item.checkAmount > 0 && item.checkPaid) {
+                      <span class="text-success"
+                            [title]="(item.checkPaidAt | date:'yyyy-MM-dd') + ' ' + (item.checkPaidBy || '')">✓</span>
+                    } @else {
+                      <span class="text-muted">—</span>
+                    }
+                  </td>
                   <td class="small text-muted">{{ item.note || '—' }}</td>
                 </tr>
               }
@@ -189,6 +174,7 @@
                 <td class="text-right fw-600">{{ r.grandTotal | number:'1.0-0' }}</td>
                 <td class="text-right fw-600">{{ r.cashTotal | number:'1.0-0' }}</td>
                 <td class="text-right fw-600">{{ r.checkTotal | number:'1.0-0' }}</td>
+                <td class="text-center small text-muted">已支付 {{ checkPaidCount(r.items) }} / {{ checkItemCount(r.items) }} 筆</td>
                 <td></td>
               </tr>
             </tfoot>

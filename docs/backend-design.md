@@ -381,7 +381,20 @@ await strategy.ExecuteAsync(async () =>
 
 當同一段寫入邏輯被多個入口共用、且需與呼叫端的其他寫入**同交易**時，把「validate + diff + 套用變更」抽成 static helper，**內部只 `db.Add/Remove` 與改 tracked entity，不呼叫 `SaveChangesAsync`**，交易邊界交由呼叫端決定。
 
-範例：[InstallmentUpsertService.Apply](../Api/Services/InstallmentUpsertService.cs)（分期撥款）— 4 個獨立 `PATCH /{type}-requests/{id}/installments` endpoint 與 `ApprovalTaskHandler` 的「財務核准當下原子寫入撥款明細」共用同一份持久化邏輯。4 種子表透過 [IInstallmentEntity](../Api/Models/Entities/IInstallmentEntity.cs) 介面 + `Func<TEntity>` create factory 泛型化（FK 由 factory 設定，其餘欄位由 helper 填）。
+範例：[InstallmentUpsertService.Apply](../Api/Services/InstallmentUpsertService.cs)（分期撥款）— 5 個獨立 `PATCH /{type}-requests/{id}/installments` endpoint 與 `ApprovalTaskHandler` 的「財務核准當下原子寫入撥款明細」共用同一份持久化邏輯。5 種子表透過 [IInstallmentEntity](../Api/Models/Entities/IInstallmentEntity.cs) 介面 + `Func<TEntity>` create factory 泛型化（FK 由 factory 設定，其餘欄位由 helper 填）。
+
+**5 種分期撥款父表**（[InstallmentParentTable](../Api/Services/Dapper/InstallmentReadService.cs)）：`PaymentRequest` / `AdvanceRequest` / `TravelRequest` / `TravelPaymentRequest` / **`WriteOffRecord`**。
+
+前 4 種的 `SUM(Amount)` 等於父表整單金額；**第 5 種（預支沖銷）不同** —— 對應的是 [WriteOffRefundCalculator](../Api/Common/WriteOffRefundCalculator.cs) 算出的 `RefundDue`：
+
+```
+RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
+          − max(0, 前次已沖銷            − 預支總額)
+```
+
+以「增額」而非「總超支」計算，讓每張沖銷單各自算得出、彼此不重疊，加總即等於整張預支單的超支總額，**不需等到結案**。`RefundDue = 0`（未超支）的沖銷單不會有任何 installment，財務核准時也不要求填寫。
+
+> 新增第 6 種分期父表時必須同步：`IInstallmentEntity` 實作 + EF Config + `InstallmentParentTable` enum + Router 的 `IsFinanceOrSuperAdminRoute` + `UserHandler.DeleteAsync` 的 `PaidByUserId` 清洗清單。
 
 範例：[DesignatedReviewerHelper](../Api/Common/DesignatedReviewerHelper.cs)（申請人指定審核者）— 9 種申請類型的 `SubmitAsync` / `Create` / `Update` 共用 `BuildEntities`（由請求建實體）/ `ReadForFlowAsync`（讀回傳給 `ResolveStartingStepAsync`）/ `ValidateAndNormalizeAsync`（送單時把未綁定的 `ApprovalStepOrder=0` 正規化成唯一 designated step 的 StepOrder，並驗證每個指定步驟皆有 designee）。`ValidateAndNormalizeAsync` 只改 tracked entity，呼叫端隨後 `SaveChanges`。一條流程多個 `UseApplicantDesignated` 步驟時，每筆 designee 以 `ApprovalStepOrder` 綁定步驟，引擎所有 designee 查詢一律加 `ApprovalStepOrder == CurrentStepOrder`（[ApprovalTaskHandler](../Api/Handlers/ApprovalTaskHandler.cs) / [ApprovalFlowService](../Api/Services/ApprovalFlowService.cs) / [PaymentRequestReadService](../Api/Services/Dapper/PaymentRequestReadService.cs) StepMatch 三者條件須同步）。
 

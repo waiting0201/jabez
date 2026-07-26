@@ -419,7 +419,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             }
             case "write_off":
             {
-                var wo = await db.WriteOffRecords.FindAsync(intId)
+                var wo = await db.WriteOffRecords.Include(w => w.Installments)
+                    .FirstOrDefaultAsync(w => w.Id == intId)
                     ?? throw AppException.NotFound("WriteOffRecord");
                 if (wo.ApprovalStatus != "pending")
                     throw AppException.BadRequest("Only pending write-off records can be reviewed.");
@@ -445,12 +446,23 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 }
                 // 記住審核前的步驟（ProcessReviewAsync 可能會 increment）
                 var reviewedStepOrder = wo.CurrentStepOrder;
+                var woRefundDue       = await CalculateWriteOffRefundDueAsync(wo);
 
                 await ProcessReviewAsync("write_off", wo.Id, wo.CurrentStepOrder,
                     wo.ApprovalItemId, action, reviewNote, reviewerId, wo.SubmittedById,
                     setStatus:     s  => wo.ApprovalStatus   = s,
                     incrementStep: () => wo.CurrentStepOrder++,
                     setReviewed:   () => { wo.ReviewedAt = Clock.Now; wo.ReviewedById = reviewerId; wo.ReviewNote = reviewNote?.Trim(); });
+
+                // 財務步驟核准時：本次沖銷有超支才需要撥款明細，且與審核同交易原子寫入
+                if (action == "approved" && woRefundDue > 0
+                    && await IsFinanceStepAsync(wo.ApprovalItemId, reviewedStepOrder, reviewer))
+                {
+                    if (installments is null || installments.Count == 0)
+                        throw AppException.BadRequest("本次沖銷金額超出預支金額，財務核准時必須填寫差額撥款明細。");
+                    InstallmentUpsertService.Apply(db, wo.Installments, installments, woRefundDue, reviewerId,
+                        () => new WriteOffInstallment { WriteOffRecordId = wo.Id });
+                }
 
                 // 預支結案：財務部步驟核准時，可勾選結案
                 if (closeAdvance == true && action == "approved")
@@ -1124,6 +1136,26 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 await notifier.NotifyApplicantAsync(applicationType, applicationId,
                     applicantId.Value, "rejected", reviewNote, contextLabel);
         }
+    }
+
+    /// <summary>
+    /// 本次沖銷造成的超支增額（公司應補撥給員工的金額）。
+    /// 與 WriteOffRequestHandler.CalculateRefundDueAsync 同一公式，共用 <see cref="WriteOffRefundCalculator"/>。
+    /// </summary>
+    private async Task<decimal> CalculateWriteOffRefundDueAsync(WriteOffRecord wo)
+    {
+        var advanceGrandTotal = await db.AdvanceRequests
+            .Where(a => a.Id == wo.AdvanceRequestId)
+            .Select(a => a.GrandTotal)
+            .FirstOrDefaultAsync();
+
+        var otherWrittenOffTotal = await db.WriteOffRecords
+            .Where(w => w.AdvanceRequestId == wo.AdvanceRequestId
+                     && w.ApprovalStatus == "approved"
+                     && w.Id < wo.Id)
+            .SumAsync(w => (decimal?)w.GrandTotal) ?? 0m;
+
+        return WriteOffRefundCalculator.Calculate(advanceGrandTotal, otherWrittenOffTotal, wo.GrandTotal);
     }
 
     // ── 結案 Helpers ─────────────────────────────────────────────────────────

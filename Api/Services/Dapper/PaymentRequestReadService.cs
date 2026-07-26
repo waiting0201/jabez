@@ -119,21 +119,23 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             await FetchAllAsync(reviewerJobTitleId: reviewerJobTitleId, reviewerDepartmentId: reviewerDepartmentId,
                                 statusFilter: status, reviewerUserId: reviewerUserId, paymentStatus: paymentStatus,
                                 applicationType: applicationType);
-        var instDicts = await LoadInstallmentsAsync(payments, advances, travels, holidayTravels, travelPayments);
+        var instDicts = await LoadInstallmentsAsync(payments, advances, travels, holidayTravels, travelPayments, writeOffs);
         var paymentAttachments   = await LoadPaymentAttachmentsAsync();
         var writeOffAttachments  = await LoadWriteOffAttachmentsAsync();
         var preReviewAttachments = await LoadPreReviewAttachmentsAsync();
-        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, instDicts, paymentAttachments, writeOffAttachments, preReviewAttachments);
+        var writeOffHistory      = await LoadWriteOffHistoryAsync();
+        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, instDicts, paymentAttachments, writeOffAttachments, preReviewAttachments, writeOffHistory);
     }
 
     public async Task<ApprovalTaskDto?> GetApprovalTaskByIdAsync(int id, string applicationType)
     {
         var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants) = await FetchAllAsync(id, applicationType);
-        var instDicts = await LoadInstallmentsAsync(payments, advances, travels, holidayTravels, travelPayments);
+        var instDicts = await LoadInstallmentsAsync(payments, advances, travels, holidayTravels, travelPayments, writeOffs);
         var paymentAttachments   = await LoadPaymentAttachmentsAsync();
         var writeOffAttachments  = await LoadWriteOffAttachmentsAsync();
         var preReviewAttachments = await LoadPreReviewAttachmentsAsync();
-        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, instDicts, paymentAttachments, writeOffAttachments, preReviewAttachments)
+        var writeOffHistory      = await LoadWriteOffHistoryAsync();
+        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, instDicts, paymentAttachments, writeOffAttachments, preReviewAttachments, writeOffHistory)
             .FirstOrDefault(t => t.Id == id && t.ApplicationType == applicationType);
     }
 
@@ -524,7 +526,9 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                              AND w2.ApprovalStatus = 'approved'
                              AND w2.Id < wo.Id), 0) AS OtherWrittenOffTotal,
                    worefundby.SignatureUrl AS RefundedBySignatureUrl,
-                   arx.IsClosed AS AdvanceIsClosed
+                   arx.IsClosed AS AdvanceIsClosed,
+                   arx.AdvanceDate AS AdvanceDate,
+                   wo.WriteOffNo
             FROM WriteOffRecords wo
             JOIN AdvanceRequests arx  ON wo.AdvanceRequestId = arx.Id
             LEFT JOIN Projects proj   ON arx.ProjectId       = proj.Id
@@ -660,8 +664,10 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         const string writeOffItemsSql = """
             SELECT wi.Id, wi.WriteOffRecordId, wi.Category, wi.SeqNo, wi.ItemName,
                    wi.UnitPrice, wi.Quantity, wi.TotalPrice, wi.CashAmount, wi.CheckAmount,
-                   wi.Note, wi.InvoiceNo, wi.FileName, wi.FileUrl, wi.SortOrder, wi.InvoiceDate
+                   wi.Note, wi.InvoiceNo, wi.FileName, wi.FileUrl, wi.SortOrder, wi.InvoiceDate,
+                   wi.CheckPaid, wi.CheckPaidAt, cpb.Name AS CheckPaidBy
             FROM WriteOffItems wi
+            LEFT JOIN Users cpb ON wi.CheckPaidById = cpb.Id
             ORDER BY wi.WriteOffRecordId, wi.SortOrder
             """;
         var writeOffItemRows = await db.QueryAsync<dynamic>(writeOffItemsSql);
@@ -733,26 +739,33 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         Dictionary<int, List<InstallmentDto>> Payment,
         Dictionary<int, List<InstallmentDto>> Advance,
         Dictionary<int, List<InstallmentDto>> Travel,
-        Dictionary<int, List<InstallmentDto>> TravelPayment);
+        Dictionary<int, List<InstallmentDto>> TravelPayment,
+        Dictionary<int, List<InstallmentDto>> WriteOff);
 
     private async Task<InstallmentDicts> LoadInstallmentsAsync(
         IEnumerable<dynamic> paymentRows,
         IEnumerable<dynamic> advanceRows,
         IEnumerable<dynamic> travelRows,
         IEnumerable<dynamic> holidayTravelRows,
-        IEnumerable<dynamic> travelPaymentRows)
+        IEnumerable<dynamic> travelPaymentRows,
+        IEnumerable<dynamic> writeOffRows)
     {
         var paymentIds       = paymentRows.Select(r => (int)r.Id).Distinct().ToList();
-        var advanceIds       = advanceRows.Select(r => (int)r.Id).Distinct().ToList();
+        // 沖銷任務要一併顯示「關聯預支單的撥款分期」，故預支 id 需併入沖銷單指向的預支單
+        var advanceIds       = advanceRows.Select(r => (int)r.Id)
+                                  .Concat(writeOffRows.Select(r => (int)r.AdvanceRequestId))
+                                  .Distinct().ToList();
         var travelIds        = travelRows.Select(r => (int)r.Id).Concat(holidayTravelRows.Select(r => (int)r.Id)).Distinct().ToList();
         var travelPaymentIds = travelPaymentRows.Select(r => (int)r.Id).Distinct().ToList();
+        var writeOffIds      = writeOffRows.Select(r => (int)r.Id).Distinct().ToList();
 
         var paymentInst       = await installments.GetByParentIdsAsync(InstallmentParentTable.PaymentRequest,       paymentIds);
         var advanceInst       = await installments.GetByParentIdsAsync(InstallmentParentTable.AdvanceRequest,       advanceIds);
         var travelInst        = await installments.GetByParentIdsAsync(InstallmentParentTable.TravelRequest,        travelIds);
         var travelPaymentInst = await installments.GetByParentIdsAsync(InstallmentParentTable.TravelPaymentRequest, travelPaymentIds);
+        var writeOffInst      = await installments.GetByParentIdsAsync(InstallmentParentTable.WriteOffRecord,       writeOffIds);
 
-        return new InstallmentDicts(paymentInst, advanceInst, travelInst, travelPaymentInst);
+        return new InstallmentDicts(paymentInst, advanceInst, travelInst, travelPaymentInst, writeOffInst);
     }
 
     /// <summary>整單批次附件（請款）依 PaymentRequestId 分組，供審核任務 mapper 取用</summary>
@@ -766,6 +779,32 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             int pid = (int)r.PaymentRequestId;
             if (!dict.ContainsKey(pid)) dict[pid] = [];
             dict[pid].Add(new AttachmentDto((int)r.Id, (string)r.FileName, (string?)r.FileUrl));
+        }
+        return dict;
+    }
+
+    /// <summary>
+    /// 同一預支單底下的各次沖銷（已拒絕的不列入），依 AdvanceRequestId 分組。
+    /// 不套用任務查詢的篩選條件 —— 沖銷資訊卡要列出「全部」沖銷次數，不能只有本次查到的那幾筆。
+    /// IsCurrent 於 mapper 內以 `with` 補上。
+    /// </summary>
+    private async Task<Dictionary<int, List<WriteOffRoundDto>>> LoadWriteOffHistoryAsync()
+    {
+        const string sql = """
+            SELECT Id, AdvanceRequestId, WriteOffNo, RequestNo, GrandTotal, ApprovalStatus, CreatedAt
+            FROM WriteOffRecords
+            WHERE ApprovalStatus <> 'rejected'
+            ORDER BY AdvanceRequestId, WriteOffNo, Id
+            """;
+        var rows = await db.QueryAsync<dynamic>(sql);
+        var dict = new Dictionary<int, List<WriteOffRoundDto>>();
+        foreach (var r in rows)
+        {
+            int advId = (int)r.AdvanceRequestId;
+            if (!dict.ContainsKey(advId)) dict[advId] = [];
+            dict[advId].Add(new WriteOffRoundDto(
+                (int)r.Id, (int)r.WriteOffNo, (string)r.RequestNo, (decimal)r.GrandTotal,
+                (string)r.ApprovalStatus, (DateTime)r.CreatedAt, false));
         }
         return dict;
     }
@@ -825,7 +864,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         InstallmentDicts instDicts,
         Dictionary<int, List<AttachmentDto>> paymentAttachments,
         Dictionary<int, List<AttachmentDto>> writeOffAttachments,
-        Dictionary<int, List<AttachmentDto>> preReviewAttachments)
+        Dictionary<int, List<AttachmentDto>> preReviewAttachments,
+        Dictionary<int, List<WriteOffRoundDto>> writeOffHistoryRows)
     {
         AttachmentDto[]? GetPaymentAttachments(int id) =>
             paymentAttachments.TryGetValue(id, out var a) && a.Count > 0 ? [.. a] : null;
@@ -1229,11 +1269,15 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (decimal)wi.CashAmount, (decimal)wi.CheckAmount,
                 (string?)wi.Note, (string?)wi.InvoiceNo,
                 (string?)wi.FileName, (string?)wi.FileUrl, (int)wi.SortOrder,
-                (DateTime?)wi.InvoiceDate));
+                (DateTime?)wi.InvoiceDate,
+                (bool)wi.CheckPaid, (DateTime?)wi.CheckPaidAt, (string?)wi.CheckPaidBy));
         }
 
         WriteOffItemDto[] GetWriteOffItems(int id) =>
             woItemDict.TryGetValue(id, out var items) ? [.. items] : [];
+
+        WriteOffRoundDto[] GetWriteOffHistory(int advanceRequestId, int currentId) =>
+            [.. writeOffHistoryRows.GetValueOrDefault(advanceRequestId, []).Select(r => r with { IsCurrent = r.Id == currentId })];
 
         // Write-off requests
         var writeOffTasks = writeOffRows.Select(row => new ApprovalTaskDto(
@@ -1268,7 +1312,15 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (bool)row.AdvanceIsClosed,
                 (decimal?)row.AdvanceRefundAmount,
                 (decimal?)row.AdvanceRefundedAmount,
-                GetWriteOffAttachments((int)row.Id)),
+                GetWriteOffAttachments((int)row.Id),
+                GetAdvanceRounds((int)row.AdvanceRequestId, (DateTime)row.AdvanceDate),
+                GetWriteOffHistory((int)row.AdvanceRequestId, (int)row.Id),
+                WriteOffRefundCalculator.Calculate(
+                    (decimal)row.AdvanceGrandTotal, (decimal)row.OtherWrittenOffTotal, (decimal)row.GrandTotal),
+                instDicts.WriteOff.TryGetValue((int)row.Id, out var woInst) ? [.. woInst] : null,
+                installments.ComputeStatus(instDicts.WriteOff.GetValueOrDefault((int)row.Id, [])),
+                instDicts.Advance.TryGetValue((int)row.AdvanceRequestId, out var woAdvInst) ? [.. woAdvInst] : null,
+                installments.ComputeStatus(instDicts.Advance.GetValueOrDefault((int)row.AdvanceRequestId, []))),
             null,
             GetRecords("write_off", (int)row.Id),
             GetDesignatedReviewers("write_off", (int)row.Id),
