@@ -575,6 +575,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
 
             // (1) 主體即該員的列 → 直接刪除（含不可為 NULL 的 ReviewerId / 該員自己的提醒紀錄）
             await db.RequestDesignatedReviewers.Where(r => r.ReviewerId == guid).ExecuteDeleteAsync();
+            await db.ApprovalStepExceptions.Where(e => e.UserId == guid).ExecuteDeleteAsync();
             await db.EscalationOverrides.Where(o => o.ReviewerId == guid).ExecuteDeleteAsync();
             await db.ApprovalRecords.Where(r => r.ReviewedById == guid).ExecuteDeleteAsync();
             await db.TravelRequestParticipants.Where(p => p.UserId == guid).ExecuteDeleteAsync();

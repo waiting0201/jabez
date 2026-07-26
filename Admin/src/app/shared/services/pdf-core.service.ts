@@ -59,6 +59,22 @@ export interface BuildDynamicSignBlocksOptions {
    * 不過濾的話，追加後兩輪紀錄併存，find(stepOrder) 會取到前一輪，PDF 會印出錯誤的簽章與日期。
    */
   roundNo?: number;
+  /**
+   * 本申請實際命中的指定審核步驟 stepOrder（含「例外指定審核」命中的步驟）。
+   * 取自 designatedReviewers[].approvalStepOrder；未提供時退化為只看 flow.steps[].useApplicantDesignated。
+   */
+  designatedStepOrders?: number[];
+}
+
+/**
+ * 由申請單的 designatedReviewers 推出「實際命中的指定審核步驟 stepOrder」，
+ * 供 buildDynamicSignBlocks 的 designatedStepOrders 使用（涵蓋「例外指定審核」命中的步驟）。
+ */
+export function designatedStepOrdersOf(
+  designatedReviewers?: { approvalStepOrder?: number }[] | null): number[] {
+  return (designatedReviewers ?? [])
+    .map(d => d.approvalStepOrder ?? 0)
+    .filter(n => n > 0);
 }
 
 /** 總監職稱層級（JobTitle.Level = 1，與後端簽核邏輯一致；勿依賴職稱名稱） */
@@ -101,9 +117,9 @@ function resolveStepLabel(step: SignFlowStep): string {
 /**
  * 依 flow.steps 動態建立 PDF 簽名欄。
  *
- * - 每個非 useApplicantDesignated step 各一格，依 stepOrder 反轉後排列
+ * - 每個非指定簽核 step 各一格，依 stepOrder 反轉後排列
  * - 「總監核准」一律 hoist 到最左，不論 flow 中總監步驟的 stepOrder
- * - 指定簽核步驟（useApplicantDesignated）不獨立佔欄位
+ * - 指定簽核步驟不獨立佔欄位（含「例外指定審核」命中的步驟，由 designatedStepOrders 判定）
  * - 例外：若指定簽核紀錄裡有人職稱層級為總監（JobTitle.Level=1）：
  *   - flow 沒有總監步驟 → 加「總監核准」欄至最左
  *   - flow 已有總監步驟 → 額外加「總監（指定）」欄並列在「總監核准」右側（即使同人簽兩次，兩格皆顯示）
@@ -119,10 +135,14 @@ export function buildDynamicSignBlocks(opts: BuildDynamicSignBlocksOptions): Sig
 
   const steps = (flow?.steps ?? []).slice().sort((a, b) => a.stepOrder - b.stepOrder);
 
-  // 1. 為每個非 useApplicantDesignated 步驟建一格
+  // 指定簽核步驟：flow 的原生設定，或本申請實際綁有指定審核者（例外指定審核命中）
+  const designatedSet = new Set(opts.designatedStepOrders ?? []);
+  const isDesignated = (s: SignFlowStep) => !!s.useApplicantDesignated || designatedSet.has(s.stepOrder);
+
+  // 1. 為每個非指定簽核步驟建一格
   const stepBlocks: SignBlock[] = [];
   for (const step of steps) {
-    if (step.useApplicantDesignated) continue;
+    if (isDesignated(step)) continue;
     const rec = records.find(r => r.stepOrder === step.stepOrder);
     stepBlocks.push({
       label: resolveStepLabel(step),
@@ -142,7 +162,7 @@ export function buildDynamicSignBlocks(opts: BuildDynamicSignBlocksOptions): Sig
   }
 
   // 2. 處理「指定簽核中的總監」
-  const designatedStep = steps.find(s => s.useApplicantDesignated);
+  const designatedStep = steps.find(isDesignated);
   if (designatedStep) {
     const designatedDirectors = records.filter(r =>
       r.stepOrder === designatedStep.stepOrder && isDirectorReviewer(r)

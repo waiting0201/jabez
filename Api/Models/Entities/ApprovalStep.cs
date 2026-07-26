@@ -21,4 +21,7 @@ public class ApprovalStep
     public ApprovalItem  ApprovalItem { get; set; } = null!;
     public Department?   Department   { get; set; }
     public JobTitle?     JobTitle     { get; set; }
+
+    /// <summary>例外指定審核名單：名單內的申請人送單時，此步驟改為「由申請人自行指定審核者」（與 UseApplicantDesignated 互斥）。</summary>
+    public ICollection<ApprovalStepException> Exceptions { get; set; } = [];
 }

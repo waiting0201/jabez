@@ -4,7 +4,7 @@
 
 ## 規則
 
-1. **每個 step 一格**：依 `stepOrder` 為每個非 `useApplicantDesignated` 步驟建一格簽名欄
+1. **每個 step 一格**：依 `stepOrder` 為每個**非指定簽核**步驟建一格簽名欄
 2. **欄位順序**：建立後反轉 → 最高 stepOrder 在最左、最低在最右（最後簽核者位於申請者左側）。**「總監」一律排在最左**：當總監僅來自指定簽核（情境 C）時，仍會推到最左；flow 與指定皆有總監（情境 D/E）時，「總監核准」在最左、「總監（指定）」緊接其右
 3. **Label 由 step 推斷**（依序判定，`resolveStepLabel`）：
    - `useDirectSupervisor=true` → `上層級`
@@ -17,7 +17,9 @@
 
 ## 指定簽核者（`useApplicantDesignated`）特殊處理
 
-指定簽核步驟本身**不**獨立佔欄位。例外：若指定簽核紀錄裡有人為總監（`isDirectorReviewer`：優先用 `reviewerJobTitleLevel === 1` 判定，缺值時 fallback 職稱名稱含「總監」）：
+指定簽核步驟本身**不**獨立佔欄位。**「是否為指定簽核步驟」的判定**＝`flow.steps[].useApplicantDesignated`（流程原生設定）**OR** `designatedStepOrders` 命中（本申請實際綁有指定審核者，涵蓋「例外指定審核」命中的步驟，見 [approval-flow.md](approval-flow.md#例外指定審核approvalstepexception2026-07-新增)）。`designatedStepOrders` 由 [pdf-core.service.ts](../../Admin/src/app/shared/services/pdf-core.service.ts) 的 `designatedStepOrdersOf(request.designatedReviewers)` 取自各筆 designee 的 `approvalStepOrder`，8 個 PDF service 各傳一次；未提供時退化為只看流程原生設定。
+
+例外：若指定簽核紀錄裡有人為總監（`isDirectorReviewer`：優先用 `reviewerJobTitleLevel === 1` 判定，缺值時 fallback 職稱名稱含「總監」）：
 
 | 情境 | flow 有總監步驟 | 指定簽核含總監 | 結果 |
 |---|---|---|---|

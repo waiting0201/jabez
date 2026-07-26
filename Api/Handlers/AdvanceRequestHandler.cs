@@ -444,7 +444,7 @@ public sealed class AdvanceRequestHandler(
         }
 
         // 正規化各 designee 所屬步驟並驗證每個指定審核步驟皆有審核者
-        await DesignatedReviewerHelper.ValidateAndNormalizeAsync(db, "advance", ar.Id, ar.ApprovalItemId);
+        await DesignatedReviewerHelper.ValidateAndNormalizeAsync(db, "advance", ar.Id, ar.ApprovalItemId, userId);
         await db.SaveChangesAsync();
 
         // 查詢指定審核者清單傳給 ResolveStartingStepAsync（含 ApprovalStepOrder 綁定步驟）
@@ -472,10 +472,9 @@ public sealed class AdvanceRequestHandler(
 
         if (!autoApproved && ar.SubmittedById.HasValue)
         {
-            bool isDesignatedStep = ar.ApprovalItemId.HasValue && await db.ApprovalSteps.AsNoTracking()
-                .AnyAsync(s => s.ApprovalItemId == ar.ApprovalItemId
-                    && s.StepOrder == startStep
-                    && s.UseApplicantDesignated);
+            // 指定審核步驟（原生 UseApplicantDesignated 或例外指定審核命中）：讀 designee 快照，
+            // 與 ResolveStartingStepAsync 的判定同源，確保不會誤走部門/職稱通知
+            bool isDesignatedStep = designatedReviewers.Any(r => r.ApprovalStepOrder == startStep);
             if (isDesignatedStep)
             {
                 var firstReviewer = await db.RequestDesignatedReviewers

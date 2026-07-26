@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { TravelWriteOffRequest } from '../models/travel-write-off-request.model';
 import { ApprovalRecord, ApprovalFlow } from '../../approval-tasks/models/approval-task.model';
-import { PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, fmtDate, fmt, buildDynamicSignBlocks } from '../../../../shared/services/pdf-core.service';
+import { PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, fmtDate, fmt, buildDynamicSignBlocks, designatedStepOrdersOf } from '../../../../shared/services/pdf-core.service';
 
 @Injectable({ providedIn: 'root' })
 export class TravelWriteOffPdfService {
@@ -190,7 +190,7 @@ export class TravelWriteOffPdfService {
 
       y += 8;
       const submitDate = r.createdAt ? fmtDT(r.createdAt) : '';
-      const signBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, submitDate, '申請者');
+      const signBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, submitDate, '申請者', designatedStepOrdersOf(r.designatedReviewers));
       const sigMap = await this.pdfCore.loadSignatureImages(signBlocks);
       this.pdfCore.drawSignatureBlock(doc, mx, pw, cw, y, signBlocks, sigMap);
 
@@ -215,8 +215,10 @@ export class TravelWriteOffPdfService {
     submittedBySignatureUrl: string | undefined,
     submitDate: string,
     applicantLabel: string,
+    designatedStepOrders: number[] = [],
   ): SignBlock[] {
     return buildDynamicSignBlocks({
+      designatedStepOrders,
       flow,
       records,
       submittedBySignatureUrl,

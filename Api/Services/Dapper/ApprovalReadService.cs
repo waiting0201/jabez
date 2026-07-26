@@ -12,14 +12,18 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
         return BuildDtos(rows);
     }
 
-    public async Task<ApprovalFlowSummaryDto?> GetActiveByTypeAsync(string applicationType, int? departmentId)
+    public async Task<ApprovalFlowSummaryDto?> GetActiveByTypeAsync(string applicationType, int? departmentId, Guid? userId)
     {
-        // 僅讀取「是否含 UseApplicantDesignated 步驟」所需最小欄位；
+        // 僅讀取「是否含指定審核步驟」所需最小欄位；
         // 故意不 JOIN Departments / JobTitles，避免敏感設定外洩給未授權呼叫者。
         // 同一 ApplicationType 可能有多個流程（各部門專屬 + 一個通用預設）。
         // 部門階層繼承：以遞迴 CTE 由呼叫者部門沿 ParentId 往上建立部門鏈（含層距 Depth），
         // 子查詢挑出「呼叫者部門實際會走」的那一筆——優先序＝自身 > 最近祖先 > 通用預設(null)，再取其 steps。
         // 必須與 ApprovalFlowService.ResolveApprovalItemIdAsync 的優先序保持一致。
+        //
+        // UseApplicantDesignated 回傳的是「對呼叫者而言的有效值」：原生設定 OR 例外名單（ApprovalStepExceptions）
+        // 命中呼叫者，讓 10 個申請表單無須改動即可為例外申請人顯示指定審核者 picker。
+        // @UserId 為 null 時 EXISTS 恆 false → 退化為原生設定（安全）。
         const string sql = """
             WITH DeptChain AS (
                 SELECT @DepartmentId AS Id, 0 AS Depth
@@ -30,7 +34,12 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
                 WHERE d.ParentId IS NOT NULL
             )
             SELECT ai.Id, ai.ApplicationType,
-                   s.StepOrder, s.UseApplicantDesignated, s.DesignatedRequiresDepartment
+                   s.StepOrder,
+                   CAST(CASE WHEN s.UseApplicantDesignated = 1
+                               OR EXISTS (SELECT 1 FROM ApprovalStepExceptions e
+                                          WHERE e.ApprovalStepId = s.Id AND e.UserId = @UserId)
+                             THEN 1 ELSE 0 END AS bit) AS UseApplicantDesignated,
+                   s.DesignatedRequiresDepartment
             FROM ApprovalItems ai
             LEFT JOIN ApprovalSteps s ON ai.Id = s.ApprovalItemId
             WHERE ai.Id = (
@@ -43,7 +52,7 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
             ORDER BY s.StepOrder
             """;
 
-        var rows = (await db.QueryAsync<dynamic>(sql, new { Type = applicationType, DepartmentId = departmentId })).ToList();
+        var rows = (await db.QueryAsync<dynamic>(sql, new { Type = applicationType, DepartmentId = departmentId, UserId = userId })).ToList();
 
         if (rows.Count == 0) return null;
 
@@ -79,7 +88,20 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
             """;
 
         var rows = await db.QueryAsync<dynamic>(sql, new { Id = id });
-        return BuildDtos(rows).FirstOrDefault();
+
+        // 例外指定審核名單（僅管理頁編輯需要；清單頁不查，避免多一次 JOIN）
+        const string exceptionSql = """
+            SELECT e.ApprovalStepId, e.UserId
+            FROM ApprovalStepExceptions e
+            JOIN ApprovalSteps s ON s.Id = e.ApprovalStepId
+            WHERE s.ApprovalItemId = @Id
+            """;
+        var exceptionRows = await db.QueryAsync<dynamic>(exceptionSql, new { Id = id });
+        var exceptions = exceptionRows
+            .GroupBy(r => (int)r.ApprovalStepId)
+            .ToDictionary(g => g.Key, g => g.Select(r => (Guid)r.UserId).ToArray());
+
+        return BuildDtos(rows, exceptions).FirstOrDefault();
     }
 
     private async Task<IEnumerable<dynamic>> QueryAllRowsAsync()
@@ -100,7 +122,9 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
         return await db.QueryAsync<dynamic>(sql);
     }
 
-    private static IEnumerable<ApprovalItemDto> BuildDtos(IEnumerable<dynamic> rows)
+    /// <param name="exceptions">StepId → 例外指定審核名單（UserId[]）；清單頁不查故傳 null。</param>
+    private static IEnumerable<ApprovalItemDto> BuildDtos(
+        IEnumerable<dynamic> rows, IReadOnlyDictionary<int, Guid[]>? exceptions = null)
     {
         var dict = new Dictionary<int, (string Name, string Code, string? Desc, bool IsActive, string? AppType, int? DeptId, string? DeptName, DateTime CreatedAt, List<ApprovalStepDto> Steps)>();
 
@@ -112,8 +136,9 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
 
             if (row.StepId is not null)
             {
+                int stepId = (int)row.StepId;
                 dict[id].Steps.Add(new ApprovalStepDto(
-                    (int)row.StepId,
+                    stepId,
                     (int)row.StepOrder,
                     (int?)row.StepDepartmentId,
                     (string?)row.DepartmentName,
@@ -124,7 +149,8 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
                     (bool)(row.UseApplicantDesignated ?? false),
                     (string?)row.Note,
                     (bool)(row.DesignatedRequiresDepartment ?? false),
-                    (int?)row.MinDays));
+                    (int?)row.MinDays,
+                    exceptions is not null && exceptions.TryGetValue(stepId, out var exUsers) ? exUsers : null));
             }
         }
 

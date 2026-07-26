@@ -1,5 +1,5 @@
 import {
-  PaymentType, InvoiceItem,
+  PaymentType, InvoiceItem, DesignatedReviewer,
   APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES,
   PAYMENT_STATE_LABELS, PAYMENT_STATE_CLASSES,
 } from '../../payment-requests/models/payment-request.model';
@@ -405,5 +405,7 @@ export interface ApprovalTask {
   travelPaymentDetail?: TravelPaymentTaskDetail;
   preReviewDetail?: PreReviewTaskDetail;
   approvalRecords: ApprovalRecord[];
+  /** 指定審核者（含 approvalStepOrder，供 PDF 簽名欄判斷哪些步驟為指定審核，含例外指定審核命中者） */
+  designatedReviewers?: DesignatedReviewer[];
   submittedBySignatureUrl?: string;  // 申請人簽名檔 URL
 }

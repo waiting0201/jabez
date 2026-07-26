@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { ApprovalTask } from '../../approval-tasks/models/approval-task.model';
-import { PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, buildDynamicSignBlocks } from '../../../../shared/services/pdf-core.service';
+import { PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, buildDynamicSignBlocks, designatedStepOrdersOf } from '../../../../shared/services/pdf-core.service';
 
 @Injectable({ providedIn: 'root' })
 export class PaymentPdfService {
@@ -242,6 +242,7 @@ export class PaymentPdfService {
     return buildDynamicSignBlocks({
       flow: task.flow,
       records: task.approvalRecords || [],
+      designatedStepOrders: designatedStepOrdersOf(task.designatedReviewers),
       submittedBySignatureUrl: task.submittedBySignatureUrl,
       submitDate,
       applicantLabel: '請款人',

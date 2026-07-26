@@ -3,7 +3,7 @@ import {HttpClient} from '@angular/common/http';
 import {firstValueFrom} from 'rxjs';
 import {ApprovalTask} from '../../approval-tasks/models/approval-task.model';
 import {PreReviewTaskDetail} from '../../approval-tasks/models/approval-task.model';
-import {PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, buildDynamicSignBlocks, resolveFileProxyUrl} from '../../../../shared/services/pdf-core.service';
+import {PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, buildDynamicSignBlocks, designatedStepOrdersOf, resolveFileProxyUrl} from '../../../../shared/services/pdf-core.service';
 import {environment} from '@/environments/environment';
 
 @Injectable({providedIn: 'root'})
@@ -331,6 +331,7 @@ export class PreReviewPdfService {
     return buildDynamicSignBlocks({
       flow: task.flow,
       records: task.approvalRecords || [],
+      designatedStepOrders: designatedStepOrdersOf(task.designatedReviewers),
       submittedBySignatureUrl: task.submittedBySignatureUrl,
       submitDate,
       applicantLabel: '申請人',

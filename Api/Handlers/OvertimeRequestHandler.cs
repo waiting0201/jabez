@@ -262,7 +262,7 @@ public sealed class OvertimeRequestHandler(
             item.ApprovalItemId = await approvalFlow.ResolveApprovalItemIdAsync("overtime", submitter?.DepartmentId);
 
         // 正規化各 designee 所屬步驟並驗證每個指定審核步驟皆有審核者
-        await DesignatedReviewerHelper.ValidateAndNormalizeAsync(db, "overtime", item.Id, item.ApprovalItemId);
+        await DesignatedReviewerHelper.ValidateAndNormalizeAsync(db, "overtime", item.Id, item.ApprovalItemId, userId);
         await db.SaveChangesAsync();
 
         // 查詢指定審核者清單傳給 ResolveStartingStepAsync（含 ApprovalStepOrder 綁定步驟）
@@ -309,10 +309,9 @@ public sealed class OvertimeRequestHandler(
                 await notifier.NotifySpecificReviewerAsync("overtime", item.Id, escalation.ReviewerId, userId, escalation.OnBehalfOfUserId is not null);
             else
             {
-                bool isDesignatedStep = item.ApprovalItemId.HasValue && await db.ApprovalSteps.AsNoTracking()
-                    .AnyAsync(s => s.ApprovalItemId == item.ApprovalItemId
-                        && s.StepOrder == startStep
-                        && s.UseApplicantDesignated);
+                // 指定審核步驟（原生 UseApplicantDesignated 或例外指定審核命中）：讀 designee 快照，
+                // 與 ResolveStartingStepAsync 的判定同源，確保不會誤走部門/職稱通知
+                bool isDesignatedStep = designatedReviewers.Any(r => r.ApprovalStepOrder == startStep);
                 if (isDesignatedStep)
                 {
                     var firstReviewer = await db.RequestDesignatedReviewers
