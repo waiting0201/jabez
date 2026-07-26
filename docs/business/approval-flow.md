@@ -296,6 +296,58 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 - 一條流程**可有多個 `UseApplicantDesignated` 步驟**（每步申請人各自指定、依序簽核；以 `ApprovalStepOrder` 隔離）。整步跳過只影響「被跳過的那一步」的 designee，不會誤核准其他 designated 步驟。
 - 唯一索引為 `(RequestType, RequestId, ApprovalStepOrder, ReviewerId)`：允許不同步驟指定同一人，但同一步驟內不可重複指定同一人。
 
+---
+
+## 例外指定審核（ApprovalStepException，2026-07 新增）
+
+**需求背景：** `UseApplicantDesignated` 是**全流程一刀切**——一個步驟要嘛所有申請人都自行指定審核者，要嘛所有人都走部門／職稱。但實務上有少數人（跨部門支援、特殊職務、專案人員）需要在某個原本固定的步驟自行指定審核者，過去只能為他們另開一條部門專屬流程，成本過高。
+
+**設定方式：** 簽核流程設定頁的步驟表單中，**當該步驟不是「申請人指定審核」時**，可勾選「例外指定審核」並**逐一挑選使用者**。名單存於子表 `ApprovalStepExceptions`（`ApprovalStepId` + `UserId`，unique index）。
+
+| 規則 | 說明 |
+|------|------|
+| 名單命中的**申請人** | 該步驟對此人改為「由申請人自行指定審核者」，指定審核者**必填**，其餘規則（picker / 驗證 / 授權 / 通知 / PDF）完全沿用 |
+| 不在名單內的申請人 | 該步驟照原設定走（固定部門+職稱 / `UseApplicantDepartment` / `UseDirectSupervisor`） |
+| 與 `UseApplicantDesignated` | **互斥**。同時設定回 400；把步驟切成 `UseApplicantDesignated=true` 時後端自動清空例外名單 |
+| 與 `DesignatedRequiresDepartment` | 沿用同一欄位（不新增欄位）：`UseApplicantDesignated` **或**有例外名單時此旗標才有意義，例外步驟同樣可開「需先選部門再選人」 |
+| 與 `MinDays` | 正交且相容（MinDays 先過濾步驟，之後才判定是否指定審核） |
+| 「部門最高層級自動略過」 | 因判定改吃「對此申請人的有效指定步驟集合」，語意自然 per-applicant 正確；只因例外而擁有**單一**指定步驟時（`Count < 2`）不抑制 |
+| API | 搭載於既有 `POST/PATCH /approval-items/{id}/steps[/{stepId}]` 的 `exceptionUserIds: Guid[]`（**整批替換**：`null`＝不動、`[]`＝清空）。權限仍為 `approvals:write`，**不需新路由 / 新權限** |
+| 是否啟用 | **不設 bool 旗標**，一律以 `exceptionUserIds` 是否非空為準（避免 bool 與陣列 desync）；前端 checkbox 僅為 UI 狀態 |
+
+### 兩個單一真相 —— 以時間軸切分（重要）
+
+`UseApplicantDesignated` 散落在 10 處消費（含 10 種申請共用的待審清單 SQL、PDF 簽名欄佈局）。若每處都改成「查例外表算對此申請人的有效值」，`PaymentRequestReadService.flowSql`（跨申請共用的全域 flow 物件，無申請人維度）將無解，且已送出的申請會因管理者事後改名單而當場失效。故採**混合方案**：
+
+| 時間點 | 真相來源 | 消費點 |
+|--------|----------|--------|
+| **送單前 / 送單當下** | `ApprovalStepExceptions` 表<br>[DesignatedReviewerHelper.GetEffectiveDesignatedStepOrdersAsync](../../Api/Common/DesignatedReviewerHelper.cs) | 僅 2 處：`GET /approval-items/active`、`ValidateAndNormalizeAsync` |
+| **送單完成後** | `RequestDesignatedReviewers` 快照（designee 列本身即「申請當下例外命中」的證據）<br>[DesignatedReviewerHelper.EffectiveDesignatedStepOrders](../../Api/Common/DesignatedReviewerHelper.cs) | 其餘全部：`ResolveStartingStepAsync` / `SkipUnreviewableStepsAsync` / `ResolveReviewerPoolAsync` / `AuthorizeStepAsync` / `ProcessReviewAsync` / `NotifyReviewersAsync` / `StepMatchClause` / 9 個 handler 送單通知分支 / PDF |
+
+**好處：** `ApprovalFlowService` 三個方法與 `AuthorizeStepAsync` 簽章完全不動；PDF 後端不用碰；**在飛行中的申請對設定變更天然免疫**（與「`ApprovalItemId` 首次送出後不重挑」的既有哲學一致）。
+
+**代價（必做守門）：** `ValidateAndNormalizeAsync` 送單時會**靜默剔除**綁在「非有效指定步驟」上的 designee，否則惡意 client 可送 `approvalStepOrder=N`（N 其實是固定部門步驟）把該步驟劫持成自己挑的人審。採靜默剔除而非丟 400，因草稿期間申請人可能調部門而換到別條流程，丟錯會誤傷正常使用者。
+
+### 待審清單 SQL 的三處改動（[PaymentRequestReadService.StepMatchClause](../../Api/Services/Dapper/PaymentRequestReadService.cs)）
+
+10 種申請類型共用同一 clause，**錯一次全錯**：
+- `s2`（一般部門/職稱分支）、`s3`（上層級分支）各加 `AND NOT EXISTS (RequestDesignatedReviewers WHERE ApprovalStepOrder = CurrentStepOrder)`
+- `s4`（指定分支）**刪掉** `AND s4.UseApplicantDesignated = 1`（`rdr.ApprovalStepOrder = CurrentStepOrder` 本就在條件內）
+
+> ⚠️ `NOT EXISTS` 的 `ApprovalStepOrder = CurrentStepOrder` **絕不可省**：省略的話「step 1 原生指定 + step 2~4 固定部門」的申請推進到 step 2 後，會從所有一般審核者的待審清單消失。
+
+### PDF 簽名欄
+
+指定簽核步驟不獨立佔簽名欄的規則，改由 `designatedStepOrders`（取自 `designatedReviewers[].approvalStepOrder`）判定，涵蓋例外命中的步驟。為此 `drSql` 補上 `rdr.ApprovalStepOrder` 欄位（原先 approval-task 路徑回傳一律為 0），前端 [pdf-core.service.ts](../../Admin/src/app/shared/services/pdf-core.service.ts) 新增 `designatedStepOrdersOf()` 與 `designatedStepOrders` 選項，8 個 PDF service 各傳一行。
+
+### 注意事項
+
+- **例外綁在特定流程的步驟上**：若申請人部門解析到另一條流程（部門專屬 vs 通用預設），該例外不生效。管理者必須設在申請人實際會走的那條流程上。
+- **刪除使用者**：`ApprovalStepExceptions.UserId` 為 `NO_ACTION` 外鍵，已納入 [UserHandler.DeleteAsync](../../Api/Handlers/UserHandler.cs) 的清洗清單（與 `RequestDesignatedReviewers` 同一區塊）。
+- **順修既有 bug**：[ApprovalNotificationService](../../Api/Services/ApprovalNotificationService.cs) 的 designee 查詢原先漏了 `ApprovalStepOrder == targetStepOrder`，多指定步驟時會通知到前一步殘留的 pending designee；例外功能使多指定步驟成為常態，已一併補上。
+
+---
+
 **存取控制（`GET /approval-tasks/{type}/{id}`）：**
 - Superadmin：可查看所有
 - 有 `approval-tasks:read` 權限：可查看所有

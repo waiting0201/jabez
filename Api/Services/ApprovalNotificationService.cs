@@ -50,13 +50,22 @@ public sealed class ApprovalNotificationService(
             // 取得歷史已審者集合（最近一次 returned 之後的 approved）— 用於排除重複通知
             var approvedIds = await GetApprovedReviewerIdsAsync(applicationType, applicationId);
 
-            // ── UseApplicantDesignated 模式：查詢 RequestDesignatedReviewers 表找當前 pending 最小 StepOrder 的審核者 ──
-            if (step.UseApplicantDesignated)
+            // ── 指定審核模式：查詢 RequestDesignatedReviewers 表找「本步驟」當前 pending 最小 StepOrder 的審核者 ──
+            // 是否為指定審核步驟＝原生 UseApplicantDesignated 或該申請已有 designee 綁定本步驟（例外指定審核命中的快照）
+            bool isDesignatedStep = step.UseApplicantDesignated
+                || await db.RequestDesignatedReviewers.AsNoTracking()
+                    .AnyAsync(r => r.RequestType == applicationType
+                                && r.RequestId == applicationId
+                                && r.ApprovalStepOrder == targetStepOrder);
+
+            if (isDesignatedStep)
             {
+                // 必須以 ApprovalStepOrder 綁定本步驟，否則多指定步驟時會撈到前一步殘留的 pending designee
                 var currentDesignated = await db.RequestDesignatedReviewers
                     .AsNoTracking()
                     .Where(r => r.RequestType == applicationType
                              && r.RequestId == applicationId
+                             && r.ApprovalStepOrder == targetStepOrder
                              && r.Status == "pending")
                     .OrderBy(r => r.StepOrder)
                     .Select(r => new { r.ReviewerId, r.StepOrder })
@@ -64,7 +73,7 @@ public sealed class ApprovalNotificationService(
 
                 if (currentDesignated is null)
                 {
-                    logger.LogWarning("UseApplicantDesignated 步驟找不到 pending 的指定審核者：{AppType} #{Id}, Step {Step}",
+                    logger.LogWarning("指定審核步驟找不到 pending 的指定審核者：{AppType} #{Id}, Step {Step}",
                         applicationType, applicationId, targetStepOrder);
                     return;
                 }

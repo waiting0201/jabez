@@ -86,9 +86,13 @@ public sealed class ApprovalFlowService(
         if (applicant is null)
             return (1, false, null);
 
+        // 送單後的有效指定步驟＝原生 UseApplicantDesignated ∪ 有 designee 綁定者（例外命中的快照）。
+        // designee 已由 DesignatedReviewerHelper.ValidateAndNormalizeAsync 剔除非法綁定。
+        var designatedSet = DesignatedReviewerHelper.EffectiveDesignatedStepOrders(steps, designatedReviewers);
+
         // 被抑制的指定步驟（首個指定步驟＝所選部門最高職稱 → 其後指定步驟自動跳過）
         var suppressed = designatedReviewers is { Count: > 0 }
-            ? await DesignatedReviewerHelper.GetSuppressedDesignatedStepOrdersAsync(db, approvalItemId.Value, designatedReviewers)
+            ? await DesignatedReviewerHelper.GetSuppressedDesignatedStepOrdersAsync(db, approvalItemId.Value, designatedReviewers, designatedSet)
             : new HashSet<int>();
 
         int currentStep = 1;
@@ -103,8 +107,8 @@ public sealed class ApprovalFlowService(
                 continue;
             }
 
-            // ── UseApplicantDesignated 模式：審核者是申請人指定的人 ──
-            if (step.UseApplicantDesignated)
+            // ── 指定審核模式（原生 UseApplicantDesignated 或例外命中）：審核者是申請人指定的人 ──
+            if (designatedSet.Contains(step.StepOrder))
             {
                 // 被抑制 → 乾淨跳過（不進 firstReviewer==null 的 throw 分支）
                 if (suppressed.Contains(step.StepOrder))
@@ -324,9 +328,12 @@ public sealed class ApprovalFlowService(
         if (applicant is null)
             return (fromStepOrder, false, emptySkipped);
 
+        // 送單後的有效指定步驟＝原生 UseApplicantDesignated ∪ 有 designee 綁定者（例外命中的快照）
+        var designatedSet = DesignatedReviewerHelper.EffectiveDesignatedStepOrders(steps, designatedReviewers);
+
         // 被抑制的指定步驟（首個指定步驟＝所選部門最高職稱 → 其後指定步驟自動跳過）
         var suppressed = designatedReviewers is { Count: > 0 }
-            ? await DesignatedReviewerHelper.GetSuppressedDesignatedStepOrdersAsync(db, approvalItemId.Value, designatedReviewers)
+            ? await DesignatedReviewerHelper.GetSuppressedDesignatedStepOrdersAsync(db, approvalItemId.Value, designatedReviewers, designatedSet)
             : new HashSet<int>();
 
         // 直接迭代 StepOrder >= fromStepOrder 的步驟（處理稀疏 StepOrder）
@@ -343,7 +350,7 @@ public sealed class ApprovalFlowService(
         {
             // ── 第一階段：判斷該步驟是否「找不到審核者」 ──
             bool hasReviewer;
-            if (step.UseApplicantDesignated)
+            if (designatedSet.Contains(step.StepOrder))
             {
                 if (suppressed.Contains(step.StepOrder))
                 {
@@ -380,7 +387,7 @@ public sealed class ApprovalFlowService(
             {
                 int directSupervisorRank = steps.Count(s => s.UseDirectSupervisor && s.StepOrder < step.StepOrder);
                 var pool = await ResolveReviewerPoolAsync(
-                    step, applicant, designatedReviewers, directSupervisorRank);
+                    step, applicant, designatedReviewers, directSupervisorRank, designatedSet);
 
                 if (pool.Count > 0 && pool.All(id => approvedReviewerIds.Contains(id)))
                 {
@@ -401,7 +408,7 @@ public sealed class ApprovalFlowService(
 
                         if (proxyIsSupervisor || isAdjacent)
                         {
-                            skipped.Add(new SkippedStepInfo(step.StepOrder, proxyId.Value, step.UseApplicantDesignated));
+                            skipped.Add(new SkippedStepInfo(step.StepOrder, proxyId.Value, designatedSet.Contains(step.StepOrder)));
                             adjacencyAnchorStepOrder = step.StepOrder; // 連鎖：下一 step 仍可能與此相鄰
                             continue;
                         }
@@ -449,7 +456,7 @@ public sealed class ApprovalFlowService(
 
     /// <summary>
     /// 解析該步驟的「審核者池」：
-    /// - UseApplicantDesignated：該 step 中所有 pending designee 的 ReviewerId
+    /// - 指定審核（原生 UseApplicantDesignated 或例外命中）：該 step 中所有 pending designee 的 ReviewerId
     /// - UseDirectSupervisor：同部門 + 第 N 層上級 Level + 非 superadmin + 非申請人
     /// - 固定部門+職稱（含 UseApplicantDepartment）：對應部門 + 職稱 + 非 superadmin + 非申請人
     /// 回傳 List<Guid>（最多 50 筆防呆）。
@@ -458,10 +465,11 @@ public sealed class ApprovalFlowService(
         Models.Entities.ApprovalStep step,
         Models.Entities.User applicant,
         IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers,
-        int directSupervisorRank)
+        int directSupervisorRank,
+        IReadOnlySet<int> designatedStepOrders)
     {
-        // ── UseApplicantDesignated：該 step 內所有 designee（以 ApprovalStepOrder 綁定本步驟） ──
-        if (step.UseApplicantDesignated)
+        // ── 指定審核：該 step 內所有 designee（以 ApprovalStepOrder 綁定本步驟） ──
+        if (designatedStepOrders.Contains(step.StepOrder))
         {
             return designatedReviewers?
                 .Where(r => r.ApprovalStepOrder == step.StepOrder && r.ReviewerId != applicant.Id)

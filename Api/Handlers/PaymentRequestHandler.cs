@@ -565,7 +565,7 @@ public sealed class PaymentRequestHandler(
         }
 
         // 若流程中有 UseApplicantDesignated 步驟，正規化各 designee 所屬步驟並驗證每步皆有指定審核者
-        await DesignatedReviewerHelper.ValidateAndNormalizeAsync(db, "payment_request", pr.Id, pr.ApprovalItemId);
+        await DesignatedReviewerHelper.ValidateAndNormalizeAsync(db, "payment_request", pr.Id, pr.ApprovalItemId, userId);
         await db.SaveChangesAsync();
 
         // 查詢指定審核者清單傳給 ResolveStartingStepAsync（含 ApprovalStepOrder 綁定步驟）
@@ -594,10 +594,9 @@ public sealed class PaymentRequestHandler(
         // 通知審核者：若為指定審核步驟則通知第一位指定審核者，否則通知符合條件的審核者
         if (!autoApproved && pr.SubmittedById.HasValue)
         {
-            bool isDesignatedStep = pr.ApprovalItemId.HasValue && await db.ApprovalSteps.AsNoTracking()
-                .AnyAsync(s => s.ApprovalItemId == pr.ApprovalItemId
-                    && s.StepOrder == startStep
-                    && s.UseApplicantDesignated);
+            // 指定審核步驟（原生 UseApplicantDesignated 或例外指定審核命中）：讀 designee 快照，
+            // 與 ResolveStartingStepAsync 的判定同源，確保不會誤走部門/職稱通知
+            bool isDesignatedStep = designatedReviewers.Any(r => r.ApprovalStepOrder == startStep);
             if (isDesignatedStep)
             {
                 var firstReviewer = await db.RequestDesignatedReviewers

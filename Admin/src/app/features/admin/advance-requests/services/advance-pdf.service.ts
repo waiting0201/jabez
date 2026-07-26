@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { AdvanceRequest, APPROVAL_STATUS_LABELS, ApprovalStatus, roundLabel } from '../models/advance-request.model';
 import { ApprovalRecord, ApprovalFlow } from '../../approval-tasks/models/approval-task.model';
-import { PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, fmt, buildDynamicSignBlocks } from '../../../../shared/services/pdf-core.service';
+import { PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, fmt, buildDynamicSignBlocks, designatedStepOrdersOf } from '../../../../shared/services/pdf-core.service';
 
 @Injectable({ providedIn: 'root' })
 export class AdvancePdfService {
@@ -339,7 +339,7 @@ export class AdvancePdfService {
       // 出納簽名取最後一期已撥款者（若有）
       const lastPaid = r.installments?.filter(i => i.paidAt).slice(-1)[0];
       // 追加後兩輪簽核紀錄併存，必須指定批次，否則簽名欄會印出前一輪的簽章
-      const advSignBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, advSubmitDate, '申請者', lastPaid?.paidBySignatureUrl, lastPaid?.paidAt, r.currentRoundNo ?? 1);
+      const advSignBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, advSubmitDate, '申請者', lastPaid?.paidBySignatureUrl, lastPaid?.paidAt, r.currentRoundNo ?? 1, designatedStepOrdersOf(r.designatedReviewers));
       const advSigMap = await this.pdfCore.loadSignatureImages(advSignBlocks);
       this.pdfCore.drawSignatureBlock(doc, mx, pw, cw, y, advSignBlocks, advSigMap);
 
@@ -367,6 +367,7 @@ export class AdvancePdfService {
     paidBySignatureUrl?: string,
     paidAt?: string,
     roundNo = 1,
+    designatedStepOrders: number[] = [],
   ): SignBlock[] {
     return buildDynamicSignBlocks({
       flow,
@@ -376,6 +377,7 @@ export class AdvancePdfService {
       applicantLabel,
       cashier: { paidBySignatureUrl, paidAt },
       roundNo,
+      designatedStepOrders,
     });
   }
 }

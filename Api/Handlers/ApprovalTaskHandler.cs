@@ -674,6 +674,25 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// 判斷「此申請的這一步驟」是否為指定審核步驟。
+    /// ＝ 原生 UseApplicantDesignated，或該申請已有 designee 綁定此 StepOrder（例外指定審核命中的快照）。
+    /// 送單後一律以 designee 快照為真相，故管理者事後調整例外名單不影響在飛行中的申請。
+    /// 詳見 DesignatedReviewerHelper 的兩個真相說明。
+    /// </summary>
+    private async Task<bool> IsDesignatedStepForRequestAsync(
+        Models.Entities.ApprovalStep? step, string? applicationType, int? applicationId)
+    {
+        if (step is null) return false;
+        if (step.UseApplicantDesignated) return true;
+        if (applicationType is null || !applicationId.HasValue) return false;
+
+        return await db.RequestDesignatedReviewers.AsNoTracking()
+            .AnyAsync(r => r.RequestType == applicationType
+                        && r.RequestId == applicationId.Value
+                        && r.ApprovalStepOrder == step.StepOrder);
+    }
+
     /// <summary>驗證當前審核者是否有權審核此步驟（依職稱/部門設定，或升級審核指派，或指定審核）。Superadmin 可審核任何步驟。</summary>
     private async Task AuthorizeStepAsync(
         int? approvalItemId, int currentStepOrder, User reviewer,
@@ -726,8 +745,9 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
 
         if (step is null) return;
 
-        // ── UseApplicantDesignated 模式：查詢「本步驟」的 RequestDesignatedReviewers，找當前 pending 最小 StepOrder 的審核者 ──
-        if (step.UseApplicantDesignated)
+        // ── 指定審核模式（原生 UseApplicantDesignated 或例外命中）：
+        //    查詢「本步驟」的 RequestDesignatedReviewers，找當前 pending 最小 StepOrder 的審核者 ──
+        if (await IsDesignatedStepForRequestAsync(step, applicationType, applicationId))
         {
             if (applicationType is not null && applicationId.HasValue)
             {
@@ -853,13 +873,13 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
 
         if (action == "approved")
         {
-            // ── UseApplicantDesignated 步驟：處理多位指定審核者的逐一推進 ──
+            // ── 指定審核步驟（原生或例外命中）：處理多位指定審核者的逐一推進 ──
             var currentStepDef = approvalItemId.HasValue
                 ? await db.ApprovalSteps.AsNoTracking()
                     .FirstOrDefaultAsync(s => s.ApprovalItemId == approvalItemId && s.StepOrder == currentStepOrder)
                 : null;
 
-            if (currentStepDef?.UseApplicantDesignated == true)
+            if (await IsDesignatedStepForRequestAsync(currentStepDef, applicationType, applicationId))
             {
                 // 更新本步驟內 pending 且 StepOrder 最小的指定審核者狀態為 approved
                 var currentDesignated = await db.RequestDesignatedReviewers
@@ -1096,13 +1116,13 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         }
         else if (action == "returned")
         {
-            // UseApplicantDesignated 步驟退回時：更新當前 pending 指定審核者的狀態為 returned
+            // 指定審核步驟（原生或例外命中）退回時：更新當前 pending 指定審核者的狀態為 returned
             var currentStepDefForReturn = approvalItemId.HasValue
                 ? await db.ApprovalSteps.AsNoTracking()
                     .FirstOrDefaultAsync(s => s.ApprovalItemId == approvalItemId && s.StepOrder == currentStepOrder)
                 : null;
 
-            if (currentStepDefForReturn?.UseApplicantDesignated == true)
+            if (await IsDesignatedStepForRequestAsync(currentStepDefForReturn, applicationType, applicationId))
             {
                 var currentDesignatedForReturn = await db.RequestDesignatedReviewers
                     .Where(r => r.RequestType == applicationType

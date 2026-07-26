@@ -7,6 +7,7 @@ using Jabez.Api.Services.Dapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace Jabez.Api.Handlers;
 
@@ -31,10 +32,12 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
             return new BadRequestObjectResult(ApiResponse.Fail("Query parameter 'type' is required."));
 
         // 依呼叫者部門解析「實際會走的流程」：部門專屬優先，否則退回通用預設
+        // 另帶呼叫者 UserId，讓回傳的 UseApplicantDesignated 反映例外指定審核名單是否命中呼叫者
         var principal = await jwtService.ValidateRequestAsync(req);
         int? departmentId = int.TryParse(principal?.FindFirst("department_id")?.Value, out var deptId) ? deptId : null;
+        Guid? userId = Guid.TryParse(principal?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value, out var uid) ? uid : null;
 
-        var flow = await reader.GetActiveByTypeAsync(type, departmentId);
+        var flow = await reader.GetActiveByTypeAsync(type, departmentId, userId);
         return new OkObjectResult(ApiResponse.Ok(flow));
     }
 
@@ -138,6 +141,51 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
 
     // ── Approval Steps ────────────────────────────────────────────────────
 
+    /// <summary>
+    /// 整批替換某步驟的例外指定審核名單（null＝不動、[]＝清空）。
+    /// 名單非空即代表啟用例外，不另設 bool 旗標；與 UseApplicantDesignated 互斥。
+    /// 呼叫端負責 SaveChanges。回傳替換後的名單人數。
+    /// </summary>
+    private async Task<int> ApplyStepExceptionsAsync(ApprovalStep step, Guid[]? exceptionUserIds)
+    {
+        var existing = await db.ApprovalStepExceptions
+            .Where(e => e.ApprovalStepId == step.Id)
+            .ToListAsync();
+
+        // 原生指定審核步驟不需要例外名單 → 一律清空（切換模式時避免殘留孤兒設定）
+        if (step.UseApplicantDesignated)
+        {
+            if (exceptionUserIds is { Length: > 0 })
+                throw AppException.BadRequest("此步驟已設為「申請人指定審核」，無需再設定例外名單。");
+            if (existing.Count > 0)
+                db.ApprovalStepExceptions.RemoveRange(existing);
+            return 0;
+        }
+
+        if (exceptionUserIds is null)
+            return existing.Count; // 不動
+
+        var ids = exceptionUserIds.Distinct().ToList();
+
+        if (ids.Count > 0)
+        {
+            var validCount = await db.Users.CountAsync(u => ids.Contains(u.Id) && !u.IsSuperAdmin);
+            if (validCount != ids.Count)
+                throw AppException.BadRequest("例外名單中包含不存在或不可指定的使用者。");
+        }
+
+        db.ApprovalStepExceptions.RemoveRange(existing.Where(e => !ids.Contains(e.UserId)));
+        foreach (var id in ids.Where(i => !existing.Any(e => e.UserId == i)))
+            db.ApprovalStepExceptions.Add(new ApprovalStepException
+            {
+                ApprovalStepId = step.Id,
+                UserId         = id,
+                CreatedAt      = Clock.Now,
+            });
+
+        return ids.Count;
+    }
+
     public async Task<IActionResult> AddStepAsync(HttpRequest req, string itemId)
     {
         if (!int.TryParse(itemId, out var intItemId))
@@ -146,6 +194,12 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
         var body = await req.ReadFromJsonAsync<CreateApprovalStepRequest>();
         if (body is null)
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
+
+        bool hasExceptions = body.ExceptionUserIds is { Length: > 0 };
+
+        // 例外指定審核與原生「申請人指定審核」互斥
+        if (body.UseApplicantDesignated && hasExceptions)
+            return new BadRequestObjectResult(ApiResponse.Fail("此步驟已設為「申請人指定審核」，無需再設定例外名單。"));
 
         // 三種模式互斥：UseApplicantDesignated / UseDirectSupervisor / 一般模式
         if (body.UseApplicantDesignated)
@@ -179,13 +233,16 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
             UseApplicantDepartment  = !body.UseApplicantDesignated && (body.UseDirectSupervisor || body.UseApplicantDepartment),
             UseDirectSupervisor     = !body.UseApplicantDesignated && body.UseDirectSupervisor,
             UseApplicantDesignated  = body.UseApplicantDesignated,
-            // 僅 UseApplicantDesignated 時此旗標有意義（此步驟需先選部門再選人）
-            DesignatedRequiresDepartment = body.UseApplicantDesignated && body.DesignatedRequiresDepartment,
+            // 指定審核（原生或例外）時此旗標才有意義（此步驟需先選部門再選人）
+            DesignatedRequiresDepartment = (body.UseApplicantDesignated || hasExceptions) && body.DesignatedRequiresDepartment,
             MinDays                 = body.MinDays is > 0 ? body.MinDays : null,
             Note                    = body.Note,
             CreatedAt               = Clock.Now,
         };
         db.ApprovalSteps.Add(step);
+        await db.SaveChangesAsync(); // 先存以取得 step.Id，例外名單需以其為 FK
+
+        await ApplyStepExceptionsAsync(step, body.ExceptionUserIds);
         await db.SaveChangesAsync();
 
         var dto = await reader.GetByIdAsync(intItemId);
@@ -241,8 +298,11 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
                 step.UseApplicantDesignated = false;
         }
 
-        // DesignatedRequiresDepartment 僅在指定審核模式下有意義
-        if (!step.UseApplicantDesignated)
+        // 例外指定審核名單（整批替換；切成 UseApplicantDesignated 時會自動清空）
+        int exceptionCount = await ApplyStepExceptionsAsync(step, body.ExceptionUserIds);
+
+        // DesignatedRequiresDepartment 僅在指定審核模式（原生或例外）下有意義
+        if (!step.UseApplicantDesignated && exceptionCount == 0)
             step.DesignatedRequiresDepartment = false;
 
         if (!step.UseApplicantDesignated && !step.UseDirectSupervisor && step.UseApplicantDepartment)

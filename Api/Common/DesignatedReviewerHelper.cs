@@ -10,9 +10,48 @@ namespace Jabez.Api.Common;
 /// 一條流程可有多個 UseApplicantDesignated 步驟，每筆 designee 以 ApprovalStepOrder 綁定所屬步驟。
 /// 9 種申請類型（payment_request / advance / travel / travel_payment / write_off /
 /// travel_write_off / leave / overtime / pre_review）共用本 helper 建立、讀取、驗證與正規化。
+///
+/// 【例外指定審核（ApprovalStepException）的兩個真相】—— 以時間軸切分：
+///   送單前 / 送單當下 → 查例外表：<see cref="GetEffectiveDesignatedStepOrdersAsync"/>
+///     （消費點僅 2 處：GET /approval-items/active、<see cref="ValidateAndNormalizeAsync"/>）
+///   送單完成後      → 看 designee 快照：<see cref="EffectiveDesignatedStepOrders"/>
+///     （designee 資料列本身即「申請當下例外命中」的證據，故管理者事後改名單不影響在飛行中的申請）
 /// </summary>
 public static class DesignatedReviewerHelper
 {
+    /// <summary>
+    /// 【送單前 / 送單當下】「對此申請人而言」的有效指定審核步驟 StepOrder 集合
+    /// ＝ UseApplicantDesignated=true 的步驟 ∪ 例外名單含此申請人的步驟。
+    /// 此時 RequestDesignatedReviewers 尚未定案，只能查 ApprovalStepException 表。
+    /// </summary>
+    public static async Task<HashSet<int>> GetEffectiveDesignatedStepOrdersAsync(
+        AppDbContext db, int approvalItemId, Guid applicantId)
+    {
+        var orders = await db.ApprovalSteps
+            .AsNoTracking()
+            .Where(s => s.ApprovalItemId == approvalItemId
+                && (s.UseApplicantDesignated || s.Exceptions.Any(e => e.UserId == applicantId)))
+            .Select(s => s.StepOrder)
+            .ToListAsync();
+        return [.. orders];
+    }
+
+    /// <summary>
+    /// 【送單完成後】有效指定審核步驟（純記憶體，不查 DB）：
+    /// 原生 UseApplicantDesignated 步驟 ∪ 已有 designee 綁定（ApprovalStepOrder）的步驟。
+    /// designee 列由送單當下的例外判定寫入並經 ValidateAndNormalizeAsync 剔除非法綁定，
+    /// 故此處等同「申請當下的例外快照」。
+    /// </summary>
+    public static HashSet<int> EffectiveDesignatedStepOrders(
+        IEnumerable<ApprovalStep> steps,
+        IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers)
+    {
+        var bound = designatedReviewers?.Select(r => r.ApprovalStepOrder).ToHashSet() ?? [];
+        return [.. steps
+            .Where(s => s.UseApplicantDesignated || bound.Contains(s.StepOrder))
+            .Select(s => s.StepOrder)];
+    }
+
     /// <summary>由請求 DTO 建立待存實體（Create / Update 草稿時用）。</summary>
     public static List<RequestDesignatedReviewer> BuildEntities(
         string requestType, int requestId, IEnumerable<DesignatedReviewerRequest> reqs)
@@ -47,24 +86,31 @@ public static class DesignatedReviewerHelper
     /// 送單時正規化 + 驗證指定審核者（此時 ApprovalItemId 已解析）：
     /// 1. 向後相容：designee 的 ApprovalStepOrder 未帶（=0）且流程只有一個 designated step → 自動補成該 step 的 StepOrder。
     /// 2. 流程有 ≥2 個 designated step 卻有未綁定（=0）的 designee → 視為呼叫端 bug，報錯。
-    /// 3. 每個 designated step 至少要有一位 designee，否則報錯（取代各 handler 既有守門）。
+    /// 3. 剔除綁在「非有效指定步驟」上的 designee（防提權：否則 client 可用 approvalStepOrder 劫持固定部門步驟）。
+    /// 4. 每個 designated step 至少要有一位 designee，否則報錯（取代各 handler 既有守門）。
+    /// 有效指定步驟＝原生 UseApplicantDesignated ∪ 例外名單命中 applicantId（見 GetEffectiveDesignatedStepOrdersAsync）。
     /// 變更已寫入 ChangeTracker，呼叫端隨後 SaveChanges 即可。
     /// </summary>
     public static async Task ValidateAndNormalizeAsync(
-        AppDbContext db, string requestType, int requestId, int? approvalItemId)
+        AppDbContext db, string requestType, int requestId, int? approvalItemId, Guid applicantId)
     {
         if (approvalItemId is null)
             return;
 
-        var designatedStepOrders = await db.ApprovalSteps
-            .AsNoTracking()
-            .Where(s => s.ApprovalItemId == approvalItemId && s.UseApplicantDesignated)
-            .Select(s => s.StepOrder)
-            .OrderBy(o => o)
-            .ToListAsync();
+        // 送單當下真相：原生指定步驟 ∪ 此申請人命中的例外步驟
+        var designatedSet = await GetEffectiveDesignatedStepOrdersAsync(db, approvalItemId.Value, applicantId);
+        var designatedStepOrders = designatedSet.OrderBy(o => o).ToList();
 
         if (designatedStepOrders.Count == 0)
-            return; // 此流程無指定審核步驟
+        {
+            // 此流程對本申請人無指定審核步驟 → 殘留的 designee（例如草稿期間換過流程／部門）一律清掉
+            var stale = await db.RequestDesignatedReviewers
+                .Where(r => r.RequestType == requestType && r.RequestId == requestId)
+                .ToListAsync();
+            if (stale.Count > 0)
+                db.RequestDesignatedReviewers.RemoveRange(stale);
+            return;
+        }
 
         var designees = await db.RequestDesignatedReviewers
             .Where(r => r.RequestType == requestType && r.RequestId == requestId)
@@ -85,12 +131,23 @@ public static class DesignatedReviewerHelper
             }
         }
 
+        // 剔除綁在「非有效指定步驟」上的 designee。
+        // 送單後的真相是 designee 快照，若不剔除，惡意/錯誤 client 可送 ApprovalStepOrder=N（N 其實是固定部門步驟）
+        // 把該步驟劫持成自己挑的人審核。採靜默剔除而非丟 400：草稿期間申請人可能調部門而換到別條流程，
+        // 丟錯會誤傷正常使用者。
+        var illegal = designees.Where(d => !designatedSet.Contains(d.ApprovalStepOrder)).ToList();
+        if (illegal.Count > 0)
+        {
+            db.RequestDesignatedReviewers.RemoveRange(illegal);
+            designees = designees.Except(illegal).ToList();
+        }
+
         // 被抑制的指定步驟（首個指定步驟＝所選部門最高職稱 → 其後指定步驟不需選人）不列入必填檢查。
         // 注意：須在上方正規化（補齊 ApprovalStepOrder==0）之後才判定，否則第一步首位 designee 綁定抓不到。
         var normalized = designees
             .Select(d => new DesignatedReviewerRequest(d.ReviewerId, d.StepOrder, d.ApprovalStepOrder, d.SelectedDepartmentId))
             .ToList();
-        var suppressed = await GetSuppressedDesignatedStepOrdersAsync(db, approvalItemId.Value, normalized);
+        var suppressed = await GetSuppressedDesignatedStepOrdersAsync(db, approvalItemId.Value, normalized, designatedSet);
 
         // 每個 designated step 至少要有一位 designee（被抑制者除外）
         foreach (var stepOrder in designatedStepOrders)
@@ -104,7 +161,8 @@ public static class DesignatedReviewerHelper
 
     /// <summary>
     /// 回傳「被抑制的指定審核步驟 StepOrder 集合」。
-    /// 條件：第一個 UseApplicantDesignated 步驟為 DesignatedRequiresDepartment=true，
+    /// designatedStepOrders 為「對此申請人的有效指定步驟集合」（含例外命中），由呼叫端依所處時間軸決定來源。
+    /// 條件：第一個有效指定步驟為 DesignatedRequiresDepartment=true，
     /// 該步驟所選部門屬於 DepartmentCodes.DesignatedTopLevelSuppression（僅
     /// Operations Department / Brand Department(疆界地域美學) 適用此規則，2026-07 限定），
     /// 且該步驟首位 designee（min StepOrder）＝其 SelectedDepartmentId 部門中
@@ -116,11 +174,12 @@ public static class DesignatedReviewerHelper
     /// </summary>
     public static async Task<HashSet<int>> GetSuppressedDesignatedStepOrdersAsync(
         AppDbContext db, int approvalItemId,
-        IReadOnlyList<DesignatedReviewerRequest> designatedReviewers)
+        IReadOnlyList<DesignatedReviewerRequest> designatedReviewers,
+        IReadOnlySet<int> designatedStepOrders)
     {
         var designatedSteps = await db.ApprovalSteps
             .AsNoTracking()
-            .Where(s => s.ApprovalItemId == approvalItemId && s.UseApplicantDesignated)
+            .Where(s => s.ApprovalItemId == approvalItemId && designatedStepOrders.Contains(s.StepOrder))
             .OrderBy(s => s.StepOrder)
             .Select(s => new { s.StepOrder, s.DesignatedRequiresDepartment })
             .ToListAsync();

@@ -6,7 +6,7 @@
 
 本地開發連線字串於 [Api/local.settings.json](../Api/local.settings.json)；遠端 Azure SQL 連線字串記在 memory `reference_azure_sql.md`（敏感資訊不入版控）。
 
-## 47 個資料表實體
+## 48 個資料表實體
 
 | 實體 | 說明 |
 |------|------|
@@ -20,7 +20,8 @@
 | `JobTitle` | 職稱主檔 |
 | `Vendor` | 廠商主檔（Name 廠商名稱/外包顧問、TaxId 統編 unique-filter index、IdNumber 身分證字號 unique-filter index（個人工作室，與 TaxId 擇一）、Phone、ContactPerson、Address、BankAccount、BankBookImageUrl 存摺封面 proxy 路徑（必填）、IdCardFrontUrl/IdCardBackUrl 身分證正反面 proxy 路徑、Note、IsActive、CreatedAt；被 PaymentRequest.VendorId 引用，FK OnDelete=Restrict 限引用中不可刪） |
 | `ApprovalItem` | 簽核流程項目（含 **DepartmentId 部門維度**：null = 該 ApplicationType 通用預設流程，非 null = 某部門專屬流程；唯一索引為 `(ApplicationType, DepartmentId)`，過濾條件 `ApplicationType IS NOT NULL`，FK→Department OnDelete=SetNull） |
-| `ApprovalStep` | 簽核流程步驟（含 UseDirectSupervisor、UseApplicantDesignated、**DesignatedRequiresDepartment**「指定審核步驟需先選部門再選人」，僅 UseApplicantDesignated 時有意義；**MinDays** 天數門檻 nullable，`null`＝一律納入、`N`＝申請天數 ≥ N 才納入此步驟，目前供請假依天數分流） |
+| `ApprovalStep` | 簽核流程步驟（含 UseDirectSupervisor、UseApplicantDesignated、**DesignatedRequiresDepartment**「指定審核步驟需先選部門再選人」，`UseApplicantDesignated` **或有例外名單**時有意義；**MinDays** 天數門檻 nullable，`null`＝一律納入、`N`＝申請天數 ≥ N 才納入此步驟，目前供請假依天數分流；例外名單見子表 `ApprovalStepException`） |
+| `ApprovalStepException` | **簽核步驟例外指定審核名單**（`ApprovalStepId` + `UserId`）：名單內的申請人送單時，該步驟改為「由申請人自行指定審核者」；與 `UseApplicantDesignated` 互斥。唯一索引 `(ApprovalStepId, UserId)`；FK→ApprovalStep **Cascade**、FK→Users **NO_ACTION（已納入 UserHandler.DeleteAsync 清洗清單）** |
 | `ApprovalRecord` | 簽核動作記錄（含 OnBehalfOfUserId 代理標記、IsEscalated 升級標記、`RoundNo` 簽核批次：僅 advance 追加預支會 > 1，其餘申請類型恆為 1） |
 | `EscalationOverride` | 升級審核指派（記錄被指派的升級/代理審核者，審核完成後清除） |
 | `Project` | 專案主檔（含 **DepartmentId 必填**、ContractAmount 契約金額、BusinessAmount 業務執行金額、RemainingAmount 剩餘金額（系統導入時剩餘預算，選填）；實收金額為衍生值，由 `SUM(ProjectPaymentSchedules.DepositAmount)` 即時計算） |
@@ -77,7 +78,7 @@
 - **User 認證相關欄位（IsSuperAdmin / RefreshToken）** → [authentication.md](authentication.md)
 - **申請類 entity 業務含義** → [docs/business/application-forms.md](business/application-forms.md)
 - **Department 可見性旗標** → [docs/business/department-visibility.md](business/department-visibility.md)
-- **ApprovalItem / Step / Record / Override / RequestDesignatedReviewer** → [docs/business/approval-flow.md](business/approval-flow.md) + [docs/business/approval-escalation.md](business/approval-escalation.md)
+- **ApprovalItem / Step / StepException / Record / Override / RequestDesignatedReviewer** → [docs/business/approval-flow.md](business/approval-flow.md) + [docs/business/approval-escalation.md](business/approval-escalation.md)
 - **EmployeeProfile + 9 子表** → [docs/business/hr-profile.md](business/hr-profile.md)
 - **HealthInsuranceDependent 影響薪資公式** → [docs/business/payroll-formula.md](business/payroll-formula.md)
 - **AttendanceReminderLog** → [docs/business/attendance-reminder.md](business/attendance-reminder.md)

@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { TravelPaymentRequest } from '../models/travel-payment-request.model';
 import { ApprovalRecord, ApprovalFlow } from '../../approval-tasks/models/approval-task.model';
-import { PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, fmtDate, fmt, buildDynamicSignBlocks } from '../../../../shared/services/pdf-core.service';
+import { PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, fmtDate, fmt, buildDynamicSignBlocks, designatedStepOrdersOf } from '../../../../shared/services/pdf-core.service';
 
 @Injectable({ providedIn: 'root' })
 export class TravelPaymentPdfService {
@@ -198,7 +198,7 @@ export class TravelPaymentPdfService {
       const submitDate = r.createdAt ? fmtDT(r.createdAt) : '';
       // 出納簽名取最後一期已撥款者（若有）
       const lastPaid = r.installments?.filter(i => i.paidAt).slice(-1)[0];
-      const signBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, submitDate, '申請者', lastPaid?.paidAt, lastPaid?.paidBySignatureUrl);
+      const signBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, submitDate, '申請者', lastPaid?.paidAt, lastPaid?.paidBySignatureUrl, designatedStepOrdersOf(r.designatedReviewers));
       const sigMap = await this.pdfCore.loadSignatureImages(signBlocks);
       this.pdfCore.drawSignatureBlock(doc, mx, pw, cw, y, signBlocks, sigMap);
 
@@ -225,8 +225,10 @@ export class TravelPaymentPdfService {
     applicantLabel: string,
     paidAt?: string,
     paidBySignatureUrl?: string,
+    designatedStepOrders: number[] = [],
   ): SignBlock[] {
     return buildDynamicSignBlocks({
+      designatedStepOrders,
       flow,
       records,
       submittedBySignatureUrl,

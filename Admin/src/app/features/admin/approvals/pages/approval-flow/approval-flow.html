@@ -66,7 +66,41 @@
                   <span class="fw-500">申請人指定審核</span>
                   <span class="text-muted">— 申請人在表單中選擇指定審核者</span>
                 </label>
-                @if (stepForm.value.useApplicantDesignated) {
+                @if (!stepForm.value.useApplicantDesignated) {
+                  <label class="flex items-center gap-1.5 cursor-pointer text-sm">
+                    <input type="checkbox" class="form-check-input m-0"
+                           [checked]="useException"
+                           (change)="useException = !useException; onUseExceptionChange()">
+                    <span class="fw-500">例外指定審核</span>
+                    <span class="text-muted">— 名單內的申請人送單時，此步驟改由申請人自行指定審核者</span>
+                  </label>
+                  @if (useException) {
+                    <div class="ms-4 flex flex-col gap-2" formArrayName="exceptionUserIds">
+                      @for (ctrl of exceptionUserIds.controls; track $index) {
+                        <div class="flex items-center gap-2">
+                          <span class="text-muted small" style="min-width:1.25rem">{{ $index + 1 }}.</span>
+                          <select class="form-select form-select-sm" style="max-width:240px" [formControlName]="$index">
+                            <option [ngValue]="null">— 選擇使用者 —</option>
+                            @for (u of availableUsers($index); track u.id) {
+                              <option [ngValue]="u.id">{{ u.name }}</option>
+                            }
+                          </select>
+                          <button type="button" class="btn btn-sm btn-ghost-danger" (click)="removeExceptionUser($index)">
+                            <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                          </button>
+                        </div>
+                      }
+                      <div>
+                        <button type="button" class="btn btn-sm btn-outline-primary inline-flex items-center gap-1"
+                                (click)="addExceptionUser()">
+                          <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                          新增使用者
+                        </button>
+                      </div>
+                    </div>
+                  }
+                }
+                @if (stepForm.value.useApplicantDesignated || useException) {
                   <label class="flex items-center gap-1.5 cursor-pointer text-sm ms-4">
                     <input type="checkbox" class="form-check-input m-0"
                            formControlName="designatedRequiresDepartment">
@@ -129,6 +163,9 @@
                 開啟「使用申請人部門」時，職稱為必填。
               } @else {
                 部門或職稱至少選一。
+              }
+              @if (useException && !stepForm.value.useApplicantDesignated) {
+                <div class="mt-1">名單內的申請人送單時，此步驟改由申請人自行指定審核者；不在名單內者照上述設定。</div>
               }
             </div>
             <div class="flex gap-2 mt-4">
@@ -197,6 +234,13 @@
                           {{ step.jobTitleName }}
                         </span>
                       }
+                    }
+                    @if (step.exceptionUserIds && step.exceptionUserIds.length > 0) {
+                      <span class="badge bg-info-subtle text-info inline-flex items-center gap-1" style="white-space:nowrap"
+                            [title]="'例外指定審核名單：' + exceptionNames(step)">
+                        <svg class="sa-icon" style="width:12px;height:12px;flex-shrink:0;stroke:currentColor"><use href="/assets/icons/sprite.svg#user-check"></use></svg>
+                        例外指定 {{ step.exceptionUserIds.length }} 人
+                      </span>
                     }
                     @if (step.minDays) {
                       <span class="badge bg-teal-subtle text-teal inline-flex items-center gap-1" style="white-space:nowrap">

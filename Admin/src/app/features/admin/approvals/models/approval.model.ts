@@ -38,6 +38,9 @@ export interface ApprovalStep {
   useApplicantDesignated?: boolean;
   designatedRequiresDepartment?: boolean;
   minDays?: number | null;   // 適用天數門檻：null/undefined = 一律適用；有值時僅當申請天數 >= minDays 才納入（目前供請假依天數分流）
+  /** 例外指定審核名單（UserId[]）：名單內的申請人送單時，此步驟改由申請人自行指定審核者。
+   *  非空即代表啟用例外（不另設 bool 旗標）；與 useApplicantDesignated 互斥。僅 getById 會帶出。 */
+  exceptionUserIds?: string[];
   note?: string;
 }
 
@@ -63,6 +66,7 @@ export interface ApprovalFlowSummary {
 
 export interface ApprovalFlowStepSummary {
   stepOrder: number;
+  /** 「對呼叫者而言」的有效值：步驟原生設定 OR 例外指定審核名單命中呼叫者 */
   useApplicantDesignated: boolean;
   designatedRequiresDepartment: boolean;
 }

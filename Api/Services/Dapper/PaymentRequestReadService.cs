@@ -256,6 +256,21 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             // Normal reviewer — "pending" tab (or no status param): match current step
             // Only show 'pending' status to avoid surfacing returned/rejected rows here.
             // Logic must stay in sync with AuthorizeStepAsync.
+            //
+            // 例外指定審核（ApprovalStepException）：送單後的真相是 designee 快照 —— 只要該申請在
+            // 「當前步驟」有 designee 綁定，此步驟即為指定審核步驟（不論步驟本身是否 UseApplicantDesignated）。
+            // 因此 s2 / s3 一般分支必須排除這種情況，s4 指定分支則不再檢查 UseApplicantDesignated。
+            // ★ NOT EXISTS 一定要綁 ApprovalStepOrder = CurrentStepOrder，否則「step1 原生指定 +
+            //   step2~4 固定部門」的申請推進到 step2 後會從所有一般審核者的待審清單消失。
+            string designatedBoundToCurrentStep = $"""
+              EXISTS (
+                SELECT 1 FROM RequestDesignatedReviewers rdrx
+                WHERE rdrx.RequestType = '{appType}'
+                  AND rdrx.RequestId   = {alias}.Id
+                  AND rdrx.ApprovalStepOrder = {alias}.CurrentStepOrder
+              )
+              """;
+
             return $"""
               {alias}.ApprovalStatus = 'pending'
               AND (
@@ -267,6 +282,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                   WHERE ai2.Id = {alias}.ApprovalItemId
                     AND s2.UseDirectSupervisor = 0
                     AND s2.UseApplicantDesignated = 0
+                    AND NOT {designatedBoundToCurrentStep}
                     AND (s2.JobTitleId IS NULL OR s2.JobTitleId = @ReviewerJobTitleId)
                     AND (
                       (s2.UseApplicantDepartment = 1
@@ -283,6 +299,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                                        AND s3.StepOrder = {alias}.CurrentStepOrder
                   WHERE ai3.Id = {alias}.ApprovalItemId
                     AND s3.UseDirectSupervisor = 1
+                    AND NOT {designatedBoundToCurrentStep}
                     AND {userAlias}.DepartmentId IS NOT NULL
                     AND {userAlias}.DepartmentId = @ReviewerDepartmentId
                     AND EXISTS (
@@ -319,7 +336,6 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                   JOIN ApprovalSteps s4 ON s4.ApprovalItemId = ai4.Id
                                        AND s4.StepOrder = {alias}.CurrentStepOrder
                   WHERE ai4.Id = {alias}.ApprovalItemId
-                    AND s4.UseApplicantDesignated = 1
                     AND EXISTS (
                       SELECT 1 FROM RequestDesignatedReviewers rdr
                       WHERE rdr.RequestType = '{appType}'
@@ -642,10 +658,11 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 
         const string drSql = """
             SELECT rdr.RequestType, rdr.RequestId, rdr.Id, rdr.ReviewerId,
-                   u.Name AS ReviewerName, rdr.StepOrder, rdr.Status, rdr.ReviewedAt, rdr.Comment
+                   u.Name AS ReviewerName, rdr.StepOrder, rdr.Status, rdr.ReviewedAt, rdr.Comment,
+                   rdr.ApprovalStepOrder
             FROM RequestDesignatedReviewers rdr
             JOIN Users u ON rdr.ReviewerId = u.Id
-            ORDER BY rdr.RequestType, rdr.RequestId, rdr.StepOrder
+            ORDER BY rdr.RequestType, rdr.RequestId, rdr.ApprovalStepOrder, rdr.StepOrder
             """;
 
         var payments        = await db.QueryAsync<dynamic>(paymentSql,        param);
@@ -887,7 +904,9 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (int)row.StepOrder,
                 (string)row.Status,
                 (DateTime?)row.ReviewedAt,
-                (string?)row.Comment));
+                (string?)row.Comment,
+                // 前端 PDF 簽名欄佈局需以此判斷哪些步驟為指定審核（含例外命中），不可省略
+                (int)(row.ApprovalStepOrder ?? 0)));
         }
 
         DesignatedReviewerDto[]? GetDesignatedReviewers(string appType, int id) =>
