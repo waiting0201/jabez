@@ -142,11 +142,7 @@ public sealed class WriteOffRequestHandler(
             .FirstOrDefaultAsync(x => x.Id == advanceRequestId && x.SubmittedById == submittedById)
             ?? throw AppException.NotFound("AdvanceRequest");
 
-        if (ar.ApprovalStatus != "approved")
-            throw AppException.BadRequest("Only approved advance requests can have write-offs.");
-
-        if (ar.IsClosed)
-            throw AppException.BadRequest("此預支申請已結案，無法再沖銷。");
+        EnsureAdvanceWriteOffable(ar);
 
         // 解析沖銷明細
         if (string.IsNullOrWhiteSpace(itemsJson))
@@ -264,6 +260,9 @@ public sealed class WriteOffRequestHandler(
 
         if (wo.ApprovalStatus != "draft" && wo.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned write-off requests can be edited.");
+
+        // 沖銷草稿可能是在預支追加之前建立的，編輯時需重新確認來源預支單仍可沖銷
+        await EnsureAdvanceWriteOffableAsync(wo.AdvanceRequestId);
 
         var form    = await req.ReadFormAsync();
         var note    = form["note"].ToString();
@@ -477,6 +476,9 @@ public sealed class WriteOffRequestHandler(
         if (wo.ApprovalStatus != "draft" && wo.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned write-off requests can be submitted.");
 
+        // 送簽當下重新確認來源預支單仍可沖銷（避免對追加簽核中、總額變動中的預支單沖銷）
+        await EnsureAdvanceWriteOffableAsync(wo.AdvanceRequestId);
+
         // 退回重送：清除舊審核記錄，重置指定審核者狀態
         if (wo.ApprovalStatus == "returned")
         {
@@ -577,6 +579,29 @@ public sealed class WriteOffRequestHandler(
     }
 
     // ── Private Helpers ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// 來源預支單是否可沖銷：須已核准且未結案。
+    /// 追加簽核中的預支單狀態為 pending / returned，總額仍在變動，禁止沖銷。
+    /// </summary>
+    private static void EnsureAdvanceWriteOffable(AdvanceRequest ar)
+    {
+        if (ar.CurrentRoundNo > 1 && (ar.ApprovalStatus == "pending" || ar.ApprovalStatus == "returned"))
+            throw AppException.BadRequest("此預支申請有進行中的追加批次，追加核准後才可沖銷。");
+
+        if (ar.ApprovalStatus != "approved")
+            throw AppException.BadRequest("Only approved advance requests can have write-offs.");
+
+        if (ar.IsClosed)
+            throw AppException.BadRequest("此預支申請已結案，無法再沖銷。");
+    }
+
+    private async Task EnsureAdvanceWriteOffableAsync(int advanceRequestId)
+    {
+        var ar = await db.AdvanceRequests.AsNoTracking().FirstOrDefaultAsync(x => x.Id == advanceRequestId)
+                 ?? throw AppException.NotFound("AdvanceRequest");
+        EnsureAdvanceWriteOffable(ar);
+    }
 
     /// <summary>從 JWT Bearer Token 取出 sub claim 作為使用者 GUID</summary>
     private async Task<Guid> GetUserIdAsync(HttpRequest req)

@@ -10,6 +10,11 @@ public class AdvanceRequestItemConfiguration : IEntityTypeConfiguration<AdvanceR
     {
         builder.HasKey(i => i.Id);
 
+        builder.Property(i => i.RoundNo)
+               .HasDefaultValue(1);
+
+        builder.HasIndex(i => new { i.AdvanceRequestId, i.RoundNo });
+
         builder.Property(i => i.Category)
                .IsRequired()
                .HasMaxLength(50);

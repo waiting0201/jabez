@@ -15,7 +15,8 @@ public sealed record AdvanceRequestItemDto(
     string?  Note,
     int      SortOrder,
     string?  FileName = null,
-    string?  FileUrl  = null);
+    string?  FileUrl  = null,
+    int      RoundNo  = 1);
 
 public sealed record AdvanceRequestItemRequest(
     string   Category,
@@ -28,6 +29,21 @@ public sealed record AdvanceRequestItemRequest(
     decimal  CheckAmount,
     string?  Note,
     int      SortOrder);
+
+// ── 預支批次（追加預支）DTO ─────────────────────────────────────────────────
+
+/// <summary>
+/// 預支批次：RoundNo=1 為原始預支（日期取 AdvanceRequest.AdvanceDate），
+/// RoundNo≥2 為第 N 次追加（取自 AdvanceRequestSupplements）。金額一律由該批次 Items 加總推導。
+/// </summary>
+public sealed record AdvanceRoundDto(
+    int      RoundNo,
+    DateTime AdvanceDate,
+    string?  Reason,
+    decimal  CashTotal,
+    decimal  CheckTotal,
+    decimal  GrandTotal,
+    int      ItemCount);
 
 // ── AdvanceRequest DTO ──────────────────────────────────────────────────────
 
@@ -59,7 +75,9 @@ public sealed record AdvanceRequestDto(
     DateTime?                 RefundedAt             = null,
     WriteOffRecordDto[]?      WriteOffRecords        = null,
     InstallmentDto[]?         Installments           = null,
-    string?                   PaymentStatus          = null);
+    string?                   PaymentStatus          = null,
+    AdvanceRoundDto[]?        Rounds                 = null,
+    int                       CurrentRoundNo         = 1);
 
 // ── WriteOff DTOs ───────────────────────────────────────────────────────────
 
@@ -150,7 +168,9 @@ public sealed record AdvanceTaskDetailDto(
     decimal?  RefundAmount = null,
     decimal?  RefundedAmount = null,
     InstallmentDto[]? Installments = null,
-    string?   PaymentStatus = null)
+    string?   PaymentStatus = null,
+    AdvanceRoundDto[]? Rounds = null,
+    int       CurrentRoundNo = 1)
 {
     public AdvanceRequestItemDto[] Items { get; init; } = Items ?? Array.Empty<AdvanceRequestItemDto>();
 }

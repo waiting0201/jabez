@@ -232,16 +232,21 @@ public sealed class ApprovalFlowService(
     public async Task<HashSet<Guid>> GetApprovedReviewerIdsAsync(
         string applicationType, int applicationId)
     {
+        // 追加預支：只看本批次，否則第 1 輪的審核者會讓追加輪所有步驟被自動跳過（未經審核就核准）
+        var roundNo = await AdvanceSupplementService.ResolveCurrentRoundAsync(db, applicationType, applicationId);
+
         // 退回重送 → 歷史清零：以最近一次 Action='returned' 的 ReviewedAt 當分隔線
         var lastReturnedAt = await db.ApprovalRecords.AsNoTracking()
             .Where(r => r.ApplicationType == applicationType
                      && r.ApplicationId == applicationId
+                     && r.RoundNo == roundNo
                      && r.Action == "returned")
             .MaxAsync(r => (DateTime?)r.ReviewedAt) ?? DateTime.MinValue;
 
         var ids = await db.ApprovalRecords.AsNoTracking()
             .Where(r => r.ApplicationType == applicationType
                      && r.ApplicationId == applicationId
+                     && r.RoundNo == roundNo
                      && r.Action == "approved"
                      && r.ReviewedById != null
                      && r.ReviewedAt > lastReturnedAt)
@@ -256,9 +261,13 @@ public sealed class ApprovalFlowService(
     public async Task<HashSet<Guid>> GetApprovedSupervisorIdsAsync(
         string applicationType, int applicationId)
     {
+        // 追加預支：只看本批次（同 GetApprovedReviewerIdsAsync）
+        var roundNo = await AdvanceSupplementService.ResolveCurrentRoundAsync(db, applicationType, applicationId);
+
         var lastReturnedAt = await db.ApprovalRecords.AsNoTracking()
             .Where(r => r.ApplicationType == applicationType
                      && r.ApplicationId == applicationId
+                     && r.RoundNo == roundNo
                      && r.Action == "returned")
             .MaxAsync(r => (DateTime?)r.ReviewedAt) ?? DateTime.MinValue;
 
@@ -268,6 +277,7 @@ public sealed class ApprovalFlowService(
                          join j in db.JobTitles.AsNoTracking() on u.JobTitleId equals j.Id
                          where r.ApplicationType == applicationType
                             && r.ApplicationId == applicationId
+                            && r.RoundNo == roundNo
                             && r.Action == "approved"
                             && r.ReviewedById != null
                             && r.ReviewedAt > lastReturnedAt

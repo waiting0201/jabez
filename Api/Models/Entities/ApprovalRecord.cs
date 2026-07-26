@@ -6,6 +6,8 @@ public class ApprovalRecord
     public string   ApplicationType { get; set; } = string.Empty; // leave | travel | payment_request
     public int      ApplicationId   { get; set; }
     public int      StepOrder       { get; set; }
+    /// <summary>簽核批次（僅 advance 追加預支會 &gt; 1，其餘申請類型恆為 1）</summary>
+    public int      RoundNo         { get; set; } = 1;
     public string   Action          { get; set; } = string.Empty; // approved | returned | rejected
     public Guid?    ReviewedById    { get; set; }
     public DateTime ReviewedAt      { get; set; }

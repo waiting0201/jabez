@@ -32,6 +32,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<EscalationOverride>  EscalationOverrides  { get; set; }
     public DbSet<AdvanceRequest>       AdvanceRequests       { get; set; }
     public DbSet<AdvanceRequestItem>   AdvanceRequestItems   { get; set; }
+    public DbSet<AdvanceRequestSupplement> AdvanceRequestSupplements { get; set; }
     public DbSet<WriteOffRecord>       WriteOffRecords       { get; set; }
     public DbSet<WriteOffItem>         WriteOffItems         { get; set; }
     public DbSet<WriteOffAttachment>   WriteOffAttachments   { get; set; }

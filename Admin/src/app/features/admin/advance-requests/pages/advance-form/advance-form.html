@@ -3,7 +3,13 @@
     <a routerLink="/admin/advance-requests" class="btn btn-sm btn-outline-secondary">
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
     </a>
-    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視預支申請' : (isReturned ? '修改預支申請' : '編輯預支草稿')) : '新增預支申請' }}</h4>
+    <h4 class="mb-0">
+      @if (isSupplement) {
+        {{ isReturned ? '修改' : '新增' }}追加預支（{{ roundLabel(supplementRound) }}）
+      } @else {
+        {{ isEdit ? (isReadOnly ? '檢視預支申請' : (isReturned ? '修改預支申請' : '編輯預支草稿')) : '新增預支申請' }}
+      }
+    </h4>
   </div>
 
   @if (errorMsg()) {
@@ -13,7 +19,58 @@
     </div>
   }
 
-  @if (isReadOnly && approvalStatus === 'pending') {
+  @if (isSupplement) {
+    <!-- 追加預支：原批次摘要（唯讀對照）-->
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+        <svg class="sa-icon text-primary" style="stroke: currentColor">
+          <use href="/assets/icons/sprite.svg#credit-card"></use>
+        </svg>
+        原預支批次
+      </div>
+      <div class="card-body">
+        @for (rd of parentRounds; track rd.roundNo) {
+          @if (rd.roundNo !== supplementRound) {
+            <div class="flex flex-wrap items-center gap-2 small" [class.mt-2]="!$first">
+              <span class="fw-500" style="min-width:110px">{{ roundLabel(rd.roundNo) }}</span>
+              <span class="text-muted">{{ rd.advanceDate | date:'yyyy-MM-dd' }}</span>
+              <span class="fw-600">{{ rd.grandTotal | number:'1.0-0' }} 元</span>
+              @if (rd.reason) {
+                <span class="text-muted italic">「{{ rd.reason }}」</span>
+              }
+            </div>
+          }
+        }
+        <hr class="my-3">
+        <div class="row g-3">
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">原預支總額</div>
+            <div class="fw-600">{{ parentGrandTotal | number:'1.0-0' }}</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">本次追加</div>
+            <div class="fw-600 text-primary">{{ grandTotal | number:'1.0-0' }}</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">追加後總額</div>
+            <div class="fw-600 text-lg">{{ supplementAfterTotal | number:'1.0-0' }}</div>
+          </div>
+        </div>
+        <div class="text-muted small mt-3">
+          送出後原預支申請會重新進入簽核流程；核准後總額併入原單，撥款與沖銷皆以追加後總額為準。
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (isSupplement && isReturned) {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(255,193,7,0.08)] border-bottom flex items-center gap-2 fw-600 text-warning py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+        此追加批次已被退回，請修改後重新送出。
+      </div>
+    </div>
+  } @else if (isReadOnly && approvalStatus === 'pending') {
     <div class="card border-0 shadow-sm mb-6">
       <div class="card-header bg-[rgba(13,110,253,0.08)] border-bottom flex items-center gap-2 fw-600 text-primary py-3">
         <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
@@ -59,7 +116,7 @@
             <div class="row g-3 mb-4">
               <div class="col-12 col-md-6">
                 <label class="form-label fw-500">專案 <span class="text-danger">*</span></label>
-                @if (isReadOnly) {
+                @if (isReadOnly || isSupplement) {
                   <p class="form-control-plaintext fw-500 font-monospace mb-0">{{ projectCode ? projectCode + ' - ' + projectName : '—' }}</p>
                 } @else {
                   <select class="form-select" formControlName="projectId">
@@ -74,22 +131,42 @@
                 }
               </div>
               <div class="col-12 col-md-6">
-                <label class="form-label fw-500">預支日期 <span class="text-danger">*</span></label>
+                <label class="form-label fw-500">
+                  {{ isSupplement ? roundLabel(supplementRound) + '預支日期' : '預支日期' }}
+                  <span class="text-danger">*</span>
+                </label>
                 <input type="date" class="form-control" formControlName="advanceDate">
               </div>
             </div>
             <div class="row g-3 mb-4">
               <div class="col-12 col-md-6">
                 <label class="form-label fw-500">活動名稱 <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" formControlName="activityName" placeholder="如：導覽人員進階培訓">
+                @if (isSupplement) {
+                  <p class="form-control-plaintext fw-500 mb-0">{{ form.getRawValue().activityName || '—' }}</p>
+                } @else {
+                  <input type="text" class="form-control" formControlName="activityName" placeholder="如：導覽人員進階培訓">
+                }
               </div>
               <div class="col-12 col-md-6">
                 <label class="form-label fw-500">活動期間 <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" formControlName="activityPeriod" placeholder="如：9/22~10/06">
+                @if (isSupplement) {
+                  <p class="form-control-plaintext fw-500 mb-0">{{ form.getRawValue().activityPeriod || '—' }}</p>
+                } @else {
+                  <input type="text" class="form-control" formControlName="activityPeriod" placeholder="如：9/22~10/06">
+                }
               </div>
             </div>
 
-            @if (isEdit) {
+            @if (isSupplement) {
+              <div class="mb-4">
+                <label class="form-label fw-500">追加原因</label>
+                <input type="text" class="form-control" formControlName="reason"
+                       placeholder="如：活動人數超出預估，需追加餐費與交通費">
+                <div class="text-muted small mt-1">會顯示在詳情頁、簽核作業頁與列印的預支申請表上，供審核者判斷。</div>
+              </div>
+            }
+
+            @if (isEdit && !isSupplement) {
               <div class="mb-4">
                 <label class="form-label fw-500">簽核狀態</label>
                 <div>
@@ -284,8 +361,8 @@
           </div>
         </div>
 
-        <!-- 指定審核者 -->
-        @if (hasDesignatedStep && !isReadOnly) {
+        <!-- 指定審核者（追加模式沿用原單指定，不重新挑人）-->
+        @if (showDesignatedPicker && !isReadOnly) {
           <div class="card border-0 shadow-sm mt-6">
             <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
               <svg class="sa-icon text-primary" style="stroke: currentColor">
@@ -304,7 +381,7 @@
                 (suppressedStepsChange)="onSuppressedSteps($event)" />
             </div>
           </div>
-        } @else if (isReadOnly && readonlyDesignatedReviewers.length > 0) {
+        } @else if ((isReadOnly || isSupplement) && readonlyDesignatedReviewers.length > 0) {
           <div class="card border-0 shadow-sm mt-6">
             <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
               <svg class="sa-icon text-primary" style="stroke: currentColor">
@@ -323,7 +400,7 @@
         }
 
         <!-- 撥款明細（核准後才會有資料；read-only）-->
-        @if (installments && installments.length > 0) {
+        @if (!isSupplement && installments && installments.length > 0) {
           <app-installments-table
             [installmentsInput]="installments"
             [paymentStatus]="paymentStatus ?? undefined"
@@ -331,14 +408,30 @@
         }
 
         <!-- 簽核流程時間軸 -->
-        <app-approval-timeline
-          [flow]="approvalFlow"
-          [approvalRecords]="approvalRecords"
-          [currentStepOrder]="taskCurrentStepOrder"
-          [status]="taskStatus" />
+        @if (!isSupplement) {
+          <app-approval-timeline
+            [flow]="approvalFlow"
+            [approvalRecords]="approvalRecords"
+            [currentStepOrder]="taskCurrentStepOrder"
+            [status]="taskStatus" />
+        }
 
         <!-- Submit / Back -->
-        @if (!isReadOnly) {
+        @if (isSupplement) {
+          <div class="mt-6 flex gap-2">
+            <!-- 新增追加無草稿階段（後端建立即送簽），只有已退回的批次可先儲存 -->
+            @if (isReturned) {
+              <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid || itemArray.length === 0">
+                儲存
+              </button>
+            }
+            <button type="button" class="btn btn-primary" [disabled]="form.invalid || itemArray.length === 0"
+                    (click)="submitForApproval()">
+              {{ isReturned ? '重新送出追加簽核' : '送出追加簽核' }}
+            </button>
+            <a [routerLink]="['/admin/advance-requests', requestId]" class="btn btn-outline-secondary">取消</a>
+          </div>
+        } @else if (!isReadOnly) {
           <div class="mt-6 flex gap-2">
             <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid || itemArray.length === 0">
               {{ isEdit ? '儲存' : '儲存草稿' }}

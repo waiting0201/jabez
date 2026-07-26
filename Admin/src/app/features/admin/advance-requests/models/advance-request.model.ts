@@ -16,8 +16,28 @@ export const APPROVAL_STATUS_CLASSES: Record<ApprovalStatus, string> = {
   returned: 'bg-secondary-subtle text-secondary',
 };
 
+/**
+ * 預支批次標籤（單一真相）：Round 1 = 原始預支，Round N(≥2) = 第 N 次追加。
+ * detail / form / PDF / 簽核作業頁一律共用此函式，避免各處各寫一套。
+ */
+export const roundLabel = (roundNo: number): string =>
+  roundNo <= 1 ? '第1次' : `第${roundNo}次追加`;
+
+/** 預支批次：金額由該批次明細加總推導，Round 1 的日期取自父單 advanceDate */
+export interface AdvanceRound {
+  roundNo: number;
+  advanceDate: string;
+  reason?: string;
+  cashTotal: number;
+  checkTotal: number;
+  grandTotal: number;
+  itemCount: number;
+}
+
 export interface AdvanceRequestItem {
   id: number;
+  /** 所屬預支批次（1 = 原始預支，≥2 = 第N次追加） */
+  roundNo: number;
   category: string;
   seqNo: number;
   itemName: string;
@@ -81,6 +101,10 @@ export interface AdvanceRequest {
   // 分期撥款（共用 InstallmentDto / PaymentInstallmentStatus 定義於 approval-tasks model）
   installments?: import('../../approval-tasks/models/approval-task.model').InstallmentDto[];
   paymentStatus?: import('../../approval-tasks/models/approval-task.model').PaymentInstallmentStatus;
+  /** 各預支批次（僅 GetById 回傳）；含 Round 1 原始預支 */
+  rounds?: AdvanceRound[];
+  /** 最新已建立的批次號；> 1 且狀態為 pending/returned 表示有進行中的追加 */
+  currentRoundNo: number;
 }
 
 export interface WriteOffSummary {

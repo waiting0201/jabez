@@ -111,7 +111,8 @@ public sealed record ApprovalRecordDto(
     string?  ReviewerSignatureUrl = null,   // 審核者簽名檔 URL
     string?  ReviewerJobTitle    = null,    // 審核者職稱（顯示用）
     string?  ReviewerDepartmentName = null, // 審核者部門（指定審核步驟顯示用，區分同名審核者）
-    int?     ReviewerJobTitleLevel = null); // 審核者職稱層級（PDF 簽名欄判定總監 Level=1 用，避免依賴職稱名稱）
+    int?     ReviewerJobTitleLevel = null,  // 審核者職稱層級（PDF 簽名欄判定總監 Level=1 用，避免依賴職稱名稱）
+    int      RoundNo = 1);                  // 簽核批次（僅 advance 追加預支會 > 1）
 
 // ── ApprovalTask 多型 DTOs ─────────────────────────────────────────────────
 

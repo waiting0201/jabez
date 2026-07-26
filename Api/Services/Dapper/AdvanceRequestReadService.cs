@@ -11,11 +11,11 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
         SELECT ar.Id, ar.RequestNo, ar.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                ar.ActivityName, ar.ActivityPeriod, ar.AdvanceDate,
                ar.CashTotal, ar.CheckTotal, ar.GrandTotal,
-               ar.ApprovalStatus,
+               ar.ApprovalStatus, ar.CurrentRoundNo,
                sub.Name AS SubmittedBy, ar.CreatedAt,
                ar.ReviewedAt, ar.ReviewNote,
                ar.IsClosed, ar.ClosedAt, ar.RefundAmount, ar.RefundedAmount, ar.EstimatedRefundDate, ar.RefundedAt,
-               ai.Id AS ItemId, ai.Category, ai.SeqNo, ai.ItemName,
+               ai.Id AS ItemId, ai.RoundNo AS ItemRoundNo, ai.Category, ai.SeqNo, ai.ItemName,
                ai.UnitPrice, ai.Quantity, ai.TotalPrice,
                ai.CashAmount AS ItemCash, ai.CheckAmount AS ItemCheck,
                ai.Note AS ItemNote, ai.SortOrder,
@@ -37,7 +37,7 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
                 ORDER BY CreatedAt DESC
                 OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
             )
-            {BaseSql} WHERE ar.Id IN (SELECT Id FROM PagedIds) ORDER BY ar.CreatedAt DESC, ai.SortOrder, ai.Id
+            {BaseSql} WHERE ar.Id IN (SELECT Id FROM PagedIds) ORDER BY ar.CreatedAt DESC, ai.RoundNo, ai.SortOrder, ai.Id
             """;
         int total = await db.ExecuteScalarAsync<int>(countSql, new { UserId = userId });
         var rows = await db.QueryAsync<dynamic>(sql, new { UserId = userId, Skip = (page - 1) * pageSize, Take = pageSize });
@@ -62,7 +62,7 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
 
     public async Task<AdvanceRequestDto?> GetByIdAsync(int id)
     {
-        var sql = BaseSql + " WHERE ar.Id = @Id ORDER BY ai.SortOrder, ai.Id";
+        var sql = BaseSql + " WHERE ar.Id = @Id ORDER BY ai.RoundNo, ai.SortOrder, ai.Id";
         var rows = await db.QueryAsync<dynamic>(sql, new { Id = id });
         var writeOffSummaries = await db.QueryAsync<dynamic>(
             "SELECT Id, AdvanceRequestId, WriteOffNo, GrandTotal, CreatedAt FROM WriteOffRecords WHERE AdvanceRequestId = @Id ORDER BY WriteOffNo",
@@ -112,13 +112,52 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
         var instDict = await installments.GetByParentIdsAsync(InstallmentParentTable.AdvanceRequest, new[] { id });
         var instList = instDict.GetValueOrDefault(id, []);
 
+        // 追加預支批次（RoundNo ≥ 2；Round 1 = 父單本身）
+        const string supSql = """
+            SELECT s.RoundNo, s.AdvanceDate, s.Reason
+            FROM AdvanceRequestSupplements s
+            WHERE s.AdvanceRequestId = @Id
+            ORDER BY s.RoundNo
+            """;
+        var supRows = await db.QueryAsync<dynamic>(supSql, new { Id = id });
+
         return dto with
         {
             DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null,
             WriteOffRecords = writeOffRecords.Length > 0 ? writeOffRecords : null,
             Installments = instList.Count > 0 ? instList.ToArray() : null,
             PaymentStatus = installments.ComputeStatus(instList),
+            Rounds = BuildRounds(dto.AdvanceDate, supRows, dto.Items),
         };
+    }
+
+    /// <summary>
+    /// 組出各預支批次：Round 1 取父單 AdvanceDate，Round ≥2 取 AdvanceRequestSupplements；
+    /// 金額一律由該批次的明細加總推導（不讀任何金額快取欄位）。
+    /// </summary>
+    internal static AdvanceRoundDto[] BuildRounds(
+        DateTime advanceDate, IEnumerable<dynamic> supplementRows, IEnumerable<AdvanceRequestItemDto> items)
+    {
+        var byRound = items.GroupBy(i => i.RoundNo).ToDictionary(g => g.Key, g => g.ToList());
+
+        var rounds = new List<AdvanceRoundDto> { BuildRound(1, advanceDate, null, byRound) };
+        foreach (var row in supplementRows)
+            rounds.Add(BuildRound((int)row.RoundNo, (DateTime)row.AdvanceDate, (string?)row.Reason, byRound));
+
+        return [.. rounds.OrderBy(r => r.RoundNo)];
+    }
+
+    private static AdvanceRoundDto BuildRound(
+        int roundNo, DateTime advanceDate, string? reason,
+        Dictionary<int, List<AdvanceRequestItemDto>> byRound)
+    {
+        var list = byRound.GetValueOrDefault(roundNo, []);
+        return new AdvanceRoundDto(
+            roundNo, advanceDate, reason,
+            list.Sum(i => i.CashAmount),
+            list.Sum(i => i.CheckAmount),
+            list.Sum(i => i.TotalPrice),
+            list.Count);
     }
 
     // ── Grouping helpers ─────────────────────────────────────────────────────
@@ -138,7 +177,8 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
                     (string)row.ItemName, (decimal)row.UnitPrice, (string)row.Quantity,
                     (decimal)row.TotalPrice, (decimal)row.ItemCash, (decimal)row.ItemCheck,
                     (string?)row.ItemNote, (int)row.SortOrder,
-                    (string?)row.ItemFileName, (string?)row.ItemFileUrl));
+                    (string?)row.ItemFileName, (string?)row.ItemFileUrl,
+                    (int)row.ItemRoundNo));
         }
 
         // 沖銷摘要 grouped by AdvanceRequestId
@@ -182,7 +222,12 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
                 (decimal?)x.ar.RefundAmount,
                 (decimal?)x.ar.RefundedAmount,
                 (DateTime?)x.ar.EstimatedRefundDate,
-                (DateTime?)x.ar.RefundedAt);
+                (DateTime?)x.ar.RefundedAt,
+                null,                               // WriteOffRecords（僅 GetByIdAsync 帶入）
+                null,                               // Installments（稍後補上）
+                null,                               // PaymentStatus（稍後補上）
+                null,                               // Rounds（僅 GetByIdAsync 帶入）
+                (int)x.ar.CurrentRoundNo);
         });
     }
 

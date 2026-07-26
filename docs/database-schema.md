@@ -21,7 +21,7 @@
 | `Vendor` | 廠商主檔（Name 廠商名稱/外包顧問、TaxId 統編 unique-filter index、IdNumber 身分證字號 unique-filter index（個人工作室，與 TaxId 擇一）、Phone、ContactPerson、Address、BankAccount、BankBookImageUrl 存摺封面 proxy 路徑（必填）、IdCardFrontUrl/IdCardBackUrl 身分證正反面 proxy 路徑、Note、IsActive、CreatedAt；被 PaymentRequest.VendorId 引用，FK OnDelete=Restrict 限引用中不可刪） |
 | `ApprovalItem` | 簽核流程項目（含 **DepartmentId 部門維度**：null = 該 ApplicationType 通用預設流程，非 null = 某部門專屬流程；唯一索引為 `(ApplicationType, DepartmentId)`，過濾條件 `ApplicationType IS NOT NULL`，FK→Department OnDelete=SetNull） |
 | `ApprovalStep` | 簽核流程步驟（含 UseDirectSupervisor、UseApplicantDesignated、**DesignatedRequiresDepartment**「指定審核步驟需先選部門再選人」，僅 UseApplicantDesignated 時有意義；**MinDays** 天數門檻 nullable，`null`＝一律納入、`N`＝申請天數 ≥ N 才納入此步驟，目前供請假依天數分流） |
-| `ApprovalRecord` | 簽核動作記錄（含 OnBehalfOfUserId 代理標記、IsEscalated 升級標記） |
+| `ApprovalRecord` | 簽核動作記錄（含 OnBehalfOfUserId 代理標記、IsEscalated 升級標記、`RoundNo` 簽核批次：僅 advance 追加預支會 > 1，其餘申請類型恆為 1） |
 | `EscalationOverride` | 升級審核指派（記錄被指派的升級/代理審核者，審核完成後清除） |
 | `Project` | 專案主檔（含 **DepartmentId 必填**、ContractAmount 契約金額、BusinessAmount 業務執行金額、RemainingAmount 剩餘金額（系統導入時剩餘預算，選填）；實收金額為衍生值，由 `SUM(ProjectPaymentSchedules.DepositAmount)` 即時計算） |
 | `ProjectPaymentSchedule` | 專案請款期別明細（一期一筆：請款/發票/入帳日期與金額、扣款備註；扣款金額 = 發票 − 入帳，前端計算不存 DB） |
@@ -39,8 +39,9 @@
 | `TravelPaymentRequest` | 出差請款申請（含 `RequestNo` 單號 `TPR-yyyyMMdd-NNN` unique index；員工代墊後直接請款，無沖銷流程；撥款資料統一由 `TravelPaymentRequestInstallment[]` 表達，父表無 cache 欄位） |
 | `TravelPaymentRequestItem` | 出差請款明細（交通費、住宿費、餐費、雜支，含發票號碼、發票日期、發票檔案上傳；上傳走 multipart + Azure Blob `invoices` container，前端支援拖放、OCR 自動辨識、HEIC/PDF） |
 | `OvertimeRequest` | 加班申請（走簽核流程） |
-| `AdvanceRequest` | 預支申請（含 `EstimatedRefundDate / RefundedAt / RefundedByUserId` 退款欄位、`RefundAmount / RefundedAmount` 退款金額；撥款資料統一由 `AdvanceRequestInstallment[]` 表達，父表無撥款 cache 欄位） |
-| `AdvanceRequestItem` | 預支明細 |
+| `AdvanceRequest` | 預支申請（含 `EstimatedRefundDate / RefundedAt / RefundedByUserId` 退款欄位、`RefundAmount / RefundedAmount` 退款金額；撥款資料統一由 `AdvanceRequestInstallment[]` 表達，父表無撥款 cache 欄位；`CurrentRoundNo` 最新預支批次號，> 1 且狀態為 pending/returned 表示有進行中的追加） |
+| `AdvanceRequestItem` | 預支明細（含 `RoundNo` 所屬預支批次，1 = 原始預支、≥2 = 第 N 次追加） |
+| `AdvanceRequestSupplement` | **追加預支批次**（只存 `RoundNo ≥ 2`；Round 1 即父單本身，不入此表）。欄位：`RoundNo / AdvanceDate / Reason / CreatedById / CreatedAt` + 駁回回滾快照 `PrevCurrentStepOrder / PrevReviewedAt / PrevReviewedById / PrevReviewNote`；unique(`AdvanceRequestId`,`RoundNo`)。**不存金額欄位**，各批次金額一律由 `SUM(AdvanceRequestItems WHERE RoundNo = N)` 推導 |
 | `WriteOffRecord` | 預支沖銷申請（獨立簽核流程，關聯 AdvanceRequest，含 ApprovalStatus/CurrentStepOrder） |
 | `WriteOffItem` | 沖銷明細（含發票號碼、檔案上傳） |
 | `WriteOffAttachment` | 預支沖銷整單批次附件（照片 / PDF，FK Cascade，存 `request-attachments`） |

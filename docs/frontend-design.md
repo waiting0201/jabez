@@ -565,6 +565,35 @@ switchTab(tab: 'tab1' | 'tab2') {
 </button>
 ```
 
+### 7.1.1 分組欄（同組第二列起留白）
+
+當明細分屬多個群組（分類、批次…）時，最左欄顯示群組名，**同組第二列起留白**，不用 `rowspan`（`rowspan` 與 `@for` 難以共存，且列數變動時易錯位）。判斷式一律做成 component method，不在 template 內比對前一列。
+
+```html
+<th style="width:130px">批次</th>
+...
+@for (item of r.items; track item.id; let i = $index) {
+  <td class="small">
+    @if (isFirstOfRound(r, i)) {
+      <span class="fw-500">{{ roundLabel(item.roundNo) }}</span>
+      @if (roundDate(r, item.roundNo); as d) {
+        <div class="text-muted">{{ d | date:'yyyy-MM-dd' }}</div>
+      }
+    }
+  </td>
+```
+```ts
+isFirstOfRound(r: AdvanceRequest, index: number): boolean {
+  return index === 0 || r.items[index - 1].roundNo !== r.items[index].roundNo;
+}
+```
+
+**已採用**：預支申請「批次」欄（[advance-detail](../Admin/src/app/features/admin/advance-requests/pages/advance-detail/advance-detail.html) / [approval-task-review](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/approval-task-review.html) 預支明細 / [advance-pdf.service](../Admin/src/app/features/admin/advance-requests/services/advance-pdf.service.ts) 的 `bodyRows`）；PDF 的「分類」欄沿用同一慣例。
+
+> **加欄位別忘 tfoot**：`<tfoot>` 合計列的 `colspan` 必須同步 +1；PDF 的 `autoTable` 則要同時改 `head`、`columnStyles` 各欄寬（總和維持 1.0）與合計列的 `colSpan`。
+>
+> **標籤文字做成單一真相**：批次標籤 `roundLabel(n)` 定義在 [advance-request.model.ts](../Admin/src/app/features/admin/advance-requests/models/advance-request.model.ts)，detail / form / PDF / 簽核作業頁 / approval-timeline 五處共用，不各寫一套。
+
 ### 7.2 ⚠ 刪除按鈕標準（**重要**）
 
 > **2026-05-09 起，所有明細列表的刪除按鈕一律統一為以下 pattern**。
@@ -676,8 +705,8 @@ UI 行為規範（4 種申請類型一致）：
 
 | 元件 | 規則 |
 |------|------|
-| **「+ 新增一期」按鈕** | `SUM(已填金額) ≥ 申請總額` 或 `paymentStatus = 'FullyPaid'` 時禁用 |
-| **「儲存撥款明細」按鈕** | `SUM ≠ 申請總額` 或 `paymentStatus = 'FullyPaid'` 時禁用 |
+| **「+ 新增一期」按鈕** | 僅 `SUM(已填金額) ≥ 申請總額` 時禁用。⚠️ **不可再加 `FullyPaid` 條件**（見下方警告） |
+| **「儲存撥款明細」按鈕** | 僅 `SUM ≠ 申請總額` 時禁用。⚠️ 同上 |
 | **金額 input** | `min="1" step="1"`（整數，≥ 1）；`[attr.max]="installmentRowMax(task, i)"` 動態 = 申請總額 − 其他列已填 |
 | **預計撥款日 / 實際撥款日 / 金額 / 備註 input** | 已撥款列（`isInstallmentLocked(row)`）：`[attr.readonly]="true"` + `[class.bg-light]="true"` |
 | **刪除按鈕（⨯）** | 已撥款列：完全隱藏；只剩 1 列時也隱藏 |
@@ -686,11 +715,12 @@ UI 行為規範（4 種申請類型一致）：
 **Helpers 命名**（4 種申請類型共用）：
 - `canAddInstallmentRow(task)` — 是否可新增
 - `isInstallmentsSumValid(task)` — SUM 是否等於申請總額
-- `isFullyPaid(task)` — 是否全撥完
 - `installmentRowMax(task, index)` — 單列金額 max（剩餘額度）
 - `isInstallmentLocked(row)` — 列是否已鎖定
 
-> 後端 `InstallmentValidator.Validate` 提供等同的伺服端防線（序號連續、SUM == 總額、已撥款列保護），前端為 UX，後端為強制驗證。
+> ⚠️ **禁止用 `paymentStatus === 'FullyPaid'` 當禁用條件**（2026-07 移除）：**追加預支**核准後申請總額會變大，原本 FullyPaid 的單必須能補一期把新增金額排入。若沿用 FullyPaid 鎖定，財務端湊不到 `SUM == 總額`，而後端在財務步驟又強制必填撥款明細 → **整張單卡死無法核准**。已撥款列的保護改由 `isInstallmentLocked(row)`（欄位 readonly + 隱藏刪除鈕）與後端 `InstallmentValidator` 負責，兩者已足夠。
+
+> 後端 `InstallmentValidator.Validate` 提供等同的伺服端防線（序號連續、SUM == 總額、已撥款列不可刪不可改），前端為 UX，後端為強制驗證。
 
 ---
 
@@ -807,6 +837,7 @@ UI 行為規範（4 種申請類型一致）：
 | 列表 | 業務狀態 | 觸發條件 |
 |---|---|---|
 | [advance-list](../Admin/src/app/features/admin/advance-requests/pages/advance-list/advance-list.html) | `已結案` | `isClosed === true` |
+| [advance-list](../Admin/src/app/features/admin/advance-requests/pages/advance-list/advance-list.html)（單號欄） | `含追加` | `currentRoundNo > 1`；不在狀態欄，直接跟在單號後（`ms-1`、`font-size:.7rem`） |
 | [payment-list](../Admin/src/app/features/admin/payment-requests/pages/payment-list/payment-list.html) | `待撥款` / `已撥款` | `approvalStatus ∈ {pending, approved}`，再依 `paidAt` 是否填入決定 |
 | [approval-task-list](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-list/approval-task-list.html) | `待撥款` / `已撥款` | `status ∈ {pending, approved}`，per-type 取 `paymentDetail.paidAt / advanceDetail.paidAt / …`；write_off / travel_write_off 僅超支才顯示；leave / overtime / holiday_travel 永不顯示 |
 

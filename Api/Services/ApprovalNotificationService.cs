@@ -208,7 +208,7 @@ public sealed class ApprovalNotificationService(
     /// <inheritdoc />
     public async Task NotifyApplicantAsync(
         string applicationType, int applicationId, Guid applicantId,
-        string action, string? reviewNote)
+        string action, string? reviewNote, string? contextLabel = null)
     {
         try
         {
@@ -217,7 +217,7 @@ public sealed class ApprovalNotificationService(
             var applicant = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == applicantId);
             if (applicant is null || string.IsNullOrEmpty(applicant.Email)) return;
 
-            var label   = AppTypeLabels.GetValueOrDefault(applicationType, applicationType);
+            var label   = AppTypeLabels.GetValueOrDefault(applicationType, applicationType) + (contextLabel ?? "");
             var summary = await GetSummaryAsync(applicationType, applicationId);
 
             var (tag, desc) = action switch
@@ -704,9 +704,13 @@ public sealed class ApprovalNotificationService(
     /// </summary>
     private async Task<HashSet<Guid>> GetApprovedReviewerIdsAsync(string applicationType, int applicationId)
     {
+        // 追加預支：只看本批次，否則第 1 輪審過的總監在追加輪收不到通知
+        var roundNo = await AdvanceSupplementService.ResolveCurrentRoundAsync(db, applicationType, applicationId);
+
         var lastReturnedAt = await db.ApprovalRecords.AsNoTracking()
             .Where(r => r.ApplicationType == applicationType
                      && r.ApplicationId == applicationId
+                     && r.RoundNo == roundNo
                      && r.Action == "returned")
             .MaxAsync(r => (DateTime?)r.ReviewedAt) ?? DateTime.MinValue;
 
@@ -715,6 +719,7 @@ public sealed class ApprovalNotificationService(
                          join j in db.JobTitles.AsNoTracking() on u.JobTitleId equals j.Id
                          where r.ApplicationType == applicationType
                             && r.ApplicationId == applicationId
+                            && r.RoundNo == roundNo
                             && r.Action == "approved"
                             && r.ReviewedById != null
                             && r.ReviewedAt > lastReturnedAt

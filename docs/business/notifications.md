@@ -65,7 +65,7 @@
 | # | Method | 主旨範本 | 收件人 | 觸發時機 | 主要呼叫位置 |
 |---|--------|---------|--------|---------|------------|
 | 1 | `NotifyReviewersAsync` | `[待審核] {label} #{id} — {申請人}` | 該步驟所有符合條件的審核者（依 JobTitle / Department / DirectSupervisor） | 申請送出 / 前一步核准後 | `ApprovalTaskHandler.cs` 通知下一步、各 Handler 的 `Submit*Async` |
-| 2 | `NotifyApplicantAsync` | `[已核准/已退回/已拒絕] 您的{label} #{id} {tag}` | 申請人 | 審核動作後（approved / returned / rejected） | `ApprovalTaskHandler.cs` 「最終核准」「退回」「拒絕」分支 |
+| 2 | `NotifyApplicantAsync` | `[已核准/已退回/已拒絕] 您的{label} #{id} {tag}`；**追加預支**時 `{label}` 後加註批次 —— `您的預支申請（第 2 次追加） #12 已拒絕`，拒絕另加「原預支單維持核准」 | 申請人 | 審核動作後（approved / returned / rejected） | `ApprovalTaskHandler.cs` 「最終核准」「退回」「拒絕」分支；批次文案由 `contextLabel` 參數帶入（`roundNo > 1` 時才有值） |
 | 3 | `NotifySpecificReviewerAsync` | `[待審核] {label} #{id} — {申請人}（指定 / 升級 / 代理 審核）` | 指定 / 升級 / 代理審核者 | 升級觸發、指定審核流程啟動、下一位指定審核者 | 各 Handler `Submit*Async`、`ApprovalTaskHandler.cs` (designated 自動代簽 while-loop) |
 | 4 | `NotifyApplicantPaidAsync` | `[已撥款] 您的{label} #{id} 已撥款 — {amount} 元（第 N/M 期）` | 申請人 | **每筆 installment** 的 PaidAt 從 null → 有值（分期撥款情境下每筆推一次，標題附「第 N/M 期」）；無分期時退化為單筆通知 | `PaymentRequestHandler` / `AdvanceRequestHandler` / `TravelRequestHandler` / `TravelPaymentRequestHandler` 的 `UpsertInstallmentsAsync` |
 | 5 | `NotifyApplicantRefundedAsync` | `[已退款] 您的{label} #{id} 退款已匯款 — {amount} 元` | 申請人 | 財務設定 RefundedAt 從 null → 有值 | `AdvanceRequestHandler` / `TravelRequestHandler` |
