@@ -1,7 +1,7 @@
 import {ChangeDetectorRef, Component, inject, OnInit, signal, TemplateRef, viewChild} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {AbstractControl, FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
-import {DecimalPipe} from '@angular/common';
+import {DatePipe, DecimalPipe} from '@angular/common';
 import {DomSanitizer} from '@angular/platform-browser';
 import {HttpErrorResponse} from '@angular/common/http';
 import {firstValueFrom} from 'rxjs';
@@ -14,6 +14,7 @@ import {WriteOffRequestService} from '../../services/write-off-request.service';
 import {PaymentRequestService, OcrItem} from '../../../payment-requests/services/payment-request.service';
 import {validateInvoiceBuyer} from '../../../../../shared/utils/invoice-buyer-validator';
 import {AdvanceSummary, ITEM_CATEGORIES, DesignatedReviewer} from '../../models/write-off-request.model';
+import {AdvanceRequestItem, roundLabel} from '../../../advance-requests/models/advance-request.model';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
 import {ApprovalService} from '../../../approvals/services/approval.service';
@@ -29,7 +30,7 @@ import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.direc
 @Component({
   selector: 'app-write-off-request-form',
   templateUrl: './write-off-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, FilePreviewModal, AttachmentsUpload, DesignatedReviewersPicker, ScrollIntoViewDirective],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, AttachmentsUpload, DesignatedReviewersPicker, ScrollIntoViewDirective],
 })
 export class WriteOffRequestForm implements OnInit {
   private fb             = inject(FormBuilder);
@@ -60,11 +61,24 @@ export class WriteOffRequestForm implements OnInit {
   /** 已撥款的預支申請清單（供新增模式下拉選擇） */
   advanceRequests = signal<AdvanceSummary[]>([]);
 
-  /** 選中的預支申請摘要（供右側顯示金額資訊） */
+  /** 選中的預支申請摘要（供右側顯示金額資訊 + 下方費用明細對照） */
   get selectedAdvance(): AdvanceSummary | null {
     return this.advanceRequests().find(a => a.id === this.selectedAdvanceId) ?? null;
   }
   loadingAdvances = true;
+
+  /** 預支批次標籤（單一真相，與 advance-requests 模組共用） */
+  readonly roundLabel = roundLabel;
+
+  /** 該批次的預支日期（比照 advance-detail.roundDate） */
+  roundDate(adv: AdvanceSummary, roundNo: number): string | null {
+    return adv.rounds?.find(r => r.roundNo === roundNo)?.advanceDate ?? null;
+  }
+
+  /** 是否為該批次的第一列（同批次第二列起批次欄留白，比照分類欄慣例） */
+  isFirstOfRound(items: AdvanceRequestItem[], index: number): boolean {
+    return index === 0 || items[index - 1].roundNo !== items[index].roundNo;
+  }
 
   /** 編輯模式時顯示的預支申請資訊（唯讀） */
   editModeAdvanceNo = '';

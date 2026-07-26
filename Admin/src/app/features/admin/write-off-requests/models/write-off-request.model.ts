@@ -1,3 +1,5 @@
+import {AdvanceRequestItem, AdvanceRound} from '../../advance-requests/models/advance-request.model';
+
 export type ApprovalStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'returned';
 
 export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
@@ -80,15 +82,22 @@ export interface WriteOffRequest {
   attachments?: import('../../approval-tasks/models/approval-task.model').AttachmentItem[];
 }
 
-/** AdvanceRequest summary for dropdown selection */
+/** AdvanceRequest summary for dropdown selection（含全批次費用明細，供表單對照） */
 export interface AdvanceSummary {
   id: number;
   requestNo: string;
   projectCode: string;
   activityName: string;
+  /** Round 1 預支日期 */
+  advanceDate: string;
+  cashTotal: number;
+  checkTotal: number;
   grandTotal: number;
   writtenOffTotal: number;
-  paidAt?: string;
+  /** 各預支批次（含 Round 1；Round ≥2 為追加） */
+  rounds: AdvanceRound[];
+  /** 全批次費用明細，已依 roundNo, sortOrder 排序 */
+  items: AdvanceRequestItem[];
 }
 
 export const ITEM_CATEGORIES = ['交通費', '活動費', '設計費', '人事費', '餐費', '雜支', '收款人', '廠商'] as const;
