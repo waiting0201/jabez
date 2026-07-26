@@ -96,7 +96,10 @@ public sealed record WriteOffItemDto(
     string?   FileName,
     string?   FileUrl,
     int       SortOrder,
-    DateTime? InvoiceDate = null);
+    DateTime? InvoiceDate   = null,
+    bool      CheckPaid     = false,   // 支票已由公司付給廠商（財務勾選）
+    DateTime? CheckPaidAt   = null,
+    string?   CheckPaidBy   = null);
 
 public sealed record WriteOffItemRequest(
     string    Category,

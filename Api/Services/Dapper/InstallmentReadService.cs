@@ -5,13 +5,13 @@ using System.Data;
 namespace Jabez.Api.Services.Dapper;
 
 /// <summary>
-/// 共用分期撥款查詢服務 — 給 4 種申請類型（請款/預支/出差/出差請款）的 ReadService 使用。
+/// 共用分期撥款查詢服務 — 給 5 種申請類型（請款/預支/出差/出差請款/預支沖銷）的 ReadService 使用。
 /// 一次取出指定父表多個 id 的所有 installments + 撥款人簽名章（JOIN Users.SignatureUrl）。
 /// 同時計算三態 status（Unpaid / PartiallyPaid / FullyPaid）。
 /// </summary>
 public interface IInstallmentReadService
 {
-    /// <summary>對應 4 種父表，回傳 {parentId -> installments list}</summary>
+    /// <summary>對應 5 種父表，回傳 {parentId -> installments list}</summary>
     Task<Dictionary<int, List<InstallmentDto>>> GetByParentIdsAsync(InstallmentParentTable table, IEnumerable<int> parentIds);
 
     /// <summary>計算三態 status（給單筆 task detail 用）</summary>
@@ -24,6 +24,7 @@ public enum InstallmentParentTable
     AdvanceRequest,
     TravelRequest,
     TravelPaymentRequest,
+    WriteOffRecord,
 }
 
 public sealed class InstallmentReadService(IDbConnection db) : IInstallmentReadService
@@ -41,6 +42,7 @@ public sealed class InstallmentReadService(IDbConnection db) : IInstallmentReadS
             InstallmentParentTable.AdvanceRequest      => ("AdvanceRequestInstallments",      "AdvanceRequestId"),
             InstallmentParentTable.TravelRequest       => ("TravelRequestInstallments",       "TravelRequestId"),
             InstallmentParentTable.TravelPaymentRequest => ("TravelPaymentRequestInstallments", "TravelPaymentRequestId"),
+            InstallmentParentTable.WriteOffRecord      => ("WriteOffInstallments",            "WriteOffRecordId"),
             _ => throw new ArgumentOutOfRangeException(nameof(table))
         };
 

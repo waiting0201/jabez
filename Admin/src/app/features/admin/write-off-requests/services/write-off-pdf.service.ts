@@ -97,7 +97,8 @@ export class WriteOffPdfService {
           item.quantity,
           fmt(item.totalPrice),
           fmt(item.cashAmount),
-          item.checkAmount > 0 ? fmt(item.checkAmount) : '',
+          // 支票由公司直接付給廠商，財務註記已支付後於金額後標「(已付)」
+          item.checkAmount > 0 ? fmt(item.checkAmount) + (item.checkPaid ? '(已付)' : '') : '',
           item.invoiceNo || '',
           item.note || '',
         ]);
@@ -157,20 +158,24 @@ export class WriteOffPdfService {
         '',
         '',
       ]);
-      if (r.advanceIsClosed && (r.advanceGrandTotal - totalWrittenOff) < 0) {
-        const fmtDate = (v?: string) => v ? new Date(v).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Taipei' }) : '尚未設定';
+      // 差額撥款分期（沖銷超支時公司補撥給員工，可分多期）
+      const fmtDate = (v?: string) => v ? new Date(v).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Taipei' }) : '尚未設定';
+      const installments = r.installments ?? [];
+      if (installments.length > 0) {
         bodyRows.push([
-          { content: '預計撥款日', colSpan: 6, styles: { halign: 'right' } },
-          { content: fmtDate(r.estimatedRefundDate), colSpan: 2, styles: { halign: 'right' } },
+          { content: `應撥差額（共 ${installments.length} 期）`, colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
+          { content: fmt(r.refundDue ?? 0), colSpan: 2, styles: { fontStyle: 'bold', halign: 'right' } },
           '',
           '',
         ]);
-        bodyRows.push([
-          { content: '撥款日', colSpan: 6, styles: { halign: 'right' } },
-          { content: r.refundedAt ? fmtDate(r.refundedAt) : '尚未撥款', colSpan: 2, styles: { halign: 'right' } },
-          '',
-          '',
-        ]);
+        for (const ins of installments) {
+          bodyRows.push([
+            { content: `第 ${ins.installmentNo} 期　預計 ${fmtDate(ins.expectedDate)}　${ins.paidAt ? '已撥 ' + fmtDate(ins.paidAt) : '尚未撥款'}`, colSpan: 6, styles: { halign: 'right' } },
+            { content: fmt(ins.amount), colSpan: 2, styles: { halign: 'right' } },
+            '',
+            '',
+          ]);
+        }
       }
 
       autoTable(doc, {

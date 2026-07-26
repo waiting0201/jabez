@@ -26,6 +26,7 @@ public class WriteOffRecord
     public User?                      SubmittedBy    { get; set; }
     public ApprovalItem?              ApprovalItem   { get; set; }
     public User?                      ReviewedBy     { get; set; }
-    public ICollection<WriteOffItem>        Items       { get; set; } = [];
-    public ICollection<WriteOffAttachment>  Attachments { get; set; } = [];
+    public ICollection<WriteOffItem>        Items        { get; set; } = [];
+    public ICollection<WriteOffAttachment>  Attachments  { get; set; } = [];
+    public ICollection<WriteOffInstallment> Installments { get; set; } = [];
 }

@@ -1,6 +1,6 @@
-import {Component, computed, inject, OnInit, signal} from '@angular/core';
+import {Component, computed, inject, OnInit, signal, viewChild} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
-import {FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
+import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {AsyncPipe, DatePipe, DecimalPipe} from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
 import {DomSanitizer} from '@angular/platform-browser';
@@ -8,6 +8,8 @@ import {EMPTY, Observable, catchError, tap} from 'rxjs';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {FilePreviewLoader} from '../../../../../shared/services/file-preview-loader';
 import {AttachmentsList} from '../../../../../shared/components/attachments-list';
+import {InstallmentsEditorComponent} from '../../../../../shared/components/installments-editor';
+import {WriteOffSummaryComponent} from '../../../../../shared/components/write-off-summary';
 import {AuthService} from '../../../../../core/auth/services/auth.service';
 import {PaymentRequestService} from '../../../payment-requests/services/payment-request.service';
 import {AdvanceRequestService} from '../../../advance-requests/services/advance-request.service';
@@ -28,7 +30,7 @@ import {
   TASK_STATUS_LABELS, TASK_STATUS_CLASSES,
   APPLICATION_TYPE_LABELS, APPLICATION_TYPE_CLASSES,
   PAYMENT_TYPE_LABELS, LEAVE_TYPE_LABELS,
-  InstallmentDto, InstallmentInput, UpsertInstallmentsRequest,
+  InstallmentDto, InstallmentInput, UpsertInstallmentsRequest, WriteOffTaskDetailItem,
   PAYMENT_INSTALLMENT_STATUS_LABELS, PAYMENT_INSTALLMENT_STATUS_CLASSES,
 } from '../../models/approval-task.model';
 import {LeaveType, formatLeaveDuration} from '../../../leave-requests/models/leave-request.model';
@@ -45,7 +47,7 @@ import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.direc
 @Component({
   selector: 'app-approval-task-review',
   templateUrl: './approval-task-review.html',
-  imports: [RouterLink, ReactiveFormsModule, AsyncPipe, DatePipe, DecimalPipe, FilePreviewModal, AttachmentsList, ScrollIntoViewDirective],
+  imports: [RouterLink, ReactiveFormsModule, AsyncPipe, DatePipe, DecimalPipe, FilePreviewModal, AttachmentsList, InstallmentsEditorComponent, WriteOffSummaryComponent, ScrollIntoViewDirective],
 })
 export class ApprovalTaskReview implements OnInit {
   private service           = inject(ApprovalTaskService);
@@ -75,19 +77,16 @@ export class ApprovalTaskReview implements OnInit {
   errorMsg = signal('');
   showNoteError = false;
 
-  // ── 分期撥款 form（4 種申請類型共用）─────────────────────────────────────────
-  /** 分期撥款明細表單 — 每列 {id?, expectedDate, paidAt, amount, note} */
-  installmentsForm = this.fb.array<FormGroup<{
-    id:           FormControl<number | null>;
-    expectedDate: FormControl<string>;
-    paidAt:       FormControl<string>;
-    amount:       FormControl<number>;
-    note:         FormControl<string>;
-  }>>([]);
+  // ── 分期撥款（5 種申請類型共用；表單邏輯在 shared/components/installments-editor）─────
+  /** 本申請單自身的撥款明細編輯器（payment_request / advance / travel / travel_payment / write_off）*/
+  installmentsEditor = viewChild<InstallmentsEditorComponent>('installmentsEditor');
+  /** 預支沖銷專用：關聯預支單的撥款明細編輯器（資料與預支申請單同步）*/
+  advanceInstallmentsEditor = viewChild<InstallmentsEditorComponent>('advanceInstallmentsEditor');
+
   installmentsMsg   = signal('');
   installmentsError = signal('');
-  /** 載入時保留 server 端的 paidAt 狀態用於 readonly 判斷（避免 form 變動後失去原本狀態）*/
-  private installmentLockedIds = new Set<number>();
+  advInstallmentsMsg   = signal('');
+  advInstallmentsError = signal('');
   readonly installmentStatusLabel = PAYMENT_INSTALLMENT_STATUS_LABELS;
   readonly installmentStatusClass = PAYMENT_INSTALLMENT_STATUS_CLASSES;
 
@@ -159,7 +158,6 @@ export class ApprovalTaskReview implements OnInit {
       tap(task => {
         if (!task) return;
         this.taskStatus.set(task.status);
-        this.initInstallmentsForm(task);
       }),
       catchError((err: HttpErrorResponse) => {
         this.errorMsg.set(err.error?.message || '載入簽核作業失敗。');
@@ -172,18 +170,23 @@ export class ApprovalTaskReview implements OnInit {
     return records.find(r => r.stepOrder === stepOrder);
   }
 
-  // ── 分期撥款 form helpers ───────────────────────────────────────────────────
+  // ── 分期撥款 helpers ────────────────────────────────────────────────────────
 
-  /** 取得當前申請的撥款明細（4 種類型擇一）*/
+  /** 取得當前申請的撥款明細（5 種類型擇一）*/
   getInstallments(task: ApprovalTask): InstallmentDto[] | undefined {
     return task.paymentDetail?.installments
         ?? task.advanceDetail?.installments
         ?? task.travelDetail?.installments
-        ?? task.travelPaymentDetail?.installments;
+        ?? task.travelPaymentDetail?.installments
+        ?? task.writeOffDetail?.installments;
   }
 
-  /** 取得當前申請的總金額（4 種類型擇一）*/
+  /**
+   * 取得當前申請的應撥總額（5 種類型擇一）。
+   * 預支沖銷不是整單金額，而是「本次沖銷造成的超支增額」refundDue（後端 WriteOffRefundCalculator 算好帶回）。
+   */
   getInstallmentTotal(task: ApprovalTask): number {
+    if (task.writeOffDetail) return task.writeOffDetail.refundDue ?? 0;
     return task.paymentDetail?.totalAmount
         ?? task.advanceDetail?.grandTotal
         ?? task.travelDetail?.grandTotal
@@ -191,8 +194,12 @@ export class ApprovalTaskReview implements OnInit {
         ?? 0;
   }
 
-  /** 是否為支援分期撥款的申請類型 */
+  /**
+   * 是否為支援分期撥款的申請類型。
+   * write_off 僅在本次沖銷超支（refundDue > 0）時才有撥款可言，未超支不顯示撥款區塊。
+   */
   isInstallmentApp(task: ApprovalTask): boolean {
+    if (task.applicationType === 'write_off') return (task.writeOffDetail?.refundDue ?? 0) > 0;
     return ['payment_request', 'advance', 'travel', 'travel_payment'].includes(task.applicationType);
   }
 
@@ -201,7 +208,8 @@ export class ApprovalTaskReview implements OnInit {
     return task.paymentDetail?.paymentStatus
         ?? task.advanceDetail?.paymentStatus
         ?? task.travelDetail?.paymentStatus
-        ?? task.travelPaymentDetail?.paymentStatus;
+        ?? task.travelPaymentDetail?.paymentStatus
+        ?? task.writeOffDetail?.paymentStatus;
   }
 
   /** Status badge class（容忍未知值）*/
@@ -213,128 +221,11 @@ export class ApprovalTaskReview implements OnInit {
     return (this.installmentStatusLabel as Record<string, string>)[status] ?? status;
   }
 
-  /** 初始化分期表單；若 task 已有 installments 則填入，否則建立 1 列空 row（金額自動帶總額）*/
-  initInstallmentsForm(task: ApprovalTask) {
-    this.installmentsForm.clear();
-    this.installmentLockedIds.clear();
-    if (!this.isInstallmentApp(task)) return;
-
-    const list = this.getInstallments(task) ?? [];
-    if (list.length > 0) {
-      for (const ins of list) {
-        if (ins.paidAt) this.installmentLockedIds.add(ins.id);
-        this.installmentsForm.push(this.buildInstallmentRow({
-          id:           ins.id,
-          installmentNo: ins.installmentNo,
-          expectedDate: ins.expectedDate?.toString().slice(0, 10) ?? '',
-          paidAt:       ins.paidAt?.toString().slice(0, 10) ?? '',
-          amount:       ins.amount,
-          note:         ins.note ?? '',
-        }));
-      }
-    } else {
-      // 預設 1 列，金額帶申請總額
-      this.installmentsForm.push(this.buildInstallmentRow({
-        id: undefined,
-        installmentNo: 1,
-        expectedDate: '',
-        paidAt: '',
-        amount: this.getInstallmentTotal(task),
-        note: '',
-      }));
-    }
-  }
-
-  private buildInstallmentRow(v: {id?: number; installmentNo: number; expectedDate: string; paidAt: string; amount: number; note: string}) {
-    return this.fb.group({
-      id:           this.fb.control<number | null>(v.id ?? null),
-      expectedDate: this.fb.nonNullable.control(v.expectedDate, Validators.required),
-      paidAt:       this.fb.nonNullable.control(v.paidAt),
-      amount:       this.fb.nonNullable.control(v.amount, [Validators.required, Validators.min(1)]),
-      note:         this.fb.nonNullable.control(v.note),
-    });
-  }
-
-  /** 是否為已鎖定列（已撥款 = 不可改 expectedDate/amount/paidAt、不可刪）*/
-  isInstallmentLocked(row: FormGroup): boolean {
-    const id = row.get('id')?.value;
-    return id != null && this.installmentLockedIds.has(id);
-  }
-
-  /** 加一列（自動推算 installmentNo = 目前列數 + 1，金額為剩餘缺口；SUM ≥ 總額時不執行）*/
-  addInstallmentRow(task: ApprovalTask) {
-    if (!this.canAddInstallmentRow(task)) return;
-    const remaining = this.getInstallmentTotal(task) - this.installmentsSum();
-    this.installmentsForm.push(this.buildInstallmentRow({
-      installmentNo: this.installmentsForm.length + 1,
-      expectedDate: '',
-      paidAt: '',
-      amount: Math.max(1, remaining),
-      note: '',
-    }));
-  }
-
-  /** 移除一列（已撥款的列不可移除）*/
-  removeInstallmentRow(index: number) {
-    const row = this.installmentsForm.at(index);
-    if (this.isInstallmentLocked(row)) return;
-    this.installmentsForm.removeAt(index);
-  }
-
-  /** 各筆金額加總 */
-  installmentsSum(): number {
-    return this.installmentsForm.controls.reduce((acc, c) => acc + (Number(c.get('amount')?.value) || 0), 0);
-  }
-
-  /** SUM 是否等於申請總額（容忍 0.01 浮點誤差）*/
-  isInstallmentsSumValid(task: ApprovalTask): boolean {
-    return Math.abs(this.installmentsSum() - this.getInstallmentTotal(task)) <= 0.01;
-  }
-
-  /** 取得除了 index 列以外其他列的金額加總（用於計算單期 max）*/
-  installmentsSumExcludingRow(index: number): number {
-    return this.installmentsForm.controls.reduce((acc, c, i) =>
-      i === index ? acc : acc + (Number(c.get('amount')?.value) || 0), 0);
-  }
-
-  /** 某列金額 input 的 max：剩餘額度（總額 − 其他列已填）*/
-  installmentRowMax(task: ApprovalTask, index: number): number {
-    return this.getInstallmentTotal(task) - this.installmentsSumExcludingRow(index);
-  }
-
-  /**
-   * 是否可新增一期：SUM < 申請總額（≥ 時禁用以避免新增 0 元空期）。
-   * 不可再加上 FullyPaid 判斷 —— 預支追加後總額會變大，
-   * 原本已全額撥款的單仍需補一期把新增金額排入，否則湊不到 SUM==總額 而卡死簽核。
-   */
-  canAddInstallmentRow(task: ApprovalTask): boolean {
-    return this.installmentsSum() < this.getInstallmentTotal(task) - 0.01;
-  }
-
-  /** 送出 upsert（4 種類型各自 dispatch 到對應 service）*/
-  submitInstallments(task: ApprovalTask) {
+  /** 送出 upsert（5 種類型各自 dispatch 到對應 service）*/
+  submitInstallments(task: ApprovalTask, inputs: InstallmentInput[]) {
     this.installmentsMsg.set('');
     this.installmentsError.set('');
 
-    if (!this.isInstallmentsSumValid(task)) {
-      this.installmentsError.set(`各筆金額加總（${this.installmentsSum().toFixed(2)}）需等於申請總額（${this.getInstallmentTotal(task).toFixed(2)}）。`);
-      return;
-    }
-    if (this.installmentsForm.invalid) {
-      this.installmentsError.set('請填妥所有預計撥款日與金額。');
-      this.installmentsForm.markAllAsTouched();
-      return;
-    }
-
-    // 組成 request — installmentNo 依當前順序重編
-    const inputs: InstallmentInput[] = this.installmentsForm.controls.map((row, idx) => ({
-      id:            row.get('id')!.value ?? undefined,
-      installmentNo: idx + 1,
-      expectedDate:  row.get('expectedDate')!.value,
-      paidAt:        row.get('paidAt')!.value || undefined,
-      amount:        Number(row.get('amount')!.value),
-      note:          row.get('note')!.value || undefined,
-    }));
     const body: UpsertInstallmentsRequest = {installments: inputs};
 
     let update$: Observable<any>;
@@ -342,21 +233,93 @@ export class ApprovalTaskReview implements OnInit {
     else if (task.advanceDetail)        update$ = this.advanceService.upsertInstallments(task.advanceDetail.advanceRequestId, body);
     else if (task.travelDetail)         update$ = this.travelService.upsertInstallments(task.travelDetail.travelRequestId, body);
     else if (task.travelPaymentDetail)  update$ = this.travelPaymentService.upsertInstallments(task.travelPaymentDetail.travelPaymentRequestId, body);
+    else if (task.writeOffDetail)       update$ = this.writeOffService.upsertInstallments(task.writeOffDetail.writeOffRequestId, body);
     else { this.installmentsError.set('不支援的申請類型。'); return; }
 
     update$.subscribe({
       next: () => {
         this.installmentsMsg.set(`已更新 ${inputs.length} 筆撥款明細。`);
-        // 重新載入 task 資料以反映新狀態（已撥款列鎖定 / paymentStatus 三態）
-        this.task$ = this.service.getById(this.taskId, this.applicationType).pipe(
-          tap(t => { if (t) { this.taskStatus.set(t.status); this.initInstallmentsForm(t); } }),
-          catchError((err: HttpErrorResponse) => { this.errorMsg.set(err.error?.message || '載入簽核作業失敗。'); return EMPTY; }),
-        );
+        this.reloadTask();
       },
       error: (err: HttpErrorResponse) => {
         this.installmentsError.set(err.error?.message || '更新撥款明細失敗。');
       },
     });
+  }
+
+  /**
+   * 預支沖銷簽核頁專用：直接更新「關聯預支申請單」的撥款明細。
+   * 走既有的 PATCH /advance-requests/{id}/installments，資料與預支申請單完全同步。
+   */
+  submitAdvanceInstallments(task: ApprovalTask, inputs: InstallmentInput[]) {
+    this.advInstallmentsMsg.set('');
+    this.advInstallmentsError.set('');
+
+    const advanceId = task.writeOffDetail?.advanceRequestId;
+    if (!advanceId) { this.advInstallmentsError.set('找不到關聯的預支申請單。'); return; }
+
+    this.advanceService.upsertInstallments(advanceId, {installments: inputs}).subscribe({
+      next: () => {
+        this.advInstallmentsMsg.set(`已更新預支單 ${inputs.length} 筆撥款明細。`);
+        this.reloadTask();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.advInstallmentsError.set(err.error?.message || '更新預支單撥款明細失敗。');
+      },
+    });
+  }
+
+  // ── 支票已支付註記（預支沖銷）─────────────────────────────────────────────
+
+  checkPaymentSaving = signal(false);
+
+  /**
+   * 是否可勾選「支票已支付」：財務體系部門或 Superadmin，且單子在待審核 / 已核准狀態。
+   * 支票由公司直接付給廠商，不走撥款分期，僅以此旗標註記已付出。
+   */
+  canMarkCheckPaid(task: ApprovalTask): boolean {
+    if (task.applicationType !== 'write_off') return false;
+    if (task.status !== 'pending' && task.status !== 'approved') return false;
+    return this.auth.isSuperAdmin() || this.auth.isFinanceDept();
+  }
+
+  /** 有支票金額的明細筆數 */
+  checkItemCount(items: {checkAmount: number}[]): number {
+    return items.filter(i => i.checkAmount > 0).length;
+  }
+
+  /** 已註記支票支付的明細筆數 */
+  checkPaidCount(items: {checkAmount: number; checkPaid?: boolean}[]): number {
+    return items.filter(i => i.checkAmount > 0 && i.checkPaid).length;
+  }
+
+  toggleCheckPaid(task: ApprovalTask, item: WriteOffTaskDetailItem, ev: Event) {
+    const d = task.writeOffDetail;
+    if (!d) return;
+    const checked = (ev.target as HTMLInputElement).checked;
+
+    this.checkPaymentSaving.set(true);
+    this.writeOffService.updateCheckPayments(d.writeOffRequestId, {
+      items: [{itemId: item.id, checkPaid: checked}],
+    }).subscribe({
+      next: () => {
+        item.checkPaid = checked;   // 樂觀更新，避免整頁重載打斷勾選節奏
+        this.checkPaymentSaving.set(false);
+      },
+      error: (err: HttpErrorResponse) => {
+        (ev.target as HTMLInputElement).checked = !checked;
+        this.errorMsg.set(err.error?.message || '更新支票支付狀態失敗。');
+        this.checkPaymentSaving.set(false);
+      },
+    });
+  }
+
+  /** 重新載入 task（反映已撥款列鎖定 / paymentStatus 三態 / 支票支付註記）*/
+  private reloadTask() {
+    this.task$ = this.service.getById(this.taskId, this.applicationType).pipe(
+      tap(t => { if (t) this.taskStatus.set(t.status); }),
+      catchError((err: HttpErrorResponse) => { this.errorMsg.set(err.error?.message || '載入簽核作業失敗。'); return EMPTY; }),
+    );
   }
 
   /**
@@ -551,23 +514,20 @@ export class ApprovalTaskReview implements OnInit {
     let installments: InstallmentInput[] | undefined;
     if (action === 'approved' && this.isInstallmentApp(task) && this.canSetPaymentDate(task)) {
       this.installmentsError.set('');
-      if (!this.isInstallmentsSumValid(task)) {
-        this.installmentsError.set(`各筆金額加總（${this.installmentsSum().toFixed(2)}）需等於申請總額（${this.getInstallmentTotal(task).toFixed(2)}）。`);
+      const editor = this.installmentsEditor();
+      if (!editor) {
+        this.installmentsError.set('請填寫撥款明細。');
         return;
       }
-      if (this.installmentsForm.invalid) {
-        this.installmentsError.set('請填妥所有預計撥款日與金額。');
-        this.installmentsForm.markAllAsTouched();
+      if (!editor.valid()) {
+        this.installmentsError.set(
+          editor.sumValid()
+            ? '請填妥所有預計撥款日與金額。'
+            : `各筆金額加總（${editor.sum().toFixed(2)}）需等於應撥總額（${this.getInstallmentTotal(task).toFixed(2)}）。`);
+        editor.markAllAsTouched();
         return;
       }
-      installments = this.installmentsForm.controls.map((row, idx) => ({
-        id:            row.get('id')!.value ?? undefined,
-        installmentNo: idx + 1,
-        expectedDate:  row.get('expectedDate')!.value,
-        paidAt:        row.get('paidAt')!.value || undefined,
-        amount:        Number(row.get('amount')!.value),
-        note:          row.get('note')!.value || undefined,
-      }));
+      installments = editor.value();
     }
 
     this.errorMsg.set('');

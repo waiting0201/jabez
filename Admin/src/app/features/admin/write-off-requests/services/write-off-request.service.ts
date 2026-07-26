@@ -1,7 +1,8 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
-import {WriteOffRequest, AdvanceSummary} from '../models/write-off-request.model';
+import {WriteOffRequest, AdvanceSummary, UpdateCheckPaymentsRequest} from '../models/write-off-request.model';
+import {UpsertInstallmentsRequest} from '../../approval-tasks/models/approval-task.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {environment} from '@/environments/environment';
 
@@ -37,5 +38,15 @@ export class WriteOffRequestService {
   /** 取得已撥款（paidAt 不為空）的預支申請清單，供沖銷申請選擇 */
   getAvailableAdvances(): Observable<AdvanceSummary[]> {
     return this.http.get<AdvanceSummary[]>(`${this.base}/available-advances`);
+  }
+
+  /** 差額撥款分期 upsert（僅已核准；財務體系 / Superadmin）*/
+  upsertInstallments(id: number, body: UpsertInstallmentsRequest): Observable<unknown> {
+    return this.http.patch(`${this.base}/${id}/installments`, body);
+  }
+
+  /** 沖銷明細的「支票金額已支付」註記（財務體系 / Superadmin）*/
+  updateCheckPayments(id: number, body: UpdateCheckPaymentsRequest): Observable<unknown> {
+    return this.http.patch(`${this.base}/${id}/check-payments`, body);
   }
 }

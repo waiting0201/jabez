@@ -1,4 +1,19 @@
 import {AdvanceRequestItem, AdvanceRound} from '../../advance-requests/models/advance-request.model';
+import {InstallmentDto, PaymentInstallmentStatus, WriteOffRound} from '../../approval-tasks/models/approval-task.model';
+
+export type {WriteOffRound};
+
+/**
+ * 本次沖銷造成的超支增額（公司應補撥給員工的金額）。
+ * 與後端 Api/Common/WriteOffRefundCalculator.cs 同一份公式：以「增額」而非「總超支」計算，
+ * 讓每張沖銷單各自算得出、彼此不重疊。
+ */
+export const calcRefundDue = (
+  advanceGrandTotal: number, otherWrittenOffTotal: number, currentGrandTotal: number): number => {
+  const before = Math.max(0, otherWrittenOffTotal - advanceGrandTotal);
+  const after  = Math.max(0, otherWrittenOffTotal + currentGrandTotal - advanceGrandTotal);
+  return after - before;
+};
 
 export type ApprovalStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'returned';
 
@@ -34,6 +49,10 @@ export interface WriteOffItem {
   fileName?: string;
   fileUrl?: string;
   sortOrder: number;
+  /** 支票已由公司直接付給廠商（財務於簽核頁勾選）*/
+  checkPaid?: boolean;
+  checkPaidAt?: string;
+  checkPaidBy?: string;
 }
 
 export interface DesignatedReviewer {
@@ -80,6 +99,23 @@ export interface WriteOffRequest {
   advanceRefundedAmount?: number;
   /** 整單批次附件（照片 / PDF） */
   attachments?: import('../../approval-tasks/models/approval-task.model').AttachmentItem[];
+  /** 關聯預支單的各預支批次（含追加）*/
+  advanceRounds?: AdvanceRound[];
+  /** 同一預支單底下各次沖銷 */
+  writeOffHistory?: WriteOffRound[];
+  /** 本次沖銷造成的超支增額 = 公司應補撥金額 */
+  refundDue?: number;
+  /** 本沖銷單的差額撥款分期（SUM 須等於 refundDue）*/
+  installments?: InstallmentDto[];
+  paymentStatus?: PaymentInstallmentStatus;
+  /** 關聯預支單的撥款分期（唯讀對照）*/
+  advanceInstallments?: InstallmentDto[];
+  advancePaymentStatus?: PaymentInstallmentStatus;
+}
+
+/** 支票已支付註記的更新 payload */
+export interface UpdateCheckPaymentsRequest {
+  items: {itemId: number; checkPaid: boolean}[];
 }
 
 /** AdvanceRequest summary for dropdown selection（含全批次費用明細，供表單對照） */

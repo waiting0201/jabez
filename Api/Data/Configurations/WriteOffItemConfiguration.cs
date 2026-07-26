@@ -50,5 +50,10 @@ public class WriteOffItemConfiguration : IEntityTypeConfiguration<WriteOffItem>
                .WithMany(w => w.Items)
                .HasForeignKey(i => i.WriteOffRecordId)
                .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(i => i.CheckPaidBy)
+               .WithMany()
+               .HasForeignKey(i => i.CheckPaidById)
+               .OnDelete(DeleteBehavior.NoAction);
     }
 }

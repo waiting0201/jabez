@@ -11,13 +11,15 @@ import {ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
 import {WriteOffRequest, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/write-off-request.model';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {AttachmentsList} from '../../../../../shared/components/attachments-list';
+import {InstallmentsTable} from '../../../../../shared/components/installments-table';
+import {WriteOffSummaryComponent} from '../../../../../shared/components/write-off-summary';
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
 
 @Component({
   selector: 'app-write-off-request-detail',
   templateUrl: './write-off-detail.html',
-  imports: [RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, AttachmentsList, ScrollIntoViewDirective],
+  imports: [RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, AttachmentsList, InstallmentsTable, WriteOffSummaryComponent, ScrollIntoViewDirective],
 })
 export class WriteOffRequestDetail implements OnInit {
   private service     = inject(WriteOffRequestService);
@@ -41,6 +43,16 @@ export class WriteOffRequestDetail implements OnInit {
 
   readonly statusLabel = APPROVAL_STATUS_LABELS;
   readonly statusClass = APPROVAL_STATUS_CLASSES;
+
+  /** 有支票金額的明細筆數（支票由公司直接付廠商，勾選在簽核頁由財務操作，此處唯讀）*/
+  checkItemCount(items: {checkAmount: number}[]): number {
+    return items.filter(i => i.checkAmount > 0).length;
+  }
+
+  /** 已註記支票支付的明細筆數 */
+  checkPaidCount(items: {checkAmount: number; checkPaid?: boolean}[]): number {
+    return items.filter(i => i.checkAmount > 0 && i.checkPaid).length;
+  }
 
   ngOnInit() {
     const id = +this.route.snapshot.paramMap.get('id')!;

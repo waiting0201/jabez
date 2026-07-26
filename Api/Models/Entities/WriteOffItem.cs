@@ -19,6 +19,12 @@ public class WriteOffItem
     public DateTime? InvoiceDate     { get; set; }
     public int      SortOrder        { get; set; }
 
+    // 支票支付註記（支票由公司直接付給廠商，非撥款給員工；僅財務體系 / Superadmin 可勾選）
+    public bool      CheckPaid       { get; set; }
+    public DateTime? CheckPaidAt     { get; set; }
+    public Guid?     CheckPaidById   { get; set; }
+
     // Navigation
     public WriteOffRecord WriteOffRecord { get; set; } = null!;
+    public User?          CheckPaidBy    { get; set; }
 }

@@ -200,7 +200,7 @@ Admin/src/app/
     │   ├── holiday-travel-requests/ # 假日執行活動申請（共用 TravelRequest entity，IsHolidayTravel=true，計入假日津貼；參與人員可逐日勾選個人參與日期，未勾選＝全程參與）
     │   ├── overtime-requests/ # 加班申請（走簽核流程；關聯專案改單選 radio 且可瀏覽全部未結案專案 /projects/active?all=true 支援跨部門；指定審核者卡片加註「跨部門支援時第一審核者填該專案協理、第二審核者選自部門協理」）
     │   ├── advance-requests/  # 預支申請（已核准單可新增「追加預支」批次：/:id/supplements/new 與 /:id/supplements/:round/edit 共用 advance-form 的追加模式；詳情頁預支日期改為批次清單、費用明細加「批次」欄；共用 roundLabel() 為批次標籤單一真相）
-    │   ├── write-off-requests/ # 預支沖銷申請（獨立簽核流程；明細下方含整單批次附件上傳，共用 shared/components/attachments-upload；新增表單選定預支單後，於「預支單」卡片下方唯讀列出該單全批次預支費用明細（含追加，依批次分組），資料由 /write-off-requests/available-advances 一併帶回）
+    │   ├── write-off-requests/ # 預支沖銷申請（獨立簽核流程；明細下方含整單批次附件上傳，共用 shared/components/attachments-upload；新增表單選定預支單後，於「預支單」卡片下方唯讀列出該單全批次預支費用明細（含追加，依批次分組），資料由 /write-off-requests/available-advances 一併帶回；**沖銷資訊卡改為 `<app-write-off-summary>` 列出預支各批次金額 + 各次沖銷金額 + 待沖銷餘額 / 應撥差額**；**超支差額走分期撥款**，明細另有「支票已支付」註記欄）
     │   ├── travel-write-off-requests/ # 出差預支沖銷申請（獨立簽核流程）
     │   ├── insurance-brackets/ # 勞健保級距維護
     │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出）
@@ -278,7 +278,7 @@ Api/
 │   ├── TravelPaymentRequestHandler.cs # 出差請款申請 CRUD（單號 TPR-yyyyMMdd-NNN；小額代墊直接請款）
 │   ├── OvertimeRequestHandler.cs      # 加班申請 CRUD
 │   ├── AdvanceRequestHandler.cs       # 預支申請 CRUD（單號 ADV-yyyyMMdd-NNN）＋**追加預支批次**（POST/PATCH/DELETE /advance-requests/{id}/supplements[/{roundNo}]；新增即送簽、無草稿階段；有進行中批次時禁止整單編輯/刪除）
-│   ├── WriteOffRequestHandler.cs      # 預支沖銷申請 CRUD（獨立簽核流程）
+│   ├── WriteOffRequestHandler.cs      # 預支沖銷申請 CRUD（獨立簽核流程）＋**差額撥款分期**（PATCH /write-off-requests/{id}/installments，SUM 對應 RefundDue 超支增額）＋**支票已支付註記**（PATCH /{id}/check-payments）
 │   ├── TravelWriteOffRequestHandler.cs # 出差預支沖銷申請 CRUD（獨立簽核流程）
 │   ├── AttendanceHandler.cs           # 打卡（上班/下班/加班開始/加班結束）
 │   ├── InsuranceBracketHandler.cs    # 勞健保級距 CRUD
@@ -298,7 +298,7 @@ Api/
 │   ├── Migrations/                    # EF Core Migration 檔案
 │   └── Seed/                          # 一次性員工人事資料匯入工具（EmployeeImporter + RocDateParser + EmployeeImportDtos + employee-import.json；RUN_EMPLOYEE_IMPORT 旗標觸發，IMPORT_UPLOAD_FILES 控制附件上傳）
 ├── Models/
-│   ├── Entities/                      # 48 個資料庫實體（新增 **追加預支批次 AdvanceRequestSupplement**（只存 RoundNo≥2，Round 1 = 父單本身）/ **TravelRequestParticipantDate 參與人員個別參與日期** / EmployeeProfile / EducationRecord / EmploymentHistoryRecord / FamilyMember / ProfessionalTraining / LanguageAbility / JobTransferRecord / RewardPunishmentRecord / SalaryAdjustmentRecord / HealthInsuranceDependent / **4 個分期撥款表 PaymentRequestInstallment / AdvanceRequestInstallment / TravelRequestInstallment / TravelPaymentRequestInstallment** / **PaymentReminderLog** / **整單批次附件 PaymentRequestAttachment / WriteOffAttachment** / **預審申請 PreReviewRequest / PreReviewItem / PreReviewRequestAttachment**）
+│   ├── Entities/                      # 49 個資料庫實體（新增 **預支沖銷差額分期 WriteOffInstallment**（第 5 種分期撥款子表）/ **追加預支批次 AdvanceRequestSupplement**（只存 RoundNo≥2，Round 1 = 父單本身）/ **TravelRequestParticipantDate 參與人員個別參與日期** / EmployeeProfile / EducationRecord / EmploymentHistoryRecord / FamilyMember / ProfessionalTraining / LanguageAbility / JobTransferRecord / RewardPunishmentRecord / SalaryAdjustmentRecord / HealthInsuranceDependent / **5 個分期撥款表 PaymentRequestInstallment / AdvanceRequestInstallment / TravelRequestInstallment / TravelPaymentRequestInstallment / WriteOffInstallment** / **PaymentReminderLog** / **整單批次附件 PaymentRequestAttachment / WriteOffAttachment** / **預審申請 PreReviewRequest / PreReviewItem / PreReviewRequestAttachment**）
 │   └── Dtos/                          # 20 個 DTO 檔案（新增 EmployeeProfileDtos / **InstallmentDtos** / **PreReviewRequestDtos**）
 ├── Services/
 │   ├── IJwtService.cs
@@ -583,7 +583,9 @@ master        # 正式環境（push → victorious-field SWA + jabez-api）
 
 ## 分期撥款（單一真相 = installments）
 
-2026-05 上線「分期撥款」，4 種申請類型（PaymentRequest / AdvanceRequest / TravelRequest / TravelPaymentRequest）的撥款資料**統一由子表 `XxxInstallment[]`** 表達：
+2026-05 上線「分期撥款」，**5 種**申請類型（PaymentRequest / AdvanceRequest / TravelRequest / TravelPaymentRequest / **WriteOffRecord**）的撥款資料**統一由子表 `XxxInstallment[]`** 表達：
+
+> **WriteOffRecord（預支沖銷）為 2026-07 新增的第 5 種，規則不同**：`SUM(Amount)` 對應的不是整單金額，而是 [WriteOffRefundCalculator](Api/Common/WriteOffRefundCalculator.cs) 算出的 `RefundDue`＝**本次沖銷造成的超支增額**。未超支（RefundDue = 0）不會有任何 installment，財務核准時也不要求填寫。詳見 [docs/business/approval-flow.md](docs/business/approval-flow.md#預支沖銷差額分期撥款2026-07-新增)。
 
 - **撥款狀態**：由 [InstallmentReadService.ComputeStatus](Api/Services/Dapper/InstallmentReadService.cs) 計算三態（`Unpaid` / `PartiallyPaid` / `FullyPaid`），全部從子表推算
 - **List filter「已撥款 / 未撥款」**：[PaymentRequestReadService](Api/Services/Dapper/PaymentRequestReadService.cs) 的 `PaymentStatusClause` 用 `EXISTS / NOT EXISTS` 子查詢 `XxxInstallments`
@@ -591,8 +593,9 @@ master        # 正式環境（push → victorious-field SWA + jabez-api）
 - **撥款明細寫入兩個入口（共用 [InstallmentUpsertService.Apply](Api/Services/InstallmentUpsertService.cs)）**：
   - 財務**核准當下**：`PATCH /approval-tasks/{appType}/{id}/review` 帶 `installments`，與審核同交易原子寫入；財務（FIN）步驟核准撥款類時**必填**（holiday_travel 除外、批次核准除外）
   - 核准**後**修改 / 填實際撥款日：`PATCH /{type}-requests/{id}/installments`（**僅 approved**），舊 `PATCH /{type}-requests/{id}/payment-date` 已移除
-- **撥款提醒**：[PaymentReminderService](Api/Services/PaymentReminderService.cs) UNION 4 種 installments 推算
-- **唯讀顯示**：[`<app-installments-table>`](Admin/src/app/shared/components/installments-table.ts) 共用元件（card 結構，跟其他 detail 卡片一致），4 種申請的 detail / form 頁皆引用
+- **撥款提醒**：[PaymentReminderService](Api/Services/PaymentReminderService.cs) UNION 4 種 installments 推算（**不含**沖銷差額分期，另案評估）
+- **唯讀顯示**：[`<app-installments-table>`](Admin/src/app/shared/components/installments-table.ts) 共用元件（card 結構，跟其他 detail 卡片一致），5 種申請的 detail / form 頁皆引用
+- **編輯共用元件**：[`<app-installments-editor>`](Admin/src/app/shared/components/installments-editor.ts)（2026-07 從 approval-task-review 抽出）—— `review` / `manage` 兩種 mode；抽離主因是預支沖銷簽核頁需同頁放兩個編輯器（本單差額撥款 + 關聯預支單撥款明細）
 - **編輯 UI 限制**（[approval-task-review](Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/)）：
   - 「+ 新增一期」：`SUM ≥ 總額` 時禁用（**2026-07 移除 `FullyPaid` 條件**：追加預支後總額變大，原已全額撥款的單必須能補期，否則湊不到 `SUM == 總額` 而卡死簽核）
   - 「儲存撥款明細」：`SUM ≠ 總額` 時禁用（同上）

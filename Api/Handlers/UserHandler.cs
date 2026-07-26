@@ -635,6 +635,10 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
                 .ExecuteUpdateAsync(s => s.SetProperty(x => x.PaidByUserId, (Guid?)null));
             await db.TravelPaymentRequestInstallments.Where(x => x.PaidByUserId == guid)
                 .ExecuteUpdateAsync(s => s.SetProperty(x => x.PaidByUserId, (Guid?)null));
+            await db.WriteOffInstallments.Where(x => x.PaidByUserId == guid)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.PaidByUserId, (Guid?)null));
+            await db.WriteOffItems.Where(x => x.CheckPaidById == guid)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.CheckPaidById, (Guid?)null));
 
             db.Users.Remove(user);
             await db.SaveChangesAsync();

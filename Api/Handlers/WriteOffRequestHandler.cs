@@ -614,7 +614,130 @@ public sealed class WriteOffRequestHandler(
         return new OkObjectResult(ApiResponse.Ok(dto, msg));
     }
 
+    // ── 差額撥款分期 ─────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// 已核准的沖銷單設定 / 修改差額撥款明細（僅財務體系部門或 Superadmin）。
+    /// 應撥總額 = 本次沖銷造成的超支增額（<see cref="WriteOffRefundCalculator"/>），未超支則不可設定。
+    /// 核准「當下」的寫入走 PATCH /approval-tasks/write_off/{id}/review，兩者共用 InstallmentUpsertService。
+    /// </summary>
+    public async Task<IActionResult> UpsertInstallmentsAsync(HttpRequest req, string id)
+    {
+        if (!int.TryParse(id, out var intId))
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid ID format."));
+
+        var userId = await GetUserIdAsync(req);
+
+        var user = await db.Users.AsNoTracking().Include(u => u.Department).FirstOrDefaultAsync(u => u.Id == userId);
+        if (user is null)
+            return new UnauthorizedObjectResult(ApiResponse.Fail("User not found."));
+        if (!user.IsSuperAdmin && !DepartmentCodes.FinancialAndAbove.Contains(user.Department?.Code ?? ""))
+            throw AppException.Forbidden("僅財務體系部門或 Superadmin 可設定撥款明細。");
+
+        var wo = await db.WriteOffRecords
+                         .Include(w => w.Installments)
+                         .FirstOrDefaultAsync(w => w.Id == intId)
+                 ?? throw AppException.NotFound("WriteOffRecord");
+
+        if (wo.ApprovalStatus != "approved")
+            return new BadRequestObjectResult(ApiResponse.Fail("只有已核准的沖銷申請可以設定撥款明細。"));
+
+        var refundDue = await CalculateRefundDueAsync(wo);
+        if (refundDue <= 0)
+            return new BadRequestObjectResult(ApiResponse.Fail("本次沖銷未超過預支金額，無需撥款。"));
+
+        var body = await req.ReadFromJsonAsync<UpsertInstallmentsRequest>(JsonOpts);
+        if (body is null)
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
+
+        // 共用 validate + diff（不 SaveChanges）
+        var newlyPaid = InstallmentUpsertService.Apply(
+            db, wo.Installments, body.Installments, refundDue, userId,
+            () => new WriteOffInstallment { WriteOffRecordId = wo.Id });
+
+        await db.SaveChangesAsync();
+
+        if (wo.SubmittedById.HasValue)
+            foreach (var np in newlyPaid)
+                await notifier.NotifyApplicantPaidAsync(
+                    RequestType, wo.Id, wo.SubmittedById.Value, np.Amount, np.PaidAt,
+                    installmentNo: np.InstallmentNo, totalInstallments: np.TotalInstallments);
+
+        return new OkObjectResult(ApiResponse.Ok(
+            new { wo.Id, InstallmentCount = body.Installments.Count },
+            $"已更新 {body.Installments.Count} 筆撥款明細。"));
+    }
+
+    // ── 支票已支付註記 ───────────────────────────────────────────────────────
+
+    /// <summary>
+    /// 勾選 / 取消沖銷明細的「支票金額已支付」（僅財務體系部門或 Superadmin）。
+    /// 支票由公司直接付給廠商，不走撥款分期，僅以此旗標註記已付出。
+    /// </summary>
+    public async Task<IActionResult> UpdateCheckPaymentsAsync(HttpRequest req, string id)
+    {
+        if (!int.TryParse(id, out var intId))
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid ID format."));
+
+        var userId = await GetUserIdAsync(req);
+
+        var user = await db.Users.AsNoTracking().Include(u => u.Department).FirstOrDefaultAsync(u => u.Id == userId);
+        if (user is null)
+            return new UnauthorizedObjectResult(ApiResponse.Fail("User not found."));
+        if (!user.IsSuperAdmin && !DepartmentCodes.FinancialAndAbove.Contains(user.Department?.Code ?? ""))
+            throw AppException.Forbidden("僅財務體系部門或 Superadmin 可註記支票支付狀態。");
+
+        var wo = await db.WriteOffRecords
+                         .Include(w => w.Items)
+                         .FirstOrDefaultAsync(w => w.Id == intId)
+                 ?? throw AppException.NotFound("WriteOffRecord");
+
+        if (wo.ApprovalStatus is not ("pending" or "approved"))
+            return new BadRequestObjectResult(ApiResponse.Fail("只有待審核或已核准的沖銷申請可以註記支票支付狀態。"));
+
+        var body = await req.ReadFromJsonAsync<UpdateCheckPaymentsRequest>(JsonOpts);
+        if (body is null || body.Items.Length == 0)
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
+
+        foreach (var input in body.Items)
+        {
+            var item = wo.Items.FirstOrDefault(i => i.Id == input.ItemId)
+                       ?? throw AppException.BadRequest($"找不到沖銷明細 Id={input.ItemId}。");
+
+            if (input.CheckPaid && item.CheckAmount <= 0)
+                throw AppException.BadRequest($"第 {item.SeqNo} 筆明細沒有支票金額，無法註記已支付。");
+
+            item.CheckPaid     = input.CheckPaid;
+            item.CheckPaidAt   = input.CheckPaid ? Clock.Now : null;
+            item.CheckPaidById = input.CheckPaid ? userId : null;
+        }
+
+        await db.SaveChangesAsync();
+
+        var paidCount = wo.Items.Count(i => i.CheckPaid);
+        return new OkObjectResult(ApiResponse.Ok(
+            new { wo.Id, PaidCount = paidCount },
+            $"已更新支票支付狀態（已支付 {paidCount} 筆）。"));
+    }
+
     // ── Private Helpers ──────────────────────────────────────────────────────
+
+    /// <summary>本次沖銷造成的超支增額（公司應補撥給員工的金額）。</summary>
+    private async Task<decimal> CalculateRefundDueAsync(WriteOffRecord wo)
+    {
+        var advanceGrandTotal = await db.AdvanceRequests
+            .Where(a => a.Id == wo.AdvanceRequestId)
+            .Select(a => a.GrandTotal)
+            .FirstOrDefaultAsync();
+
+        var otherWrittenOffTotal = await db.WriteOffRecords
+            .Where(w => w.AdvanceRequestId == wo.AdvanceRequestId
+                     && w.ApprovalStatus == "approved"
+                     && w.Id < wo.Id)
+            .SumAsync(w => (decimal?)w.GrandTotal) ?? 0m;
+
+        return WriteOffRefundCalculator.Calculate(advanceGrandTotal, otherWrittenOffTotal, wo.GrandTotal);
+    }
 
     /// <summary>
     /// 來源預支單是否可沖銷：須已核准且未結案。
