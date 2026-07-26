@@ -12,6 +12,7 @@ import {
   LEAVE_TYPE_GROUPS, LEAVE_TYPE_LABELS, LEAVE_TYPE_DAYS_LIMIT, LEAVE_TIME_UNIT,
   BEREAVEMENT_GROUPS, BEREAVEMENT_RELATIONSHIP_LABELS, BEREAVEMENT_DAYS,
   BereavementRelationship, WORKING_DAY_LEAVE_TYPES, WorkingDaysResult,
+  WORKDAY_START_HOUR, WORKDAY_END_HOUR,
 } from '../../models/leave-request.model';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
@@ -210,14 +211,17 @@ export class LeaveRequestForm implements OnInit {
     const type = this.selectedLeaveType;
     const unit = this.selectedUnit;
 
+    const wd = this.workingDaysResult();
+
+    // 產假：區間固定 56 個日曆天（起始日 +55），時數只計其中工作日
     if (type === 'maternity') {
-      return this.form.get('startDate')?.value ? 448 : 0;
+      if (!this.form.get('startDate')?.value) return 0;
+      return wd ? wd.workingDays * 8 : 0;
     }
 
-    // 工作日型 day / half_day 假別：若已取得扣假日後的請假日清單，改以工作日計算（排除國定假日與六日）
-    const wd = this.workingDaysResult();
-    if (wd && unit !== 'hour' && WORKING_DAY_LEAVE_TYPES.includes(type)) {
-      return this.computeWorkingDayHours(wd);
+    // 工作日型假別：若已取得扣假日後的請假日清單，改以工作日計算（排除國定假日與六日）
+    if (wd && WORKING_DAY_LEAVE_TYPES.includes(type)) {
+      return unit === 'hour' ? this.computeHourUnitHours(wd) : this.computeWorkingDayHours(wd);
     }
 
     if (unit === 'hour') {
@@ -525,17 +529,17 @@ export class LeaveRequestForm implements OnInit {
 
   /**
    * 重新查詢「扣除國定假日與六日後的實際請假日清單」。
-   * 僅工作日型 day / half_day 假別需要（hour 單位為當日時段、法定連續日曆天假別不扣假日）。
+   * 工作日型假別（day / half_day / hour 三種單位）皆需要；歲時祭儀假為連續日曆天不查。
+   * 產假的結束日不在表單裡（自動 = 起始日 +55 天），改用 maternityEndDate 當區間終點。
    */
   private refreshWorkingDays() {
     const type = this.selectedLeaveType;
-    const unit = this.selectedUnit;
-    if (!WORKING_DAY_LEAVE_TYPES.includes(type) || unit === 'hour') {
+    if (!WORKING_DAY_LEAVE_TYPES.includes(type)) {
       this.workingDaysResult.set(null);
       return;
     }
     const start = this.form.get('startDate')?.value;
-    const end   = this.form.get('endDate')?.value;
+    const end   = type === 'maternity' ? this.maternityEndDate : this.form.get('endDate')?.value;
     if (!start || !end || new Date(end) < new Date(start)) {
       this.workingDaysResult.set(null);
       return;
@@ -544,6 +548,38 @@ export class LeaveRequestForm implements OnInit {
       next: res => { this.workingDaysResult.set(res); this.cdr.markForCheck(); },
       error: () => { this.workingDaysResult.set(null); },
     });
+  }
+
+  /**
+   * 工作日型 hour 假別（事假 / 病假 / 產檢假 / 陪產假）：逐日累加，只算工作日。
+   * 同日 → endHour − startHour（維持既有單日語意，不扣午休）；
+   * 跨日 → 首日 clamp(17 − startHour, 0, 8) + 中間工作日各 8 小時 + 末日 clamp(endHour − 8, 0, 8)；
+   * 落在假日的日期一律 0，且不把時段挪到相鄰工作日。
+   * 須與後端 LeaveRequestHandler.ComputeHourUnitHoursAsync 保持同步。
+   */
+  private computeHourUnitHours(res: WorkingDaysResult): number {
+    const sDate = this.form.get('startDate')?.value;
+    const eDate = this.form.get('endDate')?.value;
+    const sHour = this.form.get('startHour')?.value;
+    const eHour = this.form.get('endHour')?.value;
+    if (!sDate || !eDate || sHour === null || sHour === undefined || eHour === null || eHour === undefined) return 0;
+
+    const workingSet = new Set(res.workingDates.map(d => d.slice(0, 10)));
+    if (sDate === eDate) {
+      return workingSet.has(sDate) ? Math.max(0, eHour - sHour) : 0;
+    }
+
+    let total = 0;
+    for (const d of workingSet) {
+      if (d === sDate)      total += this._clamp(WORKDAY_END_HOUR - sHour, 0, 8);
+      else if (d === eDate) total += this._clamp(eHour - WORKDAY_START_HOUR, 0, 8);
+      else                  total += 8;
+    }
+    return total;
+  }
+
+  private _clamp(v: number, min: number, max: number): number {
+    return Math.min(Math.max(v, min), max);
   }
 
   /**
@@ -851,14 +887,13 @@ export class LeaveRequestForm implements OnInit {
     let hours = this.calculatedHours;
 
     if (type === 'maternity') {
-      // 產假：只送起始日，後端自動填充 56 天
+      // 產假：只送起始日，後端自動填充 56 個日曆天並以其中工作日重算時數
       const s = v.startDate!;
       startDateStr = `${s}T00:00:00`;
       // 前端先計算 end 方便顯示，後端會覆寫
       const endD = this._parseDate(s)!;
       endD.setDate(endD.getDate() + 55);
       endDateStr = `${this._formatDate(endD)}T00:00:00`;
-      hours = 448;
     } else if (unit === 'hour') {
       const sh = String(v.startHour ?? 0).padStart(2, '0');
       const eh = String(v.endHour ?? 0).padStart(2, '0');

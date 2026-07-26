@@ -158,7 +158,7 @@
                   <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
                   @if (marriageQuota(); as q) {
                     <span class="small">
-                      婚假上限：<strong>{{ q.maxDays }}</strong> 天（可不連續）
+                      婚假上限：<strong>{{ q.maxDays }}</strong> 個工作日（可不連續）
                       <span class="text-muted ms-2">｜已請：{{ q.usedDays }} 天</span>
                       <span class="ms-2">｜剩餘：<strong class="text-primary">{{ q.remainingDays }}</strong> 天</span>
                     </span>
@@ -172,7 +172,10 @@
               @if (selectedLeaveType === 'maternity') {
                 <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
                   <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
-                  <span class="small">產假為法定一次請完：選擇起始日，系統自動計算 <strong>56 天</strong>。</span>
+                  <span class="small">
+                    產假為法定一次請完：選擇起始日，系統自動涵蓋 <strong>56 個日曆天</strong>，
+                    天數<strong>只計其中工作日</strong>（已扣除國定假日與六日）。
+                  </span>
                 </div>
                 @if (maternityStatus()?.hasActiveRequest && maternityStatus()?.activeRequestId !== requestId) {
                   <div class="alert alert-danger flex items-center gap-2 py-2 mt-2 mb-0">
@@ -281,7 +284,7 @@
                 <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
                   <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
                   <span class="small">
-                    {{ leaveTypeLabels[selectedLeaveType] }}上限：<strong>{{ currentDaysLimit }} 天</strong>
+                    {{ leaveTypeLabels[selectedLeaveType] }}上限：<strong>{{ currentDaysLimit }} 個工作日</strong>
                     @if (selectedUnit === 'hour') {
                       <span class="text-muted">（= {{ currentDaysLimit * 8 }} 小時）</span>
                     }
@@ -311,13 +314,13 @@
                   <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
                     <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
                     <span class="small">
-                      此親屬關係上限：<strong>{{ q.maxDays }}</strong> 天
+                      此親屬關係上限：<strong>{{ q.maxDays }}</strong> 個工作日
                       <span class="text-muted ms-2">｜已請：{{ q.usedDays }} 天</span>
                       <span class="ms-2">｜剩餘：<strong class="text-primary">{{ q.remainingDays }}</strong> 天</span>
                     </span>
                   </div>
                 } @else if (currentDaysLimit !== null) {
-                  <div class="text-muted small mt-1">喪假上限：<strong>{{ currentDaysLimit }} 天</strong></div>
+                  <div class="text-muted small mt-1">喪假上限：<strong>{{ currentDaysLimit }} 個工作日</strong></div>
                 }
               </div>
             }
@@ -348,7 +351,7 @@
                   </div>
                 </div>
                 <div class="col-12">
-                  <label class="form-label fw-500">時數</label>
+                  <label class="form-label fw-500">時數<span class="text-muted fw-400 small ms-1">（跨日時只計工作日，國定假日與六日不列入）</span></label>
                   <div class="form-control bg-[var(--bg-elevated)]" style="pointer-events: none">{{ calculatedDisplay }}</div>
                 </div>
               </div>
@@ -368,7 +371,7 @@
                   </div>
                 </div>
                 <div class="col-12 col-md-4">
-                  <label class="form-label fw-500">天數</label>
+                  <label class="form-label fw-500">天數<span class="text-muted fw-400 small ms-1">（已扣除假日）</span></label>
                   <div class="form-control bg-[var(--bg-elevated)]" style="pointer-events: none">{{ calculatedDisplay }}</div>
                 </div>
               </div>
@@ -439,7 +442,11 @@
                 <div class="card-body py-3">
                   <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
                     <span class="fw-500 text-sm">實際請假日（已扣除國定假日與六日）</span>
-                    <span class="badge bg-success-subtle text-success">共 {{ wd.workingDays }} 天</span>
+                    @if (selectedUnit === 'hour') {
+                      <span class="badge bg-success-subtle text-success">共 {{ wd.workingDays }} 個工作日／{{ calculatedDisplay }}</span>
+                    } @else {
+                      <span class="badge bg-success-subtle text-success">共 {{ wd.workingDays }} 天</span>
+                    }
                   </div>
                   @if (wd.workingDates.length > 0) {
                     <div class="flex flex-wrap gap-1.5">
