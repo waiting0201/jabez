@@ -23,17 +23,19 @@
 | 15 | 高階主管假 | `senior_executive` | 半天 | **每年 20 天**（曆年歸零） | **不扣任何項目**（協理以上專用，`JobTitle.Level ≤ 3`） |
 | 16 | 生理假 | `menstrual` | 天（一次請一天） | 每月 1 天、全年 12 天（**限女性**） | 按天數扣除半薪（前 3 天/年純生理假，超過併入病假） |
 
+> **天數上限一律指「工作日」**：除歲時祭儀假外，全部假別的天數 / 時數皆已扣除**國定假日與六日**（詳見 [§扣除假日計算天數](#扣除假日計算天數2026-07-新增2026-07-擴大適用)）。
+
 ## 時間單位規則
 
 請假輸入依假別分為三種單位，儲存仍為 `LeaveRequest.Hours`（`decimal(5,1)`）：
 
 | 單位 | 換算 | 輸入 UI | 適用假別 |
 |------|------|---------|---------|
-| 小時 (`hour`) | 自然小時（**整點**） | `datetime-local` 整點步進（分鐘僅 00） | 事假、病假、產檢假、陪產假 |
+| 小時 (`hour`) | 自然小時（**整點**）；**跨日逐日累加只算工作日** | 日期 + 整點小時下拉（分鐘僅 00） | 事假、病假、產檢假、陪產假 |
 | 半天 (`half_day`) | 4 小時 = 半天 | 日期 + 上午/下午 選擇 | 年假、補休、高階主管假 |
 | 整天 (`day`) | 8 小時 = 1 天 | 起迄日期選擇 | 公假、婚假、產假、喪假、歲時祭儀假、流產假系列、生理假 |
 
-- **產假特例**：選擇起始日後，結束日自動填為起始日 + 55 天（共 56 天），總時數固定 448 小時。法規為一次請完，禁止重複活躍申請（同 `EmployeeId` 存在 `pending` / `approved` 產假）。
+- **產假特例**：選擇起始日後，結束日自動填為起始日 + 55 天（共 56 個**日曆天**），總時數為其中**工作日數 × 8**（約 40 天 / 320 小時，非固定 448）。法規為一次請完，禁止重複活躍申請（同 `EmployeeId` 存在 `pending` / `approved` 產假）。
 - **補休扣除**：申請 1 個半天（4 小時）→ 從可補休時數池扣 4 小時。
 - **高階主管假權限閘門**：前後端皆檢查 `JobTitle.Level ≤ 3`；前端透過 JWT `job_title_level` claim 判斷選項可見性，後端在 `CreateAsync` / `UpdateAsync` / `SubmitAsync` 各階段驗證。
 - **高階主管假額度**：協理以上每年 20 天（曆年 1/1~12/31），當年度未用完歸零、隔年重新給予 20 天。比照年假動態計算（不儲存、不排程，按 `StartDate` 年度過濾）。額度上限驗證於 `ValidateLeaveQuotaAsync` 的 `senior_executive` 分支；API 端點 `GET /leave-requests/senior-executive-quota` 回 `totalDays` / `usedDays` / `availableDays`。
@@ -67,7 +69,7 @@
 
 - 送出申請（submit）時，後端查詢該使用者**同假別**、**已送出或已核准**的申請總時數
 - 加上本次申請時數，檢查是否超過上限
-- 天數換算：`累計時數 ÷ 8 小時 = 天數`
+- 天數換算：`累計時數 ÷ 8 小時 = 天數`（時數已扣除國定假日與六日，故等同「工作日數」）
 - 年假按**年度**累計，產假系列與喪假**不限年度**
 - 喪假按**同親屬關係**分別累計
 
@@ -104,15 +106,33 @@
 - **併入病假**：全年累計**前 3 天（24 小時）為純生理假**（薪資列「生理假扣薪」）；**超過 3 天的部分併入病假計算**（薪資併入「病假扣薪」）。因兩者皆半薪，淨薪不變，差異僅在扣款項目的歸類。薪資模組以「本年度本月之前已用生理假時數」判斷前 3 天額度是否用罄（詳見 [payroll-formula.md](payroll-formula.md)）。
 - **API 端點**：`GET /leave-requests/menstrual-quota`（回 `isFemale` + 月/年配額）。
 
-## 扣除假日計算天數（2026-07 新增）
+## 扣除假日計算天數（2026-07 新增，2026-07 擴大適用）
 
 **工作日型假別**選定起迄日後，系統扣除**國定假日與六日**，只計算實際工作日，並在表單即時列出「實際請假日清單」與天數。
 
-- **適用假別（工作日型）**：`annual`（年假）/ `personal`（事假）/ `sick`（病假）/ `compensatory`（補休）/ `official`（公假）/ `senior_executive`（高階主管假）。集合同步於後端 `LeaveRequestHandler.WorkingDayLeaveTypes` 與前端 `WORKING_DAY_LEAVE_TYPES`（[leave-request.model.ts](../../Admin/src/app/features/admin/leave-requests/models/leave-request.model.ts)）。
-- **不適用假別（法定連續日曆天，不扣假日）**：產假 / 婚假 / 喪假 / 流產假系列 / 歲時祭儀 / 生理假——依法以連續日曆天計，扣六日會算錯。
+- **適用假別（工作日型，15 種）**：`annual`（年假）/ `personal`（事假）/ `sick`（病假）/ `compensatory`（補休）/ `official`（公假）/ `senior_executive`（高階主管假）/ `marriage`（婚假）/ `maternity`（產假）/ `bereavement`（喪假）/ `miscarriage_3m`・`miscarriage_2to3m`・`miscarriage_under2m`（流產假系列）/ `prenatal_checkup`（產檢假）/ `paternity`（陪產假）/ `menstrual`（生理假）。集合同步於後端 `LeaveRequestHandler.WorkingDayLeaveTypes` 與前端 `WORKING_DAY_LEAVE_TYPES`（[leave-request.model.ts](../../Admin/src/app/features/admin/leave-requests/models/leave-request.model.ts)）。
+- **不適用假別（連續日曆天，不扣假日）**：僅 `ceremonial_festival`（歲時祭儀假）。
+- **天數上限一律改以工作日計**：婚假 8 / 喪假 8・6・3 / 流產假 28・7・5 / 產檢假・陪產假 7 / 生理假每月 1 天・全年 12 天等數字不變，但語意變成「N 個工作日」（`ValidateLeaveQuotaAsync` 比對的 `Hours / 8` 本來就是扣假日後的值，無需額外改動）。
+- **產假特例**：區間仍固定為「起始日 + 55 天 = 56 個**日曆天**」（法定一次請完、不可拆），但 `Hours` 只計其中工作日（約 40 天 / 320 小時），不再固定 448 小時。
 - **假日來源＝唯一權威 `CalendarDays` 表**：台灣政府行事曆匯入時 `IsHoliday=true` 已同時涵蓋**六日 + 國定假**、補班六為工作日（`IsHoliday=false`）。透過 [CalendarDayReadService](../../Api/Services/Dapper/CalendarDayReadService.cs) 的 `GetHolidayDatesAsync` / `HasDataForRangeAsync` 讀取（與出差假日活動共用）。
-- **前端顯示**：[leave-request-form](../../Admin/src/app/features/admin/leave-requests/pages/leave-request-form/) 於 day / half_day 工作日型假別選好起迄日後呼叫輕量端點 `GET /leave-requests/working-days?start=&end=&leaveType=`（免 `calendar-days:read`），列出逐日 chip + 合計天數；行事曆未匯入時退回僅扣六日並提示。
-- **後端權威重算**：`Day` 單位工作日型假別（如公假）於 Create / Update / **Submit** 以工作日數 × 8 覆寫 `Hours`；**Submit 時強制要求行事曆已匯入**（缺資料擋件並提示匯入），確保後續天數門檻分流與天數上限驗證皆以正確工作日為準。`half_day` 工作日型假別由前端以 working-days 端點計算後送出（後端沿用既有「HalfDay 信任 client」原則）；`hour` 單位（事假 / 病假時薪型，多為當日時段）不扣假日。
+- **行事曆完整性逐年檢查**：`HasDataForRangeAsync` 為 EXISTS 語意（區間內任一天有資料即 true），產假 56 天與拉長後的婚假 / 喪假可能跨年，故 `LeaveRequestHandler.HasCalendarForAllYearsAsync` 對區間橫跨的**每個年度**各查一次，全部有資料才算已匯入。
+- **前端顯示**：[leave-request-form](../../Admin/src/app/features/admin/leave-requests/pages/leave-request-form/) 於工作日型假別（day / half_day / hour 三種單位皆適用）選好起迄日後呼叫輕量端點 `GET /leave-requests/working-days?start=&end=&leaveType=`（免 `calendar-days:read`），列出逐日 chip + 合計天數；行事曆未匯入時退回僅扣六日並提示。產假的結束日不在表單上，前端改以 `maternityEndDate`（起始日 +55 天）當區間終點查詢。
+- **後端權威重算**：工作日型假別的 `Day` 單位（含產假）以工作日數 × 8、`Hour` 單位以逐日累加時數，於 Create / Update / **Submit** 覆寫 `Hours`；**Submit 時強制要求行事曆已匯入**（缺資料擋件並提示匯入，訊息含跨年區間的年度範圍），區間全為假日亦擋件。`half_day` 由前端以 working-days 端點計算後送出（後端沿用既有「HalfDay 信任 client」原則）。
+
+### 小時單位跨日的時數計算（`personal` / `sick` / `prenatal_checkup` / `paternity`）
+
+工作日標準時段為 **08:00–17:00（全日 8 小時）**，與 half_day 的 am 08:00–12:00 / pm 13:00–17:00 一致。常數同步於後端 `LeaveRequestHandler.WorkdayStartHour` / `WorkdayEndHour` 與前端 `WORKDAY_START_HOUR` / `WORKDAY_END_HOUR`；演算法同步於 `ComputeHourUnitHoursAsync`（後端）與 `computeHourUnitHours`（前端）。
+
+| 情境 | 時數 |
+|------|------|
+| 同日 | `endHour − startHour`（維持既有語意，不扣午休）；當日為假日 → 0，送出擋件 |
+| 跨日 · 首個工作日 | `Clamp(17 − startHour, 0, 8)` |
+| 跨日 · 中間工作日 | 各 8 小時 |
+| 跨日 · 末個工作日 | `Clamp(endHour − 8, 0, 8)` |
+| 落在假日的日期 | 0（且不把時段挪到相鄰工作日） |
+
+> 範例：週五 14:00 → 下週一 12:00 ＝ 3（週五）+ 0（六日）+ 4（週一）＝ **7 小時**。
+> 此規則同時修正了改版前「跨日以連續時鐘時數計算、會把夜間時數算進去」的問題（原本同案例為 70 小時）。
 
 ## 依請假天數決定簽核關卡（2026-07 新增）
 
@@ -133,7 +153,7 @@
 ## 請假申請步驟
 
 ```
-請假申請 → 選擇假別 → 填入開始/結束時間（工作日型顯示扣假日後請假日清單）→ 職務代理人 → 請假原因 → 指定審核人
+請假申請 → 選擇假別 → 填入開始/結束時間（除歲時祭儀假外皆顯示扣假日後請假日清單）→ 職務代理人 → 請假原因 → 指定審核人
 依天數決定關卡：< 3 天單位主管；≥ 3 天 單位主管 + 部門最高主管 + 總監
 ```
 

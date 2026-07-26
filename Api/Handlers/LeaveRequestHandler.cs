@@ -36,12 +36,16 @@ public sealed class LeaveRequestHandler(
          "ceremonial_festival", "senior_executive", "menstrual"];
 
     /// <summary>
-    /// 工作日型假別：天數以「扣除國定假日與六日後的實際工作日」計算（前端顯示請假日清單、後端 Day 單位權威重算）。
-    /// 產假 / 婚假 / 喪假 / 流產假系列 / 歲時祭儀 / 生理假等依法為「連續日曆天」，不在此清單、不扣假日。
+    /// 工作日型假別：天數 / 時數以「扣除國定假日與六日後的實際工作日」計算
+    /// （前端顯示請假日清單、後端 Day 與 Hour 單位皆權威重算）。
+    /// 除歲時祭儀假（依法為連續日曆天）外皆適用；產假區間仍為起始日 +55 天，但只計其中工作日。
     /// 前端 WORKING_DAY_LEAVE_TYPES 須與此保持同步。
     /// </summary>
     private static readonly HashSet<string> WorkingDayLeaveTypes =
-        ["annual", "personal", "sick", "compensatory", "official", "senior_executive"];
+        ["annual", "personal", "sick", "compensatory", "official", "senior_executive",
+         "marriage", "maternity", "bereavement",
+         "miscarriage_3m", "miscarriage_2to3m", "miscarriage_under2m",
+         "prenatal_checkup", "paternity", "menstrual"];
 
     /// <summary>各假別時間單位對應</summary>
     private static readonly Dictionary<string, LeaveTimeUnit> TimeUnitMap = new()
@@ -150,7 +154,7 @@ public sealed class LeaveRequestHandler(
 
     /// <summary>
     /// 依起迄日回傳「扣除國定假日與六日後的實際請假日清單與天數」（供表單即時顯示）。
-    /// 工作日型假別才扣假日；法定連續日曆天假別回整段日曆天。任何登入者可呼叫（免 calendar-days:read）。
+    /// 工作日型假別才扣假日；連續日曆天假別（目前僅歲時祭儀假）回整段日曆天。任何登入者可呼叫（免 calendar-days:read）。
     /// GET /leave-requests/working-days?start=&amp;end=&amp;leaveType=
     /// </summary>
     public async Task<IActionResult> GetWorkingDaysAsync(HttpRequest req)
@@ -167,7 +171,7 @@ public sealed class LeaveRequestHandler(
 
         var leaveType = req.Query["leaveType"].ToString();
 
-        // 非工作日型假別（法定連續日曆天，如產假 / 婚假 / 喪假）→ 不扣假日，整段日曆天皆為請假日
+        // 非工作日型假別（連續日曆天，目前僅歲時祭儀假）→ 不扣假日，整段日曆天皆為請假日
         if (!string.IsNullOrEmpty(leaveType) && !WorkingDayLeaveTypes.Contains(leaveType))
         {
             var all = EnumerateDates(start.Date, end.Date).ToList();
@@ -194,7 +198,7 @@ public sealed class LeaveRequestHandler(
     {
         var s = start.Date;
         var e = end.Date;
-        var hasData = await calendarReader.HasDataForRangeAsync(s, e);
+        var hasData = await HasCalendarForAllYearsAsync(s, e);
         var holidaySet = hasData
             ? (await calendarReader.GetHolidayDatesAsync(s, e)).Select(d => d.Date).ToHashSet()
             : [];
@@ -209,6 +213,55 @@ public sealed class LeaveRequestHandler(
             if (isHoliday) holidays.Add(d); else working.Add(d);
         }
         return (hasData, holidays, working);
+    }
+
+    /// <summary>
+    /// 檢查區間橫跨的「每一個年度」都已匯入行事曆。
+    /// CalendarDayReadService.HasDataForRangeAsync 是 EXISTS 語意（區間內任一天有資料即為 true），
+    /// 產假（56 個日曆天）與拉長後的婚假 / 喪假可能跨年，只匯入其中一年會誤判，故逐年檢查。
+    /// </summary>
+    private async Task<bool> HasCalendarForAllYearsAsync(DateTime start, DateTime end)
+    {
+        for (var y = start.Year; y <= end.Year; y++)
+        {
+            if (!await calendarReader.HasDataForRangeAsync(new DateTime(y, 1, 1), new DateTime(y, 12, 31)))
+                return false;
+        }
+        return true;
+    }
+
+    /// <summary>工作日標準時段（與 half_day 的 am 08:00–12:00 / pm 13:00–17:00 一致，全日 8 小時）</summary>
+    private const int WorkdayStartHour = 8;
+    private const int WorkdayEndHour   = 17;
+
+    /// <summary>
+    /// Hour 單位假別（事假 / 病假 / 產檢假 / 陪產假）的時數計算：逐日累加，只算工作日。
+    /// - 同日：維持 end.Hour − start.Hour（不扣午休，沿用既有單日語意）；當日為假日 → 0
+    /// - 跨日：首個工作日 Clamp(17 − start.Hour, 0, 8)、中間工作日各 8 小時、末個工作日 Clamp(end.Hour − 8, 0, 8)；
+    ///   落在假日的日期一律 0，且不把時段挪到相鄰工作日
+    /// </summary>
+    private async Task<(bool hasData, decimal hours)> ComputeHourUnitHoursAsync(DateTime start, DateTime end)
+    {
+        var (hasData, _, working) = await ComputeWorkingDatesAsync(start, end);
+        var workingSet = working.Select(d => d.Date).ToHashSet();
+
+        if (start.Date == end.Date)
+        {
+            var sameDayHours = workingSet.Contains(start.Date) ? end.Hour - start.Hour : 0;
+            return (hasData, Math.Max(0, sameDayHours));
+        }
+
+        decimal total = 0m;
+        foreach (var d in workingSet)
+        {
+            if (d == start.Date)
+                total += Math.Clamp(WorkdayEndHour - start.Hour, 0, 8);
+            else if (d == end.Date)
+                total += Math.Clamp(end.Hour - WorkdayStartHour, 0, 8);
+            else
+                total += 8m;
+        }
+        return (hasData, total);
     }
 
     public async Task<IActionResult> CreateAsync(HttpRequest req)
@@ -297,27 +350,33 @@ public sealed class LeaveRequestHandler(
                 return new BadRequestObjectResult(ApiResponse.Fail("EndDate 必須為整點（分鐘 00）。"));
         }
 
-        // 時數計算：Hour → 實算時差；HalfDay → 信任 client；Day → 依起迄日期推算
-        decimal hours = body.LeaveType switch
+        // 時數計算：Hour → 逐日累加只算工作日；HalfDay → 信任 client；Day → 工作日數 × 8。
+        // 工作日型假別（除歲時祭儀假外皆是）扣除國定假日與六日；產假區間仍為起始日 +55 天，只計其中工作日。
+        // 草稿階段行事曆若尚無資料 → 退回原始算式（送出時會強制要求行事曆並權威重算）。
+        bool isWorkingDayType = WorkingDayLeaveTypes.Contains(body.LeaveType);
+        decimal hours;
+        if (isWorkingDayType && unit == LeaveTimeUnit.Hour)
         {
-            "maternity" => MaternityDays * 8m, // 56 * 8 = 448
-            _ => unit switch
+            (_, hours) = await ComputeHourUnitHoursAsync(effectiveStart, effectiveEnd);
+        }
+        else if (isWorkingDayType && unit == LeaveTimeUnit.Day)
+        {
+            var (_, _, working) = await ComputeWorkingDatesAsync(effectiveStart, effectiveEnd);
+            hours = working.Count * 8m;
+        }
+        else
+        {
+            hours = unit switch
             {
                 LeaveTimeUnit.Hour    => (decimal)(effectiveEnd - effectiveStart).TotalHours,
                 LeaveTimeUnit.HalfDay => body.Hours,
                 LeaveTimeUnit.Day     => ((effectiveEnd.Date - effectiveStart.Date).Days + 1) * 8m,
                 _                     => (decimal)(effectiveEnd - effectiveStart).TotalHours,
-            },
-        };
-
-        // 工作日型 Day 假別（如公假）：扣除國定假日與六日，天數以實際工作日計。
-        // 草稿階段行事曆若尚無資料 → 退回原始日曆天（送出時會強制要求行事曆並權威重算）。
-        if (unit == LeaveTimeUnit.Day && WorkingDayLeaveTypes.Contains(body.LeaveType))
-        {
-            var (_, _, working) = await ComputeWorkingDatesAsync(effectiveStart, effectiveEnd);
-            hours = working.Count * 8m;
+            };
         }
 
+        if (hours <= 0 && isWorkingDayType && unit != LeaveTimeUnit.HalfDay)
+            return new BadRequestObjectResult(ApiResponse.Fail("此區間全為國定假日或六日，無可請假的工作日。"));
         if (hours <= 0)
             return new BadRequestObjectResult(ApiResponse.Fail("時數必須大於 0。"));
         if (unit == LeaveTimeUnit.HalfDay && hours % 4m != 0m)
@@ -458,12 +517,15 @@ public sealed class LeaveRequestHandler(
 
         var unit = GetTimeUnit(effectiveLeaveType);
 
-        // 產假：自動填充 56 天，不論 client 傳入
+        // 產假：自動填充 56 個日曆天，不論 client 傳入；時數只計其中工作日
         if (effectiveLeaveType == "maternity")
         {
             item.StartDate = item.StartDate.Date;
             item.EndDate   = item.StartDate.AddDays(MaternityDays - 1);
-            item.Hours     = MaternityDays * 8m;
+            var (_, _, maternityWorking) = await ComputeWorkingDatesAsync(item.StartDate, item.EndDate);
+            if (maternityWorking.Count == 0)
+                return new BadRequestObjectResult(ApiResponse.Fail("此區間全為國定假日或六日，無可請假的工作日。"));
+            item.Hours = maternityWorking.Count * 8m;
         }
         else
         {
@@ -479,20 +541,31 @@ public sealed class LeaveRequestHandler(
             if (item.EndDate <= item.StartDate)
                 return new BadRequestObjectResult(ApiResponse.Fail("EndDate must be after StartDate."));
 
-            // 時數依單位計算
-            decimal recalcHours = unit switch
+            // 時數依單位計算；工作日型假別扣除國定假日與六日
+            // （Hour 逐日累加只算工作日、Day 為工作日數 × 8；草稿階段無行事曆資料則退回原始算式）
+            bool isWorkingDayType = WorkingDayLeaveTypes.Contains(effectiveLeaveType);
+            decimal recalcHours;
+            if (isWorkingDayType && unit == LeaveTimeUnit.Hour)
             {
-                LeaveTimeUnit.Hour    => (decimal)(item.EndDate - item.StartDate).TotalHours,
-                LeaveTimeUnit.HalfDay => body.Hours ?? (decimal)(item.EndDate - item.StartDate).TotalHours,
-                LeaveTimeUnit.Day     => ((item.EndDate.Date - item.StartDate.Date).Days + 1) * 8m,
-                _                     => (decimal)(item.EndDate - item.StartDate).TotalHours,
-            };
-            // 工作日型 Day 假別：扣除國定假日與六日，天數以實際工作日計（草稿階段無行事曆資料則退回原始日曆天）
-            if (unit == LeaveTimeUnit.Day && WorkingDayLeaveTypes.Contains(effectiveLeaveType))
+                (_, recalcHours) = await ComputeHourUnitHoursAsync(item.StartDate, item.EndDate);
+            }
+            else if (isWorkingDayType && unit == LeaveTimeUnit.Day)
             {
                 var (_, _, working) = await ComputeWorkingDatesAsync(item.StartDate, item.EndDate);
                 recalcHours = working.Count * 8m;
             }
+            else
+            {
+                recalcHours = unit switch
+                {
+                    LeaveTimeUnit.Hour    => (decimal)(item.EndDate - item.StartDate).TotalHours,
+                    LeaveTimeUnit.HalfDay => body.Hours ?? (decimal)(item.EndDate - item.StartDate).TotalHours,
+                    LeaveTimeUnit.Day     => ((item.EndDate.Date - item.StartDate.Date).Days + 1) * 8m,
+                    _                     => (decimal)(item.EndDate - item.StartDate).TotalHours,
+                };
+            }
+            if (recalcHours <= 0 && isWorkingDayType && unit != LeaveTimeUnit.HalfDay)
+                return new BadRequestObjectResult(ApiResponse.Fail("此區間全為國定假日或六日，無可請假的工作日。"));
             if (recalcHours <= 0)
                 return new BadRequestObjectResult(ApiResponse.Fail("時數必須大於 0。"));
             if (unit == LeaveTimeUnit.HalfDay && recalcHours % 4m != 0m)
@@ -881,17 +954,38 @@ public sealed class LeaveRequestHandler(
                 return new BadRequestObjectResult(ApiResponse.Fail(eligError));
         }
 
-        // 工作日型 Day 假別（如公假）：送出時強制要求行事曆已匯入並權威重算 Hours（扣國定假日與六日）。
+        // 工作日型假別（除歲時祭儀假外皆是）：送出時強制要求行事曆已匯入並權威重算 Hours（扣國定假日與六日）。
+        // Day → 工作日數 × 8（產假亦走此路徑）；Hour → 逐日累加只算工作日；
+        // HalfDay 沿用既有「信任 client」原則不重算。
         // 確保後續 requestDays（Hours/8）分流與天數上限驗證皆以正確工作日為準。
-        if (GetTimeUnit(item.LeaveType) == LeaveTimeUnit.Day && WorkingDayLeaveTypes.Contains(item.LeaveType))
+        var submitUnit = GetTimeUnit(item.LeaveType);
+        if (WorkingDayLeaveTypes.Contains(item.LeaveType) &&
+            submitUnit is LeaveTimeUnit.Day or LeaveTimeUnit.Hour)
         {
-            var (hasData, _, working) = await ComputeWorkingDatesAsync(item.StartDate, item.EndDate);
-            if (!hasData)
-                return new BadRequestObjectResult(ApiResponse.Fail(
-                    $"尚未匯入 {item.StartDate:yyyy} 年行事曆，無法計算扣除假日後的請假天數，請先於「行事曆設定」匯入。"));
-            if (working.Count == 0)
-                return new BadRequestObjectResult(ApiResponse.Fail("此區間全為國定假日或六日，無可請假的工作日。"));
-            item.Hours = working.Count * 8m;
+            var yearLabel = item.StartDate.Year == item.EndDate.Year
+                ? $"{item.StartDate:yyyy}"
+                : $"{item.StartDate:yyyy}–{item.EndDate:yyyy}";
+
+            if (submitUnit == LeaveTimeUnit.Day)
+            {
+                var (hasData, _, working) = await ComputeWorkingDatesAsync(item.StartDate, item.EndDate);
+                if (!hasData)
+                    return new BadRequestObjectResult(ApiResponse.Fail(
+                        $"尚未匯入 {yearLabel} 年行事曆，無法計算扣除假日後的請假天數，請先於「行事曆設定」匯入。"));
+                if (working.Count == 0)
+                    return new BadRequestObjectResult(ApiResponse.Fail("此區間全為國定假日或六日，無可請假的工作日。"));
+                item.Hours = working.Count * 8m;
+            }
+            else
+            {
+                var (hasData, hours) = await ComputeHourUnitHoursAsync(item.StartDate, item.EndDate);
+                if (!hasData)
+                    return new BadRequestObjectResult(ApiResponse.Fail(
+                        $"尚未匯入 {yearLabel} 年行事曆，無法計算扣除假日後的請假時數，請先於「行事曆設定」匯入。"));
+                if (hours <= 0)
+                    return new BadRequestObjectResult(ApiResponse.Fail("此區間全為國定假日或六日，無可請假的工作日。"));
+                item.Hours = hours;
+            }
         }
 
         // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程

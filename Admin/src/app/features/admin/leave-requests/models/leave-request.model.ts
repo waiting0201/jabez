@@ -57,12 +57,22 @@ export const LEAVE_TIME_UNIT: Record<LeaveType, LeaveTimeUnit> = {
 };
 
 /**
- * 工作日型假別：天數以「扣除國定假日與六日後的實際工作日」計算（顯示請假日清單）。
- * 產假 / 婚假 / 喪假 / 流產假系列 / 歲時祭儀 / 生理假等依法為「連續日曆天」，不在此清單、不扣假日。
+ * 工作日型假別：天數 / 時數以「扣除國定假日與六日後的實際工作日」計算（顯示請假日清單）。
+ * 除歲時祭儀假（依法為連續日曆天）外皆適用；產假區間仍為起始日 +55 天，但只計其中工作日。
  * 須與後端 LeaveRequestHandler.WorkingDayLeaveTypes 保持同步。
  */
 export const WORKING_DAY_LEAVE_TYPES: LeaveType[] =
-  ['annual', 'personal', 'sick', 'compensatory', 'official', 'senior_executive'];
+  ['annual', 'personal', 'sick', 'compensatory', 'official', 'senior_executive',
+   'marriage', 'maternity', 'bereavement',
+   'miscarriage_3m', 'miscarriage_2to3m', 'miscarriage_under2m',
+   'prenatal_checkup', 'paternity', 'menstrual'];
+
+/**
+ * 工作日標準時段（與 half_day 的 am 08:00–12:00 / pm 13:00–17:00 一致，全日 8 小時）。
+ * 供 hour 單位跨日請假的逐日累加使用；須與後端 LeaveRequestHandler 的同名常數保持同步。
+ */
+export const WORKDAY_START_HOUR = 8;
+export const WORKDAY_END_HOUR   = 17;
 
 /** 格式化時數顯示（依單位） */
 export function formatLeaveDuration(leaveType: LeaveType, hours: number): string {

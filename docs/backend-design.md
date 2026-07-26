@@ -736,7 +736,7 @@ public sealed class GcisService(HttpClient http, ILogger<GcisService> logger) : 
 | `GET /job-titles/lookup` | `GET /job-titles`（需 `job-titles:read`） | 申請表「指定審核者」職稱下拉 |
 | `GET /vendors/lookup` | `GET /vendors`（需 `vendors:read`） | 請款表單「廠商」下拉，僅回 `IsActive=true` |
 | `GET /vendors/lookup-by-tax-id?taxId=XXXXXXXX` | — | 以統編查 GCIS 公司登記資料，自動帶出廠商名稱 / 地址 / 負責人；任何登入者可用 |
-| `GET /leave-requests/working-days?start=&end=&leaveType=` | `GET /calendar-days`（需 `calendar-days:read`） | 請假表單即時計算扣除國定假日與六日後的請假日清單與天數；重用 `CalendarDayReadService`，工作日型假別才扣假日，避免把後台行事曆權限強加給請假員工 |
+| `GET /leave-requests/working-days?start=&end=&leaveType=` | `GET /calendar-days`（需 `calendar-days:read`） | 請假表單即時計算扣除國定假日與六日後的請假日清單與天數；重用 `CalendarDayReadService`，工作日型假別（除歲時祭儀假外的 15 種）才扣假日，避免把後台行事曆權限強加給請假員工 |
 | `POST /vendors` *(無需權限)* | — | 請款表單 quick-add modal：任何登入者皆可新建廠商，避免後台 CRUD 權限被強加給請款人 |
 | `GET /files/signatures/{fileName}` / `/files/avatars/{fileName}` | — | 簽名檔 / 頭像 Blob 代理（公開路由） |
 | `GET /me/user` | `GET /users/{id}`（需 `users:read`） | 「個人資訊」唯讀頁：員工查看自己的帳號資料（從 JWT `sub` 取自身 id） |
