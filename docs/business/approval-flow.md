@@ -310,6 +310,7 @@ returned ──(DELETE supplements/{n} 主動放棄)──→ 同上回滾
 - 追加核准後 `SUM(installments)` 須等於**新**總額：已撥款列鎖定不可改，財務**補一期**新增金額。原本 `FullyPaid` 的單追加後會變回 `PartiallyPaid`
 - **追加簽核期間父單不是 `approved` → 該期間無法新增或送出沖銷**（`GET /write-off-requests/available-advances` 自動排除；`POST` / `PATCH` / `submit` 三處皆有守門，避免對變動中的總額沖銷）
 - 追加核准後，沖銷「待沖銷」= 新總額 − 已沖銷
+- **新增沖銷表單會唯讀列出所選預支單的全批次費用明細**（依「第1次 / 第N次追加」分組，各段標該批次預支日期），供申請人對照填寫實際花費。資料由 `GET /write-off-requests/available-advances` 的 `rounds` / `items` 一併帶回（不需 `advance-requests:read`）；因追加簽核期間該單已被排除，此處列出的批次必為已核准批次
 
 ### 守門
 

@@ -54,7 +54,7 @@ public sealed class WriteOffRequestHandler(
         var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         bool isSuperAdmin = user?.IsSuperAdmin == true;
 
-        var list = await db.AdvanceRequests
+        var heads = await db.AdvanceRequests
             .AsNoTracking()
             .Include(a => a.Project)
             .Where(a => a.ApprovalStatus == "approved"
@@ -67,12 +67,48 @@ public sealed class WriteOffRequestHandler(
                 a.RequestNo,
                 ProjectCode = a.Project != null ? a.Project.Code : "",
                 a.ActivityName,
+                a.AdvanceDate,
+                a.CashTotal,
+                a.CheckTotal,
                 a.GrandTotal,
                 WrittenOffTotal = db.WriteOffRecords
                     .Where(w => w.AdvanceRequestId == a.Id && w.ApprovalStatus != "rejected")
                     .Sum(w => (decimal?)w.GrandTotal) ?? 0m,
             })
             .ToListAsync();
+
+        // 一次撈回全部明細與追加批次（不逐單查詢，避免 N+1）
+        var ids = heads.Select(h => h.Id).ToList();
+
+        var itemLookup = (await db.AdvanceRequestItems
+                .AsNoTracking()
+                .Where(i => ids.Contains(i.AdvanceRequestId))
+                .OrderBy(i => i.RoundNo).ThenBy(i => i.SortOrder).ThenBy(i => i.Id)
+                .ToListAsync())
+            .ToLookup(i => i.AdvanceRequestId,
+                      i => new AdvanceRequestItemDto(
+                          i.Id, i.Category, i.SeqNo, i.ItemName, i.UnitPrice, i.Quantity,
+                          i.TotalPrice, i.CashAmount, i.CheckAmount, i.Note, i.SortOrder,
+                          i.FileName, i.FileUrl, i.RoundNo));
+
+        var supLookup = (await db.AdvanceRequestSupplements
+                .AsNoTracking()
+                .Where(s => ids.Contains(s.AdvanceRequestId))
+                .OrderBy(s => s.RoundNo)
+                .Select(s => new { s.AdvanceRequestId, s.RoundNo, s.AdvanceDate, s.Reason })
+                .ToListAsync())
+            .ToLookup(s => s.AdvanceRequestId);
+
+        var list = heads.Select(h =>
+        {
+            var items = itemLookup[h.Id].ToArray();
+            return new AvailableAdvanceDto(
+                h.Id, h.RequestNo, h.ProjectCode, h.ActivityName, h.AdvanceDate,
+                h.CashTotal, h.CheckTotal, h.GrandTotal, h.WrittenOffTotal,
+                // 批次組裝規則與 GET /advance-requests/{id} 共用同一份實作
+                AdvanceRequestReadService.BuildRounds(h.AdvanceDate, supLookup[h.Id], items),
+                items);
+        }).ToList();
 
         return new OkObjectResult(ApiResponse.Ok(list));
     }

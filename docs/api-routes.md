@@ -140,6 +140,7 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
+| GET | `/write-off-requests/available-advances` | 可沖銷的預支申請清單（`AvailableAdvanceDto[]`：已核准且未結案；含 `rounds` 各預支批次與 `items` 全批次費用明細，供新增表單唯讀對照，免 `advance-requests:read`） |
 | GET/POST | `/write-off-requests` | 預支沖銷申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/write-off-requests/{id}` | 預支沖銷申請 CRUD |
 | PATCH | `/write-off-requests/{id}/submit` | 送出預支沖銷申請（draft → pending） |

@@ -90,6 +90,80 @@
     </div>
   </div>
 
+  <!-- 預支費用明細（新增模式選定預支單後顯示，含全部追加批次，唯讀對照用） -->
+  @if (!isEdit && selectedAdvance; as adv) {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-transparent border-bottom flex items-center justify-between">
+        <div class="flex items-center gap-2 fw-600">
+          <svg class="sa-icon text-primary" style="stroke: currentColor">
+            <use href="/assets/icons/sprite.svg#list"></use>
+          </svg>
+          預支費用明細
+        </div>
+        @if (adv.rounds.length > 1) {
+          <span class="badge bg-blue-subtle text-blue-emphasis">含追加（共 {{ adv.rounds.length }} 批）</span>
+        }
+      </div>
+      <div class="card-body p-0">
+        @if (adv.items.length === 0) {
+          <div class="text-muted small px-4 py-3">此預支單無費用明細。</div>
+        } @else {
+          <div class="table-responsive">
+            <table class="table table-sm mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th style="width:130px">批次</th>
+                  <th>分類</th>
+                  <th>項次</th>
+                  <th>項目說明</th>
+                  <th>單價</th>
+                  <th>數量/單位</th>
+                  <th class="text-right">總價</th>
+                  <th class="text-right">現金(預支)</th>
+                  <th class="text-right">支票(月結)</th>
+                  <th>備註</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of adv.items; track item.id; let i = $index) {
+                  <tr>
+                    <!-- 同批次第二列起留白，比照分類欄慣例 -->
+                    <td class="small">
+                      @if (isFirstOfRound(adv.items, i)) {
+                        <span class="fw-500">{{ roundLabel(item.roundNo) }}</span>
+                        @if (roundDate(adv, item.roundNo); as d) {
+                          <div class="text-muted">{{ d | date:'yyyy-MM-dd' }}</div>
+                        }
+                      }
+                    </td>
+                    <td class="small">{{ item.category }}</td>
+                    <td class="small">{{ item.seqNo }}</td>
+                    <td class="small">{{ item.itemName }}</td>
+                    <td class="small">{{ item.unitPrice | number:'1.0-0' }}</td>
+                    <td class="small">{{ item.quantity }}</td>
+                    <td class="text-right small fw-500">{{ item.totalPrice | number:'1.0-0' }}</td>
+                    <td class="text-right small">{{ item.cashAmount | number:'1.0-0' }}</td>
+                    <td class="text-right small">{{ item.checkAmount | number:'1.0-0' }}</td>
+                    <td class="small text-muted">{{ item.note || '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+              <tfoot>
+                <tr class="table-light">
+                  <td colspan="6" class="text-right fw-500 small">合計</td>
+                  <td class="text-right fw-600">{{ adv.grandTotal | number:'1.0-0' }}</td>
+                  <td class="text-right fw-600">{{ adv.cashTotal | number:'1.0-0' }}</td>
+                  <td class="text-right fw-600">{{ adv.checkTotal | number:'1.0-0' }}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
   <form [formGroup]="form" (ngSubmit)="save()">
   <div class="row g-4">
   <div class="col-12 col-xl-10">
