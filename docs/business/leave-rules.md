@@ -189,6 +189,6 @@
 
 - **請假走簽核流程** → [approval-flow.md](approval-flow.md)（請假屬 Group A 全程禁止自審）
 - **事假 / 病假扣薪計算** → [payroll-formula.md §扣薪規則](payroll-formula.md)
-- **打卡時段阻擋規則**（已核准請假時段內無法打卡） → [api-routes.md §出勤打卡](../api-routes.md#出勤打卡)
+- **打卡時段阻擋規則**（已核准請假時段內無法打上下班卡；例外：**當日全日請假 + 已核准加班單 → 可直接打「加班開始」**，免下班卡） → [attendance-clock-rules.md](attendance-clock-rules.md)
 - **產假狀態 / 配額查詢端點** → [api-routes.md §請款 / 請假...](../api-routes.md#請款--請假--出差--加班--預支申請)
 - **`LeaveRequest` Entity 結構** → [database-schema.md](../database-schema.md)

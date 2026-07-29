@@ -183,56 +183,17 @@ public sealed class LeaveRequestHandler(
     }
 
     private static IEnumerable<DateTime> EnumerateDates(DateTime start, DateTime end)
-    {
-        for (var d = start.Date; d <= end.Date; d = d.AddDays(1))
-            yield return d;
-    }
+        => WorkCalendarHelper.EnumerateDates(start, end);
 
     /// <summary>
     /// 計算 [start, end] 內的請假日 / 假日清單。
     /// 行事曆有資料 → 以 CalendarDay.IsHoliday（已含六日 + 國定假、補班六為工作日）為準；
     /// 無資料 → 退回以星期六日判定（僅扣六日，國定假需匯入行事曆才會扣）。
+    /// 實作已抽至 WorkCalendarHelper（與打卡的休假日判定共用同一份規則）。
     /// </summary>
-    private async Task<(bool hasData, List<DateTime> holidays, List<DateTime> working)>
+    private Task<(bool hasData, List<DateTime> holidays, List<DateTime> working)>
         ComputeWorkingDatesAsync(DateTime start, DateTime end)
-    {
-        var s = start.Date;
-        var e = end.Date;
-        var hasData = await HasCalendarForAllYearsAsync(s, e);
-        var holidaySet = hasData
-            ? (await calendarReader.GetHolidayDatesAsync(s, e)).Select(d => d.Date).ToHashSet()
-            : [];
-
-        var holidays = new List<DateTime>();
-        var working  = new List<DateTime>();
-        foreach (var d in EnumerateDates(s, e))
-        {
-            bool isHoliday = hasData
-                ? holidaySet.Contains(d)
-                : d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
-            if (isHoliday) holidays.Add(d); else working.Add(d);
-        }
-        return (hasData, holidays, working);
-    }
-
-    /// <summary>
-    /// 檢查區間橫跨的「每一個年度」都已匯入行事曆。
-    /// CalendarDayReadService.HasDataForRangeAsync 是 EXISTS 語意（區間內任一天有資料即為 true），
-    /// 產假（56 個日曆天）與拉長後的婚假 / 喪假可能跨年，只匯入其中一年會誤判，故逐年檢查。
-    /// </summary>
-    private async Task<bool> HasCalendarForAllYearsAsync(DateTime start, DateTime end)
-    {
-        for (var y = start.Year; y <= end.Year; y++)
-        {
-            if (!await calendarReader.HasDataForRangeAsync(new DateTime(y, 1, 1), new DateTime(y, 12, 31)))
-                return false;
-        }
-        return true;
-    }
-
-    /// <summary>工作日標準時段（與 half_day 的 am 08:00–12:00 / pm 13:00–17:00 一致，全日 8 小時）</summary>
-    private const int WorkdayStartHour = 8;
-    private const int WorkdayEndHour   = 17;
+        => WorkCalendarHelper.ComputeWorkingDatesAsync(calendarReader, start, end);
 
     /// <summary>
     /// Hour 單位假別（事假 / 病假 / 產檢假 / 陪產假）的時數計算：逐日累加，只算工作日。
@@ -255,9 +216,9 @@ public sealed class LeaveRequestHandler(
         foreach (var d in workingSet)
         {
             if (d == start.Date)
-                total += Math.Clamp(WorkdayEndHour - start.Hour, 0, 8);
+                total += Math.Clamp(WorkdayHours.EndHour - start.Hour, 0, 8);
             else if (d == end.Date)
-                total += Math.Clamp(end.Hour - WorkdayStartHour, 0, 8);
+                total += Math.Clamp(end.Hour - WorkdayHours.StartHour, 0, 8);
             else
                 total += 8m;
         }

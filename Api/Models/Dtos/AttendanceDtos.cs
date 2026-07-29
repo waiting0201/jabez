@@ -38,7 +38,13 @@ public sealed record TodayAttendanceDto(
     double?   OvertimeEndLatitude,
     double?   OvertimeEndLongitude,
     int?      OvertimeRequestId,
-    IReadOnlyList<ActiveLeaveDto> TodayLeaves);
+    IReadOnlyList<ActiveLeaveDto> TodayLeaves,
+    /// <summary>
+    /// 今日免下班卡即可打「加班開始」（休假日或全日請假）。
+    /// 與 AttendanceHandler.OvertimeStartAsync 的放行判定同源，前端不自行重組規則。
+    /// 有預設值 → Dapper 的 MapTodayRow 不需異動（此欄位不存在於 DB，由 Handler 以 with { } 補上）。
+    /// </summary>
+    bool CanOvertimeWithoutClockOut = false);
 
 /// <summary>當下落在已核准請假時段內的請假資訊（供打卡阻擋訊息與前端提示）</summary>
 public sealed record ActiveLeaveDto(

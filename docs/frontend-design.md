@@ -882,6 +882,35 @@ Input：`advanceRounds` / `writeOffHistory` / `currentGrandTotal` / `refundDue`�
 </button>
 ```
 
+### 8.5 disabled 必須說明原因
+
+當按鈕的 `[disabled]` 來自**業務條件**（而非單純 loading）時，必須同時綁 `[title]` 說明原因，
+否則使用者只看到一顆灰掉的按鈕、無從得知要先做什麼。
+
+把原因收斂成一個 `computed`（回傳空字串代表可按），而非在 template 內寫多層三元式：
+
+```ts
+/** 加班開始 disabled 時的原因提示 */
+overtimeStartHint = computed<string>(() => {
+  const r = this.todayRecord();
+  if (r?.overtimeStartTime) return '今日已打加班開始卡';
+  if (this.approvedRequests().length === 0) return '今日無已核准的加班申請單';
+  if (!r?.clockOutTime && !r?.canOvertimeWithoutClockOut) return '請先打下班卡（今日為上班日）';
+  return '';
+});
+```
+
+```html
+<button class="btn btn-outline-primary"
+        [disabled]="!canOvertimeStart()"
+        [title]="overtimeStartHint()"
+        (click)="onOvertimeStartClick()">加班開始</button>
+```
+
+範例：dashboard 打卡四鈕（`features/dashboard/pages/dashboard/`）。
+條件牽涉後端業務規則時，**由後端回一個結論旗標**（如 `canOvertimeWithoutClockOut`），
+前端不重組規則，避免前後端判定漂移。
+
 ---
 
 ## 9. 狀態提示卡
