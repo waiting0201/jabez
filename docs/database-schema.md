@@ -44,7 +44,7 @@
 | `AdvanceRequestItem` | 預支明細（含 `RoundNo` 所屬預支批次，1 = 原始預支、≥2 = 第 N 次追加） |
 | `AdvanceRequestSupplement` | **追加預支批次**（只存 `RoundNo ≥ 2`；Round 1 即父單本身，不入此表）。欄位：`RoundNo / AdvanceDate / Reason / CreatedById / CreatedAt` + 駁回回滾快照 `PrevCurrentStepOrder / PrevReviewedAt / PrevReviewedById / PrevReviewNote`；unique(`AdvanceRequestId`,`RoundNo`)。**不存金額欄位**，各批次金額一律由 `SUM(AdvanceRequestItems WHERE RoundNo = N)` 推導 |
 | `WriteOffRecord` | 預支沖銷申請（獨立簽核流程，關聯 AdvanceRequest，含 ApprovalStatus/CurrentStepOrder） |
-| `WriteOffItem` | 沖銷明細（含發票號碼、檔案上傳；`CheckPaid / CheckPaidAt / CheckPaidById` 支票已支付註記 —— 支票由公司直接付給廠商，不走撥款分期，僅由財務體系 / Superadmin 於簽核頁勾選；`CheckPaidById` FK→Users **NO_ACTION**，須列入刪除使用者的清洗清單） |
+| `WriteOffItem` | 沖銷明細（含發票號碼、檔案上傳；`CheckPaid / CheckPaidAt / CheckPaidById` 支票已支付註記 —— 支票由公司直接付給廠商，不走撥款分期，僅由財務管理部（`DepartmentCodes.FinanceStep`）/ Superadmin 於簽核頁勾選；`CheckPaidById` FK→Users **NO_ACTION**，須列入刪除使用者的清洗清單） |
 | `WriteOffAttachment` | 預支沖銷整單批次附件（照片 / PDF，FK Cascade，存 `request-attachments`） |
 | `TravelWriteOffRecord` | 出差預支沖銷申請（獨立簽核流程，關聯 TravelRequest） |
 | `TravelWriteOffItem` | 出差預支沖銷明細（含發票號碼、檔案上傳） |
