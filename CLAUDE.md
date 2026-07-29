@@ -202,7 +202,7 @@ Admin/src/app/
     │   ├── holiday-travel-requests/ # 假日執行活動申請（共用 TravelRequest entity，IsHolidayTravel=true，計入假日津貼；參與人員可逐日勾選個人參與日期，未勾選＝全程參與）
     │   ├── overtime-requests/ # 加班申請（走簽核流程；關聯專案改單選 radio 且可瀏覽全部未結案專案 /projects/active?all=true 支援跨部門；指定審核者卡片加註「跨部門支援時第一審核者填該專案協理、第二審核者選自部門協理」）
     │   ├── advance-requests/  # 預支申請（已核准單可新增「追加預支」批次：/:id/supplements/new 與 /:id/supplements/:round/edit 共用 advance-form 的追加模式；詳情頁預支日期改為批次清單、費用明細加「批次」欄；共用 roundLabel() 為批次標籤單一真相；**明細金額三欄連動：總價 = 現金(預支) + 支票(月結)，任兩欄輸入自動算出第三欄，規則與預支沖銷相同**）
-    │   ├── write-off-requests/ # 預支沖銷申請（獨立簽核流程；**清單依預支單 group，母層列操作欄「檢視」進入彙總頁 write-off-overview（`/by-advance/:advanceId`）：一頁看完預支單完整資訊 + 該單全部沖銷單完整資訊**；明細下方含整單批次附件上傳，共用 shared/components/attachments-upload；新增表單選定預支單後，於「預支單」卡片下方唯讀列出該單全批次預支費用明細（含追加，依批次分組），資料由 /write-off-requests/available-advances 一併帶回；**沖銷資訊卡改為 `<app-write-off-summary>` 列出預支各批次金額 + 各次沖銷金額 + 待沖銷餘額 / 應撥差額**；**超支差額走分期撥款**，明細另有「支票已支付」註記欄，該欄在簽核頁僅財務體系 / Superadmin 可見；**明細金額三欄連動：總價 = 現金花費 + 支票金額，任兩欄輸入自動算出第三欄**）
+    │   ├── write-off-requests/ # 預支沖銷申請（獨立簽核流程；**清單依預支單 group，母層列操作欄「檢視」進入彙總頁 write-off-overview（`/by-advance/:advanceId`）：一頁看完預支單完整資訊 + 該單全部沖銷單完整資訊**；明細下方含整單批次附件上傳，共用 shared/components/attachments-upload；新增表單選定預支單後，於「預支單」卡片下方唯讀列出該單全批次預支費用明細（含追加，依批次分組），資料由 /write-off-requests/available-advances 一併帶回；**沖銷資訊卡改為 `<app-write-off-summary>` 列出預支各批次金額 + 各次沖銷金額 + 待沖銷餘額 / 應撥差額**；**超支差額走分期撥款**，明細另有「支票已支付」註記欄，該欄在簽核頁對所有審核者顯示，但僅財務體系 / Superadmin 可勾選，其他人 checkbox disabled 反白；**明細金額三欄連動：總價 = 現金花費 + 支票金額，任兩欄輸入自動算出第三欄**）
     │   ├── travel-write-off-requests/ # 出差預支沖銷申請（獨立簽核流程）
     │   ├── insurance-brackets/ # 勞健保級距維護
     │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出）

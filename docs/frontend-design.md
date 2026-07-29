@@ -774,9 +774,10 @@ Input：`advanceRounds` / `writeOffHistory` / `currentGrandTotal` / `refundDue`�
 
 支票由公司**直接付給廠商**，不是撥給員工的錢，因此不進撥款分期，改以沖銷明細的勾選註記。
 
-- **簽核頁整欄僅財務體系 / Superadmin 可見**（`canSeeCheckPaid` computed；`thead` / `tbody` / `tfoot` 三處同時 `@if` 包起來，非唯讀而是整欄不渲染）
-- 簽核頁（財務體系 / Superadmin，單子 pending 或 approved）：checkbox，變更即呼叫 `PATCH /write-off-requests/{id}/check-payments`，樂觀更新不重載整頁
-- 簽核頁（財務體系但單子非 pending / approved）/ 詳情頁：唯讀顯示 `✓`（`title` 帶勾選日期與勾選人）或 `—`
+- **簽核頁整欄對所有審核者顯示**（2026-07 改：原本非財務體系整欄不渲染，改為欄位照常顯示、checkbox `disabled` 反白），可否操作靠 `canMarkCheckPaid(task)`
+- 簽核頁（財務體系 / Superadmin，單子 pending 或 approved）：checkbox 可勾，變更即呼叫 `PATCH /write-off-requests/{id}/check-payments`，樂觀更新不重載整頁
+- 簽核頁（非財務體系，或單子非 pending / approved）：同一顆 checkbox `disabled` 反白，仍顯示已勾狀態；依 §8.5 綁 `[title]` 說明原因，原因收斂在 `checkPaidDisabledHint(task)`（空字串＝可勾），title 文字由 `checkPaidTitle(task, item)` 產出（已勾選改顯示勾選日期與勾選人）
+- 詳情頁 / 彙總頁：唯讀顯示 `✓`（`title` 帶勾選日期與勾選人）或 `—`
 - `checkAmount === 0` 的列一律顯示 `—` 且不可勾（後端同步擋下）
 - 表尾統計：`已支付 N / M 筆`
 
