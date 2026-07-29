@@ -15,6 +15,7 @@ namespace Jabez.Api.Handlers;
 public sealed class WriteOffRequestHandler(
     AppDbContext db,
     IWriteOffRequestReadService reader,
+    IAdvanceRequestReadService advanceReader,
     IBlobStorageService blob,
     IJwtService jwtService,
     IApprovalNotificationService notifier,
@@ -155,6 +156,45 @@ public sealed class WriteOffRequestHandler(
 
         var item = await reader.GetByIdAsync(intId);
         return new OkObjectResult(ApiResponse.Ok(item));
+    }
+
+    // ── 依預支單彙總檢視（預支單完整資訊 + 該單全部沖銷單）──────────────────
+
+    public async Task<IActionResult> GetByAdvanceAsync(HttpRequest req, string advanceId)
+    {
+        var userId = await GetUserIdAsync(req);
+
+        if (!int.TryParse(advanceId, out var intId))
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid advance request ID format."));
+
+        var advance = await advanceReader.GetByIdAsync(intId);
+        if (advance is null)
+            return new NotFoundObjectResult(ApiResponse.Fail("Advance request not found."));
+
+        // 可見性比照單筆沖銷：預支單申請人、或該預支單底下任一沖銷單的申請人 / 審核者 / 指定審核者
+        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        if (user?.IsSuperAdmin != true)
+        {
+            var writeOffIds = await db.WriteOffRecords.AsNoTracking()
+                .Where(w => w.AdvanceRequestId == intId)
+                .Select(w => w.Id)
+                .ToListAsync();
+
+            bool isAdvanceSubmitter = await db.AdvanceRequests.AsNoTracking()
+                .AnyAsync(a => a.Id == intId && a.SubmittedById == userId);
+            bool isSubmitter = await db.WriteOffRecords.AsNoTracking()
+                .AnyAsync(w => w.AdvanceRequestId == intId && w.SubmittedById == userId);
+            bool hasReviewed = await db.ApprovalRecords.AsNoTracking()
+                .AnyAsync(ar => ar.ApplicationType == RequestType && writeOffIds.Contains(ar.ApplicationId) && ar.ReviewedById == userId);
+            bool isDesignated = await db.RequestDesignatedReviewers.AsNoTracking()
+                .AnyAsync(r => r.RequestType == RequestType && writeOffIds.Contains(r.RequestId) && r.ReviewerId == userId);
+
+            if (!isAdvanceSubmitter && !isSubmitter && !hasReviewed && !isDesignated)
+                return new NotFoundObjectResult(ApiResponse.Fail("Advance request not found."));
+        }
+
+        var writeOffs = await reader.GetByAdvanceIdAsync(intId);
+        return new OkObjectResult(ApiResponse.Ok(new AdvanceWriteOffOverviewDto(advance, writeOffs)));
     }
 
     // ── 新增（multipart/form-data，支援發票檔案上傳）──────────────────────

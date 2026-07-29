@@ -117,7 +117,7 @@
 | B. 複雜主檔 | `col-12 col-xl-8` | user / role / payroll |
 | C. 申請表（無明細） | `col-12 col-lg-10 col-xl-8` | leave-request / overtime-request |
 | C. 申請表（有明細） | `col-12 col-xl-10` | payment / travel / advance / write-off |
-| D. 詳情頁 | `col-12 col-xl-10` | advance-detail / write-off-detail |
+| D. 詳情頁 | `col-12 col-xl-10` | advance-detail / write-off-detail / write-off-overview |
 | E. 審核頁 | `col-12 col-lg-10 col-xl-8` | approval-task-review |
 | G. 設定頁 | `col-12 col-md-6 col-xl-4`（多欄並排） | settings |
 
@@ -798,6 +798,18 @@ Input：`advanceRounds` / `writeOffHistory` / `currentGrandTotal` / `refundDue`�
 - 推算值一律 `Math.max(0, …)` 不為負；被 0 截斷時（如支票 > 總價）以 `amountWarnings`（`Map<列 id, string>`，比照 §12.5c 的 `invoiceWarnings` 樣式與刪列清理）顯示紅字提示，**僅提示、不阻擋送出**
 - 所有推算寫入用 `setValue(v, {emitEvent: false})`，避免連鎖觸發
 - 表頭下方固定一行 `text-muted small` 說明：「總價 = 現金 + 支票，任兩欄輸入後自動算出第三欄」（預支申請的唯讀模式 `isReadOnly` 不顯示）
+
+### 7.10 清單分組母層 + 彙總頁（預支沖銷）
+
+[write-off-list](../Admin/src/app/features/admin/write-off-requests/pages/write-off-list/write-off-list.html) 依 `advanceRequestId` 把同一張預支單的沖銷單 group 起來：**單筆直接畫一般列，≥ 2 筆才畫母層摘要列**（預設收合，點列切換展開；子列以 `border-l-2 border-[var(--forest)]` 標示縮排）。
+
+母層列的規則：
+
+- **操作欄有「檢視」**（icon `#eye`），連到彙總頁 `['by-advance', advanceRequestId]`；因為整列本身是 toggle，連結必須 `(click)="$event.stopPropagation()"`，否則點檢視會順帶收合群組
+- 母層列不可用 `colspan` 蓋掉尾端欄位——尾欄要放操作鈕時，中間空白欄逐格補 `<td>`，且 `hidden lg:table-cell` 的欄位（如建立時間）空白 td 要**帶上同一組 class**，否則窄螢幕欄數對不齊
+- 母層金額欄顯示「已沖銷 / 預支總額」，狀態 / 時間欄留白（群組沒有單一狀態）
+
+彙總頁（[write-off-overview](../Admin/src/app/features/admin/write-off-requests/pages/write-off-overview/)）走**詳情頁版型**（`col-12 col-xl-10`）：預支資訊卡 → 沖銷單一覽表卡 → 預支費用明細卡 → `<app-installments-table>`（預支撥款）→ 逐張沖銷單卡（明細 / 附件 / 該次差額撥款 `<app-installments-table>`）。共用元件維持 card 結構，故一律放在卡片**外層同級**，不塞進 `card-body`（避免卡中卡）。
 
 ---
 
