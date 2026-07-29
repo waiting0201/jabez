@@ -71,7 +71,7 @@
     </div>
   }
 
-  <!-- 已核准頁籤篩選列：類型（所有人可見） + 撥款/退款（僅 Superadmin/總監室/財務部/會計部） -->
+  <!-- 已核准頁籤篩選列：類型（所有人可見） + 申請人 / 撥款退款（僅 Superadmin/總監室/財務部/會計部） -->
   @if (activeTab() === 'approved') {
     <div class="flex flex-wrap items-center gap-2 mb-4">
       <select class="form-select form-select-sm w-auto"
@@ -83,6 +83,18 @@
           <option [value]="opt[0]">{{ opt[1] }}</option>
         }
       </select>
+
+      @if (canSeeApplicantFilter()) {
+        <select class="form-select form-select-sm w-auto"
+                [value]="submittedByFilter()"
+                (change)="setSubmittedByFilter($any($event.target).value)"
+                aria-label="篩選申請人">
+          <option value="">全部申請人</option>
+          @for (a of applicantOptions(); track a.id) {
+            <option [value]="a.id">{{ a.name }}</option>
+          }
+        </select>
+      }
 
       @if (canSeePaymentFilter()) {
         <div class="flex gap-1">
@@ -180,6 +192,7 @@
                   {{ activeTab() === 'pending' ? '目前沒有待審核的簽核作業。'
                      : activeTab() === 'rejected' ? '目前沒有已拒絕的簽核作業。'
                      : activeTab() === 'director_pending' ? '目前沒有僅剩總監待簽核的簽核作業。'
+                     : submittedByFilter() ? '目前沒有此申請人的已核准簽核作業。'
                      : applicationTypeFilter() ? '目前沒有此類型的已核准簽核作業。'
                      : paymentStatus() === 'unpaid' ? '目前沒有尚未撥款的已核准簽核作業。'
                      : paymentStatus() === 'partial' ? '目前沒有部分撥款的已核准簽核作業。'

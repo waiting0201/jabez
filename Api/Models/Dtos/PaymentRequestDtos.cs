@@ -236,3 +236,6 @@ public sealed record ApprovalTaskDto(
     string?                     SubmittedBySignatureUrl = null,
     TravelPaymentTaskDetailDto? TravelPaymentDetail     = null,   // 出差請款申請詳情
     PreReviewTaskDetailDto?     PreReviewDetail         = null);  // 預審申請詳情
+
+/// <summary>簽核作業「申請人」下拉選項（僅財務體系部門可取得）。</summary>
+public sealed record ApprovalTaskApplicantDto(Guid Id, string Name);

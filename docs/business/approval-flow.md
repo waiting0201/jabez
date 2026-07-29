@@ -188,6 +188,16 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 - **匹配條件**：`ApprovalStatus = 'pending'` 且目前卡在的步驟（`CurrentStepOrder` 對應的 `ApprovalStep`）其 `JobTitleId` 對應的 `JobTitle.Level == 1`（即總監），不受呼叫者本身職稱/部門限制（因為財務管理部並非該步驟審核者，僅是檢視）。實作於 [PaymentRequestReadService.StepMatchClause](../../Api/Services/Dapper/PaymentRequestReadService.cs) 的 `director_pending` 分支，涵蓋全部 9 種申請類型（與待審核/已核准/已拒絕頁籤一致）。
 - **僅供檢視**：此頁籤內的申請單仍只能由總監本人（或 Superadmin）實際核准；財務管理部人員點擊進入詳情頁為唯讀（前端固定顯示查看圖示，不顯示可編輯的鉛筆圖示），送出審核動作仍會被 `AuthorizeStepAsync` 擋下。
 
+## 簽核作業列表「申請人」篩選（2026-07 新增）
+
+簽核作業列表「已核准」頁籤原本只有「全部類型」下拉，新增「全部申請人」下拉，供財務清查特定同仁的已核准單據（可與類型、撥款 / 退款子篩選任意組合）。
+
+- **可見範圍**：僅**財務體系部門**（`DepartmentCodes.FinancialAndAbove` = `CEO` / `FIN` / `AC` / `Jabez HQ` + 改制後英文全名總監室 / 財務管理部 / 會計室）或 Superadmin 可見，與撥款 / 退款子篩選同一集合。前端以 `approval-task-list.ts` 的 `canSeeApplicantFilter` 控制顯示，後端 [ApprovalTaskHandler.CanFilterByApplicant](../../Api/Handlers/ApprovalTaskHandler.cs) 為同一判定的真相。
+- **選項來源**：`GET /approval-tasks/applicants` —— 10 種申請單中曾送出（`ApprovalStatus <> 'draft'`）者的申請人去重清單，依姓名排序，排除 Superadmin。非財務體系呼叫回 403。
+- **篩選行為**：`GET /approval-tasks?submittedByUserId={guid}`，於 [PaymentRequestReadService](../../Api/Services/Dapper/PaymentRequestReadService.cs) 各申請類型 SQL 直接加 WHERE（不是撈完再丟），涵蓋全部類型。**申請人欄位不一致**：請款 / 預支 / 沖銷 / 出差沖銷 / 預審用 `SubmittedById`，請假 / 出差 / 假日執行活動 / 加班 / 出差請款用 `EmployeeId`。
+- **非財務體系帶此參數一律靜默忽略**（不回 403）；按單一 ID 查詢詳情時不套用。
+- 篩選**不放寬可見範圍**：仍疊在原本的審核者可見性條件之上，只會縮小結果。
+
 ## 依請假天數決定簽核關卡（MinDays 門檻，2026-07 新增）
 
 `ApprovalStep` 新增 `MinDays`（nullable int）欄位，讓**簽核步驟可依申請天數動態納入 / 略過**：

@@ -2,7 +2,7 @@ import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
 import {switchMap, map} from 'rxjs/operators';
-import {ApprovalTask, TaskStatus, InstallmentInput} from '../models/approval-task.model';
+import {ApprovalTask, ApprovalTaskApplicant, TaskStatus, InstallmentInput} from '../models/approval-task.model';
 import {ApplicationType} from '../../approvals/models/approval.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {NotificationService} from '../../notifications/services/notification.service';
@@ -33,12 +33,18 @@ export class ApprovalTaskService {
   private http = inject(HttpClient);
   private notification = inject(NotificationService);
 
-  getPaged(page: number, pageSize: number, status?: string, paymentStatus?: string, applicationType?: string): Observable<PagedResult<ApprovalTask>> {
+  getPaged(page: number, pageSize: number, status?: string, paymentStatus?: string, applicationType?: string, submittedByUserId?: string): Observable<PagedResult<ApprovalTask>> {
     const params: Record<string, any> = {page, pageSize};
     if (status) params['status'] = status;
     if (paymentStatus) params['paymentStatus'] = paymentStatus;
     if (applicationType) params['applicationType'] = applicationType;
+    if (submittedByUserId) params['submittedByUserId'] = submittedByUserId;
     return this.http.get<PagedResult<ApprovalTask>>(`${environment.apiUrl}/approval-tasks`, {params});
+  }
+
+  /** 申請人下拉選項（僅財務體系部門可呼叫，其他人後端回 403） */
+  getApplicants(): Observable<ApprovalTaskApplicant[]> {
+    return this.http.get<ApprovalTaskApplicant[]>(`${environment.apiUrl}/approval-tasks/applicants`);
   }
 
   getById(id: number, applicationType?: string): Observable<ApprovalTask> {

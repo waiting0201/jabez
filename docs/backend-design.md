@@ -788,6 +788,29 @@ public sealed class GcisService(HttpClient http, ILogger<GcisService> logger) : 
 
 > **歷史教訓**（2026-05）：所有 9 種申請表單的「指定審核者」欄位都呼叫 `GET /approval-items`（需 `approvals:read`），導致無此權限的員工看不到欄位。最後以 `GET /approval-items/active?type=` 解決。Code Review 看到一般員工頁面呼叫 admin CRUD 端點，要立刻警覺。
 
+### 13.6 部門受限篩選端點（Restricted Filter Lookup）
+
+與 §13.1 相反的情境：列表的**某個篩選條件只開放特定部門**（不是靠 Permission，而是靠部門 Code）。此時選項端點與篩選參數**兩者都要擋**，只擋一邊等於沒擋。
+
+- **已採用**：`GET /approval-tasks/applicants`（簽核作業「申請人」下拉，僅財務體系部門 / Superadmin）
+- **判定共用一個 private static**，選項端點與列表端點都呼叫它，避免兩處條件漂移：
+
+  ```csharp
+  private static bool CanFilterByApplicant(bool isSuperAdmin, string? deptCode)
+      => isSuperAdmin || DepartmentCodes.FinancialAndAbove.Contains(deptCode ?? "");
+  ```
+
+- **選項端點**：不符資格回 `403`（比照 `status=director_pending` 的擋法）
+- **列表篩選參數**：不符資格**靜默忽略**（當成沒帶），不回 403 —— 篩選只會縮小自己看得到的範圍，回錯誤反而讓正常瀏覽變脆弱
+
+  ```csharp
+  Guid? submittedByUserId = CanFilterByApplicant(callerIsSuperAdmin, callerDeptCode)
+                            && Guid.TryParse(req.Query["submittedByUserId"], out var sbu) ? sbu : null;
+  ```
+
+- **部門 Code 集合**一律取自 [Constants.cs](../Api/Common/Constants.cs) 的 `DepartmentCodes.*`，並與前端同名集合同步（見 [frontend-design.md §3 權限差異化篩選控件](frontend-design.md#權限差異化篩選控件依部門--權限顯示)）
+- **路由次序**：選項端點是字面段（`["approval-tasks", "applicants"]`），**必須**排在 `["approval-tasks", var id]` 之前（§3.3）
+
 ---
 
 ## 13.5 父單多批次（Round）模式

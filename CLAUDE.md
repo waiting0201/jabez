@@ -190,7 +190,7 @@ Admin/src/app/
     │   ├── job-titles/     # 職稱管理
     │   ├── vendors/        # 廠商管理（含 vendor-quick-add-modal；統編/身分證字號類型切換，統編 blur 自動帶出 GCIS 公司資料；個人工作室上傳身分證正反面；存摺封面必填）
     │   ├── approvals/      # 簽核流程設定（ApprovalItem + Steps；ApprovalItem 含 DepartmentId 部門維度，可為同一申請類型設「各部門專屬流程 + 通用預設」，送單時依申請人部門挑流程；子部門未設專屬流程時自動沿用最近祖先部門流程；Step 含 MinDays 天數門檻，null＝一律納入、N＝申請天數 ≥ N 才納入，目前供請假依天數分流；**非指定審核步驟可勾「例外指定審核」並逐一挑使用者（FormArray + select 列，整批替換 exceptionUserIds）**，名單內的申請人送單時該步驟改由申請人自行指定審核者，timeline 顯示「例外指定 N 人」badge）
-    │   ├── approval-tasks/ # 待審核任務清單
+    │   ├── approval-tasks/ # 待審核任務清單（已核准頁籤篩選列：全部類型下拉（所有人）＋**申請人下拉（僅財務體系部門 / Superadmin，選項來自 /approval-tasks/applicants）**＋撥款退款子篩選（僅財務體系））
     │   ├── projects/       # 專案管理
     │   ├── payment-requests/  # 請款申請（廠商請款 type=vendor / 一般請款 type=general 明細下方皆含整單批次附件上傳，共用 shared/components/attachments-upload）
     │   ├── pre-review-requests/ # 預審申請（事前預審，clone 自請款；無撥款、不計入報表；品項類別下拉 + 報價單 OCR；含 pre-review-pdf.service 列印合併所有上傳檔）
@@ -268,7 +268,7 @@ Api/
 │   ├── JobTitleHandler.cs
 │   ├── VendorHandler.cs               # 廠商管理 CRUD（multipart 支援存摺封面（必填）/ 身分證正反面上傳；統編與身分證字號擇一；lookup / lookup-by-tax-id / POST 開放任何登入者；刪除受 PaymentRequest 引用保護）
 │   ├── ApprovalHandler.cs             # ApprovalItem + Steps CRUD（ApprovalItem 含 DepartmentId 部門維度；唯一性以 (ApplicationType, DepartmentId) 判定；/active 依呼叫者部門解析流程，優先序：自身部門 > 最近祖先部門（沿 ParentId 往上）> 通用預設）；Step 含 DesignatedRequiresDepartment（指定審核步驟可設「需先選部門再選人」，支援一條流程多個指定步驟；多指定步驟前端連動見 shared/components/designated-reviewers-picker：連動閘控 + 部門帶入 + 部門最高層級自動略過；**Step 另含例外指定審核名單 `exceptionUserIds`（ApprovalStepException 子表，整批替換）**：非指定審核步驟可挑指定使用者，名單內的申請人送單時該步驟改由申請人自行指定審核者，與 UseApplicantDesignated 互斥）
-│   ├── ApprovalTaskHandler.cs         # 待審核任務查詢與審核動作
+│   ├── ApprovalTaskHandler.cs         # 待審核任務查詢與審核動作（列表另支援 applicationType / submittedByUserId 篩選；**申請人篩選與 GET /approval-tasks/applicants 限財務體系部門或 Superadmin**，判定共用 CanFilterByApplicant → DepartmentCodes.FinancialAndAbove）
 │   ├── ProjectHandler.cs
 │   ├── PaymentRequestHandler.cs       # 請款申請 CRUD（單號 PR-yyyyMMdd-NNN）
 │   ├── PreReviewRequestHandler.cs     # 預審申請 CRUD + Submit（單號 PRV-yyyyMMdd-NNN；報價單上傳 blob container=quotes；無 installments、不計入報表）
