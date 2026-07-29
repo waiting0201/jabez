@@ -39,6 +39,8 @@ import {LeaveType, formatLeaveDuration} from '../../../leave-requests/models/lea
  * 財務撥款步驟的部門 Code（須與後端 DepartmentCodes.FinanceStep、
  * approval-task-list.ts 的 FINANCE_STEP_DEPT_CODES 三處同步）：
  * 僅財務管理部，含舊短碼 'FIN' 與改制後英文全名，避免組織改制後判定失效。
+ * 兩種比對對象：canSetPaymentDate / canCloseAdvance / canCloseTravelRequest 比對**簽核步驟綁定部門**；
+ * checkPaidDisabledHint（支票已支付）比對**登入者自身部門**，與後端同一集合。
  */
 const FINANCE_STEP_DEPT_CODES = new Set(['FIN', 'Financial Management Department']);
 
@@ -275,19 +277,20 @@ export class ApprovalTaskReview implements OnInit {
 
   /**
    * 「支票已支付」不可勾的原因（空字串＝可勾）。
-   * 整欄一律顯示給所有審核者，非財務體系只是 checkbox disabled 反白，並以 title 說明原因。
+   * 整欄一律顯示給所有審核者，非財務管理部只是 checkbox disabled 反白，並以 title 說明原因。
    */
   checkPaidDisabledHint(task: ApprovalTask): string {
     if (task.applicationType !== 'write_off') return '僅預支沖銷申請適用';
-    if (!this.auth.isSuperAdmin() && !this.auth.isFinanceDept())
-      return '僅財務體系部門可註記支票支付狀態';
+    if (!this.auth.isSuperAdmin() && !FINANCE_STEP_DEPT_CODES.has(this.auth.departmentCode() ?? ''))
+      return '僅財務管理部可註記支票支付狀態';
     if (task.status !== 'pending' && task.status !== 'approved')
       return '只有待審核或已核准的沖銷申請可註記';
     return '';
   }
 
   /**
-   * 是否可勾選「支票已支付」：財務體系部門或 Superadmin，且單子在待審核 / 已核准狀態。
+   * 是否可勾選「支票已支付」：財務管理部（FINANCE_STEP_DEPT_CODES）或 Superadmin，
+   * 且單子在待審核 / 已核准狀態。範圍刻意與撥款日 / 撥款明細 / 結案一致，不含總監室 / 會計室。
    * 支票由公司直接付給廠商，不走撥款分期，僅以此旗標註記已付出。
    */
   canMarkCheckPaid(task: ApprovalTask): boolean {

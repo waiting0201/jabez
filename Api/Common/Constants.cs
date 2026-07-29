@@ -137,9 +137,11 @@ public static class DepartmentCodes
     /// 財務撥款步驟專用：簽核流程中「填撥款日 / 撥款明細 / 結案」的財務節點所綁定之部門 Code。
     /// 僅財務管理部（舊短碼 FIN + 改制後英文全名 FinanceEn），刻意不含 CEO / 總監 / HQ / 會計，
     /// 避免把上層核准步驟誤判為撥款填寫節點而擋住簽核。
+    /// 2026-07 起「支票已支付」註記（WriteOffRequestHandler.UpdateCheckPaymentsAsync）亦改用本集合，
+    /// 與撥款判定同範圍；此處是比對**登入者自身部門**，不是比對步驟綁定部門。
     /// 前端對應判定見 approval-task-review.ts 的 FINANCE_STEP_DEPT_CODES（canSetPaymentDate /
-    /// canCloseAdvance / canCloseTravelRequest）與 approval-task-list.ts 的 FINANCE_STEP_DEPT_CODES
-    /// （總監待簽核 tab 可見性），三處須同步。
+    /// canCloseAdvance / canCloseTravelRequest / checkPaidDisabledHint）與 approval-task-list.ts 的
+    /// FINANCE_STEP_DEPT_CODES（總監待簽核 tab 可見性），三處須同步。
     /// </summary>
     public static readonly IReadOnlySet<string> FinanceStep =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase)

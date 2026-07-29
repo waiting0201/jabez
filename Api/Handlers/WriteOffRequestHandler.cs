@@ -710,7 +710,8 @@ public sealed class WriteOffRequestHandler(
     // ── 支票已支付註記 ───────────────────────────────────────────────────────
 
     /// <summary>
-    /// 勾選 / 取消沖銷明細的「支票金額已支付」（僅財務體系部門或 Superadmin）。
+    /// 勾選 / 取消沖銷明細的「支票金額已支付」（僅財務管理部 <see cref="DepartmentCodes.FinanceStep"/> 或 Superadmin，
+    /// 與撥款日 / 撥款明細 / 結案的判定範圍一致，刻意不含總監室 / 會計室）。
     /// 支票由公司直接付給廠商，不走撥款分期，僅以此旗標註記已付出。
     /// </summary>
     public async Task<IActionResult> UpdateCheckPaymentsAsync(HttpRequest req, string id)
@@ -723,8 +724,8 @@ public sealed class WriteOffRequestHandler(
         var user = await db.Users.AsNoTracking().Include(u => u.Department).FirstOrDefaultAsync(u => u.Id == userId);
         if (user is null)
             return new UnauthorizedObjectResult(ApiResponse.Fail("User not found."));
-        if (!user.IsSuperAdmin && !DepartmentCodes.FinancialAndAbove.Contains(user.Department?.Code ?? ""))
-            throw AppException.Forbidden("僅財務體系部門或 Superadmin 可註記支票支付狀態。");
+        if (!user.IsSuperAdmin && !DepartmentCodes.FinanceStep.Contains(user.Department?.Code ?? ""))
+            throw AppException.Forbidden("僅財務管理部或 Superadmin 可註記支票支付狀態。");
 
         var wo = await db.WriteOffRecords
                          .Include(w => w.Items)
