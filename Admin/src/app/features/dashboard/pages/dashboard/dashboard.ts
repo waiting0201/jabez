@@ -114,8 +114,27 @@ export class Dashboard implements OnInit, OnDestroy {
 
   canOvertimeStart = computed(() => {
     const r = this.todayRecord();
-    return !!r?.clockOutTime && !r?.overtimeStartTime
-      && this.approvedRequests().length > 0 && !this.loading();
+    if (this.loading() || r?.overtimeStartTime) return false;
+    if (this.approvedRequests().length === 0) return false;
+    // 一般上班日須先打下班卡；休假日 / 全日請假由後端旗標豁免
+    return !!r?.clockOutTime || !!r?.canOvertimeWithoutClockOut;
+  });
+
+  /** 加班開始 disabled 時的原因提示（比照上下班按鈕的 [title] 做法） */
+  overtimeStartHint = computed<string>(() => {
+    const r = this.todayRecord();
+    if (r?.overtimeStartTime) return '今日已打加班開始卡';
+    if (this.approvedRequests().length === 0) return '今日無已核准的加班申請單';
+    if (!r?.clockOutTime && !r?.canOvertimeWithoutClockOut) return '請先打下班卡（今日為上班日）';
+    return '';
+  });
+
+  /** 今日免下班卡即可打加班卡（休假日 / 全日請假），且手上有已核准加班單且尚未打卡 */
+  overtimeExemptNotice = computed(() => {
+    const r = this.todayRecord();
+    return !!r?.canOvertimeWithoutClockOut
+      && this.approvedRequests().length > 0
+      && !r?.overtimeStartTime;
   });
 
   canOvertimeEnd = computed(() => {

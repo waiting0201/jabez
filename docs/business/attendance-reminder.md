@@ -82,6 +82,7 @@
 ## 跨業務關聯
 
 - **LINE 推播管道 / 失敗分類** → [line-integration.md](line-integration.md)
+- **打卡動作前置條件（含休假日加班免下班卡）** → [attendance-clock-rules.md](attendance-clock-rules.md)
 - **打卡時段阻擋規則 + 請假中跳過** → [leave-rules.md](leave-rules.md) + [api-routes.md §出勤打卡](../api-routes.md#出勤打卡)
 - **時區處理 Clock.Now** → [backend-design.md §11](../backend-design.md#11-時區處理重要)
 - **AttendanceReminderLog Entity** → [database-schema.md](../database-schema.md)

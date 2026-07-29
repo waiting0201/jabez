@@ -38,9 +38,13 @@ export class OvertimeRequestService {
     return this.http.patch<OvertimeRequest>(`${environment.apiUrl}/overtime-requests/${id}/submit`, {});
   }
 
-  /** 取得今日已核准的加班申請（打卡頁用） */
+  /**
+   * 取得今日已核准的加班申請（打卡頁用）。
+   * 日期須以「本地日期」組字串 —— toISOString() 是 UTC，台北 00:00–08:00 會取到前一天而查不到加班單。
+   */
   getApprovedForToday(): Observable<OvertimeRequest[]> {
-    const today = new Date().toISOString().split('T')[0];
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     return this.http.get<OvertimeRequest[]>(`${environment.apiUrl}/overtime-requests`, {
       params: {status: 'approved', date: today},
     });

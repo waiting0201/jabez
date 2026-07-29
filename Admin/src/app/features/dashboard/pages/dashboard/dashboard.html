@@ -83,13 +83,25 @@
                 <use href="/assets/icons/sprite.svg#calendar"></use>
               </svg>
               <div class="small">
-                <div class="fw-600 mb-1">您今日有已核准的請假，請假時段內無法打卡：</div>
+                <div class="fw-600 mb-1">您今日有已核准的請假，請假時段內無法打上下班卡：</div>
                 @for (lv of todayRecord()!.todayLeaves; track lv.id) {
                   <div>
                     {{ leaveTypeLabel(lv.leaveType) }}
                     {{ lv.startDate | date:'HH:mm' }}–{{ lv.endDate | date:'HH:mm' }}
                   </div>
                 }
+              </div>
+            </div>
+          }
+
+          <!-- 休假日 / 全日請假：免下班卡可直接打加班卡 -->
+          @if (overtimeExemptNotice()) {
+            <div class="rounded-2 px-3 py-2 mb-3 flex items-start gap-2 bg-[rgba(13,110,253,0.08)] text-primary">
+              <svg class="sa-icon mt-1 flex-shrink-0" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#zap"></use>
+              </svg>
+              <div class="small">
+                今日為休假日／全日請假，已核准的加班申請可<span class="fw-600">直接打「加班開始」</span>（免下班卡）。
               </div>
             </div>
           }
@@ -119,6 +131,7 @@
             <div class="col-6 col-md-3">
               <button class="btn btn-outline-primary w-100 py-3 flex flex-col items-center gap-2"
                       [disabled]="!canOvertimeStart()"
+                      [title]="overtimeStartHint()"
                       (click)="onOvertimeStartClick()">
                 <svg class="sa-icon sa-icon-2x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#zap"></use></svg>
                 <span class="fw-600">加班開始</span>

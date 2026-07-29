@@ -23,7 +23,8 @@ public sealed class AttendanceHandler(
     AppDbContext db,
     IAttendanceReadService reader,
     IJwtService jwtService,
-    IProjectAccessResolver access)
+    IProjectAccessResolver access,
+    ICalendarDayReadService calendarReader)
 {
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
@@ -115,34 +116,62 @@ public sealed class AttendanceHandler(
         return new OkObjectResult(ApiResponse.Ok(dto, "下班打卡成功。"));
     }
 
-    /// <summary>加班開始打卡（需已下班 + 已核准加班申請）</summary>
+    /// <summary>
+    /// 加班開始打卡（需已核准加班申請）。
+    /// 一般上班日：須先打下班卡。
+    /// 休假日（行事曆 IsHoliday / 無行事曆時的六日）或當日全日已核准請假：免下班卡，
+    /// 今日無打卡紀錄時直接建立「只有加班時間」的紀錄。
+    /// </summary>
     public async Task<IActionResult> OvertimeStartAsync(HttpRequest req)
     {
         var userId = await GetUserIdAsync(req);
         var body   = await req.ReadFromJsonAsync<ClockActionRequest>() ?? new ClockActionRequest(null, null);
 
-        var now    = Clock.Now;
-        var today  = now.Date;
-        var record = await db.AttendanceRecords
-            .FirstOrDefaultAsync(a => a.UserId == userId && a.RecordDate == today)
-            ?? throw AppException.BadRequest("請先完成上下班打卡。");
+        var now   = Clock.Now;
+        var today = now.Date;
 
-        if (!record.ClockOutTime.HasValue)
-            throw AppException.BadRequest("請先打下班卡。");
-        if (record.OvertimeStartTime.HasValue)
-            throw AppException.BadRequest("今日已打加班開始卡。");
-
-        // 驗證加班申請
+        // 1. 先驗加班申請：放寬下班卡前置條件後，已核准加班單成為唯一授權來源
         if (!body.OvertimeRequestId.HasValue)
             throw AppException.BadRequest("請選擇已核准的加班申請。");
 
         var otRequest = await db.OvertimeRequests.FindAsync(body.OvertimeRequestId.Value)
             ?? throw AppException.BadRequest("找不到指定的加班申請。");
 
+        if (otRequest.EmployeeId != userId)
+            throw AppException.BadRequest("加班申請不屬於當前使用者。");
         if (otRequest.ApprovalStatus != "approved")
             throw AppException.BadRequest("加班申請尚未核准。");
         if (otRequest.OvertimeDate.Date != today)
             throw AppException.BadRequest("加班申請日期與今日不符。");
+
+        // 2. 今日打卡紀錄（休假日可能尚未建立）
+        var record = await db.AttendanceRecords
+            .FirstOrDefaultAsync(a => a.UserId == userId && a.RecordDate == today);
+
+        if (record?.OvertimeStartTime is not null)
+            throw AppException.BadRequest("今日已打加班開始卡。");
+
+        // 3. 下班卡前置條件：休假日 / 全日請假豁免
+        if (record?.ClockOutTime is null)
+        {
+            var todayLeaves = await reader.GetLeavesOnDateAsync(userId, DateOnly.FromDateTime(today));
+            if (!await CanOvertimeWithoutClockOutAsync(today, todayLeaves))
+                throw AppException.BadRequest(record?.ClockInTime is null
+                    ? "請先完成上下班打卡。"
+                    : "請先打下班卡。");
+        }
+
+        // 4. 休假日無打卡紀錄 → 建立只含加班時間的紀錄（比照 ClockInAsync）
+        if (record is null)
+        {
+            record = new AttendanceRecord
+            {
+                UserId     = userId,
+                RecordDate = today,
+                CreatedAt  = now,
+            };
+            db.AttendanceRecords.Add(record);
+        }
 
         record.OvertimeStartTime      = now;
         record.OvertimeStartLatitude   = body.Latitude;
@@ -231,13 +260,44 @@ public sealed class AttendanceHandler(
     }
 
     /// <summary>
+    /// 今日是否「免下班卡即可打加班開始」：
+    /// (a) 行事曆休假日（該年度無行事曆資料時退回六日判定，比照 WorkCalendarHelper）
+    /// (b) 當日全日已核准請假
+    /// GET /attendances/today 的 CanOvertimeWithoutClockOut 與 OvertimeStartAsync 的放行共用此判定。
+    /// </summary>
+    private async Task<bool> CanOvertimeWithoutClockOutAsync(DateTime today, IReadOnlyList<ActiveLeaveDto> leaves)
+    {
+        if (await WorkCalendarHelper.IsHolidayAsync(calendarReader, today))
+            return true;
+
+        return CoversFullWorkday(leaves, today);
+    }
+
+    /// <summary>
+    /// 當日已核准請假是否涵蓋整個上班時段：上午段 08:00–12:00 與下午段 13:00–17:00 各需被某一張單完整覆蓋。
+    /// 可由一張全日單（存 00:00–23:59）或「上午半天 + 下午半天」兩張單共同滿足；只請半天則不成立。
+    /// 刻意不用 Hours >= 8 判定 —— 多日請假的 Hours 是「天數 × 8」會誤判。
+    /// </summary>
+    private static bool CoversFullWorkday(IReadOnlyList<ActiveLeaveDto> leaves, DateTime today)
+    {
+        if (leaves.Count == 0) return false;
+
+        bool Covers(DateTime from, DateTime to) => leaves.Any(l => l.StartDate <= from && l.EndDate >= to);
+
+        return Covers(today.AddHours(WorkdayHours.StartHour),    today.AddHours(WorkdayHours.LunchStartHour))
+            && Covers(today.AddHours(WorkdayHours.LunchEndHour), today.AddHours(WorkdayHours.EndHour));
+    }
+
+    /// <summary>
     /// 組合今日打卡 DTO + 當日已核准請假清單。打卡紀錄不存在時回傳 Id=0 的空殼 DTO，仍帶請假資訊供前端顯示提示。
     /// </summary>
     private async Task<TodayAttendanceDto> BuildTodayDtoAsync(Guid userId)
     {
-        var today  = DateOnly.FromDateTime(Clock.Now);
+        var now    = Clock.Now;
+        var today  = DateOnly.FromDateTime(now);
         var record = await reader.GetTodayAsync(userId);
         var leaves = await reader.GetLeavesOnDateAsync(userId, today);
+        var exempt = await CanOvertimeWithoutClockOutAsync(now.Date, leaves);
 
         return record is null
             ? new TodayAttendanceDto(
@@ -248,7 +308,8 @@ public sealed class AttendanceHandler(
                 OvertimeStartTime: null,       OvertimeStartLatitude: null, OvertimeStartLongitude: null,
                 OvertimeEndTime:   null,       OvertimeEndLatitude:   null, OvertimeEndLongitude:   null,
                 OvertimeRequestId: null,
-                TodayLeaves: leaves)
-            : record with { TodayLeaves = leaves };
+                TodayLeaves: leaves,
+                CanOvertimeWithoutClockOut: exempt)
+            : record with { TodayLeaves = leaves, CanOvertimeWithoutClockOut = exempt };
     }
 }
