@@ -197,6 +197,11 @@
             }
           </div>
           <div class="card-body p-0">
+            @if (!isReadOnly) {
+              <div class="px-3 py-2 text-muted small border-bottom">
+                總價 = 現金(預支) + 支票(月結)，任兩欄輸入後自動算出第三欄
+              </div>
+            }
             <div class="table-responsive">
               <table class="table table-sm mb-0">
                 <thead class="table-light">
@@ -273,21 +278,24 @@
                         @if (isReadOnly) {
                           <span class="small fw-500">{{ ctrl.get('totalPrice')?.value | number:'1.0-0' }}</span>
                         } @else {
-                          <input type="number" class="form-control form-control-sm" formControlName="totalPrice" min="0">
+                          <input type="number" class="form-control form-control-sm" formControlName="totalPrice" min="0"
+                                 (input)="onAmountInput(ctrl, 'total')">
                         }
                       </td>
                       <td class="align-middle">
                         @if (isReadOnly) {
                           <span class="small">{{ ctrl.get('cashAmount')?.value | number:'1.0-0' }}</span>
                         } @else {
-                          <input type="number" class="form-control form-control-sm" formControlName="cashAmount" min="0">
+                          <input type="number" class="form-control form-control-sm" formControlName="cashAmount" min="0"
+                                 (input)="onAmountInput(ctrl, 'cash')">
                         }
                       </td>
                       <td class="align-middle">
                         @if (isReadOnly) {
                           <span class="small">{{ ctrl.get('checkAmount')?.value | number:'1.0-0' }}</span>
                         } @else {
-                          <input type="number" class="form-control form-control-sm" formControlName="checkAmount" min="0">
+                          <input type="number" class="form-control form-control-sm" formControlName="checkAmount" min="0"
+                                 (input)="onAmountInput(ctrl, 'check')">
                         }
                       </td>
                       <td class="align-middle">
@@ -337,6 +345,16 @@
                         </td>
                       }
                     </tr>
+                    @if (amountWarnings.has(ctrl.get('id')?.value)) {
+                      <tr>
+                        <td [attr.colspan]="isReadOnly ? 10 : 11" class="text-danger small py-1 ps-3 border-0">
+                          <span class="inline-flex items-center gap-1">
+                            <svg class="sa-icon sa-icon-1x" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                            {{ amountWarnings.get(ctrl.get('id')?.value) }}
+                          </span>
+                        </td>
+                      </tr>
+                    }
                   } @empty {
                     <tr>
                       <td [attr.colspan]="isReadOnly ? 10 : 11" class="text-center text-muted py-4 small">尚未新增預算項目</td>

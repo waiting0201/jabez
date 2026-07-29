@@ -27,6 +27,9 @@ import {DesignatedReviewersPicker, DesignatedReviewerPayload} from '../../../../
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
 
+/** 明細列的三個連動金額欄（總價 = 現金花費 + 支票金額） */
+type AmountField = 'total' | 'cash' | 'check';
+
 @Component({
   selector: 'app-write-off-request-form',
   templateUrl: './write-off-form.html',
@@ -252,6 +255,8 @@ export class WriteOffRequestForm implements OnInit {
     if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
     this.fileMap.delete(id);
     this.invoiceWarnings.delete(id);
+    this.amountWarnings.delete(id);
+    this._pinnedTotals.delete(id);
     this.itemArray.removeAt(i);
   }
 
@@ -290,6 +295,8 @@ export class WriteOffRequestForm implements OnInit {
             quantity:    '1式',
             ...(results[0].docType === 'ticket' ? { note: '票號' } : {}),
           });
+          // OCR 帶入的總價視為已確立，之後改現金 / 支票不反推總價
+          if ((results[0].amount ?? 0) > 0) this._pinnedTotals.add(id);
           this._checkBuyer(id, results[0]);
         }
         for (const item of results.slice(1)) {
@@ -335,8 +342,53 @@ export class WriteOffRequestForm implements OnInit {
     const qtyStr = (ctrl.get('quantity')?.value ?? '').toString();
     const qtyNum = parseFloat(qtyStr) || 0;
     const total = Math.round(unitPrice * qtyNum);
+    // 單價 / 數量 算出的總價視為已確立；支票金額保留，由現金吸收差額（支票為 0 時即等於總價，同舊行為）
+    this.setTotal(ctrl, total);
+  }
+
+  /**
+   * 金額三欄連動：**總價 = 現金花費 + 支票金額**，輸入其中兩欄自動算出第三欄。
+   *
+   * 推算哪一欄取決於總價是否「已確立」（單價×數量 / 手動輸入 / OCR / 編輯載入）：
+   * - 已確立 → 改現金推支票、改支票推現金（總價不被反推變動，維持與單價×數量一致）
+   * - 未確立（手動新增的空白列）→ 現金 + 支票 反推總價
+   *
+   * 存放已確立總價的列 id。
+   */
+  private _pinnedTotals = new Set<string>();
+
+  /** 總價 ≠ 現金 + 支票 時的提示（key = 列 id）；僅顯示，不阻擋送出 */
+  amountWarnings = new Map<string, string>();
+
+  /** 總價由外部（單價×數量 / OCR / 編輯載入）寫入：標記已確立並讓現金吸收差額 */
+  setTotal(ctrl: AbstractControl, total: number) {
     ctrl.get('totalPrice')?.setValue(total, {emitEvent: false});
-    ctrl.get('cashAmount')?.setValue(total, {emitEvent: false});
+    this._pinnedTotals.add(ctrl.get('id')?.value);
+    this.onAmountInput(ctrl, 'total');
+  }
+
+  onAmountInput(ctrl: AbstractControl, field: AmountField) {
+    const id  = ctrl.get('id')?.value as string;
+    const val = (name: string) => Math.max(0, +(ctrl.get(name)?.value) || 0);
+    const set = (name: string, v: number) => ctrl.get(name)?.setValue(v, {emitEvent: false});
+
+    if (field === 'total') this._pinnedTotals.add(id);
+
+    if (!this._pinnedTotals.has(id)) {
+      set('totalPrice', val('cashAmount') + val('checkAmount'));
+    } else if (field === 'cash') {
+      set('checkAmount', Math.max(0, val('totalPrice') - val('cashAmount')));
+    } else {
+      set('cashAmount', Math.max(0, val('totalPrice') - val('checkAmount')));
+    }
+
+    // 推算欄被 0 截斷時（如支票金額大於總價）三欄會對不起來，出提示讓使用者自行修正
+    const sum = val('cashAmount') + val('checkAmount');
+    if (sum !== val('totalPrice')) {
+      this.amountWarnings.set(id, `現金花費 + 支票金額（${sum.toLocaleString()}）與總價（${val('totalPrice').toLocaleString()}）不符，請確認。`);
+    } else {
+      this.amountWarnings.delete(id);
+    }
   }
 
   /** 儲存（草稿或更新，不改變狀態） */
@@ -463,8 +515,11 @@ export class WriteOffRequestForm implements OnInit {
     quantity: string, totalPrice: number, cashAmount: number, checkAmount: number,
     note: string, sortOrder: number, previewUrl = '', fileUrl = ''
   ) {
+    const rowId = id || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    // 帶總價進來的列（OCR 展開 / 編輯模式回填）總價視為已確立，改現金 / 支票時不反推總價
+    if (totalPrice > 0) this._pinnedTotals.add(rowId);
     return this.fb.group({
-      id:          [id || `${Date.now()}-${Math.random().toString(36).slice(2)}`],
+      id:          [rowId],
       fileName:    [fileName],
       invoiceNo:   [''],
       invoiceDate: [''],
