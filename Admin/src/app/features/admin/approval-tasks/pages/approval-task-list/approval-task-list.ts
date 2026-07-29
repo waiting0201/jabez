@@ -16,6 +16,7 @@ import {
   ApprovalTask, ApprovalTaskApplicant,
 } from '../../models/approval-task.model';
 import {ApplicationType} from '../../../approvals/models/approval.model';
+import {roundLabel} from '../../../advance-requests/models/advance-request.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
 import {AuthService, FINANCIAL_AND_ABOVE_DEPT_CODES} from '../../../../../core/auth/services/auth.service';
 
@@ -278,8 +279,15 @@ export class ApprovalTaskList {
       const dateStr = new Date(t.overtimeDetail.overtimeDate).toLocaleDateString('zh-TW');
       return `${dateStr}・${t.overtimeDetail.estimatedHours} 小時・${t.overtimeDetail.reason}`;
     }
+    // 預支：加註本次送簽的批次（第1次 / 第N次追加）；追加批次另列本次金額與總額
     if (t.advanceDetail) {
-      return `${t.advanceDetail.activityName}（${t.advanceDetail.grandTotal.toLocaleString()} 元）`;
+      const d = t.advanceDetail;
+      const round = d.currentRoundNo ?? 1;
+      const head = `${d.activityName}・${roundLabel(round)}`;
+      if (round <= 1) return `${head}（${d.grandTotal.toLocaleString()} 元）`;
+      const roundTotal = d.rounds?.find(r => r.roundNo === round)?.grandTotal;
+      const roundPart = roundTotal != null ? `本次 ${roundTotal.toLocaleString()} 元／` : '';
+      return `${head}（${roundPart}總額 ${d.grandTotal.toLocaleString()} 元）`;
     }
     if (t.travelPaymentDetail) {
       return `${t.travelPaymentDetail.destination}（${t.travelPaymentDetail.grandTotal.toLocaleString()} 元）`;

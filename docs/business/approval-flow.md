@@ -417,6 +417,19 @@ returned ──(DELETE supplements/{n} 主動放棄)──→ 同上回滾
 | 非 `returned` 或非最新批次 → 編輯 / 放棄追加批次 | 400 |
 | 追加簽核期間 → 沖銷新增 / 編輯 / 送簽 | 400 |
 
+### 簽核作業清單顯示
+
+簽核作業清單（`approval-task-list`）的「摘要」欄，預支申請一律加註本次送簽批次，讓審核者不必進詳情頁就知道在審的是原始預支還是第幾次追加：
+
+| 批次 | 摘要格式 |
+|---|---|
+| Round 1 | `活動名稱・第1次（總額 元）` |
+| Round N ≥ 2 | `活動名稱・第N次追加（本次 元／總額 元）` |
+
+- 批次標籤共用 `roundLabel()`（[advance-request.model.ts](../../Admin/src/app/features/admin/advance-requests/models/advance-request.model.ts)），與詳情 / 表單 / PDF 同一真相
+- 「本次」金額取 `advanceDetail.rounds[]` 中對應 `roundNo` 的 `grandTotal`；「總額」為父單 `GrandTotal`（送簽當下已併入追加金額）
+- 資料來源即列表既有 payload（`AdvanceTaskDetailDto.Rounds` / `CurrentRoundNo`），純前端顯示，無後端異動
+
 ### 通知
 
 追加情境下 approved / returned / rejected 三種結果通知，申請類型名稱後會加註批次（`NotifyApplicantAsync` 的 `contextLabel` 參數）；拒絕另加「原預支單維持核准」，避免申請人誤以為整張單被否決。
