@@ -121,7 +121,7 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 
 **簽核頁同步維護預支單撥款明細**：預支沖銷簽核頁另設「關聯預支單撥款明細」區塊，直接讀寫 `PATCH /advance-requests/{id}/installments`，與預支申請單完全同步（同一份資料，不是複本）。
 
-**支票已支付註記**：支票由公司**直接付給廠商**，不是撥給員工的錢，因此不進撥款分期；改由沖銷明細的 `CheckPaid` 勾選註記，`PATCH /write-off-requests/{id}/check-payments`（限財務體系 / Superadmin，pending 或 approved 皆可，`CheckAmount = 0` 的明細不可勾）。撥款明細的加總基準**維持含支票的整單金額**，未因此改變。
+**支票已支付註記**：支票由公司**直接付給廠商**，不是撥給員工的錢，因此不進撥款分期；改由沖銷明細的 `CheckPaid` 勾選註記，`PATCH /write-off-requests/{id}/check-payments`（限財務體系 / Superadmin，pending 或 approved 皆可，`CheckAmount = 0` 的明細不可勾）。簽核頁的「支票已支付」**整欄僅財務體系 / Superadmin 可見**，其他審核者連欄位都不會渲染。撥款明細的加總基準**維持含支票的整單金額**，未因此改變。
 
 **舊資料 backfill**：migration `AddWriteOffInstallmentsAndCheckPaid` 把既有 `AdvanceRequest.RefundAmount > 0` 且有退款日的資料，寫成該預支單**最後一張已核准沖銷單**的第 1 期。
 

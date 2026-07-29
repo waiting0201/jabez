@@ -774,8 +774,9 @@ Input：`advanceRounds` / `writeOffHistory` / `currentGrandTotal` / `refundDue`�
 
 支票由公司**直接付給廠商**，不是撥給員工的錢，因此不進撥款分期，改以沖銷明細的勾選註記。
 
+- **簽核頁整欄僅財務體系 / Superadmin 可見**（`canSeeCheckPaid` computed；`thead` / `tbody` / `tfoot` 三處同時 `@if` 包起來，非唯讀而是整欄不渲染）
 - 簽核頁（財務體系 / Superadmin，單子 pending 或 approved）：checkbox，變更即呼叫 `PATCH /write-off-requests/{id}/check-payments`，樂觀更新不重載整頁
-- 簽核頁（其他角色）/ 詳情頁：唯讀顯示 `✓`（`title` 帶勾選日期與勾選人）或 `—`
+- 簽核頁（財務體系但單子非 pending / approved）/ 詳情頁：唯讀顯示 `✓`（`title` 帶勾選日期與勾選人）或 `—`
 - `checkAmount === 0` 的列一律顯示 `—` 且不可勾（後端同步擋下）
 - 表尾統計：`已支付 N / M 筆`
 

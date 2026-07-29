@@ -274,6 +274,12 @@ export class ApprovalTaskReview implements OnInit {
   checkPaymentSaving = signal(false);
 
   /**
+   * 是否顯示「支票已支付」欄：僅財務體系部門或 Superadmin 可見（整欄隱藏，非僅唯讀）。
+   * 與 canMarkCheckPaid 用同一組部門判定，看得到的人就是可勾選的人（狀態允許時）。
+   */
+  canSeeCheckPaid = computed(() => this.auth.isSuperAdmin() || this.auth.isFinanceDept());
+
+  /**
    * 是否可勾選「支票已支付」：財務體系部門或 Superadmin，且單子在待審核 / 已核准狀態。
    * 支票由公司直接付給廠商，不走撥款分期，僅以此旗標註記已付出。
    */
