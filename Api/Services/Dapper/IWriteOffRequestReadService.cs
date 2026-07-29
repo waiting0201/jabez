@@ -7,4 +7,5 @@ public interface IWriteOffRequestReadService
 {
     Task<PagedResult<WriteOffRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null);
     Task<WriteOffRequestDto?>             GetByIdAsync(int id);
+    Task<WriteOffRequestDto[]>            GetByAdvanceIdAsync(int advanceRequestId);
 }

@@ -1,7 +1,7 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
-import {WriteOffRequest, AdvanceSummary, UpdateCheckPaymentsRequest} from '../models/write-off-request.model';
+import {WriteOffRequest, AdvanceSummary, AdvanceWriteOffOverview, UpdateCheckPaymentsRequest} from '../models/write-off-request.model';
 import {UpsertInstallmentsRequest} from '../../approval-tasks/models/approval-task.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {environment} from '@/environments/environment';
@@ -17,6 +17,11 @@ export class WriteOffRequestService {
 
   getById(id: number): Observable<WriteOffRequest> {
     return this.http.get<WriteOffRequest>(`${this.base}/${id}`);
+  }
+
+  /** 依預支單彙總：預支單完整資訊 + 該單底下全部沖銷單 */
+  getByAdvance(advanceRequestId: number): Observable<AdvanceWriteOffOverview> {
+    return this.http.get<AdvanceWriteOffOverview>(`${this.base}/by-advance/${advanceRequestId}`);
   }
 
   create(formData: FormData): Observable<WriteOffRequest> {

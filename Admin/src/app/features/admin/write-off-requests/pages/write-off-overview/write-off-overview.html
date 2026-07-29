@@ -1,0 +1,403 @@
+<div class="container-fluid py-3">
+  @if (advance(); as a) {
+
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+      <div class="flex items-center gap-2 flex-wrap">
+        <a routerLink="/admin/write-off-requests" class="btn btn-sm btn-outline-secondary">
+          <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+        </a>
+        <h4 class="mb-0">預支單 {{ a.requestNo }} 沖銷彙總</h4>
+        <span [class]="'badge ' + statusClass[a.approvalStatus]">{{ statusLabel[a.approvalStatus] }}</span>
+        @if (a.isClosed) {
+          <span class="badge bg-elevated text-secondary">
+            已結案
+            @if (a.closedAt) {
+              <span class="fw-400">（{{ a.closedAt | date:'yyyy-MM-dd' }}）</span>
+            }
+          </span>
+        }
+        @if (a.currentRoundNo > 1) {
+          <span class="badge bg-blue-subtle text-blue-emphasis">含追加（共 {{ a.currentRoundNo }} 批）</span>
+        }
+        <span class="badge bg-elevated text-secondary">沖銷 {{ writeOffs().length }} 筆</span>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <a *appHasPermission="'advance-requests:read'"
+           [routerLink]="['/admin/advance-requests', a.id]"
+           class="btn btn-outline-secondary inline-flex items-center gap-1">
+          <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#credit-card"></use></svg>
+          預支單詳情
+        </a>
+      </div>
+    </div>
+
+    <div class="row g-4">
+    <div class="col-12 col-xl-10">
+
+    <!-- 預支資訊 -->
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+        <svg class="sa-icon text-primary" style="stroke: currentColor">
+          <use href="/assets/icons/sprite.svg#credit-card"></use>
+        </svg>
+        預支資訊
+      </div>
+      <div class="card-body">
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">專案</div>
+            <div class="fw-500 font-monospace">{{ a.projectCode }}{{ a.projectName ? ' - ' + a.projectName : '' }}</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">活動名稱</div>
+            <div class="fw-500">{{ a.activityName }}</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">活動期間</div>
+            <div class="fw-500">{{ a.activityPeriod }}</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">預支日期</div>
+            @if (a.rounds?.length) {
+              @for (rd of a.rounds; track rd.roundNo) {
+                <div class="fw-500" [class.mt-1]="!$first">
+                  {{ roundLabel(rd.roundNo) }} · {{ rd.advanceDate | date:'yyyy-MM-dd' }}
+                  <span class="text-muted">· {{ rd.grandTotal | number:'1.0-0' }}</span>
+                </div>
+                @if (rd.reason) {
+                  <div class="text-muted small italic">「{{ rd.reason }}」</div>
+                }
+              }
+            } @else {
+              <div class="fw-500">{{ a.advanceDate | date:'yyyy-MM-dd' }}</div>
+            }
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">申請人</div>
+            <div class="fw-500">{{ a.submittedBy || '—' }}</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">建立時間</div>
+            <div class="fw-500">{{ a.createdAt | date:'yyyy-MM-dd' }}</div>
+          </div>
+        </div>
+
+        <!-- 金額摘要 -->
+        <div class="row g-3 mb-0">
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">預支總額</div>
+            <div class="fw-600 text-lg">{{ a.grandTotal | number:'1.0-0' }}</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">已沖銷加總</div>
+            <div class="fw-600 text-lg">{{ writtenOffTotal() | number:'1.0-0' }}</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">待沖銷餘額</div>
+            <div class="fw-600 text-lg" [class]="balance() >= 0 ? 'text-green' : 'text-red'">
+              {{ balance() | number:'1.0-0' }}
+            </div>
+          </div>
+          @if (refundDueTotal() > 0) {
+            <div class="col-6 col-md-3">
+              <div class="text-muted small">應撥差額加總</div>
+              <div class="fw-600 text-lg text-red">{{ refundDueTotal() | number:'1.0-0' }}</div>
+              <div class="text-muted small mt-1">沖銷超出預支，公司須補撥給員工</div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- 沖銷單一覽 -->
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+        <svg class="sa-icon text-primary" style="stroke: currentColor">
+          <use href="/assets/icons/sprite.svg#file-minus"></use>
+        </svg>
+        沖銷單一覽
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="width:110px">沖銷次數</th>
+                <th>沖銷單號</th>
+                <th>申請人</th>
+                <th>建立時間</th>
+                <th>簽核狀態</th>
+                <th class="text-right">沖銷金額</th>
+                <th class="text-right">應撥差額</th>
+                <th class="text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (w of writeOffs(); track w.id) {
+                <tr>
+                  <td class="small fw-500">第 {{ w.writeOffNo }} 次</td>
+                  <td class="small font-monospace">{{ w.requestNo }}</td>
+                  <td class="small">{{ w.submittedBy || '—' }}</td>
+                  <td class="small text-muted">{{ w.createdAt | date:'yyyy-MM-dd' }}</td>
+                  <td><span [class]="'badge ' + statusClass[w.approvalStatus]">{{ statusLabel[w.approvalStatus] }}</span></td>
+                  <td class="text-right small fw-500">{{ w.grandTotal | number:'1.0-0' }}</td>
+                  <td class="text-right small" [class.text-red]="(w.refundDue ?? 0) > 0">
+                    {{ (w.refundDue ?? 0) > 0 ? (w.refundDue | number:'1.0-0') : '—' }}
+                  </td>
+                  <td class="text-right" style="white-space: nowrap">
+                    <a [routerLink]="['/admin/write-off-requests', w.id]"
+                       class="btn btn-sm btn-ghost-secondary inline-flex items-center" title="檢視沖銷單">
+                      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#eye"></use></svg>
+                    </a>
+                  </td>
+                </tr>
+              } @empty {
+                <tr><td colspan="8" class="text-center text-muted py-4">此預支單尚無沖銷申請。</td></tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr class="table-light">
+                <td colspan="5" class="text-right fw-500 small">合計（已拒絕不計）</td>
+                <td class="text-right fw-600">{{ writtenOffTotal() | number:'1.0-0' }}</td>
+                <td class="text-right fw-600">{{ refundDueTotal() | number:'1.0-0' }}</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 預支費用明細 -->
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+        <svg class="sa-icon text-primary" style="stroke: currentColor">
+          <use href="/assets/icons/sprite.svg#list"></use>
+        </svg>
+        預支費用明細
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="width:130px">批次</th>
+                <th>分類</th>
+                <th>項次</th>
+                <th>項目說明</th>
+                <th>單價</th>
+                <th>數量/單位</th>
+                <th class="text-right">總價</th>
+                <th class="text-right">現金(預支)</th>
+                <th class="text-right">支票(月結)</th>
+                <th>備註</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of a.items; track item.id; let i = $index) {
+                <tr>
+                  <!-- 同批次第二列起留白，比照分類欄慣例 -->
+                  <td class="small">
+                    @if (isFirstOfRound(a, i)) {
+                      <span class="fw-500">{{ roundLabel(item.roundNo) }}</span>
+                      @if (roundDate(a, item.roundNo); as d) {
+                        <div class="text-muted">{{ d | date:'yyyy-MM-dd' }}</div>
+                      }
+                    }
+                  </td>
+                  <td class="small">{{ item.category }}</td>
+                  <td class="small">{{ item.seqNo }}</td>
+                  <td class="small">{{ item.itemName }}</td>
+                  <td class="small">{{ item.unitPrice | number:'1.0-0' }}</td>
+                  <td class="small">{{ item.quantity }}</td>
+                  <td class="text-right small fw-500">{{ item.totalPrice | number:'1.0-0' }}</td>
+                  <td class="text-right small">{{ item.cashAmount | number:'1.0-0' }}</td>
+                  <td class="text-right small">{{ item.checkAmount | number:'1.0-0' }}</td>
+                  <td class="small text-muted">{{ item.note || '—' }}</td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr class="table-light">
+                <td colspan="6" class="text-right fw-500 small">合計</td>
+                <td class="text-right fw-600">{{ a.grandTotal | number:'1.0-0' }}</td>
+                <td class="text-right fw-600">{{ a.cashTotal | number:'1.0-0' }}</td>
+                <td class="text-right fw-600">{{ a.checkTotal | number:'1.0-0' }}</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 預支撥款明細（read-only）-->
+    <app-installments-table
+      [installmentsInput]="a.installments"
+      [paymentStatus]="a.paymentStatus"
+      [totalAmount]="a.grandTotal" />
+
+    <!-- 各沖銷單完整資訊 -->
+    @for (w of writeOffs(); track w.id) {
+      <div class="card border-0 shadow-sm mb-6">
+        <div class="card-header bg-transparent border-bottom flex flex-wrap items-center gap-2 fw-600">
+          <svg class="sa-icon text-primary" style="stroke: currentColor">
+            <use href="/assets/icons/sprite.svg#file-minus"></use>
+          </svg>
+          第 {{ w.writeOffNo }} 次沖銷
+          <span class="font-monospace fw-500 text-muted">{{ w.requestNo }}</span>
+          <span [class]="'badge ' + statusClass[w.approvalStatus]">{{ statusLabel[w.approvalStatus] }}</span>
+          <a [routerLink]="['/admin/write-off-requests', w.id]"
+             class="btn btn-sm btn-ghost-secondary inline-flex items-center gap-1 ml-auto" title="檢視沖銷單">
+            <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#eye"></use></svg>
+            沖銷單詳情
+          </a>
+        </div>
+        <div class="card-body">
+          <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+              <div class="text-muted small">沖銷金額</div>
+              <div class="fw-600 text-lg">{{ w.grandTotal | number:'1.0-0' }}</div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="text-muted small">現金花費</div>
+              <div class="fw-500">{{ w.cashTotal | number:'1.0-0' }}</div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="text-muted small">支票金額</div>
+              <div class="fw-500">{{ w.checkTotal | number:'1.0-0' }}</div>
+            </div>
+            @if ((w.refundDue ?? 0) > 0) {
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">本次應撥差額</div>
+                <div class="fw-600 text-lg text-red">{{ w.refundDue | number:'1.0-0' }}</div>
+              </div>
+            }
+            <div class="col-6 col-md-3">
+              <div class="text-muted small">申請人</div>
+              <div class="fw-500">{{ w.submittedBy || '—' }}</div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="text-muted small">建立時間</div>
+              <div class="fw-500">{{ w.createdAt | date:'yyyy-MM-dd' }}</div>
+            </div>
+          </div>
+
+          @if (w.note) {
+            <div class="text-muted small mb-4">備註：{{ w.note }}</div>
+          }
+
+          @if (w.approvalStatus === 'returned' || w.approvalStatus === 'rejected') {
+            @if (w.reviewNote) {
+              <div class="alert alert-warning flex items-start gap-2 mb-4" role="alert">
+                <svg class="sa-icon shrink-0 mt-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#message-circle"></use></svg>
+                <div>
+                  <div class="fw-500 mb-1">審核意見</div>
+                  <div>{{ w.reviewNote }}</div>
+                  @if (w.reviewedAt) {
+                    <div class="text-muted small mt-1">{{ w.reviewedAt | date:'yyyy-MM-dd HH:mm' }}</div>
+                  }
+                </div>
+              </div>
+            }
+          }
+
+          <!-- 沖銷明細 -->
+          <div class="table-responsive">
+            <table class="table table-sm mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th style="width:40px"></th>
+                  <th>發票號碼</th>
+                  <th>發票日期</th>
+                  <th>分類</th>
+                  <th>項目說明</th>
+                  <th>單價</th>
+                  <th>數量/單位</th>
+                  <th class="text-right">總價</th>
+                  <th class="text-right">現金花費</th>
+                  <th class="text-right">支票金額</th>
+                  <th class="text-center" style="width:110px">支票已支付</th>
+                  <th>備註</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of w.items; track item.id) {
+                  <tr>
+                    <td class="align-middle text-center">
+                      @if (item.fileUrl) {
+                        <button type="button" class="btn btn-sm btn-ghost-secondary p-1"
+                                (click)="openPreview(item.fileName || '發票', item.fileUrl!)"
+                                title="{{ item.fileName }}">
+                          <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                        </button>
+                      }
+                    </td>
+                    <td class="small font-monospace">{{ item.invoiceNo || '—' }}</td>
+                    <td class="small">{{ item.invoiceDate ? (item.invoiceDate | date:'yyyy-MM-dd') : '—' }}</td>
+                    <td class="small">{{ item.category }}</td>
+                    <td class="small">{{ item.itemName }}</td>
+                    <td class="small">{{ item.unitPrice | number:'1.0-0' }}</td>
+                    <td class="small">{{ item.quantity }}</td>
+                    <td class="text-right small fw-500">{{ item.totalPrice | number:'1.0-0' }}</td>
+                    <td class="text-right small">{{ item.cashAmount | number:'1.0-0' }}</td>
+                    <td class="text-right small">{{ item.checkAmount | number:'1.0-0' }}</td>
+                    <td class="text-center align-middle small">
+                      @if (item.checkAmount > 0 && item.checkPaid) {
+                        <span class="text-success"
+                              [title]="(item.checkPaidAt | date:'yyyy-MM-dd') + ' ' + (item.checkPaidBy || '')">✓</span>
+                      } @else {
+                        <span class="text-muted">—</span>
+                      }
+                    </td>
+                    <td class="small text-muted">{{ item.note || '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+              <tfoot>
+                <tr class="table-light">
+                  <td colspan="7" class="text-right fw-500 small">合計</td>
+                  <td class="text-right fw-600">{{ w.grandTotal | number:'1.0-0' }}</td>
+                  <td class="text-right fw-600">{{ w.cashTotal | number:'1.0-0' }}</td>
+                  <td class="text-right fw-600">{{ w.checkTotal | number:'1.0-0' }}</td>
+                  <td class="text-center small text-muted">已支付 {{ checkPaidCount(w.items) }} / {{ checkItemCount(w.items) }} 筆</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <!-- 附件 -->
+          @if (w.attachments && w.attachments.length > 0) {
+            <div class="mt-4">
+              <div class="text-muted small mb-2 fw-500">附件</div>
+              <app-attachments-list [attachments]="w.attachments" />
+            </div>
+          }
+
+        </div>
+      </div>
+
+      <!-- 該次沖銷的差額撥款明細（僅超支時才有資料；read-only）-->
+      <app-installments-table
+        [installmentsInput]="w.installments"
+        [paymentStatus]="w.paymentStatus"
+        [totalAmount]="w.refundDue" />
+    }
+
+    </div>
+    </div>
+
+  } @else if (errorMsg()) {
+    <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+      {{ errorMsg() }}
+    </div>
+  } @else {
+    <div class="text-center py-6 text-muted">載入中…</div>
+  }
+</div>
+
+@if (previewFile) {
+  <app-file-preview-modal [file]="previewFile" (closed)="closePreview()" />
+}

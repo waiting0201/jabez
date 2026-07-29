@@ -125,6 +125,15 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 
 **舊資料 backfill**：migration `AddWriteOffInstallmentsAndCheckPaid` 把既有 `AdvanceRequest.RefundAmount > 0` 且有退款日的資料，寫成該預支單**最後一張已核准沖銷單**的第 1 期。
 
+### 依預支單彙總檢視（2026-07 新增）
+
+一張預支單可對應多張沖銷單，過去只能逐張沖銷單點進去看，對不出「這張預支單到底沖到哪」。沖銷清單本來就依 `AdvanceRequestId` 把沖銷單 group 在一起，母層列（同一預支單 ≥ 2 筆時出現的摘要列）操作欄現在多一個**檢視**按鈕，進入彙總頁 `/admin/write-off-requests/by-advance/:advanceId`（[write-off-overview](../../Admin/src/app/features/admin/write-off-requests/pages/write-off-overview/)）。
+
+- **資料來源**：`GET /write-off-requests/by-advance/{advanceRequestId}`（`AdvanceWriteOffOverviewDto`）—— `advance` 直接沿用 `IAdvanceRequestReadService.GetByIdAsync`（含批次 `rounds` / 費用明細 / 撥款分期），`writeOffs[]` 由 `WriteOffRequestReadService.GetByAdvanceIdAsync` 一次撈回（明細 / 指定審核者 / 附件 / 差額撥款分期 / `refundDue` 皆為批次查詢，不逐單 N+1）
+- **權限**：`write-off-requests:read`（不需 `advance-requests:read`——沖銷申請人本來就看得到自己沖的那張預支單；頁頭的「預支單詳情」連結才用 `advance-requests:read` 控管）
+- **可見性**：Superadmin，或**預支單申請人**，或該預支單底下**任一沖銷單**的申請人 / 審核者 / 指定審核者；皆不符合回 404（與單筆 `GET /write-off-requests/{id}` 同一套判定，只是範圍擴大到整個群組）
+- **頁面內容**：預支資訊（含各批次日期 / 金額）→ 金額摘要（預支總額 / 已沖銷加總 / 待沖銷餘額 / 應撥差額加總，**已拒絕的沖銷單不計入加總**）→ 沖銷單一覽表 → 預支費用明細 → 預支撥款明細 → 逐張沖銷單的完整卡片（明細 / 附件 / 該次差額撥款）
+
 ### 撥款明細編輯 UI 限制（[approval-task-review](../../Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/)）
 
 簽核作業頁同時在 2 個區塊提供撥款明細編輯（待審核 = 計劃用、已核准 = 實際維護）。前端規則：

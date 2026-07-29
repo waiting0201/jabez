@@ -1,4 +1,4 @@
-import {AdvanceRequestItem, AdvanceRound} from '../../advance-requests/models/advance-request.model';
+import {AdvanceRequest, AdvanceRequestItem, AdvanceRound} from '../../advance-requests/models/advance-request.model';
 import {InstallmentDto, PaymentInstallmentStatus, WriteOffRound} from '../../approval-tasks/models/approval-task.model';
 
 export type {WriteOffRound};
@@ -111,6 +111,15 @@ export interface WriteOffRequest {
   /** 關聯預支單的撥款分期（唯讀對照）*/
   advanceInstallments?: InstallmentDto[];
   advancePaymentStatus?: PaymentInstallmentStatus;
+}
+
+/**
+ * 依預支單彙總檢視：一張預支單的完整資訊 + 該單底下全部沖銷單的完整資訊。
+ * 由清單母層（同一預支單的沖銷群組）「檢視」開啟。
+ */
+export interface AdvanceWriteOffOverview {
+  advance: AdvanceRequest;
+  writeOffs: WriteOffRequest[];
 }
 
 /** 支票已支付註記的更新 payload */

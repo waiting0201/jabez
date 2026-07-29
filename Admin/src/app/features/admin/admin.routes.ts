@@ -42,6 +42,7 @@ import {AdvanceDetail} from './advance-requests/pages/advance-detail/advance-det
 import {WriteOffList} from './write-off-requests/pages/write-off-list/write-off-list';
 import {WriteOffRequestForm as WriteOffForm} from './write-off-requests/pages/write-off-form/write-off-form';
 import {WriteOffRequestDetail as WriteOffDetail} from './write-off-requests/pages/write-off-detail/write-off-detail';
+import {WriteOffOverview} from './write-off-requests/pages/write-off-overview/write-off-overview';
 import {TravelWriteOffList} from './travel-write-off-requests/pages/travel-write-off-list/travel-write-off-list';
 import {TravelWriteOffForm} from './travel-write-off-requests/pages/travel-write-off-form/travel-write-off-form';
 import {TravelWriteOffDetail} from './travel-write-off-requests/pages/travel-write-off-detail/travel-write-off-detail';
@@ -110,6 +111,7 @@ export const ADMIN_ROUTES: Routes = [
   // 沖銷申請
   {path: 'write-off-requests',           component: WriteOffList,   canActivate: [permissionGuard], data: {title: '沖銷申請',       permission: 'write-off-requests:read'}},
   {path: 'write-off-requests/new',       component: WriteOffForm,   canActivate: [permissionGuard], data: {title: '新增沖銷申請',   permission: 'write-off-requests:write'}},
+  {path: 'write-off-requests/by-advance/:advanceId', component: WriteOffOverview, canActivate: [permissionGuard], data: {title: '預支沖銷彙總', permission: 'write-off-requests:read'}},
   {path: 'write-off-requests/:id/edit',  component: WriteOffForm,   canActivate: [permissionGuard], data: {title: '編輯沖銷申請',   permission: 'write-off-requests:write'}},
   {path: 'write-off-requests/:id',       component: WriteOffDetail, canActivate: [permissionGuard], data: {title: '沖銷申請詳情',   permission: 'write-off-requests:read'}},
 

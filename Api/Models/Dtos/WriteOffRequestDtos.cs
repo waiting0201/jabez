@@ -51,6 +51,16 @@ public sealed record WriteOffRoundDto(
     DateTime CreatedAt,
     bool     IsCurrent);
 
+// ── 依預支單彙總檢視 DTO ─────────────────────────────────────────────────────
+
+/// <summary>
+/// 依預支單彙總：一張預支單的完整資訊 + 該單底下全部沖銷單的完整資訊。
+/// 供沖銷清單母層「檢視」開啟的彙總頁使用（GET /write-off-requests/by-advance/{advanceRequestId}）。
+/// </summary>
+public sealed record AdvanceWriteOffOverviewDto(
+    AdvanceRequestDto    Advance,
+    WriteOffRequestDto[] WriteOffs);
+
 // ── 可沖銷預支單 DTO ─────────────────────────────────────────────────────────
 
 /// <summary>

@@ -126,6 +126,67 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
         };
     }
 
+    /// <summary>
+    /// 同一張預支單底下的全部沖銷單（含明細 / 指定審核者 / 附件 / 差額撥款分期），供依預支單彙總檢視使用。
+    /// 子表一次撈回後於記憶體分派，不逐單查詢。預支批次與沖銷歷程由呼叫端從預支單本身取得，故不重複填入。
+    /// </summary>
+    public async Task<WriteOffRequestDto[]> GetByAdvanceIdAsync(int advanceRequestId)
+    {
+        var sql = BaseSql + " WHERE wo.AdvanceRequestId = @Id ORDER BY wo.WriteOffNo, wo.Id, wi.SortOrder, wi.Id";
+        var rows = await db.QueryAsync<dynamic>(sql, new { Id = advanceRequestId });
+
+        var dtos = GroupToWriteOffRequests(rows).OrderBy(x => x.WriteOffNo).ThenBy(x => x.Id).ToList();
+        if (dtos.Count == 0) return [];
+
+        var ids = dtos.Select(d => d.Id).ToArray();
+
+        const string drSql = """
+            SELECT rdr.RequestId, rdr.Id, rdr.ReviewerId, u.Name AS ReviewerName,
+                   rdr.StepOrder, rdr.Status, rdr.ReviewedAt, rdr.Comment
+            FROM RequestDesignatedReviewers rdr
+            JOIN Users u ON rdr.ReviewerId = u.Id
+            WHERE rdr.RequestType = 'write_off' AND rdr.RequestId IN @Ids
+            ORDER BY rdr.RequestId, rdr.StepOrder
+            """;
+        var drRows = await db.QueryAsync<dynamic>(drSql, new { Ids = ids });
+        var drLookup = drRows.ToLookup(r => (int)r.RequestId, r => new DesignatedReviewerDto(
+            (int)r.Id,
+            (Guid)r.ReviewerId,
+            (string)r.ReviewerName,
+            (int)r.StepOrder,
+            (string)r.Status,
+            (DateTime?)r.ReviewedAt,
+            (string?)r.Comment));
+
+        const string attSql = """
+            SELECT WriteOffRecordId, Id, FileName, FileUrl
+            FROM WriteOffAttachments
+            WHERE WriteOffRecordId IN @Ids
+            ORDER BY WriteOffRecordId, SortOrder
+            """;
+        var attRows = await db.QueryAsync<dynamic>(attSql, new { Ids = ids });
+        var attLookup = attRows.ToLookup(r => (int)r.WriteOffRecordId,
+            r => new AttachmentDto((int)r.Id, (string)r.FileName, (string?)r.FileUrl));
+
+        var instDict = await installments.GetByParentIdsAsync(InstallmentParentTable.WriteOffRecord, ids);
+
+        return [.. dtos.Select(dto =>
+        {
+            var dr   = drLookup[dto.Id].ToArray();
+            var att  = attLookup[dto.Id].ToArray();
+            var inst = instDict.GetValueOrDefault(dto.Id, []);
+            return dto with
+            {
+                DesignatedReviewers = dr.Length  > 0 ? dr  : null,
+                Attachments         = att.Length > 0 ? att : null,
+                RefundDue           = WriteOffRefundCalculator.Calculate(
+                                          dto.AdvanceGrandTotal, dto.AdvanceWrittenOffTotal, dto.GrandTotal),
+                Installments        = inst.Count > 0 ? [.. inst] : null,
+                PaymentStatus       = installments.ComputeStatus(inst),
+            };
+        })];
+    }
+
     // ── 批次金額檢視 helpers ─────────────────────────────────────────────────
 
     /// <summary>關聯預支單的各預支批次（含追加）；批次組裝規則與 GET /advance-requests/{id} 共用同一份實作。</summary>

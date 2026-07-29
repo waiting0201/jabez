@@ -241,6 +241,7 @@ public sealed class AppRouter(
 
             // ── Write-Off Requests ──────────────────────────────────────────
             ("GET",    ["write-off-requests", "available-advances"])            => await writeOffRequests.GetAvailableAdvancesAsync(req),
+            ("GET",    ["write-off-requests", "by-advance", var advanceId])     => await writeOffRequests.GetByAdvanceAsync(req, advanceId),
             ("GET",    ["write-off-requests"])                                  => await writeOffRequests.GetAllAsync(req),
             ("POST",   ["write-off-requests"])                                 => await writeOffRequests.CreateAsync(req),
             ("PATCH",  ["write-off-requests", var id, "submit"])               => await writeOffRequests.SubmitAsync(req, id),

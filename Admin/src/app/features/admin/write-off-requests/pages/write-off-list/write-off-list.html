@@ -93,7 +93,17 @@
                     {{ g.advanceWrittenOffTotal | number:'1.0-0' }}
                     <span class="text-muted"> / {{ g.advanceGrandTotal | number:'1.0-0' }}</span>
                   </td>
-                  <td colspan="3"></td>
+                  <td></td>
+                  <td class="hidden lg:table-cell"></td>
+                  <td class="text-right" style="white-space: nowrap">
+                    <div class="flex justify-end gap-1">
+                      <!-- 母層檢視：預支單完整資訊 + 該單全部沖銷單 -->
+                      <a [routerLink]="['by-advance', g.key]" (click)="$event.stopPropagation()"
+                         class="btn btn-sm btn-ghost-secondary inline-flex items-center" title="檢視預支與全部沖銷">
+                        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#eye"></use></svg>
+                      </a>
+                    </div>
+                  </td>
                 </tr>
 
                 @if (isExpanded(g.key)) {
