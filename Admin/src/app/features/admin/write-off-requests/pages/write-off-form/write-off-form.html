@@ -206,6 +206,9 @@
         </button>
       </div>
       <div class="card-body p-0">
+        <div class="px-3 py-2 text-muted small border-bottom">
+          總價 = 現金花費 + 支票金額，任兩欄輸入後自動算出第三欄
+        </div>
         <div class="table-responsive">
           <table class="table table-sm mb-0">
             <thead class="table-light">
@@ -290,21 +293,24 @@
                     @if (isOcr) {
                       <div class="py-1 text-muted small">—</div>
                     } @else {
-                      <input type="number" class="form-control form-control-sm" formControlName="totalPrice" min="0">
+                      <input type="number" class="form-control form-control-sm" formControlName="totalPrice" min="0"
+                             (input)="onAmountInput(ctrl, 'total')">
                     }
                   </td>
                   <td class="align-middle">
                     @if (isOcr) {
                       <div class="py-1 text-muted small">—</div>
                     } @else {
-                      <input type="number" class="form-control form-control-sm" formControlName="cashAmount" min="0">
+                      <input type="number" class="form-control form-control-sm" formControlName="cashAmount" min="0"
+                             (input)="onAmountInput(ctrl, 'cash')">
                     }
                   </td>
                   <td class="align-middle">
                     @if (isOcr) {
                       <div class="py-1 text-muted small">—</div>
                     } @else {
-                      <input type="number" class="form-control form-control-sm" formControlName="checkAmount" min="0">
+                      <input type="number" class="form-control form-control-sm" formControlName="checkAmount" min="0"
+                             (input)="onAmountInput(ctrl, 'check')">
                     }
                   </td>
                   <td class="align-middle">
@@ -323,6 +329,16 @@
                       <span class="inline-flex items-center gap-1">
                         <svg class="sa-icon sa-icon-1x" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
                         {{ invoiceWarnings.get(ctrl.get('id')?.value) }}
+                      </span>
+                    </td>
+                  </tr>
+                }
+                @if (amountWarnings.has(ctrl.get('id')?.value)) {
+                  <tr>
+                    <td colspan="12" class="text-danger small py-1 ps-3 border-0">
+                      <span class="inline-flex items-center gap-1">
+                        <svg class="sa-icon sa-icon-1x" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                        {{ amountWarnings.get(ctrl.get('id')?.value) }}
                       </span>
                     </td>
                   </tr>

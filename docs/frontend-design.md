@@ -782,6 +782,23 @@ Input：`advanceRounds` / `writeOffHistory` / `currentGrandTotal` / `refundDue`�
 
 > ⚠️ 沖銷單被**退回修改**後申請人重填明細時，`UpdateAsync` 會整批取代 items，支票支付註記將被清空。實務上退回發生在財務核准前，可接受。
 
+### 7.9 金額三欄連動（總價 = 現金 + 支票）
+
+**預支沖銷申請**（[write-off-form](../Admin/src/app/features/admin/write-off-requests/pages/write-off-form/write-off-form.ts) 實際花費明細）與**預支申請**（[advance-form](../Admin/src/app/features/admin/advance-requests/pages/advance-form/advance-form.ts) 預算明細，含追加批次）的明細，**總價 = 現金 + 支票**，三欄輸入其中兩欄自動算出第三欄（`onAmountInput(ctrl, 'total' | 'cash' | 'check')` 綁在三個 input 的 `(input)`）。兩表單共用同一套規則，改一邊須同步改另一邊。
+
+推算哪一欄取決於該列的總價是否**已確立**（`_pinnedTotals: Set<列 id>`）：
+
+| 總價狀態 | 何時進入 | 輸入現金 | 輸入支票 |
+|---|---|---|---|
+| **已確立** | 單價×數量（`calcTotal` → `setTotal`）/ 手動輸入總價 / OCR 帶入（僅沖銷）/ 編輯・追加模式回填（`_itemGroup` 中 `totalPrice > 0`） | 推算支票 = 總價 − 現金 | 推算現金 = 總價 − 支票 |
+| **未確立** | 「手動新增行」/「新增項目」的空白列 | 推算總價 = 現金 + 支票 | 同左 |
+
+- **總價不會被現金 / 支票反推變小**（已確立時），否則單價×數量 算出的總價會被打壞
+- 單價 / 數量 變動時**保留支票金額**，差額由現金吸收（支票為 0 時 ＝ 現金等於總價，與舊行為相同）
+- 推算值一律 `Math.max(0, …)` 不為負；被 0 截斷時（如支票 > 總價）以 `amountWarnings`（`Map<列 id, string>`，比照 §12.5c 的 `invoiceWarnings` 樣式與刪列清理）顯示紅字提示，**僅提示、不阻擋送出**
+- 所有推算寫入用 `setValue(v, {emitEvent: false})`，避免連鎖觸發
+- 表頭下方固定一行 `text-muted small` 說明：「總價 = 現金 + 支票，任兩欄輸入後自動算出第三欄」（預支申請的唯讀模式 `isReadOnly` 不顯示）
+
 ---
 
 ## 8. 按鈕規範
