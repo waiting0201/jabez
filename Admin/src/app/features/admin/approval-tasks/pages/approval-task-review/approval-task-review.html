@@ -624,9 +624,7 @@
                             <th class="text-right">總價</th>
                             <th class="text-right">現金花費</th>
                             <th class="text-right">支票金額</th>
-                            @if (canSeeCheckPaid()) {
-                              <th class="text-center" style="width:110px">支票已支付</th>
-                            }
+                            <th class="text-center" style="width:110px">支票已支付</th>
                             <th>備註</th>
                           </tr>
                         </thead>
@@ -651,24 +649,16 @@
                               <td class="text-right small fw-500">{{ item.totalPrice | number:'1.0-0' }}</td>
                               <td class="text-right small">{{ item.cashAmount | number:'1.0-0' }}</td>
                               <td class="text-right small">{{ item.checkAmount | number:'1.0-0' }}</td>
-                              @if (canSeeCheckPaid()) {
-                                <td class="text-center align-middle">
-                                  @if (item.checkAmount > 0) {
-                                    @if (canMarkCheckPaid(task)) {
-                                      <input type="checkbox" class="form-check-input" [checked]="item.checkPaid"
-                                             [disabled]="checkPaymentSaving()"
-                                             (change)="toggleCheckPaid(task, item, $event)">
-                                    } @else if (item.checkPaid) {
-                                      <span class="text-success"
-                                            [title]="(item.checkPaidAt | date:'yyyy-MM-dd') + ' ' + (item.checkPaidBy || '')">✓</span>
-                                    } @else {
-                                      <span class="text-muted">—</span>
-                                    }
-                                  } @else {
-                                    <span class="text-muted">—</span>
-                                  }
-                                </td>
-                              }
+                              <td class="text-center align-middle">
+                                @if (item.checkAmount > 0) {
+                                  <input type="checkbox" class="form-check-input" [checked]="item.checkPaid"
+                                         [disabled]="!canMarkCheckPaid(task) || checkPaymentSaving()"
+                                         [title]="checkPaidTitle(task, item)"
+                                         (change)="toggleCheckPaid(task, item, $event)">
+                                } @else {
+                                  <span class="text-muted">—</span>
+                                }
+                              </td>
                               <td class="small text-muted">{{ item.note || '—' }}</td>
                             </tr>
                           }
@@ -679,9 +669,7 @@
                             <td class="text-right fw-600">{{ d.grandTotal | number:'1.0-0' }}</td>
                             <td class="text-right fw-600">{{ d.cashTotal | number:'1.0-0' }}</td>
                             <td class="text-right fw-600">{{ d.checkTotal | number:'1.0-0' }}</td>
-                            @if (canSeeCheckPaid()) {
-                              <td class="text-center small text-muted">已支付 {{ checkPaidCount(d.items) }} / {{ checkItemCount(d.items) }} 筆</td>
-                            }
+                            <td class="text-center small text-muted">已支付 {{ checkPaidCount(d.items) }} / {{ checkItemCount(d.items) }} 筆</td>
                             <td></td>
                           </tr>
                         </tfoot>

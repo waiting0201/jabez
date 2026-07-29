@@ -274,19 +274,31 @@ export class ApprovalTaskReview implements OnInit {
   checkPaymentSaving = signal(false);
 
   /**
-   * 是否顯示「支票已支付」欄：僅財務體系部門或 Superadmin 可見（整欄隱藏，非僅唯讀）。
-   * 與 canMarkCheckPaid 用同一組部門判定，看得到的人就是可勾選的人（狀態允許時）。
+   * 「支票已支付」不可勾的原因（空字串＝可勾）。
+   * 整欄一律顯示給所有審核者，非財務體系只是 checkbox disabled 反白，並以 title 說明原因。
    */
-  canSeeCheckPaid = computed(() => this.auth.isSuperAdmin() || this.auth.isFinanceDept());
+  checkPaidDisabledHint(task: ApprovalTask): string {
+    if (task.applicationType !== 'write_off') return '僅預支沖銷申請適用';
+    if (!this.auth.isSuperAdmin() && !this.auth.isFinanceDept())
+      return '僅財務體系部門可註記支票支付狀態';
+    if (task.status !== 'pending' && task.status !== 'approved')
+      return '只有待審核或已核准的沖銷申請可註記';
+    return '';
+  }
 
   /**
    * 是否可勾選「支票已支付」：財務體系部門或 Superadmin，且單子在待審核 / 已核准狀態。
    * 支票由公司直接付給廠商，不走撥款分期，僅以此旗標註記已付出。
    */
   canMarkCheckPaid(task: ApprovalTask): boolean {
-    if (task.applicationType !== 'write_off') return false;
-    if (task.status !== 'pending' && task.status !== 'approved') return false;
-    return this.auth.isSuperAdmin() || this.auth.isFinanceDept();
+    return this.checkPaidDisabledHint(task) === '';
+  }
+
+  /** checkbox 的 title：已勾選顯示勾選日期與勾選人，否則顯示 disabled 原因 */
+  checkPaidTitle(task: ApprovalTask, item: WriteOffTaskDetailItem): string {
+    if (item.checkPaid)
+      return `已支付 ${(item.checkPaidAt ?? '').slice(0, 10)} ${item.checkPaidBy ?? ''}`.trim();
+    return this.checkPaidDisabledHint(task);
   }
 
   /** 有支票金額的明細筆數 */
