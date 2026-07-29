@@ -2,7 +2,7 @@ import {Component, computed, inject, signal} from '@angular/core';
 import {RouterLink} from '@angular/router';
 import {DatePipe} from '@angular/common';
 import {toSignal, toObservable} from '@angular/core/rxjs-interop';
-import {combineLatest} from 'rxjs';
+import {combineLatest, of} from 'rxjs';
 import {switchMap} from 'rxjs/operators';
 import {ToastrService} from 'ngx-toastr';
 import {ApprovalTaskService, BatchApprovePending} from '../../services/approval-task.service';
@@ -13,7 +13,7 @@ import {
   PAYMENT_STATE_LABELS, PAYMENT_STATE_CLASSES,
   PAYMENT_INSTALLMENT_STATUS_LABELS, PAYMENT_INSTALLMENT_STATUS_CLASSES,
   PaymentInstallmentStatus,
-  ApprovalTask,
+  ApprovalTask, ApprovalTaskApplicant,
 } from '../../models/approval-task.model';
 import {ApplicationType} from '../../../approvals/models/approval.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
@@ -41,6 +41,14 @@ export class ApprovalTaskList {
     this.auth.isSuperAdmin() || FINANCIAL_AND_ABOVE_DEPT_CODES.has(this.auth.departmentCode() ?? '')
   );
 
+  /**
+   * 申請人下拉：僅財務體系部門或 Superadmin 可見。
+   * 與後端 ApprovalTaskHandler.CanFilterByApplicant（DepartmentCodes.FinancialAndAbove）同步。
+   */
+  canSeeApplicantFilter = computed(() =>
+    this.auth.isSuperAdmin() || FINANCIAL_AND_ABOVE_DEPT_CODES.has(this.auth.departmentCode() ?? '')
+  );
+
   /** 「總監待簽核」tab：僅財務管理部或 Superadmin 可見 */
   canSeeDirectorPendingTab = computed(() =>
     this.auth.isSuperAdmin() || FINANCE_STEP_DEPT_CODES.has(this.auth.departmentCode() ?? '')
@@ -55,10 +63,19 @@ export class ApprovalTaskList {
   activeTab = signal<'pending' | 'approved' | 'rejected' | 'director_pending'>('pending');
   paymentStatus = signal<'' | 'paid' | 'unpaid' | 'partial'>('');
   applicationTypeFilter = signal<'' | ApplicationType>('');
+  submittedByFilter = signal('');
   page = signal(1);
 
   /** 類型下拉選項：[ApplicationType, 中文 label][] */
   appTypeOptions = computed(() => Object.entries(APPLICATION_TYPE_LABELS) as [ApplicationType, string][]);
+
+  /** 申請人下拉選項：僅財務體系部門載入（其他人不呼叫，後端亦擋 403） */
+  applicantOptions = toSignal(
+    toObservable(this.canSeeApplicantFilter).pipe(
+      switchMap(allowed => allowed ? this.service.getApplicants() : of([] as ApprovalTaskApplicant[])),
+    ),
+    {initialValue: [] as ApprovalTaskApplicant[]}
+  );
 
   /** 已勾選的任務 key 集合，格式：${applicationType}:${id} */
   selectedKeys = signal<Set<string>>(new Set());
@@ -76,6 +93,7 @@ export class ApprovalTaskList {
     this.activeTab.set(tab);
     this.paymentStatus.set('');
     this.applicationTypeFilter.set('');
+    this.submittedByFilter.set('');
     this.page.set(1);
     this.selectedKeys.set(new Set());
   }
@@ -87,6 +105,11 @@ export class ApprovalTaskList {
 
   setApplicationTypeFilter(value: string) {
     this.applicationTypeFilter.set((value || '') as '' | ApplicationType);
+    this.page.set(1);
+  }
+
+  setSubmittedByFilter(value: string) {
+    this.submittedByFilter.set(value || '');
     this.page.set(1);
   }
 
@@ -163,9 +186,10 @@ export class ApprovalTaskList {
       toObservable(this.activeTab),
       toObservable(this.paymentStatus),
       toObservable(this.applicationTypeFilter),
+      toObservable(this.submittedByFilter),
       toObservable(this.reloadTrigger),
     ]).pipe(
-      switchMap(([p, status, ps, at]) => this.service.getPaged(p, this.PAGE_SIZE, status, ps || undefined, at || undefined))
+      switchMap(([p, status, ps, at, sb]) => this.service.getPaged(p, this.PAGE_SIZE, status, ps || undefined, at || undefined, sb || undefined))
     ),
     {initialValue: {items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 1} as PagedResult<ApprovalTask>}
   );

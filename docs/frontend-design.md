@@ -282,6 +282,29 @@
 
 > 新增報表 / 多條件列表頁時，**必須**先讀其中一份（推薦：加班紀錄，覆蓋最完整）作為範本，依此規範佈局，禁止自行設計 toolbar 樣式。
 
+#### 權限差異化篩選控件（依部門 / 權限顯示）
+
+同一列表的篩選控件可依使用者身分決定是否渲染 —— 以 `computed()` 判定後用 `@if` 包住該控件，**不要**改用 disabled 或隱藏 option：
+
+```html
+@if (canSeeApplicantFilter()) {
+  <select class="form-select form-select-sm w-auto"
+          [value]="submittedByFilter()"
+          (change)="setSubmittedByFilter($any($event.target).value)"
+          aria-label="篩選申請人">
+    <option value="">全部申請人</option>
+    @for (a of applicantOptions(); track a.id) { <option [value]="a.id">{{ a.name }}</option> }
+  </select>
+}
+```
+
+規則：
+
+- 判定 signal 命名 `canSeeXxxFilter`，**必須**與後端同一份部門 / 權限判定同步（例：申請人下拉 ↔ `DepartmentCodes.FinancialAndAbove` ↔ `FINANCIAL_AND_ABOVE_DEPT_CODES`）
+- 下拉選項來源若是受限端點（如 `/approval-tasks/applicants` 非財務體系回 403），**只在判定為 true 時才發請求**（`switchMap(allowed => allowed ? api : of([]))`），避免非授權者觸發 403
+- 前端隱藏只是 UI，後端**必須**同時忽略或拒絕該篩選參數
+- 已採用：[簽核作業列表](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-list/approval-task-list.html) 已核准頁籤 —— 全部類型下拉（所有人）＋ 申請人下拉 / 撥款退款子篩選（僅財務體系部門 / Superadmin）
+
 ---
 
 ## 4. 卡片元件

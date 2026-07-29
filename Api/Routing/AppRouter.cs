@@ -362,6 +362,8 @@ public sealed class AppRouter(
             // ── Approval Tasks ─────────────────────────────────────────────────
             ("GET",    ["approval-tasks"])                                                      => await approvalTasks.GetAllAsync(req),
             ("POST",   ["approval-tasks", "batch-approve"])                                     => await approvalTasks.BatchApproveAsync(req),
+            // applicants 必須排在 ["approval-tasks", var id] 之前，否則會被當成 id 吃掉
+            ("GET",    ["approval-tasks", "applicants"])                                        => await approvalTasks.GetApplicantsAsync(req),
             ("GET",    ["approval-tasks", var appType, var id]) when ApprovalTaskHandler.ValidAppTypes.Contains(appType)
                                                                                                => await approvalTasks.GetByIdAsync(req, id, appType),
             ("GET",    ["approval-tasks", var id])                                             => await approvalTasks.GetByIdAsync(req, id),

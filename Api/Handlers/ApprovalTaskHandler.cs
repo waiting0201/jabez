@@ -56,17 +56,48 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         string? paymentStatus = req.Query["paymentStatus"].ToString() is { Length: > 0 } ps2 ? ps2 : null;
         // 類型篩選：須為 ValidAppTypes 之一，否則忽略
         string? applicationType = req.Query["applicationType"].ToString() is { Length: > 0 } at && ValidAppTypes.Contains(at) ? at : null;
+        // 申請人篩選：僅財務體系部門或 Superadmin 可用（前端下拉同步只對這些人顯示），其他人一律忽略
+        Guid? submittedByUserId = CanFilterByApplicant(callerIsSuperAdmin, callerDeptCode)
+                                  && Guid.TryParse(req.Query["submittedByUserId"], out var sbu) ? sbu : null;
 
         // 「總監待簽核」（僅剩總監步驟未簽核）僅財務管理部或 Superadmin 可查看
         if (status == "director_pending" && !callerIsSuperAdmin && !DepartmentCodes.FinanceStep.Contains(callerDeptCode ?? ""))
             return new ObjectResult(ApiResponse.Fail("僅財務管理部或 Superadmin 可查看總監待簽核清單。")) { StatusCode = 403 };
 
-        var allTasks = (await reader.GetApprovalTasksAsync(jobTitleId, deptId, status, reviewerUserId, paymentStatus, applicationType)).ToList();
+        var allTasks = (await reader.GetApprovalTasksAsync(jobTitleId, deptId, status, reviewerUserId, paymentStatus, applicationType, submittedByUserId)).ToList();
         int total = allTasks.Count;
         var items = allTasks.Skip((page - 1) * pageSize).Take(pageSize);
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
         var result = new PagedResult<ApprovalTaskDto>(items, total, page, pageSize, Math.Max(1, totalPages));
         return new OkObjectResult(ApiResponse.Ok(result));
+    }
+
+    /// <summary>
+    /// 申請人篩選（下拉 + submittedByUserId 參數）限財務體系部門或 Superadmin。
+    /// 前端對應判定見 approval-task-list.ts 的 canSeeApplicantFilter。
+    /// </summary>
+    private static bool CanFilterByApplicant(bool isSuperAdmin, string? deptCode)
+        => isSuperAdmin || DepartmentCodes.FinancialAndAbove.Contains(deptCode ?? "");
+
+    /// <summary>
+    /// GET /approval-tasks/applicants → 申請人下拉選項（僅財務體系部門或 Superadmin）。
+    /// </summary>
+    public async Task<IActionResult> GetApplicantsAsync(HttpRequest req)
+    {
+        var principal = await jwtService.ValidateRequestAsync(req);
+        if (principal is null)
+            return new UnauthorizedObjectResult(ApiResponse.Fail("Unauthorized."));
+
+        var userIdStr = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(userIdStr, out var callerId))
+            return new UnauthorizedObjectResult(ApiResponse.Fail("Invalid token claims."));
+
+        var caller = await db.Users.AsNoTracking().Include(u => u.Department).FirstOrDefaultAsync(u => u.Id == callerId);
+        if (!CanFilterByApplicant(caller?.IsSuperAdmin ?? false, caller?.Department?.Code))
+            return new ObjectResult(ApiResponse.Fail("僅財務體系部門或 Superadmin 可查看申請人清單。")) { StatusCode = 403 };
+
+        var applicants = await reader.GetApprovalTaskApplicantsAsync();
+        return new OkObjectResult(ApiResponse.Ok(applicants));
     }
 
     public async Task<IActionResult> GetByIdAsync(HttpRequest req, string id, string? applicationType = null)

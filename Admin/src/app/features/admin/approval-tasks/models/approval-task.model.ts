@@ -409,3 +409,9 @@ export interface ApprovalTask {
   designatedReviewers?: DesignatedReviewer[];
   submittedBySignatureUrl?: string;  // 申請人簽名檔 URL
 }
+
+/** 簽核作業「申請人」下拉選項（僅財務體系部門可取得） */
+export interface ApprovalTaskApplicant {
+  id: string;
+  name: string;
+}
