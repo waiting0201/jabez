@@ -13,13 +13,14 @@ import {ApprovalTimeline} from '../../../../../shared/components/approval-timeli
 import {AttachmentsList} from '../../../../../shared/components/attachments-list';
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 import {WriteOffSummaryComponent} from '../../../../../shared/components/write-off-summary';
+import {ClosureInfoCardComponent} from '../../../../../shared/components/closure-info-card';
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
 
 @Component({
   selector: 'app-write-off-request-detail',
   templateUrl: './write-off-detail.html',
-  imports: [RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, AttachmentsList, InstallmentsTable, WriteOffSummaryComponent, ScrollIntoViewDirective],
+  imports: [RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, AttachmentsList, InstallmentsTable, WriteOffSummaryComponent, ClosureInfoCardComponent, ScrollIntoViewDirective],
 })
 export class WriteOffRequestDetail implements OnInit {
   private service     = inject(WriteOffRequestService);

@@ -181,78 +181,14 @@
       </div>
     </div>
 
-    <!-- 結案與退款資訊（isClosed 或有 refundAmount 時顯示） -->
-    @if (r.isClosed || (r.refundAmount != null && r.refundAmount > 0)) {
-      <div class="card border-0 shadow-sm mb-6">
-        <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
-          <svg class="sa-icon text-muted" style="stroke: currentColor">
-            <use href="/assets/icons/sprite.svg#check-circle"></use>
-          </svg>
-          結案資訊
-        </div>
-        <div class="card-body">
-          <div class="row g-3">
-
-            <!-- 結案狀態 -->
-            @if (r.isClosed) {
-              <div class="col-6 col-md-3">
-                <div class="text-muted small">結案狀態</div>
-                <div class="fw-500">
-                  <span class="badge bg-elevated text-secondary">已結案</span>
-                </div>
-              </div>
-              @if (r.closedAt) {
-                <div class="col-6 col-md-3">
-                  <div class="text-muted small">結案時間</div>
-                  <div class="fw-500">{{ r.closedAt | date:'yyyy-MM-dd' }}</div>
-                </div>
-              }
-            }
-
-            <!-- 差額退款 -->
-            @if (r.refundAmount != null && r.refundAmount > 0) {
-              <div class="col-6 col-md-3">
-                <div class="text-muted small">應退還差額</div>
-                <div class="fw-600 text-lg" style="color: var(--red)">
-                  ${{ r.refundAmount | number:'1.0-0' }}
-                </div>
-              </div>
-            }
-            @if (r.refundedAmount != null) {
-              <div class="col-6 col-md-3">
-                <div class="text-muted small">實際退款金額</div>
-                <div class="fw-600 text-lg">${{ r.refundedAmount | number:'1.0-0' }}</div>
-              </div>
-            }
-
-            @if (r.estimatedRefundDate) {
-              <div class="col-6 col-md-3">
-                <div class="text-muted small">預計退款日</div>
-                <div class="fw-500">{{ r.estimatedRefundDate | date:'yyyy-MM-dd' }}</div>
-              </div>
-            }
-
-            @if (r.refundedAt) {
-              <div class="col-6 col-md-3">
-                <div class="text-muted small">退款日</div>
-                <div class="flex items-center gap-2">
-                  <svg class="sa-icon" style="color: var(--green); stroke: currentColor; width: 16px; height: 16px">
-                    <use href="/assets/icons/sprite.svg#check-circle"></use>
-                  </svg>
-                  <span class="fw-500" style="color: var(--green)">{{ r.refundedAt | date:'yyyy-MM-dd' }}</span>
-                </div>
-              </div>
-            } @else if (r.refundAmount != null && r.refundAmount > 0) {
-              <div class="col-6 col-md-3">
-                <div class="text-muted small">退款日</div>
-                <span class="text-muted small">尚未退款</span>
-              </div>
-            }
-
-          </div>
-        </div>
-      </div>
-    }
+    <!-- 結案與退款資訊（共用元件 app-closure-info-card，欄位與簽核作業詳情頁一致）-->
+    <app-closure-info-card
+      [isClosed]="r.isClosed"
+      [closedAt]="r.closedAt"
+      [refundAmount]="r.refundAmount"
+      [refundedAmount]="r.refundedAmount"
+      [estimatedRefundDate]="r.estimatedRefundDate"
+      [refundedAt]="r.refundedAt" />
 
     <!-- 撥款明細（核准後才會有資料；read-only）-->
     <app-installments-table

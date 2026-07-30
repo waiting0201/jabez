@@ -10,13 +10,14 @@ import {ApprovalTaskService} from '../../../approval-tasks/services/approval-tas
 import {ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
 import {TravelWriteOffRequest, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/travel-write-off-request.model';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
+import {ClosureInfoCardComponent} from '../../../../../shared/components/closure-info-card';
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
 
 @Component({
   selector: 'app-travel-write-off-detail',
   templateUrl: './travel-write-off-detail.html',
-  imports: [RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, ScrollIntoViewDirective],
+  imports: [RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, ClosureInfoCardComponent, ScrollIntoViewDirective],
 })
 export class TravelWriteOffDetail implements OnInit {
   private service     = inject(TravelWriteOffRequestService);

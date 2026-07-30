@@ -192,7 +192,7 @@ Admin/src/app/
     │   ├── job-titles/     # 職稱管理
     │   ├── vendors/        # 廠商管理（含 vendor-quick-add-modal；統編/身分證字號類型切換，統編 blur 自動帶出 GCIS 公司資料；個人工作室上傳身分證正反面；存摺封面必填）
     │   ├── approvals/      # 簽核流程設定（ApprovalItem + Steps；ApprovalItem 含 DepartmentId 部門維度，可為同一申請類型設「各部門專屬流程 + 通用預設」，送單時依申請人部門挑流程；子部門未設專屬流程時自動沿用最近祖先部門流程；Step 含 MinDays 天數門檻，null＝一律納入、N＝申請天數 ≥ N 才納入，目前供請假依天數分流；**非指定審核步驟可勾「例外指定審核」並逐一挑使用者（FormArray + select 列，整批替換 exceptionUserIds）**，名單內的申請人送單時該步驟改由申請人自行指定審核者，timeline 顯示「例外指定 N 人」badge）
-    │   ├── approval-tasks/ # 待審核任務清單（已核准頁籤篩選列：全部類型下拉（所有人）＋**申請人下拉（僅財務體系部門 / Superadmin，選項來自 /approval-tasks/applicants）**＋撥款退款子篩選（僅財務體系）；**摘要欄的預支申請加註送簽批次**：第1次顯示總額、第N次追加顯示「本次／總額」，批次標籤共用 advance-requests 的 roundLabel()）
+    │   ├── approval-tasks/ # 待審核任務清單（已核准頁籤篩選列：全部類型下拉（所有人）＋**申請人下拉（僅財務體系部門 / Superadmin，選項來自 /approval-tasks/applicants）**＋撥款退款子篩選（僅財務體系；按鈕組 全部 / 尚未撥款 / 部分撥款 / 全部撥款 / **已結案**（`paymentStatus=closed`，只撈預支 / 出差預支 `IsClosed=1`，其餘類型後端 1=0 短路））；**摘要欄的預支申請加註送簽批次**：第1次顯示總額、第N次追加顯示「本次／總額」，批次標籤共用 advance-requests 的 roundLabel()；**狀態欄的預支 / 出差預支已結案時加註「已結案」badge**，與 advance-list / travel 詳情同一真相 `AdvanceRequest.IsClosed` / `TravelRequest.IsClosed`、同一樣式，holiday_travel 不走沖銷故排除；**簽核作業詳情頁（approval-task-review）另有「結案資訊」卡片**（`closureInfo(task)` → 共用元件 `<app-closure-info-card>`；`advance` / `travel` 顯示本單結案狀態 + 退款四欄，`write_off` / `travel_write_off` 顯示**關聯母單**（預支單 / 出差單）結案狀態，per-type 差異收斂在 `isRelatedClosure()` / `closureTitle()`），頁首同掛「已結案」badge）
     │   ├── projects/       # 專案管理
     │   ├── payment-requests/  # 請款申請（廠商請款 type=vendor / 一般請款 type=general 明細下方皆含整單批次附件上傳，共用 shared/components/attachments-upload）
     │   ├── pre-review-requests/ # 預審申請（事前預審，clone 自請款；無撥款、不計入報表；品項類別下拉 + 報價單 OCR；含 pre-review-pdf.service 列印合併所有上傳檔）
@@ -202,8 +202,8 @@ Admin/src/app/
     │   ├── holiday-travel-requests/ # 假日執行活動申請（共用 TravelRequest entity，IsHolidayTravel=true，計入假日津貼；參與人員可逐日勾選個人參與日期，未勾選＝全程參與）
     │   ├── overtime-requests/ # 加班申請（走簽核流程；關聯專案改單選 radio 且可瀏覽全部未結案專案 /projects/active?all=true 支援跨部門；指定審核者卡片加註「跨部門支援時第一審核者填該專案協理、第二審核者選自部門協理」）
     │   ├── advance-requests/  # 預支申請（已核准單可新增「追加預支」批次：/:id/supplements/new 與 /:id/supplements/:round/edit 共用 advance-form 的追加模式；詳情頁預支日期改為批次清單、費用明細加「批次」欄；共用 roundLabel() 為批次標籤單一真相；**明細金額三欄連動：總價 = 現金(預支) + 支票(月結)，任兩欄輸入自動算出第三欄，規則與預支沖銷相同**）
-    │   ├── write-off-requests/ # 預支沖銷申請（獨立簽核流程；**清單依預支單 group，母層列操作欄「檢視」進入彙總頁 write-off-overview（`/by-advance/:advanceId`）：一頁看完預支單完整資訊 + 該單全部沖銷單完整資訊**；明細下方含整單批次附件上傳，共用 shared/components/attachments-upload；新增表單選定預支單後，於「預支單」卡片下方唯讀列出該單全批次預支費用明細（含追加，依批次分組），資料由 /write-off-requests/available-advances 一併帶回；**沖銷資訊卡改為 `<app-write-off-summary>` 列出預支各批次金額 + 各次沖銷金額 + 待沖銷餘額 / 應撥差額**；**超支差額走分期撥款**，明細另有「支票已支付」註記欄，該欄在簽核頁對所有審核者顯示，但**僅財務管理部（`DepartmentCodes.FinanceStep`，與撥款日／結案同範圍，不含總監室／會計室）/ Superadmin 可勾選**，其他人 checkbox disabled 反白；**明細金額三欄連動：總價 = 現金花費 + 支票金額，任兩欄輸入自動算出第三欄**）
-    │   ├── travel-write-off-requests/ # 出差預支沖銷申請（獨立簽核流程）
+    │   ├── write-off-requests/ # 預支沖銷申請（獨立簽核流程；**清單依預支單 group，母層列操作欄「檢視」進入彙總頁 write-off-overview（`/by-advance/:advanceId`）：一頁看完預支單完整資訊 + 該單全部沖銷單完整資訊**；明細下方含整單批次附件上傳，共用 shared/components/attachments-upload；新增表單選定預支單後，於「預支單」卡片下方唯讀列出該單全批次預支費用明細（含追加，依批次分組），資料由 /write-off-requests/available-advances 一併帶回；**沖銷資訊卡改為 `<app-write-off-summary>` 列出預支各批次金額 + 各次沖銷金額 + 待沖銷餘額 / 應撥差額**；**詳情頁與簽核頁另有「預支單結案資訊」卡（共用 `<app-closure-info-card>`，`showRefund=false` + `alwaysShow=true`：只呈現關聯預支單的已結案／未結案與結案時間，撥款金額仍由該頁既有「撥款」語彙欄位負責）**；**超支差額走分期撥款**，明細另有「支票已支付」註記欄，該欄在簽核頁對所有審核者顯示，但**僅財務管理部（`DepartmentCodes.FinanceStep`，與撥款日／結案同範圍，不含總監室／會計室）/ Superadmin 可勾選**，其他人 checkbox disabled 反白；**明細金額三欄連動：總價 = 現金花費 + 支票金額，任兩欄輸入自動算出第三欄**）
+    │   ├── travel-write-off-requests/ # 出差預支沖銷申請（獨立簽核流程；**詳情頁與簽核頁有「出差單結案資訊」卡（共用 `<app-closure-info-card>`，`showRefund=false` + `alwaysShow=true`：只呈現關聯出差單的已結案／未結案與結案時間，撥款金額仍由該頁既有「撥款」語彙欄位負責）**）
     │   ├── insurance-brackets/ # 勞健保級距維護
     │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出）
     │   ├── attendance-reminder-logs/ # 打卡提醒推播紀錄（僅 Superadmin）

@@ -121,6 +121,13 @@
             <svg class="sa-icon me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#check-circle"></use></svg>
             全部撥款
           </button>
+          <!-- 已結案：僅預支 / 出差預支有結案概念，其餘類型後端不回傳 -->
+          <button class="btn btn-sm"
+                  [class]="paymentStatus() === 'closed' ? 'btn-outline-primary' : 'btn-outline-secondary'"
+                  (click)="setPaymentStatus('closed')">
+            <svg class="sa-icon me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#archive"></use></svg>
+            已結案
+          </button>
         </div>
       }
     </div>
@@ -174,6 +181,9 @@
                     @if (getPaymentBadge(t); as pb) {
                       <span [class]="'badge ' + pb.cls">{{ pb.label }}</span>
                     }
+                    @if (isClosed(t)) {
+                      <span class="badge bg-elevated text-secondary">已結案</span>
+                    }
                   </div>
                 </td>
                 <td class="text-muted small hidden lg:table-cell">{{ t.submittedAt | date:'yyyy-MM-dd' }}</td>
@@ -197,6 +207,7 @@
                      : paymentStatus() === 'unpaid' ? '目前沒有尚未撥款的已核准簽核作業。'
                      : paymentStatus() === 'partial' ? '目前沒有部分撥款的已核准簽核作業。'
                      : paymentStatus() === 'paid' ? '目前沒有全部撥款的已核准簽核作業。'
+                     : paymentStatus() === 'closed' ? '目前沒有已結案的預支 / 出差預支申請。'
                      : '目前沒有已核准的簽核作業。' }}
                 </td>
               </tr>

@@ -183,7 +183,11 @@ public sealed record TravelTaskDetailDto(
     TravelRequestItemDto[] Items = null!,
     HolidayAllowanceDto[]? HolidayAllowances = null,
     InstallmentDto[]? Installments = null,
-    string?   PaymentStatus = null)
+    string?   PaymentStatus = null,
+    bool      IsClosed = false,
+    DateTime? ClosedAt = null,
+    decimal?  RefundAmount = null,
+    decimal?  RefundedAmount = null)
 {
     public TravelRequestItemDto[] Items { get; init; } = Items ?? Array.Empty<TravelRequestItemDto>();
 }

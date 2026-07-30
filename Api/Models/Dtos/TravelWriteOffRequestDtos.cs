@@ -29,7 +29,8 @@ public sealed record TravelWriteOffRequestDto(
     DateTime?                     EstimatedRefundDate   = null,
     DateTime?                     RefundedAt            = null,
     decimal?                      TravelRefundAmount    = null,
-    decimal?                      TravelRefundedAmount  = null);
+    decimal?                      TravelRefundedAmount  = null,
+    DateTime?                     TravelClosedAt        = null);  // 關聯出差單的結案時間（供沖銷頁「出差單結案資訊」卡）
 
 // ── Item DTO ──────────────────────────────────────────────────────────────────
 
@@ -95,4 +96,5 @@ public sealed record TravelWriteOffTaskDetailDto(
     string?                  RefundedBySignatureUrl = null,
     bool                     TravelIsClosed        = false,
     decimal?                 TravelRefundAmount    = null,
-    decimal?                 TravelRefundedAmount  = null);
+    decimal?                 TravelRefundedAmount  = null,
+    DateTime?                TravelClosedAt        = null);

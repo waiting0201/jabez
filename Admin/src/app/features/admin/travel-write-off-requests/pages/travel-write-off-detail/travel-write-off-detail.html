@@ -138,6 +138,14 @@
       </div>
     </div>
 
+    <!-- 關聯出差單的結案資訊（差額撥款欄位在本頁以「撥款」語彙另行呈現，此處只顯示結案狀態）-->
+    <app-closure-info-card
+      title="出差單結案資訊"
+      [alwaysShow]="true"
+      [showRefund]="false"
+      [isClosed]="r.travelIsClosed"
+      [closedAt]="r.travelClosedAt" />
+
     <!-- 沖銷明細 -->
     <div class="card border-0 shadow-sm mb-6">
       <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">

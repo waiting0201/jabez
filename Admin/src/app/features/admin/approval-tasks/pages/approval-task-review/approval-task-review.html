@@ -12,6 +12,16 @@
       <h4 class="mb-0">簽核審核</h4>
       <span [class]="'badge ' + appTypeClass[task.applicationType]">{{ appTypeLabel[task.applicationType] }}</span>
       <span [class]="'badge ' + statusClass[task.status]">{{ statusLabel[task.status] }}</span>
+      @if (closureInfo(task); as c) {
+        @if (c.isClosed) {
+          <span class="badge bg-elevated text-secondary">
+            已結案
+            @if (c.closedAt) {
+              <span class="fw-400">（{{ c.closedAt | date:'yyyy-MM-dd' }}）</span>
+            }
+          </span>
+        }
+      }
     </div>
 
     @if (errorMsg()) {
@@ -1081,6 +1091,21 @@
 
         }
 
+        <!-- ── 結案資訊（advance / travel 為本單；兩種沖銷為其關聯母單）──────────── -->
+        @if (closureInfo(task); as c) {
+          <app-closure-info-card
+            cardClass="mt-6"
+            [title]="closureTitle(task)"
+            [showRefund]="!isRelatedClosure(task)"
+            [alwaysShow]="isRelatedClosure(task)"
+            [isClosed]="c.isClosed"
+            [closedAt]="c.closedAt"
+            [refundAmount]="c.refundAmount"
+            [refundedAmount]="c.refundedAmount"
+            [estimatedRefundDate]="c.estimatedRefundDate"
+            [refundedAt]="c.refundedAt" />
+        }
+
         <!-- ── 簽核流程時間軸 ────────────────────────────────────── -->
         @if (task.flow) {
           <div class="card border-0 shadow-sm mt-6">
@@ -1299,22 +1324,7 @@
                 <div class="text-muted small mb-1 fw-500">核准時間：</div>
                 <div class="small mb-4">{{ task.reviewedAt | date:'yyyy-MM-dd HH:mm' }}</div>
               }
-              @if (task.applicationType === 'advance' && task.advanceDetail?.estimatedRefundDate) {
-                <div class="text-muted small mb-1 fw-500">預計退款日：</div>
-                <div class="small mb-4">{{ task.advanceDetail!.estimatedRefundDate | date:'yyyy-MM-dd' }}</div>
-              }
-              @if (task.applicationType === 'advance' && task.advanceDetail?.refundedAt) {
-                <div class="text-muted small mb-1 fw-500">退款日：</div>
-                <div class="small mb-4 text-success">{{ task.advanceDetail!.refundedAt | date:'yyyy-MM-dd' }}</div>
-              }
-              @if (task.applicationType === 'travel' && task.travelDetail?.estimatedRefundDate) {
-                <div class="text-muted small mb-1 fw-500">預計退款日：</div>
-                <div class="small mb-4">{{ task.travelDetail!.estimatedRefundDate | date:'yyyy-MM-dd' }}</div>
-              }
-              @if (task.applicationType === 'travel' && task.travelDetail?.refundedAt) {
-                <div class="text-muted small mb-1 fw-500">退款日：</div>
-                <div class="small mb-4 text-success">{{ task.travelDetail!.refundedAt | date:'yyyy-MM-dd' }}</div>
-              }
+              <!-- advance / travel 的預計退款日 / 退款日改由上方「結案資訊」卡片統一呈現，此處不再重複 -->
               @if (task.applicationType === 'write_off' && task.writeOffDetail?.estimatedRefundDate) {
                 <div class="text-muted small mb-1 fw-500">預計撥款日：</div>
                 <div class="small mb-4">{{ task.writeOffDetail!.estimatedRefundDate | date:'yyyy-MM-dd' }}</div>
