@@ -96,6 +96,14 @@
       </div>
     </div>
 
+    <!-- 關聯預支單的結案資訊（差額撥款欄位在本頁以「撥款」語彙另行呈現，此處只顯示結案狀態）-->
+    <app-closure-info-card
+      title="預支單結案資訊"
+      [alwaysShow]="true"
+      [showRefund]="false"
+      [isClosed]="r.advanceIsClosed"
+      [closedAt]="r.advanceClosedAt" />
+
     <!-- 本次沖銷差額撥款明細（僅超支時才有資料；read-only）-->
     <app-installments-table
       [installmentsInput]="r.installments"

@@ -174,6 +174,13 @@ export interface TravelTaskDetail {
   holidayAllowances?: HolidayAllowance[];
   installments?: InstallmentDto[];
   paymentStatus?: PaymentInstallmentStatus;
+  /** 是否已結案（沖銷完成）；假日執行活動不走沖銷，恆為 false */
+  isClosed?: boolean;
+  closedAt?: string;
+  /** 應退還差額（沖銷累計 > 出差金額時系統自動計算） */
+  refundAmount?: number;
+  /** 實際退款金額（財務手動填入） */
+  refundedAmount?: number;
 }
 
 export interface OvertimeTaskDetail {
@@ -219,6 +226,13 @@ export interface AdvanceTaskDetail {
   rounds?: import('../../advance-requests/models/advance-request.model').AdvanceRound[];
   /** 本次送簽的批次號；> 1 表示正在簽核追加批次 */
   currentRoundNo: number;
+  /** 是否已結案（所有沖銷已完成，差額已核對）；與預支申請清單同一 badge */
+  isClosed?: boolean;
+  closedAt?: string;
+  /** 應退還差額（沖銷累計 > 預支時系統自動計算） */
+  refundAmount?: number;
+  /** 實際退款金額（財務手動填入） */
+  refundedAmount?: number;
 }
 
 export interface WriteOffTaskDetailItem {
@@ -273,6 +287,8 @@ export interface WriteOffTaskDetail {
   otherWrittenOffTotal: number;
   refundedBySignatureUrl?: string;
   advanceIsClosed?: boolean;
+  /** 關聯預支單的結案時間 */
+  advanceClosedAt?: string;
   /** 關聯預支單的應退差額（系統自動計算） */
   advanceRefundAmount?: number;
   /** 關聯預支單的實際退款金額（財務手動填入） */
@@ -328,6 +344,8 @@ export interface TravelWriteOffTaskDetail {
   refundedAt?: string;
   refundedBySignatureUrl?: string;
   travelIsClosed?: boolean;
+  /** 關聯出差單的結案時間 */
+  travelClosedAt?: string;
   /** 關聯出差單的應退差額（系統自動計算） */
   travelRefundAmount?: number;
   /** 關聯出差單的實際退款金額（財務手動填入） */

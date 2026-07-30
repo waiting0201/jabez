@@ -8,11 +8,12 @@ import {ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
 import {TravelRequest, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/travel-request.model';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
+import {ClosureInfoCardComponent} from '../../../../../shared/components/closure-info-card';
 
 @Component({
   selector: 'app-travel-detail',
   templateUrl: './travel-detail.html',
-  imports: [RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, InstallmentsTable],
+  imports: [RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, InstallmentsTable, ClosureInfoCardComponent],
 })
 export class TravelDetail implements OnInit {
   private service = inject(TravelRequestService);

@@ -69,6 +69,8 @@ export interface TravelWriteOffRequest {
   travelWrittenOffTotal: number;
   /** 出差主單是否已結案 */
   travelIsClosed?: boolean;
+  /** 關聯出差單的結案時間 */
+  travelClosedAt?: string;
   /** 預計退款日（源自出差主單） */
   estimatedRefundDate?: string;
   /** 退款日（源自出差主單） */

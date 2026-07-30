@@ -10,6 +10,7 @@ import {FilePreviewLoader} from '../../../../../shared/services/file-preview-loa
 import {AttachmentsList} from '../../../../../shared/components/attachments-list';
 import {InstallmentsEditorComponent} from '../../../../../shared/components/installments-editor';
 import {WriteOffSummaryComponent} from '../../../../../shared/components/write-off-summary';
+import {ClosureInfoCardComponent} from '../../../../../shared/components/closure-info-card';
 import {AuthService} from '../../../../../core/auth/services/auth.service';
 import {PaymentRequestService} from '../../../payment-requests/services/payment-request.service';
 import {AdvanceRequestService} from '../../../advance-requests/services/advance-request.service';
@@ -49,7 +50,7 @@ import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.direc
 @Component({
   selector: 'app-approval-task-review',
   templateUrl: './approval-task-review.html',
-  imports: [RouterLink, ReactiveFormsModule, AsyncPipe, DatePipe, DecimalPipe, FilePreviewModal, AttachmentsList, InstallmentsEditorComponent, WriteOffSummaryComponent, ScrollIntoViewDirective],
+  imports: [RouterLink, ReactiveFormsModule, AsyncPipe, DatePipe, DecimalPipe, FilePreviewModal, AttachmentsList, InstallmentsEditorComponent, WriteOffSummaryComponent, ClosureInfoCardComponent, ScrollIntoViewDirective],
 })
 export class ApprovalTaskReview implements OnInit {
   private service           = inject(ApprovalTaskService);
@@ -393,6 +394,78 @@ export class ApprovalTaskReview implements OnInit {
     if (task.applicationType === 'travel_write_off')
       return !!task.travelWriteOffDetail?.travelIsClosed;
     return false;
+  }
+
+  /**
+   * 沖銷類（write_off / travel_write_off）的結案資訊呈現的是**關聯母單**（預支單 / 出差單）的狀態，
+   * 沖銷單自身沒有結案概念。這兩類：卡片一律顯示（含「未結案」）且不列退款四欄
+   * —— 同一組金額 / 日期在沖銷頁已以「撥款」語彙呈現，兩種標籤並存會語意混淆。
+   */
+  isRelatedClosure(task: ApprovalTask): boolean {
+    return task.applicationType === 'write_off' || task.applicationType === 'travel_write_off';
+  }
+
+  /** 結案資訊卡標題：沖銷類需標明是哪張母單 */
+  closureTitle(task: ApprovalTask): string {
+    if (task.applicationType === 'write_off')        return '預支單結案資訊';
+    if (task.applicationType === 'travel_write_off') return '出差單結案資訊';
+    return '結案資訊';
+  }
+
+  /**
+   * 結案 / 退款資訊（`<app-closure-info-card>` 的資料來源）。
+   * - `advance` / `travel`：本申請單自身的結案狀態（六欄全空則回 null，卡片不顯示）
+   * - `write_off` / `travel_write_off`：關聯母單的結案狀態，一律回傳（由 alwaysShow 顯示「未結案」）
+   * 其餘類型無結案概念，回傳 null；holiday_travel 共用 TravelRequest 但不走沖銷、永不結案故排除。
+   */
+  closureInfo(task: ApprovalTask): {
+    isClosed: boolean;
+    closedAt?: string;
+    refundAmount?: number;
+    refundedAmount?: number;
+    estimatedRefundDate?: string;
+    refundedAt?: string;
+  } | null {
+    const d = task.applicationType === 'advance' ? task.advanceDetail
+            : task.applicationType === 'travel'  ? task.travelDetail
+            : null;
+    const wo  = task.applicationType === 'write_off'        ? task.writeOffDetail       : null;
+    const two = task.applicationType === 'travel_write_off' ? task.travelWriteOffDetail : null;
+    if (!d && !wo && !two) return null;
+    const info = wo
+      ? {
+          isClosed:            !!wo.advanceIsClosed,
+          closedAt:            wo.advanceClosedAt,
+          refundAmount:        wo.advanceRefundAmount,
+          refundedAmount:      wo.advanceRefundedAmount,
+          estimatedRefundDate: wo.estimatedRefundDate,
+          refundedAt:          wo.refundedAt,
+        }
+      : two
+      ? {
+          isClosed:            !!two.travelIsClosed,
+          closedAt:            two.travelClosedAt,
+          refundAmount:        two.travelRefundAmount,
+          refundedAmount:      two.travelRefundedAmount,
+          estimatedRefundDate: two.estimatedRefundDate,
+          refundedAt:          two.refundedAt,
+        }
+      : {
+          isClosed:            !!d!.isClosed,
+          closedAt:            d!.closedAt,
+          refundAmount:        d!.refundAmount,
+          refundedAmount:      d!.refundedAmount,
+          estimatedRefundDate: d!.estimatedRefundDate,
+          refundedAt:          d!.refundedAt,
+        };
+    // 沖銷類一律回傳：該頁需固定呈現關聯母單的已結案 / 未結案（元件 alwaysShow）
+    if (wo || two) return info;
+    const hasAny = info.isClosed
+      || (info.refundAmount != null && info.refundAmount > 0)
+      || info.refundedAmount != null
+      || !!info.estimatedRefundDate
+      || !!info.refundedAt;
+    return hasAny ? info : null;
   }
 
   closeCaseLoading = signal(false);

@@ -87,8 +87,9 @@ draft → pending → approved / returned / rejected
   - `paid` = 有 installments 且所有 PaidAt 非 null（FullyPaid）
   - `partial` = 至少一期 PaidAt 非 null 且至少一期 PaidAt 為 null（PartiallyPaid）
   - `unpaid` = 無 installments 或所有 PaidAt 為 null（Unpaid）
-  - 簽核作業 → 已核准 Tab 的篩選按鈕對應：`全部` / `尚未撥款` (`unpaid`) / `部分撥款` (`partial`) / `全部撥款` (`paid`)
-  - 出差沖銷（travel_write_off）退款仍以父表 `RefundedAt` 兩態判斷；遇 `paymentStatus=partial` 時整批 `1=0` 短路。**預支沖銷（write_off）自 2026-07 起改走分期**，列表 filter 尚未接上分期三態（另案）
+  - `closed` = **已結案**（2026-07 新增第 4 個按鈕，非撥款態）：父表 `IsClosed = 1`。只有**預支（advance）與出差預支（travel）**有結案概念，`PaymentStatusClause` 以 `supportsClosed: true` 開啟；其餘所有類型（請款 / 出差請款 / 兩種沖銷 / 請假 / 加班 / 假日活動 / 預審）一律 `1=0` 短路
+  - 簽核作業 → 已核准 Tab 的篩選按鈕對應：`全部` / `尚未撥款` (`unpaid`) / `部分撥款` (`partial`) / `全部撥款` (`paid`) / `已結案` (`closed`)
+  - 出差沖銷（travel_write_off）退款仍以父表 `RefundedAt` 兩態判斷；遇 `paymentStatus=partial` 或 `closed` 時整批 `1=0` 短路。**預支沖銷（write_off）自 2026-07 起改走分期**，列表 filter 尚未接上分期三態（另案）
 - **PDF 出納簽名章**：取 `installments[]` 中最後一期已撥款者的 `PaidBySignatureUrl` + `PaidAt`
 
 ### 預支沖銷差額分期撥款（2026-07 新增）

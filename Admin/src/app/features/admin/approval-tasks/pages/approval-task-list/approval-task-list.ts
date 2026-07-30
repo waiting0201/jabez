@@ -62,7 +62,8 @@ export class ApprovalTaskList {
 
   readonly PAGE_SIZE = 20;
   activeTab = signal<'pending' | 'approved' | 'rejected' | 'director_pending'>('pending');
-  paymentStatus = signal<'' | 'paid' | 'unpaid' | 'partial'>('');
+  /** 撥款狀態篩選：三態撥款 + closed（已結案，僅預支 / 出差預支有結案概念，後端其他類型 short-circuit） */
+  paymentStatus = signal<'' | 'paid' | 'unpaid' | 'partial' | 'closed'>('');
   applicationTypeFilter = signal<'' | ApplicationType>('');
   submittedByFilter = signal('');
   page = signal(1);
@@ -99,7 +100,7 @@ export class ApprovalTaskList {
     this.selectedKeys.set(new Set());
   }
 
-  setPaymentStatus(status: '' | 'paid' | 'unpaid' | 'partial') {
+  setPaymentStatus(status: '' | 'paid' | 'unpaid' | 'partial' | 'closed') {
     this.paymentStatus.set(status);
     this.page.set(1);
   }
@@ -252,6 +253,17 @@ export class ApprovalTaskList {
       return refundBadge(!!d.refundedAt);
     }
     return null;
+  }
+
+  /**
+   * 是否已結案（第三個 badge）。僅預支 / 出差預支有結案概念（所有沖銷完成、差額核對完畢），
+   * 與 advance-list / travel-list 的「已結案」badge 同一真相（AdvanceRequest.IsClosed / TravelRequest.IsClosed）。
+   * holiday_travel 共用 TravelRequest 但不走沖銷、永不結案，故排除。
+   */
+  isClosed(t: ApprovalTask): boolean {
+    if (t.applicationType === 'advance') return !!t.advanceDetail?.isClosed;
+    if (t.applicationType === 'travel')  return !!t.travelDetail?.isClosed;
+    return false;
   }
 
   getSummary(t: ApprovalTask): string {

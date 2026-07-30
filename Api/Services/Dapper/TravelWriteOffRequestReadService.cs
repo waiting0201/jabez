@@ -17,6 +17,7 @@ public sealed class TravelWriteOffRequestReadService(IDbConnection db) : ITravel
                two.ReviewedAt, two.ReviewNote,
                tr.GrandTotal AS TravelGrandTotal,
                CAST(ISNULL(tr.IsClosed, 0) AS BIT) AS TravelIsClosed,
+               tr.ClosedAt AS TravelClosedAt,
                tr.EstimatedRefundDate, tr.RefundedAt,
                tr.RefundAmount AS TravelRefundAmount,
                tr.RefundedAmount AS TravelRefundedAmount,
@@ -143,6 +144,7 @@ public sealed class TravelWriteOffRequestReadService(IDbConnection db) : ITravel
             (DateTime?)x.two.EstimatedRefundDate,
             (DateTime?)x.two.RefundedAt,
             (decimal?)x.two.TravelRefundAmount,
-            (decimal?)x.two.TravelRefundedAmount));
+            (decimal?)x.two.TravelRefundedAmount,
+            (DateTime?)x.two.TravelClosedAt));
     }
 }

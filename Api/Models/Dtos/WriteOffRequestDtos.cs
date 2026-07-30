@@ -39,7 +39,8 @@ public sealed record WriteOffRequestDto(
     InstallmentDto[]?         Installments = null,        // 本沖銷單的差額撥款分期
     string?                   PaymentStatus = null,
     InstallmentDto[]?         AdvanceInstallments = null, // 關聯預支單的撥款分期（唯讀對照）
-    string?                   AdvancePaymentStatus = null);
+    string?                   AdvancePaymentStatus = null,
+    DateTime?                 AdvanceClosedAt = null);     // 關聯預支單的結案時間（供沖銷頁「預支單結案資訊」卡）
 
 /// <summary>同一張預支單底下的各次沖銷（供沖銷資訊卡列出第 N 次沖銷金額）</summary>
 public sealed record WriteOffRoundDto(
@@ -125,7 +126,8 @@ public sealed record WriteOffTaskDetailDto(
     InstallmentDto[]?   Installments = null,         // 本沖銷單的差額撥款分期（SUM 須等於 RefundDue）
     string?             PaymentStatus = null,
     InstallmentDto[]?   AdvanceInstallments = null,  // 關聯預支單的撥款分期（簽核頁可編輯，與預支單同步）
-    string?             AdvancePaymentStatus = null);
+    string?             AdvancePaymentStatus = null,
+    DateTime?           AdvanceClosedAt = null);      // 關聯預支單的結案時間（供簽核頁「預支單結案資訊」卡）
 
 // ── 支票已支付註記 ────────────────────────────────────────────────────────────
 

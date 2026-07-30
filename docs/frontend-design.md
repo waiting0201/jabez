@@ -960,6 +960,21 @@ overtimeStartHint = computed<string>(() => {
 | [advance-list](../Admin/src/app/features/admin/advance-requests/pages/advance-list/advance-list.html)（單號欄） | `含追加` | `currentRoundNo > 1`；不在狀態欄，直接跟在單號後（`ms-1`、`font-size:.7rem`） |
 | [payment-list](../Admin/src/app/features/admin/payment-requests/pages/payment-list/payment-list.html) | `待撥款` / `已撥款` | `approvalStatus ∈ {pending, approved}`，再依 `paidAt` 是否填入決定 |
 | [approval-task-list](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-list/approval-task-list.html) | `待撥款` / `已撥款` | `status ∈ {pending, approved}`，per-type 取 `paymentDetail.paidAt / advanceDetail.paidAt / …`；write_off / travel_write_off 僅超支才顯示；leave / overtime / holiday_travel 永不顯示 |
+| [approval-task-list](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-list/approval-task-list.html) | `已結案` | `isClosed(t)`：`advance` 看 `advanceDetail.isClosed`、`travel` 看 `travelDetail.isClosed`（**與 advance-list / travel 詳情同一真相 `AdvanceRequest.IsClosed` / `TravelRequest.IsClosed`、同一 class `bg-elevated text-secondary`**）；`holiday_travel` 共用 TravelRequest 但不走沖銷、永不結案故排除；狀態欄因此可能同時出現三個徽章（審核狀態 + 撥款 + 已結案），排版沿用同一 `flex flex-wrap gap-1` 容器 |
+
+**「結案資訊」卡片＝共用元件 [`<app-closure-info-card>`](../Admin/src/app/shared/components/closure-info-card.ts)**（2026-07 從 4 份重複 HTML 收斂）。欄位順序固定：結案狀態 / 結案時間 / 應退還差額 / 實際退款金額 / 預計退款日 / 退款日（未退款顯示「尚未退款」），`row g-3` + `col-6 col-md-3`，card header icon `#check-circle`。
+
+| input | 用途 |
+|---|---|
+| `isClosed` / `closedAt` / `refundAmount` / `refundedAmount` / `estimatedRefundDate` / `refundedAt` | 六個資料欄位 |
+| `title` | 預設「結案資訊」；兩種沖銷頁傳「預支單結案資訊」/「出差單結案資訊」以標明是**關聯母單**的狀態 |
+| `cardClass` | 間距：detail 頁 `mb-6`（預設）、簽核頁 `mt-6` |
+| `showRefund` | 沖銷頁傳 `false`：同一組金額 / 日期在沖銷頁已以**「撥款」語彙**呈現（差額撥款分期 + 已核准卡片 + 出差沖銷的預計撥款日 / 撥款日 / 撥款金額），兩種標籤並存會語意混淆，故該頁只留結案狀態 |
+| `alwaysShow` | 沖銷頁傳 `true`：未結案時也要看得到「未結案」badge（`bg-warning-subtle text-warning-emphasis`）。其他頁沿用「六欄全空則整卡不渲染」 |
+
+已採用：[advance-detail](../Admin/src/app/features/admin/advance-requests/pages/advance-detail/advance-detail.html)、[travel-detail](../Admin/src/app/features/admin/travel-requests/pages/travel-detail/travel-detail.html)、[write-off-detail](../Admin/src/app/features/admin/write-off-requests/pages/write-off-detail/write-off-detail.html)、[travel-write-off-detail](../Admin/src/app/features/admin/travel-write-off-requests/pages/travel-write-off-detail/travel-write-off-detail.html)、[approval-task-review](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/approval-task-review.html)。
+
+簽核頁以 `closureInfo(task)` 供資料，另有兩個 helper 收斂 per-type 差異：`isRelatedClosure(task)`（是否為沖銷類 → 決定 `showRefund` / `alwaysShow`）與 `closureTitle(task)`。取值來源：`advance` / `travel` 為本單自身欄位；`write_off` 取 `advanceIsClosed` / `advanceClosedAt`、`travel_write_off` 取 `travelIsClosed` / `travelClosedAt`（沖銷單本身無結案概念，一律回傳資料讓 `alwaysShow` 決定呈現）。卡片置於申請資訊區與簽核流程時間軸之間，同頁「已核准」卡片**不再重複**列 advance / travel 的預計退款日 / 退款日。advance / travel 詳情頁與簽核頁頁首另掛「已結案（yyyy-MM-dd）」徽章。
 
 業務狀態徽章建議色：
 

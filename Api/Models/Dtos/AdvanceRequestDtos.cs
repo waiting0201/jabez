@@ -173,7 +173,9 @@ public sealed record AdvanceTaskDetailDto(
     InstallmentDto[]? Installments = null,
     string?   PaymentStatus = null,
     AdvanceRoundDto[]? Rounds = null,
-    int       CurrentRoundNo = 1)
+    int       CurrentRoundNo = 1,
+    bool      IsClosed = false,
+    DateTime? ClosedAt = null)
 {
     public AdvanceRequestItemDto[] Items { get; init; } = Items ?? Array.Empty<AdvanceRequestItemDto>();
 }

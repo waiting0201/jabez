@@ -91,6 +91,9 @@ export interface WriteOffRequest {
   advanceGrandTotal: number;
   advanceWrittenOffTotal: number;
   advanceIsClosed: boolean;
+  /** 關聯預支單的結案時間 */
+  advanceClosedAt?: string;
+  /** 以下兩個日期皆為**關聯預支單**的退款日期（後端取自 AdvanceRequest） */
   estimatedRefundDate?: string;
   refundedAt?: string;
   /** 關聯預支單的應退差額（系統自動計算） */

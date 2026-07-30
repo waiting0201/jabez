@@ -431,8 +431,11 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         //   paid    = 已全數撥款（有 installments 且所有 PaidAt 都非 null）
         //   partial = 部分撥款（至少一期 PaidAt 非 null，且至少一期 PaidAt 為 null）
         //   unpaid  = 尚未開始撥款（無 installments，或所有 PaidAt 都為 null）
+        //   closed  = 已結案（父表 IsClosed = 1）；只有預支 / 出差預支有結案概念，其餘類型整批 short-circuit
         bool hasPaymentFilter = !string.IsNullOrEmpty(paymentStatus) && !filterId.HasValue;
-        string PaymentStatusClause(string parentAlias, string installmentTable, string fkCol)
+        bool isClosedFilter   = hasPaymentFilter && paymentStatus == "closed";
+        /// <param name="supportsClosed">父表是否有 IsClosed 欄位（僅 AdvanceRequests / TravelRequests）</param>
+        string PaymentStatusClause(string parentAlias, string installmentTable, string fkCol, bool supportsClosed = false)
         {
             if (!hasPaymentFilter) return "";
             return paymentStatus switch
@@ -441,6 +444,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                              $" AND NOT EXISTS (SELECT 1 FROM {installmentTable} ix WHERE ix.{fkCol} = {parentAlias}.Id AND ix.PaidAt IS NULL)",
                 "partial" => $" AND EXISTS (SELECT 1 FROM {installmentTable} ix WHERE ix.{fkCol} = {parentAlias}.Id AND ix.PaidAt IS NOT NULL)" +
                              $" AND EXISTS (SELECT 1 FROM {installmentTable} ix WHERE ix.{fkCol} = {parentAlias}.Id AND ix.PaidAt IS NULL)",
+                "closed"  => supportsClosed ? $" AND {parentAlias}.IsClosed = 1" : " AND 1=0",
                 _         => $" AND (NOT EXISTS (SELECT 1 FROM {installmentTable} ix WHERE ix.{fkCol} = {parentAlias}.Id)" +
                              $"      OR NOT EXISTS (SELECT 1 FROM {installmentTable} ix WHERE ix.{fkCol} = {parentAlias}.Id AND ix.PaidAt IS NOT NULL))",
             };
@@ -448,12 +452,12 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 
         /// <summary>
         /// 退款狀態篩選（沖銷類用）：仍以父表 RefundedAt 欄位判斷兩態。
-        /// 沖銷類沒有分期，遇 paymentStatus=partial 時整批 short-circuit（不顯示任何沖銷案件）。
+        /// 沖銷類沒有分期也沒有結案欄位，遇 paymentStatus=partial / closed 時整批 short-circuit（不顯示任何沖銷案件）。
         /// </summary>
         string RefundStatusClause(string refundedAtColumn)
         {
             if (!hasPaymentFilter) return "";
-            if (paymentStatus == "partial") return " AND 1=0";
+            if (paymentStatus == "partial" || isClosedFilter) return " AND 1=0";
             return paymentStatus == "paid"
                 ? $" AND {refundedAtColumn} IS NOT NULL"
                 : $" AND {refundedAtColumn} IS NULL";
@@ -472,11 +476,11 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         // 按 ID 查詢時不套用審核者過濾（StepMatchClause），只用 ID 條件
         string paymentWhere       = !TypeAllowed("payment_request") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(paymentIdWhere,       "") : BuildWhere("", StepMatchClause("pr",  "sub",  "payment_request")) + PaymentStatusClause("pr",  "PaymentRequestInstallments",      "PaymentRequestId") + SubmitterClause("pr.SubmittedById"));
         string leaveWhere         = !TypeAllowed("leave") || hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(leaveIdWhere,         "") : BuildWhere("", StepMatchClause("lr",  "u",    "leave")) + SubmitterClause("lr.EmployeeId"));
-        string travelWhere        = !TypeAllowed("travel") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(travelIdWhere,        "") + " AND tr.IsHolidayTravel = 0" : BuildWhere("tr.IsHolidayTravel = 0", StepMatchClause("tr",  "u",    "travel")) + PaymentStatusClause("tr",  "TravelRequestInstallments",       "TravelRequestId") + SubmitterClause("tr.EmployeeId"));
+        string travelWhere        = !TypeAllowed("travel") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(travelIdWhere,        "") + " AND tr.IsHolidayTravel = 0" : BuildWhere("tr.IsHolidayTravel = 0", StepMatchClause("tr",  "u",    "travel")) + PaymentStatusClause("tr",  "TravelRequestInstallments",       "TravelRequestId", supportsClosed: true) + SubmitterClause("tr.EmployeeId"));
         // 假日執行活動津貼隨次月薪資發放、不走撥款流程，故套用「已撥款 / 未撥款」篩選時與 leave/overtime 一致直接排除
         string holidayTravelWhere = !TypeAllowed("holiday_travel") || hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(holidayTravelIdWhere, "") + " AND tr.IsHolidayTravel = 1" : BuildWhere("tr.IsHolidayTravel = 1", StepMatchClause("tr",  "u",    "holiday_travel")) + SubmitterClause("tr.EmployeeId"));
         string overtimeWhere      = !TypeAllowed("overtime") || hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(overtimeIdWhere,      "") : BuildWhere("", StepMatchClause("ot",  "u",    "overtime")) + SubmitterClause("ot.EmployeeId"));
-        string advanceWhere       = !TypeAllowed("advance") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(advanceIdWhere,       "") : BuildWhere("", StepMatchClause("adv", "asub", "advance")) + PaymentStatusClause("adv", "AdvanceRequestInstallments",      "AdvanceRequestId") + SubmitterClause("adv.SubmittedById"));
+        string advanceWhere       = !TypeAllowed("advance") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(advanceIdWhere,       "") : BuildWhere("", StepMatchClause("adv", "asub", "advance")) + PaymentStatusClause("adv", "AdvanceRequestInstallments",      "AdvanceRequestId", supportsClosed: true) + SubmitterClause("adv.SubmittedById"));
         string writeOffWhere      = !TypeAllowed("write_off") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(writeOffIdWhere,      "") : BuildWhere("", StepMatchClause("wo",  "wsub", "write_off")) + RefundStatusClause("arx.RefundedAt") + SubmitterClause("wo.SubmittedById"));
         string travelWriteOffWhere  = !TypeAllowed("travel_write_off") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(travelWriteOffIdWhere,  "") : BuildWhere("", StepMatchClause("two", "trsub", "travel_write_off")) + RefundStatusClause("trx.RefundedAt") + SubmitterClause("two.SubmittedById"));
         string travelPaymentWhere   = !TypeAllowed("travel_payment") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(travelPaymentIdWhere,   "") : BuildWhere("", StepMatchClause("tpr", "tpru", "travel_payment")) + PaymentStatusClause("tpr", "TravelPaymentRequestInstallments", "TravelPaymentRequestId") + SubmitterClause("tpr.EmployeeId"));
@@ -516,6 +520,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                    tr.GrandTotal, tr.Purpose, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    tr.IsHolidayTravel,
                    tr.EstimatedRefundDate, tr.RefundedAt,
+                   tr.IsClosed, tr.ClosedAt, tr.RefundAmount, tr.RefundedAmount,
                    tr.ApprovalStatus, tr.ApprovalItemId, tr.CurrentStepOrder,
                    u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, tr.CreatedAt, tr.ReviewedAt, tr.ReviewNote
             FROM TravelRequests tr
@@ -558,6 +563,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                    adv.ActivityName, adv.GrandTotal, adv.AdvanceDate,
                    adv.ApprovalStatus, adv.ApprovalItemId, adv.CurrentStepOrder, adv.CurrentRoundNo,
                    adv.EstimatedRefundDate, adv.RefundedAt,
+                   adv.IsClosed, adv.ClosedAt, adv.RefundAmount, adv.RefundedAmount,
                    asub.Name AS SubmittedBy, asub.SignatureUrl AS SubmittedBySignatureUrl, adv.CreatedAt, adv.ReviewedAt, adv.ReviewNote
             FROM AdvanceRequests adv
             LEFT JOIN Projects proj      ON adv.ProjectId    = proj.Id
@@ -584,6 +590,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                              AND w2.Id < wo.Id), 0) AS OtherWrittenOffTotal,
                    worefundby.SignatureUrl AS RefundedBySignatureUrl,
                    arx.IsClosed AS AdvanceIsClosed,
+                   arx.ClosedAt AS AdvanceClosedAt,
                    arx.AdvanceDate AS AdvanceDate,
                    wo.WriteOffNo
             FROM WriteOffRecords wo
@@ -614,7 +621,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                              AND tw2.ApprovalStatus = 'approved'
                              AND tw2.Id < two.Id), 0) AS OtherWrittenOffTotal,
                    tworefundby.SignatureUrl AS RefundedBySignatureUrl,
-                   trx.IsClosed AS TravelIsClosed
+                   trx.IsClosed AS TravelIsClosed,
+                   trx.ClosedAt AS TravelClosedAt
             FROM TravelWriteOffRecords two
             JOIN TravelRequests trx    ON two.TravelRequestId = trx.Id
             LEFT JOIN Projects proj    ON trx.ProjectId       = proj.Id
@@ -1211,7 +1219,11 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 GetTravelItems((int)row.Id),
                 null,
                 instDicts.Travel.TryGetValue((int)row.Id, out var trInst) ? [.. trInst] : null,
-                installments.ComputeStatus(instDicts.Travel.GetValueOrDefault((int)row.Id, []))),
+                installments.ComputeStatus(instDicts.Travel.GetValueOrDefault((int)row.Id, [])),
+                (bool)row.IsClosed,
+                (DateTime?)row.ClosedAt,
+                (decimal?)row.RefundAmount,
+                (decimal?)row.RefundedAmount),
             null, null, null, null,
             GetRecords("travel", (int)row.Id),
             GetDesignatedReviewers("travel", (int)row.Id),
@@ -1306,12 +1318,14 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (DateTime?)row.EstimatedRefundDate,
                 (DateTime?)row.RefundedAt,
                 GetAdvanceItems((int)row.Id),
-                null,
-                null,
+                (decimal?)row.RefundAmount,
+                (decimal?)row.RefundedAmount,
                 instDicts.Advance.TryGetValue((int)row.Id, out var advInst) ? [.. advInst] : null,
                 installments.ComputeStatus(instDicts.Advance.GetValueOrDefault((int)row.Id, [])),
                 GetAdvanceRounds((int)row.Id, (DateTime)row.AdvanceDate),
-                (int)row.CurrentRoundNo),
+                (int)row.CurrentRoundNo,
+                (bool)row.IsClosed,
+                (DateTime?)row.ClosedAt),
             null, null,
             GetRecords("advance", (int)row.Id),
             GetDesignatedReviewers("advance", (int)row.Id),
@@ -1381,7 +1395,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 instDicts.WriteOff.TryGetValue((int)row.Id, out var woInst) ? [.. woInst] : null,
                 installments.ComputeStatus(instDicts.WriteOff.GetValueOrDefault((int)row.Id, [])),
                 instDicts.Advance.TryGetValue((int)row.AdvanceRequestId, out var woAdvInst) ? [.. woAdvInst] : null,
-                installments.ComputeStatus(instDicts.Advance.GetValueOrDefault((int)row.AdvanceRequestId, []))),
+                installments.ComputeStatus(instDicts.Advance.GetValueOrDefault((int)row.AdvanceRequestId, [])),
+                (DateTime?)row.AdvanceClosedAt),
             null,
             GetRecords("write_off", (int)row.Id),
             GetDesignatedReviewers("write_off", (int)row.Id),
@@ -1457,7 +1472,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (string?)row.RefundedBySignatureUrl,
                 (bool)row.TravelIsClosed,
                 (decimal?)row.TravelRefundAmount,
-                (decimal?)row.TravelRefundedAmount),
+                (decimal?)row.TravelRefundedAmount,
+                (DateTime?)row.TravelClosedAt),
             GetRecords("travel_write_off", (int)row.Id),
             GetDesignatedReviewers("travel_write_off", (int)row.Id),
             (string?)row.SubmittedBySignatureUrl));
