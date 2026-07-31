@@ -98,6 +98,37 @@
                         </button>
                       </div>
                     </div>
+
+                    <!-- 限定職稱：名單內申請人只能從這些職稱的人員中指定審核者 -->
+                    <div class="ms-4 mt-3">
+                      <div class="fw-500 text-sm mb-1">
+                        限定職稱
+                        <span class="text-muted">— 留空＝不限職稱；有設定時申請人只能指定這些職稱的人員</span>
+                      </div>
+                      <div class="flex flex-col gap-2" formArrayName="designatedJobTitleIds">
+                        @for (ctrl of designatedJobTitleIds.controls; track $index) {
+                          <div class="flex items-center gap-2">
+                            <span class="text-muted small" style="min-width:1.25rem">{{ $index + 1 }}.</span>
+                            <select class="form-select form-select-sm" style="max-width:240px" [formControlName]="$index">
+                              <option [ngValue]="null">— 選擇職稱 —</option>
+                              @for (jt of availableJobTitles($index); track jt.id) {
+                                <option [ngValue]="jt.id">{{ jt.name }}（L{{ jt.level }}）</option>
+                              }
+                            </select>
+                            <button type="button" class="btn btn-sm btn-ghost-danger" (click)="removeDesignatedJobTitle($index)">
+                              <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                            </button>
+                          </div>
+                        }
+                        <div>
+                          <button type="button" class="btn btn-sm btn-outline-primary inline-flex items-center gap-1"
+                                  (click)="addDesignatedJobTitle()">
+                            <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                            新增職稱
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   }
                 }
                 @if (stepForm.value.useApplicantDesignated || useException) {
@@ -166,6 +197,9 @@
               }
               @if (useException && !stepForm.value.useApplicantDesignated) {
                 <div class="mt-1">名單內的申請人送單時，此步驟改由申請人自行指定審核者；不在名單內者照上述設定。</div>
+                @if (designatedJobTitleIds.length > 0) {
+                  <div class="mt-1">已設限定職稱：申請人的人員下拉只會出現這些職稱的人（未選職稱時該步驟送單會被擋下）。</div>
+                }
               }
             </div>
             <div class="flex gap-2 mt-4">
@@ -240,6 +274,12 @@
                             [title]="'例外指定審核名單：' + exceptionNames(step)">
                         <svg class="sa-icon" style="width:12px;height:12px;flex-shrink:0;stroke:currentColor"><use href="/assets/icons/sprite.svg#user-check"></use></svg>
                         例外指定 {{ step.exceptionUserIds.length }} 人
+                      </span>
+                    }
+                    @if (step.designatedJobTitleIds && step.designatedJobTitleIds.length > 0) {
+                      <span class="badge bg-warning-subtle text-warning-emphasis inline-flex items-center gap-1" style="white-space:nowrap">
+                        <svg class="sa-icon" style="width:12px;height:12px;flex-shrink:0;stroke:currentColor"><use href="/assets/icons/sprite.svg#briefcase"></use></svg>
+                        限定職稱：{{ designatedJobTitleNames(step) }}
                       </span>
                     }
                     @if (step.minDays) {

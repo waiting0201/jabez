@@ -66,11 +66,11 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/approval-items/active?type=<applicationType>` | **輕量摘要：免 `approvals:read` 權限**，回傳「**呼叫者部門實際會走**」的啟用流程，型別為精簡版 `ApprovalFlowSummaryDto { id, applicationType, steps:[{stepOrder, useApplicantDesignated}] }`（**刻意不含** `departmentId` / `departmentName` / `jobTitle` 等敏感設定欄位，避免未授權呼叫者探知流程內部；部門專屬優先，否則退回通用預設；部門由 JWT `department_id` 解析），供申請表單判斷是否顯示「指定審核者」欄位。**`useApplicantDesignated` 為「對呼叫者而言的有效值」**：步驟原生設定 **OR** 例外指定審核名單（`ApprovalStepExceptions`）命中呼叫者，使用者由 JWT `sub` 解析（缺 token 時退化為原生設定） |
+| GET | `/approval-items/active?type=<applicationType>` | **輕量摘要：免 `approvals:read` 權限**，回傳「**呼叫者部門實際會走**」的啟用流程，型別為精簡版 `ApprovalFlowSummaryDto { id, applicationType, steps:[{stepOrder, useApplicantDesignated, designatedRequiresDepartment, designatedJobTitleIds}] }`（**刻意不含** `departmentId` / `departmentName` / `jobTitle` 等敏感設定欄位，避免未授權呼叫者探知流程內部；部門專屬優先，否則退回通用預設；部門由 JWT `department_id` 解析），供申請表單判斷是否顯示「指定審核者」欄位。**`useApplicantDesignated` 為「對呼叫者而言的有效值」**：步驟原生設定 **OR** 例外指定審核名單（`ApprovalStepExceptions`）命中呼叫者，使用者由 JWT `sub` 解析（缺 token 時退化為原生設定）。**`designatedJobTitleIds` 同為 per-caller 有效值**：僅命中例外者才帶出該步驟的限定職稱，未命中者一律為空陣列（不外洩設定）；非空＝指定審核者只能挑這些職稱的人 |
 | GET/POST | `/approval-items` | 簽核項目列表 / 新增（需 `approvals:read` / `approvals:write`；body 含 `departmentId?` 部門維度，唯一性以 `(applicationType, departmentId)` 判定） |
 | GET/PUT/PATCH/DELETE | `/approval-items/{id}` | 簽核項目 CRUD |
-| POST | `/approval-items/{id}/steps` | 新增簽核步驟（body 可帶 `exceptionUserIds: Guid[]` 例外指定審核名單，**整批替換**；與 `useApplicantDesignated` 互斥，同時帶回 400） |
-| PUT/PATCH | `/approval-items/{id}/steps/{stepId}` | 更新簽核步驟（`exceptionUserIds` 整批替換：`null`／未帶＝不動、`[]`＝清空；切成 `useApplicantDesignated=true` 時自動清空例外名單） |
+| POST | `/approval-items/{id}/steps` | 新增簽核步驟（body 可帶 `exceptionUserIds: Guid[]` 例外指定審核名單，**整批替換**；與 `useApplicantDesignated` 互斥，同時帶回 400。另可帶 `designatedJobTitleIds: int[]` 例外的限定職稱，**整批替換**；沒有例外名單卻設限定職稱回 400） |
+| PUT/PATCH | `/approval-items/{id}/steps/{stepId}` | 更新簽核步驟（`exceptionUserIds` / `designatedJobTitleIds` 整批替換：`null`／未帶＝不動、`[]`＝清空；切成 `useApplicantDesignated=true` 或例外名單清空時，限定職稱一併自動清空） |
 | DELETE | `/approval-items/{id}/steps/{stepId}` | 刪除簽核步驟 |
 
 ## 審核任務

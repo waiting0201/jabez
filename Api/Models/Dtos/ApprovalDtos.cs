@@ -16,7 +16,10 @@ public sealed record ApprovalStepDto(
     // 例外指定審核名單：名單內的申請人送單時，此步驟改為「由申請人自行指定審核者」。
     // 非空即代表啟用例外（不另設 bool 旗標，避免兩者 desync）；與 UseApplicantDesignated 互斥。
     // 僅 GetByIdAsync（管理頁編輯）會帶出，清單頁一律為 null。
-    Guid[]? ExceptionUserIds             = null);
+    Guid[]? ExceptionUserIds             = null,
+    // 例外指定審核的限定職稱：申請人只能從這些職稱的人員中指定審核者（空＝不限職稱）。
+    // 同樣僅 GetByIdAsync 會帶出。
+    int[]?  DesignatedJobTitleIds        = null);
 
 public sealed record ApprovalItemDto(
     int               Id,
@@ -40,7 +43,10 @@ public sealed record ApprovalFlowStepSummaryDto(
     int  StepOrder,
     // 「對呼叫者而言」的有效值：步驟原生設定 OR 例外指定審核名單命中呼叫者
     bool UseApplicantDesignated,
-    bool DesignatedRequiresDepartment = false);
+    bool DesignatedRequiresDepartment = false,
+    // 「對呼叫者而言」的限定職稱：僅在呼叫者命中此步驟例外名單時才非空，
+    // 未命中者一律回空陣列（不外洩設定）。空＝不限職稱。
+    int[]? DesignatedJobTitleIds = null);
 
 public sealed record CreateApprovalItemRequest(
     string  Name,
@@ -69,7 +75,9 @@ public sealed record CreateApprovalStepRequest(
     bool    DesignatedRequiresDepartment = false,
     int?    MinDays                      = null,
     // 例外指定審核名單（整批替換語意）：null＝不設定、[]＝清空
-    Guid[]? ExceptionUserIds             = null);
+    Guid[]? ExceptionUserIds             = null,
+    // 例外指定審核的限定職稱（整批替換語意）：null＝不設定、[]＝清空
+    int[]?  DesignatedJobTitleIds        = null);
 
 public sealed record UpdateApprovalStepRequest(
     int?     StepOrder,
@@ -82,4 +90,6 @@ public sealed record UpdateApprovalStepRequest(
     bool?    DesignatedRequiresDepartment = null,
     int?     MinDays                      = null,
     // 例外指定審核名單（整批替換語意）：null＝不動、[]＝清空
-    Guid[]?  ExceptionUserIds             = null);
+    Guid[]?  ExceptionUserIds             = null,
+    // 例外指定審核的限定職稱（整批替換語意）：null＝不動、[]＝清空
+    int[]?   DesignatedJobTitleIds        = null);

@@ -38,32 +38,38 @@
                     [disabled]="isDisabled(gi)"
                     (ngModelChange)="onUserChange()">
               <option [ngValue]="null">— 人員 —</option>
-              @for (user of entry.departmentFilteredUsers; track user.id) {
+              @for (user of entry.candidateUsers; track user.id) {
                 <option [ngValue]="user.id">{{ user.name }}</option>
               }
             </select>
           } @else {
-            <!-- 一般模式：先職稱再人 -->
-            <select class="form-select form-select-sm" style="max-width:160px"
-                    [(ngModel)]="entry.selectedJobTitleId"
-                    [ngModelOptions]="{standalone: true}"
-                    [disabled]="isDisabled(gi)"
-                    (ngModelChange)="onJobTitleChange(entry)">
-              <option [ngValue]="null">— 職稱 —</option>
-              @for (jt of jobTitles; track jt.id) {
-                <option [ngValue]="jt.id">{{ jt.name }}</option>
-              }
-            </select>
+            <!-- 一般模式：先職稱再人；有限定職稱時職稱下拉無意義故隱藏 -->
+            @if (!hasJobTitleLimit(group)) {
+              <select class="form-select form-select-sm" style="max-width:160px"
+                      [(ngModel)]="entry.selectedJobTitleId"
+                      [ngModelOptions]="{standalone: true}"
+                      [disabled]="isDisabled(gi)"
+                      (ngModelChange)="onJobTitleChange(group, entry)">
+                <option [ngValue]="null">— 職稱 —</option>
+                @for (jt of jobTitles; track jt.id) {
+                  <option [ngValue]="jt.id">{{ jt.name }}</option>
+                }
+              </select>
+            }
             <select class="form-select form-select-sm" style="max-width:200px"
                     [(ngModel)]="entry.selectedUserId"
                     [ngModelOptions]="{standalone: true}"
                     [disabled]="isDisabled(gi)"
                     (ngModelChange)="onUserChange()">
               <option [ngValue]="null">— 人員 —</option>
-              @for (user of entry.filteredUsers; track user.id) {
+              @for (user of entry.candidateUsers; track user.id) {
                 <option [ngValue]="user.id">{{ user.name }}</option>
               }
             </select>
+          }
+
+          @if (hasJobTitleLimit(group) && entry.candidateUsers.length === 0) {
+            <span class="text-muted small">查無符合限定職稱的人員</span>
           }
 
           <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center"

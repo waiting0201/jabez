@@ -142,6 +142,12 @@ public static class DesignatedReviewerHelper
             designees = designees.Except(illegal).ToList();
         }
 
+        // 例外指定審核的限定職稱：designee 的職稱必須在該步驟的限定名單內。
+        // 與 :138 的靜默剔除刻意不同 —— 那是「此步驟對我已非指定步驟」的殘留（使用者無從得知也無從修正）；
+        // 職稱不符則是使用者挑錯人、可自行修正，且靜默剔除會退化成下方「請提供指定審核者」的誤導訊息。
+        // 須在正規化（補齊 ApprovalStepOrder==0）與剔除非法綁定之後才判定。
+        await ValidateDesignatedJobTitlesAsync(db, approvalItemId.Value, applicantId, designees);
+
         // 被抑制的指定步驟（首個指定步驟＝所選部門最高職稱 → 其後指定步驟不需選人）不列入必填檢查。
         // 注意：須在上方正規化（補齊 ApprovalStepOrder==0）之後才判定，否則第一步首位 designee 綁定抓不到。
         var normalized = designees
@@ -156,6 +162,44 @@ public static class DesignatedReviewerHelper
                 continue;
             if (!designees.Any(d => d.ApprovalStepOrder == stepOrder))
                 throw AppException.BadRequest("此簽核流程包含申請人指定審核步驟，請提供指定審核者。");
+        }
+    }
+
+    /// <summary>
+    /// 驗證「例外指定審核限定職稱」：只有例外命中且有設限定職稱的步驟才檢查，
+    /// 該步驟的 designee 職稱須落在限定名單內，否則丟 400（訊息指名步驟）。
+    /// 限定職稱僅存在於例外步驟（由 ApprovalHandler 守門），故此處以「例外命中 + 有名單」為條件即足夠。
+    /// </summary>
+    private static async Task ValidateDesignatedJobTitlesAsync(
+        AppDbContext db, int approvalItemId, Guid applicantId,
+        IReadOnlyList<RequestDesignatedReviewer> designees)
+    {
+        if (designees.Count == 0) return;
+
+        var limits = await db.ApprovalSteps
+            .AsNoTracking()
+            .Where(s => s.ApprovalItemId == approvalItemId
+                && s.Exceptions.Any(e => e.UserId == applicantId)
+                && s.DesignatedJobTitles.Any())
+            .Select(s => new { s.StepOrder, JobTitleIds = s.DesignatedJobTitles.Select(j => j.JobTitleId).ToList() })
+            .ToListAsync();
+        if (limits.Count == 0) return;
+
+        var limitMap = limits.ToDictionary(x => x.StepOrder, x => x.JobTitleIds);
+
+        var reviewerIds = designees.Select(d => d.ReviewerId).Distinct().ToList();
+        var reviewerJobTitles = await db.Users
+            .AsNoTracking()
+            .Where(u => reviewerIds.Contains(u.Id))
+            .Select(u => new { u.Id, u.JobTitleId })
+            .ToDictionaryAsync(u => u.Id, u => u.JobTitleId);
+
+        foreach (var d in designees)
+        {
+            if (!limitMap.TryGetValue(d.ApprovalStepOrder, out var allowed)) continue;
+            reviewerJobTitles.TryGetValue(d.ReviewerId, out var jobTitleId);
+            if (jobTitleId is null || !allowed.Contains(jobTitleId.Value))
+                throw AppException.BadRequest($"步驟 {d.ApprovalStepOrder} 的指定審核者職稱不符限定職稱，請重新選擇。");
         }
     }
 

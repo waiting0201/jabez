@@ -24,6 +24,8 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
         // UseApplicantDesignated 回傳的是「對呼叫者而言的有效值」：原生設定 OR 例外名單（ApprovalStepExceptions）
         // 命中呼叫者，讓 10 個申請表單無須改動即可為例外申請人顯示指定審核者 picker。
         // @UserId 為 null 時 EXISTS 恆 false → 退化為原生設定（安全）。
+        // DesignatedJobTitleIds 同為 per-caller 有效值：只有命中例外者才帶出限定職稱，
+        // 未命中者一律為 null（前端映射成空陣列＝不限職稱），避免外洩設定。
         const string sql = """
             WITH DeptChain AS (
                 SELECT @DepartmentId AS Id, 0 AS Depth
@@ -39,7 +41,12 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
                                OR EXISTS (SELECT 1 FROM ApprovalStepExceptions e
                                           WHERE e.ApprovalStepId = s.Id AND e.UserId = @UserId)
                              THEN 1 ELSE 0 END AS bit) AS UseApplicantDesignated,
-                   s.DesignatedRequiresDepartment
+                   s.DesignatedRequiresDepartment,
+                   (SELECT STRING_AGG(CAST(dj.JobTitleId AS varchar(10)), ',')
+                    FROM ApprovalStepDesignatedJobTitles dj
+                    WHERE dj.ApprovalStepId = s.Id
+                      AND EXISTS (SELECT 1 FROM ApprovalStepExceptions e
+                                  WHERE e.ApprovalStepId = s.Id AND e.UserId = @UserId)) AS DesignatedJobTitleIds
             FROM ApprovalItems ai
             LEFT JOIN ApprovalSteps s ON ai.Id = s.ApprovalItemId
             WHERE ai.Id = (
@@ -62,7 +69,8 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
             .Select(r => new ApprovalFlowStepSummaryDto(
                 (int)r.StepOrder,
                 (bool)(r.UseApplicantDesignated ?? false),
-                (bool)(r.DesignatedRequiresDepartment ?? false)))
+                (bool)(r.DesignatedRequiresDepartment ?? false),
+                ParseIdList((string?)r.DesignatedJobTitleIds)))
             .ToArray();
 
         return new ApprovalFlowSummaryDto(
@@ -70,6 +78,12 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
             (string?)first.ApplicationType,
             steps);
     }
+
+    /// <summary>STRING_AGG 回傳的 "1,2,3" 轉 int[]；null / 空字串一律回空陣列（前端不必處理 undefined）。</summary>
+    private static int[] ParseIdList(string? csv)
+        => string.IsNullOrEmpty(csv)
+            ? []
+            : [.. csv.Split(',').Select(int.Parse)];
 
     public async Task<ApprovalItemDto?> GetByIdAsync(int id)
     {
@@ -101,7 +115,19 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
             .GroupBy(r => (int)r.ApprovalStepId)
             .ToDictionary(g => g.Key, g => g.Select(r => (Guid)r.UserId).ToArray());
 
-        return BuildDtos(rows, exceptions).FirstOrDefault();
+        // 例外指定審核的限定職稱（同上，僅管理頁編輯需要）
+        const string jobTitleSql = """
+            SELECT dj.ApprovalStepId, dj.JobTitleId
+            FROM ApprovalStepDesignatedJobTitles dj
+            JOIN ApprovalSteps s ON s.Id = dj.ApprovalStepId
+            WHERE s.ApprovalItemId = @Id
+            """;
+        var jobTitleRows = await db.QueryAsync<dynamic>(jobTitleSql, new { Id = id });
+        var designatedJobTitles = jobTitleRows
+            .GroupBy(r => (int)r.ApprovalStepId)
+            .ToDictionary(g => g.Key, g => g.Select(r => (int)r.JobTitleId).ToArray());
+
+        return BuildDtos(rows, exceptions, designatedJobTitles).FirstOrDefault();
     }
 
     private async Task<IEnumerable<dynamic>> QueryAllRowsAsync()
@@ -123,8 +149,11 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
     }
 
     /// <param name="exceptions">StepId → 例外指定審核名單（UserId[]）；清單頁不查故傳 null。</param>
+    /// <param name="designatedJobTitles">StepId → 例外指定審核的限定職稱（JobTitleId[]）；清單頁不查故傳 null。</param>
     private static IEnumerable<ApprovalItemDto> BuildDtos(
-        IEnumerable<dynamic> rows, IReadOnlyDictionary<int, Guid[]>? exceptions = null)
+        IEnumerable<dynamic> rows,
+        IReadOnlyDictionary<int, Guid[]>? exceptions = null,
+        IReadOnlyDictionary<int, int[]>? designatedJobTitles = null)
     {
         var dict = new Dictionary<int, (string Name, string Code, string? Desc, bool IsActive, string? AppType, int? DeptId, string? DeptName, DateTime CreatedAt, List<ApprovalStepDto> Steps)>();
 
@@ -150,7 +179,8 @@ public sealed class ApprovalReadService(IDbConnection db) : IApprovalReadService
                     (string?)row.Note,
                     (bool)(row.DesignatedRequiresDepartment ?? false),
                     (int?)row.MinDays,
-                    exceptions is not null && exceptions.TryGetValue(stepId, out var exUsers) ? exUsers : null));
+                    exceptions is not null && exceptions.TryGetValue(stepId, out var exUsers) ? exUsers : null,
+                    designatedJobTitles is not null && designatedJobTitles.TryGetValue(stepId, out var jts) ? jts : null));
             }
         }
 
