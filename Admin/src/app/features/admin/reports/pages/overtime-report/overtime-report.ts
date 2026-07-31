@@ -6,12 +6,18 @@ import * as XLSX from 'xlsx';
 import {environment} from '@/environments/environment';
 import {dayToRange, FilterMode, monthToRange, shiftDateString, snapToIsoWeek, todayString} from '@/app/features/admin/reports/utils/date-range';
 
+/** 加班單的關聯專案明細（含該案預估時數） */
+export interface OvertimeReportProject {
+  projectCode: string;
+  projectName: string;
+  estimatedHours: string;
+}
+
 export interface OvertimeReportRow {
   id: number;
   employeeName: string;
   overtimeDate: string;
-  projectCodes: string[];
-  projectNames: string[];
+  projects: OvertimeReportProject[];
   estimatedHours: string;
   actualHours: string | null;
   reason: string;
@@ -170,8 +176,11 @@ export class OvertimeReport implements OnInit {
             id: r.id,
             employeeName: r.employeeName ?? '—',
             overtimeDate: r.overtimeDate ? new Date(r.overtimeDate).toLocaleDateString('zh-TW') : '',
-            projectCodes: r.projectCodes ?? [],
-            projectNames: r.projectNames ?? [],
+            projects: (r.projects ?? []).map((p: any) => ({
+              projectCode: p.projectCode,
+              projectName: p.projectName,
+              estimatedHours: Number(p.estimatedHours).toFixed(1),
+            })),
             estimatedHours: Number(r.estimatedHours).toFixed(1),
             actualHours: r.actualHours != null ? Number(r.actualHours).toFixed(1) : null,
             reason: r.reason ?? '',
@@ -203,16 +212,15 @@ export class OvertimeReport implements OnInit {
         const data = res?.data ?? res ?? {};
         const items = data?.items ?? [];
         const wsData = items.map((r: any) => {
-          const codes: string[] = r.projectCodes ?? [];
-          const names: string[] = r.projectNames ?? [];
-          const projectText = codes
-            .map((c, i) => names[i] ? `${c} ${names[i]}` : c)
+          // 專案沿用單欄合併文字：「PJ001 專案甲 2.5h、PJ002 專案乙 1.5h」
+          const projectText = (r.projects ?? [])
+            .map((p: any) => `${p.projectCode}${p.projectName ? ' ' + p.projectName : ''} ${Number(p.estimatedHours).toFixed(1)}h`)
             .join('、');
           return {
             '員工姓名': r.employeeName ?? '—',
             '加班日期': r.overtimeDate ? new Date(r.overtimeDate).toLocaleDateString('zh-TW') : '',
             '專案': projectText,
-            '預估時數': r.estimatedHours != null ? Number(r.estimatedHours).toFixed(1) : '',
+            '預估總時數': r.estimatedHours != null ? Number(r.estimatedHours).toFixed(1) : '',
             '實際時數': r.actualHours != null ? Number(r.actualHours).toFixed(1) : '',
             '事由': r.reason ?? '',
           };

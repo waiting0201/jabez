@@ -9,7 +9,7 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
 {
     private const string BaseSql = """
         SELECT o.Id, u.Name AS EmployeeName,
-               o.OvertimeDate, o.ProjectIds,
+               o.OvertimeDate,
                o.EstimatedHours, o.Reason,
                o.ApprovalStatus, o.CreatedAt, o.ReviewedAt, o.ReviewNote,
                o.ApprovalItemId, o.CurrentStepOrder, o.ReviewedById
@@ -17,45 +17,42 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
         LEFT JOIN Users u ON o.EmployeeId = u.Id
         """;
 
-    /// <summary>解析逗號分隔的 ProjectIds 字串為 int 陣列</summary>
-    private static int[] ParseIds(string? csv) =>
-        string.IsNullOrEmpty(csv)
-            ? []
-            : csv.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                 .Select(s => int.TryParse(s.Trim(), out var id) ? id : 0)
-                 .Where(id => id > 0)
-                 .ToArray();
-
-    /// <summary>根據一批 ProjectIds 字串批次查詢對應 Code 與 Name</summary>
-    private async Task<Dictionary<int, (string Code, string Name)>> GetProjectCodeMapAsync(IEnumerable<string?> allProjectIds)
+    /// <summary>
+    /// 批次載入一批加班單的關聯專案明細（含 Code / Name），依 SortOrder 排序。
+    /// OvertimeReportReadService 共用同一份，避免兩邊實作漂移。
+    /// </summary>
+    public static async Task<Dictionary<int, OvertimeProjectDto[]>> LoadProjectsAsync(IDbConnection db, IEnumerable<int> requestIds)
     {
-        var ids = allProjectIds
-            .Where(s => !string.IsNullOrEmpty(s))
-            .SelectMany(s => s!.Split(',', StringSplitOptions.RemoveEmptyEntries))
-            .Select(s => int.TryParse(s.Trim(), out var id) ? id : 0)
-            .Where(id => id > 0)
-            .Distinct()
-            .ToArray();
-
+        var ids = requestIds.Distinct().ToArray();
         if (ids.Length == 0) return new();
 
-        const string sql = "SELECT Id, Code, Name FROM Projects WHERE Id IN @Ids";
-        var rows = await db.QueryAsync<(int Id, string Code, string Name)>(sql, new { Ids = ids });
-        return rows.ToDictionary(r => r.Id, r => (r.Code, r.Name));
+        const string sql = """
+            SELECT orp.OvertimeRequestId, orp.ProjectId,
+                   p.Code AS ProjectCode, p.Name AS ProjectName, orp.EstimatedHours
+            FROM OvertimeRequestProjects orp
+            JOIN Projects p ON orp.ProjectId = p.Id
+            WHERE orp.OvertimeRequestId IN @Ids
+            ORDER BY orp.OvertimeRequestId, orp.SortOrder
+            """;
+        var rows = await db.QueryAsync<dynamic>(sql, new { Ids = ids });
+        return rows
+            .GroupBy(r => (int)r.OvertimeRequestId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(r => new OvertimeProjectDto(
+                        (int)r.ProjectId,
+                        (string)r.ProjectCode,
+                        (string)r.ProjectName,
+                        (decimal)r.EstimatedHours)).ToArray());
     }
 
-    private static OvertimeRequestDto MapRow(dynamic row, Dictionary<int, (string Code, string Name)> codeMap)
+    private static OvertimeRequestDto MapRow(dynamic row, Dictionary<int, OvertimeProjectDto[]> projectMap)
     {
-        var ids = ParseIds((string?)row.ProjectIds);
-        var codes = ids.Select(id => codeMap.TryGetValue(id, out var v) ? v.Code : $"#{id}").ToArray();
-        var names = ids.Select(id => codeMap.TryGetValue(id, out var v) ? v.Name : $"#{id}").ToArray();
         return new(
             (int)row.Id,
             (string?)row.EmployeeName ?? "—",
             (DateTime)row.OvertimeDate,
-            ids.Length > 0 ? ids : null,
-            codes.Length > 0 ? codes : null,
-            names.Length > 0 ? names : null,
+            projectMap.GetValueOrDefault((int)row.Id, []),
             (decimal)row.EstimatedHours,
             (string)row.Reason,
             (string)row.ApprovalStatus,
@@ -71,8 +68,8 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
     {
         const string sql = BaseSql + " ORDER BY o.CreatedAt DESC";
         var rows = (await db.QueryAsync<dynamic>(sql)).ToList();
-        var codeMap = await GetProjectCodeMapAsync(rows.Select(r => (string?)r.ProjectIds));
-        return rows.Select(r => (OvertimeRequestDto)MapRow(r, codeMap));
+        var projectMap = await LoadProjectsAsync(db, rows.Select(r => (int)r.Id));
+        return rows.Select(r => (OvertimeRequestDto)MapRow(r, projectMap));
     }
 
     public async Task<PagedResult<OvertimeRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null)
@@ -84,9 +81,9 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
             " ORDER BY o.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
         int total = await db.ExecuteScalarAsync<int>(countSql, new { UserId = userId });
         var rows = (await db.QueryAsync<dynamic>(sql, new { UserId = userId, Skip = (page - 1) * pageSize, Take = pageSize })).ToList();
-        var codeMap = await GetProjectCodeMapAsync(rows.Select(r => (string?)r.ProjectIds));
+        var projectMap = await LoadProjectsAsync(db, rows.Select(r => (int)r.Id));
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
-        return new PagedResult<OvertimeRequestDto>(rows.Select(r => (OvertimeRequestDto)MapRow(r, codeMap)), total, page, pageSize, Math.Max(1, totalPages));
+        return new PagedResult<OvertimeRequestDto>(rows.Select(r => (OvertimeRequestDto)MapRow(r, projectMap)), total, page, pageSize, Math.Max(1, totalPages));
     }
 
     public async Task<OvertimeRequestDto?> GetByIdAsync(int id)
@@ -95,7 +92,7 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
         var row = await db.QueryFirstOrDefaultAsync<dynamic>(sql, new { Id = id });
         if (row is null) return null;
 
-        var codeMap = await GetProjectCodeMapAsync(new[] { (string?)row.ProjectIds });
+        var projectMap = await LoadProjectsAsync(db, [(int)row.Id]);
 
         // 額外查詢指定審核者（GetByIdAsync 才需要，列表查詢不包含）
         const string drSql = """
@@ -116,7 +113,7 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
             (DateTime?)r.ReviewedAt,
             (string?)r.Comment)).ToArray();
 
-        OvertimeRequestDto dto = MapRow(row, codeMap);
+        OvertimeRequestDto dto = MapRow(row, projectMap);
         return dto with { DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null };
     }
 
@@ -147,7 +144,7 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
             EmployeeId   = employeeId,
         })).ToList();
 
-        var codeMap = await GetProjectCodeMapAsync(rows.Select(r => (string?)r.ProjectIds));
-        return rows.Select(r => (OvertimeRequestDto)MapRow(r, codeMap));
+        var projectMap = await LoadProjectsAsync(db, rows.Select(r => (int)r.Id));
+        return rows.Select(r => (OvertimeRequestDto)MapRow(r, projectMap));
     }
 }

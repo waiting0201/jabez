@@ -155,7 +155,7 @@
               <select class="form-select mb-3" (change)="onOvertimeSelect($event)">
                 @for (req of approvedRequests(); track req.id) {
                   <option [value]="req.id" [selected]="req.id === selectedOvertimeId()">
-                    {{ req.overtimeDate | date:'MM/dd' }} — {{ req.projectCodes?.join(', ') || '無專案' }} ({{ req.estimatedHours }}h)
+                    {{ req.overtimeDate | date:'MM/dd' }} — {{ projectLabel(req) }} ({{ req.estimatedHours }}h)
                   </option>
                 }
               </select>

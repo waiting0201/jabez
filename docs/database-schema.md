@@ -40,7 +40,8 @@
 | `TravelRequestParticipantDate` | 參與人員個別參與日期（一列一天，可不連續；FK → TravelRequestParticipant Cascade；唯一索引 `(TravelRequestParticipantId, Date)`；無任何列＝全程參與） |
 | `TravelPaymentRequest` | 出差請款申請（含 `RequestNo` 單號 `TPR-yyyyMMdd-NNN` unique index；員工代墊後直接請款，無沖銷流程；撥款資料統一由 `TravelPaymentRequestInstallment[]` 表達，父表無 cache 欄位） |
 | `TravelPaymentRequestItem` | 出差請款明細（交通費、住宿費、餐費、雜支，含發票號碼、發票日期、發票檔案上傳；上傳走 multipart + Azure Blob `invoices` container，前端支援拖放、OCR 自動辨識、HEIC/PDF） |
-| `OvertimeRequest` | 加班申請（走簽核流程） |
+| `OvertimeRequest` | 加班申請（走簽核流程）。`EstimatedHours` 為 **`OvertimeRequestProject` 明細的合計快取**，由 Handler 於 Create/Update 重算；原 CSV 欄位 `ProjectIds` 已 DROP |
+| `OvertimeRequestProject` | 加班申請的關聯專案明細（一列一專案 + 該案 `EstimatedHours` + `SortOrder`）。唯一索引 `(OvertimeRequestId, ProjectId)`；FK → `OvertimeRequests` **Cascade**、→ `Projects` **NO_ACTION**（刪專案時由 `ProjectHandler.DeleteAsync` **阻擋**，不清洗——清空會使父表合計快取失真） |
 | `AdvanceRequest` | 預支申請（含 `EstimatedRefundDate / RefundedAt / RefundedByUserId` 退款欄位、`RefundAmount / RefundedAmount` 退款金額；撥款資料統一由 `AdvanceRequestInstallment[]` 表達，父表無撥款 cache 欄位；`CurrentRoundNo` 最新預支批次號，> 1 且狀態為 pending/returned 表示有進行中的追加） |
 | `AdvanceRequestItem` | 預支明細（含 `RoundNo` 所屬預支批次，1 = 原始預支、≥2 = 第 N 次追加） |
 | `AdvanceRequestSupplement` | **追加預支批次**（只存 `RoundNo ≥ 2`；Round 1 即父單本身，不入此表）。欄位：`RoundNo / AdvanceDate / Reason / CreatedById / CreatedAt` + 駁回回滾快照 `PrevCurrentStepOrder / PrevReviewedAt / PrevReviewedById / PrevReviewNote`；unique(`AdvanceRequestId`,`RoundNo`)。**不存金額欄位**，各批次金額一律由 `SUM(AdvanceRequestItems WHERE RoundNo = N)` 推導 |

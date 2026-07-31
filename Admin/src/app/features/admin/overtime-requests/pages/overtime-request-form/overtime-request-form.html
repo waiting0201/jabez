@@ -64,35 +64,97 @@
                 }
               </div>
               <div class="col-12 col-md-6">
-                <label class="form-label fw-500">預估時數（小時）<span class="text-danger">*</span></label>
-                <input type="number" class="form-control" formControlName="estimatedHours" min="0.5" step="0.5" placeholder="1">
-                @if (form.get('estimatedHours')?.invalid && form.get('estimatedHours')?.touched) {
-                  <div class="text-danger small mt-1">請輸入預估時數（至少 0.5）。</div>
-                }
+                <label class="form-label fw-500">預估總時數（小時）</label>
+                <p class="form-control-plaintext fw-600 mb-0">{{ totalHours() | number:'1.1-1' }} h</p>
+                <div class="form-text">由下方各專案時數自動加總，不可直接編輯。</div>
               </div>
             </div>
 
             <div class="mb-4">
-              <label class="form-label fw-500">關聯專案（單選）</label>
+              <label class="form-label fw-500">
+                關聯專案 <span class="text-danger">*</span>
+                <span class="text-muted fw-400 small">（同部門專案可複選；支援專案請獨立申請）</span>
+              </label>
               @if (isReadOnly) {
-                <p class="form-control-plaintext fw-500 font-monospace mb-0">{{ displayProjectLabels.join(', ') || '—' }}</p>
+                @if (readonlyProjects.length > 0) {
+                  <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th style="width:48px">#</th>
+                          <th>專案</th>
+                          <th class="text-right" style="width:120px">預估時數</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (p of readonlyProjects; track p.projectId; let i = $index) {
+                          <tr>
+                            <td>{{ i + 1 }}</td>
+                            <td>
+                              <div class="font-monospace small fw-500">{{ p.projectCode }}</div>
+                              <div class="text-muted text-xs">{{ p.projectName }}</div>
+                            </td>
+                            <td class="text-right fw-500">{{ p.estimatedHours | number:'1.1-1' }} h</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                } @else {
+                  <p class="form-control-plaintext mb-0 text-muted">—</p>
+                }
               } @else if (loadingProjects) {
                 <p class="text-muted small mb-0">載入中…</p>
               } @else if (projects.length === 0) {
                 <p class="text-muted small mb-0">目前無可選專案，請聯絡主管或確認部門設定。</p>
               } @else {
-                <div class="flex flex-wrap gap-2">
-                  @for (p of projects; track p.id) {
-                    <label class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer"
-                           [class.border-primary]="selectedProjectId === p.id"
-                           [class.bg-primary-subtle]="selectedProjectId === p.id">
-                      <input type="radio" class="form-check-input m-0" name="project"
-                             [checked]="selectedProjectId === p.id"
-                             (click)="selectProject(p.id)">
-                      <span class="small fw-500">{{ p.code }} - {{ p.name }}{{ p.departmentName ? '（' + p.departmentName + '）' : '' }}</span>
-                    </label>
-                  }
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th style="width:48px">#</th>
+                        <th>專案 <span class="text-danger">*</span></th>
+                        <th class="text-right" style="width:140px">預估時數 <span class="text-danger">*</span></th>
+                        <th style="width:56px"></th>
+                      </tr>
+                    </thead>
+                    <tbody formArrayName="projects">
+                      @for (ctrl of projectControls; track ctrl.get('rowId')!.value; let i = $index) {
+                        <tr [formGroupName]="i">
+                          <td>{{ i + 1 }}</td>
+                          <td>
+                            <select class="form-select form-select-sm" formControlName="projectId">
+                              <option [ngValue]="null" disabled>請選擇專案</option>
+                              @for (p of availableProjects(i); track p.id) {
+                                <option [ngValue]="p.id">{{ p.code }} - {{ p.name }}{{ p.departmentName ? '（' + p.departmentName + '）' : '' }}</option>
+                              }
+                            </select>
+                          </td>
+                          <td>
+                            <input type="number" class="form-control form-control-sm text-right"
+                                   formControlName="estimatedHours" min="0.5" step="0.5" placeholder="1">
+                          </td>
+                          <td class="text-right">
+                            <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center"
+                                    (click)="removeProject(i)">
+                              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                            </button>
+                          </td>
+                        </tr>
+                      } @empty {
+                        <tr><td colspan="4" class="text-center text-muted py-4 small">尚無關聯專案，請點擊「新增專案」</td></tr>
+                      }
+                    </tbody>
+                  </table>
                 </div>
+                <button type="button" class="btn btn-sm btn-outline-primary inline-flex items-center gap-1 mt-3"
+                        (click)="addProject()">
+                  <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                  新增專案
+                </button>
+                @if (projectControls.length === 0) {
+                  <div class="text-danger small mt-1">請至少新增一筆關聯專案。</div>
+                }
               }
             </div>
 

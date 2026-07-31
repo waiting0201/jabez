@@ -6,8 +6,7 @@ public class OvertimeRequest
     public Guid?    EmployeeId       { get; set; }
     public int?     ApprovalItemId   { get; set; }
     public DateTime OvertimeDate     { get; set; }
-    public string?  ProjectIds       { get; set; }   // 逗號分隔的專案 ID，例如 "1,3,5"
-    public decimal  EstimatedHours   { get; set; }
+    public decimal  EstimatedHours   { get; set; }   // 合計快取 = SUM(Projects[].EstimatedHours)，由 Handler 重算
     public string   Reason           { get; set; } = string.Empty;
     public string   ApprovalStatus   { get; set; } = "pending";  // pending | approved | rejected | returned
     public int      CurrentStepOrder { get; set; } = 1;
@@ -20,4 +19,7 @@ public class OvertimeRequest
     public User?         Employee           { get; set; }
     public User?         ReviewedBy         { get; set; }
     public ApprovalItem? ApprovalItem       { get; set; }
+
+    /// <summary>關聯專案明細（一列一專案，含該專案預估時數）</summary>
+    public List<OvertimeRequestProject> Projects { get; set; } = [];
 }

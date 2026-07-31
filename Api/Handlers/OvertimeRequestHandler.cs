@@ -84,8 +84,8 @@ public sealed class OvertimeRequestHandler(
         if (string.IsNullOrWhiteSpace(body.Reason))
             return new BadRequestObjectResult(ApiResponse.Fail("Reason is required."));
 
-        if (body.EstimatedHours <= 0)
-            return new BadRequestObjectResult(ApiResponse.Fail("EstimatedHours must be greater than 0."));
+        // 關聯專案明細（必填，至少一列）；父表 EstimatedHours 為其合計快取
+        var projectRows = await BuildProjectsAsync(body.Projects);
 
         // 指定審核者存在性驗證
         if (body.DesignatedReviewers is { Length: > 0 })
@@ -101,11 +101,11 @@ public sealed class OvertimeRequestHandler(
             EmployeeId     = employeeId,   // 強制使用 JWT 身分，忽略 body.EmployeeId
             ApprovalItemId = body.ApprovalItemId,
             OvertimeDate   = body.OvertimeDate,
-            ProjectIds     = body.ProjectIds is { Length: > 0 } ? string.Join(",", body.ProjectIds) : null,
-            EstimatedHours = body.EstimatedHours,
+            EstimatedHours = projectRows.Sum(r => r.EstimatedHours),
             Reason         = body.Reason,
             ApprovalStatus = "draft",
             CreatedAt      = Clock.Now,
+            Projects       = projectRows,   // EF 一併插入並自動填 FK
         };
         db.OvertimeRequests.Add(item);
         await db.SaveChangesAsync();
@@ -134,8 +134,8 @@ public sealed class OvertimeRequestHandler(
 
         var currentUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         var item = currentUser?.IsSuperAdmin == true
-            ? await db.OvertimeRequests.FirstOrDefaultAsync(x => x.Id == intId)
-            : await db.OvertimeRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
+            ? await db.OvertimeRequests.Include(x => x.Projects).FirstOrDefaultAsync(x => x.Id == intId)
+            : await db.OvertimeRequests.Include(x => x.Projects).FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
         if (item is null) throw AppException.NotFound("OvertimeRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
@@ -162,9 +162,14 @@ public sealed class OvertimeRequestHandler(
             }
         }
 
+        // 關聯專案整批替換（必填，不支援省略；一併重算父表 EstimatedHours 合計快取）
+        var projectRows = await BuildProjectsAsync(body.Projects);
+        db.OvertimeRequestProjects.RemoveRange(item.Projects);
+        projectRows.ForEach(p => p.OvertimeRequestId = item.Id);
+        await db.OvertimeRequestProjects.AddRangeAsync(projectRows);
+        item.EstimatedHours = projectRows.Sum(r => r.EstimatedHours);
+
         if (body.OvertimeDate.HasValue)    item.OvertimeDate    = body.OvertimeDate.Value;
-        if (body.ProjectIds is not null)   item.ProjectIds      = body.ProjectIds.Length > 0 ? string.Join(",", body.ProjectIds) : null;
-        if (body.EstimatedHours.HasValue)  item.EstimatedHours  = body.EstimatedHours.Value;
         if (body.Reason is not null)       item.Reason          = body.Reason;
 
         await db.SaveChangesAsync();
@@ -189,6 +194,7 @@ public sealed class OvertimeRequestHandler(
             throw AppException.BadRequest("Only draft or returned overtime requests can be deleted.");
 
         // 一併清除此申請單的審核流程足跡（多型關聯無 FK，須手動刪除，否則殘留列會擋住使用者刪除）
+        // 註：OvertimeRequestProjects 有真 FK + Cascade，由 DB 連帶刪除，無須手動處理。
         db.ApprovalRecords.RemoveRange(
             await db.ApprovalRecords.Where(r => r.ApplicationType == "overtime" && r.ApplicationId == item.Id).ToListAsync());
         db.EscalationOverrides.RemoveRange(
@@ -334,6 +340,34 @@ public sealed class OvertimeRequestHandler(
     }
 
     // ── Helper ──────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// 驗證並建立關聯專案明細（Create / Update 共用）。
+    /// 規則：至少一列、每列時數 &gt; 0、同單不可重複專案、專案必須存在。
+    /// </summary>
+    private async Task<List<OvertimeRequestProject>> BuildProjectsAsync(OvertimeProjectRequest[]? rows)
+    {
+        if (rows is null || rows.Length == 0)
+            throw AppException.BadRequest("請至少新增一筆關聯專案。");
+
+        if (rows.Any(r => r.EstimatedHours <= 0))
+            throw AppException.BadRequest("每個關聯專案的預估時數必須大於 0。");
+
+        var ids = rows.Select(r => r.ProjectId).ToList();
+        if (ids.Distinct().Count() != ids.Count)
+            throw AppException.BadRequest("同一張加班申請不可重複選擇相同專案。");
+
+        var existCount = await db.Projects.AsNoTracking().CountAsync(p => ids.Contains(p.Id));
+        if (existCount != ids.Count)
+            throw AppException.BadRequest("一或多個關聯專案不存在。");
+
+        return rows.Select((r, idx) => new OvertimeRequestProject
+        {
+            ProjectId      = r.ProjectId,
+            EstimatedHours = r.EstimatedHours,
+            SortOrder      = idx,
+        }).ToList();
+    }
 
     /// <summary>從 JWT Bearer Token 取出 sub claim 作為使用者 GUID</summary>
     private async Task<Guid> GetUserIdAsync(HttpRequest req)

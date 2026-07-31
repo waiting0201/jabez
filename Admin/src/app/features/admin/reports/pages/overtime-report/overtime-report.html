@@ -84,7 +84,7 @@
               <th>員工姓名</th>
               <th class="text-center">加班日期</th>
               <th class="text-center hidden md:table-cell">專案</th>
-              <th class="text-center">預估時數</th>
+              <th class="text-center">預估總時數</th>
               <th class="text-center">實際時數</th>
               <th class="hidden lg:table-cell">事由</th>
             </tr>
@@ -95,13 +95,13 @@
                 <td class="fw-500">{{ row.employeeName }}</td>
                 <td class="text-center text-muted small">{{ row.overtimeDate }}</td>
                 <td class="hidden md:table-cell">
-                  @if (row.projectCodes.length) {
-                    @for (code of row.projectCodes; track code; let i = $index) {
+                  @if (row.projects.length) {
+                    @for (p of row.projects; track p.projectCode) {
                       <div class="mb-1 last:mb-0">
-                        <div class="font-monospace small fw-500">{{ code }}</div>
-                        @if (row.projectNames[i]) {
-                          <div class="text-muted text-xs">{{ row.projectNames[i] }}</div>
-                        }
+                        <div class="font-monospace small fw-500">
+                          {{ p.projectCode }} <span class="text-muted">{{ p.estimatedHours }}h</span>
+                        </div>
+                        <div class="text-muted text-xs">{{ p.projectName }}</div>
                       </div>
                     }
                   } @else {

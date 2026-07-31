@@ -28,14 +28,21 @@ export interface DesignatedReviewer {
   comment?: string;
 }
 
+/** 加班申請的關聯專案明細（一列一專案，含該案預估時數） */
+export interface OvertimeProject {
+  projectId: number;
+  projectCode: string;
+  projectName: string;
+  estimatedHours: number;
+}
+
 export interface OvertimeRequest {
   id: number;
   employeeId?: string;
   approvalItemId?: number;
   overtimeDate: Date;
-  projectIds?: number[];
-  projectCodes?: string[];
-  projectNames?: string[];
+  projects: OvertimeProject[];
+  /** 預估總時數（= projects 各列加總，由後端計算，前端唯讀） */
   estimatedHours: number;
   reason: string;
   approvalStatus: ApprovalStatus;
@@ -43,4 +50,12 @@ export interface OvertimeRequest {
   createdAt: Date;
   reviewedAt?: Date;
   reviewNote?: string;
+}
+
+/** 新增 / 更新送出的 payload（總時數由後端加總，不送） */
+export interface OvertimeRequestPayload {
+  overtimeDate: Date;
+  projects: {projectId: number; estimatedHours: number}[];
+  reason: string;
+  designatedReviewers?: DesignatedReviewer[];
 }
