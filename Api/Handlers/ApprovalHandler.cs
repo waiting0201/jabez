@@ -186,6 +186,52 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
         return ids.Count;
     }
 
+    /// <summary>
+    /// 整批替換某步驟的「例外指定審核限定職稱」（null＝不動、[]＝清空）。
+    /// 名單非空＝申請人只能從這些職稱的人員中指定審核者；空＝不限職稱。
+    /// 僅例外指定審核步驟有意義：原生 UseApplicantDesignated 或無例外名單時一律清空。
+    /// exceptionCount 必須取自同一交易內 ApplyStepExceptionsAsync 的回傳值
+    /// （該方法只寫 ChangeTracker 未 SaveChanges，重查 DB 會讀到舊資料）。
+    /// 呼叫端負責 SaveChanges。
+    /// </summary>
+    private async Task ApplyStepDesignatedJobTitlesAsync(ApprovalStep step, int[]? jobTitleIds, int exceptionCount)
+    {
+        var existing = await db.ApprovalStepDesignatedJobTitles
+            .Where(x => x.ApprovalStepId == step.Id)
+            .ToListAsync();
+
+        // 限定職稱只服務「例外指定審核」；非例外步驟一律清空（切換模式時避免殘留孤兒設定）
+        if (step.UseApplicantDesignated || exceptionCount == 0)
+        {
+            if (jobTitleIds is { Length: > 0 })
+                throw AppException.BadRequest("限定職稱僅適用於「例外指定審核」步驟，請先設定例外名單。");
+            if (existing.Count > 0)
+                db.ApprovalStepDesignatedJobTitles.RemoveRange(existing);
+            return;
+        }
+
+        if (jobTitleIds is null)
+            return; // 不動
+
+        var ids = jobTitleIds.Distinct().ToList();
+
+        if (ids.Count > 0)
+        {
+            var validCount = await db.JobTitles.CountAsync(j => ids.Contains(j.Id));
+            if (validCount != ids.Count)
+                throw AppException.BadRequest("限定職稱中包含不存在的職稱。");
+        }
+
+        db.ApprovalStepDesignatedJobTitles.RemoveRange(existing.Where(x => !ids.Contains(x.JobTitleId)));
+        foreach (var id in ids.Where(i => !existing.Any(x => x.JobTitleId == i)))
+            db.ApprovalStepDesignatedJobTitles.Add(new ApprovalStepDesignatedJobTitle
+            {
+                ApprovalStepId = step.Id,
+                JobTitleId     = id,
+                CreatedAt      = Clock.Now,
+            });
+    }
+
     public async Task<IActionResult> AddStepAsync(HttpRequest req, string itemId)
     {
         if (!int.TryParse(itemId, out var intItemId))
@@ -200,6 +246,10 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
         // 例外指定審核與原生「申請人指定審核」互斥
         if (body.UseApplicantDesignated && hasExceptions)
             return new BadRequestObjectResult(ApiResponse.Fail("此步驟已設為「申請人指定審核」，無需再設定例外名單。"));
+
+        // 限定職稱只服務例外指定審核
+        if (!hasExceptions && body.DesignatedJobTitleIds is { Length: > 0 })
+            return new BadRequestObjectResult(ApiResponse.Fail("限定職稱僅適用於「例外指定審核」步驟，請先設定例外名單。"));
 
         // 三種模式互斥：UseApplicantDesignated / UseDirectSupervisor / 一般模式
         if (body.UseApplicantDesignated)
@@ -240,9 +290,10 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
             CreatedAt               = Clock.Now,
         };
         db.ApprovalSteps.Add(step);
-        await db.SaveChangesAsync(); // 先存以取得 step.Id，例外名單需以其為 FK
+        await db.SaveChangesAsync(); // 先存以取得 step.Id，例外名單 / 限定職稱需以其為 FK
 
-        await ApplyStepExceptionsAsync(step, body.ExceptionUserIds);
+        int exceptionCount = await ApplyStepExceptionsAsync(step, body.ExceptionUserIds);
+        await ApplyStepDesignatedJobTitlesAsync(step, body.DesignatedJobTitleIds, exceptionCount);
         await db.SaveChangesAsync();
 
         var dto = await reader.GetByIdAsync(intItemId);
@@ -300,6 +351,9 @@ public sealed class ApprovalHandler(AppDbContext db, IApprovalReadService reader
 
         // 例外指定審核名單（整批替換；切成 UseApplicantDesignated 時會自動清空）
         int exceptionCount = await ApplyStepExceptionsAsync(step, body.ExceptionUserIds);
+
+        // 限定職稱（整批替換；非例外步驟時會自動清空）
+        await ApplyStepDesignatedJobTitlesAsync(step, body.DesignatedJobTitleIds, exceptionCount);
 
         // DesignatedRequiresDepartment 僅在指定審核模式（原生或例外）下有意義
         if (!step.UseApplicantDesignated && exceptionCount == 0)

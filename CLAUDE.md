@@ -191,7 +191,7 @@ Admin/src/app/
     │   ├── departments/    # 部門管理
     │   ├── job-titles/     # 職稱管理
     │   ├── vendors/        # 廠商管理（含 vendor-quick-add-modal；統編/身分證字號類型切換，統編 blur 自動帶出 GCIS 公司資料；個人工作室上傳身分證正反面；存摺封面必填）
-    │   ├── approvals/      # 簽核流程設定（ApprovalItem + Steps；ApprovalItem 含 DepartmentId 部門維度，可為同一申請類型設「各部門專屬流程 + 通用預設」，送單時依申請人部門挑流程；子部門未設專屬流程時自動沿用最近祖先部門流程；Step 含 MinDays 天數門檻，null＝一律納入、N＝申請天數 ≥ N 才納入，目前供請假依天數分流；**非指定審核步驟可勾「例外指定審核」並逐一挑使用者（FormArray + select 列，整批替換 exceptionUserIds）**，名單內的申請人送單時該步驟改由申請人自行指定審核者，timeline 顯示「例外指定 N 人」badge）
+    │   ├── approvals/      # 簽核流程設定（ApprovalItem + Steps；ApprovalItem 含 DepartmentId 部門維度，可為同一申請類型設「各部門專屬流程 + 通用預設」，送單時依申請人部門挑流程；子部門未設專屬流程時自動沿用最近祖先部門流程；Step 含 MinDays 天數門檻，null＝一律納入、N＝申請天數 ≥ N 才納入，目前供請假依天數分流；**非指定審核步驟可勾「例外指定審核」並逐一挑使用者（FormArray + select 列，整批替換 exceptionUserIds）**，名單內的申請人送單時該步驟改由申請人自行指定審核者，timeline 顯示「例外指定 N 人」badge；**例外名單下方另可設「限定職稱」（可多選，整批替換 designatedJobTitleIds）**，申請人的指定審核者只能挑這些職稱的人，timeline 顯示「限定職稱：…」badge）
     │   ├── approval-tasks/ # 待審核任務清單（已核准頁籤篩選列：全部類型下拉（所有人）＋**申請人下拉（僅財務體系部門 / Superadmin，選項來自 /approval-tasks/applicants）**＋撥款退款子篩選（僅財務體系；按鈕組 全部 / 尚未撥款 / 部分撥款 / 全部撥款 / **已結案**（`paymentStatus=closed`，只撈預支 / 出差預支 `IsClosed=1`，其餘類型後端 1=0 短路））；**摘要欄的預支申請加註送簽批次**：第1次顯示總額、第N次追加顯示「本次／總額」，批次標籤共用 advance-requests 的 roundLabel()；**狀態欄的預支 / 出差預支已結案時加註「已結案」badge**，與 advance-list / travel 詳情同一真相 `AdvanceRequest.IsClosed` / `TravelRequest.IsClosed`、同一樣式，holiday_travel 不走沖銷故排除；**簽核作業詳情頁（approval-task-review）另有「結案資訊」卡片**（`closureInfo(task)` → 共用元件 `<app-closure-info-card>`；`advance` / `travel` 顯示本單結案狀態 + 退款四欄，`write_off` / `travel_write_off` 顯示**關聯母單**（預支單 / 出差單）結案狀態，per-type 差異收斂在 `isRelatedClosure()` / `closureTitle()`），頁首同掛「已結案」badge）
     │   ├── projects/       # 專案管理
     │   ├── payment-requests/  # 請款申請（廠商請款 type=vendor / 一般請款 type=general 明細下方皆含整單批次附件上傳，共用 shared/components/attachments-upload）
@@ -267,9 +267,9 @@ Api/
 │   ├── RoleHandler.cs
 │   ├── PermissionHandler.cs
 │   ├── DepartmentHandler.cs
-│   ├── JobTitleHandler.cs
+│   ├── JobTitleHandler.cs             # 職稱 CRUD（刪除時清洗 ApprovalStepDesignatedJobTitles 的 NO_ACTION 外鍵）
 │   ├── VendorHandler.cs               # 廠商管理 CRUD（multipart 支援存摺封面（必填）/ 身分證正反面上傳；統編與身分證字號擇一；lookup / lookup-by-tax-id / POST 開放任何登入者；刪除受 PaymentRequest 引用保護）
-│   ├── ApprovalHandler.cs             # ApprovalItem + Steps CRUD（ApprovalItem 含 DepartmentId 部門維度；唯一性以 (ApplicationType, DepartmentId) 判定；/active 依呼叫者部門解析流程，優先序：自身部門 > 最近祖先部門（沿 ParentId 往上）> 通用預設）；Step 含 DesignatedRequiresDepartment（指定審核步驟可設「需先選部門再選人」，支援一條流程多個指定步驟；多指定步驟前端連動見 shared/components/designated-reviewers-picker：連動閘控 + 部門帶入 + 部門最高層級自動略過；**Step 另含例外指定審核名單 `exceptionUserIds`（ApprovalStepException 子表，整批替換）**：非指定審核步驟可挑指定使用者，名單內的申請人送單時該步驟改由申請人自行指定審核者，與 UseApplicantDesignated 互斥）
+│   ├── ApprovalHandler.cs             # ApprovalItem + Steps CRUD（ApprovalItem 含 DepartmentId 部門維度；唯一性以 (ApplicationType, DepartmentId) 判定；/active 依呼叫者部門解析流程，優先序：自身部門 > 最近祖先部門（沿 ParentId 往上）> 通用預設）；Step 含 DesignatedRequiresDepartment（指定審核步驟可設「需先選部門再選人」，支援一條流程多個指定步驟；多指定步驟前端連動見 shared/components/designated-reviewers-picker：連動閘控 + 部門帶入 + 部門最高層級自動略過；**Step 另含例外指定審核名單 `exceptionUserIds`（ApprovalStepException 子表，整批替換）**：非指定審核步驟可挑指定使用者，名單內的申請人送單時該步驟改由申請人自行指定審核者，與 UseApplicantDesignated 互斥；**例外步驟另可設限定職稱 `designatedJobTitleIds`（ApprovalStepDesignatedJobTitle 子表，整批替換）**，限制申請人只能指定這些職稱的人，非例外步驟一律清空）
 │   ├── ApprovalTaskHandler.cs         # 待審核任務查詢與審核動作（列表另支援 applicationType / submittedByUserId 篩選；**申請人篩選與 GET /approval-tasks/applicants 限財務體系部門或 Superadmin**，判定共用 CanFilterByApplicant → DepartmentCodes.FinancialAndAbove）
 │   ├── ProjectHandler.cs
 │   ├── PaymentRequestHandler.cs       # 請款申請 CRUD（單號 PR-yyyyMMdd-NNN）
@@ -302,7 +302,7 @@ Api/
 │       ├── EmployeeImporter + EmployeeImportDtos + employee-import.json  # 員工人事資料（RUN_EMPLOYEE_IMPORT 旗標，IMPORT_UPLOAD_FILES 控制附件上傳）
 │       └── ProjectImporter + ProjectImportDtos + project-import.json     # 專案資料（RUN_PROJECT_IMPORT 旗標，PROJECT_IMPORT_DRY_RUN 只印不寫；來源 reference/專案資料-115.07.29.xls；以 Code upsert、期別明細全量重建）
 ├── Models/
-│   ├── Entities/                      # 50 個資料庫實體（新增 **簽核步驟例外指定審核名單 ApprovalStepException** / **預支沖銷差額分期 WriteOffInstallment**（第 5 種分期撥款子表）/ **追加預支批次 AdvanceRequestSupplement**（只存 RoundNo≥2，Round 1 = 父單本身）/ **TravelRequestParticipantDate 參與人員個別參與日期** / EmployeeProfile / EducationRecord / EmploymentHistoryRecord / FamilyMember / ProfessionalTraining / LanguageAbility / JobTransferRecord / RewardPunishmentRecord / SalaryAdjustmentRecord / HealthInsuranceDependent / **5 個分期撥款表 PaymentRequestInstallment / AdvanceRequestInstallment / TravelRequestInstallment / TravelPaymentRequestInstallment / WriteOffInstallment** / **PaymentReminderLog** / **整單批次附件 PaymentRequestAttachment / WriteOffAttachment** / **預審申請 PreReviewRequest / PreReviewItem / PreReviewRequestAttachment**）
+│   ├── Entities/                      # 51 個資料庫實體（新增 **簽核步驟例外指定審核名單 ApprovalStepException** + **例外的限定職稱 ApprovalStepDesignatedJobTitle** / **預支沖銷差額分期 WriteOffInstallment**（第 5 種分期撥款子表）/ **追加預支批次 AdvanceRequestSupplement**（只存 RoundNo≥2，Round 1 = 父單本身）/ **TravelRequestParticipantDate 參與人員個別參與日期** / EmployeeProfile / EducationRecord / EmploymentHistoryRecord / FamilyMember / ProfessionalTraining / LanguageAbility / JobTransferRecord / RewardPunishmentRecord / SalaryAdjustmentRecord / HealthInsuranceDependent / **5 個分期撥款表 PaymentRequestInstallment / AdvanceRequestInstallment / TravelRequestInstallment / TravelPaymentRequestInstallment / WriteOffInstallment** / **PaymentReminderLog** / **整單批次附件 PaymentRequestAttachment / WriteOffAttachment** / **預審申請 PreReviewRequest / PreReviewItem / PreReviewRequestAttachment**）
 │   └── Dtos/                          # 20 個 DTO 檔案（新增 EmployeeProfileDtos / **InstallmentDtos** / **PreReviewRequestDtos**）
 ├── Services/
 │   ├── IJwtService.cs
@@ -353,7 +353,7 @@ Api/
 │   ├── ApiResponse.cs                 # 統一回應格式 ApiResponse<T>
 │   ├── AppException.cs                # 自定義例外
 │   ├── AttachmentProcessor.cs         # 整單批次附件共用：multipart 解析 + magic-byte 驗證 + 上傳 request-attachments（一般請款 / 預支沖銷共用）
-│   ├── DesignatedReviewerHelper.cs    # 申請人指定審核者共用：BuildEntities / ReadForFlowAsync / ValidateAndNormalizeAsync / GetSuppressedDesignatedStepOrdersAsync（一條流程多個指定步驟，以 ApprovalStepOrder 綁定步驟；9 種申請類型共用；第一指定步驟＝所選部門最高職稱時抑制其後指定步驟：驗證免填 + 簽核乾淨跳過）；**例外指定審核的兩個真相**：送單前查例外表 `GetEffectiveDesignatedStepOrdersAsync`、送單後看 designee 快照 `EffectiveDesignatedStepOrders`，ValidateAndNormalizeAsync 另負責剔除非法 designee 綁定（防提權）
+│   ├── DesignatedReviewerHelper.cs    # 申請人指定審核者共用：BuildEntities / ReadForFlowAsync / ValidateAndNormalizeAsync / GetSuppressedDesignatedStepOrdersAsync（一條流程多個指定步驟，以 ApprovalStepOrder 綁定步驟；9 種申請類型共用；第一指定步驟＝所選部門最高職稱時抑制其後指定步驟：驗證免填 + 簽核乾淨跳過）；**例外指定審核的兩個真相**：送單前查例外表 `GetEffectiveDesignatedStepOrdersAsync`、送單後看 designee 快照 `EffectiveDesignatedStepOrders`，ValidateAndNormalizeAsync 另負責剔除非法 designee 綁定（防提權）與**限定職稱驗證**（例外命中且有設限定職稱時，designee 職稱不符丟 400）
 │   ├── FlexibleDateTimeJsonConverter.cs # 寬鬆日期解析（人事資料卡 payload 用；Safari 不支援 input type=month 手打年月字串）
 │   ├── WorkCalendarHelper.cs          # 公司行事曆共用判定（「有行事曆用 CalendarDay.IsHoliday、沒資料退回六日」的單一真相）：區間版 ComputeWorkingDatesAsync 供 LeaveRequestHandler 算請假日／時數，單日版 IsHolidayAsync 供 AttendanceHandler 判休假日免下班卡
 │   └── Constants.cs

@@ -357,8 +357,12 @@
 
 **指定審核者共用元件（[`<app-designated-reviewers-picker>`](../Admin/src/app/shared/components/designated-reviewers-picker/designated-reviewers-picker.ts)）：**
 - 一條流程可有**多個**「申請人指定審核」步驟；元件依流程的 designated steps（`useApplicantDesignated=true`）分組，每步一個區塊。
-- Inputs：`designatedSteps`（含 `stepOrder` / `designatedRequiresDepartment`）、`users`（`UserLookup`，含 `departmentId` / `jobTitleId`）、`jobTitles`、`departments`、`initial`（編輯回填的 `DesignatedReviewer[]`，含 `approvalStepOrder` / `selectedDepartmentId`）。
-- 每區塊可多列（可新增 / 刪除）：`designatedRequiresDepartment=false` → 「先選職稱→再選人」；`designatedRequiresDepartment=true` → 「先選部門→依部門篩人→選人」。
+- Inputs：`designatedSteps`（含 `stepOrder` / `designatedRequiresDepartment` / **`designatedJobTitleIds`**）、`users`（`UserLookup`，含 `departmentId` / `jobTitleId`）、`jobTitles`、`departments`、`initial`（編輯回填的 `DesignatedReviewer[]`，含 `approvalStepOrder` / `selectedDepartmentId`）。
+- 每區塊可多列（可新增 / 刪除），人員候選有三種模式：
+  1. `designatedRequiresDepartment=true` → 「先選部門→依部門篩人→選人」
+  2. `designatedRequiresDepartment=false` 且**無**限定職稱 → 「先選職稱→再選人」
+  3. **有限定職稱**（`designatedJobTitleIds` 非空，例外指定審核專用）→ 人員一律限縮在這些職稱內；部門模式為「該部門 ∩ 限定職稱」，非部門模式則**隱藏職稱下拉**、直接列全公司符合職稱者，且候選為空時顯示「查無符合限定職稱的人員」
+- **人員候選單一真相**：`PickerEntry.candidateUsers`（原 `filteredUsers` / `departmentFilteredUsers` 兩欄已合併），由 `_candidatesFor(group, entry)` 計算、`_refreshEntry(group, entry, mode)` 寫入；`mode='reset'`＝使用者主動改條件則清空已選人員，`mode='keep'`＝程式帶入（回填 / 部門自動帶入）僅在落選時清空。新增過濾條件時只改 `_candidatesFor` 一處。
 - Output `reviewersChange`：`DesignatedReviewerPayload[]`（`reviewerId` / `stepOrder` 列序 / `approvalStepOrder` 所屬步驟 / `selectedDepartmentId`）；**ngOnChanges 重建群組後會立即 emit**，確保編輯回填未互動也有 payload（送出 / 驗證才不會誤判為空）。**命名刻意避開原生 `change` 事件**（見 §17 命名規範說明），舊名 `change` 曾在 zoneless 全域事件代理下偶發收到原生 Event 物件導致 `TypeError`。
 - Output `suppressedStepsChange`：`number[]`，回報被抑制（部門最高層級 → 自動略過）的指定步驟 `stepOrder`；父表單送出驗證時對這些步驟**不要求**審核者。
 - **多步驟連動行為（三項）**：

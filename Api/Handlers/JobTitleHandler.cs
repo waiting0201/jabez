@@ -5,6 +5,7 @@ using Jabez.Api.Models.Entities;
 using Jabez.Api.Services.Dapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Jabez.Api.Handlers;
 
@@ -86,6 +87,12 @@ public sealed class JobTitleHandler(AppDbContext db, IJobTitleReadService reader
 
         var title = await db.JobTitles.FindAsync(intId)
             ?? throw AppException.NotFound("JobTitle");
+
+        // 清洗指向 JobTitles 的 NoAction 外鍵（例外指定審核的限定職稱），否則刪除會 FK violation。
+        // 清空後該步驟退回「不限職稱」，與 ApprovalStep.JobTitleId 的 SetNull 行為一致。
+        await db.ApprovalStepDesignatedJobTitles
+            .Where(x => x.JobTitleId == intId)
+            .ExecuteDeleteAsync();
 
         db.JobTitles.Remove(title);
         await db.SaveChangesAsync();

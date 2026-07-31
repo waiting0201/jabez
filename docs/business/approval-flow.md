@@ -361,6 +361,30 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 
 指定簽核步驟不獨立佔簽名欄的規則，改由 `designatedStepOrders`（取自 `designatedReviewers[].approvalStepOrder`）判定，涵蓋例外命中的步驟。為此 `drSql` 補上 `rdr.ApprovalStepOrder` 欄位（原先 approval-task 路徑回傳一律為 0），前端 [pdf-core.service.ts](../../Admin/src/app/shared/services/pdf-core.service.ts) 新增 `designatedStepOrdersOf()` 與 `designatedStepOrders` 選項，8 個 PDF service 各傳一行。
 
+### 限定職稱（ApprovalStepDesignatedJobTitle，2026-07 新增）
+
+**需求背景：** 例外步驟的人員下拉原本是「該職稱全部人」或「該部門全部人」，申請人可以挑到任何人。實務上例外步驟通常只該找特定層級（例如協理），過去只能靠表單提示文字人工約束。
+
+**設定方式：** 簽核流程設定頁的步驟表單，於「例外指定審核」名單下方新增「限定職稱」（**可多選**，FormArray 逐列 select，與例外名單同款 UI）。名單存於子表 `ApprovalStepDesignatedJobTitles`（`ApprovalStepId` + `JobTitleId`，unique index）。
+
+| 規則 | 說明 |
+|------|------|
+| 適用範圍 | **只服務例外指定審核步驟**。原生 `UseApplicantDesignated=true` 步驟維持不限職稱（互斥由 handler 守門：切成原生指定或例外名單清空時，限定職稱一律自動清空；沒有例外名單卻設限定職稱回 400） |
+| 是否啟用 | **不設 bool 旗標**，一律以 `designatedJobTitleIds` 是否非空為準（同例外名單的哲學） |
+| 前端下拉 | `designatedRequiresDepartment=true` → 部門下拉不變，人員＝**該部門 ∩ 限定職稱**；`=false` → **隱藏職稱下拉**（已限定，該下拉無意義），人員直接列全公司符合職稱者。皆濾 `status==='active'`。查無符合者顯示「查無符合限定職稱的人員」 |
+| 後端驗證 | `ValidateAndNormalizeAsync` 於送單時檢查：designee 綁定的步驟若「此申請人例外命中且有設限定職稱」，其 `User.JobTitleId` 須在名單內，否則 **400「步驟 N 的指定審核者職稱不符限定職稱，請重新選擇。」** |
+| API | 搭載於既有 `POST/PATCH /approval-items/{id}/steps[/{stepId}]` 的 `designatedJobTitleIds: int[]`（**整批替換**：`null`＝不動、`[]`＝清空）。權限仍為 `approvals:write`，**不需新路由 / 新權限** |
+| per-caller 有效值 | `GET /approval-items/active` 只對**命中例外的呼叫者**帶出限定職稱，其餘一律空陣列（與 `useApplicantDesignated` 同一套 per-caller 語意，不外洩設定） |
+
+**為何丟 400 而非靜默剔除**（與上方剔除非法綁定的處理刻意不同）：那是「此步驟對我已非指定步驟」的殘留，使用者無從得知也無從修正；職稱不符則是使用者挑錯人、可自行修正，且靜默剔除會退化成「請提供指定審核者」——填了人卻被說沒填，除錯成本極高。
+
+**交互作用（重要）**
+- **與「部門最高層級自動略過」正交**：`GetSuppressedDesignatedStepOrdersAsync` 仍以該部門**全部** active 使用者算 `MIN(JobTitle.Level)`，**刻意不把限定職稱套進判定池**（那是另一條規則的基準）。副作用：若例外步驟限定「協理」而該部門最高是「總監」，申請人永遠選不到最高層級 → 抑制不會觸發、後續指定步驟仍需逐一指定。
+- **草稿**：功能上線前存的草稿若含不符職稱的 designee，送單當下才會被擋（規則本就以送單當下為準）。
+- **在飛行中的申請免疫**：送單後一律看 designee 快照，故簽核引擎 / 待審清單 SQL / PDF / timeline **皆不需改動**。
+- **刪除職稱**：`ApprovalStepDesignatedJobTitles.JobTitleId` 為 `NO_ACTION` 外鍵（避免與 `ApprovalStep.JobTitleId` 的 SetNull 形成多重級聯路徑），已納入 [JobTitleHandler.DeleteAsync](../../Api/Handlers/JobTitleHandler.cs) 清洗；清空後該步驟退回「不限職稱」（**權限放寬**），與 `ApprovalStep.JobTitleId` SetNull 的既有行為一致。
+- **設成無人持有的職稱**會讓申請人卡死無法送單，故前端在人員下拉為空時顯示提示。
+
 ### 注意事項
 
 - **例外綁在特定流程的步驟上**：若申請人部門解析到另一條流程（部門專屬 vs 通用預設），該例外不生效。管理者必須設在申請人實際會走的那條流程上。

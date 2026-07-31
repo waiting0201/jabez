@@ -20,8 +20,9 @@
 | `JobTitle` | 職稱主檔 |
 | `Vendor` | 廠商主檔（Name 廠商名稱/外包顧問、TaxId 統編 unique-filter index、IdNumber 身分證字號 unique-filter index（個人工作室，與 TaxId 擇一）、Phone、ContactPerson、Address、BankAccount、BankBookImageUrl 存摺封面 proxy 路徑（必填）、IdCardFrontUrl/IdCardBackUrl 身分證正反面 proxy 路徑、Note、IsActive、CreatedAt；被 PaymentRequest.VendorId 引用，FK OnDelete=Restrict 限引用中不可刪） |
 | `ApprovalItem` | 簽核流程項目（含 **DepartmentId 部門維度**：null = 該 ApplicationType 通用預設流程，非 null = 某部門專屬流程；唯一索引為 `(ApplicationType, DepartmentId)`，過濾條件 `ApplicationType IS NOT NULL`，FK→Department OnDelete=SetNull） |
-| `ApprovalStep` | 簽核流程步驟（含 UseDirectSupervisor、UseApplicantDesignated、**DesignatedRequiresDepartment**「指定審核步驟需先選部門再選人」，`UseApplicantDesignated` **或有例外名單**時有意義；**MinDays** 天數門檻 nullable，`null`＝一律納入、`N`＝申請天數 ≥ N 才納入此步驟，目前供請假依天數分流；例外名單見子表 `ApprovalStepException`） |
+| `ApprovalStep` | 簽核流程步驟（含 UseDirectSupervisor、UseApplicantDesignated、**DesignatedRequiresDepartment**「指定審核步驟需先選部門再選人」，`UseApplicantDesignated` **或有例外名單**時有意義；**MinDays** 天數門檻 nullable，`null`＝一律納入、`N`＝申請天數 ≥ N 才納入此步驟，目前供請假依天數分流；例外名單見子表 `ApprovalStepException`、例外的限定職稱見 `ApprovalStepDesignatedJobTitle`） |
 | `ApprovalStepException` | **簽核步驟例外指定審核名單**（`ApprovalStepId` + `UserId`）：名單內的申請人送單時，該步驟改為「由申請人自行指定審核者」；與 `UseApplicantDesignated` 互斥。唯一索引 `(ApprovalStepId, UserId)`；FK→ApprovalStep **Cascade**、FK→Users **NO_ACTION（已納入 UserHandler.DeleteAsync 清洗清單）** |
+| `ApprovalStepDesignatedJobTitle` | **例外指定審核的限定職稱**（`ApprovalStepId` + `JobTitleId`）：例外命中的申請人只能從這些職稱的人員中指定審核者；空＝不限職稱（不另設 bool 旗標）。僅例外步驟有意義（原生 `UseApplicantDesignated` 或無例外名單時由 ApprovalHandler 一律清空）。唯一索引 `(ApprovalStepId, JobTitleId)`；FK→ApprovalStep **Cascade**、FK→JobTitles **NO_ACTION（避免多重級聯路徑，已納入 JobTitleHandler.DeleteAsync 清洗）** |
 | `ApprovalRecord` | 簽核動作記錄（含 OnBehalfOfUserId 代理標記、IsEscalated 升級標記、`RoundNo` 簽核批次：僅 advance 追加預支會 > 1，其餘申請類型恆為 1） |
 | `EscalationOverride` | 升級審核指派（記錄被指派的升級/代理審核者，審核完成後清除） |
 | `Project` | 專案主檔（含 **DepartmentId 必填**、ContractAmount 契約金額、BusinessAmount 業務執行金額、RemainingAmount 剩餘金額（系統導入時剩餘預算，選填）；實收金額為衍生值，由 `SUM(ProjectPaymentSchedules.DepositAmount)` 即時計算） |

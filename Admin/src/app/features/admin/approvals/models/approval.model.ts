@@ -41,6 +41,8 @@ export interface ApprovalStep {
   /** 例外指定審核名單（UserId[]）：名單內的申請人送單時，此步驟改由申請人自行指定審核者。
    *  非空即代表啟用例外（不另設 bool 旗標）；與 useApplicantDesignated 互斥。僅 getById 會帶出。 */
   exceptionUserIds?: string[];
+  /** 例外指定審核的限定職稱（JobTitleId[]）：申請人只能從這些職稱的人員中指定審核者；空＝不限職稱。僅 getById 會帶出。 */
+  designatedJobTitleIds?: number[];
   note?: string;
 }
 
@@ -69,4 +71,9 @@ export interface ApprovalFlowStepSummary {
   /** 「對呼叫者而言」的有效值：步驟原生設定 OR 例外指定審核名單命中呼叫者 */
   useApplicantDesignated: boolean;
   designatedRequiresDepartment: boolean;
+  /**
+   * 「對呼叫者而言」的限定職稱：僅在呼叫者命中此步驟例外名單時才非空。
+   * 非空 → 指定審核者只能從這些職稱的人員中挑；空／未帶 → 不限職稱。
+   */
+  designatedJobTitleIds?: number[];
 }

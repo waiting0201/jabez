@@ -29,9 +29,9 @@ interface PickerEntry {
   rowIndex: number;
   selectedJobTitleId: number | null;
   selectedUserId: string | null;
-  filteredUsers: UserLookup[];
   selectedDepartmentId: number | null;
-  departmentFilteredUsers: UserLookup[];
+  /** 此列目前可選的人員（單一真相，由 _candidatesFor 計算） */
+  candidateUsers: UserLookup[];
   /** 使用者是否手動改過此列部門（改過的列不被步驟一自動帶入覆寫） */
   deptManuallyChanged: boolean;
 }
@@ -47,6 +47,8 @@ interface PickerGroup {
  * 支援多個 designated step，每 step 一個分組：
  * - designatedRequiresDepartment=false：先選職稱 → 再選人（沿用 payment-form 既有互動）
  * - designatedRequiresDepartment=true：先選部門 → 依部門 filter 出人 → 選人
+ * - designatedJobTitleIds 非空（例外指定審核的限定職稱）：人員一律限縮在這些職稱內；
+ *   非部門模式時職稱下拉沒有意義故隱藏，直接列出全公司符合職稱者。
  */
 @Component({
   selector: 'app-designated-reviewers-picker',
@@ -95,6 +97,48 @@ export class DesignatedReviewersPicker implements OnChanges {
     return this.isGated(groupIndex) || this.isSuppressed(groupIndex);
   }
 
+  /** 此步驟是否有限定職稱（例外指定審核專用）→ 非部門模式時隱藏職稱下拉 */
+  hasJobTitleLimit(group: PickerGroup): boolean {
+    return (group.designatedStep.designatedJobTitleIds?.length ?? 0) > 0;
+  }
+
+  /**
+   * 人員下拉候選的單一真相：
+   *   部門模式         → 所選部門 ∩ 限定職稱
+   *   一般模式 + 有限定 → 全公司符合限定職稱者（職稱下拉隱藏）
+   *   一般模式 + 無限定 → 所選職稱者（既有行為）
+   */
+  private _candidatesFor(group: PickerGroup, entry: PickerEntry): UserLookup[] {
+    const limit = group.designatedStep.designatedJobTitleIds ?? [];
+    const pool = this.users.filter(u =>
+      u.status === 'active'
+      && (limit.length === 0 || (u.jobTitleId != null && limit.includes(u.jobTitleId))));
+
+    if (group.designatedStep.designatedRequiresDepartment) {
+      return entry.selectedDepartmentId != null
+        ? pool.filter(u => u.departmentId === entry.selectedDepartmentId)
+        : [];
+    }
+    if (limit.length > 0) return pool;
+    return entry.selectedJobTitleId != null
+      ? pool.filter(u => u.jobTitleId === entry.selectedJobTitleId)
+      : [];
+  }
+
+  /**
+   * 重算此列候選並維護已選人員。
+   * mode='reset'：使用者主動改條件（職稱 / 部門）→ 清空已選人員
+   * mode='keep' ：程式帶入（回填 / 部門自動帶入）→ 僅在已選人員落選時才清空
+   */
+  private _refreshEntry(group: PickerGroup, entry: PickerEntry, mode: 'reset' | 'keep') {
+    entry.candidateUsers = this._candidatesFor(group, entry);
+    if (mode === 'reset') {
+      entry.selectedUserId = null;
+    } else if (entry.selectedUserId && !entry.candidateUsers.some(u => u.id === entry.selectedUserId)) {
+      entry.selectedUserId = null;
+    }
+  }
+
   private _buildGroups() {
     this.groups = this.designatedSteps.map(step => {
       // 找出屬於這個 step 的既有 designee（以 approvalStepOrder 對應，兼容舊資料沒有 approvalStepOrder 時用第一個 step）
@@ -104,27 +148,21 @@ export class DesignatedReviewersPicker implements OnChanges {
           : this.designatedSteps[0]?.stepOrder === step.stepOrder
       );
 
-      const entries: PickerEntry[] = stepInitials.length > 0
-        ? stepInitials.map((init, idx) => {
-            const user = this.users.find(u => u.id === init.reviewerId);
-            return {
-              rowIndex: idx,
-              selectedJobTitleId: user?.jobTitleId ?? null,
-              selectedUserId: init.reviewerId,
-              filteredUsers: user?.jobTitleId
-                ? this.users.filter(u => u.jobTitleId === user.jobTitleId && u.status === 'active')
-                : [],
-              selectedDepartmentId: init.selectedDepartmentId ?? null,
-              departmentFilteredUsers: (init.selectedDepartmentId != null)
-                ? this.users.filter(u => u.departmentId === init.selectedDepartmentId && u.status === 'active')
-                : [],
-              deptManuallyChanged: init.selectedDepartmentId != null,
-            };
-          })
-        : [];
+      const entries: PickerEntry[] = stepInitials.map((init, idx) => ({
+        rowIndex: idx,
+        selectedJobTitleId: this.users.find(u => u.id === init.reviewerId)?.jobTitleId ?? null,
+        selectedUserId: init.reviewerId,
+        selectedDepartmentId: init.selectedDepartmentId ?? null,
+        candidateUsers: [],
+        deptManuallyChanged: init.selectedDepartmentId != null,
+      }));
 
       return {designatedStep: step, entries};
     });
+
+    // 回填的已選人員要保留（'keep'），僅在限定職稱等條件變更導致落選時才清掉
+    for (const g of this.groups)
+      for (const e of g.entries) this._refreshEntry(g, e, 'keep');
   }
 
   addEntry(group: PickerGroup) {
@@ -133,17 +171,16 @@ export class DesignatedReviewersPicker implements OnChanges {
     const inheritedDept = isLaterGroup && group.designatedStep.designatedRequiresDepartment
       ? this._firstGroupDept()
       : null;
-    group.entries.push({
+    const entry: PickerEntry = {
       rowIndex: group.entries.length,
       selectedJobTitleId: null,
       selectedUserId: null,
-      filteredUsers: [],
       selectedDepartmentId: inheritedDept,
-      departmentFilteredUsers: inheritedDept != null
-        ? this.users.filter(u => u.departmentId === inheritedDept && u.status === 'active')
-        : [],
+      candidateUsers: [],
       deptManuallyChanged: false,
-    });
+    };
+    group.entries.push(entry);
+    this._refreshEntry(group, entry, 'keep');
     this._emitChange();
   }
 
@@ -153,19 +190,13 @@ export class DesignatedReviewersPicker implements OnChanges {
     this._emitChange();
   }
 
-  onJobTitleChange(entry: PickerEntry) {
-    entry.filteredUsers = entry.selectedJobTitleId
-      ? this.users.filter(u => u.jobTitleId === entry.selectedJobTitleId && u.status === 'active')
-      : [];
-    entry.selectedUserId = null;
+  onJobTitleChange(group: PickerGroup, entry: PickerEntry) {
+    this._refreshEntry(group, entry, 'reset');
     this._emitChange();
   }
 
   onDeptChange(group: PickerGroup, entry: PickerEntry) {
-    entry.departmentFilteredUsers = entry.selectedDepartmentId != null
-      ? this.users.filter(u => u.departmentId === entry.selectedDepartmentId && u.status === 'active')
-      : [];
-    entry.selectedUserId = null;
+    this._refreshEntry(group, entry, 'reset');
     // 使用者手動改動其後步驟的部門 → 標記，避免被步驟一自動帶入覆寫
     if (this.groups.indexOf(group) > 0) entry.deptManuallyChanged = true;
     // 步驟一首列部門變更 → req2 帶入其後步驟
@@ -193,11 +224,7 @@ export class DesignatedReviewersPicker implements OnChanges {
       for (const e of g.entries) {
         if (e.deptManuallyChanged) continue;
         e.selectedDepartmentId = dept;
-        e.departmentFilteredUsers = dept != null
-          ? this.users.filter(u => u.departmentId === dept && u.status === 'active')
-          : [];
-        if (e.selectedUserId && !e.departmentFilteredUsers.some(u => u.id === e.selectedUserId))
-          e.selectedUserId = null;
+        this._refreshEntry(g, e, 'keep');
       }
     }
   }

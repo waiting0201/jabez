@@ -57,10 +57,15 @@ export class ApprovalFlow implements OnInit {
     minDays:                      [null as number | null],
     note:                         [''],
     exceptionUserIds:             this.fb.array([] as FormControl<string | null>[]),
+    designatedJobTitleIds:        this.fb.array([] as FormControl<number | null>[]),
   });
 
   get exceptionUserIds(): FormArray<FormControl<string | null>> {
     return this.stepForm.controls.exceptionUserIds;
+  }
+
+  get designatedJobTitleIds(): FormArray<FormControl<number | null>> {
+    return this.stepForm.controls.designatedJobTitleIds;
   }
 
   ngOnInit() {
@@ -75,6 +80,7 @@ export class ApprovalFlow implements OnInit {
     this.editStep = null;
     const nextOrder = (this.item$.getValue()?.steps.length ?? 0) + 1;
     this.exceptionUserIds.clear();
+    this.designatedJobTitleIds.clear();
     this.useException = false;
     this.stepForm.reset({stepOrder: nextOrder, departmentId: null, jobTitleId: null, useApplicantDepartment: false, useDirectSupervisor: false, useApplicantDesignated: false, designatedRequiresDepartment: false, minDays: null, note: ''});
     this.showStepForm = true;
@@ -85,6 +91,10 @@ export class ApprovalFlow implements OnInit {
     this.exceptionUserIds.clear();
     for (const id of step.exceptionUserIds ?? []) {
       this.exceptionUserIds.push(this.fb.control<string | null>(id));
+    }
+    this.designatedJobTitleIds.clear();
+    for (const id of step.designatedJobTitleIds ?? []) {
+      this.designatedJobTitleIds.push(this.fb.control<number | null>(id));
     }
     this.useException = this.exceptionUserIds.length > 0;
     this.stepForm.patchValue({
@@ -123,9 +133,10 @@ export class ApprovalFlow implements OnInit {
     const checked = this.stepForm.value.useApplicantDesignated;
     if (checked) {
       this.stepForm.patchValue({departmentId: null, jobTitleId: null, useApplicantDepartment: false, useDirectSupervisor: false});
-      // 原生指定審核已涵蓋全部申請人，與例外名單互斥
+      // 原生指定審核已涵蓋全部申請人，與例外名單互斥（限定職稱只服務例外，一併清空）
       this.useException = false;
       this.exceptionUserIds.clear();
+      this.designatedJobTitleIds.clear();
     }
     if (!checked) {
       this.stepForm.patchValue({designatedRequiresDepartment: false});
@@ -138,6 +149,7 @@ export class ApprovalFlow implements OnInit {
       if (this.exceptionUserIds.length === 0) this.addExceptionUser();
     } else {
       this.exceptionUserIds.clear();
+      this.designatedJobTitleIds.clear();
       this.stepForm.patchValue({designatedRequiresDepartment: false});
     }
   }
@@ -148,6 +160,23 @@ export class ApprovalFlow implements OnInit {
 
   removeExceptionUser(index: number) {
     this.exceptionUserIds.removeAt(index);
+  }
+
+  addDesignatedJobTitle() {
+    this.designatedJobTitleIds.push(this.fb.control<number | null>(null));
+  }
+
+  removeDesignatedJobTitle(index: number) {
+    this.designatedJobTitleIds.removeAt(index);
+  }
+
+  /** 已被其他列選走的職稱不再出現，避免重複觸發後端 unique index */
+  availableJobTitles(index: number): JobTitle[] {
+    const taken = new Set(
+      this.designatedJobTitleIds.controls
+        .filter((c, i) => i !== index && c.value != null)
+        .map(c => c.value as number));
+    return this.jobTitles.filter(j => !taken.has(j.id));
   }
 
   /** 已被其他列選走的人不再出現，避免重複觸發後端 unique index */
@@ -166,6 +195,14 @@ export class ApprovalFlow implements OnInit {
   /** timeline badge 的 tooltip：例外名單姓名清單 */
   exceptionNames(step: ApprovalStep): string {
     return (step.exceptionUserIds ?? []).map(id => this.userName(id)).filter(n => n).join('、');
+  }
+
+  /** timeline badge：限定職稱名稱清單 */
+  designatedJobTitleNames(step: ApprovalStep): string {
+    return (step.designatedJobTitleIds ?? [])
+      .map(id => this.jobTitles.find(j => j.id === id)?.name ?? '')
+      .filter(n => n)
+      .join('、');
   }
 
   submitStep() {
@@ -197,6 +234,11 @@ export class ApprovalFlow implements OnInit {
       return;
     }
 
+    // 限定職稱（整批替換；只服務例外指定審核，沒有例外名單就一律清空）
+    const designatedJobTitleIds = exceptionUserIds.length > 0
+      ? this.designatedJobTitleIds.controls.map(c => c.value).filter((id): id is number => id != null)
+      : [];
+
     const isSpecialMode = useApplicantDesignated || useDirectSupervisor;
     const deptId = (isSpecialMode || useAppDept) ? undefined : (v.departmentId || undefined);
     const jtId   = isSpecialMode ? undefined : (v.jobTitleId || undefined);
@@ -219,6 +261,7 @@ export class ApprovalFlow implements OnInit {
       minDays:                      v.minDays && v.minDays > 0 ? v.minDays : null,
       note:                         v.note ?? '',
       exceptionUserIds,
+      designatedJobTitleIds,
     };
 
     const obs = this.editStep

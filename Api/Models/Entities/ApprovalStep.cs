@@ -24,4 +24,7 @@ public class ApprovalStep
 
     /// <summary>例外指定審核名單：名單內的申請人送單時，此步驟改為「由申請人自行指定審核者」（與 UseApplicantDesignated 互斥）。</summary>
     public ICollection<ApprovalStepException> Exceptions { get; set; } = [];
+
+    /// <summary>例外指定審核的限定職稱：申請人只能從這些職稱的人員中指定審核者（空＝不限職稱）。僅例外步驟有意義。</summary>
+    public ICollection<ApprovalStepDesignatedJobTitle> DesignatedJobTitles { get; set; } = [];
 }
