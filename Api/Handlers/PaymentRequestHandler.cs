@@ -89,6 +89,9 @@ public sealed class PaymentRequestHandler(
         if (string.IsNullOrEmpty(type) || !ValidTypes.Contains(type))
             return new BadRequestObjectResult(ApiResponse.Fail($"Invalid type '{type}'. Must be vendor, travel, or advance."));
 
+        if (string.IsNullOrWhiteSpace(reason))
+            return new BadRequestObjectResult(ApiResponse.Fail("請填寫請款原因。"));
+
         if (!await db.Projects.AnyAsync(p => p.Id == projectId))
             throw AppException.NotFound("Project");
 
@@ -274,9 +277,13 @@ public sealed class PaymentRequestHandler(
             pr.Type = type;
         }
 
-        // 更新請款原因（空字串表示清除）
+        // 更新請款原因（必填，不可清空）
         if (form.ContainsKey("reason"))
-            pr.Reason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
+        {
+            if (string.IsNullOrWhiteSpace(reason))
+                return new BadRequestObjectResult(ApiResponse.Fail("請填寫請款原因。"));
+            pr.Reason = reason.Trim();
+        }
 
         if (projectId.HasValue)
         {

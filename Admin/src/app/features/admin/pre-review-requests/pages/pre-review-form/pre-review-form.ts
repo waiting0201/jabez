@@ -203,7 +203,7 @@ export class PreReviewForm implements OnInit {
     type:      ['vendor', Validators.required],
     projectId: [null as number | null, Validators.required],
     vendorId:  [null as number | null, Validators.required],
-    reason:    [''],
+    reason:    ['', Validators.required],
     taxAmount: [0],
     items:     this.fb.array([]),
   });

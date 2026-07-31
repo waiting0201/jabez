@@ -194,8 +194,8 @@ Admin/src/app/
     │   ├── approvals/      # 簽核流程設定（ApprovalItem + Steps；ApprovalItem 含 DepartmentId 部門維度，可為同一申請類型設「各部門專屬流程 + 通用預設」，送單時依申請人部門挑流程；子部門未設專屬流程時自動沿用最近祖先部門流程；Step 含 MinDays 天數門檻，null＝一律納入、N＝申請天數 ≥ N 才納入，目前供請假依天數分流；**非指定審核步驟可勾「例外指定審核」並逐一挑使用者（FormArray + select 列，整批替換 exceptionUserIds）**，名單內的申請人送單時該步驟改由申請人自行指定審核者，timeline 顯示「例外指定 N 人」badge；**例外名單下方另可設「限定職稱」（可多選，整批替換 designatedJobTitleIds）**，申請人的指定審核者只能挑這些職稱的人，timeline 顯示「限定職稱：…」badge）
     │   ├── approval-tasks/ # 待審核任務清單（已核准頁籤篩選列：全部類型下拉（所有人）＋**申請人下拉（僅財務體系部門 / Superadmin，選項來自 /approval-tasks/applicants）**＋撥款退款子篩選（僅財務體系；按鈕組 全部 / 尚未撥款 / 部分撥款 / 全部撥款 / **已結案**（`paymentStatus=closed`，只撈預支 / 出差預支 `IsClosed=1`，其餘類型後端 1=0 短路））；**摘要欄的預支申請加註送簽批次**：第1次顯示總額、第N次追加顯示「本次／總額」，批次標籤共用 advance-requests 的 roundLabel()；**狀態欄的預支 / 出差預支已結案時加註「已結案」badge**，與 advance-list / travel 詳情同一真相 `AdvanceRequest.IsClosed` / `TravelRequest.IsClosed`、同一樣式，holiday_travel 不走沖銷故排除；**簽核作業詳情頁（approval-task-review）另有「結案資訊」卡片**（`closureInfo(task)` → 共用元件 `<app-closure-info-card>`；`advance` / `travel` 顯示本單結案狀態 + 退款四欄，`write_off` / `travel_write_off` 顯示**關聯母單**（預支單 / 出差單）結案狀態，per-type 差異收斂在 `isRelatedClosure()` / `closureTitle()`），頁首同掛「已結案」badge）
     │   ├── projects/       # 專案管理
-    │   ├── payment-requests/  # 請款申請（廠商請款 type=vendor / 一般請款 type=general 明細下方皆含整單批次附件上傳，共用 shared/components/attachments-upload）
-    │   ├── pre-review-requests/ # 預審申請（事前預審，clone 自請款；無撥款、不計入報表；品項類別下拉 + 報價單 OCR；含 pre-review-pdf.service 列印合併所有上傳檔）
+    │   ├── payment-requests/  # 請款申請（廠商請款 type=vendor / 一般請款 type=general 明細下方皆含整單批次附件上傳，共用 shared/components/attachments-upload；**請款原因必填**）
+    │   ├── pre-review-requests/ # 預審申請（事前預審，clone 自請款；無撥款、不計入報表；品項類別下拉 + 報價單 OCR；含 pre-review-pdf.service 列印合併所有上傳檔；**預審說明必填**）
     │   ├── leave-requests/    # 請假申請（除歲時祭儀假外的 15 種假別選起迄日後皆扣國定假日與六日並列請假日清單，走輕量端點 /leave-requests/working-days；小時單位（事假/病假/產檢假/陪產假）跨日逐日累加只算工作日；產假區間仍 56 個日曆天但只計其中工作日；含職務代理人下拉；依天數決定簽核關卡 <3 天單位主管 / ≥3 天 +部門最高主管+總監，靠 ApprovalStep.MinDays）
     │   ├── travel-payment-requests/ # 出差請款申請（小額已代墊直接請款，無沖銷）
     │   ├── travel-requests/   # 出差預支申請（走沖銷流程）

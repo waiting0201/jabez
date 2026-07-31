@@ -90,6 +90,9 @@ public sealed class PreReviewRequestHandler(
         if (string.IsNullOrEmpty(type) || !ValidTypes.Contains(type))
             return new BadRequestObjectResult(ApiResponse.Fail($"Invalid type '{type}'. Must be vendor or designer."));
 
+        if (string.IsNullOrWhiteSpace(reason))
+            return new BadRequestObjectResult(ApiResponse.Fail("請填寫預審說明。"));
+
         if (!await db.Projects.AnyAsync(p => p.Id == projectId))
             throw AppException.NotFound("Project");
 
@@ -238,9 +241,13 @@ public sealed class PreReviewRequestHandler(
             pr.Type = type;
         }
 
-        // 更新申請原因（空字串表示清除）
+        // 更新預審說明（必填，不可清空）
         if (form.ContainsKey("reason"))
-            pr.Reason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
+        {
+            if (string.IsNullOrWhiteSpace(reason))
+                return new BadRequestObjectResult(ApiResponse.Fail("請填寫預審說明。"));
+            pr.Reason = reason.Trim();
+        }
 
         if (projectId.HasValue)
         {
