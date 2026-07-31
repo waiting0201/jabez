@@ -298,7 +298,9 @@ Api/
 │   ├── AppDbContextFactory.cs         # 用於 CLI Migration
 │   ├── Configurations/                # EF Core 實體對應設定（34 個，新增 EmployeeProfile + 9 張子表 + 健保眷屬 + PreReviewRequest / PreReviewItem / PreReviewRequestAttachment）
 │   ├── Migrations/                    # EF Core Migration 檔案
-│   └── Seed/                          # 一次性員工人事資料匯入工具（EmployeeImporter + RocDateParser + EmployeeImportDtos + employee-import.json；RUN_EMPLOYEE_IMPORT 旗標觸發，IMPORT_UPLOAD_FILES 控制附件上傳）
+│   └── Seed/                          # 一次性匯入工具（共用 RocDateParser 解民國年）
+│       ├── EmployeeImporter + EmployeeImportDtos + employee-import.json  # 員工人事資料（RUN_EMPLOYEE_IMPORT 旗標，IMPORT_UPLOAD_FILES 控制附件上傳）
+│       └── ProjectImporter + ProjectImportDtos + project-import.json     # 專案資料（RUN_PROJECT_IMPORT 旗標，PROJECT_IMPORT_DRY_RUN 只印不寫；來源 reference/專案資料-115.07.29.xls；以 Code upsert、期別明細全量重建）
 ├── Models/
 │   ├── Entities/                      # 50 個資料庫實體（新增 **簽核步驟例外指定審核名單 ApprovalStepException** / **預支沖銷差額分期 WriteOffInstallment**（第 5 種分期撥款子表）/ **追加預支批次 AdvanceRequestSupplement**（只存 RoundNo≥2，Round 1 = 父單本身）/ **TravelRequestParticipantDate 參與人員個別參與日期** / EmployeeProfile / EducationRecord / EmploymentHistoryRecord / FamilyMember / ProfessionalTraining / LanguageAbility / JobTransferRecord / RewardPunishmentRecord / SalaryAdjustmentRecord / HealthInsuranceDependent / **5 個分期撥款表 PaymentRequestInstallment / AdvanceRequestInstallment / TravelRequestInstallment / TravelPaymentRequestInstallment / WriteOffInstallment** / **PaymentReminderLog** / **整單批次附件 PaymentRequestAttachment / WriteOffAttachment** / **預審申請 PreReviewRequest / PreReviewItem / PreReviewRequestAttachment**）
 │   └── Dtos/                          # 20 個 DTO 檔案（新增 EmployeeProfileDtos / **InstallmentDtos** / **PreReviewRequestDtos**）

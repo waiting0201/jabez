@@ -206,6 +206,20 @@ using (var scope = host.Services.CreateScope())
             Console.Error.WriteLine($"[EmployeeImporter] skipped due to error: {ex.Message}");
         }
     }
+
+    // 一次性專案資料匯入：RUN_PROJECT_IMPORT=true 才執行（跑完切回 false）。
+    // 只印計畫不寫 DB 另由 PROJECT_IMPORT_DRY_RUN 控制；單步失敗不阻擋 Functions 啟動。
+    if (string.Equals(importCfg["RUN_PROJECT_IMPORT"], "true", StringComparison.OrdinalIgnoreCase))
+    {
+        try
+        {
+            await Jabez.Api.Data.Seed.ProjectImporter.RunAsync(db, importCfg);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[ProjectImporter] skipped due to error: {ex.Message}");
+        }
+    }
 }
 
 await host.RunAsync();

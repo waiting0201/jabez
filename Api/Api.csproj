@@ -52,5 +52,9 @@
     <None Update="Data/Seed/employee-import.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <!-- 一次性專案匯入資料檔：需複製到輸出目錄供 ProjectImporter 讀取 -->
+    <None Update="Data/Seed/project-import.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>
