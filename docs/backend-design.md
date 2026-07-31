@@ -936,6 +936,8 @@ Line__LoginChannelId              ↔ IConfiguration["Line:LoginChannelId"]
 需一次性灌資料時（如批次匯入既有員工人事卡），比照 `Program.cs` 既有 `HolidayBlobCleanup` 寫法：在 `host.MigrateAsync()` 後的 `using (scope)` 區塊內，以**環境旗標**保護呼叫一個 `static RunAsync(AppDbContext, IBlobStorageService, IConfiguration)` 工具（獨立 try/catch 不阻擋啟動），重用已注入的 DI（DbContext / Blob / BCrypt / Clock），免另開 console 專案。
 
 - 範例：[Api/Data/Seed/EmployeeImporter.cs](../Api/Data/Seed/EmployeeImporter.cs)（讀 `employee-import.json` → User + EmployeeProfile + 子表 + 附件）。旗標 `RUN_EMPLOYEE_IMPORT=true` 觸發、`IMPORT_UPLOAD_FILES` 控制附件是否實際上 blob、`EMPLOYEE_IMPORT_SOURCE_DIR` 指來源夾。
+- 範例：[Api/Data/Seed/ProjectImporter.cs](../Api/Data/Seed/ProjectImporter.cs)（讀 `project-import.json` → Project + ProjectPaymentSchedule）。旗標 `RUN_PROJECT_IMPORT=true` 觸發、`PROJECT_IMPORT_DRY_RUN=true` 只印計畫不寫 DB。去重鍵為 `Project.Code`，期別明細比照 `ProjectHandler.UpdateAsync` **全量重建**；刻意直寫 entity 繞過「已結案不可修改」限制，資料有誤可改 JSON 後重跑覆蓋。
+- 中間 JSON 須在 `Api.csproj` 加 `<None Update="Data/Seed/xxx.json"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></None>`，否則 `AppContext.BaseDirectory` 讀不到。
 - 因 DbContext 啟用 `EnableRetryOnFailure`，每筆須包 `CreateExecutionStrategy() + BeginTransactionAsync()`（同 §4 Handler 規範）。
 - 去重採 **upsert**（Email 或唯一業務鍵命中即覆蓋 update-in-place、子表 `ExecuteDelete` 後重建），確保可重跑不重複。
 - 民國/西元日期解析共用 [RocDateParser](../Api/Data/Seed/RocDateParser.cs)（年 ≤ 150 視民國 +1911）。
