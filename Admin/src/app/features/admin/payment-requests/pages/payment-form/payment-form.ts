@@ -211,7 +211,7 @@ export class PaymentForm implements OnInit {
     type:      ['vendor', Validators.required],
     projectId: [null as number | null, Validators.required],
     vendorId:  [null as number | null, Validators.required],   // 預設 type=vendor 故必填
-    reason:    [''],
+    reason:    ['', Validators.required],
     invoices:  this.fb.array([]),
   });
 

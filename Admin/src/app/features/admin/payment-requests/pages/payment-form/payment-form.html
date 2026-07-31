@@ -139,12 +139,15 @@
             }
 
             <div class="mb-4">
-              <label class="form-label fw-500">請款原因</label>
+              <label class="form-label fw-500">請款原因 <span class="text-danger">*</span></label>
               @if (isReadOnly) {
                 <p class="form-control-plaintext mb-0">{{ form.get('reason')?.value || '—' }}</p>
               } @else {
                 <textarea class="form-control" formControlName="reason" rows="3"
                           placeholder="請說明請款原因…"></textarea>
+                @if (form.get('reason')?.invalid && form.get('reason')?.touched) {
+                  <div class="text-danger small mt-1">請填寫請款原因。</div>
+                }
               }
             </div>
 
