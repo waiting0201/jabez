@@ -8,8 +8,9 @@ namespace Jabez.Api.Handlers;
 
 /// <summary>
 /// GET /reports/project-water-level → 專案水位表
-/// 回傳每個有「已動支」金額的專案（已動支 = 請款已撥分期 + 已核准預支沖銷 + 出差請款已撥分期 + 已核准出差沖銷），
-/// 及其已動支金額佔業務執行金額 / 契約金額的百分比。
+/// 回傳可見範圍內的全部專案（含尚未動支者，水位 0%），
+/// 及其已動支金額（＝請款已撥分期 + 已核准預支沖銷 + 出差請款已撥分期 + 已核准出差沖銷）
+/// 佔業務執行金額 / 契約金額的百分比。
 /// 可見範圍依 CLAUDE.md「部門可見性規則」套用（Superadmin / CanSeeAll 部門看全部；其他員工依 CanViewSiblings / CanViewDescendants 旗標）。
 /// </summary>
 public sealed class ProjectWaterLevelHandler(

@@ -8,13 +8,15 @@ namespace Jabez.Api.Services.Dapper;
 public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWaterLevelReadService
 {
     /// <summary>
-    /// 查詢有「已動支」金額的專案，計算動支金額佔業務執行金額 / 契約金額百分比。
+    /// 查詢可見範圍內的**全部**專案，計算動支金額佔業務執行金額 / 契約金額百分比。
+    /// （2026-07 起不再過濾 DisbursedAmount = 0：尚未撥款的專案也要列出，水位顯示 0%，
+    ///   否則新匯入 / 尚無撥款紀錄的專案會讓整張表空白。）
     /// 已動支 = 四種支出來源加總：
     ///   (1) 請款已撥分期金額（PaymentRequest 非 draft + PaymentRequestInstallment.PaidAt IS NOT NULL）
     ///   (2) 已核准預支沖銷 GrandTotal（透過 AdvanceRequest.ProjectId 回扣專案）
     ///   (3) 出差請款已撥分期金額（TravelPaymentRequest 非 draft + Installment.PaidAt IS NOT NULL）
     ///   (4) 已核准出差沖銷 GrandTotal（透過 TravelRequest.ProjectId 回扣專案）
-    /// Percentage 在 C# 端計算，避免 SQL 端除零問題；DisbursedAmount = 0 的專案在 C# 過濾掉。
+    /// Percentage 在 C# 端計算，避免 SQL 端除零問題（分母為 0 / NULL 時回 null，前端顯示「—」）。
     /// 套用 CLAUDE.md「部門可見性規則」：可見範圍由 IProjectAccessResolver 決定（Superadmin / CanSeeAll → SeeAll；其他依 CanViewSiblings / CanViewDescendants 旗標聯集）。
     /// </summary>
     public async Task<IEnumerable<ProjectWaterLevelDto>> GetAllAsync(ProjectAccessScope scope, int? year = null, string? status = null)
@@ -142,6 +144,6 @@ public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWat
                 PreImportUsedAmount: preImportUsed,
                 Percentage:          percentage,
                 TotalPercentage:     totalPercentage);
-        }).Where(dto => dto.DisbursedAmount > 0);
+        });
     }
 }
