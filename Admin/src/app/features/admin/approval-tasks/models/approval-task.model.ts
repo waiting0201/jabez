@@ -183,12 +183,21 @@ export interface TravelTaskDetail {
   refundedAmount?: number;
 }
 
+/** 加班申請的關聯專案明細（含該案預估時數） */
+export interface OvertimeTaskProject {
+  projectId: number;
+  projectCode: string;
+  projectName: string;
+  estimatedHours: number;
+}
+
 export interface OvertimeTaskDetail {
   overtimeRequestId: number;
   overtimeDate: Date;
+  /** 預估總時數（= projects 各列加總） */
   estimatedHours: number;
   reason: string;
-  projectCodes?: string[];
+  projects?: OvertimeTaskProject[];
 }
 
 export interface AdvanceTaskDetailItem {

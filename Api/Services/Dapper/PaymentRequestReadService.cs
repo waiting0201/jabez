@@ -115,7 +115,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         string? status = null, Guid? reviewerUserId = null, string? paymentStatus = null,
         string? applicationType = null, Guid? submittedByUserId = null)
     {
-        var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants) =
+        var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, overtimeProjects) =
             await FetchAllAsync(reviewerJobTitleId: reviewerJobTitleId, reviewerDepartmentId: reviewerDepartmentId,
                                 statusFilter: status, reviewerUserId: reviewerUserId, paymentStatus: paymentStatus,
                                 applicationType: applicationType, submittedByUserId: submittedByUserId);
@@ -124,18 +124,18 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         var writeOffAttachments  = await LoadWriteOffAttachmentsAsync();
         var preReviewAttachments = await LoadPreReviewAttachmentsAsync();
         var writeOffHistory      = await LoadWriteOffHistoryAsync();
-        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, instDicts, paymentAttachments, writeOffAttachments, preReviewAttachments, writeOffHistory);
+        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, overtimeProjects, instDicts, paymentAttachments, writeOffAttachments, preReviewAttachments, writeOffHistory);
     }
 
     public async Task<ApprovalTaskDto?> GetApprovalTaskByIdAsync(int id, string applicationType)
     {
-        var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants) = await FetchAllAsync(id, applicationType);
+        var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, overtimeProjects) = await FetchAllAsync(id, applicationType);
         var instDicts = await LoadInstallmentsAsync(payments, advances, travels, holidayTravels, travelPayments, writeOffs);
         var paymentAttachments   = await LoadPaymentAttachmentsAsync();
         var writeOffAttachments  = await LoadWriteOffAttachmentsAsync();
         var preReviewAttachments = await LoadPreReviewAttachmentsAsync();
         var writeOffHistory      = await LoadWriteOffHistoryAsync();
-        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, instDicts, paymentAttachments, writeOffAttachments, preReviewAttachments, writeOffHistory)
+        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, overtimeProjects, instDicts, paymentAttachments, writeOffAttachments, preReviewAttachments, writeOffHistory)
             .FirstOrDefault(t => t.Id == id && t.ApplicationType == applicationType);
     }
 
@@ -202,7 +202,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         IEnumerable<dynamic> travelItems,
         IEnumerable<dynamic> travelWriteOffItems,
         IEnumerable<dynamic> travelPaymentItems,
-        IEnumerable<dynamic> holidayParticipants)> FetchAllAsync(
+        IEnumerable<dynamic> holidayParticipants,
+        IEnumerable<dynamic> overtimeProjects)> FetchAllAsync(
         int? filterId = null, string? filterType = null,
         int? reviewerJobTitleId = null, int? reviewerDepartmentId = null,
         string? statusFilter = null, Guid? reviewerUserId = null,
@@ -549,7 +550,6 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 
         var overtimeSql = $"""
             SELECT ot.Id, ot.OvertimeDate, ot.EstimatedHours, ot.Reason,
-                   ot.ProjectIds,
                    ot.ApprovalStatus, ot.ApprovalItemId, ot.CurrentStepOrder,
                    u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, ot.CreatedAt, ot.ReviewedAt, ot.ReviewNote
             FROM OvertimeRequests ot
@@ -798,7 +798,17 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             """;
         var holidayParticipantRows = await db.QueryAsync<dynamic>(holidayParticipantsSql);
 
-        return (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItemRows, flows, records, designatedRows, writeOffItemRows, advanceItemRows, advanceSupplementRows, travelItemRows, travelWriteOffItemRows, travelPaymentItemRows, holidayParticipantRows);
+        // 加班申請的關聯專案明細（含各案預估時數）
+        const string overtimeProjectsSql = """
+            SELECT orp.OvertimeRequestId, orp.ProjectId,
+                   p.Code AS ProjectCode, p.Name AS ProjectName, orp.EstimatedHours
+            FROM OvertimeRequestProjects orp
+            JOIN Projects p ON orp.ProjectId = p.Id
+            ORDER BY orp.OvertimeRequestId, orp.SortOrder
+            """;
+        var overtimeProjectRows = await db.QueryAsync<dynamic>(overtimeProjectsSql);
+
+        return (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItemRows, flows, records, designatedRows, writeOffItemRows, advanceItemRows, advanceSupplementRows, travelItemRows, travelWriteOffItemRows, travelPaymentItemRows, holidayParticipantRows, overtimeProjectRows);
     }
 
     /// <summary>給 BuildApprovalTasks 用的 installments 集合（依父表分組）</summary>
@@ -928,6 +938,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         IEnumerable<dynamic> travelWriteOffItemRows,
         IEnumerable<dynamic> travelPaymentItemRows,
         IEnumerable<dynamic> holidayParticipantRows,
+        IEnumerable<dynamic> overtimeProjectRows,
         InstallmentDicts instDicts,
         Dictionary<int, List<AttachmentDto>> paymentAttachments,
         Dictionary<int, List<AttachmentDto>> writeOffAttachments,
@@ -1078,6 +1089,20 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 
         TravelRequestItemDto[] GetTravelItems(int id) =>
             travelItemDict.TryGetValue(id, out var items) ? [.. items] : [];
+
+        // Overtime 關聯專案 lookup keyed by OvertimeRequestId
+        var overtimeProjectDict = new Dictionary<int, List<OvertimeProjectDto>>();
+        foreach (var op in overtimeProjectRows)
+        {
+            int otId = (int)op.OvertimeRequestId;
+            if (!overtimeProjectDict.ContainsKey(otId))
+                overtimeProjectDict[otId] = [];
+            overtimeProjectDict[otId].Add(new OvertimeProjectDto(
+                (int)op.ProjectId, (string)op.ProjectCode, (string)op.ProjectName, (decimal)op.EstimatedHours));
+        }
+
+        OvertimeProjectDto[]? GetOvertimeProjects(int id) =>
+            overtimeProjectDict.TryGetValue(id, out var ps) && ps.Count > 0 ? [.. ps] : null;
 
         // Holiday travel participants lookup keyed by TravelRequestId
         // 每筆只存 (UserId, UserName, BaseSalary)；津貼金額在 mapper 內依 HolidayDays 計算
@@ -1287,9 +1312,9 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             new OvertimeTaskDetailDto(
                 (int)row.Id,
                 (DateTime)row.OvertimeDate,
-                (string?)row.ProjectIds,
                 (decimal)row.EstimatedHours,
-                (string)row.Reason),
+                (string)row.Reason,
+                GetOvertimeProjects((int)row.Id)),
             null, null, null,
             GetRecords("overtime", (int)row.Id),
             GetDesignatedReviewers("overtime", (int)row.Id),

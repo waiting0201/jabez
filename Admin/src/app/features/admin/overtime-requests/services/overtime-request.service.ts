@@ -1,7 +1,7 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
-import {OvertimeRequest} from '../models/overtime-request.model';
+import {OvertimeRequest, OvertimeRequestPayload} from '../models/overtime-request.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {environment} from '@/environments/environment';
 
@@ -21,11 +21,11 @@ export class OvertimeRequestService {
     return this.http.get<OvertimeRequest>(`${environment.apiUrl}/overtime-requests/${id}`);
   }
 
-  create(data: Omit<OvertimeRequest, 'id' | 'createdAt' | 'approvalStatus'>): Observable<OvertimeRequest> {
+  create(data: OvertimeRequestPayload): Observable<OvertimeRequest> {
     return this.http.post<OvertimeRequest>(`${environment.apiUrl}/overtime-requests`, data);
   }
 
-  update(id: number, changes: Partial<OvertimeRequest>): Observable<OvertimeRequest> {
+  update(id: number, changes: OvertimeRequestPayload): Observable<OvertimeRequest> {
     return this.http.patch<OvertimeRequest>(`${environment.apiUrl}/overtime-requests/${id}`, changes);
   }
 

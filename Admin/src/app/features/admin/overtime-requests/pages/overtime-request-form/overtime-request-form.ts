@@ -1,11 +1,12 @@
 import {ChangeDetectorRef, Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
-import {FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
+import {FormArray, FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
+import {DecimalPipe} from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
 import {OvertimeRequestService} from '../../services/overtime-request.service';
 import {ProjectService} from '../../../projects/services/project.service';
 import {Project} from '../../../projects/models/project.model';
-import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, DesignatedReviewer} from '../../models/overtime-request.model';
+import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, DesignatedReviewer, OvertimeProject, OvertimeRequestPayload} from '../../models/overtime-request.model';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
 import {ApprovalService} from '../../../approvals/services/approval.service';
@@ -24,7 +25,7 @@ import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.direc
 @Component({
   selector: 'app-overtime-request-form',
   templateUrl: './overtime-request-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, ApprovalTimeline, DesignatedReviewersPicker, ScrollIntoViewDirective],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, ApprovalTimeline, DesignatedReviewersPicker, ScrollIntoViewDirective],
 })
 export class OvertimeRequestForm implements OnInit {
   private fb          = inject(FormBuilder);
@@ -54,12 +55,10 @@ export class OvertimeRequestForm implements OnInit {
   taskCurrentStepOrder = 0;
   taskStatus = '';
 
-  /** 已選取的專案 ID（單選；null 為未選） */
-  selectedProjectId: number | null = null;
-  /** 檢視模式時顯示的專案編號 */
-  displayProjectCodes: string[] = [];
-  /** 檢視模式時顯示的專案編號 + 名稱（code - name） */
-  displayProjectLabels: string[] = [];
+  /** 檢視模式時顯示的關聯專案明細 */
+  readonlyProjects: OvertimeProject[] = [];
+  /** 預估總時數（明細加總；表單唯讀顯示） */
+  totalHours = signal(0);
 
   /** 指定審核者相關 */
   hasDesignatedStep = false;
@@ -96,14 +95,62 @@ export class OvertimeRequestForm implements OnInit {
   readonly statusClass = APPROVAL_STATUS_CLASSES;
 
   form = this.fb.group({
-    overtimeDate:   ['', Validators.required],
-    estimatedHours: [1, [Validators.required, Validators.min(0.5)]],
-    reason:         ['', Validators.required],
+    overtimeDate: ['', Validators.required],
+    reason:       ['', Validators.required],
+    projects:     this.fb.array<FormGroup>([]),
   });
+
+  get projectsArray(): FormArray<FormGroup> { return this.form.get('projects') as FormArray<FormGroup>; }
+  get projectControls(): FormGroup[] { return this.projectsArray.controls as FormGroup[]; }
 
   loadingProjects = true;
 
+  private buildProjectGroup(p?: Partial<OvertimeProject>): FormGroup {
+    return this.fb.group({
+      rowId:          [typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : this.fallbackUuid()],
+      projectId:      [p?.projectId ?? null, Validators.required],
+      estimatedHours: [p?.estimatedHours ?? 1, [Validators.required, Validators.min(0.5)]],
+    });
+  }
+
+  /** 舊瀏覽器或非 HTTPS 情境下的簡易 UUID fallback */
+  private fallbackUuid(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+
+  addProject() {
+    if (this.isReadOnly) return;
+    this.projectsArray.push(this.buildProjectGroup());
+  }
+
+  removeProject(index: number) {
+    if (this.isReadOnly) return;
+    this.projectsArray.removeAt(index);
+  }
+
+  /** 第 index 列可選的專案：排除其他列已選過的（後端亦擋重複專案） */
+  availableProjects(index: number): Project[] {
+    const taken = new Set<number>(
+      this.projectControls
+          .filter((_, i) => i !== index)
+          .map(g => g.get('projectId')!.value as number | null)
+          .filter((v): v is number => v != null));
+    return this.projects.filter(p => !taken.has(p.id));
+  }
+
+  /** 重算預估總時數（對齊後端 decimal(5,1)） */
+  private recomputeTotalHours() {
+    const sum = this.projectControls.reduce((acc, g) => acc + (+(g.get('estimatedHours')!.value ?? 0) || 0), 0);
+    this.totalHours.set(Math.round(sum * 10) / 10);
+  }
+
   ngOnInit() {
+    this.projectsArray.valueChanges.subscribe(() => this.recomputeTotalHours());
+
     // 檢查簽核流程是否有「申請人指定審核」步驟（呼叫輕量端點，免 approvals:read 權限）
     this.approvalSvc.getActiveByType('overtime').subscribe(flow => {
       const designated = (flow?.steps ?? []).filter(s => s.useApplicantDesignated);
@@ -142,18 +189,14 @@ export class OvertimeRequestForm implements OnInit {
           overtimeDate: r.overtimeDate instanceof Date
             ? r.overtimeDate.toISOString().split('T')[0]
             : String(r.overtimeDate).split('T')[0],
-          estimatedHours: r.estimatedHours,
-          reason:         r.reason,
+          reason: r.reason,
         });
-        if (r.projectIds?.length) {
-          this.selectedProjectId = r.projectIds[0];
-        }
-        if (r.projectCodes) {
-          this.displayProjectCodes = r.projectCodes;
-          this.displayProjectLabels = r.projectCodes.map((c, i) =>
-            c + (r.projectNames?.[i] ? ' - ' + r.projectNames[i] : '')
-          );
-        }
+        this.readonlyProjects = r.projects ?? [];
+        this.projectsArray.clear();
+        this.readonlyProjects.forEach(p => this.projectsArray.push(this.buildProjectGroup(p)));
+        // 舊單無關聯專案（migration 未回填）→ 可編輯時補 1 列空白，讓使用者依必填規則補齊
+        if (this.projectsArray.length === 0 && !this.isReadOnly) this.projectsArray.push(this.buildProjectGroup());
+        this.recomputeTotalHours();
         // 回填指定審核者：唯讀模式與編輯模式皆由 pickerInitial 傳給 picker
         if (r.designatedReviewers?.length) {
           this.pickerInitial = r.designatedReviewers;
@@ -174,18 +217,19 @@ export class OvertimeRequestForm implements OnInit {
         }
         this.cdr.markForCheck();
       });
+    } else {
+      // 新增模式：預設一列空白明細（關聯專案必填）
+      this.projectsArray.push(this.buildProjectGroup());
     }
-  }
-
-  selectProject(projectId: number) {
-    if (this.isReadOnly) return;
-    // 再次點擊已選取者 → 取消選取（可清空）
-    this.selectedProjectId = this.selectedProjectId === projectId ? null : projectId;
   }
 
   /** 儲存（草稿或更新，不改變狀態） */
   save() {
     if (this.form.invalid || this.isReadOnly) return;
+    if (this.projectsArray.length === 0) {
+      this.errorMsg.set('請至少新增一筆關聯專案。');
+      return;
+    }
     const payload = this._buildPayload();
     const obs = this.isEdit
       ? this.service.update(this.requestId, payload)
@@ -205,6 +249,10 @@ export class OvertimeRequestForm implements OnInit {
   /** 送出申請（先儲存再將狀態改為 pending） */
   submitForApproval() {
     if (this.form.invalid || this.isReadOnly) return;
+    if (this.projectsArray.length === 0) {
+      this.errorMsg.set('請至少新增一筆關聯專案。');
+      return;
+    }
     // 流程含「申請人指定審核」步驟時，至少需要 1 位指定審核者（fail-fast，避免送出後才被後端擋下）
     if (this.hasDesignatedStep) {
       for (const step of this.designatedSteps) {
@@ -236,18 +284,17 @@ export class OvertimeRequestForm implements OnInit {
     });
   }
 
-  private _buildPayload() {
+  private _buildPayload(): OvertimeRequestPayload {
     const v = this.form.value;
-    const ids = this.selectedProjectId != null ? [this.selectedProjectId] : [];
-    const codes = ids.map(id => this.projects.find(p => p.id === id)?.code).filter(Boolean) as string[];
     const reviewers = this._pickerPayload;
     return {
-      overtimeDate:         new Date(v.overtimeDate!),
-      projectIds:           ids.length > 0 ? ids : undefined,
-      projectCodes:         codes.length > 0 ? codes : undefined,
-      estimatedHours:       +v.estimatedHours!,
-      reason:               v.reason!,
-      designatedReviewers:  reviewers.length > 0 ? reviewers : undefined,
+      overtimeDate:        new Date(v.overtimeDate!),
+      projects:            this.projectControls.map(g => ({
+        projectId:      +g.get('projectId')!.value,
+        estimatedHours: +g.get('estimatedHours')!.value,
+      })),
+      reason:              v.reason!,
+      designatedReviewers: reviewers.length > 0 ? reviewers : undefined,
     };
   }
 }

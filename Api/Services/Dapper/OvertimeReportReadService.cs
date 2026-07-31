@@ -14,7 +14,7 @@ public sealed class OvertimeReportReadService(IDbConnection db) : IOvertimeRepor
     /// </summary>
     private const string BaseSql = """
         SELECT o.Id, u.Name AS EmployeeName,
-               o.OvertimeDate, o.ProjectIds,
+               o.OvertimeDate,
                o.EstimatedHours, o.Reason,
                CASE
                    WHEN a.OvertimeStartTime IS NOT NULL AND a.OvertimeEndTime IS NOT NULL
@@ -62,8 +62,8 @@ public sealed class OvertimeReportReadService(IDbConnection db) : IOvertimeRepor
 
         if (projectId.HasValue)
         {
-            // ProjectIds 為逗號分隔字串，用 LIKE 搜尋（處理首位、中間、末位）
-            where.Append(" AND (',' + o.ProjectIds + ',' LIKE '%,' + CAST(@ProjectId AS VARCHAR) + ',%')");
+            // 關聯專案已改子表，以 EXISTS 篩選（走 IX_OvertimeRequestProjects_ProjectId）
+            where.Append(" AND EXISTS (SELECT 1 FROM OvertimeRequestProjects orp WHERE orp.OvertimeRequestId = o.Id AND orp.ProjectId = @ProjectId)");
             parameters.Add("ProjectId", projectId.Value);
         }
 
@@ -90,8 +90,8 @@ public sealed class OvertimeReportReadService(IDbConnection db) : IOvertimeRepor
 
         var rows = (await db.QueryAsync<dynamic>(sql, parameters)).ToList();
 
-        // 批次查詢 Project Code / Name
-        var projectMap = await GetProjectMapAsync(rows.Select(r => (string?)r.ProjectIds));
+        // 批次查詢關聯專案明細（共用 OvertimeRequestReadService 的實作，避免兩邊漂移）
+        var projectMap = await OvertimeRequestReadService.LoadProjectsAsync(db, rows.Select(r => (int)r.Id));
 
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
         return new PagedResult<OvertimeReportDto>(
@@ -99,44 +99,13 @@ public sealed class OvertimeReportReadService(IDbConnection db) : IOvertimeRepor
             total, page, pageSize, Math.Max(1, totalPages));
     }
 
-    /// <summary>解析逗號分隔的 ProjectIds 字串為 int 陣列</summary>
-    private static int[] ParseIds(string? csv) =>
-        string.IsNullOrEmpty(csv)
-            ? []
-            : csv.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                 .Select(s => int.TryParse(s.Trim(), out var id) ? id : 0)
-                 .Where(id => id > 0)
-                 .ToArray();
-
-    /// <summary>根據一批 ProjectIds 字串批次查詢對應 Code 與 Name</summary>
-    private async Task<Dictionary<int, (string Code, string Name)>> GetProjectMapAsync(IEnumerable<string?> allProjectIds)
+    private static OvertimeReportDto MapRow(dynamic row, Dictionary<int, OvertimeProjectDto[]> projectMap)
     {
-        var ids = allProjectIds
-            .Where(s => !string.IsNullOrEmpty(s))
-            .SelectMany(s => s!.Split(',', StringSplitOptions.RemoveEmptyEntries))
-            .Select(s => int.TryParse(s.Trim(), out var id) ? id : 0)
-            .Where(id => id > 0)
-            .Distinct()
-            .ToArray();
-
-        if (ids.Length == 0) return new();
-
-        const string sql = "SELECT Id, Code, Name FROM Projects WHERE Id IN @Ids";
-        var rows = await db.QueryAsync<(int Id, string Code, string Name)>(sql, new { Ids = ids });
-        return rows.ToDictionary(r => r.Id, r => (r.Code, r.Name));
-    }
-
-    private static OvertimeReportDto MapRow(dynamic row, Dictionary<int, (string Code, string Name)> projectMap)
-    {
-        var ids = ParseIds((string?)row.ProjectIds);
-        var codes = ids.Select(id => projectMap.TryGetValue(id, out var p) ? p.Code : $"#{id}").ToArray();
-        var names = ids.Select(id => projectMap.TryGetValue(id, out var p) ? p.Name : "").ToArray();
         return new(
             (int)row.Id,
             (string?)row.EmployeeName ?? "—",
             (DateTime)row.OvertimeDate,
-            codes.Length > 0 ? codes : null,
-            names.Length > 0 ? names : null,
+            projectMap.GetValueOrDefault((int)row.Id, []),
             (decimal)row.EstimatedHours,
             (decimal?)row.ActualHours,
             (string)row.Reason);

@@ -203,6 +203,12 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader, 
         if (await db.PaymentRequests.AnyAsync(pr => pr.ProjectId == intId))
             throw AppException.BadRequest("Cannot delete project with existing payment requests.");
 
+        // OvertimeRequestProjects.ProjectId 是 NO_ACTION 外鍵（雙 FK 子表的第二主檔，見 backend-design.md §7.5）。
+        // 此處採「阻擋」而非清洗：明細列被刪會使父表 EstimatedHours 合計快取失真（含已核准單），
+        // 故比照上方請款單的做法直接擋下。
+        if (await db.OvertimeRequestProjects.AnyAsync(x => x.ProjectId == intId))
+            throw AppException.BadRequest("此專案已被加班申請關聯，無法刪除。");
+
         db.Projects.Remove(project);
         await db.SaveChangesAsync();
 

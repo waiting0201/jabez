@@ -288,8 +288,12 @@ export class ApprovalTaskList {
       return `${t.travelDetail.destination}（${t.travelDetail.grandTotal.toLocaleString()} 元）`;
     }
     if (t.overtimeDetail) {
-      const dateStr = new Date(t.overtimeDetail.overtimeDate).toLocaleDateString('zh-TW');
-      return `${dateStr}・${t.overtimeDetail.estimatedHours} 小時・${t.overtimeDetail.reason}`;
+      const d = t.overtimeDetail;
+      const dateStr = new Date(d.overtimeDate).toLocaleDateString('zh-TW');
+      const projects = (d.projects ?? []).map(p => `${p.projectCode} ${p.estimatedHours}h`).join('、');
+      return projects
+        ? `${dateStr}・${d.estimatedHours} 小時（${projects}）・${d.reason}`
+        : `${dateStr}・${d.estimatedHours} 小時・${d.reason}`;
     }
     // 預支：加註本次送簽的批次（第1次 / 第N次追加）；追加批次另列本次金額與總額
     if (t.advanceDetail) {

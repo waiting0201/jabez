@@ -200,6 +200,11 @@ export class Dashboard implements OnInit, OnDestroy {
     return `${match[1]}:${match[2]}`;
   }
 
+  /** 加班單下拉的專案標籤（多案以逗號串接；舊單可能無關聯專案） */
+  projectLabel(req: OvertimeRequest): string {
+    return req.projects?.length ? req.projects.map(p => p.projectCode).join(', ') : '無專案';
+  }
+
   /** 點擊加班開始 → 先顯示選擇器 */
   onOvertimeStartClick() {
     if (this.approvedRequests().length === 0) return;

@@ -46,8 +46,7 @@ public class OvertimeRequestConfiguration : IEntityTypeConfiguration<OvertimeReq
                .HasForeignKey(o => o.ApprovalItemId)
                .OnDelete(DeleteBehavior.SetNull);
 
-        builder.Property(o => o.ProjectIds)
-               .HasMaxLength(200);
+        // 關聯專案改由 OvertimeRequestProject 子表表達（原 CSV 欄位 ProjectIds 已 DROP）
 
         // 無 Seed data — 加班申請由使用者操作產生
     }

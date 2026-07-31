@@ -195,9 +195,9 @@ public sealed record TravelTaskDetailDto(
 public sealed record OvertimeTaskDetailDto(
     int      OvertimeRequestId,
     DateTime OvertimeDate,
-    string?  ProjectIds,
-    decimal  EstimatedHours,
-    string   Reason);
+    decimal  EstimatedHours,                      // 預估總時數（= Projects 合計）
+    string   Reason,
+    OvertimeProjectDto[]? Projects = null);       // 關聯專案明細（含各案時數）
 
 /// <summary>出差請款申請審核任務詳情 DTO</summary>
 public sealed record TravelPaymentTaskDetailDto(

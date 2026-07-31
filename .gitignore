@@ -39,3 +39,6 @@ Api/Data/Seed/project-import.json
 azurite-debug.log
 .gitignore
 .azurite/azurite.out.log
+
+# 本機產出檔（分析報告 PDF 等 — 不進版控）
+output/

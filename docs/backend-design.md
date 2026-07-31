@@ -315,7 +315,7 @@ public record CreateUserRequest(
 | 單筆查詢（含子表） | Dapper（`QueryMultipleAsync` 一次拉多表）|
 | CRUD 操作、資料異動、Transaction | **EF Core**（`AppDbContext`） |
 | Schema 管理（建表、Migration） | **EF Core Migration** |
-| 整批替換子表 | EF Core `ExecuteDeleteAsync` + `AddRangeAsync`，包在 transaction 內 |
+| 整批替換子表 | EF Core `ExecuteDeleteAsync` + `AddRangeAsync`，包在 transaction 內；小量子表亦可 `RemoveRange(已 Include 的集合)` + `AddRangeAsync` 於同一次 `SaveChangesAsync`（EF 會在唯一索引衝突時先刪後插，見 `TravelRequestHandler` 參與者、[OvertimeRequestHandler.UpdateAsync](../Api/Handlers/OvertimeRequestHandler.cs) 關聯專案）。**父表若有合計快取欄，替換後必須同步重算**（如 `OvertimeRequest.EstimatedHours = projectRows.Sum(...)`） |
 
 ### 6.1 Dapper ReadService 寫法
 
@@ -480,7 +480,11 @@ builder.HasIndex(e => new { e.UserId, e.Order });  // 子表常需依 UserId 撈
 
 > 用 `sys.foreign_keys` 查 `delete_referential_action_desc` 可列出全部引用。**新增任何指向某主檔的 `NoAction` 外鍵時，必須同步補進該主檔 Delete 的清洗清單**，否則日後刪不掉主檔。
 >
-> **兩個 FK 的關聯子表一律「一 Cascade + 一 NoAction」**：子表若同時指向父表與另一主檔（如 `ApprovalStepException` → ApprovalStep + Users、`ApprovalStepDesignatedJobTitle` → ApprovalStep + JobTitles），兩邊都設 Cascade 會撞 SQL Server 1785 multiple cascade paths，且錯誤發生在 migration 套用當下（API 啟動即失敗）。慣例是父表 Cascade、第二個主檔 NoAction + 在該主檔的 `DeleteAsync` 清洗（`ApprovalStepDesignatedJobTitles` 清洗於 [JobTitleHandler.DeleteAsync](../Api/Handlers/JobTitleHandler.cs)）。
+> **兩個 FK 的關聯子表一律「一 Cascade + 一 NoAction」**：子表若同時指向父表與另一主檔（如 `ApprovalStepException` → ApprovalStep + Users、`ApprovalStepDesignatedJobTitle` → ApprovalStep + JobTitles、`OvertimeRequestProject` → OvertimeRequests + Projects），兩邊都設 Cascade 會撞 SQL Server 1785 multiple cascade paths，且錯誤發生在 migration 套用當下（API 啟動即失敗）。慣例是父表 Cascade、第二個主檔 NoAction + 在該主檔的 `DeleteAsync` 處理。
+>
+> 第二主檔的處理有**兩種形式，依「清空是否無損」決定**：
+> - **清洗**（清空語意無損）：`ApprovalStepDesignatedJobTitles` 於 [JobTitleHandler.DeleteAsync](../Api/Handlers/JobTitleHandler.cs) 用 `ExecuteDeleteAsync` 移除，語意退回「不限職稱」，無資料損失。
+> - **阻擋**（清空會破壞其他不變式）：`OvertimeRequestProjects` 於 [ProjectHandler.DeleteAsync](../Api/Handlers/ProjectHandler.cs) 直接 `throw AppException.BadRequest`，因為刪掉明細列會使父表 `OvertimeRequest.EstimatedHours` 合計快取失真（且含已核准單），比照同檔既有的 `PaymentRequests` 引用保護。
 >
 > 多型關聯（如 `RequestDesignatedReviewer` / `ApprovalRecord` 用 `RequestType+RequestId` 對應 9 種申請父表）**沒有真 FK**，刪父表時 EF Cascade 不處理，須在各申請 Handler 的 `DeleteAsync` 手動 `RemoveRange`。
 

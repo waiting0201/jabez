@@ -491,6 +491,8 @@ switchTab(tab: 'tab1' | 'tab2') {
 </div>
 ```
 
+> ⚠ **選項數量不可控時一律改用 `form-select` 下拉，不可平鋪 radio**：radio 群組只適用於選項固定且少量（角色、是 / 否、類型切換）的情境。若選項來自資料庫且筆數會成長（如「全部未結案專案」可達數百筆），平鋪會撐爆版面 —— 改用下拉；需要多選時改為[明細列表（FormArray）](#7-明細列表formarray)，每列一個下拉。加班申請的關聯專案即由 radio 平鋪改為此形式。
+
 ### 條件式欄位
 
 當欄位依其他欄位狀態決定是否顯示，使用 `@if` 控制流：
@@ -536,7 +538,7 @@ switchTab(tab: 'tab1' | 'tab2') {
 
 ## 7. 明細列表（FormArray）
 
-明細列表（發票項目、費用明細、HR 多筆紀錄等）一律以 `<table>` + `FormArray` 實作。
+明細列表（發票項目、費用明細、HR 多筆紀錄、**加班申請關聯專案**等）一律以 `<table>` + `FormArray` 實作。
 
 ### 7.1 表格結構
 
@@ -682,6 +684,54 @@ removeItem(i: number) { this.invoiceArray.removeAt(i); }
 loadData(items: Item[]) {
   this.invoiceArray.clear();
   items.forEach(it => this.invoiceArray.push(this._invoiceGroup(it)));
+}
+```
+
+### 7.5.1 下拉排除已選項目（互斥 select）
+
+明細每列都要從**同一份清單**挑一個不重複的項目時（如加班申請的關聯專案：一列一專案、同單不可重複），每列的下拉必須排除其他列已選過的值 —— 前端先擋掉，後端仍須保留重複驗證：
+
+```ts
+/** 第 index 列可選的專案：排除其他列已選過的（後端亦擋重複專案） */
+availableProjects(index: number): Project[] {
+  const taken = new Set<number>(
+    this.projectControls
+        .filter((_, i) => i !== index)
+        .map(g => g.get('projectId')!.value as number | null)
+        .filter((v): v is number => v != null));
+  return this.projects.filter(p => !taken.has(p.id));
+}
+```
+
+```html
+<select class="form-select form-select-sm" formControlName="projectId">
+  <option [ngValue]="null" disabled>請選擇專案</option>
+  @for (p of availableProjects(i); track p.id) {
+    <option [ngValue]="p.id">{{ p.code }} - {{ p.name }}</option>
+  }
+</select>
+```
+
+> 目前該列已選的值**不會**被自己排除（`filter((_, i) => i !== index)`），否則下拉會顯示空白。
+
+### 7.5.2 明細合計顯示於表頭欄位
+
+明細各列的數值需要在表單上方以「總計」呈現時（如加班申請的預估總時數 = 各專案時數加總），該欄改為**唯讀顯示 + 說明文字**，不可留成可編輯的 input（否則會出現兩個真相）：
+
+```html
+<label class="form-label fw-500">預估總時數（小時）</label>
+<p class="form-control-plaintext fw-600 mb-0">{{ totalHours() | number:'1.1-1' }} h</p>
+<div class="form-text">由下方各專案時數自動加總，不可直接編輯。</div>
+```
+
+`FormArray` 的值變動**無法用 `computed()` 追蹤**，須訂閱 `valueChanges`（與 §7.4 的 `project-form` 合計寫法一致）：
+
+```ts
+this.projectsArray.valueChanges.subscribe(() => this.recomputeTotalHours());
+
+private recomputeTotalHours() {
+  const sum = this.projectControls.reduce((acc, g) => acc + (+(g.get('estimatedHours')!.value ?? 0) || 0), 0);
+  this.totalHours.set(Math.round(sum * 10) / 10);   // 對齊後端 decimal(5,1)
 }
 ```
 

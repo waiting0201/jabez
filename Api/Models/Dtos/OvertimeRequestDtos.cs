@@ -1,13 +1,23 @@
 namespace Jabez.Api.Models.Dtos;
 
+/// <summary>加班申請的關聯專案明細（讀取用；加班報表與簽核任務詳情共用）</summary>
+public sealed record OvertimeProjectDto(
+    int     ProjectId,
+    string  ProjectCode,
+    string  ProjectName,
+    decimal EstimatedHours);
+
+/// <summary>加班申請的關聯專案明細（寫入用；Create / Update 共用）</summary>
+public sealed record OvertimeProjectRequest(
+    int     ProjectId,
+    decimal EstimatedHours);
+
 public sealed record OvertimeRequestDto(
     int       Id,
     string    EmployeeName,
     DateTime  OvertimeDate,
-    int[]?    ProjectIds,
-    string[]? ProjectCodes,
-    string[]? ProjectNames,
-    decimal   EstimatedHours,
+    OvertimeProjectDto[] Projects,
+    decimal   EstimatedHours,          // 合計 = Projects 各列加總
     string    Reason,
     string    ApprovalStatus,
     DateTime  CreatedAt,
@@ -22,14 +32,12 @@ public sealed record CreateOvertimeRequestRequest(
     Guid?    EmployeeId,
     int?     ApprovalItemId       = null,
     DateTime OvertimeDate         = default,
-    int[]?   ProjectIds           = null,
-    decimal  EstimatedHours       = 1m,
+    OvertimeProjectRequest[]? Projects = null,   // 必填，至少 1 列（Handler 驗證）
     string   Reason               = "",
     DesignatedReviewerRequest[]? DesignatedReviewers = null);
 
 public sealed record UpdateOvertimeRequestRequest(
     DateTime? OvertimeDate,
-    int[]?    ProjectIds,
-    decimal?  EstimatedHours,
+    OvertimeProjectRequest[]? Projects,          // 必填，至少 1 列（整批替換，不支援省略）
     string?   Reason,
     DesignatedReviewerRequest[]? DesignatedReviewers = null);
