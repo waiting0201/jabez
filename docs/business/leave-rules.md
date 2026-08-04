@@ -20,7 +20,7 @@
 | 12 | 陪產假 | `paternity` | 小時 | 7 天 | 有薪 |
 | 13 | 喪假 | `bereavement` | 天 | 依親屬關係（3/6/8 天） | 有薪 |
 | 14 | 歲時祭儀假 | `ceremonial_festival` | 天 | 3 天/年（跨年歸零，**限原住民**） | 有薪 |
-| 15 | 高階主管假 | `senior_executive` | 半天 | **每年 20 天**（曆年歸零） | **不扣任何項目**（協理以上專用，`JobTitle.Level ≤ 3`） |
+| 15 | 高階主管假 | `senior_executive` | 半天 | **每年 24 天**（曆年歸零） | **不扣任何項目**（協理以上專用，`JobTitle.Level ≤ 3`） |
 | 16 | 生理假 | `menstrual` | 天（一次請一天） | 每月 1 天、全年 12 天（**限女性**） | 按天數扣除半薪（前 3 天/年純生理假，超過併入病假） |
 
 > **天數上限一律指「工作日」**：除歲時祭儀假外，全部假別的天數 / 時數皆已扣除**國定假日與六日**（詳見 [§扣除假日計算天數](#扣除假日計算天數2026-07-新增2026-07-擴大適用)）。
@@ -38,7 +38,8 @@
 - **產假特例**：選擇起始日後，結束日自動填為起始日 + 55 天（共 56 個**日曆天**），總時數為其中**工作日數 × 8**（約 40 天 / 320 小時，非固定 448）。法規為一次請完，禁止重複活躍申請（同 `EmployeeId` 存在 `pending` / `approved` 產假）。
 - **補休扣除**：申請 1 個半天（4 小時）→ 從可補休時數池扣 4 小時。
 - **高階主管假權限閘門**：前後端皆檢查 `JobTitle.Level ≤ 3`；前端透過 JWT `job_title_level` claim 判斷選項可見性，後端在 `CreateAsync` / `UpdateAsync` / `SubmitAsync` 各階段驗證。
-- **高階主管假額度**：協理以上每年 20 天（曆年 1/1~12/31），當年度未用完歸零、隔年重新給予 20 天。比照年假動態計算（不儲存、不排程，按 `StartDate` 年度過濾）。額度上限驗證於 `ValidateLeaveQuotaAsync` 的 `senior_executive` 分支；API 端點 `GET /leave-requests/senior-executive-quota` 回 `totalDays` / `usedDays` / `availableDays`。
+- **高階主管假額度**：協理以上每年 24 天（曆年 1/1~12/31），當年度未用完歸零、隔年重新給予 24 天（2026-08 由 20 天調整）。比照年假動態計算（不儲存、不排程）。**年度基準一律為「請假起始日所屬曆年」（`item.StartDate.Year`）**，非「今天所屬年度」—— 額度上限驗證於 `ValidateLeaveQuotaAsync` 的 `senior_executive` 分支；API 端點 `GET /leave-requests/senior-executive-quota` **支援 `?year=`**（未帶或超出 2000~2100 則預設當年度），回 `year` / `totalDays` / `usedDays` / `availableDays`；前端表單以起始日年度查詢額度，起始日跨年時自動重載。
+  > ⚠️ 年假（`annual`）與歲時祭儀假（`ceremonial_festival`）目前仍以 `Clock.Now.Year` 為基準（`ValidateLeaveQuotaAsync` 與其 quota endpoint），跨年送件會年度錯配，尚未比照修正。
 - **分鐘限制（小時單位）**：僅允許 `:00`（`step="3600"` 秒 = 整點步進），前後端皆驗證時數為整數倍。
 
 ## 年假額度規則（依年資）

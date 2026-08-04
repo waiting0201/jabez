@@ -46,8 +46,8 @@ public sealed class LeaveRequestHandler(
     /// <summary>高階主管假可申請之最高職級（JobTitle.Level 數字越小層級越高）</summary>
     private const int SeniorExecMaxLevel = 3;
 
-    /// <summary>高階主管假每年額度（天）：協理以上每年 20 天，曆年未用完歸零、隔年重新給予</summary>
-    private const int SeniorExecutiveAnnualDays = 20;
+    /// <summary>高階主管假每年額度（天）：協理以上每年 24 天，曆年未用完歸零、隔年重新給予</summary>
+    private const int SeniorExecutiveAnnualDays = 24;
 
     /// <summary>
     /// 期初補休時數（User.CompensatoryOpeningHours）到期日：系統上線前累計的補休須於此日前休完，
@@ -808,15 +808,20 @@ public sealed class LeaveRequestHandler(
         return new OkObjectResult(ApiResponse.Ok(new SeniorExecutiveEligibilityDto(eligible, level)));
     }
 
-    /// <summary>查詢當前使用者的高階主管假額度（每年 20 天，曆年歸零；僅協理以上 / Superadmin）</summary>
+    /// <summary>
+    /// 查詢當前使用者的高階主管假額度（每年 24 天，曆年歸零；僅協理以上 / Superadmin）。
+    /// 額度以「請假起始日所屬曆年」為基準，可帶 ?year= 指定；未帶或超出合理範圍則預設當年度。
+    /// </summary>
     public async Task<IActionResult> GetSeniorExecutiveQuotaAsync(HttpRequest req)
     {
         var userId = await GetUserIdAsync(req);
+        int year = int.TryParse(req.Query["year"], out var y) && y >= 2000 && y <= 2100 ? y : Clock.Now.Year;
 
         var eligibilityError = await CheckSeniorExecutiveEligibilityAsync(userId);
         if (eligibilityError is not null)
             return new OkObjectResult(ApiResponse.Ok(new
             {
+                year,
                 totalDays = 0,
                 usedDays = 0m,
                 availableDays = 0m,
@@ -824,12 +829,12 @@ public sealed class LeaveRequestHandler(
                 message = eligibilityError,
             }));
 
-        var now = Clock.Now;
-        var usedHours = await GetUsedHoursAsync(userId, "senior_executive", 0, now.Year);
+        var usedHours = await GetUsedHoursAsync(userId, "senior_executive", 0, year);
         var usedDays = usedHours / 8m;
 
         return new OkObjectResult(ApiResponse.Ok(new
         {
+            year,
             totalDays = SeniorExecutiveAnnualDays,
             usedDays = Math.Round(usedDays, 1),
             availableDays = Math.Round(Math.Max(0, SeniorExecutiveAnnualDays - usedDays), 1),
@@ -1146,13 +1151,14 @@ public sealed class LeaveRequestHandler(
             return null;
         }
 
-        // 高階主管假：協理以上每年 20 天（曆年歸零）；資格另由 CheckSeniorExecutiveEligibilityAsync 驗證
+        // 高階主管假：協理以上每年 24 天（曆年歸零，依申請起始日所屬年度）；資格另由 CheckSeniorExecutiveEligibilityAsync 驗證
         if (item.LeaveType == "senior_executive")
         {
-            var usedHours = await GetUsedHoursAsync(userId, "senior_executive", item.Id, now.Year);
+            var year = item.StartDate.Year;
+            var usedHours = await GetUsedHoursAsync(userId, "senior_executive", item.Id, year);
             var totalUsedDays = (usedHours + item.Hours) / 8m;
             if (totalUsedDays > SeniorExecutiveAnnualDays)
-                return $"高階主管假額度不足。每年上限 {SeniorExecutiveAnnualDays} 天，{now.Year} 年已使用 {Math.Round(usedHours / 8m, 1)} 天，本次申請 {Math.Round(item.Hours / 8m, 1)} 天。";
+                return $"高階主管假額度不足。每年上限 {SeniorExecutiveAnnualDays} 天，{year} 年已使用 {Math.Round(usedHours / 8m, 1)} 天，本次申請 {Math.Round(item.Hours / 8m, 1)} 天。";
             return null;
         }
 
