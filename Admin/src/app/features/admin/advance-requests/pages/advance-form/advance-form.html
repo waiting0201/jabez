@@ -206,18 +206,18 @@
               <table class="table table-sm mb-0">
                 <thead class="table-light">
                   <tr>
-                    <th style="min-width:100px">分類</th>
-                    <th style="min-width:60px">項次</th>
-                    <th style="min-width:160px">項目說明</th>
-                    <th style="min-width:100px">單價</th>
-                    <th style="min-width:80px">數量/單位</th>
-                    <th style="min-width:100px">總價</th>
-                    <th style="min-width:100px">現金(預支)</th>
-                    <th style="min-width:100px">支票(月結)</th>
-                    <th style="min-width:100px">備註</th>
-                    <th style="min-width:80px">檔案</th>
+                    <th style="min-width:90px">分類</th>
+                    <th style="width:48px">項次</th>
+                    <th style="min-width:130px">項目說明</th>
+                    <th style="min-width:150px">單價</th>
+                    <th style="min-width:70px">數量/單位</th>
+                    <th style="min-width:150px">總價</th>
+                    <th style="min-width:150px">現金(預支)</th>
+                    <th style="min-width:150px">支票(月結)</th>
+                    <th style="min-width:80px">備註</th>
+                    <th style="width:72px">檔案</th>
                     @if (!isReadOnly) {
-                      <th style="width:48px"></th>
+                      <th style="width:40px"></th>
                     }
                   </tr>
                 </thead>
@@ -242,7 +242,7 @@
                         @if (isReadOnly) {
                           <span class="small">{{ ctrl.get('seqNo')?.value }}</span>
                         } @else {
-                          <input type="number" class="form-control form-control-sm" formControlName="seqNo" min="1" style="width:60px">
+                          <input type="number" class="form-control form-control-sm px-1" formControlName="seqNo" min="1">
                         }
                       </td>
                       <td class="align-middle">
@@ -322,10 +322,10 @@
                               <button type="button" class="btn btn-sm btn-ghost-primary p-1"
                                       (click)="openPreview(ctrl.get('fileName')?.value || '檔案', ctrl.get('previewUrl')?.value)"
                                       [title]="ctrl.get('fileName')?.value">
-                                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                                <svg class="sa-icon sa-icon-1x" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
                               </button>
                               <button type="button" class="btn btn-sm btn-ghost-danger p-1" (click)="removeFile(i)">
-                                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                                <svg class="sa-icon sa-icon-1x" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
                               </button>
                             </div>
                           } @else {

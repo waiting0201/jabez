@@ -673,6 +673,35 @@ isFirstOfRound(r: AdvanceRequest, index: number): boolean {
 >
 > **標籤文字做成單一真相**：批次標籤 `roundLabel(n)` 定義在 [advance-request.model.ts](../Admin/src/app/features/admin/advance-requests/models/advance-request.model.ts)，detail / form / PDF / 簽核作業頁 / approval-timeline 五處共用，不各寫一套。
 
+### 7.1.2 欄寬標準（px）
+
+> 上方骨架用 `w-10` / `w-12` 只是示意；**專案實務一律用 inline `style="min-width:Npx"` / `style="width:Npx"`**，因為明細表包在 `table-responsive` 內、欄數多，Tailwind 的 `w-*` 無法表達「至少多寬、可再撐開」。新表格請直接沿用下表數值，不要另訂。
+
+- **固定小欄用 `width`**（不需要被內容撐開）：項次 `48px`（容納雙位數）、刪除鈕欄 `40px`、per-row 檔案欄 `72px`、僅圖示的檔案欄 `40px`、分組欄（批次）`130px`
+- **其餘用 `min-width`**：金額欄 `150px`（七位數 + 千分位不被擠壓，**明細表內最寬的欄**）、日期 `120px`、發票號碼 / 項目說明 `130px`、分類 `90px`、備註 `80px`、數量/單位 `70px`
+
+| 欄位 | 寬度 | 屬性 |
+|---|---|---|
+| 批次（分組欄） | 130px | `width` |
+| 分類 | 90px | `min-width` |
+| 項次 | **48px** | `width` |
+| 發票號碼 | 130px | `min-width` |
+| 發票日期 | 120px | `min-width` |
+| 項目說明 | 130px | `min-width` |
+| **金額（單價 / 總價 / 現金 / 支票）** | **150px** | `min-width` |
+| 數量/單位 | 70px | `min-width` |
+| 備註 | 80px | `min-width` |
+| 支票已支付（checkbox） | 110px | `width` |
+| 檔案（per-row 上傳／預覽） | **72px** | `width` |
+| 檔案（僅圖示，無上傳鈕） | 40px | `width` |
+| 刪除鈕欄 | **40px** | `width` |
+
+**檔案欄的 72px 是下限**：已上傳狀態要並排「預覽 + 移除」兩顆 `btn btn-sm p-1`，該情境下 icon 必須用 `sa-icon sa-icon-1x`（18px）而非預設 20px，否則兩顆按鈕塞不進 72px 扣掉 `table-sm` cell padding 後的 64px。
+
+**已套用**（2026-08，預支 / 預支沖銷全系列）：[advance-form](../Admin/src/app/features/admin/advance-requests/pages/advance-form/advance-form.html) / [advance-detail](../Admin/src/app/features/admin/advance-requests/pages/advance-detail/advance-detail.html) / [write-off-form](../Admin/src/app/features/admin/write-off-requests/pages/write-off-form/write-off-form.html)（唯讀預支明細 + 編輯實際花費明細兩張表）/ [write-off-detail](../Admin/src/app/features/admin/write-off-requests/pages/write-off-detail/write-off-detail.html) / [write-off-overview](../Admin/src/app/features/admin/write-off-requests/pages/write-off-overview/write-off-overview.html)（兩張表）。
+
+> 明細表沒有共用元件，每張表各自維護 `<th>`；**改欄寬時同一系列的表要一起改**，否則詳情頁與編輯頁欄位對不齊。
+
 ### 7.2 ⚠ 刪除按鈕標準（**重要**）
 
 > **2026-05-09 起，所有明細列表的刪除按鈕一律統一為以下 pattern**。
