@@ -129,8 +129,8 @@ Bug 修復：
 
 ### 業務功能（docs/business/）
 - [application-forms.md](docs/business/application-forms.md) — 9 種申請表類型總覽 + 流程關係 + holiday vs travel 差異
-- [leave-rules.md](docs/business/leave-rules.md) — 請假規則（16 種假別 / 時間單位 / 年假 / 喪假 / 補休 / 生理假 / 重疊驗證）
-- [approval-flow.md](docs/business/approval-flow.md) — 請款簽核流程（簽核步驟 / 批次核准 / 自審 / 上層級 / 指定審核 / 跨步驟去重 / **追加預支重跑簽核**）
+- [leave-rules.md](docs/business/leave-rules.md) — 請假規則（16 種假別 / 時間單位 / 年假 / 喪假 / 補休 / 生理假 / 重疊驗證 / **銷假**）
+- [approval-flow.md](docs/business/approval-flow.md) — 請款簽核流程（簽核步驟 / 批次核准 / 自審 / 上層級 / 指定審核 / 跨步驟去重 / **追加預支重跑簽核** / **銷假重跑請假簽核**）
 - [approval-escalation.md](docs/business/approval-escalation.md) — 簽核升級機制（找上層部門主管 + 代理人）
 - [pdf-signatures.md](docs/business/pdf-signatures.md) — 7 個 PDF 動態簽名欄規則
 - [department-visibility.md](docs/business/department-visibility.md) — 部門可見性 ProjectAccessScope
@@ -196,7 +196,7 @@ Admin/src/app/
     │   ├── projects/       # 專案管理
     │   ├── payment-requests/  # 請款申請（廠商請款 type=vendor / 一般請款 type=general 明細下方皆含整單批次附件上傳，共用 shared/components/attachments-upload；**請款原因必填**）
     │   ├── pre-review-requests/ # 預審申請（事前預審，clone 自請款；無撥款、不計入報表；品項類別下拉 + 報價單 OCR；含 pre-review-pdf.service 列印合併所有上傳檔；**預審說明必填**）
-    │   ├── leave-requests/    # 請假申請（除歲時祭儀假外的 15 種假別選起迄日後皆扣國定假日與六日並列請假日清單，走輕量端點 /leave-requests/working-days；小時單位（事假/病假/產檢假/陪產假）跨日逐日累加只算工作日；產假區間仍 56 個日曆天但只計其中工作日；含職務代理人下拉；依天數決定簽核關卡 <3 天單位主管 / ≥3 天 +部門最高主管+總監，靠 ApprovalStep.MinDays）
+    │   ├── leave-requests/    # 請假申請（除歲時祭儀假外的 15 種假別選起迄日後皆扣國定假日與六日並列請假日清單，走輕量端點 /leave-requests/working-days；小時單位（事假/病假/產檢假/陪產假）跨日逐日累加只算工作日；產假區間仍 56 個日曆天但只計其中工作日；含職務代理人下拉；依天數決定簽核關卡 <3 天單位主管 / ≥3 天 +部門最高主管+總監，靠 ApprovalStep.MinDays；**已核准的假可提「銷假」**：列表／唯讀檢視頁的「銷假」按鈕進 leave-revocation-form（`:id/revoke` / `leave-revocations/:id[/edit]` 三模式共用），逐日 chip 勾選要取消的日期（只含今天以後、未被其他銷假單佔用者）+ 銷假原因 + 指定審核者，送出後重跑同一份請假簽核；核准後父單 Hours 遞減、全銷轉 `cancelled` badge「已銷假」，部分銷加註「部分銷假」badge）
     │   ├── travel-payment-requests/ # 出差請款申請（小額已代墊直接請款，無沖銷）
     │   ├── travel-requests/   # 出差預支申請（走沖銷流程）
     │   ├── holiday-travel-requests/ # 假日執行活動申請（共用 TravelRequest entity，IsHolidayTravel=true，計入假日津貼；參與人員可逐日勾選個人參與日期，未勾選＝全程參與）
@@ -276,6 +276,7 @@ Api/
 │   ├── PreReviewRequestHandler.cs     # 預審申請 CRUD + Submit（單號 PRV-yyyyMMdd-NNN；報價單上傳 blob container=quotes；無 installments、不計入報表）
 │   ├── QuoteOcrHandler.cs             # 報價單 OCR（POST /quote-ocr，回傳品項列表 itemName/amount/note）
 │   ├── LeaveRequestHandler.cs
+│   ├── LeaveRevocationHandler.cs      # 銷假申請 CRUD + Submit（GET /leave-requests/{id}/revocable-dates 逐日可銷清單；POST /leave-requests/{id}/revocations；/leave-revocations/*；ApprovalItem 以 "leave" 解析＝跑原本的請假簽核，簽核紀錄以 "leave_revocation" 隔離）
 │   ├── TravelRequestHandler.cs        # 出差預支申請 CRUD（單號 TR-yyyyMMdd-NNN；假日執行活動為 HTR-yyyyMMdd-NNN；預支後沖銷）
 │   ├── TravelPaymentRequestHandler.cs # 出差請款申請 CRUD（單號 TPR-yyyyMMdd-NNN；小額代墊直接請款）
 │   ├── OvertimeRequestHandler.cs      # 加班申請 CRUD
@@ -302,14 +303,15 @@ Api/
 │       ├── EmployeeImporter + EmployeeImportDtos + employee-import.json  # 員工人事資料（RUN_EMPLOYEE_IMPORT 旗標，IMPORT_UPLOAD_FILES 控制附件上傳）
 │       └── ProjectImporter + ProjectImportDtos + project-import.json     # 專案資料（RUN_PROJECT_IMPORT 旗標，PROJECT_IMPORT_DRY_RUN 只印不寫；來源 reference/專案資料-115.07.29.xls；以 Code upsert、期別明細全量重建）
 ├── Models/
-│   ├── Entities/                      # 51 個資料庫實體（新增 **簽核步驟例外指定審核名單 ApprovalStepException** + **例外的限定職稱 ApprovalStepDesignatedJobTitle** / **預支沖銷差額分期 WriteOffInstallment**（第 5 種分期撥款子表）/ **追加預支批次 AdvanceRequestSupplement**（只存 RoundNo≥2，Round 1 = 父單本身）/ **TravelRequestParticipantDate 參與人員個別參與日期** / EmployeeProfile / EducationRecord / EmploymentHistoryRecord / FamilyMember / ProfessionalTraining / LanguageAbility / JobTransferRecord / RewardPunishmentRecord / SalaryAdjustmentRecord / HealthInsuranceDependent / **5 個分期撥款表 PaymentRequestInstallment / AdvanceRequestInstallment / TravelRequestInstallment / TravelPaymentRequestInstallment / WriteOffInstallment** / **PaymentReminderLog** / **整單批次附件 PaymentRequestAttachment / WriteOffAttachment** / **預審申請 PreReviewRequest / PreReviewItem / PreReviewRequestAttachment**）
-│   └── Dtos/                          # 20 個 DTO 檔案（新增 EmployeeProfileDtos / **InstallmentDtos** / **PreReviewRequestDtos**）
+│   ├── Entities/                      # 53 個資料庫實體（新增 **銷假申請 LeaveRevocation + 逐日明細 LeaveRevocationDate**（獨立子單，父單送簽期間不動；LeaveRequest 另加 OriginalHours 與 `cancelled` 終止狀態）/ **簽核步驟例外指定審核名單 ApprovalStepException** + **例外的限定職稱 ApprovalStepDesignatedJobTitle** / **預支沖銷差額分期 WriteOffInstallment**（第 5 種分期撥款子表）/ **追加預支批次 AdvanceRequestSupplement**（只存 RoundNo≥2，Round 1 = 父單本身）/ **TravelRequestParticipantDate 參與人員個別參與日期** / EmployeeProfile / EducationRecord / EmploymentHistoryRecord / FamilyMember / ProfessionalTraining / LanguageAbility / JobTransferRecord / RewardPunishmentRecord / SalaryAdjustmentRecord / HealthInsuranceDependent / **5 個分期撥款表 PaymentRequestInstallment / AdvanceRequestInstallment / TravelRequestInstallment / TravelPaymentRequestInstallment / WriteOffInstallment** / **PaymentReminderLog** / **整單批次附件 PaymentRequestAttachment / WriteOffAttachment** / **預審申請 PreReviewRequest / PreReviewItem / PreReviewRequestAttachment**）
+│   └── Dtos/                          # 21 個 DTO 檔案（新增 **LeaveRevocationDtos** / EmployeeProfileDtos / **InstallmentDtos** / **PreReviewRequestDtos**）
 ├── Services/
 │   ├── IJwtService.cs
 │   ├── JwtService.cs                  # HS256 JWT 產生與驗證
 │   ├── IEscalationService.cs          # 簽核升級服務介面
 │   ├── EscalationService.cs           # 簽核升級邏輯（上層部門主管遞迴 + 代理人）
 │   ├── EscalationResult.cs            # 升級結果 record
+│   ├── LeaveRevocationService.cs      # 銷假共用：ApplyAsync（核准後從「該假單所有已核准銷假的 distinct 日期」整組重算父單 Hours、全銷轉 cancelled，冪等且併發安全）+ 下游「該日未銷假」共用排除片段
 │   ├── ILineService.cs               # LINE API 操作介面
 │   ├── LineService.cs                # LINE Platform REST API 封裝（token 換取 + 推播 + 月度 quota 查詢）
 │   ├── PushResult.cs                 # LINE 推播結果 record（含 ErrorCategory 分類）
@@ -335,6 +337,7 @@ Api/
 │       ├── PaymentRequestReadService.cs
 │       ├── PreReviewRequestReadService.cs
 │       ├── LeaveRequestReadService.cs
+│       ├── LeaveRevocationReadService.cs
 │       ├── TravelRequestReadService.cs
 │       ├── TravelPaymentRequestReadService.cs
 │       ├── OvertimeRequestReadService.cs
@@ -356,6 +359,7 @@ Api/
 │   ├── DesignatedReviewerHelper.cs    # 申請人指定審核者共用：BuildEntities / ReadForFlowAsync / ValidateAndNormalizeAsync / GetSuppressedDesignatedStepOrdersAsync（一條流程多個指定步驟，以 ApprovalStepOrder 綁定步驟；9 種申請類型共用；第一指定步驟＝所選部門最高職稱時抑制其後指定步驟：驗證免填 + 簽核乾淨跳過）；**例外指定審核的兩個真相**：送單前查例外表 `GetEffectiveDesignatedStepOrdersAsync`、送單後看 designee 快照 `EffectiveDesignatedStepOrders`，ValidateAndNormalizeAsync 另負責剔除非法 designee 綁定（防提權）與**限定職稱驗證**（例外命中且有設限定職稱時，designee 職稱不符丟 400）
 │   ├── FlexibleDateTimeJsonConverter.cs # 寬鬆日期解析（人事資料卡 payload 用；Safari 不支援 input type=month 手打年月字串）
 │   ├── WorkCalendarHelper.cs          # 公司行事曆共用判定（「有行事曆用 CalendarDay.IsHoliday、沒資料退回六日」的單一真相）：區間版 ComputeWorkingDatesAsync 供 LeaveRequestHandler 算請假日／時數，單日版 IsHolidayAsync 供 AttendanceHandler 判休假日免下班卡
+│   ├── LeaveDayExpander.cs            # 請假單「逐日展開」單一真相（Date + Hours）：供銷假逐日勾選與核准後重算 Hours；假別分類常數 WorkingDayLeaveTypes / TimeUnitMap 亦收斂於此，LeaveRequestHandler 轉引
 │   └── Constants.cs
 ├── host.json
 ├── local.settings.json                # 本地開發設定（不進版控）
@@ -397,13 +401,13 @@ dotnet ef database update               # 套用 Migration
 
 ## 請假規則
 
-> **詳見** [docs/business/leave-rules.md](docs/business/leave-rules.md)（16 種假別、時間單位、年假、喪假、補休、生理假、重疊驗證）
+> **詳見** [docs/business/leave-rules.md](docs/business/leave-rules.md)（16 種假別、時間單位、年假、喪假、補休、生理假、重疊驗證、銷假）
 
 ---
 
 ## 請款簽核流程
 
-> **詳見** [docs/business/approval-flow.md](docs/business/approval-flow.md)（簽核步驟、批次核准、自審跳過、上層級審核、指定審核、跨步驟去重）
+> **詳見** [docs/business/approval-flow.md](docs/business/approval-flow.md)（簽核步驟、批次核准、自審跳過、上層級審核、指定審核、跨步驟去重、追加預支 / 銷假重跑簽核）
 
 ---
 

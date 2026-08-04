@@ -57,6 +57,22 @@ export class LeaveRequestList {
     return formatLeaveDuration(leaveType as LeaveType, hours);
   }
 
+  /** 可銷假：已核准且假期尚未結束（後端 LoadRevocableLeaveAsync 有相同守門） */
+  canRevoke(r: LeaveRequest): boolean {
+    return this.canWrite()
+        && r.approvalStatus === 'approved'
+        && new Date(r.endDate).getTime() >= Date.now();
+  }
+
+  /** 部分銷假：曾銷假（originalHours 有值）但尚未全數取消 */
+  isPartiallyRevoked(r: LeaveRequest): boolean {
+    return r.originalHours != null && r.approvalStatus === 'approved' && r.originalHours > r.hours;
+  }
+
+  revokedHours(r: LeaveRequest): number {
+    return r.originalHours != null ? r.originalHours - r.hours : 0;
+  }
+
   delete(r: LeaveRequest) {
     if (confirm(`確定要刪除此請假申請嗎？`)) {
       this.service.delete(r.id).subscribe(() => this.refresh.update(v => v + 1));

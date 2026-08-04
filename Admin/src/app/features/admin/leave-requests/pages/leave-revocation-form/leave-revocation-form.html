@@ -1,0 +1,201 @@
+<div class="container-fluid py-3">
+  <div class="flex items-center gap-2 mb-6">
+    <a routerLink="/admin/leave-requests" class="btn btn-sm btn-outline-secondary">
+      <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+    </a>
+    <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視銷假申請' : (isReturned ? '修改銷假申請' : '編輯銷假草稿')) : '銷假申請' }}</h4>
+  </div>
+
+  @if (errorMsg()) {
+    <div class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+      {{ errorMsg() }}
+    </div>
+  }
+
+  @if (isReadOnly && approvalStatus === 'pending') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(13,110,253,0.08)] border-bottom flex items-center gap-2 fw-600 text-primary py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
+        此銷假申請審核中，原請假仍然有效（打卡仍會被阻擋），核准後才會生效。
+      </div>
+    </div>
+  } @else if (approvalStatus === 'returned') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(255,193,7,0.08)] border-bottom flex items-center gap-2 fw-600 text-warning py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+        此銷假申請已被退回，請修改後重新送出。
+      </div>
+    </div>
+  } @else if (isReadOnly && approvalStatus === 'approved') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(37,162,68,0.08)] border-bottom flex items-center gap-2 fw-600 text-success py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#check-circle"></use></svg>
+        此銷假申請已核准，勾選的日期已恢復為上班日。
+      </div>
+    </div>
+  } @else if (isReadOnly && approvalStatus === 'rejected') {
+    <div class="card border-0 shadow-sm mb-6">
+      <div class="card-header bg-[rgba(220,53,69,0.08)] border-bottom flex items-center gap-2 fw-600 text-danger py-3">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#x-circle"></use></svg>
+        此銷假申請已被拒絕，原請假維持不變。
+      </div>
+    </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <div class="row g-4">
+      <div class="col-12 col-xl-9">
+
+        <!-- 原請假單（唯讀對照） -->
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#calendar"></use></svg>
+            原請假單
+          </div>
+          <div class="card-body">
+            @if (leaveInfo(); as info) {
+              <div class="row g-3">
+                <div class="col-12 col-md-3">
+                  <label class="form-label fw-500 text-muted small mb-1">假別</label>
+                  <div><span [class]="'badge ' + typeClass[info.leaveType]">{{ typeLabel[info.leaveType] }}</span></div>
+                </div>
+                <div class="col-12 col-md-5">
+                  <label class="form-label fw-500 text-muted small mb-1">請假期間</label>
+                  <div>{{ info.startDate | date:'yyyy/MM/dd HH:mm' }} ～ {{ info.endDate | date:'yyyy/MM/dd HH:mm' }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500 text-muted small mb-1">原請假時數</label>
+                  <div class="fw-600">{{ formatDuration(info.leaveType, info.hours) }}</div>
+                </div>
+                @if (info.reason) {
+                  <div class="col-12">
+                    <label class="form-label fw-500 text-muted small mb-1">請假原因</label>
+                    <div class="text-muted">{{ info.reason }}</div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="text-muted small">載入中…</div>
+            }
+          </div>
+        </div>
+
+        <!-- 選擇要取消的日期 -->
+        <div class="card border-0 shadow-sm mt-6">
+          <div class="card-header bg-transparent border-bottom flex items-center justify-between gap-2 fw-600">
+            <div class="flex items-center gap-2">
+              <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#check-square"></use></svg>
+              {{ isReadOnly ? '取消的請假日' : '選擇要取消的日期' }}
+            </div>
+            @if (!isReadOnly && dayChips().length > 0) {
+              <button type="button" class="btn btn-sm btn-outline-secondary" (click)="toggleAll()">
+                {{ allSelected() ? '全部取消勾選' : '全選' }}
+              </button>
+            }
+          </div>
+          <div class="card-body">
+            @if (dayChips().length === 0) {
+              <div class="text-muted small">
+                {{ isReadOnly ? '無資料。' : '沒有可銷假的日期（可能已全數銷假、已有進行中的銷假申請，或請假日皆已過去）。' }}
+              </div>
+            } @else {
+              <div class="flex flex-wrap gap-1">
+                @for (chip of dayChips(); track chip.date) {
+                  <button type="button" class="btn btn-sm rounded-pill"
+                          [disabled]="isReadOnly"
+                          [class.btn-primary]="isSelected(chip.date)"
+                          [class.btn-outline-secondary]="!isSelected(chip.date)"
+                          (click)="toggleDate(chip.date)">
+                    {{ chip.label }} <span class="ms-1 opacity-75">{{ chip.hours }}h</span>
+                  </button>
+                }
+              </div>
+              <div class="mt-3 text-muted small">
+                已選 <span class="fw-600 text-body">{{ selectedDays().length }}</span> 天 /
+                <span class="fw-600 text-body">{{ selectedHours() }}</span> 小時
+              </div>
+              @if (!isReadOnly) {
+                <div class="mt-2 text-muted" style="font-size:.75rem">
+                  僅能取消今天（含）以後的請假日；核准後這些日子將恢復為上班日，可正常打卡。
+                </div>
+              }
+            }
+          </div>
+        </div>
+
+        <!-- 銷假原因 -->
+        <div class="card border-0 shadow-sm mt-6">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+            銷假原因
+          </div>
+          <div class="card-body">
+            <label class="form-label fw-500">原因 <span class="text-danger">*</span></label>
+            <textarea class="form-control" rows="3" maxlength="500" formControlName="reason"
+                      placeholder="請說明需要取消請假的原因（例如：專案調度需回公司支援）"></textarea>
+          </div>
+        </div>
+
+        <!-- 指定審核者 -->
+        @if (hasDesignatedStep && !isReadOnly) {
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#users"></use></svg>
+              指定審核者
+            </div>
+            <div class="card-body">
+              <app-designated-reviewers-picker
+                [designatedSteps]="designatedSteps"
+                [users]="allUsers"
+                [jobTitles]="jobTitles"
+                [departments]="departments"
+                [initial]="pickerInitial"
+                (reviewersChange)="onPickerChange($event)"
+                (suppressedStepsChange)="onSuppressedSteps($event)" />
+            </div>
+          </div>
+        } @else if (isReadOnly && readonlyDesignatedReviewers.length > 0) {
+          <div class="card border-0 shadow-sm mt-6">
+            <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+              <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#users"></use></svg>
+              指定審核者
+            </div>
+            <div class="card-body">
+              <label class="form-label fw-500">指定審核者（依序審核）</label>
+              <ol class="mb-0 ps-4">
+                @for (dr of readonlyDesignatedReviewers; track $index) {
+                  <li class="small">{{ dr.reviewerName ?? getUserName(dr.reviewerId) }}</li>
+                }
+              </ol>
+            </div>
+          </div>
+        }
+
+        <!-- 簽核流程時間軸 -->
+        <app-approval-timeline
+          [flow]="approvalFlow"
+          [approvalRecords]="approvalRecords"
+          [currentStepOrder]="taskCurrentStepOrder"
+          [status]="taskStatus" />
+
+        @if (!isReadOnly) {
+          <div class="mt-6 flex gap-2">
+            <button type="submit" class="btn btn-outline-secondary" [disabled]="!canSave">
+              {{ isEdit ? '儲存' : '儲存草稿' }}
+            </button>
+            <button type="button" class="btn btn-primary" [disabled]="!canSave" (click)="submitForApproval()">
+              {{ isReturned ? '重新送出銷假申請' : '送出銷假申請' }}
+            </button>
+            <a routerLink="/admin/leave-requests" class="btn btn-outline-secondary">取消</a>
+          </div>
+        } @else {
+          <div class="mt-6">
+            <a routerLink="/admin/leave-requests" class="btn btn-outline-secondary">返回列表</a>
+          </div>
+        }
+
+      </div>
+    </div>
+  </form>
+</div>

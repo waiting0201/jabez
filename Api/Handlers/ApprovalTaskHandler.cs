@@ -17,10 +17,10 @@ namespace Jabez.Api.Handlers;
 /// GET   /approval-tasks/{id}                               → 單筆
 /// PATCH /approval-tasks/{applicationType}/{id}/review      → 多步驟審核（核准 / 退回修改 / 拒絕）
 /// </summary>
-public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadService reader, IJwtService jwtService, IApprovalNotificationService notifier, IApprovalFlowService approvalFlow, IBlobStorageService blob)
+public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadService reader, IJwtService jwtService, IApprovalNotificationService notifier, IApprovalFlowService approvalFlow, IBlobStorageService blob, ICalendarDayReadService calendarReader)
 {
     private static readonly HashSet<string> ValidActions  = ["approved", "returned", "rejected"];
-    public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "travel", "overtime", "advance", "write_off", "travel_write_off", "holiday_travel", "travel_payment", "pre_review"];
+    public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "leave_revocation", "travel", "overtime", "advance", "write_off", "travel_write_off", "holiday_travel", "travel_payment", "pre_review"];
 
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
@@ -341,6 +341,35 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     incrementStep: () => lr.CurrentStepOrder++,
                     setReviewed:   () => { lr.ReviewedAt = Clock.Now; lr.ReviewedById = reviewerId; lr.ReviewNote = reviewNote?.Trim(); });
                 await db.SaveChangesAsync();
+                break;
+            }
+            case LeaveRevocationService.AppType:
+            {
+                var rv = await db.LeaveRevocations.FindAsync(intId)
+                    ?? throw AppException.NotFound("LeaveRevocation");
+                if (rv.ApprovalStatus != "pending")
+                    throw AppException.BadRequest("Only pending leave revocations can be reviewed.");
+
+                var rvApplicant = rv.EmployeeId.HasValue
+                    ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == rv.EmployeeId.Value)
+                    : null;
+                await AuthorizeStepAsync(rv.ApprovalItemId, rv.CurrentStepOrder, reviewer, rvApplicant?.DepartmentId, LeaveRevocationService.AppType, rv.Id, rvApplicant?.JobTitleId);
+                await ProcessReviewAsync(LeaveRevocationService.AppType, rv.Id, rv.CurrentStepOrder,
+                    rv.ApprovalItemId, action, reviewNote, reviewerId, rv.EmployeeId,
+                    setStatus:     s  => rv.ApprovalStatus   = s,
+                    incrementStep: () => rv.CurrentStepOrder++,
+                    setReviewed:   () => { rv.ReviewedAt = Clock.Now; rv.ReviewedById = reviewerId; rv.ReviewNote = reviewNote?.Trim(); });
+
+                // 核准才套用到父請假單（扣掉被取消的日、重算 Hours、全銷則轉 cancelled）；
+                // 退回 / 拒絕不需任何回滾 —— 父單自始至終維持 approved
+                if (rv.ApprovalStatus == "approved")
+                {
+                    await LeaveRevocationService.ApplyAsync(db, calendarReader, rv);
+                    await db.SaveChangesAsync();
+                    await notifier.NotifyLeaveRevocationAgentAsync(rv.Id);
+                }
+                else
+                    await db.SaveChangesAsync();
                 break;
             }
             case "travel":
@@ -1046,12 +1075,19 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     }
 
                     // 請假依天數分流（MinDays 門檻）：帶入申請天數（Hours/8）供跳過 MinDays > 天數的步驟；其他類型不套用
-                    decimal? requestDays = applicationType == "leave"
-                        ? await db.LeaveRequests.AsNoTracking()
+                    // 銷假沿用「原假單天數」，讓銷假走到與原假單相同的那組審核關卡（與 LeaveRevocationHandler.SubmitAsync 同源）
+                    decimal? requestDays = applicationType switch
+                    {
+                        "leave" => await db.LeaveRequests.AsNoTracking()
                             .Where(l => l.Id == applicationId)
                             .Select(l => (decimal?)(l.Hours / 8m))
-                            .FirstOrDefaultAsync()
-                        : null;
+                            .FirstOrDefaultAsync(),
+                        LeaveRevocationService.AppType => await db.LeaveRevocations.AsNoTracking()
+                            .Where(r => r.Id == applicationId)
+                            .Select(r => (decimal?)((r.LeaveRequest!.OriginalHours ?? r.LeaveRequest.Hours) / 8m))
+                            .FirstOrDefaultAsync(),
+                        _ => null,
+                    };
 
                     var (resolvedStep, allSkipped, skippedSteps) = await approvalFlow
                         .SkipUnreviewableStepsAsync(approvalItemId, applicantId.Value, nextStep, drList,

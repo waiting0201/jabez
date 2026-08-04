@@ -110,7 +110,7 @@
 
 **工作日型假別**選定起迄日後，系統扣除**國定假日與六日**，只計算實際工作日，並在表單即時列出「實際請假日清單」與天數。
 
-- **適用假別（工作日型，15 種）**：`annual`（年假）/ `personal`（事假）/ `sick`（病假）/ `compensatory`（補休）/ `official`（公假）/ `senior_executive`（高階主管假）/ `marriage`（婚假）/ `maternity`（產假）/ `bereavement`（喪假）/ `miscarriage_3m`・`miscarriage_2to3m`・`miscarriage_under2m`（流產假系列）/ `prenatal_checkup`（產檢假）/ `paternity`（陪產假）/ `menstrual`（生理假）。集合同步於後端 `LeaveRequestHandler.WorkingDayLeaveTypes` 與前端 `WORKING_DAY_LEAVE_TYPES`（[leave-request.model.ts](../../Admin/src/app/features/admin/leave-requests/models/leave-request.model.ts)）。
+- **適用假別（工作日型，15 種）**：`annual`（年假）/ `personal`（事假）/ `sick`（病假）/ `compensatory`（補休）/ `official`（公假）/ `senior_executive`（高階主管假）/ `marriage`（婚假）/ `maternity`（產假）/ `bereavement`（喪假）/ `miscarriage_3m`・`miscarriage_2to3m`・`miscarriage_under2m`（流產假系列）/ `prenatal_checkup`（產檢假）/ `paternity`（陪產假）/ `menstrual`（生理假）。集合同步於後端 `LeaveDayExpander.WorkingDayLeaveTypes`（`LeaveRequestHandler` 轉引同一份，與銷假逐日展開共用）與前端 `WORKING_DAY_LEAVE_TYPES`（[leave-request.model.ts](../../Admin/src/app/features/admin/leave-requests/models/leave-request.model.ts)）。
 - **不適用假別（連續日曆天，不扣假日）**：僅 `ceremonial_festival`（歲時祭儀假）。
 - **天數上限一律改以工作日計**：婚假 8 / 喪假 8・6・3 / 流產假 28・7・5 / 產檢假・陪產假 7 / 生理假每月 1 天・全年 12 天等數字不變，但語意變成「N 個工作日」（`ValidateLeaveQuotaAsync` 比對的 `Hours / 8` 本來就是扣假日後的值，無需額外改動）。
 - **產假特例**：區間仍固定為「起始日 + 55 天 = 56 個**日曆天**」（法定一次請完、不可拆），但 `Hours` 只計其中工作日（約 40 天 / 320 小時），不再固定 448 小時。
@@ -150,6 +150,63 @@
 - 前端下拉選項取自輕量端點 `GET /users/lookup`（在職者、排除本人）；列表 / 詳情顯示代理人姓名。
 - 送出時（含 Superadmin 自動核准）以 Email 通知代理人「您被指定為 XXX 的職務代理人」（[ApprovalNotificationService.NotifyLeaveAgentAsync](../../Api/Services/ApprovalNotificationService.cs)，沿用 `ApprovalEmailEnabled` 開關）。
 
+## 銷假規則（2026-08 新增）
+
+已核准的請假若因專案調度需改回上班，可提出**銷假申請**，送出後**重跑一次原本的請假簽核流程**。
+
+### 可銷條件（三道都要成立）
+
+| 條件 | 說明 |
+|---|---|
+| 假單 `ApprovalStatus = 'approved'` | 草稿 / 審核中 / 已拒絕 / 已 `cancelled` 皆不可銷 |
+| 假單 `EndDate` 尚未過去 | 假期已結束即不可銷假 |
+| 逐日只能勾**今天（含）以後** | 已休完的日子不可銷，避免更動已結算薪資與既有出勤紀錄 |
+
+### 逐日部分銷假
+
+- 銷假時逐日勾選要取消的日期，**允許挖空中間日**（例：請 8/10–8/14，只取消 8/12）。
+- 各日時數由 [`LeaveDayExpander`](../../Api/Common/LeaveDayExpander.cs) 展開，規則與送出時的權威重算完全一致，保證 `Σ 逐日時數 == LeaveRequest.Hours`：
+  Day → 每工作日 8h；Hour → 同日 `end−start`、跨日首日 `Clamp(17−start,0,8)` / 中間 8 / 末日 `Clamp(end−8,0,8)`；HalfDay → 單日 am→am 4 / am→pm 8 / pm→pm 4，多日首(am 8 / pm 4) + 中間 8 + 末(pm 8 / am 4)；歲時祭儀假整段日曆天每天 8h。
+- 「哪幾天被取消」的單一真相＝ `LeaveRevocationDate`。可銷清單會排除：已核准銷假的日、被其他進行中銷假單佔用的日、今天以前的日。
+- 同一天不會被兩張銷假單重複扣除：`revocable-dates` 過濾 + `Create/Update/Submit` 三處重驗。
+
+### 送簽期間：仍視為請假中
+
+銷假送簽期間父單 `LeaveRequest` **完全不動**（維持 `approved`、`Hours` 不變），因此：
+
+- 打卡仍被阻擋、打卡提醒仍排除該員、簽核升級仍視為「主管請假中」
+- 各假別額度仍佔用、該時段仍不可重複請假
+- **核准後才一次生效**
+
+### 核准 / 退回 / 拒絕的效果
+
+| 動作 | 效果 |
+|---|---|
+| 核准 | [`LeaveRevocationService.ApplyAsync`](../../Api/Services/LeaveRevocationService.cs)：從**該假單所有已核准銷假單的 distinct 日期**整組重算 → `LeaveRequest.Hours = Σ 未銷日時數`；首次銷假時把原時數存入 `OriginalHours`。全數銷完 → `ApprovalStatus = 'cancelled'`（終止狀態，自此不落入任何 `approved` 查詢）。另寄 Email 通知原假單的職務代理人「代理已解除 / 部分解除」 |
+| 退回 | 銷假單轉 `returned`，可修改後重送；父單不受影響 |
+| 拒絕 | 銷假單轉 `rejected`，**父單零回滾**（自始至終維持 `approved`）；被拒的日期回到可銷清單 |
+
+> 從逐日整組重算（而非 `Hours -= X`）是刻意設計：天然冪等、併發安全，兩張銷假單搶同一天也會收斂。
+
+### 下游影響
+
+- **重疊驗證**：`cancelled` 已被 SQL 狀態清單排除；部分銷假則由 `LeaveRequestHandler.FilterFullyRevokedAsync` 逐日後置過濾 —— 重疊區間內每一天都已銷才不算衝突，故挖空的中間日可重新申請。
+- **打卡 / 報表 / 提醒 / 升級**：`AttendanceReadService`（3 處）、`AttendanceReminderReadService`、`EscalationService.IsOnLeaveAsync` 皆加上「該日無已核准銷假」的排除條件。
+- **薪資**：`LeaveRequest.Hours` 保持「剩餘有效時數」語意，故 [`PayrollReadService`](../../Api/Services/Dapper/PayrollReadService.cs) 的三段扣薪 SQL 不需改動即自動正確；`cancelled` 不在 `approved` 集合內。生理假「年度前 3 天半薪」的門檻只決定金額掛哪一行（生理假 / 病假扣薪率同為日薪 × 0.5），對實領薪資零影響。
+  > **既有已知限制（非本次引入）**：`leaveSql` 以「區間相交 + 整單 SUM(Hours)」計算，跨月假單會被兩個月各扣一次全額。銷假後 `Hours` 遞減，兩個月等比例變小，錯誤形態不變。若要修正，正解是把扣薪改為逐日歸月。
+- **補休池**：`ComputeCompensatoryAsync` 公式不需改 —— 銷假只把來自 `earned` 的時數還回池子，不會讓已到期作廢的期初額度復活。
+
+### 簽核掛接（「跑原本的簽核一次」）
+
+| 用途 | applicationType |
+|---|---|
+| `ResolveApprovalItemIdAsync`（挑流程設定） | **`"leave"`** —— 直接複用請假的 ApprovalItem + Steps，管理端**不需另設銷假流程**（簽核流程設定頁的類型下拉刻意不含銷假） |
+| `ResolveStartingStepAsync` / `ApprovalRecord` / `RequestDesignatedReviewer` / 簽核任務 | **`"leave_revocation"`** —— 隔離「此人已審過」查詢，避免與同 Id 的請假單撞號 |
+
+- `requestDays` 帶**原假單天數**（`(OriginalHours ?? Hours) / 8`），讓銷假回到與原假單相同的那組 `MinDays` 關卡（`LeaveRevocationHandler.SubmitAsync` 與 `ApprovalTaskHandler` 推進時同源）。
+- 自審規則沿用請假：Group A 全程禁止自審（否定清單自動涵蓋），自審時嘗試升級審核且停在總監之前。
+- 流程若含「申請人指定審核」步驟，銷假表單同樣要挑指定審核者。
+
 ## 請假申請步驟
 
 ```
@@ -182,6 +239,14 @@
 | 前端 `leave-request.model.ts` | 16 種假別定義、喪假關係常數、天數上限常數、`MenstrualQuota` |
 | 前端 `leave-request-form` | 假別下拉選單（分群組）、條件式欄位、額度提示 |
 | 前端 `payroll-form` | 本月請假紀錄表格 |
+| `LeaveRevocation` / `LeaveRevocationDate` | Entity：銷假申請 + 逐日明細 |
+| `LeaveDayExpander` | 請假單逐日展開的單一真相（假別分類常數 `WorkingDayLeaveTypes` / `TimeUnitMap` 亦收斂於此） |
+| `LeaveRevocationService.ApplyAsync()` | 銷假核准後套用到父單（逐日整組重算 Hours、全銷轉 cancelled） |
+| `LeaveRevocationHandler` | 銷假 CRUD + `revocable-dates` + `Submit`（重跑請假簽核） |
+| `LeaveRevocationReadService` | Dapper：銷假列表 / 單筆（JOIN 原假單 + 逐日明細 + 指定審核者） |
+| `LeaveRequestHandler.FilterFullyRevokedAsync()` | 重疊驗證的逐日後置過濾（挖空的日子可重新申請） |
+| 前端 `leave-revocation-form` | 銷假表單（原假單唯讀卡 + 逐日 chip 勾選 + 原因 + 指定審核者） |
+| 前端 `leave-revocation.service.ts` / `leave-revocation.model.ts` | 銷假 HTTP service 與型別 |
 
 ---
 
@@ -189,6 +254,8 @@
 
 - **請假走簽核流程** → [approval-flow.md](approval-flow.md)（請假屬 Group A 全程禁止自審）
 - **事假 / 病假扣薪計算** → [payroll-formula.md §扣薪規則](payroll-formula.md)
-- **打卡時段阻擋規則**（已核准請假時段內無法打上下班卡；例外：**當日全日請假 + 已核准加班單 → 可直接打「加班開始」**，免下班卡） → [attendance-clock-rules.md](attendance-clock-rules.md)
+- **打卡時段阻擋規則**（已核准請假時段內無法打上下班卡；例外：**當日全日請假 + 已核准加班單 → 可直接打「加班開始」**，免下班卡；**已核准銷假的日子不再阻擋**） → [attendance-clock-rules.md](attendance-clock-rules.md)
+- **銷假重跑請假簽核** → [approval-flow.md §銷假重跑請假簽核](approval-flow.md#銷假重跑請假簽核2026-08-新增)
+- **銷假通知（審核 + 職務代理人解除）** → [notifications.md](notifications.md)
 - **產假狀態 / 配額查詢端點** → [api-routes.md §請款 / 請假...](../api-routes.md#請款--請假--出差--加班--預支申請)
 - **`LeaveRequest` Entity 結構** → [database-schema.md](../database-schema.md)

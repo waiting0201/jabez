@@ -9,6 +9,7 @@ import {ApplicationType, APPLICATION_TYPE_LABELS} from '@features/admin/approval
 const TYPE_ROUTES: Record<ApplicationType, string> = {
   payment_request:  '/admin/payment-requests',
   leave:            '/admin/leave-requests',
+  leave_revocation: '/admin/leave-requests',
   travel:           '/admin/travel-requests',
   overtime:         '/admin/overtime-requests',
   advance:          '/admin/advance-requests',
@@ -23,6 +24,7 @@ const TYPE_ROUTES: Record<ApplicationType, string> = {
 const TYPE_PERMISSIONS: Record<ApplicationType, string> = {
   payment_request:  'payment-requests:read',
   leave:            'leave-requests:read',
+  leave_revocation: 'leave-requests:read',
   travel:           'travel-requests:read',
   overtime:         'overtime-requests:read',
   advance:          'advance-requests:read',
@@ -43,6 +45,7 @@ const TYPE_ORDER: ApplicationType[] = [
   'travel_write_off',
   'holiday_travel',
   'leave',
+  'leave_revocation',
   'overtime',
   'pre_review',
 ];

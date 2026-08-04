@@ -20,6 +20,16 @@
 
 > 人事薪資為動態計算，不儲存於資料庫。前端可匯出 PDF 薪資表。
 > 薪資編輯頁與薪資明細信件額外顯示該月**所有已核准的請假紀錄**（全假別，非僅事假/病假）。
+
+### 銷假對扣薪的影響（2026-08）
+
+`LeaveRequest.Hours` 的語意是**剩餘有效時數** —— 銷假核准後由 [`LeaveRevocationService.ApplyAsync`](../../Api/Services/LeaveRevocationService.cs) 從逐日重算並遞減，全數銷完則 `ApprovalStatus` 轉 `cancelled`（不在 `approved` 集合內）。因此 [`PayrollReadService`](../../Api/Services/Dapper/PayrollReadService.cs) 的三段 SQL（`leaveSql` / `priorMenstrualSql` / `leaveDetailSql`）**不需任何改動即自動正確**。
+
+- 銷假只能取消**今天（含）以後**的請假日，故不會回頭更動已休完的日子。
+- 生理假「年度前 3 天半薪」的門檻只決定金額掛「生理假扣薪」還是「病假扣薪」哪一行 —— 兩者扣薪率同為 `日薪 × 0.5`，**對實領薪水零影響**。
+- 補休池（`ComputeCompensatoryAsync`）公式不需改：銷假只把來自 `earned` 的時數還回池子，不會讓已到期作廢的期初額度復活。
+
+> **既有已知限制（非銷假引入）**：`leaveSql` 以「區間相交 + 整單 `SUM(Hours)`」計算扣薪，**跨月假單會被兩個月各扣一次全額**。銷假後 `Hours` 遞減，兩個月等比例變小，錯誤形態不變、不會惡化。若要修正，正解是把扣薪改為「逐日歸月」（需要一張請假逐日明細表）。
 > 健保費若眷屬數 ≥ 1，PDF 與信件會在金額右側補註腳「（含健保眷屬 N 口）」。
 
 ---
@@ -92,7 +102,7 @@ EmployeePayrollDto / 月度合計 / 薪資編輯頁 / 薪資明細 Email + PDF
 - **健保眷屬資料 / 上限 3 口計算** → [hr-profile.md](hr-profile.md)
 - **底薪 / 伙食費 / 5 種加給自動同步**（薪資調整紀錄 → User.BaseSalary / MealAllowance / PositionAllowance / DutyAllowance / OtherAllowance / AdjustmentDifference / OverseasAllowance） → [hr-profile.md](hr-profile.md)
 - **假日執行活動的歸月規則** → [application-forms.md](application-forms.md)
-- **事假 / 病假的扣薪天數來源** → [leave-rules.md](leave-rules.md)
+- **事假 / 病假的扣薪天數來源、銷假規則** → [leave-rules.md](leave-rules.md)
 - **勞健保級距 lookup（級距表 entity）** → [database-schema.md](../database-schema.md)（`InsuranceBracket`）
 - **PayrollHandler 計算邏輯實作** → [Api/Handlers/PayrollHandler.cs](../../Api/Handlers/PayrollHandler.cs)
 - **PayrollReadService SQL** → [Api/Services/Dapper/PayrollReadService.cs](../../Api/Services/Dapper/PayrollReadService.cs)

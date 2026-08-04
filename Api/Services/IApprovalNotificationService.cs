@@ -14,6 +14,9 @@ public interface IApprovalNotificationService
     /// <summary>請假送出後，通知被指定的職務代理人（僅記錄 + 通知，不參與簽核）。</summary>
     Task NotifyLeaveAgentAsync(int leaveRequestId);
 
+    /// <summary>銷假核准後，通知原請假單的職務代理人代理已解除 / 部分解除。</summary>
+    Task NotifyLeaveRevocationAgentAsync(int revocationId);
+
     /// <summary>通知申請人審核結果（核准/退回/拒絕）。</summary>
     /// <param name="contextLabel">附加在申請類型名稱後的說明（追加預支用，如「（第 2 次追加）」）。</param>
     Task NotifyApplicantAsync(

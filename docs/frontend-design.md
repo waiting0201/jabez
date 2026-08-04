@@ -534,6 +534,26 @@ switchTab(tab: 'tab1' | 'tab2') {
 
 實例：`holiday-travel-request-form.html` 參與執行人員卡片。
 
+**變體：單一集合的逐日勾選（銷假）** — 不隸屬任何 FormArray 列、整張表單只有一組選取時，chips 直接掛在卡片 body，並在卡片 header 右側附「全選 / 全部取消勾選」按鈕：
+
+```html
+<div class="card-header ... flex items-center justify-between gap-2 fw-600">
+  <div class="flex items-center gap-2"><svg …/> 選擇要取消的日期</div>
+  @if (!isReadOnly && dayChips().length > 0) {
+    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="toggleAll()">
+      {{ allSelected() ? '全部取消勾選' : '全選' }}
+    </button>
+  }
+</div>
+```
+
+- chip label 帶單位資訊（`MM/dd (三) 8h`），選取態 `btn-primary` / 未選 `btn-outline-secondary`
+- 底部即時 summary：`已選 N 天 / M 小時`，其下以 `text-muted`（`font-size:.75rem`）補一行規則說明
+- 唯讀模式 chips 保留但 `[disabled]`，用來呈現「已取消的日期」清單
+- 選取狀態以 `signal<Set<string>>` 保存，`selectedDays` / `selectedHours` / `allSelected` 皆為 `computed`
+
+實例：`leave-revocation-form.html`「選擇要取消的日期」卡片。
+
 ---
 
 ## 7. 明細列表（FormArray）

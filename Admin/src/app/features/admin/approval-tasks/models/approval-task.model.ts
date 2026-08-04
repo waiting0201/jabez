@@ -128,6 +128,20 @@ export interface LeaveTaskDetail {
   reason: string;
 }
 
+/** 銷假申請詳情（含原請假單資訊與被取消的逐日清單） */
+export interface LeaveRevocationTaskDetail {
+  leaveRevocationId: number;
+  leaveRequestId: number;
+  leaveType: LeaveType;
+  leaveStartDate: Date;
+  leaveEndDate: Date;
+  leaveHours: number;      // 原請假時數
+  leaveReason: string;
+  revokedHours: number;
+  reason: string;
+  dates: {date: Date; hours: number}[];
+}
+
 export interface TravelTaskDetailItem {
   id: number;
   category: string;
@@ -424,6 +438,7 @@ export interface ApprovalTask {
   flow?: ApprovalFlow;
   paymentDetail?: PaymentTaskDetail;
   leaveDetail?: LeaveTaskDetail;
+  leaveRevocationDetail?: LeaveRevocationTaskDetail;
   travelDetail?: TravelTaskDetail;
   overtimeDetail?: OvertimeTaskDetail;
   advanceDetail?: AdvanceTaskDetail;

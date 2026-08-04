@@ -272,6 +272,10 @@ export class ApprovalTaskList {
       const vendorPart = d.paymentType === 'vendor' && d.vendorName ? `・${d.vendorName}` : '';
       return `${this.payTypeLabel[d.paymentType]}・${d.projectCode}${vendorPart}（${d.totalAmount.toLocaleString()} 元）`;
     }
+    if (t.leaveRevocationDetail) {
+      const d = t.leaveRevocationDetail;
+      return `銷假・${this.leaveTypeLabel[d.leaveType]} 取消 ${d.dates.length} 天（${d.revokedHours} 小時）`;
+    }
     if (t.leaveDetail) {
       return `${this.leaveTypeLabel[t.leaveDetail.leaveType]}・${t.leaveDetail.hours} 小時`;
     }

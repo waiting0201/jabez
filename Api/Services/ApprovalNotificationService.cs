@@ -1,3 +1,4 @@
+using Jabez.Api.Common;
 using Jabez.Api.Data;
 using Jabez.Api.Models.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +16,7 @@ public sealed class ApprovalNotificationService(
     {
         ["payment_request"] = "請款申請",
         ["leave"]           = "請假申請",
+        ["leave_revocation"] = "銷假申請",
         ["travel"]          = "出差預支申請",
         ["overtime"]        = "加班申請",
         ["advance"]         = "預支申請",
@@ -615,6 +617,53 @@ public sealed class ApprovalNotificationService(
     }
 
     /// <inheritdoc />
+    public async Task NotifyLeaveRevocationAgentAsync(int revocationId)
+    {
+        try
+        {
+            var rv = await db.LeaveRevocations.AsNoTracking()
+                .Include(x => x.LeaveRequest)
+                .Include(x => x.Dates)
+                .FirstOrDefaultAsync(x => x.Id == revocationId);
+            var lr = rv?.LeaveRequest;
+            if (lr?.AgentUserId is null) return;
+
+            var (emailEnabled, _) = await ReadNotificationFlagsAsync();
+            if (!emailEnabled) return;
+
+            var agent = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == lr.AgentUserId);
+            if (agent is null || string.IsNullOrEmpty(agent.Email)) return;
+
+            var applicant = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == lr.EmployeeId);
+            var applicantName = applicant?.Name ?? "同仁";
+            var cancelledDates = string.Join("、", rv!.Dates.OrderBy(d => d.Date).Select(d => $"{d.Date:yyyy/MM/dd}"));
+            var isFullyCancelled = lr.ApprovalStatus == "cancelled";
+            var siteUrl = await GetSiteUrlAsync();
+
+            var subject = isFullyCancelled
+                ? $"[職務代理] {applicantName} 已銷假，代理職務解除"
+                : $"[職務代理] {applicantName} 已部分銷假，代理期間調整";
+            var body = $"""
+                <p>{agent.Name} 您好，</p>
+                <p>{applicantName} 的請假申請（{lr.StartDate:yyyy/MM/dd} ~ {lr.EndDate:yyyy/MM/dd}）已辦理銷假並完成簽核：</p>
+                <ul>
+                  <li>取消的請假日：{cancelledDates}</li>
+                  <li>{(isFullyCancelled ? "整張假單已全數取消，您不需再代理相關職務。" : $"其餘期間仍需代理，剩餘請假時數 {lr.Hours} 小時。")}</li>
+                </ul>
+                <p>此通知僅供知會，您不需要於系統中進行任何簽核動作。</p>
+                {BuildButtonHtml($"{siteUrl}/admin/leave-requests", "前往請假管理")}
+                """;
+
+            await emailService.SendAsync(agent.Email, subject, body);
+            logger.LogInformation("已通知職務代理人銷假：{Email}（LeaveRevocation #{Id}）", agent.Email, revocationId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "通知職務代理人銷假失敗：LeaveRevocation #{Id}", revocationId);
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<(bool EmailSent, bool LineSent, string? ErrorMessage)> NotifyFinanceUpcomingPaymentsAsync(
         Guid financeUserId,
         IReadOnlyList<(string AppType, string AppLabel, int ApplicationId, string Applicant, DateTime ExpectedDate, decimal Amount)> items)
@@ -746,6 +795,7 @@ public sealed class ApprovalNotificationService(
         {
             "payment_request" => await GetPaymentSummaryAsync(applicationId),
             "leave"           => await GetLeaveSummaryAsync(applicationId),
+            "leave_revocation" => await GetLeaveRevocationSummaryAsync(applicationId),
             "travel"          => await GetTravelSummaryAsync(applicationId),
             "overtime"        => await GetOvertimeSummaryAsync(applicationId),
             "advance"         => await GetAdvanceSummaryAsync(applicationId),
@@ -774,6 +824,23 @@ public sealed class ApprovalNotificationService(
         return lr is not null
             ? $"{lr.LeaveType} {lr.Hours} 小時（{lr.StartDate:yyyy-MM-dd} ~ {lr.EndDate:yyyy-MM-dd}）"
             : $"#{id}";
+    }
+
+    private async Task<string> GetLeaveRevocationSummaryAsync(int id)
+    {
+        var rv = await db.LeaveRevocations.AsNoTracking()
+            .Where(x => x.Id == id)
+            .Select(x => new
+            {
+                x.RevokedHours,
+                LeaveType = x.LeaveRequest!.LeaveType,
+                Dates     = x.Dates.OrderBy(d => d.Date).Select(d => d.Date).ToList(),
+            })
+            .FirstOrDefaultAsync();
+        if (rv is null) return $"#{id}";
+
+        var dateList = string.Join("、", rv.Dates.Select(d => d.ToString("MM/dd")));
+        return $"取消{LeaveTypeNames.GetZh(rv.LeaveType)} {rv.Dates.Count} 天 / {rv.RevokedHours} 小時（{dateList}）";
     }
 
     private async Task<string> GetTravelSummaryAsync(int id)
@@ -856,6 +923,7 @@ public sealed class ApprovalNotificationService(
         {
             "payment_request"  => "payment-requests",
             "leave"            => "leave-requests",
+            "leave_revocation" => "leave-revocations",
             "travel"           => "travel-requests",
             "overtime"         => "overtime-requests",
             "advance"          => "advance-requests",

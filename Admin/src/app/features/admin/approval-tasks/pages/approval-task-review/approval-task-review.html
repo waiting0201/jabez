@@ -193,6 +193,58 @@
             }
           }
 
+          @case ('leave_revocation') {
+            @if (task.leaveRevocationDetail; as d) {
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#x-circle"></use></svg>
+                  銷假申請資訊
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">原假別</div>
+                      <span class="fw-500">{{ leaveTypeLabel[d.leaveType] }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">申請人</div>
+                      <span class="fw-500">{{ task.submittedBy }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">本次取消</div>
+                      <span class="fw-600 fs-5 text-danger">{{ d.dates.length }} 天 / {{ d.revokedHours }} 小時</span>
+                    </div>
+                    <div class="col-12 col-md-8">
+                      <div class="text-muted small mb-1">原請假期間</div>
+                      <span class="text-muted small">
+                        {{ d.leaveStartDate | date:'yyyy-MM-dd' }} ～ {{ d.leaveEndDate | date:'yyyy-MM-dd' }}
+                        （原 {{ formatLeaveDuration(d.leaveType, d.leaveHours) }}）
+                      </span>
+                    </div>
+                    <div class="col-12">
+                      <div class="text-muted small mb-1">要取消的請假日</div>
+                      <div class="flex flex-wrap gap-1">
+                        @for (dt of d.dates; track dt.date) {
+                          <span class="badge bg-danger-subtle text-danger rounded-pill">
+                            {{ dt.date | date:'MM/dd (EEE)' }} {{ dt.hours }}h
+                          </span>
+                        }
+                      </div>
+                    </div>
+                    <div class="col-12">
+                      <div class="text-muted small mb-1">銷假原因</div>
+                      <div class="border rounded p-4 bg-[--bg-base] small">{{ d.reason }}</div>
+                    </div>
+                    <div class="col-12">
+                      <div class="text-muted small mb-1">原請假原因</div>
+                      <div class="border rounded p-4 bg-[--bg-base] small">{{ d.leaveReason }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
+          }
+
           @case ('travel') {
             @if (task.travelDetail; as d) {
               <div class="card border-0 shadow-sm">

@@ -23,6 +23,7 @@ import {ApprovalTaskList} from './approval-tasks/pages/approval-task-list/approv
 import {ApprovalTaskReview} from './approval-tasks/pages/approval-task-review/approval-task-review';
 import {LeaveRequestList} from './leave-requests/pages/leave-request-list/leave-request-list';
 import {LeaveRequestForm} from './leave-requests/pages/leave-request-form/leave-request-form';
+import {LeaveRevocationForm} from './leave-requests/pages/leave-revocation-form/leave-revocation-form';
 import {TravelRequestList} from './travel-requests/pages/travel-request-list/travel-request-list';
 import {TravelRequestForm} from './travel-requests/pages/travel-request-form/travel-request-form';
 import {TravelDetail} from './travel-requests/pages/travel-detail/travel-detail';
@@ -125,6 +126,10 @@ export const ADMIN_ROUTES: Routes = [
   {path: 'leave-requests',             component: LeaveRequestList, canActivate: [permissionGuard], data: {title: '請假申請',       permission: 'leave-requests:read'}},
   {path: 'leave-requests/new',         component: LeaveRequestForm, canActivate: [permissionGuard], data: {title: '新增請假申請',   permission: 'leave-requests:write'}},
   {path: 'leave-requests/:id/edit',    component: LeaveRequestForm, canActivate: [permissionGuard], data: {title: '編輯請假申請',   permission: 'leave-requests:read'}},
+  // 銷假（沿用 leave-requests:* 權限）
+  {path: 'leave-requests/:id/revoke',  component: LeaveRevocationForm, canActivate: [permissionGuard], data: {title: '銷假申請',     permission: 'leave-requests:write', mode: 'new'}},
+  {path: 'leave-revocations/:id/edit', component: LeaveRevocationForm, canActivate: [permissionGuard], data: {title: '編輯銷假申請', permission: 'leave-requests:write', mode: 'edit'}},
+  {path: 'leave-revocations/:id',      component: LeaveRevocationForm, canActivate: [permissionGuard], data: {title: '銷假申請詳情', permission: 'leave-requests:read',  mode: 'view'}},
 
   // 出差預支申請
   {path: 'travel-requests',             component: TravelRequestList, canActivate: [permissionGuard], data: {title: '出差預支申請',       permission: 'travel-requests:read'}},

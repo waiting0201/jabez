@@ -59,6 +59,11 @@ public sealed class NotificationReadService(IDbConnection db) : INotificationRea
             SELECT 'travel_payment', COUNT(*)
               FROM TravelPaymentRequests
               WHERE EmployeeId = @UserId
+                AND ApprovalStatus IN ('pending', 'returned')
+            UNION ALL
+            SELECT 'leave_revocation', COUNT(*)
+              FROM LeaveRevocations
+              WHERE EmployeeId = @UserId
                 AND ApprovalStatus IN ('pending', 'returned');
             """;
 
@@ -100,6 +105,9 @@ public sealed class NotificationReadService(IDbConnection db) : INotificationRea
                   WHERE SubmittedById = @UserId AND ApprovalStatus = 'approved'
                 UNION ALL
                 SELECT 'travel_payment', Id FROM TravelPaymentRequests
+                  WHERE EmployeeId = @UserId AND ApprovalStatus = 'approved'
+                UNION ALL
+                SELECT 'leave_revocation', Id FROM LeaveRevocations
                   WHERE EmployeeId = @UserId AND ApprovalStatus = 'approved'
             )
             SELECT m.Type AS Type, m.Id AS Id, MAX(ar.ReviewedAt) AS ApprovedAt
