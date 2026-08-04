@@ -14,6 +14,21 @@
 
   <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
+      <div class="px-4 py-3 border-b">
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="flex items-center gap-2" style="max-width: 480px">
+            <div class="relative flex-1">
+              <svg class="sa-icon absolute left-3 top-1/2 -translate-y-1/2 text-muted" style="stroke: currentColor; width: 16px; height: 16px">
+                <use href="/assets/icons/sprite.svg#search"></use>
+              </svg>
+              <input type="text" class="form-control ps-9" placeholder="搜尋廠商名稱／統編／身分證字號／聯絡人／電話…"
+                     [(ngModel)]="searchInput" (keydown.enter)="doSearch()">
+            </div>
+            <button class="btn btn-primary" (click)="doSearch()">篩選</button>
+          </div>
+        </div>
+      </div>
+
       <div class="table-responsive">
         <table class="table table-hover mb-0">
           <thead class="table-light">
@@ -29,7 +44,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (v of vendors$ | async; track v.id) {
+            @for (v of vendors(); track v.id) {
               <tr>
                 <td class="fw-500">{{ v.name }}</td>
                 <td class="text-muted hidden md:table-cell">{{ v.taxId || v.idNumber || '—' }}</td>
@@ -57,12 +72,41 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="8" class="text-center text-muted py-4">尚無廠商資料。</td>
+                <td colspan="8" class="text-center text-muted py-4">
+                  @if (searchTerm()) { 查無符合「{{ searchTerm() }}」的廠商。 } @else { 尚無廠商資料。 }
+                </td>
               </tr>
             }
           </tbody>
         </table>
       </div>
+      @if (totalPages() > 1) {
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t">
+          <span class="text-muted small text-center sm:text-left">共 {{ totalCount() }} 筆，第 {{ page() }} / {{ totalPages() }} 頁</span>
+          <div class="flex sm:hidden items-center gap-1">
+            <button class="page-link rounded" [class.disabled]="page() === 1" (click)="prev()">‹</button>
+            <span class="px-2 text-sm">{{ page() }} / {{ totalPages() }}</span>
+            <button class="page-link rounded" [class.disabled]="page() === totalPages()" (click)="next()">›</button>
+          </div>
+          <ul class="hidden sm:flex pagination mb-0">
+            <li class="page-item" [class.disabled]="page() === 1">
+              <button class="page-link" (click)="prev()">‹</button>
+            </li>
+            @for (p of pageNumbers(); track p) {
+              @if (p === -1) {
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+              } @else {
+                <li class="page-item" [class.active]="p === page()">
+                  <button class="page-link" (click)="goTo(p)">{{ p }}</button>
+                </li>
+              }
+            }
+            <li class="page-item" [class.disabled]="page() === totalPages()">
+              <button class="page-link" (click)="next()">›</button>
+            </li>
+          </ul>
+        </div>
+      }
     </div>
   </div>
 </div>

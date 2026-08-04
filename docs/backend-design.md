@@ -176,6 +176,32 @@ Handler class 命名：`<Module>Handler.cs`（PascalCase），對應一組相關
 | `SubmitAsync` | 申請類送出（draft → pending） | PATCH `/<resource>/{id}/submit` |
 | `<Custom>Async` | 業務動作（如 `BatchApproveAsync` / `UpsertAsync`） | 視 API 設計而定 |
 
+### 4.1.1 列表分頁的雙模式約定
+
+需要分頁的列表端點（目前：`GET /projects`、`GET /vendors`）**共用同一個 URL**，由 query 參數決定回應形狀：
+
+```csharp
+public async Task<IActionResult> GetAllAsync(HttpRequest req)
+{
+    string? search = req.Query["search"];
+
+    // 有分頁參數 → 回傳 PagedResult；無分頁參數 → 回傳平面陣列（供下拉選單用）
+    if (req.Query.ContainsKey("page") || req.Query.ContainsKey("pageSize"))
+    {
+        int page     = int.TryParse(req.Query["page"],     out var p)  ? Math.Max(1, p)         : 1;
+        int pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, 100) : 20;
+        return new OkObjectResult(ApiResponse.Ok(await reader.GetPagedAsync(page, pageSize, search)));
+    }
+
+    return new OkObjectResult(ApiResponse.Ok(await reader.GetAllAsync(search)));
+}
+```
+
+- `page` 下限 1、`pageSize` 一律 `Math.Clamp(ps, 1, 100)`，預設 20（**禁止**讓前端指定無上限的 pageSize）
+- ReadService 同時提供 `GetAllAsync(...)` 與 `GetPagedAsync(page, pageSize, ...)`，兩者**共用同一段 WHERE 條件建構**（抽成 private helper，如 [VendorReadService.BuildSearchFilter](../Api/Services/Dapper/VendorReadService.cs)），避免搜尋條件在兩條路徑上分歧
+- `GetPagedAsync` 內另跑一次 `SELECT COUNT(*)` 取 `TotalCount`，回傳 [PagedResult&lt;T&gt;](../Api/Common/PagedResult.cs)；`TotalPages` 以 `Math.Max(1, ceiling)` 保底
+- 關鍵字一律以參數化 `@Search`（`%keyword%`）比對，**禁止**字串串接進 SQL
+
 ### 4.2 標準方法骨架
 
 ```csharp

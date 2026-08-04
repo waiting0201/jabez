@@ -184,6 +184,27 @@
 
 - 篩選按鈕固定為 `<button class="btn btn-primary" (click)="search()">篩選</button>`，**不**加 `w-full`
 
+#### 關鍵字搜尋框
+
+需要關鍵字搜尋的列表頁（專案管理、廠商管理…），搜尋框放在同一橫列的**篩選按鈕之前**，樣式固定如下：搜尋 icon 疊在 input 內左側、input 加 `ps-9` 讓出 icon 空間、支援 Enter 送出：
+
+```html
+<div class="flex items-center gap-2" style="max-width: 480px">
+  <div class="relative flex-1">
+    <svg class="sa-icon absolute left-3 top-1/2 -translate-y-1/2 text-muted" style="stroke: currentColor; width: 16px; height: 16px">
+      <use href="/assets/icons/sprite.svg#search"></use>
+    </svg>
+    <input type="text" class="form-control ps-9" placeholder="搜尋廠商名稱／統編／…"
+           [(ngModel)]="searchInput" (keydown.enter)="doSearch()">
+  </div>
+  <button class="btn btn-primary" (click)="doSearch()">篩選</button>
+</div>
+```
+
+- placeholder 一律列出**實際會被比對的欄位**，以全形頓號「／」分隔，結尾加刪節號
+- 關鍵字**送到後端**做 SQL `LIKE` 比對（不在前端 filter），輸入值 `searchInput` 與已送出的 `searchTerm` signal 分離，按下「篩選」／Enter 才同步
+- 查無資料時空狀態文案要區分「查無符合「{{ searchTerm() }}」的…」與「尚無…資料。」
+
 #### 時段模式 pill（日 / 週 / 月）
 
 ```html
@@ -279,8 +300,32 @@
 - [出缺勤紀錄](../Admin/src/app/features/admin/reports/pages/attendance-report/attendance-report.html) — 員工 + 時段
 - [加班紀錄](../Admin/src/app/features/admin/reports/pages/overtime-report/overtime-report.html) — 員工 + 專案 + 時段
 - [款項統計](../Admin/src/app/features/admin/reports/pages/payment-report/payment-report.html) — 付款狀態 + 時段
+- [廠商管理](../Admin/src/app/features/admin/vendors/pages/vendor-list/vendor-list.html) — 只有關鍵字搜尋框的最簡形式（搜尋 icon 疊在 input 內、`(keydown.enter)` 送出）+ 分頁
 
 > 新增報表 / 多條件列表頁時，**必須**先讀其中一份（推薦：加班紀錄，覆蓋最完整）作為範本，依此規範佈局，禁止自行設計 toolbar 樣式。
+
+### 列表分頁（Pagination）
+
+> **單一真相來源**：需要分頁的列表頁（專案管理、廠商管理…）一律採下列結構，**禁止**自行設計分頁列或改用前端切片。
+
+- **後端分頁**：呼叫 `service.getPaged(page, pageSize, …)`，回 `PagedResult<T>`（[shared/models/paged-result.model.ts](../Admin/src/app/shared/models/paged-result.model.ts)）。每頁筆數以元件常數 `readonly PAGE_SIZE = 20` 宣告
+- **狀態組合**：`page` / 篩選條件 / `refresh` 皆為 signal，用 `toObservable(computed(() => ({...})))` + `switchMap` 串成單一 `toSignal` 結果，再 `computed` 拆出 `items` / `totalCount` / `totalPages`
+- 按「篩選」時 **必須** `this.page.set(1)`，否則會停在超出範圍的頁碼看到空清單
+- 刪除當頁最後一筆且非第 1 頁時退回前一頁（`if (items().length === 1 && page() > 1) page.update(p => p - 1)`），避免停在空白頁
+- 頁碼省略以 `buildPageNumbers(current, total)` 產生（`-1` 代表 `…`），總頁數 ≤ 9 時全列
+- **版面**：分頁列放在 `card-body` 內、表格 `table-responsive` 之後，`@if (totalPages() > 1)` 才顯示；手機顯示 `‹ n / m ›` 精簡版，`sm:` 以上顯示完整頁碼 `ul.pagination`
+
+```html
+@if (totalPages() > 1) {
+  <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t">
+    <span class="text-muted small text-center sm:text-left">共 {{ totalCount() }} 筆，第 {{ page() }} / {{ totalPages() }} 頁</span>
+    <div class="flex sm:hidden items-center gap-1">…精簡版…</div>
+    <ul class="hidden sm:flex pagination mb-0">…頁碼…</ul>
+  </div>
+}
+```
+
+已套用：[專案管理](../Admin/src/app/features/admin/projects/pages/project-list/project-list.html)、[廠商管理](../Admin/src/app/features/admin/vendors/pages/vendor-list/vendor-list.html)（推薦以廠商管理為範本，最精簡）。
 
 #### 權限差異化篩選控件（依部門 / 權限顯示）
 
