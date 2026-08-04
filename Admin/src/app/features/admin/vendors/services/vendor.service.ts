@@ -2,6 +2,7 @@ import {Injectable, inject} from '@angular/core';
 import {HttpClient, HttpParams} from '@angular/common/http';
 import {Observable} from 'rxjs';
 import {Vendor, VendorLookup, VendorTaxIdLookup} from '../models/vendor.model';
+import {PagedResult} from '@shared/models/paged-result.model';
 import {environment} from '@/environments/environment';
 
 export interface VendorFormPayload {
@@ -29,8 +30,18 @@ export interface VendorFileOptions {
 export class VendorService {
   private http = inject(HttpClient);
 
-  getAll(): Observable<Vendor[]> {
-    return this.http.get<Vendor[]>(`${environment.apiUrl}/vendors`);
+  /** 廠商清單（不分頁）；search 有值時後端以關鍵字模糊比對名稱 / 統編 / 身分證字號 / 聯絡人 / 電話 */
+  getAll(search?: string): Observable<Vendor[]> {
+    let params = new HttpParams();
+    if (search) params = params.set('search', search);
+    return this.http.get<Vendor[]>(`${environment.apiUrl}/vendors`, {params});
+  }
+
+  /** 廠商清單（分頁）；search 同 getAll */
+  getPaged(page: number, pageSize: number, search?: string): Observable<PagedResult<Vendor>> {
+    const params: Record<string, string | number> = {page, pageSize};
+    if (search) params['search'] = search;
+    return this.http.get<PagedResult<Vendor>>(`${environment.apiUrl}/vendors`, {params});
   }
 
   /** 輕量級廠商清單（不需 vendors:read 權限，供下拉選單用；僅回 IsActive=true） */

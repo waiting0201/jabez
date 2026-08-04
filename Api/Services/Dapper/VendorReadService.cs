@@ -1,4 +1,5 @@
 using Dapper;
+using Jabez.Api.Common;
 using Jabez.Api.Models.Dtos;
 using System.Data;
 
@@ -21,17 +22,56 @@ public sealed class VendorReadService(IDbConnection db) : IVendorReadService
                  v.Note, v.IsActive, v.CreatedAt
         """;
 
-    public async Task<IEnumerable<VendorDto>> GetAllAsync()
+    /// <summary>關鍵字篩選片段（模糊比對名稱 / 統編 / 身分證字號 / 聯絡人 / 電話），供 GetAllAsync 與 GetPagedAsync 共用</summary>
+    private static (string WhereClause, string? SearchParam) BuildSearchFilter(string? search)
     {
-        const string sql = $"""
+        if (string.IsNullOrWhiteSpace(search)) return (string.Empty, null);
+
+        const string clause = """
+            WHERE v.Name LIKE @Search OR v.TaxId LIKE @Search OR v.IdNumber LIKE @Search
+               OR v.ContactPerson LIKE @Search OR v.Phone LIKE @Search
+            """;
+        return (clause, $"%{search.Trim()}%");
+    }
+
+    /// <summary>廠商清單（不分頁，供下拉 / 匯出等情境）；search 有值時以關鍵字模糊比對</summary>
+    public async Task<IEnumerable<VendorDto>> GetAllAsync(string? search = null)
+    {
+        var (whereClause, searchParam) = BuildSearchFilter(search);
+
+        var sql = $"""
             {BaseSelect}
+            {whereClause}
             {GroupByCols}
             ORDER BY v.Name
             """;
 
-        var rows = await db.QueryAsync<dynamic>(sql);
+        var rows = await db.QueryAsync<dynamic>(sql, new { Search = searchParam });
 
         return rows.Select(MapVendor);
+    }
+
+    /// <summary>廠商清單（分頁）；search 有值時以關鍵字模糊比對名稱 / 統編 / 身分證字號 / 聯絡人 / 電話</summary>
+    public async Task<PagedResult<VendorDto>> GetPagedAsync(int page, int pageSize, string? search = null)
+    {
+        var (whereClause, searchParam) = BuildSearchFilter(search);
+
+        var countSql = $"SELECT COUNT(*) FROM Vendors v {whereClause}";
+        var sql = $"""
+            {BaseSelect}
+            {whereClause}
+            {GroupByCols}
+            ORDER BY v.Name
+            OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
+            """;
+
+        var param = new { Search = searchParam, Skip = (page - 1) * pageSize, Take = pageSize };
+
+        int total = await db.ExecuteScalarAsync<int>(countSql, param);
+        var rows = await db.QueryAsync<dynamic>(sql, param);
+        int totalPages = (int)Math.Ceiling((double)total / pageSize);
+
+        return new PagedResult<VendorDto>(rows.Select(MapVendor), total, page, pageSize, Math.Max(1, totalPages));
     }
 
     /// <summary>輕量級廠商清單（供下拉選單，不需 vendors:read 權限；僅回 IsActive=1）</summary>

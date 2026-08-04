@@ -50,9 +50,20 @@ public sealed class VendorHandler(
             : new OkObjectResult(ApiResponse.Ok(result));
     }
 
-    public async Task<IActionResult> GetAllAsync()
+    public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
-        var vendors = await reader.GetAllAsync();
+        string? search = req.Query["search"];
+
+        // 有分頁參數 → 回傳 PagedResult；無分頁參數 → 回傳平面陣列（供下拉選單用）
+        if (req.Query.ContainsKey("page") || req.Query.ContainsKey("pageSize"))
+        {
+            int page     = int.TryParse(req.Query["page"],     out var p)  ? Math.Max(1, p)         : 1;
+            int pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, 100) : 20;
+            var result = await reader.GetPagedAsync(page, pageSize, search);
+            return new OkObjectResult(ApiResponse.Ok(result));
+        }
+
+        var vendors = await reader.GetAllAsync(search);
         return new OkObjectResult(ApiResponse.Ok(vendors));
     }
 

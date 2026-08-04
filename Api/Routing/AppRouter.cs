@@ -170,7 +170,7 @@ public sealed class AppRouter(
             // ── Vendors（廠商管理）─────────────────────────────────────────
             ("GET",    ["vendors", "lookup"])              => await vendors.GetLookupAsync(),
             ("GET",    ["vendors", "lookup-by-tax-id"])    => await vendors.LookupByTaxIdAsync(req),
-            ("GET",    ["vendors"])                   => await vendors.GetAllAsync(),
+            ("GET",    ["vendors"])                   => await vendors.GetAllAsync(req),
             ("POST",   ["vendors"])                   => await vendors.CreateAsync(req),
             ("GET",    ["vendors", var id])           => await vendors.GetByIdAsync(id),
             ("PUT",    ["vendors", var id])           => await vendors.UpdateAsync(req, id),
