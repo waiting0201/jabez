@@ -471,6 +471,48 @@ returned ──(DELETE supplements/{n} 主動放棄)──→ 同上回滾
 
 ---
 
+## 銷假重跑請假簽核（2026-08 新增）
+
+已核准的請假可提出**銷假申請**，逐日勾選要取消的日期，送出後**重跑一次原本的請假簽核流程**。業務規則（可銷條件 / 逐日部分銷假 / 下游影響）詳見 [leave-rules.md §銷假規則](leave-rules.md#銷假規則2026-08-新增)，此處只講簽核掛接。
+
+### 與「追加預支」的關鍵差異：獨立子單，父單不動
+
+| | 追加預支（advance） | 銷假（leave_revocation） |
+|---|---|---|
+| 資料模型 | 批次掛回父單（`AdvanceRequestSupplement` + `RoundNo`） | **獨立子單** `LeaveRevocation`（自帶 ApprovalStatus / CurrentStepOrder / ApprovalItemId） |
+| 送簽期間父單狀態 | 轉 `pending`（沖銷等下游需另外守門） | **完全不動，維持 `approved`** —— 打卡阻擋 / 額度佔用 / 重疊驗證自動維持「仍在請假中」 |
+| 被拒 / 放棄 | 需 `Prev*` 快照 + `RollbackAsync` 回滾父單 | **零回滾** —— 只改子單狀態 |
+| 簽核紀錄隔離 | 同一 `ApplicationType="advance"`，靠 `RoundNo` 分批次 | 換 `ApplicationType`，天然隔離 |
+
+### applicationType 的兩個用途要分開
+
+| 用途 | 傳入值 | 原因 |
+|---|---|---|
+| `ApprovalFlowService.ResolveApprovalItemIdAsync`（挑流程設定） | **`"leave"`** | 直接複用請假的 ApprovalItem + Steps，管理端不需另設銷假流程。前端「簽核流程設定」的類型下拉刻意**不含**銷假（[approval-list.ts](../../Admin/src/app/features/admin/approvals/pages/approval-list/approval-list.ts)），設了也不會生效 |
+| `ResolveStartingStepAsync` / `ApprovalRecord` / `RequestDesignatedReviewer` / `EscalationOverride` / 簽核任務 | **`"leave_revocation"`** | `ApprovalRecord` 是多型 `(ApplicationType, ApplicationId)`，兩者 Id 同為 int 序列會撞號；不隔離會讓「此人已在先前步驟核准過此申請」誤擋原假單的審核者 |
+
+### requestDays 帶「原假單天數」
+
+`MinDays` 天數門檻分流以 `(OriginalHours ?? Hours) / 8` 計算，讓銷假走到與原假單**完全相同**的那組關卡（5 天假銷 1 天，仍回到單位主管 + 部門最高主管 + 總監）。兩處必須同源：
+
+- 送出：[`LeaveRevocationHandler.SubmitAsync`](../../Api/Handlers/LeaveRevocationHandler.cs)
+- 每次審核推進：[`ApprovalTaskHandler`](../../Api/Handlers/ApprovalTaskHandler.cs) 的 `requestDays` switch（漏改會讓送出時被 MinDays 跳過的關卡在推進時又冒出來，卡死在無審核者的步驟）
+
+### 沿用請假的其餘規則
+
+- **自審**：Group A 全程禁止自審（`ApprovalFlowService` 的 Group B 否定清單不含銷假，自動落入 Group A）
+- **升級審核**：自審時嘗試升級，且與請假一樣**停在總監之前**（`EscalationService` 的 `stopBeforeDirector`）
+- **指定審核**：流程含「申請人指定審核」步驟時，銷假表單同樣要挑指定審核者（designee 以 `RequestType="leave_revocation"` 儲存）
+- **退回重送**：清本單 `ApprovalRecords` / `EscalationOverrides`、重置 designee 為 pending，與請假 `SubmitAsync` 同一段邏輯
+
+### 核准當下的副作用
+
+`ApprovalTaskHandler` 的 `case "leave_revocation"` 在 `ProcessReviewAsync` 之後，若狀態轉 `approved` 才呼叫 [`LeaveRevocationService.ApplyAsync`](../../Api/Services/LeaveRevocationService.cs)（同交易），從「該假單所有已核准銷假單的 distinct 日期」整組重算父單 `Hours`，全銷則轉 `cancelled`，並通知職務代理人。
+
+> **實作陷阱**：`ApplyAsync` 執行時本張銷假單的 `ApprovalStatus="approved"` 尚在 ChangeTracker、還沒進 DB，只查 DB 會漏掉自己 —— 故明確併入自己的日期（取聯集，重複套用仍收斂）。
+
+---
+
 ## 跨步驟同人去重（限縮：總監 OR 相鄰 step）
 
 > **2026-05 規則限縮**：原本「全歷史」去重對所有審核者生效，過於激進；非總監若在跨多個 step 後再回到同一審核者，可能是流程設計需要分階段把關。新規則只對「總監 (`JobTitle.Level == 1`)」或「相鄰 step 同人」自動跳過 + 代簽，其餘場景要求重新審核。

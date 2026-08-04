@@ -22,4 +22,6 @@ public class ApprovalItem
     public ICollection<OvertimeRequest>  OvertimeRequests { get; set; } = [];
     public ICollection<AdvanceRequest>   AdvanceRequests  { get; set; } = [];
     public ICollection<TravelPaymentRequest> TravelPaymentRequests { get; set; } = [];
+    /// <summary>銷假申請沿用 ApplicationType="leave" 的流程設定，故掛在同一個 ApprovalItem 底下</summary>
+    public ICollection<LeaveRevocation>      LeaveRevocations      { get; set; } = [];
 }

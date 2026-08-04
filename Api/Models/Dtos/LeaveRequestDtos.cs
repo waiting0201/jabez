@@ -19,7 +19,8 @@ public sealed record LeaveRequestDto(
     DesignatedReviewerDto[]? DesignatedReviewers = null,
     string?   TimeUnit             = null,
     Guid?     AgentUserId          = null,
-    string?   AgentName            = null);
+    string?   AgentName            = null,
+    decimal?  OriginalHours        = null);   // 有值代表曾銷假；原始請假時數
 
 public sealed record CreateLeaveRequestRequest(
     Guid?    EmployeeId,

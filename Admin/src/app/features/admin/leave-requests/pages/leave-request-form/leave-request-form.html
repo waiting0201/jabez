@@ -4,6 +4,13 @@
       <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
     </a>
     <h4 class="mb-0">{{ isEdit ? (isReadOnly ? '檢視請假申請' : (isReturned ? '修改請假申請' : '編輯請假草稿')) : '新增請假申請' }}</h4>
+    @if (canRevoke) {
+      <a [routerLink]="['/admin/leave-requests', requestId, 'revoke']"
+         class="btn btn-warning inline-flex items-center gap-1 ms-auto">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#x-circle"></use></svg>
+        銷假
+      </a>
+    }
   </div>
 
   @if (errorMsg()) {

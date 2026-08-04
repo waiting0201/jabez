@@ -159,6 +159,19 @@ public sealed record LeaveTaskDetailDto(
     decimal  Hours,
     string   Reason);
 
+/// <summary>銷假申請詳情（含原請假單資訊與被取消的逐日清單）</summary>
+public sealed record LeaveRevocationTaskDetailDto(
+    int      LeaveRevocationId,
+    int      LeaveRequestId,
+    string   LeaveType,
+    DateTime LeaveStartDate,
+    DateTime LeaveEndDate,
+    decimal  LeaveHours,           // 原請假時數（OriginalHours ?? Hours）
+    string   LeaveReason,
+    decimal  RevokedHours,
+    string   Reason,
+    LeaveRevocationDateDto[] Dates);
+
 /// <summary>假日活動每位人員（申請人 + 參與者）的津貼預估，依 round(BaseSalary / 30) × HolidayDays 計算，與 PayrollReadService 一致</summary>
 public sealed record HolidayAllowanceDto(
     Guid    UserId,
@@ -239,7 +252,8 @@ public sealed record ApprovalTaskDto(
     DesignatedReviewerDto[]?    DesignatedReviewers     = null,
     string?                     SubmittedBySignatureUrl = null,
     TravelPaymentTaskDetailDto? TravelPaymentDetail     = null,   // 出差請款申請詳情
-    PreReviewTaskDetailDto?     PreReviewDetail         = null);  // 預審申請詳情
+    PreReviewTaskDetailDto?     PreReviewDetail         = null,   // 預審申請詳情
+    LeaveRevocationTaskDetailDto? LeaveRevocationDetail = null);  // 銷假申請詳情
 
 /// <summary>簽核作業「申請人」下拉選項（僅財務體系部門可取得）。</summary>
 public sealed record ApprovalTaskApplicantDto(Guid Id, string Name);

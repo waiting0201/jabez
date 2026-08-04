@@ -44,6 +44,13 @@ public sealed class AttendanceReminderReadService(IDbConnection db)
                       AND  lr.ApprovalStatus = 'approved'
                       AND  lr.StartDate <= @TargetTime
                       AND  lr.EndDate   >= @TargetTime
+                      -- 該日已核准銷假 → 恢復推播提醒
+                      AND  NOT EXISTS (
+                            SELECT 1 FROM LeaveRevocationDates rvd
+                            JOIN LeaveRevocations rv ON rv.Id = rvd.LeaveRevocationId
+                            WHERE rv.LeaveRequestId = lr.Id
+                              AND rv.ApprovalStatus = 'approved'
+                              AND rvd.Date = CAST(@TargetTime AS DATE))
                    )
             """;
 

@@ -45,6 +45,10 @@
                 </td>
                 <td>
                   <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
+                  @if (isPartiallyRevoked(r)) {
+                    <span class="badge bg-warning-subtle text-warning-emphasis ms-1"
+                          [title]="'原 ' + r.originalHours + ' 小時，已銷 ' + revokedHours(r) + ' 小時'">部分銷假</span>
+                  }
                 </td>
                 <td class="text-muted small hidden lg:table-cell">{{ r.createdAt | date:'yyyy-MM-dd' }}</td>
                 <td class="text-right" style="white-space: nowrap">
@@ -62,6 +66,11 @@
                       <a [routerLink]="[r.id, 'edit']" class="btn btn-sm btn-ghost-secondary inline-flex items-center" title="檢視">
                         <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#eye"></use></svg>
                       </a>
+                      @if (canRevoke(r)) {
+                        <a [routerLink]="[r.id, 'revoke']" class="btn btn-sm btn-ghost-warning inline-flex items-center" title="銷假">
+                          <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#x-circle"></use></svg>
+                        </a>
+                      }
                     }
                   </div>
                 </td>

@@ -41,32 +41,7 @@ public sealed class LeaveRequestHandler(
     /// 除歲時祭儀假（依法為連續日曆天）外皆適用；產假區間仍為起始日 +55 天，但只計其中工作日。
     /// 前端 WORKING_DAY_LEAVE_TYPES 須與此保持同步。
     /// </summary>
-    private static readonly HashSet<string> WorkingDayLeaveTypes =
-        ["annual", "personal", "sick", "compensatory", "official", "senior_executive",
-         "marriage", "maternity", "bereavement",
-         "miscarriage_3m", "miscarriage_2to3m", "miscarriage_under2m",
-         "prenatal_checkup", "paternity", "menstrual"];
-
-    /// <summary>各假別時間單位對應</summary>
-    private static readonly Dictionary<string, LeaveTimeUnit> TimeUnitMap = new()
-    {
-        ["personal"]            = LeaveTimeUnit.Hour,
-        ["sick"]                = LeaveTimeUnit.Hour,
-        ["prenatal_checkup"]    = LeaveTimeUnit.Hour,
-        ["paternity"]           = LeaveTimeUnit.Hour,
-        ["annual"]              = LeaveTimeUnit.HalfDay,
-        ["compensatory"]        = LeaveTimeUnit.HalfDay,
-        ["senior_executive"]    = LeaveTimeUnit.HalfDay,
-        ["official"]            = LeaveTimeUnit.Day,
-        ["marriage"]            = LeaveTimeUnit.Day,
-        ["maternity"]           = LeaveTimeUnit.Day,
-        ["bereavement"]         = LeaveTimeUnit.Day,
-        ["ceremonial_festival"] = LeaveTimeUnit.Day,
-        ["miscarriage_3m"]      = LeaveTimeUnit.Day,
-        ["miscarriage_2to3m"]   = LeaveTimeUnit.Day,
-        ["miscarriage_under2m"] = LeaveTimeUnit.Day,
-        ["menstrual"]           = LeaveTimeUnit.Day,
-    };
+    private static readonly HashSet<string> WorkingDayLeaveTypes = LeaveDayExpander.WorkingDayLeaveTypes;
 
     /// <summary>高階主管假可申請之最高職級（JobTitle.Level 數字越小層級越高）</summary>
     private const int SeniorExecMaxLevel = 3;
@@ -95,18 +70,11 @@ public sealed class LeaveRequestHandler(
         ["paternity"]           = 7,
     };
 
-    /// <summary>取得指定假別的時間單位</summary>
-    private static LeaveTimeUnit GetTimeUnit(string leaveType) =>
-        TimeUnitMap.TryGetValue(leaveType, out var u) ? u : LeaveTimeUnit.Hour;
+    /// <summary>取得指定假別的時間單位（單一真相在 LeaveDayExpander，與逐日展開共用）</summary>
+    private static LeaveTimeUnit GetTimeUnit(string leaveType) => LeaveDayExpander.GetTimeUnit(leaveType);
 
     /// <summary>時間單位轉字串（前端使用）</summary>
-    private static string TimeUnitToString(LeaveTimeUnit unit) => unit switch
-    {
-        LeaveTimeUnit.Hour    => "hour",
-        LeaveTimeUnit.HalfDay => "half_day",
-        LeaveTimeUnit.Day     => "day",
-        _                     => "hour",
-    };
+    private static string TimeUnitToString(LeaveTimeUnit unit) => LeaveDayExpander.TimeUnitToString(unit);
 
     /// <summary>喪假親屬關係對應天數上限</summary>
     private static readonly Dictionary<string, int> BereavementDaysLimit = new()
@@ -1094,9 +1062,10 @@ public sealed class LeaveRequestHandler(
     // ── Overlap Validation ───────────────────────────────────────────────────
 
     /// <summary>
-    /// 檢查同員工同期間是否有重疊申請（draft / pending / approved）。
+    /// 檢查同員工同期間是否有重疊申請（draft / pending / approved；cancelled 已由 SQL 排除）。
     /// 產假已有獨立 active 檢查（CreateAsync 中），此處跳過避免重複訊息；
     /// 但其他假別仍會檢查與既有產假的重疊（重疊 SQL 不限假別）。
+    /// 部分銷假：若既有假單與本次重疊的日子已全數被核准銷假，該筆不算衝突（讓挖空的日子可重新申請）。
     /// </summary>
     /// <returns>衝突時回傳中文錯誤訊息；無衝突回 null</returns>
     private async Task<string?> CheckOverlapAsync(
@@ -1106,6 +1075,7 @@ public sealed class LeaveRequestHandler(
         if (leaveType == "maternity") return null;
 
         var conflicts = (await reader.GetOverlappingRequestsAsync(employeeId, startDate, endDate, excludeId)).ToList();
+        conflicts = await FilterFullyRevokedAsync(conflicts, startDate, endDate);
         if (conflicts.Count == 0) return null;
 
         var lines = conflicts.Take(3).Select(c =>
@@ -1115,6 +1085,38 @@ public sealed class LeaveRequestHandler(
         });
         var more = conflicts.Count > 3 ? $"\n（另有 {conflicts.Count - 3} 筆…）" : "";
         return $"申請期間與既有申請衝突，請調整或先處理既有申請：\n{string.Join("\n", lines)}{more}";
+    }
+
+    /// <summary>
+    /// 剔除「與本次申請重疊的日子已全數被核准銷假」的既有假單。
+    /// 逐日比對，故支援部分銷假挖空中間日後重新申請該日的情境。
+    /// </summary>
+    private async Task<List<OverlappingLeaveRequestDto>> FilterFullyRevokedAsync(
+        List<OverlappingLeaveRequestDto> conflicts, DateTime startDate, DateTime endDate)
+    {
+        if (conflicts.Count == 0) return conflicts;
+
+        var ids = conflicts.Select(c => c.Id).ToList();
+        var revoked = await db.LeaveRevocationDates
+            .AsNoTracking()
+            .Where(d => ids.Contains(d.LeaveRevocation!.LeaveRequestId)
+                     && d.LeaveRevocation.ApprovalStatus == "approved")
+            .Select(d => new { d.LeaveRevocation!.LeaveRequestId, d.Date })
+            .ToListAsync();
+        if (revoked.Count == 0) return conflicts;
+
+        var revokedByLeave = revoked
+            .GroupBy(r => r.LeaveRequestId)
+            .ToDictionary(g => g.Key, g => g.Select(r => r.Date.Date).ToHashSet());
+
+        return [.. conflicts.Where(c =>
+        {
+            if (!revokedByLeave.TryGetValue(c.Id, out var revokedDates)) return true;
+            // 重疊區間（日層級）內只要還有任一天未被銷假，即仍算衝突
+            var from = c.StartDate.Date > startDate.Date ? c.StartDate.Date : startDate.Date;
+            var to   = c.EndDate.Date   < endDate.Date   ? c.EndDate.Date   : endDate.Date;
+            return WorkCalendarHelper.EnumerateDates(from, to).Any(d => !revokedDates.Contains(d));
+        })];
     }
 
     // ── Quota Validation ─────────────────────────────────────────────────────

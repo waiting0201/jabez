@@ -10,7 +10,7 @@ export type LeaveType =
 /** 時間單位：小時 / 半天(4hr) / 整天(8hr) */
 export type LeaveTimeUnit = 'hour' | 'half_day' | 'day';
 
-export type ApprovalStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'returned';
+export type ApprovalStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'returned' | 'cancelled';
 
 export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
   annual:              '年假(特休假)',
@@ -170,6 +170,7 @@ export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
   approved: '已核准',
   rejected: '已拒絕',
   returned: '退回修改',
+  cancelled: '已銷假',
 };
 
 export const APPROVAL_STATUS_CLASSES: Record<ApprovalStatus, string> = {
@@ -178,6 +179,7 @@ export const APPROVAL_STATUS_CLASSES: Record<ApprovalStatus, string> = {
   approved: 'bg-success-subtle text-success',
   rejected: 'bg-danger-subtle text-danger',
   returned: 'bg-secondary-subtle text-secondary',
+  cancelled: 'bg-secondary-subtle text-secondary',
 };
 
 // ── 介面定義 ──
@@ -201,7 +203,8 @@ export interface LeaveRequest {
   leaveType: LeaveType;
   startDate: string;
   endDate: string;
-  hours: number;
+  hours: number;              // 剩餘有效時數（銷假核准後遞減）
+  originalHours?: number;     // 原始請假時數；有值代表曾銷假（部分或全部）
   reason: string;
   approvalStatus: ApprovalStatus;
   bereavementRelationship?: string;

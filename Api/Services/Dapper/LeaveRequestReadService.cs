@@ -9,7 +9,7 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
 {
     private const string BaseSql = """
         SELECT lr.Id, u.Name AS EmployeeName,
-               lr.LeaveType, lr.StartDate, lr.EndDate, lr.Hours, lr.Reason,
+               lr.LeaveType, lr.StartDate, lr.EndDate, lr.Hours, lr.OriginalHours, lr.Reason,
                lr.ApprovalStatus, lr.CreatedAt, lr.ReviewedAt, lr.ReviewNote,
                lr.ApprovalItemId, lr.CurrentStepOrder, lr.ReviewedById,
                lr.BereavementRelationship, lr.AgentUserId, ag.Name AS AgentName
@@ -112,7 +112,8 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
             BereavementRelationship: (string?)row.BereavementRelationship,
             TimeUnit:                GetTimeUnitString(leaveType),
             AgentUserId:             (Guid?)row.AgentUserId,
-            AgentName:               (string?)row.AgentName);
+            AgentName:               (string?)row.AgentName,
+            OriginalHours:           (decimal?)row.OriginalHours);
     }
 
     /// <summary>依假別取得時間單位字串（與 LeaveRequestHandler 保持一致）</summary>

@@ -24,6 +24,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<InvoiceItem>    InvoiceItems    { get; set; }
     public DbSet<PaymentRequestAttachment> PaymentRequestAttachments { get; set; }
     public DbSet<LeaveRequest>   LeaveRequests   { get; set; }
+    public DbSet<LeaveRevocation>     LeaveRevocations     { get; set; }
+    public DbSet<LeaveRevocationDate> LeaveRevocationDates { get; set; }
     public DbSet<TravelRequest>     TravelRequests     { get; set; }
     public DbSet<TravelRequestItem> TravelRequestItems { get; set; }
     public DbSet<ApprovalRecord>   ApprovalRecords   { get; set; }

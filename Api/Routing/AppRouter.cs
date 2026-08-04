@@ -28,6 +28,7 @@ public sealed class AppRouter(
     ProjectHandler         projects,
     PaymentRequestHandler  paymentRequests,
     LeaveRequestHandler    leaveRequests,
+    LeaveRevocationHandler leaveRevocations,
     TravelRequestHandler   travelRequests,
     OvertimeRequestHandler overtimeRequests,
     AttendanceHandler      attendances,
@@ -305,10 +306,21 @@ public sealed class AppRouter(
             ("GET",    ["leave-requests", "senior-executive-quota"]) => await leaveRequests.GetSeniorExecutiveQuotaAsync(req),
             ("GET",    ["leave-requests", "working-days"])        => await leaveRequests.GetWorkingDaysAsync(req),
             ("PATCH",  ["leave-requests", var id, "submit"])      => await leaveRequests.SubmitAsync(req, id),
+            // 銷假子資源必須排在 ["leave-requests", var id] 之前（List Pattern 由上而下比對）
+            ("GET",    ["leave-requests", var id, "revocable-dates"]) => await leaveRevocations.GetRevocableDatesAsync(req, id),
+            ("POST",   ["leave-requests", var id, "revocations"])     => await leaveRevocations.CreateAsync(req, id),
             ("GET",    ["leave-requests", var id])                 => await leaveRequests.GetByIdAsync(req, id),
             ("PUT",    ["leave-requests", var id])                 => await leaveRequests.UpdateAsync(req, id),
             ("PATCH",  ["leave-requests", var id])                 => await leaveRequests.UpdateAsync(req, id),
             ("DELETE", ["leave-requests", var id])                 => await leaveRequests.DeleteAsync(req, id),
+
+            // ── Leave Revocations（銷假；沿用 leave-requests:* 權限） ───────────
+            ("GET",    ["leave-revocations"])                      => await leaveRevocations.GetAllAsync(req),
+            ("PATCH",  ["leave-revocations", var id, "submit"])    => await leaveRevocations.SubmitAsync(req, id),
+            ("GET",    ["leave-revocations", var id])              => await leaveRevocations.GetByIdAsync(req, id),
+            ("PUT",    ["leave-revocations", var id])              => await leaveRevocations.UpdateAsync(req, id),
+            ("PATCH",  ["leave-revocations", var id])              => await leaveRevocations.UpdateAsync(req, id),
+            ("DELETE", ["leave-revocations", var id])              => await leaveRevocations.DeleteAsync(req, id),
 
             // ── Travel Requests ────────────────────────────────────────────────
             ("GET",    ["travel-requests"])                        => await travelRequests.GetAllAsync(req),
@@ -592,6 +604,14 @@ public sealed class AppRouter(
             ("PATCH",  ["leave-requests", _, "submit"])  => PermissionCodes.LeaveRequestsWrite,
             ("PATCH",  ["leave-requests", _])            => PermissionCodes.LeaveRequestsWrite,
             ("DELETE", ["leave-requests", _])            => PermissionCodes.LeaveRequestsDelete,
+            // 銷假是請假的一部分，沿用同一組權限碼（不新增權限，既有角色免重設）
+            // 注意：GET ["leave-requests", ..] 已涵蓋 revocable-dates；POST 子資源不在 ["leave-requests"] 單段內，須另列
+            ("POST",   ["leave-requests", _, "revocations"]) => PermissionCodes.LeaveRequestsWrite,
+            ("GET",    ["leave-revocations", ..])        => PermissionCodes.LeaveRequestsRead,
+            ("POST",   ["leave-revocations", ..])        => PermissionCodes.LeaveRequestsWrite,
+            ("PUT",    ["leave-revocations", ..])        => PermissionCodes.LeaveRequestsWrite,
+            ("PATCH",  ["leave-revocations", ..])        => PermissionCodes.LeaveRequestsWrite,
+            ("DELETE", ["leave-revocations", _])         => PermissionCodes.LeaveRequestsDelete,
 
             // Travel Requests
             ("GET",    ["travel-requests", ..])          => PermissionCodes.TravelRequestsRead,

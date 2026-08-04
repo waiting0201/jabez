@@ -86,6 +86,8 @@ export class ApprovalList {
 
   readonly appTypeLabels  = APPLICATION_TYPE_LABELS;
   readonly appTypeClasses = APPLICATION_TYPE_CLASSES;
+  // 刻意不含 leave_revocation（銷假）：銷假沿用請假的流程設定，
+  // 後端 ResolveApprovalItemIdAsync 固定以 "leave" 解析，另建銷假流程不會生效。
   readonly appTypeOptions: {value: ApplicationType | ''; label: string}[] = [
     {value: '',                label: '通用（不綁定）'},
     {value: 'payment_request', label: '請款申請'},

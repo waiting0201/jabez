@@ -600,6 +600,10 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
                 .ExecuteUpdateAsync(s => s.SetProperty(x => x.ReviewedById, (Guid?)null));
             await db.LeaveRequests.Where(x => x.AgentUserId == guid)
                 .ExecuteUpdateAsync(s => s.SetProperty(x => x.AgentUserId, (Guid?)null));
+            await db.LeaveRevocations.Where(x => x.ReviewedById == guid)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.ReviewedById, (Guid?)null));
+            await db.LeaveRevocations.Where(x => x.EmployeeId == guid)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.EmployeeId, (Guid?)null));
             await db.OvertimeRequests.Where(x => x.ReviewedById == guid)
                 .ExecuteUpdateAsync(s => s.SetProperty(x => x.ReviewedById, (Guid?)null));
             await db.TravelPaymentRequests.Where(x => x.ReviewedById == guid)

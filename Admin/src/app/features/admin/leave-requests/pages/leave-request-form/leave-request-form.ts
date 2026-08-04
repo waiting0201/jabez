@@ -407,6 +407,7 @@ export class LeaveRequestForm implements OnInit {
       this.service.getById(this.requestId).subscribe(r => {
         if (!r) return;
         this.approvalStatus = r.approvalStatus;
+        this._leaveEndDate = r.endDate;
         this.isDraft    = r.approvalStatus === 'draft';
         this.isReturned = r.approvalStatus === 'returned';
         this.isReadOnly = r.approvalStatus !== 'draft' && r.approvalStatus !== 'returned';
@@ -698,6 +699,16 @@ export class LeaveRequestForm implements OnInit {
     const requestDays = this.calculatedHours / 8;
     return requestDays > q.remainingDays;
   }
+
+  /** 可否銷假：已核准且假期尚未結束（後端 LoadRevocableLeaveAsync 有相同守門） */
+  get canRevoke(): boolean {
+    return this.isEdit
+        && this.approvalStatus === 'approved'
+        && this.auth.hasPermission('leave-requests:write')
+        && this._leaveEndDate != null
+        && new Date(this._leaveEndDate).getTime() >= Date.now();
+  }
+  private _leaveEndDate: string | null = null;
 
   /** 表單整體是否可送出 */
   get canSubmit(): boolean {

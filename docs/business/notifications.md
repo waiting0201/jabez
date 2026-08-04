@@ -74,11 +74,14 @@
 | 8 | `NotifyFinanceTravelRefundAsync` | `[需匯款] 出差申請 #{id} 沖銷超額 — 差額 {金額} 元` | financial 部全員 | 出差沖銷核准且金額超過出差金額 | `ApprovalTaskHandler.CloseTravelRequestAsync` |
 | 9 | `NotifyFinanceUpcomingPaymentsAsync` | `[撥款提醒] 您有 N 筆預計撥款日將屆` | 財務體系部門（AC/FIN/Jabez HQ/CEO）全員 | 每日 09:00 (Taipei) TimerTrigger 自動跑，或 Superadmin 手動觸發 | `PaymentReminderService` + `PaymentReminderFunction` |
 
-### 3.2 職務代理人通知（1 種，2026-07 新增）
+### 3.2 職務代理人通知（2 種）
 
 | # | 來源 | 主旨 | 收件人 | 觸發時機 |
 |---|------|------|--------|---------|
-| 11 | `ApprovalNotificationService.NotifyLeaveAgentAsync` | `[職務代理] 您被指定為 {申請人} 的職務代理人` | 請假申請指定的 `AgentUserId`（職務代理人） | 請假**送出時**（含 Superadmin 自動核准）；僅知會、不參與簽核。受 `ApprovalEmailEnabled` 開關；目前僅 Email。 |
+| 11 | `ApprovalNotificationService.NotifyLeaveAgentAsync` | `[職務代理] 您被指定為 {申請人} 的職務代理人` | 請假申請指定的 `AgentUserId`（職務代理人） | 請假**送出時**（含 Superadmin 自動核准）；僅知會、不參與簽核。受 `ApprovalEmailEnabled` 開關；目前僅 Email。（2026-07 新增） |
+| 12 | `ApprovalNotificationService.NotifyLeaveRevocationAgentAsync` | 全銷 → `[職務代理] {申請人} 已銷假，代理職務解除`；部分銷 → `[職務代理] {申請人} 已部分銷假，代理期間調整` | 原請假單的 `AgentUserId` | **銷假核准時**（含 Superadmin 自動核准）；信中列出被取消的日期與剩餘請假時數。受 `ApprovalEmailEnabled` 開關；目前僅 Email。（2026-08 新增） |
+
+> **銷假申請（`leave_revocation`）的審核通知**走通用簽核通知（待審核 / 審核結果），申請類型名稱為「銷假申請」，摘要格式為「取消{假別} N 天 / M 小時（MM/dd、MM/dd…）」。
 
 ### 3.3 帳號通知（1 種）
 

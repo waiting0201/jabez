@@ -1,8 +1,9 @@
-export type ApplicationType = 'payment_request' | 'leave' | 'travel' | 'overtime' | 'advance' | 'write_off' | 'travel_write_off' | 'holiday_travel' | 'travel_payment' | 'pre_review';
+export type ApplicationType = 'payment_request' | 'leave' | 'leave_revocation' | 'travel' | 'overtime' | 'advance' | 'write_off' | 'travel_write_off' | 'holiday_travel' | 'travel_payment' | 'pre_review';
 
 export const APPLICATION_TYPE_LABELS: Record<ApplicationType, string> = {
   payment_request:  '請款申請',
   leave:            '請假申請',
+  leave_revocation: '銷假申請',
   travel:           '出差預支申請',
   overtime:         '加班申請',
   advance:          '預支申請',
@@ -16,6 +17,7 @@ export const APPLICATION_TYPE_LABELS: Record<ApplicationType, string> = {
 export const APPLICATION_TYPE_CLASSES: Record<ApplicationType, string> = {
   payment_request:  'bg-info-subtle text-info',
   leave:            'bg-success-subtle text-success',
+  leave_revocation: 'bg-warning-subtle text-warning-emphasis',
   travel:           'bg-primary-subtle text-primary',
   overtime:         'bg-warning-subtle text-warning-emphasis',
   advance:          'bg-purple-subtle text-purple',

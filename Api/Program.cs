@@ -104,6 +104,7 @@ var host = new HostBuilder()
         services.AddScoped<IProjectReadService, ProjectReadService>();
         services.AddScoped<IPaymentRequestReadService, PaymentRequestReadService>();
         services.AddScoped<ILeaveRequestReadService, LeaveRequestReadService>();
+        services.AddScoped<ILeaveRevocationReadService, LeaveRevocationReadService>();
         services.AddScoped<ITravelRequestReadService, TravelRequestReadService>();
         services.AddScoped<IOvertimeRequestReadService, OvertimeRequestReadService>();
         services.AddScoped<IAttendanceReadService, AttendanceReadService>();
@@ -141,6 +142,7 @@ var host = new HostBuilder()
         services.AddScoped<ProjectHandler>();
         services.AddScoped<PaymentRequestHandler>();
         services.AddScoped<LeaveRequestHandler>();
+        services.AddScoped<LeaveRevocationHandler>();
         services.AddScoped<TravelRequestHandler>();
         services.AddScoped<ApprovalTaskHandler>();
         services.AddScoped<OvertimeRequestHandler>();

@@ -111,6 +111,13 @@
 | GET | `/leave-requests/bereavement-quota?relationship={rel}` | 查詢喪假配額（依親屬關係 3/6/8 天） |
 | GET | `/leave-requests/senior-executive-eligibility` | 查詢高階主管假適用性（JobTitle.Level ≤ 3） |
 | GET | `/leave-requests/senior-executive-quota` | 查詢高階主管假額度（每年 20 天，曆年歸零） |
+| GET | `/leave-requests/{id}/revocable-dates[?excludeRevocationId=]` | **銷假**：可銷假日期逐日清單（已排除已核准銷假日、進行中銷假單佔用的日、今天以前的日；編輯草稿時以 `excludeRevocationId` 排除自己） |
+| POST | `/leave-requests/{id}/revocations` | 新增銷假草稿（`dates[]` + `reason` + `designatedReviewers[]`） |
+| GET | `/leave-revocations` | 銷假列表（非 Superadmin 只看自己） |
+| GET | `/leave-revocations/{id}` | 銷假單筆（含逐日清單 + 指定審核者 + 原假單資訊） |
+| PUT/PATCH | `/leave-revocations/{id}` | 更新銷假（僅 draft / returned；逐日明細整批替換） |
+| DELETE | `/leave-revocations/{id}` | 刪除銷假（僅 draft / returned；一併清 ApprovalRecords / EscalationOverrides / RequestDesignatedReviewers） |
+| PATCH | `/leave-revocations/{id}/submit` | 送出銷假（draft/returned → pending，**重跑一次原本的請假簽核流程**） |
 | GET | `/leave-requests/working-days?start=&end=&leaveType=` | 計算扣除國定假日與六日後的實際請假日清單與天數（工作日型假別才扣假日＝除歲時祭儀假外的 15 種；任何登入者可呼叫，免 `calendar-days:read`；回 `hasCalendarData / holidayDates[] / workingDates[] / workingDays`） |
 | GET/POST | `/travel-requests` | 出差預支申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/travel-requests/{id}` | 出差預支申請 CRUD |

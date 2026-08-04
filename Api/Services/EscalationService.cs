@@ -45,8 +45,8 @@ public sealed class EscalationService(AppDbContext db) : IEscalationService
         if (dept is null)
             throw AppException.BadRequest("找不到可審核的主管，無法送出申請。（部門不存在）");
 
-        // 是否停在總監之前
-        bool stopBeforeDirector = applicationType is "leave" or "overtime";
+        // 是否停在總監之前（銷假沿用請假規則）
+        bool stopBeforeDirector = applicationType is "leave" or "leave_revocation" or "overtime";
         // 加班才檢查代理人
         bool checkDelegate = applicationType is "overtime";
 
@@ -150,7 +150,7 @@ public sealed class EscalationService(AppDbContext db) : IEscalationService
         return await query.FirstOrDefaultAsync();
     }
 
-    /// <summary>檢查使用者今天是否請假中（有已核准且涵蓋今天的假單）</summary>
+    /// <summary>檢查使用者今天是否請假中（有已核准且涵蓋今天的假單；今天已核准銷假者不算）</summary>
     private async Task<bool> IsOnLeaveAsync(Guid userId)
     {
         var today = Clock.Today;
@@ -158,6 +158,8 @@ public sealed class EscalationService(AppDbContext db) : IEscalationService
             lr.EmployeeId == userId
             && lr.ApprovalStatus == "approved"
             && lr.StartDate.Date <= today
-            && lr.EndDate.Date >= today);
+            && lr.EndDate.Date >= today
+            && !lr.Revocations.Any(rv => rv.ApprovalStatus == "approved"
+                                      && rv.Dates.Any(d => d.Date == today)));
     }
 }

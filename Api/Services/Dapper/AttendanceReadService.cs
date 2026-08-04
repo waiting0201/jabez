@@ -27,6 +27,13 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
             AND CAST(a.RecordDate AS DATE) >= CAST(lr.StartDate AS DATE)
             AND CAST(a.RecordDate AS DATE) <= CAST(lr.EndDate AS DATE)
             AND lr.ApprovalStatus = 'approved'
+            -- 該日已核准銷假 → 不再視為請假日（部分銷假可挖空中間日）
+            AND NOT EXISTS (
+                SELECT 1 FROM LeaveRevocationDates rvd
+                JOIN LeaveRevocations rv ON rv.Id = rvd.LeaveRevocationId
+                WHERE rv.LeaveRequestId = lr.Id
+                  AND rv.ApprovalStatus = 'approved'
+                  AND rvd.Date = CAST(a.RecordDate AS DATE))
         """;
 
     private const string CountFromSql = """
@@ -108,13 +115,20 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
     public async Task<ActiveLeaveDto?> GetActiveLeaveAtAsync(Guid userId, DateTime when)
     {
         const string sql = """
-            SELECT TOP 1 Id, LeaveType, StartDate, EndDate
-            FROM   LeaveRequests
-            WHERE  EmployeeId = @UserId
-              AND  ApprovalStatus = 'approved'
-              AND  StartDate <= @When
-              AND  @When < EndDate
-            ORDER BY StartDate ASC
+            SELECT TOP 1 lr.Id, lr.LeaveType, lr.StartDate, lr.EndDate
+            FROM   LeaveRequests lr
+            WHERE  lr.EmployeeId = @UserId
+              AND  lr.ApprovalStatus = 'approved'
+              AND  lr.StartDate <= @When
+              AND  @When < lr.EndDate
+              -- 該日已核准銷假 → 放行打卡
+              AND  NOT EXISTS (
+                    SELECT 1 FROM LeaveRevocationDates rvd
+                    JOIN LeaveRevocations rv ON rv.Id = rvd.LeaveRevocationId
+                    WHERE rv.LeaveRequestId = lr.Id
+                      AND rv.ApprovalStatus = 'approved'
+                      AND rvd.Date = CAST(@When AS DATE))
+            ORDER BY lr.StartDate ASC
             """;
         var row = await db.QueryFirstOrDefaultAsync<dynamic>(sql, new { UserId = userId, When = when });
         return row is null ? null : MapActiveLeaveRow(row);
@@ -123,13 +137,20 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
     public async Task<IReadOnlyList<ActiveLeaveDto>> GetLeavesOnDateAsync(Guid userId, DateOnly date)
     {
         const string sql = """
-            SELECT Id, LeaveType, StartDate, EndDate
-            FROM   LeaveRequests
-            WHERE  EmployeeId = @UserId
-              AND  ApprovalStatus = 'approved'
-              AND  StartDate <  @NextDay
-              AND  EndDate   >  @DayStart
-            ORDER BY StartDate ASC
+            SELECT lr.Id, lr.LeaveType, lr.StartDate, lr.EndDate
+            FROM   LeaveRequests lr
+            WHERE  lr.EmployeeId = @UserId
+              AND  lr.ApprovalStatus = 'approved'
+              AND  lr.StartDate <  @NextDay
+              AND  lr.EndDate   >  @DayStart
+              -- 該日已核准銷假 → 該日不再算請假（休假日免下班卡的判定同步排除）
+              AND  NOT EXISTS (
+                    SELECT 1 FROM LeaveRevocationDates rvd
+                    JOIN LeaveRevocations rv ON rv.Id = rvd.LeaveRevocationId
+                    WHERE rv.LeaveRequestId = lr.Id
+                      AND rv.ApprovalStatus = 'approved'
+                      AND rvd.Date = CAST(@DayStart AS DATE))
+            ORDER BY lr.StartDate ASC
             """;
         var dayStart = date.ToDateTime(TimeOnly.MinValue);
         var nextDay  = dayStart.AddDays(1);
