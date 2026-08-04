@@ -1,18 +1,18 @@
 import {Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
-import {DatePipe} from '@angular/common';
+import {DatePipe, DecimalPipe} from '@angular/common';
 import {HolidayTravelRequestService} from '../../services/holiday-travel-request.service';
 import {HolidayTravelPdfService} from '../../services/holiday-travel-pdf.service';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
 import {ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
-import {HolidayTravelRequest, TravelParticipant, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/holiday-travel-request.model';
+import {HolidayTravelRequest, TravelParticipant, PARTICIPANT_SLOT_LABELS, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/holiday-travel-request.model';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 
 @Component({
   selector: 'app-holiday-travel-detail',
   templateUrl: './holiday-travel-detail.html',
-  imports: [RouterLink, DatePipe, ApprovalTimeline, InstallmentsTable],
+  imports: [RouterLink, DatePipe, DecimalPipe, ApprovalTimeline, InstallmentsTable],
 })
 export class HolidayTravelDetail implements OnInit {
   private service     = inject(HolidayTravelRequestService);
@@ -41,12 +41,13 @@ export class HolidayTravelDetail implements OnInit {
 
   get pdfLoading() { return this.pdfService.pdfLoading; }
 
-  /** 參與人員個人參與日期（M/d 頓號分隔；無日期＝全程參與，回空字串） */
+  /** 參與人員個人參與日期（M/d，半天附時段；頓號分隔；無日期＝全程參與，回空字串） */
   participantDates(p: TravelParticipant): string {
     return (p.dates ?? [])
       .map(d => {
-        const [, m, day] = String(d).slice(0, 10).split('-');
-        return `${+m}/${+day}`;
+        const [, m, day] = String(d.date).slice(0, 10).split('-');
+        const md = `${+m}/${+day}`;
+        return d.slot === 'full' ? md : `${md} ${PARTICIPANT_SLOT_LABELS[d.slot]}`;
       })
       .join('、');
   }

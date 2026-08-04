@@ -162,7 +162,9 @@ export interface TravelTaskDetailItem {
 export interface HolidayAllowance {
   userId: string;
   userName: string;
-  /** round(BaseSalary / 30) × HolidayDays，與 PayrollReadService 公式一致 */
+  /** 個人假日天數（參與者為 COALESCE(個人, 整單)，逐日勾選上/下半天者為 0.5 的倍數；申請人固定為整單） */
+  days: number;
+  /** round(BaseSalary / 30) × days，與 PayrollReadService 公式一致 */
   allowance: number;
   isApplicant: boolean;
 }

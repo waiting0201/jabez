@@ -155,7 +155,8 @@
           <div class="card-body">
             @if (!isReadOnly) {
               <div class="text-muted small mb-3">
-                每位人員可勾選實際參與日期（可不連續）；<span class="fw-500">未勾選日期者視為全程參與</span>。
+                每位人員可勾選實際參與日期（可不連續）；點擊日期依序切換
+                <span class="fw-500">全天 → 上午 → 下午 → 取消</span>，半天以 0.5 天計；<span class="fw-500">未勾選日期者視為全程參與</span>。
               </div>
               @if (chipsTooLong()) {
                 <div class="text-warning small mb-3 flex items-center gap-1">
@@ -205,8 +206,15 @@
                                   [class.btn-outline-danger]="chip.isHoliday && !isDateSelected(entry, chip.date)"
                                   [class.btn-primary]="!chip.isHoliday && isDateSelected(entry, chip.date)"
                                   [class.btn-outline-secondary]="!chip.isHoliday && !isDateSelected(entry, chip.date)"
-                                  (click)="toggleDate(entry, chip.date)">
+                                  [attr.aria-label]="chip.label + ' ' + (slotOf(entry, chip.date) ? slotLabel[slotOf(entry, chip.date)!] : '未選')"
+                                  (click)="cycleDate(entry, chip.date)">
                             {{ chip.label }}@if (chip.isHoliday) { <span class="ms-1">假</span> }
+                            @if (slotOf(entry, chip.date); as slot) {
+                              @if (slot !== 'full') {
+                                <span class="badge bg-white text-dark ms-1 align-middle"
+                                      style="font-size:.65rem; padding:.1rem .3rem; font-weight:600">{{ slotLabel[slot] }}</span>
+                              }
+                            }
                           </button>
                         }
                       }

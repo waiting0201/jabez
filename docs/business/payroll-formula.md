@@ -2,9 +2,10 @@
 
 1. **日薪** = 底薪 ÷ 30（四捨五入至整數）
 2. **假日津貼** = 日薪 × 假日執行活動天數（**上個月**歸月：以已核准假日執行活動申請的 `EndDate` 所屬月份歸月，獎金計入次月薪資。例：3 月活動 → 4 月薪資；跨月活動（如 3/30~4/2）EndDate=4/2 歸 4 月 → 5 月薪資）
-   - **申請人**：領整單 `HolidayDays`（活動全期間的假日天數，Submit 時依行事曆快照）。
-   - **參與執行人員**：`COALESCE(TravelRequestParticipant.HolidayDays, TravelRequest.HolidayDays)` — 有勾選個人參與日期者領「勾選日期中屬假日的天數」（Submit 時快照）；未勾選（NULL）＝全程參與，沿用整單天數。
+   - **申請人**：領整單 `HolidayDays`（活動全期間的假日天數，Submit 時依行事曆快照；`int`，不逐日、不半天）。
+   - **參與執行人員**：`COALESCE(TravelRequestParticipant.HolidayDays, TravelRequest.HolidayDays)` — 有勾選個人參與日期者領「勾選日期中屬假日者的**時段權重總和**」（全天 1.0 / 上半天 0.5 / 下半天 0.5，Submit 時快照至 `decimal(5,1)`）；未勾選（NULL）＝全程參與，沿用整單天數。
    - 跨月活動不依個人參與日期拆月，一律以整單 `EndDate` 歸月。
+   - **中點捨入**：天數可為 0.5 的倍數，奇數日薪 × .5 天必然落在 `.5` 中點，故金額一律 `Math.Round(日薪 × 天數, 0, MidpointRounding.AwayFromZero)`（`Math.Round` 預設是銀行家捨入，會少 1 元）。[PayrollReadService](../../Api/Services/Dapper/PayrollReadService.cs) 與簽核台預估 [PaymentRequestReadService.BuildHolidayAllowances](../../Api/Services/Dapper/PaymentRequestReadService.cs) 兩處須一致。
 3. **勞保費** = `User.LaborInsuranceOverride ?? lookupBracket(底薪).EmployeeLabor`（覆寫優先；無覆寫則查級距表向上取最近級距）
 4. **健保費** = `(User.HealthInsuranceOverride ?? lookupBracket(底薪).EmployeeHealth) × (1 + min(健保眷屬數, 3))`（覆寫優先；眷屬上限 3 口，第 4 口起不再加；眷屬數來自 `HealthInsuranceDependents` 表）
 5. **事假扣薪** = 日薪 × 事假天數（按天數扣除全額薪資）

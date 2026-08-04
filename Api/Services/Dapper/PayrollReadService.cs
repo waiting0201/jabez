@@ -39,16 +39,17 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
         //    例：4 月薪資只計入 EndDate 落在 3/1~3/31 的活動；跨月活動以 EndDate 所屬月份歸屬
         const string travelSql = """
             ;WITH HolidayTravelDays AS (
-                -- 申請人的假日天數
-                SELECT tr.EmployeeId, tr.HolidayDays
+                -- 申請人的假日天數（整單 int，恆為整數天；CAST 統一型別供 UNION 與 SUM）
+                SELECT tr.EmployeeId, CAST(tr.HolidayDays AS decimal(5,1)) AS HolidayDays
                 FROM TravelRequests tr
                 WHERE tr.IsHolidayTravel = 1
                   AND tr.ApprovalStatus = 'approved'
                   AND tr.EndDate >= @PrevMonthFirstDay
                   AND tr.EndDate <  @CurrMonthFirstDay
                 UNION ALL
-                -- 參與執行人員的假日天數（有勾選參與日期者取個人假日天數；NULL=全程參與，沿用整單）
-                SELECT p.UserId AS EmployeeId, COALESCE(p.HolidayDays, tr.HolidayDays) AS HolidayDays
+                -- 參與執行人員的假日天數（有勾選參與日期者取個人假日天數，含半天 0.5；NULL=全程參與，沿用整單）
+                SELECT p.UserId AS EmployeeId,
+                       CAST(COALESCE(p.HolidayDays, tr.HolidayDays) AS decimal(5,1)) AS HolidayDays
                 FROM TravelRequestParticipants p
                 JOIN TravelRequests tr ON p.TravelRequestId = tr.Id
                 WHERE tr.IsHolidayTravel = 1
@@ -116,7 +117,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 PrevMonthFirstDay = prevMonthFirstDay,
                 CurrMonthFirstDay = firstDay,
             }))
-            .ToDictionary(r => (Guid)r.EmployeeId, r => (int)r.TotalDays);
+            .ToDictionary(r => (Guid)r.EmployeeId, r => (decimal)r.TotalDays);
         var brackets = (await db.QueryAsync<dynamic>(bracketSql)).ToList();
         var adjustments = (await db.QueryAsync<dynamic>(adjustmentSql, new { Year = year, Month = month }))
             .ToDictionary(r => (Guid)r.EmployeeId, r => r);
@@ -158,10 +159,11 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             decimal overseasAllow  = (decimal?)emp.OverseasAllowance    ?? 0m;
             decimal dailySalary    = Math.Round(baseSalary / 30m, 0);
 
-            int holidayDays = travelDays.TryGetValue((Guid)emp.EmployeeId, out var days) ? days : 0;
-            // dailySalary 已四捨五入為整數、holidayDays 為 int，目前乘積必為整數；
-            // 仍包一層 Math.Round 作防禦，未來若改為比例天數計算不會跑出小數金額。
-            decimal holidayAllowance = Math.Round(dailySalary * holidayDays, 0);
+            decimal holidayDays = travelDays.TryGetValue((Guid)emp.EmployeeId, out var days) ? days : 0m;
+            // 參與人員可逐日勾上半天 / 下半天，故 holidayDays 為 0.5 的倍數；
+            // dailySalary 已四捨五入為整數，奇數日薪 × .5 天必然落在中點，
+            // 明確指定 AwayFromZero（Math.Round 預設是銀行家捨入，會少 1 元）。
+            decimal holidayAllowance = Math.Round(dailySalary * holidayDays, 0, MidpointRounding.AwayFromZero);
 
             // 查找級距：第一個 SalaryBracket >= BaseSalary 的級距，若無則取最高級距
             var bracket = brackets.FirstOrDefault(b => (decimal)b.SalaryBracket >= baseSalary)

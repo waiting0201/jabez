@@ -305,6 +305,28 @@ public record CreateUserRequest(
 );
 ```
 
+### 5.4 payload 形狀演進的向後相容 converter
+
+當既有欄位由**純量陣列**擴充成**物件陣列**（例：假日活動參與日期由 `["2026-08-02"]` → `[{date, slot}]`）時，前端部署與後端部署之間有空窗期，舊版 SPA 快取仍會送舊形狀。以屬性層級 `[JsonConverter]` 掛一支同時吃兩種形狀的 converter，把舊形狀補上預設值，避免炸成 500：
+
+```csharp
+[JsonConverter(typeof(FlexibleParticipantDateConverter))]
+public sealed record ParticipantDateRequest(DateTime Date, string? Slot = null);
+```
+
+- 放在 `Api/Common/`，比照既有 [FlexibleDateTimeJsonConverter.cs](../Api/Common/FlexibleDateTimeJsonConverter.cs)（`sealed class : JsonConverter<T>`，`Read` 依 `reader.TokenType` 分流，未知屬性 `reader.Skip()`）
+- 新舊值域的**天數 / 權重換算集中在一個常數類別**（如 `Constants.cs` 的 `ParticipantDateSlots`），`Normalize` / `Weight` 對 null 與未知值一律回退到預設，讓「舊資料」「舊 payload」「DB 預設值」三條路徑收斂到同一行為
+
+### 5.5 欄位型別 `int → decimal` 的連帶檢查（執行期地雷）
+
+放寬數值欄位精度（如個人假日天數因半天改 `decimal(5,1)`）時，`dotnet build` **不會**擋下 Dapper 的 `dynamic` 轉型 —— `(int)row.Xxx` 對 decimal 欄位會在**執行期**丟 `InvalidCastException`。變更欄位型別時必須一併 grep 所有讀取點：
+
+- Dapper mapping 的 `(int)` / `(int?)` 轉型 → 改 `(decimal)` / `(decimal?)`
+- SQL 的 `UNION` / `SUM` 分支 → 顯式 `CAST(... AS decimal(5,1))`，不依賴隱含型別提升
+- 對外 DTO 欄位型別 → 同步放寬（否則 API 回傳仍被截斷）
+- 字串內插的顯示點 → 補格式（`.ToString("0.#")`），避免整數顯示成 `2.0`
+- 完成後必須實際打一次 API 冒煙，不能只看建置結果
+
 ---
 
 ## 6. Dapper vs EF Core 使用原則

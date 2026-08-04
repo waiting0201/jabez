@@ -13,6 +13,11 @@ import {
   DesignatedReviewer,
   HolidayTravelRequest,
   TravelParticipant,
+  ParticipantDate,
+  ParticipantDaySlot,
+  PARTICIPANT_SLOT_LABELS,
+  participantSlotWeight,
+  formatParticipantDays,
 } from '../../models/holiday-travel-request.model';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
@@ -99,11 +104,19 @@ export class HolidayTravelRequestForm implements OnInit {
   participantEntries: {
     sortOrder: number;
     selectedUserId: string | null;
-    selectedDates: string[];
+    selectedDates: ParticipantDate[];
   }[] = [];
+
+  /** chip 四態循環：未選 → 全天 → 上午 → 下午 → 未選（null＝取消勾選） */
+  private static readonly SLOT_CYCLE: Record<ParticipantDaySlot, ParticipantDaySlot | null> = {
+    full: 'am',
+    am:   'pm',
+    pm:   null,
+  };
 
   readonly statusLabel = APPROVAL_STATUS_LABELS;
   readonly statusClass = APPROVAL_STATUS_CLASSES;
+  readonly slotLabel   = PARTICIPANT_SLOT_LABELS;
 
   form = this.fb.group({
     destination: ['', Validators.required],
@@ -189,41 +202,53 @@ export class HolidayTravelRequestForm implements OnInit {
     }
     this.dayChips.set(chips);
     const valid = new Set(chips.map(c => c.date));
-    this.participantEntries.forEach(e => e.selectedDates = e.selectedDates.filter(d => valid.has(d)));
+    this.participantEntries.forEach(e => e.selectedDates = e.selectedDates.filter(d => valid.has(d.date)));
   }
 
-  /** 勾選/取消勾選參與日期 */
-  toggleDate(entry: {selectedDates: string[]}, date: string) {
-    const idx = entry.selectedDates.indexOf(date);
-    if (idx >= 0) entry.selectedDates.splice(idx, 1);
-    else {
-      entry.selectedDates.push(date);
-      entry.selectedDates.sort();
+  /** 點擊參與日期 chip：未選 → 全天 → 上午 → 下午 → 未選 */
+  cycleDate(entry: {selectedDates: ParticipantDate[]}, date: string) {
+    const idx = entry.selectedDates.findIndex(d => d.date === date);
+    if (idx < 0) {
+      entry.selectedDates.push({date, slot: 'full'});
+      entry.selectedDates.sort((a, b) => a.date.localeCompare(b.date));
+      return;
     }
+    const next = HolidayTravelRequestForm.SLOT_CYCLE[entry.selectedDates[idx].slot];
+    if (next === null) entry.selectedDates.splice(idx, 1);
+    else entry.selectedDates[idx] = {date, slot: next};
   }
 
-  isDateSelected(entry: {selectedDates: string[]}, date: string): boolean {
-    return entry.selectedDates.includes(date);
+  /** 該日已選的時段；未選回 null */
+  slotOf(entry: {selectedDates: ParticipantDate[]}, date: string): ParticipantDaySlot | null {
+    return entry.selectedDates.find(d => d.date === date)?.slot ?? null;
   }
 
-  /** 該列摘要：已選 N 天（假日 M 天）/ 全程參與（假日 X 天） */
-  participantSummary(entry: {selectedDates: string[]}): string {
+  isDateSelected(entry: {selectedDates: ParticipantDate[]}, date: string): boolean {
+    return this.slotOf(entry, date) !== null;
+  }
+
+  /** 該列摘要：已選 N 天（假日 M 天）/ 全程參與（假日 X 天）；半天以 0.5 天計 */
+  participantSummary(entry: {selectedDates: ParticipantDate[]}): string {
     if (entry.selectedDates.length === 0) {
       const total = this.holidayDays();
       return total !== null ? `全程參與（假日 ${total} 天）` : '全程參與';
     }
-    if (this.holidayDaysNoCalendar()) return `已選 ${entry.selectedDates.length} 天`;
+    const total = entry.selectedDates.reduce((sum, d) => sum + participantSlotWeight(d.slot), 0);
+    if (this.holidayDaysNoCalendar()) return `已選 ${formatParticipantDays(total)} 天`;
     const holidaySet = this.holidayDateSet();
-    const holidayCount = entry.selectedDates.filter(d => holidaySet.has(d)).length;
-    return `已選 ${entry.selectedDates.length} 天（假日 ${holidayCount} 天）`;
+    const holidayTotal = entry.selectedDates
+      .filter(d => holidaySet.has(d.date))
+      .reduce((sum, d) => sum + participantSlotWeight(d.slot), 0);
+    return `已選 ${formatParticipantDays(total)} 天（假日 ${formatParticipantDays(holidayTotal)} 天）`;
   }
 
-  /** 唯讀顯示：M/d 格式日期清單（頓號分隔） */
-  formatDates(entry: {selectedDates: string[]}): string {
+  /** 唯讀顯示：M/d 格式日期清單，半天附時段（頓號分隔） */
+  formatDates(entry: {selectedDates: ParticipantDate[]}): string {
     return entry.selectedDates
-      .map(date => {
-        const [, m, d] = date.split('-');
-        return `${+m}/${+d}`;
+      .map(d => {
+        const [, m, day] = d.date.split('-');
+        const md = `${+m}/${+day}`;
+        return d.slot === 'full' ? md : `${md} ${this.slotLabel[d.slot]}`;
       })
       .join('、');
   }
@@ -316,14 +341,16 @@ export class HolidayTravelRequestForm implements OnInit {
         // 回填日期後查詢假日天數
         this.onDateChange();
 
-        // 回填參與執行人員（dates 正規化為 yyyy-MM-dd）
+        // 回填參與執行人員（dates 正規化為 {date: yyyy-MM-dd, slot}；slot 缺席＝全天）
         if (r.participants?.length) {
           this.participantEntries = r.participants
             .sort((a, b) => a.sortOrder - b.sortOrder)
             .map(p => ({
               sortOrder: p.sortOrder,
               selectedUserId: p.userId,
-              selectedDates: (p.dates ?? []).map(d => String(d).slice(0, 10)).sort(),
+              selectedDates: (p.dates ?? [])
+                .map(d => ({date: String(d.date).slice(0, 10), slot: d.slot ?? 'full'}))
+                .sort((a, b) => a.date.localeCompare(b.date)),
             }));
         }
 
@@ -429,10 +456,14 @@ export class HolidayTravelRequestForm implements OnInit {
       if (project?.code) fd.append('projectCode', project.code);
     }
 
-    // 參與執行人員（dates 空陣列＝全程參與）
+    // 參與執行人員（dates 空陣列＝全程參與；每個日期帶 slot：full / am / pm）
     const participants = this.participantEntries
       .filter(e => e.selectedUserId)
-      .map(e => ({userId: e.selectedUserId!, sortOrder: e.sortOrder, dates: e.selectedDates}));
+      .map(e => ({
+        userId: e.selectedUserId!,
+        sortOrder: e.sortOrder,
+        dates: e.selectedDates.map(d => ({date: d.date, slot: d.slot})),
+      }));
     if (participants.length > 0) {
       fd.append('participants', JSON.stringify(participants));
     }

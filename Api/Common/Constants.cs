@@ -163,3 +163,27 @@ public static class DepartmentCodes
             "Brand Department(疆界地域美學)",
         };
 }
+
+/// <summary>
+/// 假日執行活動參與人員逐日時段（DB 值 + 天數權重的單一真相）。
+/// 前端對應定義見 holiday-travel-request.model.ts 的 ParticipantDaySlot / PARTICIPANT_SLOT_LABELS，兩處須同步。
+/// </summary>
+public static class ParticipantDateSlots
+{
+    public const string Full = "full";
+    public const string Am   = "am";
+    public const string Pm   = "pm";
+
+    /// <summary>時段對應天數權重：全天 1.0、上/下半天 0.5；未知 / 空值一律視為全天（向後相容 Slot 欄位上線前的舊資料）</summary>
+    public static decimal Weight(string? slot) => slot switch
+    {
+        Am or Pm => 0.5m,
+        _        => 1m,
+    };
+
+    /// <summary>正規化：null / 空字串 / 未知值 → full</summary>
+    public static string Normalize(string? slot) => slot is Am or Pm ? slot : Full;
+
+    /// <summary>驗證用：空值視為合法（等同 full），其餘只接受 full / am / pm</summary>
+    public static bool IsValid(string? slot) => string.IsNullOrEmpty(slot) || slot is Full or Am or Pm;
+}
