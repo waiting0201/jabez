@@ -818,7 +818,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         // 假日活動參與者（不含申請人本人；申請人在 holidayTravelSql 已帶 ApplicantBaseSalary）
         // 用於假日津貼預估顯示，金額計算公式與 PayrollReadService 一致
         const string holidayParticipantsSql = """
-            SELECT p.TravelRequestId, p.UserId, u.Name AS UserName, u.BaseSalary, p.SortOrder
+            SELECT p.TravelRequestId, p.UserId, u.Name AS UserName, u.BaseSalary, p.SortOrder,
+                   CAST(COALESCE(p.HolidayDays, tr.HolidayDays) AS decimal(5,1)) AS HolidayDays
             FROM TravelRequestParticipants p
             JOIN TravelRequests tr ON p.TravelRequestId = tr.Id
             LEFT JOIN Users u      ON p.UserId = u.Id
@@ -1136,8 +1137,9 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             overtimeProjectDict.TryGetValue(id, out var ps) && ps.Count > 0 ? [.. ps] : null;
 
         // Holiday travel participants lookup keyed by TravelRequestId
-        // 每筆只存 (UserId, UserName, BaseSalary)；津貼金額在 mapper 內依 HolidayDays 計算
-        var holidayParticipantsDict = new Dictionary<int, List<(Guid UserId, string UserName, decimal? BaseSalary)>>();
+        // 每筆存 (UserId, UserName, BaseSalary, HolidayDays)；HolidayDays 已在 SQL 取 COALESCE(個人, 整單)，
+        // 與 PayrollReadService 同一真相（有勾選參與日期者為個人天數，含半天 0.5）
+        var holidayParticipantsDict = new Dictionary<int, List<(Guid UserId, string UserName, decimal? BaseSalary, decimal HolidayDays)>>();
         foreach (var hp in holidayParticipantRows)
         {
             int trId = (int)hp.TravelRequestId;
@@ -1146,26 +1148,29 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             holidayParticipantsDict[trId].Add((
                 (Guid)hp.UserId,
                 (string?)hp.UserName ?? "—",
-                (decimal?)hp.BaseSalary));
+                (decimal?)hp.BaseSalary,
+                (decimal?)hp.HolidayDays ?? 0m));
         }
 
         // 計算單筆假日活動的所有人員（申請人 + 參與者）津貼明細
-        // 公式：round(BaseSalary / 30) × HolidayDays，與 PayrollReadService.CalculateMonthlyPayrollAsync 一致
-        HolidayAllowanceDto[] BuildHolidayAllowances(int trId, Guid applicantId, string applicantName, decimal? applicantBaseSalary, int holidayDays)
+        // 公式：round(BaseSalary / 30) × 個人假日天數（半天 0.5），與 PayrollReadService.CalculateMonthlyPayrollAsync 一致
+        // 申請人固定領整單 HolidayDays（不逐日勾選）；參與者領 COALESCE(個人, 整單)
+        HolidayAllowanceDto[] BuildHolidayAllowances(int trId, Guid applicantId, string applicantName, decimal? applicantBaseSalary, decimal requestHolidayDays)
         {
-            static int Allowance(decimal? baseSalary, int days)
+            static int Allowance(decimal? baseSalary, decimal days)
                 => baseSalary is { } bs && bs > 0 && days > 0
-                    ? (int)Math.Round(bs / 30m, 0) * days
+                    ? (int)Math.Round(Math.Round(bs / 30m, 0) * days, 0, MidpointRounding.AwayFromZero)
                     : 0;
 
             var list = new List<HolidayAllowanceDto>
             {
-                new(applicantId, applicantName, Allowance(applicantBaseSalary, holidayDays), IsApplicant: true),
+                new(applicantId, applicantName, requestHolidayDays,
+                    Allowance(applicantBaseSalary, requestHolidayDays), IsApplicant: true),
             };
             if (holidayParticipantsDict.TryGetValue(trId, out var participants))
             {
-                foreach (var (uid, name, bs) in participants)
-                    list.Add(new HolidayAllowanceDto(uid, name, Allowance(bs, holidayDays), IsApplicant: false));
+                foreach (var (uid, name, bs, days) in participants)
+                    list.Add(new HolidayAllowanceDto(uid, name, days, Allowance(bs, days), IsApplicant: false));
             }
             return [.. list];
         }

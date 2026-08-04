@@ -13,7 +13,7 @@ public sealed record EmployeePayrollDto(
     decimal   MealAllowance,
     decimal   OvertimePay,
     decimal   DailySalary,
-    int       HolidayTravelDays,
+    decimal   HolidayTravelDays,   // 半天以 0.5 計（假日活動參與人員可逐日勾上/下半天）
     decimal   HolidayAllowance,
     decimal   OtherAddition,
     string?   OtherAdditionNote,

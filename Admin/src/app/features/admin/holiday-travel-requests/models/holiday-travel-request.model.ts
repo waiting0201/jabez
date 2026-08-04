@@ -28,14 +28,43 @@ export interface DesignatedReviewer {
   comment?: string;
 }
 
+/**
+ * 參與時段：全天 / 上半天 / 下半天（半天以 0.5 天計入假日津貼）。
+ * 需與後端 Constants.cs 的 ParticipantDateSlots 保持同步。
+ */
+export type ParticipantDaySlot = 'full' | 'am' | 'pm';
+
+export const PARTICIPANT_SLOT_LABELS: Record<ParticipantDaySlot, string> = {
+  full: '全天',
+  am:   '上午',
+  pm:   '下午',
+};
+
+/** 時段天數權重：全天 1、上/下半天 0.5 */
+export function participantSlotWeight(slot: ParticipantDaySlot): number {
+  return slot === 'full' ? 1 : 0.5;
+}
+
+/** 天數顯示：整數不補小數（3）、半天顯示一位（2.5） */
+export function formatParticipantDays(days: number): string {
+  return Number.isInteger(days) ? String(days) : days.toFixed(1);
+}
+
+/** 個人參與日期 + 時段 */
+export interface ParticipantDate {
+  /** yyyy-MM-dd */
+  date: string;
+  slot: ParticipantDaySlot;
+}
+
 /** 參與執行人員 */
 export interface TravelParticipant {
   userId: string;
   userName?: string;
   sortOrder: number;
-  /** 個人參與日期（yyyy-MM-dd；空/未提供＝全程參與） */
-  dates?: string[];
-  /** 個人假日天數（Submit 時後端計算；null＝全程參與，沿用整單 holidayDays） */
+  /** 個人參與日期（空/未提供＝全程參與） */
+  dates?: ParticipantDate[];
+  /** 個人假日天數（Submit 時後端計算，半天以 0.5 計；null＝全程參與，沿用整單 holidayDays） */
   holidayDays?: number | null;
 }
 

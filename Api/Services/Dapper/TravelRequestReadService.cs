@@ -93,7 +93,8 @@ public sealed class TravelRequestReadService(IDbConnection db, IInstallmentReadS
 
         // 額外查詢出差參與者（假日執行活動才需要，但統一回傳；LEFT JOIN 個人參與日期後以 trp.Id 分組）
         const string participantSql = """
-            SELECT trp.Id, trp.UserId, u.Name AS UserName, trp.SortOrder, trp.HolidayDays, d.Date
+            SELECT trp.Id, trp.UserId, u.Name AS UserName, trp.SortOrder, trp.HolidayDays,
+                   d.Date, d.Slot
             FROM TravelRequestParticipants trp
             JOIN Users u ON trp.UserId = u.Id
             LEFT JOIN TravelRequestParticipantDates d ON d.TravelRequestParticipantId = trp.Id
@@ -106,13 +107,17 @@ public sealed class TravelRequestReadService(IDbConnection db, IInstallmentReadS
             .Select(g =>
             {
                 var first = g.First();
-                var dates = g.Where(r => r.Date is not null).Select(r => (DateTime)r.Date).ToArray();
+                var dates = g.Where(r => r.Date is not null)
+                             .Select(r => new ParticipantDateDto(
+                                 (DateTime)r.Date,
+                                 ParticipantDateSlots.Normalize((string?)r.Slot)))
+                             .ToArray();
                 return new ParticipantDto(
                     (Guid)first.UserId,
                     (string)first.UserName,
                     (int)first.SortOrder,
                     dates.Length > 0 ? dates : null,
-                    (int?)first.HolidayDays);
+                    (decimal?)first.HolidayDays);   // decimal(5,1)：半天以 0.5 計，不可轉 int
             })
             .OrderBy(p => p.SortOrder)
             .ToArray();

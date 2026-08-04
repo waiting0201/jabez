@@ -1,3 +1,6 @@
+using System.Text.Json.Serialization;
+using Jabez.Api.Common;
+
 namespace Jabez.Api.Models.Dtos;
 
 // ── 明細項目 DTO ────────────────────────────────────────────────────────────
@@ -29,10 +32,19 @@ public sealed record TravelRequestItemRequest(
 
 // ── 參與者 DTO ────────────────────────────────────────────────────────────
 
-public sealed record ParticipantRequest(Guid UserId, int SortOrder, DateTime[]? Dates = null);
+/// <summary>
+/// 參與日期 + 時段（Slot：full / am / pm，缺席＝full）。
+/// 相容舊版前端送出的純日期字串，見 <see cref="FlexibleParticipantDateConverter"/>。
+/// </summary>
+[JsonConverter(typeof(FlexibleParticipantDateConverter))]
+public sealed record ParticipantDateRequest(DateTime Date, string? Slot = null);
+
+public sealed record ParticipantDateDto(DateTime Date, string Slot);
+
+public sealed record ParticipantRequest(Guid UserId, int SortOrder, ParticipantDateRequest[]? Dates = null);
 
 public sealed record ParticipantDto(Guid UserId, string UserName, int SortOrder,
-                                    DateTime[]? Dates = null, int? HolidayDays = null);
+                                    ParticipantDateDto[]? Dates = null, decimal? HolidayDays = null);
 
 // ── 主申請單 DTO ────────────────────────────────────────────────────────────
 

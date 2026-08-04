@@ -10,6 +10,10 @@ public class TravelRequestParticipantConfiguration : IEntityTypeConfiguration<Tr
     {
         builder.HasKey(p => p.Id);
 
+        // 半天以 0.5 計，故為 decimal（92 天上限，decimal(5,1) 足夠）
+        builder.Property(p => p.HolidayDays)
+               .HasColumnType("decimal(5,1)");
+
         builder.HasIndex(p => new { p.TravelRequestId, p.UserId })
                .IsUnique();
 

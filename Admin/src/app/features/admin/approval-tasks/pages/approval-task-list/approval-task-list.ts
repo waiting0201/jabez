@@ -285,7 +285,8 @@ export class ApprovalTaskList {
       const list = t.travelDetail.holidayAllowances ?? [];
       const head = `${t.travelDetail.destination}・${days} 天`;
       if (list.length === 0) return head;
-      const parts = list.map(a => `${a.userName} ${a.allowance.toLocaleString()} 元`).join('、');
+      // 每人天數可因逐日勾選（含上/下半天）而與整單不同，故逐一列出
+      const parts = list.map(a => `${a.userName} ${a.days} 天 ${a.allowance.toLocaleString()} 元`).join('、');
       return `${head}｜${parts}`;
     }
     if (t.travelDetail) {

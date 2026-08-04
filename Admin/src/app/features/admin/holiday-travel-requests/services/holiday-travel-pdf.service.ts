@@ -94,7 +94,7 @@ export class HolidayTravelPdfService {
       y += 6;
       lv('活動主旨及內容：', r.purpose || '', mx, y);
 
-      // ── 參與執行人員（有勾選參與日期者附註日期；未列日期＝全程參與）──
+      // ── 參與執行人員（有勾選參與日期者附註日期＋半天時段；未列日期＝全程參與）──
       if (r.participants && r.participants.length > 0) {
         y += 6;
         const names = r.participants
@@ -102,8 +102,9 @@ export class HolidayTravelPdfService {
           .map(p => {
             const name = p.userName || p.userId;
             const dates = (p.dates ?? []).map(d => {
-              const [, m, day] = String(d).slice(0, 10).split('-');
-              return `${+m}/${+day}`;
+              const [, m, day] = String(d.date).slice(0, 10).split('-');
+              const md = `${+m}/${+day}`;
+              return d.slot === 'full' ? md : `${md}${d.slot === 'am' ? '上午' : '下午'}`;
             });
             return dates.length > 0 ? `${name}（${dates.join('、')}）` : name;
           })
@@ -121,7 +122,7 @@ export class HolidayTravelPdfService {
           y += 5;
           doc.setFontSize(8);
           doc.setTextColor(...CIS.textMuted);
-          doc.text('未列參與日期者為全程參與。', mx + lw, y);
+          doc.text('未列參與日期者為全程參與；未標示時段者為全天。', mx + lw, y);
           doc.setFontSize(9.5);
           doc.setTextColor(...CIS.textPrimary);
         }

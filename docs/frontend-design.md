@@ -532,6 +532,36 @@ switchTab(tab: 'tab1' | 'tab2') {
 - 防呆：區間超過 **92 天**時停用 chips 並顯示警告文字（`text-warning small`），視為預設行為
 - 唯讀模式改為純文字顯示已勾日期清單（`M/d、M/d`）或預設行為文字
 
+實例：`leave-revocation-form.html` 逐日銷假 chips（單純兩態 toggle）。
+
+**變體：chip 四態循環（帶時段）** — 每個勾選日除了「選 / 不選」還要再分時段時（如假日執行活動的參與人員可指定全天 / 上半天 / 下半天），**不新增下拉或額外按鈕**，改讓同一顆 chip 循環：**未選 → 全天 → 上午 → 下午 → 未選**。
+
+```html
+<button type="button" class="btn btn-sm rounded-pill"
+        [class.btn-danger]="chip.isHoliday && isDateSelected(entry, chip.date)"
+        [class.btn-outline-danger]="chip.isHoliday && !isDateSelected(entry, chip.date)"
+        [class.btn-primary]="!chip.isHoliday && isDateSelected(entry, chip.date)"
+        [class.btn-outline-secondary]="!chip.isHoliday && !isDateSelected(entry, chip.date)"
+        [attr.aria-label]="chip.label + ' ' + (slotOf(entry, chip.date) ? slotLabel[slotOf(entry, chip.date)!] : '未選')"
+        (click)="cycleDate(entry, chip.date)">
+  {{ chip.label }}@if (chip.isHoliday) { <span class="ms-1">假</span> }
+  @if (slotOf(entry, chip.date); as slot) {
+    @if (slot !== 'full') {
+      <span class="badge bg-white text-dark ms-1 align-middle"
+            style="font-size:.65rem; padding:.1rem .3rem; font-weight:600">{{ slotLabel[slot] }}</span>
+    }
+  }
+</button>
+```
+
+關鍵：
+- **色系完全沿用基礎 pattern**（假日 danger / 平日 primary，選中實心 / 未選 outline），時段不佔用色彩語意
+- 「全天」＝純色 chip 無後綴，視覺與兩態 pattern 完全相同；只有半天才疊一顆白底小 pill（`badge bg-white text-dark`），在 danger / primary 兩種底色上對比皆足夠，不需新 token、不需自訂 CSS class
+- 循環表以 `Record<Slot, Slot | null>` 常數表達（`null`＝下一態是取消勾選），不用 if/else 串接
+- summary 與唯讀文字改為**加權天數**：「已選 2 天（假日 1.5 天）」、「8/2、8/3 上午、8/4 下午」；天數格式化統一走 model 的 `formatParticipantDays()`（整數不補小數、半天顯示一位）
+- 卡片上方說明需明寫循環順序：「點擊日期依序切換 **全天 → 上午 → 下午 → 取消**」
+- 時段字面值與權重的單一真相放在 feature model（`ParticipantDaySlot` / `PARTICIPANT_SLOT_LABELS` / `participantSlotWeight`），需與後端 `Constants.cs` 的 `ParticipantDateSlots` 同步
+
 實例：`holiday-travel-request-form.html` 參與執行人員卡片。
 
 **變體：單一集合的逐日勾選（銷假）** — 不隸屬任何 FormArray 列、整張表單只有一組選取時，chips 直接掛在卡片 body，並在卡片 header 右側附「全選 / 全部取消勾選」按鈕：

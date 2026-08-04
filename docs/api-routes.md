@@ -127,8 +127,8 @@
 | PATCH | `/travel-payment-requests/{id}/submit` | 送出出差請款申請（draft → pending） |
 | PATCH | `/travel-payment-requests/{id}/installments` | upsert 分期撥款（同 PaymentRequest 行為） |
 | GET | `/holiday-travel-requests` | 假日執行活動申請列表（共用 TravelRequest，`IsHolidayTravel=true`） |
-| POST | `/holiday-travel-requests` | 新增假日執行活動申請（預設 draft，無 Items 與發票明細） |
-| GET/PUT/PATCH/DELETE | `/holiday-travel-requests/{id}` | 假日執行活動申請 CRUD |
+| POST | `/holiday-travel-requests` | 新增假日執行活動申請（預設 draft，無 Items 與發票明細）；multipart 的 `participants` JSON 中 `dates[]` 元素為 `{date, slot}`（slot：`full` / `am` / `pm`，缺席＝`full`；亦相容舊版純日期字串） |
+| GET/PUT/PATCH/DELETE | `/holiday-travel-requests/{id}` | 假日執行活動申請 CRUD（participants 整組替換，`dates[]` 同上） |
 | PATCH | `/holiday-travel-requests/{id}/submit` | 送出假日執行活動申請（draft → pending） |
 | PATCH | `/holiday-travel-requests/{id}/installments` | upsert 分期撥款（同 PaymentRequest 行為） |
 | GET | `/holiday-travel-requests/count-holidays?startDate=...&endDate=...` | 計算指定區間內的假日天數（用於計算假日津貼）；回傳含 `holidayDates[]`（yyyy-MM-dd 假日清單，供參與日期 chips 標示） |

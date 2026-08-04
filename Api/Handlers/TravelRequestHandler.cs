@@ -409,7 +409,7 @@ public sealed class TravelRequestHandler(
         }
         else if (datesChanged && item.Participants.Any(p => p.Dates.Count > 0))
         {
-            // 防禦分支：未重送 participants 但活動期間變更 → 剪除落出新區間的日期並重算個人假日天數
+            // 防禦分支：未重送 participants 但活動期間變更 → 剪除落出新區間的日期並重算個人假日天數（含時段權重）
             var (hasCalendarData, holidaySet) = await GetHolidaySetAsync(item.StartDate, item.EndDate);
             foreach (var p in item.Participants)
             {
@@ -424,7 +424,10 @@ public sealed class TravelRequestHandler(
                 }
                 p.HolidayDays = p.Dates.Count == 0
                     ? null
-                    : (hasCalendarData ? p.Dates.Count(d => holidaySet.Contains(d.Date.Date)) : 0);
+                    : (hasCalendarData
+                        ? p.Dates.Where(d => holidaySet.Contains(d.Date.Date))
+                                 .Sum(d => ParticipantDateSlots.Weight(d.Slot))
+                        : 0m);
             }
         }
 
@@ -542,7 +545,8 @@ public sealed class TravelRequestHandler(
                     }
                     p.HolidayDays = p.Dates.Count == 0
                         ? null
-                        : p.Dates.Count(d => holidaySet.Contains(d.Date.Date));
+                        : p.Dates.Where(d => holidaySet.Contains(d.Date.Date))
+                                 .Sum(d => ParticipantDateSlots.Weight(d.Slot));
                 }
             }
         }
@@ -754,18 +758,34 @@ public sealed class TravelRequestHandler(
         return userId;
     }
 
-    /// <summary>驗證參與人員的參與日期必須落在活動期間內；回傳錯誤訊息（null = 通過）</summary>
+    /// <summary>
+    /// 驗證參與人員的參與日期：必須落在活動期間內、時段值合法、且同一人同一天不重複
+    /// （同日重複會撞唯一索引 (ParticipantId, Date) 變成 500，這裡先擋成 400）。
+    /// 回傳錯誤訊息（null = 通過）。
+    /// </summary>
     private static string? ValidateParticipantDates(ParticipantRequest[] participants, DateTime startDate, DateTime endDate)
     {
-        var hasOutOfRange = participants.Any(p => p.Dates is { Length: > 0 } &&
-            p.Dates.Any(d => d.Date < startDate.Date || d.Date > endDate.Date));
-        return hasOutOfRange ? "參與日期必須落在活動期間內。" : null;
+        foreach (var p in participants)
+        {
+            if (p.Dates is not { Length: > 0 }) continue;
+
+            if (p.Dates.Any(d => d.Date.Date < startDate.Date || d.Date.Date > endDate.Date))
+                return "參與日期必須落在活動期間內。";
+
+            if (p.Dates.Any(d => !ParticipantDateSlots.IsValid(d.Slot)))
+                return "參與時段只能是 full / am / pm。";
+
+            if (p.Dates.Select(d => d.Date.Date).Distinct().Count() != p.Dates.Length)
+                return "同一位人員的同一天不可重複指定參與時段。";
+        }
+        return null;
     }
 
     /// <summary>
     /// 建立參與人員 entity（含參與日期子集合）。
-    /// 日期正規化（.Date）+ 去重 + 排序；HolidayDays：無勾選日期 = NULL（全程參與），
-    /// 有勾選 = 與行事曆假日交集數（行事曆缺資料時先存 0，Submit 時權威重算）。
+    /// 日期正規化（.Date）+ 依日期去重 + 排序；時段正規化為 full / am / pm。
+    /// HolidayDays：無勾選日期 = NULL（全程參與），
+    /// 有勾選 = Σ(勾選日 ∩ 行事曆假日 的時段權重，full=1.0 / am=pm=0.5)（行事曆缺資料時先存 0，Submit 時權威重算）。
     /// </summary>
     private static List<TravelRequestParticipant> BuildParticipantEntities(
         int travelRequestId, ParticipantRequest[] participants,
@@ -773,10 +793,11 @@ public sealed class TravelRequestHandler(
     {
         return participants.Select(p =>
         {
-            var dates = (p.Dates ?? Array.Empty<DateTime>())
-                .Select(d => d.Date)
-                .Distinct()
-                .OrderBy(d => d)
+            var dates = (p.Dates ?? Array.Empty<ParticipantDateRequest>())
+                .Select(d => new { Date = d.Date.Date, Slot = ParticipantDateSlots.Normalize(d.Slot) })
+                .GroupBy(d => d.Date)          // 同日只留一列（唯一索引保護；已於 Validate 擋下）
+                .Select(g => g.First())
+                .OrderBy(d => d.Date)
                 .ToList();
             return new TravelRequestParticipant
             {
@@ -785,8 +806,13 @@ public sealed class TravelRequestHandler(
                 SortOrder       = p.SortOrder,
                 HolidayDays     = dates.Count == 0
                     ? null
-                    : (hasCalendarData ? dates.Count(holidaySet.Contains) : 0),
-                Dates           = dates.Select(d => new TravelRequestParticipantDate { Date = d }).ToList(),
+                    : (hasCalendarData
+                        ? dates.Where(d => holidaySet.Contains(d.Date))
+                               .Sum(d => ParticipantDateSlots.Weight(d.Slot))
+                        : 0m),
+                Dates           = dates
+                    .Select(d => new TravelRequestParticipantDate { Date = d.Date, Slot = d.Slot })
+                    .ToList(),
             };
         }).ToList();
     }

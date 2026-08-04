@@ -173,7 +173,7 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
         }
         var holidayBg = rowIdx % 2 == 1 ? " style=\"background:#FDFAF5\"" : "";
         earningsRows += $"""
-            <tr{holidayBg}><td style="padding:8px 12px">假日津貼（{emp.HolidayTravelDays} 天）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.HolidayAllowance)}</td></tr>
+            <tr{holidayBg}><td style="padding:8px 12px">假日津貼（{emp.HolidayTravelDays.ToString("0.#")} 天）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.HolidayAllowance)}</td></tr>
             """;
         rowIdx++;
         if (emp.OtherAddition > 0)

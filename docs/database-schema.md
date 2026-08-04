@@ -38,8 +38,8 @@
 | `LeaveRevocationDate` | 銷假的**逐日明細**（Date + Hours）—— 「哪一天被取消」的單一真相，支援挖空中間日的部分銷假。UNIQUE(LeaveRevocationId, Date) |
 | `TravelRequest` | 出差預支申請（含 `RequestNo` 單號 unique index：`IsHolidayTravel=false` → `TR-yyyyMMdd-NNN`、`IsHolidayTravel=true` → `HTR-yyyyMMdd-NNN`，per-prefix-per-day 序號池；含 IsHolidayTravel、IsClosed 結案、GrandTotal 明細合計、`EstimatedRefundDate / RefundedAt / RefundedByUserId` 退款欄位（沖銷超支才用）；撥款資料統一由 `TravelRequestInstallment[]` 表達，父表無撥款 cache 欄位；事後走沖銷流程）。當 `IsHolidayTravel=true`（假日執行活動）時不含 Items 與發票明細，僅記錄活動地點/期間/參與人員 |
 | `TravelRequestItem` | 出差預支明細（交通費、住宿費、餐費、雜支）；假日執行活動不使用 |
-| `TravelRequestParticipant` | 假日執行活動參與執行人員（UserId + SortOrder；唯一索引 `(TravelRequestId, UserId)`；**HolidayDays int?** 個人假日天數：NULL=全程參與沿用整單 HolidayDays，有值=Submit 時依個人參與日期權威計算的快照） |
-| `TravelRequestParticipantDate` | 參與人員個別參與日期（一列一天，可不連續；FK → TravelRequestParticipant Cascade；唯一索引 `(TravelRequestParticipantId, Date)`；無任何列＝全程參與） |
+| `TravelRequestParticipant` | 假日執行活動參與執行人員（UserId + SortOrder；唯一索引 `(TravelRequestId, UserId)`；**HolidayDays decimal(5,1)?** 個人假日天數：NULL=全程參與沿用整單 HolidayDays，有值=Submit 時依個人參與日期 × 時段權重權威計算的快照，**上/下半天以 0.5 計故為 decimal**） |
+| `TravelRequestParticipantDate` | 參與人員個別參與日期（一列一天，可不連續；FK → TravelRequestParticipant Cascade；唯一索引 `(TravelRequestParticipantId, Date)`，**刻意不含 Slot＝一天恆為一列**，同日不可同時上午+下午；無任何列＝全程參與）<br>**Slot nvarchar(4) NOT NULL default `'full'`**：參與時段 `full`（1 天）/ `am`（0.5 天）/ `pm`（0.5 天）；權重換算的單一真相為 `Api/Common/Constants.cs` 的 `ParticipantDateSlots` |
 | `TravelPaymentRequest` | 出差請款申請（含 `RequestNo` 單號 `TPR-yyyyMMdd-NNN` unique index；員工代墊後直接請款，無沖銷流程；撥款資料統一由 `TravelPaymentRequestInstallment[]` 表達，父表無 cache 欄位） |
 | `TravelPaymentRequestItem` | 出差請款明細（交通費、住宿費、餐費、雜支，含發票號碼、發票日期、發票檔案上傳；上傳走 multipart + Azure Blob `invoices` container，前端支援拖放、OCR 自動辨識、HEIC/PDF） |
 | `OvertimeRequest` | 加班申請（走簽核流程）。`EstimatedHours` 為 **`OvertimeRequestProject` 明細的合計快取**，由 Handler 於 Create/Update 重算；原 CSV 欄位 `ProjectIds` 已 DROP |
