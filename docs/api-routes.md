@@ -110,7 +110,7 @@
 | GET | `/leave-requests/maternity-status` | 查詢產假狀態（是否已有活躍申請） |
 | GET | `/leave-requests/bereavement-quota?relationship={rel}` | 查詢喪假配額（依親屬關係 3/6/8 天） |
 | GET | `/leave-requests/senior-executive-eligibility` | 查詢高階主管假適用性（JobTitle.Level ≤ 3） |
-| GET | `/leave-requests/senior-executive-quota` | 查詢高階主管假額度（每年 20 天，曆年歸零） |
+| GET | `/leave-requests/senior-executive-quota` | 查詢高階主管假額度（每年 24 天，曆年歸零；`?year=` 指定年度，預設當年度） |
 | GET | `/leave-requests/{id}/revocable-dates[?excludeRevocationId=]` | **銷假**：可銷假日期逐日清單（已排除已核准銷假日、進行中銷假單佔用的日、今天以前的日；編輯草稿時以 `excludeRevocationId` 排除自己） |
 | POST | `/leave-requests/{id}/revocations` | 新增銷假草稿（`dates[]` + `reason` + `designatedReviewers[]`） |
 | GET | `/leave-revocations` | 銷假列表（非 Superadmin 只看自己） |

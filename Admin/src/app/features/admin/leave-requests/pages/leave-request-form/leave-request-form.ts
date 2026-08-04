@@ -123,7 +123,7 @@ export class LeaveRequestForm implements OnInit {
   /** 高階主管假適用性 */
   seniorExecEligibility = signal<SeniorExecutiveEligibility | null>(null);
 
-  /** 高階主管假額度（每年 20 天，曆年歸零） */
+  /** 高階主管假額度（每年 24 天，曆年歸零；依請假起始日所屬年度查詢） */
   seniorExecQuota = signal<SeniorExecutiveQuota | null>(null);
   seniorExecQuotaLoading = signal(false);
 
@@ -381,6 +381,14 @@ export class LeaveRequestForm implements OnInit {
         this.refreshWorkingDays();
       });
     }
+
+    // 高階主管假額度依「起始日所屬年度」計算 → 起始日跨年時重載額度（同年度不重打 API）
+    this.form.get('startDate')?.valueChanges.subscribe(() => {
+      if (this.isLoadingExisting) return;
+      if (this.selectedLeaveType !== 'senior_executive') return;
+      const year = this.startDateYear;
+      if (year !== null && year !== this.seniorExecQuota()?.year) this.loadSeniorExecQuota();
+    });
 
     // 職務代理人下拉需要全體使用者清單（免 users:read，用輕量 lookup），與指定審核者共用
     this.userSvc.getLookup().subscribe({ next: users => { this.allUsers = users; this.cdr.markForCheck(); } });
@@ -673,7 +681,7 @@ export class LeaveRequestForm implements OnInit {
     return this.selectedLeaveType === 'senior_executive' && !this.isSeniorExecutive();
   }
 
-  /** 高階主管假：是否超過每年 20 天額度 */
+  /** 高階主管假：是否超過該年度 24 天額度 */
   get isSeniorExecExceeded(): boolean {
     if (this.selectedLeaveType !== 'senior_executive') return false;
     const q = this.seniorExecQuota();
@@ -859,12 +867,23 @@ export class LeaveRequestForm implements OnInit {
     });
   }
 
+  /**
+   * 載入高階主管假額度：以請假起始日所屬曆年為基準（未填起始日則由後端預設當年度），
+   * 與後端 ValidateLeaveQuotaAsync 的 item.StartDate.Year 同一口徑。
+   */
   private loadSeniorExecQuota() {
     this.seniorExecQuotaLoading.set(true);
-    this.service.getSeniorExecutiveQuota().subscribe({
-      next: data => { this.seniorExecQuota.set(data); this.seniorExecQuotaLoading.set(false); },
+    this.service.getSeniorExecutiveQuota(this.startDateYear ?? undefined).subscribe({
+      next: data => { this.seniorExecQuota.set(data); this.seniorExecQuotaLoading.set(false); this.cdr.markForCheck(); },
       error: () => this.seniorExecQuotaLoading.set(false),
     });
+  }
+
+  /** 表單起始日所屬曆年（未填或格式不符則為 null） */
+  private get startDateYear(): number | null {
+    const s = this.form.get('startDate')?.value as string | null;
+    const year = s ? Number(s.slice(0, 4)) : NaN;
+    return Number.isInteger(year) && year >= 2000 && year <= 2100 ? year : null;
   }
 
   private loadBereavementQuota(relationship: string) {

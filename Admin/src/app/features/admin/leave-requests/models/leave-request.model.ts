@@ -299,8 +299,9 @@ export interface SeniorExecutiveEligibility {
   jobTitleLevel?: number;
 }
 
-/** 高階主管假額度（每年 20 天，曆年歸零） */
+/** 高階主管假額度（每年 24 天，曆年歸零；year＝額度所屬曆年，依請假起始日決定） */
 export interface SeniorExecutiveQuota {
+  year: number;
   totalDays: number;
   usedDays: number;
   availableDays: number;

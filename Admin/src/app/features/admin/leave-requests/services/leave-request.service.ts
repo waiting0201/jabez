@@ -84,9 +84,11 @@ export class LeaveRequestService {
     return this.http.get<SeniorExecutiveEligibility>(`${environment.apiUrl}/leave-requests/senior-executive-eligibility`);
   }
 
-  /** 查詢當前使用者高階主管假額度（每年 20 天，曆年歸零） */
-  getSeniorExecutiveQuota(): Observable<SeniorExecutiveQuota> {
-    return this.http.get<SeniorExecutiveQuota>(`${environment.apiUrl}/leave-requests/senior-executive-quota`);
+  /** 查詢當前使用者高階主管假額度（每年 24 天，曆年歸零；year 未帶則為當年度） */
+  getSeniorExecutiveQuota(year?: number): Observable<SeniorExecutiveQuota> {
+    return this.http.get<SeniorExecutiveQuota>(`${environment.apiUrl}/leave-requests/senior-executive-quota`, {
+      params: year ? {year} : {},
+    });
   }
 
   /** 依起迄日計算扣除國定假日與六日後的實際請假日清單與天數（工作日型假別才扣假日） */
