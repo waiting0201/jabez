@@ -178,7 +178,7 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/attendances` | 出勤紀錄列表（分頁，套用部門可見性 scope；支援 `?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD` 區間篩選，前端依「日 / 週 / 月」模式換算） |
+| GET | `/attendances` | 出勤紀錄列表（分頁，套用部門可見性 scope；支援 `?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD` 區間篩選，前端依「日 / 週 / 月」模式換算）。**回傳「打卡紀錄 ∪ 當日請假日」合併結果**（`AttendanceLeaveMerger`）：`id = null` 代表當日只有已核准請假、無打卡的**虛擬列**（不可編輯）；另含 `userId` / `leaveHours`（當日時數合計）/ `leaves[]`（當日逐張假單，同日多張合併為一列）。**區間必須有界**：未指定起訖回退近一年，跨度 > 400 天回 400。`?export=true` 時 `pageSize` 上限放寬至 5000（一般為 100） |
 | GET | `/attendances/today` | 今日打卡紀錄（當前使用者；含 `todayLeaves` 陣列：當日所有已核准請假時段，供前端顯示提示與 disable 按鈕；含 `canOvertimeWithoutClockOut` 旗標：今日免下班卡即可打加班開始，與 overtime-start 的放行判定同源；無打卡紀錄時回傳 `Id=0` 空殼仍含請假資訊） |
 | POST | `/attendances/clock-in` | 上班打卡（含 GPS；落在已核准請假 `[StartDate, EndDate)` 區間內會回 BadRequest） |
 | POST | `/attendances/clock-out` | 下班打卡（含 GPS；同上規則） |
@@ -193,7 +193,7 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/attendances` | 出缺勤紀錄列表（共用上方出勤打卡端點，篩選參數：`employeeId / dateFrom / dateTo`） |
+| GET | `/attendances` | 出缺勤紀錄列表（共用上方出勤打卡端點，篩選參數：`employeeId / dateFrom / dateTo / export`；含請假虛擬列，詳見上方說明） |
 | GET | `/reports/overtime` | 加班紀錄報表（已核准的加班申請 + 實際打卡時數，篩選參數：`employeeId / projectId / dateFrom / dateTo`；`projectId` 以 `OvertimeRequestProjects` 的 `EXISTS` 子查詢篩選。每列回 `projects[]` 含各案時數，維持「一張加班單一列」） |
 | GET | `/reports/payment` | 款項統計報表（依類別查詢 6 種付款相關申請）。**必填** `category`（白名單：`all` / `payment` / `advance` / `writeoff` / `travel-payment` / `travel` / `travel-writeoff`，未帶或不合法 → 400）。`all` = 全部，6 種類別主查詢 `UNION ALL` 後依 `CreatedAt DESC` 分頁；明細依各列 `SourceCategory` 分組撈回對應子表。篩選參數：`dateFrom / dateTo / paymentStatus`；`{主表}.CreatedAt` 為 DATETIME，`dateTo` 用 `< DATEADD(day, 1, @DateTo)` 半開區間涵蓋當日 23:59:59。沖銷類無 installments，`paymentStatus` 被忽略（`all` 時此忽略行為一致）。權限：`reports-payment:read`，**不**需要各別 `xxx-requests:read`。 |
 | GET | `/reports/payment/export` | 款項統計匯出（不分頁、**一列一明細**：主表 LEFT JOIN 對應子表（InvoiceItems / AdvanceRequestItems / WriteOffItems / TravelPaymentRequestItems / TravelRequestItems / TravelWriteOffItems），無明細仍輸出 1 列）；參數同上（含 `all`，6 種 export 查詢 `UNION ALL`）；前端依 `category` 對應右側 4 欄表頭（請款/沖銷/出差類別 → 發票號碼/品名/發票日期/金額；預支 → 類別/品名/數量/金額；`all` → 通用 發票號碼/類別、品名、發票日期/數量、金額，明細第 3 欄 per-row 取值）。所有「不適用欄位」皆以 `CAST(NULL AS …)` 明確轉型（裸 `NULL` 會被 SQL Server 視為 int，Dapper 映射 `string?`/`DateTime?` 會拋型別轉換例外 → 500）。 |

@@ -198,6 +198,13 @@ public async Task<IActionResult> GetAllAsync(HttpRequest req)
 ```
 
 - `page` 下限 1、`pageSize` 一律 `Math.Clamp(ps, 1, 100)`，預設 20（**禁止**讓前端指定無上限的 pageSize）
+  - **例外：Excel 匯出模式**。前端匯出需一次取回全部資料，若沿用 100 的上限會被靜默截斷。做法是加 `?export=true` 旗標並改夾到**模組自訂的顯式常數**（如 `AttendanceLeaveMerger.ExportMaxPageSize = 5000`），仍**禁止**無上限：
+    ```csharp
+    bool isExport = req.Query["export"] == "true";
+    int  maxSize  = isExport ? AttendanceLeaveMerger.ExportMaxPageSize : 100;
+    int  pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, maxSize) : 20;
+    ```
+    ⚠️ 已知未修：`/reports/overtime` 與 `/reports/payment` 的前端匯出仍送 `pageSize: 9999` 而後端夾到 100，**兩張報表的 Excel 實際只有 100 筆**，待比照此模式修正
 - ReadService 同時提供 `GetAllAsync(...)` 與 `GetPagedAsync(page, pageSize, ...)`，兩者**共用同一段 WHERE 條件建構**（抽成 private helper，如 [VendorReadService.BuildSearchFilter](../Api/Services/Dapper/VendorReadService.cs)），避免搜尋條件在兩條路徑上分歧
 - `GetPagedAsync` 內另跑一次 `SELECT COUNT(*)` 取 `TotalCount`，回傳 [PagedResult&lt;T&gt;](../Api/Common/PagedResult.cs)；`TotalPages` 以 `Math.Max(1, ceiling)` 保底
 - 關鍵字一律以參數化 `@Search`（`%keyword%`）比對，**禁止**字串串接進 SQL
@@ -448,7 +455,11 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 
 範例：[AdvanceSupplementService.RollbackAsync](../Api/Services/AdvanceSupplementService.cs)（追加預支回滾）— 「駁回」（`ApprovalTaskHandler` advance 分支）與「主動放棄」（`DELETE /advance-requests/{id}/supplements/{n}`）兩個入口共用。回傳需在 `SaveChanges` **之後**刪除的 blob 名稱清單（blob 刪除不可進 DB 交易，失敗也不該讓交易 rollback）。⚠️ 由駁回進來時，本次駁回的 `ApprovalRecord` 還在 ChangeTracker 尚未寫入 DB，`Where(...).ToListAsync()` 抓不到，必須另外掃 `ChangeTracker.Entries<T>()` 把 `Added` 狀態的同批次紀錄 `Detach`，否則 SaveChanges 會留下指向已刪除批次的孤兒紀錄。
 
-範例：[LeaveDayExpander](../Api/Common/LeaveDayExpander.cs)（請假單逐日展開）— 純讀取型 static helper，收 `ICalendarDayReadService`。把一張 `LeaveRequest` 攤成 `List<LeaveDay>{Date, Hours}`，展開規則與 `LeaveRequestHandler.SubmitAsync` 的權威重算一致，保證 `Σ Hours == LeaveRequest.Hours`。消費點：銷假逐日勾選（`GET /leave-requests/{id}/revocable-dates`）與銷假核准後重算父單 `Hours`。假別分類常數 `WorkingDayLeaveTypes` / `TimeUnitMap` / `GetTimeUnit` / `TimeUnitToString` 一併收斂於此，`LeaveRequestHandler` 轉引同一份（避免兩地各留一份而漂移）。
+範例：[LeaveDayExpander](../Api/Common/LeaveDayExpander.cs)（請假單逐日展開）— 純讀取型 static helper，收 `ICalendarDayReadService`。把一張 `LeaveRequest` 攤成 `List<LeaveDay>{Date, Hours}`，展開規則與 `LeaveRequestHandler.SubmitAsync` 的權威重算一致，保證 `Σ Hours == LeaveRequest.Hours`。消費點：銷假逐日勾選（`GET /leave-requests/{id}/revocable-dates`）、銷假核准後重算父單 `Hours`、以及出缺勤報表的請假合併（`AttendanceLeaveMerger`）。假別分類常數 `WorkingDayLeaveTypes` / `TimeUnitMap` / `GetTimeUnit` / `TimeUnitToString` 一併收斂於此，`LeaveRequestHandler` 轉引同一份（避免兩地各留一份而漂移）。另提供 `ExpandAsync(calendarReader, leaveType, startDate, endDate)` overload 供 Dapper 投影使用（展開只讀這三個欄位，不必為此撈出完整 entity）。
+
+範例：[AttendanceLeaveMerger](../Api/Common/AttendanceLeaveMerger.cs)（出缺勤報表「打卡 ∪ 請假日」合併）— 純讀取型 static helper，收 `IAttendanceReadService` + `ICalendarDayReadService` 為參數。合併粒度＝**(員工, 日期) 一列**：有打卡+有請假合併同列、只有請假產 `Id = null` 的虛擬列、沒打卡也沒請假不產列。**刻意不做成 SQL JOIN**：逐日請假時數必須走 `LeaveDayExpander`（C# 的行事曆 + 半天/小時規則），SQL 端複製一份必然漂移；且同日多張假單 JOIN 會產生重複列（舊實作的 `ListSql` / `CountFromSql` 因此 total 與列數不一致）。代價是分頁改為「**區間全量載入 → 記憶體合併 → 記憶體切頁**」，因此：(1) 呼叫端必須把區間收斂在 `MaxRangeDays`（400 天）內，未指定起訖時回退近一年；(2) 排序必須是 total order（日期 DESC → 姓名 Ordinal → `Id ?? int.MaxValue`），否則翻頁會漏列 / 重複列。ReadService 端配合拆成三支純原料查詢：`ListInRangeAsync`（打卡，不分頁）/ `ListApprovedLeavesInRangeAsync`（假單，**不可加銷假過濾** —— 銷假是逐日的，整張單層級過濾會誤刪部分銷假的其餘日子）/ `ListApprovedRevokedDatesAsync`（批次銷假日，空清單提前 return 避免 Dapper 產生 `IN ()`）。
+
+範例：[CachedCalendarDayReadService](../Api/Services/Dapper/CachedCalendarDayReadService.cs)（行事曆快取 decorator）— 包裝 `ICalendarDayReadService`，以「年」為粒度快取 holiday set 與 `HasDataForRange`。解決 `LeaveDayExpander` 逐張假單展開造成的 N+1（N 張假單 2N+ 次 round-trip → 每年度最多 2 次）。**刻意不註冊進 DI**：只在唯讀合併流程中 `new`，生命週期限縮在單次作業，避免與同請求內的行事曆寫入產生陳舊快取。
 
 範例：[LeaveRevocationService.ApplyAsync](../Api/Services/LeaveRevocationService.cs)（銷假核准套用）— 不呼叫 `SaveChanges`，交易邊界交呼叫端（同 `AdvanceSupplementService` 慣例）。**從「該假單所有已核准銷假單的 distinct 日期」整組重算**父單 `Hours`，而非 `Hours -= X`：天然冪等、併發安全，兩張銷假單搶同一天也會收斂。⚠️ 由 `ApprovalTaskHandler` 進來時，本張銷假單的 `ApprovalStatus="approved"` 還在 ChangeTracker 尚未寫入 DB，只查 DB 會漏掉自己 —— 必須明確併入自己的日期（取聯集）。同檔另提供 `NotRevokedClause(alias, dateExpr)` 供下游 Dapper 查詢共用「該日未被核准銷假」的 `NOT EXISTS` 片段（打卡阻擋 / 休假日免下班卡 / 出缺勤報表 / 打卡提醒）。
 

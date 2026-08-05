@@ -26,17 +26,32 @@ public sealed class AttendanceHandler(
     IProjectAccessResolver access,
     ICalendarDayReadService calendarReader)
 {
+    /// <summary>
+    /// 出缺勤列表：回傳「打卡紀錄 ∪ 當日請假日」的合併結果（見 <see cref="AttendanceLeaveMerger"/>）。
+    /// 合併需要逐日展開請假，故查詢區間必須有界：未指定時回退近一年，跨度上限 MaxRangeDays。
+    /// </summary>
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
-        int page     = int.TryParse(req.Query["page"],     out var p)  ? Math.Max(1, p)         : 1;
-        int pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, 100) : 20;
+        // 匯出模式放寬 pageSize 上限（仍為顯式常數，不接受前端任意值）
+        bool isExport = req.Query["export"] == "true";
+        int  maxSize  = isExport ? AttendanceLeaveMerger.ExportMaxPageSize : 100;
 
-        Guid? employeeId   = Guid.TryParse(req.Query["employeeId"], out var eid) ? eid : null;
-        DateOnly? dateFrom = DateOnly.TryParse(req.Query["dateFrom"], out var df) ? df : null;
-        DateOnly? dateTo   = DateOnly.TryParse(req.Query["dateTo"],   out var dt) ? dt : null;
+        int page     = int.TryParse(req.Query["page"],     out var p)  ? Math.Max(1, p)             : 1;
+        int pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, maxSize) : 20;
 
-        var scope = await access.ResolveAsync(req.HttpContext.User);
-        var result = await reader.GetPagedAsync(scope, page, pageSize, employeeId, dateFrom, dateTo);
+        Guid? employeeId = Guid.TryParse(req.Query["employeeId"], out var eid) ? eid : null;
+
+        var dateTo   = DateOnly.TryParse(req.Query["dateTo"],   out var dt) ? dt : DateOnly.FromDateTime(Clock.Today);
+        var dateFrom = DateOnly.TryParse(req.Query["dateFrom"], out var df) ? df : dateTo.AddYears(-1);
+
+        if (dateTo < dateFrom)
+            throw AppException.BadRequest("結束日期不可早於開始日期。");
+        if (dateTo.DayNumber - dateFrom.DayNumber > AttendanceLeaveMerger.MaxRangeDays)
+            throw AppException.BadRequest($"查詢區間請勿超過 {AttendanceLeaveMerger.MaxRangeDays} 天。");
+
+        var scope  = await access.ResolveAsync(req.HttpContext.User);
+        var result = await AttendanceLeaveMerger.BuildPagedAsync(
+            reader, calendarReader, scope, page, pageSize, employeeId, dateFrom, dateTo);
         return new OkObjectResult(ApiResponse.Ok(result));
     }
 

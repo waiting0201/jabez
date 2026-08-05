@@ -327,6 +327,12 @@
 
 已套用：[專案管理](../Admin/src/app/features/admin/projects/pages/project-list/project-list.html)、[廠商管理](../Admin/src/app/features/admin/vendors/pages/vendor-list/vendor-list.html)（推薦以廠商管理為範本，最精簡）。
 
+**報表頁簡化版**：報表頁（出缺勤 / 加班 / 款項統計）改用「共 N 筆，第 x / y 頁 + 上一頁 / 下一頁」兩顆按鈕的簡化列，
+狀態以 `currentPage` / `totalCount` / `totalPages` 三個 signal + `goToPage()` 表達（篩選走使用者主動點「篩選」，
+不走 `toObservable` + `switchMap` 串流）。同樣遵守「按篩選必須 `currentPage.set(1)`」。
+已套用：[加班紀錄](../Admin/src/app/features/admin/reports/pages/overtime-report/overtime-report.html)（範本）、
+[出缺勤紀錄](../Admin/src/app/features/admin/reports/pages/attendance-report/attendance-report.html)。
+
 #### 權限差異化篩選控件（依部門 / 權限顯示）
 
 同一列表的篩選控件可依使用者身分決定是否渲染 —— 以 `computed()` 判定後用 `@if` 包住該控件，**不要**改用 disabled 或隱藏 option：
@@ -1160,7 +1166,12 @@ overtimeStartHint = computed<string>(() => {
 |---|---|
 | 進行中 / 待處理 | `bg-warning-subtle text-warning-emphasis` |
 | 完成 / 已結束 | `bg-primary-subtle text-primary`（CIS 森林綠，與 success 綠形成深淺差別） |
+| 唯讀資料標記（請假 / 分類 / 來源註記） | `bg-primary-subtle text-primary` |
 | 中性附註 | `bg-secondary-subtle text-secondary` |
+
+> ⚠️ `text-*-emphasis` 在 `tailwind.css` **只定義了 `text-warning-emphasis`**，配其他色時不可照抄 warning 的寫法，
+> 一律改用上表既有組合。同一列可能並存多顆徽章時（例：出缺勤紀錄的「系統補卡」黃 + 「請假」綠），
+> **必須挑不同色系**，否則兩顆同色徽章難以分辨。
 
 ### 9.2 跨列表一致性原則（**重要**）
 
@@ -1172,11 +1183,13 @@ overtimeStartHint = computed<string>(() => {
 2. **業務狀態 mapping**（撥款 / 退款 / 結案 etc.）：同上，在來源 feature model 定義 `XXX_STATE_LABELS` / `XXX_STATE_CLASSES`，其他列表 re-export 使用。例如 `PAYMENT_STATE_LABELS` / `PAYMENT_STATE_CLASSES` 來自 payment-request.model。
 3. **status gate（顯示時機）**：跨列表顯示同一筆資料的業務狀態徽章時，gate 條件必須一致。例如撥款徽章在 `payment-list` 是 `approvalStatus ∈ {pending, approved}`；簽核作業列表也須同樣 gate（即使 `pending` 在「待審核 tab」也要顯示「待撥款」黃徽章）。
 4. **per-type 業務規則例外**：簽核作業列表因彙整多種申請類型，可保留 per-type 業務條件（如 write_off / travel_write_off 需「超支」才顯示徽章、holiday_travel 永不顯示等），但**徽章本身的 label/CSS 仍套用共用 mapping**。
+5. **列舉值 → 中文 mapping**（假別、假別分類…）：同樣只在來源 feature model 定義，其他頁 `import` 共用。假別 `LEAVE_TYPE_LABELS`（16 種）的來源是 [leave-request.model.ts](../Admin/src/app/features/admin/leave-requests/models/leave-request.model.ts)；出缺勤紀錄原本自留一份只含 4 種的複本，導致婚假 / 公假 / 產假等直接顯示英文代碼 —— 這正是禁止重複定義的原因。
 
 **Code Review 檢查點：**
 
 - [ ] 新增列表頁顯示審核狀態徽章 → 是否從 `payment-request.model` import `APPROVAL_STATUS_LABELS / CLASSES`？（禁止自行另寫一份）
 - [ ] 新增「待撥款 / 已撥款」徽章 → 是否從 `payment-request.model` import `PAYMENT_STATE_LABELS / CLASSES`？
+- [ ] 顯示假別中文 → 是否從 `leave-request.model` import `LEAVE_TYPE_LABELS`？（禁止只列常用幾種）
 - [ ] 同一筆資料的 status gate 條件是否與既有列表一致？
 
 ---

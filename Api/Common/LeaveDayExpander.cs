@@ -14,6 +14,7 @@ public readonly record struct LeaveDay(DateTime Date, decimal Hours);
 ///   LeaveRevocationHandler  → 逐日勾選銷假（GET /leave-requests/{id}/revocable-dates）
 ///   LeaveRevocationService  → 銷假核准後重算 LeaveRequest.Hours
 ///   LeaveRequestHandler     → 共用假別分類常數（WorkingDayLeaveTypes / GetTimeUnit）
+///   AttendanceLeaveMerger   → 出缺勤報表「打卡 ∪ 請假日」合併時算當日請假時數
 ///
 /// 展開規則與 LeaveRequestHandler 送出時的權威重算完全一致，故 Σ Hours 應等於 LeaveRequest.Hours：
 ///   Day     → 每個工作日 8 小時
@@ -68,6 +69,19 @@ public static class LeaveDayExpander
         LeaveTimeUnit.Day     => "day",
         _                     => "hour",
     };
+
+    /// <summary>
+    /// Dapper 投影專用 overload：展開只讀假別與起訖三個欄位，不必為此撈出完整 LeaveRequest entity。
+    /// 消費點：AttendanceLeaveMerger（出缺勤報表合併請假虛擬列）。
+    /// </summary>
+    public static Task<List<LeaveDay>> ExpandAsync(
+        ICalendarDayReadService calendarReader, string leaveType, DateTime startDate, DateTime endDate) =>
+        ExpandAsync(calendarReader, new LeaveRequest
+        {
+            LeaveType = leaveType,
+            StartDate = startDate,
+            EndDate   = endDate,
+        });
 
     /// <summary>
     /// 把請假單攤成逐日清單（僅含實際請假的日子，假日不產生列）。
