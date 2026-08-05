@@ -208,7 +208,7 @@ Admin/src/app/
     │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出）
     │   ├── attendance-reminder-logs/ # 打卡提醒推播紀錄（僅 Superadmin）
     │   ├── payment-reminder-logs/ # 撥款提醒推播紀錄 + 手動觸發（僅 Superadmin）
-    │   ├── reports/        # 報表（出缺勤 / 加班 / 款項統計 / 專案水位）；款項統計 1 個 endpoint 支援 全部 + 6 個類別 dropdown（全部 / 請款 / 預支 / 預支沖銷 / 出差請款 / 出差預支 / 出差預支沖銷；「全部」為 6 種 UNION ALL），權限只看 `reports-payment:read`，不需各別 `xxx-requests:read`
+    │   ├── reports/        # 報表（出缺勤 / 加班 / 款項統計 / 專案水位）；**出缺勤紀錄列出「打卡紀錄 ∪ 當日請假日」**：全天請假沒打卡的人也會出現一列（`id=null` 虛擬列，上下班留空 + 「請假」badge + 假別 + 當日時數、不可編輯），同日多張假單合併為一列；假別中文 import 自 leave-request.model 的 16 種 LEAVE_TYPE_LABELS；已補上分頁（每頁 20，簡化版上一頁 / 下一頁），Excel 匯出走 `?export=true`；月篩選不再提供「全部年份 / 全部月份」（合併需有界區間）。款項統計 1 個 endpoint 支援 全部 + 6 個類別 dropdown（全部 / 請款 / 預支 / 預支沖銷 / 出差請款 / 出差預支 / 出差預支沖銷；「全部」為 6 種 UNION ALL），權限只看 `reports-payment:read`，不需各別 `xxx-requests:read`
     │   └── settings/       # 系統設定（含 PaymentReminderDaysBefore 撥款提醒天數）
     └── error/
         └── pages/ (error-403, error-404, error-500)
@@ -344,7 +344,8 @@ Api/
 │       ├── AdvanceRequestReadService.cs
 │       ├── WriteOffRequestReadService.cs
 │       ├── TravelWriteOffRequestReadService.cs
-│       ├── AttendanceReadService.cs
+│       ├── AttendanceReadService.cs        # 出缺勤三支原料查詢：ListInRangeAsync（打卡，不分頁）/ ListApprovedLeavesInRangeAsync（假單）/ ListApprovedRevokedDatesAsync（銷假日，批次），合併與切頁由 AttendanceLeaveMerger 負責
+│       ├── CachedCalendarDayReadService.cs  # 行事曆快取 decorator（以年為粒度），解 LeaveDayExpander 逐張假單展開的 N+1；刻意不註冊 DI，只在唯讀合併流程 new
 │       ├── AttendanceReminderReadService.cs
 │       ├── AttendanceReminderLogReadService.cs
 │       ├── InsuranceBracketReadService.cs
@@ -359,7 +360,8 @@ Api/
 │   ├── DesignatedReviewerHelper.cs    # 申請人指定審核者共用：BuildEntities / ReadForFlowAsync / ValidateAndNormalizeAsync / GetSuppressedDesignatedStepOrdersAsync（一條流程多個指定步驟，以 ApprovalStepOrder 綁定步驟；9 種申請類型共用；第一指定步驟＝所選部門最高職稱時抑制其後指定步驟：驗證免填 + 簽核乾淨跳過）；**例外指定審核的兩個真相**：送單前查例外表 `GetEffectiveDesignatedStepOrdersAsync`、送單後看 designee 快照 `EffectiveDesignatedStepOrders`，ValidateAndNormalizeAsync 另負責剔除非法 designee 綁定（防提權）與**限定職稱驗證**（例外命中且有設限定職稱時，designee 職稱不符丟 400）
 │   ├── FlexibleDateTimeJsonConverter.cs # 寬鬆日期解析（人事資料卡 payload 用；Safari 不支援 input type=month 手打年月字串）
 │   ├── WorkCalendarHelper.cs          # 公司行事曆共用判定（「有行事曆用 CalendarDay.IsHoliday、沒資料退回六日」的單一真相）：區間版 ComputeWorkingDatesAsync 供 LeaveRequestHandler 算請假日／時數，單日版 IsHolidayAsync 供 AttendanceHandler 判休假日免下班卡
-│   ├── LeaveDayExpander.cs            # 請假單「逐日展開」單一真相（Date + Hours）：供銷假逐日勾選與核准後重算 Hours；假別分類常數 WorkingDayLeaveTypes / TimeUnitMap 亦收斂於此，LeaveRequestHandler 轉引
+│   ├── LeaveDayExpander.cs            # 請假單「逐日展開」單一真相（Date + Hours）：供銷假逐日勾選、核准後重算 Hours、出缺勤報表請假合併；假別分類常數 WorkingDayLeaveTypes / TimeUnitMap 亦收斂於此，LeaveRequestHandler 轉引
+│   ├── AttendanceLeaveMerger.cs       # 出缺勤報表「打卡 ∪ 當日請假日」合併單一真相：(員工, 日期) 一列，只有請假無打卡時產生 Id=null 虛擬列；逐日時數走 LeaveDayExpander，故採「區間全量載入 → 記憶體合併 → 記憶體切頁」，區間跨度上限 MaxRangeDays=400 天、匯出 pageSize 上限 ExportMaxPageSize=5000
 │   └── Constants.cs
 ├── host.json
 ├── local.settings.json                # 本地開發設定（不進版控）

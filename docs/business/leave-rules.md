@@ -192,7 +192,8 @@
 ### 下游影響
 
 - **重疊驗證**：`cancelled` 已被 SQL 狀態清單排除；部分銷假則由 `LeaveRequestHandler.FilterFullyRevokedAsync` 逐日後置過濾 —— 重疊區間內每一天都已銷才不算衝突，故挖空的中間日可重新申請。
-- **打卡 / 報表 / 提醒 / 升級**：`AttendanceReadService`（3 處）、`AttendanceReminderReadService`、`EscalationService.IsOnLeaveAsync` 皆加上「該日無已核准銷假」的排除條件。
+- **打卡 / 報表 / 提醒 / 升級**：`AttendanceReadService`（打卡阻擋 / 休假日免下班卡兩處，共用 `LeaveRevocationService.NotRevokedClause`）、`AttendanceReminderReadService`、`EscalationService.IsOnLeaveAsync` 皆加上「該日無已核准銷假」的排除條件。
+  - **出缺勤報表**自 2026-08 改走 [`AttendanceLeaveMerger`](../../Api/Common/AttendanceLeaveMerger.cs)：已核准請假的日子會產生「請假虛擬列」，銷假日則不產列（逐日排除走 `ListApprovedRevokedDatesAsync` 批次查詢，不在假單層級過濾，以免誤刪部分銷假的其餘日子）。見 [attendance-clock-rules.md §出缺勤報表](attendance-clock-rules.md#出缺勤報表打卡--請假日2026-08-新增)。
 - **薪資**：`LeaveRequest.Hours` 保持「剩餘有效時數」語意，故 [`PayrollReadService`](../../Api/Services/Dapper/PayrollReadService.cs) 的三段扣薪 SQL 不需改動即自動正確；`cancelled` 不在 `approved` 集合內。生理假「年度前 3 天半薪」的門檻只決定金額掛哪一行（生理假 / 病假扣薪率同為日薪 × 0.5），對實領薪資零影響。
   > **既有已知限制（非本次引入）**：`leaveSql` 以「區間相交 + 整單 SUM(Hours)」計算，跨月假單會被兩個月各扣一次全額。銷假後 `Hours` 遞減，兩個月等比例變小，錯誤形態不變。若要修正，正解是把扣薪改為逐日歸月。
 - **補休池**：`ComputeCompensatoryAsync` 公式不需改 —— 銷假只把來自 `earned` 的時數還回池子，不會讓已到期作廢的期初額度復活。

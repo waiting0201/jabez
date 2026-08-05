@@ -6,21 +6,25 @@ import {DomSanitizer} from '@angular/platform-browser';
 import {environment} from '@/environments/environment';
 import {AttendanceService} from '@/app/features/dashboard/services/attendance.service';
 import {dayToRange, FilterMode, monthToRange, shiftDateString, snapToIsoWeek, todayString} from '@/app/features/admin/reports/utils/date-range';
+import {LEAVE_TYPE_LABELS, LeaveType} from '@/app/features/admin/leave-requests/models/leave-request.model';
 import * as XLSX from 'xlsx';
 
-const LEAVE_TYPE_LABELS: Record<string, string> = {
-  annual: '特休',
-  personal: '事假',
-  sick: '病假',
-  compensatory: '補休',
-};
-
 export interface AttendanceRecordRow {
-  id?: number;
+  /** 合併列的穩定 track key：打卡列 'a{id}'、請假虛擬列 'l{userId}_{yyyy-MM-dd}' */
+  key: string;
+  /** AttendanceRecord.Id；null＝請假虛擬列（DB 無對應紀錄，不可編輯） */
+  id: number | null;
+  userId: string;
   employeeName: string;
   recordDate: string;
+  /** 當日所有假別中文，以「、」串接 */
   leaveType: string;
+  /** 當日請假時數合計（顯示用字串，無請假為空） */
+  leaveHours: string;
+  /** 首張假單的完整區間（掛 tooltip 用） */
   leaveTime: string;
+  /** 該日只有請假、沒有任何打卡紀錄 */
+  isLeaveOnly: boolean;
   clockInTime: string;
   clockOutTime: string;
   /** 下班時間為系統自動補卡（登入時補打漏打的下班卡），非本人打卡 */
@@ -81,6 +85,12 @@ export class AttendanceReport implements OnInit {
   /** 紀錄 */
   records = signal<AttendanceRecordRow[]>([]);
   loading = signal(false);
+
+  /** 分頁 */
+  currentPage = signal(1);
+  totalCount = signal(0);
+  totalPages = signal(1);
+  private pageSize = 20;
 
   /** 地圖 Modal */
   mapModal = signal<{label: string; lat: number; lng: number} | null>(null);
@@ -169,9 +179,19 @@ export class AttendanceReport implements OnInit {
   }
 
   search() {
+    this.currentPage.set(1);
+    this.fetchData();
+  }
+
+  goToPage(page: number) {
+    this.currentPage.set(page);
+    this.fetchData();
+  }
+
+  private fetchData() {
     this.loading.set(true);
 
-    const params: any = {page: 1, pageSize: 100};
+    const params: any = {page: this.currentPage(), pageSize: this.pageSize};
     if (this.selectedEmployeeId()) params.employeeId = this.selectedEmployeeId();
     const range = this.computeDateRange();
     if (range) {
@@ -181,13 +201,21 @@ export class AttendanceReport implements OnInit {
 
     this.http.get<any>(`${environment.apiUrl}/attendances`, {params}).subscribe({
       next: (res) => {
-        const items = res?.items ?? res ?? [];
+        const data = res?.data ?? res ?? {};
+        const items = data?.items ?? [];
+        this.totalCount.set(data?.totalCount ?? 0);
+        this.totalPages.set(data?.totalPages ?? 1);
+
         this.records.set(
           items.map((r: any) => ({
-            id: r.id,
+            key: r.id != null ? `a${r.id}` : `l${r.userId}_${String(r.recordDate ?? '').substring(0, 10)}`,
+            id: r.id ?? null,
+            userId: r.userId,
+            isLeaveOnly: r.id == null,
             employeeName: r.userName ?? '—',
             recordDate: r.recordDate ? new Date(r.recordDate).toLocaleDateString('zh-TW') : '',
-            leaveType: r.leaveType ? LEAVE_TYPE_LABELS[r.leaveType as string] ?? r.leaveType : '',
+            leaveType: this.formatLeaveTypes(r),
+            leaveHours: r.leaveHours != null ? String(Math.round(Number(r.leaveHours) * 10) / 10) : '',
             leaveTime: r.leaveStartDate && r.leaveEndDate
               ? `${new Date(r.leaveStartDate).toLocaleDateString('zh-TW')} ~ ${new Date(r.leaveEndDate).toLocaleDateString('zh-TW')}`
               : '',
@@ -215,9 +243,24 @@ export class AttendanceReport implements OnInit {
       },
       error: () => {
         this.records.set([]);
+        this.totalCount.set(0);
+        this.totalPages.set(1);
         this.loading.set(false);
       },
     });
+  }
+
+  /**
+   * 當日所有假別中文，以「、」串接（同日可能上午事假 + 下午特休）。
+   * 舊版回應沒有 leaves 陣列時退回單一 leaveType 相容欄位。
+   */
+  private formatLeaveTypes(r: any): string {
+    if (r.leaves?.length) {
+      return r.leaves
+        .map((l: any) => LEAVE_TYPE_LABELS[l.leaveType as LeaveType] ?? l.leaveType)
+        .join('、');
+    }
+    return r.leaveType ? LEAVE_TYPE_LABELS[r.leaveType as LeaveType] ?? r.leaveType : '';
   }
 
   /** 開啟地圖 Modal */
@@ -266,13 +309,11 @@ export class AttendanceReport implements OnInit {
       overtimeEndTime: form.overtimeEnd ? `${dateStr}T${form.overtimeEnd}:00` : null,
     };
 
-    console.log('[AttendanceReport] saveEdit body:', body);
-
     this.attendanceService.update(record.id, body).subscribe({
       next: () => {
         this.saving.set(false);
         this.closeEdit();
-        this.search();
+        this.fetchData();   // 停留在當前頁，不重置頁碼
       },
       error: (err) => {
         console.error('[AttendanceReport] saveEdit error:', err);
@@ -295,7 +336,8 @@ export class AttendanceReport implements OnInit {
   exportExcel() {
     this.exporting.set(true);
 
-    const params: any = {page: 1, pageSize: 9999};
+    // export=true 讓後端放寬 pageSize 上限（一般列表仍為 100），避免匯出被截斷
+    const params: any = {page: 1, pageSize: 5000, export: 'true'};
     if (this.selectedEmployeeId()) params.employeeId = this.selectedEmployeeId();
     const range = this.computeDateRange();
     if (range) {
@@ -305,12 +347,14 @@ export class AttendanceReport implements OnInit {
 
     this.http.get<any>(`${environment.apiUrl}/attendances`, {params}).subscribe({
       next: (res) => {
-        const items = res?.items ?? res ?? [];
+        const data = res?.data ?? res ?? {};
+        const items = data?.items ?? [];
         const wsData = items.map((r: any) => ({
           '員工姓名': r.userName ?? '—',
           '日期': r.recordDate ? new Date(r.recordDate).toLocaleDateString('zh-TW') : '',
-          '請假類型': r.leaveType ? (LEAVE_TYPE_LABELS[r.leaveType as string] ?? r.leaveType) : '',
-          '請假時間': r.leaveStartDate && r.leaveEndDate
+          '請假類型': this.formatLeaveTypes(r),
+          '當日請假時數': r.leaveHours != null ? Number(r.leaveHours) : '',
+          '請假區間': r.leaveStartDate && r.leaveEndDate
             ? `${new Date(r.leaveStartDate).toLocaleDateString('zh-TW')} ~ ${new Date(r.leaveEndDate).toLocaleDateString('zh-TW')}`
             : '',
           '上班時間': r.clockInTime ? new Date(r.clockInTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
@@ -321,6 +365,8 @@ export class AttendanceReport implements OnInit {
             : '',
           '加班開始': r.overtimeStartTime ? new Date(r.overtimeStartTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
           '加班結束': r.overtimeEndTime ? new Date(r.overtimeEndTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
+          // 虛擬列＝當日有已核准請假但完全沒打卡，匯出後仍需分辨得出來
+          '備註': r.id == null ? '請假（未打卡）' : '',
         }));
 
         const ws = XLSX.utils.json_to_sheet(wsData);

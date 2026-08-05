@@ -21,7 +21,8 @@
 **銷假的影響（2026-08 新增）**：判定另加「該日無已核准銷假」條件 —— 已核准銷假的日子不再阻擋打卡，
 支援挖空中間日的部分銷假。**銷假送簽期間仍會阻擋**（父單維持 `approved`，核准後才放行），
 見 [leave-rules.md §銷假規則](leave-rules.md#銷假規則2026-08-新增)。同一條件亦套用於休假日免下班卡判定
-（`GetLeavesOnDateAsync`）、出缺勤報表的請假欄 LEFT JOIN、以及打卡提醒的請假排除。
+（`GetLeavesOnDateAsync`）、出缺勤報表的請假合併（見下節）、以及打卡提醒的請假排除。
+SQL 端的判定片段收斂於 `LeaveRevocationService.NotRevokedClause`，EF 端為 `GetApprovedRevokedDatesAsync`。
 
 ---
 
@@ -109,8 +110,43 @@
 > 早到 / 晚到者的工時因此不再被統一壓成 18:00 下班。
 
 **沒打上班卡則完全不會有紀錄** —— `AttendanceRecord` 只由「上班打卡」或「休假日加班開始」建立，
-因此該日在出缺勤報表中是整列不存在（不是顯示缺勤），補卡也不會觸發（條件要求 `ClockInTime` 不為 null）。
+補卡也不會觸發（條件要求 `ClockInTime` 不為 null）。
 但**下班提醒推播仍會發送**（提醒只看當日有無 `ClockOutTime`，見 [attendance-reminder.md](attendance-reminder.md)）。
+該日在出缺勤報表中是否出現，取決於當天有沒有請假 —— 見下節。
+
+---
+
+## 出缺勤報表：打卡 ∪ 請假日（2026-08 新增）
+
+### 問題
+報表原本以 `AttendanceRecords` 為主表 `LEFT JOIN LeaveRequests`，主表沒有的日子就沒有列。
+**全天請假的人不打卡 → 完全不出現在報表**，管理者查不到「今天誰請假」；
+只有「有打卡又有請假」（例如上午請假、下午上班）才看得到請假欄。
+
+### 規則
+`GET /attendances` 改回傳「打卡紀錄 ∪ 當日請假日」的合併結果，
+單一真相為 [AttendanceLeaveMerger](../../Api/Common/AttendanceLeaveMerger.cs)。合併粒度＝**(員工, 日期) 一列**：
+
+| 當日狀況 | 報表呈現 |
+|---|---|
+| 有打卡 + 有請假 | 同一列：打卡時間 + 假別 + 當日請假時數 |
+| 只有請假、完全沒打卡 | **請假虛擬列**（`Id = null`）：上下班時間留空 + 「請假」badge + 假別 + 當日時數，**不可編輯** |
+| 只有打卡 | 原樣 |
+| 沒打卡也沒請假 | **不產生列**（缺勤不在本報表範圍） |
+
+- **不限全天**：半天請假又完全沒打卡的日子同樣產生虛擬列（顯示 4 小時），採 union 語意
+- **同日多張假單**（例：上午事假 + 下午特休）合併為**一列**：`leaveHours` 加總、`leaves[]` 保留逐張顆粒度，
+  相容欄位 `leaveType` / `leaveStartDate` / `leaveEndDate` 填第一張
+- **逐日時數**走 [LeaveDayExpander](../../Api/Common/LeaveDayExpander.cs)（與銷假、請假送單同一份行事曆 + 半天/小時規則），
+  非 SQL 端另寫；展開結果會裁切到查詢區間（產假 56 天等可能超出）
+- **銷假**：該日已核准銷假即不算請假日，該日虛擬列消失（部分銷假可挖空中間日）
+- **假日**：`LeaveDayExpander` 不展開假日 → 國定假日 / 六日不會產生虛擬列
+
+### 為什麼不能純 SQL
+逐日請假時數必須走 `LeaveDayExpander`（C# 的行事曆判定與半天編碼），SQL 端複製一份必然漂移。
+故改為「區間全量載入 → 記憶體合併 → 記憶體切頁」，代價是**查詢區間必須有界**：
+未指定起訖時回退近一年，跨度超過 `AttendanceLeaveMerger.MaxRangeDays`（400 天）直接擋件。
+前端的月篩選因此不再提供「全部年份 / 全部月份」。
 
 ---
 
