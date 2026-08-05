@@ -23,6 +23,8 @@ export interface AttendanceRecordRow {
   leaveTime: string;
   clockInTime: string;
   clockOutTime: string;
+  /** 下班時間為系統自動補卡（登入時補打漏打的下班卡），非本人打卡 */
+  isClockOutAuto: boolean;
   overtimeStartTime: string;
   overtimeEndTime: string;
   /** GPS 經緯度 */
@@ -191,6 +193,7 @@ export class AttendanceReport implements OnInit {
               : '',
             clockInTime: r.clockInTime ? new Date(r.clockInTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
             clockOutTime: r.clockOutTime ? new Date(r.clockOutTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
+            isClockOutAuto: !!r.isClockOutAuto,
             overtimeStartTime: r.overtimeStartTime ? new Date(r.overtimeStartTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
             overtimeEndTime: r.overtimeEndTime ? new Date(r.overtimeEndTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
             clockInLatitude: r.clockInLatitude ?? null,
@@ -311,7 +314,11 @@ export class AttendanceReport implements OnInit {
             ? `${new Date(r.leaveStartDate).toLocaleDateString('zh-TW')} ~ ${new Date(r.leaveEndDate).toLocaleDateString('zh-TW')}`
             : '',
           '上班時間': r.clockInTime ? new Date(r.clockInTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
-          '下班時間': r.clockOutTime ? new Date(r.clockOutTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
+          // 系統補卡的下班時間加註來源，避免匯出後看不出是不是本人打的
+          '下班時間': r.clockOutTime
+            ? new Date(r.clockOutTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'})
+              + (r.isClockOutAuto ? '（系統補卡）' : '')
+            : '',
           '加班開始': r.overtimeStartTime ? new Date(r.overtimeStartTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
           '加班結束': r.overtimeEndTime ? new Date(r.overtimeEndTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
         }));

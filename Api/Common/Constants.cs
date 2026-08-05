@@ -87,7 +87,8 @@ public static class RoleNames
 /// <summary>
 /// 工作日標準時段：08:00–17:00（全日 8 小時），午休 12:00–13:00
 /// （與 half_day 的 am 08:00–12:00 / pm 13:00–17:00 一致）。
-/// 消費點：LeaveRequestHandler（Hour 單位時數計算）、AttendanceHandler（全日請假判定）。
+/// 消費點：LeaveRequestHandler（Hour 單位時數計算）、AttendanceHandler（全日請假判定）、
+/// AuthHandler（登入時自動補打下班卡＝上班打卡時間 + FullDayHours）。
 /// 刻意不與 SystemSetting.WorkStartTime / WorkEndTime（預設 09:00 / 18:00）合併 ——
 /// 後者僅供打卡提醒推播的時點判斷，語意不同。
 /// 前端對應常數見 leave-request.model.ts 的 WORKDAY_START_HOUR / WORKDAY_END_HOUR，兩處須同步。
@@ -98,6 +99,7 @@ public static class WorkdayHours
     public const int LunchStartHour = 12;
     public const int LunchEndHour   = 13;
     public const int EndHour        = 17;
+    public const int FullDayHours   = 8;   // 全日實際工時（EndHour - StartHour - 午休 1 小時）
 }
 
 /// <summary>

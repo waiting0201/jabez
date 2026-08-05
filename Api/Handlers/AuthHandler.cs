@@ -84,12 +84,20 @@ public sealed class AuthHandler(
         AutoClockOutInfo? autoClockOutInfo = null;
         if (pendingRecords.Count > 0)
         {
-            var setting = await db.SystemSettings.OrderBy(s => s.Id).FirstOrDefaultAsync();
-            var workEndTime = TimeSpan.TryParse(setting?.WorkEndTime, out var t) ? t : new TimeSpan(18, 0, 0);
+            // 補卡時間 = 該日上班打卡時間 + 標準工時。上午打卡（午休前）者工時跨越午休 → 多加 1 小時。
+            // 刻意不用 SystemSetting.WorkEndTime —— 該設定只服務打卡提醒的時點判斷，
+            // 且固定補到 18:00 會讓早到 / 晚到者的工時失真。
+            const int lunchHours = WorkdayHours.LunchEndHour - WorkdayHours.LunchStartHour;
 
             foreach (var record in pendingRecords)
             {
-                record.ClockOutTime = record.RecordDate.Date + workEndTime;
+                var clockIn = record.ClockInTime!.Value;
+                var hours   = clockIn.Hour < WorkdayHours.LunchStartHour
+                    ? WorkdayHours.FullDayHours + lunchHours   // 上午打卡 → +9（含午休）
+                    : WorkdayHours.FullDayHours;               // 下午打卡 → +8
+
+                record.ClockOutTime   = clockIn.AddHours(hours);
+                record.IsClockOutAuto = true;                  // 供出缺勤清單標示「系統補卡」
             }
 
             autoClockOutInfo = new AutoClockOutInfo(

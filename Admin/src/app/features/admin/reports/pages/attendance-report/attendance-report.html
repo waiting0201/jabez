@@ -102,6 +102,10 @@
                 </td>
                 <td class="text-center">
                   {{ row.clockOutTime }}
+                  @if (row.isClockOutAuto) {
+                    <span class="badge bg-warning-subtle text-warning-emphasis ms-1"
+                          title="未打下班卡，系統於登入時自動補上">系統補卡</span>
+                  }
                   @if (row.clockOutLatitude != null && row.clockOutLongitude != null) {
                     <button class="btn btn-sm btn-ghost-primary inline-flex items-center p-0 ms-1" title="查看打卡位置" (click)="openMap('下班打卡', row.clockOutLatitude!, row.clockOutLongitude!)">
                       <svg class="sa-icon sa-icon-1x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>

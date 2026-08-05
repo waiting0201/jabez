@@ -18,6 +18,9 @@ public class AttendanceRecordConfiguration : IEntityTypeConfiguration<Attendance
                .IsRequired()
                .HasColumnType("date");
 
+        builder.Property(a => a.IsClockOutAuto)
+               .HasDefaultValue(false);
+
         builder.Property(a => a.CreatedAt)
                .HasDefaultValueSql("GETUTCDATE() AT TIME ZONE 'UTC' AT TIME ZONE 'Taipei Standard Time'");
 

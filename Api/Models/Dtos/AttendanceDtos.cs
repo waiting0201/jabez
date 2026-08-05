@@ -10,6 +10,8 @@ public sealed record AttendanceRecordDto(
     DateTime? ClockOutTime,
     double?   ClockOutLatitude,
     double?   ClockOutLongitude,
+    /// <summary>下班時間為登入時系統自動補卡（非本人打卡），出缺勤清單以 badge 標示</summary>
+    bool      IsClockOutAuto,
     DateTime? OvertimeStartTime,
     double?   OvertimeStartLatitude,
     double?   OvertimeStartLongitude,
