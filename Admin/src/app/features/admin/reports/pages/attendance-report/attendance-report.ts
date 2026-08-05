@@ -7,6 +7,7 @@ import {environment} from '@/environments/environment';
 import {AttendanceService} from '@/app/features/dashboard/services/attendance.service';
 import {dayToRange, FilterMode, monthToRange, shiftDateString, snapToIsoWeek, todayString} from '@/app/features/admin/reports/utils/date-range';
 import {LEAVE_TYPE_LABELS, LeaveType} from '@/app/features/admin/leave-requests/models/leave-request.model';
+import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
 import * as XLSX from 'xlsx';
 
 export interface AttendanceRecordRow {
@@ -52,7 +53,7 @@ export interface AttendanceRecordRow {
 @Component({
   selector: 'app-attendance-report',
   templateUrl: './attendance-report.html',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, HasPermissionDirective],
 })
 export class AttendanceReport implements OnInit {
   private http = inject(HttpClient);

@@ -298,7 +298,8 @@ export class Login {
           this.router.navigate(['/account/change-password'], { queryParams: { forced: '1' } });
           return;
         }
-        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? '/dashboard';
+        // 預設 '/' 而非 '/dashboard'：實際落點由 app.routes.ts 的首頁決策點決定（見 resolveLandingUrl）
+        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? '/';
         this.router.navigateByUrl(returnUrl);
       },
       error: (err) => {

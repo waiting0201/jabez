@@ -143,7 +143,23 @@ private static string? RequiredPermission((string method, string[] segments) rou
 };
 ```
 
-JWT 驗證 + 權限檢查由 RouterFunction → AppRouter 統一執行；Handler 內**禁止重複檢查**。
+JWT 驗證 + 權限檢查由 RouterFunction → AppRouter 統一執行；Handler 內**禁止重複檢查**權限碼。
+
+`GetRequiredPermission` 的 fallback 是 `_ => null`（＝登入即可）。這是**寬鬆預設**：新增端點若忘了加對應，會安靜地對所有登入者開放。因此在自成一區的資源底下（如 attendances）務必補上 `[..]` catch-all 走較嚴的權限，讓遺漏至少落在保守側。
+
+**Superadmin-only 路由**由獨立的 `IsSuperAdminRoute` 判定（不走權限表）。截至 2026-08 涵蓋：`/admin/attendance-reminder*`、`/admin/payment-reminder*`、以及 `/permissions` 的**寫入類與單筆讀取**（`POST` / `PUT` / `PATCH` / `DELETE /permissions[/{id}]` + `GET /permissions/{id}`）。
+⚠️ `GET /permissions`（**列表**）刻意留在權限表回 `null` —— 角色編輯頁只要求 `roles:write`，卻要靠這支端點建權限勾選清單，鎖成 Superadmin 會讓管理員無法編輯角色。改動此處前先看 `AppRouter` 內的註解。
+
+#### 同一資源的「前後台雙軌權限」
+
+當一個資源同時有「員工對自己」與「管理者對別人」兩種用法時，**兩者必須是不同的權限碼**，不可共用。現行案例（2026-08，出勤打卡）：
+
+| 對象 | 權限碼 | 端點 |
+|---|---|---|
+| 員工對自己 | `attendances:read` / `attendances:write` | `GET /attendances/today`、`POST /attendances/clock-*`、`overtime-*` |
+| 管理者對別人 | `reports-attendance:read` / `reports-attendance:write` | `GET /attendances`、`PUT/PATCH /attendances/{id}` |
+
+共用一組碼會造成「能打自己的卡 ＝ 能改全公司的卡」。權限碼只回答「**誰**能做」；「**能對誰**做」屬於資料範圍，另由 Handler 內的部門可見性 scope（`IProjectAccessResolver`）負責 —— 這是唯一允許 Handler 做授權判斷的情境。讀寫兩端的 scope 必須對稱：若列表端有 scope 而寫入端沒有，就是缺口（`AttendanceHandler.UpdateAsync` 在 2026-08 前即為此例）。
 
 ### 3.5 公開路由（不需 JWT）
 

@@ -54,7 +54,7 @@ export class LineBindCallback implements OnInit {
     this.lineService.bind(code, environment.lineCallbackUrl).subscribe({
       next: () => {
         this.toastr.success('LINE 帳號綁定成功！');
-        this.router.navigate(['/dashboard']);
+        this.router.navigate(['/']);
       },
       error: (err) => {
         this.isLoading.set(false);
@@ -64,6 +64,6 @@ export class LineBindCallback implements OnInit {
   }
 
   goBack() {
-    this.router.navigate(['/dashboard']);
+    this.router.navigate(['/']);
   }
 }

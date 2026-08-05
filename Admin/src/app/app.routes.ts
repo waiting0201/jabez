@@ -1,8 +1,11 @@
+import {inject} from '@angular/core';
 import {Routes} from '@angular/router';
 import {MainLayout} from '@layout/main-layout/main-layout';
 import {AuthLayout} from '@layout/auth-layout/auth-layout';
 import {authGuard} from '@core/auth/guards/auth.guard';
 import {noAuthGuard} from '@core/auth/guards/no-auth.guard';
+import {AuthService} from '@core/auth/services/auth.service';
+import {resolveLandingUrl} from '@core/auth/utils/landing';
 import {Login} from '@features/auth/pages/login/login';
 import {Register} from '@features/auth/pages/register/register';
 import {ForgotPassword} from '@features/auth/pages/forgot-password/forgot-password';
@@ -14,7 +17,15 @@ import {Error404Alt} from '@features/error/pages/error-404-alt/error-404-alt';
 import {Error500} from '@features/error/pages/error-500/error-500';
 
 export const routes: Routes = [
-  {path: '', redirectTo: 'dashboard', pathMatch: 'full'},
+  // 首頁決策點：/dashboard 自 2026-08 起需 attendances:read，不可再無條件轉過去（見 resolveLandingUrl）
+  {
+    path: '',
+    pathMatch: 'full',
+    redirectTo: () => {
+      const auth = inject(AuthService);
+      return auth.isLoggedIn() ? resolveLandingUrl(auth) : '/auth/login';
+    },
+  },
 
   // 主版面（需登入）
   {

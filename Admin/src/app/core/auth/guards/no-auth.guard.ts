@@ -5,5 +5,6 @@ import {AuthService} from '../services/auth.service';
 export const noAuthGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
-  return auth.isLoggedIn() ? router.createUrlTree(['/dashboard']) : true;
+  // 導到 '/' 而非 '/dashboard'：實際落點由 app.routes.ts 的首頁決策點決定（見 resolveLandingUrl）
+  return auth.isLoggedIn() ? router.createUrlTree(['/']) : true;
 };

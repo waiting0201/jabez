@@ -20,8 +20,11 @@ public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissi
                .HasForeignKey(rp => rp.PermissionId)
                .OnDelete(DeleteBehavior.Cascade);
 
-        // Seed data — 對應資料庫 RolePermissions 表（67 筆）
+        // Seed data — 對應資料庫 RolePermissions 表
         // Seed: 與本機資料庫同步（2026-03-24）
+        // 出勤打卡（37/38）：全部角色皆給，打卡是全員功能；出缺勤紀錄編輯（42）：只給原本已有 41 的角色。
+        // 註：既有環境（含 UI 建立的自訂角色）的回填走 AddAttendanceClockPermissions migration 的 raw SQL，
+        //     此處的 HasData 只負責全新 DB 與 model snapshot 的一致性。
         builder.HasData(
             // admin（後端管理者）: 全功能
             new RolePermission { RoleId = "admin", PermissionId = "2"  },
@@ -56,9 +59,12 @@ public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissi
             new RolePermission { RoleId = "admin", PermissionId = "34" },
             new RolePermission { RoleId = "admin", PermissionId = "35" },
             new RolePermission { RoleId = "admin", PermissionId = "36" },
+            new RolePermission { RoleId = "admin", PermissionId = "37" },
+            new RolePermission { RoleId = "admin", PermissionId = "38" },
             new RolePermission { RoleId = "admin", PermissionId = "39" },
             new RolePermission { RoleId = "admin", PermissionId = "40" },
             new RolePermission { RoleId = "admin", PermissionId = "41" },
+            new RolePermission { RoleId = "admin", PermissionId = "42" },
             new RolePermission { RoleId = "admin", PermissionId = "44" },
             new RolePermission { RoleId = "admin", PermissionId = "45" },
             new RolePermission { RoleId = "admin", PermissionId = "46" },
@@ -112,9 +118,12 @@ public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissi
             new RolePermission { RoleId = "manager", PermissionId = "34" },
             new RolePermission { RoleId = "manager", PermissionId = "35" },
             new RolePermission { RoleId = "manager", PermissionId = "36" },
+            new RolePermission { RoleId = "manager", PermissionId = "37" },
+            new RolePermission { RoleId = "manager", PermissionId = "38" },
             new RolePermission { RoleId = "manager", PermissionId = "39" },
             new RolePermission { RoleId = "manager", PermissionId = "40" },
             new RolePermission { RoleId = "manager", PermissionId = "41" },
+            new RolePermission { RoleId = "manager", PermissionId = "42" },
             new RolePermission { RoleId = "manager", PermissionId = "44" },
             new RolePermission { RoleId = "manager", PermissionId = "45" },
             new RolePermission { RoleId = "manager", PermissionId = "46" },
@@ -160,6 +169,8 @@ public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissi
             new RolePermission { RoleId = "viewer", PermissionId = "57" },
             new RolePermission { RoleId = "viewer", PermissionId = "58" },
             new RolePermission { RoleId = "viewer", PermissionId = "59" },
+            new RolePermission { RoleId = "viewer", PermissionId = "37" },
+            new RolePermission { RoleId = "viewer", PermissionId = "38" },
 
             // 員工-測試: 請假/出差/加班 + 出差沖銷 + 出差請款
             new RolePermission { RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4", PermissionId = "68" },
@@ -177,6 +188,8 @@ public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissi
             new RolePermission { RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4", PermissionId = "57" },
             new RolePermission { RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4", PermissionId = "58" },
             new RolePermission { RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4", PermissionId = "59" },
+            new RolePermission { RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4", PermissionId = "37" },
+            new RolePermission { RoleId = "3afbfc1e-4caa-4a4e-af1e-ebdc0d9002b4", PermissionId = "38" },
 
             // 協理-測試: 簽核+專案+請款+簽核作業+請假/出差/加班+預支/沖銷 + 出差請款
             new RolePermission { RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856", PermissionId = "68" },
@@ -209,6 +222,8 @@ public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissi
             new RolePermission { RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856", PermissionId = "57" },
             new RolePermission { RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856", PermissionId = "58" },
             new RolePermission { RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856", PermissionId = "59" },
+            new RolePermission { RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856", PermissionId = "37" },
+            new RolePermission { RoleId = "44e48f58-1bef-441e-bb70-a624d4f97856", PermissionId = "38" },
 
             // 經理副理主管-測試: 簽核+簽核作業+請假/出差/加班+沖銷 + 出差請款
             new RolePermission { RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b", PermissionId = "68" },
@@ -228,7 +243,9 @@ public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissi
             new RolePermission { RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b", PermissionId = "36" },
             new RolePermission { RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b", PermissionId = "57" },
             new RolePermission { RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b", PermissionId = "58" },
-            new RolePermission { RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b", PermissionId = "59" }
+            new RolePermission { RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b", PermissionId = "59" },
+            new RolePermission { RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b", PermissionId = "37" },
+            new RolePermission { RoleId = "fe015c41-d9a8-48fa-994d-5588b9c4a92b", PermissionId = "38" }
         );
     }
 }

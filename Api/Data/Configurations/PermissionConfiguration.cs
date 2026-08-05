@@ -32,7 +32,7 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
         builder.Property(p => p.Description)
                .HasMaxLength(500);
 
-        // Seed data — 對應資料庫 Permissions 表（45 筆）
+        // Seed data — 對應資料庫 Permissions 表
         builder.HasData(
             // 員工管理
             new Permission { Id = "2",  Code = "users:read",                       Name = "瀏覽",     Module = "員工管理",   Description = "員工管理" },
@@ -82,11 +82,18 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             new Permission { Id = "34", Code = "overtime-requests:read",           Name = "瀏覽",     Module = "加班申請",   Description = "加班申請" },
             new Permission { Id = "35", Code = "overtime-requests:write",          Name = "新增/修改", Module = "加班申請",   Description = "加班申請" },
             new Permission { Id = "36", Code = "overtime-requests:delete",         Name = "刪除",     Module = "加班申請",   Description = "加班申請" },
+            // 出勤打卡（員工本人的打卡動作）
+            // Id 37/38 為重用的歷史空號：2026-02 曾建立、2026-03 由 SyncSeedDataWithDatabase 刪除，2026-08 重新啟用。
+            // 刻意不取 78+ —— PermissionHandler.CreateAsync 以 max(Id)+1 配號，78 起可能已被 UI 建立的權限占用。
+            new Permission { Id = "37", Code = "attendances:read",                 Name = "瀏覽",     Module = "出勤打卡",   Description = "出勤打卡" },
+            new Permission { Id = "38", Code = "attendances:write",                Name = "打卡",     Module = "出勤打卡",   Description = "出勤打卡" },
             // 系統設定
             new Permission { Id = "39", Code = "settings:read",                    Name = "瀏覽",     Module = "系統設定",   Description = "系統設定" },
             new Permission { Id = "40", Code = "settings:write",                   Name = "編輯",     Module = "系統設定",   Description = "系統設定" },
             // Reports
             new Permission { Id = "41", Code = "reports-attendance:read",          Name = "出缺勤紀錄", Module = "Reports" },
+            // Id 42 為重用的歷史空號（原 reports-leave:read，已由 RemoveUnusedReportPermissions 刪除）
+            new Permission { Id = "42", Code = "reports-attendance:write",         Name = "出缺勤紀錄編輯", Module = "Reports" },
             // 勞健保級距
             new Permission { Id = "44", Code = "insurance-brackets:read",          Name = "瀏覽",     Module = "勞健保級距" },
             new Permission { Id = "45", Code = "insurance-brackets:write",         Name = "新增/修改", Module = "勞健保級距" },

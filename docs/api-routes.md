@@ -30,14 +30,20 @@
 | DELETE | `/users/{id}` | 刪除使用者 |
 | POST | `/users/{id}/send-credentials` | 寄送帳號通知信並設置 `MustChangePassword = true`（預設密碼為生日 yyyyMMdd） |
 
-## 角色與權限（僅 Superadmin）
+## 角色與權限
 
-| Method | Path | 說明 |
-|--------|------|------|
-| GET/POST | `/roles` | 角色列表 / 新增 |
-| GET/PUT/PATCH/DELETE | `/roles/{id}` | 角色 CRUD |
-| GET/POST | `/permissions` | 權限列表 / 新增 |
-| GET/PUT/DELETE | `/permissions/{id}` | 權限 CRUD |
+| Method | Path | 權限 | 說明 |
+|--------|------|------|------|
+| GET | `/roles` | `roles:read` | 角色列表 |
+| POST | `/roles` | `roles:write` | 新增角色 |
+| GET | `/roles/{id}` | `roles:read` | 取得單一角色 |
+| PUT/PATCH | `/roles/{id}` | `roles:write` | 更新角色 |
+| DELETE | `/roles/{id}` | `roles:delete` | 刪除角色 |
+| GET | `/permissions` | **登入即可** | 權限**列表**。⚠️ 刻意不鎖 Superadmin —— 角色編輯頁（`roles:write`）要靠它建權限勾選清單，鎖了會讓有 `roles:write` 的管理員無法編輯角色。非 Superadmin 看不到「權限管理」模組是由前端 role-form 過濾 |
+| POST | `/permissions` | **Superadmin** | 新增權限 |
+| GET/PUT/PATCH/DELETE | `/permissions/{id}` | **Superadmin** | 權限單筆 CRUD（單筆讀取＝權限編輯頁專用，該頁本就 Superadmin-only） |
+
+> 前端 `/admin/permissions` 三條路由以 `permission: 'superadmin'` 的 route guard 擋 UI；**API 端自 2026-08 起亦由 `AppRouter.IsSuperAdminRoute` 強制**（在此之前只有前端擋，任何登入者都能呼叫 API 增刪權限）。
 
 ## 部門與職稱
 
@@ -176,14 +182,17 @@
 
 ## 出勤打卡
 
-| Method | Path | 說明 |
-|--------|------|------|
-| GET | `/attendances` | 出勤紀錄列表（分頁，套用部門可見性 scope；支援 `?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD` 區間篩選，前端依「日 / 週 / 月」模式換算）。**回傳「打卡紀錄 ∪ 當日請假日」合併結果**（`AttendanceLeaveMerger`）：`id = null` 代表當日只有已核准請假、無打卡的**虛擬列**（不可編輯）；另含 `userId` / `leaveHours`（當日時數合計）/ `leaves[]`（當日逐張假單，同日多張合併為一列）。**區間必須有界**：未指定起訖回退近一年，跨度 > 400 天回 400。`?export=true` 時 `pageSize` 上限放寬至 5000（一般為 100） |
-| GET | `/attendances/today` | 今日打卡紀錄（當前使用者；含 `todayLeaves` 陣列：當日所有已核准請假時段，供前端顯示提示與 disable 按鈕；含 `canOvertimeWithoutClockOut` 旗標：今日免下班卡即可打加班開始，與 overtime-start 的放行判定同源；無打卡紀錄時回傳 `Id=0` 空殼仍含請假資訊） |
-| POST | `/attendances/clock-in` | 上班打卡（含 GPS；落在已核准請假 `[StartDate, EndDate)` 區間內會回 BadRequest） |
-| POST | `/attendances/clock-out` | 下班打卡（含 GPS；同上規則） |
-| POST | `/attendances/overtime-start` | 加班開始打卡（不受請假時段阻擋）。需帶**屬於自己**且當日已核准的加班申請；一般上班日須先打下班卡，**休假日（行事曆 `IsHoliday` / 該年度無行事曆時的六日）或當日全日已核准請假時免下班卡**，且今日無打卡紀錄時自動建立「只含加班時間」的 AttendanceRecord |
-| POST | `/attendances/overtime-end` | 加班結束打卡（不受請假時段阻擋） |
+> **權限（2026-08 起）**：打卡本身走 `attendances:read` / `attendances:write`（員工對自己），出缺勤報表列表與人工修改走 `reports-attendance:read` / `reports-attendance:write`（管理者對別人）。兩組刻意分離，詳見 [attendance-clock-rules.md](business/attendance-clock-rules.md#打卡權限2026-08-新增)。
+
+| Method | Path | 權限 | 說明 |
+|--------|------|------|------|
+| GET | `/attendances` | `reports-attendance:read` | 出勤紀錄列表（分頁，套用部門可見性 scope；支援 `?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD` 區間篩選，前端依「日 / 週 / 月」模式換算）。**回傳「打卡紀錄 ∪ 當日請假日」合併結果**（`AttendanceLeaveMerger`）：`id = null` 代表當日只有已核准請假、無打卡的**虛擬列**（不可編輯）；另含 `userId` / `leaveHours`（當日時數合計）/ `leaves[]`（當日逐張假單，同日多張合併為一列）。**區間必須有界**：未指定起訖回退近一年，跨度 > 400 天回 400。`?export=true` 時 `pageSize` 上限放寬至 5000（一般為 100） |
+| GET | `/attendances/today` | `attendances:read` | 今日打卡紀錄（當前使用者；含 `todayLeaves` 陣列：當日所有已核准請假時段，供前端顯示提示與 disable 按鈕；含 `canOvertimeWithoutClockOut` 旗標：今日免下班卡即可打加班開始，與 overtime-start 的放行判定同源；無打卡紀錄時回傳 `Id=0` 空殼仍含請假資訊） |
+| POST | `/attendances/clock-in` | `attendances:write` | 上班打卡（含 GPS；落在已核准請假 `[StartDate, EndDate)` 區間內會回 BadRequest） |
+| POST | `/attendances/clock-out` | `attendances:write` | 下班打卡（含 GPS；同上規則） |
+| POST | `/attendances/overtime-start` | `attendances:write` | 加班開始打卡（不受請假時段阻擋）。需帶**屬於自己**且當日已核准的加班申請；一般上班日須先打下班卡，**休假日（行事曆 `IsHoliday` / 該年度無行事曆時的六日）或當日全日已核准請假時免下班卡**，且今日無打卡紀錄時自動建立「只含加班時間」的 AttendanceRecord |
+| POST | `/attendances/overtime-end` | `attendances:write` | 加班結束打卡（不受請假時段阻擋） |
+| PUT/PATCH | `/attendances/{id}` | `reports-attendance:write` | 人工修改出缺勤紀錄（上下班 / 加班起訖）。權限碼控管「誰能改」，Handler 內另套**部門可見性 scope** 控管「能改誰」（與 `GET /attendances` 同範圍，讀得到才改得到，非同範圍回 403）。下班時間被改動時清掉 `IsClockOutAuto`（系統補卡）標記 |
 
 > **請假時段阻擋規則**：上下班打卡以 `Clock.Now`（Asia/Taipei）比對員工 `LeaveRequests` 中 `ApprovalStatus='approved'` 的紀錄，落在 `StartDate <= now < EndDate` 半開區間內即阻擋並回含請假單編號 / 假別 / 時段的錯誤訊息。半天 / 小時請假時段已編碼於 datetime，時段外仍可打卡（如上午半天請假，下午可打上班卡；09:00–12:00 病假，12:00 整點可打卡）。加班打卡不套用此規則。實作於 [Api/Handlers/AttendanceHandler.cs](../Api/Handlers/AttendanceHandler.cs) `EnsureNotOnLeaveAsync`，Dapper SQL 於 [Api/Services/Dapper/AttendanceReadService.cs](../Api/Services/Dapper/AttendanceReadService.cs) `GetActiveLeaveAtAsync`。
 
@@ -193,7 +202,7 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/attendances` | 出缺勤紀錄列表（共用上方出勤打卡端點，篩選參數：`employeeId / dateFrom / dateTo / export`；含請假虛擬列，詳見上方說明） |
+| GET | `/attendances` | 出缺勤紀錄列表（共用上方出勤打卡端點，篩選參數：`employeeId / dateFrom / dateTo / export`；含請假虛擬列，詳見上方說明）。權限：`reports-attendance:read`；列上的人工修改另需 `reports-attendance:write` |
 | GET | `/reports/overtime` | 加班紀錄報表（已核准的加班申請 + 實際打卡時數，篩選參數：`employeeId / projectId / dateFrom / dateTo`；`projectId` 以 `OvertimeRequestProjects` 的 `EXISTS` 子查詢篩選。每列回 `projects[]` 含各案時數，維持「一張加班單一列」） |
 | GET | `/reports/payment` | 款項統計報表（依類別查詢 6 種付款相關申請）。**必填** `category`（白名單：`all` / `payment` / `advance` / `writeoff` / `travel-payment` / `travel` / `travel-writeoff`，未帶或不合法 → 400）。`all` = 全部，6 種類別主查詢 `UNION ALL` 後依 `CreatedAt DESC` 分頁；明細依各列 `SourceCategory` 分組撈回對應子表。篩選參數：`dateFrom / dateTo / paymentStatus`；`{主表}.CreatedAt` 為 DATETIME，`dateTo` 用 `< DATEADD(day, 1, @DateTo)` 半開區間涵蓋當日 23:59:59。沖銷類無 installments，`paymentStatus` 被忽略（`all` 時此忽略行為一致）。權限：`reports-payment:read`，**不**需要各別 `xxx-requests:read`。 |
 | GET | `/reports/payment/export` | 款項統計匯出（不分頁、**一列一明細**：主表 LEFT JOIN 對應子表（InvoiceItems / AdvanceRequestItems / WriteOffItems / TravelPaymentRequestItems / TravelRequestItems / TravelWriteOffItems），無明細仍輸出 1 列）；參數同上（含 `all`，6 種 export 查詢 `UNION ALL`）；前端依 `category` 對應右側 4 欄表頭（請款/沖銷/出差類別 → 發票號碼/品名/發票日期/金額；預支 → 類別/品名/數量/金額；`all` → 通用 發票號碼/類別、品名、發票日期/數量、金額，明細第 3 欄 per-row 取值）。所有「不適用欄位」皆以 `CAST(NULL AS …)` 明確轉型（裸 `NULL` 會被 SQL Server 視為 int，Dapper 映射 `string?`/`DateTime?` 會拋型別轉換例外 → 500）。 |
