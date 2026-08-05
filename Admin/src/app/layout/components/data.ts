@@ -6,6 +6,7 @@ export const menuItems: MenuItemType[] = [
     icon: '/assets/icons/sprite.svg#clock',
     label: '打卡',
     url: '/dashboard',
+    requiredPermission: 'attendances:read',
   },
   {
     icon: '/assets/icons/sprite.svg#calendar',

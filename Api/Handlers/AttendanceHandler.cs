@@ -227,7 +227,11 @@ public sealed class AttendanceHandler(
         return new OkObjectResult(ApiResponse.Ok(dto, "加班結束打卡成功。"));
     }
 
-    /// <summary>修改出缺勤紀錄（上下班時間、加班開始/結束）</summary>
+    /// <summary>
+    /// 修改出缺勤紀錄（上下班時間、加班開始/結束）。
+    /// 權限碼 reports-attendance:write 由 AppRouter 控管「誰能改」，此處的部門 scope 控管「能改誰」，
+    /// 與 <see cref="GetAllAsync"/> 的可見範圍一致（讀得到才改得到）。
+    /// </summary>
     public async Task<IActionResult> UpdateAsync(HttpRequest req, string id)
     {
         if (!int.TryParse(id, out var recordId))
@@ -238,6 +242,20 @@ public sealed class AttendanceHandler(
 
         var record = await db.AttendanceRecords.FindAsync(recordId)
             ?? throw AppException.BadRequest("找不到指定的出缺勤紀錄。");
+
+        var scope = await access.ResolveAsync(req.HttpContext.User);
+        if (!scope.SeeAll)
+        {
+            // 比照 AttendanceReadService.BuildDeptScopeFilter：以「該筆紀錄所屬員工的部門」判定
+            var ownerDeptId = await db.Users
+                .AsNoTracking()
+                .Where(u => u.Id == record.UserId)
+                .Select(u => u.DepartmentId)
+                .FirstOrDefaultAsync();
+
+            if (ownerDeptId is null || !scope.AllowedDepartmentIds.Contains(ownerDeptId.Value))
+                throw AppException.Forbidden("您沒有權限修改此員工的出缺勤紀錄。");
+        }
 
         // 下班時間被人工改動 → 清掉「系統補卡」標記（改為管理者維護的值）
         if (record.ClockOutTime != body.ClockOutTime)

@@ -138,7 +138,8 @@
                 <td class="text-right" style="white-space: nowrap">
                   <div class="flex justify-end gap-1">
                     @if (row.id) {
-                      <button class="btn btn-sm btn-ghost-primary inline-flex items-center" title="編輯" (click)="openEdit(row)">
+                      <button *appHasPermission="'reports-attendance:write'"
+                              class="btn btn-sm btn-ghost-primary inline-flex items-center" title="編輯" (click)="openEdit(row)">
                         <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
                       </button>
                     }
@@ -222,7 +223,8 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" (click)="closeEdit()">取消</button>
-          <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="saveEdit()">
+          <button *appHasPermission="'reports-attendance:write'"
+                  type="button" class="btn btn-primary" [disabled]="saving()" (click)="saveEdit()">
             @if (saving()) {
               儲存中...
             } @else {

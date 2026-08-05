@@ -22,6 +22,16 @@
 
 > Token 過期處理由前端 [auth.interceptor.ts](../Admin/src/app/core/auth/interceptors/auth.interceptor.ts) 攔截 401 後自動呼叫 `/auth/refresh`，失敗則導向登入頁。
 
+### ⚠️ 權限異動不會即時生效
+
+`permissions` claims 是**登入 / refresh 當下**從 DB 重讀的快照（[AuthHandler.cs](../Api/Handlers/AuthHandler.cs) 的 `LoginAsync` 與 `RefreshAsync` 各有一份相同邏輯）。管理員在後台調整角色權限後：
+
+- **舊 access token 在有效期內（60 分鐘）仍帶著舊權限** —— 加的權限用不到、收的權限擋不住。
+- 攔截器**只在 401 觸發 refresh，403 不會**。所以「權限不足」的請求會一路失敗到 token 自然過期，最長一小時，不會自動修復。
+- 立即生效的唯一方式是**請該使用者重新登入**。
+
+因此**新增權限碼並在 Router 啟用檢查，屬於高風險部署**：舊 token 缺新碼會被擋。建議兩階段 —— 先只上「新增權限 + 回填角色」的 migration，跨過一個 token 週期後再上 Router 的檢查。
+
 ## Superadmin（隱藏帳號）
 
 - **Email**：`sa@system.local`
@@ -92,5 +102,5 @@
 - **JWT 技術規範** → [backend-design.md §9](backend-design.md#9-jwt-認證)（HS256、BCrypt、環境變數雙底線）
 - **JWT 在路由權限檢查的角色** → [backend-design.md §3.4 權限表](backend-design.md#34-權限表)
 - **前端 Token 處理** → [auth.interceptor.ts](../Admin/src/app/core/auth/interceptors/auth.interceptor.ts)（自動附加 Bearer Token + 401 攔截）
-- **權限管理頁面** → 僅 Superadmin 可進入 `/admin/roles` 與 `/admin/permissions`
+- **權限管理頁面** → `/admin/permissions` 僅 Superadmin（前端 route guard + **API 端自 2026-08 起由 `AppRouter.IsSuperAdminRoute` 強制**：`POST/PUT/PATCH/DELETE /permissions[/{id}]` 與 `GET /permissions/{id}`；`GET /permissions` 列表刻意開放，角色編輯頁依賴它）。`/admin/roles` 走 `roles:read` / `roles:write` / `roles:delete`，**不是** Superadmin-only
 - **JWT Claims 在前端的使用** → `auth.service.ts` 解碼 JWT 取 `roles` / `permissions` / `job_title_level` 等

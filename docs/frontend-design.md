@@ -1527,6 +1527,37 @@ onTaxIdBlur() {
 },
 ```
 
+### 登入後首頁決策（landing redirect）
+
+**規則：任何「回到主頁」一律指向 `/`，不得硬寫 `/dashboard`。**
+
+`/dashboard`（打卡頁）自 2026-08 起需 `attendances:read`，不再是人人都進得去的頁面。若各處繼續硬指 `/dashboard`，沒有該權限的人會撞上 403 —— 而 403 頁的「回到主頁」按鈕本身也指向 `/dashboard`，形成 **403 → 回主頁 → 又 403** 的無窮迴圈。
+
+改為由 `app.routes.ts` 的根路由當**唯一決策點**，實際落點集中在 [`resolveLandingUrl()`](../Admin/src/app/core/auth/utils/landing.ts)：
+
+```typescript
+// app.routes.ts —— Angular 支援 function 形式的 redirectTo，在 injection context 內執行
+{
+  path: '',
+  pathMatch: 'full',
+  redirectTo: () => {
+    const auth = inject(AuthService);
+    return auth.isLoggedIn() ? resolveLandingUrl(auth) : '/auth/login';
+  },
+},
+
+// core/auth/utils/landing.ts
+export function resolveLandingUrl(auth: AuthService): string {
+  return auth.hasPermission('attendances:read') ? '/dashboard' : '/account/my-profile';
+}
+```
+
+已收斂到 `/` 的呼叫點：`no-auth.guard.ts`、`login.ts`（`returnUrl` 的預設值）、`line-bind-callback.ts`、`error-403.ts`、`error-404.ts`、`app-logo.ts`。**新增任何「首頁」連結時比照辦理**；未來若 `/account/my-profile` 也加上權限，只需改 `resolveLandingUrl` 一處。
+
+### 受權限控管的選單項目
+
+側欄項目加 `requiredPermission` 即可（[data.ts](../Admin/src/app/layout/components/data.ts)），區段標題會由 `app-menu.ts` 的 `isTitleVisible()` 在整區皆不可見時自動隱藏，不需另外處理。**選單隱藏只是視覺層**：對應路由必須同時掛 `permissionGuard` + `data.permission`，頁內的寫入按鈕再用 `*appHasPermission` 包一層（三層都要，後端才是最終防線）。
+
 ### Feature 目錄結構
 
 每個 feature 一律三層：

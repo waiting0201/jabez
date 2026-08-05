@@ -43,8 +43,13 @@ public static class PermissionCodes
     public const string OvertimeRequestsRead      = "overtime-requests:read";
     public const string OvertimeRequestsWrite     = "overtime-requests:write";
     public const string OvertimeRequestsDelete    = "overtime-requests:delete";
-    public const string AttendancesRead             = "reports-attendance:read";
-    public const string AttendancesWrite            = "reports-attendance:read";
+    // 出勤打卡（員工本人）：讀自己今日打卡 / 執行上下班・加班打卡
+    public const string AttendancesRead             = "attendances:read";
+    public const string AttendancesWrite            = "attendances:write";
+    // 出缺勤報表（管理端）：查全公司打卡紀錄 / 人工修改他人紀錄。與上面兩碼刻意分離 ——
+    // 前者是「員工對自己」，後者是「管理者對別人」，權限對象不同不可共用。
+    public const string ReportsAttendanceRead       = "reports-attendance:read";
+    public const string ReportsAttendanceWrite      = "reports-attendance:write";
     public const string InsuranceBracketsRead       = "insurance-brackets:read";
     public const string InsuranceBracketsWrite      = "insurance-brackets:write";
     public const string InsuranceBracketsDelete     = "insurance-brackets:delete";

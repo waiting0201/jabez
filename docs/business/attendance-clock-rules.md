@@ -150,6 +150,52 @@ SQL 端的判定片段收斂於 `LeaveRevocationService.NotRevokedClause`，EF �
 
 ---
 
+## 打卡權限（2026-08 新增）
+
+在此之前，打卡是系統中唯一完全不受權限控管的模組：`AppRouter.GetRequiredPermission` 對 `["attendances", ..]` 一律回 `null`，任何登入者都能打卡，**也能改任何人的出缺勤紀錄**（`PUT/PATCH /attendances/{id}` 連擁有者比對都沒有，而這會直接影響薪資與加班費）。
+
+### 三個權限碼
+
+| Code | Id | Module | 對象 | 端點 |
+|---|---|---|---|---|
+| `attendances:read` | 37 | 出勤打卡 | 員工對自己 | `GET /attendances/today` |
+| `attendances:write` | 38 | 出勤打卡 | 員工對自己 | `POST /attendances/clock-in` `clock-out` `overtime-start` `overtime-end` |
+| `reports-attendance:write` | 42 | Reports | 管理者對別人 | `PUT/PATCH /attendances/{id}` |
+
+`GET /attendances`（出缺勤報表列表）沿用既有的 `reports-attendance:read`（Id 41），不新增碼。
+
+「員工對自己」與「管理者對別人」刻意分成兩組 —— 共用一組會變成「能打自己的卡＝能改全公司的卡」。規範見 [backend-design.md §3.4](../backend-design.md#34-權限表)。
+
+> **Id 37/38/42 是重用的歷史空號**（37/38 於 2026-03 被 `SyncSeedDataWithDatabase` 刪除，42 原為已刪除的 `reports-leave:read`）。刻意不取 78+，因為 `PermissionHandler.CreateAsync` 以 `max(Id)+1` 配號，78 起可能已被 UI 建立的權限占用；重用低號可免疫撞號。
+
+### 「誰能改」vs「能對誰改」
+
+權限碼只管前者。`AttendanceHandler.UpdateAsync` 另套**部門可見性 scope**（`IProjectAccessResolver`），與 `GET /attendances` 同範圍 —— 讀得到才改得到，跨範圍回 403「您沒有權限修改此員工的出缺勤紀錄。」
+
+### 既有角色的回填
+
+`AddAttendanceClockPermissions` migration 以 raw SQL 回填，**上線後行為與現況完全相同**，差別只在「從此可管理」：
+
+- `attendances:read` / `write` → **所有現有角色**（含 UI 建立的自訂角色，`INSERT … SELECT FROM Roles`）
+- `reports-attendance:write` → **只給已擁有 `reports-attendance:read` 的角色**，精準維持「能進報表頁就能編輯」
+
+> ⚠️ **營運 SOP：日後從 UI 新建的角色，預設不會勾到「出勤打卡」模組。** 建新角色時務必手動勾選 `attendances:read` + `attendances:write`，否則該角色的員工隔天無法打卡。（migration 只回填當下已存在的角色。）
+
+> ⚠️ **權限異動不會即時生效**：JWT 的 `permissions` claims 只在 login / refresh 時從 DB 重讀，access token 有效期內（`Jwt__ExpiryMinutes`，預設 60 分）仍是舊的。調整打卡權限後請該員工重新登入。詳見 [authentication.md](../authentication.md)。
+
+### 不受權限影響的兩條路徑
+
+兩者都不經 `AppRouter`，所以沒有 `attendances:write` 的人仍會被影響 —— 已知的語意矛盾，不影響正確性：
+
+- **登入時自動補下班卡**（`AuthHandler`，見上方章節）是伺服器端直寫 DB
+- **LINE 打卡提醒**（`AttendanceReminderFunction`）走 TimerTrigger，會照樣推播給已無打卡權限的人
+
+### 已知缺口（未處理）
+
+`UpdateAsync` 沒有稽核軌跡：改了誰的卡、誰改的、原值為何都沒留。另案評估。
+
+---
+
 ## 跨業務關聯
 
 - **請假時段與假別規則** → [leave-rules.md](leave-rules.md)

@@ -472,7 +472,11 @@ public sealed class AppRouter(
             ("PUT" or "PATCH", ["roles", _])             => PermissionCodes.RolesWrite,
             ("DELETE", ["roles", _])                     => PermissionCodes.RolesDelete,
 
-            // Permissions — Superadmin-only，由 IsSuperAdminRoute 處理
+            // Permissions — 寫入類與單筆讀取為 Superadmin-only，由 IsSuperAdminRoute 擋。
+            // ⚠️ GET ["permissions"]（列表）刻意開放給任何登入者：角色編輯頁（roles:write）要靠它建
+            //    權限勾選清單（Admin role-form.ts），鎖起來會讓有 roles:write 的管理員無法編輯角色。
+            //    非 Superadmin 看不到「權限管理」模組是由前端 role-form 過濾，不在此處擋。
+            ("GET",    ["permissions"])                  => null,
 
             // Settings
             ("GET",    ["settings"])                     => PermissionCodes.SettingsRead,
@@ -630,10 +634,19 @@ public sealed class AppRouter(
             ("PATCH",  ["overtime-requests", _])          => PermissionCodes.OvertimeRequestsWrite,
             ("DELETE", ["overtime-requests", _])          => PermissionCodes.OvertimeRequestsDelete,
 
-            // Attendances（打卡不需額外權限，登入即可）
-            ("GET",    ["attendances", ..])              => null,
-            ("POST",   ["attendances", ..])              => null,
-            ("PUT" or "PATCH", ["attendances", _])       => null,
+            // Attendances — 2026-08 起納入權限管理（原本一律 null＝登入即可）。
+            // 兩組權限刻意分離：attendances:* 是「員工對自己」、reports-attendance:* 是「管理者對別人」。
+            ("GET",    ["attendances", "today"])          => PermissionCodes.AttendancesRead,
+            ("POST",   ["attendances", "clock-in"])       => PermissionCodes.AttendancesWrite,
+            ("POST",   ["attendances", "clock-out"])      => PermissionCodes.AttendancesWrite,
+            ("POST",   ["attendances", "overtime-start"]) => PermissionCodes.AttendancesWrite,
+            ("POST",   ["attendances", "overtime-end"])   => PermissionCodes.AttendancesWrite,
+            // 管理端出缺勤報表：列表沿用既有 reports-attendance:read，人工修改需 reports-attendance:write
+            ("GET",    ["attendances"])                   => PermissionCodes.ReportsAttendanceRead,
+            ("PUT" or "PATCH", ["attendances", _])        => PermissionCodes.ReportsAttendanceWrite,
+            // 未列舉的 attendances 子路由一律套較嚴的預設（新增端點時務必回來明確對應）
+            ("GET",    ["attendances", ..])               => PermissionCodes.ReportsAttendanceRead,
+            ("POST",   ["attendances", ..])               => PermissionCodes.AttendancesWrite,
 
             // Insurance Brackets
             ("GET",    ["insurance-brackets", ..])              => PermissionCodes.InsuranceBracketsRead,
@@ -666,6 +679,14 @@ public sealed class AppRouter(
     /// <summary>判斷是否為 Superadmin-only 路由</summary>
     private static bool IsSuperAdminRoute(string method, string[] segments) =>
         (method, segments) is
+            // 權限主檔異動 + 單筆讀取（權限編輯頁專用）。
+            // ⚠️ GET ["permissions"]（列表）刻意不納入 —— 角色編輯頁需要全清單建 checkbox，
+            //    詳見 GetRequiredPermission 的 Permissions 段落註解。
+            ("POST",   ["permissions"]) or
+            ("PUT",    ["permissions", _]) or
+            ("PATCH",  ["permissions", _]) or
+            ("DELETE", ["permissions", _]) or
+            ("GET",    ["permissions", _]) or
             ("POST", ["admin", "attendance-reminder", "run"]) or
             ("GET",  ["admin", "attendance-reminder-logs", ..]) or
             ("POST", ["admin", "payment-reminder", "run"]) or
