@@ -36,7 +36,7 @@ import { AuthService } from '@core/auth/services/auth.service';
             <img src="/assets/img/logo.png" alt="Jabez" class="left-logo-img" />
           </div>
 
-          <h2 class="left-heading">紮根成長，<br>一切從這裡開始。</h2>
+          <h2 class="left-heading">扎根成長，<br>一切從這裡開始。</h2>
           <p class="left-sub">Jabez 企業管理流程平台</p>
 
           <div class="left-features">
