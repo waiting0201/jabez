@@ -280,7 +280,7 @@ export class Login {
         if (res.auto_clock_out && res.auto_clock_out.count > 0) {
           const dates = res.auto_clock_out.dates.join('、');
           this.toastr.warning(
-            `以下日期未打下班卡，系統已自動以設定下班時間補上：${dates}`,
+            `以下日期未打下班卡，系統已自動以上班打卡時間 + 8 小時補上：${dates}`,
             `自動補卡提醒（${res.auto_clock_out.count} 筆）`,
             { timeOut: 10000, closeButton: true }
           );

@@ -16,7 +16,7 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
     private const string ListSql = """
         SELECT a.Id, u.Name AS UserName, a.RecordDate,
                a.ClockInTime, a.ClockInLatitude, a.ClockInLongitude,
-               a.ClockOutTime, a.ClockOutLatitude, a.ClockOutLongitude,
+               a.ClockOutTime, a.ClockOutLatitude, a.ClockOutLongitude, a.IsClockOutAuto,
                a.OvertimeStartTime, a.OvertimeStartLatitude, a.OvertimeStartLongitude,
                a.OvertimeEndTime, a.OvertimeEndLatitude, a.OvertimeEndLongitude,
                a.OvertimeRequestId, a.CreatedAt,
@@ -169,6 +169,7 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
             (DateTime?)row.ClockOutTime,
             (double?)row.ClockOutLatitude,
             (double?)row.ClockOutLongitude,
+            (bool)row.IsClockOutAuto,
             (DateTime?)row.OvertimeStartTime,
             (double?)row.OvertimeStartLatitude,
             (double?)row.OvertimeStartLongitude,

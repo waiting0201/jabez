@@ -53,7 +53,7 @@
 | `TravelWriteOffRecord` | 出差預支沖銷申請（獨立簽核流程，關聯 TravelRequest） |
 | `TravelWriteOffItem` | 出差預支沖銷明細（含發票號碼、檔案上傳） |
 | `RequestDesignatedReviewer` | 申請人指定審核者清單（多人依序審核；**ApprovalStepOrder** 綁定所屬 designated 步驟，支援一條流程多個指定步驟；**SelectedDepartmentId** 記錄第二步選的部門；唯一索引 `(RequestType, RequestId, ApprovalStepOrder, ReviewerId)`） |
-| `AttendanceRecord` | 出勤打卡紀錄（每人每天一筆，含 GPS） |
+| `AttendanceRecord` | 出勤打卡紀錄（每人每天一筆，含 GPS；`IsClockOutAuto` 標記下班時間為登入時系統補卡） |
 | `AttendanceReminderLog` | 打卡提醒推播紀錄（BatchId 串聯同一次 tick；含 batchStart 紀錄、ErrorCategory 失敗分類、HttpStatusCode、DurationMs；Snapshot 欄位保留歷史） |
 | `PaymentReminderLog` | 撥款日將屆提醒推播紀錄（BatchId 串聯同一次 tick；TriggerSource auto/manual；ReminderDateTaipei 用於同日去重；Status: success/failure/batchStart/skipped_already_sent；FinanceUserId 推播對象） |
 | `SystemSetting` | 系統設定（含站台 / 工時 / 通知 / 撥款提醒）。`ApprovalEmailEnabled` / `ApprovalLineEnabled` 控制全域簽核通知開關（不影響帳號通知 / 薪資明細 / 打卡提醒）。`PaymentReminderDaysBefore` 控制撥款日將屆提醒提前天數（預設 3 天，0-30） |

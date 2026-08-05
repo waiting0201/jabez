@@ -109,6 +109,7 @@ public sealed class AttendanceHandler(
         record.ClockOutTime      = now;
         record.ClockOutLatitude   = body.Latitude;
         record.ClockOutLongitude  = body.Longitude;
+        record.IsClockOutAuto     = false;   // 本人打卡
 
         await db.SaveChangesAsync();
 
@@ -222,6 +223,10 @@ public sealed class AttendanceHandler(
 
         var record = await db.AttendanceRecords.FindAsync(recordId)
             ?? throw AppException.BadRequest("找不到指定的出缺勤紀錄。");
+
+        // 下班時間被人工改動 → 清掉「系統補卡」標記（改為管理者維護的值）
+        if (record.ClockOutTime != body.ClockOutTime)
+            record.IsClockOutAuto = false;
 
         record.ClockInTime        = body.ClockInTime;
         record.ClockOutTime       = body.ClockOutTime;

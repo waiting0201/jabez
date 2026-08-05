@@ -76,6 +76,44 @@
 
 ---
 
+## 登入時自動補卡（漏打的歷史紀錄）
+
+補卡在**登入當下**執行（[AuthHandler.LoginAsync](../../Api/Handlers/AuthHandler.cs)），只處理 `RecordDate < 今天` 的紀錄，
+今天的漏打不會被補（當天還有機會自己打）。沒有排程 —— 員工不登入就不會補。
+
+| 情境 | 撈取條件 | 補上的時間 |
+|---|---|---|
+| 漏打下班卡 | `ClockInTime IS NOT NULL AND ClockOutTime IS NULL` | **該日上班打卡時間 + 8 或 9 小時**（見下表） |
+| 漏打加班結束卡 | `OvertimeStartTime IS NOT NULL AND OvertimeEndTime IS NULL` | 加班開始時間 + 該張加班單的 `EstimatedHours` |
+
+**下班補卡的加值以「上班打卡是否在午休前」決定**（午休界線 = `WorkdayHours.LunchStartHour` 12:00）：
+
+| 上班打卡時間 | 加值 | 理由 | 例 |
+|---|---|---|---|
+| 上午（`Hour < 12`） | **+9 小時** | 工時跨越午休 12:00–13:00，需含 1 小時不計薪的休息 | 09:00 → 18:00 |
+| 下午（`Hour >= 12`） | **+8 小時** | 不跨午休，淨工時即實際在場時間 | 13:30 → 21:30 |
+
+淨工時 8 小時 = `WorkdayHours.FullDayHours`，午休 1 小時 = `LunchEndHour - LunchStartHour`，
+兩者都取自 [Constants.cs](../../Api/Common/Constants.cs) 的 `WorkdayHours`，不在 Handler 內寫死。
+
+**補出來的下班時間會標記 `AttendanceRecord.IsClockOutAuto = true`**，出缺勤清單於「下班時間」欄位後
+加掛 badge「系統補卡」（`bg-warning-subtle`），Excel 匯出則於時間後加註「（系統補卡）」，
+以區分本人打卡與系統代打。旗標的清除時機：本人補打下班卡（`POST /attendances/clock-out`）、
+或管理者在出缺勤清單編輯 Modal 改動下班時間（`PATCH /attendances/{id}`，僅在值真的改變時清除）。
+
+補完後於登入頁跳 toastr warning 列出被補的日期（`auto_clock_out` / `auto_overtime_end` 回應欄位）。
+
+> **2026-08 變更**：下班補卡時間原本是「該日 `SystemSetting.WorkEndTime`（預設 18:00）」，
+> 改為依上班打卡時間推算（上午 +9 / 下午 +8），並新增 `IsClockOutAuto` 標記。
+> `WorkStartTime` / `WorkEndTime` 自此**只服務打卡提醒的時點判斷**，不再參與補卡；
+> 早到 / 晚到者的工時因此不再被統一壓成 18:00 下班。
+
+**沒打上班卡則完全不會有紀錄** —— `AttendanceRecord` 只由「上班打卡」或「休假日加班開始」建立，
+因此該日在出缺勤報表中是整列不存在（不是顯示缺勤），補卡也不會觸發（條件要求 `ClockInTime` 不為 null）。
+但**下班提醒推播仍會發送**（提醒只看當日有無 `ClockOutTime`，見 [attendance-reminder.md](attendance-reminder.md)）。
+
+---
+
 ## 跨業務關聯
 
 - **請假時段與假別規則** → [leave-rules.md](leave-rules.md)
