@@ -9,10 +9,29 @@
 ## 觸發邏輯
 
 1. Cron `%AttendanceReminderCron%`（UTC）進入 Function；預設 `0 */1 23,0-1,8-10 * * *`，僅在 7-9 Taipei（= UTC 23,0,1）與 16-18 Taipei（= UTC 8,9,10）時段每分鐘觸發
-2. 透過 `Clock.Now`（台北時區）取得當前 `HH:mm`
-3. 比對 `SystemSetting.WorkStartTime - 2min` / `WorkEndTime - 2min`；未命中直接 return
-4. 週末（Saturday/Sunday）直接 return（cron 跨午夜時 day-of-week 無法在單一表達式中正確涵蓋週一至週五，故由 Service 端統一過濾）
-5. 命中 → Dapper 查詢對象 → LINE 推播
+2. `IsPastDue=true` **不 return**，只記 `LogWarning` 後照常執行（見下方「時間窗 + 冪等」）
+3. 透過 `Clock.Now`（台北時區）取得當前時間
+4. 判斷是否落在**提醒時間窗**內：`[WorkStartTime − 2min, +10min)` → `clockIn`、`[WorkEndTime − 2min, +10min)` → `clockOut`；都未命中直接 return
+5. 週末（Saturday/Sunday）直接 return（cron 跨午夜時 day-of-week 無法在單一表達式中正確涵蓋週一至週五，故由 Service 端統一過濾）
+6. **冪等閘**：查 `AttendanceReminderLogs` 今天這一槽（以 `TargetTimeTaipei` 區分上/下班）是否已有 `batchStart`，有就 return
+7. 命中 → 先寫 `batchStart` → Dapper 查詢對象 → LINE 推播
+
+### 時間窗 + 冪等（2026-08 重構，重要）
+
+原本第 4 步是「`Clock.Now` 的 `HH:mm` 字串**精確等於** `WorkStartTime − 2min`」，加上 Function 端 `IsPastDue` 直接 return。這個組合對延遲零容忍，正式站因此出過兩類事故：
+
+| 症狀 | 實際紀錄 | 原因 |
+|---|---|---|
+| **整天不發** | 2026-07-06、2026-08-06 的上班提醒 batchStart 為 0 筆 | Flex Consumption 冷啟動讓 08:58 的 tick 延後執行，`HH:mm` 已跳到 08:59 → 不命中；或被 `IsPastDue` 直接跳過 |
+| **重複推播** | 2026-07-13 / 07-17 / 07-27 同一槽兩個 BatchId（08:58 與 08:59） | 同一個 occurrence 被兩個實例各跑一次，兩者相隔約 60 秒 |
+
+修正方式是把「準時」的責任從平台移到程式：
+
+- **時間窗**（`WindowMinutes = 10`）吸收冷啟動延遲 —— 窗內任何一次 tick 都算命中。窗的尾端（09:08 / 18:08 Taipei）仍落在 cron 涵蓋的時段內
+- **`batchStart` 冪等閘**收斂成一天一槽一次 —— 窗內後續的 tick、以及同 occurrence 的第二個實例都會看到已存在的 `batchStart` 而 return
+- 因為有冪等閘，`IsPastDue` 補跑變成安全操作，不再提前 return
+- 手動觸發（`ForceRunAsync`）同樣寫 `batchStart`，所以當天手動推過之後排程不會再重複打擾員工
+- 冪等查詢失敗一律當作「還沒發過」→ 寧可重複推播，也不要因為 log 表出狀況而整天不發
 
 ## 對象過濾條件（Dapper SQL）
 
@@ -33,7 +52,7 @@
 每次排程命中時點 / 手動觸發都會寫入 `AttendanceReminderLogs` 資料表，供前端「打卡提醒紀錄」頁查詢：
 
 - **BatchId 串聯**：每次 `RunAsync` 開頭產生一個 `Guid`，同一次 tick 的所有紀錄共用。
-- **batchStart 紀錄**：每次推播前先寫一筆 `Status='batchStart' / UserId=null`，即使 0 對象也能驗證排程有跑、命中時點。
+- **batchStart 紀錄**：每次推播前先寫一筆 `Status='batchStart' / UserId=null`，即使 0 對象也能驗證排程有跑、命中時點。**寫入時機必須早於收件人查詢**（2026-08 調整）——它同時是冪等閘的依據，也讓「收件人 SQL 炸掉」與「排程根本沒觸發」在紀錄上可以區分；人數於查詢完成後以 UPDATE 補回 `UserNameSnapshot='recipientCount=N'`。收件人查詢若丟例外，會補一筆 `Status='failure' / ErrorCategory='system_error'`（`ErrorMessage` 前綴「收件人查詢失敗：」）。
 - **逐筆推播紀錄**：對每位推播對象寫一筆 success/failure，含 `LineUserIdSnapshot / UserNameSnapshot`（歷史快照，員工解綁/離職後仍可查）、`HttpStatusCode`、`DurationMs`、`ErrorCategory`（`not_friend / token_invalid / rate_limited / network_error / unknown / system_error`）、`ErrorMessage`（截斷至 500 字）。
 - **Dapper INSERT**：使用 `IDbConnection` 直接 INSERT，避免 EF ChangeTracker 在迴圈中累積污染；寫入失敗只記 `LogError`，**絕不 throw**，不影響推播主流程。
 - **資料保留**：本次未實作清理機制；保守估每年 ~100K rows，仍在 SQL 可 sustain 範圍。未來可加 `CleanupAttendanceReminderLogsFunction` TimerTrigger 月清 6 個月前資料。
@@ -56,8 +75,9 @@
 ## 設計決策
 
 - **Cron Timezone**：UTC 觸發 + 內部 `Clock.Now` 比對，不依賴 `WEBSITE_TIME_ZONE` / `TZ` 環境變數，相容 Linux Consumption Plan
-- **限定時段**：cron 只在 7-9 / 16-18 Taipei 時段每分鐘觸發（共 6 小時/日），其他時段不進入 Function；對應預設 `WorkStartTime=09:00` / `WorkEndTime=18:00` 並留 1 小時前後緩衝。若上下班時間調整至此區間外，須同步修改 `AttendanceReminderCron`（Production：Function App → Configuration）
-- **幂等性**：依賴 Azure Functions Timer 的 singleton lock（AzureWebJobsStorage blob lease）保證同一 cron tick 只觸發一次，加上 `RunOnStartup=false` 與 `IsPastDue` 跳過防止意外重複
+- **限定時段**：cron 只在 7-9 / 16-18 Taipei 時段每分鐘觸發（共 6 小時/日），其他時段不進入 Function；對應預設 `WorkStartTime=09:00` / `WorkEndTime=18:00` 並留 1 小時前後緩衝。若上下班時間調整至此區間外，須同步修改 `AttendanceReminderCron`（Production：Function App → Configuration）。⚠️ 調整時記得**時間窗尾端**（上/下班時刻 + 8 分）也必須落在 cron 涵蓋範圍內
+- **幂等性**：**不依賴** Azure Functions Timer 的 singleton lock —— 正式站（Flex Consumption）實測會出現同一 occurrence 被兩個實例各跑一次。真正的去重靠 `AttendanceReminderLogs` 的 `batchStart` 查詢（見上方「時間窗 + 冪等」）
+- **可觀測性**：`Program.cs` 需保留 `AddApplicationInsightsTelemetryWorkerService()` + `ConfigureFunctionsApplicationInsights()`，否則 isolated worker 的 `ILogger` 輸出不會進 App Insights，排程異常時只能靠 `AttendanceReminderLogs` 反推（2026-08 之前正式站即為此狀態）
 - **成本**：Consumption Plan 每月約 10,800 次執行（限定時段後），遠低於免費額度（實質成本 0）
 
 ## 涉及元件
