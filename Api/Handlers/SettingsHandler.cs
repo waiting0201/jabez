@@ -45,8 +45,11 @@ public sealed class SettingsHandler(AppDbContext db)
         if (body.RequireEmailVerification is not null) entity.RequireEmailVerification = body.RequireEmailVerification.Value;
         if (body.MaintenanceMode          is not null) entity.MaintenanceMode          = body.MaintenanceMode.Value;
         if (body.MaintenanceMessage       is not null) entity.MaintenanceMessage       = body.MaintenanceMessage;
-        if (body.WorkStartTime            is not null) entity.WorkStartTime            = body.WorkStartTime;
-        if (body.WorkEndTime              is not null) entity.WorkEndTime              = body.WorkEndTime;
+        // 上下班時間必須是 "HH:mm" —— 打卡提醒的時點判斷直接吃這兩個欄位，
+        // 存進格式不合的值（空字串、"9am"…）不會噴錯，只會讓提醒從此靜默不發，
+        // 且沒有任何 log 可循，故在入口就擋掉。
+        if (body.WorkStartTime            is not null) entity.WorkStartTime            = NormalizeWorkTime(body.WorkStartTime, "上班時間");
+        if (body.WorkEndTime              is not null) entity.WorkEndTime              = NormalizeWorkTime(body.WorkEndTime,   "下班時間");
         if (body.MonthlyOvertimeLimit     is not null) entity.MonthlyOvertimeLimit     = body.MonthlyOvertimeLimit.Value;
         if (body.ApprovalEmailEnabled     is not null) entity.ApprovalEmailEnabled     = body.ApprovalEmailEnabled.Value;
         if (body.ApprovalLineEnabled      is not null) entity.ApprovalLineEnabled      = body.ApprovalLineEnabled.Value;
@@ -55,6 +58,19 @@ public sealed class SettingsHandler(AppDbContext db)
         await db.SaveChangesAsync();
 
         return new OkObjectResult(ApiResponse.Ok(ToDto(entity), "Settings updated."));
+    }
+
+    /// <summary>
+    /// 驗證並正規化 "HH:mm"（容忍 "H:mm"，一律補零存回）。
+    /// 格式不合直接 400，不讓壞值進 DB —— 消費端見 <c>AttendanceReminderService</c>。
+    /// </summary>
+    private static string NormalizeWorkTime(string value, string fieldLabel)
+    {
+        if (!TimeSpan.TryParseExact(value.Trim(), [@"h\:mm", @"hh\:mm"],
+                System.Globalization.CultureInfo.InvariantCulture, out var t))
+            throw AppException.BadRequest($"{fieldLabel}格式不正確，請填 HH:mm（例如 09:00）。");
+
+        return $"{t.Hours:D2}:{t.Minutes:D2}";
     }
 
     private static SystemSettingsDto ToDto(Models.Entities.SystemSetting e) => new(

@@ -256,7 +256,7 @@ export const environment = {
 Api/
 ├── Functions/
 │   ├── RouterFunction.cs              # HttpTrigger，catch-all route {*route}
-│   ├── AttendanceReminderFunction.cs  # TimerTrigger：限定 7-9 / 16-18 Taipei 時段每分鐘檢查上下班前 2 分鐘，命中則 LINE 推播；cron 由 `AttendanceReminderCron` app setting 控制
+│   ├── AttendanceReminderFunction.cs  # TimerTrigger：限定 7-9 / 16-18 Taipei 時段每分鐘檢查，落在「上下班前 2 分鐘起算 10 分鐘時間窗」內則 LINE 推播；cron 由 `AttendanceReminderCron` app setting 控制。**`IsPastDue` 不跳過**（冷啟動延遲會整天不發），改由 Service 端 `batchStart` 冪等閘去重
 │   └── PaymentReminderFunction.cs     # TimerTrigger：每日 09:00 Taipei 跑撥款日將屆提醒；cron 由 `PaymentReminderCron` 控制；提前天數讀 `SystemSetting.PaymentReminderDaysBefore`，推給財務體系部門全員
 ├── Routing/
 │   └── AppRouter.cs                   # C# 12 List Pattern 路由分派器
@@ -317,7 +317,7 @@ Api/
 │   ├── PushResult.cs                 # LINE 推播結果 record（含 ErrorCategory 分類）
 │   ├── LineFlexMessageBuilder.cs     # 6 種簽核通知 + 打卡提醒的 LINE Flex Message 模板
 │   ├── IAttendanceReminderService.cs # 打卡提醒服務介面
-│   ├── AttendanceReminderService.cs  # 打卡提醒協調：判斷時點、過濾對象、推播 LINE
+│   ├── AttendanceReminderService.cs  # 打卡提醒協調：時間窗判斷時點（非精確等值）、`batchStart` 冪等閘（一天一槽一次）、過濾對象、推播 LINE
 │   ├── IPaymentReminderService.cs    # 撥款提醒服務介面
 │   ├── PaymentReminderService.cs     # 撥款日將屆提醒：撈 4 種待撥 installments、過濾財務部、推 LINE+Email、寫 PaymentReminderLog（同日去重）
 │   ├── InstallmentValidator.cs       # 分期撥款共用驗證：序號連續 / SUM == 總額 / 已撥款列保護

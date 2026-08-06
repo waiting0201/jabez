@@ -19,12 +19,14 @@ public sealed class PaymentReminderFunction(
         [TimerTrigger("%PaymentReminderCron%", RunOnStartup = false)] TimerInfo timer,
         CancellationToken ct)
     {
+        // IsPastDue 不提前 return（理由同 AttendanceReminderFunction）：
+        // 冷啟動延遲被判 past due 就整天不發，代價遠大於重複執行 ——
+        // 而重複執行是安全的，PaymentReminderService 內建同日去重（PaymentReminderLog 查 success）。
         if (timer.IsPastDue)
         {
             logger.LogWarning(
-                "PaymentReminder tick 被跳過（IsPastDue=true）；下次排程：{Next}",
+                "PaymentReminder tick 延遲（IsPastDue=true），照常執行並由同日去重擋重複；下次排程：{Next}",
                 timer.ScheduleStatus?.Next);
-            return;
         }
 
         try

@@ -26,6 +26,16 @@ public sealed class AttendanceReminderService(
     /// <summary>提醒提前時間（分鐘）。</summary>
     private const int LeadMinutes = 2;
 
+    /// <summary>
+    /// 命中時間窗（分鐘）：目標時刻起算 N 分鐘內的任何一次 tick 都算命中。
+    ///
+    /// 原本是「HH:mm 精確等值」，只要那一分鐘的 tick 沒跑到就整天不發 —— Flex Consumption
+    /// 冷啟動經常把 tick 延遲數十秒到數分鐘，正式站 2026-07-06 與 2026-08-06 的上班提醒
+    /// 就是這樣整天靜默。放寬成時間窗後，窗內會有多個 tick 命中，再由
+    /// <see cref="HasBatchStartedTodayAsync"/> 收斂成一天一次。
+    /// </summary>
+    private const int WindowMinutes = 10;
+
     /// <summary>推播間隔（毫秒）：避免一次性 burst 觸發 LINE 速率限制。</summary>
     private const int InterPushDelayMs = 100;
 
@@ -48,6 +58,15 @@ public sealed class AttendanceReminderService(
             return;
 
         var workTime = type == "clockIn" ? setting.WorkStartTime : setting.WorkEndTime;
+
+        // 冪等閘：同一槽今天已推過就不再推。擋掉兩種重複來源 ——
+        //   (1) 時間窗內的後續 tick（放寬窗口的必要配套）
+        //   (2) 同一個 occurrence 被多個實例各跑一次：正式站 2026-07-13 出現
+        //       08:58 / 08:59 兩個 BatchId、員工收到兩則重複推播，兩次相隔約 60 秒，
+        //       足夠讓後者看見前者寫下的 batchStart。
+        if (await HasBatchStartedTodayAsync(now.Date, workTime, ct))
+            return;
+
         await PushAsync(type, now.Date, workTime, setting.SiteUrl, "auto", null, ct);
     }
 
@@ -66,34 +85,67 @@ public sealed class AttendanceReminderService(
     }
 
     /// <summary>
-    /// 比對台北時間 HH:mm 是否命中「上/下班時刻 - LeadMinutes」。
-    /// 以字串等值比對，精確到分；命中則回傳 "clockIn" / "clockOut"，否則 null。
+    /// 判斷台北時間是否落在上/下班的提醒時間窗內。
+    /// 窗 = [上/下班時刻 − LeadMinutes, + WindowMinutes)；命中回 "clockIn" / "clockOut"，否則 null。
+    /// 上班窗優先判斷（正常設定下兩窗不會重疊）。
     /// </summary>
     private static string? DetermineReminderType(DateTime taipeiNow, string workStart, string workEnd)
     {
-        var targetIn  = SubtractMinutesHHmm(workStart, LeadMinutes);
-        var targetOut = SubtractMinutesHHmm(workEnd,   LeadMinutes);
-        var current   = taipeiNow.ToString("HH:mm", CultureInfo.InvariantCulture);
-
-        if (targetIn  is not null && current == targetIn)  return "clockIn";
-        if (targetOut is not null && current == targetOut) return "clockOut";
+        if (IsWithinWindow(taipeiNow, workStart)) return "clockIn";
+        if (IsWithinWindow(taipeiNow, workEnd))   return "clockOut";
         return null;
     }
 
-    /// <summary>將 "HH:mm" 減去指定分鐘數，回傳新的 "HH:mm"；跨日時回繞。</summary>
-    private static string? SubtractMinutesHHmm(string hhmm, int minutes)
+    /// <summary>台北時間是否落在「workTime − LeadMinutes」起算的 WindowMinutes 分鐘窗內；跨午夜會正確回繞。</summary>
+    private static bool IsWithinWindow(DateTime taipeiNow, string workTime)
     {
-        if (string.IsNullOrWhiteSpace(hhmm))
-            return null;
+        if (!TryParseHHmm(workTime, out var work))
+            return false;
 
-        if (!TimeSpan.TryParseExact(hhmm, @"h\:mm", CultureInfo.InvariantCulture, out var t)
-         && !TimeSpan.TryParseExact(hhmm, @"hh\:mm", CultureInfo.InvariantCulture, out t))
-            return null;
+        const int minutesPerDay = 24 * 60;
+        var nowMin   = (taipeiNow.Hour * 60) + taipeiNow.Minute;
+        var startMin = (((int)work.TotalMinutes - LeadMinutes) + minutesPerDay) % minutesPerDay;
+        var endMin   = startMin + WindowMinutes;
 
-        var shifted = t.Subtract(TimeSpan.FromMinutes(minutes));
-        if (shifted < TimeSpan.Zero)
-            shifted = shifted.Add(TimeSpan.FromDays(1));
-        return $"{shifted.Hours:D2}:{shifted.Minutes:D2}";
+        return endMin <= minutesPerDay
+            ? nowMin >= startMin && nowMin < endMin
+            : nowMin >= startMin || nowMin < endMin - minutesPerDay;   // 窗跨過午夜
+    }
+
+    /// <summary>解析 SystemSetting 的 "HH:mm"（容忍 "H:mm"）；格式不合回 false。</summary>
+    private static bool TryParseHHmm(string hhmm, out TimeSpan value)
+    {
+        value = default;
+        return !string.IsNullOrWhiteSpace(hhmm)
+            && TimeSpan.TryParseExact(hhmm, [@"h\:mm", @"hh\:mm"], CultureInfo.InvariantCulture, out value);
+    }
+
+    /// <summary>
+    /// 今天這一槽是否已寫過 batchStart（＝已推播過，不論成功失敗）。
+    /// 以 TargetTimeTaipei 區分上/下班兩槽（上班存 WorkStartTime、下班存 WorkEndTime）；
+    /// 兩者設成相同時間屬不合理設定，會被視為同一槽而只發一次。
+    /// 手動觸發（ForceRunAsync）也會寫 batchStart，因此當天手動推過之後排程就不再重複打擾員工。
+    /// 查詢失敗一律回 false —— 寧可重複推播，也不要因為 log 表出狀況而整天不發。
+    /// </summary>
+    private async Task<bool> HasBatchStartedTodayAsync(DateTime today, string workTime, CancellationToken ct)
+    {
+        const string sql = """
+            SELECT TOP 1 1
+            FROM   AttendanceReminderLogs
+            WHERE  Status = 'batchStart'
+              AND  TargetTimeTaipei = @WorkTime
+              AND  CAST(TickedAtTaipei AS DATE) = @Today
+            """;
+        try
+        {
+            var cmd = new CommandDefinition(sql, new { WorkTime = workTime, Today = today.Date }, cancellationToken: ct);
+            return await conn.ExecuteScalarAsync<int?>(cmd) is not null;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "AttendanceReminder 冪等檢查失敗，本次照常推播：Target={Target}", workTime);
+            return false;
+        }
     }
 
     private async Task<AttendanceReminderRunResult> PushAsync(
@@ -103,7 +155,7 @@ public sealed class AttendanceReminderService(
         // 將工作時間（"09:00"）與今日日期合成精確 targetTime，
         // 供 SQL 用「請假是否覆蓋此時刻」判斷（修正小時制請假被誤排除問題）。
         var targetTime = today.Date;
-        if (TimeSpan.TryParseExact(workTime, [@"h\:mm", @"hh\:mm"], CultureInfo.InvariantCulture, out var ts))
+        if (TryParseHHmm(workTime, out var ts))
             targetTime = today.Date.Add(ts);
 
         var batchId       = Guid.NewGuid();
@@ -111,12 +163,11 @@ public sealed class AttendanceReminderService(
         var tickedAtTaipei = Clock.Now;
         var targetTimeStr = workTime;  // "HH:mm"
 
-        var recipients = await reader.GetRecipientsAsync(targetTime, type, ct);
-        logger.LogInformation(
-            "AttendanceReminder: type={Type} target={Target} recipientCount={Count} batchId={BatchId}",
-            type, targetTime.ToString("yyyy-MM-dd HH:mm"), recipients.Count, batchId);
-
-        // 寫一筆 batchStart：即使 0 對象也能驗證排程有跑、命中時點
+        // batchStart 一定要「先寫、再查收件人」，順序有兩個理由：
+        //   (1) 它是 RunAsync 冪等閘的依據 —— 必須在推播前落地，才擋得住同 occurrence 的第二個實例
+        //   (2) 收件人查詢若丟例外，紀錄上仍看得到「這一槽有觸發過」；
+        //       舊版把它寫在查詢之後，導致「SQL 炸掉」與「排程根本沒跑」在紀錄上完全無法分辨。
+        // 人數待查詢完成後再補回 UserNameSnapshot。
         await SafeWriteLogAsync(new AttendanceReminderLogRow(
             BatchId: batchId,
             TickedAt: tickedAtUtc,
@@ -127,12 +178,49 @@ public sealed class AttendanceReminderService(
             TriggeredByUserId: triggeredByUserId,
             UserId: null,
             LineUserIdSnapshot: null,
-            UserNameSnapshot: $"recipientCount={recipients.Count}",
+            UserNameSnapshot: null,
             Status: "batchStart",
             ErrorCategory: null,
             ErrorMessage: null,
             HttpStatusCode: null,
             DurationMs: null), ct);
+
+        IReadOnlyList<Models.Dtos.AttendanceReminderRecipientDto> recipients;
+        try
+        {
+            recipients = await reader.GetRecipientsAsync(targetTime, type, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "AttendanceReminder 收件人查詢失敗：type={Type} target={Target} batchId={BatchId}",
+                type, targetTime.ToString("yyyy-MM-dd HH:mm"), batchId);
+
+            await SafeWriteLogAsync(new AttendanceReminderLogRow(
+                BatchId: batchId,
+                TickedAt: tickedAtUtc,
+                TickedAtTaipei: tickedAtTaipei,
+                TargetTimeTaipei: targetTimeStr,
+                ReminderType: type,
+                TriggerSource: triggerSource,
+                TriggeredByUserId: triggeredByUserId,
+                UserId: null,
+                LineUserIdSnapshot: null,
+                UserNameSnapshot: null,
+                Status: "failure",
+                ErrorCategory: "system_error",
+                ErrorMessage: Truncate($"收件人查詢失敗：{ex.Message}", 500),
+                HttpStatusCode: null,
+                DurationMs: null), ct);
+
+            return new AttendanceReminderRunResult(0, 0, 0, batchId);
+        }
+
+        logger.LogInformation(
+            "AttendanceReminder: type={Type} target={Target} recipientCount={Count} batchId={BatchId}",
+            type, targetTime.ToString("yyyy-MM-dd HH:mm"), recipients.Count, batchId);
+
+        await SafeUpdateRecipientCountAsync(batchId, recipients.Count, ct);
 
         var linkUrl = $"{siteUrl.TrimEnd('/')}/dashboard";
 
@@ -219,6 +307,29 @@ public sealed class AttendanceReminderService(
             logger.LogError(ex,
                 "AttendanceReminderLog 寫入失敗：BatchId={BatchId} UserId={UserId} Status={Status}",
                 row.BatchId, row.UserId, row.Status);
+        }
+    }
+
+    /// <summary>
+    /// 收件人查詢完成後，把人數補回 batchStart 那一列（供「排程有跑但 0 對象」的判讀）。
+    /// 與 <see cref="SafeWriteLogAsync"/> 同樣只記 log 不 throw。
+    /// </summary>
+    private async Task SafeUpdateRecipientCountAsync(Guid batchId, int recipientCount, CancellationToken ct)
+    {
+        const string sql = """
+            UPDATE AttendanceReminderLogs
+            SET    UserNameSnapshot = @Note
+            WHERE  BatchId = @BatchId AND Status = 'batchStart';
+            """;
+        try
+        {
+            var cmd = new CommandDefinition(
+                sql, new { BatchId = batchId, Note = $"recipientCount={recipientCount}" }, cancellationToken: ct);
+            await conn.ExecuteAsync(cmd);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "AttendanceReminderLog 人數回寫失敗：BatchId={BatchId}", batchId);
         }
     }
 

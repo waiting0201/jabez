@@ -25,6 +25,13 @@ var host = new HostBuilder()
     {
         var cfg = ctx.Configuration;
 
+        // ── Application Insights ──────────────────────────────────────────
+        // Isolated worker 不接這兩行，程式裡所有 ILogger 輸出都不會送到 App Insights ——
+        // 正式站因此長期是空的，2026-08 查打卡提醒漏發時完全看不到 LogWarning / LogError，
+        // 只能靠 DB 的 AttendanceReminderLogs 反推。取樣設定見 host.json。
+        services.AddApplicationInsightsTelemetryWorkerService();
+        services.ConfigureFunctionsApplicationInsights();
+
         // ── 全域 JSON 序列化：camelCase（前端 TypeScript 慣例）────────────
         // IActionResult 回應序列化（OkObjectResult 等）
         services.Configure<JsonOptions>(options =>

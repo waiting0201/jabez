@@ -1028,6 +1028,27 @@ Line__LoginChannelId              ↔ IConfiguration["Line:LoginChannelId"]
 - 民國/西元日期解析共用 [RocDateParser](../Api/Data/Seed/RocDateParser.cs)（年 ≤ 150 視民國 +1911）。
 - 旗標預設 `false`；`local.settings.json` 不進版控、`CopyToPublishDirectory=Never`，旗標不會帶到 prod。
 
+### 16.5 TimerTrigger 排程規範（重要）
+
+正式站是 **Flex Consumption（scale-to-zero）**，冷啟動會讓 tick 延遲數十秒到數分鐘，也可能讓同一個 occurrence 被兩個實例各跑一次。排程程式一律照以下三條寫，不要假設 tick 會準時、也不要假設只會跑一次：
+
+1. **不要用「精確時刻等值」判斷命中**。以時間窗（例：目標時刻起算 10 分鐘）取代 `now.ToString("HH:mm") == target`——錯過那一分鐘就整天不執行。
+2. **自己做冪等，不要依賴平台的 singleton lock**。以 DB 既有的執行紀錄當去重鍵（打卡提醒用 `AttendanceReminderLogs` 的 `batchStart`、撥款提醒用 `PaymentReminderLog` 的同日 success），且**紀錄必須寫在主要工作之前**才擋得住第二個實例。
+3. **`timer.IsPastDue` 只記 log，不要 `return`**。有第 2 點保護後補跑是安全的；提前 return 等於主動放棄該槽位。
+
+實例與事故紀錄詳見 [business/attendance-reminder.md](business/attendance-reminder.md#時間窗--冪等2026-08-重構重要)。
+
+### 16.6 Application Insights（isolated worker）
+
+`Program.cs` 的 `ConfigureServices` 必須有這兩行，否則 worker 內所有 `ILogger` 輸出都不會進 App Insights：
+
+```csharp
+services.AddApplicationInsightsTelemetryWorkerService();
+services.ConfigureFunctionsApplicationInsights();
+```
+
+⚠️ **版本必須配對**：`Microsoft.ApplicationInsights.WorkerService` 要用 **2.x**（目前 2.23.0）。裝成 3.x 會拉進 `Microsoft.ApplicationInsights` 3.x，與 `Microsoft.Azure.Functions.Worker.ApplicationInsights` 需要的 2.x 型別衝突——**`dotnet build` 會過，但 host 啟動時 `TypeLoadException: ITelemetryInitializer` 直接掛掉整個 Function App**。改動這兩個套件版本後，務必用 `func start` 實際啟動驗證，不能只看建置結果。
+
 ---
 
 ## 17. Coding Style Checklist（每次撰寫前自我檢查）

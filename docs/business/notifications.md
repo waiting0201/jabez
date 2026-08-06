@@ -120,7 +120,7 @@
 
 | # | Build 方法 | 用途 | 收件人 | 觸發時機 |
 |---|-----------|------|--------|---------|
-| 9 | `BuildAttendanceReminderMessage` | 上下班打卡提醒 | 已綁 LINE 的員工 | TimerTrigger（cron 由 `AttendanceReminderCron` 控制）於上下班前 2 分鐘命中時推播 |
+| 9 | `BuildAttendanceReminderMessage` | 上下班打卡提醒 | 已綁 LINE 的員工 | TimerTrigger（cron 由 `AttendanceReminderCron` 控制）於上下班前 2 分鐘起算的 10 分鐘時間窗內命中時推播，一天一槽一次 |
 
 ---
 
@@ -147,7 +147,7 @@
 詳見 [attendance-reminder.md](attendance-reminder.md)。重點：
 
 - **觸發**：`AttendanceReminderFunction` (TimerTrigger)，cron 由 `AttendanceReminderCron` app setting 控制，預設限定台北時間 7-9 點與 16-18 點每分鐘執行一次
-- **判斷時點**：以 `WorkStartTime` / `WorkEndTime` 為準，提醒提前 2 分鐘
+- **判斷時點**：以 `WorkStartTime` / `WorkEndTime` 為準，提醒提前 2 分鐘；命中條件為**時間窗** `[提前 2 分, +10 分)`（吸收冷啟動延遲），同一槽一天只發一次由 `batchStart` 冪等閘保證
 - **過濾條件**：非週末 + 當日無覆蓋該時刻的請假記錄 + 有 LineUserId
 - **持久化**：每次執行與每筆推播結果寫入 `AttendanceReminderLogs`（Superadmin 可於前端 `/admin/attendance-reminder-logs` 查詢）
 - **推播間隔**：100ms（避免觸發 LINE 速率限制）
