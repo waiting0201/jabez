@@ -4,6 +4,7 @@ import {FormsModule} from '@angular/forms';
 import {HttpClient, HttpParams} from '@angular/common/http';
 import {toSignal} from '@angular/core/rxjs-interop';
 import {environment} from '@/environments/environment';
+import {AuthService} from '@/app/core/auth/services/auth.service';
 import {ProjectService} from '../../../projects/services/project.service';
 import {PROJECT_STATUS_LABELS} from '../../../projects/models/project.model';
 
@@ -28,6 +29,13 @@ export interface ProjectWaterLevelRow {
 export class ProjectWaterLevel implements OnInit {
   private http = inject(HttpClient);
   private projectService = inject(ProjectService);
+
+  /**
+   * 「總專案水位」欄（分母＝契約金額，含公司保留 40%）為管理層資訊，需獨立權限。
+   * 用 component 欄位而非 *appHasPermission —— 空資料列的 colspan 也要跟著變，共用同一個真相。
+   * 後端 ProjectWaterLevelHandler 亦會對無此權限者回傳 totalPercentage = null（縱深防禦）。
+   */
+  readonly canSeeTotal = inject(AuthService).hasPermission('reports-project-water-level:total');
 
   records = signal<ProjectWaterLevelRow[]>([]);
   loading = signal(false);

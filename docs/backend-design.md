@@ -159,7 +159,25 @@ JWT 驗證 + 權限檢查由 RouterFunction → AppRouter 統一執行；Handler
 | 員工對自己 | `attendances:read` / `attendances:write` | `GET /attendances/today`、`POST /attendances/clock-*`、`overtime-*` |
 | 管理者對別人 | `reports-attendance:read` / `reports-attendance:write` | `GET /attendances`、`PUT/PATCH /attendances/{id}` |
 
-共用一組碼會造成「能打自己的卡 ＝ 能改全公司的卡」。權限碼只回答「**誰**能做」；「**能對誰**做」屬於資料範圍，另由 Handler 內的部門可見性 scope（`IProjectAccessResolver`）負責 —— 這是唯一允許 Handler 做授權判斷的情境。讀寫兩端的 scope 必須對稱：若列表端有 scope 而寫入端沒有，就是缺口（`AttendanceHandler.UpdateAsync` 在 2026-08 前即為此例）。
+共用一組碼會造成「能打自己的卡 ＝ 能改全公司的卡」。權限碼只回答「**誰**能做」；「**能對誰**做」屬於資料範圍，另由 Handler 內的部門可見性 scope（`IProjectAccessResolver`）負責。讀寫兩端的 scope 必須對稱：若列表端有 scope 而寫入端沒有，就是缺口（`AttendanceHandler.UpdateAsync` 在 2026-08 前即為此例）。
+
+#### 欄位級權限（Handler 內判定的例外）
+
+「Handler 內禁止檢查權限碼」有一個例外：**同一支端點所有人都進得來，但其中某些欄位只給部分人看**。這種需求無法用路由層權限表達（表達得了就該拆端點），只能在 Handler 內讀 principal 的 `permissions` claim 後抹除欄位。
+
+現行案例（2026-08，專案水位表）：
+
+| 端點 | 進入權限（路由層） | 欄位級權限（Handler 層） | 效果 |
+|---|---|---|---|
+| `GET /reports/project-water-level` | `reports-project-water-level:read` | `reports-project-water-level:total` | 缺後者時 `TotalPercentage` / `PreImportUsedAmount` / `RemainingAmount` 回 `null` / `0`；頁面照進、業務執行水位照看 |
+
+規則：
+
+1. **回 null 而非 403** —— 少一欄不該讓整頁掛掉，前端據此隱藏該欄即可。
+2. **連同「能反推出該欄的原料欄」一起抹**。上例只藏 `TotalPercentage` 沒有用，`PreImportUsedAmount` / `RemainingAmount` 是它的分子來源，留著等同把數字送出去讓前端自己算。
+3. **判定方式比照 `ApprovalTaskHandler`**：`is_superadmin == "true"` 直接放行，否則 `principal.FindAll("permissions").Any(c => c.Value == PermissionCodes.Xxx)`。principal 由 [`AppRouter`](../Api/Routing/AppRouter.cs) 寫入 `req.HttpContext.User`。
+4. **ReadService 與 SQL 不動**，抹除一律在 Handler 用 record `with` 做，維持「Dapper 只管查、Handler 管授權」的分工。
+5. 前端同步隱藏（縱深防禦，不是唯一防線）。前端 `hasPermission()` 讀的是 JWT 快照，**新權限上線後既有 token 要到下次登入 / refresh 才會帶到新碼**，期間該欄會暫時消失 —— 因為前後端都是「隱藏」而非報錯，畫面仍然正常。
 
 ### 3.5 公開路由（不需 JWT）
 
