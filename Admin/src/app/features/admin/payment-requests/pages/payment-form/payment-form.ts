@@ -1,4 +1,4 @@
-import {ChangeDetectorRef, Component, inject, OnInit, signal, TemplateRef, viewChild} from '@angular/core';
+import {ChangeDetectorRef, Component, inject, OnInit, signal, viewChild} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {AbstractControl, FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {DatePipe, DecimalPipe} from '@angular/common';
@@ -11,6 +11,7 @@ import {FilePreviewModal, PreviewFileData} from '../../../../../shared/component
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 import {AttachmentsUpload} from '../../../../../shared/components/attachments-upload';
+import {SubmitSuccessModal} from '../../../../../shared/components/submit-success-modal';
 import {DesignatedReviewersPicker, DesignatedReviewerPayload} from '../../../../../shared/components/designated-reviewers-picker/designated-reviewers-picker';
 import {AttachmentItem} from '../../../approval-tasks/models/approval-task.model';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
@@ -58,7 +59,6 @@ export class PaymentForm implements OnInit {
   private modal        = inject(NgbModal);
   pdfService           = inject(PaymentPdfService);
 
-  successModal = viewChild<TemplateRef<any>>('successModal');
   attachmentsUpload = viewChild(AttachmentsUpload);
 
   /** 編輯模式回填的既有附件（僅一般請款） */
@@ -485,16 +485,7 @@ export class PaymentForm implements OnInit {
     save$.subscribe({
       next: saved => {
         this.service.submit(saved.id).subscribe({
-          next: () => {
-            const tpl = this.successModal();
-            if (tpl) {
-              const ref = this.modal.open(tpl, { centered: true, backdrop: 'static', keyboard: false });
-              ref.result.then(() => this.router.navigate(['/admin/payment-requests']))
-                        .catch(() => this.router.navigate(['/admin/payment-requests']));
-            } else {
-              this.router.navigate(['/admin/payment-requests']);
-            }
-          },
+          next: () => this._onSubmitted(['/admin/payment-requests']),
           error: (err: HttpErrorResponse) => {
             this.errorMsg.set(err.error?.message || '送出失敗，請稍後再試。');
           },
@@ -504,6 +495,13 @@ export class PaymentForm implements OnInit {
         this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
       },
     });
+  }
+
+  private _onSubmitted(target: unknown[]) {
+    const ref = this.modal.open(SubmitSuccessModal, { centered: true, backdrop: 'static', keyboard: false });
+    ref.componentInstance.formType = 'payment_request';
+    ref.result.then(() => this.router.navigate(target))
+              .catch(() => this.router.navigate(target));
   }
 
   private _buildFormData(): FormData {

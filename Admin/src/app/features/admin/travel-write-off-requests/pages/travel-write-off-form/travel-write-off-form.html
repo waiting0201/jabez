@@ -316,19 +316,3 @@
 @if (previewFile) {
   <app-file-preview-modal [file]="previewFile" (closed)="closePreview()" />
 }
-
-<ng-template #successModal let-modal>
-  <div class="modal-header border-0 pb-0">
-    <button type="button" class="btn-close" (click)="modal.close()"></button>
-  </div>
-  <div class="modal-body text-center py-6">
-    <svg class="sa-icon sa-icon-3x text-success mb-4" style="stroke: currentColor">
-      <use href="/assets/icons/sprite.svg#check-circle"></use>
-    </svg>
-    <h5 class="fw-600 mb-2">申請成功</h5>
-    <p class="text-secondary mb-0">請盡早將正本資料送回管理處</p>
-  </div>
-  <div class="modal-footer border-0 justify-center pt-0">
-    <button type="button" class="btn btn-primary px-6" (click)="modal.close()">確定</button>
-  </div>
-</ng-template>

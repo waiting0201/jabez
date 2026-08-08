@@ -1,4 +1,4 @@
-import {ChangeDetectorRef, Component, inject, OnInit, signal, TemplateRef, viewChild} from '@angular/core';
+import {ChangeDetectorRef, Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {AbstractControl, FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {DatePipe, DecimalPipe} from '@angular/common';
@@ -17,6 +17,7 @@ import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
+import {SubmitSuccessModal} from '../../../../../shared/components/submit-success-modal';
 import {DesignatedReviewersPicker, DesignatedReviewerPayload} from '../../../../../shared/components/designated-reviewers-picker/designated-reviewers-picker';
 import {DepartmentService} from '../../../departments/services/department.service';
 import {Department} from '../../../departments/models/department.model';
@@ -49,7 +50,6 @@ export class AdvanceForm implements OnInit {
   private cdr            = inject(ChangeDetectorRef);
   private modal          = inject(NgbModal);
   private sanitizer      = inject(DomSanitizer);
-  successModal = viewChild<TemplateRef<any>>('successModal');
 
   projects: Project[] = [];
   loadingProjects = true;
@@ -488,9 +488,8 @@ export class AdvanceForm implements OnInit {
   }
 
   private _onSubmitted(target: unknown[]) {
-    const tpl = this.successModal();
-    if (!tpl) { this.router.navigate(target); return; }
-    const ref = this.modal.open(tpl, { centered: true, backdrop: 'static', keyboard: false });
+    const ref = this.modal.open(SubmitSuccessModal, { centered: true, backdrop: 'static', keyboard: false });
+    ref.componentInstance.formType = 'advance';
     ref.result.then(() => this.router.navigate(target))
               .catch(() => this.router.navigate(target));
   }
