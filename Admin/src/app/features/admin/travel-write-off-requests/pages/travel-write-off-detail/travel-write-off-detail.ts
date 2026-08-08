@@ -11,6 +11,8 @@ import {ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
 import {TravelWriteOffRequest, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/travel-write-off-request.model';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {ClosureInfoCardComponent} from '../../../../../shared/components/closure-info-card';
+import {SubmitSuccessModal} from '../../../../../shared/components/submit-success-modal';
+import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
 
@@ -26,6 +28,7 @@ export class TravelWriteOffDetail implements OnInit {
   private route       = inject(ActivatedRoute);
   private router      = inject(Router);
   private sanitizer   = inject(DomSanitizer);
+  private modal       = inject(NgbModal);
 
   /** File preview modal */
   previewFile: PreviewFileData | null = null;
@@ -67,6 +70,8 @@ export class TravelWriteOffDetail implements OnInit {
           this.request.set(updated);
           this.submitting.set(false);
           this.loadData(r.id);
+          const ref = this.modal.open(SubmitSuccessModal, { centered: true, backdrop: 'static', keyboard: false });
+          ref.componentInstance.formType = 'travel_write_off';
         },
         error: (err: HttpErrorResponse) => {
           this.errorMsg.set(err.error?.message || '送出失敗，請稍後再試。');

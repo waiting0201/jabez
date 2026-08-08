@@ -1342,6 +1342,66 @@ Quick-add 的 `POST /<resource>` 端點通常會把 admin CRUD 權限（如 `ven
 
 ---
 
+## 11.6 送出成功 Modal（`<app-submit-success-modal>`）
+
+申請送出成功後的「申請成功」提醒視窗，一律開共用元件 [`shared/components/submit-success-modal.ts`](../Admin/src/app/shared/components/submit-success-modal.ts)。
+**禁止**再於各頁內嵌 `<ng-template #successModal>`（此彈窗曾在 8 個表單樣板重複貼 8 份，2026-08 收斂）。
+
+### 11.6.1 兩個 Input（擇一）
+
+| Input | 用途 |
+|---|---|
+| `@Input() formType?: PaperFormApplicationType` | 走「印出紙本寄回會計室」流程的 **7 種財務單**，文案自動帶入單別名稱 |
+| `@Input() message?: string` | 不走紙本流程者的自訂訊息（目前僅預審申請「預審申請已送出，等待審核中」） |
+
+> 用 `@Input()` 而非 signal `input()`：`NgbModalRef` 只暴露 `componentInstance`，無法對 `InputSignal` 賦值。同 §11.5 的 `VendorQuickAddModal.prefillName`。
+
+`formType` 的文案為：
+
+> 請於單位主管簽核完畢後，再印出**{單別}**連同紙本單據寄回會計室進行行政財務流程。
+
+**單別名稱單一真相** = [`approvals/models/approval.model.ts`](../Admin/src/app/features/admin/approvals/models/approval.model.ts) 的 `APPLICATION_FORM_NAMES`（請款單 / 預支單 / 出差請款單 / 預支沖銷單 / 出差預支沖銷單 / 出差預支單 / 假日執行活動單）。新增申請類型時，`APPLICATION_TYPE_LABELS` 與 `APPLICATION_FORM_NAMES` 兩張表一起補。
+
+### 11.6.2 呼叫方式（兩種，差在關閉後的動作）
+
+**表單頁**（8 支 `*-form`）：接 `ref.result`，關閉後導回列表 —— 統一收斂成 private `_onSubmitted(target)` helper：
+
+```typescript
+private _onSubmitted(target: unknown[]) {
+  const ref = this.modal.open(SubmitSuccessModal, { centered: true, backdrop: 'static', keyboard: false });
+  ref.componentInstance.formType = 'payment_request';
+  ref.result.then(() => this.router.navigate(target))
+            .catch(() => this.router.navigate(target));
+}
+```
+
+**詳情頁**（6 支 `*-detail` 的草稿送出）：**不接** `ref.result`，關閉後留在原頁：
+
+```typescript
+this.service.submit(r.id).subscribe(updated => {
+  this.request.set(updated);
+  const ref = this.modal.open(SubmitSuccessModal, { centered: true, backdrop: 'static', keyboard: false });
+  ref.componentInstance.formType = 'payment_request';
+});
+```
+
+`write-off-detail` / `travel-write-off-detail` 送出前既有的 native `confirm(...)` 保留 —— 那是「送出前的破壞性確認」，與「送出後的成功提醒」語意不同，彈窗插在 confirm 通過後的 `next` 分支。
+
+### 11.6.3 涵蓋範圍
+
+| 申請 | 表單頁 | 詳情頁草稿送出 | `formType` |
+|---|---|---|---|
+| 請款 | ✓ | ✓ | `payment_request` |
+| 預支 | ✓ | —（無 detail 送出鈕） | `advance` |
+| 出差請款 | ✓ | ✓ | `travel_payment` |
+| 預支沖銷 | ✓ | ✓（confirm 後） | `write_off` |
+| 出差預支沖銷 | ✓ | ✓（confirm 後） | `travel_write_off` |
+| 出差預支 | ✓ | ✓ | `travel` |
+| 假日執行活動 | ✓ | ✓ | `holiday_travel` |
+| 預審 | ✓（傳 `message`） | —（刻意不加） | — |
+
+---
+
 ## 12. 檔案上傳規範
 
 ### 12.1 標準上傳區塊
@@ -1754,6 +1814,7 @@ template / 文件中引用其他檔案時，使用相對路徑 markdown link：
 - [ ] 卡片之間 `mb-4`，最後一張無 margin
 - [ ] 控制流用 `@if` / `@for`，未用 `*ngIf` / `*ngFor`
 - [ ] `@for` 都加 `track`
+- [ ] 送出成功彈窗用 `<app-submit-success-modal>`（§11.6），未自寫 `<ng-template #successModal>`
 - [ ] 報表 / 多條件列表頁的搜尋列遵循 §3「報表 / 列表搜尋列（Toolbar Filter Pattern）」：單列 `flex flex-wrap`、無欄位 label、inline 寬度 select、`btn-primary` 篩選按鈕
 
 ### 表單

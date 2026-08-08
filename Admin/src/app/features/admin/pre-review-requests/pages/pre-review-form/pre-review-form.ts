@@ -1,4 +1,4 @@
-import {ChangeDetectorRef, Component, inject, OnInit, signal, TemplateRef, viewChild} from '@angular/core';
+import {ChangeDetectorRef, Component, inject, OnInit, signal, viewChild} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {AbstractControl, FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {DatePipe, DecimalPipe} from '@angular/common';
@@ -10,6 +10,7 @@ import heic2any from 'heic2any';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {AttachmentsUpload} from '../../../../../shared/components/attachments-upload';
+import {SubmitSuccessModal} from '../../../../../shared/components/submit-success-modal';
 import {AttachmentItem} from '../../../approval-tasks/models/approval-task.model';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
 import {ApprovalFlow, ApprovalRecord, ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
@@ -56,7 +57,6 @@ export class PreReviewForm implements OnInit {
   private modal        = inject(NgbModal);
   pdfService           = inject(PreReviewPdfService);
 
-  successModal      = viewChild<TemplateRef<any>>('successModal');
   attachmentsUpload = viewChild(AttachmentsUpload);
 
   /** 編輯模式回填的既有附件 */
@@ -449,17 +449,7 @@ export class PreReviewForm implements OnInit {
     save$.subscribe({
       next: saved => {
         this.service.submit(saved.id).subscribe({
-          next: () => {
-            const tpl = this.successModal();
-            if (tpl) {
-              const ref = this.modal.open(tpl, {centered: true, backdrop: 'static', keyboard: false});
-              ref.result
-                .then(() => this.router.navigate(['/admin/pre-review-requests']))
-                .catch(() => this.router.navigate(['/admin/pre-review-requests']));
-            } else {
-              this.router.navigate(['/admin/pre-review-requests']);
-            }
-          },
+          next: () => this._onSubmitted(['/admin/pre-review-requests']),
           error: (err: HttpErrorResponse) => {
             this.errorMsg.set(err.error?.message || '送出失敗，請稍後再試。');
           },
@@ -469,6 +459,13 @@ export class PreReviewForm implements OnInit {
         this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
       },
     });
+  }
+
+  private _onSubmitted(target: unknown[]) {
+    const ref = this.modal.open(SubmitSuccessModal, {centered: true, backdrop: 'static', keyboard: false});
+    ref.componentInstance.message = '預審申請已送出，等待審核中';
+    ref.result.then(() => this.router.navigate(target))
+              .catch(() => this.router.navigate(target));
   }
 
   private _buildFormData(): FormData {

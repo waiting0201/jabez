@@ -6,7 +6,9 @@ import {HolidayTravelPdfService} from '../../services/holiday-travel-pdf.service
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
 import {ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
 import {HolidayTravelRequest, TravelParticipant, PARTICIPANT_SLOT_LABELS, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/holiday-travel-request.model';
+import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
+import {SubmitSuccessModal} from '../../../../../shared/components/submit-success-modal';
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 
 @Component({
@@ -20,6 +22,7 @@ export class HolidayTravelDetail implements OnInit {
   private taskService = inject(ApprovalTaskService);
   private route       = inject(ActivatedRoute);
   private router      = inject(Router);
+  private modal       = inject(NgbModal);
 
   request      = signal<HolidayTravelRequest | null>(null);
   approvalTask = signal<ApprovalTask | null>(null);
@@ -71,6 +74,8 @@ export class HolidayTravelDetail implements OnInit {
     if (!r) return;
     this.service.submit(r.id).subscribe(updated => {
       this.request.set(updated);
+      const ref = this.modal.open(SubmitSuccessModal, { centered: true, backdrop: 'static', keyboard: false });
+      ref.componentInstance.formType = 'holiday_travel';
     });
   }
 

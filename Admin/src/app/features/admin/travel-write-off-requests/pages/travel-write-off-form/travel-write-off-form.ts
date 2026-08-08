@@ -1,4 +1,4 @@
-import {ChangeDetectorRef, Component, inject, OnInit, signal, TemplateRef, viewChild} from '@angular/core';
+import {ChangeDetectorRef, Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {AbstractControl, FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {DecimalPipe} from '@angular/common';
@@ -8,6 +8,7 @@ import {firstValueFrom} from 'rxjs';
 import heic2any from 'heic2any';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
+import {SubmitSuccessModal} from '../../../../../shared/components/submit-success-modal';
 import {DesignatedReviewersPicker, DesignatedReviewerPayload} from '../../../../../shared/components/designated-reviewers-picker/designated-reviewers-picker';
 import {TravelWriteOffRequestService} from '../../services/travel-write-off-request.service';
 import {PaymentRequestService, OcrItem} from '../../../payment-requests/services/payment-request.service';
@@ -41,7 +42,6 @@ export class TravelWriteOffForm implements OnInit {
   private router         = inject(Router);
   private cdr            = inject(ChangeDetectorRef);
   private modal          = inject(NgbModal);
-  successModal = viewChild<TemplateRef<any>>('successModal');
   private sanitizer      = inject(DomSanitizer);
 
   /** undefined = 新增模式；數值 = 編輯模式（出差沖銷申請 ID） */
@@ -344,16 +344,7 @@ export class TravelWriteOffForm implements OnInit {
     save$.subscribe({
       next: saved => {
         this.service.submit(saved.id).subscribe({
-          next: () => {
-            const tpl = this.successModal();
-            if (tpl) {
-              const ref = this.modal.open(tpl, { centered: true, backdrop: 'static', keyboard: false });
-              ref.result.then(() => this.router.navigate(['/admin/travel-write-off-requests']))
-                        .catch(() => this.router.navigate(['/admin/travel-write-off-requests']));
-            } else {
-              this.router.navigate(['/admin/travel-write-off-requests']);
-            }
-          },
+          next: () => this._onSubmitted(['/admin/travel-write-off-requests']),
           error: (err: HttpErrorResponse) => {
             this.errorMsg.set(err.error?.message || '送出失敗，請稍後再試。');
           },
@@ -363,6 +354,13 @@ export class TravelWriteOffForm implements OnInit {
         this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
       },
     });
+  }
+
+  private _onSubmitted(target: unknown[]) {
+    const ref = this.modal.open(SubmitSuccessModal, { centered: true, backdrop: 'static', keyboard: false });
+    ref.componentInstance.formType = 'travel_write_off';
+    ref.result.then(() => this.router.navigate(target))
+              .catch(() => this.router.navigate(target));
   }
 
   private _buildFormData(): FormData {

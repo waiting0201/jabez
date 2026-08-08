@@ -7,7 +7,9 @@ import {TravelPaymentPdfService} from '../../services/travel-payment-pdf.service
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
 import {ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
 import {TravelPaymentRequest, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/travel-payment-request.model';
+import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
+import {SubmitSuccessModal} from '../../../../../shared/components/submit-success-modal';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 
@@ -23,6 +25,7 @@ export class TravelPaymentDetail implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private sanitizer = inject(DomSanitizer);
+  private modal = inject(NgbModal);
 
   request = signal<TravelPaymentRequest | null>(null);
   approvalTask = signal<ApprovalTask | null>(null);
@@ -71,6 +74,8 @@ export class TravelPaymentDetail implements OnInit {
     if (!r) return;
     this.service.submit(r.id).subscribe(updated => {
       this.request.set(updated);
+      const ref = this.modal.open(SubmitSuccessModal, { centered: true, backdrop: 'static', keyboard: false });
+      ref.componentInstance.formType = 'travel_payment';
     });
   }
 

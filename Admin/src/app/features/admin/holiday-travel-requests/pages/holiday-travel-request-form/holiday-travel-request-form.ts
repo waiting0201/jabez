@@ -1,4 +1,4 @@
-import {ChangeDetectorRef, Component, inject, OnInit, signal, TemplateRef, viewChild} from '@angular/core';
+import {ChangeDetectorRef, Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {HttpErrorResponse} from '@angular/common/http';
@@ -25,6 +25,7 @@ import {ApprovalService} from '../../../approvals/services/approval.service';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
 import {ApprovalFlow, ApprovalRecord} from '../../../approval-tasks/models/approval-task.model';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
+import {SubmitSuccessModal} from '../../../../../shared/components/submit-success-modal';
 import {JobTitleLookup} from '../../../job-titles/models/job-title.model';
 import {UserLookup} from '../../../users/models/user.model';
 import {DesignatedReviewersPicker, DesignatedReviewerPayload} from '../../../../../shared/components/designated-reviewers-picker/designated-reviewers-picker';
@@ -52,8 +53,6 @@ export class HolidayTravelRequestForm implements OnInit {
   private router      = inject(Router);
   private cdr         = inject(ChangeDetectorRef);
   private modal       = inject(NgbModal);
-
-  successModal = viewChild<TemplateRef<any>>('successModal');
 
   isEdit     = false;
   requestId  = 0;
@@ -420,17 +419,7 @@ export class HolidayTravelRequestForm implements OnInit {
     save$.subscribe({
       next: saved => {
         this.service.submit(saved.id).subscribe({
-          next: () => {
-            const tpl = this.successModal();
-            if (tpl) {
-              const ref = this.modal.open(tpl, { centered: true, backdrop: 'static', keyboard: false });
-              ref.result
-                .then(() => this.router.navigate(['/admin/holiday-travel-requests']))
-                .catch(() => this.router.navigate(['/admin/holiday-travel-requests']));
-            } else {
-              this.router.navigate(['/admin/holiday-travel-requests']);
-            }
-          },
+          next: () => this._onSubmitted(['/admin/holiday-travel-requests']),
           error: (err: HttpErrorResponse) => {
             this.errorMsg.set(err.error?.message || '送出失敗，請稍後再試。');
           },
@@ -440,6 +429,13 @@ export class HolidayTravelRequestForm implements OnInit {
         this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
       },
     });
+  }
+
+  private _onSubmitted(target: unknown[]) {
+    const ref = this.modal.open(SubmitSuccessModal, { centered: true, backdrop: 'static', keyboard: false });
+    ref.componentInstance.formType = 'holiday_travel';
+    ref.result.then(() => this.router.navigate(target))
+              .catch(() => this.router.navigate(target));
   }
 
   private _buildFormData(): FormData {

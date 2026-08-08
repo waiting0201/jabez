@@ -14,6 +14,22 @@ export const APPLICATION_TYPE_LABELS: Record<ApplicationType, string> = {
   pre_review:       '預審申請',
 };
 
+/** 走「印出紙本寄回會計室」流程的 7 種財務單別 */
+export type PaperFormApplicationType = Extract<ApplicationType,
+  'payment_request' | 'advance' | 'travel_payment' | 'write_off'
+  | 'travel_write_off' | 'travel' | 'holiday_travel'>;
+
+/** 單別名稱（紙本單據用語；與 APPLICATION_TYPE_LABELS 的「…申請」不同） */
+export const APPLICATION_FORM_NAMES: Record<PaperFormApplicationType, string> = {
+  payment_request:  '請款單',
+  advance:          '預支單',
+  travel_payment:   '出差請款單',
+  write_off:        '預支沖銷單',
+  travel_write_off: '出差預支沖銷單',
+  travel:           '出差預支單',
+  holiday_travel:   '假日執行活動單',
+};
+
 export const APPLICATION_TYPE_CLASSES: Record<ApplicationType, string> = {
   payment_request:  'bg-info-subtle text-info',
   leave:            'bg-success-subtle text-success',

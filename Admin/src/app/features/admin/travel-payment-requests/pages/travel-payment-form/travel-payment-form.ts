@@ -1,4 +1,4 @@
-import {ChangeDetectorRef, Component, inject, OnInit, signal, TemplateRef, viewChild} from '@angular/core';
+import {ChangeDetectorRef, Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {AbstractControl, FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {DecimalPipe} from '@angular/common';
@@ -21,6 +21,7 @@ import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
+import {SubmitSuccessModal} from '../../../../../shared/components/submit-success-modal';
 import {DesignatedReviewersPicker, DesignatedReviewerPayload} from '../../../../../shared/components/designated-reviewers-picker/designated-reviewers-picker';
 import {DepartmentService} from '../../../departments/services/department.service';
 import {Department} from '../../../departments/models/department.model';
@@ -50,7 +51,6 @@ export class TravelPaymentForm implements OnInit {
   private cdr            = inject(ChangeDetectorRef);
   private modal          = inject(NgbModal);
   private sanitizer      = inject(DomSanitizer);
-  successModal = viewChild<TemplateRef<any>>('successModal');
 
   /** invoice id → File 物件（新上傳的檔案） */
   fileMap = new Map<string, File>();
@@ -396,16 +396,7 @@ export class TravelPaymentForm implements OnInit {
     save$.subscribe({
       next: saved => {
         this.service.submit(saved.id).subscribe({
-          next: () => {
-            const tpl = this.successModal();
-            if (tpl) {
-              const ref = this.modal.open(tpl, { centered: true, backdrop: 'static', keyboard: false });
-              ref.result.then(() => this.router.navigate(['/admin/travel-payment-requests']))
-                        .catch(() => this.router.navigate(['/admin/travel-payment-requests']));
-            } else {
-              this.router.navigate(['/admin/travel-payment-requests']);
-            }
-          },
+          next: () => this._onSubmitted(['/admin/travel-payment-requests']),
           error: (err: HttpErrorResponse) => {
             this.errorMsg.set(err.error?.message || '送出失敗，請稍後再試。');
           },
@@ -415,6 +406,13 @@ export class TravelPaymentForm implements OnInit {
         this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
       },
     });
+  }
+
+  private _onSubmitted(target: unknown[]) {
+    const ref = this.modal.open(SubmitSuccessModal, { centered: true, backdrop: 'static', keyboard: false });
+    ref.componentInstance.formType = 'travel_payment';
+    ref.result.then(() => this.router.navigate(target))
+              .catch(() => this.router.navigate(target));
   }
 
   private _buildFormData(): FormData {
