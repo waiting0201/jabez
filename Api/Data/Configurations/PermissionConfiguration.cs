@@ -105,6 +105,8 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             new Permission { Id = "48", Code = "reports-overtime:read",            Name = "加班紀錄",   Module = "Reports" },
             new Permission { Id = "49", Code = "reports-payment:read",             Name = "款項統計",   Module = "Reports" },
             new Permission { Id = "50", Code = "reports-project-water-level:read", Name = "專案水位表", Module = "Reports" },
+            // Id 43 為重用的歷史空號（42 與 44 之間）。刻意不取 78+ —— 理由同上方 Id 37/38 註解。
+            new Permission { Id = "43", Code = "reports-project-water-level:total", Name = "專案水位表－總水位", Module = "Reports" },
             // 預支申請
             new Permission { Id = "51", Code = "advance-requests:read",   Name = "瀏覽",     Module = "預支申請" },
             new Permission { Id = "52", Code = "advance-requests:write",  Name = "新增/修改", Module = "預支申請" },

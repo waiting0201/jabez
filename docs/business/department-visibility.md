@@ -29,6 +29,7 @@
 - `GET /projects`（專案管理列表 / 分頁）
 - `GET /projects/{id}`（單筆詳情；不符 scope 回 404）
 - `GET /reports/project-water-level`（專案水位表）
+  - ⚠️ 部門可見性只決定「看得到**哪些專案**（列）」；「總專案水位」**欄**另受欄位級權限 `reports-project-water-level:total` 控制（見 [backend-design.md §欄位級權限](../backend-design.md)）。兩者正交，缺任一都會少東西看。
 
 **過濾鍵：`User.DepartmentId`（員工 / 申請人歸屬部門）**
 - `GET /attendances`（出缺勤紀錄報表，JOIN `Users` 後過濾；支援 `dateFrom / dateTo` 區間篩選）

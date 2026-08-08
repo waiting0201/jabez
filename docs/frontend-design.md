@@ -1558,6 +1558,24 @@ export function resolveLandingUrl(auth: AuthService): string {
 
 側欄項目加 `requiredPermission` 即可（[data.ts](../Admin/src/app/layout/components/data.ts)），區段標題會由 `app-menu.ts` 的 `isTitleVisible()` 在整區皆不可見時自動隱藏，不需另外處理。**選單隱藏只是視覺層**：對應路由必須同時掛 `permissionGuard` + `data.permission`，頁內的寫入按鈕再用 `*appHasPermission` 包一層（三層都要，後端才是最終防線）。
 
+### 依權限隱藏整個表格欄（Column-level Permission）
+
+當「進得了頁面」與「看得到某一欄」是兩個權限時（例：[專案水位表](../Admin/src/app/features/admin/reports/pages/project-water-level/) 的「總專案水位」欄需 `reports-project-water-level:total`），**不要用 `*appHasPermission`**，改在 component 存一個 boolean 當單一真相：
+
+```typescript
+readonly canSeeTotal = inject(AuthService).hasPermission('reports-project-water-level:total');
+```
+
+```html
+@if (canSeeTotal) { <th style="min-width: 180px">總專案水位</th> }
+...
+@if (canSeeTotal) { <td>…</td> }
+...
+<td [attr.colspan]="canSeeTotal ? 8 : 7" class="text-center text-muted py-4">
+```
+
+理由：`<th>` / `<td>` 之外，**空資料列的 `colspan` 也要跟著變**（漏改會跑版）。三處共用同一個欄位比「兩處用指令、第三處另外算」不易走鐘。後端必須同步把該欄回 `null`（見 [backend-design.md 欄位級權限](backend-design.md)）—— 前端隱藏只是視覺層。
+
 ### Feature 目錄結構
 
 每個 feature 一律三層：
