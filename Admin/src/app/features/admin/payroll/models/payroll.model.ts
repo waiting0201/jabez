@@ -22,6 +22,8 @@ export interface EmployeePayroll {
   sickLeaveDeduction: number;
   menstrualLeaveDays: number;
   menstrualLeaveDeduction: number;
+  familyCareLeaveDays: number;
+  familyCareLeaveDeduction: number;
   otherDeduction: number;
   otherDeductionNote: string | null;
   note: string | null;
@@ -59,6 +61,7 @@ export interface MonthlyPayroll {
   totalHealthInsurance: number;
   totalPersonalLeaveDeduction: number;
   totalSickLeaveDeduction: number;
+  totalFamilyCareLeaveDeduction: number;
   totalOtherDeduction: number;
   totalNetSalary: number;
   totalPositionAllowance: number;

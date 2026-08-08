@@ -7,15 +7,7 @@ import {LineQuota} from '../../models/line-quota.model';
 import {OvertimeRequestService} from '@features/admin/overtime-requests/services/overtime-request.service';
 import {OvertimeRequest} from '@features/admin/overtime-requests/models/overtime-request.model';
 import {TodayAttendance, ClockActionType, ActiveLeave} from '../../models/attendance.model';
-
-const LEAVE_TYPE_LABELS: Record<string, string> = {
-  annual: '特休假', personal: '事假', sick: '病假', compensatory: '補休',
-  official: '公假', marriage: '婚假', maternity: '產假',
-  miscarriage_3m: '流產假(3個月以上)', miscarriage_2to3m: '流產假(2-3個月)',
-  miscarriage_under2m: '流產假(未滿2個月)', prenatal_checkup: '產檢假',
-  paternity: '陪產假', bereavement: '喪假',
-  ceremonial_festival: '歲時祭儀假', senior_executive: '高階主管假',
-};
+import {LEAVE_TYPE_LABELS} from '@features/admin/leave-requests/models/leave-request.model';
 
 const DAY_NAMES = ['日', '一', '二', '三', '四', '五', '六'];
 
@@ -158,7 +150,7 @@ export class Dashboard implements OnInit, OnDestroy {
   });
 
   leaveTypeLabel(type: string): string {
-    return LEAVE_TYPE_LABELS[type] ?? type;
+    return (LEAVE_TYPE_LABELS as Record<string, string>)[type] ?? type;
   }
 
   ngOnInit() {

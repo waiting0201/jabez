@@ -5,7 +5,7 @@ public class LeaveRequest
     public int      Id             { get; set; }
     public Guid?    EmployeeId     { get; set; }
     public int?     ApprovalItemId { get; set; }
-    public string   LeaveType      { get; set; } = string.Empty; // annual | personal | sick | compensatory | marriage | bereavement | official | maternity | miscarriage_3m | miscarriage_2to3m | miscarriage_under2m | prenatal_checkup | paternity
+    public string   LeaveType      { get; set; } = string.Empty; // annual | personal | sick | compensatory | marriage | bereavement | official | maternity | miscarriage_3m | miscarriage_2to3m | miscarriage_under2m | prenatal_checkup | paternity | ceremonial_festival | senior_executive | menstrual | family_care
     public DateTime StartDate      { get; set; }
     public DateTime EndDate        { get; set; }
     /// <summary>剩餘有效時數。銷假核准後遞減（見 LeaveRevocationService.ApplyAsync），下游扣薪 / 額度一律以此為準。</summary>

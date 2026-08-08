@@ -119,6 +119,25 @@
                 </div>
               }
 
+              <!-- 家庭照顧假提示（性別平等工作法 §20） -->
+              @if (selectedLeaveType === 'family_care') {
+                <div class="alert alert-warning flex items-start gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon shrink-0 mt-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                  <span class="small">
+                    按小時計，全年以 <strong>7 日（56 小時）</strong>為限，併入年度事假計算，
+                    按天數<strong>扣除全額薪資</strong>（不另支薪）。
+                    <br>
+                    家庭成員有預防接種、發生嚴重疾病或其他重大事故須親自照顧時得申請；
+                    雇主不得拒絕准假，亦不影響全勤獎金與考績。
+                    <br>
+                    <span class="text-muted">
+                      家庭成員範圍：配偶、父母、公婆、岳父母、子女、祖父母、孫子女、兄弟姊妹，
+                      或以永久共同生活為目的同居之家屬與伴侶。
+                    </span>
+                  </span>
+                </div>
+              }
+
               <!-- 病假扣薪提示 -->
               @if (selectedLeaveType === 'sick') {
                 <div class="alert alert-warning flex items-center gap-2 py-2 mt-2 mb-0">
@@ -287,7 +306,7 @@
               @if (currentDaysLimit !== null && selectedLeaveType !== 'bereavement' && selectedLeaveType !== 'annual'
                 && selectedLeaveType !== 'compensatory' && selectedLeaveType !== 'ceremonial_festival'
                 && selectedLeaveType !== 'marriage' && selectedLeaveType !== 'maternity'
-                && selectedLeaveType !== 'menstrual') {
+                && selectedLeaveType !== 'menstrual' && selectedLeaveType !== 'family_care') {
                 <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
                   <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
                   <span class="small">

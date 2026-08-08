@@ -33,7 +33,7 @@ public sealed class LeaveRequestHandler(
         ["annual", "personal", "sick", "compensatory", "marriage", "bereavement",
          "official", "maternity", "miscarriage_3m", "miscarriage_2to3m",
          "miscarriage_under2m", "prenatal_checkup", "paternity",
-         "ceremonial_festival", "senior_executive", "menstrual"];
+         "ceremonial_festival", "senior_executive", "menstrual", "family_care"];
 
     /// <summary>
     /// 工作日型假別：天數 / 時數以「扣除國定假日與六日後的實際工作日」計算
@@ -68,6 +68,8 @@ public sealed class LeaveRequestHandler(
         ["miscarriage_under2m"] = 5,
         ["prenatal_checkup"]    = 7,
         ["paternity"]           = 7,
+        // 家庭照顧假：性別平等工作法 §20，全年 7 日（56 小時）為限，併入年度事假計算
+        ["family_care"]         = 7,
     };
 
     /// <summary>取得指定假別的時間單位（單一真相在 LeaveDayExpander，與逐日展開共用）</summary>
@@ -1322,6 +1324,7 @@ public sealed class LeaveRequestHandler(
         "ceremonial_festival"=> "歲時祭儀假",
         "senior_executive"   => "高階主管假",
         "menstrual"          => "生理假",
+        "family_care"        => "家庭照顧假",
         _                    => leaveType,
     };
 

@@ -1,8 +1,8 @@
 # 請假規則
 
-本文件定義 Jabez 的請假業務規則：16 種假別、時間單位、年假 / 喪假 / 補休額度、天數上限驗證、日期重疊驗證、人事薪資整合。
+本文件定義 Jabez 的請假業務規則：17 種假別、時間單位、年假 / 喪假 / 補休額度、天數上限驗證、日期重疊驗證、人事薪資整合。
 
-## 假別一覽（16 種）
+## 假別一覽（17 種）
 
 | # | 假別 | LeaveType | 時間單位 | 天數上限 | 薪資影響 |
 |---|------|-----------|---------|---------|---------|
@@ -22,6 +22,7 @@
 | 14 | 歲時祭儀假 | `ceremonial_festival` | 天 | 3 天/年（跨年歸零，**限原住民**） | 有薪 |
 | 15 | 高階主管假 | `senior_executive` | 半天 | **每年 24 天**（曆年歸零） | **不扣任何項目**（協理以上專用，`JobTitle.Level ≤ 3`） |
 | 16 | 生理假 | `menstrual` | 天（一次請一天） | 每月 1 天、全年 12 天（**限女性**） | 按天數扣除半薪（前 3 天/年純生理假，超過併入病假） |
+| 17 | 家庭照顧假 | `family_care` | 小時 | **全年 7 天**（56 小時，曆年歸零） | 按天數扣除全額薪資（不另支薪） |
 
 > **天數上限一律指「工作日」**：除歲時祭儀假外，全部假別的天數 / 時數皆已扣除**國定假日與六日**（詳見 [§扣除假日計算天數](#扣除假日計算天數2026-07-新增2026-07-擴大適用)）。
 
@@ -31,7 +32,7 @@
 
 | 單位 | 換算 | 輸入 UI | 適用假別 |
 |------|------|---------|---------|
-| 小時 (`hour`) | 自然小時（**整點**）；**跨日逐日累加只算工作日** | 日期 + 整點小時下拉（分鐘僅 00） | 事假、病假、產檢假、陪產假 |
+| 小時 (`hour`) | 自然小時（**整點**）；**跨日逐日累加只算工作日** | 日期 + 整點小時下拉（分鐘僅 00） | 事假、家庭照顧假、病假、產檢假、陪產假 |
 | 半天 (`half_day`) | 4 小時 = 半天 | 日期 + 上午/下午 選擇 | 年假、補休、高階主管假 |
 | 整天 (`day`) | 8 小時 = 1 天 | 起迄日期選擇 | 公假、婚假、產假、喪假、歲時祭儀假、流產假系列、生理假 |
 
@@ -71,7 +72,7 @@
 - 送出申請（submit）時，後端查詢該使用者**同假別**、**已送出或已核准**的申請總時數
 - 加上本次申請時數，檢查是否超過上限
 - 天數換算：`累計時數 ÷ 8 小時 = 天數`（時數已扣除國定假日與六日，故等同「工作日數」）
-- 年假按**年度**累計，產假系列與喪假**不限年度**
+- 年假、家庭照顧假按**年度**累計，產假系列與喪假**不限年度**
 - 喪假按**同親屬關係**分別累計
 
 ## 日期重疊驗證（防重複申請）
@@ -107,11 +108,23 @@
 - **併入病假**：全年累計**前 3 天（24 小時）為純生理假**（薪資列「生理假扣薪」）；**超過 3 天的部分併入病假計算**（薪資併入「病假扣薪」）。因兩者皆半薪，淨薪不變，差異僅在扣款項目的歸類。薪資模組以「本年度本月之前已用生理假時數」判斷前 3 天額度是否用罄（詳見 [payroll-formula.md](payroll-formula.md)）。
 - **API 端點**：`GET /leave-requests/menstrual-quota`（回 `isFemale` + 月/年配額）。
 
+## 家庭照顧假規則（2026-08 新增）
+
+法源：《性別平等工作法》第 20 條。
+
+- **申請事由**：家庭成員有**預防接種**、發生**嚴重疾病**或其他**重大事故**須親自照顧時得申請。
+- **家庭成員範圍**：配偶、父母、公婆、岳父母、子女、祖父母、孫子女、兄弟姊妹，或以永久共同生活為目的同居之家屬與伴侶。此範圍**僅於申請表單以提示文字呈現**，不存欄位、不做系統驗證（照顧對象不入庫）。
+- **時間單位**：小時（比照事假），跨日逐日累加只算工作日。
+- **全年上限**：**7 日（56 小時）**，依申請年度累計、曆年歸零。走 `LeaveRequestHandler.LeaveTypeDaysLimit["family_care"] = 7` 的泛用分支（非產假系列 → 年度制），無獨立驗證邏輯、無獨立配額端點。
+- **併入年度事假計算**：法規語意上併計事假額度；**系統實作採獨立 56 小時上限**，事假本身維持無上限（見 [§假別一覽](#假別一覽17-種)），故不做技術性額度連動，僅於表單提示文字說明。
+- **薪資（不另支薪）**：比照事假**按天數扣除全額薪資**（`日薪 × 天數`），但於薪資頁與薪資明細信中**獨立一列「家庭照顧假扣薪」**呈現，不併入事假欄位。
+- **雇主不得拒絕准假**，亦不得影響全勤獎金或考績 —— 此為管理面規範，系統不做強制邏輯（仍走一般簽核流程）。
+
 ## 扣除假日計算天數（2026-07 新增，2026-07 擴大適用）
 
 **工作日型假別**選定起迄日後，系統扣除**國定假日與六日**，只計算實際工作日，並在表單即時列出「實際請假日清單」與天數。
 
-- **適用假別（工作日型，15 種）**：`annual`（年假）/ `personal`（事假）/ `sick`（病假）/ `compensatory`（補休）/ `official`（公假）/ `senior_executive`（高階主管假）/ `marriage`（婚假）/ `maternity`（產假）/ `bereavement`（喪假）/ `miscarriage_3m`・`miscarriage_2to3m`・`miscarriage_under2m`（流產假系列）/ `prenatal_checkup`（產檢假）/ `paternity`（陪產假）/ `menstrual`（生理假）。集合同步於後端 `LeaveDayExpander.WorkingDayLeaveTypes`（`LeaveRequestHandler` 轉引同一份，與銷假逐日展開共用）與前端 `WORKING_DAY_LEAVE_TYPES`（[leave-request.model.ts](../../Admin/src/app/features/admin/leave-requests/models/leave-request.model.ts)）。
+- **適用假別（工作日型，16 種）**：`annual`（年假）/ `personal`（事假）/ `sick`（病假）/ `compensatory`（補休）/ `official`（公假）/ `senior_executive`（高階主管假）/ `marriage`（婚假）/ `maternity`（產假）/ `bereavement`（喪假）/ `miscarriage_3m`・`miscarriage_2to3m`・`miscarriage_under2m`（流產假系列）/ `prenatal_checkup`（產檢假）/ `paternity`（陪產假）/ `menstrual`（生理假）/ `family_care`（家庭照顧假）。集合同步於後端 `LeaveDayExpander.WorkingDayLeaveTypes`（`LeaveRequestHandler` 轉引同一份，與銷假逐日展開共用）與前端 `WORKING_DAY_LEAVE_TYPES`（[leave-request.model.ts](../../Admin/src/app/features/admin/leave-requests/models/leave-request.model.ts)）。
 - **不適用假別（連續日曆天，不扣假日）**：僅 `ceremonial_festival`（歲時祭儀假）。
 - **天數上限一律改以工作日計**：婚假 8 / 喪假 8・6・3 / 流產假 28・7・5 / 產檢假・陪產假 7 / 生理假每月 1 天・全年 12 天等數字不變，但語意變成「N 個工作日」（`ValidateLeaveQuotaAsync` 比對的 `Hours / 8` 本來就是扣假日後的值，無需額外改動）。
 - **產假特例**：區間仍固定為「起始日 + 55 天 = 56 個**日曆天**」（法定一次請完、不可拆），但 `Hours` 只計其中工作日（約 40 天 / 320 小時），不再固定 448 小時。
@@ -120,7 +133,7 @@
 - **前端顯示**：[leave-request-form](../../Admin/src/app/features/admin/leave-requests/pages/leave-request-form/) 於工作日型假別（day / half_day / hour 三種單位皆適用）選好起迄日後呼叫輕量端點 `GET /leave-requests/working-days?start=&end=&leaveType=`（免 `calendar-days:read`），列出逐日 chip + 合計天數；行事曆未匯入時退回僅扣六日並提示。產假的結束日不在表單上，前端改以 `maternityEndDate`（起始日 +55 天）當區間終點查詢。
 - **後端權威重算**：工作日型假別的 `Day` 單位（含產假）以工作日數 × 8、`Hour` 單位以逐日累加時數，於 Create / Update / **Submit** 覆寫 `Hours`；**Submit 時強制要求行事曆已匯入**（缺資料擋件並提示匯入，訊息含跨年區間的年度範圍），區間全為假日亦擋件。`half_day` 由前端以 working-days 端點計算後送出（後端沿用既有「HalfDay 信任 client」原則）。
 
-### 小時單位跨日的時數計算（`personal` / `sick` / `prenatal_checkup` / `paternity`）
+### 小時單位跨日的時數計算（`personal` / `family_care` / `sick` / `prenatal_checkup` / `paternity`）
 
 工作日標準時段為 **08:00–17:00（全日 8 小時）**，與 half_day 的 am 08:00–12:00 / pm 13:00–17:00 一致。常數同步於後端 `LeaveRequestHandler.WorkdayStartHour` / `WorkdayEndHour` 與前端 `WORKDAY_START_HOUR` / `WORKDAY_END_HOUR`；演算法同步於 `ComputeHourUnitHoursAsync`（後端）與 `computeHourUnitHours`（前端）。
 
@@ -220,7 +233,7 @@
 
 - 薪資編輯頁顯示該月**所有已核准**的請假紀錄（假別、期間、天數）
 - 薪資明細信件同步顯示「本月請假紀錄」表格
-- 事假扣薪與病假扣薪仍於扣款項目中獨立計算
+- 事假扣薪、家庭照顧假扣薪與病假扣薪仍於扣款項目中獨立計算（家庭照顧假比照事假全額扣薪，但獨立一列）
 
 ## 涉及元件
 
@@ -236,9 +249,9 @@
 | `LeaveRequestHandler.GetMenstrualQuotaAsync()` | 生理假配額 API（`isFemale` + 月/年配額） |
 | `LeaveRequestHandler.IsFemaleAsync()` | 查 `EmployeeProfile.Gender == "F"`（生理假限定） |
 | `LeaveRequestHandler.CalculateAnnualLeaveDays()` | 年資 → 年假天數計算 |
-| `PayrollReadService` | 新增查詢該月所有請假明細 |
+| `PayrollReadService` | 新增查詢該月所有請假明細；事假 / 病假 / 生理假 / 家庭照顧假扣薪計算 |
 | `PayrollHandler.BuildLeaveDetailSection()` | 薪資明細信件請假紀錄 HTML |
-| 前端 `leave-request.model.ts` | 16 種假別定義、喪假關係常數、天數上限常數、`MenstrualQuota` |
+| 前端 `leave-request.model.ts` | 17 種假別定義、喪假關係常數、天數上限常數、`MenstrualQuota` |
 | 前端 `leave-request-form` | 假別下拉選單（分群組）、條件式欄位、額度提示 |
 | 前端 `payroll-form` | 本月請假紀錄表格 |
 | `LeaveRevocation` / `LeaveRevocationDate` | Entity：銷假申請 + 逐日明細 |

@@ -14,13 +14,15 @@
    - 限女性（`EmployeeProfile.Gender == "F"`）；每月 1 天、全年 12 天上限（見 [leave-rules.md](leave-rules.md)）。
    - **前 3 天/年（24h）為純生理假**，列「生理假扣薪」；**超過 3 天的部分併入「病假扣薪」**（兩者皆半薪，淨薪不變，差異僅在歸類）。
    - 拆分依「本年度本月之前已用生理假時數」判斷前 3 天額度是否用罄：`pureThisMonth = min(本月生理假時數, max(0, 24 − 本年度本月前生理假時數))`，餘額併入病假天數。
-8. **實領薪水** = 底薪 + 伙食費 + 加班費 + 加給合計 + 假日津貼 + 其他加項 − 勞保費 − 健保費 − 事假扣薪 − 病假扣薪 − 生理假扣薪 − 其他扣項 − 勞退自提扣款
+8. **家庭照顧假扣薪** = 日薪 × 家庭照顧假天數（按天數扣除全額薪資，公式同事假但**獨立一列**呈現）
+   - 全年 7 日（56 小時）上限，法源《性別平等工作法》§20（見 [leave-rules.md](leave-rules.md#家庭照顧假規則2026-08-新增)）。
+9. **實領薪水** = 底薪 + 伙食費 + 加班費 + 加給合計 + 假日津貼 + 其他加項 − 勞保費 − 健保費 − 事假扣薪 − 病假扣薪 − 生理假扣薪 − 家庭照顧假扣薪 − 其他扣項 − 勞退自提扣款
    - **加給合計** = 職務加給 + 主管加給 + 其他加給 + 調整差額 + 外派加給（5 種來自 User 表，由最新生效 SalaryAdjustmentRecord 同步而來，亦可在基本資料手動覆寫，null/未填視為 0）
-9. **勞退自提扣款** = 底薪 × `User.LaborPensionSelfContributionRate`（%，0~6 整數，員工自願提撥）÷ 100（四捨五入至整數）
+10. **勞退自提扣款** = 底薪 × `User.LaborPensionSelfContributionRate`（%，0~6 整數，員工自願提撥）÷ 100（四捨五入至整數）
    - 性質同 `LaborInsuranceOverride`/`HealthInsuranceOverride`：User 表直接欄位，**不**經過 SalaryAdjustmentRecord 歷史同步，可在基本資料 Tab 直接編輯（null 視為 0%）。
 
 > 人事薪資為動態計算，不儲存於資料庫。前端可匯出 PDF 薪資表。
-> 薪資編輯頁與薪資明細信件額外顯示該月**所有已核准的請假紀錄**（全假別，非僅事假/病假）。
+> 薪資編輯頁與薪資明細信件額外顯示該月**所有已核准的請假紀錄**（全假別，非僅事假/病假/家庭照顧假）。
 
 ### 銷假對扣薪的影響（2026-08）
 
@@ -103,7 +105,7 @@ EmployeePayrollDto / 月度合計 / 薪資編輯頁 / 薪資明細 Email + PDF
 - **健保眷屬資料 / 上限 3 口計算** → [hr-profile.md](hr-profile.md)
 - **底薪 / 伙食費 / 5 種加給自動同步**（薪資調整紀錄 → User.BaseSalary / MealAllowance / PositionAllowance / DutyAllowance / OtherAllowance / AdjustmentDifference / OverseasAllowance） → [hr-profile.md](hr-profile.md)
 - **假日執行活動的歸月規則** → [application-forms.md](application-forms.md)
-- **事假 / 病假的扣薪天數來源、銷假規則** → [leave-rules.md](leave-rules.md)
+- **事假 / 病假 / 家庭照顧假的扣薪天數來源、銷假規則** → [leave-rules.md](leave-rules.md)
 - **勞健保級距 lookup（級距表 entity）** → [database-schema.md](../database-schema.md)（`InsuranceBracket`）
 - **PayrollHandler 計算邏輯實作** → [Api/Handlers/PayrollHandler.cs](../../Api/Handlers/PayrollHandler.cs)
 - **PayrollReadService SQL** → [Api/Services/Dapper/PayrollReadService.cs](../../Api/Services/Dapper/PayrollReadService.cs)

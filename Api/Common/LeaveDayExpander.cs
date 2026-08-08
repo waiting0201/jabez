@@ -34,12 +34,13 @@ public static class LeaveDayExpander
         ["annual", "personal", "sick", "compensatory", "official", "senior_executive",
          "marriage", "maternity", "bereavement",
          "miscarriage_3m", "miscarriage_2to3m", "miscarriage_under2m",
-         "prenatal_checkup", "paternity", "menstrual"];
+         "prenatal_checkup", "paternity", "menstrual", "family_care"];
 
     /// <summary>各假別時間單位對應</summary>
     public static readonly Dictionary<string, LeaveTimeUnit> TimeUnitMap = new()
     {
         ["personal"]            = LeaveTimeUnit.Hour,
+        ["family_care"]         = LeaveTimeUnit.Hour,
         ["sick"]                = LeaveTimeUnit.Hour,
         ["prenatal_checkup"]    = LeaveTimeUnit.Hour,
         ["paternity"]           = LeaveTimeUnit.Hour,
@@ -110,7 +111,7 @@ public static class LeaveDayExpander
     }
 
     /// <summary>
-    /// Hour 單位（事假 / 病假 / 產檢假 / 陪產假）：與 LeaveRequestHandler.ComputeHourUnitHoursAsync 同規則。
+    /// Hour 單位（事假 / 家庭照顧假 / 病假 / 產檢假 / 陪產假）：與 LeaveRequestHandler.ComputeHourUnitHoursAsync 同規則。
     /// 同日維持 end.Hour − start.Hour（不扣午休，沿用既有單日語意）。
     /// </summary>
     private static List<LeaveDay> ExpandHourUnit(List<DateTime> working, DateTime start, DateTime end)

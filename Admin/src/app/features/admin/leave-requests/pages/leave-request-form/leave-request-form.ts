@@ -560,7 +560,7 @@ export class LeaveRequestForm implements OnInit {
   }
 
   /**
-   * 工作日型 hour 假別（事假 / 病假 / 產檢假 / 陪產假）：逐日累加，只算工作日。
+   * 工作日型 hour 假別（事假 / 家庭照顧假 / 病假 / 產檢假 / 陪產假）：逐日累加，只算工作日。
    * 同日 → endHour − startHour（維持既有單日語意，不扣午休）；
    * 跨日 → 首日 clamp(17 − startHour, 0, 8) + 中間工作日各 8 小時 + 末日 clamp(endHour − 8, 0, 8)；
    * 落在假日的日期一律 0，且不把時段挪到相鄰工作日。

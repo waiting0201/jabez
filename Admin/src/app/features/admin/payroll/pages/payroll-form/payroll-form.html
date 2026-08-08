@@ -141,6 +141,12 @@
                     <td class="text-right pe-4 text-danger">-{{ e.menstrualLeaveDeduction | number:'1.0-0' }}</td>
                   </tr>
                 }
+                @if (e.familyCareLeaveDays > 0) {
+                  <tr>
+                    <td class="ps-6">家庭照顧假扣薪（{{ e.familyCareLeaveDays | number:'1.0-2' }} 天 = {{ e.familyCareLeaveDays * 8 | number:'1.0-1' }} 小時）</td>
+                    <td class="text-right pe-4 text-danger">-{{ e.familyCareLeaveDeduction | number:'1.0-0' }}</td>
+                  </tr>
+                }
                 @if (e.laborPensionSelfDeduction > 0) {
                   <tr>
                     <td class="ps-6">勞工退休金自提（{{ e.laborPensionSelfContributionRate }}%）</td>
