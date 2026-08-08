@@ -1183,7 +1183,7 @@ overtimeStartHint = computed<string>(() => {
 2. **業務狀態 mapping**（撥款 / 退款 / 結案 etc.）：同上，在來源 feature model 定義 `XXX_STATE_LABELS` / `XXX_STATE_CLASSES`，其他列表 re-export 使用。例如 `PAYMENT_STATE_LABELS` / `PAYMENT_STATE_CLASSES` 來自 payment-request.model。
 3. **status gate（顯示時機）**：跨列表顯示同一筆資料的業務狀態徽章時，gate 條件必須一致。例如撥款徽章在 `payment-list` 是 `approvalStatus ∈ {pending, approved}`；簽核作業列表也須同樣 gate（即使 `pending` 在「待審核 tab」也要顯示「待撥款」黃徽章）。
 4. **per-type 業務規則例外**：簽核作業列表因彙整多種申請類型，可保留 per-type 業務條件（如 write_off / travel_write_off 需「超支」才顯示徽章、holiday_travel 永不顯示等），但**徽章本身的 label/CSS 仍套用共用 mapping**。
-5. **列舉值 → 中文 mapping**（假別、假別分類…）：同樣只在來源 feature model 定義，其他頁 `import` 共用。假別 `LEAVE_TYPE_LABELS`（16 種）的來源是 [leave-request.model.ts](../Admin/src/app/features/admin/leave-requests/models/leave-request.model.ts)；出缺勤紀錄原本自留一份只含 4 種的複本，導致婚假 / 公假 / 產假等直接顯示英文代碼 —— 這正是禁止重複定義的原因。
+5. **列舉值 → 中文 mapping**（假別、假別分類…）：同樣只在來源 feature model 定義，其他頁 `import` 共用。假別 `LEAVE_TYPE_LABELS`（17 種）的來源是 [leave-request.model.ts](../Admin/src/app/features/admin/leave-requests/models/leave-request.model.ts)；出缺勤紀錄原本自留一份只含 4 種的複本，導致婚假 / 公假 / 產假等直接顯示英文代碼 —— 這正是禁止重複定義的原因。
 
 **Code Review 檢查點：**
 

@@ -124,7 +124,7 @@
 | PUT/PATCH | `/leave-revocations/{id}` | 更新銷假（僅 draft / returned；逐日明細整批替換） |
 | DELETE | `/leave-revocations/{id}` | 刪除銷假（僅 draft / returned；一併清 ApprovalRecords / EscalationOverrides / RequestDesignatedReviewers） |
 | PATCH | `/leave-revocations/{id}/submit` | 送出銷假（draft/returned → pending，**重跑一次原本的請假簽核流程**） |
-| GET | `/leave-requests/working-days?start=&end=&leaveType=` | 計算扣除國定假日與六日後的實際請假日清單與天數（工作日型假別才扣假日＝除歲時祭儀假外的 15 種；任何登入者可呼叫，免 `calendar-days:read`；回 `hasCalendarData / holidayDates[] / workingDates[] / workingDays`） |
+| GET | `/leave-requests/working-days?start=&end=&leaveType=` | 計算扣除國定假日與六日後的實際請假日清單與天數（工作日型假別才扣假日＝除歲時祭儀假外的 16 種；任何登入者可呼叫，免 `calendar-days:read`；回 `hasCalendarData / holidayDates[] / workingDates[] / workingDays`） |
 | GET/POST | `/travel-requests` | 出差預支申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/travel-requests/{id}` | 出差預支申請 CRUD |
 | PATCH | `/travel-requests/{id}/submit` | 送出出差預支申請（draft → pending） |

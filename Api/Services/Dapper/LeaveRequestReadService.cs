@@ -119,7 +119,8 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
     /// <summary>依假別取得時間單位字串（與 LeaveRequestHandler 保持一致）</summary>
     private static string GetTimeUnitString(string leaveType) => leaveType switch
     {
-        "personal" or "sick" or "prenatal_checkup" or "paternity"   => "hour",
+        "personal" or "sick" or "prenatal_checkup" or "paternity"
+            or "family_care"                                        => "hour",
         "annual" or "compensatory" or "senior_executive"            => "half_day",
         _                                                            => "day",
     };

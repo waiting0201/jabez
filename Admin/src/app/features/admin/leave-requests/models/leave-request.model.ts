@@ -5,7 +5,8 @@ export type LeaveType =
   | 'prenatal_checkup' | 'paternity'
   | 'ceremonial_festival'
   | 'senior_executive'
-  | 'menstrual';
+  | 'menstrual'
+  | 'family_care';
 
 /** 時間單位：小時 / 半天(4hr) / 整天(8hr) */
 export type LeaveTimeUnit = 'hour' | 'half_day' | 'day';
@@ -15,6 +16,7 @@ export type ApprovalStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 're
 export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
   annual:              '年假(特休假)',
   personal:            '事假',
+  family_care:         '家庭照顧假',
   sick:                '病假',
   compensatory:        '補休',
   official:            '公假',
@@ -33,12 +35,13 @@ export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
 
 /**
  * 各假別時間單位對應（需與後端 LeaveRequestHandler.TimeUnitMap 保持同步）
- * - hour: 事假 / 病假 / 產檢假 / 陪產假
+ * - hour: 事假 / 家庭照顧假 / 病假 / 產檢假 / 陪產假
  * - half_day: 特休 / 補休 / 高階主管假（4 小時）
  * - day: 公假 / 婚假 / 產假 / 喪假 / 歲時祭儀假 / 流產假系列（8 小時）
  */
 export const LEAVE_TIME_UNIT: Record<LeaveType, LeaveTimeUnit> = {
   personal:            'hour',
+  family_care:         'hour',
   sick:                'hour',
   prenatal_checkup:    'hour',
   paternity:           'hour',
@@ -65,7 +68,7 @@ export const WORKING_DAY_LEAVE_TYPES: LeaveType[] =
   ['annual', 'personal', 'sick', 'compensatory', 'official', 'senior_executive',
    'marriage', 'maternity', 'bereavement',
    'miscarriage_3m', 'miscarriage_2to3m', 'miscarriage_under2m',
-   'prenatal_checkup', 'paternity', 'menstrual'];
+   'prenatal_checkup', 'paternity', 'menstrual', 'family_care'];
 
 /**
  * 工作日標準時段（與 half_day 的 am 08:00–12:00 / pm 13:00–17:00 一致，全日 8 小時）。
@@ -86,6 +89,7 @@ export function formatLeaveDuration(leaveType: LeaveType, hours: number): string
 export const LEAVE_TYPE_CLASSES: Record<LeaveType, string> = {
   annual:              'bg-[rgba(105,159,52,0.12)] text-[#4A6B3A]',
   personal:            'bg-[rgba(124,94,140,0.12)] text-[#7C5E8C]',
+  family_care:         'bg-[rgba(124,94,140,0.12)] text-[#7C5E8C]',
   sick:                'bg-[rgba(184,137,42,0.12)] text-[#B8892A]',
   compensatory:        'bg-[rgba(140,115,85,0.12)] text-[#8C7355]',
   official:            'bg-[rgba(74,107,58,0.12)] text-[#4A6B3A]',
@@ -104,7 +108,7 @@ export const LEAVE_TYPE_CLASSES: Record<LeaveType, string> = {
 
 /** 假別分組（供下拉選單 optgroup 使用） */
 export const LEAVE_TYPE_GROUPS: { label: string; types: LeaveType[] }[] = [
-  { label: '一般假別', types: ['annual', 'personal', 'sick', 'official', 'compensatory'] },
+  { label: '一般假別', types: ['annual', 'personal', 'family_care', 'sick', 'official', 'compensatory'] },
   { label: '婚假',     types: ['marriage'] },
   { label: '產假類別', types: ['maternity', 'miscarriage_3m', 'miscarriage_2to3m', 'miscarriage_under2m', 'prenatal_checkup', 'paternity'] },
   { label: '喪假',     types: ['bereavement'] },
@@ -126,6 +130,7 @@ export const LEAVE_TYPE_DAYS_LIMIT: Partial<Record<LeaveType, number>> = {
   paternity:           7,
   ceremonial_festival: 3,
   menstrual:           12,
+  family_care:         7,
 };
 
 // ── 喪假親屬關係 ──

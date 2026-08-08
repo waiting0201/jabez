@@ -144,6 +144,7 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
                           + emp.HolidayAllowance + emp.OtherAddition;
         var totalDeductions = emp.LaborInsurance + emp.HealthInsurance
                             + emp.PersonalLeaveDeduction + emp.SickLeaveDeduction + emp.MenstrualLeaveDeduction
+                            + emp.FamilyCareLeaveDeduction
                             + emp.OtherDeduction + emp.LaborPensionSelfDeduction;
 
         // 動態加項列：有值才顯示，斑馬色維持
@@ -204,6 +205,10 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
         if (emp.MenstrualLeaveDays > 0)
             deductionRows += $"""
             <tr style="background:#FDF5F5"><td style="padding:8px 12px">生理假扣薪（{Math.Round(emp.MenstrualLeaveDays, 2)} 天 = {Math.Round(emp.MenstrualLeaveDays * 8m, 1)} 小時 × 半薪）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.MenstrualLeaveDeduction)}</td></tr>
+            """;
+        if (emp.FamilyCareLeaveDays > 0)
+            deductionRows += $"""
+            <tr><td style="padding:8px 12px">家庭照顧假扣薪（{Math.Round(emp.FamilyCareLeaveDays, 2)} 天 = {Math.Round(emp.FamilyCareLeaveDays * 8m, 1)} 小時）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.FamilyCareLeaveDeduction)}</td></tr>
             """;
         if (emp.OtherDeduction > 0)
             deductionRows += $"""
@@ -323,6 +328,8 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
         "paternity"           => "陪產假",
         "ceremonial_festival" => "歲時祭儀假",
         "senior_executive"    => "高階主管假",
+        "menstrual"           => "生理假",
+        "family_care"         => "家庭照顧假",
         _                     => leaveType,
     };
 
@@ -330,7 +337,7 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
     private static string FormatLeaveDuration(string leaveType, decimal hours) => leaveType switch
     {
         // 小時單位
-        "personal" or "sick" or "prenatal_checkup" or "paternity"
+        "personal" or "sick" or "prenatal_checkup" or "paternity" or "family_care"
             => $"{Math.Round(hours, 1)} 小時",
         // 半天單位：4 hrs = 0.5 天
         "annual" or "compensatory" or "senior_executive"

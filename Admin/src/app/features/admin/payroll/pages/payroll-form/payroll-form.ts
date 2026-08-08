@@ -48,6 +48,7 @@ export class PayrollForm implements OnInit {
          + e.holidayAllowance + otherAdd
          - e.laborInsurance - e.healthInsurance
          - e.personalLeaveDeduction - e.sickLeaveDeduction - e.menstrualLeaveDeduction
+         - e.familyCareLeaveDeduction
          - e.laborPensionSelfDeduction
          - otherDed;
   });

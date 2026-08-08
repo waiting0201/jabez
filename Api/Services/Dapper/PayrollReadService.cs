@@ -77,14 +77,14 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             WHERE Year = @Year AND Month = @Month
             """;
 
-        // 5. 查詢該月已核准的事假/病假時數（按員工 + 假別分組）
-        //    事假/病假為「小時」單位，以 SUM(Hours) 累計，C# 端再 ÷ 8 換算天數
+        // 5. 查詢該月已核准的事假/病假/生理假/家庭照顧假時數（按員工 + 假別分組）
+        //    事假/病假/家庭照顧假為「小時」單位，以 SUM(Hours) 累計，C# 端再 ÷ 8 換算天數
         const string leaveSql = """
             SELECT lr.EmployeeId, lr.LeaveType,
                    SUM(lr.Hours) AS TotalHours
             FROM LeaveRequests lr
             WHERE lr.ApprovalStatus = 'approved'
-              AND lr.LeaveType IN ('personal', 'sick', 'menstrual')
+              AND lr.LeaveType IN ('personal', 'sick', 'menstrual', 'family_care')
               AND lr.StartDate <= @LastDay
               AND lr.EndDate   >= @FirstDay
             GROUP BY lr.EmployeeId, lr.LeaveType
@@ -202,6 +202,10 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             decimal personalDays = leaveDaysMap.TryGetValue((empId, "personal"), out var pd) ? pd : 0m;
             decimal personalDeduction = Math.Round(dailySalary * personalDays, 0);
 
+            // 家庭照顧假扣薪：日薪 × 天數（不另支薪，比照事假全額扣除）
+            decimal familyCareDays = leaveDaysMap.TryGetValue((empId, "family_care"), out var fcd) ? fcd : 0m;
+            decimal familyCareDeduction = Math.Round(dailySalary * familyCareDays, 0);
+
             // 生理假：本月時數中，本年度前 3 天（24h）為純生理假，超過部分併入病假計算（兩者皆半薪）
             //   pureThisMonth = min(本月生理假時數, max(0, 24 - 本年度本月前已用生理假時數))
             decimal menstrualHoursThisMonth = (leaveDaysMap.TryGetValue((empId, "menstrual"), out var md) ? md : 0m) * 8m;
@@ -242,6 +246,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                               + holidayAllowance + otherAddition
                               - laborIns - healthIns
                               - personalDeduction - sickDeduction - menstrualDeduction
+                              - familyCareDeduction
                               - otherDeduction
                               - laborPensionSelfDeduction;
 
@@ -269,6 +274,8 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 sickDeduction,
                 menstrualDays,
                 menstrualDeduction,
+                familyCareDays,
+                familyCareDeduction,
                 otherDeduction,
                 otherDeductionNote,
                 note,
@@ -297,6 +304,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             results.Sum(r => r.PersonalLeaveDeduction),
             results.Sum(r => r.SickLeaveDeduction),
             results.Sum(r => r.MenstrualLeaveDeduction),
+            results.Sum(r => r.FamilyCareLeaveDeduction),
             results.Sum(r => r.OtherDeduction),
             results.Sum(r => r.NetSalary),
             results.Sum(r => r.PositionAllowance),

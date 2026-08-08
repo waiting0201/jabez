@@ -23,6 +23,7 @@ public static class LeaveTypeNames
         ["ceremonial_festival"] = "歲時祭儀假",
         ["senior_executive"]    = "高階主管假",
         ["menstrual"]           = "生理假",
+        ["family_care"]         = "家庭照顧假",
     };
 
     /// <summary>取得假別的中文名稱；找不到時回傳原字串。</summary>
