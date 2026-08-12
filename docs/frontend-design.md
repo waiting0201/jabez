@@ -766,14 +766,15 @@ isFirstOfRound(r: AdvanceRequest, index: number): boolean {
 
 > 上方骨架用 `w-10` / `w-12` 只是示意；**專案實務一律用 inline `style="min-width:Npx"` / `style="width:Npx"`**，因為明細表包在 `table-responsive` 內、欄數多，Tailwind 的 `w-*` 無法表達「至少多寬、可再撐開」。新表格請直接沿用下表數值，不要另訂。
 
-- **固定小欄用 `width`**（不需要被內容撐開）：項次 `48px`（容納雙位數）、刪除鈕欄 `40px`、per-row 檔案欄 `72px`、僅圖示的檔案欄 `40px`、分組欄（批次）`130px`
+- **固定小欄用 `width`**（不需要被內容撐開）：項次唯讀 `48px`（容納雙位數）／項次可編輯 `64px`（格內為 `<input type="number">`，瀏覽器的上下微調箭頭另佔約 11px，48px 只剩兩字寬）、刪除鈕欄 `40px`、per-row 檔案欄 `72px`、僅圖示的檔案欄 `40px`、分組欄（批次）`130px`
 - **其餘用 `min-width`**：金額欄 `150px`（七位數 + 千分位不被擠壓，**明細表內最寬的欄**）、日期 `120px`、發票號碼 / 項目說明 `130px`、分類 `90px`、備註 `80px`、數量/單位 `70px`
 
 | 欄位 | 寬度 | 屬性 |
 |---|---|---|
 | 批次（分組欄） | 130px | `width` |
 | 分類 | 90px | `min-width` |
-| 項次 | **48px** | `width` |
+| 項次（唯讀文字） | **48px** | `width` |
+| 項次（可編輯 number input） | **64px** | `width` |
 | 發票號碼 | 130px | `min-width` |
 | 發票日期 | 120px | `min-width` |
 | 項目說明 | 130px | `min-width` |
@@ -786,6 +787,8 @@ isFirstOfRound(r: AdvanceRequest, index: number): boolean {
 | 刪除鈕欄 | **40px** | `width` |
 
 **檔案欄的 72px 是下限**：已上傳狀態要並排「預覽 + 移除」兩顆 `btn btn-sm p-1`，該情境下 icon 必須用 `sa-icon sa-icon-1x`（18px）而非預設 20px，否則兩顆按鈕塞不進 72px 扣掉 `table-sm` cell padding 後的 64px。
+
+> **72px 的前提是 file input 真的被藏起來**：per-row 上傳鈕的 `<input type="file">` 必須加 Tailwind 的 `class="hidden"`。2026-08 曾在 [advance-form](../Admin/src/app/features/admin/advance-requests/pages/advance-form/advance-form.html) 寫成 Bootstrap 的 `d-none`，而 Bootstrap CSS 已於 2026-02 移除、`tailwind.css` 只重定義了帶斷點的 `.d-md-none` 之類，無前綴的 `.d-none` 根本不存在 —— 該欄整個渲染出原生檔案輸入框（約 240px），把整張明細表撐開、其餘欄位被壓縮。詳見 §12.6。
 
 **已套用**（2026-08，預支 / 預支沖銷全系列）：[advance-form](../Admin/src/app/features/admin/advance-requests/pages/advance-form/advance-form.html) / [advance-detail](../Admin/src/app/features/admin/advance-requests/pages/advance-detail/advance-detail.html) / [write-off-form](../Admin/src/app/features/admin/write-off-requests/pages/write-off-form/write-off-form.html)（唯讀預支明細 + 編輯實際花費明細兩張表）/ [write-off-detail](../Admin/src/app/features/admin/write-off-requests/pages/write-off-detail/write-off-detail.html) / [write-off-overview](../Admin/src/app/features/admin/write-off-requests/pages/write-off-overview/write-off-overview.html)（兩張表）。
 
@@ -1636,6 +1639,34 @@ onTaxIdBlur() {
 - 同一輪查詢進行中以 signal 旗標擋住重複觸發
 - **不覆寫**使用者已填寫欄位（patch 前檢查 value）
 - 三態 toast：成功 / 查無資料 / 系統錯誤
+
+### 12.6 明細列內的 icon 觸發上傳（per-row）
+
+明細表的檔案欄空間只有 72px，放不下 §12.1 那種全寬上傳區塊，一律改成「`<label class="btn">` 包 icon + 隱藏的 file input」，點 icon 等同點 input：
+
+```html
+<!-- 未上傳：只有一顆上傳 icon -->
+<label class="btn btn-sm btn-outline-secondary mb-0" style="cursor:pointer">
+  <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+  <input type="file" class="hidden" accept=".jpg,.jpeg,.png,.heic,.heif,.pdf"
+         (change)="onFileSelected($event, i)">
+</label>
+
+<!-- 已上傳：預覽 + 移除，icon 降為 sa-icon-1x 才塞得進 72px -->
+<div class="flex items-center gap-1">
+  <button type="button" class="btn btn-sm btn-ghost-primary p-1" (click)="openPreview(...)" [title]="fileName">
+    <svg class="sa-icon sa-icon-1x" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+  </button>
+  <button type="button" class="btn btn-sm btn-ghost-danger p-1" (click)="removeFile(i)">
+    <svg class="sa-icon sa-icon-1x" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+  </button>
+</div>
+```
+
+> **⚠ 隱藏 file input 一律用 Tailwind 的 `class="hidden"`，禁用 Bootstrap 的 `d-none`。**
+> Bootstrap CSS 已於 2026-02 從專案移除（見 §1.2），`tailwind.css` 只手寫重定義了帶斷點的 `.d-sm-none` / `.d-md-none` 等，**無前綴的 `.d-none` 不存在**，寫了等於沒藏 —— 該格會完整渲染原生檔案輸入框（Chrome 約 240px），撐開整張 `table-responsive` 明細表並壓縮其他欄位。2026-08 已修正 [advance-form](../Admin/src/app/features/admin/advance-requests/pages/advance-form/advance-form.html)（全站唯一一處誤用）。同理，任何從 Bootstrap 範例複製來的 class 都要先確認 `tailwind.css` 有沒有對應定義。
+
+檔名不另外顯示文字（欄寬不夠），只掛在 `[title]` 當 tooltip；預覽走 `<app-file-preview-modal>` 而非另開下載連結。
 
 ---
 
