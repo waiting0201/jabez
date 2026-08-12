@@ -17,7 +17,8 @@
         }
       </div>
       <div class="flex flex-wrap gap-2">
-        @if (r.approvalStatus === 'approved') {
+        <!-- 紙本流程：主管簽核完畢後即印出紙本寄回會計室，故送出（非草稿）後就能列印 -->
+        @if (r.approvalStatus !== 'draft') {
           <button class="btn btn-outline-secondary inline-flex items-center gap-1"
                   (click)="printTravel()" [disabled]="pdfLoading()">
             @if (pdfLoading()) {

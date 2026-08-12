@@ -10,7 +10,9 @@ export class PaymentPdfService {
 
   /** 列印請款單 PDF */
   async printPaymentRequest(task: ApprovalTask) {
-    if (!task.paymentDetail || task.status !== 'approved') return;
+    // 不限 approved：紙本流程是主管簽核完畢後就印出請款單寄回會計室，pending 也要印得出來
+    // （未簽的關卡在簽名欄留白，與其他 6 種紙本財務單一致）
+    if (!task.paymentDetail) return;
 
     this.pdfLoading.set(true);
     try {
