@@ -557,6 +557,44 @@ switchTab(tab: 'tab1' | 'tab2') {
 }
 ```
 
+### 日期欄位回填（`<input type="date">`，**重要**）
+
+後端 DTO 的日期欄位一律是 `DateTime?`，`Api/Program.cs` 未掛任何 date-only 轉換器，序列化出來是 **`"2026-03-24T00:00:00"`（含時間）**；而 `<input type="date">` **只接受 `yyyy-MM-dd`**，收到帶時間的字串會被瀏覽器判為非法值 → **輸入框顯示空白**（但 FormControl 內部仍是原字串，使用者會誤以為資料掉了）。
+
+編輯模式回填日期一律用字串切割：
+
+```ts
+// ✅ 唯一寫法（全站 30+ 處慣例）
+startDate:   r.startDate?.toString().slice(0, 10) ?? '',
+invoiceDate: item.invoiceDate?.toString().slice(0, 10) ?? '',
+```
+
+**禁止**：
+
+```ts
+// ❌ toISOString() 會轉 UTC，台北 +8 的午夜被換算成前一日 → 日期少一天
+startDate: new Date(r.startDate).toISOString().split('T')[0],
+
+// ❌ instanceof Date 三元式：model 常誤標成 Date，runtime 實際是 string，
+//    永遠走 else 分支，沒切時間就空白
+startDate: r.startDate instanceof Date ? r.startDate.toISOString().split('T')[0] : String(r.startDate),
+```
+
+model 的日期欄位型別**標 `string` 不標 `Date`**（與 runtime 一致），避免又寫出 `instanceof Date` 分支。若同一個 model 同時用於讀取與送出而型別衝突，拆成 `XxxRequest`（讀）與 `XxxRequestPayload`（送）兩個介面（見 `overtime-request.model.ts`）。
+
+**送出端同理**：直接送表單的 `yyyy-MM-dd` 字串，不要包成 `new Date(...)`。後端 `DateTime` / `DateTime?` 可正常解析純日期字串（已實測：送 `"2026-03-24"` → DB 存 `2026-03-24T00:00:00`，無位移），包成 `Date` 反而多一層 UTC 轉換風險。
+
+同一條規則也適用於**用日期組其他字串**的場合（如出缺勤報表把 `recordDate` 併上時分秒送出）：
+
+```ts
+// ❌ "2026-08-12T00:00:00" 無時區標記 → 以本地時間解析 → toISOString 轉 UTC → 退回前一天
+const dateStr = new Date(record.rawRecordDate).toISOString().substring(0, 10);
+// ✅
+const dateStr = record.rawRecordDate.slice(0, 10);
+```
+
+> 歷史：commit `7ce86bcb`（生日／到職日／離職日時區偏移少一天）確立不得經 `Date` 物件轉換；後續預支沖銷 / 出差預支沖銷 / 出差請款三張單因漏做截斷，導致單據退回修正後重新編輯時發票日期與出差起訖日全空白。
+
 ### 日期多選 chips（逐日勾選）
 
 在有限日期區間內做**多選、可不連續**的日期勾選時（如假日執行活動的參與人員參與日期），以 `btn btn-sm rounded-pill` toggle 按鈕逐日產生 chips，不用多個 `<input type="date">`：
@@ -815,6 +853,14 @@ loadData(items: Item[]) {
   this.invoiceArray.clear();
   items.forEach(it => this.invoiceArray.push(this._invoiceGroup(it)));
 }
+```
+
+明細列含日期欄位時，**格式轉換放在呼叫端**（builder 只收已格式化好的 string），寫法見 [§6 日期欄位回填](#日期欄位回填input-typedate重要)：
+
+```typescript
+items.forEach(it => this.invoiceArray.push(
+  this._invoiceGroup(..., it.invoiceDate?.toString().slice(0, 10) ?? '')
+));
 ```
 
 ### 7.5.1 下拉排除已選項目（互斥 select）

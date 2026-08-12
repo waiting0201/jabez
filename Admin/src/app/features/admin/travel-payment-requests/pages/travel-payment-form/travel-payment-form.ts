@@ -195,12 +195,10 @@ export class TravelPaymentForm implements OnInit {
         this.loadedGrandTotal = r.grandTotal ?? 0;
         this.form.patchValue({
           destination:     r.destination,
-          startDate: r.startDate instanceof Date
-            ? r.startDate.toISOString().split('T')[0]
-            : String(r.startDate),
-          endDate: r.endDate instanceof Date
-            ? r.endDate.toISOString().split('T')[0]
-            : String(r.endDate),
+          // 後端回傳 "2026-03-24T00:00:00"，<input type="date"> 只接受 yyyy-MM-dd；
+          // 用字串切割而非 toISOString()，避免台北 +8 轉 UTC 造成日期少一天
+          startDate: r.startDate?.toString().slice(0, 10) ?? '',
+          endDate:   r.endDate?.toString().slice(0, 10) ?? '',
           purpose:         r.purpose,
           projectId:       r.projectId ?? null,
         });
@@ -214,7 +212,7 @@ export class TravelPaymentForm implements OnInit {
           `existing-${item.id ?? idx}`, item.fileName ?? '',
           item.category, item.seqNo, item.itemName, item.unitPrice,
           item.quantity, item.totalPrice, item.note ?? '',
-          item.invoiceNo ?? '', item.invoiceDate ?? '', idx,
+          item.invoiceNo ?? '', item.invoiceDate?.toString().slice(0, 10) ?? '', idx,
           '', item.fileUrl ?? '',
         )));
         if (this.isReadOnly) this.form.disable();

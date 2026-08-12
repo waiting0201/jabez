@@ -159,12 +159,10 @@ export class TravelRequestForm implements OnInit {
         this.loadedGrandTotal = r.grandTotal ?? 0;
         this.form.patchValue({
           destination:     r.destination,
-          startDate: r.startDate instanceof Date
-            ? r.startDate.toISOString().split('T')[0]
-            : String(r.startDate),
-          endDate: r.endDate instanceof Date
-            ? r.endDate.toISOString().split('T')[0]
-            : String(r.endDate),
+          // 後端回傳 "2026-03-24T00:00:00"，<input type="date"> 只接受 yyyy-MM-dd；
+          // 用字串切割而非 toISOString()，避免台北 +8 轉 UTC 造成日期少一天
+          startDate: r.startDate?.toString().slice(0, 10) ?? '',
+          endDate:   r.endDate?.toString().slice(0, 10) ?? '',
           purpose:         r.purpose,
           projectId:       r.projectId ?? null,
         });
@@ -295,8 +293,10 @@ export class TravelRequestForm implements OnInit {
     const grandTotal = items.reduce((s, i) => s + i.totalPrice, 0);
     return {
       destination:         v.destination!,
-      startDate:           new Date(v.startDate!),
-      endDate:             new Date(v.endDate!),
+      // 直接送表單的 yyyy-MM-dd 字串，不包成 Date：後端 DateTime 可解析純日期，
+      // 也避免 Date → JSON 的 UTC 轉換讓日期位移
+      startDate:           v.startDate!,
+      endDate:             v.endDate!,
       purpose:             v.purpose!,
       projectId:           v.projectId ?? undefined,
       projectCode:         project?.code,
