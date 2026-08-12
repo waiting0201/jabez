@@ -86,6 +86,7 @@
 | GET | `/approval-tasks` | 任務列表；`status` 參數：`pending`（待審核）/ `approved`（已核准）/ `rejected`（已拒絕）/ `director_pending`（總監待簽核，僅財務管理部或 Superadmin 可查，非財務管理部呼叫回 403）；另可帶 `paymentStatus`（撥款三態 `unpaid` / `partial` / `paid`，另加 `closed`＝已結案，只有預支 / 出差預支有結案概念、其餘類型不回傳）、`applicationType`（申請類型）、`submittedByUserId`（申請人；**僅財務體系部門或 Superadmin 生效**，其他人帶了一律忽略） |
 | GET | `/approval-tasks/applicants` | 申請人下拉選項（曾送出非草稿申請者去重清單，依姓名排序）；**僅財務體系部門或 Superadmin**，其他人回 403 |
 | GET | `/approval-tasks/{id}` | 取得任務詳情 |
+| GET | `/approval-tasks/{appType}/{id}` | 取得指定類型的任務詳情。存取控制：Superadmin / 有 `approval-tasks:read` / 被指定為審核者 / 曾審核過 / **申請人本人**（詳情頁簽核歷程與 PDF 簽名章皆取自此端點），其餘 403 |
 | PATCH | `/approval-tasks/{appType}/{id}/review` | 審核（核准 / 退回 / 拒絕）。body 可帶 `installments`：當為撥款類（payment_request / advance / travel / travel_payment）且**財務（FIN）步驟核准**時，撥款明細**必填**（加總須 == 申請總額），與審核動作同交易原子寫入。非財務步驟 / 非撥款類 / holiday_travel 不收 installments；批次核准不收。 |
 | POST | `/approval-tasks/batch-approve` | 批次核准多筆待審申請（僅 approved 動作，需 `approval-tasks:batch-approve` 權限；撥款/退款日留空，完成後以提醒清單回傳需補填者） |
 

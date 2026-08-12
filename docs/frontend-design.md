@@ -1097,6 +1097,25 @@ overtimeStartHint = computed<string>(() => {
 條件牽涉後端業務規則時，**由後端回一個結論旗標**（如 `canOvertimeWithoutClockOut`），
 前端不重組規則，避免前後端判定漂移。
 
+### 8.6 列印 PDF 按鈕的顯示條件
+
+**7 種紙本財務單**（請款 / 預支 / 預支沖銷 / 出差預支 / 出差預支沖銷 / 出差請款 / 假日執行活動）
+的申請詳情頁，列印按鈕一律：
+
+```html
+<!-- 紙本流程：主管簽核完畢後即印出紙本寄回會計室，故送出（非草稿）後就能列印 -->
+@if (r.approvalStatus !== 'draft') {
+  <button class="btn btn-outline-secondary inline-flex items-center gap-1"
+          (click)="printXxx()" [disabled]="pdfLoading()"> … </button>
+}
+```
+
+- **不可收緊成 `=== 'approved'`**：送出成功彈窗（[submit-success-modal.ts](../Admin/src/app/shared/components/submit-success-modal.ts)）明寫「請於**單位主管簽核完畢後**，再印出<單別>連同紙本單據寄回會計室」——紙本要在流程**中途（pending）**印，收緊會直接擋掉紙本流程。
+- **draft 不可印**：草稿還沒有單號以外的簽核事實，印出來是張空白單。
+- **未簽的關卡在簽名欄留白**：`buildDynamicSignBlocks` 依 `flow.steps` 產生欄位、有 `ApprovalRecord` 的才填簽章與日期，pending 印出來就是「已簽的有章、未簽的留白」。
+- **PDF service 內不可再放狀態閘**：`printXxx()` 只擋資料不足（如 `if (!task.paymentDetail) return;`），不得再寫 `task.status !== 'approved'` —— 否則按鈕看得到、按了沒反應（此坑已於 2026-08 在 `payment-pdf.service.ts` 踩過）。
+- **例外**：預審申請不走紙本流程，維持 `approved` 才可列印；簽核作業頁（approval-task-review）的審核者列印同樣維持 `approved`。
+
 ---
 
 ## 9. 狀態提示卡

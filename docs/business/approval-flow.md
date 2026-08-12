@@ -398,7 +398,24 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 - 有 `approval-tasks:read` 權限：可查看所有
 - 被指定為審核者（任何狀態）：可查看此申請單
 - 曾審核過（有 ApprovalRecord）：可查看此申請單
+- **申請人本人：可查看自己送出的申請單**（2026-08 新增，見下）
 - 其他人：403
+
+**申請人本人放行（2026-08 新增）：**
+
+各申請的**詳情頁（detail）**都會另打此端點取簽核歷程，PDF 的**簽名章、簽核日期、動態簽名欄**（`buildDynamicSignBlocks` 以 `flow.steps` 產生欄位）也全部取自這裡。申請人本人若被 403，會出現兩種壞掉的表現：
+
+| 申請類型 | 403 時的症狀 |
+|---|---|
+| 請款 / 預審 | 列印按鈕條件含 `approvalTask()`，按鈕**整個不出現** → 印不出來 |
+| 預支沖銷 / 出差預支沖銷 | 按鈕無條件顯示，但 `flow` 為 undefined → 印出**一格簽核欄都沒有**的沖銷表（連申請者簽名章也空） |
+
+故 [ApprovalTaskHandler.IsApplicantAsync](../../Api/Handlers/ApprovalTaskHandler.cs) 逐型別比對申請人欄位放行本人；申請人欄位各表不同：
+
+- `SubmittedById`：`payment_request` / `advance` / `write_off` / `travel_write_off` / `pre_review`
+- `EmployeeId`：`leave` / `leave_revocation` / `travel` / `holiday_travel` / `overtime` / `travel_payment`
+
+> 新增申請類型時，`ValidAppTypes` 與 `IsApplicantAsync` 的 switch **必須同步加一條**，否則該類型的申請人會退回 403（PDF 缺簽名欄）。
 
 **涉及元件：**
 | 元件 | 說明 |

@@ -112,7 +112,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         if (task is null)
             return new NotFoundObjectResult(ApiResponse.Fail("Approval task not found.", $"No request with id '{id}'."));
 
-        // ── 存取控制：只有有權審核此申請的使用者才能查看詳情 ─────────────────
+        // ── 存取控制：有權審核此申請的使用者，或申請人本人，才能查看詳情 ─────────────────
         var principal = await jwtService.ValidateRequestAsync(req);
         if (principal is not null)
         {
@@ -131,8 +131,11 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                         .AnyAsync(r => r.RequestType == appType && r.RequestId == intId && r.ReviewerId == callerId);
                     // 3. 符合全域審核權限（有 approval-tasks:read 可看清單的人也能看詳情）
                     bool hasReadPerm = principal.FindAll("permissions").Any(c => c.Value == PermissionCodes.ApprovalTasksRead);
+                    // 4. 申請人本人（詳情頁的簽核歷程與 PDF 簽名章都取自本端點，不放行會讓申請人印出無簽核欄的單子）
+                    bool isApplicant = !hasRecord && !isDesignated && !hasReadPerm
+                                    && await IsApplicantAsync(appType, intId, callerId);
 
-                    if (!hasRecord && !isDesignated && !hasReadPerm)
+                    if (!hasRecord && !isDesignated && !hasReadPerm && !isApplicant)
                         return new ObjectResult(ApiResponse.Fail("您沒有權限查看此申請單。")) { StatusCode = 403 };
                 }
             }
@@ -140,6 +143,26 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
 
         return new OkObjectResult(ApiResponse.Ok(task));
     }
+
+    /// <summary>
+    /// 判斷呼叫者是否為該申請單的申請人本人。
+    /// 各申請單的申請人欄位不同（PaymentRequest / Advance / WriteOff 系列為 SubmittedById，
+    /// Leave / Travel / Overtime / TravelPayment 系列為 EmployeeId），故逐型別判定。
+    /// </summary>
+    private async Task<bool> IsApplicantAsync(string applicationType, int id, Guid callerId) => applicationType switch
+    {
+        "payment_request"            => await db.PaymentRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.SubmittedById == callerId),
+        "leave"                      => await db.LeaveRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId),
+        "leave_revocation"           => await db.LeaveRevocations.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId),
+        "travel" or "holiday_travel" => await db.TravelRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId),
+        "overtime"                   => await db.OvertimeRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId),
+        "advance"                    => await db.AdvanceRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.SubmittedById == callerId),
+        "write_off"                  => await db.WriteOffRecords.AsNoTracking().AnyAsync(x => x.Id == id && x.SubmittedById == callerId),
+        "travel_write_off"           => await db.TravelWriteOffRecords.AsNoTracking().AnyAsync(x => x.Id == id && x.SubmittedById == callerId),
+        "travel_payment"             => await db.TravelPaymentRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId),
+        "pre_review"                 => await db.PreReviewRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.SubmittedById == callerId),
+        _                            => false,
+    };
 
     public async Task<IActionResult> ReviewAsync(HttpRequest req, string applicationType, string id)
     {

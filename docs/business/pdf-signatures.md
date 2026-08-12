@@ -2,6 +2,15 @@
 
 7 個含簽名檔的 PDF（請款 / 預支 / 出差預支 / 出差預支沖銷 / 出差請款 / 預支沖銷 / 假日執行活動）共用 [Admin/src/app/shared/services/pdf-core.service.ts](../../Admin/src/app/shared/services/pdf-core.service.ts) 的 `buildDynamicSignBlocks()` helper，依 `flow.steps` 動態建立簽名欄。
 
+## 何時可以列印（2026-08 統一）
+
+這 7 種即「紙本財務單」，送出成功彈窗要求「**單位主管簽核完畢後**，再印出<單別>連同紙本單據寄回會計室」——紙本在流程**中途**就要印，故：
+
+- **申請詳情頁的列印按鈕條件一律 `approvalStatus !== 'draft'`**（不是 `=== 'approved'`）；已簽的關卡帶簽章與日期、未簽的留白
+- PDF service 內**不得再放 `status !== 'approved'` 的閘**（只擋資料不足），否則按鈕看得到、按了沒反應
+- 前端規範見 [frontend-design.md §8.6](../frontend-design.md#86-列印-pdf-按鈕的顯示條件)
+- 預審申請不走紙本流程，維持 `approved` 才可印；簽核作業頁（審核者側）亦維持 `approved`
+
 ## 規則
 
 1. **每個 step 一格**：依 `stepOrder` 為每個**非指定簽核**步驟建一格簽名欄
@@ -52,6 +61,8 @@
 | `recordSql` | Dapper SQL `LEFT JOIN JobTitles` 取審核者職稱，[PaymentRequestReadService.cs](../../Api/Services/Dapper/PaymentRequestReadService.cs) |
 | `ApprovalRecord.reviewerJobTitle` | 前端 interface，[approval-task.model.ts](../../Admin/src/app/features/admin/approval-tasks/models/approval-task.model.ts) |
 | 7 個 PDF service 的 `_buildSignBlocks` | thin wrapper 呼叫共用 helper，差異僅 `cashier` 設定與 `applicantLabel` |
+
+> **資料來源**：簽名章 / 簽核日期 / 動態簽名欄全部來自 `GET /approval-tasks/{appType}/{id}`（`flow` + `approvalRecords` + `submittedBySignatureUrl`）。取不到（403）時 `flow?.steps ?? []` 會產生**零格簽核欄**，印出無簽核欄的單子——故該端點對**申請人本人**放行，見 [approval-flow.md](approval-flow.md) 的「存取控制（`GET /approval-tasks/{type}/{id}`）」。
 
 ---
 

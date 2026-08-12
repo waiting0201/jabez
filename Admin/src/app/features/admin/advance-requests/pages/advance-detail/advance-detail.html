@@ -27,15 +27,18 @@
             新增追加預支
           </a>
         }
-        <button class="btn btn-outline-secondary inline-flex items-center gap-1"
-                (click)="printAdvance()" [disabled]="pdfLoading()">
-          @if (pdfLoading()) {
-            <span class="spinner-border spinner-border-sm" role="status"></span>
-          } @else {
-            <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#printer"></use></svg>
-          }
-          列印預支表
-        </button>
+        <!-- 紙本流程：主管簽核完畢後即印出紙本寄回會計室，故送出（非草稿）後就能列印 -->
+        @if (r.approvalStatus !== 'draft') {
+          <button class="btn btn-outline-secondary inline-flex items-center gap-1"
+                  (click)="printAdvance()" [disabled]="pdfLoading()">
+            @if (pdfLoading()) {
+              <span class="spinner-border spinner-border-sm" role="status"></span>
+            } @else {
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#printer"></use></svg>
+            }
+            列印預支表
+          </button>
+        }
       </div>
     </div>
 
