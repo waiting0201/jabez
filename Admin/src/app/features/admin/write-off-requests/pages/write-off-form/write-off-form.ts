@@ -223,7 +223,13 @@ export class WriteOffRequestForm implements OnInit {
             item.fileUrl ?? '',
           ));
           const ctrl = this.itemArray.at(idx);
-          ctrl.patchValue({invoiceNo: item.invoiceNo ?? '', invoiceDate: item.invoiceDate ?? '', category: item.category});
+          // invoiceDate 需切掉後端回傳的時間部分（"2026-03-24T00:00:00"），
+          // <input type="date"> 只接受 yyyy-MM-dd，否則會顯示空白
+          ctrl.patchValue({
+            invoiceNo:   item.invoiceNo ?? '',
+            invoiceDate: item.invoiceDate?.toString().slice(0, 10) ?? '',
+            category:    item.category,
+          });
         });
         this.cdr.markForCheck();
       });

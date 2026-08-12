@@ -327,12 +327,10 @@ export class HolidayTravelRequestForm implements OnInit {
         this.isReadOnly = r.approvalStatus !== 'draft' && r.approvalStatus !== 'returned';
         this.form.patchValue({
           destination: r.destination,
-          startDate: r.startDate instanceof Date
-            ? r.startDate.toISOString().split('T')[0]
-            : String(r.startDate),
-          endDate: r.endDate instanceof Date
-            ? r.endDate.toISOString().split('T')[0]
-            : String(r.endDate),
+          // 後端回傳 "2026-03-24T00:00:00"，<input type="date"> 只接受 yyyy-MM-dd；
+          // 用字串切割而非 toISOString()，避免台北 +8 轉 UTC 造成日期少一天
+          startDate: r.startDate?.toString().slice(0, 10) ?? '',
+          endDate:   r.endDate?.toString().slice(0, 10) ?? '',
           purpose:   r.purpose,
           projectId: r.projectId ?? null,
         });

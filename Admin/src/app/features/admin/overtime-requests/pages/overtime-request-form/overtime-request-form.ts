@@ -186,9 +186,8 @@ export class OvertimeRequestForm implements OnInit {
         this.isReturned = r.approvalStatus === 'returned';
         this.isReadOnly = r.approvalStatus !== 'draft' && r.approvalStatus !== 'returned';
         this.form.patchValue({
-          overtimeDate: r.overtimeDate instanceof Date
-            ? r.overtimeDate.toISOString().split('T')[0]
-            : String(r.overtimeDate).split('T')[0],
+          // 字串切割而非 toISOString()，避免台北 +8 轉 UTC 造成日期少一天
+          overtimeDate: r.overtimeDate?.toString().slice(0, 10) ?? '',
           reason: r.reason,
         });
         this.readonlyProjects = r.projects ?? [];

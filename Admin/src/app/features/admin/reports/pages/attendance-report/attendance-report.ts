@@ -298,10 +298,13 @@ export class AttendanceReport implements OnInit {
     this.saving.set(true);
     const form = this.editForm();
 
-    // 使用原始 recordDate 組合完整 DateTime
+    // 使用原始 recordDate 組合完整 DateTime。
+    // 後端回傳 "2026-08-12T00:00:00"（無時區標記）→ new Date() 以本地時間解析，
+    // 再 toISOString() 轉 UTC 會讓台北 +8 的午夜退回前一天，導致修改後的打卡時間被存到前一日；
+    // 故一律用字串切割，不經過 Date 物件。
     const dateStr = record.rawRecordDate
-      ? new Date(record.rawRecordDate).toISOString().substring(0, 10)
-      : new Date().toISOString().substring(0, 10);
+      ? record.rawRecordDate.slice(0, 10)
+      : todayString();
 
     const body = {
       clockInTime: form.clockIn ? `${dateStr}T${form.clockIn}:00` : null,

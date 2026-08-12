@@ -54,8 +54,9 @@ export interface TravelPaymentRequest {
   employeeName?: string;
   approvalItemId?: number;
   destination: string;
-  startDate: Date;
-  endDate: Date;
+  // 後端序列化為 ISO 字串（"2026-03-24T00:00:00"），runtime 實際型別是 string 而非 Date
+  startDate: string;
+  endDate: string;
   grandTotal: number;
   purpose: string;
   projectId?: number;

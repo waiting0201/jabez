@@ -36,11 +36,13 @@ export interface OvertimeProject {
   estimatedHours: number;
 }
 
+// 讀取用（後端序列化的日期為 ISO 字串）；送出用見 OvertimeRequestPayload
 export interface OvertimeRequest {
   id: number;
   employeeId?: string;
   approvalItemId?: number;
-  overtimeDate: Date;
+  // 後端序列化為 ISO 字串（"2026-03-24T00:00:00"），runtime 實際型別是 string 而非 Date
+  overtimeDate: string;
   projects: OvertimeProject[];
   /** 預估總時數（= projects 各列加總，由後端計算，前端唯讀） */
   estimatedHours: number;
