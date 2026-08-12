@@ -207,7 +207,7 @@
                 <thead class="table-light">
                   <tr>
                     <th style="min-width:90px">分類</th>
-                    <th style="width:48px">項次</th>
+                    <th style="width:64px">項次</th>
                     <th style="min-width:130px">項目說明</th>
                     <th style="min-width:150px">單價</th>
                     <th style="min-width:70px">數量/單位</th>
@@ -331,7 +331,7 @@
                           } @else {
                             <label class="btn btn-sm btn-outline-secondary mb-0" style="cursor:pointer">
                               <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#upload"></use></svg>
-                              <input type="file" class="d-none" accept=".jpg,.jpeg,.png,.heic,.heif,.pdf"
+                              <input type="file" class="hidden" accept=".jpg,.jpeg,.png,.heic,.heif,.pdf"
                                      (change)="onFileSelected($event, i)">
                             </label>
                           }
