@@ -32,6 +32,8 @@ export interface SignRecord {
   reviewerSignatureUrl?: string;
   reviewerJobTitle?: string;
   reviewerJobTitleLevel?: number;
+  /** 簽核動作（approved / returned / rejected）；例外指定審核步驟挑最後一筆 approved 用 */
+  action?: string;
   /** 簽核批次（僅預支追加會 > 1；未提供視為 1）*/
   roundNo?: number;
 }
@@ -60,15 +62,17 @@ export interface BuildDynamicSignBlocksOptions {
    */
   roundNo?: number;
   /**
-   * 本申請實際命中的指定審核步驟 stepOrder（含「例外指定審核」命中的步驟）。
-   * 取自 designatedReviewers[].approvalStepOrder；未提供時退化為只看 flow.steps[].useApplicantDesignated。
+   * 本申請實際綁有指定審核者的步驟 stepOrder（取自 designatedReviewers[].approvalStepOrder）。
+   * 用來辨識「例外指定審核命中的步驟」（步驟本身 useApplicantDesignated=false）：
+   * 這種步驟**照常佔一格簽名欄**（角色固定，如上層級 / 會計），只是改由申請人挑人，
+   * 此參數僅用於挑紀錄時優先取最後一筆 approved（多位 designee 會有同 stepOrder 多筆）。
    */
   designatedStepOrders?: number[];
 }
 
 /**
- * 由申請單的 designatedReviewers 推出「實際命中的指定審核步驟 stepOrder」，
- * 供 buildDynamicSignBlocks 的 designatedStepOrders 使用（涵蓋「例外指定審核」命中的步驟）。
+ * 由申請單的 designatedReviewers 推出「本申請實際綁有指定審核者的步驟 stepOrder」，
+ * 供 buildDynamicSignBlocks 的 designatedStepOrders 使用。
  */
 export function designatedStepOrdersOf(
   designatedReviewers?: { approvalStepOrder?: number }[] | null): number[] {
@@ -105,6 +109,14 @@ function isDirectorReviewer(r: SignRecord): boolean {
     : !!r.reviewerJobTitle?.includes('總監');
 }
 
+/** 取某步驟最新核准的那筆紀錄（同 stepOrder 多筆時用；無 approved 則回 undefined） */
+function latestApprovedAt(records: SignRecord[], stepOrder: number): SignRecord | undefined {
+  const ts = (r: SignRecord) => (r.reviewedAt ? new Date(r.reviewedAt as Date | string).getTime() : 0);
+  return records
+    .filter(r => r.stepOrder === stepOrder && r.action === 'approved')
+    .reduce<SignRecord | undefined>((best, r) => (!best || ts(r) >= ts(best) ? r : best), undefined);
+}
+
 /** step → 簽名欄 label */
 function resolveStepLabel(step: SignFlowStep): string {
   if (step.useDirectSupervisor) return '上層級';
@@ -117,10 +129,13 @@ function resolveStepLabel(step: SignFlowStep): string {
 /**
  * 依 flow.steps 動態建立 PDF 簽名欄。
  *
- * - 每個非指定簽核 step 各一格，依 stepOrder 反轉後排列
+ * - 每個非「原生指定簽核」step 各一格，依 stepOrder 反轉後排列
  * - 「總監核准」一律 hoist 到最左，不論 flow 中總監步驟的 stepOrder
- * - 指定簽核步驟不獨立佔欄位（含「例外指定審核」命中的步驟，由 designatedStepOrders 判定）
- * - 例外：若指定簽核紀錄裡有人職稱層級為總監（JobTitle.Level=1）：
+ * - 原生指定簽核步驟（step.useApplicantDesignated=true）不獨立佔欄位（該步驟沒有固定角色）
+ * - 「例外指定審核」命中的步驟（step.useApplicantDesignated=false，但本申請綁有 designee）
+ *   **仍佔一格**：步驟角色固定（上層級 / 會計 / 財務…）、也確實產生該 stepOrder 的簽核紀錄，
+ *   吃掉欄位會讓該關卡的簽章整格消失
+ * - 例外：若「原生」指定簽核紀錄裡有人職稱層級為總監（JobTitle.Level=1）：
  *   - flow 沒有總監步驟 → 加「總監核准」欄至最左
  *   - flow 已有總監步驟 → 額外加「總監（指定）」欄並列在「總監核准」右側（即使同人簽兩次，兩格皆顯示）
  * - 出納欄（如有）緊接在 step 欄位之後、申請者欄之前
@@ -135,15 +150,20 @@ export function buildDynamicSignBlocks(opts: BuildDynamicSignBlocksOptions): Sig
 
   const steps = (flow?.steps ?? []).slice().sort((a, b) => a.stepOrder - b.stepOrder);
 
-  // 指定簽核步驟：flow 的原生設定，或本申請實際綁有指定審核者（例外指定審核命中）
-  const designatedSet = new Set(opts.designatedStepOrders ?? []);
-  const isDesignated = (s: SignFlowStep) => !!s.useApplicantDesignated || designatedSet.has(s.stepOrder);
+  // 原生指定簽核步驟（flow 設定）：不佔欄，該步驟沒有固定角色
+  const isNativeDesignated = (s: SignFlowStep) => !!s.useApplicantDesignated;
+  // 例外指定審核命中的步驟：本申請綁有 designee，但步驟本身角色固定 → 照常佔欄
+  const boundSet = new Set(opts.designatedStepOrders ?? []);
+  const isExceptionDesignated = (s: SignFlowStep) => !s.useApplicantDesignated && boundSet.has(s.stepOrder);
 
-  // 1. 為每個非指定簽核步驟建一格
+  // 1. 為每個非「原生指定簽核」步驟建一格
   const stepBlocks: SignBlock[] = [];
   for (const step of steps) {
-    if (isDesignated(step)) continue;
-    const rec = records.find(r => r.stepOrder === step.stepOrder);
+    if (isNativeDesignated(step)) continue;
+    // 例外指定審核步驟可能有多位 designee → 同 stepOrder 多筆紀錄（含同步驟自動代簽），
+    // 取最新核准的那筆。後端 recordSql 對同 stepOrder 無 tiebreaker，故以 reviewedAt 自行排序。
+    const rec = (isExceptionDesignated(step) ? latestApprovedAt(records, step.stepOrder) : undefined)
+      ?? records.find(r => r.stepOrder === step.stepOrder);
     stepBlocks.push({
       label: resolveStepLabel(step),
       signatureUrl: rec?.reviewerSignatureUrl,
@@ -161,8 +181,9 @@ export function buildDynamicSignBlocks(opts: BuildDynamicSignBlocksOptions): Sig
     stepBlocks.push(...directorBlocks);
   }
 
-  // 2. 處理「指定簽核中的總監」
-  const designatedStep = steps.find(isDesignated);
+  // 2. 處理「原生指定簽核中的總監」
+  //    只看原生指定步驟：例外命中的步驟已在上面佔了自己的欄位，再 hoist 會讓同一人出現兩格
+  const designatedStep = steps.find(isNativeDesignated);
   if (designatedStep) {
     const designatedDirectors = records.filter(r =>
       r.stepOrder === designatedStep.stepOrder && isDirectorReviewer(r)

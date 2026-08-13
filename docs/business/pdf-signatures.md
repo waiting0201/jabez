@@ -26,9 +26,13 @@
 
 ## 指定簽核者（`useApplicantDesignated`）特殊處理
 
-指定簽核步驟本身**不**獨立佔欄位。**「是否為指定簽核步驟」的判定**＝`flow.steps[].useApplicantDesignated`（流程原生設定）**OR** `designatedStepOrders` 命中（本申請實際綁有指定審核者，涵蓋「例外指定審核」命中的步驟，見 [approval-flow.md](approval-flow.md#例外指定審核approvalstepexception2026-07-新增)）。`designatedStepOrders` 由 [pdf-core.service.ts](../../Admin/src/app/shared/services/pdf-core.service.ts) 的 `designatedStepOrdersOf(request.designatedReviewers)` 取自各筆 designee 的 `approvalStepOrder`，8 個 PDF service 各傳一次；未提供時退化為只看流程原生設定。
+**只有「原生」指定簽核步驟（`flow.steps[].useApplicantDesignated === true`）不獨立佔欄位** —— 這種步驟沒有固定角色（誰簽由申請人挑），畫一格固定標籤沒有意義。
 
-例外：若指定簽核紀錄裡有人為總監（`isDirectorReviewer`：優先用 `reviewerJobTitleLevel === 1` 判定，缺值時 fallback 職稱名稱含「總監」）：
+> ⚠️ **「例外指定審核」命中的步驟照常佔一格**（2026-08 修正）。例外指定審核只改變「由誰挑審核者」，步驟本身的角色是固定的（上層級 / 會計 / 財務…），也**確實會產生該 `stepOrder` 的 `ApprovalRecord`**。2026-07 導入例外指定審核時誤把「不佔欄」規則一併套到例外命中的步驟，導致該關卡整格從 PDF 消失、簽章遺失（實務上各流程的 Step 1「上層級」普遍掛例外名單，8 種 PDF 全中）。詳見 [approval-flow.md](approval-flow.md#pdf-簽名欄)。
+
+`designatedStepOrders`（由 [pdf-core.service.ts](../../Admin/src/app/shared/services/pdf-core.service.ts) 的 `designatedStepOrdersOf(request.designatedReviewers)` 取自各筆 designee 的 `approvalStepOrder`，8 個 PDF service 各傳一次）現僅用於**辨識例外命中的步驟以挑選紀錄**：該步驟可能有多位 designee → 同 `stepOrder` 多筆紀錄（含同步驟自動代簽），故取**最後一筆 `approved`**，取不到才退回 `records.find(stepOrder)`。一般步驟維持 `find`。
+
+例外：若**原生**指定簽核紀錄裡有人為總監（`isDirectorReviewer`：優先用 `reviewerJobTitleLevel === 1` 判定，缺值時 fallback 職稱名稱含「總監」）：
 
 | 情境 | flow 有總監步驟 | 指定簽核含總監 | 結果 |
 |---|---|---|---|
@@ -37,7 +41,7 @@
 | C | ✗ | ✓ | 1 個總監核准欄（指定的總監），位於最左 |
 | D/E | ✓ | ✓ | **2 欄並列（左→右）**：總監核准 + 總監（指定）— 不論同人或不同人 |
 
-> 多位指定總監：取最後一筆（最新核准）。其他非總監的指定簽核者，簽名**不**顯示在 PDF。
+> 上表僅適用**原生**指定簽核步驟。多位指定總監：取最後一筆（最新核准）。其他非總監的原生指定簽核者，簽名**不**顯示在 PDF（例外指定審核者則顯示在該步驟自己的欄位裡）。
 
 ## 出納欄與申請者欄
 
