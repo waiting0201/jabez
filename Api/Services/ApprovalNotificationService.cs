@@ -320,17 +320,13 @@ public sealed class ApprovalNotificationService(
             var applicantName = applicant?.Name ?? "未知";
             var summary = await GetSummaryAsync(applicationType, applicationId);
 
-            // 查詢財務部(FIN)所有有 Email 的使用者
-            var financeDept = await db.Departments.AsNoTracking()
-                .FirstOrDefaultAsync(d => d.Code == "FIN");
-            if (financeDept is null)
-            {
-                logger.LogWarning("找不到「財務部(FIN)」部門，無法寄送撥款通知：PaymentRequest #{Id}", applicationId);
-                return;
-            }
-
+            // 查詢財務管理部所有有 Email 的使用者
+            // 以 DepartmentCodes.FinanceStep 比對（含舊短碼 FIN + 改制後英文全名）；
+            // 原本硬編碼 == "FIN"，組織改制後查無部門，通知會靜默不送只留一行 warning。
             var recipients = await db.Users.AsNoTracking()
-                .Where(u => u.DepartmentId == financeDept.Id && !u.IsSuperAdmin && !string.IsNullOrEmpty(u.Email))
+                .Where(u => u.Department != null && u.Department.Code != null
+                         && DepartmentCodes.FinanceStep.Contains(u.Department.Code)
+                         && !u.IsSuperAdmin && !string.IsNullOrEmpty(u.Email))
                 .Select(u => new { u.Name, u.Email })
                 .ToListAsync();
 
@@ -388,16 +384,11 @@ public sealed class ApprovalNotificationService(
                 : null;
             var applicantName = applicant?.Name ?? "未知";
 
-            var financeDept = await db.Departments.AsNoTracking()
-                .FirstOrDefaultAsync(d => d.Code == "FIN");
-            if (financeDept is null)
-            {
-                logger.LogWarning("找不到「財務部(FIN)」部門，無法寄送退款通知：AdvanceRequest #{Id}", advance.Id);
-                return;
-            }
-
+            // 收件人同 NotifyFinancePaymentAsync：以 DepartmentCodes.FinanceStep 比對，不可硬編碼 "FIN"
             var recipients = await db.Users.AsNoTracking()
-                .Where(u => u.DepartmentId == financeDept.Id && !u.IsSuperAdmin && !string.IsNullOrEmpty(u.Email))
+                .Where(u => u.Department != null && u.Department.Code != null
+                         && DepartmentCodes.FinanceStep.Contains(u.Department.Code)
+                         && !u.IsSuperAdmin && !string.IsNullOrEmpty(u.Email))
                 .Select(u => new { u.Name, u.Email })
                 .ToListAsync();
 
@@ -452,16 +443,11 @@ public sealed class ApprovalNotificationService(
                 : null;
             var applicantName = applicant?.Name ?? "未知";
 
-            var financeDept = await db.Departments.AsNoTracking()
-                .FirstOrDefaultAsync(d => d.Code == "FIN");
-            if (financeDept is null)
-            {
-                logger.LogWarning("找不到「財務部(FIN)」部門，無法寄送退款通知：TravelRequest #{Id}", travel.Id);
-                return;
-            }
-
+            // 收件人同 NotifyFinancePaymentAsync：以 DepartmentCodes.FinanceStep 比對，不可硬編碼 "FIN"
             var recipients = await db.Users.AsNoTracking()
-                .Where(u => u.DepartmentId == financeDept.Id && !u.IsSuperAdmin && !string.IsNullOrEmpty(u.Email))
+                .Where(u => u.Department != null && u.Department.Code != null
+                         && DepartmentCodes.FinanceStep.Contains(u.Department.Code)
+                         && !u.IsSuperAdmin && !string.IsNullOrEmpty(u.Email))
                 .Select(u => new { u.Name, u.Email })
                 .ToListAsync();
 

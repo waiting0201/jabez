@@ -127,7 +127,8 @@ public sealed record WriteOffTaskDetailDto(
     string?             PaymentStatus = null,
     InstallmentDto[]?   AdvanceInstallments = null,  // 關聯預支單的撥款分期（簽核頁可編輯，與預支單同步）
     string?             AdvancePaymentStatus = null,
-    DateTime?           AdvanceClosedAt = null);      // 關聯預支單的結案時間（供簽核頁「預支單結案資訊」卡）
+    DateTime?           AdvanceClosedAt = null,       // 關聯預支單的結案時間（供簽核頁「預支單結案資訊」卡）
+    bool                PendingClose = false);        // 財務已登記結案，待整張沖銷單核准後生效
 
 // ── 支票已支付註記 ────────────────────────────────────────────────────────────
 

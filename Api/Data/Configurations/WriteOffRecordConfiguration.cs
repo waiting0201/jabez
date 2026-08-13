@@ -39,6 +39,10 @@ public class WriteOffRecordConfiguration : IEntityTypeConfiguration<WriteOffReco
         builder.Property(w => w.ReviewNote)
                .HasMaxLength(1000);
 
+        // 待結案登記：財務勾選當下只登記，整張單核准才寫 AdvanceRequest.IsClosed
+        builder.Property(w => w.PendingClose)
+               .HasDefaultValue(false);
+
         builder.HasOne(w => w.AdvanceRequest)
                .WithMany(a => a.WriteOffs)
                .HasForeignKey(w => w.AdvanceRequestId)

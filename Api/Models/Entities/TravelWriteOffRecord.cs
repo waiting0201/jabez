@@ -19,6 +19,9 @@ public class TravelWriteOffRecord
     public Guid?     ReviewedById     { get; set; }
     public string?   ReviewNote       { get; set; }
 
+    /// <summary>待結案登記：語意同 <see cref="WriteOffRecord.PendingClose"/>，對應 TravelRequest.IsClosed。</summary>
+    public bool      PendingClose     { get; set; }
+
     // Navigation
     public TravelRequest                      TravelRequest  { get; set; } = null!;
     public User?                              SubmittedBy    { get; set; }
