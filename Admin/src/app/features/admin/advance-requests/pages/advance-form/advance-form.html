@@ -207,7 +207,7 @@
                 <thead class="table-light">
                   <tr>
                     <th style="min-width:90px">分類</th>
-                    <th style="width:64px">項次</th>
+                    <th style="min-width:90px">項次</th>
                     <th style="min-width:130px">項目說明</th>
                     <th style="min-width:150px">單價</th>
                     <th style="min-width:70px">數量/單位</th>
@@ -242,7 +242,7 @@
                         @if (isReadOnly) {
                           <span class="small">{{ ctrl.get('seqNo')?.value }}</span>
                         } @else {
-                          <input type="number" class="form-control form-control-sm px-1" formControlName="seqNo" min="1">
+                          <input type="number" class="form-control form-control-sm" formControlName="seqNo" min="1">
                         }
                       </td>
                       <td class="align-middle">
