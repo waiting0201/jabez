@@ -46,6 +46,8 @@ public sealed class EmployeeProfileHandler(
             return new UnauthorizedObjectResult(ApiResponse.Fail("Unauthorized.", "Invalid token claims."));
 
         // 自助端點允許員工讀自己的人事資料卡；Superadmin 讀自己也無妨（其人事資料卡通常不存在，回 null 即可）
+        // 刻意不套薪資欄位級權限（PayrollFieldAccess）—— 員工看自己的薪資調整歷史是既有需求，
+        // 該權限只管「看別人的」。請勿為了與 GetByUserIdAsync 一致而補上。
         var dto = await reader.GetByUserIdAsync(userId);
         return new OkObjectResult(ApiResponse.Ok(dto));
     }
@@ -64,6 +66,11 @@ public sealed class EmployeeProfileHandler(
             throw AppException.Forbidden("Cannot access the system super admin account.");
 
         var dto = await reader.GetByUserIdAsync(userId);
+
+        // 欄位級權限：無 payroll:read 者不回傳薪資調整歷史（整張表皆為薪資原料）
+        if (dto is not null && !PayrollFieldAccess.CanSeeSalary(req.HttpContext.User))
+            dto = PayrollFieldAccess.Mask(dto);
+
         return new OkObjectResult(ApiResponse.Ok(dto));
     }
 
@@ -97,6 +104,12 @@ public sealed class EmployeeProfileHandler(
             // 帶回欄位層級細節（如「無法解析日期格式：xxx」+ JSON path），方便前端 / 使用者定位問題欄位
             return new BadRequestObjectResult(ApiResponse.Fail("請求內容格式不正確。", ex.Message));
         }
+
+        // 薪資欄位級權限：只有「看得到（payroll:read）」且「有送」才動薪資子表。
+        // 整批替換模式下送 [] 等於清空全部薪資調整歷史，而該歷史是 User 7 個薪資欄的唯一真實來源，
+        // 清掉不可還原 —— 無權者的前端不送此 key，這裡一律當作「不變更」。
+        var touchSalary = PayrollFieldAccess.CanSeeSalary(req.HttpContext.User)
+                          && payload.SalaryAdjustmentRecords is not null;
 
         // 使用 ExecutionStrategy 包裝 transaction：DbContext 啟用 EnableRetryOnFailure
         // 後直接呼叫 BeginTransactionAsync 會被阻擋，須透過 strategy 執行整批替換的原子性操作。
@@ -275,6 +288,7 @@ public sealed class EmployeeProfileHandler(
 
             // ── 4. 9 個子表：整批替換（先 DELETE 舊資料，再 INSERT 新資料）────
             // 效能考量：EF ExecuteDeleteAsync 直接 DELETE WHERE UserId = @id，不需 tracking
+            // 例外：薪資調整歷史為「條件式」整批替換，受 touchSalary 控管（見上方註解）
             await db.EducationRecords.Where(e => e.UserId == userId).ExecuteDeleteAsync();
             await db.EmploymentHistoryRecords.Where(e => e.UserId == userId).ExecuteDeleteAsync();
             await db.FamilyMembers.Where(f => f.UserId == userId).ExecuteDeleteAsync();
@@ -282,7 +296,8 @@ public sealed class EmployeeProfileHandler(
             await db.LanguageAbilities.Where(l => l.UserId == userId).ExecuteDeleteAsync();
             await db.JobTransferRecords.Where(j => j.UserId == userId).ExecuteDeleteAsync();
             await db.RewardPunishmentRecords.Where(r => r.UserId == userId).ExecuteDeleteAsync();
-            await db.SalaryAdjustmentRecords.Where(s => s.UserId == userId).ExecuteDeleteAsync();
+            if (touchSalary)
+                await db.SalaryAdjustmentRecords.Where(s => s.UserId == userId).ExecuteDeleteAsync();
             await db.HealthInsuranceDependents.Where(h => h.UserId == userId).ExecuteDeleteAsync();
 
             var now = Clock.Now;
@@ -345,23 +360,27 @@ public sealed class EmployeeProfileHandler(
                 CreatedAt = now, UpdatedAt = now
             }));
 
-            var salaryEntities = payload.SalaryAdjustmentRecords.Select(r => new SalaryAdjustmentRecord
+            List<SalaryAdjustmentRecord> salaryEntities = [];
+            if (touchSalary)
             {
-                Id = Guid.NewGuid(), UserId = userId,
-                EffectiveDate        = r.EffectiveDate,
-                BaseSalary           = r.BaseSalary,
-                PositionAllowance    = r.PositionAllowance,
-                DutyAllowance        = r.DutyAllowance,
-                OtherAllowance       = r.OtherAllowance,
-                AdjustmentDifference = r.AdjustmentDifference,
-                OverseasAllowance    = r.OverseasAllowance,
-                MealAllowance        = r.MealAllowance,
-                TotalAmount          = r.TotalAmount,
-                Notes                = r.Notes,
-                CreatedAt = now, UpdatedAt = now
-            }).ToList();
+                salaryEntities = payload.SalaryAdjustmentRecords!.Select(r => new SalaryAdjustmentRecord
+                {
+                    Id = Guid.NewGuid(), UserId = userId,
+                    EffectiveDate        = r.EffectiveDate,
+                    BaseSalary           = r.BaseSalary,
+                    PositionAllowance    = r.PositionAllowance,
+                    DutyAllowance        = r.DutyAllowance,
+                    OtherAllowance       = r.OtherAllowance,
+                    AdjustmentDifference = r.AdjustmentDifference,
+                    OverseasAllowance    = r.OverseasAllowance,
+                    MealAllowance        = r.MealAllowance,
+                    TotalAmount          = r.TotalAmount,
+                    Notes                = r.Notes,
+                    CreatedAt = now, UpdatedAt = now
+                }).ToList();
 
-            db.SalaryAdjustmentRecords.AddRange(salaryEntities);
+                db.SalaryAdjustmentRecords.AddRange(salaryEntities);
+            }
 
             db.HealthInsuranceDependents.AddRange(payload.HealthInsuranceDependents.Select(r => new HealthInsuranceDependent
             {
@@ -375,14 +394,14 @@ public sealed class EmployeeProfileHandler(
 
             // ── 5. 薪資同步：找 EffectiveDate <= 今日（Asia/Taipei）的最新薪資紀錄 ──
             // 取得 EffectiveDate 最大（最新有效）的薪資調整紀錄，同步至 User 的 7 個薪資欄位
-            // （底薪 + 6 種加給）；無符合不變。
+            // （底薪 + 6 種加給）；無符合不變。未動薪資子表時（touchSalary = false）整段跳過。
             var today = Clock.Now.Date;
             var latestSalary = salaryEntities
                 .Where(s => s.EffectiveDate.Date <= today)
                 .OrderByDescending(s => s.EffectiveDate)
                 .FirstOrDefault();
 
-            if (latestSalary is not null)
+            if (touchSalary && latestSalary is not null)
             {
                 user.BaseSalary           = latestSalary.BaseSalary;
                 user.MealAllowance        = latestSalary.MealAllowance;

@@ -1732,6 +1732,22 @@ readonly canSeeTotal = inject(AuthService).hasPermission('reports-project-water-
 
 理由：`<th>` / `<td>` 之外，**空資料列的 `colspan` 也要跟著變**（漏改會跑版）。三處共用同一個欄位比「兩處用指令、第三處另外算」不易走鐘。後端必須同步把該欄回 `null`（見 [backend-design.md 欄位級權限](backend-design.md)）—— 前端隱藏只是視覺層。
 
+### 依權限隱藏表單區塊（Section-level Permission）
+
+當被管制的不是表格欄，而是**表單裡的一整段欄位**時（例：[員工管理](../Admin/src/app/features/admin/users/pages/user-form/) 的薪資與勞健保欄、薪資調整歷史，需 `payroll:read`），同樣在 component 存一個 boolean 當單一真相，但另有四件事必須一起處理：
+
+```typescript
+/** 受管制的控制項名單；與後端的抹除清單一一對應，新增欄位時兩邊都要改 */
+const SALARY_CONTROLS = ['baseSalary', 'mealAllowance', /* … */] as const;
+
+readonly canSeeSalary = this.authService.hasPermission('payroll:read');
+```
+
+1. **模板用 `@if` 包整段**。`@if` 不產生 DOM 節點，被包住的 `col-*` 直接從 `row g-3` 的 grid flow 消失，排版不受影響 —— 不需要調整 colspan 之類的補償。
+2. **FormGroup 不要改成條件式建立**，改在 `ngOnInit` 對名單裡的控制項 `disable({emitEvent: false})`。條件式建立會讓 `patchValue`、各種 getter、submit 解構全都要加 null 判斷，改動面大且易漏；`disable()` 的副作用剛好都是想要的 —— disabled 控制項**不進 `form.value`、也不參與驗證**（否則隱藏欄位上的 `min` / `max` 會擋住存檔）。
+3. **送出前明確剔除 payload key**（`for (const k of SALARY_CONTROLS) delete payload[k]`）。安全相關的欄位不倚賴 Angular 的隱含行為。若對應的後端端點是**整批替換**（送 `[]` 等於刪光），更要整個 key 不送而非送空陣列 —— 見 [backend-design.md 欄位級權限規則 6](backend-design.md)。
+4. **連帶處理衍生輸出**：由被管制欄位算出的試算值（getter）要加早退 `if (!this.canSeeSalary) return null;`；會查外部端點的訂閱要條件式跳過（否則噴必然 403 的 XHR，且那支端點本身可能是反推原料的側門）；**PDF / Excel 匯出要連同該段的 `addPage()` 一起跳過**，只藏內容會留下一張只有頁首的空白頁。
+
 ### Feature 目錄結構
 
 每個 feature 一律三層：

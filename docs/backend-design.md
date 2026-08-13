@@ -170,6 +170,11 @@ JWT 驗證 + 權限檢查由 RouterFunction → AppRouter 統一執行；Handler
 | 端點 | 進入權限（路由層） | 欄位級權限（Handler 層） | 效果 |
 |---|---|---|---|
 | `GET /reports/project-water-level` | `reports-project-water-level:read` | `reports-project-water-level:total` | 缺後者時 `TotalPercentage` / `PreImportUsedAmount` / `RemainingAmount` 回 `null` / `0`；頁面照進、業務執行水位照看 |
+| `GET /users`、`GET /users/{id}`（含 `POST` / `PATCH` 的回應 DTO） | `users:read` / `users:write` | `payroll:read` | 缺後者時 [`PayrollFieldAccess.Mask`](../Api/Common/PayrollFieldAccess.cs) 把 11 個薪資欄回 `null`（底薪 / 伙食費 / 加班費 / 5 種加給 / 勞健保覆寫 / 勞退自提率）；`SendPaySlip`、`CompensatoryOpeningHours` 不含金額故保留 |
+| `GET /users/{id}/profile` | `users:read` | `payroll:read` | 缺後者時 `SalaryAdjustmentRecords` 回 `[]`；其餘 8 張子表照常 |
+| `PATCH /users/{id}`、`POST /users`、`PUT /users/{id}/profile` | `users:write` | `payroll:read` | 缺後者時薪資欄位的寫入一律忽略（不回 403，其他欄位照常存檔）；見規則 6 |
+
+⚠️ 員工自助端點 `GET /me/user`、`GET /me/profile` **刻意不套**此權限 —— 員工看自己的薪資是既有需求，`payroll:read` 只管「看別人的」。兩支 Handler 方法內皆有註解防止後人「補齊一致性」時誤加。
 
 規則：
 
@@ -178,6 +183,11 @@ JWT 驗證 + 權限檢查由 RouterFunction → AppRouter 統一執行；Handler
 3. **判定方式比照 `ApprovalTaskHandler`**：`is_superadmin == "true"` 直接放行，否則 `principal.FindAll("permissions").Any(c => c.Value == PermissionCodes.Xxx)`。principal 由 [`AppRouter`](../Api/Routing/AppRouter.cs) 寫入 `req.HttpContext.User`。
 4. **ReadService 與 SQL 不動**，抹除一律在 Handler 用 record `with` 做，維持「Dapper 只管查、Handler 管授權」的分工。
 5. 前端同步隱藏（縱深防禦，不是唯一防線）。前端 `hasPermission()` 讀的是 JWT 快照，**新權限上線後既有 token 要到下次登入 / refresh 才會帶到新碼**，期間該欄會暫時消失 —— 因為前後端都是「隱藏」而非報錯，畫面仍然正常。
+6. **欄位級權限必須同時套在寫入端**（2026-08 薪資欄位的教訓）。只擋讀不擋寫有兩個獨立的失效模式：
+   - **整批替換（delete-then-insert）型子表**：無權者的前端不 render 該區塊 → 送出空陣列 → 後端「先刪光再插入 0 筆」＝**靜默刪光既有資料**。對策是把該子表改為**條件式替換**：payload 的該欄位放寬為 nullable（`null` = 不變更、`[]` = 清空），Handler 以 `canSee && payload.Xxx is not null` 決定是否進入刪除 + 重建區塊。
+   - **回應 DTO 未抹除**：`POST` / `PATCH` 成功後回傳重新讀出的完整 DTO，等於繞過 `GET` 的遮蔽。寫入端的回應也要走同一個 `Mask`。
+   兩者都**不回 403** —— 同一支端點還要負責存其他欄位 / 子表，不該因為少一塊就整張存不了（同規則 1 的精神）。
+7. 判定與抹除邏輯**跨 Handler 共用時抽成 `Api/Common/` 的 static helper**（如 [`PayrollFieldAccess`](../Api/Common/PayrollFieldAccess.cs)），不要每個 Handler 各複製一份 —— 「新增欄位時漏改其中一份」就是外洩。只有單一呼叫點時才比照 `ProjectWaterLevelHandler` 放 private static。
 
 ### 3.5 公開路由（不需 JWT）
 

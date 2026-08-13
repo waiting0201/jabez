@@ -22,11 +22,11 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/users` | 取得使用者列表 |
+| GET | `/users` | 取得使用者列表。**欄位級權限**：無 `payroll:read` 者的 11 個薪資欄（底薪 / 伙食費 / 加班費 / 5 種加給 / 勞健保覆寫 / 勞退自提率）回 `null` |
 | GET | `/users/lookup` | **輕量端點**：免 `users:read`，回 `{id, name, jobTitleId, status, departmentId, jobTitleLevel}`，供指定審核者下拉與「部門最高層級」判定（`jobTitleLevel` 數字越小越高） |
-| POST | `/users` | 新增使用者 |
-| GET | `/users/{id}` | 取得單一使用者 |
-| PUT/PATCH | `/users/{id}` | 更新使用者 |
+| POST | `/users` | 新增使用者。**欄位級權限**：無 `payroll:read` 者送的薪資欄一律忽略（存為 null），回應 DTO 亦抹除 |
+| GET | `/users/{id}` | 取得單一使用者。**欄位級權限**：同 `GET /users`，無 `payroll:read` 者薪資欄回 `null` |
+| PUT/PATCH | `/users/{id}` | 更新使用者。**欄位級權限**：無 `payroll:read` 者的薪資欄寫入一律忽略（既有值不變，不回 403），回應 DTO 亦抹除 |
 | DELETE | `/users/{id}` | 刪除使用者 |
 | POST | `/users/{id}/send-credentials` | 寄送帳號通知信並設置 `MustChangePassword = true`（預設密碼為生日 yyyyMMdd） |
 
@@ -248,8 +248,8 @@
 | Method | Path | 說明 |
 |--------|------|------|
 | GET | `/me/notification-counts` | 鈴噹通知件數聚合：回 `{approvals, myRequests, recentApprovals}`。`approvals` / `myRequests` 為 9 種申請類型 → 件數的 dictionary（前者走 reviewer 過濾，後者統計當前使用者送出且狀態為 `pending` / `returned` 的件數）。`recentApprovals` 為當前使用者「最近 10 分鐘內被核准」的單清單 `[{type, id, approvedAt}]`，供前端輪詢時比對時間戳跳「已核准」toast（後端無狀態，去重由前端 localStorage 處理）。登入即可呼叫；前端每 60 秒輪詢（分頁背景暫停） |
-| GET | `/me/user` | 員工查看**自己**的帳號資料（回傳與 `/users/{id}` 同型別 `UserDetailDto`，含薪資 / 加給 / 勞健保覆寫 / 各證明檔 URL / 頭像 / 簽名 / 部門 / 職稱）。從 JWT `sub` 取自身 id，**登入即可，不需 `users:read`**。供「個人資訊」唯讀頁用 |
-| GET | `/me/profile` | 員工查看**自己**的人事資料卡（回傳與 `/users/{id}/profile` 同型別 `EmployeeProfileDetailDto`，含 9 張子表 + 健保眷屬）。**登入即可，不需 `users:read`** |
+| GET | `/me/user` | 員工查看**自己**的帳號資料（回傳與 `/users/{id}` 同型別 `UserDetailDto`，含薪資 / 加給 / 勞健保覆寫 / 各證明檔 URL / 頭像 / 簽名 / 部門 / 職稱）。從 JWT `sub` 取自身 id，**登入即可，不需 `users:read`**。供「個人資訊」唯讀頁用。**刻意不套薪資欄位級權限**：員工看自己的薪資是既有需求 |
+| GET | `/me/profile` | 員工查看**自己**的人事資料卡（回傳與 `/users/{id}/profile` 同型別 `EmployeeProfileDetailDto`，含 9 張子表 + 健保眷屬）。**登入即可，不需 `users:read`**，且**刻意不套薪資欄位級權限**（自己的薪資調整歷史照常回傳） |
 | GET | `/me/files/{container}/{fileName}` | 員工自助讀取**自己的** PII 檔案代理。白名單容器：`id-cards` / `education-proofs` / `passbooks` / `indigenous-proofs` / `low-income-proofs` / `disabled-proofs` / `avatars` / `signatures`；非白名單回 404。安全機制：`fileName` 必須以自身 `userId` 開頭（後接 `.` 或 `_`），否則 403，避免員工竄改 fileName 讀他人檔案。**登入即可，不需 `users:read`**（管理端 `/files/<container>` 仍需 `users:read`） |
 
 ## LINE 綁定 / 推播用量
@@ -281,8 +281,8 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/users/{id}/profile` | 取得員工人事資料卡（EmployeeProfile + 9 張子表）。Profile 不存在時回傳預設空殼 |
-| PUT | `/users/{id}/profile` | 整批更新員工人事資料卡（multipart：`payload` JSON + `idCardFront` / `idCardBack` 檔案 + `removeIdCardFront` / `removeIdCardBack` 旗標）。9 張子表整批替換；薪資調整紀錄會自動同步「最新生效底薪」回 `User.BaseSalary` |
+| GET | `/users/{id}/profile` | 取得員工人事資料卡（EmployeeProfile + 9 張子表）。Profile 不存在時回傳預設空殼。**欄位級權限**：無 `payroll:read` 者 `salaryAdjustmentRecords` 回 `[]`，其餘 8 張子表照常 |
+| PUT | `/users/{id}/profile` | 整批更新員工人事資料卡（multipart：`payload` JSON + `idCardFront` / `idCardBack` 檔案 + `removeIdCardFront` / `removeIdCardBack` 旗標）。9 張子表整批替換；薪資調整紀錄會自動同步「最新生效底薪」回 `User.BaseSalary`。**欄位級權限**：`salaryAdjustmentRecords` 為**條件式**整批替換 —— 缺 `payroll:read` 或 payload 省略該 key（`null`）時整段跳過（既有薪資歷史不刪不改、也不做 User 同步）；送 `[]` 才是清空 |
 
 > 員工要查看**自己**的人事資料卡（唯讀，免 `users:read`）改走 [`/me/profile` + `/me/user` + `/me/files`](#當前使用者聚合資訊me)（避免管理權限強加到一般員工）。
 

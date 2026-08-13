@@ -25,6 +25,16 @@ import {EmployeeProfileDetail} from '../../models/employee-profile.model';
 
 const MAX_FILE_BYTES = 1 * 1024 * 1024; // 1 MB
 
+/**
+ * Tab1 受 payroll:read 管制的薪資 / 勞健保控制項。
+ * 與後端 Api/Common/PayrollFieldAccess.cs 的 Mask 一一對應 —— 新增薪資欄位時兩邊都要改。
+ */
+const SALARY_CONTROLS = [
+  'baseSalary', 'mealAllowance', 'overtimePay',
+  'positionAllowance', 'dutyAllowance', 'otherAllowance', 'adjustmentDifference', 'overseasAllowance',
+  'healthInsuranceOverride', 'laborInsuranceOverride', 'laborPensionSelfContributionRate',
+] as const;
+
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
 
 @Component({
@@ -49,6 +59,14 @@ export class UserForm implements OnInit {
   private toastr               = inject(ToastrService);
 
   isSuperAdmin = this.authService.isSuperAdmin;
+
+  /**
+   * 薪資欄位級權限：Tab1 的 11 個薪資 / 勞健保欄、Tab2 薪資調整歷史、Tab3 健保費試算、
+   * 以及列印 PDF 的薪資頁，全部共用這一個真相。
+   * 沿用 payroll:read（與「人事薪資」模組同一把鑰匙）。後端 UserHandler / EmployeeProfileHandler
+   * 亦會抹除這些欄位並拒絕寫入 —— 前端隱藏只是視覺層（縱深防禦）。
+   */
+  readonly canSeeSalary = this.authService.hasPermission('payroll:read');
   sending      = signal(false);
   printing     = signal(false);
   roles        = signal<Role[]>([]);
@@ -211,20 +229,30 @@ export class UserForm implements OnInit {
     this.jtService.getAll().subscribe(j => this.jobTitles.set(j));
     this.userService.getAll().subscribe(u => this.allUsers.set(u));
 
+    // 無薪資權限：控制項一律 disable。disabled 控制項不進 form.value、也不參與驗證
+    // （勞退自提的 min/max 不會擋住存檔），比條件式建立 FormGroup 改動面小得多。
+    if (!this.canSeeSalary) {
+      SALARY_CONTROLS.forEach(n => this.form.get(n)!.disable({emitEvent: false}));
+    }
+
     // 監聽底薪變化，查詢對應勞健保級距
-    this.form.get('baseSalary')!.valueChanges.pipe(
-      takeUntilDestroyed(this.destroyRef),
-      debounceTime(500),
-      distinctUntilChanged(),
-      switchMap(val =>
-        val !== null && val > 0
-          ? this.bracketService.lookupBySalary(val).pipe(catchError(() => of(null)))
-          : of(null)
-      ),
-    ).subscribe(bracket => {
-      this.laborInsurance.set(bracket?.laborInsuranceEmployee ?? null);
-      this.healthInsurance.set(bracket?.healthInsuranceEmployee ?? null);
-    });
+    // 無薪資權限時不訂閱：級距 lookup 走 insurance-brackets:read（與 users 正交），
+    // 留著等於開一條由底薪反推投保級距的側門，且會噴必然 403 的 XHR。
+    if (this.canSeeSalary) {
+      this.form.get('baseSalary')!.valueChanges.pipe(
+        takeUntilDestroyed(this.destroyRef),
+        debounceTime(500),
+        distinctUntilChanged(),
+        switchMap(val =>
+          val !== null && val > 0
+            ? this.bracketService.lookupBySalary(val).pipe(catchError(() => of(null)))
+            : of(null)
+        ),
+      ).subscribe(bracket => {
+        this.laborInsurance.set(bracket?.laborInsuranceEmployee ?? null);
+        this.healthInsurance.set(bracket?.healthInsuranceEmployee ?? null);
+      });
+    }
 
     this.userId = this.route.snapshot.paramMap.get('id') ?? '';
     if (this.userId) {
@@ -412,7 +440,9 @@ export class UserForm implements OnInit {
   }
 
   // ── 健保費試算（眷屬最多計 3 口） ─────────────
+  // 試算值 = 健保覆寫金額 ×(1+眷屬數)，可反推投保金額 → 隨薪資欄位一起受管制
   get estimatedHealthInsurance(): number | null {
+    if (!this.canSeeSalary) return null;
     const base = this.form.get('healthInsuranceOverride')?.value ?? this.healthInsurance();
     if (base === null || base === undefined) return null;
     const n    = this.dependentsArray.length;
@@ -421,7 +451,9 @@ export class UserForm implements OnInit {
   }
 
   // ── 勞退自提試算（底薪 × 自提率%，四捨五入） ─────
+  // 直接由底薪算出，等同洩漏底薪 → 隨薪資欄位一起受管制
   get estimatedLaborPensionDeduction(): number | null {
+    if (!this.canSeeSalary) return null;
     const rate = this.form.get('laborPensionSelfContributionRate')?.value;
     const base = this.form.get('baseSalary')?.value;
     if (!rate || !base) return null;
@@ -1153,7 +1185,7 @@ export class UserForm implements OnInit {
         this.toastr.error('無法取得員工資料，請重試。');
         return;
       }
-      await this.hrPdfService.generate(this._hrProfile, this._currentUser);
+      await this.hrPdfService.generate(this._hrProfile, this._currentUser, this.canSeeSalary);
     } catch (err) {
       console.error('[UserForm] PDF 列印失敗', err);
       this.toastr.error('PDF 生成失敗，請稍後再試。', '列印失敗');
@@ -1232,6 +1264,12 @@ export class UserForm implements OnInit {
       adjustmentDifference:     rest.adjustmentDifference     ?? undefined,
       overseasAllowance:        rest.overseasAllowance        ?? undefined,
     };
+
+    // 薪資欄位級權限：disabled 控制項本就不在 form.value，這裡再明確剔除一次。
+    // 薪資屬安全相關，不倚賴 Angular 的隱含行為（後端 UserHandler 亦有同一道 gate）。
+    if (!this.canSeeSalary) {
+      for (const k of SALARY_CONTROLS) delete payload[k];
+    }
 
     const obs = this.isEdit
       ? this.userService.update(this.userId, payload, {
@@ -1404,9 +1442,12 @@ export class UserForm implements OnInit {
       languageAbilities:           hrVal.languageAbilities,
       jobTransferRecords:          hrVal.jobTransferRecords,
       rewardPunishmentRecords:     rewards,
-      salaryAdjustmentRecords:     salaries,
       healthInsuranceDependents:   dependents,
     };
+
+    // 薪資調整歷史：無權限時整個 key 不送（後端為整批替換，送 [] 會把既有薪資歷史刪光；
+    // 後端收到 undefined 視為「不變更」）。
+    if (this.canSeeSalary) profilePayload.salaryAdjustmentRecords = salaries;
 
     this.profileService.upsert(userId, profilePayload, {
       idCardFront:                 this.idCardFrontFile(),

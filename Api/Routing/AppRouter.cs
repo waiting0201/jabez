@@ -125,7 +125,7 @@ public sealed class AppRouter(
             // 人事資料卡：必須在 ["users", var id] catch-all 之前
             ("GET",    ["users", var id, "profile"])  => await employeeProfile.GetByUserIdAsync(req, id),
             ("PUT",    ["users", var id, "profile"])  => await employeeProfile.UpsertAsync(req, id),
-            ("GET",    ["users", var id])             => await users.GetByIdAsync(id),
+            ("GET",    ["users", var id])             => await users.GetByIdAsync(req, id),
             ("PUT",    ["users", var id])             => await users.UpdateAsync(req, id),
             ("PATCH",  ["users", var id])             => await users.UpdateAsync(req, id),
             ("DELETE", ["users", var id])             => await users.DeleteAsync(id),

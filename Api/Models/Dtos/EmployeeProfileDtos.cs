@@ -141,6 +141,9 @@ public sealed record EmployeeProfileDetailDto(
 /// <summary>
 /// PUT /users/{id}/profile 的 JSON payload（放在 multipart text part "payload"）。
 /// 子表 Id 為 nullable：null = 新增，有值 = 伺服器忽略（整批替換模式，不做 patch）。
+///
+/// 例外：<see cref="SalaryAdjustmentRecords"/> 為 nullable —— null = 不變更（保留既有整批），
+/// [] = 清空。無 payroll:read 的呼叫者前端不送此 key，若當成空陣列處理會把薪資歷史整批刪光。
 /// </summary>
 public sealed record EmployeeProfileUpsertRequest(
     string? EmployeeNumber,
@@ -169,5 +172,5 @@ public sealed record EmployeeProfileUpsertRequest(
     LanguageAbilityDto[]         LanguageAbilities,
     JobTransferRecordDto[]       JobTransferRecords,
     RewardPunishmentRecordDto[]  RewardPunishmentRecords,
-    SalaryAdjustmentRecordDto[]  SalaryAdjustmentRecords,
+    SalaryAdjustmentRecordDto[]? SalaryAdjustmentRecords,
     HealthInsuranceDependentDto[] HealthInsuranceDependents);
