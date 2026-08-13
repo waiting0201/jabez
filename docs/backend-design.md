@@ -1050,6 +1050,7 @@ Line__LoginChannelId              ↔ IConfiguration["Line:LoginChannelId"]
 
 - 範例：[Api/Data/Seed/EmployeeImporter.cs](../Api/Data/Seed/EmployeeImporter.cs)（讀 `employee-import.json` → User + EmployeeProfile + 子表 + 附件）。旗標 `RUN_EMPLOYEE_IMPORT=true` 觸發、`IMPORT_UPLOAD_FILES` 控制附件是否實際上 blob、`EMPLOYEE_IMPORT_SOURCE_DIR` 指來源夾。
 - 範例：[Api/Data/Seed/ProjectImporter.cs](../Api/Data/Seed/ProjectImporter.cs)（讀 `project-import.json` → Project + ProjectPaymentSchedule）。旗標 `RUN_PROJECT_IMPORT=true` 觸發、`PROJECT_IMPORT_DRY_RUN=true` 只印計畫不寫 DB。去重鍵為 `Project.Code`，期別明細比照 `ProjectHandler.UpdateAsync` **全量重建**；刻意直寫 entity 繞過「已結案不可修改」限制，資料有誤可改 JSON 後重跑覆蓋。
+- 範例：[Api/Data/Seed/VendorImporter.cs](../Api/Data/Seed/VendorImporter.cs)（讀 `vendor-import.json` → Vendor）。旗標 `RUN_VENDOR_IMPORT=true` 觸發、`VENDOR_IMPORT_DRY_RUN=true` 只印計畫不寫 DB。去重鍵為 `Vendor.Name`（Vendor 無 Code 欄位，且來源的統編／身分證字號全缺）；刻意直寫 entity 繞過 `VendorHandler` 的「統編／身分證字號二擇一必填」與「存摺封面必填」，故匯入的廠商在後台**編輯儲存時仍會被擋**，須先補件，每筆 `Note` 已寫入待補標記以利辨識。
 - 中間 JSON 須在 `Api.csproj` 加 `<None Update="Data/Seed/xxx.json"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></None>`，否則 `AppContext.BaseDirectory` 讀不到。
 - 因 DbContext 啟用 `EnableRetryOnFailure`，每筆須包 `CreateExecutionStrategy() + BeginTransactionAsync()`（同 §4 Handler 規範）。
 - 去重採 **upsert**（Email 或唯一業務鍵命中即覆蓋 update-in-place、子表 `ExecuteDelete` 後重建），確保可重跑不重複。

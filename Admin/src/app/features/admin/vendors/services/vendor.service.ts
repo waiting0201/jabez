@@ -12,6 +12,9 @@ export interface VendorFormPayload {
   phone?: string | null;
   contactPerson?: string | null;
   address?: string | null;
+  bankAccountName?: string | null;
+  bankName?: string | null;
+  bankCode?: string | null;
   bankAccount?: string | null;
   note?: string | null;
   isActive?: boolean;
@@ -30,7 +33,7 @@ export interface VendorFileOptions {
 export class VendorService {
   private http = inject(HttpClient);
 
-  /** 廠商清單（不分頁）；search 有值時後端以關鍵字模糊比對名稱 / 統編 / 身分證字號 / 聯絡人 / 電話 */
+  /** 廠商清單（不分頁）；search 有值時後端以關鍵字模糊比對名稱 / 統編 / 身分證字號 / 聯絡人 / 電話 / 匯款戶名 */
   getAll(search?: string): Observable<Vendor[]> {
     let params = new HttpParams();
     if (search) params = params.set('search', search);

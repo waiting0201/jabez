@@ -117,6 +117,9 @@ public sealed class VendorHandler(
             Phone         = string.IsNullOrWhiteSpace(body.Phone)         ? null : body.Phone.Trim(),
             ContactPerson = string.IsNullOrWhiteSpace(body.ContactPerson) ? null : body.ContactPerson.Trim(),
             Address       = string.IsNullOrWhiteSpace(body.Address)       ? null : body.Address.Trim(),
+            BankAccountName = string.IsNullOrWhiteSpace(body.BankAccountName) ? null : body.BankAccountName.Trim(),
+            BankName        = string.IsNullOrWhiteSpace(body.BankName)        ? null : body.BankName.Trim(),
+            BankCode        = string.IsNullOrWhiteSpace(body.BankCode)        ? null : body.BankCode.Trim(),
             BankAccount   = string.IsNullOrWhiteSpace(body.BankAccount)   ? null : body.BankAccount.Trim(),
             Note          = string.IsNullOrWhiteSpace(body.Note)          ? null : body.Note.Trim(),
             IsActive      = body.IsActive,
@@ -183,6 +186,9 @@ public sealed class VendorHandler(
         if (body.Phone         is not null) vendor.Phone         = string.IsNullOrWhiteSpace(body.Phone)         ? null : body.Phone.Trim();
         if (body.ContactPerson is not null) vendor.ContactPerson = string.IsNullOrWhiteSpace(body.ContactPerson) ? null : body.ContactPerson.Trim();
         if (body.Address       is not null) vendor.Address       = string.IsNullOrWhiteSpace(body.Address)       ? null : body.Address.Trim();
+        if (body.BankAccountName is not null) vendor.BankAccountName = string.IsNullOrWhiteSpace(body.BankAccountName) ? null : body.BankAccountName.Trim();
+        if (body.BankName        is not null) vendor.BankName        = string.IsNullOrWhiteSpace(body.BankName)        ? null : body.BankName.Trim();
+        if (body.BankCode        is not null) vendor.BankCode        = string.IsNullOrWhiteSpace(body.BankCode)        ? null : body.BankCode.Trim();
         if (body.BankAccount   is not null) vendor.BankAccount   = string.IsNullOrWhiteSpace(body.BankAccount)   ? null : body.BankAccount.Trim();
         if (body.Note          is not null) vendor.Note          = string.IsNullOrWhiteSpace(body.Note)          ? null : body.Note.Trim();
         if (body.IsActive.HasValue)         vendor.IsActive      = body.IsActive.Value;

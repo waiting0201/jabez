@@ -18,7 +18,7 @@
 | `RefreshToken` | Refresh Token 儲存 |
 | `Department` | 部門主檔（含 ParentId 階層、**CanSeeAll / CanViewSiblings / CanViewDescendants / CanViewParent 四個可見性旗標**） |
 | `JobTitle` | 職稱主檔 |
-| `Vendor` | 廠商主檔（Name 廠商名稱/外包顧問、TaxId 統編 unique-filter index、IdNumber 身分證字號 unique-filter index（個人工作室，與 TaxId 擇一）、Phone、ContactPerson、Address、BankAccount、BankBookImageUrl 存摺封面 proxy 路徑（必填）、IdCardFrontUrl/IdCardBackUrl 身分證正反面 proxy 路徑、Note、IsActive、CreatedAt；被 PaymentRequest.VendorId 引用，FK OnDelete=Restrict 限引用中不可刪） |
+| `Vendor` | 廠商主檔（Name 廠商名稱/外包顧問、TaxId 統編 unique-filter index、IdNumber 身分證字號 unique-filter index（個人工作室，與 TaxId 擇一）、Phone、ContactPerson、Address、**匯款四欄 BankAccountName 戶名（實際受款人，常與 Name 不同）/ BankName 匯款銀行（含分行）/ BankCode 銀行代號（農漁會為 xxx-xxxx，原樣保留）/ BankAccount 銀行帳號**、BankBookImageUrl 存摺封面 proxy 路徑（必填）、IdCardFrontUrl/IdCardBackUrl 身分證正反面 proxy 路徑、Note、IsActive、CreatedAt；被 PaymentRequest.VendorId 引用，FK OnDelete=Restrict 限引用中不可刪） |
 | `ApprovalItem` | 簽核流程項目（含 **DepartmentId 部門維度**：null = 該 ApplicationType 通用預設流程，非 null = 某部門專屬流程；唯一索引為 `(ApplicationType, DepartmentId)`，過濾條件 `ApplicationType IS NOT NULL`，FK→Department OnDelete=SetNull） |
 | `ApprovalStep` | 簽核流程步驟（含 UseDirectSupervisor、UseApplicantDesignated、**DesignatedRequiresDepartment**「指定審核步驟需先選部門再選人」，`UseApplicantDesignated` **或有例外名單**時有意義；**MinDays** 天數門檻 nullable，`null`＝一律納入、`N`＝申請天數 ≥ N 才納入此步驟，目前供請假依天數分流；例外名單見子表 `ApprovalStepException`、例外的限定職稱見 `ApprovalStepDesignatedJobTitle`） |
 | `ApprovalStepException` | **簽核步驟例外指定審核名單**（`ApprovalStepId` + `UserId`）：名單內的申請人送單時，該步驟改為「由申請人自行指定審核者」；與 `UseApplicantDesignated` 互斥。唯一索引 `(ApprovalStepId, UserId)`；FK→ApprovalStep **Cascade**、FK→Users **NO_ACTION（已納入 UserHandler.DeleteAsync 清洗清單）** |

@@ -7,6 +7,19 @@ namespace Jabez.Api.Services.Dapper;
 
 public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentReadService installments) : IPaymentRequestReadService
 {
+    /// <summary>
+    /// 廠商匯款資料組字串（戶名 / 匯款銀行 / 銀行代號 / 銀行帳號 四欄併為一行）。
+    /// 請款 PDF 的「帳戶資料」為單一欄位，故在 SQL 端組合，避免動到 detail DTO 的位置參數。
+    /// 空欄自動略過；四欄皆空回 NULL（前端顯示破折號）。
+    /// </summary>
+    private const string VendorBankAccountExpr = """
+        NULLIF(CONCAT_WS(N' / ',
+            NULLIF(CONCAT(N'戶名：',     NULLIF(ven.BankAccountName, N'')), N'戶名：'),
+            NULLIF(CONCAT(N'匯款銀行：', NULLIF(ven.BankName,        N'')), N'匯款銀行：'),
+            NULLIF(CONCAT(N'銀行代號：', NULLIF(ven.BankCode,        N'')), N'銀行代號：'),
+            NULLIF(ven.BankAccount, N'')), N'')
+        """;
+
     // ── 通用 JOIN SQL ─────────────────────────────────────────────────────────
     private const string BaseSql = """
         SELECT pr.Id, pr.RequestNo, pr.Type, pr.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
@@ -501,7 +514,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                    pr.Reason,
                    pr.VendorId, ven.Name AS VendorName, ven.TaxId AS VendorTaxId,
                    ven.ContactPerson AS VendorContactPerson, ven.Phone AS VendorPhone,
-                   ven.BankAccount AS VendorBankAccount, ven.Address AS VendorAddress,
+                   {VendorBankAccountExpr} AS VendorBankAccount, ven.Address AS VendorAddress,
                    ii.Id AS InvId, ii.FileName, ii.InvoiceNo, ii.Amount AS InvAmount, ii.ItemName AS InvItemName, ii.Note AS InvNote, ii.FileUrl AS InvFileUrl, ii.InvoiceDate AS InvInvoiceDate
             FROM PaymentRequests pr
             LEFT JOIN Projects proj   ON pr.ProjectId    = proj.Id
@@ -683,7 +696,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                    prv.CreatedAt, prv.ReviewedAt, prv.ReviewNote,
                    prv.VendorId, ven.Name AS VendorName, ven.TaxId AS VendorTaxId,
                    ven.ContactPerson AS VendorContactPerson, ven.Phone AS VendorPhone,
-                   ven.BankAccount AS VendorBankAccount, ven.Address AS VendorAddress
+                   {VendorBankAccountExpr} AS VendorBankAccount, ven.Address AS VendorAddress
             FROM PreReviewRequests prv
             LEFT JOIN Projects proj    ON prv.ProjectId    = proj.Id
             LEFT JOIN Users   sub_prv  ON prv.SubmittedById = sub_prv.Id

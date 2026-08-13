@@ -8,6 +8,9 @@ public sealed record VendorDto(
     string?  Phone,
     string?  ContactPerson,
     string?  Address,
+    string?  BankAccountName,
+    string?  BankName,
+    string?  BankCode,
     string?  BankAccount,
     string?  BankBookImageUrl,
     string?  IdCardFrontUrl,
@@ -30,10 +33,13 @@ public sealed record CreateVendorRequest(
     string? IdNumber      = null,
     string? Phone         = null,
     string? ContactPerson = null,
-    string? Address       = null,
-    string? BankAccount   = null,
-    string? Note          = null,
-    bool    IsActive      = true);
+    string? Address         = null,
+    string? BankAccountName = null,
+    string? BankName        = null,
+    string? BankCode        = null,
+    string? BankAccount     = null,
+    string? Note            = null,
+    bool    IsActive        = true);
 
 public sealed record UpdateVendorRequest(
     string? Name,
@@ -42,6 +48,9 @@ public sealed record UpdateVendorRequest(
     string? Phone,
     string? ContactPerson,
     string? Address,
+    string? BankAccountName,
+    string? BankName,
+    string? BankCode,
     string? BankAccount,
     string? Note,
     bool?   IsActive);
