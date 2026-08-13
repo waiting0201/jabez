@@ -60,9 +60,9 @@
 |--------|------|------|
 | GET | `/vendors/lookup` | **輕量端點**：免 `vendors:read` 權限，僅回 `IsActive=true` 的 `{id, name, taxId, idNumber}`，供請款申請下拉清單 |
 | GET | `/vendors/lookup-by-tax-id?taxId=XXXXXXXX` | **輕量端點**：以統編查 GCIS 公司登記資料，回 `{taxId, name, address, contactPerson}`，免 `vendors:read`，僅需登入 |
-| GET | `/vendors?page=1&pageSize=20&search=關鍵字` | 廠商列表（含使用筆數，需 `vendors:read`）；`search` 選填，模糊比對 `Name` / `TaxId` / `IdNumber` / `ContactPerson` / `Phone`；**帶 `page` / `pageSize` 回 `PagedResult`，不帶則回平面陣列**（`pageSize` clamp 1~100，預設 20） |
+| GET | `/vendors?page=1&pageSize=20&search=關鍵字` | 廠商列表（含使用筆數，需 `vendors:read`）；`search` 選填，模糊比對 `Name` / `TaxId` / `IdNumber` / `ContactPerson` / `Phone` / `BankAccountName`（匯款戶名常與廠商名稱不同，須可反查）；**帶 `page` / `pageSize` 回 `PagedResult`，不帶則回平面陣列**（`pageSize` clamp 1~100，預設 20） |
 | POST | `/vendors` | 新增廠商（**multipart**：text part `payload` JSON + 檔案 `bankBookImage`（**必填**）/ `idCardFront` / `idCardBack`；統編與身分證字號擇一，填身分證字號時正反面必傳；**任何登入者皆可，無需權限**） |
-| GET | `/vendors/{id}` | 取得廠商（需 `vendors:read`，回應含 `idNumber` / `bankBookImageUrl` / `idCardFrontUrl` / `idCardBackUrl`） |
+| GET | `/vendors/{id}` | 取得廠商（需 `vendors:read`，回應含 `idNumber` / 匯款四欄 `bankAccountName` / `bankName` / `bankCode` / `bankAccount` / `bankBookImageUrl` / `idCardFrontUrl` / `idCardBackUrl`） |
 | PUT/PATCH | `/vendors/{id}` | 更新廠商（**multipart**：text part `payload` + 檔案 `bankBookImage` / `idCardFront` / `idCardBack` 與 remove 旗標 `removeBankBookImage` / `removeIdCardFront` / `removeIdCardBack`；存摺封面為必填、身分證字號廠商須備齊正反面；需 `vendors:write`） |
 | DELETE | `/vendors/{id}` | 刪除廠商（需 `vendors:delete`；若已被請款單引用會回 400，須改用停用；連同存摺封面與身分證影本 blob 一併刪除） |
 | GET | `/files/vendor-passbooks/{fileName}` | 廠商存摺封面代理（需 JWT，免特殊權限，與 avatars/signatures 同層的一般檔案） |

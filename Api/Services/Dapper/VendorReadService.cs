@@ -9,7 +9,8 @@ public sealed class VendorReadService(IDbConnection db) : IVendorReadService
 {
     private const string BaseSelect = """
         SELECT v.Id, v.Name, v.TaxId, v.IdNumber, v.Phone, v.ContactPerson, v.Address,
-               v.BankAccount, v.BankBookImageUrl, v.IdCardFrontUrl, v.IdCardBackUrl,
+               v.BankAccountName, v.BankName, v.BankCode, v.BankAccount,
+               v.BankBookImageUrl, v.IdCardFrontUrl, v.IdCardBackUrl,
                v.Note, v.IsActive, v.CreatedAt,
                COUNT(pr.Id) AS UsageCount
         FROM Vendors v
@@ -18,18 +19,21 @@ public sealed class VendorReadService(IDbConnection db) : IVendorReadService
 
     private const string GroupByCols = """
         GROUP BY v.Id, v.Name, v.TaxId, v.IdNumber, v.Phone, v.ContactPerson, v.Address,
-                 v.BankAccount, v.BankBookImageUrl, v.IdCardFrontUrl, v.IdCardBackUrl,
+                 v.BankAccountName, v.BankName, v.BankCode, v.BankAccount,
+                 v.BankBookImageUrl, v.IdCardFrontUrl, v.IdCardBackUrl,
                  v.Note, v.IsActive, v.CreatedAt
         """;
 
-    /// <summary>關鍵字篩選片段（模糊比對名稱 / 統編 / 身分證字號 / 聯絡人 / 電話），供 GetAllAsync 與 GetPagedAsync 共用</summary>
+    /// <summary>關鍵字篩選片段（模糊比對名稱 / 統編 / 身分證字號 / 聯絡人 / 電話 / 匯款戶名），供 GetAllAsync 與 GetPagedAsync 共用</summary>
     private static (string WhereClause, string? SearchParam) BuildSearchFilter(string? search)
     {
         if (string.IsNullOrWhiteSpace(search)) return (string.Empty, null);
 
+        // 匯款戶名常與店家名稱不同（例：橘之鄉 → 旭工實業有限公司），須可用戶名反查廠商
         const string clause = """
             WHERE v.Name LIKE @Search OR v.TaxId LIKE @Search OR v.IdNumber LIKE @Search
                OR v.ContactPerson LIKE @Search OR v.Phone LIKE @Search
+               OR v.BankAccountName LIKE @Search
             """;
         return (clause, $"%{search.Trim()}%");
     }
@@ -51,7 +55,7 @@ public sealed class VendorReadService(IDbConnection db) : IVendorReadService
         return rows.Select(MapVendor);
     }
 
-    /// <summary>廠商清單（分頁）；search 有值時以關鍵字模糊比對名稱 / 統編 / 身分證字號 / 聯絡人 / 電話</summary>
+    /// <summary>廠商清單（分頁）；search 有值時以關鍵字模糊比對名稱 / 統編 / 身分證字號 / 聯絡人 / 電話 / 匯款戶名</summary>
     public async Task<PagedResult<VendorDto>> GetPagedAsync(int page, int pageSize, string? search = null)
     {
         var (whereClause, searchParam) = BuildSearchFilter(search);
@@ -101,6 +105,9 @@ public sealed class VendorReadService(IDbConnection db) : IVendorReadService
         (string?)row.Phone,
         (string?)row.ContactPerson,
         (string?)row.Address,
+        (string?)row.BankAccountName,
+        (string?)row.BankName,
+        (string?)row.BankCode,
         (string?)row.BankAccount,
         (string?)row.BankBookImageUrl,
         (string?)row.IdCardFrontUrl,

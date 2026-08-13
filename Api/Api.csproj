@@ -58,5 +58,9 @@
     <None Update="Data/Seed/project-import.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <!-- 一次性廠商匯入資料檔：需複製到輸出目錄供 VendorImporter 讀取 -->
+    <None Update="Data/Seed/vendor-import.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>

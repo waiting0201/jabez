@@ -14,6 +14,13 @@ export interface Vendor {
   phone?: string;
   contactPerson?: string;
   address?: string;
+  /** 匯款戶名（實際受款人，常與 name 不同） */
+  bankAccountName?: string;
+  /** 匯款銀行（含分行） */
+  bankName?: string;
+  /** 銀行代號（農漁會為 xxx-xxxx） */
+  bankCode?: string;
+  /** 銀行帳號 */
   bankAccount?: string;
   bankBookImageUrl?: string;
   idCardFrontUrl?: string;

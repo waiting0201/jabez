@@ -35,6 +35,8 @@ Api/local.settings.json
 Api/Data/Seed/employee-import.json
 # 一次性專案匯入資料（含真實客戶案名與合約金額 — 本 repo 為 public，絕不進版控）
 Api/Data/Seed/project-import.json
+# 一次性廠商匯入資料（含真實廠商匯款戶名與銀行帳號 — 本 repo 為 public，絕不進版控）
+Api/Data/Seed/vendor-import.json
 .azurite/debug.log
 azurite-debug.log
 .gitignore
