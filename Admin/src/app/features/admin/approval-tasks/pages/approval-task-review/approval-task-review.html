@@ -1326,7 +1326,10 @@
                       <input type="checkbox" formControlName="closeAdvance" class="form-check-input">
                       <span class="fw-500">預支結案</span>
                     </label>
-                    <div class="text-muted small mt-1">勾選後，核准時將同步關閉關聯的預支申請。</div>
+                    <div class="text-muted small mt-1">
+                      勾選後將登記結案，待本張沖銷申請<strong>完成所有簽核關卡</strong>時才正式關閉關聯的預支申請；
+                      若後續關卡退回或拒絕，登記會一併取消。
+                    </div>
                   </div>
                 }
                 @if (canCloseTravelRequest(task)) {
@@ -1335,7 +1338,30 @@
                       <input type="checkbox" formControlName="closeAdvance" class="form-check-input">
                       <span class="fw-500">出差結案</span>
                     </label>
-                    <div class="text-muted small mt-1">勾選後，核准時將同步關閉關聯的出差預支申請。</div>
+                    <div class="text-muted small mt-1">
+                      勾選後將登記結案，待本張沖銷申請<strong>完成所有簽核關卡</strong>時才正式關閉關聯的出差預支申請；
+                      若後續關卡退回或拒絕，登記會一併取消。
+                    </div>
+                  </div>
+                }
+                @if (closeRegistered(task)) {
+                  <div class="flex items-start gap-2 text-[--yellow] small mb-4">
+                    <svg class="sa-icon shrink-0" style="width:16px;height:16px;stroke:currentColor;margin-top:2px">
+                      <use href="/assets/icons/sprite.svg#clock"></use>
+                    </svg>
+                    <span>
+                      財務已登記
+                      {{ task.applicationType === 'write_off' ? '預支結案' : '出差結案' }}，
+                      待本張沖銷申請完成所有簽核關卡後自動生效，無須重複勾選。
+                    </span>
+                  </div>
+                }
+                @if (relatedAlreadyClosed(task)) {
+                  <div class="flex items-center gap-2 text-success small mb-4">
+                    <svg class="sa-icon" style="width:16px;height:16px;stroke:currentColor">
+                      <use href="/assets/icons/sprite.svg#check-circle"></use>
+                    </svg>
+                    {{ task.applicationType === 'write_off' ? '關聯預支申請已結案，無須重複結案。' : '關聯出差預支申請已結案，無須重複結案。' }}
                   </div>
                 }
                 <div class="flex gap-2">

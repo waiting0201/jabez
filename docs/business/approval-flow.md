@@ -68,6 +68,7 @@ draft → pending → approved / returned / rejected
 
 - **填寫時機**：財務撥款步驟**核准當下**即填預計撥款日 + 各期金額，透過 `PATCH /approval-tasks/{appType}/{id}/review` 的 `installments` 欄位**與審核同交易原子寫入**；此時撥款明細**必填**（加總須 == 申請總額，否則不可核准）。核准後仍可在「設定撥款明細」區塊透過獨立 endpoint 修改未撥列 / 填實際撥款日。
   - **「財務撥款步驟」判定**：看**該簽核步驟綁定的部門 Code** 是否屬財務管理部（後端 `DepartmentCodes.FinanceStep` = `{FIN, Financial Management Department}`，即舊短碼 + 改制後英文全名；Superadmin 視同）。刻意**只含財務管理部、不含 CEO / 總監 / HQ / 會計**，避免上層核准步驟被誤判為撥款填寫節點而擋住簽核。同一判定用於 `IsFinanceStepAsync`（後端撥款明細必填）與前端 `FINANCE_STEP_DEPT_CODES`（`canSetPaymentDate` 顯示撥款表單 / `canCloseAdvance` / `canCloseTravelRequest` 結案 checkbox），**前後端兩處須同步**。注意此「步驟判定」與「使用者撥款權限判定」`DepartmentCodes.FinancialAndAbove`（含 CEO/總監/HQ/會計）是**兩個不同集合**。
+    - ⚠️ **一律用 `DepartmentCodes.FinanceStep` 集合比對，不得硬編碼 `== "FIN"`**（2026-08 踩過：沖銷結案的兩處判定寫死 `FIN`，組織改制後 Code 變 `Financial Management Department` 即失效。前端用的是含新碼的集合，故 checkbox 照常顯示、財務勾得下去，後端卻靜默略過不結案也不報錯，財務只好在總監審完後再按一次結案按鈕。現已改走 `IsFinanceStepAsync`，且勾選但判定不成立時改丟 400，不再靜默）。
   - 例外：`holiday_travel`（假日執行活動）不在 review 流程填撥款明細，僅走核准後的獨立 endpoint。
   - 批次核准不填撥款明細，最終 approved 後由「待補撥款」提醒（`BuildPendingPaymentReminderAsync`）追蹤。
 - **獨立 endpoint**：`PATCH /{type}-requests/{id}/installments`（舊 `/payment-date` 已於 Phase 2 移除）；**僅 ApprovalStatus == approved 可呼叫**（4 種一致；review 路徑因在核准同交易內寫入故不經此守衛）
@@ -126,6 +127,34 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 > 2026-07 收窄：原本用 `DepartmentCodes.FinancialAndAbove`（含總監室 / 會計室 / Jabez HQ），造成財務管理部以外的人也能勾；現與撥款日 / 撥款明細 / 結案同用 `FinanceStep`。撥款明細的加總基準**維持含支票的整單金額**，未因此改變。
 
 **舊資料 backfill**：migration `AddWriteOffInstallmentsAndCheckPaid` 把既有 `AdvanceRequest.RefundAmount > 0` 且有退款日的資料，寫成該預支單**最後一張已核准沖銷單**的第 1 期。
+
+### 母單結案（預支 / 出差）
+
+「結案」只存在於**母單**（`AdvanceRequest` / `TravelRequest` 的 `IsClosed` / `ClosedAt` / `ClosedById`），沖銷單自身沒有結案概念。結案後該母單不可再新增沖銷（`available-advances` 清單直接排除），亦不可再新增追加預支。
+
+**兩個入口 = 同一個冪等動作，勾過就不必再按一次**：
+
+| 入口 | 時機 | 授權比對對象 |
+|---|---|---|
+| 簽核時勾「預支結案 / 出差結案」checkbox（`review` 的 `CloseAdvance`） | 財務步驟核准當下**登記**，整張單核准才生效 | **步驟綁定部門**（`IsFinanceStepAsync` → `DepartmentCodes.FinanceStep`），Superadmin 視同 |
+| 核准後按「預支結案」按鈕（`PATCH /approval-tasks/{write_off\|travel_write_off}/{id}/close`） | 沖銷單已 `approved` | **登入者自身部門**（`DepartmentCodes.FinancialAndAbove`，較廣） |
+
+兩者最終都呼叫 `CloseAdvanceRequestAsync` / `CloseTravelRequestAsync`，開頭即 `if (... || IsClosed) return;` —— **重複呼叫是 no-op**，`ClosedAt` / `ClosedById` 不會被覆寫、超額匯款通知也不會重發。前端 `canCloseAfterApproval()`（按鈕）與 `canCloseAdvance()` / `canCloseTravelRequest()`（checkbox）皆帶「母單尚未結案」條件，已結案時改顯示唯讀提示，不會要求使用者按第二次。
+
+#### 延後結案：`PendingClose` 登記制（2026-08 改）
+
+財務多半**不是**流程最後一關（實務流程 `… → 會計室 → 財務管理部 → 總監室`）。原本財務勾選當下就寫 `IsClosed`，會造成總監尚未核准時預支單已關閉、無法補開沖銷單，且總監退回也不會還原。現改為兩段式：
+
+1. **登記**：財務於其關卡勾選 → 只設沖銷單自身的 `WriteOffRecord.PendingClose` / `TravelWriteOffRecord.PendingClose = true`，母單**完全不動**
+2. **生效**：任一次審核使該沖銷單轉 `ApprovalStatus == "approved"` 時，若 `PendingClose` 為 true 才真正結案。財務本身就是最後一關時，兩段在同一次呼叫內完成，行為與過去一致
+
+- **退回 / 拒絕會清除登記**（`action is "rejected" or "returned"` → `PendingClose = false`）：申請人改金額重送後，需由財務依新金額重新判斷是否結案，不沿用舊決定
+- **登記期間不鎖定**：`IsClosed` 仍為 0，該預支單照常出現在 `available-advances`、可再開沖銷單、可追加預支 —— 只有真結案才鎖
+- **批次核准**：不會**設定** `CloseAdvance`，但若先前已登記，批次核准使其轉 `approved` 時同樣會生效（結案觸發點不看 `closeAdvance` 參數，只看 `PendingClose && approved`）
+- **`ClosedById` 語意**：記的是**實際觸發結案那次審核的審核者**（延後後多半是最後一關的人，非當初登記的財務）。此欄純稽核用，未出現在任何 DTO / PDF / 前端
+- **前端**：`pendingClose` 隨 task detail 回傳；已登記時 checkbox 隱藏並改顯示「財務已登記結案，待完成所有簽核關卡後自動生效」，後續關卡（如總監）也看得到
+
+**結案當下的 `RefundAmount`**：只計 `ApprovalStatus == "approved"` 的沖銷單，**外加觸發本次結案的那一張**（`triggeringWriteOffId`）—— 結案發生在 `SaveChangesAsync` 之前，該張在 DB 仍是 `pending`。刻意不用 `!= "rejected"`，否則 `draft` / `returned` 的沖銷單會灌進差額，發出金額偏高的「[需匯款]」通知。基準與 `WriteOffRefundCalculator` 一致。
 
 ### 依預支單彙總檢視（2026-07 新增）
 
@@ -189,7 +218,7 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 - **權限獨立**：批次核准為獨立權限，不依賴 `approval-tasks:write`；未擁有此權限者按鈕不顯示，後端亦回 403。
 - **逐筆驗證**：每筆仍經過 `AuthorizeStepAsync`（職稱/部門/指定/升級），失敗者回報於 `failed` 清單，不中斷其他項目。
 - **撥款類留空**：批次核准 payment_request / advance / travel / travel_payment 時不會建立 installments，後端回傳 `pendingPayment` 清單（檢查條件：無 installments 或仍有 PaidAt 為空），前端以 banner 提示使用者「前往補填撥款明細」。
-- **沖銷結案不觸發**：批次核准不會設定 `CloseAdvance`；沖銷結案仍須於詳情頁或獨立結案端點操作。
+- **沖銷結案不主動觸發，但會讓既有登記生效**：批次核准不會**設定** `CloseAdvance`；但若財務先前已勾選登記（`PendingClose = true`），批次核准使該沖銷單轉 `approved` 時仍會完成結案（觸發點只看 `PendingClose && approved`）。未登記者，結案仍須於詳情頁或獨立結案端點操作。
 
 ## 總監待簽核（2026-07 新增）
 

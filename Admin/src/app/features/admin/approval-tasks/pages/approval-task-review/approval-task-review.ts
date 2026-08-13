@@ -358,22 +358,44 @@ export class ApprovalTaskReview implements OnInit {
     return !!step?.departmentCode && FINANCE_STEP_DEPT_CODES.has(step.departmentCode);
   }
 
-  /** 判斷是否顯示「預支結案」checkbox：預支沖銷申請 (write_off) 且當前步驟為財務部 */
+  /**
+   * 判斷是否顯示「預支結案」checkbox：預支沖銷申請 (write_off) 且當前步驟為財務部。
+   * 母單已結案則不顯示（結案是一次性冪等動作，一條流程若設了兩個財務關卡，
+   * 第二關不該再看到已無作用的勾選框）—— 改由 relatedAlreadyClosed() 顯示唯讀提示。
+   */
   canCloseAdvance(task: ApprovalTask): boolean {
     if (task.applicationType !== 'write_off') return false;
+    if (task.writeOffDetail?.advanceIsClosed || task.writeOffDetail?.pendingClose) return false;
     if (this.auth.isSuperAdmin()) return true;
     if (!task.flow) return false;
     const step = task.flow.steps.find(s => s.stepOrder === task.currentStepOrder);
     return !!step?.departmentCode && FINANCE_STEP_DEPT_CODES.has(step.departmentCode);
   }
 
-  /** 判斷是否顯示「出差結案」checkbox：出差沖銷申請 (travel_write_off) 且當前步驟為財務部 */
+  /** 判斷是否顯示「出差結案」checkbox：出差沖銷申請 (travel_write_off) 且當前步驟為財務部（規則同上） */
   canCloseTravelRequest(task: ApprovalTask): boolean {
     if (task.applicationType !== 'travel_write_off') return false;
+    if (task.travelWriteOffDetail?.travelIsClosed || task.travelWriteOffDetail?.pendingClose) return false;
     if (this.auth.isSuperAdmin()) return true;
     if (!task.flow) return false;
     const step = task.flow.steps.find(s => s.stepOrder === task.currentStepOrder);
     return !!step?.departmentCode && FINANCE_STEP_DEPT_CODES.has(step.departmentCode);
+  }
+
+  /** 待審核中的沖銷單，其關聯母單是否已結案（供審核表單顯示唯讀提示，取代已無作用的 checkbox）*/
+  relatedAlreadyClosed(task: ApprovalTask): boolean {
+    return this.isRelatedClosure(task) && this.isClosedAfterApproval(task);
+  }
+
+  /**
+   * 財務已勾選結案、但整張沖銷單尚未走完簽核 —— 結案要等最終核准才生效。
+   * 供後續關卡（如總監）與財務自己看到「已登記，待核准後生效」，避免以為沒勾成功而重複操作。
+   */
+  closeRegistered(task: ApprovalTask): boolean {
+    if (!this.isRelatedClosure(task)) return false;
+    if (this.isClosedAfterApproval(task)) return false;
+    const d = task.applicationType === 'write_off' ? task.writeOffDetail : task.travelWriteOffDetail;
+    return !!d?.pendingClose;
   }
 
   /** 判斷已核准的沖銷申請是否可結案：財務部或 Superadmin，且關聯的預支/出差未結案 */

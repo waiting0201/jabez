@@ -21,6 +21,14 @@ public class WriteOffRecord
     public Guid?     ReviewedById      { get; set; }
     public string?   ReviewNote        { get; set; }
 
+    /// <summary>
+    /// 待結案登記：財務於其簽核關卡勾選「預支結案」時設為 true，
+    /// 但直到**整張沖銷單轉 approved**才真正寫入 AdvanceRequest.IsClosed
+    /// （財務常非最後一關，提前結案會讓總監退回後無法補開沖銷單）。
+    /// 退回 / 拒絕時清除，重跑流程需由財務重新勾選。
+    /// </summary>
+    public bool      PendingClose      { get; set; }
+
     // Navigation
     public AdvanceRequest             AdvanceRequest { get; set; } = null!;
     public User?                      SubmittedBy    { get; set; }

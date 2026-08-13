@@ -97,4 +97,5 @@ public sealed record TravelWriteOffTaskDetailDto(
     bool                     TravelIsClosed        = false,
     decimal?                 TravelRefundAmount    = null,
     decimal?                 TravelRefundedAmount  = null,
-    DateTime?                TravelClosedAt        = null);
+    DateTime?                TravelClosedAt        = null,
+    bool                     PendingClose          = false);  // 財務已登記結案，待整張沖銷單核准後生效

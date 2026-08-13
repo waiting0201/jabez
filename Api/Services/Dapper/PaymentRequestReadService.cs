@@ -618,6 +618,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                    worefundby.SignatureUrl AS RefundedBySignatureUrl,
                    arx.IsClosed AS AdvanceIsClosed,
                    arx.ClosedAt AS AdvanceClosedAt,
+                   wo.PendingClose,
                    arx.AdvanceDate AS AdvanceDate,
                    wo.WriteOffNo
             FROM WriteOffRecords wo
@@ -649,7 +650,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                              AND tw2.Id < two.Id), 0) AS OtherWrittenOffTotal,
                    tworefundby.SignatureUrl AS RefundedBySignatureUrl,
                    trx.IsClosed AS TravelIsClosed,
-                   trx.ClosedAt AS TravelClosedAt
+                   trx.ClosedAt AS TravelClosedAt,
+                   two.PendingClose
             FROM TravelWriteOffRecords two
             JOIN TravelRequests trx    ON two.TravelRequestId = trx.Id
             LEFT JOIN Projects proj    ON trx.ProjectId       = proj.Id
@@ -1492,7 +1494,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 installments.ComputeStatus(instDicts.WriteOff.GetValueOrDefault((int)row.Id, [])),
                 instDicts.Advance.TryGetValue((int)row.AdvanceRequestId, out var woAdvInst) ? [.. woAdvInst] : null,
                 installments.ComputeStatus(instDicts.Advance.GetValueOrDefault((int)row.AdvanceRequestId, [])),
-                (DateTime?)row.AdvanceClosedAt),
+                (DateTime?)row.AdvanceClosedAt,
+                (bool)row.PendingClose),
             null,
             GetRecords("write_off", (int)row.Id),
             GetDesignatedReviewers("write_off", (int)row.Id),
@@ -1569,7 +1572,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (bool)row.TravelIsClosed,
                 (decimal?)row.TravelRefundAmount,
                 (decimal?)row.TravelRefundedAmount,
-                (DateTime?)row.TravelClosedAt),
+                (DateTime?)row.TravelClosedAt,
+                (bool)row.PendingClose),
             GetRecords("travel_write_off", (int)row.Id),
             GetDesignatedReviewers("travel_write_off", (int)row.Id),
             (string?)row.SubmittedBySignatureUrl));

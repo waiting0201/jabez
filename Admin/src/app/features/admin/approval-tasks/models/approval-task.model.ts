@@ -314,6 +314,8 @@ export interface WriteOffTaskDetail {
   advanceIsClosed?: boolean;
   /** 關聯預支單的結案時間 */
   advanceClosedAt?: string;
+  /** 財務已於其簽核關卡登記結案，待整張沖銷單核准後才真正結案 */
+  pendingClose?: boolean;
   /** 關聯預支單的應退差額（系統自動計算） */
   advanceRefundAmount?: number;
   /** 關聯預支單的實際退款金額（財務手動填入） */
@@ -371,6 +373,8 @@ export interface TravelWriteOffTaskDetail {
   travelIsClosed?: boolean;
   /** 關聯出差單的結案時間 */
   travelClosedAt?: string;
+  /** 財務已於其簽核關卡登記結案，待整張沖銷單核准後才真正結案 */
+  pendingClose?: boolean;
   /** 關聯出差單的應退差額（系統自動計算） */
   travelRefundAmount?: number;
   /** 關聯出差單的實際退款金額（財務手動填入） */

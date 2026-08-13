@@ -547,19 +547,25 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                         () => new WriteOffInstallment { WriteOffRecordId = wo.Id });
                 }
 
-                // 預支結案：財務部步驟核准時，可勾選結案
+                // 預支結案：財務部步驟核准時勾選 → 只「登記」，等整張單核准才真正結案（見 ApplyPendingCloseAsync）
+                // 步驟判定一律走 IsFinanceStepAsync（DepartmentCodes.FinanceStep，含改制後英文全名）；
+                // 早期此處硬編碼 == "FIN"，組織改制後 Code 變 "Financial Management Department" 即失效，
+                // 且是靜默略過 —— 財務勾了沒反應，只能於核准後再按一次結案按鈕。
                 if (closeAdvance == true && action == "approved")
                 {
-                    // 驗證審核的步驟是否為財務部
-                    var currentStep = wo.ApprovalItemId.HasValue
-                        ? await db.ApprovalSteps.AsNoTracking()
-                            .Include(s => s.Department)
-                            .FirstOrDefaultAsync(s => s.ApprovalItemId == wo.ApprovalItemId && s.StepOrder == reviewedStepOrder)
-                        : null;
+                    if (!await IsFinanceStepAsync(wo.ApprovalItemId, reviewedStepOrder, reviewer))
+                        throw AppException.BadRequest("僅財務管理部的簽核步驟可執行結案。");
 
-                    if (currentStep?.Department?.Code == "FIN" || reviewer.IsSuperAdmin)
-                        await CloseAdvanceRequestAsync(reviewerId, wo.AdvanceRequestId);
+                    wo.PendingClose = true;
                 }
+
+                // 退回 / 拒絕：清除登記，重跑流程時由財務依新金額重新判斷是否結案
+                if (action is "rejected" or "returned")
+                    wo.PendingClose = false;
+
+                // 整張單走到最終核准時才真正結案（財務多半不是最後一關；批次核准使最終核准也適用）
+                if (wo.PendingClose && wo.ApprovalStatus == "approved")
+                    await CloseAdvanceRequestAsync(reviewerId, wo.AdvanceRequestId, wo.Id);
 
                 await db.SaveChangesAsync();
                 break;
@@ -601,19 +607,20 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     incrementStep: () => two.CurrentStepOrder++,
                     setReviewed:   () => { two.ReviewedAt = Clock.Now; two.ReviewedById = reviewerId; two.ReviewNote = reviewNote?.Trim(); });
 
-                // 出差結案：財務部步驟核准時，可勾選結案
+                // 出差結案：規則同 write_off —— 財務勾選只是登記，整張單核准才真正結案（見上方註解）
                 if (closeAdvance == true && action == "approved")
                 {
-                    // 驗證審核的步驟是否為財務部
-                    var currentStep = two.ApprovalItemId.HasValue
-                        ? await db.ApprovalSteps.AsNoTracking()
-                            .Include(s => s.Department)
-                            .FirstOrDefaultAsync(s => s.ApprovalItemId == two.ApprovalItemId && s.StepOrder == twoReviewedStepOrder)
-                        : null;
+                    if (!await IsFinanceStepAsync(two.ApprovalItemId, twoReviewedStepOrder, reviewer))
+                        throw AppException.BadRequest("僅財務管理部的簽核步驟可執行結案。");
 
-                    if (currentStep?.Department?.Code == "FIN" || reviewer.IsSuperAdmin)
-                        await CloseTravelRequestAsync(reviewerId, two.TravelRequestId);
+                    two.PendingClose = true;
                 }
+
+                if (action is "rejected" or "returned")
+                    two.PendingClose = false;
+
+                if (two.PendingClose && two.ApprovalStatus == "approved")
+                    await CloseTravelRequestAsync(reviewerId, two.TravelRequestId, two.Id);
 
                 await db.SaveChangesAsync();
                 break;
@@ -1270,8 +1277,17 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
 
     // ── 結案 Helpers ─────────────────────────────────────────────────────────
 
-    /// <summary>關閉預支申請：設 IsClosed、計算退款差額、通知財務。</summary>
-    private async Task CloseAdvanceRequestAsync(Guid closedById, int advanceRequestId)
+    /// <summary>
+    /// 關閉預支申請：設 IsClosed、計算退款差額、通知財務。
+    /// <paramref name="closedById"/> = **實際觸發結案那次審核的審核者**（延後結案後多半是最後一關的人，
+    /// 而非當初勾選登記的財務）；此欄純稽核用，未出現在任何 DTO / PDF / 前端。
+    /// 差額基準與 <see cref="WriteOffRefundCalculator"/> 對齊，只計已核准的沖銷單；
+    /// 但財務是在「本張沖銷單尚未轉 approved」的關卡勾選結案的（DB 仍是 pending，
+    /// ProcessReviewAsync 的異動尚未 SaveChanges），故額外納入觸發本次結案的那一張
+    /// <paramref name="triggeringWriteOffId"/>。刻意不用 != "rejected"，否則 draft /
+    /// returned 的沖銷單也會灌進差額，發出金額偏高的匯款通知。
+    /// </summary>
+    private async Task CloseAdvanceRequestAsync(Guid closedById, int advanceRequestId, int? triggeringWriteOffId = null)
     {
         var advance = await db.AdvanceRequests.FindAsync(advanceRequestId);
         if (advance is null || advance.IsClosed) return;
@@ -1282,7 +1298,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
 
         // 檢查是否有退還差額（沖銷累計 > 預支金額）
         var totalWrittenOff = await db.WriteOffRecords
-            .Where(w => w.AdvanceRequestId == advanceRequestId && w.ApprovalStatus != "rejected")
+            .Where(w => w.AdvanceRequestId == advanceRequestId
+                     && (w.ApprovalStatus == "approved" || w.Id == triggeringWriteOffId))
             .SumAsync(w => (decimal?)w.GrandTotal) ?? 0m;
 
         var diff = totalWrittenOff - advance.GrandTotal;
@@ -1293,8 +1310,11 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         }
     }
 
-    /// <summary>關閉出差申請：設 IsClosed、計算退款差額、通知財務。</summary>
-    private async Task CloseTravelRequestAsync(Guid closedById, int travelRequestId)
+    /// <summary>
+    /// 關閉出差申請：設 IsClosed、計算退款差額、通知財務。
+    /// 差額基準同 <see cref="CloseAdvanceRequestAsync"/>（只計已核准 + 觸發本次結案的那一張）。
+    /// </summary>
+    private async Task CloseTravelRequestAsync(Guid closedById, int travelRequestId, int? triggeringWriteOffId = null)
     {
         var travel = await db.TravelRequests.FindAsync(travelRequestId);
         if (travel is null || travel.IsClosed) return;
@@ -1305,7 +1325,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
 
         // 檢查是否有退還差額（沖銷累計 > 出差金額）
         var totalWrittenOff = await db.TravelWriteOffRecords
-            .Where(w => w.TravelRequestId == travelRequestId && w.ApprovalStatus != "rejected")
+            .Where(w => w.TravelRequestId == travelRequestId
+                     && (w.ApprovalStatus == "approved" || w.Id == triggeringWriteOffId))
             .SumAsync(w => (decimal?)w.GrandTotal) ?? 0m;
 
         var diff = totalWrittenOff - travel.GrandTotal;
@@ -1346,7 +1367,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         if (wo.ApprovalStatus != "approved")
             return new BadRequestObjectResult(ApiResponse.Fail("僅已核准的沖銷申請可執行結案。"));
 
-        await CloseAdvanceRequestAsync(userId, wo.AdvanceRequestId);
+        await CloseAdvanceRequestAsync(userId, wo.AdvanceRequestId, wo.Id);
         await db.SaveChangesAsync();
 
         var task = await reader.GetApprovalTaskByIdAsync(intId, "write_off");
@@ -1381,7 +1402,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         if (two.ApprovalStatus != "approved")
             return new BadRequestObjectResult(ApiResponse.Fail("僅已核准的沖銷申請可執行結案。"));
 
-        await CloseTravelRequestAsync(userId, two.TravelRequestId);
+        await CloseTravelRequestAsync(userId, two.TravelRequestId, two.Id);
         await db.SaveChangesAsync();
 
         var task = await reader.GetApprovalTaskByIdAsync(intId, "travel_write_off");

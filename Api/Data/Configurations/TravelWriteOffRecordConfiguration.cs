@@ -33,6 +33,10 @@ public class TravelWriteOffRecordConfiguration : IEntityTypeConfiguration<Travel
         builder.Property(w => w.ReviewNote)
                .HasMaxLength(1000);
 
+        // 待結案登記：語意同 WriteOffRecord.PendingClose，對應 TravelRequest.IsClosed
+        builder.Property(w => w.PendingClose)
+               .HasDefaultValue(false);
+
         builder.HasOne(w => w.TravelRequest)
                .WithMany(t => t.WriteOffs)
                .HasForeignKey(w => w.TravelRequestId)
