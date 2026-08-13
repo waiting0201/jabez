@@ -388,7 +388,21 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 
 ### PDF 簽名欄
 
-指定簽核步驟不獨立佔簽名欄的規則，改由 `designatedStepOrders`（取自 `designatedReviewers[].approvalStepOrder`）判定，涵蓋例外命中的步驟。為此 `drSql` 補上 `rdr.ApprovalStepOrder` 欄位（原先 approval-task 路徑回傳一律為 0），前端 [pdf-core.service.ts](../../Admin/src/app/shared/services/pdf-core.service.ts) 新增 `designatedStepOrdersOf()` 與 `designatedStepOrders` 選項，8 個 PDF service 各傳一行。
+**例外命中的步驟照常佔一格簽名欄**（2026-08 修正）。
+
+2026-07 導入例外指定審核時，把「指定簽核步驟不獨立佔簽名欄」的規則改由 `designatedStepOrders`（取自 `designatedReviewers[].approvalStepOrder`）判定，**一併涵蓋例外命中的步驟** —— 這是錯的：
+
+| | 原生 `UseApplicantDesignated` 步驟 | 例外指定審核命中的步驟 |
+|---|---|---|
+| 步驟角色 | 無固定角色（誰簽全由申請人挑） | **固定**（上層級 / 會計 / 財務…） |
+| 是否寫 `ApprovalRecord` | 會（但無固定欄位可掛） | **會**，`StepOrder` 就是該步驟 |
+| PDF 簽名欄 | 不佔欄（僅總監有特例，見 [pdf-signatures.md](pdf-signatures.md)） | **佔一格**，標籤沿用 `resolveStepLabel` |
+
+實務上各申請類型的 Step 1「上層級」普遍掛有例外名單，導致 **8 種 PDF 的「上層級」欄整格消失、該主管簽章遺失**。修正後 `buildDynamicSignBlocks` 拆成兩個判定：`isNativeDesignated`（= `step.useApplicantDesignated`，不佔欄、總監 hoist 特例只看它）與 `isExceptionDesignated`（= 非原生但 `designatedStepOrders` 命中，佔欄）。
+
+`designatedStepOrders` 的職責因此縮小為「辨識例外命中步驟以挑紀錄」：該步驟可有多位 designee → 同 `stepOrder` 多筆紀錄，取最後一筆 `approved`。
+
+為此 `drSql` 補上 `rdr.ApprovalStepOrder` 欄位（原先 approval-task 路徑回傳一律為 0），前端 [pdf-core.service.ts](../../Admin/src/app/shared/services/pdf-core.service.ts) 的 `designatedStepOrdersOf()` 與 `designatedStepOrders` 選項由 8 個 PDF service 各傳一行（呼叫端不受本次修正影響）。
 
 ### 限定職稱（ApprovalStepDesignatedJobTitle，2026-07 新增）
 
