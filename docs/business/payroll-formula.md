@@ -83,22 +83,44 @@ EmployeePayrollDto / 月度合計 / 薪資編輯頁 / 薪資明細 Email + PDF
 
 ### 加 / 改 / 刪薪資欄位的 Checklist
 
-新增或修改其中一個欄位，**必須同步以下 8 處**（漏一處就會壞掉）：
+新增或修改其中一個欄位，**必須同步以下 14 處**（漏一處就會壞掉；其中第 6 / 12 項漏改是**外洩**，比壞掉更嚴重）：
 
 1. `Api/Models/Entities/SalaryAdjustmentRecord.cs` — entity 欄位
 2. `Api/Models/Entities/User.cs` — entity 欄位 + 對應 Configuration / Migration
 3. `Api/Models/Dtos/UserDtos.cs` — `UserDto` / `CreateUserRequest` / `UpdateUserRequest`
 4. `Api/Services/Dapper/UserReadService.cs` — 3 處 SELECT / tuple / 映射
-5. `Api/Handlers/UserHandler.cs` — Create + Update 接收 form 欄位
-6. `Api/Handlers/EmployeeProfileHandler.cs` — 同步邏輯 `user.Xxx = latestSalary.Xxx`
-7. `Api/Services/Dapper/PayrollReadService.cs` — `employeeSql` SELECT、迴圈讀取、`netSalary` 公式、月度 `Sum`
-8. `Api/Models/Dtos/PayrollDtos.cs` — `EmployeePayrollDto` + `MonthlyPayrollDto` 的 `Total*`
-9. `Api/Handlers/PayrollHandler.cs` — `BuildPaySlipHtml` 應發項目區塊
-10. 前端：`Admin/.../users/models/user.model.ts` + `user-form.ts` (FormGroup / patchValue / submit) + `user-form.html`
-11. 前端：`Admin/.../payroll/models/payroll.model.ts` + `payroll-list.html` (summary 或 column) + `payroll-form.html` (應發項目)
-12. 文件：本檔（更新 7 個欄位對照表 + 公式 + Checklist 數字）+ [hr-profile.md](hr-profile.md)（薪資自動同步條目）
+5. `Api/Handlers/UserHandler.cs` — Create + Update 接收 form 欄位（薪資段落包在 `PayrollFieldAccess.CanSeeSalary` 內）
+6. ⚠️ `Api/Common/PayrollFieldAccess.cs` — `Mask(UserDto)` 的抹除清單（**漏改＝無 `payroll:read` 者看得到該欄**）
+7. `Api/Handlers/EmployeeProfileHandler.cs` — 同步邏輯 `user.Xxx = latestSalary.Xxx`
+8. `Api/Services/Dapper/PayrollReadService.cs` — `employeeSql` SELECT、迴圈讀取、`netSalary` 公式、月度 `Sum`
+9. `Api/Models/Dtos/PayrollDtos.cs` — `EmployeePayrollDto` + `MonthlyPayrollDto` 的 `Total*`
+10. `Api/Handlers/PayrollHandler.cs` — `BuildPaySlipHtml` 應發項目區塊
+11. 前端：`Admin/.../users/models/user.model.ts` + `user-form.ts` (FormGroup / patchValue / submit) + `user-form.html`
+12. ⚠️ 前端：`Admin/.../users/pages/user-form/user-form.ts` 的 `SALARY_CONTROLS` 常數（**漏改＝該欄不會被 disable，會出現在無權者的畫面與送出的 payload**）
+13. 前端：`Admin/.../payroll/models/payroll.model.ts` + `payroll-list.html` (summary 或 column) + `payroll-form.html` (應發項目)
+14. 文件：本檔（更新 7 個欄位對照表 + 公式 + Checklist 數字）+ [hr-profile.md](hr-profile.md)（薪資自動同步條目）
 
 ---
+
+## 誰看得到薪資欄位（欄位級權限，2026-08）
+
+「進得了員工管理」不等於「看得到薪資」。`users:read` 只決定能否開啟員工管理，**薪資與可反推薪資的欄位另需 `payroll:read`** —— 沿用「人事薪資」模組同一把鑰匙，未另立權限碼。
+
+| 範圍 | 需要 | 缺少時 |
+|---|---|---|
+| 員工管理 Tab1 的 11 個薪資 / 勞健保欄 | `payroll:read` | API 回 `null`，前端整段不 render、控制項 `disable()` |
+| 員工管理 Tab2「薪資調整歷史」 | `payroll:read` | API 回 `[]`，前端整區不 render |
+| Tab3「每月健保費試算」（＝健保覆寫 ×(1+眷屬數)，可反推投保金額） | `payroll:read` | getter 早退回 `null`，區塊自動關閉。**眷屬名單本身不受限** |
+| 列印人事資料卡 PDF 的薪資頁 | `payroll:read` | 整個 PAGE 3 連同 `addPage()` 一起跳過，輸出 2 頁 |
+| 勞健保級距 lookup（`insurance-brackets/lookup?salary=`） | `payroll:read`（前端不訂閱） | 不發出請求 —— 該端點權限與 users 正交，留著等於開一條由底薪反推級距的側門 |
+| **寫入**（`POST /users`、`PATCH /users/{id}`、`PUT /users/{id}/profile` 的薪資部分） | `payroll:read` | 靜默忽略（不回 403，其他欄位照常存檔）。薪資調整歷史為**條件式**整批替換，無權者送空陣列不會刪光既有歷史 |
+
+**不受影響**：`GET /me/user`、`GET /me/profile`（員工看自己的薪資是既有需求）；銀行帳號 / 存摺封面 / 投保起日 / 扶養人數 / 健保眷屬名單 / 期初補休時數 / 寄送薪資表旗標。
+
+實作單一真相：後端 [`Api/Common/PayrollFieldAccess.cs`](../../Api/Common/PayrollFieldAccess.cs)、前端 `user-form.ts` 的 `canSeeSalary` + `SALARY_CONTROLS`。規範見 [backend-design.md 欄位級權限](../backend-design.md) 與 [frontend-design.md 依權限隱藏表單區塊](../frontend-design.md)。
+
+> ⚠️ **副作用**：`payroll:read` 同時是「人事薪資」選單與 `/admin/payroll` 月薪列表的進入權限。要讓某個角色看得到員工管理的薪資欄，就一併給了他人事薪資頁。若日後需要脫鉤，得另立 `users-salary:read` 獨立碼。
+> ⚠️ **JWT 快照**：`permissions` 是登入 / refresh 當下的快照，角色權限異動後需**重新登入**才生效。
 
 ## 跨業務關聯
 

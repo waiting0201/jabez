@@ -185,7 +185,7 @@ Admin/src/app/
     │   ├── services/my-profile.service.ts   # 呼叫 /me/user + /me/profile + /me/files（自助唯讀）
     │   └── pages/my-profile/                # 「個人資訊」唯讀頁：比照管理頁 3 Tab（含薪資）全唯讀，avatar 下拉進入
     ├── admin/
-    │   ├── users/          # 使用者管理（user-form 含 3 Tab：員工基本資料 / 人事資料卡 / 健保眷屬；含 employee-profile.service / hr-profile-pdf.service / 9 組 FormArray）
+    │   ├── users/          # 使用者管理（user-form 含 3 Tab：員工基本資料 / 人事資料卡 / 健保眷屬；含 employee-profile.service / hr-profile-pdf.service / 9 組 FormArray；**薪資為欄位級權限 `payroll:read`**：進得了員工管理（`users:read`）不等於看得到薪資，Tab1 的 11 個薪資／勞健保欄、Tab2 薪資調整歷史、Tab3 健保費試算、列印 PDF 第 3 頁皆需另持 `payroll:read`，前端共用 `canSeeSalary` + `SALARY_CONTROLS`（`@if` 隱藏區塊 + `disable()` 控制項 + 送出前剔除 payload key），後端共用 [Api/Common/PayrollFieldAccess.cs](Api/Common/PayrollFieldAccess.cs) 抹除回應並拒絕寫入；薪資調整歷史改為**條件式**整批替換（`null`＝不變更）避免無權者送空陣列刪光歷史；`/me/user`、`/me/profile` 刻意全開，員工看自己的薪資不受影響）
     │   ├── roles/          # 角色管理（僅 Superadmin）
     │   ├── permissions/    # 權限管理（僅 Superadmin）
     │   ├── departments/    # 部門管理

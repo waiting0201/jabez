@@ -37,9 +37,12 @@ export class HrProfilePdfService {
   private pdfCore = inject(PdfCoreService);
 
   /**
-   * 產生人事資料卡 PDF（三頁 A4 直式）並開啟列印視窗。
+   * 產生人事資料卡 PDF（A4 直式）並開啟列印視窗。
+   *
+   * @param canSeeSalary 是否可看薪資（payroll:read）。false 時整個 PAGE 3（薪資調整歷史）
+   *   連同 addPage() 一起跳過，輸出 2 頁；若只藏表格會留下一張只有頁首的空白頁。
    */
-  async generate(profile: EmployeeProfileDetail, user: User): Promise<void> {
+  async generate(profile: EmployeeProfileDetail, user: User, canSeeSalary = true): Promise<void> {
     const fonts = await this.pdfCore.loadFonts();
 
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -295,37 +298,39 @@ export class HrProfilePdfService {
     }
 
     // ════════════════════════════════════════════════
-    // PAGE 3
+    // PAGE 3（薪資調整歷史；無 payroll:read 時整頁不產生）
     // ════════════════════════════════════════════════
-    doc.addPage();
-    y = 14;
-    y = this._drawPageHeader(doc, mx, pw, y, profile, user, F);
+    if (canSeeSalary) {
+      doc.addPage();
+      y = 14;
+      y = this._drawPageHeader(doc, mx, pw, y, profile, user, F);
 
-    // ── 薪資調整歷史 ─────────────────────────────────
-    y = this._drawSection(doc, mx, y, '薪資調整歷史', F);
-    if (profile.salaryAdjustmentRecords.length > 0) {
-      autoTable(doc, {
-        startY: y,
-        margin: { left: mx, right: mx },
-        styles:     { font: F, fontSize: 7, cellPadding: 1.5, textColor: TEXT_PRIMARY, halign: 'right' },
-        headStyles: { fillColor: FOREST, textColor: WHITE, fontStyle: 'bold', halign: 'center', fontSize: 7 },
-        columnStyles: { 0: { halign: 'center' }, 9: { halign: 'left' } },
-        head: [['生效日', '底薪', '職務', '職責', '其他', '差額', '海外', '伙食', '合計', '備註']],
-        body: profile.salaryAdjustmentRecords.map(r => [
-          fmtD(r.effectiveDate),
-          fmtMoney(r.baseSalary),
-          fmtMoney(r.positionAllowance),
-          fmtMoney(r.dutyAllowance),
-          fmtMoney(r.otherAllowance),
-          fmtMoney(r.adjustmentDifference),
-          fmtMoney(r.overseasAllowance),
-          fmtMoney(r.mealAllowance),
-          fmtMoney(r.totalAmount),
-          val(r.notes),
-        ]),
-      });
-    } else {
-      this._drawEmpty(doc, mx, y, F);
+      // ── 薪資調整歷史 ─────────────────────────────────
+      y = this._drawSection(doc, mx, y, '薪資調整歷史', F);
+      if (profile.salaryAdjustmentRecords.length > 0) {
+        autoTable(doc, {
+          startY: y,
+          margin: { left: mx, right: mx },
+          styles:     { font: F, fontSize: 7, cellPadding: 1.5, textColor: TEXT_PRIMARY, halign: 'right' },
+          headStyles: { fillColor: FOREST, textColor: WHITE, fontStyle: 'bold', halign: 'center', fontSize: 7 },
+          columnStyles: { 0: { halign: 'center' }, 9: { halign: 'left' } },
+          head: [['生效日', '底薪', '職務', '職責', '其他', '差額', '海外', '伙食', '合計', '備註']],
+          body: profile.salaryAdjustmentRecords.map(r => [
+            fmtD(r.effectiveDate),
+            fmtMoney(r.baseSalary),
+            fmtMoney(r.positionAllowance),
+            fmtMoney(r.dutyAllowance),
+            fmtMoney(r.otherAllowance),
+            fmtMoney(r.adjustmentDifference),
+            fmtMoney(r.overseasAllowance),
+            fmtMoney(r.mealAllowance),
+            fmtMoney(r.totalAmount),
+            val(r.notes),
+          ]),
+        });
+      } else {
+        this._drawEmpty(doc, mx, y, F);
+      }
     }
 
     // 輸出 PDF（開啟新視窗）

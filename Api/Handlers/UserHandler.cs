@@ -14,6 +14,8 @@ namespace Jabez.Api.Handlers;
 public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmailService emailService, IBlobStorageService blob, IProjectAccessResolver access)
 {
     // GET /me/user → 當前使用者自助查詢自己的完整個人資料（登入即可，不需 users:read）
+    // 刻意不套薪資欄位級權限（PayrollFieldAccess）—— 員工看自己的薪資是既有需求，
+    // 該權限只管「看別人的」。請勿為了與 GetAllAsync / GetByIdAsync 一致而補上。
     public async Task<IActionResult> GetMineAsync(HttpRequest req)
     {
         var userIdStr = req.HttpContext.User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
@@ -43,23 +45,31 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
     }
 
     // GET /api/users — Dapper 讀取（含 JOIN）
+    // 欄位級權限：無 payroll:read 者的薪資欄位一律抹為 null（SQL 不動，抹除在 Handler）
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
+        var canSeeSalary = PayrollFieldAccess.CanSeeSalary(req.HttpContext.User);
+
         // 有分頁參數 → 回傳 PagedResult；無分頁參數 → 回傳平面陣列（供下拉選單用）
         if (req.Query.ContainsKey("page") || req.Query.ContainsKey("pageSize"))
         {
             int page     = int.TryParse(req.Query["page"],     out var p)  ? Math.Max(1, p)         : 1;
             int pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, 100) : 20;
             var result = await reader.GetPagedAsync(page, pageSize);
+            // Items 為 IEnumerable，Select 需 ToList() 具體化，避免延遲到序列化才求值
+            if (!canSeeSalary)
+                result = result with { Items = result.Items.Select(PayrollFieldAccess.Mask).ToList() };
             return new OkObjectResult(ApiResponse.Ok(result));
         }
 
         var all = await reader.GetAllAsync();
+        if (!canSeeSalary)
+            all = all.Select(PayrollFieldAccess.Mask).ToList();
         return new OkObjectResult(ApiResponse.Ok(all));
     }
 
     // GET /api/users/{id}
-    public async Task<IActionResult> GetByIdAsync(string id)
+    public async Task<IActionResult> GetByIdAsync(HttpRequest req, string id)
     {
         if (!Guid.TryParse(id, out var guid))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid user ID format."));
@@ -69,9 +79,13 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             return new NotFoundObjectResult(ApiResponse.Fail("User not found.", $"No user with id '{id}'."));
 
         var user = await reader.GetByIdAsync(guid);
-        return user is null
-            ? new NotFoundObjectResult(ApiResponse.Fail("User not found.", $"No user with id '{id}'."))
-            : new OkObjectResult(ApiResponse.Ok(user));
+        if (user is null)
+            return new NotFoundObjectResult(ApiResponse.Fail("User not found.", $"No user with id '{id}'."));
+
+        if (!PayrollFieldAccess.CanSeeSalary(req.HttpContext.User))
+            user = PayrollFieldAccess.Mask(user);
+
+        return new OkObjectResult(ApiResponse.Ok(user));
     }
 
     private const string SignatureContainer        = "signatures";
@@ -304,6 +318,23 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             UpdatedAt    = Clock.Now,
         };
 
+        // 薪資欄位級權限：讀寫同一道 gate —— 看不到就不該寫得進去。
+        // 無 payroll:read 者的前端不會送這些 key，這裡把值一律清掉（不回 403，其他欄位照常建立）。
+        if (!PayrollFieldAccess.CanSeeSalary(req.HttpContext.User))
+        {
+            user.BaseSalary                       = null;
+            user.MealAllowance                    = null;
+            user.OvertimePay                      = null;
+            user.PositionAllowance                = null;
+            user.DutyAllowance                    = null;
+            user.OtherAllowance                   = null;
+            user.AdjustmentDifference             = null;
+            user.OverseasAllowance                = null;
+            user.HealthInsuranceOverride          = null;
+            user.LaborInsuranceOverride           = null;
+            user.LaborPensionSelfContributionRate = null;
+        }
+
         // 處理檔案上傳：簽名檔、頭像、原住民證明、低收入證明、殘障證明
         user.SignatureUrl = await HandleSignatureUploadAsync(form.Files, userId, null);
         user.Avatar       = await HandleAvatarUploadAsync(form.Files, userId, null);
@@ -339,6 +370,8 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         await db.SaveChangesAsync();
 
         var dto = await reader.GetByIdAsync(user.Id);
+        if (dto is not null && !PayrollFieldAccess.CanSeeSalary(req.HttpContext.User))
+            dto = PayrollFieldAccess.Mask(dto);
         return new ObjectResult(ApiResponse.Ok(dto, "User created.")) { StatusCode = 201 };
     }
 
@@ -383,12 +416,6 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             user.HireDate = DateTime.TryParse(form["hireDate"], out var hd) ? hd : null;
         if (form.ContainsKey("resignDate"))
             user.ResignDate = DateTime.TryParse(form["resignDate"], out var rd) ? rd : null;
-        if (form.ContainsKey("baseSalary"))
-            user.BaseSalary = decimal.TryParse(form["baseSalary"], out var bs) ? bs : null;
-        if (form.ContainsKey("mealAllowance"))
-            user.MealAllowance = decimal.TryParse(form["mealAllowance"], out var ma) ? ma : null;
-        if (form.ContainsKey("overtimePay"))
-            user.OvertimePay = decimal.TryParse(form["overtimePay"], out var op) ? op : null;
         if (form.ContainsKey("sendPaySlip"))
             user.SendPaySlip = form["sendPaySlip"] == "true";
         if (form.ContainsKey("compensatoryOpeningHours"))
@@ -403,22 +430,33 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             user.IsLowIncome = form["isLowIncome"] == "true";
         if (form.ContainsKey("isDisabled"))
             user.IsDisabled = form["isDisabled"] == "true";
-        if (form.ContainsKey("healthInsuranceOverride"))
-            user.HealthInsuranceOverride = decimal.TryParse(form["healthInsuranceOverride"], out var hio) ? hio : null;
-        if (form.ContainsKey("laborInsuranceOverride"))
-            user.LaborInsuranceOverride = decimal.TryParse(form["laborInsuranceOverride"], out var lio) ? lio : null;
-        if (form.ContainsKey("laborPensionSelfContributionRate"))
-            user.LaborPensionSelfContributionRate = ParseLaborPensionRate(form["laborPensionSelfContributionRate"]);
-        if (form.ContainsKey("positionAllowance"))
-            user.PositionAllowance = decimal.TryParse(form["positionAllowance"], out var pa) ? pa : null;
-        if (form.ContainsKey("dutyAllowance"))
-            user.DutyAllowance = decimal.TryParse(form["dutyAllowance"], out var da) ? da : null;
-        if (form.ContainsKey("otherAllowance"))
-            user.OtherAllowance = decimal.TryParse(form["otherAllowance"], out var oa) ? oa : null;
-        if (form.ContainsKey("adjustmentDifference"))
-            user.AdjustmentDifference = decimal.TryParse(form["adjustmentDifference"], out var ad) ? ad : null;
-        if (form.ContainsKey("overseasAllowance"))
-            user.OverseasAllowance = decimal.TryParse(form["overseasAllowance"], out var oea) ? oea : null;
+        // 薪資欄位級權限：11 個薪資 / 勞健保欄位集中在此，無 payroll:read 者整段不受理。
+        // 讀寫同一道 gate —— 看不到就不該改得動。不回 403：其他欄位（部門、離職日…）必須照常存檔。
+        if (PayrollFieldAccess.CanSeeSalary(req.HttpContext.User))
+        {
+            if (form.ContainsKey("baseSalary"))
+                user.BaseSalary = decimal.TryParse(form["baseSalary"], out var bs) ? bs : null;
+            if (form.ContainsKey("mealAllowance"))
+                user.MealAllowance = decimal.TryParse(form["mealAllowance"], out var ma) ? ma : null;
+            if (form.ContainsKey("overtimePay"))
+                user.OvertimePay = decimal.TryParse(form["overtimePay"], out var op) ? op : null;
+            if (form.ContainsKey("healthInsuranceOverride"))
+                user.HealthInsuranceOverride = decimal.TryParse(form["healthInsuranceOverride"], out var hio) ? hio : null;
+            if (form.ContainsKey("laborInsuranceOverride"))
+                user.LaborInsuranceOverride = decimal.TryParse(form["laborInsuranceOverride"], out var lio) ? lio : null;
+            if (form.ContainsKey("laborPensionSelfContributionRate"))
+                user.LaborPensionSelfContributionRate = ParseLaborPensionRate(form["laborPensionSelfContributionRate"]);
+            if (form.ContainsKey("positionAllowance"))
+                user.PositionAllowance = decimal.TryParse(form["positionAllowance"], out var pa) ? pa : null;
+            if (form.ContainsKey("dutyAllowance"))
+                user.DutyAllowance = decimal.TryParse(form["dutyAllowance"], out var da) ? da : null;
+            if (form.ContainsKey("otherAllowance"))
+                user.OtherAllowance = decimal.TryParse(form["otherAllowance"], out var oa) ? oa : null;
+            if (form.ContainsKey("adjustmentDifference"))
+                user.AdjustmentDifference = decimal.TryParse(form["adjustmentDifference"], out var ad) ? ad : null;
+            if (form.ContainsKey("overseasAllowance"))
+                user.OverseasAllowance = decimal.TryParse(form["overseasAllowance"], out var oea) ? oea : null;
+        }
 
         // 處理簽名檔：removeSignature=true 表示刪除
         if (form["removeSignature"] == "true")
@@ -534,6 +572,9 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         await db.SaveChangesAsync();
 
         var dto = await reader.GetByIdAsync(user.Id);
+        // 更新回應也要抹除：無權者若拿回既有薪資值，等於繞過 GetByIdAsync 的遮蔽
+        if (dto is not null && !PayrollFieldAccess.CanSeeSalary(req.HttpContext.User))
+            dto = PayrollFieldAccess.Mask(dto);
         return new OkObjectResult(ApiResponse.Ok(dto, "User updated."));
     }
 

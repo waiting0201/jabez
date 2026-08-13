@@ -162,105 +162,108 @@
                   <label class="form-label fw-500">入職日</label>
                   <input type="date" class="form-control" formControlName="hireDate">
                 </div>
-                <div class="col-12 col-md-4">
-                  <label class="form-label fw-500">底薪</label>
-                  <div class="input-group">
-                    <span class="input-group-text">NT$</span>
-                    <input type="number" class="form-control" formControlName="baseSalary" placeholder="例如：50000" min="0">
+                <!-- 薪資與勞健保：欄位級權限 payroll:read（@if 不產生 DOM 節點，row g-3 排版不受影響） -->
+                @if (canSeeSalary) {
+                  <div class="col-12 col-md-4">
+                    <label class="form-label fw-500">底薪</label>
+                    <div class="input-group">
+                      <span class="input-group-text">NT$</span>
+                      <input type="number" class="form-control" formControlName="baseSalary" placeholder="例如：50000" min="0">
+                    </div>
                   </div>
-                </div>
-                <!-- 勞保：lookup 預設值 + 可覆寫 -->
-                <div class="col-12 col-md-4">
-                  <label class="form-label fw-500">勞保（員工負擔）</label>
-                  <div class="input-group">
-                    <span class="input-group-text">NT$</span>
-                    <input type="number" class="form-control" formControlName="laborInsuranceOverride"
-                           [placeholder]="laborInsurance() !== null ? (laborInsurance() | number:'1.0-0') + '（級距預設）' : '—'">
+                  <!-- 勞保：lookup 預設值 + 可覆寫 -->
+                  <div class="col-12 col-md-4">
+                    <label class="form-label fw-500">勞保（員工負擔）</label>
+                    <div class="input-group">
+                      <span class="input-group-text">NT$</span>
+                      <input type="number" class="form-control" formControlName="laborInsuranceOverride"
+                             [placeholder]="laborInsurance() !== null ? (laborInsurance() | number:'1.0-0') + '（級距預設）' : '—'">
+                    </div>
+                    <div class="text-muted small mt-1">留空則使用級距表預設值</div>
                   </div>
-                  <div class="text-muted small mt-1">留空則使用級距表預設值</div>
-                </div>
-                <!-- 勞退自提：員工自願提撥比例（%），直接影響實領薪水扣款 -->
-                <div class="col-12 col-md-4">
-                  <label class="form-label fw-500">勞退自提</label>
-                  <div class="input-group">
-                    <input type="number" class="form-control" formControlName="laborPensionSelfContributionRate"
-                           placeholder="例如：3" min="0" max="6" step="1">
-                    <span class="input-group-text">%</span>
+                  <!-- 勞退自提：員工自願提撥比例（%），直接影響實領薪水扣款 -->
+                  <div class="col-12 col-md-4">
+                    <label class="form-label fw-500">勞退自提</label>
+                    <div class="input-group">
+                      <input type="number" class="form-control" formControlName="laborPensionSelfContributionRate"
+                             placeholder="例如：3" min="0" max="6" step="1">
+                      <span class="input-group-text">%</span>
+                    </div>
+                    @if (estimatedLaborPensionDeduction !== null) {
+                      <div class="text-muted small mt-1">預估每月扣款：NT$ {{ estimatedLaborPensionDeduction | number:'1.0-0' }}</div>
+                    } @else {
+                      <div class="text-muted small mt-1">依台灣勞退條例，僅能以整數 1% 為級距，上限 6%</div>
+                    }
+                    @if (form.get('laborPensionSelfContributionRate')?.invalid && form.get('laborPensionSelfContributionRate')?.touched) {
+                      <div class="text-danger small mt-1">勞退自提比例僅能為 0~6 之整數。</div>
+                    }
                   </div>
-                  @if (estimatedLaborPensionDeduction !== null) {
-                    <div class="text-muted small mt-1">預估每月扣款：NT$ {{ estimatedLaborPensionDeduction | number:'1.0-0' }}</div>
-                  } @else {
-                    <div class="text-muted small mt-1">依台灣勞退條例，僅能以整數 1% 為級距，上限 6%</div>
-                  }
-                  @if (form.get('laborPensionSelfContributionRate')?.invalid && form.get('laborPensionSelfContributionRate')?.touched) {
-                    <div class="text-danger small mt-1">勞退自提比例僅能為 0~6 之整數。</div>
-                  }
-                </div>
-                <!-- 健保：lookup 預設值 + 可覆寫 -->
-                <div class="col-12 col-md-4">
-                  <label class="form-label fw-500">健保（員工負擔）</label>
-                  <div class="input-group">
-                    <span class="input-group-text">NT$</span>
-                    <input type="number" class="form-control" formControlName="healthInsuranceOverride"
-                           [placeholder]="healthInsurance() !== null ? (healthInsurance() | number:'1.0-0') + '（級距預設）' : '—'">
+                  <!-- 健保：lookup 預設值 + 可覆寫 -->
+                  <div class="col-12 col-md-4">
+                    <label class="form-label fw-500">健保（員工負擔）</label>
+                    <div class="input-group">
+                      <span class="input-group-text">NT$</span>
+                      <input type="number" class="form-control" formControlName="healthInsuranceOverride"
+                             [placeholder]="healthInsurance() !== null ? (healthInsurance() | number:'1.0-0') + '（級距預設）' : '—'">
+                    </div>
+                    <div class="text-muted small mt-1">留空則使用級距表預設值</div>
                   </div>
-                  <div class="text-muted small mt-1">留空則使用級距表預設值</div>
-                </div>
-                <div class="col-12 col-md-4">
-                  <label class="form-label fw-500">伙食費</label>
-                  <div class="input-group">
-                    <span class="input-group-text">NT$</span>
-                    <input type="number" class="form-control" formControlName="mealAllowance" placeholder="例如：2400" min="0">
+                  <div class="col-12 col-md-4">
+                    <label class="form-label fw-500">伙食費</label>
+                    <div class="input-group">
+                      <span class="input-group-text">NT$</span>
+                      <input type="number" class="form-control" formControlName="mealAllowance" placeholder="例如：2400" min="0">
+                    </div>
                   </div>
-                </div>
-                <div class="col-12 col-md-4">
-                  <label class="form-label fw-500">加班費</label>
-                  <div class="input-group">
-                    <span class="input-group-text">NT$</span>
-                    <input type="number" class="form-control" formControlName="overtimePay" placeholder="例如：0" min="0">
+                  <div class="col-12 col-md-4">
+                    <label class="form-label fw-500">加班費</label>
+                    <div class="input-group">
+                      <span class="input-group-text">NT$</span>
+                      <input type="number" class="form-control" formControlName="overtimePay" placeholder="例如：0" min="0">
+                    </div>
                   </div>
-                </div>
-                <!-- 5 種加給：自動同步自最新生效 SalaryAdjustmentRecord，亦可手動覆寫 -->
-                <div class="col-12 col-md-4">
-                  <label class="form-label fw-500">職務加給</label>
-                  <div class="input-group">
-                    <span class="input-group-text">NT$</span>
-                    <input type="number" class="form-control" formControlName="positionAllowance" placeholder="例如：0" min="0">
+                  <!-- 5 種加給：自動同步自最新生效 SalaryAdjustmentRecord，亦可手動覆寫 -->
+                  <div class="col-12 col-md-4">
+                    <label class="form-label fw-500">職務加給</label>
+                    <div class="input-group">
+                      <span class="input-group-text">NT$</span>
+                      <input type="number" class="form-control" formControlName="positionAllowance" placeholder="例如：0" min="0">
+                    </div>
+                    <div class="text-muted small mt-1">由人事資料卡最新薪資紀錄同步</div>
                   </div>
-                  <div class="text-muted small mt-1">由人事資料卡最新薪資紀錄同步</div>
-                </div>
-                <div class="col-12 col-md-4">
-                  <label class="form-label fw-500">主管加給</label>
-                  <div class="input-group">
-                    <span class="input-group-text">NT$</span>
-                    <input type="number" class="form-control" formControlName="dutyAllowance" placeholder="例如：0" min="0">
+                  <div class="col-12 col-md-4">
+                    <label class="form-label fw-500">主管加給</label>
+                    <div class="input-group">
+                      <span class="input-group-text">NT$</span>
+                      <input type="number" class="form-control" formControlName="dutyAllowance" placeholder="例如：0" min="0">
+                    </div>
+                    <div class="text-muted small mt-1">由人事資料卡最新薪資紀錄同步</div>
                   </div>
-                  <div class="text-muted small mt-1">由人事資料卡最新薪資紀錄同步</div>
-                </div>
-                <div class="col-12 col-md-4">
-                  <label class="form-label fw-500">其他加給</label>
-                  <div class="input-group">
-                    <span class="input-group-text">NT$</span>
-                    <input type="number" class="form-control" formControlName="otherAllowance" placeholder="例如：0" min="0">
+                  <div class="col-12 col-md-4">
+                    <label class="form-label fw-500">其他加給</label>
+                    <div class="input-group">
+                      <span class="input-group-text">NT$</span>
+                      <input type="number" class="form-control" formControlName="otherAllowance" placeholder="例如：0" min="0">
+                    </div>
+                    <div class="text-muted small mt-1">由人事資料卡最新薪資紀錄同步</div>
                   </div>
-                  <div class="text-muted small mt-1">由人事資料卡最新薪資紀錄同步</div>
-                </div>
-                <div class="col-12 col-md-4">
-                  <label class="form-label fw-500">調整差額</label>
-                  <div class="input-group">
-                    <span class="input-group-text">NT$</span>
-                    <input type="number" class="form-control" formControlName="adjustmentDifference" placeholder="例如：0">
+                  <div class="col-12 col-md-4">
+                    <label class="form-label fw-500">調整差額</label>
+                    <div class="input-group">
+                      <span class="input-group-text">NT$</span>
+                      <input type="number" class="form-control" formControlName="adjustmentDifference" placeholder="例如：0">
+                    </div>
+                    <div class="text-muted small mt-1">由人事資料卡最新薪資紀錄同步</div>
                   </div>
-                  <div class="text-muted small mt-1">由人事資料卡最新薪資紀錄同步</div>
-                </div>
-                <div class="col-12 col-md-4">
-                  <label class="form-label fw-500">外派加給</label>
-                  <div class="input-group">
-                    <span class="input-group-text">NT$</span>
-                    <input type="number" class="form-control" formControlName="overseasAllowance" placeholder="例如：0" min="0">
+                  <div class="col-12 col-md-4">
+                    <label class="form-label fw-500">外派加給</label>
+                    <div class="input-group">
+                      <span class="input-group-text">NT$</span>
+                      <input type="number" class="form-control" formControlName="overseasAllowance" placeholder="例如：0" min="0">
+                    </div>
+                    <div class="text-muted small mt-1">由人事資料卡最新薪資紀錄同步</div>
                   </div>
-                  <div class="text-muted small mt-1">由人事資料卡最新薪資紀錄同步</div>
-                </div>
+                }
                 <div class="col-12 col-md-4">
                   <label class="form-label fw-500">期初補休時數</label>
                   <div class="input-group">
@@ -1198,61 +1201,63 @@
                     新增獎懲
                   </button>
 
-                  <!-- 薪資調整歷史 -->
-                  <div class="fw-600 mb-2 text-[--text-secondary]">薪資調整歷史</div>
-                  <div class="alert alert-info py-2 small mb-3">
-                    新增 / 編輯紀錄並儲存後，最新生效紀錄（≤ 今日）的底薪、伙食費會自動同步至員工基本資料的對應欄位。
-                  </div>
-                  <div class="table-responsive mb-3">
-                    <table class="table table-sm align-middle mb-0">
-                      <thead class="table-light">
-                        <tr>
-                          <th>生效日</th>
-                          <th>底薪</th>
-                          <th>職務津貼</th>
-                          <th>職責津貼</th>
-                          <th>其他</th>
-                          <th>差額</th>
-                          <th>海外津貼</th>
-                          <th>伙食</th>
-                          <th>合計</th>
-                          <th>備註</th>
-                          <th></th>
-                        </tr>
-                      </thead>
-                      <tbody formArrayName="salaryAdjustmentRecords">
-                        @for (ctrl of salaryControls; track $index; let i = $index) {
-                          <tr [formGroupName]="i">
-                            <td>
-                              <input type="date" class="form-control form-control-sm" formControlName="effectiveDate"
-                                     [class.is-invalid]="ctrl.get('effectiveDate')?.invalid && ctrl.get('effectiveDate')?.touched">
-                            </td>
-                            <td><input type="number" class="form-control form-control-sm" formControlName="baseSalary" placeholder="0" min="0" style="min-width: 80px"></td>
-                            <td><input type="number" class="form-control form-control-sm" formControlName="positionAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
-                            <td><input type="number" class="form-control form-control-sm" formControlName="dutyAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
-                            <td><input type="number" class="form-control form-control-sm" formControlName="otherAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
-                            <td><input type="number" class="form-control form-control-sm" formControlName="adjustmentDifference" placeholder="0" style="min-width: 70px"></td>
-                            <td><input type="number" class="form-control form-control-sm" formControlName="overseasAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
-                            <td><input type="number" class="form-control form-control-sm" formControlName="mealAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
-                            <td class="text-end fw-500">{{ salaryRowTotal(ctrl) | number:'1.0-0' }}</td>
-                            <td><input type="text" class="form-control form-control-sm" formControlName="notes" placeholder="備註" style="min-width: 80px"></td>
-                            <td>
-                              <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeSalary(i)">
-                                <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
-                              </button>
-                            </td>
+                  <!-- 薪資調整歷史（欄位級權限：payroll:read） -->
+                  @if (canSeeSalary) {
+                    <div class="fw-600 mb-2 text-[--text-secondary]">薪資調整歷史</div>
+                    <div class="alert alert-info py-2 small mb-3">
+                      新增 / 編輯紀錄並儲存後，最新生效紀錄（≤ 今日）的底薪、伙食費會自動同步至員工基本資料的對應欄位。
+                    </div>
+                    <div class="table-responsive mb-3">
+                      <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                          <tr>
+                            <th>生效日</th>
+                            <th>底薪</th>
+                            <th>職務津貼</th>
+                            <th>職責津貼</th>
+                            <th>其他</th>
+                            <th>差額</th>
+                            <th>海外津貼</th>
+                            <th>伙食</th>
+                            <th>合計</th>
+                            <th>備註</th>
+                            <th></th>
                           </tr>
-                        }
-                        @if (salaryControls.length === 0) {
-                          <tr><td colspan="11" class="text-center text-muted small py-3">尚無紀錄</td></tr>
-                        }
-                      </tbody>
-                    </table>
-                  </div>
-                  <button type="button" class="btn btn-sm btn-outline-secondary mb-4" (click)="addSalary()">
-                    <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#plus"></use></svg>
-                    新增薪資紀錄
-                  </button>
+                        </thead>
+                        <tbody formArrayName="salaryAdjustmentRecords">
+                          @for (ctrl of salaryControls; track $index; let i = $index) {
+                            <tr [formGroupName]="i">
+                              <td>
+                                <input type="date" class="form-control form-control-sm" formControlName="effectiveDate"
+                                       [class.is-invalid]="ctrl.get('effectiveDate')?.invalid && ctrl.get('effectiveDate')?.touched">
+                              </td>
+                              <td><input type="number" class="form-control form-control-sm" formControlName="baseSalary" placeholder="0" min="0" style="min-width: 80px"></td>
+                              <td><input type="number" class="form-control form-control-sm" formControlName="positionAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
+                              <td><input type="number" class="form-control form-control-sm" formControlName="dutyAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
+                              <td><input type="number" class="form-control form-control-sm" formControlName="otherAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
+                              <td><input type="number" class="form-control form-control-sm" formControlName="adjustmentDifference" placeholder="0" style="min-width: 70px"></td>
+                              <td><input type="number" class="form-control form-control-sm" formControlName="overseasAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
+                              <td><input type="number" class="form-control form-control-sm" formControlName="mealAllowance" placeholder="0" min="0" style="min-width: 70px"></td>
+                              <td class="text-end fw-500">{{ salaryRowTotal(ctrl) | number:'1.0-0' }}</td>
+                              <td><input type="text" class="form-control form-control-sm" formControlName="notes" placeholder="備註" style="min-width: 80px"></td>
+                              <td>
+                                <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="removeSalary(i)">
+                                  <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                                </button>
+                              </td>
+                            </tr>
+                          }
+                          @if (salaryControls.length === 0) {
+                            <tr><td colspan="11" class="text-center text-muted small py-3">尚無紀錄</td></tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary mb-4" (click)="addSalary()">
+                      <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+                      新增薪資紀錄
+                    </button>
+                  }
 
                   <!-- 離職資訊 -->
                   <div class="fw-600 mb-2 text-[--text-secondary]">離職資訊</div>
