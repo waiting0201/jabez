@@ -165,6 +165,8 @@
                 <thead class="table-light">
                   <tr>
                     <th style="width:40px"></th>
+                    <th style="min-width:120px">發票號碼</th>
+                    <th style="min-width:120px">發票日期</th>
                     <th style="min-width:100px">分類</th>
                     <th style="min-width:60px">項次</th>
                     <th style="min-width:160px">項目說明</th>
@@ -172,8 +174,6 @@
                     <th style="min-width:80px">數量/單位</th>
                     <th style="min-width:100px">總價</th>
                     <th style="min-width:100px">備註</th>
-                    <th style="min-width:120px">發票號碼</th>
-                    <th style="min-width:120px">發票日期</th>
                     @if (!isReadOnly) {
                       <th style="width:48px"></th>
                     }
@@ -192,6 +192,30 @@
                           </button>
                         } @else if (isOcr) {
                           <span class="spinner-border spinner-border-sm" role="status"></span>
+                        }
+                      </td>
+                      <td class="align-middle">
+                        @if (isReadOnly) {
+                          <span class="small font-monospace">{{ ctrl.get('invoiceNo')?.value || '—' }}</span>
+                        } @else if (isOcr) {
+                          <div class="flex items-center gap-1 text-muted small py-1">
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                            識別中…
+                          </div>
+                        } @else {
+                          <input class="form-control form-control-sm font-monospace" formControlName="invoiceNo" placeholder="AB-12345678">
+                        }
+                      </td>
+                      <td class="align-middle">
+                        @if (isReadOnly) {
+                          <span class="small">{{ ctrl.get('invoiceDate')?.value || '—' }}</span>
+                        } @else if (isOcr) {
+                          <div class="flex items-center gap-1 text-muted small py-1">
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                            識別中…
+                          </div>
+                        } @else {
+                          <input type="date" class="form-control form-control-sm" formControlName="invoiceDate">
                         }
                       </td>
                       <td class="align-middle">
@@ -264,30 +288,6 @@
                           <input class="form-control form-control-sm" formControlName="note" placeholder="">
                         }
                       </td>
-                      <td class="align-middle">
-                        @if (isReadOnly) {
-                          <span class="small font-monospace">{{ ctrl.get('invoiceNo')?.value || '—' }}</span>
-                        } @else if (isOcr) {
-                          <div class="flex items-center gap-1 text-muted small py-1">
-                            <span class="spinner-border spinner-border-sm" role="status"></span>
-                            識別中…
-                          </div>
-                        } @else {
-                          <input class="form-control form-control-sm font-monospace" formControlName="invoiceNo" placeholder="AB-12345678">
-                        }
-                      </td>
-                      <td class="align-middle">
-                        @if (isReadOnly) {
-                          <span class="small">{{ ctrl.get('invoiceDate')?.value || '—' }}</span>
-                        } @else if (isOcr) {
-                          <div class="flex items-center gap-1 text-muted small py-1">
-                            <span class="spinner-border spinner-border-sm" role="status"></span>
-                            識別中…
-                          </div>
-                        } @else {
-                          <input type="date" class="form-control form-control-sm" formControlName="invoiceDate">
-                        }
-                      </td>
                       @if (!isReadOnly) {
                         <td class="text-right align-middle">
                           <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center"
@@ -316,9 +316,9 @@
                 @if (itemControls.length > 0) {
                   <tfoot>
                     <tr class="table-light">
-                      <td colspan="6" class="text-right fw-500 small">合計</td>
+                      <td colspan="8" class="text-right fw-500 small">合計</td>
                       <td class="fw-600">{{ grandTotal | number:'1.0-0' }}</td>
-                      <td colspan="3"></td>
+                      <td></td>
                       @if (!isReadOnly) { <td></td> }
                     </tr>
                   </tfoot>

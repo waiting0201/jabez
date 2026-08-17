@@ -819,14 +819,14 @@
                         <thead class="table-light">
                           <tr>
                             <th style="width:40px"></th>
+                            <th>發票號碼</th>
+                            <th>發票日期</th>
                             <th>分類</th>
                             <th>項目說明</th>
                             <th class="text-right">單價</th>
                             <th>數量/單位</th>
                             <th class="text-right">總價</th>
                             <th>備註</th>
-                            <th>發票號碼</th>
-                            <th>發票日期</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -841,22 +841,22 @@
                                   </button>
                                 }
                               </td>
+                              <td class="small font-monospace">{{ item.invoiceNo || '—' }}</td>
+                              <td class="small">{{ item.invoiceDate ? (item.invoiceDate | date:'yyyy-MM-dd') : '—' }}</td>
                               <td class="small">{{ item.category }}</td>
                               <td class="small">{{ item.itemName }}</td>
                               <td class="text-right small">{{ item.unitPrice | number:'1.0-0' }}</td>
                               <td class="small">{{ item.quantity }}</td>
                               <td class="text-right small fw-500">{{ item.totalPrice | number:'1.0-0' }}</td>
                               <td class="small text-muted">{{ item.note || '—' }}</td>
-                              <td class="small font-monospace">{{ item.invoiceNo || '—' }}</td>
-                              <td class="small">{{ item.invoiceDate ? (item.invoiceDate | date:'yyyy-MM-dd') : '—' }}</td>
                             </tr>
                           }
                         </tbody>
                         <tfoot>
                           <tr class="table-light">
-                            <td colspan="5" class="text-right fw-500 small">合計</td>
+                            <td colspan="7" class="text-right fw-500 small">合計</td>
                             <td class="text-right fw-600">{{ d.grandTotal | number:'1.0-0' }}</td>
-                            <td colspan="3"></td>
+                            <td></td>
                           </tr>
                         </tfoot>
                       </table>

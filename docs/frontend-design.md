@@ -794,6 +794,22 @@ isFirstOfRound(r: AdvanceRequest, index: number): boolean {
 
 > 明細表沒有共用元件，每張表各自維護 `<th>`；**改欄寬時同一系列的表要一起改**，否則詳情頁與編輯頁欄位對不齊。
 
+### 7.1.3 欄位順序標準
+
+明細表的欄位順序**跨申請單一致**，不因單別自訂。基準順序（有該欄才出現，沒有就跳過）：
+
+```
+檔案 → 發票號碼 → 發票日期 → 分類 → 項次 → 項目說明 → 單價 → 數量/單位 → 總價 → 現金 → 支票 → 備註 → 刪除鈕
+```
+
+- **發票欄（發票號碼 / 發票日期）一律緊接在檔案欄之後、分類之前**，不放表尾。理由是操作動線：上傳單據 → OCR 回填 → 就地核對號碼與日期，三件事在視線同一區塊完成；擺到 `備註` 後面會讓使用者在寬表裡左右來回。
+- **備註永遠是最後一個資料欄**（刪除鈕欄除外）。
+- 分組欄（如沖銷的「批次」）例外，置於最左。
+
+> **改順序＝改四處**：form / detail / [approval-task-review](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/approval-task-review.html) 的該類型明細表 / PDF service，四處要一起動，且每處的 `<tfoot>` colspan 與 PDF `columnStyles` 索引都要跟著重算（見 §7.1.1 的提醒）。
+>
+> **已套用**：2026-08 出差請款（TPR）從「發票欄置尾」改為與請款 / 預支沖銷一致的置前 —— [travel-payment-form](../Admin/src/app/features/admin/travel-payment-requests/pages/travel-payment-form/travel-payment-form.html) / [travel-payment-detail](../Admin/src/app/features/admin/travel-payment-requests/pages/travel-payment-detail/travel-payment-detail.html) / approval-task-review 的 `travel_payment` 區塊 / [travel-payment-pdf.service.ts](../Admin/src/app/features/admin/travel-payment-requests/services/travel-payment-pdf.service.ts)。成因是該單 clone 自出差預支（無發票欄）後把兩欄接在既有欄位尾巴，而非比照請款系列。
+
 ### 7.2 ⚠ 刪除按鈕標準（**重要**）
 
 > **2026-05-09 起，所有明細列表的刪除按鈕一律統一為以下 pattern**。
