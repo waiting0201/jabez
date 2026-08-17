@@ -17,10 +17,16 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
                sub.Name AS SubmittedBy, wo.CreatedAt,
                wo.ReviewedAt, wo.ReviewNote,
                ar.GrandTotal AS AdvanceGrandTotal,
+               -- 本單之前已沖銷金額：條件與 WriteOffRefundCalculator.PriorApprovedTotalAsync 一致
+               -- （已核准且核准時間早於本單；本單未核准則全部已核准者；舊資料 ReviewedAt 為 null 視為更早）
                ISNULL((SELECT SUM(w2.GrandTotal) FROM WriteOffRecords w2
                        WHERE w2.AdvanceRequestId = wo.AdvanceRequestId
                          AND w2.ApprovalStatus = 'approved'
-                         AND w2.Id < wo.Id), 0) AS AdvanceWrittenOffTotal,
+                         AND w2.Id <> wo.Id
+                         AND (wo.ReviewedAt IS NULL
+                           OR w2.ReviewedAt IS NULL
+                           OR w2.ReviewedAt < wo.ReviewedAt
+                           OR (w2.ReviewedAt = wo.ReviewedAt AND w2.Id < wo.Id))), 0) AS AdvanceWrittenOffTotal,
                CAST(ISNULL(ar.IsClosed, 0) AS BIT) AS AdvanceIsClosed,
                ar.ClosedAt AS AdvanceClosedAt,
                ar.EstimatedRefundDate, ar.RefundedAt,

@@ -78,7 +78,8 @@ public sealed record AvailableAdvanceDto(
     decimal                 CashTotal,
     decimal                 CheckTotal,
     decimal                 GrandTotal,
-    decimal                 WrittenOffTotal,
+    decimal                 WrittenOffTotal,       // 只計已核准，與詳情頁 / 差額撥款同基準
+    decimal                 PendingWriteOffTotal,  // 草稿 / 簽核中 / 已退回的沖銷金額（表單提示用，不計入餘額）
     AdvanceRoundDto[]       Rounds,            // 含 Round 1；Round ≥2 來自 AdvanceRequestSupplements
     AdvanceRequestItemDto[] Items);            // 全批次明細，已依 RoundNo, SortOrder, Id 排序
 

@@ -141,7 +141,10 @@ export interface AdvanceSummary {
   cashTotal: number;
   checkTotal: number;
   grandTotal: number;
+  /** 已沖銷金額（只計已核准，與詳情頁 / 差額撥款同基準） */
   writtenOffTotal: number;
+  /** 草稿 / 簽核中 / 已退回的沖銷金額（提示用，不計入待沖銷餘額） */
+  pendingWriteOffTotal: number;
   /** 各預支批次（含 Round 1；Round ≥2 為追加） */
   rounds: AdvanceRound[];
   /** 全批次費用明細，已依 roundNo, sortOrder 排序 */

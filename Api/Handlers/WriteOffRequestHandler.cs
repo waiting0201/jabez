@@ -72,8 +72,15 @@ public sealed class WriteOffRequestHandler(
                 a.CashTotal,
                 a.CheckTotal,
                 a.GrandTotal,
+                // 已沖銷金額只認「已核准」，與詳情頁 / 差額撥款（WriteOffRefundCalculator）同一基準，
+                // 避免同一張預支單在表單頁與詳情頁顯示不同餘額
                 WrittenOffTotal = db.WriteOffRecords
-                    .Where(w => w.AdvanceRequestId == a.Id && w.ApprovalStatus != "rejected")
+                    .Where(w => w.AdvanceRequestId == a.Id && w.ApprovalStatus == "approved")
+                    .Sum(w => (decimal?)w.GrandTotal) ?? 0m,
+                // 草稿 / 簽核中的沖銷金額另外帶出，供表單提示「另有 N 元沖銷中」，防止重複沖同一批費用
+                PendingWriteOffTotal = db.WriteOffRecords
+                    .Where(w => w.AdvanceRequestId == a.Id
+                             && (w.ApprovalStatus == "draft" || w.ApprovalStatus == "pending" || w.ApprovalStatus == "returned"))
                     .Sum(w => (decimal?)w.GrandTotal) ?? 0m,
             })
             .ToListAsync();
@@ -105,7 +112,7 @@ public sealed class WriteOffRequestHandler(
             var items = itemLookup[h.Id].ToArray();
             return new AvailableAdvanceDto(
                 h.Id, h.RequestNo, h.ProjectCode, h.ActivityName, h.AdvanceDate,
-                h.CashTotal, h.CheckTotal, h.GrandTotal, h.WrittenOffTotal,
+                h.CashTotal, h.CheckTotal, h.GrandTotal, h.WrittenOffTotal, h.PendingWriteOffTotal,
                 // 批次組裝規則與 GET /advance-requests/{id} 共用同一份實作
                 AdvanceRequestReadService.BuildRounds(h.AdvanceDate, supLookup[h.Id], items),
                 items);
@@ -213,9 +220,14 @@ public sealed class WriteOffRequestHandler(
             return new BadRequestObjectResult(ApiResponse.Fail("advanceRequestId 欄位為必填且須為整數。"));
 
         // 驗證預支申請存在、已核准、已撥款
+        // 可沖銷者＝預支單申請人本人，或 Superadmin（與 GetAvailableAdvancesAsync 的下拉清單範圍一致，
+        // 否則 Superadmin 選得到別人的預支單卻在送出時吃 404）
+        var isSuperAdmin = await db.Users.AsNoTracking()
+            .AnyAsync(u => u.Id == submittedById && u.IsSuperAdmin);
         var ar = await db.AdvanceRequests
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == advanceRequestId && x.SubmittedById == submittedById)
+            .FirstOrDefaultAsync(x => x.Id == advanceRequestId
+                                   && (isSuperAdmin || x.SubmittedById == submittedById))
             ?? throw AppException.NotFound("AdvanceRequest");
 
         EnsureAdvanceWriteOffable(ar);
@@ -681,7 +693,7 @@ public sealed class WriteOffRequestHandler(
         if (wo.ApprovalStatus != "approved")
             return new BadRequestObjectResult(ApiResponse.Fail("只有已核准的沖銷申請可以設定撥款明細。"));
 
-        var refundDue = await CalculateRefundDueAsync(wo);
+        var refundDue = await WriteOffRefundCalculator.CalculateAsync(db, wo);
         if (refundDue <= 0)
             return new BadRequestObjectResult(ApiResponse.Fail("本次沖銷未超過預支金額，無需撥款。"));
 
@@ -762,23 +774,6 @@ public sealed class WriteOffRequestHandler(
 
     // ── Private Helpers ──────────────────────────────────────────────────────
 
-    /// <summary>本次沖銷造成的超支增額（公司應補撥給員工的金額）。</summary>
-    private async Task<decimal> CalculateRefundDueAsync(WriteOffRecord wo)
-    {
-        var advanceGrandTotal = await db.AdvanceRequests
-            .Where(a => a.Id == wo.AdvanceRequestId)
-            .Select(a => a.GrandTotal)
-            .FirstOrDefaultAsync();
-
-        var otherWrittenOffTotal = await db.WriteOffRecords
-            .Where(w => w.AdvanceRequestId == wo.AdvanceRequestId
-                     && w.ApprovalStatus == "approved"
-                     && w.Id < wo.Id)
-            .SumAsync(w => (decimal?)w.GrandTotal) ?? 0m;
-
-        return WriteOffRefundCalculator.Calculate(advanceGrandTotal, otherWrittenOffTotal, wo.GrandTotal);
-    }
-
     /// <summary>
     /// 來源預支單是否可沖銷：須已核准且未結案。
     /// 追加簽核中的預支單狀態為 pending / returned，總額仍在變動，禁止沖銷。
@@ -839,8 +834,11 @@ public sealed class WriteOffRequestHandler(
             throw AppException.Conflict($"發票號碼重複：{string.Join(", ", duplicatesInBatch)}");
 
         // 資料庫唯一性檢查（跨所有沖銷 + 請款發票，排除已拒絕的申請）
+        // 已拒絕的沖銷單必須排除，否則其發票號碼會被永久占用，申請人重開一張新單就卡 409 且無從自救
+        // （與下方 InvoiceItems 的 ApprovalStatus != "rejected" 同一規則）
         var writeOffQuery = db.WriteOffItems
-            .Where(wi => invoiceNos.Contains(wi.InvoiceNo!));
+            .Where(wi => invoiceNos.Contains(wi.InvoiceNo!)
+                      && wi.WriteOffRecord.ApprovalStatus != "rejected");
 
         // 更新場景：排除本筆 WriteOffRecord 的明細
         if (excludeWriteOffRecordId.HasValue)

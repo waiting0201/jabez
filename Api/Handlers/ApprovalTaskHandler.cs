@@ -529,7 +529,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 }
                 // 記住審核前的步驟（ProcessReviewAsync 可能會 increment）
                 var reviewedStepOrder = wo.CurrentStepOrder;
-                var woRefundDue       = await CalculateWriteOffRefundDueAsync(wo);
+                var woRefundDue       = await WriteOffRefundCalculator.CalculateAsync(db, wo);
 
                 await ProcessReviewAsync("write_off", wo.Id, wo.CurrentStepOrder,
                     wo.ApprovalItemId, action, reviewNote, reviewerId, wo.SubmittedById,
@@ -1253,26 +1253,6 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 await notifier.NotifyApplicantAsync(applicationType, applicationId,
                     applicantId.Value, "rejected", reviewNote, contextLabel);
         }
-    }
-
-    /// <summary>
-    /// 本次沖銷造成的超支增額（公司應補撥給員工的金額）。
-    /// 與 WriteOffRequestHandler.CalculateRefundDueAsync 同一公式，共用 <see cref="WriteOffRefundCalculator"/>。
-    /// </summary>
-    private async Task<decimal> CalculateWriteOffRefundDueAsync(WriteOffRecord wo)
-    {
-        var advanceGrandTotal = await db.AdvanceRequests
-            .Where(a => a.Id == wo.AdvanceRequestId)
-            .Select(a => a.GrandTotal)
-            .FirstOrDefaultAsync();
-
-        var otherWrittenOffTotal = await db.WriteOffRecords
-            .Where(w => w.AdvanceRequestId == wo.AdvanceRequestId
-                     && w.ApprovalStatus == "approved"
-                     && w.Id < wo.Id)
-            .SumAsync(w => (decimal?)w.GrandTotal) ?? 0m;
-
-        return WriteOffRefundCalculator.Calculate(advanceGrandTotal, otherWrittenOffTotal, wo.GrandTotal);
     }
 
     // ── 結案 Helpers ─────────────────────────────────────────────────────────

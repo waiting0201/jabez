@@ -43,7 +43,7 @@
     </div>
   }
 
-  <form [formGroup]="form" (ngSubmit)="save()">
+  <form [formGroup]="form" (ngSubmit)="save()" (keydown.enter)="onEnterKey($event)">
     <div class="row g-4">
       <div class="col-12 col-xl-10">
 
@@ -383,18 +383,18 @@
 
         @if (!isReadOnly) {
           <div class="mt-6 flex gap-2">
-            <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid || itemArray.length === 0 || isAnyOcrPending">
-              @if (isAnyOcrPending) {
+            <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid || itemArray.length === 0 || isAnyOcrPending || saving()">
+              @if (isAnyOcrPending || saving()) {
                 <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
               }
               {{ isEdit ? '儲存' : '儲存草稿' }}
             </button>
-            <button type="button" class="btn btn-primary" [disabled]="form.invalid || itemArray.length === 0 || isAnyOcrPending"
+            <button type="button" class="btn btn-primary" [disabled]="form.invalid || itemArray.length === 0 || isAnyOcrPending || saving()"
                     (click)="submitForApproval()">
-              @if (isAnyOcrPending) {
+              @if (isAnyOcrPending || saving()) {
                 <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
               }
-              送出申請
+              {{ saving() ? '處理中…' : '送出申請' }}
             </button>
             <a routerLink="/admin/travel-payment-requests" class="btn btn-outline-secondary">取消</a>
           </div>

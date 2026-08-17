@@ -1133,6 +1133,61 @@ Input：`advanceRounds` / `writeOffHistory` / `currentGrandTotal` / `refundDue`�
 </button>
 ```
 
+### 8.4.1 申請表單「儲存 / 送出」必須有 in-flight 鎖（**重要**）
+
+申請表單的儲存 / 送出會做 multipart 上傳（發票、附件），一送好幾秒。
+**按鈕在請求期間必須 disabled + spinner**，否則畫面毫無反應，使用者會再按一次，
+**每按一次就是一個 POST，同一張單會被建立多筆**（2026-08 預支沖銷實際踩過）。
+
+三個要點缺一不可：
+
+```ts
+/** 儲存 / 送出進行中（鎖按鈕 + spinner） */
+saving = signal(false);
+
+submitForApproval() {
+  if (this.saving()) return;                     // ① 方法層再擋一次（連點的第二下可能早於變更偵測）
+  this.saving.set(true);
+  const save$ = this.editId                      // ② 判斷依據是「後端已有這張單的 id」，不是路由模式旗標 isEdit
+    ? this.service.update(this.editId, fd)
+    : this.service.create(fd);
+  save$.subscribe({
+    next: saved => {
+      this.editId = saved.id;                    // ③ create 成功立刻記住 id
+      this.service.submit(saved.id).subscribe({  //    → 後續 submit 失敗時重送走 update，不會再建一張新單
+        next:  () => { this.saving.set(false); this._onSubmitted([...]); },
+        error: err => { this.saving.set(false); this.errorMsg.set((err.error?.message ?? '送出失敗') + '（草稿已保留，修正後可直接再送出）'); },
+      });
+    },
+    error: err => { this.saving.set(false); this.errorMsg.set(err.error?.message ?? '儲存失敗'); },
+  });
+}
+```
+
+- `isEdit` 只用於「標題 / 版面呈現」，**不可**在 create 成功後翻轉（會讓新增模式的預支單選擇區塊整塊換掉）
+- 錯誤時務必 `saving.set(false)`，否則按鈕永久鎖死
+- **11 支申請表單已全數套用**（請款 / 預支（含追加批次）/ 出差預支 / 出差請款 / 預支沖銷 / 出差預支沖銷 / 請假 / 銷假 / 加班 / 假日執行活動 / 預審）。新增申請表單時比照辦理
+  - 銷假表單的鎖寫在 `canSave` getter（`!this.saving() && …`），兩個方法都走該 getter，效果相同
+  - 預支的「新增追加批次」是 `POST /advance-requests/{id}/supplements` 建立即送簽的單一請求，連按同樣會建出兩個批次，故 `_submitSupplement()` 內也上鎖
+
+### 8.4.2 表單內按 Enter 不得直接送出
+
+申請表單為 `<form [formGroup] (ngSubmit)="save()">` + `type="submit"` 的儲存鈕，
+瀏覽器預設**在任一 `<input>` 按 Enter 就會觸發 ngSubmit**，使用者打完金額順手按 Enter
+就會建立草稿並跳回列表，只看到頁面莫名跳走，誤以為資料沒存到而重做一次。
+
+```html
+<form [formGroup]="form" (ngSubmit)="save()" (keydown.enter)="onEnterKey($event)">
+```
+
+```ts
+/** 表單內按 Enter 不送出（textarea 換行不受影響） */
+onEnterKey(event: Event) {
+  const tag = (event.target as HTMLElement)?.tagName;
+  if (tag !== 'TEXTAREA') event.preventDefault();
+}
+```
+
 ### 8.5 disabled 必須說明原因
 
 當按鈕的 `[disabled]` 來自**業務條件**（而非單純 loading）時，必須同時綁 `[title]` 說明原因，

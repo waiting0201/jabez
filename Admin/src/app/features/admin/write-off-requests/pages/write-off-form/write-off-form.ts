@@ -54,8 +54,12 @@ export class WriteOffRequestForm implements OnInit {
   /** 編輯模式回填的既有附件 */
   loadedAttachments: AttachmentItem[] = [];
 
-  /** undefined = 新增模式；數值 = 編輯模式（預支沖銷申請 ID） */
+  /**
+   * 「已存在於後端的沖銷單 ID」：編輯模式進場即有；新增模式在 create 成功後填入。
+   * 有值即代表後續儲存 / 送出一律走 update，不會再建一張新單。
+   */
   editId: number | null = null;
+  /** 路由模式旗標（僅影響標題與預支單區塊的呈現），create 成功後不改動 */
   isEdit = false;
 
   /** 選擇的預支申請 ID（新增模式中由使用者選擇） */
@@ -92,6 +96,13 @@ export class WriteOffRequestForm implements OnInit {
 
   errorMsg = signal('');
   categories = ITEM_CATEGORIES;
+
+  /**
+   * 儲存 / 送出進行中：鎖住兩顆按鈕並顯示 spinner。
+   * 沖銷單常帶多張發票照片，multipart 上傳需數秒，期間畫面若無反應使用者會重按，
+   * 造成同一張沖銷單被建立兩筆（每按一次就是一個 POST /write-off-requests）。
+   */
+  saving = signal(false);
 
   /** 指定審核者相關 */
   hasDesignatedStep = false;
@@ -397,8 +408,19 @@ export class WriteOffRequestForm implements OnInit {
     }
   }
 
+  /**
+   * 表單內按 Enter 不送出（textarea 換行不受影響）。
+   * `<form (ngSubmit)="save()">` 會讓任一 input 的 Enter 直接建立草稿並跳回列表，
+   * 使用者只會看到頁面莫名跳走，誤以為資料沒存到而重做一次。
+   */
+  onEnterKey(event: Event) {
+    const tag = (event.target as HTMLElement)?.tagName;
+    if (tag !== 'TEXTAREA') event.preventDefault();
+  }
+
   /** 儲存（草稿或更新，不改變狀態） */
   save() {
+    if (this.saving()) return;
     if (this.itemArray.length === 0) return;
     if (!this.isEdit && !this.selectedAdvanceId) {
       this.errorMsg.set('請選擇預支單。');
@@ -406,17 +428,22 @@ export class WriteOffRequestForm implements OnInit {
     }
     const fd = this._buildFormData();
     this.errorMsg.set('');
-    const obs = this.isEdit
-      ? this.service.update(this.editId!, fd)
+    this.saving.set(true);
+    const obs = this.editId
+      ? this.service.update(this.editId, fd)
       : this.service.create(fd);
     obs.subscribe({
       next: () => this.router.navigate(['/admin/write-off-requests']),
-      error: (err: HttpErrorResponse) => this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。'),
+      error: (err: HttpErrorResponse) => {
+        this.saving.set(false);
+        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+      },
     });
   }
 
   /** 送出申請（先儲存再將狀態改為 pending） */
   submitForApproval() {
+    if (this.saving()) return;
     if (this.itemArray.length === 0) return;
     if (!this.isEdit && !this.selectedAdvanceId) {
       this.errorMsg.set('請選擇預支單。');
@@ -435,19 +462,30 @@ export class WriteOffRequestForm implements OnInit {
     }
     const fd = this._buildFormData();
     this.errorMsg.set('');
-    const save$ = this.isEdit
-      ? this.service.update(this.editId!, fd)
+    this.saving.set(true);
+    const save$ = this.editId
+      ? this.service.update(this.editId, fd)
       : this.service.create(fd);
     save$.subscribe({
       next: saved => {
+        // 草稿已建立 → 記住 ID，後續重送走 update。
+        // 否則 submit 失敗時（指定審核者驗證、預支單狀態改變…）使用者重按送出，
+        // 會再 POST 一張全新的沖銷單，變成同一筆沖銷有兩張單。
+        this.editId = saved.id;
         this.service.submit(saved.id).subscribe({
-          next: () => this._onSubmitted(['/admin/write-off-requests']),
+          next: () => {
+            this.saving.set(false);
+            this._onSubmitted(['/admin/write-off-requests']);
+          },
           error: (err: HttpErrorResponse) => {
-            this.errorMsg.set(err.error?.message || '送出失敗，請稍後再試。');
+            this.saving.set(false);
+            this.errorMsg.set(
+              (err.error?.message || '送出失敗，請稍後再試。') + '（草稿已保留，修正後可直接再送出）');
           },
         });
       },
       error: (err: HttpErrorResponse) => {
+        this.saving.set(false);
         this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
       },
     });

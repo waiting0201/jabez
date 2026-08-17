@@ -53,10 +53,14 @@ export class AdvanceForm implements OnInit {
 
   projects: Project[] = [];
   loadingProjects = true;
+  /** 路由模式旗標（僅影響版面呈現），create 成功後不改動 */
   isEdit     = false;
   isReadOnly = false;
   isReturned = false;
+  /** 後端已存在的申請單 ID（編輯 / 追加模式進場即有；新增模式 create 成功後填入）；> 0 即代表要走 update */
   requestId  = 0;
+  /** 儲存 / 送出進行中：鎖按鈕 + spinner，避免 multipart 上傳期間連按建出多張單（見 docs/frontend-design.md §8.4.1） */
+  saving = signal(false);
 
   /** 追加預支模式：掛在已核准預支單上新增 / 編輯一個追加批次 */
   isSupplement    = false;
@@ -386,7 +390,17 @@ export class AdvanceForm implements OnInit {
     }
   }
 
+  /**
+   * 表單內按 Enter 不送出（textarea 換行不受影響）。
+   * 否則任一 input 的 Enter 都會觸發 ngSubmit，直接建草稿並跳回列表。
+   */
+  onEnterKey(event: Event) {
+    const tag = (event.target as HTMLElement)?.tagName;
+    if (tag !== 'TEXTAREA') event.preventDefault();
+  }
+
   save() {
+    if (this.saving()) return;
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       this.errorMsg.set('尚有必填欄位未填寫，請檢查紅字標示的欄位後再儲存。');
@@ -399,28 +413,36 @@ export class AdvanceForm implements OnInit {
     this.errorMsg.set('');
     // 追加模式：只有「編輯已退回批次」可儲存不送簽（新增追加一律建立即送簽）
     if (this.isSupplement) {
+      this.saving.set(true);
       this.service.updateSupplement(this.requestId, this.supplementRound, this._buildSupplementFormData()).subscribe({
         next: () => this.router.navigate(['/admin/advance-requests', this.requestId]),
-        error: (err: HttpErrorResponse) => this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。'),
+        error: (err: HttpErrorResponse) => {
+          this.saving.set(false);
+          this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+        },
       });
       return;
     }
     const fd = this._buildFormData();
-    const obs = this.isEdit
+    this.saving.set(true);
+    // 判斷依據是「後端已有這張單」，不是路由模式：create 成功後重送必須走 update
+    const obs = this.requestId
       ? this.service.updateWithFiles(this.requestId, fd)
       : this.service.createWithFiles(fd);
     obs.subscribe({
       next: saved => {
-        if (!this.isEdit) this.requestId = saved.id;
+        this.requestId = saved.id;
         this.router.navigate(['/admin/advance-requests']);
       },
       error: (err: HttpErrorResponse) => {
+        this.saving.set(false);
         this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
       },
     });
   }
 
   submitForApproval() {
+    if (this.saving()) return;
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       this.errorMsg.set('尚有必填欄位未填寫，請檢查紅字標示的欄位後再送出。');
@@ -447,17 +469,29 @@ export class AdvanceForm implements OnInit {
       }
     }
     const fd = this._buildFormData();
-    const save$ = this.isEdit
+    this.saving.set(true);
+    const save$ = this.requestId
       ? this.service.updateWithFiles(this.requestId, fd)
       : this.service.createWithFiles(fd);
     save$.subscribe({
       next: saved => {
+        // 草稿已建立 → 記住 ID，後續重送走 update，避免同一筆申請被建成兩張單
+        this.requestId = saved.id;
         this.service.submit(saved.id).subscribe({
-          next: () => this._onSubmitted(['/admin/advance-requests']),
-          error: (err: HttpErrorResponse) => this.errorMsg.set(err.error?.message || '送出失敗。'),
+          next: () => {
+            this.saving.set(false);
+            this._onSubmitted(['/admin/advance-requests']);
+          },
+          error: (err: HttpErrorResponse) => {
+            this.saving.set(false);
+            this.errorMsg.set((err.error?.message || '送出失敗。') + '（草稿已保留，修正後可直接再送出）');
+          },
         });
       },
-      error: (err: HttpErrorResponse) => this.errorMsg.set(err.error?.message || '儲存失敗。'),
+      error: (err: HttpErrorResponse) => {
+        this.saving.set(false);
+        this.errorMsg.set(err.error?.message || '儲存失敗。');
+      },
     });
   }
 
@@ -468,22 +502,32 @@ export class AdvanceForm implements OnInit {
    */
   private _submitSupplement() {
     const fd = this._buildSupplementFormData();
-    const done = () => this._onSubmitted(['/admin/advance-requests', this.requestId]);
+    const done = () => {
+      this.saving.set(false);
+      this._onSubmitted(['/admin/advance-requests', this.requestId]);
+    };
+    const fail = (msg: string) => (err: HttpErrorResponse) => {
+      this.saving.set(false);
+      this.errorMsg.set(err.error?.message || msg);
+    };
+
+    // 新增追加是「建立即送簽」的單一 POST，連按就會建出兩個批次，故此處同樣受 saving 鎖保護
+    this.saving.set(true);
 
     if (this.supplementRound > 0 && this.isReturned) {
       this.service.updateSupplement(this.requestId, this.supplementRound, fd).subscribe({
         next: () => this.service.submit(this.requestId).subscribe({
           next: done,
-          error: (err: HttpErrorResponse) => this.errorMsg.set(err.error?.message || '送出失敗。'),
+          error: fail('送出失敗。'),
         }),
-        error: (err: HttpErrorResponse) => this.errorMsg.set(err.error?.message || '儲存失敗。'),
+        error: fail('儲存失敗。'),
       });
       return;
     }
 
     this.service.createSupplement(this.requestId, fd).subscribe({
       next: done,
-      error: (err: HttpErrorResponse) => this.errorMsg.set(err.error?.message || '送出失敗。'),
+      error: fail('送出失敗。'),
     });
   }
 

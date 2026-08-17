@@ -44,9 +44,15 @@ export class TravelWriteOffForm implements OnInit {
   private modal          = inject(NgbModal);
   private sanitizer      = inject(DomSanitizer);
 
-  /** undefined = 新增模式；數值 = 編輯模式（出差沖銷申請 ID） */
+  /**
+   * 「已存在於後端的沖銷單 ID」：編輯模式進場即有；新增模式在 create 成功後填入。
+   * 有值即代表後續儲存 / 送出一律走 update，不會再建一張新單。
+   */
   editId: number | null = null;
+  /** 路由模式旗標（僅影響版面呈現），create 成功後不改動 */
   isEdit = false;
+  /** 儲存 / 送出進行中：鎖按鈕 + spinner，避免 multipart 上傳期間連按建出多張單（見 docs/frontend-design.md §8.4.1） */
+  saving = signal(false);
 
   /** 選擇的出差申請 ID（新增模式中由使用者選擇） */
   selectedTravelId: number | null = null;
@@ -306,8 +312,18 @@ export class TravelWriteOffForm implements OnInit {
     ctrl.get('totalPrice')?.setValue(total, {emitEvent: false});
   }
 
+  /**
+   * 表單內按 Enter 不送出（textarea 換行不受影響）。
+   * 否則任一 input 的 Enter 都會觸發 ngSubmit，直接建草稿並跳回列表。
+   */
+  onEnterKey(event: Event) {
+    const tag = (event.target as HTMLElement)?.tagName;
+    if (tag !== 'TEXTAREA') event.preventDefault();
+  }
+
   /** 儲存（草稿或更新，不改變狀態） */
   save() {
+    if (this.saving()) return;
     if (this.itemArray.length === 0) return;
     if (!this.isEdit && !this.selectedTravelId) {
       this.errorMsg.set('請選擇出差單。');
@@ -315,17 +331,23 @@ export class TravelWriteOffForm implements OnInit {
     }
     const fd = this._buildFormData();
     this.errorMsg.set('');
-    const obs = this.isEdit
-      ? this.service.update(this.editId!, fd)
+    this.saving.set(true);
+    // 判斷依據是「後端已有這張單」，不是路由模式：create 成功後重送必須走 update
+    const obs = this.editId
+      ? this.service.update(this.editId, fd)
       : this.service.create(fd);
     obs.subscribe({
       next: () => this.router.navigate(['/admin/travel-write-off-requests']),
-      error: (err: HttpErrorResponse) => this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。'),
+      error: (err: HttpErrorResponse) => {
+        this.saving.set(false);
+        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+      },
     });
   }
 
   /** 送出申請（先儲存再將狀態改為 pending） */
   submitForApproval() {
+    if (this.saving()) return;
     if (this.itemArray.length === 0) return;
     if (!this.isEdit && !this.selectedTravelId) {
       this.errorMsg.set('請選擇出差單。');
@@ -344,19 +366,28 @@ export class TravelWriteOffForm implements OnInit {
     }
     const fd = this._buildFormData();
     this.errorMsg.set('');
-    const save$ = this.isEdit
-      ? this.service.update(this.editId!, fd)
+    this.saving.set(true);
+    const save$ = this.editId
+      ? this.service.update(this.editId, fd)
       : this.service.create(fd);
     save$.subscribe({
       next: saved => {
+        // 草稿已建立 → 記住 ID，後續重送走 update，避免同一筆沖銷被建成兩張單
+        this.editId = saved.id;
         this.service.submit(saved.id).subscribe({
-          next: () => this._onSubmitted(['/admin/travel-write-off-requests']),
+          next: () => {
+            this.saving.set(false);
+            this._onSubmitted(['/admin/travel-write-off-requests']);
+          },
           error: (err: HttpErrorResponse) => {
-            this.errorMsg.set(err.error?.message || '送出失敗，請稍後再試。');
+            this.saving.set(false);
+            this.errorMsg.set(
+              (err.error?.message || '送出失敗，請稍後再試。') + '（草稿已保留，修正後可直接再送出）');
           },
         });
       },
       error: (err: HttpErrorResponse) => {
+        this.saving.set(false);
         this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
       },
     });

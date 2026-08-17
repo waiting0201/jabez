@@ -15,6 +15,10 @@ public class TravelWriteOffRecordConfiguration : IEntityTypeConfiguration<Travel
                .HasMaxLength(30)
                .HasDefaultValue("");
 
+        // 單號唯一（比照其他申請單）：CreateAsync 以 MAX(RequestNo)+1 取號，併發時擋下重複單號
+        builder.HasIndex(w => w.RequestNo)
+               .IsUnique();
+
         builder.Property(w => w.GrandTotal)
                .HasColumnType("decimal(18,2)");
 
