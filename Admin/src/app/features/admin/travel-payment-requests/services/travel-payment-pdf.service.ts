@@ -106,6 +106,8 @@ export class TravelPaymentPdfService {
         const cat = item.category === lastCategory ? '' : item.category;
         lastCategory = item.category;
         bodyRows.push([
+          item.invoiceNo || '',
+          item.invoiceDate ? fmtDate(item.invoiceDate) : '',
           cat,
           item.seqNo.toString(),
           item.itemName,
@@ -113,16 +115,14 @@ export class TravelPaymentPdfService {
           item.quantity,
           fmt(item.totalPrice),
           item.note || '',
-          item.invoiceNo || '',
-          item.invoiceDate ? fmtDate(item.invoiceDate) : '',
         ]);
       }
 
       // 合計列
       bodyRows.push([
-        { content: '合計', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: '合計', colSpan: 7, styles: { halign: 'right', fontStyle: 'bold' } },
         { content: fmt(r.grandTotal), styles: { fontStyle: 'bold', halign: 'right' } },
-        '', '', '',
+        '',
       ]);
 
       autoTable(doc, {
@@ -142,17 +142,17 @@ export class TravelPaymentPdfService {
           cellPadding: { top: 3, bottom: 3, left: 3, right: 3 },
         },
         columnStyles: {
-          0: { cellWidth: cw * 0.08, halign: 'center' },  // 分類
-          1: { cellWidth: cw * 0.05, halign: 'center' },  // 項次
-          2: { cellWidth: cw * 0.22 },                     // 項目說明
-          3: { cellWidth: cw * 0.10, halign: 'right' },    // 單價
-          4: { cellWidth: cw * 0.09, halign: 'center' },   // 數量
-          5: { cellWidth: cw * 0.10, halign: 'right' },    // 總價
-          6: { cellWidth: cw * 0.16 },                     // 備註
-          7: { cellWidth: cw * 0.10, halign: 'center' },   // 發票號碼
-          8: { cellWidth: cw * 0.10, halign: 'center' },   // 發票日期
+          0: { cellWidth: cw * 0.10, halign: 'center' },   // 發票號碼
+          1: { cellWidth: cw * 0.10, halign: 'center' },   // 發票日期
+          2: { cellWidth: cw * 0.08, halign: 'center' },  // 分類
+          3: { cellWidth: cw * 0.05, halign: 'center' },  // 項次
+          4: { cellWidth: cw * 0.22 },                     // 項目說明
+          5: { cellWidth: cw * 0.10, halign: 'right' },    // 單價
+          6: { cellWidth: cw * 0.09, halign: 'center' },   // 數量
+          7: { cellWidth: cw * 0.10, halign: 'right' },    // 總價
+          8: { cellWidth: cw * 0.16 },                     // 備註
         },
-        head: [['分類', '項次', '項目說明', '單價', '數量/單位', '總價', '備註', '發票號碼', '發票日期']],
+        head: [['發票號碼', '發票日期', '分類', '項次', '項目說明', '單價', '數量/單位', '總價', '備註']],
         body: bodyRows,
       });
 
