@@ -82,6 +82,15 @@
               </div>
             }
           </div>
+          @if (selectedAdvance; as adv) {
+            @if (adv.pendingWriteOffTotal > 0) {
+              <div class="text-muted small mt-2">
+                此預支單另有
+                <span class="fw-600 text-accent">{{ adv.pendingWriteOffTotal | number:'1.0-0' }}</span>
+                元的沖銷單尚在草稿 / 簽核中（未計入「已沖銷」），請確認不要重複沖同一批費用。
+              </div>
+            }
+          }
           @if (advanceRequests().length === 0) {
             <div class="text-muted small mt-2">目前無可沖銷的預支單（需已核准且已撥款）。</div>
           }
@@ -164,7 +173,7 @@
     </div>
   }
 
-  <form [formGroup]="form" (ngSubmit)="save()">
+  <form [formGroup]="form" (ngSubmit)="save()" (keydown.enter)="onEnterKey($event)">
   <div class="row g-4">
   <div class="col-12 col-xl-10">
 
@@ -405,16 +414,19 @@
 
     <div class="mt-6 flex gap-2">
       <button type="submit" class="btn btn-outline-secondary"
-              [disabled]="itemArray.length === 0 || isAnyOcrPending || (!isEdit && !selectedAdvanceId)">
+              [disabled]="itemArray.length === 0 || isAnyOcrPending || saving() || (!isEdit && !selectedAdvanceId)">
+        @if (saving()) {
+          <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        }
         {{ isEdit ? '儲存' : '儲存草稿' }}
       </button>
       <button type="button" class="btn btn-primary"
-              [disabled]="itemArray.length === 0 || isAnyOcrPending || (!isEdit && !selectedAdvanceId)"
+              [disabled]="itemArray.length === 0 || isAnyOcrPending || saving() || (!isEdit && !selectedAdvanceId)"
               (click)="submitForApproval()">
-        @if (isAnyOcrPending) {
+        @if (isAnyOcrPending || saving()) {
           <span class="spinner-border spinner-border-sm me-1" role="status"></span>
         }
-        送出申請
+        {{ saving() ? '處理中…' : '送出申請' }}
       </button>
       <a routerLink="/admin/write-off-requests" class="btn btn-outline-secondary">取消</a>
     </div>

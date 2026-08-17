@@ -100,7 +100,7 @@
     </div>
   }
 
-  <form [formGroup]="form" (ngSubmit)="save()">
+  <form [formGroup]="form" (ngSubmit)="save()" (keydown.enter)="onEnterKey($event)">
     <div class="row g-4">
       <div class="col-12 col-xl-10">
 
@@ -439,24 +439,36 @@
           <div class="mt-6 flex gap-2">
             <!-- 新增追加無草稿階段（後端建立即送簽），只有已退回的批次可先儲存 -->
             @if (isReturned) {
-              <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid || itemArray.length === 0">
+              <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid || itemArray.length === 0 || saving()">
+                @if (saving()) {
+                  <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                }
                 儲存
               </button>
             }
-            <button type="button" class="btn btn-primary" [disabled]="form.invalid || itemArray.length === 0"
+            <button type="button" class="btn btn-primary" [disabled]="form.invalid || itemArray.length === 0 || saving()"
                     (click)="submitForApproval()">
-              {{ isReturned ? '重新送出追加簽核' : '送出追加簽核' }}
+              @if (saving()) {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+              }
+              {{ saving() ? '處理中…' : (isReturned ? '重新送出追加簽核' : '送出追加簽核') }}
             </button>
             <a [routerLink]="['/admin/advance-requests', requestId]" class="btn btn-outline-secondary">取消</a>
           </div>
         } @else if (!isReadOnly) {
           <div class="mt-6 flex gap-2">
-            <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid || itemArray.length === 0">
+            <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid || itemArray.length === 0 || saving()">
+              @if (saving()) {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+              }
               {{ isEdit ? '儲存' : '儲存草稿' }}
             </button>
-            <button type="button" class="btn btn-primary" [disabled]="form.invalid || itemArray.length === 0"
+            <button type="button" class="btn btn-primary" [disabled]="form.invalid || itemArray.length === 0 || saving()"
                     (click)="submitForApproval()">
-              送出申請
+              @if (saving()) {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+              }
+              {{ saving() ? '處理中…' : '送出申請' }}
             </button>
             <a routerLink="/admin/advance-requests" class="btn btn-outline-secondary">取消</a>
           </div>

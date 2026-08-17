@@ -249,13 +249,23 @@ export class LeaveRevocationForm implements OnInit {
     };
   }
 
+  /**
+   * 表單內按 Enter 不送出（textarea 換行不受影響）。
+   * 否則任一 input 的 Enter 都會觸發 ngSubmit，直接建草稿並跳回列表。
+   */
+  onEnterKey(event: Event) {
+    const tag = (event.target as HTMLElement)?.tagName;
+    if (tag !== 'TEXTAREA') event.preventDefault();
+  }
+
   /** 儲存草稿（新增或編輯退回件） */
   save() {
     if (!this.canSave) return;
     this.errorMsg.set('');
     this.saving.set(true);
     const payload = this.buildPayload();
-    const save$ = this.isEdit
+    // 判斷依據是「後端已有這張單」，不是路由模式：create 成功後重送必須走 update
+    const save$ = this.revocationId
       ? this.service.update(this.revocationId, payload)
       : this.service.create(this.leaveRequestId, payload);
     save$.subscribe({
@@ -286,16 +296,20 @@ export class LeaveRevocationForm implements OnInit {
     this.errorMsg.set('');
     this.saving.set(true);
     const payload = this.buildPayload();
-    const save$ = this.isEdit
+    // 判斷依據是「後端已有這張單」，不是路由模式：create 成功後重送必須走 update
+    const save$ = this.revocationId
       ? this.service.update(this.revocationId, payload)
       : this.service.create(this.leaveRequestId, payload);
     save$.subscribe({
       next: saved => {
+        // 草稿已建立 → 記住 ID，後續重送走 update，避免同一次銷假被建成兩張單
+        this.revocationId = saved.id;
         this.service.submit(saved.id).subscribe({
           next: () => this.router.navigate(['/admin/leave-requests']),
           error: (err: HttpErrorResponse) => {
             this.saving.set(false);
-            this.errorMsg.set(err.error?.message || '送出失敗，請稍後再試。');
+            this.errorMsg.set(
+              (err.error?.message || '送出失敗，請稍後再試。') + '（草稿已保留，修正後可直接再送出）');
           },
         });
       },

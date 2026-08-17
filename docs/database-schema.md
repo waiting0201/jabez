@@ -47,10 +47,10 @@
 | `AdvanceRequest` | 預支申請（含 `EstimatedRefundDate / RefundedAt / RefundedByUserId` 退款欄位、`RefundAmount / RefundedAmount` 退款金額；撥款資料統一由 `AdvanceRequestInstallment[]` 表達，父表無撥款 cache 欄位；`CurrentRoundNo` 最新預支批次號，> 1 且狀態為 pending/returned 表示有進行中的追加） |
 | `AdvanceRequestItem` | 預支明細（含 `RoundNo` 所屬預支批次，1 = 原始預支、≥2 = 第 N 次追加） |
 | `AdvanceRequestSupplement` | **追加預支批次**（只存 `RoundNo ≥ 2`；Round 1 即父單本身，不入此表）。欄位：`RoundNo / AdvanceDate / Reason / CreatedById / CreatedAt` + 駁回回滾快照 `PrevCurrentStepOrder / PrevReviewedAt / PrevReviewedById / PrevReviewNote`；unique(`AdvanceRequestId`,`RoundNo`)。**不存金額欄位**，各批次金額一律由 `SUM(AdvanceRequestItems WHERE RoundNo = N)` 推導 |
-| `WriteOffRecord` | 預支沖銷申請（獨立簽核流程，關聯 AdvanceRequest，含 ApprovalStatus/CurrentStepOrder；`PendingClose` = 財務已登記結案，待整張單核准才寫 AdvanceRequest.IsClosed，退回/拒絕時清除） |
+| `WriteOffRecord` | 預支沖銷申請（獨立簽核流程，關聯 AdvanceRequest，含 ApprovalStatus/CurrentStepOrder；`PendingClose` = 財務已登記結案，待整張單核准才寫 AdvanceRequest.IsClosed，退回/拒絕時清除；`RequestNo` **唯一索引**，2026-08 補上 EF 宣告，擋併發取到同號） |
 | `WriteOffItem` | 沖銷明細（含發票號碼、檔案上傳；`CheckPaid / CheckPaidAt / CheckPaidById` 支票已支付註記 —— 支票由公司直接付給廠商，不走撥款分期，僅由財務管理部（`DepartmentCodes.FinanceStep`）/ Superadmin 於簽核頁勾選；`CheckPaidById` FK→Users **NO_ACTION**，須列入刪除使用者的清洗清單） |
 | `WriteOffAttachment` | 預支沖銷整單批次附件（照片 / PDF，FK Cascade，存 `request-attachments`） |
-| `TravelWriteOffRecord` | 出差預支沖銷申請（獨立簽核流程，關聯 TravelRequest；`PendingClose` 語意同 WriteOffRecord，對應 TravelRequest.IsClosed） |
+| `TravelWriteOffRecord` | 出差預支沖銷申請（獨立簽核流程，關聯 TravelRequest；`PendingClose` 語意同 WriteOffRecord，對應 TravelRequest.IsClosed；`RequestNo` **唯一索引**，2026-08 新增，migration 內含空白／重複單號清洗） |
 | `TravelWriteOffItem` | 出差預支沖銷明細（含發票號碼、檔案上傳） |
 | `RequestDesignatedReviewer` | 申請人指定審核者清單（多人依序審核；**ApprovalStepOrder** 綁定所屬 designated 步驟，支援一條流程多個指定步驟；**SelectedDepartmentId** 記錄第二步選的部門；唯一索引 `(RequestType, RequestId, ApprovalStepOrder, ReviewerId)`） |
 | `AttendanceRecord` | 出勤打卡紀錄（每人每天一筆，含 GPS；`IsClockOutAuto` 標記下班時間為登入時系統補卡） |

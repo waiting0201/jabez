@@ -622,6 +622,28 @@ dotnet ef migrations add <DescriptiveName>
         → dotnet ef migrations add <Name> → 啟動 API 自動套用
 ```
 
+### 8.4 索引一律宣告在 Configuration，不可只寫在手寫 Migration（**重要**）
+
+在 Migration 裡直接 `migrationBuilder.CreateIndex(...)` 但**沒有**在 `<Entity>Configuration.cs` 補
+`builder.HasIndex(...)`，資料庫會有索引、model snapshot 卻沒有 → **設定與資料庫漂移**：
+
+- 後續 `migrations add` 完全看不到這個索引，也不會維護它
+- Code Review 讀 Configuration 會誤判「這個欄位沒有唯一約束」而寫出仰賴唯一索引擋併發的邏輯
+- 2026-08 踩過：`WriteOffRecords.RequestNo` 的唯一索引只存在於手寫 migration，Handler 註解寫著「唯一索引保護並發」，但從 EF 模型完全看不出來；同期新增的 `TravelWriteOffRecords` 就漏了索引
+
+**補宣告時，Migration 必須寫成可重入**（既有 DB 已有索引、全新 DB 沒有，同一份 migration 都要能跑）：
+
+```csharp
+migrationBuilder.Sql("""
+    -- 先清洗會違反唯一性的舊資料（空白值補流水號、重複值加後綴）
+    IF NOT EXISTS (SELECT 1 FROM sys.indexes
+                   WHERE name = 'IX_Xxx_RequestNo' AND object_id = OBJECT_ID('Xxx'))
+        CREATE UNIQUE INDEX IX_Xxx_RequestNo ON Xxx (RequestNo);
+    """);
+```
+
+參考：[20260817015432_AddWriteOffRequestNoUniqueIndex](../Api/Data/Migrations/)
+
 ---
 
 ## 9. JWT 認證
@@ -914,6 +936,19 @@ public sealed class GcisService(HttpClient http, ILogger<GcisService> logger) : 
   private static bool CanFilterByApplicant(bool isSuperAdmin, string? deptCode)
       => isSuperAdmin || DepartmentCodes.FinancialAndAbove.Contains(deptCode ?? "");
   ```
+
+### 13.7 選項端點與寫入端點的可視範圍必須一致
+
+「下拉能選到的東西」與「送出時後端接受的東西」**必須同一組條件**，否則使用者選得到卻送不出去，
+而且錯誤訊息通常是無從理解的 404。
+
+2026-08 踩過：`GET /write-off-requests/available-advances` 對 Superadmin 回傳**所有人**的預支單，
+但 `POST /write-off-requests` 的查詢寫死 `x.SubmittedById == submittedById` → Superadmin 選了別人的
+預支單，送出必定 `404 AdvanceRequest not found`（同一個 Handler 的 Update / Delete / GetById 都有放行
+Superadmin，只有 Create 沒有）。
+
+**Checklist**：新增 / 修改「先選一個父單再建子單」的流程時，比對三處是否同一條件 ——
+① 選項端點的 `Where`、② 寫入端點載入父單的 `Where`、③ 同 Handler 其他方法的可視範圍。
 
 - **選項端點**：不符資格回 `403`（比照 `status=director_pending` 的擋法）
 - **列表篩選參數**：不符資格**靜默忽略**（當成沒帶），不回 403 —— 篩選只會縮小自己看得到的範圍，回錯誤反而讓正常瀏覽變脆弱

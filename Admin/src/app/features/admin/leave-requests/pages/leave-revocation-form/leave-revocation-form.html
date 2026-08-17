@@ -43,7 +43,7 @@
     </div>
   }
 
-  <form [formGroup]="form" (ngSubmit)="save()">
+  <form [formGroup]="form" (ngSubmit)="save()" (keydown.enter)="onEnterKey($event)">
     <div class="row g-4">
       <div class="col-12 col-xl-9">
 
@@ -182,10 +182,16 @@
         @if (!isReadOnly) {
           <div class="mt-6 flex gap-2">
             <button type="submit" class="btn btn-outline-secondary" [disabled]="!canSave">
+              @if (saving()) {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+              }
               {{ isEdit ? '儲存' : '儲存草稿' }}
             </button>
             <button type="button" class="btn btn-primary" [disabled]="!canSave" (click)="submitForApproval()">
-              {{ isReturned ? '重新送出銷假申請' : '送出銷假申請' }}
+              @if (saving()) {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+              }
+              {{ saving() ? '處理中…' : (isReturned ? '重新送出銷假申請' : '送出銷假申請') }}
             </button>
             <a routerLink="/admin/leave-requests" class="btn btn-outline-secondary">取消</a>
           </div>

@@ -114,6 +114,15 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 | 第 2 次沖銷 | 3,000 | 15,000 | **3,000** |
 | | | | 合計 5,000 = 總超支 |
 
+**「前次已沖銷」的判定＝已核准且核准時間早於本單**（2026-08 修正，[`WriteOffRefundCalculator.PriorApprovedTotalAsync`](../../Api/Common/WriteOffRefundCalculator.cs)）：
+
+- 本單尚未核准（財務核准當下計算）→ 前次＝**當下全部已核准**的其他沖銷單
+- 本單已核准（核准後修改撥款明細 / 詳情頁顯示）→ 前次＝**`ReviewedAt` 早於本單**者；同時間以 Id 較小者為前序；舊資料 `ReviewedAt` 為 null 視為更早
+- ⚠️ 原本以 **Id 較小** 判定前序，但沖銷單的**建立順序與核准順序未必一致**：較晚建立卻先核准的單會把同一段超支算成自己的增額，之後較早建立的單再算一次 → **同一筆超支重複撥款**
+- EF 版（`WriteOffRequestHandler` / `ApprovalTaskHandler` 共用同一支）與 Dapper 版（`WriteOffRequestReadService.BaseSql` 的 `AdvanceWrittenOffTotal` 子查詢）**條件必須一致**，否則畫面顯示的差額與實際寫入的撥款金額會對不起來
+
+**「已沖銷金額」一律只計已核准**：可沖銷預支單下拉（`GET /write-off-requests/available-advances`）原本算「非 rejected」（含草稿 / 簽核中），與詳情頁的「已核准」基準不同，同一張預支單在兩個畫面顯示不同餘額。現統一為**已核准**；草稿 / 簽核中 / 已退回的金額另以 `PendingWriteOffTotal` 帶出，表單顯示「另有 N 元沖銷中」提示，不計入待沖銷餘額。
+
 **規則**：
 
 - **財務核准當下必填**（`RefundDue > 0` 時）：走既有的 `PATCH /approval-tasks/write_off/{id}/review` 的 `installments` 欄位，與審核同交易原子寫入。`RefundDue = 0`（未超支）則不要求、UI 也不顯示撥款區塊
