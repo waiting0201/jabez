@@ -71,7 +71,7 @@
 | `LanguageAbility` | 語言能力（語言 / 聽 / 說 / 讀 / 寫，皆 good 或 fair） |
 | `JobTransferRecord` | 職務調整歷史（生效日 / 原單位 / 轉調單位 / 原職務 / 轉調職務，皆字串 snapshot） |
 | `RewardPunishmentRecord` | 獎懲歷史（生效日 / 類別 reward 或 punishment / 細項 / 次數 / 原由） |
-| `SalaryAdjustmentRecord` | 薪資調整歷史（生效日 / 底薪 / 其他加給 / 調整差額 / 伙食津貼 / 合計 / 備註）。**儲存後會把最新生效底薪自動同步至 `User.BaseSalary`**。2026-08 移除職務加給 / 主管加給 / 外派加給欄位（DB 欄位保留不 DROP，程式已不讀寫） |
+| `SalaryAdjustmentRecord` | 薪資調整歷史（生效日 / 底薪 / 其他加給 / 代扣代付款 / 伙食津貼 / 合計 / 備註）。**儲存後會把最新生效底薪自動同步至 `User.BaseSalary`**。2026-08 移除職務加給 / 主管加給 / 外派加給欄位（DB 欄位保留不 DROP，程式已不讀寫） |
 | `HealthInsuranceDependent` | 健保眷屬（姓名 / 關係 / 身分證號 / 出生日期）。每位眷屬會在薪資公式中按一份員工健保費計算，最多計 3 口 |
 
 ---

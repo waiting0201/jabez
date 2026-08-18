@@ -175,7 +175,7 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
         var allowanceRows = new (string Label, decimal Value)[]
         {
             ("其他加給", emp.OtherAllowanceAmount),
-            ("調整差額", emp.AdjustmentDifference),
+            ("代扣代付款", emp.AdjustmentDifference),
         };
         int rowIdx = 3; // 已有 底薪/伙食/加班 3 列
         foreach (var (label, value) in allowanceRows)

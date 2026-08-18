@@ -314,7 +314,7 @@ export class HrProfilePdfService {
           styles:     { font: F, fontSize: 7, cellPadding: 1.5, textColor: TEXT_PRIMARY, halign: 'right' },
           headStyles: { fillColor: FOREST, textColor: WHITE, fontStyle: 'bold', halign: 'center', fontSize: 7 },
           columnStyles: { 0: { halign: 'center' }, 6: { halign: 'left' } },
-          head: [['生效日', '底薪', '其他', '差額', '伙食', '合計', '備註']],
+          head: [['生效日', '底薪', '其他', '代扣代付', '伙食', '合計', '備註']],
           body: profile.salaryAdjustmentRecords.map(r => [
             fmtD(r.effectiveDate),
             fmtMoney(r.baseSalary),

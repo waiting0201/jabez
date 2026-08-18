@@ -31,7 +31,7 @@ public class User
     // 2026-08 移除職務加給 / 主管加給 / 外派加給，僅保留以下兩項。
     // DB 欄位（Users.PositionAllowance / DutyAllowance / OverseasAllowance）刻意保留作歷史封存，未產 DROP migration。
     public decimal?  OtherAllowance       { get; set; }   // 其他加給
-    public decimal?  AdjustmentDifference { get; set; }   // 調整差額
+    public decimal?  AdjustmentDifference { get; set; }   // 代扣代付款（識別字沿用 AdjustmentDifference，未改欄位名）
     public bool      SendPaySlip     { get; set; }   // 是否寄送薪資表
 
     // 期初補休時數：系統上線前（115/1~6/30）以紙本累計、匯入系統的補休時數；

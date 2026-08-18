@@ -46,7 +46,7 @@ export class PayrollList implements OnInit {
 
   employees = computed(() => this.payroll()?.employees ?? []);
 
-  /** 2 種加給總計（其他加給 + 調整差額） */
+  /** 2 種加給總計（其他加給 + 代扣代付款） */
   totalAllowances(p: MonthlyPayroll): number {
     return p.totalOtherAllowance
          + p.totalAdjustmentDifference;

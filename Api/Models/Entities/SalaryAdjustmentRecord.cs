@@ -14,7 +14,7 @@ public class SalaryAdjustmentRecord
     public decimal  BaseSalary           { get; set; }        // 底薪
     // 2026-08 移除職務加給 / 主管加給 / 外派加給；DB 欄位保留作歷史封存，未產 DROP migration。
     public decimal? OtherAllowance       { get; set; }        // 其他加給
-    public decimal? AdjustmentDifference { get; set; }        // 調整差額
+    public decimal? AdjustmentDifference { get; set; }        // 代扣代付款（識別字沿用 AdjustmentDifference，未改欄位名）
     public decimal? MealAllowance        { get; set; }        // 伙食費
     public decimal  TotalAmount          { get; set; }        // 合計金額
     public string?  Notes                { get; set; }        // 備註
