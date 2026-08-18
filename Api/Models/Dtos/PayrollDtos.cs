@@ -35,11 +35,8 @@ public sealed record EmployeePayrollDto(
     int               DependentCount   = 0,
     int               CappedDependentCount = 0,
     // 加給（自動同步自最新 SalaryAdjustmentRecord，計入 NetSalary 的加項）
-    decimal   PositionAllowance    = 0m,
-    decimal   DutyAllowance        = 0m,
     decimal   OtherAllowanceAmount = 0m,
     decimal   AdjustmentDifference = 0m,
-    decimal   OverseasAllowance    = 0m,
     // 勞退自提（%，直接欄位、非覆寫，計入 NetSalary 的扣項）
     decimal?  LaborPensionSelfContributionRate = null,
     decimal   LaborPensionSelfDeduction        = 0m,
@@ -72,11 +69,8 @@ public sealed record MonthlyPayrollDto(
     decimal TotalFamilyCareLeaveDeduction,
     decimal TotalOtherDeduction,
     decimal TotalNetSalary,
-    decimal TotalPositionAllowance    = 0m,
-    decimal TotalDutyAllowance        = 0m,
     decimal TotalOtherAllowance       = 0m,
     decimal TotalAdjustmentDifference = 0m,
-    decimal TotalOverseasAllowance    = 0m,
     decimal TotalLaborPensionSelfDeduction = 0m,
     decimal TotalParentalLeaveDays         = 0m);
 

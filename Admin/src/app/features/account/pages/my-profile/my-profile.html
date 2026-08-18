@@ -129,24 +129,12 @@
                   <div>{{ u.healthInsuranceOverride != null ? ('NT$ ' + (u.healthInsuranceOverride | number:'1.0-0')) : '—（依級距）' }}</div>
                 </div>
                 <div class="col-12 col-md-4">
-                  <div class="form-label fw-500 text-muted small">職務加給</div>
-                  <div>{{ u.positionAllowance != null ? ('NT$ ' + (u.positionAllowance | number:'1.0-0')) : '—' }}</div>
-                </div>
-                <div class="col-12 col-md-4">
-                  <div class="form-label fw-500 text-muted small">主管加給</div>
-                  <div>{{ u.dutyAllowance != null ? ('NT$ ' + (u.dutyAllowance | number:'1.0-0')) : '—' }}</div>
-                </div>
-                <div class="col-12 col-md-4">
                   <div class="form-label fw-500 text-muted small">其他加給</div>
                   <div>{{ u.otherAllowance != null ? ('NT$ ' + (u.otherAllowance | number:'1.0-0')) : '—' }}</div>
                 </div>
                 <div class="col-12 col-md-4">
                   <div class="form-label fw-500 text-muted small">調整差額</div>
                   <div>{{ u.adjustmentDifference != null ? ('NT$ ' + (u.adjustmentDifference | number:'1.0-0')) : '—' }}</div>
-                </div>
-                <div class="col-12 col-md-4">
-                  <div class="form-label fw-500 text-muted small">外派加給</div>
-                  <div>{{ u.overseasAllowance != null ? ('NT$ ' + (u.overseasAllowance | number:'1.0-0')) : '—' }}</div>
                 </div>
               </div>
             </div>
@@ -641,24 +629,21 @@
               <div class="table-responsive mb-4">
                 <table class="table table-sm align-middle mb-0">
                   <thead class="table-light">
-                    <tr><th>生效日</th><th>底薪</th><th>職務</th><th>主管</th><th>其他</th><th>差額</th><th>海外</th><th>伙食</th><th>合計</th><th>備註</th></tr>
+                    <tr><th>生效日</th><th>底薪</th><th>其他</th><th>差額</th><th>伙食</th><th>合計</th><th>備註</th></tr>
                   </thead>
                   <tbody>
                     @for (r of p.salaryAdjustmentRecords; track r.id ?? $index) {
                       <tr>
                         <td>{{ r.effectiveDate?.slice(0,10) || '—' }}</td>
                         <td class="text-end">{{ r.baseSalary != null ? (r.baseSalary | number:'1.0-0') : '—' }}</td>
-                        <td class="text-end">{{ r.positionAllowance != null ? (r.positionAllowance | number:'1.0-0') : '—' }}</td>
-                        <td class="text-end">{{ r.dutyAllowance != null ? (r.dutyAllowance | number:'1.0-0') : '—' }}</td>
                         <td class="text-end">{{ r.otherAllowance != null ? (r.otherAllowance | number:'1.0-0') : '—' }}</td>
                         <td class="text-end">{{ r.adjustmentDifference != null ? (r.adjustmentDifference | number:'1.0-0') : '—' }}</td>
-                        <td class="text-end">{{ r.overseasAllowance != null ? (r.overseasAllowance | number:'1.0-0') : '—' }}</td>
                         <td class="text-end">{{ r.mealAllowance != null ? (r.mealAllowance | number:'1.0-0') : '—' }}</td>
                         <td class="text-end fw-500">{{ r.totalAmount != null ? (r.totalAmount | number:'1.0-0') : (salaryRowTotal(r) | number:'1.0-0') }}</td>
                         <td>{{ r.notes || '—' }}</td>
                       </tr>
                     } @empty {
-                      <tr><td colspan="10" class="text-center text-muted small py-3">尚無紀錄</td></tr>
+                      <tr><td colspan="7" class="text-center text-muted small py-3">尚無紀錄</td></tr>
                     }
                   </tbody>
                 </table>

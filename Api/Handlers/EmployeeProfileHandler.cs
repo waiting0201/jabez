@@ -368,11 +368,8 @@ public sealed class EmployeeProfileHandler(
                     Id = Guid.NewGuid(), UserId = userId,
                     EffectiveDate        = r.EffectiveDate,
                     BaseSalary           = r.BaseSalary,
-                    PositionAllowance    = r.PositionAllowance,
-                    DutyAllowance        = r.DutyAllowance,
                     OtherAllowance       = r.OtherAllowance,
                     AdjustmentDifference = r.AdjustmentDifference,
-                    OverseasAllowance    = r.OverseasAllowance,
                     MealAllowance        = r.MealAllowance,
                     TotalAmount          = r.TotalAmount,
                     Notes                = r.Notes,
@@ -393,8 +390,8 @@ public sealed class EmployeeProfileHandler(
             await db.SaveChangesAsync();
 
             // ── 5. 薪資同步：找 EffectiveDate <= 今日（Asia/Taipei）的最新薪資紀錄 ──
-            // 取得 EffectiveDate 最大（最新有效）的薪資調整紀錄，同步至 User 的 7 個薪資欄位
-            // （底薪 + 6 種加給）；無符合不變。未動薪資子表時（touchSalary = false）整段跳過。
+            // 取得 EffectiveDate 最大（最新有效）的薪資調整紀錄，同步至 User 的 4 個薪資欄位
+            // （底薪 + 伙食費 + 其他加給 + 調整差額）；無符合不變。未動薪資子表時（touchSalary = false）整段跳過。
             var today = Clock.Now.Date;
             var latestSalary = salaryEntities
                 .Where(s => s.EffectiveDate.Date <= today)
@@ -405,11 +402,8 @@ public sealed class EmployeeProfileHandler(
             {
                 user.BaseSalary           = latestSalary.BaseSalary;
                 user.MealAllowance        = latestSalary.MealAllowance;
-                user.PositionAllowance    = latestSalary.PositionAllowance;
-                user.DutyAllowance        = latestSalary.DutyAllowance;
                 user.OtherAllowance       = latestSalary.OtherAllowance;
                 user.AdjustmentDifference = latestSalary.AdjustmentDifference;
-                user.OverseasAllowance    = latestSalary.OverseasAllowance;
                 user.UpdatedAt            = now;
                 await db.SaveChangesAsync();
             }

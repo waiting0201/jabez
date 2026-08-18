@@ -29,8 +29,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.IsLowIncome, u.LowIncomeProofUrl,
                 u.IsDisabled, u.DisabledProofUrl,
                 u.HealthInsuranceOverride, u.LaborInsuranceOverride,
-                u.PositionAllowance, u.DutyAllowance, u.OtherAllowance,
-                u.AdjustmentDifference, u.OverseasAllowance,
+                u.OtherAllowance, u.AdjustmentDifference,
                 u.CompensatoryOpeningHours,
                 u.LaborPensionSelfContributionRate,
                 r.Id AS RoleId
@@ -62,8 +61,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             bool IsLowIncome, string? LowIncomeProofUrl,
             bool IsDisabled, string? DisabledProofUrl,
             decimal? HealthInsuranceOverride, decimal? LaborInsuranceOverride,
-            decimal? PositionAllowance, decimal? DutyAllowance, decimal? OtherAllowance,
-            decimal? AdjustmentDifference, decimal? OverseasAllowance,
+            decimal? OtherAllowance, decimal? AdjustmentDifference,
             decimal CompensatoryOpeningHours,
             decimal? LaborPensionSelfContributionRate,
             List<string> RoleIds)>();
@@ -89,8 +87,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     (bool)row.IsLowIncome, (string?)row.LowIncomeProofUrl,
                     (bool)row.IsDisabled, (string?)row.DisabledProofUrl,
                     (decimal?)row.HealthInsuranceOverride, (decimal?)row.LaborInsuranceOverride,
-                    (decimal?)row.PositionAllowance, (decimal?)row.DutyAllowance, (decimal?)row.OtherAllowance,
-                    (decimal?)row.AdjustmentDifference, (decimal?)row.OverseasAllowance,
+                    (decimal?)row.OtherAllowance, (decimal?)row.AdjustmentDifference,
                     (decimal)row.CompensatoryOpeningHours,
                     (decimal?)row.LaborPensionSelfContributionRate,
                     []);
@@ -117,8 +114,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.IsLowIncome, kv.Value.LowIncomeProofUrl,
             kv.Value.IsDisabled, kv.Value.DisabledProofUrl,
             kv.Value.HealthInsuranceOverride, kv.Value.LaborInsuranceOverride,
-            kv.Value.PositionAllowance, kv.Value.DutyAllowance, kv.Value.OtherAllowance,
-            kv.Value.AdjustmentDifference, kv.Value.OverseasAllowance,
+            kv.Value.OtherAllowance, kv.Value.AdjustmentDifference,
             kv.Value.CompensatoryOpeningHours,
             kv.Value.LaborPensionSelfContributionRate));
     }
@@ -181,8 +177,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.IsLowIncome, u.LowIncomeProofUrl,
                 u.IsDisabled, u.DisabledProofUrl,
                 u.HealthInsuranceOverride, u.LaborInsuranceOverride,
-                u.PositionAllowance, u.DutyAllowance, u.OtherAllowance,
-                u.AdjustmentDifference, u.OverseasAllowance,
+                u.OtherAllowance, u.AdjustmentDifference,
                 u.CompensatoryOpeningHours,
                 u.LaborPensionSelfContributionRate,
                 r.Id AS RoleId
@@ -215,8 +210,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             bool IsLowIncome, string? LowIncomeProofUrl,
             bool IsDisabled, string? DisabledProofUrl,
             decimal? HealthInsuranceOverride, decimal? LaborInsuranceOverride,
-            decimal? PositionAllowance, decimal? DutyAllowance, decimal? OtherAllowance,
-            decimal? AdjustmentDifference, decimal? OverseasAllowance,
+            decimal? OtherAllowance, decimal? AdjustmentDifference,
             decimal CompensatoryOpeningHours,
             decimal? LaborPensionSelfContributionRate,
             List<string> RoleIds)>();
@@ -242,8 +236,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     (bool)row.IsLowIncome, (string?)row.LowIncomeProofUrl,
                     (bool)row.IsDisabled, (string?)row.DisabledProofUrl,
                     (decimal?)row.HealthInsuranceOverride, (decimal?)row.LaborInsuranceOverride,
-                    (decimal?)row.PositionAllowance, (decimal?)row.DutyAllowance, (decimal?)row.OtherAllowance,
-                    (decimal?)row.AdjustmentDifference, (decimal?)row.OverseasAllowance,
+                    (decimal?)row.OtherAllowance, (decimal?)row.AdjustmentDifference,
                     (decimal)row.CompensatoryOpeningHours,
                     (decimal?)row.LaborPensionSelfContributionRate,
                     []);
@@ -270,8 +263,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.IsLowIncome, kv.Value.LowIncomeProofUrl,
             kv.Value.IsDisabled, kv.Value.DisabledProofUrl,
             kv.Value.HealthInsuranceOverride, kv.Value.LaborInsuranceOverride,
-            kv.Value.PositionAllowance, kv.Value.DutyAllowance, kv.Value.OtherAllowance,
-            kv.Value.AdjustmentDifference, kv.Value.OverseasAllowance,
+            kv.Value.OtherAllowance, kv.Value.AdjustmentDifference,
             kv.Value.CompensatoryOpeningHours,
             kv.Value.LaborPensionSelfContributionRate));
 
@@ -297,8 +289,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.IsLowIncome, u.LowIncomeProofUrl,
                 u.IsDisabled, u.DisabledProofUrl,
                 u.HealthInsuranceOverride, u.LaborInsuranceOverride,
-                u.PositionAllowance, u.DutyAllowance, u.OtherAllowance,
-                u.AdjustmentDifference, u.OverseasAllowance,
+                u.OtherAllowance, u.AdjustmentDifference,
                 u.CompensatoryOpeningHours,
                 u.LaborPensionSelfContributionRate,
                 r.Id AS RoleId
@@ -336,8 +327,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 (bool)row.IsLowIncome, (string?)row.LowIncomeProofUrl,
                 (bool)row.IsDisabled, (string?)row.DisabledProofUrl,
                 (decimal?)row.HealthInsuranceOverride, (decimal?)row.LaborInsuranceOverride,
-                (decimal?)row.PositionAllowance, (decimal?)row.DutyAllowance, (decimal?)row.OtherAllowance,
-                (decimal?)row.AdjustmentDifference, (decimal?)row.OverseasAllowance,
+                (decimal?)row.OtherAllowance, (decimal?)row.AdjustmentDifference,
                 (decimal)row.CompensatoryOpeningHours,
                 (decimal?)row.LaborPensionSelfContributionRate);
 

@@ -74,11 +74,8 @@ export class MyProfile implements OnInit {
 
   salaryRowTotal(r: SalaryAdjustmentRecord): number {
     return (+(r.baseSalary ?? 0))
-      + (+(r.positionAllowance ?? 0))
-      + (+(r.dutyAllowance ?? 0))
       + (+(r.otherAllowance ?? 0))
       + (+(r.adjustmentDifference ?? 0))
-      + (+(r.overseasAllowance ?? 0))
       + (+(r.mealAllowance ?? 0));
   }
 

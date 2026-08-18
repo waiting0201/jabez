@@ -139,8 +139,7 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
         var fmt = (decimal n) => n.ToString("N0");
         var hireDateStr = emp.HireDate?.ToString("yyyy/MM/dd") ?? "---";
         var totalEarnings = emp.BaseSalary + emp.MealAllowance + emp.OvertimePay
-                          + emp.PositionAllowance + emp.DutyAllowance + emp.OtherAllowanceAmount
-                          + emp.AdjustmentDifference + emp.OverseasAllowance
+                          + emp.OtherAllowanceAmount + emp.AdjustmentDifference
                           + emp.HolidayAllowance + emp.OtherAddition;
         var totalDeductions = emp.LaborInsurance + emp.HealthInsurance
                             + emp.PersonalLeaveDeduction + emp.SickLeaveDeduction + emp.MenstrualLeaveDeduction
@@ -172,14 +171,11 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
             <tr style="background:#FDFAF5"><td style="padding:8px 12px">伙食費</td><td style="padding:8px 12px;text-align:right">{fmt(emp.MealAllowance)}</td></tr>
             <tr><td style="padding:8px 12px">加班費</td><td style="padding:8px 12px;text-align:right">{fmt(emp.OvertimePay)}</td></tr>
             """;
-        // 5 種加給（值為 0 不顯示）
+        // 2 種加給（值為 0 不顯示）
         var allowanceRows = new (string Label, decimal Value)[]
         {
-            ("職務加給", emp.PositionAllowance),
-            ("主管加給", emp.DutyAllowance),
             ("其他加給", emp.OtherAllowanceAmount),
             ("調整差額", emp.AdjustmentDifference),
-            ("外派加給", emp.OverseasAllowance),
         };
         int rowIdx = 3; // 已有 底薪/伙食/加班 3 列
         foreach (var (label, value) in allowanceRows)

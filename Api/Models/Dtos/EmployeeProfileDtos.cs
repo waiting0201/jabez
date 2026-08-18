@@ -62,11 +62,8 @@ public sealed record SalaryAdjustmentRecordDto(
     Guid?     Id,
     DateTime  EffectiveDate,
     decimal   BaseSalary,
-    decimal?  PositionAllowance,
-    decimal?  DutyAllowance,
     decimal?  OtherAllowance,
     decimal?  AdjustmentDifference,
-    decimal?  OverseasAllowance,
     decimal?  MealAllowance,
     decimal   TotalAmount,
     string?   Notes);

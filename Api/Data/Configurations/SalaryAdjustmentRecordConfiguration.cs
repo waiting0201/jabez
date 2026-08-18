@@ -14,19 +14,10 @@ public class SalaryAdjustmentRecordConfiguration : IEntityTypeConfiguration<Sala
                .IsRequired()
                .HasColumnType("decimal(18,2)");
 
-        builder.Property(s => s.PositionAllowance)
-               .HasColumnType("decimal(18,2)");
-
-        builder.Property(s => s.DutyAllowance)
-               .HasColumnType("decimal(18,2)");
-
         builder.Property(s => s.OtherAllowance)
                .HasColumnType("decimal(18,2)");
 
         builder.Property(s => s.AdjustmentDifference)
-               .HasColumnType("decimal(18,2)");
-
-        builder.Property(s => s.OverseasAllowance)
                .HasColumnType("decimal(18,2)");
 
         builder.Property(s => s.MealAllowance)

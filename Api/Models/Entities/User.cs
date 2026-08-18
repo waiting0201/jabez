@@ -28,11 +28,10 @@ public class User
     public decimal?  OvertimePay     { get; set; }   // 加班費
 
     // 加給（與 BaseSalary / MealAllowance 同：來自最新生效 SalaryAdjustmentRecord 自動同步，也可在基本資料手動編輯）
-    public decimal?  PositionAllowance    { get; set; }   // 職務加給
-    public decimal?  DutyAllowance        { get; set; }   // 主管加給
+    // 2026-08 移除職務加給 / 主管加給 / 外派加給，僅保留以下兩項。
+    // DB 欄位（Users.PositionAllowance / DutyAllowance / OverseasAllowance）刻意保留作歷史封存，未產 DROP migration。
     public decimal?  OtherAllowance       { get; set; }   // 其他加給
     public decimal?  AdjustmentDifference { get; set; }   // 調整差額
-    public decimal?  OverseasAllowance    { get; set; }   // 外派加給
     public bool      SendPaySlip     { get; set; }   // 是否寄送薪資表
 
     // 期初補休時數：系統上線前（115/1~6/30）以紙本累計、匯入系統的補休時數；

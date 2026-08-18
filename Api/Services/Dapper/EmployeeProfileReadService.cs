@@ -55,8 +55,8 @@ public sealed class EmployeeProfileReadService(IDbConnection db) : IEmployeeProf
             WHERE UserId = @UserId
             ORDER BY EffectiveDate DESC;
 
-            SELECT Id, EffectiveDate, BaseSalary, PositionAllowance, DutyAllowance, OtherAllowance,
-                   AdjustmentDifference, OverseasAllowance, MealAllowance, TotalAmount, Notes
+            SELECT Id, EffectiveDate, BaseSalary, OtherAllowance,
+                   AdjustmentDifference, MealAllowance, TotalAmount, Notes
             FROM SalaryAdjustmentRecords
             WHERE UserId = @UserId
             ORDER BY EffectiveDate DESC;
@@ -149,8 +149,8 @@ public sealed class EmployeeProfileReadService(IDbConnection db) : IEmployeeProf
 
             SalaryAdjustmentRecords: salaryRows.Select(r => new SalaryAdjustmentRecordDto(
                 (Guid?)r.Id, (DateTime)r.EffectiveDate, (decimal)r.BaseSalary,
-                (decimal?)r.PositionAllowance, (decimal?)r.DutyAllowance, (decimal?)r.OtherAllowance,
-                (decimal?)r.AdjustmentDifference, (decimal?)r.OverseasAllowance, (decimal?)r.MealAllowance,
+                (decimal?)r.OtherAllowance,
+                (decimal?)r.AdjustmentDifference, (decimal?)r.MealAllowance,
                 (decimal)r.TotalAmount, (string?)r.Notes)).ToArray(),
 
             HealthInsuranceDependents: dependentRows.Select(r => new HealthInsuranceDependentDto(
