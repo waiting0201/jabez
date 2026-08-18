@@ -170,7 +170,7 @@ JWT 驗證 + 權限檢查由 RouterFunction → AppRouter 統一執行；Handler
 | 端點 | 進入權限（路由層） | 欄位級權限（Handler 層） | 效果 |
 |---|---|---|---|
 | `GET /reports/project-water-level` | `reports-project-water-level:read` | `reports-project-water-level:total` | 缺後者時 `TotalPercentage` / `PreImportUsedAmount` / `RemainingAmount` 回 `null` / `0`；頁面照進、業務執行水位照看 |
-| `GET /users`、`GET /users/{id}`（含 `POST` / `PATCH` 的回應 DTO） | `users:read` / `users:write` | `payroll:read` | 缺後者時 [`PayrollFieldAccess.Mask`](../Api/Common/PayrollFieldAccess.cs) 把 11 個薪資欄回 `null`（底薪 / 伙食費 / 加班費 / 5 種加給 / 勞健保覆寫 / 勞退自提率）；`SendPaySlip`、`CompensatoryOpeningHours` 不含金額故保留 |
+| `GET /users`、`GET /users/{id}`（含 `POST` / `PATCH` 的回應 DTO） | `users:read` / `users:write` | `payroll:read` | 缺後者時 [`PayrollFieldAccess.Mask`](../Api/Common/PayrollFieldAccess.cs) 把 8 個薪資欄回 `null`（底薪 / 伙食費 / 加班費 / 2 種加給 / 勞健保覆寫 / 勞退自提率）；`SendPaySlip`、`CompensatoryOpeningHours` 不含金額故保留 |
 | `GET /users/{id}/profile` | `users:read` | `payroll:read` | 缺後者時 `SalaryAdjustmentRecords` 回 `[]`；其餘 8 張子表照常 |
 | `PATCH /users/{id}`、`POST /users`、`PUT /users/{id}/profile` | `users:write` | `payroll:read` | 缺後者時薪資欄位的寫入一律忽略（不回 403，其他欄位照常存檔）；見規則 6 |
 

@@ -128,11 +128,8 @@ export interface SalaryAdjustmentRecord {
   userId?: string;
   effectiveDate?: string | null;
   baseSalary?: number | null;
-  positionAllowance?: number | null;
-  dutyAllowance?: number | null;
   otherAllowance?: number | null;
   adjustmentDifference?: number | null;
-  overseasAllowance?: number | null;
   mealAllowance?: number | null;
   totalAmount?: number | null;
   notes?: string | null;

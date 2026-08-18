@@ -19,14 +19,15 @@
 9. **育嬰留職停薪按比例**（2026-08 新增；非扣項，而是**應發項目的折減**）
    - 該月留停日曆天數由 `parentalSql` **逐日歸月**計算（假單區間 ∩ 當月區間），涵蓋 `parental_leave` 與 `parental_leave_daily`。
    - `留停天數 ≥ 當月天數` **且當月無其他應發／扣項**（加班費、上月假日津貼、`PayrollAdjustment` 其他加項／扣項皆為 0）→ **整月留停，該員工不產生薪資列**。有其中任一項仍會出單（底薪與加給折為 0），避免已賺得的金額憑空消失、且不計入月合計。
-   - 折減率 `workRatio = max(0, 1 − 留停天數 ÷ 30)`，**底薪 + 伙食費 + 5 種加給**乘上此比例。與事假等無薪假的「日薪 × 天數」**完全等價**（日薪即底薪 ÷ 30）。
+   - 折減率 `workRatio = max(0, 1 − 留停天數 ÷ 30)`，**底薪 + 伙食費 + 2 種加給**乘上此比例。與事假等無薪假的「日薪 × 天數」**完全等價**（日薪即底薪 ÷ 30）。
    - ⚠️ 刻意**不用**「(當月天數 − 留停天數) ÷ 30」：31 天的月份請 1 天留停時該式為 30/30 = 1，會完全不折減，「不支薪」形同無效。
    - **不折減**：勞保費、健保費（續保者仍繳全額）、勞退自提、加班費、假日津貼。實作上另存 `insuredBaseSalary`（折減前底薪）供**級距 lookup 與勞退自提**使用 —— 若用折減後底薪查級距會掉到低級距，等於把保費也按比例少扣。
    - `dailySalary` 在折減前先算好，避免事假 / 病假等扣薪被雙重折減。
    - ⚠️ **實領可能為負數**：在職天數少但保費全額時，差額即員工**應補繳的保費**。薪資編輯頁與薪資明細信皆顯示警示，提醒人事另行收取或辦理個人負擔部分遞延繳納（最長 3 年），勿直接寄送明細。系統**不做遞延帳**。
    - 詳見 [leave-rules.md §育嬰留職停薪規則](leave-rules.md#育嬰留職停薪規則2026-08-新增)。
 10. **實領薪水** = 底薪 + 伙食費 + 加班費 + 加給合計 + 假日津貼 + 其他加項 − 勞保費 − 健保費 − 事假扣薪 − 病假扣薪 − 生理假扣薪 − 家庭照顧假扣薪 − 其他扣項 − 勞退自提扣款
-   - **加給合計** = 職務加給 + 主管加給 + 其他加給 + 調整差額 + 外派加給（5 種來自 User 表，由最新生效 SalaryAdjustmentRecord 同步而來，亦可在基本資料手動覆寫，null/未填視為 0）
+   - **加給合計** = 其他加給 + 調整差額（2 種來自 User 表，由最新生效 SalaryAdjustmentRecord 同步而來，亦可在基本資料手動覆寫，null/未填視為 0）
+     - 2026-08 移除職務加給 / 主管加給 / 外派加給。DB 欄位（`Users` / `SalaryAdjustmentRecords` 各 3 欄）**刻意保留不 DROP** 作歷史封存，程式已完全不讀寫；同步用的 no-op migration 見 `RemoveThreeAllowancesFromModel`。
    - 底薪與加給若當月有育嬰留停，已為折減後的金額（見第 9 條）。
 11. **勞退自提扣款** = 提繳底薪 × `User.LaborPensionSelfContributionRate`（%，0~6 整數，員工自願提撥）÷ 100（四捨五入至整數）
    - 性質同 `LaborInsuranceOverride`/`HealthInsuranceOverride`：User 表直接欄位，**不**經過 SalaryAdjustmentRecord 歷史同步，可在基本資料 Tab 直接編輯（null 視為 0%）。
@@ -52,7 +53,7 @@
 
 ## 薪資欄位連動規則（重要 / 避免遺忘）
 
-人事薪資模組仰賴 `User` 表的 **7 個薪資欄位**，這 7 個欄位的「真實來源」是員工人事資料卡的「薪資調整歷史（`SalaryAdjustmentRecord`）」。**每次新增 / 修改 / 刪除欄位時，三個位置必須同步更新**。
+人事薪資模組仰賴 `User` 表的 **4 個薪資欄位**，這 4 個欄位的「真實來源」是員工人事資料卡的「薪資調整歷史（`SalaryAdjustmentRecord`）」。**每次新增 / 修改 / 刪除欄位時，三個位置必須同步更新**。
 
 ### 資料流（Source of Truth）
 
@@ -62,9 +63,9 @@ SalaryAdjustmentRecord（人事資料卡 Tab 2，多筆歷史）
    │  PUT /users/{id}/profile
    │  → EmployeeProfileHandler.UpsertAsync
    │  → 取 EffectiveDate ≤ Asia/Taipei 今日 中 EffectiveDate 最大的那一筆
-   │  → 寫回 User 表（7 個欄位一次同步）
+   │  → 寫回 User 表（4 個欄位一次同步）
    ▼
-User 表 7 個薪資欄位（基本資料 Tab 1 可手動覆寫）
+User 表 4 個薪資欄位（基本資料 Tab 1 可手動覆寫）
    │
    │  GET /payroll?year=YYYY&month=MM
    │  → PayrollReadService 直接讀 User.* 計算
@@ -72,19 +73,22 @@ User 表 7 個薪資欄位（基本資料 Tab 1 可手動覆寫）
 EmployeePayrollDto / 月度合計 / 薪資編輯頁 / 薪資明細 Email + PDF
 ```
 
-### 7 個欄位對照表
+### 4 個欄位對照表
 
 | # | 名稱 | SalaryAdjustmentRecord | User 欄位 | EmployeePayrollDto | NetSalary 角色 |
 |---|---|---|---|---|---|
 | 1 | 底薪 | `BaseSalary` | `BaseSalary` | `BaseSalary` | 加項 |
 | 2 | 伙食費 | `MealAllowance` | `MealAllowance` | `MealAllowance` | 加項 |
-| 3 | 職務加給 | `PositionAllowance` | `PositionAllowance` | `PositionAllowance` | 加項 |
-| 4 | 主管加給 | `DutyAllowance` | `DutyAllowance` | `DutyAllowance` | 加項 |
-| 5 | 其他加給 | `OtherAllowance` | `OtherAllowance` | `OtherAllowanceAmount` ⚠️ | 加項 |
-| 6 | 調整差額 | `AdjustmentDifference` | `AdjustmentDifference` | `AdjustmentDifference` | 加項 |
-| 7 | 外派加給 | `OverseasAllowance` | `OverseasAllowance` | `OverseasAllowance` | 加項 |
+| 3 | 其他加給 | `OtherAllowance` | `OtherAllowance` | `OtherAllowanceAmount` ⚠️ | 加項 |
+| 4 | 調整差額 | `AdjustmentDifference` | `AdjustmentDifference` | `AdjustmentDifference` | 加項 |
 
-> ⚠️ `EmployeePayrollDto.OtherAllowanceAmount` 命名特例：因 DTO 既有 `OtherAddition`/`OtherDeduction` 用「Other」字首，為避免歧義改用 `OtherAllowanceAmount`，前端 model 對應 `otherAllowanceAmount`。其它 6 個欄位三層命名一致。
+> ⚠️ `EmployeePayrollDto.OtherAllowanceAmount` 命名特例：因 DTO 既有 `OtherAddition`/`OtherDeduction` 用「Other」字首，為避免歧義改用 `OtherAllowanceAmount`，前端 model 對應 `otherAllowanceAmount`。其它 3 個欄位三層命名一致。
+
+> **2026-08 已移除**：職務加給 `PositionAllowance` / 主管加給 `DutyAllowance` / 外派加給 `OverseasAllowance`。
+> 程式碼（entity / DTO / Dapper SQL / 公式 / 前端表單與薪資單 / PDF）已全數移除，
+> 但 `Users` 與 `SalaryAdjustmentRecords` 兩張表的 6 個 DB 欄位**刻意保留不 DROP** —— 薪資調整歷史是稽核紀錄，DROP 無法回復。
+> `RemoveThreeAllowancesFromModel` 是一支 Up / Down 皆留空的 no-op migration，唯一作用是讓 ModelSnapshot 追上 entity，
+> 避免日後 `dotnet ef migrations add` 自動夾帶 `DropColumn`。
 
 ### 同步觸發 & 規則
 
@@ -92,7 +96,7 @@ EmployeePayrollDto / 月度合計 / 薪資編輯頁 / 薪資明細 Email + PDF
 - **挑選紀錄**：`EffectiveDate <= Clock.Now.Date`（Asia/Taipei）中 `EffectiveDate` 最大的一筆
 - **無符合紀錄**：完全不動 `User` 表（沿用既有值）
 - **null 處理**：SalaryAdjustmentRecord 上的加給為 `decimal?`，`null` 同步後寫回 `User` 仍為 `null`；薪資公式視 `null` 為 `0`
-- **手動覆寫**：基本資料 Tab 1 可直接編輯這 7 個欄位（呼叫 `PATCH /users/{id}`）；下次儲存人事資料卡時又會被最新生效紀錄覆蓋——以薪資調整歷史為**最終真實來源**
+- **手動覆寫**：基本資料 Tab 1 可直接編輯這 4 個欄位（呼叫 `PATCH /users/{id}`）；下次儲存人事資料卡時又會被最新生效紀錄覆蓋——以薪資調整歷史為**最終真實來源**
 
 ### 加 / 改 / 刪薪資欄位的 Checklist
 
@@ -121,7 +125,7 @@ EmployeePayrollDto / 月度合計 / 薪資編輯頁 / 薪資明細 Email + PDF
 
 | 範圍 | 需要 | 缺少時 |
 |---|---|---|
-| 員工管理 Tab1 的 11 個薪資 / 勞健保欄 | `payroll:read` | API 回 `null`，前端整段不 render、控制項 `disable()` |
+| 員工管理 Tab1 的 8 個薪資 / 勞健保欄 | `payroll:read` | API 回 `null`，前端整段不 render、控制項 `disable()` |
 | 員工管理 Tab2「薪資調整歷史」 | `payroll:read` | API 回 `[]`，前端整區不 render |
 | Tab3「每月健保費試算」（＝健保覆寫 ×(1+眷屬數)，可反推投保金額） | `payroll:read` | getter 早退回 `null`，區塊自動關閉。**眷屬名單本身不受限** |
 | 列印人事資料卡 PDF 的薪資頁 | `payroll:read` | 整個 PAGE 3 連同 `addPage()` 一起跳過，輸出 2 頁 |
@@ -138,7 +142,7 @@ EmployeePayrollDto / 月度合計 / 薪資編輯頁 / 薪資明細 Email + PDF
 ## 跨業務關聯
 
 - **健保眷屬資料 / 上限 3 口計算** → [hr-profile.md](hr-profile.md)
-- **底薪 / 伙食費 / 5 種加給自動同步**（薪資調整紀錄 → User.BaseSalary / MealAllowance / PositionAllowance / DutyAllowance / OtherAllowance / AdjustmentDifference / OverseasAllowance） → [hr-profile.md](hr-profile.md)
+- **底薪 / 伙食費 / 2 種加給自動同步**（薪資調整紀錄 → User.BaseSalary / MealAllowance / OtherAllowance / AdjustmentDifference） → [hr-profile.md](hr-profile.md)
 - **假日執行活動的歸月規則** → [application-forms.md](application-forms.md)
 - **事假 / 病假 / 家庭照顧假的扣薪天數來源、銷假規則** → [leave-rules.md](leave-rules.md)
 - **勞健保級距 lookup（級距表 entity）** → [database-schema.md](../database-schema.md)（`InsuranceBracket`）

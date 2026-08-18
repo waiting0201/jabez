@@ -36,11 +36,8 @@ public sealed record UserDto(
     decimal?  HealthInsuranceOverride = null,
     decimal?  LaborInsuranceOverride  = null,
     // 加給（與 BaseSalary / MealAllowance 同：自動同步自最新 SalaryAdjustmentRecord，亦可手動覆寫）
-    decimal?  PositionAllowance    = null,
-    decimal?  DutyAllowance        = null,
     decimal?  OtherAllowance       = null,
     decimal?  AdjustmentDifference = null,
-    decimal?  OverseasAllowance    = null,
     // 期初補休時數（系統上線前累計，116/6/30 到期歸零）
     decimal   CompensatoryOpeningHours = 0m,
     // 勞退自提率（%，null = 0%，直接欄位、非覆寫、無 lookup）
@@ -68,11 +65,8 @@ public sealed record CreateUserRequest(
     bool      IsDisabled   = false,
     decimal?  HealthInsuranceOverride = null,
     decimal?  LaborInsuranceOverride  = null,
-    decimal?  PositionAllowance    = null,
-    decimal?  DutyAllowance        = null,
     decimal?  OtherAllowance       = null,
     decimal?  AdjustmentDifference = null,
-    decimal?  OverseasAllowance    = null,
     decimal?  LaborPensionSelfContributionRate = null);
 
 /// <summary>輕量級使用者資料（供指定審核者下拉選單用，不需 users:read 權限）</summary>
@@ -106,9 +100,6 @@ public sealed record UpdateUserRequest(
     bool?      IsDisabled   = null,
     decimal?   HealthInsuranceOverride = null,
     decimal?   LaborInsuranceOverride  = null,
-    decimal?   PositionAllowance    = null,
-    decimal?   DutyAllowance        = null,
     decimal?   OtherAllowance       = null,
     decimal?   AdjustmentDifference = null,
-    decimal?   OverseasAllowance    = null,
     decimal?   LaborPensionSelfContributionRate = null);

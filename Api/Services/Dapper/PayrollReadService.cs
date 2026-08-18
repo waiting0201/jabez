@@ -19,8 +19,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                    u.Email, u.SendPaySlip,
                    d.Name AS DepartmentName, jt.Name AS JobTitleName,
                    u.HireDate, u.BaseSalary, u.MealAllowance, u.OvertimePay,
-                   u.PositionAllowance, u.DutyAllowance, u.OtherAllowance,
-                   u.AdjustmentDifference, u.OverseasAllowance,
+                   u.OtherAllowance, u.AdjustmentDifference,
                    u.HealthInsuranceOverride, u.LaborInsuranceOverride,
                    u.LaborPensionSelfContributionRate,
                    (SELECT COUNT(*) FROM HealthInsuranceDependents WHERE UserId = u.Id) AS DependentCount
@@ -177,11 +176,8 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             decimal baseSalary     = (decimal)emp.BaseSalary;
             decimal mealAllowance  = (decimal?)emp.MealAllowance ?? 0m;
             decimal overtimePay    = (decimal?)emp.OvertimePay ?? 0m;
-            decimal positionAllow  = (decimal?)emp.PositionAllowance    ?? 0m;
-            decimal dutyAllow      = (decimal?)emp.DutyAllowance        ?? 0m;
             decimal otherAllow     = (decimal?)emp.OtherAllowance       ?? 0m;
             decimal adjDiff        = (decimal?)emp.AdjustmentDifference ?? 0m;
-            decimal overseasAllow  = (decimal?)emp.OverseasAllowance    ?? 0m;
             // dailySalary 刻意在折減前先算好：事假 / 病假 / 生理假 / 家庭照顧假的扣薪仍以
             // 原始底薪推算的日薪為基準，避免留停按比例後又被重複折減一次。
             decimal dailySalary    = Math.Round(baseSalary / 30m, 0);
@@ -213,11 +209,8 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 decimal workRatio = Math.Max(0m, 1m - parentalLeaveDays / 30m);
                 baseSalary    = Math.Round(baseSalary    * workRatio, 0);
                 mealAllowance = Math.Round(mealAllowance * workRatio, 0);
-                positionAllow = Math.Round(positionAllow * workRatio, 0);
-                dutyAllow     = Math.Round(dutyAllow     * workRatio, 0);
                 otherAllow    = Math.Round(otherAllow    * workRatio, 0);
                 adjDiff       = Math.Round(adjDiff       * workRatio, 0);
-                overseasAllow = Math.Round(overseasAllow * workRatio, 0);
             }
 
             // 參與人員可逐日勾上半天 / 下半天，故 holidayDays 為 0.5 的倍數；
@@ -303,7 +296,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             decimal laborPensionSelfDeduction = Math.Round(insuredBaseSalary * (laborPensionRate ?? 0m) / 100m, 0);
 
             decimal netSalary = baseSalary + mealAllowance + overtimePay
-                              + positionAllow + dutyAllow + otherAllow + adjDiff + overseasAllow
+                              + otherAllow + adjDiff
                               + holidayAllowance + otherAddition
                               - laborIns - healthIns
                               - personalDeduction - sickDeduction - menstrualDeduction
@@ -344,11 +337,8 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 leaveDetails.TryGetValue(empId, out var ld) ? ld : null,
                 dependentCount,
                 cappedN,
-                positionAllow,
-                dutyAllow,
                 otherAllow,
                 adjDiff,
-                overseasAllow,
                 laborPensionRate,
                 laborPensionSelfDeduction,
                 parentalLeaveDays));
@@ -369,11 +359,8 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             results.Sum(r => r.FamilyCareLeaveDeduction),
             results.Sum(r => r.OtherDeduction),
             results.Sum(r => r.NetSalary),
-            results.Sum(r => r.PositionAllowance),
-            results.Sum(r => r.DutyAllowance),
             results.Sum(r => r.OtherAllowanceAmount),
             results.Sum(r => r.AdjustmentDifference),
-            results.Sum(r => r.OverseasAllowance),
             results.Sum(r => r.LaborPensionSelfDeduction),
             results.Sum(r => r.ParentalLeaveDays));
     }

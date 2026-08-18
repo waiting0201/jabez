@@ -31,7 +31,7 @@ const MAX_FILE_BYTES = 1 * 1024 * 1024; // 1 MB
  */
 const SALARY_CONTROLS = [
   'baseSalary', 'mealAllowance', 'overtimePay',
-  'positionAllowance', 'dutyAllowance', 'otherAllowance', 'adjustmentDifference', 'overseasAllowance',
+  'otherAllowance', 'adjustmentDifference',
   'healthInsuranceOverride', 'laborInsuranceOverride', 'laborPensionSelfContributionRate',
 ] as const;
 
@@ -179,11 +179,8 @@ export class UserForm implements OnInit {
     laborPensionSelfContributionRate: [null as number | null,
       [Validators.min(0), Validators.max(6), Validators.pattern(/^\d+$/)]],
     // 加給（同步自最新薪資調整紀錄，可手動覆寫）
-    positionAllowance:        [null as number | null],
-    dutyAllowance:            [null as number | null],
     otherAllowance:           [null as number | null],
     adjustmentDifference:     [null as number | null],
-    overseasAllowance:        [null as number | null],
     // Tab 2 – HR profile
     hrProfile: this.fb.group({
       employeeNumber:       [''],
@@ -280,11 +277,8 @@ export class UserForm implements OnInit {
           healthInsuranceOverride: user.healthInsuranceOverride ?? null,
           laborInsuranceOverride:  user.laborInsuranceOverride  ?? null,
           laborPensionSelfContributionRate: user.laborPensionSelfContributionRate ?? null,
-          positionAllowance:       user.positionAllowance       ?? null,
-          dutyAllowance:           user.dutyAllowance           ?? null,
           otherAllowance:          user.otherAllowance          ?? null,
           adjustmentDifference:    user.adjustmentDifference    ?? null,
-          overseasAllowance:       user.overseasAllowance       ?? null,
         });
         this.signatureUrl.set(user.signatureUrl ?? null);
         this.avatarUrl.set(user.avatar ?? null);
@@ -431,11 +425,8 @@ export class UserForm implements OnInit {
   salaryRowTotal(ctrl: AbstractControl): number {
     const v = ctrl.value;
     return (+(v.baseSalary) || 0)
-      + (+(v.positionAllowance) || 0)
-      + (+(v.dutyAllowance) || 0)
       + (+(v.otherAllowance) || 0)
       + (+(v.adjustmentDifference) || 0)
-      + (+(v.overseasAllowance) || 0)
       + (+(v.mealAllowance) || 0);
   }
 
@@ -561,11 +552,8 @@ export class UserForm implements OnInit {
       id:                   [r?.id ?? null],
       effectiveDate:        [r?.effectiveDate?.slice(0, 10) ?? '', Validators.required],
       baseSalary:           [r?.baseSalary ?? null],
-      positionAllowance:    [r?.positionAllowance ?? null],
-      dutyAllowance:        [r?.dutyAllowance ?? null],
       otherAllowance:       [r?.otherAllowance ?? null],
       adjustmentDifference: [r?.adjustmentDifference ?? null],
-      overseasAllowance:    [r?.overseasAllowance ?? null],
       mealAllowance:        [r?.mealAllowance ?? null],
       notes:                [r?.notes ?? ''],
     });
@@ -1257,12 +1245,9 @@ export class UserForm implements OnInit {
       healthInsuranceOverride:  rest.healthInsuranceOverride ?? undefined,
       laborInsuranceOverride:   rest.laborInsuranceOverride ?? undefined,
       laborPensionSelfContributionRate: rest.laborPensionSelfContributionRate ?? undefined,
-      // 加給（5 種）
-      positionAllowance:        rest.positionAllowance        ?? undefined,
-      dutyAllowance:            rest.dutyAllowance            ?? undefined,
+      // 加給（2 種）
       otherAllowance:           rest.otherAllowance           ?? undefined,
       adjustmentDifference:     rest.adjustmentDifference     ?? undefined,
-      overseasAllowance:        rest.overseasAllowance        ?? undefined,
     };
 
     // 薪資欄位級權限：disabled 控制項本就不在 form.value，這裡再明確剔除一次。
@@ -1407,11 +1392,8 @@ export class UserForm implements OnInit {
       baseSalary: r.baseSalary ?? 0,
       totalAmount:
         (r.baseSalary           ?? 0) +
-        (r.positionAllowance    ?? 0) +
-        (r.dutyAllowance        ?? 0) +
         (r.otherAllowance       ?? 0) +
         (r.adjustmentDifference ?? 0) +
-        (r.overseasAllowance    ?? 0) +
         (r.mealAllowance        ?? 0),
     }));
 

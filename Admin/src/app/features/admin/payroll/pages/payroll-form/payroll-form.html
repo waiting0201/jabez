@@ -70,18 +70,6 @@
                   <td class="text-right pe-4">{{ e.overtimePay | number:'1.0-0' }}</td>
                 </tr>
                 <!-- 5 種加給：有值才顯示 -->
-                @if (e.positionAllowance) {
-                  <tr>
-                    <td class="ps-6">職務加給</td>
-                    <td class="text-right pe-4">{{ e.positionAllowance | number:'1.0-0' }}</td>
-                  </tr>
-                }
-                @if (e.dutyAllowance) {
-                  <tr>
-                    <td class="ps-6">主管加給</td>
-                    <td class="text-right pe-4">{{ e.dutyAllowance | number:'1.0-0' }}</td>
-                  </tr>
-                }
                 @if (e.otherAllowanceAmount) {
                   <tr>
                     <td class="ps-6">其他加給</td>
@@ -92,12 +80,6 @@
                   <tr>
                     <td class="ps-6">調整差額</td>
                     <td class="text-right pe-4">{{ e.adjustmentDifference | number:'1.0-0' }}</td>
-                  </tr>
-                }
-                @if (e.overseasAllowance) {
-                  <tr>
-                    <td class="ps-6">外派加給</td>
-                    <td class="text-right pe-4">{{ e.overseasAllowance | number:'1.0-0' }}</td>
                   </tr>
                 }
                 <tr>
