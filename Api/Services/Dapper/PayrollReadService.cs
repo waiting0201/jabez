@@ -6,7 +6,11 @@ namespace Jabez.Api.Services.Dapper;
 
 public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
 {
-    public async Task<MonthlyPayrollDto> CalculateMonthlyPayrollAsync(int year, int month)
+    /// <param name="employeeId">
+    /// 指定員工時只計算該員工（供 GET /me/payroll 員工自助查詢近 N 個月使用）；
+    /// null＝全公司（人事薪資頁 / 寄送薪資單）。計算邏輯完全共用，不另開一套公式。
+    /// </param>
+    public async Task<MonthlyPayrollDto> CalculateMonthlyPayrollAsync(int year, int month, Guid? employeeId = null)
     {
         var firstDay          = new DateTime(year, month, 1);
         var lastDay           = firstDay.AddMonths(1).AddDays(-1);
@@ -31,6 +35,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
               AND u.BaseSalary IS NOT NULL
               AND u.BaseSalary > 0
               AND (u.ResignDate IS NULL OR u.ResignDate >= @FirstDay)
+              AND (@EmployeeId IS NULL OR u.Id = @EmployeeId)
             ORDER BY u.Name
             """;
 
@@ -45,6 +50,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                   AND tr.ApprovalStatus = 'approved'
                   AND tr.EndDate >= @PrevMonthFirstDay
                   AND tr.EndDate <  @CurrMonthFirstDay
+                  AND (@EmployeeId IS NULL OR tr.EmployeeId = @EmployeeId)
                 UNION ALL
                 -- 參與執行人員的假日天數（有勾選參與日期者取個人假日天數，含半天 0.5；NULL=全程參與，沿用整單）
                 SELECT p.UserId AS EmployeeId,
@@ -55,6 +61,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                   AND tr.ApprovalStatus = 'approved'
                   AND tr.EndDate >= @PrevMonthFirstDay
                   AND tr.EndDate <  @CurrMonthFirstDay
+                  AND (@EmployeeId IS NULL OR p.UserId = @EmployeeId)
             )
             SELECT EmployeeId, SUM(HolidayDays) AS TotalDays
             FROM HolidayTravelDays
@@ -74,6 +81,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                    OtherDeduction, OtherDeductionNote, Note
             FROM PayrollAdjustments
             WHERE Year = @Year AND Month = @Month
+              AND (@EmployeeId IS NULL OR EmployeeId = @EmployeeId)
             """;
 
         // 5. 查詢該月已核准的事假/病假/生理假/家庭照顧假時數（按員工 + 假別分組）
@@ -86,6 +94,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
               AND lr.LeaveType IN ('personal', 'sick', 'menstrual', 'family_care')
               AND lr.StartDate <= @LastDay
               AND lr.EndDate   >= @FirstDay
+              AND (@EmployeeId IS NULL OR lr.EmployeeId = @EmployeeId)
             GROUP BY lr.EmployeeId, lr.LeaveType
             """;
 
@@ -98,6 +107,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
               AND lr.LeaveType = 'menstrual'
               AND lr.StartDate >= @YearFirstDay
               AND lr.StartDate <  @FirstDay
+              AND (@EmployeeId IS NULL OR lr.EmployeeId = @EmployeeId)
             GROUP BY lr.EmployeeId
             """;
 
@@ -117,6 +127,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
               AND lr.LeaveType IN ('parental_leave', 'parental_leave_daily')
               AND lr.StartDate <= @LastDay
               AND lr.EndDate   >= @FirstDay
+              AND (@EmployeeId IS NULL OR lr.EmployeeId = @EmployeeId)
             GROUP BY lr.EmployeeId
             """;
 
@@ -127,22 +138,24 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             WHERE lr.ApprovalStatus = 'approved'
               AND lr.StartDate <= @LastDay
               AND lr.EndDate   >= @FirstDay
+              AND (@EmployeeId IS NULL OR lr.EmployeeId = @EmployeeId)
             ORDER BY lr.StartDate
             """;
 
-        var employees = (await db.QueryAsync<dynamic>(employeeSql, new { FirstDay = firstDay })).ToList();
+        var employees = (await db.QueryAsync<dynamic>(employeeSql, new { FirstDay = firstDay, EmployeeId = employeeId })).ToList();
         var travelDays = (await db.QueryAsync<dynamic>(travelSql, new {
                 PrevMonthFirstDay = prevMonthFirstDay,
                 CurrMonthFirstDay = firstDay,
+                EmployeeId        = employeeId,
             }))
             .ToDictionary(r => (Guid)r.EmployeeId, r => (decimal)r.TotalDays);
         var brackets = (await db.QueryAsync<dynamic>(bracketSql)).ToList();
-        var adjustments = (await db.QueryAsync<dynamic>(adjustmentSql, new { Year = year, Month = month }))
+        var adjustments = (await db.QueryAsync<dynamic>(adjustmentSql, new { Year = year, Month = month, EmployeeId = employeeId }))
             .ToDictionary(r => (Guid)r.EmployeeId, r => r);
 
         // 事假/病假天數：Dictionary<(EmployeeId, LeaveType), TotalDays (decimal)>
         // TotalHours ÷ 8 = 實際天數（保留小數，例如 2 小時 = 0.25 天）
-        var leaveRecords = (await db.QueryAsync<dynamic>(leaveSql, new { FirstDay = firstDay, LastDay = lastDay }))
+        var leaveRecords = (await db.QueryAsync<dynamic>(leaveSql, new { FirstDay = firstDay, LastDay = lastDay, EmployeeId = employeeId }))
             .ToList();
         var leaveDaysMap = new Dictionary<(Guid, string), decimal>();
         foreach (var lr in leaveRecords)
@@ -150,11 +163,11 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
 
         // 本年度本月之前已用生理假時數：Dictionary<EmployeeId, PriorHours>
         var yearFirstDay = new DateTime(year, 1, 1);
-        var priorMenstrualMap = (await db.QueryAsync<dynamic>(priorMenstrualSql, new { YearFirstDay = yearFirstDay, FirstDay = firstDay }))
+        var priorMenstrualMap = (await db.QueryAsync<dynamic>(priorMenstrualSql, new { YearFirstDay = yearFirstDay, FirstDay = firstDay, EmployeeId = employeeId }))
             .ToDictionary(r => (Guid)r.EmployeeId, r => (decimal)r.TotalHours);
 
         // 請假明細：Dictionary<EmployeeId, LeaveDetailDto[]>
-        var leaveDetails = (await db.QueryAsync<dynamic>(leaveDetailSql, new { FirstDay = firstDay, LastDay = lastDay }))
+        var leaveDetails = (await db.QueryAsync<dynamic>(leaveDetailSql, new { FirstDay = firstDay, LastDay = lastDay, EmployeeId = employeeId }))
             .GroupBy(r => (Guid)r.EmployeeId)
             .ToDictionary(
                 g => g.Key,
@@ -165,7 +178,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                     (decimal)r.Hours)).ToArray());
 
         // 育嬰留停天數：Dictionary<EmployeeId, 該月留停日曆天數>
-        var parentalDaysMap = (await db.QueryAsync<dynamic>(parentalSql, new { FirstDay = firstDay, LastDay = lastDay }))
+        var parentalDaysMap = (await db.QueryAsync<dynamic>(parentalSql, new { FirstDay = firstDay, LastDay = lastDay, EmployeeId = employeeId }))
             .ToDictionary(r => (Guid)r.EmployeeId, r => (decimal)r.Days);
 
         int daysInMonth = DateTime.DaysInMonth(year, month);

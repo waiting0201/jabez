@@ -137,12 +137,27 @@ EmployeePayrollDto / 月度合計 / 薪資編輯頁 / 薪資明細 Email + PDF
 | 勞健保級距 lookup（`insurance-brackets/lookup?salary=`） | `payroll:read`（前端不訂閱） | 不發出請求 —— 該端點權限與 users 正交，留著等於開一條由底薪反推級距的側門 |
 | **寫入**（`POST /users`、`PATCH /users/{id}`、`PUT /users/{id}/profile` 的薪資部分） | `payroll:read` | 靜默忽略（不回 403，其他欄位照常存檔）。薪資調整歷史為**條件式**整批替換，無權者送空陣列不會刪光既有歷史 |
 
-**不受影響**：`GET /me/user`、`GET /me/profile`（員工看自己的薪資是既有需求）；銀行帳號 / 存摺封面 / 投保起日 / 扶養人數 / 健保眷屬名單 / 期初補休時數 / 寄送薪資表旗標。
+**不受影響**：`GET /me/user`、`GET /me/profile`、`GET /me/payroll`（員工看自己的薪資是既有需求）；銀行帳號 / 存摺封面 / 投保起日 / 扶養人數 / 健保眷屬名單 / 期初補休時數 / 寄送薪資表旗標。
 
 實作單一真相：後端 [`Api/Common/PayrollFieldAccess.cs`](../../Api/Common/PayrollFieldAccess.cs)、前端 `user-form.ts` 的 `canSeeSalary` + `SALARY_CONTROLS`。規範見 [backend-design.md 欄位級權限](../backend-design.md) 與 [frontend-design.md 依權限隱藏表單區塊](../frontend-design.md)。
 
 > ⚠️ **副作用**：`payroll:read` 同時是「人事薪資」選單與 `/admin/payroll` 月薪列表的進入權限。要讓某個角色看得到員工管理的薪資欄，就一併給了他人事薪資頁。若日後需要脫鉤，得另立 `users-salary:read` 獨立碼。
 > ⚠️ **JWT 快照**：`permissions` 是登入 / refresh 當下的快照，角色權限異動後需**重新登入**才生效。
+
+## 員工自助查詢過往薪資（2026-08 新增）
+
+員工從右上角頭像 →「個人資訊」→ **「過往薪資」Tab**（第 4 個，在「健保眷屬」右邊）可查自己**近 12 個月**的薪資明細，走 `GET /me/payroll?months=12`（登入即可，不需 `payroll:read`）。
+
+- **同一份公式**：後端逐月呼叫 `CalculateMonthlyPayrollAsync(year, month, employeeId)` —— 就是人事薪資頁用的那支，只多帶員工過濾，**不另開一套計算**。因此員工看到的數字與 `/admin/payroll` 逐欄相同。
+- **前端同一份版型**：清單列（年月 / 底薪 / 加班費 / 假日津貼 / 勞健保 / 實領）點「明細」展開共用元件 [`<app-payroll-detail-card>`](../../Admin/src/app/shared/components/payroll-detail-card.ts)，與人事薪資調整頁 `payroll-form` 共用。
+- **到職前的月份不列入**（Handler 依 `HireDate` 提早 break）；入職當月的勞保費仍按加保天數比例，與既有公式一致。
+- **當月會標「本月尚未結算」badge** —— 當月請假 / 加班尚未結束，數字還會變動。
+
+> ⚠️ **已知限制：回溯歷史月份用的是「現在的」底薪**。薪資為動態計算、**無月結快照表**，`PayrollReadService` 的員工查詢直接讀 `Users` 表當下的底薪 / 加給 / 勞健保覆寫，因此期間調過薪的員工，過往月份會以**現行**底薪重算，與當時實發不符（`PayrollAdjustments`、請假、假日活動則按年月正確歸屬）。
+> 前端「過往薪資」Tab 頂端已明確加註「依目前薪資設定即時重算，實際發放金額以人事寄送的薪資明細為準」。
+> 若日後要真正的歷史紀錄，正解是新增月結快照表（人事結算 / 寄送薪資單時寫入），而非在計算端回推。
+
+---
 
 ## 跨業務關聯
 

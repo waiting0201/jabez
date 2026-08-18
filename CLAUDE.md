@@ -182,8 +182,8 @@ Admin/src/app/
     ├── auth/
     │   └── pages/ (login, register, forgot-password, lock-screen, two-factor)
     ├── account/             # 員工自助（change-password / line-bind-callback / my-profile）
-    │   ├── services/my-profile.service.ts   # 呼叫 /me/user + /me/profile + /me/files（自助唯讀）
-    │   └── pages/my-profile/                # 「個人資訊」唯讀頁：比照管理頁 3 Tab（含薪資）全唯讀，avatar 下拉進入
+    │   ├── services/my-profile.service.ts   # 呼叫 /me/user + /me/profile + /me/files + /me/payroll（自助唯讀）
+    │   └── pages/my-profile/                # 「個人資訊」唯讀頁：avatar 下拉進入，**4 Tab** 全唯讀 —— 員工基本資料 / 人事資料卡 / 健保眷屬（前 3 個比照管理頁，含薪資）＋ **過往薪資**（2026-08 新增，走 `GET /me/payroll?months=12` 列出近 12 個月，一列一月，點「明細」展開共用元件 `<app-payroll-detail-card>`；到職前月份不列、當月標「本月尚未結算」；**薪資即時重算、無月結快照**，調薪後回溯歷史月份會用現行底薪，頁面已加註說明）
     ├── admin/
     │   ├── users/          # 使用者管理（user-form 含 3 Tab：員工基本資料 / 人事資料卡 / 健保眷屬；含 employee-profile.service / hr-profile-pdf.service / 9 組 FormArray；**薪資為欄位級權限 `payroll:read`**：進得了員工管理（`users:read`）不等於看得到薪資，Tab1 的 8 個薪資／勞健保欄（2026-08 移除職務加給 / 主管加給 / 外派加給，加給剩其他加給 + 代扣代付款（2026-08 由「調整差額」更名，識別字仍為 `AdjustmentDifference`））、Tab2 薪資調整歷史、Tab3 健保費試算、列印 PDF 第 3 頁皆需另持 `payroll:read`，前端共用 `canSeeSalary` + `SALARY_CONTROLS`（`@if` 隱藏區塊 + `disable()` 控制項 + 送出前剔除 payload key），後端共用 [Api/Common/PayrollFieldAccess.cs](Api/Common/PayrollFieldAccess.cs) 抹除回應並拒絕寫入；薪資調整歷史改為**條件式**整批替換（`null`＝不變更）避免無權者送空陣列刪光歷史；`/me/user`、`/me/profile` 刻意全開，員工看自己的薪資不受影響）
     │   ├── roles/          # 角色管理（僅 Superadmin）
@@ -290,7 +290,7 @@ Api/
 │   ├── TravelWriteOffRequestHandler.cs # 出差預支沖銷申請 CRUD（獨立簽核流程）
 │   ├── AttendanceHandler.cs           # 打卡（上班/下班/加班開始/加班結束；請假時段內擋上下班打卡；**休假日（行事曆假日／六日）或當日全日請假時，加班開始免下班卡**，無紀錄則建立只含加班時間的紀錄；**2026-08 起納入權限管理**：打卡走 `attendances:read/write`（員工對自己）、出缺勤報表列表與 `PUT/PATCH /attendances/{id}` 走 `reports-attendance:read/write`（管理者對別人），後者另在 Handler 內套部門可見性 scope 控管「能改誰」）
 │   ├── InsuranceBracketHandler.cs    # 勞健保級距 CRUD
-│   ├── PayrollHandler.cs             # 人事薪資查詢（月薪計算）
+│   ├── PayrollHandler.cs             # 人事薪資查詢（月薪計算）；GetMineAsync = GET /me/payroll 員工讀自己近 N 個月薪資（免 payroll:read，逐月呼叫帶 employeeId 的同一支計算，依 HireDate 擋掉到職前月份，months clamp 1~24）
 │   ├── LineHandler.cs                # LINE 帳號綁定/解綁 + 月度推播用量查詢（line-quota:read）
 │   ├── AttendanceReminderAdminHandler.cs # 打卡提醒手動觸發（Superadmin，除錯用）
 │   ├── AttendanceReminderLogHandler.cs   # 打卡提醒推播紀錄查詢（Superadmin）
@@ -358,7 +358,7 @@ Api/
 │       ├── EmployeeProfileReadService.cs   # 一次 QueryMultiple 讀回 EmployeeProfile + 9 張子表
 │       ├── InstallmentReadService.cs       # 共用：依父表 ID 撈 4 種 installments + JOIN User SignatureUrl + 三態 status 計算
 │       ├── PaymentReminderReadService.cs   # UNION 4 種 installments，撈 PaidAt 為空且 ExpectedDate 在 N 天內的紀錄
-│       └── PayrollReadService.cs           # 月薪計算（含健保眷屬數 + 覆寫值 fallback）
+│       └── PayrollReadService.cs           # 月薪計算（含健保眷屬數 + 覆寫值 fallback）；`CalculateMonthlyPayrollAsync(year, month, employeeId = null)` 帶 employeeId 時只算該員工，供 /me/payroll 共用同一份公式
 ├── Common/
 │   ├── ApiResponse.cs                 # 統一回應格式 ApiResponse<T>
 │   ├── AppException.cs                # 自定義例外
@@ -483,7 +483,7 @@ dotnet ef database update               # 套用 Migration
 
 > **詳見** [docs/backend-design.md §13 輕量讀取端點模式](docs/backend-design.md#13-輕量讀取端點模式lightweight-lookup-pattern)（已採用清單、設計原則、何時新增、歷史教訓）
 >
-> 衍生的「**自己讀自己**」(self / me) 模式（員工讀自己完整資料含薪資 / PII，免 `users:read`）見 [§13.4](docs/backend-design.md#134-自己讀自己模式self--me-endpoints)：`GET /me/user`、`GET /me/profile`、`GET /me/files/{container}/{fileName}`（白名單容器 + userId 前綴檢查）。
+> 衍生的「**自己讀自己**」(self / me) 模式（員工讀自己完整資料含薪資 / PII，免 `users:read` / `payroll:read`）見 [§13.4](docs/backend-design.md#134-自己讀自己模式self--me-endpoints)：`GET /me/user`、`GET /me/profile`、`GET /me/files/{container}/{fileName}`（白名單容器 + userId 前綴檢查）、`GET /me/payroll?months=12`（近 N 個月薪資，即時重算型）。
 
 ---
 

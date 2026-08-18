@@ -5,11 +5,13 @@ import { AuthService } from '@core/auth/services/auth.service';
 import { MyProfileService } from '../../services/my-profile.service';
 import { User } from '../../../admin/users/models/user.model';
 import { EmployeeProfileDetail, SalaryAdjustmentRecord } from '../../../admin/users/models/employee-profile.model';
+import { MyPayrollMonth } from '../../models/my-payroll.model';
+import { PayrollDetailCard } from '@shared/components/payroll-detail-card';
 
 @Component({
   selector: 'app-my-profile',
   templateUrl: './my-profile.html',
-  imports: [DatePipe, DecimalPipe],
+  imports: [DatePipe, DecimalPipe, PayrollDetailCard],
 })
 export class MyProfile implements OnInit {
   private auth = inject(AuthService);
@@ -25,24 +27,43 @@ export class MyProfile implements OnInit {
   loading = signal(false);
   hrLoading = signal(false);
   hrLoaded = signal(false);
+  payrollLoading = signal(false);
+  payrollLoaded = signal(false);
   errorMsg = signal<string | null>(null);
 
   // ─── 資料 signals ────────────────────────────────────────────
   user = signal<User | null>(null);
   profile = signal<EmployeeProfileDetail | null>(null);
+  payrollMonths = signal<MyPayrollMonth[]>([]);
+
+  /** 目前展開明細的月份 key（yyyy-MM），null＝全部收合 */
+  expandedKey = signal<string | null>(null);
 
   // ─── Tab signals ─────────────────────────────────────────────
-  activeTab = signal<'basic' | 'hr' | 'dependents'>('basic');
+  activeTab = signal<'basic' | 'hr' | 'dependents' | 'payroll'>('basic');
 
   ngOnInit(): void {
     this._loadUser();
   }
 
-  switchTab(tab: 'basic' | 'hr' | 'dependents'): void {
+  switchTab(tab: 'basic' | 'hr' | 'dependents' | 'payroll'): void {
     this.activeTab.set(tab);
     if ((tab === 'hr' || tab === 'dependents') && !this.hrLoaded()) {
       this._loadProfile();
     }
+    if (tab === 'payroll' && !this.payrollLoaded()) {
+      this._loadPayroll();
+    }
+  }
+
+  /** 月份 key（yyyy-MM），供展開／收合比對 */
+  monthKey(m: MyPayrollMonth): string {
+    return `${m.year}-${String(m.month).padStart(2, '0')}`;
+  }
+
+  toggleMonth(m: MyPayrollMonth): void {
+    const key = this.monthKey(m);
+    this.expandedKey.set(this.expandedKey() === key ? null : key);
   }
 
   // ─── 健保費試算（getter）─────────────────────────────────────
@@ -118,6 +139,18 @@ export class MyProfile implements OnInit {
     this.myProfileService.getMyUser().subscribe({
       next: u => { this.user.set(u); this.loading.set(false); },
       error: () => { this.errorMsg.set('無法載入個人資料，請稍後再試。'); this.loading.set(false); },
+    });
+  }
+
+  private _loadPayroll(): void {
+    this.payrollLoading.set(true);
+    this.myProfileService.getMyPayroll(12).subscribe({
+      next: h => {
+        this.payrollMonths.set(h.months ?? []);
+        this.payrollLoaded.set(true);
+        this.payrollLoading.set(false);
+      },
+      error: () => { this.errorMsg.set('無法載入薪資紀錄，請稍後再試。'); this.payrollLoading.set(false); },
     });
   }
 
