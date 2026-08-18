@@ -17,6 +17,11 @@
         </svg>
         查詢
       </button>
+      <button class="btn btn-outline inline-flex items-center gap-1"
+              [disabled]="exporting() || employees().length === 0" (click)="exportExcel()">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#download"></use></svg>
+        @if (exporting()) { 匯出中... } @else { 匯出總表 }
+      </button>
       @if (payroll()) {
         <button class="btn btn-outline-secondary inline-flex items-center gap-1"
                 (click)="sendSlips()" [disabled]="sending()">

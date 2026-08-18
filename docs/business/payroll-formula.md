@@ -33,7 +33,7 @@
    - 性質同 `LaborInsuranceOverride`/`HealthInsuranceOverride`：User 表直接欄位，**不**經過 SalaryAdjustmentRecord 歷史同步，可在基本資料 Tab 直接編輯（null 視為 0%）。
    - 提繳底薪＝`insuredBaseSalary`（育嬰留停折減前的底薪）。
 
-> 人事薪資為動態計算，不儲存於資料庫。前端可匯出 PDF 薪資表。
+> 人事薪資為動態計算，不儲存於資料庫。前端可匯出 PDF 薪資表，亦可於清單頁「匯出總表」輸出當月 Excel（一位員工一列 × 32 欄的全部薪資欄位 + 合計列，合計取自後端 `MonthlyPayrollDto` 的 Total* 欄，不在前端重算）。
 > 薪資編輯頁與薪資明細信件額外顯示該月**所有已核准的請假紀錄**（全假別，非僅事假/病假/家庭照顧假）。
 
 ### 銷假對扣薪的影響（2026-08）
