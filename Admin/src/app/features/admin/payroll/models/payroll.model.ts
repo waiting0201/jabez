@@ -36,6 +36,10 @@ export interface EmployeePayroll {
   /** 勞退自提率（%，null = 0%，直接欄位、非覆寫） */
   laborPensionSelfContributionRate: number | null;
   laborPensionSelfDeduction: number;
+  /** 健保眷屬實際人數 */
+  dependentCount: number;
+  /** 計費眷屬口數 = min(眷屬數, 3)，健保費 = 員工負擔 ×(1 + 此數) */
+  cappedDependentCount: number;
   /**
    * 該月育嬰留職停薪日曆天數。> 0 代表底薪與各項加給已按「在職天數 ÷ 30」折減；
    * 整月留停者不會出現在薪資名單中。
@@ -63,6 +67,7 @@ export interface MonthlyPayroll {
   totalHealthInsurance: number;
   totalPersonalLeaveDeduction: number;
   totalSickLeaveDeduction: number;
+  totalMenstrualLeaveDeduction: number;
   totalFamilyCareLeaveDeduction: number;
   totalOtherDeduction: number;
   totalNetSalary: number;

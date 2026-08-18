@@ -16,6 +16,7 @@
 | 圖表 | ApexCharts (ng-apexcharts) | 報表頁使用 |
 | 通知 | ngx-toastr | 禁止自製 alert/modal 替代 |
 | PDF 匯出 | jsPDF + jspdf-autotable | 中文字型走 [pdf-core.service.ts](../Admin/src/app/shared/services/pdf-core.service.ts) |
+| Excel 匯出 | SheetJS (`xlsx`) | 一律**前端產檔**（`XLSX.writeFile()`），後端只回 JSON、不設 Content-Disposition |
 | 圖檔壓縮 | [image-compression.service.ts](../Admin/src/app/shared/services/image-compression.service.ts) | HEIC→JPEG / Canvas resize / JPEG quality；PDF passthrough |
 | Icon | SVG sprite | `<svg class="sa-icon"><use href="/assets/icons/sprite.svg#NAME"></use></svg>` |
 | Modal / Dropdown | @ng-bootstrap | 僅用其行為，CSS class 在 tailwind.css `@layer components` |
@@ -1738,6 +1739,55 @@ onTaxIdBlur() {
 > Bootstrap CSS 已於 2026-02 從專案移除（見 §1.2），`tailwind.css` 只手寫重定義了帶斷點的 `.d-sm-none` / `.d-md-none` 等，**無前綴的 `.d-none` 不存在**，寫了等於沒藏 —— 該格會完整渲染原生檔案輸入框（Chrome 約 240px），撐開整張 `table-responsive` 明細表並壓縮其他欄位。2026-08 已修正 [advance-form](../Admin/src/app/features/admin/advance-requests/pages/advance-form/advance-form.html)（全站唯一一處誤用）。同理，任何從 Bootstrap 範例複製來的 class 都要先確認 `tailwind.css` 有沒有對應定義。
 
 檔名不另外顯示文字（欄寬不夠），只掛在 `[title]` 當 tooltip；預覽走 `<app-file-preview-modal>` 而非另開下載連結。
+
+---
+
+## 12.7 Excel 匯出（SheetJS 前端產檔）
+
+Excel 一律**在前端產生**：後端只回 JSON（不設 `Content-Disposition`、不引入 ClosedXML / EPPlus），前端 `import * as XLSX from 'xlsx'` 組表後 `XLSX.writeFile(wb, 檔名)`。已採用：出缺勤 / 加班 / 款項統計三張報表 + **人事薪資總表**。
+
+### 12.7.1 資料來源二選一
+
+| 情境 | 做法 |
+|---|---|
+| 列表**有分頁**（reports 三頁） | 匯出時**重打一次 API**取全量。後端須加 `?export=true` 旗標把 `pageSize` 上限放寬到模組常數（見 [backend-design.md §分頁](backend-design.md)），**禁止**只把 `pageSize` 送 9999 —— 後端仍夾到 100，Excel 會被靜默截斷 |
+| API 本來就**不分頁**（人事薪資） | **直接讀已載入的 signal**，不再打 API。少一次往返，也不會有「畫面與檔案內容不一致」的時間差 |
+
+### 12.7.2 兩種組表方式
+
+- `XLSX.utils.json_to_sheet(rows)`：只有表頭 + 資料列時用（出缺勤 / 加班）。
+- `XLSX.utils.aoa_to_sheet(aoa)`：需要**摘要列 / 合計列**時用（款項統計 / 人事薪資總表）。結構為 `[[摘要], [], [表頭], ...資料列, [合計列]]`。
+
+### 12.7.3 合計列取值
+
+合計列**一律取後端已算好的 Total 欄位**，不在前端重新加總 —— 否則畫面 summary card 與 Excel 會出現兩份真相。後端沒提供合計的欄（天數 / 比率 / 說明文字）留空字串。
+
+### 12.7.4 格式化：只有 `!cols` 與 `cell.z` 有效
+
+```ts
+// 欄寬：中文字佔 2 格，不能直接用 header.length
+const displayWidth = (t: string) => [...t].reduce((n, ch) => n + (ch.charCodeAt(0) > 0x2e80 ? 2 : 1), 0);
+ws['!cols'] = headers.map(h => ({wch: Math.max(displayWidth(h) + 2, 10)}));
+
+// 金額欄千分位；天數 / 比率維持 General
+cell.z = '#,##0';
+```
+
+- ⚠️ **`cell.s`（字型 / 底色 / 對齊）在社群版 SheetJS 完全無效**，寫了也不會進檔案。[payment-report.ts](../Admin/src/app/features/admin/reports/pages/payment-report/payment-report.ts) 裡那段 `alignment: {wrapText: true}` 是無效程式碼，勿再複製。
+- ⚠️ **天數 / 比率欄不要套 `'#,##0.##'`** —— 整數會顯示成「6.」多一個小數點。不指定 `z`（General）即可正確顯示 `6` 與 `1.5`。
+- 金額一律寫入 **number 而非字串**，否則使用者無法在 Excel 直接 SUM。
+
+### 12.7.5 按鈕與狀態
+
+```html
+<button class="btn btn-outline inline-flex items-center gap-1"
+        [disabled]="exporting() || records().length === 0" (click)="exportExcel()">
+  <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#download"></use></svg>
+  @if (exporting()) { 匯出中... } @else { 匯出 Excel }
+</button>
+```
+
+固定 `btn btn-outline` + `download` icon + `exporting` signal 鎖；無資料時 `disabled` 而非隱藏。產檔以 `try / catch / finally` 包住，失敗吐 toastr error，`finally` 一定要解鎖。
 
 ---
 
