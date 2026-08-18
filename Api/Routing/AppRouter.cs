@@ -304,6 +304,7 @@ public sealed class AppRouter(
             ("GET",    ["leave-requests", "bereavement-quota"])   => await leaveRequests.GetBereavementQuotaAsync(req),
             ("GET",    ["leave-requests", "senior-executive-eligibility"]) => await leaveRequests.GetSeniorExecutiveEligibilityAsync(req),
             ("GET",    ["leave-requests", "senior-executive-quota"]) => await leaveRequests.GetSeniorExecutiveQuotaAsync(req),
+            ("GET",    ["leave-requests", "parental-quota"])      => await leaveRequests.GetParentalQuotaAsync(req),
             ("GET",    ["leave-requests", "working-days"])        => await leaveRequests.GetWorkingDaysAsync(req),
             ("PATCH",  ["leave-requests", var id, "submit"])      => await leaveRequests.SubmitAsync(req, id),
             // 銷假子資源必須排在 ["leave-requests", var id] 之前（List Pattern 由上而下比對）

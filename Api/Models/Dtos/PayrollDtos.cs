@@ -42,7 +42,10 @@ public sealed record EmployeePayrollDto(
     decimal   OverseasAllowance    = 0m,
     // 勞退自提（%，直接欄位、非覆寫，計入 NetSalary 的扣項）
     decimal?  LaborPensionSelfContributionRate = null,
-    decimal   LaborPensionSelfDeduction        = 0m);
+    decimal   LaborPensionSelfDeduction        = 0m,
+    // 育嬰留職停薪：該月留停日曆天數。> 0 代表底薪與各加給已按「在職天數 ÷ 30」折減；
+    // 整月留停者不會出現在名單中（見 PayrollReadService）
+    decimal   ParentalLeaveDays = 0m);
 
 /// <summary>請假明細（用於薪資頁面顯示）</summary>
 public sealed record LeaveDetailDto(
@@ -74,7 +77,8 @@ public sealed record MonthlyPayrollDto(
     decimal TotalOtherAllowance       = 0m,
     decimal TotalAdjustmentDifference = 0m,
     decimal TotalOverseasAllowance    = 0m,
-    decimal TotalLaborPensionSelfDeduction = 0m);
+    decimal TotalLaborPensionSelfDeduction = 0m,
+    decimal TotalParentalLeaveDays         = 0m);
 
 /// <summary>薪資調整新增/更新請求</summary>
 public sealed record PayrollAdjustmentRequest(

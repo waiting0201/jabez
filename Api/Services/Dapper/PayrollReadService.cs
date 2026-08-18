@@ -102,6 +102,25 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             GROUP BY lr.EmployeeId
             """;
 
+        // 5c. 查詢該月已核准的育嬰留職停薪日曆天數（逐日歸月）
+        //     刻意不沿用上面 leaveSql 的「區間相交 + 整單 SUM(Hours)」寫法 —— 那個寫法會讓跨月假單
+        //     在每個月各扣一次全額（見 docs/business/payroll-formula.md 已知限制）。育嬰留停動輒數月，
+        //     必須逐日歸月，故改以「假單區間 ∩ 當月區間」的實際天數計算。
+        //     parental_leave 為連續日曆天型，parental_leave_daily 強制單日（StartDate = EndDate），
+        //     兩者用同一段日期交集即可正確歸月，不需 LeaveDayExpander 逐日展開。
+        const string parentalSql = """
+            SELECT lr.EmployeeId,
+                   SUM(DATEDIFF(day,
+                         CASE WHEN lr.StartDate > @FirstDay THEN lr.StartDate ELSE @FirstDay END,
+                         CASE WHEN lr.EndDate   < @LastDay  THEN lr.EndDate   ELSE @LastDay  END) + 1) AS Days
+            FROM LeaveRequests lr
+            WHERE lr.ApprovalStatus = 'approved'
+              AND lr.LeaveType IN ('parental_leave', 'parental_leave_daily')
+              AND lr.StartDate <= @LastDay
+              AND lr.EndDate   >= @FirstDay
+            GROUP BY lr.EmployeeId
+            """;
+
         // 6. 查詢該月所有已核准的請假明細（全假別）
         const string leaveDetailSql = """
             SELECT lr.EmployeeId, lr.LeaveType, lr.StartDate, lr.EndDate, lr.Hours
@@ -146,6 +165,12 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                     (DateTime)r.EndDate,
                     (decimal)r.Hours)).ToArray());
 
+        // 育嬰留停天數：Dictionary<EmployeeId, 該月留停日曆天數>
+        var parentalDaysMap = (await db.QueryAsync<dynamic>(parentalSql, new { FirstDay = firstDay, LastDay = lastDay }))
+            .ToDictionary(r => (Guid)r.EmployeeId, r => (decimal)r.Days);
+
+        int daysInMonth = DateTime.DaysInMonth(year, month);
+
         var results = new List<EmployeePayrollDto>();
         foreach (var emp in employees)
         {
@@ -157,16 +182,51 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             decimal otherAllow     = (decimal?)emp.OtherAllowance       ?? 0m;
             decimal adjDiff        = (decimal?)emp.AdjustmentDifference ?? 0m;
             decimal overseasAllow  = (decimal?)emp.OverseasAllowance    ?? 0m;
+            // dailySalary 刻意在折減前先算好：事假 / 病假 / 生理假 / 家庭照顧假的扣薪仍以
+            // 原始底薪推算的日薪為基準，避免留停按比例後又被重複折減一次。
             decimal dailySalary    = Math.Round(baseSalary / 30m, 0);
 
             decimal holidayDays = travelDays.TryGetValue((Guid)emp.EmployeeId, out var days) ? days : 0m;
+
+            // ── 育嬰留職停薪：不支薪 ────────────────────────────────────────────
+            // 折減率＝「1 − 留停天數 ÷ 30」，與事假等無薪假的「日薪 × 天數」完全等價
+            // （日薪本身就是底薪 ÷ 30）。刻意不用「(當月天數 − 留停天數) ÷ 30」：
+            // 31 天的月份請 1 天留停時該式為 30/30 = 1，會完全不折減，「不支薪」形同無效。
+            // 不折減的項目：勞健保（續保者仍須繳全額）、勞退自提、加班費與假日津貼（本就是實績金額）。
+            decimal parentalLeaveDays = parentalDaysMap.TryGetValue((Guid)emp.EmployeeId, out var pld) ? pld : 0m;
+
+            // 投保／提繳基準：恆為折減前的底薪。留停續保者的投保薪資不會因當月少領而降級，
+            // 若用折減後的底薪查級距，會連帶把勞健保也「按比例」少扣（例：底薪 60000 折成 8000
+            // 會掉到最低級距 29500），與「勞健保不折減」的規則相違。勞退自提同理。
+            decimal insuredBaseSalary = baseSalary;
+
+            if (parentalLeaveDays > 0)
+            {
+                // 整月留停且當月確實無其他應發／扣項時，整列剔除（不產生薪資單）。
+                // 有加班費、上月假日津貼或當月薪資調整（其他加項／扣項）時仍須出單，
+                // 否則這些已賺得的金額會憑空消失且不計入月合計。
+                bool hasOtherItems = overtimePay != 0m || holidayDays > 0m
+                                  || (adjustments.TryGetValue((Guid)emp.EmployeeId, out var padj)
+                                      && ((decimal)padj.OtherAddition != 0m || (decimal)padj.OtherDeduction != 0m));
+                if (parentalLeaveDays >= daysInMonth && !hasOtherItems) continue;
+
+                decimal workRatio = Math.Max(0m, 1m - parentalLeaveDays / 30m);
+                baseSalary    = Math.Round(baseSalary    * workRatio, 0);
+                mealAllowance = Math.Round(mealAllowance * workRatio, 0);
+                positionAllow = Math.Round(positionAllow * workRatio, 0);
+                dutyAllow     = Math.Round(dutyAllow     * workRatio, 0);
+                otherAllow    = Math.Round(otherAllow    * workRatio, 0);
+                adjDiff       = Math.Round(adjDiff       * workRatio, 0);
+                overseasAllow = Math.Round(overseasAllow * workRatio, 0);
+            }
+
             // 參與人員可逐日勾上半天 / 下半天，故 holidayDays 為 0.5 的倍數；
             // dailySalary 已四捨五入為整數，奇數日薪 × .5 天必然落在中點，
             // 明確指定 AwayFromZero（Math.Round 預設是銀行家捨入，會少 1 元）。
             decimal holidayAllowance = Math.Round(dailySalary * holidayDays, 0, MidpointRounding.AwayFromZero);
 
-            // 查找級距：第一個 SalaryBracket >= BaseSalary 的級距，若無則取最高級距
-            var bracket = brackets.FirstOrDefault(b => (decimal)b.SalaryBracket >= baseSalary)
+            // 查找級距：第一個 SalaryBracket >= 投保底薪的級距，若無則取最高級距
+            var bracket = brackets.FirstOrDefault(b => (decimal)b.SalaryBracket >= insuredBaseSalary)
                        ?? brackets.LastOrDefault();
 
             decimal baseHealthIns = bracket is not null ? (decimal)bracket.HealthInsuranceEmployee : 0m;
@@ -238,8 +298,9 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 note               = (string?)adj.Note;
             }
 
-            // 勞退自提扣款 = 底薪 × 自提率%，四捨五入至整數（比照勞健保費公式）
-            decimal laborPensionSelfDeduction = Math.Round(baseSalary * (laborPensionRate ?? 0m) / 100m, 0);
+            // 勞退自提扣款 = 提繳底薪 × 自提率%，四捨五入至整數（比照勞健保費公式）
+            // 用 insuredBaseSalary：留停當月的提繳基準同樣不隨少領而降低
+            decimal laborPensionSelfDeduction = Math.Round(insuredBaseSalary * (laborPensionRate ?? 0m) / 100m, 0);
 
             decimal netSalary = baseSalary + mealAllowance + overtimePay
                               + positionAllow + dutyAllow + otherAllow + adjDiff + overseasAllow
@@ -289,7 +350,8 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 adjDiff,
                 overseasAllow,
                 laborPensionRate,
-                laborPensionSelfDeduction));
+                laborPensionSelfDeduction,
+                parentalLeaveDays));
         }
 
         return new MonthlyPayrollDto(
@@ -312,6 +374,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             results.Sum(r => r.OtherAllowanceAmount),
             results.Sum(r => r.AdjustmentDifference),
             results.Sum(r => r.OverseasAllowance),
-            results.Sum(r => r.LaborPensionSelfDeduction));
+            results.Sum(r => r.LaborPensionSelfDeduction),
+            results.Sum(r => r.ParentalLeaveDays));
     }
 }

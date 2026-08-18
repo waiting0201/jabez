@@ -147,9 +147,28 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
                             + emp.FamilyCareLeaveDeduction
                             + emp.OtherDeduction + emp.LaborPensionSelfDeduction;
 
+        // 育嬰留停當月：底薪與各加給已按「在職天數 ÷ 30」折減，於底薪列加註說明（整月留停者不會出現在名單中）
+        var parentalNote = emp.ParentalLeaveDays > 0
+            ? $"（育嬰留停 {emp.ParentalLeaveDays.ToString("0.#")} 天，按在職比例計算）"
+            : "";
+
+        // 留停期間薪資折減但勞健保收全額，實領可能為負數 —— 差額即員工應補繳的保費。
+        // 系統不做遞延帳，於明細加註說明避免誤解為公司欠薪。
+        var negativeNetSection = emp.ParentalLeaveDays > 0 && emp.NetSalary < 0
+            ? $"""
+                <div style="background:#FCF3E3;border-left:4px solid #B8892A;padding:12px 16px;margin:16px 0;border-radius:4px">
+                    <p style="margin:0;color:#8C6A20;font-size:13px;line-height:1.7">
+                        本月因育嬰留職停薪，薪資已按實際在職天數計算，惟勞健保仍以全額計收，
+                        故實領為負數。差額 <strong>NT$ {fmt(-emp.NetSalary)}</strong> 為您應補繳之保費，
+                        請洽人事部門辦理繳納或申請個人負擔部分遞延繳納（最長 3 年）。
+                    </p>
+                </div>
+                """
+            : "";
+
         // 動態加項列：有值才顯示，斑馬色維持
         var earningsRows = $"""
-            <tr><td style="padding:8px 12px">底薪</td><td style="padding:8px 12px;text-align:right">{fmt(emp.BaseSalary)}</td></tr>
+            <tr><td style="padding:8px 12px">底薪{parentalNote}</td><td style="padding:8px 12px;text-align:right">{fmt(emp.BaseSalary)}</td></tr>
             <tr style="background:#FDFAF5"><td style="padding:8px 12px">伙食費</td><td style="padding:8px 12px;text-align:right">{fmt(emp.MealAllowance)}</td></tr>
             <tr><td style="padding:8px 12px">加班費</td><td style="padding:8px 12px;text-align:right">{fmt(emp.OvertimePay)}</td></tr>
             """;
@@ -272,6 +291,8 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
                     </tr>
                 </table>
 
+                {negativeNetSection}
+
                 {noteSection}
 
                 {BuildLeaveDetailSection(emp)}
@@ -330,6 +351,8 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
         "senior_executive"    => "高階主管假",
         "menstrual"           => "生理假",
         "family_care"         => "家庭照顧假",
+        "parental_leave"      => "育嬰留職停薪",
+        "parental_leave_daily" => "育嬰留停(單日)",
         _                     => leaveType,
     };
 

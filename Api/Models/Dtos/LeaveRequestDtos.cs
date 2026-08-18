@@ -20,7 +20,9 @@ public sealed record LeaveRequestDto(
     string?   TimeUnit             = null,
     Guid?     AgentUserId          = null,
     string?   AgentName            = null,
-    decimal?  OriginalHours        = null);   // 有值代表曾銷假；原始請假時數
+    decimal?  OriginalHours        = null,   // 有值代表曾銷假；原始請假時數
+    DateTime? ChildBirthDate       = null,   // 育嬰留停：子女出生日期
+    bool?     ContinueInsurance    = null);  // 育嬰留停：期間是否續保勞健保（僅記錄意願）
 
 public sealed record CreateLeaveRequestRequest(
     Guid?    EmployeeId,
@@ -32,6 +34,8 @@ public sealed record CreateLeaveRequestRequest(
     string   Reason               = "",
     string?  BereavementRelationship = null,
     Guid?    AgentUserId          = null,
+    DateTime? ChildBirthDate      = null,
+    bool?    ContinueInsurance    = null,
     DesignatedReviewerRequest[]? DesignatedReviewers = null);
 
 public sealed record UpdateLeaveRequestRequest(
@@ -42,7 +46,27 @@ public sealed record UpdateLeaveRequestRequest(
     string?   Reason,
     string?   BereavementRelationship = null,
     Guid?     AgentUserId          = null,
+    DateTime? ChildBirthDate      = null,
+    bool?     ContinueInsurance   = null,
     DesignatedReviewerRequest[]? DesignatedReviewers = null);
+
+/// <summary>
+/// 育嬰留職停薪配額回應。
+/// 兩層額度：每名子女合計 730 天（2 年，兩種育嬰假別併計）＋ 彈性單日每人每年 30 日。
+/// 「雙親合計 60 日」無法驗證（配偶可能不在同一公司），僅於前端提示。
+/// </summary>
+public sealed record ParentalQuotaDto(
+    bool      IsEligible,          // 在職年資是否符合（滿 6 個月）
+    int       SeniorityMonths,
+    bool      ChildAgeValid,       // 子女是否未滿 3 歲
+    DateTime? ChildBirthDate,
+    int       TotalDays,           // 730
+    decimal   UsedDays,            // 該名子女已使用（兩種育嬰假別合計）
+    decimal   AvailableDays,
+    int       DailyYearLimit,      // 30
+    decimal   DailyYearUsed,       // 當年度彈性單日已使用
+    decimal   DailyYearAvailable,
+    string?   Message = null);
 
 /// <summary>婚假配額回應</summary>
 public sealed record MarriageQuotaDto(

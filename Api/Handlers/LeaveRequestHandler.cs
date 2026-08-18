@@ -33,7 +33,8 @@ public sealed class LeaveRequestHandler(
         ["annual", "personal", "sick", "compensatory", "marriage", "bereavement",
          "official", "maternity", "miscarriage_3m", "miscarriage_2to3m",
          "miscarriage_under2m", "prenatal_checkup", "paternity",
-         "ceremonial_festival", "senior_executive", "menstrual", "family_care"];
+         "ceremonial_festival", "senior_executive", "menstrual", "family_care",
+         "parental_leave", "parental_leave_daily"];
 
     /// <summary>
     /// 工作日型假別：天數 / 時數以「扣除國定假日與六日後的實際工作日」計算
@@ -57,6 +58,25 @@ public sealed class LeaveRequestHandler(
 
     /// <summary>產假固定天數（法規為一次請完）</summary>
     private const int MaternityDays = 56;
+
+    // ── 育嬰留職停薪常數 ──────────────────────────────────────────────────────
+    // 法源：性別平等工作法 §16、育嬰留職停薪實施辦法。津貼為勞保局按投保薪資 80% 給付，
+    // 非公司給付，故系統不計算津貼金額，只處理「不支薪」與「年資不計入」。
+
+    /// <summary>育嬰留停申請資格：在職滿 6 個月（Superadmin 可繞過，對應「未滿 6 個月經雇主同意亦可」）</summary>
+    private const int ParentalMinSeniorityMonths = 6;
+
+    /// <summary>育嬰留停申請資格：子女未滿 3 歲</summary>
+    private const int ParentalChildMaxAgeYears = 3;
+
+    /// <summary>育嬰留停每名子女合計上限（天）：2 年。兩種育嬰假別併計，以 ChildBirthDate 為分組鍵</summary>
+    private const int ParentalTotalDays = 730;
+
+    /// <summary>彈性單日育嬰留停每人每年上限（日）。雙親合計 60 日無法驗證，僅前端提示</summary>
+    private const int ParentalDailyAnnualDays = 30;
+
+    /// <summary>兩種育嬰留停假別（額度併計、薪資按比例、年資扣除皆一體適用）</summary>
+    private static readonly HashSet<string> ParentalLeaveTypes = ["parental_leave", "parental_leave_daily"];
 
     /// <summary>各假別天數上限（不含年假與補休，它們有獨立邏輯）</summary>
     private static readonly Dictionary<string, int> LeaveTypeDaysLimit = new()
@@ -240,6 +260,16 @@ public sealed class LeaveRequestHandler(
         if (body.LeaveType == "menstrual" && !await IsFemaleAsync(employeeId))
             return new BadRequestObjectResult(ApiResponse.Fail("僅女性員工可申請生理假。"));
 
+        // 育嬰留停：在職滿 6 個月 + 子女未滿 3 歲（前置檢查；submit 時再次驗證）
+        if (ParentalLeaveTypes.Contains(body.LeaveType))
+        {
+            // 單日型的 body.EndDate 稍後會被強制覆寫為起始日，故此處以起始日檢核
+            var parentalEnd = body.LeaveType == "parental_leave_daily" ? body.StartDate : body.EndDate;
+            var parentalError = await CheckParentalEligibilityAsync(employeeId, body.ChildBirthDate, body.StartDate, parentalEnd);
+            if (parentalError is not null)
+                return new BadRequestObjectResult(ApiResponse.Fail(parentalError));
+        }
+
         // 產假：禁止重複活躍申請（一次請完制）
         if (body.LeaveType == "maternity")
         {
@@ -261,6 +291,24 @@ public sealed class LeaveRequestHandler(
         {
             effectiveStart = body.StartDate.Date;
             effectiveEnd   = effectiveStart.AddDays(MaternityDays - 1);
+        }
+        else if (body.LeaveType == "parental_leave_daily")
+        {
+            // 彈性單日新制：一次申請一日，強制結束日＝起始日（徹底消除跨月歸屬問題）。
+            // 結束時間必須是當日 23:59 —— 重疊驗證與打卡阻擋皆為半開區間 [Start, End)，
+            // 若存成 00:00 會變成零長度區間，同一天可重複申請、也擋不住當日打卡。
+            effectiveStart = body.StartDate.Date;
+            effectiveEnd   = EndOfDay(effectiveStart);
+        }
+        else if (body.LeaveType == "parental_leave")
+        {
+            // 長期留停為連續日曆天：起始日正規化為 00:00、結束日補滿到 23:59（理由同上）
+            if (body.EndDate == default)
+                return new BadRequestObjectResult(ApiResponse.Fail("EndDate is required."));
+            effectiveStart = body.StartDate.Date;
+            effectiveEnd   = EndOfDay(body.EndDate);
+            if (effectiveEnd <= effectiveStart)
+                return new BadRequestObjectResult(ApiResponse.Fail("EndDate must be after StartDate."));
         }
         else
         {
@@ -341,6 +389,8 @@ public sealed class LeaveRequestHandler(
             Hours                   = hours,
             Reason                  = body.Reason,
             BereavementRelationship = body.LeaveType == "bereavement" ? body.BereavementRelationship : null,
+            ChildBirthDate          = ParentalLeaveTypes.Contains(body.LeaveType) ? body.ChildBirthDate?.Date : null,
+            ContinueInsurance       = ParentalLeaveTypes.Contains(body.LeaveType) ? body.ContinueInsurance : null,
             AgentUserId             = body.AgentUserId == employeeId ? null : body.AgentUserId,  // 代理人不可為本人
             ApprovalStatus          = "draft",
             CreatedAt               = Clock.Now,
@@ -446,7 +496,39 @@ public sealed class LeaveRequestHandler(
         if (effectiveLeaveType == "menstrual" && !await IsFemaleAsync(item.EmployeeId ?? Guid.Empty))
             return new BadRequestObjectResult(ApiResponse.Fail("僅女性員工可申請生理假。"));
 
+        // 育嬰留停欄位更新 + 資格檢查（與 CreateAsync 保持一致）；改為其他假別時一併清空
+        if (ParentalLeaveTypes.Contains(effectiveLeaveType))
+        {
+            if (body.ChildBirthDate.HasValue) item.ChildBirthDate = body.ChildBirthDate.Value.Date;
+            item.ContinueInsurance = body.ContinueInsurance;
+
+            var parentalError = await CheckParentalEligibilityAsync(
+                item.EmployeeId ?? Guid.Empty, item.ChildBirthDate, item.StartDate, item.EndDate);
+            if (parentalError is not null)
+                return new BadRequestObjectResult(ApiResponse.Fail(parentalError));
+        }
+        else
+        {
+            item.ChildBirthDate    = null;
+            item.ContinueInsurance = null;
+        }
+
         var unit = GetTimeUnit(effectiveLeaveType);
+
+        // 育嬰留停日期正規化（與 CreateAsync 保持一致）：起始日 00:00、結束日補滿 23:59。
+        // 彈性單日一次申請一日，結束日＝起始日當天 23:59 —— 不可存成 00:00，否則變成零長度區間，
+        // 重疊驗證與打卡阻擋的半開區間 [Start, End) 會整個失效；且會被下方通用守門判為
+        // EndDate <= StartDate 而恆回 400，導致草稿永遠改不了、送不出。
+        if (effectiveLeaveType == "parental_leave_daily")
+        {
+            item.StartDate = item.StartDate.Date;
+            item.EndDate   = EndOfDay(item.StartDate);
+        }
+        else if (effectiveLeaveType == "parental_leave")
+        {
+            item.StartDate = item.StartDate.Date;
+            item.EndDate   = EndOfDay(item.EndDate);
+        }
 
         // 產假：自動填充 56 個日曆天，不論 client 傳入；時數只計其中工作日
         if (effectiveLeaveType == "maternity")
@@ -630,8 +712,10 @@ public sealed class LeaveRequestHandler(
             }));
 
         var now = Clock.Now;
-        var (years, months) = CalculateSeniority(user.HireDate.Value, now);
-        int totalDays = CalculateAnnualLeaveDays(years, months);
+        // 育嬰留停期間不計入工作年資 → 特休額度隨之暫停累積
+        var parentalExcludedDays = await GetParentalLeaveDaysAsync(userId, now);
+        var (years, months) = SeniorityHelper.Calculate(user.HireDate.Value, now, parentalExcludedDays);
+        int totalDays = SeniorityHelper.CalculateAnnualLeaveDays(years, months);
 
         // 查詢今年已使用的年假天數（pending + approved）
         var startOfYear = new DateTime(now.Year, 1, 1);
@@ -651,6 +735,7 @@ public sealed class LeaveRequestHandler(
             availableDays = Math.Round(Math.Max(0, totalDays - usedDays), 1),
             seniorityYears = years,
             seniorityMonths = months,
+            parentalLeaveExcludedDays = parentalExcludedDays,   // 已扣除的育嬰留停天數（0 = 未曾留停）
         }));
     }
 
@@ -844,6 +929,72 @@ public sealed class LeaveRequestHandler(
         }));
     }
 
+    /// <summary>
+    /// 查詢當前使用者的育嬰留職停薪額度。
+    /// 兩層額度：每名子女合計 730 天（兩種育嬰假別併計，需帶 childBirthDate 才能計算）
+    /// ＋ 彈性單日每人每年 30 日（依當年度）。
+    /// </summary>
+    public async Task<IActionResult> GetParentalQuotaAsync(HttpRequest req)
+    {
+        var userId = await GetUserIdAsync(req);
+        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var now = Clock.Now;
+
+        // 資格：在職滿 6 個月（Superadmin 一律通過，比照高階主管假）
+        int seniorityMonths = 0;
+        bool isEligible = user?.IsSuperAdmin == true;
+        string? message = null;
+        if (user?.HireDate is null)
+        {
+            if (!isEligible) message = "未設定到職日";
+        }
+        else
+        {
+            var parentalExcludedDays = await GetParentalLeaveDaysAsync(userId, now);
+            var (y, m) = SeniorityHelper.Calculate(user.HireDate.Value, now, parentalExcludedDays);
+            seniorityMonths = y * 12 + m;
+            if (!isEligible) isEligible = seniorityMonths >= ParentalMinSeniorityMonths;
+            if (!isEligible) message = $"在職未滿 {ParentalMinSeniorityMonths} 個月";
+        }
+
+        // 子女出生日期（選填）：有帶才算得出「該名子女」的總額度與 3 歲資格
+        DateTime? childBirthDate = null;
+        if (DateTime.TryParse(req.Query["childBirthDate"], out var parsedChild))
+            childBirthDate = parsedChild.Date;
+
+        bool childAgeValid = childBirthDate is not null
+                          && now.Date < childBirthDate.Value.AddYears(ParentalChildMaxAgeYears);
+
+        decimal usedDays = 0m;
+        if (childBirthDate is not null)
+        {
+            var usedHours = await db.LeaveRequests.AsNoTracking()
+                .Where(l => l.EmployeeId == userId
+                         && ParentalLeaveTypes.Contains(l.LeaveType)
+                         && l.ChildBirthDate == childBirthDate
+                         && (l.ApprovalStatus == "approved" || l.ApprovalStatus == "pending"))
+                .SumAsync(l => l.Hours);
+            usedDays = usedHours / 8m;
+        }
+
+        // 彈性單日年度額度（不分子女，依人依年度）
+        var dailyYearUsedHours = await GetUsedHoursAsync(userId, "parental_leave_daily", excludeId: 0, year: now.Year);
+        var dailyYearUsed = dailyYearUsedHours / 8m;
+
+        return new OkObjectResult(ApiResponse.Ok(new ParentalQuotaDto(
+            IsEligible:         isEligible,
+            SeniorityMonths:    seniorityMonths,
+            ChildAgeValid:      childAgeValid,
+            ChildBirthDate:     childBirthDate,
+            TotalDays:          ParentalTotalDays,
+            UsedDays:           Math.Round(usedDays, 1),
+            AvailableDays:      Math.Round(Math.Max(0, ParentalTotalDays - usedDays), 1),
+            DailyYearLimit:     ParentalDailyAnnualDays,
+            DailyYearUsed:      Math.Round(dailyYearUsed, 1),
+            DailyYearAvailable: Math.Round(Math.Max(0, ParentalDailyAnnualDays - dailyYearUsed), 1),
+            Message:            message)));
+    }
+
     /// <summary>檢查使用者是否符合高階主管假資格，回傳錯誤訊息或 null（Superadmin 一律通過）</summary>
     private async Task<string?> CheckSeniorExecutiveEligibilityAsync(Guid userId)
     {
@@ -888,6 +1039,15 @@ public sealed class LeaveRequestHandler(
             var eligError = await CheckSeniorExecutiveEligibilityAsync(item.EmployeeId ?? Guid.Empty);
             if (eligError is not null)
                 return new BadRequestObjectResult(ApiResponse.Fail(eligError));
+        }
+
+        // 育嬰留停：資格再次驗證（防止草稿期間子女已滿 3 歲）
+        if (ParentalLeaveTypes.Contains(item.LeaveType))
+        {
+            var parentalError = await CheckParentalEligibilityAsync(
+                item.EmployeeId ?? Guid.Empty, item.ChildBirthDate, item.StartDate, item.EndDate);
+            if (parentalError is not null)
+                return new BadRequestObjectResult(ApiResponse.Fail(parentalError));
         }
 
         // 工作日型假別（除歲時祭儀假外皆是）：送出時強制要求行事曆已匯入並權威重算 Hours（扣國定假日與六日）。
@@ -1140,8 +1300,10 @@ public sealed class LeaveRequestHandler(
             if (user?.HireDate is null)
                 return "未設定到職日，無法申請年假。";
 
-            var (years, months) = CalculateSeniority(user.HireDate.Value, now);
-            int totalDays = CalculateAnnualLeaveDays(years, months);
+            // 必須與 GetAnnualQuotaAsync 用同一套扣除算法，否則查得到的額度與實際能送的會不一致
+            var parentalExcludedDays = await GetParentalLeaveDaysAsync(userId, now);
+            var (years, months) = SeniorityHelper.Calculate(user.HireDate.Value, now, parentalExcludedDays);
+            int totalDays = SeniorityHelper.CalculateAnnualLeaveDays(years, months);
             if (totalDays <= 0)
                 return "年資不足，尚無年假額度。";
 
@@ -1194,6 +1356,38 @@ public sealed class LeaveRequestHandler(
             var yearUsed = await GetUsedHoursAsync(userId, "menstrual", item.Id, item.StartDate.Year);
             if (yearUsed + item.Hours > 96m)
                 return $"生理假全年上限 12 天。{item.StartDate.Year} 年已使用 {Math.Round(yearUsed / 8m, 1)} 天，本次申請 {Math.Round(item.Hours / 8m, 1)} 天。";
+
+            return null;
+        }
+
+        // 育嬰留職停薪：兩層額度
+        //   1. 每名子女合計 730 天（2 年）—— 兩種育嬰假別併計，以 ChildBirthDate 為分組鍵
+        //   2. 彈性單日另受「每人每年 30 日」限制（依申請起始日所屬年度，非 Clock.Now.Year）
+        // 資格（在職滿 6 個月 / 子女未滿 3 歲）由 CheckParentalEligibilityAsync 於三階段前置檢查。
+        if (ParentalLeaveTypes.Contains(item.LeaveType))
+        {
+            var eligError = await CheckParentalEligibilityAsync(userId, item.ChildBirthDate, item.StartDate, item.EndDate);
+            if (eligError is not null) return eligError;
+
+            var childUsedHours = await db.LeaveRequests
+                .Where(l => l.EmployeeId == userId
+                         && ParentalLeaveTypes.Contains(l.LeaveType)
+                         && l.ChildBirthDate == item.ChildBirthDate
+                         && l.Id != item.Id
+                         && (l.ApprovalStatus == "approved" || l.ApprovalStatus == "pending"))
+                .SumAsync(l => l.Hours);
+            var childUsedDays = (childUsedHours + item.Hours) / 8m;
+            if (childUsedDays > ParentalTotalDays)
+                return $"育嬰留職停薪額度不足。每名子女合計上限 {ParentalTotalDays} 天（2 年），已使用 {Math.Round(childUsedHours / 8m, 1)} 天，本次申請 {Math.Round(item.Hours / 8m, 1)} 天。";
+
+            if (item.LeaveType == "parental_leave_daily")
+            {
+                var dailyYear = item.StartDate.Year;
+                var dailyUsedHours = await GetUsedHoursAsync(userId, "parental_leave_daily", item.Id, dailyYear);
+                var dailyUsedDays = (dailyUsedHours + item.Hours) / 8m;
+                if (dailyUsedDays > ParentalDailyAnnualDays)
+                    return $"育嬰留停(單日)額度不足。每人每年上限 {ParentalDailyAnnualDays} 日，{dailyYear} 年已使用 {Math.Round(dailyUsedHours / 8m, 1)} 日，本次申請 {Math.Round(item.Hours / 8m, 1)} 日。";
+            }
 
             return null;
         }
@@ -1281,28 +1475,68 @@ public sealed class LeaveRequestHandler(
     }
 
     // ── Seniority / Annual Leave ─────────────────────────────────────────────
+    // 年資與年假天數的計算已抽至 Api/Common/SeniorityHelper.cs（因育嬰留停需扣除天數，
+    // 且 GetAnnualQuotaAsync 與 ValidateLeaveQuotaAsync 兩處必須用同一套算法）。
 
-    /// <summary>計算年資（年, 月）</summary>
-    private static (int Years, int Months) CalculateSeniority(DateTime hireDate, DateTime now)
+    /// <summary>
+    /// 當日結束時刻（23:59）。整天型假別的結束日必須涵蓋到當天結束 —— 重疊驗證與打卡阻擋
+    /// 皆以半開區間 [StartDate, EndDate) 比對，結束日若停在 00:00 會讓當天完全不受保護。
+    /// </summary>
+    private static DateTime EndOfDay(DateTime d) => d.Date.AddHours(23).AddMinutes(59);
+
+    /// <summary>
+    /// 計算「已經過去」的育嬰留停累計天數，供年資扣除使用（留停期間不計入工作年資）。
+    /// 只計已核准者；進行中的留停只算到 asOf 為止，尚未發生的天數不提前扣年資。
+    /// 已結束者直接用 Hours ÷ 8（銷假後 Hours 已遞減，天數自動反映）。
+    /// </summary>
+    private async Task<int> GetParentalLeaveDaysAsync(Guid userId, DateTime asOf)
     {
-        int years = now.Year - hireDate.Year;
-        int months = now.Month - hireDate.Month;
-        if (now.Day < hireDate.Day) months--;
-        if (months < 0) { years--; months += 12; }
-        return (years, months);
+        var rows = await db.LeaveRequests.AsNoTracking()
+            .Where(l => l.EmployeeId == userId
+                     && ParentalLeaveTypes.Contains(l.LeaveType)
+                     && l.ApprovalStatus == "approved"
+                     && l.StartDate <= asOf)
+            .Select(l => new { l.StartDate, l.EndDate, l.Hours })
+            .ToListAsync();
+
+        var cutoff = asOf.Date;
+        decimal total = 0m;
+        foreach (var r in rows)
+        {
+            total += r.EndDate.Date <= cutoff
+                ? r.Hours / 8m                                  // 已結束
+                : (cutoff - r.StartDate.Date).Days + 1;         // 進行中，只算已過去的日曆天
+        }
+        return (int)Math.Round(total, MidpointRounding.AwayFromZero);
     }
 
-    /// <summary>根據年資計算年假天數</summary>
-    private static int CalculateAnnualLeaveDays(int years, int months)
+    /// <summary>
+    /// 檢查育嬰留停申請資格，回傳錯誤訊息或 null。
+    /// Superadmin 一律通過（比照高階主管假；亦對應法規「在職未滿 6 個月經雇主同意亦可申請」）。
+    /// </summary>
+    private async Task<string?> CheckParentalEligibilityAsync(
+        Guid userId, DateTime? childBirthDate, DateTime startDate, DateTime? endDate = null)
     {
-        int totalMonths = years * 12 + months;
-        if (totalMonths < 6) return 0;          // 未滿 6 個月
-        if (totalMonths < 12) return 3;         // 滿 6 個月 ~ 未滿 1 年
-        if (years < 2) return 10;               // 滿 1 年 ~ 未滿 2 年
-        if (years < 3) return 10;               // 滿 2 年 ~ 未滿 3 年
-        if (years < 5) return 14;               // 滿 3 年 ~ 未滿 5 年
-        if (years < 10) return 15;              // 滿 5 年 ~ 未滿 10 年
-        return Math.Min(30, 15 + (years - 10)); // 10 年以上：每年加 1 天，上限 30 天
+        if (childBirthDate is null)
+            return "育嬰留職停薪必須填寫子女出生日期。";
+
+        // 子女未滿 3 歲：起訖日皆須落在 3 歲生日之前（法規為「子女滿 3 歲前」得申請並休畢；
+        // 只擋起始日會讓一張 730 天的留停一路延續到子女 5 歲）
+        var thirdBirthday = childBirthDate.Value.Date.AddYears(ParentalChildMaxAgeYears);
+        if (startDate.Date >= thirdBirthday)
+            return $"育嬰留職停薪僅限子女未滿 {ParentalChildMaxAgeYears} 歲前申請。";
+        if (endDate.HasValue && endDate.Value.Date >= thirdBirthday)
+            return $"育嬰留職停薪須於子女滿 {ParentalChildMaxAgeYears} 歲前結束，請將結束日調整為 {thirdBirthday.AddDays(-1):yyyy/MM/dd}（含）之前。";
+
+        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        if (user?.IsSuperAdmin == true) return null;
+        if (user?.HireDate is null)
+            return "未設定到職日，無法申請育嬰留職停薪。";
+
+        var (years, months) = SeniorityHelper.Calculate(user.HireDate.Value, Clock.Now);
+        if (years * 12 + months < ParentalMinSeniorityMonths)
+            return $"育嬰留職停薪需在職滿 {ParentalMinSeniorityMonths} 個月。";
+        return null;
     }
 
     /// <summary>假別中文標籤（用於錯誤訊息）</summary>
@@ -1325,6 +1559,8 @@ public sealed class LeaveRequestHandler(
         "senior_executive"   => "高階主管假",
         "menstrual"          => "生理假",
         "family_care"        => "家庭照顧假",
+        "parental_leave"     => "育嬰留職停薪",
+        "parental_leave_daily" => "育嬰留停(單日)",
         _                    => leaveType,
     };
 

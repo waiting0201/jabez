@@ -33,7 +33,7 @@
 | `PreReviewRequest` | 預審申請（事前預審：實際花費前送類似請款的單據走簽核，含報價單 / 品項 / 金額；含 `RequestNo` 單號 `PRV-yyyyMMdd-NNN` unique index；**無撥款流程、金額不計入款項統計報表**） |
 | `PreReviewItem` | 預審品項明細（ItemCategory 品項類別、ItemName、Amount、Note、ItemDate、FileName / FileUrl 報價單檔，存 `quotes` container） |
 | `PreReviewRequestAttachment` | 預審申請整單批次附件（照片 / PDF，FK Cascade，存 `request-attachments`） |
-| `LeaveRequest` | 請假申請（含 BereavementRelationship 喪假親屬關係、**AgentUserId** 職務代理人 FK→Users `OnDelete=NoAction`，記錄 + 通知不參與簽核；`Hours`＝**剩餘有效時數**（銷假核准後遞減）、`OriginalHours`＝原始時數（null＝從未銷假）；`ApprovalStatus` 新增終止狀態 **`cancelled`**＝全數銷假） |
+| `LeaveRequest` | 請假申請（含 BereavementRelationship 喪假親屬關係、**AgentUserId** 職務代理人 FK→Users `OnDelete=NoAction`，記錄 + 通知不參與簽核；`Hours`＝**剩餘有效時數**（銷假核准後遞減）、`OriginalHours`＝原始時數（null＝從未銷假）；`ApprovalStatus` 新增終止狀態 **`cancelled`**＝全數銷假；**育嬰留停專用欄位 `ChildBirthDate date?`**（子女出生日期，驗證未滿 3 歲並作為「每名子女 730 天」的累計分組鍵）與 **`ContinueInsurance bit?`**（留停期間續保勞健保意願，僅記錄不算遞延帳）） |
 | `LeaveRevocation` | **銷假申請**（已核准請假單的取消）。獨立子單、自帶 `ApprovalStatus / CurrentStepOrder / ApprovalItemId / ReviewedBy*`；父單在銷假送簽期間完全不動。FK→LeaveRequests `Cascade`、→Users `NoAction` |
 | `LeaveRevocationDate` | 銷假的**逐日明細**（Date + Hours）—— 「哪一天被取消」的單一真相，支援挖空中間日的部分銷假。UNIQUE(LeaveRevocationId, Date) |
 | `TravelRequest` | 出差預支申請（含 `RequestNo` 單號 unique index：`IsHolidayTravel=false` → `TR-yyyyMMdd-NNN`、`IsHolidayTravel=true` → `HTR-yyyyMMdd-NNN`，per-prefix-per-day 序號池；含 IsHolidayTravel、IsClosed 結案、GrandTotal 明細合計、`EstimatedRefundDate / RefundedAt / RefundedByUserId` 退款欄位（沖銷超支才用）；撥款資料統一由 `TravelRequestInstallment[]` 表達，父表無撥款 cache 欄位；事後走沖銷流程）。當 `IsHolidayTravel=true`（假日執行活動）時不含 Items 與發票明細，僅記錄活動地點/期間/參與人員 |

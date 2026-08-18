@@ -53,7 +53,12 @@
                   </td>
                 </tr>
                 <tr>
-                  <td class="ps-6">底薪</td>
+                  <td class="ps-6">
+                    底薪
+                    @if (e.parentalLeaveDays > 0) {
+                      <span class="text-muted small ms-1">（育嬰留停 {{ e.parentalLeaveDays | number:'1.0-1' }} 天，按在職比例計算）</span>
+                    }
+                  </td>
                   <td class="text-right pe-4">{{ e.baseSalary | number:'1.0-0' }}</td>
                 </tr>
                 <tr>
@@ -250,6 +255,23 @@
                         placeholder="其他備註事項（會顯示在薪資條上）"></textarea>
             </div>
           </div>
+
+          <!--
+            育嬰留停當月的實領為負數：底薪與加給已按在職天數折減，但勞健保仍收全額，
+            差額為員工應補繳的保費。系統不做遞延帳（見 docs/business/leave-rules.md），
+            須由人事另行向員工收取或依規辦理遞延繳納。
+          -->
+          @if (e.parentalLeaveDays > 0 && previewNet() < 0) {
+            <div class="alert alert-warning flex items-start gap-2 py-2 mb-4">
+              <svg class="sa-icon shrink-0 mt-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+              <span class="small">
+                本月實領為<strong>負數</strong>：育嬰留停期間薪資按在職天數折減，但勞健保仍收全額，
+                差額 <strong>NT$ {{ -previewNet() | number:'1.0-0' }}</strong> 為員工應補繳的保費。
+                請人事另行向員工收取，或依規定辦理個人負擔部分遞延繳納（最長 3 年），
+                <strong>勿直接寄送薪資明細</strong>。
+              </span>
+            </div>
+          }
 
           <!-- 實領薪資預覽 -->
           <div class="card border-0 shadow-sm mb-4 bg-primary text-white">

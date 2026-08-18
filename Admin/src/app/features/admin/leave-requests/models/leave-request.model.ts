@@ -6,7 +6,8 @@ export type LeaveType =
   | 'ceremonial_festival'
   | 'senior_executive'
   | 'menstrual'
-  | 'family_care';
+  | 'family_care'
+  | 'parental_leave' | 'parental_leave_daily';
 
 /** 時間單位：小時 / 半天(4hr) / 整天(8hr) */
 export type LeaveTimeUnit = 'hour' | 'half_day' | 'day';
@@ -31,13 +32,15 @@ export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
   ceremonial_festival: '歲時祭儀假',
   senior_executive:    '高階主管假',
   menstrual:           '生理假',
+  parental_leave:       '育嬰留職停薪',
+  parental_leave_daily: '育嬰留停(單日)',
 };
 
 /**
  * 各假別時間單位對應（需與後端 LeaveRequestHandler.TimeUnitMap 保持同步）
  * - hour: 事假 / 家庭照顧假 / 病假 / 產檢假 / 陪產假
  * - half_day: 特休 / 補休 / 高階主管假（4 小時）
- * - day: 公假 / 婚假 / 產假 / 喪假 / 歲時祭儀假 / 流產假系列（8 小時）
+ * - day: 公假 / 婚假 / 產假 / 喪假 / 歲時祭儀假 / 流產假系列 / 育嬰留停（8 小時）
  */
 export const LEAVE_TIME_UNIT: Record<LeaveType, LeaveTimeUnit> = {
   personal:            'hour',
@@ -57,18 +60,27 @@ export const LEAVE_TIME_UNIT: Record<LeaveType, LeaveTimeUnit> = {
   miscarriage_2to3m:   'day',
   miscarriage_under2m: 'day',
   menstrual:           'day',
+  parental_leave:       'day',
+  parental_leave_daily: 'day',
 };
 
 /**
  * 工作日型假別：天數 / 時數以「扣除國定假日與六日後的實際工作日」計算（顯示請假日清單）。
- * 除歲時祭儀假（依法為連續日曆天）外皆適用；產假區間仍為起始日 +55 天，但只計其中工作日。
- * 須與後端 LeaveRequestHandler.WorkingDayLeaveTypes 保持同步。
+ * 不適用者為歲時祭儀假與育嬰留職停薪（依法／依語意為連續日曆天）；
+ * 產假區間仍為起始日 +55 天，但只計其中工作日。
+ * 須與後端 LeaveDayExpander.WorkingDayLeaveTypes 保持同步。
+ *
+ * parental_leave（長期留停）刻意不列入：留停整段期間都不在職（含六日與國定假日），
+ * 且工作日型假別送出時後端會強制要求區間橫跨的每個年度行事曆皆已匯入，
+ * 育嬰留停跨 1~2 年會因未來年度行事曆未匯入而無法送件。
+ * parental_leave_daily（彈性單日）為一般工作日請假語意，仍列入。
  */
 export const WORKING_DAY_LEAVE_TYPES: LeaveType[] =
   ['annual', 'personal', 'sick', 'compensatory', 'official', 'senior_executive',
    'marriage', 'maternity', 'bereavement',
    'miscarriage_3m', 'miscarriage_2to3m', 'miscarriage_under2m',
-   'prenatal_checkup', 'paternity', 'menstrual', 'family_care'];
+   'prenatal_checkup', 'paternity', 'menstrual', 'family_care',
+   'parental_leave_daily'];
 
 /**
  * 工作日標準時段（與 half_day 的 am 08:00–12:00 / pm 13:00–17:00 一致，全日 8 小時）。
@@ -104,6 +116,8 @@ export const LEAVE_TYPE_CLASSES: Record<LeaveType, string> = {
   ceremonial_festival: 'bg-[rgba(140,115,85,0.12)] text-[#8C7355]',
   senior_executive:    'bg-[rgba(105,159,52,0.12)] text-[#4A6B3A]',
   menstrual:           'bg-[rgba(160,64,64,0.12)] text-[#A04040]',
+  parental_leave:       'bg-[rgba(124,94,140,0.12)] text-[#7C5E8C]',
+  parental_leave_daily: 'bg-[rgba(124,94,140,0.12)] text-[#7C5E8C]',
 };
 
 /** 假別分組（供下拉選單 optgroup 使用） */
@@ -117,6 +131,8 @@ export const LEAVE_TYPE_GROUPS: { label: string; types: LeaveType[] }[] = [
   { label: '生理假',   types: ['menstrual'] },
   // 高階主管假僅協理以上可見（實際顯示由前端依 auth.isSeniorExecutive() 過濾）
   { label: '高階主管假', types: ['senior_executive'] },
+  // 育嬰假僅在職滿 6 個月者可見（實際顯示由前端依 isParentalEligible() 過濾）
+  { label: '育嬰假',   types: ['parental_leave', 'parental_leave_daily'] },
 ];
 
 /** 假別天數上限（前端顯示用，實際驗證在後端） */
@@ -131,6 +147,8 @@ export const LEAVE_TYPE_DAYS_LIMIT: Partial<Record<LeaveType, number>> = {
   ceremonial_festival: 3,
   menstrual:           12,
   family_care:         7,
+  parental_leave:       730,   // 每名子女合計 2 年
+  parental_leave_daily: 30,    // 每人每年 30 日（雙親合計 60 日，系統無法驗證）
 };
 
 // ── 喪假親屬關係 ──
@@ -213,6 +231,8 @@ export interface LeaveRequest {
   reason: string;
   approvalStatus: ApprovalStatus;
   bereavementRelationship?: string;
+  childBirthDate?: string | null;      // 育嬰留停：子女出生日期
+  continueInsurance?: boolean | null;  // 育嬰留停：期間是否續保勞健保（僅記錄意願）
   designatedReviewers?: DesignatedReviewer[];
   agentUserId?: string | null;   // 職務代理人（記錄 + 通知，不參與簽核）
   agentName?: string;
@@ -235,6 +255,8 @@ export interface AnnualQuota {
   availableDays: number;
   seniorityYears: number;
   seniorityMonths: number;
+  /** 已從年資扣除的育嬰留停天數（0＝未曾留停）；留停期間不計入工作年資，特休隨之暫停累積 */
+  parentalLeaveExcludedDays?: number;
   message?: string;
 }
 
@@ -302,6 +324,25 @@ export interface BereavementQuota {
 export interface SeniorExecutiveEligibility {
   isEligible: boolean;
   jobTitleLevel?: number;
+}
+
+/**
+ * 育嬰留職停薪配額。
+ * 兩層額度：每名子女合計 730 天（2 年，兩種育嬰假別併計，需帶 childBirthDate 才算得出）
+ * ＋ 彈性單日每人每年 30 日。「雙親合計 60 日」系統無法驗證，僅表單提示。
+ */
+export interface ParentalQuota {
+  isEligible: boolean;          // 在職是否滿 6 個月
+  seniorityMonths: number;
+  childAgeValid: boolean;       // 子女是否未滿 3 歲
+  childBirthDate?: string | null;
+  totalDays: number;            // 730
+  usedDays: number;
+  availableDays: number;
+  dailyYearLimit: number;       // 30
+  dailyYearUsed: number;
+  dailyYearAvailable: number;
+  message?: string;
 }
 
 /** 高階主管假額度（每年 24 天，曆年歸零；year＝額度所屬曆年，依請假起始日決定） */

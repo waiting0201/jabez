@@ -39,6 +39,11 @@ export interface EmployeePayroll {
   /** 勞退自提率（%，null = 0%，直接欄位、非覆寫） */
   laborPensionSelfContributionRate: number | null;
   laborPensionSelfDeduction: number;
+  /**
+   * 該月育嬰留職停薪日曆天數。> 0 代表底薪與各項加給已按「在職天數 ÷ 30」折減；
+   * 整月留停者不會出現在薪資名單中。
+   */
+  parentalLeaveDays: number;
 }
 
 export interface LeaveDetail {
@@ -70,6 +75,7 @@ export interface MonthlyPayroll {
   totalAdjustmentDifference: number;
   totalOverseasAllowance: number;
   totalLaborPensionSelfDeduction: number;
+  totalParentalLeaveDays: number;
 }
 
 export interface PayrollAdjustment {

@@ -1,8 +1,8 @@
 # 請假規則
 
-本文件定義 Jabez 的請假業務規則：17 種假別、時間單位、年假 / 喪假 / 補休額度、天數上限驗證、日期重疊驗證、人事薪資整合。
+本文件定義 Jabez 的請假業務規則：19 種假別、時間單位、年假 / 喪假 / 補休額度、天數上限驗證、日期重疊驗證、人事薪資整合。
 
-## 假別一覽（17 種）
+## 假別一覽（19 種）
 
 | # | 假別 | LeaveType | 時間單位 | 天數上限 | 薪資影響 |
 |---|------|-----------|---------|---------|---------|
@@ -23,8 +23,10 @@
 | 15 | 高階主管假 | `senior_executive` | 半天 | **每年 24 天**（曆年歸零） | **不扣任何項目**（協理以上專用，`JobTitle.Level ≤ 3`） |
 | 16 | 生理假 | `menstrual` | 天（一次請一天） | 每月 1 天、全年 12 天（**限女性**） | 按天數扣除半薪（前 3 天/年純生理假，超過併入病假） |
 | 17 | 家庭照顧假 | `family_care` | 小時 | **全年 7 天**（56 小時，曆年歸零） | 按天數扣除全額薪資（不另支薪） |
+| 18 | 育嬰留職停薪 | `parental_leave` | 天（**連續日曆天**） | 每名子女合計 730 天（2 年） | **不支薪**（底薪與各加給按在職天數比例計算；整月留停者不入薪資名單） |
+| 19 | 育嬰留停(單日) | `parental_leave_daily` | 天（**一次一日**） | 每人每年 30 日，併入該名子女 730 天 | 同上 |
 
-> **天數上限一律指「工作日」**：除歲時祭儀假外，全部假別的天數 / 時數皆已扣除**國定假日與六日**（詳見 [§扣除假日計算天數](#扣除假日計算天數2026-07-新增2026-07-擴大適用)）。
+> **天數上限一律指「工作日」**：除歲時祭儀假與育嬰留職停薪（`parental_leave`）外，全部假別的天數 / 時數皆已扣除**國定假日與六日**（詳見 [§扣除假日計算天數](#扣除假日計算天數2026-07-新增2026-07-擴大適用)）。育嬰留職停薪為連續日曆天，其「730 天」指日曆天。
 
 ## 時間單位規則
 
@@ -34,7 +36,7 @@
 |------|------|---------|---------|
 | 小時 (`hour`) | 自然小時（**整點**）；**跨日逐日累加只算工作日** | 日期 + 整點小時下拉（分鐘僅 00） | 事假、家庭照顧假、病假、產檢假、陪產假 |
 | 半天 (`half_day`) | 4 小時 = 半天 | 日期 + 上午/下午 選擇 | 年假、補休、高階主管假 |
-| 整天 (`day`) | 8 小時 = 1 天 | 起迄日期選擇 | 公假、婚假、產假、喪假、歲時祭儀假、流產假系列、生理假 |
+| 整天 (`day`) | 8 小時 = 1 天 | 起迄日期選擇 | 公假、婚假、產假、喪假、歲時祭儀假、流產假系列、生理假、育嬰留職停薪、育嬰留停(單日) |
 
 - **產假特例**：選擇起始日後，結束日自動填為起始日 + 55 天（共 56 個**日曆天**），總時數為其中**工作日數 × 8**（約 40 天 / 320 小時，非固定 448）。法規為一次請完，禁止重複活躍申請（同 `EmployeeId` 存在 `pending` / `approved` 產假）。
 - **補休扣除**：申請 1 個半天（4 小時）→ 從可補休時數池扣 4 小時。
@@ -55,7 +57,9 @@
 | 滿 5 年 ~ 未滿 10 年 | 15 天 |
 | 10 年以上 | 每年加 1 天，上限 30 天 |
 
-> 年資根據 `User.HireDate` 計算。API 端點：`GET /leave-requests/annual-quota`。
+> 年資根據 `User.HireDate` 計算，並**扣除已核准且已經過去的育嬰留職停薪天數**（見 [§育嬰留職停薪規則](#育嬰留職停薪規則2026-08-新增)）。
+> 計算收斂於 [Api/Common/SeniorityHelper.cs](../../Api/Common/SeniorityHelper.cs)，`GetAnnualQuotaAsync` 與 `ValidateLeaveQuotaAsync` 兩處必須帶入相同的扣除天數，否則查得到的額度與實際能送的會不一致。
+> API 端點：`GET /leave-requests/annual-quota`（回應含 `parentalLeaveExcludedDays`，前端在年假提示區塊顯示「年資已扣除育嬰留停 N 天」）。
 
 ## 喪假親屬關係與天數
 
@@ -120,12 +124,108 @@
 - **薪資（不另支薪）**：比照事假**按天數扣除全額薪資**（`日薪 × 天數`），但於薪資頁與薪資明細信中**獨立一列「家庭照顧假扣薪」**呈現，不併入事假欄位。
 - **雇主不得拒絕准假**，亦不得影響全勤獎金或考績 —— 此為管理面規範，系統不做強制邏輯（仍走一般簽核流程）。
 
+## 育嬰留職停薪規則（2026-08 新增）
+
+法源：《性別平等工作法》§16、育嬰留職停薪實施辦法。2026-01-01 起施行「以日為單位」彈性新制。
+
+### 兩種假別代碼
+
+| 代碼 | 名稱 | 適用 | 時間單位 | 上限 |
+|------|------|------|---------|------|
+| `parental_leave` | 育嬰留職停薪 | 長期留停（數週 ~ 2 年） | 天，**連續日曆天** | 每名子女合計 **730 天**（2 年） |
+| `parental_leave_daily` | 育嬰留停(單日) | 彈性單日新制 | 天，**強制一次一日**（`EndDate = StartDate`） | 每人每年 **30 日**，且併入該名子女 730 天總額度 |
+
+> **為何拆兩個代碼**：長期留停與彈性單日在額度基準（每子女 vs 每年度）、日期輸入 UI（起迄 vs 單日）、時數計算（日曆天 vs 工作日）上皆不同，合併成一個代碼會讓額度驗證與表單提示無法講清楚。
+
+### `parental_leave` 刻意不列入工作日型假別
+
+`parental_leave` **不在** `LeaveDayExpander.WorkingDayLeaveTypes` 內（與歲時祭儀假同列），三個理由：
+
+1. **語意正確**：留停整段期間都不在職，含六日與國定假日，`Hours = 日曆天數 × 8`，`Hours ÷ 8` 直接等於日曆天數。
+2. **繞開送件阻擋**：工作日型假別在 `SubmitAsync` 會**強制要求區間橫跨的每個年度行事曆皆已匯入**。育嬰留停跨 1~2 年，未來年度行事曆通常尚未匯入，會直接擋件。
+3. **避免逐日展開爆量**：非工作日型不觸發前端 `refreshWorkingDays` 的逐日 chip 清單。
+
+`parental_leave_daily` 則為一般工作日請假語意，**仍列入**工作日型（請到國定假日 / 六日會被擋）。
+
+### 申請資格（三階段驗證：Create / Update / Submit）
+
+- **在職滿 6 個月** —— `SeniorityHelper.Calculate`；`IsSuperAdmin` 一律通過（比照高階主管假；亦對應法規「未滿 6 個月經雇主同意亦可申請」）。
+- **子女未滿 3 歲** —— `ChildBirthDate` 必填，**起訖日皆須落在 3 歲生日之前**（`StartDate` 與 `EndDate` 都 `< ChildBirthDate + 3 年`）。只擋起始日會讓一張 730 天的留停一路延續到子女 5 歲。前端另有同規則的即時警示（`isParentalChildTooOld`，純前端計算，不依賴 API 的 `childAgeValid`——後者以「今天」判定，看不出所選區間會不會跨過 3 歲生日）。
+- 資格檢查共用 `LeaveRequestHandler.CheckParentalEligibilityAsync`。
+
+### 兩個新欄位（`LeaveRequest`）
+
+| 欄位 | 型別 | 用途 |
+|------|------|------|
+| `ChildBirthDate` | `date?` | 子女出生日期。驗證 3 歲資格（起訖日皆須在 3 歲生日前），並作為「每名子女 730 天」的**累計分組鍵**（不同子女額度互相獨立） |
+| `ContinueInsurance` | `bit?` | 留停期間是否續保勞健保。**僅記錄意願**供人事作業參考，系統不算遞延帳、不自動扣款 |
+
+> 比照喪假 `BereavementRelationship` 的「假別專屬欄位」先例；切換為其他假別時一併清空。
+
+### 薪資處理（不支薪）
+
+實作於 [Api/Services/Dapper/PayrollReadService.cs](../../Api/Services/Dapper/PayrollReadService.cs)：
+
+1. 以 `parentalSql` 逐日歸月算出該月留停日曆天數（假單區間 ∩ 當月區間）。
+2. `留停天數 ≥ 當月天數` **且當月無其他應發／扣項**（加班費、上月假日津貼、`PayrollAdjustment` 其他加項／扣項皆為 0）→ **整月留停，不產生薪資列**。若有其中任一項仍會出單（底薪與加給折為 0），否則這些已賺得的金額會憑空消失且不計入月合計。
+3. 折減率 `workRatio = max(0, 1 − 留停天數 ÷ 30)`，**底薪與 6 項加給**（伙食費 / 職務 / 主管 / 其他 / 調整差額 / 外派）乘上此比例。
+   > 這與事假等無薪假的「日薪 × 天數」**完全等價**（日薪本身就是底薪 ÷ 30）。刻意**不用**「(當月天數 − 留停天數) ÷ 30」：31 天的月份請 1 天留停時該式為 30/30 = 1，會完全不折減，「不支薪」形同無效。
+
+**不折減的項目與理由**：
+
+- **勞保費、健保費** —— 續保者仍須繳全額。實作上另存 `insuredBaseSalary`（折減前底薪）供**級距 lookup** 使用；若用折減後底薪查級距會掉到低級距，等於把保費也「按比例」少扣。
+- **勞退自提** —— 同理，提繳基準用 `insuredBaseSalary`。
+- **加班費、假日津貼** —— 本就是實績金額。
+- **`dailySalary`** —— 在折減前先算好，避免事假 / 病假等扣薪被雙重折減。
+
+> ⚠️ **實領可能為負數**：只在職少數天卻繳全額勞健保時，實領會是負數，差額即員工**應補繳的保費**。薪資編輯頁與薪資明細信皆會顯示警示，提醒人事另行收取或依規辦理個人負擔部分遞延繳納（最長 3 年），**勿直接寄送薪資明細**。
+
+> **刻意不沿用 `leaveSql` 的寫法**：既有扣薪 SQL 用「區間相交 + 整單 `SUM(Hours)`」，跨月假單會被每個月各扣一次全額（見 [payroll-formula.md](payroll-formula.md) 已知限制）。育嬰留停動輒數月，必須逐日歸月，故 `parentalSql` 改用日期交集。**新增長期型假別時不得沿用 `leaveSql` 模式。**
+
+### 年資與特休
+
+留停期間**不計入工作年資**，特休隨之暫停累積。`SeniorityHelper.Calculate(hireDate, now, excludedDays)` 的作法是把到職日往後推 `excludedDays` 天得到「有效到職日」再算日曆差。扣除天數由 `GetParentalLeaveDaysAsync` 提供：只計**已核准**者，進行中的留停只算到今天為止（尚未發生的天數不提前扣年資）；已結束者用 `Hours ÷ 8`（銷假後 `Hours` 已遞減，天數自動反映）。
+
+退休金基數本系統未實作，不受影響。
+
+### 刻意不實作（僅表單提示）
+
+| 項目 | 原因 |
+|------|------|
+| 雙親合計 60 日 | 配偶可能不在同一公司，系統無從得知，無法驗證 |
+| 以日申請須 5 日前預告 | 法規寫「原則上」，緊急狀況需彈性；前端顯示提示文字，後端不硬擋 |
+| 8 成薪津貼計算 | 由勞保局按前 6 個月平均月投保薪資給付（每名子女父母雙方各最多 6 個月），非公司給付，員工自行申請 |
+| 勞健保個人負擔遞延 3 年 | 需要「應收未收 / 遞延餘額」帳務子表，等同新開一個帳務模組；本次只記錄續保意願 |
+| 留停期間不得有工作事實 | 管理面規範，系統不做強制邏輯 |
+
+### 其他已知限制
+
+- **育嬰留職停薪（長期）不開放銷假** —— 列表與檢視頁的「銷假」按鈕對 `parental_leave` 隱藏（`canRevoke()` 排除）。原因：非工作日型假別會逐日展開整段日曆天，2 年留停會在銷假頁產出 700+ 個逐日 chip，UI 無法使用。提前復職暫由人事以編輯／重新申請處理。`parental_leave_daily` 不受此限。
+- **`User.Status` 未新增第三態** —— 留停狀態由已核准的育嬰假單推導，避免動到依賴 `Status='active'` 的 6 處查詢（薪資、打卡提醒、簽核升級、指定審核者、付款提醒）。副作用：留停員工仍可能被排入簽核流程、仍會收到打卡提醒（打卡本身已由 `AttendanceHandler` 的「請假時段內擋打卡」自動擋住）。
+
+### 日期區間必須涵蓋整個結束日
+
+兩種育嬰假別的 `StartDate` 一律正規化為當日 00:00、`EndDate` 補滿為當日 **23:59**（`EndOfDay()`）。彈性單日的 `EndDate` 亦為**起始日當天 23:59**，不是 00:00。
+
+原因：重疊驗證（`CheckOverlapAsync`）與打卡阻擋皆以**半開區間 `[StartDate, EndDate)`** 比對。結束日若停在 00:00：
+
+- 彈性單日會變成**零長度區間** → 同一天可重複申請（額度扣兩次、薪資扣兩天）、也不與同日其他假別衝突，且已核准的留停當天仍可打卡。
+- 長期留停的**最後一天**同樣不受保護。
+
+此外 `UpdateAsync` 若把彈性單日存成 `EndDate = StartDate`（皆 00:00），會被下游通用守門判為 `EndDate <= StartDate` 而**恆回 400**，草稿永遠改不了、送不出。
+
+### 額度查詢端點
+
+`GET /leave-requests/parental-quota?childBirthDate=yyyy-MM-dd`
+
+帶 `childBirthDate` 才算得出該名子女的 730 天總額度與 3 歲資格；彈性單日的年度 30 日額度不分子女，未帶亦回傳。回應見 `ParentalQuotaDto`。
+
 ## 扣除假日計算天數（2026-07 新增，2026-07 擴大適用）
 
 **工作日型假別**選定起迄日後，系統扣除**國定假日與六日**，只計算實際工作日，並在表單即時列出「實際請假日清單」與天數。
 
-- **適用假別（工作日型，16 種）**：`annual`（年假）/ `personal`（事假）/ `sick`（病假）/ `compensatory`（補休）/ `official`（公假）/ `senior_executive`（高階主管假）/ `marriage`（婚假）/ `maternity`（產假）/ `bereavement`（喪假）/ `miscarriage_3m`・`miscarriage_2to3m`・`miscarriage_under2m`（流產假系列）/ `prenatal_checkup`（產檢假）/ `paternity`（陪產假）/ `menstrual`（生理假）/ `family_care`（家庭照顧假）。集合同步於後端 `LeaveDayExpander.WorkingDayLeaveTypes`（`LeaveRequestHandler` 轉引同一份，與銷假逐日展開共用）與前端 `WORKING_DAY_LEAVE_TYPES`（[leave-request.model.ts](../../Admin/src/app/features/admin/leave-requests/models/leave-request.model.ts)）。
-- **不適用假別（連續日曆天，不扣假日）**：僅 `ceremonial_festival`（歲時祭儀假）。
+- **適用假別（工作日型，17 種）**：`annual`（年假）/ `personal`（事假）/ `sick`（病假）/ `compensatory`（補休）/ `official`（公假）/ `senior_executive`（高階主管假）/ `marriage`（婚假）/ `maternity`（產假）/ `bereavement`（喪假）/ `miscarriage_3m`・`miscarriage_2to3m`・`miscarriage_under2m`（流產假系列）/ `prenatal_checkup`（產檢假）/ `paternity`（陪產假）/ `menstrual`（生理假）/ `family_care`（家庭照顧假）/ `parental_leave_daily`（育嬰留停單日）。集合同步於後端 `LeaveDayExpander.WorkingDayLeaveTypes`（`LeaveRequestHandler` 轉引同一份，與銷假逐日展開共用）與前端 `WORKING_DAY_LEAVE_TYPES`（[leave-request.model.ts](../../Admin/src/app/features/admin/leave-requests/models/leave-request.model.ts)）。
+- **不適用假別（連續日曆天，不扣假日）**：`ceremonial_festival`（歲時祭儀假）與 `parental_leave`（育嬰留職停薪，理由見 [§育嬰留職停薪規則](#育嬰留職停薪規則2026-08-新增)）。
 - **天數上限一律改以工作日計**：婚假 8 / 喪假 8・6・3 / 流產假 28・7・5 / 產檢假・陪產假 7 / 生理假每月 1 天・全年 12 天等數字不變，但語意變成「N 個工作日」（`ValidateLeaveQuotaAsync` 比對的 `Hours / 8` 本來就是扣假日後的值，無需額外改動）。
 - **產假特例**：區間仍固定為「起始日 + 55 天 = 56 個**日曆天**」（法定一次請完、不可拆），但 `Hours` 只計其中工作日（約 40 天 / 320 小時），不再固定 448 小時。
 - **假日來源＝唯一權威 `CalendarDays` 表**：台灣政府行事曆匯入時 `IsHoliday=true` 已同時涵蓋**六日 + 國定假**、補班六為工作日（`IsHoliday=false`）。透過 [CalendarDayReadService](../../Api/Services/Dapper/CalendarDayReadService.cs) 的 `GetHolidayDatesAsync` / `HasDataForRangeAsync` 讀取（與出差假日活動共用）。
@@ -242,18 +342,22 @@
 | `LeaveRequest.BereavementRelationship` | Entity 欄位：喪假親屬關係 |
 | `LeaveRequestHandler.ValidateLeaveQuotaAsync()` | 天數上限驗證（累計制） |
 | `LeaveRequestHandler.CheckOverlapAsync()` | 日期重疊驗證（draft/pending/approved 比對） |
-| `LeaveRequestHandler.LeaveTypeNameZh` | 假別中文名稱字典（重疊衝突訊息用） |
+| `LeaveTypeNames`（`Api/Common/LeaveTypeNames.cs`） | 假別中文名稱字典（重疊衝突訊息、打卡阻擋訊息、銷假通知信用） |
 | `LeaveRequestReadService.GetOverlappingRequestsAsync()` | Dapper：查詢同員工 datetime 區間相交申請 |
 | `OverlappingLeaveRequestDto` | 重疊衝突 DTO（內部用） |
 | `LeaveRequestHandler.GetAnnualQuotaAsync()` | 年假額度 API |
 | `LeaveRequestHandler.GetMenstrualQuotaAsync()` | 生理假配額 API（`isFemale` + 月/年配額） |
 | `LeaveRequestHandler.IsFemaleAsync()` | 查 `EmployeeProfile.Gender == "F"`（生理假限定） |
-| `LeaveRequestHandler.CalculateAnnualLeaveDays()` | 年資 → 年假天數計算 |
-| `PayrollReadService` | 新增查詢該月所有請假明細；事假 / 病假 / 生理假 / 家庭照顧假扣薪計算 |
+| `SeniorityHelper`（`Api/Common/SeniorityHelper.cs`） | 年資計算（含育嬰留停扣除天數）→ 年假天數，單一真相 |
+| `LeaveRequestHandler.GetParentalQuotaAsync()` | 育嬰留停額度 API（每子女 730 天 + 年度單日 30 日） |
+| `LeaveRequestHandler.CheckParentalEligibilityAsync()` | 育嬰留停資格（在職滿 6 個月 + 子女未滿 3 歲） |
+| `LeaveRequestHandler.GetParentalLeaveDaysAsync()` | 已經過去的留停累計天數（供年資扣除） |
+| `LeaveRequest.ChildBirthDate` / `.ContinueInsurance` | Entity 欄位：育嬰留停專用（子女出生日期 / 續保意願） |
+| `PayrollReadService` | 查詢該月所有請假明細；事假 / 病假 / 生理假 / 家庭照顧假扣薪計算；**育嬰留停整月排除 + 當月按比例折減**（`parentalSql` 逐日歸月、`insuredBaseSalary` 保護級距 lookup） |
 | `PayrollHandler.BuildLeaveDetailSection()` | 薪資明細信件請假紀錄 HTML |
-| 前端 `leave-request.model.ts` | 17 種假別定義、喪假關係常數、天數上限常數、`MenstrualQuota` |
+| 前端 `leave-request.model.ts` | 19 種假別定義、喪假關係常數、天數上限常數、`MenstrualQuota`、`ParentalQuota` |
 | 前端 `leave-request-form` | 假別下拉選單（分群組）、條件式欄位、額度提示 |
-| 前端 `payroll-form` | 本月請假紀錄表格 |
+| 前端 `payroll-form` | 本月請假紀錄表格；育嬰留停按比例註記與**實領負數警示** |
 | `LeaveRevocation` / `LeaveRevocationDate` | Entity：銷假申請 + 逐日明細 |
 | `LeaveDayExpander` | 請假單逐日展開的單一真相（假別分類常數 `WorkingDayLeaveTypes` / `TimeUnitMap` 亦收斂於此） |
 | `LeaveRevocationService.ApplyAsync()` | 銷假核准後套用到父單（逐日整組重算 Hours、全銷轉 cancelled） |
@@ -268,7 +372,7 @@
 ## 跨業務關聯
 
 - **請假走簽核流程** → [approval-flow.md](approval-flow.md)（請假屬 Group A 全程禁止自審）
-- **事假 / 病假扣薪計算** → [payroll-formula.md §扣薪規則](payroll-formula.md)
+- **事假 / 病假扣薪計算、育嬰留停按比例** → [payroll-formula.md §扣薪規則](payroll-formula.md)
 - **打卡時段阻擋規則**（已核准請假時段內無法打上下班卡；例外：**當日全日請假 + 已核准加班單 → 可直接打「加班開始」**，免下班卡；**已核准銷假的日子不再阻擋**） → [attendance-clock-rules.md](attendance-clock-rules.md)
 - **銷假重跑請假簽核** → [approval-flow.md §銷假重跑請假簽核](approval-flow.md#銷假重跑請假簽核2026-08-新增)
 - **銷假通知（審核 + 職務代理人解除）** → [notifications.md](notifications.md)

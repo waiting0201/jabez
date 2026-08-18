@@ -58,9 +58,15 @@ export class LeaveRequestList {
   }
 
   /** 可銷假：已核准且假期尚未結束（後端 LoadRevocableLeaveAsync 有相同守門） */
+  /**
+   * 育嬰留職停薪（長期）暫不開放銷假：非工作日型假別會逐日展開整段日曆天，
+   * 2 年留停會在銷假頁產出 700+ 個逐日 chip，UI 無法使用。
+   * 提前復職請洽人事以編輯／重新申請處理。彈性單日（parental_leave_daily）不受此限。
+   */
   canRevoke(r: LeaveRequest): boolean {
     return this.canWrite()
         && r.approvalStatus === 'approved'
+        && r.leaveType !== 'parental_leave'
         && new Date(r.endDate).getTime() >= Date.now();
   }
 
