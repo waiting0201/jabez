@@ -26,7 +26,7 @@
    - ⚠️ **實領可能為負數**：在職天數少但保費全額時，差額即員工**應補繳的保費**。薪資編輯頁與薪資明細信皆顯示警示，提醒人事另行收取或辦理個人負擔部分遞延繳納（最長 3 年），勿直接寄送明細。系統**不做遞延帳**。
    - 詳見 [leave-rules.md §育嬰留職停薪規則](leave-rules.md#育嬰留職停薪規則2026-08-新增)。
 10. **實領薪水** = 底薪 + 伙食費 + 加班費 + 加給合計 + 假日津貼 + 其他加項 − 勞保費 − 健保費 − 事假扣薪 − 病假扣薪 − 生理假扣薪 − 家庭照顧假扣薪 − 其他扣項 − 勞退自提扣款
-   - **加給合計** = 其他加給 + 調整差額（2 種來自 User 表，由最新生效 SalaryAdjustmentRecord 同步而來，亦可在基本資料手動覆寫，null/未填視為 0）
+   - **加給合計** = 其他加給 + 代扣代付款（2 種來自 User 表，由最新生效 SalaryAdjustmentRecord 同步而來，亦可在基本資料手動覆寫，null/未填視為 0）
      - 2026-08 移除職務加給 / 主管加給 / 外派加給。DB 欄位（`Users` / `SalaryAdjustmentRecords` 各 3 欄）**刻意保留不 DROP** 作歷史封存，程式已完全不讀寫；同步用的 no-op migration 見 `RemoveThreeAllowancesFromModel`。
    - 底薪與加給若當月有育嬰留停，已為折減後的金額（見第 9 條）。
 11. **勞退自提扣款** = 提繳底薪 × `User.LaborPensionSelfContributionRate`（%，0~6 整數，員工自願提撥）÷ 100（四捨五入至整數）
@@ -80,7 +80,12 @@ EmployeePayrollDto / 月度合計 / 薪資編輯頁 / 薪資明細 Email + PDF
 | 1 | 底薪 | `BaseSalary` | `BaseSalary` | `BaseSalary` | 加項 |
 | 2 | 伙食費 | `MealAllowance` | `MealAllowance` | `MealAllowance` | 加項 |
 | 3 | 其他加給 | `OtherAllowance` | `OtherAllowance` | `OtherAllowanceAmount` ⚠️ | 加項 |
-| 4 | 調整差額 | `AdjustmentDifference` | `AdjustmentDifference` | `AdjustmentDifference` | 加項 |
+| 4 | 代扣代付款 | `AdjustmentDifference` | `AdjustmentDifference` | `AdjustmentDifference` | 加項 |
+
+> ⚠️ **代扣代付款的顯示名稱與識別字刻意不一致**：2026-08 由「調整差額」更名為「代扣代付款」，
+> 但程式識別字（entity 屬性 / DTO / DB 欄位 / 前端 formControlName）**一律沿用 `AdjustmentDifference`**，
+> 未做 rename migration。改動只在顯示層（表單 label、表格表頭「代扣代付」、薪資明細頁、薪資明細信、人事資料卡 PDF）。
+> 這是 2 種加給中**唯一允許負數**的欄位（前端無 `min="0"`），代員工扣繳 / 代墊款項走這一欄。
 
 > ⚠️ `EmployeePayrollDto.OtherAllowanceAmount` 命名特例：因 DTO 既有 `OtherAddition`/`OtherDeduction` 用「Other」字首，為避免歧義改用 `OtherAllowanceAmount`，前端 model 對應 `otherAllowanceAmount`。其它 3 個欄位三層命名一致。
 

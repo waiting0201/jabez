@@ -133,7 +133,7 @@
                   <div>{{ u.otherAllowance != null ? ('NT$ ' + (u.otherAllowance | number:'1.0-0')) : '—' }}</div>
                 </div>
                 <div class="col-12 col-md-4">
-                  <div class="form-label fw-500 text-muted small">調整差額</div>
+                  <div class="form-label fw-500 text-muted small">代扣代付款</div>
                   <div>{{ u.adjustmentDifference != null ? ('NT$ ' + (u.adjustmentDifference | number:'1.0-0')) : '—' }}</div>
                 </div>
               </div>
@@ -629,7 +629,7 @@
               <div class="table-responsive mb-4">
                 <table class="table table-sm align-middle mb-0">
                   <thead class="table-light">
-                    <tr><th>生效日</th><th>底薪</th><th>其他</th><th>差額</th><th>伙食</th><th>合計</th><th>備註</th></tr>
+                    <tr><th>生效日</th><th>底薪</th><th>其他</th><th>代扣代付</th><th>伙食</th><th>合計</th><th>備註</th></tr>
                   </thead>
                   <tbody>
                     @for (r of p.salaryAdjustmentRecords; track r.id ?? $index) {

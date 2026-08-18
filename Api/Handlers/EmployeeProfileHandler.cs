@@ -391,7 +391,7 @@ public sealed class EmployeeProfileHandler(
 
             // ── 5. 薪資同步：找 EffectiveDate <= 今日（Asia/Taipei）的最新薪資紀錄 ──
             // 取得 EffectiveDate 最大（最新有效）的薪資調整紀錄，同步至 User 的 4 個薪資欄位
-            // （底薪 + 伙食費 + 其他加給 + 調整差額）；無符合不變。未動薪資子表時（touchSalary = false）整段跳過。
+            // （底薪 + 伙食費 + 其他加給 + 代扣代付款）；無符合不變。未動薪資子表時（touchSalary = false）整段跳過。
             var today = Clock.Now.Date;
             var latestSalary = salaryEntities
                 .Where(s => s.EffectiveDate.Date <= today)
