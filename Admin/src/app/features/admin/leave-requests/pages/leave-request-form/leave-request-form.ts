@@ -7,7 +7,7 @@ import {LeaveRequestService} from '../../services/leave-request.service';
 import {
   LeaveType, ApprovalStatus, AnnualQuota, CompensatoryHours, CeremonialQuota,
   MarriageQuota, MaternityStatus, BereavementQuota, SeniorExecutiveEligibility,
-  SeniorExecutiveQuota, MenstrualQuota, DesignatedReviewer,
+  SeniorExecutiveQuota, MenstrualQuota, ParentalQuota, DesignatedReviewer,
   APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES,
   LEAVE_TYPE_GROUPS, LEAVE_TYPE_LABELS, LEAVE_TYPE_DAYS_LIMIT, LEAVE_TIME_UNIT,
   BEREAVEMENT_GROUPS, BEREAVEMENT_RELATIONSHIP_LABELS, BEREAVEMENT_DAYS,
@@ -134,6 +134,10 @@ export class LeaveRequestForm implements OnInit {
   /** 生理假配額（限女性；亦用於下拉過濾） */
   menstrualQuota = signal<MenstrualQuota | null>(null);
 
+  /** 育嬰留停配額（兩層額度；isEligible 亦用於下拉過濾） */
+  parentalQuota = signal<ParentalQuota | null>(null);
+  parentalQuotaLoading = signal(false);
+
   /** 扣除國定假日與六日後的實際請假日清單（工作日型 day/half_day 假別，選好起迄日後即時查詢） */
   workingDaysResult = signal<WorkingDaysResult | null>(null);
 
@@ -148,6 +152,55 @@ export class LeaveRequestForm implements OnInit {
     if (this.auth.isSeniorExecutive()) return true;
     return this.seniorExecEligibility()?.isEligible === true;
   });
+
+  /**
+   * 是否符合育嬰留停申請資格（決定「育嬰假」下拉群組是否顯示）。
+   * Superadmin 一律通過（比照高階主管假；亦對應法規「在職未滿 6 個月經雇主同意亦可申請」）。
+   */
+  readonly isParentalEligible = computed<boolean>(() => {
+    if (this.auth.isSuperAdmin()) return true;
+    return this.parentalQuota()?.isEligible === true;
+  });
+
+  /** 育嬰留停：子女 3 歲生日（yyyy-MM-dd）；未填出生日期則為 null */
+  get parentalChildThirdBirthday(): string | null {
+    const v = this.form.get('childBirthDate')?.value as string | null;
+    if (!v) return null;
+    const d = new Date(v);
+    if (isNaN(d.getTime())) return null;
+    d.setFullYear(d.getFullYear() + 3);
+    return this._formatDate(d);
+  }
+
+  /**
+   * 育嬰留停：請假區間是否已超過子女 3 歲生日。
+   * 起訖日皆須落在 3 歲生日之前（法規為「子女滿 3 歲前」得申請並休畢），與後端
+   * CheckParentalEligibilityAsync 同一條規則；純前端計算，不依賴 API 的 childAgeValid
+   * （後者是以「今天」判定，看不出所選區間會不會跨過 3 歲生日）。
+   */
+  get isParentalChildTooOld(): boolean {
+    const limit = this.parentalChildThirdBirthday;
+    if (!limit) return false;
+    const start = this.form.get('startDate')?.value as string | null;
+    const end   = this.selectedLeaveType === 'parental_leave_daily'
+      ? start
+      : this.form.get('endDate')?.value as string | null;
+    return (!!start && start >= limit) || (!!end && end >= limit);
+  }
+
+  /** 育嬰留停：該名子女合計額度是否已超出 */
+  get isParentalExceeded(): boolean {
+    const q = this.parentalQuota();
+    if (!q || !this.form.get('childBirthDate')?.value) return false;
+    return this.calculatedHours / 8 > q.availableDays;
+  }
+
+  /** 育嬰留停(單日)：當年度 30 日額度是否已超出 */
+  get isParentalDailyExceeded(): boolean {
+    const q = this.parentalQuota();
+    if (!q || this.selectedLeaveType !== 'parental_leave_daily') return false;
+    return this.calculatedHours / 8 > q.dailyYearAvailable;
+  }
 
   /** 整點小時選項（0 ~ 23） */
   readonly hourOptions: number[] = Array.from({length: 24}, (_, i) => i);
@@ -164,6 +217,9 @@ export class LeaveRequestForm implements OnInit {
     // HalfDay 模式：時段
     startSlot:               ['am' as HalfDaySlot],
     endSlot:                 ['pm' as HalfDaySlot],
+    // 育嬰留停專用（其他假別不使用；leaveType 切換時清空並開關 validator）
+    childBirthDate:          ['' as string],
+    continueInsurance:       [false as boolean],
     agentUserId:             [null as string | null],   // 職務代理人（記錄 + 通知，不參與簽核）
     reason:                  ['', Validators.required],
   });
@@ -362,6 +418,8 @@ export class LeaveRequestForm implements OnInit {
     this.loadCeremonialQuota();
     // 預載生理假配額以判斷使用者是否為女性身份（用於下拉過濾）
     this.loadMenstrualQuota();
+    // 預載育嬰留停配額以判斷在職是否滿 6 個月（用於下拉過濾）
+    this.loadParentalQuota();
 
     // 監聽假別變化（載入既有資料期間跳過，避免 patch / disable 觸發的 valueChanges 把日期清掉）
     this.form.get('leaveType')?.valueChanges.subscribe(type => {
@@ -376,6 +434,22 @@ export class LeaveRequestForm implements OnInit {
       } else {
         this.bereavementQuota.set(null);
       }
+    });
+
+    // 育嬰留停(單日)：一次申請一日，endDate 永遠跟隨 startDate（後端亦強制 EndDate = StartDate）
+    this.form.get('startDate')?.valueChanges.subscribe(v => {
+      if (this.isLoadingExisting) return;
+      if (this.selectedLeaveType !== 'parental_leave_daily') return;
+      if (this.form.get('endDate')?.value !== v) {
+        this.form.patchValue({endDate: v}, {emitEvent: false});
+        this.refreshWorkingDays();
+      }
+    });
+
+    // 監聽子女出生日期變化 → 重載該名子女的育嬰留停額度（730 天以子女為分組鍵）
+    this.form.get('childBirthDate')?.valueChanges.subscribe(() => {
+      if (this.isLoadingExisting) return;
+      if (this.isParentalType(this.selectedLeaveType)) this.loadParentalQuota();
     });
 
     // 監聽起迄日 / 半天時段變化 → 重新查詢扣除假日後的請假日清單
@@ -431,6 +505,8 @@ export class LeaveRequestForm implements OnInit {
           const baseValues = {
             leaveType:               r.leaveType,
             bereavementRelationship: r.bereavementRelationship ?? '',
+            childBirthDate:          r.childBirthDate ? r.childBirthDate.slice(0, 10) : '',
+            continueInsurance:       r.continueInsurance ?? false,
             agentUserId:             r.agentUserId ?? null,
             reason:                  r.reason,
           };
@@ -512,6 +588,19 @@ export class LeaveRequestForm implements OnInit {
     }
     this.form.get('bereavementRelationship')?.updateValueAndValidity({emitEvent: false});
 
+    // 育嬰留停：childBirthDate 必填
+    if (this.isParentalType(type)) {
+      this.form.get('childBirthDate')?.setValidators(Validators.required);
+    } else {
+      this.form.get('childBirthDate')?.clearValidators();
+      this.form.get('childBirthDate')?.setValue('', {emitEvent: false});
+      this.form.get('continueInsurance')?.setValue(false, {emitEvent: false});
+      // 刻意不清空 parentalQuota：isParentalEligible() 以它判斷「育嬰假」下拉群組是否顯示，
+      // 清成 null 會讓選過育嬰假再切回其他假別後，整組選項從下拉消失且無法復原。
+      // 比照 menstrualQuota / ceremonialQuota（ngOnInit 預載後不重置）的作法。
+    }
+    this.form.get('childBirthDate')?.updateValueAndValidity({emitEvent: false});
+
     // 依假別載入對應配額
     if (type === 'annual') this.loadAnnualQuota();
     if (type === 'compensatory') this.loadCompensatoryHours();
@@ -520,6 +609,12 @@ export class LeaveRequestForm implements OnInit {
     if (type === 'maternity') this.loadMaternityStatus();
     if (type === 'menstrual') this.loadMenstrualQuota();
     if (type === 'senior_executive') this.loadSeniorExecQuota();
+    if (this.isParentalType(type)) this.loadParentalQuota();
+  }
+
+  /** 是否為育嬰留停假別（長期留停 + 彈性單日） */
+  isParentalType(type: LeaveType): boolean {
+    return type === 'parental_leave' || type === 'parental_leave_daily';
   }
 
   /** 載入既有資料時手動套用 leaveType 對應的驗證規則與配額載入（取代被 guard 跳過的 valueChanges 副作用） */
@@ -536,6 +631,11 @@ export class LeaveRequestForm implements OnInit {
     if (type === 'maternity') this.loadMaternityStatus();
     if (type === 'menstrual') this.loadMenstrualQuota();
     if (type === 'senior_executive') this.loadSeniorExecQuota();
+    if (this.isParentalType(type)) {
+      this.form.get('childBirthDate')?.setValidators(Validators.required);
+      this.form.get('childBirthDate')?.updateValueAndValidity({emitEvent: false});
+      this.loadParentalQuota();
+    }
     // 回填既有起迄日後，重新計算扣除假日的請假日清單
     this.refreshWorkingDays();
   }
@@ -717,6 +817,8 @@ export class LeaveRequestForm implements OnInit {
     return this.isEdit
         && this.approvalStatus === 'approved'
         && this.auth.hasPermission('leave-requests:write')
+        // 育嬰留職停薪（長期）暫不開放銷假，理由見 leave-request-list.canRevoke()
+        && this.selectedLeaveType !== 'parental_leave'
         && this._leaveEndDate != null
         && new Date(this._leaveEndDate).getTime() >= Date.now();
   }
@@ -736,6 +838,9 @@ export class LeaveRequestForm implements OnInit {
     if (this.isBereavementExceeded) return false;
     if (this.isMenstrualNotAllowed) return false;
     if (this.isMenstrualExceeded) return false;
+    if (this.isParentalChildTooOld) return false;
+    if (this.isParentalExceeded) return false;
+    if (this.isParentalDailyExceeded) return false;
     return true;
   }
 
@@ -910,6 +1015,20 @@ export class LeaveRequestForm implements OnInit {
     return Number.isInteger(year) && year >= 2000 && year <= 2100 ? year : null;
   }
 
+  /**
+   * 載入育嬰留停配額。
+   * 帶 childBirthDate 才算得出「該名子女」的 730 天總額度與 3 歲資格；
+   * 未帶時仍會回傳資格判定與彈性單日的年度 30 日額度（下拉過濾靠 isEligible）。
+   */
+  private loadParentalQuota() {
+    const childBirthDate = (this.form.get('childBirthDate')?.value as string) || undefined;
+    this.parentalQuotaLoading.set(true);
+    this.service.getParentalQuota(childBirthDate).subscribe({
+      next: data => { this.parentalQuota.set(data); this.parentalQuotaLoading.set(false); this.cdr.markForCheck(); },
+      error: () => this.parentalQuotaLoading.set(false),
+    });
+  }
+
   private loadBereavementQuota(relationship: string) {
     this.service.getBereavementQuota(relationship).subscribe({
       next: data => this.bereavementQuota.set(data),
@@ -955,7 +1074,10 @@ export class LeaveRequestForm implements OnInit {
       endDateStr = `${v.endDate}T${eh}:00:00`;
     } else if (unit === 'day') {
       startDateStr = `${v.startDate}T00:00:00`;
-      endDateStr = `${v.endDate}T23:59:00`;
+      // 育嬰留停(單日)：一次申請一日，結束日恆等於起始日
+      endDateStr = type === 'parental_leave_daily'
+        ? `${v.startDate}T23:59:00`
+        : `${v.endDate}T23:59:00`;
     } else {
       // half_day：將 slot 轉為代表性時間
       const startHour = v.startSlot === 'am' ? '08:00:00' : '13:00:00';
@@ -967,6 +1089,8 @@ export class LeaveRequestForm implements OnInit {
     return {
       leaveType:               type,
       bereavementRelationship: type === 'bereavement' ? v.bereavementRelationship || undefined : undefined,
+      childBirthDate:          this.isParentalType(type) ? v.childBirthDate || undefined : undefined,
+      continueInsurance:       this.isParentalType(type) ? !!v.continueInsurance : undefined,
       startDate:               startDateStr,
       endDate:                 endDateStr,
       hours,

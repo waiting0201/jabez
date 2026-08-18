@@ -5,7 +5,7 @@ public class LeaveRequest
     public int      Id             { get; set; }
     public Guid?    EmployeeId     { get; set; }
     public int?     ApprovalItemId { get; set; }
-    public string   LeaveType      { get; set; } = string.Empty; // annual | personal | sick | compensatory | marriage | bereavement | official | maternity | miscarriage_3m | miscarriage_2to3m | miscarriage_under2m | prenatal_checkup | paternity | ceremonial_festival | senior_executive | menstrual | family_care
+    public string   LeaveType      { get; set; } = string.Empty; // annual | personal | sick | compensatory | marriage | bereavement | official | maternity | miscarriage_3m | miscarriage_2to3m | miscarriage_under2m | prenatal_checkup | paternity | ceremonial_festival | senior_executive | menstrual | family_care | parental_leave | parental_leave_daily
     public DateTime StartDate      { get; set; }
     public DateTime EndDate        { get; set; }
     /// <summary>剩餘有效時數。銷假核准後遞減（見 LeaveRevocationService.ApplyAsync），下游扣薪 / 額度一律以此為準。</summary>
@@ -19,6 +19,10 @@ public class LeaveRequest
     public DateTime? ReviewedAt   { get; set; }
     public string?  ReviewNote     { get; set; }
     public string?  BereavementRelationship { get; set; }  // 喪假親屬關係
+    /// <summary>子女出生日期（育嬰留停專用）。驗證「子女未滿 3 歲」，並作為「每名子女合計 2 年額度」的累計分組鍵。</summary>
+    public DateTime? ChildBirthDate { get; set; }
+    /// <summary>留停期間是否續保勞健保（育嬰留停專用）。僅記錄意願供人事作業參考，系統不算遞延帳、不自動扣款。</summary>
+    public bool?    ContinueInsurance { get; set; }
     public Guid?    AgentUserId    { get; set; }  // 職務代理人（記錄 + 通知，不參與簽核）
     public DateTime CreatedAt      { get; set; }
 

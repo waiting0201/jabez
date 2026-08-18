@@ -35,6 +35,10 @@ public class LeaveRequestConfiguration : IEntityTypeConfiguration<LeaveRequest>
         builder.Property(l => l.BereavementRelationship)
                .HasMaxLength(50);
 
+        // 育嬰留停專用欄位（皆可為 null，其餘假別不使用）
+        builder.Property(l => l.ChildBirthDate)
+               .HasColumnType("date");
+
         builder.HasOne(l => l.Employee)
                .WithMany()
                .HasForeignKey(l => l.EmployeeId)

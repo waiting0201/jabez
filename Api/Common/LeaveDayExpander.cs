@@ -27,14 +27,21 @@ public static class LeaveDayExpander
 {
     /// <summary>
     /// 工作日型假別：天數 / 時數以「扣除國定假日與六日後的實際工作日」計算。
-    /// 除歲時祭儀假（依法為連續日曆天）外皆適用。
+    /// 不適用者為歲時祭儀假與育嬰留職停薪（依法／依語意為連續日曆天）。
     /// 前端 WORKING_DAY_LEAVE_TYPES 須與此保持同步。
     /// </summary>
+    /// <remarks>
+    /// parental_leave（長期留停）刻意不列入：留停整段期間都不在職（含六日與國定假日），
+    /// 且工作日型假別在 Submit 時會強制要求區間橫跨的每個年度行事曆皆已匯入
+    /// （見 LeaveRequestHandler.SubmitAsync），育嬰留停跨 1~2 年會因未來年度行事曆未匯入而無法送件。
+    /// parental_leave_daily（彈性單日）則為一般工作日請假語意，仍列入。
+    /// </remarks>
     public static readonly HashSet<string> WorkingDayLeaveTypes =
         ["annual", "personal", "sick", "compensatory", "official", "senior_executive",
          "marriage", "maternity", "bereavement",
          "miscarriage_3m", "miscarriage_2to3m", "miscarriage_under2m",
-         "prenatal_checkup", "paternity", "menstrual", "family_care"];
+         "prenatal_checkup", "paternity", "menstrual", "family_care",
+         "parental_leave_daily"];
 
     /// <summary>各假別時間單位對應</summary>
     public static readonly Dictionary<string, LeaveTimeUnit> TimeUnitMap = new()
@@ -56,6 +63,8 @@ public static class LeaveDayExpander
         ["miscarriage_2to3m"]   = LeaveTimeUnit.Day,
         ["miscarriage_under2m"] = LeaveTimeUnit.Day,
         ["menstrual"]           = LeaveTimeUnit.Day,
+        ["parental_leave"]       = LeaveTimeUnit.Day,
+        ["parental_leave_daily"] = LeaveTimeUnit.Day,
     };
 
     /// <summary>取得指定假別的時間單位</summary>

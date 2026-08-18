@@ -4,7 +4,7 @@ import {Observable} from 'rxjs';
 import {
   LeaveRequest, AnnualQuota, CompensatoryHours, CeremonialQuota,
   MarriageQuota, MaternityStatus, BereavementQuota, SeniorExecutiveEligibility,
-  SeniorExecutiveQuota, MenstrualQuota, WorkingDaysResult,
+  SeniorExecutiveQuota, MenstrualQuota, ParentalQuota, WorkingDaysResult,
 } from '../models/leave-request.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {environment} from '@/environments/environment';
@@ -88,6 +88,17 @@ export class LeaveRequestService {
   getSeniorExecutiveQuota(year?: number): Observable<SeniorExecutiveQuota> {
     return this.http.get<SeniorExecutiveQuota>(`${environment.apiUrl}/leave-requests/senior-executive-quota`, {
       params: year ? {year} : {},
+    });
+  }
+
+  /**
+   * 查詢當前使用者的育嬰留職停薪配額。
+   * 帶 childBirthDate 才算得出「該名子女」的 730 天總額度與 3 歲資格；
+   * 彈性單日的年度 30 日額度不分子女，未帶亦會回傳。
+   */
+  getParentalQuota(childBirthDate?: string): Observable<ParentalQuota> {
+    return this.http.get<ParentalQuota>(`${environment.apiUrl}/leave-requests/parental-quota`, {
+      params: childBirthDate ? {childBirthDate} : {},
     });
   }
 

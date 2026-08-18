@@ -129,7 +129,7 @@ Bug 修復：
 
 ### 業務功能（docs/business/）
 - [application-forms.md](docs/business/application-forms.md) — 9 種申請表類型總覽 + 流程關係 + holiday vs travel 差異
-- [leave-rules.md](docs/business/leave-rules.md) — 請假規則（17 種假別 / 時間單位 / 年假 / 喪假 / 補休 / 生理假 / 重疊驗證 / **銷假**）
+- [leave-rules.md](docs/business/leave-rules.md) — 請假規則（19 種假別 / 時間單位 / 年假 / 喪假 / 補休 / 生理假 / **育嬰留職停薪** / 重疊驗證 / **銷假**）
 - [approval-flow.md](docs/business/approval-flow.md) — 請款簽核流程（簽核步驟 / 批次核准 / 自審 / 上層級 / 指定審核 / 跨步驟去重 / **追加預支重跑簽核** / **銷假重跑請假簽核**）
 - [approval-escalation.md](docs/business/approval-escalation.md) — 簽核升級機制（找上層部門主管 + 代理人）
 - [pdf-signatures.md](docs/business/pdf-signatures.md) — 7 個 PDF 動態簽名欄規則
@@ -196,7 +196,12 @@ Admin/src/app/
     │   ├── projects/       # 專案管理
     │   ├── payment-requests/  # 請款申請（廠商請款 type=vendor / 一般請款 type=general 明細下方皆含整單批次附件上傳，共用 shared/components/attachments-upload；**請款原因必填**）
     │   ├── pre-review-requests/ # 預審申請（事前預審，clone 自請款；無撥款、不計入報表；品項類別下拉 + 報價單 OCR；含 pre-review-pdf.service 列印合併所有上傳檔；**預審說明必填**）
-    │   ├── leave-requests/    # 請假申請（除歲時祭儀假外的 16 種假別選起迄日後皆扣國定假日與六日並列請假日清單，走輕量端點 /leave-requests/working-days；小時單位（事假/**家庭照顧假**/病假/產檢假/陪產假）跨日逐日累加只算工作日；**家庭照顧假**（`family_care`，性平法 §20）全年 7 日／56 小時上限、比照事假全額扣薪但薪資單獨立一列，家庭成員範圍僅表單提示不入庫；產假區間仍 56 個日曆天但只計其中工作日；含職務代理人下拉；依天數決定簽核關卡 <3 天單位主管 / ≥3 天 +部門最高主管+總監，靠 ApprovalStep.MinDays；**已核准的假可提「銷假」**：列表／唯讀檢視頁的「銷假」按鈕進 leave-revocation-form（`:id/revoke` / `leave-revocations/:id[/edit]` 三模式共用），逐日 chip 勾選要取消的日期（只含今天以後、未被其他銷假單佔用者）+ 銷假原因 + 指定審核者，送出後重跑同一份請假簽核；核准後父單 Hours 遞減、全銷轉 `cancelled` badge「已銷假」，部分銷加註「部分銷假」badge）
+    │   ├── leave-requests/    # 請假申請（除歲時祭儀假與育嬰留職停薪外的 17 種假別選起迄日後皆扣國定假日與六日並列請假日清單，走輕量端點 /leave-requests/working-days；小時單位（事假/**家庭照顧假**/病假/產檢假/陪產假）跨日逐日累加只算工作日；**家庭照顧假**（`family_care`，性平法 §20）全年 7 日／56 小時上限、比照事假全額扣薪但薪資單獨立一列，家庭成員範圍僅表單提示不入庫；產假區間仍 56 個日曆天但只計其中工作日；含職務代理人下拉；依天數決定簽核關卡 <3 天單位主管 / ≥3 天 +部門最高主管+總監，靠 ApprovalStep.MinDays；**已核准的假可提「銷假」**：列表／唯讀檢視頁的「銷假」按鈕進 leave-revocation-form（`:id/revoke` / `leave-revocations/:id[/edit]` 三模式共用），逐日 chip 勾選要取消的日期（只含今天以後、未被其他銷假單佔用者）+ 銷假原因 + 指定審核者，送出後重跑同一份請假簽核；核准後父單 Hours 遞減、全銷轉 `cancelled` badge「已銷假」，部分銷加註「部分銷假」badge；
+    │   │                      **育嬰留職停薪（2026-08 新增，兩個代碼）**：`parental_leave`（長期留停，**連續日曆天**、每名子女合計 730 天）+ `parental_leave_daily`（彈性單日新制，強制 `EndDate = StartDate`、每人每年 30 日且併入該子女總額度）；
+    │   │                      資格為「在職滿 6 個月 + 子女未滿 3 歲」（Superadmin 繞過），新增欄位 `ChildBirthDate`（額度分組鍵）/ `ContinueInsurance`（僅記錄續保意願）；
+    │   │                      `parental_leave` **刻意不列入 WorkingDayLeaveTypes**（否則跨年送件會被「行事曆未匯入」擋死、逐日 chip 也會爆量），故長期留停**不開放銷假**；
+    │   │                      薪資「整月留停排除名單 + 當月按在職天數 ÷ 30 折減底薪與加給」，勞健保與勞退自提用折減前的 `insuredBaseSalary` 不打折，實領為負時前後端皆顯示「應補繳保費」警示；
+    │   │                      年資扣除留停天數（`Api/Common/SeniorityHelper.cs` 單一真相，特休額度隨之暫停累積），額度端點 `GET /leave-requests/parental-quota`）
     │   ├── travel-payment-requests/ # 出差請款申請（小額已代墊直接請款，無沖銷）
     │   ├── travel-requests/   # 出差預支申請（走沖銷流程）
     │   ├── holiday-travel-requests/ # 假日執行活動申請（共用 TravelRequest entity，IsHolidayTravel=true，計入假日津貼；參與人員可逐日勾選個人參與日期，未勾選＝全程參與；**每個勾選日期可再指定「全天／上午／下午」**：chip 四態循環 未選 → 全天 → 上午 → 下午 → 未選，半天以 0.5 天計入假日津貼，個人天數存 `TravelRequestParticipant.HolidayDays decimal(5,1)`；申請人本人不逐日、不半天，一律沿用整單 `TravelRequest.HolidayDays`）
@@ -208,7 +213,7 @@ Admin/src/app/
     │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出）
     │   ├── attendance-reminder-logs/ # 打卡提醒推播紀錄（僅 Superadmin）
     │   ├── payment-reminder-logs/ # 撥款提醒推播紀錄 + 手動觸發（僅 Superadmin）
-    │   ├── reports/        # 報表（出缺勤 / 加班 / 款項統計 / 專案水位）；**出缺勤紀錄列出「打卡紀錄 ∪ 當日請假日」**：全天請假沒打卡的人也會出現一列（`id=null` 虛擬列，上下班留空 + 「請假」badge + 假別 + 當日時數、不可編輯），同日多張假單合併為一列；假別中文 import 自 leave-request.model 的 17 種 LEAVE_TYPE_LABELS；已補上分頁（每頁 20，簡化版上一頁 / 下一頁），Excel 匯出走 `?export=true`；月篩選不再提供「全部年份 / 全部月份」（合併需有界區間）。款項統計 1 個 endpoint 支援 全部 + 6 個類別 dropdown（全部 / 請款 / 預支 / 預支沖銷 / 出差請款 / 出差預支 / 出差預支沖銷；「全部」為 6 種 UNION ALL），權限只看 `reports-payment:read`，不需各別 `xxx-requests:read`。**專案水位表的「總專案水位」欄（分母＝契約金額，含公司保留 40%）為欄位級權限 `reports-project-water-level:total`**：只有 `reports-project-water-level:read` 者頁面照進、業務執行水位照看，但總水位整欄消失（前端 `canSeeTotal` 同時控 `<th>` / `<td>` / 空列 colspan），後端 `ProjectWaterLevelHandler` 亦把 `TotalPercentage` / `PreImportUsedAmount` / `RemainingAmount` 抹為 null / 0
+    │   ├── reports/        # 報表（出缺勤 / 加班 / 款項統計 / 專案水位）；**出缺勤紀錄列出「打卡紀錄 ∪ 當日請假日」**：全天請假沒打卡的人也會出現一列（`id=null` 虛擬列，上下班留空 + 「請假」badge + 假別 + 當日時數、不可編輯），同日多張假單合併為一列；假別中文 import 自 leave-request.model 的 19 種 LEAVE_TYPE_LABELS；已補上分頁（每頁 20，簡化版上一頁 / 下一頁），Excel 匯出走 `?export=true`；月篩選不再提供「全部年份 / 全部月份」（合併需有界區間）。款項統計 1 個 endpoint 支援 全部 + 6 個類別 dropdown（全部 / 請款 / 預支 / 預支沖銷 / 出差請款 / 出差預支 / 出差預支沖銷；「全部」為 6 種 UNION ALL），權限只看 `reports-payment:read`，不需各別 `xxx-requests:read`。**專案水位表的「總專案水位」欄（分母＝契約金額，含公司保留 40%）為欄位級權限 `reports-project-water-level:total`**：只有 `reports-project-water-level:read` 者頁面照進、業務執行水位照看，但總水位整欄消失（前端 `canSeeTotal` 同時控 `<th>` / `<td>` / 空列 colspan），後端 `ProjectWaterLevelHandler` 亦把 `TotalPercentage` / `PreImportUsedAmount` / `RemainingAmount` 抹為 null / 0
     │   └── settings/       # 系統設定（含 PaymentReminderDaysBefore 撥款提醒天數）
     └── error/
         └── pages/ (error-403, error-404, error-500)
@@ -410,7 +415,7 @@ dotnet ef database update               # 套用 Migration
 
 ## 請假規則
 
-> **詳見** [docs/business/leave-rules.md](docs/business/leave-rules.md)（17 種假別、時間單位、年假、喪假、補休、生理假、家庭照顧假、重疊驗證、銷假）
+> **詳見** [docs/business/leave-rules.md](docs/business/leave-rules.md)（19 種假別、時間單位、年假、喪假、補休、生理假、家庭照顧假、育嬰留職停薪、重疊驗證、銷假）
 
 ---
 

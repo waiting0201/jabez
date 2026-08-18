@@ -12,7 +12,8 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
                lr.LeaveType, lr.StartDate, lr.EndDate, lr.Hours, lr.OriginalHours, lr.Reason,
                lr.ApprovalStatus, lr.CreatedAt, lr.ReviewedAt, lr.ReviewNote,
                lr.ApprovalItemId, lr.CurrentStepOrder, lr.ReviewedById,
-               lr.BereavementRelationship, lr.AgentUserId, ag.Name AS AgentName
+               lr.BereavementRelationship, lr.AgentUserId, ag.Name AS AgentName,
+               lr.ChildBirthDate, lr.ContinueInsurance
         FROM LeaveRequests lr
         LEFT JOIN Users u  ON lr.EmployeeId  = u.Id
         LEFT JOIN Users ag ON lr.AgentUserId = ag.Id
@@ -113,7 +114,9 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
             TimeUnit:                GetTimeUnitString(leaveType),
             AgentUserId:             (Guid?)row.AgentUserId,
             AgentName:               (string?)row.AgentName,
-            OriginalHours:           (decimal?)row.OriginalHours);
+            OriginalHours:           (decimal?)row.OriginalHours,
+            ChildBirthDate:          (DateTime?)row.ChildBirthDate,
+            ContinueInsurance:       (bool?)row.ContinueInsurance);
     }
 
     /// <summary>依假別取得時間單位字串（與 LeaveRequestHandler 保持一致）</summary>

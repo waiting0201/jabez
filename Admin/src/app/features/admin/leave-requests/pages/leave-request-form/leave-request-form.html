@@ -62,14 +62,15 @@
           </div>
           <div class="card-body">
 
-            <!-- 假別選擇（下拉選單分群組；高階主管假僅協理以上可見） -->
+            <!-- 假別選擇（下拉選單分群組；高階主管假僅協理以上可見、育嬰假僅在職滿 6 個月可見） -->
             <div class="mb-4">
               <label class="form-label fw-500">假別 <span class="text-danger">*</span></label>
               <select class="form-select" formControlName="leaveType" style="max-width: 320px">
                 @for (group of leaveTypeGroups; track group.label) {
                   @if ((group.label !== '高階主管假' || isSeniorExecutive())
                        && (group.label !== '其他假別' || isIndigenousUser())
-                       && (group.label !== '生理假' || isFemaleEmployee())) {
+                       && (group.label !== '生理假' || isFemaleEmployee())
+                       && (group.label !== '育嬰假' || isParentalEligible())) {
                     <optgroup [label]="group.label">
                       @for (type of group.types; track type) {
                         <option [value]="type">{{ leaveTypeLabels[type] }}</option>
@@ -103,6 +104,9 @@
                         <span class="text-muted ms-2">｜年假額度：<strong>{{ quota.totalDays }}</strong> 天</span>
                         <span class="text-muted ms-2">｜已使用：{{ quota.usedDays }} 天</span>
                         <span class="ms-2">｜剩餘：<strong class="text-primary">{{ quota.availableDays }}</strong> 天</span>
+                        @if (quota.parentalLeaveExcludedDays) {
+                          <span class="text-muted ms-2 d-block">（年資已扣除育嬰留停 {{ quota.parentalLeaveExcludedDays }} 天，留停期間不計入工作年資）</span>
+                        }
                       </span>
                     }
                   } @else {
@@ -302,11 +306,105 @@
                 }
               }
 
+              <!-- 育嬰留職停薪 -->
+              @if (isParentalType(selectedLeaveType)) {
+                <div class="alert alert-warning flex items-start gap-2 py-2 mt-2 mb-0">
+                  <svg class="sa-icon shrink-0 mt-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                  <span class="small">
+                    @if (selectedLeaveType === 'parental_leave') {
+                      育嬰留職停薪：子女滿 3 歲前得申請，<strong>每名子女最長合計 2 年</strong>，
+                      期間<strong>不支薪</strong>（底薪與各項加給依在職天數按比例計算，整月留停者當月不計薪）。
+                    } @else {
+                      育嬰留停(單日)：<strong>一次申請一日</strong>，每人每年最多 <strong>30 日</strong>（雙親合計 60 日），
+                      併入該名子女 2 年總額度計算，期間<strong>不支薪</strong>（薪資按在職天數比例計算）。
+                    }
+                    <span class="text-muted d-block mt-1">
+                      留職停薪期間<strong>不計入工作年資</strong>，特休與退休金基數暫停累積。
+                      津貼由勞保局按申請前 6 個月平均月投保薪資 <strong>80%</strong> 給付（每名子女父母雙方各最多 6 個月），
+                      需自行向勞保局申請，不由本系統計算。留停期間不得有工作事實或另訂勞動契約。
+                    </span>
+                    @if (selectedLeaveType === 'parental_leave_daily') {
+                      <span class="text-muted d-block mt-1">
+                        以日為單位申請原則上須於 <strong>5 日前</strong>提出；「雙親合計 60 日」需與配偶自行協調，系統不代為檢核。
+                      </span>
+                    }
+                  </span>
+                </div>
+
+                <!-- 子女出生日期：驗證「未滿 3 歲」並作為 2 年總額度的分組鍵 -->
+                <div class="mt-3">
+                  <label class="form-label fw-500">子女出生日期 <span class="text-danger">*</span></label>
+                  <input type="date" class="form-control" formControlName="childBirthDate" style="max-width: 320px">
+                  <div class="text-muted small mt-1">同一名子女的額度以出生日期歸戶，請確實填寫。</div>
+                </div>
+
+                <!-- 續保意願：僅記錄供人事作業參考，系統不計算遞延保費 -->
+                <div class="form-check mt-3">
+                  <input type="checkbox" class="form-check-input" id="continueInsurance" formControlName="continueInsurance">
+                  <label class="form-check-label small" for="continueInsurance">
+                    留停期間繼續投保勞健保
+                    <span class="text-muted">（個人負擔部分最多可遞延 3 年繳納；本系統僅記錄意願，實際辦理與收費由人事處理）</span>
+                  </label>
+                </div>
+
+                @if (parentalQuotaLoading()) {
+                  <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                    <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
+                    <span class="small">載入中...</span>
+                  </div>
+                } @else if (parentalQuota(); as q) {
+                  @if (!q.isEligible) {
+                    <div class="alert alert-danger flex items-center gap-2 py-2 mt-2 mb-0">
+                      <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                      <span class="small">{{ q.message || '育嬰留職停薪需在職滿 6 個月。' }}</span>
+                    </div>
+                  } @else if (isParentalChildTooOld) {
+                    <div class="alert alert-danger flex items-center gap-2 py-2 mt-2 mb-0">
+                      <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                      <span class="small">
+                        育嬰留職停薪須於子女滿 3 歲前結束。請將日期調整為
+                        <strong>{{ parentalChildThirdBirthday }}</strong> 之前。
+                      </span>
+                    </div>
+                  } @else {
+                    <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
+                      <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+                      <span class="small">
+                        @if (q.childBirthDate) {
+                          本名子女已用：{{ q.usedDays }} 天
+                          <span class="ms-2">｜剩餘：<strong class="text-primary">{{ q.availableDays }}</strong> / {{ q.totalDays }} 天</span>
+                        } @else {
+                          <span class="text-muted">填寫子女出生日期後顯示該名子女的 {{ q.totalDays }} 天總額度</span>
+                        }
+                        @if (selectedLeaveType === 'parental_leave_daily') {
+                          <span class="text-muted ms-2">｜本年度單日已用：{{ q.dailyYearUsed }} 日</span>
+                          <span class="ms-2">｜本年度單日剩餘：<strong class="text-primary">{{ q.dailyYearAvailable }}</strong> / {{ q.dailyYearLimit }} 日</span>
+                        }
+                      </span>
+                    </div>
+                  }
+                }
+
+                @if (isParentalExceeded) {
+                  <div class="alert alert-danger flex items-center gap-2 py-2 mt-2 mb-0">
+                    <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                    <span class="small">本次申請天數已超過該名子女的剩餘額度。</span>
+                  </div>
+                }
+                @if (isParentalDailyExceeded) {
+                  <div class="alert alert-danger flex items-center gap-2 py-2 mt-2 mb-0">
+                    <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                    <span class="small">本次申請已超過本年度育嬰留停(單日) 30 日上限。</span>
+                  </div>
+                }
+              }
+
               <!-- 其他有上限的假別提示 -->
               @if (currentDaysLimit !== null && selectedLeaveType !== 'bereavement' && selectedLeaveType !== 'annual'
                 && selectedLeaveType !== 'compensatory' && selectedLeaveType !== 'ceremonial_festival'
                 && selectedLeaveType !== 'marriage' && selectedLeaveType !== 'maternity'
-                && selectedLeaveType !== 'menstrual' && selectedLeaveType !== 'family_care') {
+                && selectedLeaveType !== 'menstrual' && selectedLeaveType !== 'family_care'
+                && !isParentalType(selectedLeaveType)) {
                 <div class="alert alert-info flex items-center gap-2 py-2 mt-2 mb-0">
                   <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
                   <span class="small">
@@ -403,8 +501,23 @@
               </div>
             }
 
+            <!-- Day 模式：育嬰留停(單日) 一次申請一日，只給單一日期欄（結束日由前後端一致設為同一天） -->
+            @if (selectedLeaveType === 'parental_leave_daily') {
+              <div class="row g-3 mb-4">
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">請假日期 <span class="text-danger">*</span></label>
+                  <input type="date" class="form-control" formControlName="startDate">
+                  <div class="text-muted small mt-1">以日為單位，一次申請一日</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">天數</label>
+                  <div class="form-control bg-[var(--bg-elevated)]" style="pointer-events: none">{{ calculatedDisplay }}</div>
+                </div>
+              </div>
+            }
+
             <!-- Day 模式：整天 -->
-            @if (selectedUnit === 'day' && selectedLeaveType !== 'maternity') {
+            @if (selectedUnit === 'day' && selectedLeaveType !== 'maternity' && selectedLeaveType !== 'parental_leave_daily') {
               <div class="row g-3 mb-4">
                 <div class="col-12 col-md-4">
                   <label class="form-label fw-500">開始日期 <span class="text-danger">*</span></label>

@@ -24,6 +24,8 @@ public static class LeaveTypeNames
         ["senior_executive"]    = "高階主管假",
         ["menstrual"]           = "生理假",
         ["family_care"]         = "家庭照顧假",
+        ["parental_leave"]      = "育嬰留職停薪",
+        ["parental_leave_daily"] = "育嬰留停(單日)",
     };
 
     /// <summary>取得假別的中文名稱；找不到時回傳原字串。</summary>
