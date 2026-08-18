@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { environment } from '@/environments/environment';
 import { User } from '../../admin/users/models/user.model';
 import { EmployeeProfileDetail } from '../../admin/users/models/employee-profile.model';
+import { MyPayrollHistory } from '../models/my-payroll.model';
 
 @Injectable({ providedIn: 'root' })
 export class MyProfileService {
@@ -17,6 +18,11 @@ export class MyProfileService {
   /** 取得自己的人事資料（與 GET /users/{id}/profile 同型別） */
   getMyProfile(): Observable<EmployeeProfileDetail> {
     return this.http.get<EmployeeProfileDetail>(`${environment.apiUrl}/me/profile`);
+  }
+
+  /** 取得自己近 N 個月的薪資紀錄（即時重算，非月結快照） */
+  getMyPayroll(months = 12): Observable<MyPayrollHistory> {
+    return this.http.get<MyPayrollHistory>(`${environment.apiUrl}/me/payroll`, { params: { months } });
   }
 
   /** 下載 PII 檔案（需 Bearer token），回傳 Blob 供前端建立 Object URL */

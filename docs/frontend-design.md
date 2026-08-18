@@ -1063,6 +1063,22 @@ Input：`advanceRounds` / `writeOffHistory` / `currentGrandTotal` / `refundDue`�
 
 彙總頁（[write-off-overview](../Admin/src/app/features/admin/write-off-requests/pages/write-off-overview/)）走**詳情頁版型**（`col-12 col-xl-10`）：預支資訊卡 → 沖銷單一覽表卡 → 預支費用明細卡 → `<app-installments-table>`（預支撥款）→ 逐張沖銷單卡（明細 / 附件 / 該次差額撥款 `<app-installments-table>`）。共用元件維持 card 結構，故一律放在卡片**外層同級**，不塞進 `card-body`（避免卡中卡）。
 
+### 7.11 單月薪資明細（[`<app-payroll-detail-card>`](../Admin/src/app/shared/components/payroll-detail-card.ts)）
+
+「應發項目 / 扣款項目（+ 本月請假紀錄）」的唯讀薪資明細，2026-08 從 `payroll-form` 抽出成共用元件，供兩處使用：
+
+| 使用者 | 頁面 | `showNetSalary` |
+|---|---|---|
+| 人事（`payroll:read`） | `/admin/payroll/{id}` 薪資調整頁 | `false`（該頁另有可即時預覽的「實領薪資」卡片，會隨表單輸入變動） |
+| 一般員工 | 個人資訊 →「過往薪資」Tab 展開列 | `true`（表尾附「實領薪水」列＋育嬰留停負數警語） |
+
+- 結構同其他 detail 卡片：`card border-0 shadow-sm` + `card-header` + `card-body p-0` + `table table-hover`。
+- 分區列用 `<tr class="table-light">`＋`text-primary`（應發，icon `#plus-circle`）／`text-danger`（扣款，icon `#minus-circle`）。
+- 加給、各假別扣薪、勞退自提**有值才顯示該列**（`@if`），避免一堆 0 的雜訊。
+- 假別中文與時數格式一律 import [`LEAVE_TYPE_LABELS` / `formatLeaveDuration`](../Admin/src/app/features/admin/leave-requests/models/leave-request.model.ts)，不在元件內另抄一份對照表。
+
+> 展開列的用法：`<td colspan="欄數" class="p-4 bg-[var(--bg-elevated)]">` 內放此元件，讓明細與清單列在視覺上分層。
+
 ---
 
 ## 8. 按鈕規範

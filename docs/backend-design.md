@@ -174,7 +174,7 @@ JWT 驗證 + 權限檢查由 RouterFunction → AppRouter 統一執行；Handler
 | `GET /users/{id}/profile` | `users:read` | `payroll:read` | 缺後者時 `SalaryAdjustmentRecords` 回 `[]`；其餘 8 張子表照常 |
 | `PATCH /users/{id}`、`POST /users`、`PUT /users/{id}/profile` | `users:write` | `payroll:read` | 缺後者時薪資欄位的寫入一律忽略（不回 403，其他欄位照常存檔）；見規則 6 |
 
-⚠️ 員工自助端點 `GET /me/user`、`GET /me/profile` **刻意不套**此權限 —— 員工看自己的薪資是既有需求，`payroll:read` 只管「看別人的」。兩支 Handler 方法內皆有註解防止後人「補齊一致性」時誤加。
+⚠️ 員工自助端點 `GET /me/user`、`GET /me/profile`、`GET /me/payroll` **刻意不套**此權限 —— 員工看自己的薪資是既有需求，`payroll:read` 只管「看別人的」。三支 Handler 方法內皆有註解防止後人「補齊一致性」時誤加。
 
 規則：
 
@@ -894,6 +894,7 @@ public sealed class GcisService(HttpClient http, ILogger<GcisService> logger) : 
 | `GET /me/user` | `GET /users/{id}`（需 `users:read`） | 「個人資訊」唯讀頁：員工查看自己的帳號資料（從 JWT `sub` 取自身 id） |
 | `GET /me/profile` | `GET /users/{id}/profile`（需 `users:read`） | 「個人資訊」唯讀頁：員工查看自己的人事資料卡 + 健保眷屬 |
 | `GET /me/files/{container}/{fileName}` | `GET /files/<PII container>/{fileName}`（需 `users:read`） | 「個人資訊」唯讀頁：員工讀自己的 PII 檔案，見下方 §13.4 |
+| `GET /me/payroll?months=12` | `GET /payroll`（需 `payroll:read`，且一次回全公司） | 「個人資訊」→「過往薪資」Tab：員工查自己近 N 個月薪資明細。共用 `IPayrollReadService.CalculateMonthlyPayrollAsync(year, month, employeeId)` 的同一份公式，只多帶 employeeId 過濾，不另開計算邏輯 |
 
 > HR 敏感 PII（`/files/indigenous-proofs/`、`/files/low-income-proofs/`、`/files/disabled-proofs/`、`/files/id-cards/`、`/files/education-proofs/`、`/files/passbooks/`）的**管理端**代理**不**走輕量模式，仍需 `users:read`；員工要讀**自己的** PII 改走 `/me/files/{container}/{fileName}`（§13.4）。
 
@@ -906,6 +907,9 @@ public sealed class GcisService(HttpClient http, ILogger<GcisService> logger) : 
   1. **白名單容器**：`SelfServiceContainers`（id-cards / education-proofs / passbooks / 三種 proofs / avatars / signatures），不在白名單一律 404。
   2. **前綴檢查**：所有 blob 命名都以 `{userId}` 開頭（`{userId}{ext}` / `{userId}_front{ext}` / `{userId}_education{ext}` / `{userId}_passbook{ext}`…），驗證 `fileName` 以自身 `userId` 開頭且後接 `.` 或 `_`，否則 403 — 防止員工竄改 `fileName` 讀他人檔案（GUID 定長 + 分隔符，無前綴包含風險）。
   3. 通過後複用既有私有 `GetFileAsync`（blob 串流 + Content-Type 驗證）。
+- **即時計算型自助端點** [`PayrollHandler.GetMineAsync`](../Api/Handlers/PayrollHandler.cs)（`GET /me/payroll?months=12`）：資料不是「查一張表」而是「算出來的」，故不新增 Read Service，改在既有 `CalculateMonthlyPayrollAsync` 加上可為 null 的 `employeeId` 過濾（7 段 SQL 各加 `AND (@EmployeeId IS NULL OR ... = @EmployeeId)`），Handler 逐月呼叫並取 `Employees.FirstOrDefault()`。兩點必須注意：
+  1. `months` 一律 clamp（1~24），避免有人送 `months=99999` 打爆 DB。
+  2. **必須自行擋掉到職日之前的月份** —— 員工查詢 SQL 只濾 `Status` / `ResignDate`，不擋的話到職前的月份會算出一筆「全額底薪」的假資料。
 - **權限對應**：`me` 路由在 `GetRequiredPermission` 無對應項，落到 `_ => null`（登入即可），且不在 `IsPublicRoute`（強制 JWT）。
 - **前端對應**：`<img src>` 不能帶 Authorization header，故簽名 / 頭像（公開容器）走公開 `/files/...`；其餘 PII 改以 HttpClient 下載 blob（interceptor 帶 token）再 `URL.createObjectURL` 顯示 / 開新分頁。
 

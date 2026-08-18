@@ -406,6 +406,7 @@ public sealed class AppRouter(
             ("GET",    ["me", "user"])                                    => await users.GetMineAsync(req),
             ("GET",    ["me", "profile"])                                 => await employeeProfile.GetMineAsync(req),
             ("GET",    ["me", "files", var container, var fileName])      => await files.GetMineAsync(req, container, fileName),
+            ("GET",    ["me", "payroll"])                                 => await payroll.GetMineAsync(req),
 
             // ── LINE 綁定 ─────────────────────────────────────────────────────
             ("GET",    ["line", "bind-url"])         => await line.GetBindUrlAsync(req),

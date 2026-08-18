@@ -7,6 +7,7 @@ using Jabez.Api.Services.Dapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace Jabez.Api.Handlers;
 
@@ -26,6 +27,57 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
 
         var result = await reader.CalculateMonthlyPayrollAsync(year, month);
         return new OkObjectResult(ApiResponse.Ok(result));
+    }
+
+    /// <summary>員工自助查詢近 N 個月薪資的預設 / 上限月數</summary>
+    private const int DefaultMonths = 12;
+    private const int MaxMonths     = 24;
+
+    /// <summary>
+    /// GET /me/payroll?months=12 → 員工自助查詢自己近 N 個月的薪資明細（登入即可，不需 payroll:read）
+    /// </summary>
+    /// <remarks>
+    /// 刻意不套薪資欄位級權限（PayrollFieldAccess）—— 員工看自己的薪資是既有需求，
+    /// 該權限只管「看別人的」。請勿為了與 GetMonthlyAsync 一致而補上。
+    /// 端點不接受 employeeId 參數，一律以 JWT 的 sub 為對象，故無法查別人。
+    ///
+    /// 注意：薪資為即時計算、無月結快照表，底薪 / 加給 / 勞健保覆寫取自 Users 表「當下」的值，
+    /// 因此調薪過的員工回溯歷史月份會以現行底薪重算（前端已加註說明）。
+    /// </remarks>
+    public async Task<IActionResult> GetMineAsync(HttpRequest req)
+    {
+        var userIdStr = req.HttpContext.User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return new UnauthorizedObjectResult(ApiResponse.Fail("Unauthorized.", "Invalid token claims."));
+
+        var months = int.TryParse(req.Query["months"], out var m) ? m : DefaultMonths;
+        months = Math.Clamp(months, 1, MaxMonths);
+
+        // 到職日：employeeSql 只濾 Status / ResignDate，不另外擋到職前的月份，
+        // 否則到職前的月份會算出一筆「全額底薪」的假資料。
+        var hireDate = await db.Users
+            .Where(u => u.Id == userId)
+            .Select(u => u.HireDate)
+            .FirstOrDefaultAsync();
+
+        var today   = Clock.Now.Date;
+        var current = new DateTime(today.Year, today.Month, 1);
+
+        var list = new List<MyPayrollMonthDto>();
+        for (int i = 0; i < months; i++)
+        {
+            var first = current.AddMonths(-i);
+            var last  = first.AddMonths(1).AddDays(-1);
+            if (hireDate.HasValue && last < hireDate.Value.Date) break;   // 再往前都是到職前，直接停
+
+            var monthly = await reader.CalculateMonthlyPayrollAsync(first.Year, first.Month, userId);
+            var payroll = monthly.Employees.FirstOrDefault();
+            if (payroll is null) continue;   // 無底薪 / 整月留停等，該月不出單
+
+            list.Add(new MyPayrollMonthDto(first.Year, first.Month, first == current, payroll));
+        }
+
+        return new OkObjectResult(ApiResponse.Ok(new MyPayrollHistoryDto(list)));
     }
 
     /// <summary>GET /payroll/{employeeId}/adjustment?year=YYYY&amp;month=MM → 取得單一員工薪資調整</summary>

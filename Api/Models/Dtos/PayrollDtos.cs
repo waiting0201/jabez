@@ -74,6 +74,18 @@ public sealed record MonthlyPayrollDto(
     decimal TotalLaborPensionSelfDeduction = 0m,
     decimal TotalParentalLeaveDays         = 0m);
 
+/// <summary>
+/// 員工自助查詢：單月薪資紀錄（Payroll 為當月即時重算結果，非月結快照）
+/// </summary>
+public sealed record MyPayrollMonthDto(
+    int  Year,
+    int  Month,
+    bool IsCurrentMonth,
+    EmployeePayrollDto Payroll);
+
+/// <summary>員工自助查詢：近 N 個月薪資紀錄（新到舊）</summary>
+public sealed record MyPayrollHistoryDto(IEnumerable<MyPayrollMonthDto> Months);
+
 /// <summary>薪資調整新增/更新請求</summary>
 public sealed record PayrollAdjustmentRequest(
     decimal  OtherAddition,
