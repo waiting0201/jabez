@@ -580,7 +580,7 @@
               <div class="card border-0 shadow-sm mb-4">
                 <div class="card-body py-3">
                   <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
-                    <span class="fw-500 text-sm">實際請假日（已扣除國定假日與六日）</span>
+                    <span class="fw-500 text-sm">實際請假日（已扣除休假日）</span>
                     @if (selectedUnit === 'hour') {
                       <span class="badge bg-success-subtle text-success">共 {{ wd.workingDays }} 個工作日／{{ calculatedDisplay }}</span>
                     } @else {
@@ -594,10 +594,10 @@
                       }
                     </div>
                     @if (wd.holidayDates.length > 0) {
-                      <div class="text-muted small mt-2">已扣除 {{ wd.holidayDates.length }} 天假日（國定假日與六日）</div>
+                      <div class="text-muted small mt-2">已扣除 {{ wd.holidayDates.length }} 天休假日（國定假日與六日）</div>
                     }
                   } @else {
-                    <span class="text-danger small">此區間全為國定假日或六日，無可請假的工作日。</span>
+                    <span class="text-danger small">此區間全為休假日，無可請假的工作日。</span>
                   }
                   @if (!wd.hasCalendarData) {
                     <div class="alert alert-warning flex items-center gap-2 py-2 mt-2 mb-0">

@@ -21,7 +21,8 @@ public readonly record struct LeaveDay(DateTime Date, decimal Hours);
 ///   Hour    → 同日 end.Hour − start.Hour；跨日首日 Clamp(17 − start.Hour, 0, 8)、中間 8、末日 Clamp(end.Hour − 8, 0, 8)
 ///   HalfDay → 單一工作日 am→am 4 / am→pm 8 / pm→pm 4；多工作日 首日(am 8 / pm 4) + 中間 8 + 末日(pm 8 / am 4)
 ///   非工作日型假別（歲時祭儀假）→ 整段日曆天，每天 8 小時
-/// 工作日判定一律走 <see cref="WorkCalendarHelper"/>（有行事曆用 CalendarDay.IsHoliday、無資料退回六日）。
+/// 工作日判定一律走 <see cref="WorkCalendarHelper"/>（有行事曆用 CalendarDay.IsHoliday、無資料退回六日）；
+/// 申請人為排班制（User.IsShiftWorker）時 ignoreHolidays=true，整段皆為工作日、不扣六日與國定假日。
 /// </summary>
 public static class LeaveDayExpander
 {
@@ -85,8 +86,9 @@ public static class LeaveDayExpander
     /// 消費點：AttendanceLeaveMerger（出缺勤報表合併請假虛擬列）。
     /// </summary>
     public static Task<List<LeaveDay>> ExpandAsync(
-        ICalendarDayReadService calendarReader, string leaveType, DateTime startDate, DateTime endDate) =>
-        ExpandAsync(calendarReader, new LeaveRequest
+        ICalendarDayReadService calendarReader, bool ignoreHolidays,
+        string leaveType, DateTime startDate, DateTime endDate) =>
+        ExpandAsync(calendarReader, ignoreHolidays, new LeaveRequest
         {
             LeaveType = leaveType,
             StartDate = startDate,
@@ -98,7 +100,7 @@ public static class LeaveDayExpander
     /// 行事曆尚未匯入時退回六日判定，與 <see cref="WorkCalendarHelper"/> 同一規則。
     /// </summary>
     public static async Task<List<LeaveDay>> ExpandAsync(
-        ICalendarDayReadService calendarReader, LeaveRequest leave)
+        ICalendarDayReadService calendarReader, bool ignoreHolidays, LeaveRequest leave)
     {
         var start = leave.StartDate;
         var end   = leave.EndDate;
@@ -107,7 +109,7 @@ public static class LeaveDayExpander
         if (!WorkingDayLeaveTypes.Contains(leave.LeaveType))
             return [.. WorkCalendarHelper.EnumerateDates(start, end).Select(d => new LeaveDay(d, 8m))];
 
-        var (_, _, working) = await WorkCalendarHelper.ComputeWorkingDatesAsync(calendarReader, start, end);
+        var (_, _, working) = await WorkCalendarHelper.ComputeWorkingDatesAsync(calendarReader, ignoreHolidays, start, end);
         if (working.Count == 0) return [];
 
         return GetTimeUnit(leave.LeaveType) switch

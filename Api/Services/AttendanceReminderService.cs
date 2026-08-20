@@ -43,8 +43,11 @@ public sealed class AttendanceReminderService(
     {
         var now = Clock.Now;
 
-        // 週末不提醒
-        if (now.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+        // 週末只提醒排班制員工（賣店 / 營業所照常營業）；一人都沒有就維持整批不推。
+        // 平日刻意不看行事曆（國定假日照推），沿用既有語意。
+        var isWeekend = now.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+        if (isWeekend && !await db.Users.AsNoTracking()
+                .AnyAsync(u => u.IsShiftWorker && u.Status == "active", ct))
             return;
 
         var setting = await db.SystemSettings.AsNoTracking()
@@ -67,7 +70,7 @@ public sealed class AttendanceReminderService(
         if (await HasBatchStartedTodayAsync(now.Date, workTime, ct))
             return;
 
-        await PushAsync(type, now.Date, workTime, setting.SiteUrl, "auto", null, ct);
+        await PushAsync(type, now.Date, workTime, setting.SiteUrl, "auto", null, isWeekend, ct);
     }
 
     public async Task<AttendanceReminderRunResult> ForceRunAsync(string type, Guid? triggeredByUserId, CancellationToken ct = default)
@@ -81,7 +84,9 @@ public sealed class AttendanceReminderService(
             ?? throw AppException.BadRequest("尚未設定 SystemSetting。");
 
         var workTime = type == "clockIn" ? setting.WorkStartTime : setting.WorkEndTime;
-        return await PushAsync(type, Clock.Today, workTime, setting.SiteUrl, "manual", triggeredByUserId, ct);
+        // 手動觸發沿用同一條「今天誰要上班」規則：六日只推排班制員工
+        var forcedWeekend = Clock.Today.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+        return await PushAsync(type, Clock.Today, workTime, setting.SiteUrl, "manual", triggeredByUserId, forcedWeekend, ct);
     }
 
     /// <summary>
@@ -150,7 +155,7 @@ public sealed class AttendanceReminderService(
 
     private async Task<AttendanceReminderRunResult> PushAsync(
         string type, DateTime today, string workTime, string siteUrl,
-        string triggerSource, Guid? triggeredByUserId, CancellationToken ct)
+        string triggerSource, Guid? triggeredByUserId, bool shiftWorkersOnly, CancellationToken ct)
     {
         // 將工作時間（"09:00"）與今日日期合成精確 targetTime，
         // 供 SQL 用「請假是否覆蓋此時刻」判斷（修正小時制請假被誤排除問題）。
@@ -188,7 +193,7 @@ public sealed class AttendanceReminderService(
         IReadOnlyList<Models.Dtos.AttendanceReminderRecipientDto> recipients;
         try
         {
-            recipients = await reader.GetRecipientsAsync(targetTime, type, ct);
+            recipients = await reader.GetRecipientsAsync(targetTime, type, shiftWorkersOnly, ct);
         }
         catch (Exception ex)
         {

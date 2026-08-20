@@ -17,7 +17,7 @@ namespace Jabez.Api.Handlers;
 /// GET   /approval-tasks/{id}                               → 單筆
 /// PATCH /approval-tasks/{applicationType}/{id}/review      → 多步驟審核（核准 / 退回修改 / 拒絕）
 /// </summary>
-public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadService reader, IJwtService jwtService, IApprovalNotificationService notifier, IApprovalFlowService approvalFlow, IBlobStorageService blob, ICalendarDayReadService calendarReader)
+public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadService reader, IJwtService jwtService, IApprovalNotificationService notifier, IApprovalFlowService approvalFlow, IBlobStorageService blob, ICalendarDayReadService calendarReader, IWorkPatternReadService workPattern)
 {
     private static readonly HashSet<string> ValidActions  = ["approved", "returned", "rejected"];
     public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "leave_revocation", "travel", "overtime", "advance", "write_off", "travel_write_off", "holiday_travel", "travel_payment", "pre_review"];
@@ -387,7 +387,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 // 退回 / 拒絕不需任何回滾 —— 父單自始至終維持 approved
                 if (rv.ApprovalStatus == "approved")
                 {
-                    await LeaveRevocationService.ApplyAsync(db, calendarReader, rv);
+                    await LeaveRevocationService.ApplyAsync(db, calendarReader, workPattern, rv);
                     await db.SaveChangesAsync();
                     await notifier.NotifyLeaveRevocationAgentAsync(rv.Id);
                 }

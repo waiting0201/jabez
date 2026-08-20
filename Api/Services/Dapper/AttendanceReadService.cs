@@ -85,7 +85,8 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
         // 故 approved 過濾天然排除；逐日排除由 ListApprovedRevokedDatesAsync 負責。
         var sql = """
             SELECT lr.Id, lr.EmployeeId AS UserId, u.Name AS UserName,
-                   lr.LeaveType, lr.StartDate, lr.EndDate
+                   lr.LeaveType, lr.StartDate, lr.EndDate,
+                   u.IsShiftWorker
             FROM   LeaveRequests lr
             INNER JOIN Users u ON lr.EmployeeId = u.Id
             WHERE  lr.ApprovalStatus = 'approved'

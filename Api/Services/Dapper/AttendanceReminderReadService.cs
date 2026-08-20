@@ -8,7 +8,7 @@ public sealed class AttendanceReminderReadService(IDbConnection db)
     : IAttendanceReminderReadService
 {
     public async Task<IReadOnlyList<AttendanceReminderRecipientDto>> GetRecipientsAsync(
-        DateTime targetTime, string type, CancellationToken ct = default)
+        DateTime targetTime, string type, bool shiftWorkersOnly = false, CancellationToken ct = default)
     {
         // 白名單保護：只接受固定字串，避免 SQL injection
         var clockColumn = type switch
@@ -17,6 +17,9 @@ public sealed class AttendanceReminderReadService(IDbConnection db)
             "clockOut" => "ClockOutTime",
             _ => throw new ArgumentException("type 必須為 clockIn 或 clockOut", nameof(type))
         };
+
+        // 六日只提醒排班制員工（賣店 / 營業所照常營業）
+        var shiftWorkerFilter = shiftWorkersOnly ? "AND u.IsShiftWorker = 1" : "";
 
         // 請假覆蓋判斷：用「請假是否覆蓋目標時刻」而非「請假日期是否含今日」，
         // 否則小時制請假（例如下午 13:00-17:00 病假）在上午打卡提醒時會被誤排除。
@@ -28,6 +31,7 @@ public sealed class AttendanceReminderReadService(IDbConnection db)
               AND  u.LineUserId <> ''
               AND  u.IsSuperAdmin = 0
               AND  u.Status = 'active'
+              {shiftWorkerFilter}
               -- ResignDate >= 今天 → 仍在職（離職當日 = 最後上班日，與 PayrollReadService 相同慣例）
               AND  (u.ResignDate IS NULL OR CAST(u.ResignDate AS DATE) >= CAST(@TargetTime AS DATE))
               -- 今日已打該類型卡 → 排除

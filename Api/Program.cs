@@ -126,6 +126,7 @@ var host = new HostBuilder()
         services.AddScoped<IPaymentReportReadService, PaymentReportReadService>();
         services.AddScoped<IProjectWaterLevelReadService, ProjectWaterLevelReadService>();
         services.AddScoped<ICalendarDayReadService, CalendarDayReadService>();
+        services.AddScoped<IWorkPatternReadService, WorkPatternReadService>();
         services.AddScoped<ITravelPaymentRequestReadService, TravelPaymentRequestReadService>();
         services.AddScoped<IAttendanceReminderLogReadService, AttendanceReminderLogReadService>();
         services.AddScoped<IEmployeeProfileReadService, EmployeeProfileReadService>();

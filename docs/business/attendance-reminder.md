@@ -12,7 +12,10 @@
 2. `IsPastDue=true` **不 return**，只記 `LogWarning` 後照常執行（見下方「時間窗 + 冪等」）
 3. 透過 `Clock.Now`（台北時區）取得當前時間
 4. 判斷是否落在**提醒時間窗**內：`[WorkStartTime − 2min, +10min)` → `clockIn`、`[WorkEndTime − 2min, +10min)` → `clockOut`；都未命中直接 return
-5. 週末（Saturday/Sunday）直接 return（cron 跨午夜時 day-of-week 無法在單一表達式中正確涵蓋週一至週五，故由 Service 端統一過濾）
+5. 週末（Saturday/Sunday）**只提醒排班制員工**（`User.IsShiftWorker = true`，賣店 / 營業所照常營業）：
+   收件人查詢加 `AND u.IsShiftWorker = 1`；系統中一個排班制員工都沒有時維持整批 return
+   （cron 跨午夜時 day-of-week 無法在單一表達式中正確涵蓋週一至週五，故由 Service 端統一過濾）。
+   **平日刻意不看行事曆**（國定假日照推），沿用既有語意
 6. **冪等閘**：查 `AttendanceReminderLogs` 今天這一槽（以 `TargetTimeTaipei` 區分上/下班）是否已有 `batchStart`，有就 return
 7. 命中 → 先寫 `batchStart` → Dapper 查詢對象 → LINE 推播
 
@@ -45,7 +48,7 @@
 ## 手動觸發（除錯）
 
 `POST /admin/attendance-reminder/run?type=clockIn|clockOut`（僅 Superadmin）
-繞過時點與週末檢查，強制對符合條件員工推播；其餘過濾條件保留。回傳 `{ type, recipientCount, pushedCount, failureCount, batchId }`。
+繞過時點檢查，強制對符合條件員工推播；其餘過濾條件保留（含「六日只推排班制員工」，與自動排程同一規則）。回傳 `{ type, recipientCount, pushedCount, failureCount, batchId }`。
 
 ## 推播紀錄持久化
 

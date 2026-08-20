@@ -32,7 +32,12 @@
             @for (user of pagedUsers(); track user.id) {
               <tr>
                 <td>
-                  <div class="fw-500">{{ user.name }}</div>
+                  <div class="fw-500">
+                    {{ user.name }}
+                    @if (user.isShiftWorker) {
+                      <span class="badge bg-info-subtle text-info ms-1" title="六日與國定假日視為工作日">排班制</span>
+                    }
+                  </div>
                 </td>
                 <td class="text-muted hidden md:table-cell">{{ user.email }}</td>
                 <td class="hidden lg:table-cell">

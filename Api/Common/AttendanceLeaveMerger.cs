@@ -55,7 +55,8 @@ public static class AttendanceLeaveMerger
         {
             nameByUser[lr.UserId] = lr.UserName;
             var revokedSet = revoked[lr.Id].ToHashSet();
-            var days = await LeaveDayExpander.ExpandAsync(cal, lr.LeaveType, lr.StartDate, lr.EndDate);
+            // 排班制旗標隨資料列帶出（SQL 已 JOIN Users），避免逐張假單再查一次 DB
+            var days = await LeaveDayExpander.ExpandAsync(cal, lr.IsShiftWorker, lr.LeaveType, lr.StartDate, lr.EndDate);
 
             foreach (var d in days)
             {

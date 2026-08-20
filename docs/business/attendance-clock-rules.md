@@ -51,6 +51,10 @@ SQL 端的判定片段收斂於 `LeaveRevocationService.NotRevokedClause`，EF �
 (a) 沿用 `Api/Common/WorkCalendarHelper.IsHolidayAsync` —— 與請假日計算共用「有行事曆用 `IsHoliday`、
 沒資料退回六日」的同一份規則，不另外寫一份。
 
+> **排班制員工（`User.IsShiftWorker = true`，2026-08 新增）恆不符合 (a)**：六日與國定假日對其而言都是工作日，
+> 故**沒有「休假日免下班卡」的放寬**，週六打「加班開始」前仍須先打下班卡。旗標以**打卡者本人**解析。
+> 條件 (b) 全日請假的豁免不受影響。詳見 [leave-rules.md §排班制員工不扣假日](leave-rules.md#排班制員工不扣假日2026-08-新增)。
+
 (b) 兩段各需被**某一張單**完整覆蓋，可由：
 - 一張全日單（Day 單位存 `00:00–23:59`、HalfDay 單位存 `08:00–17:00`）滿足，或
 - 「上午半天 + 下午半天」兩張單共同滿足

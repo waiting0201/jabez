@@ -185,7 +185,7 @@ Admin/src/app/
     │   ├── services/my-profile.service.ts   # 呼叫 /me/user + /me/profile + /me/files + /me/payroll（自助唯讀）
     │   └── pages/my-profile/                # 「個人資訊」唯讀頁：avatar 下拉進入，**4 Tab** 全唯讀 —— 員工基本資料 / 人事資料卡 / 健保眷屬（前 3 個比照管理頁，含薪資）＋ **過往薪資**（2026-08 新增，走 `GET /me/payroll?months=12` 列出近 12 個月，一列一月，點「明細」展開共用元件 `<app-payroll-detail-card>`；到職前月份不列、當月標「本月尚未結算」；**薪資即時重算、無月結快照**，調薪後回溯歷史月份會用現行底薪，頁面已加註說明）
     ├── admin/
-    │   ├── users/          # 使用者管理（user-form 含 3 Tab：員工基本資料 / 人事資料卡 / 健保眷屬；含 employee-profile.service / hr-profile-pdf.service / 9 組 FormArray；**薪資為欄位級權限 `payroll:read`**：進得了員工管理（`users:read`）不等於看得到薪資，Tab1 的 8 個薪資／勞健保欄（2026-08 移除職務加給 / 主管加給 / 外派加給，加給剩其他加給 + 代扣代付款（2026-08 由「調整差額」更名，識別字仍為 `AdjustmentDifference`））、Tab2 薪資調整歷史、Tab3 健保費試算、列印 PDF 第 3 頁皆需另持 `payroll:read`，前端共用 `canSeeSalary` + `SALARY_CONTROLS`（`@if` 隱藏區塊 + `disable()` 控制項 + 送出前剔除 payload key），後端共用 [Api/Common/PayrollFieldAccess.cs](Api/Common/PayrollFieldAccess.cs) 抹除回應並拒絕寫入；薪資調整歷史改為**條件式**整批替換（`null`＝不變更）避免無權者送空陣列刪光歷史；`/me/user`、`/me/profile` 刻意全開，員工看自己的薪資不受影響）
+    │   ├── users/          # 使用者管理（user-form 含 3 Tab：員工基本資料 / 人事資料卡 / 健保眷屬；Tab1「員工資訊」含 **「排班制（六日與國定假日視為工作日）」** 勾選框（`isShiftWorker`，賣店 / 營業所用，清單頁姓名旁掛「排班制」badge）；含 employee-profile.service / hr-profile-pdf.service / 9 組 FormArray；**薪資為欄位級權限 `payroll:read`**：進得了員工管理（`users:read`）不等於看得到薪資，Tab1 的 8 個薪資／勞健保欄（2026-08 移除職務加給 / 主管加給 / 外派加給，加給剩其他加給 + 代扣代付款（2026-08 由「調整差額」更名，識別字仍為 `AdjustmentDifference`））、Tab2 薪資調整歷史、Tab3 健保費試算、列印 PDF 第 3 頁皆需另持 `payroll:read`，前端共用 `canSeeSalary` + `SALARY_CONTROLS`（`@if` 隱藏區塊 + `disable()` 控制項 + 送出前剔除 payload key），後端共用 [Api/Common/PayrollFieldAccess.cs](Api/Common/PayrollFieldAccess.cs) 抹除回應並拒絕寫入；薪資調整歷史改為**條件式**整批替換（`null`＝不變更）避免無權者送空陣列刪光歷史；`/me/user`、`/me/profile` 刻意全開，員工看自己的薪資不受影響）
     │   ├── roles/          # 角色管理（僅 Superadmin）
     │   ├── permissions/    # 權限管理（僅 Superadmin）
     │   ├── departments/    # 部門管理
@@ -261,7 +261,7 @@ export const environment = {
 Api/
 ├── Functions/
 │   ├── RouterFunction.cs              # HttpTrigger，catch-all route {*route}
-│   ├── AttendanceReminderFunction.cs  # TimerTrigger：限定 7-9 / 16-18 Taipei 時段每分鐘檢查，落在「上下班前 2 分鐘起算 10 分鐘時間窗」內則 LINE 推播；cron 由 `AttendanceReminderCron` app setting 控制。**`IsPastDue` 不跳過**（冷啟動延遲會整天不發），改由 Service 端 `batchStart` 冪等閘去重
+│   ├── AttendanceReminderFunction.cs  # TimerTrigger：限定 7-9 / 16-18 Taipei 時段每分鐘檢查，落在「上下班前 2 分鐘起算 10 分鐘時間窗」內則 LINE 推播；cron 由 `AttendanceReminderCron` app setting 控制。**`IsPastDue` 不跳過**（冷啟動延遲會整天不發），改由 Service 端 `batchStart` 冪等閘去重；**六日只推排班制員工**（`IsShiftWorker`，賣店照常營業），一個都沒有時維持整批跳過，平日仍不看行事曆（國定假日照推）
 │   └── PaymentReminderFunction.cs     # TimerTrigger：每日 09:00 Taipei 跑撥款日將屆提醒；cron 由 `PaymentReminderCron` 控制；提前天數讀 `SystemSetting.PaymentReminderDaysBefore`，推給財務體系部門全員
 ├── Routing/
 │   └── AppRouter.cs                   # C# 12 List Pattern 路由分派器
@@ -288,7 +288,7 @@ Api/
 │   ├── AdvanceRequestHandler.cs       # 預支申請 CRUD（單號 ADV-yyyyMMdd-NNN）＋**追加預支批次**（POST/PATCH/DELETE /advance-requests/{id}/supplements[/{roundNo}]；新增即送簽、無草稿階段；有進行中批次時禁止整單編輯/刪除）
 │   ├── WriteOffRequestHandler.cs      # 預支沖銷申請 CRUD（獨立簽核流程）＋**依預支單彙總檢視**（GET /write-off-requests/by-advance/{advanceRequestId}，回傳預支單完整資訊 + 該單全部沖銷單）＋**差額撥款分期**（PATCH /write-off-requests/{id}/installments，SUM 對應 RefundDue 超支增額）＋**支票已支付註記**（PATCH /{id}/check-payments）
 │   ├── TravelWriteOffRequestHandler.cs # 出差預支沖銷申請 CRUD（獨立簽核流程）
-│   ├── AttendanceHandler.cs           # 打卡（上班/下班/加班開始/加班結束；請假時段內擋上下班打卡；**休假日（行事曆假日／六日）或當日全日請假時，加班開始免下班卡**，無紀錄則建立只含加班時間的紀錄；**2026-08 起納入權限管理**：打卡走 `attendances:read/write`（員工對自己）、出缺勤報表列表與 `PUT/PATCH /attendances/{id}` 走 `reports-attendance:read/write`（管理者對別人），後者另在 Handler 內套部門可見性 scope 控管「能改誰」）
+│   ├── AttendanceHandler.cs           # 打卡（上班/下班/加班開始/加班結束；請假時段內擋上下班打卡；**休假日（行事曆假日／六日）或當日全日請假時，加班開始免下班卡**（**排班制員工 `User.IsShiftWorker` 恆不適用休假日條件**，週六仍須先打下班卡），無紀錄則建立只含加班時間的紀錄；**2026-08 起納入權限管理**：打卡走 `attendances:read/write`（員工對自己）、出缺勤報表列表與 `PUT/PATCH /attendances/{id}` 走 `reports-attendance:read/write`（管理者對別人），後者另在 Handler 內套部門可見性 scope 控管「能改誰」）
 │   ├── InsuranceBracketHandler.cs    # 勞健保級距 CRUD
 │   ├── PayrollHandler.cs             # 人事薪資查詢（月薪計算）；GetMineAsync = GET /me/payroll 員工讀自己近 N 個月薪資（免 payroll:read，逐月呼叫帶 employeeId 的同一支計算，依 HireDate 擋掉到職前月份，months clamp 1~24）
 │   ├── LineHandler.cs                # LINE 帳號綁定/解綁 + 月度推播用量查詢（line-quota:read）
@@ -338,6 +338,7 @@ Api/
 │       ├── DepartmentReadService.cs
 │       ├── JobTitleReadService.cs
 │       ├── VendorReadService.cs
+│       ├── WorkPatternReadService.cs      # 員工出勤型態：IsShiftWorkerAsync（排班制旗標，request-scoped memo）；供請假 / 銷假 / 打卡以「假單所有人 / 打卡本人」解析，勿用呼叫者 id
 │       ├── ApprovalReadService.cs
 │       ├── ProjectReadService.cs
 │       ├── PaymentRequestReadService.cs
