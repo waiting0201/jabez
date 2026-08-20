@@ -58,8 +58,12 @@
     <None Update="Data/Seed/project-import.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <!-- 一次性廠商匯入資料檔：需複製到輸出目錄供 VendorImporter 讀取 -->
+    <!-- 一次性廠商匯入資料檔：需複製到輸出目錄供 VendorImporter 讀取（檔名由 VENDOR_IMPORT_FILE 指定） -->
     <None Update="Data/Seed/vendor-import.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <!-- 來源：reference/廠商及個人資料建置表_1150820.xlsx（廠商 79 ＋ 個人 30） -->
+    <None Update="Data/Seed/vendor-import-1150820.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

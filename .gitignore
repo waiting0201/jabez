@@ -31,12 +31,10 @@ reference/
 Api/local.settings.json
 **/local.settings.json
 
-# 一次性員工匯入資料（含真實個資：身分證號/地址/家庭/眷屬 — 絕不進版控）
-Api/Data/Seed/employee-import.json
-# 一次性專案匯入資料（含真實客戶案名與合約金額 — 本 repo 為 public，絕不進版控）
-Api/Data/Seed/project-import.json
-# 一次性廠商匯入資料（含真實廠商匯款戶名與銀行帳號 — 本 repo 為 public，絕不進版控）
-Api/Data/Seed/vendor-import.json
+# 一次性匯入資料檔（含真實個資：身分證號/銀行帳號/地址/家庭/眷屬、客戶案名與合約金額）
+# 本 repo 為 public，絕不進版控。以萬用字元涵蓋，新增匯入檔不必再逐檔補規則：
+#   employee-import.json / project-import.json / vendor-import.json / vendor-import-1150820.json …
+Api/Data/Seed/*.json
 .azurite/debug.log
 azurite-debug.log
 .gitignore
