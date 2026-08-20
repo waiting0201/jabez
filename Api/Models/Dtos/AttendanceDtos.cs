@@ -82,7 +82,8 @@ public sealed record AttendanceLeaveSourceRow(
     string   UserName,
     string   LeaveType,
     DateTime StartDate,
-    DateTime EndDate);
+    DateTime EndDate,
+    bool     IsShiftWorker);
 
 /// <summary>
 /// 出缺勤報表合併用的原料列：已核准銷假的逐日紀錄（批次查詢結果）。

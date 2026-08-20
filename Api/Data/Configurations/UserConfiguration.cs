@@ -105,6 +105,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                .HasColumnType("decimal(18,2)")
                .HasDefaultValue(0m);
 
+        // 排班制員工（六日與國定假日視為工作日）
+        builder.Property(u => u.IsShiftWorker)
+               .HasDefaultValue(false);
+
         builder.HasOne(u => u.Department)
                .WithMany(d => d.Users)
                .HasForeignKey(u => u.DepartmentId)

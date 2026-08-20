@@ -298,6 +298,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             OvertimePay   = decimal.TryParse(form["overtimePay"], out var op) ? op : null,
             SendPaySlip   = form["sendPaySlip"] == "true",
             CompensatoryOpeningHours = decimal.TryParse(form["compensatoryOpeningHours"], out var coh) ? coh : 0m,
+            IsShiftWorker = form["isShiftWorker"] == "true",
             AgentUserId   = Guid.TryParse(form["agentUserId"], out var aid) && aid != Guid.Empty ? aid : null,
             Birthday     = birthday,
             IsIndigenous = form["isIndigenous"] == "true",
@@ -414,6 +415,8 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             user.SendPaySlip = form["sendPaySlip"] == "true";
         if (form.ContainsKey("compensatoryOpeningHours"))
             user.CompensatoryOpeningHours = decimal.TryParse(form["compensatoryOpeningHours"], out var coh) ? coh : 0m;
+        if (form.ContainsKey("isShiftWorker"))
+            user.IsShiftWorker = form["isShiftWorker"] == "true";
         if (form.ContainsKey("agentUserId"))
             user.AgentUserId = Guid.TryParse(form["agentUserId"], out var aid) && aid != Guid.Empty ? aid : null;
         if (form.ContainsKey("birthday"))

@@ -226,12 +226,36 @@
 
 - **適用假別（工作日型，17 種）**：`annual`（年假）/ `personal`（事假）/ `sick`（病假）/ `compensatory`（補休）/ `official`（公假）/ `senior_executive`（高階主管假）/ `marriage`（婚假）/ `maternity`（產假）/ `bereavement`（喪假）/ `miscarriage_3m`・`miscarriage_2to3m`・`miscarriage_under2m`（流產假系列）/ `prenatal_checkup`（產檢假）/ `paternity`（陪產假）/ `menstrual`（生理假）/ `family_care`（家庭照顧假）/ `parental_leave_daily`（育嬰留停單日）。集合同步於後端 `LeaveDayExpander.WorkingDayLeaveTypes`（`LeaveRequestHandler` 轉引同一份，與銷假逐日展開共用）與前端 `WORKING_DAY_LEAVE_TYPES`（[leave-request.model.ts](../../Admin/src/app/features/admin/leave-requests/models/leave-request.model.ts)）。
 - **不適用假別（連續日曆天，不扣假日）**：`ceremonial_festival`（歲時祭儀假）與 `parental_leave`（育嬰留職停薪，理由見 [§育嬰留職停薪規則](#育嬰留職停薪規則2026-08-新增)）。
+- **不適用「人」**：`User.IsShiftWorker = true` 的排班制員工（賣店 / 營業所）不論假別皆不扣假日，見 [§排班制員工不扣假日](#排班制員工不扣假日2026-08-新增)。
 - **天數上限一律改以工作日計**：婚假 8 / 喪假 8・6・3 / 流產假 28・7・5 / 產檢假・陪產假 7 / 生理假每月 1 天・全年 12 天等數字不變，但語意變成「N 個工作日」（`ValidateLeaveQuotaAsync` 比對的 `Hours / 8` 本來就是扣假日後的值，無需額外改動）。
 - **產假特例**：區間仍固定為「起始日 + 55 天 = 56 個**日曆天**」（法定一次請完、不可拆），但 `Hours` 只計其中工作日（約 40 天 / 320 小時），不再固定 448 小時。
 - **假日來源＝唯一權威 `CalendarDays` 表**：台灣政府行事曆匯入時 `IsHoliday=true` 已同時涵蓋**六日 + 國定假**、補班六為工作日（`IsHoliday=false`）。透過 [CalendarDayReadService](../../Api/Services/Dapper/CalendarDayReadService.cs) 的 `GetHolidayDatesAsync` / `HasDataForRangeAsync` 讀取（與出差假日活動共用）。
 - **行事曆完整性逐年檢查**：`HasDataForRangeAsync` 為 EXISTS 語意（區間內任一天有資料即 true），產假 56 天與拉長後的婚假 / 喪假可能跨年，故 `LeaveRequestHandler.HasCalendarForAllYearsAsync` 對區間橫跨的**每個年度**各查一次，全部有資料才算已匯入。
 - **前端顯示**：[leave-request-form](../../Admin/src/app/features/admin/leave-requests/pages/leave-request-form/) 於工作日型假別（day / half_day / hour 三種單位皆適用）選好起迄日後呼叫輕量端點 `GET /leave-requests/working-days?start=&end=&leaveType=`（免 `calendar-days:read`），列出逐日 chip + 合計天數；行事曆未匯入時退回僅扣六日並提示。產假的結束日不在表單上，前端改以 `maternityEndDate`（起始日 +55 天）當區間終點查詢。
 - **後端權威重算**：工作日型假別的 `Day` 單位（含產假）以工作日數 × 8、`Hour` 單位以逐日累加時數，於 Create / Update / **Submit** 覆寫 `Hours`；**Submit 時強制要求行事曆已匯入**（缺資料擋件並提示匯入，訊息含跨年區間的年度範圍），區間全為假日亦擋件。`half_day` 由前端以 working-days 端點計算後送出（後端沿用既有「HalfDay 信任 client」原則）。
+
+### 排班制員工不扣假日（2026-08 新增）
+
+賣店 / 營業所人員排班上班，**六日與國定假日照常營業**，對其而言全都是工作日。若沿用公司行事曆，
+他們請六日的假會被算成 0 天並於送出時被擋（「此區間全為國定假日或六日」），等於**無法請六日的假**。
+
+- **設定位置**：員工基本資料（使用者管理 Tab1「員工資訊」）的 **「排班制（六日與國定假日視為工作日）」** 勾選框，
+  對應 `User.IsShiftWorker`（預設 `false`）。逐人設定，非部門層級；使用者列表在姓名旁掛「排班制」badge 便於稽核。
+- **行為**：勾選者的 [WorkCalendarHelper](../../Api/Common/WorkCalendarHelper.cs) 三個方法一律短路 —— 區間內每一天都是工作日、
+  **完全不查行事曆**，且視同「行事曆已匯入」（故 Submit 不會因該年度未匯入行事曆而被擋）。
+- **旗標解析對象＝假單所有人**：Create 用 JWT 身分、Update / Submit 用 `LeaveRequest.EmployeeId`、
+  銷假重算用 `leave.EmployeeId`、出缺勤報表由 SQL 隨資料列帶出（`AttendanceLeaveSourceRow.IsShiftWorker`，
+  避免逐張假單 N+1）。**不可用呼叫者 id** —— Superadmin 代送、主管核准銷假時呼叫者都不是本人，用錯會靜默算錯時數。
+- **連帶影響**：
+  - 勾選者**請國定假日的假會扣額度**（那天是他的上班日），此為「照常營業」的直接推論。
+  - 勾選者**沒有「休假日免下班卡」的放寬**（見 [attendance-clock-rules.md](attendance-clock-rules.md)），週六打加班開始前仍須先打下班卡。
+  - 打卡提醒六日改為**只推排班制員工**（見 [attendance-reminder.md](attendance-reminder.md)）。
+  - **不影響假日津貼** —— 假日執行活動的 `HolidayDays` 一律走公司行事曆，與此旗標無關。
+- **限制**：一個勾選＝全年皆工作日，**無法表達賣店的個別公休日**（例如大年初一公休）。
+  若日後有此需求，須升級為「行事曆群組」架構（`CalendarDay` 加群組維度 + 部門指派）；
+  屆時把 `WorkCalendarHelper` / `LeaveDayExpander` 的 `bool ignoreHolidays` 換成 `int calendarGroupId` 即可，消費點結構不變。
+- **既有假單不回溯**：改變勾選狀態不會重算已核准假單的 `Hours`；但**銷假重算會用「當下」的旗標**，
+  故變更設定前請先處理未完成的銷假。
 
 ### 小時單位跨日的時數計算（`personal` / `family_care` / `sick` / `prenatal_checkup` / `paternity`）
 

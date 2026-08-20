@@ -40,6 +40,8 @@ public sealed record UserDto(
     decimal?  AdjustmentDifference = null,
     // 期初補休時數（系統上線前累計，116/6/30 到期歸零）
     decimal   CompensatoryOpeningHours = 0m,
+    // 排班制員工（賣店 / 營業所）：六日與國定假日視為工作日
+    bool      IsShiftWorker = false,
     // 勞退自提率（%，null = 0%，直接欄位、非覆寫、無 lookup）
     decimal?  LaborPensionSelfContributionRate = null);
 

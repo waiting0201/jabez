@@ -11,6 +11,10 @@ public interface IAttendanceReminderReadService
     /// </summary>
     /// <param name="targetTime">目標時刻（台北時區，例如今日 09:00 為 clockIn 提醒目標）</param>
     /// <param name="type">"clockIn" 或 "clockOut"</param>
+    /// <param name="shiftWorkersOnly">
+    /// true 時只回排班制員工（User.IsShiftWorker）。六日專用 —— 一般員工週末休假不提醒，
+    /// 但賣店 / 營業所排班人員照常上班，仍需提醒。
+    /// </param>
     Task<IReadOnlyList<AttendanceReminderRecipientDto>> GetRecipientsAsync(
-        DateTime targetTime, string type, CancellationToken ct = default);
+        DateTime targetTime, string type, bool shiftWorkersOnly = false, CancellationToken ct = default);
 }

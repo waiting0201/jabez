@@ -24,7 +24,8 @@ public sealed class AttendanceHandler(
     IAttendanceReadService reader,
     IJwtService jwtService,
     IProjectAccessResolver access,
-    ICalendarDayReadService calendarReader)
+    ICalendarDayReadService calendarReader,
+    IWorkPatternReadService workPattern)
 {
     /// <summary>
     /// 出缺勤列表：回傳「打卡紀錄 ∪ 當日請假日」的合併結果（見 <see cref="AttendanceLeaveMerger"/>）。
@@ -171,7 +172,7 @@ public sealed class AttendanceHandler(
         if (record?.ClockOutTime is null)
         {
             var todayLeaves = await reader.GetLeavesOnDateAsync(userId, DateOnly.FromDateTime(today));
-            if (!await CanOvertimeWithoutClockOutAsync(today, todayLeaves))
+            if (!await CanOvertimeWithoutClockOutAsync(userId, today, todayLeaves))
                 throw AppException.BadRequest(record?.ClockInTime is null
                     ? "請先完成上下班打卡。"
                     : "請先打下班卡。");
@@ -302,10 +303,13 @@ public sealed class AttendanceHandler(
     /// (a) 行事曆休假日（該年度無行事曆資料時退回六日判定，比照 WorkCalendarHelper）
     /// (b) 當日全日已核准請假
     /// GET /attendances/today 的 CanOvertimeWithoutClockOut 與 OvertimeStartAsync 的放行共用此判定。
+    /// 排班制員工（六日與國定假日皆為工作日）不適用 (a)，須照常先打下班卡。
     /// </summary>
-    private async Task<bool> CanOvertimeWithoutClockOutAsync(DateTime today, IReadOnlyList<ActiveLeaveDto> leaves)
+    private async Task<bool> CanOvertimeWithoutClockOutAsync(
+        Guid userId, DateTime today, IReadOnlyList<ActiveLeaveDto> leaves)
     {
-        if (await WorkCalendarHelper.IsHolidayAsync(calendarReader, today))
+        var isShiftWorker = await workPattern.IsShiftWorkerAsync(userId);
+        if (await WorkCalendarHelper.IsHolidayAsync(calendarReader, isShiftWorker, today))
             return true;
 
         return CoversFullWorkday(leaves, today);
@@ -335,7 +339,7 @@ public sealed class AttendanceHandler(
         var today  = DateOnly.FromDateTime(now);
         var record = await reader.GetTodayAsync(userId);
         var leaves = await reader.GetLeavesOnDateAsync(userId, today);
-        var exempt = await CanOvertimeWithoutClockOutAsync(now.Date, leaves);
+        var exempt = await CanOvertimeWithoutClockOutAsync(userId, now.Date, leaves);
 
         return record is null
             ? new TodayAttendanceDto(

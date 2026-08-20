@@ -38,6 +38,11 @@ public class User
     // 設定於 116/6/30 前未休完即歸零（到期日為固定常數，見 LeaveRequestHandler.CompensatoryOpeningExpiry）
     public decimal   CompensatoryOpeningHours { get; set; } = 0m;
 
+    // 排班制員工（賣店 / 營業所）：六日與國定假日照常營業，對其而言皆為工作日。
+    // true 時 WorkCalendarHelper / LeaveDayExpander 一律不扣假日（不查行事曆），
+    // 使其能正常請六日的假；連帶影響打卡「休假日免下班卡」與週末打卡提醒。
+    public bool      IsShiftWorker { get; set; } = false;
+
     public Guid?     AgentUserId     { get; set; }
     public DateTime? Birthday        { get; set; }
     public bool      IsIndigenous    { get; set; }   // 是否為原住民（影響歲時祭儀假申請）

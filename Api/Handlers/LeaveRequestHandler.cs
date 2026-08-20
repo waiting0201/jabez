@@ -27,7 +27,8 @@ public sealed class LeaveRequestHandler(
     IJwtService jwtService,
     IApprovalNotificationService notifier,
     IApprovalFlowService approvalFlow,
-    ICalendarDayReadService calendarReader)
+    ICalendarDayReadService calendarReader,
+    IWorkPatternReadService workPattern)
 {
     private static readonly HashSet<string> ValidLeaveTypes =
         ["annual", "personal", "sick", "compensatory", "marriage", "bereavement",
@@ -149,7 +150,7 @@ public sealed class LeaveRequestHandler(
     /// </summary>
     public async Task<IActionResult> GetWorkingDaysAsync(HttpRequest req)
     {
-        await GetUserIdAsync(req); // 僅需登入身分
+        var callerId = await GetUserIdAsync(req); // 僅需登入身分（同時作為排班制旗標的解析對象）
 
         if (!DateTime.TryParse(req.Query["start"], out var start) ||
             !DateTime.TryParse(req.Query["end"], out var end))
@@ -168,7 +169,7 @@ public sealed class LeaveRequestHandler(
             return new OkObjectResult(ApiResponse.Ok(new WorkingDaysDto(true, [], all, all.Count)));
         }
 
-        var (hasData, holidays, working) = await ComputeWorkingDatesAsync(start, end);
+        var (hasData, holidays, working) = await ComputeWorkingDatesAsync(callerId, start, end);
         return new OkObjectResult(ApiResponse.Ok(new WorkingDaysDto(hasData, holidays, working, working.Count)));
     }
 
@@ -181,9 +182,10 @@ public sealed class LeaveRequestHandler(
     /// 無資料 → 退回以星期六日判定（僅扣六日，國定假需匯入行事曆才會扣）。
     /// 實作已抽至 WorkCalendarHelper（與打卡的休假日判定共用同一份規則）。
     /// </summary>
-    private Task<(bool hasData, List<DateTime> holidays, List<DateTime> working)>
-        ComputeWorkingDatesAsync(DateTime start, DateTime end)
-        => WorkCalendarHelper.ComputeWorkingDatesAsync(calendarReader, start, end);
+    private async Task<(bool hasData, List<DateTime> holidays, List<DateTime> working)>
+        ComputeWorkingDatesAsync(Guid ownerId, DateTime start, DateTime end)
+        => await WorkCalendarHelper.ComputeWorkingDatesAsync(
+            calendarReader, await workPattern.IsShiftWorkerAsync(ownerId), start, end);
 
     /// <summary>
     /// Hour 單位假別（事假 / 病假 / 產檢假 / 陪產假）的時數計算：逐日累加，只算工作日。
@@ -191,9 +193,9 @@ public sealed class LeaveRequestHandler(
     /// - 跨日：首個工作日 Clamp(17 − start.Hour, 0, 8)、中間工作日各 8 小時、末個工作日 Clamp(end.Hour − 8, 0, 8)；
     ///   落在假日的日期一律 0，且不把時段挪到相鄰工作日
     /// </summary>
-    private async Task<(bool hasData, decimal hours)> ComputeHourUnitHoursAsync(DateTime start, DateTime end)
+    private async Task<(bool hasData, decimal hours)> ComputeHourUnitHoursAsync(Guid ownerId, DateTime start, DateTime end)
     {
-        var (hasData, _, working) = await ComputeWorkingDatesAsync(start, end);
+        var (hasData, _, working) = await ComputeWorkingDatesAsync(ownerId, start, end);
         var workingSet = working.Select(d => d.Date).ToHashSet();
 
         if (start.Date == end.Date)
@@ -336,11 +338,11 @@ public sealed class LeaveRequestHandler(
         decimal hours;
         if (isWorkingDayType && unit == LeaveTimeUnit.Hour)
         {
-            (_, hours) = await ComputeHourUnitHoursAsync(effectiveStart, effectiveEnd);
+            (_, hours) = await ComputeHourUnitHoursAsync(employeeId, effectiveStart, effectiveEnd);
         }
         else if (isWorkingDayType && unit == LeaveTimeUnit.Day)
         {
-            var (_, _, working) = await ComputeWorkingDatesAsync(effectiveStart, effectiveEnd);
+            var (_, _, working) = await ComputeWorkingDatesAsync(employeeId, effectiveStart, effectiveEnd);
             hours = working.Count * 8m;
         }
         else
@@ -535,7 +537,7 @@ public sealed class LeaveRequestHandler(
         {
             item.StartDate = item.StartDate.Date;
             item.EndDate   = item.StartDate.AddDays(MaternityDays - 1);
-            var (_, _, maternityWorking) = await ComputeWorkingDatesAsync(item.StartDate, item.EndDate);
+            var (_, _, maternityWorking) = await ComputeWorkingDatesAsync(item.EmployeeId ?? Guid.Empty, item.StartDate, item.EndDate);
             if (maternityWorking.Count == 0)
                 return new BadRequestObjectResult(ApiResponse.Fail("此區間全為國定假日或六日，無可請假的工作日。"));
             item.Hours = maternityWorking.Count * 8m;
@@ -560,11 +562,11 @@ public sealed class LeaveRequestHandler(
             decimal recalcHours;
             if (isWorkingDayType && unit == LeaveTimeUnit.Hour)
             {
-                (_, recalcHours) = await ComputeHourUnitHoursAsync(item.StartDate, item.EndDate);
+                (_, recalcHours) = await ComputeHourUnitHoursAsync(item.EmployeeId ?? Guid.Empty, item.StartDate, item.EndDate);
             }
             else if (isWorkingDayType && unit == LeaveTimeUnit.Day)
             {
-                var (_, _, working) = await ComputeWorkingDatesAsync(item.StartDate, item.EndDate);
+                var (_, _, working) = await ComputeWorkingDatesAsync(item.EmployeeId ?? Guid.Empty, item.StartDate, item.EndDate);
                 recalcHours = working.Count * 8m;
             }
             else
@@ -1064,7 +1066,7 @@ public sealed class LeaveRequestHandler(
 
             if (submitUnit == LeaveTimeUnit.Day)
             {
-                var (hasData, _, working) = await ComputeWorkingDatesAsync(item.StartDate, item.EndDate);
+                var (hasData, _, working) = await ComputeWorkingDatesAsync(item.EmployeeId ?? Guid.Empty, item.StartDate, item.EndDate);
                 if (!hasData)
                     return new BadRequestObjectResult(ApiResponse.Fail(
                         $"尚未匯入 {yearLabel} 年行事曆，無法計算扣除假日後的請假天數，請先於「行事曆設定」匯入。"));
@@ -1074,7 +1076,7 @@ public sealed class LeaveRequestHandler(
             }
             else
             {
-                var (hasData, hours) = await ComputeHourUnitHoursAsync(item.StartDate, item.EndDate);
+                var (hasData, hours) = await ComputeHourUnitHoursAsync(item.EmployeeId ?? Guid.Empty, item.StartDate, item.EndDate);
                 if (!hasData)
                     return new BadRequestObjectResult(ApiResponse.Fail(
                         $"尚未匯入 {yearLabel} 年行事曆，無法計算扣除假日後的請假時數，請先於「行事曆設定」匯入。"));

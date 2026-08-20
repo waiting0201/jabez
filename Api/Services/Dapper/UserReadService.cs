@@ -31,6 +31,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.HealthInsuranceOverride, u.LaborInsuranceOverride,
                 u.OtherAllowance, u.AdjustmentDifference,
                 u.CompensatoryOpeningHours,
+                u.IsShiftWorker,
                 u.LaborPensionSelfContributionRate,
                 r.Id AS RoleId
             FROM Users u
@@ -63,6 +64,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             decimal? HealthInsuranceOverride, decimal? LaborInsuranceOverride,
             decimal? OtherAllowance, decimal? AdjustmentDifference,
             decimal CompensatoryOpeningHours,
+            bool IsShiftWorker,
             decimal? LaborPensionSelfContributionRate,
             List<string> RoleIds)>();
 
@@ -89,6 +91,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     (decimal?)row.HealthInsuranceOverride, (decimal?)row.LaborInsuranceOverride,
                     (decimal?)row.OtherAllowance, (decimal?)row.AdjustmentDifference,
                     (decimal)row.CompensatoryOpeningHours,
+                    (bool)row.IsShiftWorker,
                     (decimal?)row.LaborPensionSelfContributionRate,
                     []);
 
@@ -116,6 +119,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.HealthInsuranceOverride, kv.Value.LaborInsuranceOverride,
             kv.Value.OtherAllowance, kv.Value.AdjustmentDifference,
             kv.Value.CompensatoryOpeningHours,
+            kv.Value.IsShiftWorker,
             kv.Value.LaborPensionSelfContributionRate));
     }
 
@@ -179,6 +183,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.HealthInsuranceOverride, u.LaborInsuranceOverride,
                 u.OtherAllowance, u.AdjustmentDifference,
                 u.CompensatoryOpeningHours,
+                u.IsShiftWorker,
                 u.LaborPensionSelfContributionRate,
                 r.Id AS RoleId
             FROM Users u
@@ -212,6 +217,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             decimal? HealthInsuranceOverride, decimal? LaborInsuranceOverride,
             decimal? OtherAllowance, decimal? AdjustmentDifference,
             decimal CompensatoryOpeningHours,
+            bool IsShiftWorker,
             decimal? LaborPensionSelfContributionRate,
             List<string> RoleIds)>();
 
@@ -238,6 +244,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     (decimal?)row.HealthInsuranceOverride, (decimal?)row.LaborInsuranceOverride,
                     (decimal?)row.OtherAllowance, (decimal?)row.AdjustmentDifference,
                     (decimal)row.CompensatoryOpeningHours,
+                    (bool)row.IsShiftWorker,
                     (decimal?)row.LaborPensionSelfContributionRate,
                     []);
 
@@ -265,6 +272,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.HealthInsuranceOverride, kv.Value.LaborInsuranceOverride,
             kv.Value.OtherAllowance, kv.Value.AdjustmentDifference,
             kv.Value.CompensatoryOpeningHours,
+            kv.Value.IsShiftWorker,
             kv.Value.LaborPensionSelfContributionRate));
 
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
@@ -291,6 +299,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.HealthInsuranceOverride, u.LaborInsuranceOverride,
                 u.OtherAllowance, u.AdjustmentDifference,
                 u.CompensatoryOpeningHours,
+                u.IsShiftWorker,
                 u.LaborPensionSelfContributionRate,
                 r.Id AS RoleId
             FROM Users u
@@ -329,6 +338,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 (decimal?)row.HealthInsuranceOverride, (decimal?)row.LaborInsuranceOverride,
                 (decimal?)row.OtherAllowance, (decimal?)row.AdjustmentDifference,
                 (decimal)row.CompensatoryOpeningHours,
+                (bool)row.IsShiftWorker,
                 (decimal?)row.LaborPensionSelfContributionRate);
 
             if (row.RoleId is not null)
