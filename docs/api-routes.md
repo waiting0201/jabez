@@ -83,7 +83,7 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/approval-tasks` | 任務列表；`status` 參數：`pending`（待審核）/ `approved`（已核准）/ `rejected`（已拒絕）/ `director_pending`（總監待簽核，僅財務管理部或 Superadmin 可查，非財務管理部呼叫回 403）；另可帶 `paymentStatus`（撥款三態 `unpaid` / `partial` / `paid`，另加 `closed`＝已結案，只有預支 / 出差預支有結案概念、其餘類型不回傳）、`applicationType`（申請類型）、`submittedByUserId`（申請人；**僅財務體系部門或 Superadmin 生效**，其他人帶了一律忽略） |
+| GET | `/approval-tasks` | 任務列表；`status` 參數：`pending`（待審核）/ `approved`（已核准）/ `rejected`（已拒絕）/ `director_pending`（總監待簽核，僅財務管理部 / 會計室或 Superadmin 可查，其他部門呼叫回 403；財務管理部 / Superadmin 看全部卡在總監的單，會計室只看流程中含會計室關卡的單）；另可帶 `paymentStatus`（撥款三態 `unpaid` / `partial` / `paid`，另加 `closed`＝已結案，只有預支 / 出差預支有結案概念、其餘類型不回傳）、`applicationType`（申請類型）、`submittedByUserId`（申請人；**僅財務體系部門或 Superadmin 生效**，其他人帶了一律忽略） |
 | GET | `/approval-tasks/applicants` | 申請人下拉選項（曾送出非草稿申請者去重清單，依姓名排序）；**僅財務體系部門或 Superadmin**，其他人回 403 |
 | GET | `/approval-tasks/{id}` | 取得任務詳情 |
 | GET | `/approval-tasks/{appType}/{id}` | 取得指定類型的任務詳情。存取控制：Superadmin / 有 `approval-tasks:read` / 被指定為審核者 / 曾審核過 / **申請人本人**（詳情頁簽核歷程與 PDF 簽名章皆取自此端點），其餘 403 |

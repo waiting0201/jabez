@@ -231,11 +231,17 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 
 ## 總監待簽核（2026-07 新增）
 
-簽核作業列表新增第 4 個頁籤「總監待簽核」，讓財務管理部提前掌握「只差總監一步就核准」的申請，方便主動追蹤撥款進度。
+簽核作業列表新增第 4 個頁籤「總監待簽核」，讓財務管理部與會計室提前掌握「只差總監一步就核准」的申請，方便主動追蹤撥款進度。
 
-- **可見範圍**：僅財務管理部（`DepartmentCodes.FinanceStep` = 舊短碼 `FIN` + 改制後英文全名 `Financial Management Department`）或 Superadmin 可見此頁籤；其他部門呼叫 `GET /approval-tasks?status=director_pending` 一律回 403。前端以 `approval-task-list.ts` 的 `canSeeDirectorPendingTab` 控制頁籤顯示，權限判定同時存在後端（防止繞過 UI 直接打 API）。
-- **匹配條件**：`ApprovalStatus = 'pending'` 且目前卡在的步驟（`CurrentStepOrder` 對應的 `ApprovalStep`）其 `JobTitleId` 對應的 `JobTitle.Level == 1`（即總監），不受呼叫者本身職稱/部門限制（因為財務管理部並非該步驟審核者，僅是檢視）。實作於 [PaymentRequestReadService.StepMatchClause](../../Api/Services/Dapper/PaymentRequestReadService.cs) 的 `director_pending` 分支，涵蓋全部 9 種申請類型（與待審核/已核准/已拒絕頁籤一致）。
-- **僅供檢視**：此頁籤內的申請單仍只能由總監本人（或 Superadmin）實際核准；財務管理部人員點擊進入詳情頁為唯讀（前端固定顯示查看圖示，不顯示可編輯的鉛筆圖示），送出審核動作仍會被 `AuthorizeStepAsync` 擋下。
+- **可見範圍（2026-08 擴充會計室）**：財務管理部 + 會計室（`DepartmentCodes.DirectorPendingView` = 舊短碼 `FIN` / `AC` + 改制後英文全名 `Financial Management Department` / `Accounting Department`）或 Superadmin 可見此頁籤；其他部門呼叫 `GET /approval-tasks?status=director_pending` 一律回 403。前端以 `approval-task-list.ts` 的 `canSeeDirectorPendingTab`（`DIRECTOR_PENDING_DEPT_CODES`）控制頁籤顯示，權限判定同時存在後端（防止繞過 UI 直接打 API）。
+  - **檢視權與撥款寫入權刻意分離**：本集合只給「看得到頁籤」，不等於 `DepartmentCodes.FinanceStep`（撥款日 / 撥款明細 / 沖銷結案 / 支票已支付）。會計室看得到清單，但這些寫入型操作仍只有財務管理部 / Superadmin 可執行。
+- **資料範圍依部門收斂（2026-08 新增）**：由 [ApprovalTaskHandler.GetAllAsync](../../Api/Handlers/ApprovalTaskHandler.cs) 算出 `directorPendingStepDeptId` 並傳給 reader。
+  - 財務管理部 / Superadmin → `null`，看全部卡在總監的單（維持原行為）。
+  - 其他有檢視權的部門（會計室）→ 傳自身 `DepartmentId`，SQL 追加「該單流程中存在綁定該部門的步驟」，即**只看流程需要自己部門簽核的單**。沒有會計關卡的請假 / 銷假 / 加班 / 預審等他人單據因此不會出現（此清單本身不套部門可見性 scope，故必須靠這層收斂）。
+    - **刻意不比對 `StepOrder`**：實務流程多為「… → 會計 → 財務 → 總監」，總監常是最後一關，會計關卡在其之前；若限定「總監之後的步驟」會讓會計室看到空清單。
+    - **相容只綁職稱、未綁部門的會計關卡**：部分流程的會計步驟 `DepartmentId` 為 null、只綁 `JobTitleId`，故條件為 `DepartmentId = 該部門 OR (DepartmentId IS NULL AND JobTitleId = 呼叫者職稱)`。
+- **匹配條件**：`ApprovalStatus = 'pending'` 且目前卡在的步驟（`CurrentStepOrder` 對應的 `ApprovalStep`）其 `JobTitleId` 對應的 `JobTitle.Level == 1`（即總監），不受呼叫者本身職稱/部門限制（因為檢視者並非該步驟審核者，僅是檢視），再套上方的部門收斂條件。實作於 [PaymentRequestReadService.StepMatchClause](../../Api/Services/Dapper/PaymentRequestReadService.cs) 的 `director_pending` 分支，涵蓋全部 9 種申請類型（與待審核/已核准/已拒絕頁籤一致）。
+- **僅供檢視**：此頁籤內的申請單仍只能由總監本人（或 Superadmin）實際核准；財務管理部 / 會計室人員點擊進入詳情頁為唯讀（前端固定顯示查看圖示，不顯示可編輯的鉛筆圖示），送出審核動作仍會被 `AuthorizeStepAsync` 擋下。
 
 ## 簽核作業列表「申請人」篩選（2026-07 新增）
 
