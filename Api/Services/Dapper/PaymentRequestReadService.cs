@@ -126,12 +126,14 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
     public async Task<IEnumerable<ApprovalTaskDto>> GetApprovalTasksAsync(
         int? reviewerJobTitleId = null, int? reviewerDepartmentId = null,
         string? status = null, Guid? reviewerUserId = null, string? paymentStatus = null,
-        string? applicationType = null, Guid? submittedByUserId = null)
+        string? applicationType = null, Guid? submittedByUserId = null,
+        int? directorPendingStepDeptId = null)
     {
         var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, overtimeProjects, leaveRevocations, leaveRevocationDates) =
             await FetchAllAsync(reviewerJobTitleId: reviewerJobTitleId, reviewerDepartmentId: reviewerDepartmentId,
                                 statusFilter: status, reviewerUserId: reviewerUserId, paymentStatus: paymentStatus,
-                                applicationType: applicationType, submittedByUserId: submittedByUserId);
+                                applicationType: applicationType, submittedByUserId: submittedByUserId,
+                                directorPendingStepDeptId: directorPendingStepDeptId);
         var instDicts = await LoadInstallmentsAsync(payments, advances, travels, holidayTravels, travelPayments, writeOffs);
         var paymentAttachments   = await LoadPaymentAttachmentsAsync();
         var writeOffAttachments  = await LoadWriteOffAttachmentsAsync();
@@ -225,7 +227,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         int? reviewerJobTitleId = null, int? reviewerDepartmentId = null,
         string? statusFilter = null, Guid? reviewerUserId = null,
         string? paymentStatus = null, string? applicationType = null,
-        Guid? submittedByUserId = null)
+        Guid? submittedByUserId = null, int? directorPendingStepDeptId = null)
     {
         // ── WHERE clause for specific ID lookup ──────────────────────────────
         string paymentIdWhere        = (filterId.HasValue && filterType == "payment_request")  ? "pr.Id = @Id"  : "";
@@ -254,7 +256,11 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         string StepMatchClause(string alias, string userAlias, string appType)
         {
             // 「總監待簽核」：目前步驟卡在總監（JobTitle.Level=1）且尚未核准，不受審核者職稱/部門限制
-            // （財務管理部專用檢視，權限已在 ApprovalTaskHandler.GetAllAsync 擋過，此處僅過濾資料）
+            // （檢視用清單，可見權限已在 ApprovalTaskHandler.GetAllAsync 擋過，此處僅過濾資料）
+            // directorPendingStepDeptId 有值時（會計室等非財務管理部的檢視者）再收斂為
+            // 「該單流程中含綁定自己部門的關卡」＝這張單需要自己部門簽核（總監關卡多為最後一關，
+            // 會計關卡在其之前，故刻意不比 StepOrder；沒有會計關卡的請假 / 銷假 / 加班因此被排除）。
+            // 相容 DepartmentId 未綁定、只綁職稱的會計關卡（部分流程如此設定）。
             if (statusFilter == "director_pending")
                 return $"""
                   {alias}.ApprovalStatus = 'pending'
@@ -265,7 +271,17 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                       AND sDir.StepOrder = {alias}.CurrentStepOrder
                       AND jtDir.Level = 1
                   )
-                  """;
+                  """ + (directorPendingStepDeptId.HasValue ? $"""
+
+                  AND EXISTS (
+                    SELECT 1 FROM ApprovalSteps sMine
+                    WHERE sMine.ApprovalItemId = {alias}.ApprovalItemId
+                      AND (
+                        sMine.DepartmentId = @DirectorPendingStepDeptId
+                        OR (sMine.DepartmentId IS NULL AND sMine.JobTitleId = @ReviewerJobTitleId)
+                      )
+                  )
+                  """ : "");
 
             // Superadmin without status param: show all except draft
             if (superAdminDefault) return $"{alias}.ApprovalStatus <> 'draft'";
@@ -746,6 +762,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             ReviewerUserId       = reviewerUserId,
             StatusFilter         = statusFilter,
             SubmittedByUserId    = submittedByUserId,
+            DirectorPendingStepDeptId = directorPendingStepDeptId,
         };
 
         const string drSql = """

@@ -21,11 +21,15 @@ import {PagedResult} from '../../../../../shared/models/paged-result.model';
 import {AuthService, FINANCIAL_AND_ABOVE_DEPT_CODES} from '../../../../../core/auth/services/auth.service';
 
 /**
- * 財務撥款步驟專用部門代碼（僅財務管理部，不含總監室/會計室）。
- * 用於「總監待簽核」tab 的可見性判斷；須與 approval-task-review.ts 的
- * FINANCE_STEP_DEPT_CODES、後端 DepartmentCodes.FinanceStep 三處同步。
+ * 「總監待簽核」tab 的可見部門代碼：財務管理部 + 會計室（各含舊短碼與改制後英文全名）。
+ * 須與後端 DepartmentCodes.DirectorPendingView 兩處同步；刻意不共用撥款寫入權的
+ * FinanceStep（approval-task-review.ts 的 FINANCE_STEP_DEPT_CODES），會計室只有檢視權。
+ * 資料範圍另由後端收斂：財務管理部看全部，會計室只看流程中含會計室關卡的單。
  */
-const FINANCE_STEP_DEPT_CODES = new Set(['FIN', 'Financial Management Department']);
+const DIRECTOR_PENDING_DEPT_CODES = new Set([
+  'FIN', 'Financial Management Department',
+  'AC', 'Accounting Department',
+]);
 
 @Component({
   selector: 'app-approval-task-list',
@@ -50,9 +54,9 @@ export class ApprovalTaskList {
     this.auth.isSuperAdmin() || FINANCIAL_AND_ABOVE_DEPT_CODES.has(this.auth.departmentCode() ?? '')
   );
 
-  /** 「總監待簽核」tab：僅財務管理部或 Superadmin 可見 */
+  /** 「總監待簽核」tab：僅財務管理部 / 會計室或 Superadmin 可見 */
   canSeeDirectorPendingTab = computed(() =>
-    this.auth.isSuperAdmin() || FINANCE_STEP_DEPT_CODES.has(this.auth.departmentCode() ?? '')
+    this.auth.isSuperAdmin() || DIRECTOR_PENDING_DEPT_CODES.has(this.auth.departmentCode() ?? '')
   );
 
   /** 是否具備全選核准權限（待審核 tab 才啟用 UI） */

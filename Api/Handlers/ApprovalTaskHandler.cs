@@ -60,11 +60,20 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         Guid? submittedByUserId = CanFilterByApplicant(callerIsSuperAdmin, callerDeptCode)
                                   && Guid.TryParse(req.Query["submittedByUserId"], out var sbu) ? sbu : null;
 
-        // 「總監待簽核」（僅剩總監步驟未簽核）僅財務管理部或 Superadmin 可查看
-        if (status == "director_pending" && !callerIsSuperAdmin && !DepartmentCodes.FinanceStep.Contains(callerDeptCode ?? ""))
-            return new ObjectResult(ApiResponse.Fail("僅財務管理部或 Superadmin 可查看總監待簽核清單。")) { StatusCode = 403 };
+        // 「總監待簽核」（僅剩總監步驟未簽核）僅財務管理部 / 會計室或 Superadmin 可查看
+        if (status == "director_pending" && !callerIsSuperAdmin && !DepartmentCodes.DirectorPendingView.Contains(callerDeptCode ?? ""))
+            return new ObjectResult(ApiResponse.Fail("僅財務管理部 / 會計室或 Superadmin 可查看總監待簽核清單。")) { StatusCode = 403 };
 
-        var allTasks = (await reader.GetApprovalTasksAsync(jobTitleId, deptId, status, reviewerUserId, paymentStatus, applicationType, submittedByUserId)).ToList();
+        // 總監待簽核的資料範圍：財務管理部 / Superadmin 看全部（維持原行為）；
+        // 其他有檢視權的部門（會計室）只看「流程中含自己部門關卡」的單，
+        // 避免看到沒有會計關卡的請假 / 銷假 / 加班等他人單據。
+        int? directorPendingStepDeptId =
+            status == "director_pending"
+            && !callerIsSuperAdmin
+            && !DepartmentCodes.FinanceStep.Contains(callerDeptCode ?? "")
+                ? deptId : null;
+
+        var allTasks = (await reader.GetApprovalTasksAsync(jobTitleId, deptId, status, reviewerUserId, paymentStatus, applicationType, submittedByUserId, directorPendingStepDeptId)).ToList();
         int total = allTasks.Count;
         var items = allTasks.Skip((page - 1) * pageSize).Take(pageSize);
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
