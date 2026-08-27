@@ -355,7 +355,8 @@
 - 判定 signal 命名 `canSeeXxxFilter`，**必須**與後端同一份部門 / 權限判定同步（例：申請人下拉 ↔ `DepartmentCodes.FinancialAndAbove` ↔ `FINANCIAL_AND_ABOVE_DEPT_CODES`）
 - 下拉選項來源若是受限端點（如 `/approval-tasks/applicants` 非財務體系回 403），**只在判定為 true 時才發請求**（`switchMap(allowed => allowed ? api : of([]))`），避免非授權者觸發 403
 - 前端隱藏只是 UI，後端**必須**同時忽略或拒絕該篩選參數
-- 已採用：[簽核作業列表](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-list/approval-task-list.html) 已核准頁籤 —— 全部類型下拉（所有人）＋ 申請人下拉 / 撥款退款子篩選（僅財務體系部門 / Superadmin）
+- **篩選列與頁籤的關係**：與狀態無關的篩選（類型、申請人）應**各頁籤常駐**；只有在特定狀態才有意義的篩選（如撥款 / 退款）才綁該頁籤。判斷基準是「這個篩選在這個狀態下篩得出東西嗎」，不是「當初是在哪個頁籤做的」。
+- 已採用：[簽核作業列表](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-list/approval-task-list.html) —— 全部類型下拉（所有人）＋ 申請人下拉（僅財務體系部門 / Superadmin）**5 個頁籤常駐**；撥款退款子篩選另加 `activeTab() === 'approved'` 條件（其他狀態的單尚未進入撥款階段）
 
 ---
 
@@ -460,6 +461,51 @@ switchTab(tab: 'tab1' | 'tab2') {
   // optional: lazy load
 }
 ```
+
+### 主頁籤 + 子狀態列（兩層 pill）
+
+當某個頁籤本身是一個「範圍」，範圍內還要再切狀態時，用**兩層 pill** 表達層級，不要把子狀態攤平成更多主頁籤（主頁籤列會爆量，且「範圍」與「狀態」兩個維度混在同一列會讓使用者以為它們互斥）。
+
+- **主層**：實心 `btn-primary`（選中）/ `btn-outline-secondary`（未選）—— 即上方標準結構
+- **子層**：外框 `btn-outline-primary`（選中）/ `btn-outline-secondary`（未選），置於主頁籤列下方、篩選列同一行
+
+```html
+@if (activeTab() === 'director') {
+  <div class="flex gap-1">
+    <button class="btn btn-sm"
+            [class]="directorStatus() === 'pending' ? 'btn-outline-primary' : 'btn-outline-secondary'"
+            (click)="setDirectorStatus('pending')">
+      <svg class="sa-icon me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
+      待簽核
+    </button>
+    <!-- … 其餘子狀態同樣結構，icon 要嘛全給要嘛全不給 -->
+  </div>
+}
+```
+
+TS 端**兩個維度各一個 signal**（不要合併成複合字串），切主頁籤時重置子狀態、切子狀態時只回第一頁：
+
+```typescript
+type TaskTab = 'pending' | 'approved' | 'rejected' | 'returned' | 'director';
+type DirectorStatus = 'pending' | 'approved' | 'returned' | 'rejected';
+
+activeTab      = signal<TaskTab>('pending');
+directorStatus = signal<DirectorStatus>('pending');
+
+switchTab(tab: TaskTab) {
+  this.activeTab.set(tab);
+  this.directorStatus.set('pending');   // 主頁籤切換 → 子狀態回預設
+  /* … 其餘篩選一併重置 … */
+}
+setDirectorStatus(s: DirectorStatus) {
+  this.directorStatus.set(s);
+  this.page.set(1);                     // 子狀態切換只回第一頁，保留類型 / 申請人篩選
+}
+```
+
+送 API 時在 `switchMap` 內把兩個維度拆成兩個 query param（`scope` + `status`），**不要組成 `director_approved` 這種複合字串** —— 後端會被迫用前綴判斷，且該參數若同時拿去和 DB 欄位等值比對就會靜默回空。
+
+已採用：[approval-task-list](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-list/) 的「總監室簽核」頁籤（四種子狀態）。
 
 ### 多 Tab 共用同一 form 的場景
 

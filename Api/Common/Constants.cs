@@ -151,7 +151,7 @@ public static class DepartmentCodes
     /// 與撥款判定同範圍；此處是比對**登入者自身部門**，不是比對步驟綁定部門。
     /// 前端對應判定見 approval-task-review.ts 的 FINANCE_STEP_DEPT_CODES（canSetPaymentDate /
     /// canCloseAdvance / canCloseTravelRequest / checkPaidDisabledHint），兩處須同步。
-    /// 「總監待簽核」tab 的可見性 2026-08 起改用 DirectorPendingView（另含會計室），已不共用本集合。
+    /// 「總監室簽核」tab 的可見性 2026-08 起改用 DirectorPendingView（另含會計室），已不共用本集合。
     /// </summary>
     public static readonly IReadOnlySet<string> FinanceStep =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -161,12 +161,13 @@ public static class DepartmentCodes
         };
 
     /// <summary>
-    /// 「總監待簽核」頁籤檢視權（2026-08 擴充）：財務管理部 + 會計室（各含舊短碼與改制後英文全名）。
+    /// 「總監室簽核」頁籤檢視權（2026-08 擴充會計室）：財務管理部 + 會計室（各含舊短碼與改制後英文全名）。
     /// 純檢視用途，刻意與寫入型的 FinanceStep（撥款日 / 撥款明細 / 結案 / 支票已支付）分開，
     /// 避免會計室因看得到頁籤而一併取得撥款與結案權限。
-    /// 注意：本集合只決定「看不看得到頁籤」，資料範圍另由 ApprovalTaskHandler 的
-    /// directorPendingStepDeptId 控制（財務管理部 / Superadmin＝全部；其他＝限流程中還需自部門簽核者）。
-    /// 前端對應清單見 approval-task-list.ts 的 DIRECTOR_PENDING_DEPT_CODES，兩處須同步。
+    /// 注意：本集合只決定「看不看得到頁籤」（後端以 scope=director 判定，涵蓋四種狀態），
+    /// 資料範圍另由 ApprovalTaskHandler 的 directorStepDeptId 控制
+    /// （財務管理部 / Superadmin＝全部；其他＝限流程中含自部門關卡者）。
+    /// 前端對應清單見 approval-task-list.ts 的 DIRECTOR_SCOPE_DEPT_CODES，兩處須同步。
     /// </summary>
     public static readonly IReadOnlySet<string> DirectorPendingView =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase)

@@ -954,13 +954,25 @@ Superadmin，只有 Create 沒有）。
 **Checklist**：新增 / 修改「先選一個父單再建子單」的流程時，比對三處是否同一條件 ——
 ① 選項端點的 `Where`、② 寫入端點載入父單的 `Where`、③ 同 Handler 其他方法的可視範圍。
 
-- **選項端點**：不符資格回 `403`（比照 `status=director_pending` 的擋法）
+- **選項端點**：不符資格回 `403`（比照 `scope=director` 的擋法）
 - **列表篩選參數**：不符資格**靜默忽略**（當成沒帶），不回 403 —— 篩選只會縮小自己看得到的範圍，回錯誤反而讓正常瀏覽變脆弱
 
   ```csharp
   Guid? submittedByUserId = CanFilterByApplicant(callerIsSuperAdmin, callerDeptCode)
                             && Guid.TryParse(req.Query["submittedByUserId"], out var sbu) ? sbu : null;
   ```
+
+- **多維度篩選不得塞進同一個 query param**：正交的維度（範圍 vs 狀態）各開一個參數，別組成 `director_approved` 這種複合字串。複合字串會逼 Handler 用前綴判斷，且該值若同時被當成 SQL 參數拿去和欄位等值比對（`ApprovalStatus = @StatusFilter`），就會靜默回空。
+- **列舉型 query param 一律走白名單正規化**，非法值收斂到安全預設，不得讓未知值 fall through 到某個 `if` 都沒命中的分支：
+
+  ```csharp
+  private static readonly HashSet<string> ValidListStatuses = ["pending", "approved", "returned", "rejected"];
+  string? status = rawStatus is null ? null
+                 : ValidListStatuses.Contains(rawStatus) ? rawStatus
+                 : "pending";
+  ```
+
+  **實際踩過的坑**：`StepMatchClause` 原本沒有 `returned` 分支，非 Superadmin 傳 `status=returned` 會掉到最後的待審核 fallback（該分支寫死 `ApprovalStatus = 'pending'`），**回傳完全不相干的待審清單而非空集合** —— 沒有錯誤、沒有 log，只有使用者覺得「這頁怪怪的」。詳見 [approval-flow.md](business/approval-flow.md) 的「退回修改中」節。
 
 - **部門 Code 集合**一律取自 [Constants.cs](../Api/Common/Constants.cs) 的 `DepartmentCodes.*`，並與前端同名集合同步（見 [frontend-design.md §3 權限差異化篩選控件](frontend-design.md#權限差異化篩選控件依部門--權限顯示)）
 - **路由次序**：選項端點是字面段（`["approval-tasks", "applicants"]`），**必須**排在 `["approval-tasks", var id]` 之前（§3.3）

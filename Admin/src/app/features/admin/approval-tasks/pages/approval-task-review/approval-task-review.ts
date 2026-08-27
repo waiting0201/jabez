@@ -39,8 +39,8 @@ import {LeaveType, formatLeaveDuration} from '../../../leave-requests/models/lea
 /**
  * 財務撥款步驟的部門 Code（須與後端 DepartmentCodes.FinanceStep 兩處同步）：
  * 僅財務管理部，含舊短碼 'FIN' 與改制後英文全名，避免組織改制後判定失效。
- * 註：approval-task-list.ts 的「總監待簽核」tab 2026-08 起改用較寬的
- * DIRECTOR_PENDING_DEPT_CODES（另含會計室，純檢視），已不共用本集合。
+ * 註：approval-task-list.ts 的「總監室簽核」tab 2026-08 起改用較寬的
+ * DIRECTOR_SCOPE_DEPT_CODES（另含會計室，純檢視），已不共用本集合。
  * 兩種比對對象：canSetPaymentDate / canCloseAdvance / canCloseTravelRequest 比對**簽核步驟綁定部門**；
  * checkPaidDisabledHint（支票已支付）比對**登入者自身部門**，與後端同一集合。
  */

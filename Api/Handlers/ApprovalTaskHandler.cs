@@ -20,12 +20,18 @@ namespace Jabez.Api.Handlers;
 public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadService reader, IJwtService jwtService, IApprovalNotificationService notifier, IApprovalFlowService approvalFlow, IBlobStorageService blob, ICalendarDayReadService calendarReader, IWorkPatternReadService workPattern)
 {
     private static readonly HashSet<string> ValidActions  = ["approved", "returned", "rejected"];
+    /// <summary>
+    /// 簽核作業列表的合法 status（＝ApprovalStatus 除 draft 外的四態）。未列於此者一律正規化為 pending，
+    /// 避免像 2026-08 之前的 returned 一樣靜默落到 StepMatchClause 的 pending fallback、回傳不相干的待審清單。
+    /// </summary>
+    private static readonly HashSet<string> ValidListStatuses = ["pending", "approved", "returned", "rejected"];
     public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "leave_revocation", "travel", "overtime", "advance", "write_off", "travel_write_off", "holiday_travel", "travel_payment", "pre_review"];
 
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
         // 依審核者職稱過濾，讓每個人只看到「當前步驟符合自己職稱」的待審申請
-        // status 參數：pending（待審）、approved（已核准），空值沿用既有行為
+        // status 參數：pending（待審）/ approved（已核准）/ returned（退回修改中）/ rejected（已拒絕），空值沿用既有行為
+        // scope  參數：director（總監室簽核，範圍維度，與 status 四態自由組合；舊值 status=director_pending 相容為兩者組合）
         var principal = await jwtService.ValidateRequestAsync(req);
         int?    jobTitleId      = null;
         int?    deptId          = null;
@@ -52,7 +58,23 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
 
         int    page     = int.TryParse(req.Query["page"],     out var p)  ? Math.Max(1, p)         : 1;
         int    pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, 100) : 20;
-        string? status  = req.Query["status"].ToString() is { Length: > 0 } s ? s : null;
+        string? rawStatus = req.Query["status"].ToString() is { Length: > 0 } s  ? s  : null;
+        string? scope     = req.Query["scope"].ToString()  is { Length: > 0 } sc ? sc : null;
+
+        // 向後相容：舊前端 / 書籤仍會送 status=director_pending（範圍與狀態混在同一個參數）。
+        // 2026-08 起改為 scope=director + status 四態兩個正交維度。
+        if (rawStatus == "director_pending")
+        {
+            scope     = "director";
+            rawStatus = "pending";
+        }
+
+        // status 白名單正規化：未帶＝維持既有行為（Superadmin 看全部非草稿、一般人看待審）；
+        // 帶了但不合法＝一律當 pending，不再靜默 fall through 回傳「像是查了別的東西」的清單。
+        string? status = rawStatus is null ? null
+                       : ValidListStatuses.Contains(rawStatus) ? rawStatus
+                       : "pending";
+
         string? paymentStatus = req.Query["paymentStatus"].ToString() is { Length: > 0 } ps2 ? ps2 : null;
         // 類型篩選：須為 ValidAppTypes 之一，否則忽略
         string? applicationType = req.Query["applicationType"].ToString() is { Length: > 0 } at && ValidAppTypes.Contains(at) ? at : null;
@@ -60,20 +82,21 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         Guid? submittedByUserId = CanFilterByApplicant(callerIsSuperAdmin, callerDeptCode)
                                   && Guid.TryParse(req.Query["submittedByUserId"], out var sbu) ? sbu : null;
 
-        // 「總監待簽核」（僅剩總監步驟未簽核）僅財務管理部 / 會計室或 Superadmin 可查看
-        if (status == "director_pending" && !callerIsSuperAdmin && !DepartmentCodes.DirectorPendingView.Contains(callerDeptCode ?? ""))
-            return new ObjectResult(ApiResponse.Fail("僅財務管理部 / 會計室或 Superadmin 可查看總監待簽核清單。")) { StatusCode = 403 };
+        // 「總監室簽核」頁籤（scope=director）：僅財務管理部 / 會計室或 Superadmin 可查看
+        bool directorScope = scope == "director";
+        if (directorScope && !callerIsSuperAdmin && !DepartmentCodes.DirectorPendingView.Contains(callerDeptCode ?? ""))
+            return new ObjectResult(ApiResponse.Fail("僅財務管理部 / 會計室或 Superadmin 可查看總監室簽核清單。")) { StatusCode = 403 };
 
-        // 總監待簽核的資料範圍：財務管理部 / Superadmin 看全部（維持原行為）；
+        // 總監室簽核的資料範圍：財務管理部 / Superadmin 看全部（維持原行為）；
         // 其他有檢視權的部門（會計室）只看「流程中含自己部門關卡」的單，
-        // 避免看到沒有會計關卡的請假 / 銷假 / 加班等他人單據。
-        int? directorPendingStepDeptId =
-            status == "director_pending"
+        // 避免看到沒有會計關卡的請假 / 銷假 / 加班等他人單據。四種狀態一律套用。
+        int? directorStepDeptId =
+            directorScope
             && !callerIsSuperAdmin
             && !DepartmentCodes.FinanceStep.Contains(callerDeptCode ?? "")
                 ? deptId : null;
 
-        var allTasks = (await reader.GetApprovalTasksAsync(jobTitleId, deptId, status, reviewerUserId, paymentStatus, applicationType, submittedByUserId, directorPendingStepDeptId)).ToList();
+        var allTasks = (await reader.GetApprovalTasksAsync(jobTitleId, deptId, status, reviewerUserId, paymentStatus, applicationType, submittedByUserId, directorStepDeptId, directorScope)).ToList();
         int total = allTasks.Count;
         var items = allTasks.Skip((page - 1) * pageSize).Take(pageSize);
         int totalPages = (int)Math.Ceiling((double)total / pageSize);

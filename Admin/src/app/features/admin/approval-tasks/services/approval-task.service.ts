@@ -33,12 +33,14 @@ export class ApprovalTaskService {
   private http = inject(HttpClient);
   private notification = inject(NotificationService);
 
-  getPaged(page: number, pageSize: number, status?: string, paymentStatus?: string, applicationType?: string, submittedByUserId?: string): Observable<PagedResult<ApprovalTask>> {
+  getPaged(page: number, pageSize: number, status?: string, paymentStatus?: string, applicationType?: string, submittedByUserId?: string, scope?: string): Observable<PagedResult<ApprovalTask>> {
     const params: Record<string, any> = {page, pageSize};
     if (status) params['status'] = status;
     if (paymentStatus) params['paymentStatus'] = paymentStatus;
     if (applicationType) params['applicationType'] = applicationType;
     if (submittedByUserId) params['submittedByUserId'] = submittedByUserId;
+    // scope=director：總監室簽核頁籤（與 status 四態組合），僅財務管理部 / 會計室 / Superadmin 可用
+    if (scope) params['scope'] = scope;
     return this.http.get<PagedResult<ApprovalTask>>(`${environment.apiUrl}/approval-tasks`, {params});
   }
 

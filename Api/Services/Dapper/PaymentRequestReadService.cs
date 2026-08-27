@@ -127,13 +127,13 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         int? reviewerJobTitleId = null, int? reviewerDepartmentId = null,
         string? status = null, Guid? reviewerUserId = null, string? paymentStatus = null,
         string? applicationType = null, Guid? submittedByUserId = null,
-        int? directorPendingStepDeptId = null)
+        int? directorStepDeptId = null, bool directorScope = false)
     {
         var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, overtimeProjects, leaveRevocations, leaveRevocationDates) =
             await FetchAllAsync(reviewerJobTitleId: reviewerJobTitleId, reviewerDepartmentId: reviewerDepartmentId,
                                 statusFilter: status, reviewerUserId: reviewerUserId, paymentStatus: paymentStatus,
                                 applicationType: applicationType, submittedByUserId: submittedByUserId,
-                                directorPendingStepDeptId: directorPendingStepDeptId);
+                                directorStepDeptId: directorStepDeptId, directorScope: directorScope);
         var instDicts = await LoadInstallmentsAsync(payments, advances, travels, holidayTravels, travelPayments, writeOffs);
         var paymentAttachments   = await LoadPaymentAttachmentsAsync();
         var writeOffAttachments  = await LoadWriteOffAttachmentsAsync();
@@ -227,7 +227,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         int? reviewerJobTitleId = null, int? reviewerDepartmentId = null,
         string? statusFilter = null, Guid? reviewerUserId = null,
         string? paymentStatus = null, string? applicationType = null,
-        Guid? submittedByUserId = null, int? directorPendingStepDeptId = null)
+        Guid? submittedByUserId = null, int? directorStepDeptId = null, bool directorScope = false)
     {
         // ── WHERE clause for specific ID lookup ──────────────────────────────
         string paymentIdWhere        = (filterId.HasValue && filterType == "payment_request")  ? "pr.Id = @Id"  : "";
@@ -255,33 +255,50 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         // appType:   用於 "approved" 模式查詢 ApprovalRecords 時區分申請類型（字串常數，非 SQL 參數，已知安全值）
         string StepMatchClause(string alias, string userAlias, string appType)
         {
-            // 「總監待簽核」：目前步驟卡在總監（JobTitle.Level=1）且尚未核准，不受審核者職稱/部門限制
-            // （檢視用清單，可見權限已在 ApprovalTaskHandler.GetAllAsync 擋過，此處僅過濾資料）
-            // directorPendingStepDeptId 有值時（會計室等非財務管理部的檢視者）再收斂為
+            // 「總監室簽核」（scope=director）：與總監關卡（JobTitle.Level=1）有關的單，依 statusFilter 分四態。
+            //   pending  → 維持原「總監待簽核」語意：已輪到總監關卡（綁 CurrentStepOrder）且尚未簽核
+            //   其餘三態 → 只要流程中含總監關卡即可（讓檢視者看得到同一批單的最終結果）
+            // 一律不受審核者職稱/部門限制（檢視用清單，可見權限已在 ApprovalTaskHandler.GetAllAsync 擋過，
+            // 此處僅過濾資料）。
+            // directorStepDeptId 有值時（會計室等非財務管理部的檢視者）再收斂為
             // 「該單流程中含綁定自己部門的關卡」＝這張單需要自己部門簽核（總監關卡多為最後一關，
             // 會計關卡在其之前，故刻意不比 StepOrder；沒有會計關卡的請假 / 銷假 / 加班因此被排除）。
-            // 相容 DepartmentId 未綁定、只綁職稱的會計關卡（部分流程如此設定）。
-            if (statusFilter == "director_pending")
+            // 相容 DepartmentId 未綁定、只綁職稱的會計關卡（部分流程如此設定）。四態一律套用此收斂。
+            if (directorScope)
+            {
+                string dirStatus = statusFilter switch
+                {
+                    "approved" => "approved",
+                    "returned" => "returned",
+                    "rejected" => "rejected",
+                    _          => "pending",
+                };
+                // 待簽核才綁「目前卡在總監關卡」；已核准 / 退回 / 已拒絕的單 CurrentStepOrder 已無意義
+                string dirStepOrderClause = dirStatus == "pending"
+                    ? $"AND sDir.StepOrder = {alias}.CurrentStepOrder"
+                    : "";
+
                 return $"""
-                  {alias}.ApprovalStatus = 'pending'
+                  {alias}.ApprovalStatus = '{dirStatus}'
                   AND EXISTS (
                     SELECT 1 FROM ApprovalSteps sDir
                     JOIN JobTitles jtDir ON jtDir.Id = sDir.JobTitleId
                     WHERE sDir.ApprovalItemId = {alias}.ApprovalItemId
-                      AND sDir.StepOrder = {alias}.CurrentStepOrder
+                      {dirStepOrderClause}
                       AND jtDir.Level = 1
                   )
-                  """ + (directorPendingStepDeptId.HasValue ? $"""
+                  """ + (directorStepDeptId.HasValue ? $"""
 
                   AND EXISTS (
                     SELECT 1 FROM ApprovalSteps sMine
                     WHERE sMine.ApprovalItemId = {alias}.ApprovalItemId
                       AND (
-                        sMine.DepartmentId = @DirectorPendingStepDeptId
+                        sMine.DepartmentId = @DirectorStepDeptId
                         OR (sMine.DepartmentId IS NULL AND sMine.JobTitleId = @ReviewerJobTitleId)
                       )
                   )
                   """ : "");
+            }
 
             // Superadmin without status param: show all except draft
             if (superAdminDefault) return $"{alias}.ApprovalStatus <> 'draft'";
@@ -321,6 +338,58 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                     WHERE ar2.ApplicationType = '{appType}'
                       AND ar2.ApplicationId = {alias}.Id
                       AND ar2.ReviewedById = @ReviewerUserId
+                  )
+                  """;
+
+            // Normal reviewer — "returned" tab: 退回修改中（申請人手上待改的單）
+            // 與 approved / rejected 只看「我親自審過」不同：退回常發生在還沒輪到我之前，
+            // 只比對 ApprovalRecords 會漏掉流程後段的審核者，故再放行「流程中含我關卡」。
+            //   1) 我留過簽核紀錄（含我親自退回的、退回前已核准的）
+            //   2) 我是這張單的指定審核者（designee 快照；刻意不限 Status='pending'，
+            //      退回時該筆已被設為 'returned'，限 pending 會漏掉自己被指定的那張）
+            //   3) 我是這張單的升級審核者（自審時被指派的 EscalationOverride）
+            //   4) 流程中存在綁定我職稱的固定關卡（部門相符或未綁部門）
+            // 第 4 段刻意只涵蓋固定職稱/部門關卡，不重用 pending 分支的 UseDirectSupervisor 遞迴
+            // ——那段靠 CurrentStepOrder 定位「第幾層主管」，脫離當前步驟即無從成立且成本極高；
+            // 直屬主管的情形由第 1 段涵蓋（主管退回前必已留下紀錄）。
+            // JobTitleId 亦刻意不放行 IS NULL，否則「不限職稱」關卡會讓全公司都看到這張單。
+            if (statusFilter == "returned")
+                return $"""
+                  {alias}.ApprovalStatus = 'returned'
+                  AND (
+                    EXISTS (
+                      SELECT 1 FROM ApprovalRecords ar2
+                      WHERE ar2.ApplicationType = '{appType}'
+                        AND ar2.ApplicationId = {alias}.Id
+                        AND ar2.ReviewedById = @ReviewerUserId
+                    )
+                    OR EXISTS (
+                      SELECT 1 FROM RequestDesignatedReviewers rdrRet
+                      WHERE rdrRet.RequestType = '{appType}'
+                        AND rdrRet.RequestId = {alias}.Id
+                        AND rdrRet.ReviewerId = @ReviewerUserId
+                    )
+                    OR EXISTS (
+                      SELECT 1 FROM EscalationOverrides eoRet
+                      WHERE eoRet.ApplicationType = '{appType}'
+                        AND eoRet.ApplicationId = {alias}.Id
+                        AND eoRet.ReviewerId = @ReviewerUserId
+                    )
+                    OR EXISTS (
+                      SELECT 1 FROM ApprovalSteps sRet
+                      WHERE sRet.ApprovalItemId = {alias}.ApprovalItemId
+                        AND sRet.UseApplicantDesignated = 0
+                        AND sRet.UseDirectSupervisor = 0
+                        AND sRet.JobTitleId = @ReviewerJobTitleId
+                        AND (
+                          (sRet.UseApplicantDepartment = 1
+                            AND {userAlias}.DepartmentId IS NOT NULL
+                            AND {userAlias}.DepartmentId = @ReviewerDepartmentId)
+                          OR
+                          (sRet.UseApplicantDepartment = 0
+                            AND (sRet.DepartmentId IS NULL OR sRet.DepartmentId = @ReviewerDepartmentId))
+                        )
+                    )
                   )
                   """;
 
@@ -762,7 +831,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             ReviewerUserId       = reviewerUserId,
             StatusFilter         = statusFilter,
             SubmittedByUserId    = submittedByUserId,
-            DirectorPendingStepDeptId = directorPendingStepDeptId,
+            DirectorStepDeptId = directorStepDeptId,
         };
 
         const string drSql = """

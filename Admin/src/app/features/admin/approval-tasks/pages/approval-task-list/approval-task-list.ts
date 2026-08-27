@@ -21,15 +21,21 @@ import {PagedResult} from '../../../../../shared/models/paged-result.model';
 import {AuthService, FINANCIAL_AND_ABOVE_DEPT_CODES} from '../../../../../core/auth/services/auth.service';
 
 /**
- * 「總監待簽核」tab 的可見部門代碼：財務管理部 + 會計室（各含舊短碼與改制後英文全名）。
+ * 「總監室簽核」tab 的可見部門代碼：財務管理部 + 會計室（各含舊短碼與改制後英文全名）。
  * 須與後端 DepartmentCodes.DirectorPendingView 兩處同步；刻意不共用撥款寫入權的
  * FinanceStep（approval-task-review.ts 的 FINANCE_STEP_DEPT_CODES），會計室只有檢視權。
  * 資料範圍另由後端收斂：財務管理部看全部，會計室只看流程中含會計室關卡的單。
  */
-const DIRECTOR_PENDING_DEPT_CODES = new Set([
+const DIRECTOR_SCOPE_DEPT_CODES = new Set([
   'FIN', 'Financial Management Department',
   'AC', 'Accounting Department',
 ]);
+
+/** 簽核作業頁籤；director＝總監室簽核（範圍），其狀態另由 directorStatus 決定 */
+type ApprovalTab = 'pending' | 'approved' | 'rejected' | 'returned' | 'director';
+
+/** 「總監室簽核」頁籤內的四種狀態 */
+type DirectorStatus = 'pending' | 'approved' | 'returned' | 'rejected';
 
 @Component({
   selector: 'app-approval-task-list',
@@ -54,9 +60,9 @@ export class ApprovalTaskList {
     this.auth.isSuperAdmin() || FINANCIAL_AND_ABOVE_DEPT_CODES.has(this.auth.departmentCode() ?? '')
   );
 
-  /** 「總監待簽核」tab：僅財務管理部 / 會計室或 Superadmin 可見 */
-  canSeeDirectorPendingTab = computed(() =>
-    this.auth.isSuperAdmin() || DIRECTOR_PENDING_DEPT_CODES.has(this.auth.departmentCode() ?? '')
+  /** 「總監室簽核」tab：僅財務管理部 / 會計室或 Superadmin 可見 */
+  canSeeDirectorTab = computed(() =>
+    this.auth.isSuperAdmin() || DIRECTOR_SCOPE_DEPT_CODES.has(this.auth.departmentCode() ?? '')
   );
 
   /** 是否具備全選核准權限（待審核 tab 才啟用 UI） */
@@ -65,12 +71,19 @@ export class ApprovalTaskList {
   );
 
   readonly PAGE_SIZE = 20;
-  activeTab = signal<'pending' | 'approved' | 'rejected' | 'director_pending'>('pending');
+  activeTab = signal<ApprovalTab>('pending');
+  /** 「總監室簽核」頁籤內的狀態子篩選（僅 activeTab()==='director' 時有效） */
+  directorStatus = signal<DirectorStatus>('pending');
   /** 撥款狀態篩選：三態撥款 + closed（已結案，僅預支 / 出差預支有結案概念，後端其他類型 short-circuit） */
   paymentStatus = signal<'' | 'paid' | 'unpaid' | 'partial' | 'closed'>('');
   applicationTypeFilter = signal<'' | ApplicationType>('');
   submittedByFilter = signal('');
   page = signal(1);
+
+  /** 「總監室簽核」四種子狀態的中文 label（空清單文案共用） */
+  readonly DIRECTOR_STATUS_LABELS: Record<DirectorStatus, string> = {
+    pending: '待簽核', approved: '已核准', returned: '退回修改中', rejected: '已拒絕',
+  };
 
   /** 類型下拉選項：[ApplicationType, 中文 label][] */
   appTypeOptions = computed(() => Object.entries(APPLICATION_TYPE_LABELS) as [ApplicationType, string][]);
@@ -95,13 +108,19 @@ export class ApprovalTaskList {
   /** 重新載入當頁資料的觸發訊號（批次核准完成後遞增） */
   private reloadTrigger = signal(0);
 
-  switchTab(tab: 'pending' | 'approved' | 'rejected' | 'director_pending') {
+  switchTab(tab: ApprovalTab) {
     this.activeTab.set(tab);
+    this.directorStatus.set('pending');
     this.paymentStatus.set('');
     this.applicationTypeFilter.set('');
     this.submittedByFilter.set('');
     this.page.set(1);
     this.selectedKeys.set(new Set());
+  }
+
+  setDirectorStatus(status: DirectorStatus) {
+    this.directorStatus.set(status);
+    this.page.set(1);
   }
 
   setPaymentStatus(status: '' | 'paid' | 'unpaid' | 'partial' | 'closed') {
@@ -190,12 +209,18 @@ export class ApprovalTaskList {
     combineLatest([
       toObservable(this.page),
       toObservable(this.activeTab),
+      toObservable(this.directorStatus),
       toObservable(this.paymentStatus),
       toObservable(this.applicationTypeFilter),
       toObservable(this.submittedByFilter),
       toObservable(this.reloadTrigger),
     ]).pipe(
-      switchMap(([p, status, ps, at, sb]) => this.service.getPaged(p, this.PAGE_SIZE, status, ps || undefined, at || undefined, sb || undefined))
+      // 總監室簽核頁籤把「範圍」與「狀態」拆成兩個參數送出（scope=director + status 四態）
+      switchMap(([p, tab, ds, ps, at, sb]) => {
+        const scope  = tab === 'director' ? 'director' : undefined;
+        const status = tab === 'director' ? ds : tab;
+        return this.service.getPaged(p, this.PAGE_SIZE, status, ps || undefined, at || undefined, sb || undefined, scope);
+      })
     ),
     {initialValue: {items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 1} as PagedResult<ApprovalTask>}
   );
