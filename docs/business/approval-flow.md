@@ -229,23 +229,54 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 - **撥款類留空**：批次核准 payment_request / advance / travel / travel_payment 時不會建立 installments，後端回傳 `pendingPayment` 清單（檢查條件：無 installments 或仍有 PaidAt 為空），前端以 banner 提示使用者「前往補填撥款明細」。
 - **沖銷結案不主動觸發，但會讓既有登記生效**：批次核准不會**設定** `CloseAdvance`；但若財務先前已勾選登記（`PendingClose = true`），批次核准使該沖銷單轉 `approved` 時仍會完成結案（觸發點只看 `PendingClose && approved`）。未登記者，結案仍須於詳情頁或獨立結案端點操作。
 
-## 總監待簽核（2026-07 新增）
+## 總監室簽核（2026-07 新增「總監待簽核」，2026-08 擴為四態）
 
-簽核作業列表新增第 4 個頁籤「總監待簽核」，讓財務管理部與會計室提前掌握「只差總監一步就核准」的申請，方便主動追蹤撥款進度。
+簽核作業列表的「總監室簽核」頁籤，讓財務管理部與會計室掌握**所有與總監關卡有關**的申請 —— 頁籤內再以四個子狀態切換：**待簽核 / 已核准 / 退回修改中 / 已拒絕**。原名為「總監待簽核」、只有「只差總監一步」一種狀態，2026-08 擴充後可從同一入口追完整批單的後續結果。
 
-- **可見範圍（2026-08 擴充會計室）**：財務管理部 + 會計室（`DepartmentCodes.DirectorPendingView` = 舊短碼 `FIN` / `AC` + 改制後英文全名 `Financial Management Department` / `Accounting Department`）或 Superadmin 可見此頁籤；其他部門呼叫 `GET /approval-tasks?status=director_pending` 一律回 403。前端以 `approval-task-list.ts` 的 `canSeeDirectorPendingTab`（`DIRECTOR_PENDING_DEPT_CODES`）控制頁籤顯示，權限判定同時存在後端（防止繞過 UI 直接打 API）。
+- **範圍與狀態拆成兩個正交參數（2026-08）**：`GET /approval-tasks?scope=director&status={pending|approved|returned|rejected}`。
+  - 舊值 `status=director_pending` 由 [ApprovalTaskHandler.GetAllAsync](../../Api/Handlers/ApprovalTaskHandler.cs) 相容為 `scope=director&status=pending`（舊書籤 / 舊前端不會壞）。
+  - **為何不用複合字串**（`director_approved` …）：`status` 會同時承載「範圍」與「狀態」兩種語意，SQL 參數 `@StatusFilter` 拿去和 `ApprovalStatus` 等值比對就會靜默回空 —— 這正是 2026-08 之前 `status=returned` 靜默回傳待審清單的同一個根因。現行 `status` 一律走白名單 `ValidListStatuses` 正規化（非法值 → `pending`）。
+- **可見範圍（2026-08 擴充會計室）**：財務管理部 + 會計室（`DepartmentCodes.DirectorPendingView` = 舊短碼 `FIN` / `AC` + 改制後英文全名 `Financial Management Department` / `Accounting Department`）或 Superadmin 可見此頁籤；其他部門呼叫 `GET /approval-tasks?scope=director` 一律回 403（四種子狀態共用同一組可見權限）。前端以 `approval-task-list.ts` 的 `canSeeDirectorTab`（`DIRECTOR_SCOPE_DEPT_CODES`）控制頁籤顯示，權限判定同時存在後端（防止繞過 UI 直接打 API）。
   - **檢視權與撥款寫入權刻意分離**：本集合只給「看得到頁籤」，不等於 `DepartmentCodes.FinanceStep`（撥款日 / 撥款明細 / 沖銷結案 / 支票已支付）。會計室看得到清單，但這些寫入型操作仍只有財務管理部 / Superadmin 可執行。
-- **資料範圍依部門收斂（2026-08 新增）**：由 [ApprovalTaskHandler.GetAllAsync](../../Api/Handlers/ApprovalTaskHandler.cs) 算出 `directorPendingStepDeptId` 並傳給 reader。
-  - 財務管理部 / Superadmin → `null`，看全部卡在總監的單（維持原行為）。
+- **資料範圍依部門收斂（2026-08 新增）**：由 [ApprovalTaskHandler.GetAllAsync](../../Api/Handlers/ApprovalTaskHandler.cs) 算出 `directorStepDeptId` 並傳給 reader，**四種子狀態一律套用**。
+  - 財務管理部 / Superadmin → `null`，看全部（維持原行為）。
   - 其他有檢視權的部門（會計室）→ 傳自身 `DepartmentId`，SQL 追加「該單流程中存在綁定該部門的步驟」，即**只看流程需要自己部門簽核的單**。沒有會計關卡的請假 / 銷假 / 加班 / 預審等他人單據因此不會出現（此清單本身不套部門可見性 scope，故必須靠這層收斂）。
     - **刻意不比對 `StepOrder`**：實務流程多為「… → 會計 → 財務 → 總監」，總監常是最後一關，會計關卡在其之前；若限定「總監之後的步驟」會讓會計室看到空清單。
     - **相容只綁職稱、未綁部門的會計關卡**：部分流程的會計步驟 `DepartmentId` 為 null、只綁 `JobTitleId`，故條件為 `DepartmentId = 該部門 OR (DepartmentId IS NULL AND JobTitleId = 呼叫者職稱)`。
-- **匹配條件**：`ApprovalStatus = 'pending'` 且目前卡在的步驟（`CurrentStepOrder` 對應的 `ApprovalStep`）其 `JobTitleId` 對應的 `JobTitle.Level == 1`（即總監），不受呼叫者本身職稱/部門限制（因為檢視者並非該步驟審核者，僅是檢視），再套上方的部門收斂條件。實作於 [PaymentRequestReadService.StepMatchClause](../../Api/Services/Dapper/PaymentRequestReadService.cs) 的 `director_pending` 分支，涵蓋全部 9 種申請類型（與待審核/已核准/已拒絕頁籤一致）。
+- **匹配條件（四態）**：一律不受呼叫者本身職稱/部門限制（檢視者並非該步驟審核者，僅是檢視），再套上方的部門收斂條件。實作於 [PaymentRequestReadService.StepMatchClause](../../Api/Services/Dapper/PaymentRequestReadService.cs) 的 `directorScope` 分支（擋在所有分支最前面，Superadmin 也走同一條），涵蓋全部申請類型。
+
+  | 子狀態 | `ApprovalStatus` | 總監關卡條件 |
+  |---|---|---|
+  | 待簽核 | `pending` | 流程中存在 `JobTitle.Level = 1` 的步驟 **且 `StepOrder = CurrentStepOrder`**（＝已輪到總監，原「總監待簽核」語意不變） |
+  | 已核准 | `approved` | 流程中存在 `JobTitle.Level = 1` 的步驟（**不綁 `CurrentStepOrder`**） |
+  | 退回修改中 | `returned` | 同上 |
+  | 已拒絕 | `rejected` | 同上 |
+
+  **為何後三態不綁 `CurrentStepOrder`**：單子已離開總監那一步 —— `approved` 已走完全部步驟、`returned` / `rejected` 停在退回（拒絕）者所在的步驟，`CurrentStepOrder` 不再指向總監，綁了就永遠查不到東西。
 - **僅供檢視**：此頁籤內的申請單仍只能由總監本人（或 Superadmin）實際核准；財務管理部 / 會計室人員點擊進入詳情頁為唯讀（前端固定顯示查看圖示，不顯示可編輯的鉛筆圖示），送出審核動作仍會被 `AuthorizeStepAsync` 擋下。
+
+## 簽核作業「退回修改中」頁籤（2026-08 新增）
+
+簽核作業列表新增「退回修改中」頁籤，列出 `ApprovalStatus = 'returned'`（已退回、正在申請人手上待修改）的單。此前審核者按下「退回修改」後就再也看不到那張單，只有申請人在各自的申請清單看得到，無從追蹤對方改了沒。
+
+- **可見範圍**：所有審核者皆有此頁籤（不限財務體系）。單筆是否列出，由 [PaymentRequestReadService.StepMatchClause](../../Api/Services/Dapper/PaymentRequestReadService.cs) 的 `returned` 分支以 **四選一** 判定：
+  1. 我在這張單留過任何 `ApprovalRecord`（含我親自退回的、退回前已核准的）
+  2. 我是這張單的指定審核者（`RequestDesignatedReviewers`）
+  3. 我是這張單的升級審核者（`EscalationOverrides`，自審時被指派）
+  4. 該單流程中存在**綁定我職稱**的固定關卡（`UseApplicantDepartment` 相符，或步驟未綁部門）
+- **與「已核准」/「已拒絕」的差異**：那兩個頁籤只看第 1 條（我親自審過）。退回常發生在**還沒輪到我之前**，只比對 `ApprovalRecords` 會讓流程後段的審核者完全看不到，故多放行第 2~4 條。
+- **刻意的簡化取捨**：
+  - 第 4 條**不重用待審核分支的 `UseDirectSupervisor` 遞迴解析**。那段靠 `CurrentStepOrder` 定位「第幾層直屬主管」（`ROW_NUMBER` 視窗函數 + 相關子查詢），脫離當前步驟即無從成立，且成本隨流程步驟數線性放大。直屬主管的情形由第 1 條涵蓋（主管退回前必已留下紀錄）。
+  - 第 4 條的 `JobTitleId` **不放行 `IS NULL`**（待審核分支放行，因為那裡另有 `CurrentStepOrder` 收斂）。否則「不限職稱」的關卡會讓全公司都看到這張單。
+  - 第 2 條**不限 `Status = 'pending'`**（待審核分支有限）：退回時該筆 designee 會被設為 `'returned'`，限 pending 會漏掉「自己被指定、然後這張單被退回」的情形。
+- **舊行為修正**：2026-08 之前 `StepMatchClause` 沒有 `returned` 分支，非 Superadmin 傳 `status=returned` 會 fall through 到待審核分支（寫死 `ApprovalStatus = 'pending'`），**靜默回傳完全不相干的待審清單**。現行 `status` 一律走 [ApprovalTaskHandler](../../Api/Handlers/ApprovalTaskHandler.cs) 的 `ValidListStatuses` 白名單正規化。
+- **列表為唯讀**：退回單的 `status` 不是 `pending`，操作欄自動顯示查看圖示；要重新簽核須等申請人修改後重送。
 
 ## 簽核作業列表「申請人」篩選（2026-07 新增）
 
 簽核作業列表「已核准」頁籤原本只有「全部類型」下拉，新增「全部申請人」下拉，供財務清查特定同仁的已核准單據（可與類型、撥款 / 退款子篩選任意組合）。
+
+**2026-08 起篩選列改為各頁籤常駐**：類型 + 申請人下拉在 待審核 / 已核准 / 退回修改中 / 已拒絕 / 總監室簽核（四態）皆可用；**撥款 / 退款子篩選仍只在「已核准」頁籤顯示**（其他狀態的單尚未進入撥款階段，篩了沒有意義）。後端零改動 —— `applicationType` / `submittedByUserId` 的 WHERE 本來就與 `status` 正交，各狀態分支共用同一組 `SubmitterClause` / `TypeAllowed`。
 
 - **可見範圍**：僅**財務體系部門**（`DepartmentCodes.FinancialAndAbove` = `CEO` / `FIN` / `AC` / `Jabez HQ` + 改制後英文全名總監室 / 財務管理部 / 會計室）或 Superadmin 可見，與撥款 / 退款子篩選同一集合。前端以 `approval-task-list.ts` 的 `canSeeApplicantFilter` 控制顯示，後端 [ApprovalTaskHandler.CanFilterByApplicant](../../Api/Handlers/ApprovalTaskHandler.cs) 為同一判定的真相。
 - **選項來源**：`GET /approval-tasks/applicants` —— 10 種申請單中曾送出（`ApprovalStatus <> 'draft'`）者的申請人去重清單，依姓名排序，排除 Superadmin。非財務體系呼叫回 403。

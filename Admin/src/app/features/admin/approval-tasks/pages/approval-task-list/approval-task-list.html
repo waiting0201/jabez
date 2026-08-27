@@ -19,15 +19,20 @@
       已核准
     </button>
     <button class="btn btn-sm"
+            [class]="activeTab() === 'returned' ? 'btn-primary' : 'btn-outline-secondary'"
+            (click)="switchTab('returned')">
+      退回修改中
+    </button>
+    <button class="btn btn-sm"
             [class]="activeTab() === 'rejected' ? 'btn-primary' : 'btn-outline-secondary'"
             (click)="switchTab('rejected')">
       已拒絕
     </button>
-    @if (canSeeDirectorPendingTab()) {
+    @if (canSeeDirectorTab()) {
       <button class="btn btn-sm"
-              [class]="activeTab() === 'director_pending' ? 'btn-primary' : 'btn-outline-secondary'"
-              (click)="switchTab('director_pending')">
-        總監待簽核
+              [class]="activeTab() === 'director' ? 'btn-primary' : 'btn-outline-secondary'"
+              (click)="switchTab('director')">
+        總監室簽核
       </button>
     }
   </div>
@@ -71,9 +76,38 @@
     </div>
   }
 
-  <!-- 已核准頁籤篩選列：類型（所有人可見） + 申請人 / 撥款退款（僅 Superadmin/總監室/財務部/會計部） -->
-  @if (activeTab() === 'approved') {
-    <div class="flex flex-wrap items-center gap-2 mb-4">
+  <!-- 篩選列（四個頁籤共用）：總監四態（僅總監室簽核頁籤） + 類型（所有人可見）
+       + 申請人（僅 Superadmin/總監室/財務部/會計部） + 撥款退款（僅已核准頁籤且具權限） -->
+  <div class="flex flex-wrap items-center gap-2 mb-4">
+      @if (activeTab() === 'director') {
+        <div class="flex gap-1">
+          <button class="btn btn-sm"
+                  [class]="directorStatus() === 'pending' ? 'btn-outline-primary' : 'btn-outline-secondary'"
+                  (click)="setDirectorStatus('pending')">
+            <svg class="sa-icon me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
+            待簽核
+          </button>
+          <button class="btn btn-sm"
+                  [class]="directorStatus() === 'approved' ? 'btn-outline-primary' : 'btn-outline-secondary'"
+                  (click)="setDirectorStatus('approved')">
+            <svg class="sa-icon me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#check-circle"></use></svg>
+            已核准
+          </button>
+          <button class="btn btn-sm"
+                  [class]="directorStatus() === 'returned' ? 'btn-outline-primary' : 'btn-outline-secondary'"
+                  (click)="setDirectorStatus('returned')">
+            <svg class="sa-icon me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#corner-up-left"></use></svg>
+            退回修改中
+          </button>
+          <button class="btn btn-sm"
+                  [class]="directorStatus() === 'rejected' ? 'btn-outline-primary' : 'btn-outline-secondary'"
+                  (click)="setDirectorStatus('rejected')">
+            <svg class="sa-icon me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#x-circle"></use></svg>
+            已拒絕
+          </button>
+        </div>
+      }
+
       <select class="form-select form-select-sm w-auto"
               [value]="applicationTypeFilter()"
               (change)="setApplicationTypeFilter($any($event.target).value)"
@@ -96,7 +130,7 @@
         </select>
       }
 
-      @if (canSeePaymentFilter()) {
+      @if (activeTab() === 'approved' && canSeePaymentFilter()) {
         <div class="flex gap-1">
           <button class="btn btn-sm"
                   [class]="paymentStatus() === '' ? 'btn-outline-primary' : 'btn-outline-secondary'"
@@ -130,8 +164,7 @@
           </button>
         </div>
       }
-    </div>
-  }
+  </div>
 
   <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
@@ -189,9 +222,9 @@
                 <td class="text-muted small hidden lg:table-cell">{{ t.submittedAt | date:'yyyy-MM-dd' }}</td>
                 <td class="text-right" style="white-space: nowrap">
                   <a [routerLink]="[t.applicationType, t.id, 'review']"
-                     [class]="'btn btn-sm inline-flex items-center ' + (t.status === 'pending' && activeTab() !== 'director_pending' ? 'btn-ghost-primary' : 'btn-ghost-secondary')">
+                     [class]="'btn btn-sm inline-flex items-center ' + (t.status === 'pending' && activeTab() !== 'director' ? 'btn-ghost-primary' : 'btn-ghost-secondary')">
                     <svg class="sa-icon" style="stroke: currentColor">
-                      <use [attr.href]="t.status === 'pending' && activeTab() !== 'director_pending' ? '/assets/icons/sprite.svg#edit' : '/assets/icons/sprite.svg#eye'"></use>
+                      <use [attr.href]="t.status === 'pending' && activeTab() !== 'director' ? '/assets/icons/sprite.svg#edit' : '/assets/icons/sprite.svg#eye'"></use>
                     </svg>
                   </a>
                 </td>
@@ -199,9 +232,10 @@
             } @empty {
               <tr>
                 <td [attr.colspan]="(activeTab() === 'pending' && canBatchApprove()) ? 8 : 7" class="text-center text-muted py-4">
-                  {{ activeTab() === 'pending' ? '目前沒有待審核的簽核作業。'
+                  {{ activeTab() === 'director' ? '目前沒有' + DIRECTOR_STATUS_LABELS[directorStatus()] + '的總監室簽核作業。'
+                     : activeTab() === 'pending' ? '目前沒有待審核的簽核作業。'
+                     : activeTab() === 'returned' ? '目前沒有退回修改中的簽核作業。'
                      : activeTab() === 'rejected' ? '目前沒有已拒絕的簽核作業。'
-                     : activeTab() === 'director_pending' ? '目前沒有僅剩總監待簽核的簽核作業。'
                      : submittedByFilter() ? '目前沒有此申請人的已核准簽核作業。'
                      : applicationTypeFilter() ? '目前沒有此類型的已核准簽核作業。'
                      : paymentStatus() === 'unpaid' ? '目前沒有尚未撥款的已核准簽核作業。'
