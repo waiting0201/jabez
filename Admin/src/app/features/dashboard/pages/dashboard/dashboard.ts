@@ -40,6 +40,12 @@ export class Dashboard implements OnInit, OnDestroy {
   /** Whether the overtime request selector is visible (shown on "加班開始" click) */
   showOvertimeSelector = signal(false);
 
+  /**
+   * 本次打卡是否為出差（整天一個旗標）。
+   * 初始值由 /attendances/today 帶回，故已標記出差的當日再次打卡不會被誤清。
+   */
+  isBusinessTrip = signal(false);
+
   /** GPS state */
   gpsStatus = signal<'idle' | 'locating' | 'success' | 'failed'>('idle');
   gpsCoords = signal<{lat: number; lng: number} | null>(null);
@@ -158,7 +164,7 @@ export class Dashboard implements OnInit, OnDestroy {
 
     this.attendanceService.getToday().subscribe(r => {
       // 後端永遠回傳非 null（即使無打卡紀錄也會回傳含 todayLeaves 的空殼 DTO）
-      if (r) this.todayRecord.set(r);
+      if (r) this.applyTodayRecord(r);
     });
 
     this.overtimeService.getApprovedForToday().subscribe(list => {
@@ -230,6 +236,7 @@ export class Dashboard implements OnInit, OnDestroy {
         latitude: coords?.lat,
         longitude: coords?.lng,
         overtimeRequestId: type === 'overtime-start' ? (this.selectedOvertimeId() ?? undefined) : undefined,
+        isBusinessTrip: this.isBusinessTrip(),
       };
 
       let obs$;
@@ -242,7 +249,7 @@ export class Dashboard implements OnInit, OnDestroy {
 
       obs$.subscribe({
         next: record => {
-          this.todayRecord.set(record);
+          this.applyTodayRecord(record);
           this.loading.set(false);
           const labels: Record<ClockActionType, string> = {
             'clock-in': '上班打卡', 'clock-out': '下班打卡',
@@ -258,6 +265,12 @@ export class Dashboard implements OnInit, OnDestroy {
         },
       });
     });
+  }
+
+  /** 套用今日打卡紀錄，並把出差勾選框同步回後端的當日狀態（單一真相為後端紀錄） */
+  private applyTodayRecord(record: TodayAttendance) {
+    this.todayRecord.set(record);
+    this.isBusinessTrip.set(!!record.isBusinessTrip);
   }
 
   showToast(message: string, type: 'success' | 'warning' | 'error') {

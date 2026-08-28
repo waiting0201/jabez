@@ -29,6 +29,8 @@ export interface TodayAttendance {
    * 由後端計算，與 POST /attendances/overtime-start 的放行條件同源，前端不自行重組規則。
    */
   canOvertimeWithoutClockOut: boolean;
+  /** 該日已被標記為出差（供打卡頁勾選框帶回既有狀態） */
+  isBusinessTrip: boolean;
 }
 
 export type ClockActionType = 'clock-in' | 'clock-out' | 'overtime-start' | 'overtime-end';
@@ -37,4 +39,6 @@ export interface ClockActionRequest {
   latitude?: number;
   longitude?: number;
   overtimeRequestId?: number;
+  /** 本次打卡為出差：後端以此值覆寫當日紀錄的 isBusinessTrip */
+  isBusinessTrip?: boolean;
 }

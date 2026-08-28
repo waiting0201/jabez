@@ -13,6 +13,10 @@ public class AttendanceRecord
     public double?   ClockOutLongitude      { get; set; }
     /// <summary>下班時間為系統自動補卡（登入時補打漏打的下班卡），非本人打卡</summary>
     public bool      IsClockOutAuto         { get; set; }
+    /// <summary>該日為出差（打卡時由本人勾選，四個打卡動作皆會覆寫），出缺勤清單以 badge 標示</summary>
+    public bool      IsBusinessTrip         { get; set; }
+    /// <summary>管理者於出缺勤編輯表單填寫的備註（僅編輯表單可見可填）</summary>
+    public string?   Remark                 { get; set; }
     public DateTime? OvertimeStartTime      { get; set; }
     public double?   OvertimeStartLatitude  { get; set; }
     public double?   OvertimeStartLongitude { get; set; }

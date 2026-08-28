@@ -27,6 +27,9 @@ public sealed class AttendanceHandler(
     ICalendarDayReadService calendarReader,
     IWorkPatternReadService workPattern)
 {
+    /// <summary>備註欄長度上限（與 AttendanceRecordConfiguration 的 HasMaxLength(500) 同步）</summary>
+    private const int RemarkMaxLength = 500;
+
     /// <summary>
     /// 出缺勤列表：回傳「打卡紀錄 ∪ 當日請假日」的合併結果（見 <see cref="AttendanceLeaveMerger"/>）。
     /// 合併需要逐日展開請假，故查詢區間必須有界：未指定時回退近一年，跨度上限 MaxRangeDays。
@@ -96,6 +99,7 @@ public sealed class AttendanceHandler(
         record.ClockInTime      = now;
         record.ClockInLatitude   = body.Latitude;
         record.ClockInLongitude  = body.Longitude;
+        record.IsBusinessTrip    = body.IsBusinessTrip;
 
         await db.SaveChangesAsync();
 
@@ -126,6 +130,7 @@ public sealed class AttendanceHandler(
         record.ClockOutLatitude   = body.Latitude;
         record.ClockOutLongitude  = body.Longitude;
         record.IsClockOutAuto     = false;   // 本人打卡
+        record.IsBusinessTrip     = body.IsBusinessTrip;
 
         await db.SaveChangesAsync();
 
@@ -194,6 +199,7 @@ public sealed class AttendanceHandler(
         record.OvertimeStartLatitude   = body.Latitude;
         record.OvertimeStartLongitude  = body.Longitude;
         record.OvertimeRequestId       = body.OvertimeRequestId;
+        record.IsBusinessTrip          = body.IsBusinessTrip;
 
         await db.SaveChangesAsync();
 
@@ -221,6 +227,7 @@ public sealed class AttendanceHandler(
         record.OvertimeEndTime      = now;
         record.OvertimeEndLatitude   = body.Latitude;
         record.OvertimeEndLongitude  = body.Longitude;
+        record.IsBusinessTrip        = body.IsBusinessTrip;
 
         await db.SaveChangesAsync();
 
@@ -229,7 +236,7 @@ public sealed class AttendanceHandler(
     }
 
     /// <summary>
-    /// 修改出缺勤紀錄（上下班時間、加班開始/結束）。
+    /// 修改出缺勤紀錄（上下班時間、加班開始/結束、備註）。
     /// 權限碼 reports-attendance:write 由 AppRouter 控管「誰能改」，此處的部門 scope 控管「能改誰」，
     /// 與 <see cref="GetAllAsync"/> 的可見範圍一致（讀得到才改得到）。
     /// </summary>
@@ -240,6 +247,9 @@ public sealed class AttendanceHandler(
 
         var body = await req.ReadFromJsonAsync<UpdateAttendanceRequest>()
             ?? throw AppException.BadRequest("請提供更新資料。");
+
+        if (body.Remark?.Length > RemarkMaxLength)
+            throw AppException.BadRequest($"備註長度不可超過 {RemarkMaxLength} 字。");
 
         var record = await db.AttendanceRecords.FindAsync(recordId)
             ?? throw AppException.BadRequest("找不到指定的出缺勤紀錄。");
@@ -266,6 +276,8 @@ public sealed class AttendanceHandler(
         record.ClockOutTime       = body.ClockOutTime;
         record.OvertimeStartTime  = body.OvertimeStartTime;
         record.OvertimeEndTime    = body.OvertimeEndTime;
+        record.Remark             = string.IsNullOrWhiteSpace(body.Remark) ? null : body.Remark.Trim();
+        // IsBusinessTrip 刻意不在此異動：出差僅由本人打卡時勾選
 
         await db.SaveChangesAsync();
 

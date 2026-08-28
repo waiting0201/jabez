@@ -88,7 +88,13 @@
             @for (row of records(); track row.key) {
               <tr>
                 <td class="fw-500">{{ row.employeeName }}</td>
-                <td class="text-center text-muted small">{{ row.recordDate }}</td>
+                <td class="text-center text-muted small">
+                  {{ row.recordDate }}
+                  @if (row.isBusinessTrip) {
+                    <span class="badge bg-info-subtle text-info ms-1"
+                          title="打卡時勾選為出差">出差</span>
+                  }
+                </td>
                 <td class="text-center hidden md:table-cell">
                   {{ row.leaveType }}
                   @if (row.isLeaveOnly) {
@@ -112,6 +118,10 @@
                   @if (row.isClockOutAuto) {
                     <span class="badge bg-warning-subtle text-warning-emphasis ms-1"
                           title="未打下班卡，系統於登入時自動補上">系統補卡</span>
+                  }
+                  @if (row.isLongWorkday) {
+                    <span class="badge bg-danger-subtle text-danger ms-1"
+                          [title]="'上下班跨度 ' + row.workHours + ' 小時（含午休）'">超過 {{ longWorkdayHours }} 小時</span>
                   }
                   @if (row.clockOutLatitude != null && row.clockOutLongitude != null) {
                     <button class="btn btn-sm btn-ghost-primary inline-flex items-center p-0 ms-1" title="查看打卡位置" (click)="openMap('下班打卡', row.clockOutLatitude!, row.clockOutLongitude!)">
@@ -219,6 +229,14 @@
                      [ngModel]="editForm().overtimeEnd"
                      (ngModelChange)="editForm.set({...editForm(), overtimeEnd: $event})">
             </div>
+          </div>
+
+          <div class="mt-4">
+            <label class="form-label">備註</label>
+            <textarea class="form-control" rows="3" maxlength="500"
+                      placeholder="例：忘刷卡，經主管確認"
+                      [ngModel]="editForm().remark"
+                      (ngModelChange)="editForm.set({...editForm(), remark: $event})"></textarea>
           </div>
         </div>
         <div class="modal-footer">

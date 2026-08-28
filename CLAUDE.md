@@ -175,7 +175,7 @@ Admin/src/app/
 │       ├── footer/
 │       └── customizer/
 └── features/
-    ├── dashboard/              # 打卡系統（即時時鐘、上下班/加班打卡、GPS；**路由需 `attendances:read`**，選單同步；未持有者由根路由 `resolveLandingUrl()` 導向個人資訊）
+    ├── dashboard/              # 打卡系統（即時時鐘、上下班/加班打卡、GPS；**路由需 `attendances:read`**，選單同步；未持有者由根路由 `resolveLandingUrl()` 導向個人資訊；**打卡按鈕上方有「出差（在外辦公）」勾選框**（2026-08 新增）：整天一個旗標 `AttendanceRecord.IsBusinessTrip`，四個打卡動作皆帶出並覆寫，初始值由 `/attendances/today` 帶回故不會被第二次打卡誤清，出缺勤清單以「出差」badge 呈現）
     │   ├── models/attendance.model.ts
     │   ├── services/attendance.service.ts
     │   └── pages/dashboard/
@@ -213,7 +213,7 @@ Admin/src/app/
     │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出 + **Excel 總表匯出**：查詢列「匯出總表」鈕，一位員工一列 × 32 欄（基本 4 / 應發 10 / 扣項 15 / 其他 3）+ 合計列，資料直接取自已載入的 `payroll()` signal（`GET /payroll` 本身不分頁），無後端變動）
     │   ├── attendance-reminder-logs/ # 打卡提醒推播紀錄（僅 Superadmin）
     │   ├── payment-reminder-logs/ # 撥款提醒推播紀錄 + 手動觸發（僅 Superadmin）
-    │   ├── reports/        # 報表（出缺勤 / 加班 / 款項統計 / 專案水位）；**出缺勤紀錄列出「打卡紀錄 ∪ 當日請假日」**：全天請假沒打卡的人也會出現一列（`id=null` 虛擬列，上下班留空 + 「請假」badge + 假別 + 當日時數、不可編輯），同日多張假單合併為一列；假別中文 import 自 leave-request.model 的 19 種 LEAVE_TYPE_LABELS；已補上分頁（每頁 20，簡化版上一頁 / 下一頁），Excel 匯出走 `?export=true`；月篩選不再提供「全部年份 / 全部月份」（合併需有界區間）。款項統計 1 個 endpoint 支援 全部 + 6 個類別 dropdown（全部 / 請款 / 預支 / 預支沖銷 / 出差請款 / 出差預支 / 出差預支沖銷；「全部」為 6 種 UNION ALL），權限只看 `reports-payment:read`，不需各別 `xxx-requests:read`。**專案水位表的「總專案水位」欄（分母＝契約金額，含公司保留 40%）為欄位級權限 `reports-project-water-level:total`**：只有 `reports-project-water-level:read` 者頁面照進、業務執行水位照看，但總水位整欄消失（前端 `canSeeTotal` 同時控 `<th>` / `<td>` / 空列 colspan），後端 `ProjectWaterLevelHandler` 亦把 `TotalPercentage` / `PreImportUsedAmount` / `RemainingAmount` 抹為 null / 0
+    │   ├── reports/        # 報表（出缺勤 / 加班 / 款項統計 / 專案水位）；**出缺勤紀錄列出「打卡紀錄 ∪ 當日請假日」**：全天請假沒打卡的人也會出現一列（`id=null` 虛擬列，上下班留空 + 「請假」badge + 假別 + 當日時數、不可編輯），同日多張假單合併為一列；**另有兩個 badge（2026-08 新增）**：日期欄的「出差」（`isBusinessTrip`，打卡時勾選）與下班欄的「超過 9.5 小時」（下班−上班 > 9.5h 含午休，**純前端 derived**、門檻常數 `LONG_WORKDAY_HOURS` 為單一真相，不進 DB / DTO，不影響薪資與加班時數）；**編輯 Modal 加備註欄**（`AttendanceRecord.Remark`，500 字，只在編輯表單可見可填，清單不列）；假別中文 import 自 leave-request.model 的 19 種 LEAVE_TYPE_LABELS；已補上分頁（每頁 20，簡化版上一頁 / 下一頁），Excel 匯出走 `?export=true`；月篩選不再提供「全部年份 / 全部月份」（合併需有界區間）。款項統計 1 個 endpoint 支援 全部 + 6 個類別 dropdown（全部 / 請款 / 預支 / 預支沖銷 / 出差請款 / 出差預支 / 出差預支沖銷；「全部」為 6 種 UNION ALL），權限只看 `reports-payment:read`，不需各別 `xxx-requests:read`。**專案水位表的「總專案水位」欄（分母＝契約金額，含公司保留 40%）為欄位級權限 `reports-project-water-level:total`**：只有 `reports-project-water-level:read` 者頁面照進、業務執行水位照看，但總水位整欄消失（前端 `canSeeTotal` 同時控 `<th>` / `<td>` / 空列 colspan），後端 `ProjectWaterLevelHandler` 亦把 `TotalPercentage` / `PreImportUsedAmount` / `RemainingAmount` 抹為 null / 0
     │   └── settings/       # 系統設定（含 PaymentReminderDaysBefore 撥款提醒天數）
     └── error/
         └── pages/ (error-403, error-404, error-500)

@@ -106,6 +106,15 @@
             </div>
           }
 
+          <!-- 出差註記（整天一個旗標，四個打卡動作皆帶出；已標記者重新整理仍為勾選） -->
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="isBusinessTrip"
+                   [checked]="isBusinessTrip()"
+                   (change)="isBusinessTrip.set($any($event.target).checked)">
+            <label class="form-check-label" for="isBusinessTrip">出差（在外辦公）</label>
+          </div>
+          <div class="text-muted small mb-3">勾選後打卡，該日出缺勤紀錄會標示「出差」</div>
+
           <div class="row g-3">
             <!-- Clock In -->
             <div class="col-6 col-md-3">

@@ -30,6 +30,14 @@ export interface AttendanceRecordRow {
   clockOutTime: string;
   /** 下班時間為系統自動補卡（登入時補打漏打的下班卡），非本人打卡 */
   isClockOutAuto: boolean;
+  /** 該日打卡時勾選為出差 */
+  isBusinessTrip: boolean;
+  /** 管理者填寫的備註（僅編輯表單使用，清單不顯示） */
+  remark: string;
+  /** 下班 − 上班的實際跨度（小時，含午休）；缺任一端為 null */
+  workHours: number | null;
+  /** 上下班跨度超過 LONG_WORKDAY_HOURS 小時 */
+  isLongWorkday: boolean;
   overtimeStartTime: string;
   overtimeEndTime: string;
   /** GPS 經緯度 */
@@ -49,6 +57,9 @@ export interface AttendanceRecordRow {
   rawOvertimeStart: string | null;
   rawOvertimeEnd: string | null;
 }
+
+/** 工時跨度提示門檻（小時）：下班 − 上班（含午休）超過此值即於清單標示 */
+const LONG_WORKDAY_HOURS = 9.5;
 
 @Component({
   selector: 'app-attendance-report',
@@ -105,7 +116,7 @@ export class AttendanceReport implements OnInit {
 
   /** 編輯 Modal */
   editingRecord = signal<AttendanceRecordRow | null>(null);
-  editForm = signal({clockIn: '', clockOut: '', overtimeStart: '', overtimeEnd: ''});
+  editForm = signal({clockIn: '', clockOut: '', overtimeStart: '', overtimeEnd: '', remark: ''});
   saving = signal(false);
 
   ngOnInit() {
@@ -223,6 +234,10 @@ export class AttendanceReport implements OnInit {
             clockInTime: r.clockInTime ? new Date(r.clockInTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
             clockOutTime: r.clockOutTime ? new Date(r.clockOutTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
             isClockOutAuto: !!r.isClockOutAuto,
+            isBusinessTrip: !!r.isBusinessTrip,
+            remark: r.remark ?? '',
+            workHours: this.computeWorkHours(r.clockInTime, r.clockOutTime),
+            isLongWorkday: this.isLongWorkday(r.clockInTime, r.clockOutTime),
             overtimeStartTime: r.overtimeStartTime ? new Date(r.overtimeStartTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
             overtimeEndTime: r.overtimeEndTime ? new Date(r.overtimeEndTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
             clockInLatitude: r.clockInLatitude ?? null,
@@ -250,6 +265,32 @@ export class AttendanceReport implements OnInit {
       },
     });
   }
+
+  /**
+   * 下班 − 上班的實際跨度（小時，含午休），未捨入。
+   * 缺任一端或跨度非正值時回 null（例如只打上班卡、或人工改到下班早於上班）。
+   */
+  private rawWorkHours(rawIn: string | null, rawOut: string | null): number | null {
+    if (!rawIn || !rawOut) return null;
+    const diff = new Date(rawOut).getTime() - new Date(rawIn).getTime();
+    if (!(diff > 0)) return null;
+    return diff / 3600000;
+  }
+
+  /** 顯示用工時（四捨五入至小數一位）。刻意與 isLongWorkday 分離：捨入後比較會讓 9:31 被捨成 9.5 而漏標 */
+  private computeWorkHours(rawIn: string | null, rawOut: string | null): number | null {
+    const h = this.rawWorkHours(rawIn, rawOut);
+    return h == null ? null : Math.round(h * 10) / 10;
+  }
+
+  /** 工時跨度是否超過門檻（清單 badge 與 Excel 匯出共用，避免門檻值散落兩處）。以未捨入值比較 */
+  private isLongWorkday(rawIn: string | null, rawOut: string | null): boolean {
+    const h = this.rawWorkHours(rawIn, rawOut);
+    return h != null && h > LONG_WORKDAY_HOURS;
+  }
+
+  /** 清單 / tooltip 顯示用的門檻值 */
+  readonly longWorkdayHours = LONG_WORKDAY_HOURS;
 
   /**
    * 當日所有假別中文，以「、」串接（同日可能上午事假 + 下午特休）。
@@ -282,6 +323,7 @@ export class AttendanceReport implements OnInit {
       clockOut: this.toTimeInput(row.rawClockOut),
       overtimeStart: this.toTimeInput(row.rawOvertimeStart),
       overtimeEnd: this.toTimeInput(row.rawOvertimeEnd),
+      remark: row.remark,
     });
   }
 
@@ -311,6 +353,7 @@ export class AttendanceReport implements OnInit {
       clockOutTime: form.clockOut ? `${dateStr}T${form.clockOut}:00` : null,
       overtimeStartTime: form.overtimeStart ? `${dateStr}T${form.overtimeStart}:00` : null,
       overtimeEndTime: form.overtimeEnd ? `${dateStr}T${form.overtimeEnd}:00` : null,
+      remark: form.remark?.trim() || null,
     };
 
     this.attendanceService.update(record.id, body).subscribe({
@@ -369,8 +412,12 @@ export class AttendanceReport implements OnInit {
             : '',
           '加班開始': r.overtimeStartTime ? new Date(r.overtimeStartTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
           '加班結束': r.overtimeEndTime ? new Date(r.overtimeEndTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
-          // 虛擬列＝當日有已核准請假但完全沒打卡，匯出後仍需分辨得出來
-          '備註': r.id == null ? '請假（未打卡）' : '',
+          // 虛擬列＝當日有已核准請假但完全沒打卡，匯出後仍需分辨得出來；出差與逾時註記與畫面 badge 同源
+          '備註': [
+            r.id == null ? '請假（未打卡）' : '',
+            r.isBusinessTrip ? '出差' : '',
+            this.isLongWorkday(r.clockInTime, r.clockOutTime) ? `超過 ${LONG_WORKDAY_HOURS} 小時` : '',
+          ].filter(Boolean).join('；'),
         }));
 
         const ws = XLSX.utils.json_to_sheet(wsData);
