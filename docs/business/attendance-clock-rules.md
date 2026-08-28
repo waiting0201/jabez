@@ -154,6 +154,44 @@ SQL 端的判定片段收斂於 `LeaveRevocationService.NotRevokedClause`，EF �
 
 ---
 
+## 出差註記（2026-08 新增）
+
+出差在外辦公時 GPS 不在公司屬正常，但清單看不出差異。故打卡頁（`features/dashboard`）在四顆打卡按鈕上方
+加一個勾選框「出差（在外辦公）」，出缺勤清單於日期欄掛「出差」badge。
+
+- **粒度＝整天一個旗標**：`AttendanceRecord.IsBusinessTrip`，不分上班卡 / 下班卡
+- **四個打卡動作皆帶出**（`ClockActionRequest.IsBusinessTrip`），每次打卡**以送出的值覆寫**當日旗標
+- **勾選框初始值來自 `GET /attendances/today`**（`TodayAttendanceDto.IsBusinessTrip`）：
+  已標記出差的當日再次打卡不會被誤清；要取消出差就取消勾選後再打下一次卡
+- **編輯表單不提供切換**：`UpdateAsync` 刻意不動 `IsBusinessTrip`，出差只由本人打卡時認列
+- **請假虛擬列恆為 `false`**（無 `AttendanceRecord`）
+
+---
+
+## 逾 9.5 小時工時提示（2026-08 新增）
+
+出缺勤清單於下班時間欄掛「超過 9.5 小時」badge，供管理者關注工時 / 加班合理性。
+
+- **判定＝下班時間 − 上班時間 > 9.5 小時**（**含午休**，即實際在班跨度）
+- **純前端 derived**：不寫 DB、不進 DTO，由 `attendance-report.ts` 的 `computeWorkHours()` / `isLongWorkday()`
+  以清單既有的 `clockInTime` / `clockOutTime` 計算；門檻常數 `LONG_WORKDAY_HOURS = 9.5` 為單一真相，
+  清單 badge 與 Excel 匯出共用
+- **缺任一端或跨度非正值不顯示**（只打上班卡、或人工改到下班早於上班）
+- **不影響薪資與加班時數計算**：加班費仍以加班申請單與加班打卡為準
+
+---
+
+## 出缺勤備註（2026-08 新增）
+
+`AttendanceRecord.Remark`（nvarchar(500)），供管理者在出缺勤編輯 Modal 記錄修改原因（例：忘刷卡，經主管確認）。
+
+- **只在編輯表單可見可填**：清單不新增備註欄，Excel 匯出亦不含使用者填寫的 Remark
+  （匯出的「備註」欄是系統註記：請假（未打卡）／出差／超過 9.5 小時）
+- 走既有的 `PATCH /attendances/{id}`（`UpdateAttendanceRequest.Remark`），受 `reports-attendance:write` 控管
+- 空白字串一律正規化為 `null`；超過 500 字回 400
+
+---
+
 ## 打卡權限（2026-08 新增）
 
 在此之前，打卡是系統中唯一完全不受權限控管的模組：`AppRouter.GetRequiredPermission` 對 `["attendances", ..]` 一律回 `null`，任何登入者都能打卡，**也能改任何人的出缺勤紀錄**（`PUT/PATCH /attendances/{id}` 連擁有者比對都沒有，而這會直接影響薪資與加班費）。

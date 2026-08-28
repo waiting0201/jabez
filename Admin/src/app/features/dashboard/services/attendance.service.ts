@@ -40,7 +40,7 @@ export class AttendanceService {
     );
   }
 
-  update(id: number, body: {clockInTime?: string | null; clockOutTime?: string | null; overtimeStartTime?: string | null; overtimeEndTime?: string | null}): Observable<any> {
+  update(id: number, body: {clockInTime?: string | null; clockOutTime?: string | null; overtimeStartTime?: string | null; overtimeEndTime?: string | null; remark?: string | null}): Observable<any> {
     return this.http.patch(`${environment.apiUrl}/attendances/${id}`, body);
   }
 }

@@ -22,7 +22,7 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
                a.ClockOutTime, a.ClockOutLatitude, a.ClockOutLongitude, a.IsClockOutAuto,
                a.OvertimeStartTime, a.OvertimeStartLatitude, a.OvertimeStartLongitude,
                a.OvertimeEndTime, a.OvertimeEndLatitude, a.OvertimeEndLongitude,
-               a.OvertimeRequestId, a.CreatedAt
+               a.OvertimeRequestId, a.CreatedAt, a.IsBusinessTrip, a.Remark
         FROM AttendanceRecords a
         INNER JOIN Users u ON a.UserId = u.Id
         """;
@@ -124,7 +124,7 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
                    ClockOutTime, ClockOutLatitude, ClockOutLongitude,
                    OvertimeStartTime, OvertimeStartLatitude, OvertimeStartLongitude,
                    OvertimeEndTime,   OvertimeEndLatitude,   OvertimeEndLongitude,
-                   OvertimeRequestId
+                   OvertimeRequestId, IsBusinessTrip
             FROM AttendanceRecords
             WHERE UserId = @UserId AND RecordDate = @Today
             """;
@@ -194,7 +194,10 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
             (DateTime?)row.CreatedAt,
             null,   // LeaveType
             null,   // LeaveStartDate
-            null);  // LeaveEndDate
+            null,   // LeaveEndDate
+            // 具名參數跳過 LeaveHours / Leaves（由 AttendanceLeaveMerger 事後以 with { } 補上）
+            IsBusinessTrip: (bool)row.IsBusinessTrip,
+            Remark:         (string?)row.Remark);
 
     private static TodayAttendanceDto MapTodayRow(dynamic row) =>
         new(
@@ -213,7 +216,8 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
             (double?)row.OvertimeEndLatitude,
             (double?)row.OvertimeEndLongitude,
             (int?)row.OvertimeRequestId,
-            Array.Empty<ActiveLeaveDto>());
+            Array.Empty<ActiveLeaveDto>(),
+            IsBusinessTrip: (bool)row.IsBusinessTrip);
 
     private static ActiveLeaveDto MapActiveLeaveRow(dynamic row) =>
         new(

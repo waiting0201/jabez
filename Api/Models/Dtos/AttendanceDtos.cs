@@ -37,7 +37,11 @@ public sealed record AttendanceRecordDto(
     /// <summary>當日請假時數合計（同日多張假單加總）。無請假為 null</summary>
     decimal?  LeaveHours = null,
     /// <summary>當日所有已核准（且該日未被銷假）的請假，依 StartDate 排序。無請假為 null</summary>
-    IReadOnlyList<AttendanceLeaveDto>? Leaves = null);
+    IReadOnlyList<AttendanceLeaveDto>? Leaves = null,
+    /// <summary>該日打卡時勾選為出差，出缺勤清單以 badge 標示。虛擬列恆為 false</summary>
+    bool      IsBusinessTrip = false,
+    /// <summary>管理者填寫的備註（僅出缺勤編輯表單使用，清單不顯示）。虛擬列恆為 null</summary>
+    string?   Remark = null);
 
 /// <summary>出缺勤報表列中的單張請假資訊（當日份）</summary>
 public sealed record AttendanceLeaveDto(
@@ -70,7 +74,9 @@ public sealed record TodayAttendanceDto(
     /// 與 AttendanceHandler.OvertimeStartAsync 的放行判定同源，前端不自行重組規則。
     /// 有預設值 → Dapper 的 MapTodayRow 不需異動（此欄位不存在於 DB，由 Handler 以 with { } 補上）。
     /// </summary>
-    bool CanOvertimeWithoutClockOut = false);
+    bool CanOvertimeWithoutClockOut = false,
+    /// <summary>該日已被標記為出差，供打卡頁的勾選框帶回既有狀態</summary>
+    bool IsBusinessTrip = false);
 
 /// <summary>
 /// 出缺勤報表合併用的原料列：區間內已核准的假單（尚未逐日展開）。
@@ -102,11 +108,14 @@ public sealed record ActiveLeaveDto(
 public sealed record ClockActionRequest(
     double? Latitude,
     double? Longitude,
-    int?    OvertimeRequestId = null);
+    int?    OvertimeRequestId = null,
+    /// <summary>本次打卡為出差：四個打卡動作皆以此值覆寫當日的 AttendanceRecord.IsBusinessTrip</summary>
+    bool    IsBusinessTrip = false);
 
-/// <summary>修改出缺勤紀錄（僅允許調整四個時間欄位）</summary>
+/// <summary>修改出缺勤紀錄（四個時間欄位 + 備註；出差旗標僅由本人打卡時勾選，此處不開放）</summary>
 public sealed record UpdateAttendanceRequest(
     DateTime? ClockInTime,
     DateTime? ClockOutTime,
     DateTime? OvertimeStartTime,
-    DateTime? OvertimeEndTime);
+    DateTime? OvertimeEndTime,
+    string?   Remark = null);

@@ -21,6 +21,12 @@ public class AttendanceRecordConfiguration : IEntityTypeConfiguration<Attendance
         builder.Property(a => a.IsClockOutAuto)
                .HasDefaultValue(false);
 
+        builder.Property(a => a.IsBusinessTrip)
+               .HasDefaultValue(false);
+
+        builder.Property(a => a.Remark)
+               .HasMaxLength(500);
+
         builder.Property(a => a.CreatedAt)
                .HasDefaultValueSql("GETUTCDATE() AT TIME ZONE 'UTC' AT TIME ZONE 'Taipei Standard Time'");
 
