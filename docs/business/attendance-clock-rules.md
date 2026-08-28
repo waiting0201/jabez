@@ -88,15 +88,15 @@ SQL 端的判定片段收斂於 `LeaveRevocationService.NotRevokedClause`，EF �
 
 | 情境 | 撈取條件 | 補上的時間 |
 |---|---|---|
-| 漏打下班卡 | `ClockInTime IS NOT NULL AND ClockOutTime IS NULL` | **該日上班打卡時間 + 8 或 9 小時**（見下表） |
+| 漏打下班卡 | `ClockInTime IS NOT NULL AND ClockOutTime IS NULL` | **該日上班打卡時間 + 9 小時**（見下表） |
 | 漏打加班結束卡 | `OvertimeStartTime IS NOT NULL AND OvertimeEndTime IS NULL` | 加班開始時間 + 該張加班單的 `EstimatedHours` |
 
-**下班補卡的加值以「上班打卡是否在午休前」決定**（午休界線 = `WorkdayHours.LunchStartHour` 12:00）：
+**下班補卡一律 +9 小時，不分上下午打卡**：
 
 | 上班打卡時間 | 加值 | 理由 | 例 |
 |---|---|---|---|
-| 上午（`Hour < 12`） | **+9 小時** | 工時跨越午休 12:00–13:00，需含 1 小時不計薪的休息 | 09:00 → 18:00 |
-| 下午（`Hour >= 12`） | **+8 小時** | 不跨午休，淨工時即實際在場時間 | 13:30 → 21:30 |
+| 上午（`Hour < 12`） | **+9 小時** | 淨工時 8 小時 + 午休 1 小時 | 09:00 → 18:00 |
+| 下午（`Hour >= 12`） | **+9 小時** | 同上，補卡不再區分是否跨午休 | 13:30 → 22:30 |
 
 淨工時 8 小時 = `WorkdayHours.FullDayHours`，午休 1 小時 = `LunchEndHour - LunchStartHour`，
 兩者都取自 [Constants.cs](../../Api/Common/Constants.cs) 的 `WorkdayHours`，不在 Handler 內寫死。
@@ -109,7 +109,9 @@ SQL 端的判定片段收斂於 `LeaveRevocationService.NotRevokedClause`，EF �
 補完後於登入頁跳 toastr warning 列出被補的日期（`auto_clock_out` / `auto_overtime_end` 回應欄位）。
 
 > **2026-08 變更**：下班補卡時間原本是「該日 `SystemSetting.WorkEndTime`（預設 18:00）」，
-> 改為依上班打卡時間推算（上午 +9 / 下午 +8），並新增 `IsClockOutAuto` 標記。
+> 改為依上班打卡時間推算，並新增 `IsClockOutAuto` 標記。
+> 初版依午休界線分流（上午 +9 / 下午 +8），**2026-08-28 起統一為一律 +9**（含午休），
+> 避免同一天早班／晚班的補卡工時不一致。
 > `WorkStartTime` / `WorkEndTime` 自此**只服務打卡提醒的時點判斷**，不再參與補卡；
 > 早到 / 晚到者的工時因此不再被統一壓成 18:00 下班。
 
