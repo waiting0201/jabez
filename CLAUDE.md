@@ -266,7 +266,7 @@ Api/
 ├── Routing/
 │   └── AppRouter.cs                   # C# 12 List Pattern 路由分派器
 ├── Handlers/                          # 25 個 Handler（業務邏輯）
-│   ├── AuthHandler.cs                 # 登入、刷新 Token（登入時自動補打漏打的下班卡＝**上班打卡時間 + 9 小時（上午打卡，含午休）／+ 8 小時（下午打卡）**，並標記 `IsClockOutAuto` 供出缺勤清單顯示「系統補卡」badge；加班結束卡＝加班開始 + 申請單預估時數）
+│   ├── AuthHandler.cs                 # 登入、刷新 Token（登入時自動補打漏打的下班卡＝**上班打卡時間 + 9 小時（含午休），不分上下午打卡**，並標記 `IsClockOutAuto` 供出缺勤清單顯示「系統補卡」badge；加班結束卡＝加班開始 + 申請單預估時數）
 │   ├── UserHandler.cs                 # 使用者 CRUD（含原住民 / 低收入 / 殘障證明 + 健保 / 勞保覆寫）；GetMineAsync = GET /me/user 員工讀自己（免 users:read）
 │   ├── EmployeeProfileHandler.cs     # 員工人事資料卡 GET / PUT（multipart：HR JSON + 身分證正反面 + 最高學歷證明 + 存摺封面）；GetMineAsync = GET /me/profile 員工讀自己（免 users:read）
 │   ├── RoleHandler.cs
