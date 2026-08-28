@@ -28,6 +28,50 @@ export interface DesignatedReviewer {
   comment?: string;
 }
 
+/**
+ * 補償方式（整單二擇一）：
+ * - compensatory 補休 → 時數計入補休池（見請假申請的「補休」假別）
+ * - pay 加班費       → 依勞基法分段累進倍率試算，隨「加班日次月」薪資發放
+ */
+export type OvertimeCompensationType = 'compensatory' | 'pay';
+
+export const COMPENSATION_TYPE_LABELS: Record<OvertimeCompensationType, string> = {
+  compensatory: '補休',
+  pay:          '加班費',
+};
+
+export const COMPENSATION_TYPE_CLASSES: Record<OvertimeCompensationType, string> = {
+  compensatory: 'bg-secondary-subtle text-secondary',
+  pay:          'bg-primary-subtle text-primary',
+};
+
+/** 加班費試算的單一分段（倍率 / 該段時數 / 該段金額） */
+export interface OvertimePaySegment {
+  multiplier: number;
+  hours: number;
+  amount: number;
+}
+
+/** 加班費試算結果（GET /overtime-requests/estimate） */
+export interface OvertimePayEstimate {
+  overtimeDate: string;
+  /** 日別（排班制員工恆為 false，六日與國定假日視為工作日） */
+  isHoliday: boolean;
+  hourlyRate: number;
+  requestedHours: number;
+  /** = min(requestedHours, capHours) */
+  payableHours: number;
+  /** 超出上限、不計酬的時數 */
+  excessHours: number;
+  capHours: number;
+  amount: number;
+  segments: OvertimePaySegment[];
+  /** false → 該員工未設定底薪，amount 必為 0 */
+  hasBaseSalary: boolean;
+  /** 同日已有已核准的假日執行活動 → 可能與假日津貼雙重給付 */
+  hasHolidayTravelConflict: boolean;
+}
+
 /** 加班申請的關聯專案明細（一列一專案，含該案預估時數） */
 export interface OvertimeProject {
   projectId: number;
@@ -48,6 +92,13 @@ export interface OvertimeRequest {
   estimatedHours: number;
   reason: string;
   approvalStatus: ApprovalStatus;
+  /** 補償方式（補休 / 加班費，整單二擇一） */
+  compensationType: OvertimeCompensationType;
+  /** 加班費快照（補休型為 null；核准當下寫入，日後調薪不回溯） */
+  overtimePayAmount?: number | null;
+  hourlyRateSnapshot?: number | null;
+  payableHours?: number | null;
+  isHolidayOvertime?: boolean | null;
   designatedReviewers?: DesignatedReviewer[];
   createdAt: Date;
   reviewedAt?: Date;
@@ -59,5 +110,6 @@ export interface OvertimeRequestPayload {
   overtimeDate: Date;
   projects: {projectId: number; estimatedHours: number}[];
   reason: string;
+  compensationType: OvertimeCompensationType;
   designatedReviewers?: DesignatedReviewer[];
 }

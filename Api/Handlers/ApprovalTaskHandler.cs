@@ -491,6 +491,16 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     setStatus:     s  => ot.ApprovalStatus   = s,
                     incrementStep: () => ot.CurrentStepOrder++,
                     setReviewed:   () => { ot.ReviewedAt = Clock.Now; ot.ReviewedById = reviewerId; ot.ReviewNote = reviewNote?.Trim(); });
+
+                // 加班費快照：終局核准時以「核准當下的底薪 + 行事曆」重算並落地（覆蓋送簽時的預估值）；
+                // 退回 / 拒絕則清空，避免死掉的單留著金額誤導報表與簽核台。
+                // ProcessReviewAsync 只在最後一關才把狀態設成 approved，故這裡天然只在終局觸發。
+                // 本 switch 位於 ExecuteReviewAsync，單筆審核與 BatchApproveAsync 共用同一段。
+                if (ot.ApprovalStatus == "approved")
+                    await OvertimeCompensationService.ApplyAsync(db, calendarReader, workPattern, ot);
+                else if (ot.ApprovalStatus is "returned" or "rejected")
+                    OvertimeCompensationService.ClearSnapshot(ot);
+
                 await db.SaveChangesAsync();
                 break;
             }

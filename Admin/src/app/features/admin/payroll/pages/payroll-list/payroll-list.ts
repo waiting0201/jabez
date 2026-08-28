@@ -78,7 +78,7 @@ export class PayrollList implements OnInit {
     });
   }
 
-  /** 匯出總表：一位員工一列 × 32 欄（全部薪資相關欄位）+ 合計列。
+  /** 匯出總表：一位員工一列 × 33 欄（全部薪資相關欄位）+ 合計列。
    *  GET /payroll 本身不分頁、已回傳全月完整欄位，故直接讀 payroll() signal，不再打一次 API。 */
   exportExcel() {
     const p = this.payroll();
@@ -91,7 +91,7 @@ export class PayrollList implements OnInit {
     try {
       const headers = [
         '員工姓名', '部門', '職稱', '到職日',
-        '底薪', '伙食費', '加班費', '其他加給', '代扣代付款', '日薪',
+        '底薪', '伙食費', '加班費', '加班費(加班申請)', '其他加給', '代扣代付款', '日薪',
         '假日活動天數', '假日津貼', '其他加項', '其他加項說明',
         '勞保費', '健保費', '健保眷屬口數（計費）',
         '事假天數', '事假扣薪', '病假天數', '病假扣薪',
@@ -107,7 +107,7 @@ export class PayrollList implements OnInit {
         e.departmentName ?? '',
         e.jobTitleName ?? '',
         e.hireDate ? new Date(e.hireDate).toLocaleDateString('zh-TW') : '',
-        e.baseSalary, e.mealAllowance, e.overtimePay, e.otherAllowanceAmount, e.adjustmentDifference, e.dailySalary,
+        e.baseSalary, e.mealAllowance, e.overtimePay, e.calculatedOvertimePay, e.otherAllowanceAmount, e.adjustmentDifference, e.dailySalary,
         e.holidayTravelDays, e.holidayAllowance, e.otherAddition, e.otherAdditionNote ?? '',
         e.laborInsurance, e.healthInsurance, e.cappedDependentCount,
         e.personalLeaveDays, e.personalLeaveDeduction, e.sickLeaveDays, e.sickLeaveDeduction,
@@ -120,7 +120,7 @@ export class PayrollList implements OnInit {
       // 後端未提供合計的欄位（日薪 / 各請假天數 / 眷屬口數 / 自提率 / 說明欄）留空。
       const totalRow: (string | number)[] = [
         '合計', '', '', '',
-        p.totalBaseSalary, p.totalMealAllowance, p.totalOvertimePay, p.totalOtherAllowance, p.totalAdjustmentDifference, '',
+        p.totalBaseSalary, p.totalMealAllowance, p.totalOvertimePay, p.totalCalculatedOvertimePay, p.totalOtherAllowance, p.totalAdjustmentDifference, '',
         '', p.totalHolidayAllowance, p.totalOtherAddition, '',
         p.totalLaborInsurance, p.totalHealthInsurance, '',
         '', p.totalPersonalLeaveDeduction, '', p.totalSickLeaveDeduction,
@@ -138,7 +138,7 @@ export class PayrollList implements OnInit {
 
       // 數字格式：金額欄套千分位；天數 / 口數 / 自提率維持 General
       //（'#,##0.##' 會讓整數顯示成「6.」多一個小數點，故不套）
-      const rawNumberCols = new Set([10, 16, 17, 19, 21, 23, 27, 29]);
+      const rawNumberCols = new Set([11, 17, 18, 20, 22, 24, 28, 30]);
       const headerRowIdx = 2;
       const lastRowIdx = aoa.length - 1;
       for (let r = headerRowIdx + 1; r <= lastRowIdx; r++) {

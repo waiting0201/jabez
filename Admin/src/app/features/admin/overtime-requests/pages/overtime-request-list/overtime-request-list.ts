@@ -7,6 +7,7 @@ import {OvertimeRequestService} from '../../services/overtime-request.service';
 import {
   OvertimeRequest,
   APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES,
+  COMPENSATION_TYPE_LABELS, COMPENSATION_TYPE_CLASSES,
 } from '../../models/overtime-request.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
 import {AuthService} from '@core/auth/services/auth.service';
@@ -46,6 +47,8 @@ export class OvertimeRequestList {
 
   readonly statusLabel = APPROVAL_STATUS_LABELS;
   readonly statusClass = APPROVAL_STATUS_CLASSES;
+  readonly compensationLabel = COMPENSATION_TYPE_LABELS;
+  readonly compensationClass = COMPENSATION_TYPE_CLASSES;
 
   delete(r: OvertimeRequest) {
     if (confirm(`確定要刪除此加班申請嗎？`)) {

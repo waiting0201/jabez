@@ -214,6 +214,12 @@ export interface OvertimeTaskDetail {
   estimatedHours: number;
   reason: string;
   projects?: OvertimeTaskProject[];
+  /** 補償方式（compensatory 補休 / pay 加班費） */
+  compensationType: 'compensatory' | 'pay';
+  /** 加班費快照（補休型為 null） */
+  overtimePayAmount?: number | null;
+  payableHours?: number | null;
+  isHolidayOvertime?: boolean | null;
 }
 
 export interface AdvanceTaskDetailItem {

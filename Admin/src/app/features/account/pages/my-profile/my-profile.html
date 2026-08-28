@@ -760,6 +760,7 @@
                       <th>年月</th>
                       <th class="text-end">底薪</th>
                       <th class="text-end">加班費</th>
+                      <th class="text-end">加班費(加班申請)</th>
                       <th class="text-end">假日津貼</th>
                       <th class="text-end">勞保費</th>
                       <th class="text-end">健保費</th>
@@ -778,6 +779,7 @@
                         </td>
                         <td class="text-end">{{ m.payroll.baseSalary | number:'1.0-0' }}</td>
                         <td class="text-end">{{ m.payroll.overtimePay | number:'1.0-0' }}</td>
+                        <td class="text-end">{{ m.payroll.calculatedOvertimePay | number:'1.0-0' }}</td>
                         <td class="text-end">{{ m.payroll.holidayAllowance | number:'1.0-0' }}</td>
                         <td class="text-end text-danger">-{{ m.payroll.laborInsurance | number:'1.0-0' }}</td>
                         <td class="text-end text-danger">-{{ m.payroll.healthInsurance | number:'1.0-0' }}</td>
@@ -792,13 +794,13 @@
                       </tr>
                       @if (expandedKey() === monthKey(m)) {
                         <tr>
-                          <td colspan="8" class="p-4 bg-[var(--bg-elevated)]">
+                          <td colspan="9" class="p-4 bg-[var(--bg-elevated)]">
                             <app-payroll-detail-card [payroll]="m.payroll" [showNetSalary]="true" />
                           </td>
                         </tr>
                       }
                     } @empty {
-                      <tr><td colspan="8" class="text-center text-muted small py-3">尚無薪資紀錄</td></tr>
+                      <tr><td colspan="9" class="text-center text-muted small py-3">尚無薪資紀錄</td></tr>
                     }
                   </tbody>
                 </table>

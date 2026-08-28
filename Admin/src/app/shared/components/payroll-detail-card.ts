@@ -61,6 +61,13 @@ import {LEAVE_TYPE_LABELS, LeaveType, formatLeaveDuration} from '../../features/
               <td class="ps-6">加班費</td>
               <td class="text-right pe-4">{{ e.overtimePay | number:'1.0-0' }}</td>
             </tr>
+            <tr>
+              <td class="ps-6">
+                加班費（加班申請）
+                <span class="text-muted text-xs">{{ e.calculatedOvertimeHours | number:'1.0-1' }} 小時</span>
+              </td>
+              <td class="text-right pe-4">{{ e.calculatedOvertimePay | number:'1.0-0' }}</td>
+            </tr>
             <!-- 5 種加給：有值才顯示 -->
             @if (e.otherAllowanceAmount) {
               <tr>

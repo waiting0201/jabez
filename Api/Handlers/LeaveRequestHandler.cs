@@ -653,8 +653,12 @@ public sealed class LeaveRequestHandler(
             .FirstOrDefaultAsync();
 
         // 系統核准加班時數（07/01 後申請；不到期）
+        // ⚠️ 必須濾 CompensationType == "compensatory" —— 選了「加班費」的單已隨次月薪資發放現金，
+        //    再進補休池就是同一段工時領兩次（雙重給付）。
         var earned = await db.OvertimeRequests
-            .Where(o => o.EmployeeId == userId && o.ApprovalStatus == "approved")
+            .Where(o => o.EmployeeId == userId
+                     && o.ApprovalStatus == "approved"
+                     && o.CompensationType == OvertimeCompensationService.Compensatory)
             .SumAsync(o => o.EstimatedHours);
 
         // 已補休時數：已送出（pending / approved）的補休假 Hours 合計

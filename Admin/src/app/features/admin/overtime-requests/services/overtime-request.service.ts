@@ -1,7 +1,7 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
-import {OvertimeRequest, OvertimeRequestPayload} from '../models/overtime-request.model';
+import {OvertimePayEstimate, OvertimeRequest, OvertimeRequestPayload} from '../models/overtime-request.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {environment} from '@/environments/environment';
 
@@ -31,6 +31,17 @@ export class OvertimeRequestService {
 
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${environment.apiUrl}/overtime-requests/${id}`);
+  }
+
+  /**
+   * 加班費即時試算（表單用）。對象一律為登入者本人，端點不接受 employeeId。
+   * @param date  加班日期 yyyy-MM-dd
+   * @param hours 預估總時數
+   */
+  estimatePay(date: string, hours: number): Observable<OvertimePayEstimate> {
+    return this.http.get<OvertimePayEstimate>(`${environment.apiUrl}/overtime-requests/estimate`, {
+      params: {date, hours},
+    });
   }
 
   /** 送出申請（draft → pending） */

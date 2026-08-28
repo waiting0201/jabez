@@ -205,12 +205,12 @@ Admin/src/app/
     │   ├── travel-payment-requests/ # 出差請款申請（小額已代墊直接請款，無沖銷）
     │   ├── travel-requests/   # 出差預支申請（走沖銷流程）
     │   ├── holiday-travel-requests/ # 假日執行活動申請（共用 TravelRequest entity，IsHolidayTravel=true，計入假日津貼；參與人員可逐日勾選個人參與日期，未勾選＝全程參與；**每個勾選日期可再指定「全天／上午／下午」**：chip 四態循環 未選 → 全天 → 上午 → 下午 → 未選，半天以 0.5 天計入假日津貼，個人天數存 `TravelRequestParticipant.HolidayDays decimal(5,1)`；申請人本人不逐日、不半天，一律沿用整單 `TravelRequest.HolidayDays`）
-    │   ├── overtime-requests/ # 加班申請（走簽核流程；**關聯專案為必填明細（至少一列）**：FormArray 每列一個專案下拉（來源 /projects/active?all=true 全部未結案專案，支援跨部門；**下拉自動排除其他列已選過的專案**）+ 該案預估時數，欄位標題註記「同部門專案可複選；支援專案請獨立申請」（業務提示，非硬性過濾）；**預估總時數改為唯讀自動加總**（父表 `OvertimeRequest.EstimatedHours` 為 `OvertimeRequestProject` 子表的合計快取，後端 Create/Update 重算，補休時數 / 登入自動補打加班結束卡 / 通知摘要皆沿用此欄）；指定審核者卡片加註「跨部門支援時第一審核者填該專案協理、第二審核者選自部門協理」）
+    │   ├── overtime-requests/ # 加班申請（走簽核流程；**關聯專案為必填明細（至少一列）**：FormArray 每列一個專案下拉（來源 /projects/active?all=true 全部未結案專案，支援跨部門；**下拉自動排除其他列已選過的專案**）+ 該案預估時數，欄位標題註記「同部門專案可複選；支援專案請獨立申請」（業務提示，非硬性過濾）；**預估總時數改為唯讀自動加總**（父表 `OvertimeRequest.EstimatedHours` 為 `OvertimeRequestProject` 子表的合計快取，後端 Create/Update 重算，補休時數 / 登入自動補打加班結束卡 / 通知摘要皆沿用此欄）；指定審核者卡片加註「跨部門支援時第一審核者填該專案協理、第二審核者選自部門協理」；**補償方式（補休 / 加班費）整單二擇一**（2026-08 新增，`OvertimeRequest.CompensationType`）：選「補休」時數計入補休池、選「加班費」則依勞基法**分段累進倍率**試算金額並隨**加班日次月**薪資發放，兩者互斥以免同一段工時雙重給付；選加班費時表單即時試算（走 `GET /overtime-requests/estimate`，顯示分段明細 / 平日或假日 badge / 超出上限不計酬警示 / 同日已有假日執行活動的重複給付警示），金額於送簽時算一次（讓審核者看得到，否則盲簽）、終局核准時以核准當下底薪重算並落地為快照，退回 / 拒絕 / 改單則清空；倍率與時薪的單一真相為 [Api/Common/OvertimePayCalculator.cs](Api/Common/OvertimePayCalculator.cs)，快照寫入的單一真相為 [Api/Services/OvertimeCompensationService.cs](Api/Services/OvertimeCompensationService.cs)）
     │   ├── advance-requests/  # 預支申請（已核准單可新增「追加預支」批次：/:id/supplements/new 與 /:id/supplements/:round/edit 共用 advance-form 的追加模式；詳情頁預支日期改為批次清單、費用明細加「批次」欄；共用 roundLabel() 為批次標籤單一真相；**明細金額三欄連動：總價 = 現金(預支) + 支票(月結)，任兩欄輸入自動算出第三欄，規則與預支沖銷相同**）
     │   ├── write-off-requests/ # 預支沖銷申請（獨立簽核流程；**清單依預支單 group，母層列操作欄「檢視」進入彙總頁 write-off-overview（`/by-advance/:advanceId`）：一頁看完預支單完整資訊 + 該單全部沖銷單完整資訊**；明細下方含整單批次附件上傳，共用 shared/components/attachments-upload；新增表單選定預支單後，於「預支單」卡片下方唯讀列出該單全批次預支費用明細（含追加，依批次分組），資料由 /write-off-requests/available-advances 一併帶回；**沖銷資訊卡改為 `<app-write-off-summary>` 列出預支各批次金額 + 各次沖銷金額 + 待沖銷餘額 / 應撥差額**；**詳情頁與簽核頁另有「預支單結案資訊」卡（共用 `<app-closure-info-card>`，`showRefund=false` + `alwaysShow=true`：只呈現關聯預支單的已結案／未結案與結案時間，撥款金額仍由該頁既有「撥款」語彙欄位負責）**；**超支差額走分期撥款**，明細另有「支票已支付」註記欄，該欄在簽核頁對所有審核者顯示，但**僅財務管理部（`DepartmentCodes.FinanceStep`，與撥款日／結案同範圍，不含總監室／會計室）/ Superadmin 可勾選**，其他人 checkbox disabled 反白；**明細金額三欄連動：總價 = 現金花費 + 支票金額，任兩欄輸入自動算出第三欄**；**2026-08 重複建單修正**：表單送出／儲存加 `saving` in-flight 鎖（按鈕 disabled + spinner，避免上傳期間連按建出多筆）、create 成功即記住 `editId` 讓送簽失敗的重送走 update 而非再建一張、表單內按 Enter 不再直接送出；**「已沖銷」一律只計已核准**（下拉與詳情頁同基準），草稿／簽核中金額改以 `pendingWriteOffTotal` 顯示「另有 N 元沖銷中」提示；發票號碼唯一性檢查排除已拒絕的沖銷單；Superadmin 可對他人預支單建沖銷（與下拉範圍一致）；`RequestNo` 補上唯一索引宣告（含 travel_write_off））
     │   ├── travel-write-off-requests/ # 出差預支沖銷申請（獨立簽核流程；**詳情頁與簽核頁有「出差單結案資訊」卡（共用 `<app-closure-info-card>`，`showRefund=false` + `alwaysShow=true`：只呈現關聯出差單的已結案／未結案與結案時間，撥款金額仍由該頁既有「撥款」語彙欄位負責）**）
     │   ├── insurance-brackets/ # 勞健保級距維護
-    │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出 + **Excel 總表匯出**：查詢列「匯出總表」鈕，一位員工一列 × 32 欄（基本 4 / 應發 10 / 扣項 15 / 其他 3）+ 合計列，資料直接取自已載入的 `payroll()` signal（`GET /payroll` 本身不分頁），無後端變動）
+    │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出 + **Excel 總表匯出**：查詢列「匯出總表」鈕，一位員工一列 × 33 欄（基本 4 / 應發 11 / 扣項 15 / 其他 3；2026-08 新增「加班費(加班申請)」欄）+ 合計列，資料直接取自已載入的 `payroll()` signal（`GET /payroll` 本身不分頁），無後端變動）
     │   ├── attendance-reminder-logs/ # 打卡提醒推播紀錄（僅 Superadmin）
     │   ├── payment-reminder-logs/ # 撥款提醒推播紀錄 + 手動觸發（僅 Superadmin）
     │   ├── reports/        # 報表（出缺勤 / 加班 / 款項統計 / 專案水位）；**出缺勤紀錄列出「打卡紀錄 ∪ 當日請假日」**：全天請假沒打卡的人也會出現一列（`id=null` 虛擬列，上下班留空 + 「請假」badge + 假別 + 當日時數、不可編輯），同日多張假單合併為一列；**另有兩個 badge（2026-08 新增）**：日期欄的「出差」（`isBusinessTrip`，打卡時勾選）與下班欄的「超過 9.5 小時」（下班−上班 > 9.5h 含午休，**純前端 derived**、門檻常數 `LONG_WORKDAY_HOURS` 為單一真相，不進 DB / DTO，不影響薪資與加班時數）；**編輯 Modal 加備註欄**（`AttendanceRecord.Remark`，500 字，只在編輯表單可見可填，清單不列）；假別中文 import 自 leave-request.model 的 19 種 LEAVE_TYPE_LABELS；已補上分頁（每頁 20，簡化版上一頁 / 下一頁），Excel 匯出走 `?export=true`；月篩選不再提供「全部年份 / 全部月份」（合併需有界區間）。款項統計 1 個 endpoint 支援 全部 + 6 個類別 dropdown（全部 / 請款 / 預支 / 預支沖銷 / 出差請款 / 出差預支 / 出差預支沖銷；「全部」為 6 種 UNION ALL），權限只看 `reports-payment:read`，不需各別 `xxx-requests:read`。**專案水位表的「總專案水位」欄（分母＝契約金額，含公司保留 40%）為欄位級權限 `reports-project-water-level:total`**：只有 `reports-project-water-level:read` 者頁面照進、業務執行水位照看，但總水位整欄消失（前端 `canSeeTotal` 同時控 `<th>` / `<td>` / 空列 colspan），後端 `ProjectWaterLevelHandler` 亦把 `TotalPercentage` / `PreImportUsedAmount` / `RemainingAmount` 抹為 null / 0
@@ -284,7 +284,7 @@ Api/
 │   ├── LeaveRevocationHandler.cs      # 銷假申請 CRUD + Submit（GET /leave-requests/{id}/revocable-dates 逐日可銷清單；POST /leave-requests/{id}/revocations；/leave-revocations/*；ApprovalItem 以 "leave" 解析＝跑原本的請假簽核，簽核紀錄以 "leave_revocation" 隔離）
 │   ├── TravelRequestHandler.cs        # 出差預支申請 CRUD（單號 TR-yyyyMMdd-NNN；假日執行活動為 HTR-yyyyMMdd-NNN；預支後沖銷）
 │   ├── TravelPaymentRequestHandler.cs # 出差請款申請 CRUD（單號 TPR-yyyyMMdd-NNN；小額代墊直接請款）
-│   ├── OvertimeRequestHandler.cs      # 加班申請 CRUD
+│   ├── OvertimeRequestHandler.cs      # 加班申請 CRUD（含補償方式 compensatory / pay；`GET /overtime-requests/estimate?date=&hours=` 加班費即時試算，對象一律取 JWT sub、不接受 employeeId）
 │   ├── AdvanceRequestHandler.cs       # 預支申請 CRUD（單號 ADV-yyyyMMdd-NNN）＋**追加預支批次**（POST/PATCH/DELETE /advance-requests/{id}/supplements[/{roundNo}]；新增即送簽、無草稿階段；有進行中批次時禁止整單編輯/刪除）
 │   ├── WriteOffRequestHandler.cs      # 預支沖銷申請 CRUD（獨立簽核流程）＋**依預支單彙總檢視**（GET /write-off-requests/by-advance/{advanceRequestId}，回傳預支單完整資訊 + 該單全部沖銷單）＋**差額撥款分期**（PATCH /write-off-requests/{id}/installments，SUM 對應 RefundDue 超支增額）＋**支票已支付註記**（PATCH /{id}/check-payments）
 │   ├── TravelWriteOffRequestHandler.cs # 出差預支沖銷申請 CRUD（獨立簽核流程）
@@ -321,6 +321,8 @@ Api/
 │   ├── IEscalationService.cs          # 簽核升級服務介面
 │   ├── EscalationService.cs           # 簽核升級邏輯（上層部門主管遞迴 + 代理人）
 │   ├── EscalationResult.cs            # 升級結果 record
+│   ├── OvertimeCompensationService.cs # 加班補償方式共用（static，不呼叫 SaveChanges）：Compensatory / Pay 常數 + Normalize（未知→補休，安全側）
+│   │                                    + ApplyAsync（算並寫入 4 個快照欄）/ ClearSnapshot（退回・拒絕・改單）/ HasHolidayTravelConflictAsync（假日津貼重複給付警示）
 │   ├── LeaveRevocationService.cs      # 銷假共用：ApplyAsync（核准後從「該假單所有已核准銷假的 distinct 日期」整組重算父單 Hours、全銷轉 cancelled，冪等且併發安全）+ 下游「該日未銷假」共用排除片段
 │   ├── ILineService.cs               # LINE API 操作介面
 │   ├── LineService.cs                # LINE Platform REST API 封裝（token 換取 + 推播 + 月度 quota 查詢）
@@ -371,6 +373,10 @@ Api/
 │   ├── DesignatedReviewerHelper.cs    # 申請人指定審核者共用：BuildEntities / ReadForFlowAsync / ValidateAndNormalizeAsync / GetSuppressedDesignatedStepOrdersAsync（一條流程多個指定步驟，以 ApprovalStepOrder 綁定步驟；9 種申請類型共用；第一指定步驟＝所選部門最高職稱時抑制其後指定步驟：驗證免填 + 簽核乾淨跳過）；**例外指定審核的兩個真相**：送單前查例外表 `GetEffectiveDesignatedStepOrdersAsync`、送單後看 designee 快照 `EffectiveDesignatedStepOrders`，ValidateAndNormalizeAsync 另負責剔除非法 designee 綁定（防提權）與**限定職稱驗證**（例外命中且有設限定職稱時，designee 職稱不符丟 400）
 │   ├── FlexibleDateTimeJsonConverter.cs # 寬鬆日期解析（人事資料卡 payload 用；Safari 不支援 input type=month 手打年月字串）
 │   ├── WorkCalendarHelper.cs          # 公司行事曆共用判定（「有行事曆用 CalendarDay.IsHoliday、沒資料退回六日」的單一真相）：區間版 ComputeWorkingDatesAsync 供 LeaveRequestHandler 算請假日／時數，單日版 IsHolidayAsync 供 AttendanceHandler 判休假日免下班卡
+│   ├── OvertimePayCalculator.cs       # 勞基法加班費「倍率 / 時薪 / 分段累進」單一真相（純函式）：
+│   │                                    平日 1–2h ×1.34、3h 起 ×1.67（上限 4h）；假日 1–2h ×1.34、3–8h ×1.67、9h 起 ×2.67（上限 12h）；
+│   │                                    時薪＝ROUND(底薪 ÷ 240, 2)；金額只在總額捨入一次（AwayFromZero）；
+│   │                                    日別走 WorkCalendarHelper.IsHolidayAsync，**排班制員工恆判平日**；超出上限截斷計酬但不擋送出
 │   ├── LeaveDayExpander.cs            # 請假單「逐日展開」單一真相（Date + Hours）：供銷假逐日勾選、核准後重算 Hours、出缺勤報表請假合併；假別分類常數 WorkingDayLeaveTypes / TimeUnitMap 亦收斂於此，LeaveRequestHandler 轉引
 │   ├── AttendanceLeaveMerger.cs       # 出缺勤報表「打卡 ∪ 當日請假日」合併單一真相：(員工, 日期) 一列，只有請假無打卡時產生 Id=null 虛擬列；逐日時數走 LeaveDayExpander，故採「區間全量載入 → 記憶體合併 → 記憶體切頁」，區間跨度上限 MaxRangeDays=400 天、匯出 pageSize 上限 ExportMaxPageSize=5000
 │   └── Constants.cs

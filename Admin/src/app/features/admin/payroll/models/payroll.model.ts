@@ -9,6 +9,9 @@ export interface EmployeePayroll {
   baseSalary: number;
   mealAllowance: number;
   overtimePay: number;
+  /** 加班申請試算加班費（上月加班、已核准且選「加班費」者的快照合計；與手填 overtimePay 併存） */
+  calculatedOvertimePay: number;
+  calculatedOvertimeHours: number;
   dailySalary: number;
   holidayTravelDays: number;
   holidayAllowance: number;
@@ -61,6 +64,7 @@ export interface MonthlyPayroll {
   totalBaseSalary: number;
   totalMealAllowance: number;
   totalOvertimePay: number;
+  totalCalculatedOvertimePay: number;
   totalHolidayAllowance: number;
   totalOtherAddition: number;
   totalLaborInsurance: number;

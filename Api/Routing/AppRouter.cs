@@ -337,6 +337,8 @@ public sealed class AppRouter(
             ("GET",    ["overtime-requests"])                      => await overtimeRequests.GetAllAsync(req),
             ("POST",   ["overtime-requests"])                      => await overtimeRequests.CreateAsync(req),
             ("PATCH",  ["overtime-requests", var id, "submit"])   => await overtimeRequests.SubmitAsync(req, id),
+            // 注意 List Pattern 順序：estimate 必須排在 {id} catch-all 之前
+            ("GET",    ["overtime-requests", "estimate"])          => await overtimeRequests.EstimateAsync(req),
             ("GET",    ["overtime-requests", var id])              => await overtimeRequests.GetByIdAsync(req, id),
             ("PUT",    ["overtime-requests", var id])              => await overtimeRequests.UpdateAsync(req, id),
             ("PATCH",  ["overtime-requests", var id])              => await overtimeRequests.UpdateAsync(req, id),

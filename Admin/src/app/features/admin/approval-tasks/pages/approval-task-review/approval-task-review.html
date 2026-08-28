@@ -472,6 +472,31 @@
                       <div class="text-muted small mb-1">預計加班總時數</div>
                       <span class="fw-600 fs-5">{{ d.estimatedHours }} 小時</span>
                     </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">補償方式</div>
+                      <span class="badge" [class]="d.compensationType === 'pay' ? 'bg-primary-subtle text-primary' : 'bg-secondary-subtle text-secondary'">
+                        {{ d.compensationType === 'pay' ? '加班費' : '補休' }}
+                      </span>
+                    </div>
+                    @if (d.compensationType === 'pay') {
+                      <div class="col-6 col-md-4">
+                        <div class="text-muted small mb-1">加班費（試算）</div>
+                        @if (d.overtimePayAmount != null) {
+                          <span class="fw-600 fs-5 text-primary">NT$ {{ d.overtimePayAmount | number:'1.0-0' }}</span>
+                          <div class="text-muted text-xs mt-1">
+                            計酬 {{ d.payableHours | number:'1.0-1' }} 小時
+                            @if (d.isHolidayOvertime != null) {
+                              ｜{{ d.isHolidayOvertime ? '假日' : '平日' }}加班
+                            }
+                            @if (d.payableHours != null && d.payableHours < d.estimatedHours) {
+                              ｜超出上限 {{ d.estimatedHours - d.payableHours | number:'1.0-1' }} 小時不計酬
+                            }
+                          </div>
+                        } @else {
+                          <span class="text-muted">—</span>
+                        }
+                      </div>
+                    }
                     @if (d.projects && d.projects.length > 0) {
                       <div class="col-12 col-md-8">
                         <div class="text-muted small mb-1">關聯專案</div>

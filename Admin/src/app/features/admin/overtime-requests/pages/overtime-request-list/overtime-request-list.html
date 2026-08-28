@@ -21,6 +21,8 @@
               <th>加班日期</th>
               <th>專案</th>
               <th class="text-right">預估總時數</th>
+              <th>補償方式</th>
+              <th class="text-right hidden lg:table-cell">加班費</th>
               <th class="hidden md:table-cell">原因</th>
               <th>狀態</th>
               <th class="hidden lg:table-cell">申請時間</th>
@@ -47,6 +49,16 @@
                   }
                 </td>
                 <td class="text-right fw-500">{{ r.estimatedHours | number:'1.1-1' }} h</td>
+                <td>
+                  <span [class]="'badge ' + compensationClass[r.compensationType]">{{ compensationLabel[r.compensationType] }}</span>
+                </td>
+                <td class="text-right hidden lg:table-cell">
+                  @if (r.overtimePayAmount != null) {
+                    <span class="fw-500">{{ r.overtimePayAmount | number:'1.0-0' }}</span>
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
                 <td class="text-muted small hidden md:table-cell">{{ r.reason }}</td>
                 <td>
                   <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
@@ -73,7 +85,7 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="7" class="text-center text-muted py-4">尚無加班申請。</td>
+                <td colspan="9" class="text-center text-muted py-4">尚無加班申請。</td>
               </tr>
             }
           </tbody>

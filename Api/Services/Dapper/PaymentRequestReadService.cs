@@ -675,6 +675,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 
         var overtimeSql = $"""
             SELECT ot.Id, ot.OvertimeDate, ot.EstimatedHours, ot.Reason,
+                   ot.CompensationType, ot.OvertimePayAmount, ot.PayableHours, ot.IsHolidayOvertime,
                    ot.ApprovalStatus, ot.ApprovalItemId, ot.CurrentStepOrder,
                    u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, ot.CreatedAt, ot.ReviewedAt, ot.ReviewNote
             FROM OvertimeRequests ot
@@ -1486,7 +1487,11 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (DateTime)row.OvertimeDate,
                 (decimal)row.EstimatedHours,
                 (string)row.Reason,
-                GetOvertimeProjects((int)row.Id)),
+                GetOvertimeProjects((int)row.Id),
+                (string?)row.CompensationType ?? "compensatory",
+                (decimal?)row.OvertimePayAmount,
+                (decimal?)row.PayableHours,
+                (bool?)row.IsHolidayOvertime),
             null, null, null,
             GetRecords("overtime", (int)row.Id),
             GetDesignatedReviewers("overtime", (int)row.Id),
