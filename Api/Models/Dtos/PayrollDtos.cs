@@ -42,7 +42,11 @@ public sealed record EmployeePayrollDto(
     decimal   LaborPensionSelfDeduction        = 0m,
     // 育嬰留職停薪：該月留停日曆天數。> 0 代表底薪與各加給已按「在職天數 ÷ 30」折減；
     // 整月留停者不會出現在名單中（見 PayrollReadService）
-    decimal   ParentalLeaveDays = 0m);
+    decimal   ParentalLeaveDays = 0m,
+    // 加班申請試算加班費（上月加班日、已核准且選「加班費」的申請單快照合計）。
+    // 與 OvertimePay（Users 表手填的固定加班費）**併存、不取代**，兩者是不同來源的兩筆錢。
+    decimal   CalculatedOvertimePay   = 0m,
+    decimal   CalculatedOvertimeHours = 0m);
 
 /// <summary>請假明細（用於薪資頁面顯示）</summary>
 public sealed record LeaveDetailDto(
@@ -72,7 +76,8 @@ public sealed record MonthlyPayrollDto(
     decimal TotalOtherAllowance       = 0m,
     decimal TotalAdjustmentDifference = 0m,
     decimal TotalLaborPensionSelfDeduction = 0m,
-    decimal TotalParentalLeaveDays         = 0m);
+    decimal TotalParentalLeaveDays         = 0m,
+    decimal TotalCalculatedOvertimePay      = 0m);
 
 /// <summary>
 /// 員工自助查詢：單月薪資紀錄（Payroll 為當月即時重算結果，非月結快照）

@@ -68,6 +68,26 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             GROUP BY EmployeeId
             """;
 
+        // 2b. 查詢「上一個月」加班日、已核准且選擇「加班費」的加班申請
+        //     歸月規則與假日津貼一致：加班日所屬月份的**次月**薪資（例：2026/08/15 加班 → 2026/09 薪資）。
+        //     金額與時數皆取核准當下寫入的快照欄，故日後調薪不會回溯改動歷史加班費。
+        //     EmployeeId IS NOT NULL：FK 為 SetNull，員工刪除後的殘留列會讓 GROUP BY 產生 NULL key，
+        //     下方 (Guid)r.EmployeeId 會爆。
+        const string overtimePaySql = """
+            SELECT o.EmployeeId,
+                   SUM(o.OvertimePayAmount) AS TotalPay,
+                   SUM(o.PayableHours)      AS TotalHours
+            FROM OvertimeRequests o
+            WHERE o.ApprovalStatus    = 'approved'
+              AND o.CompensationType  = 'pay'
+              AND o.OvertimePayAmount IS NOT NULL
+              AND o.EmployeeId        IS NOT NULL
+              AND o.OvertimeDate >= @PrevMonthFirstDay
+              AND o.OvertimeDate <  @CurrMonthFirstDay
+              AND (@EmployeeId IS NULL OR o.EmployeeId = @EmployeeId)
+            GROUP BY o.EmployeeId
+            """;
+
         // 3. 查詢所有勞健保級距
         const string bracketSql = """
             SELECT SalaryBracket, LaborInsuranceEmployee, HealthInsuranceEmployee
@@ -149,6 +169,15 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 EmployeeId        = employeeId,
             }))
             .ToDictionary(r => (Guid)r.EmployeeId, r => (decimal)r.TotalDays);
+        // 加班申請試算加班費（上月加班、已核准且選「加班費」者的快照合計）
+        var overtimePayRows = (await db.QueryAsync<dynamic>(overtimePaySql, new {
+                PrevMonthFirstDay = prevMonthFirstDay,
+                CurrMonthFirstDay = firstDay,
+                EmployeeId        = employeeId,
+            }))
+            .ToList();
+        var calcOvertimePayMap   = overtimePayRows.ToDictionary(r => (Guid)r.EmployeeId, r => (decimal)r.TotalPay);
+        var calcOvertimeHoursMap = overtimePayRows.ToDictionary(r => (Guid)r.EmployeeId, r => (decimal)r.TotalHours);
         var brackets = (await db.QueryAsync<dynamic>(bracketSql)).ToList();
         var adjustments = (await db.QueryAsync<dynamic>(adjustmentSql, new { Year = year, Month = month, EmployeeId = employeeId }))
             .ToDictionary(r => (Guid)r.EmployeeId, r => r);
@@ -197,6 +226,10 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
 
             decimal holidayDays = travelDays.TryGetValue((Guid)emp.EmployeeId, out var days) ? days : 0m;
 
+            // 加班申請試算加班費：與手填的 User.OvertimePay 併存、不取代 —— 兩者是不同來源的兩筆錢
+            decimal calcOvertimePay   = calcOvertimePayMap.TryGetValue((Guid)emp.EmployeeId, out var cop) ? cop : 0m;
+            decimal calcOvertimeHours = calcOvertimeHoursMap.TryGetValue((Guid)emp.EmployeeId, out var coh) ? coh : 0m;
+
             // ── 育嬰留職停薪：不支薪 ────────────────────────────────────────────
             // 折減率＝「1 − 留停天數 ÷ 30」，與事假等無薪假的「日薪 × 天數」完全等價
             // （日薪本身就是底薪 ÷ 30）。刻意不用「(當月天數 − 留停天數) ÷ 30」：
@@ -214,7 +247,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 // 整月留停且當月確實無其他應發／扣項時，整列剔除（不產生薪資單）。
                 // 有加班費、上月假日津貼或當月薪資調整（其他加項／扣項）時仍須出單，
                 // 否則這些已賺得的金額會憑空消失且不計入月合計。
-                bool hasOtherItems = overtimePay != 0m || holidayDays > 0m
+                bool hasOtherItems = overtimePay != 0m || calcOvertimePay != 0m || holidayDays > 0m
                                   || (adjustments.TryGetValue((Guid)emp.EmployeeId, out var padj)
                                       && ((decimal)padj.OtherAddition != 0m || (decimal)padj.OtherDeduction != 0m));
                 if (parentalLeaveDays >= daysInMonth && !hasOtherItems) continue;
@@ -308,7 +341,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             // 用 insuredBaseSalary：留停當月的提繳基準同樣不隨少領而降低
             decimal laborPensionSelfDeduction = Math.Round(insuredBaseSalary * (laborPensionRate ?? 0m) / 100m, 0);
 
-            decimal netSalary = baseSalary + mealAllowance + overtimePay
+            decimal netSalary = baseSalary + mealAllowance + overtimePay + calcOvertimePay
                               + otherAllow + adjDiff
                               + holidayAllowance + otherAddition
                               - laborIns - healthIns
@@ -354,7 +387,9 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 adjDiff,
                 laborPensionRate,
                 laborPensionSelfDeduction,
-                parentalLeaveDays));
+                parentalLeaveDays,
+                calcOvertimePay,
+                calcOvertimeHours));
         }
 
         return new MonthlyPayrollDto(
@@ -375,6 +410,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             results.Sum(r => r.OtherAllowanceAmount),
             results.Sum(r => r.AdjustmentDifference),
             results.Sum(r => r.LaborPensionSelfDeduction),
-            results.Sum(r => r.ParentalLeaveDays));
+            results.Sum(r => r.ParentalLeaveDays),
+            results.Sum(r => r.CalculatedOvertimePay));
     }
 }

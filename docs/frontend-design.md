@@ -1301,6 +1301,28 @@ overtimeStartHint = computed<string>(() => {
 
 ---
 
+## 8.6 即時試算卡片（Live Estimate Card）
+
+表單欄位變動後由後端即時算出金額 / 天數並回顯的區塊（目前唯一採用：加班申請的「加班費試算」）。**不是** `alert`，也不是獨立 `card` —— 它屬於所在卡片的一部分，用 `border rounded p-4 bg-light-subtle` 內嵌。
+
+**結構（由上而下）**
+
+| 區 | 內容 | 樣式 |
+|---|---|---|
+| 標題列 | 左「{項目}試算」+ 右狀態（`計算中…` / 唯讀時的 `核准快照` badge） | `flex items-center justify-between mb-3`，標題 `fw-600` |
+| 分段明細 | `table table-sm`，一列一段（算式 / 數量 / 金額） | 包 `table-responsive` |
+| 結果列 | 金額大字 + 條件 badge + 補充說明 | `flex flex-wrap items-baseline gap-4`，金額 `fs-4 fw-600 text-primary` |
+| 警示 | 超出上限 / 前置資料缺漏 → `alert-warning`；業務衝突 → `alert-danger` | `alert ... flex items-center gap-2 py-2`，icon `#alert-triangle` |
+| 註腳 | 金額何時、以什麼身分生效 | `form-text mt-2` |
+
+**規則**
+
+1. **一定要顯示算式，不能只給總額** —— 使用者看到單一數字不會相信，看到「2h ×1.34 + 6h ×1.67」才會。分段明細不是裝飾。
+2. **請求要節流**：`takeUntilDestroyed + debounceTime(300) + distinctUntilChanged + switchMap + catchError(() => of(null))`，範式比照 [user-form.ts](../Admin/src/app/features/admin/users/pages/user-form/user-form.ts) 的「底薪 → 勞健保級距 lookup」。`distinctUntilChanged` 必須逐欄比對試算輸入，否則無關欄位的每次鍵入都會打一次 API。
+3. **失敗靜默**：`catchError` 回 `null` 讓卡片退回「請先填寫…」提示，不要跳 toastr —— 使用者還在填表，這不是錯誤。
+4. **唯讀模式顯示快照、不重新試算**：已送出 / 已核准的單顯示後端存的金額並標「核准快照」badge，加註「日後調薪不會回溯變動」。重新試算會讓畫面金額與實發金額不一致。
+5. **前置資料缺漏不擋送出**：改以 `alert-warning` 說明（例：「尚未設定底薪，無法試算，請洽人事」），送出鍵維持可用。
+
 ## 9. 狀態提示卡
 
 申請類頁面在送出後或唯讀模式顯示。**使用 `@if/@else if` 鏈式**，不用 `@switch`。

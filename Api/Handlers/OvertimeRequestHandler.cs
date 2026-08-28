@@ -18,13 +18,16 @@ namespace Jabez.Api.Handlers;
 /// PUT    /overtime-requests/{id}      → 更新（僅 draft 才允許）
 /// DELETE /overtime-requests/{id}      → 刪除（僅 draft 才允許）
 /// PATCH  /overtime-requests/{id}/submit → 送出（draft → pending）
+/// GET    /overtime-requests/estimate    → 加班費即時試算（僅本人）
 /// </summary>
 public sealed class OvertimeRequestHandler(
     AppDbContext db,
     IOvertimeRequestReadService reader,
     IJwtService jwtService,
     IApprovalNotificationService notifier,
-    IApprovalFlowService approvalFlow)
+    IApprovalFlowService approvalFlow,
+    ICalendarDayReadService calendarReader,
+    IWorkPatternReadService workPattern)
 {
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
@@ -102,6 +105,8 @@ public sealed class OvertimeRequestHandler(
             ApprovalItemId = body.ApprovalItemId,
             OvertimeDate   = body.OvertimeDate,
             EstimatedHours = projectRows.Sum(r => r.EstimatedHours),
+            // 補償方式二擇一；未知值正規化為補休（安全側，寧可少發現金也不可雙重給付）
+            CompensationType = OvertimeCompensationService.Normalize(body.CompensationType),
             Reason         = body.Reason,
             ApprovalStatus = "draft",
             CreatedAt      = Clock.Now,
@@ -171,6 +176,11 @@ public sealed class OvertimeRequestHandler(
 
         if (body.OvertimeDate.HasValue)    item.OvertimeDate    = body.OvertimeDate.Value;
         if (body.Reason is not null)       item.Reason          = body.Reason;
+        if (body.CompensationType is not null)
+            item.CompensationType = OvertimeCompensationService.Normalize(body.CompensationType);
+
+        // 日期 / 時數 / 補償方式任一可能已變動 → 舊的加班費快照必須失效，重新送簽時再算一次
+        OvertimeCompensationService.ClearSnapshot(item);
 
         await db.SaveChangesAsync();
 
@@ -248,6 +258,10 @@ public sealed class OvertimeRequestHandler(
                 rdr.Comment    = null;
             }
         }
+
+        // 加班費快照：在所有核准分支之前算一次，讓「一般送審 / Superadmin 自動核准 / 全自審自動核准」
+        // 三個出口都帶著金額。送審中的單也必須有金額，否則審核者在簽核台是盲簽。
+        await OvertimeCompensationService.ApplyAsync(db, calendarReader, workPattern, item);
 
         // Superadmin 無部門歸屬，直接自動核准
         var submitter = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
@@ -337,6 +351,41 @@ public sealed class OvertimeRequestHandler(
         var dto = await reader.GetByIdAsync(item.Id);
         var msg = autoApproved ? "Overtime request auto-approved." : "Overtime request submitted.";
         return new OkObjectResult(ApiResponse.Ok(dto, msg));
+    }
+
+    /// <summary>
+    /// GET /overtime-requests/estimate?date=&amp;hours= → 加班費即時試算（表單用）。
+    /// </summary>
+    /// <remarks>
+    /// 對象一律取 JWT 的 sub，端點**刻意不接受 employeeId** —— 回傳含時薪，可反推底薪。
+    /// 權限沿用 overtime-requests:read（能填加班單的人本來就持有），不另開權限碼。
+    /// 比照 GET /leave-requests/working-days 的輕量端點模式：重用 CalendarDayReadService，
+    /// 避免把後台行事曆權限強加給申請人。
+    /// </remarks>
+    public async Task<IActionResult> EstimateAsync(HttpRequest req)
+    {
+        var userId = await GetUserIdAsync(req);
+
+        if (!DateTime.TryParse(req.Query["date"], out var date))
+            return new BadRequestObjectResult(ApiResponse.Fail("請提供有效的加班日期。"));
+
+        if (!decimal.TryParse(req.Query["hours"], out var hours) || hours <= 0)
+            return new BadRequestObjectResult(ApiResponse.Fail("請提供有效的加班時數。"));
+
+        hours = Math.Min(hours, 24m);   // 上界防呆
+
+        var baseSalary = await db.Users.AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => u.BaseSalary)
+            .FirstOrDefaultAsync();
+
+        var estimate = await OvertimePayCalculator.CalculateAsync(
+            calendarReader, workPattern, baseSalary ?? 0m, userId, date, hours);
+
+        // 同日已有已核准的假日執行活動 → 假日津貼與加班費可能就同一段工時雙重給付，前端顯示警示
+        var conflict = await OvertimeCompensationService.HasHolidayTravelConflictAsync(db, userId, date);
+
+        return new OkObjectResult(ApiResponse.Ok(estimate with { HasHolidayTravelConflict = conflict }));
     }
 
     // ── Helper ──────────────────────────────────────────────────────────────────

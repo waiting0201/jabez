@@ -214,7 +214,12 @@ public sealed record OvertimeTaskDetailDto(
     DateTime OvertimeDate,
     decimal  EstimatedHours,                      // 預估總時數（= Projects 合計）
     string   Reason,
-    OvertimeProjectDto[]? Projects = null);       // 關聯專案明細（含各案時數）
+    OvertimeProjectDto[]? Projects = null,        // 關聯專案明細（含各案時數）
+    // 補償方式與加班費快照 —— 審核者必須看得到金額，否則是盲簽
+    string   CompensationType  = "compensatory",  // compensatory | pay
+    decimal? OvertimePayAmount = null,
+    decimal? PayableHours      = null,
+    bool?    IsHolidayOvertime = null);
 
 /// <summary>出差請款申請審核任務詳情 DTO</summary>
 public sealed record TravelPaymentTaskDetailDto(

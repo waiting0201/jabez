@@ -25,6 +25,23 @@ public class OvertimeRequestConfiguration : IEntityTypeConfiguration<OvertimeReq
         builder.Property(o => o.EstimatedHours)
                .HasColumnType("decimal(5,1)");
 
+        // 補償方式（補休 / 加班費，整單二擇一）。預設 compensatory 同時是舊資料的 backfill 值，
+        // 讓上線前所有已核准加班單原封不動留在補休池（見 LeaveRequestHandler.ComputeCompensatoryAsync）。
+        builder.Property(o => o.CompensationType)
+               .IsRequired()
+               .HasMaxLength(20)
+               .HasDefaultValue("compensatory");
+
+        // 加班費快照。金額 / 時薪沿用專案金額欄慣例 decimal(18,2)，計酬時數與 EstimatedHours 同精度。
+        builder.Property(o => o.OvertimePayAmount)
+               .HasColumnType("decimal(18,2)");
+
+        builder.Property(o => o.HourlyRateSnapshot)
+               .HasColumnType("decimal(18,2)");
+
+        builder.Property(o => o.PayableHours)
+               .HasColumnType("decimal(5,1)");
+
         builder.Property(o => o.ReviewNote)
                .HasMaxLength(1000);
 

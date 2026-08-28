@@ -165,7 +165,7 @@
                       } @else {
                         <span class="text-muted ms-2">｜舊補休剩餘 {{ h.openingRemaining }} 小時（116/6/30 到期）</span>
                       }
-                      <span class="text-muted ms-2">｜系統加班補休 {{ h.totalOvertimeHours - (h.usedCompensatoryHours > h.openingHours ? h.usedCompensatoryHours - h.openingHours : 0) }} 小時</span>
+                      <span class="text-muted ms-2">｜系統加班補休 {{ h.totalOvertimeHours - (h.usedCompensatoryHours > h.openingHours ? h.usedCompensatoryHours - h.openingHours : 0) }} 小時（僅計入選擇「補休」的加班單）</span>
                       <span class="text-muted ms-2">｜半天扣除 4 小時</span>
                     </span>
                   } @else {

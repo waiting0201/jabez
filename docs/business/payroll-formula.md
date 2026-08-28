@@ -25,15 +25,38 @@
    - `dailySalary` 在折減前先算好，避免事假 / 病假等扣薪被雙重折減。
    - ⚠️ **實領可能為負數**：在職天數少但保費全額時，差額即員工**應補繳的保費**。薪資編輯頁與薪資明細信皆顯示警示，提醒人事另行收取或辦理個人負擔部分遞延繳納（最長 3 年），勿直接寄送明細。系統**不做遞延帳**。
    - 詳見 [leave-rules.md §育嬰留職停薪規則](leave-rules.md#育嬰留職停薪規則2026-08-新增)。
-10. **實領薪水** = 底薪 + 伙食費 + 加班費 + 加給合計 + 假日津貼 + 其他加項 − 勞保費 − 健保費 − 事假扣薪 − 病假扣薪 − 生理假扣薪 − 家庭照顧假扣薪 − 其他扣項 − 勞退自提扣款
+10. **實領薪水** = 底薪 + 伙食費 + 加班費 + **加班費（加班申請）** + 加給合計 + 假日津貼 + 其他加項 − 勞保費 − 健保費 − 事假扣薪 − 病假扣薪 − 生理假扣薪 − 家庭照顧假扣薪 − 其他扣項 − 勞退自提扣款
    - **加給合計** = 其他加給 + 代扣代付款（2 種來自 User 表，由最新生效 SalaryAdjustmentRecord 同步而來，亦可在基本資料手動覆寫，null/未填視為 0）
      - 2026-08 移除職務加給 / 主管加給 / 外派加給。DB 欄位（`Users` / `SalaryAdjustmentRecords` 各 3 欄）**刻意保留不 DROP** 作歷史封存，程式已完全不讀寫；同步用的 no-op migration 見 `RemoveThreeAllowancesFromModel`。
+   - **加班費（加班申請）** 見第 12 條 —— 與 `User.OvertimePay`（人事手填的固定月額）**併存、不取代**，兩者是不同來源的兩筆錢，薪資單分列兩行。
    - 底薪與加給若當月有育嬰留停，已為折減後的金額（見第 9 條）。
 11. **勞退自提扣款** = 提繳底薪 × `User.LaborPensionSelfContributionRate`（%，0~6 整數，員工自願提撥）÷ 100（四捨五入至整數）
    - 性質同 `LaborInsuranceOverride`/`HealthInsuranceOverride`：User 表直接欄位，**不**經過 SalaryAdjustmentRecord 歷史同步，可在基本資料 Tab 直接編輯（null 視為 0%）。
    - 提繳底薪＝`insuredBaseSalary`（育嬰留停折減前的底薪）。
 
-> 人事薪資為動態計算，不儲存於資料庫。前端可匯出 PDF 薪資表，亦可於清單頁「匯出總表」輸出當月 Excel（一位員工一列 × 32 欄的全部薪資欄位 + 合計列，合計取自後端 `MonthlyPayrollDto` 的 Total* 欄，不在前端重算）。
+12. **加班費（加班申請）** = Σ（該員工「上個月」加班日、已核准且 `CompensationType='pay'` 的加班單 `OvertimePayAmount`）（2026-08 新增）
+    - **歸月：加班日所屬月份的「次月」薪資**（例：2026/08/15 加班 → 2026/09 薪資），與假日津貼同為「次月發放」。
+    - **金額為快照**，於加班單核准當下寫入 `OvertimeRequest.OvertimePayAmount`，薪資端只做 `SUM`，**不即時重算**。
+      刻意如此：薪資本身無月結快照表（見下方已知限制），若加班費也即時算，一次調薪會回溯改動所有歷史月份的加班費且無從稽核。
+    - **倍率（分段累進，不是整段套一個倍率）**，單一真相 [Api/Common/OvertimePayCalculator.cs](../../Api/Common/OvertimePayCalculator.cs)：
+
+      | 日別 | 級距 | 計酬上限 |
+      |---|---|---|
+      | 平日 | 1–2h ×1.34、第 3 小時起 ×1.67 | 4 小時 |
+      | 假日（非辦活動） | 1–2h ×1.34、第 3–8 小時 ×1.67、第 9 小時起 ×2.67 | 12 小時 |
+
+    - **時薪** = `ROUND(BaseSalary ÷ 240, 2)`（月薪 ÷ 30 ÷ 8）。分母直接寫 240 而非除兩次；**刻意不沿用 `dailySalary`**（該值已先 ROUND 到整數元，再除 8 會繼承取整誤差）。
+    - **捨入**：各分段保留原始小數，**只在總額捨入一次**（`AwayFromZero`，同假日津貼；逐段捨入再加總會漂移）。
+    - **時數來源為申請單 `EstimatedHours`（預估）**，不是打卡實際時數 —— 與補休的換算基準一致，且送簽當下即可確定金額。
+    - **日別判定**走 `WorkCalendarHelper.IsHolidayAsync`（行事曆有資料看 `IsHoliday`、沒資料退回六日）。
+      ⚠️ **排班制員工（`IsShiftWorker`）恆判為平日**（4 小時上限），這是與請假同源的既定語意，刻意不為加班開特例。
+      勞基法 §36 / §39 對排班制的例假 / 休息日另有規定，**此點待 HR 確認**；若需區分，正解是給 `CalendarDay` 加排班制專屬日別，不是在計算器裡挖洞。
+    - **超出上限截斷計酬、但不擋送出**：`EstimatedHours` 是預估值，擋件會讓員工無法如實登記加班事實；補休路徑本來就沒有上限，只在加班費側硬擋並不對稱。超出部分以 `ExcessHours` 於表單 / 簽核台 / 快照全鏈路可見。
+    - **與補休二擇一**：`CompensationType='pay'` 的加班單**不計入補休池**（`LeaveRequestHandler.ComputeCompensatoryAsync` 已加此條件），避免同一段工時領兩次。詳見 [leave-rules.md §補休](leave-rules.md)。
+    - **不折減、不計投保薪資**：與既有手填加班費同處理 —— 育嬰留停不按比例折減（本就是實績金額）、不計入勞健保投保薪資與勞退自提提繳基準（已知簡化）。
+    - **育嬰留停出單判斷**：`hasOtherItems` 已納入本項，否則整月留停者上月已賺得的加班費會憑空消失。
+
+> 人事薪資為動態計算，不儲存於資料庫。可於清單頁「匯出總表」輸出當月 Excel（一位員工一列 × 33 欄的全部薪資欄位 + 合計列，合計取自後端 `MonthlyPayrollDto` 的 Total* 欄，不在前端重算）。
 > 薪資編輯頁與薪資明細信件額外顯示該月**所有已核准的請假紀錄**（全假別，非僅事假/病假/家庭照顧假）。
 
 ### 銷假對扣薪的影響（2026-08）
@@ -149,13 +172,22 @@ EmployeePayrollDto / 月度合計 / 薪資編輯頁 / 薪資明細 Email + PDF
 員工從右上角頭像 →「個人資訊」→ **「過往薪資」Tab**（第 4 個，在「健保眷屬」右邊）可查自己**近 12 個月**的薪資明細，走 `GET /me/payroll?months=12`（登入即可，不需 `payroll:read`）。
 
 - **同一份公式**：後端逐月呼叫 `CalculateMonthlyPayrollAsync(year, month, employeeId)` —— 就是人事薪資頁用的那支，只多帶員工過濾，**不另開一套計算**。因此員工看到的數字與 `/admin/payroll` 逐欄相同。
-- **前端同一份版型**：清單列（年月 / 底薪 / 加班費 / 假日津貼 / 勞健保 / 實領）點「明細」展開共用元件 [`<app-payroll-detail-card>`](../../Admin/src/app/shared/components/payroll-detail-card.ts)，與人事薪資調整頁 `payroll-form` 共用。
+- **前端同一份版型**：清單列（年月 / 底薪 / 加班費 / 加班費(加班申請) / 假日津貼 / 勞健保 / 實領）點「明細」展開共用元件 [`<app-payroll-detail-card>`](../../Admin/src/app/shared/components/payroll-detail-card.ts)，與人事薪資調整頁 `payroll-form` 共用。
 - **到職前的月份不列入**（Handler 依 `HireDate` 提早 break）；入職當月的勞保費仍按加保天數比例，與既有公式一致。
 - **當月會標「本月尚未結算」badge** —— 當月請假 / 加班尚未結束，數字還會變動。
 
 > ⚠️ **已知限制：回溯歷史月份用的是「現在的」底薪**。薪資為動態計算、**無月結快照表**，`PayrollReadService` 的員工查詢直接讀 `Users` 表當下的底薪 / 加給 / 勞健保覆寫，因此期間調過薪的員工，過往月份會以**現行**底薪重算，與當時實發不符（`PayrollAdjustments`、請假、假日活動則按年月正確歸屬）。
 > 前端「過往薪資」Tab 頂端已明確加註「依目前薪資設定即時重算，實際發放金額以人事寄送的薪資明細為準」。
 > 若日後要真正的歷史紀錄，正解是新增月結快照表（人事結算 / 寄送薪資單時寫入），而非在計算端回推。
+> （加班費（加班申請）不受此限 —— 它在核准當下就存了金額快照，調薪不會回溯改動。）
+
+### 其他已知限制（2026-08）
+
+- **加班單延遲核准會靜默改動已寄出的月份**：8/31 的加班單若拖到 10 月才核准，9 月薪資單已寄出，重算 9 月才會突然多出這筆錢而無人察覺。
+  受限於「薪資無月結快照表」，本期不修；建議後續加一支「核准日晚於歸屬月月底」的稽核清單。
+- **假日津貼 × 假日加班費可能雙重給付**：同一個週六若同時有已核准的「假日執行活動」（領日薪 × 天數）與 `CompensationType='pay'` 的加班單，兩筆都會進次月薪資。
+  系統目前**不硬擋**（屬業務決策）：試算端點回傳 `hasHolidayTravelConflict`，加班表單以紅色警示呈現，讓申請人與審核者看得到。若 HR 要求硬擋，再另案處理。
+- **加班費不計入投保薪資 / 勞退提繳基準**：沿用既有手填加班費的處理，屬已知簡化。
 
 ---
 
@@ -164,6 +196,7 @@ EmployeePayrollDto / 月度合計 / 薪資編輯頁 / 薪資明細 Email + PDF
 - **健保眷屬資料 / 上限 3 口計算** → [hr-profile.md](hr-profile.md)
 - **底薪 / 伙食費 / 2 種加給自動同步**（薪資調整紀錄 → User.BaseSalary / MealAllowance / OtherAllowance / AdjustmentDifference） → [hr-profile.md](hr-profile.md)
 - **假日執行活動的歸月規則** → [application-forms.md](application-forms.md)
+- **加班申請的補償方式（補休 / 加班費）與倍率規則** → [application-forms.md](application-forms.md)、[leave-rules.md](leave-rules.md)
 - **事假 / 病假 / 家庭照顧假的扣薪天數來源、銷假規則** → [leave-rules.md](leave-rules.md)
 - **勞健保級距 lookup（級距表 entity）** → [database-schema.md](../database-schema.md)（`InsuranceBracket`）
 - **PayrollHandler 計算邏輯實作** → [Api/Handlers/PayrollHandler.cs](../../Api/Handlers/PayrollHandler.cs)

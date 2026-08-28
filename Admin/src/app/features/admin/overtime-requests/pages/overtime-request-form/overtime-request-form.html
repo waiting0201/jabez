@@ -71,6 +71,25 @@
             </div>
 
             <div class="mb-4">
+              <label class="form-label fw-500">補償方式 <span class="text-danger">*</span></label>
+              <div class="flex flex-wrap items-center gap-6">
+                <div class="form-check mb-0">
+                  <input class="form-check-input" type="radio" id="compType-compensatory"
+                         formControlName="compensationType" value="compensatory">
+                  <label class="form-check-label" for="compType-compensatory">補休</label>
+                </div>
+                <div class="form-check mb-0">
+                  <input class="form-check-input" type="radio" id="compType-pay"
+                         formControlName="compensationType" value="pay">
+                  <label class="form-check-label" for="compType-pay">加班費</label>
+                </div>
+              </div>
+              <div class="form-text">
+                二擇一，不可並行。選「補休」時數計入補休池；選「加班費」依勞基法試算金額，隨<strong>次月</strong>薪資發放。
+              </div>
+            </div>
+
+            <div class="mb-4">
               <label class="form-label fw-500">
                 關聯專案 <span class="text-danger">*</span>
                 <span class="text-muted fw-400 small">（同部門專案可複選；支援專案請獨立申請）</span>
@@ -166,6 +185,93 @@
                 <div class="text-danger small mt-1">請填寫加班原因。</div>
               }
             </div>
+
+            <!-- 加班費試算（僅選「加班費」時顯示） -->
+            @if (isPayMode) {
+              <div class="border rounded p-4 bg-light-subtle">
+                <div class="flex items-center justify-between mb-3">
+                  <span class="fw-600">加班費試算</span>
+                  @if (isReadOnly) {
+                    <span class="badge bg-secondary-subtle text-secondary">核准快照</span>
+                  } @else if (estimateLoading()) {
+                    <span class="text-muted small">計算中…</span>
+                  }
+                </div>
+
+                @if (isReadOnly) {
+                  @if (snapshotPayAmount != null) {
+                    <div class="flex flex-wrap items-baseline gap-4">
+                      <span class="fs-4 fw-600 text-primary">NT$ {{ snapshotPayAmount | number:'1.0-0' }}</span>
+                      <span class="text-muted small">
+                        計酬 {{ snapshotPayableHours | number:'1.0-1' }} 小時
+                        @if (snapshotIsHoliday != null) {
+                          ｜{{ snapshotIsHoliday ? '假日' : '平日' }}加班
+                        }
+                      </span>
+                    </div>
+                    <div class="form-text mt-2">金額為核准當下寫入的快照，日後調薪不會回溯變動。</div>
+                  } @else {
+                    <span class="text-muted small">尚未產生加班費金額。</span>
+                  }
+                } @else if (estimate(); as e) {
+                  @if (!e.hasBaseSalary) {
+                    <div class="alert alert-warning flex items-center gap-2 py-2 mb-0">
+                      <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                      <span class="small">尚未設定底薪，無法試算加班費，請洽人事。</span>
+                    </div>
+                  } @else {
+                    <div class="table-responsive mb-3">
+                      <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                          <tr>
+                            <th>級距</th>
+                            <th class="text-right" style="width:110px">時數</th>
+                            <th class="text-right" style="width:130px">金額</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (seg of e.segments; track $index) {
+                            <tr>
+                              <td>時薪 {{ e.hourlyRate | number:'1.0-2' }} × {{ seg.multiplier }}</td>
+                              <td class="text-right">{{ seg.hours | number:'1.0-1' }} h</td>
+                              <td class="text-right">{{ seg.amount | number:'1.0-0' }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                    <div class="flex flex-wrap items-baseline gap-4">
+                      <span class="fs-4 fw-600 text-primary">NT$ {{ e.amount | number:'1.0-0' }}</span>
+                      <span class="badge" [class]="e.isHoliday ? 'bg-warning-subtle text-warning-emphasis' : 'bg-secondary-subtle text-secondary'">
+                        {{ e.isHoliday ? '假日加班' : '平日加班' }}
+                      </span>
+                      <span class="text-muted small">計酬上限 {{ e.capHours | number:'1.0-0' }} 小時</span>
+                    </div>
+                    @if (e.excessHours > 0) {
+                      <div class="alert alert-warning flex items-center gap-2 py-2 mt-3 mb-0">
+                        <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                        <span class="small">
+                          超過 {{ e.capHours | number:'1.0-0' }} 小時的 {{ e.excessHours | number:'1.0-1' }} 小時不計加班費（仍可送出登記）。
+                        </span>
+                      </div>
+                    }
+                    @if (e.hasHolidayTravelConflict) {
+                      <div class="alert alert-danger flex items-center gap-2 py-2 mt-3 mb-0">
+                        <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                        <span class="small">
+                          當日已有已核准的「假日執行活動」（另計假日津貼），同時申請加班費可能重複給付，請確認後再送出。
+                        </span>
+                      </div>
+                    }
+                    <div class="form-text mt-2">
+                      試算金額於核准當下寫入快照，隨 {{ e.overtimeDate | date:'yyyy 年 M 月' }} 的<strong>次月</strong>薪資發放。
+                    </div>
+                  }
+                } @else if (!estimateLoading()) {
+                  <span class="text-muted small">請先填寫加班日期與關聯專案時數。</span>
+                }
+              </div>
+            }
 
           </div>
         </div>

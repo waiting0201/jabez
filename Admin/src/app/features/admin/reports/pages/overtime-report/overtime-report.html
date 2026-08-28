@@ -86,6 +86,8 @@
               <th class="text-center hidden md:table-cell">專案</th>
               <th class="text-center">預估總時數</th>
               <th class="text-center">實際時數</th>
+              <th class="text-center">補償方式</th>
+              <th class="text-center">加班費</th>
               <th class="hidden lg:table-cell">事由</th>
             </tr>
           </thead>
@@ -116,11 +118,23 @@
                     <span class="text-muted">—</span>
                   }
                 </td>
+                <td class="text-center">
+                  <span class="badge" [class]="row.compensationType === 'pay' ? 'bg-primary-subtle text-primary' : 'bg-secondary-subtle text-secondary'">
+                    {{ row.compensationType === 'pay' ? '加班費' : '補休' }}
+                  </span>
+                </td>
+                <td class="text-center">
+                  @if (row.overtimePayAmount !== null) {
+                    <span class="fw-500">{{ row.overtimePayAmount | number:'1.0-0' }}</span>
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
                 <td class="hidden lg:table-cell text-muted small" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="row.reason">{{ row.reason }}</td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="6" class="text-center text-muted py-4">
+                <td colspan="8" class="text-center text-muted py-4">
                   @if (loading()) {
                     載入中...
                   } @else {

@@ -1,12 +1,15 @@
-import {ChangeDetectorRef, Component, inject, OnInit, signal} from '@angular/core';
+import {ChangeDetectorRef, Component, DestroyRef, inject, OnInit, signal} from '@angular/core';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
+import {of} from 'rxjs';
+import {catchError, debounceTime, distinctUntilChanged, map, switchMap} from 'rxjs/operators';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {FormArray, FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
-import {DecimalPipe} from '@angular/common';
+import {DatePipe, DecimalPipe} from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
 import {OvertimeRequestService} from '../../services/overtime-request.service';
 import {ProjectService} from '../../../projects/services/project.service';
 import {Project} from '../../../projects/models/project.model';
-import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, DesignatedReviewer, OvertimeProject, OvertimeRequestPayload} from '../../models/overtime-request.model';
+import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, COMPENSATION_TYPE_LABELS, DesignatedReviewer, OvertimeCompensationType, OvertimePayEstimate, OvertimeProject, OvertimeRequestPayload} from '../../models/overtime-request.model';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
 import {ApprovalService} from '../../../approvals/services/approval.service';
@@ -25,7 +28,7 @@ import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.direc
 @Component({
   selector: 'app-overtime-request-form',
   templateUrl: './overtime-request-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, ApprovalTimeline, DesignatedReviewersPicker, ScrollIntoViewDirective],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DatePipe, DecimalPipe, ApprovalTimeline, DesignatedReviewersPicker, ScrollIntoViewDirective],
 })
 export class OvertimeRequestForm implements OnInit {
   private fb          = inject(FormBuilder);
@@ -39,6 +42,7 @@ export class OvertimeRequestForm implements OnInit {
   private route       = inject(ActivatedRoute);
   private router      = inject(Router);
   private cdr         = inject(ChangeDetectorRef);
+  private destroyRef  = inject(DestroyRef);
 
   /** 路由模式旗標（僅影響版面呈現），create 成功後不改動 */
   isEdit     = false;
@@ -63,6 +67,21 @@ export class OvertimeRequestForm implements OnInit {
   readonlyProjects: OvertimeProject[] = [];
   /** 預估總時數（明細加總；表單唯讀顯示） */
   totalHours = signal(0);
+
+  /** 加班費試算結果（僅 compensationType='pay' 時查詢） */
+  estimate = signal<OvertimePayEstimate | null>(null);
+  estimateLoading = signal(false);
+  readonly compensationLabel = COMPENSATION_TYPE_LABELS;
+
+  /** 唯讀模式顯示的加班費快照（核准當下寫入，不重新試算） */
+  snapshotPayAmount: number | null = null;
+  snapshotPayableHours: number | null = null;
+  snapshotIsHoliday: boolean | null = null;
+
+  /** 目前是否選擇「加班費」（模板用，避免在 template 重複取值） */
+  get isPayMode(): boolean {
+    return this.form.get('compensationType')?.value === 'pay';
+  }
 
   /** 指定審核者相關 */
   hasDesignatedStep = false;
@@ -99,9 +118,11 @@ export class OvertimeRequestForm implements OnInit {
   readonly statusClass = APPROVAL_STATUS_CLASSES;
 
   form = this.fb.group({
-    overtimeDate: ['', Validators.required],
-    reason:       ['', Validators.required],
-    projects:     this.fb.array<FormGroup>([]),
+    overtimeDate:     ['', Validators.required],
+    // 補償方式二擇一；預設補休（與後端 Normalize 的安全側一致）
+    compensationType: ['compensatory' as OvertimeCompensationType, Validators.required],
+    reason:           ['', Validators.required],
+    projects:         this.fb.array<FormGroup>([]),
   });
 
   get projectsArray(): FormArray<FormGroup> { return this.form.get('projects') as FormArray<FormGroup>; }
@@ -153,7 +174,30 @@ export class OvertimeRequestForm implements OnInit {
   }
 
   ngOnInit() {
+    // 這條訂閱必須維持在最前面註冊：下方試算 pipeline 讀 totalHours()，
+    // 同一 tick 內若尚未重算會拿到舊值。
     this.projectsArray.valueChanges.subscribe(() => this.recomputeTotalHours());
+
+    // 加班費即時試算（僅 pay 模式）。範式比照 user-form 的底薪 → 勞健保級距 lookup。
+    this.form.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef),
+      map(() => ({
+        date:  this.form.get('overtimeDate')!.value as string,
+        type:  this.form.get('compensationType')!.value as OvertimeCompensationType,
+        hours: this.totalHours(),
+      })),
+      debounceTime(300),
+      distinctUntilChanged((a, b) => a.date === b.date && a.type === b.type && a.hours === b.hours),
+      switchMap(v => {
+        if (this.isReadOnly || v.type !== 'pay' || !v.date || v.hours <= 0) return of(null);
+        this.estimateLoading.set(true);
+        return this.service.estimatePay(v.date, v.hours).pipe(catchError(() => of(null)));
+      }),
+    ).subscribe(e => {
+      this.estimate.set(e);
+      this.estimateLoading.set(false);
+      this.cdr.markForCheck();
+    });
 
     // 檢查簽核流程是否有「申請人指定審核」步驟（呼叫輕量端點，免 approvals:read 權限）
     this.approvalSvc.getActiveByType('overtime').subscribe(flow => {
@@ -191,9 +235,14 @@ export class OvertimeRequestForm implements OnInit {
         this.isReadOnly = r.approvalStatus !== 'draft' && r.approvalStatus !== 'returned';
         this.form.patchValue({
           // 字串切割而非 toISOString()，避免台北 +8 轉 UTC 造成日期少一天
-          overtimeDate: r.overtimeDate?.toString().slice(0, 10) ?? '',
+          overtimeDate:     r.overtimeDate?.toString().slice(0, 10) ?? '',
+          compensationType: r.compensationType ?? 'compensatory',
           reason: r.reason,
         });
+        // 唯讀模式顯示核准當下寫入的快照，不重新試算（避免調薪後金額與已發放的不符）
+        this.snapshotPayAmount    = r.overtimePayAmount ?? null;
+        this.snapshotPayableHours = r.payableHours ?? null;
+        this.snapshotIsHoliday    = r.isHolidayOvertime ?? null;
         this.readonlyProjects = r.projects ?? [];
         this.projectsArray.clear();
         this.readonlyProjects.forEach(p => this.projectsArray.push(this.buildProjectGroup(p)));
@@ -317,6 +366,7 @@ export class OvertimeRequestForm implements OnInit {
         estimatedHours: +g.get('estimatedHours')!.value,
       })),
       reason:              v.reason!,
+      compensationType:    v.compensationType!,
       designatedReviewers: reviewers.length > 0 ? reviewers : undefined,
     };
   }

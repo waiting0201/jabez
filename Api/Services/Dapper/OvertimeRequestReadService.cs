@@ -12,7 +12,9 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
                o.OvertimeDate,
                o.EstimatedHours, o.Reason,
                o.ApprovalStatus, o.CreatedAt, o.ReviewedAt, o.ReviewNote,
-               o.ApprovalItemId, o.CurrentStepOrder, o.ReviewedById
+               o.ApprovalItemId, o.CurrentStepOrder, o.ReviewedById,
+               o.CompensationType, o.OvertimePayAmount, o.HourlyRateSnapshot,
+               o.PayableHours, o.IsHolidayOvertime
         FROM OvertimeRequests o
         LEFT JOIN Users u ON o.EmployeeId = u.Id
         """;
@@ -59,9 +61,14 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
             (DateTime)row.CreatedAt,
             (DateTime?)row.ReviewedAt,
             (string?)row.ReviewNote,
-            ApprovalItemId:   (int?)row.ApprovalItemId,
-            CurrentStepOrder: (int?)row.CurrentStepOrder,
-            ReviewedById:     (Guid?)row.ReviewedById);
+            ApprovalItemId:     (int?)row.ApprovalItemId,
+            CurrentStepOrder:   (int?)row.CurrentStepOrder,
+            ReviewedById:       (Guid?)row.ReviewedById,
+            CompensationType:   (string?)row.CompensationType ?? "compensatory",
+            OvertimePayAmount:  (decimal?)row.OvertimePayAmount,
+            HourlyRateSnapshot: (decimal?)row.HourlyRateSnapshot,
+            PayableHours:       (decimal?)row.PayableHours,
+            IsHolidayOvertime:  (bool?)row.IsHolidayOvertime);
     }
 
     public async Task<IEnumerable<OvertimeRequestDto>> GetAllAsync()

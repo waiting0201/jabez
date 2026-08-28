@@ -43,7 +43,10 @@ export class PayrollForm implements OnInit {
     if (!e) return 0;
     const otherAdd = this.form.get('otherAddition')!.value ?? 0;
     const otherDed = this.form.get('otherDeduction')!.value ?? 0;
-    return e.baseSalary + e.mealAllowance + e.overtimePay
+    // 與後端 PayrollReadService 的 netSalary 公式逐項對齊 —— 原本漏了 otherAllowanceAmount
+    // 與 adjustmentDifference，有加給的員工預覽值會永遠偏低，一併補齊。
+    return e.baseSalary + e.mealAllowance + e.overtimePay + e.calculatedOvertimePay
+         + e.otherAllowanceAmount + e.adjustmentDifference
          + e.holidayAllowance + otherAdd
          - e.laborInsurance - e.healthInsurance
          - e.personalLeaveDeduction - e.sickLeaveDeduction - e.menstrualLeaveDeduction
