@@ -128,7 +128,10 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
               * 折扣後 / 抹零後的金額優先於折扣前的金額
             - invoiceDate：發票日期（西元 YYYY-MM-DD；若為民國年如「113 年 01 月 15 日」或「113/01/15」請轉為西元）
             - buyerName：買方 / 買受人抬頭（統一發票「買受人」欄的公司名稱；手寫發票為抬頭欄）。讀不到填 ""。
-            - buyerTaxId：買方統一編號（買受人欄的 8 碼數字統編；手寫發票常只填統編）。讀不到填 ""。
+            - buyerTaxId：**買方**統一編號（只取「買受人」／「統一編號」欄的 8 碼數字；手寫發票常只填統編）。讀不到填 ""。
+              * **嚴禁**改用「營業人蓋用統一發票專用章」印章內的統編 —— 那是**賣方**統編，應填到 sellerTaxId
+              * 手寫發票即使字跡潦草、難以辨認，仍必須以買受人欄的手寫數字為準，不可改抄清晰的印章號碼；真的讀不出來就填 ""
+            - sellerTaxId：**賣方**（開立人）統一編號，即「營業人蓋用統一發票專用章」印章內的 8 碼數字統編。讀不到填 ""。
 
             【若為交通票根】
             - invoiceNo：票號 / 車票號碼 / 訂位代號 / 序號（保留完整英數字，不做格式限制）
@@ -137,13 +140,14 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
             - invoiceDate：搭乘日期 / 乘車日期 / 航班日期（西元 YYYY-MM-DD；民國年請轉為西元；去回程票以去程日期為準）
             - buyerName：固定填 ""（交通票根無買方抬頭）
             - buyerTaxId：固定填 ""（交通票根無買方統編）
+            - sellerTaxId：固定填 ""（交通票根無賣方統編）
 
             找不到的欄位：字串欄位填空字串 ""、金額填 0。
             無法判別文件類型時：docType 填 "invoice"。
             若整張圖片完全沒有任何發票 / 收據 / 票根，請回傳空陣列 []。
 
             回覆格式（僅此一行 JSON 陣列，無任何多餘文字）：
-            [{"docType": "invoice|ticket", "invoiceNo": "...", "amount": 0, "invoiceDate": "YYYY-MM-DD 或空字串", "buyerName": "買方抬頭或空字串", "buyerTaxId": "買方統編或空字串"}]
+            [{"docType": "invoice|ticket", "invoiceNo": "...", "amount": 0, "invoiceDate": "YYYY-MM-DD 或空字串", "buyerName": "買方抬頭或空字串", "buyerTaxId": "買方統編或空字串", "sellerTaxId": "賣方統編或空字串"}]
             """;
 
         var requestBody = new
@@ -217,6 +221,10 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
                           ?.Text ?? string.Empty;
 
         var cleanedText = CleanJsonText(rawText);
+
+        // 記錄辨識結果原文：買方統編誤判（抓到賣方統編 / 手寫誤讀）只能靠這段事後查證；
+        // rawText 僅含辨識出的欄位、不含圖檔內容，可安全記錄。
+        logger.LogInformation("InvoiceOcr Gemini raw response: {Text}", rawText);
 
         OcrResult[] ocrResults;
         try
@@ -293,6 +301,7 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
         var docType = "invoice";
         var buyerName = string.Empty;
         var buyerTaxId = string.Empty;
+        var sellerTaxId = string.Empty;
 
         // 嘗試從 JSON 文字中萃取 docType
         var docTypeMatch = Regex.Match(text, @"""docType""\s*:\s*""(invoice|ticket)""");
@@ -307,6 +316,10 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
         var buyerTaxIdMatch = Regex.Match(text, @"""buyerTaxId""\s*:\s*""([^""]*)""");
         if (buyerTaxIdMatch.Success)
             buyerTaxId = buyerTaxIdMatch.Groups[1].Value;
+
+        var sellerTaxIdMatch = Regex.Match(text, @"""sellerTaxId""\s*:\s*""([^""]*)""");
+        if (sellerTaxIdMatch.Success)
+            sellerTaxId = sellerTaxIdMatch.Groups[1].Value;
 
         // 優先：直接從 JSON 字串萃取 invoiceNo 欄位（支援任意格式的票號，例如交通票根）
         var invoiceNoJsonMatch = Regex.Match(text, @"""invoiceNo""\s*:\s*""([^""]*)""");
@@ -350,7 +363,7 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
         if (string.IsNullOrEmpty(invoiceNo) && amount == 0 && string.IsNullOrEmpty(invoiceDate))
             return null;
 
-        return new OcrResult(invoiceNo, amount, invoiceDate, docType, buyerName, buyerTaxId);
+        return new OcrResult(invoiceNo, amount, invoiceDate, docType, buyerName, buyerTaxId, sellerTaxId);
     }
 
     // ── 內部 DTO ──────────────────────────────────────────────────────────────
@@ -361,7 +374,8 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
         [property: JsonPropertyName("invoiceDate")]  string  InvoiceDate = "",
         [property: JsonPropertyName("docType")]      string  DocType = "invoice",
         [property: JsonPropertyName("buyerName")]    string  BuyerName = "",
-        [property: JsonPropertyName("buyerTaxId")]   string  BuyerTaxId = "");
+        [property: JsonPropertyName("buyerTaxId")]   string  BuyerTaxId = "",
+        [property: JsonPropertyName("sellerTaxId")]  string  SellerTaxId = "");
 
     /// <summary>Gemini API 回應結構</summary>
     private sealed class GeminiResponse

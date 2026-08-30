@@ -16,6 +16,8 @@ export interface OcrItem {
   buyerName: string;
   /** 買方統編（統一發票買受人）；交通票根為空字串 */
   buyerTaxId: string;
+  /** 賣方統編（發票專用章）；供交叉比對排除 OCR 抓錯欄位，交通票根為空字串 */
+  sellerTaxId: string;
 }
 
 @Injectable({providedIn: 'root'})
