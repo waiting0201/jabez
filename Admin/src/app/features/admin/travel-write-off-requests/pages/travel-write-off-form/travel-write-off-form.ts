@@ -116,7 +116,7 @@ export class TravelWriteOffForm implements OnInit {
   /** OCR 填值後驗證買方抬頭/統編（僅統一發票）；不符則記錄該列警告 */
   private _checkBuyer(rowId: string, item: OcrItem) {
     if (item.docType !== 'invoice') { this.invoiceWarnings.delete(rowId); return; }
-    const r = validateInvoiceBuyer(item.buyerName ?? '', item.buyerTaxId ?? '');
+    const r = validateInvoiceBuyer(item.buyerName ?? '', item.buyerTaxId ?? '', item.sellerTaxId ?? '');
     if (r.level === 'warn') this.invoiceWarnings.set(rowId, r.message!);
     else this.invoiceWarnings.delete(rowId);
   }
