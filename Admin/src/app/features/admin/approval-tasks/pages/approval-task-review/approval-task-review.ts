@@ -31,10 +31,11 @@ import {
   TASK_STATUS_LABELS, TASK_STATUS_CLASSES,
   APPLICATION_TYPE_LABELS, APPLICATION_TYPE_CLASSES,
   PAYMENT_TYPE_LABELS, LEAVE_TYPE_LABELS,
-  InstallmentDto, InstallmentInput, UpsertInstallmentsRequest, WriteOffTaskDetailItem,
+  InstallmentDto, InstallmentInput, UpsertInstallmentsRequest, WriteOffTaskDetailItem, HolidayAllowance,
   PAYMENT_INSTALLMENT_STATUS_LABELS, PAYMENT_INSTALLMENT_STATUS_CLASSES,
 } from '../../models/approval-task.model';
 import {LeaveType, formatLeaveDuration} from '../../../leave-requests/models/leave-request.model';
+import {formatParticipantDates, formatParticipantDays} from '../../../holiday-travel-requests/models/holiday-travel-request.model';
 
 /**
  * 財務撥款步驟的部門 Code（須與後端 DepartmentCodes.FinanceStep 兩處同步）：
@@ -145,6 +146,16 @@ export class ApprovalTaskReview implements OnInit {
   /** 依假別單位格式化時數顯示 */
   formatLeaveDuration(type: string, hours: number): string {
     return formatLeaveDuration(type as LeaveType, hours);
+  }
+
+  /** 假日活動人員的參與日期（M/d，半天附時段；無逐日勾選＝全程參與，回空字串） */
+  participantDates(a: HolidayAllowance): string {
+    return formatParticipantDates(a.dates);
+  }
+
+  /** 天數顯示：整數不補小數（3）、半天顯示一位（2.5） */
+  participantDays(days: number): string {
+    return formatParticipantDays(days);
   }
 
   form = this.fb.group({

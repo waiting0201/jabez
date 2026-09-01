@@ -919,14 +919,18 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 
         // 假日活動參與者（不含申請人本人；申請人在 holidayTravelSql 已帶 ApplicantBaseSalary）
         // 用於假日津貼預估顯示，金額計算公式與 PayrollReadService 一致
+        // LEFT JOIN 個人參與日期後一列一 (參與者, 日期)，以 p.Id 分組還原（寫法比照 TravelRequestReadService）
         const string holidayParticipantsSql = """
-            SELECT p.TravelRequestId, p.UserId, u.Name AS UserName, u.BaseSalary, p.SortOrder,
-                   CAST(COALESCE(p.HolidayDays, tr.HolidayDays) AS decimal(5,1)) AS HolidayDays
+            SELECT p.Id AS ParticipantId, p.TravelRequestId, p.UserId, u.Name AS UserName,
+                   u.BaseSalary, p.SortOrder,
+                   CAST(COALESCE(p.HolidayDays, tr.HolidayDays) AS decimal(5,1)) AS HolidayDays,
+                   d.Date, d.Slot
             FROM TravelRequestParticipants p
             JOIN TravelRequests tr ON p.TravelRequestId = tr.Id
             LEFT JOIN Users u      ON p.UserId = u.Id
+            LEFT JOIN TravelRequestParticipantDates d ON d.TravelRequestParticipantId = p.Id
             WHERE tr.IsHolidayTravel = 1
-            ORDER BY p.TravelRequestId, p.SortOrder
+            ORDER BY p.TravelRequestId, p.SortOrder, d.Date
             """;
         var holidayParticipantRows = await db.QueryAsync<dynamic>(holidayParticipantsSql);
 
@@ -1239,19 +1243,27 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             overtimeProjectDict.TryGetValue(id, out var ps) && ps.Count > 0 ? [.. ps] : null;
 
         // Holiday travel participants lookup keyed by TravelRequestId
-        // 每筆存 (UserId, UserName, BaseSalary, HolidayDays)；HolidayDays 已在 SQL 取 COALESCE(個人, 整單)，
+        // 每筆存 (UserId, UserName, BaseSalary, HolidayDays, Dates)；HolidayDays 已在 SQL 取 COALESCE(個人, 整單)，
         // 與 PayrollReadService 同一真相（有勾選參與日期者為個人天數，含半天 0.5）
-        var holidayParticipantsDict = new Dictionary<int, List<(Guid UserId, string UserName, decimal? BaseSalary, decimal HolidayDays)>>();
-        foreach (var hp in holidayParticipantRows)
+        // 來源列因 LEFT JOIN 參與日期而一人多列，先以 ParticipantId 分組還原成一人一筆 + 逐日清單
+        var holidayParticipantsDict = new Dictionary<int, List<(Guid UserId, string UserName, decimal? BaseSalary, decimal HolidayDays, ParticipantDateDto[]? Dates)>>();
+        foreach (var g in holidayParticipantRows.GroupBy(r => (int)r.ParticipantId))
         {
+            var hp = g.First();
             int trId = (int)hp.TravelRequestId;
             if (!holidayParticipantsDict.ContainsKey(trId))
                 holidayParticipantsDict[trId] = [];
+            var dates = g.Where(r => r.Date is not null)
+                         .Select(r => new ParticipantDateDto(
+                             (DateTime)r.Date,
+                             ParticipantDateSlots.Normalize((string?)r.Slot)))
+                         .ToArray();
             holidayParticipantsDict[trId].Add((
                 (Guid)hp.UserId,
                 (string?)hp.UserName ?? "—",
                 (decimal?)hp.BaseSalary,
-                (decimal?)hp.HolidayDays ?? 0m));
+                (decimal?)hp.HolidayDays ?? 0m,
+                dates.Length > 0 ? dates : null));
         }
 
         // 計算單筆假日活動的所有人員（申請人 + 參與者）津貼明細
@@ -1271,8 +1283,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             };
             if (holidayParticipantsDict.TryGetValue(trId, out var participants))
             {
-                foreach (var (uid, name, bs, days) in participants)
-                    list.Add(new HolidayAllowanceDto(uid, name, days, Allowance(bs, days), IsApplicant: false));
+                foreach (var (uid, name, bs, days, dates) in participants)
+                    list.Add(new HolidayAllowanceDto(uid, name, days, Allowance(bs, days), IsApplicant: false, dates));
             }
             return [.. list];
         }

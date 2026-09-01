@@ -7,6 +7,7 @@ import {LeaveType, LEAVE_TYPE_LABELS} from '../../leave-requests/models/leave-re
 import {ApplicationType, APPLICATION_TYPE_LABELS, APPLICATION_TYPE_CLASSES} from '../../approvals/models/approval.model';
 import {TravelPaymentRequestItem} from '../../travel-payment-requests/models/travel-payment-request.model';
 import {PreReviewItem} from '../../pre-review-requests/models/pre-review-request.model';
+import {ParticipantDate} from '../../holiday-travel-requests/models/holiday-travel-request.model';
 
 export type TaskStatus = 'pending' | 'approved' | 'rejected' | 'returned';
 
@@ -167,6 +168,8 @@ export interface HolidayAllowance {
   /** round(BaseSalary / 30) × days，與 PayrollReadService 公式一致 */
   allowance: number;
   isApplicant: boolean;
+  /** 逐日勾選的參與日期 + 時段（null / 空＝全程參與；申請人不逐日故恆為空） */
+  dates?: ParticipantDate[];
 }
 
 export interface TravelTaskDetail {
