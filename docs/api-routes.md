@@ -273,7 +273,7 @@
 | GET | `/files/avatars/{fileName}` | 頭像代理（公開，topbar 顯示用） |
 | GET | `/files/indigenous-proofs/{fileName}` | 原住民證明文件代理（需 `users:read`，HR 敏感 PII） |
 | GET | `/files/low-income-proofs/{fileName}` | 低收入證明文件代理（需 `users:read`，HR 敏感 PII） |
-| GET | `/files/disabled-proofs/{fileName}` | 殘障證明文件代理（需 `users:read`，HR 敏感 PII） |
+| GET | `/files/disabled-proofs/{fileName}` | 身心障礙證明文件代理（需 `users:read`，HR 敏感 PII） |
 | GET | `/files/id-cards/{fileName}` | 身分證影本代理（需 `users:read`，HR 敏感 PII） |
 | GET | `/files/education-proofs/{fileName}` | 最高學歷證明代理（需 `users:read`，HR 敏感 PII） |
 | GET | `/files/passbooks/{fileName}` | 員工存摺封面代理（需 `users:read`，HR 敏感 PII） |

@@ -774,7 +774,7 @@ if (record.EffectiveDate <= Clock.Today) { /* 已生效 */ }
 | 檔案類型 | 上限 |
 |---|---|
 | 員工頭像 / 簽名 | 1 MB |
-| 證明文件（原住民 / 低收入 / 殘障 / 身分證） | 1 MB |
+| 證明文件（原住民 / 低收入 / 身心障礙 / 身分證） | 1 MB |
 | 發票圖檔 | 1 MB |
 
 ### 12.3 驗證
@@ -801,7 +801,7 @@ var allowedSignatures = new Dictionary<string, byte[][]>
 | `signatures` | 簽名檔 | **公開** `/files/signatures/{fileName}` |
 | `indigenous-proofs` | 原住民證明 | 授權 `users:read` |
 | `low-income-proofs` | 低收入證明 | 授權 `users:read` |
-| `disabled-proofs` | 殘障證明 | 授權 `users:read` |
+| `disabled-proofs` | 身心障礙證明 | 授權 `users:read` |
 | `id-cards` | 身分證影本 | 授權 `users:read` |
 | `education-proofs` | 最高學歷證明 | 授權 `users:read` |
 | `passbooks` | 員工存摺封面 | 授權 `users:read` |

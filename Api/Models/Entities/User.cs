@@ -47,11 +47,11 @@ public class User
     public DateTime? Birthday        { get; set; }
     public bool      IsIndigenous    { get; set; }   // 是否為原住民（影響歲時祭儀假申請）
 
-    // 低收入 / 殘障身份（與原住民相同的條件式上傳模式）
+    // 低收入 / 身心障礙身份（與原住民相同的條件式上傳模式）
     public bool   IsLowIncome         { get; set; } = false;
     public string? LowIncomeProofUrl  { get; set; }   // 低收入戶證明文件（圖或 PDF）
     public bool   IsDisabled          { get; set; } = false;
-    public string? DisabledProofUrl   { get; set; }   // 殘障手冊 / 身心障礙證明（圖或 PDF）
+    public string? DisabledProofUrl   { get; set; }   // 身心障礙手冊 / 證明（圖或 PDF）
 
     // 健保 / 勞保金額手動覆寫（null = 走 lookup 級距表）
     public decimal? HealthInsuranceOverride { get; set; }

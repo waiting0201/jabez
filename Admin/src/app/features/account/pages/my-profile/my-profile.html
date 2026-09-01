@@ -178,12 +178,12 @@
                   </div>
                 }
                 <div class="col-12 col-md-4">
-                  <div class="form-label fw-500 text-muted small">殘障身份</div>
+                  <div class="form-label fw-500 text-muted small">身心障礙身份</div>
                   <div>{{ u.isDisabled ? '是' : '否' }}</div>
                 </div>
                 @if (u.isDisabled && u.disabledProofUrl) {
                   <div class="col-12 col-md-8">
-                    <div class="form-label fw-500 text-muted small">殘障證明文件</div>
+                    <div class="form-label fw-500 text-muted small">身心障礙證明文件</div>
                     <button type="button" class="btn btn-sm btn-outline-secondary" (click)="viewFile(u.disabledProofUrl)">
                       <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
                       檢視

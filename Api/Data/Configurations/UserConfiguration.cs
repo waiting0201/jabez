@@ -46,7 +46,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.IndigenousProofUrl)
                .HasMaxLength(500);
 
-        // 低收入 / 殘障身份
+        // 低收入 / 身心障礙身份
         builder.Property(u => u.IsLowIncome)
                .HasDefaultValue(false);
 
