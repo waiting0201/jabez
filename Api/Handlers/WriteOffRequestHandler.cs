@@ -619,8 +619,9 @@ public sealed class WriteOffRequestHandler(
         // 查詢指定審核者清單傳給 ResolveStartingStepAsync（含 ApprovalStepOrder 綁定步驟）
         var designatedReviewers = await DesignatedReviewerHelper.ReadForFlowAsync(db, RequestType, wo.Id);
 
-        // 自審跳過邏輯（與請款、預支一致，不升級）
-        var (startStep, autoApproved, _) = await approvalFlow.ResolveStartingStepAsync(
+        // 自審跳過邏輯（與請款、預支一致，自審不升級）；
+        // 上層級關卡在同部門找不到更高階者時，改由上層部門主管接手（escalation）
+        var (startStep, autoApproved, escalation) = await approvalFlow.ResolveStartingStepAsync(
             wo.ApprovalItemId, userId, RequestType, designatedReviewers);
 
         if (autoApproved)
@@ -637,6 +638,20 @@ public sealed class WriteOffRequestHandler(
             wo.CurrentStepOrder = startStep;
         }
 
+        // 升級審核：上層級步驟在同部門找不到更高階審核者，改由上層部門主管接手
+        if (escalation is not null)
+        {
+            db.EscalationOverrides.Add(new EscalationOverride
+            {
+                ApplicationType  = RequestType,
+                ApplicationId    = wo.Id,
+                StepOrder        = startStep,
+                ReviewerId       = escalation.ReviewerId,
+                OnBehalfOfUserId = escalation.OnBehalfOfUserId,
+                CreatedAt        = Clock.Now,
+            });
+        }
+
         await db.SaveChangesAsync();
 
         // 通知審核者：指定審核步驟通知第一位指定審核者，否則通知符合條件的審核者
@@ -646,7 +661,10 @@ public sealed class WriteOffRequestHandler(
             // 與 ResolveStartingStepAsync 的判定同源，確保不會誤走部門/職稱通知
             bool isDesignatedStep = designatedReviewers.Any(r => r.ApprovalStepOrder == startStep);
 
-            if (isDesignatedStep)
+            if (escalation is not null)
+                await notifier.NotifySpecificReviewerAsync(RequestType, wo.Id, escalation.ReviewerId,
+                    wo.SubmittedById.Value, escalation.OnBehalfOfUserId is not null);
+            else if (isDesignatedStep)
             {
                 var firstReviewer = await db.RequestDesignatedReviewers
                     .AsNoTracking()

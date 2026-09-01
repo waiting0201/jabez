@@ -114,6 +114,66 @@ public sealed class EscalationService(AppDbContext db) : IEscalationService
         throw AppException.BadRequest("找不到可審核的主管，無法送出申請。");
     }
 
+    /// <inheritdoc />
+    public async Task<Guid?> FindSuperiorInAncestorDepartmentsAsync(
+        User applicant, IReadOnlySet<Guid>? excludeUserIds = null)
+    {
+        // 申請人沒有部門或沒有職稱 → 無從比較職級，維持跳過該關
+        if (applicant.DepartmentId is null || applicant.JobTitleId is null)
+            return null;
+
+        var applicantLevel = await db.JobTitles.AsNoTracking()
+            .Where(j => j.Id == applicant.JobTitleId)
+            .Select(j => (int?)j.Level)
+            .FirstOrDefaultAsync();
+        if (applicantLevel is null)
+            return null;
+
+        var dept = await db.Departments.AsNoTracking()
+            .FirstOrDefaultAsync(d => d.Id == applicant.DepartmentId);
+        if (dept is null)
+            return null;
+
+        var visited = new HashSet<int> { dept.Id }; // 防止部門循環
+        var excludeIds = excludeUserIds?.ToArray() ?? [];
+
+        var currentDept = dept;
+        for (int depth = 0; depth < MaxDepth; depth++)
+        {
+            if (currentDept.ParentId is null)
+                break; // 已到頂層
+
+            var parentDept = await db.Departments.AsNoTracking()
+                .FirstOrDefaultAsync(d => d.Id == currentDept.ParentId);
+            if (parentDept is null)
+                break;
+
+            if (!visited.Add(parentDept.Id))
+                break; // 部門循環
+
+            // 該部門中確實比申請人高階者，取最接近申請人職級的一位（Level 由大到小＝由近到遠）
+            var superiorId = await db.Users.AsNoTracking()
+                .Where(u => u.DepartmentId == parentDept.Id
+                    && u.Status == "active"
+                    && !u.IsSuperAdmin
+                    && u.Id != applicant.Id
+                    && u.JobTitle != null
+                    && u.JobTitle.Level < applicantLevel.Value
+                    && !excludeIds.Contains(u.Id))
+                .OrderByDescending(u => u.JobTitle!.Level)
+                .Select(u => (Guid?)u.Id)
+                .FirstOrDefaultAsync();
+
+            if (superiorId.HasValue)
+                return superiorId;
+
+            currentDept = parentDept;
+        }
+
+        // 一路到頂層仍找不到 → 回 null，呼叫端維持既有的「跳過該關」行為
+        return null;
+    }
+
     /// <summary>判斷申請人是否符合此步驟的審核者條件（即「自己審自己」）</summary>
     private static bool IsApplicantTheReviewer(ApprovalStep step, User applicant)
     {

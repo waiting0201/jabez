@@ -578,8 +578,9 @@ public sealed class PaymentRequestHandler(
         // 查詢指定審核者清單傳給 ResolveStartingStepAsync（含 ApprovalStepOrder 綁定步驟）
         var designatedReviewers = await DesignatedReviewerHelper.ReadForFlowAsync(db, "payment_request", pr.Id);
 
-        // 自動跳過「申請人即審核者」的步驟
-        var (startStep, autoApproved, _) = await approvalFlow.ResolveStartingStepAsync(
+        // 自審跳過「申請人即審核者」的步驟（請款類不做自審升級）；
+        // 上層級關卡在同部門找不到更高階者時，改由上層部門主管接手（escalation）
+        var (startStep, autoApproved, escalation) = await approvalFlow.ResolveStartingStepAsync(
             pr.ApprovalItemId, userId, "payment_request", designatedReviewers);
 
         if (autoApproved)
@@ -596,6 +597,20 @@ public sealed class PaymentRequestHandler(
             pr.CurrentStepOrder = startStep;
         }
 
+        // 升級審核：上層級步驟在同部門找不到更高階審核者，改由上層部門主管接手
+        if (escalation is not null)
+        {
+            db.EscalationOverrides.Add(new EscalationOverride
+            {
+                ApplicationType  = "payment_request",
+                ApplicationId    = pr.Id,
+                StepOrder        = startStep,
+                ReviewerId       = escalation.ReviewerId,
+                OnBehalfOfUserId = escalation.OnBehalfOfUserId,
+                CreatedAt        = Clock.Now,
+            });
+        }
+
         await db.SaveChangesAsync();
 
         // 通知審核者：若為指定審核步驟則通知第一位指定審核者，否則通知符合條件的審核者
@@ -604,7 +619,10 @@ public sealed class PaymentRequestHandler(
             // 指定審核步驟（原生 UseApplicantDesignated 或例外指定審核命中）：讀 designee 快照，
             // 與 ResolveStartingStepAsync 的判定同源，確保不會誤走部門/職稱通知
             bool isDesignatedStep = designatedReviewers.Any(r => r.ApprovalStepOrder == startStep);
-            if (isDesignatedStep)
+            if (escalation is not null)
+                await notifier.NotifySpecificReviewerAsync("payment_request", pr.Id, escalation.ReviewerId,
+                    pr.SubmittedById.Value, escalation.OnBehalfOfUserId is not null);
+            else if (isDesignatedStep)
             {
                 var firstReviewer = await db.RequestDesignatedReviewers
                     .AsNoTracking()

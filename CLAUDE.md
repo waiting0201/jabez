@@ -304,6 +304,8 @@ Api/
 │   ├── AppDbContextFactory.cs         # 用於 CLI Migration
 │   ├── Configurations/                # EF Core 實體對應設定（34 個，新增 EmployeeProfile + 9 張子表 + 健保眷屬 + PreReviewRequest / PreReviewItem / PreReviewRequestAttachment）
 │   ├── Migrations/                    # EF Core Migration 檔案
+│   ├── Scripts/                       # 一次性維運 SQL（非程式）：01 診斷「送單後會卡死」的簽核關卡（唯讀，遞迴 CTE 重現流程解析優先序）、
+│   │                                  #   02 修正請假 Step2「申請人部門的協理」→ 上層級審核（@Commit 空跑開關 + MinDays 遺失防呆）。staging / 正式站各跑一次
 │   └── Seed/                          # 一次性匯入工具（共用 RocDateParser 解民國年）
 │       ├── EmployeeImporter + EmployeeImportDtos + employee-import.json  # 員工人事資料（RUN_EMPLOYEE_IMPORT 旗標，IMPORT_UPLOAD_FILES 控制附件上傳）
 │       ├── ProjectImporter + ProjectImportDtos + project-import.json     # 專案資料（RUN_PROJECT_IMPORT 旗標，PROJECT_IMPORT_DRY_RUN 只印不寫；來源 reference/專案資料-115.07.29.xls；以 Code upsert、期別明細全量重建）
@@ -319,7 +321,7 @@ Api/
 │   ├── IJwtService.cs
 │   ├── JwtService.cs                  # HS256 JWT 產生與驗證
 │   ├── IEscalationService.cs          # 簽核升級服務介面
-│   ├── EscalationService.cs           # 簽核升級邏輯（上層部門主管遞迴 + 代理人）
+│   ├── EscalationService.cs           # 簽核升級邏輯（上層部門主管遞迴 + 代理人）＋ **上層級關卡無人時往上層部門接手**（2026-09，`FindSuperiorInAncestorDepartmentsAsync`）：`UseDirectSupervisor` 步驟在同部門找不到更高階者時，沿部門 `ParentId` 往上找 `Level <` 申請人的最接近一位並以升級審核指派，找不到才退回原本的「跳過該關」；全部 9 種申請類型適用，修正「部門最高主管送單一路跳到底 → 無人審即自動核准」
 │   ├── EscalationResult.cs            # 升級結果 record
 │   ├── OvertimeCompensationService.cs # 加班補償方式共用（static，不呼叫 SaveChanges）：Compensatory / Pay 常數 + Normalize（未知→補休，安全側）
 │   │                                    + ApplyAsync（算並寫入 4 個快照欄）/ ClearSnapshot（退回・拒絕・改單）/ HasHolidayTravelConflictAsync（假日津貼重複給付警示）
