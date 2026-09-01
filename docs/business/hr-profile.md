@@ -5,7 +5,7 @@
 | Tab | 名稱 | 內容 | API |
 |---|---|---|---|
 | 1 | 員工基本資料 | Email / 角色 / 部門 / 職稱 / 底薪 / 伙食津貼 / 頭像 / 簽名 / **三個身份旗標 + 證明檔（原住民 / 低收入 / 身心障礙）** / **健保 / 勞保金額（可手動覆寫，留空 fallback 級距表）** | `POST /users` / `PATCH /users/{id}`（multipart） |
-| 2 | 人事資料卡（**「薪資調整」子表需 `payroll:read`**） | 員工代號 / 英文名 / 身分證號 / 性別 / 婚姻 / 出生地 / 行動電話 / 戶籍 / 通訊 / 緊急聯絡 / 銀行帳號 / 投保起日 / 扶養人 / 專長興趣 / 離職原因 / **身分證正反面影本** / **最高學歷證明** / **存摺封面** / 學歷 / 經歷 / 家庭 / 訓練 / 語言 / 職務調整 / 獎懲 / 薪資調整 | `GET / PUT /users/{id}/profile`（PUT 為 multipart） |
+| 2 | 人事資料卡（**「薪資調整」子表需 `payroll:read`**） | 員工代號 / 英文名 / 身分證號 / 性別 / 婚姻 / 出生地 / 行動電話 / 戶籍 / 通訊 / 緊急聯絡 / 銀行帳號（兩組帳戶）/ 投保起日 / 扶養人 / 專長興趣 / 離職原因 / **身分證正反面影本** / **最高學歷證明** / **存摺封面** / 學歷 / 經歷 / 家庭 / 訓練 / 語言 / 職務調整 / 獎懲 / 薪資調整 | `GET / PUT /users/{id}/profile`（PUT 為 multipart） |
 | 3 | 健保眷屬 | 姓名 / 關係 / 身分證號 / 出生日期；上方提示「最多計 3 口」+ 即時試算 `健保費 = baseHealth × (1 + min(N, 3))` | 同 Tab 2（共用 PUT 端點） |
 
 ## 行為規則
@@ -15,6 +15,13 @@
   - 例外：**薪資調整為「條件式」整批替換** —— payload 的 `salaryAdjustmentRecords` 為 nullable（`null` = 不變更、`[]` = 清空），且需持有 `payroll:read` 才會進入刪除 + 重建。無此權限者的前端不送該 key，既有薪資歷史不刪不改、也不觸發下方的薪資自動同步（見 [payroll-formula.md §誰看得到薪資欄位](payroll-formula.md)）
 - **最高學歷證明**：與身分證影本同 multipart 機制，附在 `EmployeeProfile` 主表（`HighestEducationProofUrl`，非每筆學歷各掛附件），blob 命名 `{userId}_education{ext}`，前端使用 `ImageCompressionService.compress` 壓縮（圖片 maxSize=1600 quality=0.85；PDF passthrough），1MB 上限
 - **存摺封面**：同上 multipart 機制，附在 `EmployeeProfile` 主表（`BankBookImageUrl`，選填），multipart part 為 `bankBookImage` / `removeBankBook`，blob 容器 `passbooks`、命名 `{userId}_passbook{ext}`，位於「緊急聯絡 / 財務 / 其他」卡片銀行欄位下方；管理端代理 `GET /files/passbooks/{fileName}`（需 `users:read`），員工自助走 `/me/files/passbooks/...`
+- **銀行帳戶為兩組（2026-09 新增第二帳戶）**：「緊急聯絡 / 財務 / 其他」卡片內分成「**第一帳戶（薪轉）**」與「**第二帳戶（選填）**」兩段小標，各含 **銀行分行 + 銀行帳號 + 存摺封面** 三項，欄位完全對稱：
+  - 主表欄位 `BankCode` / `BankAccount` / `BankBookImageUrl` 與 `BankCode2` / `BankAccount2` / `BankBookImageUrl2`
+  - multipart part `bankBookImage` / `removeBankBook` 與 `bankBookImage2` / `removeBankBook2`
+  - blob 同一容器 `passbooks`，命名 `{userId}_passbook{ext}` 與 `{userId}_passbook2{ext}`（**suffix 必須不同，否則第二張會覆蓋第一張**）
+  - 後端兩組共用 `EmployeeProfileHandler.ProcessPassbookAsync(form, userId, fileKey, removeKey, blobSuffix, currentUrl)`（1MB 上限 + magic-byte 驗 PNG / JPEG / PDF + 換副檔名時刪舊 blob，皆收斂於此）
+  - `{userId}_passbook2{ext}` 仍以 userId 開頭，故 `/me/files/passbooks/...` 的前綴檢查照常放行，員工在「個人資訊」看得到自己的第二帳戶（有值才顯示該區塊）
+  - 人事資料卡列印 PDF 的「緊急聯絡 / 財務 / 其他」區塊多兩格「銀行分行(二)」「銀行帳號(二)」
 - **薪資自動同步**：插入完所有 `SalaryAdjustmentRecord` 後，找 `EffectiveDate <= 今日(Asia/Taipei)` 中 `EffectiveDate` 最大的那一筆，把該筆 4 個金額欄位寫回 `User`：`BaseSalary`、`MealAllowance`、`OtherAllowance`（其他加給）、`AdjustmentDifference`（代扣代付款，2026-08 由「調整差額」更名，識別字未改）；無符合則不變。同步後人事薪資計算自動納入。（2026-08 移除職務加給 / 主管加給 / 外派加給，DB 欄位保留作歷史封存）
 - **日期欄位寬鬆解析（Safari 相容）**：學歷 / 經歷起訖用 `<input type="month">`，Safari 不支援會退化成純文字框，使用者可能手打 `2020/09`、`2020.9` 等格式。三層防護：(1) 前端送出前驗證學歷年月格式（不合法擋下並提示 YYYY-MM）；(2) 前端把可解析的年月正規化為 `yyyy-MM-dd`（另補獎懲次數預設 1、健保眷屬生日空字串→null、薪資 baseSalary 預設 0）；(3) 後端 payload 反序列化掛 [FlexibleDateTimeJsonConverter](../../Api/Common/FlexibleDateTimeJsonConverter.cs) 寬鬆解析 12 種常見年月/日期格式，失敗時回傳含欄位值的明確錯誤訊息（非籠統「請求內容格式不正確」）
 - **2 寸彩照**：hr.doc 上「黏貼 2 吋彩照」欄位**不做**（也不重用 `User.Avatar`）

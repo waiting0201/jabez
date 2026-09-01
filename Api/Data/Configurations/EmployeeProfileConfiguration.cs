@@ -56,6 +56,12 @@ public class EmployeeProfileConfiguration : IEntityTypeConfiguration<EmployeePro
         builder.Property(p => p.BankAccount)
                .HasMaxLength(50);
 
+        builder.Property(p => p.BankCode2)
+               .HasMaxLength(20);
+
+        builder.Property(p => p.BankAccount2)
+               .HasMaxLength(50);
+
         builder.Property(p => p.Specialties)
                .HasColumnType("nvarchar(max)");
 
@@ -72,6 +78,9 @@ public class EmployeeProfileConfiguration : IEntityTypeConfiguration<EmployeePro
                .HasMaxLength(500);
 
         builder.Property(p => p.BankBookImageUrl)
+               .HasMaxLength(500);
+
+        builder.Property(p => p.BankBookImageUrl2)
                .HasMaxLength(500);
 
         builder.Property(p => p.CreatedAt)

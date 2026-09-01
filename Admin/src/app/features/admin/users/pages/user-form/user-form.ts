@@ -148,6 +148,12 @@ export class UserForm implements OnInit {
   bankBookImageFileName = signal<string | null>(null);
   removeBankBook        = signal(false);
 
+  bankBookImageUrl2      = signal<string | null>(null);
+  bankBookImageFile2     = signal<File | null>(null);
+  bankBookImagePreview2  = signal<string | null>(null);
+  bankBookImageFileName2 = signal<string | null>(null);
+  removeBankBook2        = signal(false);
+
   // ── 通訊地址同戶籍 ───────────────────────────────
   mailingAddressSameAsResidential = false;
 
@@ -199,6 +205,8 @@ export class UserForm implements OnInit {
       emergencyContactPhone:[''],
       bankCode:             [''],
       bankAccount:          [''],
+      bankCode2:            [''],
+      bankAccount2:         [''],
       insuranceStartDate:   [''],
       dependentCount:       [null as number | null],
       specialties:          [''],
@@ -350,6 +358,8 @@ export class UserForm implements OnInit {
       emergencyContactPhone: p.emergencyContactPhone ?? '',
       bankCode:              p.bankCode ?? '',
       bankAccount:           p.bankAccount ?? '',
+      bankCode2:             p.bankCode2 ?? '',
+      bankAccount2:          p.bankAccount2 ?? '',
       insuranceStartDate:    p.insuranceStartDate?.slice(0, 10) ?? '',
       dependentCount:        p.dependentCount ?? null,
       specialties:           p.specialties ?? '',
@@ -363,6 +373,7 @@ export class UserForm implements OnInit {
     // 最高學歷證明 URL
     this.highestEducationProofUrl.set(p.highestEducationProofUrl ?? null);
     this.bankBookImageUrl.set(p.bankBookImageUrl ?? null);
+    this.bankBookImageUrl2.set(p.bankBookImageUrl2 ?? null);
 
     // FormArrays
     this.educationArray.clear();
@@ -1000,6 +1011,59 @@ export class UserForm implements OnInit {
   }
 
   // ═══════════════════════════════════════════════
+  // 存摺封面（第二帳戶）
+  // ═══════════════════════════════════════════════
+  async onBankBook2Selected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file  = input.files?.[0];
+    if (!file) return;
+    input.value = '';
+    try {
+      const compressed = await this.imageCompression.compress(file, { maxSize: 1600, quality: 0.85 });
+      if (compressed.size > MAX_FILE_BYTES) {
+        this.toastr.error('上傳照片勿超過1MB');
+        return;
+      }
+      this.bankBookImageFile2.set(compressed);
+      this.bankBookImageFileName2.set(file.name);
+      this.removeBankBook2.set(false);
+      if (compressed.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = () => this.bankBookImagePreview2.set(reader.result as string);
+        reader.readAsDataURL(compressed);
+      } else {
+        this.bankBookImagePreview2.set(null);
+      }
+    } catch (err) {
+      console.error('[UserForm] 第二帳戶存摺封面處理失敗', err);
+      this.toastr.error('檔案處理失敗，請重試。', '處理失敗');
+    }
+  }
+
+  onRemoveBankBook2() {
+    this.bankBookImageFile2.set(null);
+    this.bankBookImagePreview2.set(null);
+    this.bankBookImageFileName2.set(null);
+    this.removeBankBook2.set(true);
+  }
+
+  viewBankBook2() {
+    const url = this.bankBookImageUrl2();
+    if (!url) return;
+    const match    = url.match(/\/passbooks\/(.+)$/);
+    const fileName = match?.[1];
+    if (!fileName) return;
+    this.userService.getPassbook(fileName).subscribe({
+      next: blob => {
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, '_blank');
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+      },
+      error: err => this.toastr.error(err.error?.message || '無法載入存摺封面。', '載入失敗'),
+    });
+  }
+
+  // ═══════════════════════════════════════════════
   // 通訊地址同戶籍
   // ═══════════════════════════════════════════════
   copyResidentialToMailing() {
@@ -1135,6 +1199,20 @@ export class UserForm implements OnInit {
 
   get hasExistingBankBook(): boolean {
     return !!this.bankBookImageUrl() && !this.bankBookImageFile() && !this.removeBankBook();
+  }
+
+  get bankBookDisplayName2(): string | null {
+    if (this.removeBankBook2()) return null;
+    const pending = this.bankBookImageFileName2();
+    if (pending) return pending;
+    const url = this.bankBookImageUrl2();
+    if (!url) return null;
+    const match = url.match(/\/([^/]+)$/);
+    return match?.[1] ?? url;
+  }
+
+  get hasExistingBankBook2(): boolean {
+    return !!this.bankBookImageUrl2() && !this.bankBookImageFile2() && !this.removeBankBook2();
   }
 
   // ═══════════════════════════════════════════════
@@ -1415,6 +1493,8 @@ export class UserForm implements OnInit {
       emergencyContactPhone: hrVal.emergencyContactPhone || null,
       bankCode:              hrVal.bankCode || null,
       bankAccount:           hrVal.bankAccount || null,
+      bankCode2:             hrVal.bankCode2 || null,
+      bankAccount2:          hrVal.bankAccount2 || null,
       insuranceStartDate:    hrVal.insuranceStartDate || null,
       dependentCount:        hrVal.dependentCount ?? null,
       specialties:           hrVal.specialties || null,
@@ -1442,6 +1522,8 @@ export class UserForm implements OnInit {
       removeHighestEducationProof: this.removeHighestEducationProof(),
       bankBookImage:               this.bankBookImageFile(),
       removeBankBook:              this.removeBankBook(),
+      bankBookImage2:              this.bankBookImageFile2(),
+      removeBankBook2:             this.removeBankBook2(),
     }).subscribe({
       next: profile => {
         this._hrProfile = profile;

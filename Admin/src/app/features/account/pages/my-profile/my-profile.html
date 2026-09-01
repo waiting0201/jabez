@@ -543,6 +543,9 @@
                   <div class="form-label fw-500 text-muted small">緊急聯絡電話</div>
                   <div>{{ p.emergencyContactPhone || '—' }}</div>
                 </div>
+                <div class="col-12">
+                  <div class="fw-600 mb-2 text-[--text-secondary]">第一帳戶（薪轉）</div>
+                </div>
                 <div class="col-12 col-md-3">
                   <div class="form-label fw-500 text-muted small">銀行分行</div>
                   <div>{{ p.bankCode || '—' }}</div>
@@ -559,6 +562,28 @@
                       檢視文件
                     </button>
                   </div>
+                }
+                @if (p.bankCode2 || p.bankAccount2 || p.bankBookImageUrl2) {
+                  <div class="col-12">
+                    <div class="fw-600 mb-2 mt-2 pt-3 border-top text-[--text-secondary]">第二帳戶</div>
+                  </div>
+                  <div class="col-12 col-md-3">
+                    <div class="form-label fw-500 text-muted small">銀行分行</div>
+                    <div>{{ p.bankCode2 || '—' }}</div>
+                  </div>
+                  <div class="col-12 col-md-5">
+                    <div class="form-label fw-500 text-muted small">銀行帳號</div>
+                    <div>{{ p.bankAccount2 || '—' }}</div>
+                  </div>
+                  @if (p.bankBookImageUrl2) {
+                    <div class="col-12">
+                      <div class="form-label fw-500 text-muted small">存摺封面</div>
+                      <button type="button" class="btn btn-sm btn-outline-secondary" (click)="viewFile(p.bankBookImageUrl2)">
+                        <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                        檢視文件
+                      </button>
+                    </div>
+                  }
                 }
                 <div class="col-12 col-md-4">
                   <div class="form-label fw-500 text-muted small">投保起日</div>

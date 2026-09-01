@@ -268,7 +268,7 @@ Api/
 ├── Handlers/                          # 25 個 Handler（業務邏輯）
 │   ├── AuthHandler.cs                 # 登入、刷新 Token（登入時自動補打漏打的下班卡＝**上班打卡時間 + 9 小時（含午休），不分上下午打卡**，並標記 `IsClockOutAuto` 供出缺勤清單顯示「系統補卡」badge；加班結束卡＝加班開始 + 申請單預估時數）
 │   ├── UserHandler.cs                 # 使用者 CRUD（含原住民 / 低收入 / 身心障礙證明 + 健保 / 勞保覆寫）；GetMineAsync = GET /me/user 員工讀自己（免 users:read）
-│   ├── EmployeeProfileHandler.cs     # 員工人事資料卡 GET / PUT（multipart：HR JSON + 身分證正反面 + 最高學歷證明 + 存摺封面）；GetMineAsync = GET /me/profile 員工讀自己（免 users:read）
+│   ├── EmployeeProfileHandler.cs     # 員工人事資料卡 GET / PUT（multipart：HR JSON + 身分證正反面 + 最高學歷證明 + **存摺封面 ×2**：銀行帳戶分第一 / 第二兩組，各含分行 + 帳號 + 存摺封面，兩張共用 ProcessPassbookAsync、blob 以 `_passbook` / `_passbook2` 區隔）；GetMineAsync = GET /me/profile 員工讀自己（免 users:read）
 │   ├── RoleHandler.cs
 │   ├── PermissionHandler.cs
 │   ├── DepartmentHandler.cs

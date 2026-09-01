@@ -1029,6 +1029,9 @@
                       <label class="form-label fw-500">緊急聯絡電話</label>
                       <input type="tel" class="form-control" formControlName="emergencyContactPhone" placeholder="09xx-xxxxxx">
                     </div>
+                    <div class="col-12">
+                      <div class="fw-600 mb-2 text-[--text-secondary]">第一帳戶（薪轉）</div>
+                    </div>
                     <div class="col-12 col-md-3">
                       <label class="form-label fw-500">銀行分行</label>
                       <input type="text" class="form-control" formControlName="bankCode" placeholder="分行名稱">
@@ -1067,6 +1070,50 @@
                           選擇檔案
                           <input type="file" class="hidden" accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
                                  (change)="onBankBookSelected($event)">
+                        </label>
+                      }
+                    </div>
+                    <div class="col-12">
+                      <div class="fw-600 mb-2 mt-2 pt-3 border-top text-[--text-secondary]">第二帳戶（選填）</div>
+                    </div>
+                    <div class="col-12 col-md-3">
+                      <label class="form-label fw-500">銀行分行</label>
+                      <input type="text" class="form-control" formControlName="bankCode2" placeholder="分行名稱">
+                    </div>
+                    <div class="col-12 col-md-5">
+                      <label class="form-label fw-500">銀行帳號</label>
+                      <input type="text" class="form-control" formControlName="bankAccount2" placeholder="帳號">
+                    </div>
+                    <div class="col-12">
+                      <div class="fw-500 mb-1">存摺封面</div>
+                      <p class="text-muted small mb-3">支援 PNG、JPEG 圖片或 PDF。此文件受權限保護，僅人事部門可查閱。上傳後勿超過 1MB。</p>
+                      @if (bankBookImagePreview2()) {
+                        <div class="mb-2">
+                          <img [src]="bankBookImagePreview2()!" alt="存摺封面" class="rounded border max-h-40 object-contain">
+                        </div>
+                      }
+                      @if (bankBookDisplayName2) {
+                        <div class="flex items-center gap-2 mb-2 border rounded px-3 py-2 bg-[--bg-surface]">
+                          <svg class="sa-icon text-[--accent]" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                          <span class="fw-500 text-[--text-primary] truncate text-sm">{{ bankBookDisplayName2 }}</span>
+                          @if (hasExistingBankBook2) {
+                            <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="viewBankBook2()">檢視</button>
+                          }
+                        </div>
+                        <div class="flex gap-2">
+                          <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                            更換
+                            <input type="file" class="hidden" accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                                   (change)="onBankBook2Selected($event)">
+                          </label>
+                          <button type="button" class="btn btn-sm btn-outline-danger" (click)="onRemoveBankBook2()">刪除</button>
+                        </div>
+                      } @else {
+                        <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                          <svg class="sa-icon me-1"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                          選擇檔案
+                          <input type="file" class="hidden" accept="image/png,image/jpeg,image/heic,image/heif,application/pdf,.heic,.heif"
+                                 (change)="onBankBook2Selected($event)">
                         </label>
                       }
                     </div>

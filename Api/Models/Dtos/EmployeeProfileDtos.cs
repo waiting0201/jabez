@@ -100,9 +100,11 @@ public sealed record EmployeeProfileDetailDto(
     string? EmergencyContactName,
     string? EmergencyContactPhone,
 
-    // 銀行
+    // 銀行（第一帳戶 / 第二帳戶）
     string? BankCode,
     string? BankAccount,
+    string? BankCode2,
+    string? BankAccount2,
 
     // 保險與扶養
     DateTime? InsuranceStartDate,
@@ -119,8 +121,9 @@ public sealed record EmployeeProfileDetailDto(
     // 最高學歷證明 URL（走 /files/education-proofs/ 代理）
     string? HighestEducationProofUrl,
 
-    // 存摺封面 URL（走 /files/passbooks/ 代理）
+    // 存摺封面 URL（走 /files/passbooks/ 代理；第一 / 第二帳戶各一張）
     string? BankBookImageUrl,
+    string? BankBookImageUrl2,
 
     // 9 個子表
     EducationRecordDto[]         EducationRecords,
@@ -158,6 +161,8 @@ public sealed record EmployeeProfileUpsertRequest(
     string? EmergencyContactPhone,
     string? BankCode,
     string? BankAccount,
+    string? BankCode2,
+    string? BankAccount2,
     DateTime? InsuranceStartDate,
     int?    DependentCount,
     string? Specialties,

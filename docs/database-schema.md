@@ -63,7 +63,7 @@
 | `TravelPaymentRequestInstallment` | 出差請款撥款明細（同上結構，FK→TravelPaymentRequest，SUM 對應父表 GrandTotal）|
 | `WriteOffInstallment` | 預支沖銷**差額**撥款明細（同上結構，FK→WriteOffRecord Cascade）。與其他 4 種不同：`SUM(Amount)` 對應的不是整單金額，而是 `RefundDue`＝**本次沖銷造成的超支增額**（`Api/Common/WriteOffRefundCalculator.cs`）。未超支（RefundDue = 0）的沖銷單不會有任何 installment |
 | `InsuranceBracket` | 勞健保級距（投保級距、員工負擔勞保、員工負擔健保） |
-| `EmployeeProfile` | 員工人事資料卡 1:1 對 User（PK=UserId）；含員工代號 / 英文名 / 身分證號 / 性別 / 婚姻 / 出生地 / 行動電話 / 戶籍 / 通訊 / 緊急聯絡 / 銀行帳號 / 投保起日 / 扶養人 / 專長興趣 / 離職原因 / 身分證正反面影本 / 最高學歷證明 URL / 存摺封面 URL（BankBookImageUrl） |
+| `EmployeeProfile` | 員工人事資料卡 1:1 對 User（PK=UserId）；含員工代號 / 英文名 / 身分證號 / 性別 / 婚姻 / 出生地 / 行動電話 / 戶籍 / 通訊 / 緊急聯絡 / **銀行帳戶兩組**（BankCode / BankAccount 第一帳戶＋BankCode2 / BankAccount2 第二帳戶）/ 投保起日 / 扶養人 / 專長興趣 / 離職原因 / 身分證正反面影本 / 最高學歷證明 URL / **存摺封面 URL 兩張**（BankBookImageUrl / BankBookImageUrl2） |
 | `EducationRecord` | 學歷紀錄（最高 / 次之 / 次之，校名 / 科系 / 畢肄業 / 起迄） |
 | `EmploymentHistoryRecord` | 經歷紀錄（最近 / 次之 / 次之，服務機構 / 職別 / 任職起迄） |
 | `FamilyMember` | 家庭成員（親屬姓名 / 關係 / 年齡 / 職業） |

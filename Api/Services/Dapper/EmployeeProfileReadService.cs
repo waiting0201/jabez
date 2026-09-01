@@ -17,9 +17,9 @@ public sealed class EmployeeProfileReadService(IDbConnection db) : IEmployeeProf
             SELECT EmployeeNumber, EnglishName, IdNumber, Gender, MaritalStatus, BirthPlace, MobilePhone,
                    ResidentialAddress, ResidentialPhone, MailingAddress, MailingPhone,
                    EmergencyContactName, EmergencyContactPhone,
-                   BankCode, BankAccount, InsuranceStartDate, DependentCount,
+                   BankCode, BankAccount, BankCode2, BankAccount2, InsuranceStartDate, DependentCount,
                    Specialties, ResignationReason, IdCardFrontUrl, IdCardBackUrl,
-                   HighestEducationProofUrl, BankBookImageUrl
+                   HighestEducationProofUrl, BankBookImageUrl, BankBookImageUrl2
             FROM EmployeeProfiles
             WHERE UserId = @UserId;
 
@@ -101,8 +101,10 @@ public sealed class EmployeeProfileReadService(IDbConnection db) : IEmployeeProf
             EmergencyContactName:  (string?)profile?.EmergencyContactName,
             EmergencyContactPhone: (string?)profile?.EmergencyContactPhone,
 
-            BankCode:    (string?)profile?.BankCode,
-            BankAccount: (string?)profile?.BankAccount,
+            BankCode:     (string?)profile?.BankCode,
+            BankAccount:  (string?)profile?.BankAccount,
+            BankCode2:    (string?)profile?.BankCode2,
+            BankAccount2: (string?)profile?.BankAccount2,
 
             InsuranceStartDate: (DateTime?)profile?.InsuranceStartDate,
             DependentCount:     (int?)profile?.DependentCount,
@@ -115,7 +117,8 @@ public sealed class EmployeeProfileReadService(IDbConnection db) : IEmployeeProf
 
             HighestEducationProofUrl: (string?)profile?.HighestEducationProofUrl,
 
-            BankBookImageUrl: (string?)profile?.BankBookImageUrl,
+            BankBookImageUrl:  (string?)profile?.BankBookImageUrl,
+            BankBookImageUrl2: (string?)profile?.BankBookImageUrl2,
 
             EducationRecords: educationRows.Select(r => new EducationRecordDto(
                 (Guid?)r.Id, (string)r.School, (string?)r.Department,
