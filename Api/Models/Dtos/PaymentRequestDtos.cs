@@ -52,7 +52,7 @@ public sealed record InvoiceItemRequest(
 
 public sealed record PaymentRequestDto(
     int              Id,
-    string           RequestNo,
+    string?          RequestNo,
     string           Type,
     int              ProjectId,
     string           ProjectCode,

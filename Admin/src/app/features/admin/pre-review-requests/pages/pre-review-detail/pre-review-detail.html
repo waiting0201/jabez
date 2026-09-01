@@ -5,7 +5,7 @@
         <a routerLink="/admin/pre-review-requests" class="btn btn-sm btn-outline-secondary">
           <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
         </a>
-        <h4 class="mb-0">預審申請 <span class="font-monospace text-muted">{{ r.requestNo }}</span></h4>
+        <h4 class="mb-0">預審申請 <span class="font-monospace text-muted">{{ r.requestNo || '（送簽後取號）' }}</span></h4>
         <span [class]="'badge ' + typeClass[r.type]">{{ typeLabel[r.type] }}</span>
         <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
       </div>

@@ -167,7 +167,7 @@ public sealed class TravelRequestReadService(IDbConnection db, IInstallmentReadS
             TravelRequestItemDto[]? items = x.items.Count > 0 ? [.. x.items] : null;
             return new TravelRequestDto(
                 (int)tr.Id,
-                (string)tr.RequestNo,
+                (string?)tr.RequestNo,
                 (string?)tr.EmployeeName ?? "—",
                 (string)tr.Destination,
                 (DateTime)tr.StartDate,

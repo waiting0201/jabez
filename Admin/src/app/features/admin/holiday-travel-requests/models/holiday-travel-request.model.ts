@@ -84,7 +84,8 @@ export interface TravelParticipant {
 
 export interface HolidayTravelRequest {
   id: number;
-  requestNo: string;
+  /** 送簽時才取號，草稿為 null */
+  requestNo: string | null;
   employeeId?: string;
   approvalItemId?: number;
   /** 執行活動地點（前端標籤，DB 欄位：destination） */

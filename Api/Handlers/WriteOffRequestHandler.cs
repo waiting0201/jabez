@@ -112,7 +112,8 @@ public sealed class WriteOffRequestHandler(
         {
             var items = itemLookup[h.Id].ToArray();
             return new AvailableAdvanceDto(
-                h.Id, h.RequestNo, h.ProjectCode, h.ActivityName, h.AdvanceDate,
+                // 只撈 approved 的預支單，必定已於送簽時取號
+                h.Id, h.RequestNo!, h.ProjectCode, h.ActivityName, h.AdvanceDate,
                 h.CashTotal, h.CheckTotal, h.GrandTotal, h.WrittenOffTotal, h.PendingWriteOffTotal,
                 // 批次組裝規則與 GET /advance-requests/{id} 共用同一份實作
                 AdvanceRequestReadService.BuildRounds(h.AdvanceDate, h.AdvanceNeededDate, supLookup[h.Id], items),
@@ -267,20 +268,7 @@ public sealed class WriteOffRequestHandler(
             .Select(w => w.WriteOffNo)
             .FirstOrDefaultAsync();
 
-        // 產生沖銷申請單號：WO-yyyyMMdd-NNN（唯一索引保護並發）
-        var today  = Clock.Now;
-        var prefix = $"WO-{today:yyyyMMdd}-";
-        var maxNo  = await db.WriteOffRecords
-            .Where(w => w.RequestNo.StartsWith(prefix))
-            .MaxAsync(w => (string?)w.RequestNo);
-        int seq = 1;
-        if (maxNo is not null)
-        {
-            var seqStr = maxNo[prefix.Length..];
-            if (int.TryParse(seqStr, out var parsed))
-                seq = parsed + 1;
-        }
-        var requestNo = $"{prefix}{seq:D3}";
+        var today = Clock.Now;
 
         // 上傳檔案至 Blob Storage，組裝沖銷明細
         var files         = form.Files.GetFiles("files");
@@ -288,7 +276,6 @@ public sealed class WriteOffRequestHandler(
 
         var wo = new WriteOffRecord
         {
-            RequestNo        = requestNo,
             AdvanceRequestId = advanceRequestId,
             WriteOffNo       = lastNo + 1,
             CashTotal        = items.Sum(i => i.CashAmount),
@@ -564,6 +551,12 @@ public sealed class WriteOffRequestHandler(
 
         if (wo.ApprovalStatus != "draft" && wo.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned write-off requests can be submitted.");
+
+        // 送簽時才取號：單號日期＝送簽日，草稿不佔號。
+        // 退回（returned）重送時已有單號，不可重新配號，否則已流通的單號會被改掉。
+        if (string.IsNullOrEmpty(wo.RequestNo))
+            wo.RequestNo = await RequestNoGenerator.NextAsync(
+                db.WriteOffRecords.Select(x => x.RequestNo), "WO-", Clock.Now);
 
         // 送簽當下重新確認來源預支單仍可沖銷（避免對追加簽核中、總額變動中的預支單沖銷）
         await EnsureAdvanceWriteOffableAsync(wo.AdvanceRequestId);

@@ -67,7 +67,8 @@ export interface DesignatedReviewer {
 
 export interface PaymentRequest {
   id: number;
-  requestNo: string;
+  /** 送簽時才取號，草稿為 null */
+  requestNo: string | null;
   employeeId?: string;
   type: PaymentType;
   projectId: number;

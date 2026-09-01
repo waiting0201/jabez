@@ -7,7 +7,7 @@ namespace Jabez.Api.Models.Entities;
 public class TravelPaymentRequest
 {
     public int      Id              { get; set; }
-    public string   RequestNo       { get; set; } = string.Empty; // TPR-yyyyMMdd-NNN
+    public string?  RequestNo       { get; set; }                 // TPR-yyyyMMdd-NNN；送簽時取號，草稿為 null
     public Guid?    EmployeeId      { get; set; }
     public int?     ApprovalItemId  { get; set; }
     public string   Destination     { get; set; } = string.Empty;

@@ -769,7 +769,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 var hasInst = await db.AdvanceRequestInstallments.AsNoTracking()
                     .AnyAsync(i => i.AdvanceRequestId == id);
                 if (!hasInst || hasUnpaid)
-                    return new BatchApprovePending("advance", id, adv.RequestNo, "payment");
+                    // 上方已確認 approved，必定已於送簽時取號
+                    return new BatchApprovePending("advance", id, adv.RequestNo!, "payment");
                 return null;
             }
             case "travel":

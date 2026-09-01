@@ -10,16 +10,18 @@ public class WriteOffRecordConfiguration : IEntityTypeConfiguration<WriteOffReco
     {
         builder.HasKey(w => w.Id);
 
+        // 送簽時才取號（RequestNoGenerator），草稿階段為 null
         builder.Property(w => w.RequestNo)
-               .IsRequired()
-               .HasMaxLength(30)
-               .HasDefaultValue("");
+               .HasMaxLength(30);
 
-        // 單號唯一（比照其他 5 種申請單）：CreateAsync 以 MAX(RequestNo)+1 取號，
+        // 單號唯一（比照其他 5 種申請單）：SubmitAsync 以 MAX(RequestNo)+1 取號，
         // 併發（例如使用者連按送出）時兩筆會取到同號，靠此索引擋下第二筆。
+        // filtered index：草稿的 RequestNo 為 NULL，SQL Server 的一般唯一索引會視多個 NULL 為互相衝突，
+        // 必須加 WHERE ... IS NOT NULL 才能讓多張草稿並存。
         // 註：資料庫早在 20260320072900 就以手寫 SQL 建了此索引，但 EF 設定漏宣告，model snapshot 一直沒有它。
         builder.HasIndex(w => w.RequestNo)
-               .IsUnique();
+               .IsUnique()
+               .HasFilter("[RequestNo] IS NOT NULL");
 
         builder.Property(w => w.CashTotal)
                .HasColumnType("decimal(18,2)");

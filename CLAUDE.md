@@ -277,15 +277,15 @@ Api/
 │   ├── ApprovalHandler.cs             # ApprovalItem + Steps CRUD（ApprovalItem 含 DepartmentId 部門維度；唯一性以 (ApplicationType, DepartmentId) 判定；/active 依呼叫者部門解析流程，優先序：自身部門 > 最近祖先部門（沿 ParentId 往上）> 通用預設）；Step 含 DesignatedRequiresDepartment（指定審核步驟可設「需先選部門再選人」，支援一條流程多個指定步驟；多指定步驟前端連動見 shared/components/designated-reviewers-picker：連動閘控 + 部門帶入 + 部門最高層級自動略過；**Step 另含例外指定審核名單 `exceptionUserIds`（ApprovalStepException 子表，整批替換）**：非指定審核步驟可挑指定使用者，名單內的申請人送單時該步驟改由申請人自行指定審核者，與 UseApplicantDesignated 互斥；**例外步驟另可設限定職稱 `designatedJobTitleIds`（ApprovalStepDesignatedJobTitle 子表，整批替換）**，限制申請人只能指定這些職稱的人，非例外步驟一律清空）
 │   ├── ApprovalTaskHandler.cs         # 待審核任務查詢與審核動作（列表另支援 applicationType / submittedByUserId 篩選（與 status 正交，各頁籤共用）；**`status` 走 `ValidListStatuses` 白名單正規化**（pending / approved / returned / rejected，非法值→pending，避免像舊 `returned` 一樣靜默落到待審分支）＋**`scope=director` 範圍參數**（總監室簽核，與 status 四態組合，舊 `status=director_pending` 相容）；**申請人篩選與 GET /approval-tasks/applicants 限財務體系部門或 Superadmin**，判定共用 CanFilterByApplicant → DepartmentCodes.FinancialAndAbove；**單筆詳情 `GET /approval-tasks/{appType}/{id}` 的存取控制另放行「申請人本人」**（`IsApplicantAsync` 逐型別比對 SubmittedById / EmployeeId），否則申請人拿不到 flow / approvalRecords，請款列印按鈕不出現、兩張沖銷表印出無簽核欄的 PDF；**沖銷結案採「登記制」**：財務於其簽核關卡勾 `closeAdvance` 只設沖銷單的 `PendingClose`，待整張沖銷單轉 `approved` 才真正寫母單 `IsClosed`（財務多為倒數第二關，提前結案會讓總監退回後無法補開沖銷單）；退回／拒絕清除登記；步驟判定走 `IsFinanceStepAsync`（`DepartmentCodes.FinanceStep`，**禁止硬編碼 "FIN"**），勾了但非財務步驟改回 400 不再靜默）
 │   ├── ProjectHandler.cs
-│   ├── PaymentRequestHandler.cs       # 請款申請 CRUD（單號 PR-yyyyMMdd-NNN）
-│   ├── PreReviewRequestHandler.cs     # 預審申請 CRUD + Submit（單號 PRV-yyyyMMdd-NNN；報價單上傳 blob container=quotes；無 installments、不計入報表）
+│   ├── PaymentRequestHandler.cs       # 請款申請 CRUD（單號 PR-yyyyMMdd-NNN，**送簽時取號**）
+│   ├── PreReviewRequestHandler.cs     # 預審申請 CRUD + Submit（單號 PRV-yyyyMMdd-NNN，**送簽時取號**；報價單上傳 blob container=quotes；無 installments、不計入報表）
 │   ├── QuoteOcrHandler.cs             # 報價單 OCR（POST /quote-ocr，回傳品項列表 itemName/amount/note）
 │   ├── LeaveRequestHandler.cs
 │   ├── LeaveRevocationHandler.cs      # 銷假申請 CRUD + Submit（GET /leave-requests/{id}/revocable-dates 逐日可銷清單；POST /leave-requests/{id}/revocations；/leave-revocations/*；ApprovalItem 以 "leave" 解析＝跑原本的請假簽核，簽核紀錄以 "leave_revocation" 隔離）
-│   ├── TravelRequestHandler.cs        # 出差預支申請 CRUD（單號 TR-yyyyMMdd-NNN；假日執行活動為 HTR-yyyyMMdd-NNN；預支後沖銷）
-│   ├── TravelPaymentRequestHandler.cs # 出差請款申請 CRUD（單號 TPR-yyyyMMdd-NNN；小額代墊直接請款）
+│   ├── TravelRequestHandler.cs        # 出差預支申請 CRUD（單號 TR-yyyyMMdd-NNN，假日執行活動為 HTR-yyyyMMdd-NNN，**皆送簽時取號**；預支後沖銷）
+│   ├── TravelPaymentRequestHandler.cs # 出差請款申請 CRUD（單號 TPR-yyyyMMdd-NNN，**送簽時取號**；小額代墊直接請款）
 │   ├── OvertimeRequestHandler.cs      # 加班申請 CRUD（含補償方式 compensatory / pay；`GET /overtime-requests/estimate?date=&hours=` 加班費即時試算，對象一律取 JWT sub、不接受 employeeId）
-│   ├── AdvanceRequestHandler.cs       # 預支申請 CRUD（單號 ADV-yyyyMMdd-NNN）＋**追加預支批次**（POST/PATCH/DELETE /advance-requests/{id}/supplements[/{roundNo}]；新增即送簽、無草稿階段；有進行中批次時禁止整單編輯/刪除）
+│   ├── AdvanceRequestHandler.cs       # 預支申請 CRUD（單號 ADV-yyyyMMdd-NNN，**送簽時取號**；追加批次沿用父單單號）＋**追加預支批次**（POST/PATCH/DELETE /advance-requests/{id}/supplements[/{roundNo}]；新增即送簽、無草稿階段；有進行中批次時禁止整單編輯/刪除）
 │   ├── WriteOffRequestHandler.cs      # 預支沖銷申請 CRUD（獨立簽核流程）＋**依預支單彙總檢視**（GET /write-off-requests/by-advance/{advanceRequestId}，回傳預支單完整資訊 + 該單全部沖銷單）＋**差額撥款分期**（PATCH /write-off-requests/{id}/installments，SUM 對應 RefundDue 超支增額）＋**支票已支付註記**（PATCH /{id}/check-payments）
 │   ├── TravelWriteOffRequestHandler.cs # 出差預支沖銷申請 CRUD（獨立簽核流程）
 │   ├── AttendanceHandler.cs           # 打卡（上班/下班/加班開始/加班結束；請假時段內擋上下班打卡；**休假日（行事曆假日／六日）或當日全日請假時，加班開始免下班卡**（**排班制員工 `User.IsShiftWorker` 恆不適用休假日條件**，週六仍須先打下班卡），無紀錄則建立只含加班時間的紀錄；**2026-08 起納入權限管理**：打卡走 `attendances:read/write`（員工對自己）、出缺勤報表列表與 `PUT/PATCH /attendances/{id}` 走 `reports-attendance:read/write`（管理者對別人），後者另在 Handler 內套部門可見性 scope 控管「能改誰」）
@@ -375,6 +375,9 @@ Api/
 │   ├── DesignatedReviewerHelper.cs    # 申請人指定審核者共用：BuildEntities / ReadForFlowAsync / ValidateAndNormalizeAsync / GetSuppressedDesignatedStepOrdersAsync（一條流程多個指定步驟，以 ApprovalStepOrder 綁定步驟；9 種申請類型共用；第一指定步驟＝所選部門最高職稱時抑制其後指定步驟：驗證免填 + 簽核乾淨跳過）；**例外指定審核的兩個真相**：送單前查例外表 `GetEffectiveDesignatedStepOrdersAsync`、送單後看 designee 快照 `EffectiveDesignatedStepOrders`，ValidateAndNormalizeAsync 另負責剔除非法 designee 綁定（防提權）與**限定職稱驗證**（例外命中且有設限定職稱時，designee 職稱不符丟 400）
 │   ├── FlexibleDateTimeJsonConverter.cs # 寬鬆日期解析（人事資料卡 payload 用；Safari 不支援 input type=month 手打年月字串）
 │   ├── WorkCalendarHelper.cs          # 公司行事曆共用判定（「有行事曆用 CalendarDay.IsHoliday、沒資料退回六日」的單一真相）：區間版 ComputeWorkingDatesAsync 供 LeaveRequestHandler 算請假日／時數，單日版 IsHolidayAsync 供 AttendanceHandler 判休假日免下班卡
+│   ├── RequestNoGenerator.cs          # 申請單號取號單一真相（{prefix}yyyyMMdd-NNN 當日流水號）：
+│   │                                    **2026-09 起於 SubmitAsync 取號、不再於 CreateAsync**，草稿 RequestNo 為 null（欄位 nullable + filtered unique index）；
+│   │                                    三條守則：只在單號為空時取（退回重送不改號）／放在狀態閘門後、Superadmin 自動核准早退前／追加預支批次沿用父單號
 │   ├── OvertimePayCalculator.cs       # 勞基法加班費「倍率 / 時薪 / 分段累進」單一真相（純函式）：
 │   │                                    平日 1–2h ×1.34、3h 起 ×1.67（上限 4h）；假日 1–2h ×1.34、3–8h ×1.67、9h 起 ×2.67（上限 12h）；
 │   │                                    時薪＝ROUND(底薪 ÷ 240, 2)；金額只在總額捨入一次（AwayFromZero）；

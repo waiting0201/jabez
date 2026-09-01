@@ -119,7 +119,7 @@ public sealed class TravelWriteOffRequestReadService(IDbConnection db) : ITravel
 
         return dict.Values.Select(x => new TravelWriteOffRequestDto(
             (int)x.two.Id,
-            (string)x.two.RequestNo,
+            (string?)x.two.RequestNo,
             (int)x.two.TravelRequestId,
             (string)x.two.TravelRequestNo,
             (int)x.two.WriteOffNo,

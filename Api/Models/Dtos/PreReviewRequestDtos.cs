@@ -26,7 +26,7 @@ public sealed record PreReviewItemRequest(
 
 public sealed record PreReviewRequestDto(
     int                  Id,
-    string               RequestNo,
+    string?              RequestNo,
     string               Type,
     int                  ProjectId,
     string               ProjectCode,

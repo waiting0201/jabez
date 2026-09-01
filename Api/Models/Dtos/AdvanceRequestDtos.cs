@@ -50,7 +50,7 @@ public sealed record AdvanceRoundDto(
 
 public sealed record AdvanceRequestDto(
     int                       Id,
-    string                    RequestNo,
+    string?                   RequestNo,
     int                       ProjectId,
     string                    ProjectCode,
     string                    ProjectName,
@@ -118,7 +118,7 @@ public sealed record WriteOffItemRequest(
 
 public sealed record WriteOffRecordDto(
     int               Id,
-    string            RequestNo,
+    string?           RequestNo,
     int               WriteOffNo,
     decimal           CashTotal,
     decimal           CheckTotal,

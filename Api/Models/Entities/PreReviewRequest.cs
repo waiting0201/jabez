@@ -3,7 +3,7 @@ namespace Jabez.Api.Models.Entities;
 public class PreReviewRequest
 {
     public int       Id             { get; set; }
-    public string    RequestNo      { get; set; } = string.Empty; // PRV-yyyyMMdd-NNN
+    public string?   RequestNo      { get; set; }                 // PRV-yyyyMMdd-NNN；送簽時取號，草稿為 null
     public string    Type           { get; set; } = string.Empty; // vendor | general
     public int       ProjectId      { get; set; }
     public int?      VendorId       { get; set; }

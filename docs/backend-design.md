@@ -327,6 +327,31 @@ public async Task<HttpResponseData> UpsertAsync(HttpRequestData req, string id, 
 
 `ExceptionMiddleware.cs` 自動捕捉並轉成 `ApiResponse<T>.Fail(message)`；未預期例外回 500 + 通用訊息。
 
+### 4.5 申請單號取號一律在 SubmitAsync（**重要**）
+
+單號格式 `{PREFIX}-yyyyMMdd-NNN`，取號的單一真相是
+[Common/RequestNoGenerator.cs](../Api/Common/RequestNoGenerator.cs)（**不可再各自 inline 複製一份**，
+2026-09 之前 7 個 Handler 各抄一份，改一個行為要改八處）：
+
+```csharp
+if (string.IsNullOrEmpty(pr.RequestNo))
+    pr.RequestNo = await RequestNoGenerator.NextAsync(
+        db.PaymentRequests.Select(x => x.RequestNo), "PR-", Clock.Now);
+```
+
+**取號時機是「送簽當下」，不是 `CreateAsync`** —— 單號日期要是送簽日，且草稿刪除不該留下缺號。
+草稿階段 `RequestNo` 為 `NULL`（entity 為 `string?`）。三條守則缺一不可：
+
+1. **只在 `RequestNo` 為空時取號** —— `SubmitAsync` 同時服務「草稿首次送簽」與「退回（`returned`）重送」，
+   少了這個判斷，退回重送會把已流通、已印在 PDF 上的單號改成重送當天的新號。
+2. **放在狀態閘門之後、Superadmin 自動核准早退分支之前** —— 各 Handler 都有
+   `if (submitter?.IsSuperAdmin == true) { ... return; }` 的早退，放在它後面 Superadmin 送的單就沒有單號。
+   `TravelPaymentRequestHandler` 的早退順序與其他家不同，故一律放在「狀態閘門通過後的第一件事」。
+3. **追加預支批次不重新取號** —— `CreateSupplementAsync` 直接呼叫 `SubmitCoreAsync`（繞過狀態閘門，
+   此時父單是 `approved`），沿用父單單號，由守則 1 天然涵蓋。
+
+併發（兩人同秒送簽同類申請）仍可能取到同號，由各表的 `RequestNo` 唯一索引擋下第二筆。
+
 ---
 
 ## 5. DTO 設計
@@ -645,6 +670,32 @@ migrationBuilder.Sql("""
 ```
 
 參考：[20260817015432_AddWriteOffRequestNoUniqueIndex](../Api/Data/Migrations/)
+
+### 8.5 可為 NULL 的唯一欄位必須用 filtered unique index（**重要**）
+
+欄位「有值時唯一、但允許留空」時（如草稿尚未取號的 `RequestNo`），**一般唯一索引不夠**
+—— SQL Server 把多個 NULL 視為互相衝突，第二筆空值就會撞索引：
+
+```csharp
+builder.HasIndex(x => x.RequestNo)
+       .IsUnique()
+       .HasFilter("[RequestNo] IS NOT NULL");
+```
+
+兩個伴隨的地雷：
+
+- **`HasDefaultValue("")` 會讓 `null` 寫成空字串** —— EF 把該屬性標成 `ValueGeneratedOnAdd`，
+  指派 `null` 時改用 DB 預設值。空字串不是 NULL，filtered index 擋不住，第二筆一樣撞。
+  改 nullable 時**必須一併移除 `HasDefaultValue("")`**（2026-09 兩張沖銷表踩過）。
+- **filtered index 讓該表的寫入要求 `QUOTED_IDENTIFIER ON`** —— 應用程式端沒問題（SqlClient 預設 ON），
+  但 `sqlcmd` 預設 **OFF**，對含 filtered index 的表下 `INSERT / UPDATE / DELETE` 會直接失敗：
+
+  > Msg 1934 — UPDATE failed because the following SET options have incorrect settings: 'QUOTED_IDENTIFIER'.
+
+  故 [Api/Data/Scripts/](../Api/Data/Scripts/) 下的維運 SQL、以及任何用 `sqlcmd` 手動修資料的情境，
+  只要碰到 7 張申請單表，**開頭必須加 `SET QUOTED_IDENTIFIER ON;`**。
+
+參考：[20260901131258_MakeRequestNoNullableUntilSubmit](../Api/Data/Migrations/)
 
 ---
 

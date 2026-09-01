@@ -68,7 +68,8 @@ export interface DesignatedReviewer {
 
 export interface AdvanceRequest {
   id: number;
-  requestNo: string;
+  /** 送簽時才取號，草稿為 null */
+  requestNo: string | null;
   projectId: number;
   projectCode: string;
   projectName: string;
@@ -137,7 +138,8 @@ export interface WriteOffItem {
 
 export interface WriteOffRecord {
   id: number;
-  requestNo: string;
+  /** 送簽時才取號，草稿為 null */
+  requestNo: string | null;
   writeOffNo: number;
   cashTotal: number;
   checkTotal: number;

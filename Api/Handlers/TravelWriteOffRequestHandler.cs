@@ -185,20 +185,7 @@ public sealed class TravelWriteOffRequestHandler(
             .Select(w => w.WriteOffNo)
             .FirstOrDefaultAsync();
 
-        // 產生沖銷申請單號：TWO-yyyyMMdd-NNN（唯一索引保護並發）
-        var today  = Clock.Now;
-        var prefix = $"TWO-{today:yyyyMMdd}-";
-        var maxNo  = await db.TravelWriteOffRecords
-            .Where(w => w.RequestNo.StartsWith(prefix))
-            .MaxAsync(w => (string?)w.RequestNo);
-        int seq = 1;
-        if (maxNo is not null)
-        {
-            var seqStr = maxNo[prefix.Length..];
-            if (int.TryParse(seqStr, out var parsed))
-                seq = parsed + 1;
-        }
-        var requestNo = $"{prefix}{seq:D3}";
+        var today = Clock.Now;
 
         // 上傳檔案至 Blob Storage，組裝沖銷明細
         var files              = form.Files.GetFiles("files");
@@ -206,7 +193,6 @@ public sealed class TravelWriteOffRequestHandler(
 
         var wo = new TravelWriteOffRecord
         {
-            RequestNo       = requestNo,
             TravelRequestId = travelRequestId,
             WriteOffNo      = lastNo + 1,
             GrandTotal      = grandTotal,
@@ -425,6 +411,12 @@ public sealed class TravelWriteOffRequestHandler(
 
         if (wo.ApprovalStatus != "draft" && wo.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel write-off requests can be submitted.");
+
+        // 送簽時才取號：單號日期＝送簽日，草稿不佔號。
+        // 退回（returned）重送時已有單號，不可重新配號，否則已流通的單號會被改掉。
+        if (string.IsNullOrEmpty(wo.RequestNo))
+            wo.RequestNo = await RequestNoGenerator.NextAsync(
+                db.TravelWriteOffRecords.Select(x => x.RequestNo), "TWO-", Clock.Now);
 
         // 退回重送：清除舊審核記錄，重置指定審核者狀態
         if (wo.ApprovalStatus == "returned")
