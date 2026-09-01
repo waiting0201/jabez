@@ -1737,7 +1737,9 @@ async onFileSelected(event: Event) {
 4. `docType==='ticket'` 時各表單套用各自規則（`note='票號'`、出差請款另帶 `category='交通費'`）；金額帶入 `unitPrice/totalPrice`（+ 預支沖銷 `cashAmount`）、`quantity='1式'`。
 5. `isAnyOcrPending` 控制送出按鈕禁用，存檔組 FormData 的逐列 `fileMap.get(id)` → `append('files')` 迴圈不變。**OCR 呼叫務必加前端逾時**（`.pipe(timeout(45000))`，略大於後端 Gemini 30 秒上限），否則請求卡住時 `ocrLoadingIds` 永不清除、`isAnyOcrPending` 恆為 true，會把「送出 / 儲存」按鈕**永久鎖住**且畫面無提示。同時 OCR 進行中**須在按鈕區顯示「辨識中…請稍候」hint**（避免使用者誤以為按鈕壞掉）。
 6. **OCR 結算後（成功或失敗皆同）該列必須立即 `markAllAsTouched()`**（`finally` 區塊，依 `id` 找回該列 `FormGroup`；多列展開時每個新 push 的列也各自呼叫一次）。原因：`invoiceNo`/`itemName` 等必填欄位的紅框顯示條件是 `control.invalid && control.touched`，若 OCR 沒辨識到值導致欄位留白，使用者從未手動點過該欄位就不會顯示 `touched`，欄位不會顯示紅框、按鈕卻已因 `form.invalid` 鎖住——使用者完全看不出原因。五個共用此 OCR pattern 的表單（請款 / 預審申請 / 預支沖銷 / 出差請款 / 出差預支沖銷）皆須套用此規則，不可只修其中一個。
-7. **買方抬頭/統編驗證**：OCR 結果含 `buyerName`/`buyerTaxId`/`sellerTaxId`，填值後對 `docType==='invoice'` 的列呼叫共用工具 [`validateInvoiceBuyer(buyerName, buyerTaxId, sellerTaxId)`](../Admin/src/app/shared/utils/invoice-buyer-validator.ts) 比對公司白名單（6 組抬頭＋統編）。**抬頭與統編需皆讀得到才判斷，任一缺漏即跳過不驗**（收銀機 / 二聯式 / 手寫讀不全）。**第三參數 `sellerTaxId` 必傳**：買方統編與賣方統編相同時代表 OCR 抄到「營業人蓋用統一發票專用章」，視同讀不到而不跳警告（手寫發票買受人統編潦草時最常發生）。不符時 `invoiceWarnings.set(rowId, msg)`（`invoiceWarnings = new Map<string,string>()`，key = 列 id），刪列時一併 `delete`。統編檢查碼不合、但與某組白名單**僅差 1 碼且抬頭相容**時視為手寫誤讀該組，同樣不跳警告。**警告訊息一律帶出讀到的統編**（三種：抬頭與統編不符 / 統編辨識不完整 / 統編不在白名單），使用者才能自行判斷是 OCR 抓錯欄位還是真的開錯抬頭。**警告僅顯示、不阻擋送出、不持久化**。警告列以 `<span class="inline-flex items-center gap-1">` 包 `sa-icon sa-icon-1x`（alert-triangle）＋訊息，**icon 與文字同一行**。
+7. **買方抬頭/統編驗證**：OCR 結果含 `buyerName`/`buyerTaxId`/`sellerTaxId`，填值後對 `docType==='invoice'` 的列呼叫共用工具 [`validateInvoiceBuyer(buyerName, buyerTaxId, sellerTaxId)`](../Admin/src/app/shared/utils/invoice-buyer-validator.ts) 比對公司白名單（6 組抬頭＋統編）。**抬頭與統編需皆讀得到才判斷，任一缺漏即跳過不驗**（收銀機 / 二聯式 / 手寫讀不全）。**第三參數 `sellerTaxId` 必傳**：買方統編與賣方統編相同時代表 OCR 抄到「營業人蓋用統一發票專用章」，視同讀不到而不跳警告（手寫發票買受人統編潦草時最常發生）。不符時 `invoiceWarnings.set(rowId, msg)`（`invoiceWarnings = new Map<string,string>()`，key = 列 id），刪列時一併 `delete`。統編檢查碼不合、但與某組白名單**僅差 1 碼且抬頭相容**時視為手寫誤讀該組，同樣不跳警告；**抬頭相容另含「同長度僅差 1 個字」**（統編已完全命中白名單時，長中文公司名差 1 字幾乎必為 OCR 形近字誤讀，如「雅比斯」被讀成「羅比斯」；長度 ≥ 6 才適用）。**警告訊息一律帶出讀到的統編**（三種：抬頭與統編不符 / 統編辨識不完整 / 統編不在白名單），使用者才能自行判斷是 OCR 抓錯欄位還是真的開錯抬頭。**警告僅顯示、不阻擋送出、不持久化**。警告列以 `<span class="inline-flex items-center gap-1">` 包 `sa-icon sa-icon-1x`（alert-triangle）＋訊息，**icon 與文字同一行**。
+
+**警告列附「確認無誤」checkbox**：容錯規則沒接住的誤判（OCR 讀成完全不同的公司名、統編抄到他欄等）由使用者自行放行 —— 元件上另備 `invoiceConfirmed = new Set<string>()`（key 同為列 id），勾選後該列警告由 `text-danger` 轉 `text-muted` 並在訊息前加「已確認無誤：」。**確認狀態與警告一樣純顯示**：不阻擋送出（本來就不擋）、不進 FormControl、不寫 DB、重開草稿不重現。`_checkBuyer()` 開頭須 `invoiceConfirmed.delete(rowId)`（同一列重新 OCR → 舊確認失效）、`removeItem()` 須比照 `invoiceWarnings` 一併 `delete`。四個表單皆須套用，不可只修其中一個。
 
 > 多張擠在一張照片時辨識準確度較低，各列辨識後仍需人工核對（欄位皆可手動修改）。
 
@@ -1749,13 +1751,29 @@ async onFileSelected(event: Event) {
 </tr>
 @if (invoiceWarnings.has(ctrl.get('id')?.value)) {
   <tr>
-    <td colspan="<欄數>" class="text-danger small py-1 ps-3 border-0">
-      <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
-      {{ invoiceWarnings.get(ctrl.get('id')?.value) }}
+    <td colspan="<欄數>" class="small py-1 ps-3 border-0"
+        [class.text-danger]="!invoiceConfirmed.has(ctrl.get('id')?.value)"
+        [class.text-muted]="invoiceConfirmed.has(ctrl.get('id')?.value)">
+      <span class="inline-flex items-center gap-3 flex-wrap">
+        <span class="inline-flex items-center gap-1">
+          <svg class="sa-icon sa-icon-1x" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+          @if (invoiceConfirmed.has(ctrl.get('id')?.value)) { <span>已確認無誤：</span> }
+          {{ invoiceWarnings.get(ctrl.get('id')?.value) }}
+        </span>
+        <span class="form-check mb-0">
+          <input type="checkbox" class="form-check-input"
+                 [id]="'invoiceConfirm-' + ctrl.get('id')?.value"
+                 [checked]="invoiceConfirmed.has(ctrl.get('id')?.value)"
+                 (change)="toggleInvoiceConfirm(ctrl.get('id')?.value, $event)">
+          <label class="form-check-label" [for]="'invoiceConfirm-' + ctrl.get('id')?.value">確認無誤</label>
+        </span>
+      </span>
     </td>
   </tr>
 }
 ```
+
+> 只有買方警告列附 checkbox（人工放行有意義）；同檔的 `amountWarnings`（總價 ≠ 現金＋支票）維持純紅字列。
 
 ### 12.5 外部 API 即時查詢欄位（blur 觸發 pattern）
 
