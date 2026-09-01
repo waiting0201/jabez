@@ -130,6 +130,7 @@ export class AdvanceForm implements OnInit {
     activityName:   ['', Validators.required],
     activityPeriod: ['', Validators.required],
     advanceDate:    ['', Validators.required],
+    advanceNeededDate: [''],
     reason:         [''],   // 僅追加模式使用
     items:          this.fb.array([]),
   });
@@ -199,6 +200,7 @@ export class AdvanceForm implements OnInit {
           activityName:   r.activityName,
           activityPeriod: r.activityPeriod,
           advanceDate:    r.advanceDate?.toString().slice(0, 10),
+          advanceNeededDate: r.advanceNeededDate?.toString().slice(0, 10) ?? '',
         });
         this.installments    = r.installments ?? null;
         this.paymentStatus   = r.paymentStatus ?? null;
@@ -262,13 +264,14 @@ export class AdvanceForm implements OnInit {
       const cur = rounds.find(x => x.roundNo === this.supplementRound);
       this.parentGrandTotal = grandTotal - (cur?.grandTotal ?? 0);
       this.form.patchValue({
-        advanceDate: cur?.advanceDate?.toString().slice(0, 10) ?? '',
-        reason:      cur?.reason ?? '',
+        advanceDate:       cur?.advanceDate?.toString().slice(0, 10) ?? '',
+        advanceNeededDate: cur?.advanceNeededDate?.toString().slice(0, 10) ?? '',
+        reason:            cur?.reason ?? '',
       });
     } else {
       this.parentGrandTotal = grandTotal;
       this.supplementRound = (rounds.at(-1)?.roundNo ?? 1) + 1;
-      this.form.patchValue({advanceDate: '', reason: ''});
+      this.form.patchValue({advanceDate: '', advanceNeededDate: '', reason: ''});
     }
   }
 
@@ -544,6 +547,7 @@ export class AdvanceForm implements OnInit {
     fd.append('activityName', this.form.get('activityName')?.value || '');
     fd.append('activityPeriod', this.form.get('activityPeriod')?.value || '');
     fd.append('advanceDate', this.form.get('advanceDate')?.value || '');
+    fd.append('advanceNeededDate', this.form.get('advanceNeededDate')?.value || '');
 
     // 指定審核者清單（從 picker payload 組成，含 approvalStepOrder 與 selectedDepartmentId）
     if (this._pickerPayload.length > 0) {
@@ -558,6 +562,7 @@ export class AdvanceForm implements OnInit {
   private _buildSupplementFormData(): FormData {
     const fd = new FormData();
     fd.append('advanceDate', this.form.get('advanceDate')?.value || '');
+    fd.append('advanceNeededDate', this.form.get('advanceNeededDate')?.value || '');
     fd.append('reason', this.form.get('reason')?.value || '');
     this._appendItems(fd);
     return fd;

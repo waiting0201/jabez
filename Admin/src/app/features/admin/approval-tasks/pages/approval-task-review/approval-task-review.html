@@ -281,6 +281,10 @@
                       <div class="text-muted small mb-1">返回日期</div>
                       <span class="text-muted small">{{ d.endDate | date:'yyyy-MM-dd' }}</span>
                     </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">預支款需求日</div>
+                      <span class="fw-500">{{ d.advanceNeededDate ? (d.advanceNeededDate | date:'yyyy-MM-dd') : '—' }}</span>
+                    </div>
                     @if (d.projectCode) {
                       <div class="col-6 col-md-4">
                         <div class="text-muted small mb-1">關聯專案</div>
@@ -604,6 +608,10 @@
                       <div class="text-muted small mb-1">預支金額</div>
                       <span class="fw-600 fs-5">{{ d.grandTotal | number:'1.0-0' }} 元</span>
                     </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">預支款需求日</div>
+                      <span class="fw-500">{{ d.advanceNeededDate ? (d.advanceNeededDate | date:'yyyy-MM-dd') : '—' }}</span>
+                    </div>
                   </div>
 
                   <!-- 追加預支批次：本次送簽的批次以主色標示 -->
@@ -620,6 +628,7 @@
                           }
                         </span>
                         <span class="text-muted">{{ rd.advanceDate | date:'yyyy-MM-dd' }}</span>
+                        <span class="text-muted">需求日 {{ rd.advanceNeededDate ? (rd.advanceNeededDate | date:'yyyy-MM-dd') : '—' }}</span>
                         <span class="fw-600">{{ rd.grandTotal | number:'1.0-0' }} 元</span>
                         @if (rd.reason) {
                           <span class="text-muted italic">「{{ rd.reason }}」</span>

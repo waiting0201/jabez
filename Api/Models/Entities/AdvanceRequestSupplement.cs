@@ -10,6 +10,7 @@ public class AdvanceRequestSupplement
     public int       AdvanceRequestId { get; set; }
     public int       RoundNo          { get; set; }                  // ≥ 2
     public DateTime  AdvanceDate      { get; set; }                  // 該批次的預支日期
+    public DateTime? AdvanceNeededDate { get; set; }                 // 該批次的預支款需求日（選填）
     public string?   Reason           { get; set; }                  // 追加原因
     public Guid?     CreatedById      { get; set; }
     public DateTime  CreatedAt        { get; set; }

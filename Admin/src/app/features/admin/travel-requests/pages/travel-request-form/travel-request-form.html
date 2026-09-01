@@ -80,19 +80,24 @@
             </div>
 
             <div class="row g-3 mb-4">
-              <div class="col-12 col-md-6">
+              <div class="col-12 col-md-4">
                 <label class="form-label fw-500">出發日期 <span class="text-danger">*</span></label>
                 <input type="date" class="form-control" formControlName="startDate">
                 @if (form.get('startDate')?.invalid && form.get('startDate')?.touched) {
                   <div class="text-danger small mt-1">請選擇出發日期。</div>
                 }
               </div>
-              <div class="col-12 col-md-6">
+              <div class="col-12 col-md-4">
                 <label class="form-label fw-500">返回日期 <span class="text-danger">*</span></label>
                 <input type="date" class="form-control" formControlName="endDate">
                 @if (form.get('endDate')?.invalid && form.get('endDate')?.touched) {
                   <div class="text-danger small mt-1">請選擇返回日期。</div>
                 }
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">預支款需求日</label>
+                <input type="date" class="form-control" formControlName="advanceNeededDate">
+                <div class="text-muted small mt-1">希望款項撥入的日期，供財務排撥款參考（可留空）。</div>
               </div>
             </div>
 

@@ -9,7 +9,7 @@ public sealed class TravelRequestReadService(IDbConnection db, IInstallmentReadS
 {
     private const string BaseSql = """
         SELECT tr.Id, tr.RequestNo, u.Name AS EmployeeName,
-               tr.Destination, tr.StartDate, tr.EndDate,
+               tr.Destination, tr.StartDate, tr.EndDate, tr.AdvanceNeededDate,
                tr.GrandTotal, tr.Purpose,
                tr.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                tr.IsHolidayTravel, tr.HolidayDays,
@@ -192,7 +192,8 @@ public sealed class TravelRequestReadService(IDbConnection db, IInstallmentReadS
                 RefundedAmount:          (decimal?)tr.RefundedAmount,
                 EstimatedRefundDate:     (DateTime?)tr.EstimatedRefundDate,
                 RefundedAt:              (DateTime?)tr.RefundedAt,
-                HolidayDays:             (int)tr.HolidayDays);
+                HolidayDays:             (int)tr.HolidayDays,
+                AdvanceNeededDate:       (DateTime?)tr.AdvanceNeededDate);
         });
     }
 }

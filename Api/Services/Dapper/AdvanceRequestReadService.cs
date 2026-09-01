@@ -9,7 +9,7 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
 {
     private const string BaseSql = """
         SELECT ar.Id, ar.RequestNo, ar.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
-               ar.ActivityName, ar.ActivityPeriod, ar.AdvanceDate,
+               ar.ActivityName, ar.ActivityPeriod, ar.AdvanceDate, ar.AdvanceNeededDate,
                ar.CashTotal, ar.CheckTotal, ar.GrandTotal,
                ar.ApprovalStatus, ar.CurrentRoundNo,
                sub.Name AS SubmittedBy, ar.CreatedAt,
@@ -114,7 +114,7 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
 
         // 追加預支批次（RoundNo ≥ 2；Round 1 = 父單本身）
         const string supSql = """
-            SELECT s.RoundNo, s.AdvanceDate, s.Reason
+            SELECT s.RoundNo, s.AdvanceDate, s.AdvanceNeededDate, s.Reason
             FROM AdvanceRequestSupplements s
             WHERE s.AdvanceRequestId = @Id
             ORDER BY s.RoundNo
@@ -127,28 +127,30 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
             WriteOffRecords = writeOffRecords.Length > 0 ? writeOffRecords : null,
             Installments = instList.Count > 0 ? instList.ToArray() : null,
             PaymentStatus = installments.ComputeStatus(instList),
-            Rounds = BuildRounds(dto.AdvanceDate, supRows, dto.Items),
+            Rounds = BuildRounds(dto.AdvanceDate, dto.AdvanceNeededDate, supRows, dto.Items),
         };
     }
 
     /// <summary>
-    /// 組出各預支批次：Round 1 取父單 AdvanceDate，Round ≥2 取 AdvanceRequestSupplements；
+    /// 組出各預支批次：Round 1 取父單 AdvanceDate / AdvanceNeededDate，Round ≥2 取 AdvanceRequestSupplements；
     /// 金額一律由該批次的明細加總推導（不讀任何金額快取欄位）。
     /// </summary>
     internal static AdvanceRoundDto[] BuildRounds(
-        DateTime advanceDate, IEnumerable<dynamic> supplementRows, IEnumerable<AdvanceRequestItemDto> items)
+        DateTime advanceDate, DateTime? advanceNeededDate,
+        IEnumerable<dynamic> supplementRows, IEnumerable<AdvanceRequestItemDto> items)
     {
         var byRound = items.GroupBy(i => i.RoundNo).ToDictionary(g => g.Key, g => g.ToList());
 
-        var rounds = new List<AdvanceRoundDto> { BuildRound(1, advanceDate, null, byRound) };
+        var rounds = new List<AdvanceRoundDto> { BuildRound(1, advanceDate, advanceNeededDate, null, byRound) };
         foreach (var row in supplementRows)
-            rounds.Add(BuildRound((int)row.RoundNo, (DateTime)row.AdvanceDate, (string?)row.Reason, byRound));
+            rounds.Add(BuildRound((int)row.RoundNo, (DateTime)row.AdvanceDate,
+                                  (DateTime?)row.AdvanceNeededDate, (string?)row.Reason, byRound));
 
         return [.. rounds.OrderBy(r => r.RoundNo)];
     }
 
     private static AdvanceRoundDto BuildRound(
-        int roundNo, DateTime advanceDate, string? reason,
+        int roundNo, DateTime advanceDate, DateTime? advanceNeededDate, string? reason,
         Dictionary<int, List<AdvanceRequestItemDto>> byRound)
     {
         var list = byRound.GetValueOrDefault(roundNo, []);
@@ -157,7 +159,8 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
             list.Sum(i => i.CashAmount),
             list.Sum(i => i.CheckAmount),
             list.Sum(i => i.TotalPrice),
-            list.Count);
+            list.Count,
+            advanceNeededDate);
     }
 
     // ── Grouping helpers ─────────────────────────────────────────────────────
@@ -227,7 +230,8 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
                 null,                               // Installments（稍後補上）
                 null,                               // PaymentStatus（稍後補上）
                 null,                               // Rounds（僅 GetByIdAsync 帶入）
-                (int)x.ar.CurrentRoundNo);
+                (int)x.ar.CurrentRoundNo,
+                (DateTime?)x.ar.AdvanceNeededDate);
         });
     }
 

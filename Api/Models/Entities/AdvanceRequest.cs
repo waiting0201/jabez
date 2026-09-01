@@ -9,6 +9,8 @@ public class AdvanceRequest
     public string    ActivityName      { get; set; } = string.Empty;
     public string    ActivityPeriod    { get; set; } = string.Empty;
     public DateTime  AdvanceDate       { get; set; }
+    /// <summary>預支款需求日（選填）：申請人希望款項撥入的日期，供財務排撥款參考。</summary>
+    public DateTime? AdvanceNeededDate { get; set; }
     public decimal   CashTotal         { get; set; }
     public decimal   CheckTotal        { get; set; }
     public decimal   GrandTotal        { get; set; }

@@ -199,9 +199,11 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
     /// <summary>關聯預支單的各預支批次（含追加）；批次組裝規則與 GET /advance-requests/{id} 共用同一份實作。</summary>
     private async Task<AdvanceRoundDto[]> GetAdvanceRoundsAsync(int advanceRequestId)
     {
-        const string headSql = "SELECT AdvanceDate FROM AdvanceRequests WHERE Id = @Id";
-        var advanceDate = await db.ExecuteScalarAsync<DateTime?>(headSql, new { Id = advanceRequestId });
-        if (advanceDate is null) return [];
+        const string headSql = "SELECT AdvanceDate, AdvanceNeededDate FROM AdvanceRequests WHERE Id = @Id";
+        var head = await db.QuerySingleOrDefaultAsync<dynamic>(headSql, new { Id = advanceRequestId });
+        if (head is null) return [];
+        var advanceDate       = (DateTime)head.AdvanceDate;
+        var advanceNeededDate = (DateTime?)head.AdvanceNeededDate;
 
         const string itemSql = """
             SELECT Id, Category, SeqNo, ItemName, UnitPrice, Quantity, TotalPrice,
@@ -218,14 +220,14 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
             (string?)r.FileName, (string?)r.FileUrl, (int)r.RoundNo)).ToList();
 
         const string supSql = """
-            SELECT RoundNo, AdvanceDate, Reason
+            SELECT RoundNo, AdvanceDate, AdvanceNeededDate, Reason
             FROM AdvanceRequestSupplements
             WHERE AdvanceRequestId = @Id
             ORDER BY RoundNo
             """;
         var supRows = await db.QueryAsync<dynamic>(supSql, new { Id = advanceRequestId });
 
-        return AdvanceRequestReadService.BuildRounds(advanceDate.Value, supRows, items);
+        return AdvanceRequestReadService.BuildRounds(advanceDate, advanceNeededDate, supRows, items);
     }
 
     /// <summary>同一張預支單底下的各次沖銷（含本單；已拒絕的不列入）。</summary>

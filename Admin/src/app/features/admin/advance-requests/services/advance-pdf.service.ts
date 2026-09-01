@@ -55,6 +55,8 @@ export class AdvancePdfService {
       doc.setTextColor(...CIS.textPrimary);
 
       const advDate = r.advanceDate ? new Date(r.advanceDate).toLocaleDateString('zh-TW') : '';
+      /** 預支款需求日為選填，未填時印「—」 */
+      const neededDate = (v?: string) => v ? new Date(v).toLocaleDateString('zh-TW') : '—';
 
       /** 畫標籤+值，值緊貼冒號後 */
       const lv = (label: string, value: string, x: number, yy: number, bold = false) => {
@@ -76,13 +78,14 @@ export class AdvancePdfService {
         rounds.forEach((rd, idx) => {
           const d = rd.advanceDate ? new Date(rd.advanceDate).toLocaleDateString('zh-TW') : '';
           lv(idx === 0 ? '預支日期：' : '　　　　　',
-             `${roundLabel(rd.roundNo)}　${d}　${fmt(rd.grandTotal)}元${rd.reason ? `（${rd.reason}）` : ''}`,
+             `${roundLabel(rd.roundNo)}　${d}　需求日 ${neededDate(rd.advanceNeededDate)}　${fmt(rd.grandTotal)}元${rd.reason ? `（${rd.reason}）` : ''}`,
              mx, y);
           y += 5.5;
         });
         lv('預支總額：', `${fmt(r.grandTotal)}元`, mx, y, true);
       } else {
         lv('預支日期：', advDate, mx, y);
+        lv('預支款需求日：', neededDate(r.advanceNeededDate), pw - mx - 50, y);
       }
 
       y += 6;

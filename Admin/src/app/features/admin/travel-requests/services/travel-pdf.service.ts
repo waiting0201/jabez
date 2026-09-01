@@ -88,6 +88,9 @@ export class TravelPdfService {
       lv('假日執行活動：', r.isHolidayTravel ? '是' : '否', pw - mx - 50, y);
 
       y += 6;
+      lv('預支款需求日：', r.advanceNeededDate ? fmtDate(r.advanceNeededDate) : '—', mx, y);
+
+      y += 6;
       if (r.projectCode || r.projectName) {
         lv('關聯專案：', `${r.projectCode ?? ''}${r.projectName ? ' - ' + r.projectName : ''}`, mx, y, true);
       }

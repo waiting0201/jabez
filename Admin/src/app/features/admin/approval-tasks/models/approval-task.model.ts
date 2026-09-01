@@ -178,6 +178,8 @@ export interface TravelTaskDetail {
   destination: string;
   startDate: Date;
   endDate: Date;
+  /** 預支款需求日（選填；假日執行活動不使用） */
+  advanceNeededDate?: string;
   grandTotal: number;
   purpose: string;
   projectCode?: string;
@@ -267,6 +269,8 @@ export interface AdvanceTaskDetail {
   refundAmount?: number;
   /** 實際退款金額（財務手動填入） */
   refundedAmount?: number;
+  /** 預支款需求日（選填；Round 1 的值，逐批次值請看 rounds[]） */
+  advanceNeededDate?: string;
 }
 
 export interface WriteOffTaskDetailItem {

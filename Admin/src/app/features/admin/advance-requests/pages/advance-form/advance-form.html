@@ -114,7 +114,7 @@
           </div>
           <div class="card-body">
             <div class="row g-3 mb-4">
-              <div class="col-12 col-md-6">
+              <div class="col-12 col-md-4">
                 <label class="form-label fw-500">專案 <span class="text-danger">*</span></label>
                 @if (isReadOnly || isSupplement) {
                   <p class="form-control-plaintext fw-500 font-monospace mb-0">{{ projectCode ? projectCode + ' - ' + projectName : '—' }}</p>
@@ -130,12 +130,19 @@
                   }
                 }
               </div>
-              <div class="col-12 col-md-6">
+              <div class="col-12 col-md-4">
                 <label class="form-label fw-500">
                   {{ isSupplement ? roundLabel(supplementRound) + '預支日期' : '預支日期' }}
                   <span class="text-danger">*</span>
                 </label>
                 <input type="date" class="form-control" formControlName="advanceDate">
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-500">
+                  {{ isSupplement ? roundLabel(supplementRound) + '預支款需求日' : '預支款需求日' }}
+                </label>
+                <input type="date" class="form-control" formControlName="advanceNeededDate">
+                <div class="text-muted small mt-1">希望款項撥入的日期，供財務排撥款參考（可留空）。</div>
               </div>
             </div>
             <div class="row g-3 mb-4">
