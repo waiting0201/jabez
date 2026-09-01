@@ -10,12 +10,13 @@ public class AdvanceRequestConfiguration : IEntityTypeConfiguration<AdvanceReque
     {
         builder.HasKey(a => a.Id);
 
+        // 送簽時才取號（RequestNoGenerator），草稿階段為 null
         builder.Property(a => a.RequestNo)
-               .IsRequired()
                .HasMaxLength(50);
 
         builder.HasIndex(a => a.RequestNo)
-               .IsUnique();
+               .IsUnique()
+               .HasFilter("[RequestNo] IS NOT NULL");
 
         builder.Property(a => a.ActivityName)
                .IsRequired()

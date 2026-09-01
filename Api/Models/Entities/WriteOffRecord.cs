@@ -3,7 +3,7 @@ namespace Jabez.Api.Models.Entities;
 public class WriteOffRecord
 {
     public int       Id                { get; set; }
-    public string    RequestNo         { get; set; } = string.Empty; // WO-yyyyMMdd-NNN
+    public string?   RequestNo         { get; set; }                 // WO-yyyyMMdd-NNN；送簽時取號，草稿為 null
     public int       AdvanceRequestId  { get; set; }
     public int       WriteOffNo        { get; set; }   // 第幾次沖銷（1, 2, 3…）
     public decimal   CashTotal         { get; set; }

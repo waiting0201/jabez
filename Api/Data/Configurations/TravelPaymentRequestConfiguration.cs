@@ -10,12 +10,13 @@ public class TravelPaymentRequestConfiguration : IEntityTypeConfiguration<Travel
     {
         builder.HasKey(t => t.Id);
 
+        // 送簽時才取號（RequestNoGenerator），草稿階段為 null
         builder.Property(t => t.RequestNo)
-               .IsRequired()
                .HasMaxLength(50);
 
         builder.HasIndex(t => t.RequestNo)
-               .IsUnique();
+               .IsUnique()
+               .HasFilter("[RequestNo] IS NOT NULL");
 
         builder.Property(t => t.Destination)
                .IsRequired()

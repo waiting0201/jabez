@@ -45,7 +45,8 @@ export const ITEM_CATEGORIES = ['交通費', '住宿費', '餐費', '人事費',
 
 export interface TravelRequest {
   id: number;
-  requestNo: string;
+  /** 送簽時才取號，草稿為 null */
+  requestNo: string | null;
   employeeId?: string;
   approvalItemId?: number;
   destination: string;

@@ -4,7 +4,10 @@
 
 ## 單號（RequestNo）對照
 
-7 種金錢相關申請表均有單號，格式 `{PREFIX}-yyyyMMdd-NNN`（per-prefix-per-day 序號池，於 Handler `CreateAsync` 產生，由 unique index 保護並發）：
+7 種金錢相關申請表均有單號，格式 `{PREFIX}-yyyyMMdd-NNN`（per-prefix-per-day 序號池，由 unique index 保護並發）：
+
+> **單號於「送簽當下」產生，不是建立草稿時**（2026-09 變更）。日期＝**送簽日**，草稿階段 `RequestNo` 為 `NULL`、畫面顯示「—」。
+> 舊制在 `CreateAsync` 取號，導致單號日期是建單日、且草稿刪除會留下缺號。
 
 | 申請表 | 前綴 | 範例 |
 |--------|------|------|
@@ -18,6 +21,18 @@
 | 出差預支沖銷申請 TravelWriteOffRecord | `TWO-` | `TWO-20260520-001` |
 
 > 請假 / 加班無單號（僅以 GUID Id 識別）。
+
+### 取號規則（2026-09 起）
+
+| 時機 | 行為 |
+|------|------|
+| 建立草稿 | **不取號**，`RequestNo = NULL` |
+| 首次送簽 | 以**送簽日**取當日流水號（`Common/RequestNoGenerator.NextAsync`） |
+| 退回後重送 | **不重新取號**，沿用原單號（否則已流通的單號會被改掉） |
+| 追加預支批次 | 沿用父單單號，只遞增 `RoundNo` |
+| Superadmin 送簽（自動核准） | 照常取號 |
+
+上線前既有的單（含當時仍是草稿者）已有單號，送簽時不會重新配號，故單號日期基準以上線日為分界。
 
 ## 一般申請表（5 種）
 

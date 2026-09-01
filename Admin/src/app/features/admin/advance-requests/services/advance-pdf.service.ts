@@ -222,7 +222,7 @@ export class AdvancePdfService {
         doc.setFontSize(10);
         doc.setTextColor(...CIS.forestMid);
         const statusLabel = APPROVAL_STATUS_LABELS[wo.approvalStatus as ApprovalStatus] || wo.approvalStatus;
-        doc.text(`第 ${wo.writeOffNo} 次沖銷 - ${wo.requestNo}（${statusLabel}）`, mx, y);
+        doc.text(`第 ${wo.writeOffNo} 次沖銷 - ${wo.requestNo || '—'}（${statusLabel}）`, mx, y);
         y += 6;
 
         // 沖銷明細表格
@@ -354,7 +354,7 @@ export class AdvancePdfService {
       doc.setLineWidth(0.8);
       doc.line(mx, y + 1.5, pw - mx, y + 1.5);
 
-      doc.save(`經費預支申請表-${r.requestNo}.pdf`);
+      doc.save(`經費預支申請表-${r.requestNo || r.id}.pdf`);
     } finally {
       this.pdfLoading.set(false);
     }

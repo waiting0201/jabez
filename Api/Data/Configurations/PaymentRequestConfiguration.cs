@@ -10,12 +10,13 @@ public class PaymentRequestConfiguration : IEntityTypeConfiguration<PaymentReque
     {
         builder.HasKey(pr => pr.Id);
 
+        // 送簽時才取號（RequestNoGenerator），草稿階段為 null
         builder.Property(pr => pr.RequestNo)
-               .IsRequired()
                .HasMaxLength(50);
 
         builder.HasIndex(pr => pr.RequestNo)
-               .IsUnique();
+               .IsUnique()
+               .HasFilter("[RequestNo] IS NOT NULL");
 
         builder.Property(pr => pr.Type)
                .IsRequired()

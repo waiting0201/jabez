@@ -120,7 +120,7 @@ public sealed class TravelPaymentRequestReadService(IDbConnection db, IInstallme
             TravelPaymentRequestItemDto[]? items = x.items.Count > 0 ? [.. x.items] : null;
             return new TravelPaymentRequestDto(
                 (int)tpr.Id,
-                (string)tpr.RequestNo,
+                (string?)tpr.RequestNo,
                 (string?)tpr.EmployeeName ?? "—",
                 (string)tpr.Destination,
                 (DateTime)tpr.StartDate,

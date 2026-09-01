@@ -136,7 +136,7 @@
               @for (w of writeOffs(); track w.id) {
                 <tr>
                   <td class="small fw-500">第 {{ w.writeOffNo }} 次</td>
-                  <td class="small font-monospace">{{ w.requestNo }}</td>
+                  <td class="small font-monospace">{{ w.requestNo || '—' }}</td>
                   <td class="small">{{ w.submittedBy || '—' }}</td>
                   <td class="small text-muted">{{ w.createdAt | date:'yyyy-MM-dd' }}</td>
                   <td><span [class]="'badge ' + statusClass[w.approvalStatus]">{{ statusLabel[w.approvalStatus] }}</span></td>
@@ -245,7 +245,7 @@
             <use href="/assets/icons/sprite.svg#file-minus"></use>
           </svg>
           第 {{ w.writeOffNo }} 次沖銷
-          <span class="font-monospace fw-500 text-muted">{{ w.requestNo }}</span>
+          <span class="font-monospace fw-500 text-muted">{{ w.requestNo || '—' }}</span>
           <span [class]="'badge ' + statusClass[w.approvalStatus]">{{ statusLabel[w.approvalStatus] }}</span>
           <a [routerLink]="['/admin/write-off-requests', w.id]"
              class="btn btn-sm btn-ghost-secondary inline-flex items-center gap-1 ml-auto" title="檢視沖銷單">

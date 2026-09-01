@@ -68,7 +68,7 @@ export class WriteOffPdfService {
       lv('案號：', r.projectCode, pw - mx - 50, y, true);
 
       y += 6;
-      lv('沖銷單號：', r.requestNo, mx, y);
+      lv('沖銷單號：', r.requestNo || '—', mx, y);
       lv('關聯預支單號：', r.advanceRequestNo, pw / 2, y);
 
       y += 6;
@@ -240,7 +240,7 @@ export class WriteOffPdfService {
       doc.setLineWidth(0.8);
       doc.line(mx, y + 1.5, pw - mx, y + 1.5);
 
-      doc.save(`預支沖銷申請表-${r.requestNo}.pdf`);
+      doc.save(`預支沖銷申請表-${r.requestNo || r.id}.pdf`);
     } finally {
       this.pdfLoading.set(false);
     }

@@ -1017,7 +1017,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             int advId = (int)r.AdvanceRequestId;
             if (!dict.ContainsKey(advId)) dict[advId] = [];
             dict[advId].Add(new WriteOffRoundDto(
-                (int)r.Id, (int)r.WriteOffNo, (string)r.RequestNo, (decimal)r.GrandTotal,
+                (int)r.Id, (int)r.WriteOffNo, (string?)r.RequestNo, (decimal)r.GrandTotal,
                 (string)r.ApprovalStatus, (DateTime)r.CreatedAt, false));
         }
         return dict;
@@ -1831,7 +1831,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 
         return dict.Values.Select(x => new PaymentRequestDto(
             (int)x.pr.Id,
-            (string)x.pr.RequestNo,
+            (string?)x.pr.RequestNo,
             (string)x.pr.Type,
             (int)x.pr.ProjectId,
             (string)x.pr.ProjectCode,

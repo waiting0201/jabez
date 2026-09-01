@@ -53,7 +53,7 @@ import {WriteOffRound} from '../../features/admin/approval-tasks/models/approval
                     第 {{ wo.writeOffNo }} 次沖銷
                     @if (wo.isCurrent) { <span class="badge bg-primary ml-1">本單</span> }
                   </td>
-                  <td class="text-muted font-monospace">{{ wo.requestNo }}</td>
+                  <td class="text-muted font-monospace">{{ wo.requestNo || '—' }}</td>
                   <td class="text-right fw-500"
                       [class.text-muted]="wo.approvalStatus !== 'approved' && !wo.isCurrent">
                     {{ wo.grandTotal | number:'1.0-0' }}

@@ -124,20 +124,7 @@ public sealed class PaymentRequestHandler(
         if (invoices is null || invoices.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one invoice is required."));
 
-        // 產生請款單號：PR-yyyyMMdd-NNN（唯一索引保護並發）
         var today = Clock.Now;
-        var prefix = $"PR-{today:yyyyMMdd}-";
-        var maxNo = await db.PaymentRequests
-            .Where(p => p.RequestNo.StartsWith(prefix))
-            .MaxAsync(p => (string?)p.RequestNo);
-        int seq = 1;
-        if (maxNo is not null)
-        {
-            var seqStr = maxNo[prefix.Length..];
-            if (int.TryParse(seqStr, out var parsed))
-                seq = parsed + 1;
-        }
-        var requestNo = $"{prefix}{seq:D3}";
 
         // 發票號碼含中文 / CJK 者（如「收據」「領據」）視為手打文字，排除於重複檢查之外
         var checkableInvoices = invoices
@@ -202,7 +189,6 @@ public sealed class PaymentRequestHandler(
 
         var pr = new PaymentRequest
         {
-            RequestNo     = requestNo,
             Type          = type,
             ProjectId     = projectId,
             VendorId      = vendorId,
@@ -526,6 +512,12 @@ public sealed class PaymentRequestHandler(
 
         if (pr.ApprovalStatus != "draft" && pr.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned payment requests can be submitted.");
+
+        // 送簽時才取號：單號日期＝送簽日，草稿不佔號。
+        // 退回（returned）重送時已有單號，不可重新配號，否則已流通的單號會被改掉。
+        if (string.IsNullOrEmpty(pr.RequestNo))
+            pr.RequestNo = await RequestNoGenerator.NextAsync(
+                db.PaymentRequests.Select(x => x.RequestNo), "PR-", Clock.Now);
 
         // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
         if (pr.ApprovalStatus == "returned")

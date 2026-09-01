@@ -10,14 +10,15 @@ public class TravelWriteOffRecordConfiguration : IEntityTypeConfiguration<Travel
     {
         builder.HasKey(w => w.Id);
 
+        // 送簽時才取號（RequestNoGenerator），草稿階段為 null
         builder.Property(w => w.RequestNo)
-               .IsRequired()
-               .HasMaxLength(30)
-               .HasDefaultValue("");
+               .HasMaxLength(30);
 
-        // 單號唯一（比照其他申請單）：CreateAsync 以 MAX(RequestNo)+1 取號，併發時擋下重複單號
+        // 單號唯一（比照其他申請單）：SubmitAsync 以 MAX(RequestNo)+1 取號，併發時擋下重複單號
+        // filtered index：草稿的 RequestNo 為 NULL，一般唯一索引會視多個 NULL 為衝突，故須排除 NULL
         builder.HasIndex(w => w.RequestNo)
-               .IsUnique();
+               .IsUnique()
+               .HasFilter("[RequestNo] IS NOT NULL");
 
         builder.Property(w => w.GrandTotal)
                .HasColumnType("decimal(18,2)");

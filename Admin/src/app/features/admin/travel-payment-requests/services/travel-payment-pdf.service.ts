@@ -59,7 +59,7 @@ export class TravelPaymentPdfService {
       doc.setFont(F, 'normal');
       doc.setFontSize(9.5);
       doc.setTextColor(...CIS.textMuted);
-      doc.text(`單號：${r.requestNo}`, pw - mx, y, { align: 'right' });
+      doc.text(`單號：${r.requestNo || '—'}`, pw - mx, y, { align: 'right' });
       doc.setTextColor(...CIS.textPrimary);
 
       // ── 表頭資訊 ──
@@ -210,7 +210,7 @@ export class TravelPaymentPdfService {
       doc.setLineWidth(0.8);
       doc.line(mx, y + 1.5, pw - mx, y + 1.5);
 
-      doc.save(`出差請款申請單-${r.requestNo}.pdf`);
+      doc.save(`出差請款申請單-${r.requestNo || r.id}.pdf`);
     } finally {
       this.pdfLoading.set(false);
     }

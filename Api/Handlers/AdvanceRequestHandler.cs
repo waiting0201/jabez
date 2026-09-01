@@ -112,20 +112,7 @@ public sealed class AdvanceRequestHandler(
                 return new BadRequestObjectResult(ApiResponse.Fail("一或多位指定審核者不存在。"));
         }
 
-        // 產生預支單號：ADV-yyyyMMdd-NNN（唯一索引保護並發）
         var today = Clock.Now;
-        var prefix = $"ADV-{today:yyyyMMdd}-";
-        var maxNo = await db.AdvanceRequests
-            .Where(a => a.RequestNo.StartsWith(prefix))
-            .MaxAsync(a => (string?)a.RequestNo);
-        int seq = 1;
-        if (maxNo is not null)
-        {
-            var seqStr = maxNo[prefix.Length..];
-            if (int.TryParse(seqStr, out var parsed))
-                seq = parsed + 1;
-        }
-        var requestNo = $"{prefix}{seq:D3}";
 
         // 上傳檔案至 Blob Storage
         var files = form.Files.GetFiles("files");
@@ -163,7 +150,6 @@ public sealed class AdvanceRequestHandler(
 
         var ar = new AdvanceRequest
         {
-            RequestNo      = requestNo,
             ProjectId      = projectId,
             ActivityName   = activityName,
             ActivityPeriod = activityPeriod,
@@ -411,6 +397,13 @@ public sealed class AdvanceRequestHandler(
     /// </summary>
     private async Task<IActionResult> SubmitCoreAsync(AdvanceRequest ar, Guid userId, bool isSupplementRound)
     {
+        // 送簽時才取號：單號日期＝送簽日，草稿不佔號。
+        // 退回（returned）重送時已有單號，不可重新配號，否則已流通的單號會被改掉。
+        // 追加預支批次（isSupplementRound）沿用父單單號，同樣由這個判斷擋住。
+        if (string.IsNullOrEmpty(ar.RequestNo))
+            ar.RequestNo = await RequestNoGenerator.NextAsync(
+                db.AdvanceRequests.Select(x => x.RequestNo), "ADV-", Clock.Now);
+
         var roundNo = ar.CurrentRoundNo;
 
         // 退回重送 / 追加新輪次：清除「本輪」審核記錄，重置指定審核者狀態

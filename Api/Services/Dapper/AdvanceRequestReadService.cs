@@ -202,7 +202,7 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
             var wos = woDict.TryGetValue(id, out var list) ? [.. list] : Array.Empty<WriteOffSummaryDto>();
             return new AdvanceRequestDto(
                 id,
-                (string)x.ar.RequestNo,
+                (string?)x.ar.RequestNo,
                 (int)x.ar.ProjectId,
                 (string)x.ar.ProjectCode,
                 (string)x.ar.ProjectName,
@@ -258,7 +258,7 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
             .OrderBy(x => (int)x.wo.WriteOffNo)
             .Select(x => new WriteOffRecordDto(
                 (int)x.wo.Id,
-                (string)x.wo.RequestNo,
+                (string?)x.wo.RequestNo,
                 (int)x.wo.WriteOffNo,
                 (decimal)x.wo.CashTotal,
                 (decimal)x.wo.CheckTotal,

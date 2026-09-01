@@ -4,7 +4,7 @@ namespace Jabez.Api.Models.Dtos;
 
 public sealed record TravelWriteOffRequestDto(
     int                           Id,
-    string                        RequestNo,
+    string?                       RequestNo,
     int                           TravelRequestId,
     string                        TravelRequestNo,
     int                           WriteOffNo,

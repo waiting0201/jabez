@@ -118,20 +118,7 @@ public sealed class PreReviewRequestHandler(
         if (items is null || items.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
 
-        // 產生預審申請單號：PRV-yyyyMMdd-NNN（唯一索引保護並發）
         var today = Clock.Now;
-        var prefix = $"PRV-{today:yyyyMMdd}-";
-        var maxNo = await db.PreReviewRequests
-            .Where(p => p.RequestNo.StartsWith(prefix))
-            .MaxAsync(p => (string?)p.RequestNo);
-        int seq = 1;
-        if (maxNo is not null)
-        {
-            var seqStr = maxNo[prefix.Length..];
-            if (int.TryParse(seqStr, out var parsed))
-                seq = parsed + 1;
-        }
-        var requestNo = $"{prefix}{seq:D3}";
 
         // 上傳檔案至 Blob Storage（quotes 容器）
         var files = form.Files.GetFiles("files");
@@ -163,7 +150,6 @@ public sealed class PreReviewRequestHandler(
 
         var pr = new PreReviewRequest
         {
-            RequestNo     = requestNo,
             Type          = type,
             ProjectId     = projectId,
             VendorId      = vendorId,
@@ -450,6 +436,12 @@ public sealed class PreReviewRequestHandler(
 
         if (pr.ApprovalStatus != "draft" && pr.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned pre-review requests can be submitted.");
+
+        // 送簽時才取號：單號日期＝送簽日，草稿不佔號。
+        // 退回（returned）重送時已有單號，不可重新配號，否則已流通的單號會被改掉。
+        if (string.IsNullOrEmpty(pr.RequestNo))
+            pr.RequestNo = await RequestNoGenerator.NextAsync(
+                db.PreReviewRequests.Select(x => x.RequestNo), "PRV-", Clock.Now);
 
         // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
         if (pr.ApprovalStatus == "returned")

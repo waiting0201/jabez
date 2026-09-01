@@ -3,7 +3,7 @@ namespace Jabez.Api.Models.Entities;
 public class AdvanceRequest
 {
     public int       Id                { get; set; }
-    public string    RequestNo         { get; set; } = string.Empty;
+    public string?   RequestNo         { get; set; }                 // ADV-yyyyMMdd-NNN；送簽時取號，草稿為 null
     public int       ProjectId         { get; set; }
     public int?      ApprovalItemId    { get; set; }
     public string    ActivityName      { get; set; } = string.Empty;

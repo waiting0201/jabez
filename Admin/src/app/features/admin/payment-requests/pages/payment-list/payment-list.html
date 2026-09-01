@@ -31,7 +31,7 @@
           <tbody>
             @for (r of pagedRequests(); track r.id) {
               <tr>
-                <td class="font-monospace small">{{ r.requestNo }}</td>
+                <td class="font-monospace small">{{ r.requestNo || '—' }}</td>
                 <td>
                   <span [class]="'badge ' + typeClass[r.type]">{{ typeLabel[r.type] }}</span>
                 </td>

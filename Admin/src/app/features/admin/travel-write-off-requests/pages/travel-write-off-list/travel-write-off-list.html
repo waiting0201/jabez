@@ -32,7 +32,7 @@
               @if (g.count === 1) {
                 @let r = g.items[0];
                 <tr>
-                  <td class="fw-500 font-monospace">{{ r.requestNo }}</td>
+                  <td class="fw-500 font-monospace">{{ r.requestNo || '—' }}</td>
                   <td class="font-monospace text-muted">{{ r.travelRequestNo }}</td>
                   <td class="fw-500">{{ r.destination }}</td>
                   <td class="text-right fw-500">{{ r.grandTotal | number:'1.0-0' }}</td>
@@ -89,7 +89,7 @@
                 @if (isExpanded(g.key)) {
                   @for (r of g.items; track r.id) {
                     <tr class="border-l-2 border-[var(--forest)]">
-                      <td class="fw-500 font-monospace pl-6">{{ r.requestNo }}</td>
+                      <td class="fw-500 font-monospace pl-6">{{ r.requestNo || '—' }}</td>
                       <td class="font-monospace text-muted">{{ r.travelRequestNo }}</td>
                       <td class="fw-500">{{ r.destination }}</td>
                       <td class="text-right fw-500">{{ r.grandTotal | number:'1.0-0' }}</td>

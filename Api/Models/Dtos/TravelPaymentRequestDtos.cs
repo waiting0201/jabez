@@ -36,7 +36,7 @@ public sealed record TravelPaymentRequestItemRequest(
 
 public sealed record TravelPaymentRequestDto(
     int       Id,
-    string    RequestNo,
+    string?   RequestNo,
     string    EmployeeName,
     string    Destination,
     DateTime  StartDate,

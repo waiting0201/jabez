@@ -406,7 +406,8 @@ public sealed class ApprovalNotificationService(
 
             foreach (var r in recipients)
             {
-                var body = BuildRefundEmail(r.Name, applicantName, advance.Id, advance.RequestNo,
+                // 退款通知只在預支單核准後發出，必定已於送簽時取號
+                var body = BuildRefundEmail(r.Name, applicantName, advance.Id, advance.RequestNo!,
                     advance.GrandTotal, refundAmount, linkUrl);
                 if (emailEnabled)
                     await emailService.SendAsync(r.Email!, subject, body);
@@ -415,7 +416,7 @@ public sealed class ApprovalNotificationService(
                 {
                     try
                     {
-                        var flex = LineFlexMessageBuilder.BuildRefundMessage(applicantName, advance.RequestNo,
+                        var flex = LineFlexMessageBuilder.BuildRefundMessage(applicantName, advance.RequestNo!,
                             advance.GrandTotal, refundAmount, linkUrl);
                         await lineService.PushMessageAsync(lineUid, flex);
                     }

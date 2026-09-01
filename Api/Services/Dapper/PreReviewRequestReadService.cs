@@ -120,7 +120,7 @@ public sealed class PreReviewRequestReadService(IDbConnection db) : IPreReviewRe
 
         return dict.Values.Select(x => new PreReviewRequestDto(
             (int)x.prv.Id,
-            (string)x.prv.RequestNo,
+            (string?)x.prv.RequestNo,
             (string)x.prv.Type,
             (int)x.prv.ProjectId,
             (string)x.prv.ProjectCode,

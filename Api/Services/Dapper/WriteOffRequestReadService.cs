@@ -243,7 +243,7 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
         return [.. rows.Select(r => new WriteOffRoundDto(
             (int)r.Id,
             (int)r.WriteOffNo,
-            (string)r.RequestNo,
+            (string?)r.RequestNo,
             (decimal)r.GrandTotal,
             (string)r.ApprovalStatus,
             (DateTime)r.CreatedAt,
@@ -284,7 +284,7 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
 
         return dict.Values.Select(x => new WriteOffRequestDto(
             (int)x.wo.Id,
-            (string)x.wo.RequestNo,
+            (string?)x.wo.RequestNo,
             (int)x.wo.AdvanceRequestId,
             (string)x.wo.AdvanceRequestNo,
             (int)x.wo.WriteOffNo,

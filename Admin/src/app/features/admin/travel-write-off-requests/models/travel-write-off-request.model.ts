@@ -46,7 +46,8 @@ export interface DesignatedReviewer {
 
 export interface TravelWriteOffRequest {
   id: number;
-  requestNo: string;
+  /** 送簽時才取號，草稿為 null */
+  requestNo: string | null;
   travelRequestId: number;
   travelRequestNo: string;
   writeOffNo: number;

@@ -4,7 +4,7 @@ namespace Jabez.Api.Models.Dtos;
 
 public sealed record WriteOffRequestDto(
     int                       Id,
-    string                    RequestNo,
+    string?                   RequestNo,
     int                       AdvanceRequestId,
     string                    AdvanceRequestNo,
     int                       WriteOffNo,
@@ -46,7 +46,7 @@ public sealed record WriteOffRequestDto(
 public sealed record WriteOffRoundDto(
     int      Id,
     int      WriteOffNo,
-    string   RequestNo,
+    string?  RequestNo,
     decimal  GrandTotal,
     string   ApprovalStatus,
     DateTime CreatedAt,
