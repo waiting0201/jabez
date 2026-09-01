@@ -83,6 +83,10 @@ public sealed class TravelRequestHandler(
         if (body.EndDate < body.StartDate)
             return new BadRequestObjectResult(ApiResponse.Fail("EndDate must be on or after StartDate."));
 
+        // 預支款需求日為必填（假日執行活動走 form-data 分支，不適用本欄位）
+        if (!body.AdvanceNeededDate.HasValue)
+            return new BadRequestObjectResult(ApiResponse.Fail("AdvanceNeededDate is required."));
+
         // 明細項目驗證：至少需要一筆
         if (body.Items is null || body.Items.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
@@ -286,8 +290,8 @@ public sealed class TravelRequestHandler(
         if (body.Destination is not null)  item.Destination = body.Destination;
         if (body.StartDate.HasValue)       item.StartDate   = body.StartDate.Value;
         if (body.EndDate.HasValue)         item.EndDate     = body.EndDate.Value;
-        // 預支款需求日為選填：一律覆寫（含 null＝清除）
-        item.AdvanceNeededDate = body.AdvanceNeededDate;
+        // 預支款需求日為必填：有帶值才覆寫（不接受清空）
+        if (body.AdvanceNeededDate.HasValue) item.AdvanceNeededDate = body.AdvanceNeededDate;
         if (body.Purpose is not null)      item.Purpose     = body.Purpose;
         if (body.ProjectId.HasValue)       item.ProjectId   = body.ProjectId == 0 ? null : body.ProjectId;
 

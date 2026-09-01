@@ -27,10 +27,6 @@ public sealed class AdvanceRequestHandler(
         PropertyNameCaseInsensitive = true,
     };
 
-    /// <summary>選填日期欄位解析：留空或格式錯誤一律回 null（供預支款需求日使用）。</summary>
-    private static DateTime? ParseOptionalDate(string? value) =>
-        DateTime.TryParse(value, out var d) ? d : null;
-
     /// <summary>Multipart form 中 items JSON 的內部結構</summary>
     private sealed record ItemMetadata(
         string   Category,
@@ -85,13 +81,16 @@ public sealed class AdvanceRequestHandler(
         var activityName   = form["activityName"].ToString();
         var activityPeriod = form["activityPeriod"].ToString();
         var advanceDateStr = form["advanceDate"].ToString();
-        // 預支款需求日為選填：解析不出（含留空）即視為 null
-        var neededDate     = ParseOptionalDate(form["advanceNeededDate"].ToString());
+        var neededDateStr  = form["advanceNeededDate"].ToString();
         var itemsJson      = form["items"].ToString();
         var drJson         = form["designatedReviewers"].ToString();
 
         if (!DateTime.TryParse(advanceDateStr, out var advanceDate))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid advanceDate."));
+
+        // 預支款需求日為必填：比照 advanceDate，解析不出（含留空）即回 400
+        if (!DateTime.TryParse(neededDateStr, out var neededDate))
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid advanceNeededDate."));
 
         var itemsMeta = JsonSerializer.Deserialize<ItemMetadata[]>(itemsJson, JsonOpts);
         if (itemsMeta is null || itemsMeta.Length == 0)
@@ -234,9 +233,9 @@ public sealed class AdvanceRequestHandler(
             ar.ActivityPeriod = activityPeriod;
         if (DateTime.TryParse(advanceDateStr, out var advanceDate))
             ar.AdvanceDate = advanceDate;
-        // 選填欄位：有帶 key 就整個覆寫（含留空清除）
-        if (form.ContainsKey("advanceNeededDate"))
-            ar.AdvanceNeededDate = ParseOptionalDate(form["advanceNeededDate"].ToString());
+        // 必填欄位：比照 advanceDate，解析成功才覆寫（不接受清空）
+        if (DateTime.TryParse(form["advanceNeededDate"].ToString(), out var neededDate))
+            ar.AdvanceNeededDate = neededDate;
 
         // 指定審核者整組替換
         if (!string.IsNullOrEmpty(drJson) || form.ContainsKey("designatedReviewers"))
@@ -580,11 +579,16 @@ public sealed class AdvanceRequestHandler(
 
         var form = await req.ReadFormAsync();
         var advanceDateStr = form["advanceDate"].ToString();
+        var neededDateStr  = form["advanceNeededDate"].ToString();
         var reason         = form["reason"].ToString();
         var itemsJson      = form["items"].ToString();
 
         if (!DateTime.TryParse(advanceDateStr, out var advanceDate))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid advanceDate."));
+
+        // 預支款需求日為必填（逐批次）
+        if (!DateTime.TryParse(neededDateStr, out var neededDate))
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid advanceNeededDate."));
 
         var itemsMeta = JsonSerializer.Deserialize<ItemMetadata[]>(itemsJson, JsonOpts);
         if (itemsMeta is null || itemsMeta.Length == 0)
@@ -598,7 +602,7 @@ public sealed class AdvanceRequestHandler(
             AdvanceRequestId     = ar.Id,
             RoundNo              = roundNo,
             AdvanceDate          = advanceDate,
-            AdvanceNeededDate    = ParseOptionalDate(form["advanceNeededDate"].ToString()),
+            AdvanceNeededDate    = neededDate,
             Reason               = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim(),
             CreatedById          = userId,
             CreatedAt            = Clock.Now,
@@ -638,9 +642,9 @@ public sealed class AdvanceRequestHandler(
 
         if (DateTime.TryParse(advanceDateStr, out var advanceDate))
             supplement.AdvanceDate = advanceDate;
-        // 選填欄位：有帶 key 就整個覆寫（含留空清除）
-        if (form.ContainsKey("advanceNeededDate"))
-            supplement.AdvanceNeededDate = ParseOptionalDate(form["advanceNeededDate"].ToString());
+        // 必填欄位：比照 advanceDate，解析成功才覆寫（不接受清空）
+        if (DateTime.TryParse(form["advanceNeededDate"].ToString(), out var neededDate))
+            supplement.AdvanceNeededDate = neededDate;
         if (form.ContainsKey("reason"))
             supplement.Reason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
 

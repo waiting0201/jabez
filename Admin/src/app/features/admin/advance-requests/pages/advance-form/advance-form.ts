@@ -130,7 +130,7 @@ export class AdvanceForm implements OnInit {
     activityName:   ['', Validators.required],
     activityPeriod: ['', Validators.required],
     advanceDate:    ['', Validators.required],
-    advanceNeededDate: [''],
+    advanceNeededDate: ['', Validators.required],
     reason:         [''],   // 僅追加模式使用
     items:          this.fb.array([]),
   });
