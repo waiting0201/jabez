@@ -390,6 +390,60 @@
                 </div>
               </div>
 
+              <!-- 參與執行人員（含申請人；逐日勾選者列出日期 + 時段，未勾選＝全程參與） -->
+              @if (d.holidayAllowances && d.holidayAllowances.length > 0) {
+                <div class="card border-0 shadow-sm mt-6">
+                  <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                    <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#users"></use></svg>
+                    參與執行人員
+                  </div>
+                  <div class="card-body p-0">
+                    <div class="table-responsive">
+                      <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                          <tr>
+                            <th style="width:56px" class="text-center">#</th>
+                            <th>人員</th>
+                            <th>參與日期</th>
+                            <th class="text-right">假日天數</th>
+                            <th class="text-right">津貼預估</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (a of d.holidayAllowances; track $index; let i = $index) {
+                            <tr>
+                              <td class="small text-center text-muted">{{ i + 1 }}</td>
+                              <td class="small fw-500">
+                                {{ a.userName }}
+                                @if (a.isApplicant) {
+                                  <span class="badge bg-primary-subtle text-primary ms-1">申請人</span>
+                                }
+                              </td>
+                              <td class="small">
+                                @if (participantDates(a); as dates) {
+                                  {{ dates }}
+                                } @else {
+                                  <span class="text-muted">全程參與</span>
+                                }
+                              </td>
+                              <td class="text-right small fw-500">{{ participantDays(a.days) }} 天</td>
+                              <td class="text-right small fw-500">{{ a.allowance | number:'1.0-0' }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                        <tfoot>
+                          <tr class="table-light">
+                            <td colspan="4" class="text-right fw-500 small">津貼合計</td>
+                            <td class="text-right fw-600">{{ sumField(d.holidayAllowances, 'allowance') | number:'1.0-0' }}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                    <div class="text-muted small p-4 pt-2">未列參與日期者為全程參與；未標示時段者為全天，上/下午以 0.5 天計。津貼隨次月薪資發放。</div>
+                  </div>
+                </div>
+              }
+
               <!-- 出差明細 -->
               @if (d.items && d.items.length > 0) {
                 <div class="card border-0 shadow-sm mt-6">

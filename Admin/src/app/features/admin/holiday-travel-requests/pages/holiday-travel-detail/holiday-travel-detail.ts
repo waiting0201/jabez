@@ -5,7 +5,7 @@ import {HolidayTravelRequestService} from '../../services/holiday-travel-request
 import {HolidayTravelPdfService} from '../../services/holiday-travel-pdf.service';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
 import {ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
-import {HolidayTravelRequest, TravelParticipant, PARTICIPANT_SLOT_LABELS, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/holiday-travel-request.model';
+import {HolidayTravelRequest, TravelParticipant, formatParticipantDates, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/holiday-travel-request.model';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {SubmitSuccessModal} from '../../../../../shared/components/submit-success-modal';
@@ -46,13 +46,7 @@ export class HolidayTravelDetail implements OnInit {
 
   /** 參與人員個人參與日期（M/d，半天附時段；頓號分隔；無日期＝全程參與，回空字串） */
   participantDates(p: TravelParticipant): string {
-    return (p.dates ?? [])
-      .map(d => {
-        const [, m, day] = String(d.date).slice(0, 10).split('-');
-        const md = `${+m}/${+day}`;
-        return d.slot === 'full' ? md : `${md} ${PARTICIPANT_SLOT_LABELS[d.slot]}`;
-      })
-      .join('、');
+    return formatParticipantDates(p.dates);
   }
 
   printHolidayTravel() {

@@ -57,6 +57,20 @@ export interface ParticipantDate {
   slot: ParticipantDaySlot;
 }
 
+/**
+ * 個人參與日期顯示（M/d，半天附時段；頓號分隔）；無日期＝全程參與，回空字串。
+ * 假日執行活動詳情頁與簽核作業詳情頁共用，為此格式的單一真相。
+ */
+export function formatParticipantDates(dates?: ParticipantDate[] | null): string {
+  return (dates ?? [])
+    .map(d => {
+      const [, m, day] = String(d.date).slice(0, 10).split('-');
+      const md = `${+m}/${+day}`;
+      return d.slot === 'full' ? md : `${md} ${PARTICIPANT_SLOT_LABELS[d.slot]}`;
+    })
+    .join('、');
+}
+
 /** 參與執行人員 */
 export interface TravelParticipant {
   userId: string;
