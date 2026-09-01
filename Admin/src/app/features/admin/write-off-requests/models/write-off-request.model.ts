@@ -151,4 +151,8 @@ export interface AdvanceSummary {
   items: AdvanceRequestItem[];
 }
 
-export const ITEM_CATEGORIES = ['交通費', '活動費', '設計費', '人事費', '餐費', '雜支', '收款人', '廠商'] as const;
+/** 常用分類選項（與 advance-request.model.ts 的同名常數必須保持一致：沖銷表單會從母預支單複製 category） */
+export const ITEM_CATEGORIES = [
+  '交通費', '活動費', '設計費', '人事費', '餐費', '雜支', '收款人', '廠商',
+  '食材進貨', '備品耗材', '商品進貨', '臨時人力',
+] as const;
