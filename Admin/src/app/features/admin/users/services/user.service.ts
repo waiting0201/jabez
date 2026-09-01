@@ -75,7 +75,7 @@ export class UserService {
     return this.http.get(`${environment.apiUrl}/files/low-income-proofs/${fileName}`, {responseType: 'blob'});
   }
 
-  /** 以 JWT 取得殘障證明檔（HR 權限保護） */
+  /** 以 JWT 取得身心障礙證明檔（HR 權限保護） */
   getDisabledProof(fileName: string): Observable<Blob> {
     return this.http.get(`${environment.apiUrl}/files/disabled-proofs/${fileName}`, {responseType: 'blob'});
   }

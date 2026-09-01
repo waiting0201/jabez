@@ -42,7 +42,7 @@ export interface User {
   /** 低收入戶身份 */
   isLowIncome?: boolean;
   lowIncomeProofUrl?: string | null;
-  /** 殘障身份 */
+  /** 身心障礙身份 */
   isDisabled?: boolean;
   disabledProofUrl?: string | null;
   /** 健保金額手動覆寫（null = 走 lookup） */

@@ -116,7 +116,7 @@ export class UserForm implements OnInit {
   lowIncomeProofFileName = signal<string | null>(null);
   removeLowIncomeProof   = signal(false);
 
-  // ── 殘障證明 ─────────────────────────────────────
+  // ── 身心障礙證明 ─────────────────────────────────────
   disabledProofUrl      = signal<string | null>(null);
   disabledProofFile     = signal<File | null>(null);
   disabledProofFileName = signal<string | null>(null);
@@ -743,7 +743,7 @@ export class UserForm implements OnInit {
   }
 
   // ═══════════════════════════════════════════════
-  // 殘障證明
+  // 身心障礙證明
   // ═══════════════════════════════════════════════
   async onDisabledProofSelected(event: Event) {
     const input = event.target as HTMLInputElement;
@@ -760,7 +760,7 @@ export class UserForm implements OnInit {
       this.disabledProofFileName.set(file.name);
       this.removeDisabledProof.set(false);
     } catch (err) {
-      console.error('[UserForm] 殘障證明處理失敗', err);
+      console.error('[UserForm] 身心障礙證明處理失敗', err);
       this.toastr.error('檔案處理失敗，請重試。', '處理失敗');
     }
   }

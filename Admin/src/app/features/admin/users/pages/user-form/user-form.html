@@ -278,12 +278,12 @@
                     <label class="form-check-label" for="isLowIncome">低收入戶身份</label>
                   </div>
                 </div>
-                <!-- 殘障身份 -->
+                <!-- 身心障礙身份 -->
                 <div class="col-12 col-md-4">
-                  <label class="form-label fw-500">殘障身份</label>
+                  <label class="form-label fw-500">身心障礙身份</label>
                   <div class="form-check mt-2">
                     <input class="form-check-input" type="checkbox" formControlName="isDisabled" id="isDisabled">
-                    <label class="form-check-label" for="isDisabled">具殘障資格</label>
+                    <label class="form-check-label" for="isDisabled">具身心障礙資格</label>
                   </div>
                 </div>
                 <div class="col-12 col-md-4">
@@ -440,12 +440,12 @@
             </div>
           }
 
-          <!-- 殘障證明文件 -->
+          <!-- 身心障礙證明文件 -->
           @if (form.value.isDisabled) {
             <div class="card border-0 shadow-sm mb-4">
               <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
                 <svg class="sa-icon"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
-                殘障證明文件
+                身心障礙證明文件
               </div>
               <div class="card-body">
                 <p class="text-muted small mb-3">支援 PNG、JPEG 圖片或 PDF 檔案。此文件僅供人事部門稽核，受權限保護。</p>

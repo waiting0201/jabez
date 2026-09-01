@@ -239,7 +239,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         if (file is not null && file.Length > ProofMaxBytes)
             throw AppException.BadRequest("上傳照片勿超過1MB");
         return HandleFileUploadAsync(files, "disabledProof", DisabledProofContainer, AllowedProofTypes,
-            "殘障身份證明文件僅支援 PNG、JPEG 圖片或 PDF 格式。", userId, existingUrl);
+            "身心障礙身份證明文件僅支援 PNG、JPEG 圖片或 PDF 格式。", userId, existingUrl);
     }
 
     // POST /api/users
@@ -330,7 +330,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             user.LaborPensionSelfContributionRate = null;
         }
 
-        // 處理檔案上傳：簽名檔、頭像、原住民證明、低收入證明、殘障證明
+        // 處理檔案上傳：簽名檔、頭像、原住民證明、低收入證明、身心障礙證明
         user.SignatureUrl = await HandleSignatureUploadAsync(form.Files, userId, null);
         user.Avatar       = await HandleAvatarUploadAsync(form.Files, userId, null);
 
@@ -352,7 +352,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         {
             user.DisabledProofUrl = await HandleDisabledProofUploadAsync(form.Files, userId, null);
             if (user.DisabledProofUrl is null)
-                throw AppException.BadRequest("勾選殘障身份時必須上傳證明文件。");
+                throw AppException.BadRequest("勾選身心障礙身份時必須上傳證明文件。");
         }
 
         db.Users.Add(user);
@@ -529,7 +529,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         if (user.IsLowIncome && string.IsNullOrEmpty(user.LowIncomeProofUrl))
             throw AppException.BadRequest("勾選低收入戶時必須上傳證明文件。");
 
-        // 處理殘障身份證明（同上模式）
+        // 處理身心障礙身份證明（同上模式）
         if (!user.IsDisabled)
         {
             await DeleteBlobByUrlAsync(DisabledProofContainer, user.DisabledProofUrl);
@@ -546,7 +546,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         }
 
         if (user.IsDisabled && string.IsNullOrEmpty(user.DisabledProofUrl))
-            throw AppException.BadRequest("勾選殘障身份時必須上傳證明文件。");
+            throw AppException.BadRequest("勾選身心障礙身份時必須上傳證明文件。");
 
         user.UpdatedAt = Clock.Now;
 
