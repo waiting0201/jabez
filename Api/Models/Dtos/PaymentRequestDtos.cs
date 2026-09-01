@@ -206,7 +206,8 @@ public sealed record TravelTaskDetailDto(
     bool      IsClosed = false,
     DateTime? ClosedAt = null,
     decimal?  RefundAmount = null,
-    decimal?  RefundedAmount = null)
+    decimal?  RefundedAmount = null,
+    DateTime? AdvanceNeededDate = null)
 {
     public TravelRequestItemDto[] Items { get; init; } = Items ?? Array.Empty<TravelRequestItemDto>();
 }

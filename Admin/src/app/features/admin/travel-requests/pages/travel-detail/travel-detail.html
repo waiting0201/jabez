@@ -96,6 +96,10 @@
             <div class="text-muted small">結束日期</div>
             <div class="fw-500">{{ r.endDate | date:'yyyy-MM-dd' }}</div>
           </div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">預支款需求日</div>
+            <div class="fw-500">{{ r.advanceNeededDate ? (r.advanceNeededDate | date:'yyyy-MM-dd') : '—' }}</div>
+          </div>
           @if (r.projectCode || r.projectName) {
             <div class="col-6 col-md-3">
               <div class="text-muted small">關聯專案</div>

@@ -120,6 +120,7 @@ public sealed class TravelRequestHandler(
             Destination     = body.Destination,
             StartDate       = body.StartDate,
             EndDate         = body.EndDate,
+            AdvanceNeededDate = body.AdvanceNeededDate,
             GrandTotal      = items.Sum(i => i.TotalPrice),
             Purpose         = body.Purpose,
             ProjectId       = body.ProjectId,
@@ -285,6 +286,8 @@ public sealed class TravelRequestHandler(
         if (body.Destination is not null)  item.Destination = body.Destination;
         if (body.StartDate.HasValue)       item.StartDate   = body.StartDate.Value;
         if (body.EndDate.HasValue)         item.EndDate     = body.EndDate.Value;
+        // 預支款需求日為選填：一律覆寫（含 null＝清除）
+        item.AdvanceNeededDate = body.AdvanceNeededDate;
         if (body.Purpose is not null)      item.Purpose     = body.Purpose;
         if (body.ProjectId.HasValue)       item.ProjectId   = body.ProjectId == 0 ? null : body.ProjectId;
 

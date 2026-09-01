@@ -52,6 +52,8 @@ export interface TravelRequest {
   // 後端序列化為 ISO 字串（"2026-03-24T00:00:00"），runtime 實際型別是 string 而非 Date
   startDate: string;
   endDate: string;
+  /** 預支款需求日（選填）：申請人希望款項撥入的日期 */
+  advanceNeededDate?: string;
   grandTotal: number;
   purpose: string;
   projectId?: number;

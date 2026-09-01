@@ -83,6 +83,18 @@
               <div class="fw-500">{{ r.advanceDate | date:'yyyy-MM-dd' }}</div>
             }
           </div>
+          <div class="col-6 col-md-3">
+            <div class="text-muted small">預支款需求日</div>
+            @if (rounds(r); as rds) {
+              @for (rd of rds; track rd.roundNo) {
+                <div class="fw-500" [class.mt-1]="!$first">
+                  {{ roundLabel(rd.roundNo) }} · {{ rd.advanceNeededDate ? (rd.advanceNeededDate | date:'yyyy-MM-dd') : '—' }}
+                </div>
+              }
+            } @else {
+              <div class="fw-500">{{ r.advanceNeededDate ? (r.advanceNeededDate | date:'yyyy-MM-dd') : '—' }}</div>
+            }
+          </div>
         </div>
 
         <!-- 金額摘要 -->

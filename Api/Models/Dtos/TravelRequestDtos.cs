@@ -79,7 +79,8 @@ public sealed record TravelRequestDto(
     int                          HolidayDays          = 0,
     ParticipantDto[]?            Participants         = null,
     InstallmentDto[]?            Installments         = null,
-    string?                      PaymentStatus        = null);
+    string?                      PaymentStatus        = null,
+    DateTime?                    AdvanceNeededDate    = null);
 
 public sealed record CreateTravelRequestRequest(
     Guid?    EmployeeId,
@@ -92,7 +93,8 @@ public sealed record CreateTravelRequestRequest(
     bool     IsHolidayTravel      = false,
     TravelRequestItemRequest[]?  Items               = null,
     DesignatedReviewerRequest[]? DesignatedReviewers = null,
-    ParticipantRequest[]?        Participants        = null);
+    ParticipantRequest[]?        Participants        = null,
+    DateTime?                    AdvanceNeededDate   = null);
 
 public sealed record UpdateTravelRequestRequest(
     string?   Destination,
@@ -103,4 +105,5 @@ public sealed record UpdateTravelRequestRequest(
     bool?     IsHolidayTravel,
     TravelRequestItemRequest[]?  Items               = null,
     DesignatedReviewerRequest[]? DesignatedReviewers = null,
-    ParticipantRequest[]?        Participants        = null);
+    ParticipantRequest[]?        Participants        = null,
+    DateTime?                    AdvanceNeededDate   = null);

@@ -9,6 +9,8 @@ public class TravelRequest
     public string   Destination     { get; set; } = string.Empty;
     public DateTime StartDate       { get; set; }
     public DateTime EndDate         { get; set; }
+    /// <summary>預支款需求日（選填）：申請人希望款項撥入的日期，供財務排撥款參考。假日執行活動不使用此欄位，恆為 null。</summary>
+    public DateTime? AdvanceNeededDate { get; set; }
     public decimal  GrandTotal      { get; set; }  // SUM(Items.TotalPrice)，由後端自動計算
     public string   Purpose         { get; set; } = string.Empty;
     public int?     ProjectId       { get; set; }

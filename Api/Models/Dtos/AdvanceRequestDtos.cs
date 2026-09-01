@@ -43,7 +43,8 @@ public sealed record AdvanceRoundDto(
     decimal  CashTotal,
     decimal  CheckTotal,
     decimal  GrandTotal,
-    int      ItemCount);
+    int      ItemCount,
+    DateTime? AdvanceNeededDate = null);
 
 // ── AdvanceRequest DTO ──────────────────────────────────────────────────────
 
@@ -77,7 +78,8 @@ public sealed record AdvanceRequestDto(
     InstallmentDto[]?         Installments           = null,
     string?                   PaymentStatus          = null,
     AdvanceRoundDto[]?        Rounds                 = null,
-    int                       CurrentRoundNo         = 1);
+    int                       CurrentRoundNo         = 1,
+    DateTime?                 AdvanceNeededDate      = null);
 
 // ── WriteOff DTOs ───────────────────────────────────────────────────────────
 
@@ -142,7 +144,8 @@ public sealed record CreateAdvanceRequestRequest(
     string                      ActivityPeriod,
     DateTime                    AdvanceDate,
     AdvanceRequestItemRequest[] Items,
-    DesignatedReviewerRequest[]? DesignatedReviewers = null);
+    DesignatedReviewerRequest[]? DesignatedReviewers = null,
+    DateTime?                   AdvanceNeededDate   = null);
 
 public sealed record UpdateAdvanceRequestRequest(
     int?                         ProjectId,
@@ -150,7 +153,8 @@ public sealed record UpdateAdvanceRequestRequest(
     string?                      ActivityPeriod,
     DateTime?                    AdvanceDate,
     AdvanceRequestItemRequest[]? Items,
-    DesignatedReviewerRequest[]? DesignatedReviewers = null);
+    DesignatedReviewerRequest[]? DesignatedReviewers = null,
+    DateTime?                    AdvanceNeededDate   = null);
 
 public sealed record CreateWriteOffRequest(
     WriteOffItemRequest[] Items,
@@ -175,7 +179,8 @@ public sealed record AdvanceTaskDetailDto(
     AdvanceRoundDto[]? Rounds = null,
     int       CurrentRoundNo = 1,
     bool      IsClosed = false,
-    DateTime? ClosedAt = null)
+    DateTime? ClosedAt = null,
+    DateTime? AdvanceNeededDate = null)
 {
     public AdvanceRequestItemDto[] Items { get; init; } = Items ?? Array.Empty<AdvanceRequestItemDto>();
 }

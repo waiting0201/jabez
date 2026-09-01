@@ -27,6 +27,8 @@ export const roundLabel = (roundNo: number): string =>
 export interface AdvanceRound {
   roundNo: number;
   advanceDate: string;
+  /** 該批次的預支款需求日（選填） */
+  advanceNeededDate?: string;
   reason?: string;
   cashTotal: number;
   checkTotal: number;
@@ -73,6 +75,8 @@ export interface AdvanceRequest {
   activityName: string;
   activityPeriod: string;
   advanceDate: string;
+  /** 預支款需求日（選填）：申請人希望款項撥入的日期 */
+  advanceNeededDate?: string;
   cashTotal: number;
   checkTotal: number;
   grandTotal: number;

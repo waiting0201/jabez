@@ -69,6 +69,7 @@ public sealed class WriteOffRequestHandler(
                 ProjectCode = a.Project != null ? a.Project.Code : "",
                 a.ActivityName,
                 a.AdvanceDate,
+                a.AdvanceNeededDate,
                 a.CashTotal,
                 a.CheckTotal,
                 a.GrandTotal,
@@ -103,7 +104,7 @@ public sealed class WriteOffRequestHandler(
                 .AsNoTracking()
                 .Where(s => ids.Contains(s.AdvanceRequestId))
                 .OrderBy(s => s.RoundNo)
-                .Select(s => new { s.AdvanceRequestId, s.RoundNo, s.AdvanceDate, s.Reason })
+                .Select(s => new { s.AdvanceRequestId, s.RoundNo, s.AdvanceDate, s.AdvanceNeededDate, s.Reason })
                 .ToListAsync())
             .ToLookup(s => s.AdvanceRequestId);
 
@@ -114,7 +115,7 @@ public sealed class WriteOffRequestHandler(
                 h.Id, h.RequestNo, h.ProjectCode, h.ActivityName, h.AdvanceDate,
                 h.CashTotal, h.CheckTotal, h.GrandTotal, h.WrittenOffTotal, h.PendingWriteOffTotal,
                 // 批次組裝規則與 GET /advance-requests/{id} 共用同一份實作
-                AdvanceRequestReadService.BuildRounds(h.AdvanceDate, supLookup[h.Id], items),
+                AdvanceRequestReadService.BuildRounds(h.AdvanceDate, h.AdvanceNeededDate, supLookup[h.Id], items),
                 items);
         }).ToList();
 

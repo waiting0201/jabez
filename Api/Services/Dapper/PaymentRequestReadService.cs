@@ -642,7 +642,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             """;
 
         var travelSql = $"""
-            SELECT tr.Id, tr.RequestNo, tr.Destination, tr.StartDate, tr.EndDate,
+            SELECT tr.Id, tr.RequestNo, tr.Destination, tr.StartDate, tr.EndDate, tr.AdvanceNeededDate,
                    tr.GrandTotal, tr.Purpose, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    tr.IsHolidayTravel,
                    tr.EstimatedRefundDate, tr.RefundedAt,
@@ -659,7 +659,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         // 假日執行活動申請（IsHolidayTravel = 1），獨立 ApplicationType = "holiday_travel"
         // ApplicantId / ApplicantBaseSalary 用於計算申請人本人的假日津貼
         var holidayTravelSql = $"""
-            SELECT tr.Id, tr.RequestNo, tr.Destination, tr.StartDate, tr.EndDate,
+            SELECT tr.Id, tr.RequestNo, tr.Destination, tr.StartDate, tr.EndDate, tr.AdvanceNeededDate,
                    tr.GrandTotal, tr.Purpose, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    tr.IsHolidayTravel, tr.HolidayDays,
                    tr.EstimatedRefundDate, tr.RefundedAt,
@@ -686,7 +686,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 
         var advanceSql = $"""
             SELECT adv.Id, adv.RequestNo, proj.Code AS ProjectCode, proj.Name AS ProjectName,
-                   adv.ActivityName, adv.GrandTotal, adv.AdvanceDate,
+                   adv.ActivityName, adv.GrandTotal, adv.AdvanceDate, adv.AdvanceNeededDate,
                    adv.ApprovalStatus, adv.ApprovalItemId, adv.CurrentStepOrder, adv.CurrentRoundNo,
                    adv.EstimatedRefundDate, adv.RefundedAt,
                    adv.IsClosed, adv.ClosedAt, adv.RefundAmount, adv.RefundedAmount,
@@ -719,6 +719,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                    arx.ClosedAt AS AdvanceClosedAt,
                    wo.PendingClose,
                    arx.AdvanceDate AS AdvanceDate,
+                   arx.AdvanceNeededDate AS AdvanceNeededDate,
                    wo.WriteOffNo
             FROM WriteOffRecords wo
             JOIN AdvanceRequests arx  ON wo.AdvanceRequestId = arx.Id
@@ -881,7 +882,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 
         // 追加預支批次（RoundNo ≥ 2；Round 1 = 父單本身）
         const string advanceSupplementsSql = """
-            SELECT s.AdvanceRequestId, s.RoundNo, s.AdvanceDate, s.Reason
+            SELECT s.AdvanceRequestId, s.RoundNo, s.AdvanceDate, s.AdvanceNeededDate, s.Reason
             FROM AdvanceRequestSupplements s
             ORDER BY s.AdvanceRequestId, s.RoundNo
             """;
@@ -1206,9 +1207,9 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             advSupplementDict[advId].Add(s);
         }
 
-        AdvanceRoundDto[] GetAdvanceRounds(int id, DateTime advanceDate) =>
+        AdvanceRoundDto[] GetAdvanceRounds(int id, DateTime advanceDate, DateTime? advanceNeededDate) =>
             AdvanceRequestReadService.BuildRounds(
-                advanceDate, advSupplementDict.GetValueOrDefault(id, []), GetAdvanceItems(id));
+                advanceDate, advanceNeededDate, advSupplementDict.GetValueOrDefault(id, []), GetAdvanceItems(id));
 
         // Travel request items lookup keyed by TravelRequestId
         var travelItemDict = new Dictionary<int, List<TravelRequestItemDto>>();
@@ -1433,7 +1434,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (bool)row.IsClosed,
                 (DateTime?)row.ClosedAt,
                 (decimal?)row.RefundAmount,
-                (decimal?)row.RefundedAmount),
+                (decimal?)row.RefundedAmount,
+                (DateTime?)row.AdvanceNeededDate),
             null, null, null, null,
             GetRecords("travel", (int)row.Id),
             GetDesignatedReviewers("travel", (int)row.Id),
@@ -1536,10 +1538,11 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (decimal?)row.RefundedAmount,
                 instDicts.Advance.TryGetValue((int)row.Id, out var advInst) ? [.. advInst] : null,
                 installments.ComputeStatus(instDicts.Advance.GetValueOrDefault((int)row.Id, [])),
-                GetAdvanceRounds((int)row.Id, (DateTime)row.AdvanceDate),
+                GetAdvanceRounds((int)row.Id, (DateTime)row.AdvanceDate, (DateTime?)row.AdvanceNeededDate),
                 (int)row.CurrentRoundNo,
                 (bool)row.IsClosed,
-                (DateTime?)row.ClosedAt),
+                (DateTime?)row.ClosedAt,
+                (DateTime?)row.AdvanceNeededDate),
             null, null,
             GetRecords("advance", (int)row.Id),
             GetDesignatedReviewers("advance", (int)row.Id),
@@ -1602,7 +1605,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (decimal?)row.AdvanceRefundAmount,
                 (decimal?)row.AdvanceRefundedAmount,
                 GetWriteOffAttachments((int)row.Id),
-                GetAdvanceRounds((int)row.AdvanceRequestId, (DateTime)row.AdvanceDate),
+                GetAdvanceRounds((int)row.AdvanceRequestId, (DateTime)row.AdvanceDate, (DateTime?)row.AdvanceNeededDate),
                 GetWriteOffHistory((int)row.AdvanceRequestId, (int)row.Id),
                 WriteOffRefundCalculator.Calculate(
                     (decimal)row.AdvanceGrandTotal, (decimal)row.OtherWrittenOffTotal, (decimal)row.GrandTotal),
