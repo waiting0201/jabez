@@ -21,7 +21,7 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
         Timeout = TimeSpan.FromSeconds(30)
     };
 
-    private const string DefaultModel = "gemini-2.0-flash-lite-001";
+    private const string DefaultModel = "gemini-3.5-flash-lite";
     private const string ApiBase = "https://generativelanguage.googleapis.com/v1beta/models";
 
     // 允許的 MIME 類型（圖片 + PDF）
@@ -122,6 +122,9 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
 
             【若為台灣統一發票 / 收據】
             - invoiceNo：發票號碼（格式為 2 個英文大寫字母 + 8 個數字，例如 AB12345678）
+              * 收銀機 / 三聯式發票的字軌（2 個英文大寫字母）常與 8 碼數字**分開印**在「中華民國 NNN 年 M-M 月份」的右側，中間有明顯空白或框線 —— 請合併成 10 碼，例如「ED 22598786」→「ED22598786」
+              * **嚴禁**填入 8 碼純數字：8 碼純數字是統一編號（買方「統編」欄／賣方發票專用章）或收銀機機號（「NO.」開頭），**都不是發票號碼**
+              * 字軌（英文字母）讀不出來時填 ""，不可改抄統編或機號充數
             - amount：金額（純數字，無則填 0）
               * 優先序（由高至低）：實收金額 > 應付/應收金額 > 總計/合計 > 小計
               * 若收據同時印出「金額」與「實收金額」，一律以「實收金額」為準
@@ -259,15 +262,30 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
     }
 
     /// <summary>
-    /// 後處理：高鐵票號若為「含 dash 的 13 碼純數字」，移除所有 dash（含全形「－」）。
-    /// 對統一發票（AB12345678）等其他格式無副作用。
+    /// 後處理發票號碼 / 票號：
+    /// 1. 高鐵票號若為「含 dash 的 13 碼純數字」，移除所有 dash（含全形「－」）。
+    /// 2. 統一發票字軌與號碼分開印（收銀機 / 三聯式）時 LLM 常回「ED 22598786」，合併中間的空白 / dash。
+    /// 3. 統一發票號碼必含 2 碼字軌；抓到的是 8 碼純數字且與買方 / 賣方統編相同時，代表誤抓統編欄，清空讓使用者自行補填。
+    /// 對其他格式（交通票根票號）無副作用。
     /// </summary>
     private static OcrResult NormalizeInvoiceNo(OcrResult r)
     {
         if (string.IsNullOrEmpty(r.InvoiceNo)) return r;
+
         var noDash = r.InvoiceNo.Replace("-", string.Empty).Replace("－", string.Empty);
         if (noDash.Length == 13 && noDash.All(char.IsDigit) && noDash != r.InvoiceNo)
             return r with { InvoiceNo = noDash };
+
+        // 「ED 22598786」/「ED-22598786」→「ED22598786」
+        var merged = Regex.Replace(r.InvoiceNo.Trim(), @"^([A-Za-z]{2})[\s\-－]+(\d{8})$", "$1$2");
+        if (merged != r.InvoiceNo)
+            r = r with { InvoiceNo = merged };
+
+        if (r.DocType == "invoice"
+            && r.InvoiceNo.Length == 8 && r.InvoiceNo.All(char.IsDigit)
+            && (r.InvoiceNo == r.BuyerTaxId || r.InvoiceNo == r.SellerTaxId))
+            r = r with { InvoiceNo = string.Empty };
+
         return r;
     }
 
