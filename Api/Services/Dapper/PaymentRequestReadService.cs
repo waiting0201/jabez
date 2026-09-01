@@ -1267,10 +1267,11 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 dates.Length > 0 ? dates : null));
         }
 
-        // 計算單筆假日活動的所有人員（申請人 + 參與者）津貼明細
+        // 計算單筆假日活動的所有人員（申請人 + 參與者）參與明細與津貼合計
         // 公式：round(BaseSalary / 30) × 個人假日天數（半天 0.5），與 PayrollReadService.CalculateMonthlyPayrollAsync 一致
         // 申請人固定領整單 HolidayDays（不逐日勾選）；參與者領 COALESCE(個人, 整單)
-        HolidayAllowanceDto[] BuildHolidayAllowances(int trId, Guid applicantId, string applicantName, decimal? applicantBaseSalary, decimal requestHolidayDays)
+        // 逐人金額只在此處相加後即丟棄，不進 DTO：個人津貼 ÷ 天數即為該員日薪，會反推出月薪
+        (HolidayAllowanceDto[] List, int Total) BuildHolidayAllowances(int trId, Guid applicantId, string applicantName, decimal? applicantBaseSalary, decimal requestHolidayDays)
         {
             static int Allowance(decimal? baseSalary, decimal days)
                 => baseSalary is { } bs && bs > 0 && days > 0
@@ -1279,15 +1280,18 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 
             var list = new List<HolidayAllowanceDto>
             {
-                new(applicantId, applicantName, requestHolidayDays,
-                    Allowance(applicantBaseSalary, requestHolidayDays), IsApplicant: true),
+                new(applicantId, applicantName, requestHolidayDays, IsApplicant: true),
             };
+            var total = Allowance(applicantBaseSalary, requestHolidayDays);
             if (holidayParticipantsDict.TryGetValue(trId, out var participants))
             {
                 foreach (var (uid, name, bs, days, dates) in participants)
-                    list.Add(new HolidayAllowanceDto(uid, name, days, Allowance(bs, days), IsApplicant: false, dates));
+                {
+                    list.Add(new HolidayAllowanceDto(uid, name, days, IsApplicant: false, dates));
+                    total += Allowance(bs, days);
+                }
             }
-            return [.. list];
+            return ([.. list], total);
         }
 
         // Payment requests (one-to-many with InvoiceItems)
@@ -1442,46 +1446,51 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             (string?)row.SubmittedBySignatureUrl));
 
         // Holiday travel requests (假日執行活動，IsHolidayTravel = 1)，使用獨立 ApplicationType = "holiday_travel"
-        var holidayTravelTasks = holidayTravelRows.Select(row => new ApprovalTaskDto(
-            (int)row.Id,
-            "holiday_travel",
-            $"假日執行活動申請 {row.RequestNo}（{row.Destination}）",
-            (string?)row.SubmittedBy ?? "—",
-            (DateTime)row.CreatedAt,
-            (string)row.ApprovalStatus,
-            (int)row.CurrentStepOrder,
-            (DateTime?)row.ReviewedAt,
-            (string?)row.ReviewNote,
-            GetFlow("holiday_travel", (int?)row.ApprovalItemId),
-            null,
-            null,
-            new TravelTaskDetailDto(
+        var holidayTravelTasks = holidayTravelRows.Select(row =>
+        {
+            var (htAllowances, htAllowanceTotal) = BuildHolidayAllowances(
                 (int)row.Id,
-                (string)row.RequestNo,
-                (string)row.Destination,
-                (DateTime)row.StartDate,
-                (DateTime)row.EndDate,
-                (decimal)row.GrandTotal,
-                (string)row.Purpose,
-                (string?)row.ProjectCode,
-                (string?)row.ProjectName,
-                (bool)row.IsHolidayTravel,
-                (DateTime?)row.EstimatedRefundDate,
-                (DateTime?)row.RefundedAt,
-                (int?)row.HolidayDays,
-                GetTravelItems((int)row.Id),
-                BuildHolidayAllowances(
+                (Guid)row.ApplicantId,
+                (string?)row.SubmittedBy ?? "—",
+                (decimal?)row.ApplicantBaseSalary,
+                (int?)row.HolidayDays ?? 0);
+            return new ApprovalTaskDto(
+                (int)row.Id,
+                "holiday_travel",
+                $"假日執行活動申請 {row.RequestNo}（{row.Destination}）",
+                (string?)row.SubmittedBy ?? "—",
+                (DateTime)row.CreatedAt,
+                (string)row.ApprovalStatus,
+                (int)row.CurrentStepOrder,
+                (DateTime?)row.ReviewedAt,
+                (string?)row.ReviewNote,
+                GetFlow("holiday_travel", (int?)row.ApprovalItemId),
+                null,
+                null,
+                new TravelTaskDetailDto(
                     (int)row.Id,
-                    (Guid)row.ApplicantId,
-                    (string?)row.SubmittedBy ?? "—",
-                    (decimal?)row.ApplicantBaseSalary,
-                    (int?)row.HolidayDays ?? 0),
-                instDicts.Travel.TryGetValue((int)row.Id, out var htInst) ? [.. htInst] : null,
-                installments.ComputeStatus(instDicts.Travel.GetValueOrDefault((int)row.Id, []))),
-            null, null, null, null,
-            GetRecords("holiday_travel", (int)row.Id),
-            GetDesignatedReviewers("holiday_travel", (int)row.Id),
-            (string?)row.SubmittedBySignatureUrl));
+                    (string)row.RequestNo,
+                    (string)row.Destination,
+                    (DateTime)row.StartDate,
+                    (DateTime)row.EndDate,
+                    (decimal)row.GrandTotal,
+                    (string)row.Purpose,
+                    (string?)row.ProjectCode,
+                    (string?)row.ProjectName,
+                    (bool)row.IsHolidayTravel,
+                    (DateTime?)row.EstimatedRefundDate,
+                    (DateTime?)row.RefundedAt,
+                    (int?)row.HolidayDays,
+                    GetTravelItems((int)row.Id),
+                    htAllowances,
+                    instDicts.Travel.TryGetValue((int)row.Id, out var htInst) ? [.. htInst] : null,
+                    installments.ComputeStatus(instDicts.Travel.GetValueOrDefault((int)row.Id, [])),
+                    HolidayAllowanceTotal: htAllowanceTotal),
+                null, null, null, null,
+                GetRecords("holiday_travel", (int)row.Id),
+                GetDesignatedReviewers("holiday_travel", (int)row.Id),
+                (string?)row.SubmittedBySignatureUrl);
+        });
 
         // Overtime requests
         var overtimeTasks = overtimeRows.Select(row => new ApprovalTaskDto(

@@ -159,14 +159,16 @@ export interface TravelTaskDetailItem {
   invoiceDate?: string;
 }
 
-/** 假日活動每位人員（申請人 + 參與者）的津貼預估 */
+/**
+ * 假日活動每位人員（申請人 + 參與者）的參與明細。
+ * 刻意不含個人津貼金額：津貼 ÷ 天數＝該員日薪，逐人揭露等同揭露月薪，
+ * 故只呈現全單合計（travelDetail.holidayAllowanceTotal）。
+ */
 export interface HolidayAllowance {
   userId: string;
   userName: string;
   /** 個人假日天數（參與者為 COALESCE(個人, 整單)，逐日勾選上/下半天者為 0.5 的倍數；申請人固定為整單） */
   days: number;
-  /** round(BaseSalary / 30) × days，與 PayrollReadService 公式一致 */
-  allowance: number;
   isApplicant: boolean;
   /** 逐日勾選的參與日期 + 時段（null / 空＝全程參與；申請人不逐日故恆為空） */
   dates?: ParticipantDate[];
@@ -191,8 +193,10 @@ export interface TravelTaskDetail {
   estimatedRefundDate?: string;
   /** 差額退款完成時間 */
   refundedAt?: string;
-  /** 假日活動每位人員津貼預估（僅 isHolidayTravel=true 時提供） */
+  /** 假日活動每位人員參與明細（僅 isHolidayTravel=true 時提供；不含個人金額） */
   holidayAllowances?: HolidayAllowance[];
+  /** 假日活動津貼合計（僅 isHolidayTravel=true 時提供） */
+  holidayAllowanceTotal?: number;
   installments?: InstallmentDto[];
   paymentStatus?: PaymentInstallmentStatus;
   /** 是否已結案（沖銷完成）；假日執行活動不走沖銷，恆為 false */

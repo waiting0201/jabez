@@ -410,7 +410,6 @@
                             <th>人員</th>
                             <th>參與日期</th>
                             <th class="text-right">假日天數</th>
-                            <th class="text-right">津貼預估</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -431,14 +430,13 @@
                                 }
                               </td>
                               <td class="text-right small fw-500">{{ participantDays(a.days) }} 天</td>
-                              <td class="text-right small fw-500">{{ a.allowance | number:'1.0-0' }}</td>
                             </tr>
                           }
                         </tbody>
                         <tfoot>
                           <tr class="table-light">
-                            <td colspan="4" class="text-right fw-500 small">津貼合計</td>
-                            <td class="text-right fw-600">{{ sumField(d.holidayAllowances, 'allowance') | number:'1.0-0' }}</td>
+                            <td colspan="3" class="text-right fw-500 small">津貼合計</td>
+                            <td class="text-right fw-600">{{ (d.holidayAllowanceTotal ?? 0) | number:'1.0-0' }}</td>
                           </tr>
                         </tfoot>
                       </table>

@@ -308,14 +308,16 @@ export class ApprovalTaskList {
     if (t.leaveDetail) {
       return `${this.leaveTypeLabel[t.leaveDetail.leaveType]}・${t.leaveDetail.hours} 小時`;
     }
-    // 假日執行活動：列出每位人員（申請人 + 參與者）的津貼預估
+    // 假日執行活動：列出每位人員（申請人 + 參與者）的參與天數 + 全單津貼合計
+    // 逐人金額刻意不顯示：津貼 ÷ 天數＝該員日薪，會反推出月薪
     if (t.applicationType === 'holiday_travel' && t.travelDetail) {
       const days = t.travelDetail.holidayDays ?? 0;
       const list = t.travelDetail.holidayAllowances ?? [];
-      const head = `${t.travelDetail.destination}・${days} 天`;
+      const total = t.travelDetail.holidayAllowanceTotal ?? 0;
+      const head = `${t.travelDetail.destination}・${days} 天（津貼合計 ${total.toLocaleString()} 元）`;
       if (list.length === 0) return head;
       // 每人天數可因逐日勾選（含上/下半天）而與整單不同，故逐一列出
-      const parts = list.map(a => `${a.userName} ${a.days} 天 ${a.allowance.toLocaleString()} 元`).join('、');
+      const parts = list.map(a => `${a.userName} ${a.days} 天`).join('、');
       return `${head}｜${parts}`;
     }
     if (t.travelDetail) {
