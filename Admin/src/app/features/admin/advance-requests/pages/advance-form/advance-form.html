@@ -140,9 +140,13 @@
               <div class="col-12 col-md-4">
                 <label class="form-label fw-500">
                   {{ isSupplement ? roundLabel(supplementRound) + '預支款需求日' : '預支款需求日' }}
+                  <span class="text-danger">*</span>
                 </label>
                 <input type="date" class="form-control" formControlName="advanceNeededDate">
-                <div class="text-muted small mt-1">希望款項撥入的日期，供財務排撥款參考（可留空）。</div>
+                @if (form.get('advanceNeededDate')?.invalid && form.get('advanceNeededDate')?.touched) {
+                  <div class="text-danger small mt-1">請選擇預支款需求日。</div>
+                }
+                <div class="text-muted small mt-1">希望款項撥入的日期，供財務排撥款參考。</div>
               </div>
             </div>
             <div class="row g-3 mb-4">

@@ -72,7 +72,7 @@
 | 含 Items 與發票明細 | ✓ | ✗（僅記錄活動地點 / 期間 / 參與人員） |
 | 參與人員個人參與日期 | —（不使用參與人員） | ✓ 每位參與人員可逐日勾選參與日期（可不連續，限活動期間內），**每個勾選日可再指定「全天 / 上半天 / 下半天」**；**未勾選＝全程參與**；個人假日津貼天數 = Σ(勾選日 ∩ 行事曆假日 的時段權重，全天 1.0 / 上下半天各 0.5)，Submit 時快照至 `TravelRequestParticipant.HolidayDays`（`decimal(5,1)`），未勾選者沿用整單 `HolidayDays`；**申請人本人不逐日、不半天**，一律沿用整單 `TravelRequest.HolidayDays`（維持 `int`）|
 | 簽核頁參與人員明細 | —（不使用參與人員） | ✓ 簽核作業詳情頁（`approval-task-review`）於「假日執行活動申請資訊」下方多一張 **參與執行人員** 卡：一人一列，含 人員（申請人掛 badge）/ 參與日期（`9/5、9/6 上午`，未逐日勾選顯示「全程參與」）/ 假日天數（半天顯示 `1.5`）/ 津貼預估 + 津貼合計；資料走 `TravelTaskDetailDto.HolidayAllowances[].Dates`，日期格式化共用前端 `formatParticipantDates()`（與申請詳情頁同一真相）|
-| 預支款需求日 `AdvanceNeededDate` | ✓（選填，見下方章節） | ✗（走 multipart 分支、不解析該 key，值恆 null） |
+| 預支款需求日 `AdvanceNeededDate` | ✓（**必填**，見下方章節） | ✗（走 multipart 分支、不解析該 key，值恆 null） |
 | 走沖銷流程 | ✓（`travel-write-off-requests`） | ✗ |
 | 計入假日津貼 | ✗ | ✓（依已核准 EndDate 月份歸月，獎金計入次月薪資） |
 | 含撥款日 / 預計撥款日 | ✓ | ✓ |
@@ -88,11 +88,11 @@
 
 | 項目 | 規則 |
 |------|------|
-| 必填性 | **選填**。DB 欄位 `AdvanceNeededDate datetime2 NULL`；留空即 `null`，不影響任何既有驗證與計算 |
+| 必填性 | **必填**（2026-09 由選填改必填）。前端 `Validators.required`；後端預支走 multipart，解析不出（含留空）回 400 `Invalid advanceNeededDate.`，出差預支走 JSON，`AdvanceNeededDate` 為 null 回 400 `AdvanceNeededDate is required.`。DB 欄位仍為 `AdvanceNeededDate datetime2 NULL`（保留既有資料，不做資料回填） |
 | 顯示位置 | 申請表單（可填）/ 詳情頁 / **簽核作業詳情頁** / **列印 PDF**。清單頁**不列**此欄 |
 | 預支申請的批次粒度 | **逐批次各一個**，比照既有「預支日期」：Round 1 存 `AdvanceRequests.AdvanceNeededDate`，Round ≥2 存 `AdvanceRequestSupplements.AdvanceNeededDate`，經 [AdvanceRequestReadService.BuildRounds](../../Api/Services/Dapper/AdvanceRequestReadService.cs) 合成 `AdvanceRoundDto.AdvanceNeededDate` |
 | 出差預支的粒度 | 整單一個（無批次機制） |
-| 清除既有值 | 預支申請走 multipart：帶 `advanceNeededDate` key 且值為空字串即清除；出差預支走 JSON：不帶 key 或帶 `null` 即清除（後端無條件覆寫） |
+| 更新語意 | 改必填後**不接受清空**：預支申請比照 `advanceDate`，解析成功才覆寫；出差預支僅在 `body.AdvanceNeededDate` 有值時覆寫 |
 | 假日執行活動 | **不使用**。共用 `TravelRequests` 表故欄位存在，但 `CreateFromFormDataAsync` / `UpdateFromFormDataAsync` 刻意不解析此 key，值恆為 null |
 | 不影響 | 沖銷鏈路（`AvailableAdvanceDto` 不帶此欄）、撥款提醒、報表、薪資 |
 

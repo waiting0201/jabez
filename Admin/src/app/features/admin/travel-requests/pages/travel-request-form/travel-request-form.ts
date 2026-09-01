@@ -110,7 +110,7 @@ export class TravelRequestForm implements OnInit {
     destination:     ['', Validators.required],
     startDate:       ['', Validators.required],
     endDate:         ['', Validators.required],
-    advanceNeededDate: [''],
+    advanceNeededDate: ['', Validators.required],
     purpose:         ['', Validators.required],
     projectId:       [null as number | null],
     items:           this.fb.array([]),
@@ -326,8 +326,7 @@ export class TravelRequestForm implements OnInit {
       // 也避免 Date → JSON 的 UTC 轉換讓日期位移
       startDate:           v.startDate!,
       endDate:             v.endDate!,
-      // 選填：留空即不帶 key，後端 DTO 預設 null 並無條件覆寫，達成「清除」
-      advanceNeededDate:   v.advanceNeededDate || undefined,
+      advanceNeededDate:   v.advanceNeededDate!,
       purpose:             v.purpose!,
       projectId:           v.projectId ?? undefined,
       projectCode:         project?.code,
