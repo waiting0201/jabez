@@ -3,7 +3,7 @@
  *
  * 公司只有以下 6 組合法的「抬頭 ＋ 統編」組合，發票買受人必須為其一。
  * 上傳發票經 OCR 辨識買方抬頭與統編後，於上傳當下做即時驗證，
- * 不符者在該列明細下方顯示警告（非阻擋式，仍可送出）。
+ * 不符者在該列明細下方顯示警告（非阻擋式，仍可送出；使用者可勾「確認無誤」把警告轉為已確認樣式）。
  *
  * 未來增減公司只需維護 VALID_INVOICE_BUYERS。
  */
@@ -63,11 +63,15 @@ export function isValidTaxIdFormat(taxId: string): boolean {
   return sum % 5 === 0 || (id[6] === '7' && (sum + 1) % 5 === 0);
 }
 
+/** 抬頭「差 1 字」容錯的最短長度（太短的名稱差 1 字可能真的是別家公司） */
+const TITLE_ONE_CHAR_MIN_LENGTH = 6;
+
 /**
- * 兩組同長度統編是否「僅差 1 碼」（漢明距離 1）。
- * 手寫發票最常見的誤讀就是單一數字看錯（9→5、6→8），此判定用來認出這種情況。
+ * 兩個同長度字串是否「僅差 1 個字元」（漢明距離 1）。
+ * 統編：手寫發票最常見的誤讀就是單一數字看錯（9→5、6→8）。
+ * 抬頭：長中文公司名最常見的誤讀是單一形近字看錯（雅→羅）。
  */
-const differsByOneDigit = (a: string, b: string): boolean => {
+const differsByOneChar = (a: string, b: string): boolean => {
   if (a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i++) {
@@ -79,22 +83,29 @@ const differsByOneDigit = (a: string, b: string): boolean => {
 /**
  * 抬頭相容性比對（容忍 OCR 對長中文公司名常見的缺字 / 截斷）。
  * 統編已唯一識別公司實體，此處只要抬頭「明顯屬於同一家」即視為相容：
- * 完全相等、互為子字串、或公司名前 3 個識別字相同（如「雅比斯」「疆界地」）。
+ * 完全相等、互為子字串、公司名前 3 個識別字相同（如「雅比斯」「疆界地」），
+ * 或**同長度僅差 1 個字**（如「雅比斯…」被讀成「羅比斯…」）。
  * 不同公司（前綴不同）才會判為不符。
+ *
+ * 「差 1 字」容錯與既有的「統編差 1 碼」同一思路：統一編號是法定唯一識別碼，
+ * 統編已完全命中白名單時，長中文公司名只差 1 個字幾乎必為 OCR 形近字誤讀
+ * （實測收銀機發票把「雅比斯」讀成「羅比斯」），不應為此跳假警告。
+ * 白名單 6 組的抬頭彼此不會落入「同長度差 1 字」，不會互相誤放行。
  */
 const titleCompatible = (entryTitle: string, ocrTitle: string): boolean => {
   const a = normalizeTitle(entryTitle);
   const b = normalizeTitle(ocrTitle);
   if (!b) return true; // 抬頭讀不到 → 以統編為準
   if (a === b || a.includes(b) || b.includes(a)) return true;
-  return a.slice(0, 3) === b.slice(0, 3);
+  if (a.slice(0, 3) === b.slice(0, 3)) return true;
+  return a.length >= TITLE_ONE_CHAR_MIN_LENGTH && differsByOneChar(a, b);
 };
 
 /**
  * 驗證發票買方抬頭與統編是否為公司合法的 6 組之一。統編為主要錨點（8 碼數字較可靠）。
  * - 抬頭與統編「需皆讀得到」才判斷；任一缺漏（含收銀機 / 二聯式 / 手寫發票讀不全）→ ok（不警告）
  * - 買方統編與賣方統編相同 → OCR 抓錯欄位（多半是抄了「營業人蓋用統一發票專用章」），視為讀不到 → ok
- * - 統編符合某組 + 抬頭相容 → ok
+ * - 統編符合某組 + 抬頭相容（含同長度僅差 1 字的 OCR 形近字誤讀）→ ok
  * - 統編符合某組但抬頭明顯為他家公司 → warn（抬頭與統編不符）
  * - 統編不在 6 組內、且格式 / 檢查碼不合，但與某組「僅差 1 碼」且抬頭相容 → ok（手寫誤讀該組）
  * - 統編不在 6 組內、且格式 / 檢查碼不合 → warn（辨識不完整，多半是手寫誤讀）
@@ -135,7 +146,7 @@ export function validateInvoiceBuyer(
     // 若與某組白名單「僅差 1 碼」且抬頭也相容，即認定為該組的誤讀，不跳假警告。
     // 限定在「檢查碼已不合法」的前提下才容錯，真實他家公司的統編（檢查碼必合法）不受影響。
     const misread = VALID_INVOICE_BUYERS.find(
-      (b) => differsByOneDigit(b.taxId, taxId) && titleCompatible(b.title, buyerName),
+      (b) => differsByOneChar(b.taxId, taxId) && titleCompatible(b.title, buyerName),
     );
     if (misread) {
       return { level: 'ok' };

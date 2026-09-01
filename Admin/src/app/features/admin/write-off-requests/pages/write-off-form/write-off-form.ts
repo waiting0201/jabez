@@ -145,8 +145,23 @@ export class WriteOffRequestForm implements OnInit {
   /** 發票買方抬頭/統編驗證警告（key = 列 id，value = 警告訊息）；僅供顯示，不阻擋送出 */
   invoiceWarnings = new Map<string, string>();
 
+  /**
+   * 使用者對買方警告勾選「確認無誤」的列 id。
+   * OCR 誤判（抬頭缺字 / 手寫誤讀）時讓使用者自行放行，警告由紅字轉為灰字已確認樣式。
+   * 與警告本身一樣**僅供顯示**：不阻擋送出、不寫入 DB、重開草稿不重現。
+   */
+  invoiceConfirmed = new Set<string>();
+
+  /** 警告列的「確認無誤」勾選切換 */
+  toggleInvoiceConfirm(rowId: string, event: Event) {
+    (event.target as HTMLInputElement).checked
+      ? this.invoiceConfirmed.add(rowId)
+      : this.invoiceConfirmed.delete(rowId);
+  }
+
   /** OCR 填值後驗證買方抬頭/統編（僅統一發票）；不符則記錄該列警告 */
   private _checkBuyer(rowId: string, item: OcrItem) {
+    this.invoiceConfirmed.delete(rowId); // 同一列重新辨識 → 舊的人工確認失效
     if (item.docType !== 'invoice') { this.invoiceWarnings.delete(rowId); return; }
     const r = validateInvoiceBuyer(item.buyerName ?? '', item.buyerTaxId ?? '', item.sellerTaxId ?? '');
     if (r.level === 'warn') this.invoiceWarnings.set(rowId, r.message!);
@@ -272,6 +287,7 @@ export class WriteOffRequestForm implements OnInit {
     if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
     this.fileMap.delete(id);
     this.invoiceWarnings.delete(id);
+    this.invoiceConfirmed.delete(id);
     this.amountWarnings.delete(id);
     this._pinnedTotals.delete(id);
     this.itemArray.removeAt(i);

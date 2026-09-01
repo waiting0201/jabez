@@ -229,10 +229,22 @@
                 </tr>
                 @if (invoiceWarnings.has(ctrl.get('id')?.value)) {
                   <tr>
-                    <td colspan="10" class="text-danger small py-1 ps-3 border-0">
-                      <span class="inline-flex items-center gap-1">
-                        <svg class="sa-icon sa-icon-1x" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
-                        {{ invoiceWarnings.get(ctrl.get('id')?.value) }}
+                    <td colspan="10" class="small py-1 ps-3 border-0"
+                        [class.text-danger]="!invoiceConfirmed.has(ctrl.get('id')?.value)"
+                        [class.text-muted]="invoiceConfirmed.has(ctrl.get('id')?.value)">
+                      <span class="inline-flex items-center gap-3 flex-wrap">
+                        <span class="inline-flex items-center gap-1">
+                          <svg class="sa-icon sa-icon-1x" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                          @if (invoiceConfirmed.has(ctrl.get('id')?.value)) { <span>已確認無誤：</span> }
+                          {{ invoiceWarnings.get(ctrl.get('id')?.value) }}
+                        </span>
+                        <span class="form-check mb-0">
+                          <input type="checkbox" class="form-check-input"
+                                 [id]="'invoiceConfirm-' + ctrl.get('id')?.value"
+                                 [checked]="invoiceConfirmed.has(ctrl.get('id')?.value)"
+                                 (change)="toggleInvoiceConfirm(ctrl.get('id')?.value, $event)">
+                          <label class="form-check-label" [for]="'invoiceConfirm-' + ctrl.get('id')?.value">確認無誤</label>
+                        </span>
                       </span>
                     </td>
                   </tr>
