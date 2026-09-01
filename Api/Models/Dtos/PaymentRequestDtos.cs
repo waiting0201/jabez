@@ -173,15 +173,16 @@ public sealed record LeaveRevocationTaskDetailDto(
     LeaveRevocationDateDto[] Dates);
 
 /// <summary>
-/// 假日活動每位人員（申請人 + 參與者）的津貼預估，依 round(BaseSalary / 30) × Days 計算，與 PayrollReadService 一致。
+/// 假日活動每位人員（申請人 + 參與者）的參與明細。
 /// Days = 個人假日天數：參與者取 COALESCE(個人, 整單)（逐日勾選上/下半天者為 0.5 的倍數），申請人固定為整單。
 /// Dates = 參與者逐日勾選的日期 + 時段（null＝全程參與；申請人不逐日故恆為 null），供簽核頁列出「幾月幾號 全天/上午/下午」。
+/// **刻意不含個人津貼金額**：津貼＝round(BaseSalary / 30) × Days，逐人揭露等同揭露該員底薪，
+/// 故只在 <see cref="TravelTaskDetailDto.HolidayAllowanceTotal"/> 回傳全單合計。
 /// </summary>
 public sealed record HolidayAllowanceDto(
     Guid    UserId,
     string  UserName,
     decimal Days,
-    int     Allowance,
     bool    IsApplicant,
     ParticipantDateDto[]? Dates = null);
 
@@ -207,7 +208,9 @@ public sealed record TravelTaskDetailDto(
     DateTime? ClosedAt = null,
     decimal?  RefundAmount = null,
     decimal?  RefundedAmount = null,
-    DateTime? AdvanceNeededDate = null)
+    DateTime? AdvanceNeededDate = null,
+    /// <summary>假日活動津貼合計（僅 IsHolidayTravel=true 時提供）；逐人金額不外流，只給合計。</summary>
+    int?      HolidayAllowanceTotal = null)
 {
     public TravelRequestItemDto[] Items { get; init; } = Items ?? Array.Empty<TravelRequestItemDto>();
 }
