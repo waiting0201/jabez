@@ -502,8 +502,9 @@ public sealed class PreReviewRequestHandler(
         // 查詢指定審核者清單傳給 ResolveStartingStepAsync（含 ApprovalStepOrder 綁定步驟）
         var designatedReviewers = await DesignatedReviewerHelper.ReadForFlowAsync(db, "pre_review", pr.Id);
 
-        // 自動跳過「申請人即審核者」的步驟
-        var (startStep, autoApproved, _) = await approvalFlow.ResolveStartingStepAsync(
+        // 自審跳過「申請人即審核者」的步驟（預審不做自審升級）；
+        // 上層級關卡在同部門找不到更高階者時，改由上層部門主管接手（escalation）
+        var (startStep, autoApproved, escalation) = await approvalFlow.ResolveStartingStepAsync(
             pr.ApprovalItemId, userId, "pre_review", designatedReviewers);
 
         if (autoApproved)
@@ -520,6 +521,20 @@ public sealed class PreReviewRequestHandler(
             pr.CurrentStepOrder = startStep;
         }
 
+        // 升級審核：上層級步驟在同部門找不到更高階審核者，改由上層部門主管接手
+        if (escalation is not null)
+        {
+            db.EscalationOverrides.Add(new EscalationOverride
+            {
+                ApplicationType  = "pre_review",
+                ApplicationId    = pr.Id,
+                StepOrder        = startStep,
+                ReviewerId       = escalation.ReviewerId,
+                OnBehalfOfUserId = escalation.OnBehalfOfUserId,
+                CreatedAt        = Clock.Now,
+            });
+        }
+
         await db.SaveChangesAsync();
 
         // 通知審核者
@@ -528,7 +543,10 @@ public sealed class PreReviewRequestHandler(
             // 指定審核步驟（原生 UseApplicantDesignated 或例外指定審核命中）：讀 designee 快照，
             // 與 ResolveStartingStepAsync 的判定同源，確保不會誤走部門/職稱通知
             bool isDesignatedStep = designatedReviewers.Any(r => r.ApprovalStepOrder == startStep);
-            if (isDesignatedStep)
+            if (escalation is not null)
+                await notifier.NotifySpecificReviewerAsync("pre_review", pr.Id, escalation.ReviewerId,
+                    pr.SubmittedById.Value, escalation.OnBehalfOfUserId is not null);
+            else if (isDesignatedStep)
             {
                 var firstReviewer = await db.RequestDesignatedReviewers
                     .AsNoTracking()

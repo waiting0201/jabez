@@ -95,6 +95,10 @@ public sealed class ApprovalFlowService(
             ? await DesignatedReviewerHelper.GetSuppressedDesignatedStepOrdersAsync(db, approvalItemId.Value, designatedReviewers, designatedSet)
             : new HashSet<int>();
 
+        // 送單前防呆：固定審核者池的步驟若查無可審人員，直接擋下送出。
+        // 否則單子送得出去卻卡在半路 —— 該關沒有人通得過 AuthorizeStepAsync，也不會有人收到通知，只能靠 Superadmin 介入。
+        await ValidateFixedStepsHaveReviewersAsync(steps, applicant, applicationType, designatedSet, requestDays);
+
         int currentStep = 1;
         int directSupervisorRank = 0; // 追蹤目前是第幾個上層級步驟（0-based）
         foreach (var step in steps)
@@ -161,7 +165,14 @@ public sealed class ApprovalFlowService(
                 directSupervisorRank++;
                 if (targetLevel.HasValue)
                     return (currentStep, false, null); // 有上層級 → 從這步開始
-                // 找不到 → 跳過此步驟
+
+                // 同部門找不到更高階者（例：申請人已是部門最高階）→ 沿部門 ParentId 往上層部門找。
+                // 找到 → 以升級審核指派該員（寫 EscalationOverride 由呼叫端負責）。
+                var superiorId = await escalationService.FindSuperiorInAncestorDepartmentsAsync(applicant);
+                if (superiorId.HasValue)
+                    return (currentStep, false, new EscalationResult(superiorId.Value, null, true));
+
+                // 連上層部門都找不到 → 維持既有行為：跳過此步驟
                 currentStep++;
                 continue;
             }
@@ -171,7 +182,7 @@ public sealed class ApprovalFlowService(
             if (!isSelfReview)
             {
                 // 請款/預支/沖銷：若步驟使用申請人部門但該部門無符合條件的審核者，也跳過
-                if (applicationType is "payment_request" or "advance" or "write_off" or "travel_write_off" or "pre_review" && step.UseApplicantDepartment && applicant.DepartmentId.HasValue)
+                if (SkipEmptyApplicantDeptTypes.Contains(applicationType) && step.UseApplicantDepartment && applicant.DepartmentId.HasValue)
                 {
                     bool hasReviewer = await db.Users.AsNoTracking().AnyAsync(u =>
                         u.DepartmentId == applicant.DepartmentId
@@ -206,6 +217,94 @@ public sealed class ApprovalFlowService(
 
         // 所有步驟都被跳過 → 自動核准
         return (steps.Count, true, null);
+    }
+
+    /// <summary>
+    /// 「UseApplicantDepartment 步驟在申請人部門找不到審核者時，明確跳過該關」的申請類型（請款類）。
+    /// 其餘類型遇到同樣情況會被 ValidateFixedStepsHaveReviewersAsync 擋下送出。
+    /// </summary>
+    private static readonly string[] SkipEmptyApplicantDeptTypes =
+        ["payment_request", "advance", "write_off", "travel_write_off", "pre_review"];
+
+    /// <summary>
+    /// 送單前防呆：檢查流程中每個「固定審核者池」的步驟至少有一位可審的人，否則丟 400 擋下送出。
+    ///
+    /// 固定池步驟（綁部門 / 職稱，含 UseApplicantDepartment）與上層級步驟不同 —— 引擎不會因為查無人員而跳過，
+    /// 而是照樣停在該關；但沒有人通得過 AuthorizeStepAsync 的部門 / 職稱比對，也沒有人會收到通知，
+    /// 結果是單子卡死在半路，只能靠 Superadmin 介入。與其讓它送出後才卡住，不如送單當下就講清楚。
+    ///
+    /// 以下步驟**不檢查**（各自另有合法的「無人可審」出路）：
+    ///   · MinDays 門檻擋掉的步驟  —— 這張單根本不走這關
+    ///   · 指定審核步驟            —— 由 DesignatedReviewerHelper.ValidateAndNormalizeAsync 負責
+    ///   · UseDirectSupervisor     —— 找不到人時往上層部門升級，再找不到則設計上允許跳過
+    ///   · 申請人即審核者（自審）  —— 另有跳過（請款類）／升級（請假・出差・加班）機制
+    ///   · 請款類的 UseApplicantDepartment —— 現行明確設計為「該部門無人則跳過」
+    /// </summary>
+    private async Task ValidateFixedStepsHaveReviewersAsync(
+        List<Models.Entities.ApprovalStep> steps,
+        Models.Entities.User applicant,
+        string applicationType,
+        IReadOnlySet<int> designatedStepOrders,
+        decimal? requestDays)
+    {
+        foreach (var step in steps)
+        {
+            if (StepBelowMinDays(step, requestDays))                continue;
+            if (designatedStepOrders.Contains(step.StepOrder))      continue;
+            if (step.UseDirectSupervisor)                           continue;
+            if (IsApplicantTheReviewer(step, applicant))            continue;
+            if (step.UseApplicantDepartment
+                && SkipEmptyApplicantDeptTypes.Contains(applicationType)) continue;
+
+            if (await HasStepReviewerAsync(step, applicant)) continue;
+
+            throw AppException.BadRequest(await BuildMissingReviewerMessageAsync(step, applicant));
+        }
+    }
+
+    /// <summary>
+    /// 該固定池步驟是否至少有一位可審的人（active、非 superadmin、非申請人本人）。
+    /// UseApplicantDepartment 但申請人未設部門 → 一律視為無人（該關的部門條件永遠對不上）。
+    /// </summary>
+    private async Task<bool> HasStepReviewerAsync(
+        Models.Entities.ApprovalStep step, Models.Entities.User applicant)
+    {
+        int? targetDepartmentId = step.UseApplicantDepartment ? applicant.DepartmentId : step.DepartmentId;
+        if (step.UseApplicantDepartment && targetDepartmentId is null)
+            return false;
+
+        var query = db.Users.AsNoTracking()
+            .Where(u => u.Status == "active" && !u.IsSuperAdmin && u.Id != applicant.Id);
+
+        if (targetDepartmentId.HasValue)
+            query = query.Where(u => u.DepartmentId == targetDepartmentId.Value);
+
+        if (step.JobTitleId.HasValue)
+            query = query.Where(u => u.JobTitleId == step.JobTitleId.Value);
+
+        return await query.AnyAsync();
+    }
+
+    /// <summary>組出「這一關找不到人」的錯誤訊息，帶出部門與職稱讓管理員知道要改哪裡。</summary>
+    private async Task<string> BuildMissingReviewerMessageAsync(
+        Models.Entities.ApprovalStep step, Models.Entities.User applicant)
+    {
+        int? targetDepartmentId = step.UseApplicantDepartment ? applicant.DepartmentId : step.DepartmentId;
+
+        var deptText = targetDepartmentId.HasValue
+            ? await db.Departments.AsNoTracking()
+                .Where(d => d.Id == targetDepartmentId.Value).Select(d => d.Name).FirstOrDefaultAsync()
+              ?? $"部門 #{targetDepartmentId.Value}"
+            : (step.UseApplicantDepartment ? "申請人部門（申請人未設定部門）" : "不限部門");
+
+        var titleText = step.JobTitleId.HasValue
+            ? await db.JobTitles.AsNoTracking()
+                .Where(j => j.Id == step.JobTitleId.Value).Select(j => j.Name).FirstOrDefaultAsync()
+              ?? $"職稱 #{step.JobTitleId.Value}"
+            : "不限職稱";
+
+        return $"簽核流程第 {step.StepOrder} 關找不到可審核的人員（{deptText} / {titleText}），無法送出申請。"
+             + "請聯絡管理員調整簽核流程設定或該部門人員職稱。";
     }
 
     /// <summary>
@@ -295,7 +394,7 @@ public sealed class ApprovalFlowService(
     }
 
     /// <inheritdoc />
-    public async Task<(int nextStep, bool allSkipped, IReadOnlyList<SkippedStepInfo> skippedSteps)>
+    public async Task<(int nextStep, bool allSkipped, IReadOnlyList<SkippedStepInfo> skippedSteps, EscalationResult? escalation)>
         SkipUnreviewableStepsAsync(int? approvalItemId, Guid applicantId, int fromStepOrder,
             IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers = null,
             IReadOnlySet<Guid>? approvedReviewerIds = null,
@@ -308,7 +407,7 @@ public sealed class ApprovalFlowService(
         var emptySkipped = Array.Empty<SkippedStepInfo>();
 
         if (approvalItemId is null)
-            return (fromStepOrder, false, emptySkipped);
+            return (fromStepOrder, false, emptySkipped, null);
 
         var steps = await db.ApprovalSteps
             .AsNoTracking()
@@ -321,13 +420,13 @@ public sealed class ApprovalFlowService(
         steps = FilterStepsByMinDays(steps, requestDays);
 
         if (steps.Count == 0)
-            return (fromStepOrder, false, emptySkipped);
+            return (fromStepOrder, false, emptySkipped, null);
 
         var applicant = await db.Users.AsNoTracking()
             .Include(u => u.JobTitle)
             .FirstOrDefaultAsync(u => u.Id == applicantId);
         if (applicant is null)
-            return (fromStepOrder, false, emptySkipped);
+            return (fromStepOrder, false, emptySkipped, null);
 
         // 送單後的有效指定步驟＝原生 UseApplicantDesignated ∪ 有 designee 綁定者（例外命中的快照）
         var designatedSet = DesignatedReviewerHelper.EffectiveDesignatedStepOrders(steps, designatedReviewers);
@@ -351,6 +450,8 @@ public sealed class ApprovalFlowService(
         {
             // ── 第一階段：判斷該步驟是否「找不到審核者」 ──
             bool hasReviewer;
+            // 上層級步驟改由上層部門主管接手時的升級指派（呼叫端負責寫 EscalationOverride）
+            EscalationResult? stepEscalation = null;
             if (designatedSet.Contains(step.StepOrder))
             {
                 if (suppressed.Contains(step.StepOrder))
@@ -372,6 +473,19 @@ public sealed class ApprovalFlowService(
                 int rank = steps.Count(s => s.UseDirectSupervisor && s.StepOrder < step.StepOrder);
                 var targetLevel = await FindNthSuperiorLevelAsync(applicant, rank);
                 hasReviewer = targetLevel.HasValue;
+
+                if (!hasReviewer)
+                {
+                    // 同部門找不到更高階者 → 沿部門 ParentId 往上層部門找（與送出時 ResolveStartingStepAsync 同源）。
+                    // 排除總監歷史已審者，避免把已經審過的人再找回來重審。
+                    var superiorId = await escalationService
+                        .FindSuperiorInAncestorDepartmentsAsync(applicant, supervisorIds);
+                    if (superiorId.HasValue)
+                    {
+                        hasReviewer   = true;
+                        stepEscalation = new EscalationResult(superiorId.Value, null, true);
+                    }
+                }
             }
             else
             {
@@ -387,8 +501,13 @@ public sealed class ApprovalFlowService(
             if (approvedReviewerIds is not null && approvedReviewerIds.Count > 0)
             {
                 int directSupervisorRank = steps.Count(s => s.UseDirectSupervisor && s.StepOrder < step.StepOrder);
-                var pool = await ResolveReviewerPoolAsync(
-                    step, applicant, designatedReviewers, directSupervisorRank, designatedSet);
+
+                // 升級接手的步驟：審核者池就是被指派的那一位（ResolveReviewerPoolAsync 對這種步驟會回空池，
+                // 空池不進去重判定，會害「連續兩個上層級關卡都升級到同一人」變成同一人連審兩次）。
+                var pool = stepEscalation is not null
+                    ? new List<Guid> { stepEscalation.ReviewerId }
+                    : await ResolveReviewerPoolAsync(
+                        step, applicant, designatedReviewers, directSupervisorRank, designatedSet);
 
                 if (pool.Count > 0 && pool.All(id => approvedReviewerIds.Contains(id)))
                 {
@@ -417,12 +536,12 @@ public sealed class ApprovalFlowService(
                 }
             }
 
-            return (step.StepOrder, false, skipped); // 停在這步（含「池被覆蓋但非總監且不相鄰 → 要求重審」）
+            return (step.StepOrder, false, skipped, stepEscalation); // 停在這步（含「池被覆蓋但非總監且不相鄰 → 要求重審」）
         }
 
         // 所有剩餘步驟都跳過
         var maxStepOrder = steps.Max(s => s.StepOrder);
-        return (maxStepOrder + 1, true, skipped);
+        return (maxStepOrder + 1, true, skipped, null);
     }
 
     /// <summary>

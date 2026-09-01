@@ -902,6 +902,11 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         // ── UseDirectSupervisor 模式：驗證審核者是同部門的第 N 層上級 ──
         if (step.UseDirectSupervisor)
         {
+            // 上層級步驟改由上層部門主管接手時，該員不在申請人部門，過不了下方的同部門 + 層級比對，
+            // 必須先以升級指派放行（與 ResolveStartingStepAsync / SkipUnreviewableStepsAsync 寫入的 override 對應）。
+            if (await HasEscalationOverrideAsync(applicationType, applicationId, currentStepOrder, reviewer.Id))
+                return;
+
             if (applicantDepartmentId is null || applicantJobTitleId is null
                 || reviewer.DepartmentId != applicantDepartmentId
                 || reviewer.JobTitleId is null)
@@ -951,19 +956,28 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         if (!jobTitleOk || !deptOk)
         {
             // 檢查是否為升級審核指派的審核者
-            if (applicationType is not null && applicationId.HasValue)
-            {
-                var hasOverride = await db.EscalationOverrides
-                    .AsNoTracking()
-                    .AnyAsync(e =>
-                        e.ApplicationType == applicationType
-                        && e.ApplicationId == applicationId.Value
-                        && e.StepOrder == currentStepOrder
-                        && e.ReviewerId == reviewer.Id);
-                if (hasOverride) return; // 升級審核者，授權通過
-            }
+            if (await HasEscalationOverrideAsync(applicationType, applicationId, currentStepOrder, reviewer.Id))
+                return; // 升級審核者，授權通過
             throw AppException.Forbidden("You are not authorized to review this step.");
         }
+    }
+
+    /// <summary>
+    /// 此審核者是否為該步驟的升級審核指派者（EscalationOverride）。
+    /// 兩個來源：自審升級、上層級步驟改由上層部門主管接手。
+    /// </summary>
+    private async Task<bool> HasEscalationOverrideAsync(
+        string? applicationType, int? applicationId, int currentStepOrder, Guid reviewerId)
+    {
+        if (applicationType is null || !applicationId.HasValue)
+            return false;
+
+        return await db.EscalationOverrides
+            .AsNoTracking()
+            .AnyAsync(e => e.ApplicationType == applicationType
+                        && e.ApplicationId == applicationId.Value
+                        && e.StepOrder == currentStepOrder
+                        && e.ReviewerId == reviewerId);
     }
 
     /// <summary>寫入審核紀錄並根據 action 更新申請狀態與步驟，完成後觸發通知。</summary>
@@ -1102,6 +1116,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             if (nextStepEntity is not null)
             {
                 int nextStep = nextStepEntity.StepOrder;
+                // 上層級步驟改由上層部門主管接手時的升級指派（決定下方要通知誰）
+                EscalationResult? nextStepEscalation = null;
 
                 // 檢查後續步驟是否有審核者，跳過無人的步驟
                 if (applicantId.HasValue)
@@ -1161,7 +1177,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                         _ => null,
                     };
 
-                    var (resolvedStep, allSkipped, skippedSteps) = await approvalFlow
+                    var (resolvedStep, allSkipped, skippedSteps, stepEscalation) = await approvalFlow
                         .SkipUnreviewableStepsAsync(approvalItemId, applicantId.Value, nextStep, drList,
                             approvedIds, applicationType, applicationId,
                             supervisorIds: supervisorIds, priorStepOrder: currentStepOrder,
@@ -1201,6 +1217,32 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                         }
                     }
 
+                    // 上層級步驟改由上層部門主管接手：寫升級指派，讓 AuthorizeStepAsync 放行該員、
+                    // 並在 ApprovalRecord 標記 IsEscalated。allSkipped 時不會有 escalation（引擎回 null）。
+                    if (stepEscalation is not null)
+                    {
+                        nextStepEscalation = stepEscalation;
+
+                        // 防呆：(ApplicationType, ApplicationId, StepOrder) 有唯一索引，先清掉同步驟殘留再寫入
+                        var staleOverrides = await db.EscalationOverrides
+                            .Where(o => o.ApplicationType == applicationType
+                                     && o.ApplicationId == applicationId
+                                     && o.StepOrder == resolvedStep)
+                            .ToListAsync();
+                        if (staleOverrides.Count > 0)
+                            db.EscalationOverrides.RemoveRange(staleOverrides);
+
+                        db.EscalationOverrides.Add(new EscalationOverride
+                        {
+                            ApplicationType  = applicationType,
+                            ApplicationId    = applicationId,
+                            StepOrder        = resolvedStep,
+                            ReviewerId       = stepEscalation.ReviewerId,
+                            OnBehalfOfUserId = stepEscalation.OnBehalfOfUserId,
+                            CreatedAt        = Clock.Now,
+                        });
+                    }
+
                     if (allSkipped)
                     {
                         // 所有剩餘步驟都跳過 → 直接核准
@@ -1234,10 +1276,17 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     else { for (int i = currentStepOrder; i < nextStep; i++) incrementStep(); }
                 }
 
-                // 通知下一步審核者
+                // 通知下一步審核者：升級指派時只通知該員（部門/職稱條件對不上，走一般通知會漏發）
                 if (applicantId.HasValue)
-                    await notifier.NotifyReviewersAsync(applicationType, applicationId,
-                        approvalItemId, nextStep, applicantId.Value);
+                {
+                    if (nextStepEscalation is not null)
+                        await notifier.NotifySpecificReviewerAsync(applicationType, applicationId,
+                            nextStepEscalation.ReviewerId, applicantId.Value,
+                            nextStepEscalation.OnBehalfOfUserId is not null);
+                    else
+                        await notifier.NotifyReviewersAsync(applicationType, applicationId,
+                            approvalItemId, nextStep, applicantId.Value);
+                }
             }
             else
             {

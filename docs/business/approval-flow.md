@@ -307,6 +307,28 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 
 此行為與加班/請假/出差不同 — 後者會觸發升級機制往上層部門找主管審核（詳見 [approval-escalation.md](approval-escalation.md)）。
 
+## 送單防呆：固定關卡查無審核者即擋下（2026-09 新增）
+
+**問題：** 綁部門／職稱的「固定審核者池」關卡與上層級關卡不同 —— 引擎**不會**因為查無人員而跳過，而是照樣停在該關。但沒有人通得過 `AuthorizeStepAsync` 的部門／職稱比對，也沒有人會收到通知，結果是**單子送得出去卻卡死在半路**，只能靠 Superadmin 介入。
+
+**改法：** [ApprovalFlowService.ValidateFixedStepsHaveReviewersAsync](../../Api/Services/ApprovalFlowService.cs) 在 `ResolveStartingStepAsync` 主迴圈前先掃過**全部**步驟（不只走到第一個停留關），任一固定池關卡查無可審人員即丟 400 擋下送出，訊息帶出關卡序號 + 部門 + 職稱：
+
+> 簽核流程第 2 關找不到可審核的人員（發展三部 / 協理），無法送出申請。請聯絡管理員調整簽核流程設定或該部門人員職稱。
+
+**可審人員的判定：** `Status='active'` + 非 superadmin + 非申請人本人，再依關卡條件套部門／職稱過濾。`UseApplicantDepartment` 但申請人未設部門 → 一律視為無人（該關的部門條件永遠對不上）。
+
+**以下關卡刻意不檢查**（各自另有合法的「無人可審」出路）：
+
+| 關卡 | 不檢查的原因 |
+|------|--------------|
+| 被 `MinDays` 門檻擋掉 | 這張單根本不走這關 |
+| 指定審核步驟 | 由 `DesignatedReviewerHelper.ValidateAndNormalizeAsync` 負責 |
+| `UseDirectSupervisor` | 找不到人時往上層部門升級，再找不到則設計上允許跳過 |
+| 申請人即審核者（自審） | 另有跳過（請款類）／升級（請假・出差・加班）機制 |
+| 請款類的 `UseApplicantDepartment` | 現行明確設計為「該部門無人則跳過」，由 `SkipEmptyApplicantDeptTypes` 常數界定 |
+
+**上線前必須先修設定：** 此防呆會讓既有的流程設定問題從「送出後卡死」變成「送不出去」。以請假通用預設流程（ApprovalItem 4）Step2「申請人部門的協理」（`MinDays=3`）為例，**沒有協理的部門**其成員一旦請 ≥3 天就會被擋下。修法擇一：該部門補上協理職稱人員、把該關改為 `UseDirectSupervisor`、或放寬為不限職稱。
+
 ## 上層級審核模式（UseDirectSupervisor）
 
 `ApprovalStep` 新增 `UseDirectSupervisor`（bool, 預設 false）欄位，啟用時系統自動找同部門中層級最接近的上級作為審核者。
@@ -321,10 +343,47 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 
 **規則：**
 - 同層級有多人 → 全部通知，任一人審核即通過
-- 找不到更高層級的人 → 該步驟自動跳過（視為通過）
+- **同部門找不到更高層級的人 → 沿部門 `ParentId` 往上層部門找（2026-09 新增，見下）**
+- 連上層部門都找不到 → 該步驟自動跳過（視為通過）
 - 所有步驟都跳過 → 自動核准
-- 此模式不走 EscalationService 升級機制
 - 啟用時自動忽略 `DepartmentId` 和 `JobTitleId`（隱含使用申請人部門）
+
+### 同部門無上級時往上層部門接手（2026-09 新增，全部 9 種申請類型適用）
+
+**問題：** 原本「同部門找不到更高階者 → 跳過該關」是**乾淨跳過**（不寫 `ApprovalRecord`、不寫代簽人），事後從簽核歷程完全看不出這關曾存在。最常踩到的是**部門最高主管本人送單**：他上面同部門沒有人，若流程各關皆為上層級模式，會一路跳到底 → `autoApproved = true`，**送出當下直接變成已核准、沒有任何人審過**。
+
+**改法：** 同部門解析不到上級時，先呼叫 [EscalationService.FindSuperiorInAncestorDepartmentsAsync](../../Api/Services/EscalationService.cs) 沿部門 `ParentId` 逐層往上找；找到即**停在該關**並以升級審核指派該員（寫 `EscalationOverride`），找不到才退回原本的跳過。
+
+| 情境 | 改動前 | 改動後 |
+|------|--------|--------|
+| 同部門有上級 | 停在該關由上級審 | 不變 |
+| 同部門無上級、上層部門有更高階者 | 乾淨跳過 | **停在該關，由上層部門該員審（升級審核）** |
+| 同部門與所有上層部門皆無更高階者 | 乾淨跳過 | 不變（維持跳過） |
+
+**設計取捨：**
+- **找不到時回退跳過、不丟例外** —— 與自審升級（`TryEscalateAsync` 找不到就 400 擋下送出）刻意不同。此處行為只增不減，確保原本送得出的單不會因這次改動而送不出去。
+- **不套用請假／加班的「停在總監前」規則** —— 上層級關卡的語意就是往上找；排除總監會讓部門最高主管仍然無人可審，等同此機制失效。
+- **同部門內取最接近申請人職級的一位**（`Level` 由大到小），避免一步跳到最頂層。
+- **排除總監歷史已審者**（`supervisorIds`），避免把已經審過的總監再找回來重審；與 `SkipUnreviewableStepsAsync` 的去重規則同源。非總監的重複指派則允許，與「非總監允許重審」的既有規則一致。
+
+**兩個觸發點（送單時 + 簽核推進時都要有，否則中段的上層級關卡仍會被跳掉）：**
+
+| 觸發點 | 位置 | 產出 |
+|--------|------|------|
+| 送出申請 | [ApprovalFlowService.ResolveStartingStepAsync](../../Api/Services/ApprovalFlowService.cs) | 回傳 `EscalationResult`，由 9 個 SubmitAsync Handler 寫 `EscalationOverride` + `NotifySpecificReviewerAsync` |
+| 簽核推進 | [ApprovalFlowService.SkipUnreviewableStepsAsync](../../Api/Services/ApprovalFlowService.cs) | 回傳值新增第 4 項 `escalation`，由 [ApprovalTaskHandler.ProcessReviewAsync](../../Api/Handlers/ApprovalTaskHandler.cs) 寫 `EscalationOverride` + 通知該員 |
+
+**連續兩個上層級關卡都升級到同一人 → 沿用既有的「相鄰 step 同人」去重：**
+部門最高主管送單時，Step1（rank 0）與 Step2（rank 1）在同部門都解析不到人，會升級到**同一位**上層部門主管。
+若不處理，該員得為同一張單連審兩次。`ResolveReviewerPoolAsync` 對「已升級的上層級步驟」回的是**空池**，
+空池不進第二階段去重判定，因此在 [SkipUnreviewableStepsAsync](../../Api/Services/ApprovalFlowService.cs) 內改為
+**升級接手時直接以「被指派的那一位」當池**，讓既有的 (A) 總監 / (B) 相鄰 step 規則正常生效 —— 相鄰時自動跳過 + 寫代簽
+（`自動核准：已於先前步驟核准本申請`），不再重複打擾同一人。
+
+**授權與可見性：**
+- [AuthorizeStepAsync](../../Api/Handlers/ApprovalTaskHandler.cs) 的 `UseDirectSupervisor` 分支**必須先檢查 `EscalationOverride` 才做層級比對** —— 升級進來的人不在申請人部門，會先被同部門比對擋成 403。共用 helper `HasEscalationOverrideAsync`（與一般步驟的 override 檢查同一支）。
+- 待審清單無需改：`StepMatchClause` 已有 `EscalationOverrides` 分支（綁 `StepOrder = CurrentStepOrder`）。
+- 前端無需改：`ApprovalRecord.IsEscalated` 由既有邏輯設定，時間軸沿用「升級審核」紫色 badge。
 
 **可與現有模式混用：** 每個 ApprovalStep 獨立判斷，例如 Step 1 用 `UseDirectSupervisor=true`，Step 2 也用 `UseDirectSupervisor=true`（自動往上一層），Step 3 維持固定部門 + 職稱。
 
@@ -333,7 +392,8 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 |------|------|
 | `ApprovalStep.UseDirectSupervisor` | Entity 欄位 |
 | `ApprovalFlowService.FindNthSuperiorLevelAsync()` | 找同部門第 N 層上級 |
-| `ApprovalTaskHandler.AuthorizeStepAsync()` | 驗證審核者是否為正確層級的上級 |
+| `EscalationService.FindSuperiorInAncestorDepartmentsAsync()` | 同部門無上級時沿 `ParentId` 往上層部門找更高階者（找不到回 null＝維持跳過） |
+| `ApprovalTaskHandler.AuthorizeStepAsync()` | 驗證審核者是否為正確層級的上級（**先檢查 `EscalationOverride`**） |
 | `PaymentRequestReadService.StepMatchClause()` | Dapper SQL 以 ROW_NUMBER 計算 rank 匹配審核者 |
 | `ApprovalNotificationService.NotifyReviewersAsync()` | 通知正確層級的上級 |
 | 前端 `approval-flow.html` | 設定頁 checkbox 開關 |

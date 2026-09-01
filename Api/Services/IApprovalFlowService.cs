@@ -20,7 +20,8 @@ public interface IApprovalFlowService
     /// <returns>
     /// startStep: 應開始的步驟序號
     /// autoApproved: 是否全部步驟都被跳過而自動核准
-    /// escalation: 升級審核結果（null 表示無升級）
+    /// escalation: 升級審核結果（null 表示無升級）。兩個來源：(1) 自審升級（EscalationService.TryEscalateAsync）；
+    ///             (2) 上層級步驟在同部門找不到更高階審核者，改由上層部門主管接手。
     /// </returns>
     Task<(int startStep, bool autoApproved, EscalationResult? escalation)>
         ResolveStartingStepAsync(int? approvalItemId, Guid applicantId, string applicationType,
@@ -41,12 +42,18 @@ public interface IApprovalFlowService
     ///   (A) 解析後的審核者池被 approvedReviewerIds 完全覆蓋，且代簽人為「總監」（JobTitle.Level == 1）
     ///   (B) 池被覆蓋且當前 step 與 priorStepOrder（連鎖跳過時會更新）相鄰（中間沒夾任何 ApprovalStep）
     /// 跳過時由呼叫端對該 step 寫一筆代簽 ApprovalRecord（代簽人取池中最早審過此申請者）。
-    /// 回傳：下一個有效步驟、是否全部跳過、被跳過的步驟清單（含代簽人 + 是否為 UseApplicantDesignated）。
+    ///
+    /// 上層級步驟（UseDirectSupervisor）在同部門找不到更高階審核者時，會先沿部門 ParentId 往上層部門找
+    /// （IEscalationService.FindSuperiorInAncestorDepartmentsAsync），找到則停在該步驟並回傳 escalation；
+    /// 連上層部門都找不到才維持既有的跳過行為。
+    ///
+    /// 回傳：下一個有效步驟、是否全部跳過、被跳過的步驟清單（含代簽人 + 是否為 UseApplicantDesignated）、
+    /// 以及停留步驟的升級審核指派（呼叫端負責寫 EscalationOverride 並通知該員；null 表示無升級）。
     /// </summary>
     /// <param name="supervisorIds">「總監（Level=1）」歷史已審者集合；用於條件 (A)。可為 null。</param>
     /// <param name="priorStepOrder">上一個有審核紀錄的 step；用於條件 (B) 相鄰判定。連鎖跳過時內部會自動更新。可為 null。</param>
     /// <param name="requestDays">申請天數（目前僅請假傳入 Hours/8）；非 null 時會過濾掉 MinDays > requestDays 的步驟，null＝不套用天數門檻</param>
-    Task<(int nextStep, bool allSkipped, IReadOnlyList<SkippedStepInfo> skippedSteps)>
+    Task<(int nextStep, bool allSkipped, IReadOnlyList<SkippedStepInfo> skippedSteps, EscalationResult? escalation)>
         SkipUnreviewableStepsAsync(int? approvalItemId, Guid applicantId, int fromStepOrder,
             IReadOnlyList<DesignatedReviewerRequest>? designatedReviewers = null,
             IReadOnlySet<Guid>? approvedReviewerIds = null,
