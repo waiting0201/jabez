@@ -137,6 +137,8 @@ public sealed class EmployeeProfileHandler(
             profile.EmergencyContactPhone = payload.EmergencyContactPhone;
             profile.BankCode              = payload.BankCode;
             profile.BankAccount           = payload.BankAccount;
+            profile.BankCode2             = payload.BankCode2;
+            profile.BankAccount2          = payload.BankAccount2;
             profile.InsuranceStartDate    = payload.InsuranceStartDate;
             profile.DependentCount        = payload.DependentCount;
             profile.Specialties           = payload.Specialties;
@@ -248,40 +250,11 @@ public sealed class EmployeeProfileHandler(
                 }
             }
 
-            // ── 5. 存摺封面 Blob 處理 ─────────────────────────────────────────
-            if (form["removeBankBook"] == "true")
-            {
-                await TryDeleteBlobByUrlAsync(PassbookContainer, profile.BankBookImageUrl);
-                profile.BankBookImageUrl = null;
-            }
-            else
-            {
-                var bankBookFile = form.Files.GetFile("bankBookImage");
-                if (bankBookFile is not null && bankBookFile.Length > 0)
-                {
-                    if (bankBookFile.Length > 1 * 1024 * 1024)
-                        throw AppException.BadRequest("上傳照片勿超過1MB");
-
-                    string? actualType;
-                    using (var peek = bankBookFile.OpenReadStream())
-                        actualType = await FileSignatureValidator.DetectAsync(peek);
-
-                    if (actualType is null || !AllowedPassbookTypes.Contains(actualType))
-                        throw AppException.BadRequest("存摺封面僅支援 PNG、JPEG 圖片或 PDF 格式。");
-
-                    var ext      = Path.GetExtension(bankBookFile.FileName);
-                    var blobName = $"{userId}_passbook{ext}";
-                    var newUrl   = $"files/{PassbookContainer}/{blobName}";
-
-                    using (var stream = bankBookFile.OpenReadStream())
-                        await blob.UploadAsync(PassbookContainer, blobName, stream, actualType);
-
-                    if (!string.Equals(profile.BankBookImageUrl, newUrl, StringComparison.OrdinalIgnoreCase))
-                        await TryDeleteBlobByUrlAsync(PassbookContainer, profile.BankBookImageUrl);
-
-                    profile.BankBookImageUrl = newUrl;
-                }
-            }
+            // ── 5. 存摺封面 Blob 處理（第一 / 第二帳戶各一張，欄位與 blob 名稱對稱）──
+            profile.BankBookImageUrl  = await ProcessPassbookAsync(
+                form, userId, "bankBookImage",  "removeBankBook",  "passbook",  profile.BankBookImageUrl);
+            profile.BankBookImageUrl2 = await ProcessPassbookAsync(
+                form, userId, "bankBookImage2", "removeBankBook2", "passbook2", profile.BankBookImageUrl2);
 
             if (isNew)
                 db.EmployeeProfiles.Add(profile);
@@ -417,6 +390,49 @@ public sealed class EmployeeProfileHandler(
     }
 
     /// <summary>嘗試刪除 Blob；失敗只記錄，不阻斷主流程（孤兒檔案可事後清理）。</summary>
+    /// <summary>
+    /// 存摺封面上傳 / 移除（第一、第二帳戶共用）。
+    /// 回傳處理後應存回 entity 的 URL：移除 → null、有上傳 → 新 URL、皆無 → 原值不變。
+    /// blobSuffix 區隔兩個帳戶的 blob 名稱（passbook / passbook2），避免第二張覆蓋第一張。
+    /// </summary>
+    private async Task<string?> ProcessPassbookAsync(
+        IFormCollection form, Guid userId,
+        string fileKey, string removeKey, string blobSuffix, string? currentUrl)
+    {
+        if (form[removeKey] == "true")
+        {
+            await TryDeleteBlobByUrlAsync(PassbookContainer, currentUrl);
+            return null;
+        }
+
+        var bankBookFile = form.Files.GetFile(fileKey);
+        if (bankBookFile is null || bankBookFile.Length == 0)
+            return currentUrl;
+
+        if (bankBookFile.Length > 1 * 1024 * 1024)
+            throw AppException.BadRequest("上傳照片勿超過1MB");
+
+        string? actualType;
+        using (var peek = bankBookFile.OpenReadStream())
+            actualType = await FileSignatureValidator.DetectAsync(peek);
+
+        if (actualType is null || !AllowedPassbookTypes.Contains(actualType))
+            throw AppException.BadRequest("存摺封面僅支援 PNG、JPEG 圖片或 PDF 格式。");
+
+        var ext      = Path.GetExtension(bankBookFile.FileName);
+        var blobName = $"{userId}_{blobSuffix}{ext}";
+        var newUrl   = $"files/{PassbookContainer}/{blobName}";
+
+        using (var stream = bankBookFile.OpenReadStream())
+            await blob.UploadAsync(PassbookContainer, blobName, stream, actualType);
+
+        // 副檔名換掉時（jpg → pdf）新舊 URL 不同，須刪掉舊 blob 避免殘留
+        if (!string.Equals(currentUrl, newUrl, StringComparison.OrdinalIgnoreCase))
+            await TryDeleteBlobByUrlAsync(PassbookContainer, currentUrl);
+
+        return newUrl;
+    }
+
     private async Task TryDeleteBlobByUrlAsync(string container, string? url)
     {
         if (string.IsNullOrEmpty(url)) return;

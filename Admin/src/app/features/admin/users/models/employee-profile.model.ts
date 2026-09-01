@@ -164,9 +164,11 @@ export interface EmployeeProfileDetail {
   // 緊急聯絡
   emergencyContactName?: string | null;
   emergencyContactPhone?: string | null;
-  // 銀行
+  // 銀行（第一帳戶 / 第二帳戶）
   bankCode?: string | null;
   bankAccount?: string | null;
+  bankCode2?: string | null;
+  bankAccount2?: string | null;
   // 保險
   insuranceStartDate?: string | null;
   dependentCount?: number | null;
@@ -178,8 +180,9 @@ export interface EmployeeProfileDetail {
   idCardBackUrl?: string | null;
   // 最高學歷證明
   highestEducationProofUrl?: string | null;
-  // 存摺封面
+  // 存摺封面（第一 / 第二帳戶各一張）
   bankBookImageUrl?: string | null;
+  bankBookImageUrl2?: string | null;
   // 子表
   educationRecords: EducationRecord[];
   employmentHistoryRecords: EmploymentHistoryRecord[];

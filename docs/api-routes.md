@@ -285,7 +285,7 @@
 | Method | Path | 說明 |
 |--------|------|------|
 | GET | `/users/{id}/profile` | 取得員工人事資料卡（EmployeeProfile + 9 張子表）。Profile 不存在時回傳預設空殼。**欄位級權限**：無 `payroll:read` 者 `salaryAdjustmentRecords` 回 `[]`，其餘 8 張子表照常 |
-| PUT | `/users/{id}/profile` | 整批更新員工人事資料卡（multipart：`payload` JSON + `idCardFront` / `idCardBack` 檔案 + `removeIdCardFront` / `removeIdCardBack` 旗標）。9 張子表整批替換；薪資調整紀錄會自動同步「最新生效底薪」回 `User.BaseSalary`。**欄位級權限**：`salaryAdjustmentRecords` 為**條件式**整批替換 —— 缺 `payroll:read` 或 payload 省略該 key（`null`）時整段跳過（既有薪資歷史不刪不改、也不做 User 同步）；送 `[]` 才是清空 |
+| PUT | `/users/{id}/profile` | 整批更新員工人事資料卡（multipart：`payload` JSON + `idCardFront` / `idCardBack` / `highestEducationProof` / `bankBookImage` / `bankBookImage2` 檔案 + `removeIdCardFront` / `removeIdCardBack` / `removeHighestEducationProof` / `removeBankBook` / `removeBankBook2` 旗標；兩張存摺封面對應第一 / 第二銀行帳戶，blob 命名 `{userId}_passbook{ext}` / `{userId}_passbook2{ext}`）。9 張子表整批替換；薪資調整紀錄會自動同步「最新生效底薪」回 `User.BaseSalary`。**欄位級權限**：`salaryAdjustmentRecords` 為**條件式**整批替換 —— 缺 `payroll:read` 或 payload 省略該 key（`null`）時整段跳過（既有薪資歷史不刪不改、也不做 User 同步）；送 `[]` 才是清空 |
 
 > 員工要查看**自己**的人事資料卡（唯讀，免 `users:read`）改走 [`/me/profile` + `/me/user` + `/me/files`](#當前使用者聚合資訊me)（避免管理權限強加到一般員工）。
 

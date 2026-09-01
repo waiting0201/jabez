@@ -30,9 +30,13 @@ public class EmployeeProfile
     public string? EmergencyContactName  { get; set; }
     public string? EmergencyContactPhone { get; set; }
 
-    // 銀行帳號
+    // 銀行帳號（第一帳戶＝薪轉主帳戶）
     public string? BankCode    { get; set; }   // 銀行分行
     public string? BankAccount { get; set; }   // 銀行帳號
+
+    // 第二帳戶（選填；與第一帳戶欄位對稱）
+    public string? BankCode2    { get; set; }   // 銀行分行
+    public string? BankAccount2 { get; set; }   // 銀行帳號
 
     // 保險與扶養
     public DateTime? InsuranceStartDate { get; set; }   // 投保起日
@@ -50,7 +54,8 @@ public class EmployeeProfile
     public string? HighestEducationProofUrl { get; set; }
 
     // 存摺封面（走授權 file proxy：GET /files/passbooks/{fileName}，需 users:read）
-    public string? BankBookImageUrl { get; set; }
+    public string? BankBookImageUrl  { get; set; }   // 第一帳戶
+    public string? BankBookImageUrl2 { get; set; }   // 第二帳戶
 
     public DateTime CreatedAt { get; set; } = Clock.Now;
     public DateTime UpdatedAt { get; set; } = Clock.Now;
