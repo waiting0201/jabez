@@ -11,9 +11,32 @@ namespace Jabez.Api.Services.Dapper;
 /// </summary>
 public sealed class UserReadService(IDbConnection db) : IUserReadService
 {
-    public async Task<IEnumerable<UserDto>> GetAllAsync()
+    /// <summary>
+    /// 員工清單篩選片段（姓名模糊比對 + 部門），供 GetAllAsync 與 GetPagedAsync 共用。
+    /// 兩者的 WHERE 皆以 u.IsSuperAdmin = 0 起頭，故此處一律以 AND 串接。
+    /// </summary>
+    private static (string Filter, string? SearchParam) BuildFilter(string? search, int? departmentId)
     {
-        const string sql = """
+        var filter = string.Empty;
+        string? searchParam = null;
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            filter += " AND u.Name LIKE @Search";
+            searchParam = $"%{search.Trim()}%";
+        }
+
+        if (departmentId.HasValue)
+            filter += " AND u.DepartmentId = @DepartmentId";
+
+        return (filter, searchParam);
+    }
+
+    public async Task<IEnumerable<UserDto>> GetAllAsync(string? search = null, int? departmentId = null)
+    {
+        var (filter, searchParam) = BuildFilter(search, departmentId);
+
+        var sql = $"""
             SELECT
                 u.Id, u.Name, u.Email, u.Avatar, u.SignatureUrl, u.Status, u.CreatedAt,
                 u.DepartmentId, d.Name AS DepartmentName,
@@ -40,11 +63,11 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             LEFT JOIN Departments d ON u.DepartmentId = d.Id
             LEFT JOIN JobTitles jt  ON u.JobTitleId = jt.Id
             LEFT JOIN Users ag      ON u.AgentUserId = ag.Id
-            WHERE u.IsSuperAdmin = 0
+            WHERE u.IsSuperAdmin = 0{filter}
             ORDER BY u.CreatedAt
             """;
 
-        var rows = await db.QueryAsync<dynamic>(sql);
+        var rows = await db.QueryAsync<dynamic>(sql, new { Search = searchParam, DepartmentId = departmentId });
 
         var dict = new Dictionary<Guid, (
             string Name, string Email, string? Avatar, string? SignatureUrl, string Status,
@@ -158,13 +181,15 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
         return await db.QueryAsync<UserLookupDto>(sql, new { AllowedDeptIds = scope.AllowedDepartmentIds });
     }
 
-    public async Task<PagedResult<UserDto>> GetPagedAsync(int page, int pageSize)
+    public async Task<PagedResult<UserDto>> GetPagedAsync(int page, int pageSize, string? search = null, int? departmentId = null)
     {
-        const string countSql = "SELECT COUNT(*) FROM Users WHERE IsSuperAdmin = 0";
-        const string sql = """
+        var (filter, searchParam) = BuildFilter(search, departmentId);
+
+        var countSql = $"SELECT COUNT(*) FROM Users u WHERE u.IsSuperAdmin = 0{filter}";
+        var sql = $"""
             WITH PagedIds AS (
-                SELECT Id FROM Users WHERE IsSuperAdmin = 0
-                ORDER BY CreatedAt OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
+                SELECT u.Id FROM Users u WHERE u.IsSuperAdmin = 0{filter}
+                ORDER BY u.CreatedAt OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
             )
             SELECT
                 u.Id, u.Name, u.Email, u.Avatar, u.SignatureUrl, u.Status, u.CreatedAt,
@@ -196,8 +221,10 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             ORDER BY u.CreatedAt
             """;
 
-        int total = await db.ExecuteScalarAsync<int>(countSql);
-        var rows = await db.QueryAsync<dynamic>(sql, new { Skip = (page - 1) * pageSize, Take = pageSize });
+        var param = new { Search = searchParam, DepartmentId = departmentId, Skip = (page - 1) * pageSize, Take = pageSize };
+
+        int total = await db.ExecuteScalarAsync<int>(countSql, param);
+        var rows = await db.QueryAsync<dynamic>(sql, param);
 
         var dict = new Dictionary<Guid, (
             string Name, string Email, string? Avatar, string? SignatureUrl, string Status,
