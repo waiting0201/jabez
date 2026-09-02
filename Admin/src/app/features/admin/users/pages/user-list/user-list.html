@@ -15,7 +15,7 @@
   <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
 
-      <!-- Toolbar: 篩選列（部門 + 姓名關鍵字） -->
+      <!-- Toolbar: 篩選列（部門 + 在職狀態 + 勞退 + 姓名關鍵字） -->
       <div class="px-4 py-3 border-b">
         <div class="flex flex-wrap items-center gap-2">
           <select class="form-select w-full sm:w-auto" style="min-width: 180px"
@@ -25,6 +25,21 @@
               <option [value]="d.id">{{ d.name }}</option>
             }
           </select>
+          <select class="form-select w-full sm:w-auto" style="min-width: 140px"
+                  [ngModel]="status() ?? ''" (ngModelChange)="onStatusChange($event)">
+            <option value="">全部狀態</option>
+            <option value="active">在職</option>
+            <option value="inactive">離職</option>
+          </select>
+          @if (canSeeSalary) {
+            <select class="form-select w-full sm:w-auto" style="min-width: 160px"
+                    [ngModel]="hasLaborPension() === null ? '' : (hasLaborPension() ? 'true' : 'false')"
+                    (ngModelChange)="onLaborPensionChange($event)">
+              <option value="">全部勞退</option>
+              <option value="true">有自提</option>
+              <option value="false">未自提</option>
+            </select>
+          }
           <div class="flex items-center gap-2 w-full sm:w-auto" style="max-width: 420px">
             <div class="relative flex-1">
               <svg class="sa-icon absolute left-3 top-1/2 -translate-y-1/2 text-muted" style="stroke: currentColor; width: 16px; height: 16px">

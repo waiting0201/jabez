@@ -12,10 +12,12 @@ namespace Jabez.Api.Services.Dapper;
 public sealed class UserReadService(IDbConnection db) : IUserReadService
 {
     /// <summary>
-    /// 員工清單篩選片段（姓名模糊比對 + 部門），供 GetAllAsync 與 GetPagedAsync 共用。
+    /// 員工清單篩選片段（姓名模糊比對 + 部門 + 在職狀態 + 勞退自提），供 GetAllAsync 與 GetPagedAsync 共用。
     /// 兩者的 WHERE 皆以 u.IsSuperAdmin = 0 起頭，故此處一律以 AND 串接。
+    /// ⚠ 新增需要 Dapper 參數的條件時，兩個呼叫端的匿名參數物件都要同步補上，漏一個會丟 must declare the scalar variable。
     /// </summary>
-    private static (string Filter, string? SearchParam) BuildFilter(string? search, int? departmentId)
+    private static (string Filter, string? SearchParam) BuildFilter(
+        string? search, int? departmentId, string? status, bool? hasLaborPension)
     {
         var filter = string.Empty;
         string? searchParam = null;
@@ -29,12 +31,23 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
         if (departmentId.HasValue)
             filter += " AND u.DepartmentId = @DepartmentId";
 
+        if (!string.IsNullOrWhiteSpace(status))
+            filter += " AND u.Status = @Status";
+
+        // 勞退自提率 null 與 0 同義（皆為未自提），故以 ISNULL 正規化後比較；
+        // 布林條件直接寫進 SQL 文字，不需額外 Dapper 參數
+        if (hasLaborPension.HasValue)
+            filter += hasLaborPension.Value
+                ? " AND ISNULL(u.LaborPensionSelfContributionRate, 0) > 0"
+                : " AND ISNULL(u.LaborPensionSelfContributionRate, 0) = 0";
+
         return (filter, searchParam);
     }
 
-    public async Task<IEnumerable<UserDto>> GetAllAsync(string? search = null, int? departmentId = null)
+    public async Task<IEnumerable<UserDto>> GetAllAsync(string? search = null, int? departmentId = null,
+        string? status = null, bool? hasLaborPension = null)
     {
-        var (filter, searchParam) = BuildFilter(search, departmentId);
+        var (filter, searchParam) = BuildFilter(search, departmentId, status, hasLaborPension);
 
         var sql = $"""
             SELECT
@@ -67,7 +80,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             ORDER BY u.CreatedAt
             """;
 
-        var rows = await db.QueryAsync<dynamic>(sql, new { Search = searchParam, DepartmentId = departmentId });
+        var rows = await db.QueryAsync<dynamic>(sql, new { Search = searchParam, DepartmentId = departmentId, Status = status });
 
         var dict = new Dictionary<Guid, (
             string Name, string Email, string? Avatar, string? SignatureUrl, string Status,
@@ -181,9 +194,10 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
         return await db.QueryAsync<UserLookupDto>(sql, new { AllowedDeptIds = scope.AllowedDepartmentIds });
     }
 
-    public async Task<PagedResult<UserDto>> GetPagedAsync(int page, int pageSize, string? search = null, int? departmentId = null)
+    public async Task<PagedResult<UserDto>> GetPagedAsync(int page, int pageSize, string? search = null, int? departmentId = null,
+        string? status = null, bool? hasLaborPension = null)
     {
-        var (filter, searchParam) = BuildFilter(search, departmentId);
+        var (filter, searchParam) = BuildFilter(search, departmentId, status, hasLaborPension);
 
         var countSql = $"SELECT COUNT(*) FROM Users u WHERE u.IsSuperAdmin = 0{filter}";
         var sql = $"""
@@ -221,7 +235,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             ORDER BY u.CreatedAt
             """;
 
-        var param = new { Search = searchParam, DepartmentId = departmentId, Skip = (page - 1) * pageSize, Take = pageSize };
+        var param = new { Search = searchParam, DepartmentId = departmentId, Status = status, Skip = (page - 1) * pageSize, Take = pageSize };
 
         int total = await db.ExecuteScalarAsync<int>(countSql, param);
         var rows = await db.QueryAsync<dynamic>(sql, param);
