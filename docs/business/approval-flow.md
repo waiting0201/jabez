@@ -679,23 +679,46 @@ returned ──(DELETE supplements/{n} 主動放棄)──→ 同上回滾
 
 ---
 
-## 跨步驟同人去重（限縮：總監 OR 相鄰 step）
+## 跨步驟同人去重（相鄰 step 同人 OR 總監）
 
-> **2026-05 規則限縮**：原本「全歷史」去重對所有審核者生效，過於激進；非總監若在跨多個 step 後再回到同一審核者，可能是流程設計需要分階段把關。新規則只對「總監 (`JobTitle.Level == 1`)」或「相鄰 step 同人」自動跳過 + 代簽，其餘場景要求重新審核。
+> **2026-05 規則限縮**：原本「全歷史」去重對所有審核者生效，過於激進；非總監若在跨多個 step 後再回到同一審核者，可能是流程設計需要分階段把關。規則改為只對「總監 (`JobTitle.Level == 1`)」或「相鄰 step 同人」自動跳過 + 代簽，其餘場景要求重新審核。
+>
+> **2026-09 相鄰分支放寬（全池 → 任一人）**：原本相鄰分支也要求審核者池被「已審者」**完全覆蓋**才跳過，
+> 導致「同一角色有兩人以上」時永遠湊不齊全池。實例：品牌事業部 Step1「部門主管初核」（`UseDirectSupervisor`）
+> 對專案經理送的單解析出來就是「部門協理」，與 Step2 固定的「品牌事業部 + 協理」是**同一池**，
+> 而該部門有兩位協理 —— 董修慈簽完 Step1 後，因另一位協理沒審過而不跳過，同一人被要求連簽兩關。
+> 固定部門+職稱 / 上層級的池語意本來就是「這個角色任一人可審」，同一人在相鄰前一關已行使過同一份權責，
+> 故相鄰分支改為「池中**任一人**已審即跳過」。**指定審核步驟不套用放寬**（見下表）。
 
-任一申請進行中時，後續任意 step 的解析審核者池被「該申請已 approved 的所有 ReviewedById」完全覆蓋時，是否自動跳過 + 代簽，依下表判定：
+任一申請進行中時，後續任意 step 的解析審核者池與「該申請已 approved 的所有 ReviewedById」比對，是否自動跳過 + 代簽，依下表判定：
 
 | 情境 | 行為 |
 |---|---|
-| 池中仍有未審者 | 通知未審者（仍排除已審總監） |
-| 池被覆蓋 + 代簽人 `JobTitle.Level == 1`（總監） | **跳過 + 寫代簽** |
-| 池被覆蓋 + 代簽人非總監 + 與「上一個有審核紀錄的 step」相鄰 | **跳過 + 寫代簽** |
-| 池被覆蓋 + 代簽人非總監 + 不相鄰 | **不跳過**，停在此 step（要求重審） |
+| 池中無任何已審者 | 通知未審者（仍排除已審總監） |
+| 池中**任一人**已審 + 與「上一個有審核紀錄的 step」相鄰 + **非**指定審核步驟 | **跳過 + 寫代簽**（2026-09 放寬） |
+| **指定審核步驟** + 相鄰 + 全部 designee 皆已審 | **跳過 + 寫代簽** |
+| **指定審核步驟** + 相鄰 + 仍有 designee 未審 | **不跳過**，停在此 step（未審的 designee 仍須審） |
+| 池被**完全覆蓋** + 代簽人 `JobTitle.Level == 1`（總監） | **跳過 + 寫代簽**（總監分支維持限縮，不放寬） |
+| 有已審者但非總監 + 不相鄰 | **不跳過**，停在此 step（要求重審） |
 | 同一 designated step 內 multi-designee 同人 | **維持原樣，自動代簽**（同 step 內延續，視為「比相鄰更緊」，不論角色） |
+
+**指定審核步驟為何不放寬**：`UseApplicantDesignated`（含例外指定命中）的池是申請人**逐位點名**的人，
+語意是「這些人都要審」，與 [ApprovalTaskHandler.cs](../../Api/Handlers/ApprovalTaskHandler.cs) `ProcessReviewAsync`
+的 in-step `while` 迴圈（逐位推進、遇到未審者就停下）一致。外層若用「任一人」整關跳過，
+會讓從沒審過的 designee 被靜默略過，與 in-step 行為矛盾。
+
+**審核者池只含 active 帳號**：[ApprovalFlowService.ResolveReviewerPoolAsync](../../Api/Services/ApprovalFlowService.cs)
+的三個分支與送單防呆 `HasStepReviewerAsync` 一致，皆篩 `Status == "active"`。離職 / 停用帳號若混進池中，
+會讓仍走「全池皆已審」的總監分支永遠不成立。
 
 「相鄰」精確定義：以 `ApprovalSteps` 依 `StepOrder` 排序後的索引為準，當前 step 索引 == 上一審核 step 索引 + 1（避免稀疏 StepOrder 數值差距誤判）。連鎖跳過時，每跳過一步即更新「上一審核 step」為剛跳過者，下個 step 仍可能算相鄰。
 
-**統一自動代簽**：當某 step 因新規則跳過時，**一律寫一筆代簽 `ApprovalRecord`**（含 `Action='approved' / ReviewedById=代簽人 / ReviewNote='自動核准：已於先前步驟核准本申請'`），讓 PDF 簽名欄、簽核時間軸能正確顯示已審者的簽名。代簽人選擇邏輯：取「step 池 ∩ 歷史已審者」交集後按 `ApprovalRecords.ReviewedAt` 升序取首位（最早審過此申請者）。
+**統一自動代簽**：當某 step 因新規則跳過時，**一律寫一筆代簽 `ApprovalRecord`**（含 `Action='approved' / ReviewedById=代簽人 / ReviewNote='自動核准：已於先前步驟核准本申請'`），讓 PDF 簽名欄、簽核時間軸能正確顯示已審者的簽名。代簽人選擇邏輯：取「step 池 ∩ 已審者」交集後按 `ApprovalRecords.ReviewedAt` 升序取首位（最早審過此申請者）。
+
+> **代簽人一定要從交集挑，不可退回池內第一位**：當次審核的 `ApprovalRecord` 還在 EF ChangeTracker、尚未 SaveChanges
+> （由 `ApprovalTaskHandler` 手動補進 `approvedReviewerIds`），而 `PickEarliestProxyAsync` 以 `AsNoTracking` 讀 DB 看不到它。
+> 相鄰分支放寬後池中常有「從沒審過的人」（如同部門另一位同職稱主管），若查無紀錄時退回 `pool[0]`，
+> 代簽紀錄與 PDF 簽名章會掛到錯的人身上。
 
 **指定審核步驟（`UseApplicantDesignated`）內部**：[ApprovalTaskHandler.cs](../../Api/Handlers/ApprovalTaskHandler.cs) `ProcessReviewAsync` 中以 `while` 迴圈推進 — 下一位 designee 若已於先前步驟核准 → 自動標記 `RequestDesignatedReviewer.Status='approved'` + `Comment='已於先前步驟審核（自動核准）'`，並寫一筆代簽 `ApprovalRecord`，繼續找再下一位；遇到沒在歷史中的 designee 才停下並通知。**此邏輯不受新規則限縮影響**（同 step 內延續）。
 
@@ -703,7 +726,7 @@ returned ──(DELETE supplements/{n} 主動放棄)──→ 同上回滾
 
 **所有剩餘步驟皆被自動代簽** → 申請自動核准 + 通知申請人。
 
-**AuthorizeStepAsync 防呆**：限縮為「總監（`JobTitle.Level == 1`）reviewer 重複 PATCH」→ 400「您已在先前步驟核准過此申請，不需重複審核」。非總監允許重審（與新規則對齊）。
+**AuthorizeStepAsync 防呆**：限縮為「總監（`JobTitle.Level == 1`）reviewer 重複 PATCH」→ 400「您已在先前步驟核准過此申請，不需重複審核」。非總監允許重審（與新規則對齊）—— 2026-09 放寬後相鄰同人根本走不到該關，但「非相鄰同人須重審」的場景仍需要它放行，故維持不變。
 
 **待審清單同步**：[PaymentRequestReadService.StepMatchClause](../../Api/Services/Dapper/PaymentRequestReadService.cs) pending tab 的 `NOT EXISTS` 子句加上「reviewer 是 Level=1」條件，僅排除「總監已被自動代簽」的殘留待審項目。非總監若不滿足跳過條件 → 該 step 正常顯示在待審清單中。
 
@@ -719,6 +742,10 @@ returned ──(DELETE supplements/{n} 主動放棄)──→ 同上回滾
 | `ApprovalTaskHandler.AuthorizeStepAsync` | 重複 PATCH 防呆 |
 | `ApprovalFlowService.GetApprovedReviewerIdsAsync` / `GetApprovedSupervisorIdsAsync` | 自動跳過 + 代簽判定 |
 | `ApprovalNotificationService.GetApprovedReviewerIdsAsync` | 通知去重 |
+
+> 第 5 處查 `ApprovalRecords` 的位置是 `ApprovalFlowService.PickEarliestProxyAsync`（挑代簽人）。
+> 它只在「已判定要跳過」之後決定代簽人是誰、不決定是否跳過，且候選已先收斂成 `pool ∩ approvedReviewerIds`
+> （該集合本身已套用 `RoundNo` 與退回分隔線），故不需另加 `RoundNo` 條件。
 
 **升級審核排除**：[EscalationService.FindManagerInDepartmentAsync](../../Api/Services/EscalationService.cs) 的 `excludeUserIds` 語義改為「總監（Level=1）已審者」。實務上 escalation 鏈停在總監前，此調整理論上影響極小，但維持與 `SkipUnreviewableStepsAsync` 邏輯一致。
 

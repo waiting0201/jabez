@@ -495,9 +495,13 @@ public sealed class ApprovalFlowService(
             if (!hasReviewer)
                 continue; // 找不到審核者 → 跳過（不寫代簽，因為池本來就空）
 
-            // ── 第二階段：跨步驟同人去重（限縮：總監 OR 相鄰 step 同人） ──
-            // 若 approvedReviewerIds 提供，解析池後檢查是否被完全覆蓋；
-            // 池被覆蓋且滿足 (A) 代簽人為總監（Level=1） 或 (B) 與上一審核 step 相鄰 → 跳過 + 標記代簽人。
+            // ── 第二階段：跨步驟同人去重（相鄰 step 同人 OR 總監） ──
+            // 若 approvedReviewerIds 提供，解析池後判斷是否已由同一人行使過同一份權責：
+            //   (A) 代簽人為總監（Level=1） → 維持限縮：要求「全池」皆已審
+            //   (B) 與上一審核 step 相鄰     → 放寬為「池中任一人」已審即可（2026-09）
+            // 放寬理由：固定部門+職稱 / 上層級的池語意是「這個角色任一人可審」，
+            // 同一人在相鄰的前一關已行使過同一份權責，不該被要求連簽兩關
+            // （例：品牌事業部 Step1 上層級解析＝Step2 固定「部門協理」同一池，部門有兩位協理時永遠湊不齊全池）。
             if (approvedReviewerIds is not null && approvedReviewerIds.Count > 0)
             {
                 int directSupervisorRank = steps.Count(s => s.UseDirectSupervisor && s.StepOrder < step.StepOrder);
@@ -509,14 +513,22 @@ public sealed class ApprovalFlowService(
                     : await ResolveReviewerPoolAsync(
                         step, applicant, designatedReviewers, directSupervisorRank, designatedSet);
 
-                if (pool.Count > 0 && pool.All(id => approvedReviewerIds.Contains(id)))
+                // 指定審核步驟不套用放寬：池是申請人逐位點名的人，語意為「這些人都要審」，
+                // 與 ApprovalTaskHandler.ProcessReviewAsync 的 in-step while 迴圈（逐位推進、遇未審者停下）一致。
+                bool isDesignatedStep = designatedSet.Contains(step.StepOrder);
+                bool allApproved = pool.Count > 0 && pool.All(id => approvedReviewerIds.Contains(id));
+                bool anyApproved = pool.Count > 0 && pool.Any(id => approvedReviewerIds.Contains(id));
+
+                if (isDesignatedStep ? allApproved : anyApproved)
                 {
-                    // 池中所有人皆已審 → 挑「池 ∩ 歷史已審者中最早審過此申請者」作為代簽人
+                    // 代簽人必為「池 ∩ 已審者」，多位時取最早審過此申請者
                     var proxyId = await PickEarliestProxyAsync(
-                        pool, applicationType, applicationId);
+                        pool, approvedReviewerIds, applicationType, applicationId);
                     if (proxyId.HasValue)
                     {
-                        bool proxyIsSupervisor = supervisorIds is not null && supervisorIds.Contains(proxyId.Value);
+                        // 總監分支維持原本的「全池覆蓋」限縮，放寬只作用於相鄰分支
+                        bool proxyIsSupervisor = allApproved
+                            && supervisorIds is not null && supervisorIds.Contains(proxyId.Value);
 
                         bool isAdjacent = false;
                         if (adjacencyAnchorStepOrder.HasValue)
@@ -536,7 +548,7 @@ public sealed class ApprovalFlowService(
                 }
             }
 
-            return (step.StepOrder, false, skipped, stepEscalation); // 停在這步（含「池被覆蓋但非總監且不相鄰 → 要求重審」）
+            return (step.StepOrder, false, skipped, stepEscalation); // 停在這步（含「同人已審但非總監且不相鄰 → 要求重審」）
         }
 
         // 所有剩餘步驟都跳過
@@ -547,39 +559,49 @@ public sealed class ApprovalFlowService(
     /// <summary>
     /// 從「step 池 ∩ 歷史已審者」中取最早審過此申請者作為代簽人。
     /// 多人時按 ApprovalRecords.ReviewedAt 升序取首位（最早審過此申請的池內成員）；
-    /// applicationType / applicationId 缺漏時回退為池內第一位（理論上不會發生，呼叫端應提供）。
+    /// 查無紀錄 / applicationType 缺漏時回退為交集首位（代簽人必定是實際審過的人）。
+    ///
+    /// 候選一律先收斂成 pool ∩ approvedReviewerIds —— 不可退回 pool[0]：
+    /// 當次審核的 ApprovalRecord 還在 ChangeTracker（呼叫端手動補進 approvedReviewerIds），
+    /// 這裡以 AsNoTracking 讀 DB 看不到它；池中若還有從沒審過的人（如同部門另一位同職稱主管），
+    /// 退回 pool[0] 會把代簽紀錄與 PDF 簽名章掛到錯的人身上。
     /// </summary>
     private async Task<Guid?> PickEarliestProxyAsync(
         IReadOnlyList<Guid> pool,
+        IReadOnlySet<Guid> approvedReviewerIds,
         string? applicationType,
         int? applicationId)
     {
-        if (pool.Count == 0) return null;
-        if (pool.Count == 1) return pool[0];
+        var candidates = pool.Where(approvedReviewerIds.Contains).ToList();
+        if (candidates.Count == 0) return null;
+        if (candidates.Count == 1) return candidates[0];
 
         if (applicationType is null || !applicationId.HasValue)
-            return pool[0];
+            return candidates[0];
 
-        var poolSet = pool.ToHashSet();
+        var candidateSet = candidates.ToHashSet();
         var earliest = await db.ApprovalRecords.AsNoTracking()
             .Where(r => r.ApplicationType == applicationType
                      && r.ApplicationId == applicationId.Value
                      && r.Action == "approved"
                      && r.ReviewedById != null
-                     && poolSet.Contains(r.ReviewedById!.Value))
+                     && candidateSet.Contains(r.ReviewedById!.Value))
             .OrderBy(r => r.ReviewedAt)
             .Select(r => r.ReviewedById!.Value)
             .FirstOrDefaultAsync();
 
-        return earliest != Guid.Empty ? earliest : pool[0];
+        return earliest != Guid.Empty ? earliest : candidates[0];
     }
 
     /// <summary>
     /// 解析該步驟的「審核者池」：
     /// - 指定審核（原生 UseApplicantDesignated 或例外命中）：該 step 中所有 pending designee 的 ReviewerId
-    /// - UseDirectSupervisor：同部門 + 第 N 層上級 Level + 非 superadmin + 非申請人
-    /// - 固定部門+職稱（含 UseApplicantDepartment）：對應部門 + 職稱 + 非 superadmin + 非申請人
-    /// 回傳 List<Guid>（最多 50 筆防呆）。
+    /// - UseDirectSupervisor：同部門 + 第 N 層上級 Level + active + 非 superadmin + 非申請人
+    /// - 固定部門+職稱（含 UseApplicantDepartment）：對應部門 + 職稱 + active + 非 superadmin + 非申請人
+    /// 回傳 List&lt;Guid&gt;（最多 50 筆防呆）。
+    ///
+    /// active 條件與送單防呆 HasStepReviewerAsync 一致 —— 離職 / 停用帳號若混進池中，
+    /// 會讓仍走「全池皆已審」的總監去重分支永遠不成立。
     /// </summary>
     private async Task<List<Guid>> ResolveReviewerPoolAsync(
         Models.Entities.ApprovalStep step,
@@ -607,6 +629,7 @@ public sealed class ApprovalFlowService(
 
             return await db.Users.AsNoTracking()
                 .Where(u => u.DepartmentId == applicant.DepartmentId
+                    && u.Status == "active"
                     && !u.IsSuperAdmin
                     && u.Id != applicant.Id
                     && u.JobTitle != null
@@ -624,6 +647,7 @@ public sealed class ApprovalFlowService(
 
         var query = db.Users.AsNoTracking()
             .Where(u => u.DepartmentId == targetDepartmentId.Value
+                && u.Status == "active"
                 && !u.IsSuperAdmin
                 && u.Id != applicant.Id);
 
