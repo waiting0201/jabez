@@ -69,7 +69,7 @@ import {roundLabel} from '../../features/admin/advance-requests/models/advance-r
                       } @else if (rec.isEscalated) {
                         <span class="badge bg-[--bg-elevated] text-[--purple] ms-1" style="font-size:.7rem">升級審核</span>
                       }
-                      · {{ rec.reviewedAt | date:'yyyy-MM-dd' }} ·
+                      · {{ rec.reviewedAt | date:'yyyy-MM-dd HH:mm:ss' }} ·
                       @if (rec.action === 'approved') {
                         <span class="text-success">已核准</span>
                       } @else if (rec.action === 'returned') {
