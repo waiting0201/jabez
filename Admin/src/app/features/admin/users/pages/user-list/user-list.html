@@ -14,6 +14,33 @@
 
   <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
+
+      <!-- Toolbar: 篩選列（部門 + 姓名關鍵字） -->
+      <div class="px-4 py-3 border-b">
+        <div class="flex flex-wrap items-center gap-2">
+          <select class="form-select w-full sm:w-auto" style="min-width: 180px"
+                  [ngModel]="departmentId() ?? ''" (ngModelChange)="onDepartmentChange($event)">
+            <option value="">全部部門</option>
+            @for (d of departments(); track d.id) {
+              <option [value]="d.id">{{ d.name }}</option>
+            }
+          </select>
+          <div class="flex items-center gap-2 w-full sm:w-auto" style="max-width: 420px">
+            <div class="relative flex-1">
+              <svg class="sa-icon absolute left-3 top-1/2 -translate-y-1/2 text-muted" style="stroke: currentColor; width: 16px; height: 16px">
+                <use href="/assets/icons/sprite.svg#search"></use>
+              </svg>
+              <input type="text" class="form-control ps-9" placeholder="搜尋員工姓名…"
+                     [(ngModel)]="searchInput" (keydown.enter)="doSearch()">
+            </div>
+            <button class="btn btn-primary" (click)="doSearch()">篩選</button>
+          </div>
+          @if (isFiltered()) {
+            <button class="btn btn-ghost-secondary" (click)="resetFilter()">清除</button>
+          }
+        </div>
+      </div>
+
       <div class="table-responsive">
         <table class="table table-hover mb-0">
           <thead class="table-light">
@@ -75,7 +102,9 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="8" class="text-center text-muted py-4">尚無員工資料。</td>
+                <td colspan="8" class="text-center text-muted py-4">
+                  {{ isFiltered() ? '查無符合條件的員工。' : '尚無員工資料。' }}
+                </td>
               </tr>
             }
           </tbody>

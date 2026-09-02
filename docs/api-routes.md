@@ -22,7 +22,7 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/users` | 取得使用者列表。**欄位級權限**：無 `payroll:read` 者的 8 個薪資欄（底薪 / 伙食費 / 加班費 / 2 種加給 / 勞健保覆寫 / 勞退自提率）回 `null` |
+| GET | `/users?page=1&pageSize=20&search=關鍵字&departmentId=9` | 取得使用者列表。`search` 選填，模糊比對**姓名** `Name`；`departmentId` 選填，篩選部門（兩者可併用，與分頁參數正交，非數字的 `departmentId` 一律忽略）；**帶 `page` / `pageSize` 回 `PagedResult`，不帶則回平面陣列**（`pageSize` clamp 1~100，預設 20）。**欄位級權限**：無 `payroll:read` 者的 8 個薪資欄（底薪 / 伙食費 / 加班費 / 2 種加給 / 勞健保覆寫 / 勞退自提率）回 `null` |
 | GET | `/users/lookup` | **輕量端點**：免 `users:read`，回 `{id, name, jobTitleId, status, departmentId, jobTitleLevel}`，供指定審核者下拉與「部門最高層級」判定（`jobTitleLevel` 數字越小越高） |
 | POST | `/users` | 新增使用者。**欄位級權限**：無 `payroll:read` 者送的薪資欄一律忽略（存為 null），回應 DTO 亦抹除 |
 | GET | `/users/{id}` | 取得單一使用者。**欄位級權限**：同 `GET /users`，無 `payroll:read` 者薪資欄回 `null` |

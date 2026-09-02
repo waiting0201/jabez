@@ -34,8 +34,11 @@ export class UserService {
     return this.http.get<UserLookup[]>(`${environment.apiUrl}/users/lookup`);
   }
 
-  getPaged(page: number, pageSize: number): Observable<PagedResult<User>> {
-    return this.http.get<PagedResult<User>>(`${environment.apiUrl}/users`, {params: {page, pageSize}});
+  getPaged(page: number, pageSize: number, search?: string, departmentId?: number): Observable<PagedResult<User>> {
+    const params: Record<string, string | number> = {page, pageSize};
+    if (search) params['search'] = search;
+    if (departmentId) params['departmentId'] = departmentId;
+    return this.http.get<PagedResult<User>>(`${environment.apiUrl}/users`, {params});
   }
 
   getById(id: string): Observable<User> {

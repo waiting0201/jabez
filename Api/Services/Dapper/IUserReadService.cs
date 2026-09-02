@@ -6,9 +6,9 @@ namespace Jabez.Api.Services.Dapper;
 
 public interface IUserReadService
 {
-    Task<IEnumerable<UserDto>>    GetAllAsync();
+    Task<IEnumerable<UserDto>>    GetAllAsync(string? search = null, int? departmentId = null);
     Task<IEnumerable<UserLookupDto>> GetLookupAsync();
     Task<IEnumerable<UserLookupDto>> GetLookupAsync(ProjectAccessScope scope);
-    Task<PagedResult<UserDto>>    GetPagedAsync(int page, int pageSize);
+    Task<PagedResult<UserDto>>    GetPagedAsync(int page, int pageSize, string? search = null, int? departmentId = null);
     Task<UserDto?>                GetByIdAsync(Guid id);
 }
