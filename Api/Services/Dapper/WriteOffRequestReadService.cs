@@ -14,7 +14,7 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
                ar.ActivityName, ar.ActivityPeriod,
                wo.CashTotal, wo.CheckTotal, wo.GrandTotal,
                wo.Note, wo.ApprovalStatus,
-               sub.Name AS SubmittedBy, wo.CreatedAt,
+               sub.Name AS SubmittedBy, wo.CreatedAt, wo.SubmittedAt,
                wo.ReviewedAt, wo.ReviewNote,
                ar.GrandTotal AS AdvanceGrandTotal,
                -- 本單之前已沖銷金額：條件與 WriteOffRefundCalculator.PriorApprovedTotalAsync 一致
@@ -56,10 +56,10 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
             WITH PagedIds AS (
                 SELECT Id FROM WriteOffRecords
                 {userFilter}
-                ORDER BY CreatedAt DESC
+                ORDER BY COALESCE(SubmittedAt, CreatedAt) DESC
                 OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
             )
-            {BaseSql} WHERE wo.Id IN (SELECT Id FROM PagedIds) ORDER BY wo.CreatedAt DESC, wi.SortOrder, wi.Id
+            {BaseSql} WHERE wo.Id IN (SELECT Id FROM PagedIds) ORDER BY COALESCE(wo.SubmittedAt, wo.CreatedAt) DESC, wi.SortOrder, wi.Id
             """;
 
         int total = await db.ExecuteScalarAsync<int>(countSql, new { UserId = userId });
@@ -299,6 +299,7 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
             (string)x.wo.ApprovalStatus,
             (string?)x.wo.SubmittedBy,
             (DateTime)x.wo.CreatedAt,
+            (DateTime?)x.wo.SubmittedAt,
             (DateTime?)x.wo.ReviewedAt,
             (string?)x.wo.ReviewNote,
             [.. x.items],

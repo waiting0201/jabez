@@ -13,7 +13,7 @@ public sealed class TravelRequestReadService(IDbConnection db, IInstallmentReadS
                tr.GrandTotal, tr.Purpose,
                tr.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                tr.IsHolidayTravel, tr.HolidayDays,
-               tr.ApprovalStatus, tr.CreatedAt, tr.ReviewedAt, tr.ReviewNote,
+               tr.ApprovalStatus, tr.CreatedAt, tr.SubmittedAt, tr.ReviewedAt, tr.ReviewNote,
                tr.ApprovalItemId, tr.CurrentStepOrder, tr.ReviewedById,
                tr.IsClosed, tr.ClosedAt, tr.RefundAmount, tr.RefundedAmount,
                tr.EstimatedRefundDate, tr.RefundedAt,
@@ -29,7 +29,7 @@ public sealed class TravelRequestReadService(IDbConnection db, IInstallmentReadS
 
     public async Task<IEnumerable<TravelRequestDto>> GetAllAsync()
     {
-        const string sql = BaseSql + " ORDER BY tr.CreatedAt DESC, ti.SortOrder, ti.Id";
+        const string sql = BaseSql + " ORDER BY COALESCE(tr.SubmittedAt, tr.CreatedAt) DESC, ti.SortOrder, ti.Id";
         var rows = await db.QueryAsync<dynamic>(sql);
         return GroupToTravelRequests(rows);
     }
@@ -47,10 +47,10 @@ public sealed class TravelRequestReadService(IDbConnection db, IInstallmentReadS
             WITH PagedIds AS (
                 SELECT Id FROM TravelRequests
                 {whereClause}
-                ORDER BY CreatedAt DESC
+                ORDER BY COALESCE(SubmittedAt, CreatedAt) DESC
                 OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
             )
-            {BaseSql} WHERE tr.Id IN (SELECT Id FROM PagedIds) ORDER BY tr.CreatedAt DESC, ti.SortOrder, ti.Id
+            {BaseSql} WHERE tr.Id IN (SELECT Id FROM PagedIds) ORDER BY COALESCE(tr.SubmittedAt, tr.CreatedAt) DESC, ti.SortOrder, ti.Id
             """;
         var parameters = new { UserId = userId, IsHolidayTravel = isHolidayTravel, Skip = (page - 1) * pageSize, Take = pageSize };
         int total = await db.ExecuteScalarAsync<int>(countSql, parameters);
@@ -180,6 +180,7 @@ public sealed class TravelRequestReadService(IDbConnection db, IInstallmentReadS
                 (bool)tr.IsHolidayTravel,
                 (string)tr.ApprovalStatus,
                 (DateTime)tr.CreatedAt,
+                (DateTime?)tr.SubmittedAt,
                 (DateTime?)tr.ReviewedAt,
                 (string?)tr.ReviewNote,
                 ApprovalItemId:   (int?)tr.ApprovalItemId,

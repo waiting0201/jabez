@@ -10,7 +10,7 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
     private const string BaseSql = """
         SELECT lr.Id, u.Name AS EmployeeName,
                lr.LeaveType, lr.StartDate, lr.EndDate, lr.Hours, lr.OriginalHours, lr.Reason,
-               lr.ApprovalStatus, lr.CreatedAt, lr.ReviewedAt, lr.ReviewNote,
+               lr.ApprovalStatus, lr.CreatedAt, lr.SubmittedAt, lr.ReviewedAt, lr.ReviewNote,
                lr.ApprovalItemId, lr.CurrentStepOrder, lr.ReviewedById,
                lr.BereavementRelationship, lr.AgentUserId, ag.Name AS AgentName,
                lr.ChildBirthDate, lr.ContinueInsurance
@@ -21,7 +21,7 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
 
     public async Task<IEnumerable<LeaveRequestDto>> GetAllAsync()
     {
-        const string sql = BaseSql + " ORDER BY lr.CreatedAt DESC";
+        const string sql = BaseSql + " ORDER BY COALESCE(lr.SubmittedAt, lr.CreatedAt) DESC";
         var rows = await db.QueryAsync<dynamic>(sql);
         return rows.Select(MapRow);
     }
@@ -32,7 +32,7 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
         var countSql = $"SELECT COUNT(*) FROM LeaveRequests {userFilter}";
         var sql = BaseSql +
             (userId.HasValue ? " WHERE lr.EmployeeId = @UserId" : "") +
-            " ORDER BY lr.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
+            " ORDER BY COALESCE(lr.SubmittedAt, lr.CreatedAt) DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
         int total = await db.ExecuteScalarAsync<int>(countSql, new { UserId = userId });
         var rows = await db.QueryAsync<dynamic>(sql, new { UserId = userId, Skip = (page - 1) * pageSize, Take = pageSize });
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
@@ -105,6 +105,7 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
             (string)row.Reason,
             (string)row.ApprovalStatus,
             (DateTime)row.CreatedAt,
+            (DateTime?)row.SubmittedAt,
             (DateTime?)row.ReviewedAt,
             (string?)row.ReviewNote,
             ApprovalItemId:          (int?)row.ApprovalItemId,

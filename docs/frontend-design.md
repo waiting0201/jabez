@@ -875,6 +875,33 @@ isFirstOfRound(r: AdvanceRequest, index: number): boolean {
 >
 > **已套用**：2026-08 出差請款（TPR）從「發票欄置尾」改為與請款 / 預支沖銷一致的置前 —— [travel-payment-form](../Admin/src/app/features/admin/travel-payment-requests/pages/travel-payment-form/travel-payment-form.html) / [travel-payment-detail](../Admin/src/app/features/admin/travel-payment-requests/pages/travel-payment-detail/travel-payment-detail.html) / approval-task-review 的 `travel_payment` 區塊 / [travel-payment-pdf.service.ts](../Admin/src/app/features/admin/travel-payment-requests/services/travel-payment-pdf.service.ts)。成因是該單 clone 自出差預支（無發票欄）後把兩欄接在既有欄位尾巴，而非比照請款系列。
 
+### 7.1.4 申請日期欄（送簽後才有值）
+
+「申請日期」＝**送簽日**（後端 `submittedAt`），不是建立草稿的 `createdAt`。草稿還沒有這個值，
+顯示規則與「單號」完全一致：
+
+| 位置 | 欄名 / 標籤 | 綁定 | 草稿顯示 |
+|---|---|---|---|
+| 各申請清單頁 | **一律「申請日期」**（不用「建立時間 / 申請時間」） | `submittedAt` | `—` |
+| 詳情頁資訊卡 | 申請日期 | `submittedAt` | `（送簽後產生）` |
+| 簽核作業清單 / 詳情 | 申請日期 | `task.submittedAt` | 不適用（草稿不進簽核） |
+| 列印 PDF | 申請日期 / 簽名欄「申請者」格日期 | `submittedAt` | 不適用 |
+| 款項統計報表 | 申請日期（欄位**與日期區間篩選**同基準） | `submittedAt` | 不適用（報表排除草稿） |
+
+```html
+<!-- 清單頁 -->
+<td class="text-muted small hidden lg:table-cell">
+  {{ r.submittedAt ? (r.submittedAt | date:'yyyy-MM-dd') : '—' }}
+</td>
+
+<!-- 詳情頁 -->
+<div class="text-muted small">申請日期</div>
+<div class="fw-500">{{ r.submittedAt ? (r.submittedAt | date:'yyyy-MM-dd') : '（送簽後產生）' }}</div>
+```
+
+> `createdAt` 仍保留在 model 上（建立草稿時間），但**不再用於任何「申請日期」的顯示**。
+> 主檔類清單（廠商 / 職稱 / 角色 / 簽核流程設定）的「建立時間」欄不是申請單，維持 `createdAt` 不動。
+
 ### 7.2 ⚠ 刪除按鈕標準（**重要**）
 
 > **2026-05-09 起，所有明細列表的刪除按鈕一律統一為以下 pattern**。

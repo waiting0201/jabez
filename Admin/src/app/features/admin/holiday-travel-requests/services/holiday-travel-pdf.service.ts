@@ -133,7 +133,7 @@ export class HolidayTravelPdfService {
 
       if (y + 35 > ph - 15) { doc.addPage(); y = 20; }
 
-      const submitDate = r.createdAt ? fmtDT(r.createdAt) : '';
+      const submitDate = r.submittedAt ? fmtDT(r.submittedAt) : '';
       const signBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, submitDate, '申請者', designatedStepOrdersOf(r.designatedReviewers));
       const sigMap = await this.pdfCore.loadSignatureImages(signBlocks);
       this.pdfCore.drawSignatureBlock(doc, mx, pw, cw, y, signBlocks, sigMap);

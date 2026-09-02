@@ -195,7 +195,7 @@ export class TravelPaymentPdfService {
 
       if (y + 35 > ph - 15) { doc.addPage(); y = 20; }
 
-      const submitDate = r.createdAt ? fmtDT(r.createdAt) : '';
+      const submitDate = r.submittedAt ? fmtDT(r.submittedAt) : '';
       // 出納簽名取最後一期已撥款者（若有）
       const lastPaid = r.installments?.filter(i => i.paidAt).slice(-1)[0];
       const signBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, submitDate, '申請者', lastPaid?.paidAt, lastPaid?.paidBySignatureUrl, designatedStepOrdersOf(r.designatedReviewers));

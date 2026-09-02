@@ -13,7 +13,7 @@ public sealed class TravelWriteOffRequestReadService(IDbConnection db) : ITravel
                two.WriteOffNo, tr.Destination, tr.StartDate, tr.EndDate, tr.Purpose,
                proj.Code AS ProjectCode, proj.Name AS ProjectName,
                two.GrandTotal, two.Note, two.ApprovalStatus,
-               sub.Name AS SubmittedBy, two.CreatedAt,
+               sub.Name AS SubmittedBy, two.CreatedAt, two.SubmittedAt,
                two.ReviewedAt, two.ReviewNote,
                tr.GrandTotal AS TravelGrandTotal,
                CAST(ISNULL(tr.IsClosed, 0) AS BIT) AS TravelIsClosed,
@@ -45,10 +45,10 @@ public sealed class TravelWriteOffRequestReadService(IDbConnection db) : ITravel
             WITH PagedIds AS (
                 SELECT Id FROM TravelWriteOffRecords
                 {userFilter}
-                ORDER BY CreatedAt DESC
+                ORDER BY COALESCE(SubmittedAt, CreatedAt) DESC
                 OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
             )
-            {BaseSql} WHERE two.Id IN (SELECT Id FROM PagedIds) ORDER BY two.CreatedAt DESC, twi.SortOrder, twi.Id
+            {BaseSql} WHERE two.Id IN (SELECT Id FROM PagedIds) ORDER BY COALESCE(two.SubmittedAt, two.CreatedAt) DESC, twi.SortOrder, twi.Id
             """;
 
         int total = await db.ExecuteScalarAsync<int>(countSql, new { UserId = userId });
@@ -134,6 +134,7 @@ public sealed class TravelWriteOffRequestReadService(IDbConnection db) : ITravel
             (string)x.two.ApprovalStatus,
             (string?)x.two.SubmittedBy,
             (DateTime)x.two.CreatedAt,
+            (DateTime?)x.two.SubmittedAt,
             (DateTime?)x.two.ReviewedAt,
             (string?)x.two.ReviewNote,
             [.. x.items],

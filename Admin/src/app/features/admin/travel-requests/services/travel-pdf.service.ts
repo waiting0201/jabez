@@ -198,7 +198,7 @@ export class TravelPdfService {
       const lastPaid = r.installments?.filter(i => i.paidAt).slice(-1)[0];
       const cashierPaidAt = lastPaid?.paidAt;
       const cashierSignatureUrl = lastPaid?.paidBySignatureUrl;
-      const submitDate = r.createdAt ? fmtDT(r.createdAt) : '';
+      const submitDate = r.submittedAt ? fmtDT(r.submittedAt) : '';
       const signBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, submitDate, '申請者', cashierPaidAt, cashierSignatureUrl, designatedStepOrdersOf(r.designatedReviewers));
       const sigMap = await this.pdfCore.loadSignatureImages(signBlocks);
       this.pdfCore.drawSignatureBlock(doc, mx, pw, cw, y, signBlocks, sigMap);

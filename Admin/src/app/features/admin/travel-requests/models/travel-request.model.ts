@@ -65,6 +65,7 @@ export interface TravelRequest {
   designatedReviewers?: DesignatedReviewer[];
   items: TravelRequestItem[];
   createdAt: Date;
+  submittedAt: Date | null;   // 送簽日期（申請日期）；草稿為 null
   reviewedAt?: Date;
   reviewNote?: string;
   /** 是否已結案（沖銷完成） */

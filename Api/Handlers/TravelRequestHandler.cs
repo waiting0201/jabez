@@ -515,6 +515,9 @@ public sealed class TravelRequestHandler(
             item.RequestNo = await RequestNoGenerator.NextAsync(
                 db.TravelRequests.Select(x => x.RequestNo), isHolidayTravel ? "HTR-" : "TR-", Clock.Now);
 
+        // 送簽日期只在首次送簽寫入：退回（returned）重送不改，與單號規則一致。
+        item.SubmittedAt ??= Clock.Now;
+
         // 送出前確認有明細項目（假日執行活動不需明細）
         if (!isHolidayTravel)
         {

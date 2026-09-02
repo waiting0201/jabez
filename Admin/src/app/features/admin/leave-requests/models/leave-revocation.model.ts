@@ -32,6 +32,7 @@ export interface LeaveRevocation {
   dates?: LeaveRevocationDate[];
   designatedReviewers?: DesignatedReviewer[];
   createdAt: string;
+  submittedAt: string | null;   // 送簽日期（申請日期）；草稿為 null
   reviewedAt?: string;
   reviewNote?: string;
   // 原請假單資訊

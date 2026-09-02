@@ -69,6 +69,7 @@ export interface TravelPaymentRequest {
   designatedReviewers?: DesignatedReviewer[];
   items: TravelPaymentRequestItem[];
   createdAt: Date;
+  submittedAt: Date | null;   // 送簽日期（申請日期）；草稿為 null
   reviewedAt?: Date;
   reviewNote?: string;
   // 分期撥款（共用 InstallmentDto / PaymentInstallmentStatus 定義於 approval-tasks model）

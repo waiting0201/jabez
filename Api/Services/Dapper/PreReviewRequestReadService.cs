@@ -11,7 +11,7 @@ public sealed class PreReviewRequestReadService(IDbConnection db) : IPreReviewRe
     private const string BaseSql = """
         SELECT prv.Id, prv.RequestNo, prv.Type, prv.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                prv.TotalAmount, prv.TaxAmount, prv.ApprovalStatus,
-               sub.Name AS SubmittedBy, prv.CreatedAt,
+               sub.Name AS SubmittedBy, prv.CreatedAt, prv.SubmittedAt,
                prv.ReviewedAt, prv.ReviewNote, prv.Reason,
                prv.VendorId, ven.Name AS VendorName, ven.TaxId AS VendorTaxId,
                pri.Id AS ItemId, pri.FileName, pri.ItemCategory, pri.Amount AS ItemAmount, pri.ItemName, pri.Description AS ItemDescription, pri.Note AS ItemNote, pri.FileUrl AS ItemFileUrl, pri.ItemDate
@@ -26,7 +26,7 @@ public sealed class PreReviewRequestReadService(IDbConnection db) : IPreReviewRe
 
     public async Task<IEnumerable<PreReviewRequestDto>> GetAllAsync()
     {
-        const string sql = BaseSql + " ORDER BY prv.CreatedAt DESC, pri.Id";
+        const string sql = BaseSql + " ORDER BY COALESCE(prv.SubmittedAt, prv.CreatedAt) DESC, pri.Id";
         var rows = await db.QueryAsync<dynamic>(sql);
         return GroupToPreReviewRequests(rows);
     }
@@ -39,10 +39,10 @@ public sealed class PreReviewRequestReadService(IDbConnection db) : IPreReviewRe
             WITH PagedIds AS (
                 SELECT Id FROM PreReviewRequests
                 {userFilter}
-                ORDER BY CreatedAt DESC
+                ORDER BY COALESCE(SubmittedAt, CreatedAt) DESC
                 OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
             )
-            {BaseSql} WHERE prv.Id IN (SELECT Id FROM PagedIds) ORDER BY prv.CreatedAt DESC, pri.Id
+            {BaseSql} WHERE prv.Id IN (SELECT Id FROM PagedIds) ORDER BY COALESCE(prv.SubmittedAt, prv.CreatedAt) DESC, pri.Id
             """;
         int total = await db.ExecuteScalarAsync<int>(countSql, new { UserId = userId, Skip = (page - 1) * pageSize, Take = pageSize });
         var rows = await db.QueryAsync<dynamic>(sql, new { UserId = userId, Skip = (page - 1) * pageSize, Take = pageSize });
@@ -131,6 +131,7 @@ public sealed class PreReviewRequestReadService(IDbConnection db) : IPreReviewRe
             (string)x.prv.ApprovalStatus,
             (string?)x.prv.SubmittedBy,
             (DateTime)x.prv.CreatedAt,
+            (DateTime?)x.prv.SubmittedAt,
             (DateTime?)x.prv.ReviewedAt,
             (string?)x.prv.ReviewNote,
             (string?)x.prv.Reason,

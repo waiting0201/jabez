@@ -17,6 +17,7 @@ public class PaymentRequest
     public string?   Reason         { get; set; }
     public Guid?     ReviewedById   { get; set; }
     public DateTime  CreatedAt      { get; set; }
+    public DateTime? SubmittedAt    { get; set; }                 // 送簽日期；草稿為 null，送簽當下寫入，退回重送不改
 
     // Navigation
     public Project                                  Project      { get; set; } = null!;

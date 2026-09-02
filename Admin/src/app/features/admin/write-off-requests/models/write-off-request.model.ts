@@ -85,6 +85,7 @@ export interface WriteOffRequest {
   approvalStatus: ApprovalStatus;
   submittedBy?: string;
   createdAt: string;
+  submittedAt: string | null;   // 送簽日期（申請日期）；草稿為 null
   reviewedAt?: string;
   reviewNote?: string;
   items: WriteOffItem[];

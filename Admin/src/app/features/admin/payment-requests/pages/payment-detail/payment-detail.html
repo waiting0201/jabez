@@ -70,7 +70,7 @@
           </div>
           <div class="col-6 col-md-3">
             <div class="text-muted small">申請日期</div>
-            <div class="fw-500">{{ r.createdAt | date:'yyyy-MM-dd' }}</div>
+            <div class="fw-500">{{ r.submittedAt ? (r.submittedAt | date:'yyyy-MM-dd') : '（送簽後產生）' }}</div>
           </div>
           <div class="col-6 col-md-3">
             <div class="text-muted small">總金額</div>

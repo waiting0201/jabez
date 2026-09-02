@@ -558,6 +558,9 @@ public sealed class WriteOffRequestHandler(
             wo.RequestNo = await RequestNoGenerator.NextAsync(
                 db.WriteOffRecords.Select(x => x.RequestNo), "WO-", Clock.Now);
 
+        // 送簽日期只在首次送簽寫入：退回（returned）重送不改，與單號規則一致。
+        wo.SubmittedAt ??= Clock.Now;
+
         // 送簽當下重新確認來源預支單仍可沖銷（避免對追加簽核中、總額變動中的預支單沖銷）
         await EnsureAdvanceWriteOffableAsync(wo.AdvanceRequestId);
 
