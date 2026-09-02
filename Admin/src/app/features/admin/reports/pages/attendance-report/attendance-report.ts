@@ -104,6 +104,9 @@ export class AttendanceReport implements OnInit {
   totalPages = signal(1);
   private pageSize = 20;
 
+  /** 桌機版頁碼列表（-1 = 省略號） */
+  pageNumbers = computed(() => buildPageNumbers(this.currentPage(), this.totalPages()));
+
   /** 地圖 Modal */
   mapModal = signal<{label: string; lat: number; lng: number} | null>(null);
   mapIframeUrl = computed(() => {
@@ -196,6 +199,8 @@ export class AttendanceReport implements OnInit {
   }
 
   goToPage(page: number) {
+    // 分頁鈕以 .disabled class 呈現（僅樣式，不會擋 click），故在此夾住邊界
+    if (page < 1 || page > this.totalPages() || page === this.currentPage()) return;
     this.currentPage.set(page);
     this.fetchData();
   }
@@ -432,4 +437,18 @@ export class AttendanceReport implements OnInit {
       },
     });
   }
+}
+
+function buildPageNumbers(current: number, total: number): number[] {
+  if (total <= 9) return Array.from({length: total}, (_, i) => i + 1);
+  const pages: number[] = [];
+  let prev = 0;
+  for (let i = 1; i <= total; i++) {
+    if (i === 1 || i === total || (i >= current - 2 && i <= current + 2)) {
+      if (prev && i - prev > 1) pages.push(-1);
+      pages.push(i);
+      prev = i;
+    }
+  }
+  return pages;
 }
