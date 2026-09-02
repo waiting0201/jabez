@@ -108,9 +108,26 @@
 ### RWD 注意事項
 
 - 所有 `col` **必須**包含 `col-12` 基礎（mobile-first 全寬）
-- 明細表格外層 **必須**包 `<div class="table-responsive">`，確保手機可橫向捲動
+- 表格外層 **必須**包 `<div class="table-responsive">`（`overflow-x: auto`），**且 `<table>` 必須另給 `min-w-[…]`**。
+  只包 wrapper 不會捲動 —— `.table` 本身是 `width: 100%`，永遠塞得進容器，`overflow-x` 從不觸發，欄位只會被壓扁
 - 詳情頁頁頭使用 `flex flex-wrap`，避免按鈕擠成一團
 - 同一列多個按鈕需加 `flex-wrap gap-2` 讓窄螢幕自動換行
+- 篩選列控制項在手機給 `w-full sm:w-auto`（或 `flex-1 sm:flex-none`），避免 inline `style="width:auto"` 硬擠成一團
+- 分頁列一律用標準 pattern：外層 `flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between`，
+  手機 `flex sm:hidden` 的 `‹ N / M ›` 簡化 pager + 桌機 `hidden sm:flex pagination` 完整頁碼列。
+  頁碼列表走各清單頁檔案內的 `buildPageNumbers(current, total)`（`-1` = 省略號）。
+  **注意 `page-link` 的 `.disabled` 只是樣式、不會擋 click**，換頁方法必須自行夾住邊界
+
+### 欄位多的清單：兩種選擇
+
+| 方式 | 寫法 | 適用 |
+|---|---|---|
+| A. 逐欄隱藏 | `<th>` / `<td>` 掛 `hidden md:table-cell` / `hidden lg:table-cell` / `hidden xl:table-cell` | 次要欄位在手機可以捨棄（user / vendor / payment 等清單） |
+| B. 橫向捲動 | `<table class="table table-hover table-sticky-first mb-0 min-w-[…]">` | 每一欄手機也都要看得到（出缺勤紀錄） |
+
+`.table-sticky-first`（定義於 [tailwind.css](../Admin/src/tailwind.css) `@layer components` 的 Tables 區塊）把**第一欄釘在左側**，
+橫向捲動到右半邊時仍看得出這列是誰。內部切 `border-collapse: separate`（collapse 下 sticky 儲存格邊框不會繪製），
+並補上 sticky 儲存格的 hover 底色（不透明背景會蓋掉 `.table-hover` 的整列變色）。
 
 | 頁面類型 | RWD 寬度 | 範例 |
 |---|---|---|

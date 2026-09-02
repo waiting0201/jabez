@@ -817,6 +817,24 @@
     &.table-hover tbody tr:hover { background: var(--bg-hover); }
   }
 
+  /* 橫向捲動表格：釘住第一欄，滑到右側時仍看得到該列的識別欄位。
+     搭配 <table class="table table-sticky-first min-w-[…]"> 使用，外層仍需 .table-responsive */
+  .table.table-sticky-first {
+    border-collapse: separate;   /* collapse 下 sticky 儲存格的邊框不會繪製 */
+    border-spacing: 0;
+
+    th:first-child, td:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      background: var(--bg-surface);
+      box-shadow: 1px 0 0 var(--border);   /* 取代被 sticky 吃掉的右邊界 */
+    }
+    thead th:first-child { z-index: 2; background: var(--bg-elevated); }
+    /* sticky 儲存格是不透明的，hover 底色不會透過來，需另外補 */
+    &.table-hover tbody tr:hover td:first-child { background: var(--bg-hover); }
+  }
+
   thead.table-light th, tr.table-light th, tr.table-light td,
   .table thead.table-light th {
     background: var(--bg-elevated);

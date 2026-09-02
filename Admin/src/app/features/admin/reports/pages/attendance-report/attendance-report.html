@@ -19,7 +19,7 @@
       <!-- Toolbar: 篩選列 -->
       <div class="px-4 py-3 border-b">
         <div class="flex flex-wrap items-center gap-2">
-          <select class="form-select" style="width: auto; min-width: 160px"
+          <select class="form-select w-full sm:w-auto sm:min-w-[160px]"
                   [ngModel]="selectedEmployeeId()" (ngModelChange)="selectedEmployeeId.set($event)">
             <option value="">全部員工</option>
             @for (emp of employees(); track emp.id) {
@@ -38,30 +38,32 @@
                     (click)="filterMode.set('month')">月</button>
           </div>
           @if (filterMode() === 'day') {
-            <input type="date" class="form-control" style="width: auto; min-width: 150px"
+            <input type="date" class="form-control w-full sm:w-auto sm:min-w-[150px]"
                    [ngModel]="selectedDate()" (ngModelChange)="selectedDate.set($event)" />
           } @else if (filterMode() === 'week') {
-            <button type="button" class="btn btn-outline px-2" title="上一週" (click)="shiftWeek(-7)">‹</button>
-            <input type="date" class="form-control" style="width: auto; min-width: 150px"
-                   [ngModel]="selectedWeekDate()" (ngModelChange)="selectedWeekDate.set($event)" />
-            <button type="button" class="btn btn-outline px-2" title="下一週" (click)="shiftWeek(7)">›</button>
-            <button type="button" class="btn btn-outline whitespace-nowrap" title="回到本週" (click)="resetToThisWeek()">本週</button>
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+              <button type="button" class="btn btn-outline px-2" title="上一週" (click)="shiftWeek(-7)">‹</button>
+              <input type="date" class="form-control flex-1 sm:w-auto sm:flex-none sm:min-w-[150px]"
+                     [ngModel]="selectedWeekDate()" (ngModelChange)="selectedWeekDate.set($event)" />
+              <button type="button" class="btn btn-outline px-2" title="下一週" (click)="shiftWeek(7)">›</button>
+              <button type="button" class="btn btn-outline whitespace-nowrap" title="回到本週" (click)="resetToThisWeek()">本週</button>
+            </div>
           } @else {
             <!-- 不提供「全部年份 / 全部月份」：合併請假虛擬列需逐日展開，區間必須有界 -->
-            <select class="form-select" style="width: auto; min-width: 120px"
+            <select class="form-select flex-1 sm:w-auto sm:flex-none sm:min-w-[120px]"
                     [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set($event)">
               @for (y of years(); track y) {
                 <option [value]="y">{{ y }}</option>
               }
             </select>
-            <select class="form-select" style="width: auto; min-width: 120px"
+            <select class="form-select flex-1 sm:w-auto sm:flex-none sm:min-w-[120px]"
                     [ngModel]="selectedMonth()" (ngModelChange)="selectedMonth.set($event)">
               @for (m of months; track m) {
                 <option [value]="m">{{ m }}月</option>
               }
             </select>
           }
-          <button class="btn btn-primary" (click)="search()">篩選</button>
+          <button class="btn btn-primary w-full sm:w-auto" (click)="search()">篩選</button>
         </div>
         @if (filterMode() === 'week' && weekRange(); as r) {
           <div class="text-xs text-muted mt-2">第 {{ r.weekNumber }} 週（{{ r.dateFrom }} 一 ~ {{ r.dateTo }} 日）</div>
@@ -70,17 +72,17 @@
 
       <!-- Table -->
       <div class="table-responsive">
-        <table class="table table-hover mb-0">
+        <table class="table table-hover table-sticky-first mb-0 min-w-[1040px]">
           <thead class="table-light">
             <tr>
               <th>員工姓名</th>
               <th class="text-center">日期</th>
-              <th class="text-center hidden md:table-cell">請假</th>
-              <th class="text-center hidden md:table-cell">當日時數</th>
+              <th class="text-center">請假</th>
+              <th class="text-center">當日時數</th>
               <th class="text-center">上班時間</th>
               <th class="text-center">下班時間</th>
-              <th class="text-center hidden lg:table-cell">加班開始</th>
-              <th class="text-center hidden lg:table-cell">加班結束</th>
+              <th class="text-center">加班開始</th>
+              <th class="text-center">加班結束</th>
               <th class="text-right">操作</th>
             </tr>
           </thead>
@@ -95,14 +97,14 @@
                           title="打卡時勾選為出差">出差</span>
                   }
                 </td>
-                <td class="text-center hidden md:table-cell">
+                <td class="text-center">
                   {{ row.leaveType }}
                   @if (row.isLeaveOnly) {
                     <span class="badge bg-primary-subtle text-primary ms-1"
                           title="當日有已核准請假，且無任何打卡紀錄">請假</span>
                   }
                 </td>
-                <td class="text-center text-muted small hidden md:table-cell" [title]="row.leaveTime">
+                <td class="text-center text-muted small" [title]="row.leaveTime">
                   @if (row.leaveHours) { {{ row.leaveHours }} 小時 }
                 </td>
                 <td class="text-center">
@@ -129,7 +131,7 @@
                     </button>
                   }
                 </td>
-                <td class="text-center hidden lg:table-cell">
+                <td class="text-center">
                   {{ row.overtimeStartTime }}
                   @if (row.overtimeStartLatitude != null && row.overtimeStartLongitude != null) {
                     <button class="btn btn-sm btn-ghost-primary inline-flex items-center p-0 ms-1" title="查看打卡位置" (click)="openMap('加班開始', row.overtimeStartLatitude!, row.overtimeStartLongitude!)">
@@ -137,7 +139,7 @@
                     </button>
                   }
                 </td>
-                <td class="text-center hidden lg:table-cell">
+                <td class="text-center">
                   {{ row.overtimeEndTime }}
                   @if (row.overtimeEndLatitude != null && row.overtimeEndLongitude != null) {
                     <button class="btn btn-sm btn-ghost-primary inline-flex items-center p-0 ms-1" title="查看打卡位置" (click)="openMap('加班結束', row.overtimeEndLatitude!, row.overtimeEndLongitude!)">
@@ -173,12 +175,30 @@
 
       <!-- Pagination -->
       @if (totalPages() > 1) {
-        <div class="flex items-center justify-between px-4 py-3 border-t">
-          <span class="text-muted small">共 {{ totalCount() }} 筆，第 {{ currentPage() }} / {{ totalPages() }} 頁</span>
-          <div class="flex gap-1">
-            <button class="btn btn-sm btn-outline" [disabled]="currentPage() <= 1" (click)="goToPage(currentPage() - 1)">上一頁</button>
-            <button class="btn btn-sm btn-outline" [disabled]="currentPage() >= totalPages()" (click)="goToPage(currentPage() + 1)">下一頁</button>
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t">
+          <span class="text-muted small text-center sm:text-left">共 {{ totalCount() }} 筆，第 {{ currentPage() }} / {{ totalPages() }} 頁</span>
+          <div class="flex sm:hidden items-center justify-center gap-1">
+            <button class="page-link rounded" [class.disabled]="currentPage() === 1" (click)="goToPage(currentPage() - 1)">‹</button>
+            <span class="px-2 text-sm">{{ currentPage() }} / {{ totalPages() }}</span>
+            <button class="page-link rounded" [class.disabled]="currentPage() === totalPages()" (click)="goToPage(currentPage() + 1)">›</button>
           </div>
+          <ul class="hidden sm:flex pagination mb-0">
+            <li class="page-item" [class.disabled]="currentPage() === 1">
+              <button class="page-link" (click)="goToPage(currentPage() - 1)">‹</button>
+            </li>
+            @for (p of pageNumbers(); track p) {
+              @if (p === -1) {
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+              } @else {
+                <li class="page-item" [class.active]="p === currentPage()">
+                  <button class="page-link" (click)="goToPage(p)">{{ p }}</button>
+                </li>
+              }
+            }
+            <li class="page-item" [class.disabled]="currentPage() === totalPages()">
+              <button class="page-link" (click)="goToPage(currentPage() + 1)">›</button>
+            </li>
+          </ul>
         </div>
       }
 
