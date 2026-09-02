@@ -8,11 +8,12 @@ import {of} from 'rxjs';
 import {UserService} from '../../services/user.service';
 import {RoleService} from '../../../roles/services/role.service';
 import {DepartmentService} from '../../../departments/services/department.service';
-import {User} from '../../models/user.model';
+import {User, UserStatus} from '../../models/user.model';
 import {Role} from '../../../roles/models/role.model';
 import {Department} from '../../../departments/models/department.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
 import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
+import {AuthService} from '../../../../../core/auth/services/auth.service';
 
 @Component({
   selector: 'app-user-list',
@@ -23,6 +24,10 @@ export class UserList {
   private userService = inject(UserService);
   private roleService = inject(RoleService);
   private deptService = inject(DepartmentService);
+  private authService = inject(AuthService);
+
+  /** 勞退自提率屬 payroll:read 欄位級權限，無權者不顯示勞退篩選（後端亦回 403） */
+  readonly canSeeSalary = this.authService.hasPermission('payroll:read');
 
   private roles = toSignal(
     this.roleService.getAll().pipe(catchError(() => of([] as Role[]))),
@@ -39,6 +44,8 @@ export class UserList {
   searchInput = '';
   searchTerm = signal('');
   departmentId = signal<number | null>(null);
+  status = signal<UserStatus | null>(null);
+  hasLaborPension = signal<boolean | null>(null);
   private refresh = signal(0);
 
   private result = toSignal(
@@ -46,10 +53,13 @@ export class UserList {
       page: this.page(),
       search: this.searchTerm(),
       departmentId: this.departmentId(),
+      status: this.status(),
+      hasLaborPension: this.hasLaborPension(),
       refresh: this.refresh(),
     }))).pipe(
-      switchMap(({ page, search, departmentId }) =>
-        this.userService.getPaged(page, this.PAGE_SIZE, search || undefined, departmentId ?? undefined))
+      switchMap(({ page, search, departmentId, status, hasLaborPension }) =>
+        this.userService.getPaged(page, this.PAGE_SIZE, search || undefined, departmentId ?? undefined,
+                                  status ?? undefined, hasLaborPension ?? undefined))
     ),
     {initialValue: {items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 1} as PagedResult<User>}
   );
@@ -60,7 +70,9 @@ export class UserList {
   pageNumbers = computed(() => buildPageNumbers(this.page(), this.totalPages()));
 
   /** 是否處於篩選狀態（供無資料時的文案切換） */
-  isFiltered = computed(() => !!this.searchTerm() || this.departmentId() !== null);
+  isFiltered = computed(() =>
+    !!this.searchTerm() || this.departmentId() !== null
+    || this.status() !== null || this.hasLaborPension() !== null);
 
   doSearch() {
     this.searchTerm.set(this.searchInput.trim());
@@ -72,10 +84,22 @@ export class UserList {
     this.page.set(1);
   }
 
+  onStatusChange(value: string) {
+    this.status.set(value ? value as UserStatus : null);
+    this.page.set(1);
+  }
+
+  onLaborPensionChange(value: string) {
+    this.hasLaborPension.set(value ? value === 'true' : null);
+    this.page.set(1);
+  }
+
   resetFilter() {
     this.searchInput = '';
     this.searchTerm.set('');
     this.departmentId.set(null);
+    this.status.set(null);
+    this.hasLaborPension.set(null);
     this.page.set(1);
   }
 

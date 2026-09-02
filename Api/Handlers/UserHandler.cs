@@ -46,7 +46,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
 
     // GET /api/users — Dapper 讀取（含 JOIN）
     // 欄位級權限：無 payroll:read 者的薪資欄位一律抹為 null（SQL 不動，抹除在 Handler）
-    // 篩選：?search= 姓名模糊比對、?departmentId= 部門（與分頁參數正交）
+    // 篩選：?search= 姓名模糊比對、?departmentId= 部門、?status= 在職狀態、?hasLaborPension= 勞退自提（皆與分頁參數正交）
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
         var canSeeSalary = PayrollFieldAccess.CanSeeSalary(req.HttpContext.User);
@@ -54,19 +54,30 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         var search = req.Query["search"].ToString();
         int? departmentId = int.TryParse(req.Query["departmentId"], out var deptId) ? deptId : null;
 
+        // 在職狀態：白名單正規化，非法值一律忽略
+        var statusRaw = req.Query["status"].ToString();
+        var status = statusRaw is "active" or "inactive" ? statusRaw : null;
+
+        // 勞退自提：僅接受 true / false，其餘忽略
+        bool? hasLaborPension = bool.TryParse(req.Query["hasLaborPension"], out var hp) ? hp : null;
+
+        // 勞退自提率為 payroll:read 欄位級權限保護欄，能以此篩選＝能反推他人自提率
+        if (hasLaborPension.HasValue && !canSeeSalary)
+            throw AppException.Forbidden("勞退自提篩選需要薪資檢視權限（payroll:read）。");
+
         // 有分頁參數 → 回傳 PagedResult；無分頁參數 → 回傳平面陣列（供下拉選單用）
         if (req.Query.ContainsKey("page") || req.Query.ContainsKey("pageSize"))
         {
             int page     = int.TryParse(req.Query["page"],     out var p)  ? Math.Max(1, p)         : 1;
             int pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, 100) : 20;
-            var result = await reader.GetPagedAsync(page, pageSize, search, departmentId);
+            var result = await reader.GetPagedAsync(page, pageSize, search, departmentId, status, hasLaborPension);
             // Items 為 IEnumerable，Select 需 ToList() 具體化，避免延遲到序列化才求值
             if (!canSeeSalary)
                 result = result with { Items = result.Items.Select(PayrollFieldAccess.Mask).ToList() };
             return new OkObjectResult(ApiResponse.Ok(result));
         }
 
-        var all = await reader.GetAllAsync(search, departmentId);
+        var all = await reader.GetAllAsync(search, departmentId, status, hasLaborPension);
         if (!canSeeSalary)
             all = all.Select(PayrollFieldAccess.Mask).ToList();
         return new OkObjectResult(ApiResponse.Ok(all));

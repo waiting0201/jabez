@@ -1,7 +1,7 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
-import {User, UserLookup} from '../models/user.model';
+import {User, UserLookup, UserStatus} from '../models/user.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {environment} from '@/environments/environment';
 
@@ -34,10 +34,14 @@ export class UserService {
     return this.http.get<UserLookup[]>(`${environment.apiUrl}/users/lookup`);
   }
 
-  getPaged(page: number, pageSize: number, search?: string, departmentId?: number): Observable<PagedResult<User>> {
-    const params: Record<string, string | number> = {page, pageSize};
+  getPaged(page: number, pageSize: number, search?: string, departmentId?: number,
+           status?: UserStatus, hasLaborPension?: boolean): Observable<PagedResult<User>> {
+    const params: Record<string, string | number | boolean> = {page, pageSize};
     if (search) params['search'] = search;
     if (departmentId) params['departmentId'] = departmentId;
+    if (status) params['status'] = status;
+    // false 也是有效篩選（未自提），故不可用 truthy 判斷
+    if (hasLaborPension !== undefined) params['hasLaborPension'] = hasLaborPension;
     return this.http.get<PagedResult<User>>(`${environment.apiUrl}/users`, {params});
   }
 
