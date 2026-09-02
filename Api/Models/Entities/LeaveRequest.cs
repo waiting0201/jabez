@@ -25,6 +25,7 @@ public class LeaveRequest
     public bool?    ContinueInsurance { get; set; }
     public Guid?    AgentUserId    { get; set; }  // 職務代理人（記錄 + 通知，不參與簽核）
     public DateTime CreatedAt      { get; set; }
+    public DateTime? SubmittedAt   { get; set; }                  // 送簽日期；草稿為 null，送簽當下寫入，退回重送不改
 
     // Navigation
     public User?         Employee           { get; set; }

@@ -83,6 +83,7 @@ export interface PaymentRequest {
   vendorName?: string;
   vendorTaxId?: string;
   createdAt: Date;
+  submittedAt: Date | null;   // 送簽日期（申請日期）；草稿為 null
   // 分期撥款（共用 InstallmentDto / PaymentInstallmentStatus 定義於 approval-tasks model）
   installments?: import('../../approval-tasks/models/approval-task.model').InstallmentDto[];
   paymentStatus?: import('../../approval-tasks/models/approval-task.model').PaymentInstallmentStatus;

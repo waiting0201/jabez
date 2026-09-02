@@ -227,7 +227,7 @@ export class WriteOffPdfService {
       doc.text('報銷時請附活動行程表及照片，並附上相關發票正本。 )', mx, y);
 
       y += 8;
-      const submitDate = r.createdAt ? fmtDT(r.createdAt) : '';
+      const submitDate = r.submittedAt ? fmtDT(r.submittedAt) : '';
       const signBlocks = this._buildSignBlocks(flow, approvalRecords, submittedBySignatureUrl, submitDate, '申請者', refundedAt, refundedBySignatureUrl, designatedStepOrdersOf(r.designatedReviewers));
       const sigMap = await this.pdfCore.loadSignatureImages(signBlocks);
       this.pdfCore.drawSignatureBlock(doc, mx, pw, cw, y, signBlocks, sigMap);

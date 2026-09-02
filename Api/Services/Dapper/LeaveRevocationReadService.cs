@@ -9,7 +9,7 @@ public sealed class LeaveRevocationReadService(IDbConnection db) : ILeaveRevocat
 {
     private const string BaseSql = """
         SELECT rv.Id, rv.LeaveRequestId, u.Name AS EmployeeName,
-               rv.Reason, rv.RevokedHours, rv.ApprovalStatus, rv.CreatedAt,
+               rv.Reason, rv.RevokedHours, rv.ApprovalStatus, rv.CreatedAt, rv.SubmittedAt,
                rv.ReviewedAt, rv.ReviewNote, rv.ApprovalItemId, rv.CurrentStepOrder, rv.ReviewedById,
                lr.LeaveType, lr.StartDate AS LeaveStartDate, lr.EndDate AS LeaveEndDate,
                lr.Hours AS LeaveHours, lr.OriginalHours AS LeaveOriginalHours,
@@ -24,7 +24,7 @@ public sealed class LeaveRevocationReadService(IDbConnection db) : ILeaveRevocat
         var countSql = "SELECT COUNT(*) FROM LeaveRevocations" + (userId.HasValue ? " WHERE EmployeeId = @UserId" : "");
         var sql = BaseSql +
             (userId.HasValue ? " WHERE rv.EmployeeId = @UserId" : "") +
-            " ORDER BY rv.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
+            " ORDER BY COALESCE(rv.SubmittedAt, rv.CreatedAt) DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
 
         int total = await db.ExecuteScalarAsync<int>(countSql, new { UserId = userId });
         var rows = await db.QueryAsync<dynamic>(sql, new { UserId = userId, Skip = (page - 1) * pageSize, Take = pageSize });
@@ -104,6 +104,7 @@ public sealed class LeaveRevocationReadService(IDbConnection db) : ILeaveRevocat
         (decimal)row.RevokedHours,
         (string)row.ApprovalStatus,
         (DateTime)row.CreatedAt,
+        (DateTime?)row.SubmittedAt,
         (DateTime?)row.ReviewedAt,
         (string?)row.ReviewNote,
         ApprovalItemId:      (int?)row.ApprovalItemId,

@@ -327,7 +327,7 @@ public async Task<HttpResponseData> UpsertAsync(HttpRequestData req, string id, 
 
 `ExceptionMiddleware.cs` 自動捕捉並轉成 `ApiResponse<T>.Fail(message)`；未預期例外回 500 + 通用訊息。
 
-### 4.5 申請單號取號一律在 SubmitAsync（**重要**）
+### 4.5 送簽戳記（單號 + 申請日期）一律在 SubmitAsync（**重要**）
 
 單號格式 `{PREFIX}-yyyyMMdd-NNN`，取號的單一真相是
 [Common/RequestNoGenerator.cs](../Api/Common/RequestNoGenerator.cs)（**不可再各自 inline 複製一份**，
@@ -351,6 +351,38 @@ if (string.IsNullOrEmpty(pr.RequestNo))
    此時父單是 `approved`），沿用父單單號，由守則 1 天然涵蓋。
 
 併發（兩人同秒送簽同類申請）仍可能取到同號，由各表的 `RequestNo` 唯一索引擋下第二筆。
+
+#### 送簽的第二個戳記：`SubmittedAt`（申請日期，2026-09 新增）
+
+「申請日期」的語意是**送出（送簽）那一天**，不是建立草稿那一天。10 張申請父表
+（`PaymentRequests` / `PreReviewRequests` / `LeaveRequests` / `LeaveRevocations` / `TravelRequests` /
+`TravelPaymentRequests` / `OvertimeRequests` / `AdvanceRequests` / `WriteOffRecords` / `TravelWriteOffRecords`）
+各有一個 `DateTime? SubmittedAt`，草稿為 `NULL`，於 `SubmitAsync` 蓋章：
+
+```csharp
+// 緊接在取號之後（沒有單號的類型則接在狀態閘門之後）
+pr.SubmittedAt ??= Clock.Now;
+```
+
+`CreatedAt` **維持原義不動**（草稿建立時間），兩者分工：
+
+| 欄位 | 語意 | 草稿 | 退回重送 |
+|---|---|---|---|
+| `CreatedAt` | 建立草稿的時間 | 有值 | 不變 |
+| `SubmittedAt` | 送簽時間＝**申請日期** | `NULL` | 不變（`??=`） |
+
+守則與取號完全共用：`??=` 即守則 1、位置即守則 2、追加預支批次由守則 1 天然涵蓋。
+**請假 / 加班 / 銷假三種沒有單號**，戳記改放在狀態閘門的下一行，位置語意相同。
+新增申請類型時兩個戳記必須一起做 —— 只做一半會讓同一張單的單號日期與申請日期對不起來
+（這正是 2026-09 補這個欄位的原因：單號已改送簽日取號，申請日期卻還讀 `CreatedAt`）。
+
+讀取端一律以 `SubmittedAt` 為「申請日期」的真相：
+
+- 各 ReadService 清單排序改 `ORDER BY COALESCE(x.SubmittedAt, x.CreatedAt) DESC`
+  （草稿沒有送簽日，用建立時間遞補才不會全部沉底）
+- `ApprovalTaskDto.SubmittedAt` 改吃真正的 `SubmittedAt`（原本一直餵 `CreatedAt`，名實不符）
+- 款項統計報表的日期區間篩選與排序改以 `SubmittedAt`
+  （`PaymentReportReadService.DateAndPaymentStatusClause` 的 `dateCol` 參數；報表只含非草稿故必有值）
 
 ---
 

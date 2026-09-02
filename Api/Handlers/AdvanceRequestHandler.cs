@@ -404,6 +404,9 @@ public sealed class AdvanceRequestHandler(
             ar.RequestNo = await RequestNoGenerator.NextAsync(
                 db.AdvanceRequests.Select(x => x.RequestNo), "ADV-", Clock.Now);
 
+        // 送簽日期只在首次送簽寫入：退回（returned）重送不改，與單號規則一致。
+        ar.SubmittedAt ??= Clock.Now;
+
         var roundNo = ar.CurrentRoundNo;
 
         // 退回重送 / 追加新輪次：清除「本輪」審核記錄，重置指定審核者狀態

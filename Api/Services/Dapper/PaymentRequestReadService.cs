@@ -24,7 +24,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
     private const string BaseSql = """
         SELECT pr.Id, pr.RequestNo, pr.Type, pr.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                pr.TotalAmount, pr.ApprovalStatus,
-               sub.Name AS SubmittedBy, pr.CreatedAt,
+               sub.Name AS SubmittedBy, pr.CreatedAt, pr.SubmittedAt,
                pr.ReviewedAt, pr.ReviewNote, pr.Reason,
                pr.VendorId, ven.Name AS VendorName, ven.TaxId AS VendorTaxId,
                ii.Id AS InvId, ii.FileName, ii.InvoiceNo, ii.Amount AS InvAmount, ii.ItemName AS InvItemName, ii.Note AS InvNote, ii.FileUrl AS InvFileUrl, ii.InvoiceDate AS InvInvoiceDate
@@ -39,7 +39,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 
     public async Task<IEnumerable<PaymentRequestDto>> GetAllAsync()
     {
-        const string sql = BaseSql + " ORDER BY pr.CreatedAt DESC, ii.Id";
+        const string sql = BaseSql + " ORDER BY COALESCE(pr.SubmittedAt, pr.CreatedAt) DESC, ii.Id";
         var rows = await db.QueryAsync<dynamic>(sql);
         return GroupToPaymentRequests(rows);
     }
@@ -52,10 +52,10 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             WITH PagedIds AS (
                 SELECT Id FROM PaymentRequests
                 {userFilter}
-                ORDER BY CreatedAt DESC
+                ORDER BY COALESCE(SubmittedAt, CreatedAt) DESC
                 OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
             )
-            {BaseSql} WHERE pr.Id IN (SELECT Id FROM PagedIds) ORDER BY pr.CreatedAt DESC, ii.Id
+            {BaseSql} WHERE pr.Id IN (SELECT Id FROM PagedIds) ORDER BY COALESCE(pr.SubmittedAt, pr.CreatedAt) DESC, ii.Id
             """;
         int total = await db.ExecuteScalarAsync<int>(countSql, new { UserId = userId, Skip = (page - 1) * pageSize, Take = pageSize });
         var rows = await db.QueryAsync<dynamic>(sql, new { UserId = userId, Skip = (page - 1) * pageSize, Take = pageSize });
@@ -595,7 +595,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         var paymentSql = $"""
             SELECT pr.Id, pr.RequestNo, pr.Type AS PaymentType, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    pr.TotalAmount, pr.ApprovalStatus, pr.ApprovalItemId, pr.CurrentStepOrder,
-                   sub.Name AS SubmittedBy, sub.SignatureUrl AS SubmittedBySignatureUrl, pr.CreatedAt, pr.ReviewedAt, pr.ReviewNote,
+                   sub.Name AS SubmittedBy, sub.SignatureUrl AS SubmittedBySignatureUrl, pr.CreatedAt, pr.SubmittedAt, pr.ReviewedAt, pr.ReviewNote,
                    pr.Reason,
                    pr.VendorId, ven.Name AS VendorName, ven.TaxId AS VendorTaxId,
                    ven.ContactPerson AS VendorContactPerson, ven.Phone AS VendorPhone,
@@ -607,17 +607,17 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             LEFT JOIN Vendors ven     ON pr.VendorId     = ven.Id
             LEFT JOIN InvoiceItems ii ON ii.PaymentRequestId = pr.Id
             {paymentWhere}
-            ORDER BY pr.CreatedAt DESC, ii.Id
+            ORDER BY COALESCE(pr.SubmittedAt, pr.CreatedAt) DESC, ii.Id
             """;
 
         var leaveSql = $"""
             SELECT lr.Id, lr.LeaveType, lr.StartDate, lr.EndDate, lr.Hours, lr.Reason,
                    lr.ApprovalStatus, lr.ApprovalItemId, lr.CurrentStepOrder,
-                   u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, lr.CreatedAt, lr.ReviewedAt, lr.ReviewNote
+                   u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, lr.CreatedAt, lr.SubmittedAt, lr.ReviewedAt, lr.ReviewNote
             FROM LeaveRequests lr
             LEFT JOIN Users u ON lr.EmployeeId = u.Id
             {leaveWhere}
-            ORDER BY lr.CreatedAt DESC
+            ORDER BY COALESCE(lr.SubmittedAt, lr.CreatedAt) DESC
             """;
 
         // 銷假申請：JOIN 原請假單帶出假別 / 原期間 / 原時數（OriginalHours 為 null 表尚未銷過，取 Hours）
@@ -625,14 +625,14 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             SELECT rv.Id, rv.LeaveRequestId, rv.Reason, rv.RevokedHours,
                    rv.ApprovalStatus, rv.ApprovalItemId, rv.CurrentStepOrder,
                    u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl,
-                   rv.CreatedAt, rv.ReviewedAt, rv.ReviewNote,
+                   rv.CreatedAt, rv.SubmittedAt, rv.ReviewedAt, rv.ReviewNote,
                    lr.LeaveType, lr.StartDate AS LeaveStartDate, lr.EndDate AS LeaveEndDate,
                    ISNULL(lr.OriginalHours, lr.Hours) AS LeaveHours, lr.Reason AS LeaveReason
             FROM LeaveRevocations rv
             JOIN LeaveRequests lr ON rv.LeaveRequestId = lr.Id
             LEFT JOIN Users u ON rv.EmployeeId = u.Id
             {leaveRevocationWhere}
-            ORDER BY rv.CreatedAt DESC
+            ORDER BY COALESCE(rv.SubmittedAt, rv.CreatedAt) DESC
             """;
 
         const string leaveRevocationDateSql = """
@@ -648,12 +648,12 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                    tr.EstimatedRefundDate, tr.RefundedAt,
                    tr.IsClosed, tr.ClosedAt, tr.RefundAmount, tr.RefundedAmount,
                    tr.ApprovalStatus, tr.ApprovalItemId, tr.CurrentStepOrder,
-                   u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, tr.CreatedAt, tr.ReviewedAt, tr.ReviewNote
+                   u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, tr.CreatedAt, tr.SubmittedAt, tr.ReviewedAt, tr.ReviewNote
             FROM TravelRequests tr
             LEFT JOIN Users u          ON tr.EmployeeId  = u.Id
             LEFT JOIN Projects proj    ON tr.ProjectId   = proj.Id
             {travelWhere}
-            ORDER BY tr.CreatedAt DESC
+            ORDER BY COALESCE(tr.SubmittedAt, tr.CreatedAt) DESC
             """;
 
         // 假日執行活動申請（IsHolidayTravel = 1），獨立 ApplicationType = "holiday_travel"
@@ -665,23 +665,23 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                    tr.EstimatedRefundDate, tr.RefundedAt,
                    tr.ApprovalStatus, tr.ApprovalItemId, tr.CurrentStepOrder,
                    tr.EmployeeId AS ApplicantId, u.BaseSalary AS ApplicantBaseSalary,
-                   u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, tr.CreatedAt, tr.ReviewedAt, tr.ReviewNote
+                   u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, tr.CreatedAt, tr.SubmittedAt, tr.ReviewedAt, tr.ReviewNote
             FROM TravelRequests tr
             LEFT JOIN Users u          ON tr.EmployeeId  = u.Id
             LEFT JOIN Projects proj    ON tr.ProjectId   = proj.Id
             {holidayTravelWhere}
-            ORDER BY tr.CreatedAt DESC
+            ORDER BY COALESCE(tr.SubmittedAt, tr.CreatedAt) DESC
             """;
 
         var overtimeSql = $"""
             SELECT ot.Id, ot.OvertimeDate, ot.EstimatedHours, ot.Reason,
                    ot.CompensationType, ot.OvertimePayAmount, ot.PayableHours, ot.IsHolidayOvertime,
                    ot.ApprovalStatus, ot.ApprovalItemId, ot.CurrentStepOrder,
-                   u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, ot.CreatedAt, ot.ReviewedAt, ot.ReviewNote
+                   u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, ot.CreatedAt, ot.SubmittedAt, ot.ReviewedAt, ot.ReviewNote
             FROM OvertimeRequests ot
             LEFT JOIN Users u ON ot.EmployeeId = u.Id
             {overtimeWhere}
-            ORDER BY ot.CreatedAt DESC
+            ORDER BY COALESCE(ot.SubmittedAt, ot.CreatedAt) DESC
             """;
 
         var advanceSql = $"""
@@ -690,12 +690,12 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                    adv.ApprovalStatus, adv.ApprovalItemId, adv.CurrentStepOrder, adv.CurrentRoundNo,
                    adv.EstimatedRefundDate, adv.RefundedAt,
                    adv.IsClosed, adv.ClosedAt, adv.RefundAmount, adv.RefundedAmount,
-                   asub.Name AS SubmittedBy, asub.SignatureUrl AS SubmittedBySignatureUrl, adv.CreatedAt, adv.ReviewedAt, adv.ReviewNote
+                   asub.Name AS SubmittedBy, asub.SignatureUrl AS SubmittedBySignatureUrl, adv.CreatedAt, adv.SubmittedAt, adv.ReviewedAt, adv.ReviewNote
             FROM AdvanceRequests adv
             LEFT JOIN Projects proj      ON adv.ProjectId    = proj.Id
             LEFT JOIN Users   asub       ON adv.SubmittedById = asub.Id
             {advanceWhere}
-            ORDER BY adv.CreatedAt DESC
+            ORDER BY COALESCE(adv.SubmittedAt, adv.CreatedAt) DESC
             """;
 
         var writeOffSql = $"""
@@ -703,7 +703,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                    proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    wo.GrandTotal, wo.CashTotal, wo.CheckTotal, wo.Note,
                    wo.ApprovalStatus, wo.ApprovalItemId, wo.CurrentStepOrder,
-                   wsub.Name AS SubmittedBy, wsub.SignatureUrl AS SubmittedBySignatureUrl, wo.CreatedAt, wo.ReviewedAt, wo.ReviewNote,
+                   wsub.Name AS SubmittedBy, wsub.SignatureUrl AS SubmittedBySignatureUrl, wo.CreatedAt, wo.SubmittedAt, wo.ReviewedAt, wo.ReviewNote,
                    wo.SubmittedById,
                    arx.EstimatedRefundDate AS AdvanceEstimatedRefundDate,
                    arx.RefundedAt AS AdvanceRefundedAt,
@@ -727,7 +727,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             LEFT JOIN Users   wsub    ON wo.SubmittedById    = wsub.Id
             LEFT JOIN Users   worefundby ON arx.RefundedByUserId = worefundby.Id
             {writeOffWhere}
-            ORDER BY wo.CreatedAt DESC
+            ORDER BY COALESCE(wo.SubmittedAt, wo.CreatedAt) DESC
             """;
 
         var travelWriteOffSql = $"""
@@ -738,7 +738,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                    two.GrandTotal, two.Note,
                    two.ApprovalStatus, two.ApprovalItemId, two.CurrentStepOrder,
                    trsub.Name AS SubmittedBy, trsub.SignatureUrl AS SubmittedBySignatureUrl,
-                   two.CreatedAt, two.ReviewedAt, two.ReviewNote,
+                   two.CreatedAt, two.SubmittedAt, two.ReviewedAt, two.ReviewNote,
                    trx.EstimatedRefundDate AS TravelEstimatedRefundDate,
                    trx.RefundedAt AS TravelRefundedAt,
                    trx.RefundAmount AS TravelRefundAmount,
@@ -758,19 +758,19 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             LEFT JOIN Users   trsub    ON two.SubmittedById   = trsub.Id
             LEFT JOIN Users   tworefundby ON trx.RefundedByUserId = tworefundby.Id
             {travelWriteOffWhere}
-            ORDER BY two.CreatedAt DESC
+            ORDER BY COALESCE(two.SubmittedAt, two.CreatedAt) DESC
             """;
 
         var travelPaymentSql = $"""
             SELECT tpr.Id, tpr.RequestNo, tpr.Destination, tpr.StartDate, tpr.EndDate,
                    tpr.GrandTotal, tpr.Purpose, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    tpr.ApprovalStatus, tpr.ApprovalItemId, tpr.CurrentStepOrder,
-                   tpru.Name AS SubmittedBy, tpru.SignatureUrl AS SubmittedBySignatureUrl, tpr.CreatedAt, tpr.ReviewedAt, tpr.ReviewNote
+                   tpru.Name AS SubmittedBy, tpru.SignatureUrl AS SubmittedBySignatureUrl, tpr.CreatedAt, tpr.SubmittedAt, tpr.ReviewedAt, tpr.ReviewNote
             FROM TravelPaymentRequests tpr
             LEFT JOIN Users   tpru       ON tpr.EmployeeId   = tpru.Id
             LEFT JOIN Projects proj      ON tpr.ProjectId    = proj.Id
             {travelPaymentWhere}
-            ORDER BY tpr.CreatedAt DESC
+            ORDER BY COALESCE(tpr.SubmittedAt, tpr.CreatedAt) DESC
             """;
 
         // ── 預審申請（pre_review）──────────────────────────────────────────────
@@ -780,7 +780,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                    prv.TotalAmount, prv.TaxAmount, prv.Reason,
                    prv.ApprovalStatus, prv.ApprovalItemId, prv.CurrentStepOrder,
                    sub_prv.Name AS SubmittedBy, sub_prv.SignatureUrl AS SubmittedBySignatureUrl,
-                   prv.CreatedAt, prv.ReviewedAt, prv.ReviewNote,
+                   prv.CreatedAt, prv.SubmittedAt, prv.ReviewedAt, prv.ReviewNote,
                    prv.VendorId, ven.Name AS VendorName, ven.TaxId AS VendorTaxId,
                    ven.ContactPerson AS VendorContactPerson, ven.Phone AS VendorPhone,
                    {VendorBankAccountExpr} AS VendorBankAccount, ven.Address AS VendorAddress
@@ -789,7 +789,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             LEFT JOIN Users   sub_prv  ON prv.SubmittedById = sub_prv.Id
             LEFT JOIN Vendors ven      ON prv.VendorId      = ven.Id
             {preReviewWhere}
-            ORDER BY prv.CreatedAt DESC
+            ORDER BY COALESCE(prv.SubmittedAt, prv.CreatedAt) DESC
             """;
 
         const string preReviewItemsSql = """
@@ -1313,7 +1313,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             "payment_request",
             $"請款申請 {x.pr.RequestNo}（{x.pr.ProjectCode}）",
             (string?)x.pr.SubmittedBy ?? "—",
-            (DateTime)x.pr.CreatedAt,
+            (DateTime?)x.pr.SubmittedAt ?? (DateTime)x.pr.CreatedAt,
             (string)x.pr.ApprovalStatus,
             (int)x.pr.CurrentStepOrder,
             (DateTime?)x.pr.ReviewedAt,
@@ -1349,7 +1349,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             "leave",
             $"請假申請 #{row.Id}（{row.LeaveType}）",
             (string?)row.SubmittedBy ?? "—",
-            (DateTime)row.CreatedAt,
+            (DateTime?)row.SubmittedAt ?? (DateTime)row.CreatedAt,
             (string)row.ApprovalStatus,
             (int)row.CurrentStepOrder,
             (DateTime?)row.ReviewedAt,
@@ -1380,7 +1380,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             "leave_revocation",
             $"銷假申請 #{row.Id}（{LeaveTypeNames.GetZh((string)row.LeaveType)}）",
             (string?)row.SubmittedBy ?? "—",
-            (DateTime)row.CreatedAt,
+            (DateTime?)row.SubmittedAt ?? (DateTime)row.CreatedAt,
             (string)row.ApprovalStatus,
             (int)row.CurrentStepOrder,
             (DateTime?)row.ReviewedAt,
@@ -1409,7 +1409,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             "travel",
             $"出差申請 {row.RequestNo}（{row.Destination}）",
             (string?)row.SubmittedBy ?? "—",
-            (DateTime)row.CreatedAt,
+            (DateTime?)row.SubmittedAt ?? (DateTime)row.CreatedAt,
             (string)row.ApprovalStatus,
             (int)row.CurrentStepOrder,
             (DateTime?)row.ReviewedAt,
@@ -1459,7 +1459,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 "holiday_travel",
                 $"假日執行活動申請 {row.RequestNo}（{row.Destination}）",
                 (string?)row.SubmittedBy ?? "—",
-                (DateTime)row.CreatedAt,
+                (DateTime?)row.SubmittedAt ?? (DateTime)row.CreatedAt,
                 (string)row.ApprovalStatus,
                 (int)row.CurrentStepOrder,
                 (DateTime?)row.ReviewedAt,
@@ -1498,7 +1498,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             "overtime",
             $"加班申請 #{row.Id}（{(decimal)row.EstimatedHours}h）",
             (string?)row.SubmittedBy ?? "—",
-            (DateTime)row.CreatedAt,
+            (DateTime?)row.SubmittedAt ?? (DateTime)row.CreatedAt,
             (string)row.ApprovalStatus,
             (int)row.CurrentStepOrder,
             (DateTime?)row.ReviewedAt,
@@ -1526,7 +1526,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             "advance",
             $"預支申請 #{row.Id}（{row.ProjectCode}）",
             (string?)row.SubmittedBy ?? "—",
-            (DateTime)row.CreatedAt,
+            (DateTime?)row.SubmittedAt ?? (DateTime)row.CreatedAt,
             (string)row.ApprovalStatus,
             (int)row.CurrentStepOrder,
             (DateTime?)row.ReviewedAt,
@@ -1586,7 +1586,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             "write_off",
             $"沖銷申請 #{row.Id}（{row.ProjectCode}）",
             (string?)row.SubmittedBy ?? "—",
-            (DateTime)row.CreatedAt,
+            (DateTime?)row.SubmittedAt ?? (DateTime)row.CreatedAt,
             (string)row.ApprovalStatus,
             (int)row.CurrentStepOrder,
             (DateTime?)row.ReviewedAt,
@@ -1671,7 +1671,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             "travel_write_off",
             $"出差沖銷申請 #{row.Id}（{row.Destination}）",
             (string?)row.SubmittedBy ?? "—",
-            (DateTime)row.CreatedAt,
+            (DateTime?)row.SubmittedAt ?? (DateTime)row.CreatedAt,
             (string)row.ApprovalStatus,
             (int)row.CurrentStepOrder,
             (DateTime?)row.ReviewedAt,
@@ -1712,7 +1712,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             "travel_payment",
             $"出差請款申請 {row.RequestNo}（{row.Destination}）",
             (string?)row.SubmittedBy ?? "—",
-            (DateTime)row.CreatedAt,
+            (DateTime?)row.SubmittedAt ?? (DateTime)row.CreatedAt,
             (string)row.ApprovalStatus,
             (int)row.CurrentStepOrder,
             (DateTime?)row.ReviewedAt,
@@ -1764,7 +1764,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             "pre_review",
             $"預審申請 {row.RequestNo}（{row.ProjectCode}）",
             (string?)row.SubmittedBy ?? "—",
-            (DateTime)row.CreatedAt,
+            (DateTime?)row.SubmittedAt ?? (DateTime)row.CreatedAt,
             (string)row.ApprovalStatus,
             (int)row.CurrentStepOrder,
             (DateTime?)row.ReviewedAt,
@@ -1841,6 +1841,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             (string)x.pr.ApprovalStatus,
             (string?)x.pr.SubmittedBy,
             (DateTime)x.pr.CreatedAt,
+            (DateTime?)x.pr.SubmittedAt,
             (DateTime?)x.pr.ReviewedAt,
             (string?)x.pr.ReviewNote,
             (string?)x.pr.Reason,

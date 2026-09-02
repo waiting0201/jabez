@@ -106,6 +106,7 @@ export interface HolidayTravelRequest {
   approvalStatus: ApprovalStatus;
   designatedReviewers?: DesignatedReviewer[];
   createdAt: Date;
+  submittedAt: Date | null;   // 送簽日期（申請日期）；草稿為 null
   reviewedAt?: Date;
   reviewNote?: string;
   /** 申請總額（由後端計算 SUM(items.totalPrice)）*/

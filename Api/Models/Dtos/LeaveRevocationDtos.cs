@@ -28,6 +28,7 @@ public sealed record LeaveRevocationDto(
     decimal   RevokedHours,
     string    ApprovalStatus,
     DateTime  CreatedAt,
+    DateTime? SubmittedAt,             // 送簽日期（申請日期）；草稿為 null
     DateTime? ReviewedAt,
     string?   ReviewNote,
     int?      ApprovalItemId   = null,

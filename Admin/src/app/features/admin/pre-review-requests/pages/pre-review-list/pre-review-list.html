@@ -24,7 +24,7 @@
               <th>品項數</th>
               <th class="text-right">預算總額</th>
               <th>簽核狀態</th>
-              <th class="hidden lg:table-cell">建立時間</th>
+              <th class="hidden lg:table-cell">申請日期</th>
               <th class="text-right">操作</th>
             </tr>
           </thead>
@@ -51,7 +51,7 @@
                 <td>
                   <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
                 </td>
-                <td class="text-muted small hidden lg:table-cell">{{ r.createdAt | date:'yyyy-MM-dd' }}</td>
+                <td class="text-muted small hidden lg:table-cell">{{ r.submittedAt ? (r.submittedAt | date:'yyyy-MM-dd') : '—' }}</td>
                 <td class="text-right" style="white-space: nowrap">
                   <div class="flex justify-end gap-1">
                     @if (canWrite() && (r.approvalStatus === 'draft' || r.approvalStatus === 'returned')) {

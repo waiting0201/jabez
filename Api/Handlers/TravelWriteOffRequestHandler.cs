@@ -418,6 +418,9 @@ public sealed class TravelWriteOffRequestHandler(
             wo.RequestNo = await RequestNoGenerator.NextAsync(
                 db.TravelWriteOffRecords.Select(x => x.RequestNo), "TWO-", Clock.Now);
 
+        // 送簽日期只在首次送簽寫入：退回（returned）重送不改，與單號規則一致。
+        wo.SubmittedAt ??= Clock.Now;
+
         // 退回重送：清除舊審核記錄，重置指定審核者狀態
         if (wo.ApprovalStatus == "returned")
         {

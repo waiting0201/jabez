@@ -25,7 +25,7 @@ export class LeaveRequestService {
     return this.http.get<LeaveRequest>(`${environment.apiUrl}/leave-requests/${id}`);
   }
 
-  create(data: Omit<LeaveRequest, 'id' | 'createdAt' | 'approvalStatus'>): Observable<LeaveRequest> {
+  create(data: Omit<LeaveRequest, 'id' | 'createdAt' | 'submittedAt' | 'approvalStatus'>): Observable<LeaveRequest> {
     return this.http.post<LeaveRequest>(`${environment.apiUrl}/leave-requests`, data);
   }
 

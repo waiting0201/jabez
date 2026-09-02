@@ -394,6 +394,9 @@ public sealed class TravelPaymentRequestHandler(
             item.RequestNo = await RequestNoGenerator.NextAsync(
                 db.TravelPaymentRequests.Select(x => x.RequestNo), "TPR-", Clock.Now);
 
+        // 送簽日期只在首次送簽寫入：退回（returned）重送不改，與單號規則一致。
+        item.SubmittedAt ??= Clock.Now;
+
         var hasItems = await db.TravelPaymentRequestItems.AnyAsync(i => i.TravelPaymentRequestId == intId);
         if (!hasItems)
             return new BadRequestObjectResult(ApiResponse.Fail("出差請款申請至少需要一筆費用明細項目。"));

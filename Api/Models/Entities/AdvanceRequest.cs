@@ -25,6 +25,7 @@ public class AdvanceRequest
     public Guid?     ReviewedById      { get; set; }
 
     public DateTime  CreatedAt         { get; set; }
+    public DateTime? SubmittedAt       { get; set; }              // 送簽日期；草稿為 null，送簽當下寫入，退回重送不改
 
     // 結案欄位
     public bool      IsClosed          { get; set; }

@@ -101,6 +101,7 @@ export interface OvertimeRequest {
   isHolidayOvertime?: boolean | null;
   designatedReviewers?: DesignatedReviewer[];
   createdAt: Date;
+  submittedAt: Date | null;   // 送簽日期（申請日期）；草稿為 null
   reviewedAt?: Date;
   reviewNote?: string;
 }

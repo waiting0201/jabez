@@ -77,8 +77,8 @@
             <div class="fw-500">{{ a.submittedBy || '—' }}</div>
           </div>
           <div class="col-6 col-md-3">
-            <div class="text-muted small">建立時間</div>
-            <div class="fw-500">{{ a.createdAt | date:'yyyy-MM-dd' }}</div>
+            <div class="text-muted small">申請日期</div>
+            <div class="fw-500">{{ a.submittedAt ? (a.submittedAt | date:'yyyy-MM-dd') : '—' }}</div>
           </div>
         </div>
 
@@ -125,7 +125,7 @@
                 <th style="width:110px">沖銷次數</th>
                 <th>沖銷單號</th>
                 <th>申請人</th>
-                <th>建立時間</th>
+                <th>申請日期</th>
                 <th>簽核狀態</th>
                 <th class="text-right">沖銷金額</th>
                 <th class="text-right">應撥差額</th>
@@ -138,7 +138,7 @@
                   <td class="small fw-500">第 {{ w.writeOffNo }} 次</td>
                   <td class="small font-monospace">{{ w.requestNo || '—' }}</td>
                   <td class="small">{{ w.submittedBy || '—' }}</td>
-                  <td class="small text-muted">{{ w.createdAt | date:'yyyy-MM-dd' }}</td>
+                  <td class="small text-muted">{{ w.submittedAt ? (w.submittedAt | date:'yyyy-MM-dd') : '—' }}</td>
                   <td><span [class]="'badge ' + statusClass[w.approvalStatus]">{{ statusLabel[w.approvalStatus] }}</span></td>
                   <td class="text-right small fw-500">{{ w.grandTotal | number:'1.0-0' }}</td>
                   <td class="text-right small" [class.text-red]="(w.refundDue ?? 0) > 0">
@@ -278,8 +278,8 @@
               <div class="fw-500">{{ w.submittedBy || '—' }}</div>
             </div>
             <div class="col-6 col-md-3">
-              <div class="text-muted small">建立時間</div>
-              <div class="fw-500">{{ w.createdAt | date:'yyyy-MM-dd' }}</div>
+              <div class="text-muted small">申請日期</div>
+              <div class="fw-500">{{ w.submittedAt ? (w.submittedAt | date:'yyyy-MM-dd') : '—' }}</div>
             </div>
           </div>
 

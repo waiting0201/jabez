@@ -24,7 +24,7 @@
               <th class="text-right">期間</th>
               <th class="hidden md:table-cell">原因</th>
               <th>狀態</th>
-              <th class="hidden lg:table-cell">申請時間</th>
+              <th class="hidden lg:table-cell">申請日期</th>
               <th class="text-right">操作</th>
             </tr>
           </thead>
@@ -50,7 +50,7 @@
                           [title]="'原 ' + r.originalHours + ' 小時，已銷 ' + revokedHours(r) + ' 小時'">部分銷假</span>
                   }
                 </td>
-                <td class="text-muted small hidden lg:table-cell">{{ r.createdAt | date:'yyyy-MM-dd' }}</td>
+                <td class="text-muted small hidden lg:table-cell">{{ r.submittedAt ? (r.submittedAt | date:'yyyy-MM-dd') : '—' }}</td>
                 <td class="text-right" style="white-space: nowrap">
                   <div class="flex justify-end gap-1">
                     @if (canWrite() && (r.approvalStatus === 'draft' || r.approvalStatus === 'returned')) {

@@ -12,7 +12,7 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
                ar.ActivityName, ar.ActivityPeriod, ar.AdvanceDate, ar.AdvanceNeededDate,
                ar.CashTotal, ar.CheckTotal, ar.GrandTotal,
                ar.ApprovalStatus, ar.CurrentRoundNo,
-               sub.Name AS SubmittedBy, ar.CreatedAt,
+               sub.Name AS SubmittedBy, ar.CreatedAt, ar.SubmittedAt,
                ar.ReviewedAt, ar.ReviewNote,
                ar.IsClosed, ar.ClosedAt, ar.RefundAmount, ar.RefundedAmount, ar.EstimatedRefundDate, ar.RefundedAt,
                ai.Id AS ItemId, ai.RoundNo AS ItemRoundNo, ai.Category, ai.SeqNo, ai.ItemName,
@@ -34,10 +34,10 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
             WITH PagedIds AS (
                 SELECT Id FROM AdvanceRequests
                 {userFilter}
-                ORDER BY CreatedAt DESC
+                ORDER BY COALESCE(SubmittedAt, CreatedAt) DESC
                 OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
             )
-            {BaseSql} WHERE ar.Id IN (SELECT Id FROM PagedIds) ORDER BY ar.CreatedAt DESC, ai.RoundNo, ai.SortOrder, ai.Id
+            {BaseSql} WHERE ar.Id IN (SELECT Id FROM PagedIds) ORDER BY COALESCE(ar.SubmittedAt, ar.CreatedAt) DESC, ai.RoundNo, ai.SortOrder, ai.Id
             """;
         int total = await db.ExecuteScalarAsync<int>(countSql, new { UserId = userId });
         var rows = await db.QueryAsync<dynamic>(sql, new { UserId = userId, Skip = (page - 1) * pageSize, Take = pageSize });
@@ -215,6 +215,7 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
                 (string)x.ar.ApprovalStatus,
                 (string?)x.ar.SubmittedBy,
                 (DateTime)x.ar.CreatedAt,
+                (DateTime?)x.ar.SubmittedAt,
                 (DateTime?)x.ar.ReviewedAt,
                 (string?)x.ar.ReviewNote,
                 [.. x.items],

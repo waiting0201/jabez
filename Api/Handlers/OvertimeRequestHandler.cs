@@ -234,6 +234,9 @@ public sealed class OvertimeRequestHandler(
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned overtime requests can be submitted.");
 
+        // 送簽日期只在首次送簽寫入：退回（returned）重送不改，與有單號的申請類型規則一致。
+        item.SubmittedAt ??= Clock.Now;
+
         // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
         if (item.ApprovalStatus == "returned")
         {

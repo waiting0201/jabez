@@ -15,7 +15,7 @@ public sealed record PaymentReportDto(
     decimal   TotalAmount,
     string    ApprovalStatus,
     DateTime? PaidAt,
-    DateTime  CreatedAt,
+    DateTime  SubmittedAt,   // 送簽日期（申請日期）；報表只含非草稿，必有值
     List<PaymentReportItemDto> Items);
 
 /// <summary>
@@ -42,7 +42,7 @@ public sealed record PaymentExportRowDto(
     string    ProjectCode,
     string    ProjectName,
     string    ApprovalStatus,
-    DateTime  CreatedAt,
+    DateTime  SubmittedAt,   // 送簽日期（申請日期）；報表只含非草稿，必有值
     DateTime? PaidAt,
     decimal   PaymentTotalAmount,
     string?   ItemCol1,

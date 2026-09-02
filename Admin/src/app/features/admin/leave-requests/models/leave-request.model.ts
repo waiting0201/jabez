@@ -237,6 +237,7 @@ export interface LeaveRequest {
   agentUserId?: string | null;   // 職務代理人（記錄 + 通知，不參與簽核）
   agentName?: string;
   createdAt: string;
+  submittedAt: string | null;   // 送簽日期（申請日期）；草稿為 null
   reviewedAt?: string;
   reviewNote?: string;
 }

@@ -377,7 +377,10 @@ Api/
 │   ├── WorkCalendarHelper.cs          # 公司行事曆共用判定（「有行事曆用 CalendarDay.IsHoliday、沒資料退回六日」的單一真相）：區間版 ComputeWorkingDatesAsync 供 LeaveRequestHandler 算請假日／時數，單日版 IsHolidayAsync 供 AttendanceHandler 判休假日免下班卡
 │   ├── RequestNoGenerator.cs          # 申請單號取號單一真相（{prefix}yyyyMMdd-NNN 當日流水號）：
 │   │                                    **2026-09 起於 SubmitAsync 取號、不再於 CreateAsync**，草稿 RequestNo 為 null（欄位 nullable + filtered unique index）；
-│   │                                    三條守則：只在單號為空時取（退回重送不改號）／放在狀態閘門後、Superadmin 自動核准早退前／追加預支批次沿用父單號
+│   │                                    三條守則：只在單號為空時取（退回重送不改號）／放在狀態閘門後、Superadmin 自動核准早退前／追加預支批次沿用父單號；
+│   │                                    **送簽當下的第二個戳記＝`SubmittedAt`（申請日期，2026-09 新增）**：10 張申請父表各一欄 `DateTime?`，草稿為 null，
+│   │                                    以 `x.SubmittedAt ??= Clock.Now;` 緊接取號寫入（請假 / 加班 / 銷假無單號者接在狀態閘門後），與取號共用同三條守則；
+│   │                                    `CreatedAt` 維持原義（建立草稿時間）不動，全站「申請日期」一律讀 `SubmittedAt`，兩個戳記必須一起做
 │   ├── OvertimePayCalculator.cs       # 勞基法加班費「倍率 / 時薪 / 分段累進」單一真相（純函式）：
 │   │                                    平日 1–2h ×1.34、3h 起 ×1.67（上限 4h）；假日 1–2h ×1.34、3–8h ×1.67、9h 起 ×2.67（上限 12h）；
 │   │                                    時薪＝ROUND(底薪 ÷ 240, 2)；金額只在總額捨入一次（AwayFromZero）；
@@ -426,6 +429,11 @@ dotnet ef database update               # 套用 Migration
 > **create 成功後改走 update**（以「後端已有這張單的 id」判定，不是 `isEdit` 路由旗標）、
 > **表單內按 Enter 不送出**。缺任一項都會讓同一筆申請被建成兩張單，詳見
 > [docs/frontend-design.md §8.4.1 / §8.4.2](docs/frontend-design.md)。
+>
+> **申請日期＝送簽日（2026-09）**：10 張申請父表新增 `SubmittedAt`，草稿為 null（清單顯示「—」、
+> 詳情顯示「（送簽後產生）」），送簽當下與單號同時蓋章、退回重送不改。清單頁欄名一律「申請日期」，
+> 詳情頁 / 簽核頁 / 列印 PDF / 款項統計報表（含**日期區間篩選**）皆改讀 `submittedAt`；
+> `CreatedAt` 保留原義（建立草稿時間），不再用於顯示。
 
 ---
 

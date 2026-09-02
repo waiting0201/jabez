@@ -95,7 +95,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
     /// 用主表 alias + 子表 installments 名稱 + parentFk 組裝日期 / 付款狀態 where 片段字串（不負責加參數）。
     /// </summary>
     /// <param name="parentAlias">主表 alias（如 "pr"、"adv"）</param>
-    /// <param name="dateCol">主表日期欄位（多為 "CreatedAt"）</param>
+    /// <param name="dateCol">主表日期欄位（一律為 "SubmittedAt" 送簽日＝申請日期；報表只含非草稿故必有值）</param>
     /// <param name="installmentsTable">分期撥款子表名（如 "PaymentRequestInstallments"），null 表示無 installments</param>
     /// <param name="installmentsFk">分期撥款子表 FK 欄位（如 "PaymentRequestId"），null 表示無 installments</param>
     private static string DateAndPaymentStatusClause(
@@ -170,7 +170,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                pr.TotalAmount,
                pr.ApprovalStatus,
                {paidAt} AS PaidAt,
-               pr.CreatedAt,
+               pr.SubmittedAt,
                'payment' AS SourceCategory
         FROM PaymentRequests pr
         JOIN Users   u    ON pr.SubmittedById = u.Id
@@ -189,7 +189,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                adv.GrandTotal AS TotalAmount,
                adv.ApprovalStatus,
                {paidAt}       AS PaidAt,
-               adv.CreatedAt,
+               adv.SubmittedAt,
                'advance'      AS SourceCategory
         FROM AdvanceRequests adv
         JOIN Users    u    ON adv.SubmittedById = u.Id
@@ -208,7 +208,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                wo.GrandTotal  AS TotalAmount,
                wo.ApprovalStatus,
                adv.RefundedAt AS PaidAt,
-               wo.CreatedAt,
+               wo.SubmittedAt,
                'writeoff'     AS SourceCategory
         FROM WriteOffRecords wo
         JOIN Users           u    ON wo.SubmittedById = u.Id
@@ -228,7 +228,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                tpr.GrandTotal AS TotalAmount,
                tpr.ApprovalStatus,
                {paidAt}       AS PaidAt,
-               tpr.CreatedAt,
+               tpr.SubmittedAt,
                'travel-payment' AS SourceCategory
         FROM TravelPaymentRequests tpr
         JOIN Users         u    ON tpr.EmployeeId = u.Id
@@ -247,7 +247,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                tr.GrandTotal  AS TotalAmount,
                tr.ApprovalStatus,
                {paidAt}       AS PaidAt,
-               tr.CreatedAt,
+               tr.SubmittedAt,
                'travel'       AS SourceCategory
         FROM TravelRequests tr
         JOIN Users         u    ON tr.EmployeeId = u.Id
@@ -266,7 +266,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                two.GrandTotal AS TotalAmount,
                two.ApprovalStatus,
                tr.RefundedAt  AS PaidAt,
-               two.CreatedAt,
+               two.SubmittedAt,
                'travel-writeoff' AS SourceCategory
         FROM TravelWriteOffRecords two
         JOIN Users          u    ON two.SubmittedById = u.Id
@@ -287,7 +287,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                proj.Code      AS ProjectCode,
                proj.Name      AS ProjectName,
                pr.ApprovalStatus,
-               pr.CreatedAt,
+               pr.SubmittedAt,
                {paidAt}       AS PaidAt,
                pr.TotalAmount AS PaymentTotalAmount,
                ii.InvoiceNo   AS ItemCol1,
@@ -310,7 +310,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                proj.Code      AS ProjectCode,
                proj.Name      AS ProjectName,
                adv.ApprovalStatus,
-               adv.CreatedAt,
+               adv.SubmittedAt,
                {paidAt}       AS PaidAt,
                adv.GrandTotal AS PaymentTotalAmount,
                item.Category  AS ItemCol1,
@@ -333,7 +333,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                proj.Code      AS ProjectCode,
                proj.Name      AS ProjectName,
                wo.ApprovalStatus,
-               wo.CreatedAt,
+               wo.SubmittedAt,
                adv.RefundedAt AS PaidAt,
                wo.GrandTotal  AS PaymentTotalAmount,
                item.InvoiceNo AS ItemCol1,
@@ -357,7 +357,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                ISNULL(proj.Code, '') AS ProjectCode,
                ISNULL(proj.Name, '') AS ProjectName,
                tpr.ApprovalStatus,
-               tpr.CreatedAt,
+               tpr.SubmittedAt,
                {paidAt}         AS PaidAt,
                tpr.GrandTotal   AS PaymentTotalAmount,
                item.InvoiceNo   AS ItemCol1,
@@ -380,7 +380,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                ISNULL(proj.Code, '') AS ProjectCode,
                ISNULL(proj.Name, '') AS ProjectName,
                tr.ApprovalStatus,
-               tr.CreatedAt,
+               tr.SubmittedAt,
                {paidAt}         AS PaidAt,
                tr.GrandTotal    AS PaymentTotalAmount,
                item.InvoiceNo   AS ItemCol1,
@@ -403,7 +403,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                ISNULL(proj.Code, '') AS ProjectCode,
                ISNULL(proj.Name, '') AS ProjectName,
                two.ApprovalStatus,
-               two.CreatedAt,
+               two.SubmittedAt,
                tr.RefundedAt    AS PaidAt,
                two.GrandTotal   AS PaymentTotalAmount,
                item.InvoiceNo   AS ItemCol1,
@@ -433,7 +433,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         var where = new StringBuilder(" WHERE pr.ApprovalStatus != 'draft'");
         where.Append(BuildDeptScopeFilter(scope, parameters));
         where.Append(BuildDateAndPaymentStatus(dateFrom, dateTo, paymentStatus, parameters,
-            "pr", "CreatedAt", "PaymentRequestInstallments", "PaymentRequestId"));
+            "pr", "SubmittedAt", "PaymentRequestInstallments", "PaymentRequestId"));
 
         var paidAt = PaidAtCase("pr", "PaymentRequestInstallments", "PaymentRequestId");
 
@@ -446,7 +446,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         int total = await db.ExecuteScalarAsync<int>(countSql, parameters);
 
         var sql = PaymentPagedCore(where.ToString(), paidAt)
-            + "\nORDER BY pr.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
+            + "\nORDER BY pr.SubmittedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
 
         var rows = (await db.QueryAsync<dynamic>(sql, parameters)).ToList();
         var dtos = rows.Select(r => (PaymentReportDto)MapPaymentRow(r)).ToList();
@@ -460,12 +460,12 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         var where = new StringBuilder(" WHERE pr.ApprovalStatus != 'draft'");
         where.Append(BuildDeptScopeFilter(scope, parameters));
         where.Append(BuildDateAndPaymentStatus(dateFrom, dateTo, paymentStatus, parameters,
-            "pr", "CreatedAt", "PaymentRequestInstallments", "PaymentRequestId"));
+            "pr", "SubmittedAt", "PaymentRequestInstallments", "PaymentRequestId"));
 
         var paidAt = PaidAtCase("pr", "PaymentRequestInstallments", "PaymentRequestId");
 
         var sql = PaymentExportCore(where.ToString(), paidAt)
-            + "\nORDER BY pr.CreatedAt DESC, pr.Id DESC, ii.Id ASC";
+            + "\nORDER BY pr.SubmittedAt DESC, pr.Id DESC, ii.Id ASC";
 
         return (await db.QueryAsync<PaymentExportRowDto>(sql, parameters)).AsList();
     }
@@ -484,7 +484,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         var where = new StringBuilder(" WHERE adv.ApprovalStatus != 'draft'");
         where.Append(BuildDeptScopeFilter(scope, parameters));
         where.Append(BuildDateAndPaymentStatus(dateFrom, dateTo, paymentStatus, parameters,
-            "adv", "CreatedAt", "AdvanceRequestInstallments", "AdvanceRequestId"));
+            "adv", "SubmittedAt", "AdvanceRequestInstallments", "AdvanceRequestId"));
 
         var paidAt = PaidAtCase("adv", "AdvanceRequestInstallments", "AdvanceRequestId");
 
@@ -497,7 +497,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         int total = await db.ExecuteScalarAsync<int>(countSql, parameters);
 
         var sql = AdvancePagedCore(where.ToString(), paidAt)
-            + "\nORDER BY adv.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
+            + "\nORDER BY adv.SubmittedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
 
         var rows = (await db.QueryAsync<dynamic>(sql, parameters)).ToList();
         var dtos = rows.Select(r => (PaymentReportDto)MapPaymentRow(r)).ToList();
@@ -511,13 +511,13 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         var where = new StringBuilder(" WHERE adv.ApprovalStatus != 'draft'");
         where.Append(BuildDeptScopeFilter(scope, parameters));
         where.Append(BuildDateAndPaymentStatus(dateFrom, dateTo, paymentStatus, parameters,
-            "adv", "CreatedAt", "AdvanceRequestInstallments", "AdvanceRequestId"));
+            "adv", "SubmittedAt", "AdvanceRequestInstallments", "AdvanceRequestId"));
 
         var paidAt = PaidAtCase("adv", "AdvanceRequestInstallments", "AdvanceRequestId");
 
         // 預支：item 4 欄 = 類別 / 品名 / 數量(string) / 金額
         var sql = AdvanceExportCore(where.ToString(), paidAt)
-            + "\nORDER BY adv.CreatedAt DESC, adv.Id DESC, item.SortOrder ASC, item.Id ASC";
+            + "\nORDER BY adv.SubmittedAt DESC, adv.Id DESC, item.SortOrder ASC, item.Id ASC";
 
         return (await db.QueryAsync<PaymentExportRowDto>(sql, parameters)).AsList();
     }
@@ -536,7 +536,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         var where = new StringBuilder(" WHERE wo.ApprovalStatus != 'draft'");
         where.Append(BuildDeptScopeFilter(scope, parameters));
         where.Append(BuildDateAndPaymentStatus(dateFrom, dateTo, paymentStatus, parameters,
-            "wo", "CreatedAt", installmentsTable: null, installmentsFk: null));
+            "wo", "SubmittedAt", installmentsTable: null, installmentsFk: null));
 
         var countSql = $"""
             SELECT COUNT(*) FROM WriteOffRecords wo
@@ -548,7 +548,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         int total = await db.ExecuteScalarAsync<int>(countSql, parameters);
 
         var sql = WriteOffPagedCore(where.ToString())
-            + "\nORDER BY wo.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
+            + "\nORDER BY wo.SubmittedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
 
         var rows = (await db.QueryAsync<dynamic>(sql, parameters)).ToList();
         var dtos = rows.Select(r => (PaymentReportDto)MapPaymentRow(r)).ToList();
@@ -562,10 +562,10 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         var where = new StringBuilder(" WHERE wo.ApprovalStatus != 'draft'");
         where.Append(BuildDeptScopeFilter(scope, parameters));
         where.Append(BuildDateAndPaymentStatus(dateFrom, dateTo, paymentStatus, parameters,
-            "wo", "CreatedAt", installmentsTable: null, installmentsFk: null));
+            "wo", "SubmittedAt", installmentsTable: null, installmentsFk: null));
 
         var sql = WriteOffExportCore(where.ToString())
-            + "\nORDER BY wo.CreatedAt DESC, wo.Id DESC, item.SortOrder ASC, item.Id ASC";
+            + "\nORDER BY wo.SubmittedAt DESC, wo.Id DESC, item.SortOrder ASC, item.Id ASC";
 
         return (await db.QueryAsync<PaymentExportRowDto>(sql, parameters)).AsList();
     }
@@ -584,7 +584,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         var where = new StringBuilder(" WHERE tpr.ApprovalStatus != 'draft'");
         where.Append(BuildDeptScopeFilter(scope, parameters));
         where.Append(BuildDateAndPaymentStatus(dateFrom, dateTo, paymentStatus, parameters,
-            "tpr", "CreatedAt", "TravelPaymentRequestInstallments", "TravelPaymentRequestId"));
+            "tpr", "SubmittedAt", "TravelPaymentRequestInstallments", "TravelPaymentRequestId"));
 
         var paidAt = PaidAtCase("tpr", "TravelPaymentRequestInstallments", "TravelPaymentRequestId");
 
@@ -597,7 +597,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         int total = await db.ExecuteScalarAsync<int>(countSql, parameters);
 
         var sql = TravelPaymentPagedCore(where.ToString(), paidAt)
-            + "\nORDER BY tpr.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
+            + "\nORDER BY tpr.SubmittedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
 
         var rows = (await db.QueryAsync<dynamic>(sql, parameters)).ToList();
         var dtos = rows.Select(r => (PaymentReportDto)MapPaymentRow(r)).ToList();
@@ -611,12 +611,12 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         var where = new StringBuilder(" WHERE tpr.ApprovalStatus != 'draft'");
         where.Append(BuildDeptScopeFilter(scope, parameters));
         where.Append(BuildDateAndPaymentStatus(dateFrom, dateTo, paymentStatus, parameters,
-            "tpr", "CreatedAt", "TravelPaymentRequestInstallments", "TravelPaymentRequestId"));
+            "tpr", "SubmittedAt", "TravelPaymentRequestInstallments", "TravelPaymentRequestId"));
 
         var paidAt = PaidAtCase("tpr", "TravelPaymentRequestInstallments", "TravelPaymentRequestId");
 
         var sql = TravelPaymentExportCore(where.ToString(), paidAt)
-            + "\nORDER BY tpr.CreatedAt DESC, tpr.Id DESC, item.SortOrder ASC, item.Id ASC";
+            + "\nORDER BY tpr.SubmittedAt DESC, tpr.Id DESC, item.SortOrder ASC, item.Id ASC";
 
         return (await db.QueryAsync<PaymentExportRowDto>(sql, parameters)).AsList();
     }
@@ -635,7 +635,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         var where = new StringBuilder(" WHERE tr.ApprovalStatus != 'draft' AND tr.IsHolidayTravel = 0");
         where.Append(BuildDeptScopeFilter(scope, parameters));
         where.Append(BuildDateAndPaymentStatus(dateFrom, dateTo, paymentStatus, parameters,
-            "tr", "CreatedAt", "TravelRequestInstallments", "TravelRequestId"));
+            "tr", "SubmittedAt", "TravelRequestInstallments", "TravelRequestId"));
 
         var paidAt = PaidAtCase("tr", "TravelRequestInstallments", "TravelRequestId");
 
@@ -648,7 +648,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         int total = await db.ExecuteScalarAsync<int>(countSql, parameters);
 
         var sql = TravelPagedCore(where.ToString(), paidAt)
-            + "\nORDER BY tr.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
+            + "\nORDER BY tr.SubmittedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
 
         var rows = (await db.QueryAsync<dynamic>(sql, parameters)).ToList();
         var dtos = rows.Select(r => (PaymentReportDto)MapPaymentRow(r)).ToList();
@@ -662,12 +662,12 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         var where = new StringBuilder(" WHERE tr.ApprovalStatus != 'draft' AND tr.IsHolidayTravel = 0");
         where.Append(BuildDeptScopeFilter(scope, parameters));
         where.Append(BuildDateAndPaymentStatus(dateFrom, dateTo, paymentStatus, parameters,
-            "tr", "CreatedAt", "TravelRequestInstallments", "TravelRequestId"));
+            "tr", "SubmittedAt", "TravelRequestInstallments", "TravelRequestId"));
 
         var paidAt = PaidAtCase("tr", "TravelRequestInstallments", "TravelRequestId");
 
         var sql = TravelExportCore(where.ToString(), paidAt)
-            + "\nORDER BY tr.CreatedAt DESC, tr.Id DESC, item.SortOrder ASC, item.Id ASC";
+            + "\nORDER BY tr.SubmittedAt DESC, tr.Id DESC, item.SortOrder ASC, item.Id ASC";
 
         return (await db.QueryAsync<PaymentExportRowDto>(sql, parameters)).AsList();
     }
@@ -686,7 +686,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         var where = new StringBuilder(" WHERE two.ApprovalStatus != 'draft'");
         where.Append(BuildDeptScopeFilter(scope, parameters));
         where.Append(BuildDateAndPaymentStatus(dateFrom, dateTo, paymentStatus, parameters,
-            "two", "CreatedAt", installmentsTable: null, installmentsFk: null));
+            "two", "SubmittedAt", installmentsTable: null, installmentsFk: null));
 
         var countSql = $"""
             SELECT COUNT(*) FROM TravelWriteOffRecords two
@@ -698,7 +698,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         int total = await db.ExecuteScalarAsync<int>(countSql, parameters);
 
         var sql = TravelWriteOffPagedCore(where.ToString())
-            + "\nORDER BY two.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
+            + "\nORDER BY two.SubmittedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
 
         var rows = (await db.QueryAsync<dynamic>(sql, parameters)).ToList();
         var dtos = rows.Select(r => (PaymentReportDto)MapPaymentRow(r)).ToList();
@@ -712,10 +712,10 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         var where = new StringBuilder(" WHERE two.ApprovalStatus != 'draft'");
         where.Append(BuildDeptScopeFilter(scope, parameters));
         where.Append(BuildDateAndPaymentStatus(dateFrom, dateTo, paymentStatus, parameters,
-            "two", "CreatedAt", installmentsTable: null, installmentsFk: null));
+            "two", "SubmittedAt", installmentsTable: null, installmentsFk: null));
 
         var sql = TravelWriteOffExportCore(where.ToString())
-            + "\nORDER BY two.CreatedAt DESC, two.Id DESC, item.SortOrder ASC, item.Id ASC";
+            + "\nORDER BY two.SubmittedAt DESC, two.Id DESC, item.SortOrder ASC, item.Id ASC";
 
         return (await db.QueryAsync<PaymentExportRowDto>(sql, parameters)).AsList();
     }
@@ -733,21 +733,21 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         return string.Join("\nUNION ALL\n", new[]
         {
             PaymentPagedCore(
-                $" WHERE pr.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "pr", "CreatedAt", "PaymentRequestInstallments", "PaymentRequestId")}",
+                $" WHERE pr.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "pr", "SubmittedAt", "PaymentRequestInstallments", "PaymentRequestId")}",
                 PaidAtCase("pr", "PaymentRequestInstallments", "PaymentRequestId")),
             AdvancePagedCore(
-                $" WHERE adv.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "adv", "CreatedAt", "AdvanceRequestInstallments", "AdvanceRequestId")}",
+                $" WHERE adv.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "adv", "SubmittedAt", "AdvanceRequestInstallments", "AdvanceRequestId")}",
                 PaidAtCase("adv", "AdvanceRequestInstallments", "AdvanceRequestId")),
             WriteOffPagedCore(
-                $" WHERE wo.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "wo", "CreatedAt", null, null)}"),
+                $" WHERE wo.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "wo", "SubmittedAt", null, null)}"),
             TravelPaymentPagedCore(
-                $" WHERE tpr.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "tpr", "CreatedAt", "TravelPaymentRequestInstallments", "TravelPaymentRequestId")}",
+                $" WHERE tpr.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "tpr", "SubmittedAt", "TravelPaymentRequestInstallments", "TravelPaymentRequestId")}",
                 PaidAtCase("tpr", "TravelPaymentRequestInstallments", "TravelPaymentRequestId")),
             TravelPagedCore(
-                $" WHERE tr.ApprovalStatus != 'draft' AND tr.IsHolidayTravel = 0{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "tr", "CreatedAt", "TravelRequestInstallments", "TravelRequestId")}",
+                $" WHERE tr.ApprovalStatus != 'draft' AND tr.IsHolidayTravel = 0{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "tr", "SubmittedAt", "TravelRequestInstallments", "TravelRequestId")}",
                 PaidAtCase("tr", "TravelRequestInstallments", "TravelRequestId")),
             TravelWriteOffPagedCore(
-                $" WHERE two.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "two", "CreatedAt", null, null)}"),
+                $" WHERE two.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "two", "SubmittedAt", null, null)}"),
         });
     }
 
@@ -757,21 +757,21 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         return string.Join("\nUNION ALL\n", new[]
         {
             PaymentExportCore(
-                $" WHERE pr.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "pr", "CreatedAt", "PaymentRequestInstallments", "PaymentRequestId")}",
+                $" WHERE pr.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "pr", "SubmittedAt", "PaymentRequestInstallments", "PaymentRequestId")}",
                 PaidAtCase("pr", "PaymentRequestInstallments", "PaymentRequestId")),
             AdvanceExportCore(
-                $" WHERE adv.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "adv", "CreatedAt", "AdvanceRequestInstallments", "AdvanceRequestId")}",
+                $" WHERE adv.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "adv", "SubmittedAt", "AdvanceRequestInstallments", "AdvanceRequestId")}",
                 PaidAtCase("adv", "AdvanceRequestInstallments", "AdvanceRequestId")),
             WriteOffExportCore(
-                $" WHERE wo.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "wo", "CreatedAt", null, null)}"),
+                $" WHERE wo.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "wo", "SubmittedAt", null, null)}"),
             TravelPaymentExportCore(
-                $" WHERE tpr.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "tpr", "CreatedAt", "TravelPaymentRequestInstallments", "TravelPaymentRequestId")}",
+                $" WHERE tpr.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "tpr", "SubmittedAt", "TravelPaymentRequestInstallments", "TravelPaymentRequestId")}",
                 PaidAtCase("tpr", "TravelPaymentRequestInstallments", "TravelPaymentRequestId")),
             TravelExportCore(
-                $" WHERE tr.ApprovalStatus != 'draft' AND tr.IsHolidayTravel = 0{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "tr", "CreatedAt", "TravelRequestInstallments", "TravelRequestId")}",
+                $" WHERE tr.ApprovalStatus != 'draft' AND tr.IsHolidayTravel = 0{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "tr", "SubmittedAt", "TravelRequestInstallments", "TravelRequestId")}",
                 PaidAtCase("tr", "TravelRequestInstallments", "TravelRequestId")),
             TravelWriteOffExportCore(
-                $" WHERE two.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "two", "CreatedAt", null, null)}"),
+                $" WHERE two.ApprovalStatus != 'draft'{dept}{DateAndPaymentStatusClause(dateFrom, dateTo, paymentStatus, "two", "SubmittedAt", null, null)}"),
         });
     }
 
@@ -798,7 +798,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         var countSql = $"SELECT COUNT(*) FROM (\n{union}\n) t";
         int total = await db.ExecuteScalarAsync<int>(countSql, parameters);
 
-        var dataSql = $"SELECT * FROM (\n{union}\n) t ORDER BY t.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
+        var dataSql = $"SELECT * FROM (\n{union}\n) t ORDER BY t.SubmittedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
         var rows = (await db.QueryAsync<dynamic>(dataSql, parameters)).ToList();
 
         // 依 SourceCategory 分組撈各自子表明細（組內 Id 唯一，跨表 Id 碰撞不影響）
@@ -811,8 +811,8 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
             foreach (var (_, dto) in grp)
                 withItems.Add(dto with { Items = byParent.GetValueOrDefault(dto.Id, []) });
         }
-        // 分組打亂了 union 的 CreatedAt DESC 次序，重新排序回該頁順序
-        withItems = withItems.OrderByDescending(d => d.CreatedAt).ToList();
+        // 分組打亂了 union 的 SubmittedAt DESC 次序，重新排序回該頁順序
+        withItems = withItems.OrderByDescending(d => d.SubmittedAt).ToList();
 
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
         return new PagedResult<PaymentReportDto>(withItems, total, page, pageSize, Math.Max(1, totalPages));
@@ -825,7 +825,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
         AddSharedAllParams(parameters, scope, dateFrom, dateTo);
 
         var union = BuildAllExportUnion(scope, dateFrom, dateTo, paymentStatus);
-        var sql = $"SELECT * FROM (\n{union}\n) t ORDER BY t.CreatedAt DESC, t.ParentId DESC";
+        var sql = $"SELECT * FROM (\n{union}\n) t ORDER BY t.SubmittedAt DESC, t.ParentId DESC";
 
         return (await db.QueryAsync<PaymentExportRowDto>(sql, parameters)).AsList();
     }
@@ -851,7 +851,7 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
             TotalAmount:    (decimal)row.TotalAmount,
             ApprovalStatus: (string)row.ApprovalStatus,
             PaidAt:         (DateTime?)row.PaidAt,
-            CreatedAt:      (DateTime)row.CreatedAt,
+            SubmittedAt:    (DateTime)row.SubmittedAt,
             Items:          []);
     }
 

@@ -75,6 +75,7 @@ export interface PreReviewRequest {
   vendorName?: string;
   vendorTaxId?: string;
   createdAt: Date;
+  submittedAt: Date | null;   // 送簽日期（申請日期）；草稿為 null
   // 整單批次附件
   attachments?: import('../../approval-tasks/models/approval-task.model').AttachmentItem[];
 }

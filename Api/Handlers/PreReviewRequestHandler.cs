@@ -443,6 +443,9 @@ public sealed class PreReviewRequestHandler(
             pr.RequestNo = await RequestNoGenerator.NextAsync(
                 db.PreReviewRequests.Select(x => x.RequestNo), "PRV-", Clock.Now);
 
+        // 送簽日期只在首次送簽寫入：退回（returned）重送不改，與單號規則一致。
+        pr.SubmittedAt ??= Clock.Now;
+
         // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
         if (pr.ApprovalStatus == "returned")
         {

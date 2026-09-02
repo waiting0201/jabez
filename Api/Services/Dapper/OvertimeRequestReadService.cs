@@ -11,7 +11,7 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
         SELECT o.Id, u.Name AS EmployeeName,
                o.OvertimeDate,
                o.EstimatedHours, o.Reason,
-               o.ApprovalStatus, o.CreatedAt, o.ReviewedAt, o.ReviewNote,
+               o.ApprovalStatus, o.CreatedAt, o.SubmittedAt, o.ReviewedAt, o.ReviewNote,
                o.ApprovalItemId, o.CurrentStepOrder, o.ReviewedById,
                o.CompensationType, o.OvertimePayAmount, o.HourlyRateSnapshot,
                o.PayableHours, o.IsHolidayOvertime
@@ -59,6 +59,7 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
             (string)row.Reason,
             (string)row.ApprovalStatus,
             (DateTime)row.CreatedAt,
+            (DateTime?)row.SubmittedAt,
             (DateTime?)row.ReviewedAt,
             (string?)row.ReviewNote,
             ApprovalItemId:     (int?)row.ApprovalItemId,
@@ -73,7 +74,7 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
 
     public async Task<IEnumerable<OvertimeRequestDto>> GetAllAsync()
     {
-        const string sql = BaseSql + " ORDER BY o.CreatedAt DESC";
+        const string sql = BaseSql + " ORDER BY COALESCE(o.SubmittedAt, o.CreatedAt) DESC";
         var rows = (await db.QueryAsync<dynamic>(sql)).ToList();
         var projectMap = await LoadProjectsAsync(db, rows.Select(r => (int)r.Id));
         return rows.Select(r => (OvertimeRequestDto)MapRow(r, projectMap));
@@ -85,7 +86,7 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
         var countSql = $"SELECT COUNT(*) FROM OvertimeRequests {userFilter}";
         var sql = BaseSql +
             (userId.HasValue ? " WHERE o.EmployeeId = @UserId" : "") +
-            " ORDER BY o.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
+            " ORDER BY COALESCE(o.SubmittedAt, o.CreatedAt) DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
         int total = await db.ExecuteScalarAsync<int>(countSql, new { UserId = userId });
         var rows = (await db.QueryAsync<dynamic>(sql, new { UserId = userId, Skip = (page - 1) * pageSize, Take = pageSize })).ToList();
         var projectMap = await LoadProjectsAsync(db, rows.Select(r => (int)r.Id));

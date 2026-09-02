@@ -1035,6 +1035,9 @@ public sealed class LeaveRequestHandler(
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned leave requests can be submitted.");
 
+        // 送簽日期只在首次送簽寫入：退回（returned）重送不改，與有單號的申請類型規則一致。
+        item.SubmittedAt ??= Clock.Now;
+
         // 喪假驗證：必須有親屬關係
         if (item.LeaveType == "bereavement" && string.IsNullOrWhiteSpace(item.BereavementRelationship))
             return new BadRequestObjectResult(ApiResponse.Fail("喪假必須選擇親屬關係。"));

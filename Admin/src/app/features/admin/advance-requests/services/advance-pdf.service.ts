@@ -338,7 +338,7 @@ export class AdvancePdfService {
       doc.text('報銷時請附活動行程表及照片。 )', mx, y);
 
       y += 8;
-      const advSubmitDate = r.createdAt ? fmtDT(r.createdAt) : '';
+      const advSubmitDate = r.submittedAt ? fmtDT(r.submittedAt) : '';
       // 出納簽名取最後一期已撥款者（若有）
       const lastPaid = r.installments?.filter(i => i.paidAt).slice(-1)[0];
       // 追加後兩輪簽核紀錄併存，必須指定批次，否則簽名欄會印出前一輪的簽章

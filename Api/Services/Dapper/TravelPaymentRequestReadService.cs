@@ -12,7 +12,7 @@ public sealed class TravelPaymentRequestReadService(IDbConnection db, IInstallme
                tpr.Destination, tpr.StartDate, tpr.EndDate,
                tpr.GrandTotal, tpr.Purpose,
                tpr.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
-               tpr.ApprovalStatus, tpr.CreatedAt, tpr.ReviewedAt, tpr.ReviewNote,
+               tpr.ApprovalStatus, tpr.CreatedAt, tpr.SubmittedAt, tpr.ReviewedAt, tpr.ReviewNote,
                tpr.ApprovalItemId, tpr.CurrentStepOrder, tpr.ReviewedById,
                ti.Id AS ItemId, ti.Category, ti.SeqNo, ti.ItemName,
                ti.UnitPrice, ti.Quantity, ti.TotalPrice,
@@ -32,10 +32,10 @@ public sealed class TravelPaymentRequestReadService(IDbConnection db, IInstallme
             WITH PagedIds AS (
                 SELECT Id FROM TravelPaymentRequests
                 {whereClause}
-                ORDER BY CreatedAt DESC
+                ORDER BY COALESCE(SubmittedAt, CreatedAt) DESC
                 OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
             )
-            {BaseSql} WHERE tpr.Id IN (SELECT Id FROM PagedIds) ORDER BY tpr.CreatedAt DESC, ti.SortOrder, ti.Id
+            {BaseSql} WHERE tpr.Id IN (SELECT Id FROM PagedIds) ORDER BY COALESCE(tpr.SubmittedAt, tpr.CreatedAt) DESC, ti.SortOrder, ti.Id
             """;
         var parameters = new { UserId = userId, Skip = (page - 1) * pageSize, Take = pageSize };
         int total = await db.ExecuteScalarAsync<int>(countSql, parameters);
@@ -132,6 +132,7 @@ public sealed class TravelPaymentRequestReadService(IDbConnection db, IInstallme
                 (string?)tpr.ProjectName,
                 (string)tpr.ApprovalStatus,
                 (DateTime)tpr.CreatedAt,
+                (DateTime?)tpr.SubmittedAt,
                 (DateTime?)tpr.ReviewedAt,
                 (string?)tpr.ReviewNote,
                 ApprovalItemId:       (int?)tpr.ApprovalItemId,

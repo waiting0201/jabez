@@ -72,7 +72,7 @@ export interface PaymentReportRow {
   approvalStatus: string;
   statusLabel: string;
   paidAt: string;
-  createdAt: string;
+  submittedAt: string;
   items: PaymentReportItem[];
 }
 
@@ -93,7 +93,7 @@ interface PaymentExportRow {
   projectCode: string;
   projectName: string;
   approvalStatus: string;
-  createdAt: string;
+  submittedAt: string;
   paidAt: string | null;
   paymentTotalAmount: number;
   itemCol1: string | null;
@@ -295,7 +295,7 @@ export class PaymentReport implements OnInit {
       approvalStatus: r.approvalStatus,
       statusLabel: STATUS_LABELS[r.approvalStatus] ?? r.approvalStatus,
       paidAt: r.paidAt ? new Date(r.paidAt).toLocaleDateString('zh-TW') : '',
-      createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString('zh-TW') : '',
+      submittedAt: r.submittedAt ? new Date(r.submittedAt).toLocaleDateString('zh-TW') : '',
       items,
     };
   }
@@ -436,7 +436,7 @@ export class PaymentReport implements OnInit {
         isFirstRow ? (r.paymentTotalAmount ?? 0) : '',
         isFirstRow ? (STATUS_LABELS[r.approvalStatus] ?? r.approvalStatus) : '',
         isFirstRow ? this.toIsoDate(r.paidAt) : '',
-        isFirstRow ? this.toIsoDate(r.createdAt) : '',
+        isFirstRow ? this.toIsoDate(r.submittedAt) : '',
       ]);
     }
 

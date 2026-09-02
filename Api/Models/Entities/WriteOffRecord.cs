@@ -12,6 +12,7 @@ public class WriteOffRecord
     public string?   Note              { get; set; }
     public Guid?     SubmittedById     { get; set; }
     public DateTime  CreatedAt         { get; set; }
+    public DateTime? SubmittedAt       { get; set; }              // 送簽日期；草稿為 null，送簽當下寫入，退回重送不改
 
     // 簽核流程欄位
     public int?      ApprovalItemId    { get; set; }
