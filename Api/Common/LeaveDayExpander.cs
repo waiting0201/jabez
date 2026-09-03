@@ -171,6 +171,8 @@ public static class LeaveDayExpander
     /// <summary>
     /// HalfDay 單位（年假 / 補休 / 高階主管假）：與前端 computeWorkingDayHours 同規則。
     /// 半天時段編碼於 datetime：起 08:00＝上午、13:00＝下午；訖 12:00＝上午、17:00＝下午。
+    /// 補休的上午起點為 09:00（見前端 halfDayAmStartHour），故一律以「起 &lt; 13:00 ＝上午」分類，
+    /// 不可改用「等於 08:00」判定；展開後的時段與時數仍取標準半天 08:00–12:00 / 4 小時。
     /// 首 / 末日以「工作日清單」的頭尾為準（非日曆起訖），與前端一致。
     /// </summary>
     private static List<LeaveDay> ExpandHalfDayUnit(List<DateTime> working, DateTime start, DateTime end)
@@ -213,7 +215,7 @@ public static class LeaveDayExpander
     private static LeaveDay FullDay(DateTime date) =>
         new(date, 8m, LeaveDaySegments.Full, WorkdayStart, WorkdayEnd);
 
-    /// <summary>上半天 08:00–12:00（4 小時）</summary>
+    /// <summary>上半天 08:00–12:00（4 小時）。補休起點雖存 09:00，展開仍取標準上午時段（時數恆 4 小時）</summary>
     private static LeaveDay AmHalfDay(DateTime date) =>
         new(date, 4m, LeaveDaySegments.Am, WorkdayStart, LunchStart);
 
