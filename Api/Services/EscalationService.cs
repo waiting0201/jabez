@@ -116,7 +116,8 @@ public sealed class EscalationService(AppDbContext db) : IEscalationService
 
     /// <inheritdoc />
     public async Task<Guid?> FindSuperiorInAncestorDepartmentsAsync(
-        User applicant, IReadOnlySet<Guid>? excludeUserIds = null)
+        User applicant, IReadOnlySet<Guid>? excludeUserIds = null,
+        IReadOnlyList<StepReviewerScope>? laterStepScopes = null)
     {
         // 申請人沒有部門或沒有職稱 → 無從比較職級，維持跳過該關
         if (applicant.DepartmentId is null || applicant.JobTitleId is null)
@@ -151,8 +152,10 @@ public sealed class EscalationService(AppDbContext db) : IEscalationService
             if (!visited.Add(parentDept.Id))
                 break; // 部門循環
 
-            // 該部門中確實比申請人高階者，取最接近申請人職級的一位（Level 由大到小＝由近到遠）
-            var superiorId = await db.Users.AsNoTracking()
+            // 該部門中確實比申請人高階者，由近到遠排列（Level 由大到小）。
+            // 同職級多人時以 HireDate → Id 作次要排序：沒有次要排序時 DB 回哪一位不保證，
+            // 同一張單在「送出」與「推進」兩次解析可能指派到不同人。
+            var candidates = await db.Users.AsNoTracking()
                 .Where(u => u.DepartmentId == parentDept.Id
                     && u.Status == "active"
                     && !u.IsSuperAdmin
@@ -161,8 +164,20 @@ public sealed class EscalationService(AppDbContext db) : IEscalationService
                     && u.JobTitle.Level < applicantLevel.Value
                     && !excludeIds.Contains(u.Id))
                 .OrderByDescending(u => u.JobTitle!.Level)
-                .Select(u => (Guid?)u.Id)
-                .FirstOrDefaultAsync();
+                .ThenBy(u => u.HireDate ?? DateTime.MaxValue)
+                .ThenBy(u => u.Id)
+                .Select(u => new { u.Id, u.DepartmentId, u.JobTitleId })
+                .ToListAsync();
+
+            // 流程後面本來就會找上的人不指派（例：最後一關是「總監室 / 總監」時，
+            // 不把總監提前拉到這一關 —— 否則同一人得連簽兩關，而總監的跨步驟去重
+            // 要求「全池皆已審」才會自動代簽，池中還有其他總監時就會卡死）。
+            // 找不到其他人選則維持回 null＝跳過該關，由後面那一關把關。
+            var superiorId = candidates
+                .Where(c => laterStepScopes is null
+                         || !laterStepScopes.Any(sc => sc.Covers(c.DepartmentId, c.JobTitleId)))
+                .Select(c => (Guid?)c.Id)
+                .FirstOrDefault();
 
             if (superiorId.HasValue)
                 return superiorId;

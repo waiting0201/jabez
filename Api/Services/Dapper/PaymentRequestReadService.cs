@@ -453,6 +453,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                             JOIN JobTitles jt2 ON jt2.Id = u2.JobTitleId
                             WHERE u2.DepartmentId = {userAlias}.DepartmentId
                               AND jt2.Level < appJt.Level
+                              AND u2.Status = 'active'
                               AND u2.IsSuperAdmin = 0
                           ) ranked
                           WHERE ranked.rn = (
