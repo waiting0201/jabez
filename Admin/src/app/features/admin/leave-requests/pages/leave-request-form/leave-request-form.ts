@@ -12,7 +12,7 @@ import {
   LEAVE_TYPE_GROUPS, LEAVE_TYPE_LABELS, LEAVE_TYPE_DAYS_LIMIT, LEAVE_TIME_UNIT,
   BEREAVEMENT_GROUPS, BEREAVEMENT_RELATIONSHIP_LABELS, BEREAVEMENT_DAYS,
   BereavementRelationship, WORKING_DAY_LEAVE_TYPES, WorkingDaysResult,
-  WORKDAY_START_HOUR, WORKDAY_END_HOUR,
+  WORKDAY_START_HOUR, WORKDAY_END_HOUR, halfDayAmStartHour,
 } from '../../models/leave-request.model';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
@@ -234,6 +234,11 @@ export class LeaveRequestForm implements OnInit {
   /** 當前選擇的假別 */
   get selectedLeaveType(): LeaveType {
     return this.form.get('leaveType')?.value as LeaveType || 'annual';
+  }
+
+  /** 半天模式「上午」時段的下拉標籤（補休自 09:00 起，其餘 08:00） */
+  get amSlotLabel(): string {
+    return `上午（從 ${String(halfDayAmStartHour(this.selectedLeaveType)).padStart(2, '0')}:00）`;
   }
 
   /** 當前假別的時間單位 */
@@ -1082,8 +1087,9 @@ export class LeaveRequestForm implements OnInit {
         ? `${v.startDate}T23:59:00`
         : `${v.endDate}T23:59:00`;
     } else {
-      // half_day：將 slot 轉為代表性時間
-      const startHour = v.startSlot === 'am' ? '08:00:00' : '13:00:00';
+      // half_day：將 slot 轉為代表性時間（上午起點依假別，補休自 09:00 起）
+      const amStart = String(halfDayAmStartHour(type)).padStart(2, '0');
+      const startHour = v.startSlot === 'am' ? `${amStart}:00:00` : '13:00:00';
       const endHour = v.endSlot === 'am' ? '12:00:00' : '17:00:00';
       startDateStr = `${v.startDate}T${startHour}`;
       endDateStr = `${v.endDate}T${endHour}`;

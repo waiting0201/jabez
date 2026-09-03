@@ -188,6 +188,27 @@ public sealed class LeaveRequestHandler(
             calendarReader, await workPattern.IsShiftWorkerAsync(ownerId), start, end);
 
     /// <summary>
+    /// HalfDay 時數在 body.Hours 未帶時的退路：以 LeaveDayExpander 同一套「起 &lt; 13:00 ＝上午」
+    /// 時段分類推時數，不用 End − Start 時間差 —— 補休的上午時段自 09:00 起（見前端
+    /// halfDayAmStartHour），時間差會算成 3 小時而被「半天需為 4 的倍數」檢查誤擋。
+    /// 跨日半天假一律由 client 帶 Hours（時間差對跨日本來就沒有意義），此處僅處理同日。
+    /// </summary>
+    private static decimal ComputeHalfDaySlotHours(DateTime start, DateTime end)
+    {
+        if (start.Date != end.Date) return (decimal)(end - start).TotalHours;
+
+        bool startIsAm = start.Hour < WorkdayHours.LunchEndHour;    // 08:00 / 09:00 → am、13:00 → pm
+        bool endIsPm   = end.Hour   > WorkdayHours.LunchStartHour;  // 17:00 → pm、12:00 → am
+        return (startIsAm, endIsPm) switch
+        {
+            (true,  false) => 4m,   // am → am
+            (true,  true)  => 8m,   // am → pm（全日）
+            (false, true)  => 4m,   // pm → pm
+            _              => 0m,   // pm → am：單日無效
+        };
+    }
+
+    /// <summary>
     /// Hour 單位假別（事假 / 病假 / 產檢假 / 陪產假）的時數計算：逐日累加，只算工作日。
     /// - 同日：維持 end.Hour − start.Hour（不扣午休，沿用既有單日語意）；當日為假日 → 0
     /// - 跨日：首個工作日 Clamp(17 − start.Hour, 0, 8)、中間工作日各 8 小時、末個工作日 Clamp(end.Hour − 8, 0, 8)；
@@ -574,7 +595,7 @@ public sealed class LeaveRequestHandler(
                 recalcHours = unit switch
                 {
                     LeaveTimeUnit.Hour    => (decimal)(item.EndDate - item.StartDate).TotalHours,
-                    LeaveTimeUnit.HalfDay => body.Hours ?? (decimal)(item.EndDate - item.StartDate).TotalHours,
+                    LeaveTimeUnit.HalfDay => body.Hours ?? ComputeHalfDaySlotHours(item.StartDate, item.EndDate),
                     LeaveTimeUnit.Day     => ((item.EndDate.Date - item.StartDate.Date).Days + 1) * 8m,
                     _                     => (decimal)(item.EndDate - item.StartDate).TotalHours,
                 };

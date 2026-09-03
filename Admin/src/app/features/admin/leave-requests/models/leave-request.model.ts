@@ -89,6 +89,20 @@ export const WORKING_DAY_LEAVE_TYPES: LeaveType[] =
 export const WORKDAY_START_HOUR = 8;
 export const WORKDAY_END_HOUR   = 17;
 
+/**
+ * 半天型假別（特休 / 補休 / 高階主管假）「上午」時段的起點時刻。
+ * 標準工作日自 08:00 起，唯獨**補休自 09:00 起**（業務規定）；下午一律 13:00 起。
+ *
+ * 只影響存進 StartDate 的代表性時刻與畫面顯示，**不影響時數**：半天恆為 4 小時、
+ * 全日恆為 8 小時。後端 LeaveDayExpander 以「起 < 13:00 ＝上午」分類時段（非時間差），
+ * 故 09:00 仍判為上午半天 4 小時；請假時數本身則走「HalfDay 信任 client」。
+ *
+ * 送出 payload 與時段下拉標籤共用此函式，勿在別處另行硬編碼 08。
+ */
+export function halfDayAmStartHour(leaveType: LeaveType): number {
+  return leaveType === 'compensatory' ? 9 : WORKDAY_START_HOUR;
+}
+
 /** 格式化時數顯示（依單位） */
 export function formatLeaveDuration(leaveType: LeaveType, hours: number): string {
   const unit = LEAVE_TIME_UNIT[leaveType];
