@@ -473,6 +473,18 @@ export interface ApprovalTask {
   /** 指定審核者（含 approvalStepOrder，供 PDF 簽名欄判斷哪些步驟為指定審核，含例外指定審核命中者） */
   designatedReviewers?: DesignatedReviewer[];
   submittedBySignatureUrl?: string;  // 申請人簽名檔 URL
+  /** 目前關卡實際可簽核的人（僅 pending 單有值；空陣列＝查無可簽核人員，單子卡住） */
+  currentStepReviewers?: PendingReviewer[];
+}
+
+/** 目前關卡的待簽核者（簽核流程時間軸顯示用） */
+export interface PendingReviewer {
+  id: string;
+  name: string;
+  jobTitleName?: string;
+  departmentName?: string;
+  /** 是否為升級審核指派（上層級關卡由上層部門主管接手） */
+  isEscalated: boolean;
 }
 
 /** 簽核作業「申請人」下拉選項（僅財務體系部門可取得） */

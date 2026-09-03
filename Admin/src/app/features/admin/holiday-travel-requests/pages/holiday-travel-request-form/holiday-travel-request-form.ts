@@ -23,7 +23,7 @@ import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
 import {ApprovalService} from '../../../approvals/services/approval.service';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
-import {ApprovalFlow, ApprovalRecord} from '../../../approval-tasks/models/approval-task.model';
+import {ApprovalFlow, ApprovalRecord, PendingReviewer} from '../../../approval-tasks/models/approval-task.model';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {SubmitSuccessModal} from '../../../../../shared/components/submit-success-modal';
 import {JobTitleLookup} from '../../../job-titles/models/job-title.model';
@@ -86,6 +86,8 @@ export class HolidayTravelRequestForm implements OnInit {
   approvalRecords: ApprovalRecord[] = [];
   taskCurrentStepOrder = 0;
   taskStatus = '';
+  /** 目前關卡的待簽核者（後端解析；空陣列＝查無可簽核人員）*/
+  pendingReviewers: PendingReviewer[] = [];
 
   /** 指定審核者相關 */
   hasDesignatedStep = false;
@@ -371,6 +373,7 @@ export class HolidayTravelRequestForm implements OnInit {
               this.approvalRecords = task.approvalRecords ?? [];
               this.taskCurrentStepOrder = task.currentStepOrder;
               this.taskStatus = task.status;
+              this.pendingReviewers = task.currentStepReviewers ?? [];
               this.cdr.markForCheck();
             },
           });

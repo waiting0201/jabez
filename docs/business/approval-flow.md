@@ -398,6 +398,37 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 | `ApprovalNotificationService.NotifyReviewersAsync()` | 通知正確層級的上級 |
 | 前端 `approval-flow.html` | 設定頁 checkbox 開關 |
 
+## 簽核流程時間軸的待簽核者（2026-09 新增）
+
+**問題：** 「上層級」與「指定審核」關卡在簽核**前**沒有任何人名可顯示 —— 時間軸只印一行「審核中…」，
+申請人不知道該催誰、審核者也看不出這關輪到誰。且送單時被跳過的關卡不留 `ApprovalRecord`，
+灰圈長得跟「還沒輪到」一模一樣，看起來就像整條流程沒人簽。
+
+實例：部門最高主管（執行長）2026-08 送出的請假單停在 Step2「上層級」，
+該部門已無高於執行長者 → **0 位候選人**，誰的待審清單都撈不到，畫面上也完全看不出原因。
+
+**做法：** `GET /approval-tasks/{appType}/{id}` 於 `status = pending` 時多回一個
+`currentStepReviewers`（`PendingReviewerDto[]`：姓名 / 職稱 / 部門 / `isEscalated`），
+由 [ApprovalFlowService.ResolveCurrentStepReviewersAsync](../../Api/Services/ApprovalFlowService.cs) 解析，
+**判定順序與 [AuthorizeStepAsync](../../Api/Handlers/ApprovalTaskHandler.cs) 一致**（否則畫面上寫的人簽不了）：
+
+| 順位 | 情境 | 回傳 |
+|------|------|------|
+| 1 | 有 `EscalationOverride`（升級指派） | 指名者本人，`isEscalated = true` |
+| 2 | 指定審核（原生或例外命中） | 本關 pending designee 中 `StepOrder` 最小的**那一位**（依序審核，其餘還沒輪到）|
+| 3 | 上層級 / 固定部門職稱 | 與送單同一套 `ResolveReviewerPoolAsync` 審核者池 |
+
+**空陣列＝這一關查無可簽核人員**，前端以紅字「查無可簽核人員，請聯絡管理員調整簽核流程或人員職稱」明示，
+不再只是一行「審核中…」。時間軸另把「序號小於目前關卡且無簽核紀錄」的關卡標為**「已跳過」**，
+與「尚未輪到」區分開來。
+
+**卡住的舊單怎麼救：** 職級 / 部門異動只影響**之後**的解析，已停在該關的單不會自動重算。
+維運腳本 [05-unstick-direct-supervisor-leave.sql](../../Api/Data/Scripts/05-unstick-direct-supervisor-leave.sql)
+（`@Commit` 空跑開關）以條件比對找出「停在上層級關卡、無升級指派、候選人 0 位」的請假單，
+推進到下一個**有人可簽的固定關卡**（跳過 MinDays 擋掉者 / 指定審核 / 上層級，與
+`BuildLaterFixedStepScopes` 同一套「只認固定池」的判準）；找不到安全落點的單一律不動，交人工處理。
+腳本不發通知，推進後需自行告知新的審核者。
+
 ## 申請人指定審核模式（UseApplicantDesignated）
 
 `ApprovalStep` 新增 `UseApplicantDesignated`（bool, 預設 false）欄位，啟用時審核者由申請人在表單中**依序指定多人**。

@@ -64,6 +64,17 @@ public interface IApprovalFlowService
             decimal? requestDays = null);
 
     /// <summary>
+    /// 解析「目前關卡實際可簽核的人」，供詳情頁的簽核流程時間軸顯示待簽核者。
+    /// 判定順序與 ApprovalTaskHandler.AuthorizeStepAsync 一致：
+    ///   (1) 升級指派（EscalationOverride）→ 指名者本人
+    ///   (2) 指定審核（含例外命中）→ 本關 pending designee 中 StepOrder 最小的那位（依序審核，只有他輪得到）
+    ///   (3) 上層級 / 固定部門職稱 → 與送單同一套審核者池
+    /// 回傳空清單＝這一關查無可簽核人員（單子會卡住，前端據此顯示警示）。
+    /// </summary>
+    Task<IReadOnlyList<PendingReviewerDto>> ResolveCurrentStepReviewersAsync(
+        string applicationType, int applicationId, int? approvalItemId, Guid applicantId, int currentStepOrder);
+
+    /// <summary>
     /// 取得此申請「最近一次 returned 之後」所有 approved 的審核者 Id（去重 HashSet）。
     /// 退回重送 → 歷史清零：以最近一次 Action='returned' 的 ReviewedAt 當分隔線。
     /// 從未被退回 → 等同全歷史。

@@ -198,6 +198,7 @@
         [flow]="task.flow ?? null"
         [approvalRecords]="task.approvalRecords"
         [currentStepOrder]="task.currentStepOrder"
+        [pendingReviewers]="task.currentStepReviewers ?? []"
         [status]="task.status" />
     }
 

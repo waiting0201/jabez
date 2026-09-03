@@ -1,6 +1,6 @@
 import {Component, computed, input} from '@angular/core';
 import {DatePipe} from '@angular/common';
-import {ApprovalFlow, ApprovalRecord} from '../../features/admin/approval-tasks/models/approval-task.model';
+import {ApprovalFlow, ApprovalRecord, PendingReviewer} from '../../features/admin/approval-tasks/models/approval-task.model';
 import {roundLabel} from '../../features/admin/advance-requests/models/advance-request.model';
 
 @Component({
@@ -83,6 +83,26 @@ import {roundLabel} from '../../features/admin/advance-requests/models/advance-r
                     }
                   } @else if (isActiveStep(step.stepOrder, round)) {
                     <div class="text-primary small mt-1">審核中…</div>
+                    <!-- 上層級 / 指定審核在簽核前沒有人名，這裡把後端解析出的實際可簽核者列出來 -->
+                    @if (pendingReviewers().length) {
+                      <div class="text-muted small mt-1">
+                        待簽核：
+                        @for (r of pendingReviewers(); track r.id; let lastReviewer = $last) {
+                          {{ r.name }}
+                          @if (r.departmentName || r.jobTitleName) {
+                            <span class="text-muted">（{{ r.departmentName }}{{ r.departmentName && r.jobTitleName ? ' · ' : '' }}{{ r.jobTitleName }}）</span>
+                          }
+                          @if (r.isEscalated) {
+                            <span class="badge bg-[--bg-elevated] text-[--purple] ms-1" style="font-size:.7rem">升級審核</span>
+                          }
+                          @if (!lastReviewer) { <span>、</span> }
+                        }
+                      </div>
+                    } @else {
+                      <div class="text-danger small mt-1">查無可簽核人員，請聯絡管理員調整簽核流程或人員職稱</div>
+                    }
+                  } @else if (isSkippedStep(step.stepOrder, round)) {
+                    <div class="text-muted small mt-1">已跳過</div>
                   }
                 </div>
               </li>
@@ -101,6 +121,8 @@ export class ApprovalTimeline {
   status = input('');
   /** 目前進行中的簽核批次（僅預支追加會 > 1；其餘申請維持 1）*/
   currentRoundNo = input(1);
+  /** 目前關卡實際可簽核的人（後端解析，空陣列＝查無可簽核人員）*/
+  pendingReviewers = input<PendingReviewer[]>([]);
 
   protected readonly roundLabel = roundLabel;
 
@@ -120,5 +142,15 @@ export class ApprovalTimeline {
     return roundNo === this.currentRoundNo()
         && this.currentStepOrder() === stepOrder
         && this.status() === 'pending';
+  }
+
+  /**
+   * 已跳過的關卡：目前批次中「序號在目前關卡之前、卻沒有任何簽核紀錄」者。
+   * 送單時被跳過的步驟不會留下 ApprovalRecord，與「還沒輪到」的灰圈長得一模一樣，故明確標示。
+   */
+  isSkippedStep(stepOrder: number, roundNo: number): boolean {
+    return roundNo === this.currentRoundNo()
+        && stepOrder < this.currentStepOrder()
+        && !this.getRecord(stepOrder, roundNo);
   }
 }
