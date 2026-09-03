@@ -1467,7 +1467,24 @@ overtimeStartHint = computed<string>(() => {
 | 進行中 / 待處理 | `bg-warning-subtle text-warning-emphasis` |
 | 完成 / 已結束 | `bg-primary-subtle text-primary`（CIS 森林綠，與 success 綠形成深淺差別） |
 | 唯讀資料標記（請假 / 分類 / 來源註記） | `bg-primary-subtle text-primary` |
+| 異常 / 應處理（缺勤 / 未打卡 / 逾時工時） | `bg-danger-subtle text-danger` |
 | 中性附註 | `bg-secondary-subtle text-secondary` |
+
+出缺勤紀錄的徽章一覽（同列可能並存，色系刻意錯開）：
+
+| 徽章 | 欄位 | class | 觸發 |
+|---|---|---|---|
+| 出差 | 日期 | `bg-info-subtle text-info` | `isBusinessTrip`（打卡時本人勾選） |
+| 請假 | 請假 | `bg-primary-subtle text-primary` | `rowKind === 'leave'`（當日只有請假、無打卡） |
+| 缺勤 | 請假 | `bg-danger-subtle text-danger` | `rowKind === 'absent'`（工作日無打卡且無請假） |
+| 未打卡 | 請假 | `bg-danger-subtle text-danger` | `isMissingClockIn`（有應出勤時段卻無上班時間，例如只請半天卻整天沒打卡） |
+| 系統補卡 | 上班 / 下班 | `bg-warning-subtle text-warning-emphasis` | `isClockInAuto` / `isClockOutAuto`（登入時系統代打） |
+| 超過 9.5 小時 | 下班 | `bg-danger-subtle text-danger` | `isLongWorkday`（純前端 derived） |
+
+> **`rowKind` 是三種列的唯一判別依據**：請假列與缺勤列同樣 `id === null`，
+> 不可再用 `id` 分辨（track key 亦因此分成 `a{id}` / `l{userId}_{date}` / `x{userId}_{date}` 三組）。
+> 「應出勤時段」（`expectedStart` / `expectedEnd`）刻意**不做成欄位**，改掛在上下班兩格的 tooltip ——
+> 該表已 9 欄 + `min-w-[1040px]`，而絕大多數列都是恆定的 08:00–17:00，做成常駐欄是純雜訊。
 
 > ⚠️ `text-*-emphasis` 在 `tailwind.css` **只定義了 `text-warning-emphasis`**，配其他色時不可照抄 warning 的寫法，
 > 一律改用上表既有組合。同一列可能並存多顆徽章時（例：出缺勤紀錄的「系統補卡」黃 + 「請假」綠），

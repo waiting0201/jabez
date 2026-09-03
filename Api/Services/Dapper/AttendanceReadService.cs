@@ -19,7 +19,8 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
     private const string ListSql = """
         SELECT a.Id, a.UserId, u.Name AS UserName, a.RecordDate,
                a.ClockInTime, a.ClockInLatitude, a.ClockInLongitude,
-               a.ClockOutTime, a.ClockOutLatitude, a.ClockOutLongitude, a.IsClockOutAuto,
+               a.ClockOutTime, a.ClockOutLatitude, a.ClockOutLongitude,
+               a.IsClockInAuto, a.IsClockOutAuto,
                a.OvertimeStartTime, a.OvertimeStartLatitude, a.OvertimeStartLongitude,
                a.OvertimeEndTime, a.OvertimeEndLatitude, a.OvertimeEndLongitude,
                a.OvertimeRequestId, a.CreatedAt, a.IsBusinessTrip, a.Remark
@@ -116,6 +117,45 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
         return [.. rows];
     }
 
+    public async Task<IReadOnlyList<AttendanceEmployeeRow>> ListClockingEmployeesAsync(
+        ProjectAccessScope scope, Guid? employeeId, DateOnly dateFrom, DateOnly dateTo)
+    {
+        var where = new StringBuilder();
+        var parameters = new DynamicParameters();
+
+        where.Append(BuildDeptScopeFilter(scope, parameters));
+
+        if (employeeId.HasValue)
+        {
+            where.Append(" AND u.Id = @EmployeeId");
+            parameters.Add("EmployeeId", employeeId.Value);
+        }
+
+        parameters.Add("DateFrom", dateFrom.ToDateTime(TimeOnly.MinValue));
+        parameters.Add("DateTo",   dateTo.ToDateTime(TimeOnly.MinValue));
+        parameters.Add("ClockPermission", PermissionCodes.AttendancesWrite);
+
+        // 以「持有 attendances:write」而非只看 Status 判定應出勤母體：
+        // 未開通打卡權限的角色（顧問 / 外部人員）本來就不打卡，不該被算成缺勤。
+        // 離職當日仍為最後上班日 → ResignDate >= @DateFrom 才納入（慣例同 AttendanceReminderReadService）。
+        var sql = """
+            SELECT u.Id AS UserId, u.Name AS UserName, u.IsShiftWorker, u.HireDate, u.ResignDate
+            FROM   Users u
+            WHERE  u.IsSuperAdmin = 0
+              AND  u.Status = 'active'
+              AND  (u.ResignDate IS NULL OR CAST(u.ResignDate AS DATE) >= @DateFrom)
+              AND  (u.HireDate   IS NULL OR CAST(u.HireDate   AS DATE) <= @DateTo)
+              AND  EXISTS (SELECT 1
+                           FROM   UserRoles ur
+                           JOIN   RolePermissions rp ON rp.RoleId = ur.RoleId
+                           JOIN   Permissions p      ON p.Id = rp.PermissionId
+                           WHERE  ur.UserId = u.Id AND p.Code = @ClockPermission)
+            """ + where;
+
+        var rows = await db.QueryAsync<AttendanceEmployeeRow>(sql, parameters);
+        return [.. rows];
+    }
+
     public async Task<TodayAttendanceDto?> GetTodayAsync(Guid userId)
     {
         const string sql = """
@@ -197,7 +237,9 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
             null,   // LeaveEndDate
             // 具名參數跳過 LeaveHours / Leaves（由 AttendanceLeaveMerger 事後以 with { } 補上）
             IsBusinessTrip: (bool)row.IsBusinessTrip,
-            Remark:         (string?)row.Remark);
+            Remark:         (string?)row.Remark,
+            IsClockInAuto:  (bool)row.IsClockInAuto);
+            // RowKind / ExpectedStart / ExpectedEnd 由 AttendanceLeaveMerger 事後以 with { } 補上
 
     private static TodayAttendanceDto MapTodayRow(dynamic row) =>
         new(

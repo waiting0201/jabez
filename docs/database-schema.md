@@ -53,7 +53,7 @@
 | `TravelWriteOffRecord` | 出差預支沖銷申請（獨立簽核流程，關聯 TravelRequest；`PendingClose` 語意同 WriteOffRecord，對應 TravelRequest.IsClosed；`RequestNo` **nullable + filtered 唯一索引**（草稿為 NULL，送簽時取號；2026-08 新增時 migration 內含空白／重複單號清洗，2026-09 改 filtered 並移除 `HasDefaultValue("")`））；**`SubmittedAt` datetime2 NULL 送簽日期＝申請日期**（2026-09 新增，草稿為 NULL、送簽當下與單號同時寫入、退回重送不改；`CreatedAt` 維持原義＝建立草稿時間） |
 | `TravelWriteOffItem` | 出差預支沖銷明細（含發票號碼、檔案上傳） |
 | `RequestDesignatedReviewer` | 申請人指定審核者清單（多人依序審核；**ApprovalStepOrder** 綁定所屬 designated 步驟，支援一條流程多個指定步驟；**SelectedDepartmentId** 記錄第二步選的部門；唯一索引 `(RequestType, RequestId, ApprovalStepOrder, ReviewerId)`） |
-| `AttendanceRecord` | 出勤打卡紀錄（每人每天一筆，含 GPS；`IsClockOutAuto` 標記下班時間為登入時系統補卡；`IsBusinessTrip` 標記該日為出差、由本人打卡時勾選；`Remark` 為管理者於出缺勤編輯表單填寫的備註，上限 500 字） |
+| `AttendanceRecord` | 出勤打卡紀錄（每人每天一筆，含 GPS；`IsClockInAuto` / `IsClockOutAuto` 標記上 / 下班時間為登入時系統補卡（非本人打卡，補的時間已避開請假時段）；`IsBusinessTrip` 標記該日為出差、由本人打卡時勾選；`Remark` 為管理者於出缺勤編輯表單填寫的備註，上限 500 字） |
 | `AttendanceReminderLog` | 打卡提醒推播紀錄（BatchId 串聯同一次 tick；含 batchStart 紀錄、ErrorCategory 失敗分類、HttpStatusCode、DurationMs；Snapshot 欄位保留歷史） |
 | `PaymentReminderLog` | 撥款日將屆提醒推播紀錄（BatchId 串聯同一次 tick；TriggerSource auto/manual；ReminderDateTaipei 用於同日去重；Status: success/failure/batchStart/skipped_already_sent；FinanceUserId 推播對象） |
 | `SystemSetting` | 系統設定（含站台 / 工時 / 通知 / 撥款提醒）。`ApprovalEmailEnabled` / `ApprovalLineEnabled` 控制全域簽核通知開關（不影響帳號通知 / 薪資明細 / 打卡提醒）。`PaymentReminderDaysBefore` 控制撥款日將屆提醒提前天數（預設 3 天，0-30） |

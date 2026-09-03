@@ -4,8 +4,16 @@ using Jabez.Api.Services.Dapper;
 
 namespace Jabez.Api.Common;
 
-/// <summary>某一天的請假時數</summary>
-public readonly record struct LeaveDay(DateTime Date, decimal Hours);
+/// <summary>
+/// 某一天的請假時數與時段。
+/// <para>
+/// Start / End 為該日實際請假時段，一律 clamp 在 08:00–17:00 內（小時假可能填 07:00 / 19:00）。
+/// 注意 Hours 沿用既有語意（整點差、不扣午休，故 09:00–13:00 ＝ 4 小時），
+/// 與 End − Start 不必然等長，這是刻意保留的既有行為。
+/// </para>
+/// </summary>
+public readonly record struct LeaveDay(
+    DateTime Date, decimal Hours, string Segment, TimeOnly Start, TimeOnly End);
 
 /// <summary>
 /// 請假單「逐日展開」的單一真相 —— 把一張 LeaveRequest 攤成「哪一天、幾小時」的清單。
@@ -107,40 +115,55 @@ public static class LeaveDayExpander
 
         // 非工作日型假別（連續日曆天，目前僅歲時祭儀假）→ 不扣假日，整段日曆天每天 8 小時
         if (!WorkingDayLeaveTypes.Contains(leave.LeaveType))
-            return [.. WorkCalendarHelper.EnumerateDates(start, end).Select(d => new LeaveDay(d, 8m))];
+            return [.. WorkCalendarHelper.EnumerateDates(start, end).Select(FullDay)];
 
         var (_, _, working) = await WorkCalendarHelper.ComputeWorkingDatesAsync(calendarReader, ignoreHolidays, start, end);
         if (working.Count == 0) return [];
 
         return GetTimeUnit(leave.LeaveType) switch
         {
-            LeaveTimeUnit.Day     => [.. working.Select(d => new LeaveDay(d, 8m))],
+            LeaveTimeUnit.Day     => [.. working.Select(FullDay)],
             LeaveTimeUnit.Hour    => ExpandHourUnit(working, start, end),
             LeaveTimeUnit.HalfDay => ExpandHalfDayUnit(working, start, end),
-            _                     => [.. working.Select(d => new LeaveDay(d, 8m))],
+            _                     => [.. working.Select(FullDay)],
         };
     }
 
     /// <summary>
     /// Hour 單位（事假 / 家庭照顧假 / 病假 / 產檢假 / 陪產假）：與 LeaveRequestHandler.ComputeHourUnitHoursAsync 同規則。
     /// 同日維持 end.Hour − start.Hour（不扣午休，沿用既有單日語意）。
+    /// 時段：同日為原始起訖、跨日首日為「起 → 17:00」、末日為「08:00 → 訖」、中間日為全天。
     /// </summary>
     private static List<LeaveDay> ExpandHourUnit(List<DateTime> working, DateTime start, DateTime end)
     {
         if (start.Date == end.Date)
         {
             var sameDay = Math.Max(0, end.Hour - start.Hour);
-            return sameDay > 0 ? [new LeaveDay(start.Date, sameDay)] : [];
+            return sameDay > 0
+                ? [new LeaveDay(start.Date, sameDay, LeaveDaySegments.Partial,
+                                ClampToWorkday(start), ClampToWorkday(end))]
+                : [];
         }
 
         var days = new List<LeaveDay>();
         foreach (var d in working)
         {
-            decimal hours =
-                d == start.Date ? Math.Clamp(WorkdayHours.EndHour - start.Hour, 0, 8) :
-                d == end.Date   ? Math.Clamp(end.Hour - WorkdayHours.StartHour, 0, 8) :
-                                  8m;
-            if (hours > 0) days.Add(new LeaveDay(d, hours));
+            if (d == start.Date)
+            {
+                decimal hours = Math.Clamp(WorkdayHours.EndHour - start.Hour, 0, 8);
+                if (hours > 0)
+                    days.Add(new LeaveDay(d, hours, LeaveDaySegments.Partial, ClampToWorkday(start), WorkdayEnd));
+            }
+            else if (d == end.Date)
+            {
+                decimal hours = Math.Clamp(end.Hour - WorkdayHours.StartHour, 0, 8);
+                if (hours > 0)
+                    days.Add(new LeaveDay(d, hours, LeaveDaySegments.Partial, WorkdayStart, ClampToWorkday(end)));
+            }
+            else
+            {
+                days.Add(FullDay(d));
+            }
         }
         return days;
     }
@@ -157,25 +180,56 @@ public static class LeaveDayExpander
 
         if (working.Count == 1)
         {
-            decimal single = (startIsAm, endIsPm) switch
+            return (startIsAm, endIsPm) switch
             {
-                (true,  false) => 4m,  // am → am
-                (true,  true)  => 8m,  // am → pm
-                (false, true)  => 4m,  // pm → pm
-                _              => 0m,  // pm → am：單日無效
+                (true,  false) => [AmHalfDay(working[0])],   // am → am
+                (true,  true)  => [FullDay(working[0])],     // am → pm
+                (false, true)  => [PmHalfDay(working[0])],   // pm → pm
+                _              => [],                        // pm → am：單日無效
             };
-            return single > 0 ? [new LeaveDay(working[0], single)] : [];
         }
 
         var days = new List<LeaveDay>(working.Count);
         for (int i = 0; i < working.Count; i++)
         {
-            decimal hours =
-                i == 0                  ? (startIsAm ? 8m : 4m) :
-                i == working.Count - 1  ? (endIsPm   ? 8m : 4m) :
-                                          8m;
-            days.Add(new LeaveDay(working[i], hours));
+            var d = working[i];
+            days.Add(
+                i == 0                 ? (startIsAm ? FullDay(d) : PmHalfDay(d)) :
+                i == working.Count - 1 ? (endIsPm   ? FullDay(d) : AmHalfDay(d)) :
+                                         FullDay(d));
         }
         return days;
+    }
+
+    // ── 時段建構輔助 ──────────────────────────────────────────
+    // 工作日邊界一律取自 WorkdayHours（Constants.cs），不在此重複硬編碼時分。
+
+    private static readonly TimeOnly WorkdayStart = new(WorkdayHours.StartHour, 0);       // 08:00
+    private static readonly TimeOnly LunchStart   = new(WorkdayHours.LunchStartHour, 0);  // 12:00
+    private static readonly TimeOnly LunchEnd     = new(WorkdayHours.LunchEndHour, 0);    // 13:00
+    private static readonly TimeOnly WorkdayEnd   = new(WorkdayHours.EndHour, 0);         // 17:00
+
+    /// <summary>整個工作日 08:00–17:00（8 小時）</summary>
+    private static LeaveDay FullDay(DateTime date) =>
+        new(date, 8m, LeaveDaySegments.Full, WorkdayStart, WorkdayEnd);
+
+    /// <summary>上半天 08:00–12:00（4 小時）</summary>
+    private static LeaveDay AmHalfDay(DateTime date) =>
+        new(date, 4m, LeaveDaySegments.Am, WorkdayStart, LunchStart);
+
+    /// <summary>下半天 13:00–17:00（4 小時）</summary>
+    private static LeaveDay PmHalfDay(DateTime date) =>
+        new(date, 4m, LeaveDaySegments.Pm, LunchEnd, WorkdayEnd);
+
+    /// <summary>
+    /// 把原始填寫時間夾在工作日邊界 08:00–17:00 內。
+    /// 小時假的 Hours 端本來就 Math.Clamp(…, 0, 8)，時段端不夾會讓「應出勤時段」被推到 07:00 開工。
+    /// </summary>
+    private static TimeOnly ClampToWorkday(DateTime at)
+    {
+        var t = TimeOnly.FromDateTime(at);
+        return t < WorkdayStart ? WorkdayStart
+             : t > WorkdayEnd   ? WorkdayEnd
+             : t;
     }
 }

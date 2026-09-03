@@ -98,6 +98,48 @@ export function formatLeaveDuration(leaveType: LeaveType, hours: number): string
   return `${days} 天`;
 }
 
+/**
+ * 請假「逐日時段」代碼（後端 LeaveDayExpander 展開結果，須與 Api/Common/Constants.cs 的
+ * LeaveDaySegments 保持同步）。半天 / 小時假的時段本身編碼在假單起訖的時分上，
+ * 展開成逐日後由後端以此欄帶出。
+ */
+export type LeaveDaySegment = 'full' | 'am' | 'pm' | 'partial';
+
+/** partial 沒有固定名稱，改以實際時分呈現（見 formatLeaveDaySegment） */
+export const LEAVE_DAY_SEGMENT_LABELS: Record<LeaveDaySegment, string> = {
+  full:    '全天',
+  am:      '上午',
+  pm:      '下午',
+  partial: '',
+};
+
+/** 從 ISO 字串取 HH:mm（刻意用字串切割而非 Date，避免 UTC 位移把時間挪掉一小時） */
+function isoTime(iso: string): string {
+  const t = String(iso ?? '').split('T')[1] ?? '';
+  return t.substring(0, 5);
+}
+
+/**
+ * 單張假單「當日」的顯示字串：
+ *   `事假 09:00–13:00 (4h)` / `年假(特休假) 上午` / `婚假 全天`
+ * 供出缺勤報表的請假欄使用（同日多張假單時一張一行）。
+ */
+export function formatLeaveDaySegment(
+  leaveType: LeaveType | string,
+  segment: LeaveDaySegment | string,
+  dayStart: string,
+  dayEnd: string,
+  hours: number,
+): string {
+  const name = LEAVE_TYPE_LABELS[leaveType as LeaveType] ?? leaveType;
+  if (segment === 'partial') {
+    const h = Math.round(Number(hours) * 10) / 10;
+    return `${name} ${isoTime(dayStart)}–${isoTime(dayEnd)} (${h}h)`;
+  }
+  const label = LEAVE_DAY_SEGMENT_LABELS[segment as LeaveDaySegment] ?? '';
+  return label ? `${name} ${label}` : name;
+}
+
 export const LEAVE_TYPE_CLASSES: Record<LeaveType, string> = {
   annual:              'bg-[rgba(105,159,52,0.12)] text-[#4A6B3A]',
   personal:            'bg-[rgba(124,94,140,0.12)] text-[#7C5E8C]',

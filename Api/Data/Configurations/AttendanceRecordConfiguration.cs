@@ -18,6 +18,9 @@ public class AttendanceRecordConfiguration : IEntityTypeConfiguration<Attendance
                .IsRequired()
                .HasColumnType("date");
 
+        builder.Property(a => a.IsClockInAuto)
+               .HasDefaultValue(false);
+
         builder.Property(a => a.IsClockOutAuto)
                .HasDefaultValue(false);
 

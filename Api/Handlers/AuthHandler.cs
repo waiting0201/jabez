@@ -3,6 +3,7 @@ using Jabez.Api.Data;
 using Jabez.Api.Models.Dtos;
 using Jabez.Api.Models.Entities;
 using Jabez.Api.Services;
+using Jabez.Api.Services.Dapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +15,8 @@ namespace Jabez.Api.Handlers;
 public sealed class AuthHandler(
     AppDbContext db,
     IJwtService  jwt,
-    IConfiguration config)
+    IConfiguration config,
+    ICalendarDayReadService calendarReader)
 {
     private readonly int _refreshExpiryDays =
         int.TryParse(config["Jwt:RefreshExpiryDays"], out var d) ? d : 7;
@@ -72,61 +74,25 @@ public sealed class AuthHandler(
             ExpiresAt = DateTime.UtcNow.AddDays(_refreshExpiryDays),
         });
 
-        // ── 自動補打下班卡（歷史漏打紀錄） ──────────────────────────
-        var today = Clock.Now.Date;
-        var pendingRecords = await db.AttendanceRecords
-            .Where(a => a.UserId == user.Id
-                && a.ClockInTime != null
-                && a.ClockOutTime == null
-                && a.RecordDate < today)
-            .ToListAsync();
-
-        AutoClockOutInfo? autoClockOutInfo = null;
-        if (pendingRecords.Count > 0)
-        {
-            // 補卡時間 = 該日上班打卡時間 + 標準工時 + 午休（一律 +9，不分上下午打卡）。
-            // 刻意不用 SystemSetting.WorkEndTime —— 該設定只服務打卡提醒的時點判斷，
-            // 且固定補到 18:00 會讓早到 / 晚到者的工時失真。
-            const int lunchHours = WorkdayHours.LunchEndHour - WorkdayHours.LunchStartHour;
-            const int autoHours  = WorkdayHours.FullDayHours + lunchHours;   // 8 + 1 = 9
-
-            foreach (var record in pendingRecords)
-            {
-                var clockIn = record.ClockInTime!.Value;
-
-                record.ClockOutTime   = clockIn.AddHours(autoHours);
-                record.IsClockOutAuto = true;                  // 供出缺勤清單標示「系統補卡」
-            }
-
-            autoClockOutInfo = new AutoClockOutInfo(
-                pendingRecords.Count,
-                pendingRecords.Select(r => r.RecordDate.ToString("yyyy-MM-dd")).OrderBy(d => d).ToArray());
-        }
-
-        // ── 自動補打加班結束卡（已開始加班但未打結束卡） ──────────────
-        var pendingOvertimeRecords = await db.AttendanceRecords
-            .Include(a => a.OvertimeRequest)
-            .Where(a => a.UserId == user.Id
-                && a.OvertimeStartTime != null
-                && a.OvertimeEndTime == null
-                && a.RecordDate < today)
-            .ToListAsync();
-
-        AutoOvertimeEndInfo? autoOvertimeEndInfo = null;
-        if (pendingOvertimeRecords.Count > 0)
-        {
-            foreach (var record in pendingOvertimeRecords)
-            {
-                var hours = (double)(record.OvertimeRequest?.EstimatedHours ?? 0);
-                record.OvertimeEndTime = record.OvertimeStartTime!.Value.AddHours(hours);
-            }
-
-            autoOvertimeEndInfo = new AutoOvertimeEndInfo(
-                pendingOvertimeRecords.Count,
-                pendingOvertimeRecords.Select(r => r.RecordDate.ToString("yyyy-MM-dd")).OrderBy(d => d).ToArray());
-        }
-
+        // 先結束登入主流程的交易：Refresh Token 一定要寫進去，登入才算成功
         await db.SaveChangesAsync();
+
+        // ── 自動補卡（登入是唯一能收斂漏打的時機） ──────────────────
+        // 補卡是登入的**副作用**，故獨立一次 SaveChanges：
+        // 同帳號併發登入撞 IX_AttendanceRecords_UserId_RecordDate 時，
+        // 若與上面的 RefreshToken 共用交易會讓整個登入回 500，使用者直接登不進來。
+        var autoClock = AutoClockResult.Empty;
+        try
+        {
+            autoClock = await AttendanceAutoClockService.ApplyAsync(
+                db, calendarReader, user, permissions.Contains(PermissionCodes.AttendancesWrite));
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // 另一個 session 已補完 → 忽略。補卡邏輯只填空欄，冪等，下次登入自然收斂。
+            autoClock = AutoClockResult.Empty;
+        }
 
         return new OkObjectResult(ApiResponse.Ok(new
         {
@@ -134,8 +100,9 @@ public sealed class AuthHandler(
             refresh_token = refreshToken,
             token_type    = "Bearer",
             must_change_password = user.MustChangePassword,
-            auto_clock_out = autoClockOutInfo,
-            auto_overtime_end = autoOvertimeEndInfo,
+            auto_clock_in     = autoClock.ClockIn,
+            auto_clock_out    = autoClock.ClockOut,
+            auto_overtime_end = autoClock.OvertimeEnd,
         }, "Login successful."));
     }
 

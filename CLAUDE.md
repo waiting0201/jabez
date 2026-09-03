@@ -213,7 +213,7 @@ Admin/src/app/
     │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出 + **Excel 總表匯出**：查詢列「匯出總表」鈕，一位員工一列 × 33 欄（基本 4 / 應發 11 / 扣項 15 / 其他 3；2026-08 新增「加班費(加班申請)」欄）+ 合計列，資料直接取自已載入的 `payroll()` signal（`GET /payroll` 本身不分頁），無後端變動）
     │   ├── attendance-reminder-logs/ # 打卡提醒推播紀錄（僅 Superadmin）
     │   ├── payment-reminder-logs/ # 撥款提醒推播紀錄 + 手動觸發（僅 Superadmin）
-    │   ├── reports/        # 報表（出缺勤 / 加班 / 款項統計 / 專案水位）；**出缺勤紀錄列出「打卡紀錄 ∪ 當日請假日」**：全天請假沒打卡的人也會出現一列（`id=null` 虛擬列，上下班留空 + 「請假」badge + 假別 + 當日時數、不可編輯），同日多張假單合併為一列；**另有兩個 badge（2026-08 新增）**：日期欄的「出差」（`isBusinessTrip`，打卡時勾選）與下班欄的「超過 9.5 小時」（下班−上班 > 9.5h 含午休，**純前端 derived**、門檻常數 `LONG_WORKDAY_HOURS` 為單一真相，不進 DB / DTO，不影響薪資與加班時數）；**編輯 Modal 加備註欄**（`AttendanceRecord.Remark`，500 字，只在編輯表單可見可填，清單不列）；假別中文 import 自 leave-request.model 的 19 種 LEAVE_TYPE_LABELS；分頁（每頁 20）改用全站標準 pattern（手機 `‹ N / M ›` + 桌機頁碼列，共用 `buildPageNumbers()`），Excel 匯出走 `?export=true`；月篩選不再提供「全部年份 / 全部月份」（合併需有界區間）；**手機版採橫向捲動而非逐欄隱藏（2026-09）**：9 欄全數保留（原本請假 / 當日時數 / 加班開始 / 加班結束 4 欄在手機被 `hidden md:table-cell` 藏掉、且 `.table-responsive` 因 `.table` 是 `width:100%` 無 `min-width` 而從未真正捲動），改為 `<table class="… table-sticky-first min-w-[1040px]">`＋新增的 `.table-sticky-first`（釘住員工姓名欄，見 [docs/frontend-design.md §3](docs/frontend-design.md)）；篩選列同步補 `w-full sm:w-auto`。款項統計 1 個 endpoint 支援 全部 + 6 個類別 dropdown（全部 / 請款 / 預支 / 預支沖銷 / 出差請款 / 出差預支 / 出差預支沖銷；「全部」為 6 種 UNION ALL），權限只看 `reports-payment:read`，不需各別 `xxx-requests:read`。**專案水位表的「總專案水位」欄（分母＝契約金額，含公司保留 40%）為欄位級權限 `reports-project-water-level:total`**：只有 `reports-project-water-level:read` 者頁面照進、業務執行水位照看，但總水位整欄消失（前端 `canSeeTotal` 同時控 `<th>` / `<td>` / 空列 colspan），後端 `ProjectWaterLevelHandler` 亦把 `TotalPercentage` / `PreImportUsedAmount` / `RemainingAmount` 抹為 null / 0
+    │   ├── reports/        # 報表（出缺勤 / 加班 / 款項統計 / 專案水位）；**出缺勤紀錄列出「打卡紀錄 ∪ 當日請假日 ∪ 缺勤日」**：全天請假沒打卡的人也會出現一列（`id=null` 虛擬列，上下班留空 + 「請假」badge + 假別 + 當日時數、不可編輯），同日多張假單合併為一列；**2026-09 三項擴充**：① **請假欄改顯示逐日精確時段**（`事假 09:00–13:00 (4h)` / `年假(特休假) 上午` / `婚假 全天`，同日多張一張一行，共用 leave-request.model 的 `formatLeaveDaySegment()`，資料來自後端 `leaves[].daySegment / dayStart / dayEnd`）；② **新增缺勤列**（`rowKind=absent`，工作日既沒打卡也沒請假，紅字「缺勤」badge、不可編輯）—— **請假列與缺勤列同樣 `id=null`，一律以 `rowKind` 分辨**，track key 分成 `a{id}` / `l{...}` / `x{...}` 三組；③ **「未打卡」badge**（有應出勤時段卻無上班時間，例如只請半天卻整天沒打卡）與**上班欄的「系統補卡」badge**（`isClockInAuto`），應出勤時段（`expectedStart/expectedEnd`）掛在上下班兩格的 tooltip、不佔欄位（維持 9 欄與 `min-w-[1040px]`）；**另有兩個 badge（2026-08 新增）**：日期欄的「出差」（`isBusinessTrip`，打卡時勾選）與下班欄的「超過 9.5 小時」（下班−上班 > 9.5h 含午休，**純前端 derived**、門檻常數 `LONG_WORKDAY_HOURS` 為單一真相，不進 DB / DTO，不影響薪資與加班時數）；**編輯 Modal 加備註欄**（`AttendanceRecord.Remark`，500 字，只在編輯表單可見可填，清單不列）；假別中文 import 自 leave-request.model 的 19 種 LEAVE_TYPE_LABELS；分頁（每頁 20）改用全站標準 pattern（手機 `‹ N / M ›` + 桌機頁碼列，共用 `buildPageNumbers()`），Excel 匯出走 `?export=true`；月篩選不再提供「全部年份 / 全部月份」（合併需有界區間）；**手機版採橫向捲動而非逐欄隱藏（2026-09）**：9 欄全數保留（原本請假 / 當日時數 / 加班開始 / 加班結束 4 欄在手機被 `hidden md:table-cell` 藏掉、且 `.table-responsive` 因 `.table` 是 `width:100%` 無 `min-width` 而從未真正捲動），改為 `<table class="… table-sticky-first min-w-[1040px]">`＋新增的 `.table-sticky-first`（釘住員工姓名欄，見 [docs/frontend-design.md §3](docs/frontend-design.md)）；篩選列同步補 `w-full sm:w-auto`。款項統計 1 個 endpoint 支援 全部 + 6 個類別 dropdown（全部 / 請款 / 預支 / 預支沖銷 / 出差請款 / 出差預支 / 出差預支沖銷；「全部」為 6 種 UNION ALL），權限只看 `reports-payment:read`，不需各別 `xxx-requests:read`。**專案水位表的「總專案水位」欄（分母＝契約金額，含公司保留 40%）為欄位級權限 `reports-project-water-level:total`**：只有 `reports-project-water-level:read` 者頁面照進、業務執行水位照看，但總水位整欄消失（前端 `canSeeTotal` 同時控 `<th>` / `<td>` / 空列 colspan），後端 `ProjectWaterLevelHandler` 亦把 `TotalPercentage` / `PreImportUsedAmount` / `RemainingAmount` 抹為 null / 0
     │   └── settings/       # 系統設定（含 PaymentReminderDaysBefore 撥款提醒天數）
     └── error/
         └── pages/ (error-403, error-404, error-500)
@@ -266,7 +266,7 @@ Api/
 ├── Routing/
 │   └── AppRouter.cs                   # C# 12 List Pattern 路由分派器
 ├── Handlers/                          # 25 個 Handler（業務邏輯）
-│   ├── AuthHandler.cs                 # 登入、刷新 Token（登入時自動補打漏打的下班卡＝**上班打卡時間 + 9 小時（含午休），不分上下午打卡**，並標記 `IsClockOutAuto` 供出缺勤清單顯示「系統補卡」badge；加班結束卡＝加班開始 + 申請單預估時數）
+│   ├── AuthHandler.cs                 # 登入、刷新 Token（登入時自動補卡，邏輯收斂在 `Services/AttendanceAutoClockService.cs`；**只填既有紀錄的空欄、絕不建立新列**：完全無打卡痕跡的日子交由報表的缺勤 / 未打卡列呈現，故不需回溯視窗常數。三種缺口：**漏打上班卡**（2026-09 新增，該日有下班卡或加班卡＝人確實來過，補到「當日應出勤起」，僅工作日且需持有 `attendances:write`）/ 下班卡＝**上班打卡時間 + 9 小時（含午休），不分上下午打卡** / 加班結束卡＝加班開始 + 申請單預估時數；**補卡時間一律避開已核准請假時段**（走 `ExpectedWorkWindow`）：上午請假者補上班 13:00、下午請假者補下班 12:00，**但無請假時絕不縮短**（以 `EndAdjustedByLeave` 為閘門，否則 09:00 上班者會從 18:00 被壓成 17:00）；分別標記 `IsClockInAuto` / `IsClockOutAuto` 供出缺勤清單顯示「系統補卡」badge。**Refresh Token 與補卡必須分成兩次 SaveChanges**：補卡是登入副作用，併發登入撞唯一索引時共用交易會讓整個登入回 500）
 │   ├── UserHandler.cs                 # 使用者 CRUD（含原住民 / 低收入 / 身心障礙證明 + 健保 / 勞保覆寫）；GetMineAsync = GET /me/user 員工讀自己（免 users:read）
 │   ├── EmployeeProfileHandler.cs     # 員工人事資料卡 GET / PUT（multipart：HR JSON + 身分證正反面 + 最高學歷證明 + **存摺封面 ×2**：銀行帳戶分第一 / 第二兩組，各含分行 + 帳號 + 存摺封面，兩張共用 ProcessPassbookAsync、blob 以 `_passbook` / `_passbook2` 區隔）；GetMineAsync = GET /me/profile 員工讀自己（免 users:read）
 │   ├── RoleHandler.cs
@@ -336,6 +336,7 @@ Api/
 ├── Services/
 │   ├── IJwtService.cs
 │   ├── JwtService.cs                  # HS256 JWT 產生與驗證
+│   ├── AttendanceAutoClockService.cs  # 登入自動補卡共用（static，不呼叫 SaveChanges，比照 LeaveRevocationService）：三種缺口（漏打上班 / 下班 / 加班結束）一次撈回，時間走 ExpectedWorkWindow 避開請假時段；**只填空欄不建新列**
 │   ├── IEscalationService.cs          # 簽核升級服務介面
 │   ├── EscalationService.cs           # 簽核升級邏輯（上層部門主管遞迴 + 代理人）＋ **上層級關卡無人時往上層部門接手**（2026-09，`FindSuperiorInAncestorDepartmentsAsync`）：`UseDirectSupervisor` 步驟在同部門找不到更高階者時，沿部門 `ParentId` 往上找 `Level <` 申請人的最接近一位並以升級審核指派，找不到才退回原本的「跳過該關」；全部 9 種申請類型適用，修正「部門最高主管送單一路跳到底 → 無人審即自動核准」；**指派前先排除「流程後續固定關卡本來就會簽到的人」**（`laterStepScopes` / `StepReviewerScope`，範圍由 `ApprovalFlowService.BuildLaterFixedStepScopes` 算出，只認固定池關卡：MinDays 擋掉 / 指定審核 / 上層級 / 全不限者皆不算），否則「Step1 升級到總監 + 最後一關固定總監」會變同一人連簽兩關，並撞上總監跨步驟去重的「全池皆已審」限縮而卡死；同職級多人再依 `HireDate` → `Id` 排序確保決定性（送單與推進兩次解析拿到同一人）；「同部門有無上級」三處判定（`ApprovalFlowService.FindNthSuperiorLevelAsync` / `ApprovalTaskHandler.AuthorizeStepAsync` / 待審清單 SQL）一律加上 `Status='active'`，離職者不再撐住一個沒人能審的層級
 │   ├── EscalationResult.cs            # 升級結果 record
@@ -375,7 +376,7 @@ Api/
 │       ├── AdvanceRequestReadService.cs
 │       ├── WriteOffRequestReadService.cs
 │       ├── TravelWriteOffRequestReadService.cs
-│       ├── AttendanceReadService.cs        # 出缺勤三支原料查詢：ListInRangeAsync（打卡，不分頁）/ ListApprovedLeavesInRangeAsync（假單）/ ListApprovedRevokedDatesAsync（銷假日，批次），合併與切頁由 AttendanceLeaveMerger 負責
+│       ├── AttendanceReadService.cs        # 出缺勤四支原料查詢：ListInRangeAsync（打卡，不分頁）/ ListApprovedLeavesInRangeAsync（假單）/ ListApprovedRevokedDatesAsync（銷假日，批次）/ **ListClockingEmployeesAsync（應出勤員工母體，供缺勤列：非超管 + 在職 + 持有 `attendances:write` + 部門 scope）**，合併與切頁由 AttendanceLeaveMerger 負責
 │       ├── CachedCalendarDayReadService.cs  # 行事曆快取 decorator（以年為粒度），解 LeaveDayExpander 逐張假單展開的 N+1；刻意不註冊 DI，只在唯讀合併流程 new
 │       ├── AttendanceReminderReadService.cs
 │       ├── AttendanceReminderLogReadService.cs
@@ -401,8 +402,9 @@ Api/
 │   │                                    平日 1–2h ×1.34、3h 起 ×1.67（上限 4h）；假日 1–2h ×1.34、3–8h ×1.67、9h 起 ×2.67（上限 12h）；
 │   │                                    時薪＝ROUND(底薪 ÷ 240, 2)；金額只在總額捨入一次（AwayFromZero）；
 │   │                                    日別走 WorkCalendarHelper.IsHolidayAsync，**排班制員工恆判平日**；超出上限截斷計酬但不擋送出
-│   ├── LeaveDayExpander.cs            # 請假單「逐日展開」單一真相（Date + Hours）：供銷假逐日勾選、核准後重算 Hours、出缺勤報表請假合併；假別分類常數 WorkingDayLeaveTypes / TimeUnitMap 亦收斂於此，LeaveRequestHandler 轉引
-│   ├── AttendanceLeaveMerger.cs       # 出缺勤報表「打卡 ∪ 當日請假日」合併單一真相：(員工, 日期) 一列，只有請假無打卡時產生 Id=null 虛擬列；逐日時數走 LeaveDayExpander，故採「區間全量載入 → 記憶體合併 → 記憶體切頁」，區間跨度上限 MaxRangeDays=400 天、匯出 pageSize 上限 ExportMaxPageSize=5000
+│   ├── LeaveDayExpander.cs            # 請假單「逐日展開」單一真相（Date + Hours + **Segment / Start / End 逐日時段**，2026-09 新增）：供銷假逐日勾選、核准後重算 Hours、出缺勤報表請假合併與時段顯示；時段代碼 full / am / pm / partial（`Constants.LeaveDaySegments`）一律 clamp 在 08:00–17:00，Hours 沿用既有整點差語意故與 End−Start 不必然等長；假別分類常數 WorkingDayLeaveTypes / TimeUnitMap 亦收斂於此，LeaveRequestHandler 轉引
+│   ├── ExpectedWorkWindow.cs          # 「該日應出勤（可打卡）時段」單一真相（2026-09 新增，純函式無 I/O，比照 OvertimePayCalculator）：以 08:00–17:00 扣掉當日請假時段，含跨午休正規化（上午假 08–12 → 13:00 開工、下午假 13–17 → 12:00 下班），中段小時假刻意不縮；Start/End 為 null＝當日免出勤。**兩個 AdjustedByLeave 旗標不可省**：無請假時 End 恆為 17:00，補下班卡若無條件取 min 會把 09:00 上班者從 18:00 壓成 17:00。消費點：出缺勤報表應出勤欄 + 未打卡判定、登入自動補卡
+│   ├── AttendanceLeaveMerger.cs       # 出缺勤報表「打卡 ∪ 當日請假日 ∪ **缺勤日**」合併單一真相：(員工, 日期) 一列，以 **`RowKind`（clock / leave / absent）** 標示種類 —— 請假列與缺勤列同樣 Id=null，**前端不可再用 Id 判斷**；缺勤列＝工作日無打卡且無請假（今天與未來不算、依 HireDate/ResignDate 夾邊界、展開上限 AbsenceMaxCells=60000）；每列另帶 ExpectedStart/End（走 ExpectedWorkWindow，無請假的工作日為 08:00–17:00、休假日為 null）；逐日時數與時段走 LeaveDayExpander，故採「區間全量載入 → 記憶體合併 → 記憶體切頁」，區間跨度上限 MaxRangeDays=400 天、匯出 pageSize 上限 ExportMaxPageSize=5000。**缺勤判定必須用 leavesByDay 的 Remove 前快照**，否則「有打卡又有請假」的日子會被誤判成缺勤
 │   └── Constants.cs
 ├── host.json
 ├── local.settings.json                # 本地開發設定（不進版控）
