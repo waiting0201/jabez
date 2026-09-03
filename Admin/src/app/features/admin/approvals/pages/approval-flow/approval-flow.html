@@ -76,7 +76,10 @@
                   </label>
                   @if (useException) {
                     <div class="ms-4 flex flex-col gap-2" formArrayName="exceptionUserIds">
-                      @for (ctrl of exceptionUserIds.controls; track $index) {
+                      <!-- track 必須是控制項本體：列內以 [formControlName]="$index" 索引綁定，
+                           若 track $index 則刪除中間列後 DOM 與控制項錯位（顯示值整批往前跳、選項被
+                           availableUsers 濾掉而變空白），改選還會寫進已被移除的控制項 -->
+                      @for (ctrl of exceptionUserIds.controls; track ctrl) {
                         <div class="flex items-center gap-2">
                           <span class="text-muted small" style="min-width:1.25rem">{{ $index + 1 }}.</span>
                           <select class="form-select form-select-sm" style="max-width:240px" [formControlName]="$index">
@@ -106,7 +109,8 @@
                         <span class="text-muted">— 留空＝不限職稱；有設定時申請人只能指定這些職稱的人員</span>
                       </div>
                       <div class="flex flex-col gap-2" formArrayName="designatedJobTitleIds">
-                        @for (ctrl of designatedJobTitleIds.controls; track $index) {
+                        <!-- 同上：索引綁定的列一律 track 控制項本體 -->
+                        @for (ctrl of designatedJobTitleIds.controls; track ctrl) {
                           <div class="flex items-center gap-2">
                             <span class="text-muted small" style="min-width:1.25rem">{{ $index + 1 }}.</span>
                             <select class="form-select form-select-sm" style="max-width:240px" [formControlName]="$index">

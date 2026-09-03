@@ -2147,6 +2147,23 @@ export class AuthService {
 
 `@for` **必須**指定 `track`：物件用 `track item.id`，純值用 `track $index`。
 
+#### ⚠ FormArray 的 track：索引綁定的列一律 track 控制項本體
+
+跑 `FormArray.controls` 的 `@for`，能不能用 `track $index` 取決於**列內怎麼綁控制項**：
+
+| 列內綁法 | 可用的 track | 說明 |
+|---|---|---|
+| `[formGroup]="$any(item)"`（**實例**綁定，§7 明細列表標準） | `track $index` 可 | 每次變更偵測都重新拿到正確的控制項實例 |
+| `[formControlName]="$index"` / `[formGroupName]="i"`（**索引**綁定） | **必須** `track ctrl`（或穩定 `rowId`，見加班申請關聯專案） | 見下方原因 |
+
+原因：`FormArray.removeAt()` **不會**觸發 `_onCollectionChange`，`FormGroupDirective` 因此不會重新解析各列的控制項；
+而 `FormControlName.ngOnChanges` 只在 `_added === false` 時 `_setUpControl()`，所以 `name`（`$index`）改變也**不會**重新綁。
+`track $index` 時 Angular 只會砍掉最後一列並沿用其餘 DOM，被沿用的列仍指向**刪除前**同索引的舊控制項 → 畫面值整批錯位；
+若下拉選項還會排除其他列已選值（`availableUsers()` / `availableJobTitles()` / `availableProjects()`），錯位的值會被濾掉而**顯示空白**，
+使用者改選也只會寫進已被移除的控制項（靜默遺失）。改 `track ctrl` 後 DOM 節點跟著控制項搬移，索引綁定自然對齊。
+
+實例：簽核流程設定的「例外指定審核」名單與其「限定職稱」（[approval-flow.html](../Admin/src/app/features/admin/approvals/pages/approval-flow/approval-flow.html)）。
+
 ---
 
 ## 17. 命名規範
