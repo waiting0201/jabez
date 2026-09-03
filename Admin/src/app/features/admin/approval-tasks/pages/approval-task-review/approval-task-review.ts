@@ -27,7 +27,7 @@ import {TravelPaymentPdfService} from '../../../travel-payment-requests/services
 import {PreReviewPdfService} from '../../../pre-review-requests/services/pre-review-pdf.service';
 import {ApprovalTaskService} from '../../services/approval-task.service';
 import {
-  ApprovalTask, ApprovalRecord, TaskStatus,
+  ApprovalTask, ApprovalRecord, PendingReviewer, TaskStatus,
   TASK_STATUS_LABELS, TASK_STATUS_CLASSES,
   APPLICATION_TYPE_LABELS, APPLICATION_TYPE_CLASSES,
   PAYMENT_TYPE_LABELS, LEAVE_TYPE_LABELS,
@@ -186,6 +186,19 @@ export class ApprovalTaskReview implements OnInit {
 
   getRecord(records: ApprovalRecord[], stepOrder: number): ApprovalRecord | undefined {
     return records.find(r => r.stepOrder === stepOrder);
+  }
+
+  /** 該關卡實際可簽核的人（後端解析；與共用元件 <app-approval-timeline> 的兩個 helper 保持同步）*/
+  reviewersFor(task: ApprovalTask, stepOrder: number): PendingReviewer[] {
+    return task.stepReviewers?.find(s => s.stepOrder === stepOrder)?.reviewers ?? [];
+  }
+
+  /** 「張三（總監室 · 總監）、李四」—— 部門 / 職稱有值才加括號 */
+  reviewerNames(reviewers: PendingReviewer[]): string {
+    return reviewers.map(r => {
+      const extra = [r.departmentName, r.jobTitleName].filter(Boolean).join(' · ');
+      return extra ? `${r.name}（${extra}）` : r.name;
+    }).join('、');
   }
 
   // ── 分期撥款 helpers ────────────────────────────────────────────────────────

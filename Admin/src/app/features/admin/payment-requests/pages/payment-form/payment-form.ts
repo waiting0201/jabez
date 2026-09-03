@@ -13,7 +13,7 @@ import {InstallmentsTable} from '../../../../../shared/components/installments-t
 import {AttachmentsUpload} from '../../../../../shared/components/attachments-upload';
 import {SubmitSuccessModal} from '../../../../../shared/components/submit-success-modal';
 import {DesignatedReviewersPicker, DesignatedReviewerPayload} from '../../../../../shared/components/designated-reviewers-picker/designated-reviewers-picker';
-import {AttachmentItem, PendingReviewer} from '../../../approval-tasks/models/approval-task.model';
+import {AttachmentItem, StepReviewers} from '../../../approval-tasks/models/approval-task.model';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
 import {ApprovalFlow, ApprovalRecord, ApprovalTask, InstallmentDto, PaymentInstallmentStatus} from '../../../approval-tasks/models/approval-task.model';
 import {PaymentRequestService, OcrItem} from '../../services/payment-request.service';
@@ -88,8 +88,8 @@ export class PaymentForm implements OnInit {
   approvalRecords: ApprovalRecord[] = [];
   taskCurrentStepOrder = 0;
   taskStatus = '';
-  /** 目前關卡的待簽核者（後端解析；空陣列＝查無可簽核人員）*/
-  pendingReviewers: PendingReviewer[] = [];
+  /** 各關卡的可簽核者（後端解析；某關為空陣列＝該關查無可簽核人員）*/
+  stepReviewers: StepReviewers[] = [];
   approvalTask: ApprovalTask | null = null;
   // 分期撥款（read-only 顯示用，財務排定後申請人可查看）
   installments: InstallmentDto[] | null = null;
@@ -341,7 +341,7 @@ export class PaymentForm implements OnInit {
               this.approvalRecords = task.approvalRecords ?? [];
               this.taskCurrentStepOrder = task.currentStepOrder;
               this.taskStatus = task.status;
-              this.pendingReviewers = task.currentStepReviewers ?? [];
+              this.stepReviewers = task.stepReviewers ?? [];
               this.cdr.markForCheck();
             },
           });

@@ -173,16 +173,16 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             }
         }
 
-        // ── 目前關卡的待簽核者：上層級 / 指定審核關卡在簽核前沒有人名，時間軸只印「審核中…」，
-        //     申請人與審核者都看不出這關該找誰；空清單代表查無可簽核人員（前端顯示警示） ──
+        // ── 各關卡的可簽核者：上層級 / 指定審核關卡本身沒有人名，時間軸不印就完全看不出誰要簽；
+        //     某關為空清單代表該關查無可簽核人員（前端顯示警示） ──
         if (task.Status == "pending")
         {
             var applicantId = await GetApplicantIdAsync(task.ApplicationType, intId);
             if (applicantId.HasValue)
             {
-                var reviewers = await approvalFlow.ResolveCurrentStepReviewersAsync(
-                    task.ApplicationType, intId, task.Flow?.Id, applicantId.Value, task.CurrentStepOrder);
-                task = task with { CurrentStepReviewers = [.. reviewers] };
+                var stepReviewers = await approvalFlow.ResolveStepReviewersAsync(
+                    task.ApplicationType, intId, task.Flow?.Id, applicantId.Value);
+                task = task with { StepReviewers = [.. stepReviewers] };
             }
         }
 

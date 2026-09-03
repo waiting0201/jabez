@@ -270,13 +270,18 @@ public sealed record ApprovalTaskDto(
     TravelPaymentTaskDetailDto? TravelPaymentDetail     = null,   // 出差請款申請詳情
     PreReviewTaskDetailDto?     PreReviewDetail         = null,   // 預審申請詳情
     LeaveRevocationTaskDetailDto? LeaveRevocationDetail = null,   // 銷假申請詳情
-    PendingReviewerDto[]?       CurrentStepReviewers    = null);  // 目前關卡實際可簽核的人（僅 pending 單計算）
+    StepReviewersDto[]?         StepReviewers           = null);  // 各關卡實際可簽核的人（僅 pending 單計算）
 
 /// <summary>
-/// 目前關卡的待簽核者（簽核流程時間軸用）。
-/// 上層級 / 指定審核這類動態關卡在簽核前沒有任何人名可顯示，申請人與審核者都看不出「這關該找誰」，
-/// 故由後端以與授權判定同一套規則解析後帶回；空陣列＝這關查無可簽核人員（單子會卡住）。
+/// 一個簽核關卡的可簽核者（簽核流程時間軸用）。
+/// 上層級 / 指定審核這類動態關卡本身沒有人名可顯示，申請人與審核者都看不出「這關是誰簽」，
+/// 故由後端以與授權判定同一套規則逐關解析後帶回；Reviewers 為空＝這關查無可簽核人員（單子會卡住）。
 /// </summary>
+public sealed record StepReviewersDto(
+    int                  StepOrder,
+    PendingReviewerDto[] Reviewers);
+
+/// <summary>可簽核者顯示資訊。</summary>
 /// <param name="IsEscalated">是否為升級審核指派（上層級關卡由上層部門主管接手）</param>
 public sealed record PendingReviewerDto(
     Guid    Id,

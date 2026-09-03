@@ -64,15 +64,16 @@ public interface IApprovalFlowService
             decimal? requestDays = null);
 
     /// <summary>
-    /// 解析「目前關卡實際可簽核的人」，供詳情頁的簽核流程時間軸顯示待簽核者。
+    /// 逐關解析「這一關實際可簽核的人」，供詳情頁的簽核流程時間軸把人名印在關卡名稱上
+    /// （例如「上層級：張三」）—— 上層級 / 指定審核關卡本身沒有人名，不解析就完全看不出誰要簽。
     /// 判定順序與 ApprovalTaskHandler.AuthorizeStepAsync 一致：
     ///   (1) 升級指派（EscalationOverride）→ 指名者本人
-    ///   (2) 指定審核（含例外命中）→ 本關 pending designee 中 StepOrder 最小的那位（依序審核，只有他輪得到）
+    ///   (2) 指定審核（含例外命中）→ 該關全部 pending designee，維持申請人排定的審核次序
     ///   (3) 上層級 / 固定部門職稱 → 與送單同一套審核者池
-    /// 回傳空清單＝這一關查無可簽核人員（單子會卡住，前端據此顯示警示）。
+    /// 某關的 Reviewers 為空＝該關查無可簽核人員（單子會卡在該關，前端據此顯示警示）。
     /// </summary>
-    Task<IReadOnlyList<PendingReviewerDto>> ResolveCurrentStepReviewersAsync(
-        string applicationType, int applicationId, int? approvalItemId, Guid applicantId, int currentStepOrder);
+    Task<IReadOnlyList<StepReviewersDto>> ResolveStepReviewersAsync(
+        string applicationType, int applicationId, int? approvalItemId, Guid applicantId);
 
     /// <summary>
     /// 取得此申請「最近一次 returned 之後」所有 approved 的審核者 Id（去重 HashSet）。

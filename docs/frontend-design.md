@@ -461,13 +461,14 @@ model 皆宣告為 `requestNo: string | null`：
 - 父表單（範本 [payment-form](../Admin/src/app/features/admin/payment-requests/pages/payment-form/payment-form.ts)）以 `(reviewersChange)` 存 payload、`(suppressedStepsChange)` 存被抑制步驟；`_buildFormData()` 直接 `JSON.stringify` 進 `designatedReviewers` 欄位；送出驗證「每個 designated step 至少 1 位（被抑制者除外）」。
 
 **簽核流程時間軸共用元件（[`<app-approval-timeline>`](../Admin/src/app/shared/components/approval-timeline.ts)）：**
-- Inputs：`flow` / `approvalRecords` / `currentStepOrder` / `status` / `currentRoundNo`（追加預支批次）/ **`pendingReviewers`**。
+- Inputs：`flow` / `approvalRecords` / `currentStepOrder` / `status` / `currentRoundNo`（追加預支批次）/ **`stepReviewers`**。
+- **關卡名稱一律帶人名**：`上層級：張三（發展三部 · 專案經理）`、`指定審核：李四（…）、王五（…）`、`總監（總監室）：蔡志堅（…）`。「上層級」「指定審核」本身不是人名，不接人名就完全看不出誰要簽。多人以「、」相接，升級指派掛紫色「升級審核」badge；該關無人可簽則接紅字「：查無可簽核人員」。
 - 每個關卡四種狀態，缺一就會讓人看不出「誰簽過、這關輪到誰」：
-  1. **已簽核** —— 綠 ✓ / 紅 ✗ 圓圈 + 審核者姓名、代理 / 升級審核 badge、時間（到秒）、結果與簽核意見。
-  2. **審核中** —— 藍色圓圈 + 「審核中…」，其下再列 **待簽核者**（姓名 +（部門 · 職稱），升級指派掛紫色「升級審核」badge）；`pendingReviewers` 為空時改印紅字「查無可簽核人員，請聯絡管理員調整簽核流程或人員職稱」。**上層級 / 指定審核關卡在簽核前沒有人名，這一段是唯一線索，不可省略。**
-  3. **已跳過** —— 序號小於目前關卡卻無簽核紀錄者（送單時被跳過不留 `ApprovalRecord`），灰字「已跳過」，與「尚未輪到」區分。
-  4. **尚未輪到** —— 灰圈 + 關卡名稱，無額外文字。
-- `pendingReviewers` 來源一律是 `ApprovalTask.currentStepReviewers`（後端 `GET /approval-tasks/{appType}/{id}` 於 pending 時解析），**前端不自行推算誰能簽**；detail 頁綁 `task.currentStepReviewers ?? []`，form 頁存在 `pendingReviewers` 欄位。
+  1. **已簽核** —— 綠 ✓ / 紅 ✗ 圓圈 + 審核者姓名、代理 / 升級審核 badge、時間（到秒）、結果與簽核意見；關卡名稱**不**重複列人名（下方已是實際簽核者）。
+  2. **審核中** —— 藍色圓圈 + 「審核中…」；該關無人可簽時再補一行紅字「這一關沒有人簽得到，請聯絡管理員調整簽核流程或人員職稱」。
+  3. **已跳過** —— 序號小於目前關卡卻無簽核紀錄者（送單時被跳過不留 `ApprovalRecord`），灰字「已跳過」，與「尚未輪到」區分；關卡名稱**不**列人名（這張單不會再回頭走）。
+  4. **尚未輪到** —— 灰圈 + 關卡名稱 + 人名（誰會簽後面幾關，送出當下就看得到）。
+- `stepReviewers` 來源一律是 `ApprovalTask.stepReviewers`（後端 `GET /approval-tasks/{appType}/{id}` 於 pending 時逐關解析），**前端不自行推算誰能簽**；detail 頁綁 `task.stepReviewers ?? []`，form 頁存在 `stepReviewers` 欄位。後端沒帶回時（非 pending 單）一律不顯示人名，也不誤報「查無可簽核人員」。
 - ⚠ [approval-task-review](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/approval-task-review.html) 另有一份**內嵌**時間軸（審核頁需與審核表單同頁佈局），改動時**兩處必須同步**。
 
 ---

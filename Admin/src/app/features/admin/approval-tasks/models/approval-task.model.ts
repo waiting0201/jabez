@@ -473,11 +473,17 @@ export interface ApprovalTask {
   /** 指定審核者（含 approvalStepOrder，供 PDF 簽名欄判斷哪些步驟為指定審核，含例外指定審核命中者） */
   designatedReviewers?: DesignatedReviewer[];
   submittedBySignatureUrl?: string;  // 申請人簽名檔 URL
-  /** 目前關卡實際可簽核的人（僅 pending 單有值；空陣列＝查無可簽核人員，單子卡住） */
-  currentStepReviewers?: PendingReviewer[];
+  /** 各關卡實際可簽核的人（僅 pending 單有值；某關為空陣列＝該關查無可簽核人員，單子會卡住） */
+  stepReviewers?: StepReviewers[];
 }
 
-/** 目前關卡的待簽核者（簽核流程時間軸顯示用） */
+/** 一個簽核關卡的可簽核者（簽核流程時間軸把人名印在關卡名稱上） */
+export interface StepReviewers {
+  stepOrder: number;
+  reviewers: PendingReviewer[];
+}
+
+/** 可簽核者顯示資訊 */
 export interface PendingReviewer {
   id: string;
   name: string;
