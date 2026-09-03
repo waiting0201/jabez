@@ -307,7 +307,16 @@ Api/
 │   ├── Scripts/                       # 一次性維運 SQL（非程式）：01 診斷「送單後會卡死」的簽核關卡（唯讀，遞迴 CTE 重現流程解析優先序）、
 │   │                                  #   02 修正請假 Step2「申請人部門的協理」→ 上層級審核（@Commit 空跑開關 + MinDays 遺失防呆）、
 │   │                                  #   03 停用測試帳號（Email @example.com / 姓名含「測試」→ Status='inactive'，避免混進簽核候選池與去重全池判定；
-│   │                                  #      刻意跳過仍背著 pending 指定審核 / 升級指派 / 職務代理者，停用＝無法登入會讓那些單沒人審）。staging / 正式站各跑一次
+│   │                                  #      刻意跳過仍背著 pending 指定審核 / 升級指派 / 職務代理者，停用＝無法登入會讓那些單沒人審）。staging / 正式站各跑一次、
+│   │                                  #   04 清除測試申請單與測試專案（@Commit 空跑開關；帳號一律不動）：以「測試帳號送出 ∪ 掛在測試專案上 ∪ 明列單號 ∪ 預審全表」
+│   │                                  #      取聯集，再補上相依單據（沖銷←預支 / 出差、銷假←請假），最後刪 5 個測試專案。
+│   │                                  #      兩個關鍵：① 三張多型無 FK 的表（ApprovalRecords / EscalationOverrides / RequestDesignatedReviewers）
+│   │                                  #      必須趕在父列消失前用 (AppType, AppId) 清掉，否則殘列掛著 ReviewerId 擋住日後刪使用者；
+│   │                                  #      ② OvertimeRequestProjects.ProjectId 是 NO_ACTION，殘一列就擋住刪專案，故引用測試專案的加班單須整張納入範圍。
+│   │                                  #      附件 blob 不會被刪（成為孤兒 blob，本機不影響功能）、
+│   │                                  #   04b 同 04 的逐筆展開版（一張單一組 4 行 DELETE：3 行簽核足跡 + 1 行父列），
+│   │                                  #      供逐筆檢視 / 挑著跑；區塊順序同樣是先子單（沖銷 / 銷假）後母單，
+│   │                                  #      要保留某張單就整組四行一起註解。兩版刪除結果已比對逐欄一致
 │   └── Seed/                          # 一次性匯入工具（共用 RocDateParser 解民國年）
 │       ├── EmployeeImporter + EmployeeImportDtos + employee-import.json  # 員工人事資料（RUN_EMPLOYEE_IMPORT 旗標，IMPORT_UPLOAD_FILES 控制附件上傳）
 │       ├── ProjectImporter + ProjectImportDtos + project-import.json     # 專案資料（RUN_PROJECT_IMPORT 旗標，PROJECT_IMPORT_DRY_RUN 只印不寫；來源 reference/專案資料-115.07.29.xls；以 Code upsert、期別明細全量重建）
