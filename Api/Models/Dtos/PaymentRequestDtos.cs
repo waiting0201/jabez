@@ -158,7 +158,8 @@ public sealed record LeaveTaskDetailDto(
     DateTime StartDate,
     DateTime EndDate,
     decimal  Hours,
-    string   Reason);
+    string   Reason,
+    string?  RequestNo = null);   // LV-yyyyMMdd-NNN（草稿無單號，簽核頁看到的一律已送簽故必有值）
 
 /// <summary>銷假申請詳情（含原請假單資訊與被取消的逐日清單）</summary>
 public sealed record LeaveRevocationTaskDetailDto(
@@ -171,7 +172,8 @@ public sealed record LeaveRevocationTaskDetailDto(
     string   LeaveReason,
     decimal  RevokedHours,
     string   Reason,
-    LeaveRevocationDateDto[] Dates);
+    LeaveRevocationDateDto[] Dates,
+    string?  RequestNo = null);   // LVR-yyyyMMdd-NNN
 
 /// <summary>
 /// 假日活動每位人員（申請人 + 參與者）的參與明細。
@@ -226,7 +228,8 @@ public sealed record OvertimeTaskDetailDto(
     string   CompensationType  = "compensatory",  // compensatory | pay
     decimal? OvertimePayAmount = null,
     decimal? PayableHours      = null,
-    bool?    IsHolidayOvertime = null);
+    bool?    IsHolidayOvertime = null,
+    string?  RequestNo         = null);           // OT-yyyyMMdd-NNN
 
 /// <summary>出差請款申請審核任務詳情 DTO</summary>
 public sealed record TravelPaymentTaskDetailDto(

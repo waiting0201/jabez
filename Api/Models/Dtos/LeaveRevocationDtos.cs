@@ -42,7 +42,8 @@ public sealed record LeaveRevocationDto(
     DateTime? LeaveEndDate     = null,
     decimal?  LeaveHours       = null,
     decimal?  LeaveOriginalHours = null,
-    string?   LeaveApprovalStatus = null);
+    string?   LeaveApprovalStatus = null,
+    string?   RequestNo          = null);  // LVR-yyyyMMdd-NNN；送簽時取號，草稿為 null
 
 public sealed record CreateLeaveRevocationRequest(
     DateTime[] Dates,

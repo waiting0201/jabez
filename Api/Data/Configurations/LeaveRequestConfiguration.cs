@@ -10,6 +10,14 @@ public class LeaveRequestConfiguration : IEntityTypeConfiguration<LeaveRequest>
     {
         builder.HasKey(l => l.Id);
 
+        // 送簽時才取號（RequestNoGenerator），草稿階段為 null
+        builder.Property(l => l.RequestNo)
+               .HasMaxLength(50);
+
+        builder.HasIndex(l => l.RequestNo)
+               .IsUnique()
+               .HasFilter("[RequestNo] IS NOT NULL");
+
         builder.Property(l => l.LeaveType)
                .IsRequired()
                .HasMaxLength(30);

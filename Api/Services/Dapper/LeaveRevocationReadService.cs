@@ -8,7 +8,7 @@ namespace Jabez.Api.Services.Dapper;
 public sealed class LeaveRevocationReadService(IDbConnection db) : ILeaveRevocationReadService
 {
     private const string BaseSql = """
-        SELECT rv.Id, rv.LeaveRequestId, u.Name AS EmployeeName,
+        SELECT rv.Id, rv.RequestNo, rv.LeaveRequestId, u.Name AS EmployeeName,
                rv.Reason, rv.RevokedHours, rv.ApprovalStatus, rv.CreatedAt, rv.SubmittedAt,
                rv.ReviewedAt, rv.ReviewNote, rv.ApprovalItemId, rv.CurrentStepOrder, rv.ReviewedById,
                lr.LeaveType, lr.StartDate AS LeaveStartDate, lr.EndDate AS LeaveEndDate,
@@ -116,5 +116,6 @@ public sealed class LeaveRevocationReadService(IDbConnection db) : ILeaveRevocat
         LeaveEndDate:        (DateTime)row.LeaveEndDate,
         LeaveHours:          (decimal)row.LeaveHours,
         LeaveOriginalHours:  (decimal?)row.LeaveOriginalHours,
-        LeaveApprovalStatus: (string)row.LeaveApprovalStatus);
+        LeaveApprovalStatus: (string)row.LeaveApprovalStatus,
+        RequestNo:           (string?)row.RequestNo);
 }

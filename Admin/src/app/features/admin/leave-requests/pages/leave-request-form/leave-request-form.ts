@@ -58,6 +58,7 @@ export class LeaveRequestForm implements OnInit {
   isReturned = false;
   isDraft    = true;
   approvalStatus: ApprovalStatus = 'draft';
+  requestNo = '';   // LV-yyyyMMdd-NNN；草稿尚未取號故為空
   errorMsg = signal('');
   /** 儲存 / 送出進行中：鎖按鈕 + spinner，避免連按建出多張單（見 docs/frontend-design.md §8.4.1） */
   saving = signal(false);
@@ -500,6 +501,7 @@ export class LeaveRequestForm implements OnInit {
       this.service.getById(this.requestId).subscribe(r => {
         if (!r) return;
         this.approvalStatus = r.approvalStatus;
+        this.requestNo      = r.requestNo ?? '';
         this._leaveEndDate = r.endDate;
         this.isDraft    = r.approvalStatus === 'draft';
         this.isReturned = r.approvalStatus === 'returned';

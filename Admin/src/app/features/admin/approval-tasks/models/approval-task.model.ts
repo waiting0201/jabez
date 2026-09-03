@@ -122,6 +122,7 @@ export interface PaymentTaskDetail {
 
 export interface LeaveTaskDetail {
   leaveRequestId: number;
+  requestNo?: string | null;   // LV-yyyyMMdd-NNN
   leaveType: LeaveType;
   startDate: Date;
   endDate: Date;
@@ -132,6 +133,7 @@ export interface LeaveTaskDetail {
 /** 銷假申請詳情（含原請假單資訊與被取消的逐日清單） */
 export interface LeaveRevocationTaskDetail {
   leaveRevocationId: number;
+  requestNo?: string | null;   // LVR-yyyyMMdd-NNN
   leaveRequestId: number;
   leaveType: LeaveType;
   leaveStartDate: Date;
@@ -218,6 +220,7 @@ export interface OvertimeTaskProject {
 
 export interface OvertimeTaskDetail {
   overtimeRequestId: number;
+  requestNo?: string | null;   // OT-yyyyMMdd-NNN
   overtimeDate: Date;
   /** 預估總時數（= projects 各列加總） */
   estimatedHours: number;

@@ -331,7 +331,8 @@ public async Task<HttpResponseData> UpsertAsync(HttpRequestData req, string id, 
 
 單號格式 `{PREFIX}-yyyyMMdd-NNN`，取號的單一真相是
 [Common/RequestNoGenerator.cs](../Api/Common/RequestNoGenerator.cs)（**不可再各自 inline 複製一份**，
-2026-09 之前 7 個 Handler 各抄一份，改一個行為要改八處）：
+2026-09 之前 7 個 Handler 各抄一份，改一個行為要改八處）。
+**10 種申請類型全部都取號**（2026-09 起請假 `LV-` / 加班 `OT-` / 銷假 `LVR-` 補上）：
 
 ```csharp
 if (string.IsNullOrEmpty(pr.RequestNo))
@@ -372,7 +373,7 @@ pr.SubmittedAt ??= Clock.Now;
 | `SubmittedAt` | 送簽時間＝**申請日期** | `NULL` | 不變（`??=`） |
 
 守則與取號完全共用：`??=` 即守則 1、位置即守則 2、追加預支批次由守則 1 天然涵蓋。
-**請假 / 加班 / 銷假三種沒有單號**，戳記改放在狀態閘門的下一行，位置語意相同。
+請假 / 加班 / 銷假三種在 2026-09 補上單號後，兩個戳記同樣是「狀態閘門通過後的第一件事」，寫在一起。
 新增申請類型時兩個戳記必須一起做 —— 只做一半會讓同一張單的單號日期與申請日期對不起來
 （這正是 2026-09 補這個欄位的原因：單號已改送簽日取號，申請日期卻還讀 `CreatedAt`）。
 

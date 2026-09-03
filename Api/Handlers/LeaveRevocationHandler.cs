@@ -247,7 +247,13 @@ public sealed class LeaveRevocationHandler(
         if (revocation.ApprovalStatus is not ("draft" or "returned"))
             throw AppException.BadRequest("Only draft or returned leave revocations can be submitted.");
 
-        // 送簽日期只在首次送簽寫入：退回（returned）重送不改，與有單號的申請類型規則一致。
+        // 送簽時才取號：單號日期＝送簽日，草稿不佔號。
+        // 退回（returned）重送時已有單號，不可重新配號，否則已流通的單號會被改掉。
+        if (string.IsNullOrEmpty(revocation.RequestNo))
+            revocation.RequestNo = await RequestNoGenerator.NextAsync(
+                db.LeaveRevocations.Select(x => x.RequestNo), "LVR-", Clock.Now);
+
+        // 送簽日期只在首次送簽寫入：退回（returned）重送不改，與單號規則一致。
         revocation.SubmittedAt ??= Clock.Now;
 
         // 父單守門 + 逐日重驗（防併發：草稿期間父單可能已被別張銷假單改動）

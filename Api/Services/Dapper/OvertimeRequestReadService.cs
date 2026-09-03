@@ -8,7 +8,7 @@ namespace Jabez.Api.Services.Dapper;
 public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequestReadService
 {
     private const string BaseSql = """
-        SELECT o.Id, u.Name AS EmployeeName,
+        SELECT o.Id, o.RequestNo, u.Name AS EmployeeName,
                o.OvertimeDate,
                o.EstimatedHours, o.Reason,
                o.ApprovalStatus, o.CreatedAt, o.SubmittedAt, o.ReviewedAt, o.ReviewNote,
@@ -69,7 +69,8 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
             OvertimePayAmount:  (decimal?)row.OvertimePayAmount,
             HourlyRateSnapshot: (decimal?)row.HourlyRateSnapshot,
             PayableHours:       (decimal?)row.PayableHours,
-            IsHolidayOvertime:  (bool?)row.IsHolidayOvertime);
+            IsHolidayOvertime:  (bool?)row.IsHolidayOvertime,
+            RequestNo:          (string?)row.RequestNo);
     }
 
     public async Task<IEnumerable<OvertimeRequestDto>> GetAllAsync()

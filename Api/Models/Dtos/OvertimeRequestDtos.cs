@@ -56,7 +56,8 @@ public sealed record OvertimeRequestDto(
     decimal?  OvertimePayAmount    = null,
     decimal?  HourlyRateSnapshot   = null,
     decimal?  PayableHours         = null,
-    bool?     IsHolidayOvertime    = null);
+    bool?     IsHolidayOvertime    = null,
+    string?   RequestNo            = null);  // OT-yyyyMMdd-NNN；送簽時取號，草稿為 null
 
 public sealed record CreateOvertimeRequestRequest(
     Guid?    EmployeeId,

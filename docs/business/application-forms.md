@@ -4,7 +4,8 @@
 
 ## 單號（RequestNo）對照
 
-7 種金錢相關申請表均有單號，格式 `{PREFIX}-yyyyMMdd-NNN`（per-prefix-per-day 序號池，由 unique index 保護並發）：
+**10 種申請表全部都有單號**（2026-09 起請假 / 加班 / 銷假補上），格式 `{PREFIX}-yyyyMMdd-NNN`
+（per-prefix-per-day 序號池，由 unique index 保護並發）：
 
 > **單號於「送簽當下」產生，不是建立草稿時**（2026-09 變更）。日期＝**送簽日**，草稿階段 `RequestNo` 為 `NULL`、畫面顯示「—」。
 > 舊制在 `CreateAsync` 取號，導致單號日期是建單日、且草稿刪除會留下缺號。
@@ -19,8 +20,14 @@
 | 假日執行活動申請 TravelRequest（`IsHolidayTravel=true`） | `HTR-` | `HTR-20260520-001` |
 | 預支沖銷申請 WriteOffRecord | `WO-` | `WO-20260520-001` |
 | 出差預支沖銷申請 TravelWriteOffRecord | `TWO-` | `TWO-20260520-001` |
+| 請假申請 LeaveRequest | `LV-` | `LV-20260903-001` |
+| 加班申請 OvertimeRequest | `OT-` | `OT-20260903-001` |
+| 銷假申請 LeaveRevocation | `LVR-` | `LVR-20260903-001` |
 
-> 請假 / 加班無單號（僅以 GUID Id 識別）。
+> 請假 / 加班 / 銷假原本沒有單號（僅以 Id 識別），2026-09 補上，規則與其餘 7 種完全相同：
+> 草稿不取號、送簽當下配號、退回重送不改號。上線時已將既有非草稿單依
+> `COALESCE(SubmittedAt, CreatedAt)` 的日期分組回填流水號（見
+> `AddRequestNoToLeaveOvertimeRevocation` migration），故舊單也看得到單號。
 
 ### 取號規則（2026-09 起）
 

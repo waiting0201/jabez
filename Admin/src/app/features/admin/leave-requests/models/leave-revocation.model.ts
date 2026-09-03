@@ -21,6 +21,7 @@ export interface RevocableDatesResult {
 
 export interface LeaveRevocation {
   id: number;
+  requestNo?: string | null;  // LVR-yyyyMMdd-NNN；送簽時取號，草稿為 null
   leaveRequestId: number;
   employeeName?: string;
   reason: string;

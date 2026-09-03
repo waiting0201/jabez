@@ -15,6 +15,7 @@ namespace Jabez.Api.Models.Entities;
 public class LeaveRevocation
 {
     public int      Id             { get; set; }
+    public string?  RequestNo      { get; set; }                 // LVR-yyyyMMdd-NNN；送簽時取號，草稿為 null
     public int      LeaveRequestId { get; set; }
     public Guid?    EmployeeId     { get; set; }
     public string   Reason         { get; set; } = string.Empty;

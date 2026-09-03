@@ -612,7 +612,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             """;
 
         var leaveSql = $"""
-            SELECT lr.Id, lr.LeaveType, lr.StartDate, lr.EndDate, lr.Hours, lr.Reason,
+            SELECT lr.Id, lr.RequestNo, lr.LeaveType, lr.StartDate, lr.EndDate, lr.Hours, lr.Reason,
                    lr.ApprovalStatus, lr.ApprovalItemId, lr.CurrentStepOrder,
                    u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, lr.CreatedAt, lr.SubmittedAt, lr.ReviewedAt, lr.ReviewNote
             FROM LeaveRequests lr
@@ -623,7 +623,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 
         // 銷假申請：JOIN 原請假單帶出假別 / 原期間 / 原時數（OriginalHours 為 null 表尚未銷過，取 Hours）
         var leaveRevocationSql = $"""
-            SELECT rv.Id, rv.LeaveRequestId, rv.Reason, rv.RevokedHours,
+            SELECT rv.Id, rv.RequestNo, rv.LeaveRequestId, rv.Reason, rv.RevokedHours,
                    rv.ApprovalStatus, rv.ApprovalItemId, rv.CurrentStepOrder,
                    u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl,
                    rv.CreatedAt, rv.SubmittedAt, rv.ReviewedAt, rv.ReviewNote,
@@ -675,7 +675,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             """;
 
         var overtimeSql = $"""
-            SELECT ot.Id, ot.OvertimeDate, ot.EstimatedHours, ot.Reason,
+            SELECT ot.Id, ot.RequestNo, ot.OvertimeDate, ot.EstimatedHours, ot.Reason,
                    ot.CompensationType, ot.OvertimePayAmount, ot.PayableHours, ot.IsHolidayOvertime,
                    ot.ApprovalStatus, ot.ApprovalItemId, ot.CurrentStepOrder,
                    u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, ot.CreatedAt, ot.SubmittedAt, ot.ReviewedAt, ot.ReviewNote
@@ -1348,7 +1348,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         var leaveTasks = leaveRows.Select(row => new ApprovalTaskDto(
             (int)row.Id,
             "leave",
-            $"請假申請 #{row.Id}（{row.LeaveType}）",
+            $"請假申請 {(string?)row.RequestNo ?? $"#{row.Id}"}（{row.LeaveType}）",
             (string?)row.SubmittedBy ?? "—",
             (DateTime?)row.SubmittedAt ?? (DateTime)row.CreatedAt,
             (string)row.ApprovalStatus,
@@ -1363,7 +1363,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (DateTime)row.StartDate,
                 (DateTime)row.EndDate,
                 (decimal)row.Hours,
-                (string)row.Reason),
+                (string)row.Reason,
+                (string?)row.RequestNo),
             null, null, null, null, null,
             GetRecords("leave", (int)row.Id),
             GetDesignatedReviewers("leave", (int)row.Id),
@@ -1379,7 +1380,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         var leaveRevocationTasks = leaveRevocationRows.Select(row => new ApprovalTaskDto(
             (int)row.Id,
             "leave_revocation",
-            $"銷假申請 #{row.Id}（{LeaveTypeNames.GetZh((string)row.LeaveType)}）",
+            $"銷假申請 {(string?)row.RequestNo ?? $"#{row.Id}"}（{LeaveTypeNames.GetZh((string)row.LeaveType)}）",
             (string?)row.SubmittedBy ?? "—",
             (DateTime?)row.SubmittedAt ?? (DateTime)row.CreatedAt,
             (string)row.ApprovalStatus,
@@ -1402,7 +1403,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (string)row.LeaveReason,
                 (decimal)row.RevokedHours,
                 (string)row.Reason,
-                revocationDatesById.GetValueOrDefault((int)row.Id, []))));
+                revocationDatesById.GetValueOrDefault((int)row.Id, []),
+                (string?)row.RequestNo)));
 
         // Travel requests (非假日執行活動，IsHolidayTravel = 0)
         var travelTasks = travelRows.Select(row => new ApprovalTaskDto(
@@ -1497,7 +1499,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         var overtimeTasks = overtimeRows.Select(row => new ApprovalTaskDto(
             (int)row.Id,
             "overtime",
-            $"加班申請 #{row.Id}（{(decimal)row.EstimatedHours}h）",
+            $"加班申請 {(string?)row.RequestNo ?? $"#{row.Id}"}（{(decimal)row.EstimatedHours}h）",
             (string?)row.SubmittedBy ?? "—",
             (DateTime?)row.SubmittedAt ?? (DateTime)row.CreatedAt,
             (string)row.ApprovalStatus,
@@ -1515,7 +1517,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (string?)row.CompensationType ?? "compensatory",
                 (decimal?)row.OvertimePayAmount,
                 (decimal?)row.PayableHours,
-                (bool?)row.IsHolidayOvertime),
+                (bool?)row.IsHolidayOvertime,
+                (string?)row.RequestNo),
             null, null, null,
             GetRecords("overtime", (int)row.Id),
             GetDesignatedReviewers("overtime", (int)row.Id),
