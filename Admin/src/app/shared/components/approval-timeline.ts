@@ -1,6 +1,6 @@
 import {Component, computed, input} from '@angular/core';
 import {DatePipe} from '@angular/common';
-import {ApprovalFlow, ApprovalRecord, PendingReviewer} from '../../features/admin/approval-tasks/models/approval-task.model';
+import {ApprovalFlow, ApprovalRecord, PendingReviewer, StepReviewers} from '../../features/admin/approval-tasks/models/approval-task.model';
 import {roundLabel} from '../../features/admin/advance-requests/models/advance-request.model';
 
 @Component({
@@ -54,6 +54,20 @@ import {roundLabel} from '../../features/admin/advance-requests/models/advance-r
                         <span class="text-muted font-normal">（{{ step.departmentName }}）</span>
                       }
                     }
+                    <!-- 上層級 / 指定審核關卡本身沒有人名，這裡把後端解析出的可簽核者直接接在關卡名稱後。
+                         已簽核（下方已列實際簽核者）與已跳過（這張單不會再回頭走）的關卡不列，避免噪音 -->
+                    @if (!getRecord(step.stepOrder, round) && !isSkippedStep(step.stepOrder, round)) {
+                      @if (reviewersFor(step.stepOrder); as rs) {
+                        @if (rs.length) {
+                          <span class="font-normal">：{{ reviewerNames(rs) }}</span>
+                          @if (rs[0].isEscalated) {
+                            <span class="badge bg-[--bg-elevated] text-[--purple] ms-1" style="font-size:.7rem">升級審核</span>
+                          }
+                        } @else if (hasReviewerInfo()) {
+                          <span class="text-danger font-normal">：查無可簽核人員</span>
+                        }
+                      }
+                    }
                   </div>
                   @if (step.note) {
                     <div class="text-muted small">{{ step.note }}</div>
@@ -83,23 +97,8 @@ import {roundLabel} from '../../features/admin/advance-requests/models/advance-r
                     }
                   } @else if (isActiveStep(step.stepOrder, round)) {
                     <div class="text-primary small mt-1">審核中…</div>
-                    <!-- 上層級 / 指定審核在簽核前沒有人名，這裡把後端解析出的實際可簽核者列出來 -->
-                    @if (pendingReviewers().length) {
-                      <div class="text-muted small mt-1">
-                        待簽核：
-                        @for (r of pendingReviewers(); track r.id; let lastReviewer = $last) {
-                          {{ r.name }}
-                          @if (r.departmentName || r.jobTitleName) {
-                            <span class="text-muted">（{{ r.departmentName }}{{ r.departmentName && r.jobTitleName ? ' · ' : '' }}{{ r.jobTitleName }}）</span>
-                          }
-                          @if (r.isEscalated) {
-                            <span class="badge bg-[--bg-elevated] text-[--purple] ms-1" style="font-size:.7rem">升級審核</span>
-                          }
-                          @if (!lastReviewer) { <span>、</span> }
-                        }
-                      </div>
-                    } @else {
-                      <div class="text-danger small mt-1">查無可簽核人員，請聯絡管理員調整簽核流程或人員職稱</div>
+                    @if (hasReviewerInfo() && !reviewersFor(step.stepOrder).length) {
+                      <div class="text-danger small mt-1">這一關沒有人簽得到，請聯絡管理員調整簽核流程或人員職稱</div>
                     }
                   } @else if (isSkippedStep(step.stepOrder, round)) {
                     <div class="text-muted small mt-1">已跳過</div>
@@ -121,8 +120,8 @@ export class ApprovalTimeline {
   status = input('');
   /** 目前進行中的簽核批次（僅預支追加會 > 1；其餘申請維持 1）*/
   currentRoundNo = input(1);
-  /** 目前關卡實際可簽核的人（後端解析，空陣列＝查無可簽核人員）*/
-  pendingReviewers = input<PendingReviewer[]>([]);
+  /** 各關卡實際可簽核的人（後端解析；某關為空陣列＝該關查無可簽核人員）*/
+  stepReviewers = input<StepReviewers[]>([]);
 
   protected readonly roundLabel = roundLabel;
 
@@ -132,6 +131,23 @@ export class ApprovalTimeline {
     set.add(this.currentRoundNo());
     return [...set].sort((a, b) => a - b);
   });
+
+  /** 後端是否有帶回可簽核者資訊（只有 pending 單會算；沒帶回時不顯示人名，也不誤報查無人員）*/
+  hasReviewerInfo(): boolean {
+    return this.stepReviewers().length > 0;
+  }
+
+  reviewersFor(stepOrder: number): PendingReviewer[] {
+    return this.stepReviewers().find(s => s.stepOrder === stepOrder)?.reviewers ?? [];
+  }
+
+  /** 「張三（總監室 · 總監）、李四」—— 部門 / 職稱有值才加括號 */
+  reviewerNames(reviewers: PendingReviewer[]): string {
+    return reviewers.map(r => {
+      const extra = [r.departmentName, r.jobTitleName].filter(Boolean).join(' · ');
+      return extra ? `${r.name}（${extra}）` : r.name;
+    }).join('、');
+  }
 
   getRecord(stepOrder: number, roundNo: number): ApprovalRecord | undefined {
     return this.approvalRecords().find(r => r.stepOrder === stepOrder && (r.roundNo ?? 1) === roundNo);

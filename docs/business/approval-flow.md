@@ -408,19 +408,21 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 該部門已無高於執行長者 → **0 位候選人**，誰的待審清單都撈不到，畫面上也完全看不出原因。
 
 **做法：** `GET /approval-tasks/{appType}/{id}` 於 `status = pending` 時多回一個
-`currentStepReviewers`（`PendingReviewerDto[]`：姓名 / 職稱 / 部門 / `isEscalated`），
-由 [ApprovalFlowService.ResolveCurrentStepReviewersAsync](../../Api/Services/ApprovalFlowService.cs) 解析，
+`stepReviewers`（`StepReviewersDto[]`：`stepOrder` + `reviewers[]`，每人含姓名 / 職稱 / 部門 / `isEscalated`），
+由 [ApprovalFlowService.ResolveStepReviewersAsync](../../Api/Services/ApprovalFlowService.cs) **逐關**解析
+（不只目前關卡 —— 後面幾關是誰要簽，送出當下就該看得到），
 **判定順序與 [AuthorizeStepAsync](../../Api/Handlers/ApprovalTaskHandler.cs) 一致**（否則畫面上寫的人簽不了）：
 
 | 順位 | 情境 | 回傳 |
 |------|------|------|
 | 1 | 有 `EscalationOverride`（升級指派） | 指名者本人，`isEscalated = true` |
-| 2 | 指定審核（原生或例外命中） | 本關 pending designee 中 `StepOrder` 最小的**那一位**（依序審核，其餘還沒輪到）|
-| 3 | 上層級 / 固定部門職稱 | 與送單同一套 `ResolveReviewerPoolAsync` 審核者池 |
+| 2 | 指定審核（原生或例外命中） | 該關全部 pending designee，**維持申請人排定的審核次序**（不依姓名重排）|
+| 3 | 上層級 / 固定部門職稱 | 與送單同一套 `ResolveReviewerPoolAsync` 審核者池；上層級的 rank 逐關遞增 |
 
-**空陣列＝這一關查無可簽核人員**，前端以紅字「查無可簽核人員，請聯絡管理員調整簽核流程或人員職稱」明示，
-不再只是一行「審核中…」。時間軸另把「序號小於目前關卡且無簽核紀錄」的關卡標為**「已跳過」**，
-與「尚未輪到」區分開來。
+前端把人名直接接在關卡名稱後（`上層級：張三（發展三部 · 專案經理）`），
+某關 `reviewers` 為空則印紅字「查無可簽核人員」，目前關卡另補一行說明。
+時間軸另把「序號小於目前關卡且無簽核紀錄」的關卡標為**「已跳過」**，與「尚未輪到」區分開來；
+已簽核（下方已列實際簽核者）與已跳過的關卡不重複列人名。
 
 **卡住的舊單怎麼救：** 職級 / 部門異動只影響**之後**的解析，已停在該關的單不會自動重算。
 維運腳本 [05-unstick-direct-supervisor-leave.sql](../../Api/Data/Scripts/05-unstick-direct-supervisor-leave.sql)

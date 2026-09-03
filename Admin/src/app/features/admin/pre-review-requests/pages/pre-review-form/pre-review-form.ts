@@ -11,7 +11,7 @@ import {FilePreviewModal, PreviewFileData} from '../../../../../shared/component
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {AttachmentsUpload} from '../../../../../shared/components/attachments-upload';
 import {SubmitSuccessModal} from '../../../../../shared/components/submit-success-modal';
-import {AttachmentItem, PendingReviewer} from '../../../approval-tasks/models/approval-task.model';
+import {AttachmentItem, StepReviewers} from '../../../approval-tasks/models/approval-task.model';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
 import {ApprovalFlow, ApprovalRecord, ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
 import {PreReviewRequestService, QuoteOcrItem} from '../../services/pre-review-request.service';
@@ -84,8 +84,8 @@ export class PreReviewForm implements OnInit {
   approvalRecords: ApprovalRecord[] = [];
   taskCurrentStepOrder = 0;
   taskStatus = '';
-  /** 目前關卡的待簽核者（後端解析；空陣列＝查無可簽核人員）*/
-  pendingReviewers: PendingReviewer[] = [];
+  /** 各關卡的可簽核者（後端解析；某關為空陣列＝該關查無可簽核人員）*/
+  stepReviewers: StepReviewers[] = [];
   approvalTask: ApprovalTask | null = null;
 
   /** 指定審核者相關 */
@@ -313,7 +313,7 @@ export class PreReviewForm implements OnInit {
               this.approvalRecords = task.approvalRecords ?? [];
               this.taskCurrentStepOrder = task.currentStepOrder;
               this.taskStatus = task.status;
-              this.pendingReviewers = task.currentStepReviewers ?? [];
+              this.stepReviewers = task.stepReviewers ?? [];
               this.cdr.markForCheck();
             },
           });
