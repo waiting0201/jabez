@@ -164,6 +164,10 @@
                 <div class="card-body">
                   <div class="row g-3">
                     <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">請假單號</div>
+                      <span class="fw-500 font-monospace">{{ d.requestNo || '—' }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
                       <div class="text-muted small mb-1">假別</div>
                       <span class="fw-500">{{ leaveTypeLabel[d.leaveType] }}</span>
                     </div>
@@ -202,6 +206,10 @@
                 </div>
                 <div class="card-body">
                   <div class="row g-3">
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">銷假單號</div>
+                      <span class="fw-500 font-monospace">{{ d.requestNo || '—' }}</span>
+                    </div>
                     <div class="col-6 col-md-4">
                       <div class="text-muted small mb-1">原假別</div>
                       <span class="fw-500">{{ leaveTypeLabel[d.leaveType] }}</span>
@@ -516,6 +524,10 @@
                 </div>
                 <div class="card-body">
                   <div class="row g-3">
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">加班單號</div>
+                      <span class="fw-500 font-monospace">{{ d.requestNo || '—' }}</span>
+                    </div>
                     <div class="col-6 col-md-4">
                       <div class="text-muted small mb-1">加班日期</div>
                       <span class="fw-500">{{ d.overtimeDate | date:'yyyy-MM-dd' }}</span>

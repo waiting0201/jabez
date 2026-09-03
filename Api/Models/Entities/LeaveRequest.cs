@@ -3,6 +3,7 @@ namespace Jabez.Api.Models.Entities;
 public class LeaveRequest
 {
     public int      Id             { get; set; }
+    public string?  RequestNo      { get; set; }                 // LV-yyyyMMdd-NNN；送簽時取號，草稿為 null
     public Guid?    EmployeeId     { get; set; }
     public int?     ApprovalItemId { get; set; }
     public string   LeaveType      { get; set; } = string.Empty; // annual | personal | sick | compensatory | marriage | bereavement | official | maternity | miscarriage_3m | miscarriage_2to3m | miscarriage_under2m | prenatal_checkup | paternity | ceremonial_festival | senior_executive | menstrual | family_care | parental_leave | parental_leave_daily

@@ -8,7 +8,7 @@ namespace Jabez.Api.Services.Dapper;
 public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestReadService
 {
     private const string BaseSql = """
-        SELECT lr.Id, u.Name AS EmployeeName,
+        SELECT lr.Id, lr.RequestNo, u.Name AS EmployeeName,
                lr.LeaveType, lr.StartDate, lr.EndDate, lr.Hours, lr.OriginalHours, lr.Reason,
                lr.ApprovalStatus, lr.CreatedAt, lr.SubmittedAt, lr.ReviewedAt, lr.ReviewNote,
                lr.ApprovalItemId, lr.CurrentStepOrder, lr.ReviewedById,
@@ -117,7 +117,8 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
             AgentName:               (string?)row.AgentName,
             OriginalHours:           (decimal?)row.OriginalHours,
             ChildBirthDate:          (DateTime?)row.ChildBirthDate,
-            ContinueInsurance:       (bool?)row.ContinueInsurance);
+            ContinueInsurance:       (bool?)row.ContinueInsurance,
+            RequestNo:               (string?)row.RequestNo);
     }
 
     /// <summary>依假別取得時間單位字串（與 LeaveRequestHandler 保持一致）</summary>

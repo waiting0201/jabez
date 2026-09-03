@@ -277,6 +277,7 @@ export interface DesignatedReviewer {
 
 export interface LeaveRequest {
   id: number;
+  requestNo?: string | null;  // LV-yyyyMMdd-NNN；送簽時取號，草稿為 null
   employeeId?: string;
   approvalItemId?: number;
   leaveType: LeaveType;

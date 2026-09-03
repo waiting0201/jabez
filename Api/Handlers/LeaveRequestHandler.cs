@@ -1056,7 +1056,13 @@ public sealed class LeaveRequestHandler(
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned leave requests can be submitted.");
 
-        // 送簽日期只在首次送簽寫入：退回（returned）重送不改，與有單號的申請類型規則一致。
+        // 送簽時才取號：單號日期＝送簽日，草稿不佔號。
+        // 退回（returned）重送時已有單號，不可重新配號，否則已流通的單號會被改掉。
+        if (string.IsNullOrEmpty(item.RequestNo))
+            item.RequestNo = await RequestNoGenerator.NextAsync(
+                db.LeaveRequests.Select(x => x.RequestNo), "LV-", Clock.Now);
+
+        // 送簽日期只在首次送簽寫入：退回（returned）重送不改，與單號規則一致。
         item.SubmittedAt ??= Clock.Now;
 
         // 喪假驗證：必須有親屬關係

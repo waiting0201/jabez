@@ -83,6 +83,7 @@ export interface OvertimeProject {
 // 讀取用（後端序列化的日期為 ISO 字串）；送出用見 OvertimeRequestPayload
 export interface OvertimeRequest {
   id: number;
+  requestNo?: string | null;  // OT-yyyyMMdd-NNN；送簽時取號，草稿為 null
   employeeId?: string;
   approvalItemId?: number;
   // 後端序列化為 ISO 字串（"2026-03-24T00:00:00"），runtime 實際型別是 string 而非 Date

@@ -8,7 +8,7 @@ namespace Jabez.Api.Common;
 /// **取號時機為「送簽當下」，不是建立草稿時**（2026-09 變更）：草稿階段 RequestNo 為 null，
 /// 使用者在 SubmitAsync 送出申請的那一刻才配號，故單號日期＝送簽日，草稿刪除也不會留下缺號。
 ///
-/// 呼叫端（7 個 Handler 的 SubmitAsync）必須遵守三條守則：
+/// 呼叫端（10 個 Handler 的 SubmitAsync）必須遵守三條守則：
 ///   1. **只在 RequestNo 為空時取號** —— SubmitAsync 同時服務「草稿首次送簽」與「退回（returned）後重送」，
 ///      少了這個判斷，退回重送會把已流通的單號改成重送當天的新號。
 ///   2. **放在狀態閘門之後、Superadmin 自動核准早退分支之前** —— 早退分支會直接 return，
@@ -22,7 +22,7 @@ namespace Jabez.Api.Common;
 /// 10 種申請的 SubmitAsync 一律在此處緊接著寫 <c>x.SubmittedAt ??= Clock.Now;</c>，
 /// 與取號共用上面三條守則（`??=` 即守則 1，位置即守則 2，追加批次由守則 1 天然涵蓋），
 /// 這樣同一張單的「單號日期」與「申請日期」永遠是同一天。
-/// 請假 / 加班 / 銷假三種沒有單號，戳記改放在狀態閘門的下一行，位置語意相同。
+/// 請假（LV-）/ 加班（OT-）/ 銷假（LVR-）三種於 2026-09 補上單號，兩個戳記一起寫在狀態閘門的下一行。
 /// 新增申請類型時兩個戳記必須一起做，只做一半會讓單號與申請日期對不起來。
 /// </summary>
 public static class RequestNoGenerator

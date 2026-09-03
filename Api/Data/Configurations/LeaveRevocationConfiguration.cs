@@ -10,6 +10,14 @@ public class LeaveRevocationConfiguration : IEntityTypeConfiguration<LeaveRevoca
     {
         builder.HasKey(r => r.Id);
 
+        // 送簽時才取號（RequestNoGenerator），草稿階段為 null
+        builder.Property(r => r.RequestNo)
+               .HasMaxLength(50);
+
+        builder.HasIndex(r => r.RequestNo)
+               .IsUnique()
+               .HasFilter("[RequestNo] IS NOT NULL");
+
         builder.Property(r => r.Reason)
                .IsRequired()
                .HasMaxLength(500);

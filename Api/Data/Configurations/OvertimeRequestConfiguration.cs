@@ -10,6 +10,14 @@ public class OvertimeRequestConfiguration : IEntityTypeConfiguration<OvertimeReq
     {
         builder.HasKey(o => o.Id);
 
+        // 送簽時才取號（RequestNoGenerator），草稿階段為 null
+        builder.Property(o => o.RequestNo)
+               .HasMaxLength(50);
+
+        builder.HasIndex(o => o.RequestNo)
+               .IsUnique()
+               .HasFilter("[RequestNo] IS NOT NULL");
+
         builder.Property(o => o.Reason)
                .IsRequired()
                .HasMaxLength(500);

@@ -65,6 +65,7 @@ export class LeaveRevocationForm implements OnInit {
   revocationId = 0;
   leaveRequestId = 0;
   approvalStatus: ApprovalStatus = 'draft';
+  requestNo = '';   // LVR-yyyyMMdd-NNN；草稿尚未取號故為空
   errorMsg = signal('');
   saving   = signal(false);
 
@@ -160,6 +161,7 @@ export class LeaveRevocationForm implements OnInit {
     this.service.getById(this.revocationId).subscribe({
       next: (r: LeaveRevocation) => {
         this.approvalStatus = r.approvalStatus;
+        this.requestNo      = r.requestNo ?? '';
         this.leaveRequestId = r.leaveRequestId;
         this.isReturned = r.approvalStatus === 'returned';
         // 非 draft / returned 一律唯讀（檢視模式亦然）
