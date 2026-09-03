@@ -1292,6 +1292,9 @@ submitForApproval() {
 - `isEdit` 只用於「標題 / 版面呈現」，**不可**在 create 成功後翻轉（會讓新增模式的預支單選擇區塊整塊換掉）
 - 錯誤時務必 `saving.set(false)`，否則按鈕永久鎖死
 - **11 支申請表單已全數套用**（請款 / 預支（含追加批次）/ 出差預支 / 出差請款 / 預支沖銷 / 出差預支沖銷 / 請假 / 銷假 / 加班 / 假日執行活動 / 預審）。新增申請表單時比照辦理
+  - **簽核作業詳情頁的「提交審核」同樣要鎖**（2026-09 補）：後端雖有 `ApprovalStatus != "pending"` 守門，但連按的兩個請求會在第一個 commit 前一起讀到 pending，
+    同一關卡因此寫入**兩筆 ApprovalRecord**（實際發生過：同一位總監相隔 1.1 秒的兩筆 step3 紀錄），PDF 簽名欄與簽核時間軸會出現重複簽章。
+    `submitting` signal + 方法層 `if (this.submitting()) return;`，**成功後導頁不解鎖**、只在錯誤時 `set(false)`
   - 銷假表單的鎖寫在 `canSave` getter（`!this.saving() && …`），兩個方法都走該 getter，效果相同
   - 預支的「新增追加批次」是 `POST /advance-requests/{id}/supplements` 建立即送簽的單一請求，連按同樣會建出兩個批次，故 `_submitSupplement()` 內也上鎖
 

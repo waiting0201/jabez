@@ -924,9 +924,11 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             var reviewerLevel = await db.JobTitles.AsNoTracking()
                 .Where(j => j.Id == reviewer.JobTitleId).Select(j => j.Level).FirstOrDefaultAsync();
 
-            // 找第 N 層上級的目標 Level
+            // 找第 N 層上級的目標 Level（與 ApprovalFlowService.FindNthSuperiorLevelAsync 同一套條件，
+            // 含 Status == "active"：離職者不該撐住一個沒人能審的層級）
             var targetLevel = await db.Users.AsNoTracking()
                 .Where(u => u.DepartmentId == applicantDepartmentId
+                    && u.Status == "active"
                     && !u.IsSuperAdmin
                     && u.JobTitle != null
                     && u.JobTitle.Level < applicantLevel)

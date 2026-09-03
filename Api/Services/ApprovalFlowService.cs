@@ -168,7 +168,10 @@ public sealed class ApprovalFlowService(
 
                 // 同部門找不到更高階者（例：申請人已是部門最高階）→ 沿部門 ParentId 往上層部門找。
                 // 找到 → 以升級審核指派該員（寫 EscalationOverride 由呼叫端負責）。
-                var superiorId = await escalationService.FindSuperiorInAncestorDepartmentsAsync(applicant);
+                // 帶入後續固定關卡範圍：流程後面本來就會簽到的人不提前拉進這一關（見 StepReviewerScope）。
+                var superiorId = await escalationService.FindSuperiorInAncestorDepartmentsAsync(
+                    applicant, null,
+                    BuildLaterFixedStepScopes(steps, step.StepOrder, applicant, designatedSet, requestDays));
                 if (superiorId.HasValue)
                     return (currentStep, false, new EscalationResult(superiorId.Value, null, true));
 
@@ -321,6 +324,7 @@ public sealed class ApprovalFlowService(
         // 取得同部門中所有比申請人高的不重複 Level，由近到遠排列（DESC，因為 Level 越小越高）
         var superiorLevels = await db.Users.AsNoTracking()
             .Where(u => u.DepartmentId == applicant.DepartmentId
+                && u.Status == "active"
                 && !u.IsSuperAdmin
                 && u.JobTitle != null
                 && u.JobTitle.Level < applicantLevel)
@@ -479,7 +483,8 @@ public sealed class ApprovalFlowService(
                     // 同部門找不到更高階者 → 沿部門 ParentId 往上層部門找（與送出時 ResolveStartingStepAsync 同源）。
                     // 排除總監歷史已審者，避免把已經審過的人再找回來重審。
                     var superiorId = await escalationService
-                        .FindSuperiorInAncestorDepartmentsAsync(applicant, supervisorIds);
+                        .FindSuperiorInAncestorDepartmentsAsync(applicant, supervisorIds,
+                            BuildLaterFixedStepScopes(steps, step.StepOrder, applicant, designatedSet, requestDays));
                     if (superiorId.HasValue)
                     {
                         hasReviewer   = true;
@@ -666,6 +671,40 @@ public sealed class ApprovalFlowService(
     /// </summary>
     private static bool StepBelowMinDays(Models.Entities.ApprovalStep step, decimal? requestDays)
         => requestDays.HasValue && step.MinDays.HasValue && requestDays.Value < step.MinDays.Value;
+
+    /// <summary>
+    /// 組出「本流程 <paramref name="fromStepOrder"/> 之後的固定關卡審核者範圍」，供上層級關卡的
+    /// 升級指派避開「流程後面本來就會簽到的人」（見 <see cref="StepReviewerScope"/>）。
+    ///
+    /// 只納入**固定池**關卡 —— 這種關卡確定會有人接手，才足以作為「這一關可以跳過」的保證：
+    ///   · MinDays 擋掉的步驟   → 這張單根本不走這關
+    ///   · 指定審核步驟         → 人由申請人臨時點名，不保證會是同一位
+    ///   · 上層級步驟           → 同樣可能無人（該關自身也會走升級），不能當保證
+    ///   · 不限部門也不限職稱   → 範圍等於全公司，會把所有候選人都排除掉
+    /// </summary>
+    private static List<StepReviewerScope> BuildLaterFixedStepScopes(
+        List<Models.Entities.ApprovalStep> steps,
+        int fromStepOrder,
+        Models.Entities.User applicant,
+        IReadOnlySet<int> designatedStepOrders,
+        decimal? requestDays)
+    {
+        var scopes = new List<StepReviewerScope>();
+
+        foreach (var s in steps.Where(s => s.StepOrder > fromStepOrder))
+        {
+            if (StepBelowMinDays(s, requestDays))             continue;
+            if (designatedStepOrders.Contains(s.StepOrder))   continue;
+            if (s.UseApplicantDesignated || s.UseDirectSupervisor) continue;
+
+            int? departmentId = s.UseApplicantDepartment ? applicant.DepartmentId : s.DepartmentId;
+            if (departmentId is null && s.JobTitleId is null) continue;
+
+            scopes.Add(new StepReviewerScope(departmentId, s.JobTitleId));
+        }
+
+        return scopes;
+    }
 
     /// <summary>移除所有 MinDays > requestDays 的步驟（乾淨略過，等同該步驟不存在）。</summary>
     private static List<Models.Entities.ApprovalStep> FilterStepsByMinDays(

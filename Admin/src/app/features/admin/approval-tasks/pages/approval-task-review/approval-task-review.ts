@@ -80,6 +80,9 @@ export class ApprovalTaskReview implements OnInit {
   applicationType = '';
   taskStatus = signal<TaskStatus>('pending');
   errorMsg = signal('');
+
+  /** 審核送出進行中（鎖按鈕 + spinner）；連按會讓同一關卡寫入多筆 ApprovalRecord */
+  submitting = signal(false);
   showNoteError = false;
 
   // ── 分期撥款（5 種申請類型共用；表單邏輯在 shared/components/installments-editor）─────
@@ -627,6 +630,7 @@ export class ApprovalTaskReview implements OnInit {
 
   submit(task: ApprovalTask) {
     if (this.taskStatus() !== 'pending') return;
+    if (this.submitting()) return;   // 方法層再擋一次（連點的第二下可能早於變更偵測）
     const action = this.form.value.action as TaskStatus;
     const note   = this.form.value.reviewNote?.trim() ?? '';
     const estimatedRefundDate = this.form.value.estimatedRefundDate || undefined;
@@ -659,9 +663,12 @@ export class ApprovalTaskReview implements OnInit {
     }
 
     this.errorMsg.set('');
+    this.submitting.set(true);
     this.service.review(this.taskId, this.applicationType, action, note, estimatedRefundDate, refundedAt, closeAdvance, installments).subscribe({
+      // 成功後導頁，維持鎖定狀態（不解鎖，避免導頁前的殘留點擊再送一次）
       next: () => this.router.navigate(['/admin/approval-tasks']),
       error: (err: HttpErrorResponse) => {
+        this.submitting.set(false);
         this.errorMsg.set(err.error?.message || '審核失敗，請稍後再試。');
       },
     });
