@@ -14,7 +14,7 @@ import {DepartmentService} from '../../../departments/services/department.servic
 import {Department} from '../../../departments/models/department.model';
 import {ApprovalFlowStepSummary} from '../../../approvals/models/approval.model';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
-import {ApprovalFlow, ApprovalRecord, InstallmentDto, PaymentInstallmentStatus} from '../../../approval-tasks/models/approval-task.model';
+import {ApprovalFlow, ApprovalRecord, InstallmentDto, PaymentInstallmentStatus, PendingReviewer} from '../../../approval-tasks/models/approval-task.model';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
@@ -66,6 +66,8 @@ export class TravelRequestForm implements OnInit {
   approvalRecords: ApprovalRecord[] = [];
   taskCurrentStepOrder = 0;
   taskStatus = '';
+  /** 目前關卡的待簽核者（後端解析；空陣列＝查無可簽核人員）*/
+  pendingReviewers: PendingReviewer[] = [];
 
   /** 分期撥款（read-only 顯示用，財務排定後申請人可查看）*/
   installments: InstallmentDto[] | null = null;
@@ -191,6 +193,7 @@ export class TravelRequestForm implements OnInit {
               this.approvalRecords = task.approvalRecords ?? [];
               this.taskCurrentStepOrder = task.currentStepOrder;
               this.taskStatus = task.status;
+              this.pendingReviewers = task.currentStepReviewers ?? [];
               this.cdr.markForCheck();
             },
           });

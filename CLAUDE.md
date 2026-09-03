@@ -275,7 +275,7 @@ Api/
 │   ├── JobTitleHandler.cs             # 職稱 CRUD（刪除時清洗 ApprovalStepDesignatedJobTitles 的 NO_ACTION 外鍵）
 │   ├── VendorHandler.cs               # 廠商管理 CRUD（匯款資料四欄 BankAccountName 戶名 / BankName 銀行 / BankCode 代號 / BankAccount 帳號；清單支援 `?search=` 關鍵字模糊比對 名稱 / 統編 / 身分證字號 / 聯絡人 / 電話 / 匯款戶名，並支援 `?page=&pageSize=` 分頁：帶分頁參數回 PagedResult、不帶回平面陣列；multipart 支援存摺封面（必填）/ 身分證正反面上傳；統編與身分證字號擇一；lookup / lookup-by-tax-id / POST 開放任何登入者；刪除受 PaymentRequest 引用保護）
 │   ├── ApprovalHandler.cs             # ApprovalItem + Steps CRUD（ApprovalItem 含 DepartmentId 部門維度；唯一性以 (ApplicationType, DepartmentId) 判定；/active 依呼叫者部門解析流程，優先序：自身部門 > 最近祖先部門（沿 ParentId 往上）> 通用預設）；Step 含 DesignatedRequiresDepartment（指定審核步驟可設「需先選部門再選人」，支援一條流程多個指定步驟；多指定步驟前端連動見 shared/components/designated-reviewers-picker：連動閘控 + 部門帶入 + 部門最高層級自動略過；**Step 另含例外指定審核名單 `exceptionUserIds`（ApprovalStepException 子表，整批替換）**：非指定審核步驟可挑指定使用者，名單內的申請人送單時該步驟改由申請人自行指定審核者，與 UseApplicantDesignated 互斥；**例外步驟另可設限定職稱 `designatedJobTitleIds`（ApprovalStepDesignatedJobTitle 子表，整批替換）**，限制申請人只能指定這些職稱的人，非例外步驟一律清空）
-│   ├── ApprovalTaskHandler.cs         # 待審核任務查詢與審核動作（列表另支援 applicationType / submittedByUserId 篩選（與 status 正交，各頁籤共用）；**`status` 走 `ValidListStatuses` 白名單正規化**（pending / approved / returned / rejected，非法值→pending，避免像舊 `returned` 一樣靜默落到待審分支）＋**`scope=director` 範圍參數**（總監室簽核，與 status 四態組合，舊 `status=director_pending` 相容）；**申請人篩選與 GET /approval-tasks/applicants 限財務體系部門或 Superadmin**，判定共用 CanFilterByApplicant → DepartmentCodes.FinancialAndAbove；**單筆詳情 `GET /approval-tasks/{appType}/{id}` 的存取控制另放行「申請人本人」**（`IsApplicantAsync` 逐型別比對 SubmittedById / EmployeeId），否則申請人拿不到 flow / approvalRecords，請款列印按鈕不出現、兩張沖銷表印出無簽核欄的 PDF；**沖銷結案採「登記制」**：財務於其簽核關卡勾 `closeAdvance` 只設沖銷單的 `PendingClose`，待整張沖銷單轉 `approved` 才真正寫母單 `IsClosed`（財務多為倒數第二關，提前結案會讓總監退回後無法補開沖銷單）；退回／拒絕清除登記；步驟判定走 `IsFinanceStepAsync`（`DepartmentCodes.FinanceStep`，**禁止硬編碼 "FIN"**），勾了但非財務步驟改回 400 不再靜默）
+│   ├── ApprovalTaskHandler.cs         # 待審核任務查詢與審核動作（列表另支援 applicationType / submittedByUserId 篩選（與 status 正交，各頁籤共用）；**`status` 走 `ValidListStatuses` 白名單正規化**（pending / approved / returned / rejected，非法值→pending，避免像舊 `returned` 一樣靜默落到待審分支）＋**`scope=director` 範圍參數**（總監室簽核，與 status 四態組合，舊 `status=director_pending` 相容）；**申請人篩選與 GET /approval-tasks/applicants 限財務體系部門或 Superadmin**，判定共用 CanFilterByApplicant → DepartmentCodes.FinancialAndAbove；**單筆詳情 `GET /approval-tasks/{appType}/{id}` 的存取控制另放行「申請人本人」**（`IsApplicantAsync` 逐型別比對 SubmittedById / EmployeeId），否則申請人拿不到 flow / approvalRecords，請款列印按鈕不出現、兩張沖銷表印出無簽核欄的 PDF；**沖銷結案採「登記制」**：財務於其簽核關卡勾 `closeAdvance` 只設沖銷單的 `PendingClose`，待整張沖銷單轉 `approved` 才真正寫母單 `IsClosed`（財務多為倒數第二關，提前結案會讓總監退回後無法補開沖銷單）；退回／拒絕清除登記；步驟判定走 `IsFinanceStepAsync`（`DepartmentCodes.FinanceStep`，**禁止硬編碼 "FIN"**），勾了但非財務步驟改回 400 不再靜默；**單筆詳情另回 `currentStepReviewers`**（目前關卡實際可簽核的人，僅 pending 計算，判定順序＝升級指派 > 指定審核 designee > 上層級 / 固定池，與 `AuthorizeStepAsync` 同一套；空陣列＝查無可簽核人員，前端時間軸改印紅字警示），解析收斂在 `ApprovalFlowService.ResolveCurrentStepReviewersAsync`）
 │   ├── ProjectHandler.cs
 │   ├── PaymentRequestHandler.cs       # 請款申請 CRUD（單號 PR-yyyyMMdd-NNN，**送簽時取號**）
 │   ├── PreReviewRequestHandler.cs     # 預審申請 CRUD + Submit（單號 PRV-yyyyMMdd-NNN，**送簽時取號**；報價單上傳 blob container=quotes；無 installments、不計入報表）
@@ -316,7 +316,12 @@ Api/
 │   │                                  #      附件 blob 不會被刪（成為孤兒 blob，本機不影響功能）、
 │   │                                  #   04b 同 04 的逐筆展開版（一張單一組 4 行 DELETE：3 行簽核足跡 + 1 行父列），
 │   │                                  #      供逐筆檢視 / 挑著跑；區塊順序同樣是先子單（沖銷 / 銷假）後母單，
-│   │                                  #      要保留某張單就整組四行一起註解。兩版刪除結果已比對逐欄一致
+│   │                                  #      要保留某張單就整組四行一起註解。兩版刪除結果已比對逐欄一致、
+│   │                                  #   05 推進「卡在上層級關卡但查無可簽核人員」的請假單（@Commit 空跑開關）：
+│   │                                  #      職級 / 部門異動後，原本有人可簽的上層級關卡會變成 0 位候選人，單子停在該關誰都撈不到。
+│   │                                  #      以條件比對定位（不寫死 Id），推進到下一個有人可簽的**固定**關卡（跳過 MinDays 擋掉者 /
+│   │                                  #      指定審核 / 上層級，同 BuildLaterFixedStepScopes 的判準）；找不到安全落點者不動、交人工。
+│   │                                  #      不發通知，推進後須自行告知新的審核者
 │   └── Seed/                          # 一次性匯入工具（共用 RocDateParser 解民國年）
 │       ├── EmployeeImporter + EmployeeImportDtos + employee-import.json  # 員工人事資料（RUN_EMPLOYEE_IMPORT 旗標，IMPORT_UPLOAD_FILES 控制附件上傳）
 │       ├── ProjectImporter + ProjectImportDtos + project-import.json     # 專案資料（RUN_PROJECT_IMPORT 旗標，PROJECT_IMPORT_DRY_RUN 只印不寫；來源 reference/專案資料-115.07.29.xls；以 Code upsert、期別明細全量重建）

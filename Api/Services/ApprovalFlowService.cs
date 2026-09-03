@@ -337,6 +337,78 @@ public sealed class ApprovalFlowService(
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<PendingReviewerDto>> ResolveCurrentStepReviewersAsync(
+        string applicationType, int applicationId, int? approvalItemId, Guid applicantId, int currentStepOrder)
+    {
+        if (approvalItemId is null)
+            return [];
+
+        var step = await db.ApprovalSteps.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.ApprovalItemId == approvalItemId.Value && s.StepOrder == currentStepOrder);
+        if (step is null)
+            return [];
+
+        // ── (1) 升級指派：這一關已指名接手者（上層部門主管 / 代理人），其餘人過不了 AuthorizeStepAsync ──
+        var escalatedIds = await db.EscalationOverrides.AsNoTracking()
+            .Where(e => e.ApplicationType == applicationType
+                     && e.ApplicationId   == applicationId
+                     && e.StepOrder       == currentStepOrder)
+            .Select(e => e.ReviewerId)
+            .ToListAsync();
+        if (escalatedIds.Count > 0)
+            return await LoadReviewersAsync(escalatedIds, isEscalated: true);
+
+        // ── (2) 指定審核（原生或例外命中）：同一關的 designee 依序審核，只有 StepOrder 最小的 pending 那位輪得到 ──
+        var designeeIds = await db.RequestDesignatedReviewers.AsNoTracking()
+            .Where(r => r.RequestType       == applicationType
+                     && r.RequestId         == applicationId
+                     && r.ApprovalStepOrder == currentStepOrder
+                     && r.Status            == "pending")
+            .OrderBy(r => r.StepOrder)
+            .Select(r => r.ReviewerId)
+            .Take(1)
+            .ToListAsync();
+        if (designeeIds.Count > 0)
+            return await LoadReviewersAsync(designeeIds, isEscalated: false);
+
+        // ── (3) 上層級 / 固定部門職稱：與送單同一套池解析（單一真相 ResolveReviewerPoolAsync） ──
+        var applicant = await db.Users.AsNoTracking()
+            .Include(u => u.JobTitle)
+            .FirstOrDefaultAsync(u => u.Id == applicantId);
+        if (applicant is null)
+            return [];
+
+        int directSupervisorRank = await db.ApprovalSteps.AsNoTracking()
+            .CountAsync(s => s.ApprovalItemId == approvalItemId.Value
+                          && s.UseDirectSupervisor
+                          && s.StepOrder < currentStepOrder);
+
+        // designatedStepOrders 傳空集合：指定審核已在 (2) 處理完，落到這裡代表該關沒有 pending designee
+        var pool = await ResolveReviewerPoolAsync(step, applicant, null, directSupervisorRank, new HashSet<int>());
+        return await LoadReviewersAsync(pool, isEscalated: false);
+    }
+
+    /// <summary>審核者 Id 清單 → 顯示用 DTO（姓名 + 職稱 + 部門），依姓名排序。</summary>
+    private async Task<IReadOnlyList<PendingReviewerDto>> LoadReviewersAsync(List<Guid> reviewerIds, bool isEscalated)
+    {
+        if (reviewerIds.Count == 0)
+            return [];
+
+        // OrderBy 必須在 Select 之前：對投影出的 record 排序 EF 無法轉譯成 SQL
+        var rows = await db.Users.AsNoTracking()
+            .Where(u => reviewerIds.Contains(u.Id))
+            .OrderBy(u => u.Name)
+            .Select(u => new PendingReviewerDto(
+                u.Id, u.Name,
+                u.JobTitle != null ? u.JobTitle.Name : null,
+                u.Department != null ? u.Department.Name : null,
+                isEscalated))
+            .ToListAsync();
+
+        return rows;
+    }
+
+    /// <inheritdoc />
     public async Task<HashSet<Guid>> GetApprovedReviewerIdsAsync(
         string applicationType, int applicationId)
     {

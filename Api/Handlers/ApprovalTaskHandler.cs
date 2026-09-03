@@ -173,8 +173,39 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             }
         }
 
+        // ── 目前關卡的待簽核者：上層級 / 指定審核關卡在簽核前沒有人名，時間軸只印「審核中…」，
+        //     申請人與審核者都看不出這關該找誰；空清單代表查無可簽核人員（前端顯示警示） ──
+        if (task.Status == "pending")
+        {
+            var applicantId = await GetApplicantIdAsync(task.ApplicationType, intId);
+            if (applicantId.HasValue)
+            {
+                var reviewers = await approvalFlow.ResolveCurrentStepReviewersAsync(
+                    task.ApplicationType, intId, task.Flow?.Id, applicantId.Value, task.CurrentStepOrder);
+                task = task with { CurrentStepReviewers = [.. reviewers] };
+            }
+        }
+
         return new OkObjectResult(ApiResponse.Ok(task));
     }
+
+    /// <summary>
+    /// 取得該申請單的申請人 Id（欄位差異同 <see cref="IsApplicantAsync"/>）。
+    /// </summary>
+    private async Task<Guid?> GetApplicantIdAsync(string applicationType, int id) => applicationType switch
+    {
+        "payment_request"            => await db.PaymentRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.SubmittedById).FirstOrDefaultAsync(),
+        "leave"                      => await db.LeaveRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
+        "leave_revocation"           => await db.LeaveRevocations.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
+        "travel" or "holiday_travel" => await db.TravelRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
+        "overtime"                   => await db.OvertimeRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
+        "advance"                    => await db.AdvanceRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.SubmittedById).FirstOrDefaultAsync(),
+        "write_off"                  => await db.WriteOffRecords.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.SubmittedById).FirstOrDefaultAsync(),
+        "travel_write_off"           => await db.TravelWriteOffRecords.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.SubmittedById).FirstOrDefaultAsync(),
+        "travel_payment"             => await db.TravelPaymentRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
+        "pre_review"                 => await db.PreReviewRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.SubmittedById).FirstOrDefaultAsync(),
+        _                            => null,
+    };
 
     /// <summary>
     /// 判斷呼叫者是否為該申請單的申請人本人。

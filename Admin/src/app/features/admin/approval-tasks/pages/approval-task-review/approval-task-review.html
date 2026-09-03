@@ -1317,6 +1317,27 @@
                         }
                       } @else if (task.currentStepOrder === step.stepOrder && task.status === 'pending') {
                         <div class="text-primary small mt-1">審核中…</div>
+                        <!-- 上層級 / 指定審核在簽核前沒有人名，這裡把後端解析出的實際可簽核者列出來 -->
+                        @if (task.currentStepReviewers?.length) {
+                          <div class="text-muted small mt-1">
+                            待簽核：
+                            @for (r of task.currentStepReviewers; track r.id; let lastReviewer = $last) {
+                              {{ r.name }}
+                              @if (r.departmentName || r.jobTitleName) {
+                                <span class="text-muted">（{{ r.departmentName }}{{ r.departmentName && r.jobTitleName ? ' · ' : '' }}{{ r.jobTitleName }}）</span>
+                              }
+                              @if (r.isEscalated) {
+                                <span class="badge bg-[--bg-elevated] text-[--purple] ms-1" style="font-size:.7rem">升級審核</span>
+                              }
+                              @if (!lastReviewer) { <span>、</span> }
+                            }
+                          </div>
+                        } @else {
+                          <div class="text-danger small mt-1">查無可簽核人員，請聯絡管理員調整簽核流程或人員職稱</div>
+                        }
+                      } @else if (task.currentStepOrder > step.stepOrder) {
+                        <!-- 送單時被跳過的關卡不會留下簽核紀錄，與「還沒輪到」的灰圈長得一樣，故明確標示 -->
+                        <div class="text-muted small mt-1">已跳過</div>
                       }
                     </div>
                   </li>
