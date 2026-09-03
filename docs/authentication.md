@@ -18,7 +18,23 @@
 3. Superadmin：取得 DB 中所有權限
 4. 一般使用者：取得角色對應權限
 5. 產生 Access Token + Refresh Token
-6. Refresh Token 存入 DB（`RefreshTokens` 資料表）
+6. Refresh Token 存入 DB（`RefreshTokens` 資料表）→ **第一次 `SaveChangesAsync`**（登入主流程到此結束）
+7. **自動補卡副作用** → 獨立的第二次 `SaveChangesAsync`（try/catch 吞掉 `DbUpdateException`）
+
+登入是唯一能收斂「漏打卡」的時機，故 `/auth/login` 回應另夾帶三個補卡結果欄位
+（皆為 `{ count, dates[] }`，無補卡時為 `null`），前端登入頁據此跳 toastr warning：
+
+| 欄位 | 補了什麼 |
+|---|---|
+| `auto_clock_in` | 漏打的上班卡（該日有下班卡或加班卡＝人確實來過） |
+| `auto_clock_out` | 漏打的下班卡 |
+| `auto_overtime_end` | 漏打的加班結束卡 |
+
+補卡規則（只填空欄、不建新列、避開請假時段）詳見
+[attendance-clock-rules.md](business/attendance-clock-rules.md#登入時自動補卡漏打的歷史紀錄)。
+
+> **副作用必須獨立交易**：補卡與 Refresh Token 共用同一次 `SaveChanges` 時，
+> 同帳號併發登入撞唯一索引會讓整個登入回 500。見 [backend-design.md §6.3](backend-design.md#63-跨流程共用寫入核心不-savechanges-的-helper)。
 
 > Token 過期處理由前端 [auth.interceptor.ts](../Admin/src/app/core/auth/interceptors/auth.interceptor.ts) 攔截 401 後自動呼叫 `/auth/refresh`，失敗則導向登入頁。
 

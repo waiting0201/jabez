@@ -98,24 +98,38 @@
                   }
                 </td>
                 <td class="text-center">
-                  {{ row.leaveType }}
+                  @for (line of row.leaveLines; track $index) {
+                    <div class="whitespace-nowrap">{{ line }}</div>
+                  }
                   @if (row.isLeaveOnly) {
                     <span class="badge bg-primary-subtle text-primary ms-1"
                           title="當日有已核准請假，且無任何打卡紀錄">請假</span>
+                  }
+                  @if (row.isAbsent) {
+                    <span class="badge bg-danger-subtle text-danger"
+                          [title]="row.expectedWindow + '，無打卡紀錄且無請假'">缺勤</span>
+                  }
+                  @if (row.isMissingClockIn && !row.isAbsent) {
+                    <span class="badge bg-danger-subtle text-danger ms-1"
+                          [title]="row.expectedWindow + '，但沒有上班時間'">未打卡</span>
                   }
                 </td>
                 <td class="text-center text-muted small" [title]="row.leaveTime">
                   @if (row.leaveHours) { {{ row.leaveHours }} 小時 }
                 </td>
-                <td class="text-center">
+                <td class="text-center" [title]="row.expectedWindow">
                   {{ row.clockInTime }}
+                  @if (row.isClockInAuto) {
+                    <span class="badge bg-warning-subtle text-warning-emphasis ms-1"
+                          title="未打上班卡，系統於登入時自動補上（已避開請假時段）">系統補卡</span>
+                  }
                   @if (row.clockInLatitude != null && row.clockInLongitude != null) {
                     <button class="btn btn-sm btn-ghost-primary inline-flex items-center p-0 ms-1" title="查看打卡位置" (click)="openMap('上班打卡', row.clockInLatitude!, row.clockInLongitude!)">
                       <svg class="sa-icon sa-icon-1x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
                     </button>
                   }
                 </td>
-                <td class="text-center">
+                <td class="text-center" [title]="row.expectedWindow">
                   {{ row.clockOutTime }}
                   @if (row.isClockOutAuto) {
                     <span class="badge bg-warning-subtle text-warning-emphasis ms-1"

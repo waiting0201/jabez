@@ -6,28 +6,43 @@ import {DomSanitizer} from '@angular/platform-browser';
 import {environment} from '@/environments/environment';
 import {AttendanceService} from '@/app/features/dashboard/services/attendance.service';
 import {dayToRange, FilterMode, monthToRange, shiftDateString, snapToIsoWeek, todayString} from '@/app/features/admin/reports/utils/date-range';
-import {LEAVE_TYPE_LABELS, LeaveType} from '@/app/features/admin/leave-requests/models/leave-request.model';
+import {formatLeaveDaySegment, LEAVE_TYPE_LABELS, LeaveType} from '@/app/features/admin/leave-requests/models/leave-request.model';
 import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
 import * as XLSX from 'xlsx';
 
 export interface AttendanceRecordRow {
-  /** 合併列的穩定 track key：打卡列 'a{id}'、請假虛擬列 'l{userId}_{yyyy-MM-dd}' */
+  /** 合併列的穩定 track key：打卡列 'a{id}'、請假虛擬列 'l{...}'、缺勤虛擬列 'x{...}' */
   key: string;
-  /** AttendanceRecord.Id；null＝請假虛擬列（DB 無對應紀錄，不可編輯） */
+  /** AttendanceRecord.Id；null＝虛擬列（DB 無對應紀錄，不可編輯）。種類一律看 rowKind */
   id: number | null;
   userId: string;
   employeeName: string;
   recordDate: string;
-  /** 當日所有假別中文，以「、」串接 */
+  /**
+   * 列的種類：clock＝有打卡紀錄／leave＝當日只有請假／absent＝工作日無打卡且無請假。
+   * 請假列與缺勤列同樣 id === null，不可再用 id 判斷是哪一種。
+   */
+  rowKind: 'clock' | 'leave' | 'absent';
+  /** 當日所有假別中文，以「、」串接（Excel 匯出與相容用） */
   leaveType: string;
+  /** 逐張假單的當日時段字串，一張一行（例：`事假 09:00–13:00 (4h)`、`年假(特休假) 上午`） */
+  leaveLines: string[];
   /** 當日請假時數合計（顯示用字串，無請假為空） */
   leaveHours: string;
   /** 首張假單的完整區間（掛 tooltip 用） */
   leaveTime: string;
-  /** 該日只有請假、沒有任何打卡紀錄 */
+  /** 該日只有請假、沒有任何打卡紀錄（rowKind === 'leave'） */
   isLeaveOnly: boolean;
+  /** 工作日既沒打卡也沒請假（rowKind === 'absent'） */
+  isAbsent: boolean;
+  /** 當日有應出勤時段、卻沒有上班時間（缺勤列以外的漏打，例如只請半天卻整天沒打卡） */
+  isMissingClockIn: boolean;
+  /** 當日應出勤時段的顯示字串（掛 tooltip 用），免出勤時為說明文字 */
+  expectedWindow: string;
   clockInTime: string;
   clockOutTime: string;
+  /** 上班時間為系統自動補卡（登入時補打漏打的上班卡），非本人打卡 */
+  isClockInAuto: boolean;
   /** 下班時間為系統自動補卡（登入時補打漏打的下班卡），非本人打卡 */
   isClockOutAuto: boolean;
   /** 該日打卡時勾選為出差 */
@@ -225,19 +240,25 @@ export class AttendanceReport implements OnInit {
 
         this.records.set(
           items.map((r: any) => ({
-            key: r.id != null ? `a${r.id}` : `l${r.userId}_${String(r.recordDate ?? '').substring(0, 10)}`,
+            key: this.rowKey(r),
             id: r.id ?? null,
             userId: r.userId,
-            isLeaveOnly: r.id == null,
+            rowKind: r.rowKind ?? (r.id == null ? 'leave' : 'clock'),
+            isLeaveOnly: (r.rowKind ?? (r.id == null ? 'leave' : 'clock')) === 'leave',
+            isAbsent: r.rowKind === 'absent',
+            isMissingClockIn: !r.clockInTime && !!r.expectedStart && r.rowKind !== 'absent',
+            expectedWindow: this.formatExpectedWindow(r),
             employeeName: r.userName ?? '—',
             recordDate: r.recordDate ? new Date(r.recordDate).toLocaleDateString('zh-TW') : '',
             leaveType: this.formatLeaveTypes(r),
+            leaveLines: this.formatLeaveLines(r),
             leaveHours: r.leaveHours != null ? String(Math.round(Number(r.leaveHours) * 10) / 10) : '',
             leaveTime: r.leaveStartDate && r.leaveEndDate
               ? `${new Date(r.leaveStartDate).toLocaleDateString('zh-TW')} ~ ${new Date(r.leaveEndDate).toLocaleDateString('zh-TW')}`
               : '',
             clockInTime: r.clockInTime ? new Date(r.clockInTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
             clockOutTime: r.clockOutTime ? new Date(r.clockOutTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
+            isClockInAuto: !!r.isClockInAuto,
             isClockOutAuto: !!r.isClockOutAuto,
             isBusinessTrip: !!r.isBusinessTrip,
             remark: r.remark ?? '',
@@ -308,6 +329,42 @@ export class AttendanceReport implements OnInit {
         .join('、');
     }
     return r.leaveType ? LEAVE_TYPE_LABELS[r.leaveType as LeaveType] ?? r.leaveType : '';
+  }
+
+  /**
+   * 逐張假單的當日時段字串（一張一行）。
+   * 舊版回應的 leaves 沒有 daySegment 時退回只顯示假別名稱。
+   */
+  private formatLeaveLines(r: any): string[] {
+    if (!r.leaves?.length) {
+      const name = this.formatLeaveTypes(r);
+      return name ? [name] : [];
+    }
+    return r.leaves.map((l: any) =>
+      l.daySegment
+        ? formatLeaveDaySegment(l.leaveType, l.daySegment, l.dayStart, l.dayEnd, Number(l.hours ?? 0))
+        : LEAVE_TYPE_LABELS[l.leaveType as LeaveType] ?? l.leaveType);
+  }
+
+  /** 當日應出勤時段（扣掉請假後）。後端未回傳時為空字串，tooltip 自然不顯示 */
+  private formatExpectedWindow(r: any): string {
+    if (r.expectedStart && r.expectedEnd) {
+      return `應出勤 ${this.isoTime(r.expectedStart)}–${this.isoTime(r.expectedEnd)}`;
+    }
+    // 有請假但沒有應出勤時段＝整天被請假蓋滿
+    return r.leaveHours != null ? '當日全日請假，免出勤' : '';
+  }
+
+  /** 從 ISO 字串取 HH:mm（字串切割，避免 UTC 位移把時間挪掉一小時） */
+  private isoTime(iso: string): string {
+    return (String(iso ?? '').split('T')[1] ?? '').substring(0, 5);
+  }
+
+  /** 三種列各自的穩定 track key（請假列與缺勤列同樣 id === null，不可共用同一組 key） */
+  private rowKey(r: any): string {
+    const date = String(r.recordDate ?? '').substring(0, 10);
+    if (r.rowKind === 'absent') return `x${r.userId}_${date}`;
+    return r.id != null ? `a${r.id}` : `l${r.userId}_${date}`;
   }
 
   /** 開啟地圖 Modal */
@@ -405,21 +462,28 @@ export class AttendanceReport implements OnInit {
           '員工姓名': r.userName ?? '—',
           '日期': r.recordDate ? new Date(r.recordDate).toLocaleDateString('zh-TW') : '',
           '請假類型': this.formatLeaveTypes(r),
+          '請假時段': this.formatLeaveLines(r).join('；'),
           '當日請假時數': r.leaveHours != null ? Number(r.leaveHours) : '',
           '請假區間': r.leaveStartDate && r.leaveEndDate
             ? `${new Date(r.leaveStartDate).toLocaleDateString('zh-TW')} ~ ${new Date(r.leaveEndDate).toLocaleDateString('zh-TW')}`
             : '',
-          '上班時間': r.clockInTime ? new Date(r.clockInTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
-          // 系統補卡的下班時間加註來源，避免匯出後看不出是不是本人打的
+          '應出勤時段': this.formatExpectedWindow(r).replace('應出勤 ', ''),
+          // 系統補卡的上下班時間皆加註來源，避免匯出後看不出是不是本人打的
+          '上班時間': r.clockInTime
+            ? new Date(r.clockInTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'})
+              + (r.isClockInAuto ? '（系統補卡）' : '')
+            : '',
           '下班時間': r.clockOutTime
             ? new Date(r.clockOutTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'})
               + (r.isClockOutAuto ? '（系統補卡）' : '')
             : '',
           '加班開始': r.overtimeStartTime ? new Date(r.overtimeStartTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
           '加班結束': r.overtimeEndTime ? new Date(r.overtimeEndTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
-          // 虛擬列＝當日有已核准請假但完全沒打卡，匯出後仍需分辨得出來；出差與逾時註記與畫面 badge 同源
+          // 兩種虛擬列（請假 / 缺勤）匯出後仍需分辨得出來；出差與逾時註記與畫面 badge 同源
           '備註': [
-            r.id == null ? '請假（未打卡）' : '',
+            r.rowKind === 'absent' ? '缺勤（未打卡未請假）' : '',
+            r.rowKind === 'leave' ? '請假（未打卡）' : '',
+            (!r.clockInTime && r.expectedStart && r.rowKind === 'clock') ? '未打上班卡' : '',
             r.isBusinessTrip ? '出差' : '',
             this.isLongWorkday(r.clockInTime, r.clockOutTime) ? `超過 ${LONG_WORKDAY_HOURS} 小時` : '',
           ].filter(Boolean).join('；'),

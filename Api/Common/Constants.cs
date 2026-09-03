@@ -215,3 +215,21 @@ public static class ParticipantDateSlots
     /// <summary>驗證用：空值視為合法（等同 full），其餘只接受 full / am / pm</summary>
     public static bool IsValid(string? slot) => string.IsNullOrEmpty(slot) || slot is Full or Am or Pm;
 }
+
+/// <summary>
+/// 請假「逐日時段」代碼（LeaveDayExpander 展開結果的單一真相）。
+/// 半天 / 小時假的時段本身編碼在 LeaveRequest.StartDate / EndDate 的時分上（08 / 12 / 13 / 17 或整點），
+/// 展開成逐日後那份資訊會遺失，故由 LeaveDay.Segment 帶出，供出缺勤報表顯示與應出勤時段計算。
+/// 前端對應定義見 leave-request.model.ts 的 LeaveDaySegment / LEAVE_DAY_SEGMENT_LABELS，兩處須同步。
+/// </summary>
+public static class LeaveDaySegments
+{
+    /// <summary>整個工作日 08:00–17:00</summary>
+    public const string Full    = "full";
+    /// <summary>上半天 08:00–12:00</summary>
+    public const string Am      = "am";
+    /// <summary>下半天 13:00–17:00</summary>
+    public const string Pm      = "pm";
+    /// <summary>小時假的任意區段（實際時分見 LeaveDay.Start / End）</summary>
+    public const string Partial = "partial";
+}

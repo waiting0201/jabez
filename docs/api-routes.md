@@ -189,13 +189,13 @@
 
 | Method | Path | 權限 | 說明 |
 |--------|------|------|------|
-| GET | `/attendances` | `reports-attendance:read` | 出勤紀錄列表（分頁，套用部門可見性 scope；支援 `?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD` 區間篩選，前端依「日 / 週 / 月」模式換算）。**回傳「打卡紀錄 ∪ 當日請假日」合併結果**（`AttendanceLeaveMerger`）：`id = null` 代表當日只有已核准請假、無打卡的**虛擬列**（不可編輯）；另含 `userId` / `leaveHours`（當日時數合計）/ `leaves[]`（當日逐張假單，同日多張合併為一列）。**區間必須有界**：未指定起訖回退近一年，跨度 > 400 天回 400。`?export=true` 時 `pageSize` 上限放寬至 5000（一般為 100） |
+| GET | `/attendances` | `reports-attendance:read` | 出勤紀錄列表（分頁，套用部門可見性 scope；支援 `?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD` 區間篩選，前端依「日 / 週 / 月」模式換算）。**回傳「打卡紀錄 ∪ 當日請假日 ∪ 缺勤日」合併結果**（`AttendanceLeaveMerger`）：以 **`rowKind`（`clock` / `leave` / `absent`）** 標示列的種類 —— `leave`＝當日只有已核准請假無打卡、`absent`＝工作日既沒打卡也沒請假（2026-09 新增），**兩者同樣 `id = null` 且不可編輯，不可再用 `id` 分辨**。另含 `userId` / `leaveHours`（當日時數合計）/ `leaves[]`（當日逐張假單，同日多張合併為一列，每張帶 `daySegment`（`full`/`am`/`pm`/`partial`）+ `dayStart` / `dayEnd` 逐日時段）/ `expectedStart` / `expectedEnd`（當日應出勤時段，扣掉請假後；`null`＝免出勤）/ `isClockInAuto`。缺勤列的員工母體＝非超管 + 在職 + 持有 `attendances:write`，展開上限 `AbsenceMaxCells`（60,000 ＝ 員工數 × 天數）。**區間必須有界**：未指定起訖回退近一年，跨度 > 400 天回 400。`?export=true` 時 `pageSize` 上限放寬至 5000（一般為 100） |
 | GET | `/attendances/today` | `attendances:read` | 今日打卡紀錄（當前使用者；含 `todayLeaves` 陣列：當日所有已核准請假時段，供前端顯示提示與 disable 按鈕；含 `canOvertimeWithoutClockOut` 旗標：今日免下班卡即可打加班開始，與 overtime-start 的放行判定同源；無打卡紀錄時回傳 `Id=0` 空殼仍含請假資訊） |
 | POST | `/attendances/clock-in` | `attendances:write` | 上班打卡（含 GPS；落在已核准請假 `[StartDate, EndDate)` 區間內會回 BadRequest） |
 | POST | `/attendances/clock-out` | `attendances:write` | 下班打卡（含 GPS；同上規則） |
 | POST | `/attendances/overtime-start` | `attendances:write` | 加班開始打卡（不受請假時段阻擋）。需帶**屬於自己**且當日已核准的加班申請；一般上班日須先打下班卡，**休假日（行事曆 `IsHoliday` / 該年度無行事曆時的六日）或當日全日已核准請假時免下班卡**，且今日無打卡紀錄時自動建立「只含加班時間」的 AttendanceRecord |
 | POST | `/attendances/overtime-end` | `attendances:write` | 加班結束打卡（不受請假時段阻擋） |
-| PUT/PATCH | `/attendances/{id}` | `reports-attendance:write` | 人工修改出缺勤紀錄（上下班 / 加班起訖）。權限碼控管「誰能改」，Handler 內另套**部門可見性 scope** 控管「能改誰」（與 `GET /attendances` 同範圍，讀得到才改得到，非同範圍回 403）。下班時間被改動時清掉 `IsClockOutAuto`（系統補卡）標記 |
+| PUT/PATCH | `/attendances/{id}` | `reports-attendance:write` | 人工修改出缺勤紀錄（上下班 / 加班起訖）。權限碼控管「誰能改」，Handler 內另套**部門可見性 scope** 控管「能改誰」（與 `GET /attendances` 同範圍，讀得到才改得到，非同範圍回 403）。上 / 下班時間被改動時各自清掉 `IsClockInAuto` / `IsClockOutAuto`（系統補卡）標記 |
 
 > **請假時段阻擋規則**：上下班打卡以 `Clock.Now`（Asia/Taipei）比對員工 `LeaveRequests` 中 `ApprovalStatus='approved'` 的紀錄，落在 `StartDate <= now < EndDate` 半開區間內即阻擋並回含請假單編號 / 假別 / 時段的錯誤訊息。半天 / 小時請假時段已編碼於 datetime，時段外仍可打卡（如上午半天請假，下午可打上班卡；09:00–12:00 病假，12:00 整點可打卡）。加班打卡不套用此規則。實作於 [Api/Handlers/AttendanceHandler.cs](../Api/Handlers/AttendanceHandler.cs) `EnsureNotOnLeaveAsync`，Dapper SQL 於 [Api/Services/Dapper/AttendanceReadService.cs](../Api/Services/Dapper/AttendanceReadService.cs) `GetActiveLeaveAtAsync`。
 

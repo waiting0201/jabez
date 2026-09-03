@@ -99,6 +99,7 @@ public sealed class AttendanceHandler(
         record.ClockInTime      = now;
         record.ClockInLatitude   = body.Latitude;
         record.ClockInLongitude  = body.Longitude;
+        record.IsClockInAuto     = false;   // 本人打卡
         record.IsBusinessTrip    = body.IsBusinessTrip;
 
         await db.SaveChangesAsync();
@@ -268,7 +269,10 @@ public sealed class AttendanceHandler(
                 throw AppException.Forbidden("您沒有權限修改此員工的出缺勤紀錄。");
         }
 
-        // 下班時間被人工改動 → 清掉「系統補卡」標記（改為管理者維護的值）
+        // 時間被人工改動 → 清掉該欄的「系統補卡」標記（改為管理者維護的值）
+        if (record.ClockInTime != body.ClockInTime)
+            record.IsClockInAuto = false;
+
         if (record.ClockOutTime != body.ClockOutTime)
             record.IsClockOutAuto = false;
 

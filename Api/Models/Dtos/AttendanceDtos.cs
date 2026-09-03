@@ -41,7 +41,18 @@ public sealed record AttendanceRecordDto(
     /// <summary>該日打卡時勾選為出差，出缺勤清單以 badge 標示。虛擬列恆為 false</summary>
     bool      IsBusinessTrip = false,
     /// <summary>管理者填寫的備註（僅出缺勤編輯表單使用，清單不顯示）。虛擬列恆為 null</summary>
-    string?   Remark = null);
+    string?   Remark = null,
+    /// <summary>上班時間為登入時系統自動補卡（非本人打卡），出缺勤清單以 badge 標示</summary>
+    bool      IsClockInAuto = false,
+    /// <summary>
+    /// 列的種類：clock＝有打卡紀錄／leave＝當日只有請假／absent＝工作日無打卡且無請假（缺勤）。
+    /// 請假列與缺勤列同樣 Id = null，前端不可再用 Id 判斷是哪一種。
+    /// </summary>
+    string    RowKind = "clock",
+    /// <summary>當日應出勤起（扣掉請假時段後）。null＝當日免出勤（全日請假）</summary>
+    DateTime? ExpectedStart = null,
+    /// <summary>當日應出勤訖（扣掉請假時段後）。null＝當日免出勤（全日請假）</summary>
+    DateTime? ExpectedEnd = null);
 
 /// <summary>出缺勤報表列中的單張請假資訊（當日份）</summary>
 public sealed record AttendanceLeaveDto(
@@ -49,8 +60,16 @@ public sealed record AttendanceLeaveDto(
     string   LeaveType,
     /// <summary>該假單「當日」的時數（由 LeaveDayExpander 逐日展開，非整張單的 Hours）</summary>
     decimal  Hours,
+    /// <summary>整張假單的起（非當日）</summary>
     DateTime StartDate,
-    DateTime EndDate);
+    /// <summary>整張假單的訖（非當日）</summary>
+    DateTime EndDate,
+    /// <summary>該假單「當日」的時段代碼：full / am / pm / partial（見 LeaveDaySegments）</summary>
+    string   DaySegment,
+    /// <summary>該假單「當日」的實際請假起（含日期）</summary>
+    DateTime DayStart,
+    /// <summary>該假單「當日」的實際請假訖（含日期）</summary>
+    DateTime DayEnd);
 
 public sealed record TodayAttendanceDto(
     int       Id,
@@ -90,6 +109,17 @@ public sealed record AttendanceLeaveSourceRow(
     DateTime StartDate,
     DateTime EndDate,
     bool     IsShiftWorker);
+
+/// <summary>
+/// 出缺勤報表合併用的原料列：區間內「應出勤」的員工母體（供缺勤虛擬列）。
+/// 條件＝非超管 + 在職 + 持有 attendances:write（不打卡的角色不該被算成缺勤）。
+/// </summary>
+public sealed record AttendanceEmployeeRow(
+    Guid      UserId,
+    string    UserName,
+    bool      IsShiftWorker,
+    DateTime? HireDate,
+    DateTime? ResignDate);
 
 /// <summary>
 /// 出缺勤報表合併用的原料列：已核准銷假的逐日紀錄（批次查詢結果）。

@@ -28,6 +28,11 @@ export interface AutoClockOutInfo {
   dates: string[];
 }
 
+export interface AutoClockInInfo {
+  count: number;
+  dates: string[];
+}
+
 /**
  * 財務體系部門 Code（須與後端 Constants.cs 的 DepartmentCodes.FinancialAndAbove 同步）：
  * 成員可執行撥款 / 退款 / 結案 / 批次核准等業務操作，亦顯示撥款/退款子篩選。
@@ -52,6 +57,7 @@ export interface LoginResponse {
   refresh_token: string;
   token_type: string;
   must_change_password?: boolean;
+  auto_clock_in?: AutoClockInInfo | null;
   auto_clock_out?: AutoClockOutInfo | null;
   auto_overtime_end?: AutoOvertimeEndInfo | null;
 }

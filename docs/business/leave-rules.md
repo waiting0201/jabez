@@ -386,7 +386,7 @@
 | 前端 `leave-request-form` | 假別下拉選單（分群組）、條件式欄位、額度提示 |
 | 前端 `payroll-form` | 本月請假紀錄表格；育嬰留停按比例註記與**實領負數警示** |
 | `LeaveRevocation` / `LeaveRevocationDate` | Entity：銷假申請 + 逐日明細 |
-| `LeaveDayExpander` | 請假單逐日展開的單一真相（假別分類常數 `WorkingDayLeaveTypes` / `TimeUnitMap` 亦收斂於此） |
+| `LeaveDayExpander` | 請假單逐日展開的單一真相（假別分類常數 `WorkingDayLeaveTypes` / `TimeUnitMap` 亦收斂於此）。2026-09 起 `LeaveDay` 除 `Date` / `Hours` 外另帶**逐日時段** `Segment`（`full` / `am` / `pm` / `partial`，見 `Constants.LeaveDaySegments`）+ `Start` / `End`（clamp 在 08:00–17:00），供出缺勤報表顯示「事假 09:00–13:00 (4h)」/「年假 上午」與 `ExpectedWorkWindow` 算應出勤時段。`Hours` 沿用既有整點差語意（不扣午休），與 `End − Start` 不必然等長 |
 | `LeaveRevocationService.ApplyAsync()` | 銷假核准後套用到父單（逐日整組重算 Hours、全銷轉 cancelled） |
 | `LeaveRevocationHandler` | 銷假 CRUD + `revocable-dates` + `Submit`（重跑請假簽核） |
 | `LeaveRevocationReadService` | Dapper：銷假列表 / 單筆（JOIN 原假單 + 逐日明細 + 指定審核者） |

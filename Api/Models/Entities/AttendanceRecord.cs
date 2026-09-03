@@ -8,6 +8,11 @@ public class AttendanceRecord
     public DateTime? ClockInTime            { get; set; }
     public double?   ClockInLatitude        { get; set; }
     public double?   ClockInLongitude       { get; set; }
+    /// <summary>
+    /// 上班時間為系統自動補卡（登入時，該日已有下班卡或加班卡卻沒有上班卡），非本人打卡。
+    /// 補的時間避開當日已核准請假時段（見 AttendanceAutoClockService）。
+    /// </summary>
+    public bool      IsClockInAuto          { get; set; }
     public DateTime? ClockOutTime           { get; set; }
     public double?   ClockOutLatitude       { get; set; }
     public double?   ClockOutLongitude      { get; set; }

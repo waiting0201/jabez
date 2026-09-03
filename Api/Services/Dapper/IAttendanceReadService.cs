@@ -21,6 +21,13 @@ public interface IAttendanceReadService
     Task<IReadOnlyList<LeaveRevokedDateRow>> ListApprovedRevokedDatesAsync(
         IReadOnlyCollection<int> leaveRequestIds);
 
+    /// <summary>
+    /// 區間內「應出勤」的員工母體（供出缺勤報表的缺勤虛擬列）。
+    /// 條件＝非超管 + 在職 + 持有 attendances:write，並套用部門可見性 scope。
+    /// </summary>
+    Task<IReadOnlyList<AttendanceEmployeeRow>> ListClockingEmployeesAsync(
+        ProjectAccessScope scope, Guid? employeeId, DateOnly dateFrom, DateOnly dateTo);
+
     Task<TodayAttendanceDto?>              GetTodayAsync(Guid userId);
 
     /// <summary>取得指定時刻落在 [StartDate, EndDate) 區間內的最早一筆已核准請假；無則回 null。</summary>

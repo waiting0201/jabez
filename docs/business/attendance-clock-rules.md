@@ -86,10 +86,49 @@ SQL 端的判定片段收斂於 `LeaveRevocationService.NotRevokedClause`，EF �
 補卡在**登入當下**執行（[AuthHandler.LoginAsync](../../Api/Handlers/AuthHandler.cs)），只處理 `RecordDate < 今天` 的紀錄，
 今天的漏打不會被補（當天還有機會自己打）。沒有排程 —— 員工不登入就不會補。
 
+補卡邏輯的單一真相為 [AttendanceAutoClockService](../../Api/Services/AttendanceAutoClockService.cs)
+（static、不呼叫 SaveChanges，比照 `LeaveRevocationService`）。
+
 | 情境 | 撈取條件 | 補上的時間 |
 |---|---|---|
+| 漏打上班卡 | `ClockInTime IS NULL AND (ClockOutTime IS NOT NULL OR OvertimeStartTime IS NOT NULL)` | **該日應出勤起**（見下方「避開請假時段」） |
 | 漏打下班卡 | `ClockInTime IS NOT NULL AND ClockOutTime IS NULL` | **該日上班打卡時間 + 9 小時**（見下表） |
 | 漏打加班結束卡 | `OvertimeStartTime IS NOT NULL AND OvertimeEndTime IS NULL` | 加班開始時間 + 該張加班單的 `EstimatedHours` |
+
+### 只填空欄，絕不建立新列（2026-09 界線）
+
+補上班卡的前提是「該日已有下班卡或加班卡」—— **人確實來過，只是漏打上班**。
+完全沒有任何打卡痕跡的日子一律不補，包含「只請了半天假卻整天沒打卡」者：
+系統沒有任何證據可證明當事人有出勤，代打就等於憑空產生一整天的出勤紀錄（勞基法 §30 出勤紀錄應逐日記載）。
+
+因此**不需要回溯視窗常數** —— 補卡只可能填既有列的空欄，久未登入者一次登入也不會被補出歷史偽出勤。
+
+那些日子改由出缺勤報表呈現：完全無紀錄無請假 → **缺勤列**；有請假但沒打卡 → **「未打卡」badge**。
+兩者都由管理者判斷後以編輯 Modal 補登（`PATCH /attendances/{id}`）。
+
+補上班卡另有兩個跳過條件：
+- **非工作日**（依該員工 `IsShiftWorker` 走 [WorkCalendarHelper](../../Api/Common/WorkCalendarHelper.cs)）
+  —— 休假日只含加班時間的紀錄不該被補出上班卡
+- **未持有 `attendances:write`** —— 不打卡的角色（顧問 / 外部人員）不補，與缺勤列的員工母體同一條規則
+
+### 補卡時間避開請假時段（2026-09 新增）
+
+補出來的卡若落在已核准請假區間內，會與 `EnsureNotOnLeaveAsync` 的打卡阻擋規則自相矛盾。
+故兩種補卡皆改走 [ExpectedWorkWindow](../../Api/Common/ExpectedWorkWindow.cs)
+（以 08:00–17:00 為底、扣掉當日請假時段後的「應出勤時段」，含跨午休正規化）：
+
+| 當日請假 | 補上班卡 | 補下班卡（08:30 上班為例） |
+|---|---|---|
+| 無 | 08:00 | 17:30（＝上班 + 9h，**不受影響**） |
+| 上午 08:00–12:00 | **13:00**（跨午休正規化） | — |
+| 下午 13:00–17:00 | — | **12:00**（提前，不落在假內） |
+| 中段小時假 10:00–12:00 | 08:00 | 17:30（單一區間表達不了中間挖洞，刻意不縮） |
+| 全日 | **不補**（`Start` 為 null） | 不補 |
+
+> ⚠️ **下班補卡只有在 `EndAdjustedByLeave` 為 true 時才提前。**
+> 無請假時 `ExpectedWorkWindow.End` 恆為 17:00，若無條件取 `min(上班 + 9h, End)`
+> 會把 09:00 上班者的補卡從 18:00 壓成 17:00，推翻下方 2026-08 刻意做的決策。
+> 這是本機制最容易踩的回歸，`WorkWindow` 的兩個 `AdjustedByLeave` 旗標即為此存在。
 
 **下班補卡一律 +9 小時，不分上下午打卡**：
 
@@ -101,12 +140,23 @@ SQL 端的判定片段收斂於 `LeaveRevocationService.NotRevokedClause`，EF �
 淨工時 8 小時 = `WorkdayHours.FullDayHours`，午休 1 小時 = `LunchEndHour - LunchStartHour`，
 兩者都取自 [Constants.cs](../../Api/Common/Constants.cs) 的 `WorkdayHours`，不在 Handler 內寫死。
 
-**補出來的下班時間會標記 `AttendanceRecord.IsClockOutAuto = true`**，出缺勤清單於「下班時間」欄位後
-加掛 badge「系統補卡」（`bg-warning-subtle`），Excel 匯出則於時間後加註「（系統補卡）」，
-以區分本人打卡與系統代打。旗標的清除時機：本人補打下班卡（`POST /attendances/clock-out`）、
-或管理者在出缺勤清單編輯 Modal 改動下班時間（`PATCH /attendances/{id}`，僅在值真的改變時清除）。
+**補出來的時間會分別標記 `AttendanceRecord.IsClockInAuto` / `IsClockOutAuto = true`**，
+出缺勤清單於「上班時間」/「下班時間」欄位後各自加掛 badge「系統補卡」（`bg-warning-subtle`），
+Excel 匯出則於時間後加註「（系統補卡）」，以區分本人打卡與系統代打。
+旗標的清除時機：本人打卡（`POST /attendances/clock-in` / `clock-out`）、
+或管理者在出缺勤清單編輯 Modal 改動該欄時間（`PATCH /attendances/{id}`，僅在值真的改變時清除）。
 
-補完後於登入頁跳 toastr warning 列出被補的日期（`auto_clock_out` / `auto_overtime_end` 回應欄位）。
+> 勞檢舉證時，**以 `IsClockInAuto = 0 AND IsClockOutAuto = 0` 的紀錄為準** ——
+> 帶旗標者為系統代填，不等於實際出勤時間。
+
+補完後於登入頁跳 toastr warning 列出被補的日期
+（`auto_clock_in` / `auto_clock_out` / `auto_overtime_end` 回應欄位）。
+
+**登入路徑的交易邊界**：Refresh Token 與補卡**必須分成兩次 `SaveChangesAsync`**。
+補卡是登入的副作用，同帳號併發登入撞 `IX_AttendanceRecords_UserId_RecordDate` 時，
+若共用同一次 Save 會讓整個登入回 500、使用者直接登不進來。
+`AuthHandler` 因此先存 Refresh Token 再 try/catch 執行補卡，
+`DbUpdateException` 一律吞掉（補卡只填空欄、冪等，下次登入自然收斂）。
 
 > **2026-08 變更**：下班補卡時間原本是「該日 `SystemSetting.WorkEndTime`（預設 18:00）」，
 > 改為依上班打卡時間推算，並新增 `IsClockOutAuto` 標記。
@@ -115,14 +165,14 @@ SQL 端的判定片段收斂於 `LeaveRevocationService.NotRevokedClause`，EF �
 > `WorkStartTime` / `WorkEndTime` 自此**只服務打卡提醒的時點判斷**，不再參與補卡；
 > 早到 / 晚到者的工時因此不再被統一壓成 18:00 下班。
 
-**沒打上班卡則完全不會有紀錄** —— `AttendanceRecord` 只由「上班打卡」或「休假日加班開始」建立，
-補卡也不會觸發（條件要求 `ClockInTime` 不為 null）。
+**沒打上班卡、也沒打下班卡 / 加班卡的日子完全不會有紀錄** ——
+`AttendanceRecord` 只由「上班打卡」或「休假日加班開始」建立，自動補卡也不建新列（見上方界線）。
 但**下班提醒推播仍會發送**（提醒只看當日有無 `ClockOutTime`，見 [attendance-reminder.md](attendance-reminder.md)）。
-該日在出缺勤報表中是否出現，取決於當天有沒有請假 —— 見下節。
+該日在出缺勤報表中一律以**缺勤列**呈現（2026-09 起，見下節）。
 
 ---
 
-## 出缺勤報表：打卡 ∪ 請假日（2026-08 新增）
+## 出缺勤報表：打卡 ∪ 請假日 ∪ 缺勤日（2026-08 新增，2026-09 擴充）
 
 ### 問題
 報表原本以 `AttendanceRecords` 為主表 `LEFT JOIN LeaveRequests`，主表沒有的日子就沒有列。
@@ -133,20 +183,51 @@ SQL 端的判定片段收斂於 `LeaveRevocationService.NotRevokedClause`，EF �
 `GET /attendances` 改回傳「打卡紀錄 ∪ 當日請假日」的合併結果，
 單一真相為 [AttendanceLeaveMerger](../../Api/Common/AttendanceLeaveMerger.cs)。合併粒度＝**(員工, 日期) 一列**：
 
-| 當日狀況 | 報表呈現 |
-|---|---|
-| 有打卡 + 有請假 | 同一列：打卡時間 + 假別 + 當日請假時數 |
-| 只有請假、完全沒打卡 | **請假虛擬列**（`Id = null`）：上下班時間留空 + 「請假」badge + 假別 + 當日時數，**不可編輯** |
-| 只有打卡 | 原樣 |
-| 沒打卡也沒請假 | **不產生列**（缺勤不在本報表範圍） |
+| 當日狀況 | `rowKind` | 報表呈現 |
+|---|---|---|
+| 有打卡 + 有請假 | `clock` | 同一列：打卡時間 + 逐日請假時段 + 當日請假時數 |
+| 只有打卡 | `clock` | 原樣 |
+| 只有請假、完全沒打卡 | `leave` | **請假虛擬列**（`Id = null`）：上下班留空 + 「請假」badge + 假別時段 + 當日時數，**不可編輯** |
+| 工作日既沒打卡也沒請假 | `absent` | **缺勤虛擬列**（`Id = null`）：「缺勤」badge，**不可編輯** |
 
-- **不限全天**：半天請假又完全沒打卡的日子同樣產生虛擬列（顯示 4 小時），採 union 語意
+> ⚠️ **請假列與缺勤列同樣 `Id = null`**，前端不可再用 `Id` 判斷是哪一種，一律看 `rowKind`
+> （前端 track key 亦因此分成 `a{id}` / `l{userId}_{date}` / `x{userId}_{date}` 三組）。
+
+### 缺勤列（2026-09 新增）
+
+漏打卡的日子原本在報表上根本不存在（沒有列＝管理者看不到＝無從補登），故補上缺勤列。
+
+- **員工母體**＝非超管 + `Status='active'` + **持有 `attendances:write`** + 套用部門可見性 scope
+  （[AttendanceReadService.ListClockingEmployeesAsync](../../Api/Services/Dapper/AttendanceReadService.cs)）。
+  用權限碼而非只看 `Status`：不打卡的角色（顧問 / 外部人員）本來就不打卡，不該被算成缺勤
+- **在職區間**：`HireDate` 之前、`ResignDate` 之後的日子不列（離職當日仍為最後上班日）
+- **今天與未來一律不算缺勤**（今天還有機會打卡），上界收在昨天
+- **工作日判定**依該員工的 `IsShiftWorker` 走 `WorkCalendarHelper`，行事曆查詢只依兩種旗標各算一次
+- **展開上限** `AttendanceLeaveMerger.AbsenceMaxCells`（60,000 ＝ 員工數 × 區間天數）；
+  超過即擋件，避免笛卡兒積在記憶體端爆開
+
+### 逐日請假時段（2026-09 新增）
+
+`leaves[]` 每張假單另帶 `daySegment`（`full` / `am` / `pm` / `partial`）+ `dayStart` / `dayEnd`，
+由 [LeaveDayExpander](../../Api/Common/LeaveDayExpander.cs) 的 `LeaveDay` 帶出
+（半天 / 小時假的時段編碼在假單起訖的時分上，展開成逐日後那份資訊原本會遺失）。
+前端據此呈現「事假 09:00–13:00 (4h)」/「年假(特休假) 上午」/「婚假 全天」，同日多張假單一張一行。
+
+每列另帶 **`expectedStart` / `expectedEnd`（應出勤時段）**，
+由 [ExpectedWorkWindow](../../Api/Common/ExpectedWorkWindow.cs) 以 08:00–17:00 扣掉當日請假算出；
+`null` ＝當日免出勤（全日請假或休假日）。前端用它顯示 tooltip，並標示
+**「未打卡」badge**（有應出勤時段卻沒有上班時間，例如只請半天卻整天沒打卡）。
+`LeaveDay.Hours` 沿用既有語意（整點差、不扣午休，故 09:00–13:00 ＝ 4 小時），
+與 `dayEnd − dayStart` 不必然等長，屬刻意保留的既有行為。
+
+- **不限全天**：半天請假又完全沒打卡的日子同樣產生請假虛擬列（顯示 4 小時），採 union 語意；
+  那天另外半天雖然也沒出勤，但**不另立缺勤列**（會破壞「(員工, 日期) 一列」的合併粒度），改掛「未打卡」badge
 - **同日多張假單**（例：上午事假 + 下午特休）合併為**一列**：`leaveHours` 加總、`leaves[]` 保留逐張顆粒度，
   相容欄位 `leaveType` / `leaveStartDate` / `leaveEndDate` 填第一張
 - **逐日時數**走 [LeaveDayExpander](../../Api/Common/LeaveDayExpander.cs)（與銷假、請假送單同一份行事曆 + 半天/小時規則），
   非 SQL 端另寫；展開結果會裁切到查詢區間（產假 56 天等可能超出）
 - **銷假**：該日已核准銷假即不算請假日，該日虛擬列消失（部分銷假可挖空中間日）
-- **假日**：`LeaveDayExpander` 不展開假日 → 國定假日 / 六日不會產生虛擬列
+- **假日**：`LeaveDayExpander` 不展開假日 → 國定假日 / 六日不會產生請假虛擬列，缺勤列亦跳過非工作日
 
 ### 為什麼不能純 SQL
 逐日請假時數必須走 `LeaveDayExpander`（C# 的行事曆判定與半天編碼），SQL 端複製一份必然漂移。

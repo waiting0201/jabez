@@ -277,6 +277,14 @@ export class Login {
           localStorage.removeItem(this.REMEMBER_KEY);
         }
         // 自動補卡提醒
+        if (res.auto_clock_in && res.auto_clock_in.count > 0) {
+          const dates = res.auto_clock_in.dates.join('、');
+          this.toastr.warning(
+            `以下日期有下班卡或加班卡卻沒有上班卡，系統已依當日應出勤時段（已避開請假）自動補上：${dates}`,
+            `自動補卡提醒（${res.auto_clock_in.count} 筆）`,
+            { timeOut: 10000, closeButton: true }
+          );
+        }
         if (res.auto_clock_out && res.auto_clock_out.count > 0) {
           const dates = res.auto_clock_out.dates.join('、');
           this.toastr.warning(
