@@ -127,13 +127,15 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         int? reviewerJobTitleId = null, int? reviewerDepartmentId = null,
         string? status = null, Guid? reviewerUserId = null, string? paymentStatus = null,
         string? applicationType = null, Guid? submittedByUserId = null,
-        int? directorStepDeptId = null, bool directorScope = false)
+        int? directorStepDeptId = null, bool directorScope = false,
+        DateOnly? dateFrom = null, DateOnly? dateTo = null)
     {
         var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, overtimeProjects, leaveRevocations, leaveRevocationDates) =
             await FetchAllAsync(reviewerJobTitleId: reviewerJobTitleId, reviewerDepartmentId: reviewerDepartmentId,
                                 statusFilter: status, reviewerUserId: reviewerUserId, paymentStatus: paymentStatus,
                                 applicationType: applicationType, submittedByUserId: submittedByUserId,
-                                directorStepDeptId: directorStepDeptId, directorScope: directorScope);
+                                directorStepDeptId: directorStepDeptId, directorScope: directorScope,
+                                dateFrom: dateFrom, dateTo: dateTo);
         var instDicts = await LoadInstallmentsAsync(payments, advances, travels, holidayTravels, travelPayments, writeOffs);
         var paymentAttachments   = await LoadPaymentAttachmentsAsync();
         var writeOffAttachments  = await LoadWriteOffAttachmentsAsync();
@@ -227,7 +229,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         int? reviewerJobTitleId = null, int? reviewerDepartmentId = null,
         string? statusFilter = null, Guid? reviewerUserId = null,
         string? paymentStatus = null, string? applicationType = null,
-        Guid? submittedByUserId = null, int? directorStepDeptId = null, bool directorScope = false)
+        Guid? submittedByUserId = null, int? directorStepDeptId = null, bool directorScope = false,
+        DateOnly? dateFrom = null, DateOnly? dateTo = null)
     {
         // ── WHERE clause for specific ID lookup ──────────────────────────────
         string paymentIdWhere        = (filterId.HasValue && filterType == "payment_request")  ? "pr.Id = @Id"  : "";
@@ -578,20 +581,34 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         bool hasSubmitterFilter = submittedByUserId.HasValue && !filterId.HasValue;
         string SubmitterClause(string column) => hasSubmitterFilter ? $" AND {column} = @SubmittedByUserId" : "";
 
+        // ── 申請日期區間篩選（各頁籤常駐；按 ID 查詢時略過）───────────────
+        // 基準＝「申請日期」＝送簽日 SubmittedAt，與清單顯示同一欄位；舊資料萬一沒回填到則退回 CreatedAt，
+        // 與 BuildApprovalTasks 的 `SubmittedAt ?? CreatedAt` 保持一致（否則會篩掉清單上明明有日期的單）。
+        // dateTo 含當日，故以 < DATEADD(day, 1, @DateTo) 表達（比照 PaymentReportReadService）。
+        bool hasDateFilter = (dateFrom.HasValue || dateTo.HasValue) && !filterId.HasValue;
+        string DateRangeClause(string alias)
+        {
+            if (!hasDateFilter) return "";
+            var sb = new System.Text.StringBuilder();
+            if (dateFrom.HasValue) sb.Append($" AND COALESCE({alias}.SubmittedAt, {alias}.CreatedAt) >= @DateFrom");
+            if (dateTo.HasValue)   sb.Append($" AND COALESCE({alias}.SubmittedAt, {alias}.CreatedAt) < DATEADD(day, 1, @DateTo)");
+            return sb.ToString();
+        }
+
         // 按 ID 查詢時不套用審核者過濾（StepMatchClause），只用 ID 條件
-        string paymentWhere       = !TypeAllowed("payment_request") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(paymentIdWhere,       "") : BuildWhere("", StepMatchClause("pr",  "sub",  "payment_request")) + PaymentStatusClause("pr",  "PaymentRequestInstallments",      "PaymentRequestId") + SubmitterClause("pr.SubmittedById"));
-        string leaveWhere         = !TypeAllowed("leave") || hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(leaveIdWhere,         "") : BuildWhere("", StepMatchClause("lr",  "u",    "leave")) + SubmitterClause("lr.EmployeeId"));
-        string travelWhere        = !TypeAllowed("travel") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(travelIdWhere,        "") + " AND tr.IsHolidayTravel = 0" : BuildWhere("tr.IsHolidayTravel = 0", StepMatchClause("tr",  "u",    "travel")) + PaymentStatusClause("tr",  "TravelRequestInstallments",       "TravelRequestId", supportsClosed: true) + SubmitterClause("tr.EmployeeId"));
+        string paymentWhere       = !TypeAllowed("payment_request") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(paymentIdWhere,       "") : BuildWhere("", StepMatchClause("pr",  "sub",  "payment_request")) + PaymentStatusClause("pr",  "PaymentRequestInstallments",      "PaymentRequestId") + SubmitterClause("pr.SubmittedById") + DateRangeClause("pr"));
+        string leaveWhere         = !TypeAllowed("leave") || hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(leaveIdWhere,         "") : BuildWhere("", StepMatchClause("lr",  "u",    "leave")) + SubmitterClause("lr.EmployeeId") + DateRangeClause("lr"));
+        string travelWhere        = !TypeAllowed("travel") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(travelIdWhere,        "") + " AND tr.IsHolidayTravel = 0" : BuildWhere("tr.IsHolidayTravel = 0", StepMatchClause("tr",  "u",    "travel")) + PaymentStatusClause("tr",  "TravelRequestInstallments",       "TravelRequestId", supportsClosed: true) + SubmitterClause("tr.EmployeeId") + DateRangeClause("tr"));
         // 假日執行活動津貼隨次月薪資發放、不走撥款流程，故套用「已撥款 / 未撥款」篩選時與 leave/overtime 一致直接排除
-        string holidayTravelWhere = !TypeAllowed("holiday_travel") || hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(holidayTravelIdWhere, "") + " AND tr.IsHolidayTravel = 1" : BuildWhere("tr.IsHolidayTravel = 1", StepMatchClause("tr",  "u",    "holiday_travel")) + SubmitterClause("tr.EmployeeId"));
-        string overtimeWhere      = !TypeAllowed("overtime") || hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(overtimeIdWhere,      "") : BuildWhere("", StepMatchClause("ot",  "u",    "overtime")) + SubmitterClause("ot.EmployeeId"));
-        string advanceWhere       = !TypeAllowed("advance") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(advanceIdWhere,       "") : BuildWhere("", StepMatchClause("adv", "asub", "advance")) + PaymentStatusClause("adv", "AdvanceRequestInstallments",      "AdvanceRequestId", supportsClosed: true) + SubmitterClause("adv.SubmittedById"));
-        string writeOffWhere      = !TypeAllowed("write_off") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(writeOffIdWhere,      "") : BuildWhere("", StepMatchClause("wo",  "wsub", "write_off")) + RefundStatusClause("arx.RefundedAt") + SubmitterClause("wo.SubmittedById"));
-        string travelWriteOffWhere  = !TypeAllowed("travel_write_off") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(travelWriteOffIdWhere,  "") : BuildWhere("", StepMatchClause("two", "trsub", "travel_write_off")) + RefundStatusClause("trx.RefundedAt") + SubmitterClause("two.SubmittedById"));
-        string travelPaymentWhere   = !TypeAllowed("travel_payment") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(travelPaymentIdWhere,   "") : BuildWhere("", StepMatchClause("tpr", "tpru", "travel_payment")) + PaymentStatusClause("tpr", "TravelPaymentRequestInstallments", "TravelPaymentRequestId") + SubmitterClause("tpr.EmployeeId"));
+        string holidayTravelWhere = !TypeAllowed("holiday_travel") || hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(holidayTravelIdWhere, "") + " AND tr.IsHolidayTravel = 1" : BuildWhere("tr.IsHolidayTravel = 1", StepMatchClause("tr",  "u",    "holiday_travel")) + SubmitterClause("tr.EmployeeId") + DateRangeClause("tr"));
+        string overtimeWhere      = !TypeAllowed("overtime") || hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(overtimeIdWhere,      "") : BuildWhere("", StepMatchClause("ot",  "u",    "overtime")) + SubmitterClause("ot.EmployeeId") + DateRangeClause("ot"));
+        string advanceWhere       = !TypeAllowed("advance") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(advanceIdWhere,       "") : BuildWhere("", StepMatchClause("adv", "asub", "advance")) + PaymentStatusClause("adv", "AdvanceRequestInstallments",      "AdvanceRequestId", supportsClosed: true) + SubmitterClause("adv.SubmittedById") + DateRangeClause("adv"));
+        string writeOffWhere      = !TypeAllowed("write_off") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(writeOffIdWhere,      "") : BuildWhere("", StepMatchClause("wo",  "wsub", "write_off")) + RefundStatusClause("arx.RefundedAt") + SubmitterClause("wo.SubmittedById") + DateRangeClause("wo"));
+        string travelWriteOffWhere  = !TypeAllowed("travel_write_off") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(travelWriteOffIdWhere,  "") : BuildWhere("", StepMatchClause("two", "trsub", "travel_write_off")) + RefundStatusClause("trx.RefundedAt") + SubmitterClause("two.SubmittedById") + DateRangeClause("two"));
+        string travelPaymentWhere   = !TypeAllowed("travel_payment") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(travelPaymentIdWhere,   "") : BuildWhere("", StepMatchClause("tpr", "tpru", "travel_payment")) + PaymentStatusClause("tpr", "TravelPaymentRequestInstallments", "TravelPaymentRequestId") + SubmitterClause("tpr.EmployeeId") + DateRangeClause("tpr"));
         // 預審申請：無撥款流程，paymentStatus 篩選時排除
-        string leaveRevocationWhere = !TypeAllowed("leave_revocation") || hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(leaveRevocationIdWhere, "") : BuildWhere("", StepMatchClause("rv", "u", "leave_revocation")) + SubmitterClause("rv.EmployeeId"));
-        string preReviewWhere       = !TypeAllowed("pre_review") || hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(preReviewIdWhere, "") : BuildWhere("", StepMatchClause("prv", "sub_prv", "pre_review")) + SubmitterClause("prv.SubmittedById"));
+        string leaveRevocationWhere = !TypeAllowed("leave_revocation") || hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(leaveRevocationIdWhere, "") : BuildWhere("", StepMatchClause("rv", "u", "leave_revocation")) + SubmitterClause("rv.EmployeeId") + DateRangeClause("rv"));
+        string preReviewWhere       = !TypeAllowed("pre_review") || hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(preReviewIdWhere, "") : BuildWhere("", StepMatchClause("prv", "sub_prv", "pre_review")) + SubmitterClause("prv.SubmittedById") + DateRangeClause("prv"));
 
         var paymentSql = $"""
             SELECT pr.Id, pr.RequestNo, pr.Type AS PaymentType, proj.Code AS ProjectCode, proj.Name AS ProjectName,
@@ -835,6 +852,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             StatusFilter         = statusFilter,
             SubmittedByUserId    = submittedByUserId,
             DirectorStepDeptId = directorStepDeptId,
+            DateFrom = dateFrom?.ToDateTime(TimeOnly.MinValue),
+            DateTo   = dateTo?.ToDateTime(TimeOnly.MinValue),
         };
 
         const string drSql = """

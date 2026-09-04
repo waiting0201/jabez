@@ -393,6 +393,37 @@ model 皆宣告為 `requestNo: string | null`：
 - **篩選列與頁籤的關係**：與狀態無關的篩選（類型、申請人）應**各頁籤常駐**；只有在特定狀態才有意義的篩選（如撥款 / 退款）才綁該頁籤。判斷基準是「這個篩選在這個狀態下篩得出東西嗎」，不是「當初是在哪個頁籤做的」。
 - 已採用：[簽核作業列表](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-list/approval-task-list.html) —— 全部類型下拉（所有人）＋ 申請人下拉（僅財務體系部門 / Superadmin）**5 個頁籤常駐**；撥款退款子篩選另加 `activeTab() === 'approved'` 條件（其他狀態的單尚未進入撥款階段）
 
+#### 即時篩選列的日期區間（起 ~ 迄）
+
+**清單頁**（非報表頁）要篩日期時，用「起 ~ 迄」兩個 `<input type="date">`，**不套報表頁的日 / 週 / 月 pill**（那組綁「篩選」按鈕，
+而清單頁的篩選列是改值即時重查）。控件比照同列其他控件用 `form-control-sm w-auto`，前面掛欄位名（如「申請日期」）、
+中間以 `~` 分隔，兩邊皆設 `aria-label`；已設值時才顯示「清除」鈕：
+
+```html
+<div class="flex items-center gap-1">
+  <span class="text-muted small whitespace-nowrap">申請日期</span>
+  <input type="date" class="form-control form-control-sm w-auto"
+         [value]="dateFromFilter()" (change)="setDateFromFilter($any($event.target).value)"
+         aria-label="申請日期起日" />
+  <span class="text-muted small">~</span>
+  <input type="date" class="form-control form-control-sm w-auto"
+         [value]="dateToFilter()" (change)="setDateToFilter($any($event.target).value)"
+         aria-label="申請日期迄日" />
+  @if (hasDateFilter()) {
+    <button type="button" class="btn btn-sm btn-outline-secondary whitespace-nowrap" (click)="clearDateFilter()">清除</button>
+  }
+</div>
+```
+
+規則：
+
+- 兩個 setter 與其他篩選一樣**必須 `page.set(1)`**，並把 signal 併進 `combineLatest` 串流（不另外寫 loader）
+- **可單邊帶**（只填起日或只填迄日），起迄顛倒不擋、不跳錯，自然查無資料
+- **迄日含當日**：日期只到「日」，後端一律以 `< DATEADD(day, 1, @DateTo)` 表達，前端不做 +1
+- 篩選基準欄位要與該列表**顯示的日期欄同一個值**（申請單類一律「申請日期」＝ `submittedAt`，見 §7.1.4），否則會出現「畫面上日期在區間內卻被篩掉」
+- 切換頁籤時比照其他篩選一併清空
+- 已採用：[簽核作業列表](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-list/approval-task-list.html)（5 個頁籤常駐）
+
 ---
 
 ## 4. 卡片元件
@@ -912,7 +943,7 @@ isFirstOfRound(r: AdvanceRequest, index: number): boolean {
 |---|---|---|---|
 | 各申請清單頁 | **一律「申請日期」**（不用「建立時間 / 申請時間」） | `submittedAt` | `—` |
 | 詳情頁資訊卡 | 申請日期 | `submittedAt` | `（送簽後產生）` |
-| 簽核作業清單 / 詳情 | 申請日期 | `task.submittedAt` | 不適用（草稿不進簽核） |
+| 簽核作業清單 / 詳情 | 申請日期（清單欄位**與日期區間篩選**同基準） | `task.submittedAt` | 不適用（草稿不進簽核） |
 | 列印 PDF | 申請日期 / 簽名欄「申請者」格日期 | `submittedAt` | 不適用 |
 | 款項統計報表 | 申請日期（欄位**與日期區間篩選**同基準） | `submittedAt` | 不適用（報表排除草稿） |
 

@@ -32,6 +32,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         // 依審核者職稱過濾，讓每個人只看到「當前步驟符合自己職稱」的待審申請
         // status 參數：pending（待審）/ approved（已核准）/ returned（退回修改中）/ rejected（已拒絕），空值沿用既有行為
         // scope  參數：director（總監室簽核，範圍維度，與 status 四態自由組合；舊值 status=director_pending 相容為兩者組合）
+        // dateFrom / dateTo：申請日期（送簽日）區間，各頁籤常駐
         var principal = await jwtService.ValidateRequestAsync(req);
         int?    jobTitleId      = null;
         int?    deptId          = null;
@@ -82,6 +83,11 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         Guid? submittedByUserId = CanFilterByApplicant(callerIsSuperAdmin, callerDeptCode)
                                   && Guid.TryParse(req.Query["submittedByUserId"], out var sbu) ? sbu : null;
 
+        // 申請日期區間篩選（各頁籤常駐，所有人可用）：比照款項統計報表以「送簽日 SubmittedAt」為基準，
+        // dateTo 為含當日（SQL 端以 < DATEADD(day, 1, @DateTo) 處理）。起迄顛倒不特別處理，自然查無資料。
+        DateOnly? dateFrom = DateOnly.TryParse(req.Query["dateFrom"], out var df) ? df : null;
+        DateOnly? dateTo   = DateOnly.TryParse(req.Query["dateTo"],   out var dt) ? dt : null;
+
         // 「總監室簽核」頁籤（scope=director）：僅財務管理部 / 會計室或 Superadmin 可查看
         bool directorScope = scope == "director";
         if (directorScope && !callerIsSuperAdmin && !DepartmentCodes.DirectorPendingView.Contains(callerDeptCode ?? ""))
@@ -96,7 +102,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             && !DepartmentCodes.FinanceStep.Contains(callerDeptCode ?? "")
                 ? deptId : null;
 
-        var allTasks = (await reader.GetApprovalTasksAsync(jobTitleId, deptId, status, reviewerUserId, paymentStatus, applicationType, submittedByUserId, directorStepDeptId, directorScope)).ToList();
+        var allTasks = (await reader.GetApprovalTasksAsync(jobTitleId, deptId, status, reviewerUserId, paymentStatus, applicationType, submittedByUserId, directorStepDeptId, directorScope, dateFrom, dateTo)).ToList();
         int total = allTasks.Count;
         var items = allTasks.Skip((page - 1) * pageSize).Take(pageSize);
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
