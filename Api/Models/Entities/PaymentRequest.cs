@@ -4,7 +4,7 @@ public class PaymentRequest
 {
     public int       Id             { get; set; }
     public string?   RequestNo      { get; set; }                 // PR-yyyyMMdd-NNN；送簽時取號，草稿為 null
-    public string    Type           { get; set; } = string.Empty; // vendor | general | business_trip
+    public string    Type           { get; set; } = string.Empty; // vendor | general | business_trip | other
     public int       ProjectId      { get; set; }
     public int?      VendorId       { get; set; }
     public int?      ApprovalItemId { get; set; }

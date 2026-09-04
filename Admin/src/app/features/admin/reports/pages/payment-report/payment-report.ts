@@ -23,6 +23,7 @@ const PAYMENT_TYPE_LABELS: Record<string, string> = {
   vendor:          '廠商請款',
   general:         '一般請款',
   business_trip:   '員工公出請款',
+  other:           '其他',
   advance:         '預支',
   writeoff:        '預支沖銷',
   'travel-payment': '出差請款',
