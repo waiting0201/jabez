@@ -21,7 +21,7 @@ public sealed class PaymentRequestHandler(
     IApprovalNotificationService notifier,
     IApprovalFlowService approvalFlow)
 {
-    private static readonly HashSet<string> ValidTypes = ["vendor", "general", "business_trip"];
+    private static readonly HashSet<string> ValidTypes = ["vendor", "general", "business_trip", "other"];
     private const string ContainerName = "invoices";
 
     private static readonly JsonSerializerOptions JsonOpts = new()
@@ -87,7 +87,7 @@ public sealed class PaymentRequestHandler(
             designatedReviewers = JsonSerializer.Deserialize<DesignatedReviewerRequest[]>(designatedReviewersJson, JsonOpts);
 
         if (string.IsNullOrEmpty(type) || !ValidTypes.Contains(type))
-            return new BadRequestObjectResult(ApiResponse.Fail($"Invalid type '{type}'. Must be vendor, travel, or advance."));
+            return new BadRequestObjectResult(ApiResponse.Fail($"Invalid type '{type}'. Must be one of: {string.Join(", ", ValidTypes)}."));
 
         if (string.IsNullOrWhiteSpace(reason))
             return new BadRequestObjectResult(ApiResponse.Fail("請填寫請款原因。"));

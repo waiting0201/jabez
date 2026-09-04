@@ -934,7 +934,7 @@ DELETE entity 時，相關 Blob 全部一起刪。
 
 ### 12.7 整單批次附件（共用 AttachmentProcessor）
 
-請款（`PaymentRequest`，type=vendor 廠商請款 / type=general 一般請款皆可）與預支沖銷（`WriteOffRecord`）支援**整單層級**批次附件（照片 / PDF），存於專屬子表 `PaymentRequestAttachment` / `WriteOffAttachment`（真實 FK + Cascade delete），統一走 [`AttachmentProcessor`](../Api/Common/AttachmentProcessor.cs)：
+請款（`PaymentRequest`，type=vendor 廠商請款 / type=general 一般請款 / type=other 其他皆可）與預支沖銷（`WriteOffRecord`）支援**整單層級**批次附件（照片 / PDF），存於專屬子表 `PaymentRequestAttachment` / `WriteOffAttachment`（真實 FK + Cascade delete），統一走 [`AttachmentProcessor`](../Api/Common/AttachmentProcessor.cs)：
 
 - **multipart 欄位**（與明細列檔案的 `files` 區隔）：
   - `attachments`（JSON）：`AttachmentMetadata[] { FileName, FileUrl, FileIndex }`；既有檔保留 `FileUrl`，新檔以 `FileIndex` 對應檔案部分

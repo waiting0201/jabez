@@ -20,6 +20,7 @@ export const PAYMENT_TYPE_LABELS: Record<PaymentType, string> = {
   vendor:        '廠商請款',
   general:       '一般請款',
   business_trip: '員工公出請款',
+  other:         '其他',
 };
 
 export {LEAVE_TYPE_LABELS};
