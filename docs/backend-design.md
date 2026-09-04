@@ -384,6 +384,16 @@ pr.SubmittedAt ??= Clock.Now;
 - `ApprovalTaskDto.SubmittedAt` 改吃真正的 `SubmittedAt`（原本一直餵 `CreatedAt`，名實不符）
 - 款項統計報表的日期區間篩選與排序改以 `SubmittedAt`
   （`PaymentReportReadService.DateAndPaymentStatusClause` 的 `dateCol` 參數；報表只含非草稿故必有值）
+- 簽核作業清單的日期區間篩選（`GET /approval-tasks?dateFrom=&dateTo=`，2026-09 新增）
+  （`PaymentRequestReadService.FetchAllAsync` 的 `DateRangeClause(alias)`，10 種申請類型各自的 WHERE 共用同一個 local function；
+  比照 `SubmitterClause` / `PaymentStatusClause` 的寫法，按 ID 查詢時整段略過）
+
+**日期區間篩選的兩條共同守則**（新增任何 `dateFrom` / `dateTo` 篩選時照抄）：
+
+1. **迄日含當日**：參數以 `DateOnly?` 解析（`DateOnly.TryParse`，失敗＝忽略、不回 400），
+   SQL 一律寫成 `>= @DateFrom` 與 `< DATEADD(day, 1, @DateTo)`，不在應用層對 `dateTo` 做 +1
+2. **篩選欄位＝清單顯示的那個欄位**：簽核作業清單顯示的是 `SubmittedAt ?? CreatedAt`，
+   故 WHERE 也用 `COALESCE(x.SubmittedAt, x.CreatedAt)`，否則舊資料會出現「畫面上日期在區間內卻被篩掉」
 
 ---
 

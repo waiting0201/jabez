@@ -77,7 +77,8 @@
   }
 
   <!-- 篩選列（四個頁籤共用）：總監四態（僅總監室簽核頁籤） + 類型（所有人可見）
-       + 申請人（僅 Superadmin/總監室/財務部/會計部） + 撥款退款（僅已核准頁籤且具權限） -->
+       + 申請人（僅 Superadmin/總監室/財務部/會計部） + 申請日期區間（所有人可見）
+       + 撥款退款（僅已核准頁籤且具權限） -->
   <div class="flex flex-wrap items-center gap-2 mb-4">
       @if (activeTab() === 'director') {
         <div class="flex gap-1">
@@ -129,6 +130,24 @@
           }
         </select>
       }
+
+      <!-- 申請日期（送簽日）區間：各頁籤常駐，迄日含當日 -->
+      <div class="flex items-center gap-1">
+        <span class="text-muted small whitespace-nowrap">申請日期</span>
+        <input type="date" class="form-control form-control-sm w-auto"
+               [value]="dateFromFilter()"
+               (change)="setDateFromFilter($any($event.target).value)"
+               aria-label="申請日期起日" />
+        <span class="text-muted small">~</span>
+        <input type="date" class="form-control form-control-sm w-auto"
+               [value]="dateToFilter()"
+               (change)="setDateToFilter($any($event.target).value)"
+               aria-label="申請日期迄日" />
+        @if (hasDateFilter()) {
+          <button type="button" class="btn btn-sm btn-outline-secondary whitespace-nowrap"
+                  (click)="clearDateFilter()">清除</button>
+        }
+      </div>
 
       @if (activeTab() === 'approved' && canSeePaymentFilter()) {
         <div class="flex gap-1">

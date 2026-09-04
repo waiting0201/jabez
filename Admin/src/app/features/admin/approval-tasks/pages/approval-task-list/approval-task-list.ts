@@ -78,6 +78,9 @@ export class ApprovalTaskList {
   paymentStatus = signal<'' | 'paid' | 'unpaid' | 'partial' | 'closed'>('');
   applicationTypeFilter = signal<'' | ApplicationType>('');
   submittedByFilter = signal('');
+  /** 申請日期（送簽日）區間篩選，'YYYY-MM-DD'；迄日含當日，各頁籤常駐 */
+  dateFromFilter = signal('');
+  dateToFilter = signal('');
   page = signal(1);
 
   /** 「總監室簽核」四種子狀態的中文 label（空清單文案共用） */
@@ -114,6 +117,8 @@ export class ApprovalTaskList {
     this.paymentStatus.set('');
     this.applicationTypeFilter.set('');
     this.submittedByFilter.set('');
+    this.dateFromFilter.set('');
+    this.dateToFilter.set('');
     this.page.set(1);
     this.selectedKeys.set(new Set());
   }
@@ -135,6 +140,25 @@ export class ApprovalTaskList {
 
   setSubmittedByFilter(value: string) {
     this.submittedByFilter.set(value || '');
+    this.page.set(1);
+  }
+
+  setDateFromFilter(value: string) {
+    this.dateFromFilter.set(value || '');
+    this.page.set(1);
+  }
+
+  setDateToFilter(value: string) {
+    this.dateToFilter.set(value || '');
+    this.page.set(1);
+  }
+
+  /** 是否已設定日期區間（決定「清除日期」按鈕是否顯示） */
+  hasDateFilter = computed(() => !!this.dateFromFilter() || !!this.dateToFilter());
+
+  clearDateFilter() {
+    this.dateFromFilter.set('');
+    this.dateToFilter.set('');
     this.page.set(1);
   }
 
@@ -213,13 +237,16 @@ export class ApprovalTaskList {
       toObservable(this.paymentStatus),
       toObservable(this.applicationTypeFilter),
       toObservable(this.submittedByFilter),
+      toObservable(this.dateFromFilter),
+      toObservable(this.dateToFilter),
       toObservable(this.reloadTrigger),
     ]).pipe(
       // 總監室簽核頁籤把「範圍」與「狀態」拆成兩個參數送出（scope=director + status 四態）
-      switchMap(([p, tab, ds, ps, at, sb]) => {
+      switchMap(([p, tab, ds, ps, at, sb, from, to]) => {
         const scope  = tab === 'director' ? 'director' : undefined;
         const status = tab === 'director' ? ds : tab;
-        return this.service.getPaged(p, this.PAGE_SIZE, status, ps || undefined, at || undefined, sb || undefined, scope);
+        return this.service.getPaged(p, this.PAGE_SIZE, status, ps || undefined, at || undefined, sb || undefined, scope,
+                                     from || undefined, to || undefined);
       })
     ),
     {initialValue: {items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 1} as PagedResult<ApprovalTask>}
