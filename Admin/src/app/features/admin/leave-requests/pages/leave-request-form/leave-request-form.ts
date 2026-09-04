@@ -12,7 +12,8 @@ import {
   LEAVE_TYPE_GROUPS, LEAVE_TYPE_LABELS, LEAVE_TYPE_DAYS_LIMIT, LEAVE_TIME_UNIT,
   BEREAVEMENT_GROUPS, BEREAVEMENT_RELATIONSHIP_LABELS, BEREAVEMENT_DAYS,
   BereavementRelationship, WORKING_DAY_LEAVE_TYPES, WorkingDaysResult,
-  WORKDAY_START_HOUR, WORKDAY_END_HOUR, halfDayAmStartHour,
+  WORKDAY_START_HOUR, WORKDAY_END_HOUR, LUNCH_END_HOUR,
+  halfDayAmStartHour, halfDayAmEndHour,
 } from '../../models/leave-request.model';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
@@ -237,9 +238,14 @@ export class LeaveRequestForm implements OnInit {
     return this.form.get('leaveType')?.value as LeaveType || 'annual';
   }
 
-  /** 半天模式「上午」時段的下拉標籤（補休自 09:00 起，其餘 08:00） */
+  /** 半天模式「上午」開始時段的下拉標籤（補休自 09:00 起，其餘 08:00） */
   get amSlotLabel(): string {
     return `上午（從 ${String(halfDayAmStartHour(this.selectedLeaveType)).padStart(2, '0')}:00）`;
+  }
+
+  /** 半天模式「上午」結束時段的下拉標籤（補休至 13:00，其餘 12:00） */
+  get amEndSlotLabel(): string {
+    return `上午（至 ${String(halfDayAmEndHour(this.selectedLeaveType)).padStart(2, '0')}:00）`;
   }
 
   /** 當前假別的時間單位 */
@@ -1089,10 +1095,11 @@ export class LeaveRequestForm implements OnInit {
         ? `${v.startDate}T23:59:00`
         : `${v.endDate}T23:59:00`;
     } else {
-      // half_day：將 slot 轉為代表性時間（上午起點依假別，補休自 09:00 起）
+      // half_day：將 slot 轉為代表性時間（上午時段依假別，補休為 09:00–13:00）
       const amStart = String(halfDayAmStartHour(type)).padStart(2, '0');
+      const amEnd   = String(halfDayAmEndHour(type)).padStart(2, '0');
       const startHour = v.startSlot === 'am' ? `${amStart}:00:00` : '13:00:00';
-      const endHour = v.endSlot === 'am' ? '12:00:00' : '17:00:00';
+      const endHour = v.endSlot === 'am' ? `${amEnd}:00:00` : '17:00:00';
       startDateStr = `${v.startDate}T${startHour}`;
       endDateStr = `${v.endDate}T${endHour}`;
     }
@@ -1175,8 +1182,9 @@ export class LeaveRequestForm implements OnInit {
     : {startSlot: HalfDaySlot; endSlot: HalfDaySlot} {
     const startHour = new Date(startDate).getHours();
     const endHour = new Date(endDate).getHours();
-    const startSlot: HalfDaySlot = startHour >= 12 ? 'pm' : 'am';
-    const endSlot: HalfDaySlot = endHour < 13 ? 'am' : 'pm';
+    // 起 13:00＝下午開始；訖 12:00 / 13:00（補休）皆為上午結束，故兩端界線不同
+    const startSlot: HalfDaySlot = startHour >= LUNCH_END_HOUR ? 'pm' : 'am';
+    const endSlot: HalfDaySlot = endHour <= LUNCH_END_HOUR ? 'am' : 'pm';
     return {startSlot, endSlot};
   }
 }
