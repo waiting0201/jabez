@@ -719,6 +719,40 @@ const dateStr = record.rawRecordDate.slice(0, 10);
 
 > 歷史：commit `7ce86bcb`（生日／到職日／離職日時區偏移少一天）確立不得經 `Date` 物件轉換；後續預支沖銷 / 出差預支沖銷 / 出差請款三張單因漏做截斷，導致單據退回修正後重新編輯時發票日期與出差起訖日全空白。
 
+### 日期欄位的合理範圍（`min` / `max`，**申請表單必加**）
+
+`<input type="date">` 的年份欄可以打任意 4 位數。使用者把民國年當西元年輸入（115 → 西元 0115 年）時，
+畫面看起來只差在年份，後果卻是整張單失效。故 **11 支申請表單的每一個日期欄位一律掛 `min` / `max`**：
+
+```ts
+import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
+
+  /** 日期欄位合理範圍：擋民國年誤植（見 shared/utils/date-bounds.ts） */
+  readonly minDate = MIN_REQUEST_DATE;
+  readonly maxDate = MAX_REQUEST_DATE;
+```
+
+```html
+<input type="date" class="form-control" formControlName="overtimeDate"
+       [min]="minDate" [max]="maxDate">
+```
+
+- **範圍的單一真相是 [`shared/utils/date-bounds.ts`](../Admin/src/app/shared/utils/date-bounds.ts)**（今日 ±3 年），
+  不可在各表單自行算日期。子女出生日期另有一組 `MIN_CHILD_BIRTH_DATE` / `MAX_CHILD_BIRTH_DATE`（過去 3 年內、不得晚於今日）。
+- **不加 Angular validator**：形式上更嚴謹，但表單既有的錯誤訊息區塊是逐欄手寫的
+  （`@if (control.invalid && touched) { 請選擇加班日期。}`），多一種 error 會顯示錯誤的文案；
+  而多數送出按鈕綁 `[disabled]="form.invalid"`，沒有對應訊息時只會變成「按鈕莫名反灰」。
+- **真正的守門在兩端**：行動裝置的原生日期選擇器直接轉不到範圍外的年份（本案的根治點，
+  當事人正是用 iOS 的 LINE 內建瀏覽器操作）；桌機仍可硬打，由後端
+  [`RequestDateGuard`](../Api/Common/RequestDateGuard.cs) 以同一組數字回 400，訊息直接由 toastr 呈現。
+- 超出範圍時 `.form-control:out-of-range` 會即時給紅框（tailwind.css）。用 `:out-of-range` 而非 `:invalid` ——
+  後者連「必填但還沒填」都會中，一進表單就整片紅。
+
+> 歷史：2026-09 一張加班單的加班日期存成 `0115-09-06`，打卡頁以「加班日期 = 今日」撈單撈不到，
+> 員工當天完全無法打加班卡；單子已核准（只有草稿能編輯）本人也改不掉，只能直接改 DB。
+> 另有一個辨識陷阱：iOS 日期選擇器對 1582 年前的日期改用儒略曆呈現，
+> 同一筆資料清單頁顯示 `0115-09-06`、編輯頁卻顯示「115年9月7日」，差一天，讓誤植更難被認出。
+
 ### 日期多選 chips（逐日勾選）
 
 在有限日期區間內做**多選、可不連續**的日期勾選時（如假日執行活動的參與人員參與日期），以 `btn btn-sm rounded-pill` toggle 按鈕逐日產生 chips，不用多個 `<input type="date">`：

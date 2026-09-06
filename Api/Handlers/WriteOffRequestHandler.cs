@@ -242,6 +242,9 @@ public sealed class WriteOffRequestHandler(
         if (items is null || items.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one write-off item is required."));
 
+        // 年份合理性（擋民國年誤植）
+        RequestDateGuard.EnsureEach(items, i => i.InvoiceDate, "發票日期");
+
         // 解析指定審核者
         DesignatedReviewerRequest[]? designatedReviewers = null;
         if (!string.IsNullOrEmpty(designatedReviewersJson))
@@ -401,6 +404,9 @@ public sealed class WriteOffRequestHandler(
             var items = JsonSerializer.Deserialize<WriteOffItemMetadata[]>(itemsJson, JsonOpts);
             if (items is null || items.Length == 0)
                 return new BadRequestObjectResult(ApiResponse.Fail("At least one write-off item is required."));
+
+            // 年份合理性（擋民國年誤植，比照 CreateAsync）
+            RequestDateGuard.EnsureEach(items, i => i.InvoiceDate, "發票日期");
 
             // 發票唯一性驗證（排除本筆記錄自身的明細）
             await ValidateInvoiceUniquenessAsync(items, excludeWriteOffRecordId: intId);

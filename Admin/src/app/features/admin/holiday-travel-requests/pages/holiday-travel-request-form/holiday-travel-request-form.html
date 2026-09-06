@@ -83,14 +83,16 @@
             <div class="row g-3 mb-4">
               <div class="col-12 col-md-4">
                 <label class="form-label fw-500">開始日期 <span class="text-danger">*</span></label>
-                <input type="date" class="form-control" formControlName="startDate" (change)="onDateChange()">
+                <input type="date" class="form-control" formControlName="startDate" (change)="onDateChange()"
+                       [min]="minDate" [max]="maxDate">
                 @if (form.get('startDate')?.invalid && form.get('startDate')?.touched) {
                   <div class="text-danger small mt-1">請選擇開始日期。</div>
                 }
               </div>
               <div class="col-12 col-md-4">
                 <label class="form-label fw-500">結束日期 <span class="text-danger">*</span></label>
-                <input type="date" class="form-control" formControlName="endDate" (change)="onDateChange()">
+                <input type="date" class="form-control" formControlName="endDate" (change)="onDateChange()"
+                       [min]="minDate" [max]="maxDate">
                 @if (form.get('endDate')?.invalid && form.get('endDate')?.touched) {
                   <div class="text-danger small mt-1">請選擇結束日期。</div>
                 }

@@ -395,6 +395,39 @@ pr.SubmittedAt ??= Clock.Now;
 2. **篩選欄位＝清單顯示的那個欄位**：簽核作業清單顯示的是 `SubmittedAt ?? CreatedAt`，
    故 WHERE 也用 `COALESCE(x.SubmittedAt, x.CreatedAt)`，否則舊資料會出現「畫面上日期在區間內卻被篩掉」
 
+### 4.6 使用者輸入的日期一律過 `RequestDateGuard`（**重要**）
+
+申請單上**由使用者填寫**的日期欄位，在 Create / Update 收下後、進入業務驗證之前，
+一律以 [Common/RequestDateGuard.cs](../Api/Common/RequestDateGuard.cs) 檢查年份合理性（今日 ±3 年，超出回 400）：
+
+```csharp
+RequestDateGuard.Ensure(body.OvertimeDate, "加班日期");                       // 單一欄位
+RequestDateGuard.EnsureAll((startDate, "出差開始日"), (endDate, "出差結束日")); // 多欄位
+RequestDateGuard.EnsureEach(invoices, i => i.InvoiceDate, "發票日期");         // 明細列表同一欄
+RequestDateGuard.EnsurePastWithin(body.ChildBirthDate, "子女出生日期",
+    RequestDateGuard.ChildBirthYearsBack);                                    // 只能是過去 N 年內
+```
+
+**存在理由**：`<input type="date">` 的年份欄可以打任意 4 位數，把民國年當西元年輸入（115 → 西元 0115 年）
+時前後端都沒有一關會擋。2026-09 實際發生過：一張加班單的 `OvertimeDate` 存成 `0115-09-06`，
+打卡頁以 `CAST(OvertimeDate AS DATE) = 今日` 撈不到，員工當天完全無法打加班卡；
+單子已 `approved`（只有 draft 能編輯）本人也改不掉，只能直接改 DB。
+
+四條守則：
+
+1. **範圍是防呆不是業務規則** —— ±3 年刻意寬鬆，只攔「差了 1911 年的民國年」與明顯誤植的年份。
+   必須容納既有合法情境：育嬰留職停薪最長 730 天（迄日可達今日 +2 年）、補請去年度的發票、跨年度活動。
+   真正的期間限制（假別額度、起迄先後、發票期限）留在各 Handler 既有的驗證。
+2. **排在該類型的資格 / 額度驗證之前** —— 否則誤植的年份會先撞上「子女未滿 3 歲」這類業務訊息，
+   使用者看不出真正的問題出在年份（請假 Create 就吃過這個虧，故 guard 放在 `LeaveType` 白名單檢查的下一行）。
+3. **`default(DateTime)` 不進 guard** —— 未帶值要回「必填」訊息，不是「0001-01-01 超出合理範圍」。
+   非 nullable 欄位一律寫成 `x == default ? (DateTime?)null : x` 再傳入。
+4. **只驗使用者填的日期** —— 系統自己蓋的戳記（`CreatedAt` / `SubmittedAt` / `PaidAt`）與
+   人事資料的生日 / 到職日（可能是數十年前）不適用；銷假的逐日日期由母單可銷清單驗證，也不需要。
+
+前端對應：`Admin/src/app/shared/utils/date-bounds.ts` 以相同數字掛 `min` / `max`
+（見 [frontend-design.md §6](frontend-design.md)）。**兩處數字必須一起改。**
+
 ---
 
 ## 5. DTO 設計

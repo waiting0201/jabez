@@ -790,6 +790,13 @@
     &:focus { box-shadow: 0 0 0 3px rgba(160,64,64,0.15); }
   }
 
+  /* 超出 min / max 的日期即時紅框（申請表單的日期欄一律掛合理範圍，見 shared/utils/date-bounds.ts）。
+     用 :out-of-range 而非 :invalid —— 後者連「必填但還沒填」都會中，一進表單就整片紅。 */
+  .form-control:out-of-range {
+    border-color: var(--red);
+    &:focus { box-shadow: 0 0 0 3px rgba(160,64,64,0.15); }
+  }
+
   /* ─── Tables ──────────────────────────────────── */
   .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 

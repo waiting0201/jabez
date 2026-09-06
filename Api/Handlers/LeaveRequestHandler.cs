@@ -255,6 +255,14 @@ public sealed class LeaveRequestHandler(
             return new BadRequestObjectResult(ApiResponse.Fail(
                 $"Invalid LeaveType '{body.LeaveType}'. Must be one of: {string.Join(", ", ValidLeaveTypes)}"));
 
+        // 年份合理性（擋民國年誤植）：排在各假別的資格 / 額度檢查之前，否則誤植的年份會先撞上
+        // 「子女未滿 3 歲」這類業務訊息，使用者看不出真正的問題出在年份。
+        // 未帶值（default）交由下方的必填檢查回報；業務期間限制仍由各假別驗證負責。
+        RequestDateGuard.EnsureAll(
+            (body.StartDate == default ? (DateTime?)null : body.StartDate, "請假開始日"),
+            (body.EndDate   == default ? (DateTime?)null : body.EndDate,   "請假結束日"));
+        RequestDateGuard.EnsurePastWithin(body.ChildBirthDate, "子女出生日期", RequestDateGuard.ChildBirthYearsBack);
+
         // 喪假必須提供親屬關係
         if (body.LeaveType == "bereavement")
         {
@@ -481,6 +489,10 @@ public sealed class LeaveRequestHandler(
                     $"Invalid LeaveType '{body.LeaveType}'."));
             item.LeaveType = body.LeaveType;
         }
+        // 年份合理性（擋民國年誤植，比照 CreateAsync）
+        RequestDateGuard.EnsureAll((body.StartDate, "請假開始日"), (body.EndDate, "請假結束日"));
+        RequestDateGuard.EnsurePastWithin(body.ChildBirthDate, "子女出生日期", RequestDateGuard.ChildBirthYearsBack);
+
         if (body.StartDate.HasValue) item.StartDate = body.StartDate.Value;
         if (body.EndDate.HasValue)   item.EndDate   = body.EndDate.Value;
         if (body.Reason is not null) item.Reason    = body.Reason;

@@ -87,6 +87,11 @@ public sealed class TravelRequestHandler(
         if (!body.AdvanceNeededDate.HasValue)
             return new BadRequestObjectResult(ApiResponse.Fail("AdvanceNeededDate is required."));
 
+        // 年份合理性（擋民國年誤植）
+        RequestDateGuard.EnsureAll(
+            (body.StartDate, "出差開始日"), (body.EndDate, "出差結束日"),
+            (body.AdvanceNeededDate, "預支款需求日"));
+
         // 明細項目驗證：至少需要一筆
         if (body.Items is null || body.Items.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
@@ -163,6 +168,9 @@ public sealed class TravelRequestHandler(
             return new BadRequestObjectResult(ApiResponse.Fail("StartDate and EndDate are required."));
         if (endDate < startDate)
             return new BadRequestObjectResult(ApiResponse.Fail("EndDate must be on or after StartDate."));
+
+        // 年份合理性（擋民國年誤植）
+        RequestDateGuard.EnsureAll((startDate, "活動開始日"), (endDate, "活動結束日"));
 
         // 解析指定審核者 JSON
         DesignatedReviewerRequest[]? designatedReviewers = null;
@@ -283,6 +291,11 @@ public sealed class TravelRequestHandler(
             }
         }
 
+        // 年份合理性（擋民國年誤植，比照 CreateAsync）
+        RequestDateGuard.EnsureAll(
+            (body.StartDate, "出差開始日"), (body.EndDate, "出差結束日"),
+            (body.AdvanceNeededDate, "預支款需求日"));
+
         if (body.Destination is not null)  item.Destination = body.Destination;
         if (body.StartDate.HasValue)       item.StartDate   = body.StartDate.Value;
         if (body.EndDate.HasValue)         item.EndDate     = body.EndDate.Value;
@@ -338,11 +351,13 @@ public sealed class TravelRequestHandler(
         var datesChanged = false;
         if (DateTime.TryParse(form["startDate"], out var sd) && item.StartDate != sd)
         {
+            RequestDateGuard.Ensure(sd, "活動開始日");   // 年份合理性（擋民國年誤植）
             item.StartDate = sd;
             datesChanged = true;
         }
         if (DateTime.TryParse(form["endDate"], out var ed) && item.EndDate != ed)
         {
+            RequestDateGuard.Ensure(ed, "活動結束日");
             item.EndDate = ed;
             datesChanged = true;
         }

@@ -82,21 +82,24 @@
             <div class="row g-3 mb-4">
               <div class="col-12 col-md-4">
                 <label class="form-label fw-500">出發日期 <span class="text-danger">*</span></label>
-                <input type="date" class="form-control" formControlName="startDate">
+                <input type="date" class="form-control" formControlName="startDate"
+                       [min]="minDate" [max]="maxDate">
                 @if (form.get('startDate')?.invalid && form.get('startDate')?.touched) {
                   <div class="text-danger small mt-1">請選擇出發日期。</div>
                 }
               </div>
               <div class="col-12 col-md-4">
                 <label class="form-label fw-500">返回日期 <span class="text-danger">*</span></label>
-                <input type="date" class="form-control" formControlName="endDate">
+                <input type="date" class="form-control" formControlName="endDate"
+                       [min]="minDate" [max]="maxDate">
                 @if (form.get('endDate')?.invalid && form.get('endDate')?.touched) {
                   <div class="text-danger small mt-1">請選擇返回日期。</div>
                 }
               </div>
               <div class="col-12 col-md-4">
                 <label class="form-label fw-500">預支款需求日 <span class="text-danger">*</span></label>
-                <input type="date" class="form-control" formControlName="advanceNeededDate">
+                <input type="date" class="form-control" formControlName="advanceNeededDate"
+                       [min]="minDate" [max]="maxDate">
                 @if (form.get('advanceNeededDate')?.invalid && form.get('advanceNeededDate')?.touched) {
                   <div class="text-danger small mt-1">請選擇預支款需求日。</div>
                 }

@@ -27,6 +27,7 @@ import {UserLookup} from '../../../users/models/user.model';
 import heic2any from 'heic2any';
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
 
 /** 明細列的三個連動金額欄（總價 = 現金(預支) + 支票(月結)） */
 type AmountField = 'total' | 'cash' | 'check';
@@ -61,6 +62,9 @@ export class AdvanceForm implements OnInit {
   requestId  = 0;
   /** 儲存 / 送出進行中：鎖按鈕 + spinner，避免 multipart 上傳期間連按建出多張單（見 docs/frontend-design.md §8.4.1） */
   saving = signal(false);
+  /** 日期欄位合理範圍：擋民國年誤植（見 shared/utils/date-bounds.ts） */
+  readonly minDate = MIN_REQUEST_DATE;
+  readonly maxDate = MAX_REQUEST_DATE;
 
   /** 追加預支模式：掛在已核准預支單上新增 / 編輯一個追加批次 */
   isSupplement    = false;

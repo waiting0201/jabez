@@ -117,6 +117,10 @@ public sealed class TravelPaymentRequestHandler(
         if (itemRequests is null || itemRequests.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
 
+        // 年份合理性（擋民國年誤植）
+        RequestDateGuard.EnsureAll((startDate, "出差開始日"), (endDate, "出差結束日"));
+        RequestDateGuard.EnsureEach(itemRequests, i => i.InvoiceDate, "發票日期");
+
         var today = Clock.Now;
 
         // 指定審核者
@@ -220,10 +224,17 @@ public sealed class TravelPaymentRequestHandler(
         }
         if (form.ContainsKey("purpose"))
             item.Purpose = form["purpose"].ToString();
+        // 年份合理性（擋民國年誤植，比照 CreateAsync）
         if (form.ContainsKey("startDate") && DateTime.TryParse(form["startDate"], out var startDate))
+        {
+            RequestDateGuard.Ensure(startDate, "出差開始日");
             item.StartDate = startDate;
+        }
         if (form.ContainsKey("endDate") && DateTime.TryParse(form["endDate"], out var endDate))
+        {
+            RequestDateGuard.Ensure(endDate, "出差結束日");
             item.EndDate = endDate;
+        }
         if (form.ContainsKey("projectId"))
         {
             if (int.TryParse(form["projectId"], out var pid))
@@ -265,6 +276,8 @@ public sealed class TravelPaymentRequestHandler(
             var itemRequests = JsonSerializer.Deserialize<TravelPaymentRequestItemRequest[]>(itemsJson, JsonOpts);
             if (itemRequests is null || itemRequests.Length == 0)
                 return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
+
+            RequestDateGuard.EnsureEach(itemRequests, i => i.InvoiceDate, "發票日期");
 
             // 收集舊 FileUrl（稍後清理孤立 blob）
             var oldFileUrls = item.Items
