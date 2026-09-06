@@ -92,6 +92,9 @@ public sealed class AdvanceRequestHandler(
         if (!DateTime.TryParse(neededDateStr, out var neededDate))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid advanceNeededDate."));
 
+        // 年份合理性（擋民國年誤植）
+        RequestDateGuard.EnsureAll((advanceDate, "預支日期"), (neededDate, "預支款需求日"));
+
         var itemsMeta = JsonSerializer.Deserialize<ItemMetadata[]>(itemsJson, JsonOpts);
         if (itemsMeta is null || itemsMeta.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
@@ -218,10 +221,16 @@ public sealed class AdvanceRequestHandler(
         if (!string.IsNullOrEmpty(activityPeriod))
             ar.ActivityPeriod = activityPeriod;
         if (DateTime.TryParse(advanceDateStr, out var advanceDate))
+        {
+            RequestDateGuard.Ensure(advanceDate, "預支日期");   // 年份合理性（擋民國年誤植）
             ar.AdvanceDate = advanceDate;
+        }
         // 必填欄位：比照 advanceDate，解析成功才覆寫（不接受清空）
         if (DateTime.TryParse(form["advanceNeededDate"].ToString(), out var neededDate))
+        {
+            RequestDateGuard.Ensure(neededDate, "預支款需求日");
             ar.AdvanceNeededDate = neededDate;
+        }
 
         // 指定審核者整組替換
         if (!string.IsNullOrEmpty(drJson) || form.ContainsKey("designatedReviewers"))
@@ -604,6 +613,9 @@ public sealed class AdvanceRequestHandler(
         if (!DateTime.TryParse(neededDateStr, out var neededDate))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid advanceNeededDate."));
 
+        // 年份合理性（擋民國年誤植，比照 CreateAsync）
+        RequestDateGuard.EnsureAll((advanceDate, "預支日期"), (neededDate, "預支款需求日"));
+
         var itemsMeta = JsonSerializer.Deserialize<ItemMetadata[]>(itemsJson, JsonOpts);
         if (itemsMeta is null || itemsMeta.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
@@ -655,10 +667,16 @@ public sealed class AdvanceRequestHandler(
         var itemsJson      = form["items"].ToString();
 
         if (DateTime.TryParse(advanceDateStr, out var advanceDate))
+        {
+            RequestDateGuard.Ensure(advanceDate, "預支日期");   // 年份合理性（擋民國年誤植）
             supplement.AdvanceDate = advanceDate;
+        }
         // 必填欄位：比照 advanceDate，解析成功才覆寫（不接受清空）
         if (DateTime.TryParse(form["advanceNeededDate"].ToString(), out var neededDate))
+        {
+            RequestDateGuard.Ensure(neededDate, "預支款需求日");
             supplement.AdvanceNeededDate = neededDate;
+        }
         if (form.ContainsKey("reason"))
             supplement.Reason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
 

@@ -124,6 +124,9 @@ public sealed class PaymentRequestHandler(
         if (invoices is null || invoices.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one invoice is required."));
 
+        // 年份合理性（擋民國年誤植）
+        RequestDateGuard.EnsureEach(invoices, i => i.InvoiceDate, "發票日期");
+
         var today = Clock.Now;
 
         // 發票號碼含中文 / CJK 者（如「收據」「領據」）視為手打文字，排除於重複檢查之外
@@ -347,6 +350,9 @@ public sealed class PaymentRequestHandler(
             var invoices = JsonSerializer.Deserialize<InvoiceMetadata[]>(invoicesJson, JsonOpts);
             if (invoices is null || invoices.Length == 0)
                 return new BadRequestObjectResult(ApiResponse.Fail("At least one invoice is required."));
+
+            // 年份合理性（擋民國年誤植，比照 CreateAsync）
+            RequestDateGuard.EnsureEach(invoices, i => i.InvoiceDate, "發票日期");
 
             // 發票號碼含中文 / CJK 者（如「收據」「領據」）視為手打文字，排除於重複檢查之外
             var checkableInvoices = invoices

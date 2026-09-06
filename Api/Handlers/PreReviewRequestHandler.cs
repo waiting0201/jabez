@@ -118,6 +118,9 @@ public sealed class PreReviewRequestHandler(
         if (items is null || items.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
 
+        // 年份合理性（擋民國年誤植）
+        RequestDateGuard.EnsureEach(items, i => i.ItemDate, "品項日期");
+
         var today = Clock.Now;
 
         // 上傳檔案至 Blob Storage（quotes 容器）
@@ -305,6 +308,9 @@ public sealed class PreReviewRequestHandler(
             var items = JsonSerializer.Deserialize<ItemMetadata[]>(itemsJson, JsonOpts);
             if (items is null || items.Length == 0)
                 return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
+
+            // 年份合理性（擋民國年誤植，比照 CreateAsync）
+            RequestDateGuard.EnsureEach(items, i => i.ItemDate, "品項日期");
 
             // 收集舊 FileUrl（稍後比對，刪除不再使用的 blob）
             var oldFileUrls = pr.Items

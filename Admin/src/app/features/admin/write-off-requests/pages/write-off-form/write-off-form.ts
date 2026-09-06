@@ -27,6 +27,7 @@ import {UserLookup} from '../../../users/models/user.model';
 import {DesignatedReviewersPicker, DesignatedReviewerPayload} from '../../../../../shared/components/designated-reviewers-picker/designated-reviewers-picker';
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
 
 /** 明細列的三個連動金額欄（總價 = 現金花費 + 支票金額） */
 type AmountField = 'total' | 'cash' | 'check';
@@ -103,6 +104,9 @@ export class WriteOffRequestForm implements OnInit {
    * 造成同一張沖銷單被建立兩筆（每按一次就是一個 POST /write-off-requests）。
    */
   saving = signal(false);
+  /** 日期欄位合理範圍：擋民國年誤植（見 shared/utils/date-bounds.ts） */
+  readonly minDate = MIN_REQUEST_DATE;
+  readonly maxDate = MAX_REQUEST_DATE;
 
   /** 指定審核者相關 */
   hasDesignatedStep = false;

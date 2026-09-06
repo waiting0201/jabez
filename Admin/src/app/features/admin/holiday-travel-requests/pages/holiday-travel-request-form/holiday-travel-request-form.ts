@@ -34,6 +34,7 @@ import {Department} from '../../../departments/models/department.model';
 import {ApprovalFlowStepSummary} from '../../../approvals/models/approval.model';
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
 
 @Component({
   selector: 'app-holiday-travel-request-form',
@@ -60,6 +61,9 @@ export class HolidayTravelRequestForm implements OnInit {
   requestId  = 0;
   /** 儲存 / 送出進行中：鎖按鈕 + spinner，避免 multipart 上傳期間連按建出多張單（見 docs/frontend-design.md §8.4.1） */
   saving = signal(false);
+  /** 日期欄位合理範圍：擋民國年誤植（見 shared/utils/date-bounds.ts） */
+  readonly minDate = MIN_REQUEST_DATE;
+  readonly maxDate = MAX_REQUEST_DATE;
   isReadOnly = false;
   isReturned = false;
   isDraft    = true;

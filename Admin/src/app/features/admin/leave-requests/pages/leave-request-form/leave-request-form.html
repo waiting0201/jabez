@@ -339,7 +339,8 @@
                 <!-- 子女出生日期：驗證「未滿 3 歲」並作為 2 年總額度的分組鍵 -->
                 <div class="mt-3">
                   <label class="form-label fw-500">子女出生日期 <span class="text-danger">*</span></label>
-                  <input type="date" class="form-control" formControlName="childBirthDate" style="max-width: 320px">
+                  <input type="date" class="form-control" formControlName="childBirthDate" style="max-width: 320px"
+                         [min]="minChildBirthDate" [max]="maxChildBirthDate">
                   <div class="text-muted small mt-1">同一名子女的額度以出生日期歸戶，請確實填寫。</div>
                 </div>
 
@@ -460,7 +461,8 @@
                 <div class="col-12 col-md-6">
                   <label class="form-label fw-500">開始日期 <span class="text-danger">*</span></label>
                   <div class="flex gap-2">
-                    <input type="date" class="form-control" formControlName="startDate">
+                    <input type="date" class="form-control" formControlName="startDate"
+                           [min]="minDate" [max]="maxDate">
                     <select class="form-select" formControlName="startHour" style="max-width:120px">
                       @for (h of hourOptions; track h) {
                         <option [ngValue]="h">{{ formatHour(h) }}</option>
@@ -471,7 +473,8 @@
                 <div class="col-12 col-md-6">
                   <label class="form-label fw-500">結束日期 <span class="text-danger">*</span></label>
                   <div class="flex gap-2">
-                    <input type="date" class="form-control" formControlName="endDate">
+                    <input type="date" class="form-control" formControlName="endDate"
+                           [min]="minDate" [max]="maxDate">
                     <select class="form-select" formControlName="endHour" style="max-width:120px">
                       @for (h of hourOptions; track h) {
                         <option [ngValue]="h">{{ formatHour(h) }}</option>
@@ -491,7 +494,8 @@
               <div class="row g-3 mb-4">
                 <div class="col-12 col-md-4">
                   <label class="form-label fw-500">起始日 <span class="text-danger">*</span></label>
-                  <input type="date" class="form-control" formControlName="startDate">
+                  <input type="date" class="form-control" formControlName="startDate"
+                         [min]="minDate" [max]="maxDate">
                 </div>
                 <div class="col-12 col-md-4">
                   <label class="form-label fw-500">結束日（自動）</label>
@@ -511,7 +515,8 @@
               <div class="row g-3 mb-4">
                 <div class="col-12 col-md-4">
                   <label class="form-label fw-500">請假日期 <span class="text-danger">*</span></label>
-                  <input type="date" class="form-control" formControlName="startDate">
+                  <input type="date" class="form-control" formControlName="startDate"
+                         [min]="minDate" [max]="maxDate">
                   <div class="text-muted small mt-1">以日為單位，一次申請一日</div>
                 </div>
                 <div class="col-12 col-md-4">
@@ -526,11 +531,13 @@
               <div class="row g-3 mb-4">
                 <div class="col-12 col-md-4">
                   <label class="form-label fw-500">開始日期 <span class="text-danger">*</span></label>
-                  <input type="date" class="form-control" formControlName="startDate">
+                  <input type="date" class="form-control" formControlName="startDate"
+                         [min]="minDate" [max]="maxDate">
                 </div>
                 <div class="col-12 col-md-4">
                   <label class="form-label fw-500">結束日期 <span class="text-danger">*</span></label>
-                  <input type="date" class="form-control" formControlName="endDate">
+                  <input type="date" class="form-control" formControlName="endDate"
+                         [min]="minDate" [max]="maxDate">
                 </div>
                 <div class="col-12 col-md-4">
                   <label class="form-label fw-500">天數</label>
@@ -545,7 +552,8 @@
                 <div class="col-12 col-md-6">
                   <label class="form-label fw-500">開始日期 <span class="text-danger">*</span></label>
                   <div class="flex gap-2">
-                    <input type="date" class="form-control" formControlName="startDate">
+                    <input type="date" class="form-control" formControlName="startDate"
+                           [min]="minDate" [max]="maxDate">
                     <select class="form-select" formControlName="startSlot" style="max-width:180px">
                       <option value="am">{{ amSlotLabel }}</option>
                       <option value="pm">下午（從 13:00）</option>
@@ -555,7 +563,8 @@
                 <div class="col-12 col-md-6">
                   <label class="form-label fw-500">結束日期 <span class="text-danger">*</span></label>
                   <div class="flex gap-2">
-                    <input type="date" class="form-control" formControlName="endDate">
+                    <input type="date" class="form-control" formControlName="endDate"
+                           [min]="minDate" [max]="maxDate">
                     <select class="form-select" formControlName="endSlot" style="max-width:180px">
                       <option value="am">{{ amEndSlotLabel }}</option>
                       <option value="pm">下午（至 17:00）</option>

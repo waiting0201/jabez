@@ -84,6 +84,9 @@ public sealed class OvertimeRequestHandler(
         if (body.OvertimeDate == default)
             return new BadRequestObjectResult(ApiResponse.Fail("OvertimeDate is required."));
 
+        // 年份合理性（擋民國年誤植：0115-09-06 這種單子送出後打卡頁永遠撈不到）
+        RequestDateGuard.Ensure(body.OvertimeDate, "加班日期");
+
         if (string.IsNullOrWhiteSpace(body.Reason))
             return new BadRequestObjectResult(ApiResponse.Fail("Reason is required."));
 
@@ -173,6 +176,9 @@ public sealed class OvertimeRequestHandler(
         projectRows.ForEach(p => p.OvertimeRequestId = item.Id);
         await db.OvertimeRequestProjects.AddRangeAsync(projectRows);
         item.EstimatedHours = projectRows.Sum(r => r.EstimatedHours);
+
+        // 年份合理性（擋民國年誤植，比照 CreateAsync）
+        RequestDateGuard.Ensure(body.OvertimeDate, "加班日期");
 
         if (body.OvertimeDate.HasValue)    item.OvertimeDate    = body.OvertimeDate.Value;
         if (body.Reason is not null)       item.Reason          = body.Reason;

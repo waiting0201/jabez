@@ -399,6 +399,11 @@ Api/
 │   │                                    **送簽當下的第二個戳記＝`SubmittedAt`（申請日期，2026-09 新增）**：10 張申請父表各一欄 `DateTime?`，草稿為 null，
 │   │                                    以 `x.SubmittedAt ??= Clock.Now;` 緊接取號寫入，與取號共用同三條守則；
 │   │                                    `CreatedAt` 維持原義（建立草稿時間）不動，全站「申請日期」一律讀 `SubmittedAt`，兩個戳記必須一起做
+│   ├── RequestDateGuard.cs            # 申請單「使用者輸入日期」年份合理性單一真相（2026-09 新增，純函式無 I/O）：今日 ±3 年（子女出生日期另為「過去 3 年內且不得晚於今日」），
+│   │                                    超出回 400 且訊息點名「是否誤填民國年」。10 種申請表的 Create / Update 全數套用（Ensure / EnsureAll / EnsureEach / EnsurePastWithin）。
+│   │                                    三個地雷：① 範圍是防呆不是業務規則（±3 年須容納育嬰留停 730 天的迄日）；② 必須排在該類型的資格 / 額度驗證之前，
+│   │                                    否則誤植年份會先撞上「子女未滿 3 歲」這類訊息；③ `default(DateTime)` 不進 guard（要回「必填」而非「0001-01-01 超出範圍」）。
+│   │                                    前端同一組數字在 `Admin/src/app/shared/utils/date-bounds.ts`（日期 input 的 min / max），兩處必須一起改
 │   ├── OvertimePayCalculator.cs       # 勞基法加班費「倍率 / 時薪 / 分段累進」單一真相（純函式）：
 │   │                                    平日 1–2h ×1.34、3h 起 ×1.67（上限 4h）；假日 1–2h ×1.34、3–8h ×1.67、9h 起 ×2.67（上限 12h）；
 │   │                                    時薪＝ROUND(底薪 ÷ 240, 2)；金額只在總額捨入一次（AwayFromZero）；
@@ -453,6 +458,13 @@ dotnet ef database update               # 套用 Migration
 > 詳情顯示「（送簽後產生）」），送簽當下與單號同時蓋章、退回重送不改。清單頁欄名一律「申請日期」，
 > 詳情頁 / 簽核頁 / 列印 PDF / 款項統計報表（含**日期區間篩選**）皆改讀 `submittedAt`；
 > `CreatedAt` 保留原義（建立草稿時間），不再用於顯示。
+>
+> **日期欄位年份防呆（2026-09）**：所有使用者填寫的日期欄位（加班日期 / 請假起迄 / 出差起迄 /
+> 預支日期與需求日 / 發票日期 / 品項日期 / 子女出生日期）限制在**今日 ±3 年**，前端以日期 input 的
+> `min` / `max`（單一真相 `Admin/src/app/shared/utils/date-bounds.ts`，行動裝置的原生選擇器直接轉不到範圍外）、
+> 後端以 [Api/Common/RequestDateGuard.cs](Api/Common/RequestDateGuard.cs) 回 400 兩端守門，
+> 兩處數字必須一起改。起因是一張加班單被打成民國年（`115/09/06` → 西元 0115 年），
+> 打卡頁以「加班日期 = 今日」撈不到該單，員工整天無法打加班卡且因單已核准而無法自行修正。
 
 ---
 

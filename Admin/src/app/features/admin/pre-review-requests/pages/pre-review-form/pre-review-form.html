@@ -259,7 +259,8 @@
                           </div>
                         } @else {
                           <input type="date" class="form-control form-control-sm"
-                                 formControlName="itemDate">
+                                 formControlName="itemDate"
+                                 [min]="minDate" [max]="maxDate">
                         }
                       </td>
                       <td class="align-middle">
