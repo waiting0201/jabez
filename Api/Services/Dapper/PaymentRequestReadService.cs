@@ -161,8 +161,10 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         => (await GetApprovalTasksAsync()).FirstOrDefault(t => t.Id == id);
 
     /// <summary>
-    /// 簽核作業「申請人」下拉選項：10 種申請單中曾送出（非草稿）者的申請人去重清單，依姓名排序。
+    /// 簽核作業「申請人」下拉選項：**在職員工 ∪ 曾送出（非草稿）申請單者**，去重後依姓名排序。
     /// 僅供財務體系部門篩選用（權限在 ApprovalTaskHandler.GetApplicantsAsync 檢查）。
+    /// 只列「曾送過單的人」會讓尚未送過任何單的在職員工整個消失在下拉中（財務找不到人、誤以為漏資料），
+    /// 故補上在職員工；離職者則靠 EXISTS 保留（其歷史單仍需可篩）。
     /// </summary>
     public async Task<IEnumerable<ApprovalTaskApplicantDto>> GetApprovalTaskApplicantsAsync()
     {
@@ -170,7 +172,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             SELECT u.Id, u.Name
             FROM Users u
             WHERE u.IsSuperAdmin = 0
-              AND EXISTS (
+              AND (u.Status = 'active' OR EXISTS (
                 SELECT 1 FROM PaymentRequests          x WHERE x.SubmittedById = u.Id AND x.ApprovalStatus <> 'draft'
                 UNION ALL
                 SELECT 1 FROM LeaveRequests            x WHERE x.EmployeeId    = u.Id AND x.ApprovalStatus <> 'draft'
@@ -190,7 +192,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 SELECT 1 FROM PreReviewRequests        x WHERE x.SubmittedById = u.Id AND x.ApprovalStatus <> 'draft'
                 UNION ALL
                 SELECT 1 FROM LeaveRevocations         x WHERE x.EmployeeId    = u.Id AND x.ApprovalStatus <> 'draft'
-              )
+              ))
             ORDER BY u.Name
             """;
         var rows = await db.QueryAsync<dynamic>(sql);
