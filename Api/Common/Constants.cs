@@ -179,6 +179,22 @@ public static class DepartmentCodes
         };
 
     /// <summary>
+    /// 「可撥款」最終核准通知的收件部門（2026-09 擴充會計室）：財務管理部 + 會計室（各含舊短碼與改制後英文全名）。
+    /// 財務管理部是實際撥款者；會計室需知悉「總監已簽核、單子走完流程」才能接著入帳，
+    /// 過去只寄財務管理部，會計室得自己去「總監室簽核」頁籤輪詢。
+    /// 純通知用途，刻意與寫入型的 <see cref="FinanceStep"/>（撥款明細 / 結案 / 支票已支付）分開 ——
+    /// 會計室收得到信，但這些寫入型操作仍不可執行。
+    /// </summary>
+    public static readonly IReadOnlySet<string> PaymentApprovedNotify =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            Finance,
+            FinanceEn,
+            Accounting,
+            AccountingEn,
+        };
+
+    /// <summary>
     /// 指定審核者「部門最高層級自動略過」限定部門（2026-07 新增）：
     /// 僅當第一個指定審核步驟（先選部門模式）選的部門屬於此集合時，
     /// 首位指定人若為該部門職稱最高者，才會自動略過其後的指定審核步驟；其餘部門一律不抑制。

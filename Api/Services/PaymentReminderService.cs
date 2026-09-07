@@ -19,6 +19,7 @@ public sealed class PaymentReminderService(
         ["advance"]         = "預支申請",
         ["travel"]          = "出差預支",
         ["travel_payment"]  = "出差請款",
+        ["write_off"]       = "預支沖銷差額",
     };
 
     public async Task<PaymentReminderRunResult> RunAsync(string triggerSource, Guid? triggeredByUserId = null)
