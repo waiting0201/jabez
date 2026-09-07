@@ -321,7 +321,11 @@ Api/
 │   │                                  #      職級 / 部門異動後，原本有人可簽的上層級關卡會變成 0 位候選人，單子停在該關誰都撈不到。
 │   │                                  #      以條件比對定位（不寫死 Id），推進到下一個有人可簽的**固定**關卡（跳過 MinDays 擋掉者 /
 │   │                                  #      指定審核 / 上層級，同 BuildLaterFixedStepScopes 的判準）；找不到安全落點者不動、交人工。
-│   │                                  #      不發通知，推進後須自行告知新的審核者
+│   │                                  #      不發通知，推進後須自行告知新的審核者、
+│   │                                  #   06 刪除指定單號的預支申請單（@Commit 空跑開關 + @AllowPaid 已撥款保護）：
+│   │                                  #      以 **RequestNo 定位**（不寫死 Id），故同一份可在本機 / staging / 正式站跑；
+│   │                                  #      刪除規則同 04b（先子單沖銷的三張多型足跡與本體、再母單足跡與本體），
+│   │                                  #      Items / Installments / Supplements 走 CASCADE。目標單有已撥款分期時預設整份中止
 │   └── Seed/                          # 一次性匯入工具（共用 RocDateParser 解民國年）
 │       ├── EmployeeImporter + EmployeeImportDtos + employee-import.json  # 員工人事資料（RUN_EMPLOYEE_IMPORT 旗標，IMPORT_UPLOAD_FILES 控制附件上傳）
 │       ├── ProjectImporter + ProjectImportDtos + project-import.json     # 專案資料（RUN_PROJECT_IMPORT 旗標，PROJECT_IMPORT_DRY_RUN 只印不寫；來源 reference/專案資料-115.07.29.xls；以 Code upsert、期別明細全量重建）
