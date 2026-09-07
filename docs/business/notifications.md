@@ -69,10 +69,10 @@
 | 3 | `NotifySpecificReviewerAsync` | `[待審核] {label} #{id} — {申請人}（指定 / 升級 / 代理 審核）` | 指定 / 升級 / 代理審核者 | 升級觸發、指定審核流程啟動、下一位指定審核者 | 各 Handler `Submit*Async`、`ApprovalTaskHandler.cs` (designated 自動代簽 while-loop) |
 | 4 | `NotifyApplicantPaidAsync` | `[已撥款] 您的{label} #{id} 已撥款 — {amount} 元（第 N/M 期）` | 申請人 | **每筆 installment** 的 PaidAt 從 null → 有值（分期撥款情境下每筆推一次，標題附「第 N/M 期」）；無分期時退化為單筆通知 | `PaymentRequestHandler` / `AdvanceRequestHandler` / `TravelRequestHandler` / `TravelPaymentRequestHandler` 的 `UpsertInstallmentsAsync` |
 | 5 | `NotifyApplicantRefundedAsync` | `[已退款] 您的{label} #{id} 退款已匯款 — {amount} 元` | 申請人 | 財務設定 RefundedAt 從 null → 有值 | `AdvanceRequestHandler` / `TravelRequestHandler` |
-| 6 | `NotifyFinanceDeptAsync` | `[可撥款] {label} #{id} 已核准 — {申請人}` | 財務管理部全員（`DepartmentCodes.FinanceStep`） | 請款 / 預支 / 出差預支 / 出差請款 最終核准後 | `ApprovalTaskHandler.cs:921, 957`（兩處最終核准分支，受 `IsFinanceApplicationType` 守衛） |
+| 6 | `NotifyFinanceDeptAsync` | `[可撥款] {label} #{id} 已核准 — {申請人}` | **財務管理部 + 會計室**全員（`DepartmentCodes.PaymentApprovedNotify`，2026-09 擴充會計室） | 請款 / 預支 / 出差預支 / 出差請款 / **預支沖銷（限有超支差額者）** 最終核准後 | `ApprovalTaskHandler.cs:1295, 1340`（兩處最終核准分支，受 `ShouldNotifyFinanceAsync` 守衛） |
 | 7 | `NotifyFinanceRefundAsync` | `[需匯款] 預支申請 #{id} 沖銷超額 — 差額 {金額} 元` | 財務管理部全員（`DepartmentCodes.FinanceStep`） | 預支沖銷核准且金額超過預支金額 | `ApprovalTaskHandler.CloseAdvanceRequestAsync` |
 | 8 | `NotifyFinanceTravelRefundAsync` | `[需匯款] 出差申請 #{id} 沖銷超額 — 差額 {金額} 元` | 財務管理部全員（`DepartmentCodes.FinanceStep`） | 出差沖銷核准且金額超過出差金額 | `ApprovalTaskHandler.CloseTravelRequestAsync` |
-| 9 | `NotifyFinanceUpcomingPaymentsAsync` | `[撥款提醒] 您有 N 筆預計撥款日將屆` | 財務體系部門（`DepartmentCodes.FinancialAndAbove`，含會計室 / 總監室）全員 | 每日 09:00 (Taipei) TimerTrigger 自動跑，或 Superadmin 手動觸發 | `PaymentReminderService` + `PaymentReminderFunction` |
+| 9 | `NotifyFinanceUpcomingPaymentsAsync` | `[撥款提醒] 您有 N 筆預計撥款日將屆` | 財務體系部門（`DepartmentCodes.FinancialAndAbove`，含會計室 / 總監室）全員 | 每日 09:00 (Taipei) TimerTrigger 自動跑，或 Superadmin 手動觸發；來源為 **5 種** installments（2026-09 納入預支沖銷差額） | `PaymentReminderService` + `PaymentReminderFunction` |
 
 > ⚠️ **收件人一律用 `DepartmentCodes.*` 集合比對部門 Code，禁止硬編碼字串**（`#6/#7/#8` 用窄集合 `FinanceStep` = 財務管理部；`#9` 用廣集合 `FinancialAndAbove`）。
 > 2026-08 修正：這 3 支原本寫死 `d.Code == "FIN"` 撈單一部門，組織改制後 Code 變 `Financial Management Department`，查無部門即 `return`，**通知靜默不送，只留一行 warning log**。詳見 [approval-flow.md 財務撥款步驟判定](approval-flow.md)。
@@ -115,7 +115,7 @@
 | 3 | `BuildSpecificReviewerMessage` | 指定 / 升級 / 代理審核者 | 已綁 LINE 的特定審核者 | `NotifySpecificReviewerAsync` | 同 method |
 | 4 | `BuildApplicantPaidMessage` | 撥款完成通知 | 已綁 LINE 的申請人 | `NotifyApplicantPaidAsync` | 同 method |
 | 5 | `BuildApplicantRefundedMessage` | 退款完成通知 | 已綁 LINE 的申請人 | `NotifyApplicantRefundedAsync` | 同 method |
-| 6 | `BuildFinanceDeptMessage` | 財務部撥款通知 | 已綁 LINE 的財務部成員 | `NotifyFinanceDeptAsync` | 同 method |
+| 6 | `BuildFinanceDeptMessage` | 財務部撥款通知 | 已綁 LINE 的財務管理部 + 會計室成員 | `NotifyFinanceDeptAsync` | 同 method |
 | 7 | `BuildRefundMessage` | 預支沖銷超額通知 | 已綁 LINE 的財務部成員 | `NotifyFinanceRefundAsync` | 同 method |
 | 8 | `BuildTravelRefundMessage` | 出差沖銷超額通知 | 已綁 LINE 的財務部成員 | `NotifyFinanceTravelRefundAsync` | 同 method |
 

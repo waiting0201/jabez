@@ -60,7 +60,24 @@ draft → pending → approved / returned / rejected
 當**最後一步**（Step 4 總監）核准後，系統自動：
 1. 狀態變更為 `approved`
 2. **通知申請人**：信件主旨 `[已核准] 請款申請 #XX`
-3. **通知財務部全員**：信件主旨 `[可撥款] 請款申請 #XX 已核准`
+3. **通知財務管理部 + 會計室全員**：信件主旨 `[可撥款] 請款申請 #XX 已核准`（Email + LINE）
+
+> **收件範圍（2026-09 擴充會計室）**：`DepartmentCodes.PaymentApprovedNotify` = 財務管理部 + 會計室。
+> 財務管理部是實際撥款者；**會計室需知悉「總監已簽核、單子走完流程」才能接著入帳**，
+> 過去只寄財務管理部，會計室得自己去「總監室簽核」頁籤輪詢。
+> 此集合**純通知用途**，刻意與寫入型的 `DepartmentCodes.FinanceStep`（撥款明細 / 結案 / 支票已支付）分開 ——
+> 會計室收得到信，但這些寫入型操作仍不可執行。
+>
+> **適用申請類型（2026-09 納入預支沖銷）**：請款 / 預支 / 出差預支 / 出差請款 一律發；
+> **預支沖銷（`write_off`）只有在超支（`RefundDue > 0`，即財務核准當下建了差額 installments）時才發** ——
+> 未超支的沖銷單沒有任何款要撥，發信只是雜訊。判定收斂在
+> [ApprovalTaskHandler.ShouldNotifyFinanceAsync](../../Api/Handlers/ApprovalTaskHandler.cs)。
+> **出差預支沖銷（`travel_write_off`）不發**（本來就沒有 installments）。
+
+> ⚠️ **觸發點是「最後一關通過」而不是「總監這個角色」**。實務流程 `… → 會計室 → 財務管理部 → 總監室`，
+> 總監是最後一關故等同總監簽完；但若某流程把財務設為最後一關，財務核准當下就同時發信（等於通知自己）。
+> 另注意**預計撥款日不是這時才填** —— 財務在自己的關卡（總監之前）核准當下就必填，
+> 這封信之後填的是**實際撥款日**（`PATCH /{type}-requests/{id}/installments` 僅 `approved` 可呼叫）。
 
 ### 分期撥款（Installments，2026-05 上線；2026-05 Phase 2 完成）
 
@@ -129,6 +146,7 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 - **核准後修改**：`PATCH /write-off-requests/{id}/installments`（僅 approved、限財務體系 / Superadmin）
 - 驗證、已撥款列保護、每期 `PaidAt` null→value 觸發「已撥款（第 N/M 期）」通知，皆與其他 4 種一致
 - **出差預支沖銷（travel_write_off）不在此範圍**，仍維持單一預計撥款日
+- **通知（2026-09 補上）**：本單最終核准且有差額 installments 時，發 `[可撥款]` 給財務管理部 + 會計室；差額分期亦納入每日撥款日將屆提醒。過去這筆撥款從頭到尾沒有任何主動通知，財務只能自己去「已核准」頁籤撈
 
 **簽核頁同步維護預支單撥款明細**：預支沖銷簽核頁另設「關聯預支單撥款明細」區塊，直接讀寫 `PATCH /advance-requests/{id}/installments`，與預支申請單完全同步（同一份資料，不是複本）。
 
@@ -198,7 +216,7 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 ### 撥款日將屆提醒（PaymentReminderFunction，2026-05 新增）
 
 每日 09:00 (Taipei) `TimerTrigger` 自動執行：
-- 撈出所有「PaidAt 為空 + ExpectedDate ≤ 今天+N 天」的 installments（4 種申請類型 UNION）
+- 撈出所有「PaidAt 為空 + ExpectedDate ≤ 今天+N 天」的 installments（**5 種**申請類型 UNION；2026-09 納入預支沖銷差額 `WriteOffInstallments`，沖銷單本身無 `ProjectId`，專案代號取自其母預支單）
 - N 由 `SystemSetting.PaymentReminderDaysBefore` 控制（預設 3，0-30）
 - 對**財務體系部門全員**各推一則彙整通知（Email + LINE，沿用 `ApprovalEmailEnabled` + `ApprovalLineEnabled` 開關）
 - 同日同人去重（`PaymentReminderLog` 記錄 success 後當日不再推）

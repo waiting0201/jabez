@@ -320,19 +320,20 @@ public sealed class ApprovalNotificationService(
             var applicantName = applicant?.Name ?? "未知";
             var summary = await GetSummaryAsync(applicationType, applicationId);
 
-            // 查詢財務管理部所有有 Email 的使用者
-            // 以 DepartmentCodes.FinanceStep 比對（含舊短碼 FIN + 改制後英文全名）；
+            // 查詢財務管理部 + 會計室所有有 Email 的使用者
+            // 以 DepartmentCodes.PaymentApprovedNotify 比對（含舊短碼 FIN / AC + 改制後英文全名）；
             // 原本硬編碼 == "FIN"，組織改制後查無部門，通知會靜默不送只留一行 warning。
+            // 2026-09 擴充會計室：會計需知悉「總監已簽核、單子走完流程」才能接著入帳。
             var recipients = await db.Users.AsNoTracking()
                 .Where(u => u.Department != null && u.Department.Code != null
-                         && DepartmentCodes.FinanceStep.Contains(u.Department.Code)
+                         && DepartmentCodes.PaymentApprovedNotify.Contains(u.Department.Code)
                          && !u.IsSuperAdmin && !string.IsNullOrEmpty(u.Email))
                 .Select(u => new { u.Name, u.Email })
                 .ToListAsync();
 
             if (recipients.Count == 0)
             {
-                logger.LogWarning("財務部(FIN)無可通知的使用者：PaymentRequest #{Id}", applicationId);
+                logger.LogWarning("財務管理部 / 會計室無可通知的使用者：{AppType} #{Id}", applicationType, applicationId);
                 return;
             }
 
@@ -368,7 +369,7 @@ public sealed class ApprovalNotificationService(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "寄送財務部(FIN)撥款通知失敗：PaymentRequest #{Id}", applicationId);
+            logger.LogWarning(ex, "寄送財務管理部 / 會計室撥款通知失敗：{AppType} #{Id}", applicationType, applicationId);
         }
     }
 

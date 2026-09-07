@@ -4,7 +4,9 @@ using System.Data;
 namespace Jabez.Api.Services.Dapper;
 
 /// <summary>
-/// 撥款提醒：UNION 4 種申請類型的 installments，撈出「PaidAt 為空且 ExpectedDate 在 N 天內」的紀錄。
+/// 撥款提醒：UNION 5 種申請類型的 installments，撈出「PaidAt 為空且 ExpectedDate 在 N 天內」的紀錄。
+/// 2026-09 納入預支沖銷差額分期（WriteOffInstallments）—— 該筆撥款過去完全沒有任何主動通知，
+/// 財務只能自己去「已核准」頁籤撈。沖銷單本身無 ProjectId，專案代號取自其母預支單。
 /// </summary>
 public interface IPaymentReminderReadService
 {
@@ -12,7 +14,7 @@ public interface IPaymentReminderReadService
 }
 
 public sealed record UpcomingInstallmentDto(
-    string    ApplicationType,      // payment_request / advance / travel / travel_payment
+    string    ApplicationType,      // payment_request / advance / travel / travel_payment / write_off
     int       ApplicationId,
     int       InstallmentNo,
     DateTime  ExpectedDate,
@@ -75,6 +77,20 @@ public sealed class PaymentReminderReadService(IDbConnection db) : IPaymentRemin
             WHERE i.PaidAt IS NULL
               AND CAST(i.ExpectedDate AS DATE) BETWEEN @FromDate AND @ToDate
               AND tpr.ApprovalStatus = 'approved'
+
+            UNION ALL
+
+            SELECT 'write_off' AS ApplicationType, i.WriteOffRecordId AS ApplicationId,
+                   i.InstallmentNo, i.ExpectedDate, i.Amount, i.Note,
+                   proj.Code AS ProjectCode, sub.Name AS ApplicantName
+            FROM WriteOffInstallments i
+            JOIN WriteOffRecords wo ON i.WriteOffRecordId = wo.Id
+            JOIN AdvanceRequests ar ON wo.AdvanceRequestId = ar.Id
+            LEFT JOIN Projects proj ON ar.ProjectId = proj.Id
+            LEFT JOIN Users sub     ON wo.SubmittedById = sub.Id
+            WHERE i.PaidAt IS NULL
+              AND CAST(i.ExpectedDate AS DATE) BETWEEN @FromDate AND @ToDate
+              AND wo.ApprovalStatus = 'approved'
 
             ORDER BY ExpectedDate, ApplicationType, ApplicationId, InstallmentNo
             """;

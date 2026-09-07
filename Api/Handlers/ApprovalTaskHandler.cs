@@ -1292,7 +1292,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                         setReviewed();
                         await notifier.NotifyApplicantAsync(applicationType, applicationId,
                             applicantId.Value, "approved", reviewNote);
-                        if (IsFinanceApplicationType(applicationType))
+                        if (await ShouldNotifyFinanceAsync(applicationType, applicationId))
                             await notifier.NotifyFinanceDeptAsync(applicationId, applicantId.Value, applicationType);
                         return;
                     }
@@ -1337,7 +1337,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 {
                     await notifier.NotifyApplicantAsync(applicationType, applicationId,
                         applicantId.Value, "approved", reviewNote, contextLabel);
-                    if (IsFinanceApplicationType(applicationType))
+                    if (await ShouldNotifyFinanceAsync(applicationType, applicationId))
                         await notifier.NotifyFinanceDeptAsync(applicationId, applicantId.Value, applicationType);
                 }
             }
@@ -1528,5 +1528,21 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         applicationType is "payment_request"
                         or "advance"
                         or "travel"
-                        or "travel_payment";
+                        or "travel_payment"
+                        or "write_off";
+
+    /// <summary>
+    /// 最終核准後是否要發「[可撥款]」通知給財務管理部 / 會計室。
+    /// 撥款四類（請款 / 預支 / 出差預支 / 出差請款）一律發；
+    /// **預支沖銷只有在超支（RefundDue &gt; 0，即財務核准當下建了差額 installments）時才發** ——
+    /// 未超支的沖銷單沒有任何款要撥，發信只會變雜訊。
+    /// </summary>
+    private async Task<bool> ShouldNotifyFinanceAsync(string applicationType, int applicationId)
+    {
+        if (!IsFinanceApplicationType(applicationType)) return false;
+        if (applicationType != "write_off") return true;
+
+        return await db.WriteOffInstallments.AsNoTracking()
+            .AnyAsync(i => i.WriteOffRecordId == applicationId);
+    }
 }

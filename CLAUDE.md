@@ -383,7 +383,7 @@ Api/
 │       ├── InsuranceBracketReadService.cs
 │       ├── EmployeeProfileReadService.cs   # 一次 QueryMultiple 讀回 EmployeeProfile + 9 張子表
 │       ├── InstallmentReadService.cs       # 共用：依父表 ID 撈 4 種 installments + JOIN User SignatureUrl + 三態 status 計算
-│       ├── PaymentReminderReadService.cs   # UNION 4 種 installments，撈 PaidAt 為空且 ExpectedDate 在 N 天內的紀錄
+│       ├── PaymentReminderReadService.cs   # UNION **5 種** installments（2026-09 納入預支沖銷差額 WriteOffInstallments），撈 PaidAt 為空且 ExpectedDate 在 N 天內的紀錄
 │       └── PayrollReadService.cs           # 月薪計算（含健保眷屬數 + 覆寫值 fallback）；`CalculateMonthlyPayrollAsync(year, month, employeeId = null)` 帶 employeeId 時只算該員工，供 /me/payroll 共用同一份公式
 ├── Common/
 │   ├── ApiResponse.cs                 # 統一回應格式 ApiResponse<T>
@@ -671,7 +671,7 @@ master        # 正式環境（push → victorious-field SWA + jabez-api）
 - **撥款明細寫入兩個入口（共用 [InstallmentUpsertService.Apply](Api/Services/InstallmentUpsertService.cs)）**：
   - 財務**核准當下**：`PATCH /approval-tasks/{appType}/{id}/review` 帶 `installments`，與審核同交易原子寫入；財務（FIN）步驟核准撥款類時**必填**（holiday_travel 除外、批次核准除外）
   - 核准**後**修改 / 填實際撥款日：`PATCH /{type}-requests/{id}/installments`（**僅 approved**），舊 `PATCH /{type}-requests/{id}/payment-date` 已移除
-- **撥款提醒**：[PaymentReminderService](Api/Services/PaymentReminderService.cs) UNION 4 種 installments 推算（**不含**沖銷差額分期，另案評估）
+- **撥款提醒**：[PaymentReminderService](Api/Services/PaymentReminderService.cs) UNION **5 種** installments 推算（2026-09 納入預支沖銷差額分期；沖銷單無 ProjectId，專案代號取自母預支單）
 - **唯讀顯示**：[`<app-installments-table>`](Admin/src/app/shared/components/installments-table.ts) 共用元件（card 結構，跟其他 detail 卡片一致），5 種申請的 detail / form 頁皆引用
 - **編輯共用元件**：[`<app-installments-editor>`](Admin/src/app/shared/components/installments-editor.ts)（2026-07 從 approval-task-review 抽出）—— `review` / `manage` 兩種 mode；抽離主因是預支沖銷簽核頁需同頁放兩個編輯器（本單差額撥款 + 關聯預支單撥款明細）
 - **編輯 UI 限制**（[approval-task-review](Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/)）：
