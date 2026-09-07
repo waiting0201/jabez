@@ -279,7 +279,8 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 **2026-08 起篩選列改為各頁籤常駐**：類型 + 申請人下拉在 待審核 / 已核准 / 退回修改中 / 已拒絕 / 總監室簽核（四態）皆可用；**撥款 / 退款子篩選仍只在「已核准」頁籤顯示**（其他狀態的單尚未進入撥款階段，篩了沒有意義）。後端零改動 —— `applicationType` / `submittedByUserId` 的 WHERE 本來就與 `status` 正交，各狀態分支共用同一組 `SubmitterClause` / `TypeAllowed`。
 
 - **可見範圍**：僅**財務體系部門**（`DepartmentCodes.FinancialAndAbove` = `CEO` / `FIN` / `AC` / `Jabez HQ` + 改制後英文全名總監室 / 財務管理部 / 會計室）或 Superadmin 可見，與撥款 / 退款子篩選同一集合。前端以 `approval-task-list.ts` 的 `canSeeApplicantFilter` 控制顯示，後端 [ApprovalTaskHandler.CanFilterByApplicant](../../Api/Handlers/ApprovalTaskHandler.cs) 為同一判定的真相。
-- **選項來源**：`GET /approval-tasks/applicants` —— 10 種申請單中曾送出（`ApprovalStatus <> 'draft'`）者的申請人去重清單，依姓名排序，排除 Superadmin。非財務體系呼叫回 403。
+- **選項來源**：`GET /approval-tasks/applicants` —— **在職員工（`Status='active'`）∪ 10 種申請單中曾送出（`ApprovalStatus <> 'draft'`）者**，去重後依姓名排序，排除 Superadmin。非財務體系呼叫回 403。
+  - 只取「曾送過單的人」會讓尚未送過任何單的在職員工整個消失在下拉中（財務找不到人、誤以為系統漏資料），故補上在職員工；離職者則由 EXISTS 保留，其歷史單仍可篩。
 - **篩選行為**：`GET /approval-tasks?submittedByUserId={guid}`，於 [PaymentRequestReadService](../../Api/Services/Dapper/PaymentRequestReadService.cs) 各申請類型 SQL 直接加 WHERE（不是撈完再丟），涵蓋全部類型。**申請人欄位不一致**：請款 / 預支 / 沖銷 / 出差沖銷 / 預審用 `SubmittedById`，請假 / 出差 / 假日執行活動 / 加班 / 出差請款用 `EmployeeId`。
 - **非財務體系帶此參數一律靜默忽略**（不回 403）；按單一 ID 查詢詳情時不套用。
 - 篩選**不放寬可見範圍**：仍疊在原本的審核者可見性條件之上，只會縮小結果。
