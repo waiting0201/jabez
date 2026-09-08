@@ -325,7 +325,16 @@ Api/
 │   │                                  #   06 刪除指定單號的預支申請單（@Commit 空跑開關 + @AllowPaid 已撥款保護）：
 │   │                                  #      以 **RequestNo 定位**（不寫死 Id），故同一份可在本機 / staging / 正式站跑；
 │   │                                  #      刪除規則同 04b（先子單沖銷的三張多型足跡與本體、再母單足跡與本體），
-│   │                                  #      Items / Installments / Supplements 走 CASCADE。目標單有已撥款分期時預設整份中止
+│   │                                  #      Items / Installments / Supplements 走 CASCADE。目標單有已撥款分期時預設整份中止、
+│   │                                  #   07 移轉指定預支單（含其沖銷子單）的申請人：代錄帳號 → 實際員工（@Commit 空跑開關 + 7 道閘門）。
+│   │                                  #      以 **RequestNo → Email 對照表**定位（不寫死 Id；Email 有 filtered unique index 且純 ASCII，
+│   │                                  #      Linux 版 sqlcmd 無 -f codepage 可指定輸入編碼，中文字面量解碼出包也不影響寫入）。
+│   │                                  #      只改 `SubmittedById` 一欄（AdvanceRequests / WriteOffRecords 兩表皆無 UpdatedAt），沖銷子單繼承母單申請人；
+│   │                                  #      `ApprovalItemId` / `SubmittedAt` / 三張多型足跡表皆為送簽快照，刻意不重算（已核准單屬歷史）。
+│   │                                  #      現任申請人已是目標人 → 跳過該列（故可安全重跑）；是第三者 → 整份中止。
+│   │                                  #      ⚠ pending 單必須先驗「新申請人不是目前固定關卡的唯一候選人」：
+│   │                                  #      `ApprovalFlowService.ResolveReviewerPoolAsync` 三個分支都排除申請人本人，
+│   │                                  #      踩到就會製造出一張永遠沒人能簽的單（＝ 05 在救的狀態）
 │   └── Seed/                          # 一次性匯入工具（共用 RocDateParser 解民國年）
 │       ├── EmployeeImporter + EmployeeImportDtos + employee-import.json  # 員工人事資料（RUN_EMPLOYEE_IMPORT 旗標，IMPORT_UPLOAD_FILES 控制附件上傳）
 │       ├── ProjectImporter + ProjectImportDtos + project-import.json     # 專案資料（RUN_PROJECT_IMPORT 旗標，PROJECT_IMPORT_DRY_RUN 只印不寫；來源 reference/專案資料-115.07.29.xls；以 Code upsert、期別明細全量重建）
