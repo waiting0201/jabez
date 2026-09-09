@@ -258,6 +258,7 @@ export interface AdvanceTaskDetail {
   requestNo: string;
   projectCode: string;
   activityName: string;
+  activityPeriod: string;
   grandTotal: number;
   /** 預計退款日（沖銷退還差額） */
   estimatedRefundDate?: string;
