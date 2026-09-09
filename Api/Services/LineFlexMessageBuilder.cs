@@ -143,18 +143,34 @@ public static class LineFlexMessageBuilder
             buttonUrl:   linkUrl);
     }
 
-    /// <summary>打卡提醒 — 上班/下班前 N 分鐘推播給員工。</summary>
+    /// <summary>
+    /// 打卡提醒 — 推播給尚未打該類型卡的員工。
+    /// <paramref name="minutesUntil"/> 為「推播當下」距目標時刻的實際分鐘數，**可為 0 或負數**（＝目標時刻已過），
+    /// 由呼叫端算出；負數時文案改為「已過 N 分鐘」。
+    /// </summary>
     public static object BuildAttendanceReminderMessage(
         string reminderType, string userName, int minutesUntil, string workTime, string linkUrl)
     {
         var isClockIn   = reminderType == "clockIn";
         var headerText  = isClockIn ? "上班打卡提醒" : "下班打卡提醒";
-        var altText     = isClockIn
-            ? $"[打卡提醒] 再 {minutesUntil} 分鐘上班（{workTime}）— {userName}"
-            : $"[打卡提醒] 再 {minutesUntil} 分鐘下班（{workTime}）— {userName}";
-        var tip         = isClockIn
-            ? "記得上班後打卡，開始新的一天"
-            : "記得下班前打卡，別忘了喔";
+        var action      = isClockIn ? "上班" : "下班";
+
+        // minutesUntil 是「推播當下」到目標時刻的實際分鐘數，由呼叫端算出而非常數：
+        // 命中窗有 30 分鐘（見 AttendanceReminderService.WindowMinutes），tick 延遲時
+        // 目標時刻可能已經過了，寫死「再 2 分鐘」會變成 09:25 推播卻說「再 2 分鐘上班」。
+        var overdue     = minutesUntil <= 0;
+        var altText     = overdue
+            ? $"[打卡提醒] {action}時間（{workTime}）已過 — {userName}"
+            : $"[打卡提醒] 再 {minutesUntil} 分鐘{action}（{workTime}）— {userName}";
+        var timeLabel   = overdue ? "目前狀態" : "剩餘時間";
+        var timeValue   = overdue ? $"已過 {-minutesUntil} 分鐘" : $"{minutesUntil} 分鐘";
+        var tip         = (isClockIn, overdue) switch
+        {
+            (true,  false) => "記得上班後打卡，開始新的一天",
+            (true,  true)  => "還沒打卡的話請儘快打卡",
+            (false, false) => "記得下班前打卡，別忘了喔",
+            (false, true)  => "還沒打卡的話請記得補打下班卡",
+        };
 
         return BuildBubble(
             altText:      altText,
@@ -164,7 +180,7 @@ public static class LineFlexMessageBuilder
             {
                 ("員工",     userName),
                 ("目標時刻", workTime),
-                ("剩餘時間", $"{minutesUntil} 分鐘"),
+                (timeLabel,  timeValue),
                 ("提醒",     tip),
             },
             buttonLabel: "前往打卡",

@@ -33,8 +33,14 @@ public sealed class AttendanceReminderService(
     /// 冷啟動經常把 tick 延遲數十秒到數分鐘，正式站 2026-07-06 與 2026-08-06 的上班提醒
     /// 就是這樣整天靜默。放寬成時間窗後，窗內會有多個 tick 命中，再由
     /// <see cref="HasBatchStartedTodayAsync"/> 收斂成一天一次。
+    ///
+    /// 2026-09-09 由 10 → 30：2026-09-08 的下班提醒整批沒發（該日無 18:00 的 batchStart，
+    /// 全體員工都沒收到），而同一時段有 9 人正常打下班卡 —— App 是活的，是 17:58–18:07
+    /// 這 10 分鐘內一次 tick 都沒觸發到。延後發送不會誤擾任何人：收件人 SQL 本來就排除
+    /// 「今日已打該類型卡」的人，晚發只會發給還沒打卡的人，語意仍然成立。
+    /// 窗尾（09:28 / 18:28 Taipei）仍落在 cron 涵蓋時段（台北 7-9 / 16-18 時）內，故不必改 cron。
     /// </summary>
-    private const int WindowMinutes = 10;
+    private const int WindowMinutes = 30;
 
     /// <summary>推播間隔（毫秒）：避免一次性 burst 觸發 LINE 速率限制。</summary>
     private const int InterPushDelayMs = 100;
@@ -244,8 +250,12 @@ public sealed class AttendanceReminderService(
             PushResult pr;
             try
             {
+                // 剩餘分鐘數以「推播當下」實際算，不用 LeadMinutes 常數：命中窗有 WindowMinutes 分鐘，
+                // tick 延遲時目標時刻可能已過，寫死常數會推出「09:25 說再 2 分鐘上班」。
+                // 準時的 tick（目標 −LeadMinutes）算出來仍是 LeadMinutes，文案與過去一致。
+                var minutesUntil = (int)Math.Round((targetTime - Clock.Now).TotalMinutes, MidpointRounding.AwayFromZero);
                 var flex = LineFlexMessageBuilder.BuildAttendanceReminderMessage(
-                    type, r.UserName, LeadMinutes, workTime, linkUrl);
+                    type, r.UserName, minutesUntil, workTime, linkUrl);
                 pr = await lineService.PushMessageAsync(r.LineUserId, flex);
                 if (pr.Success) pushed++;
                 else            failed++;
