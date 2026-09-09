@@ -231,7 +231,8 @@ export class LeaveRequestForm implements OnInit {
     childBirthDate:          ['' as string],
     continueInsurance:       [false as boolean],
     agentUserId:             [null as string | null],   // 職務代理人（記錄 + 通知，不參與簽核）
-    reason:                  ['', Validators.required],
+    // 年假(特休假)不必填，其餘假別必填（validator 於 applyReasonValidator 開關）
+    reason:                  [''],
   });
 
   /** 將整數小時轉為 HH:00 顯示 */
@@ -623,6 +624,9 @@ export class LeaveRequestForm implements OnInit {
     }
     this.form.get('childBirthDate')?.updateValueAndValidity({emitEvent: false});
 
+    // 請假原因：年假(特休假)非必填
+    this.applyReasonValidator(type);
+
     // 依假別載入對應配額
     if (type === 'annual') this.loadAnnualQuota();
     if (type === 'compensatory') this.loadCompensatoryHours();
@@ -637,6 +641,19 @@ export class LeaveRequestForm implements OnInit {
   /** 是否為育嬰留停假別（長期留停 + 彈性單日） */
   isParentalType(type: LeaveType): boolean {
     return type === 'parental_leave' || type === 'parental_leave_daily';
+  }
+
+  /** 請假原因是否必填（年假(特休假)免填，其餘假別必填） */
+  isReasonRequired(type: LeaveType = this.selectedLeaveType): boolean {
+    return type !== 'annual';
+  }
+
+  /** 依假別開關「請假原因」的必填驗證 */
+  private applyReasonValidator(type: LeaveType) {
+    const ctrl = this.form.get('reason');
+    if (this.isReasonRequired(type)) ctrl?.setValidators(Validators.required);
+    else                             ctrl?.clearValidators();
+    ctrl?.updateValueAndValidity({emitEvent: false});
   }
 
   /** 載入既有資料時手動套用 leaveType 對應的驗證規則與配額載入（取代被 guard 跳過的 valueChanges 副作用） */
@@ -658,6 +675,7 @@ export class LeaveRequestForm implements OnInit {
       this.form.get('childBirthDate')?.updateValueAndValidity({emitEvent: false});
       this.loadParentalQuota();
     }
+    this.applyReasonValidator(type);
     // 回填既有起迄日後，重新計算扣除假日的請假日清單
     this.refreshWorkingDays();
   }
