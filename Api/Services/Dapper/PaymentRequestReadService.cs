@@ -706,7 +706,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 
         var advanceSql = $"""
             SELECT adv.Id, adv.RequestNo, proj.Code AS ProjectCode, proj.Name AS ProjectName,
-                   adv.ActivityName, adv.GrandTotal, adv.AdvanceDate, adv.AdvanceNeededDate,
+                   adv.ActivityName, adv.ActivityPeriod, adv.GrandTotal, adv.AdvanceDate, adv.AdvanceNeededDate,
                    adv.ApprovalStatus, adv.ApprovalItemId, adv.CurrentStepOrder, adv.CurrentRoundNo,
                    adv.EstimatedRefundDate, adv.RefundedAt,
                    adv.IsClosed, adv.ClosedAt, adv.RefundAmount, adv.RefundedAmount,
@@ -1564,6 +1564,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (string)row.ProjectCode,
                 (string)row.ProjectName,
                 (string)row.ActivityName,
+                (string)row.ActivityPeriod,
                 (decimal)row.GrandTotal,
                 (DateTime?)row.EstimatedRefundDate,
                 (DateTime?)row.RefundedAt,

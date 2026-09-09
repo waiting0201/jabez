@@ -615,6 +615,10 @@
                       <span class="fw-500">{{ d.activityName }}</span>
                     </div>
                     <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">活動期間</div>
+                      <span class="fw-500">{{ d.activityPeriod || '—' }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
                       <div class="text-muted small mb-1">預支金額</div>
                       <span class="fw-600 fs-5">{{ d.grandTotal | number:'1.0-0' }} 元</span>
                     </div>

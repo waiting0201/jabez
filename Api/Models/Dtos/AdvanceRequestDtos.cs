@@ -169,6 +169,7 @@ public sealed record AdvanceTaskDetailDto(
     string    ProjectCode,
     string    ProjectName,
     string    ActivityName,
+    string    ActivityPeriod,
     decimal   GrandTotal,
     DateTime? EstimatedRefundDate,
     DateTime? RefundedAt,
