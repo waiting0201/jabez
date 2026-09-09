@@ -666,8 +666,8 @@
             </div>
 
             <div class="mb-0">
-              <label class="form-label fw-500">請假原因 <span class="text-danger">*</span></label>
-              <textarea class="form-control" formControlName="reason" rows="3" placeholder="請填寫請假原因..."></textarea>
+              <label class="form-label fw-500">請假原因 @if (isReasonRequired()) {<span class="text-danger">*</span>}</label>
+              <textarea class="form-control" formControlName="reason" rows="3" [placeholder]="isReasonRequired() ? '請填寫請假原因...' : '請填寫請假原因（選填）...'"></textarea>
               @if (form.get('reason')?.invalid && form.get('reason')?.touched) {
                 <div class="text-danger small mt-1">請填寫請假原因。</div>
               }

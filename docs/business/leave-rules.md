@@ -368,6 +368,11 @@
 依天數決定關卡：< 3 天單位主管；≥ 3 天 單位主管 + 部門最高主管 + 總監
 ```
 
+**請假原因必填規則（2026-09）**：**年假（特休假 `annual`）非必填**，其餘 18 種假別一律必填。
+前端以 `isReasonRequired(type)` 為單一真相（`leave-request-form.ts`），假別切換（`onLeaveTypeChange`）
+與載入既有資料（`applyLeaveTypeOnLoad`）兩條路徑皆呼叫 `applyReasonValidator()` 開關 validator，
+label 星號與 placeholder 同步條件顯示。後端 `LeaveRequest.Reason` 維持 NOT NULL（空字串合法），不另做驗證。
+
 ## 人事薪資頁面整合
 
 - 薪資編輯頁顯示該月**所有已核准**的請假紀錄（假別、期間、天數）
