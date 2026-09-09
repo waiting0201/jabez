@@ -123,7 +123,7 @@
 
 | # | Build 方法 | 用途 | 收件人 | 觸發時機 |
 |---|-----------|------|--------|---------|
-| 9 | `BuildAttendanceReminderMessage` | 上下班打卡提醒 | 已綁 LINE 的員工 | TimerTrigger（cron 由 `AttendanceReminderCron` 控制）於上下班前 2 分鐘起算的 10 分鐘時間窗內命中時推播，一天一槽一次 |
+| 9 | `BuildAttendanceReminderMessage` | 上下班打卡提醒 | 已綁 LINE 的員工 | TimerTrigger（cron 由 `AttendanceReminderCron` 控制）於上下班前 2 分鐘起算的 30 分鐘時間窗內命中時推播，一天一槽一次；文案的「剩餘時間」依推播當下實際時間差計算，目標時刻已過時改顯示「已過 N 分鐘」 |
 
 ---
 

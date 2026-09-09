@@ -1255,7 +1255,7 @@ Line__LoginChannelId              ↔ IConfiguration["Line:LoginChannelId"]
 
 正式站是 **Flex Consumption（scale-to-zero）**，冷啟動會讓 tick 延遲數十秒到數分鐘，也可能讓同一個 occurrence 被兩個實例各跑一次。排程程式一律照以下三條寫，不要假設 tick 會準時、也不要假設只會跑一次：
 
-1. **不要用「精確時刻等值」判斷命中**。以時間窗（例：目標時刻起算 10 分鐘）取代 `now.ToString("HH:mm") == target`——錯過那一分鐘就整天不執行。
+1. **不要用「精確時刻等值」判斷命中**。以時間窗（例：目標時刻起算 30 分鐘）取代 `now.ToString("HH:mm") == target`——錯過那一分鐘就整天不執行。
 2. **自己做冪等，不要依賴平台的 singleton lock**。以 DB 既有的執行紀錄當去重鍵（打卡提醒用 `AttendanceReminderLogs` 的 `batchStart`、撥款提醒用 `PaymentReminderLog` 的同日 success），且**紀錄必須寫在主要工作之前**才擋得住第二個實例。
 3. **`timer.IsPastDue` 只記 log，不要 `return`**。有第 2 點保護後補跑是安全的；提前 return 等於主動放棄該槽位。
 
