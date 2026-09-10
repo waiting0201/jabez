@@ -2262,8 +2262,57 @@ export class AuthService {
 
 - **輪詢**：`rxjs` `timer(0, INTERVAL_MS).subscribe(...)`，由畫面殼層（`MainLayout`）`ngOnInit` 啟動、`ngOnDestroy` 取消（`startPolling()` / `stopPolling()`）。
 - **省請求**：每 tick 先判 `if (document.hidden) return;` 跳過發送；監聽 `visibilitychange`，切回前景立即補抓一次。
-- **Toast 去重**：service 內保留比對基準（`private prevXxx` / `localStorage`），**首次** refresh 只設基準不跳 toast；toast 邏輯統一寫在 `refresh()` 的 `tap` 內，使輪詢 / 開 dropdown / 自送單後共用同一比對而天然去重。
+- **Toast 去重**：service 內保留比對基準（`private prevXxx` / `safeLocal`，見 §15.5），**首次** refresh 只設基準不跳 toast；toast 邏輯統一寫在 `refresh()` 的 `tap` 內，使輪詢 / 開 dropdown / 自送單後共用同一比對而天然去重。
 - 間隔常數抽成 module 級 `const`（如 `POLL_INTERVAL_MS = 60_000`），勿散落魔術數字。
+
+### 15.5 瀏覽器儲存（`safeLocal` / `safeSession`）
+
+**全站禁止直接呼叫 `localStorage` / `sessionStorage`**，一律走 [`core/utils/safe-storage.ts`](../Admin/src/app/core/utils/safe-storage.ts) 的 `safeLocal` / `safeSession`。
+
+```typescript
+import {safeLocal} from '@core/utils/safe-storage';
+
+private _token = signal<string | null>(safeLocal.getItem(TOKEN_KEY));
+safeLocal.setItem(TOKEN_KEY, accessToken);
+safeLocal.removeItem(TOKEN_KEY);
+```
+
+**理由**：這兩個 API **不是永遠可用的，而且失敗方式是 throw 而非回傳 `null`**。
+
+| 情境 | 行為 |
+|---|---|
+| iOS Safari「設定 → Safari →**阻擋所有 Cookie**」 | 連讀取 `window.localStorage` 這個 property 都丟 `SecurityError` |
+| 舊版 iOS 無痕視窗 | 配額為 0，`setItem` 一律丟 `QuotaExceededError` |
+| 企業 MDM / 家長控制 / 瀏覽器擴充 | 整個關閉網站儲存 |
+
+**2026-09 實際事故**：一位員工用 iPhone Safari 開站看到**整頁純白**。原因是 `AuthService._token` 是 field initializer（`localStorage.getItem(...)`），而首頁決策點 `app.routes.ts` 與 `authGuard` / `noAuthGuard` 三個入口都會 `inject(AuthService)` —— 第一次導航必定踩到 → 服務建構失敗 → router 爆掉。連登入頁都白（`login.ts` 的「記住我」同樣是裸的 field initializer），使用者完全無從自救。
+
+實測當時的 DOM 是 `<app-root><router-outlet></router-outlet><!----></app-root>` —— **子元素存在但高度 0、一個字都沒有**，且 Angular 把錯誤吞進 ErrorHandler，`window.onerror` 完全不會觸發。
+
+`safeStorage` 的行為：
+
+- 讀取失敗 → 回 `null`（呼叫端本來就要處理「沒存過」，不需另外改）
+- 寫入失敗 → 靜默略過，改寫進**記憶體 fallback**
+- 記憶體 fallback 讓儲存被封鎖的使用者仍能在**單次瀏覽期間**正常登入操作，只是重整後要重新登入 —— 遠優於整站白畫面
+
+**⚠ 兩個地雷**：
+
+1. **不可用 `typeof localStorage === 'undefined'` 判斷可用性** —— `typeof` 會觸發 getter，一樣會爆。必須整段包在 `try` 裡。
+2. **探測要含一次寫入**（`setItem` 後立刻 `removeItem`），否則抓不到「讀得到但寫不進去」的零配額情境。
+
+### 15.6 啟動失敗的保底畫面（`index.html`）
+
+`index.html` 底部有一段**不依賴任何框架的 ES5 inline script** —— 它必須能在「連 `main.js` 都 parse 不了」的舊瀏覽器上執行，所以不可改寫成現代語法、不可抽成外部檔案。
+
+職責：Angular 沒能 render 出東西時，顯示可讀的中文說明（含 iOS 阻擋 Cookie 的排查步驟）與「重新載入」按鈕，取代原本的一片純白。
+
+- **`booted()` 判定用 `offsetHeight > 0 || innerText` 非 `firstElementChild`** —— 見 §15.5，router 導航失敗時 `<router-outlet>` 這個子元素照樣存在。
+- **逾時檢查是主要路徑**（`BOOT_TIMEOUT_MS = 10000`）：Angular 會吞掉 router 錯誤，`window.onerror` 靠不住；error / unhandledrejection 監聽只是補強（舊瀏覽器 SyntaxError、chunk 404 走這條）。
+- **顯示前有 `SHOW_GRACE_MS = 2500` 寬限期並二次確認 `booted()`**，避免早期非致命錯誤（某支 API 失敗、第三方字型被擋）讓正常啟動的畫面跳出「載入失敗」。
+- **chunk 載入失敗自動重載一次**（部署當下 index.html 與 chunk 版本錯開），以 `sessionStorage` 旗標確保只重載一次、避免無窮迴圈；旗標讀寫同樣包 `try`。
+- 舊瀏覽器的 `SyntaxError` **刻意不列入自動重載條件** —— 重載也不會好，只會拖慢看到訊息的時間。
+
+---
 
 ---
 
@@ -2353,6 +2402,7 @@ template / 文件中引用其他檔案時，使用相對路徑 markdown link：
 - [ ] Component 用 `signal()` 不用 `BehaviorSubject`
 - [ ] 用 `inject()` 注入，不用 constructor injection
 - [ ] HTTP 封裝在 service，component 不注入 `HttpClient`
+- [ ] **瀏覽器儲存走 `safeLocal` / `safeSession`（§15.5），未直接呼叫 `localStorage` / `sessionStorage`** —— 直接呼叫會在 iOS 阻擋 Cookie 時 throw，若位於 field initializer 更會造成整站白畫面
 
 ### 樣式
 - [ ] 所有 utility 來自 Tailwind 或 `@layer components`

@@ -3,6 +3,7 @@ import { BehaviorSubject } from 'rxjs';
 import { LayoutState, LayoutThemeType } from '../models/layout.model';
 import { NgbOffcanvas } from '@ng-bootstrap/ng-bootstrap';
 import { Customizer } from '@layouts/components/customizer/customizer';
+import { safeLocal } from '@core/utils/safe-storage';
 
 const STORAGE_KEY = '__SMART_ADMIN_ANGULAR_CONFIG__';
 
@@ -50,7 +51,7 @@ export class LayoutService {
   /** -------- Persistence Helpers -------- */
   private loadInitialState(): LayoutState {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = safeLocal.getItem(STORAGE_KEY);
       return stored ? JSON.parse(stored) : INIT_STATE;
     } catch {
       return INIT_STATE;
@@ -58,7 +59,7 @@ export class LayoutService {
   }
 
   private persist() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state()));
+    safeLocal.setItem(STORAGE_KEY, JSON.stringify(this.state()));
     this._state$.next(this.state());
   }
 
@@ -96,7 +97,7 @@ export class LayoutService {
     classesToRemove.forEach(cls => this.html.classList.remove(cls));
     this.state.set(INIT_STATE);
     this.persist();
-    localStorage.removeItem('panelStates');
+    safeLocal.removeItem('panelStates');
     this.applyAttributesFromState();
   }
 

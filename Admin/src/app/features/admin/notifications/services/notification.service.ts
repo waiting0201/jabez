@@ -6,6 +6,7 @@ import {ToastrService} from 'ngx-toastr';
 import {ApplicationType} from '@features/admin/approvals/models/approval.model';
 import {AuthService} from '@core/auth/services/auth.service';
 import {environment} from '@/environments/environment';
+import {safeLocal} from '@core/utils/safe-storage';
 
 /** 最近被核准的「我的單」：前端用 approvedAt 與上次已提示時間比對後跳 toast */
 export interface RecentApproval {
@@ -22,7 +23,7 @@ export interface NotificationCounts {
 
 /** 輪詢間隔（毫秒）：60 秒；簽核通知不需秒級即時 */
 const POLL_INTERVAL_MS = 60_000;
-/** localStorage key：記錄最後一次已 toast 的核准時間，避免重開頁面重複提示 */
+/** safeLocal key：記錄最後一次已 toast 的核准時間，避免重開頁面重複提示 */
 const LAST_SEEN_APPROVED_KEY = 'notif:lastSeenApprovedAt';
 
 /**
@@ -52,7 +53,7 @@ export class NotificationService {
   /** toast 比對基準：首次 refresh 只設基準不跳 toast */
   private initialized = false;
   private prevApprovalTotal = 0;
-  private lastSeenApprovedAt = localStorage.getItem(LAST_SEEN_APPROVED_KEY) ?? '';
+  private lastSeenApprovedAt = safeLocal.getItem(LAST_SEEN_APPROVED_KEY) ?? '';
 
   private pollSub?: Subscription;
   private readonly onVisibilityChange = () => {
@@ -116,7 +117,7 @@ export class NotificationService {
     if (fresh.length > 0) {
       this.toastr.info(`您有 ${fresh.length} 件申請已核准`, '核准通知');
       this.lastSeenApprovedAt = maxApprovedAt;
-      localStorage.setItem(LAST_SEEN_APPROVED_KEY, this.lastSeenApprovedAt);
+      safeLocal.setItem(LAST_SEEN_APPROVED_KEY, this.lastSeenApprovedAt);
     }
   }
 }

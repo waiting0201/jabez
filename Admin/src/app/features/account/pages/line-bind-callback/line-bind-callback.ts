@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import { LineService } from '@core/auth/services/line.service';
 import { environment } from '@/environments/environment';
+import { safeSession } from '@core/utils/safe-storage';
 
 @Component({
   selector: 'app-line-bind-callback',
@@ -39,17 +40,17 @@ export class LineBindCallback implements OnInit {
   ngOnInit() {
     const code = this.route.snapshot.queryParamMap.get('code');
     const state = this.route.snapshot.queryParamMap.get('state');
-    const savedState = sessionStorage.getItem('line_bind_state');
+    const savedState = safeSession.getItem('line_bind_state');
 
     // 驗證 state 防 CSRF
     if (!code || !state || state !== savedState) {
       this.isLoading.set(false);
       this.errorMsg.set('驗證失敗，請重新操作。');
-      sessionStorage.removeItem('line_bind_state');
+      safeSession.removeItem('line_bind_state');
       return;
     }
 
-    sessionStorage.removeItem('line_bind_state');
+    safeSession.removeItem('line_bind_state');
 
     this.lineService.bind(code, environment.lineCallbackUrl).subscribe({
       next: () => {

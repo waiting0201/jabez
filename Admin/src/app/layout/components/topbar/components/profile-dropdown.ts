@@ -4,6 +4,7 @@ import {Router, RouterLink} from '@angular/router';
 import {AuthService} from '@core/auth/services/auth.service';
 import {LineService} from '@core/auth/services/line.service';
 import {environment} from '@/environments/environment';
+import {safeSession} from '@core/utils/safe-storage';
 
 @Component({
   selector: 'app-profile-dropdown',
@@ -142,7 +143,7 @@ export class ProfileDropdown implements OnInit {
   bindLine() {
     this.lineService.getBindUrl().subscribe({
       next: (data) => {
-        sessionStorage.setItem('line_bind_state', data.state);
+        safeSession.setItem('line_bind_state', data.state);
         window.location.href = data.url;
       },
       error: (err) => {
