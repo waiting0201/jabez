@@ -25,12 +25,20 @@
   <div id="boot-fallback" style="display:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:32rem;margin:0 auto;padding:3rem 1.5rem;color:#1f2937;line-height:1.7">
     <h1 style="font-size:1.25rem;margin:0 0 1rem">網頁載入失敗</h1>
     <p id="boot-fallback-msg" style="margin:0 0 1rem"></p>
-    <p style="margin:0 0 1.5rem;font-size:.875rem;color:#6b7280">
+    <p id="boot-fallback-hint" style="margin:0 0 1.5rem;font-size:.875rem;color:#6b7280">
       若重新載入後仍然如此，請確認：<br>
       1. iPhone 使用者：設定 → Safari → 隱私權與安全性 →「阻擋所有 Cookie」請關閉<br>
-      2. 系統版本過舊（iOS 16 以下）可能無法支援，請更新後再試<br>
+      2. 系統版本過舊（iOS 16.3 以下）無法支援，請更新至 iOS 16.4 以上後再試<br>
       3. 仍無法排除時，請將本畫面截圖提供給系統管理員
     </p>
+
+    <!--
+      技術資訊：**一定要印在畫面上**。
+      這個保底畫面唯一的回報管道就是使用者的截圖，沒有這段就只能靠猜
+      （2026-09 第一版只印「請重新載入」，收到截圖後仍無法分辨是 storage 被擋、
+      chunk 404 還是語法不支援，白白多繞一輪）。內容只有 UA 與例外訊息，不含任何個資。
+    -->
+    <pre id="boot-fallback-diag" style="margin:0 0 1.5rem;padding:.75rem;background:#f3f4f6;border-radius:.375rem;font-size:.6875rem;line-height:1.5;color:#4b5563;white-space:pre-wrap;word-break:break-all;overflow-wrap:break-word"></pre>
     <button type="button" onclick="location.reload()"
             style="border:0;border-radius:.5rem;background:#1f4d3a;color:#fff;padding:.625rem 1.25rem;font-size:.9375rem;cursor:pointer">
       重新載入
@@ -43,6 +51,28 @@
       var BOOT_TIMEOUT_MS = 10000;
       var SHOW_GRACE_MS = 2500;
       var shown = false;
+      var firstError = '';
+
+      /*
+        瀏覽器能力探測（**畫面上唯一能分辨「版本太舊」與「其他錯誤」的依據**）。
+        本站的產出物實測需要 Safari / iOS **16.4** 以上：
+          · main.js 用到 class static initialization block（`static{...}`，Safari 16.4+）
+            —— 舊版是 **parse 期就 SyntaxError**，整支 main.js 一行都不會執行
+          · styles.css（Tailwind v4）用到 @property（同為 Safari 16.4+）
+        探測刻意用 `new Function`（而非直接寫 `class T{static{}}`），
+        否則這段 inline script 自己就會在舊瀏覽器 parse 失敗，連保底畫面都出不來。
+
+        ⚠ 探測條件與 build target 綁定：日後若在 `Admin/.browserslistrc` 降低目標版本
+        （esbuild 會把 `static{...}` 降級），這裡必須跟著放寬，否則會把「明明跑得動」的
+        使用者誤擋在門外。見 docs/frontend-design.md §15.7。
+      */
+      function supportsModernJs() {
+        try { new Function('class T{static{}}'); return true; } catch (e) { return false; }
+      }
+      function supportsModernCss() {
+        try { return !!(window.CSS && CSS.supports && CSS.supports('color', 'oklch(0 0 0)')); }
+        catch (e) { return false; }
+      }
 
       /* sessionStorage 在「阻擋所有 Cookie」時連讀取都會丟 SecurityError，故一律包 try */
       function flagRead() { try { return sessionStorage.getItem(RELOAD_FLAG); } catch (e) { return null; } }
@@ -72,6 +102,11 @@
           if (shown || booted()) return;
           shown = true;
           document.getElementById('boot-fallback-msg').textContent = msg;
+          document.getElementById('boot-fallback-diag').textContent =
+            'UA: ' + navigator.userAgent +
+            '\nJS: ' + (supportsModernJs() ? 'ok' : 'too old') +
+            ' / CSS: ' + (supportsModernCss() ? 'ok' : 'too old') +
+            '\nERR: ' + (firstError || '(none)');
           document.getElementById('boot-fallback').style.display = 'block';
         }, SHOW_GRACE_MS);
       }
@@ -85,12 +120,25 @@
       }
 
       function handle(msg) {
+        if (!firstError && msg) firstError = String(msg).slice(0, 300);
         if (booted()) return;
         if (isChunkError(msg) && !flagRead() && flagWrite()) {
           location.reload();
           return;
         }
         show('請重新載入頁面再試一次。');
+      }
+
+      /*
+        版本太舊時**不要等 timeout、也不要印「請重新載入」**：重載一百次也不會好，
+        使用者只會反覆重試而不知道該更新系統。直接點名 iOS 16.4 才是可行的自救路徑。
+      */
+      if (!supportsModernJs() || !supportsModernCss()) {
+        show('您的瀏覽器版本過舊，無法執行本系統。');
+        document.getElementById('boot-fallback-hint').innerHTML =
+          'iPhone / iPad：設定 → 一般 → 軟體更新，更新至 <b>iOS 16.4 以上</b>後再開啟。<br>' +
+          '若機型已無法再更新，請改用電腦或較新的手機操作。<br>' +
+          '（重新載入無法解決此問題）';
       }
 
       window.addEventListener('error', function (e) {
