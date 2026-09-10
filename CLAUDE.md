@@ -162,9 +162,19 @@ Admin/src/app/
 │   │   └── interceptors/
 │   │       ├── auth.interceptor.ts       # 自動附加 Bearer Token
 │   │       └── api-response.interceptor.ts
-│   └── layout/
-│       ├── services/
-│       └── models/
+│   ├── layout/
+│   │   ├── services/
+│   │   └── models/
+│   └── utils/
+│       ├── avatar-style.ts
+│       └── safe-storage.ts               # **瀏覽器儲存的安全存取（全站唯一入口）**：`safeLocal` / `safeSession`。
+│                                         #   `localStorage` / `sessionStorage` 在 iOS Safari「阻擋所有 Cookie」時**連讀取 property 都丟 SecurityError**
+│                                         #   （舊版 iOS 無痕視窗則是配額 0、`setItem` 丟 QuotaExceededError），而不是回傳 null。
+│                                         #   2026-09 事故：`AuthService._token` 是裸的 field initializer，而首頁決策點 / authGuard / noAuthGuard
+│                                         #   三個入口都會 `inject(AuthService)`，於是第一次導航必踩 → 服務建構失敗 → router 爆掉 → **整頁純白**
+│                                         #   （連登入頁都白，`login.ts` 的「記住我」同樣是裸 field initializer），使用者完全無從自救。
+│                                         #   讀失敗回 null、寫失敗改寫記憶體 fallback（儲存被封鎖者仍能在單次瀏覽期間正常登入操作）。
+│                                         #   **禁止直接呼叫 `localStorage` / `sessionStorage`**，見 [docs/frontend-design.md §15.5](docs/frontend-design.md)
 ├── layout/
 │   ├── auth-layout/
 │   ├── main-layout/
@@ -224,7 +234,8 @@ Admin/src/app/
 > **詳見** [docs/frontend-design.md](docs/frontend-design.md) §13 路由 / §14 HTTP service / §15 Signal / §17 命名
 
 - 所有 API 路徑統一在 `Admin/src/environments/environment.ts` 的 `apiUrl` 管理
-- Token 儲存於 `localStorage`，由 `core/auth/interceptors/auth.interceptor.ts` 自動附加 Bearer Token
+- Token 儲存於 `localStorage`（**一律經 `core/utils/safe-storage.ts` 的 `safeLocal`**，禁止直接呼叫原生 API，見 [docs/frontend-design.md §15.5](docs/frontend-design.md)），由 `core/auth/interceptors/auth.interceptor.ts` 自動附加 Bearer Token
+- `Admin/src/index.html` 底部有**啟動失敗保底畫面**（不依賴框架的 ES5 inline script）：Angular 沒 render 出東西時顯示可讀中文說明 + 重新載入鈕，取代原本的一片純白；chunk 版本錯開時自動重載一次。**判定用 `offsetHeight` 而非 `firstElementChild`**（router 導航失敗時 `<router-outlet>` 照樣在），且因 Angular 會吞掉 router 錯誤、`window.onerror` 靠不住，**逾時檢查才是主要路徑**。見 [docs/frontend-design.md §15.6](docs/frontend-design.md)
 
 ### 常用指令
 

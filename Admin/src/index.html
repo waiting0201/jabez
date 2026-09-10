@@ -13,5 +13,105 @@
 <body>
   <link id="app-theme" rel="stylesheet"/>
   <app-root></app-root>
+
+  <!--
+    啟動失敗的保底畫面。
+    在此之前，只要 Angular bootstrap 前後丟出任何例外（舊瀏覽器語法不支援、lazy chunk 404、
+    儲存被瀏覽器封鎖…），畫面就是**一片純白**，使用者看不到任何訊息也無從自救，
+    客服端更無法分辨是當機還是網路慢。2026-09 有員工用 iPhone Safari 遇到此情況。
+    這段刻意寫成不依賴任何框架與外部檔案的 ES5 inline script —— 它要能在
+    「連 main.js 都 parse 不了」的舊瀏覽器上執行。
+  -->
+  <div id="boot-fallback" style="display:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:32rem;margin:0 auto;padding:3rem 1.5rem;color:#1f2937;line-height:1.7">
+    <h1 style="font-size:1.25rem;margin:0 0 1rem">網頁載入失敗</h1>
+    <p id="boot-fallback-msg" style="margin:0 0 1rem"></p>
+    <p style="margin:0 0 1.5rem;font-size:.875rem;color:#6b7280">
+      若重新載入後仍然如此，請確認：<br>
+      1. iPhone 使用者：設定 → Safari → 隱私權與安全性 →「阻擋所有 Cookie」請關閉<br>
+      2. 系統版本過舊（iOS 16 以下）可能無法支援，請更新後再試<br>
+      3. 仍無法排除時，請將本畫面截圖提供給系統管理員
+    </p>
+    <button type="button" onclick="location.reload()"
+            style="border:0;border-radius:.5rem;background:#1f4d3a;color:#fff;padding:.625rem 1.25rem;font-size:.9375rem;cursor:pointer">
+      重新載入
+    </button>
+  </div>
+
+  <script>
+    (function () {
+      var RELOAD_FLAG = '__jabez_boot_reloaded__';
+      var BOOT_TIMEOUT_MS = 10000;
+      var SHOW_GRACE_MS = 2500;
+      var shown = false;
+
+      /* sessionStorage 在「阻擋所有 Cookie」時連讀取都會丟 SecurityError，故一律包 try */
+      function flagRead() { try { return sessionStorage.getItem(RELOAD_FLAG); } catch (e) { return null; } }
+      function flagWrite() { try { sessionStorage.setItem(RELOAD_FLAG, '1'); return true; } catch (e) { return false; } }
+      function flagClear() { try { sessionStorage.removeItem(RELOAD_FLAG); } catch (e) {} }
+
+      /*
+        判斷「真的有畫出東西」不能只看 app-root 有沒有子元素。
+        實測（2026-09）：AuthService 建構失敗時 Angular 仍會 render 出
+        `<app-root><router-outlet></router-outlet><!----></app-root>` ——
+        子元素存在、但高度 0、一個字都沒有，正是使用者看到的純白畫面。
+        故改以「量得到高度或有文字」為準。
+      */
+      function booted() {
+        var root = document.querySelector('app-root');
+        if (!root) return false;
+        return root.offsetHeight > 0 || (root.innerText || '').trim().length > 0;
+      }
+
+      /*
+        刻意延遲再確認一次才顯示：早期的非致命錯誤（某支 API 失敗、第三方資源被擋）
+        不該讓一個正在正常啟動的畫面跳出「載入失敗」。只有等到寬限期過後仍沒 render 才算真的死掉。
+      */
+      function show(msg) {
+        if (shown || booted()) return;
+        setTimeout(function () {
+          if (shown || booted()) return;
+          shown = true;
+          document.getElementById('boot-fallback-msg').textContent = msg;
+          document.getElementById('boot-fallback').style.display = 'block';
+        }, SHOW_GRACE_MS);
+      }
+
+      /*
+        部署當下開頁可能拿到新的 index.html 卻抓到舊的 chunk（或反過來），舊檔已不存在 → 純白。
+        這種情況重載一次就會好，故自動重載一次；用 flag 確保只重載一次，避免無窮迴圈。
+      */
+      function isChunkError(msg) {
+        return /dynamically imported module|Importing a module script failed|error loading dynamically imported|ChunkLoadError/i.test(msg || '');
+      }
+
+      function handle(msg) {
+        if (booted()) return;
+        if (isChunkError(msg) && !flagRead() && flagWrite()) {
+          location.reload();
+          return;
+        }
+        show('請重新載入頁面再試一次。');
+      }
+
+      window.addEventListener('error', function (e) {
+        handle((e && e.message) || (e && e.error && e.error.message) || '');
+      }, true);
+
+      window.addEventListener('unhandledrejection', function (e) {
+        var r = e && e.reason;
+        handle((r && r.message) || String(r || ''));
+      });
+
+      /* 沒丟例外但就是沒 render（例如 chunk 請求被中斷而永遠 pending）也要有出口 */
+      setTimeout(function () {
+        if (!booted()) show('載入時間過長，可能是網路不穩或瀏覽器不支援。');
+      }, BOOT_TIMEOUT_MS);
+
+      /* 成功啟動就把重載旗標清掉，下次部署才能再自動重載一次 */
+      window.addEventListener('load', function () {
+        setTimeout(function () { if (booted()) flagClear(); }, 0);
+      });
+    })();
+  </script>
 </body>
 </html>

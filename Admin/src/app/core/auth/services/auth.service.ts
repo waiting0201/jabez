@@ -4,6 +4,7 @@ import {Observable, throwError} from 'rxjs';
 import {switchMap, tap} from 'rxjs/operators';
 import {User} from '@features/admin/users/models/user.model';
 import {environment} from '@/environments/environment';
+import {safeLocal} from '@core/utils/safe-storage';
 
 export interface JwtPayload {
   sub: string;
@@ -69,7 +70,7 @@ const REFRESH_KEY = 'refresh_token';
 export class AuthService {
   private http = inject(HttpClient);
 
-  private _token = signal<string | null>(localStorage.getItem(TOKEN_KEY));
+  private _token = signal<string | null>(safeLocal.getItem(TOKEN_KEY));
 
   /** 從 JWT payload 衍生的目前使用者（signal） */
   currentUser = computed<User | null>(() => {
@@ -172,7 +173,7 @@ export class AuthService {
   }
 
   get refreshTokenValue(): string | null {
-    return localStorage.getItem(REFRESH_KEY);
+    return safeLocal.getItem(REFRESH_KEY);
   }
 
   isLoggedIn(): boolean {
@@ -221,18 +222,18 @@ export class AuthService {
   }
 
   logout(): void {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REFRESH_KEY);
+    safeLocal.removeItem(TOKEN_KEY);
+    safeLocal.removeItem(REFRESH_KEY);
     this._token.set(null);
   }
 
   // ─── Private helpers ────────────────────────────────────
 
   private _storeTokens(accessToken: string, refreshToken?: string): void {
-    localStorage.setItem(TOKEN_KEY, accessToken);
+    safeLocal.setItem(TOKEN_KEY, accessToken);
     this._token.set(accessToken);
     if (refreshToken) {
-      localStorage.setItem(REFRESH_KEY, refreshToken);
+      safeLocal.setItem(REFRESH_KEY, refreshToken);
     }
   }
 

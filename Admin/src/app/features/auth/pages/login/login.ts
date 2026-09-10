@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { AuthService } from '@core/auth/services/auth.service';
+import { safeLocal } from '@core/utils/safe-storage';
 
 @Component({
   selector: 'app-login',
@@ -253,10 +254,10 @@ export class Login {
   showPassword = signal(false);
   isLoading = signal(false);
   errorMsg = signal('');
-  rememberMe = signal(!!localStorage.getItem(this.REMEMBER_KEY));
+  rememberMe = signal(!!safeLocal.getItem(this.REMEMBER_KEY));
 
   form = this.fb.group({
-    email:    [localStorage.getItem(this.REMEMBER_KEY) || '', [Validators.required, Validators.email]],
+    email:    [safeLocal.getItem(this.REMEMBER_KEY) || '', [Validators.required, Validators.email]],
     password: ['', Validators.required],
   });
 
@@ -272,9 +273,9 @@ export class Login {
     this.authService.login(email!, password!).subscribe({
       next: (res) => {
         if (this.rememberMe()) {
-          localStorage.setItem(this.REMEMBER_KEY, email!);
+          safeLocal.setItem(this.REMEMBER_KEY, email!);
         } else {
-          localStorage.removeItem(this.REMEMBER_KEY);
+          safeLocal.removeItem(this.REMEMBER_KEY);
         }
         // 自動補卡提醒
         if (res.auto_clock_in && res.auto_clock_in.count > 0) {
