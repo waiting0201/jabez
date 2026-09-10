@@ -1,5 +1,5 @@
-import {Component, computed, inject, signal} from '@angular/core';
-import {RouterLink} from '@angular/router';
+import {Component, computed, effect, inject, signal} from '@angular/core';
+import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {DatePipe} from '@angular/common';
 import {toSignal, toObservable} from '@angular/core/rxjs-interop';
 import {combineLatest, of} from 'rxjs';
@@ -37,6 +37,18 @@ type ApprovalTab = 'pending' | 'approved' | 'rejected' | 'returned' | 'director'
 /** 「總監室簽核」頁籤內的四種狀態 */
 type DirectorStatus = 'pending' | 'approved' | 'returned' | 'rejected';
 
+/** 撥款 / 退款子篩選（''＝全部） */
+type PaymentStatusFilter = '' | 'paid' | 'unpaid' | 'partial' | 'closed';
+
+/**
+ * URL 還原用白名單：詳情頁「返回列表」帶回的 query params 一律經此正規化，
+ * 非法值退回預設，避免手改網址把 UI 帶進不存在的頁籤 / 篩選狀態。
+ */
+const APPROVAL_TABS: ApprovalTab[] = ['pending', 'approved', 'rejected', 'returned', 'director'];
+const DIRECTOR_STATUSES: DirectorStatus[] = ['pending', 'approved', 'returned', 'rejected'];
+const PAYMENT_STATUSES: PaymentStatusFilter[] = ['paid', 'unpaid', 'partial', 'closed'];
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 @Component({
   selector: 'app-approval-task-list',
   templateUrl: './approval-task-list.html',
@@ -46,6 +58,15 @@ export class ApprovalTaskList {
   private service = inject(ApprovalTaskService);
   private auth = inject(AuthService);
   private toastr = inject(ToastrService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+
+  /**
+   * 進入頁面時的 URL 查詢字串：由簽核作業詳情頁的「返回列表」帶回，用來還原頁籤 / 篩選 / 頁碼。
+   * 直接在 field initializer 讀 snapshot（而非 ngOnInit），確保下方 result 的 combineLatest
+   * 第一次發射時就已是還原後的值，不會先打一次預設條件的 API。
+   */
+  private qp = this.route.snapshot.queryParamMap;
 
   /** Superadmin 或總監室/財務部/會計部才顯示撥款/退款子篩選 */
   canSeePaymentFilter = computed(() =>
@@ -71,17 +92,68 @@ export class ApprovalTaskList {
   );
 
   readonly PAGE_SIZE = 20;
-  activeTab = signal<ApprovalTab>('pending');
+  activeTab = signal<ApprovalTab>(this.initialTab());
   /** 「總監室簽核」頁籤內的狀態子篩選（僅 activeTab()==='director' 時有效） */
-  directorStatus = signal<DirectorStatus>('pending');
+  directorStatus = signal<DirectorStatus>(this.pick('ds', DIRECTOR_STATUSES, 'pending'));
   /** 撥款狀態篩選：三態撥款 + closed（已結案，僅預支 / 出差預支有結案概念，後端其他類型 short-circuit） */
-  paymentStatus = signal<'' | 'paid' | 'unpaid' | 'partial' | 'closed'>('');
-  applicationTypeFilter = signal<'' | ApplicationType>('');
-  submittedByFilter = signal('');
+  paymentStatus = signal<PaymentStatusFilter>(this.initialPaymentStatus());
+  applicationTypeFilter = signal<'' | ApplicationType>(this.initialApplicationType());
+  submittedByFilter = signal(this.canSeeApplicantFilter() ? this.qp.get('by') ?? '' : '');
   /** 申請日期（送簽日）區間篩選，'YYYY-MM-DD'；迄日含當日，各頁籤常駐 */
-  dateFromFilter = signal('');
-  dateToFilter = signal('');
-  page = signal(1);
+  dateFromFilter = signal(this.initialDate('from'));
+  dateToFilter = signal(this.initialDate('to'));
+  page = signal(this.initialPage());
+
+  // ── URL 狀態還原 / 保存 ────────────────────────────────────────────────
+  /** 白名單挑值：URL 帶的值不在允許清單內就退回預設 */
+  private pick<T extends string>(key: string, allowed: T[], fallback: T): T {
+    const v = this.qp.get(key) as T | null;
+    return v && allowed.includes(v) ? v : fallback;
+  }
+
+  /** 頁籤：無權看「總監室簽核」者即使網址帶 tab=director 也退回待審核 */
+  private initialTab(): ApprovalTab {
+    const tab = this.pick('tab', APPROVAL_TABS, 'pending');
+    return tab === 'director' && !this.canSeeDirectorTab() ? 'pending' : tab;
+  }
+
+  /** 撥款子篩選：僅「已核准」頁籤且具權限時才還原（與篩選列的顯示條件一致） */
+  private initialPaymentStatus(): PaymentStatusFilter {
+    if (this.initialTab() !== 'approved' || !this.canSeePaymentFilter()) return '';
+    return this.pick('pay', PAYMENT_STATUSES, '' as PaymentStatusFilter);
+  }
+
+  private initialApplicationType(): '' | ApplicationType {
+    const v = this.qp.get('type') as ApplicationType | null;
+    return v && v in APPLICATION_TYPE_LABELS ? v : '';
+  }
+
+  private initialDate(key: 'from' | 'to'): string {
+    const v = this.qp.get(key) ?? '';
+    return ISO_DATE_RE.test(v) ? v : '';
+  }
+
+  private initialPage(): number {
+    const n = Number(this.qp.get('page'));
+    return Number.isInteger(n) && n > 0 ? n : 1;
+  }
+
+  /**
+   * 進入詳情頁時帶上的清單狀態（單一真相），返回時由上面的 initialXxx() 還原。
+   * 只帶非預設值，避免網址被一長串預設參數塞滿。
+   */
+  listQueryParams = computed(() => {
+    const q: Record<string, string | number> = {};
+    if (this.activeTab() !== 'pending') q['tab'] = this.activeTab();
+    if (this.activeTab() === 'director' && this.directorStatus() !== 'pending') q['ds'] = this.directorStatus();
+    if (this.paymentStatus()) q['pay'] = this.paymentStatus();
+    if (this.applicationTypeFilter()) q['type'] = this.applicationTypeFilter();
+    if (this.submittedByFilter()) q['by'] = this.submittedByFilter();
+    if (this.dateFromFilter()) q['from'] = this.dateFromFilter();
+    if (this.dateToFilter()) q['to'] = this.dateToFilter();
+    if (this.page() > 1) q['page'] = this.page();
+    return q;
+  });
 
   /** 「總監室簽核」四種子狀態的中文 label（空清單文案共用） */
   readonly DIRECTOR_STATUS_LABELS: Record<DirectorStatus, string> = {
@@ -110,6 +182,18 @@ export class ApprovalTaskList {
 
   /** 重新載入當頁資料的觸發訊號（批次核准完成後遞增） */
   private reloadTrigger = signal(0);
+
+  constructor() {
+    // 清單狀態同步進網址（replaceUrl：不在瀏覽紀錄留下每次切頁籤的足跡）。
+    // 網址是狀態的單一真相，重整 / 上一頁 / 從詳情頁返回看到的才會是同一份頁籤與篩選。
+    effect(() => {
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: this.listQueryParams(),
+        replaceUrl: true,
+      });
+    });
+  }
 
   switchTab(tab: ApprovalTab) {
     this.activeTab.set(tab);

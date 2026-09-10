@@ -69,7 +69,7 @@
           <li>
             <span [class]="'badge me-2 ' + appTypeClass[p.applicationType]">{{ appTypeLabel[p.applicationType] }}</span>
             <span class="text-muted small me-2">{{ p.requestNo }}</span>
-            <a [routerLink]="[p.applicationType, p.id, 'review']" class="small">前往補填 →</a>
+            <a [routerLink]="[p.applicationType, p.id, 'review']" [queryParams]="listQueryParams()" class="small">前往補填 →</a>
           </li>
         }
       </ul>
@@ -241,6 +241,7 @@
                 <td class="text-muted small hidden lg:table-cell">{{ t.submittedAt | date:'yyyy-MM-dd' }}</td>
                 <td class="text-right" style="white-space: nowrap">
                   <a [routerLink]="[t.applicationType, t.id, 'review']"
+                     [queryParams]="listQueryParams()"
                      [class]="'btn btn-sm inline-flex items-center ' + (t.status === 'pending' && activeTab() !== 'director' ? 'btn-ghost-primary' : 'btn-ghost-secondary')">
                     <svg class="sa-icon" style="stroke: currentColor">
                       <use [attr.href]="t.status === 'pending' && activeTab() !== 'director' ? '/assets/icons/sprite.svg#edit' : '/assets/icons/sprite.svg#eye'"></use>

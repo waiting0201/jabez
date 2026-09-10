@@ -2129,6 +2129,48 @@ readonly canSeeSalary = this.authService.hasPermission('payroll:read');
 3. **送出前明確剔除 payload key**（`for (const k of SALARY_CONTROLS) delete payload[k]`）。安全相關的欄位不倚賴 Angular 的隱含行為。若對應的後端端點是**整批替換**（送 `[]` 等於刪光），更要整個 key 不送而非送空陣列 —— 見 [backend-design.md 欄位級權限規則 6](backend-design.md)。
 4. **連帶處理衍生輸出**：由被管制欄位算出的試算值（getter）要加早退 `if (!this.canSeeSalary) return null;`；會查外部端點的訂閱要條件式跳過（否則噴必然 403 的 XHR，且那支端點本身可能是反推原料的側門）；**PDF / Excel 匯出要連同該段的 `addPage()` 一起跳過**，只藏內容會留下一張只有頁首的空白頁。
 
+### 清單狀態保存於網址（List State in URL，2026-09）
+
+**規則：清單頁的頁籤 / 篩選 / 頁碼一律以 URL query params 為單一真相，詳情頁的「返回列表」把它原封不動帶回。**
+
+沒有這層的話，從「已核准」第 3 頁點進一張單、按返回會落在「待審核」第 1 頁，使用者得重新篩選一次。已採用：[簽核作業清單](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-list/)（`tab` / `ds` / `pay` / `type` / `by` / `from` / `to` / `page`，四個要點齊備）；[人事薪資](../Admin/src/app/features/admin/payroll/pages/payroll-list/)（`year` / `month`）只做了還原與連結帶參數，**未做第 3 點的網址同步**，改月份後重整會跳回網址上的舊月份 —— 下次動到該頁時補上。
+
+四個要點：
+
+1. **還原寫在 field initializer，不要寫 ngOnInit**。清單的資料流多半是 `toSignal(combineLatest([toObservable(...)]))` 這種 field，寫在 `ngOnInit` 雖然多半也趕得上第一次發射，但把還原與宣告放在同一行、時序上不必推敲：
+
+   ```typescript
+   private qp = this.route.snapshot.queryParamMap;   // 放在所有狀態 signal 之前
+   activeTab = signal<ApprovalTab>(this.initialTab());
+   page      = signal(this.initialPage());
+   ```
+
+2. **一律白名單正規化，非法值退回預設**。網址是使用者可以手改的輸入：頁籤 / 子狀態用允許值陣列比對、日期用 `^\d{4}-\d{2}-\d{2}$`、頁碼用 `Number.isInteger(n) && n > 0`。**受權限控管的篩選要連權限一起判**（例：無 `canSeeDirectorTab()` 者即使網址帶 `tab=director` 也退回待審核，無 `canSeeApplicantFilter()` 者忽略 `by`），否則等於開了一道繞過 UI 隱藏的側門。
+
+3. **狀態變更要同步回網址，用 `replaceUrl: true`**。少了這步，切完頁籤後重整會跳回舊參數，畫面與網址各說各話：
+
+   ```typescript
+   /** 進詳情頁時帶上的清單狀態（單一真相）；只帶非預設值，避免網址被預設參數塞滿 */
+   listQueryParams = computed(() => { /* 略：非預設值才放進物件 */ });
+
+   constructor() {
+     effect(() => {
+       this.router.navigate([], {relativeTo: this.route, queryParams: this.listQueryParams(), replaceUrl: true});
+     });
+   }
+   ```
+   `replaceUrl` 讓每次切頁籤不在瀏覽紀錄留下足跡（否則按上一頁要退十幾次才離得開清單）；同 URL 的 navigate 預設被忽略，不會迴圈。
+
+4. **詳情頁只是轉手，不要自己重組參數**：
+
+   ```typescript
+   readonly backQueryParams = this.route.snapshot.queryParams;   // 三個返回連結共用
+   ```
+   ```html
+   <a routerLink="/admin/approval-tasks" [queryParams]="backQueryParams" class="btn btn-outline-secondary">返回列表</a>
+   ```
+   **例外是「送出後導頁」**：審核 / 儲存成功後該筆通常已離開原頁籤，總筆數變少、原頁碼可能超出範圍而顯示空清單，故導頁時保留篩選但**剔除 `page`**。
+
 ### Feature 目錄結構
 
 每個 feature 一律三層：

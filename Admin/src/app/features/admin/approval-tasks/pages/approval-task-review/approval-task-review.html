@@ -1516,7 +1516,7 @@
                 <div class="border rounded p-4 bg-[--bg-base] small mb-4">{{ task.reviewNote }}</div>
               }
               <div class="mt-2">
-                <a routerLink="/admin/approval-tasks" class="btn btn-outline-secondary">返回列表</a>
+                <a routerLink="/admin/approval-tasks" [queryParams]="backQueryParams" class="btn btn-outline-secondary">返回列表</a>
               </div>
             </div>
           </div>
@@ -1709,7 +1709,7 @@
                     }
                   </button>
                 }
-                <a routerLink="/admin/approval-tasks" class="btn btn-outline-secondary">返回列表</a>
+                <a routerLink="/admin/approval-tasks" [queryParams]="backQueryParams" class="btn btn-outline-secondary">返回列表</a>
               </div>
             </div>
           </div>
@@ -1733,7 +1733,7 @@
                 <div class="border rounded p-4 bg-[--bg-base] small mb-4">{{ task.reviewNote }}</div>
               }
               <div class="mt-2 flex gap-2">
-                <a routerLink="/admin/approval-tasks" class="btn btn-outline-secondary">返回列表</a>
+                <a routerLink="/admin/approval-tasks" [queryParams]="backQueryParams" class="btn btn-outline-secondary">返回列表</a>
               </div>
             </div>
           </div>

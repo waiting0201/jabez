@@ -75,6 +75,18 @@ export class ApprovalTaskReview implements OnInit {
   private sanitizer         = inject(DomSanitizer);
   private previewLoader     = inject(FilePreviewLoader);
 
+  /**
+   * 「返回列表」要帶回的清單狀態（頁籤 / 篩選 / 頁碼），由清單頁的 listQueryParams() 帶入本頁網址，
+   * 這裡原封不動送回去。直接開單一網址（沒帶參數）時為空物件，退回清單預設的「待審核」第 1 頁。
+   */
+  readonly backQueryParams = this.route.snapshot.queryParams;
+
+  /** 審核送出後導頁用：沿用同一組篩選，但回第 1 頁（該筆已離開原頁籤，頁數可能縮短） */
+  private get reviewedQueryParams(): Record<string, unknown> {
+    const {page, ...rest} = this.backQueryParams;
+    return rest;
+  }
+
   task$!: Observable<ApprovalTask | undefined>;
   taskId = 0;
   applicationType = '';
@@ -679,7 +691,7 @@ export class ApprovalTaskReview implements OnInit {
     this.submitting.set(true);
     this.service.review(this.taskId, this.applicationType, action, note, estimatedRefundDate, refundedAt, closeAdvance, installments).subscribe({
       // 成功後導頁，維持鎖定狀態（不解鎖，避免導頁前的殘留點擊再送一次）
-      next: () => this.router.navigate(['/admin/approval-tasks']),
+      next: () => this.router.navigate(['/admin/approval-tasks'], {queryParams: this.reviewedQueryParams}),
       error: (err: HttpErrorResponse) => {
         this.submitting.set(false);
         this.errorMsg.set(err.error?.message || '審核失敗，請稍後再試。');
