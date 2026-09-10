@@ -2311,6 +2311,35 @@ safeLocal.removeItem(TOKEN_KEY);
 - **顯示前有 `SHOW_GRACE_MS = 2500` 寬限期並二次確認 `booted()`**，避免早期非致命錯誤（某支 API 失敗、第三方字型被擋）讓正常啟動的畫面跳出「載入失敗」。
 - **chunk 載入失敗自動重載一次**（部署當下 index.html 與 chunk 版本錯開），以 `sessionStorage` 旗標確保只重載一次、避免無窮迴圈；旗標讀寫同樣包 `try`。
 - 舊瀏覽器的 `SyntaxError` **刻意不列入自動重載條件** —— 重載也不會好，只會拖慢看到訊息的時間。
+- **開場先做瀏覽器能力探測，版本太舊直接點名 iOS 版本**（2026-09 追加）：
+  `supportsModernJs()`（`new Function('class T{static{}}')`）＋ `supportsModernCss()`（`CSS.supports('color','oklch(0 0 0)')`），
+  任一不過就**立即**顯示「您的瀏覽器版本過舊，無法執行本系統。」並把排查步驟整段換成「更新至 iOS 16.4 以上」。
+  三個重點：① 探測**必須包在 `new Function` 裡**，直接寫 `class T{static{}}` 會讓這段 inline script 自己 parse 失敗，連保底畫面都出不來；
+  ② 不等 `BOOT_TIMEOUT_MS`、也不印「請重新載入」—— 重載一百次都不會好，只會讓使用者反覆重試而不知道要更新系統；
+  ③ 探測條件與 build target 綁定，**日後若降 `.browserslistrc` 就必須同步放寬**（見 §15.7），否則會誤擋跑得動的使用者。
+- **保底畫面必須印出技術資訊**（`#boot-fallback-diag`：`UA` / `JS`・`CSS` 探測結果 / 第一個例外訊息，只有這三項、不含個資）：
+  這個畫面唯一的回報管道是使用者的截圖，第一版只印「請重新載入」，收到截圖仍無法分辨是 storage 被擋、chunk 404 還是語法不支援，白白多繞一輪。
+
+### 15.7 最低支援瀏覽器：Safari / iOS 16.4
+
+**本站最低需求為 Safari / iOS 16.4**，低於此版本**整站開不起來**（不是某功能壞掉）：
+
+- `main.js` 含 **class static initialization block**（`static{...}`，Safari 16.4+）—— **parse 期就 SyntaxError**，整支檔案一行都不會執行
+- `styles.css`（Tailwind v4）用到 `@property`（Safari 16.4+）；`oklch()`（15.4）與 `color-mix()`（16.2）則在門檻內
+- 執行期 API 最新只用到 `.at()` / `Object.hasOwn` / `findLast`（皆 15.4）與 RegExp `d` flag（15.0），不構成額外限制
+
+專案**未設定 `Admin/.browserslistrc`**，故 Angular 21 採 baseline widely available，上述語法即由此而來。
+
+**2026-09 決議：不降 build target，改為要求使用者更新 iOS。**
+背景是一位員工的 iPhone 停在 **iOS 16.2**，正式站對他完全無法使用（先是整頁白，加了保底畫面後變成「請重新載入」的死路）。
+當時實測過降版方案：`.browserslistrc` 設 `Safari >= 16` 後 esbuild 會把 `static{...}` 降級、全部 chunk 歸零，
+**bundle 大小幾乎不變**（main.js −115 bytes），Tailwind v4 也自帶 `@supports` 後備區塊補 `--tw-*` 預設值。
+技術上可行，但選擇不做 —— 有瀏海的機型（iPhone X 以後）都能更新到 16.4 以上，
+為個位數未更新裝置長期背一組低版本 target 不划算。**改由 §15.6 的保底畫面明確擋下並引導更新。**
+
+> 日後若因故要降版支援，`.browserslistrc` 與 §15.6 的能力探測條件**必須一起改**，
+> 兩者是同一件事的兩端（build 產出什麼 vs 執行前檢查什麼）。
+> 再往下降到 Safari 15 則不可行：`color-mix()` 要 16.2、Tailwind v4 的色彩體系建立在 `oklch()` 上，等同要退回 Tailwind v3。
 
 ---
 

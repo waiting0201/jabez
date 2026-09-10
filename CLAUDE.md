@@ -235,7 +235,8 @@ Admin/src/app/
 
 - 所有 API 路徑統一在 `Admin/src/environments/environment.ts` 的 `apiUrl` 管理
 - Token 儲存於 `localStorage`（**一律經 `core/utils/safe-storage.ts` 的 `safeLocal`**，禁止直接呼叫原生 API，見 [docs/frontend-design.md §15.5](docs/frontend-design.md)），由 `core/auth/interceptors/auth.interceptor.ts` 自動附加 Bearer Token
-- `Admin/src/index.html` 底部有**啟動失敗保底畫面**（不依賴框架的 ES5 inline script）：Angular 沒 render 出東西時顯示可讀中文說明 + 重新載入鈕，取代原本的一片純白；chunk 版本錯開時自動重載一次。**判定用 `offsetHeight` 而非 `firstElementChild`**（router 導航失敗時 `<router-outlet>` 照樣在），且因 Angular 會吞掉 router 錯誤、`window.onerror` 靠不住，**逾時檢查才是主要路徑**。見 [docs/frontend-design.md §15.6](docs/frontend-design.md)
+- `Admin/src/index.html` 底部有**啟動失敗保底畫面**（不依賴框架的 ES5 inline script）：Angular 沒 render 出東西時顯示可讀中文說明 + 重新載入鈕，取代原本的一片純白；chunk 版本錯開時自動重載一次。**判定用 `offsetHeight` 而非 `firstElementChild`**（router 導航失敗時 `<router-outlet>` 照樣在），且因 Angular 會吞掉 router 錯誤、`window.onerror` 靠不住，**逾時檢查才是主要路徑**。**另有開場能力探測 + 技術資訊區塊**（2026-09）：JS（class static block）／CSS（`oklch`）任一不支援就直接顯示「請更新至 iOS 16.4 以上」而非「請重新載入」，並印出 UA / 探測結果 / 第一個例外訊息供截圖回報。見 [docs/frontend-design.md §15.6](docs/frontend-design.md)
+- **最低支援瀏覽器＝Safari / iOS 16.4**（`main.js` 的 `static{...}` 是 parse 期 SyntaxError、Tailwind v4 的 `@property` 亦同）：2026-09 決議**不降 build target**（實測降版可行且 bundle 幾乎不變，但選擇請使用者更新 iOS），故專案刻意不設 `.browserslistrc`。日後若降版，index.html 的能力探測條件須一起改，見 [docs/frontend-design.md §15.7](docs/frontend-design.md)
 
 ### 常用指令
 
