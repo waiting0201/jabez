@@ -41,31 +41,23 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
 
         // 2. 查詢「上一個月」已核准的假日執行活動天數（以 EndDate 歸月，獎金計入次月薪資）
         //    例：4 月薪資只計入 EndDate 落在 3/1~3/31 的活動；跨月活動以 EndDate 所屬月份歸屬
+        //
+        //    ⚠ 只認 TravelRequestParticipants（2026-09 改）：
+        //    申請人**不再**因為送了單就自動領津貼，要領就得把自己加進參與執行人員清單
+        //    （表單的人員下拉本來就含自己）。舊版另有一支 tr.EmployeeId 的 UNION ALL，
+        //    導致申請人無條件領整單 HolidayDays，且自己又勾進清單時會被重複計算兩次。
         const string travelSql = """
-            ;WITH HolidayTravelDays AS (
-                -- 申請人的假日天數（整單 int，恆為整數天；CAST 統一型別供 UNION 與 SUM）
-                SELECT tr.EmployeeId, CAST(tr.HolidayDays AS decimal(5,1)) AS HolidayDays
-                FROM TravelRequests tr
-                WHERE tr.IsHolidayTravel = 1
-                  AND tr.ApprovalStatus = 'approved'
-                  AND tr.EndDate >= @PrevMonthFirstDay
-                  AND tr.EndDate <  @CurrMonthFirstDay
-                  AND (@EmployeeId IS NULL OR tr.EmployeeId = @EmployeeId)
-                UNION ALL
-                -- 參與執行人員的假日天數（有勾選參與日期者取個人假日天數，含半天 0.5；NULL=全程參與，沿用整單）
-                SELECT p.UserId AS EmployeeId,
-                       CAST(COALESCE(p.HolidayDays, tr.HolidayDays) AS decimal(5,1)) AS HolidayDays
-                FROM TravelRequestParticipants p
-                JOIN TravelRequests tr ON p.TravelRequestId = tr.Id
-                WHERE tr.IsHolidayTravel = 1
-                  AND tr.ApprovalStatus = 'approved'
-                  AND tr.EndDate >= @PrevMonthFirstDay
-                  AND tr.EndDate <  @CurrMonthFirstDay
-                  AND (@EmployeeId IS NULL OR p.UserId = @EmployeeId)
-            )
-            SELECT EmployeeId, SUM(HolidayDays) AS TotalDays
-            FROM HolidayTravelDays
-            GROUP BY EmployeeId
+            SELECT p.UserId AS EmployeeId,
+                   -- 有勾選參與日期者取個人假日天數（含半天 0.5）；NULL=全程參與，沿用整單
+                   SUM(CAST(COALESCE(p.HolidayDays, tr.HolidayDays) AS decimal(5,1))) AS TotalDays
+            FROM TravelRequestParticipants p
+            JOIN TravelRequests tr ON p.TravelRequestId = tr.Id
+            WHERE tr.IsHolidayTravel = 1
+              AND tr.ApprovalStatus = 'approved'
+              AND tr.EndDate >= @PrevMonthFirstDay
+              AND tr.EndDate <  @CurrMonthFirstDay
+              AND (@EmployeeId IS NULL OR p.UserId = @EmployeeId)
+            GROUP BY p.UserId
             """;
 
         // 2b. 查詢「上一個月」加班日、已核准且選擇「加班費」的加班申請

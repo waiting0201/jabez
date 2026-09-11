@@ -402,8 +402,9 @@
                 </div>
               </div>
 
-              <!-- 參與執行人員（含申請人；逐日勾選者列出日期 + 時段，未勾選＝全程參與） -->
-              @if (d.holidayAllowances && d.holidayAllowances.length > 0) {
+              <!-- 參與執行人員（逐日勾選者列出日期 + 時段，未勾選＝全程參與）
+                   申請人不會自動列入，自行加入清單時掛「申請人」badge；清單為空＝本單無人領津貼，
+                   故卡片一律顯示（空清單改顯示 @empty 列），避免整張卡消失讓審核者誤以為漏帶資料 -->
                 <div class="card border-0 shadow-sm mt-6">
                   <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
                     <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#users"></use></svg>
@@ -421,7 +422,7 @@
                           </tr>
                         </thead>
                         <tbody>
-                          @for (a of d.holidayAllowances; track $index; let i = $index) {
+                          @for (a of d.holidayAllowances ?? []; track $index; let i = $index) {
                             <tr>
                               <td class="small text-center text-muted">{{ i + 1 }}</td>
                               <td class="small fw-500">
@@ -439,6 +440,10 @@
                               </td>
                               <td class="text-right small fw-500">{{ participantDays(a.days) }} 天</td>
                             </tr>
+                          } @empty {
+                            <tr>
+                              <td colspan="4" class="text-center text-muted py-4 small">尚無參與執行人員，本單不計入假日津貼</td>
+                            </tr>
                           }
                         </tbody>
                         <tfoot>
@@ -449,10 +454,9 @@
                         </tfoot>
                       </table>
                     </div>
-                    <div class="text-muted small p-4 pt-2">未列參與日期者為全程參與；未標示時段者為全天，上/下午以 0.5 天計。津貼隨次月薪資發放。</div>
+                    <div class="text-muted small p-4 pt-2">未列參與日期者為全程參與；未標示時段者為全天，上/下午以 0.5 天計。津貼隨次月薪資發放。申請人須列於本清單才計入津貼。</div>
                   </div>
                 </div>
-              }
 
               <!-- 出差明細 -->
               @if (d.items && d.items.length > 0) {

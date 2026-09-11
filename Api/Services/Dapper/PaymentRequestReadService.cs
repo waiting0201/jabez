@@ -677,14 +677,15 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             """;
 
         // 假日執行活動申請（IsHolidayTravel = 1），獨立 ApplicationType = "holiday_travel"
-        // ApplicantId / ApplicantBaseSalary 用於計算申請人本人的假日津貼
+        // ApplicantId 用於在參與執行人員清單中辨識申請人本人（掛 badge）；
+        // 申請人不再自動領津貼，故此處不需帶 BaseSalary（津貼一律由參與者查詢的 BaseSalary 算）
         var holidayTravelSql = $"""
             SELECT tr.Id, tr.RequestNo, tr.Destination, tr.StartDate, tr.EndDate, tr.AdvanceNeededDate,
                    tr.GrandTotal, tr.Purpose, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    tr.IsHolidayTravel, tr.HolidayDays,
                    tr.EstimatedRefundDate, tr.RefundedAt,
                    tr.ApprovalStatus, tr.ApprovalItemId, tr.CurrentStepOrder,
-                   tr.EmployeeId AS ApplicantId, u.BaseSalary AS ApplicantBaseSalary,
+                   tr.EmployeeId AS ApplicantId,
                    u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, tr.CreatedAt, tr.SubmittedAt, tr.ReviewedAt, tr.ReviewNote
             FROM TravelRequests tr
             LEFT JOIN Users u          ON tr.EmployeeId  = u.Id
@@ -940,7 +941,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             """;
         var travelPaymentItemRows = await db.QueryAsync<dynamic>(travelPaymentItemsSql);
 
-        // 假日活動參與者（不含申請人本人；申請人在 holidayTravelSql 已帶 ApplicantBaseSalary）
+        // 假日活動參與執行人員（申請人若自行加入清單亦在其中，與其他人同一套算法）
         // 用於假日津貼預估顯示，金額計算公式與 PayrollReadService 一致
         // LEFT JOIN 個人參與日期後一列一 (參與者, 日期)，以 p.Id 分組還原（寫法比照 TravelRequestReadService）
         const string holidayParticipantsSql = """
@@ -1289,27 +1290,28 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 dates.Length > 0 ? dates : null));
         }
 
-        // 計算單筆假日活動的所有人員（申請人 + 參與者）參與明細與津貼合計
+        // 計算單筆假日活動的參與執行人員明細與津貼合計
         // 公式：round(BaseSalary / 30) × 個人假日天數（半天 0.5），與 PayrollReadService.CalculateMonthlyPayrollAsync 一致
-        // 申請人固定領整單 HolidayDays（不逐日勾選）；參與者領 COALESCE(個人, 整單)
+        // 每人領 COALESCE(個人勾選天數, 整單 HolidayDays)
+        //
+        // ⚠ 只列參與執行人員清單上的人（2026-09 改）：
+        // 申請人**不再**自動占一列、也不再自動領津貼，要領就得把自己加進清單（屆時比照一般參與者，
+        // 可逐日勾選與半天），命中時仍掛 IsApplicant badge。清單為空＝本單無人領津貼，合計 0。
         // 逐人金額只在此處相加後即丟棄，不進 DTO：個人津貼 ÷ 天數即為該員日薪，會反推出月薪
-        (HolidayAllowanceDto[] List, int Total) BuildHolidayAllowances(int trId, Guid applicantId, string applicantName, decimal? applicantBaseSalary, decimal requestHolidayDays)
+        (HolidayAllowanceDto[] List, int Total) BuildHolidayAllowances(int trId, Guid applicantId)
         {
             static int Allowance(decimal? baseSalary, decimal days)
                 => baseSalary is { } bs && bs > 0 && days > 0
                     ? (int)Math.Round(Math.Round(bs / 30m, 0) * days, 0, MidpointRounding.AwayFromZero)
                     : 0;
 
-            var list = new List<HolidayAllowanceDto>
-            {
-                new(applicantId, applicantName, requestHolidayDays, IsApplicant: true),
-            };
-            var total = Allowance(applicantBaseSalary, requestHolidayDays);
+            var list = new List<HolidayAllowanceDto>();
+            var total = 0;
             if (holidayParticipantsDict.TryGetValue(trId, out var participants))
             {
                 foreach (var (uid, name, bs, days, dates) in participants)
                 {
-                    list.Add(new HolidayAllowanceDto(uid, name, days, IsApplicant: false, dates));
+                    list.Add(new HolidayAllowanceDto(uid, name, days, IsApplicant: uid == applicantId, dates));
                     total += Allowance(bs, days);
                 }
             }
@@ -1474,10 +1476,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         {
             var (htAllowances, htAllowanceTotal) = BuildHolidayAllowances(
                 (int)row.Id,
-                (Guid)row.ApplicantId,
-                (string?)row.SubmittedBy ?? "—",
-                (decimal?)row.ApplicantBaseSalary,
-                (int?)row.HolidayDays ?? 0);
+                (Guid)row.ApplicantId);
             return new ApprovalTaskDto(
                 (int)row.Id,
                 "holiday_travel",

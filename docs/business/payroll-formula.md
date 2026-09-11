@@ -2,8 +2,10 @@
 
 1. **日薪** = 底薪 ÷ 30（四捨五入至整數）
 2. **假日津貼** = 日薪 × 假日執行活動天數（**上個月**歸月：以已核准假日執行活動申請的 `EndDate` 所屬月份歸月，獎金計入次月薪資。例：3 月活動 → 4 月薪資；跨月活動（如 3/30~4/2）EndDate=4/2 歸 4 月 → 5 月薪資）
-   - **申請人**：領整單 `HolidayDays`（活動全期間的假日天數，Submit 時依行事曆快照；`int`，不逐日、不半天）。
-   - **參與執行人員**：`COALESCE(TravelRequestParticipant.HolidayDays, TravelRequest.HolidayDays)` — 有勾選個人參與日期者領「勾選日期中屬假日者的**時段權重總和**」（全天 1.0 / 上半天 0.5 / 下半天 0.5，Submit 時快照至 `decimal(5,1)`）；未勾選（NULL）＝全程參與，沿用整單天數。
+   - **領津貼的人＝`TravelRequestParticipants` 清單上的人**，每人領 `COALESCE(TravelRequestParticipant.HolidayDays, TravelRequest.HolidayDays)` — 有勾選個人參與日期者領「勾選日期中屬假日者的**時段權重總和**」（全天 1.0 / 上半天 0.5 / 下半天 0.5，Submit 時快照至 `decimal(5,1)`）；未勾選（NULL）＝全程參與，沿用整單天數。清單為空＝該單無人領津貼。
+   - **申請人不會自動計入（2026-09 改）**：要領津貼就得把自己加進參與執行人員清單（表單人員下拉本來就含自己），屆時比照一般參與者，可逐日勾選與半天。
+     - 舊制另有一支 `SELECT tr.EmployeeId FROM TravelRequests` 的 `UNION ALL`，讓申請人**無條件**領整單 `HolidayDays`；申請人若又把自己勾進清單（實務上多數人都會），同一人會被 SUM 兩次而**領到雙倍**。移除該分支即同時修掉這個溢發。
+     - 影響歷史：薪資為即時重算、無月結快照，故過去月份會跟著變。既有單以 [`Api/Data/Scripts/08-backfill-holiday-travel-applicant-participant.sql`](../../Api/Data/Scripts/08-backfill-holiday-travel-applicant-participant.sql) 把未列入清單的申請人補成參與者（全程參與，金額不變）；已列入者則由雙倍回正為單份。
    - 跨月活動不依個人參與日期拆月，一律以整單 `EndDate` 歸月。
    - **中點捨入**：天數可為 0.5 的倍數，奇數日薪 × .5 天必然落在 `.5` 中點，故金額一律 `Math.Round(日薪 × 天數, 0, MidpointRounding.AwayFromZero)`（`Math.Round` 預設是銀行家捨入，會少 1 元）。[PayrollReadService](../../Api/Services/Dapper/PayrollReadService.cs) 與簽核台預估 [PaymentRequestReadService.BuildHolidayAllowances](../../Api/Services/Dapper/PaymentRequestReadService.cs) 兩處須一致。
 3. **勞保費** = `User.LaborInsuranceOverride ?? lookupBracket(底薪).EmployeeLabor`（覆寫優先；無覆寫則查級距表向上取最近級距）

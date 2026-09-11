@@ -159,6 +159,7 @@
               <div class="text-muted small mb-3">
                 每位人員可勾選實際參與日期（可不連續）；點擊日期依序切換
                 <span class="fw-500">全天 → 上午 → 下午 → 取消</span>，半天以 0.5 天計；<span class="fw-500">未勾選日期者視為全程參與</span>。
+                <div class="mt-1"><span class="fw-500">申請人本人若有參與，須自行加入本清單</span>，未列入者不計入假日津貼。</div>
               </div>
               @if (chipsTooLong()) {
                 <div class="text-warning small mb-3 flex items-center gap-1">
@@ -169,7 +170,7 @@
             }
             @if (participantEntries.length === 0) {
               <div class="text-muted small">
-                @if (isReadOnly) { 無參與執行人員記錄。} @else { 點擊「新增人員」新增參與執行人員。}
+                @if (isReadOnly) { 無參與執行人員記錄（本單不計入假日津貼）。} @else { 點擊「新增人員」新增參與執行人員（含申請人本人）。}
               </div>
             } @else {
               @for (entry of participantEntries; track $index; let i = $index; let last = $last) {
@@ -187,7 +188,7 @@
                       <select class="form-select form-select-sm" style="max-width:240px"
                               [(ngModel)]="entry.selectedUserId" [ngModelOptions]="{standalone: true}">
                         <option [ngValue]="null">— 選擇人員 —</option>
-                        @for (user of allUsers; track user.id) {
+                        @for (user of availableUsers(i); track user.id) {
                           <option [ngValue]="user.id">{{ user.name }}</option>
                         }
                       </select>
