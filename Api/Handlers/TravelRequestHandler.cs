@@ -199,7 +199,7 @@ public sealed class TravelRequestHandler(
             if (existCount != participantIds.Count)
                 return new BadRequestObjectResult(ApiResponse.Fail("一或多位出差參與者不存在。"));
 
-            var dateError = ValidateParticipantDates(participants, startDate, endDate);
+            var dateError = ValidateParticipants(participants, startDate, endDate);
             if (dateError is not null)
                 return new BadRequestObjectResult(ApiResponse.Fail(dateError));
         }
@@ -411,7 +411,7 @@ public sealed class TravelRequestHandler(
                 if (existCount != participantIds.Count)
                     return new BadRequestObjectResult(ApiResponse.Fail("一或多位出差參與者不存在。"));
 
-                var dateError = ValidateParticipantDates(participants, item.StartDate, item.EndDate);
+                var dateError = ValidateParticipants(participants, item.StartDate, item.EndDate);
                 if (dateError is not null)
                     return new BadRequestObjectResult(ApiResponse.Fail(dateError));
             }
@@ -786,12 +786,19 @@ public sealed class TravelRequestHandler(
     }
 
     /// <summary>
-    /// 驗證參與人員的參與日期：必須落在活動期間內、時段值合法、且同一人同一天不重複
-    /// （同日重複會撞唯一索引 (ParticipantId, Date) 變成 500，這裡先擋成 400）。
+    /// 驗證參與人員：同一人不可重複列入、參與日期必須落在活動期間內、時段值合法、
+    /// 且同一人同一天不重複（同日重複會撞唯一索引 (ParticipantId, Date) 變成 500，這裡先擋成 400）。
     /// 回傳錯誤訊息（null = 通過）。
+    ///
+    /// ⚠ 同一人重複列入（2026-09）：DB 已有唯一索引 (TravelRequestId, UserId) 擋住，
+    /// 但撞索引是 500；這裡先擋成 400 給出可讀訊息。申請人自 2026-09 起不再自動計入、
+    /// 要領津貼得自行列入清單，重複列入的機會因此變高（前端下拉亦排除已選過的人）。
     /// </summary>
-    private static string? ValidateParticipantDates(ParticipantRequest[] participants, DateTime startDate, DateTime endDate)
+    private static string? ValidateParticipants(ParticipantRequest[] participants, DateTime startDate, DateTime endDate)
     {
+        if (participants.Select(p => p.UserId).Distinct().Count() != participants.Length)
+            return "同一位人員不可重複列入參與執行人員。";
+
         foreach (var p in participants)
         {
             if (p.Dates is not { Length: > 0 }) continue;

@@ -286,6 +286,18 @@ export class HolidayTravelRequestForm implements OnInit {
     this.participantEntries.push({sortOrder: nextOrder, selectedUserId: null, selectedDates: []});
   }
 
+  /**
+   * 第 index 列可選的人員：排除其他列已選過的（後端亦擋重複人員，DB 另有唯一索引）。
+   */
+  availableUsers(index: number): UserLookup[] {
+    const taken = new Set<string>(
+      this.participantEntries
+          .filter((_, i) => i !== index)
+          .map(e => e.selectedUserId)
+          .filter((v): v is string => v != null));
+    return this.allUsers.filter(u => !taken.has(u.id));
+  }
+
   removeParticipant(i: number) {
     this.participantEntries.splice(i, 1);
     this.participantEntries.forEach((e, idx) => e.sortOrder = idx + 1);

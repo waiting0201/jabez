@@ -105,8 +105,7 @@
       </div>
     </div>
 
-    <!-- 參與執行人員 -->
-    @if (r.participants && r.participants.length > 0) {
+    <!-- 參與執行人員（申請人不自動列入；清單為空＝本單無人領假日津貼，故卡片一律顯示）-->
       <div class="card border-0 shadow-sm mb-6">
         <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
           <svg class="sa-icon text-primary" style="stroke: currentColor">
@@ -116,7 +115,7 @@
         </div>
         <div class="card-body">
           <ol class="mb-0 ps-4">
-            @for (p of r.participants; track p.userId) {
+            @for (p of r.participants ?? []; track p.userId) {
               <li class="small fw-500">
                 {{ p.userName || p.userId }}
                 @if (p.dates?.length) {
@@ -127,12 +126,13 @@
                   <span class="text-muted fw-normal">全程參與</span>
                 }
               </li>
+            } @empty {
+              <li class="small text-muted list-none -ms-4">尚無參與執行人員，本單不計入假日津貼。</li>
             }
           </ol>
-          <div class="text-muted small mt-2">未列參與日期者為全程參與；未標示時段者為全天。</div>
+          <div class="text-muted small mt-2">未列參與日期者為全程參與；未標示時段者為全天。申請人須列於本清單才計入假日津貼。</div>
         </div>
       </div>
-    }
 
     <!-- 撥款明細（核准後才會有資料；read-only）-->
     <app-installments-table
