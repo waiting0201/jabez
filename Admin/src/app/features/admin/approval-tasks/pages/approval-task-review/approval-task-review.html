@@ -2,26 +2,129 @@
   @if (task$ | async; as task) {
 
     <!-- Page Header -->
-    <div class="flex items-center gap-2 mb-6">
-      <a routerLink="/admin/approval-tasks" class="btn btn-sm btn-outline-secondary">
-        <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
-      </a>
-      <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
-        <use href="/assets/icons/sprite.svg#check-square"></use>
-      </svg>
-      <h4 class="mb-0">簽核審核</h4>
-      <span [class]="'badge ' + appTypeClass[task.applicationType]">{{ appTypeLabel[task.applicationType] }}</span>
-      <span [class]="'badge ' + statusClass[task.status]">{{ statusLabel[task.status] }}</span>
-      @if (closureInfo(task); as c) {
-        @if (c.isClosed) {
-          <span class="badge bg-elevated text-secondary">
-            已結案
-            @if (c.closedAt) {
-              <span class="fw-400">（{{ c.closedAt | date:'yyyy-MM-dd' }}）</span>
-            }
-          </span>
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+      <div class="flex flex-wrap items-center gap-2">
+        <a routerLink="/admin/approval-tasks" class="btn btn-sm btn-outline-secondary">
+          <svg class="sa-icon"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+        </a>
+        <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+          <use href="/assets/icons/sprite.svg#check-square"></use>
+        </svg>
+        <h4 class="mb-0">簽核審核</h4>
+        <span [class]="'badge ' + appTypeClass[task.applicationType]">{{ appTypeLabel[task.applicationType] }}</span>
+        <span [class]="'badge ' + statusClass[task.status]">{{ statusLabel[task.status] }}</span>
+        @if (closureInfo(task); as c) {
+          @if (c.isClosed) {
+            <span class="badge bg-elevated text-secondary">
+              已結案
+              @if (c.closedAt) {
+                <span class="fw-400">（{{ c.closedAt | date:'yyyy-MM-dd' }}）</span>
+              }
+            </span>
+          }
         }
-      }
+      </div>
+
+      <!-- 列印：紙本流程要在待審 / 退回 / 拒絕 / 已核准各階段都印得出來，
+           故一律放在頁首、不綁 task.status（簽核台上的單必為非草稿）。 -->
+      <div class="flex flex-wrap gap-2">
+        @if (task.applicationType === 'payment_request' && task.paymentDetail) {
+          <button type="button" class="btn btn-outline-secondary inline-flex items-center gap-2"
+                  [disabled]="paymentPdfService.pdfLoading()" (click)="printPaymentPdf(task)">
+            @if (paymentPdfService.pdfLoading()) {
+              <span class="spinner-border spinner-border-sm" role="status"></span>
+              產生中…
+            } @else {
+              <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#printer"></use></svg>
+              列印請款單
+            }
+          </button>
+        }
+        @if (task.applicationType === 'advance' && task.advanceDetail) {
+          <button type="button" class="btn btn-outline-secondary inline-flex items-center gap-2"
+                  [disabled]="advancePdfService.pdfLoading()" (click)="printAdvancePdf(task)">
+            @if (advancePdfService.pdfLoading()) {
+              <span class="spinner-border spinner-border-sm" role="status"></span>
+              產生中…
+            } @else {
+              <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#printer"></use></svg>
+              列印預支單
+            }
+          </button>
+        }
+        @if (task.applicationType === 'write_off' && task.writeOffDetail) {
+          <button type="button" class="btn btn-outline-secondary inline-flex items-center gap-2"
+                  [disabled]="writeOffPdfService.pdfLoading()" (click)="printWriteOffPdf(task)">
+            @if (writeOffPdfService.pdfLoading()) {
+              <span class="spinner-border spinner-border-sm" role="status"></span>
+              產生中…
+            } @else {
+              <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#printer"></use></svg>
+              列印沖銷單
+            }
+          </button>
+        }
+        @if (task.applicationType === 'travel' && task.travelDetail) {
+          <button type="button" class="btn btn-outline-secondary inline-flex items-center gap-2"
+                  [disabled]="travelPdfService.pdfLoading()" (click)="printTravelPdf(task)">
+            @if (travelPdfService.pdfLoading()) {
+              <span class="spinner-border spinner-border-sm" role="status"></span>
+              產生中…
+            } @else {
+              <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#printer"></use></svg>
+              列印出差表
+            }
+          </button>
+        }
+        @if (task.applicationType === 'holiday_travel' && task.travelDetail) {
+          <button type="button" class="btn btn-outline-secondary inline-flex items-center gap-2"
+                  [disabled]="holidayTravelPdfService.pdfLoading()" (click)="printHolidayTravelPdf(task)">
+            @if (holidayTravelPdfService.pdfLoading()) {
+              <span class="spinner-border spinner-border-sm" role="status"></span>
+              產生中…
+            } @else {
+              <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#printer"></use></svg>
+              列印申請單
+            }
+          </button>
+        }
+        @if (task.applicationType === 'travel_write_off' && task.travelWriteOffDetail) {
+          <button type="button" class="btn btn-outline-secondary inline-flex items-center gap-2"
+                  [disabled]="travelWriteOffPdfService.pdfLoading()" (click)="printTravelWriteOffPdf(task)">
+            @if (travelWriteOffPdfService.pdfLoading()) {
+              <span class="spinner-border spinner-border-sm" role="status"></span>
+              產生中…
+            } @else {
+              <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#printer"></use></svg>
+              列印出差沖銷單
+            }
+          </button>
+        }
+        @if (task.applicationType === 'travel_payment' && task.travelPaymentDetail) {
+          <button type="button" class="btn btn-outline-secondary inline-flex items-center gap-2"
+                  [disabled]="travelPaymentPdfService.pdfLoading()" (click)="printTravelPaymentPdf(task)">
+            @if (travelPaymentPdfService.pdfLoading()) {
+              <span class="spinner-border spinner-border-sm" role="status"></span>
+              產生中…
+            } @else {
+              <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#printer"></use></svg>
+              列印出差請款單
+            }
+          </button>
+        }
+        @if (task.applicationType === 'pre_review' && task.preReviewDetail) {
+          <button type="button" class="btn btn-outline-secondary inline-flex items-center gap-2"
+                  [disabled]="preReviewPdfService.pdfLoading()" (click)="printPreReviewPdf(task)">
+            @if (preReviewPdfService.pdfLoading()) {
+              <span class="spinner-border spinner-border-sm" role="status"></span>
+              產生中…
+            } @else {
+              <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#printer"></use></svg>
+              列印預審單
+            }
+          </button>
+        }
+      </div>
     </div>
 
     @if (errorMsg()) {
@@ -1628,91 +1731,8 @@
                 <div class="text-muted small mb-1 fw-500">審核意見：</div>
                 <div class="border rounded p-4 bg-[--bg-base] small mb-4">{{ task.reviewNote }}</div>
               }
+              <!-- 列印按鈕統一移到頁首（各階段皆可列印），此處只留返回 -->
               <div class="mt-2 flex gap-2">
-                @if (task.applicationType === 'payment_request' && task.paymentDetail) {
-                  <button type="button" class="btn btn-primary inline-flex items-center gap-2"
-                          [disabled]="paymentPdfService.pdfLoading()" (click)="printPaymentPdf(task)">
-                    @if (paymentPdfService.pdfLoading()) {
-                      <span class="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                      產生中…
-                    } @else {
-                      <svg class="sa-icon" style="width:16px;height:16px;stroke:currentColor">
-                        <use href="/assets/icons/sprite.svg#printer"></use>
-                      </svg>
-                      列印請款單
-                    }
-                  </button>
-                }
-                @if (task.applicationType === 'advance' && task.advanceDetail && task.status === 'approved') {
-                  <button type="button" class="btn btn-outline-secondary inline-flex items-center gap-2"
-                          [disabled]="advancePdfService.pdfLoading()" (click)="printAdvancePdf(task)">
-                    @if (advancePdfService.pdfLoading()) {
-                      <span class="inline-block w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin"></span>
-                      產生中…
-                    } @else {
-                      <svg class="sa-icon" style="width:16px;height:16px;stroke:currentColor">
-                        <use href="/assets/icons/sprite.svg#printer"></use>
-                      </svg>
-                      列印預支單
-                    }
-                  </button>
-                }
-                @if (task.applicationType === 'write_off' && task.writeOffDetail && task.status === 'approved') {
-                  <button type="button" class="btn btn-outline-secondary inline-flex items-center gap-2"
-                          [disabled]="writeOffPdfService.pdfLoading()" (click)="printWriteOffPdf(task)">
-                    @if (writeOffPdfService.pdfLoading()) {
-                      <span class="inline-block w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin"></span>
-                      產生中…
-                    } @else {
-                      <svg class="sa-icon" style="width:16px;height:16px;stroke:currentColor">
-                        <use href="/assets/icons/sprite.svg#printer"></use>
-                      </svg>
-                      列印沖銷單
-                    }
-                  </button>
-                }
-                @if (task.applicationType === 'travel_write_off' && task.travelWriteOffDetail && task.status === 'approved') {
-                  <button type="button" class="btn btn-outline-secondary inline-flex items-center gap-2"
-                          [disabled]="travelWriteOffPdfService.pdfLoading()" (click)="printTravelWriteOffPdf(task)">
-                    @if (travelWriteOffPdfService.pdfLoading()) {
-                      <span class="inline-block w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin"></span>
-                      產生中…
-                    } @else {
-                      <svg class="sa-icon" style="width:16px;height:16px;stroke:currentColor">
-                        <use href="/assets/icons/sprite.svg#printer"></use>
-                      </svg>
-                      列印出差沖銷單
-                    }
-                  </button>
-                }
-                @if (task.applicationType === 'travel_payment' && task.travelPaymentDetail && task.status === 'approved') {
-                  <button type="button" class="btn btn-outline-secondary inline-flex items-center gap-2"
-                          [disabled]="travelPaymentPdfService.pdfLoading()" (click)="printTravelPaymentPdf(task)">
-                    @if (travelPaymentPdfService.pdfLoading()) {
-                      <span class="inline-block w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin"></span>
-                      產生中…
-                    } @else {
-                      <svg class="sa-icon" style="width:16px;height:16px;stroke:currentColor">
-                        <use href="/assets/icons/sprite.svg#printer"></use>
-                      </svg>
-                      列印出差請款單
-                    }
-                  </button>
-                }
-                @if (task.applicationType === 'pre_review' && task.preReviewDetail && task.status === 'approved') {
-                  <button type="button" class="btn btn-outline-secondary inline-flex items-center gap-2"
-                          [disabled]="preReviewPdfService.pdfLoading()" (click)="printPreReviewPdf(task)">
-                    @if (preReviewPdfService.pdfLoading()) {
-                      <span class="inline-block w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin"></span>
-                      產生中…
-                    } @else {
-                      <svg class="sa-icon" style="width:16px;height:16px;stroke:currentColor">
-                        <use href="/assets/icons/sprite.svg#printer"></use>
-                      </svg>
-                      列印預審單 PDF
-                    }
-                  </button>
-                }
                 <a routerLink="/admin/approval-tasks" [queryParams]="backQueryParams" class="btn btn-outline-secondary">返回列表</a>
               </div>
             </div>

@@ -188,6 +188,10 @@ export class OvertimeReport implements OnInit {
             estimatedHours: Number(r.estimatedHours).toFixed(1),
             actualHours: r.actualHours != null ? Number(r.actualHours).toFixed(1) : null,
             reason: r.reason ?? '',
+            // 這兩欄漏了會靜默顯示錯誤：compensationType 為 undefined 時 badge 一律落到「補休」，
+            // 選加班費的單看起來像選了補休；overtimePayAmount 為 undefined 則讓「加班費」欄印出空白而非「—」
+            compensationType: r.compensationType === 'pay' ? 'pay' : 'compensatory',
+            overtimePayAmount: r.overtimePayAmount ?? null,
           }))
         );
         this.loading.set(false);
@@ -226,6 +230,8 @@ export class OvertimeReport implements OnInit {
             '專案': projectText,
             '預估總時數': r.estimatedHours != null ? Number(r.estimatedHours).toFixed(1) : '',
             '實際時數': r.actualHours != null ? Number(r.actualHours).toFixed(1) : '',
+            '補償方式': r.compensationType === 'pay' ? '加班費' : '補休',
+            '加班費': r.overtimePayAmount != null ? Number(r.overtimePayAmount) : '',
             '事由': r.reason ?? '',
           };
         });

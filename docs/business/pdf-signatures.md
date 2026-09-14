@@ -2,14 +2,18 @@
 
 7 個含簽名檔的 PDF（請款 / 預支 / 出差預支 / 出差預支沖銷 / 出差請款 / 預支沖銷 / 假日執行活動）共用 [Admin/src/app/shared/services/pdf-core.service.ts](../../Admin/src/app/shared/services/pdf-core.service.ts) 的 `buildDynamicSignBlocks()` helper，依 `flow.steps` 動態建立簽名欄。
 
-## 何時可以列印（2026-08 統一）
+## 何時可以列印（2026-08 統一，2026-09 擴及審核者側）
 
 這 7 種即「紙本財務單」，送出成功彈窗要求「**單位主管簽核完畢後**，再印出<單別>連同紙本單據寄回會計室」——紙本在流程**中途**就要印，故：
 
 - **申請詳情頁的列印按鈕條件一律 `approvalStatus !== 'draft'`**（不是 `=== 'approved'`）；已簽的關卡帶簽章與日期、未簽的留白
 - PDF service 內**不得再放 `status !== 'approved'` 的閘**（只擋資料不足），否則按鈕看得到、按了沒反應
 - 前端規範見 [frontend-design.md §8.6](../frontend-design.md#86-列印-pdf-按鈕的顯示條件)
-- 預審申請不走紙本流程，維持 `approved` 才可印；簽核作業頁（審核者側）亦維持 `approved`
+- **簽核作業頁（審核者側）同樣不綁狀態**（2026-09 改）：列印按鈕移到頁首，待審 / 退回修改中 / 已拒絕 / 已核准四個階段皆可印。
+  原本全部擠在「已核准」分支，等於把「主管簽完就印紙本」這件**待審階段**的事擋掉。方法層的 `task.status !== 'approved'` 守衛一併移除
+- **預審申請 2026-09 起併入本規則**（原為「不走紙本流程，維持 approved 才可印」），詳情頁與表單檢視頁皆改 `!== 'draft'`
+- **簽核作業頁補上出差預支 / 假日執行活動**（2026-09）：原本審核者側只有 6 種可印，兩者共用 `TravelRequest` 但 PDF 版面不同，分別走 `TravelPdfService` / `HolidayTravelPdfService`
+- **請假 / 加班 / 銷假無 PDF**：不走紙本流程，三者本來就沒有列印功能（非遺漏）
 
 ## 規則
 
