@@ -20,6 +20,9 @@ import {WriteOffRequestService} from '../../../write-off-requests/services/write
 import {WriteOffPdfService} from '../../../write-off-requests/services/write-off-pdf.service';
 import {PaymentPdfService} from '../../../payment-requests/services/payment-pdf.service';
 import {TravelRequestService} from '../../../travel-requests/services/travel-request.service';
+import {TravelPdfService} from '../../../travel-requests/services/travel-pdf.service';
+import {HolidayTravelRequestService} from '../../../holiday-travel-requests/services/holiday-travel-request.service';
+import {HolidayTravelPdfService} from '../../../holiday-travel-requests/services/holiday-travel-pdf.service';
 import {TravelWriteOffRequestService} from '../../../travel-write-off-requests/services/travel-write-off-request.service';
 import {TravelWriteOffPdfService} from '../../../travel-write-off-requests/services/travel-write-off-pdf.service';
 import {TravelPaymentRequestService} from '../../../travel-payment-requests/services/travel-payment-request.service';
@@ -63,6 +66,9 @@ export class ApprovalTaskReview implements OnInit {
   protected writeOffPdfService = inject(WriteOffPdfService);
   protected paymentPdfService = inject(PaymentPdfService);
   private travelService               = inject(TravelRequestService);
+  protected travelPdfService          = inject(TravelPdfService);
+  private holidayTravelService        = inject(HolidayTravelRequestService);
+  protected holidayTravelPdfService   = inject(HolidayTravelPdfService);
   private travelWriteOffService       = inject(TravelWriteOffRequestService);
   protected travelWriteOffPdfService  = inject(TravelWriteOffPdfService);
   private travelPaymentService        = inject(TravelPaymentRequestService);
@@ -558,7 +564,7 @@ export class ApprovalTaskReview implements OnInit {
 
   /** 列印預支申請表 PDF */
   printAdvancePdf(task: ApprovalTask) {
-    if (!task.advanceDetail || task.status !== 'approved') return;
+    if (!task.advanceDetail) return;
     this.advanceService.getById(task.advanceDetail.advanceRequestId).subscribe({
       next: r => {
         this.advancePdfService.printAdvanceRequest(
@@ -577,7 +583,7 @@ export class ApprovalTaskReview implements OnInit {
 
   /** 列印預支沖銷申請表 PDF */
   printWriteOffPdf(task: ApprovalTask) {
-    if (!task.writeOffDetail || task.status !== 'approved') return;
+    if (!task.writeOffDetail) return;
     this.writeOffService.getById(task.writeOffDetail.writeOffRequestId).subscribe({
       next: r => {
         this.writeOffPdfService.printWriteOff(
@@ -596,9 +602,47 @@ export class ApprovalTaskReview implements OnInit {
     });
   }
 
+  /** 列印出差預支申請表 PDF */
+  printTravelPdf(task: ApprovalTask) {
+    if (!task.travelDetail) return;
+    this.travelService.getById(task.travelDetail.travelRequestId).subscribe({
+      next: r => {
+        this.travelPdfService.printTravelRequest(
+          r,
+          task.submittedBy,
+          task.approvalRecords ?? [],
+          task.flow,
+          task.submittedBySignatureUrl,
+        );
+      },
+      error: () => {
+        this.errorMsg.set('載入出差預支申請資料失敗，無法匯出 PDF。');
+      },
+    });
+  }
+
+  /** 列印假日執行活動申請表 PDF（與出差共用 TravelRequest，但版面與津貼欄位不同） */
+  printHolidayTravelPdf(task: ApprovalTask) {
+    if (!task.travelDetail) return;
+    this.holidayTravelService.getById(task.travelDetail.travelRequestId).subscribe({
+      next: r => {
+        this.holidayTravelPdfService.printHolidayTravelRequest(
+          r,
+          task.submittedBy,
+          task.approvalRecords ?? [],
+          task.flow,
+          task.submittedBySignatureUrl,
+        );
+      },
+      error: () => {
+        this.errorMsg.set('載入假日執行活動申請資料失敗，無法匯出 PDF。');
+      },
+    });
+  }
+
   /** 列印出差請款申請表 PDF */
   printTravelPaymentPdf(task: ApprovalTask) {
-    if (!task.travelPaymentDetail || task.status !== 'approved') return;
+    if (!task.travelPaymentDetail) return;
     this.travelPaymentService.getById(task.travelPaymentDetail.travelPaymentRequestId).subscribe({
       next: r => {
         this.travelPaymentPdfService.printTravelPaymentRequest(
@@ -618,7 +662,7 @@ export class ApprovalTaskReview implements OnInit {
 
   /** 列印出差沖銷申請表 PDF */
   printTravelWriteOffPdf(task: ApprovalTask) {
-    if (!task.travelWriteOffDetail || task.status !== 'approved') return;
+    if (!task.travelWriteOffDetail) return;
     this.travelWriteOffService.getById(task.travelWriteOffDetail.travelWriteOffRequestId).subscribe({
       next: r => {
         this.travelWriteOffPdfService.printTravelWriteOff(
@@ -636,7 +680,7 @@ export class ApprovalTaskReview implements OnInit {
   }
 
   printPreReviewPdf(task: ApprovalTask) {
-    if (!task.preReviewDetail || task.status !== 'approved') return;
+    if (!task.preReviewDetail) return;
     this.preReviewPdfService.printPreReviewRequest(task);
   }
 

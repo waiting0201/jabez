@@ -1423,7 +1423,7 @@ overtimeStartHint = computed<string>(() => {
 
 ### 8.6 列印 PDF 按鈕的顯示條件
 
-**7 種紙本財務單**（請款 / 預支 / 預支沖銷 / 出差預支 / 出差預支沖銷 / 出差請款 / 假日執行活動）
+**8 種紙本單**（請款 / 預審 / 預支 / 預支沖銷 / 出差預支 / 出差預支沖銷 / 出差請款 / 假日執行活動）
 的申請詳情頁，列印按鈕一律：
 
 ```html
@@ -1438,7 +1438,16 @@ overtimeStartHint = computed<string>(() => {
 - **draft 不可印**：草稿還沒有單號以外的簽核事實，印出來是張空白單。
 - **未簽的關卡在簽名欄留白**：`buildDynamicSignBlocks` 依 `flow.steps` 產生欄位、有 `ApprovalRecord` 的才填簽章與日期，pending 印出來就是「已簽的有章、未簽的留白」。
 - **PDF service 內不可再放狀態閘**：`printXxx()` 只擋資料不足（如 `if (!task.paymentDetail) return;`），不得再寫 `task.status !== 'approved'` —— 否則按鈕看得到、按了沒反應（此坑已於 2026-08 在 `payment-pdf.service.ts` 踩過）。
-- **例外**：預審申請不走紙本流程，維持 `approved` 才可列印；簽核作業頁（approval-task-review）的審核者列印同樣維持 `approved`。
+- **簽核作業頁（[approval-task-review](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/approval-task-review.html)）的列印按鈕放在頁首、不綁 `task.status`**（2026-09 改）：
+  原本 8 個按鈕全擠在 `@else if (task.status === 'approved')` 分支裡，審核者在**待審 / 退回修改中 / 已拒絕**三個階段完全看不到列印——
+  而「主管簽完就印紙本寄回會計室」正是**待審階段**要做的事，等於整條紙本流程在審核者側被擋掉。
+  簽核台上的單必為非草稿，故頁首那組按鈕**只判 `applicationType` 與該類型的 detail 是否載回**，不再加狀態條件；
+  已核准分支裡只留「返回列表」。同理，兼作檢視頁的 [payment-form](../Admin/src/app/features/admin/payment-requests/pages/payment-form/payment-form.html) /
+  [pre-review-form](../Admin/src/app/features/admin/pre-review-requests/pages/pre-review-form/pre-review-form.html) 也把列印從「已核准」卡片搬到頁首，條件為 `approvalStatus !== 'draft'`。
+- **預審申請 2026-09 起併入紙本規則**：詳情頁條件由 `=== 'approved'` 改為 `!== 'draft'`，與其餘 7 種一致。
+- **簽核作業頁另補上出差預支 / 假日執行活動兩種列印**（2026-09）：原本只有 6 種，審核者印不到這兩張；
+  兩者共用 `TravelRequest`（`travelDetail.travelRequestId`）但版面不同，故分別走 `TravelPdfService` / `HolidayTravelPdfService`，
+  資料各自以 `TravelRequestService` / `HolidayTravelRequestService` 的 `getById` 取回。
 
 ---
 
