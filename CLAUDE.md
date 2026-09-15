@@ -18,7 +18,7 @@
 │   ├── api-routes.md        # API 路由清單
 │   ├── database-schema.md   # 34 個 entity 清單
 │   ├── authentication.md    # JWT 規格 / 登入流程 / Superadmin
-│   └── business/            # 業務功能（11 個檔，每業務一檔）
+│   └── business/            # 業務功能（13 個檔，每業務一檔）
 │       ├── application-forms.md      # 9 種申請表類型總覽
 │       ├── leave-rules.md            # 請假規則
 │       ├── approval-flow.md          # 請款簽核流程
@@ -30,7 +30,8 @@
 │       ├── attendance-reminder.md    # 打卡提醒
 │       ├── payroll-formula.md        # 薪資公式
 │       ├── hr-profile.md             # 員工人事資料卡
-│       └── notifications.md          # 通知系統清單（Email + LINE）
+│       ├── notifications.md          # 通知系統清單（Email + LINE）
+│       └── flexible-work-hours.md   # 四週彈性工時（規格，**尚未實作**）
 └── Jabez.sln       # Visual Studio 方案檔
 ```
 
@@ -140,6 +141,7 @@ Bug 修復：
 - [payroll-formula.md](docs/business/payroll-formula.md) — 薪資 7 條公式 + 健保眷屬計算
 - [hr-profile.md](docs/business/hr-profile.md) — 員工人事資料卡（3 Tab + 9 子表 + 整批替換）
 - [notifications.md](docs/business/notifications.md) — 通知系統清單（9 種 Email + 9 種 LINE Flex Message + 系統開關 + 打卡提醒）
+- [flexible-work-hours.md](docs/business/flexible-work-hours.md) — **四週彈性工時（規格，尚未實作）**：勞基法 §30-1 框架 / 09:00–18:00＋午休 12:30–13:30 / 個人排班排例休 / 出勤排休總覽表 / 打卡與加班連動 / 補休 FIFO 6 個月效期換津貼 / 假日執行活動退場 / **與現行系統差異對照 + 未決事項**
 
 ---
 
