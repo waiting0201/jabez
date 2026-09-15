@@ -358,7 +358,19 @@ Api/
 │   │                                  #      搭配「申請人不再自動被算成參與者」的程式變更。薪資即時重算無月結快照，
 │   │                                  #      故把 pending / returned / approved 的假日活動單的申請人補一列
 │   │                                  #      （HolidayDays=NULL＝全程參與，等值於舊制的整單 HolidayDays），讓既有金額不變；
-│   │                                  #      已在清單中者跳過 —— 這批人舊制被 SUM 兩次（溢發雙倍），跑完會回正為單份
+│   │                                  #      已在清單中者跳過 —— 這批人舊制被 SUM 兩次（溢發雙倍），跑完會回正為單份、
+│   │                                  #   09 補登一張「已核准」的育嬰留職停薪請假單含簽核足跡（@Commit 空跑開關，冪等可重跑）：
+│   │                                  #      紙本早已核准、系統無單，而年資扣除 / 特休 / 出缺勤 / 730 天額度全以 LeaveRequests 為唯一來源。
+│   │                                  #      **系統其實允許從前台補登過去日期**（前後端皆無「起始日 ≥ 今天」檢查，下界只有 RequestDateGuard 的
+│   │                                  #      今日 −3 年，且請假重疊驗證不看打卡），此腳本只是免去三位主管為舊案重簽。
+│   │                                  #      一次寫三張表：LeaveRequests（approved）+ ApprovalRecords（每個生效關卡一列）
+│   │                                  #      + RequestDesignatedReviewers（指定審核關卡）；**不寫 EscalationOverrides**（核准當下本就會被刪）。
+│   │                                  #      三個關鍵：① `EndDate` 必須是 **23:59**（EndOfDay），寫 00:00 會讓最後一天的打卡阻擋與重疊檢查失效；
+│   │                                  #      ② `Hours` = **日曆天 × 8**（parental_leave 不在 WorkingDayLeaveTypes，六日與國定假日照算）；
+│   │                                  #      ③ `ChildBirthDate` 是 730 天額度的分組鍵，不寫則 parental-quota 永遠算不到這張單。
+│   │                                  #      不寫死 Id：員工 / 指定審核者以 Email 解析，流程依部門沿 ParentId 往上（同 ResolveApprovalItemIdAsync
+│   │                                  #      的優先序），固定關卡審核者依 部門 + 職稱 解析且**排除 @example.com 測試帳號與 Superadmin**
+│   │                                  #      （正式站仍有 active 的測試主管帳號，不排除會把簽名記到測試帳號上），每關須恰好 1 位否則整份中止
 │   └── Seed/                          # 一次性匯入工具（共用 RocDateParser 解民國年）
 │       ├── EmployeeImporter + EmployeeImportDtos + employee-import.json  # 員工人事資料（RUN_EMPLOYEE_IMPORT 旗標，IMPORT_UPLOAD_FILES 控制附件上傳）
 │       ├── ProjectImporter + ProjectImportDtos + project-import.json     # 專案資料（RUN_PROJECT_IMPORT 旗標，PROJECT_IMPORT_DRY_RUN 只印不寫；來源 reference/專案資料-115.07.29.xls；以 Code upsert、期別明細全量重建）
