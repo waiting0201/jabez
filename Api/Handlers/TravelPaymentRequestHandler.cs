@@ -78,11 +78,14 @@ public sealed class TravelPaymentRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid travel payment request ID format."));
 
-        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
-        var exists = user?.IsSuperAdmin == true
-            ? await db.TravelPaymentRequests.AnyAsync(x => x.Id == intId)
-            : await db.TravelPaymentRequests.AnyAsync(x => x.Id == intId && x.EmployeeId == userId);
-        if (!exists)
+        // 申請人以外，簽核關係人也要讀得到（簽核詳情頁的列印 PDF 走本端點取原料），判準見 RequestViewAccess
+        var employeeId = await db.TravelPaymentRequests.AsNoTracking()
+            .Where(x => x.Id == intId).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync();
+        if (employeeId is null)
+            return new NotFoundObjectResult(ApiResponse.Fail("Travel payment request not found."));
+
+        var principal = await jwtService.ValidateRequestAsync(req);
+        if (!await RequestViewAccess.CanViewAsync(db, principal, userId, "travel_payment", intId, employeeId == userId))
             return new NotFoundObjectResult(ApiResponse.Fail("Travel payment request not found."));
 
         var item = await reader.GetByIdAsync(intId);

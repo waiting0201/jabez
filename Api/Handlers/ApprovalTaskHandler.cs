@@ -160,20 +160,14 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 var userIdStr = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
                 if (Guid.TryParse(userIdStr, out var callerId))
                 {
+                    // 判準（申請人本人 / approval-tasks:read / 簽核足跡）收斂於 RequestViewAccess，
+                    // 與申請單自身的 GET /{type}-requests/{id} 共用同一份 —— 簽核頁的列印 PDF 走的是後者，
+                    // 兩邊判準若不一致，就會出現「詳情看得到、列印卻 404」。
+                    // 申請人本人：詳情頁的簽核歷程與 PDF 簽名章都取自本端點，不放行會讓申請人印出無簽核欄的單子。
                     var appType = task.ApplicationType;
-                    // 1. 曾審核過（有 ApprovalRecord）
-                    bool hasRecord = await db.ApprovalRecords.AsNoTracking()
-                        .AnyAsync(ar => ar.ApplicationType == appType && ar.ApplicationId == intId && ar.ReviewedById == callerId);
-                    // 2. 被指定為審核者（任何狀態）
-                    bool isDesignated = await db.RequestDesignatedReviewers.AsNoTracking()
-                        .AnyAsync(r => r.RequestType == appType && r.RequestId == intId && r.ReviewerId == callerId);
-                    // 3. 符合全域審核權限（有 approval-tasks:read 可看清單的人也能看詳情）
-                    bool hasReadPerm = principal.FindAll("permissions").Any(c => c.Value == PermissionCodes.ApprovalTasksRead);
-                    // 4. 申請人本人（詳情頁的簽核歷程與 PDF 簽名章都取自本端點，不放行會讓申請人印出無簽核欄的單子）
-                    bool isApplicant = !hasRecord && !isDesignated && !hasReadPerm
-                                    && await IsApplicantAsync(appType, intId, callerId);
-
-                    if (!hasRecord && !isDesignated && !hasReadPerm && !isApplicant)
+                    if (!await RequestViewAccess.CanViewAsync(
+                            db, principal, callerId, appType, intId,
+                            await IsApplicantAsync(appType, intId, callerId)))
                         return new ObjectResult(ApiResponse.Fail("您沒有權限查看此申請單。")) { StatusCode = 403 };
                 }
             }

@@ -147,21 +147,15 @@ public sealed class WriteOffRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid write-off request ID format."));
 
-        if (!await db.WriteOffRecords.AnyAsync(x => x.Id == intId))
+        // 申請人以外，簽核關係人也要讀得到（簽核詳情頁的列印 PDF 走本端點取原料），判準見 RequestViewAccess
+        var submittedById = await db.WriteOffRecords.AsNoTracking()
+            .Where(x => x.Id == intId).Select(x => (Guid?)x.SubmittedById).FirstOrDefaultAsync();
+        if (submittedById is null)
             return new NotFoundObjectResult(ApiResponse.Fail("Write-off request not found."));
 
-        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
-        if (user?.IsSuperAdmin != true)
-        {
-            bool isSubmitter = await db.WriteOffRecords.AnyAsync(x => x.Id == intId && x.SubmittedById == userId);
-            bool hasReviewed = await db.ApprovalRecords.AsNoTracking()
-                .AnyAsync(ar => ar.ApplicationType == "write_off" && ar.ApplicationId == intId && ar.ReviewedById == userId);
-            bool isDesignated = await db.RequestDesignatedReviewers.AsNoTracking()
-                .AnyAsync(r => r.RequestType == "write_off" && r.RequestId == intId && r.ReviewerId == userId);
-
-            if (!isSubmitter && !hasReviewed && !isDesignated)
-                return new NotFoundObjectResult(ApiResponse.Fail("Write-off request not found."));
-        }
+        var principal = await jwtService.ValidateRequestAsync(req);
+        if (!await RequestViewAccess.CanViewAsync(db, principal, userId, "write_off", intId, submittedById == userId))
+            return new NotFoundObjectResult(ApiResponse.Fail("Write-off request not found."));
 
         var item = await reader.GetByIdAsync(intId);
         return new OkObjectResult(ApiResponse.Ok(item));
