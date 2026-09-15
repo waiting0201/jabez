@@ -14,6 +14,11 @@
 - **預審申請 2026-09 起併入本規則**（原為「不走紙本流程，維持 approved 才可印」），詳情頁與表單檢視頁皆改 `!== 'draft'`
 - **簽核作業頁補上出差預支 / 假日執行活動**（2026-09）：原本審核者側只有 6 種可印，兩者共用 `TravelRequest` 但 PDF 版面不同，分別走 `TravelPdfService` / `HolidayTravelPdfService`
 - **請假 / 加班 / 銷假無 PDF**：不走紙本流程，三者本來就沒有列印功能（非遺漏）
+- ⚠️ **審核者側的列印取原料時走的是申請單端點**（`GET /{type}-requests/{id}`），不是 `approval-tasks` 端點 ——
+  簽核詳情頁看得到不代表印得出來。該端點原本只放行申請人，審核者一按就跳「載入 XX 申請資料失敗，無法匯出 PDF」；
+  2026-09 起兩邊改共用 [`RequestViewAccess`](../../Api/Common/RequestViewAccess.cs)（規範見
+  [backend-design.md §3.4 單筆詳情的檢視授權](../backend-design.md)）。新增申請類型的列印時，
+  務必**以審核者身分**實測一次，別只用 Superadmin 或申請人本人測（那兩種身分本來就通得過）
 
 ## 規則
 

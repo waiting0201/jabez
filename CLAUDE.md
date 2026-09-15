@@ -451,6 +451,14 @@ Api/
 │   │                                    **送簽當下的第二個戳記＝`SubmittedAt`（申請日期，2026-09 新增）**：10 張申請父表各一欄 `DateTime?`，草稿為 null，
 │   │                                    以 `x.SubmittedAt ??= Clock.Now;` 緊接取號寫入，與取號共用同三條守則；
 │   │                                    `CreatedAt` 維持原義（建立草稿時間）不動，全站「申請日期」一律讀 `SubmittedAt`，兩個戳記必須一起做
+│   ├── RequestViewAccess.cs           # 申請單「單筆詳情」檢視授權單一真相（2026-09 新增）：申請人本人 ∪ Superadmin ∪ 持 `approval-tasks:read`
+│   │                                    ∪ 曾審核（ApprovalRecord）∪ 指定審核者 ∪ 升級指派（EscalationOverride），不符回 404。
+│   │                                    起因：**簽核詳情頁的列印 PDF 是走申請單自身的 `GET /{type}-requests/{id}` 取原料**，而該端點原本只認申請人，
+│   │                                    審核者一按列印就拿到 404 →「載入 XX 申請資料失敗，無法匯出 PDF」（travel / travel_payment 全壞、
+│   │                                    write_off 系列在**待審階段**壞）。故 `GET /approval-tasks/{appType}/{id}` 與 5 支申請單端點**共用這一份判準**，
+│   │                                    收緊授權時要一起收。**advance 為反向案例**：原本毫無存取控制（逐一試 id 可讀遍全公司預支明細，
+│   │                                    而列表只列自己的單），2026-09 一併收斂＝補缺口而非放寬。兩個地雷：① TravelRequests 一表兩型，須依 `IsHolidayTravel` 傳 `travel` / `holiday_travel`，
+│   │                                    否則查不到自己的簽核足跡；② 路由層權限碼仍在最外層（無 `xxx-requests:read` 者在 AppRouter 就 403，根本進不到這裡）
 │   ├── RequestDateGuard.cs            # 申請單「使用者輸入日期」年份合理性單一真相（2026-09 新增，純函式無 I/O）：今日 ±3 年（子女出生日期另為「過去 3 年內且不得晚於今日」），
 │   │                                    超出回 400 且訊息點名「是否誤填民國年」。10 種申請表的 Create / Update 全數套用（Ensure / EnsureAll / EnsureEach / EnsurePastWithin）。
 │   │                                    三個地雷：① 範圍是防呆不是業務規則（±3 年須容納育嬰留停 730 天的迄日）；② 必須排在該類型的資格 / 額度驗證之前，

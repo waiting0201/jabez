@@ -161,6 +161,36 @@ JWT 驗證 + 權限檢查由 RouterFunction → AppRouter 統一執行；Handler
 
 共用一組碼會造成「能打自己的卡 ＝ 能改全公司的卡」。權限碼只回答「**誰**能做」；「**能對誰**做」屬於資料範圍，另由 Handler 內的部門可見性 scope（`IProjectAccessResolver`）負責。讀寫兩端的 scope 必須對稱：若列表端有 scope 而寫入端沒有，就是缺口（`AttendanceHandler.UpdateAsync` 在 2026-08 前即為此例）。
 
+#### 單筆詳情的檢視授權（`RequestViewAccess`）
+
+申請單的 `GET /{type}-requests/{id}` 除了路由層權限碼，還要回答「**這張單**給不給你看」。判準收斂在
+[`Api/Common/RequestViewAccess.cs`](../Api/Common/RequestViewAccess.cs)：
+
+> 申請人本人 ∪ Superadmin ∪ 持 `approval-tasks:read`（＝簽核台可見者）∪ 曾審核過（`ApprovalRecord`）
+> ∪ 被指定為審核者（`RequestDesignatedReviewer`）∪ 被指派升級審核（`EscalationOverride`），
+> 不符者一律回 **404**（不回 403，避免用狀態碼探測單號是否存在）。
+
+⚠️ **簽核詳情頁的列印 PDF 走的是申請單端點、不是 `approval-tasks` 端點**，所以
+`GET /approval-tasks/{appType}/{id}` 與 `GET /{type}-requests/{id}` 兩邊的判準**必須同一份** ——
+不一致的症狀是「詳情頁看得到、一按列印卻跳『載入 XX 申請資料失敗，無法匯出 PDF』」。
+2026-09 修正前正是如此：travel / travel_payment 只認 `EmployeeId == 我`（審核者一律 404）、
+write_off 系列認「已審 ∪ 指定審核」（**待審階段**、走固定池的審核者仍 404）、advance 則完全不判 ——
+同一件事五個 handler 三種寫法。現行**五支申請單端點**（advance / travel（含 holiday_travel）/ travel_payment /
+write_off / travel_write_off）與 `approval-tasks` 詳情共用這一份判準。
+
+⚠️ advance 是**反向**案例：它原本毫無存取控制，任何持 `advance-requests:read` 的人逐一試 id 就能讀遍全公司的預支明細，
+而列表 `GetAllAsync` 非 Superadmin 一律只列自己的單 —— 2026-09 一併收斂，是補上缺口而非放寬。
+新增申請類型時，**列表的可見範圍與單筆的檢視授權要一起設計**。
+
+三個施工守則：
+
+1. **`applicationType` 要與送簽時寫進多型足跡表的值一致**。`TravelRequests` 一張表承載兩種申請，
+   須依 `IsHolidayTravel` 解析為 `travel` / `holiday_travel`，傳錯就查不到自己的簽核足跡。
+2. **`isApplicant` 由呼叫端算**（各表的申請人欄位不同：`SubmittedById` / `EmployeeId`），
+   順手與「單據是否存在」併成同一次查詢，不要為此多打一次 DB。
+3. 路由層權限碼仍然在最外層 —— 審核者若沒有該申請類型的 `xxx-requests:read`，在 `AppRouter` 就會收到 403，
+   本 helper 根本不會被呼叫到。放寬檢視範圍時兩層要一起看。
+
 #### 欄位級權限（Handler 內判定的例外）
 
 「Handler 內禁止檢查權限碼」有一個例外：**同一支端點所有人都進得來，但其中某些欄位只給部分人看**。這種需求無法用路由層權限表達（表達得了就該拆端點），只能在 Handler 內讀 principal 的 `permissions` claim 後抹除欄位。

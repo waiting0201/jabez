@@ -59,13 +59,22 @@ public sealed class AdvanceRequestHandler(
 
     public async Task<IActionResult> GetByIdAsync(HttpRequest req, string id)
     {
+        var userId = await GetUserIdAsync(req);
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid advance request ID format."));
 
-        var item = await reader.GetByIdAsync(intId);
-        if (item is null)
+        // 申請人以外，簽核關係人也要讀得到（簽核詳情頁的列印 PDF 走本端點取原料），判準見 RequestViewAccess。
+        // 列表（GetAllAsync）非 Superadmin 一律只列自己的單，單筆若不設限就能逐一試 id 讀到全公司的預支明細。
+        var submittedById = await db.AdvanceRequests.AsNoTracking()
+            .Where(x => x.Id == intId).Select(x => (Guid?)x.SubmittedById).FirstOrDefaultAsync();
+        if (submittedById is null)
             return new NotFoundObjectResult(ApiResponse.Fail("Advance request not found."));
 
+        var principal = await jwtService.ValidateRequestAsync(req);
+        if (!await RequestViewAccess.CanViewAsync(db, principal, userId, "advance", intId, submittedById == userId))
+            return new NotFoundObjectResult(ApiResponse.Fail("Advance request not found."));
+
+        var item = await reader.GetByIdAsync(intId);
         return new OkObjectResult(ApiResponse.Ok(item));
     }
 

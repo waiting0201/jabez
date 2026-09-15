@@ -49,11 +49,17 @@ public sealed class TravelRequestHandler(
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid travel request ID format."));
 
-        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
-        var exists = user?.IsSuperAdmin == true
-            ? await db.TravelRequests.AnyAsync(x => x.Id == intId)
-            : await db.TravelRequests.AnyAsync(x => x.Id == intId && x.EmployeeId == userId);
-        if (!exists)
+        // 申請人以外，簽核關係人也要讀得到（簽核詳情頁的列印 PDF 走本端點取原料），判準見 RequestViewAccess
+        var owner = await db.TravelRequests.AsNoTracking()
+            .Where(x => x.Id == intId)
+            .Select(x => new { x.EmployeeId, x.IsHolidayTravel })
+            .FirstOrDefaultAsync();
+        if (owner is null)
+            return new NotFoundObjectResult(ApiResponse.Fail("Travel request not found."));
+
+        var principal = await jwtService.ValidateRequestAsync(req);
+        var appType = owner.IsHolidayTravel ? "holiday_travel" : "travel";
+        if (!await RequestViewAccess.CanViewAsync(db, principal, userId, appType, intId, owner.EmployeeId == userId))
             return new NotFoundObjectResult(ApiResponse.Fail("Travel request not found."));
 
         var item = await reader.GetByIdAsync(intId);
