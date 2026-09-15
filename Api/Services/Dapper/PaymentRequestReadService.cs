@@ -313,7 +313,13 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 return $"{alias}.ApprovalStatus = @StatusFilter";
 
             // Normal reviewer — "approved" tab: show tasks the user has already reviewed
-            // 請款申請額外允許財務部成員查看所有已核准的請款（因需設定撥款日期）
+            // 請款申請額外允許財務體系部門查看所有已核准的請款（因需設定撥款明細）。
+            // ⚠️ 範圍必須與「誰能改撥款明細」一致 —— PaymentRequestHandler.UpdateInstallmentsAsync
+            //    用的是 DepartmentCodes.FinancialAndAbove，故此處同樣比對該集合（含改制後英文全名），
+            //    否則會出現「改得動卻看不到」的狀態。
+            // ⚠️ 禁止硬編碼部門 Code：原本寫死 d.Code = N'FIN'，2026 組織改制把 Code 改成英文全名
+            //    （財務管理部 = 'Financial Management Department'、會計室 = 'Accounting Department'）後
+            //    再也沒有任何部門是 'FIN'，整條 OR 對所有人靜默失效，財務／會計只剩「自己親手簽過」的單看得到。
             if (statusFilter == "approved")
                 return $"""
                   {alias}.ApprovalStatus = 'approved'
@@ -328,7 +334,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                     OR EXISTS (
                       SELECT 1 FROM Departments d
                       WHERE d.Id = @ReviewerDepartmentId
-                        AND d.Code = N'FIN'
+                        AND d.Code IN @FinancialDeptCodes
                     )
                     """ : "")}
                   )
@@ -855,6 +861,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             StatusFilter         = statusFilter,
             SubmittedByUserId    = submittedByUserId,
             DirectorStepDeptId = directorStepDeptId,
+            // 財務體系部門代碼（含改制前短碼與改制後英文全名），供「已核准」頁籤的財務可見性判定
+            FinancialDeptCodes = DepartmentCodes.FinancialAndAbove.ToArray(),
             DateFrom = dateFrom?.ToDateTime(TimeOnly.MinValue),
             DateTo   = dateTo?.ToDateTime(TimeOnly.MinValue),
         };

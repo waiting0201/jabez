@@ -273,6 +273,25 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
   **為何後三態不綁 `CurrentStepOrder`**：單子已離開總監那一步 —— `approved` 已走完全部步驟、`returned` / `rejected` 停在退回（拒絕）者所在的步驟，`CurrentStepOrder` 不再指向總監，綁了就永遠查不到東西。
 - **僅供檢視**：此頁籤內的申請單仍只能由總監本人（或 Superadmin）實際核准；財務管理部 / 會計室人員點擊進入詳情頁為唯讀（前端固定顯示查看圖示，不顯示可編輯的鉛筆圖示），送出審核動作仍會被 `AuthorizeStepAsync` 擋下。
 
+## 簽核作業「已核准」頁籤的可見範圍（2026-09 修正硬編碼失效）
+
+「已核准」頁籤預設只列出**我親自審過**的單（`EXISTS ApprovalRecords WHERE ReviewedById = 我`），
+另對**請款申請**開一條後路：**財務體系部門成員看得到全部已核准請款**，因為撥款明細是核准後才填的，
+不能只有簽過那一關的人看得到。判定在 [PaymentRequestReadService.StepMatchClause](../../Api/Services/Dapper/PaymentRequestReadService.cs) 的 `approved` 分支。
+
+- **範圍＝`DepartmentCodes.FinancialAndAbove`**（總監室 / 財務管理部 / 會計室 + 改制前短碼）。
+  必須與「誰能改撥款明細」同一個集合 —— `PATCH /payment-requests/{id}/installments`
+  （[PaymentRequestHandler.UpdateInstallmentsAsync](../../Api/Handlers/PaymentRequestHandler.cs)）用的就是 `FinancialAndAbove`，
+  兩邊不一致就會出現「改得動卻看不到」。
+- **⚠️ 2026-09 修正**：這條後路原本寫死 `AND d.Code = N'FIN'`。2026 組織改制把部門 `Code` 改成英文全名後
+  （財務管理部 = `Financial Management Department`），**再也沒有任何部門的 Code 是 `FIN`**，整條 OR
+  對所有人靜默失效 —— 財務與會計只剩「自己親手簽過」的單看得到，且畫面上沒有任何錯誤徵兆。
+  現改為參數化 `AND d.Code IN @FinancialDeptCodes`，值取自 `DepartmentCodes.FinancialAndAbove`。
+- **非財務體系不受影響**：仍只看得到自己審過的單。
+- **找漏網之魚**：SQL 字面量是 `N'FIN'`，**躲得過**只找雙引號的 `grep -rn '"FIN"' Api/`。
+  正確的檢查是連單引號一起找：`grep -rnE "N?'(FIN|CEO|AC|Jabez HQ)'" Api/Services Api/Handlers Api/Common`
+  （正常應零命中；`Constants.cs` 以雙引號定義，不會被這條命中）。
+
 ## 簽核作業「退回修改中」頁籤（2026-08 新增）
 
 簽核作業列表新增「退回修改中」頁籤，列出 `ApprovalStatus = 'returned'`（已退回、正在申請人手上待修改）的單。此前審核者按下「退回修改」後就再也看不到那張單，只有申請人在各自的申請清單看得到，無從追蹤對方改了沒。
