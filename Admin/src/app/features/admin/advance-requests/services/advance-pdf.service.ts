@@ -48,6 +48,13 @@ export class AdvancePdfService {
       doc.setTextColor(...CIS.forest);
       doc.text('經 費 預 支 申 請 表', pw / 2, y, { align: 'center' });
 
+      // ── 單號（右上角）──
+      doc.setFont(F, 'normal');
+      doc.setFontSize(9.5);
+      doc.setTextColor(...CIS.textMuted);
+      doc.text(`單號：${r.requestNo || '—'}`, pw - mx, y, { align: 'right' });
+      doc.setTextColor(...CIS.textPrimary);
+
       // ── 表頭資訊 ──
       y += 10;
       doc.setFont(F, 'normal');

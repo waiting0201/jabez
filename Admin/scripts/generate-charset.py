@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Generate tc-charset.txt for font subsetting.
-Includes: ASCII printable, CJK punctuation, Big5 Level 1+2,
+Includes: ASCII printable, CJK punctuation, Big5 Level 1+2 (含姓名罕用字),
 currency/math symbols, and all Chinese chars found in PDF source files.
 """
 import os
@@ -27,9 +27,12 @@ extra = '\u00A5\u00B7\u2013\u2014\u2018\u2019\u201C\u201D\u2026\u2030\u20AC\u210
 for c in extra:
     chars.add(c)
 
-# 4. Big5 Level 1 characters only (~5,401 most common Traditional Chinese chars)
-# Level 1 range: A440-C67E (covers all commonly used chars in Taiwan)
-for lead in range(0xA4, 0xC7):  # A4xx - C6xx
+# 4. Big5 Level 1 + Level 2 characters (~13,000 Traditional Chinese chars)
+# Level 1: A440-C67E（常用字）
+# Level 2: C940-F9D5（次常用字）—— 姓名用字（如「闓」F16D）多落在此區，
+#          只收 Level 1 會讓 PDF 的員工姓名**靜默缺字**（整個字不印，不是印方框），
+#          從畫面上看不出來，故一律連 Level 2 一起收。
+for lead in list(range(0xA4, 0xC7)) + list(range(0xC9, 0xFA)):
     for trail in list(range(0x40, 0x7F)) + list(range(0xA1, 0xFF)):
         try:
             b = struct.pack('BB', lead, trail)
