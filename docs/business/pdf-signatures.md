@@ -110,6 +110,19 @@
 
 ---
 
+## 表頭單號與中文字型（2026-09）
+
+- **每張紙本單的 PDF 都要印單號**（標題同列右上角，草稿印 `—`）。2026-09 補上預支申請
+  ([advance-pdf.service.ts](../../Admin/src/app/features/admin/advance-requests/services/advance-pdf.service.ts))
+  —— 它是 8 種紙本單裡唯一漏掉的一張，紙本寄回會計室後無法對回系統單號。
+  兩張沖銷單則改在表頭資訊列同時印「沖銷單號 + 關聯母單單號」。
+- **姓名罕用字缺字**：PDF 字型是 subset，原先只收 Big5 第一字面，姓名常見的第二字面字
+  （例「闓」U+95D3）**整個字靜默消失**（「劉闓毅」印成「劉毅」，簽名欄與申請人欄皆受影響）。
+  2026-09 起字集擴至 Big5 第一 + 第二字面。細節與重跑方式見
+  [frontend-design.md §8.8](../frontend-design.md)。
+
+---
+
 ## 跨業務關聯
 
 - **簽核流程主軸**（簽核步驟、狀態、指定審核） → [approval-flow.md](approval-flow.md)

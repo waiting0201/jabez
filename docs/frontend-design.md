@@ -1449,6 +1449,45 @@ overtimeStartHint = computed<string>(() => {
   兩者共用 `TravelRequest`（`travelDetail.travelRequestId`）但版面不同，故分別走 `TravelPdfService` / `HolidayTravelPdfService`，
   資料各自以 `TravelRequestService` / `HolidayTravelRequestService` 的 `getById` 取回。
 
+### 8.7 列印 PDF 的共同表頭：單號（右上角）
+
+每一種紙本單的 PDF **都要印出自己的單號**，位置一律在標題同一列的右上角，樣式固定：
+
+```ts
+// ── 單號（右上角）──
+doc.setFont(F, 'normal');
+doc.setFontSize(9.5);
+doc.setTextColor(...CIS.textMuted);
+doc.text(`單號：${r.requestNo || '—'}`, pw - mx, y, { align: 'right' });
+doc.setTextColor(...CIS.textPrimary);
+```
+
+- 兩張沖銷單例外，改以表頭資訊列的 `lv()` 呈現**兩個**單號（`沖銷單號` + `關聯預支單號` / `關聯出差單號`），
+  因為紙本要能一眼對回母單
+- **`requestNo` 為 `null`（草稿）時印 `—`**，見上方「空值欄位的顯示」
+- **新增申請類型的 PDF 時，這段是必抄項**：2026-09 發現預支申請（[advance-pdf.service.ts](../Admin/src/app/features/admin/advance-requests/services/advance-pdf.service.ts)）
+  是 8 種紙本單裡唯一漏掉的一張 —— 紙本寄回會計室後無法對回系統單號
+
+### 8.8 PDF 中文字型：subset 必須涵蓋 Big5 第一 + 第二字面（**重要**）
+
+PDF 中文走 [pdf-core.service.ts](../Admin/src/app/shared/services/pdf-core.service.ts) 載入的
+`assets/fonts/NotoSansTC-{Regular,Bold}.subset.ttf`，由
+[Admin/scripts/generate-charset.py](../Admin/scripts/generate-charset.py) 產生字集、
+[Admin/scripts/subset-fonts.sh](../Admin/scripts/subset-fonts.sh) 執行子集化（需 `pip install fonttools brotli`）。
+
+**字集必須同時包含 Big5 Level 1（`A440`–`C67E`）與 Level 2（`C940`–`F9D5`）**，共約 13,000 字。
+
+> **歷史教訓（2026-09）**：原字集只收 Level 1（約 5,800 字），而**姓名罕用字多落在 Level 2** ——
+> 例如「闓」（U+95D3 / Big5 `F16D`）。字型缺字時 jsPDF **不會印方框、不會報錯，而是整個字消失**，
+> 「劉闓毅」印成「劉毅」，從程式與畫面上都看不出異常，只有拿到紙本的人才會發現。
+> 擴充後單一字型檔 1.9 MB → 4.6 MB。**jsPDF 嵌入 PDF 時會再自行子集化（只嵌入實際用到的字）**，
+> 故 PDF 不會變成 9 MB —— 實測同一張預支申請表（嵌 Regular + Bold 兩套）約 95 KB → 365 KB。
+> 代價是首次列印時多下載一次字型（之後走瀏覽器快取），換掉「紙本姓名少一個字」這種拿到紙才會發現的錯。
+
+- **改字集後必須重跑 `bash scripts/subset-fonts.sh`（或 `npm run subset-fonts`）並把 `.subset.ttf` 一起進版控**，
+  只改 `generate-charset.py` 不會有任何效果
+- 驗證方式：`TTFont(...).getBestCmap()` 內要找得到該字碼，且 `glyf[g].numberOfContours > 0`
+
 ---
 
 ## 8.6 即時試算卡片（Live Estimate Card）
