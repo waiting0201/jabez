@@ -103,6 +103,10 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             new Permission { Id = "66", Code = "payroll:write",                    Name = "新增/修改", Module = "人事薪資" },
             // Reports
             new Permission { Id = "48", Code = "reports-overtime:read",            Name = "加班紀錄",   Module = "Reports" },
+            // Id 1 為重用的歷史空號（原 admin-access，已由 20260226113509_RemoveAdminAccessAddSettings
+            // 的 DeleteData 從 Permissions 與 RolePermissions 刪除，該 migration 早已在所有環境套用）。
+            // 目前 2~77 全滿，1 是唯一空號。刻意不取 78+ —— 理由同下方 Id 43 註解。
+            new Permission { Id = "1",  Code = "reports-overtime:amount",          Name = "加班紀錄－加班費金額", Module = "Reports" },
             new Permission { Id = "49", Code = "reports-payment:read",             Name = "款項統計",   Module = "Reports" },
             new Permission { Id = "50", Code = "reports-project-water-level:read", Name = "專案水位表", Module = "Reports" },
             // Id 43 為重用的歷史空號（42 與 44 之間）。刻意不取 78+ —— 理由同上方 Id 37/38 註解。

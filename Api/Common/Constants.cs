@@ -56,6 +56,10 @@ public static class PermissionCodes
     public const string PayrollRead                 = "payroll:read";
     public const string PayrollWrite                = "payroll:write";
     public const string ReportsOvertimeRead           = "reports-overtime:read";
+    // 加班報表的「加班費金額」欄為薪資性資訊（依核准當下底薪試算），
+    // 與能否進入報表頁（:read）刻意分離 —— 沒有此碼者頁面照進、時數與補償方式照看，
+    // 只是金額欄不回傳、不顯示。
+    public const string ReportsOvertimeAmount         = "reports-overtime:amount";
     public const string ReportsPaymentRead            = "reports-payment:read";
     public const string ReportsProjectWaterLevelRead  = "reports-project-water-level:read";
     // 專案水位表的「總專案水位」欄（分母＝契約金額，含公司保留 40%）為管理層資訊，

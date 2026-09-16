@@ -195,11 +195,12 @@ write_off / travel_write_off）與 `approval-tasks` 詳情共用這一份判準�
 
 「Handler 內禁止檢查權限碼」有一個例外：**同一支端點所有人都進得來，但其中某些欄位只給部分人看**。這種需求無法用路由層權限表達（表達得了就該拆端點），只能在 Handler 內讀 principal 的 `permissions` claim 後抹除欄位。
 
-現行案例（2026-08，專案水位表）：
+現行案例（2026-08 專案水位表 / 員工薪資欄；2026-09 加班報表金額欄）：
 
 | 端點 | 進入權限（路由層） | 欄位級權限（Handler 層） | 效果 |
 |---|---|---|---|
 | `GET /reports/project-water-level` | `reports-project-water-level:read` | `reports-project-water-level:total` | 缺後者時 `TotalPercentage` / `PreImportUsedAmount` / `RemainingAmount` 回 `null` / `0`；頁面照進、業務執行水位照看 |
+| `GET /reports/overtime` | `reports-overtime:read` | `reports-overtime:amount` | 缺後者時 `OvertimePayAmount` 回 `null`；頁面照進、時數與 `CompensationType` 照看。本端點是唯一能以「全公司逐筆」形式看到他人加班費的地方 |
 | `GET /users`、`GET /users/{id}`（含 `POST` / `PATCH` 的回應 DTO） | `users:read` / `users:write` | `payroll:read` | 缺後者時 [`PayrollFieldAccess.Mask`](../Api/Common/PayrollFieldAccess.cs) 把 8 個薪資欄回 `null`（底薪 / 伙食費 / 加班費 / 2 種加給 / 勞健保覆寫 / 勞退自提率）；`SendPaySlip`、`CompensatoryOpeningHours` 不含金額故保留 |
 | `GET /users/{id}/profile` | `users:read` | `payroll:read` | 缺後者時 `SalaryAdjustmentRecords` 回 `[]`；其餘 8 張子表照常 |
 | `PATCH /users/{id}`、`POST /users`、`PUT /users/{id}/profile` | `users:write` | `payroll:read` | 缺後者時薪資欄位的寫入一律忽略（不回 403，其他欄位照常存檔）；見規則 6 |
@@ -210,14 +211,17 @@ write_off / travel_write_off）與 `approval-tasks` 詳情共用這一份判準�
 
 1. **回 null 而非 403** —— 少一欄不該讓整頁掛掉，前端據此隱藏該欄即可。
 2. **連同「能反推出該欄的原料欄」一起抹**。上例只藏 `TotalPercentage` 沒有用，`PreImportUsedAmount` / `RemainingAmount` 是它的分子來源，留著等同把數字送出去讓前端自己算。
+   但「能反推」要**具體論證反推鏈是否真的成立**，不是一律從嚴：加班報表只抹 `OvertimePayAmount`、保留 `CompensationType` 與時數 —— 反推金額需要時薪快照，而時薪來自底薪、底薪已受 `payroll:read` 管制，鏈子斷在那裡。過度抹除的代價是 non-nullable 欄位得抹成哨兵值（`""`），前後端型別一起變髒。
 3. **判定方式比照 `ApprovalTaskHandler`**：`is_superadmin == "true"` 直接放行，否則 `principal.FindAll("permissions").Any(c => c.Value == PermissionCodes.Xxx)`。principal 由 [`AppRouter`](../Api/Routing/AppRouter.cs) 寫入 `req.HttpContext.User`。
 4. **ReadService 與 SQL 不動**，抹除一律在 Handler 用 record `with` 做，維持「Dapper 只管查、Handler 管授權」的分工。
+   回傳型別是 [`PagedResult<T>`](../Api/Common/PagedResult.cs) 時要連**外層** record 一起重建：`result = result with { Items = result.Items.Select(r => r with { Xxx = null }).ToList() }` —— record 不可變，只改 `Items` 的元素沒有用；`.ToList()` 讓抹除即時求值，不要把延遲求值帶出 Handler 作用域。
 5. 前端同步隱藏（縱深防禦，不是唯一防線）。前端 `hasPermission()` 讀的是 JWT 快照，**新權限上線後既有 token 要到下次登入 / refresh 才會帶到新碼**，期間該欄會暫時消失 —— 因為前後端都是「隱藏」而非報錯，畫面仍然正常。
 6. **欄位級權限必須同時套在寫入端**（2026-08 薪資欄位的教訓）。只擋讀不擋寫有兩個獨立的失效模式：
    - **整批替換（delete-then-insert）型子表**：無權者的前端不 render 該區塊 → 送出空陣列 → 後端「先刪光再插入 0 筆」＝**靜默刪光既有資料**。對策是把該子表改為**條件式替換**：payload 的該欄位放寬為 nullable（`null` = 不變更、`[]` = 清空），Handler 以 `canSee && payload.Xxx is not null` 決定是否進入刪除 + 重建區塊。
    - **回應 DTO 未抹除**：`POST` / `PATCH` 成功後回傳重新讀出的完整 DTO，等於繞過 `GET` 的遮蔽。寫入端的回應也要走同一個 `Mask`。
    兩者都**不回 403** —— 同一支端點還要負責存其他欄位 / 子表，不該因為少一塊就整張存不了（同規則 1 的精神）。
 7. 判定與抹除邏輯**跨 Handler 共用時抽成 `Api/Common/` 的 static helper**（如 [`PayrollFieldAccess`](../Api/Common/PayrollFieldAccess.cs)），不要每個 Handler 各複製一份 —— 「新增欄位時漏改其中一份」就是外洩。只有單一呼叫點時才比照 `ProjectWaterLevelHandler` 放 private static。
+8. **前端有「第二份輸出」時（Excel / PDF 匯出）必須一併遮蔽**（2026-09 加班報表的教訓）。畫面 `@if` 藏了但匯出照印＝完全沒擋，而匯出通常是一份與畫面完全獨立的欄位 map（[`overtime-report.ts`](../Admin/src/app/features/admin/reports/pages/overtime-report/overtime-report.ts) 的 `fetchData()` 與 `exportExcel()` 就是兩份）。作法是**條件式 spread 讓該 key 整個不存在**（`...(canSeeAmount ? {'加班費': v} : {})`），不要填 `undefined` 或空字串 —— `XLSX.utils.json_to_sheet` 照樣會建出一整欄空白，會被讀成「這個月都是 0」。
 
 ### 3.5 公開路由（不需 JWT）
 
@@ -278,7 +282,16 @@ public async Task<IActionResult> GetAllAsync(HttpRequest req)
     int  maxSize  = isExport ? AttendanceLeaveMerger.ExportMaxPageSize : 100;
     int  pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, maxSize) : 20;
     ```
-    ⚠️ 已知未修：`/reports/overtime` 與 `/reports/payment` 的前端匯出仍送 `pageSize: 9999` 而後端夾到 100，**兩張報表的 Excel 實際只有 100 筆**，待比照此模式修正
+    採用此模式者：`/attendances`（出缺勤）、`/reports/overtime`（加班紀錄，2026-09 修正，`OvertimeReportHandler.ExportMaxPageSize`）。
+    ⚠️ 放寬 pageSize 前先確認**下游批次查詢撐得住**：Dapper 會把 `IN @Ids` 展開成逐一參數，而 SQL Server 單一陳述式的參數上限是 2100 ——
+    一次帶回 5000 筆再拿這些 id 去撈子表就會整句丟例外。對策是在該查詢內分批（見 [`OvertimeRequestReadService.LoadProjectsAsync`](../Api/Services/Dapper/OvertimeRequestReadService.cs) 的 `ProjectLoadChunkSize`），
+    而不是把上限壓回 2100 以下 —— 後者只是把天花板移高一點，同樣會再度靜默截斷。
+    ⚠️ 前端仍須處理「總筆數 > 單次上限」：比對回應的 `totalCount` 與 `items.length`，不一致就明確告知使用者匯出不完整，別再給出一份看起來完整的殘缺報表
+  - **另一種做法：獨立的不分頁匯出端點**。當匯出的**資料形狀與畫面不同**時（例如款項統計的匯出要把主表 LEFT JOIN 子表、一張單展開成多列明細），
+    分頁端點的 `pageSize` 根本對不上匯出列數，硬套 `export=true` 只會讓「一頁幾筆」這個概念失去意義。此時改開一支專用端點，
+    ReadService 提供 `GetExportRowsAsync(...)` 與 `GetPagedAsync(...)` 兩條路徑（共用 WHERE 建構），如 [`PaymentReportHandler.GetExportAsync`](../Api/Handlers/PaymentReportHandler.cs) → `GET /reports/payment/export`。
+    **選用準則**：匯出欄位與畫面一致 → `?export=true`（改動小）；匯出需要另一種 JOIN / 展開粒度 → 專用端點。
+    兩者都**禁止**沿用分頁端點卻送一個超大 `pageSize` —— 後端一定會 clamp，結果是靜默截斷
 - ReadService 同時提供 `GetAllAsync(...)` 與 `GetPagedAsync(page, pageSize, ...)`，兩者**共用同一段 WHERE 條件建構**（抽成 private helper，如 [VendorReadService.BuildSearchFilter](../Api/Services/Dapper/VendorReadService.cs)），避免搜尋條件在兩條路徑上分歧
 - `GetPagedAsync` 內另跑一次 `SELECT COUNT(*)` 取 `TotalCount`，回傳 [PagedResult&lt;T&gt;](../Api/Common/PagedResult.cs)；`TotalPages` 以 `Math.Max(1, ceiling)` 保底
 - 關鍵字一律以參數化 `@Search`（`%keyword%`）比對，**禁止**字串串接進 SQL

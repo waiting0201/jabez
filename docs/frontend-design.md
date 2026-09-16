@@ -2145,10 +2145,11 @@ export function resolveLandingUrl(auth: AuthService): string {
 
 ### 依權限隱藏整個表格欄（Column-level Permission）
 
-當「進得了頁面」與「看得到某一欄」是兩個權限時（例：[專案水位表](../Admin/src/app/features/admin/reports/pages/project-water-level/) 的「總專案水位」欄需 `reports-project-water-level:total`），**不要用 `*appHasPermission`**，改在 component 存一個 boolean 當單一真相：
+當「進得了頁面」與「看得到某一欄」是兩個權限時（例：[專案水位表](../Admin/src/app/features/admin/reports/pages/project-water-level/) 的「總專案水位」欄需 `reports-project-water-level:total`；[加班紀錄報表](../Admin/src/app/features/admin/reports/pages/overtime-report/) 的「加班費」欄需 `reports-overtime:amount`），**不要用 `*appHasPermission`**，改在 component 存一個 boolean 當單一真相：
 
 ```typescript
-readonly canSeeTotal = inject(AuthService).hasPermission('reports-project-water-level:total');
+readonly canSeeTotal  = inject(AuthService).hasPermission('reports-project-water-level:total');
+readonly canSeeAmount = inject(AuthService).hasPermission('reports-overtime:amount');   // 加班報表的對照
 ```
 
 ```html
@@ -2160,6 +2161,16 @@ readonly canSeeTotal = inject(AuthService).hasPermission('reports-project-water-
 ```
 
 理由：`<th>` / `<td>` 之外，**空資料列的 `colspan` 也要跟著變**（漏改會跑版）。三處共用同一個欄位比「兩處用指令、第三處另外算」不易走鐘。後端必須同步把該欄回 `null`（見 [backend-design.md 欄位級權限](backend-design.md)）—— 前端隱藏只是視覺層。
+
+**第四處：Excel / PDF 匯出的欄位 map。** 匯出通常另有一份與畫面**完全獨立**的欄位表（`overtime-report.ts` 的 `fetchData()` 給畫面、`exportExcel()` 給 Excel），`@if` 管不到它，**只藏畫面不藏匯出等於沒擋**。作法是條件式 spread 讓該 key 整個不存在：
+
+```typescript
+'補償方式': r.compensationType === 'pay' ? '加班費' : '補休',
+...(this.canSeeAmount ? {'加班費': r.overtimePayAmount != null ? Number(r.overtimePayAmount) : ''} : {}),
+'事由': r.reason ?? '',
+```
+
+`XLSX.utils.json_to_sheet` 以第一筆物件的 key 順序決定欄序，spread 不會打亂欄序；但填 `undefined` 或空字串仍會建出一整欄空白，會被讀成「這個月都是 0」。兩份 map 刻意不重構成單一 mapper —— 輸出型別根本不同（一份給畫面、一份給 Excel），硬合併只會生出滿是 `if` 的中間層；改以「`canSeeXxx` 當共用真相 + 兩份 map 互相交叉引用的註解」防漂移。
 
 ### 依權限隱藏表單區塊（Section-level Permission）
 
