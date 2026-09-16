@@ -376,13 +376,14 @@
 | `Api/Models/Entities/AttendanceRecord.cs`：無遲到欄、無「早退」欄、無任何「原因」欄；全 codebase `grep 遲到\|IsLate\|早退` **零命中**。`Remark` 是管理者事後補註欄（`reports-attendance:write`），語意不同**不可挪用** | 遲到判定（>09:30）、**早退**判定與原因、**逾時 30 分**原因，且**出差當日全部豁免** | 需新增欄位（遲到旗標 / 早退旗標 / 下班原因）；`IsClockInAuto` / `IsClockOutAuto` 已有，可沿用「系統補卡」語意。`IsBusinessTrip` 已有但目前**純顯示**，需改為參與判定 |
 | `TravelRequest.IsHolidayTravel` 分流（同一支 `TravelRequestHandler` 以 `bool isHolidayTravel` 參數雙用，十餘處分支）＋ `TravelRequestParticipant` / `TravelRequestParticipantDate` 兩張表 ＋ `Constants.ParticipantDateSlots` | **整條線退場** | 連帶：`PaymentRequestReadService.holidayParticipantsSql`、`PayrollReadService` 的 `travelSql` UNION ALL ＋ `holidayAllowance` 計算、簽核詳情頁「參與執行人員」卡片 |
 | `SystemSetting.WorkStartTime/WorkEndTime` = `09:00` / `18:00`（`SystemSetting.cs:24-25`，只服務打卡提醒時點） | **上班提醒仍用 `WorkStartTime`；下班提醒不再用 `WorkEndTime`**，改為每人 `實際 ClockInTime + 9h − 2min` | ⚠️ 三件事：① `AttendanceReminderReadService` 現行只用 `NOT EXISTS` 判「今日是否已打卡」，**沒把 `ClockInTime` 的值撈出來**，新制需要它才算得出時點；② `AttendanceReminderService` 的冪等閘 key 是「日期 + `TargetTimeTaipei`（全公司同一個 `HH:mm`）」且在**整批層級** —— 時點變成每人不同後，第一個人推播寫下 `batchStart` 就會把其餘時點的人**整批擋死**，去重必須下沉到「每人每日每類型一次」；③ `AttendanceReminderCron`（台北 7–9、16–18 時段）須放大到涵蓋所有可能的下班時點 |
-| 前端 `leave-request.model.ts:89-90` `WORKDAY_START_HOUR=8 / END=17`、`halfDayAmStartHour()`（補休 09:00 特例）、`leave-request-form.ts` 硬編 `'17:00:00'` 收尾、`leave-request-form.html` 的「下午（至 17:00）」文案 | 平移至 09:00/12:30/13:30/18:00 | 前後端常數**必須一起改**（既有規範） |
+| 前端 `leave-request.model.ts:89-90` `WORKDAY_START_HOUR=8 / END=17`、`halfDayAmStartHour()`（補休 09:00 特例）、`leave-request-form.ts` 硬編 `'17:00:00'` 收尾、`leave-request-form.html` 的「下午（至 17:00）」文案 | 平移至 **09:00／13:00／18:00**；**`halfDayAmStartHour()` 的補休特例可整個移除**（新制全假別統一，見 §10.2） | 前後端常數**必須一起改**（既有規範） |
 | **專案中沒有任何月曆格狀 UI**（`grid-cols-7` / `repeat(7` 全無命中，未裝 FullCalendar；`calendar-days` 是逐日表格） | 排休月曆大方格 | **UI 需從零做** |
 
 ### 9.3 ⚠️ 舊資料相容性風險
 
 半天假的時段是**編碼在 datetime 裡**（08:00＝上午起、12:00＝上午訖、13:00＝下午起、17:00＝下午訖，
-見 `LeaveDayExpander` 與 [leave-rules.md](leave-rules.md)）。改成 09:00/12:30/13:30/18:00 後，
+見 `LeaveDayExpander` 與 [leave-rules.md](leave-rules.md)；補休另有 09:00 的假別特例）。
+改成 **09:00＝上午起、13:00＝上午訖兼下午起、18:00＝下午訖**（全假別統一，見 §10.2）後，
 舊資料的 `ExpectedWorkWindow` 會與新制不一致。**已決議不遷移資料** → 走「以切換日決定套用哪套常數」的版本化設計，見 [§10.2](#102-決議-2舊請假留著的實作要求常數版本化)。
 
 ### 9.4 既有流程可沿用的部分（有現成樣板，不必從零做）
@@ -438,14 +439,26 @@
 | | 上班 | 午休 | 下班 | 半天假時刻編碼 |
 |---|---|---|---|---|
 | 切換日**前**的舊單 | 08:00 | 12:00–13:00 | 17:00 | 08:00／12:00／13:00／17:00 |
-| 切換日**起**的新單 | 09:00 | 12:30–13:30 | 18:00 | 09:00／12:30／13:30／18:00 |
+| 切換日**起**的新單 | 09:00 | 12:30–13:30 | 18:00 | **09:00／13:00／18:00**（見下方） |
 
 因此 `WorkdayHours` **不能只是把數字改掉**，否則回看歷史月份時，出缺勤報表會拿新制的應出勤時段去比對舊單的請假時刻，
 生出不存在的「未打卡」與錯誤的請假時段顯示。要以**切換日**為界選用哪一套常數，判定基準為該請假單的 `StartDate`。
 消費點即 §9.2 表中的 `ExpectedWorkWindow` / `LeaveDayExpander` / `AttendanceLeaveMerger` 一線。
 
-> 補休假的上午時段本來就已有「09:00–13:00」的假別特例（見 [leave-rules.md](leave-rules.md)），
-> 版本化時要一併確認新制下是否仍需保留該特例。
+**半天假的時段：全假別統一，分界點 13:00**（2026-09-16 決議）
+
+| 半天假 | 時段 | 意義 |
+|---|---|---|
+| **上午** | **09:00–13:00** | 請上午假者 **13:00 才來上班** |
+| **下午** | **13:00–18:00** | 請下午假者 **13:00 就可下班** |
+
+> 現行系統中「上午 09:00–13:00」只是**補休**的假別特例（其餘假別為 08:00–12:00，見 [leave-rules.md](leave-rules.md)）。
+> **新制取消該特例 —— 全部假別一律 09:00–13:00**，`halfDayAmStartHour()` 的分支可移除。
+>
+> ⚠️ **時數不由時鐘長度推導**：沿用現行「半天恆 4 小時」的既有慣例。
+> 上午 09:00–13:00 表面是 4 小時、下午 13:00–18:00 表面是 5 小時，但**兩者都記 4 小時** ——
+> 這些時刻是「代表時刻」（供打卡阻擋、應出勤時段、逐日時段顯示用），不是工時計算的分子。
+> 分界點刻意落在午休（12:30–13:30）之中，好處是上下午**接得起來、不重疊也不留空檔**。
 
 ### 10.3 決議 3「一次到位」的風險與對策
 
@@ -491,8 +504,8 @@
 **衍生的實作要求**：
 - 行事曆資料必須**先匯入**才排得了班 —— 現行 `WorkCalendarHelper` 已有「沒資料就退回六日」的 fallback，
   但新制下六日不再天然等於休假（由個人排休決定），該 fallback 在排班情境不適用，缺行事曆時應**明確擋下並提示匯入**。
-- **國定假日出勤的費率，0914 未定義**。§6.3 只有正常排班日／休息日／例假日三種。
-  **預設沿用現行行為**（走 1.34／1.67／2.67 三段），若需依《勞基法》§39 另計加倍工資，須另行提出。
+- **國定假日出勤的費率：沿用現行行為**（2026-09-16 決議）。§6.3 只有正常排班日／休息日／例假日三種，
+  國定假日出勤**不另立第四種**，一律走現行的 1.34／1.67／2.67 三段累進，**不依《勞基法》§39 另計加倍工資**。
   注意此處的「國定假日」同樣採上述判準（`IsHoliday` 且 `Description` 非空）。
 
 ### 10.5 切換日：驗收通過才切，故必須做成可設定值（2026-09-15 決議）
