@@ -45,3 +45,12 @@ output/
 
 # 產出的 PDF 一律放 output/（已 ignore），不進版控
 docs/**/*.pdf
+
+# 編輯器 / 指令碼產生的備份暫存檔（2026-09 新增）
+# 起因：payment-form.ts.bak（0 byte）在 2026-06 攤平 repo 時混進版控，之後無人察覺。
+# sed -i.bak、編輯器自動備份、手動改檔前的副本都會產生這類檔案，一律不進版控。
+*.bak
+*.orig
+*.rej
+*.tmp
+*~

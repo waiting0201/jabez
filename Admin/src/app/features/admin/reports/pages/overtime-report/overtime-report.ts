@@ -4,6 +4,8 @@ import {FormsModule} from '@angular/forms';
 import {HttpClient} from '@angular/common/http';
 import * as XLSX from 'xlsx';
 import {environment} from '@/environments/environment';
+import {ToastrService} from 'ngx-toastr';
+import {AuthService} from '@/app/core/auth/services/auth.service';
 import {dayToRange, FilterMode, monthToRange, shiftDateString, snapToIsoWeek, todayString} from '@/app/features/admin/reports/utils/date-range';
 
 /** 加班單的關聯專案明細（含該案預估時數） */
@@ -27,6 +29,12 @@ export interface OvertimeReportRow {
   overtimePayAmount: number | null;
 }
 
+/**
+ * 單次 Excel 匯出的筆數上限，與後端 OvertimeReportHandler.ExportMaxPageSize 相同。
+ * 兩處必須一起改 —— 前端送得比後端上限大時會被 clamp 回去並靜默截斷。
+ */
+const EXPORT_MAX_ROWS = 5000;
+
 @Component({
   selector: 'app-overtime-report',
   templateUrl: './overtime-report.html',
@@ -34,6 +42,15 @@ export interface OvertimeReportRow {
 })
 export class OvertimeReport implements OnInit {
   private http = inject(HttpClient);
+  private toastr = inject(ToastrService);
+
+  /**
+   * 「加班費」欄為薪資性資訊（依核准當下底薪試算），需獨立權限 reports-overtime:amount。
+   * 用 component 欄位而非 *appHasPermission —— <th> / <td> / 空列 colspan / Excel 匯出
+   * 四處要共用同一個真相，漏改任一處就跑版或外洩。
+   * 後端 OvertimeReportHandler 亦會對無此權限者把 overtimePayAmount 抹為 null（縱深防禦）。
+   */
+  readonly canSeeAmount = inject(AuthService).hasPermission('reports-overtime:amount');
 
   /** 篩選條件 */
   selectedEmployeeId = signal('');
@@ -190,6 +207,9 @@ export class OvertimeReport implements OnInit {
             reason: r.reason ?? '',
             // 這兩欄漏了會靜默顯示錯誤：compensationType 為 undefined 時 badge 一律落到「補休」，
             // 選加班費的單看起來像選了補休；overtimePayAmount 為 undefined 則讓「加班費」欄印出空白而非「—」
+            // ⚠ overtimePayAmount 受 reports-overtime:amount 管制 —— 無權者後端已回 null，
+            //   此處照收即可（畫面由 canSeeAmount 整欄隱藏）。
+            //   ★ 動到本欄時，exportExcel() 的 wsData 是另一份獨立欄位表，務必一起改。
             compensationType: r.compensationType === 'pay' ? 'pay' : 'compensatory',
             overtimePayAmount: r.overtimePayAmount ?? null,
           }))
@@ -206,7 +226,10 @@ export class OvertimeReport implements OnInit {
   exportExcel() {
     this.exporting.set(true);
 
-    const params: any = {page: 1, pageSize: 9999};
+    // export=true 讓後端放寬 pageSize 上限（一般列表仍為 100），避免匯出被截斷。
+    // 原本送 pageSize: 9999 但後端 Math.Clamp(ps, 1, 100) 會壓回 100 ——
+    // 匯出永遠只有前 100 筆且毫無提示（2026-09 修正，上限見 OvertimeReportHandler.ExportMaxPageSize）。
+    const params: any = {page: 1, pageSize: EXPORT_MAX_ROWS, export: 'true'};
     if (this.selectedEmployeeId()) params.employeeId = this.selectedEmployeeId();
     if (this.selectedProjectId()) params.projectId = this.selectedProjectId();
     const range = this.computeDateRange();
@@ -219,6 +242,16 @@ export class OvertimeReport implements OnInit {
       next: (res) => {
         const data = res?.data ?? res ?? {};
         const items = data?.items ?? [];
+
+        // 仍超出單次上限時明講，不要再讓使用者拿到一份「看起來完整」的殘缺報表
+        const total = data?.totalCount ?? items.length;
+        if (total > items.length) {
+          this.toastr.warning(
+            `本次查詢共 ${total} 筆，超出單次匯出上限 ${EXPORT_MAX_ROWS} 筆，僅匯出前 ${items.length} 筆。請縮小日期區間後分次匯出。`,
+            '匯出不完整'
+          );
+        }
+
         const wsData = items.map((r: any) => {
           // 專案沿用單欄合併文字：「PJ001 專案甲 2.5h、PJ002 專案乙 1.5h」
           const projectText = (r.projects ?? [])
@@ -231,7 +264,13 @@ export class OvertimeReport implements OnInit {
             '預估總時數': r.estimatedHours != null ? Number(r.estimatedHours).toFixed(1) : '',
             '實際時數': r.actualHours != null ? Number(r.actualHours).toFixed(1) : '',
             '補償方式': r.compensationType === 'pay' ? '加班費' : '補休',
-            '加班費': r.overtimePayAmount != null ? Number(r.overtimePayAmount) : '',
+            // ★ 這是本檔第二份獨立欄位表（另一份在 fetchData()）。
+            //   「加班費」受 reports-overtime:amount 管制，漏改這裡＝Excel 外洩＝等於沒擋。
+            //   用條件式 spread 而非填空字串：json_to_sheet 對 undefined / '' 仍會建出一整欄空白，
+            //   會被讀成「這個月都是 0」。spread 不影響欄序（欄序取自第一筆物件的 key 順序）。
+            ...(this.canSeeAmount
+              ? {'加班費': r.overtimePayAmount != null ? Number(r.overtimePayAmount) : ''}
+              : {}),
             '事由': r.reason ?? '',
           };
         });

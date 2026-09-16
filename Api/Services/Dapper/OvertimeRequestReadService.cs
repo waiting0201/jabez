@@ -20,8 +20,16 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
         """;
 
     /// <summary>
+    /// 一次送進 IN 子句的 Id 數量上限。Dapper 會把 <c>IN @Ids</c> 展開成逐一參數
+    /// （@Ids1, @Ids2, …），而 SQL Server 單一陳述式的參數上限是 2100 ——
+    /// 超過就整句丟例外。報表匯出可一次帶回數千筆，故分批查詢而非寄望呼叫端自我節制。
+    /// </summary>
+    private const int ProjectLoadChunkSize = 1000;
+
+    /// <summary>
     /// 批次載入一批加班單的關聯專案明細（含 Code / Name），依 SortOrder 排序。
     /// OvertimeReportReadService 共用同一份，避免兩邊實作漂移。
+    /// id 數量超過 <see cref="ProjectLoadChunkSize"/> 時自動分批，結果合併回同一個 Dictionary。
     /// </summary>
     public static async Task<Dictionary<int, OvertimeProjectDto[]>> LoadProjectsAsync(IDbConnection db, IEnumerable<int> requestIds)
     {
@@ -36,16 +44,19 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
             WHERE orp.OvertimeRequestId IN @Ids
             ORDER BY orp.OvertimeRequestId, orp.SortOrder
             """;
-        var rows = await db.QueryAsync<dynamic>(sql, new { Ids = ids });
-        return rows
-            .GroupBy(r => (int)r.OvertimeRequestId)
-            .ToDictionary(
-                g => g.Key,
-                g => g.Select(r => new OvertimeProjectDto(
+
+        var map = new Dictionary<int, OvertimeProjectDto[]>();
+        foreach (var chunk in ids.Chunk(ProjectLoadChunkSize))
+        {
+            var rows = await db.QueryAsync<dynamic>(sql, new { Ids = chunk });
+            foreach (var g in rows.GroupBy(r => (int)r.OvertimeRequestId))
+                map[g.Key] = g.Select(r => new OvertimeProjectDto(
                         (int)r.ProjectId,
                         (string)r.ProjectCode,
                         (string)r.ProjectName,
-                        (decimal)r.EstimatedHours)).ToArray());
+                        (decimal)r.EstimatedHours)).ToArray();
+        }
+        return map;
     }
 
     private static OvertimeRequestDto MapRow(dynamic row, Dictionary<int, OvertimeProjectDto[]> projectMap)
