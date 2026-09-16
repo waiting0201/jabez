@@ -19,6 +19,17 @@ public sealed record OvertimePaySegmentDto(
     decimal Amount);
 
 /// <summary>
+/// 加班費的分段計酬級距（倍率 + 該段時數）—— **刻意不含金額**。
+/// 簽核詳情頁專用：金額 ÷ 時數 = 時薪 × 加權倍率 → 可反推底薪，
+/// 與加班報表 reports-overtime:amount 是同一個顧慮。
+/// 本型別是 <see cref="OvertimePaySegmentDto"/> 去掉 Amount 的投影，兩者共用
+/// <see cref="Jabez.Api.Common.OvertimePayCalculator.SplitHourTiers"/> 的同一份級距表。
+/// </summary>
+public sealed record OvertimeHourTierDto(
+    decimal Multiplier,
+    decimal Hours);
+
+/// <summary>
 /// 加班費試算結果（表單即時試算與核准寫快照共用）。
 /// Segments 是必要的：使用者看到總額不會相信，看到「2h ×1.34 + 6h ×1.67」才會。
 /// </summary>

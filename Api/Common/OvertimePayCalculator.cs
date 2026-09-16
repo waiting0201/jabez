@@ -22,6 +22,7 @@ namespace Jabez.Api.Common;
 /// 消費點：
 ///   OvertimeRequestHandler.EstimateAsync        → 表單即時試算
 ///   OvertimeCompensationService.ApplyAsync      → 送簽 / 核准時寫入金額快照
+///   PaymentRequestReadService（簽核任務詳情）    → 只取 SplitHourTiers 的級距，**不給金額**
 /// </summary>
 public static class OvertimePayCalculator
 {
@@ -41,26 +42,52 @@ public static class OvertimePayCalculator
     private static readonly (decimal UpToHour, decimal Rate)[] WeekdayTiers = [(2m, 1.34m), (4m, 1.67m)];
     private static readonly (decimal UpToHour, decimal Rate)[] HolidayTiers = [(2m, 1.34m), (8m, 1.67m), (12m, 2.67m)];
 
+    /// <summary>該日別的計酬上限。Calculate 與 SplitHourTiers 共用，避免三元式散在兩處。</summary>
+    public static decimal CapHoursFor(bool isHoliday) => isHoliday ? HolidayCapHours : WeekdayCapHours;
+
+    /// <summary>
+    /// 只切「分段時數」、不算錢：依日別級距把 hours 截斷至上限後拆成 (倍率, 該段時數)。
+    ///
+    /// 存在理由：簽核詳情頁必須讓審核者看懂計酬結構（「2h ×1.34 + 1h ×1.67」），
+    /// 但**不能給金額** —— 金額 ÷ 時數 = 時薪 × 加權倍率 → 反推得出底薪，
+    /// 與加班報表 reports-overtime:amount 是同一個顧慮。級距與 <see cref="Calculate"/>
+    /// 共用同一份級距表與同一套截斷語意，杜絕「畫面切 2+1、實發按別的算」。
+    ///
+    /// ⚠ 呼叫端請傳 **PayableHours 快照**（已截斷）而非 EstimatedHours —— 時數側才吃得到快照保真度。
+    /// ⚠ 級距表本身取的是**當下常數**、非快照：日後修法時舊單顯示的級距會跟著變，與 OvertimePayAmount
+    ///   快照不同步。這是刻意取捨 —— 正解是修法時給級距表加生效日，不是在這裡再加第五個快照欄。
+    /// </summary>
+    public static OvertimeHourTierDto[] SplitHourTiers(decimal hours, bool isHoliday)
+    {
+        var tiers  = isHoliday ? HolidayTiers : WeekdayTiers;
+        var capped = Math.Max(0m, Math.Min(hours, CapHoursFor(isHoliday)));
+
+        decimal prev = 0m;
+        var result = new List<OvertimeHourTierDto>();
+        foreach (var (upTo, mult) in tiers)
+        {
+            var segHours = Math.Max(0m, Math.Min(capped, upTo) - prev);
+            if (segHours > 0m) result.Add(new OvertimeHourTierDto(mult, segHours));
+            prev = upTo;
+        }
+        return [.. result];
+    }
+
     /// <summary>純計算版（無 I/O）。表單試算與核准寫快照共用同一支，杜絕兩套公式漂移。</summary>
     public static OvertimePayEstimateDto Calculate(decimal baseSalary, decimal hours, bool isHoliday, DateTime overtimeDate)
     {
         var rate   = HourlyRate(baseSalary);
-        var tiers  = isHoliday ? HolidayTiers : WeekdayTiers;
-        var cap    = isHoliday ? HolidayCapHours : WeekdayCapHours;
+        var cap    = CapHoursFor(isHoliday);
         var capped = Math.Max(0m, Math.Min(hours, cap));
 
-        decimal prev = 0m, raw = 0m;
+        // 分段「時數」的單一真相＝SplitHourTiers；本方法只負責乘上時薪與總額捨入。
+        decimal raw = 0m;
         var segments = new List<OvertimePaySegmentDto>();
-        foreach (var (upTo, mult) in tiers)
+        foreach (var (mult, segHours) in SplitHourTiers(hours, isHoliday))
         {
-            var segHours = Math.Max(0m, Math.Min(capped, upTo) - prev);
-            if (segHours > 0m)
-            {
-                var amount = rate * mult * segHours;
-                raw += amount;
-                segments.Add(new OvertimePaySegmentDto(mult, segHours, amount));
-            }
-            prev = upTo;
+            var amount = rate * mult * segHours;
+            raw += amount;
+            segments.Add(new OvertimePaySegmentDto(mult, segHours, amount));
         }
 
         // 只在**總額**捨入一次（各分段保留原始小數；逐段捨入再加總會漂移）。

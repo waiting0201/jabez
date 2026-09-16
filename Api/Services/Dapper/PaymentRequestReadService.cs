@@ -702,7 +702,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 
         var overtimeSql = $"""
             SELECT ot.Id, ot.RequestNo, ot.OvertimeDate, ot.EstimatedHours, ot.Reason,
-                   ot.CompensationType, ot.OvertimePayAmount, ot.PayableHours, ot.IsHolidayOvertime,
+                   ot.CompensationType, ot.PayableHours, ot.IsHolidayOvertime,
                    ot.ApprovalStatus, ot.ApprovalItemId, ot.CurrentStepOrder,
                    u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, ot.CreatedAt, ot.SubmittedAt, ot.ReviewedAt, ot.ReviewNote
             FROM OvertimeRequests ot
@@ -1524,33 +1524,47 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         });
 
         // Overtime requests
-        var overtimeTasks = overtimeRows.Select(row => new ApprovalTaskDto(
-            (int)row.Id,
-            "overtime",
-            $"加班申請 {(string?)row.RequestNo ?? $"#{row.Id}"}（{(decimal)row.EstimatedHours}h）",
-            (string?)row.SubmittedBy ?? "—",
-            (DateTime?)row.SubmittedAt ?? (DateTime)row.CreatedAt,
-            (string)row.ApprovalStatus,
-            (int)row.CurrentStepOrder,
-            (DateTime?)row.ReviewedAt,
-            (string?)row.ReviewNote,
-            GetFlow("overtime", (int?)row.ApprovalItemId),
-            null, null, null,
-            new OvertimeTaskDetailDto(
+        var overtimeTasks = overtimeRows.Select(row =>
+        {
+            // 簽核台只給級距、不給金額（金額 ÷ 時數可反推時薪 → 底薪）。
+            // 級距純由 PayableHours（已截斷的快照）+ 日別導出，兩欄本來就在 DTO 內 → 不新增可反推面。
+            var otCompType     = (string?)row.CompensationType ?? "compensatory";
+            var otPayableHours = (decimal?)row.PayableHours;
+            var otIsHoliday    = (bool?)row.IsHolidayOvertime;
+            var otHourTiers    = otCompType == "pay" && otPayableHours is not null && otIsHoliday is not null
+                ? OvertimePayCalculator.SplitHourTiers(otPayableHours.Value, otIsHoliday.Value)
+                : null;
+
+            return new ApprovalTaskDto(
                 (int)row.Id,
-                (DateTime)row.OvertimeDate,
-                (decimal)row.EstimatedHours,
-                (string)row.Reason,
-                GetOvertimeProjects((int)row.Id),
-                (string?)row.CompensationType ?? "compensatory",
-                (decimal?)row.OvertimePayAmount,
-                (decimal?)row.PayableHours,
-                (bool?)row.IsHolidayOvertime,
-                (string?)row.RequestNo),
-            null, null, null,
-            GetRecords("overtime", (int)row.Id),
-            GetDesignatedReviewers("overtime", (int)row.Id),
-            (string?)row.SubmittedBySignatureUrl));
+                "overtime",
+                $"加班申請 {(string?)row.RequestNo ?? $"#{row.Id}"}（{(decimal)row.EstimatedHours}h）",
+                (string?)row.SubmittedBy ?? "—",
+                (DateTime?)row.SubmittedAt ?? (DateTime)row.CreatedAt,
+                (string)row.ApprovalStatus,
+                (int)row.CurrentStepOrder,
+                (DateTime?)row.ReviewedAt,
+                (string?)row.ReviewNote,
+                GetFlow("overtime", (int?)row.ApprovalItemId),
+                null, null, null,
+                // ⚠ 一律用具名引數：移除的 OvertimePayAmount 與 PayableHours 同為 decimal?，
+                //   位置參數一旦滑位編譯器擋不住（比照 OvertimeRequestReadService 的既有寫法）。
+                new OvertimeTaskDetailDto(
+                    (int)row.Id,
+                    (DateTime)row.OvertimeDate,
+                    (decimal)row.EstimatedHours,
+                    (string)row.Reason,
+                    GetOvertimeProjects((int)row.Id),
+                    CompensationType:  otCompType,
+                    PayableHours:      otPayableHours,
+                    IsHolidayOvertime: otIsHoliday,
+                    RequestNo:         (string?)row.RequestNo,
+                    HourTiers:         otHourTiers),
+                null, null, null,
+                GetRecords("overtime", (int)row.Id),
+                GetDesignatedReviewers("overtime", (int)row.Id),
+                (string?)row.SubmittedBySignatureUrl);
+        });
 
         // Advance requests
         var advanceTasks = advanceRows.Select(row => new ApprovalTaskDto(

@@ -10,7 +10,8 @@ namespace Jabez.Api.Services;
 /// 加班補償方式（補休 / 加班費）共用邏輯（靜態，比照 LeaveRevocationService 慣例：
 /// 不呼叫 SaveChanges，交易邊界交給呼叫端）。
 ///
-/// 加班費金額採**快照**：送簽時算一次（讓審核者看得到金額，否則是盲簽）、
+/// 加班費金額採**快照**：送簽時算一次（簽核台**不顯示金額**，但要靠同一批快照的
+/// PayableHours / IsHolidayOvertime 導出分段計酬級距；見 OvertimeTaskDetailDto）、
 /// 最終核准時以核准當下的底薪與行事曆重算並落地；退回 / 拒絕 / 改單則清空。
 /// 刻意不在薪資端即時重算 —— 薪資本身無月結快照表，一次調薪會回溯改動所有歷史月份的加班費。
 /// </summary>

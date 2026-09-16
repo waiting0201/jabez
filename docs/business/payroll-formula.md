@@ -61,6 +61,12 @@
     - **與補休二擇一**：`CompensationType='pay'` 的加班單**不計入補休池**（`LeaveRequestHandler.ComputeCompensatoryAsync` 已加此條件），避免同一段工時領兩次。詳見 [leave-rules.md §補休](leave-rules.md)。
     - **不折減、不計投保薪資**：與既有手填加班費同處理 —— 育嬰留停不按比例折減（本就是實績金額）、不計入勞健保投保薪資與勞退自提提繳基準（已知簡化）。
     - **育嬰留停出單判斷**：`hasOtherItems` 已納入本項，否則整月留停者上月已賺得的加班費會憑空消失。
+    - **揭露範圍（2026-09）**：金額只給**申請人本人**（表單即時試算 / 唯讀快照 / 加班申請清單）與
+      `GET /reports/overtime` 持 `reports-overtime:amount` 者。**簽核詳情頁一律不顯示金額**
+      —— 金額 ÷ 時數 = 時薪 × 加權倍率 → 可反推底薪，而審核者是全公司每一位主管、無從整批授予薪資權限。
+      改列 `OvertimePayCalculator.SplitHourTiers(PayableHours, IsHolidayOvertime)` 導出的**分段計酬級距**
+      （`2.0 小時 × 1.34`、`1.0 小時 × 1.67`），該值只是 DTO 內既有兩欄的重新排版，資訊量為零，故不另立權限碼。
+      ⚠️ 申請人本人從簽核詳情頁進入時同樣看不到金額（他在自己的表單 / 清單頁照常看得到），屬刻意取捨。
 
 > 人事薪資為動態計算，不儲存於資料庫。可於清單頁「匯出總表」輸出當月 Excel（一位員工一列 × 33 欄的全部薪資欄位 + 合計列，合計取自後端 `MonthlyPayrollDto` 的 Total* 欄，不在前端重算）。
 > 薪資編輯頁與薪資明細信件額外顯示該月**所有已核准的請假紀錄**（全假別，非僅事假/病假/家庭照顧假）。
@@ -165,6 +171,8 @@ EmployeePayrollDto / 月度合計 / 薪資編輯頁 / 薪資明細 Email + PDF
 | 列印人事資料卡 PDF 的薪資頁 | `payroll:read` | 整個 PAGE 3 連同 `addPage()` 一起跳過，輸出 2 頁 |
 | 勞健保級距 lookup（`insurance-brackets/lookup?salary=`） | `payroll:read`（前端不訂閱） | 不發出請求 —— 該端點權限與 users 正交，留著等於開一條由底薪反推級距的側門 |
 | **寫入**（`POST /users`、`PATCH /users/{id}`、`PUT /users/{id}/profile` 的薪資部分） | `payroll:read` | 靜默忽略（不回 403，其他欄位照常存檔）。薪資調整歷史為**條件式**整批替換，無權者送空陣列不會刪光既有歷史 |
+| 加班紀錄報表的「加班費」欄（`GET /reports/overtime`） | `reports-overtime:read` + `reports-overtime:amount` | API 回 `null`，前端整欄消失（含 Excel 匯出的條件式 spread）；時數與「補償方式」照看 |
+| 簽核詳情頁的加班費（`GET /approval-tasks/{appType}/{id}`） | — | **一律不回金額**（`OvertimeTaskDetailDto` 已無 `OvertimePayAmount`），改回 `hourTiers` 級距；不另立權限碼 |
 
 **不受影響**：`GET /me/user`、`GET /me/profile`、`GET /me/payroll`（員工看自己的薪資是既有需求）；銀行帳號 / 存摺封面 / 投保起日 / 扶養人數 / 健保眷屬名單 / 期初補休時數 / 寄送薪資表旗標。
 
