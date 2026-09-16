@@ -1512,6 +1512,43 @@ PDF 中文走 [pdf-core.service.ts](../Admin/src/app/shared/services/pdf-core.se
 4. **唯讀模式顯示快照、不重新試算**：已送出 / 已核准的單顯示後端存的金額並標「核准快照」badge，加註「日後調薪不會回溯變動」。重新試算會讓畫面金額與實發金額不一致。
 5. **前置資料缺漏不擋送出**：改以 `alert-warning` 說明（例：「尚未設定底薪，無法試算，請洽人事」），送出鍵維持可用。
 
+### 8.6.1 不能給金額時，給級距（Tier Chips）
+
+規則 1 的「一定要顯示算式」預設**閱讀者是金額的權利人**（申請人看自己的加班費）。當同一份資料要給
+**非權利人**看時（簽核詳情頁的審核者是全公司每一位主管），金額本身就是外洩面 ——
+金額 ÷ 時數 = 時薪 × 加權倍率 → 反推得出底薪。此時**不是把算式藏起來，而是只留算式、拿掉金額**。
+
+現行唯一案例：[approval-task-review](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/)
+的加班申請區塊（2026-09 由「`NT$ 4,350` 總額」改為級距 chips）。
+
+```html
+@if (d.compensationType === 'pay') {
+  <div class="col-12 col-md-4">
+    <div class="text-muted small mb-1">計酬級距</div>
+    @if (d.hourTiers && d.hourTiers.length > 0) {
+      <div class="flex flex-wrap items-center gap-1">
+        @for (t of d.hourTiers; track $index) {
+          <span class="badge bg-[--bg-base] text-[--text-muted] font-monospace">
+            {{ t.hours | number:'1.1-1' }} 小時 × {{ t.multiplier | number:'1.2-2' }}
+          </span>
+        }
+      </div>
+      <div class="text-muted text-xs mt-1">計酬 N 小時｜平日/假日加班｜超出上限 X 小時不計酬</div>
+    } @else { <span class="text-muted">—</span> }
+  </div>
+}
+```
+
+四個要點：
+
+1. **這不是 §8.6 的試算卡片**，是 §4 標準卡片內的 `row g-3` 欄位格 —— 不要套 `border rounded p-4 bg-light-subtle` 與 `table table-sm`。
+2. **chip 用中性色** `bg-[--bg-base] text-[--text-muted] font-monospace`（同卡片專案代碼 chip 的既有寫法），
+   **不要用 `bg-primary-subtle`** —— 正上方的「補償方式」badge 已經是它，撞色會分不出主從。
+3. **欄寬 `col-12 col-md-4`**：md 以上版面與其他欄一致，手機獨占一列 —— 假日最多 3 段級距，半寬會擠成三行。
+4. **數字位數固定**：`number:'1.1-1'`（`2` → `2.0 小時`）、`number:'1.2-2'`（`1.34` / `1.67` / `2.67` 對齊）。
+5. **級距必須由後端算**（`OvertimePayCalculator.SplitHourTiers`），前端不得 copy 一份倍率表 —— 見
+   [backend-design.md 純函式 static helper](backend-design.md)。
+
 ## 9. 狀態提示卡
 
 申請類頁面在送出後或唯讀模式顯示。**使用 `@if/@else if` 鏈式**，不用 `@switch`。
@@ -2171,6 +2208,11 @@ readonly canSeeAmount = inject(AuthService).hasPermission('reports-overtime:amou
 ```
 
 `XLSX.utils.json_to_sheet` 以第一筆物件的 key 順序決定欄序，spread 不會打亂欄序；但填 `undefined` 或空字串仍會建出一整欄空白，會被讀成「這個月都是 0」。兩份 map 刻意不重構成單一 mapper —— 輸出型別根本不同（一份給畫面、一份給 Excel），硬合併只會生出滿是 `if` 的中間層；改以「`canSeeXxx` 當共用真相 + 兩份 map 互相交叉引用的註解」防漂移。
+
+**先問「是不是權限問題」。** 若該欄**對所有讀者都不該出現**（不是「某些人可以看」），就不要做成 `canSeeXxx` ——
+直接從 DTO 移除，並改以既有欄位的衍生值呈現。例：簽核詳情頁的加班費金額對全體審核者一律不給，
+改列由 `payableHours` + 日別導出的計酬級距（見 [§8.6.1](#861-不能給金額時給級距tier-chips)）。
+判準在 [backend-design.md 欄位級權限規則 9](backend-design.md)。
 
 ### 依權限隱藏表單區塊（Section-level Permission）
 

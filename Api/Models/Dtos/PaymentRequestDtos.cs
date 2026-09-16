@@ -224,12 +224,16 @@ public sealed record OvertimeTaskDetailDto(
     decimal  EstimatedHours,                      // 預估總時數（= Projects 合計）
     string   Reason,
     OvertimeProjectDto[]? Projects = null,        // 關聯專案明細（含各案時數）
-    // 補償方式與加班費快照 —— 審核者必須看得到金額，否則是盲簽
+    // 補償方式與計酬結構 —— **刻意不含金額**：金額 ÷ 時數 = 時薪 × 加權倍率 → 可反推底薪，
+    // 與加班報表 reports-overtime:amount 是同一個顧慮。審核者要判斷的是「時數與級距合不合理」，
+    // 不是金額。申請人自己的表單 / 清單頁照常顯示金額（GET /overtime-requests 本人限定）。
+    // ⚠ 申請人本人經 RequestViewAccess 進到簽核詳情頁時同樣看不到金額，這是刻意取捨，勿「修回來」。
     string   CompensationType  = "compensatory",  // compensatory | pay
-    decimal? OvertimePayAmount = null,
     decimal? PayableHours      = null,
     bool?    IsHolidayOvertime = null,
-    string?  RequestNo         = null);           // OT-yyyyMMdd-NNN
+    string?  RequestNo         = null,            // OT-yyyyMMdd-NNN
+    // 分段計酬級距（僅 pay 且已有快照時有值）；由 PayableHours + 日別純函式導出，不新增可反推面。
+    OvertimeHourTierDto[]? HourTiers = null);
 
 /// <summary>出差請款申請審核任務詳情 DTO</summary>
 public sealed record TravelPaymentTaskDetailDto(

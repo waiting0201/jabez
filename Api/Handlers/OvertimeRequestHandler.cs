@@ -275,7 +275,9 @@ public sealed class OvertimeRequestHandler(
         }
 
         // 加班費快照：在所有核准分支之前算一次，讓「一般送審 / Superadmin 自動核准 / 全自審自動核准」
-        // 三個出口都帶著金額。送審中的單也必須有金額，否則審核者在簽核台是盲簽。
+        // 三個出口都帶著快照。送審中的單也必須寫 —— 簽核台顯示的**分段計酬級距**是由
+        // PayableHours + IsHolidayOvertime 導出的，不寫這兩欄，審核者連時數結構都看不到。
+        // （2026-09 起簽核台刻意不顯示金額本身，見 OvertimeTaskDetailDto 註解。）
         await OvertimeCompensationService.ApplyAsync(db, calendarReader, workPattern, item);
 
         // Superadmin 無部門歸屬，直接自動核准

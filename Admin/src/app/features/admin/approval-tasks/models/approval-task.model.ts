@@ -219,6 +219,12 @@ export interface OvertimeTaskProject {
   estimatedHours: number;
 }
 
+/** 加班費的分段計酬級距（倍率 + 該段時數）；**刻意不含金額** */
+export interface OvertimeHourTier {
+  multiplier: number;
+  hours: number;
+}
+
 export interface OvertimeTaskDetail {
   overtimeRequestId: number;
   requestNo?: string | null;   // OT-yyyyMMdd-NNN
@@ -229,8 +235,13 @@ export interface OvertimeTaskDetail {
   projects?: OvertimeTaskProject[];
   /** 補償方式（compensatory 補休 / pay 加班費） */
   compensationType: 'compensatory' | 'pay';
-  /** 加班費快照（補休型為 null） */
-  overtimePayAmount?: number | null;
+  /**
+   * 分段計酬級距（僅 compensationType='pay' 且已有快照時有值）。
+   * ⚠ 簽核台**刻意不回金額** —— 金額 ÷ 時數 = 時薪 × 加權倍率 → 可反推底薪
+   *   （與加班報表 reports-overtime:amount 同一顧慮）。申請人自己的
+   *   overtime-request.model.ts 照常有 overtimePayAmount，**不要為了一致性補齊**。
+   */
+  hourTiers?: OvertimeHourTier[] | null;
   payableHours?: number | null;
   isHolidayOvertime?: boolean | null;
 }

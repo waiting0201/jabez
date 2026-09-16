@@ -222,6 +222,17 @@ write_off / travel_write_off）與 `approval-tasks` 詳情共用這一份判準�
    兩者都**不回 403** —— 同一支端點還要負責存其他欄位 / 子表，不該因為少一塊就整張存不了（同規則 1 的精神）。
 7. 判定與抹除邏輯**跨 Handler 共用時抽成 `Api/Common/` 的 static helper**（如 [`PayrollFieldAccess`](../Api/Common/PayrollFieldAccess.cs)），不要每個 Handler 各複製一份 —— 「新增欄位時漏改其中一份」就是外洩。只有單一呼叫點時才比照 `ProjectWaterLevelHandler` 放 private static。
 8. **前端有「第二份輸出」時（Excel / PDF 匯出）必須一併遮蔽**（2026-09 加班報表的教訓）。畫面 `@if` 藏了但匯出照印＝完全沒擋，而匯出通常是一份與畫面完全獨立的欄位 map（[`overtime-report.ts`](../Admin/src/app/features/admin/reports/pages/overtime-report/overtime-report.ts) 的 `fetchData()` 與 `exportExcel()` 就是兩份）。作法是**條件式 spread 讓該 key 整個不存在**（`...(canSeeAmount ? {'加班費': v} : {})`），不要填 `undefined` 或空字串 —— `XLSX.utils.json_to_sheet` 照樣會建出一整欄空白，會被讀成「這個月都是 0」。
+9. **能找到「資訊量為零的等價呈現」時，直接換掉優於開權限碼**（2026-09 加班簽核台）。
+   欄位級權限的成本是**要有人被授予**：加班報表只開給財務與總監，這種對象明確的場合適用；
+   但簽核詳情頁的讀者是**全公司每一位審核者**，無從整批授予 `payroll` 類權限，開權限碼等於全員關閉。
+   此時先問「審核者真正需要的是什麼」——他要判斷的是「這個加班該不該准」，看的是**時數與倍率結構**而非金額。
+   於是 `OvertimeTaskDetailDto` **直接移除 `OvertimePayAmount`**，改回
+   `HourTiers[]`（`OvertimePayCalculator.SplitHourTiers(PayableHours, IsHolidayOvertime)` 的純函式導出值）。
+   關鍵在於**新欄位的資訊量為零**：`PayableHours` 與 `IsHolidayOvertime` 本來就在同一個 DTO 裡，
+   級距只是它們的重新排版，不擴大任何可反推面 —— 所以這個換法不需要新權限碼、不需要 migration，
+   也不必跟著做規則 5 的「新 token 才帶得到新碼」那套過渡。
+   判準：**能不能在不減損讀者判斷力的前提下，用既有欄位的導出值取代敏感欄位**。能，就換掉；
+   不能（例如財務就是要對帳金額本身），才走權限碼。這條與規則 2 是一組：先論證反推鏈，再選手段。
 
 ### 3.5 公開路由（不需 JWT）
 
@@ -646,6 +657,7 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 範例：[LeaveDayExpander](../Api/Common/LeaveDayExpander.cs)（請假單逐日展開）— 純讀取型 static helper，收 `ICalendarDayReadService`。把一張 `LeaveRequest` 攤成 `List<LeaveDay>{Date, Hours}`，展開規則與 `LeaveRequestHandler.SubmitAsync` 的權威重算一致，保證 `Σ Hours == LeaveRequest.Hours`。消費點：銷假逐日勾選（`GET /leave-requests/{id}/revocable-dates`）、銷假核准後重算父單 `Hours`、以及出缺勤報表的請假合併（`AttendanceLeaveMerger`）。假別分類常數 `WorkingDayLeaveTypes` / `TimeUnitMap` / `GetTimeUnit` / `TimeUnitToString` 一併收斂於此，`LeaveRequestHandler` 轉引同一份（避免兩地各留一份而漂移）。另提供 `ExpandAsync(calendarReader, leaveType, startDate, endDate)` overload 供 Dapper 投影使用（展開只讀這三個欄位，不必為此撈出完整 entity）。
 
 範例：[OvertimePayCalculator](../Api/Common/OvertimePayCalculator.cs)（勞基法加班費）— 純函式 static helper，倍率 / 時薪 / 分段累進的單一真相。`Calculate(baseSalary, hours, isHoliday, date)` 完全無 I/O（可直接驗算），`CalculateAsync(...)` 只多一層行事曆與排班制旗標查詢後委派給前者。**兩個消費點共用同一支**：表單試算端點 `GET /overtime-requests/estimate` 與核准寫快照的 `OvertimeCompensationService.ApplyAsync` —— 拆成兩份必然漂移成「畫面顯示 A、實發 B」。倍率級距刻意放在 helper 內的 `private static readonly (decimal UpToHour, decimal Rate)[]` 而**不放 `Constants.cs`**：級距與「分段累進」的演算法是一體的，把常數獨立出去就會出現「有人拿到級距卻整段套一個倍率」的錯用；上限 `WeekdayCapHours` / `HolidayCapHours` 才是 `public const`（前端提示文案與後端驗證共用同一來源）。金額只在**總額**捨入一次（`AwayFromZero`），各分段保留原始小數 —— 逐段捨入再加總會漂移。
+**第三個消費點（2026-09）**：簽核詳情頁只取 `SplitHourTiers(hours, isHoliday)` —— 同一份級距表的第二個投影，只切「分段時數」不乘時薪，讓審核者看得懂計酬結構卻拿不到金額（金額 ÷ 時數 → 時薪 → 底薪）。`Calculate` 改為呼叫它再乘時薪，**級距表因此仍只有一份**；切段順序與 `> 0m` 過濾原樣保留，`raw` 的累加順序不變，總額逐位元等價。呼叫端傳的是 `PayableHours` **快照**（已截斷）而非 `EstimatedHours`；級距表本身取當下常數、非快照，日後修法時舊單的級距顯示會跟著變 —— 刻意不為此加第五個快照欄，正解是修法時給級距表加生效日。**前端不得 copy 一份級距表**（理由同上段：拿到級距卻整段套一個倍率）。
 
 範例：[AttendanceLeaveMerger](../Api/Common/AttendanceLeaveMerger.cs)（出缺勤報表「打卡 ∪ 請假日」合併）— 純讀取型 static helper，收 `IAttendanceReadService` + `ICalendarDayReadService` 為參數。合併粒度＝**(員工, 日期) 一列**：有打卡+有請假合併同列、只有請假產 `Id = null` 的虛擬列、沒打卡也沒請假不產列。**刻意不做成 SQL JOIN**：逐日請假時數必須走 `LeaveDayExpander`（C# 的行事曆 + 半天/小時規則），SQL 端複製一份必然漂移；且同日多張假單 JOIN 會產生重複列（舊實作的 `ListSql` / `CountFromSql` 因此 total 與列數不一致）。代價是分頁改為「**區間全量載入 → 記憶體合併 → 記憶體切頁**」，因此：(1) 呼叫端必須把區間收斂在 `MaxRangeDays`（400 天）內，未指定起訖時回退近一年；(2) 排序必須是 total order（日期 DESC → 姓名 Ordinal → `Id ?? int.MaxValue`），否則翻頁會漏列 / 重複列。ReadService 端配合拆成三支純原料查詢：`ListInRangeAsync`（打卡，不分頁）/ `ListApprovedLeavesInRangeAsync`（假單，**不可加銷假過濾** —— 銷假是逐日的，整張單層級過濾會誤刪部分銷假的其餘日子）/ `ListApprovedRevokedDatesAsync`（批次銷假日，空清單提前 return 避免 Dapper 產生 `IN ()`）。
 
