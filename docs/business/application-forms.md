@@ -158,14 +158,38 @@
 
 ## 發票號碼重複檢查規則
 
-含發票明細的申請（請款 `PaymentRequest`、預支沖銷 `WriteOffRecord`、出差沖銷 `TravelWriteOffRecord`）在建立 / 更新時，會對明細層級的發票號碼做重複檢查：
+含發票明細的申請在建立 / 更新時，會對明細層級的發票號碼做重複檢查。規則的**單一真相**為 [InvoiceUniquenessChecker](../../Api/Common/InvoiceUniquenessChecker.cs)，四個 Handler（請款 / 預支沖銷 / 出差沖銷 / 出差請款）共用同一份判準：
 
 - **批次內去重**：同一張單的多筆明細不可有相同發票號碼。
-- **跨表唯一性**：跨請款 + 沖銷各表全系統唯一（排除已拒絕申請；更新時排除自身明細）。
+- **跨表唯一性**：跨**四張**明細表全系統唯一 —— `InvoiceItems`（請款）/ `WriteOffItems`（預支沖銷）/ `TravelWriteOffItems`（出差沖銷）/ `TravelPaymentRequestItems`（出差請款）。更新時排除自身明細。
+
+### 哪些狀態會佔住號碼
+
+| 狀態 | 是否佔號 | 說明 |
+|------|---------|------|
+| `draft` 草稿 | **會** | 只要建出單就佔號，**即使從未送簽**。要釋放必須把那張單刪掉（明細 cascade 一起刪）。 |
+| `pending` 簽核中 | 會 | |
+| `returned` 退回修改中 | 會 | 單還活著、之後會再送簽。 |
+| `approved` 已核准 | 會 | |
+| `rejected` 已拒絕 | **不會** | 四張表一律排除，否則被拒絕的單會永久佔住號碼、申請人無從自救。 |
+
+**OCR 辨識本身不佔號** —— [InvoiceOcrHandler](../../Api/Handlers/InvoiceOcrHandler.cs) 只回傳辨識結果、不寫 DB。「一次掃多張看能不能辨識」不留痕跡；**按下儲存建出單之後才佔號**。
+
+### 錯誤訊息必須點名佔用者
+
+撞號時訊息格式為：
+
+```
+發票號碼已被使用：ZZ99887701（預支沖銷單 WO-20260905-001／王小明／草稿）
+```
+
+草稿尚未取號時顯示「尚未取號」。**不可退回只印號碼的訊息** —— 2026-09 事故：同仁一次掃多張發票試 OCR 留下一張草稿，之後拆單正式申請時撞號，而「發票號碼已存在：XXX」沒說是哪張單，使用者既不知道草稿也算數、也找不到要刪哪一張。
 
 **例外（手打中文文字排除）**：發票號碼欄位若**含中文 / CJK 字**（如手打「收據」「領據」等非統一發票），視為手打文字，**排除於上述兩項重複檢查之外**——同一張單或跨單填多筆「收據」皆可送出。純英數的真正統一發票（如 `AB12345678`）仍維持重複檢查。判定邏輯見 [InvoiceNoHelper.IsManualText](../../Api/Common/InvoiceNoHelper.cs)。
 
-> 出差請款 `TravelPaymentRequest` / 出差預支 `TravelRequest` / 預支 `AdvanceRequest` 目前無發票重複檢查。
+> 出差預支 `TravelRequest` / 預支 `AdvanceRequest` 無發票重複檢查。`TravelRequestItem.InvoiceNo`（假日執行活動）刻意不納入：該欄只有 ReadService 讀得出來，Handler 無任何寫入路徑、值恆 null。
+>
+> DB **沒有**發票號碼唯一索引，全是程式層檢查。2026-09 收斂前三個 Handler 各寫一份、跨表查詢漏加 `!= 'rejected'`，且出差請款從未檢查過，故可能留有歷史重複 —— 診斷腳本見 [Api/Data/Scripts/10-diagnose-duplicate-invoice-numbers.sql](../../Api/Data/Scripts/10-diagnose-duplicate-invoice-numbers.sql)。
 
 ---
 

@@ -129,39 +129,8 @@ public sealed class PaymentRequestHandler(
 
         var today = Clock.Now;
 
-        // 發票號碼含中文 / CJK 者（如「收據」「領據」）視為手打文字，排除於重複檢查之外
-        var checkableInvoices = invoices
-            .Where(i => !InvoiceNoHelper.IsManualText(i.InvoiceNo))
-            .ToList();
-
-        // 批次內重複檢查
-        var duplicatesInBatch = checkableInvoices
-            .GroupBy(i => i.InvoiceNo)
-            .Where(g => g.Count() > 1)
-            .Select(g => g.Key)
-            .ToList();
-        if (duplicatesInBatch.Count > 0)
-            throw AppException.Conflict($"發票號碼重複：{string.Join(", ", duplicatesInBatch)}");
-
-        // 資料庫唯一性檢查（排除已拒絕的請款單，並跨沖銷表檢查）
-        var invoiceNos = checkableInvoices.Select(i => i.InvoiceNo).ToList();
-        if (invoiceNos.Count > 0)
-        {
-            var existInInvoice = await db.InvoiceItems
-                .Where(ii => invoiceNos.Contains(ii.InvoiceNo)
-                          && ii.PaymentRequest.ApprovalStatus != "rejected")
-                .Select(ii => ii.InvoiceNo)
-                .Distinct()
-                .ToListAsync();
-            var existInWriteOff = await db.Set<WriteOffItem>()
-                .Where(wi => invoiceNos.Contains(wi.InvoiceNo!))
-                .Select(wi => wi.InvoiceNo!)
-                .Distinct()
-                .ToListAsync();
-            var existingNos = existInInvoice.Union(existInWriteOff).Distinct().ToList();
-            if (existingNos.Count > 0)
-                throw AppException.Conflict($"發票號碼已存在：{string.Join(", ", existingNos)}");
-        }
+        // 發票號碼唯一性（批次內去重 + 跨四張明細表；規則與訊息格式見 InvoiceUniquenessChecker）
+        await InvoiceUniquenessChecker.EnsureUniqueAsync(db, invoices.Select(i => i.InvoiceNo));
 
         // 上傳檔案至 Blob Storage
         var files = form.Files.GetFiles("files");
@@ -354,40 +323,10 @@ public sealed class PaymentRequestHandler(
             // 年份合理性（擋民國年誤植，比照 CreateAsync）
             RequestDateGuard.EnsureEach(invoices, i => i.InvoiceDate, "發票日期");
 
-            // 發票號碼含中文 / CJK 者（如「收據」「領據」）視為手打文字，排除於重複檢查之外
-            var checkableInvoices = invoices
-                .Where(i => !InvoiceNoHelper.IsManualText(i.InvoiceNo))
-                .ToList();
-
-            // 批次內重複檢查
-            var duplicatesInBatch = checkableInvoices
-                .GroupBy(i => i.InvoiceNo)
-                .Where(g => g.Count() > 1)
-                .Select(g => g.Key)
-                .ToList();
-            if (duplicatesInBatch.Count > 0)
-                throw AppException.Conflict($"發票號碼重複：{string.Join(", ", duplicatesInBatch)}");
-
-            // 資料庫唯一性檢查（排除自己目前的發票 + 已拒絕的請款單，並跨沖銷表檢查）
-            var invoiceNos = checkableInvoices.Select(i => i.InvoiceNo).ToList();
-            if (invoiceNos.Count > 0)
-            {
-                var existInInvoice = await db.InvoiceItems
-                    .Where(ii => invoiceNos.Contains(ii.InvoiceNo)
-                              && ii.PaymentRequestId != intId
-                              && ii.PaymentRequest.ApprovalStatus != "rejected")
-                    .Select(ii => ii.InvoiceNo)
-                    .Distinct()
-                    .ToListAsync();
-                var existInWriteOff = await db.Set<WriteOffItem>()
-                    .Where(wi => invoiceNos.Contains(wi.InvoiceNo!))
-                    .Select(wi => wi.InvoiceNo!)
-                    .Distinct()
-                    .ToListAsync();
-                var existingNos = existInInvoice.Union(existInWriteOff).Distinct().ToList();
-                if (existingNos.Count > 0)
-                    throw AppException.Conflict($"發票號碼已存在：{string.Join(", ", existingNos)}");
-            }
+            // 發票號碼唯一性（排除自身明細；規則與訊息格式見 InvoiceUniquenessChecker）
+            await InvoiceUniquenessChecker.EnsureUniqueAsync(
+                db, invoices.Select(i => i.InvoiceNo),
+                (InvoiceUniquenessChecker.InvoiceSource.PaymentRequest, intId));
 
             // 收集舊 FileUrl（稍後比對，刪除不再使用的 blob）
             var oldFileUrls = pr.InvoiceItems

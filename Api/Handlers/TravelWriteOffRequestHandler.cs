@@ -172,7 +172,7 @@ public sealed class TravelWriteOffRequestHandler(
 
         var grandTotal = items.Sum(i => i.TotalPrice);
 
-        // 批次內發票號碼重複檢查
+        // 發票號碼唯一性（批次內去重 + 跨四張明細表）
         await ValidateInvoiceUniquenessAsync(items, excludeTravelWriteOffRecordId: null);
 
         // 取得下一個沖銷編號（WriteOffNo：本出差申請的第幾次沖銷）
@@ -550,61 +550,19 @@ public sealed class TravelWriteOffRequestHandler(
     }
 
     /// <summary>
-    /// 驗證發票號碼唯一性：批次內去重 + 跨所有出差沖銷、預支沖銷與請款發票表（排除已拒絕申請）。
+    /// 驗證發票號碼唯一性：轉呼叫共用單一真相 <see cref="InvoiceUniquenessChecker"/>
+    /// （批次內去重 + 跨請款 / 預支沖銷 / 出差沖銷 / 出差請款四張明細表，排除已拒絕的單）。
     /// excludeTravelWriteOffRecordId：更新時傳入自身 ID 以排除自身明細。
     /// </summary>
-    private async Task ValidateInvoiceUniquenessAsync(
+    private Task ValidateInvoiceUniquenessAsync(
         TravelWriteOffItemMetadata[] items,
         int? excludeTravelWriteOffRecordId)
-    {
-        // 發票號碼含中文 / CJK 者（如「收據」「領據」）視為手打文字，排除於重複檢查之外
-        var invoiceNos = items
-            .Where(i => !string.IsNullOrWhiteSpace(i.InvoiceNo)
-                     && !InvoiceNoHelper.IsManualText(i.InvoiceNo))
-            .Select(i => i.InvoiceNo!)
-            .ToList();
-
-        if (invoiceNos.Count == 0) return;
-
-        // 批次內重複檢查
-        var duplicatesInBatch = invoiceNos
-            .GroupBy(n => n)
-            .Where(g => g.Count() > 1)
-            .Select(g => g.Key)
-            .ToList();
-        if (duplicatesInBatch.Count > 0)
-            throw AppException.Conflict($"發票號碼重複：{string.Join(", ", duplicatesInBatch)}");
-
-        // 資料庫唯一性檢查（跨出差沖銷 + 預支沖銷 + 請款發票，排除已拒絕的申請）
-        var travelWriteOffQuery = db.TravelWriteOffItems
-            .Where(twi => invoiceNos.Contains(twi.InvoiceNo!));
-
-        // 更新場景：排除本筆 TravelWriteOffRecord 的明細
-        if (excludeTravelWriteOffRecordId.HasValue)
-            travelWriteOffQuery = travelWriteOffQuery.Where(twi => twi.TravelWriteOffRecordId != excludeTravelWriteOffRecordId.Value);
-
-        var existInTravelWriteOff = await travelWriteOffQuery
-            .Select(twi => twi.InvoiceNo!)
-            .Distinct()
-            .ToListAsync();
-
-        var existInWriteOff = await db.WriteOffItems
-            .Where(wi => invoiceNos.Contains(wi.InvoiceNo!))
-            .Select(wi => wi.InvoiceNo!)
-            .Distinct()
-            .ToListAsync();
-
-        var existInInvoice = await db.InvoiceItems
-            .Where(ii => invoiceNos.Contains(ii.InvoiceNo)
-                      && ii.PaymentRequest.ApprovalStatus != "rejected")
-            .Select(ii => ii.InvoiceNo)
-            .Distinct()
-            .ToListAsync();
-
-        var existingNos = existInTravelWriteOff.Union(existInWriteOff).Union(existInInvoice).Distinct().ToList();
-        if (existingNos.Count > 0)
-            throw AppException.Conflict($"發票號碼已存在：{string.Join(", ", existingNos)}");
-    }
+        => InvoiceUniquenessChecker.EnsureUniqueAsync(
+            db,
+            items.Select(i => i.InvoiceNo),
+            excludeTravelWriteOffRecordId is { } id
+                ? (InvoiceUniquenessChecker.InvoiceSource.TravelWriteOff, id)
+                : null);
 
     /// <summary>
     /// 依 multipart metadata 與上傳檔案清單，組裝 TravelWriteOffItem 清單並上傳至 Blob Storage。
