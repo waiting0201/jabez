@@ -42,3 +42,6 @@ azurite-debug.log
 
 # 本機產出檔（分析報告 PDF 等 — 不進版控）
 output/
+
+# 產出的 PDF 一律放 output/（已 ignore），不進版控
+docs/**/*.pdf
