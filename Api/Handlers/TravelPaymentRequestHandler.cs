@@ -124,6 +124,9 @@ public sealed class TravelPaymentRequestHandler(
         RequestDateGuard.EnsureAll((startDate, "出差開始日"), (endDate, "出差結束日"));
         RequestDateGuard.EnsureEach(itemRequests, i => i.InvoiceDate, "發票日期");
 
+        // 發票號碼唯一性（批次內去重 + 跨四張明細表；規則與訊息格式見 InvoiceUniquenessChecker）
+        await InvoiceUniquenessChecker.EnsureUniqueAsync(db, itemRequests.Select(i => i.InvoiceNo));
+
         var today = Clock.Now;
 
         // 指定審核者
@@ -281,6 +284,11 @@ public sealed class TravelPaymentRequestHandler(
                 return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
 
             RequestDateGuard.EnsureEach(itemRequests, i => i.InvoiceDate, "發票日期");
+
+            // 發票號碼唯一性（排除自身明細；規則與訊息格式見 InvoiceUniquenessChecker）
+            await InvoiceUniquenessChecker.EnsureUniqueAsync(
+                db, itemRequests.Select(i => i.InvoiceNo),
+                (InvoiceUniquenessChecker.InvoiceSource.TravelPayment, intId));
 
             // 收集舊 FileUrl（稍後清理孤立 blob）
             var oldFileUrls = item.Items

@@ -373,7 +373,12 @@ Api/
 │   │                                  #      ③ `ChildBirthDate` 是 730 天額度的分組鍵，不寫則 parental-quota 永遠算不到這張單。
 │   │                                  #      不寫死 Id：員工 / 指定審核者以 Email 解析，流程依部門沿 ParentId 往上（同 ResolveApprovalItemIdAsync
 │   │                                  #      的優先序），固定關卡審核者依 部門 + 職稱 解析且**排除 @example.com 測試帳號與 Superadmin**
-│   │                                  #      （正式站仍有 active 的測試主管帳號，不排除會把簽名記到測試帳號上），每關須恰好 1 位否則整份中止
+│   │                                  #      （正式站仍有 active 的測試主管帳號，不排除會把簽名記到測試帳號上），每關須恰好 1 位否則整份中止、
+│   │                                  #   10 診斷跨表重複的發票號碼（唯讀）：搭配發票唯一性收斂成 InvoiceUniquenessChecker 的程式變更。
+│   │                                  #      出差請款從未做過檢查、跨表查詢又漏排除已拒絕單，故可能留有歷史重複；納入檢查後，
+│   │                                  #      使用者編輯這些舊單（發票欄根本沒動）會被別張舊單擋住而存不回去，上線前先跑一次交人工清理。
+│   │                                  #      ⚠ CJK 手打文字的排除**必須用 `Latin1_General_BIN2`** collation —— 中文 collation 下
+│   │                                  #      字元範圍 `[一-鿿]` 不照 Unicode 碼位排序，「收據」會判成 0 而靜默失效
 │   └── Seed/                          # 一次性匯入工具（共用 RocDateParser 解民國年）
 │       ├── EmployeeImporter + EmployeeImportDtos + employee-import.json  # 員工人事資料（RUN_EMPLOYEE_IMPORT 旗標，IMPORT_UPLOAD_FILES 控制附件上傳）
 │       ├── ProjectImporter + ProjectImportDtos + project-import.json     # 專案資料（RUN_PROJECT_IMPORT 旗標，PROJECT_IMPORT_DRY_RUN 只印不寫；來源 reference/專案資料-115.07.29.xls；以 Code upsert、期別明細全量重建）
@@ -464,6 +469,16 @@ Api/
 │   │                                    三個地雷：① 範圍是防呆不是業務規則（±3 年須容納育嬰留停 730 天的迄日）；② 必須排在該類型的資格 / 額度驗證之前，
 │   │                                    否則誤植年份會先撞上「子女未滿 3 歲」這類訊息；③ `default(DateTime)` 不進 guard（要回「必填」而非「0001-01-01 超出範圍」）。
 │   │                                    前端同一組數字在 `Admin/src/app/shared/utils/date-bounds.ts`（日期 input 的 min / max），兩處必須一起改
+│   ├── InvoiceUniquenessChecker.cs    # 發票號碼唯一性單一真相（2026-09 新增）：批次內去重 + 跨**四張**明細表
+│   │                                    （InvoiceItems 請款 / WriteOffItems 預支沖銷 / TravelWriteOffItems 出差沖銷 /
+│   │                                    TravelPaymentRequestItems 出差請款），四個 Handler 的 Create + Update 共用，
+│   │                                    更新時以 `(InvoiceSource, Id)` 排除自身。**佔號規則**：draft / pending / returned /
+│   │                                    approved 皆佔號（草稿即使從未送簽也算），只有 `rejected` 不佔；OCR 辨識本身不寫 DB 故不佔號。
+│   │                                    **訊息必須點名佔用者**（`號碼（單別 單號／申請人／狀態）`，草稿印「尚未取號」）——
+│   │                                    2026-09 事故：同仁一次掃多張發票試 OCR 留下草稿，拆單時撞號而「發票號碼已存在」沒說是哪張，
+│   │                                    使用者既不知草稿也算數、也找不到要刪哪張。收斂前三個 Handler 各寫一份，
+│   │                                    請款查沖銷表 / 出差沖銷的兩個跨表查詢都漏加 `!= 'rejected'`（已拒絕的單**永久佔號**、無從自救），
+│   │                                    出差請款則完全未檢查。DB 無唯一索引故改規則免 migration；歷史重複診斷見 Scripts/10
 │   ├── OvertimePayCalculator.cs       # 勞基法加班費「倍率 / 時薪 / 分段累進」單一真相（純函式）：
 │   │                                    平日 1–2h ×1.34、3h 起 ×1.67（上限 4h）；假日 1–2h ×1.34、3–8h ×1.67、9h 起 ×2.67（上限 12h）；
 │   │                                    時薪＝ROUND(底薪 ÷ 240, 2)；金額只在總額捨入一次（AwayFromZero）；

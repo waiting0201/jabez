@@ -255,7 +255,7 @@ public sealed class WriteOffRequestHandler(
 
         var grandTotal = items.Sum(i => i.TotalPrice);
 
-        // 批次內發票號碼重複檢查
+        // 發票號碼唯一性（批次內去重 + 跨四張明細表）
         await ValidateInvoiceUniquenessAsync(items, excludeWriteOffRecordId: null);
 
         // 取得下一個沖銷編號（WriteOffNo：本預支單的第幾次沖銷）
@@ -823,58 +823,19 @@ public sealed class WriteOffRequestHandler(
     }
 
     /// <summary>
-    /// 驗證發票號碼唯一性：批次內去重 + 跨所有沖銷與請款發票表（排除已拒絕申請）。
+    /// 驗證發票號碼唯一性：轉呼叫共用單一真相 <see cref="InvoiceUniquenessChecker"/>
+    /// （批次內去重 + 跨請款 / 預支沖銷 / 出差沖銷 / 出差請款四張明細表，排除已拒絕的單）。
     /// excludeWriteOffRecordId：更新時傳入自身 ID 以排除自身明細。
     /// </summary>
-    private async Task ValidateInvoiceUniquenessAsync(
+    private Task ValidateInvoiceUniquenessAsync(
         WriteOffItemMetadata[] items,
         int? excludeWriteOffRecordId)
-    {
-        // 發票號碼含中文 / CJK 者（如「收據」「領據」）視為手打文字，排除於重複檢查之外
-        var invoiceNos = items
-            .Where(i => !string.IsNullOrWhiteSpace(i.InvoiceNo)
-                     && !InvoiceNoHelper.IsManualText(i.InvoiceNo))
-            .Select(i => i.InvoiceNo!)
-            .ToList();
-
-        if (invoiceNos.Count == 0) return;
-
-        // 批次內重複檢查
-        var duplicatesInBatch = invoiceNos
-            .GroupBy(n => n)
-            .Where(g => g.Count() > 1)
-            .Select(g => g.Key)
-            .ToList();
-        if (duplicatesInBatch.Count > 0)
-            throw AppException.Conflict($"發票號碼重複：{string.Join(", ", duplicatesInBatch)}");
-
-        // 資料庫唯一性檢查（跨所有沖銷 + 請款發票，排除已拒絕的申請）
-        // 已拒絕的沖銷單必須排除，否則其發票號碼會被永久占用，申請人重開一張新單就卡 409 且無從自救
-        // （與下方 InvoiceItems 的 ApprovalStatus != "rejected" 同一規則）
-        var writeOffQuery = db.WriteOffItems
-            .Where(wi => invoiceNos.Contains(wi.InvoiceNo!)
-                      && wi.WriteOffRecord.ApprovalStatus != "rejected");
-
-        // 更新場景：排除本筆 WriteOffRecord 的明細
-        if (excludeWriteOffRecordId.HasValue)
-            writeOffQuery = writeOffQuery.Where(wi => wi.WriteOffRecordId != excludeWriteOffRecordId.Value);
-
-        var existInWriteOff = await writeOffQuery
-            .Select(wi => wi.InvoiceNo!)
-            .Distinct()
-            .ToListAsync();
-
-        var existInInvoice = await db.InvoiceItems
-            .Where(ii => invoiceNos.Contains(ii.InvoiceNo)
-                      && ii.PaymentRequest.ApprovalStatus != "rejected")
-            .Select(ii => ii.InvoiceNo)
-            .Distinct()
-            .ToListAsync();
-
-        var existingNos = existInWriteOff.Union(existInInvoice).Distinct().ToList();
-        if (existingNos.Count > 0)
-            throw AppException.Conflict($"發票號碼已存在：{string.Join(", ", existingNos)}");
-    }
+        => InvoiceUniquenessChecker.EnsureUniqueAsync(
+            db,
+            items.Select(i => i.InvoiceNo),
+            excludeWriteOffRecordId is { } id
+                ? (InvoiceUniquenessChecker.InvoiceSource.WriteOff, id)
+                : null);
 
     /// <summary>
     /// 依 multipart metadata 與上傳檔案清單，組裝 WriteOffItem 清單並上傳至 Blob Storage。
