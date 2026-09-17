@@ -32,7 +32,7 @@
 │       ├── hr-profile.md             # 員工人事資料卡
 │       ├── notifications.md          # 通知系統清單（Email + LINE）
 │       ├── flexible-work-hours.md   # 四週彈性工時（技術規格，**尚未實作**）
-│       └── flexible-work-hours-client.md # 四週彈性工時（**客戶確認版**，無技術內容、逐項打勾）
+│       └── flexible-work-hours-client.md # 四週彈性工時（**客戶確認版**，無技術內容、逐項寫明做法）
 └── Jabez.sln       # Visual Studio 方案檔
 ```
 
@@ -143,7 +143,7 @@ Bug 修復：
 - [hr-profile.md](docs/business/hr-profile.md) — 員工人事資料卡（3 Tab + 9 子表 + 整批替換）
 - [notifications.md](docs/business/notifications.md) — 通知系統清單（9 種 Email + 9 種 LINE Flex Message + 系統開關 + 打卡提醒）
 - [flexible-work-hours.md](docs/business/flexible-work-hours.md) — **四週彈性工時（技術規格，尚未實作）**：勞基法 §30-1 框架 / 09:00–18:00＋午休 12:30–13:30 / 個人排班排例休（**例假未排滿或觸及連續 12 天・14 天 2 例假即擋存**，休假未滿只警示）/ 出勤排休總覽表（三色）/ 打卡與加班連動 / **國定假日出勤加倍工資**（不開放排班、改走加班申請；前 8 小時加發 1 日日薪 ＋ 第 9 小時起走**平日級距**，故 `OvertimePayCalculator` 不需新增級距表、只需改日別解析）/ 補休 FIFO（**1–6 月用至 7 月底→8 月薪資結算；7–12 月用至隔年 1 月底→隔年 2 月結算**）/ 假日執行活動退場 / **與現行系統差異對照 + §10 決議（含 2026-09-16 客戶回覆 21 項）**
-- [flexible-work-hours-client.md](docs/business/flexible-work-hours-client.md) — 四週彈性工時**客戶確認版**（v1.2）：無技術內容與法條罰鍰，A–F 六區塊逐項可打勾。⚠️ **與上一份需人工同步**，改技術規格時要回頭確認客戶版是否受影響
+- [flexible-work-hours-client.md](docs/business/flexible-work-hours-client.md) — 四週彈性工時**客戶確認版**（v1.3）：無技術內容與法條罰鍰，A–F 六區塊**逐項寫明實際做法**（v1.3 移除「確認」勾選欄與「修正意見」欄，改為把畫面行為／時點／擋存條件寫清楚）。⚠️ **與上一份需人工同步**，改技術規格時要回頭確認客戶版是否受影響
 
 ---
 
@@ -380,7 +380,17 @@ Api/
 │   │                                  #      出差請款從未做過檢查、跨表查詢又漏排除已拒絕單，故可能留有歷史重複；納入檢查後，
 │   │                                  #      使用者編輯這些舊單（發票欄根本沒動）會被別張舊單擋住而存不回去，上線前先跑一次交人工清理。
 │   │                                  #      ⚠ CJK 手打文字的排除**必須用 `Latin1_General_BIN2`** collation —— 中文 collation 下
-│   │                                  #      字元範圍 `[一-鿿]` 不照 Unicode 碼位排序，「收據」會判成 0 而靜默失效
+│   │                                  #      字元範圍 `[一-鿿]` 不照 Unicode 碼位排序，「收據」會判成 0 而靜默失效、
+│   │                                  #   11 變更指定預支單的所屬專案（@Commit 空跑開關，冪等可重跑）：已核准單前台無法編輯
+│   │                                  #      （UpdateAsync 僅開放 draft / returned），掛錯專案只能以腳本更正。以 **RequestNo + Projects.Code**
+│   │                                  #      定位（不寫死 Id），**只改 `AdvanceRequests.ProjectId` 一欄**（該表無 UpdatedAt）。
+│   │                                  #      子表全部不必動：Items / Installments / Supplements 皆無專案欄，**WriteOffRecords 也沒有自己的
+│   │                                  #      ProjectId**（全站一律透過母單回扣專案），故沖銷子單與已撥分期會自動跟著搬家 ——
+│   │                                  #      這也代表**已撥金額的專案歸屬會一起改變**，空跑報表須先確認金額。
+│   │                                  #      簽核流程依**申請人部門**解析、與專案無關，故 ApprovalItemId 等送簽快照刻意不重算；
+│   │                                  #      款項統計的部門可見性看的也是申請人部門，換專案不影響誰看得到這張單。
+│   │                                  #      閘門：單號查無 / 目標 Code 非唯一命中（Projects.Code 無唯一索引）/ 新專案已結案 /
+│   │                                  #      現有專案非預期（代表交辦後又被人改過）
 │   └── Seed/                          # 一次性匯入工具（共用 RocDateParser 解民國年）
 │       ├── EmployeeImporter + EmployeeImportDtos + employee-import.json  # 員工人事資料（RUN_EMPLOYEE_IMPORT 旗標，IMPORT_UPLOAD_FILES 控制附件上傳）
 │       ├── ProjectImporter + ProjectImportDtos + project-import.json     # 專案資料（RUN_PROJECT_IMPORT 旗標，PROJECT_IMPORT_DRY_RUN 只印不寫；來源 reference/專案資料-115.07.29.xls；以 Code upsert、期別明細全量重建）
