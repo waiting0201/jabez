@@ -12,7 +12,7 @@
 > 前一版 `e化0902 變形工時相關修正.docx`（2026-09-02）**已作廢**，其與本版的差異見 [§9](#9-與現行系統的差異對照實作影響評估)。
 > docx 不進版控（`reference/` 已從版控移除），本檔即為需求的單一真相。
 >
-> **客戶版**（無技術內容、供逐項打勾）：[flexible-work-hours-client.md](flexible-work-hours-client.md)。
+> **客戶版**（無技術內容、逐項寫明實際做法）：[flexible-work-hours-client.md](flexible-work-hours-client.md)。
 > ⚠️ **兩份需人工同步** —— 改本檔時要回頭確認客戶版是否受影響。
 >
 > 報價**不在本檔範圍**（另案）。

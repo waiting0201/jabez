@@ -32,7 +32,7 @@
 │       ├── hr-profile.md             # 員工人事資料卡
 │       ├── notifications.md          # 通知系統清單（Email + LINE）
 │       ├── flexible-work-hours.md   # 四週彈性工時（技術規格，**尚未實作**）
-│       └── flexible-work-hours-client.md # 四週彈性工時（**客戶確認版**，無技術內容、逐項打勾）
+│       └── flexible-work-hours-client.md # 四週彈性工時（**客戶確認版**，無技術內容、逐項寫明做法）
 └── Jabez.sln       # Visual Studio 方案檔
 ```
 
@@ -143,7 +143,7 @@ Bug 修復：
 - [hr-profile.md](docs/business/hr-profile.md) — 員工人事資料卡（3 Tab + 9 子表 + 整批替換）
 - [notifications.md](docs/business/notifications.md) — 通知系統清單（9 種 Email + 9 種 LINE Flex Message + 系統開關 + 打卡提醒）
 - [flexible-work-hours.md](docs/business/flexible-work-hours.md) — **四週彈性工時（技術規格，尚未實作）**：勞基法 §30-1 框架 / 09:00–18:00＋午休 12:30–13:30 / 個人排班排例休（**例假未排滿或觸及連續 12 天・14 天 2 例假即擋存**，休假未滿只警示）/ 出勤排休總覽表（三色）/ 打卡與加班連動 / **國定假日出勤加倍工資**（不開放排班、改走加班申請；前 8 小時加發 1 日日薪 ＋ 第 9 小時起走**平日級距**，故 `OvertimePayCalculator` 不需新增級距表、只需改日別解析）/ 補休 FIFO（**1–6 月用至 7 月底→8 月薪資結算；7–12 月用至隔年 1 月底→隔年 2 月結算**）/ 假日執行活動退場 / **與現行系統差異對照 + §10 決議（含 2026-09-16 客戶回覆 21 項）**
-- [flexible-work-hours-client.md](docs/business/flexible-work-hours-client.md) — 四週彈性工時**客戶確認版**（v1.2）：無技術內容與法條罰鍰，A–F 六區塊逐項可打勾。⚠️ **與上一份需人工同步**，改技術規格時要回頭確認客戶版是否受影響
+- [flexible-work-hours-client.md](docs/business/flexible-work-hours-client.md) — 四週彈性工時**客戶確認版**（v1.3）：無技術內容與法條罰鍰，A–F 六區塊**逐項寫明實際做法**（v1.3 移除「確認」勾選欄與「修正意見」欄，改為把畫面行為／時點／擋存條件寫清楚）。⚠️ **與上一份需人工同步**，改技術規格時要回頭確認客戶版是否受影響
 
 ---
 
