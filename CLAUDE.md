@@ -380,7 +380,17 @@ Api/
 │   │                                  #      出差請款從未做過檢查、跨表查詢又漏排除已拒絕單，故可能留有歷史重複；納入檢查後，
 │   │                                  #      使用者編輯這些舊單（發票欄根本沒動）會被別張舊單擋住而存不回去，上線前先跑一次交人工清理。
 │   │                                  #      ⚠ CJK 手打文字的排除**必須用 `Latin1_General_BIN2`** collation —— 中文 collation 下
-│   │                                  #      字元範圍 `[一-鿿]` 不照 Unicode 碼位排序，「收據」會判成 0 而靜默失效
+│   │                                  #      字元範圍 `[一-鿿]` 不照 Unicode 碼位排序，「收據」會判成 0 而靜默失效、
+│   │                                  #   11 變更指定預支單的所屬專案（@Commit 空跑開關，冪等可重跑）：已核准單前台無法編輯
+│   │                                  #      （UpdateAsync 僅開放 draft / returned），掛錯專案只能以腳本更正。以 **RequestNo + Projects.Code**
+│   │                                  #      定位（不寫死 Id），**只改 `AdvanceRequests.ProjectId` 一欄**（該表無 UpdatedAt）。
+│   │                                  #      子表全部不必動：Items / Installments / Supplements 皆無專案欄，**WriteOffRecords 也沒有自己的
+│   │                                  #      ProjectId**（全站一律透過母單回扣專案），故沖銷子單與已撥分期會自動跟著搬家 ——
+│   │                                  #      這也代表**已撥金額的專案歸屬會一起改變**，空跑報表須先確認金額。
+│   │                                  #      簽核流程依**申請人部門**解析、與專案無關，故 ApprovalItemId 等送簽快照刻意不重算；
+│   │                                  #      款項統計的部門可見性看的也是申請人部門，換專案不影響誰看得到這張單。
+│   │                                  #      閘門：單號查無 / 目標 Code 非唯一命中（Projects.Code 無唯一索引）/ 新專案已結案 /
+│   │                                  #      現有專案非預期（代表交辦後又被人改過）
 │   └── Seed/                          # 一次性匯入工具（共用 RocDateParser 解民國年）
 │       ├── EmployeeImporter + EmployeeImportDtos + employee-import.json  # 員工人事資料（RUN_EMPLOYEE_IMPORT 旗標，IMPORT_UPLOAD_FILES 控制附件上傳）
 │       ├── ProjectImporter + ProjectImportDtos + project-import.json     # 專案資料（RUN_PROJECT_IMPORT 旗標，PROJECT_IMPORT_DRY_RUN 只印不寫；來源 reference/專案資料-115.07.29.xls；以 Code upsert、期別明細全量重建）
