@@ -325,6 +325,19 @@ export const CIS = {
 export const FONT_FAMILY = 'NotoSansTC';
 
 /**
+ * PDF 中文字型子集的版本戳（＝兩個 `.subset.ttf` 的內容短雜湊），以 query string 附在字型 URL 後做 cache busting。
+ *
+ * **這一行由 `npm run subset-fonts` 自動改寫，不要手動編輯。**
+ *
+ * 字型是 Angular `assets`（原樣複製、檔名不帶 content hash），且 `loadFonts()` 又在 SPA 生命週期內
+ * 單例快取，所以換了字集但 URL 沒變時，瀏覽器會沿用舊字型 —— 而缺字在 jsPDF 是**整個字消失、
+ * 不報錯**（見 docs/frontend-design.md §8.8），畫面與程式皆看不出異常。
+ * 2026-09 事故：字集補上 Big5 第二字面並部署後，仍有使用者列印出的 PDF 缺「瑋」，
+ * 同一人的另一張單卻正常 —— 差別只在那次列印載到的是新字型還是快取的舊字型。
+ */
+const FONT_SUBSET_VERSION = '7688aa67';
+
+/**
  * 將圖片透過 Canvas 縮放至指定尺寸，用於壓縮簽名圖片。
  * - 不放大（scale 最大為 1）
  * - 保留透明背景（PNG）
@@ -368,8 +381,8 @@ export class PdfCoreService {
   loadFonts(): Promise<{ regular: string; bold: string }> {
     if (!this.fontCache) {
       this.fontCache = Promise.all([
-        fetch('/assets/fonts/NotoSansTC-Regular.subset.ttf').then(r => r.arrayBuffer()),
-        fetch('/assets/fonts/NotoSansTC-Bold.subset.ttf').then(r => r.arrayBuffer()),
+        fetch(`/assets/fonts/NotoSansTC-Regular.subset.ttf?v=${FONT_SUBSET_VERSION}`).then(r => r.arrayBuffer()),
+        fetch(`/assets/fonts/NotoSansTC-Bold.subset.ttf?v=${FONT_SUBSET_VERSION}`).then(r => r.arrayBuffer()),
       ]).then(([regular, bold]) => ({
         regular: arrayBufferToBase64(regular),
         bold: arrayBufferToBase64(bold),

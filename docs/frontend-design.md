@@ -1488,6 +1488,32 @@ PDF 中文走 [pdf-core.service.ts](../Admin/src/app/shared/services/pdf-core.se
   只改 `generate-charset.py` 不會有任何效果
 - 驗證方式：`TTFont(...).getBestCmap()` 內要找得到該字碼，且 `glyf[g].numberOfContours > 0`
 
+#### 8.8.1 字型 URL 必須帶版本戳（cache busting）
+
+字型放在 Angular `assets`，**原樣複製、檔名不帶 content hash**，加上 `PdfCoreService.loadFonts()`
+又在 SPA 生命週期內單例快取，所以「換了字集、檔名沒換」時瀏覽器會繼續用舊字型 ——
+而缺字的表現是**整個字消失、不報錯**，使用者只會看到「明明修好了，印出來還是少一個字」。
+
+作法：[pdf-core.service.ts](../Admin/src/app/shared/services/pdf-core.service.ts) 的
+`FONT_SUBSET_VERSION`（兩個 `.subset.ttf` 的內容短雜湊）以 `?v=` 附在兩個字型 URL 後，
+**由 `npm run subset-fonts` 自動改寫該常數**，不靠人記得手動 +1（會忘記的正是這一步）。
+
+```ts
+const FONT_SUBSET_VERSION = '7688aa67';   // 由 npm run subset-fonts 自動蓋章，勿手改
+fetch(`/assets/fonts/NotoSansTC-Regular.subset.ttf?v=${FONT_SUBSET_VERSION}`)
+```
+
+- 改完字集跑一次 `npm run subset-fonts`，**三樣東西一起進版控**：`*.subset.ttf`、`tc-charset.txt`、`pdf-core.service.ts`
+- 雜湊沒變＝字型沒變，重跑不會產生雜訊 diff（冪等）
+- 這個 pattern 只適用於「內容會變、檔名固定」的 `assets`；經由 bundler 引用的資源 Angular 已自帶 hash
+
+> **歷史教訓（2026-09-18）**：Big5 第二字面的字集修正（`398e9025`）上線後，
+> 同一位員工「高蘇貞瑋」的出差請款單仍印成「高蘇貞」，預支單卻正常。
+> 兩支 PDF service 的姓名繪製程式碼逐字相同、姓名同樣取自 `Users.Name`，
+> 差別只在那次列印載到的是新字型還是快取的舊字型 —— 沒有 cache busting 時，
+> 這種 bug 會表現成「同一個人、不同單別、時好時壞」，很容易誤判成後端資料問題。
+
+
 ---
 
 ## 8.6 即時試算卡片（Live Estimate Card）
