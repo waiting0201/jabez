@@ -610,7 +610,7 @@ export class PaymentForm implements OnInit {
       fileName:    [fileName],
       invoiceNo:   [invoiceNo, Validators.required],
       invoiceDate: [invoiceDate],
-      amount:      [amount, [Validators.required, Validators.min(0)]],
+      amount:      [amount, Validators.required],   // 允許負數（折讓 / 退款列）
       itemName:    [itemName],
       note:        [note],
       previewUrl:  [previewUrl],

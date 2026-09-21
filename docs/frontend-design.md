@@ -1042,13 +1042,21 @@ private _invoiceGroup(item?: { id?: string; field1: string; amount: number }) {
   return this.fb.group({
     id:     [item?.id ?? null],
     field1: [item?.field1 ?? '', Validators.required],
-    amount: [item?.amount ?? 0,  Validators.min(0)],
+    amount: [item?.amount ?? 0,  Validators.required],   // 下限視業務而定，見下方說明
   });
 }
 
 addItem() { this.invoiceArray.push(this._invoiceGroup()); }
 removeItem(i: number) { this.invoiceArray.removeAt(i); }
 ```
+
+> **金額欄要不要加 `Validators.min(0)`，看該張單有沒有「負向列」的業務需求**：
+> **請款 / 預審**的明細金額**允許負數**（2026-09 解除限制），折讓、退款、扣款直接以負數列表達，
+> 不必另開欄位或拆單；TS 端不掛 `min(0)`、HTML 的 `<input type="number">` 也不帶 `min="0"`，
+> 兩處要一起拿掉（只拿掉其中一處，桌機瀏覽器的 spinner 或行動裝置鍵盤仍會擋）。
+> 總額一律由 `reduce` 加總（前端）與 `Sum()`（後端）推得，負數天然正確，不需另做處理。
+> **預支 / 出差 / 兩張沖銷**的 `unitPrice` 仍維持 `min(0)`（該類單無負向列語意，負值只會是誤植）。
+
 
 ### 7.5 載入後資料回填
 
