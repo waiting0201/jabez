@@ -13,7 +13,8 @@
 
  目標
  ----
- 29 張預支單（AdvanceRequests）＋ 其沖銷子單（WriteOffRecords）的
+ 30 張預支單（AdvanceRequests）＋ 其沖銷子單（WriteOffRecords）的
+ （2026-09-21 追加 ADV-20260907-069 → 李文絕，原為 29 張 / 12 位員工）
  **SubmittedById** 由代錄帳號改成實際員工。沖銷子單一律繼承母單的新申請人。
 
  只改一個欄位
@@ -64,7 +65,8 @@
 
  空跑要確認四件事：
    ① 「找不到的單號」0 列  ② 「新申請人解析異常」0 列
-   ③  主報表 29 列、Action 全為「移轉」、新申請人逐列對得上交辦清單
+   ③  主報表 30 列、Action 全為「移轉」（已跑過的批次會是「已是目標申請人→略過」）、
+      新申請人逐列對得上交辦清單
    ④ 「pending 卡死預警」0 列
 
  ⚠ 本腳本可安全重跑：已移轉過的單會落入 already 而被跳過，不會重複異動。
@@ -81,7 +83,7 @@ DECLARE @AllowInactiveNew   bit = 0;   -- 新申請人非 active 時是否放行
 DECLARE @AllowStuckPending  bit = 0;   -- 改完會讓 pending 單目前關卡 0 人可簽時是否放行
 
 DECLARE @FromEmail    nvarchar(200) = N'cherng1217@gmail.com';  -- 代錄帳號 Charles
-DECLARE @ExpectedRows int           = 29;                        -- 對照表應有的列數
+DECLARE @ExpectedRows int           = 30;                        -- 對照表應有的列數
 
 -- ---------------------------------------------------------------------------
 -- 單號 → 新申請人 對照表
@@ -140,7 +142,9 @@ INSERT INTO @Map (RequestNo, NewApplicantEmail, NewApplicantName) VALUES
 -- 楊雪（發展三部）
     (N'ADV-20260907-066', N'ice919@jacreative.com.tw',     N'楊雪'),
 -- 石佳品（發展三部）
-    (N'ADV-20260907-067', N'abby.shih77@jacreative.com.tw', N'石佳品');
+    (N'ADV-20260907-067', N'abby.shih77@jacreative.com.tw', N'石佳品'),
+-- 李文絕（發展一部）── 2026-09-21 追加，同一批代錄單漏列
+    (N'ADV-20260907-069', N'keynes@jacreative.com.tw',       N'李文絕');
 
 BEGIN TRANSACTION;
 
