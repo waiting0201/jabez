@@ -576,7 +576,7 @@ export class PreReviewForm implements OnInit {
       categorySelect: [categorySelect],
       categoryCustom: [categoryCustom],
       itemDate:       [itemDate],
-      amount:         [amount, [Validators.required, Validators.min(0)]],
+      amount:         [amount, Validators.required],   // 允許負數（折讓 / 退款列）
       itemName:       [itemName],
       description:    [description],
       note:           [note],
