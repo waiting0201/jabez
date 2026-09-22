@@ -6,28 +6,44 @@
 
 ## 非正式環境的訊息標記（2026-09 新增）
 
-LINE 訊息會依設定 `Line:EnvironmentLabel`（Azure App Setting `Line__EnvironmentLabel`）在**兩個位置**
-加上環境標記，正式站**不設此值**故輸出完全不變：
+**LINE 與 Email 共用同一個設定鍵** `App:EnvironmentLabel`
+（Azure App Setting `App__EnvironmentLabel`），正式站**不設此值**故輸出完全不變。
+單一真相為 [`Api/Common/Constants.cs` 的 `EnvironmentLabel`](../../Api/Common/Constants.cs)。
 
-| 位置 | 為什麼兩個都要 |
-|---|---|
-| `altText` | 手機通知列與聊天列表看到的是這個 |
-| bubble header 的第一行 | 點開訊息後看到的是這個 |
+> ⚠️ 拆成兩個設定鍵的必然結果是有人只設了一邊，症狀是「LINE 標了、Email 沒標」
+> 而且**不會有任何錯誤**。一個概念就給一個鍵。
 
-只加其中一個會出現「通知列看得出是測試、點開卻看不出來」的半吊子狀態。
+| 通道 | 套用位置 | 為什麼兩個位置都要 |
+|---|---|---|
+| LINE | `altText` | 手機通知列與聊天列表看到的是這個 |
+| LINE | bubble header 第一行 | 點開訊息後看到的是這個 |
+| Email | 主旨前綴 | 信箱列表看到的是這個 |
+| Email | 內文頂端橫幅 | 轉寄或列印出來時看到的是這個 |
 
-實作在 [`LineFlexMessageBuilder.BuildBubble`](../../Api/Services/LineFlexMessageBuilder.cs) ——
-**11 種模板全部走這個唯一收斂點**，日後新增模板自動涵蓋，不必逐一修改。
-該類別是 static 無 DI，故由 `Program.cs` 於啟動時設定一次（composition root），
-不在每個 Build 方法多加參數。
+只加其中一個會出現「列表看得出是測試、點開卻看不出來」的半吊子狀態。
 
-**為什麼需要**：測試站與正式站推的是同一批真實員工看得懂的訊息，收件人手機上完全分不出
-哪一則是測試 —— 2026-09 曾因此讓 29 位同仁各收到 2 則測試推播而無從判斷真偽，
-且**訊息送出後收不回來**。
+兩個實作點都是該通道的**唯一收斂點**，故日後新增訊息模板自動涵蓋：
 
-⚠️ **Email 目前沒有對應機制**。測試站現況是把 `SystemSetting.ApprovalEmailEnabled` 關掉來避免誤寄，
-但那個開關**擋不到打卡提醒與撥款提醒**（兩支 TimerTrigger 不看它）。
-若日後要在測試站開 Email，需比照本節在信件主旨加標記。
+- LINE → [`LineFlexMessageBuilder.BuildBubble`](../../Api/Services/LineFlexMessageBuilder.cs)（11 種模板全部走它，已逐一確認）
+- Email → [`EmailService.SendAsync`](../../Api/Services/EmailService.cs)（14 個寄信點全部走它）
+
+兩個類別都是 static / 無 DI，故由 `Program.cs` 於啟動時設定一次（composition root）。
+
+**為什麼需要**：測試站與正式站送的是同一批真實員工看得懂的訊息，收件人手機／信箱上
+完全分不出哪一則是測試 —— 2026-09 曾因此讓 29 位同仁各收到 2 則測試 LINE 推播而
+無從判斷真偽，且**訊息送出後收不回來**。
+
+> ⚠️ **不要以為關掉通知開關就安全了**：`SystemSetting.ApprovalEmailEnabled` /
+> `ApprovalLineEnabled` **只管簽核通知**。以下路徑完全不受它們管制，關了照送：
+> | 路徑 | 通道 |
+> |---|---|
+> | 帳號通知信（`UserHandler`） | Email |
+> | 薪資明細信（`PayrollHandler`） | Email |
+> | 打卡提醒（`AttendanceReminderFunction`） | LINE |
+> | 撥款提醒（`PaymentReminderFunction`） | LINE + Email |
+> | 排班提醒（`ShiftScheduleReminderFunction`） | LINE |
+>
+> 環境標記是唯一能涵蓋全部路徑的機制。
 
 現值：測試站 `【測試站｜此為測試訊息】`；正式站未設定。
 

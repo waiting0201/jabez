@@ -118,6 +118,39 @@ public static class PermissionCodes
     public const string ActivityDaysWrite = "activity-days:write";
 }
 
+/// <summary>
+/// 非正式環境的訊息標記（例：<c>【測試站｜此為測試訊息】</c>）。**正式站不設此值**，輸出完全不變。
+///
+/// 設定鍵 <c>App:EnvironmentLabel</c>（Azure App Setting <c>App__EnvironmentLabel</c>）。
+///
+/// <b>為什麼要有</b>：測試站與正式站送的是同一批真實員工看得懂的訊息，
+/// 收件人手機／信箱上完全分不出哪一則是測試 —— 2026-09 曾因此讓 29 位同仁
+/// 各收到 2 則測試 LINE 推播而無從判斷真偽，且**訊息送出後收不回來**。
+///
+/// <b>為什麼 LINE 與 Email 共用同一個設定鍵</b>：拆成兩個鍵的必然結果是有人只設了一邊，
+/// 症狀是「LINE 標了、Email 沒標」而且不會有任何錯誤。一個概念就給一個鍵。
+///
+/// 兩個通道各自的套用位置（都是該通道的**唯一收斂點**，故日後新增模板自動涵蓋）：
+///   · LINE  → <c>LineFlexMessageBuilder.BuildBubble</c>（altText ＋ header 第一行）
+///   · Email → <c>EmailService.SendAsync</c>（主旨前綴 ＋ 內文頂端橫幅）
+///
+/// ⚠ **Email 的曝險比 LINE 大**：`SystemSetting.ApprovalEmailEnabled` 只管簽核通知，
+///   **帳號通知信（UserHandler）與薪資明細信（PayrollHandler）完全不受它管制**，
+///   關掉那個開關並不會讓測試站停止寄信給真實員工。
+/// </summary>
+public static class EnvironmentLabel
+{
+    public const string ConfigKey = "App:EnvironmentLabel";
+
+    /// <summary>目前值；空字串＝正式環境。由 <c>Program.cs</c> 於啟動時寫入。</summary>
+    public static string Value { get; set; } = "";
+
+    public static bool HasValue => !string.IsNullOrWhiteSpace(Value);
+
+    /// <summary>加在標題 / 主旨前面；無標記時原樣回傳。</summary>
+    public static string Prefix(string text) => HasValue ? $"{Value}{text}" : text;
+}
+
 public static class RoleNames
 {
     public const string Admin   = "admin";

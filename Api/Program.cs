@@ -78,11 +78,12 @@ var host = new HostBuilder()
             c.Timeout = TimeSpan.FromSeconds(10);
         });
 
-        // 非正式環境的 LINE 訊息標記（例：「【測試站】」）。正式站不設此值即為空字串、輸出完全不變。
-        // LineFlexMessageBuilder 是 static 無 DI，故在 composition root 設定一次；
-        // 標記會同時進 altText 與 header，讓收件人在通知列與訊息內都看得出是測試。
-        LineFlexMessageBuilder.EnvironmentLabel =
-            ctx.Configuration["Line:EnvironmentLabel"] ?? "";
+        // 非正式環境的訊息標記（例：「【測試站｜此為測試訊息】」）。正式站不設此值即為空字串、輸出完全不變。
+        // **LINE 與 Email 共用同一個設定鍵** —— 拆成兩個鍵的必然結果是有人只設了一邊，
+        // 症狀是「LINE 標了、Email 沒標」且不會有任何錯誤。
+        // 這裡是 static 無 DI 的類別，故在 composition root 設定一次。
+        Jabez.Api.Common.EnvironmentLabel.Value =
+            ctx.Configuration[Jabez.Api.Common.EnvironmentLabel.ConfigKey] ?? "";
 
         // ── GCIS Service（HttpClient 注入）─────────────────────────────
         // 政府開放資料商工登記公示資料查詢；以統編查公司名稱 / 地址 / 負責人。

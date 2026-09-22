@@ -529,7 +529,7 @@ Api/
 │   ├── PushResult.cs                 # LINE 推播結果 record（含 ErrorCategory 分類）
 │   ├── LineFlexMessageBuilder.cs     # 11 種 LINE Flex Message 模板（簽核 / 財務 / 打卡提醒 / 排班提醒）。
 │   │                                    **全部走唯一的 `BuildBubble`**，故環境標記 `EnvironmentLabel`
-│   │                                    （設定 `Line:EnvironmentLabel`，Azure App Setting `Line__EnvironmentLabel`）
+│   │                                    （設定 `App:EnvironmentLabel`，**與 Email 共用同一個鍵**，見 Common/Constants.cs）
 │   │                                    只需改這一處就涵蓋全部、日後新增模板自動生效。標記同時加在 **altText**（通知列）
 │   │                                    與 **header 第一行**（點開後）—— 只加一個會出現「通知列看得出是測試、點開看不出來」；
 │   │                                    正式站不設此值，輸出完全不變。類別是 static 無 DI，由 `Program.cs` 在 composition root 設定一次
@@ -658,7 +658,11 @@ Api/
 │   │                                    ⚠ 空白月曆第一次儲存必然被擋，為預期行為，UI 須一進畫面就提示
 │   ├── ShiftScheduleWindow.cs         # 排班開放期單一真相（純函式）：10–25 日排次月／當月僅當日 08:30 前改當天／歷史唯讀／
 │   │                                    當月到職者自 `User.CredentialsSentAt` 起 3 個工作天寬限（以 `CalendarDay` 判定，**刻意不用個人班表**）
-│   └── Constants.cs
+│   └── Constants.cs                   # 含 **`EnvironmentLabel`（非正式環境的訊息標記，LINE 與 Email 共用）**：
+│                                        設定鍵 `App:EnvironmentLabel`。拆成兩個鍵的必然結果是有人只設一邊、
+│                                        症狀是「LINE 標了、Email 沒標」且不會有任何錯誤。
+│                                        ⚠ **關掉 `ApprovalEmailEnabled` / `ApprovalLineEnabled` 不等於安全** ——
+│                                        那兩個開關只管簽核通知，帳號通知信 / 薪資明細信 / 三支 TimerTrigger 全都不受管制
 ├── host.json
 ├── local.settings.json                # 本地開發設定（不進版控）
 └── Api.csproj
