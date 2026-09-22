@@ -35,6 +35,7 @@ public sealed class AppRouter(
     ShiftScheduleHandler   shiftSchedules,
     ActivityDayHandler     activityDays,
     ShiftScheduleReportHandler shiftScheduleReport,
+    ShiftScheduleReminderAdminHandler shiftScheduleReminders,
     ApprovalTaskHandler    approvalTasks,
     InsuranceBracketHandler insuranceBrackets,
     PayrollHandler         payroll,
@@ -363,6 +364,8 @@ public sealed class AppRouter(
             ("PUT",    ["shift-schedules"])               => await shiftSchedules.SaveMonthAsync(req),
 
             // 活動日（主管排定；疊加在日別之上的旗標）
+            ("POST",   ["shift-schedule-reminders", "run"]) => await shiftScheduleReminders.RunAsync(req),
+            ("GET",    ["shift-schedule-reminders", "clock-out-preview"]) => await shiftScheduleReminders.ClockOutPreviewAsync(req),
             ("GET",    ["activity-days"])                 => await activityDays.GetAllAsync(req),
             ("POST",   ["activity-days"])                 => await activityDays.CreateAsync(req),
             ("PUT",    ["activity-days", var adId])       => await activityDays.UpdateAsync(req, adId),
@@ -676,6 +679,9 @@ public sealed class AppRouter(
 
             // 活動日：讀給全員（排班月曆要顯示），寫限持有 activity-days:write 者，
             // 可排定的部門範圍另在 Handler 內以 ProjectAccessScope 把關
+            // Superadmin 手動觸發（Handler 內另驗 is_superadmin）
+            ("POST",   ["shift-schedule-reminders", ..])  => null,
+            ("GET",    ["shift-schedule-reminders", ..])   => null,
             ("GET",    ["activity-days", ..])             => PermissionCodes.ActivityDaysRead,
             ("POST" or "PUT" or "DELETE", ["activity-days", ..]) => PermissionCodes.ActivityDaysWrite,
 

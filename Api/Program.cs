@@ -130,6 +130,7 @@ var host = new HostBuilder()
         // 四週彈性工時：per-user 日別解析（取代 WorkCalendarHelper 的 bool ignoreHolidays）
         services.AddScoped<IShiftScheduleReadService, ShiftScheduleReadService>();
         services.AddScoped<IWorkdayScheduleProvider, WorkdayScheduleProvider>();
+        services.AddScoped<IShiftScheduleReminderService, ShiftScheduleReminderService>();
         services.AddScoped<ITravelPaymentRequestReadService, TravelPaymentRequestReadService>();
         services.AddScoped<IAttendanceReminderLogReadService, AttendanceReminderLogReadService>();
         services.AddScoped<IEmployeeProfileReadService, EmployeeProfileReadService>();
@@ -161,6 +162,7 @@ var host = new HostBuilder()
         services.AddScoped<ShiftScheduleHandler>();
         services.AddScoped<ActivityDayHandler>();
         services.AddScoped<ShiftScheduleReportHandler>();
+        services.AddScoped<ShiftScheduleReminderAdminHandler>();
         services.AddScoped<InsuranceBracketHandler>();
         services.AddScoped<PayrollHandler>();
         services.AddScoped<OvertimeReportHandler>();

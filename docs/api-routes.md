@@ -224,6 +224,18 @@
 > **排班一律只能排自己的**（代排會讓「誰排的」失去意義，且改班申請的簽核對象會錯亂），帶他人 `userId` 送 PUT 回 403。
 
 
+## 排班提醒（四週彈性工時 ‧ §3.5）
+
+| Method | 路徑 | 權限 | 說明 |
+|---|---|---|---|
+| POST | `/shift-schedule-reminders/run?kind=…[&send=true]` | Superadmin（Handler 內驗 `is_superadmin`） | 手動觸發排班提醒。`kind` ＝ `schOpen` / `schPending` / `schDeadline` / `schAuto`。**預設乾跑**：只回收件人名單、不發送、不寫紀錄；要真的推播必須明確帶 `send=true` |
+| GET | `/shift-schedule-reminders/clock-out-preview?at=HH:mm` | Superadmin | **唯讀**預覽個人化下班提醒：今天誰打了上班卡沒打下班卡、各自的提醒時點、此刻誰會被推、誰因每人每日去重而跳過。`at` 可模擬時刻，不必等到 17:33 才驗得了 |
+
+> ⚠️ **手動觸發為何預設乾跑**：這支端點的作用就是對外發 LINE，誤觸會讓真實同仁收到看不懂的通知，
+> 而 **LINE 不支援撤回已送出的推播**。安全的那一邊才該是預設值。
+> 本機 `local.settings.json` 內的 LINE token 是**真的會送出訊息**的，測試前務必確認。
+
+
 ## 活動日（四週彈性工時 ‧ §3.2）
 
 主管（各部門協理）於活動 2 個月前預先排定日期並勾選預定人力，讓同仁排班時看得到。

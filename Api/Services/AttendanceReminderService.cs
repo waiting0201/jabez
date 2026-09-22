@@ -21,6 +21,8 @@ public sealed class AttendanceReminderService(
     IDbConnection conn,
     IAttendanceReminderReadService reader,
     ILineService lineService,
+    IWorkdayScheduleProvider workdaySchedule,
+    IShiftScheduleReadService shiftReader,
     ILogger<AttendanceReminderService> logger) : IAttendanceReminderService
 {
     /// <summary>提醒提前時間（分鐘）。</summary>
@@ -61,6 +63,14 @@ public sealed class AttendanceReminderService(
             .FirstOrDefaultAsync(ct);
         if (setting is null)
             return;
+
+        // 四週彈性工時切換後改走個人化提醒；切換前一律沿用下方原有流程，行為完全不變。
+        var switchDate = await workdaySchedule.GetSwitchDateAsync();
+        if (switchDate is { } sd && now.Date >= sd.Date)
+        {
+            await RunFlexibleAsync(now, setting, ct);
+            return;
+        }
 
         var type = DetermineReminderType(now, setting.WorkStartTime, setting.WorkEndTime);
         if (type is null)
@@ -138,18 +148,25 @@ public sealed class AttendanceReminderService(
     /// 手動觸發（ForceRunAsync）也會寫 batchStart，因此當天手動推過之後排程就不再重複打擾員工。
     /// 查詢失敗一律回 false —— 寧可重複推播，也不要因為 log 表出狀況而整天不發。
     /// </summary>
-    private async Task<bool> HasBatchStartedTodayAsync(DateTime today, string workTime, CancellationToken ct)
+    /// <param name="slot">
+    /// 槽別（寫在 batchStart 列的 ReminderType）。舊制的兩槽一律是 "batchStart"；
+    /// 新制的兩個 12:55 提醒各佔一槽，靠這個參數區分 ——
+    /// TargetTimeTaipei 只有 5 字元（HH:mm），塞不下槽名。
+    /// </param>
+    private async Task<bool> HasBatchStartedTodayAsync(
+        DateTime today, string workTime, CancellationToken ct, string slot = "batchStart")
     {
         const string sql = """
             SELECT TOP 1 1
             FROM   AttendanceReminderLogs
             WHERE  Status = 'batchStart'
               AND  TargetTimeTaipei = @WorkTime
+              AND  ReminderType = @Slot
               AND  CAST(TickedAtTaipei AS DATE) = @Today
             """;
         try
         {
-            var cmd = new CommandDefinition(sql, new { WorkTime = workTime, Today = today.Date }, cancellationToken: ct);
+            var cmd = new CommandDefinition(sql, new { WorkTime = workTime, Today = today.Date, Slot = slot }, cancellationToken: ct);
             return await conn.ExecuteScalarAsync<int?>(cmd) is not null;
         }
         catch (Exception ex)
@@ -368,4 +385,220 @@ public sealed class AttendanceReminderService(
         string?  ErrorMessage,
         int?     HttpStatusCode,
         int?     DurationMs);
+
+    /// <summary>寫一筆 batchStart 足跡（不含收件人）。</summary>
+    private async Task WriteBatchStartAsync(
+        Guid batchId, DateTime now, string slotTime, string slot,
+        string triggerSource, Guid? triggeredByUserId, CancellationToken ct)
+    {
+        await SafeWriteLogAsync(new AttendanceReminderLogRow(
+            BatchId: batchId,
+            TickedAt: DateTime.UtcNow,
+            TickedAtTaipei: now,
+            TargetTimeTaipei: slotTime,
+            ReminderType: slot,
+            TriggerSource: triggerSource,
+            TriggeredByUserId: triggeredByUserId,
+            UserId: null,
+            LineUserIdSnapshot: null,
+            UserNameSnapshot: null,
+            Status: "batchStart",
+            ErrorCategory: null,
+            ErrorMessage: null,
+            HttpStatusCode: null,
+            DurationMs: null), ct);
+    }
+
+    /// <summary>推播給單一收件人並寫 success / failure 紀錄。</summary>
+    private async Task PushOneAsync(
+        Guid batchId, DateTime now, string slotTime, string reminderType,
+        string triggerSource, Guid? triggeredByUserId,
+        Models.Dtos.AttendanceReminderRecipientDto r, object message, CancellationToken ct)
+    {
+        var sw = Stopwatch.StartNew();
+        PushResult pr;
+        try
+        {
+            pr = await lineService.PushMessageAsync(r.LineUserId, message);
+        }
+        catch (Exception ex)
+        {
+            pr = new PushResult(false, null, "system_error", Truncate(ex.Message, 500));
+            logger.LogError(ex, "打卡提醒推播例外（系統錯誤）：UserId={UserId}, Name={Name}", r.UserId, r.UserName);
+        }
+        finally
+        {
+            sw.Stop();
+        }
+
+        await SafeWriteLogAsync(new AttendanceReminderLogRow(
+            BatchId: batchId,
+            TickedAt: DateTime.UtcNow,
+            TickedAtTaipei: now,
+            TargetTimeTaipei: slotTime,
+            ReminderType: reminderType,
+            TriggerSource: triggerSource,
+            TriggeredByUserId: triggeredByUserId,
+            UserId: r.UserId,
+            LineUserIdSnapshot: r.LineUserId,
+            UserNameSnapshot: r.UserName,
+            Status: pr.Success ? "success" : "failure",
+            ErrorCategory: pr.ErrorCategory,
+            ErrorMessage: pr.ErrorMessage,
+            HttpStatusCode: pr.HttpStatusCode,
+            DurationMs: (int)sw.ElapsedMilliseconds), ct);
+
+        await Task.Delay(InterPushDelayMs, ct);
+    }
+
+    // ── 四週彈性工時：個人化下班提醒與當日狀態文案 ──────────────────────────
+    //
+    // ⚠ **這裡是整個提醒模組唯一需要改架構的地方**。
+    // 舊制的冪等閘 key 是「台北日期 ＋ TargetTimeTaipei（全公司同一個 HH:mm）」且在**整批層級**：
+    // batchStart 先寫、再查收件人。新制的下班時點是「實際上班打卡 ＋ 9 小時 − 2 分」，每人不同 ——
+    // 沿用整批閘的話，**第一個人推播寫下的 batchStart 會把其餘時點的人整批擋死**，
+    // 那些人整天收不到提醒，而且紀錄上看起來一切正常。
+    // 故下班提醒改為「每人每日每類型一次」的去重（GetAlreadyPushedUserIdsAsync）。
+    //
+    // 上班提醒（08:58）與兩個 12:55 半天假提醒仍是**固定時點**，繼續沿用整批閘，各佔一個槽。
+
+    /// <summary>上午半天假者的交接提醒時刻（取代當日 08:58 的上班提醒 —— 那時人還在休假）。</summary>
+    private static readonly TimeOnly HalfDayHandoverAt = new(12, 55);
+
+    private const string SlotHalfDayAm = "amHandover";
+    private const string SlotHalfDayPm = "pmHandover";
+
+    /// <summary>
+    /// 新制的每分鐘處理：三種提醒各自獨立判斷，彼此不互相擋。
+    /// </summary>
+    private async Task RunFlexibleAsync(DateTime now, Models.Entities.SystemSetting setting, CancellationToken ct)
+    {
+        // ① 上班提醒（固定 08:58）：依當日日別發三種文案
+        if (IsWithinWindow(now, setting.WorkStartTime)
+            && !await HasBatchStartedTodayAsync(now.Date, setting.WorkStartTime, ct))
+        {
+            await PushClockInByDayTypeAsync(now, setting, ct);
+        }
+
+        // ② 半天假 12:55 交接提醒（兩個獨立的固定時點槽）
+        var handover = HalfDayHandoverAt.ToString("HH\\:mm");
+        if (IsWithinWindow(now, handover))
+        {
+            await PushHalfDayHandoverAsync(now, setting, "am", SlotHalfDayAm, handover, ct);
+            await PushHalfDayHandoverAsync(now, setting, "pm", SlotHalfDayPm, handover, ct);
+        }
+
+        // ③ 個人化下班提醒：每個 tick 都要看，時點每人不同
+        await PushPersonalClockOutAsync(now, setting, ct);
+    }
+
+    /// <summary>
+    /// 上班提醒：依個人當日日別發三種文案（上班日 / 休假日 / 例假日）。
+    /// 國定假日者不推（免出勤，且未被排活動日時本來就不該來）。
+    /// </summary>
+    private async Task PushClockInByDayTypeAsync(DateTime now, Models.Entities.SystemSetting setting, CancellationToken ct)
+    {
+        var targetTime = now.Date.Add(ParseOrDefault(setting.WorkStartTime, new TimeOnly(9, 0)).ToTimeSpan());
+
+        // 收件人沿用既有 SQL（已排除今日已打卡、請假涵蓋該時刻者）；
+        // 休假日 / 例假日的人本來就不會打卡，故會留在名單內，再依日別分流文案。
+        var recipients = await reader.GetRecipientsAsync(targetTime, "clockIn", shiftWorkersOnly: false, ct);
+        if (recipients.Count == 0) return;
+
+        var dayTypes = await shiftReader.ResolveRangeForUsersAsync(
+            [.. recipients.Select(r => r.UserId)], now.Date, now.Date);
+
+        var batchId = Guid.NewGuid();
+        await WriteBatchStartAsync(batchId, now, setting.WorkStartTime, "batchStart", "auto", null, ct);
+
+        int minutesUntil = (int)Math.Round((targetTime - now).TotalMinutes);
+
+        foreach (var r in recipients)
+        {
+            var dayType = dayTypes.TryGetValue((r.UserId, now.Date), out var t) ? t : WorkDayTypes.Work;
+            if (dayType == WorkDayTypes.PublicHoliday) continue;   // 國定假日免出勤，不打擾
+
+            var message = dayType switch
+            {
+                WorkDayTypes.StatutoryOff => LineFlexMessageBuilder.BuildShiftDayNoticeMessage(
+                    r.UserName, "例假日",
+                    "本日為您排定的例假日，依法嚴禁出勤。如遇業主或承辦人提出公務需求，"
+                    + "請禮貌告知將於上班日再行處理，或轉由職務代理人協助處理。", setting.SiteUrl),
+
+                WorkDayTypes.RestDay => LineFlexMessageBuilder.BuildShiftDayNoticeMessage(
+                    r.UserName, "休假日",
+                    "本日為您排定的休假日。如因緊急公務必要需求需於休假日加班者，"
+                    + "請務必事前至《加班申請系統》提出加班申請，經主管核准後方可出勤。", setting.SiteUrl),
+
+                _ => LineFlexMessageBuilder.BuildAttendanceReminderMessage(
+                    "clockIn", r.UserName, minutesUntil, setting.WorkStartTime, setting.SiteUrl),
+            };
+
+            await PushOneAsync(batchId, now, setting.WorkStartTime, "clockIn", "auto", null, r, message, ct);
+        }
+    }
+
+    /// <summary>半天假 12:55 交接提醒。適用**所有半天假假別**，不限補休。</summary>
+    private async Task PushHalfDayHandoverAsync(
+        DateTime now, Models.Entities.SystemSetting setting, string segment, string slot, string slotTime, CancellationToken ct)
+    {
+        if (await HasBatchStartedTodayAsync(now.Date, slotTime, ct, slot)) return;
+
+        var boundary = now.Date.AddHours(13);
+        var recipients = await reader.GetHalfDayLeaveRecipientsAsync(now.Date, segment, boundary, ct);
+
+        var batchId = Guid.NewGuid();
+        await WriteBatchStartAsync(batchId, now, slotTime, slot, "auto", null, ct);
+        if (recipients.Count == 0) return;
+
+        var (title, body) = segment == "am"
+            ? ("上午假將屆", "上午假時數將屆，請準備完成上班打卡！")
+            : ("準備休假", "請準備開始休假，並記得先完成下班打卡！");
+
+        foreach (var r in recipients)
+        {
+            var message = LineFlexMessageBuilder.BuildShiftDayNoticeMessage(r.UserName, title, body, setting.SiteUrl);
+            await PushOneAsync(batchId, now, slotTime, slot, "auto", null, r, message, ct);
+        }
+    }
+
+    /// <summary>
+    /// 個人化下班提醒：時點 ＝ 實際上班打卡 ＋ 9 小時 − 2 分（請上午半天假者 ＋4 小時）。
+    /// **去重下沉到每人每日一次**，不走整批閘。
+    /// </summary>
+    private async Task PushPersonalClockOutAsync(DateTime now, Models.Entities.SystemSetting setting, CancellationToken ct)
+    {
+        var candidates = await reader.GetClockOutCandidatesAsync(now.Date, ct);
+        if (candidates.Count == 0) return;
+
+        var schedule = WorkdayHours.For(now.Date, await workdaySchedule.GetSwitchDateAsync());
+        var pushed   = (await reader.GetAlreadyPushedUserIdsAsync(now.Date, "clockOut", ct)).ToHashSet();
+
+        var due = candidates
+            .Where(c => !pushed.Contains(c.UserId))
+            .Select(c => (c, At: ClockRules.ExpectedClockOut(c.ClockInTime, schedule, c.AfternoonOnly)
+                                             .AddMinutes(-LeadMinutes)))
+            .Where(x => now >= x.At && now < x.At.AddMinutes(WindowMinutes))
+            .ToList();
+
+        if (due.Count == 0) return;
+
+        var batchId = Guid.NewGuid();
+        // batchStart 只作為「這一分鐘有處理個人化下班提醒」的足跡，**不是冪等閘**
+        await WriteBatchStartAsync(batchId, now, now.ToString("HH\\:mm"), "clockOut", "auto", null, ct);
+
+        foreach (var (c, at) in due)
+        {
+            int minutesUntil = (int)Math.Round((at.AddMinutes(LeadMinutes) - now).TotalMinutes);
+            var message = LineFlexMessageBuilder.BuildAttendanceReminderMessage(
+                "clockOut", c.UserName, minutesUntil,
+                at.AddMinutes(LeadMinutes).ToString("HH\\:mm"), setting.SiteUrl);
+
+            await PushOneAsync(batchId, now, now.ToString("HH\\:mm"), "clockOut", "auto", null,
+                new Models.Dtos.AttendanceReminderRecipientDto(c.UserId, c.LineUserId, c.UserName), message, ct);
+        }
+    }
+
+    private static TimeOnly ParseOrDefault(string hhmm, TimeOnly fallback) =>
+        TryParseHHmm(hhmm, out var ts) ? TimeOnly.FromTimeSpan(ts) : fallback;
 }

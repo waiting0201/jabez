@@ -4,6 +4,38 @@
 > 公司已確認導入《勞基法》§30-1「四週彈性工時」（09:00–18:00、午休 12:30–13:30、個人排例假／休假日），
 > 規格見 [flexible-work-hours.md](flexible-work-hours.md) —— **該制尚未實作**，本檔在對應項目落地前仍為準。
 
+
+> ### 📌 四週彈性工時的提醒改版**已實作、但預設不生效**（2026-09-22）
+>
+> `SystemSetting.FlexibleWorkStartDate` 為 `null` 時，本檔描述的現行流程完全不變。
+> 切換後 `AttendanceReminderService.RunAsync` 改走 `RunFlexibleAsync`，三種提醒**各自獨立判斷、彼此不互相擋**：
+>
+> | 提醒 | 時點 | 去重方式 |
+> |---|---|---|
+> | 上班提醒 | 08:58（固定） | 沿用整批 `batchStart` 閘 |
+> | 半天假交接 | 12:55（固定，上午假／下午假各一則） | 沿用整批閘，**各佔一槽**（槽名寫在 `ReminderType`） |
+> | **下班提醒** | **實際上班打卡 ＋ 9 小時 − 2 分（每人不同）** | **每人每日每類型一次** |
+>
+> ### ⚠️ 為什麼下班提醒非改架構不可
+>
+> 舊制的冪等閘 key 是「台北日期 ＋ `TargetTimeTaipei`（全公司同一個 HH:mm）」且在**整批層級**
+> （`batchStart` 先寫、再查收件人）。下班時點變成每人不同之後，
+> **第一個人推播寫下的 `batchStart` 會把其餘時點的人整批擋死** —— 那些人整天收不到提醒，
+> 而且紀錄上看起來一切正常（有 batchStart、有 success），完全不會有人發現。
+>
+> 另外，舊制收件人 SQL 只用 `NOT EXISTS` 判「今天有沒有打卡」，**沒把 `ClockInTime` 的值撈出來**；
+> 新制要算個人時點，非有這個值不可（`GetClockOutCandidatesAsync`）。
+>
+> ### ⚠️ 手動觸發一律預設乾跑
+>
+> `POST /shift-schedule-reminders/run?kind=…` **預設只回收件人名單、不發送**，
+> 要真的推播必須明確帶 `&send=true`。理由：這支端點的作用就是對外發 LINE，
+> 誤觸會讓真實同仁收到看不懂的通知，而 **LINE 不支援撤回已送出的推播**。
+> 另有唯讀的 `GET /shift-schedule-reminders/clock-out-preview?at=HH:mm`，
+> 可在不發送的前提下驗證「誰會被推、誰因去重被跳過」。
+>
+> ⚠️ **本機 `local.settings.json` 內的 LINE token 是真的會送出訊息的**，測試前務必確認。
+
 ## 功能範圍
 
 - 每日上班前 2 分鐘、下班前 2 分鐘各一次，自動推播 LINE Flex Message 提醒員工打卡

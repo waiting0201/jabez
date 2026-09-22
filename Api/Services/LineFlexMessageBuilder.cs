@@ -256,6 +256,33 @@ public static class LineFlexMessageBuilder
 
     // ── Flex Message Bubble 共用模板 ────────────────────────────────────────
 
+    /// <summary>
+    /// 排班日別通知（四週彈性工時）——「今天是例假日／休假日」或半天假 12:55 交接提醒。
+    ///
+    /// 與 <see cref="BuildAttendanceReminderMessage"/> 的差別：那支是「快到打卡時間了」的倒數提醒，
+    /// 這支是「今天的狀態是什麼、該注意什麼」的告知，沒有剩餘分鐘數。
+    /// </summary>
+    /// <param name="title">例假日 / 休假日 / 上午假將屆 / 準備休假</param>
+    /// <param name="body">要員工知道的規則或動作</param>
+    public static object BuildShiftDayNoticeMessage(
+        string userName, string title, string body, string linkUrl)
+    {
+        // 例假日是法定嚴禁出勤（罰鍰 2 萬～100 萬），用紅色；其餘用提醒色
+        var headerColor = title.Contains("例假") ? DangerRed : WarningBrown;
+
+        return BuildBubble(
+            altText: $"[排班提醒] {title} — {userName}",
+            headerColor: headerColor,
+            headerText: title,
+            rows:
+            [
+                ("同仁", userName),
+                ("說明", body),
+            ],
+            buttonLabel: "前往打卡頁",
+            buttonUrl: $"{linkUrl.TrimEnd('/')}/dashboard");
+    }
+
     private static object BuildBubble(
         string altText, string headerColor, string headerText,
         (string label, string value)[] rows, string buttonLabel, string buttonUrl)
