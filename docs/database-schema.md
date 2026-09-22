@@ -6,7 +6,7 @@
 
 本地開發連線字串於 [Api/local.settings.json](../Api/local.settings.json)；遠端 Azure SQL 連線字串記在 memory `reference_azure_sql.md`（敏感資訊不入版控）。
 
-## 56 個資料表實體
+## 58 個資料表實體
 
 | 實體 | 說明 |
 |------|------|
@@ -58,6 +58,8 @@
 | `ShiftScheduleMonth` | 個人排班的**整月狀態**：`Status` = `draft` / `committed` / `auto`，唯一索引 `(UserId, Year, Month)`。供「次月是否已完成排班」（20 號提醒）、「是否為系統自動排班」（26 號批次）判定；`AutoAssignedAt` 非 null 即代表該月班表非本人所排 |
 | `ActivityDay` | 主管（部門協理）於活動 2 個月前預先排定的**活動日**。⚠ **疊加旗標、非第 5 種日別** —— 月曆格狀態仍四選一，活動日壓在其上；做成第 5 種會讓自動排班的「跳過活動日」與配額計算互相打架。**可排在國定假日上** |
 | `ActivityDayAssignee` | 活動日的**預定人力**，唯一索引 `(ActivityDayId, UserId)`。被列入者若當日為國定假日 → 解鎖上下班打卡、不需加班申請單 |
+| `ShiftChangeRequest` | **改班申請**（四週彈性工時 §3.5.2）：開放期結束、班表定案後的異動途徑。單號 `SC-yyyyMMdd-NNN`（**送簽時取號**，草稿為 null）。⚠ **與銷假申請不同，必須有自己的 `ApplicationType`（`shift_change`）** —— 逐部門六條簽核路線要靠管理員建 6 個 `ApprovalItem`，借用別型就建不出來 |
+| `ShiftChangeRequestDate` | 改班的逐日明細：`FromDayType`（**送單當下的快照**，讓簽核者看得到原本是什麼）+ `ToDayType`。一張單可同時調多天（支援「A 日改上班、B 日改休假」的對調）；唯一索引 `(ShiftChangeRequestId, Date)` |
 | `CompensatoryLot` | **補休批次**（取代現行純聚合 SUM 的補休池）：`RateSnapshot` 快照當時的原始加班費率（1.34 / 1.67 / 2.67，到期換算津貼用，事後才算會拿到改版後的費率）、`ExpiresAt` 效期（1–6 月產生用至 7/31、7–12 月至隔年 1/31）、`IsOpening` 標記切換日整批轉入的期初 lot。`SourceOvertimeRequestId` 有 filtered unique index，一張加班單只開一個 lot |
 | `CompensatoryUsage` | 補休**扣抵紀錄**（FIFO，一張補休假可跨多個 lot）：「某張補休假吃掉哪幾筆加班」的單一真相 |
 | `AttendanceReminderLog` | 打卡提醒推播紀錄（BatchId 串聯同一次 tick；含 batchStart 紀錄、ErrorCategory 失敗分類、HttpStatusCode、DurationMs；Snapshot 欄位保留歷史） |

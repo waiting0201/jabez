@@ -206,7 +206,7 @@ public sealed class ApprovalFlowService(
 
             // 自審情境：根據申請類型決定處理方式
             // 銷假沿用請假的升級規則（Group A 全程禁止自審由上方否定清單自動涵蓋）
-            if (applicationType is "leave" or "leave_revocation" or "travel" or "overtime")
+            if (applicationType is "leave" or "leave_revocation" or "travel" or "overtime" or "shift_change")
             {
                 // 嘗試升級審核（會拋出 AppException 如果找不到人）
                 var escalation = await escalationService.TryEscalateAsync(step, applicant, applicationType);

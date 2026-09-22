@@ -36,6 +36,12 @@
             </svg>
             <div>
               <div class="fw-600">{{ data()?.editable ? '開放排班' : '目前無法編輯' }}</div>
+              <!-- 班表定案後的異動途徑（§3.5.2）：當日臨時調休以外一律走改班申請 -->
+              @if (data() && !data()!.editable) {
+                <a class="btn btn-sm btn-outline-primary mt-2" routerLink="/admin/shift-changes/new">
+                  提出改班申請
+                </a>
+              }
               <div class="text-secondary small">{{ data()?.editReason }}</div>
             </div>
           </div>

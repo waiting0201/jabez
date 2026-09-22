@@ -25,7 +25,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
     /// 避免像 2026-08 之前的 returned 一樣靜默落到 StepMatchClause 的 pending fallback、回傳不相干的待審清單。
     /// </summary>
     private static readonly HashSet<string> ValidListStatuses = ["pending", "approved", "returned", "rejected"];
-    public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "leave_revocation", "travel", "overtime", "advance", "write_off", "travel_write_off", "holiday_travel", "travel_payment", "pre_review"];
+    public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "leave_revocation", "travel", "overtime", "advance", "write_off", "travel_write_off", "holiday_travel", "travel_payment", "pre_review", "shift_change"];
 
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
@@ -197,6 +197,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         "payment_request"            => await db.PaymentRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.SubmittedById).FirstOrDefaultAsync(),
         "leave"                      => await db.LeaveRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
         "leave_revocation"           => await db.LeaveRevocations.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
+        "shift_change"           => await db.ShiftChangeRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
         "travel" or "holiday_travel" => await db.TravelRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
         "overtime"                   => await db.OvertimeRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
         "advance"                    => await db.AdvanceRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.SubmittedById).FirstOrDefaultAsync(),
@@ -217,6 +218,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         "payment_request"            => await db.PaymentRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.SubmittedById == callerId),
         "leave"                      => await db.LeaveRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId),
         "leave_revocation"           => await db.LeaveRevocations.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId),
+        "shift_change"           => await db.ShiftChangeRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId),
         "travel" or "holiday_travel" => await db.TravelRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId),
         "overtime"                   => await db.OvertimeRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId),
         "advance"                    => await db.AdvanceRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.SubmittedById == callerId),
@@ -456,6 +458,31 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 }
                 else
                     await db.SaveChangesAsync();
+                break;
+            }
+            case ShiftChangeRequestService.AppType:
+            {
+                var sc = await db.ShiftChangeRequests.FindAsync(intId)
+                    ?? throw AppException.NotFound("ShiftChangeRequest");
+                if (sc.ApprovalStatus != "pending")
+                    throw AppException.BadRequest("Only pending shift change requests can be reviewed.");
+
+                var scApplicant = sc.EmployeeId.HasValue
+                    ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sc.EmployeeId.Value)
+                    : null;
+                await AuthorizeStepAsync(sc.ApprovalItemId, sc.CurrentStepOrder, reviewer, scApplicant?.DepartmentId, ShiftChangeRequestService.AppType, sc.Id, scApplicant?.JobTitleId);
+                await ProcessReviewAsync(ShiftChangeRequestService.AppType, sc.Id, sc.CurrentStepOrder,
+                    sc.ApprovalItemId, action, reviewNote, reviewerId, sc.EmployeeId,
+                    setStatus:     s  => sc.ApprovalStatus   = s,
+                    incrementStep: () => sc.CurrentStepOrder++,
+                    setReviewed:   () => { sc.ReviewedAt = Clock.Now; sc.ReviewedById = reviewerId; sc.ReviewNote = reviewNote?.Trim(); });
+
+                // **核准才寫入班表**；未核准前 ShiftScheduleDay 完全沒動過，
+                // 故退回 / 拒絕都不需要任何回滾（同銷假申請的思路）
+                if (sc.ApprovalStatus == "approved")
+                    await ShiftChangeRequestService.ApplyAsync(db, sc);
+
+                await db.SaveChangesAsync();
                 break;
             }
             case "travel":

@@ -251,3 +251,14 @@ OCR 同時辨識統一發票的**買方抬頭（買受人公司名稱）**、**�
 - **假日執行活動的假日津貼計算** → [payroll-formula.md](payroll-formula.md)
 - **API 端點清單** → [api-routes.md](../api-routes.md)
 - **Entity 結構** → [database-schema.md](../database-schema.md)
+
+---
+
+## 改班申請（shift_change，2026-09 新增）
+
+四週彈性工時 §3.5.2 —— 班表定案後的異動途徑。**不做列印單、不做撥款欄位**，
+只復用簽核引擎（同銷假申請）。單號 `SC-yyyyMMdd-NNN`，送簽時取號。
+
+⚠ 與銷假不同：改班**有自己的 `ApplicationType` 與 `ApprovalItem`**（逐部門六條路線）。
+權限沿用 `shift-schedule:read/write`，不新增權限碼。
+詳見 [approval-flow.md](approval-flow.md) 的「改班申請」一節與 [flexible-work-hours.md](flexible-work-hours.md) §3.5.2。

@@ -156,6 +156,13 @@ export const ADMIN_ROUTES: Routes = [
   {path: 'overtime-requests',             component: OvertimeRequestList, canActivate: [permissionGuard], data: {title: '加班申請',       permission: 'overtime-requests:read'}},
   {path: 'shift-schedules',               canActivate: [permissionGuard], data: {title: '個人排班', permission: 'shift-schedule:read'},
    loadComponent: () => import('./shift-schedules/pages/shift-schedule-calendar/shift-schedule-calendar').then(m => m.ShiftScheduleCalendar)},
+  // 改班申請（沿用排班權限碼；三模式共用一個元件）
+  {path: 'shift-changes/new',             canActivate: [permissionGuard], data: {title: '改班申請', permission: 'shift-schedule:write', mode: 'new'},
+   loadComponent: () => import('./shift-schedules/pages/shift-change-form/shift-change-form').then(m => m.ShiftChangeForm)},
+  {path: 'shift-changes/:id/edit',        canActivate: [permissionGuard], data: {title: '編輯改班申請', permission: 'shift-schedule:write', mode: 'edit'},
+   loadComponent: () => import('./shift-schedules/pages/shift-change-form/shift-change-form').then(m => m.ShiftChangeForm)},
+  {path: 'shift-changes/:id',             canActivate: [permissionGuard], data: {title: '改班申請詳情', permission: 'shift-schedule:read', mode: 'view'},
+   loadComponent: () => import('./shift-schedules/pages/shift-change-form/shift-change-form').then(m => m.ShiftChangeForm)},
   {path: 'activity-days',                 canActivate: [permissionGuard], data: {title: '活動日管理', permission: 'activity-days:read'},
    loadComponent: () => import('./activity-days/pages/activity-day-list/activity-day-list').then(m => m.ActivityDayList)},
   {path: 'overtime-requests/new',         component: OvertimeRequestForm, canActivate: [permissionGuard], data: {title: '新增加班申請',   permission: 'overtime-requests:write'}},

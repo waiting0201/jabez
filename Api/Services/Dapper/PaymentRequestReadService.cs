@@ -130,7 +130,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         int? directorStepDeptId = null, bool directorScope = false,
         DateOnly? dateFrom = null, DateOnly? dateTo = null)
     {
-        var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, overtimeProjects, leaveRevocations, leaveRevocationDates) =
+        var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, overtimeProjects, leaveRevocations, leaveRevocationDates, shiftChanges, shiftChangeDates) =
             await FetchAllAsync(reviewerJobTitleId: reviewerJobTitleId, reviewerDepartmentId: reviewerDepartmentId,
                                 statusFilter: status, reviewerUserId: reviewerUserId, paymentStatus: paymentStatus,
                                 applicationType: applicationType, submittedByUserId: submittedByUserId,
@@ -141,18 +141,18 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         var writeOffAttachments  = await LoadWriteOffAttachmentsAsync();
         var preReviewAttachments = await LoadPreReviewAttachmentsAsync();
         var writeOffHistory      = await LoadWriteOffHistoryAsync();
-        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, overtimeProjects, leaveRevocations, leaveRevocationDates, instDicts, paymentAttachments, writeOffAttachments, preReviewAttachments, writeOffHistory);
+        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, overtimeProjects, leaveRevocations, leaveRevocationDates, shiftChanges, shiftChangeDates, instDicts, paymentAttachments, writeOffAttachments, preReviewAttachments, writeOffHistory);
     }
 
     public async Task<ApprovalTaskDto?> GetApprovalTaskByIdAsync(int id, string applicationType)
     {
-        var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, overtimeProjects, leaveRevocations, leaveRevocationDates) = await FetchAllAsync(id, applicationType);
+        var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, overtimeProjects, leaveRevocations, leaveRevocationDates, shiftChanges, shiftChangeDates) = await FetchAllAsync(id, applicationType);
         var instDicts = await LoadInstallmentsAsync(payments, advances, travels, holidayTravels, travelPayments, writeOffs);
         var paymentAttachments   = await LoadPaymentAttachmentsAsync();
         var writeOffAttachments  = await LoadWriteOffAttachmentsAsync();
         var preReviewAttachments = await LoadPreReviewAttachmentsAsync();
         var writeOffHistory      = await LoadWriteOffHistoryAsync();
-        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, overtimeProjects, leaveRevocations, leaveRevocationDates, instDicts, paymentAttachments, writeOffAttachments, preReviewAttachments, writeOffHistory)
+        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, overtimeProjects, leaveRevocations, leaveRevocationDates, shiftChanges, shiftChangeDates, instDicts, paymentAttachments, writeOffAttachments, preReviewAttachments, writeOffHistory)
             .FirstOrDefault(t => t.Id == id && t.ApplicationType == applicationType);
     }
 
@@ -192,6 +192,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 SELECT 1 FROM PreReviewRequests        x WHERE x.SubmittedById = u.Id AND x.ApprovalStatus <> 'draft'
                 UNION ALL
                 SELECT 1 FROM LeaveRevocations         x WHERE x.EmployeeId    = u.Id AND x.ApprovalStatus <> 'draft'
+                UNION ALL
+                SELECT 1 FROM ShiftChangeRequests      x WHERE x.EmployeeId    = u.Id AND x.ApprovalStatus <> 'draft'
               ))
             ORDER BY u.Name
             """;
@@ -226,7 +228,9 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         IEnumerable<dynamic> holidayParticipants,
         IEnumerable<dynamic> overtimeProjects,
         IEnumerable<dynamic> leaveRevocations,
-        IEnumerable<dynamic> leaveRevocationDates)> FetchAllAsync(
+        IEnumerable<dynamic> leaveRevocationDates,
+        IEnumerable<dynamic> shiftChanges,
+        IEnumerable<dynamic> shiftChangeDates)> FetchAllAsync(
         int? filterId = null, string? filterType = null,
         int? reviewerJobTitleId = null, int? reviewerDepartmentId = null,
         string? statusFilter = null, Guid? reviewerUserId = null,
@@ -246,6 +250,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         string travelPaymentIdWhere   = (filterId.HasValue && filterType == "travel_payment")    ? "tpr.Id = @Id" : "";
         string preReviewIdWhere       = (filterId.HasValue && filterType == "pre_review")         ? "prv.Id = @Id" : "";
         string leaveRevocationIdWhere = (filterId.HasValue && filterType == "leave_revocation")   ? "rv.Id = @Id"  : "";
+        string shiftChangeIdWhere     = (filterId.HasValue && filterType == "shift_change")       ? "sc.Id = @Id"  : "";
 
         // ── Step-match filter for listing (reviewer's job title) ─────────────
         // Three modes:
@@ -616,6 +621,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         string travelPaymentWhere   = !TypeAllowed("travel_payment") ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(travelPaymentIdWhere,   "") : BuildWhere("", StepMatchClause("tpr", "tpru", "travel_payment")) + PaymentStatusClause("tpr", "TravelPaymentRequestInstallments", "TravelPaymentRequestId") + SubmitterClause("tpr.EmployeeId") + DateRangeClause("tpr"));
         // 預審申請：無撥款流程，paymentStatus 篩選時排除
         string leaveRevocationWhere = !TypeAllowed("leave_revocation") || hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(leaveRevocationIdWhere, "") : BuildWhere("", StepMatchClause("rv", "u", "leave_revocation")) + SubmitterClause("rv.EmployeeId") + DateRangeClause("rv"));
+        // hasPaymentFilter 一定要保留：改班沒有撥款概念，「已核准 + 已撥款/未撥款」頁籤不該撈出改班單
+        string shiftChangeWhere = !TypeAllowed("shift_change") || hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(shiftChangeIdWhere, "") : BuildWhere("", StepMatchClause("sc", "u", "shift_change")) + SubmitterClause("sc.EmployeeId") + DateRangeClause("sc"));
         string preReviewWhere       = !TypeAllowed("pre_review") || hasPaymentFilter ? " WHERE 1=0" : (filterId.HasValue ? BuildWhere(preReviewIdWhere, "") : BuildWhere("", StepMatchClause("prv", "sub_prv", "pre_review")) + SubmitterClause("prv.SubmittedById") + DateRangeClause("prv"));
 
         var paymentSql = $"""
@@ -665,6 +672,24 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             SELECT LeaveRevocationId, Date, Hours
             FROM LeaveRevocationDates
             ORDER BY LeaveRevocationId, Date
+            """;
+
+        // 改班申請（§3.5.2）：無母單、無撥款概念，故不 JOIN 任何父表
+        var shiftChangeSql = $"""
+            SELECT sc.Id, sc.RequestNo, sc.Year, sc.Month, sc.Reason,
+                   sc.ApprovalStatus, sc.ApprovalItemId, sc.CurrentStepOrder,
+                   u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl,
+                   sc.CreatedAt, sc.SubmittedAt, sc.ReviewedAt, sc.ReviewNote
+            FROM ShiftChangeRequests sc
+            LEFT JOIN Users u ON sc.EmployeeId = u.Id
+            {shiftChangeWhere}
+            ORDER BY COALESCE(sc.SubmittedAt, sc.CreatedAt) DESC
+            """;
+
+        const string shiftChangeDateSql = """
+            SELECT ShiftChangeRequestId, Date, FromDayType, ToDayType
+            FROM ShiftChangeRequestDates
+            ORDER BY ShiftChangeRequestId, Date
             """;
 
         var travelSql = $"""
@@ -887,6 +912,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         var preReviews      = await db.QueryAsync<dynamic>(preReviewSql,      param);
         var leaveRevocations     = await db.QueryAsync<dynamic>(leaveRevocationSql, param);
         var leaveRevocationDates = await db.QueryAsync<dynamic>(leaveRevocationDateSql);
+        var shiftChanges     = await db.QueryAsync<dynamic>(shiftChangeSql, param);
+        var shiftChangeDates = await db.QueryAsync<dynamic>(shiftChangeDateSql);
         var flows           = await db.QueryAsync<dynamic>(flowSql);
         var records         = await db.QueryAsync<dynamic>(recordSql);
         var designatedRows  = await db.QueryAsync<dynamic>(drSql);
@@ -976,7 +1003,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             """;
         var overtimeProjectRows = await db.QueryAsync<dynamic>(overtimeProjectsSql);
 
-        return (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItemRows, flows, records, designatedRows, writeOffItemRows, advanceItemRows, advanceSupplementRows, travelItemRows, travelWriteOffItemRows, travelPaymentItemRows, holidayParticipantRows, overtimeProjectRows, leaveRevocations, leaveRevocationDates);
+        return (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItemRows, flows, records, designatedRows, writeOffItemRows, advanceItemRows, advanceSupplementRows, travelItemRows, travelWriteOffItemRows, travelPaymentItemRows, holidayParticipantRows, overtimeProjectRows, leaveRevocations, leaveRevocationDates, shiftChanges, shiftChangeDates);
     }
 
     /// <summary>給 BuildApprovalTasks 用的 installments 集合（依父表分組）</summary>
@@ -1109,6 +1136,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         IEnumerable<dynamic> overtimeProjectRows,
         IEnumerable<dynamic> leaveRevocationRows,
         IEnumerable<dynamic> leaveRevocationDateRows,
+        IEnumerable<dynamic> shiftChangeRows,
+        IEnumerable<dynamic> shiftChangeDateRows,
         InstallmentDicts instDicts,
         Dictionary<int, List<AttachmentDto>> paymentAttachments,
         Dictionary<int, List<AttachmentDto>> writeOffAttachments,
@@ -1435,6 +1464,41 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (decimal)row.RevokedHours,
                 (string)row.Reason,
                 revocationDatesById.GetValueOrDefault((int)row.Id, []),
+                (string?)row.RequestNo)));
+
+
+        // Shift change requests（改班申請）
+        var shiftChangeDatesById = shiftChangeDateRows
+            .GroupBy(r => (int)r.ShiftChangeRequestId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(r => new ShiftChangeDateDto(
+                    (DateTime)r.Date, (string)r.FromDayType, (string)r.ToDayType)).ToArray());
+
+        var shiftChangeTasks = shiftChangeRows.Select(row => new ApprovalTaskDto(
+            (int)row.Id,
+            "shift_change",
+            $"改班申請 {(string?)row.RequestNo ?? $"#{row.Id}"}（{(int)row.Year}/{(int)row.Month}）",
+            (string?)row.SubmittedBy ?? "—",
+            (DateTime?)row.SubmittedAt ?? (DateTime)row.CreatedAt,
+            (string)row.ApprovalStatus,
+            (int)row.CurrentStepOrder,
+            (DateTime?)row.ReviewedAt,
+            (string?)row.ReviewNote,
+            GetFlow("shift_change", (int?)row.ApprovalItemId),
+            null, null, null, null, null, null, null,   // 7 個既有 detail 佔位
+            GetRecords("shift_change", (int)row.Id),
+            GetDesignatedReviewers("shift_change", (int)row.Id),
+            (string?)row.SubmittedBySignatureUrl,
+            null, null,                                  // TravelPaymentDetail, PreReviewDetail
+            null,                                        // LeaveRevocationDetail
+            null,                                        // StepReviewers（僅 pending 單於他處補上）
+            new ShiftChangeTaskDetailDto(
+                (int)row.Id,
+                (int)row.Year,
+                (int)row.Month,
+                (string)row.Reason,
+                shiftChangeDatesById.GetValueOrDefault((int)row.Id, []),
                 (string?)row.RequestNo)));
 
         // Travel requests (非假日執行活動，IsHolidayTravel = 0)
@@ -1844,6 +1908,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         return paymentTasks
             .Concat(leaveTasks)
             .Concat(leaveRevocationTasks)
+            .Concat(shiftChangeTasks)
             .Concat(travelTasks)
             .Concat(holidayTravelTasks)
             .Concat(overtimeTasks)

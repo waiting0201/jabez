@@ -68,3 +68,16 @@ public static class PublicHolidayRule
     public static bool IsPublicHoliday(bool isHoliday, string? description) =>
         isHoliday && !string.IsNullOrWhiteSpace(description);
 }
+
+/// <summary>日別的中文名稱（通知文案、簽核摘要共用）。</summary>
+public static class WorkDayTypeNames
+{
+    public static string GetZh(string? dayType) => dayType switch
+    {
+        WorkDayTypes.Work          => "上班日",
+        WorkDayTypes.RestDay       => "休假日",
+        WorkDayTypes.StatutoryOff  => "例假日",
+        WorkDayTypes.PublicHoliday => "國定假日",
+        _                          => dayType ?? "—",
+    };
+}

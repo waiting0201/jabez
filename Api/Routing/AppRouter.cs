@@ -29,6 +29,7 @@ public sealed class AppRouter(
     PaymentRequestHandler  paymentRequests,
     LeaveRequestHandler    leaveRequests,
     LeaveRevocationHandler leaveRevocations,
+    ShiftChangeRequestHandler shiftChanges,
     TravelRequestHandler   travelRequests,
     OvertimeRequestHandler overtimeRequests,
     AttendanceHandler      attendances,
@@ -321,6 +322,17 @@ public sealed class AppRouter(
             ("DELETE", ["leave-requests", var id])                 => await leaveRequests.DeleteAsync(req, id),
 
             // ── Leave Revocations（銷假；沿用 leave-requests:* 權限） ───────────
+            // 改班申請（§3.5.2）。⚠ List Pattern 由上而下比對：
+            //    changeable-dates / submit 這類三段式必須排在兩段式 ["shift-changes", var id] 之前
+            ("GET",    ["shift-changes", "changeable-dates"])      => await shiftChanges.GetChangeableDatesAsync(req),
+            ("PATCH",  ["shift-changes", var scId, "submit"])      => await shiftChanges.SubmitAsync(req, scId),
+            ("GET",    ["shift-changes"])                          => await shiftChanges.GetAllAsync(req),
+            ("POST",   ["shift-changes"])                          => await shiftChanges.CreateAsync(req),
+            ("GET",    ["shift-changes", var scGetId])             => await shiftChanges.GetByIdAsync(req, scGetId),
+            ("PUT",    ["shift-changes", var scPutId])             => await shiftChanges.UpdateAsync(req, scPutId),
+            ("PATCH",  ["shift-changes", var scPatchId])           => await shiftChanges.UpdateAsync(req, scPatchId),
+            ("DELETE", ["shift-changes", var scDelId])             => await shiftChanges.DeleteAsync(req, scDelId),
+
             ("GET",    ["leave-revocations"])                      => await leaveRevocations.GetAllAsync(req),
             ("PATCH",  ["leave-revocations", var id, "submit"])    => await leaveRevocations.SubmitAsync(req, id),
             ("GET",    ["leave-revocations", var id])              => await leaveRevocations.GetByIdAsync(req, id),
@@ -637,6 +649,13 @@ public sealed class AppRouter(
             // 銷假是請假的一部分，沿用同一組權限碼（不新增權限，既有角色免重設）
             // 注意：GET ["leave-requests", ..] 已涵蓋 revocable-dates；POST 子資源不在 ["leave-requests"] 單段內，須另列
             ("POST",   ["leave-requests", _, "revocations"]) => PermissionCodes.LeaveRequestsWrite,
+            // 改班申請沿用排班權限碼（比照銷假沿用 leave-requests:*）——
+            // 不新增權限碼，既有角色不必重新指派、也不必再上一支 migration
+            ("GET",    ["shift-changes", ..])            => PermissionCodes.ShiftScheduleRead,
+            ("POST",   ["shift-changes", ..])            => PermissionCodes.ShiftScheduleWrite,
+            ("PUT",    ["shift-changes", ..])            => PermissionCodes.ShiftScheduleWrite,
+            ("PATCH",  ["shift-changes", ..])            => PermissionCodes.ShiftScheduleWrite,
+            ("DELETE", ["shift-changes", _])             => PermissionCodes.ShiftScheduleWrite,
             ("GET",    ["leave-revocations", ..])        => PermissionCodes.LeaveRequestsRead,
             ("POST",   ["leave-revocations", ..])        => PermissionCodes.LeaveRequestsWrite,
             ("PUT",    ["leave-revocations", ..])        => PermissionCodes.LeaveRequestsWrite,

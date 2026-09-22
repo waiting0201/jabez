@@ -201,3 +201,18 @@
 - **薪資明細產生公式** → [payroll-formula.md](payroll-formula.md)
 - **API 端點清單** → [../api-routes.md](../api-routes.md)
 - **SystemSetting 欄位** → [../database-schema.md](../database-schema.md)
+
+---
+
+## 改班申請（shift_change，2026-09 新增）
+
+沿用既有簽核通知機制，不新增通知種類 —— `ApprovalNotificationService` 的
+`AppTypeLabels`（「改班申請」）、`GetSummaryAsync`（`GetShiftChangeSummaryAsync`，
+摘要格式「2026/12 調整 2 天（12/12 休假日→上班日、12/18 上班日→休假日）」）、
+`BuildRequestUrl`（`shift-changes`）三處各加一筆即可。
+
+## 排班相關推播（四週彈性工時）
+
+見 [attendance-reminder.md](attendance-reminder.md)：排班提醒四個時點（10／20／25／26 號）
+與個人化下班提醒、半天假 12:55 交接提醒。
+⚠ 手動觸發端點**預設乾跑**，要真的發送必須明確帶 `send=true`。

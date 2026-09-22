@@ -201,6 +201,8 @@ Admin/src/app/
     │   ├── services/my-profile.service.ts   # 呼叫 /me/user + /me/profile + /me/files + /me/payroll（自助唯讀）
     │   └── pages/my-profile/                # 「個人資訊」唯讀頁：avatar 下拉進入，**4 Tab** 全唯讀 —— 員工基本資料 / 人事資料卡 / 健保眷屬（前 3 個比照管理頁，含薪資）＋ **過往薪資**（2026-08 新增，走 `GET /me/payroll?months=12` 列出近 12 個月，一列一月，點「明細」展開共用元件 `<app-payroll-detail-card>`；到職前月份不列、當月標「本月尚未結算」；**薪資即時重算、無月結快照**，調薪後回溯歷史月份會用現行底薪，頁面已加註說明）
     ├── admin/
+    │   ├── shift-schedules/  # （續）另含 **改班申請表單** `pages/shift-change-form/`（new / edit / view 三模式共用，
+    │   │                       比照銷假申請）與 `models/shift-change.model.ts`、`services/shift-change.service.ts`
     │   ├── activity-days/    # **活動日管理（2026-09 新增）**：協理排定活動日 + 勾選預定人力，`activity-days:write` 才顯示選單。
     │   │                       ⚠ 部門下拉的 `ngModelChange` 會清空已選人力（候選名單整組換掉），
     │   │                       但**必須擋掉「值沒真的變」的那次觸發** —— 編輯表單載入時 select 初始化也會 emit，
@@ -331,6 +333,14 @@ Api/
 │   ├── WriteOffRequestHandler.cs      # 預支沖銷申請 CRUD（獨立簽核流程）＋**依預支單彙總檢視**（GET /write-off-requests/by-advance/{advanceRequestId}，回傳預支單完整資訊 + 該單全部沖銷單）＋**差額撥款分期**（PATCH /write-off-requests/{id}/installments，SUM 對應 RefundDue 超支增額）＋**支票已支付註記**（PATCH /{id}/check-payments）
 │   ├── TravelWriteOffRequestHandler.cs # 出差預支沖銷申請 CRUD（獨立簽核流程）
 │   ├── AttendanceHandler.cs           # 打卡（上班/下班/加班開始/加班結束；請假時段內擋上下班打卡；**休假日（行事曆假日／六日）或當日全日請假時，加班開始免下班卡**（**排班制員工 `User.IsShiftWorker` 恆不適用休假日條件**，週六仍須先打下班卡），無紀錄則建立只含加班時間的紀錄；**2026-08 起納入權限管理**：打卡走 `attendances:read/write`（員工對自己）、出缺勤報表列表與 `PUT/PATCH /attendances/{id}` 走 `reports-attendance:read/write`（管理者對別人），後者另在 Handler 內套部門可見性 scope 控管「能改誰」）
+│   ├── ShiftChangeRequestHandler.cs  # **改班申請（四週彈性工時 §3.5.2，2026-09 新增，第 12 種申請類型）**：
+│   │                                    班表定案後的異動途徑，走簽核流程、**核准後才寫入班表**（未核准前班表完全不動，故不需回滾）。
+│   │                                    ⚠ **與銷假申請的關鍵差異**：銷假借用請假的流程設定（`ResolveApprovalItemIdAsync("leave", …)`）、
+│   │                                    自己沒有 ApprovalItem；改班以**自己的 ApplicationType** 解析 ——
+│   │                                    逐部門六條簽核路線要靠管理員建 6 個 ApprovalItem，借用別型就建不出來。
+│   │                                    連帶要求前端 `approval-list.ts` 的 `appTypeOptions`（**硬式清單**）必須含 shift_change，
+│   │                                    漏改的話管理員選不到該類型、一條路線也建不出來。
+│   │                                    權限沿用 `shift-schedule:read/write`，不新增權限碼
 │   ├── ShiftScheduleHandler.cs       # **個人排班排例／休（四週彈性工時功能 A，2026-09 新增）**：GET / PUT `/shift-schedules`（整月整批替換）。
 │   │                                    擋存判準與開放期各自收斂成純函式單一真相（`Api/Common/ShiftScheduleValidator.cs` / `ShiftScheduleWindow.cs`），
 │   │                                    讀寫共用同一份、前端只顯示不重算。**國定假日不入表**（唯讀、不佔配額）、**上班日不落地**（查無紀錄即上班日）

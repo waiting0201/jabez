@@ -651,6 +651,11 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
                 .ExecuteUpdateAsync(s => s.SetProperty(x => x.ReviewedById, (Guid?)null));
             await db.LeaveRevocations.Where(x => x.EmployeeId == guid)
                 .ExecuteUpdateAsync(s => s.SetProperty(x => x.EmployeeId, (Guid?)null));
+            // 改班申請：兩個 FK 都是 NoAction，不清洗會刪不掉使用者
+            await db.ShiftChangeRequests.Where(x => x.ReviewedById == guid)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.ReviewedById, (Guid?)null));
+            await db.ShiftChangeRequests.Where(x => x.EmployeeId == guid)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.EmployeeId, (Guid?)null));
             await db.OvertimeRequests.Where(x => x.ReviewedById == guid)
                 .ExecuteUpdateAsync(s => s.SetProperty(x => x.ReviewedById, (Guid?)null));
             await db.TravelPaymentRequests.Where(x => x.ReviewedById == guid)

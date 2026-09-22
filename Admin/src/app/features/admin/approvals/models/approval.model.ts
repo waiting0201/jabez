@@ -1,9 +1,10 @@
-export type ApplicationType = 'payment_request' | 'leave' | 'leave_revocation' | 'travel' | 'overtime' | 'advance' | 'write_off' | 'travel_write_off' | 'holiday_travel' | 'travel_payment' | 'pre_review';
+export type ApplicationType = 'payment_request' | 'leave' | 'leave_revocation' | 'travel' | 'overtime' | 'advance' | 'write_off' | 'travel_write_off' | 'holiday_travel' | 'travel_payment' | 'pre_review' | 'shift_change';
 
 export const APPLICATION_TYPE_LABELS: Record<ApplicationType, string> = {
   payment_request:  '請款申請',
   leave:            '請假申請',
   leave_revocation: '銷假申請',
+  shift_change:     '改班申請',
   travel:           '出差預支申請',
   overtime:         '加班申請',
   advance:          '預支申請',
@@ -42,6 +43,7 @@ export const APPLICATION_TYPE_CLASSES: Record<ApplicationType, string> = {
   holiday_travel:   'bg-indigo-subtle text-indigo',
   travel_payment:   'bg-orange-subtle text-orange',
   pre_review:       'bg-danger-subtle text-danger',
+  shift_change:     'bg-secondary-subtle text-secondary',
 };
 
 export interface ApprovalStep {

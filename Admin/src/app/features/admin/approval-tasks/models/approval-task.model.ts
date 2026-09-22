@@ -146,6 +146,16 @@ export interface LeaveRevocationTaskDetail {
   dates: {date: Date; hours: number}[];
 }
 
+/** 改班申請詳情（§3.5.2）。逐日「從什麼改成什麼」，簽核者不必自己去查班表 */
+export interface ShiftChangeTaskDetail {
+  shiftChangeRequestId: number;
+  requestNo?: string | null;   // SC-yyyyMMdd-NNN
+  year: number;
+  month: number;
+  reason: string;
+  dates: {date: Date; fromDayType: string; toDayType: string}[];
+}
+
 export interface TravelTaskDetailItem {
   id: number;
   category: string;
@@ -478,6 +488,7 @@ export interface ApprovalTask {
   paymentDetail?: PaymentTaskDetail;
   leaveDetail?: LeaveTaskDetail;
   leaveRevocationDetail?: LeaveRevocationTaskDetail;
+  shiftChangeDetail?: ShiftChangeTaskDetail;
   travelDetail?: TravelTaskDetail;
   overtimeDetail?: OvertimeTaskDetail;
   advanceDetail?: AdvanceTaskDetail;

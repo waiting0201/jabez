@@ -300,6 +300,49 @@
             }
           }
 
+          @case ('shift_change') {
+            @if (task.shiftChangeDetail; as d) {
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#calendar"></use></svg>
+                  改班申請資訊
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">改班單號</div>
+                      <span class="fw-500 font-monospace">{{ d.requestNo || '—' }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">異動月份</div>
+                      <span class="fw-500">{{ d.year }} 年 {{ d.month }} 月</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">申請人</div>
+                      <span class="fw-500">{{ task.submittedBy }}</span>
+                    </div>
+
+                    <div class="col-12">
+                      <div class="text-muted small mb-1">調整內容（{{ d.dates.length }} 天）</div>
+                      <div class="flex flex-wrap gap-2">
+                        @for (x of d.dates; track x.date) {
+                          <span class="badge bg-light text-dark border">
+                            {{ x.date | date:'MM/dd' }}
+                            {{ shiftDayTypeLabel(x.fromDayType) }} → <b>{{ shiftDayTypeLabel(x.toDayType) }}</b>
+                          </span>
+                        }
+                      </div>
+                    </div>
+
+                    <div class="col-12">
+                      <div class="text-muted small mb-1">改班原因</div>
+                      <span class="fw-500">{{ d.reason || '—' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
+          }
           @case ('leave_revocation') {
             @if (task.leaveRevocationDetail; as d) {
               <div class="card border-0 shadow-sm">

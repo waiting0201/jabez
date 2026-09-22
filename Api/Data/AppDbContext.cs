@@ -59,6 +59,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ActivityDay>                ActivityDays               { get; set; }
     public DbSet<ActivityDayAssignee>        ActivityDayAssignees       { get; set; }
 
+    // 四週彈性工時：改班申請（開放期結束後的班表異動，走簽核流程）
+    public DbSet<ShiftChangeRequest>         ShiftChangeRequests        { get; set; }
+    public DbSet<ShiftChangeRequestDate>     ShiftChangeRequestDates    { get; set; }
+
     // 四週彈性工時：補休逐筆 lot（取代現行純聚合 SUM 的補休池）
     public DbSet<CompensatoryLot>            CompensatoryLots           { get; set; }
     public DbSet<CompensatoryUsage>          CompensatoryUsages         { get; set; }

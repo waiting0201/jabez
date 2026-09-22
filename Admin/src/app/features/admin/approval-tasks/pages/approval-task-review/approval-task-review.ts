@@ -162,6 +162,11 @@ export class ApprovalTaskReview implements OnInit {
   readonly appTypeLabel   = APPLICATION_TYPE_LABELS;
   readonly appTypeClass   = APPLICATION_TYPE_CLASSES;
   readonly payTypeLabel   = PAYMENT_TYPE_LABELS;
+  /** 日別中文（改班申請詳情卡用）。與後端 WorkDayTypeNames 對應。 */
+  shiftDayTypeLabel(t: string): string {
+    return ({work: '上班日', rest_day: '休假日', statutory_off: '例假日', public_holiday: '國定假日'} as Record<string, string>)[t] ?? t;
+  }
+
   readonly leaveTypeLabel = LEAVE_TYPE_LABELS;
 
   /** 依假別單位格式化時數顯示 */

@@ -46,7 +46,9 @@ public sealed class EscalationService(AppDbContext db) : IEscalationService
             throw AppException.BadRequest("找不到可審核的主管，無法送出申請。（部門不存在）");
 
         // 是否停在總監之前（銷假沿用請假規則）
-        bool stopBeforeDirector = applicationType is "leave" or "leave_revocation" or "overtime";
+        // shift_change 與請假 / 銷假 / 加班同屬人事類單：自審升級時停在總監之前，
+        // 不讓「自己送的單升級到總監」跳過中間關卡（六條路線的最後一關本來就是總監）。
+        bool stopBeforeDirector = applicationType is "leave" or "leave_revocation" or "overtime" or "shift_change";
         // 加班才檢查代理人
         bool checkDelegate = applicationType is "overtime";
 

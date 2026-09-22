@@ -1,6 +1,7 @@
 import {Component, computed, inject, OnInit, signal, viewChild} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
+import {RouterLink} from '@angular/router';
 import {ToastrService} from 'ngx-toastr';
 import {FullCalendarComponent, FullCalendarModule} from '@fullcalendar/angular';
 import {CalendarOptions, DayCellContentArg} from '@fullcalendar/core';
@@ -32,7 +33,7 @@ import {
 @Component({
   selector: 'app-shift-schedule-calendar',
   standalone: true,
-  imports: [CommonModule, FormsModule, FullCalendarModule],
+  imports: [CommonModule, FormsModule, RouterLink, FullCalendarModule],
   templateUrl: './shift-schedule-calendar.html',
   styleUrl: './shift-schedule-calendar.scss',
 })

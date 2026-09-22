@@ -17,6 +17,7 @@ public sealed class ApprovalNotificationService(
         ["payment_request"] = "請款申請",
         ["leave"]           = "請假申請",
         ["leave_revocation"] = "銷假申請",
+        ["shift_change"]     = "改班申請",
         ["travel"]          = "出差預支申請",
         ["overtime"]        = "加班申請",
         ["advance"]         = "預支申請",
@@ -784,6 +785,7 @@ public sealed class ApprovalNotificationService(
             "payment_request" => await GetPaymentSummaryAsync(applicationId),
             "leave"           => await GetLeaveSummaryAsync(applicationId),
             "leave_revocation" => await GetLeaveRevocationSummaryAsync(applicationId),
+            "shift_change"     => await GetShiftChangeSummaryAsync(applicationId),
             "travel"          => await GetTravelSummaryAsync(applicationId),
             "overtime"        => await GetOvertimeSummaryAsync(applicationId),
             "advance"         => await GetAdvanceSummaryAsync(applicationId),
@@ -829,6 +831,25 @@ public sealed class ApprovalNotificationService(
 
         var dateList = string.Join("、", rv.Dates.Select(d => d.ToString("MM/dd")));
         return $"取消{LeaveTypeNames.GetZh(rv.LeaveType)} {rv.Dates.Count} 天 / {rv.RevokedHours} 小時（{dateList}）";
+    }
+
+    private async Task<string> GetShiftChangeSummaryAsync(int id)
+    {
+        var sc = await db.ShiftChangeRequests.AsNoTracking()
+            .Where(x => x.Id == id)
+            .Select(x => new
+            {
+                x.Year,
+                x.Month,
+                Dates = x.Dates.OrderBy(d => d.Date)
+                               .Select(d => new { d.Date, d.FromDayType, d.ToDayType }).ToList(),
+            })
+            .FirstOrDefaultAsync();
+        if (sc is null) return $"#{id}";
+
+        var detail = string.Join("、", sc.Dates.Select(d =>
+            $"{d.Date:MM/dd} {WorkDayTypeNames.GetZh(d.FromDayType)}→{WorkDayTypeNames.GetZh(d.ToDayType)}"));
+        return $"{sc.Year}/{sc.Month} 調整 {sc.Dates.Count} 天（{detail}）";
     }
 
     private async Task<string> GetTravelSummaryAsync(int id)
@@ -912,6 +933,7 @@ public sealed class ApprovalNotificationService(
             "payment_request"  => "payment-requests",
             "leave"            => "leave-requests",
             "leave_revocation" => "leave-revocations",
+            "shift_change"     => "shift-changes",
             "travel"           => "travel-requests",
             "overtime"         => "overtime-requests",
             "advance"          => "advance-requests",

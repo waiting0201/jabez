@@ -175,6 +175,15 @@ public sealed record LeaveRevocationTaskDetailDto(
     LeaveRevocationDateDto[] Dates,
     string?  RequestNo = null);   // LVR-yyyyMMdd-NNN
 
+/// <summary>改班申請詳情（§3.5.2）。逐日「從什麼改成什麼」，簽核者不必自己去查班表。</summary>
+public sealed record ShiftChangeTaskDetailDto(
+    int      ShiftChangeRequestId,
+    int      Year,
+    int      Month,
+    string   Reason,
+    ShiftChangeDateDto[] Dates,
+    string?  RequestNo = null);   // SC-yyyyMMdd-NNN
+
 /// <summary>
 /// 假日活動每位人員（申請人 + 參與者）的參與明細。
 /// Days = 個人假日天數：參與者取 COALESCE(個人, 整單)（逐日勾選上/下半天者為 0.5 的倍數），申請人固定為整單。
@@ -277,7 +286,10 @@ public sealed record ApprovalTaskDto(
     TravelPaymentTaskDetailDto? TravelPaymentDetail     = null,   // 出差請款申請詳情
     PreReviewTaskDetailDto?     PreReviewDetail         = null,   // 預審申請詳情
     LeaveRevocationTaskDetailDto? LeaveRevocationDetail = null,   // 銷假申請詳情
-    StepReviewersDto[]?         StepReviewers           = null);  // 各關卡實際可簽核的人（僅 pending 單計算）
+    StepReviewersDto[]?         StepReviewers           = null,  // 各關卡實際可簽核的人（僅 pending 單計算）
+    // ⚠ 本 record 是**位置參數**，新欄位一律加在最後 ——
+    //    插在中間會讓 PaymentRequestReadService 裡 11 個 new ApprovalTaskDto(...) 的佔位 null 全部要重排。
+    ShiftChangeTaskDetailDto?   ShiftChangeDetail       = null);  // 改班申請詳情
 
 /// <summary>
 /// 一個簽核關卡的可簽核者（簽核流程時間軸用）。

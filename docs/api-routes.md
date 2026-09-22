@@ -224,6 +224,33 @@
 > **排班一律只能排自己的**（代排會讓「誰排的」失去意義，且改班申請的簽核對象會錯亂），帶他人 `userId` 送 PUT 回 403。
 
 
+## 改班申請（四週彈性工時 ‧ §3.5.2）
+
+開放期（10–25 日）結束、班表定案鎖定後的異動途徑。唯一不需簽核的例外是「當日 08:30 前調整當天狀態」。
+
+| Method | 路徑 | 權限 | 說明 |
+|---|---|---|---|
+| GET | `/shift-changes` | `shift-schedule:read` | 自己的改班申請清單（分頁）。簽核者從〈簽核作業〉進入 |
+| GET | `/shift-changes/changeable-dates?year=&month=` | `shift-schedule:read` | 可申請改班的日期（逐日現況 + 目前配額）。已排除國定假日與過去日期 |
+| POST | `/shift-changes` | `shift-schedule:write` | 新增草稿。body `{ year, month, reason, dates: [{ date, toDayType }] }` |
+| GET | `/shift-changes/{id}` | `shift-schedule:read` | 詳情（授權走 `RequestViewAccess`，不符回 404） |
+| PUT/PATCH | `/shift-changes/{id}` | `shift-schedule:write` | 修改草稿 / 退回單 |
+| PATCH | `/shift-changes/{id}/submit` | `shift-schedule:write` | 送簽（取號 `SC-yyyyMMdd-NNN` + 寫 `SubmittedAt`） |
+| DELETE | `/shift-changes/{id}` | `shift-schedule:write` | 刪除草稿（一併清三張多型足跡表） |
+
+> ⚠ **與銷假申請的關鍵差異**：銷假借用請假的流程設定（`ResolveApprovalItemIdAsync("leave", …)`），
+> 改班以**自己的 `ApplicationType`** 解析 —— §3.5.2 的逐部門六條路線要靠管理員建 6 個 `ApprovalItem`。
+> 連帶要求前端 `approval-list.ts` 的 `appTypeOptions`（硬式清單）必須含 `shift_change`。
+
+> **核准後才寫入班表**：未核准前 `ShiftScheduleDay` 完全不動，故退回 / 拒絕都不需要任何回滾。
+> `toDayType = work` 時是**刪除**該日排班列（全站語意：查無紀錄即上班日）。
+
+> **送單時擋件**：國定假日不可變更、「原本就是該日別」不需申請、日期須落在該年月內。
+> `FromDayType` 為**送單當下的快照**，供簽核者看到「原本是什麼」，不必自己去查班表。
+
+> **權限沿用 `shift-schedule:*`**，不新增權限碼（比照銷假沿用 `leave-requests:*`）。
+
+
 ## 排班提醒（四週彈性工時 ‧ §3.5）
 
 | Method | 路徑 | 權限 | 說明 |

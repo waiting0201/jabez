@@ -10,6 +10,7 @@ const TYPE_ROUTES: Record<ApplicationType, string> = {
   payment_request:  '/admin/payment-requests',
   leave:            '/admin/leave-requests',
   leave_revocation: '/admin/leave-requests',
+  shift_change:     '/admin/shift-schedules',
   travel:           '/admin/travel-requests',
   overtime:         '/admin/overtime-requests',
   advance:          '/admin/advance-requests',
@@ -25,6 +26,7 @@ const TYPE_PERMISSIONS: Record<ApplicationType, string> = {
   payment_request:  'payment-requests:read',
   leave:            'leave-requests:read',
   leave_revocation: 'leave-requests:read',
+  shift_change:     'shift-schedule:read',
   travel:           'travel-requests:read',
   overtime:         'overtime-requests:read',
   advance:          'advance-requests:read',
@@ -46,6 +48,7 @@ const TYPE_ORDER: ApplicationType[] = [
   'holiday_travel',
   'leave',
   'leave_revocation',
+  'shift_change',
   'overtime',
   'pre_review',
 ];

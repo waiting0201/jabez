@@ -848,3 +848,44 @@ returned ──(DELETE supplements/{n} 主動放棄)──→ 同上回滾
 - **撥款日端點權限**（部門 Code AC/FIN/Jabez HQ/CEO，或改制後英文全名碼） → [department-visibility.md](department-visibility.md)
 - **API 端點清單** → [api-routes.md §審核任務](../api-routes.md#審核任務)
 - **Entity（ApprovalItem / Step / Record / Override / RequestDesignatedReviewer）** → [database-schema.md](../database-schema.md)
+
+---
+
+## 改班申請（shift_change，2026-09 新增）
+
+四週彈性工時 §3.5.2。開放期（10–25 日）結束、次月班表定案鎖定後的異動途徑；
+唯一不需簽核的例外是「當日 08:30 前調整當天狀態」（臨時調休）。
+
+| 項目 | 內容 |
+|---|---|
+| ApplicationType | `shift_change`（單一真相：`ShiftChangeRequestService.AppType`） |
+| 單號 | `SC-yyyyMMdd-NNN`，**送簽時取號**，草稿為 null |
+| 權限 | **沿用 `shift-schedule:read` / `shift-schedule:write`**，不新增權限碼 |
+| 流程解析 | `ResolveApprovalItemIdAsync("shift_change", 申請人部門)` —— 自身部門 > 最近祖先部門 > 通用預設 |
+| 自審 | Group A（全程禁止指定自己）；自審時走升級審核，`stopBeforeDirector` **含** shift_change（同請假／銷假／加班） |
+| 天數門檻 | **無** —— `requestDays` 傳 null，六條路線的 `MinDays` 一律留空 |
+| 核准效果 | 寫入 `ShiftScheduleDay`；`toDayType = work` 時是**刪除**該列（查無紀錄即上班日） |
+| 退回／拒絕 | **不需任何回滾** —— 未核准前班表完全沒動過 |
+
+### ⚠ 與〈銷假申請〉的關鍵差異
+
+銷假是 `ResolveApprovalItemIdAsync("leave", …)`：**借用請假的流程設定**、自己沒有 `ApprovalItem`，
+所以前端 `approval-list.ts` 的 `appTypeOptions` **刻意排除**它（另建銷假流程不會生效）。
+
+改班相反 —— 它要的是**逐部門六條簽核路線**，管理員必須在〈簽核流程設定〉建得出 6 個 `ApprovalItem`，
+因此 `appTypeOptions` **必須含 `shift_change`**。那是一份硬式清單、不是從 `APPLICATION_TYPE_LABELS`
+自動來的，漏改的話管理員在 UI 上選不到該類型，六條路線一條也建不出來。
+
+### 六條路線（§3.5.2；部門與職稱皆已查證於 DB）
+
+| # | 部門(Id) | 關卡 |
+|---|---|---|
+| 1 | 營運管理及發展部(16，含底下部門) | 部門協理 → 執行長(職稱 6) → 財務協理(7) → 總監(5) |
+| 2 | 品牌事業部(3，含底下部門) | 部門協理 → 財務協理 → 總監 |
+| 3 | 數位研發部(15) | 財務協理 → 總監 |
+| 4 | 總監室專案部門(18) | 總監 |
+| 5 | 行政財務管理部(5，含會計室 12) | 財務協理 → 總監 |
+| 6 | **通用預設（客戶未列）** | 總監 —— 涵蓋直屬總監室(4) 等未對到上述部門者 |
+
+「含底下部門」不必逐一建檔：`ResolveApprovalItemIdAsync` 已做部門階層繼承（沿 `Department.ParentId` 往上）。
+⚠ **程式不得寫死部門 Code 或職稱 Level**，一律由〈簽核流程設定〉維護（前例：§9.2 的 `'FIN'` 硬編碼事故）。
