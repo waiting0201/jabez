@@ -1088,6 +1088,7 @@ public sealed class GcisService(HttpClient http, ILogger<GcisService> logger) : 
 | `GET /projects/active` | `GET /projects`（需 `projects:read`） | 申請表「專案」下拉，僅回傳 `active` 狀態；預設依使用者部門可見範圍過濾。帶 `?all=true` 時不過濾部門，回傳全部 `active` 專案（供加班申請等跨部門支援情境瀏覽用） |
 | `GET /approval-items/active?type=<applicationType>` | `GET /approval-items`（需 `approvals:read`） | 申請表判斷流程是否含 `useApplicantDesignated` 步驟 |
 | `GET /job-titles/lookup` | `GET /job-titles`（需 `job-titles:read`） | 申請表「指定審核者」職稱下拉 |
+`GET /departments/lookup` | `GET /departments`（需 `departments:read`） | 活動日 / 排班頁的部門下拉（2026-09 新增；不該為了一個下拉就把部門管理權限給各部門協理） |
 | `GET /vendors/lookup` | `GET /vendors`（需 `vendors:read`） | 請款表單「廠商」下拉，僅回 `IsActive=true` |
 | `GET /vendors/lookup-by-tax-id?taxId=XXXXXXXX` | — | 以統編查 GCIS 公司登記資料，自動帶出廠商名稱 / 地址 / 負責人；任何登入者可用 |
 | `GET /overtime-requests/estimate?date=&hours=` | `GET /calendar-days`（需 `calendar-days:read`）＋ 薪資欄位（需 `payroll:read`） | 加班表單即時試算加班費；重用 `CalendarDayReadService` + `WorkPatternReadService`，避免把後台行事曆權限強加給申請人。**對象一律取 JWT `sub`，端點刻意不接受 `employeeId`** —— 回傳含時薪（可反推底薪），若開放指定對象等於開一條查別人薪水的側門；員工在 `GET /me/payroll` 本來就看得到自己的底薪，故無新增外洩面。權限沿用 `overtime-requests:read`，不另開權限碼 |

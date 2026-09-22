@@ -37,3 +37,6 @@ public sealed record UpdateDepartmentRequest(
     bool?    CanSeeAll,
     bool?    CanViewDescendants,
     bool?    CanViewParent);
+
+/// <summary>輕量部門項目（供下拉選單；不需 departments:read）。</summary>
+public sealed record DepartmentLookupDto(int Id, string Name, int? ParentId);

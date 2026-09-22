@@ -33,6 +33,7 @@ public sealed class AppRouter(
     OvertimeRequestHandler overtimeRequests,
     AttendanceHandler      attendances,
     ShiftScheduleHandler   shiftSchedules,
+    ActivityDayHandler     activityDays,
     ApprovalTaskHandler    approvalTasks,
     InsuranceBracketHandler insuranceBrackets,
     PayrollHandler         payroll,
@@ -152,6 +153,7 @@ public sealed class AppRouter(
             ("PATCH",  ["settings"])                  => await settings.UpdateAsync(req),
 
             // ── Departments ────────────────────────────────────────────────────
+            ("GET",    ["departments", "lookup"])     => await depts.GetLookupAsync(),
             ("GET",    ["departments"])               => await depts.GetAllAsync(),
             ("POST",   ["departments"])               => await depts.CreateAsync(req),
             ("GET",    ["departments", var id])       => await depts.GetByIdAsync(id),
@@ -359,6 +361,12 @@ public sealed class AppRouter(
             ("GET",    ["shift-schedules"])               => await shiftSchedules.GetMonthAsync(req),
             ("PUT",    ["shift-schedules"])               => await shiftSchedules.SaveMonthAsync(req),
 
+            // 活動日（主管排定；疊加在日別之上的旗標）
+            ("GET",    ["activity-days"])                 => await activityDays.GetAllAsync(req),
+            ("POST",   ["activity-days"])                 => await activityDays.CreateAsync(req),
+            ("PUT",    ["activity-days", var adId])       => await activityDays.UpdateAsync(req, adId),
+            ("DELETE", ["activity-days", var adDelId])    => await activityDays.DeleteAsync(req, adDelId),
+
             // ── Insurance Brackets ────────────────────────────────────────────
             ("GET",    ["insurance-brackets"])              => await insuranceBrackets.GetAllAsync(),
             ("GET",    ["insurance-brackets", "lookup"])    => await insuranceBrackets.LookupBySalaryAsync(req),
@@ -492,6 +500,8 @@ public sealed class AppRouter(
             ("PATCH",  ["settings"])                     => PermissionCodes.SettingsWrite,
 
             // Departments
+            // lookup 不需權限，登入即可（輕量讀取端點模式，見 backend-design.md §13）
+            ("GET",    ["departments", "lookup"])        => null,
             ("GET",    ["departments", ..])              => PermissionCodes.DepartmentsRead,
             ("POST",   ["departments"])                  => PermissionCodes.DepartmentsWrite,
             ("PUT" or "PATCH", ["departments", _])       => PermissionCodes.DepartmentsWrite,
@@ -661,6 +671,11 @@ public sealed class AppRouter(
             ("GET",    ["shift-schedules"])               => PermissionCodes.ShiftScheduleRead,
             ("PUT",    ["shift-schedules"])               => PermissionCodes.ShiftScheduleWrite,
             ("GET",    ["shift-schedules", ..])           => PermissionCodes.ShiftScheduleRead,
+
+            // 活動日：讀給全員（排班月曆要顯示），寫限持有 activity-days:write 者，
+            // 可排定的部門範圍另在 Handler 內以 ProjectAccessScope 把關
+            ("GET",    ["activity-days", ..])             => PermissionCodes.ActivityDaysRead,
+            ("POST" or "PUT" or "DELETE", ["activity-days", ..]) => PermissionCodes.ActivityDaysWrite,
 
             // Insurance Brackets
             ("GET",    ["insurance-brackets", ..])              => PermissionCodes.InsuranceBracketsRead,

@@ -201,6 +201,10 @@ Admin/src/app/
     │   ├── services/my-profile.service.ts   # 呼叫 /me/user + /me/profile + /me/files + /me/payroll（自助唯讀）
     │   └── pages/my-profile/                # 「個人資訊」唯讀頁：avatar 下拉進入，**4 Tab** 全唯讀 —— 員工基本資料 / 人事資料卡 / 健保眷屬（前 3 個比照管理頁，含薪資）＋ **過往薪資**（2026-08 新增，走 `GET /me/payroll?months=12` 列出近 12 個月，一列一月，點「明細」展開共用元件 `<app-payroll-detail-card>`；到職前月份不列、當月標「本月尚未結算」；**薪資即時重算、無月結快照**，調薪後回溯歷史月份會用現行底薪，頁面已加註說明）
     ├── admin/
+    │   ├── activity-days/    # **活動日管理（2026-09 新增）**：協理排定活動日 + 勾選預定人力，`activity-days:write` 才顯示選單。
+    │   │                       ⚠ 部門下拉的 `ngModelChange` 會清空已選人力（候選名單整組換掉），
+    │   │                       但**必須擋掉「值沒真的變」的那次觸發** —— 編輯表單載入時 select 初始化也會 emit，
+    │   │                       無條件清空會把回填的預定人力洗掉、且畫面上完全看不出來
     │   ├── shift-schedules/  # **個人排班排例／休（四週彈性工時功能 A，2026-09 新增）**：月曆大方格頁，權限 `shift-schedule:read/write`。
     │   │                       專案**第一個 FullCalendar 使用點**（`dayGridMonth`，套件早已安裝但從未用過）——
     │   │                       只借月格骨架，每格狀態存在元件 signal、以 `dayCellClassNames` / `dayCellContent` 上色與標字，
@@ -324,6 +328,11 @@ Api/
 │   ├── ShiftScheduleHandler.cs       # **個人排班排例／休（四週彈性工時功能 A，2026-09 新增）**：GET / PUT `/shift-schedules`（整月整批替換）。
 │   │                                    擋存判準與開放期各自收斂成純函式單一真相（`Api/Common/ShiftScheduleValidator.cs` / `ShiftScheduleWindow.cs`），
 │   │                                    讀寫共用同一份、前端只顯示不重算。**國定假日不入表**（唯讀、不佔配額）、**上班日不落地**（查無紀錄即上班日）
+│   ├── ActivityDayHandler.cs         # **活動日（四週彈性工時 §3.2，2026-09 新增）**：各部門協理排定活動日 + 預定人力，`activity-days:read/write`。
+│   │                                    **疊加旗標非第 5 種日別**（可壓在國定假日上），Handler 完全不碰 `ShiftScheduleDay`；
+│   │                                    改期**不自動改寫個人班表**，只回報需調整的同仁。⚠ 衝突判定不是「重跑三條檢核」——
+│   │                                    三條檢核的輸入與活動日無關、永遠不會因改期而不合格，真正的衝突是
+│   │                                    「活動日當天該員排定為例假／休假」（國定假日除外）
 │   ├── InsuranceBracketHandler.cs    # 勞健保級距 CRUD
 │   ├── PayrollHandler.cs             # 人事薪資查詢（月薪計算）；GetMineAsync = GET /me/payroll 員工讀自己近 N 個月薪資（免 payroll:read，逐月呼叫帶 employeeId 的同一支計算，依 HireDate 擋掉到職前月份，months clamp 1~24）
 │   ├── LineHandler.cs                # LINE 帳號綁定/解綁 + 月度推播用量查詢（line-quota:read）

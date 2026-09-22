@@ -26,6 +26,12 @@ export const menuItems: MenuItemType[] = [
     url: '/admin/shift-schedules',
     requiredPermission: 'shift-schedule:read',
   },
+  {
+    icon: '/assets/icons/sprite.svg#sun',
+    label: '活動日管理',
+    url: '/admin/activity-days',
+    requiredPermission: 'activity-days:write',
+  },
 
   { label: '業務管理', isTitle: true },
   {

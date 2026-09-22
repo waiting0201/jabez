@@ -17,6 +17,23 @@ public sealed class DepartmentHandler(AppDbContext db, IDepartmentReadService re
         return new OkObjectResult(ApiResponse.Ok(depts));
     }
 
+    /// <summary>
+    /// 輕量部門清單（Id / Name / ParentId），**不需 departments:read**。
+    ///
+    /// 比照 <c>/users/lookup</c>、<c>/job-titles/lookup</c> 的輕量讀取端點模式（見 backend-design.md §13）：
+    /// 活動日排定、排班相關頁面只是要一個部門下拉，不該因此把「部門管理」的後台權限
+    /// 強加給各部門協理。
+    /// </summary>
+    public async Task<IActionResult> GetLookupAsync()
+    {
+        var items = await db.Departments.AsNoTracking()
+            .OrderBy(d => d.ParentId ?? 0).ThenBy(d => d.Id)
+            .Select(d => new DepartmentLookupDto(d.Id, d.Name, d.ParentId))
+            .ToListAsync();
+
+        return new OkObjectResult(ApiResponse.Ok(items));
+    }
+
     public async Task<IActionResult> GetByIdAsync(string id)
     {
         if (!int.TryParse(id, out var intId))

@@ -1,0 +1,166 @@
+<div class="container-fluid py-3">
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
+      <svg class="sa-icon text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#sun"></use>
+      </svg>
+      <h4 class="mb-0">活動日管理</h4>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <select class="form-select form-select-sm w-full sm:w-auto"
+              [ngModel]="year()" (ngModelChange)="year.set($event); onPeriodChange()">
+        @for (y of yearOptions(); track y) { <option [value]="y">{{ y }} 年</option> }
+      </select>
+      <select class="form-select form-select-sm w-full sm:w-auto"
+              [ngModel]="month()" (ngModelChange)="month.set($event); onPeriodChange()">
+        @for (m of monthOptions; track m) { <option [value]="m">{{ m }} 月</option> }
+      </select>
+      @if (canWrite) {
+        <button type="button" class="btn btn-sm btn-primary" (click)="startCreate()">新增活動日</button>
+      }
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-12 col-xl-10">
+
+      <!-- 改期後排班不合規者：系統刻意不自動改寫班表，需由主管通知當事人 -->
+      @if (affected().length) {
+        <div class="alert alert-warning border-0 shadow-sm mb-4">
+          <div class="fw-600 mb-2">以下同仁的班表因這次異動而不符排班規定，請通知他們提出〈改班申請〉調整</div>
+          <ul class="mb-0 ps-3">
+            @for (a of affected(); track a.userId + a.year + a.month) {
+              <li>{{ a.userName }}（{{ a.year }}/{{ a.month }}）：{{ a.blocks.join('；') }}</li>
+            }
+          </ul>
+        </div>
+      }
+
+      @if (editingId() !== null) {
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#edit"></use>
+            </svg>
+            {{ editingId() ? '編輯活動日' : '新增活動日' }}
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-12 col-md-4">
+                <label class="form-label">活動日期</label>
+                <input type="date" class="form-control" [ngModel]="form().date"
+                       (ngModelChange)="form.set({...form(), date: $event})">
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label">部門</label>
+                <select class="form-select" [ngModel]="form().departmentId"
+                        (ngModelChange)="onDepartmentChange($event)">
+                  @for (d of departments(); track d.id) { <option [value]="d.id">{{ d.name }}</option> }
+                </select>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label">活動名稱</label>
+                <input type="text" class="form-control" maxlength="200" [ngModel]="form().title"
+                       (ngModelChange)="form.set({...form(), title: $event})"
+                       placeholder="例：壯圍沙丘假日市集">
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">
+                  預定人力
+                  <span class="text-secondary small">（勾選者於該日出勤；若當天是國定假日，可直接打上下班卡、不需加班申請單）</span>
+                </label>
+                @if (candidates().length) {
+                  <div class="flex flex-wrap gap-2">
+                    @for (u of candidates(); track u.id) {
+                      <button type="button" class="btn btn-sm"
+                              [class.btn-primary]="isAssigned(u.id)"
+                              [class.btn-outline-secondary]="!isAssigned(u.id)"
+                              (click)="toggleAssignee(u.id)">
+                        {{ u.name }}
+                      </button>
+                    }
+                  </div>
+                } @else {
+                  <div class="text-secondary small">該部門查無在職同仁。</div>
+                }
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 mt-4">
+              <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="save()">
+                @if (saving()) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                儲存
+              </button>
+              <button type="button" class="btn btn-outline-secondary" [disabled]="saving()" (click)="cancel()">
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+          <svg class="sa-icon text-primary" style="stroke: currentColor">
+            <use href="/assets/icons/sprite.svg#calendar"></use>
+          </svg>
+          {{ year() }} 年 {{ month() }} 月活動日
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0 min-w-[720px]">
+              <thead>
+                <tr>
+                  <th>日期</th>
+                  <th>活動名稱</th>
+                  <th>部門</th>
+                  <th>預定人力</th>
+                  @if (canWrite) { <th class="text-end">操作</th> }
+                </tr>
+              </thead>
+              <tbody>
+                @for (a of items(); track a.id) {
+                  <tr>
+                    <td class="whitespace-nowrap">
+                      {{ a.date | date: 'yyyy/MM/dd' }}
+                      @if (a.isPublicHoliday) {
+                        <span class="badge text-bg-secondary ms-1" [title]="a.holidayName ?? ''">國定假日</span>
+                      }
+                    </td>
+                    <td>{{ a.title }}</td>
+                    <td>{{ a.departmentName }}</td>
+                    <td>
+                      @if (a.assignees.length) {
+                        {{ a.assignees.length }} 人
+                        <span class="text-secondary small d-block">
+                          {{ assigneeNames(a) }}
+                        </span>
+                      } @else {
+                        <span class="text-secondary">尚未指定</span>
+                      }
+                    </td>
+                    @if (canWrite) {
+                      <td class="text-end whitespace-nowrap">
+                        <button type="button" class="btn btn-sm btn-outline-secondary me-1" (click)="startEdit(a)">編輯</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" (click)="remove(a)">刪除</button>
+                      </td>
+                    }
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td [attr.colspan]="canWrite ? 5 : 4" class="text-center text-secondary py-4">
+                      @if (loading()) { 載入中… } @else { 本月尚未排定活動日 }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

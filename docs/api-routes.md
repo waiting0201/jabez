@@ -49,6 +49,7 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
+| GET | `/departments/lookup` | 輕量部門清單（`id` / `name` / `parentId`），**免權限、登入即可**。供活動日、排班等頁面的部門下拉；比照 `/users/lookup`、`/job-titles/lookup` 的輕量讀取端點模式 —— 不該為了一個下拉就把「部門管理」的後台權限強加給各部門協理 |
 | GET/POST | `/departments` | 部門列表 / 新增 |
 | GET/PUT/PATCH/DELETE | `/departments/{id}` | 部門 CRUD |
 | GET/POST | `/job-titles` | 職稱列表 / 新增 |
@@ -221,6 +222,32 @@
 > 開放期結束後的異動一律走〈改班申請〉送簽。
 
 > **排班一律只能排自己的**（代排會讓「誰排的」失去意義，且改班申請的簽核對象會錯亂），帶他人 `userId` 送 PUT 回 403。
+
+
+## 活動日（四週彈性工時 ‧ §3.2）
+
+主管（各部門協理）於活動 2 個月前預先排定日期並勾選預定人力，讓同仁排班時看得到。
+
+| Method | 路徑 | 權限 | 說明 |
+|---|---|---|---|
+| GET | `/activity-days?year=&month=[&departmentId=]` | `activity-days:read` | 某月的活動日清單（含預定人力、是否落在國定假日）。套用 `ProjectAccessScope` 部門可見性 |
+| POST | `/activity-days` | `activity-days:write` | 新增。body `{ date, departmentId, title, assigneeUserIds[] }` |
+| PUT | `/activity-days/{id}` | `activity-days:write` | 更新／**改期**。不受 10–25 日開放期限制（活動得因業主通知或天氣因素變更），但**原活動日已過則不可改期** |
+| DELETE | `/activity-days/{id}` | `activity-days:write` | 刪除（預定人力走 Cascade） |
+
+> **活動日是疊加旗標，不是第 5 種日別**：同一天可以既是「上班日」又是「活動日」，
+> **也可以壓在國定假日上**（2026-09-17 決議 —— 假日活動本來就會排在國定假日）。
+> 本 Handler 完全不碰 `ShiftScheduleDay`。做成第 5 種狀態會讓自動排班的「跳過活動日」與配額計算互相打架。
+
+> **改期後不自動改寫個人班表**（§3.2）：班表是同仁自己排的，自動改寫會讓人在不知情下被調班。
+> 系統只重跑檢核並在回應的 `affected[]` 回報「需要調整」的同仁，由主管通知其送〈改班申請〉。
+> ⚠ 檢核**不只跑 §3.3 的三條規則** —— 三條規則的輸入是日別分佈、與活動日無關，
+> 光跑它們永遠不會因改期而變不合格（「改期後通知受影響同仁」會等於永遠不通知任何人）。
+> 真正的衝突判定是「**活動日當天該員排定為例假／休假**」；國定假日上的活動日**不算衝突**
+> （該日對同仁唯讀、本來就排不了班，且預定人力當天直接解鎖上下班打卡）。
+
+> **寫入範圍**：`activity-days:write` ＋ 只能排定 `ProjectAccessScope` 涵蓋的部門。
+> **不得硬編 `JobTitle.Level` 判定「協理」**（組織改制後職級對應會漂移，前例見 `'FIN'` 硬編碼事故）。
 
 
 ## 報表（Reports）

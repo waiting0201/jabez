@@ -107,6 +107,15 @@ public static class PermissionCodes
     public const string ShiftScheduleViewAll = "shift-schedule:view-all";
     /// <summary>進入〈出勤／排休總覽表〉報表頁。</summary>
     public const string ReportsShiftScheduleRead = "reports-shift-schedule:read";
+
+    /// <summary>檢視活動日清單。</summary>
+    public const string ActivityDaysRead = "activity-days:read";
+    /// <summary>
+    /// 排定／改期活動日並勾選預定人力（規格上是「各部門協理主管」）。
+    /// ⚠ 同樣以權限碼判定，**不得硬編 `JobTitle.Level ≤ 3`** —— 組織改制後職級對應會漂移。
+    /// 可排定的部門範圍另由 <c>ProjectAccessScope</c> 控管（只能排自己看得到的部門）。
+    /// </summary>
+    public const string ActivityDaysWrite = "activity-days:write";
 }
 
 public static class RoleNames
