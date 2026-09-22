@@ -1,5 +1,6 @@
 import {Routes} from '@angular/router';
 import {permissionGuard} from '@core/auth/guards/permission.guard';
+import {holidayTravelRetiredGuard} from '@core/auth/guards/holiday-travel-retired.guard';
 import {UserList} from './users/pages/user-list/user-list';
 import {UserForm} from './users/pages/user-form/user-form';
 import {RoleList} from './roles/pages/role-list/role-list';
@@ -145,8 +146,10 @@ export const ADMIN_ROUTES: Routes = [
 
   // 假日執行活動申請
   {path: 'holiday-travel-requests',          canActivate: [permissionGuard], data: {title: '假日執行活動申請',       permission: 'holiday-travel-requests:read'}, loadComponent: () => import('./holiday-travel-requests/pages/holiday-travel-request-list/holiday-travel-request-list').then(m => m.HolidayTravelRequestList)},
-  {path: 'holiday-travel-requests/new',      canActivate: [permissionGuard], data: {title: '新增假日執行活動申請',   permission: 'holiday-travel-requests:write'}, loadComponent: () => import('./holiday-travel-requests/pages/holiday-travel-request-form/holiday-travel-request-form').then(m => m.HolidayTravelRequestForm)},
-  {path: 'holiday-travel-requests/:id/edit', canActivate: [permissionGuard], data: {title: '編輯假日執行活動申請',   permission: 'holiday-travel-requests:read'}, loadComponent: () => import('./holiday-travel-requests/pages/holiday-travel-request-form/holiday-travel-request-form').then(m => m.HolidayTravelRequestForm)},
+  // 新增 / 編輯另掛 holidayTravelRetiredGuard：四週彈性工時上線後本申請別退場（§8），
+  // **只關寫入口、保留唯讀**，故列表與詳情兩條路由刻意不掛
+  {path: 'holiday-travel-requests/new',      canActivate: [permissionGuard, holidayTravelRetiredGuard], data: {title: '新增假日執行活動申請',   permission: 'holiday-travel-requests:write'}, loadComponent: () => import('./holiday-travel-requests/pages/holiday-travel-request-form/holiday-travel-request-form').then(m => m.HolidayTravelRequestForm)},
+  {path: 'holiday-travel-requests/:id/edit', canActivate: [permissionGuard, holidayTravelRetiredGuard], data: {title: '編輯假日執行活動申請',   permission: 'holiday-travel-requests:read'}, loadComponent: () => import('./holiday-travel-requests/pages/holiday-travel-request-form/holiday-travel-request-form').then(m => m.HolidayTravelRequestForm)},
   {path: 'holiday-travel-requests/:id',      canActivate: [permissionGuard], data: {title: '假日執行活動申請詳情',   permission: 'holiday-travel-requests:read'}, loadComponent: () => import('./holiday-travel-requests/pages/holiday-travel-detail/holiday-travel-detail').then(m => m.HolidayTravelDetail)},
 
   // 行事曆管理

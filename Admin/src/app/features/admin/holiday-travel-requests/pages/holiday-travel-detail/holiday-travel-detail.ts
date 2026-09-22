@@ -1,4 +1,4 @@
-import {Component, inject, OnInit, signal} from '@angular/core';
+import {Component, computed, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {DatePipe, DecimalPipe} from '@angular/common';
 import {HolidayTravelRequestService} from '../../services/holiday-travel-request.service';
@@ -10,6 +10,7 @@ import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {SubmitSuccessModal} from '../../../../../shared/components/submit-success-modal';
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
+import {WorkModeService} from '@shared/services/work-mode.service';
 
 @Component({
   selector: 'app-holiday-travel-detail',
@@ -17,6 +18,15 @@ import {InstallmentsTable} from '../../../../../shared/components/installments-t
   imports: [RouterLink, DatePipe, DecimalPipe, ApprovalTimeline, InstallmentsTable],
 })
 export class HolidayTravelDetail implements OnInit {
+  private readonly workMode = inject(WorkModeService);
+
+  /**
+   * 〈假日執行活動申請〉已隨四週彈性工時退場（§8）：只關寫入口、保留唯讀。
+   * 真正的閘門在後端 `TravelRequestHandler.GuardHolidayTravelRetiredAsync`，
+   * 此處只是不要讓使用者點了才被擋。切換日未設定時恆為 false，一切照舊。
+   */
+  readonly retired = computed(() => this.workMode.mode()?.isFlexibleActive ?? false);
+
   private service     = inject(HolidayTravelRequestService);
   private pdfService  = inject(HolidayTravelPdfService);
   private taskService = inject(ApprovalTaskService);
@@ -32,6 +42,7 @@ export class HolidayTravelDetail implements OnInit {
   readonly statusClass = APPROVAL_STATUS_CLASSES;
 
   ngOnInit() {
+    void this.workMode.load();
     const id = +this.route.snapshot.paramMap.get('id')!;
     this.service.getById(id).subscribe(r => {
       this.request.set(r);

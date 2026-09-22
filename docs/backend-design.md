@@ -1089,6 +1089,7 @@ public sealed class GcisService(HttpClient http, ILogger<GcisService> logger) : 
 | `GET /approval-items/active?type=<applicationType>` | `GET /approval-items`（需 `approvals:read`） | 申請表判斷流程是否含 `useApplicantDesignated` 步驟 |
 | `GET /job-titles/lookup` | `GET /job-titles`（需 `job-titles:read`） | 申請表「指定審核者」職稱下拉 |
 `GET /departments/lookup` | `GET /departments`（需 `departments:read`） | 活動日 / 排班頁的部門下拉（2026-09 新增；不該為了一個下拉就把部門管理權限給各部門協理） |
+| `GET /work-mode` | `GET /settings`（需 `settings:read`） | 「四週彈性工時切換了沒」（2026-09 新增）。只回 `flexibleWorkStartDate` 與 `isFlexibleActive` 兩個非敏感欄位 —— 讓一般同仁為了知道制度而拿到整份系統設定（含維護模式、通知開關）等於把後台權限強加給員工。⚠️ `isFlexibleActive` 是**以今天**判斷，**僅供 UI 開關**（例如〈假日執行活動申請〉的新增鈕要不要顯示）；任何與**資料**有關的判定（薪資、加班費率、請假時段）一律以**該筆資料自己的日期**比對切換日，前端不得自行重算，否則切換後歷史資料會被新制重新解讀 |
 | `GET /vendors/lookup` | `GET /vendors`（需 `vendors:read`） | 請款表單「廠商」下拉，僅回 `IsActive=true` |
 | `GET /vendors/lookup-by-tax-id?taxId=XXXXXXXX` | — | 以統編查 GCIS 公司登記資料，自動帶出廠商名稱 / 地址 / 負責人；任何登入者可用 |
 | `GET /overtime-requests/estimate?date=&hours=` | `GET /calendar-days`（需 `calendar-days:read`）＋ 薪資欄位（需 `payroll:read`） | 加班表單即時試算加班費；重用 `CalendarDayReadService` + `WorkPatternReadService`，避免把後台行事曆權限強加給申請人。**對象一律取 JWT `sub`，端點刻意不接受 `employeeId`** —— 回傳含時薪（可反推底薪），若開放指定對象等於開一條查別人薪水的側門；員工在 `GET /me/payroll` 本來就看得到自己的底薪，故無新增外洩面。權限沿用 `overtime-requests:read`，不另開權限碼 |

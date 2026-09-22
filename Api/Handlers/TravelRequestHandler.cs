@@ -27,10 +27,36 @@ public sealed class TravelRequestHandler(
     IApprovalNotificationService notifier,
     IApprovalFlowService approvalFlow,
     ICalendarDayReadService calendarDayReader,
-    IBlobStorageService blob)
+    IBlobStorageService blob,
+    IWorkdayScheduleProvider scheduleProvider)
 {
     private const string ContainerName = "invoices";
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+
+    /// <summary>
+    /// 〈假日執行活動申請〉退場閘門（四週彈性工時 §8）。
+    ///
+    /// 新制下全公司改用〈加班申請〉，本申請別**只保留唯讀**：列表、詳情、簽核台分支、
+    /// 薪資的假日津貼取數全部原封不動（薪資是即時重算、無月結快照，移除取數會讓
+    /// 歷史月份的金額憑空消失，但錢早就發出去了），只關掉**新增 / 編輯 / 送簽**三個寫入口。
+    ///
+    /// ⚠ **以「今天」判斷，不是以活動日期判斷** —— 這是全站少數的例外，理由是這裡問的不是
+    /// 「這筆資料該用哪套規則算」而是「現在還能不能建新的單」，屬於制度開關而非資料解讀。
+    /// 已建立的草稿在切換後會卡住無法送簽，屬預期行為（改提加班申請）。
+    ///
+    /// 切換日為 null（尚未切換）時完全不擋，故本階段部署不改變任何現行行為。
+    /// </summary>
+    private async Task<IActionResult?> GuardHolidayTravelRetiredAsync(bool isHolidayTravel)
+    {
+        if (!isHolidayTravel) return null;
+
+        var switchDate = await scheduleProvider.GetSwitchDateAsync();
+        if (!WorkdayHours.IsFlexible(Clock.Now, switchDate)) return null;
+
+        return new BadRequestObjectResult(ApiResponse.Fail(
+            "〈假日執行活動申請〉已隨四週彈性工時上線退場，不再受理新增與送簽；"
+          + "假日出勤請改提〈加班申請〉。既有單據仍可查閱。"));
+    }
 
     public async Task<IActionResult> GetAllAsync(HttpRequest req, bool isHolidayTravel = false)
     {
@@ -68,6 +94,8 @@ public sealed class TravelRequestHandler(
 
     public async Task<IActionResult> CreateAsync(HttpRequest req, bool isHolidayTravel = false)
     {
+        if (await GuardHolidayTravelRetiredAsync(isHolidayTravel) is { } retired) return retired;
+
         var appType = isHolidayTravel ? "holiday_travel" : "travel";
         // BUG-04: EmployeeId 由 JWT 中的 sub claim 決定，不信任客戶端傳入的值
         var employeeId = await GetUserIdAsync(req);
@@ -254,6 +282,8 @@ public sealed class TravelRequestHandler(
 
     public async Task<IActionResult> UpdateAsync(HttpRequest req, string id, bool isHolidayTravel = false)
     {
+        if (await GuardHolidayTravelRetiredAsync(isHolidayTravel) is { } retired) return retired;
+
         var appType = isHolidayTravel ? "holiday_travel" : "travel";
         var userId = await GetUserIdAsync(req);
         if (!int.TryParse(id, out var intId))
@@ -514,6 +544,8 @@ public sealed class TravelRequestHandler(
     /// <summary>送出申請（draft → pending）</summary>
     public async Task<IActionResult> SubmitAsync(HttpRequest req, string id, bool isHolidayTravel = false)
     {
+        if (await GuardHolidayTravelRetiredAsync(isHolidayTravel) is { } retired) return retired;
+
         // 根據路由決定申請類型（假日執行活動 vs 一般出差）
         var appType = isHolidayTravel ? "holiday_travel" : "travel";
 

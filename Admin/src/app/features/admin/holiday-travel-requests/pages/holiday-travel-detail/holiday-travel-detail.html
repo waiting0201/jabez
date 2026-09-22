@@ -21,7 +21,9 @@
             列印申請單
           </button>
         }
-        @if (r.approvalStatus === 'draft' || r.approvalStatus === 'returned') {
+        <!-- 退場後不再提供編輯與送簽（後端 GuardHolidayTravelRetiredAsync 才是真正的閘門）；
+             刪除保留，否則切換當下還開著的草稿永遠清不掉 -->
+        @if (!retired() && (r.approvalStatus === 'draft' || r.approvalStatus === 'returned')) {
           <a [routerLink]="['/admin/holiday-travel-requests', r.id, 'edit']"
              class="btn btn-outline-primary inline-flex items-center gap-1">
             <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
@@ -29,10 +31,12 @@
           </a>
         }
         @if (r.approvalStatus === 'draft') {
-          <button class="btn btn-primary inline-flex items-center gap-1" (click)="submitRequest()">
-            <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#send"></use></svg>
-            送出申請
-          </button>
+          @if (!retired()) {
+            <button class="btn btn-primary inline-flex items-center gap-1" (click)="submitRequest()">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#send"></use></svg>
+              送出申請
+            </button>
+          }
           <button class="btn btn-outline-danger inline-flex items-center gap-1"
                   (click)="deleteRequest()" [disabled]="deleting()">
             @if (deleting()) {

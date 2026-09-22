@@ -153,6 +153,7 @@ public sealed class AppRouter(
 
             // ── Settings ───────────────────────────────────────────────────────
             ("GET",    ["settings"])                  => await settings.GetAsync(),
+            ("GET",    ["work-mode"])                 => await settings.GetWorkModeAsync(),
             ("PATCH",  ["settings"])                  => await settings.UpdateAsync(req),
 
             // ── Departments ────────────────────────────────────────────────────
@@ -515,6 +516,8 @@ public sealed class AppRouter(
             ("GET",    ["permissions"])                  => null,
 
             // Settings
+            // 輕量讀取端點：任何登入者，免 settings:read（見 SettingsHandler.GetWorkModeAsync）
+            ("GET",    ["work-mode"])                    => null,
             ("GET",    ["settings"])                     => PermissionCodes.SettingsRead,
             ("PATCH",  ["settings"])                     => PermissionCodes.SettingsWrite,
 

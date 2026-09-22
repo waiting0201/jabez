@@ -23,6 +23,33 @@ public sealed class SettingsHandler(AppDbContext db)
         return new OkObjectResult(ApiResponse.Ok(ToDto(entity)));
     }
 
+    /// <summary>
+    /// GET /work-mode —— **輕量讀取端點**（任何登入者，免 `settings:read`）。
+    ///
+    /// 只回「四週彈性工時切換了沒」這一件事。存在理由：前端有數個地方要依制度分歧
+    /// （目前是〈假日執行活動申請〉的新增入口），而 `GET /settings` 需要 `settings:read`——
+    /// 讓一般同仁為了知道制度而拿到整份系統設定（含維護模式、通知開關）是把後台權限強加給員工，
+    /// 正是 backend-design §13 要避免的事。
+    ///
+    /// 回傳刻意只有兩個欄位、皆非敏感：切換日本身與「以今天判斷是否已生效」。
+    /// ⚠ `IsFlexibleActive` 是**以今天**判斷，僅供 UI 開關使用；
+    ///   任何與**資料**有關的判定（薪資、加班費、請假時段）一律以**該筆資料自己的日期**比對切換日，
+    ///   不可改用這個旗標，否則切換後歷史資料會被新制重新解讀。
+    /// </summary>
+    public async Task<IActionResult> GetWorkModeAsync()
+    {
+        var switchDate = await db.SystemSettings.AsNoTracking()
+            .Where(s => s.Id == SettingsId)
+            .Select(s => s.FlexibleWorkStartDate)
+            .FirstOrDefaultAsync();
+
+        return new OkObjectResult(ApiResponse.Ok(new
+        {
+            flexibleWorkStartDate = switchDate,
+            isFlexibleActive      = WorkdayHours.IsFlexible(Clock.Now, switchDate),
+        }));
+    }
+
     public async Task<IActionResult> UpdateAsync(HttpRequest req)
     {
         var body = await req.ReadFromJsonAsync<UpdateSettingsRequest>();

@@ -181,6 +181,12 @@ Admin/src/app/
 │                                         #   （連登入頁都白，`login.ts` 的「記住我」同樣是裸 field initializer），使用者完全無從自救。
 │                                         #   讀失敗回 null、寫失敗改寫記憶體 fallback（儲存被封鎖者仍能在單次瀏覽期間正常登入操作）。
 │                                         #   **禁止直接呼叫 `localStorage` / `sessionStorage`**，見 [docs/frontend-design.md §15.5](docs/frontend-design.md)
+├── shared/
+│   └── services/
+│       └── work-mode.service.ts          # **「四週彈性工時切換了沒」的前端唯一入口**（2026-09 新增）：走輕量端點 `GET /work-mode`，
+│                                         #   request-scoped 快取（切換日在一次瀏覽期間不會變）＋ in-flight 去重。
+│                                         #   **失敗時退回「尚未切換」**（安全側：寧可讓入口留著，也不要因一次網路失敗就把功能整個藏起來、
+│                                         #   使用者完全無從自救）。⚠ `isFlexibleActive` 只供 UI 開關，**不得**用於任何資料解讀
 ├── layout/
 │   ├── auth-layout/
 │   ├── main-layout/
@@ -237,7 +243,16 @@ Admin/src/app/
     │   │                      年資扣除留停天數（`Api/Common/SeniorityHelper.cs` 單一真相，特休額度隨之暫停累積），額度端點 `GET /leave-requests/parental-quota`）
     │   ├── travel-payment-requests/ # 出差請款申請（小額已代墊直接請款，無沖銷）
     │   ├── travel-requests/   # 出差預支申請（走沖銷流程；**預支款需求日 `advanceNeededDate`**（2026-09 新增，**必填**）：申請人希望款項撥入的日期，供財務排撥款參考，出現在申請表單 / 詳情頁 / 簽核作業詳情頁 / 列印 PDF，清單頁不列；**假日執行活動不使用此欄位**（走 multipart 分支、不解析該 key，值恆 null））
-    │   ├── holiday-travel-requests/ # 假日執行活動申請（共用 TravelRequest entity，IsHolidayTravel=true，計入假日津貼；參與人員可逐日勾選個人參與日期，未勾選＝全程參與；**每個勾選日期可再指定「全天／上午／下午」**：chip 四態循環 未選 → 全天 → 上午 → 下午 → 未選，半天以 0.5 天計入假日津貼，個人天數存 `TravelRequestParticipant.HolidayDays decimal(5,1)`；**申請人不會自動被算成參與者**（2026-09 改）：要領假日津貼須自行加入參與人員清單，加入後比照一般參與者可逐日、可半天，同一人不可重複列入（DB 唯一索引 `(TravelRequestId, UserId)` + 後端 400 + 前端下拉排除已選過的人）。舊制申請人無條件領整單 `HolidayDays`，自己又勾進清單時會被 SUM 兩次而**領雙倍**，一併修掉；歷史單以 `Api/Data/Scripts/08` 回填）
+    │   ├── holiday-travel-requests/ # 假日執行活動申請（**四週彈性工時上線後退場，但只關寫入口、保留唯讀**（2026-09）：
+    │   │                       Create / Update / Submit 三個入口由後端 `TravelRequestHandler.GuardHolidayTravelRetiredAsync` 回 400
+    │   │                       並指向〈加班申請〉；前端「新增申請」/「編輯」/「送出申請」依 `retired()` 隱藏、
+    │   │                       `new` 與 `:id/edit` 兩條路由加掛 `holidayTravelRetiredGuard`（導回**列表**而非 403 —— 這不是權限不足、是功能退場）。
+    │   │                       **選單與刪除鈕刻意保留**：前者是歷史單的唯一入口，後者不留的話切換當下還開著的草稿永遠清不掉。
+    │   │                       **薪資的假日津貼取數、簽核台的 holiday_travel 分支、`HasHolidayTravelConflictAsync` 全部原封不動** ——
+    │   │                       薪資即時重算無月結快照，移除取數會讓歷史月份金額憑空消失（錢早就發出去了）。
+    │   │                       ⚠ 閘門以**「今天」**判斷是否已切換，是全站少數的例外（其餘一律以資料自己的日期判定）：
+    │   │                       這裡問的不是「這筆資料該用哪套規則算」而是「現在還能不能建新的單」。切換日 null 時完全不擋；
+    │   │                       共用 TravelRequest entity，IsHolidayTravel=true，計入假日津貼；參與人員可逐日勾選個人參與日期，未勾選＝全程參與；**每個勾選日期可再指定「全天／上午／下午」**：chip 四態循環 未選 → 全天 → 上午 → 下午 → 未選，半天以 0.5 天計入假日津貼，個人天數存 `TravelRequestParticipant.HolidayDays decimal(5,1)`；**申請人不會自動被算成參與者**（2026-09 改）：要領假日津貼須自行加入參與人員清單，加入後比照一般參與者可逐日、可半天，同一人不可重複列入（DB 唯一索引 `(TravelRequestId, UserId)` + 後端 400 + 前端下拉排除已選過的人）。舊制申請人無條件領整單 `HolidayDays`，自己又勾進清單時會被 SUM 兩次而**領雙倍**，一併修掉；歷史單以 `Api/Data/Scripts/08` 回填）
     │   ├── overtime-requests/ # 加班申請（**單號 `OT-yyyyMMdd-NNN`，2026-09 新增**：送簽時取號、草稿為 null，清單頁首欄與表單標題旁顯示；走簽核流程；**關聯專案為必填明細（至少一列）**：FormArray 每列一個專案下拉（來源 /projects/active?all=true 全部未結案專案，支援跨部門；**下拉自動排除其他列已選過的專案**）+ 該案預估時數，欄位標題註記「同部門專案可複選；支援專案請獨立申請」（業務提示，非硬性過濾）；**預估總時數改為唯讀自動加總**（父表 `OvertimeRequest.EstimatedHours` 為 `OvertimeRequestProject` 子表的合計快取，後端 Create/Update 重算，補休時數 / 登入自動補打加班結束卡 / 通知摘要皆沿用此欄）；指定審核者卡片加註「跨部門支援時第一審核者填該專案協理、第二審核者選自部門協理」；**補償方式（補休 / 加班費）整單二擇一**（2026-08 新增，`OvertimeRequest.CompensationType`）：選「補休」時數計入補休池、選「加班費」則依勞基法**分段累進倍率**試算金額並隨**加班日次月**薪資發放，兩者互斥以免同一段工時雙重給付；選加班費時表單即時試算（走 `GET /overtime-requests/estimate`，顯示分段明細 / **平日・假日・國定假日三值日別 badge**（2026-09 由二值改，`OvertimePayEstimateDto.DayType`）/ 超出上限不計酬警示 / 同日已有假日執行活動的重複給付警示），金額於送簽時算一次、終局核准時以核准當下底薪重算並落地為快照，退回 / 拒絕 / 改單則清空；**簽核詳情頁（approval-task-review）刻意不顯示金額**（2026-09 改，原為「讓審核者看得到總額」）：金額 ÷ 時數 = 時薪 × 加權倍率 → 可反推底薪，與加班報表 `reports-overtime:amount` 同一顧慮，改列**分段計酬級距** chips（`2.0 小時 × 1.34`、`1.0 小時 × 1.67`）＋「計酬 N 小時｜平日/假日/國定假日加班｜超出上限不計酬」小字（國定假日另加一行「前 8 小時另於薪資加發 1 日日薪，不計加班費」，否則審核者看到「8 小時申請、計酬 0 小時」會以為系統算錯；**「超出上限」的時數不可寫成 `estimatedHours − payableHours`**，國定假日來源 B 的申請時數含前 8 小時，直接相減會誤報「超出 8 小時」）；級距由後端 `OvertimePayCalculator.SplitHourTiers(PayableHours, OvertimeDayType)` 導出並以 `OvertimeTaskDetailDto.HourTiers` 帶回，**`OvertimePayAmount` 整欄從該 DTO 移除**（前端隱藏不算擋住，payload 仍看得到）——這是「找得到資訊量為零的等價呈現時，直接換掉優於開權限碼」的案例，故不另立權限碼；申請人自己的表單試算 / 唯讀快照 / 加班申請清單頁照常顯示金額，**申請人本人從簽核詳情頁進入時同樣看不到金額，屬刻意取捨**；倍率與時薪的單一真相為 [Api/Common/OvertimePayCalculator.cs](Api/Common/OvertimePayCalculator.cs)，快照寫入的單一真相為 [Api/Services/OvertimeCompensationService.cs](Api/Services/OvertimeCompensationService.cs)）
     │   ├── advance-requests/  # 預支申請（已核准單可新增「追加預支」批次：/:id/supplements/new 與 /:id/supplements/:round/edit 共用 advance-form 的追加模式；詳情頁預支日期改為批次清單、費用明細加「批次」欄；共用 roundLabel() 為批次標籤單一真相；**明細金額三欄連動：總價 = 現金(預支) + 支票(月結)，任兩欄輸入自動算出第三欄，規則與預支沖銷相同**；**預支款需求日 `advanceNeededDate`**（2026-09 新增，**必填**，含追加批次）：申請人希望款項撥入的日期，供財務排撥款參考，**比照預支日期為逐批次欄位**（Round 1 存 `AdvanceRequest`、Round ≥2 存 `AdvanceRequestSupplement`，經 `BuildRounds` 合成 `AdvanceRoundDto`），出現在申請表單 / 詳情頁 / 簽核作業詳情頁 / 列印 PDF，清單頁不列）；**費用明細分類下拉 12 項**（2026-09 新增 食材進貨 / 備品耗材 / 商品進貨 / 臨時人力），值以中文字面存 DB（後端無白名單），預支與沖銷兩份 `ITEM_CATEGORIES` 常數必須同步；**列印 PDF 補上右上角單號**（2026-09，8 種紙本單裡唯一漏掉的一張，紙本寄回會計室後無法對回系統單號）
     │   ├── write-off-requests/ # 預支沖銷申請（獨立簽核流程；**清單依預支單 group，母層列操作欄「檢視」進入彙總頁 write-off-overview（`/by-advance/:advanceId`）：一頁看完預支單完整資訊 + 該單全部沖銷單完整資訊**；明細下方含整單批次附件上傳，共用 shared/components/attachments-upload；新增表單選定預支單後，於「預支單」卡片下方唯讀列出該單全批次預支費用明細（含追加，依批次分組），資料由 /write-off-requests/available-advances 一併帶回；**沖銷資訊卡改為 `<app-write-off-summary>` 列出預支各批次金額 + 各次沖銷金額 + 待沖銷餘額 / 應撥差額**；**詳情頁與簽核頁另有「預支單結案資訊」卡（共用 `<app-closure-info-card>`，`showRefund=false` + `alwaysShow=true`：只呈現關聯預支單的已結案／未結案與結案時間，撥款金額仍由該頁既有「撥款」語彙欄位負責）**；**超支差額走分期撥款**，明細另有「支票已支付」註記欄，該欄在簽核頁對所有審核者顯示，但**僅財務管理部（`DepartmentCodes.FinanceStep`，與撥款日／結案同範圍，不含總監室／會計室）/ Superadmin 可勾選**，其他人 checkbox disabled 反白；**明細金額三欄連動：總價 = 現金花費 + 支票金額，任兩欄輸入自動算出第三欄**；**2026-08 重複建單修正**：表單送出／儲存加 `saving` in-flight 鎖（按鈕 disabled + spinner，避免上傳期間連按建出多筆）、create 成功即記住 `editId` 讓送簽失敗的重送走 update 而非再建一張、表單內按 Enter 不再直接送出；**「已沖銷」一律只計已核准**（下拉與詳情頁同基準），草稿／簽核中金額改以 `pendingWriteOffTotal` 顯示「另有 N 元沖銷中」提示；發票號碼唯一性檢查排除已拒絕的沖銷單；Superadmin 可對他人預支單建沖銷（與下拉範圍一致）；`RequestNo` 補上唯一索引宣告（含 travel_write_off））；**費用明細分類下拉 12 項**（2026-09 新增 食材進貨 / 備品耗材 / 商品進貨 / 臨時人力），值以中文字面存 DB（後端無白名單），預支與沖銷兩份 `ITEM_CATEGORIES` 常數必須同步
@@ -362,7 +377,10 @@ Api/
 │   ├── AttendanceReminderAdminHandler.cs # 打卡提醒手動觸發（Superadmin，除錯用）
 │   ├── AttendanceReminderLogHandler.cs   # 打卡提醒推播紀錄查詢（Superadmin）
 │   ├── PaymentReminderLogHandler.cs      # 撥款提醒推播紀錄查詢 + 手動觸發（Superadmin）
-│   ├── SettingsHandler.cs
+│   ├── SettingsHandler.cs             # 系統設定 CRUD（單行模式）＋ **`GET /work-mode` 輕量端點**（2026-09 新增，任何登入者、免 `settings:read`）：
+│   │                                    只回「四週彈性工時切換了沒」兩個非敏感欄位。一般同仁為了知道制度而拿到整份系統設定
+│   │                                    （含維護模式、通知開關）等於把後台權限強加給員工。
+│   │                                    ⚠ `isFlexibleActive` 以**今天**判斷、**僅供 UI 開關**；與資料有關的判定一律以該筆資料自己的日期比對切換日
 │   └── HealthHandler.cs
 ├── Middleware/
 │   └── ExceptionMiddleware.cs         # 全域例外處理
