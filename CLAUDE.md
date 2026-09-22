@@ -328,6 +328,11 @@ Api/
 │   ├── ShiftScheduleHandler.cs       # **個人排班排例／休（四週彈性工時功能 A，2026-09 新增）**：GET / PUT `/shift-schedules`（整月整批替換）。
 │   │                                    擋存判準與開放期各自收斂成純函式單一真相（`Api/Common/ShiftScheduleValidator.cs` / `ShiftScheduleWindow.cs`），
 │   │                                    讀寫共用同一份、前端只顯示不重算。**國定假日不入表**（唯讀、不佔配額）、**上班日不落地**（查無紀錄即上班日）
+│   ├── ShiftScheduleReportHandler.cs # **出勤／排休總覽表（四週彈性工時功能 B，2026-09 新增）**：`GET /reports/shift-schedule`，
+│   │                                    `reports-shift-schedule:read`。一人一列 × 當月每日一欄，不分頁。
+│   │                                    日別組裝走共用的 `ShiftScheduleMap`；**活動日的第三色只套在被指派為預定人力的人身上**
+│   │                                    （用 `isActivityDay` 會讓整欄的人全亮起來，看不出誰真的要出勤）；
+│   │                                    `noCoverage` 警示只在**週一至週五且非國定假日**成立
 │   ├── ActivityDayHandler.cs         # **活動日（四週彈性工時 §3.2，2026-09 新增）**：各部門協理排定活動日 + 預定人力，`activity-days:read/write`。
 │   │                                    **疊加旗標非第 5 種日別**（可壓在國定假日上），Handler 完全不碰 `ShiftScheduleDay`；
 │   │                                    改期**不自動改寫個人班表**，只回報需調整的同仁。⚠ 衝突判定不是「重跑三條檢核」——
@@ -531,6 +536,12 @@ Api/
 │   ├── LeaveDayExpander.cs            # 請假單「逐日展開」單一真相（Date + Hours + **Segment / Start / End 逐日時段**，2026-09 新增）：供銷假逐日勾選、核准後重算 Hours、出缺勤報表請假合併與時段顯示；時段代碼 full / am / pm / partial（`Constants.LeaveDaySegments`）一律 clamp 在 08:00–17:00，Hours 沿用既有整點差語意故與 End−Start 不必然等長；假別分類常數 WorkingDayLeaveTypes / TimeUnitMap 亦收斂於此，LeaveRequestHandler 轉引
 │   ├── ExpectedWorkWindow.cs          # 「該日應出勤（可打卡）時段」單一真相（2026-09 新增，純函式無 I/O，比照 OvertimePayCalculator）：以 08:00–17:00 扣掉當日請假時段，含跨午休正規化（上午假 08–12 → 13:00 開工、下午假 13–17 → 12:00 下班），中段小時假刻意不縮；Start/End 為 null＝當日免出勤。**兩個 AdjustedByLeave 旗標不可省**：無請假時 End 恆為 17:00，補下班卡若無條件取 min 會把 09:00 上班者從 18:00 壓成 17:00。消費點：出缺勤報表應出勤欄 + 未打卡判定、登入自動補卡
 │   ├── AttendanceLeaveMerger.cs       # 出缺勤報表「打卡 ∪ 當日請假日 ∪ **缺勤日**」合併單一真相：(員工, 日期) 一列，以 **`RowKind`（clock / leave / absent）** 標示種類 —— 請假列與缺勤列同樣 Id=null，**前端不可再用 Id 判斷**；缺勤列＝工作日無打卡且無請假（今天與未來不算、依 HireDate/ResignDate 夾邊界、展開上限 AbsenceMaxCells=60000）；每列另帶 ExpectedStart/End（走 ExpectedWorkWindow，無請假的工作日為 08:00–17:00、休假日為 null）；逐日時數與時段走 LeaveDayExpander，故採「區間全量載入 → 記憶體合併 → 記憶體切頁」，區間跨度上限 MaxRangeDays=400 天、匯出 pageSize 上限 ExportMaxPageSize=5000。**缺勤判定必須用 leavesByDay 的 Remove 前快照**，否則「有打卡又有請假」的日子會被誤判成缺勤
+│   ├── ShiftScheduleMap.cs            # **排班「整月日別組裝」與「國定假日載入」共用實作**（2026-09 新增）：
+│   │                                    規格 §10.4 明訂月曆讀取／整月寫入／配額重算**必須共用同一支 helper**，
+│   │                                    加上總覽表與活動日改期重跑檢核共 4 個消費點，全部收斂於此。
+│   │                                    ⚠ 「查無紀錄即上班日」與 `ShiftScheduleReadService` 的三段退回**刻意不同** ——
+│   │                                    後者服務執行期判定（打卡 / 請假扣假日），沒排班要退回舊制行事曆；
+│   │                                    本 helper 回答「這個人這個月排了什麼」，沒排就是沒排，不該替他補上週末＝休假
 │   ├── WorkDayType.cs                 # **四週彈性工時的四值日別**（work / rest_day / statutory_off / public_holiday）＋
 │   │                                    **`PublicHolidayRule`：國定假日 ＝ `IsHoliday` 且 `Description` 非空**。
 │   │                                    行事曆把週六日也標成 `IsHoliday=1`（Description 為空），只看旗標會讓 2026-10 的 11 天全變唯讀格

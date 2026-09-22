@@ -59,7 +59,7 @@ public sealed class ActivityDayHandler(
             query = query.Where(a => a.DepartmentId == deptFilter);
 
         var rows = await query.OrderBy(a => a.Date).ThenBy(a => a.Id).ToListAsync();
-        var holidays = await LoadPublicHolidaysAsync(monthStart, monthEnd);
+        var holidays = await ShiftScheduleMap.LoadPublicHolidaysAsync(calendarReader, monthStart, monthEnd);
 
         var dtos = new List<ActivityDayDto>(rows.Count);
         foreach (var r in rows) dtos.Add(await ToDtoAsync(r, holidays));
@@ -93,7 +93,7 @@ public sealed class ActivityDayHandler(
 
         // 新增（非改期）也可能讓已排好班的同仁不合規 —— 一樣回報，讓主管知道要通知誰
         var affected = await RecheckAsync(body.AssigneeUserIds, [entity.Date], [entity.Date]);
-        var dto = await ToDtoAsync(entity, await LoadPublicHolidaysAsync(entity.Date, entity.Date));
+        var dto = await ToDtoAsync(entity, await ShiftScheduleMap.LoadPublicHolidaysAsync(calendarReader, entity.Date, entity.Date));
 
         return new OkObjectResult(ApiResponse.Ok(
             new SaveActivityDayResultDto(dto, DateChanged: false, Affected: [.. affected]),
@@ -138,7 +138,7 @@ public sealed class ActivityDayHandler(
 
         // 月份來源含新舊兩天（跨月改期時兩個月都要重驗），但衝突只看「活動日現在在哪一天」
         var affected = await RecheckAsync(affectedUsers, [oldDate, newDate], [newDate]);
-        var dto = await ToDtoAsync(entity, await LoadPublicHolidaysAsync(newDate, newDate));
+        var dto = await ToDtoAsync(entity, await ShiftScheduleMap.LoadPublicHolidaysAsync(calendarReader, newDate, newDate));
 
         return new OkObjectResult(ApiResponse.Ok(
             new SaveActivityDayResultDto(dto, DateChanged: oldDate != newDate, Affected: [.. affected]),
@@ -208,7 +208,7 @@ public sealed class ActivityDayHandler(
         {
             var monthStart = new DateTime(year, month, 1);
             var monthEnd   = monthStart.AddMonths(1).AddDays(-1);
-            var holidays   = await LoadPublicHolidaysAsync(monthStart, monthEnd);
+            var holidays   = await ShiftScheduleMap.LoadPublicHolidaysAsync(calendarReader, monthStart, monthEnd);
 
             var saved = await db.ShiftScheduleDays.AsNoTracking()
                 .Where(d => userIds.Contains(d.UserId) && d.Date >= monthStart && d.Date <= monthEnd)
@@ -220,14 +220,9 @@ public sealed class ActivityDayHandler(
                 // 該月完全沒排班的人不算「受影響」—— 他本來就還沒排，不是被改期弄壞的
                 if (!byUser[uid].Any()) continue;
 
-                var map = new Dictionary<DateTime, string>();
-                for (var d = monthStart; d <= monthEnd; d = d.AddDays(1))
-                {
-                    map[d] = holidays.ContainsKey(d) ? WorkDayTypes.PublicHoliday
-                           : byUser[uid].FirstOrDefault(x => x.Date.Date == d) is { } row
-                               ? WorkDayTypes.Normalize(row.DayType)
-                               : WorkDayTypes.Work;
-                }
+                // 日別組裝走共用 helper（§10.4：四個消費點必須同一份，各寫各的必然漂移）
+                var userDays = byUser[uid].ToDictionary(x => x.Date.Date, x => x.DayType);
+                var map      = ShiftScheduleMap.BuildMonthDayTypes(monthStart, monthEnd, userDays, holidays);
 
                 var blocks = new List<string>();
 
@@ -304,22 +299,6 @@ public sealed class ActivityDayHandler(
             IsPublicHoliday: isHoliday,
             HolidayName:     isHoliday ? holidayName : null,
             Assignees:       [.. assignees]);
-    }
-
-    /// <summary>國定假日判準與排班月曆共用 <see cref="PublicHolidayRule"/>（必須用 GetByYearAsync 才有 Description）。</summary>
-    private async Task<Dictionary<DateTime, string>> LoadPublicHolidaysAsync(DateTime from, DateTime to)
-    {
-        var map = new Dictionary<DateTime, string>();
-        for (int y = from.Year; y <= to.Year; y++)
-        {
-            foreach (var d in await calendarReader.GetByYearAsync(y))
-            {
-                if (!PublicHolidayRule.IsPublicHoliday(d.IsHoliday, d.Description)) continue;
-                if (d.Date.Date < from.Date || d.Date.Date > to.Date) continue;
-                map[d.Date.Date] = d.Description;
-            }
-        }
-        return map;
     }
 
     private async Task<SaveActivityDayRequest> ReadBodyAsync(HttpRequest req)

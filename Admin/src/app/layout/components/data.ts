@@ -109,6 +109,12 @@ export const menuItems: MenuItemType[] = [
     requiredPermission: 'reports-overtime:read',
   },
   {
+    icon: '/assets/icons/sprite.svg#calendar',
+    label: '出勤排休總覽表',
+    url: '/admin/reports/shift-schedule',
+    requiredPermission: 'reports-shift-schedule:read',
+  },
+  {
     icon: '/assets/icons/sprite.svg#credit-card',
     label: '款項統計',
     url: '/admin/reports/payment',

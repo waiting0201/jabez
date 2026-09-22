@@ -73,7 +73,7 @@ public sealed class ShiftScheduleHandler(
         var monthEnd   = monthStart.AddMonths(1).AddDays(-1);
 
         // 國定假日：唯讀格，送進來一律丟棄（判準與月曆讀取、配額重算共用 PublicHolidayRule）
-        var publicHolidays = await LoadPublicHolidaysAsync(monthStart, monthEnd);
+        var publicHolidays = await ShiftScheduleMap.LoadPublicHolidaysAsync(calendarReader, monthStart, monthEnd);
 
         var incoming = new Dictionary<DateTime, string>();
         foreach (var d in body.Days)
@@ -92,7 +92,7 @@ public sealed class ShiftScheduleHandler(
             await EnsureOnlyTodayChangedAsync(targetId, monthStart, monthEnd, incoming, now, editability);
 
         // 檢核（與 GET 共用同一份判準）
-        var monthDays = BuildMonthDayTypes(monthStart, monthEnd, incoming, publicHolidays);
+        var monthDays = ShiftScheduleMap.BuildMonthDayTypes(monthStart, monthEnd, incoming, publicHolidays);
         var context   = await LoadContextDaysAsync(targetId, monthStart, monthEnd);
         var result    = ShiftScheduleValidator.Validate(body.Year, body.Month, monthDays, context);
 
@@ -121,7 +121,7 @@ public sealed class ShiftScheduleHandler(
             .FirstOrDefaultAsync()
             ?? throw AppException.NotFound("查無此使用者。");
 
-        var publicHolidays = await LoadPublicHolidaysAsync(monthStart, monthEnd);
+        var publicHolidays = await ShiftScheduleMap.LoadPublicHolidaysAsync(calendarReader, monthStart, monthEnd);
 
         var saved = await db.ShiftScheduleDays.AsNoTracking()
             .Where(d => d.UserId == userId && d.Date >= monthStart && d.Date <= monthEnd)
@@ -145,7 +145,7 @@ public sealed class ShiftScheduleHandler(
         var editability = ShiftScheduleWindow.Evaluate(
             year, month, now, await ResolveGraceDeadlineAsync(userId, year, month));
 
-        var dayTypes = BuildMonthDayTypes(monthStart, monthEnd, saved, publicHolidays);
+        var dayTypes = ShiftScheduleMap.BuildMonthDayTypes(monthStart, monthEnd, saved, publicHolidays);
 
         var days = new List<ShiftScheduleDayDto>();
         for (var d = monthStart; d <= monthEnd; d = d.AddDays(1))
@@ -189,22 +189,6 @@ public sealed class ShiftScheduleHandler(
                                 result.RequiredRestDay));
     }
 
-    /// <summary>當月每一天的日別：已排的用已排的，國定假日覆蓋，其餘為上班日。</summary>
-    private static Dictionary<DateTime, string> BuildMonthDayTypes(
-        DateTime monthStart, DateTime monthEnd,
-        IReadOnlyDictionary<DateTime, string> saved,
-        IReadOnlyDictionary<DateTime, string> publicHolidays)
-    {
-        var map = new Dictionary<DateTime, string>();
-        for (var d = monthStart; d <= monthEnd; d = d.AddDays(1))
-        {
-            map[d] = publicHolidays.ContainsKey(d)          ? WorkDayTypes.PublicHoliday
-                   : saved.TryGetValue(d, out var t)        ? WorkDayTypes.Normalize(t)
-                   :                                          WorkDayTypes.Work;
-        }
-        return map;
-    }
-
     /// <summary>
     /// 關卡 A／B 的跨月上下文：前月月底與次月月初的**已定案**班表。
     /// 次月尚未排定就不放進去 —— 未知的日子不可當成上班日，否則會誤擋（見 ShiftScheduleValidator）。
@@ -221,32 +205,13 @@ public sealed class ShiftScheduleHandler(
             .ToDictionaryAsync(d => d.Date.Date, d => WorkDayTypes.Normalize(d.DayType));
 
         // 前後月的國定假日同樣要納入（它們會中斷連續上班、但不算例假）
-        var holidays = await LoadPublicHolidaysAsync(from, to);
+        var holidays = await ShiftScheduleMap.LoadPublicHolidaysAsync(calendarReader, from, to);
         foreach (var kv in holidays)
         {
             if (kv.Key >= monthStart && kv.Key <= monthEnd) continue;
             saved[kv.Key] = WorkDayTypes.PublicHoliday;
         }
         return saved;
-    }
-
-    /// <summary>
-    /// 區間內的國定假日 → 名稱。
-    /// ⚠ 必須用 GetByYearAsync（有 Description），判準收斂在 <see cref="PublicHolidayRule"/>。
-    /// </summary>
-    private async Task<Dictionary<DateTime, string>> LoadPublicHolidaysAsync(DateTime from, DateTime to)
-    {
-        var map = new Dictionary<DateTime, string>();
-        for (int y = from.Year; y <= to.Year; y++)
-        {
-            foreach (var d in await calendarReader.GetByYearAsync(y))
-            {
-                if (!PublicHolidayRule.IsPublicHoliday(d.IsHoliday, d.Description)) continue;
-                if (d.Date.Date < from.Date || d.Date.Date > to.Date) continue;
-                map[d.Date.Date] = d.Description;
-            }
-        }
-        return map;
     }
 
     // ── 寫入 ────────────────────────────────────────────────────────

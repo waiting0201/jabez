@@ -34,6 +34,7 @@ public sealed class AppRouter(
     AttendanceHandler      attendances,
     ShiftScheduleHandler   shiftSchedules,
     ActivityDayHandler     activityDays,
+    ShiftScheduleReportHandler shiftScheduleReport,
     ApprovalTaskHandler    approvalTasks,
     InsuranceBracketHandler insuranceBrackets,
     PayrollHandler         payroll,
@@ -387,6 +388,7 @@ public sealed class AppRouter(
             ("GET",    ["reports", "payment", "export"])           => await paymentReport.GetExportAsync(req),
             ("GET",    ["reports", "payment"])                     => await paymentReport.GetAllAsync(req),
             ("GET",    ["reports", "project-water-level"])         => await projectWaterLevel.GetAllAsync(req),
+            ("GET",    ["reports", "shift-schedule"])              => await shiftScheduleReport.GetOverviewAsync(req),
 
             // ── Approval Tasks ─────────────────────────────────────────────────
             ("GET",    ["approval-tasks"])                                                      => await approvalTasks.GetAllAsync(req),
@@ -694,6 +696,7 @@ public sealed class AppRouter(
             ("GET",    ["reports", "payment", "export"])           => PermissionCodes.ReportsPaymentRead,
             ("GET",    ["reports", "payment"])                     => PermissionCodes.ReportsPaymentRead,
             ("GET",    ["reports", "project-water-level"])         => PermissionCodes.ReportsProjectWaterLevelRead,
+            ("GET",    ["reports", "shift-schedule"])              => PermissionCodes.ReportsShiftScheduleRead,
 
             // Approval Tasks — 指定審核者不需要全域審核權限，改由 Handler 內部依步驟類型判斷
             // GET: 任何已登入使用者可查詢（SQL 已依職稱/指定審核過濾）
