@@ -2,7 +2,8 @@
 
 > ⚠️ **本檔描述的是現行制度（每日 08:00–17:00、午休 12:00–13:00）。**
 > 公司已確認導入《勞基法》§30-1「四週彈性工時」（09:00–18:00、午休 12:30–13:30、個人排例假／休假日），
-> 規格見 [flexible-work-hours.md](flexible-work-hours.md) —— **該制尚未實作**，本檔在對應項目落地前仍為準。
+> 規格見 [flexible-work-hours.md](flexible-work-hours.md) —— **程式已全部實作，但制度尚未切換**
+> （`SystemSetting.FlexibleWorkStartDate` 為 null 時行為與本檔完全一致）。
 
 
 > ### 📌 四週彈性工時的提醒改版**已實作、但預設不生效**（2026-09-22）

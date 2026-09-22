@@ -1,11 +1,24 @@
 # 四週彈性（變形）工時 — 業務規格
 
-> ## ⚠️ 本檔是「尚未實作」的規格，不是現況描述
+> ## ⚠️ 已全部實作，但**制度尚未切換**
 >
-> 截至 2026-09-16，系統仍為**現行 08:00–17:00 制**，本檔任一條**皆未實作**。描述現況的是
-> [attendance-clock-rules.md](attendance-clock-rules.md)、[leave-rules.md](leave-rules.md)、
-> [payroll-formula.md](payroll-formula.md)、[attendance-reminder.md](attendance-reminder.md)。
-> 兩者衝突時，**以那幾份為現況、以本檔為目標**。本檔任一條落地後，須同步改寫對應現況檔。
+> **2026-09-22：本檔八個階段的程式全部實作完成並部署至 staging。**
+> 但**是否生效由 `SystemSetting.FlexibleWorkStartDate` 決定** —— 該值為 `null`（現況）時，
+> 全系統行為與**現行 08:00–17:00 制**完全一致，每一階段都以此為驗收標準並實測過。
+>
+> 判定基準一律是**該筆資料自己的日期**（請假看 `StartDate`、打卡看 `RecordDate`、
+> 薪資看該月、加班看加班日），不是「今天」—— 故切換後的歷史資料仍走舊制。
+> 唯一的例外是〈假日執行活動申請〉的退場閘門（§8），理由見該節。
+>
+> 因此描述**現況**的仍是 [attendance-clock-rules.md](attendance-clock-rules.md)、
+> [leave-rules.md](leave-rules.md)、[payroll-formula.md](payroll-formula.md)、
+> [attendance-reminder.md](attendance-reminder.md)；本檔描述的是**切換後**的樣子。
+> 那幾份現況檔已就落地項目補上「兩制並存、由切換日決定」的說明。
+>
+> **切換前的非程式待辦**（缺任一項會出事，詳見 §10.5 與實作計畫）：
+> 正式站 App Setting `ShiftScheduleReminderCron` 尚未建立（不存在時 Function 註冊失敗）／
+> 切換同時放寬兩站的 `AttendanceReminderCron`／建 6 個 `shift_change` ApprovalItem／
+> 匯入 2027 年行事曆／跑 `Api/Data/Scripts/12` 建期初補休 lot。
 >
 > **來源**：115.09.14 會議結論 `e化彈性工時相關修正0914結論.docx`（final），
 > ＋ **2026-09-16 客戶就〈客戶確認版〉規格書回覆的 21 項意見**（見 [§10.6](#106-2026-09-16-客戶回覆-21-項的定案)）。
