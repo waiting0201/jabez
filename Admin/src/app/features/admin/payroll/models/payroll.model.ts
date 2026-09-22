@@ -55,6 +55,12 @@ export interface EmployeePayroll {
   publicHolidayWorkDays: number;
   /** 國定假日出勤加倍工資 ＝ 出勤天數 × 日薪（出勤即加發一日，不按時數折算） */
   publicHolidayDoublePay: number;
+  /** 補休未休完時數（上月到期的 lot 剩餘合計） */
+  compensatorySettlementHours: number;
+  /** 補休未休完加班津貼 ＝ Σ(剩餘時數 × 原始加班費率快照) × 時薪 */
+  compensatorySettlementAmount: number;
+  /** 薪資單上的項目名稱，例「116年1-6月補休時數未完畢津貼」 */
+  compensatorySettlementNote: string | null;
 }
 
 export interface LeaveDetail {
@@ -73,6 +79,7 @@ export interface MonthlyPayroll {
   totalOvertimePay: number;
   totalCalculatedOvertimePay: number;
   totalPublicHolidayDoublePay: number;
+  totalCompensatorySettlementAmount: number;
   totalHolidayAllowance: number;
   totalOtherAddition: number;
   totalLaborInsurance: number;

@@ -190,6 +190,9 @@ public sealed class OvertimeRequestHandler(
         // 日期 / 時數 / 補償方式任一可能已變動 → 舊的加班費快照必須失效，重新送簽時再算一次
         OvertimeCompensationService.ClearSnapshot(item);
 
+        // 補休 lot 同理收掉（進得來的只有 draft / returned，理論上不該有 lot，此處為防呆）
+        await CompensatoryLotService.RevokeAsync(db, item.Id);
+
         await db.SaveChangesAsync();
 
         var dto = await reader.GetByIdAsync(item.Id);
@@ -219,6 +222,12 @@ public sealed class OvertimeRequestHandler(
             await db.EscalationOverrides.Where(o => o.ApplicationType == "overtime" && o.ApplicationId == item.Id).ToListAsync());
         db.RequestDesignatedReviewers.RemoveRange(
             await db.RequestDesignatedReviewers.Where(r => r.RequestType == "overtime" && r.RequestId == item.Id).ToListAsync());
+
+        // 補休 lot：SourceOvertimeRequestId 的 FK 是 NoAction，殘留列會擋住刪單。
+        // 已被扣抵過的 lot 由 RevokeAsync 保留、只歸零剩餘時數（扣抵紀錄指向已核准的補休假單，
+        // 刪掉會讓那張假單變成憑空來的補休）—— 但那種 lot 的來源單必為 approved，
+        // 而 approved 的加班單本來就刪不掉，故此處實際上一律是直接刪除。
+        await CompensatoryLotService.RevokeAsync(db, item.Id);
 
         db.OvertimeRequests.Remove(item);
         await db.SaveChangesAsync();
@@ -291,6 +300,7 @@ public sealed class OvertimeRequestHandler(
             item.ReviewedAt       = Clock.Now;
             item.ReviewedById     = userId;
             item.ReviewNote       = "系統自動核准（Superadmin）";
+            await CompensatoryLotService.ApplyAsync(db, shiftSchedule, scheduleProvider, item);
             await db.SaveChangesAsync();
             var saDto = await reader.GetByIdAsync(item.Id);
             return new OkObjectResult(ApiResponse.Ok(saDto, "Overtime request auto-approved."));
@@ -324,6 +334,10 @@ public sealed class OvertimeRequestHandler(
             item.ApprovalStatus   = "pending";
             item.CurrentStepOrder = startStep;
         }
+
+        // 補休 lot：只有終局核准（此處為「全自審自動核准」出口）才開，pending 不開 ——
+        // 未核准的加班時數還不是已賺得的補休。ApplyAsync 內部自行判斷狀態，故無條件呼叫。
+        await CompensatoryLotService.ApplyAsync(db, shiftSchedule, scheduleProvider, item);
 
         // 升級審核：記錄指派的審核者
         if (escalation is not null)

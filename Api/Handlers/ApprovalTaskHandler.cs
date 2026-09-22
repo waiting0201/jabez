@@ -428,6 +428,11 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     setStatus:     s  => lr.ApprovalStatus   = s,
                     incrementStep: () => lr.CurrentStepOrder++,
                     setReviewed:   () => { lr.ReviewedAt = Clock.Now; lr.ReviewedById = reviewerId; lr.ReviewNote = reviewNote?.Trim(); });
+
+                // 補休 lot 扣抵：整組重算（冪等）。pending → approved 不變動、
+                // → returned / rejected 則把時數歸還給 lot。不歸還的話那批補休就永遠鎖死。
+                await CompensatoryLotService.SyncUsageAsync(db, scheduleProvider, lr);
+
                 await db.SaveChangesAsync();
                 break;
             }
@@ -453,6 +458,13 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 if (rv.ApprovalStatus == "approved")
                 {
                     await LeaveRevocationService.ApplyAsync(db, calendarReader, workPattern, rv);
+
+                    // 銷的若是補休假，父單 Hours 已遞減 → 扣抵紀錄必須跟著縮，
+                    // 否則被銷掉的那幾天仍佔著 lot，同仁憑空少一批補休。
+                    var rvParent = await db.LeaveRequests.FindAsync(rv.LeaveRequestId);
+                    if (rvParent is not null)
+                        await CompensatoryLotService.SyncUsageAsync(db, scheduleProvider, rvParent);
+
                     await db.SaveChangesAsync();
                     await notifier.NotifyLeaveRevocationAgentAsync(rv.Id);
                 }
@@ -558,6 +570,10 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     await OvertimeCompensationService.ApplyAsync(db, shiftSchedule, scheduleProvider, ot);
                 else if (ot.ApprovalStatus is "returned" or "rejected")
                     OvertimeCompensationService.ClearSnapshot(ot);
+
+                // 補休 lot：終局核准且補償方式為補休時開一筆（帶原始費率快照與到期日）；
+                // 其餘狀態收掉。ApplyAsync 內部自行判斷，故無條件呼叫。
+                await CompensatoryLotService.ApplyAsync(db, shiftSchedule, scheduleProvider, ot);
 
                 await db.SaveChangesAsync();
                 break;

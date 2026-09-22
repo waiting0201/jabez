@@ -119,6 +119,40 @@
   - 到期後：`可用 = 系統加班 − max(0, 已用補休 − 期初)`（期初未用部分作廢）
 - API 端點：`GET /leave-requests/compensatory-hours`（回 `openingHours` / `openingRemaining` / `openingExpiry` / `openingExpired` / `totalOvertimeHours` / `usedCompensatoryHours` / `availableHours`）。
 
+### 逐筆 lot 制（四週彈性工時，2026-09 實作）
+
+⚠️ **以上是舊制（純聚合 SUM）。`SystemSetting.FlexibleWorkStartDate` 一旦設定，補休池改以逐筆 lot 為準。**
+回應欄位刻意沿用同一組名稱，前端不必分兩套；`openingExpiry` 在 lot 制下改讀期初 lot 的 `ExpiresAt`。
+
+| | 舊制（聚合） | 新制（lot） |
+|---|---|---|
+| 結構 | 三個 SUM 相減 | `CompensatoryLots`（一張加班單一筆）＋ `CompensatoryUsages`（扣抵紀錄） |
+| FIFO | `Math.Min(used, opening)` 的算術模擬 | 真的逐筆扣抵，「這張補休假吃掉哪幾筆加班」可稽核 |
+| 效期 | 只有期初有到期日，系統加班**不到期** | 每筆都有到期日 |
+| 原始費率 | 無 | `RateSnapshot`（核准當下寫入），到期換津貼用 |
+
+- **效期（2026-09-16 客戶修訂，比產生期間多留一個月）**：1–6 月產生 → 用至 **7/31** → **8 月**薪資結算；
+  7–12 月產生 → 用至**隔年 1/31** → **隔年 2 月**結算。單一真相 `CompensatoryLotService.ExpiresAtFor`。
+  ⚠️ 原規格「1–6 月產生者用至 6 月底」已被推翻（6 月下旬產生的補休幾乎無法執行），舊數字不可沿用。
+- **開 lot 的三個條件**（缺一不可）：加班單**終局核准** ＋ 補償方式為補休 ＋ **加班日 ≥ 切換日**。
+  第三個條件是為了不與期初 lot 重複計算 —— 切換日之前的餘額由
+  [`Api/Data/Scripts/12`](../../Api/Data/Scripts/12-seed-compensatory-opening-lots.sql) 整批做成**一筆期初 lot**。
+- **時數沿用 `EstimatedHours`（未截斷）**，不是加班費那條路徑的 `PayableHours` ——
+  現行補休路徑本來就沒有計酬上限，改用截斷值會把既有餘額追溯砍掉。
+- **費率快照為加權平均**：一張加班單可能橫跨多個級距（例：休假日 3 小時 ＝ 2h ×1.34 ＋ 1h ×1.67 → 1.45），
+  而 `CompensatoryLot.SourceOvertimeRequestId` 有唯一索引（一單一 lot）。加權平均讓
+  「剩餘時數 × 費率 × 時薪」在全額未休完時與逐段計算完全相等。
+- **佔用時機比照舊制：pending 與 approved 都佔用**（送出即扣，避免同一批時數被重複申請）。
+- **扣抵一律走 `CompensatoryLotService.SyncUsageAsync`**：該函式對一張補休假單「先全額歸還、再重新 FIFO 扣抵」，
+  **冪等**。六個入口（送簽 / 審核 / 退回 / 拒絕 / 刪單 / **銷假使 Hours 遞減**）都只呼叫這一支 ——
+  增量寫法則每個入口都要各自算差額，漏一個就會出現對不起來的餘額。
+- **FIFO 以「該假單起始日當下尚未逾期」篩選**，不是今天 —— 補登過去日期的補休才不會被誤擋。
+- **到期未休完 → 轉加班津貼**進結算月薪資（見 [payroll-formula.md](payroll-formula.md) 第 14 條）。
+- ⚠️ **期初 lot 的 `RateSnapshot` 刻意為 NULL**（無從得知當時費率），故 2027-06-30 到期時**不會**自動換成津貼，
+  交人工處理。憑空給一個費率等於系統自行決定要發多少錢。
+- ⚠️ **`SettledAt` / `SettledAmount` 目前恆為 null**：薪資是即時重算、無月結快照，另寫一份落地金額
+  等於製造第二個真相。兩欄保留給日後「明確結算批次」的設計。
+
 ## 生理假規則（限女性）
 
 - **資格限定**：僅 `EmployeeProfile.Gender == "F"` 之員工可申請（性別存於人事資料卡，不在 JWT、不在 User）。前後端皆驗證：

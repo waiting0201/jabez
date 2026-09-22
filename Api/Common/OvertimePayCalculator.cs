@@ -65,6 +65,12 @@ public static class OvertimePayCalculator
         _                                                 => WeekdayTiers,   // work / public_holiday
     };
 
+    /// <summary>
+    /// 最低倍率（＝第一段的倍率）。供補休 lot 在「時數全落在國定假日前 8 小時、切不出任何級距」
+    /// 時取一個安全側的費率快照 —— 那段時數走薪資加項，本來就沒有加班費率可言。
+    /// </summary>
+    public static decimal LowestMultiplier => WeekdayTiers[0].Rate;
+
     /// <summary>該日別的計酬上限。Calculate 與 SplitHourTiers 共用，避免三元式散在兩處。</summary>
     public static decimal CapHoursFor(string dayType) =>
         dayType is WorkDayTypes.RestDay or WorkDayTypes.StatutoryOff ? HolidayCapHours : WeekdayCapHours;

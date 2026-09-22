@@ -255,6 +255,16 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
             """;
             rowIdx++;
         }
+        // 補休到期未休完轉津貼（依 lot 上的原始加班費率換算）。只在結算月（8 月 / 隔年 2 月）出現。
+        if (emp.CompensatorySettlementAmount > 0)
+        {
+            var csBg = rowIdx % 2 == 1 ? " style=\"background:#FDFAF5\"" : "";
+            var csLabel = emp.CompensatorySettlementNote ?? "補休未休完加班津貼";
+            earningsRows += $"""
+            <tr{csBg}><td style="padding:8px 12px">{csLabel}（{emp.CompensatorySettlementHours.ToString("0.#")} 小時）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.CompensatorySettlementAmount)}</td></tr>
+            """;
+            rowIdx++;
+        }
         if (emp.OtherAddition > 0)
         {
             var addBg = rowIdx % 2 == 1 ? " style=\"background:#FDFAF5\"" : "";

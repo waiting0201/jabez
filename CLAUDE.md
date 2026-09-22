@@ -227,7 +227,9 @@ Admin/src/app/
     │   ├── projects/       # 專案管理
     │   ├── payment-requests/  # 請款申請（請款類型三選一：廠商請款 type=vendor / 一般請款 type=general / **其他 type=other**（2026-09 新增，比照一般請款不需選廠商）；明細下方皆含整單批次附件上傳，共用 shared/components/attachments-upload；**請款原因必填**）
     │   ├── pre-review-requests/ # 預審申請（事前預審，clone 自請款；無撥款、不計入報表；品項類別下拉 + 報價單 OCR；含 pre-review-pdf.service 列印合併所有上傳檔；**預審說明必填**）
-    │   ├── leave-requests/    # 請假申請（**單號 `LV-yyyyMMdd-NNN`（銷假 `LVR-`），2026-09 新增**：送簽時取號、草稿為 null，清單頁首欄與表單標題旁顯示，規則見 [docs/business/application-forms.md](docs/business/application-forms.md)；除歲時祭儀假與育嬰留職停薪外的 17 種假別選起迄日後皆扣國定假日與六日並列請假日清單，走輕量端點 /leave-requests/working-days；小時單位（事假/**家庭照顧假**/病假/產檢假/陪產假）跨日逐日累加只算工作日；**家庭照顧假**（`family_care`，性平法 §20）全年 7 日／56 小時上限、比照事假全額扣薪但薪資單獨立一列，家庭成員範圍僅表單提示不入庫；產假區間仍 56 個日曆天但只計其中工作日；**半天型假別（年假 / 補休 / 高階主管假）的上午時段起點依假別**：**補休為 09:00–13:00**、其餘 08:00–12:00，單一真相為前端 `halfDayAmStartHour()` / `halfDayAmEndHour()`（leave-request.model.ts），只改存進 `StartDate` / `EndDate` 的代表時刻與顯示、**不改時數**（半天恆 4 小時），後端一律以「起 < 13:00 ＝上午、訖 > 13:00 ＝下午」分類時段（`LeaveDayExpander` 逐日展開仍取 08:00–12:00，故出缺勤 / 應出勤 / 自動補卡不受影響）；含職務代理人下拉；依天數決定簽核關卡 <3 天單位主管 / ≥3 天 +部門最高主管+總監，靠 ApprovalStep.MinDays；**已核准的假可提「銷假」**：列表／唯讀檢視頁的「銷假」按鈕進 leave-revocation-form（`:id/revoke` / `leave-revocations/:id[/edit]` 三模式共用），逐日 chip 勾選要取消的日期（只含今天以後、未被其他銷假單佔用者）+ 銷假原因 + 指定審核者，送出後重跑同一份請假簽核；核准後父單 Hours 遞減、全銷轉 `cancelled` badge「已銷假」，部分銷加註「部分銷假」badge；
+    │   ├── leave-requests/    # 請假申請（**補休池於四週彈性工時切換後改為逐筆 lot**（`CompensatoryLots` / `CompensatoryUsages`，
+    │   │                      有到期日 + 原始費率快照 + 真 FIFO），切換日 null 時仍走舊的聚合 SUM，見 [docs/business/leave-rules.md](docs/business/leave-rules.md)；
+    │   │                      **單號 `LV-yyyyMMdd-NNN`（銷假 `LVR-`），2026-09 新增**：送簽時取號、草稿為 null，清單頁首欄與表單標題旁顯示，規則見 [docs/business/application-forms.md](docs/business/application-forms.md)；除歲時祭儀假與育嬰留職停薪外的 17 種假別選起迄日後皆扣國定假日與六日並列請假日清單，走輕量端點 /leave-requests/working-days；小時單位（事假/**家庭照顧假**/病假/產檢假/陪產假）跨日逐日累加只算工作日；**家庭照顧假**（`family_care`，性平法 §20）全年 7 日／56 小時上限、比照事假全額扣薪但薪資單獨立一列，家庭成員範圍僅表單提示不入庫；產假區間仍 56 個日曆天但只計其中工作日；**半天型假別（年假 / 補休 / 高階主管假）的上午時段起點依假別**：**補休為 09:00–13:00**、其餘 08:00–12:00，單一真相為前端 `halfDayAmStartHour()` / `halfDayAmEndHour()`（leave-request.model.ts），只改存進 `StartDate` / `EndDate` 的代表時刻與顯示、**不改時數**（半天恆 4 小時），後端一律以「起 < 13:00 ＝上午、訖 > 13:00 ＝下午」分類時段（`LeaveDayExpander` 逐日展開仍取 08:00–12:00，故出缺勤 / 應出勤 / 自動補卡不受影響）；含職務代理人下拉；依天數決定簽核關卡 <3 天單位主管 / ≥3 天 +部門最高主管+總監，靠 ApprovalStep.MinDays；**已核准的假可提「銷假」**：列表／唯讀檢視頁的「銷假」按鈕進 leave-revocation-form（`:id/revoke` / `leave-revocations/:id[/edit]` 三模式共用），逐日 chip 勾選要取消的日期（只含今天以後、未被其他銷假單佔用者）+ 銷假原因 + 指定審核者，送出後重跑同一份請假簽核；核准後父單 Hours 遞減、全銷轉 `cancelled` badge「已銷假」，部分銷加註「部分銷假」badge；
     │   │                      **育嬰留職停薪（2026-08 新增，兩個代碼）**：`parental_leave`（長期留停，**連續日曆天**、每名子女合計 730 天）+ `parental_leave_daily`（彈性單日新制，強制 `EndDate = StartDate`、每人每年 30 日且併入該子女總額度）；
     │   │                      資格為「在職滿 6 個月 + 子女未滿 3 歲」（Superadmin 繞過），新增欄位 `ChildBirthDate`（額度分組鍵）/ `ContinueInsurance`（僅記錄續保意願）；
     │   │                      `parental_leave` **刻意不列入 WorkingDayLeaveTypes**（否則跨年送件會被「行事曆未匯入」擋死、逐日 chip 也會爆量），故長期留停**不開放銷假**；
@@ -241,7 +243,7 @@ Admin/src/app/
     │   ├── write-off-requests/ # 預支沖銷申請（獨立簽核流程；**清單依預支單 group，母層列操作欄「檢視」進入彙總頁 write-off-overview（`/by-advance/:advanceId`）：一頁看完預支單完整資訊 + 該單全部沖銷單完整資訊**；明細下方含整單批次附件上傳，共用 shared/components/attachments-upload；新增表單選定預支單後，於「預支單」卡片下方唯讀列出該單全批次預支費用明細（含追加，依批次分組），資料由 /write-off-requests/available-advances 一併帶回；**沖銷資訊卡改為 `<app-write-off-summary>` 列出預支各批次金額 + 各次沖銷金額 + 待沖銷餘額 / 應撥差額**；**詳情頁與簽核頁另有「預支單結案資訊」卡（共用 `<app-closure-info-card>`，`showRefund=false` + `alwaysShow=true`：只呈現關聯預支單的已結案／未結案與結案時間，撥款金額仍由該頁既有「撥款」語彙欄位負責）**；**超支差額走分期撥款**，明細另有「支票已支付」註記欄，該欄在簽核頁對所有審核者顯示，但**僅財務管理部（`DepartmentCodes.FinanceStep`，與撥款日／結案同範圍，不含總監室／會計室）/ Superadmin 可勾選**，其他人 checkbox disabled 反白；**明細金額三欄連動：總價 = 現金花費 + 支票金額，任兩欄輸入自動算出第三欄**；**2026-08 重複建單修正**：表單送出／儲存加 `saving` in-flight 鎖（按鈕 disabled + spinner，避免上傳期間連按建出多筆）、create 成功即記住 `editId` 讓送簽失敗的重送走 update 而非再建一張、表單內按 Enter 不再直接送出；**「已沖銷」一律只計已核准**（下拉與詳情頁同基準），草稿／簽核中金額改以 `pendingWriteOffTotal` 顯示「另有 N 元沖銷中」提示；發票號碼唯一性檢查排除已拒絕的沖銷單；Superadmin 可對他人預支單建沖銷（與下拉範圍一致）；`RequestNo` 補上唯一索引宣告（含 travel_write_off））；**費用明細分類下拉 12 項**（2026-09 新增 食材進貨 / 備品耗材 / 商品進貨 / 臨時人力），值以中文字面存 DB（後端無白名單），預支與沖銷兩份 `ITEM_CATEGORIES` 常數必須同步
     │   ├── travel-write-off-requests/ # 出差預支沖銷申請（獨立簽核流程；**詳情頁與簽核頁有「出差單結案資訊」卡（共用 `<app-closure-info-card>`，`showRefund=false` + `alwaysShow=true`：只呈現關聯出差單的已結案／未結案與結案時間，撥款金額仍由該頁既有「撥款」語彙欄位負責）**）
     │   ├── insurance-brackets/ # 勞健保級距維護
-    │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出 + **Excel 總表匯出**：查詢列「匯出總表」鈕，一位員工一列 × **35 欄**（基本 4 / 應發 13 / 扣項 15 / 其他 3；2026-08 新增「加班費(加班申請)」欄，2026-09 於索引 13、14 插入「國定假日出勤天數 / 國定假日加倍工資」—— **插欄會讓 `rawNumberCols` 的硬編索引整體位移，四處都要重算**）+ 合計列，資料直接取自已載入的 `payroll()` signal（`GET /payroll` 本身不分頁），無後端變動）
+    │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出 + **Excel 總表匯出**：查詢列「匯出總表」鈕，一位員工一列 × **38 欄**（基本 4 / 應發 16 / 扣項 15 / 其他 3；2026-08 新增「加班費(加班申請)」欄，2026-09 於索引 13–17 插入「國定假日出勤天數 / 國定假日加倍工資 / 補休未休完時數 / 補休未休完津貼 / 補休結算期間」5 欄 —— **插欄會讓 `rawNumberCols` 的硬編索引整體位移，四處都要重算**，現值 11/13/15/22/23/25/27/29/33/35）+ 合計列，資料直接取自已載入的 `payroll()` signal（`GET /payroll` 本身不分頁），無後端變動）
     │   ├── attendance-reminder-logs/ # 打卡提醒推播紀錄（僅 Superadmin）
     │   ├── payment-reminder-logs/ # 撥款提醒推播紀錄 + 手動觸發（僅 Superadmin）
     │   ├── reports/        # 報表（出缺勤 / 加班 / 款項統計 / 專案水位）；**加班紀錄的「補償方式」/「加班費」兩欄 2026-09 修正**：
@@ -431,7 +433,16 @@ Api/
 │   │                                  #      簽核流程依**申請人部門**解析、與專案無關，故 ApprovalItemId 等送簽快照刻意不重算；
 │   │                                  #      款項統計的部門可見性看的也是申請人部門，換專案不影響誰看得到這張單。
 │   │                                  #      閘門：單號查無 / 目標 Code 非唯一命中（Projects.Code 無唯一索引）/ 新專案已結案 /
-│   │                                  #      現有專案非預期（代表交辦後又被人改過）
+│   │                                  #      現有專案非預期（代表交辦後又被人改過）、
+│   │                                  #   12 四週彈性工時切換：把現行補休餘額整批做成「期初 lot」（@Commit 空跑開關，冪等可重跑）：
+│   │                                  #      `CompensatoryLotService.ApplyAsync` 只對「加班日 ≥ 切換日」的單開 lot，切換前累積的餘額
+│   │                                  #      因此完全沒有 lot —— 不補的話全公司補休餘額在切換當天直接歸零。
+│   │                                  #      依 2026-09-22 決議做成**一筆**期初 lot（`IsOpening=1`）而非逐張加班單回填：
+│   │                                  #      舊資料沒有「原始費率」可言，事後推算拿到的是現行級距、精度是假的。
+│   │                                  #      三個要點：① `EarnedDate` 壓成 2000-01-01（FIFO 必須先扣期初 lot，用今天會排到所有新 lot 之後）；
+│   │                                  #      ② `RateSnapshot` 刻意留 NULL，到期不自動換津貼、交人工（憑空給費率＝系統自行決定發多少錢）；
+│   │                                  #      ③ **必須在設定 `FlexibleWorkStartDate` 之前或同時執行**，先切換再跑的話中間那段時間
+│   │                                  #      同仁看到的補休餘額是 0。⚠ CTE 生存範圍只到下一個語句，故 Balance 必須落成暫存表
 │   └── Seed/                          # 一次性匯入工具（共用 RocDateParser 解民國年）
 │       ├── EmployeeImporter + EmployeeImportDtos + employee-import.json  # 員工人事資料（RUN_EMPLOYEE_IMPORT 旗標，IMPORT_UPLOAD_FILES 控制附件上傳）
 │       ├── ProjectImporter + ProjectImportDtos + project-import.json     # 專案資料（RUN_PROJECT_IMPORT 旗標，PROJECT_IMPORT_DRY_RUN 只印不寫；來源 reference/專案資料-115.07.29.xls；以 Code upsert、期別明細全量重建）
@@ -458,6 +469,19 @@ Api/
 │   ├── IEscalationService.cs          # 簽核升級服務介面
 │   ├── EscalationService.cs           # 簽核升級邏輯（上層部門主管遞迴 + 代理人）＋ **上層級關卡無人時往上層部門接手**（2026-09，`FindSuperiorInAncestorDepartmentsAsync`）：`UseDirectSupervisor` 步驟在同部門找不到更高階者時，沿部門 `ParentId` 往上找 `Level <` 申請人的最接近一位並以升級審核指派，找不到才退回原本的「跳過該關」；全部 9 種申請類型適用，修正「部門最高主管送單一路跳到底 → 無人審即自動核准」；**指派前先排除「流程後續固定關卡本來就會簽到的人」**（`laterStepScopes` / `StepReviewerScope`，範圍由 `ApprovalFlowService.BuildLaterFixedStepScopes` 算出，只認固定池關卡：MinDays 擋掉 / 指定審核 / 上層級 / 全不限者皆不算），否則「Step1 升級到總監 + 最後一關固定總監」會變同一人連簽兩關，並撞上總監跨步驟去重的「全池皆已審」限縮而卡死；同職級多人再依 `HireDate` → `Id` 排序確保決定性（送單與推進兩次解析拿到同一人）；「同部門有無上級」三處判定（`ApprovalFlowService.FindNthSuperiorLevelAsync` / `ApprovalTaskHandler.AuthorizeStepAsync` / 待審清單 SQL）一律加上 `Status='active'`，離職者不再撐住一個沒人能審的層級
 │   ├── EscalationResult.cs            # 升級結果 record
+│   ├── CompensatoryLotService.cs      # 補休「逐筆 lot」帳務（static，不呼叫 SaveChanges；四週彈性工時 §7，取代純聚合 SUM 的補休池）：
+│   │                                    `ExpiresAtFor`（1–6 月產生用至 7/31、7–12 月用至隔年 1/31 —— 比產生期間多留一個月，
+│   │                                    原「用至 6 月底」已被客戶推翻）/ `ApplyAsync`（開 lot 的三條件：**終局核准 ＋ 補償方式為補休 ＋
+│   │                                    加班日 ≥ 切換日**，第三條是為了不與期初 lot 重複計算）/ `RevokeAsync`（退回・拒絕・改單・刪單；
+│   │                                    **已被扣抵過的 lot 不刪、只歸零剩餘時數** —— 扣抵紀錄指向已核准的補休假單，且 `CompensatoryUsage.LotId`
+│   │                                    是 Cascade，刪 lot 會連稽核紀錄一起消失）/ **`SyncUsageAsync`（扣抵的唯一入口）**：對一張補休假單
+│   │                                    「先全額歸還、再重新 FIFO 扣抵」、**冪等**，六個入口（送簽 / 審核 / 退回 / 拒絕 / 刪單 / 銷假使 Hours 遞減）
+│   │                                    都只呼叫這一支 —— 增量寫法每個入口都要各自算差額，漏一個就會出現對不起來的餘額；
+│   │                                    FIFO 以「**該假單起始日**當下尚未逾期」篩選（不是今天，否則補登過去日期的補休會被誤擋）/
+│   │                                    `GetBalanceAsync`（欄位語意對齊舊聚合版，前端不必分兩套）/ `SettlementLabel`（薪資單項目名稱，含民國年期間）；
+│   │                                    時數沿用 **`EstimatedHours`（未截斷）** 而非 `PayableHours`（補休路徑本來就沒有計酬上限，
+│   │                                    改用截斷值會把既有餘額追溯砍掉）；費率快照取**加權平均**（一單一 lot 有唯一索引，
+│   │                                    而一張單可能橫跨多個級距）；期初 lot 的 `RateSnapshot` 刻意為 NULL，到期不自動換津貼、交人工
 │   ├── OvertimeCompensationService.cs # 加班補償方式共用（static，不呼叫 SaveChanges）：Compensatory / Pay 常數 + Normalize（未知→補休，安全側）
 │   │                                    + ApplyAsync（算並寫入 4 個快照欄）/ ClearSnapshot（退回・拒絕・改單）/ HasHolidayTravelConflictAsync（假日津貼重複給付警示）
 │   ├── LeaveRevocationService.cs      # 銷假共用：ApplyAsync（核准後從「該假單所有已核准銷假的 distinct 日期」整組重算父單 Hours、全銷轉 cancelled，冪等且併發安全）+ 下游「該日未銷假」共用排除片段

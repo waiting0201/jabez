@@ -53,7 +53,12 @@ public sealed record EmployeePayrollDto(
     // ⚠ 新欄一律**加在最末端**：本 record 有 39 個位置參數且多為 decimal，
     //   插在中間會靜默錯位（編譯器擋不住），見 CLAUDE.md 薪資欄位連動規則。
     int       PublicHolidayWorkDays   = 0,
-    decimal   PublicHolidayDoublePay  = 0m);
+    decimal   PublicHolidayDoublePay  = 0m,
+    // 補休未休完加班津貼（四週彈性工時 §7.5）：上月到期的補休 lot，
+    // 依 lot 上的**原始加班費率快照** × 現行時薪換算。Note 為薪資單上的項目名稱（含民國年期間）。
+    decimal   CompensatorySettlementHours  = 0m,
+    decimal   CompensatorySettlementAmount = 0m,
+    string?   CompensatorySettlementNote   = null);
 
 /// <summary>請假明細（用於薪資頁面顯示）</summary>
 public sealed record LeaveDetailDto(
@@ -85,7 +90,8 @@ public sealed record MonthlyPayrollDto(
     decimal TotalLaborPensionSelfDeduction = 0m,
     decimal TotalParentalLeaveDays         = 0m,
     decimal TotalCalculatedOvertimePay      = 0m,
-    decimal TotalPublicHolidayDoublePay     = 0m);
+    decimal TotalPublicHolidayDoublePay     = 0m,
+    decimal TotalCompensatorySettlementAmount = 0m);
 
 /// <summary>
 /// 員工自助查詢：單月薪資紀錄（Payroll 為當月即時重算結果，非月結快照）

@@ -28,7 +28,8 @@ public sealed class LeaveRequestHandler(
     IApprovalNotificationService notifier,
     IApprovalFlowService approvalFlow,
     ICalendarDayReadService calendarReader,
-    IWorkPatternReadService workPattern)
+    IWorkPatternReadService workPattern,
+    IWorkdayScheduleProvider scheduleProvider)
 {
     private static readonly HashSet<string> ValidLeaveTypes =
         ["annual", "personal", "sick", "compensatory", "marriage", "bereavement",
@@ -660,6 +661,10 @@ public sealed class LeaveRequestHandler(
         db.RequestDesignatedReviewers.RemoveRange(
             await db.RequestDesignatedReviewers.Where(r => r.RequestType == "leave" && r.RequestId == item.Id).ToListAsync());
 
+        // 補休扣抵紀錄：LeaveRequestId 的 FK 是 NoAction，殘留列會擋住刪單；
+        // 走 SyncUsageAsync 先把時數歸還給 lot，再由它清掉 usage 列（狀態必為 draft / returned → target 0）。
+        await CompensatoryLotService.SyncUsageAsync(db, scheduleProvider, item);
+
         db.LeaveRequests.Remove(item);
         await db.SaveChangesAsync();
 
@@ -681,6 +686,16 @@ public sealed class LeaveRequestHandler(
     /// </summary>
     private async Task<CompensatoryBreakdown> ComputeCompensatoryAsync(Guid userId)
     {
+        // 四週彈性工時上線後改以逐筆 lot 為準（有到期日、有原始費率、FIFO 可稽核）。
+        // 切換日為 null 時仍走下方的聚合版，確保地基上線不改變任何可見行為。
+        if (await scheduleProvider.GetSwitchDateAsync() is not null)
+        {
+            var b = await CompensatoryLotService.GetBalanceAsync(db, userId);
+            return new CompensatoryBreakdown(
+                b.OpeningHours, b.OpeningRemaining, b.OvertimeHours,
+                b.UsedHours, b.AvailableHours, b.OpeningExpired);
+        }
+
         var opening = await db.Users.AsNoTracking()
             .Where(u => u.Id == userId)
             .Select(u => u.CompensatoryOpeningHours)
@@ -722,11 +737,16 @@ public sealed class LeaveRequestHandler(
         var userId = await GetUserIdAsync(req);
         var b = await ComputeCompensatoryAsync(userId);
 
+        // lot 制的期初到期日存在期初 lot 上（由切換時的一次性腳本寫入），不再是程式常數
+        var lotExpiry = await scheduleProvider.GetSwitchDateAsync() is not null
+            ? (await CompensatoryLotService.GetBalanceAsync(db, userId)).OpeningExpiry
+            : null;
+
         return new OkObjectResult(ApiResponse.Ok(new
         {
             openingHours          = b.OpeningHours,       // 期初匯入
             openingRemaining      = b.OpeningRemaining,   // 舊補休剩餘
-            openingExpiry         = CompensatoryOpeningExpiry,
+            openingExpiry         = lotExpiry ?? CompensatoryOpeningExpiry,
             openingExpired        = b.OpeningExpired,
             totalOvertimeHours    = b.OvertimeHours,      // 系統加班可補休
             usedCompensatoryHours = b.UsedHours,
@@ -1187,6 +1207,7 @@ public sealed class LeaveRequestHandler(
             item.ReviewedAt       = Clock.Now;
             item.ReviewedById     = userId;
             item.ReviewNote       = "系統自動核准（Superadmin）";
+            await CompensatoryLotService.SyncUsageAsync(db, scheduleProvider, item);
             await db.SaveChangesAsync();
             await notifier.NotifyLeaveAgentAsync(item.Id);
             var saDto = await reader.GetByIdAsync(item.Id);
@@ -1237,6 +1258,11 @@ public sealed class LeaveRequestHandler(
                 CreatedAt        = Clock.Now,
             });
         }
+
+        // 補休 lot：送出即佔用（pending 與 approved 同樣佔用，比照現行補休池語意）。
+        // 三個出口（Superadmin 自動核准 / 全自審自動核准 / 一般送簽）都要走到 ——
+        // 漏掉任一個，那批時數就會一直顯示為可用而被重複申請。
+        await CompensatoryLotService.SyncUsageAsync(db, scheduleProvider, item);
 
         await db.SaveChangesAsync();
 
