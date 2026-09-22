@@ -8,6 +8,7 @@ import {ApplicationType, APPLICATION_TYPE_LABELS, APPLICATION_TYPE_CLASSES} from
 import {TravelPaymentRequestItem} from '../../travel-payment-requests/models/travel-payment-request.model';
 import {PreReviewItem} from '../../pre-review-requests/models/pre-review-request.model';
 import {ParticipantDate} from '../../holiday-travel-requests/models/holiday-travel-request.model';
+import {ShiftDayType} from '../../shift-schedules/models/shift-schedule.model';
 
 export type TaskStatus = 'pending' | 'approved' | 'rejected' | 'returned';
 
@@ -253,7 +254,10 @@ export interface OvertimeTaskDetail {
    */
   hourTiers?: OvertimeHourTier[] | null;
   payableHours?: number | null;
+  /** 舊快照欄；日別請讀 overtimeDayType */
   isHolidayOvertime?: boolean | null;
+  /** 日別快照（`WorkDayTypes` 四值；既有列由後端 SnapshotDayType 還原） */
+  overtimeDayType?: ShiftDayType | null;
 }
 
 export interface AdvanceTaskDetailItem {

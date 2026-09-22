@@ -17,7 +17,7 @@ namespace Jabez.Api.Handlers;
 /// GET   /approval-tasks/{id}                               → 單筆
 /// PATCH /approval-tasks/{applicationType}/{id}/review      → 多步驟審核（核准 / 退回修改 / 拒絕）
 /// </summary>
-public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadService reader, IJwtService jwtService, IApprovalNotificationService notifier, IApprovalFlowService approvalFlow, IBlobStorageService blob, ICalendarDayReadService calendarReader, IWorkPatternReadService workPattern)
+public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadService reader, IJwtService jwtService, IApprovalNotificationService notifier, IApprovalFlowService approvalFlow, IBlobStorageService blob, ICalendarDayReadService calendarReader, IWorkPatternReadService workPattern, IShiftScheduleReadService shiftSchedule, IWorkdayScheduleProvider scheduleProvider)
 {
     private static readonly HashSet<string> ValidActions  = ["approved", "returned", "rejected"];
     /// <summary>
@@ -555,7 +555,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 // ProcessReviewAsync 只在最後一關才把狀態設成 approved，故這裡天然只在終局觸發。
                 // 本 switch 位於 ExecuteReviewAsync，單筆審核與 BatchApproveAsync 共用同一段。
                 if (ot.ApprovalStatus == "approved")
-                    await OvertimeCompensationService.ApplyAsync(db, calendarReader, workPattern, ot);
+                    await OvertimeCompensationService.ApplyAsync(db, shiftSchedule, scheduleProvider, ot);
                 else if (ot.ApprovalStatus is "returned" or "rejected")
                     OvertimeCompensationService.ClearSnapshot(ot);
 

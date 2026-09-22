@@ -46,7 +46,14 @@ public sealed record EmployeePayrollDto(
     // 加班申請試算加班費（上月加班日、已核准且選「加班費」的申請單快照合計）。
     // 與 OvertimePay（Users 表手填的固定加班費）**併存、不取代**，兩者是不同來源的兩筆錢。
     decimal   CalculatedOvertimePay   = 0m,
-    decimal   CalculatedOvertimeHours = 0m);
+    decimal   CalculatedOvertimeHours = 0m,
+    // 國定假日出勤加倍工資（四週彈性工時 §6.3.1）：上月國定假日出勤天數 × 日薪。
+    // 「出勤」＝當日有上班打卡 ∪ 有已核准加班單，**依日期去重**（同日只加發一次）。
+    // 出勤即加發一日、不按時數比例折算。切換日之前恆為 0。
+    // ⚠ 新欄一律**加在最末端**：本 record 有 39 個位置參數且多為 decimal，
+    //   插在中間會靜默錯位（編譯器擋不住），見 CLAUDE.md 薪資欄位連動規則。
+    int       PublicHolidayWorkDays   = 0,
+    decimal   PublicHolidayDoublePay  = 0m);
 
 /// <summary>請假明細（用於薪資頁面顯示）</summary>
 public sealed record LeaveDetailDto(
@@ -77,7 +84,8 @@ public sealed record MonthlyPayrollDto(
     decimal TotalAdjustmentDifference = 0m,
     decimal TotalLaborPensionSelfDeduction = 0m,
     decimal TotalParentalLeaveDays         = 0m,
-    decimal TotalCalculatedOvertimePay      = 0m);
+    decimal TotalCalculatedOvertimePay      = 0m,
+    decimal TotalPublicHolidayDoublePay     = 0m);
 
 /// <summary>
 /// 員工自助查詢：單月薪資紀錄（Payroll 為當月即時重算結果，非月結快照）

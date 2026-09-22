@@ -35,7 +35,7 @@ public sealed record OvertimeHourTierDto(
 /// </summary>
 public sealed record OvertimePayEstimateDto(
     DateTime OvertimeDate,
-    bool     IsHoliday,        // 日別（排班制員工恆為 false，見 OvertimePayCalculator 註解）
+    string   DayType,          // WorkDayTypes 四值；已經 EffectiveDayType 收斂（切換日前無 public_holiday）
     decimal  HourlyRate,       // ROUND(BaseSalary / 240, 2)
     decimal  RequestedHours,   // = OvertimeRequest.EstimatedHours
     decimal  PayableHours,     // = min(RequestedHours, CapHours)
@@ -67,7 +67,8 @@ public sealed record OvertimeRequestDto(
     decimal?  OvertimePayAmount    = null,
     decimal?  HourlyRateSnapshot   = null,
     decimal?  PayableHours         = null,
-    bool?     IsHolidayOvertime    = null,
+    bool?     IsHolidayOvertime    = null,   // 舊快照欄，僅供既有列還原日別（見 OvertimePayCalculator.SnapshotDayType）
+    string?   OvertimeDayType      = null,   // 新快照欄（WorkDayTypes 四值）；2026-09 前的列為 null
     string?   RequestNo            = null);  // OT-yyyyMMdd-NNN；送簽時取號，草稿為 null
 
 public sealed record CreateOvertimeRequestRequest(

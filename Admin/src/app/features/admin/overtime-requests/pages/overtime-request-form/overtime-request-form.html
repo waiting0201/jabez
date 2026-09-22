@@ -210,8 +210,8 @@
                       <span class="fs-4 fw-600 text-primary">NT$ {{ snapshotPayAmount | number:'1.0-0' }}</span>
                       <span class="text-muted small">
                         計酬 {{ snapshotPayableHours | number:'1.0-1' }} 小時
-                        @if (snapshotIsHoliday != null) {
-                          ｜{{ snapshotIsHoliday ? '假日' : '平日' }}加班
+                        @if (snapshotDayType != null) {
+                          ｜{{ overtimeDayLabel(snapshotDayType) }}
                         }
                       </span>
                     </div>
@@ -248,8 +248,8 @@
                     </div>
                     <div class="flex flex-wrap items-baseline gap-4">
                       <span class="fs-4 fw-600 text-primary">NT$ {{ e.amount | number:'1.0-0' }}</span>
-                      <span class="badge" [class]="e.isHoliday ? 'bg-warning-subtle text-warning-emphasis' : 'bg-secondary-subtle text-secondary'">
-                        {{ e.isHoliday ? '假日加班' : '平日加班' }}
+                      <span class="badge" [class]="overtimeDayBadgeClass(e.dayType)">
+                        {{ overtimeDayLabel(e.dayType) }}
                       </span>
                       <span class="text-muted small">計酬上限 {{ e.capHours | number:'1.0-0' }} 小時</span>
                     </div>

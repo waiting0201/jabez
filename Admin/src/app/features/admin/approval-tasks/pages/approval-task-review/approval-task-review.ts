@@ -51,6 +51,7 @@ import {formatParticipantDates, formatParticipantDays} from '../../../holiday-tr
 const FINANCE_STEP_DEPT_CODES = new Set(['FIN', 'Financial Management Department']);
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+import {ShiftDayType} from '../../../shift-schedules/models/shift-schedule.model';
 
 @Component({
   selector: 'app-approval-task-review',
@@ -483,6 +484,33 @@ export class ApprovalTaskReview implements OnInit {
     if (task.applicationType === 'write_off')        return '預支單結案資訊';
     if (task.applicationType === 'travel_write_off') return '出差單結案資訊';
     return '結案資訊';
+  }
+
+  /**
+   * 加班日別的顯示文字（三值語意，2026-09 四週彈性工時）。
+   * 與 overtime-request-form 的同名方法刻意各寫一份 —— 兩頁受眾不同（審核者 vs 申請人），
+   * 但**級距與日別本身仍只有後端一份真相**，這裡只做文案。
+   */
+  overtimeDayLabel(t: ShiftDayType | null | undefined): string {
+    switch (t) {
+      case 'public_holiday': return '國定假日加班';
+      case 'rest_day':
+      case 'statutory_off':  return '假日加班';
+      default:               return '平日加班';
+    }
+  }
+
+  /**
+   * 超出計酬上限、不計酬的時數。
+   * ⚠ 不可直接寫 `estimatedHours - payableHours`：國定假日（來源 B）的申請時數含前 8 小時，
+   * 那 8 小時走薪資加項而非加班費，直接相減會誤報「超出上限 8 小時不計酬」。
+   */
+  overtimeExcessHours(
+    d: { estimatedHours: number; payableHours?: number | null; overtimeDayType?: ShiftDayType | null },
+  ): number {
+    if (d.payableHours == null) return 0;
+    const free = d.overtimeDayType === 'public_holiday' ? 8 : 0;
+    return Math.max(0, d.estimatedHours - free - d.payableHours);
   }
 
   /**

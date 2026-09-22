@@ -179,7 +179,14 @@ public static class WorkdayHours
     /// 舊資料不遷移（§10.2），拿新制時段去比對舊單會生出不存在的「未打卡」與錯誤的請假時段顯示。
     /// </summary>
     public static WorkdaySchedule For(DateTime date, DateTime? switchDate) =>
-        switchDate is { } s && date.Date >= s.Date ? Flexible : Legacy;
+        IsFlexible(date, switchDate) ? Flexible : Legacy;
+
+    /// <summary>
+    /// 該日期是否已套用四週彈性工時。與 <see cref="For"/> 同一個判準，抽出來供
+    /// 「不是時段、但同樣以切換日分歧」的規則使用（例：國定假日是否另立第四種加班日別）。
+    /// </summary>
+    public static bool IsFlexible(DateTime date, DateTime? switchDate) =>
+        switchDate is { } s && date.Date >= s.Date;
 }
 
 /// <summary>

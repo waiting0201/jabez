@@ -48,6 +48,13 @@ export interface EmployeePayroll {
    * 整月留停者不會出現在薪資名單中。
    */
   parentalLeaveDays: number;
+  /**
+   * 國定假日出勤天數（上月）。「出勤」＝當日有上班打卡 ∪ 有已核准加班單，**依日期去重**。
+   * 切換日（四週彈性工時）之前恆為 0。
+   */
+  publicHolidayWorkDays: number;
+  /** 國定假日出勤加倍工資 ＝ 出勤天數 × 日薪（出勤即加發一日，不按時數折算） */
+  publicHolidayDoublePay: number;
 }
 
 export interface LeaveDetail {
@@ -65,6 +72,7 @@ export interface MonthlyPayroll {
   totalMealAllowance: number;
   totalOvertimePay: number;
   totalCalculatedOvertimePay: number;
+  totalPublicHolidayDoublePay: number;
   totalHolidayAllowance: number;
   totalOtherAddition: number;
   totalLaborInsurance: number;

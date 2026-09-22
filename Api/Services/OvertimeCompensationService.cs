@@ -38,8 +38,8 @@ public static class OvertimeCompensationService
     /// </summary>
     public static async Task ApplyAsync(
         AppDbContext db,
-        ICalendarDayReadService calendarReader,
-        IWorkPatternReadService workPattern,
+        IShiftScheduleReadService shiftSchedule,
+        IWorkdayScheduleProvider scheduleProvider,
         OvertimeRequest ot)
     {
         ot.CompensationType = Normalize(ot.CompensationType);
@@ -56,17 +56,20 @@ public static class OvertimeCompensationService
             .FirstOrDefaultAsync();
 
         var estimate = await OvertimePayCalculator.CalculateAsync(
-            calendarReader, workPattern,
+            shiftSchedule, scheduleProvider,
             baseSalary ?? 0m, ot.EmployeeId.Value, ot.OvertimeDate, ot.EstimatedHours);
 
         ot.OvertimePayAmount  = estimate.Amount;
         ot.HourlyRateSnapshot = estimate.HourlyRate;
         ot.PayableHours       = estimate.PayableHours;
-        ot.IsHolidayOvertime  = estimate.IsHoliday;
+        ot.OvertimeDayType    = estimate.DayType;
+        // 舊欄一併寫，讓「日別快照」在 OvertimeDayType 上線前後的列都讀得出來（見 SnapshotDayType）。
+        // 國定假日在舊二值語意裡最接近「假日」，故歸 true。
+        ot.IsHolidayOvertime  = estimate.DayType != WorkDayTypes.Work;
     }
 
     /// <summary>
-    /// 清空四個快照欄（退回 / 拒絕 / 草稿階段改時數或日期時呼叫）。
+    /// 清空五個快照欄（退回 / 拒絕 / 草稿階段改時數或日期時呼叫）。
     /// 退回、拒絕也要清：薪資 SQL 雖然會濾 approved，但留著死金額會讓報表 / 簽核台
     /// 出現一張被拒絕卻標著金額的單，是純粹的認知陷阱。
     /// </summary>
@@ -76,6 +79,7 @@ public static class OvertimeCompensationService
         ot.HourlyRateSnapshot = null;
         ot.PayableHours       = null;
         ot.IsHolidayOvertime  = null;
+        ot.OvertimeDayType    = null;
     }
 
     /// <summary>

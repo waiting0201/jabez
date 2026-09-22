@@ -711,13 +711,18 @@
                           </div>
                           <div class="text-muted text-xs mt-1">
                             計酬 {{ d.payableHours | number:'1.0-1' }} 小時
-                            @if (d.isHolidayOvertime != null) {
-                              ｜{{ d.isHolidayOvertime ? '假日' : '平日' }}加班
+                            @if (d.overtimeDayType != null) {
+                              ｜{{ overtimeDayLabel(d.overtimeDayType) }}
                             }
-                            @if (d.payableHours != null && d.payableHours < d.estimatedHours) {
-                              ｜超出上限 {{ d.estimatedHours - d.payableHours | number:'1.0-1' }} 小時不計酬
+                            @if (overtimeExcessHours(d) > 0) {
+                              ｜超出上限 {{ overtimeExcessHours(d) | number:'1.0-1' }} 小時不計酬
                             }
                           </div>
+                          @if (d.overtimeDayType === 'public_holiday') {
+                            <!-- 國定假日前 8 小時走薪資加項（加發 1 日日薪），不在加班費級距內 —— 
+                                 不寫清楚的話，審核者看到「8 小時申請、計酬 0 小時」會以為系統算錯。 -->
+                            <div class="text-muted text-xs mt-1">前 8 小時另於薪資加發 1 日日薪，不計加班費</div>
+                          }
                         } @else {
                           <span class="text-muted">—</span>
                         }

@@ -92,7 +92,7 @@ export class PayrollList implements OnInit {
       const headers = [
         '員工姓名', '部門', '職稱', '到職日',
         '底薪', '伙食費', '加班費', '加班費(加班申請)', '其他加給', '代扣代付款', '日薪',
-        '假日活動天數', '假日津貼', '其他加項', '其他加項說明',
+        '假日活動天數', '假日津貼', '國定假日出勤天數', '國定假日加倍工資', '其他加項', '其他加項說明',
         '勞保費', '健保費', '健保眷屬口數（計費）',
         '事假天數', '事假扣薪', '病假天數', '病假扣薪',
         '生理假天數', '生理假扣薪', '家庭照顧假天數', '家庭照顧假扣薪',
@@ -108,7 +108,8 @@ export class PayrollList implements OnInit {
         e.jobTitleName ?? '',
         e.hireDate ? new Date(e.hireDate).toLocaleDateString('zh-TW') : '',
         e.baseSalary, e.mealAllowance, e.overtimePay, e.calculatedOvertimePay, e.otherAllowanceAmount, e.adjustmentDifference, e.dailySalary,
-        e.holidayTravelDays, e.holidayAllowance, e.otherAddition, e.otherAdditionNote ?? '',
+        e.holidayTravelDays, e.holidayAllowance, e.publicHolidayWorkDays, e.publicHolidayDoublePay,
+        e.otherAddition, e.otherAdditionNote ?? '',
         e.laborInsurance, e.healthInsurance, e.cappedDependentCount,
         e.personalLeaveDays, e.personalLeaveDeduction, e.sickLeaveDays, e.sickLeaveDeduction,
         e.menstrualLeaveDays, e.menstrualLeaveDeduction, e.familyCareLeaveDays, e.familyCareLeaveDeduction,
@@ -121,7 +122,7 @@ export class PayrollList implements OnInit {
       const totalRow: (string | number)[] = [
         '合計', '', '', '',
         p.totalBaseSalary, p.totalMealAllowance, p.totalOvertimePay, p.totalCalculatedOvertimePay, p.totalOtherAllowance, p.totalAdjustmentDifference, '',
-        '', p.totalHolidayAllowance, p.totalOtherAddition, '',
+        '', p.totalHolidayAllowance, '', p.totalPublicHolidayDoublePay, p.totalOtherAddition, '',
         p.totalLaborInsurance, p.totalHealthInsurance, '',
         '', p.totalPersonalLeaveDeduction, '', p.totalSickLeaveDeduction,
         '', p.totalMenstrualLeaveDeduction, '', p.totalFamilyCareLeaveDeduction,
@@ -138,7 +139,11 @@ export class PayrollList implements OnInit {
 
       // 數字格式：金額欄套千分位；天數 / 口數 / 自提率維持 General
       //（'#,##0.##' 會讓整數顯示成「6.」多一個小數點，故不套）
-      const rawNumberCols = new Set([11, 17, 18, 20, 22, 24, 28, 30]);
+      // 天數 / 口數 / 自提率不套千分位。**插欄會讓索引整體位移** ——
+      // 2026-09 在索引 13、14 插入「國定假日出勤天數 / 加倍工資」後，13 之後的每一欄都 +2。
+      // 依序為：假日活動天數 11、國定假日出勤天數 13、健保眷屬口數 19、事假 20、病假 22、
+      //         生理假 24、家庭照顧假 26、勞退自提率 30、育嬰留停天數 32。
+      const rawNumberCols = new Set([11, 13, 19, 20, 22, 24, 26, 30, 32]);
       const headerRowIdx = 2;
       const lastRowIdx = aoa.length - 1;
       for (let r = headerRowIdx + 1; r <= lastRowIdx; r++) {

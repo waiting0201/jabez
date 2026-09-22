@@ -50,6 +50,10 @@ public class OvertimeRequestConfiguration : IEntityTypeConfiguration<OvertimeReq
         builder.Property(o => o.PayableHours)
                .HasColumnType("decimal(5,1)");
 
+        // 日別快照（work / rest_day / statutory_off / public_holiday）；既有列為 null
+        builder.Property(o => o.OvertimeDayType)
+               .HasMaxLength(20);
+
         builder.Property(o => o.ReviewNote)
                .HasMaxLength(1000);
 

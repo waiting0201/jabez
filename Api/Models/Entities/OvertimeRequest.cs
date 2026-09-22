@@ -37,6 +37,14 @@ public class OvertimeRequest
     /// </summary>
     public bool?    IsHolidayOvertime  { get; set; }
 
+    /// <summary>
+    /// 日別快照（<c>WorkDayTypes</c> 四值）—— 2026-09 四週彈性工時新增，取代二值的
+    /// <see cref="IsHolidayOvertime"/>（國定假日在二值下會誤落到 ×2.67 級距）。
+    /// 既有列**刻意不 backfill**（migration 只做 schema），讀取端一律走
+    /// <c>OvertimePayCalculator.SnapshotDayType</c> 退回舊欄。兩欄一起寫，舊欄保留供回溯比對。
+    /// </summary>
+    public string?  OvertimeDayType    { get; set; }
+
     public string   Reason           { get; set; } = string.Empty;
     public string   ApprovalStatus   { get; set; } = "pending";  // pending | approved | rejected | returned
     public int      CurrentStepOrder { get; set; } = 1;

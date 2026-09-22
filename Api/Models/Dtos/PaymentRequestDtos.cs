@@ -239,7 +239,8 @@ public sealed record OvertimeTaskDetailDto(
     // ⚠ 申請人本人經 RequestViewAccess 進到簽核詳情頁時同樣看不到金額，這是刻意取捨，勿「修回來」。
     string   CompensationType  = "compensatory",  // compensatory | pay
     decimal? PayableHours      = null,
-    bool?    IsHolidayOvertime = null,
+    bool?    IsHolidayOvertime = null,   // 舊快照欄；日別請讀 OvertimeDayType
+    string?  OvertimeDayType   = null,   // WorkDayTypes 四值（既有列由 SnapshotDayType 還原）
     string?  RequestNo         = null,            // OT-yyyyMMdd-NNN
     // 分段計酬級距（僅 pay 且已有快照時有值）；由 PayableHours + 日別純函式導出，不新增可反推面。
     OvertimeHourTierDto[]? HourTiers = null);

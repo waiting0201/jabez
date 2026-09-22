@@ -25,6 +25,7 @@ import {ApprovalFlowStepSummary} from '../../../approvals/models/approval.model'
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
 import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
+import {ShiftDayType} from '../../../shift-schedules/models/shift-schedule.model';
 
 @Component({
   selector: 'app-overtime-request-form',
@@ -83,7 +84,30 @@ export class OvertimeRequestForm implements OnInit {
   /** 唯讀模式顯示的加班費快照（核准當下寫入，不重新試算） */
   snapshotPayAmount: number | null = null;
   snapshotPayableHours: number | null = null;
-  snapshotIsHoliday: boolean | null = null;
+  snapshotDayType: ShiftDayType | null = null;
+
+  /**
+   * 加班日別 badge 的文字與配色。三值語意（2026-09 四週彈性工時）：
+   * 上班日＝平日級距、休假日／例假日＝假日級距、國定假日＝平日級距 ＋ 薪資端另加發 1 日日薪。
+   * 文案刻意寫「加班」而非日別本身，因為使用者在意的是「我這張單算哪一種」。
+   */
+  overtimeDayLabel(t: ShiftDayType | null | undefined): string {
+    switch (t) {
+      case 'public_holiday': return '國定假日加班';
+      case 'rest_day':
+      case 'statutory_off':  return '假日加班';
+      default:               return '平日加班';
+    }
+  }
+
+  overtimeDayBadgeClass(t: ShiftDayType | null | undefined): string {
+    switch (t) {
+      case 'public_holiday': return 'bg-danger-subtle text-danger-emphasis';
+      case 'rest_day':
+      case 'statutory_off':  return 'bg-warning-subtle text-warning-emphasis';
+      default:               return 'bg-secondary-subtle text-secondary';
+    }
+  }
 
   /** 目前是否選擇「加班費」（模板用，避免在 template 重複取值） */
   get isPayMode(): boolean {
@@ -250,7 +274,7 @@ export class OvertimeRequestForm implements OnInit {
         // 唯讀模式顯示核准當下寫入的快照，不重新試算（避免調薪後金額與已發放的不符）
         this.snapshotPayAmount    = r.overtimePayAmount ?? null;
         this.snapshotPayableHours = r.payableHours ?? null;
-        this.snapshotIsHoliday    = r.isHolidayOvertime ?? null;
+        this.snapshotDayType      = r.overtimeDayType ?? null;
         this.readonlyProjects = r.projects ?? [];
         this.projectsArray.clear();
         this.readonlyProjects.forEach(p => this.projectsArray.push(this.buildProjectGroup(p)));

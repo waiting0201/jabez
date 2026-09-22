@@ -1,3 +1,5 @@
+import {ShiftDayType} from '../../shift-schedules/models/shift-schedule.model';
+
 export type ApprovalStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'returned';
 
 export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
@@ -55,8 +57,13 @@ export interface OvertimePaySegment {
 /** 加班費試算結果（GET /overtime-requests/estimate） */
 export interface OvertimePayEstimate {
   overtimeDate: string;
-  /** 日別（排班制員工恆為 false，六日與國定假日視為工作日） */
-  isHoliday: boolean;
+  /**
+   * 日別（`WorkDayTypes` 四值，與後端 `Api/Common/WorkDayType.cs` 同步）。
+   * 2026-09 四週彈性工時由 `isHoliday: boolean` 改為三值語意：
+   * 上班日與**國定假日**走平日級距（國定假日另在薪資端加發 1 日日薪）、
+   * 休假日 / 例假日走假日級距。切換日之前後端會把國定假日收斂回 `rest_day`，舊資料不會突然變樣。
+   */
+  dayType: ShiftDayType;
   hourlyRate: number;
   requestedHours: number;
   /** = min(requestedHours, capHours) */
@@ -99,7 +106,10 @@ export interface OvertimeRequest {
   overtimePayAmount?: number | null;
   hourlyRateSnapshot?: number | null;
   payableHours?: number | null;
+  /** 舊快照欄；日別請讀 overtimeDayType */
   isHolidayOvertime?: boolean | null;
+  /** 日別快照（既有列由後端 SnapshotDayType 還原） */
+  overtimeDayType?: ShiftDayType | null;
   designatedReviewers?: DesignatedReviewer[];
   createdAt: Date;
   submittedAt: Date | null;   // 送簽日期（申請日期）；草稿為 null

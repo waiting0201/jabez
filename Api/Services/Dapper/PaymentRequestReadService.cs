@@ -727,7 +727,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 
         var overtimeSql = $"""
             SELECT ot.Id, ot.RequestNo, ot.OvertimeDate, ot.EstimatedHours, ot.Reason,
-                   ot.CompensationType, ot.PayableHours, ot.IsHolidayOvertime,
+                   ot.CompensationType, ot.PayableHours, ot.IsHolidayOvertime, ot.OvertimeDayType,
                    ot.ApprovalStatus, ot.ApprovalItemId, ot.CurrentStepOrder,
                    u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, ot.CreatedAt, ot.SubmittedAt, ot.ReviewedAt, ot.ReviewNote
             FROM OvertimeRequests ot
@@ -1595,8 +1595,11 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             var otCompType     = (string?)row.CompensationType ?? "compensatory";
             var otPayableHours = (decimal?)row.PayableHours;
             var otIsHoliday    = (bool?)row.IsHolidayOvertime;
-            var otHourTiers    = otCompType == "pay" && otPayableHours is not null && otIsHoliday is not null
-                ? OvertimePayCalculator.SplitHourTiers(otPayableHours.Value, otIsHoliday.Value)
+            // 日別快照：新欄優先，既有列退回舊的 bool 欄（見 OvertimePayCalculator.SnapshotDayType）
+            var otDayType      = OvertimePayCalculator.SnapshotDayType(
+                                     (string?)row.OvertimeDayType, otIsHoliday);
+            var otHourTiers    = otCompType == "pay" && otPayableHours is not null && otDayType is not null
+                ? OvertimePayCalculator.SplitHourTiers(otPayableHours.Value, otDayType)
                 : null;
 
             return new ApprovalTaskDto(
@@ -1622,6 +1625,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                     CompensationType:  otCompType,
                     PayableHours:      otPayableHours,
                     IsHolidayOvertime: otIsHoliday,
+                    OvertimeDayType:   otDayType,
                     RequestNo:         (string?)row.RequestNo,
                     HourTiers:         otHourTiers),
                 null, null, null,

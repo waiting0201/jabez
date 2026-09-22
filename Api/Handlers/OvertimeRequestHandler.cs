@@ -27,7 +27,9 @@ public sealed class OvertimeRequestHandler(
     IApprovalNotificationService notifier,
     IApprovalFlowService approvalFlow,
     ICalendarDayReadService calendarReader,
-    IWorkPatternReadService workPattern)
+    IWorkPatternReadService workPattern,
+    IShiftScheduleReadService shiftSchedule,
+    IWorkdayScheduleProvider scheduleProvider)
 {
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
@@ -278,7 +280,7 @@ public sealed class OvertimeRequestHandler(
         // 三個出口都帶著快照。送審中的單也必須寫 —— 簽核台顯示的**分段計酬級距**是由
         // PayableHours + IsHolidayOvertime 導出的，不寫這兩欄，審核者連時數結構都看不到。
         // （2026-09 起簽核台刻意不顯示金額本身，見 OvertimeTaskDetailDto 註解。）
-        await OvertimeCompensationService.ApplyAsync(db, calendarReader, workPattern, item);
+        await OvertimeCompensationService.ApplyAsync(db, shiftSchedule, scheduleProvider, item);
 
         // Superadmin 無部門歸屬，直接自動核准
         var submitter = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
@@ -397,7 +399,7 @@ public sealed class OvertimeRequestHandler(
             .FirstOrDefaultAsync();
 
         var estimate = await OvertimePayCalculator.CalculateAsync(
-            calendarReader, workPattern, baseSalary ?? 0m, userId, date, hours);
+            shiftSchedule, scheduleProvider, baseSalary ?? 0m, userId, date, hours);
 
         // 同日已有已核准的假日執行活動 → 假日津貼與加班費可能就同一段工時雙重給付，前端顯示警示
         var conflict = await OvertimeCompensationService.HasHolidayTravelConflictAsync(db, userId, date);
