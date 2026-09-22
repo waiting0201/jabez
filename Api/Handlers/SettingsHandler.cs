@@ -54,6 +54,10 @@ public sealed class SettingsHandler(AppDbContext db)
         if (body.ApprovalEmailEnabled     is not null) entity.ApprovalEmailEnabled     = body.ApprovalEmailEnabled.Value;
         if (body.ApprovalLineEnabled      is not null) entity.ApprovalLineEnabled      = body.ApprovalLineEnabled.Value;
         if (body.PaymentReminderDaysBefore is not null) entity.PaymentReminderDaysBefore = Math.Clamp(body.PaymentReminderDaysBefore.Value, 0, 30);
+        // 四週彈性工時切換日：日期本身用 Patch 語意（null = 不變更），
+        // 「清空」另走 ClearFlexibleWorkStartDate —— 否則退回舊制的意圖表達不出來。
+        if (body.ClearFlexibleWorkStartDate == true) entity.FlexibleWorkStartDate = null;
+        else if (body.FlexibleWorkStartDate is not null) entity.FlexibleWorkStartDate = body.FlexibleWorkStartDate.Value.Date;
 
         await db.SaveChangesAsync();
 
@@ -90,5 +94,6 @@ public sealed class SettingsHandler(AppDbContext db)
         MonthlyOvertimeLimit:     e.MonthlyOvertimeLimit,
         ApprovalEmailEnabled:     e.ApprovalEmailEnabled,
         ApprovalLineEnabled:      e.ApprovalLineEnabled,
-        PaymentReminderDaysBefore: e.PaymentReminderDaysBefore);
+        PaymentReminderDaysBefore: e.PaymentReminderDaysBefore,
+        FlexibleWorkStartDate:     e.FlexibleWorkStartDate);
 }

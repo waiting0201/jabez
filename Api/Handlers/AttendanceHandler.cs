@@ -25,7 +25,8 @@ public sealed class AttendanceHandler(
     IJwtService jwtService,
     IProjectAccessResolver access,
     ICalendarDayReadService calendarReader,
-    IWorkPatternReadService workPattern)
+    IWorkPatternReadService workPattern,
+    IWorkdayScheduleProvider workdaySchedule)
 {
     /// <summary>備註欄長度上限（與 AttendanceRecordConfiguration 的 HasMaxLength(500) 同步）</summary>
     private const int RemarkMaxLength = 500;
@@ -54,8 +55,10 @@ public sealed class AttendanceHandler(
             throw AppException.BadRequest($"查詢區間請勿超過 {AttendanceLeaveMerger.MaxRangeDays} 天。");
 
         var scope  = await access.ResolveAsync(req.HttpContext.User);
+        // 應出勤時段依「該列自己的日期」在新舊制間選用，故傳切換日而非單一時段
+        var switchDate = await workdaySchedule.GetSwitchDateAsync();
         var result = await AttendanceLeaveMerger.BuildPagedAsync(
-            reader, calendarReader, scope, page, pageSize, employeeId, dateFrom, dateTo);
+            reader, calendarReader, scope, page, pageSize, employeeId, dateFrom, dateTo, switchDate);
         return new OkObjectResult(ApiResponse.Ok(result));
     }
 

@@ -53,6 +53,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AttendanceReminderLog>      AttendanceReminderLogs     { get; set; }
     public DbSet<PaymentReminderLog>         PaymentReminderLogs        { get; set; }
 
+    // 四週彈性工時：個人排班 + 主管活動日
+    public DbSet<ShiftScheduleDay>           ShiftScheduleDays          { get; set; }
+    public DbSet<ShiftScheduleMonth>         ShiftScheduleMonths        { get; set; }
+    public DbSet<ActivityDay>                ActivityDays               { get; set; }
+    public DbSet<ActivityDayAssignee>        ActivityDayAssignees       { get; set; }
+
+    // 四週彈性工時：補休逐筆 lot（取代現行純聚合 SUM 的補休池）
+    public DbSet<CompensatoryLot>            CompensatoryLots           { get; set; }
+    public DbSet<CompensatoryUsage>          CompensatoryUsages         { get; set; }
+
     // 分期撥款
     public DbSet<PaymentRequestInstallment>      PaymentRequestInstallments      { get; set; }
     public DbSet<AdvanceRequestInstallment>      AdvanceRequestInstallments      { get; set; }

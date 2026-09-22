@@ -70,6 +70,17 @@ public class User
     public string?   LineUserId  { get; set; }   // LINE platform userId (U 開頭 33 字元)
     public DateTime? LineLinkedAt { get; set; }   // 綁定時間
 
+    /// <summary>
+    /// 管理者於人員管理點「寄出帳號通知」的時間（<c>POST /users/{id}/send-credentials</c>）。
+    ///
+    /// 用途：四週彈性工時「當月到職者的排班寬限期」起算點 —— 自此起 3 個**工作天**可自由排定當月班表
+    /// （工作天以公司行事曆 CalendarDay 判定、排除國定假日與六日，故日曆跨度可能超過 3 天）。
+    ///
+    /// ⚠ 既有欄位一個都不能挪用：<c>UpdatedAt</c> 任何編輯都會動、
+    /// <c>MustChangePassword</c> 是布林且首次登入即被清掉、<c>HireDate</c> 是到職日不是通知寄出日。
+    /// </summary>
+    public DateTime? CredentialsSentAt { get; set; }
+
     // Navigation
     public ICollection<UserRole>     UserRoles     { get; set; } = [];
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];

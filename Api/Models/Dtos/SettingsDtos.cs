@@ -17,7 +17,8 @@ public sealed record SystemSettingsDto(
     int    MonthlyOvertimeLimit,
     bool   ApprovalEmailEnabled,
     bool   ApprovalLineEnabled,
-    int    PaymentReminderDaysBefore);
+    int    PaymentReminderDaysBefore,
+    DateTime? FlexibleWorkStartDate);
 
 public sealed record UpdateSettingsRequest(
     string? SiteName                  = null,
@@ -36,4 +37,8 @@ public sealed record UpdateSettingsRequest(
     int?    MonthlyOvertimeLimit      = null,
     bool?   ApprovalEmailEnabled      = null,
     bool?   ApprovalLineEnabled       = null,
-    int?    PaymentReminderDaysBefore = null);
+    int?    PaymentReminderDaysBefore = null,
+    // 四週彈性工時切換日。null 於此代表「本次請求不變更」，
+    // 要「清空切換日（退回舊制）」請另傳 ClearFlexibleWorkStartDate = true。
+    DateTime? FlexibleWorkStartDate = null,
+    bool?   ClearFlexibleWorkStartDate = null);

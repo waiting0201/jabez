@@ -46,7 +46,8 @@ public static class AttendanceLeaveMerger
         ICalendarDayReadService calendarReader,
         ProjectAccessScope scope,
         int page, int pageSize,
-        Guid? employeeId, DateOnly dateFrom, DateOnly dateTo)
+        Guid? employeeId, DateOnly dateFrom, DateOnly dateTo,
+        DateTime? flexibleWorkStartDate = null)
     {
         // 本次合併專用的行事曆快取：逐張假單展開與缺勤列的工作日計算會反覆查同一年度，收斂成每年最多 2 次查詢
         var cal = new CachedCalendarDayReadService(calendarReader);
@@ -70,7 +71,9 @@ public static class AttendanceLeaveMerger
             nameByUser[lr.UserId] = lr.UserName;
             var revokedSet = revoked[lr.Id].ToHashSet();
             // 排班制旗標隨資料列帶出（SQL 已 JOIN Users），避免逐張假單再查一次 DB
-            var days = await LeaveDayExpander.ExpandAsync(cal, lr.IsShiftWorker, lr.LeaveType, lr.StartDate, lr.EndDate);
+            var days = await LeaveDayExpander.ExpandAsync(
+                cal, lr.IsShiftWorker, lr.LeaveType, lr.StartDate, lr.EndDate,
+                WorkdayHours.For(lr.StartDate, flexibleWorkStartDate));
 
             foreach (var d in days)
             {
@@ -101,14 +104,14 @@ public static class AttendanceLeaveMerger
         {
             // Remove：命中即從字典移除，剩下的自然就是「沒有打卡紀錄」的請假日
             merged.Add(leavesByDay.Remove((row.UserId, row.RecordDate.Date), out var entry)
-                ? WithLeaves(row, entry.Dtos, entry.Days)
+                ? WithLeaves(row, entry.Dtos, entry.Days, flexibleWorkStartDate)
                 : row);
         }
 
         foreach (var (key, entry) in leavesByDay)
             merged.Add(WithLeaves(
-                CreateVirtualRow(key.UserId, nameByUser[key.UserId], key.Date, RowKindLeave),
-                entry.Dtos, entry.Days));
+                CreateVirtualRow(key.UserId, nameByUser[key.UserId], key.Date, RowKindLeave, flexibleWorkStartDate),
+                entry.Dtos, entry.Days, flexibleWorkStartDate));
 
         // 工作日集合（依排班制旗標分兩組，行事曆查詢因此最多 2 次），應出勤時段與缺勤列共用
         var shiftByUser   = employees.ToDictionary(e => e.UserId, e => e.IsShiftWorker);
@@ -121,8 +124,8 @@ public static class AttendanceLeaveMerger
             return workingByFlag[isShiftWorker] = [.. working];
         }
 
-        await ApplyExpectedWindowAsync(merged, shiftByUser, WorkingSetAsync);
-        await AppendAbsentRowsAsync(merged, employees, WorkingSetAsync, clockedKeys, leaveKeys, from, to);
+        await ApplyExpectedWindowAsync(merged, shiftByUser, WorkingSetAsync, flexibleWorkStartDate);
+        await AppendAbsentRowsAsync(merged, employees, WorkingSetAsync, clockedKeys, leaveKeys, from, to, flexibleWorkStartDate);
 
         // 三段式 tiebreak 確保 total order：記憶體切頁若排序不穩定，翻頁會漏列 / 重複列
         var ordered = merged
@@ -147,7 +150,8 @@ public static class AttendanceLeaveMerger
     private static async Task ApplyExpectedWindowAsync(
         List<AttendanceRecordDto> merged,
         Dictionary<Guid, bool> shiftByUser,
-        Func<bool, Task<HashSet<DateTime>>> workingSetAsync)
+        Func<bool, Task<HashSet<DateTime>>> workingSetAsync,
+        DateTime? flexibleWorkStartDate)
     {
         for (int i = 0; i < merged.Count; i++)
         {
@@ -163,11 +167,15 @@ public static class AttendanceLeaveMerger
             if (!working.Contains(date))
                 merged[i] = row with { ExpectedStart = null, ExpectedEnd = null };
             else if (row.Leaves is null)
+            {
+                // 依**該列自己的日期**選時段：回看切換日之前的月份仍須用舊制，否則會生出不存在的「未打卡」
+                var sch = WorkdayHours.For(date, flexibleWorkStartDate);
                 merged[i] = row with
                 {
-                    ExpectedStart = date.AddHours(WorkdayHours.StartHour),
-                    ExpectedEnd   = date.AddHours(WorkdayHours.EndHour),
+                    ExpectedStart = date.Add(sch.Start.ToTimeSpan()),
+                    ExpectedEnd   = date.Add(sch.End.ToTimeSpan()),
                 };
+            }
         }
     }
 
@@ -181,7 +189,8 @@ public static class AttendanceLeaveMerger
         Func<bool, Task<HashSet<DateTime>>> workingSetAsync,
         HashSet<(Guid, DateTime)> clockedKeys,
         HashSet<(Guid, DateTime)> leaveKeys,
-        DateTime from, DateTime to)
+        DateTime from, DateTime to,
+        DateTime? flexibleWorkStartDate)
     {
         var lastDate = Clock.Now.Date.AddDays(-1);
         if (to < lastDate) lastDate = to;
@@ -207,18 +216,20 @@ public static class AttendanceLeaveMerger
                 if (clockedKeys.Contains((emp.UserId, d))) continue;  // 有任何打卡紀錄（含只有加班時間的列）
                 if (leaveKeys.Contains((emp.UserId, d)))   continue;  // 有請假 → 已有請假列，不重複產生
 
-                merged.Add(CreateVirtualRow(emp.UserId, emp.UserName, d, RowKindAbsent));
+                merged.Add(CreateVirtualRow(emp.UserId, emp.UserName, d, RowKindAbsent, flexibleWorkStartDate));
             }
         }
     }
 
     /// <summary>把當日請假資訊與應出勤時段掛到一列上（打卡列與請假虛擬列共用）。</summary>
     private static AttendanceRecordDto WithLeaves(
-        AttendanceRecordDto row, List<AttendanceLeaveDto> leaves, List<LeaveDay> days)
+        AttendanceRecordDto row, List<AttendanceLeaveDto> leaves, List<LeaveDay> days,
+        DateTime? flexibleWorkStartDate)
     {
         // 以「當日實際起時」排序，同日多張假才會照上午 → 下午的順序呈現
         var sorted = leaves.OrderBy(l => l.DayStart).ThenBy(l => l.LeaveRequestId).ToList();
-        var window = ExpectedWorkWindow.Compute(row.RecordDate, days);
+        var window = ExpectedWorkWindow.Compute(
+            row.RecordDate, days, WorkdayHours.For(row.RecordDate, flexibleWorkStartDate));
 
         return row with
         {
@@ -237,7 +248,13 @@ public static class AttendanceLeaveMerger
     /// 請假列的 ExpectedStart / End 稍後由 <see cref="WithLeaves"/> 覆寫；
     /// 缺勤列當日無請假，應出勤時段即為標準工作日 08:00–17:00。
     /// </summary>
-    private static AttendanceRecordDto CreateVirtualRow(Guid userId, string userName, DateTime date, string rowKind) =>
+    private static AttendanceRecordDto CreateVirtualRow(
+        Guid userId, string userName, DateTime date, string rowKind,
+        DateTime? flexibleWorkStartDate = null) =>
+        CreateVirtualRow(userId, userName, date, rowKind, WorkdayHours.For(date, flexibleWorkStartDate));
+
+    private static AttendanceRecordDto CreateVirtualRow(
+        Guid userId, string userName, DateTime date, string rowKind, WorkdaySchedule sch) =>
         new(
             Id:                     null,
             UserId:                 userId,
@@ -262,6 +279,6 @@ public static class AttendanceLeaveMerger
             LeaveStartDate:         null,
             LeaveEndDate:           null,
             RowKind:                rowKind,
-            ExpectedStart:          date.AddHours(WorkdayHours.StartHour),
-            ExpectedEnd:            date.AddHours(WorkdayHours.EndHour));
+            ExpectedStart:          date.Add(sch.Start.ToTimeSpan()),
+            ExpectedEnd:            date.Add(sch.End.ToTimeSpan()));
 }
