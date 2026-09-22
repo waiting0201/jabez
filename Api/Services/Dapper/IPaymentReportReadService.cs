@@ -23,4 +23,18 @@ public interface IPaymentReportReadService
         ProjectAccessScope scope,
         string category,
         DateOnly? dateFrom = null, DateOnly? dateTo = null, string? paymentStatus = null);
+
+    /// <summary>
+    /// 待撥款清單：**一期一列**（與上面兩支的「一單一列」粒度不同）。
+    /// 依**預計撥款日**區間查出各期，供財務排款並逐筆開啟簽核作業填實際撥款日。
+    ///
+    /// ⚠ 只含 `ApprovalStatus = 'approved'` 的單 —— 撥款明細端點僅開放 approved，
+    ///   列出 pending 的單會讓財務點進去卻填不了實際撥款日。
+    /// ⚠ `travel-writeoff` 無 installments 表，該類別一律回空清單。
+    /// </summary>
+    Task<PagedResult<DuePaymentRowDto>> GetDuePagedAsync(
+        ProjectAccessScope scope,
+        string category,
+        int page, int pageSize,
+        DateOnly? dueFrom = null, DateOnly? dueTo = null, string? installmentStatus = null);
 }

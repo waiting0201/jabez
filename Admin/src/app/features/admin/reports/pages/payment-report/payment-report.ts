@@ -3,6 +3,7 @@ import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {HttpClient} from '@angular/common/http';
 import {ToastrService} from 'ngx-toastr';
+import {AuthService} from '@core/auth/services/auth.service';
 import {environment} from '@/environments/environment';
 import {dayToRange, FilterMode, monthToRange, shiftDateString, snapToIsoWeek, todayString} from '@/app/features/admin/reports/utils/date-range';
 import * as XLSX from 'xlsx';
@@ -29,6 +30,38 @@ const PAYMENT_TYPE_LABELS: Record<string, string> = {
   'travel-payment': '出差請款',
   travel:          '出差預支',
   'travel-writeoff': '出差預支沖銷',
+};
+
+/** 待撥款清單的一列（一期一列）— 對應後端 DuePaymentRowDto */
+export interface DuePaymentRow {
+  applicationType: string;      // snake_case，直接用於組簽核作業網址
+  applicationId: number;
+  requestNo: string;
+  employeeName: string;
+  projectCode: string;
+  projectName: string;
+  installmentNo: number;
+  totalInstallments: number;
+  paidInstallments: number;
+  expectedDate: string;         // 已格式化
+  expectedDateIso: string;      // 供 Excel 匯出
+  paidAt: string;
+  amount: number;
+  note: string;
+  parentTotalAmount: number;
+  parentUnpaidAmount: number;
+}
+
+/**
+ * 申請類型 → 中文（待撥款清單用）。
+ * ⚠ key 是**後端回的 snake_case**，與上面 PAYMENT_TYPE_LABELS 的 kebab 是兩套命名，不可共用。
+ */
+const DUE_TYPE_LABELS: Record<string, string> = {
+  payment_request: '請款',
+  advance:         '預支',
+  travel:          '出差預支',
+  travel_payment:  '出差請款',
+  write_off:       '預支沖銷差額',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -117,6 +150,7 @@ interface PaymentExportRow {
 export class PaymentReport implements OnInit {
   private http   = inject(HttpClient);
   private toastr = inject(ToastrService);
+  private auth   = inject(AuthService);
 
   /** 類別下拉選單 */
   readonly categoryOptions = CATEGORY_OPTIONS;
@@ -240,7 +274,9 @@ export class PaymentReport implements OnInit {
   private filterSummaryLine(): string {
     const cat = `類別：${this.categoryLabel()}`;
     const period = `時段：${this.exportSuffix()}`;
-    const statusLabel: Record<string, string> = { paid: '已付', unpaid: '未付' };
+    // 2026-09 由二態擴成四態；標籤與下拉、與簽核作業的撥款篩選一致，
+    // 使用者不必在兩個頁面學兩套說法
+    const statusLabel: Record<string, string> = { unpaid: '尚未撥款', partial: '部分撥款', paid: '全部撥款' };
     const status = `付款狀態：${statusLabel[this.selectedPaymentStatus()] ?? '全部'}`;
     return `${cat}　${period}　${status}`;
   }
@@ -344,7 +380,167 @@ export class PaymentReport implements OnInit {
     return `${yyyy}-${mm}-${dd}`;
   }
 
+  // ── 待撥款清單（一期一列）─────────────────────────────────────────────────
+  //
+  // 與上方「統計報表」是兩套完全不同的欄位，故做成頁籤而非同一張表變形 ——
+  // 一單一列 12 欄 vs 一期一列 10 欄，硬塞進同一個 <table> 只會讓使用者
+  // 「欄位怎麼突然變了」而困惑，匯出也得分兩套。
+
+  activeTab = signal<'report' | 'due'>('report');
+
+  readonly dueTypeLabels = DUE_TYPE_LABELS;
+
+  /** 是否顯示「開啟簽核作業」連結 —— 該路由掛 approval-tasks:read，
+   *  無此權限者點下去會被 permissionGuard 導到 /error/403。
+   *  寧可不顯示，也不要讓使用者看得到連結、點了卻 403。 */
+  readonly canOpenApproval = this.auth.hasPermission('approval-tasks:read');
+
+  dueCategory = signal<string>('all');
+  dueStatus   = signal<string>('unpaid');
+  dueFrom     = signal<string>('');
+  dueTo       = signal<string>('');
+
+  dueRows       = signal<DuePaymentRow[]>([]);
+  dueLoading    = signal(false);
+  dueExporting  = signal(false);
+  dueSearched   = signal(false);
+  duePage       = signal(1);
+  dueTotalCount = signal(0);
+  dueTotalPages = signal(1);
+
+  /** 本頁未撥金額合計（已撥的期不計入，否則財務會把已付的錢也算進待撥） */
+  dueUnpaidTotal = computed(() =>
+    this.dueRows().filter(r => !r.paidAt).reduce((sum, r) => sum + r.amount, 0));
+
+  switchTab(tab: 'report' | 'due') {
+    this.activeTab.set(tab);
+    // 第一次切到待撥款清單時，預設帶出本月並直接查一次 —— 財務進來就是要看「最近要撥什麼」
+    if (tab === 'due' && !this.dueSearched()) {
+      const today = new Date();
+      const first = new Date(today.getFullYear(), today.getMonth(), 1);
+      const last  = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      this.dueFrom.set(this.toIsoDate(first.toISOString()));
+      this.dueTo.set(this.toIsoDate(last.toISOString()));
+      this.searchDue();
+    }
+  }
+
+  searchDue() {
+    this.duePage.set(1);
+    this.fetchDue();
+  }
+
+  goToDuePage(page: number) {
+    this.duePage.set(page);
+    this.fetchDue();
+  }
+
+  /** 簽核作業詳情網址。⚠ 結尾是 /review，且 appType 用後端回的 snake_case（不是報表那套 kebab）。 */
+  approvalUrl(r: DuePaymentRow): string {
+    return `/admin/approval-tasks/${r.applicationType}/${r.applicationId}/review`;
+  }
+
+  private buildDueParams(paged = true): Record<string, string | number> {
+    const params: Record<string, string | number> = {category: this.dueCategory()};
+    if (paged) {
+      params['page'] = this.duePage();
+      params['pageSize'] = this.pageSize;
+    }
+    if (this.dueFrom()) params['dueFrom'] = this.dueFrom();
+    if (this.dueTo())   params['dueTo']   = this.dueTo();
+    params['installmentStatus'] = this.dueStatus();
+    return params;
+  }
+
+  private mapDueRow(r: any): DuePaymentRow {
+    return {
+      applicationType: r.applicationType,
+      applicationId: r.applicationId,
+      requestNo: r.requestNo ?? '—',
+      employeeName: r.employeeName ?? '—',
+      projectCode: r.projectCode ?? '—',
+      projectName: r.projectName ?? '',
+      installmentNo: r.installmentNo,
+      totalInstallments: r.totalInstallments,
+      paidInstallments: r.paidInstallments,
+      expectedDate: r.expectedDate ? new Date(r.expectedDate).toLocaleDateString('zh-TW') : '',
+      expectedDateIso: this.toIsoDate(r.expectedDate),
+      paidAt: r.paidAt ? new Date(r.paidAt).toLocaleDateString('zh-TW') : '',
+      amount: r.amount ?? 0,
+      note: r.note ?? '',
+      parentTotalAmount: r.parentTotalAmount ?? 0,
+      parentUnpaidAmount: r.parentUnpaidAmount ?? 0,
+    };
+  }
+
+  private fetchDue() {
+    this.dueLoading.set(true);
+    this.dueSearched.set(true);
+    this.http.get<any>(`${environment.apiUrl}/reports/payment/due`, {params: this.buildDueParams()}).subscribe({
+      next: (res) => {
+        const data = res?.data ?? res ?? {};
+        this.dueTotalCount.set(data?.totalCount ?? 0);
+        this.dueTotalPages.set(data?.totalPages ?? 1);
+        this.dueRows.set((data?.items ?? []).map((r: any) => this.mapDueRow(r)));
+        this.dueLoading.set(false);
+      },
+      error: () => {
+        this.dueRows.set([]);
+        this.dueTotalCount.set(0);
+        this.dueLoading.set(false);
+      },
+    });
+  }
+
+  /** 待撥款清單匯出。⚠ 這是與畫面獨立的第二份欄位 map —— 日後加欄位兩處都要改
+   *  （見 CLAUDE.md 加班報表的教訓：只改畫面不改匯出等於沒改）。 */
+  exportDueExcel() {
+    if (this.dueRows().length === 0) {
+      this.toastr.warning('查無資料可匯出。', '提示');
+      return;
+    }
+    this.dueExporting.set(true);
+    try {
+      const statusLabel: Record<string, string> = {unpaid: '尚未撥款', paid: '已撥款', all: '全部'};
+      const summary = `待撥款清單　類別：${CATEGORY_OPTIONS.find(o => o.value === this.dueCategory())?.label ?? '—'}`
+        + `　預計撥款日：${this.dueFrom() || '不限'} ~ ${this.dueTo() || '不限'}`
+        + `　本期狀態：${statusLabel[this.dueStatus()] ?? '全部'}`
+        + `　匯出時間：${new Date().toLocaleString('zh-TW')}`;
+
+      const headers = ['預計撥款日', '單號', '類型', '申請人', '專案代號', '專案名稱',
+                       '期數', '本期金額', '實際撥款日', '母單總額', '母單未撥金額', '備註'];
+      const rows = this.dueRows().map(r => [
+        r.expectedDateIso, r.requestNo, DUE_TYPE_LABELS[r.applicationType] ?? r.applicationType,
+        r.employeeName, r.projectCode, r.projectName,
+        `${r.installmentNo}/${r.totalInstallments}`, r.amount, r.paidAt,
+        r.parentTotalAmount, r.parentUnpaidAmount, r.note,
+      ]);
+      const totalRow: (string | number)[] = ['合計', '', '', '', '', '', '', this.dueUnpaidTotal(), '', '', '', ''];
+
+      const aoa: (string | number)[][] = [[summary], [], headers, ...rows, totalRow];
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      const displayWidth = (t: string) => [...t].reduce((n, ch) => n + (ch.charCodeAt(0) > 0x2e80 ? 2 : 1), 0);
+      ws['!cols'] = headers.map(h => ({wch: Math.max(displayWidth(h) + 2, 10)}));
+
+      // 金額欄套千分位（期數是 "1/3" 字串、日期是字串，都不需要）
+      const amountCols = new Set([7, 9, 10]);
+      for (let r = 3; r < aoa.length; r++) {
+        for (const c of amountCols) {
+          const cell = ws[XLSX.utils.encode_cell({r, c})];
+          if (cell && typeof cell.v === 'number') cell.z = '#,##0';
+        }
+      }
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '待撥款清單');
+      XLSX.writeFile(wb, `待撥款清單_${this.dueFrom() || '不限'}_${this.dueTo() || '不限'}.xlsx`);
+    } finally {
+      this.dueExporting.set(false);
+    }
+  }
+
   exportExcel() {
+
     if (!this.selectedCategory()) {
       this.toastr.warning('請先選擇類別', '提示');
       return;

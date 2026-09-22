@@ -89,6 +89,11 @@ draft → pending → approved / returned / rejected
   - 例外：`holiday_travel`（假日執行活動）不在 review 流程填撥款明細，僅走核准後的獨立 endpoint。
   - 批次核准不填撥款明細，最終 approved 後由「待補撥款」提醒（`BuildPendingPaymentReminderAsync`）追蹤。
 - **獨立 endpoint**：`PATCH /{type}-requests/{id}/installments`（舊 `/payment-date` 已於 Phase 2 移除）；**僅 ApprovalStatus == approved 可呼叫**（4 種一致；review 路徑因在核准同交易內寫入故不經此守衛）
+- **財務排款的入口＝款項統計的「待撥款清單」頁籤**（2026-09 新增，`GET /reports/payment/due`）：
+  依**預計撥款日**區間查出各期、**一期一列**，每列可開新分頁進簽核作業的「已核准」卡片填實際撥款日。
+  在此之前，「這段期間有哪些單要撥錢」只存在於排程推播（`PaymentReminderService`），畫面上查不到。
+  ⚠ 該清單**只列 approved** —— 正是因為上面這條「僅 approved 可呼叫」的限制，列出 pending 的單
+  只會讓財務點進去卻填不了。
 - **DTO**：`UpsertInstallmentsRequest { installments[], approvalStatus? }`，每筆 `{ id?, installmentNo, expectedDate, paidAt?, amount, note? }`
 - **持久化核心共用**：`InstallmentUpsertService.Apply`（validate + diff，**不 SaveChanges**，交易邊界交呼叫端）— 獨立 endpoint 與 review 原子寫入共用同一份邏輯；5 種子表實作 `IInstallmentEntity` 介面以泛型化
 - **驗證**（`InstallmentValidator.Validate`）：
