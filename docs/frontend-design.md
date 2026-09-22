@@ -124,10 +124,20 @@
 |---|---|---|
 | A. 逐欄隱藏 | `<th>` / `<td>` 掛 `hidden md:table-cell` / `hidden lg:table-cell` / `hidden xl:table-cell` | 次要欄位在手機可以捨棄（user / vendor / payment 等清單） |
 | B. 橫向捲動 | `<table class="table table-hover table-sticky-first mb-0 min-w-[…]">` | 每一欄手機也都要看得到（出缺勤紀錄） |
+| B'. 橫向捲動 ＋ 釘操作欄 | 再加 `table-sticky-last` | 最後一欄是「操作」按鈕（款項統計的待撥款清單） |
 
 `.table-sticky-first`（定義於 [tailwind.css](../Admin/src/tailwind.css) `@layer components` 的 Tables 區塊）把**第一欄釘在左側**，
 橫向捲動到右半邊時仍看得出這列是誰。內部切 `border-collapse: separate`（collapse 下 sticky 儲存格邊框不會繪製），
 並補上 sticky 儲存格的 hover 底色（不透明背景會蓋掉 `.table-hover` 的整列變色）。
+
+**`.table-sticky-last`（2026-09 新增）** 與前者對稱，把**最後一欄釘在右側**。
+用於最後一欄是「操作」的橫向捲動表格 —— 那欄放的是使用者要按的按鈕，
+擺在捲動區最右側等於**預設看不到、每看一列都要先往右捲才點得到**（款項統計的待撥款清單踩過）。
+兩者可同時掛（識別欄釘左、操作欄釘右）。
+
+> ⚠ `tfoot` 的合計列常用 `colspan` 合併儲存格，那會讓「最後一個 `td`」不是視覺上的最後一欄，
+> sticky 定位到合併後的格子，右下角就會出現一塊沒有背景的空白。
+> 故 `.table-sticky-last` 對 `tfoot tr td` 一律 `position: static` ＋ 給底色（合計列本來就不需要釘）。
 
 | 頁面類型 | RWD 寬度 | 範例 |
 |---|---|---|

@@ -50,3 +50,35 @@ public sealed record PaymentExportRowDto(
     string?   ItemCol3Text,
     DateTime? ItemCol3Date,
     decimal?  ItemAmount);
+
+/// <summary>
+/// 待撥款清單的一列 —— **一期一列**（一張單有 3 期就 3 列），與上面「一單一列」的報表粒度不同。
+///
+/// 存在理由：預計撥款日是 installment 層級的欄位，用一單一列表達不出「哪一期到期」；
+/// 財務排款時要回答的是「這週要撥哪幾筆、各多少錢」，不是「哪些單還沒撥完」。
+/// </summary>
+/// <param name="ApplicationType">
+/// **snake_case**（payment_request / advance / travel / travel_payment / write_off）——
+/// ⚠ 刻意不用報表那套 kebab（payment / travel-payment / writeoff）：
+/// 這個值前端要直接拿去組簽核作業網址 `/admin/approval-tasks/{type}/{id}/review`，
+/// 而該路由只認 <c>ApprovalTaskHandler.ValidAppTypes</c> 的 snake_case。映射在後端做掉，前端不再轉一次。
+/// </param>
+/// <param name="TotalInstallments">母單總期數</param>
+/// <param name="PaidInstallments">母單已撥期數 —— 兩者合起來就是「已撥 1/3 期」的撥款進度</param>
+/// <param name="ParentUnpaidAmount">母單尚未撥款的金額合計（不只本期）</param>
+public sealed record DuePaymentRowDto(
+    string    ApplicationType,
+    int       ApplicationId,
+    string?   RequestNo,
+    string    EmployeeName,
+    string?   ProjectCode,
+    string?   ProjectName,
+    int       InstallmentNo,
+    int       TotalInstallments,
+    int       PaidInstallments,
+    DateTime  ExpectedDate,
+    DateTime? PaidAt,
+    decimal   Amount,
+    string?   Note,
+    decimal   ParentTotalAmount,
+    decimal   ParentUnpaidAmount);
