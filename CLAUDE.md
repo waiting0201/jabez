@@ -315,6 +315,9 @@ Api/
 │   ├── WriteOffRequestHandler.cs      # 預支沖銷申請 CRUD（獨立簽核流程）＋**依預支單彙總檢視**（GET /write-off-requests/by-advance/{advanceRequestId}，回傳預支單完整資訊 + 該單全部沖銷單）＋**差額撥款分期**（PATCH /write-off-requests/{id}/installments，SUM 對應 RefundDue 超支增額）＋**支票已支付註記**（PATCH /{id}/check-payments）
 │   ├── TravelWriteOffRequestHandler.cs # 出差預支沖銷申請 CRUD（獨立簽核流程）
 │   ├── AttendanceHandler.cs           # 打卡（上班/下班/加班開始/加班結束；請假時段內擋上下班打卡；**休假日（行事曆假日／六日）或當日全日請假時，加班開始免下班卡**（**排班制員工 `User.IsShiftWorker` 恆不適用休假日條件**，週六仍須先打下班卡），無紀錄則建立只含加班時間的紀錄；**2026-08 起納入權限管理**：打卡走 `attendances:read/write`（員工對自己）、出缺勤報表列表與 `PUT/PATCH /attendances/{id}` 走 `reports-attendance:read/write`（管理者對別人），後者另在 Handler 內套部門可見性 scope 控管「能改誰」）
+│   ├── ShiftScheduleHandler.cs       # **個人排班排例／休（四週彈性工時功能 A，2026-09 新增）**：GET / PUT `/shift-schedules`（整月整批替換）。
+│   │                                    擋存判準與開放期各自收斂成純函式單一真相（`Api/Common/ShiftScheduleValidator.cs` / `ShiftScheduleWindow.cs`），
+│   │                                    讀寫共用同一份、前端只顯示不重算。**國定假日不入表**（唯讀、不佔配額）、**上班日不落地**（查無紀錄即上班日）
 │   ├── InsuranceBracketHandler.cs    # 勞健保級距 CRUD
 │   ├── PayrollHandler.cs             # 人事薪資查詢（月薪計算）；GetMineAsync = GET /me/payroll 員工讀自己近 N 個月薪資（免 payroll:read，逐月呼叫帶 employeeId 的同一支計算，依 HireDate 擋掉到職前月份，months clamp 1~24）
 │   ├── LineHandler.cs                # LINE 帳號綁定/解綁 + 月度推播用量查詢（line-quota:read）
@@ -405,6 +408,14 @@ Api/
 │   ├── Entities/                      # 53 個資料庫實體（新增 **銷假申請 LeaveRevocation + 逐日明細 LeaveRevocationDate**（獨立子單，父單送簽期間不動；LeaveRequest 另加 OriginalHours 與 `cancelled` 終止狀態）/ **簽核步驟例外指定審核名單 ApprovalStepException** + **例外的限定職稱 ApprovalStepDesignatedJobTitle** / **預支沖銷差額分期 WriteOffInstallment**（第 5 種分期撥款子表）/ **WriteOffRecord + TravelWriteOffRecord 新增 `PendingClose`**（財務登記結案，待整張單核准才生效）/ **追加預支批次 AdvanceRequestSupplement**（只存 RoundNo≥2，Round 1 = 父單本身）/ **TravelRequestParticipantDate 參與人員個別參與日期** / EmployeeProfile / EducationRecord / EmploymentHistoryRecord / FamilyMember / ProfessionalTraining / LanguageAbility / JobTransferRecord / RewardPunishmentRecord / SalaryAdjustmentRecord / HealthInsuranceDependent / **5 個分期撥款表 PaymentRequestInstallment / AdvanceRequestInstallment / TravelRequestInstallment / TravelPaymentRequestInstallment / WriteOffInstallment** / **PaymentReminderLog** / **整單批次附件 PaymentRequestAttachment / WriteOffAttachment** / **預審申請 PreReviewRequest / PreReviewItem / PreReviewRequestAttachment**）
 │   └── Dtos/                          # 21 個 DTO 檔案（新增 **LeaveRevocationDtos** / EmployeeProfileDtos / **InstallmentDtos** / **PreReviewRequestDtos**）
 ├── Services/
+│   ├── WorkdayScheduleProvider.cs     # **工作時段的版本化取用管道（四週彈性工時，2026-09 新增）**：把 `SystemSetting.FlexibleWorkStartDate`
+│   │                                    讀成 per-request 快取。`Constants.cs` 的 `WorkdayHours` 已由 5 個 `const int` 擴充為
+│   │                                    `WorkdaySchedule` record ＋ `Legacy`（08:00–17:00／午休 12:00–13:00）／`Flexible`（09:00–18:00／午休 12:30–13:30）
+│   │                                    ＋ `For(date, switchDate)`。**舊資料不遷移**故系統內同時存在兩套時段，判定基準一律是
+│   │                                    **該筆資料自己的日期**（請假看 `StartDate`、打卡看 `RecordDate`、報表看該列日期），不是今天。
+│   │                                    ⚠ **切換日必須訂在未來月初、不可回溯設定** —— 回溯會讓舊制建立的單被新制時段重新解讀，
+│   │                                    全日假憑空多出 17:00–18:00 的假性應出勤（已於 staging 實測，見 flexible-work-hours.md §10.5）。
+│   │                                    5 個 `const int` 原地保留（值等同 Legacy），故既有 18 處引用零改動
 │   ├── IJwtService.cs
 │   ├── JwtService.cs                  # HS256 JWT 產生與驗證
 │   ├── AttendanceAutoClockService.cs  # 登入自動補卡共用（static，不呼叫 SaveChanges，比照 LeaveRevocationService）：三種缺口（漏打上班 / 下班 / 加班結束）一次撈回，時間走 ExpectedWorkWindow 避開請假時段；**只填空欄不建新列**
@@ -434,6 +445,9 @@ Api/
 │       ├── DepartmentReadService.cs
 │       ├── JobTitleReadService.cs
 │       ├── VendorReadService.cs
+│       ├── ShiftScheduleReadService.cs     # **per-user 日別解析**（取代 `WorkCalendarHelper` 的 `bool ignoreHolidays` 二元旗標）：
+│       │                                    三段退回「個人排班 → 國定假日 → 舊制行事曆判定」。批次版一次撈回整區間全部人（單次 SQL）——
+│       │                                    per-user 後出缺勤報表原本「依 IsShiftWorker 分兩組、整趟最多 2 次工作日計算」的 memo 會失效
 │       ├── WorkPatternReadService.cs      # 員工出勤型態：IsShiftWorkerAsync（排班制旗標，request-scoped memo）；供請假 / 銷假 / 打卡以「假單所有人 / 打卡本人」解析，勿用呼叫者 id
 │       ├── ApprovalReadService.cs
 │       ├── ProjectReadService.cs
@@ -502,6 +516,16 @@ Api/
 │   ├── LeaveDayExpander.cs            # 請假單「逐日展開」單一真相（Date + Hours + **Segment / Start / End 逐日時段**，2026-09 新增）：供銷假逐日勾選、核准後重算 Hours、出缺勤報表請假合併與時段顯示；時段代碼 full / am / pm / partial（`Constants.LeaveDaySegments`）一律 clamp 在 08:00–17:00，Hours 沿用既有整點差語意故與 End−Start 不必然等長；假別分類常數 WorkingDayLeaveTypes / TimeUnitMap 亦收斂於此，LeaveRequestHandler 轉引
 │   ├── ExpectedWorkWindow.cs          # 「該日應出勤（可打卡）時段」單一真相（2026-09 新增，純函式無 I/O，比照 OvertimePayCalculator）：以 08:00–17:00 扣掉當日請假時段，含跨午休正規化（上午假 08–12 → 13:00 開工、下午假 13–17 → 12:00 下班），中段小時假刻意不縮；Start/End 為 null＝當日免出勤。**兩個 AdjustedByLeave 旗標不可省**：無請假時 End 恆為 17:00，補下班卡若無條件取 min 會把 09:00 上班者從 18:00 壓成 17:00。消費點：出缺勤報表應出勤欄 + 未打卡判定、登入自動補卡
 │   ├── AttendanceLeaveMerger.cs       # 出缺勤報表「打卡 ∪ 當日請假日 ∪ **缺勤日**」合併單一真相：(員工, 日期) 一列，以 **`RowKind`（clock / leave / absent）** 標示種類 —— 請假列與缺勤列同樣 Id=null，**前端不可再用 Id 判斷**；缺勤列＝工作日無打卡且無請假（今天與未來不算、依 HireDate/ResignDate 夾邊界、展開上限 AbsenceMaxCells=60000）；每列另帶 ExpectedStart/End（走 ExpectedWorkWindow，無請假的工作日為 08:00–17:00、休假日為 null）；逐日時數與時段走 LeaveDayExpander，故採「區間全量載入 → 記憶體合併 → 記憶體切頁」，區間跨度上限 MaxRangeDays=400 天、匯出 pageSize 上限 ExportMaxPageSize=5000。**缺勤判定必須用 leavesByDay 的 Remove 前快照**，否則「有打卡又有請假」的日子會被誤判成缺勤
+│   ├── WorkDayType.cs                 # **四週彈性工時的四值日別**（work / rest_day / statutory_off / public_holiday）＋
+│   │                                    **`PublicHolidayRule`：國定假日 ＝ `IsHoliday` 且 `Description` 非空**。
+│   │                                    行事曆把週六日也標成 `IsHoliday=1`（Description 為空），只看旗標會讓 2026-10 的 11 天全變唯讀格
+│   │                                    （實際國定假日只有 4 天），員工**永遠排不滿 4 例 4 休**。必須用 `GetByYearAsync` 而非 `GetHolidayDatesAsync`。
+│   │                                    月曆讀取／整月寫入／配額重算三個消費點共用此判準
+│   ├── ShiftScheduleValidator.cs      # 排班「能不能存」單一真相（純函式）：`例假 4 天排滿 ∧ 連續上班 ≤12 天 ∧ 任意 14 天內 ≥2 例假` ⇒ 可存；
+│   │                                    休假未排滿只警示。滾動 14 天視窗**跨月**（併入前後月已定案班表，次月未排則該側不檢核）。
+│   │                                    ⚠ 空白月曆第一次儲存必然被擋，為預期行為，UI 須一進畫面就提示
+│   ├── ShiftScheduleWindow.cs         # 排班開放期單一真相（純函式）：10–25 日排次月／當月僅當日 08:30 前改當天／歷史唯讀／
+│   │                                    當月到職者自 `User.CredentialsSentAt` 起 3 個工作天寬限（以 `CalendarDay` 判定，**刻意不用個人班表**）
 │   └── Constants.cs
 ├── host.json
 ├── local.settings.json                # 本地開發設定（不進版控）

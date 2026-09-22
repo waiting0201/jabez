@@ -32,6 +32,7 @@ public sealed class AppRouter(
     TravelRequestHandler   travelRequests,
     OvertimeRequestHandler overtimeRequests,
     AttendanceHandler      attendances,
+    ShiftScheduleHandler   shiftSchedules,
     ApprovalTaskHandler    approvalTasks,
     InsuranceBracketHandler insuranceBrackets,
     PayrollHandler         payroll,
@@ -354,6 +355,10 @@ public sealed class AppRouter(
             ("PUT",    ["attendances", var id])           => await attendances.UpdateAsync(req, id),
             ("PATCH",  ["attendances", var id])           => await attendances.UpdateAsync(req, id),
 
+            // 四週彈性工時：個人排班排例／休
+            ("GET",    ["shift-schedules"])               => await shiftSchedules.GetMonthAsync(req),
+            ("PUT",    ["shift-schedules"])               => await shiftSchedules.SaveMonthAsync(req),
+
             // ── Insurance Brackets ────────────────────────────────────────────
             ("GET",    ["insurance-brackets"])              => await insuranceBrackets.GetAllAsync(),
             ("GET",    ["insurance-brackets", "lookup"])    => await insuranceBrackets.LookupBySalaryAsync(req),
@@ -651,6 +656,11 @@ public sealed class AppRouter(
             // 未列舉的 attendances 子路由一律套較嚴的預設（新增端點時務必回來明確對應）
             ("GET",    ["attendances", ..])               => PermissionCodes.ReportsAttendanceRead,
             ("POST",   ["attendances", ..])               => PermissionCodes.AttendancesWrite,
+
+            // 四週彈性工時：個人排班。看別人的班表另在 Handler 內以 view-all / 部門 scope 把關
+            ("GET",    ["shift-schedules"])               => PermissionCodes.ShiftScheduleRead,
+            ("PUT",    ["shift-schedules"])               => PermissionCodes.ShiftScheduleWrite,
+            ("GET",    ["shift-schedules", ..])           => PermissionCodes.ShiftScheduleRead,
 
             // Insurance Brackets
             ("GET",    ["insurance-brackets", ..])              => PermissionCodes.InsuranceBracketsRead,

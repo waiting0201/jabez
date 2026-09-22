@@ -199,6 +199,30 @@
 
 > **請假時段阻擋規則**：上下班打卡以 `Clock.Now`（Asia/Taipei）比對員工 `LeaveRequests` 中 `ApprovalStatus='approved'` 的紀錄，落在 `StartDate <= now < EndDate` 半開區間內即阻擋並回含請假單編號 / 假別 / 時段的錯誤訊息。半天 / 小時請假時段已編碼於 datetime，時段外仍可打卡（如上午半天請假，下午可打上班卡；09:00–12:00 病假，12:00 整點可打卡）。加班打卡不套用此規則。實作於 [Api/Handlers/AttendanceHandler.cs](../Api/Handlers/AttendanceHandler.cs) `EnsureNotOnLeaveAsync`，Dapper SQL 於 [Api/Services/Dapper/AttendanceReadService.cs](../Api/Services/Dapper/AttendanceReadService.cs) `GetActiveLeaveAtAsync`。
 
+## 個人排班（四週彈性工時 ‧ 功能 A）
+
+> **狀態**：後端已實作、**制度尚未切換**（`SystemSetting.FlexibleWorkStartDate` 為 null 時全系統維持舊制）。
+> 規格見 [flexible-work-hours.md](business/flexible-work-hours.md)。
+
+| Method | 路徑 | 權限 | 說明 |
+|---|---|---|---|
+| GET | `/shift-schedules?year=&month=[&userId=]` | `shift-schedule:read` | 某人某月的排班月曆。回傳每日 `dayType`（`work` / `rest_day` / `statutory_off` / `public_holiday`）、`holidayName`、`readOnly`、活動日疊加旗標（`isActivityDay` / `activityTitle` / `isActivityAssignee`），以及 `editable` / `editMode`（`open` / `grace_period` / `same_day_only` / `closed`）與 **`validation`**（擋存判準結果，**進入畫面即顯示**，不可等到按儲存才報錯）。帶 `userId` 看別人：未持 `shift-schedule:view-all` 者僅限 `ProjectAccessScope` 涵蓋的部門 |
+| PUT | `/shift-schedules` | `shift-schedule:write` | 整月整批替換。body `{ year, month, days: [{ date, dayType }] }`，只需送非上班日的格子。**國定假日格送了會被靜默丟棄**（唯讀、不佔配額）；上班日**不落地**（查無紀錄即上班日）。未通過擋存判準回 400 並列出全部原因 |
+
+> **擋存判準（單一真相 [Api/Common/ShiftScheduleValidator.cs](../Api/Common/ShiftScheduleValidator.cs)）**：
+> `例假 4 天已排滿 ∧ 連續上班 ≤ 12 天 ∧ 任意連續 14 天內 ≥ 2 天例假` ⇒ 可儲存。
+> **休假未排滿只警示、不擋存**（31 日曆月為 5 休）。滾動 14 天視窗會**跨月**，計算時併入前月月底與次月月初的已定案班表；
+> 次月尚未排定則該側不檢核（未知的日子不可當成上班日，否則會誤擋）。
+> ⚠ **空白月曆的第一次儲存必然被擋**（全月皆上班日 → 關卡 A／B 必不過），為預期行為。
+
+> **開放期（單一真相 [Api/Common/ShiftScheduleWindow.cs](../Api/Common/ShiftScheduleWindow.cs)）**：
+> 每月 10 日 00:00 ～ 25 日 23:59 排**次月**；當月僅可於**當日 08:30 前**調整**當天**一格（臨時調休，仍受擋存判準約束）；
+> 歷史月份唯讀。當月到職者另有寬限期 ＝ `User.CredentialsSentAt` 起 3 個**工作天**（以 `CalendarDay` 判定，**刻意不用個人班表** —— 新人當月本來就沒班表）。
+> 開放期結束後的異動一律走〈改班申請〉送簽。
+
+> **排班一律只能排自己的**（代排會讓「誰排的」失去意義，且改班申請的簽核對象會錯亂），帶他人 `userId` 送 PUT 回 403。
+
+
 ## 報表（Reports）
 
 三個報表（出缺勤、加班、請款）共用「日 / 週 / 月」三選一時段模式。前端 segmented control 切換模式後，依使用者輸入計算 `dateFrom` / `dateTo`（皆 `YYYY-MM-DD`，inclusive）送出；後端統一接 `dateFrom` / `dateTo`（取代舊有的 `year` / `month`）。週為 ISO 8601（週一→週日），共用工具於 [Admin/src/app/features/admin/reports/utils/date-range.ts](../Admin/src/app/features/admin/reports/utils/date-range.ts)。

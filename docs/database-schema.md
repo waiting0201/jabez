@@ -6,7 +6,7 @@
 
 本地開發連線字串於 [Api/local.settings.json](../Api/local.settings.json)；遠端 Azure SQL 連線字串記在 memory `reference_azure_sql.md`（敏感資訊不入版控）。
 
-## 50 個資料表實體
+## 56 個資料表實體
 
 | 實體 | 說明 |
 |------|------|
@@ -54,9 +54,15 @@
 | `TravelWriteOffItem` | 出差預支沖銷明細（含發票號碼、檔案上傳） |
 | `RequestDesignatedReviewer` | 申請人指定審核者清單（多人依序審核；**ApprovalStepOrder** 綁定所屬 designated 步驟，支援一條流程多個指定步驟；**SelectedDepartmentId** 記錄第二步選的部門；唯一索引 `(RequestType, RequestId, ApprovalStepOrder, ReviewerId)`） |
 | `AttendanceRecord` | 出勤打卡紀錄（每人每天一筆，含 GPS；`IsClockInAuto` / `IsClockOutAuto` 標記上 / 下班時間為登入時系統補卡（非本人打卡，補的時間已避開請假時段）；`IsBusinessTrip` 標記該日為出差、由本人打卡時勾選；`Remark` 為管理者於出缺勤編輯表單填寫的備註，上限 500 字） |
+| `ShiftScheduleDay` | **個人排班的某人某日日別**（四週彈性工時）：`DayType` = `work` / `rest_day` / `statutory_off`，唯一索引 `(UserId, Date)`。**國定假日不入表**（唯讀、不佔配額，一律由 `CalendarDay` 解析）；**上班日亦不落地**（查無紀錄即上班日，與解析器的退回順序一致） |
+| `ShiftScheduleMonth` | 個人排班的**整月狀態**：`Status` = `draft` / `committed` / `auto`，唯一索引 `(UserId, Year, Month)`。供「次月是否已完成排班」（20 號提醒）、「是否為系統自動排班」（26 號批次）判定；`AutoAssignedAt` 非 null 即代表該月班表非本人所排 |
+| `ActivityDay` | 主管（部門協理）於活動 2 個月前預先排定的**活動日**。⚠ **疊加旗標、非第 5 種日別** —— 月曆格狀態仍四選一，活動日壓在其上；做成第 5 種會讓自動排班的「跳過活動日」與配額計算互相打架。**可排在國定假日上** |
+| `ActivityDayAssignee` | 活動日的**預定人力**，唯一索引 `(ActivityDayId, UserId)`。被列入者若當日為國定假日 → 解鎖上下班打卡、不需加班申請單 |
+| `CompensatoryLot` | **補休批次**（取代現行純聚合 SUM 的補休池）：`RateSnapshot` 快照當時的原始加班費率（1.34 / 1.67 / 2.67，到期換算津貼用，事後才算會拿到改版後的費率）、`ExpiresAt` 效期（1–6 月產生用至 7/31、7–12 月至隔年 1/31）、`IsOpening` 標記切換日整批轉入的期初 lot。`SourceOvertimeRequestId` 有 filtered unique index，一張加班單只開一個 lot |
+| `CompensatoryUsage` | 補休**扣抵紀錄**（FIFO，一張補休假可跨多個 lot）：「某張補休假吃掉哪幾筆加班」的單一真相 |
 | `AttendanceReminderLog` | 打卡提醒推播紀錄（BatchId 串聯同一次 tick；含 batchStart 紀錄、ErrorCategory 失敗分類、HttpStatusCode、DurationMs；Snapshot 欄位保留歷史） |
 | `PaymentReminderLog` | 撥款日將屆提醒推播紀錄（BatchId 串聯同一次 tick；TriggerSource auto/manual；ReminderDateTaipei 用於同日去重；Status: success/failure/batchStart/skipped_already_sent；FinanceUserId 推播對象） |
-| `SystemSetting` | 系統設定（含站台 / 工時 / 通知 / 撥款提醒）。`ApprovalEmailEnabled` / `ApprovalLineEnabled` 控制全域簽核通知開關（不影響帳號通知 / 薪資明細 / 打卡提醒）。`PaymentReminderDaysBefore` 控制撥款日將屆提醒提前天數（預設 3 天，0-30） |
+| `SystemSetting` | 系統設定（含站台 / 工時 / 通知 / 撥款提醒）。**`FlexibleWorkStartDate`（四週彈性工時切換日，null ＝ 尚未切換、全系統維持舊制 08:00–17:00）**：刻意做成可設定值而非程式常數（需求方決議「驗收沒問題才切」），判定基準為**該筆資料自己的日期**而非今天，單一真相 `WorkdayHours.For`。`ApprovalEmailEnabled` / `ApprovalLineEnabled` 控制全域簽核通知開關（不影響帳號通知 / 薪資明細 / 打卡提醒）。`PaymentReminderDaysBefore` 控制撥款日將屆提醒提前天數（預設 3 天，0-30） |
 | `PaymentRequestInstallment` | 請款撥款明細（多筆，與父表 1:N）：`InstallmentNo` 1-based 連續、`ExpectedDate` 預計撥款日（必填）、`PaidAt` 實際撥款日（null = 未撥）、`Amount` 金額（>= 1）、`Note` 備註、`PaidByUserId` 撥款人 FK→Users。**驗證**（InstallmentValidator）：序號連續無斷號、`SUM(Amount) == 父表 TotalAmount`（容忍 0.01）、已撥款列保護（PaidAt 有值時 ExpectedDate/Amount/PaidAt 不可改、不可刪）。每筆 PaidAt null→value 觸發一次「已撥款」通知（含 N/M 期） |
 | `AdvanceRequestInstallment` | 預支撥款明細（同上結構，FK→AdvanceRequest，SUM 對應父表 GrandTotal）|
 | `TravelRequestInstallment` | 出差預支撥款明細（同上結構，FK→TravelRequest，SUM 對應父表 GrandTotal）|

@@ -158,6 +158,7 @@ var host = new HostBuilder()
         services.AddScoped<ApprovalTaskHandler>();
         services.AddScoped<OvertimeRequestHandler>();
         services.AddScoped<AttendanceHandler>();
+        services.AddScoped<ShiftScheduleHandler>();
         services.AddScoped<InsuranceBracketHandler>();
         services.AddScoped<PayrollHandler>();
         services.AddScoped<OvertimeReportHandler>();
