@@ -95,7 +95,25 @@ public sealed record TodayAttendanceDto(
     /// </summary>
     bool CanOvertimeWithoutClockOut = false,
     /// <summary>該日已被標記為出差，供打卡頁的勾選框帶回既有狀態</summary>
-    bool IsBusinessTrip = false);
+    bool IsBusinessTrip = false,
+
+    // ── 四週彈性工時（切換日之前一律為預設值，前端據此維持舊行為）──────────
+    /// <summary>四週彈性工時是否已對今日生效。false 時前端不顯示確認對話框、不判早退逾時。</summary>
+    bool FlexibleEnabled = false,
+    /// <summary>今日日別：work / rest_day / statutory_off / public_holiday</summary>
+    string? DayType = null,
+    /// <summary>本人是否為今日活動日的預定人力（國定假日據此解鎖上下班打卡）</summary>
+    bool IsActivityAssignee = false,
+    /// <summary>今日可否打上下班卡（日別鎖定的結果）。前端不自行重組規則，只吃這個旗標。</summary>
+    bool CanClockInOut = true,
+    /// <summary>不可打卡時的說明，可直接顯示給使用者</summary>
+    string? ClockLockReason = null,
+    /// <summary>
+    /// 應下班時間 ＝ 實際上班打卡 ＋ 9 小時（請了上午半天假者為 ＋4 小時）。
+    /// 供前端在確認對話框顯示「目前出勤 X 小時 Y 分」與判斷是否要顯示原因欄位。
+    /// 尚未打上班卡時為 null。
+    /// </summary>
+    DateTime? ExpectedClockOutTime = null);
 
 /// <summary>
 /// 出缺勤報表合併用的原料列：區間內已核准的假單（尚未逐日展開）。
@@ -140,7 +158,12 @@ public sealed record ClockActionRequest(
     double? Longitude,
     int?    OvertimeRequestId = null,
     /// <summary>本次打卡為出差：四個打卡動作皆以此值覆寫當日的 AttendanceRecord.IsBusinessTrip</summary>
-    bool    IsBusinessTrip = false);
+    bool    IsBusinessTrip = false,
+    /// <summary>
+    /// 下班打卡的早退／逾時原因（四週彈性工時）。
+    /// 早退或逾時且**非出差**時為必填，否則後端回 400；出差當日可填可不填。
+    /// </summary>
+    string? Reason = null);
 
 /// <summary>修改出缺勤紀錄（四個時間欄位 + 備註；出差旗標僅由本人打卡時勾選，此處不開放）</summary>
 public sealed record UpdateAttendanceRequest(

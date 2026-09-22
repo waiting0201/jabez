@@ -2170,6 +2170,40 @@ cell.z = '#,##0';
 
 ---
 
+## 11.7 共用確認對話框（`<app-confirm-modal>`）
+
+[`shared/components/confirm-modal.ts`](../Admin/src/app/shared/components/confirm-modal.ts)。
+專案原本**沒有**共用 confirm 元件，20+ 處都用原生 `window.confirm` —— 它無法附加輸入欄位、
+樣式也跟系統不一致。四週彈性工時的下班打卡需要「確認 ＋ 視情況附一個必填原因」，
+且規格明訂**不另開第二個視窗**，故建立此元件。
+
+```ts
+const ref = this.modal.open(ConfirmModal, {centered: true});
+const ci = ref.componentInstance as ConfirmModal;
+ci.title = '確認下班打卡';
+ci.message = '目前出勤 8 小時 30 分';
+ci.detail = '今日出勤未達應下班時間（18:00），尚差 30 分鐘。';
+ci.reasonLabel = '早退原因';       // 有值才顯示原因欄位
+ci.reasonRequired = true;          // false → 顯示「（選填）」
+ci.tone = 'warning';               // 標題左側加驚嘆號 icon
+
+try {
+  const result: ConfirmModalResult = await ref.result;   // { confirmed, reason }
+  // 按「確定」才會走到這裡
+} catch {
+  // 按「取消」或關閉 → dismiss() 會 reject，什麼都不做
+}
+```
+
+三個約定：
+- **取消走 `dismiss()`**（reject），確定走 `close(result)`。呼叫端用 try/catch 區分，
+  不要用 `result.confirmed` 判斷取消 —— 取消根本不會 resolve。
+- 必填未填時**在 modal 內顯示錯誤、不關閉視窗**；使用者一開始輸入就把錯誤收掉。
+- `reasonLabel` 為空字串時整個原因區塊不渲染，此時它就是一個單純的確認框，
+  可用來取代既有的 `window.confirm`（逐步汰換，不必一次改完）。
+
+---
+
 ## 12.8 月曆格狀 UI（FullCalendar）
 
 專案的月曆一律用 **FullCalendar `dayGridMonth`**（`@fullcalendar/angular`，peer 支援 Angular 12–21）。

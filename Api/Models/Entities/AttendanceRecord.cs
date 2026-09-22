@@ -22,6 +22,20 @@ public class AttendanceRecord
     public bool      IsBusinessTrip         { get; set; }
     /// <summary>管理者於出缺勤編輯表單填寫的備註（僅編輯表單可見可填）</summary>
     public string?   Remark                 { get; set; }
+
+    // ── 四週彈性工時（切換日之後才寫入；舊制一律維持 false / null）──────────
+    /// <summary>遲到（上班打卡超過 09:30）。**出差當日不判定**。</summary>
+    public bool      IsLate                 { get; set; }
+    /// <summary>早退（下班打卡早於「上班打卡 ＋ 9 小時」）。**出差當日不判定**。</summary>
+    public bool      IsEarlyLeave           { get; set; }
+    /// <summary>
+    /// 下班打卡的早退／逾時原因（上限 500 字）。
+    /// ⚠ 與 <see cref="Remark"/> **語意不同、不可互相挪用**：Remark 是管理者事後在出缺勤編輯表單
+    /// 補註的（走 reports-attendance:write），本欄是員工打卡當下自己填的。
+    /// 出差當日欄位**仍顯示但改為非必填** —— 在外仍可能有值得記錄的異常，
+    /// 讓同仁想填就能填比直接拿掉欄位有用；改的是必填性，不是可見性。
+    /// </summary>
+    public string?   ClockOutReason         { get; set; }
     public DateTime? OvertimeStartTime      { get; set; }
     public double?   OvertimeStartLatitude  { get; set; }
     public double?   OvertimeStartLongitude { get; set; }

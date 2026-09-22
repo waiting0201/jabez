@@ -26,7 +26,8 @@ public sealed class AttendanceHandler(
     IProjectAccessResolver access,
     ICalendarDayReadService calendarReader,
     IWorkPatternReadService workPattern,
-    IWorkdayScheduleProvider workdaySchedule)
+    IWorkdayScheduleProvider workdaySchedule,
+    IShiftScheduleReadService shiftReader)
 {
     /// <summary>備註欄長度上限（與 AttendanceRecordConfiguration 的 HasMaxLength(500) 同步）</summary>
     private const int RemarkMaxLength = 500;
@@ -86,7 +87,20 @@ public sealed class AttendanceHandler(
         if (record is not null && record.ClockInTime.HasValue)
             throw AppException.BadRequest("今日已打上班卡。");
 
-        await EnsureNotOnLeaveAsync(userId, now);
+        var ctx = await ResolveClockContextAsync(userId, now);
+        if (ctx.Flexible)
+        {
+            if (!ClockDayPolicy.AllowsClockInOut(ctx.DayType, ctx.IsActivityAssignee))
+                throw AppException.BadRequest(
+                    ClockDayPolicy.ClockInOutLockReason(ctx.DayType, ctx.IsActivityAssignee)!);
+
+            // 上班打卡鍵 08:30 才開放。**請了上午半天假的人不適用** —— 他本來就是 13:00 才來。
+            if (!ctx.AfternoonOnly && TimeOnly.FromDateTime(now) < ClockRules.ClockInOpenFrom)
+                throw AppException.BadRequest(
+                    $"上班打卡於 {ClockRules.ClockInOpenFrom:HH\\:mm} 開放，請稍候再打卡。");
+        }
+
+        await EnsureNotOnLeaveAsync(userId, now, ctx.Flexible, forClockOut: false);
 
         if (record is null)
         {
@@ -104,6 +118,8 @@ public sealed class AttendanceHandler(
         record.ClockInLongitude  = body.Longitude;
         record.IsClockInAuto     = false;   // 本人打卡
         record.IsBusinessTrip    = body.IsBusinessTrip;
+        // 出差當日不判定遲到（在外辦公本來就不是九點進辦公室）
+        RefreshExceptionFlags(record, ctx, body.IsBusinessTrip);
 
         await db.SaveChangesAsync();
 
@@ -128,13 +144,34 @@ public sealed class AttendanceHandler(
         if (record.ClockOutTime.HasValue)
             throw AppException.BadRequest("今日已打下班卡。");
 
-        await EnsureNotOnLeaveAsync(userId, now);
+        var ctx = await ResolveClockContextAsync(userId, now);
+        if (ctx.Flexible && !ClockDayPolicy.AllowsClockInOut(ctx.DayType, ctx.IsActivityAssignee))
+            throw AppException.BadRequest(
+                ClockDayPolicy.ClockInOutLockReason(ctx.DayType, ctx.IsActivityAssignee)!);
+
+        await EnsureNotOnLeaveAsync(userId, now, ctx.Flexible, forClockOut: true);
+
+        var kind = ClockOutKind.Normal;
+        if (ctx.Flexible && record.ClockInTime is { } clockIn)
+        {
+            kind = ClockRules.ResolveClockOutKind(clockIn, now, ctx.Schedule, ctx.AfternoonOnly);
+
+            // 出差當日：原因欄位仍顯示但改為非必填（§5.1「改的是必填性，不是可見性」）
+            if (kind != ClockOutKind.Normal && !body.IsBusinessTrip && string.IsNullOrWhiteSpace(body.Reason))
+                throw AppException.BadRequest(kind == ClockOutKind.Early
+                    ? "今日出勤未達應下班時間，請填寫早退原因。"
+                    : "下班時間已超過應下班時間 30 分鐘，請填寫逾時原因。");
+        }
 
         record.ClockOutTime      = now;
         record.ClockOutLatitude   = body.Latitude;
         record.ClockOutLongitude  = body.Longitude;
         record.IsClockOutAuto     = false;   // 本人打卡
         record.IsBusinessTrip     = body.IsBusinessTrip;
+        RefreshExceptionFlags(record, ctx, body.IsBusinessTrip, kind);
+        record.ClockOutReason     = string.IsNullOrWhiteSpace(body.Reason)
+            ? null
+            : body.Reason.Trim()[..Math.Min(body.Reason.Trim().Length, RemarkMaxLength)];
 
         await db.SaveChangesAsync();
 
@@ -177,6 +214,12 @@ public sealed class AttendanceHandler(
         if (record?.OvertimeStartTime is not null)
             throw AppException.BadRequest("今日已打加班開始卡。");
 
+        // 2.5 例假日全鎖：依法嚴禁出勤與加班（罰鍰 2 萬～100 萬），連加班單都不該救得回來
+        var otCtx = await ResolveClockContextAsync(userId, now);
+        if (otCtx.Flexible && !ClockDayPolicy.AllowsOvertime(otCtx.DayType))
+            throw AppException.BadRequest(
+                "本日為您排定的例假日，依法嚴禁出勤與加班，無法打加班卡。");
+
         // 3. 下班卡前置條件：休假日 / 全日請假豁免
         if (record?.ClockOutTime is null)
         {
@@ -204,6 +247,8 @@ public sealed class AttendanceHandler(
         record.OvertimeStartLongitude  = body.Longitude;
         record.OvertimeRequestId       = body.OvertimeRequestId;
         record.IsBusinessTrip          = body.IsBusinessTrip;
+        // 加班打卡也能設出差旗標，同樣要重算遲到／早退
+        RefreshExceptionFlags(record, await ResolveClockContextAsync(userId, now), body.IsBusinessTrip);
 
         await db.SaveChangesAsync();
 
@@ -232,6 +277,8 @@ public sealed class AttendanceHandler(
         record.OvertimeEndLatitude   = body.Latitude;
         record.OvertimeEndLongitude  = body.Longitude;
         record.IsBusinessTrip        = body.IsBusinessTrip;
+        // 加班打卡也能設出差旗標，同樣要重算遲到／早退
+        RefreshExceptionFlags(record, await ResolveClockContextAsync(userId, now), body.IsBusinessTrip);
 
         await db.SaveChangesAsync();
 
@@ -306,10 +353,74 @@ public sealed class AttendanceHandler(
     /// 阻擋落在已核准請假時段內的打卡（[StartDate, EndDate) 半開區間）。
     /// 僅針對上下班打卡使用；加班打卡不呼叫此方法。
     /// </summary>
-    private async Task EnsureNotOnLeaveAsync(Guid userId, DateTime when)
+    /// <summary>
+    /// 今日打卡的共用判定原料：是否已切換新制、當日日別、是否為活動日預定人力、
+    /// 以及「是否只上下午」（請了上午半天假 → 應下班時間改為上班打卡 ＋ 4 小時）。
+    /// </summary>
+    private readonly record struct ClockContext(
+        bool Flexible, string DayType, bool IsActivityAssignee,
+        WorkdaySchedule Schedule, bool AfternoonOnly);
+
+    /// <summary>
+    /// 依「當日出差旗標」重算遲到／早退。
+    ///
+    /// ⚠ 出差是**整日**旗標，四個打卡動作任一個都能設定它 ——
+    /// 上班時沒勾、下班（或打加班卡）時才勾的人很常見。若只在上班打卡當下算一次遲到，
+    /// 事後勾出差不會把它清掉，出缺勤報表就會出現「出差卻被記遲到」的矛盾。
+    /// 故每次寫入 IsBusinessTrip 之後都要呼叫本方法重算。
+    /// </summary>
+    private static void RefreshExceptionFlags(
+        AttendanceRecord record, ClockContext ctx, bool isBusinessTrip, ClockOutKind? clockOutKind = null)
+    {
+        if (!ctx.Flexible) return;
+
+        record.IsLate = !isBusinessTrip
+                     && record.ClockInTime is { } ci
+                     && !record.IsClockInAuto            // 系統補卡不是本人遲到
+                     && ClockRules.IsLate(ci);
+
+        if (clockOutKind is { } kind)
+            record.IsEarlyLeave = !isBusinessTrip && kind == ClockOutKind.Early;
+        else if (isBusinessTrip)
+            record.IsEarlyLeave = false;
+    }
+
+    private async Task<ClockContext> ResolveClockContextAsync(Guid userId, DateTime now)
+    {
+        var switchDate = await workdaySchedule.GetSwitchDateAsync();
+        var schedule   = WorkdayHours.For(now.Date, switchDate);
+        bool flexible  = switchDate is { } sd && now.Date >= sd.Date;
+
+        if (!flexible)
+            return new ClockContext(false, WorkDayTypes.Work, false, schedule, false);
+
+        var dayType    = await shiftReader.ResolveDayTypeAsync(userId, now.Date);
+        var isAssignee = await shiftReader.IsActivityAssigneeAsync(userId, now.Date);
+
+        // 「只上下午」＝當日有一段假從上班時刻起、在半天分界（13:00）前結束
+        var leaves = await reader.GetLeavesOnDateAsync(userId, DateOnly.FromDateTime(now));
+        var dayStart = now.Date.Add(schedule.Start.ToTimeSpan());
+        var boundary = now.Date.Add(schedule.HalfDayPmStart.ToTimeSpan());
+        bool afternoonOnly = leaves.Any(l => l.StartDate <= dayStart && l.EndDate > dayStart && l.EndDate <= boundary);
+
+        return new ClockContext(true, dayType, isAssignee, schedule, afternoonOnly);
+    }
+
+    private async Task EnsureNotOnLeaveAsync(
+        Guid userId, DateTime when, bool flexible = false, bool forClockOut = false)
     {
         var active = await reader.GetActiveLeaveAtAsync(userId, when);
         if (active is null) return;
+
+        // 半天假 13:00 交接的容許帶（前後各 5 分鐘）：
+        // 下午請假者於此區間打**下班**卡、上午請假者於此區間打**上班**卡，皆視為準時。
+        // 同一個容許帶也實現「請假開始前 5 分鐘提前解鎖下班打卡鍵」（§5.1.4）。
+        if (flexible)
+        {
+            var tolerance = TimeSpan.FromMinutes(ClockRules.LeaveHandoverToleranceMinutes);
+            if (forClockOut && when >= active.StartDate - tolerance) return;   // 假快開始了，先打下班卡
+            if (!forClockOut && when >= active.EndDate - tolerance)   return;   // 假快結束了，先打上班卡
+        }
 
         var typeZh = LeaveTypeNames.GetZh(active.LeaveType);
         throw AppException.BadRequest(
@@ -360,6 +471,24 @@ public sealed class AttendanceHandler(
         var leaves = await reader.GetLeavesOnDateAsync(userId, today);
         var exempt = await CanOvertimeWithoutClockOutAsync(userId, now.Date, leaves);
 
+        // 四週彈性工時的旗標：前端不自行重組日別規則，只吃這裡算好的結果
+        var ctx = await ResolveClockContextAsync(userId, now);
+        bool canClock = !ctx.Flexible || ClockDayPolicy.AllowsClockInOut(ctx.DayType, ctx.IsActivityAssignee);
+        string? lockReason = ctx.Flexible
+            ? ClockDayPolicy.ClockInOutLockReason(ctx.DayType, ctx.IsActivityAssignee)
+            : null;
+        DateTime? expectedOut = ctx.Flexible && record?.ClockInTime is { } ci
+            ? ClockRules.ExpectedClockOut(ci, ctx.Schedule, ctx.AfternoonOnly)
+            : null;
+
+        var flexFields = (
+            FlexibleEnabled:      ctx.Flexible,
+            DayType:              ctx.Flexible ? ctx.DayType : null,
+            IsActivityAssignee:   ctx.IsActivityAssignee,
+            CanClockInOut:        canClock,
+            ClockLockReason:      lockReason,
+            ExpectedClockOutTime: expectedOut);
+
         return record is null
             ? new TodayAttendanceDto(
                 Id: 0,
@@ -370,7 +499,24 @@ public sealed class AttendanceHandler(
                 OvertimeEndTime:   null,       OvertimeEndLatitude:   null, OvertimeEndLongitude:   null,
                 OvertimeRequestId: null,
                 TodayLeaves: leaves,
-                CanOvertimeWithoutClockOut: exempt)
-            : record with { TodayLeaves = leaves, CanOvertimeWithoutClockOut = exempt };
+                CanOvertimeWithoutClockOut: exempt,
+                IsBusinessTrip: false,
+                FlexibleEnabled:      flexFields.FlexibleEnabled,
+                DayType:              flexFields.DayType,
+                IsActivityAssignee:   flexFields.IsActivityAssignee,
+                CanClockInOut:        flexFields.CanClockInOut,
+                ClockLockReason:      flexFields.ClockLockReason,
+                ExpectedClockOutTime: flexFields.ExpectedClockOutTime)
+            : record with
+            {
+                TodayLeaves = leaves,
+                CanOvertimeWithoutClockOut = exempt,
+                FlexibleEnabled      = flexFields.FlexibleEnabled,
+                DayType              = flexFields.DayType,
+                IsActivityAssignee   = flexFields.IsActivityAssignee,
+                CanClockInOut        = flexFields.CanClockInOut,
+                ClockLockReason      = flexFields.ClockLockReason,
+                ExpectedClockOutTime = flexFields.ExpectedClockOutTime,
+            };
     }
 }
