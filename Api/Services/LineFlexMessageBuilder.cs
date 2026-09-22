@@ -3,6 +3,25 @@ namespace Jabez.Api.Services;
 /// <summary>產生 LINE Flex Message JSON 物件（6 種簽核通知）。</summary>
 public static class LineFlexMessageBuilder
 {
+    /// <summary>
+    /// 環境標記（例：<c>【測試站】</c>）。非正式環境務必設定，正式站留空。
+    ///
+    /// **為什麼需要**：測試站與正式站推的是同一批真實員工看得懂的訊息，
+    /// 收件人手機上完全分不出哪一則是測試 —— 2026-09 曾因此讓 29 位同仁
+    /// 各收到 2 則測試推播而無從判斷真偽（訊息送出後收不回來）。
+    ///
+    /// 標記加在 <see cref="BuildBubble"/> 這個**唯一收斂點**，故 11 種訊息模板
+    /// 與日後新增的模板全部自動涵蓋，不必逐一修改。兩個位置都要加：
+    ///   · <c>altText</c> —— 手機通知列與聊天列表看到的是這個
+    ///   · header 內的一行文字 —— 點開訊息後看到的是這個
+    /// 只加其中一個就會出現「通知列看得出是測試、點開卻看不出來」的半吊子狀態。
+    ///
+    /// 由 <c>Program.cs</c> 於啟動時從設定 <c>Line:EnvironmentLabel</c> 寫入
+    /// （Azure App Setting 為 <c>Line__EnvironmentLabel</c>）。本類別是 static、無 DI，
+    /// 故以 composition root 設定一次的方式注入，不在每個 Build 方法多加參數。
+    /// </summary>
+    public static string EnvironmentLabel { get; set; } = "";
+
     private const string BrandGreen = "#699F34";
     private const string WarningBrown = "#B8892A";
     private const string SuccessGreen = "#4A6B3A";
@@ -303,10 +322,24 @@ public static class LineFlexMessageBuilder
             });
         }
 
+        // 環境標記：正式站為空字串時完全不影響輸出（不多一行、altText 不變）
+        var envLabel     = EnvironmentLabel;
+        var hasLabel     = !string.IsNullOrWhiteSpace(envLabel);
+        var finalAltText = hasLabel ? $"{envLabel}{altText}" : altText;
+
+        var headerContents = new List<object>();
+        if (hasLabel)
+            headerContents.Add(new
+            {
+                type = "text", text = envLabel, color = "#FFFFFF",
+                weight = "bold", size = "xs", wrap = true,
+            });
+        headerContents.Add(new { type = "text", text = headerText, color = "#FFFFFF", weight = "bold", size = "lg" });
+
         return new
         {
             type = "flex",
-            altText,
+            altText = finalAltText,
             contents = new
             {
                 type = "bubble",
@@ -316,10 +349,7 @@ public static class LineFlexMessageBuilder
                     layout = "vertical",
                     backgroundColor = headerColor,
                     paddingAll = "16px",
-                    contents = new object[]
-                    {
-                        new { type = "text", text = headerText, color = "#FFFFFF", weight = "bold", size = "lg" },
-                    }
+                    contents = headerContents.ToArray()
                 },
                 body = new
                 {

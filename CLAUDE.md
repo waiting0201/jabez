@@ -527,7 +527,12 @@ Api/
 │   ├── ILineService.cs               # LINE API 操作介面
 │   ├── LineService.cs                # LINE Platform REST API 封裝（token 換取 + 推播 + 月度 quota 查詢）
 │   ├── PushResult.cs                 # LINE 推播結果 record（含 ErrorCategory 分類）
-│   ├── LineFlexMessageBuilder.cs     # 6 種簽核通知 + 打卡提醒的 LINE Flex Message 模板
+│   ├── LineFlexMessageBuilder.cs     # 11 種 LINE Flex Message 模板（簽核 / 財務 / 打卡提醒 / 排班提醒）。
+│   │                                    **全部走唯一的 `BuildBubble`**，故環境標記 `EnvironmentLabel`
+│   │                                    （設定 `Line:EnvironmentLabel`，Azure App Setting `Line__EnvironmentLabel`）
+│   │                                    只需改這一處就涵蓋全部、日後新增模板自動生效。標記同時加在 **altText**（通知列）
+│   │                                    與 **header 第一行**（點開後）—— 只加一個會出現「通知列看得出是測試、點開看不出來」；
+│   │                                    正式站不設此值，輸出完全不變。類別是 static 無 DI，由 `Program.cs` 在 composition root 設定一次
 │   ├── IAttendanceReminderService.cs # 打卡提醒服務介面
 │   ├── AttendanceReminderService.cs  # 打卡提醒協調：時間窗判斷時點（非精確等值）、`batchStart` 冪等閘（一天一槽一次）、過濾對象、推播 LINE
 │   ├── IPaymentReminderService.cs    # 撥款提醒服務介面
