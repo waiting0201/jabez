@@ -84,11 +84,41 @@ public sealed class SettingsHandler(AppDbContext db)
         // 四週彈性工時切換日：日期本身用 Patch 語意（null = 不變更），
         // 「清空」另走 ClearFlexibleWorkStartDate —— 否則退回舊制的意圖表達不出來。
         if (body.ClearFlexibleWorkStartDate == true) entity.FlexibleWorkStartDate = null;
-        else if (body.FlexibleWorkStartDate is not null) entity.FlexibleWorkStartDate = body.FlexibleWorkStartDate.Value.Date;
+        else if (body.FlexibleWorkStartDate is not null)
+            entity.FlexibleWorkStartDate = NormalizeSwitchDate(body.FlexibleWorkStartDate.Value);
 
         await db.SaveChangesAsync();
 
         return new OkObjectResult(ApiResponse.Ok(ToDto(entity), "Settings updated."));
+    }
+
+    /// <summary>
+    /// 四週彈性工時切換日的驗證：**必須是未來某個月的 1 號**（規格 §10.5）。
+    ///
+    /// 兩條限制各有理由，都不是形式規定：
+    /// <list type="number">
+    ///   <item><b>不可回溯</b> —— 判定基準是「該筆資料自己的日期」，把切換日往回填會讓舊制建立的單
+    ///     被新制時段重新解讀（staging 實測：一張全日假會憑空多出 17:00–18:00 的假性應出勤）。
+    ///     舊資料**不遷移**是既定決策，這是它的必然後果。</item>
+    ///   <item><b>必須是月初</b> —— 薪資、補休 lot 的效期、排班開放期都是以「月」為單位，
+    ///     切在月中會讓同一個月同時存在兩套工時，對帳時無從解釋。</item>
+    /// </list>
+    ///
+    /// 這裡硬擋而不只靠前端 <c>min</c>：切換日一旦設錯，症狀是**歷史資料悄悄改變**、
+    /// 畫面上看不出異常，發現時通常已經發過一輪薪資。要退回舊制請改送
+    /// <c>ClearFlexibleWorkStartDate = true</c>（那條路徑刻意不驗，隨時可以關掉）。
+    /// </summary>
+    private static DateTime NormalizeSwitchDate(DateTime value)
+    {
+        var d = value.Date;
+
+        if (d.Day != 1)
+            throw AppException.BadRequest("四週彈性工時切換日必須是某個月的 1 號 —— 薪資與補休效期都以月為單位，切在月中會讓同一個月存在兩套工時。");
+
+        if (d <= Clock.Now.Date)
+            throw AppException.BadRequest("四週彈性工時切換日必須是未來的月份 —— 回溯設定會讓切換日之前建立的請假、打卡、加班資料被新制重新解讀，且畫面上看不出異常。");
+
+        return d;
     }
 
     /// <summary>

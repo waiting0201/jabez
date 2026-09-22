@@ -15,6 +15,13 @@
 > [attendance-reminder.md](attendance-reminder.md)；本檔描述的是**切換後**的樣子。
 > 那幾份現況檔已就落地項目補上「兩制並存、由切換日決定」的說明。
 >
+> **切換的操作位置**：〈系統設定〉頁最下方的「四週彈性工時」卡片（需 `settings:write`）。
+> 該卡片**刻意獨立於上方的表單**、自己送出 —— 這是高後果且極少動的制度開關，
+> 不該因為有人來改「每月加班時數限制」順手按了儲存就被一起送出去。
+> 後端 `SettingsHandler.NormalizeSwitchDate` 硬擋「必須是未來某月的 1 號」（不是只靠前端 `min`）：
+> 切換日設錯的症狀是**歷史資料悄悄改變、畫面上看不出異常**，發現時通常已經發過一輪薪資。
+> 「退回舊制」那條路徑刻意不驗任何條件，出事時要能隨時關掉。
+>
 > **切換前的非程式待辦**（缺任一項會出事，詳見 §10.5 與實作計畫）：
 > 正式站 App Setting `ShiftScheduleReminderCron` 尚未建立（不存在時 Function 註冊失敗）／
 > 切換同時放寬兩站的 `AttendanceReminderCron`／建 6 個 `shift_change` ApprovalItem／

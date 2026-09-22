@@ -111,4 +111,89 @@
     </div>
 
   </form>
+
+  <!-- 四週彈性工時：刻意放在 form 之外、獨立送出。
+       這是高後果、極少動的制度開關，不該因為有人來改「加班時數限制」順手按了儲存就被一起送出去。 -->
+  <div class="card border-0 shadow-sm mt-6">
+    <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+      <svg class="sa-icon text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#calendar"></use>
+      </svg>
+      四週彈性工時
+    </div>
+    <div class="card-body">
+
+      <div class="mb-4">
+        <div class="text-muted small mb-1">目前狀態</div>
+        @if (switchDate()) {
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="badge bg-success-subtle text-success-emphasis">已設定切換日</span>
+            <span class="fw-600 font-monospace">{{ switchDate() }}</span>
+            <span class="text-muted small">起適用 09:00–18:00（午休 12:30–13:30）</span>
+          </div>
+        } @else {
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="badge bg-secondary-subtle text-secondary">尚未切換</span>
+            <span class="text-muted small">全系統維持現行 08:00–17:00（午休 12:00–13:00）</span>
+          </div>
+        }
+      </div>
+
+      <!-- ⚠ .alert 是 flex 容器（見 tailwind.css）：內容必須包成**單一**子元素，
+           直接放多段文字會讓每一段各自變成 flex item、被擠成窄欄 -->
+      <div class="alert alert-info small mb-4">
+        <svg class="sa-icon shrink-0 mt-0.5" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+        <div>
+          <div class="fw-600 mb-1">切換日之前的資料不會被改動</div>
+          <p class="mb-2">
+            判定基準是「<strong>該筆資料自己的日期</strong>」—— 請假看起始日、打卡看出勤日、薪資看所屬月份、加班看加班日。
+            故切換之後，切換日以前的單據與薪資仍維持舊制的樣子。
+          </p>
+          <p class="mb-0">
+            切換日<strong>只能選未來月份的 1 號</strong>：回溯設定會讓舊制建立的資料被新制重新解讀（畫面上看不出異常）；
+            切在月中則會讓同一個月同時存在兩套工時，對帳時無從解釋。
+          </p>
+        </div>
+      </div>
+
+      @if (switchError()) {
+        <div class="alert alert-danger small"><div>{{ switchError() }}</div></div>
+      }
+
+      <div class="flex flex-wrap items-end gap-2">
+        <div>
+          <label class="form-label fw-500" for="flexibleWorkStartDate">
+            {{ switchDate() ? '改為' : '設定切換日' }}
+          </label>
+          <input type="date" class="form-control" id="flexibleWorkStartDate" style="max-width: 200px"
+                 [min]="minSwitchDate"
+                 [value]="switchInput()" (input)="switchInput.set($any($event.target).value)"
+                 [disabled]="switching()">
+        </div>
+        <button type="button" class="btn btn-primary inline-flex items-center gap-1"
+                [disabled]="!switchInput() || switching()" (click)="applySwitchDate()">
+          @if (switching()) {
+            <span class="spinner-border spinner-border-sm" role="status"></span>
+          } @else {
+            <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#check"></use></svg>
+          }
+          {{ switchDate() ? '變更切換日' : '啟用四週彈性工時' }}
+        </button>
+        @if (switchDate()) {
+          <button type="button" class="btn btn-outline-danger inline-flex items-center gap-1"
+                  [disabled]="switching()" (click)="clearSwitchDate()">
+            <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#rotate-ccw"></use></svg>
+            退回現行制度
+          </button>
+        }
+      </div>
+
+      <div class="text-muted small mt-3">
+        啟用前請先完成：① 指派 6 個排班相關權限碼給對應角色（指派後請該員重新登入）
+        ② 於〈簽核流程設定〉建立改班申請的流程 ③ 執行期初補休轉換腳本
+        ④ 放寬打卡提醒的排程時段。詳見開發文件。
+      </div>
+
+    </div>
+  </div>
 </div>

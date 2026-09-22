@@ -20,4 +20,9 @@ export interface SystemSettings {
   approvalLineEnabled: boolean;  // 是否推播簽核流程相關 LINE 訊息
   // 撥款提醒
   paymentReminderDaysBefore: number; // 預計撥款日提前提醒天數（0-30，預設 3）
+  /**
+   * 四週彈性工時切換日（ISO 字串）；null ＝ 尚未切換，全系統維持現行 08:00–17:00 制。
+   * 判定基準是**該筆資料自己的日期**，故切換後的歷史資料仍走舊制。
+   */
+  flexibleWorkStartDate: string | null;
 }
