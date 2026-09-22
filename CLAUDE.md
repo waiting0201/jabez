@@ -542,6 +542,12 @@ Api/
 │   ├── LeaveDayExpander.cs            # 請假單「逐日展開」單一真相（Date + Hours + **Segment / Start / End 逐日時段**，2026-09 新增）：供銷假逐日勾選、核准後重算 Hours、出缺勤報表請假合併與時段顯示；時段代碼 full / am / pm / partial（`Constants.LeaveDaySegments`）一律 clamp 在 08:00–17:00，Hours 沿用既有整點差語意故與 End−Start 不必然等長；假別分類常數 WorkingDayLeaveTypes / TimeUnitMap 亦收斂於此，LeaveRequestHandler 轉引
 │   ├── ExpectedWorkWindow.cs          # 「該日應出勤（可打卡）時段」單一真相（2026-09 新增，純函式無 I/O，比照 OvertimePayCalculator）：以 08:00–17:00 扣掉當日請假時段，含跨午休正規化（上午假 08–12 → 13:00 開工、下午假 13–17 → 12:00 下班），中段小時假刻意不縮；Start/End 為 null＝當日免出勤。**兩個 AdjustedByLeave 旗標不可省**：無請假時 End 恆為 17:00，補下班卡若無條件取 min 會把 09:00 上班者從 18:00 壓成 17:00。消費點：出缺勤報表應出勤欄 + 未打卡判定、登入自動補卡
 │   ├── AttendanceLeaveMerger.cs       # 出缺勤報表「打卡 ∪ 當日請假日 ∪ **缺勤日**」合併單一真相：(員工, 日期) 一列，以 **`RowKind`（clock / leave / absent）** 標示種類 —— 請假列與缺勤列同樣 Id=null，**前端不可再用 Id 判斷**；缺勤列＝工作日無打卡且無請假（今天與未來不算、依 HireDate/ResignDate 夾邊界、展開上限 AbsenceMaxCells=60000）；每列另帶 ExpectedStart/End（走 ExpectedWorkWindow，無請假的工作日為 08:00–17:00、休假日為 null）；逐日時數與時段走 LeaveDayExpander，故採「區間全量載入 → 記憶體合併 → 記憶體切頁」，區間跨度上限 MaxRangeDays=400 天、匯出 pageSize 上限 ExportMaxPageSize=5000。**缺勤判定必須用 leavesByDay 的 Remove 前快照**，否則「有打卡又有請假」的日子會被誤判成缺勤
+│   ├── AutoShiftScheduler.cs          # **逾期未排班者的自動排班（§3.5.1，純函式，2026-09 新增）**：
+│   │                                    候選日優先序 週日→週六→平日、跳過國定假日與活動日、取 4 例 4（或 5）休，
+│   │                                    再跑三條檢核、不過就遞補。⚠ **遞補必須補在違規視窗的「尾端」** ——
+│   │                                    滾動視窗每次往後移一天，補在開頭的例假馬上掉出下一個視窗，
+│   │                                    於是每個視窗都要再補一次（實測會從 4 天例假一路補到 11 天）。
+│   │                                    ⚠ **排不出合法班表時一律留白不寫入**，交人工處理 —— 例假違規罰鍰 2 萬～100 萬
 │   ├── ClockRules.cs                  # **四週彈性工時的打卡規則（純函式，2026-09 新增）**：打卡窗 08:30／準時界線 09:30（超過仍可打、只記遲到）／
 │   │                                    應下班時間＝實際上班打卡＋9 小時（請上午半天假者＋4 小時，午休已過不再扣）／
 │   │                                    下班三態（早退・正常・逾時，以 T 與 T+30 分為界）／半天假 13:00 交接容許帶 ±5 分。

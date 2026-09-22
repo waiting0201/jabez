@@ -131,6 +131,7 @@ var host = new HostBuilder()
         services.AddScoped<IShiftScheduleReadService, ShiftScheduleReadService>();
         services.AddScoped<IWorkdayScheduleProvider, WorkdayScheduleProvider>();
         services.AddScoped<IShiftScheduleReminderService, ShiftScheduleReminderService>();
+        services.AddScoped<IAutoShiftScheduleService, AutoShiftScheduleService>();
         services.AddScoped<ITravelPaymentRequestReadService, TravelPaymentRequestReadService>();
         services.AddScoped<IAttendanceReminderLogReadService, AttendanceReminderLogReadService>();
         services.AddScoped<IEmployeeProfileReadService, EmployeeProfileReadService>();

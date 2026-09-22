@@ -365,7 +365,9 @@ public sealed class AppRouter(
 
             // 活動日（主管排定；疊加在日別之上的旗標）
             ("POST",   ["shift-schedule-reminders", "run"]) => await shiftScheduleReminders.RunAsync(req),
+            ("POST",   ["shift-schedule-reminders", "auto-schedule"]) => await shiftScheduleReminders.AutoScheduleApplyAsync(req),
             ("GET",    ["shift-schedule-reminders", "clock-out-preview"]) => await shiftScheduleReminders.ClockOutPreviewAsync(req),
+            ("GET",    ["shift-schedule-reminders", "auto-schedule-preview"]) => await shiftScheduleReminders.AutoSchedulePreviewAsync(req),
             ("GET",    ["activity-days"])                 => await activityDays.GetAllAsync(req),
             ("POST",   ["activity-days"])                 => await activityDays.CreateAsync(req),
             ("PUT",    ["activity-days", var adId])       => await activityDays.UpdateAsync(req, adId),

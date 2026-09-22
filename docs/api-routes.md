@@ -229,6 +229,8 @@
 | Method | 路徑 | 權限 | 說明 |
 |---|---|---|---|
 | POST | `/shift-schedule-reminders/run?kind=…[&send=true]` | Superadmin（Handler 內驗 `is_superadmin`） | 手動觸發排班提醒。`kind` ＝ `schOpen` / `schPending` / `schDeadline` / `schAuto`。**預設乾跑**：只回收件人名單、不發送、不寫紀錄；要真的推播必須明確帶 `send=true` |
+| POST | `/shift-schedule-reminders/auto-schedule?year=&month=[&userId=][&apply=true]` | Superadmin | 補跑自動排班。**預設乾跑**，要真的寫入必須帶 `apply=true`。與 26 號排程的差別：**不發任何通知** —— 排程沒跑到要補救時，通知與排班該分開處理 |
+| GET | `/shift-schedule-reminders/auto-schedule-preview?year=&month=[&userId=]` | Superadmin | **唯讀**預覽自動排班結果：每位逾期者排出來的例假／休假日期，以及**排不出合法班表**者與其原因 |
 | GET | `/shift-schedule-reminders/clock-out-preview?at=HH:mm` | Superadmin | **唯讀**預覽個人化下班提醒：今天誰打了上班卡沒打下班卡、各自的提醒時點、此刻誰會被推、誰因每人每日去重而跳過。`at` 可模擬時刻，不必等到 17:33 才驗得了 |
 
 > ⚠️ **手動觸發為何預設乾跑**：這支端點的作用就是對外發 LINE，誤觸會讓真實同仁收到看不懂的通知，

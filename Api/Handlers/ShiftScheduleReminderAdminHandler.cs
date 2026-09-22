@@ -23,6 +23,7 @@ public sealed class ShiftScheduleReminderAdminHandler(
     IShiftScheduleReminderService service,
     IAttendanceReminderReadService reminderReader,
     IWorkdayScheduleProvider workdaySchedule,
+    IAutoShiftScheduleService autoScheduler,
     IJwtService jwtService)
 {
     public async Task<IActionResult> RunAsync(HttpRequest req)
@@ -107,5 +108,57 @@ public sealed class ShiftScheduleReminderAdminHandler(
             WouldPushCount = rows.Count(r => r.WouldPushNow),
             Rows = rows,
         }));
+    }
+
+    /// <summary>
+    /// **唯讀**預覽自動排班（GET /shift-schedule-reminders/auto-schedule-preview?year=&amp;month=[&amp;userId=]）。
+    ///
+    /// 只算不寫：對每位逾期者跑一次演算法，回傳排出來的例假／休假日期，
+    /// 以及**排不出合法班表**者與其原因（那些人一律留白不寫入，須人工處理）。
+    /// 上線前可用這支確認演算法在真實的國定假日／活動日分佈下排得出東西。
+    /// </summary>
+    public async Task<IActionResult> AutoSchedulePreviewAsync(HttpRequest req)
+    {
+        var principal = await jwtService.ValidateRequestAsync(req)
+                        ?? throw AppException.Unauthorized("Invalid token.");
+        if (principal.FindFirst("is_superadmin")?.Value != "true")
+            throw AppException.Forbidden("僅 Superadmin 可檢視。");
+
+        var now = Clock.Now;
+        int year  = int.TryParse(req.Query["year"],  out var y) ? y : now.AddMonths(1).Year;
+        int month = int.TryParse(req.Query["month"], out var m) ? m : now.AddMonths(1).Month;
+        if (month is < 1 or > 12) throw AppException.BadRequest("月份必須介於 1 ~ 12。");
+
+        Guid? onlyUser = Guid.TryParse(req.Query["userId"], out var uid) ? uid : null;
+
+        var result = await autoScheduler.RunAsync(year, month, dryRun: true, onlyUserId: onlyUser);
+        return new OkObjectResult(ApiResponse.Ok(result));
+    }
+
+    /// <summary>
+    /// 實際執行自動排班（POST /shift-schedule-reminders/auto-schedule?year=&amp;month=[&amp;userId=][&amp;apply=true]）。
+    ///
+    /// **預設仍是乾跑**，要真的寫入必須明確帶 <c>apply=true</c>（同 run 端點的 send=true 慣例）。
+    /// 與 26 號排程的差別：這支**不發任何通知**，純粹補跑排班 ——
+    /// 排程沒跑到要補救時，通知與排班該分開處理。
+    /// </summary>
+    public async Task<IActionResult> AutoScheduleApplyAsync(HttpRequest req)
+    {
+        var principal = await jwtService.ValidateRequestAsync(req)
+                        ?? throw AppException.Unauthorized("Invalid token.");
+        if (principal.FindFirst("is_superadmin")?.Value != "true")
+            throw AppException.Forbidden("僅 Superadmin 可執行。");
+
+        var now = Clock.Now;
+        int year  = int.TryParse(req.Query["year"],  out var y) ? y : now.AddMonths(1).Year;
+        int month = int.TryParse(req.Query["month"], out var m) ? m : now.AddMonths(1).Month;
+        if (month is < 1 or > 12) throw AppException.BadRequest("月份必須介於 1 ~ 12。");
+
+        Guid? onlyUser = Guid.TryParse(req.Query["userId"], out var uid) ? uid : null;
+        bool apply = req.Query["apply"].ToString() == "true";
+
+        var result = await autoScheduler.RunAsync(year, month, dryRun: !apply, onlyUserId: onlyUser);
+        return new OkObjectResult(ApiResponse.Ok(result,
+            apply ? "自動排班已寫入（未發送任何通知）。" : "乾跑完成（未寫入）。帶 apply=true 才會真的寫入。"));
     }
 }

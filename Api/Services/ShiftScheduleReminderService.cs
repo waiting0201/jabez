@@ -25,8 +25,8 @@ namespace Jabez.Api.Services;
 /// </summary>
 public sealed class ShiftScheduleReminderService(
     AppDbContext db,
-    IAttendanceReminderReadService reminderReader,
     IWorkdayScheduleProvider workdaySchedule,
+    IAutoShiftScheduleService autoScheduler,
     ILineService lineService,
     ILogger<ShiftScheduleReminderService> logger) : IShiftScheduleReminderService
 {
@@ -57,6 +57,16 @@ public sealed class ShiftScheduleReminderService(
 
         // 目標月份：10 / 20 / 25 號排的是**次月**；26 號通知的是前一日自動排好的那個月（也是次月）
         var target = new DateTime(now.Year, now.Month, 1).AddMonths(1);
+
+        // 26 號：**先自動排班、再通知**。順序不可顛倒 ——
+        // 收件人是「被自動排班者」（ShiftScheduleMonth.Status = auto），排班沒跑就一個人都挑不到。
+        if (kind == "schAuto" && !dryRun)
+        {
+            var auto = await autoScheduler.RunAsync(target.Year, target.Month, dryRun: false, ct: ct);
+            logger.LogInformation(
+                "[ShiftScheduleReminder] 自動排班完成：{Year}/{Month} assigned={Assigned} failed={Failed}",
+                auto.Year, auto.Month, auto.Assigned, auto.Failed);
+        }
 
         var recipients = await ResolveRecipientsAsync(kind, target, ct);
 
