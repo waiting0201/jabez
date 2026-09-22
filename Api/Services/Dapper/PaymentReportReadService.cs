@@ -111,17 +111,34 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
             where.Append($" AND {parentAlias}.{dateCol} < DATEADD(day, 1, @DateTo)");
 
         if (string.IsNullOrEmpty(paymentStatus)) return where.ToString();
-        if (installmentsTable == null || installmentsFk == null) return where.ToString();  // 沖銷類無 installments，忽略
 
-        if (paymentStatus == "paid")
+        // ⚠ 沖銷類目前傳 null（`WriteOffInstallments` 於 2026-07 加入時漏更新此處），
+        //   故付款狀態篩選對 writeoff 是 **no-op**：選「已撥款」會連未撥的沖銷單一起出現。
+        //   沒有順手修掉，是因為該類別的 PaidAt 取的是母預支單 `RefundedAt`＝**員工退錢給公司**，
+        //   而 WriteOffInstallments 是**公司補撥超支差額給員工**，兩個相反的金流不能互換；
+        //   要修得先釐清雙金流語意，屬另一張單。
+        if (installmentsTable == null || installmentsFk == null) return where.ToString();
+
+        string Exists(string extra = "")
+            => $"EXISTS (SELECT 1 FROM {installmentsTable} i WHERE i.{installmentsFk} = {parentAlias}.Id{extra})";
+
+        // 四態（2026-09 由二態擴充）。原本的 `unpaid` 語意是「非全額撥款」（含部分撥款），
+        // 現改為「完全沒撥」，部分撥款另立一態 —— 財務要能單獨撈出「撥到一半」的單。
+        switch (paymentStatus)
         {
-            where.Append($" AND EXISTS (SELECT 1 FROM {installmentsTable} i WHERE i.{installmentsFk} = {parentAlias}.Id)");
-            where.Append($" AND NOT EXISTS (SELECT 1 FROM {installmentsTable} i WHERE i.{installmentsFk} = {parentAlias}.Id AND i.PaidAt IS NULL)");
-        }
-        else if (paymentStatus == "unpaid")
-        {
-            where.Append($" AND (NOT EXISTS (SELECT 1 FROM {installmentsTable} i WHERE i.{installmentsFk} = {parentAlias}.Id)");
-            where.Append($"      OR EXISTS (SELECT 1 FROM {installmentsTable} i WHERE i.{installmentsFk} = {parentAlias}.Id AND i.PaidAt IS NULL))");
+            case "paid":                                   // 有分期且每一期都已撥
+                where.Append($" AND {Exists()}");
+                where.Append($" AND NOT {Exists(" AND i.PaidAt IS NULL")}");
+                break;
+
+            case "partial":                                // 有撥過、但還有沒撥的
+                where.Append($" AND {Exists(" AND i.PaidAt IS NOT NULL")}");
+                where.Append($" AND {Exists(" AND i.PaidAt IS NULL")}");
+                break;
+
+            case "unpaid":                                 // 完全沒撥（含尚未建立分期者）
+                where.Append($" AND NOT {Exists(" AND i.PaidAt IS NOT NULL")}");
+                break;
         }
         return where.ToString();
     }
@@ -961,5 +978,136 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
             .ToList();
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
         return new PagedResult<PaymentReportDto>(withItems, total, page, pageSize, Math.Max(1, totalPages));
+    }
+
+    // ========================================================================
+    // 待撥款清單（一期一列）—— 2026-09 新增
+    //
+    // 與上面所有查詢的粒度不同：那些是「一單一列」，這支是 **一期一列**。
+    // 預計撥款日是 installment 層級的欄位，一單一列表達不出「哪一期到期」，
+    // 而財務排款要回答的正是「這週要撥哪幾筆、各多少錢」。
+    //
+    // 骨架沿用 PaymentReminderReadService.GetUpcomingAsync（撥款提醒的 UNION），
+    // 但有四個必要差異，不可直接共用那支：
+    //   ① **加部門 scope** —— 提醒服務刻意沒有（推給財務全公司），這裡是報表必須套
+    //   ② 補 RequestNo（提醒沒撈，但清單要能對回紙本）
+    //   ③ 補母單撥款進度（總期數 / 已撥期數 / 未撥金額）
+    //   ④ 分頁
+    //
+    // ⚠ **只撈 approved**（同提醒服務，與上面報表的 != 'draft' 不同）：
+    //   `PATCH /{type}-requests/{id}/installments` 僅開放 approved，
+    //   列出 pending 的單會讓財務點進去卻填不了實際撥款日。
+    //   財務關卡不一定是最後一關，所以「已有分期但還沒核准」的單確實存在，刻意排除。
+    //
+    // ⚠ travel_write_off **沒有 installments 表**，故天然不會出現在此清單，不是遺漏。
+    // ⚠ ExpectedDate 沒有索引（5 張表只有 (FK, InstallmentNo) 與 PaidAt 索引）。
+    //   現階段資料量小先不加；若正式站變慢，落點是加索引，那需要 migration。
+    // ========================================================================
+
+    /// <summary>待撥款清單的 5 個 UNION 分支定義。</summary>
+    private static readonly (string AppType, string Table, string Fk, string Parent, string ParentAlias,
+                             string TotalCol, string UserFk, string ProjectJoin)[] DueSources =
+    [
+        ("payment_request", "PaymentRequestInstallments",      "PaymentRequestId",
+         "PaymentRequests",       "p", "TotalAmount", "SubmittedById", "LEFT JOIN Projects proj ON p.ProjectId = proj.Id"),
+        ("advance",         "AdvanceRequestInstallments",      "AdvanceRequestId",
+         "AdvanceRequests",       "p", "GrandTotal",  "SubmittedById", "LEFT JOIN Projects proj ON p.ProjectId = proj.Id"),
+        ("travel",          "TravelRequestInstallments",       "TravelRequestId",
+         "TravelRequests",        "p", "GrandTotal",  "EmployeeId",    "LEFT JOIN Projects proj ON p.ProjectId = proj.Id"),
+        ("travel_payment",  "TravelPaymentRequestInstallments", "TravelPaymentRequestId",
+         "TravelPaymentRequests", "p", "GrandTotal",  "EmployeeId",    "LEFT JOIN Projects proj ON p.ProjectId = proj.Id"),
+        // 沖銷單自己沒有 ProjectId，全站一律透過母預支單回扣專案
+        ("write_off",       "WriteOffInstallments",            "WriteOffRecordId",
+         "WriteOffRecords",       "p", "GrandTotal",  "SubmittedById",
+         "JOIN AdvanceRequests par ON p.AdvanceRequestId = par.Id LEFT JOIN Projects proj ON par.ProjectId = proj.Id"),
+    ];
+
+    /// <summary>報表的 kebab 類別 → 待撥款清單的 snake_case appType（null ＝ 不限）。</summary>
+    private static string? DueAppTypeFor(string category) => category switch
+    {
+        CategoryPayment       => "payment_request",
+        CategoryAdvance       => "advance",
+        CategoryTravel        => "travel",
+        CategoryTravelPayment => "travel_payment",
+        CategoryWriteOff      => "write_off",
+        _                     => null,   // all / travel-writeoff（後者無 installments，靠下方回空清單）
+    };
+
+    public async Task<PagedResult<DuePaymentRowDto>> GetDuePagedAsync(
+        ProjectAccessScope scope,
+        string category,
+        int page, int pageSize,
+        DateOnly? dueFrom = null, DateOnly? dueTo = null, string? installmentStatus = null)
+    {
+        // 出差預支沖銷沒有 installments 表 —— 明確回空清單，而不是讓它悄悄落進 'all' 的 UNION
+        if (category == CategoryTravelWriteOff)
+            return new PagedResult<DuePaymentRowDto>([], 0, page, pageSize, 0);
+
+        var wanted = DueAppTypeFor(category);
+        var sources = wanted is null ? DueSources : DueSources.Where(s => s.AppType == wanted).ToArray();
+
+        var parameters = new DynamicParameters();
+        parameters.Add("Skip", (page - 1) * pageSize);
+        parameters.Add("Take", pageSize);
+        if (dueFrom.HasValue) parameters.Add("DueFrom", dueFrom.Value.ToDateTime(TimeOnly.MinValue));
+        if (dueTo.HasValue)   parameters.Add("DueTo",   dueTo.Value.ToDateTime(TimeOnly.MinValue));
+        if (!scope.SeeAll && scope.AllowedDepartmentIds.Count > 0)
+            parameters.Add("AllowedDeptIds", scope.AllowedDepartmentIds);
+
+        var branches = sources.Select(s => DueBranchSql(s, dueFrom, dueTo, installmentStatus, scope));
+        var union    = string.Join("\n\nUNION ALL\n\n", branches);
+
+        var countSql = $"SELECT COUNT(*) FROM (\n{union}\n) t";
+        int total = await db.ExecuteScalarAsync<int>(countSql, parameters);
+
+        var sql = $"""
+            SELECT * FROM (
+            {union}
+            ) t
+            ORDER BY t.ExpectedDate, t.ApplicationType, t.ApplicationId, t.InstallmentNo
+            OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
+            """;
+
+        var rows = (await db.QueryAsync<DuePaymentRowDto>(sql, parameters)).ToList();
+        var totalPages = total == 0 ? 0 : (int)Math.Ceiling(total / (double)pageSize);
+        return new PagedResult<DuePaymentRowDto>(rows, total, page, pageSize, totalPages);
+    }
+
+    private static string DueBranchSql(
+        (string AppType, string Table, string Fk, string Parent, string ParentAlias,
+         string TotalCol, string UserFk, string ProjectJoin) s,
+        DateOnly? dueFrom, DateOnly? dueTo, string? installmentStatus, ProjectAccessScope scope)
+    {
+        var where = new StringBuilder($" WHERE p.ApprovalStatus = 'approved'");
+
+        if (dueFrom.HasValue) where.Append(" AND CAST(i.ExpectedDate AS DATE) >= @DueFrom");
+        if (dueTo.HasValue)   where.Append(" AND CAST(i.ExpectedDate AS DATE) <= @DueTo");
+
+        // 本期狀態是二元（這一期撥了沒），母單的四態進度另由 PaidInstallments / TotalInstallments 表達
+        if (installmentStatus == "unpaid") where.Append(" AND i.PaidAt IS NULL");
+        else if (installmentStatus == "paid") where.Append(" AND i.PaidAt IS NOT NULL");
+
+        where.Append(DeptScopeClause(scope));
+
+        return $"""
+            SELECT '{s.AppType}' AS ApplicationType,
+                   i.{s.Fk}      AS ApplicationId,
+                   p.RequestNo,
+                   u.Name        AS EmployeeName,
+                   proj.Code     AS ProjectCode,
+                   proj.Name     AS ProjectName,
+                   i.InstallmentNo,
+                   (SELECT COUNT(*) FROM {s.Table} x WHERE x.{s.Fk} = i.{s.Fk})                            AS TotalInstallments,
+                   (SELECT COUNT(*) FROM {s.Table} x WHERE x.{s.Fk} = i.{s.Fk} AND x.PaidAt IS NOT NULL)   AS PaidInstallments,
+                   i.ExpectedDate, i.PaidAt, i.Amount, i.Note,
+                   p.{s.TotalCol} AS ParentTotalAmount,
+                   ISNULL((SELECT SUM(x.Amount) FROM {s.Table} x
+                           WHERE x.{s.Fk} = i.{s.Fk} AND x.PaidAt IS NULL), 0)                             AS ParentUnpaidAmount
+            FROM {s.Table} i
+            JOIN {s.Parent} p ON i.{s.Fk} = p.Id
+            JOIN Users u      ON p.{s.UserFk} = u.Id
+            {s.ProjectJoin}
+            {where}
+            """;
     }
 }

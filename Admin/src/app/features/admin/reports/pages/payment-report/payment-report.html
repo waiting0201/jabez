@@ -7,13 +7,35 @@
       </svg>
       <h4 class="mb-0">款項統計</h4>
     </div>
-    <button class="btn btn-outline inline-flex items-center gap-1"
-            [disabled]="exporting() || totalCount() === 0"
-            (click)="exportExcel()">
-      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#download"></use></svg>
-      {{ exporting() ? '匯出中...' : '匯出' }}
-    </button>
+    @if (activeTab() === 'report') {
+      <button class="btn btn-outline inline-flex items-center gap-1"
+              [disabled]="exporting() || totalCount() === 0"
+              (click)="exportExcel()">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#download"></use></svg>
+        {{ exporting() ? '匯出中...' : '匯出' }}
+      </button>
+    } @else {
+      <button class="btn btn-outline inline-flex items-center gap-1"
+              [disabled]="dueExporting() || dueTotalCount() === 0"
+              (click)="exportDueExcel()">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#download"></use></svg>
+        {{ dueExporting() ? '匯出中...' : '匯出' }}
+      </button>
+    }
   </div>
+
+  <!-- 頁籤（pill button pattern，見 docs/frontend-design.md §5）。
+       兩個頁籤的欄位完全不同（一單一列 12 欄 vs 一期一列 10 欄），故不共用表格。 -->
+  <div class="flex gap-1 mb-4">
+    <button type="button" class="btn btn-sm"
+            [class]="activeTab() === 'report' ? 'btn-primary' : 'btn-outline-secondary'"
+            (click)="switchTab('report')">統計報表</button>
+    <button type="button" class="btn btn-sm"
+            [class]="activeTab() === 'due' ? 'btn-primary' : 'btn-outline-secondary'"
+            (click)="switchTab('due')">待撥款清單</button>
+  </div>
+
+  @if (activeTab() === 'report') {
 
   <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
@@ -31,8 +53,9 @@
           <select class="form-select" style="width: auto; min-width: 140px"
                   [ngModel]="selectedPaymentStatus()" (ngModelChange)="selectedPaymentStatus.set($event)">
             <option value="">全部付款狀態</option>
-            <option value="paid">已付</option>
-            <option value="unpaid">未付</option>
+            <option value="unpaid">尚未撥款</option>
+            <option value="partial">部分撥款</option>
+            <option value="paid">全部撥款</option>
           </select>
           <div class="inline-flex border rounded-md overflow-hidden">
             <button type="button" class="px-3 py-1.5 text-sm"
@@ -198,4 +221,144 @@
 
     </div>
   </div>
+  }
+
+  @if (activeTab() === 'due') {
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+
+      <!-- 篩選列 -->
+      <div class="px-4 py-3 border-b">
+        <div class="flex flex-wrap items-end gap-2">
+          <div>
+            <label class="form-label small text-muted mb-1">類別</label>
+            <select class="form-select" style="width: auto; min-width: 140px"
+                    [ngModel]="dueCategory()" (ngModelChange)="dueCategory.set($event)">
+              @for (opt of categoryOptions; track opt.value) {
+                <option [value]="opt.value">{{ opt.label }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label class="form-label small text-muted mb-1">預計撥款日（起）</label>
+            <input type="date" class="form-control" style="width: auto"
+                   [ngModel]="dueFrom()" (ngModelChange)="dueFrom.set($event)">
+          </div>
+          <div>
+            <label class="form-label small text-muted mb-1">預計撥款日（迄）</label>
+            <input type="date" class="form-control" style="width: auto"
+                   [ngModel]="dueTo()" (ngModelChange)="dueTo.set($event)">
+          </div>
+          <div>
+            <label class="form-label small text-muted mb-1">本期狀態</label>
+            <select class="form-select" style="width: auto; min-width: 120px"
+                    [ngModel]="dueStatus()" (ngModelChange)="dueStatus.set($event)">
+              <option value="unpaid">尚未撥款</option>
+              <option value="paid">已撥款</option>
+              <option value="all">全部</option>
+            </select>
+          </div>
+          <button class="btn btn-primary inline-flex items-center gap-1" [disabled]="dueLoading()" (click)="searchDue()">
+            <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#search"></use></svg>
+            篩選
+          </button>
+        </div>
+        <div class="text-muted small mt-2">
+          一期一列：同一張單有多期分期撥款時，會拆成多列呈現。僅列出<strong>已核准</strong>的申請
+          —— 未核准的單無法填寫實際撥款日。出差預支沖銷無分期撥款，不會出現在此清單。
+        </div>
+      </div>
+
+      <!-- 表格 -->
+      <div class="table-responsive">
+        <!-- table-sticky-last：把「操作」欄釘在右側。表格比容器寬（專案名稱很長），
+             不釘的話財務每看一筆就要往右捲一次才點得到「簽核作業」。 -->
+        <table class="table table-hover table-sticky-last mb-0 min-w-[1100px]">
+          <thead class="table-light">
+            <tr>
+              <th>預計撥款日</th>
+              <th>單號</th>
+              <th>類型</th>
+              <th>申請人</th>
+              <th class="hidden lg:table-cell">專案</th>
+              <th class="text-center">期數</th>
+              <th class="text-right">本期金額</th>
+              <th>實際撥款日</th>
+              <th class="text-right hidden md:table-cell">母單未撥</th>
+              <th class="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of dueRows(); track r.applicationType + '-' + r.applicationId + '-' + r.installmentNo) {
+              <tr>
+                <td class="font-monospace small">{{ r.expectedDate }}</td>
+                <td class="font-monospace small">{{ r.requestNo }}</td>
+                <td><span class="badge bg-secondary-subtle text-secondary">{{ dueTypeLabels[r.applicationType] ?? r.applicationType }}</span></td>
+                <td>{{ r.employeeName }}</td>
+                <td class="hidden lg:table-cell">
+                  <div class="font-monospace small fw-500">{{ r.projectCode }}</div>
+                  @if (r.projectName) { <div class="text-muted small">{{ r.projectName }}</div> }
+                </td>
+                <td class="text-center small">
+                  {{ r.installmentNo }} / {{ r.totalInstallments }}
+                  @if (r.totalInstallments > 1) {
+                    <div class="text-muted" style="font-size: .75rem">已撥 {{ r.paidInstallments }} 期</div>
+                  }
+                </td>
+                <td class="text-right fw-500">{{ r.amount | number:'1.0-0' }}</td>
+                <td>
+                  @if (r.paidAt) {
+                    <span class="badge bg-success-subtle text-success-emphasis">{{ r.paidAt }}</span>
+                  } @else {
+                    <span class="text-muted small">尚未撥款</span>
+                  }
+                </td>
+                <td class="text-right hidden md:table-cell">{{ r.parentUnpaidAmount | number:'1.0-0' }}</td>
+                <td class="text-right" style="white-space: nowrap">
+                  <!-- ⚠ 無 approval-tasks:read 者不渲染連結：該路由掛該權限碼，
+                       點下去會被 permissionGuard 導到 /error/403。 -->
+                  @if (canOpenApproval) {
+                    <a [href]="approvalUrl(r)" target="_blank" rel="noopener"
+                       class="btn btn-sm btn-ghost-primary inline-flex items-center gap-1" title="於新分頁開啟簽核作業">
+                      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#external-link"></use></svg>
+                      簽核作業
+                    </a>
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="10" class="text-center text-muted py-4">
+                  {{ dueSearched() ? '此區間內沒有符合條件的撥款期數。' : '請選擇預計撥款日區間後按「篩選」。' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+          @if (dueRows().length > 0) {
+            <tfoot>
+              <tr class="table-light">
+                <td colspan="6" class="text-right fw-500 small">本頁未撥金額合計</td>
+                <td class="text-right fw-600">{{ dueUnpaidTotal() | number:'1.0-0' }}</td>
+                <td colspan="3"></td>
+              </tr>
+            </tfoot>
+          }
+        </table>
+      </div>
+
+      @if (dueTotalPages() > 1) {
+        <div class="flex items-center justify-between px-4 py-3 border-t">
+          <span class="text-muted small">共 {{ dueTotalCount() }} 筆，第 {{ duePage() }} / {{ dueTotalPages() }} 頁</span>
+          <div class="flex gap-1">
+            <button class="btn btn-sm btn-outline" [disabled]="duePage() <= 1" (click)="goToDuePage(duePage() - 1)">上一頁</button>
+            <button class="btn btn-sm btn-outline" [disabled]="duePage() >= dueTotalPages()" (click)="goToDuePage(duePage() + 1)">下一頁</button>
+          </div>
+        </div>
+      }
+
+    </div>
+  </div>
+  }
 </div>

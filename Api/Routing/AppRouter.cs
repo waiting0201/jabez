@@ -403,6 +403,8 @@ public sealed class AppRouter(
 
             // ── Reports ─────────────────────────────────────────────────────────
             ("GET",    ["reports", "overtime"])                    => await overtimeReport.GetAllAsync(req),
+            // due / export 兩條三段式必須排在兩段式 ["reports","payment"] 之前
+            ("GET",    ["reports", "payment", "due"])              => await paymentReport.GetDueAsync(req),
             ("GET",    ["reports", "payment", "export"])           => await paymentReport.GetExportAsync(req),
             ("GET",    ["reports", "payment"])                     => await paymentReport.GetAllAsync(req),
             ("GET",    ["reports", "project-water-level"])         => await projectWaterLevel.GetAllAsync(req),
@@ -723,6 +725,7 @@ public sealed class AppRouter(
 
             // Reports
             ("GET",    ["reports", "overtime"])                    => PermissionCodes.ReportsOvertimeRead,
+            ("GET",    ["reports", "payment", "due"])              => PermissionCodes.ReportsPaymentRead,
             ("GET",    ["reports", "payment", "export"])           => PermissionCodes.ReportsPaymentRead,
             ("GET",    ["reports", "payment"])                     => PermissionCodes.ReportsPaymentRead,
             ("GET",    ["reports", "project-water-level"])         => PermissionCodes.ReportsProjectWaterLevelRead,

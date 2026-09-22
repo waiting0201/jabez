@@ -842,6 +842,30 @@
     &.table-hover tbody tr:hover td:first-child { background: var(--bg-hover); }
   }
 
+  /* 橫向捲動表格：釘住**最後一欄**，通常是「操作」欄 —— 該欄放的是使用者要按的按鈕，
+     擺在捲動區最右側等於預設看不到、每次都要先往右捲才點得到。
+     與 .table-sticky-first 對稱，兩者可同時掛（識別欄 + 操作欄各釘一邊）。
+     搭配 <table class="table table-sticky-last min-w-[…]"> 使用，外層仍需 .table-responsive */
+  .table.table-sticky-last {
+    border-collapse: separate;   /* 同 sticky-first：collapse 下 sticky 儲存格的邊框不會繪製 */
+    border-spacing: 0;
+
+    th:last-child, td:last-child {
+      position: sticky;
+      right: 0;
+      z-index: 1;
+      background: var(--bg-surface);
+      box-shadow: -1px 0 0 var(--border);   /* 取代被 sticky 吃掉的左邊界 */
+    }
+    thead th:last-child { z-index: 2; background: var(--bg-elevated); }
+    /* sticky 儲存格是不透明的，hover 底色不會透過來，需另外補 */
+    &.table-hover tbody tr:hover td:last-child { background: var(--bg-hover); }
+    /* ⚠ tfoot 的合計列常用 colspan 合併儲存格 —— 那會讓「最後一個 td」不是視覺上的最後一欄，
+       sticky 定位到的是合併後的格子，右下角就會出現一塊沒有背景的空白。
+       故 tfoot 整列一律給底色並取消 sticky，合計列本來就不需要釘。 */
+    tfoot tr td { position: static; background: var(--bg-elevated); box-shadow: none; }
+  }
+
   thead.table-light th, tr.table-light th, tr.table-light td,
   .table thead.table-light th {
     background: var(--bg-elevated);
