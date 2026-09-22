@@ -20,6 +20,12 @@ export const menuItems: MenuItemType[] = [
     url: '/admin/overtime-requests',
     requiredPermission: 'overtime-requests:read',
   },
+  {
+    icon: '/assets/icons/sprite.svg#calendar',
+    label: '個人排班',
+    url: '/admin/shift-schedules',
+    requiredPermission: 'shift-schedule:read',
+  },
 
   { label: '業務管理', isTitle: true },
   {

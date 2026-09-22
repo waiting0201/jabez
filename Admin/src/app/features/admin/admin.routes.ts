@@ -154,6 +154,8 @@ export const ADMIN_ROUTES: Routes = [
 
   // 加班申請
   {path: 'overtime-requests',             component: OvertimeRequestList, canActivate: [permissionGuard], data: {title: '加班申請',       permission: 'overtime-requests:read'}},
+  {path: 'shift-schedules',               canActivate: [permissionGuard], data: {title: '個人排班', permission: 'shift-schedule:read'},
+   loadComponent: () => import('./shift-schedules/pages/shift-schedule-calendar/shift-schedule-calendar').then(m => m.ShiftScheduleCalendar)},
   {path: 'overtime-requests/new',         component: OvertimeRequestForm, canActivate: [permissionGuard], data: {title: '新增加班申請',   permission: 'overtime-requests:write'}},
   {path: 'overtime-requests/:id/edit',    component: OvertimeRequestForm, canActivate: [permissionGuard], data: {title: '編輯加班申請',   permission: 'overtime-requests:read'}},
 

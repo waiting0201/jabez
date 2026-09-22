@@ -1,0 +1,148 @@
+<div class="container-fluid py-3">
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
+      <svg class="sa-icon text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#calendar"></use>
+      </svg>
+      <h4 class="mb-0">個人排班</h4>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <select class="form-select form-select-sm w-full sm:w-auto"
+              [ngModel]="year()" (ngModelChange)="year.set($event); onPeriodChange()">
+        @for (y of yearOptions(); track y) {
+          <option [value]="y">{{ y }} 年</option>
+        }
+      </select>
+      <select class="form-select form-select-sm w-full sm:w-auto"
+              [ngModel]="month()" (ngModelChange)="month.set($event); onPeriodChange()">
+        @for (m of monthOptions; track m) {
+          <option [value]="m">{{ m }} 月</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-12 col-xl-10">
+
+      <!-- 開放狀態：進畫面就講清楚此刻能不能改、為什麼 -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-start gap-2">
+            <svg class="sa-icon" style="stroke: currentColor"
+                 [style.color]="data()?.editable ? 'var(--green)' : 'var(--text-secondary)'">
+              <use [attr.href]="'/assets/icons/sprite.svg#' + (data()?.editable ? 'unlock' : 'lock')"></use>
+            </svg>
+            <div>
+              <div class="fw-600">{{ data()?.editable ? '開放排班' : '目前無法編輯' }}</div>
+              <div class="text-secondary small">{{ data()?.editReason }}</div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4">
+            <div class="text-center">
+              <div class="small text-secondary">例假日</div>
+              <div class="fw-600"
+                   [style.color]="statutoryOffSatisfied() ? 'var(--green)' : 'var(--red)'">
+                {{ statutoryOffCount() }} / {{ requiredStatutoryOff() }}
+              </div>
+            </div>
+            <div class="text-center">
+              <div class="small text-secondary">休假日</div>
+              <div class="fw-600">{{ restDayCount() }} / {{ requiredRestDay() }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 擋存原因與警示：來自後端，前端不自行判斷規則 -->
+      @if (data(); as d) {
+        @if (d.validation.blocks.length) {
+          <div class="alert alert-danger border-0 shadow-sm mb-4">
+            <div class="fw-600 mb-1">尚未符合排班規定，目前無法儲存</div>
+            <ul class="mb-0 ps-3">
+              @for (b of d.validation.blocks; track b) { <li>{{ b }}</li> }
+            </ul>
+          </div>
+        }
+        @if (d.validation.warnings.length) {
+          <div class="alert alert-warning border-0 shadow-sm mb-4">
+            <ul class="mb-0 ps-3">
+              @for (w of d.validation.warnings; track w) { <li>{{ w }}</li> }
+            </ul>
+          </div>
+        }
+      }
+
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent border-bottom flex flex-wrap items-center justify-between gap-2 fw-600">
+          <div class="flex items-center gap-2">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#calendar"></use>
+            </svg>
+            {{ year() }} 年 {{ month() }} 月班表
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3 small text-secondary">
+            <span class="flex items-center gap-1"><i class="shift-swatch shift-swatch--statutory-off"></i>例假日</span>
+            <span class="flex items-center gap-1"><i class="shift-swatch shift-swatch--rest-day"></i>休假日</span>
+            <span class="flex items-center gap-1"><i class="shift-swatch shift-swatch--public-holiday"></i>國定假日</span>
+            <span class="flex items-center gap-1"><i class="shift-swatch shift-swatch--activity"></i>活動日</span>
+          </div>
+        </div>
+
+        <div class="card-body">
+          @if (loading()) {
+            <div class="text-center text-secondary py-5">載入中…</div>
+          } @else {
+            <p class="text-secondary small mb-3">
+              點一下格子切換狀態：上班日 → 例假日 → 休假日。
+              國定假日與已定案的日期不可變更。
+            </p>
+            <!-- 手機採橫向捲動而非壓縮欄寬：7 欄硬塞進 390px 會讓長假名一字一行、列高爆開（見 §3 方案 B） -->
+            <div class="shift-calendar-scroll">
+              <div class="shift-calendar-inner">
+                <full-calendar #calendar [options]="calendarOptions"></full-calendar>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+          <div class="small text-secondary mb-3">
+            <div class="mb-1">1. 請於上方月曆勾選 <b>例假日 {{ requiredStatutoryOff() }} 天</b>
+              與 <b>休假日 {{ requiredRestDay() }} 天</b>。</div>
+            <div class="mb-1">2. <b>例假日</b>依法嚴禁出勤。如遇業主或承辦人於例假日提出公務需求，
+              請禮貌告知將於上班日再行處理；若有急件，請委由當日之職務代理人協助。</div>
+            <div>3. <b>休假日</b>如因緊急公務必要需求需加班者，請務必事前至《加班申請系統》提出加班申請，
+              經主管核准後方可出勤。</div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" class="btn btn-primary"
+                    [disabled]="!data()?.editable || !dirty() || saving()"
+                    (click)="save()">
+              @if (saving()) {
+                <span class="spinner-border spinner-border-sm me-1"></span>
+              }
+              儲存排班
+            </button>
+            <button type="button" class="btn btn-outline-secondary"
+                    [disabled]="!dirty() || saving()" (click)="reset()">
+              還原變更
+            </button>
+            @if (data()?.status === 'auto') {
+              <span class="badge text-bg-warning">系統自動排班</span>
+            } @else if (data()?.status === 'committed') {
+              <span class="badge text-bg-success">已完成排班</span>
+            }
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

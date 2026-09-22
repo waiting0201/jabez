@@ -2170,6 +2170,52 @@ cell.z = '#,##0';
 
 ---
 
+## 12.8 月曆格狀 UI（FullCalendar）
+
+專案的月曆一律用 **FullCalendar `dayGridMonth`**（`@fullcalendar/angular`，peer 支援 Angular 12–21）。
+首個使用點：[個人排班](../Admin/src/app/features/admin/shift-schedules/pages/shift-schedule-calendar/shift-schedule-calendar.ts)。
+FullCalendar v6 的 CSS 由 JS 自動注入，**不需要改 `angular.json`**。
+
+### 用法：借骨架，不用 event 模型
+
+排班這類「一格一個狀態」的需求**不要塞進 FullCalendar 的 event**。做法是：
+
+| 目的 | 掛鉤 |
+|---|---|
+| 每格上色 | `dayCellClassNames: (arg) => string[]`（回傳自訂 class，於元件 `.scss` 內定義） |
+| 每格文字 | `dayCellContent: (arg) => ({html})` |
+| 點擊切換 | `dateClick: (arg) => …`，`arg.dateStr` 已是 `yyyy-MM-dd` |
+| 月份切換 | 頁面自備年／月下拉 + `headerToolbar: false`，切換走 `getApi().gotoDate()` |
+
+狀態本身存在元件的 signal（`Record<yyyy-MM-dd, T>`），不存在 FullCalendar 裡。
+
+### 四個踩過的坑
+
+1. **重繪一定要走 `getApi().render()`**。換掉 options 物件（`{...o}`）**沒有用** ——
+   `dayCellClassNames` / `dayCellContent` 是同一個函式參考，FullCalendar 比對後認定「沒變更」而不重繪。
+   症狀很誤導：狀態、計數、按鈕 disabled 全部正確，**只有格子顏色停在舊值**。
+   取 ref 用 `viewChild<FullCalendarComponent>('calendar')`。
+
+2. **首次渲染吃 `initialDate`，之後才用 `gotoDate()`**。`ngOnInit` 的資料載入早於 view 就緒，
+   此時 `viewChild()` 還是 `undefined`，只靠 `gotoDate` 會讓月曆停在「今天所在的月」而與資料對不上（整片格子查無日期）。
+
+3. **`.fc-daygrid-day-top` 不可 `display: none`**。`dayCellContent` 產生的 HTML 就渲染在這個容器裡面，
+   藏掉它會讓整片格子只剩底色、日期與狀態文字全不見。要改版面請把它調成 `display: block; width: 100%`，
+   並把 `.fc-daygrid-day-number` 的連結樣式拿掉（`color: inherit; text-decoration: none; padding: 0`）。
+
+4. **手機必須橫向捲動，不要壓縮欄寬**。7 欄硬塞進 390px 時，長字串（如國定假日名稱
+   「臺灣光復暨金門古寧頭大捷紀念日」）會一字一行，把列高撐到數百 px。
+   做法同 §3 的表格方案 B：外層 `overflow-x: auto` ＋ **內層給 `min-width`**（排班頁用 `42rem`）——
+   只包 wrapper 是沒有用的。格內長文另以 `-webkit-line-clamp: 2` 截斷，完整內容放 `title`。
+
+### 色彩
+
+格子狀態一律引用 [tailwind.css](../Admin/src/tailwind.css) 的 CIS token（`--red` / `--green` / `--bg-elevated` / `--purple`），
+不寫死色碼。**疊加性的標記**（如「主管排定的活動日」與日別狀態並存）用**左側色條**而不是換底色，
+否則兩個維度會互相蓋掉。圖例與格子必須共用同一組色票。
+
+---
+
 ## 13. 路由與 Lazy Loading
 
 所有 feature 在 `app.routes.ts` 用 `loadComponent` / `loadChildren` lazy load：

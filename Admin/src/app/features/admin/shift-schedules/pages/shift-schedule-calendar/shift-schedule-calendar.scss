@@ -1,0 +1,135 @@
+// FullCalendar 的月格覆寫。
+// 這是專案第一個 FullCalendar 使用點 —— 它自帶的樣式與 CIS 設計 token 不一致，
+// 故在此把邊框、字色、格子高度拉回設計系統；顏色一律引用 tailwind.css 的 CSS 變數，不寫死色碼。
+
+:host {
+  display: block;
+}
+
+::ng-deep {
+  .fc {
+    --fc-border-color: var(--border);
+    --fc-page-bg-color: var(--bg-surface);
+    --fc-neutral-bg-color: var(--bg-elevated);
+    --fc-today-bg-color: transparent;   // 今天另以左上角圓點標示，整格染色會蓋掉排班狀態
+
+    font-family: inherit;
+    color: var(--text-primary);
+  }
+
+  .fc .fc-col-header-cell-cushion {
+    padding: 0.5rem 0;
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .fc .fc-daygrid-day-frame {
+    min-height: 4.5rem;
+    padding: 0.25rem;
+  }
+
+  // 每格的狀態：由 dayCellClassNames 掛上
+  .fc .shift-cell {
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+  }
+
+  .fc .shift-cell--readonly {
+    cursor: not-allowed;
+  }
+
+  .fc .shift-cell--work .fc-daygrid-day-frame {
+    background: var(--bg-surface);
+  }
+
+  .fc .shift-cell--statutory-off .fc-daygrid-day-frame {
+    background: #f0e4e4;
+    box-shadow: inset 0 0 0 1px var(--red);
+  }
+
+  .fc .shift-cell--rest-day .fc-daygrid-day-frame {
+    background: #e7efe1;
+    box-shadow: inset 0 0 0 1px var(--green);
+  }
+
+  .fc .shift-cell--public-holiday .fc-daygrid-day-frame {
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+  }
+
+  // 活動日是疊加旗標（與狀態並存），故用左側色條而不是換底色
+  .fc .shift-cell--activity .fc-daygrid-day-frame {
+    border-left: 3px solid var(--purple);
+  }
+
+  .fc .shift-cell__num {
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  // 長假名（如「臺灣光復暨金門古寧頭大捷紀念日」）最多兩行，其餘以 … 收尾；
+  // 完整名稱掛在 title 上，滑鼠移上去看得到。不截斷會把列高撐到數百 px。
+  .fc .shift-cell__label {
+    font-size: 0.72rem;
+    line-height: 1.2;
+    margin-top: 0.15rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .fc .shift-cell__activity {
+    font-size: 0.68rem;
+    line-height: 1.2;
+    margin-top: 0.15rem;
+    color: var(--purple);
+  }
+
+  // 自己被排為預定人力時加粗，一眼看出「這天我要出勤」
+  .fc .shift-cell__activity--mine {
+    font-weight: 700;
+  }
+
+  // ⚠ `dayCellContent` 產生的 HTML 就渲染在 `.fc-daygrid-day-top` 裡面，
+  // 所以這個容器**不能 display:none**（曾因此整片格子只剩底色、日期與狀態文字全不見）。
+  // 這裡只是把它從「右上角的小連結」改成佔滿整格的區塊。
+  .fc .fc-daygrid-day-top {
+    display: block;
+    width: 100%;
+    flex-direction: unset;
+  }
+
+  .fc .fc-daygrid-day-number {
+    display: block;
+    width: 100%;
+    padding: 0;
+    color: inherit;
+    text-decoration: none;
+    cursor: inherit;
+  }
+}
+
+// 圖例色塊
+.shift-swatch {
+  display: inline-block;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 2px;
+
+  &--statutory-off { background: #f0e4e4; box-shadow: inset 0 0 0 1px var(--red); }
+  &--rest-day      { background: #e7efe1; box-shadow: inset 0 0 0 1px var(--green); }
+  &--public-holiday{ background: var(--bg-elevated); box-shadow: inset 0 0 0 1px var(--border); }
+  &--activity      { background: transparent; border-left: 3px solid var(--purple); border-radius: 0; }
+}
+
+// 手機橫向捲動容器：min-width 讓 7 欄各自至少 ~90px，窄螢幕改為左右滑動。
+// 只包 wrapper 是不夠的 —— 內層若沒有 min-width，表格永遠塞得進容器、overflow-x 不會觸發（同 §3 的表格規範）。
+.shift-calendar-scroll {
+  overflow-x: auto;
+}
+
+.shift-calendar-inner {
+  min-width: 42rem;
+}
