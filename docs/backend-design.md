@@ -1300,6 +1300,12 @@ Line__LoginChannelId              ↔ IConfiguration["Line:LoginChannelId"]
 
 直接在 Function App → Configuration → Application Settings 設定，名稱與 `local.settings.json` 相同（雙底線格式）。
 
+**僅限測試站的開關**（正式站一律不設）：
+
+| App Setting | 作用 |
+|---|---|
+| `App__ShiftScheduleOpenAllFutureMonths=true` | 個人排班的未來月份（次月起）一律開放編輯，不受「10–25 日」與「僅次月」限制；過往月份與當月規則不變。對應 `ShiftScheduleWindow.OpenAllFutureMonths`，於 `Program.cs` 啟動時讀入，**改值後須重啟 Function App** |
+
 ### 16.4 一次性 Seeder 工具（Startup Hook 模式）
 
 需一次性灌資料時（如批次匯入既有員工人事卡），比照 `Program.cs` 既有 `HolidayBlobCleanup` 寫法：在 `host.MigrateAsync()` 後的 `using (scope)` 區塊內，以**環境旗標**保護呼叫一個 `static RunAsync(AppDbContext, IBlobStorageService, IConfiguration)` 工具（獨立 try/catch 不阻擋啟動），重用已注入的 DI（DbContext / Blob / BCrypt / Clock），免另開 console 專案。

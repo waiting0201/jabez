@@ -49,6 +49,17 @@ public static class ShiftScheduleWindow
     /// <summary>當月到職者的寬限工作天數。</summary>
     public const int GraceWorkingDays = 3;
 
+    /// <summary>
+    /// 設定鍵 <c>App:ShiftScheduleOpenAllFutureMonths</c>（Azure App Setting <c>App__ShiftScheduleOpenAllFutureMonths</c>）。
+    /// </summary>
+    public const string OpenAllFutureMonthsConfigKey = "App:ShiftScheduleOpenAllFutureMonths";
+
+    /// <summary>
+    /// <b>測試用開關</b>：為 true 時，所有「未來月份」（次月起）一律視為開放期，不受 10–25 日與「僅次月」限制。
+    /// 過往月份與當月規則不變。由 <c>Program.cs</c> 於啟動時寫入；<b>正式站不得設定</b>。
+    /// </summary>
+    public static bool OpenAllFutureMonths { get; set; }
+
     public static ShiftScheduleEditability Evaluate(
         int year, int month, DateTime now, DateTime? graceDeadline = null)
     {
@@ -70,6 +81,9 @@ public static class ShiftScheduleWindow
                 $"當月班表已定案，僅可於當日 {SameDayCutoff:HH:mm} 前調整當天狀態；"
               + "其餘異動請提出〈改班申請〉。");
         }
+
+        if (OpenAllFutureMonths)
+            return new(true, ShiftScheduleEditMode.Open, "【測試模式】未來月份一律開放排班（正式站不適用）。");
 
         if (target == nextMonth)
         {

@@ -85,6 +85,11 @@ var host = new HostBuilder()
         Jabez.Api.Common.EnvironmentLabel.Value =
             ctx.Configuration[Jabez.Api.Common.EnvironmentLabel.ConfigKey] ?? "";
 
+        // 排班開放期的測試開關：未來月份一律開放（僅供測試站，正式站不設）。
+        Jabez.Api.Common.ShiftScheduleWindow.OpenAllFutureMonths =
+            bool.TryParse(ctx.Configuration[Jabez.Api.Common.ShiftScheduleWindow.OpenAllFutureMonthsConfigKey], out var openAll)
+            && openAll;
+
         // ── GCIS Service（HttpClient 注入）─────────────────────────────
         // 政府開放資料商工登記公示資料查詢；以統編查公司名稱 / 地址 / 負責人。
         // 8s timeout：查不到不快取，回 404 讓使用者手動填寫即可。
