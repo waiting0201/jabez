@@ -276,6 +276,14 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
   | 已拒絕 | `rejected` | 同上 |
 
   **為何後三態不綁 `CurrentStepOrder`**：單子已離開總監那一步 —— `approved` 已走完全部步驟、`returned` / `rejected` 停在退回（拒絕）者所在的步驟，`CurrentStepOrder` 不再指向總監，綁了就永遠查不到東西。
+
+- **「已核准」子狀態的簽核日期篩選（2026-09 新增）**：`GET /approval-tasks?scope=director&status=approved&directorReviewedOn=YYYY-MM-DD`，回答「**總監那天簽了哪些單**」。篩選列只在 `tab=director` + `ds=approved` 顯示（網址參數 `dsign`），切頁籤 / 切子狀態即清空，前後端**同時守門**（其他組合帶了一律忽略）。
+  - **單一日期，不是區間**：既有的「申請日期」區間基準是**送簽日** `SubmittedAt`，與簽核日是兩回事，替代不了。
+  - **綁「總監關卡的 `StepOrder`」而非「簽核者本人 `JobTitle.Level = 1`」**：升級指派（`EscalationOverride`）、代理簽核（`OnBehalfOfUserId`）、以及「自動核准：已於先前步驟核准本申請」三種紀錄的 `ReviewedById`，其職稱 Level 未必是 1；比對簽核者會讓這些單整批查不到，而且**查不到的理由在畫面上完全看不出來**。`ApprovalRecord.StepOrder` 寫入時即取自當下的 `CurrentStepOrder`，與 `ApprovalSteps.StepOrder` 同一套編號（MinDays 稀疏跳關亦維持對齊）。
+  - **用 `EXISTS` 而非 `MAX`**：一張單可能有多筆總監核准紀錄（追加預支的不同 `RoundNo`、退回後重簽、流程配置多個 Level=1 關卡）。語意取「該單在這天有總監核准動作」，取 MAX 會讓前幾次的簽核日永遠查不到東西。
+  - **`Action = 'approved'` 不可省**：少了它，總監當初「退回」那筆紀錄也會命中，變成「明明是退回那天，單卻出現在已核准清單」。
+  - **時區**：`ApprovalRecord.ReviewedAt` 存的是 `Clock.Now`＝**台北時間的 naive `DateTime`**，參數同樣是 naive 本地日 00:00，兩邊同基準、**不可**做任何時區換算（加了會整體位移 8 小時，症狀是 08:00 前簽的單被算到前一天）。含當日以半開區間 `>= @X AND < DATEADD(day, 1, @X)` 表達，比照 `DateRangeClause`。
+  - **為何只在 `approved` 開放**：其餘三態語意上不存在「總監已簽核日」—— `pending` 還沒簽（查出來恆空）、`returned` / `rejected` 就算有總監核准紀錄也多半屬於前一輪，清單結果無法向使用者解釋。
 - **僅供檢視**：此頁籤內的申請單仍只能由總監本人（或 Superadmin）實際核准；財務管理部 / 會計室人員點擊進入詳情頁為唯讀（前端固定顯示查看圖示，不顯示可編輯的鉛筆圖示），送出審核動作仍會被 `AuthorizeStepAsync` 擋下。
 
 ## 簽核作業「已核准」頁籤的可見範圍（2026-09 修正硬編碼失效）
@@ -318,7 +326,7 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 
 簽核作業列表「已核准」頁籤原本只有「全部類型」下拉，新增「全部申請人」下拉，供財務清查特定同仁的已核准單據（可與類型、撥款 / 退款子篩選任意組合）。
 
-**2026-08 起篩選列改為各頁籤常駐**：類型 + 申請人下拉在 待審核 / 已核准 / 退回修改中 / 已拒絕 / 總監室簽核（四態）皆可用；**撥款 / 退款子篩選仍只在「已核准」頁籤顯示**（其他狀態的單尚未進入撥款階段，篩了沒有意義）。後端零改動 —— `applicationType` / `submittedByUserId` 的 WHERE 本來就與 `status` 正交，各狀態分支共用同一組 `SubmitterClause` / `TypeAllowed`。
+**2026-08 起篩選列改為各頁籤常駐**：類型 + 申請人下拉在 待審核 / 已核准 / 退回修改中 / 已拒絕 / 總監室簽核（四態）皆可用；**撥款 / 退款子篩選仍只在「已核准」頁籤顯示**（其他狀態的單尚未進入撥款階段，篩了沒有意義）。**簽核日期（2026-09）則是第二個只在特定子狀態顯示的篩選**，只出現在總監室簽核的「已核准」（見上節）。後端零改動 —— `applicationType` / `submittedByUserId` 的 WHERE 本來就與 `status` 正交，各狀態分支共用同一組 `SubmitterClause` / `TypeAllowed`。
 
 - **可見範圍**：僅**財務體系部門**（`DepartmentCodes.FinancialAndAbove` = `CEO` / `FIN` / `AC` / `Jabez HQ` + 改制後英文全名總監室 / 財務管理部 / 會計室）或 Superadmin 可見，與撥款 / 退款子篩選同一集合。前端以 `approval-task-list.ts` 的 `canSeeApplicantFilter` 控制顯示，後端 [ApprovalTaskHandler.CanFilterByApplicant](../../Api/Handlers/ApprovalTaskHandler.cs) 為同一判定的真相。
 - **選項來源**：`GET /approval-tasks/applicants` —— **在職員工（`Status='active'`）∪ 10 種申請單中曾送出（`ApprovalStatus <> 'draft'`）者**，去重後依姓名排序，排除 Superadmin。非財務體系呼叫回 403。

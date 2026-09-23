@@ -128,14 +128,14 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         string? status = null, Guid? reviewerUserId = null, string? paymentStatus = null,
         string? applicationType = null, Guid? submittedByUserId = null,
         int? directorStepDeptId = null, bool directorScope = false,
-        DateOnly? dateFrom = null, DateOnly? dateTo = null)
+        DateOnly? dateFrom = null, DateOnly? dateTo = null, DateOnly? directorReviewedOn = null)
     {
         var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, overtimeProjects, leaveRevocations, leaveRevocationDates) =
             await FetchAllAsync(reviewerJobTitleId: reviewerJobTitleId, reviewerDepartmentId: reviewerDepartmentId,
                                 statusFilter: status, reviewerUserId: reviewerUserId, paymentStatus: paymentStatus,
                                 applicationType: applicationType, submittedByUserId: submittedByUserId,
                                 directorStepDeptId: directorStepDeptId, directorScope: directorScope,
-                                dateFrom: dateFrom, dateTo: dateTo);
+                                dateFrom: dateFrom, dateTo: dateTo, directorReviewedOn: directorReviewedOn);
         var instDicts = await LoadInstallmentsAsync(payments, advances, travels, holidayTravels, travelPayments, writeOffs);
         var paymentAttachments   = await LoadPaymentAttachmentsAsync();
         var writeOffAttachments  = await LoadWriteOffAttachmentsAsync();
@@ -232,7 +232,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         string? statusFilter = null, Guid? reviewerUserId = null,
         string? paymentStatus = null, string? applicationType = null,
         Guid? submittedByUserId = null, int? directorStepDeptId = null, bool directorScope = false,
-        DateOnly? dateFrom = null, DateOnly? dateTo = null)
+        DateOnly? dateFrom = null, DateOnly? dateTo = null, DateOnly? directorReviewedOn = null)
     {
         // ── WHERE clause for specific ID lookup ──────────────────────────────
         string paymentIdWhere        = (filterId.HasValue && filterType == "payment_request")  ? "pr.Id = @Id"  : "";
@@ -283,6 +283,39 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                     ? $"AND sDir.StepOrder = {alias}.CurrentStepOrder"
                     : "";
 
+                // ── 總監簽核日期（單一日期；Handler 已守門為 scope=director + status=approved）──
+                // **綁「總監那一關的 StepOrder」而非「簽核者本人 JobTitle.Level = 1」**：
+                //   升級指派（EscalationOverride）、代理簽核（OnBehalfOfUserId）、同人相鄰步驟自動代簽
+                //   留下的 ApprovalRecord，其 ReviewedById 的職稱 Level 未必是 1；比對簽核者職稱會讓這些單
+                //   整批查不到，而且查不到的理由在畫面上完全看不出來。
+                //   ApprovalRecord.StepOrder 寫入時即取自當下的 CurrentStepOrder（ApprovalTaskHandler），
+                //   與 ApprovalSteps.StepOrder 同一套編號（MinDays 稀疏跳關亦維持對齊），故可安全 JOIN。
+                // 用 EXISTS 而非 MAX：同一張單可能有多筆總監核准紀錄 —— 追加預支的不同 RoundNo、退回後重簽、
+                //   流程中配置多個 Level=1 關卡。語意取「該單在這天有總監核准動作」，正好對應使用者的情境
+                //   「那天總監簽了哪些單」；取 MAX 會讓前幾次的簽核日永遠查不到東西。
+                // Action = 'approved' 不可省：少了它，總監當初「退回」那筆紀錄也會命中，
+                //   變成「明明是退回那天，單卻出現在已核准清單」。
+                // ReviewedAt 存的是 Clock.Now（**台北時間的 naive DateTime，不是 UTC**），@DirectorReviewedOn
+                //   同樣由 DateOnly 轉 naive 本地日 00:00，兩邊同基準、**不可**做任何時區換算
+                //   （加了會整體位移 8 小時，症狀是 08:00 前簽的單被算到前一天，畫面上很難發現）。
+                // 含當日以半開區間表達（比照 DateRangeClause），也比 CAST(ReviewedAt AS DATE) = @X 更有機會吃到索引。
+                string dirReviewedOnClause = (directorReviewedOn.HasValue && !filterId.HasValue) ? $"""
+
+                  AND EXISTS (
+                    SELECT 1 FROM ApprovalRecords arDir
+                    JOIN ApprovalSteps sDirR
+                      ON sDirR.ApprovalItemId = {alias}.ApprovalItemId
+                     AND sDirR.StepOrder      = arDir.StepOrder
+                    JOIN JobTitles jtDirR ON jtDirR.Id = sDirR.JobTitleId
+                    WHERE arDir.ApplicationType = '{appType}'
+                      AND arDir.ApplicationId   = {alias}.Id
+                      AND arDir.Action          = 'approved'
+                      AND jtDirR.Level          = 1
+                      AND arDir.ReviewedAt     >= @DirectorReviewedOn
+                      AND arDir.ReviewedAt      < DATEADD(day, 1, @DirectorReviewedOn)
+                  )
+                  """ : "";
+
                 return $"""
                   {alias}.ApprovalStatus = '{dirStatus}'
                   AND EXISTS (
@@ -302,7 +335,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                         OR (sMine.DepartmentId IS NULL AND sMine.JobTitleId = @ReviewerJobTitleId)
                       )
                   )
-                  """ : "");
+                  """ : "") + dirReviewedOnClause;
             }
 
             // Superadmin without status param: show all except draft
@@ -865,6 +898,9 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             FinancialDeptCodes = DepartmentCodes.FinancialAndAbove.ToArray(),
             DateFrom = dateFrom?.ToDateTime(TimeOnly.MinValue),
             DateTo   = dateTo?.ToDateTime(TimeOnly.MinValue),
+            // 總監簽核日（單一日期，僅 scope=director + status=approved 有值）：
+            // naive DateTime，與 ApprovalRecords.ReviewedAt（Clock.Now，台北時間）同基準
+            DirectorReviewedOn = directorReviewedOn?.ToDateTime(TimeOnly.MinValue),
         };
 
         const string drSql = """
