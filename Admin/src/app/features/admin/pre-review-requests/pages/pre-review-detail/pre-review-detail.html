@@ -74,7 +74,8 @@
           </div>
           <div class="col-6 col-md-3">
             <div class="text-muted small">預算總額</div>
-            <div class="fw-600 text-lg">{{ r.totalAmount | number:'1.0-0' }}</div>
+            <!-- ⚠ r.totalAmount 是**未稅小計**，稅金另存 r.taxAmount；此處顯示含稅，與下方表尾「含稅總計」同一算法 -->
+            <div class="fw-600 text-lg">{{ (r.totalAmount + (r.taxAmount ?? 0)) | number:'1.0-0' }}</div>
           </div>
           @if (approvalTask(); as t) {
             <div class="col-6 col-md-3">
