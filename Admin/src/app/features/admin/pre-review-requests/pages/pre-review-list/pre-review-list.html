@@ -47,7 +47,8 @@
                 <td>
                   <span class="badge bg-secondary-subtle text-secondary">{{ r.items.length }} 項</span>
                 </td>
-                <td class="text-right fw-500">{{ r.totalAmount | number:'1.0-0' }}</td>
+                <!-- ⚠ r.totalAmount 是**未稅小計**，稅金另存 r.taxAmount；「預算總額」一律顯示含稅 -->
+                <td class="text-right fw-500">{{ (r.totalAmount + (r.taxAmount ?? 0)) | number:'1.0-0' }}</td>
                 <td>
                   <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>
                 </td>

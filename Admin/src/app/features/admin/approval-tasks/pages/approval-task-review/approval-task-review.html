@@ -1306,7 +1306,10 @@
                     </div>
                     <div class="col-6 col-md-4">
                       <div class="text-muted small mb-1">預算總額</div>
-                      <span class="fw-600 fs-5">{{ d.totalAmount | number:'1.0-0' }} 元</span>
+                      <!-- ⚠ d.totalAmount 是**未稅小計**（後端 items.Sum，稅金另存 taxAmount），
+                           與請款的 totalAmount（發票金額合計＝實付總額）同名不同義。
+                           此處顯示含稅，與下方明細表尾的「含稅總計」同一算法 -->
+                      <span class="fw-600 fs-5">{{ (d.totalAmount + (d.taxAmount ?? 0)) | number:'1.0-0' }} 元</span>
                     </div>
                     @if (d.vendorName) {
                       <div class="col-6 col-md-4">

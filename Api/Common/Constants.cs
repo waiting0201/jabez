@@ -259,6 +259,27 @@ public sealed record WorkdaySchedule(
 }
 
 /// <summary>
+/// 公司行事曆 CalendarDay.Description 的特定值（全站唯一真相）。
+///
+/// Description 本身是自由字串，逐字來自外部來源 ruyut/TaiwanCalendar（國慶日 / 春節 / 補假 / 調整放假 …），
+/// 週六日則為空字串。本專案只對「補假」做改名，其餘原樣沿用。
+///
+/// ⚠ 中文字面量只准寫在這裡：匯入映射（CalendarDayHandler）、請假日判定的 SQL 參數
+/// （CalendarDayReadService）、一次性回填腳本（Data/Scripts/15）三處共用同一個值，各寫各的必然漂移。
+/// </summary>
+public static class CalendarDescriptions
+{
+    /// <summary>外部行事曆對「因國定假日產生的補假」的原文用字。</summary>
+    public const string SourceMakeupHoliday = "補假";
+
+    /// <summary>
+    /// 本公司對上述日子的稱呼。仍為 IsHoliday = 1（不用上班、不用打卡、不算缺勤），
+    /// 但**計入請假日**（見 WorkCalendarHelper.CalendarScope）。
+    /// </summary>
+    public const string FlexibleHoliday = "彈性休假日";
+}
+
+/// <summary>
 /// 部門代碼常數。用於「撥款 / 退款 / 結案 / 批次核准」等業務操作權限的硬編碼判斷。
 /// 注意：可見性 SeeAll 已改由 Department.CanSeeAll 旗標驅動（見 CLAUDE.md「部門可見性規則」），與此常數無關。
 /// </summary>

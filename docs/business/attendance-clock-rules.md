@@ -71,6 +71,10 @@ SQL 端的判定片段收斂於 `LeaveRevocationService.NotRevokedClause`，EF �
 (a) 沿用 `Api/Common/WorkCalendarHelper.IsHolidayAsync` —— 與請假日計算共用「有行事曆用 `IsHoliday`、
 沒資料退回六日」的同一份規則，不另外寫一份。
 
+> **彈性休假日（原「補假」，2026-09）對打卡完全不變**：它仍是 `IsHoliday = 1`，故仍符合 (a)、仍免下班卡。
+> 單日版 `IsHolidayAsync` **只有出勤語意、不吃 `CalendarScope`**；只有**請假日計算**才把它視為可請假日
+> （見 [leave-rules.md §彈性休假日](leave-rules.md#彈性休假日2026-09-新增)）。
+
 > **排班制員工（`User.IsShiftWorker = true`，2026-08 新增）恆不符合 (a)**：六日與國定假日對其而言都是工作日，
 > 故**沒有「休假日免下班卡」的放寬**，週六打「加班開始」前仍須先打下班卡。旗標以**打卡者本人**解析。
 > 條件 (b) 全日請假的豁免不受影響。詳見 [leave-rules.md §排班制員工不扣假日](leave-rules.md#排班制員工不扣假日2026-08-新增)。
@@ -222,7 +226,8 @@ Excel 匯出則於時間後加註「（系統補卡）」，以區分本人打�
   用權限碼而非只看 `Status`：不打卡的角色（顧問 / 外部人員）本來就不打卡，不該被算成缺勤
 - **在職區間**：`HireDate` 之前、`ResignDate` 之後的日子不列（離職當日仍為最後上班日）
 - **今天與未來一律不算缺勤**（今天還有機會打卡），上界收在昨天
-- **工作日判定**依該員工的 `IsShiftWorker` 走 `WorkCalendarHelper`，行事曆查詢只依兩種旗標各算一次
+- **工作日判定**依該員工的 `IsShiftWorker` 走 `WorkCalendarHelper`（**`CalendarScope.Attendance`**：
+  彈性休假日仍是休假日，不會冒出缺勤列），行事曆查詢只依兩種旗標各算一次
 - **展開上限** `AttendanceLeaveMerger.AbsenceMaxCells`（60,000 ＝ 員工數 × 區間天數）；
   超過即擋件，避免笛卡兒積在記憶體端爆開
 

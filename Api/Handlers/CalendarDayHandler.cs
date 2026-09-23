@@ -70,7 +70,7 @@ public sealed class CalendarDayHandler(AppDbContext db, ICalendarDayReadService 
             {
                 Date        = date,
                 IsHoliday   = entry.IsHoliday,
-                Description = entry.Description ?? "",
+                Description = MapDescription(entry.Description),
                 Year        = year,
             };
         }).ToList();
@@ -155,5 +155,17 @@ public sealed class CalendarDayHandler(AppDbContext db, ICalendarDayReadService 
     }
 
     /// <summary>政府 API 回傳的行事曆項目</summary>
+    /// <summary>
+    /// 外部行事曆的假日名稱 → 本公司用語。目前只有一條：「補假」→「彈性休假日」。
+    ///
+    /// ⚠ **改名必須落在這裡**，不能只改 DB 或畫面：ImportYearAsync 是「整年 RemoveRange 後重建」，
+    /// 只要有人再按一次「匯入 {年} 年」，手改過的名稱就會整批被沖回「補假」。
+    /// 既有年度的資料另以一次性腳本 Data/Scripts/15 回填。
+    /// </summary>
+    private static string MapDescription(string? source) =>
+        source == CalendarDescriptions.SourceMakeupHoliday
+            ? CalendarDescriptions.FlexibleHoliday
+            : source ?? "";
+
     private record TaiwanCalendarEntry(string Date, string Week, bool IsHoliday, string? Description);
 }

@@ -283,10 +283,45 @@
 - **不適用「人」**：`User.IsShiftWorker = true` 的排班制員工（賣店 / 營業所）不論假別皆不扣假日，見 [§排班制員工不扣假日](#排班制員工不扣假日2026-08-新增)。
 - **天數上限一律改以工作日計**：婚假 8 / 喪假 8・6・3 / 流產假 28・7・5 / 產檢假・陪產假 7 / 生理假每月 1 天・全年 12 天等數字不變，但語意變成「N 個工作日」（`ValidateLeaveQuotaAsync` 比對的 `Hours / 8` 本來就是扣假日後的值，無需額外改動）。
 - **產假特例**：區間仍固定為「起始日 + 55 天 = 56 個**日曆天**」（法定一次請完、不可拆），但 `Hours` 只計其中工作日（約 40 天 / 320 小時），不再固定 448 小時。
-- **假日來源＝唯一權威 `CalendarDays` 表**：台灣政府行事曆匯入時 `IsHoliday=true` 已同時涵蓋**六日 + 國定假**、補班六為工作日（`IsHoliday=false`）。透過 [CalendarDayReadService](../../Api/Services/Dapper/CalendarDayReadService.cs) 的 `GetHolidayDatesAsync` / `HasDataForRangeAsync` 讀取（與出差假日活動共用）。
+- **假日來源＝唯一權威 `CalendarDays` 表**：台灣政府行事曆匯入時 `IsHoliday=true` 已同時涵蓋**六日 + 國定假**、補班六為工作日（`IsHoliday=false`）。透過 [CalendarDayReadService](../../Api/Services/Dapper/CalendarDayReadService.cs) 的 `GetHolidayDatesAsync` / `HasDataForRangeAsync` 讀取（與出差假日活動共用）。**例外：彈性休假日（原「補假」）雖為 `IsHoliday=1` 但不從請假日中扣除**，見 [§彈性休假日](#彈性休假日2026-09-新增)。
 - **行事曆完整性逐年檢查**：`HasDataForRangeAsync` 為 EXISTS 語意（區間內任一天有資料即 true），產假 56 天與拉長後的婚假 / 喪假可能跨年，故 `LeaveRequestHandler.HasCalendarForAllYearsAsync` 對區間橫跨的**每個年度**各查一次，全部有資料才算已匯入。
 - **前端顯示**：[leave-request-form](../../Admin/src/app/features/admin/leave-requests/pages/leave-request-form/) 於工作日型假別（day / half_day / hour 三種單位皆適用）選好起迄日後呼叫輕量端點 `GET /leave-requests/working-days?start=&end=&leaveType=`（免 `calendar-days:read`），列出逐日 chip + 合計天數；行事曆未匯入時退回僅扣六日並提示。產假的結束日不在表單上，前端改以 `maternityEndDate`（起始日 +55 天）當區間終點查詢。
 - **後端權威重算**：工作日型假別的 `Day` 單位（含產假）以工作日數 × 8、`Hour` 單位以逐日累加時數，於 Create / Update / **Submit** 覆寫 `Hours`；**Submit 時強制要求行事曆已匯入**（缺資料擋件並提示匯入，訊息含跨年區間的年度範圍），區間全為假日亦擋件。`half_day` 由前端以 working-days 端點計算後送出（後端沿用既有「HalfDay 信任 client」原則）。
+
+### 彈性休假日（2026-09 新增）
+
+公司行事曆（來源 ruyut/TaiwanCalendar）中，**因國定假日產生的補假**（原文 `補假`）改稱「**彈性休假日**」。
+
+| | 彈性休假日 | 一般國定假日 / 六日 |
+|---|---|---|
+| `CalendarDay.IsHoliday` | **1（仍是放假日）** | 1 |
+| 要不要上班、打卡 | 不用 | 不用 |
+| 出缺勤報表會不會出現缺勤列 | **不會** | 不會 |
+| 休假日免下班卡即可打「加班開始」 | 適用 | 適用 |
+| 假日執行活動的假日天數 / 假日津貼 | **照算** | 照算 |
+| **請假時會不會被扣掉** | **不會（計入請假日）** | 會 |
+
+也就是說：那幾天公司不強制安排放假，**想休的人自己請假**。單選該日送假單會算 1 天
+（改制前算 0 天、`canSubmit` 擋住、根本送不出去）；**跨該日的區間也一併計入**，
+例如 10/8–10/10 的年假，改制前算 2 天、現在算 3 天。
+
+實作上由 [WorkCalendarHelper](../../Api/Common/WorkCalendarHelper.cs) 的 **`CalendarScope`** 區分兩種語意：
+
+- `CalendarScope.Leave`（請假）→ 彈性休假日視為可請假日。消費點：`LeaveRequestHandler`（請假日清單 / 時數 / Submit 擋件）、`LeaveDayExpander`（逐日展開：銷假逐日 chip、出缺勤報表請假列）。
+  兩者**必須一致** —— 不一致的話同一張假單送簽算 3 天、銷假重算成 2 天，`Hours` 會憑空變動。
+- `CalendarScope.Attendance`（出勤）→ 彈性休假日仍是休假日。消費點：`AttendanceLeaveMerger`（應出勤時段 + 缺勤列）、`AttendanceAutoClockService`（登入自動補上班卡）。
+- 單日版 `IsHolidayAsync` **只有出勤語意**（不吃 scope），打卡不受影響。
+
+參數**刻意必填、不給預設值**，理由同 `ignoreHolidays`：新增消費點時漏傳要是編譯錯誤，
+而不是讓某人的請假天數或某天的缺勤判定被靜默算錯。
+
+名稱的改寫有**兩個落點，缺一不可**：匯入映射 [`CalendarDayHandler.MapDescription`](../../Api/Handlers/CalendarDayHandler.cs)
+（`ImportYearAsync` 是「整年 RemoveRange 後重建」，只改 DB 的話有人再按一次「匯入 {年} 年」就被沖回「補假」），
+以及既有年度的一次性回填腳本 `Api/Data/Scripts/15`。字串常數的單一真相為 `Constants.CalendarDescriptions`。
+**「調整放假」刻意不改**（2026-09-23 業務決議，只改「補假」）。
+
+> **歷史假單**：已核准假單的 `Hours` 是快照，不會回溯變動。但若對一張**橫跨彈性休假日**的舊假單辦銷假，
+> `LeaveRevocationService.ApplyAsync` 會以新規則重新展開重算剩餘時數，得到的天數會比原快照多一天。
 
 ### 排班制員工不扣假日（2026-08 新增）
 

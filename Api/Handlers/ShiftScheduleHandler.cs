@@ -314,8 +314,9 @@ public sealed class ShiftScheduleHandler(
         var to   = from.AddDays(30);   // 上界：3 個工作天不可能超過 30 天
 
         // ⚠ 工作天刻意用 CalendarDay（全公司一份）而非個人班表 —— 新人當月本來就沒有班表
+        // Attendance 語意：彈性休假日（原「補假」）不用上班，不該計入寬限的 3 個工作天
         var (_, _, working) = await WorkCalendarHelper.ComputeWorkingDatesAsync(
-            calendarReader, ignoreHolidays: false, from, to);
+            calendarReader, ignoreHolidays: false, from, to, CalendarScope.Attendance);
 
         var counted = working.Where(d => d >= from).Take(ShiftScheduleWindow.GraceWorkingDays).ToList();
         if (counted.Count < ShiftScheduleWindow.GraceWorkingDays) return null;

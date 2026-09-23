@@ -124,7 +124,10 @@ public static class LeaveDayExpander
         if (!WorkingDayLeaveTypes.Contains(leave.LeaveType))
             return [.. WorkCalendarHelper.EnumerateDates(start, end).Select(d => FullDay(d, sch))];
 
-        var (_, _, working) = await WorkCalendarHelper.ComputeWorkingDatesAsync(calendarReader, ignoreHolidays, start, end);
+        // Leave 語意：彈性休假日算請假日。**必須與 LeaveRequestHandler 送簽時的計算一致** ——
+        // 不一致的話，同一張假單送簽算 3 天、銷假重算成 2 天，Hours 會憑空變動
+        var (_, _, working) = await WorkCalendarHelper.ComputeWorkingDatesAsync(
+            calendarReader, ignoreHolidays, start, end, CalendarScope.Leave);
         if (working.Count == 0) return [];
 
         return GetTimeUnit(leave.LeaveType) switch

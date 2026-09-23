@@ -12,13 +12,34 @@ namespace Jabez.Api.Common;
 /// 使其能正常請六日的假。此參數**刻意必填、不給預設值** —— 新增消費點時漏傳會是編譯錯誤，
 /// 而不是讓某人的請假天數被靜默算成 0。
 ///
-/// 消費點：
-///   LeaveRequestHandler → 請假日清單 / Hour 單位時數 / Submit 擋件（區間版）
+/// 消費點（區間版另須表態 <see cref="CalendarScope"/>）：
+///   LeaveRequestHandler → 請假日清單 / Hour 單位時數 / Submit 擋件（區間版，Leave）
+///   LeaveDayExpander    → 請假逐日展開：銷假逐日 chip / 出缺勤報表請假列（區間版，Leave）
+///   AttendanceLeaveMerger → 應出勤時段 + 缺勤列判定（區間版，Attendance）
+///   AttendanceAutoClockService → 登入自動補上班卡（區間版，Attendance）
 ///   AttendanceHandler   → 休假日免下班卡即可打「加班開始」（單日版）
 ///   AttendanceReminderService → 週末只提醒排班制員工（單日版）
 ///
+/// **單日版 IsHolidayAsync 只有出勤語意**（不吃 scope）：彈性休假日對打卡而言仍是休假日。
+///
 /// 旗標一律以「假單所有人 / 打卡本人」解析（見 IWorkPatternReadService），不可用呼叫者 id。
 /// </summary>
+/// <summary>
+/// 行事曆判定的**語意**：同一批 CalendarDay 在「出勤」與「請假」兩個脈絡下答案不同。
+///
+/// 差別只有一種日子 —— **彈性休假日**（原行事曆的「補假」，見 <see cref="CalendarDescriptions"/>）：
+/// 它仍是 <c>IsHoliday = 1</c>（不用上班、不用打卡、不算缺勤），但**要休得自己請假**，
+/// 故計算請假日時不得把它扣掉。
+/// </summary>
+public enum CalendarScope
+{
+    /// <summary>出勤語意：所有 <c>IsHoliday = 1</c> 皆為休假日。應出勤時段 / 缺勤列 / 自動補卡用。</summary>
+    Attendance,
+
+    /// <summary>請假語意：彈性休假日視為可請假日。請假天數 / 時數 / 逐日展開用。</summary>
+    Leave,
+}
+
 public static class WorkCalendarHelper
 {
     public static IEnumerable<DateTime> EnumerateDates(DateTime start, DateTime end)
@@ -29,8 +50,14 @@ public static class WorkCalendarHelper
 
     /// <summary>計算 [start, end] 內的請假日 / 假日清單。</summary>
     /// <param name="ignoreHolidays">排班制員工：整段皆為工作日，不查行事曆。</param>
+    /// <param name="scope">
+    /// 出勤語意或請假語意（差別僅在彈性休假日，見 <see cref="CalendarScope"/>）。
+    /// **刻意必填、不給預設值** —— 理由同 <paramref name="ignoreHolidays"/>：新增消費點時漏傳要是編譯錯誤，
+    /// 而不是讓某人的請假天數或某天的缺勤判定被靜默算錯。
+    /// </param>
     public static async Task<(bool hasData, List<DateTime> holidays, List<DateTime> working)>
-        ComputeWorkingDatesAsync(ICalendarDayReadService calendarReader, bool ignoreHolidays, DateTime start, DateTime end)
+        ComputeWorkingDatesAsync(ICalendarDayReadService calendarReader, bool ignoreHolidays,
+                                 DateTime start, DateTime end, CalendarScope scope)
     {
         var s = start.Date;
         var e = end.Date;
@@ -41,7 +68,8 @@ public static class WorkCalendarHelper
 
         var hasData = await HasCalendarForAllYearsAsync(calendarReader, ignoreHolidays, s, e);
         var holidaySet = hasData
-            ? (await calendarReader.GetHolidayDatesAsync(s, e)).Select(d => d.Date).ToHashSet()
+            ? (await calendarReader.GetHolidayDatesAsync(s, e, scope == CalendarScope.Leave))
+                .Select(d => d.Date).ToHashSet()
             : [];
 
         var holidays = new List<DateTime>();
