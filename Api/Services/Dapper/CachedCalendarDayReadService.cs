@@ -13,7 +13,9 @@ namespace Jabez.Api.Services.Dapper;
 /// </summary>
 public sealed class CachedCalendarDayReadService(ICalendarDayReadService inner) : ICalendarDayReadService
 {
-    private readonly Dictionary<int, HashSet<DateTime>> _holidaysByYear = [];
+    // ⚠ 依 excludeFlexibleHoliday 分兩個 slot：同一次合併流程裡「請假語意」與「出勤語意」都會查，
+    //    共用一份的話先查到的那種語意會被另一種重用（彈性休假日會多算 / 少算一天，且畫面看不出異常）
+    private readonly Dictionary<(int Year, bool ExcludeFlexible), HashSet<DateTime>> _holidaysByYear = [];
     private readonly Dictionary<(DateTime Start, DateTime End), bool> _hasData = [];
 
     public Task<IEnumerable<CalendarDayDto>> GetByYearAsync(int year) => inner.GetByYearAsync(year);
@@ -32,7 +34,8 @@ public sealed class CachedCalendarDayReadService(ICalendarDayReadService inner) 
         return value;
     }
 
-    public async Task<IReadOnlyList<DateTime>> GetHolidayDatesAsync(DateTime startDate, DateTime endDate)
+    public async Task<IReadOnlyList<DateTime>> GetHolidayDatesAsync(
+        DateTime startDate, DateTime endDate, bool excludeFlexibleHoliday = false)
     {
         var s = startDate.Date;
         var e = endDate.Date;
@@ -41,11 +44,13 @@ public sealed class CachedCalendarDayReadService(ICalendarDayReadService inner) 
         // 以「整年」為單位載入（CalendarDays 本就有 Year 欄位），任何子區間都能就地服務
         for (var y = s.Year; y <= e.Year; y++)
         {
-            if (!_holidaysByYear.TryGetValue(y, out var set))
+            var key = (y, excludeFlexibleHoliday);
+            if (!_holidaysByYear.TryGetValue(key, out var set))
             {
-                var dates = await inner.GetHolidayDatesAsync(new DateTime(y, 1, 1), new DateTime(y, 12, 31));
+                var dates = await inner.GetHolidayDatesAsync(
+                    new DateTime(y, 1, 1), new DateTime(y, 12, 31), excludeFlexibleHoliday);
                 set = [.. dates.Select(d => d.Date)];
-                _holidaysByYear[y] = set;
+                _holidaysByYear[key] = set;
             }
             result.AddRange(set.Where(d => d >= s && d <= e));
         }

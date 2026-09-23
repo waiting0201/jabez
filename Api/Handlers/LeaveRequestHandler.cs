@@ -185,7 +185,7 @@ public sealed class LeaveRequestHandler(
     private async Task<(bool hasData, List<DateTime> holidays, List<DateTime> working)>
         ComputeWorkingDatesAsync(Guid ownerId, DateTime start, DateTime end)
         => await WorkCalendarHelper.ComputeWorkingDatesAsync(
-            calendarReader, await workPattern.IsShiftWorkerAsync(ownerId), start, end);
+            calendarReader, await workPattern.IsShiftWorkerAsync(ownerId), start, end, CalendarScope.Leave);
 
     /// <summary>
     /// HalfDay 時數在 body.Hours 未帶時的退路：以 LeaveDayExpander 同一套「起 &lt; 13:00 ＝上午、

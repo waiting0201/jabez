@@ -117,7 +117,9 @@ public static class AttendanceLeaveMerger
         async Task<HashSet<DateTime>> WorkingSetAsync(bool isShiftWorker)
         {
             if (workingByFlag.TryGetValue(isShiftWorker, out var cached)) return cached;
-            var (_, _, working) = await WorkCalendarHelper.ComputeWorkingDatesAsync(cal, isShiftWorker, from, to);
+            // Attendance 語意：彈性休假日仍是休假日，否則該日全公司會冒出一排紅字「缺勤」
+            var (_, _, working) = await WorkCalendarHelper.ComputeWorkingDatesAsync(
+                cal, isShiftWorker, from, to, CalendarScope.Attendance);
             return workingByFlag[isShiftWorker] = [.. working];
         }
 
