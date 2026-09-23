@@ -102,6 +102,11 @@ export class ApprovalTaskList {
   /** 申請日期（送簽日）區間篩選，'YYYY-MM-DD'；迄日含當日，各頁籤常駐 */
   dateFromFilter = signal(this.initialDate('from'));
   dateToFilter = signal(this.initialDate('to'));
+  /**
+   * 總監簽核日期（**單一日期**，'YYYY-MM-DD'）：僅 tab=director + ds=approved 有效。
+   * 語意＝總監那一關實際簽核的日期，非整單 reviewedAt、非登入者自己簽的日期。
+   */
+  directorReviewedOnFilter = signal(this.initialDirectorReviewedOn());
   page = signal(this.initialPage());
 
   // ── URL 狀態還原 / 保存 ────────────────────────────────────────────────
@@ -133,6 +138,14 @@ export class ApprovalTaskList {
     return ISO_DATE_RE.test(v) ? v : '';
   }
 
+  /** 總監簽核日：僅「總監室簽核」頁籤的「已核准」子狀態才還原（與篩選器的顯示條件一致） */
+  private initialDirectorReviewedOn(): string {
+    if (this.initialTab() !== 'director') return '';
+    if (this.pick('ds', DIRECTOR_STATUSES, 'pending') !== 'approved') return '';
+    const v = this.qp.get('dsign') ?? '';
+    return ISO_DATE_RE.test(v) ? v : '';
+  }
+
   private initialPage(): number {
     const n = Number(this.qp.get('page'));
     return Number.isInteger(n) && n > 0 ? n : 1;
@@ -151,6 +164,8 @@ export class ApprovalTaskList {
     if (this.submittedByFilter()) q['by'] = this.submittedByFilter();
     if (this.dateFromFilter()) q['from'] = this.dateFromFilter();
     if (this.dateToFilter()) q['to'] = this.dateToFilter();
+    if (this.activeTab() === 'director' && this.directorStatus() === 'approved' && this.directorReviewedOnFilter())
+      q['dsign'] = this.directorReviewedOnFilter();
     if (this.page() > 1) q['page'] = this.page();
     return q;
   });
@@ -203,12 +218,16 @@ export class ApprovalTaskList {
     this.submittedByFilter.set('');
     this.dateFromFilter.set('');
     this.dateToFilter.set('');
+    this.directorReviewedOnFilter.set('');
     this.page.set(1);
     this.selectedKeys.set(new Set());
   }
 
   setDirectorStatus(status: DirectorStatus) {
     this.directorStatus.set(status);
+    // 簽核日期只在「已核准」子狀態存在，離開時必須清掉：留著會變成一個看不見卻仍在生效的條件
+    // （畫面上沒有欄位可清，使用者只會覺得「怎麼查不到單」）
+    if (status !== 'approved') this.directorReviewedOnFilter.set('');
     this.page.set(1);
   }
 
@@ -243,6 +262,16 @@ export class ApprovalTaskList {
   clearDateFilter() {
     this.dateFromFilter.set('');
     this.dateToFilter.set('');
+    this.page.set(1);
+  }
+
+  setDirectorReviewedOnFilter(value: string) {
+    this.directorReviewedOnFilter.set(value || '');
+    this.page.set(1);
+  }
+
+  clearDirectorReviewedOnFilter() {
+    this.directorReviewedOnFilter.set('');
     this.page.set(1);
   }
 
@@ -323,14 +352,17 @@ export class ApprovalTaskList {
       toObservable(this.submittedByFilter),
       toObservable(this.dateFromFilter),
       toObservable(this.dateToFilter),
+      toObservable(this.directorReviewedOnFilter),
       toObservable(this.reloadTrigger),
     ]).pipe(
       // 總監室簽核頁籤把「範圍」與「狀態」拆成兩個參數送出（scope=director + status 四態）
-      switchMap(([p, tab, ds, ps, at, sb, from, to]) => {
+      switchMap(([p, tab, ds, ps, at, sb, from, to, dsign]) => {
         const scope  = tab === 'director' ? 'director' : undefined;
         const status = tab === 'director' ? ds : tab;
+        // 總監簽核日只在 director + approved 送出（signal 本已被 switchTab / setDirectorStatus 清空，此處為第二道保險）
+        const directorReviewedOn = tab === 'director' && ds === 'approved' ? (dsign || undefined) : undefined;
         return this.service.getPaged(p, this.PAGE_SIZE, status, ps || undefined, at || undefined, sb || undefined, scope,
-                                     from || undefined, to || undefined);
+                                     from || undefined, to || undefined, directorReviewedOn);
       })
     ),
     {initialValue: {items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 1} as PagedResult<ApprovalTask>}

@@ -78,7 +78,7 @@
 
   <!-- 篩選列（四個頁籤共用）：總監四態（僅總監室簽核頁籤） + 類型（所有人可見）
        + 申請人（僅 Superadmin/總監室/財務部/會計部） + 申請日期區間（所有人可見）
-       + 撥款退款（僅已核准頁籤且具權限） -->
+       + 簽核日期（僅總監室簽核頁籤的「已核准」子狀態） + 撥款退款（僅已核准頁籤且具權限） -->
   <div class="flex flex-wrap items-center gap-2 mb-4">
       @if (activeTab() === 'director') {
         <div class="flex gap-1">
@@ -148,6 +148,23 @@
                   (click)="clearDateFilter()">清除</button>
         }
       </div>
+
+      <!-- 總監簽核日期（單一日期）：僅「總監室簽核」頁籤的「已核准」子狀態顯示。
+           語意＝總監那一關實際簽核的日期（非整單 reviewedAt、非登入者自己簽的日期）；
+           切頁籤 / 切子狀態時由 switchTab / setDirectorStatus 清掉，不留看不見的生效條件 -->
+      @if (activeTab() === 'director' && directorStatus() === 'approved') {
+        <div class="flex items-center gap-1">
+          <span class="text-muted small whitespace-nowrap">簽核日期</span>
+          <input type="date" class="form-control form-control-sm w-auto"
+                 [value]="directorReviewedOnFilter()"
+                 (change)="setDirectorReviewedOnFilter($any($event.target).value)"
+                 aria-label="總監簽核日期" />
+          @if (directorReviewedOnFilter()) {
+            <button type="button" class="btn btn-sm btn-outline-secondary whitespace-nowrap"
+                    (click)="clearDirectorReviewedOnFilter()">清除</button>
+          }
+        </div>
+      }
 
       @if (activeTab() === 'approved' && canSeePaymentFilter()) {
         <div class="flex gap-1">

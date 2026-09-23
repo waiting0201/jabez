@@ -2358,7 +2358,7 @@ readonly canSeeSalary = this.authService.hasPermission('payroll:read');
 
 **規則：清單頁的頁籤 / 篩選 / 頁碼一律以 URL query params 為單一真相，詳情頁的「返回列表」把它原封不動帶回。**
 
-沒有這層的話，從「已核准」第 3 頁點進一張單、按返回會落在「待審核」第 1 頁，使用者得重新篩選一次。已採用：[簽核作業清單](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-list/)（`tab` / `ds` / `pay` / `type` / `by` / `from` / `to` / `page`，四個要點齊備）；[人事薪資](../Admin/src/app/features/admin/payroll/pages/payroll-list/)（`year` / `month`）只做了還原與連結帶參數，**未做第 3 點的網址同步**，改月份後重整會跳回網址上的舊月份 —— 下次動到該頁時補上。
+沒有這層的話，從「已核准」第 3 頁點進一張單、按返回會落在「待審核」第 1 頁，使用者得重新篩選一次。已採用：[簽核作業清單](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-list/)（`tab` / `ds` / `pay` / `type` / `by` / `from` / `to` / `dsign` / `page`，四個要點齊備）；[人事薪資](../Admin/src/app/features/admin/payroll/pages/payroll-list/)（`year` / `month`）只做了還原與連結帶參數，**未做第 3 點的網址同步**，改月份後重整會跳回網址上的舊月份 —— 下次動到該頁時補上。
 
 四個要點：
 
@@ -2370,7 +2370,7 @@ readonly canSeeSalary = this.authService.hasPermission('payroll:read');
    page      = signal(this.initialPage());
    ```
 
-2. **一律白名單正規化，非法值退回預設**。網址是使用者可以手改的輸入：頁籤 / 子狀態用允許值陣列比對、日期用 `^\d{4}-\d{2}-\d{2}$`、頁碼用 `Number.isInteger(n) && n > 0`。**受權限控管的篩選要連權限一起判**（例：無 `canSeeDirectorTab()` 者即使網址帶 `tab=director` 也退回待審核，無 `canSeeApplicantFilter()` 者忽略 `by`），否則等於開了一道繞過 UI 隱藏的側門。
+2. **一律白名單正規化，非法值退回預設**。網址是使用者可以手改的輸入：頁籤 / 子狀態用允許值陣列比對、日期用 `^\d{4}-\d{2}-\d{2}$`、頁碼用 `Number.isInteger(n) && n > 0`。**受權限控管的篩選要連權限一起判**（例：無 `canSeeDirectorTab()` 者即使網址帶 `tab=director` 也退回待審核，無 `canSeeApplicantFilter()` 者忽略 `by`），否則等於開了一道繞過 UI 隱藏的側門。**受「其他篩選的值」牽動的篩選，還原時要連前置條件一起判，切換前置條件時也要清空**（例：簽核日期 `dsign` 只在 `tab=director` + `ds=approved` 有意義，`setDirectorStatus()` 離開 `approved` 時一併 `set('')`）—— 否則會留下一個「看不見卻仍在生效」的條件，畫面上沒有欄位可清，使用者只會覺得「怎麼查不到單」。
 
 3. **狀態變更要同步回網址，用 `replaceUrl: true`**。少了這步，切完頁籤後重整會跳回舊參數，畫面與網址各說各話：
 

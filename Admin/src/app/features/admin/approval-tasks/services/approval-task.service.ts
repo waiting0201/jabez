@@ -33,7 +33,7 @@ export class ApprovalTaskService {
   private http = inject(HttpClient);
   private notification = inject(NotificationService);
 
-  getPaged(page: number, pageSize: number, status?: string, paymentStatus?: string, applicationType?: string, submittedByUserId?: string, scope?: string, dateFrom?: string, dateTo?: string): Observable<PagedResult<ApprovalTask>> {
+  getPaged(page: number, pageSize: number, status?: string, paymentStatus?: string, applicationType?: string, submittedByUserId?: string, scope?: string, dateFrom?: string, dateTo?: string, directorReviewedOn?: string): Observable<PagedResult<ApprovalTask>> {
     const params: Record<string, any> = {page, pageSize};
     if (status) params['status'] = status;
     if (paymentStatus) params['paymentStatus'] = paymentStatus;
@@ -44,6 +44,8 @@ export class ApprovalTaskService {
     // 申請日期（送簽日）區間篩選，dateTo 含當日
     if (dateFrom) params['dateFrom'] = dateFrom;
     if (dateTo) params['dateTo'] = dateTo;
+    // 總監簽核日（單一日期）：僅 scope=director + status=approved 送出，後端亦同樣守門
+    if (directorReviewedOn) params['directorReviewedOn'] = directorReviewedOn;
     return this.http.get<PagedResult<ApprovalTask>>(`${environment.apiUrl}/approval-tasks`, {params});
   }
 

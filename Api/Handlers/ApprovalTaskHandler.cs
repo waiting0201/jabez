@@ -33,6 +33,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         // status 參數：pending（待審）/ approved（已核准）/ returned（退回修改中）/ rejected（已拒絕），空值沿用既有行為
         // scope  參數：director（總監室簽核，範圍維度，與 status 四態自由組合；舊值 status=director_pending 相容為兩者組合）
         // dateFrom / dateTo：申請日期（送簽日）區間，各頁籤常駐
+        // directorReviewedOn：總監簽核日（單一日期），僅 scope=director + status=approved 生效
         var principal = await jwtService.ValidateRequestAsync(req);
         int?    jobTitleId      = null;
         int?    deptId          = null;
@@ -102,7 +103,18 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             && !DepartmentCodes.FinanceStep.Contains(callerDeptCode ?? "")
                 ? deptId : null;
 
-        var allTasks = (await reader.GetApprovalTasksAsync(jobTitleId, deptId, status, reviewerUserId, paymentStatus, applicationType, submittedByUserId, directorStepDeptId, directorScope, dateFrom, dateTo)).ToList();
+        // 總監簽核日期篩選（**單一日期**，非區間）：僅「總監室簽核」頁籤的「已核准」子狀態生效。
+        // 語意＝**總監那一關實際被簽核的日期**，不是整單父表 ReviewedAt，也不是登入者自己簽的日期。
+        // 守在 directorScope && status == "approved" 的理由：
+        //   ① 其餘三態語意上不存在「總監已簽核日」—— pending 還沒簽（查出來恆空）、
+        //      returned / rejected 就算有總監核准紀錄也多半屬於前一輪，清單結果無法向使用者解釋；
+        //   ② 前端切頁籤 / 切子狀態會清掉此條件，後端同樣守門，手改網址的行為才與 UI 一致。
+        // 解析失敗一律忽略、不回 400（比照 dateFrom / dateTo）。
+        DateOnly? directorReviewedOn =
+            directorScope && status == "approved"
+            && DateOnly.TryParse(req.Query["directorReviewedOn"], out var dro) ? dro : null;
+
+        var allTasks = (await reader.GetApprovalTasksAsync(jobTitleId, deptId, status, reviewerUserId, paymentStatus, applicationType, submittedByUserId, directorStepDeptId, directorScope, dateFrom, dateTo, directorReviewedOn)).ToList();
         int total = allTasks.Count;
         var items = allTasks.Skip((page - 1) * pageSize).Take(pageSize);
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
