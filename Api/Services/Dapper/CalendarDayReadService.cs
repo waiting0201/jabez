@@ -1,5 +1,6 @@
 using System.Data;
 using Dapper;
+using Jabez.Api.Common;
 using Jabez.Api.Models.Dtos;
 
 namespace Jabez.Api.Services.Dapper;
@@ -9,7 +10,13 @@ public interface ICalendarDayReadService
     Task<IEnumerable<CalendarDayDto>> GetByYearAsync(int year);
     Task<int> CountHolidaysAsync(DateTime startDate, DateTime endDate);
     Task<bool> HasDataForRangeAsync(DateTime startDate, DateTime endDate);
-    Task<IReadOnlyList<DateTime>> GetHolidayDatesAsync(DateTime startDate, DateTime endDate);
+    /// <param name="excludeFlexibleHoliday">
+    /// true＝排除「彈性休假日」（原行事曆的「補假」）。**僅請假日判定會傳 true**：那些日子仍是休假日
+    /// （不用上班、不用打卡、不算缺勤），但員工要休得自己請假，故不得從請假日中扣除。
+    /// 預設 false＝原語意（所有 IsHoliday = 1 的日子）—— 假日執行活動的假日天數 / 假日津貼取數
+    /// （TravelRequestHandler 三處）與打卡休假日判定都吃這個預設值，彈性休假日對它們仍是假日。
+    /// </param>
+    Task<IReadOnlyList<DateTime>> GetHolidayDatesAsync(DateTime startDate, DateTime endDate, bool excludeFlexibleHoliday = false);
 }
 
 public sealed class CalendarDayReadService(IDbConnection db) : ICalendarDayReadService
@@ -39,16 +46,24 @@ public sealed class CalendarDayReadService(IDbConnection db) : ICalendarDayReadS
     }
 
     /// <summary>取得日期範圍內的所有放假日期（供逐日假日標示與參與人員個人假日天數計算）</summary>
-    public async Task<IReadOnlyList<DateTime>> GetHolidayDatesAsync(DateTime startDate, DateTime endDate)
+    public async Task<IReadOnlyList<DateTime>> GetHolidayDatesAsync(
+        DateTime startDate, DateTime endDate, bool excludeFlexibleHoliday = false)
     {
-        const string sql = """
+        // 名稱以 Dapper 參數帶入（不寫中文字面量），單一真相為 Constants.CalendarDescriptions
+        var sql = $"""
             SELECT Date
             FROM CalendarDays
             WHERE Date >= @StartDate AND Date <= @EndDate AND IsHoliday = 1
+              {(excludeFlexibleHoliday ? "AND Description <> @FlexibleHoliday" : "")}
             ORDER BY Date
             """;
 
-        var rows = await db.QueryAsync<DateTime>(sql, new { StartDate = startDate, EndDate = endDate });
+        var rows = await db.QueryAsync<DateTime>(sql, new
+        {
+            StartDate = startDate,
+            EndDate   = endDate,
+            FlexibleHoliday = CalendarDescriptions.FlexibleHoliday,
+        });
         return rows.ToList();
     }
 

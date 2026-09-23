@@ -70,8 +70,9 @@ public static class AttendanceAutoClockService
         var clockInDates = pending.Where(NeedsClockIn).Select(a => a.RecordDate.Date).ToList();
         if (canClockIn && clockInDates.Count > 0)
         {
+            // Attendance 語意：彈性休假日仍是休假日，不該被補上班卡
             var (_, _, working) = await WorkCalendarHelper.ComputeWorkingDatesAsync(
-                cal, user.IsShiftWorker, clockInDates.Min(), clockInDates.Max());
+                cal, user.IsShiftWorker, clockInDates.Min(), clockInDates.Max(), CalendarScope.Attendance);
             workingDates = [.. working];
         }
 

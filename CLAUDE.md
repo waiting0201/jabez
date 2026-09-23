@@ -403,7 +403,12 @@ Api/
 │   │                                  #      簽核流程依**申請人部門**解析、與專案無關，故 ApprovalItemId 等送簽快照刻意不重算；
 │   │                                  #      款項統計的部門可見性看的也是申請人部門，換專案不影響誰看得到這張單。
 │   │                                  #      閘門：單號查無 / 目標 Code 非唯一命中（Projects.Code 無唯一索引）/ 新專案已結案 /
-│   │                                  #      現有專案非預期（代表交辦後又被人改過）
+│   │                                  #      現有專案非預期（代表交辦後又被人改過）、
+│   │                                  #   15 行事曆「補假」改名為「彈性休假日」（@Commit 空跑開關，冪等可重跑）：
+│   │                                  #      搭配 `CalendarDayHandler.MapDescription` 的匯入映射。**兩個落點缺一不可** ——
+│   │                                  #      只跑腳本不改程式的話，`ImportYearAsync` 是「整年 RemoveRange 後重建」，
+│   │                                  #      有人再按一次「匯入 {年} 年」就整批沖回「補假」；只改程式不跑腳本則既有年度不會變。
+│   │                                  #      「調整放假」刻意不動（2026-09-23 業務決議只改「補假」）
 │   └── Seed/                          # 一次性匯入工具（共用 RocDateParser 解民國年）
 │       ├── EmployeeImporter + EmployeeImportDtos + employee-import.json  # 員工人事資料（RUN_EMPLOYEE_IMPORT 旗標，IMPORT_UPLOAD_FILES 控制附件上傳）
 │       ├── ProjectImporter + ProjectImportDtos + project-import.json     # 專案資料（RUN_PROJECT_IMPORT 旗標，PROJECT_IMPORT_DRY_RUN 只印不寫；來源 reference/專案資料-115.07.29.xls；以 Code upsert、期別明細全量重建）
@@ -473,7 +478,17 @@ Api/
 │   ├── AttachmentProcessor.cs         # 整單批次附件共用：multipart 解析 + magic-byte 驗證 + 上傳 request-attachments（一般請款 / 預支沖銷共用）
 │   ├── DesignatedReviewerHelper.cs    # 申請人指定審核者共用：BuildEntities / ReadForFlowAsync / ValidateAndNormalizeAsync / GetSuppressedDesignatedStepOrdersAsync（一條流程多個指定步驟，以 ApprovalStepOrder 綁定步驟；9 種申請類型共用；第一指定步驟＝所選部門最高職稱時抑制其後指定步驟：驗證免填 + 簽核乾淨跳過）；**例外指定審核的兩個真相**：送單前查例外表 `GetEffectiveDesignatedStepOrdersAsync`、送單後看 designee 快照 `EffectiveDesignatedStepOrders`，ValidateAndNormalizeAsync 另負責剔除非法 designee 綁定（防提權）與**限定職稱驗證**（例外命中且有設限定職稱時，designee 職稱不符丟 400）
 │   ├── FlexibleDateTimeJsonConverter.cs # 寬鬆日期解析（人事資料卡 payload 用；Safari 不支援 input type=month 手打年月字串）
-│   ├── WorkCalendarHelper.cs          # 公司行事曆共用判定（「有行事曆用 CalendarDay.IsHoliday、沒資料退回六日」的單一真相）：區間版 ComputeWorkingDatesAsync 供 LeaveRequestHandler 算請假日／時數，單日版 IsHolidayAsync 供 AttendanceHandler 判休假日免下班卡
+│   ├── WorkCalendarHelper.cs          # 公司行事曆共用判定（「有行事曆用 CalendarDay.IsHoliday、沒資料退回六日」的單一真相）：區間版 ComputeWorkingDatesAsync 供 LeaveRequestHandler 算請假日／時數，單日版 IsHolidayAsync 供 AttendanceHandler 判休假日免下班卡。
+│   │                                  #   **區間版另須表態 `CalendarScope`（2026-09 新增，刻意必填無預設值）**：同一批行事曆在「出勤」與
+│   │                                  #   「請假」兩個脈絡下答案不同，差別只有**彈性休假日**（原行事曆的「補假」，見 `Constants.CalendarDescriptions`）——
+│   │                                  #   它仍是 `IsHoliday=1`（不用上班、不用打卡、不算缺勤、假日津貼照算），但**要休得自己請假**故不得從請假日扣除。
+│   │                                  #   `Leave`：LeaveRequestHandler（請假日 / 時數 / Submit 擋件）+ LeaveDayExpander（逐日展開：銷假 chip、出缺勤請假列）——
+│   │                                  #   **兩者必須一致**，否則同一張假單送簽算 3 天、銷假重算成 2 天，Hours 憑空變動；
+│   │                                  #   `Attendance`：AttendanceLeaveMerger（應出勤時段 + 缺勤列）+ AttendanceAutoClockService（自動補上班卡）。
+│   │                                  #   **單日版 IsHolidayAsync 只有出勤語意**（不吃 scope），打卡不受影響。
+│   │                                  #   `ICalendarDayReadService.GetHolidayDatesAsync` 的 `excludeFlexibleHoliday` **預設 false**：
+│   │                                  #   TravelRequestHandler 的 3 處假日津貼取數吃這個預設值，彈性休假日對津貼而言仍是假日。
+│   │                                  #   改名的兩個落點見 [docs/business/leave-rules.md §彈性休假日](docs/business/leave-rules.md)
 │   ├── RequestNoGenerator.cs          # 申請單號取號單一真相（{prefix}yyyyMMdd-NNN 當日流水號）：
 │   │                                    **2026-09 起於 SubmitAsync 取號、不再於 CreateAsync**，草稿 RequestNo 為 null（欄位 nullable + filtered unique index）；
 │   │                                    **10 種申請類型全部有單號**（2026-09 補上請假 `LV-` / 加班 `OT-` / 銷假 `LVR-`，既有非草稿單以 migration 依送簽日回填）；
