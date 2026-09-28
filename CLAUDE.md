@@ -336,7 +336,7 @@ export const environment = {
 Api/
 ├── Functions/
 │   ├── RouterFunction.cs              # HttpTrigger，catch-all route {*route}
-│   ├── AttendanceReminderFunction.cs  # TimerTrigger：限定 7-9 / 16-18 Taipei 時段每分鐘檢查，落在「上下班前 2 分鐘起算 **30 分鐘**時間窗」內則 LINE 推播（2026-09-09 由 10 分鐘放寬，見 attendance-reminder.md）；cron 由 `AttendanceReminderCron` app setting 控制。**`IsPastDue` 不跳過**（冷啟動延遲會整天不發），改由 Service 端 `batchStart` 冪等閘去重；**六日只推排班制員工**（`IsShiftWorker`，賣店照常營業），一個都沒有時維持整批跳過，平日仍不看行事曆（國定假日照推）
+│   ├── AttendanceReminderFunction.cs  # TimerTrigger：限定 7-9 / 16-18 Taipei 時段每分鐘檢查，落在「上下班前 2 分鐘起算 **30 分鐘**時間窗」內則 LINE 推播（2026-09-09 由 10 分鐘放寬，見 attendance-reminder.md）；cron 由 `AttendanceReminderCron` app setting 控制。**`IsPastDue` 不跳過**（冷啟動延遲會整天不發），改由 Service 端 `batchStart` 冪等閘去重；**公司休假日只推排班制員工**（`IsShiftWorker`，賣店照常營業），一個都沒有時維持整批跳過；休假日判定走 `WorkCalendarHelper.IsHolidayAsync`（行事曆 `IsHoliday` 優先、含國定假日 / 彈性休假日，未匯入年度退回六日）—— 2026-09 前只看六日，國定假日（中秋、教師節）照推全員
 │   ├── ShiftScheduleReminderFunction.cs # **排班提醒 TimerTrigger（四週彈性工時 §3.5，2026-09 新增）**：
 │   │                                    10 號 09:00 開放／20 號 09:00 未完成／25 號 12:00 截止／26 號 09:00 已自動排班。
 │   │                                    cron `ShiftScheduleReminderCron` 現值 `0 0 1,4 * * *`＝**每天** UTC 01:00/04:00（台北 09:00/12:00），
