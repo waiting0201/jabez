@@ -30,12 +30,17 @@ export const DAY_TYPE_STYLES: Record<ShiftDayType, { bg: string; fg: string; bor
 export interface ShiftScheduleDay {
   date: string;                  // ISO yyyy-MM-ddTHH:mm:ss
   dayType: ShiftDayType;
-  holidayName: string | null;    // 國定假日名稱（國慶日 / 補假…）
-  readOnly: boolean;             // 國定假日、或此刻不可編輯的日期
+  holidayName: string | null;    // 國定假日名稱（國慶日…），或「彈性休假日」（可排班，僅提示）
+  readOnly: boolean;             // 國定假日、活動日預定人力、已請假日、或此刻不可編輯的日期
   isActivityDay: boolean;        // 主管排定的活動日（疊加旗標，與 dayType 並存）
   activityTitle: string | null;
   isActivityAssignee: boolean;   // 本人是否為該活動日的預定人力
+  /** 鎖定為上班日的原因：activity（活動日預定人力）/ leave（已請假）/ change（已在另一張改班單內） */
+  lockReason?: ShiftDayLockReason | null;
+  leaveLabel?: string | null;    // 該日的假別（例「年假」「事假（簽核中）」）
 }
+
+export type ShiftDayLockReason = 'activity' | 'leave' | 'change';
 
 /**
  * 擋存判準結果。**進入畫面時就要顯示** —— 空白月曆必然擋存，

@@ -105,9 +105,15 @@ public sealed class AutoShiftScheduleService(
 
             var deptActivities = t.DepartmentId is { } dep
                 ? activityByDept[dep].ToHashSet()
-                : [];
+                : new HashSet<DateTime>();
 
-            var context = await LoadContextAsync(t.Id, monthStart, monthEnd, holidays, ct);
+            // 本人的活動日預定人力與已請假日同樣不可排休（與個人排班的鎖定同一真相）
+            var locked = await ShiftScheduleConstraintService.LoadLockedDatesAsync(
+                db, calendarReader, t.Id, monthStart, monthEnd);
+            deptActivities.UnionWith(locked.Keys);
+
+            var context = await ShiftScheduleConstraintService.LoadContextDaysAsync(
+                db, calendarReader, t.Id, monthStart, monthEnd);
             var outcome = AutoShiftScheduler.Build(year, month, holidays, deptActivities, context);
 
             results.Add(new AutoScheduleUserResult(
@@ -135,28 +141,6 @@ public sealed class AutoShiftScheduleService(
         if (!dryRun) await db.SaveChangesAsync(ct);
 
         return new AutoScheduleRunResult(year, month, dryRun, assigned, failed, 0, [.. results]);
-    }
-
-    /// <summary>關卡 A／B 的跨月上下文（同 ShiftScheduleHandler 的作法）。</summary>
-    private async Task<Dictionary<DateTime, string>> LoadContextAsync(
-        Guid userId, DateTime monthStart, DateTime monthEnd,
-        IReadOnlySet<DateTime> holidays, CancellationToken ct)
-    {
-        var from = monthStart.AddDays(-(ShiftScheduleValidator.RollingWindowDays - 1));
-        var to   = monthEnd.AddDays(ShiftScheduleValidator.RollingWindowDays - 1);
-
-        var saved = await db.ShiftScheduleDays.AsNoTracking()
-            .Where(d => d.UserId == userId
-                     && ((d.Date >= from && d.Date < monthStart) || (d.Date > monthEnd && d.Date <= to)))
-            .ToDictionaryAsync(d => d.Date.Date, d => WorkDayTypes.Normalize(d.DayType), ct);
-
-        var outerHolidays = await ShiftScheduleMap.LoadPublicHolidaysAsync(calendarReader, from, to);
-        foreach (var kv in outerHolidays)
-        {
-            if (kv.Key >= monthStart && kv.Key <= monthEnd) continue;
-            saved[kv.Key] = WorkDayTypes.PublicHoliday;
-        }
-        return saved;
     }
 
     private async Task WriteAsync(

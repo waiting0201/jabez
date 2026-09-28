@@ -91,10 +91,10 @@ public sealed class ShiftScheduleHandler(
         if (editability.Mode == ShiftScheduleEditMode.SameDayOnly)
             await EnsureOnlyTodayChangedAsync(targetId, monthStart, monthEnd, incoming, now, editability);
 
-        // 檢核（與 GET 共用同一份判準）
+        // 檢核（與 GET、改班申請共用同一份判準，含活動日／請假鎖定）
         var monthDays = ShiftScheduleMap.BuildMonthDayTypes(monthStart, monthEnd, incoming, publicHolidays);
-        var context   = await LoadContextDaysAsync(targetId, monthStart, monthEnd);
-        var result    = ShiftScheduleValidator.Validate(body.Year, body.Month, monthDays, context);
+        var result    = await ShiftScheduleConstraintService.EvaluateAsync(
+            db, calendarReader, targetId, body.Year, body.Month, monthDays);
 
         if (!result.CanSave)
             throw AppException.BadRequest(string.Join(" ", result.Blocks));
@@ -121,7 +121,10 @@ public sealed class ShiftScheduleHandler(
             .FirstOrDefaultAsync()
             ?? throw AppException.NotFound("查無此使用者。");
 
-        var publicHolidays = await ShiftScheduleMap.LoadPublicHolidaysAsync(calendarReader, monthStart, monthEnd);
+        var publicHolidays   = await ShiftScheduleMap.LoadPublicHolidaysAsync(calendarReader, monthStart, monthEnd);
+        var flexibleHolidays = await ShiftScheduleMap.LoadFlexibleHolidaysAsync(calendarReader, monthStart, monthEnd);
+        var locks            = await ShiftScheduleConstraintService.LoadLockedDatesAsync(
+            db, calendarReader, userId, monthStart, monthEnd);
 
         var saved = await db.ShiftScheduleDays.AsNoTracking()
             .Where(d => d.UserId == userId && d.Date >= monthStart && d.Date <= monthEnd)
@@ -151,21 +154,26 @@ public sealed class ShiftScheduleHandler(
         for (var d = monthStart; d <= monthEnd; d = d.AddDays(1))
         {
             var isPublicHoliday = publicHolidays.TryGetValue(d, out var holidayName);
-            var act             = activityByDate[d].FirstOrDefault();
+            // 同一天多個活動時，優先取本人被指派的那一筆（否則會把本人的指派蓋掉）
+            var act             = activityByDate[d].OrderByDescending(a => a.IsAssignee).FirstOrDefault();
+            var dayLock         = locks.GetValueOrDefault(d);
 
             days.Add(new ShiftScheduleDayDto(
                 Date:               d,
                 DayType:            dayTypes[d],
-                HolidayName:        isPublicHoliday ? holidayName : null,
-                // 國定假日恆唯讀；其餘依「此刻這一格能不能改」
-                ReadOnly:           isPublicHoliday || !ShiftScheduleWindow.CanEditDate(editability, d, now),
+                HolidayName:        isPublicHoliday ? holidayName : flexibleHolidays.GetValueOrDefault(d),
+                // 國定假日、活動日預定人力、已請假日恆唯讀；其餘依「此刻這一格能不能改」
+                ReadOnly:           isPublicHoliday || dayLock is not null
+                                 || !ShiftScheduleWindow.CanEditDate(editability, d, now),
                 IsActivityDay:      act is not null,
                 ActivityTitle:      act?.Title,
-                IsActivityAssignee: act?.IsAssignee ?? false));
+                IsActivityAssignee: act?.IsAssignee ?? false,
+                LockReason:         dayLock?.Reason,
+                LeaveLabel:         dayLock?.Reason == ShiftScheduleConstraintService.LockLeave ? dayLock.Label : null));
         }
 
-        var context = await LoadContextDaysAsync(userId, monthStart, monthEnd);
-        var result  = ShiftScheduleValidator.Validate(year, month, dayTypes, context);
+        var result = await ShiftScheduleConstraintService.EvaluateAsync(
+            db, calendarReader, userId, year, month, dayTypes, locks);
 
         return new ShiftScheduleMonthDto(
             UserId:         user.Id,
@@ -179,39 +187,7 @@ public sealed class ShiftScheduleHandler(
             CommittedAt:    monthStatus?.CommittedAt,
             AutoAssignedAt: monthStatus?.AutoAssignedAt,
             Days:           [.. days],
-            Validation:     new ShiftScheduleValidationDto(
-                                result.CanSave,
-                                [.. result.Blocks],
-                                [.. result.Warnings],
-                                result.StatutoryOffCount,
-                                result.RestDayCount,
-                                result.RequiredStatutoryOff,
-                                result.RequiredRestDay));
-    }
-
-    /// <summary>
-    /// 關卡 A／B 的跨月上下文：前月月底與次月月初的**已定案**班表。
-    /// 次月尚未排定就不放進去 —— 未知的日子不可當成上班日，否則會誤擋（見 ShiftScheduleValidator）。
-    /// </summary>
-    private async Task<Dictionary<DateTime, string>> LoadContextDaysAsync(
-        Guid userId, DateTime monthStart, DateTime monthEnd)
-    {
-        var from = monthStart.AddDays(-(ShiftScheduleValidator.RollingWindowDays - 1));
-        var to   = monthEnd.AddDays(ShiftScheduleValidator.RollingWindowDays - 1);
-
-        var saved = await db.ShiftScheduleDays.AsNoTracking()
-            .Where(d => d.UserId == userId
-                     && ((d.Date >= from && d.Date < monthStart) || (d.Date > monthEnd && d.Date <= to)))
-            .ToDictionaryAsync(d => d.Date.Date, d => WorkDayTypes.Normalize(d.DayType));
-
-        // 前後月的國定假日同樣要納入（它們會中斷連續上班、但不算例假）
-        var holidays = await ShiftScheduleMap.LoadPublicHolidaysAsync(calendarReader, from, to);
-        foreach (var kv in holidays)
-        {
-            if (kv.Key >= monthStart && kv.Key <= monthEnd) continue;
-            saved[kv.Key] = WorkDayTypes.PublicHoliday;
-        }
-        return saved;
+            Validation:     ShiftScheduleConstraintService.ToDto(result));
     }
 
     // ── 寫入 ────────────────────────────────────────────────────────

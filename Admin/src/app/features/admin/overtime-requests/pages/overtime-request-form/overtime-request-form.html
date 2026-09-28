@@ -192,6 +192,18 @@
               }
             </div>
 
+            <!--
+              擋件訊息：超出計酬上限，或該日為彈性休假日出勤（依打卡自動計酬，免提加班單）。
+              **與補償方式無關**（2026-09 起兩種補償方式一律擋），故不放在下方僅 pay 模式顯示的
+              「加班費試算」區塊內，改在此處常駐顯示、擋住儲存 / 送出按鈕（見 isBlocked）。
+            -->
+            @if (!isReadOnly && estimate()?.blockMessage; as blockMsg) {
+              <div class="alert alert-danger flex items-center gap-2 py-2 mb-4">
+                <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                <span class="small">{{ blockMsg }}</span>
+              </div>
+            }
+
             <!-- 加班費試算（僅選「加班費」時顯示） -->
             @if (isPayMode) {
               <div class="border rounded p-4 bg-light-subtle">
@@ -253,14 +265,6 @@
                       </span>
                       <span class="text-muted small">計酬上限 {{ e.capHours | number:'1.0-0' }} 小時</span>
                     </div>
-                    @if (e.excessHours > 0) {
-                      <div class="alert alert-warning flex items-center gap-2 py-2 mt-3 mb-0">
-                        <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
-                        <span class="small">
-                          超過 {{ e.capHours | number:'1.0-0' }} 小時的 {{ e.excessHours | number:'1.0-1' }} 小時不計加班費（仍可送出登記）。
-                        </span>
-                      </div>
-                    }
                     @if (e.hasHolidayTravelConflict) {
                       <div class="alert alert-danger flex items-center gap-2 py-2 mt-3 mb-0">
                         <svg class="sa-icon shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
@@ -337,13 +341,13 @@
 
         @if (!isReadOnly) {
           <div class="mt-6 flex gap-2">
-            <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid || saving()">
+            <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid || saving() || isBlocked">
               @if (saving()) {
                 <span class="spinner-border spinner-border-sm me-1" role="status"></span>
               }
               {{ isEdit ? '儲存' : '儲存草稿' }}
             </button>
-            <button type="button" class="btn btn-primary" [disabled]="form.invalid || saving()"
+            <button type="button" class="btn btn-primary" [disabled]="form.invalid || saving() || isBlocked"
                     (click)="submitForApproval()">
               @if (saving()) {
                 <span class="spinner-border spinner-border-sm me-1" role="status"></span>

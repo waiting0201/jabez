@@ -144,7 +144,7 @@
 | GET/POST | `/overtime-requests` | 加班申請列表 / 新增（預設 draft）。payload 須帶 **`projects[]`（`projectId` + `estimatedHours`），必填至少 1 筆**、`compensationType`（`compensatory` 補休 / `pay` 加班費，未知值一律正規化為 `compensatory`）；驗證：每列時數 > 0、同單不可重複專案、專案須存在。回應 `projects[]` 含 `projectCode` / `projectName` / `estimatedHours`，`estimatedHours` 為各列合計（後端計算，不接受客戶端傳入） |
 | GET/PUT/PATCH/DELETE | `/overtime-requests/{id}` | 加班申請 CRUD。更新時 `projects[]` **整批替換且必填**（不支援省略），一併重算父表合計；`compensationType` 為 `null` 時不變更。**任何更新一律清空加班費快照**（日期 / 時數 / 補償方式可能已變動），重新送簽時再算 |
 | PATCH | `/overtime-requests/{id}/submit` | 送出加班申請（draft → pending）。送出時依 `compensationType` 寫入加班費快照（`pay` 才算；補休型清空） |
-| GET | `/overtime-requests/estimate?date=&hours=` | **加班費即時試算**（表單用，權限沿用 `overtime-requests:read`）。對象一律取 JWT `sub`，**刻意不接受 `employeeId`**（回傳含時薪可反推底薪）。回傳 `hourlyRate` / `requestedHours` / `payableHours` / `excessHours` / `capHours` / `amount` / `isHoliday` / `segments[]`（分段明細）/ `hasBaseSalary` / `hasHolidayTravelConflict` |
+| GET | `/overtime-requests/estimate?date=&hours=` | **加班時數即時試算**（表單用，權限沿用 `overtime-requests:read`；2026-09-28 起**兩種補償方式都查詢**，不再限「加班費」模式）。對象一律取 JWT `sub`，**刻意不接受 `employeeId`**（回傳含時薪可反推底薪）。回傳 `hourlyRate` / `requestedHours` / `payableHours` / `excessHours` / `capHours` / `amount` / `dayType`（`WorkDayTypes` 四值，2026-09 由 `isHoliday` 布林改）/ `segments[]`（分段明細）/ `hasBaseSalary` / `hasHolidayTravelConflict` / **`exceedsCap`**（超出上限，2026-09-28 新增）/ **`blockMessage`**（非 null＝不可送出：超出上限或彈性休假日出勤依打卡自動計酬，2026-09-28 新增） |
 | GET/POST | `/advance-requests` | 預支申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/advance-requests/{id}` | 預支申請 CRUD |
 | PATCH | `/advance-requests/{id}/submit` | 送出預支申請（draft → pending）；追加批次被退回後也走此端點重送 |
@@ -207,8 +207,8 @@
 
 | Method | 路徑 | 權限 | 說明 |
 |---|---|---|---|
-| GET | `/shift-schedules?year=&month=[&userId=]` | `shift-schedule:read` | 某人某月的排班月曆。回傳每日 `dayType`（`work` / `rest_day` / `statutory_off` / `public_holiday`）、`holidayName`、`readOnly`、活動日疊加旗標（`isActivityDay` / `activityTitle` / `isActivityAssignee`），以及 `editable` / `editMode`（`open` / `grace_period` / `same_day_only` / `closed`）與 **`validation`**（擋存判準結果，**進入畫面即顯示**，不可等到按儲存才報錯）。帶 `userId` 看別人：未持 `shift-schedule:view-all` 者僅限 `ProjectAccessScope` 涵蓋的部門 |
-| PUT | `/shift-schedules` | `shift-schedule:write` | 整月整批替換。body `{ year, month, days: [{ date, dayType }] }`，只需送非上班日的格子。**國定假日格送了會被靜默丟棄**（唯讀、不佔配額）；上班日**不落地**（查無紀錄即上班日）。未通過擋存判準回 400 並列出全部原因 |
+| GET | `/shift-schedules?year=&month=[&userId=]` | `shift-schedule:read` | 某人某月的排班月曆。回傳每日 `dayType`（`work` / `rest_day` / `statutory_off` / `public_holiday`）、`holidayName`、`readOnly`、活動日疊加旗標（`isActivityDay` / `activityTitle` / `isActivityAssignee`）、**鎖定原因 `lockReason`（`activity` / `leave`）與假別 `leaveLabel`**（2026-09-28：本人的活動日與已請假日唯讀、不得排休），以及 `editable` / `editMode`（`open` / `grace_period` / `same_day_only` / `closed`）與 **`validation`**（擋存判準結果，**進入畫面即顯示**，不可等到按儲存才報錯）。帶 `userId` 看別人：未持 `shift-schedule:view-all` 者僅限 `ProjectAccessScope` 涵蓋的部門 |
+| PUT | `/shift-schedules` | `shift-schedule:write` | 整月整批替換。body `{ year, month, days: [{ date, dayType }] }`，只需送非上班日的格子。**國定假日格送了會被靜默丟棄**（唯讀、不佔配額；彈性休假日不是國定假日、可排班）；活動日／已請假日排為例假或休假回 400；上班日**不落地**（查無紀錄即上班日）。未通過擋存判準回 400 並列出全部原因 |
 
 > **擋存判準（單一真相 [Api/Common/ShiftScheduleValidator.cs](../Api/Common/ShiftScheduleValidator.cs)）**：
 > `例假 4 天已排滿 ∧ 連續上班 ≤ 12 天 ∧ 任意連續 14 天內 ≥ 2 天例假` ⇒ 可儲存。
@@ -231,11 +231,12 @@
 | Method | 路徑 | 權限 | 說明 |
 |---|---|---|---|
 | GET | `/shift-changes` | `shift-schedule:read` | 自己的改班申請清單（分頁）。簽核者從〈簽核作業〉進入 |
-| GET | `/shift-changes/changeable-dates?year=&month=` | `shift-schedule:read` | 可申請改班的日期（逐日現況 + 目前配額）。已排除國定假日與過去日期 |
-| POST | `/shift-changes` | `shift-schedule:write` | 新增草稿。body `{ year, month, reason, dates: [{ date, toDayType }] }` |
-| GET | `/shift-changes/{id}` | `shift-schedule:read` | 詳情（授權走 `RequestViewAccess`，不符回 404） |
-| PUT/PATCH | `/shift-changes/{id}` | `shift-schedule:write` | 修改草稿 / 退回單 |
-| PATCH | `/shift-changes/{id}/submit` | `shift-schedule:write` | 送簽（取號 `SC-yyyyMMdd-NNN` + 寫 `SubmittedAt`） |
+| GET | `/shift-changes/changeable-dates?year=&month=` | `shift-schedule:read` | 可申請改班的日期（逐日現況 + 目前配額）。已排除國定假日、過去日期與被其他進行中改班單佔用的日期 |
+| POST | `/shift-changes/preview` | `shift-schedule:write` | **試算（不寫入，2026-09-28）**：body `{ year, month, dates: [{ date, toDayType }], excludeRequestId? }`，回 `ShiftChangeMonthViewDto`（套用後整月 `days` + `changes` 原→新 + `validation`，與個人排班同一套檢核含活動日／請假鎖定）。表單每點一格呼叫一次 |
+| POST | `/shift-changes` | `shift-schedule:write` | 新增草稿。body `{ year, month, reason, dates: [{ date, toDayType }] }`。**同一人同一月份已有進行中（草稿／簽核中／退回）的單回 400** |
+| GET | `/shift-changes/{id}` | `shift-schedule:read` | 詳情（授權走 `RequestViewAccess`，不符回 404），含 `view`（套用後整月月曆 + 檢核） |
+| PUT/PATCH | `/shift-changes/{id}` | `shift-schedule:write` | 修改草稿 / 退回單；可帶 `year` / `month` 換月份（同月一張規則同樣適用） |
+| PATCH | `/shift-changes/{id}/submit` | `shift-schedule:write` | 送簽（取號 `SC-yyyyMMdd-NNN` + 寫 `SubmittedAt`）。**套用後班表不合規回 400**；同月已有簽核中／退回的另一張單亦回 400 |
 | DELETE | `/shift-changes/{id}` | `shift-schedule:write` | 刪除草稿（一併清三張多型足跡表） |
 
 > ⚠ **與銷假申請的關鍵差異**：銷假借用請假的流程設定（`ResolveApprovalItemIdAsync("leave", …)`），

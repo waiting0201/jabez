@@ -1,99 +1,137 @@
 <div class="container-fluid py-3">
-  <div class="flex items-center gap-2 mb-6">
-    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="back()">
-      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
-    </button>
-    <h4 class="mb-0">
-      {{ mode() === 'new' ? '改班申請' : mode() === 'edit' ? '編輯改班申請' : '改班申請詳情' }}
-    </h4>
-    @if (existing(); as e) {
-      @if (e.requestNo) { <span class="font-monospace text-secondary">{{ e.requestNo }}</span> }
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
+      <button type="button" class="btn btn-sm btn-outline-secondary" (click)="back()">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#arrow-left"></use></svg>
+      </button>
+      <h4 class="mb-0">
+        {{ mode() === 'new' ? '改班申請' : readOnly() ? '改班申請詳情' : '編輯改班申請' }}
+      </h4>
+      @if (existing(); as e) {
+        @if (e.requestNo) { <span class="font-monospace text-secondary">{{ e.requestNo }}</span> }
+        <span class="badge" [class]="statusClass(e.approvalStatus)">{{ statusLabel(e.approvalStatus) }}</span>
+      }
+    </div>
+
+    @if (!readOnly()) {
+      <div class="flex flex-wrap items-center gap-2">
+        <select class="form-select form-select-sm w-full sm:w-auto"
+                [ngModel]="year()" (ngModelChange)="year.set(+$event); onPeriodChange()">
+          @for (y of yearOptions(); track y) { <option [value]="y">{{ y }} 年</option> }
+        </select>
+        <select class="form-select form-select-sm w-full sm:w-auto"
+                [ngModel]="month()" (ngModelChange)="month.set(+$event); onPeriodChange()">
+          @for (m of monthOptions; track m) { <option [value]="m">{{ m }} 月</option> }
+        </select>
+      </div>
     }
   </div>
 
   <div class="row g-4">
-    <div class="col-12 col-lg-10 col-xl-8">
+    <div class="col-12 col-xl-10">
 
       @if (readOnly() && existing(); as e) {
-        <div class="alert alert-secondary border-0 shadow-sm mb-4">
-          狀態：<b>{{ e.approvalStatus }}</b>
-          @if (e.submittedAt) { ・送簽於 {{ e.submittedAt | date: 'yyyy/MM/dd HH:mm' }} }
-          @if (e.reviewNote) { <div class="small mt-1">審核意見：{{ e.reviewNote }}</div> }
+        @if (e.submittedAt || e.reviewNote) {
+          <div class="alert alert-secondary border-0 shadow-sm mb-4">
+            <div>
+              @if (e.submittedAt) { 送簽於 {{ e.submittedAt | date: 'yyyy/MM/dd HH:mm' }} }
+              @if (e.reviewNote) { <div class="small mt-1">審核意見：{{ e.reviewNote }}</div> }
+            </div>
+          </div>
+        }
+      }
+
+      <!-- 配額：與〈個人排班〉同一版面，數字為「套用本次調整後」的結果 -->
+      @if (view(); as v) {
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-body flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div class="fw-600">{{ year() }} 年 {{ month() }} 月・調整後配額</div>
+              <div class="text-secondary small">
+                每點一格即重新檢核；送出後各關審核者看到的是同一份結果。
+              </div>
+            </div>
+            <div class="flex items-center gap-4">
+              <div class="text-center">
+                <div class="small text-secondary">例假日</div>
+                <div class="fw-600"
+                     [style.color]="v.validation.statutoryOffCount >= v.validation.requiredStatutoryOff ? 'var(--green)' : 'var(--red)'">
+                  {{ v.validation.statutoryOffCount }} / {{ v.validation.requiredStatutoryOff }}
+                </div>
+              </div>
+              <div class="text-center">
+                <div class="small text-secondary">休假日</div>
+                <div class="fw-600">{{ v.validation.restDayCount }} / {{ v.validation.requiredRestDay }}</div>
+              </div>
+            </div>
+          </div>
         </div>
+
+        <!-- 系統檢核：由後端判定，前端不自行重算規則 -->
+        @if (previewing()) {
+          <div class="alert alert-secondary border-0 shadow-sm mb-4">
+            <div>檢核中…</div>
+          </div>
+        } @else if (v.validation.blocks.length) {
+          <div class="alert alert-danger border-0 shadow-sm mb-4">
+            <div>
+              <div class="fw-600 mb-1">調整後班表不符合排班規範，無法送出</div>
+              <ul class="mb-0 ps-3">
+                @for (b of v.validation.blocks; track b) { <li>{{ b }}</li> }
+              </ul>
+            </div>
+          </div>
+        } @else if (dirty()) {
+          <div class="alert alert-success border-0 shadow-sm mb-4">
+            <div>✔ 經系統檢核，調整後班表符合排班規範（例假日排滿、連續上班不超過 12 天、任 14 天內至少 2 天例假日）。</div>
+          </div>
+        }
+        @if (!previewing() && v.validation.warnings.length) {
+          <div class="alert alert-warning border-0 shadow-sm mb-4">
+            <ul class="mb-0 ps-3">
+              @for (w of v.validation.warnings; track w) { <li>{{ w }}</li> }
+            </ul>
+          </div>
+        }
       }
 
       <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-transparent border-bottom flex flex-wrap items-center justify-between gap-2 fw-600">
-          <div class="flex items-center gap-2">
-            <svg class="sa-icon text-primary" style="stroke: currentColor">
-              <use href="/assets/icons/sprite.svg#calendar"></use>
-            </svg>
-            調整內容
-          </div>
-          @if (!readOnly()) {
-            <div class="flex flex-wrap items-center gap-2">
-              <select class="form-select form-select-sm w-full sm:w-auto"
-                      [ngModel]="year()" (ngModelChange)="year.set($event); onPeriodChange()">
-                @for (y of yearOptions(); track y) { <option [value]="y">{{ y }} 年</option> }
-              </select>
-              <select class="form-select form-select-sm w-full sm:w-auto"
-                      [ngModel]="month()" (ngModelChange)="month.set($event); onPeriodChange()">
-                @for (m of monthOptions; track m) { <option [value]="m">{{ m }} 月</option> }
-              </select>
-            </div>
-          } @else {
-            <span class="text-secondary small">{{ year() }} 年 {{ month() }} 月</span>
-          }
+        <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+          <svg class="sa-icon text-primary" style="stroke: currentColor">
+            <use href="/assets/icons/sprite.svg#calendar"></use>
+          </svg>
+          調整內容
         </div>
 
         <div class="card-body">
-          @if (source(); as s) {
-            <div class="small text-secondary mb-3">
-              目前配額：例假 {{ s.statutoryOffCount }}/{{ s.requiredStatutoryOff }}
-              ・休假 {{ s.restDayCount }}/{{ s.requiredRestDay }}
-              @if (s.monthStatus === 'auto') { <span class="badge text-bg-warning ms-2">系統自動排班</span> }
-            </div>
-          }
-
-          @if (loading()) {
+          @if (loading() && !view()) {
             <div class="text-center text-secondary py-4">載入中…</div>
-          } @else if (!readOnly()) {
-            <p class="text-secondary small mb-3">
-              點一下日期切換要改成的狀態（上班日 → 例假日 → 休假日）；切回原本的狀態即取消該日異動。
-              國定假日不可變更。
-            </p>
-            <div class="flex flex-wrap gap-2">
-              @for (d of dates(); track d.date) {
-                <button type="button" class="btn btn-sm"
-                        [disabled]="d.isPublicHoliday"
-                        [class.btn-primary]="isChanged(d)"
-                        [class.btn-outline-secondary]="!isChanged(d)"
-                        (click)="cycle(d)">
-                  {{ d.date | date: 'MM/dd' }}
-                  <span class="small">
-                    @if (isChanged(d)) {
-                      {{ dayTypeLabels[d.fromDayType] }} → <b>{{ dayTypeLabels[displayType(d)] }}</b>
-                    } @else {
-                      {{ dayTypeLabels[d.fromDayType] }}
-                    }
-                  </span>
-                </button>
-              }
-            </div>
-          }
+          } @else if (view(); as v) {
+            @if (!readOnly()) {
+              <p class="text-secondary small mb-3">
+                點一下格子切換要改成的狀態（上班日 → 例假日 → 休假日）；切回原本的狀態即取消該日異動。
+                國定假日、已請假日、您被指派的活動日與已過的日期不可變更。
+              </p>
+            }
+            <app-shift-month-calendar
+              [year]="v.year" [month]="v.month"
+              [days]="v.days" [dayTypes]="displayTypes()" [changedFrom]="changedFrom()"
+              [interactive]="!readOnly()" [showChangedLegend]="true"
+              (cellClick)="onCellClick($event)" />
 
-          @if (pickedList().length) {
-            <div class="mt-4">
-              <div class="text-muted small mb-1">本次調整（{{ pickedList().length }} 天）</div>
-              <div class="flex flex-wrap gap-2">
-                @for (x of pickedList(); track x.date) {
-                  <span class="badge bg-light text-dark border">
-                    {{ x.date | date: 'MM/dd' }}
-                    {{ dayTypeLabels[x.fromDayType] }} → <b>{{ dayTypeLabels[x.toDayType] }}</b>
-                  </span>
-                }
+            @if (pickedList().length) {
+              <div class="mt-4">
+                <div class="text-muted small mb-1">本次調整（{{ pickedList().length }} 天）</div>
+                <div class="flex flex-wrap gap-2">
+                  @for (x of pickedList(); track x.date) {
+                    <span class="badge bg-light text-dark border">
+                      {{ x.date | date: 'MM/dd' }}
+                      {{ dayTypeLabels[x.fromDayType] }} → <b>{{ dayTypeLabels[x.toDayType] }}</b>
+                    </span>
+                  }
+                </div>
               </div>
-            </div>
+            }
           }
         </div>
       </div>
@@ -103,7 +141,7 @@
           <svg class="sa-icon text-primary" style="stroke: currentColor">
             <use href="/assets/icons/sprite.svg#edit"></use>
           </svg>
-          改班原因
+          改班原因 <span class="text-danger">*</span>
         </div>
         <div class="card-body">
           @if (readOnly()) {
@@ -118,7 +156,7 @@
 
       @if (!readOnly()) {
         <div class="flex flex-wrap items-center gap-2">
-          <button type="button" class="btn btn-primary" [disabled]="!dirty() || saving()" (click)="save(true)">
+          <button type="button" class="btn btn-primary" [disabled]="!canSubmit() || saving()" (click)="save(true)">
             @if (saving()) { <span class="spinner-border spinner-border-sm me-1"></span> }
             送出申請
           </button>

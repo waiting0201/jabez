@@ -673,6 +673,8 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 
 另一例：[AttendanceAutoClockService.ApplyAsync](../Api/Services/AttendanceAutoClockService.cs)（登入時自動補卡）— 同慣例不呼叫 `SaveChanges`。
 
+另一例：[ShiftScheduleConstraintService](../Api/Services/ShiftScheduleConstraintService.cs)（2026-09-28）— 排班「能不能存」的 **I/O 部分**：純函式 `ShiftScheduleValidator` 只看日別，本服務補上需要查 DB 的兩條鎖定（本人的**活動日預定人力**、**簽核中／已核准假單**涵蓋的日子不得排休），並以 `EvaluateAsync` 合併成一份結果。**個人排班 GET / PUT、自動排班、〈改班申請〉的試算 / 送簽 / 每關核准全部走這一支** —— 申請人、審核者、月曆看到的檢核結果因此一致；新增任何「寫入班表」的入口都必須呼叫它，不可只跑 `ShiftScheduleValidator`。跨月上下文 `LoadContextDaysAsync` 也收斂於此（原本 `ShiftScheduleHandler` 與 `AutoShiftScheduleService` 各有一份）。〈改班申請〉的整月試算在 [ShiftChangeRequestService.BuildMonthViewAsync](../Api/Services/ShiftChangeRequestService.cs)。
+
 #### 登入路徑的副作用必須與主流程分離交易
 
 `AuthHandler.LoginAsync` 原本只有一次 `SaveChangesAsync`，同時包含 `RefreshTokens.Add(...)` 與補卡的變更。
@@ -1304,7 +1306,7 @@ Line__LoginChannelId              ↔ IConfiguration["Line:LoginChannelId"]
 
 | App Setting | 作用 |
 |---|---|
-| `App__ShiftScheduleOpenAllFutureMonths=true` | 個人排班的未來月份（次月起）一律開放編輯，不受「10–25 日」與「僅次月」限制；過往月份與當月規則不變。對應 `ShiftScheduleWindow.OpenAllFutureMonths`，於 `Program.cs` 啟動時讀入，**改值後須重啟 Function App** |
+| `App__ShiftScheduleOpenAllFutureMonths=true` | 個人排班的**所有月份**（過往月份、當月、未來月份）一律開放編輯，不受「過往唯讀」「當月僅能改當天」「10–25 日」「僅次月」任何限制（2026-09-28 由「只開未來月份」擴大，供教育訓練以不同月份示範；鍵名沿用舊名以免重設）。對應 `ShiftScheduleWindow.OpenAllFutureMonths`，於 `Program.cs` 啟動時讀入，**改值後須重啟 Function App** |
 
 ### 16.4 一次性 Seeder 工具（Startup Hook 模式）
 

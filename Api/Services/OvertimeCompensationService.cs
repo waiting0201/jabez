@@ -63,6 +63,7 @@ public static class OvertimeCompensationService
         ot.HourlyRateSnapshot = estimate.HourlyRate;
         ot.PayableHours       = estimate.PayableHours;
         ot.OvertimeDayType    = estimate.DayType;
+        ot.ExcessHours        = estimate.ExcessHours;
         // 舊欄一併寫，讓「日別快照」在 OvertimeDayType 上線前後的列都讀得出來（見 SnapshotDayType）。
         // 國定假日在舊二值語意裡最接近「假日」，故歸 true。
         ot.IsHolidayOvertime  = estimate.DayType != WorkDayTypes.Work;
@@ -80,6 +81,7 @@ public static class OvertimeCompensationService
         ot.PayableHours       = null;
         ot.IsHolidayOvertime  = null;
         ot.OvertimeDayType    = null;
+        ot.ExcessHours        = null;
     }
 
     /// <summary>

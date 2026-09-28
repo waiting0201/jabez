@@ -1,6 +1,7 @@
 using System.Data;
 using Dapper;
 using Jabez.Api.Common;
+using Jabez.Api.Models.Entities;
 
 namespace Jabez.Api.Services.Dapper;
 
@@ -11,8 +12,13 @@ namespace Jabez.Api.Services.Dapper;
 ///   <list type="number">
 ///     <item>該員該日有 <c>ShiftScheduleDay</c> → 用它（上班日／例假日／休假日）</item>
 ///     <item>否則該日為**國定假日**（<c>CalendarDay.IsHoliday</c> 且 <c>Description</c> 非空）→ public_holiday</item>
+///     <item>否則該員**該月已排班**（<c>ShiftScheduleMonths</c> 有 committed / auto 紀錄）→ work</item>
 ///     <item>否則 → 依舊制行事曆判定（有資料看 IsHoliday、無資料退回六日），回 work / rest_day</item>
 ///   </list>
+///
+/// ⚠ 第 3 段不可省（2026-09-28 修正）：<c>ShiftScheduleDay</c> 只落地非上班日（「查無紀錄即上班日」），
+/// 若已排班月份的空白日也退回舊制行事曆，員工排成上班的週末／彈性休假日會被解析成 rest_day，
+/// 打卡被鎖、加班走錯級距。
 ///
 /// 第 3 段是**切換日之前的歷史日期**與「尚未排班的未來日期」的退路，
 /// 讓本服務在制度切換前後都能回答，呼叫端不必自己判斷切換與否。
@@ -84,6 +90,22 @@ public sealed class ShiftScheduleReadService(IDbConnection db, ICalendarDayReadS
 
         var scheduled = rows.ToDictionary(r => (r.UserId, r.Date.Date), r => WorkDayTypes.Normalize(r.DayType));
 
+        // 已排班的月份（空白日＝上班日，不可退回舊制行事曆）
+        var monthSql = """
+            SELECT UserId, [Year], [Month]
+            FROM ShiftScheduleMonths
+            WHERE Status IN @Statuses
+              AND ([Year] * 100 + [Month]) BETWEEN @FromYm AND @ToYm
+        """;
+        if (userIds.Count > 0) monthSql += " AND UserId IN @UserIds";
+        var committedMonths = (await db.QueryAsync<(Guid UserId, int Year, int Month)>(monthSql, new
+        {
+            Statuses = new[] { ShiftScheduleMonthStatus.Committed, ShiftScheduleMonthStatus.Auto },
+            FromYm   = start.Year * 100 + start.Month,
+            ToYm     = end.Year * 100 + end.Month,
+            UserIds  = userIds,
+        })).ToHashSet();
+
         // ② / ③ 沒排到的日子：國定假日 → 舊制行事曆判定
         await EnsureCalendarLoadedAsync(start, end);
 
@@ -99,7 +121,9 @@ public sealed class ShiftScheduleReadService(IDbConnection db, ICalendarDayReadS
             for (var d = start; d <= end; d = d.AddDays(1))
             {
                 if (result.ContainsKey((uid, d))) continue;
-                result[(uid, d)] = ResolveUnscheduled(d);
+                result[(uid, d)] = committedMonths.Contains((uid, d.Year, d.Month)) && !IsPublicHoliday(d)
+                    ? WorkDayTypes.Work
+                    : ResolveUnscheduled(d);
             }
         }
         return result;
@@ -115,6 +139,9 @@ public sealed class ShiftScheduleReadService(IDbConnection db, ICalendarDayReadS
         """;
         return await db.ExecuteScalarAsync<int?>(sql, new { UserId = userId, Date = date.Date }) is not null;
     }
+
+    private bool IsPublicHoliday(DateTime date) =>
+        _publicHolidaysByYear.TryGetValue(date.Year, out var holidays) && holidays.Contains(date);
 
     /// <summary>沒有個人排班時的退路：國定假日 → 舊制行事曆（無資料退回六日）。</summary>
     private string ResolveUnscheduled(DateTime date)

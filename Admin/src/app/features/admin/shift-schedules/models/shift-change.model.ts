@@ -1,4 +1,4 @@
-import {ShiftDayType} from './shift-schedule.model';
+import {ShiftDayType, ShiftScheduleDay, ShiftScheduleValidation} from './shift-schedule.model';
 
 /** 改班申請的單日明細：哪一天、從什麼改成什麼 */
 export interface ShiftChangeDate {
@@ -39,6 +39,27 @@ export interface ShiftChangeRequest {
   currentStepOrder?: number | null;
   dates?: ShiftChangeDate[];
   designatedReviewers?: unknown[];
+  /** 套用後整月月曆 + 系統檢核（詳情端點才有） */
+  view?: ShiftChangeMonthView | null;
+}
+
+/**
+ * 改班「套用後」的整月檢視（表單即時試算、申請詳情、簽核頁三處共用）。
+ * `days[].dayType` 為調整後日別；`validation` 與個人排班同一真相（後端 ShiftScheduleConstraintService）。
+ */
+export interface ShiftChangeMonthView {
+  year: number;
+  month: number;
+  days: ShiftScheduleDay[];
+  changes: ShiftChangeDate[];
+  validation: ShiftScheduleValidation;
+}
+
+export interface PreviewShiftChangeRequest {
+  year: number;
+  month: number;
+  dates: {date: string; toDayType: ShiftDayType}[];
+  excludeRequestId?: number | null;
 }
 
 export interface SaveShiftChangeRequest {

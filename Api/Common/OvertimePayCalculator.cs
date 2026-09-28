@@ -22,13 +22,20 @@ namespace Jabez.Api.Common;
 /// 舊制退路仍是 <see cref="WorkCalendarHelper"/> 那套（行事曆有資料看 IsHoliday、沒資料退回六日），
 /// **排班制員工（User.IsShiftWorker）** 的短路則已隨個人排班退場 —— 有個人班表者一律以班表為準。
 ///
-/// 上限採「截斷計酬、不擋送出」：EstimatedHours 是預估值，擋件會讓員工無法如實登記加班事實；
-/// 補休路徑本來就沒有上限，只在加班費側硬擋並不對稱。超出部分以 ExcessHours 全鏈路可見。
+/// 上限（2026-09 起改為**擋件**，不分補休或加班費）：加班工時上限是勞基法規範本身，
+/// 與員工選擇補休或領加班費無關 —— 舊版「截斷計酬、不擋送出」曾以「只在加班費側硬擋並不對稱」
+/// 為由兩種補償方式都不擋，但那個顧慮反了：不擋等於系統放行違法排班，而非公平對待兩種補償方式。
+/// 現改為 <see cref="ExceedsCap"/> 為真時，Create / Update / Submit 一律 400 擋下（見
+/// <see cref="CapMessage"/>），與切換日無關（切換日前 <c>ResolveDayContextAsync</c> 本就把
+/// 日別收斂回 work / rest_day，沿用相同的 4 / 12 小時上限）。超出部分仍以 ExcessHours 全鏈路可見，
+/// 供 2026-09 之前既有的（擋件上線前送出的）歷史單顯示用。
 ///
 /// 消費點：
-///   OvertimeRequestHandler.EstimateAsync        → 表單即時試算
-///   OvertimeCompensationService.ApplyAsync      → 送簽 / 核准時寫入金額快照
-///   PaymentRequestReadService（簽核任務詳情）    → 只取 SplitHourTiers 的級距，**不給金額**
+///   OvertimeRequestHandler.EstimateAsync        → 表單即時試算（ExceedsCap / BlockMessage）
+///   OvertimeRequestHandler（Create/Update/Submit）→ 擋件（ExceedsCap + CapMessage）
+///   OvertimeCompensationService.ApplyAsync      → 送簽 / 核准時寫入金額快照（含 ExcessHours）
+///   PaymentRequestReadService（簽核任務詳情）    → 只取 SplitHourTiers 的級距，**不給金額**；
+///                                                  ExcessHours 讀 OvertimeRequest 快照欄，不現場推算
 /// </summary>
 public static class OvertimePayCalculator
 {
@@ -74,6 +81,27 @@ public static class OvertimePayCalculator
     /// <summary>該日別的計酬上限。Calculate 與 SplitHourTiers 共用，避免三元式散在兩處。</summary>
     public static decimal CapHoursFor(string dayType) =>
         dayType is WorkDayTypes.RestDay or WorkDayTypes.StatutoryOff ? HolidayCapHours : WeekdayCapHours;
+
+    /// <summary>
+    /// 加班時數是否超出計酬上限（2026-09 起用於**擋件**，不分補休或加班費）。
+    /// 國定假日來源 B 的申請時數含前 8 小時（那 8 小時走薪資加項），故先經
+    /// <see cref="ToPayableTierHours"/> 換算成實際進級距的時數再比對上限。
+    /// </summary>
+    public static bool ExceedsCap(decimal requestedHours, string dayType, bool isActivityAssignee) =>
+        ToPayableTierHours(requestedHours, dayType, isActivityAssignee) > CapHoursFor(dayType);
+
+    /// <summary>
+    /// 擋件訊息文案 —— Handler 的 400 例外訊息與試算端點的 <c>BlockMessage</c> 共用同一份，
+    /// 避免「送出時的錯誤」與「表單試算顯示的警示」文字兜不起來。
+    /// </summary>
+    public static string CapMessage(string dayType, bool isActivityAssignee) => dayType switch
+    {
+        WorkDayTypes.RestDay or WorkDayTypes.StatutoryOff => "休假日加班上限 12 小時，請勿超時加班",
+        WorkDayTypes.PublicHoliday => isActivityAssignee
+            ? "國定假日活動出勤第 9 小時起加班上限 4 小時，請勿超時加班"
+            : "國定假日出勤上限 12 小時，請勿超時加班",
+        _ => "上班日加班上限 4 小時，請勿超時加班",
+    };
 
     /// <summary>
     /// 切換日前，**國定假日一律收斂回休假日** —— 舊制沒有第四種日別，
@@ -122,20 +150,30 @@ public static class OvertimePayCalculator
     /// ⚠ 級距表本身取的是**當下常數**、非快照：日後修法時舊單顯示的級距會跟著變，與 OvertimePayAmount
     ///   快照不同步。這是刻意取捨 —— 正解是修法時給級距表加生效日，不是在這裡再加第五個快照欄。
     /// </summary>
-    public static OvertimeHourTierDto[] SplitHourTiers(decimal hours, string dayType)
+    public static OvertimeHourTierDto[] SplitHourTiers(decimal hours, string dayType) =>
+        [.. SplitTiers(hours, CapHoursFor(dayType), TiersFor(dayType))
+             .Select(t => new OvertimeHourTierDto(t.Multiplier, t.Hours))];
+
+    /// <summary>
+    /// 級距切分的共用核心：截斷至上限後，依序切出各段 (倍率, 該段時數)。
+    /// <see cref="SplitHourTiers"/>（平日 / 假日 / 國定假日）與
+    /// <see cref="CalculateFlexibleHolidayWork"/>（彈性休假日，自己一份級距表）共用同一份邏輯，
+    /// 避免「級距切法」與「金額捨入」各寫一份而漂移。
+    /// </summary>
+    private static List<(decimal Multiplier, decimal Hours)> SplitTiers(
+        decimal hours, decimal cap, (decimal UpToHour, decimal Rate)[] tiers)
     {
-        var tiers  = TiersFor(dayType);
-        var capped = Math.Max(0m, Math.Min(hours, CapHoursFor(dayType)));
+        var capped = Math.Max(0m, Math.Min(hours, cap));
 
         decimal prev = 0m;
-        var result = new List<OvertimeHourTierDto>();
+        var result = new List<(decimal, decimal)>();
         foreach (var (upTo, mult) in tiers)
         {
             var segHours = Math.Max(0m, Math.Min(capped, upTo) - prev);
-            if (segHours > 0m) result.Add(new OvertimeHourTierDto(mult, segHours));
+            if (segHours > 0m) result.Add((mult, segHours));
             prev = upTo;
         }
-        return [.. result];
+        return result;
     }
 
     /// <summary>
@@ -168,6 +206,10 @@ public static class OvertimePayCalculator
         // AwayFromZero 為專案慣例：Math.Round 預設銀行家捨入，落在 .5 會少 1 元（見 PayrollReadService 假日津貼）。
         var total = Math.Round(raw, 0, MidpointRounding.AwayFromZero);
 
+        // 2026-09 起超出上限一律擋件（見類別註解），BlockMessage 供試算端點直接顯示、
+        // 與 Handler 400 的例外訊息共用同一份文案（CapMessage）。
+        var exceedsCap = tierHours > cap;
+
         return new OvertimePayEstimateDto(
             OvertimeDate:   overtimeDate.Date,
             DayType:        dayType,
@@ -178,7 +220,9 @@ public static class OvertimePayCalculator
             CapHours:       cap,
             Amount:         total,
             Segments:       [.. segments],
-            HasBaseSalary:  baseSalary > 0m);
+            HasBaseSalary:  baseSalary > 0m,
+            ExceedsCap:     exceedsCap,
+            BlockMessage:   exceedsCap ? CapMessage(dayType, isActivityAssignee) : null);
     }
 
     /// <summary>
@@ -214,5 +258,58 @@ public static class OvertimePayCalculator
                       && await shiftSchedule.IsActivityAssigneeAsync(ownerId, overtimeDate);
 
         return (dayType, isAssignee);
+    }
+
+    // ── 彈性休假日出勤（四週彈性工時，2026-09 新增）────────────────────────────
+    //
+    // 彈性休假日（行事曆原「補假」，見 PublicHolidayRule.IsFlexibleHoliday）已由業務決議改為
+    // 一般可排班日：排為上班且切換日後打卡出勤者，依打卡時數自動計酬，不走加班申請
+    // （OvertimeRequestHandler 反過來擋掉這種日子的加班單，見該檔 GuardOvertimeHoursAsync）。
+    // 級距刻意獨立於 WeekdayTiers / HolidayTiers 一份 —— 這天不是「休假日出勤才需要加班單核准」
+    // 的情境，是使用者自己排定的班表，出勤事實只認打卡，故第 9–12 小時給比休假日（×2.67）
+    // 略低的 ×2.33：介於平日與休假日之間，反映「非強制出勤但仍是排定的假期」。
+
+    /// <summary>彈性休假日出勤分段倍率：1–2h ×1.34、3–8h ×1.67、9–12h ×2.33。</summary>
+    private static readonly (decimal UpToHour, decimal Rate)[] FlexibleHolidayTiers =
+        [(2m, 1.34m), (8m, 1.67m), (12m, 2.33m)];
+
+    /// <summary>彈性休假日出勤計酬上限（小時）。</summary>
+    public const decimal FlexibleHolidayCapHours = 12m;
+
+    /// <summary>
+    /// 彈性休假日出勤時數（純函式）：打卡時數扣掉與彈性工時午休（12:30–13:30）的重疊部分，
+    /// 無條件捨去至 0.5 小時，上限 12 小時。缺下班卡（尚未打卡或忘記打卡）視為 0 小時 ——
+    /// 這天走的是正常上下班卡（比照活動日 Source A），不是加班申請，沒有「預估時數」可言，
+    /// 出勤事實只能由打卡認定。刻意不看加班開始／結束卡欄位。
+    /// </summary>
+    public static decimal FlexibleHolidayWorkedHours(DateTime? clockIn, DateTime? clockOut)
+    {
+        if (clockIn is null || clockOut is null || clockOut <= clockIn) return 0m;
+
+        var day        = clockIn.Value.Date;
+        var lunchStart = day.Add(WorkdayHours.Flexible.LunchStart.ToTimeSpan());
+        var lunchEnd   = day.Add(WorkdayHours.Flexible.LunchEnd.ToTimeSpan());
+
+        var overlapStart = clockIn.Value > lunchStart ? clockIn.Value : lunchStart;
+        var overlapEnd   = clockOut.Value < lunchEnd   ? clockOut.Value : lunchEnd;
+        var overlapHours = overlapEnd > overlapStart ? (decimal)(overlapEnd - overlapStart).TotalHours : 0m;
+
+        var netHours = Math.Max(0m, (decimal)(clockOut.Value - clockIn.Value).TotalHours - overlapHours);
+        var floored  = Math.Floor(netHours * 2m) / 2m;   // 無條件捨去至 0.5 小時
+        return Math.Min(floored, FlexibleHolidayCapHours);
+    }
+
+    /// <summary>
+    /// 彈性休假日出勤加班費（純函式）：與 <see cref="Calculate"/> 共用同一套
+    /// 「切級距 → 乘時薪 → 只在總額捨入一次」邏輯（<see cref="SplitTiers"/>），
+    /// 差別只在自己一份級距表、沒有 dayType 分岔、也沒有 EstimatedHours 快照可言
+    /// （時數本身就是由打卡當場算出，見 <see cref="FlexibleHolidayWorkedHours"/>）。
+    /// </summary>
+    public static decimal CalculateFlexibleHolidayWork(decimal hours, decimal baseSalary)
+    {
+        var rate = HourlyRate(baseSalary);
+        var raw  = SplitTiers(hours, FlexibleHolidayCapHours, FlexibleHolidayTiers)
+                       .Sum(t => rate * t.Multiplier * t.Hours);
+        return Math.Round(raw, 0, MidpointRounding.AwayFromZero);
     }
 }

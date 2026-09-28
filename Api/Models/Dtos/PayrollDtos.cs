@@ -58,7 +58,15 @@ public sealed record EmployeePayrollDto(
     // 依 lot 上的**原始加班費率快照** × 現行時薪換算。Note 為薪資單上的項目名稱（含民國年期間）。
     decimal   CompensatorySettlementHours  = 0m,
     decimal   CompensatorySettlementAmount = 0m,
-    string?   CompensatorySettlementNote   = null);
+    string?   CompensatorySettlementNote   = null,
+    // 彈性休假日出勤加班費（四週彈性工時 C3，2026-09 新增）：上月「彈性休假日」（原「補假」，
+    // 已改為一般可排班日）排定上班且已打卡出勤者，依打卡時數自動計酬，**不經加班申請**。
+    // 「出勤時數」＝ 上月各次出勤（扣午休重疊、捨去至 0.5 小時、單日上限 12 小時）的合計；
+    // 「加班費」＝ 逐次依 OvertimePayCalculator.CalculateFlexibleHolidayWork 分段計酬後加總
+    //（級距按單日切分，不可先加總時數再套一次級距 —— 上限與級距都是「每日」基準）。
+    // 切換日之前恆為 0（彈性休假日這個排班機制本身就是新制才有）。
+    decimal   FlexibleHolidayWorkHours     = 0m,
+    decimal   FlexibleHolidayOvertimePay   = 0m);
 
 /// <summary>請假明細（用於薪資頁面顯示）</summary>
 public sealed record LeaveDetailDto(
@@ -91,7 +99,8 @@ public sealed record MonthlyPayrollDto(
     decimal TotalParentalLeaveDays         = 0m,
     decimal TotalCalculatedOvertimePay      = 0m,
     decimal TotalPublicHolidayDoublePay     = 0m,
-    decimal TotalCompensatorySettlementAmount = 0m);
+    decimal TotalCompensatorySettlementAmount = 0m,
+    decimal TotalFlexibleHolidayOvertimePay = 0m);
 
 /// <summary>
 /// 員工自助查詢：單月薪資紀錄（Payroll 為當月即時重算結果，非月結快照）

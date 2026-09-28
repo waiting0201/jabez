@@ -51,12 +51,13 @@ import {formatParticipantDates, formatParticipantDays} from '../../../holiday-tr
 const FINANCE_STEP_DEPT_CODES = new Set(['FIN', 'Financial Management Department']);
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
-import {ShiftDayType} from '../../../shift-schedules/models/shift-schedule.model';
+import {ShiftDayType, dateKey} from '../../../shift-schedules/models/shift-schedule.model';
+import {ShiftMonthCalendar} from '../../../../../shared/components/shift-month-calendar/shift-month-calendar';
 
 @Component({
   selector: 'app-approval-task-review',
   templateUrl: './approval-task-review.html',
-  imports: [RouterLink, ReactiveFormsModule, AsyncPipe, DatePipe, DecimalPipe, FilePreviewModal, AttachmentsList, InstallmentsEditorComponent, WriteOffSummaryComponent, ClosureInfoCardComponent, ScrollIntoViewDirective],
+  imports: [RouterLink, ReactiveFormsModule, AsyncPipe, DatePipe, DecimalPipe, FilePreviewModal, AttachmentsList, InstallmentsEditorComponent, WriteOffSummaryComponent, ClosureInfoCardComponent, ScrollIntoViewDirective, ShiftMonthCalendar],
 })
 export class ApprovalTaskReview implements OnInit {
   private service           = inject(ApprovalTaskService);
@@ -164,6 +165,21 @@ export class ApprovalTaskReview implements OnInit {
   readonly appTypeClass   = APPLICATION_TYPE_CLASSES;
   readonly payTypeLabel   = PAYMENT_TYPE_LABELS;
   /** 日別中文（改班申請詳情卡用）。與後端 WorkDayTypeNames 對應。 */
+  /**
+   * 改班簽核月曆：異動格 key → 原日別。
+   * 以來源陣列參考做快取 —— 模板每次變更偵測都會呼叫，每次回新物件會讓月曆元件的 input 一直變動而反覆重繪。
+   */
+  private shiftChangedFromCache: {src: unknown; val: Record<string, ShiftDayType>} | null = null;
+  shiftChangedFrom(dates: {date: Date | string; fromDayType: string}[]): Record<string, ShiftDayType> {
+    if (this.shiftChangedFromCache?.src !== dates) {
+      this.shiftChangedFromCache = {
+        src: dates,
+        val: Object.fromEntries(dates.map(d => [dateKey(String(d.date)), d.fromDayType as ShiftDayType])),
+      };
+    }
+    return this.shiftChangedFromCache.val;
+  }
+
   shiftDayTypeLabel(t: string): string {
     return ({work: '上班日', rest_day: '休假日', statutory_off: '例假日', public_holiday: '國定假日'} as Record<string, string>)[t] ?? t;
   }
@@ -500,18 +516,12 @@ export class ApprovalTaskReview implements OnInit {
     }
   }
 
-  /**
-   * 超出計酬上限、不計酬的時數。
-   * ⚠ 不可直接寫 `estimatedHours - payableHours`：國定假日（來源 B）的申請時數含前 8 小時，
-   * 那 8 小時走薪資加項而非加班費，直接相減會誤報「超出上限 8 小時不計酬」。
-   */
-  overtimeExcessHours(
-    d: { estimatedHours: number; payableHours?: number | null; overtimeDayType?: ShiftDayType | null },
-  ): number {
-    if (d.payableHours == null) return 0;
-    const free = d.overtimeDayType === 'public_holiday' ? 8 : 0;
-    return Math.max(0, d.estimatedHours - free - d.payableHours);
-  }
+  // 超出計酬上限、不計酬的時數：直接讀後端快照 `d.excessHours`（OvertimeRequest.ExcessHours），
+  // **不可**在前端用 `estimatedHours - payableHours` 現場推算 —— 舊寫法對國定假日一律扣 8 小時，
+  // 但那 8 小時只在「未排活動日」（來源 B）才該扣，活動日預定人力（來源 A）的申請時數本來就不含
+  // 前 8 小時，會被誤扣成負值又被 max(0, …) 蓋掉，看起來「沒超時」但其實是算錯。
+  // 是否為活動日預定人力屬送簽當下的事實，前端事後從 overtimeDayType 反推不出來，
+  // 故 2026-09 起改由後端於送簽 / 核准當下算好存進 ExcessHours 快照，模板直接讀 `d.excessHours ?? 0`。
 
   /**
    * 結案 / 退款資訊（`<app-closure-info-card>` 的資料來源）。

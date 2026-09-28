@@ -61,6 +61,13 @@ export interface EmployeePayroll {
   compensatorySettlementAmount: number;
   /** 薪資單上的項目名稱，例「116年1-6月補休時數未完畢津貼」 */
   compensatorySettlementNote: string | null;
+  /**
+   * 上月「彈性休假日」（原「補假」，四週彈性工時 C3）排定上班且已打卡出勤的時數合計。
+   * 依打卡自動計酬、不經加班申請，切換日之前恆為 0。
+   */
+  flexibleHolidayWorkHours: number;
+  /** 彈性休假日出勤加班費（依打卡時數分段計酬後加總；級距按單日切分） */
+  flexibleHolidayOvertimePay: number;
 }
 
 export interface LeaveDetail {
@@ -80,6 +87,7 @@ export interface MonthlyPayroll {
   totalCalculatedOvertimePay: number;
   totalPublicHolidayDoublePay: number;
   totalCompensatorySettlementAmount: number;
+  totalFlexibleHolidayOvertimePay: number;
   totalHolidayAllowance: number;
   totalOtherAddition: number;
   totalLaborInsurance: number;

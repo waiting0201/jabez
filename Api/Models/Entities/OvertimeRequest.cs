@@ -45,6 +45,15 @@ public class OvertimeRequest
     /// </summary>
     public string?  OvertimeDayType    { get; set; }
 
+    /// <summary>
+    /// 超出上限、不計酬的時數快照（2026-09 新增）。2026-09 起超出上限已改為送出前擋件
+    /// （見 OvertimeRequestHandler.GuardOvertimeHoursAsync），故新單恆為 0；有值代表擋件上線前
+    /// 送出的歷史單。讀取端（簽核詳情頁）直接用本欄，**不可**用 EstimatedHours − PayableHours
+    /// 現場推算 —— 國定假日來源 B 的申請時數含前 8 小時，是否為活動日預定人力屬送簽當下的事實，
+    /// 事後從日別反推不出來。
+    /// </summary>
+    public decimal? ExcessHours        { get; set; }
+
     public string   Reason           { get; set; } = string.Empty;
     public string   ApprovalStatus   { get; set; } = "pending";  // pending | approved | rejected | returned
     public int      CurrentStepOrder { get; set; } = 1;

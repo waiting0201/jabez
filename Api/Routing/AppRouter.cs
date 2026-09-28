@@ -326,6 +326,7 @@ public sealed class AppRouter(
             // 改班申請（§3.5.2）。⚠ List Pattern 由上而下比對：
             //    changeable-dates / submit 這類三段式必須排在兩段式 ["shift-changes", var id] 之前
             ("GET",    ["shift-changes", "changeable-dates"])      => await shiftChanges.GetChangeableDatesAsync(req),
+            ("POST",   ["shift-changes", "preview"])               => await shiftChanges.PreviewAsync(req),
             ("PATCH",  ["shift-changes", var scId, "submit"])      => await shiftChanges.SubmitAsync(req, scId),
             ("GET",    ["shift-changes"])                          => await shiftChanges.GetAllAsync(req),
             ("POST",   ["shift-changes"])                          => await shiftChanges.CreateAsync(req),

@@ -85,7 +85,7 @@ var host = new HostBuilder()
         Jabez.Api.Common.EnvironmentLabel.Value =
             ctx.Configuration[Jabez.Api.Common.EnvironmentLabel.ConfigKey] ?? "";
 
-        // 排班開放期的測試開關：未來月份一律開放（僅供測試站，正式站不設）。
+        // 排班開放期的測試開關：所有月份（含過往與當月）一律開放（僅供測試站，正式站不設）。
         Jabez.Api.Common.ShiftScheduleWindow.OpenAllFutureMonths =
             bool.TryParse(ctx.Configuration[Jabez.Api.Common.ShiftScheduleWindow.OpenAllFutureMonthsConfigKey], out var openAll)
             && openAll;

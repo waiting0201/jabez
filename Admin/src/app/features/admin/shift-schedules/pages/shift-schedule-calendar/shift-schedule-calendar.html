@@ -90,28 +90,20 @@
             {{ year() }} 年 {{ month() }} 月班表
           </div>
 
-          <div class="flex flex-wrap items-center gap-3 small text-secondary">
-            <span class="flex items-center gap-1"><i class="shift-swatch shift-swatch--statutory-off"></i>例假日</span>
-            <span class="flex items-center gap-1"><i class="shift-swatch shift-swatch--rest-day"></i>休假日</span>
-            <span class="flex items-center gap-1"><i class="shift-swatch shift-swatch--public-holiday"></i>國定假日</span>
-            <span class="flex items-center gap-1"><i class="shift-swatch shift-swatch--activity"></i>活動日</span>
-          </div>
         </div>
 
         <div class="card-body">
-          @if (loading()) {
+          @if (loading() && !data()) {
             <div class="text-center text-secondary py-5">載入中…</div>
-          } @else {
+          } @else if (data(); as d) {
             <p class="text-secondary small mb-3">
               點一下格子切換狀態：上班日 → 例假日 → 休假日。
-              國定假日與已定案的日期不可變更。
+              國定假日、已請假日、您被指派的活動日，以及已定案的日期不可變更。
             </p>
-            <!-- 手機採橫向捲動而非壓縮欄寬：7 欄硬塞進 390px 會讓長假名一字一行、列高爆開（見 §3 方案 B） -->
-            <div class="shift-calendar-scroll">
-              <div class="shift-calendar-inner">
-                <full-calendar #calendar [options]="calendarOptions"></full-calendar>
-              </div>
-            </div>
+            <app-shift-month-calendar
+              [year]="d.year" [month]="d.month"
+              [days]="d.days" [dayTypes]="dayTypes()"
+              (cellClick)="onCellClick($event)" />
           }
         </div>
       </div>
@@ -148,6 +140,46 @@
           </div>
         </div>
       </div>
+
+      @if (myChanges().length) {
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-transparent border-bottom flex flex-wrap items-center justify-between gap-2 fw-600">
+            <div class="flex items-center gap-2">
+              <svg class="sa-icon text-primary" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#file-text"></use>
+              </svg>
+              我的改班申請
+            </div>
+            <span class="small text-secondary fw-normal">同一月份同時只能有一張進行中的申請</span>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table mb-0 align-middle">
+                <thead>
+                  <tr><th>單號</th><th>月份</th><th>狀態</th><th>申請日期</th><th class="text-end">操作</th></tr>
+                </thead>
+                <tbody>
+                  @for (c of myChanges(); track c.id) {
+                    <tr>
+                      <td class="font-monospace">{{ c.requestNo || '—' }}</td>
+                      <td>{{ c.year }}/{{ c.month }}</td>
+                      <td><span class="badge" [class]="statusClass(c.approvalStatus)">{{ statusLabel(c.approvalStatus) }}</span></td>
+                      <td>{{ c.submittedAt ? (c.submittedAt | date: 'yyyy/MM/dd') : '—' }}</td>
+                      <td class="text-end">
+                        @if (c.approvalStatus === 'draft' || c.approvalStatus === 'returned') {
+                          <a class="btn btn-sm btn-outline-primary" [routerLink]="['/admin/shift-changes', c.id, 'edit']">編輯</a>
+                        } @else {
+                          <a class="btn btn-sm btn-outline-secondary" [routerLink]="['/admin/shift-changes', c.id]">檢視</a>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      }
 
     </div>
   </div>

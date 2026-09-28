@@ -77,6 +77,17 @@ export interface OvertimePayEstimate {
   hasBaseSalary: boolean;
   /** 同日已有已核准的假日執行活動 → 可能與假日津貼雙重給付 */
   hasHolidayTravelConflict: boolean;
+  /**
+   * 是否超出計酬上限（4 / 12 小時）。2026-09 起改為**擋件**，不分補休或加班費 ——
+   * 加班工時上限是勞基法規範本身，與補償方式無關。true 時 blockMessage 必有值。
+   */
+  exceedsCap: boolean;
+  /**
+   * 非 null＝不可送出（超出上限，或該日為彈性休假日出勤依打卡自動計酬、免提加班申請）。
+   * 兩種情境共用同一個欄位：exceedsCap 為 false 但 blockMessage 有值時，
+   * 代表的是後者（這天根本不該提加班單），不是超時。
+   */
+  blockMessage: string | null;
 }
 
 /** 加班申請的關聯專案明細（一列一專案，含該案預估時數） */

@@ -187,6 +187,20 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
 
         // ── 各關卡的可簽核者：上層級 / 指定審核關卡本身沒有人名，時間軸不印就完全看不出誰要簽；
         //     某關為空清單代表該關查無可簽核人員（前端顯示警示） ──
+        // ── 改班申請：補上「套用後整月月曆 + 系統檢核」，審核者不必自行核對是否符合排班規範 ──
+        if (task.ShiftChangeDetail is not null)
+        {
+            var sc = await db.ShiftChangeRequests.AsNoTracking().FirstOrDefaultAsync(x => x.Id == intId);
+            if (sc is not null)
+                task = task with
+                {
+                    ShiftChangeDetail = task.ShiftChangeDetail with
+                    {
+                        View = await ShiftChangeRequestService.BuildMonthViewAsync(db, calendarReader, sc),
+                    },
+                };
+        }
+
         if (task.Status == "pending")
         {
             var applicantId = await GetApplicantIdAsync(task.ApplicationType, intId);
@@ -495,6 +509,12 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sc.EmployeeId.Value)
                     : null;
                 await AuthorizeStepAsync(sc.ApprovalItemId, sc.CurrentStepOrder, reviewer, scApplicant?.DepartmentId, ShiftChangeRequestService.AppType, sc.Id, scApplicant?.JobTitleId);
+
+                // 每一關核准前以「現行班表 + 本單異動」重驗：簽核期間班表若被其他途徑改動而不再合規，
+                // 不可放行（排在 ProcessReviewAsync 之前，才不會留下核准紀錄與通知）
+                if (action == "approved")
+                    await ShiftChangeRequestService.EnsureValidAsync(db, calendarReader, sc,
+                        "班表已變動，套用本改班申請後不符合排班規範，請退回申請人調整：");
                 await ProcessReviewAsync(ShiftChangeRequestService.AppType, sc.Id, sc.CurrentStepOrder,
                     sc.ApprovalItemId, action, reviewNote, reviewerId, sc.EmployeeId,
                     setStatus:     s  => sc.ApprovalStatus   = s,

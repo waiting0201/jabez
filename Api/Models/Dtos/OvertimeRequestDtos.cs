@@ -44,7 +44,12 @@ public sealed record OvertimePayEstimateDto(
     decimal  Amount,           // 總額（AwayFromZero 捨入至元）
     OvertimePaySegmentDto[] Segments,
     bool     HasBaseSalary = true,          // false → 未設定底薪，Amount 必為 0，前端顯示提示而非 NT$0
-    bool     HasHolidayTravelConflict = false);  // 同日已有已核准的假日執行活動 → 可能與假日津貼雙重給付
+    bool     HasHolidayTravelConflict = false,  // 同日已有已核准的假日執行活動 → 可能與假日津貼雙重給付
+    // 2026-09 起超出上限改為擋件（不分補休或加班費）。ExceedsCap 為 true 時 BlockMessage 必有值；
+    // Handler 另會就「彈性休假日出勤依打卡自動計酬」覆寫 BlockMessage（此時 ExceedsCap 仍為 false —
+    // 那不是超時，是這天根本不該提加班單）。前端看到 BlockMessage 非 null 一律擋 送出／儲存。
+    bool     ExceedsCap   = false,
+    string?  BlockMessage = null);
 
 public sealed record OvertimeRequestDto(
     int       Id,

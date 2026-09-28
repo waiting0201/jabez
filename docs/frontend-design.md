@@ -2217,8 +2217,22 @@ try {
 ## 12.8 月曆格狀 UI（FullCalendar）
 
 專案的月曆一律用 **FullCalendar `dayGridMonth`**（`@fullcalendar/angular`，peer 支援 Angular 12–21）。
-首個使用點：[個人排班](../Admin/src/app/features/admin/shift-schedules/pages/shift-schedule-calendar/shift-schedule-calendar.ts)。
 FullCalendar v6 的 CSS 由 JS 自動注入，**不需要改 `angular.json`**。
+
+**排班月曆一律用共用元件 [`<app-shift-month-calendar>`](../Admin/src/app/shared/components/shift-month-calendar/shift-month-calendar.ts)**
+（2026-09-28 由個人排班頁抽出；個人排班 / 改班申請 / 簽核詳情頁三處共用），FullCalendar 細節全收在元件內：
+
+| input / output | 說明 |
+|---|---|
+| `year` / `month`（required） | 顯示的月份。改值即 `gotoDate()` + `render()` |
+| `days` | 每格附加資訊（`readOnly` / `holidayName` / 活動 / `lockReason` / `leaveLabel`） |
+| `dayTypes` | 目前要呈現的日別（父層編輯中的狀態）；未給者取 `days[].dayType` |
+| `changedFrom` | 改班異動格：key → 原日別，虛線框 + 「原：xx」 |
+| `interactive` | false ＝ 唯讀檢視 |
+| `(cellClick)` | `{key, cell}`；要不要切換由父層決定，被鎖的格子用共用的 `lockedCellMessage()` 出提示 |
+
+⚠ 傳給 `changedFrom` / `dayTypes` 的物件**必須是穩定參考**（signal / computed / 自行快取）：
+模板若每次變更偵測都回新物件，元件的 effect 會反覆重繪。
 
 ### 用法：借骨架，不用 event 模型
 
@@ -2242,6 +2256,10 @@ FullCalendar v6 的 CSS 由 JS 自動注入，**不需要改 `angular.json`**。
 
 2. **首次渲染吃 `initialDate`，之後才用 `gotoDate()`**。`ngOnInit` 的資料載入早於 view 就緒，
    此時 `viewChild()` 還是 `undefined`，只靠 `gotoDate` 會讓月曆停在「今天所在的月」而與資料對不上（整片格子查無日期）。
+   ⚠ **同一個坑的變形（2026-09-28 事故）**：舊個人排班頁在載入中以 `@if (loading())` 把 `<full-calendar>` 拆掉，
+   載入完才重建 —— 重建出來的新實例吃的是**寫死的預設月份** `initialDate`，而 `gotoDate` 在它就緒前就呼叫過了，
+   於是選 12 月卻顯示 10 月的格子、12 月資料一格都對不上（客戶回報「12/25 行憲紀念日沒顯示」）。
+   共用元件以 input 組 `initialDate`，且載入中不拆月曆。
 
 3. **`.fc-daygrid-day-top` 不可 `display: none`**。`dayCellContent` 產生的 HTML 就渲染在這個容器裡面，
    藏掉它會讓整片格子只剩底色、日期與狀態文字全不見。要改版面請把它調成 `display: block; width: 100%`，

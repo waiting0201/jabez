@@ -1,3 +1,4 @@
+import type {ShiftChangeMonthView} from '../../shift-schedules/models/shift-change.model';
 import {
   PaymentType, InvoiceItem, DesignatedReviewer,
   APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES,
@@ -155,6 +156,8 @@ export interface ShiftChangeTaskDetail {
   month: number;
   reason: string;
   dates: {date: Date; fromDayType: string; toDayType: string}[];
+  /** 套用後整月月曆 + 系統檢核（單筆詳情才有），與申請人表單看到的同一份 */
+  view?: ShiftChangeMonthView | null;
 }
 
 export interface TravelTaskDetailItem {
@@ -258,6 +261,13 @@ export interface OvertimeTaskDetail {
   isHolidayOvertime?: boolean | null;
   /** 日別快照（`WorkDayTypes` 四值；既有列由後端 SnapshotDayType 還原） */
   overtimeDayType?: ShiftDayType | null;
+  /**
+   * 超出上限、不計酬的時數快照（後端 OvertimeRequest.ExcessHours，2026-09 新增）。
+   * ⚠ 不可用 `estimatedHours − payableHours` 現場推算：國定假日來源 B 的申請時數含前 8 小時，
+   * 是否為活動日預定人力屬送簽當下的事實，事後從 overtimeDayType 反推不出來，只能讀這個快照欄。
+   * 2026-09 起超出上限已改為擋件，新單恆為 0；有值代表擋件上線前送出的歷史單。
+   */
+  excessHours?: number | null;
 }
 
 export interface AdvanceTaskDetailItem {

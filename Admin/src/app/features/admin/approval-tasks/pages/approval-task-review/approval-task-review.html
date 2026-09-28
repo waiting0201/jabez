@@ -341,6 +341,51 @@
                   </div>
                 </div>
               </div>
+
+              <!-- 套用後整月月曆 + 系統檢核：合規與否由系統判定，審核者只需就改班原因與部門人力安排審核 -->
+              @if (d.view; as v) {
+                @if (v.validation.canSave) {
+                  <div class="alert alert-success border-0 shadow-sm mt-4 mb-0">
+                    <div>
+                      <div class="fw-600">✔ 經系統檢核，本次改班後班表符合排班規範</div>
+                      <div class="small">
+                        例假日 {{ v.validation.statutoryOffCount }}/{{ v.validation.requiredStatutoryOff }}、
+                        休假日 {{ v.validation.restDayCount }}/{{ v.validation.requiredRestDay }}；
+                        連續上班不超過 12 天、任 14 天內至少 2 天例假日。
+                        請僅就改班原因及部門人力安排（是否與部門同仁休假強碰）審核。
+                      </div>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="alert alert-danger border-0 shadow-sm mt-4 mb-0">
+                    <div>
+                      <div class="fw-600 mb-1">⚠ 班表已變動，套用本申請後不符合排班規範，無法核准，請退回申請人調整</div>
+                      <ul class="mb-0 ps-3">
+                        @for (b of v.validation.blocks; track b) { <li>{{ b }}</li> }
+                      </ul>
+                    </div>
+                  </div>
+                }
+
+                <div class="card border-0 shadow-sm mt-4">
+                  <div class="card-header bg-transparent border-bottom flex flex-wrap items-center justify-between gap-2 fw-600">
+                    <div class="flex items-center gap-2">
+                      <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#calendar"></use></svg>
+                      {{ v.year }} 年 {{ v.month }} 月・調整後班表
+                    </div>
+                    <div class="small text-secondary fw-normal">
+                      例假日 {{ v.validation.statutoryOffCount }}/{{ v.validation.requiredStatutoryOff }}
+                      ・休假日 {{ v.validation.restDayCount }}/{{ v.validation.requiredRestDay }}
+                    </div>
+                  </div>
+                  <div class="card-body">
+                    <app-shift-month-calendar
+                      [year]="v.year" [month]="v.month" [days]="v.days"
+                      [changedFrom]="shiftChangedFrom(d.dates)"
+                      [interactive]="false" [showChangedLegend]="true" />
+                  </div>
+                </div>
+              }
             }
           }
           @case ('leave_revocation') {
@@ -714,8 +759,8 @@
                             @if (d.overtimeDayType != null) {
                               ｜{{ overtimeDayLabel(d.overtimeDayType) }}
                             }
-                            @if (overtimeExcessHours(d) > 0) {
-                              ｜超出上限 {{ overtimeExcessHours(d) | number:'1.0-1' }} 小時不計酬
+                            @if ((d.excessHours ?? 0) > 0) {
+                              ｜超出上限 {{ d.excessHours | number:'1.0-1' }} 小時不計酬
                             }
                           </div>
                           @if (d.overtimeDayType === 'public_holiday') {

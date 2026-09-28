@@ -54,6 +54,10 @@ public class OvertimeRequestConfiguration : IEntityTypeConfiguration<OvertimeReq
         builder.Property(o => o.OvertimeDayType)
                .HasMaxLength(20);
 
+        // 超出上限時數快照，精度同 EstimatedHours / PayableHours
+        builder.Property(o => o.ExcessHours)
+               .HasColumnType("decimal(5,1)");
+
         builder.Property(o => o.ReviewNote)
                .HasMaxLength(1000);
 

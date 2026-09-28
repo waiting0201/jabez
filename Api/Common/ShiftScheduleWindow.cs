@@ -55,8 +55,10 @@ public static class ShiftScheduleWindow
     public const string OpenAllFutureMonthsConfigKey = "App:ShiftScheduleOpenAllFutureMonths";
 
     /// <summary>
-    /// <b>測試用開關</b>：為 true 時，所有「未來月份」（次月起）一律視為開放期，不受 10–25 日與「僅次月」限制。
-    /// 過往月份與當月規則不變。由 <c>Program.cs</c> 於啟動時寫入；<b>正式站不得設定</b>。
+    /// <b>測試用開關</b>：為 true 時，<b>所有月份</b>（過往月份、當月、未來月份）一律視為開放期，
+    /// 不受「過往唯讀」「當月僅能改當天」「10–25 日」「僅次月」任何限制（供教育訓練以不同月份示範）。
+    /// 設定鍵名稱沿用舊名（當初只開未來月份）以免測試站重設 App Setting。
+    /// 由 <c>Program.cs</c> 於啟動時寫入；<b>正式站不得設定</b>。
     /// </summary>
     public static bool OpenAllFutureMonths { get; set; }
 
@@ -66,6 +68,9 @@ public static class ShiftScheduleWindow
         var target       = new DateTime(year, month, 1);
         var currentMonth = new DateTime(now.Year, now.Month, 1);
         var nextMonth    = currentMonth.AddMonths(1);
+
+        if (OpenAllFutureMonths)
+            return new(true, ShiftScheduleEditMode.Open, "【測試模式】所有月份一律開放排班（正式站不適用）。");
 
         if (target < currentMonth)
             return new(false, ShiftScheduleEditMode.Closed, "已過往之月份不可修改，僅供歷史查詢。");
@@ -81,9 +86,6 @@ public static class ShiftScheduleWindow
                 $"當月班表已定案，僅可於當日 {SameDayCutoff:HH:mm} 前調整當天狀態；"
               + "其餘異動請提出〈改班申請〉。");
         }
-
-        if (OpenAllFutureMonths)
-            return new(true, ShiftScheduleEditMode.Open, "【測試模式】未來月份一律開放排班（正式站不適用）。");
 
         if (target == nextMonth)
         {

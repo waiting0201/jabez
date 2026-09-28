@@ -1,7 +1,13 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
-import {ChangeableShiftDates, ShiftChangeRequest, SaveShiftChangeRequest} from '../models/shift-change.model';
+import {
+  ChangeableShiftDates,
+  PreviewShiftChangeRequest,
+  SaveShiftChangeRequest,
+  ShiftChangeMonthView,
+  ShiftChangeRequest,
+} from '../models/shift-change.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {environment} from '@/environments/environment';
 
@@ -13,6 +19,11 @@ export class ShiftChangeService {
   getChangeableDates(year: number, month: number): Observable<ChangeableShiftDates> {
     return this.http.get<ChangeableShiftDates>(
       `${environment.apiUrl}/shift-changes/changeable-dates`, {params: {year, month}});
+  }
+
+  /** 試算：把調整疊到現行班表上，回傳整月月曆 + 檢核（不寫入）。表單每點一格呼叫一次 */
+  preview(data: PreviewShiftChangeRequest): Observable<ShiftChangeMonthView> {
+    return this.http.post<ShiftChangeMonthView>(`${environment.apiUrl}/shift-changes/preview`, data);
   }
 
   getPaged(page: number, pageSize: number): Observable<PagedResult<ShiftChangeRequest>> {
