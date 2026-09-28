@@ -20,6 +20,7 @@ public sealed class AttendanceReminderService(
     AppDbContext db,
     IDbConnection conn,
     IAttendanceReminderReadService reader,
+    ICalendarDayReadService calendarReader,
     ILineService lineService,
     ILogger<AttendanceReminderService> logger) : IAttendanceReminderService
 {
@@ -49,13 +50,6 @@ public sealed class AttendanceReminderService(
     {
         var now = Clock.Now;
 
-        // 週末只提醒排班制員工（賣店 / 營業所照常營業）；一人都沒有就維持整批不推。
-        // 平日刻意不看行事曆（國定假日照推），沿用既有語意。
-        var isWeekend = now.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
-        if (isWeekend && !await db.Users.AsNoTracking()
-                .AnyAsync(u => u.IsShiftWorker && u.Status == "active", ct))
-            return;
-
         var setting = await db.SystemSettings.AsNoTracking()
             .OrderBy(s => s.Id)
             .FirstOrDefaultAsync(ct);
@@ -64,6 +58,14 @@ public sealed class AttendanceReminderService(
 
         var type = DetermineReminderType(now, setting.WorkStartTime, setting.WorkEndTime);
         if (type is null)
+            return;
+
+        // 休假日只提醒排班制員工（賣店 / 營業所照常營業）；一人都沒有就維持整批不推。
+        // 2026-09 起看公司行事曆（國定假日 / 彈性休假日 / 六日），原本只看六日，
+        // 正式站中秋節、教師節照樣對全員推播。放在時間窗判斷之後，行事曆只在窗內的 tick 查詢。
+        var isNonWorkday = await IsNonWorkdayAsync(now.Date);
+        if (isNonWorkday && !await db.Users.AsNoTracking()
+                .AnyAsync(u => u.IsShiftWorker && u.Status == "active", ct))
             return;
 
         var workTime = type == "clockIn" ? setting.WorkStartTime : setting.WorkEndTime;
@@ -76,7 +78,7 @@ public sealed class AttendanceReminderService(
         if (await HasBatchStartedTodayAsync(now.Date, workTime, ct))
             return;
 
-        await PushAsync(type, now.Date, workTime, setting.SiteUrl, "auto", null, isWeekend, ct);
+        await PushAsync(type, now.Date, workTime, setting.SiteUrl, "auto", null, isNonWorkday, ct);
     }
 
     public async Task<AttendanceReminderRunResult> ForceRunAsync(string type, Guid? triggeredByUserId, CancellationToken ct = default)
@@ -90,10 +92,17 @@ public sealed class AttendanceReminderService(
             ?? throw AppException.BadRequest("尚未設定 SystemSetting。");
 
         var workTime = type == "clockIn" ? setting.WorkStartTime : setting.WorkEndTime;
-        // 手動觸發沿用同一條「今天誰要上班」規則：六日只推排班制員工
-        var forcedWeekend = Clock.Today.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
-        return await PushAsync(type, Clock.Today, workTime, setting.SiteUrl, "manual", triggeredByUserId, forcedWeekend, ct);
+        // 手動觸發沿用同一條「今天誰要上班」規則：休假日只推排班制員工
+        var isNonWorkday = await IsNonWorkdayAsync(Clock.Today);
+        return await PushAsync(type, Clock.Today, workTime, setting.SiteUrl, "manual", triggeredByUserId, isNonWorkday, ct);
     }
+
+    /// <summary>
+    /// 指定日是否為公司休假日：行事曆 IsHoliday 優先（含國定假日、彈性休假日、六日），
+    /// 該年度未匯入行事曆時退回六日。與打卡「休假日免下班卡」共用 WorkCalendarHelper 同一個判準。
+    /// </summary>
+    private Task<bool> IsNonWorkdayAsync(DateTime date)
+        => WorkCalendarHelper.IsHolidayAsync(calendarReader, ignoreHolidays: false, date);
 
     /// <summary>
     /// 判斷台北時間是否落在上/下班的提醒時間窗內。
