@@ -2276,6 +2276,18 @@ FullCalendar v6 的 CSS 由 JS 自動注入，**不需要改 `angular.json`**。
    做法同 §3 的表格方案 B：外層 `overflow-x: auto` ＋ **內層給 `min-width`**（排班頁用 `42rem`）——
    只包 wrapper 是沒有用的。格內長文另以 `-webkit-line-clamp: 2` 截斷，完整內容放 `title`。
 
+### 前後月的對照格（2026-09-29）
+
+個人排班頁把月格首尾的前後月日子也畫出來（`showNonCurrentDates: true`），因為「連續上班 12 天」與「14 天內 2 天例假」
+都會跨月計算，同仁需要看得到月界另一側排了什麼。規則：
+
+- 共用元件以 input `adjacentDays` 開關：**非 null 才顯示**，改班申請 / 簽核頁不傳就維持只看當月。
+  `showNonCurrentDates` 只在 `ngOnInit` 決定一次，呼叫端要嘛一律給、要嘛一律不給。
+- 前後月格子掛 `shift-cell--adjacent`：保留日別底色、整格 `opacity: 0.5`、`cursor: default`；
+  日期寫成 `M/D`（避免與當月同號日混淆）；該月尚未定案者標「未排定」（`shift-cell--unknown`）。
+  點擊不會 emit —— `meta` 只收當月，`onDateClick` 自然查無。
+- 資料**與後端跨月檢核同一份**（`ShiftScheduleConstraintService.LoadAdjacentDaysAsync`），不在前端自行推算。
+
 ### 色彩
 
 格子狀態一律引用 [tailwind.css](../Admin/src/tailwind.css) 的 CIS token（`--red` / `--green` / `--bg-elevated` / `--purple`），

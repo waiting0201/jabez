@@ -75,6 +75,18 @@ export interface ShiftScheduleMonth {
   autoAssignedAt: string | null;
   days: ShiftScheduleDay[];
   validation: ShiftScheduleValidation;
+  /** 前月月底與次月月初各 13 天，僅供月曆對照（與跨月檢核讀同一份資料）。 */
+  adjacentDays: ShiftScheduleAdjacentDay[];
+}
+
+/**
+ * 前後月的一天（唯讀對照）。對應後端 `ShiftScheduleAdjacentDayDto`。
+ * `dayType` 為 null ＝ 該月尚未定案（未排定）—— 跨月檢核同樣不看這些日子。
+ */
+export interface ShiftScheduleAdjacentDay {
+  date: string;
+  dayType: ShiftDayType | null;
+  holidayName: string | null;
 }
 
 export interface SaveShiftScheduleRequest {

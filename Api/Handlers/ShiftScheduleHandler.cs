@@ -207,8 +207,12 @@ public sealed class ShiftScheduleHandler(
                 LeaveLabel:         dayLock?.Reason == ShiftScheduleConstraintService.LockLeave ? dayLock.Label : null));
         }
 
+        var adjacent = await ShiftScheduleConstraintService.LoadAdjacentDaysAsync(
+            db, calendarReader, userId, monthStart, monthEnd);
+
         var result = await ShiftScheduleConstraintService.EvaluateAsync(
-            db, calendarReader, workdaysFactory, userId, year, month, dayTypes, locks);
+            db, calendarReader, workdaysFactory, userId, year, month, dayTypes, locks,
+            ShiftScheduleConstraintService.ToContext(adjacent));
 
         return new ShiftScheduleMonthDto(
             UserId:         user.Id,
@@ -222,7 +226,8 @@ public sealed class ShiftScheduleHandler(
             CommittedAt:    monthStatus?.CommittedAt,
             AutoAssignedAt: monthStatus?.AutoAssignedAt,
             Days:           [.. days],
-            Validation:     ShiftScheduleConstraintService.ToDto(result));
+            Validation:     ShiftScheduleConstraintService.ToDto(result),
+            AdjacentDays:   [.. adjacent.Select(a => new ShiftScheduleAdjacentDayDto(a.Date, a.DayType, a.HolidayName))]);
     }
 
     // ── 寫入 ────────────────────────────────────────────────────────

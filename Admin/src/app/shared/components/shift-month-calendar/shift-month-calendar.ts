@@ -8,6 +8,7 @@ import zhTwLocale from '@fullcalendar/core/locales/zh-tw';
 import {
   DAY_TYPE_LABELS,
   ShiftDayType,
+  ShiftScheduleAdjacentDay,
   ShiftScheduleDay,
   dateKey,
 } from '../../../features/admin/shift-schedules/models/shift-schedule.model';
@@ -22,6 +23,7 @@ import {
  * ⚠ 重繪一律走 `getApi().render()`：`dayCellClassNames` / `dayCellContent` 是同一個函式參考，
  * 換 options 物件 FullCalendar 會判定「沒變」而不重畫。本元件以 effect 監看所有 input，變了就重畫。
  * ⚠ 首次渲染吃 `initialDate`（ngOnInit 時由 input 組出），之後的月份切換走 `gotoDate()`。
+ * `adjacentDays` 有給（非 null）才顯示前後月的格子：唯讀、淡化、不 emit；未給的呼叫端維持只顯示當月。
  */
 @Component({
   selector: 'app-shift-month-calendar',
@@ -33,6 +35,9 @@ import {
       <span class="flex items-center gap-1"><i class="shift-swatch shift-swatch--public-holiday"></i>國定假日</span>
       <span class="flex items-center gap-1"><i class="shift-swatch shift-swatch--activity"></i>活動日</span>
       <span class="flex items-center gap-1"><i class="shift-swatch shift-swatch--leave"></i>已請假</span>
+      @if (adjacentDays()) {
+        <span class="flex items-center gap-1"><i class="shift-swatch shift-swatch--adjacent"></i>前後月（僅供對照）</span>
+      }
       @if (showChangedLegend()) {
         <span class="flex items-center gap-1"><i class="shift-swatch shift-swatch--changed"></i>本次調整</span>
       }
@@ -65,6 +70,11 @@ export class ShiftMonthCalendar implements OnInit {
    * 本元件只負責畫。⚠ 同 dayTypes，必須是穩定參考。
    */
   leaveDates = input<Record<string, true>>({});
+  /**
+   * 前後月的日別（僅供對照）。null ＝ 不顯示前後月的格子（改班申請 / 簽核頁維持只看當月）。
+   * ⚠ 是否顯示於 ngOnInit 決定一次（`showNonCurrentDates`），故呼叫端要嘛一律給、要嘛一律不給。
+   */
+  adjacentDays = input<ShiftScheduleAdjacentDay[] | null>(null);
 
   cellClick = output<{key: string; cell: ShiftScheduleDay}>();
   leaveClick = output<string>();
@@ -75,12 +85,17 @@ export class ShiftMonthCalendar implements OnInit {
   options = signal<CalendarOptions | null>(null);
 
   private meta: Record<string, ShiftScheduleDay> = {};
+  private adjacent: Record<string, ShiftScheduleAdjacentDay> = {};
 
   constructor() {
     effect(() => {
       const meta: Record<string, ShiftScheduleDay> = {};
       for (const d of this.days()) meta[dateKey(d.date)] = d;
       this.meta = meta;
+
+      const adjacent: Record<string, ShiftScheduleAdjacentDay> = {};
+      for (const d of this.adjacentDays() ?? []) adjacent[dateKey(d.date)] = d;
+      this.adjacent = adjacent;
 
       // 讀取所有會影響畫面的 input，任一變動都重畫
       this.dayTypes();
@@ -111,7 +126,8 @@ export class ShiftMonthCalendar implements OnInit {
       height: 'auto',
       headerToolbar: false,        // 月份切換由父層控制
       fixedWeekCount: false,
-      showNonCurrentDates: false,  // 只顯示當月，避免點到別月的格子
+      // 前後月的格子只在有對照資料時顯示；點了也不會 emit（meta 只有當月）
+      showNonCurrentDates: this.adjacentDays() !== null,
       dayCellClassNames: (arg) => this.cellClasses(arg),
       dayCellContent: (arg) => this.cellContent(arg),
       dateClick: (arg) => this.onDateClick(arg),
@@ -132,6 +148,10 @@ export class ShiftMonthCalendar implements OnInit {
 
   private cellClasses(arg: DayCellContentArg): string[] {
     const key = keyOf(arg.date);
+    if (arg.isOther) {
+      const type = this.adjacent[key]?.dayType;
+      return ['shift-cell', 'shift-cell--adjacent', type ? `shift-cell--${type.replace('_', '-')}` : 'shift-cell--unknown'];
+    }
     const cell = this.meta[key];
     const type = this.typeOf(key);
 
@@ -145,6 +165,7 @@ export class ShiftMonthCalendar implements OnInit {
 
   private cellContent(arg: DayCellContentArg): {html: string} {
     const key = keyOf(arg.date);
+    if (arg.isOther) return this.adjacentContent(arg.date, key);
     const cell = this.meta[key];
     const type = this.typeOf(key);
 
@@ -171,6 +192,20 @@ export class ShiftMonthCalendar implements OnInit {
       parts.push(`<button type="button" class="shift-cell__leave-btn" data-leave-date="${key}"`
         + ` aria-label="${key} 請假">請假</button>`);
     }
+    return {html: parts.join('')};
+  }
+
+  /** 前後月的格子：日期加註月份以免與當月混淆；未定案的月份標「未排定」。 */
+  private adjacentContent(date: Date, key: string): {html: string} {
+    const day = this.adjacent[key];
+    const parts = [`<div class="shift-cell__num">${date.getMonth() + 1}/${date.getDate()}</div>`];
+
+    let label = '';
+    if (!day || day.dayType === null) label = '未排定';
+    else if (day.dayType === 'public_holiday') label = day.holidayName ?? DAY_TYPE_LABELS.public_holiday;
+    else if (day.dayType !== 'work') label = DAY_TYPE_LABELS[day.dayType];
+
+    if (label) parts.push(`<div class="shift-cell__label" title="${escapeHtml(label)}">${escapeHtml(label)}</div>`);
     return {html: parts.join('')};
   }
 

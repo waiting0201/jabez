@@ -39,6 +39,7 @@ public sealed record ShiftScheduleValidationDto(
 /// <param name="EditMode">open / grace_period / same_day_only / closed</param>
 /// <param name="EditReason">可直接顯示給使用者的說明</param>
 /// <param name="Status">整月狀態：draft / committed / auto；尚未建立為 null</param>
+/// <param name="AdjacentDays">前後月對照用的日別（見 <see cref="ShiftScheduleAdjacentDayDto"/>）</param>
 /// <param name="Validation">
 /// 以目前班表算出的檢核結果。**進入畫面時就要顯示**（空白月曆必然擋存，
 /// 不可等到按下儲存才報錯）。
@@ -55,7 +56,18 @@ public sealed record ShiftScheduleMonthDto(
     DateTime? CommittedAt,
     DateTime? AutoAssignedAt,
     ShiftScheduleDayDto[]       Days,
-    ShiftScheduleValidationDto  Validation);
+    ShiftScheduleValidationDto  Validation,
+    ShiftScheduleAdjacentDayDto[] AdjacentDays);
+
+/// <summary>
+/// 前月月底與次月月初的一天（各 13 天，僅供月曆對照、不可編輯）。與跨月檢核讀的是同一份資料。
+/// </summary>
+/// <param name="DayType">work / rest_day / statutory_off / public_holiday；null ＝ 該月尚未定案（未排定）</param>
+/// <param name="HolidayName">國定假日名稱；其餘為 null</param>
+public sealed record ShiftScheduleAdjacentDayDto(
+    DateTime Date,
+    string?  DayType,
+    string?  HolidayName);
 
 /// <summary>整月整批替換的請求。未列出的日子一律視為上班日。</summary>
 /// <param name="Days">
