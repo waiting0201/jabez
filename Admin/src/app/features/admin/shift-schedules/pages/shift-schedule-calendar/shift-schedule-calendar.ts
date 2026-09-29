@@ -1,7 +1,7 @@
 import {Component, computed, inject, OnInit, signal} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
-import {RouterLink} from '@angular/router';
+import {Router, RouterLink} from '@angular/router';
 import {ToastrService} from 'ngx-toastr';
 
 import {ShiftScheduleService} from '../../services/shift-schedule.service';
@@ -20,6 +20,7 @@ import {
   dateKey,
   nextDayType,
 } from '../../models/shift-schedule.model';
+import {AuthService} from '../../../../../core/auth/services/auth.service';
 import {ShiftMonthCalendar, lockedCellMessage} from '../../../../../shared/components/shift-month-calendar/shift-month-calendar';
 /**
  * 個人排班排例／休（四週彈性工時 · 功能 A）。
@@ -41,6 +42,8 @@ export class ShiftScheduleCalendar implements OnInit {
   private svc = inject(ShiftScheduleService);
   private changeSvc = inject(ShiftChangeService);
   private toastr = inject(ToastrService);
+  private router = inject(Router);
+  private auth = inject(AuthService);
 
   /**
    * 我的改班申請（最近幾張）。原本申請人沒有任何入口看得到自己送出的單，
@@ -83,6 +86,22 @@ export class ShiftScheduleCalendar implements OnInit {
   /** 例假是否已排滿 —— 唯一在前端判斷的一條，只為了即時提示，送出仍由後端把關。 */
   readonly statutoryOffSatisfied = computed(() =>
     this.statutoryOffCount() >= this.requiredStatutoryOff());
+
+  /**
+   * 格子上顯示「請假」鈕的日子：**已儲存**為上班日、今天（含）以後，且持有 leave-requests:write。
+   * 以已儲存的班表為準而非編輯中的狀態 —— 後端算請假日看的是已存的個人排班，
+   * 用未儲存的狀態會讓使用者在「還沒存的上班日」送出一張算成 0 天的假。
+   * 國定假日本來就不是上班日，自然排除。
+   */
+  readonly leaveDates = computed<Record<string, true>>(() => {
+    if (!this.auth.hasPermission('leave-requests:write')) return {};
+    const today = todayKey();
+    const result: Record<string, true> = {};
+    for (const [key, type] of Object.entries(this.original())) {
+      if (type === 'work' && key >= today) result[key] = true;
+    }
+    return result;
+  });
 
   readonly yearOptions = computed(() => {
     const y = new Date().getFullYear();
@@ -161,6 +180,15 @@ export class ShiftScheduleCalendar implements OnInit {
     this.dayTypes.update((m) => ({...m, [key]: nextDayType(current)}));
   }
 
+  /** 格子上的「請假」鈕：開新增請假表單並帶入該日。有未儲存的排班時先擋下，否則離開頁面會丟掉變更。 */
+  onLeaveClick(date: string): void {
+    if (this.dirty()) {
+      this.toastr.warning('排班尚未儲存，請先儲存或還原變更後再請假。');
+      return;
+    }
+    this.router.navigate(['/admin/leave-requests/new'], {queryParams: {date}});
+  }
+
   // ── 內部 ────────────────────────────────────────────────────────
 
   private apply(res: ShiftScheduleMonth): void {
@@ -175,4 +203,10 @@ export class ShiftScheduleCalendar implements OnInit {
   private countOf(type: ShiftDayType): number {
     return Object.values(this.dayTypes()).filter((t) => t === type).length;
   }
+}
+
+/** 今天的 yyyy-MM-dd（本地時間，避免 toISOString() 的 UTC 位移）。 */
+function todayKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }

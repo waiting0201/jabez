@@ -77,6 +77,39 @@
     font-weight: 600;
   }
 
+  // 上班日的「請假」鈕：小型外框鈕，點了開請假表單並帶入該日。
+  // 滑鼠裝置平時淡化、移到格子上才完整顯示，避免整月每格都有一顆鈕搶走日別狀態的注意力；
+  // 觸控裝置沒有 hover，一律完整顯示。
+  .fc .shift-cell__leave-btn {
+    display: inline-block;
+    margin-top: 0.3rem;
+    padding: 0.05rem 0.45rem;
+    font-size: 0.68rem;
+    line-height: 1.4;
+    color: var(--accent);
+    background: var(--bg-surface);
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: opacity 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+
+    &:hover {
+      color: #fff;
+      background: var(--accent);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+      opacity: 1;
+    }
+  }
+
+  @media (hover: hover) {
+    .fc .shift-cell__leave-btn { opacity: 0.35; }
+    .fc .shift-cell:hover .shift-cell__leave-btn { opacity: 1; }
+  }
+
   // 改班申請的異動格：虛線外框 + 「原：xx」
   .fc .shift-cell--changed .fc-daygrid-day-frame {
     outline: 2px dashed var(--accent);

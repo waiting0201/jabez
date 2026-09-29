@@ -2230,6 +2230,12 @@ FullCalendar v6 的 CSS 由 JS 自動注入，**不需要改 `angular.json`**。
 | `changedFrom` | 改班異動格：key → 原日別，虛線框 + 「原：xx」 |
 | `interactive` | false ＝ 唯讀檢視 |
 | `(cellClick)` | `{key, cell}`；要不要切換由父層決定，被鎖的格子用共用的 `lockedCellMessage()` 出提示 |
+| `leaveDates` / `(leaveClick)` | （2026-09-29）`leaveDates` 有值且**目前日別仍為上班日**的格子顯示「請假」小鈕（`--accent` 外框膠囊；滑鼠裝置平時 35% 淡化、hover 格子才完整顯示，觸控裝置恆顯示），點了 emit 日期字串、**不會**同時觸發 `cellClick`。哪些日子可請假由父層決定（個人排班頁＝**已儲存**為上班日 ∩ 今天以後 ∩ `leave-requests:write`，有未儲存變更時擋下並提示），父層導向 `/admin/leave-requests/new?date=yyyy-MM-dd` |
+
+⚠ 格內按鈕是 `dayCellContent` 產生的原生 `<button>`：點擊以**元件 host 上的委派 click 監聽**接住（`closest('[data-leave-date]')`），
+不能只靠 FullCalendar 的 `dateClick` —— 鍵盤（Enter / 空白鍵）觸發的 click 不走它的 pointer 事件；
+`dateClick` 端則須反過來忽略落在按鈕上的點擊，否則按請假會順便把日別切掉。
+請假表單接 `?date=` 時，**切換假別清空日期的邏輯要改成回到帶入日期**，否則使用者一選假別日期就不見了。
 
 ⚠ 傳給 `changedFrom` / `dayTypes` 的物件**必須是穩定參考**（signal / computed / 自行快取）：
 模板若每次變更偵測都回新物件，元件的 effect 會反覆重繪。

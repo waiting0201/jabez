@@ -99,11 +99,14 @@
             <p class="text-secondary small mb-3">
               點一下格子切換狀態：上班日 → 例假日 → 休假日。
               國定假日、已請假日、您被指派的活動日，以及已定案的日期不可變更。
+              要請假時，點上班日格子裡的「請假」即可開啟請假申請並帶入該日。
             </p>
             <app-shift-month-calendar
               [year]="d.year" [month]="d.month"
               [days]="d.days" [dayTypes]="dayTypes()"
-              (cellClick)="onCellClick($event)" />
+              [leaveDates]="leaveDates()"
+              (cellClick)="onCellClick($event)"
+              (leaveClick)="onLeaveClick($event)" />
           }
         </div>
       </div>

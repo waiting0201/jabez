@@ -1,4 +1,4 @@
-import {Component, OnInit, effect, input, output, signal, viewChild} from '@angular/core';
+import {Component, ElementRef, OnInit, effect, inject, input, output, signal, viewChild} from '@angular/core';
 import {FullCalendarComponent, FullCalendarModule} from '@fullcalendar/angular';
 import {CalendarOptions, DayCellContentArg} from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -16,6 +16,7 @@ import {
  * 共用排班月曆（個人排班 / 改班申請 / 簽核詳情頁 三處共用，2026-09-28 由個人排班頁抽出）。
  *
  * 純呈現元件：資料全由父層傳入，點格只 emit `cellClick`，要不要切換狀態由父層決定。
+ * `leaveDates` 有值的格子另顯示「請假」鈕，點了 emit `leaveClick`（不會同時觸發 `cellClick`）。
  * FullCalendar `dayGridMonth` 只借月格骨架，每格狀態不是 event（見 frontend-design.md §12.8）。
  *
  * ⚠ 重繪一律走 `getApi().render()`：`dayCellClassNames` / `dayCellContent` 是同一個函式參考，
@@ -59,8 +60,16 @@ export class ShiftMonthCalendar implements OnInit {
   /** 可點選（false ＝ 唯讀檢視，不 emit 也不顯示手指游標）。 */
   interactive = input(true);
   showChangedLegend = input(false);
+  /**
+   * 顯示「請假」鈕的日子（key = yyyy-MM-dd）。哪些日子可以請假由父層決定（只有本人、已存為上班日、今天以後），
+   * 本元件只負責畫。⚠ 同 dayTypes，必須是穩定參考。
+   */
+  leaveDates = input<Record<string, true>>({});
 
   cellClick = output<{key: string; cell: ShiftScheduleDay}>();
+  leaveClick = output<string>();
+
+  private host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   private calendarRef = viewChild<FullCalendarComponent>('calendar');
   options = signal<CalendarOptions | null>(null);
@@ -76,6 +85,7 @@ export class ShiftMonthCalendar implements OnInit {
       // 讀取所有會影響畫面的 input，任一變動都重畫
       this.dayTypes();
       this.changedFrom();
+      this.leaveDates();
       const date = this.firstOfMonth();
 
       const api = this.calendarRef()?.getApi();
@@ -85,6 +95,13 @@ export class ShiftMonthCalendar implements OnInit {
   }
 
   ngOnInit(): void {
+    // 「請假」鈕是 dayCellContent 產生的原生 <button>：以委派監聽接住滑鼠與鍵盤（Enter / 空白鍵）兩種點擊。
+    // 不能只靠 dateClick —— 鍵盤觸發的 click 不會經過 FullCalendar 的 pointer 事件。
+    this.host.nativeElement.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-leave-date]');
+      if (btn?.dataset['leaveDate']) this.leaveClick.emit(btn.dataset['leaveDate']);
+    });
+
     this.options.set({
       plugins: [dayGridPlugin, interactionPlugin],
       initialView: 'dayGridMonth',
@@ -103,6 +120,8 @@ export class ShiftMonthCalendar implements OnInit {
 
   private onDateClick(arg: DateClickArg): void {
     if (!this.interactive()) return;
+    // 點的是「請假」鈕 → 交給上面的委派監聽，不切換日別
+    if ((arg.jsEvent.target as HTMLElement).closest('[data-leave-date]')) return;
     const cell = this.meta[arg.dateStr];
     if (cell) this.cellClick.emit({key: arg.dateStr, cell});
   }
@@ -145,6 +164,12 @@ export class ShiftMonthCalendar implements OnInit {
       const title = cell.activityTitle ?? '活動日';
       const mine = cell.isActivityAssignee ? ' shift-cell__activity--mine' : '';
       parts.push(`<div class="shift-cell__activity${mine}">${escapeHtml(title)}</div>`);
+    }
+
+    // 只有「目前仍是上班日」的格子給請假鈕：使用者剛把它點成休假、還沒儲存時就不該出現
+    if (this.leaveDates()[key] && type === 'work') {
+      parts.push(`<button type="button" class="shift-cell__leave-btn" data-leave-date="${key}"`
+        + ` aria-label="${key} 請假">請假</button>`);
     }
     return {html: parts.join('')};
   }

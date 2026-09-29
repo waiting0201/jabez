@@ -78,6 +78,13 @@ export class LeaveRequestForm implements OnInit {
    */
   private isLoadingExisting = false;
 
+  /**
+   * 從個人排班月曆的「請假」鈕帶入的日期（`?date=yyyy-MM-dd`，僅新增模式）。
+   * 切換假別時日期會被清空（避免前一模式的殘留值），有帶入日期時改為回到這一天，
+   * 否則使用者一選假別，從月曆帶進來的日期就不見了。
+   */
+  private prefillDate = '';
+
   /** 簽核流程時間軸 */
   approvalFlow: ApprovalFlow | null = null;
   approvalRecords: ApprovalRecord[] = [];
@@ -508,6 +515,13 @@ export class LeaveRequestForm implements OnInit {
     });
 
     const id = this.route.snapshot.paramMap.get('id');
+    if (!id) {
+      const date = this.route.snapshot.queryParamMap.get('date') ?? '';
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date) && date >= this.minDate && date <= this.maxDate) {
+        this.prefillDate = date;
+        this.form.patchValue({startDate: date, endDate: date});   // 觸發 valueChanges → 查請假日清單
+      }
+    }
     if (id) {
       this.isEdit    = true;
       this.requestId = +id;
@@ -598,8 +612,9 @@ export class LeaveRequestForm implements OnInit {
   /** 假別變化時的處理 */
   private onLeaveTypeChange(type: LeaveType) {
     // 切換時清空共用日期欄位，避免前一模式的殘留值
-    this.form.patchValue({startDate: '', endDate: ''}, {emitEvent: false});
+    this.form.patchValue({startDate: this.prefillDate, endDate: this.prefillDate}, {emitEvent: false});
     this.workingDaysResult.set(null); // 日期已清空，重置請假日清單
+    if (this.prefillDate) this.refreshWorkingDays();
 
     // 喪假：bereavementRelationship 必填
     if (type === 'bereavement') {

@@ -211,7 +211,7 @@ Admin/src/app/
     │   │                       比照銷假申請）與 `models/shift-change.model.ts`、`services/shift-change.service.ts`。
     │   │                       **2026-09-28 改版**：月曆抽成共用元件 `shared/components/shift-month-calendar/`（個人排班 / 改班申請 /
     │   │                       簽核詳情頁三處共用）；改班表單每點一格走 `POST /shift-changes/preview` 即時試算配額與合規檢核，
-    │   │                       不合規不得送出；個人排班頁另列「我的改班申請」。⚠ 舊排班頁曾以 `@if (loading())` 拆掉 FullCalendar，
+    │   │                       不合規不得送出；個人排班頁另列「我的改班申請」。**2026-09-29**：個人排班月曆的上班日格子（已儲存、今天以後）有「請假」鈕，開 `leave-requests/new?date=` 帶入該日（請假表單切換假別時回到帶入日期而非清空）。⚠ 舊排班頁曾以 `@if (loading())` 拆掉 FullCalendar，
     │   │                       重建後吃預設月份的 `initialDate` → 選 12 月卻顯示 10 月格子（「12/25 沒顯示」的真因），共用元件已避開
     │   ├── activity-days/    # **活動日管理（2026-09 新增）**：協理排定活動日 + 勾選預定人力，`activity-days:write` 才顯示選單。
     │   │                       ⚠ 部門下拉的 `ngModelChange` 會清空已選人力（候選名單整組換掉），
