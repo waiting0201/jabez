@@ -16,6 +16,8 @@ namespace Jabez.Api.Handlers;
 ///
 /// GET  /shift-schedules?year=&amp;month=[&amp;userId=]  → 某人某月的月曆（含檢核結果）
 /// PUT  /shift-schedules                            → 整月整批替換
+/// GET  /shift-schedules/adjustments                → 本人未確認的「活動日覆蓋班表」通知
+/// POST /shift-schedules/adjustments/ack            → 全部標為已讀（「我知道了」）
 ///
 /// 設計重點：
 /// <list type="bullet">
@@ -108,6 +110,36 @@ public sealed class ShiftScheduleHandler(
         return new OkObjectResult(ApiResponse.Ok(dto, "排班已儲存。"));
     }
 
+    /// <summary>
+    /// 本人未確認的「活動日覆蓋班表」通知（鈴鐺 + 個人排班頁提示卡）。對象一律取 JWT sub。
+    /// </summary>
+    public async Task<IActionResult> GetMyAdjustmentsAsync(HttpRequest req)
+    {
+        var userId = await GetUserIdAsync(req);
+
+        var rows = await db.ShiftScheduleAdjustments.AsNoTracking()
+            .Where(a => a.UserId == userId && a.AcknowledgedAt == null)
+            .OrderBy(a => a.Date).ThenBy(a => a.Id)
+            .Select(a => new ShiftScheduleAdjustmentDto(
+                a.Id, a.Date, a.ActivityTitle, a.OriginalDayType, a.RelocatedTo, a.CreatedAt))
+            .ToListAsync();
+
+        return new OkObjectResult(ApiResponse.Ok(rows));
+    }
+
+    /// <summary>把本人所有未確認的通知標為已讀。</summary>
+    public async Task<IActionResult> AcknowledgeAdjustmentsAsync(HttpRequest req)
+    {
+        var userId = await GetUserIdAsync(req);
+        var now    = Clock.Now;
+
+        var count = await db.ShiftScheduleAdjustments
+            .Where(a => a.UserId == userId && a.AcknowledgedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(a => a.AcknowledgedAt, (DateTime?)now));
+
+        return new OkObjectResult(ApiResponse.Ok(new { count }));
+    }
+
     // ── 組裝 ────────────────────────────────────────────────────────
 
     private async Task<ShiftScheduleMonthDto> BuildMonthDtoAsync(Guid userId, int year, int month)
@@ -162,8 +194,11 @@ public sealed class ShiftScheduleHandler(
                 Date:               d,
                 DayType:            dayTypes[d],
                 HolidayName:        isPublicHoliday ? holidayName : null,
-                // 國定假日、活動日預定人力、已請假日恆唯讀；其餘依「此刻這一格能不能改」
-                ReadOnly:           isPublicHoliday || dayLock is not null
+                // 國定假日、活動日預定人力、已請假日恆唯讀；其餘依「此刻這一格能不能改」。
+                // 例外：鎖定日卻排著例假／休假（歷史資料或覆蓋前的衝突）—— 放行點選，前端只允許改成上班日，
+                // 否則格子點不動、LockBlocks 又擋存，同仁兩邊都改不了（2026-09-29 死結）
+                ReadOnly:           isPublicHoliday
+                                 || (dayLock is not null && !WorkDayTypes.QuotaBearing.Contains(dayTypes[d]))
                                  || !ShiftScheduleWindow.CanEditDate(editability, d, now),
                 IsActivityDay:      act is not null,
                 ActivityTitle:      act?.Title,

@@ -57,6 +57,7 @@
 | `ShiftScheduleDay` | **個人排班的某人某日日別**（四週彈性工時）：`DayType` = `work` / `rest_day` / `statutory_off`，唯一索引 `(UserId, Date)`。**國定假日不入表**（唯讀、不佔配額，一律由 `CalendarDay` 解析）；**上班日亦不落地**（查無紀錄即上班日，與解析器的退回順序一致） |
 | `ShiftScheduleMonth` | 個人排班的**整月狀態**：`Status` = `draft` / `committed` / `auto`，唯一索引 `(UserId, Year, Month)`。供「次月是否已完成排班」（20 號提醒）、「是否為系統自動排班」（26 號批次）判定；`AutoAssignedAt` 非 null 即代表該月班表非本人所排 |
 | `ActivityDay` | 主管（部門協理）於活動 2 個月前預先排定的**活動日**。⚠ **疊加旗標、非第 5 種日別** —— 月曆格狀態仍四選一，活動日壓在其上；做成第 5 種會讓自動排班的「跳過活動日」與配額計算互相打架。**可排在國定假日上** |
+| `ShiftScheduleAdjustment` | **活動日覆蓋個人排班的異動紀錄 ＝ 鈴鐺通知來源**（2026-09-29）：`UserId`（CASCADE）/ `ActivityDayId`（SET NULL，活動日刪除後保留紀錄）/ `ActivityTitle` 快照 / `Date`（被改為上班日的日子）/ `OriginalDayType` / `RelocatedTo`（原例假／休假搬到哪天，null ＝ 待補排）/ `AcknowledgedAt`（null ＝ 未讀）。索引 `(UserId, AcknowledgedAt)` |
 | `ActivityDayAssignee` | 活動日的**預定人力**，唯一索引 `(ActivityDayId, UserId)`。被列入者若當日為國定假日 → 解鎖上下班打卡、不需加班申請單 |
 | `ShiftChangeRequest` | **改班申請**（四週彈性工時 §3.5.2）：開放期結束、班表定案後的異動途徑。單號 `SC-yyyyMMdd-NNN`（**送簽時取號**，草稿為 null）。⚠ **與銷假申請不同，必須有自己的 `ApplicationType`（`shift_change`）** —— 逐部門六條簽核路線要靠管理員建 6 個 `ApprovalItem`，借用別型就建不出來 |
 | `ShiftChangeRequestDate` | 改班的逐日明細：`FromDayType`（**送單當下的快照**，讓簽核者看得到原本是什麼）+ `ToDayType`。一張單可同時調多天（支援「A 日改上班、B 日改休假」的對調）；唯一索引 `(ShiftChangeRequestId, Date)` |

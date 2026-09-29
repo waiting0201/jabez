@@ -58,6 +58,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ShiftScheduleMonth>         ShiftScheduleMonths        { get; set; }
     public DbSet<ActivityDay>                ActivityDays               { get; set; }
     public DbSet<ActivityDayAssignee>        ActivityDayAssignees       { get; set; }
+    public DbSet<ShiftScheduleAdjustment>    ShiftScheduleAdjustments   { get; set; }
 
     // 四週彈性工時：改班申請（開放期結束後的班表異動，走簽核流程）
     public DbSet<ShiftChangeRequest>         ShiftChangeRequests        { get; set; }

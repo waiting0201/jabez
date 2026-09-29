@@ -19,6 +19,8 @@ export interface NotificationCounts {
   approvals:        Record<ApplicationType, number>;
   myRequests:       Record<ApplicationType, number>;
   recentApprovals:  RecentApproval[];
+  /** 我的班表被活動日覆蓋、尚未按「我知道了」的筆數 */
+  shiftAdjustments: number;
 }
 
 /** 輪詢間隔（毫秒）：60 秒；簽核通知不需秒級即時 */
@@ -30,6 +32,7 @@ const LAST_SEEN_APPROVED_KEY = 'notif:lastSeenApprovedAt';
  * 鈴噹通知件數聚合 Service。
  * - approvals  ：待我簽核（依申請類型分組）
  * - myRequests ：我送出的進行中申請（pending / returned）
+ * - shiftAdjustments：主管的活動日覆蓋了我的例假／休假（系統已改上班日並自動補排），尚未確認的筆數
  *
  * Refresh 時機：登入後（main-layout 啟動輪詢）+ 每 60 秒輪詢 + 開 dropdown 時 + 簽核 / 送單後。
  * 輪詢更新 signal 時，鈴鐺紅點與 dropdown 明細自動同步（畫面不刷新）；
@@ -43,16 +46,18 @@ export class NotificationService {
 
   readonly approvalCounts  = signal<Record<string, number>>({});
   readonly myRequestCounts = signal<Record<string, number>>({});
+  readonly shiftAdjustmentCount = signal(0);
 
   readonly totalCount = computed(() => {
     const sum = (m: Record<string, number>) =>
       Object.values(m).reduce((a, b) => a + (b ?? 0), 0);
-    return sum(this.approvalCounts()) + sum(this.myRequestCounts());
+    return sum(this.approvalCounts()) + sum(this.myRequestCounts()) + this.shiftAdjustmentCount();
   });
 
   /** toast 比對基準：首次 refresh 只設基準不跳 toast */
   private initialized = false;
   private prevApprovalTotal = 0;
+  private prevShiftAdjustments = 0;
   private lastSeenApprovedAt = safeLocal.getItem(LAST_SEEN_APPROVED_KEY) ?? '';
 
   private pollSub?: Subscription;
@@ -69,6 +74,7 @@ export class NotificationService {
         if (!data) return;
         this.approvalCounts.set(data.approvals);
         this.myRequestCounts.set(data.myRequests);
+        this.shiftAdjustmentCount.set(data.shiftAdjustments ?? 0);
         this.processToasts(data);
       }),
     );
@@ -100,6 +106,7 @@ export class NotificationService {
 
     if (!this.initialized) {
       this.prevApprovalTotal  = approvalTotal;
+      this.prevShiftAdjustments = data.shiftAdjustments ?? 0;
       this.lastSeenApprovedAt = maxApprovedAt;
       this.initialized = true;
       return;
@@ -111,6 +118,13 @@ export class NotificationService {
       this.toastr.info(`您有 ${delta} 件新的待簽核`, '簽核通知');
     }
     this.prevApprovalTotal = approvalTotal;
+
+    // 班表被活動日調整 → 跳 toast
+    const adjusted = (data.shiftAdjustments ?? 0) - this.prevShiftAdjustments;
+    if (adjusted > 0) {
+      this.toastr.warning('主管排定的活動日調整了您的班表，請至個人排班查看', '班表異動');
+    }
+    this.prevShiftAdjustments = data.shiftAdjustments ?? 0;
 
     // 我的單被核准（approvedAt 比上次已提示時間新）→ 跳 toast
     const fresh = data.recentApprovals.filter(r => r.approvedAt > this.lastSeenApprovedAt);

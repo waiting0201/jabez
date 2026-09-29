@@ -102,7 +102,20 @@ const TYPE_ORDER: ApplicationType[] = [
           }
         }
 
-        @if (!showApprovalSection && myRequestTypes.length === 0) {
+        @if (shiftAdjustmentCount() > 0) {
+          @if (showApprovalSection || myRequestTypes.length > 0) {
+            <div class="dropdown-divider"></div>
+          }
+          <div class="dropdown-header">班表異動</div>
+          <a class="dropdown-item"
+             style="justify-content: space-between"
+             (click)="navigateShiftSchedule($event)">
+            <span>活動日調整了我的班表</span>
+            <span class="badge bg-warning">{{ shiftAdjustmentCount() }}</span>
+          </a>
+        }
+
+        @if (!showApprovalSection && myRequestTypes.length === 0 && shiftAdjustmentCount() === 0) {
           <div class="px-4 py-3 text-sm" style="color: var(--text-muted)">
             目前沒有待辦事項
           </div>
@@ -121,6 +134,7 @@ export class NotificationDropdown {
   readonly labels = APPLICATION_TYPE_LABELS;
 
   readonly totalCount = this.notification.totalCount;
+  readonly shiftAdjustmentCount = this.notification.shiftAdjustmentCount;
   readonly hasApprovalPermission = computed(() => this.auth.hasPermission('approval-tasks:read'));
 
   /** 待我簽核：彙總所有類型件數成單一「簽核作業」項目 */
@@ -153,6 +167,12 @@ export class NotificationDropdown {
     event.preventDefault();
     if (!this.canAccess(type)) return;
     this.router.navigateByUrl(TYPE_ROUTES[type]);
+  }
+
+  /** 活動日覆蓋班表的通知：個人排班頁頂端有提示卡列出改了什麼 */
+  navigateShiftSchedule(event: Event) {
+    event.preventDefault();
+    this.router.navigateByUrl('/admin/shift-schedules');
   }
 
   navigateApproval(event: Event) {

@@ -31,6 +31,21 @@ public static class ShiftChangeRequestService
     public const string LockPendingChange = "change";
 
     /// <summary>
+    /// 該員該月被**進行中**改班單佔用的日期（<paramref name="excludeRequestId"/> 那張除外）。
+    /// 月曆鎖定、改班表單可選日期、活動日覆蓋補排三處共用。
+    /// </summary>
+    public static async Task<HashSet<DateTime>> OccupiedDatesAsync(
+        AppDbContext db, Guid userId, int year, int month, int? excludeRequestId) =>
+        (await db.ShiftChangeRequestDates.AsNoTracking()
+            .Where(d => d.ShiftChangeRequest!.EmployeeId == userId
+                     && d.ShiftChangeRequest.Year == year && d.ShiftChangeRequest.Month == month
+                     && InFlightStatuses.Contains(d.ShiftChangeRequest.ApprovalStatus)
+                     && (excludeRequestId == null || d.ShiftChangeRequestId != excludeRequestId))
+            .Select(d => d.Date)
+            .ToListAsync())
+        .Select(d => d.Date).ToHashSet();
+
+    /// <summary>
     /// 改班「套用後」的整月檢視 —— 表單即時試算、申請詳情、簽核頁三處共用，
     /// 申請人送出前看到的檢核結果與審核者看到的必然一致。
     ///
@@ -57,15 +72,7 @@ public static class ShiftChangeRequestService
             .ToDictionaryAsync(d => d.Date.Date, d => d.DayType);
         var baseMap = ShiftScheduleMap.BuildMonthDayTypes(monthStart, monthEnd, saved, holidays);
 
-        var occupied = (await db.ShiftChangeRequestDates.AsNoTracking()
-                .Where(d => d.ShiftChangeRequest!.EmployeeId == userId
-                         && d.ShiftChangeRequest.Year == year && d.ShiftChangeRequest.Month == month
-                         && InFlightStatuses.Contains(d.ShiftChangeRequest.ApprovalStatus)
-                         && (excludeRequestId == null || d.ShiftChangeRequestId != excludeRequestId))
-                .Select(d => d.Date)
-                .ToListAsync())
-            .Select(d => d.Date)
-            .ToHashSet();
+        var occupied = await OccupiedDatesAsync(db, userId, year, month, excludeRequestId);
 
         var activities = await db.ActivityDays.AsNoTracking()
             .Where(a => a.Date >= monthStart && a.Date <= monthEnd)
@@ -98,7 +105,11 @@ public static class ShiftChangeRequestService
                 Date:               d,
                 DayType:            resultMap[d],
                 HolidayName:        isHoliday ? holidayName : null,
-                ReadOnly:           isHoliday || isPast || lockReason is not null,
+                // 活動日／請假鎖定日卻排著例假／休假時放行點選（前端只允許改成上班日），避免死結；
+                // 被其他改班單佔用（LockPendingChange）則一律唯讀
+                ReadOnly:           isHoliday || isPast
+                                 || (lockReason is not null
+                                     && !(dayLock is not null && WorkDayTypes.QuotaBearing.Contains(baseMap[d]))),
                 IsActivityDay:      act is not null,
                 ActivityTitle:      act?.Title,
                 IsActivityAssignee: act?.IsAssignee ?? false,

@@ -25,8 +25,11 @@ namespace Jabez.Api.Handlers;
 ///   <item><b>活動日是疊加旗標，不是第 5 種日別</b>。同一天可以既是上班日又是活動日；
 ///         **也可以壓在國定假日上**（2026-09-17 決議，因為假日活動本來就會排在國定假日）。
 ///         本 Handler 完全不碰 <c>ShiftScheduleDay</c>。</item>
-///   <item><b>改期不自動改寫個人班表</b>。系統只重跑三條檢核、回報受影響且不合規的同仁，
-///         由他們自行送〈改班申請〉—— 自動改寫會讓人在不知情下被調班。</item>
+///   <item><b>活動日優先（2026-09-29 改）</b>。預定人力當天若排了例假／休假，存檔時由
+///         <see cref="ActivityScheduleOverrideService"/> 改為上班日並把少掉的那一天自動補排到當月其他日子，
+///         同仁以右上角鈴鐺收到通知。原設計「不改寫班表、請同仁自提改班申請」走不通 ——
+///         活動日格子在月曆與改班表單都被鎖成唯讀，同仁兩邊都改不了。
+///         改期／移除預定人力時**不還原**先前的覆蓋。</item>
 ///   <item><b>不受 10–25 日開放期限制</b>。活動日得因業主通知或天氣因素變更，
 ///         協理於原活動日之前皆可改期。</item>
 /// </list>
@@ -38,7 +41,8 @@ public sealed class ActivityDayHandler(
     AppDbContext db,
     IJwtService jwtService,
     IProjectAccessResolver access,
-    ICalendarDayReadService calendarReader)
+    ICalendarDayReadService calendarReader,
+    IEmployeeWorkdaysFactory workdaysFactory)
 {
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
@@ -91,12 +95,16 @@ public sealed class ActivityDayHandler(
         await ReplaceAssigneesAsync(entity.Id, body.AssigneeUserIds);
         await db.SaveChangesAsync();
 
-        // 新增（非改期）也可能讓已排好班的同仁不合規 —— 一樣回報，讓主管知道要通知誰
-        var affected = await RecheckAsync(body.AssigneeUserIds, [entity.Date], [entity.Date]);
+        // 活動日優先：預定人力當天排了例假／休假 → 改上班日並自動補排
+        var adjusted = await ActivityScheduleOverrideService.ApplyAsync(
+            db, calendarReader, workdaysFactory, entity, body.AssigneeUserIds);
+        await db.SaveChangesAsync();
+
+        var affected = await RecheckAsync(body.AssigneeUserIds, [entity.Date]);
         var dto = await ToDtoAsync(entity, await ShiftScheduleMap.LoadPublicHolidaysAsync(calendarReader, entity.Date, entity.Date));
 
         return new OkObjectResult(ApiResponse.Ok(
-            new SaveActivityDayResultDto(dto, DateChanged: false, Affected: [.. affected]),
+            new SaveActivityDayResultDto(dto, DateChanged: false, Adjusted: [.. adjusted], Affected: [.. affected]),
             "活動日已建立。"));
     }
 
@@ -136,12 +144,17 @@ public sealed class ActivityDayHandler(
         await ReplaceAssigneesAsync(entity.Id, body.AssigneeUserIds);
         await db.SaveChangesAsync();
 
-        // 月份來源含新舊兩天（跨月改期時兩個月都要重驗），但衝突只看「活動日現在在哪一天」
-        var affected = await RecheckAsync(affectedUsers, [oldDate, newDate], [newDate]);
+        // 活動日優先：只看「活動日現在在哪一天」的預定人力（舊日期已經沒有活動，不還原先前的覆蓋）
+        var adjusted = await ActivityScheduleOverrideService.ApplyAsync(
+            db, calendarReader, workdaysFactory, entity, body.AssigneeUserIds);
+        await db.SaveChangesAsync();
+
+        // 月份來源含新舊兩天（跨月改期時兩個月都要重驗）
+        var affected = await RecheckAsync(affectedUsers, [oldDate, newDate]);
         var dto = await ToDtoAsync(entity, await ShiftScheduleMap.LoadPublicHolidaysAsync(calendarReader, newDate, newDate));
 
         return new OkObjectResult(ApiResponse.Ok(
-            new SaveActivityDayResultDto(dto, DateChanged: oldDate != newDate, Affected: [.. affected]),
+            new SaveActivityDayResultDto(dto, DateChanged: oldDate != newDate, Adjusted: [.. adjusted], Affected: [.. affected]),
             oldDate != newDate ? "活動日已改期。" : "活動日已更新。"));
     }
 
@@ -167,32 +180,16 @@ public sealed class ActivityDayHandler(
     // ── 內部 ────────────────────────────────────────────────────────
 
     /// <summary>
-    /// 對受影響同仁重跑檢核，回報**不通過**者。只讀不寫 —— 系統不自動改寫個人已定案的班表（§3.2）。
+    /// 覆蓋並補排後，對受影響同仁重跑 §3.3 三條檢核（例假排滿 / 連續上班 ≤12 天 / 14 天內 ≥2 例假），
+    /// 回報**仍不通過**者（班表本來就沒排完、或補排找不到合法日子）。只讀不寫。
     ///
-    /// 檢核兩件事：
-    /// <list type="number">
-    ///   <item><b>活動日當天該員排的是例假／休假</b> —— 這才是改期真正會踩到的衝突。
-    ///         規格 §3.2 只寫「重跑 §3.3 三條檢核」，但三條檢核的輸入是日別分佈、
-    ///         與活動日無關，光跑它們永遠不會因改期而變不合格。故補上這條，
-    ///         否則「改期後通知受影響同仁」實際上永遠不會通知任何人。</item>
-    ///   <item>§3.3 的三條檢核（例假排滿 / 連續上班 ≤12 天 / 14 天內 ≥2 例假），
-    ///         用於回報該員班表本來就不合規的情形。</item>
-    /// </list>
-    ///
-    /// ⚠ **國定假日上的活動日不算衝突**：該日對同仁唯讀、本來就排不了班，
-    /// 且被勾為預定人力者當天直接解鎖上下班打卡（§5.3），沒有需要調整的東西。
+    /// 「活動日當天排了例假／休假」的衝突已由 <see cref="ActivityScheduleOverrideService"/> 處理掉，不在此列。
     /// </summary>
     /// <param name="userIds">受影響的同仁（原活動日 ∪ 新活動日的預定人力）。</param>
     /// <param name="monthDates">要重跑三條檢核的月份來源（改期時含新舊兩個日期，可能跨月）。</param>
-    /// <param name="conflictDates">
-    /// 要檢查「當天是否排了例假／休假」的日期 —— **只放活動日現在真正落在的日期**。
-    /// 改期後舊日期已經沒有活動了，若一併檢查會吐出「10/17 活動日當天…」這種
-    /// 指向不存在活動的誤導訊息。
-    /// </param>
     private async Task<List<AffectedScheduleDto>> RecheckAsync(
         IReadOnlyCollection<Guid> userIds,
-        IReadOnlyCollection<DateTime> monthDates,
-        IReadOnlyCollection<DateTime> conflictDates)
+        IReadOnlyCollection<DateTime> monthDates)
     {
         var result = new List<AffectedScheduleDto>();
         if (userIds.Count == 0) return result;
@@ -224,25 +221,9 @@ public sealed class ActivityDayHandler(
                 var userDays = byUser[uid].ToDictionary(x => x.Date.Date, x => x.DayType);
                 var map      = ShiftScheduleMap.BuildMonthDayTypes(monthStart, monthEnd, userDays, holidays);
 
-                var blocks = new List<string>();
-
-                // ① 活動日當天排了例假／休假 → 需要調整（國定假日除外）
-                foreach (var d in conflictDates.Where(x => x.Year == year && x.Month == month))
-                {
-                    if (holidays.ContainsKey(d.Date)) continue;          // 國定假日不算衝突
-                    if (!map.TryGetValue(d.Date, out var t)) continue;
-
-                    if (t == WorkDayTypes.StatutoryOff)
-                        blocks.Add($"{d:M/d} 活動日當天您排定為「例假日」，依法不得出勤，請調整班表。");
-                    else if (t == WorkDayTypes.RestDay)
-                        blocks.Add($"{d:M/d} 活動日當天您排定為「休假日」，請調整班表或另提加班申請。");
-                }
-
-                // ② §3.3 三條檢核（班表本身是否合規）
                 var check = ShiftScheduleValidator.Validate(year, month, map);
-                if (!check.CanSave) blocks.AddRange(check.Blocks);
-
-                if (blocks.Count == 0) continue;
+                if (check.CanSave) continue;
+                var blocks = check.Blocks;
 
                 result.Add(new AffectedScheduleDto(
                     uid, names.TryGetValue(uid, out var n) ? n : "(已離職)",

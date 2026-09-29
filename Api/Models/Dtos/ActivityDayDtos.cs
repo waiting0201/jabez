@@ -30,11 +30,10 @@ public sealed record SaveActivityDayRequest(
     Guid[]   AssigneeUserIds);
 
 /// <summary>
-/// 改期後「排班被影響、且重跑檢核不通過」的同仁。
+/// 存檔後「班表重跑檢核仍不通過」的同仁（班表本身未排完或不合規）。
 ///
-/// 規格 §3.2：活動日得因業主通知或天氣因素改期，改期後系統對受影響同仁重跑三條檢核，
-/// 不通過者告知其自行送〈改班申請〉調整 —— **系統不自動改寫個人已定案的班表**
-/// （班表是同仁自己排的，自動改寫會讓人在不知情下被調班）。
+/// 活動日當天排了例假／休假的衝突**不在此列** —— 2026-09-29 起改為活動日優先、由系統自動覆蓋並補排，
+/// 見 <see cref="ActivityScheduleAdjustedDto"/>。
 /// </summary>
 public sealed record AffectedScheduleDto(
     Guid     UserId,
@@ -43,8 +42,24 @@ public sealed record AffectedScheduleDto(
     int      Month,
     string[] Blocks);
 
-/// <summary>新增／改期活動日的回應。<see cref="Affected"/> 非空時前端要提示主管通知這些同仁。</summary>
+/// <summary>
+/// 被活動日覆蓋的一筆排班（2026-09-29 活動日優先）：該員當天原排例假／休假，已改為上班日。
+/// </summary>
+/// <param name="OriginalDayType">statutory_off / rest_day</param>
+/// <param name="RelocatedTo">原例假／休假搬到的日子；null ＝ 找不到合法的日子，待同仁自行補排。</param>
+public sealed record ActivityScheduleAdjustedDto(
+    Guid      UserId,
+    string    UserName,
+    DateTime  Date,
+    string    OriginalDayType,
+    DateTime? RelocatedTo);
+
+/// <summary>
+/// 新增／改期活動日的回應。<see cref="Adjusted"/> 為系統已自動覆蓋的班表（同仁會收到鈴鐺通知），
+/// <see cref="Affected"/> 為班表仍不合規、需要主管留意的同仁。
+/// </summary>
 public sealed record SaveActivityDayResultDto(
-    ActivityDayDto        ActivityDay,
-    bool                  DateChanged,
-    AffectedScheduleDto[] Affected);
+    ActivityDayDto                ActivityDay,
+    bool                          DateChanged,
+    ActivityScheduleAdjustedDto[] Adjusted,
+    AffectedScheduleDto[]         Affected);

@@ -32,7 +32,7 @@ export interface SaveActivityDayRequest {
   assigneeUserIds: string[];
 }
 
-/** 改期後排班檢核不通過的同仁。系統**不會**自動改寫他們的班表，需由其自行送〈改班申請〉。 */
+/** 存檔後班表重跑檢核仍不通過的同仁（班表本身未排完或不合規）。 */
 export interface AffectedSchedule {
   userId: string;
   userName: string;
@@ -41,8 +41,21 @@ export interface AffectedSchedule {
   blocks: string[];
 }
 
+/**
+ * 被活動日覆蓋的排班（2026-09-29 活動日優先）：該員當天原排例假／休假，系統已改為上班日並自動補排，
+ * 同仁會收到鈴鐺通知。`relocatedTo` 為 null ＝ 找不到合法的日子，待同仁自行補排。
+ */
+export interface AdjustedSchedule {
+  userId: string;
+  userName: string;
+  date: string;
+  originalDayType: 'statutory_off' | 'rest_day';
+  relocatedTo: string | null;
+}
+
 export interface SaveActivityDayResult {
   activityDay: ActivityDay;
   dateChanged: boolean;
+  adjusted: AdjustedSchedule[];
   affected: AffectedSchedule[];
 }

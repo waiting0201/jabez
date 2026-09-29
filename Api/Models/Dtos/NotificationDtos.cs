@@ -8,7 +8,8 @@ namespace Jabez.Api.Models.Dtos;
 public sealed record NotificationCountsDto(
     IReadOnlyDictionary<string, int> Approvals,         // 待我簽核（依申請類型分組）
     IReadOnlyDictionary<string, int> MyRequests,        // 我送出的進行中申請（pending / returned）
-    IReadOnlyList<RecentApprovalDto> RecentApprovals);  // 我送出且最近（時間窗內）被核准的單，供前端比對時間戳跳 toast
+    IReadOnlyList<RecentApprovalDto> RecentApprovals,   // 我送出且最近（時間窗內）被核准的單，供前端比對時間戳跳 toast
+    int                              ShiftAdjustments); // 我的班表被活動日覆蓋、尚未按「我知道了」的筆數（ShiftScheduleAdjustment）
 
 /// <summary>
 /// 最近被核准的「我的單」：前端輪詢時用 ApprovedAt 與上次已提示時間比對，

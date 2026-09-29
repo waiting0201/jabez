@@ -470,15 +470,8 @@ public sealed class ShiftChangeRequestHandler(
     }
 
     /// <summary>被其他進行中改班單佔用的日期。</summary>
-    private async Task<HashSet<DateTime>> OccupiedDatesAsync(Guid userId, int year, int month, int? excludeRequestId) =>
-        (await db.ShiftChangeRequestDates.AsNoTracking()
-            .Where(d => d.ShiftChangeRequest!.EmployeeId == userId
-                     && d.ShiftChangeRequest.Year == year && d.ShiftChangeRequest.Month == month
-                     && ShiftChangeRequestService.InFlightStatuses.Contains(d.ShiftChangeRequest.ApprovalStatus)
-                     && (excludeRequestId == null || d.ShiftChangeRequestId != excludeRequestId))
-            .Select(d => d.Date)
-            .ToListAsync())
-        .Select(d => d.Date).ToHashSet();
+    private Task<HashSet<DateTime>> OccupiedDatesAsync(Guid userId, int year, int month, int? excludeRequestId) =>
+        ShiftChangeRequestService.OccupiedDatesAsync(db, userId, year, month, excludeRequestId);
 
     private async Task<ShiftChangeRequest?> LoadOwnedAsync(Guid userId, int id) =>
         await db.ShiftChangeRequests.FirstOrDefaultAsync(x => x.Id == id && x.EmployeeId == userId);

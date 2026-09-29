@@ -376,6 +376,8 @@ public sealed class AppRouter(
             // 四週彈性工時：個人排班排例／休
             ("GET",    ["shift-schedules"])               => await shiftSchedules.GetMonthAsync(req),
             ("PUT",    ["shift-schedules"])               => await shiftSchedules.SaveMonthAsync(req),
+            ("GET",    ["shift-schedules", "adjustments"])         => await shiftSchedules.GetMyAdjustmentsAsync(req),
+            ("POST",   ["shift-schedules", "adjustments", "ack"])  => await shiftSchedules.AcknowledgeAdjustmentsAsync(req),
 
             // 活動日（主管排定；疊加在日別之上的旗標）
             ("POST",   ["shift-schedule-reminders", "run"]) => await shiftScheduleReminders.RunAsync(req),
@@ -703,6 +705,8 @@ public sealed class AppRouter(
             ("GET",    ["shift-schedules"])               => PermissionCodes.ShiftScheduleRead,
             ("PUT",    ["shift-schedules"])               => PermissionCodes.ShiftScheduleWrite,
             ("GET",    ["shift-schedules", ..])           => PermissionCodes.ShiftScheduleRead,
+            // 活動日覆蓋班表的通知「我知道了」：只動本人的已讀戳記，與讀取同級
+            ("POST",   ["shift-schedules", "adjustments", "ack"]) => PermissionCodes.ShiftScheduleRead,
 
             // 活動日：讀給全員（排班月曆要顯示），寫限持有 activity-days:write 者，
             // 可排定的部門範圍另在 Handler 內以 ProjectAccessScope 把關

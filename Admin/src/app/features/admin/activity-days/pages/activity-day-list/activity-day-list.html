@@ -25,15 +25,38 @@
   <div class="row g-4">
     <div class="col-12 col-xl-10">
 
-      <!-- 改期後排班不合規者：系統刻意不自動改寫班表，需由主管通知當事人 -->
+      <!-- 活動日優先：預定人力當天排了例假／休假 → 系統已改上班日並自動補排，同仁以鈴鐺收到通知 -->
+      @if (adjusted().length) {
+        <div class="alert alert-info border-0 shadow-sm mb-4">
+          <div>
+            <div class="fw-600 mb-2">以下同仁當天原本排休，已自動改為上班日（系統已通知本人）</div>
+            <ul class="mb-0 ps-3">
+              @for (a of adjusted(); track a.userId + a.date) {
+                <li>
+                  {{ a.userName }}：{{ md(a.date) }} 原為{{ dayTypeLabel(a.originalDayType) }}，
+                  @if (a.relocatedTo) {
+                    已移至 {{ md(a.relocatedTo) }}
+                  } @else {
+                    <span class="text-danger">找不到合適的日子補排，待本人自行調整</span>
+                  }
+                </li>
+              }
+            </ul>
+          </div>
+        </div>
+      }
+
+      <!-- 存檔後班表仍不合規者（班表本身未排完、或補排找不到合法日子），需由主管通知當事人 -->
       @if (affected().length) {
         <div class="alert alert-warning border-0 shadow-sm mb-4">
-          <div class="fw-600 mb-2">以下同仁的班表因這次異動而不符排班規定，請通知他們提出〈改班申請〉調整</div>
-          <ul class="mb-0 ps-3">
-            @for (a of affected(); track a.userId + a.year + a.month) {
-              <li>{{ a.userName }}（{{ a.year }}/{{ a.month }}）：{{ a.blocks.join('；') }}</li>
-            }
-          </ul>
+          <div>
+            <div class="fw-600 mb-2">以下同仁的班表仍不符排班規定，請通知他們調整</div>
+            <ul class="mb-0 ps-3">
+              @for (a of affected(); track a.userId + a.year + a.month) {
+                <li>{{ a.userName }}（{{ a.year }}/{{ a.month }}）：{{ a.blocks.join('；') }}</li>
+              }
+            </ul>
+          </div>
         </div>
       }
 

@@ -93,3 +93,26 @@ export function nextDayType(current: ShiftDayType): ShiftDayType {
 export function dateKey(iso: string): string {
   return iso.slice(0, 10);
 }
+
+/**
+ * 活動日覆蓋個人排班的通知（2026-09-29 活動日優先）。對應後端 `ShiftScheduleAdjustmentDto`。
+ * 主管把活動日排在本人的例假／休假上時，該日改為上班日、原例假／休假搬到 `relocatedTo`；
+ * `relocatedTo` 為 null ＝ 系統找不到合法的日子，待本人自行補排。
+ */
+export interface ShiftScheduleAdjustment {
+  id: number;
+  date: string;
+  activityTitle: string;
+  originalDayType: ShiftDayType;
+  relocatedTo: string | null;
+  createdAt: string;
+}
+
+/**
+ * 鎖定格（活動日預定人力／已請假）卻排著例假／休假 —— 後端此時放行點選，但只允許改成上班日
+ * （否則格子點不動、存檔又被擋，兩邊都改不了）。個人排班與改班申請兩頁共用此判斷。
+ */
+export function isLockedOffCell(cell: ShiftScheduleDay, current: ShiftDayType): boolean {
+  return (cell.lockReason === 'activity' || cell.lockReason === 'leave')
+    && (current === 'statutory_off' || current === 'rest_day');
+}

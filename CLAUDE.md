@@ -211,7 +211,7 @@ Admin/src/app/
     │   │                       比照銷假申請）與 `models/shift-change.model.ts`、`services/shift-change.service.ts`。
     │   │                       **2026-09-28 改版**：月曆抽成共用元件 `shared/components/shift-month-calendar/`（個人排班 / 改班申請 /
     │   │                       簽核詳情頁三處共用）；改班表單每點一格走 `POST /shift-changes/preview` 即時試算配額與合規檢核，
-    │   │                       不合規不得送出；個人排班頁另列「我的改班申請」。**2026-09-29**：個人排班月曆的上班日格子（已儲存、今天以後）有「請假」鈕，開 `leave-requests/new?date=` 帶入該日（請假表單切換假別時回到帶入日期而非清空）。⚠ 舊排班頁曾以 `@if (loading())` 拆掉 FullCalendar，
+    │   │                       不合規不得送出；個人排班頁另列「我的改班申請」。**2026-09-29**：個人排班月曆的上班日格子（已儲存、今天以後）有「請假」鈕，開 `leave-requests/new?date=` 帶入該日（請假表單切換假別時回到帶入日期而非清空）。**2026-09-29 活動日優先**：個人排班頁頂端有「班表因活動日調整」提示卡（`GET /shift-schedules/adjustments`，「我知道了」呼叫 `/ack` 並刷新鈴鐺），鈴鐺 dropdown 另有「班表異動」一項；活動日／請假鎖定格若仍排著例假／休假（歷史資料），月曆與改班表單放行點選但**只能改成上班日**（`isLockedOffCell`）。⚠ 舊排班頁曾以 `@if (loading())` 拆掉 FullCalendar，
     │   │                       重建後吃預設月份的 `initialDate` → 選 12 月卻顯示 10 月格子（「12/25 沒顯示」的真因），共用元件已避開
     │   ├── activity-days/    # **活動日管理（2026-09 新增）**：協理排定活動日 + 勾選預定人力，`activity-days:write` 才顯示選單。
     │   │                       ⚠ 部門下拉的 `ngModelChange` 會清空已選人力（候選名單整組換掉），
@@ -391,10 +391,13 @@ Api/
 │   │                                    （用 `isActivityDay` 會讓整欄的人全亮起來，看不出誰真的要出勤）；
 │   │                                    `noCoverage` 警示只在**週一至週五且非國定假日**成立
 │   ├── ActivityDayHandler.cs         # **活動日（四週彈性工時 §3.2，2026-09 新增）**：各部門協理排定活動日 + 預定人力，`activity-days:read/write`。
-│   │                                    **疊加旗標非第 5 種日別**（可壓在國定假日上），Handler 完全不碰 `ShiftScheduleDay`；
-│   │                                    改期**不自動改寫個人班表**，只回報需調整的同仁。⚠ 衝突判定不是「重跑三條檢核」——
-│   │                                    三條檢核的輸入與活動日無關、永遠不會因改期而不合格，真正的衝突是
-│   │                                    「活動日當天該員排定為例假／休假」（國定假日除外）
+│   │                                    **疊加旗標非第 5 種日別**（可壓在國定假日上）。
+│   │                                    **活動日優先（2026-09-29，推翻「不自動改寫個人班表」）**：預定人力當天排了例假／休假時，
+│   │                                    存檔即由 `Services/ActivityScheduleOverrideService` 改為上班日、少掉的那天以
+│   │                                    `Common/ActivityOverrideRelocator`（純函式）補排到當月最近的合法日子，找不到則標「待補排」，
+│   │                                    每筆落 `ShiftScheduleAdjustment` 並以鈴鐺通知本人（`GET /shift-schedules/adjustments` + `/ack`）。
+│   │                                    原設計走不通：活動日格子在月曆與改班表單都唯讀、又擋存「不可排例假／休假」＝死結。
+│   │                                    回應 `adjusted[]`（本次覆蓋）＋ `affected[]`（覆蓋後仍不合規）；改期／移除人力**不還原**
 │   ├── InsuranceBracketHandler.cs    # 勞健保級距 CRUD
 │   ├── PayrollHandler.cs             # 人事薪資查詢（月薪計算）；GetMineAsync = GET /me/payroll 員工讀自己近 N 個月薪資（免 payroll:read，逐月呼叫帶 employeeId 的同一支計算，依 HireDate 擋掉到職前月份，months clamp 1~24）
 │   ├── LineHandler.cs                # LINE 帳號綁定/解綁 + 月度推播用量查詢（line-quota:read）
@@ -532,6 +535,10 @@ Api/
 │   ├── IEscalationService.cs          # 簽核升級服務介面
 │   ├── EscalationService.cs           # 簽核升級邏輯（上層部門主管遞迴 + 代理人）＋ **上層級關卡無人時往上層部門接手**（2026-09，`FindSuperiorInAncestorDepartmentsAsync`）：`UseDirectSupervisor` 步驟在同部門找不到更高階者時，沿部門 `ParentId` 往上找 `Level <` 申請人的最接近一位並以升級審核指派，找不到才退回原本的「跳過該關」；全部 9 種申請類型適用，修正「部門最高主管送單一路跳到底 → 無人審即自動核准」；**指派前先排除「流程後續固定關卡本來就會簽到的人」**（`laterStepScopes` / `StepReviewerScope`，範圍由 `ApprovalFlowService.BuildLaterFixedStepScopes` 算出，只認固定池關卡：MinDays 擋掉 / 指定審核 / 上層級 / 全不限者皆不算），否則「Step1 升級到總監 + 最後一關固定總監」會變同一人連簽兩關，並撞上總監跨步驟去重的「全池皆已審」限縮而卡死；同職級多人再依 `HireDate` → `Id` 排序確保決定性（送單與推進兩次解析拿到同一人）；「同部門有無上級」三處判定（`ApprovalFlowService.FindNthSuperiorLevelAsync` / `ApprovalTaskHandler.AuthorizeStepAsync` / 待審清單 SQL）一律加上 `Status='active'`，離職者不再撐住一個沒人能審的層級
 │   ├── EscalationResult.cs            # 升級結果 record
+│   ├── ActivityScheduleOverrideService.cs # **活動日覆蓋個人排班（2026-09-29）**：static、不呼叫 SaveChanges。
+│   │                                    衝突日改上班日（刪列）＋ 補排一天 ＋ 落 `ShiftScheduleAdjustment`；**不動 `ShiftScheduleMonth.Status`**
+│   │                                    （改 draft 會誤觸 20 號提醒與 26 號整月自動排班）；過去日／今天／國定假日不處理。
+│   │                                    補排候選日排除本人其他活動日與請假日、被進行中改班單佔用日（`ShiftChangeRequestService.OccupiedDatesAsync`，三處共用）
 │   ├── CompensatoryLotService.cs      # 補休「逐筆 lot」帳務（static，不呼叫 SaveChanges；四週彈性工時 §7，取代純聚合 SUM 的補休池）：
 │   │                                    `ExpiresAtFor`（1–6 月產生用至 7/31、7–12 月用至隔年 1/31 —— 比產生期間多留一個月，
 │   │                                    原「用至 6 月底」已被客戶推翻）/ `ApplyAsync`（開 lot 的三條件：**終局核准 ＋ 補償方式為補休 ＋
@@ -669,6 +676,10 @@ Api/
 │   ├── LeaveDayExpander.cs            # 請假單「逐日展開」單一真相（Date + Hours + **Segment / Start / End 逐日時段**，2026-09 新增）：供銷假逐日勾選、核准後重算 Hours、出缺勤報表請假合併與時段顯示；時段代碼 full / am / pm / partial（`Constants.LeaveDaySegments`）一律 clamp 在 08:00–17:00，Hours 沿用既有整點差語意故與 End−Start 不必然等長；假別分類常數 WorkingDayLeaveTypes / TimeUnitMap 亦收斂於此，LeaveRequestHandler 轉引
 │   ├── ExpectedWorkWindow.cs          # 「該日應出勤（可打卡）時段」單一真相（2026-09 新增，純函式無 I/O，比照 OvertimePayCalculator）：以 08:00–17:00 扣掉當日請假時段，含跨午休正規化（上午假 08–12 → 13:00 開工、下午假 13–17 → 12:00 下班），中段小時假刻意不縮；Start/End 為 null＝當日免出勤。**兩個 AdjustedByLeave 旗標不可省**：無請假時 End 恆為 17:00，補下班卡若無條件取 min 會把 09:00 上班者從 18:00 壓成 17:00。消費點：出缺勤報表應出勤欄 + 未打卡判定、登入自動補卡
 │   ├── AttendanceLeaveMerger.cs       # 出缺勤報表「打卡 ∪ 當日請假日 ∪ **缺勤日**」合併單一真相：(員工, 日期) 一列，以 **`RowKind`（clock / leave / absent）** 標示種類 —— 請假列與缺勤列同樣 Id=null，**前端不可再用 Id 判斷**；缺勤列＝工作日無打卡且無請假（今天與未來不算、依 HireDate/ResignDate 夾邊界、展開上限 AbsenceMaxCells=60000）；每列另帶 ExpectedStart/End（走 ExpectedWorkWindow，無請假的工作日為 08:00–17:00、休假日為 null）；逐日時數與時段走 LeaveDayExpander，故採「區間全量載入 → 記憶體合併 → 記憶體切頁」，區間跨度上限 MaxRangeDays=400 天、匯出 pageSize 上限 ExportMaxPageSize=5000。**缺勤判定必須用 leavesByDay 的 Remove 前快照**，否則「有打卡又有請假」的日子會被誤判成缺勤
+│   ├── ActivityOverrideRelocator.cs   # **活動日覆蓋後的補排（純函式，2026-09-29）**：一次只搬一天、不重排整月；
+│   │                                    候選＝當月上班日（扣 blockedDates），依「離衝突日最近 → 同距離取較晚」試排，
+│   │                                    過 `ShiftScheduleValidator` 即採用（覆蓋前本就不合規的暫存班表改以「擋存原因不變多」為準）；
+│   │                                    全不過回 `RelocatedTo=null`（待補排）—— **不可硬塞仍違法的日子**
 │   ├── AutoShiftScheduler.cs          # **逾期未排班者的自動排班（§3.5.1，純函式，2026-09 新增）**：
 │   │                                    候選日優先序 週日→週六→平日、跳過國定假日與活動日、取 4 例 4（或 5）休，
 │   │                                    再跑三條檢核、不過就遞補。⚠ **遞補必須補在違規視窗的「尾端」** ——

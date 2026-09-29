@@ -5,7 +5,7 @@ import {ActivatedRoute, Router} from '@angular/router';
 import {ToastrService} from 'ngx-toastr';
 import {ShiftChangeService} from '../../services/shift-change.service';
 import {ShiftChangeMonthView, ShiftChangeRequest} from '../../models/shift-change.model';
-import {DAY_TYPE_LABELS, ShiftDayType, ShiftScheduleDay, dateKey, nextDayType} from '../../models/shift-schedule.model';
+import {DAY_TYPE_LABELS, ShiftDayType, ShiftScheduleDay, dateKey, nextDayType, isLockedOffCell} from '../../models/shift-schedule.model';
 import {
   APPROVAL_STATUS_CLASSES,
   APPROVAL_STATUS_LABELS,
@@ -164,6 +164,23 @@ export class ShiftChangeForm implements OnInit, OnDestroy {
     }
 
     const base = this.baseTypes()[key] ?? 'work';
+
+    // 活動日／請假鎖定格卻排著例假／休假：只能在「改成上班日」與「維持原狀」之間切換
+    if (cell.lockReason) {
+      if (!isLockedOffCell(cell, base)) {
+        this.toastr.info(lockedCellMessage(cell, '此日期不可變更。'));
+        return;
+      }
+      this.picked.update(p => {
+        const copy = {...p};
+        if (copy[key]) delete copy[key];
+        else copy[key] = 'work';
+        return copy;
+      });
+      this.schedulePreview();
+      return;
+    }
+
     const next = nextDayType(this.picked()[key] ?? base);
 
     this.picked.update(p => {

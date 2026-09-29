@@ -26,6 +26,40 @@
   <div class="row g-4">
     <div class="col-12 col-xl-10">
 
+      <!-- 活動日覆蓋通知（鈴鐺點進來看的就是這張）：主管的活動日排在本人的例假／休假上，系統已改為上班日並自動補排 -->
+      @if (adjustments().length > 0) {
+        <div class="card border-0 shadow-sm mb-4 bg-[rgba(255,193,7,0.08)]">
+          <div class="card-body">
+            <div class="flex items-center gap-2 text-warning fw-600 mb-2">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+              您的班表因主管排定的活動日而調整
+            </div>
+            <ul class="mb-3 ps-4 small">
+              @for (a of adjustments(); track a.id) {
+                <li class="mb-1">
+                  <a href="#" class="text-primary" (click)="$event.preventDefault(); viewAdjustment(a)">{{ md(a.date) }}</a>
+                  （{{ a.activityTitle }}）原為{{ labels[a.originalDayType] }}，已改為上班日；
+                  @if (a.relocatedTo) {
+                    原{{ labels[a.originalDayType] }}已移至
+                    <a href="#" class="text-primary" (click)="$event.preventDefault(); viewAdjustment(a)">{{ md(a.relocatedTo) }}</a>。
+                  } @else {
+                    <span class="text-danger">系統找不到合適的日子，請自行另選一天補排{{ labels[a.originalDayType] }}。</span>
+                  }
+                </li>
+              }
+            </ul>
+            <div class="text-secondary small mb-2">如需調整，開放排班期間可直接修改班表，其餘期間請提出改班申請。</div>
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    [disabled]="acknowledging()" (click)="acknowledgeAdjustments()">
+              @if (acknowledging()) {
+                <span class="spinner-border spinner-border-sm me-1"></span>
+              }
+              我知道了
+            </button>
+          </div>
+        </div>
+      }
+
       <!-- 開放狀態：進畫面就講清楚此刻能不能改、為什麼 -->
       <div class="card border-0 shadow-sm mb-4">
         <div class="card-body flex flex-wrap items-center justify-between gap-3">

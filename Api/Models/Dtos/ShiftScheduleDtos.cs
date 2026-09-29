@@ -70,3 +70,16 @@ public sealed record SaveShiftScheduleRequest(
 public sealed record SaveShiftScheduleDayRequest(
     DateTime Date,
     string   DayType);
+
+/// <summary>
+/// 活動日覆蓋個人排班的通知（鈴鐺 + 個人排班頁提示卡）。來源 <c>ShiftScheduleAdjustment</c>。
+/// </summary>
+/// <param name="OriginalDayType">statutory_off / rest_day</param>
+/// <param name="RelocatedTo">原例假／休假搬到的日子；null ＝ 待補排。</param>
+public sealed record ShiftScheduleAdjustmentDto(
+    int       Id,
+    DateTime  Date,
+    string    ActivityTitle,
+    string    OriginalDayType,
+    DateTime? RelocatedTo,
+    DateTime  CreatedAt);

@@ -2513,6 +2513,10 @@ export class AuthService {
 - **省請求**：每 tick 先判 `if (document.hidden) return;` 跳過發送；監聽 `visibilitychange`，切回前景立即補抓一次。
 - **Toast 去重**：service 內保留比對基準（`private prevXxx` / `safeLocal`，見 §15.5），**首次** refresh 只設基準不跳 toast；toast 邏輯統一寫在 `refresh()` 的 `tap` 內，使輪詢 / 開 dropdown / 自送單後共用同一比對而天然去重。
 - 間隔常數抽成 module 級 `const`（如 `POLL_INTERVAL_MS = 60_000`），勿散落魔術數字。
+- **需要「已讀」的通知**（2026-09-29 首例：活動日覆蓋班表 `shiftAdjustments`）：件數仍併入同一支 `/me/notification-counts`
+  與 `totalCount`，不另開輪詢；已讀狀態存**後端資料表**（`ShiftScheduleAdjustment.AcknowledgedAt`），不用 `safeLocal`
+  （換裝置後要一致、且紀錄本身就是業務資料）。落地頁顯示明細提示卡＋「我知道了」按鈕，ack 後呼叫
+  `notification.refresh()` 讓鈴鐺立即歸零。
 
 ### 15.5 瀏覽器儲存（`safeLocal` / `safeSession`）
 

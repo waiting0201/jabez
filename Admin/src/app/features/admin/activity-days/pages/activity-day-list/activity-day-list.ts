@@ -6,7 +6,7 @@ import {ToastrService} from 'ngx-toastr';
 import {environment} from '@/environments/environment';
 import {AuthService} from '@core/auth/services/auth.service';
 import {ActivityDayService} from '../../services/activity-day.service';
-import {ActivityDay, AffectedSchedule} from '../../models/activity-day.model';
+import {ActivityDay, AdjustedSchedule, AffectedSchedule} from '../../models/activity-day.model';
 
 interface DeptLookup { id: number; name: string; parentId: number | null; }
 interface UserLookupRow { id: string; name: string; departmentId?: number; status: string; }
@@ -48,6 +48,8 @@ export class ActivityDayList implements OnInit {
 
   /** 改期後排班不合規的同仁，需由主管通知他們送〈改班申請〉 */
   affected = signal<AffectedSchedule[]>([]);
+  /** 本次存檔被活動日覆蓋的同仁班表（系統已改上班日並自動補排，同仁會收到鈴鐺通知） */
+  adjusted = signal<AdjustedSchedule[]>([]);
 
   readonly yearOptions = computed(() => {
     const y = new Date().getFullYear();
@@ -72,6 +74,7 @@ export class ActivityDayList implements OnInit {
   /** 切換年／月：換月才清掉上一次的受影響清單（存檔後的 load 不可清，否則警示區塊會被自己洗掉）。 */
   onPeriodChange(): void {
     this.affected.set([]);
+    this.adjusted.set([]);
     this.load();
   }
 
@@ -85,6 +88,7 @@ export class ActivityDayList implements OnInit {
 
   startCreate(): void {
     this.affected.set([]);
+    this.adjusted.set([]);
     this.editingId.set(0);
     this.form.set({
       date: `${this.year()}-${String(this.month()).padStart(2, '0')}-01`,
@@ -96,6 +100,7 @@ export class ActivityDayList implements OnInit {
 
   startEdit(a: ActivityDay): void {
     this.affected.set([]);
+    this.adjusted.set([]);
     this.editingId.set(a.id);
     this.form.set({
       date: a.date.slice(0, 10),
@@ -157,9 +162,13 @@ export class ActivityDayList implements OnInit {
         this.saving.set(false);
         this.editingId.set(null);
         this.affected.set(res?.affected ?? []);
+        this.adjusted.set(res?.adjusted ?? []);
         this.toastr.success(res?.dateChanged ? '活動日已改期' : '活動日已儲存');
+        if ((res?.adjusted?.length ?? 0) > 0) {
+          this.toastr.info(`已自動調整 ${res.adjusted.length} 位同仁的班表，系統會通知他們`);
+        }
         if ((res?.affected?.length ?? 0) > 0) {
-          this.toastr.warning(`有 ${res.affected.length} 位同仁的班表因此不符規定，請通知他們提出〈改班申請〉`);
+          this.toastr.warning(`有 ${res.affected.length} 位同仁的班表仍不符規定，請通知他們調整`);
         }
         this.load();
       },
@@ -185,5 +194,15 @@ export class ActivityDayList implements OnInit {
 
   deptName(id: number | null): string {
     return this.departments().find(d => d.id === id)?.name ?? '';
+  }
+
+  /** 「11/15」這種 M/d 顯示（字串切割，避免 UTC 位移）。 */
+  md(iso: string): string {
+    const [, m, d] = iso.slice(0, 10).split('-').map(Number);
+    return `${m}/${d}`;
+  }
+
+  dayTypeLabel(t: string): string {
+    return t === 'statutory_off' ? '例假日' : '休假日';
   }
 }

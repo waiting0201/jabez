@@ -15,11 +15,14 @@ import {
 import {
   DAY_TYPE_LABELS,
   ShiftDayType,
+  ShiftScheduleAdjustment,
   ShiftScheduleDay,
   ShiftScheduleMonth,
   dateKey,
+  isLockedOffCell,
   nextDayType,
 } from '../../models/shift-schedule.model';
+import {NotificationService} from '../../../notifications/services/notification.service';
 import {AuthService} from '../../../../../core/auth/services/auth.service';
 import {ShiftMonthCalendar, lockedCellMessage} from '../../../../../shared/components/shift-month-calendar/shift-month-calendar';
 /**
@@ -44,6 +47,14 @@ export class ShiftScheduleCalendar implements OnInit {
   private toastr = inject(ToastrService);
   private router = inject(Router);
   private auth = inject(AuthService);
+  private notification = inject(NotificationService);
+
+  /**
+   * 活動日覆蓋本人班表的通知（未按「我知道了」者）。主管把活動日排在本人的例假／休假上時，
+   * 系統已改為上班日並自動補排，這裡告訴本人改了什麼（鈴鐺點進來就是看這張卡）。
+   */
+  adjustments = signal<ShiftScheduleAdjustment[]>([]);
+  acknowledging = signal(false);
 
   /**
    * 我的改班申請（最近幾張）。原本申請人沒有任何入口看得到自己送出的單，
@@ -121,6 +132,7 @@ export class ShiftScheduleCalendar implements OnInit {
 
   ngOnInit(): void {
     this.load();
+    this.loadAdjustments();
     this.changeSvc.getPaged(1, 5).subscribe({
       next: res => this.myChanges.set(res.items ?? []),
       error: () => this.myChanges.set([]),
@@ -178,6 +190,43 @@ export class ShiftScheduleCalendar implements OnInit {
     this.dayTypes.set({...this.original()});
   }
 
+  // ── 活動日覆蓋通知 ──────────────────────────────────────────
+
+  /** 跳到該筆通知所在的月份。 */
+  viewAdjustment(a: ShiftScheduleAdjustment): void {
+    const [y, m] = dateKey(a.date).split('-').map(Number);
+    if (y === this.year() && m === this.month()) return;
+    if (this.dirty()) {
+      this.toastr.warning('排班尚未儲存，請先儲存或還原變更後再切換月份。');
+      return;
+    }
+    this.year.set(y);
+    this.month.set(m);
+    this.load();
+  }
+
+  acknowledgeAdjustments(): void {
+    if (this.acknowledging()) return;
+    this.acknowledging.set(true);
+    this.svc.acknowledgeAdjustments().subscribe({
+      next: () => {
+        this.adjustments.set([]);
+        this.acknowledging.set(false);
+        this.notification.refresh().subscribe();
+      },
+      error: (err) => {
+        this.toastr.error(err?.error?.message ?? '操作失敗');
+        this.acknowledging.set(false);
+      },
+    });
+  }
+
+  /** 「11/15 例假日 → 已移至 11/16」這種 M/d 顯示。 */
+  md(iso: string): string {
+    const [, m, d] = dateKey(iso).split('-').map(Number);
+    return `${m}/${d}`;
+  }
+
   // ── 月曆點格 ────────────────────────────────────────────────
 
   onCellClick({key, cell}: {key: string; cell: ShiftScheduleDay}): void {
@@ -187,6 +236,18 @@ export class ShiftScheduleCalendar implements OnInit {
     }
 
     const current = this.dayTypes()[key] ?? 'work';
+
+    // 活動日／請假鎖定格卻排著例假／休假：只能改成上班日（後端存檔時同樣要求），不參與三態循環
+    if (cell.lockReason) {
+      if (isLockedOffCell(cell, current)) {
+        this.dayTypes.update((m) => ({...m, [key]: 'work'}));
+        this.toastr.info('已改為上班日，請記得另選一天補排' + DAY_TYPE_LABELS[current] + '。');
+      } else {
+        this.toastr.info(lockedCellMessage(cell, this.data()?.editReason ?? '此日期不可變更。'));
+      }
+      return;
+    }
+
     this.dayTypes.update((m) => ({...m, [key]: nextDayType(current)}));
   }
 
@@ -200,6 +261,13 @@ export class ShiftScheduleCalendar implements OnInit {
   }
 
   // ── 內部 ────────────────────────────────────────────────────────
+
+  private loadAdjustments(): void {
+    this.svc.getAdjustments().subscribe({
+      next: (rows) => this.adjustments.set(rows ?? []),
+      error: () => this.adjustments.set([]),
+    });
+  }
 
   private apply(res: ShiftScheduleMonth): void {
     const types: Record<string, ShiftDayType> = {};

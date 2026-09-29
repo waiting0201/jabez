@@ -208,6 +208,8 @@
 | Method | 路徑 | 權限 | 說明 |
 |---|---|---|---|
 | GET | `/shift-schedules?year=&month=[&userId=]` | `shift-schedule:read` | 某人某月的排班月曆。回傳每日 `dayType`（`work` / `rest_day` / `statutory_off` / `public_holiday`）、`holidayName`、`readOnly`、活動日疊加旗標（`isActivityDay` / `activityTitle` / `isActivityAssignee`）、**鎖定原因 `lockReason`（`activity` / `leave`）與假別 `leaveLabel`**（2026-09-28：本人的活動日與已請假日唯讀、不得排休），以及 `editable` / `editMode`（`open` / `grace_period` / `same_day_only` / `closed`）與 **`validation`**（擋存判準結果，**進入畫面即顯示**，不可等到按儲存才報錯）。帶 `userId` 看別人：未持 `shift-schedule:view-all` 者僅限 `ProjectAccessScope` 涵蓋的部門 |
+| GET | `/shift-schedules/adjustments` | `shift-schedule:read` | 本人**未確認**的「活動日覆蓋班表」通知（`ShiftScheduleAdjustment`，2026-09-29）：`[{id, date, activityTitle, originalDayType, relocatedTo, createdAt}]`，`relocatedTo=null` ＝ 待補排。對象一律取 JWT sub |
+| POST | `/shift-schedules/adjustments/ack` | `shift-schedule:read` | 「我知道了」：把本人所有未確認的通知標為已讀，回 `{count}` |
 | PUT | `/shift-schedules` | `shift-schedule:write` | 整月整批替換。body `{ year, month, days: [{ date, dayType }] }`，只需送非上班日的格子。**國定假日格送了會被靜默丟棄**（唯讀、不佔配額；**彈性休假日比照國定假日**，2026-09-29 改回）；活動日／已請假日排為例假或休假回 400；上班日**不落地**（查無紀錄即上班日）。未通過擋存判準回 400 並列出全部原因 |
 
 > **擋存判準（單一真相 [Api/Common/ShiftScheduleValidator.cs](../Api/Common/ShiftScheduleValidator.cs)）**：
@@ -280,14 +282,14 @@
 
 > **活動日是疊加旗標，不是第 5 種日別**：同一天可以既是「上班日」又是「活動日」，
 > **也可以壓在國定假日上**（2026-09-17 決議 —— 假日活動本來就會排在國定假日）。
-> 本 Handler 完全不碰 `ShiftScheduleDay`。做成第 5 種狀態會讓自動排班的「跳過活動日」與配額計算互相打架。
+> 做成第 5 種狀態會讓自動排班的「跳過活動日」與配額計算互相打架。
 
-> **改期後不自動改寫個人班表**（§3.2）：班表是同仁自己排的，自動改寫會讓人在不知情下被調班。
-> 系統只重跑檢核並在回應的 `affected[]` 回報「需要調整」的同仁，由主管通知其送〈改班申請〉。
-> ⚠ 檢核**不只跑 §3.3 的三條規則** —— 三條規則的輸入是日別分佈、與活動日無關，
-> 光跑它們永遠不會因改期而變不合格（「改期後通知受影響同仁」會等於永遠不通知任何人）。
-> 真正的衝突判定是「**活動日當天該員排定為例假／休假**」；國定假日上的活動日**不算衝突**
-> （該日對同仁唯讀、本來就排不了班，且預定人力當天直接解鎖上下班打卡）。
+> **活動日優先（2026-09-29 改，推翻「不自動改寫個人班表」）**：POST / PUT 存檔時，預定人力當天若排了例假／休假，
+> 由 `ActivityScheduleOverrideService` 改為上班日並把少掉的那一天自動補排到當月最近的合法日子
+> （找不到則只改上班日、待同仁補排），每筆落一列 `ShiftScheduleAdjustment` 並以鈴鐺通知本人。
+> 回應 `adjusted[]` 列出本次覆蓋（`{userId, userName, date, originalDayType, relocatedTo}`，`relocatedTo=null` ＝ 待補排），
+> `affected[]` 列出覆蓋後班表**仍**不合規的同仁。國定假日上的活動日**不覆蓋**（國定假日不入表，本來就無衝突）；
+> 過去日與今天不處理；改期／移除預定人力時**不還原**先前的覆蓋。見 [flexible-work-hours.md §3.2](business/flexible-work-hours.md)。
 
 > **寫入範圍**：`activity-days:write` ＋ 只能排定 `ProjectAccessScope` 涵蓋的部門。
 > **不得硬編 `JobTitle.Level` 判定「協理」**（組織改制後職級對應會漂移，前例見 `'FIN'` 硬編碼事故）。
@@ -345,7 +347,7 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/me/notification-counts` | 鈴噹通知件數聚合：回 `{approvals, myRequests, recentApprovals}`。`approvals` / `myRequests` 為 9 種申請類型 → 件數的 dictionary（前者走 reviewer 過濾，後者統計當前使用者送出且狀態為 `pending` / `returned` 的件數）。`recentApprovals` 為當前使用者「最近 10 分鐘內被核准」的單清單 `[{type, id, approvedAt}]`，供前端輪詢時比對時間戳跳「已核准」toast（後端無狀態，去重由前端 localStorage 處理）。登入即可呼叫；前端每 60 秒輪詢（分頁背景暫停） |
+| GET | `/me/notification-counts` | 鈴噹通知件數聚合：回 `{approvals, myRequests, recentApprovals, shiftAdjustments}`（`shiftAdjustments` ＝ 本人班表被活動日覆蓋、尚未確認的筆數，2026-09-29 新增）。`approvals` / `myRequests` 為 9 種申請類型 → 件數的 dictionary（前者走 reviewer 過濾，後者統計當前使用者送出且狀態為 `pending` / `returned` 的件數）。`recentApprovals` 為當前使用者「最近 10 分鐘內被核准」的單清單 `[{type, id, approvedAt}]`，供前端輪詢時比對時間戳跳「已核准」toast（後端無狀態，去重由前端 localStorage 處理）。登入即可呼叫；前端每 60 秒輪詢（分頁背景暫停） |
 | GET | `/me/user` | 員工查看**自己**的帳號資料（回傳與 `/users/{id}` 同型別 `UserDetailDto`，含薪資 / 加給 / 勞健保覆寫 / 各證明檔 URL / 頭像 / 簽名 / 部門 / 職稱）。從 JWT `sub` 取自身 id，**登入即可，不需 `users:read`**。供「個人資訊」唯讀頁用。**刻意不套薪資欄位級權限**：員工看自己的薪資是既有需求 |
 | GET | `/me/profile` | 員工查看**自己**的人事資料卡（回傳與 `/users/{id}/profile` 同型別 `EmployeeProfileDetailDto`，含 9 張子表 + 健保眷屬）。**登入即可，不需 `users:read`**，且**刻意不套薪資欄位級權限**（自己的薪資調整歷史照常回傳） |
 | GET | `/me/payroll?months=12` | 員工查看**自己**近 N 個月的薪資明細（`months` 預設 12、clamp 1~24；回 `MyPayrollHistoryDto`＝`{months:[{year, month, isCurrentMonth, payroll}]}`，`payroll` 與 `/payroll` 同型別 `EmployeePayrollDto`）。**登入即可，不需 `payroll:read`**，端點不接受 employeeId 參數故無法查別人。逐月呼叫 `CalculateMonthlyPayrollAsync(y, m, userId)`，**薪資為即時重算、無月結快照**（底薪 / 加給取自 `Users` 表當下的值），到職日之前的月份不列入。供「個人資訊」→「過往薪資」Tab 用 |

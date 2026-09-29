@@ -70,7 +70,11 @@
 
 除 Email / LINE 外，前端右上角鈴鐺提供**站內準即時通知**：
 
-- **資料來源**：`GET /me/notification-counts` 回 `{approvals, myRequests, recentApprovals}`。
+- **資料來源**：`GET /me/notification-counts` 回 `{approvals, myRequests, recentApprovals, shiftAdjustments}`。
+- **班表異動（2026-09-29 新增）**：`shiftAdjustments` ＝ 主管的活動日覆蓋了本人例假／休假（系統已改上班日並自動補排）、
+  尚未按「我知道了」的筆數，**與其他兩段不同，這段有「已讀」資料表** `ShiftScheduleAdjustment.AcknowledgedAt`。
+  dropdown 顯示「班表異動 → 活動日調整了我的班表」並導向個人排班頁（頁首提示卡列出改了什麼，按「我知道了」呼叫
+  `POST /shift-schedules/adjustments/ack`）；筆數增加時跳 warning toast「主管排定的活動日調整了您的班表」。不發 LINE / Email。
 - **輪詢**：前端 `NotificationService.startPolling()`（由 `MainLayout` 啟停）每 **60 秒**呼叫一次更新 signal；鈴鐺紅點與 dropdown 明細同步更新（Angular signal 精準更新，**畫面不刷新**）。分頁切到背景（`document.hidden`）時**暫停發送**以省 Azure Functions 請求，切回前景立即補抓一次。
 - **Toast（ngx-toastr）**：比對基準後跳出兩種提示：
   - **待我簽核增加** → `您有 N 件新的待簽核`（純前端比對 `approvals` 總和增量，零後端依賴）。
