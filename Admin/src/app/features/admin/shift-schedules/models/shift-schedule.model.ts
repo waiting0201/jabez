@@ -53,7 +53,10 @@ export interface ShiftScheduleValidation {
   statutoryOffCount: number;
   restDayCount: number;
   requiredStatutoryOff: number;
+  /** 休假應排天數 ＝ requiredOffDays − max(4, 已排例假)：多排的例假由休假轉入 */
   requiredRestDay: number;
+  /** 例假＋休假合計應排天數（31 日曆月為 9，其餘 8） */
+  requiredOffDays: number;
 }
 
 /** 可編輯情形。同 `Api/Common/ShiftScheduleWindow.cs` 的 `ShiftScheduleEditMode`。 */

@@ -101,7 +101,6 @@ public sealed class ShiftScheduleReportHandler(
             activities.SelectMany(a => a.AssigneeIds.Select(uid => (uid, a.Date.Date))));
 
         // ── 組表 ──────────────────────────────────────────────────
-        var requiredRest = ShiftScheduleValidator.RequiredRestDaysFor(year, month);
         var workingCount = new int[daysInMonth + 1];
 
         var rows = new List<ShiftOverviewRowDto>(employees.Count);
@@ -131,6 +130,9 @@ public sealed class ShiftScheduleReportHandler(
                     IsActivityDay:      hasActivity,
                     IsActivityAssignee: assigneeByDate.Contains((emp.Id, date))));
             }
+
+            // 多排的例假由休假轉入，休假應排天數隨該員已排例假而定（見 ShiftScheduleValidator）
+            var requiredRest = ShiftScheduleValidator.RequiredRestDaysFor(year, month, statutoryOff);
 
             rows.Add(new ShiftOverviewRowDto(
                 UserId:               emp.Id,

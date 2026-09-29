@@ -9,7 +9,11 @@ namespace Jabez.Api.Common;
 /// <param name="StatutoryOffCount">本月已排例假天數</param>
 /// <param name="RestDayCount">本月已排休假天數</param>
 /// <param name="RequiredStatutoryOff">本月應排例假天數（恆 4）</param>
-/// <param name="RequiredRestDay">本月應排休假天數（31 日曆月為 5，其餘 4）</param>
+/// <param name="RequiredRestDay">
+/// 本月應排休假天數 ＝ <paramref name="RequiredOffDays"/> − max(4, 已排例假)。
+/// 例假多排幾天，休假就少排幾天（見 <see cref="ShiftScheduleValidator"/>「例假由休假轉入」）。
+/// </param>
+/// <param name="RequiredOffDays">本月例假＋休假合計應排天數（31 日曆月為 9，其餘 8）</param>
 public sealed record ShiftScheduleValidationResult(
     bool CanSave,
     IReadOnlyList<string> Blocks,
@@ -17,7 +21,8 @@ public sealed record ShiftScheduleValidationResult(
     int StatutoryOffCount,
     int RestDayCount,
     int RequiredStatutoryOff,
-    int RequiredRestDay);
+    int RequiredRestDay,
+    int RequiredOffDays);
 
 /// <summary>
 /// 個人排班「能不能存」的單一真相（純函式、無 I/O，比照 <see cref="OvertimePayCalculator"/>）。
@@ -37,6 +42,13 @@ public sealed record ShiftScheduleValidationResult(
 /// ⚠ **關卡 B 會跨出當月**：滾動 14 天視窗必須併入前一個月月底與次月月初的已定案班表，
 /// 否則月初／月底永遠算不準。前月為歷史（唯讀、已定案）可直接讀；
 /// 次月若尚未排定則**該側不檢核**（不可把未排的日子當成上班日，否則會誤擋）。
+///
+/// <b>例假由休假轉入（2026-09-29 決議）</b>：關卡 B 是滾動視窗，等同要求例假平均每 7 天至少一天，
+/// 一年至少 52 天；但配額是每月 4 天、一年只有 48 天。兩者差 4 天，故每位同仁一年約有 4 個月
+/// **必然**要排 5 天例假才過得了關卡 B（例：10 月最後一個例假落在 10/24，11 月就非得 5 天不可）。
+/// 決議維持「每月休息總天數不變」（8 天；31 日曆月 9 天）：例假至少 4 天，
+/// **多排的例假從休假扣**，即 休假應排 ＝ 休息總天數 − max(4, 已排例假)。
+/// 員工與公司都沒有多放或少放一天，只是其中一天的性質由休假變成例假（對員工只有更嚴格的保護）。
 /// </summary>
 public static class ShiftScheduleValidator
 {
@@ -53,8 +65,23 @@ public static class ShiftScheduleValidator
     public const int MinStatutoryOffPerWindow = 2;
 
     /// <summary>該月應排休假天數：31 日曆月為 5 天，其餘 4 天。</summary>
+    /// <remarks>
+    /// 這是「例假剛好 4 天」時的**基準**休假天數，供自動排班初始挑選與提醒文字使用。
+    /// 檢核與畫面上的應排天數一律用帶 <c>statutoryOff</c> 的多載。
+    /// </remarks>
     public static int RequiredRestDaysFor(int year, int month) =>
         DateTime.DaysInMonth(year, month) == 31 ? 5 : 4;
+
+    /// <summary>該月例假＋休假合計應排天數：31 日曆月為 9 天，其餘 8 天。</summary>
+    public static int RequiredOffDaysFor(int year, int month) =>
+        RequiredStatutoryOffDays + RequiredRestDaysFor(year, month);
+
+    /// <summary>
+    /// 已排 <paramref name="statutoryOff"/> 天例假時，該月還應排幾天休假：
+    /// 休息總天數 − max(4, 已排例假)。例假未滿 4 天時仍以 4 天計（例假不足另由擋存處理）。
+    /// </summary>
+    public static int RequiredRestDaysFor(int year, int month, int statutoryOff) =>
+        Math.Max(0, RequiredOffDaysFor(year, month) - Math.Max(RequiredStatutoryOffDays, statutoryOff));
 
     /// <summary>
     /// 檢核某人某月的班表。
@@ -84,12 +111,14 @@ public static class ShiftScheduleValidator
                                               && kv.Value == WorkDayTypes.StatutoryOff);
         int restDay      = monthDays.Count(kv => kv.Key >= monthStart && kv.Key <= monthEnd
                                               && kv.Value == WorkDayTypes.RestDay);
-        int requiredRest = RequiredRestDaysFor(year, month);
+        int requiredOff  = RequiredOffDaysFor(year, month);
+        int requiredRest = RequiredRestDaysFor(year, month, statutoryOff);
 
         if (statutoryOff < RequiredStatutoryOffDays)
             blocks.Add($"請先排定 {RequiredStatutoryOffDays} 天例假日（目前 {statutoryOff} 天）。");
         else if (statutoryOff > RequiredStatutoryOffDays)
-            warnings.Add($"例假日已排 {statutoryOff} 天，多於應排的 {RequiredStatutoryOffDays} 天。");
+            warnings.Add($"例假日排了 {statutoryOff} 天，多出的 {statutoryOff - RequiredStatutoryOffDays} 天由休假轉入，"
+                       + $"本月休假日應排 {requiredRest} 天（例假＋休假合計 {requiredOff} 天）。");
 
         // 休假未排滿只警示、不擋存
         if (restDay < requiredRest)
@@ -122,7 +151,8 @@ public static class ShiftScheduleValidator
             StatutoryOffCount:    statutoryOff,
             RestDayCount:         restDay,
             RequiredStatutoryOff: RequiredStatutoryOffDays,
-            RequiredRestDay:      requiredRest);
+            RequiredRestDay:      requiredRest,
+            RequiredOffDays:      requiredOff);
     }
 
     /// <summary>最長連續上班日長度與其結束日。日期不連續（中間有未知日）時視為中斷。</summary>

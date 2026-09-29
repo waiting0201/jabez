@@ -13,7 +13,7 @@ public sealed record AutoScheduleResult(
 /// <summary>
 /// 逾期未排班者的系統自動排班（四週彈性工時 §3.5.1）。純函式、無 I/O。
 ///
-/// <b>設計原則</b>：唯一的硬性要求是**產出必須合於《勞基法》**（例假 4 天、連續上班 ≤ 12 天、
+/// <b>設計原則</b>：唯一的硬性要求是**產出必須合於《勞基法》**（例假至少 4 天、連續上班 ≤ 12 天、
 /// 任意 14 天內 ≥ 2 例假）。規則刻意做得單純可驗證 —— 它只是逾期者的保底，
 /// 真正要排得好的人請在開放期內自己排。
 ///
@@ -23,7 +23,11 @@ public sealed record AutoScheduleResult(
 ///   <item>候選日優先序：**週日 → 週六 → 其餘平日**（各組內由月初往後依序）</item>
 ///   <item>依序取 4 天排為例假日，再依序取 4 天（31 日曆月 5 天）排為休假日</item>
 ///   <item>**主管已排定的活動日一律跳過**，不會被排成例假或休假</item>
-///   <item>排完跑三條檢核，任一不過就**往後遞補** —— 把最接近違規區間的候選日改排為例假日，重跑至全過</item>
+///   <item>排完跑三條檢核，任一不過就**往後遞補** —— 把最接近違規區間的候選日改排為例假日，重跑至全過。
+///         違規區間內**優先把休假改為例假**（例假由休假轉入，休息總天數不變，見 <see cref="ShiftScheduleValidator"/>），
+///         沒有休假可改才動上班日；14 天視窗**含前後月已定案的日子**（跨月違規也要在當月內補救）</item>
+///   <item>通過後若例假＋休假多於該月休息總天數（遞補動到上班日所致），把多出的休假逐一改回上班日，
+///         每改一天都重跑檢核、仍通過才保留</item>
 ///   <item>⚠ **候選日用盡仍無法通過時，一律不得產生違法班表**：回傳失敗、班表留白不寫入，
 ///         交由部門協理與行政部門人工處理</item>
 /// </list>
@@ -80,24 +84,18 @@ public static class AutoShiftScheduler
             var check = ShiftScheduleValidator.Validate(year, month, map, contextDays);
 
             if (check.CanSave)
-                return new AutoScheduleResult(true, assigned, null, attempt);
+                return new AutoScheduleResult(true, TrimSurplusRestDays(year, month, monthStart, monthEnd,
+                    assigned, candidates, publicHolidays, contextDays), null, attempt);
 
-            var fix = FindFixDate(monthStart, monthEnd, map, assigned, publicHolidays, activityDays);
+            var fix = FindFixDate(monthStart, monthEnd, map, assigned, publicHolidays, activityDays, contextDays);
             if (fix is null)
                 return new AutoScheduleResult(false, new Dictionary<DateTime, string>(),
                     "候選日已用盡仍無法排出合法班表（" + string.Join("；", check.Blocks) + "），請人工處理。",
                     attempt);
 
-            // 若動到的是休假日，等於把休假挪去補例假 —— 之後要從剩餘候選日補回一天休假，
-            // 否則遞補幾次就會把休假配額吃光（只會出警示，但同仁實際少放假）。
-            bool tookRestDay = assigned.TryGetValue(fix.Value, out var prev) && prev == WorkDayTypes.RestDay;
+            // 休假改例假＝例假由休假轉入，休息總天數不變，不必補回休假（2026-09-29 決議）。
+            // 動到上班日造成的休息天數超額，於通過後由 TrimSurplusRestDays 收回。
             assigned[fix.Value] = WorkDayTypes.StatutoryOff;
-
-            if (tookRestDay)
-            {
-                var spare = candidates.FirstOrDefault(d => !assigned.ContainsKey(d));
-                if (spare != default) assigned[spare] = WorkDayTypes.RestDay;
-            }
         }
 
         return new AutoScheduleResult(false, new Dictionary<DateTime, string>(),
@@ -105,10 +103,37 @@ public static class AutoShiftScheduler
     }
 
     /// <summary>
+    /// 例假＋休假多於該月休息總天數時，把多出的休假逐一改回上班日。
+    /// 依候選優先序的**反序**（平日 → 週六 → 週日）嘗試，每改一天重跑檢核，
+    /// 仍通過才保留 —— 改回上班日可能讓連續上班超過 12 天，那一天就維持休假。
+    /// </summary>
+    private static Dictionary<DateTime, string> TrimSurplusRestDays(
+        int year, int month, DateTime monthStart, DateTime monthEnd,
+        Dictionary<DateTime, string> assigned,
+        IReadOnlyList<DateTime> candidates,
+        IReadOnlySet<DateTime> publicHolidays,
+        IReadOnlyDictionary<DateTime, string>? contextDays)
+    {
+        int requiredOff = ShiftScheduleValidator.RequiredOffDaysFor(year, month);
+
+        foreach (var d in candidates.Reverse())
+        {
+            if (assigned.Count <= requiredOff) break;
+            if (!assigned.TryGetValue(d, out var t) || t != WorkDayTypes.RestDay) continue;
+
+            assigned.Remove(d);
+            var map = BuildFullMap(monthStart, monthEnd, assigned, publicHolidays);
+            if (!ShiftScheduleValidator.Validate(year, month, map, contextDays).CanSave)
+                assigned[d] = WorkDayTypes.RestDay;
+        }
+        return assigned;
+    }
+
+    /// <summary>
     /// 找一個「改排為例假日」最有幫助的日子。
     ///
     /// 優先修**連續上班過長**（把最長連續區間的中點改為例假，一刀切兩半最有效），
-    /// 其次補**14 天視窗例假不足**（在該視窗內找一個上班日）。
+    /// 其次補**14 天視窗例假不足**（在該視窗內優先找休假日、其次上班日）。
     /// 都找不到可動的日子時回 null ＝ 候選日用盡。
     /// </summary>
     private static DateTime? FindFixDate(
@@ -116,7 +141,8 @@ public static class AutoShiftScheduler
         IReadOnlyDictionary<DateTime, string> map,
         IReadOnlyDictionary<DateTime, string> assigned,
         IReadOnlySet<DateTime> publicHolidays,
-        IReadOnlySet<DateTime> activityDays)
+        IReadOnlySet<DateTime> activityDays,
+        IReadOnlyDictionary<DateTime, string>? contextDays)
     {
         bool Movable(DateTime d) =>
             d >= monthStart && d <= monthEnd
@@ -124,8 +150,9 @@ public static class AutoShiftScheduler
             && !activityDays.Contains(d)
             && (!assigned.TryGetValue(d, out var t) || t != WorkDayTypes.StatutoryOff);
 
-        // 優先動「上班日」，真的沒有才動休假日 —— 動休假等於少放一天假，能不動就不動
-        bool IsWork(DateTime d) => !assigned.ContainsKey(d);
+        // 視窗補救時優先動「休假日」：休假改例假＝例假由休假轉入，休息總天數不變；
+        // 動上班日則會多出一天休息，事後還得由 TrimSurplusRestDays 收回
+        bool IsRest(DateTime d) => assigned.TryGetValue(d, out var t) && t == WorkDayTypes.RestDay;
 
         // ① 最長連續上班區間 → 取中點
         var (runStart, runLength) = LongestWorkRun(monthStart, monthEnd, map);
@@ -142,23 +169,37 @@ public static class AutoShiftScheduler
             }
         }
 
-        // ② 第一個例假不足的 14 天視窗 → 取視窗內第一個可動的日子
-        for (var start = monthStart;
-             start.AddDays(ShiftScheduleValidator.RollingWindowDays - 1) <= monthEnd;
+        // ② 第一個例假不足的 14 天視窗 → 取視窗內可動的日子
+        // ⚠ 視窗必須**含前後月已定案的日子**（與 ShiftScheduleValidator 同一條時間軸）。
+        // 只掃當月內的視窗時，跨月違規（例：前月最後一個例假離月初太遠）會落到第 ③ 步亂補月初。
+        // 可動的日子仍由 Movable 限定在當月。
+        var timeline = new Dictionary<DateTime, string>();
+        if (contextDays is not null)
+            foreach (var kv in contextDays) timeline[kv.Key.Date] = kv.Value;
+        foreach (var kv in map) timeline[kv.Key.Date] = kv.Value;
+
+        var windowFrom = monthStart.AddDays(-(ShiftScheduleValidator.RollingWindowDays - 1));
+        for (var start = windowFrom;
+             start <= monthEnd;
              start = start.AddDays(1))
         {
             int count = 0;
+            bool complete = true;
             for (int i = 0; i < ShiftScheduleValidator.RollingWindowDays; i++)
-                if (map.TryGetValue(start.AddDays(i), out var t) && t == WorkDayTypes.StatutoryOff) count++;
+            {
+                if (!timeline.TryGetValue(start.AddDays(i), out var t)) { complete = false; break; }
+                if (t == WorkDayTypes.StatutoryOff) count++;
+            }
 
-            if (count >= ShiftScheduleValidator.MinStatutoryOffPerWindow) continue;
+            // 跨進未知區的視窗不檢核（與 ShiftScheduleValidator 一致）
+            if (!complete || count >= ShiftScheduleValidator.MinStatutoryOffPerWindow) continue;
 
             // ⚠ **由視窗尾端往前找**，不可從頭找。
             // 滾動視窗每次往後移一天，補在開頭的例假馬上就掉出下一個視窗，
             // 於是每個視窗都要再補一次 —— 實測會從 4 天例假一路補到 11 天（連續補 7 天）。
             // 補在尾端則能同時涵蓋最多個後續視窗，通常一兩次就收斂。
             for (int i = ShiftScheduleValidator.RollingWindowDays - 1; i >= 0; i--)
-                if (Movable(start.AddDays(i)) && IsWork(start.AddDays(i))) return start.AddDays(i);
+                if (Movable(start.AddDays(i)) && IsRest(start.AddDays(i))) return start.AddDays(i);
             for (int i = ShiftScheduleValidator.RollingWindowDays - 1; i >= 0; i--)
                 if (Movable(start.AddDays(i))) return start.AddDays(i);
         }

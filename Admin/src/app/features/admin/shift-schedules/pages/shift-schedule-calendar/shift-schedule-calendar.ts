@@ -81,7 +81,17 @@ export class ShiftScheduleCalendar implements OnInit {
   readonly restDayCount = computed(() => this.countOf('rest_day'));
 
   readonly requiredStatutoryOff = computed(() => this.data()?.validation.requiredStatutoryOff ?? 4);
-  readonly requiredRestDay = computed(() => this.data()?.validation.requiredRestDay ?? 4);
+  /** 例假＋休假合計應排天數（後端給的單一真相；尚未載入時依當月天數推回 8 / 9）。 */
+  readonly requiredOffDays = computed(() => this.data()?.validation.requiredOffDays
+    ?? (new Date(this.year(), this.month(), 0).getDate() === 31 ? 9 : 8));
+
+  /**
+   * 休假應排天數隨編輯中的例假即時變動：多排的例假由休假轉入（休息總天數不變），
+   * 同後端 `ShiftScheduleValidator.RequiredRestDaysFor(year, month, statutoryOff)`。
+   * 只影響計數分母的顯示，能不能存仍由後端判定。
+   */
+  readonly requiredRestDay = computed(() => Math.max(0,
+    this.requiredOffDays() - Math.max(this.requiredStatutoryOff(), this.statutoryOffCount())));
 
   /** 例假是否已排滿 —— 唯一在前端判斷的一條，只為了即時提示，送出仍由後端把關。 */
   readonly statutoryOffSatisfied = computed(() =>

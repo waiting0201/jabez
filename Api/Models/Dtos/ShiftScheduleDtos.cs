@@ -31,7 +31,8 @@ public sealed record ShiftScheduleValidationDto(
     int      StatutoryOffCount,
     int      RestDayCount,
     int      RequiredStatutoryOff,
-    int      RequiredRestDay);
+    int      RequiredRestDay,
+    int      RequiredOffDays);
 
 /// <summary>某人某月的排班月曆。</summary>
 /// <param name="Editable">此刻是否可編輯（開放期／寬限期／當日臨時調休）</param>

@@ -151,7 +151,8 @@ public sealed class ShiftScheduleReminderService(
     {
         "schOpen" => ($"{target:M} 月排班已開放",
             $"{target:yyyy 年 M 月}班表已開放填寫，請於本月 {ShiftScheduleWindow.OpenToDay} 日 23:59 前完成排定"
-            + $"（例假日 4 天、休假日 {ShiftScheduleValidator.RequiredRestDaysFor(target.Year, target.Month)} 天）。"),
+            + $"（例假日至少 {ShiftScheduleValidator.RequiredStatutoryOffDays} 天，"
+            + $"例假＋休假合計 {ShiftScheduleValidator.RequiredOffDaysFor(target.Year, target.Month)} 天）。"),
 
         "schPending" => ($"{target:M} 月排班尚未完成",
             $"您的 {target:yyyy 年 M 月}班表尚未完成排定，請於本月 {ShiftScheduleWindow.OpenToDay} 日 23:59 前完成，"

@@ -115,7 +115,8 @@
         <div class="card-body">
           <div class="small text-secondary mb-3">
             <div class="mb-1">1. 請於上方月曆勾選 <b>例假日 {{ requiredStatutoryOff() }} 天</b>
-              與 <b>休假日 {{ requiredRestDay() }} 天</b>。</div>
+              與 <b>休假日 {{ requiredRestDay() }} 天</b>（合計 {{ requiredOffDays() }} 天）。
+              若系統提示某 14 天內例假日不足，可把其中 1 天休假改排為例假，休假應排天數會自動減少。</div>
             <div class="mb-1">2. <b>例假日</b>依法嚴禁出勤。如遇業主或承辦人於例假日提出公務需求，
               請禮貌告知將於上班日再行處理；若有急件，請委由當日之職務代理人協助。</div>
             <div>3. <b>休假日</b>如因緊急公務必要需求需加班者，請務必事前至《加班申請系統》提出加班申請，

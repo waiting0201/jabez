@@ -177,5 +177,6 @@ public static class ShiftScheduleConstraintService
         r.StatutoryOffCount,
         r.RestDayCount,
         r.RequiredStatutoryOff,
-        r.RequiredRestDay);
+        r.RequiredRestDay,
+        r.RequiredOffDays);
 }

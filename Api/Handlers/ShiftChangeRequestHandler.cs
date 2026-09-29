@@ -146,7 +146,7 @@ public sealed class ShiftChangeRequestHandler(
             year, month, monthStatus, [.. dates],
             off, rest,
             ShiftScheduleValidator.RequiredStatutoryOffDays,
-            ShiftScheduleValidator.RequiredRestDaysFor(year, month))));
+            ShiftScheduleValidator.RequiredRestDaysFor(year, month, off))));
     }
 
     // ── Write ────────────────────────────────────────────────────────────────
