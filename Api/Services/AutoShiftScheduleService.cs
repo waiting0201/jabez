@@ -53,6 +53,7 @@ public interface IAutoShiftScheduleService
 public sealed class AutoShiftScheduleService(
     AppDbContext db,
     ICalendarDayReadService calendarReader,
+    IEmployeeWorkdaysFactory workdaysFactory,
     ILogger<AutoShiftScheduleService> logger) : IAutoShiftScheduleService
 {
     public async Task<AutoScheduleRunResult> RunAsync(
@@ -109,7 +110,7 @@ public sealed class AutoShiftScheduleService(
 
             // 本人的活動日預定人力與已請假日同樣不可排休（與個人排班的鎖定同一真相）
             var locked = await ShiftScheduleConstraintService.LoadLockedDatesAsync(
-                db, calendarReader, t.Id, monthStart, monthEnd);
+                db, workdaysFactory, t.Id, monthStart, monthEnd);
             deptActivities.UnionWith(locked.Keys);
 
             var context = await ShiftScheduleConstraintService.LoadContextDaysAsync(

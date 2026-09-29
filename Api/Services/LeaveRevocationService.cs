@@ -21,13 +21,12 @@ public static class LeaveRevocationService
     /// 兩張銷假單搶同一天、或同一張被重複套用時結果都會收斂，天然冪等且併發安全。
     /// 呼叫端負責 SaveChangesAsync。
     ///
-    /// 排班制旗標**必須以假單所有人（leave.EmployeeId）解析**，不可用核准者 —— 核准的通常是主管，
-    /// 用錯人會讓排班制員工的假被重新展開成扣掉六日的天數，Hours 靜默算錯。
+    /// 工作日判定**必須以假單所有人（leave.EmployeeId）解析**，不可用核准者 —— 核准的通常是主管，
+    /// 用錯人會讓假單被拿主管的排班（或排班制旗標）重新展開，Hours 靜默算錯。
     /// </summary>
     public static async Task ApplyAsync(
         AppDbContext db,
-        ICalendarDayReadService calendarReader,
-        IWorkPatternReadService workPattern,
+        IEmployeeWorkdaysFactory workdaysFactory,
         LeaveRevocation revocation)
     {
         var leave = await db.LeaveRequests.FirstOrDefaultAsync(l => l.Id == revocation.LeaveRequestId);
@@ -46,9 +45,8 @@ public static class LeaveRevocationService
             .ToListAsync();
         foreach (var d in ownDates) revokedDates.Add(d.Date);
 
-        var isShiftWorker = leave.EmployeeId is Guid ownerId
-            && await workPattern.IsShiftWorkerAsync(ownerId);
-        var allDays   = await LeaveDayExpander.ExpandAsync(calendarReader, isShiftWorker, leave);
+        var workdays  = await workdaysFactory.ForAsync(leave.EmployeeId ?? Guid.Empty);
+        var allDays   = await LeaveDayExpander.ExpandAsync(workdays, leave);
         var remaining = allDays.Where(d => !revokedDates.Contains(d.Date.Date)).ToList();
 
         leave.Hours = remaining.Sum(d => d.Hours);

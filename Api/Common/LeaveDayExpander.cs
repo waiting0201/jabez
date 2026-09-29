@@ -29,8 +29,8 @@ public readonly record struct LeaveDay(
 ///   Hour    → 同日 end.Hour − start.Hour；跨日首日 Clamp(17 − start.Hour, 0, 8)、中間 8、末日 Clamp(end.Hour − 8, 0, 8)
 ///   HalfDay → 單一工作日 am→am 4 / am→pm 8 / pm→pm 4；多工作日 首日(am 8 / pm 4) + 中間 8 + 末日(pm 8 / am 4)
 ///   非工作日型假別（歲時祭儀假）→ 整段日曆天，每天 8 小時
-/// 工作日判定一律走 <see cref="WorkCalendarHelper"/>（有行事曆用 CalendarDay.IsHoliday、無資料退回六日）；
-/// 申請人為排班制（User.IsShiftWorker）時 ignoreHolidays=true，整段皆為工作日、不扣六日與國定假日。
+/// 工作日判定一律走 <see cref="EmployeeWorkdays"/>：切換日前為公司行事曆（排班制員工不扣六日與國定假日），
+/// 切換日起為假單所有人的個人排班（只有排定上班的日子才算請假日）。
 /// </summary>
 public static class LeaveDayExpander
 {
@@ -94,29 +94,25 @@ public static class LeaveDayExpander
     /// 消費點：AttendanceLeaveMerger（出缺勤報表合併請假虛擬列）。
     /// </summary>
     public static Task<List<LeaveDay>> ExpandAsync(
-        ICalendarDayReadService calendarReader, bool ignoreHolidays,
-        string leaveType, DateTime startDate, DateTime endDate,
-        WorkdaySchedule? schedule = null) =>
-        ExpandAsync(calendarReader, ignoreHolidays, new LeaveRequest
+        EmployeeWorkdays workdays,
+        string leaveType, DateTime startDate, DateTime endDate) =>
+        ExpandAsync(workdays, new LeaveRequest
         {
             LeaveType = leaveType,
             StartDate = startDate,
             EndDate   = endDate,
-        }, schedule);
+        });
 
     /// <summary>
     /// 把請假單攤成逐日清單（僅含實際請假的日子，假日不產生列）。
-    /// 行事曆尚未匯入時退回六日判定，與 <see cref="WorkCalendarHelper"/> 同一規則。
+    /// 工作日判定走 <see cref="EmployeeWorkdays"/>：切換日前看公司行事曆（未匯入退回六日），
+    /// 切換日起看**假單所有人的個人排班**。
+    /// 工作時段依**假單 StartDate** 與切換日選用（見 <see cref="WorkdayHours.For"/>）——
+    /// 舊單不遷移，回看歷史時必須拿舊制時段展開，否則出缺勤報表會顯示錯誤的請假時段。
     /// </summary>
-    /// <param name="schedule">
-    /// 該假單適用的工作時段（依**假單 StartDate** 與切換日選用，見 <see cref="WorkdayHours.For"/>）。
-    /// 傳 null ＝ 舊制。舊單不遷移，回看歷史時必須拿舊制時段展開，否則出缺勤報表會顯示錯誤的請假時段。
-    /// </param>
-    public static async Task<List<LeaveDay>> ExpandAsync(
-        ICalendarDayReadService calendarReader, bool ignoreHolidays, LeaveRequest leave,
-        WorkdaySchedule? schedule = null)
+    public static async Task<List<LeaveDay>> ExpandAsync(EmployeeWorkdays workdays, LeaveRequest leave)
     {
-        var sch   = schedule ?? WorkdayHours.Legacy;
+        var sch   = workdays.ScheduleFor(leave.StartDate);
         var start = leave.StartDate;
         var end   = leave.EndDate;
 
@@ -126,8 +122,7 @@ public static class LeaveDayExpander
 
         // Leave 語意：彈性休假日算請假日。**必須與 LeaveRequestHandler 送簽時的計算一致** ——
         // 不一致的話，同一張假單送簽算 3 天、銷假重算成 2 天，Hours 會憑空變動
-        var (_, _, working) = await WorkCalendarHelper.ComputeWorkingDatesAsync(
-            calendarReader, ignoreHolidays, start, end, CalendarScope.Leave);
+        var (_, _, working) = await workdays.ComputeAsync(start, end, CalendarScope.Leave);
         if (working.Count == 0) return [];
 
         return GetTimeUnit(leave.LeaveType) switch

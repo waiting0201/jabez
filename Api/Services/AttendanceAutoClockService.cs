@@ -37,8 +37,9 @@ public static class AttendanceAutoClockService
     /// 呼叫者是否持有 attendances:write。沒有打卡權限的角色（顧問 / 外部人員）本來就不打卡，
     /// 不補上班卡；與出缺勤報表缺勤列的員工母體同一條規則。
     /// </param>
+    /// <param name="workdays">本人的工作日判定（切換日起看個人排班，見 <see cref="EmployeeWorkdays"/>）。</param>
     public static async Task<AutoClockResult> ApplyAsync(
-        AppDbContext db, ICalendarDayReadService calendarReader, User user, bool canClockIn)
+        AppDbContext db, EmployeeWorkdays workdays, User user, bool canClockIn)
     {
         var today = Clock.Now.Date;
 
@@ -60,10 +61,9 @@ public static class AttendanceAutoClockService
             .Select(a => a.RecordDate.Date)
             .ToHashSet();
 
-        var cal = new CachedCalendarDayReadService(calendarReader);
         var leavesByDay = needWindow.Count == 0
             ? []
-            : await ExpandLeavesAsync(db, cal, user, needWindow);
+            : await ExpandLeavesAsync(db, workdays, user, needWindow);
 
         // 補上班卡另需工作日判定（休假日只含加班時間的紀錄不該被補上班卡）
         HashSet<DateTime>? workingDates = null;
@@ -71,8 +71,8 @@ public static class AttendanceAutoClockService
         if (canClockIn && clockInDates.Count > 0)
         {
             // Attendance 語意：彈性休假日仍是休假日，不該被補上班卡
-            var (_, _, working) = await WorkCalendarHelper.ComputeWorkingDatesAsync(
-                cal, user.IsShiftWorker, clockInDates.Min(), clockInDates.Max(), CalendarScope.Attendance);
+            var (_, _, working) = await workdays.ComputeAsync(
+                clockInDates.Min(), clockInDates.Max(), CalendarScope.Attendance);
             workingDates = [.. working];
         }
 
@@ -135,10 +135,10 @@ public static class AttendanceAutoClockService
 
     /// <summary>
     /// 把該員工與目標日期有交集的已核准請假逐日展開（扣掉已核准銷假日），依日期分組。
-    /// 排班制旗標一律以「假單所有人」解析，此處呼叫者即本人。
+    /// 工作日判定一律以「假單所有人」解析，此處呼叫者即本人。
     /// </summary>
     private static async Task<Dictionary<DateTime, List<LeaveDay>>> ExpandLeavesAsync(
-        AppDbContext db, ICalendarDayReadService cal, User user, HashSet<DateTime> targetDates)
+        AppDbContext db, EmployeeWorkdays workdays, User user, HashSet<DateTime> targetDates)
     {
         var minDate = targetDates.Min();
         var maxDate = targetDates.Max();
@@ -166,7 +166,7 @@ public static class AttendanceAutoClockService
         {
             var revokedSet = revoked[leave.Id].ToHashSet();
             var days = await LeaveDayExpander.ExpandAsync(
-                cal, user.IsShiftWorker, leave.LeaveType, leave.StartDate, leave.EndDate);
+                workdays, leave.LeaveType, leave.StartDate, leave.EndDate);
 
             foreach (var d in days)
             {

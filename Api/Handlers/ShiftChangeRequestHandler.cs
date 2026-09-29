@@ -39,7 +39,8 @@ public sealed class ShiftChangeRequestHandler(
     IJwtService jwtService,
     IApprovalNotificationService notifier,
     IApprovalFlowService approvalFlow,
-    ICalendarDayReadService calendarReader)
+    ICalendarDayReadService calendarReader,
+    IEmployeeWorkdaysFactory workdaysFactory)
 {
     private const string AppType = ShiftChangeRequestService.AppType;
 
@@ -72,7 +73,7 @@ public sealed class ShiftChangeRequestHandler(
         if (!canView) throw AppException.NotFound("ShiftChangeRequest");
 
         var entity = await db.ShiftChangeRequests.AsNoTracking().FirstAsync(x => x.Id == intId);
-        dto = dto with { View = await ShiftChangeRequestService.BuildMonthViewAsync(db, calendarReader, entity) };
+        dto = dto with { View = await ShiftChangeRequestService.BuildMonthViewAsync(db, calendarReader, workdaysFactory, entity) };
 
         return new OkObjectResult(ApiResponse.Ok(dto));
     }
@@ -96,7 +97,7 @@ public sealed class ShiftChangeRequestHandler(
             .ToList();
 
         var view = await ShiftChangeRequestService.BuildMonthViewAsync(
-            db, calendarReader, userId, body.Year, body.Month, changes, body.ExcludeRequestId);
+            db, calendarReader, workdaysFactory, userId, body.Year, body.Month, changes, body.ExcludeRequestId);
         return new OkObjectResult(ApiResponse.Ok(view));
     }
 
@@ -272,7 +273,7 @@ public sealed class ShiftChangeRequestHandler(
         await EnsureNoOtherInFlightAsync(userId, entity.Year, entity.Month, entity.Id, onlySubmitted: true);
 
         // 系統把關：套用後的整月班表必須符合排班規範，不合格不得送簽
-        await ShiftChangeRequestService.EnsureValidAsync(db, calendarReader, entity, "改班後班表不符合排班規範：");
+        await ShiftChangeRequestService.EnsureValidAsync(db, calendarReader, workdaysFactory, entity, "改班後班表不符合排班規範：");
 
         // 送簽時才取號；退回重送不改號（單號日期＝首次送簽日）
         if (string.IsNullOrEmpty(entity.RequestNo))
@@ -403,7 +404,7 @@ public sealed class ShiftChangeRequestHandler(
 
         var userId   = entity.EmployeeId ?? Guid.Empty;
         var locks    = await ShiftScheduleConstraintService.LoadLockedDatesAsync(
-            db, calendarReader, userId, monthStart, monthEnd);
+            db, workdaysFactory, userId, monthStart, monthEnd);
         var occupied = await OccupiedDatesAsync(userId, entity.Year, entity.Month, entity.Id);
         var today    = Clock.Now.Date;
 

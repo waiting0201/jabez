@@ -604,6 +604,10 @@ Api/
 │   ├── AttachmentProcessor.cs         # 整單批次附件共用：multipart 解析 + magic-byte 驗證 + 上傳 request-attachments（一般請款 / 預支沖銷共用）
 │   ├── DesignatedReviewerHelper.cs    # 申請人指定審核者共用：BuildEntities / ReadForFlowAsync / ValidateAndNormalizeAsync / GetSuppressedDesignatedStepOrdersAsync（一條流程多個指定步驟，以 ApprovalStepOrder 綁定步驟；9 種申請類型共用；第一指定步驟＝所選部門最高職稱時抑制其後指定步驟：驗證免填 + 簽核乾淨跳過）；**例外指定審核的兩個真相**：送單前查例外表 `GetEffectiveDesignatedStepOrdersAsync`、送單後看 designee 快照 `EffectiveDesignatedStepOrders`，ValidateAndNormalizeAsync 另負責剔除非法 designee 綁定（防提權）與**限定職稱驗證**（例外命中且有設限定職稱時，designee 職稱不符丟 400）
 │   ├── FlexibleDateTimeJsonConverter.cs # 寬鬆日期解析（人事資料卡 payload 用；Safari 不支援 input type=month 手打年月字串）
+│   ├── EmployeeWorkdays.cs            # **「某位員工哪幾天算工作日」單一真相（2026-09-29 新增）**：切換日前走下方 WorkCalendarHelper（公司行事曆 + IsShiftWorker），
+│   │                                  #   切換日起只有個人排班為 `work` 的日子算工作日（例假／休假／國定假日皆不算請假日），區間跨切換日兩段各自判定。
+│   │                                  #   由 `Services/EmployeeWorkdaysFactory.cs`（scoped）以**假單所有人**建立；請假 / 銷假 / 排班鎖定 / 出缺勤報表 / 自動補卡全部共用，
+│   │                                  #   `LeaveDayExpander.ExpandAsync` 改吃它（並依假單 StartDate 自選新舊制時段）。已知限制：送簽後把假期間內的休假日改排上班，Hours 不會跟著變
 │   ├── WorkCalendarHelper.cs          # 公司行事曆共用判定（「有行事曆用 CalendarDay.IsHoliday、沒資料退回六日」的單一真相）：區間版 ComputeWorkingDatesAsync 供 LeaveRequestHandler 算請假日／時數，單日版 IsHolidayAsync 供 AttendanceHandler 判休假日免下班卡。
 │   │                                  #   **區間版另須表態 `CalendarScope`（2026-09 新增，刻意必填無預設值）**：同一批行事曆在「出勤」與
 │   │                                  #   「請假」兩個脈絡下答案不同，差別只有**彈性休假日**（原行事曆的「補假」，見 `Constants.CalendarDescriptions`）——

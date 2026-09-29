@@ -31,8 +31,7 @@ public sealed class LeaveRevocationHandler(
     IJwtService jwtService,
     IApprovalNotificationService notifier,
     IApprovalFlowService approvalFlow,
-    ICalendarDayReadService calendarReader,
-    IWorkPatternReadService workPattern)
+    IEmployeeWorkdaysFactory workdaysFactory)
 {
     private const string AppType = LeaveRevocationService.AppType;
 
@@ -299,7 +298,7 @@ public sealed class LeaveRevocationHandler(
             revocation.ReviewedAt       = Clock.Now;
             revocation.ReviewedById     = userId;
             revocation.ReviewNote       = "系統自動核准（Superadmin）";
-            await LeaveRevocationService.ApplyAsync(db, calendarReader, workPattern, revocation);
+            await LeaveRevocationService.ApplyAsync(db, workdaysFactory, revocation);
             await db.SaveChangesAsync();
             await notifier.NotifyLeaveRevocationAgentAsync(revocation.Id);
             var saDto = await reader.GetByIdAsync(revocation.Id);
@@ -326,7 +325,7 @@ public sealed class LeaveRevocationHandler(
             revocation.ReviewedAt       = Clock.Now;
             revocation.ReviewedById     = userId;
             revocation.ReviewNote       = "系統自動核准（所有審核步驟皆為申請人本人）";
-            await LeaveRevocationService.ApplyAsync(db, calendarReader, workPattern, revocation);
+            await LeaveRevocationService.ApplyAsync(db, workdaysFactory, revocation);
         }
         else
         {
@@ -423,10 +422,9 @@ public sealed class LeaveRevocationHandler(
         var takenSet = taken.Select(d => d.Date).ToHashSet();
 
         var today = Clock.Now.Date;
-        // 排班制旗標以假單所有人解析（銷假可由代理人 / 主管操作，不可用呼叫者）
-        var isShiftWorker = leave.EmployeeId is Guid ownerId
-            && await workPattern.IsShiftWorkerAsync(ownerId);
-        var all = await LeaveDayExpander.ExpandAsync(calendarReader, isShiftWorker, leave);
+        // 工作日判定以假單所有人解析（銷假可由代理人 / 主管操作，不可用呼叫者）
+        var workdays = await workdaysFactory.ForAsync(leave.EmployeeId ?? Guid.Empty);
+        var all = await LeaveDayExpander.ExpandAsync(workdays, leave);
         return [.. all.Where(d => d.Date.Date >= today && !takenSet.Contains(d.Date.Date))];
     }
 

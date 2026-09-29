@@ -17,7 +17,7 @@ namespace Jabez.Api.Handlers;
 /// GET   /approval-tasks/{id}                               → 單筆
 /// PATCH /approval-tasks/{applicationType}/{id}/review      → 多步驟審核（核准 / 退回修改 / 拒絕）
 /// </summary>
-public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadService reader, IJwtService jwtService, IApprovalNotificationService notifier, IApprovalFlowService approvalFlow, IBlobStorageService blob, ICalendarDayReadService calendarReader, IWorkPatternReadService workPattern, IShiftScheduleReadService shiftSchedule, IWorkdayScheduleProvider scheduleProvider)
+public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadService reader, IJwtService jwtService, IApprovalNotificationService notifier, IApprovalFlowService approvalFlow, IBlobStorageService blob, ICalendarDayReadService calendarReader, IEmployeeWorkdaysFactory workdaysFactory, IShiftScheduleReadService shiftSchedule, IWorkdayScheduleProvider scheduleProvider)
 {
     private static readonly HashSet<string> ValidActions  = ["approved", "returned", "rejected"];
     /// <summary>
@@ -196,7 +196,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 {
                     ShiftChangeDetail = task.ShiftChangeDetail with
                     {
-                        View = await ShiftChangeRequestService.BuildMonthViewAsync(db, calendarReader, sc),
+                        View = await ShiftChangeRequestService.BuildMonthViewAsync(db, calendarReader, workdaysFactory, sc),
                     },
                 };
         }
@@ -483,7 +483,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 // 退回 / 拒絕不需任何回滾 —— 父單自始至終維持 approved
                 if (rv.ApprovalStatus == "approved")
                 {
-                    await LeaveRevocationService.ApplyAsync(db, calendarReader, workPattern, rv);
+                    await LeaveRevocationService.ApplyAsync(db, workdaysFactory, rv);
 
                     // 銷的若是補休假，父單 Hours 已遞減 → 扣抵紀錄必須跟著縮，
                     // 否則被銷掉的那幾天仍佔著 lot，同仁憑空少一批補休。
@@ -513,7 +513,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 // 每一關核准前以「現行班表 + 本單異動」重驗：簽核期間班表若被其他途徑改動而不再合規，
                 // 不可放行（排在 ProcessReviewAsync 之前，才不會留下核准紀錄與通知）
                 if (action == "approved")
-                    await ShiftChangeRequestService.EnsureValidAsync(db, calendarReader, sc,
+                    await ShiftChangeRequestService.EnsureValidAsync(db, calendarReader, workdaysFactory, sc,
                         "班表已變動，套用本改班申請後不符合排班規範，請退回申請人調整：");
                 await ProcessReviewAsync(ShiftChangeRequestService.AppType, sc.Id, sc.CurrentStepOrder,
                     sc.ApprovalItemId, action, reviewNote, reviewerId, sc.EmployeeId,

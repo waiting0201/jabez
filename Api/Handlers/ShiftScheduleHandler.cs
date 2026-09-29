@@ -34,7 +34,8 @@ public sealed class ShiftScheduleHandler(
     AppDbContext db,
     IJwtService jwtService,
     IProjectAccessResolver access,
-    ICalendarDayReadService calendarReader)
+    ICalendarDayReadService calendarReader,
+    IEmployeeWorkdaysFactory workdaysFactory)
 {
     public async Task<IActionResult> GetMonthAsync(HttpRequest req)
     {
@@ -94,7 +95,7 @@ public sealed class ShiftScheduleHandler(
         // 檢核（與 GET、改班申請共用同一份判準，含活動日／請假鎖定）
         var monthDays = ShiftScheduleMap.BuildMonthDayTypes(monthStart, monthEnd, incoming, publicHolidays);
         var result    = await ShiftScheduleConstraintService.EvaluateAsync(
-            db, calendarReader, targetId, body.Year, body.Month, monthDays);
+            db, calendarReader, workdaysFactory, targetId, body.Year, body.Month, monthDays);
 
         if (!result.CanSave)
             throw AppException.BadRequest(string.Join(" ", result.Blocks));
@@ -124,7 +125,7 @@ public sealed class ShiftScheduleHandler(
         var publicHolidays   = await ShiftScheduleMap.LoadPublicHolidaysAsync(calendarReader, monthStart, monthEnd);
         var flexibleHolidays = await ShiftScheduleMap.LoadFlexibleHolidaysAsync(calendarReader, monthStart, monthEnd);
         var locks            = await ShiftScheduleConstraintService.LoadLockedDatesAsync(
-            db, calendarReader, userId, monthStart, monthEnd);
+            db, workdaysFactory, userId, monthStart, monthEnd);
 
         var saved = await db.ShiftScheduleDays.AsNoTracking()
             .Where(d => d.UserId == userId && d.Date >= monthStart && d.Date <= monthEnd)
@@ -173,7 +174,7 @@ public sealed class ShiftScheduleHandler(
         }
 
         var result = await ShiftScheduleConstraintService.EvaluateAsync(
-            db, calendarReader, userId, year, month, dayTypes, locks);
+            db, calendarReader, workdaysFactory, userId, year, month, dayTypes, locks);
 
         return new ShiftScheduleMonthDto(
             UserId:         user.Id,

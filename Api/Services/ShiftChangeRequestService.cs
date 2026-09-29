@@ -40,7 +40,7 @@ public static class ShiftChangeRequestService
     /// <param name="changes">本次調整；<c>FromDayType</c> 為快照（現行班表已等於目標值時用來顯示「原本是什麼」）。</param>
     /// <param name="excludeRequestId">自己這張單的 Id（其日期不算「被其他改班單佔用」）。</param>
     public static async Task<ShiftChangeMonthViewDto> BuildMonthViewAsync(
-        AppDbContext db, ICalendarDayReadService calendarReader,
+        AppDbContext db, ICalendarDayReadService calendarReader, IEmployeeWorkdaysFactory workdaysFactory,
         Guid userId, int year, int month,
         IReadOnlyCollection<ShiftChangeDateDto> changes, int? excludeRequestId)
     {
@@ -51,7 +51,7 @@ public static class ShiftChangeRequestService
         var holidays = await ShiftScheduleMap.LoadPublicHolidaysAsync(calendarReader, monthStart, monthEnd);
         var flexible = await ShiftScheduleMap.LoadFlexibleHolidaysAsync(calendarReader, monthStart, monthEnd);
         var locks    = await ShiftScheduleConstraintService.LoadLockedDatesAsync(
-            db, calendarReader, userId, monthStart, monthEnd);
+            db, workdaysFactory, userId, monthStart, monthEnd);
 
         var saved = await db.ShiftScheduleDays.AsNoTracking()
             .Where(d => d.UserId == userId && d.Date >= monthStart && d.Date <= monthEnd)
@@ -108,7 +108,7 @@ public static class ShiftChangeRequestService
         }
 
         var result = await ShiftScheduleConstraintService.EvaluateAsync(
-            db, calendarReader, userId, year, month, resultMap, locks);
+            db, calendarReader, workdaysFactory, userId, year, month, resultMap, locks);
 
         return new ShiftChangeMonthViewDto(
             year, month, [.. days], [.. changeList], ShiftScheduleConstraintService.ToDto(result));
@@ -116,14 +116,15 @@ public static class ShiftChangeRequestService
 
     /// <summary>某張改班單的整月檢視（以其逐日明細為本次調整）。</summary>
     public static async Task<ShiftChangeMonthViewDto?> BuildMonthViewAsync(
-        AppDbContext db, ICalendarDayReadService calendarReader, ShiftChangeRequest request)
+        AppDbContext db, ICalendarDayReadService calendarReader, IEmployeeWorkdaysFactory workdaysFactory,
+        ShiftChangeRequest request)
     {
         if (request.EmployeeId is not { } userId) return null;
         var changes = await db.ShiftChangeRequestDates.AsNoTracking()
             .Where(d => d.ShiftChangeRequestId == request.Id)
             .Select(d => new ShiftChangeDateDto(d.Date, d.FromDayType, d.ToDayType, false))
             .ToListAsync();
-        return await BuildMonthViewAsync(db, calendarReader, userId, request.Year, request.Month, changes, request.Id);
+        return await BuildMonthViewAsync(db, calendarReader, workdaysFactory, userId, request.Year, request.Month, changes, request.Id);
     }
 
     /// <summary>
@@ -131,9 +132,10 @@ public static class ShiftChangeRequestService
     /// 不合格回 400。審核者因此只需就改班原因與部門人力安排判斷，不必自行核對是否觸法。
     /// </summary>
     public static async Task EnsureValidAsync(
-        AppDbContext db, ICalendarDayReadService calendarReader, ShiftChangeRequest request, string prefix)
+        AppDbContext db, ICalendarDayReadService calendarReader, IEmployeeWorkdaysFactory workdaysFactory,
+        ShiftChangeRequest request, string prefix)
     {
-        var view = await BuildMonthViewAsync(db, calendarReader, request);
+        var view = await BuildMonthViewAsync(db, calendarReader, workdaysFactory, request);
         if (view is null || view.Validation.CanSave) return;
         throw AppException.BadRequest(prefix + string.Join(" ", view.Validation.Blocks));
     }

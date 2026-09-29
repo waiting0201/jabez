@@ -807,11 +807,19 @@
 |---|---|---|
 | `OvertimePayCalculator`（`IsHolidayAsync`） | 排班制員工**恆判平日**倍率 | 改看當日是**上班日／休息日／例假日**（例假日禁止加班） |
 | `AttendanceHandler`（休假日加班免下班卡） | 排班制員工恆不適用休假日條件 | 改看個人排定的休假日 |
-| `LeaveRequestHandler` / `LeaveDayExpander`（請假扣假日） | 排班制員工請假**不扣**六日與國定假日 | 改扣個人排定的例假／休假日 |
-| `LeaveRevocationHandler`（銷假逐日展開） | 同上 | 同上 |
-| `AttendanceLeaveMerger`（出缺勤報表工作日集合） | 依旗標分兩組查行事曆 | 改 per-user（見 §9.2 效能重估） |
+| `LeaveRequestHandler` / `LeaveDayExpander`（請假扣假日） | 排班制員工請假**不扣**六日與國定假日 | 改扣個人排定的例假／休假日 ✅ **2026-09-29 已實作** |
+| `LeaveRevocationHandler`（銷假逐日展開） | 同上 | 同上 ✅ |
+| `AttendanceLeaveMerger`（出缺勤報表工作日集合） | 依旗標分兩組查行事曆 | 改 per-user（見 §9.2 效能重估）✅ 查詢區間全在切換日前仍分兩組快取 |
 | `AttendanceReminderService`（六日只推排班制） | 六日只推排班制員工 | 改依個人當日狀態推三種文案（§5.2） |
 
+> **請假／銷假／出缺勤／排班鎖定／自動補卡的實作（2026-09-29）**：全部改走 [EmployeeWorkdays](../../Api/Common/EmployeeWorkdays.cs)
+> （由 `IEmployeeWorkdaysFactory.ForAsync(假單所有人)` 建立）。**切換日前**維持舊制（公司行事曆 ＋ `IsShiftWorker`），
+> **切換日起**只有個人日別為 `work` 的日子算工作日（例假／休假／國定假日皆不算請假日），區間跨切換日時兩段各自判定。
+> 該月尚未排班時退回舊制行事曆（週末＝休假）。小時假跨日的首末日邊界同時改依假單 `StartDate` 選新舊制時段
+> （原本寫死 17:00／08:00），與 `LeaveDayExpander` 一致。
+> ⚠ **已知限制**：請假送出後再把假期間內的**休假日改排為上班日**，逐日展開會多出那一天、與已存的 `LeaveRequest.Hours` 不一致
+> （反方向＝把已請假的上班日改成休假，已由排班鎖定擋下）。
+>
 > **做法**：欄位與 UI（`user-form` 勾選框、`user-list` 的「排班制」badge）**可保留但停止被消費**，
 > 或連同 `WorkPatternReadService.IsShiftWorkerAsync` 一併移除 —— 屬實作細節，兩者皆不影響業務結果。
 > **不可以**的是沿用舊語意去代表「適用彈性工時」：全員適用，本來就不需要旗標，且舊語意會誤傷加班倍率與請假扣假日。

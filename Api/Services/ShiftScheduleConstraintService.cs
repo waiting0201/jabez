@@ -39,7 +39,7 @@ public static class ShiftScheduleConstraintService
 
     /// <summary>該員 [monthStart, monthEnd] 內被鎖為上班日的日子。</summary>
     public static async Task<Dictionary<DateTime, ShiftDayLock>> LoadLockedDatesAsync(
-        AppDbContext db, ICalendarDayReadService calendarReader,
+        AppDbContext db, IEmployeeWorkdaysFactory workdaysFactory,
         Guid userId, DateTime monthStart, DateTime monthEnd)
     {
         var locks = new Dictionary<DateTime, ShiftDayLock>();
@@ -72,15 +72,16 @@ public static class ShiftScheduleConstraintService
             .Select(x => (x.LeaveRequestId, x.Date.Date))
             .ToHashSet();
 
-        var isShiftWorker = await db.Users.AsNoTracking()
-            .Where(u => u.Id == userId).Select(u => u.IsShiftWorker).FirstOrDefaultAsync();
+        // 切換日起以本人**目前已存的**班表展開（只鎖真正算請假的上班日）；
+        // 若改用公司行事曆，排休在平日的人會被鎖住一個本來就不上班的日子、整月存不了
+        var workdays = await workdaysFactory.ForAsync(userId);
 
         var labels = new Dictionary<DateTime, List<string>>();
         foreach (var leave in leaves)
         {
             var label = LeaveTypeNames.GetZh(leave.LeaveType)
                       + (leave.ApprovalStatus == "pending" ? "（簽核中）" : "");
-            var days = await LeaveDayExpander.ExpandAsync(calendarReader, isShiftWorker, leave);
+            var days = await LeaveDayExpander.ExpandAsync(workdays, leave);
             foreach (var day in days)
             {
                 var d = day.Date.Date;
@@ -147,7 +148,7 @@ public static class ShiftScheduleConstraintService
     /// <param name="monthDays">當月每一天的日別（<see cref="ShiftScheduleMap.BuildMonthDayTypes"/> 的結果）。</param>
     /// <param name="locks">可由呼叫端先載好傳入（GET 也要拿它組 DTO），null 則自行載入。</param>
     public static async Task<ShiftScheduleValidationResult> EvaluateAsync(
-        AppDbContext db, ICalendarDayReadService calendarReader,
+        AppDbContext db, ICalendarDayReadService calendarReader, IEmployeeWorkdaysFactory workdaysFactory,
         Guid userId, int year, int month,
         IReadOnlyDictionary<DateTime, string> monthDays,
         IReadOnlyDictionary<DateTime, ShiftDayLock>? locks = null)
@@ -155,7 +156,7 @@ public static class ShiftScheduleConstraintService
         var monthStart = new DateTime(year, month, 1);
         var monthEnd   = monthStart.AddMonths(1).AddDays(-1);
 
-        locks ??= await LoadLockedDatesAsync(db, calendarReader, userId, monthStart, monthEnd);
+        locks ??= await LoadLockedDatesAsync(db, workdaysFactory, userId, monthStart, monthEnd);
         var context = await LoadContextDaysAsync(db, calendarReader, userId, monthStart, monthEnd);
         var result  = ShiftScheduleValidator.Validate(year, month, monthDays, context);
 

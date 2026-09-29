@@ -16,7 +16,7 @@ public sealed class AuthHandler(
     AppDbContext db,
     IJwtService  jwt,
     IConfiguration config,
-    ICalendarDayReadService calendarReader)
+    IEmployeeWorkdaysFactory workdaysFactory)
 {
     private readonly int _refreshExpiryDays =
         int.TryParse(config["Jwt:RefreshExpiryDays"], out var d) ? d : 7;
@@ -85,7 +85,7 @@ public sealed class AuthHandler(
         try
         {
             autoClock = await AttendanceAutoClockService.ApplyAsync(
-                db, calendarReader, user, permissions.Contains(PermissionCodes.AttendancesWrite));
+                db, await workdaysFactory.ForAsync(user.Id), user, permissions.Contains(PermissionCodes.AttendancesWrite));
             await db.SaveChangesAsync();
         }
         catch (DbUpdateException)

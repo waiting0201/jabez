@@ -28,7 +28,7 @@ public sealed class LeaveRequestHandler(
     IApprovalNotificationService notifier,
     IApprovalFlowService approvalFlow,
     ICalendarDayReadService calendarReader,
-    IWorkPatternReadService workPattern,
+    IEmployeeWorkdaysFactory workdaysFactory,
     IWorkdayScheduleProvider scheduleProvider)
 {
     private static readonly HashSet<string> ValidLeaveTypes =
@@ -181,12 +181,12 @@ public sealed class LeaveRequestHandler(
     /// 計算 [start, end] 內的請假日 / 假日清單。
     /// 行事曆有資料 → 以 CalendarDay.IsHoliday（已含六日 + 國定假、補班六為工作日）為準；
     /// 無資料 → 退回以星期六日判定（僅扣六日，國定假需匯入行事曆才會扣）。
-    /// 實作已抽至 WorkCalendarHelper（與打卡的休假日判定共用同一份規則）。
+    /// 四週彈性工時切換日起改看**假單所有人的個人排班**（只有排定上班的日子算請假日），見 <see cref="EmployeeWorkdays"/>。
+    /// 必須與 <see cref="LeaveDayExpander"/> 同一套判定，否則送簽與銷假重算的 Hours 會不一致。
     /// </summary>
     private async Task<(bool hasData, List<DateTime> holidays, List<DateTime> working)>
         ComputeWorkingDatesAsync(Guid ownerId, DateTime start, DateTime end)
-        => await WorkCalendarHelper.ComputeWorkingDatesAsync(
-            calendarReader, await workPattern.IsShiftWorkerAsync(ownerId), start, end, CalendarScope.Leave);
+        => await (await workdaysFactory.ForAsync(ownerId)).ComputeAsync(start, end, CalendarScope.Leave);
 
     /// <summary>
     /// HalfDay 時數在 body.Hours 未帶時的退路：以 LeaveDayExpander 同一套「起 &lt; 13:00 ＝上午、
@@ -220,6 +220,8 @@ public sealed class LeaveRequestHandler(
     {
         var (hasData, _, working) = await ComputeWorkingDatesAsync(ownerId, start, end);
         var workingSet = working.Select(d => d.Date).ToHashSet();
+        // 跨日首末日的邊界依假單 StartDate 選新舊制時段（與 LeaveDayExpander.ExpandHourUnit 一致）
+        var sch = await scheduleProvider.ForAsync(start);
 
         if (start.Date == end.Date)
         {
@@ -231,9 +233,9 @@ public sealed class LeaveRequestHandler(
         foreach (var d in workingSet)
         {
             if (d == start.Date)
-                total += Math.Clamp(WorkdayHours.EndHour - start.Hour, 0, 8);
+                total += Math.Clamp(sch.End.Hour - start.Hour, 0, sch.FullDayHours);
             else if (d == end.Date)
-                total += Math.Clamp(end.Hour - WorkdayHours.StartHour, 0, 8);
+                total += Math.Clamp(end.Hour - sch.Start.Hour, 0, sch.FullDayHours);
             else
                 total += 8m;
         }

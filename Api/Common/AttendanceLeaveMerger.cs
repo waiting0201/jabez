@@ -47,7 +47,8 @@ public static class AttendanceLeaveMerger
         ProjectAccessScope scope,
         int page, int pageSize,
         Guid? employeeId, DateOnly dateFrom, DateOnly dateTo,
-        DateTime? flexibleWorkStartDate = null)
+        DateTime? flexibleWorkStartDate = null,
+        IShiftScheduleReadService? shiftReader = null)
     {
         // 本次合併專用的行事曆快取：逐張假單展開與缺勤列的工作日計算會反覆查同一年度，收斂成每年最多 2 次查詢
         var cal = new CachedCalendarDayReadService(calendarReader);
@@ -62,6 +63,13 @@ public static class AttendanceLeaveMerger
         var from = dateFrom.ToDateTime(TimeOnly.MinValue);
         var to   = dateTo.ToDateTime(TimeOnly.MinValue);
 
+        // 每位員工的工作日判定（切換日起看個人排班）。個人日別一次撈回全部人，不逐人查
+        var shiftByUser = employees.ToDictionary(e => e.UserId, e => e.IsShiftWorker);
+        foreach (var lr in leaveRows) shiftByUser.TryAdd(lr.UserId, lr.IsShiftWorker);
+        var workdaysFor = await BuildWorkdaysResolverAsync(
+            cal, shiftReader, flexibleWorkStartDate, shiftByUser,
+            [.. clockRows.Select(r => r.UserId)], leaveRows, from, to);
+
         // (員工, 日期) → 該日所有假單。Dtos 供回傳、Days 供 ExpectedWorkWindow 計算應出勤時段
         var leavesByDay = new Dictionary<(Guid UserId, DateTime Date), (List<AttendanceLeaveDto> Dtos, List<LeaveDay> Days)>();
         var nameByUser  = new Dictionary<Guid, string>();
@@ -70,10 +78,8 @@ public static class AttendanceLeaveMerger
         {
             nameByUser[lr.UserId] = lr.UserName;
             var revokedSet = revoked[lr.Id].ToHashSet();
-            // 排班制旗標隨資料列帶出（SQL 已 JOIN Users），避免逐張假單再查一次 DB
             var days = await LeaveDayExpander.ExpandAsync(
-                cal, lr.IsShiftWorker, lr.LeaveType, lr.StartDate, lr.EndDate,
-                WorkdayHours.For(lr.StartDate, flexibleWorkStartDate));
+                workdaysFor(lr.UserId), lr.LeaveType, lr.StartDate, lr.EndDate);
 
             foreach (var d in days)
             {
@@ -113,20 +119,25 @@ public static class AttendanceLeaveMerger
                 CreateVirtualRow(key.UserId, nameByUser[key.UserId], key.Date, RowKindLeave, flexibleWorkStartDate),
                 entry.Dtos, entry.Days, flexibleWorkStartDate));
 
-        // 工作日集合（依排班制旗標分兩組，行事曆查詢因此最多 2 次），應出勤時段與缺勤列共用
-        var shiftByUser   = employees.ToDictionary(e => e.UserId, e => e.IsShiftWorker);
-        var workingByFlag = new Dictionary<bool, HashSet<DateTime>>();
+        // 工作日集合，應出勤時段與缺勤列共用。
+        // 查詢區間全在切換日之前 → 只取決於排班制旗標，分兩組快取（行事曆查詢最多 2 次）；
+        // 否則每人班表不同，逐人快取
+        var perUser     = flexibleWorkStartDate is { } sw && shiftReader is not null && to >= sw.Date;
+        var workingMemo = new Dictionary<(Guid, bool), HashSet<DateTime>>();
 
-        async Task<HashSet<DateTime>> WorkingSetAsync(bool isShiftWorker)
+        async Task<HashSet<DateTime>> WorkingSetAsync(Guid userId)
         {
-            if (workingByFlag.TryGetValue(isShiftWorker, out var cached)) return cached;
+            // 不在員工母體內者（超管 / 未開通打卡權限卻有紀錄）退回以非排班制判定：
+            // 此集合只服務顯示與缺勤列，不影響任何寫入
+            var isShiftWorker = shiftByUser.TryGetValue(userId, out var flag) && flag;
+            var key = perUser ? (userId, false) : (Guid.Empty, isShiftWorker);
+            if (workingMemo.TryGetValue(key, out var cached)) return cached;
             // Attendance 語意：彈性休假日仍是休假日，否則該日全公司會冒出一排紅字「缺勤」
-            var (_, _, working) = await WorkCalendarHelper.ComputeWorkingDatesAsync(
-                cal, isShiftWorker, from, to, CalendarScope.Attendance);
-            return workingByFlag[isShiftWorker] = [.. working];
+            var (_, _, working) = await workdaysFor(userId).ComputeAsync(from, to, CalendarScope.Attendance);
+            return workingMemo[key] = [.. working];
         }
 
-        await ApplyExpectedWindowAsync(merged, shiftByUser, WorkingSetAsync, flexibleWorkStartDate);
+        await ApplyExpectedWindowAsync(merged, WorkingSetAsync, flexibleWorkStartDate);
         await AppendAbsentRowsAsync(merged, employees, WorkingSetAsync, clockedKeys, leaveKeys, from, to, flexibleWorkStartDate);
 
         // 三段式 tiebreak 確保 total order：記憶體切頁若排序不穩定，翻頁會漏列 / 重複列
@@ -151,8 +162,7 @@ public static class AttendanceLeaveMerger
     /// </summary>
     private static async Task ApplyExpectedWindowAsync(
         List<AttendanceRecordDto> merged,
-        Dictionary<Guid, bool> shiftByUser,
-        Func<bool, Task<HashSet<DateTime>>> workingSetAsync,
+        Func<Guid, Task<HashSet<DateTime>>> workingSetAsync,
         DateTime? flexibleWorkStartDate)
     {
         for (int i = 0; i < merged.Count; i++)
@@ -160,10 +170,7 @@ public static class AttendanceLeaveMerger
             var row = merged[i];
             if (row.RowKind == RowKindAbsent) continue;   // 缺勤列建立時已填好
 
-            // 不在員工母體內者（超管 / 未開通打卡權限卻有紀錄）退回以非排班制判定：
-            // 此欄只服務顯示與 badge，不影響任何寫入
-            var isShiftWorker = shiftByUser.TryGetValue(row.UserId, out var flag) && flag;
-            var working = await workingSetAsync(isShiftWorker);
+            var working = await workingSetAsync(row.UserId);
             var date = row.RecordDate.Date;
 
             if (!working.Contains(date))
@@ -188,7 +195,7 @@ public static class AttendanceLeaveMerger
     private static async Task AppendAbsentRowsAsync(
         List<AttendanceRecordDto> merged,
         IReadOnlyList<AttendanceEmployeeRow> employees,
-        Func<bool, Task<HashSet<DateTime>>> workingSetAsync,
+        Func<Guid, Task<HashSet<DateTime>>> workingSetAsync,
         HashSet<(Guid, DateTime)> clockedKeys,
         HashSet<(Guid, DateTime)> leaveKeys,
         DateTime from, DateTime to,
@@ -204,7 +211,7 @@ public static class AttendanceLeaveMerger
 
         foreach (var emp in employees)
         {
-            var working = await workingSetAsync(emp.IsShiftWorker);
+            var working = await workingSetAsync(emp.UserId);
 
             var floor = from;
             if (emp.HireDate is { } hire && hire.Date > floor) floor = hire.Date;
@@ -214,7 +221,7 @@ public static class AttendanceLeaveMerger
 
             for (var d = floor; d <= ceil; d = d.AddDays(1))
             {
-                if (!working.Contains(d))                  continue;  // 非工作日（依該員工的排班制旗標）
+                if (!working.Contains(d))                  continue;  // 非工作日（切換日前看排班制旗標、之後看個人排班）
                 if (clockedKeys.Contains((emp.UserId, d))) continue;  // 有任何打卡紀錄（含只有加班時間的列）
                 if (leaveKeys.Contains((emp.UserId, d)))   continue;  // 有請假 → 已有請假列，不重複產生
 
@@ -222,6 +229,55 @@ public static class AttendanceLeaveMerger
             }
         }
     }
+
+    /// <summary>
+    /// 建立「員工 → 工作日判定」的查找函式。
+    /// 切換日前（或未提供 <paramref name="shiftReader"/>）一律舊制；
+    /// 切換日起的個人日別以 <see cref="IShiftScheduleReadService.ResolveRangeForUsersAsync"/> 一次撈回
+    /// （區間涵蓋查詢區間與所有假單的起訖，產假等長假會超出查詢區間），不逐人逐張查。
+    /// </summary>
+    private static async Task<Func<Guid, EmployeeWorkdays>> BuildWorkdaysResolverAsync(
+        ICalendarDayReadService cal,
+        IShiftScheduleReadService? shiftReader,
+        DateTime? switchDate,
+        Dictionary<Guid, bool> shiftByUser,
+        IReadOnlyCollection<Guid> clockUserIds,
+        IReadOnlyList<AttendanceLeaveSourceRow> leaveRows,
+        DateTime from, DateTime to)
+    {
+        var lo = leaveRows.Count == 0 ? from : Min(from, leaveRows.Min(l => l.StartDate.Date));
+        var hi = leaveRows.Count == 0 ? to   : Max(to,   leaveRows.Max(l => l.EndDate.Date));
+
+        if (switchDate is not { } sw || shiftReader is null || hi < sw.Date)
+            return uid => EmployeeWorkdays.Legacy(cal, shiftByUser.TryGetValue(uid, out var f) && f);
+
+        lo = Max(lo, sw.Date);
+        HashSet<Guid> userIds = [.. shiftByUser.Keys, .. clockUserIds];
+        // ⚠ 空集合＝「不限人員」，會撈全公司；沒人就不必查
+        var dayTypes = userIds.Count == 0
+            ? new Dictionary<(Guid UserId, DateTime Date), string>()
+            : await shiftReader.ResolveRangeForUsersAsync(userIds, lo, hi);
+
+        var cache = new Dictionary<Guid, EmployeeWorkdays>();
+        return uid =>
+        {
+            if (cache.TryGetValue(uid, out var w)) return w;
+            return cache[uid] = new EmployeeWorkdays(
+                cal, shiftByUser.TryGetValue(uid, out var f) && f, switchDate,
+                async (s, e) =>
+                {
+                    // 預載範圍外（理論上不會發生）才逐人補查
+                    if (s < lo || e > hi) return await shiftReader.ResolveRangeAsync(uid, s, e);
+                    var map = new Dictionary<DateTime, string>();
+                    for (var d = s.Date; d <= e.Date; d = d.AddDays(1))
+                        if (dayTypes.TryGetValue((uid, d), out var t)) map[d] = t;
+                    return map;
+                });
+        };
+    }
+
+    private static DateTime Min(DateTime a, DateTime b) => a < b ? a : b;
+    private static DateTime Max(DateTime a, DateTime b) => a > b ? a : b;
 
     /// <summary>把當日請假資訊與應出勤時段掛到一列上（打卡列與請假虛擬列共用）。</summary>
     private static AttendanceRecordDto WithLeaves(

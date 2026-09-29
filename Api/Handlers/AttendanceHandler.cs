@@ -59,7 +59,7 @@ public sealed class AttendanceHandler(
         // 應出勤時段依「該列自己的日期」在新舊制間選用，故傳切換日而非單一時段
         var switchDate = await workdaySchedule.GetSwitchDateAsync();
         var result = await AttendanceLeaveMerger.BuildPagedAsync(
-            reader, calendarReader, scope, page, pageSize, employeeId, dateFrom, dateTo, switchDate);
+            reader, calendarReader, scope, page, pageSize, employeeId, dateFrom, dateTo, switchDate, shiftReader);
         return new OkObjectResult(ApiResponse.Ok(result));
     }
 
