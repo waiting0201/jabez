@@ -86,6 +86,7 @@
 - `User.IsSuperAdmin = 0`
 - `User.Status = 'active'`
 - 未離職（`ResignDate` 為 null 或 > 今日）
+- **持有 `attendances:write`**（2026-09 新增）：約聘 / 外聘等未開通打卡權限的角色本來就不打卡，**不推上下班提醒**；上班、下班（舊制與新制）、半天假交接通知四支查詢共用 `AttendanceReminderReadService.ClockPermissionFilter`。判準與出缺勤報表的缺勤母體（`ListClockingEmployeesAsync`）、登入自動補卡一致。**申請 / 簽核的 LINE 通知不受影響**，照常推送。要讓某類人員不收提醒，到角色管理取消該角色的 `attendances:write` 即可，不需另設勾選框
 - **非請假中**：今日不落在任何 `LeaveRequest.ApprovalStatus='approved'` 範圍內
 - **未打卡**：上班提醒排除今日 `AttendanceRecord.ClockInTime` 已有值者；下班提醒排除 `ClockOutTime` 已有值者
 

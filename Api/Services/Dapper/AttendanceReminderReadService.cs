@@ -1,5 +1,6 @@
 using System.Data;
 using Dapper;
+using Jabez.Api.Common;
 using Jabez.Api.Models.Dtos;
 
 namespace Jabez.Api.Services.Dapper;
@@ -7,6 +8,18 @@ namespace Jabez.Api.Services.Dapper;
 public sealed class AttendanceReminderReadService(IDbConnection db)
     : IAttendanceReminderReadService
 {
+    // 只推給「需要打卡的人」＝ 持有 attendances:write。
+    // 約聘 / 顧問等未開通打卡權限的角色本來就不打卡，不該收到上下班提醒
+    // （判準同 AttendanceReadService.ListClockingEmployeesAsync 的缺勤母體與登入自動補卡）。
+    // 申請 / 簽核通知走另一條路，不受此過濾影響。
+    private const string ClockPermissionFilter = """
+          AND  EXISTS (SELECT 1
+                       FROM   UserRoles ur
+                       JOIN   RolePermissions rp ON rp.RoleId = ur.RoleId
+                       JOIN   Permissions p      ON p.Id = rp.PermissionId
+                       WHERE  ur.UserId = u.Id AND p.Code = @ClockPermission)
+        """;
+
     public async Task<IReadOnlyList<AttendanceReminderRecipientDto>> GetRecipientsAsync(
         DateTime targetTime, string type, bool shiftWorkersOnly = false, CancellationToken ct = default)
     {
@@ -32,6 +45,7 @@ public sealed class AttendanceReminderReadService(IDbConnection db)
               AND  u.IsSuperAdmin = 0
               AND  u.Status = 'active'
               {shiftWorkerFilter}
+              {ClockPermissionFilter}
               -- ResignDate >= 今天 → 仍在職（離職當日 = 最後上班日，與 PayrollReadService 相同慣例）
               AND  (u.ResignDate IS NULL OR CAST(u.ResignDate AS DATE) >= CAST(@TargetTime AS DATE))
               -- 今日已打該類型卡 → 排除
@@ -58,7 +72,10 @@ public sealed class AttendanceReminderReadService(IDbConnection db)
                    )
             """;
 
-        var cmd = new CommandDefinition(sql, new { TargetTime = targetTime }, cancellationToken: ct);
+        var cmd = new CommandDefinition(
+            sql,
+            new { TargetTime = targetTime, ClockPermission = PermissionCodes.AttendancesWrite },
+            cancellationToken: ct);
         var rows = await db.QueryAsync<AttendanceReminderRecipientDto>(cmd);
         return rows.ToList();
     }
@@ -71,7 +88,7 @@ public sealed class AttendanceReminderReadService(IDbConnection db)
         //
         // AfternoonOnly：當日有一段已核准假在半天分界（13:00）前結束 → 視為請了上午半天假，
         // 應下班時間改為 ＋4 小時（午休已過，不再扣那 1 小時）。
-        const string sql = @"
+        var sql = $@"
             SELECT u.Id AS UserId, u.LineUserId, u.Name AS UserName, a.ClockInTime,
                    CAST(CASE WHEN EXISTS (
                         SELECT 1 FROM LeaveRequests lr
@@ -89,11 +106,12 @@ public sealed class AttendanceReminderReadService(IDbConnection db)
               AND  u.Status = 'active'
               AND  (u.ResignDate IS NULL OR CAST(u.ResignDate AS DATE) >= @Today)
               AND  a.ClockInTime  IS NOT NULL
-              AND  a.ClockOutTime IS NULL";
+              AND  a.ClockOutTime IS NULL
+              {ClockPermissionFilter}";
 
         var cmd = new CommandDefinition(
             sql,
-            new { Today = today.Date, Boundary = today.Date.AddHours(13) },
+            new { Today = today.Date, Boundary = today.Date.AddHours(13), ClockPermission = PermissionCodes.AttendancesWrite },
             cancellationToken: ct);
         var rows = await db.QueryAsync<AttendanceReminderClockOutCandidateDto>(cmd);
         return rows.ToList();
@@ -138,6 +156,7 @@ public sealed class AttendanceReminderReadService(IDbConnection db)
               AND  u.IsSuperAdmin = 0
               AND  u.Status = 'active'
               AND  (u.ResignDate IS NULL OR CAST(u.ResignDate AS DATE) >= @Today)
+              {ClockPermissionFilter}
               AND  EXISTS (
                     SELECT 1 FROM LeaveRequests lr
                     WHERE  lr.EmployeeId = u.Id
@@ -152,7 +171,10 @@ public sealed class AttendanceReminderReadService(IDbConnection db)
                               AND rvd.Date = @Today)
                    )";
 
-        var cmd = new CommandDefinition(sql, new { Today = today.Date, Boundary = boundary }, cancellationToken: ct);
+        var cmd = new CommandDefinition(
+            sql,
+            new { Today = today.Date, Boundary = boundary, ClockPermission = PermissionCodes.AttendancesWrite },
+            cancellationToken: ct);
         var rows = await db.QueryAsync<AttendanceReminderRecipientDto>(cmd);
         return rows.ToList();
     }
