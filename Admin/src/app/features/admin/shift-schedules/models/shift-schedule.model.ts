@@ -30,7 +30,7 @@ export const DAY_TYPE_STYLES: Record<ShiftDayType, { bg: string; fg: string; bor
 export interface ShiftScheduleDay {
   date: string;                  // ISO yyyy-MM-ddTHH:mm:ss
   dayType: ShiftDayType;
-  holidayName: string | null;    // 國定假日名稱（國慶日…），或「彈性休假日」（可排班，僅提示）
+  holidayName: string | null;    // 國定假日名稱（國慶日、彈性休假日…）
   readOnly: boolean;             // 國定假日、活動日預定人力、已請假日、或此刻不可編輯的日期
   isActivityDay: boolean;        // 主管排定的活動日（疊加旗標，與 dayType 並存）
   activityTitle: string | null;

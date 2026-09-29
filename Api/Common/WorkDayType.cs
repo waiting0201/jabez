@@ -54,7 +54,7 @@ public static class WorkDayTypes
 ///
 /// ⚠ 判準是「<c>IsHoliday</c> **且** <c>Description</c> 非空」，不是只看 <c>IsHoliday</c>：
 /// 公司行事曆（來源 ruyut/TaiwanCalendar）把**週六日也標成 IsHoliday = 1**，只是 Description 為空；
-/// 有名稱的（國慶日／臺灣光復…紀念日）才是真正的國定假日（彈性休假日除外，見下）。
+/// 有名稱的（彈性休假日／國慶日／臺灣光復…紀念日）才是真正的國定假日。
 ///
 /// 只看旗標的後果：四週彈性工時下週末不再天然免出勤（該不該休由個人排班決定），
 /// 每個週末都變唯讀格 → 員工**永遠排不滿 4 例 4 休**（實測 2026 年 10 月 31 天有 11 天被誤丟，配額停在 0/4）。
@@ -63,18 +63,13 @@ public static class WorkDayTypes
 /// **不可用 GetHolidayDatesAsync**（只回日期，分不出「國慶日」與「單純的週六」）。
 /// 月曆讀取（唯讀格）、整月寫入（丟棄該日）、配額重算三個消費點**必須共用本方法**，各寫各的必然漂移。
 ///
-/// ⚠ <b>彈性休假日（原「補假」）不是國定假日</b>（2026-09-28 業務決議）：它是可自行排班的一般日 ——
-/// 月曆可勾選、佔 4 例 4 休配額、不領國定假日加倍工資；排為上班並出勤者，依打卡時數自動以
-/// 彈性休假日級距計酬（見 <c>OvertimePayCalculator.FlexibleHolidayTiers</c>）。判準見 <see cref="IsFlexibleHoliday"/>。
+/// <b>彈性休假日（原「補假」）比照國定假日</b>（2026-09-29 業務決議，推翻 9/28「改為可排班一般日」）：
+/// 月曆唯讀、不佔 4 例 4 休配額，出勤比照國定假日（前 8 小時加發 1 日日薪、第 9 小時起提加班申請）。
 /// </summary>
 public static class PublicHolidayRule
 {
     public static bool IsPublicHoliday(bool isHoliday, string? description) =>
-        isHoliday && !string.IsNullOrWhiteSpace(description) && !IsFlexibleHoliday(isHoliday, description);
-
-    /// <summary>行事曆上的「彈性休假日」（原「補假」）。</summary>
-    public static bool IsFlexibleHoliday(bool isHoliday, string? description) =>
-        isHoliday && description?.Trim() == CalendarDescriptions.FlexibleHoliday;
+        isHoliday && !string.IsNullOrWhiteSpace(description);
 }
 
 /// <summary>日別的中文名稱（通知文案、簽核摘要共用）。</summary>

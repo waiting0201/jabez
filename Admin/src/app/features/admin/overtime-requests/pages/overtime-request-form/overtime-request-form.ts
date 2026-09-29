@@ -115,7 +115,7 @@ export class OvertimeRequestForm implements OnInit {
   }
 
   /**
-   * 送出 / 儲存是否應被擋下——超出加班上限，或該日為彈性休假日出勤（依打卡自動計酬，免提加班單）。
+   * 送出 / 儲存是否應被擋下——超出加班上限。
    * **與補償方式無關**（2026-09 起兩種補償方式一律擋，見後端 GuardOvertimeHoursAsync），
    * 故試算改為兩種模式都查詢（見下方 valueChanges pipeline），不再只在 isPayMode 時才打 API。
    */
@@ -218,7 +218,7 @@ export class OvertimeRequestForm implements OnInit {
     // 同一 tick 內若尚未重算會拿到舊值。
     this.projectsArray.valueChanges.subscribe(() => this.recomputeTotalHours());
 
-    // 加班時數試算（**兩種補償方式都查**，2026-09 改）：超出上限 / 彈性休假日出勤自動計酬
+    // 加班時數試算（**兩種補償方式都查**，2026-09 改）：超出上限
     // 這兩種擋件與補償方式無關，補休模式若只在切到「加班費」才查，使用者選補休送出時
     // 完全看不到擋件訊息，只能等後端 400 才發現。金額 / 分段明細仍只在 isPayMode 顯示（見 template）。
     // 範式比照 user-form 的底薪 → 勞健保級距 lookup。

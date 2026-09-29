@@ -95,7 +95,7 @@ public sealed class OvertimeRequestHandler(
         // 關聯專案明細（必填，至少一列）；父表 EstimatedHours 為其合計快取
         var projectRows = await BuildProjectsAsync(body.Projects);
 
-        // 彈性休假日出勤自動計酬 / 超出上限，一律於此擋下（見 GuardOvertimeHoursAsync）
+        // 超出加班上限一律於此擋下（見 GuardOvertimeHoursAsync）
         await GuardOvertimeHoursAsync(employeeId, body.OvertimeDate, projectRows.Sum(r => r.EstimatedHours));
 
         // 指定審核者存在性驗證
@@ -190,7 +190,7 @@ public sealed class OvertimeRequestHandler(
         if (body.CompensationType is not null)
             item.CompensationType = OvertimeCompensationService.Normalize(body.CompensationType);
 
-        // 彈性休假日出勤自動計酬 / 超出上限，一律於此擋下（見 GuardOvertimeHoursAsync）
+        // 超出加班上限一律於此擋下（見 GuardOvertimeHoursAsync）
         await GuardOvertimeHoursAsync(item.EmployeeId!.Value, item.OvertimeDate, item.EstimatedHours);
 
         // 日期 / 時數 / 補償方式任一可能已變動 → 舊的加班費快照必須失效，重新送簽時再算一次
@@ -257,7 +257,7 @@ public sealed class OvertimeRequestHandler(
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned overtime requests can be submitted.");
 
-        // 彈性休假日出勤自動計酬 / 超出上限，一律於此擋下（見 GuardOvertimeHoursAsync）。
+        // 超出加班上限一律於此擋下（見 GuardOvertimeHoursAsync）。
         // Create / Update 已擋過一次，這裡是最後一道防線 —— 例如活動日排定於建單後才變動，
         // 或退回（returned）重送時日別已與建單當下不同。
         await GuardOvertimeHoursAsync(item.EmployeeId!.Value, item.OvertimeDate, item.EstimatedHours);
@@ -429,59 +429,25 @@ public sealed class OvertimeRequestHandler(
         // 同日已有已核准的假日執行活動 → 假日津貼與加班費可能就同一段工時雙重給付，前端顯示警示
         var conflict = await OvertimeCompensationService.HasHolidayTravelConflictAsync(db, userId, date);
 
-        // 彈性休假日出勤依打卡自動計酬：擋加班申請本身，優先於「超出上限」訊息（完全不同情境，
-        // 此時 ExceedsCap 仍為 false —— 那不是超時，是這天根本不該提加班單）。
-        var flexibleBlock = await IsFlexibleHolidayScheduledWorkAsync(userId, date)
-            ? "彈性休假日出勤依打卡自動計酬，免提加班申請。"
-            : null;
-
-        return new OkObjectResult(ApiResponse.Ok(estimate with
-        {
-            HasHolidayTravelConflict = conflict,
-            BlockMessage             = flexibleBlock ?? estimate.BlockMessage,
-        }));
+        return new OkObjectResult(ApiResponse.Ok(estimate with { HasHolidayTravelConflict = conflict }));
     }
 
     // ── Helper ──────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// 加班申請 Create / Update / Submit 共用擋件：
-    ///   ① 彈性休假日出勤依打卡自動計酬 —— 這種日子的加班單本身就不該存在；
-    ///   ② 加班時數超出計酬上限（四週彈性工時 2026-09 起改為擋件，不分補休或加班費 ——
-    ///      工時上限是勞基法規範本身，與員工選擇補休或領加班費無關，不擋等於系統放行違法排班）。
+    /// 加班申請 Create / Update / Submit 共用擋件：加班時數超出計酬上限
+    /// （四週彈性工時 2026-09 起改為擋件，不分補休或加班費 ——
+    /// 工時上限是勞基法規範本身，與員工選擇補休或領加班費無關，不擋等於系統放行違法排班）。
     /// 與切換日無關：ResolveDayContextAsync 內部本就把切換日前的日別收斂回 work / rest_day，
     /// 沿用相同的 4 / 12 小時上限。
     /// </summary>
     private async Task GuardOvertimeHoursAsync(Guid ownerId, DateTime overtimeDate, decimal hours)
     {
-        if (await IsFlexibleHolidayScheduledWorkAsync(ownerId, overtimeDate))
-            throw AppException.BadRequest("彈性休假日出勤依打卡自動計酬，免提加班申請。");
-
         var (dayType, isAssignee) = await OvertimePayCalculator.ResolveDayContextAsync(
             shiftSchedule, scheduleProvider, ownerId, overtimeDate);
 
         if (OvertimePayCalculator.ExceedsCap(hours, dayType, isAssignee))
             throw AppException.BadRequest(OvertimePayCalculator.CapMessage(dayType, isAssignee));
-    }
-
-    /// <summary>
-    /// 該日對 ownerId 是否為「彈性休假日且已排定為上班日」—— 這類出勤依打卡時數自動計酬
-    /// （見 OvertimePayCalculator.FlexibleHolidayWorkedHours / PayrollReadService），
-    /// 不可再提加班申請重複給付。三個判準缺一不可：① 切換日已到、② 行事曆上是彈性休假日、
-    /// ③ 個人排班解析為上班日（非彈性休假日的一般日子即使剛好排了 work 也與此無關）。
-    /// </summary>
-    private async Task<bool> IsFlexibleHolidayScheduledWorkAsync(Guid ownerId, DateTime date)
-    {
-        var switchDate = await scheduleProvider.GetSwitchDateAsync();
-        if (!WorkdayHours.IsFlexible(date, switchDate)) return false;
-
-        var calendarDays = await calendarReader.GetByYearAsync(date.Year);
-        var day = calendarDays.FirstOrDefault(d => d.Date.Date == date.Date);
-        if (day is null || !PublicHolidayRule.IsFlexibleHoliday(day.IsHoliday, day.Description))
-            return false;
-
-        var resolved = await shiftSchedule.ResolveDayTypeAsync(ownerId, date);
-        return resolved == WorkDayTypes.Work;
     }
 
     /// <summary>

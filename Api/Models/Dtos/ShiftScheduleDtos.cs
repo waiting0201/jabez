@@ -5,7 +5,7 @@ namespace Jabez.Api.Models.Dtos;
 /// </summary>
 /// <param name="Date">日期</param>
 /// <param name="DayType">work / rest_day / statutory_off / public_holiday</param>
-/// <param name="HolidayName">國定假日名稱（如「國慶日」），或「彈性休假日」（可排班，僅供提示）；其餘為 null</param>
+/// <param name="HolidayName">國定假日名稱（如「國慶日」「彈性休假日」）；其餘為 null</param>
 /// <param name="ReadOnly">該格不可由員工勾選（國定假日、活動日預定人力、已請假日，以及不在可編輯範圍內的日期）</param>
 /// <param name="IsActivityDay">該日有主管排定的活動（疊加旗標，與 DayType 並存）</param>
 /// <param name="ActivityTitle">活動名稱</param>

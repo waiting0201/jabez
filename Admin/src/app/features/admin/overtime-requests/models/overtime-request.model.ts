@@ -83,7 +83,7 @@ export interface OvertimePayEstimate {
    */
   exceedsCap: boolean;
   /**
-   * 非 null＝不可送出（超出上限，或該日為彈性休假日出勤依打卡自動計酬、免提加班申請）。
+   * 非 null＝不可送出（超出加班上限）。
    * 兩種情境共用同一個欄位：exceedsCap 為 false 但 blockMessage 有值時，
    * 代表的是後者（這天根本不該提加班單），不是超時。
    */

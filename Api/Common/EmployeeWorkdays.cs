@@ -18,8 +18,8 @@ namespace Jabez.Api.Common;
 ///   LeaveRequestHandler（請假日 / 時數 / Submit 擋件）、<see cref="LeaveDayExpander"/>（銷假逐日、排班鎖定、
 ///   出缺勤請假列、自動補卡）、AttendanceLeaveMerger（應出勤時段 + 缺勤列）、AttendanceAutoClockService（補上班卡）。
 ///
-/// 新制段的 <see cref="CalendarScope"/> 不影響結果：彈性休假日在新制是可排班日，上不上班看個人排班，
-/// 故出勤語意與請假語意的答案一致。
+/// 新制段的 <see cref="CalendarScope"/> 不影響結果：彈性休假日在新制比照國定假日（非上班日、不算請假日），
+/// 故出勤語意與請假語意的答案一致。舊制段仍依 scope 區分（請假語意把彈性休假日算成請假日）。
 ///
 /// ⚠ 已知限制：請假送出後，若再把假期間內的休假日改排為上班日（或反之），逐日展開會跟著改變，
 /// 與送簽當下存入的 <c>LeaveRequest.Hours</c> 不一致。已請假的「工作日」由排班鎖定擋住不能改為休假，

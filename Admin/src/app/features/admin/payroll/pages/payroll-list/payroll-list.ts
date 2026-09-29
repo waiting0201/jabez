@@ -78,7 +78,7 @@ export class PayrollList implements OnInit {
     });
   }
 
-  /** 匯出總表：一位員工一列 × 40 欄（全部薪資相關欄位）+ 合計列。
+  /** 匯出總表：一位員工一列 × 38 欄（全部薪資相關欄位）+ 合計列。
    *  GET /payroll 本身不分頁、已回傳全月完整欄位，故直接讀 payroll() signal，不再打一次 API。 */
   exportExcel() {
     const p = this.payroll();
@@ -93,7 +93,6 @@ export class PayrollList implements OnInit {
         '員工姓名', '部門', '職稱', '到職日',
         '底薪', '伙食費', '加班費', '加班費(加班申請)', '其他加給', '代扣代付款', '日薪',
         '假日活動天數', '假日津貼', '國定假日出勤天數', '國定假日加倍工資',
-        '彈性休假日出勤時數', '彈性休假日出勤加班費',
         '補休未休完時數', '補休未休完津貼', '補休結算期間', '其他加項', '其他加項說明',
         '勞保費', '健保費', '健保眷屬口數（計費）',
         '事假天數', '事假扣薪', '病假天數', '病假扣薪',
@@ -111,7 +110,6 @@ export class PayrollList implements OnInit {
         e.hireDate ? new Date(e.hireDate).toLocaleDateString('zh-TW') : '',
         e.baseSalary, e.mealAllowance, e.overtimePay, e.calculatedOvertimePay, e.otherAllowanceAmount, e.adjustmentDifference, e.dailySalary,
         e.holidayTravelDays, e.holidayAllowance, e.publicHolidayWorkDays, e.publicHolidayDoublePay,
-        e.flexibleHolidayWorkHours, e.flexibleHolidayOvertimePay,
         e.compensatorySettlementHours, e.compensatorySettlementAmount, e.compensatorySettlementNote ?? '',
         e.otherAddition, e.otherAdditionNote ?? '',
         e.laborInsurance, e.healthInsurance, e.cappedDependentCount,
@@ -127,7 +125,6 @@ export class PayrollList implements OnInit {
         '合計', '', '', '',
         p.totalBaseSalary, p.totalMealAllowance, p.totalOvertimePay, p.totalCalculatedOvertimePay, p.totalOtherAllowance, p.totalAdjustmentDifference, '',
         '', p.totalHolidayAllowance, '', p.totalPublicHolidayDoublePay,
-        '', p.totalFlexibleHolidayOvertimePay,
         '', p.totalCompensatorySettlementAmount, '', p.totalOtherAddition, '',
         p.totalLaborInsurance, p.totalHealthInsurance, '',
         '', p.totalPersonalLeaveDeduction, '', p.totalSickLeaveDeduction,
@@ -146,12 +143,11 @@ export class PayrollList implements OnInit {
       // 數字格式：金額欄套千分位；天數 / 口數 / 自提率維持 General
       //（'#,##0.##' 會讓整數顯示成「6.」多一個小數點，故不套）
       // 天數 / 時數 / 口數 / 自提率不套千分位。**插欄會讓索引整體位移** ——
-      // 2026-09 在索引 13、14 插入「國定假日出勤天數 / 加倍工資」後，13 之後的每一欄都 +2；
-      // 同批再於索引 15、16 插入「彈性休假日出勤時數 / 加班費」，15（時數欄）之後的每一欄再 +2。
-      // 依序為：假日活動天數 11、國定假日出勤天數 13、彈性休假日出勤時數 15、補休未休完時數 17、
-      //         健保眷屬口數 24、事假 25、病假 27、生理假 29、家庭照顧假 31、勞退自提率 35、育嬰留停天數 37。
-      // 注意：彈性休假日出勤**加班費**（索引 16）是金額欄，不在本清單內，比照國定假日加倍工資（14）。
-      const rawNumberCols = new Set([11, 13, 15, 17, 24, 25, 27, 29, 31, 35, 37]);
+      // 2026-09 在索引 13、14 插入「國定假日出勤天數 / 加倍工資」後，13 之後的每一欄都 +2
+      //（2026-09-29 移除「彈性休假日出勤時數 / 加班費」兩欄，15 之後的每一欄再 −2）。
+      // 依序為：假日活動天數 11、國定假日出勤天數 13、補休未休完時數 15、
+      //         健保眷屬口數 22、事假 23、病假 25、生理假 27、家庭照顧假 29、勞退自提率 33、育嬰留停天數 35。
+      const rawNumberCols = new Set([11, 13, 15, 22, 23, 25, 27, 29, 33, 35]);
       const headerRowIdx = 2;
       const lastRowIdx = aoa.length - 1;
       for (let r = headerRowIdx + 1; r <= lastRowIdx; r++) {

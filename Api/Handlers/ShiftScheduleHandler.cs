@@ -123,7 +123,6 @@ public sealed class ShiftScheduleHandler(
             ?? throw AppException.NotFound("查無此使用者。");
 
         var publicHolidays   = await ShiftScheduleMap.LoadPublicHolidaysAsync(calendarReader, monthStart, monthEnd);
-        var flexibleHolidays = await ShiftScheduleMap.LoadFlexibleHolidaysAsync(calendarReader, monthStart, monthEnd);
         var locks            = await ShiftScheduleConstraintService.LoadLockedDatesAsync(
             db, workdaysFactory, userId, monthStart, monthEnd);
 
@@ -162,7 +161,7 @@ public sealed class ShiftScheduleHandler(
             days.Add(new ShiftScheduleDayDto(
                 Date:               d,
                 DayType:            dayTypes[d],
-                HolidayName:        isPublicHoliday ? holidayName : flexibleHolidays.GetValueOrDefault(d),
+                HolidayName:        isPublicHoliday ? holidayName : null,
                 // 國定假日、活動日預定人力、已請假日恆唯讀；其餘依「此刻這一格能不能改」
                 ReadOnly:           isPublicHoliday || dayLock is not null
                                  || !ShiftScheduleWindow.CanEditDate(editability, d, now),

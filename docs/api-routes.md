@@ -144,7 +144,7 @@
 | GET/POST | `/overtime-requests` | 加班申請列表 / 新增（預設 draft）。payload 須帶 **`projects[]`（`projectId` + `estimatedHours`），必填至少 1 筆**、`compensationType`（`compensatory` 補休 / `pay` 加班費，未知值一律正規化為 `compensatory`）；驗證：每列時數 > 0、同單不可重複專案、專案須存在。回應 `projects[]` 含 `projectCode` / `projectName` / `estimatedHours`，`estimatedHours` 為各列合計（後端計算，不接受客戶端傳入） |
 | GET/PUT/PATCH/DELETE | `/overtime-requests/{id}` | 加班申請 CRUD。更新時 `projects[]` **整批替換且必填**（不支援省略），一併重算父表合計；`compensationType` 為 `null` 時不變更。**任何更新一律清空加班費快照**（日期 / 時數 / 補償方式可能已變動），重新送簽時再算 |
 | PATCH | `/overtime-requests/{id}/submit` | 送出加班申請（draft → pending）。送出時依 `compensationType` 寫入加班費快照（`pay` 才算；補休型清空） |
-| GET | `/overtime-requests/estimate?date=&hours=` | **加班時數即時試算**（表單用，權限沿用 `overtime-requests:read`；2026-09-28 起**兩種補償方式都查詢**，不再限「加班費」模式）。對象一律取 JWT `sub`，**刻意不接受 `employeeId`**（回傳含時薪可反推底薪）。回傳 `hourlyRate` / `requestedHours` / `payableHours` / `excessHours` / `capHours` / `amount` / `dayType`（`WorkDayTypes` 四值，2026-09 由 `isHoliday` 布林改）/ `segments[]`（分段明細）/ `hasBaseSalary` / `hasHolidayTravelConflict` / **`exceedsCap`**（超出上限，2026-09-28 新增）/ **`blockMessage`**（非 null＝不可送出：超出上限或彈性休假日出勤依打卡自動計酬，2026-09-28 新增） |
+| GET | `/overtime-requests/estimate?date=&hours=` | **加班時數即時試算**（表單用，權限沿用 `overtime-requests:read`；2026-09-28 起**兩種補償方式都查詢**，不再限「加班費」模式）。對象一律取 JWT `sub`，**刻意不接受 `employeeId`**（回傳含時薪可反推底薪）。回傳 `hourlyRate` / `requestedHours` / `payableHours` / `excessHours` / `capHours` / `amount` / `dayType`（`WorkDayTypes` 四值，2026-09 由 `isHoliday` 布林改）/ `segments[]`（分段明細）/ `hasBaseSalary` / `hasHolidayTravelConflict` / **`exceedsCap`**（超出上限，2026-09-28 新增）/ **`blockMessage`**（非 null＝不可送出：超出加班上限，2026-09-28 新增） |
 | GET/POST | `/advance-requests` | 預支申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/advance-requests/{id}` | 預支申請 CRUD |
 | PATCH | `/advance-requests/{id}/submit` | 送出預支申請（draft → pending）；追加批次被退回後也走此端點重送 |
@@ -208,7 +208,7 @@
 | Method | 路徑 | 權限 | 說明 |
 |---|---|---|---|
 | GET | `/shift-schedules?year=&month=[&userId=]` | `shift-schedule:read` | 某人某月的排班月曆。回傳每日 `dayType`（`work` / `rest_day` / `statutory_off` / `public_holiday`）、`holidayName`、`readOnly`、活動日疊加旗標（`isActivityDay` / `activityTitle` / `isActivityAssignee`）、**鎖定原因 `lockReason`（`activity` / `leave`）與假別 `leaveLabel`**（2026-09-28：本人的活動日與已請假日唯讀、不得排休），以及 `editable` / `editMode`（`open` / `grace_period` / `same_day_only` / `closed`）與 **`validation`**（擋存判準結果，**進入畫面即顯示**，不可等到按儲存才報錯）。帶 `userId` 看別人：未持 `shift-schedule:view-all` 者僅限 `ProjectAccessScope` 涵蓋的部門 |
-| PUT | `/shift-schedules` | `shift-schedule:write` | 整月整批替換。body `{ year, month, days: [{ date, dayType }] }`，只需送非上班日的格子。**國定假日格送了會被靜默丟棄**（唯讀、不佔配額；彈性休假日不是國定假日、可排班）；活動日／已請假日排為例假或休假回 400；上班日**不落地**（查無紀錄即上班日）。未通過擋存判準回 400 並列出全部原因 |
+| PUT | `/shift-schedules` | `shift-schedule:write` | 整月整批替換。body `{ year, month, days: [{ date, dayType }] }`，只需送非上班日的格子。**國定假日格送了會被靜默丟棄**（唯讀、不佔配額；**彈性休假日比照國定假日**，2026-09-29 改回）；活動日／已請假日排為例假或休假回 400；上班日**不落地**（查無紀錄即上班日）。未通過擋存判準回 400 並列出全部原因 |
 
 > **擋存判準（單一真相 [Api/Common/ShiftScheduleValidator.cs](../Api/Common/ShiftScheduleValidator.cs)）**：
 > `例假 4 天已排滿 ∧ 連續上班 ≤ 12 天 ∧ 任意連續 14 天內 ≥ 2 天例假` ⇒ 可儲存。

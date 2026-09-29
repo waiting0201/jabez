@@ -150,7 +150,7 @@ export class ShiftMonthCalendar implements OnInit {
 
     const parts = [`<div class="shift-cell__num">${arg.dayNumberText.replace('日', '')}</div>`];
 
-    // 國定假日顯示名稱本身；彈性休假日（可排班）名稱與狀態並列
+    // 國定假日（含彈性休假日）顯示名稱本身；其餘日別名稱與狀態並列
     const typeLabel = type === 'work' || type === 'public_holiday' ? '' : DAY_TYPE_LABELS[type];
     const label = [cell?.holidayName, typeLabel].filter(Boolean).join('・');
     if (label) parts.push(`<div class="shift-cell__label" title="${escapeHtml(label)}">${escapeHtml(label)}</div>`);

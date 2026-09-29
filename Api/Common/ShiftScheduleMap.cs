@@ -59,24 +59,4 @@ public static class ShiftScheduleMap
         }
         return map;
     }
-
-    /// <summary>
-    /// 區間內的「彈性休假日」→ 名稱。它不是國定假日（可排班、佔配額），
-    /// 只在月曆格上掛名稱提示，判準見 <see cref="PublicHolidayRule.IsFlexibleHoliday"/>。
-    /// </summary>
-    public static async Task<Dictionary<DateTime, string>> LoadFlexibleHolidaysAsync(
-        ICalendarDayReadService calendarReader, DateTime from, DateTime to)
-    {
-        var map = new Dictionary<DateTime, string>();
-        for (int y = from.Year; y <= to.Year; y++)
-        {
-            foreach (var d in await calendarReader.GetByYearAsync(y))
-            {
-                if (!PublicHolidayRule.IsFlexibleHoliday(d.IsHoliday, d.Description)) continue;
-                if (d.Date.Date < from.Date || d.Date.Date > to.Date) continue;
-                map[d.Date.Date] = d.Description;
-            }
-        }
-        return map;
-    }
 }

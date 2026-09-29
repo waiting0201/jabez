@@ -104,17 +104,6 @@ import {LEAVE_TYPE_LABELS, LeaveType, formatLeaveDuration} from '../../features/
                 <td class="text-right pe-4">{{ e.publicHolidayDoublePay | number:'1.0-0' }}</td>
               </tr>
             }
-            @if (e.flexibleHolidayOvertimePay > 0) {
-              <!-- 彈性休假日出勤加班費（四週彈性工時 C3）；依打卡自動計酬，切換日之前 / 未出勤過恆為 0 -->
-              <tr>
-                <td class="ps-6">彈性休假日出勤時數</td>
-                <td class="text-right pe-4">{{ e.flexibleHolidayWorkHours | number:'1.0-1' }} 小時</td>
-              </tr>
-              <tr>
-                <td class="ps-6">彈性休假日出勤加班費</td>
-                <td class="text-right pe-4">{{ e.flexibleHolidayOvertimePay | number:'1.0-0' }}</td>
-              </tr>
-            }
             @if (e.compensatorySettlementAmount > 0) {
               <!-- 補休到期未休完轉津貼（依 lot 上的原始加班費率換算）。只在結算月出現 -->
               <tr>

@@ -194,7 +194,7 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
         // 國定假日加倍工資與補休未休完津貼兩項（2026-09 新增時未同步更新），一併補上。
         var totalEarnings = emp.BaseSalary + emp.MealAllowance + emp.OvertimePay + emp.CalculatedOvertimePay
                           + emp.OtherAllowanceAmount + emp.AdjustmentDifference
-                          + emp.HolidayAllowance + emp.PublicHolidayDoublePay + emp.FlexibleHolidayOvertimePay
+                          + emp.HolidayAllowance + emp.PublicHolidayDoublePay
                           + emp.CompensatorySettlementAmount + emp.OtherAddition;
         var totalDeductions = emp.LaborInsurance + emp.HealthInsurance
                             + emp.PersonalLeaveDeduction + emp.SickLeaveDeduction + emp.MenstrualLeaveDeduction
@@ -255,16 +255,6 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
             var phBg = rowIdx % 2 == 1 ? " style=\"background:#FDFAF5\"" : "";
             earningsRows += $"""
             <tr{phBg}><td style="padding:8px 12px">國定假日出勤加倍工資（{emp.PublicHolidayWorkDays} 天）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.PublicHolidayDoublePay)}</td></tr>
-            """;
-            rowIdx++;
-        }
-        // 彈性休假日出勤加班費（四週彈性工時 C3）。切換日前 / 未出勤過恆為 0，故整列跳過而非印 0。
-        // ⚠ 斑馬色靠 rowIdx 累加，新增列一定要 rowIdx++，否則其後每一列的底色全反過來。
-        if (emp.FlexibleHolidayOvertimePay > 0)
-        {
-            var fhBg = rowIdx % 2 == 1 ? " style=\"background:#FDFAF5\"" : "";
-            earningsRows += $"""
-            <tr{fhBg}><td style="padding:8px 12px">彈性休假日出勤加班費（{emp.FlexibleHolidayWorkHours.ToString("0.#")} 小時）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.FlexibleHolidayOvertimePay)}</td></tr>
             """;
             rowIdx++;
         }

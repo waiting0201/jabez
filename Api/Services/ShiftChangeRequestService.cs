@@ -49,7 +49,6 @@ public static class ShiftChangeRequestService
         var today      = Clock.Now.Date;
 
         var holidays = await ShiftScheduleMap.LoadPublicHolidaysAsync(calendarReader, monthStart, monthEnd);
-        var flexible = await ShiftScheduleMap.LoadFlexibleHolidaysAsync(calendarReader, monthStart, monthEnd);
         var locks    = await ShiftScheduleConstraintService.LoadLockedDatesAsync(
             db, workdaysFactory, userId, monthStart, monthEnd);
 
@@ -98,7 +97,7 @@ public static class ShiftChangeRequestService
             days.Add(new ShiftScheduleDayDto(
                 Date:               d,
                 DayType:            resultMap[d],
-                HolidayName:        isHoliday ? holidayName : flexible.GetValueOrDefault(d),
+                HolidayName:        isHoliday ? holidayName : null,
                 ReadOnly:           isHoliday || isPast || lockReason is not null,
                 IsActivityDay:      act is not null,
                 ActivityTitle:      act?.Title,

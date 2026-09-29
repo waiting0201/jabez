@@ -10,14 +10,18 @@ namespace Jabez.Api.Services.Dapper;
 ///
 /// 解析優先序（三段，缺一不可）：
 ///   <list type="number">
-///     <item>該員該日有 <c>ShiftScheduleDay</c> → 用它（上班日／例假日／休假日）</item>
-///     <item>否則該日為**國定假日**（<c>CalendarDay.IsHoliday</c> 且 <c>Description</c> 非空）→ public_holiday</item>
+///     <item>該日為**國定假日**（<c>CalendarDay.IsHoliday</c> 且 <c>Description</c> 非空，含彈性休假日）→ public_holiday</item>
+///     <item>否則該員該日有 <c>ShiftScheduleDay</c> → 用它（上班日／例假日／休假日）</item>
 ///     <item>否則該員**該月已排班**（<c>ShiftScheduleMonths</c> 有 committed / auto 紀錄）→ work</item>
 ///     <item>否則 → 依舊制行事曆判定（有資料看 IsHoliday、無資料退回六日），回 work / rest_day</item>
 ///   </list>
 ///
+/// ⚠ 國定假日必須排在個人排班**之前**（2026-09-29）：與月曆 <c>ShiftScheduleMap.BuildMonthDayTypes</c> 同一優先序。
+/// 整月寫入會丟棄國定假日那天，正常不會有這種紀錄；但 9/28–9/29 彈性休假日曾開放排班，
+/// 期間排成例假／休假的紀錄仍留在表裡，若讓它優先，月曆顯示國定假日、請假／加班／打卡卻當成休假日。
+///
 /// ⚠ 第 3 段不可省（2026-09-28 修正）：<c>ShiftScheduleDay</c> 只落地非上班日（「查無紀錄即上班日」），
-/// 若已排班月份的空白日也退回舊制行事曆，員工排成上班的週末／彈性休假日會被解析成 rest_day，
+/// 若已排班月份的空白日也退回舊制行事曆，員工排成上班的週末會被解析成 rest_day，
 /// 打卡被鎖、加班走錯級距。
 ///
 /// 第 3 段是**切換日之前的歷史日期**與「尚未排班的未來日期」的退路，
@@ -88,7 +92,12 @@ public sealed class ShiftScheduleReadService(IDbConnection db, ICalendarDayReadS
         var rows = await db.QueryAsync<(Guid UserId, DateTime Date, string DayType)>(
             sql, new { Start = start, End = end, UserIds = userIds });
 
-        var scheduled = rows.ToDictionary(r => (r.UserId, r.Date.Date), r => WorkDayTypes.Normalize(r.DayType));
+        // ② 國定假日：先載入，個人排班落在國定假日上的紀錄一律不採用（見類別註解）
+        await EnsureCalendarLoadedAsync(start, end);
+
+        var scheduled = rows
+            .Where(r => !IsPublicHoliday(r.Date.Date))
+            .ToDictionary(r => (r.UserId, r.Date.Date), r => WorkDayTypes.Normalize(r.DayType));
 
         // 已排班的月份（空白日＝上班日，不可退回舊制行事曆）
         var monthSql = """
@@ -106,9 +115,7 @@ public sealed class ShiftScheduleReadService(IDbConnection db, ICalendarDayReadS
             UserIds  = userIds,
         })).ToHashSet();
 
-        // ② / ③ 沒排到的日子：國定假日 → 舊制行事曆判定
-        await EnsureCalendarLoadedAsync(start, end);
-
+        // ③ / ④ 沒排到的日子：國定假日 → 已排班月份的上班日 → 舊制行事曆判定
         var result = new Dictionary<(Guid, DateTime), string>(scheduled.Count);
         foreach (var kv in scheduled) result[kv.Key] = kv.Value;
 

@@ -129,49 +129,6 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             GROUP BY EmployeeId
             """;
 
-        // 2c-2. 彈性休假日出勤加班費（四週彈性工時 C3，2026-09 新增）：
-        //     彈性休假日（原行事曆「補假」，已由業務決議改為一般可排班日，見 PublicHolidayRule.IsFlexibleHoliday）
-        //     排定上班且已打卡出勤者，依打卡時數自動計酬，**不經加班申請**——加班申請端反過來擋掉
-        //     這種日子的申請單（見 OvertimeRequestHandler.GuardOvertimeHoursAsync），故取數只能看
-        //     個人排班（該月已排班且當天非例假／休假 ＝ 上班日不落地）∩ AttendanceRecords（實際打卡），沒有加班單可撈。
-        //
-        //     歸月規則同國定假日加倍工資與加班費：**加班日所屬月份的次月**薪資。
-        //     只回傳每一筆 (員工, 上下班打卡時間)，時數換算（扣午休重疊 / 捨去 0.5 / 上限 12）
-        //     與計酬（分段級距）都在 C# 端逐日計算後加總 —— 上限與級距是**每日**基準，
-        //     不可先加總整月時數再套一次級距。
-        //
-        //     切換日之前恆為空（彈性休假日這個排班機制本身就是新制才有，ShiftScheduleDays 不會有資料）。
-        const string flexibleHolidayWorkSql = """
-            WITH FlexibleHolidays AS (
-                SELECT c.Date
-                FROM CalendarDays c
-                CROSS JOIN (SELECT TOP 1 FlexibleWorkStartDate AS SwitchDate
-                            FROM SystemSettings ORDER BY Id) s
-                WHERE c.IsHoliday = 1
-                  AND c.Description = @FlexibleHolidayName
-                  AND c.Date >= @PrevMonthFirstDay
-                  AND c.Date <  @CurrMonthFirstDay
-                  AND s.SwitchDate IS NOT NULL
-                  AND c.Date >= s.SwitchDate
-            )
-            -- ⚠ 上班日**不落地**（ShiftScheduleDays 只存例假／休假，查無紀錄即上班日），
-            --   故「排為上班」＝該月已排班（committed / auto）且當天沒有非上班日的列。
-            --   寫成 ssd.DayType = 'work' 會永遠撈不到任何人。
-            SELECT a.UserId AS EmployeeId, a.ClockInTime, a.ClockOutTime
-            FROM AttendanceRecords a
-            JOIN FlexibleHolidays fh ON fh.Date = CAST(a.RecordDate AS date)
-            WHERE a.ClockInTime IS NOT NULL
-              AND (@EmployeeId IS NULL OR a.UserId = @EmployeeId)
-              AND EXISTS (
-                  SELECT 1 FROM ShiftScheduleMonths m
-                  WHERE m.UserId = a.UserId
-                    AND m.[Year] = YEAR(fh.Date) AND m.[Month] = MONTH(fh.Date)
-                    AND m.Status IN ('committed', 'auto'))
-              AND NOT EXISTS (
-                  SELECT 1 FROM ShiftScheduleDays d
-                  WHERE d.UserId = a.UserId AND d.Date = fh.Date AND d.DayType <> 'work')
-            """;
-
         // 2d. 補休未休完加班津貼（四週彈性工時 §7.5）：
         //     補休 lot 到期仍未休完者，依該 lot 的**原始加班費率快照**換算為加班津貼，
         //     於到期月的**次月**薪資單獨立顯示。7/31 到期 → 8 月薪資；隔年 1/31 → 隔年 2 月。
@@ -293,22 +250,6 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 EmployeeId        = employeeId,
             }))
             .ToDictionary(r => (Guid)r.EmployeeId, r => (int)r.Days);
-        // 彈性休假日出勤打卡明細（上月；每一筆＝一次出勤，時數與計酬皆逐筆計算後於下方加總）
-        var flexibleHolidayHoursMap = new Dictionary<Guid, List<decimal>>();
-        foreach (var row in await db.QueryAsync<dynamic>(flexibleHolidayWorkSql, new {
-                FlexibleHolidayName = CalendarDescriptions.FlexibleHoliday,
-                PrevMonthFirstDay = prevMonthFirstDay,
-                CurrMonthFirstDay = firstDay,
-                EmployeeId        = employeeId,
-            }))
-        {
-            var fhEmpId = (Guid)row.EmployeeId;
-            var fhHours = OvertimePayCalculator.FlexibleHolidayWorkedHours(
-                (DateTime?)row.ClockInTime, (DateTime?)row.ClockOutTime);
-            if (!flexibleHolidayHoursMap.TryGetValue(fhEmpId, out var list))
-                flexibleHolidayHoursMap[fhEmpId] = list = [];
-            list.Add(fhHours);
-        }
         // 到期未休完的補休 lot（上月到期者，於本月薪資結算）
         var compSettlementMap = (await db.QueryAsync<dynamic>(compensatorySettlementSql, new {
                 PrevMonthFirstDay = prevMonthFirstDay,
@@ -368,18 +309,6 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             // 國定假日出勤過的人整列消失，該筆加倍工資憑空不見。
             int publicHolidayWorkDays = publicHolidayDaysMap.TryGetValue((Guid)emp.EmployeeId, out var phd) ? phd : 0;
 
-            // 上月彈性休假日出勤時數與加班費（同上，提早取出供留停 hasOtherItems 判定）。
-            // ⚠ 級距是**每日**基準，逐筆算完再加總，不可先加總時數再套一次級距（同國定假日
-            // 出勤天數用「天」而非「時數」加總的理由——一次出勤最多只能吃到 12 小時的上限一次）。
-            // 底薪取**折減前**的值，同假日津貼 / 國定假日加倍工資：這筆是已賺得的實績金額。
-            decimal flexibleHolidayHours = 0m;
-            decimal flexibleHolidayPay   = 0m;
-            if (flexibleHolidayHoursMap.TryGetValue((Guid)emp.EmployeeId, out var fhHoursList))
-            {
-                flexibleHolidayHours = fhHoursList.Sum();
-                flexibleHolidayPay   = fhHoursList.Sum(h => OvertimePayCalculator.CalculateFlexibleHolidayWork(h, baseSalary));
-            }
-
             // 上月到期、仍未休完的補休 lot（見下方 netSalary；同樣提早取出供留停判定）。
             // 時薪與加班費同一支公式（ROUND(底薪 ÷ 240, 2)），刻意不沿用 dailySalary ÷ 8
             //（後者已先 ROUND 到整數元，再除 8 會繼承取整誤差）。
@@ -421,7 +350,6 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 // 否則這些已賺得的金額會憑空消失且不計入月合計。
                 bool hasOtherItems = overtimePay != 0m || calcOvertimePay != 0m || holidayDays > 0m
                                   || publicHolidayWorkDays > 0 || compSettlementAmount != 0m
-                                  || flexibleHolidayPay != 0m
                                   || (adjustments.TryGetValue((Guid)emp.EmployeeId, out var padj)
                                       && ((decimal)padj.OtherAddition != 0m || (decimal)padj.OtherDeduction != 0m));
                 if (parentalLeaveDays >= daysInMonth && !hasOtherItems) continue;
@@ -522,7 +450,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
 
             decimal netSalary = baseSalary + mealAllowance + overtimePay + calcOvertimePay
                               + otherAllow + adjDiff
-                              + holidayAllowance + publicHolidayDoublePay + flexibleHolidayPay
+                              + holidayAllowance + publicHolidayDoublePay
                               + compSettlementAmount + otherAddition
                               - laborIns - healthIns
                               - personalDeduction - sickDeduction - menstrualDeduction
@@ -574,9 +502,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 publicHolidayDoublePay,
                 compSettlementHours,
                 compSettlementAmount,
-                compSettlementNote,
-                flexibleHolidayHours,
-                flexibleHolidayPay));
+                compSettlementNote));
         }
 
         return new MonthlyPayrollDto(
@@ -600,7 +526,6 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             results.Sum(r => r.ParentalLeaveDays),
             results.Sum(r => r.CalculatedOvertimePay),
             results.Sum(r => r.PublicHolidayDoublePay),
-            results.Sum(r => r.CompensatorySettlementAmount),
-            results.Sum(r => r.FlexibleHolidayOvertimePay));
+            results.Sum(r => r.CompensatorySettlementAmount));
     }
 }
