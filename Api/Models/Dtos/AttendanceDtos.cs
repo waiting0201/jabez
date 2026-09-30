@@ -109,11 +109,14 @@ public sealed record TodayAttendanceDto(
     /// <summary>不可打卡時的說明，可直接顯示給使用者</summary>
     string? ClockLockReason = null,
     /// <summary>
-    /// 應下班時間 ＝ 實際上班打卡 ＋ 9 小時（請了上午半天假者為 ＋4 小時）。
+    /// 應下班時間 ＝ 實際上班打卡 ＋ 9 小時（請了上午半天假者為 ＋4 小時）；
+    /// 設有自訂上下班時段者（賣店等）為當日固定下班時刻。
     /// 供前端在確認對話框顯示「目前出勤 X 小時 Y 分」與判斷是否要顯示原因欄位。
     /// 尚未打上班卡時為 null。
     /// </summary>
-    DateTime? ExpectedClockOutTime = null);
+    DateTime? ExpectedClockOutTime = null,
+    /// <summary>正常下班帶終點（應下班 ＋ 容許帶：公司預設 30 分、自訂上下班時段 5 分），晚於此即逾時。</summary>
+    DateTime? NormalClockOutUntil  = null);
 
 /// <summary>
 /// 出缺勤報表合併用的原料列：區間內已核准的假單（尚未逐日展開）。

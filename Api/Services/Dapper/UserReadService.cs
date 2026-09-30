@@ -69,6 +69,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.CompensatoryOpeningHours,
                 u.IsShiftWorker,
                 u.LaborPensionSelfContributionRate,
+                u.CustomWorkStartTime, u.CustomWorkEndTime,
                 r.Id AS RoleId
             FROM Users u
             LEFT JOIN UserRoles ur  ON u.Id = ur.UserId
@@ -102,6 +103,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             decimal CompensatoryOpeningHours,
             bool IsShiftWorker,
             decimal? LaborPensionSelfContributionRate,
+            string? CustomWorkStartTime, string? CustomWorkEndTime,
             List<string> RoleIds)>();
 
         foreach (var row in rows)
@@ -129,6 +131,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     (decimal)row.CompensatoryOpeningHours,
                     (bool)row.IsShiftWorker,
                     (decimal?)row.LaborPensionSelfContributionRate,
+                    (string?)row.CustomWorkStartTime, (string?)row.CustomWorkEndTime,
                     []);
 
             if (row.RoleId is not null)
@@ -156,7 +159,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.OtherAllowance, kv.Value.AdjustmentDifference,
             kv.Value.CompensatoryOpeningHours,
             kv.Value.IsShiftWorker,
-            kv.Value.LaborPensionSelfContributionRate));
+            kv.Value.LaborPensionSelfContributionRate,
+            kv.Value.CustomWorkStartTime, kv.Value.CustomWorkEndTime));
     }
 
     /// <summary>輕量級使用者清單（供指定審核者下拉選單，不需 users:read 權限）</summary>
@@ -224,6 +228,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.CompensatoryOpeningHours,
                 u.IsShiftWorker,
                 u.LaborPensionSelfContributionRate,
+                u.CustomWorkStartTime, u.CustomWorkEndTime,
                 r.Id AS RoleId
             FROM Users u
             INNER JOIN PagedIds pid ON u.Id = pid.Id
@@ -260,6 +265,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             decimal CompensatoryOpeningHours,
             bool IsShiftWorker,
             decimal? LaborPensionSelfContributionRate,
+            string? CustomWorkStartTime, string? CustomWorkEndTime,
             List<string> RoleIds)>();
 
         foreach (var row in rows)
@@ -287,6 +293,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                     (decimal)row.CompensatoryOpeningHours,
                     (bool)row.IsShiftWorker,
                     (decimal?)row.LaborPensionSelfContributionRate,
+                    (string?)row.CustomWorkStartTime, (string?)row.CustomWorkEndTime,
                     []);
 
             if (row.RoleId is not null)
@@ -314,7 +321,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
             kv.Value.OtherAllowance, kv.Value.AdjustmentDifference,
             kv.Value.CompensatoryOpeningHours,
             kv.Value.IsShiftWorker,
-            kv.Value.LaborPensionSelfContributionRate));
+            kv.Value.LaborPensionSelfContributionRate,
+            kv.Value.CustomWorkStartTime, kv.Value.CustomWorkEndTime));
 
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
         return new PagedResult<UserDto>(items, total, page, pageSize, Math.Max(1, totalPages));
@@ -342,6 +350,7 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 u.CompensatoryOpeningHours,
                 u.IsShiftWorker,
                 u.LaborPensionSelfContributionRate,
+                u.CustomWorkStartTime, u.CustomWorkEndTime,
                 r.Id AS RoleId
             FROM Users u
             LEFT JOIN UserRoles ur  ON u.Id = ur.UserId
@@ -380,7 +389,8 @@ public sealed class UserReadService(IDbConnection db) : IUserReadService
                 (decimal?)row.OtherAllowance, (decimal?)row.AdjustmentDifference,
                 (decimal)row.CompensatoryOpeningHours,
                 (bool)row.IsShiftWorker,
-                (decimal?)row.LaborPensionSelfContributionRate);
+                (decimal?)row.LaborPensionSelfContributionRate,
+                (string?)row.CustomWorkStartTime, (string?)row.CustomWorkEndTime);
 
             if (row.RoleId is not null)
                 roleIds.Add((string)row.RoleId);

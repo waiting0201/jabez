@@ -175,6 +175,10 @@ export class UserForm implements OnInit {
     sendPaySlip:   [false],
     compensatoryOpeningHours: [null as number | null],
     isShiftWorker: [false],
+    // 自訂上下班時段（賣店等）：勾選才送出兩個時刻，後端未勾選一律寫 null
+    hasCustomWorkHours:  [false],
+    customWorkStartTime: ['' as string],
+    customWorkEndTime:   ['' as string],
     isIndigenous:  [false],
     agentUserId:  ['' as string],
     birthday:     ['' as string, Validators.required],
@@ -279,6 +283,9 @@ export class UserForm implements OnInit {
           sendPaySlip:   user.sendPaySlip ?? false,
           compensatoryOpeningHours: user.compensatoryOpeningHours ?? null,
           isShiftWorker: user.isShiftWorker ?? false,
+          hasCustomWorkHours:  !!user.customWorkStartTime && !!user.customWorkEndTime,
+          customWorkStartTime: user.customWorkStartTime ?? '',
+          customWorkEndTime:   user.customWorkEndTime ?? '',
           isIndigenous:  user.isIndigenous ?? false,
           agentUserId:   user.agentUserId ?? '',
           birthday:     user.birthday ? this.toDateString(user.birthday) : '',
@@ -1291,6 +1298,22 @@ export class UserForm implements OnInit {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
+    }
+
+    // 自訂上下班時段：勾選時兩個時刻皆必填且下班晚於上班（範圍由 input min/max 與後端 UserHandler 把關）
+    if (this.form.value.hasCustomWorkHours === true) {
+      const start = this.form.value.customWorkStartTime ?? '';
+      const end   = this.form.value.customWorkEndTime ?? '';
+      if (!start || !end) {
+        this.activeTab.set('basic');
+        this.errorMsg.set('勾選自訂上下班時段時，上班與下班時間皆為必填。');
+        return;
+      }
+      if (end <= start) {
+        this.activeTab.set('basic');
+        this.errorMsg.set('自訂下班時間必須晚於上班時間。');
+        return;
+      }
     }
 
     // 原住民驗證

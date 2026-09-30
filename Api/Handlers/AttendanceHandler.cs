@@ -94,10 +94,11 @@ public sealed class AttendanceHandler(
                 throw AppException.BadRequest(
                     ClockDayPolicy.ClockInOutLockReason(ctx.DayType, ctx.IsActivityAssignee)!);
 
-            // 上班打卡鍵 08:30 才開放。**請了上午半天假的人不適用** —— 他本來就是 13:00 才來。
-            if (!ctx.AfternoonOnly && TimeOnly.FromDateTime(now) < ClockRules.ClockInOpenFrom)
+            // 上班打卡鍵 08:30（自訂時段者為上班前 30 分）才開放。
+            // **請了上午半天假的人不適用** —— 他本來就是 13:00 才來。
+            if (!ctx.AfternoonOnly && TimeOnly.FromDateTime(now) < ctx.Profile.OpenFrom)
                 throw AppException.BadRequest(
-                    $"上班打卡於 {ClockRules.ClockInOpenFrom:HH\\:mm} 開放，請稍候再打卡。");
+                    $"上班打卡於 {ctx.Profile.OpenFrom:HH\\:mm} 開放，請稍候再打卡。");
         }
 
         await EnsureNotOnLeaveAsync(userId, now, ctx.Flexible, forClockOut: false);
@@ -154,13 +155,13 @@ public sealed class AttendanceHandler(
         var kind = ClockOutKind.Normal;
         if (ctx.Flexible && record.ClockInTime is { } clockIn)
         {
-            kind = ClockRules.ResolveClockOutKind(clockIn, now, ctx.Schedule, ctx.AfternoonOnly);
+            kind = ClockRules.ResolveClockOutKind(clockIn, now, ctx.Schedule, ctx.AfternoonOnly, ctx.Profile);
 
             // 出差當日：原因欄位仍顯示但改為非必填（§5.1「改的是必填性，不是可見性」）
             if (kind != ClockOutKind.Normal && !body.IsBusinessTrip && string.IsNullOrWhiteSpace(body.Reason))
                 throw AppException.BadRequest(kind == ClockOutKind.Early
                     ? "今日出勤未達應下班時間，請填寫早退原因。"
-                    : "下班時間已超過應下班時間 30 分鐘，請填寫逾時原因。");
+                    : $"下班時間已超過應下班時間 {ctx.Profile.GraceMinutes} 分鐘，請填寫逾時原因。");
         }
 
         record.ClockOutTime      = now;
@@ -359,7 +360,7 @@ public sealed class AttendanceHandler(
     /// </summary>
     private readonly record struct ClockContext(
         bool Flexible, string DayType, bool IsActivityAssignee,
-        WorkdaySchedule Schedule, bool AfternoonOnly);
+        WorkdaySchedule Schedule, bool AfternoonOnly, ClockProfile Profile);
 
     /// <summary>
     /// 依「當日出差旗標」重算遲到／早退。
@@ -377,7 +378,7 @@ public sealed class AttendanceHandler(
         record.IsLate = !isBusinessTrip
                      && record.ClockInTime is { } ci
                      && !record.IsClockInAuto            // 系統補卡不是本人遲到
-                     && ClockRules.IsLate(ci);
+                     && ClockRules.IsLate(ci, ctx.Profile);
 
         if (clockOutKind is { } kind)
             record.IsEarlyLeave = !isBusinessTrip && kind == ClockOutKind.Early;
@@ -392,7 +393,7 @@ public sealed class AttendanceHandler(
         bool flexible  = switchDate is { } sd && now.Date >= sd.Date;
 
         if (!flexible)
-            return new ClockContext(false, WorkDayTypes.Work, false, schedule, false);
+            return new ClockContext(false, WorkDayTypes.Work, false, schedule, false, ClockProfile.Company);
 
         var dayType    = await shiftReader.ResolveDayTypeAsync(userId, now.Date);
         var isAssignee = await shiftReader.IsActivityAssigneeAsync(userId, now.Date);
@@ -403,7 +404,10 @@ public sealed class AttendanceHandler(
         var boundary = now.Date.Add(schedule.HalfDayPmStart.ToTimeSpan());
         bool afternoonOnly = leaves.Any(l => l.StartDate <= dayStart && l.EndDate > dayStart && l.EndDate <= boundary);
 
-        return new ClockContext(true, dayType, isAssignee, schedule, afternoonOnly);
+        // 自訂上下班時段（賣店等）只在新制生效，舊制分支一律走公司預設
+        var profile = await workPattern.GetClockProfileAsync(userId);
+
+        return new ClockContext(true, dayType, isAssignee, schedule, afternoonOnly, profile);
     }
 
     private async Task EnsureNotOnLeaveAsync(
@@ -478,8 +482,10 @@ public sealed class AttendanceHandler(
             ? ClockDayPolicy.ClockInOutLockReason(ctx.DayType, ctx.IsActivityAssignee)
             : null;
         DateTime? expectedOut = ctx.Flexible && record?.ClockInTime is { } ci
-            ? ClockRules.ExpectedClockOut(ci, ctx.Schedule, ctx.AfternoonOnly)
+            ? ClockRules.ExpectedClockOut(ci, ctx.Schedule, ctx.AfternoonOnly, ctx.Profile)
             : null;
+        // 正常下班帶的終點（公司預設 T+30 分、自訂時段 E+5 分），前端據此判斷逾時、不再寫死 30 分
+        DateTime? normalOutUntil = expectedOut?.AddMinutes(ctx.Profile.GraceMinutes);
 
         var flexFields = (
             FlexibleEnabled:      ctx.Flexible,
@@ -487,7 +493,8 @@ public sealed class AttendanceHandler(
             IsActivityAssignee:   ctx.IsActivityAssignee,
             CanClockInOut:        canClock,
             ClockLockReason:      lockReason,
-            ExpectedClockOutTime: expectedOut);
+            ExpectedClockOutTime: expectedOut,
+            NormalClockOutUntil:  normalOutUntil);
 
         return record is null
             ? new TodayAttendanceDto(
@@ -506,7 +513,8 @@ public sealed class AttendanceHandler(
                 IsActivityAssignee:   flexFields.IsActivityAssignee,
                 CanClockInOut:        flexFields.CanClockInOut,
                 ClockLockReason:      flexFields.ClockLockReason,
-                ExpectedClockOutTime: flexFields.ExpectedClockOutTime)
+                ExpectedClockOutTime: flexFields.ExpectedClockOutTime,
+                NormalClockOutUntil:  flexFields.NormalClockOutUntil)
             : record with
             {
                 TodayLeaves = leaves,
@@ -517,6 +525,7 @@ public sealed class AttendanceHandler(
                 CanClockInOut        = flexFields.CanClockInOut,
                 ClockLockReason      = flexFields.ClockLockReason,
                 ExpectedClockOutTime = flexFields.ExpectedClockOutTime,
+                NormalClockOutUntil  = flexFields.NormalClockOutUntil,
             };
     }
 }

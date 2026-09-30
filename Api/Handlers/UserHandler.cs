@@ -218,6 +218,33 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         return rate;
     }
 
+    /// <summary>
+    /// 解析自訂上下班時段（賣店等）：<c>hasCustomWorkHours=true</c> 時兩個 "HH:mm" 皆必填、下班晚於上班、
+    /// 且須落在 <see cref="ClockProfile"/> 的合法範圍內（超出提醒排程時段會永遠收不到提醒）；
+    /// 未勾選一律回 (null, null) ＝ 公司預設。推導規則見 <see cref="ClockProfile.For"/>。
+    /// </summary>
+    private static (string? Start, string? End) ParseCustomWorkHours(IFormCollection form)
+    {
+        if (form["hasCustomWorkHours"] != "true") return (null, null);
+
+        if (!ClockProfile.TryParseHHmm(form["customWorkStartTime"], out var start)
+            || !ClockProfile.TryParseHHmm(form["customWorkEndTime"], out var end))
+            throw AppException.BadRequest("勾選自訂上下班時段時，上班與下班時間皆為必填（HH:mm）。");
+
+        if (end <= start)
+            throw AppException.BadRequest("自訂下班時間必須晚於上班時間。");
+
+        if (start < ClockProfile.CustomStartEarliest || start > ClockProfile.CustomStartLatest)
+            throw AppException.BadRequest(
+                $"自訂上班時間須介於 {ClockProfile.CustomStartEarliest:HH\\:mm}–{ClockProfile.CustomStartLatest:HH\\:mm}（超出此範圍將無法發送上班提醒）。");
+
+        if (end < ClockProfile.CustomEndEarliest || end > ClockProfile.CustomEndLatest)
+            throw AppException.BadRequest(
+                $"自訂下班時間須介於 {ClockProfile.CustomEndEarliest:HH\\:mm}–{ClockProfile.CustomEndLatest:HH\\:mm}（超出此範圍將無法發送下班提醒）。");
+
+        return (start.ToString("HH\\:mm"), end.ToString("HH\\:mm"));
+    }
+
     private Task<string?> HandleSignatureUploadAsync(IFormFileCollection files, Guid userId, string? existingUrl)
         => HandleFileUploadAsync(files, "signature", SignatureContainer, AllowedSignatureTypes,
             "僅支援 PNG、JPEG、GIF、WebP 圖片格式。", userId, existingUrl);
@@ -295,6 +322,8 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         if (await db.Users.AnyAsync(u => u.Email.ToLower() == email.ToLower()))
             throw AppException.Conflict($"Email '{email}' is already in use.");
 
+        var (customStart, customEnd) = ParseCustomWorkHours(form);
+
         var userId = Guid.NewGuid();
 
         var user = new User
@@ -314,6 +343,8 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             SendPaySlip   = form["sendPaySlip"] == "true",
             CompensatoryOpeningHours = decimal.TryParse(form["compensatoryOpeningHours"], out var coh) ? coh : 0m,
             IsShiftWorker = form["isShiftWorker"] == "true",
+            CustomWorkStartTime = customStart,
+            CustomWorkEndTime   = customEnd,
             AgentUserId   = Guid.TryParse(form["agentUserId"], out var aid) && aid != Guid.Empty ? aid : null,
             Birthday     = birthday,
             IsIndigenous = form["isIndigenous"] == "true",
@@ -432,6 +463,8 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             user.CompensatoryOpeningHours = decimal.TryParse(form["compensatoryOpeningHours"], out var coh) ? coh : 0m;
         if (form.ContainsKey("isShiftWorker"))
             user.IsShiftWorker = form["isShiftWorker"] == "true";
+        if (form.ContainsKey("hasCustomWorkHours"))
+            (user.CustomWorkStartTime, user.CustomWorkEndTime) = ParseCustomWorkHours(form);
         if (form.ContainsKey("agentUserId"))
             user.AgentUserId = Guid.TryParse(form["agentUserId"], out var aid) && aid != Guid.Empty ? aid : null;
         if (form.ContainsKey("birthday"))

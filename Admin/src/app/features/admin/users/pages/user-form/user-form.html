@@ -264,6 +264,25 @@
                   <div class="text-muted small mt-1">賣店 / 營業所等排班人員請勾選，請假天數不再扣除六日與國定假日</div>
                 </div>
                 <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">上下班時段</label>
+                  <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" formControlName="hasCustomWorkHours" id="hasCustomWorkHours">
+                    <label class="form-check-label" for="hasCustomWorkHours">自訂上下班時間（賣店等）</label>
+                  </div>
+                  @if (form.value.hasCustomWorkHours) {
+                    <div class="flex items-center gap-2 mt-2">
+                      <input type="time" class="form-control" formControlName="customWorkStartTime"
+                             min="07:30" max="09:30" aria-label="上班時間">
+                      <span class="text-muted">～</span>
+                      <input type="time" class="form-control" formControlName="customWorkEndTime"
+                             min="16:30" max="18:30" aria-label="下班時間">
+                    </div>
+                  }
+                  <div class="text-muted small mt-1">
+                    僅四週彈性工時切換後生效。上下班前 2 分鐘發送 LINE 提醒；上班前 30 分鐘開放打卡、上班後 2 分鐘內算準時；下班後 5 分鐘內為正常下班
+                  </div>
+                </div>
+                <div class="col-12 col-md-4">
                   <label class="form-label fw-500">原住民身份</label>
                   <div class="form-check mt-2">
                     <input class="form-check-input" type="checkbox" formControlName="isIndigenous" id="isIndigenous">

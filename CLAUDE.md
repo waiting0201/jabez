@@ -223,7 +223,7 @@ Admin/src/app/
     │   │                       **不使用 event 模型**。四個踩過的坑（重繪須走 `getApi().render()`、首次渲染吃 `initialDate`、
     │   │                       `.fc-daygrid-day-top` 不可 `display:none`、手機要橫向捲動）見 [docs/frontend-design.md §12.8](docs/frontend-design.md)。
     │   │                       三條擋存規則**不在前端重算**（後端 `ShiftScheduleValidator` 為單一真相），畫面只顯示回傳的 blocks / warnings
-    │   ├── users/          # 使用者管理（清單頁含**部門下拉 + 在職狀態下拉 + 勞退下拉 + 員工姓名搜尋列 + 分頁**，走 `GET /users?page=&pageSize=&search=&departmentId=&status=&hasLaborPension=`（每頁 20 筆，比照 vendors），後端以姓名模糊比對、部門 / 狀態為等值比對，四者可併用，單一擴充點為 `UserReadService.BuildFilter`；**在職狀態**（`status=active|inactive`，預設全部，白名單正規化）；**勞退**（`hasLaborPension=true|false`，有無自提二選一，SQL 以 `ISNULL(LaborPensionSelfContributionRate,0)` 正規化故 null 與 0 同屬「未自提」）**為 `payroll:read` 欄位級權限**：無權者前端不顯示該下拉、後端收到參數回 403（否則可用篩選結果反推他人自提率，繞過 `PayrollFieldAccess.Mask`）；user-form 含 3 Tab：員工基本資料 / 人事資料卡 / 健保眷屬；Tab1「員工資訊」含 **「排班制（六日與國定假日視為工作日）」** 勾選框（`isShiftWorker`，賣店 / 營業所用，清單頁姓名旁掛「排班制」badge）；含 employee-profile.service / hr-profile-pdf.service / 9 組 FormArray；**薪資為欄位級權限 `payroll:read`**：進得了員工管理（`users:read`）不等於看得到薪資，Tab1 的 8 個薪資／勞健保欄（2026-08 移除職務加給 / 主管加給 / 外派加給，加給剩其他加給 + 代扣代付款（2026-08 由「調整差額」更名，識別字仍為 `AdjustmentDifference`））、Tab2 薪資調整歷史、Tab3 健保費試算、列印 PDF 第 3 頁皆需另持 `payroll:read`，前端共用 `canSeeSalary` + `SALARY_CONTROLS`（`@if` 隱藏區塊 + `disable()` 控制項 + 送出前剔除 payload key），後端共用 [Api/Common/PayrollFieldAccess.cs](Api/Common/PayrollFieldAccess.cs) 抹除回應並拒絕寫入；薪資調整歷史改為**條件式**整批替換（`null`＝不變更）避免無權者送空陣列刪光歷史；`/me/user`、`/me/profile` 刻意全開，員工看自己的薪資不受影響）
+    │   ├── users/          # 使用者管理（清單頁含**部門下拉 + 在職狀態下拉 + 勞退下拉 + 員工姓名搜尋列 + 分頁**，走 `GET /users?page=&pageSize=&search=&departmentId=&status=&hasLaborPension=`（每頁 20 筆，比照 vendors），後端以姓名模糊比對、部門 / 狀態為等值比對，四者可併用，單一擴充點為 `UserReadService.BuildFilter`；**在職狀態**（`status=active|inactive`，預設全部，白名單正規化）；**勞退**（`hasLaborPension=true|false`，有無自提二選一，SQL 以 `ISNULL(LaborPensionSelfContributionRate,0)` 正規化故 null 與 0 同屬「未自提」）**為 `payroll:read` 欄位級權限**：無權者前端不顯示該下拉、後端收到參數回 403（否則可用篩選結果反推他人自提率，繞過 `PayrollFieldAccess.Mask`）；user-form 含 3 Tab：員工基本資料 / 人事資料卡 / 健保眷屬；Tab1「員工資訊」含 **「排班制（六日與國定假日視為工作日）」** 勾選框（`isShiftWorker`，賣店 / 營業所用，清單頁姓名旁掛「排班制」badge）與 **「自訂上下班時間」** 勾選框＋兩個時間欄（`hasCustomWorkHours` / `customWorkStartTime` / `customWorkEndTime`，2026-09-30，**僅四週彈性工時切換後生效**，決定該員打卡判定與 LINE 提醒時點，清單頁掛 `09:00–17:00` badge）；含 employee-profile.service / hr-profile-pdf.service / 9 組 FormArray；**薪資為欄位級權限 `payroll:read`**：進得了員工管理（`users:read`）不等於看得到薪資，Tab1 的 8 個薪資／勞健保欄（2026-08 移除職務加給 / 主管加給 / 外派加給，加給剩其他加給 + 代扣代付款（2026-08 由「調整差額」更名，識別字仍為 `AdjustmentDifference`））、Tab2 薪資調整歷史、Tab3 健保費試算、列印 PDF 第 3 頁皆需另持 `payroll:read`，前端共用 `canSeeSalary` + `SALARY_CONTROLS`（`@if` 隱藏區塊 + `disable()` 控制項 + 送出前剔除 payload key），後端共用 [Api/Common/PayrollFieldAccess.cs](Api/Common/PayrollFieldAccess.cs) 抹除回應並拒絕寫入；薪資調整歷史改為**條件式**整批替換（`null`＝不變更）避免無權者送空陣列刪光歷史；`/me/user`、`/me/profile` 刻意全開，員工看自己的薪資不受影響）
     │   ├── roles/          # 角色管理（僅 Superadmin）
     │   ├── permissions/    # 權限管理（僅 Superadmin）
     │   ├── departments/    # 部門管理
@@ -336,7 +336,7 @@ export const environment = {
 Api/
 ├── Functions/
 │   ├── RouterFunction.cs              # HttpTrigger，catch-all route {*route}
-│   ├── AttendanceReminderFunction.cs  # TimerTrigger：限定 7-9 / 16-18 Taipei 時段每分鐘檢查，落在「上下班前 2 分鐘起算 **30 分鐘**時間窗」內則 LINE 推播（2026-09-09 由 10 分鐘放寬，見 attendance-reminder.md）；cron 由 `AttendanceReminderCron` app setting 控制。**`IsPastDue` 不跳過**（冷啟動延遲會整天不發），改由 Service 端 `batchStart` 冪等閘去重；**公司休假日只推排班制員工**（`IsShiftWorker`，賣店照常營業），一個都沒有時維持整批跳過；**只推持有 `attendances:write` 者**（2026-09：約聘 / 外聘等無打卡權限的角色不收打卡提醒，申請 / 簽核通知照收）；休假日判定走 `WorkCalendarHelper.IsHolidayAsync`（行事曆 `IsHoliday` 優先、含國定假日 / 彈性休假日，未匯入年度退回六日）—— 2026-09 前只看六日，國定假日（中秋、教師節）照推全員
+│   ├── AttendanceReminderFunction.cs  # TimerTrigger：限定 7-9 / 16-18 Taipei 時段每分鐘檢查，落在「上下班前 2 分鐘起算 **30 分鐘**時間窗」內則 LINE 推播（2026-09-09 由 10 分鐘放寬，見 attendance-reminder.md）；cron 由 `AttendanceReminderCron` app setting 控制。**`IsPastDue` 不跳過**（冷啟動延遲會整天不發），改由 Service 端 `batchStart` 冪等閘去重；**公司休假日只推排班制員工**（`IsShiftWorker`，賣店照常營業），一個都沒有時維持整批跳過；**只推持有 `attendances:write` 者**（2026-09：約聘 / 外聘等無打卡權限的角色不收打卡提醒，申請 / 簽核通知照收）；**新制下自訂上下班時段者（賣店等，2026-09-30）改依個人時段 S−2／E−2 分推播**（不在 08:58 整批內，每人每日去重；當日有上午半天假者改收 12:55 交接提醒），見 [docs/business/attendance-reminder.md](docs/business/attendance-reminder.md)；休假日判定走 `WorkCalendarHelper.IsHolidayAsync`（行事曆 `IsHoliday` 優先、含國定假日 / 彈性休假日，未匯入年度退回六日）—— 2026-09 前只看六日，國定假日（中秋、教師節）照推全員
 │   ├── ShiftScheduleReminderFunction.cs # **排班提醒 TimerTrigger（四週彈性工時 §3.5，2026-09 新增）**：
 │   │                                    10 號 09:00 開放／20 號 09:00 未完成／25 號 12:00 截止／26 號 09:00 已自動排班。
 │   │                                    cron `ShiftScheduleReminderCron` 現值 `0 0 1,4 * * *`＝**每天** UTC 01:00/04:00（台北 09:00/12:00），
@@ -583,7 +583,7 @@ Api/
 │       ├── ShiftScheduleReadService.cs     # **per-user 日別解析**（取代 `WorkCalendarHelper` 的 `bool ignoreHolidays` 二元旗標）：
 │       │                                    三段退回「個人排班 → 國定假日 → 舊制行事曆判定」。批次版一次撈回整區間全部人（單次 SQL）——
 │       │                                    per-user 後出缺勤報表原本「依 IsShiftWorker 分兩組、整趟最多 2 次工作日計算」的 memo 會失效
-│       ├── WorkPatternReadService.cs      # 員工出勤型態：IsShiftWorkerAsync（排班制旗標，request-scoped memo）；供請假 / 銷假 / 打卡以「假單所有人 / 打卡本人」解析，勿用呼叫者 id
+│       ├── WorkPatternReadService.cs      # 員工出勤型態：IsShiftWorkerAsync（排班制旗標，request-scoped memo）＋ GetClockProfileAsync（自訂上下班時段 → ClockProfile）；供請假 / 銷假 / 打卡以「假單所有人 / 打卡本人」解析，勿用呼叫者 id
 │       ├── ApprovalReadService.cs
 │       ├── ProjectReadService.cs
 │       ├── PaymentRequestReadService.cs
@@ -689,6 +689,9 @@ Api/
 │   │                                    **2026-09-29**：視窗補救優先把休假改例假（例假由休假轉入）、視窗含前後月已定案日子
 │   │                                    （原只掃當月，跨月違規會亂補月初）、通過後把超出合計的休假改回上班日
 │   ├── ClockRules.cs                  # **四週彈性工時的打卡規則（純函式，2026-09 新增）**：打卡窗 08:30／準時界線 09:30（超過仍可打、只記遲到）／
+│   │                                    **＋ `ClockProfile`（2026-09-30）：個人打卡參數單一真相** —— 員工設有自訂上下班時段（賣店等，`User.CustomWorkStartTime/EndTime`）時，
+│   │                                    開放 S−30 分／準時 S+2 分／應下班固定 E／正常下班 [E, E+5 分]／提醒 S−2、E−2，未設定走 `ClockProfile.Company`（現值不變）；
+│   │                                    打卡端（AttendanceHandler）與提醒端（AttendanceReminderService）共用，僅新制生效／
 │   │                                    應下班時間＝實際上班打卡＋9 小時（請上午半天假者＋4 小時，午休已過不再扣）／
 │   │                                    下班三態（早退・正常・逾時，以 T 與 T+30 分為界）／半天假 13:00 交接容許帶 ±5 分。
 │   │                                    ＋ `ClockDayPolicy`：**日別鎖定的單一真相**（例假日全鎖連加班申請都不給提、休假日鎖上下班、

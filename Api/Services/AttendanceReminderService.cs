@@ -477,12 +477,15 @@ public sealed class AttendanceReminderService(
     private const string SlotHalfDayAm = "amHandover";
     private const string SlotHalfDayPm = "pmHandover";
 
+    /// <summary>自訂上下班時段者的個人化上班提醒足跡槽（只作足跡、不是冪等閘，比照下班提醒）。</summary>
+    private const string SlotCustomClockIn = "customClockIn";
+
     /// <summary>
     /// 新制的每分鐘處理：三種提醒各自獨立判斷，彼此不互相擋。
     /// </summary>
     private async Task RunFlexibleAsync(DateTime now, Models.Entities.SystemSetting setting, CancellationToken ct)
     {
-        // ① 上班提醒（固定 08:58）：依當日日別發三種文案
+        // ① 上班提醒（固定 08:58）：依當日日別發三種文案。設有自訂上下班時段者（賣店等）不在此批
         if (IsWithinWindow(now, setting.WorkStartTime)
             && !await HasBatchStartedTodayAsync(now.Date, setting.WorkStartTime, ct))
         {
@@ -499,6 +502,9 @@ public sealed class AttendanceReminderService(
 
         // ③ 個人化下班提醒：每個 tick 都要看，時點每人不同
         await PushPersonalClockOutAsync(now, setting, ct);
+
+        // ④ 自訂上下班時段者的上班提醒（上班 − 2 分，每人不同）
+        await PushCustomClockInAsync(now, setting, ct);
     }
 
     /// <summary>
@@ -511,7 +517,8 @@ public sealed class AttendanceReminderService(
 
         // 收件人沿用既有 SQL（已排除今日已打卡、請假涵蓋該時刻者）；
         // 休假日 / 例假日的人本來就不會打卡，故會留在名單內，再依日別分流文案。
-        var recipients = await reader.GetRecipientsAsync(targetTime, "clockIn", shiftWorkersOnly: false, ct);
+        var recipients = await reader.GetRecipientsAsync(
+            targetTime, "clockIn", shiftWorkersOnly: false, ct, excludeCustomHours: true);
         if (recipients.Count == 0) return;
 
         var dayTypes = await shiftReader.ResolveRangeForUsersAsync(
@@ -527,23 +534,73 @@ public sealed class AttendanceReminderService(
             var dayType = dayTypes.TryGetValue((r.UserId, now.Date), out var t) ? t : WorkDayTypes.Work;
             if (dayType == WorkDayTypes.PublicHoliday) continue;   // 國定假日免出勤，不打擾
 
-            var message = dayType switch
-            {
-                WorkDayTypes.StatutoryOff => LineFlexMessageBuilder.BuildShiftDayNoticeMessage(
-                    r.UserName, "例假日",
-                    "本日為您排定的例假日，依法嚴禁出勤。如遇業主或承辦人提出公務需求，"
-                    + "請禮貌告知將於上班日再行處理，或轉由職務代理人協助處理。", setting.SiteUrl),
-
-                WorkDayTypes.RestDay => LineFlexMessageBuilder.BuildShiftDayNoticeMessage(
-                    r.UserName, "休假日",
-                    "本日為您排定的休假日。如因緊急公務必要需求需於休假日加班者，"
-                    + "請務必事前至《加班申請系統》提出加班申請，經主管核准後方可出勤。", setting.SiteUrl),
-
-                _ => LineFlexMessageBuilder.BuildAttendanceReminderMessage(
-                    "clockIn", r.UserName, minutesUntil, setting.WorkStartTime, setting.SiteUrl),
-            };
+            var message = BuildClockInMessage(dayType, r.UserName, minutesUntil, setting.WorkStartTime, setting.SiteUrl);
 
             await PushOneAsync(batchId, now, setting.WorkStartTime, "clockIn", "auto", null, r, message, ct);
+        }
+    }
+
+    /// <summary>
+    /// 上班提醒文案依個人當日日別分流（上班日 / 休假日 / 例假日）。①整批與④自訂時段共用。
+    /// </summary>
+    private static object BuildClockInMessage(
+        string dayType, string userName, int minutesUntil, string workTime, string siteUrl) => dayType switch
+    {
+        WorkDayTypes.StatutoryOff => LineFlexMessageBuilder.BuildShiftDayNoticeMessage(
+            userName, "例假日",
+            "本日為您排定的例假日，依法嚴禁出勤。如遇業主或承辦人提出公務需求，"
+            + "請禮貌告知將於上班日再行處理，或轉由職務代理人協助處理。", siteUrl),
+
+        WorkDayTypes.RestDay => LineFlexMessageBuilder.BuildShiftDayNoticeMessage(
+            userName, "休假日",
+            "本日為您排定的休假日。如因緊急公務必要需求需於休假日加班者，"
+            + "請務必事前至《加班申請系統》提出加班申請，經主管核准後方可出勤。", siteUrl),
+
+        _ => LineFlexMessageBuilder.BuildAttendanceReminderMessage(
+            "clockIn", userName, minutesUntil, workTime, siteUrl),
+    };
+
+    /// <summary>
+    /// 自訂上下班時段者（賣店等）的上班提醒：時點 ＝ 個人上班時刻 − 2 分，窗寬同 <see cref="WindowMinutes"/>。
+    /// 時點每人不同，故比照③下班提醒以「每人每日一次」去重，不走整批閘。
+    /// 上午請假（含補休）者已由 SQL 以個人上班時刻排除，改收 12:55 交接提醒，比照一般同仁新制。
+    /// </summary>
+    private async Task PushCustomClockInAsync(DateTime now, Models.Entities.SystemSetting setting, CancellationToken ct)
+    {
+        var candidates = await reader.GetCustomClockInRecipientsAsync(now.Date, ct);
+        if (candidates.Count == 0) return;
+
+        var pushed = (await reader.GetAlreadyPushedUserIdsAsync(now.Date, "clockIn", ct)).ToHashSet();
+
+        var due = candidates
+            .Where(c => !pushed.Contains(c.UserId))
+            .Select(c => (c, Profile: ClockProfile.For(c.CustomWorkStartTime, c.CustomWorkEndTime)))
+            .Where(x => x.Profile.FixedStart is not null)
+            .Select(x => (x.c, Start: now.Date.Add(x.Profile.FixedStart!.Value.ToTimeSpan())))
+            .Where(x => now >= x.Start.AddMinutes(-LeadMinutes)
+                     && now <  x.Start.AddMinutes(-LeadMinutes + WindowMinutes))
+            .ToList();
+
+        if (due.Count == 0) return;
+
+        var dayTypes = await shiftReader.ResolveRangeForUsersAsync(
+            [.. due.Select(x => x.c.UserId)], now.Date, now.Date);
+
+        var batchId  = Guid.NewGuid();
+        var slotTime = now.ToString("HH\\:mm");
+        await WriteBatchStartAsync(batchId, now, slotTime, SlotCustomClockIn, "auto", null, ct);
+
+        foreach (var (c, start) in due)
+        {
+            var dayType = dayTypes.TryGetValue((c.UserId, now.Date), out var t) ? t : WorkDayTypes.Work;
+            if (dayType == WorkDayTypes.PublicHoliday) continue;   // 國定假日免出勤，不打擾
+
+            int minutesUntil = (int)Math.Round((start - now).TotalMinutes);
+            var message = BuildClockInMessage(
+                dayType, c.UserName, minutesUntil, start.ToString("HH\\:mm"), setting.SiteUrl);
+
+            await PushOneAsync(batchId, now, slotTime, "clockIn", "auto", null,
+                new Models.Dtos.AttendanceReminderRecipientDto(c.UserId, c.LineUserId, c.UserName), message, ct);
         }
     }
 
@@ -572,7 +629,8 @@ public sealed class AttendanceReminderService(
     }
 
     /// <summary>
-    /// 個人化下班提醒：時點 ＝ 實際上班打卡 ＋ 9 小時 − 2 分（請上午半天假者 ＋4 小時）。
+    /// 個人化下班提醒：時點 ＝ 實際上班打卡 ＋ 9 小時 − 2 分（請上午半天假者 ＋4 小時）；
+    /// 設有自訂上下班時段者（賣店等）為個人下班時刻 − 2 分。
     /// **去重下沉到每人每日一次**，不走整批閘。
     /// </summary>
     private async Task PushPersonalClockOutAsync(DateTime now, Models.Entities.SystemSetting setting, CancellationToken ct)
@@ -585,8 +643,10 @@ public sealed class AttendanceReminderService(
 
         var due = candidates
             .Where(c => !pushed.Contains(c.UserId))
-            .Select(c => (c, At: ClockRules.ExpectedClockOut(c.ClockInTime, schedule, c.AfternoonOnly)
-                                             .AddMinutes(-LeadMinutes)))
+            .Select(c => (c, At: ClockRules.ExpectedClockOut(
+                                    c.ClockInTime, schedule, c.AfternoonOnly,
+                                    ClockProfile.For(c.CustomWorkStartTime, c.CustomWorkEndTime))
+                                 .AddMinutes(-LeadMinutes)))
             .Where(x => now >= x.At && now < x.At.AddMinutes(WindowMinutes))
             .ToList();
 

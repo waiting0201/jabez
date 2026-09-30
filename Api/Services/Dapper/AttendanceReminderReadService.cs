@@ -20,8 +20,16 @@ public sealed class AttendanceReminderReadService(IDbConnection db)
                        WHERE  ur.UserId = u.Id AND p.Code = @ClockPermission)
         """;
 
+    // 「設有有效的自訂上下班時段」—— 與 ClockProfile.For 的判準一致（兩者皆可解析且下班晚於上班），
+    // 讓新制整批上班提醒的排除名單與個人化名單剛好互補，不會有人兩邊都拿不到。
+    private const string HasCustomHours = """
+        (TRY_CAST(u.CustomWorkStartTime AS time) IS NOT NULL
+         AND TRY_CAST(u.CustomWorkEndTime AS time) > TRY_CAST(u.CustomWorkStartTime AS time))
+        """;
+
     public async Task<IReadOnlyList<AttendanceReminderRecipientDto>> GetRecipientsAsync(
-        DateTime targetTime, string type, bool shiftWorkersOnly = false, CancellationToken ct = default)
+        DateTime targetTime, string type, bool shiftWorkersOnly = false, CancellationToken ct = default,
+        bool excludeCustomHours = false)
     {
         // 白名單保護：只接受固定字串，避免 SQL injection
         var clockColumn = type switch
@@ -33,6 +41,8 @@ public sealed class AttendanceReminderReadService(IDbConnection db)
 
         // 六日只提醒排班制員工（賣店 / 營業所照常營業）
         var shiftWorkerFilter = shiftWorkersOnly ? "AND u.IsShiftWorker = 1" : "";
+        // 新制：自訂上下班時段者改走個人化上班提醒
+        var customHoursFilter = excludeCustomHours ? $"AND NOT {HasCustomHours}" : "";
 
         // 請假覆蓋判斷：用「請假是否覆蓋目標時刻」而非「請假日期是否含今日」，
         // 否則小時制請假（例如下午 13:00-17:00 病假）在上午打卡提醒時會被誤排除。
@@ -45,6 +55,7 @@ public sealed class AttendanceReminderReadService(IDbConnection db)
               AND  u.IsSuperAdmin = 0
               AND  u.Status = 'active'
               {shiftWorkerFilter}
+              {customHoursFilter}
               {ClockPermissionFilter}
               -- ResignDate >= 今天 → 仍在職（離職當日 = 最後上班日，與 PayrollReadService 相同慣例）
               AND  (u.ResignDate IS NULL OR CAST(u.ResignDate AS DATE) >= CAST(@TargetTime AS DATE))
@@ -96,7 +107,8 @@ public sealed class AttendanceReminderReadService(IDbConnection db)
                           AND lr.ApprovalStatus = 'approved'
                           AND CAST(lr.StartDate AS DATE) <= @Today
                           AND lr.EndDate > @Today AND lr.EndDate <= @Boundary
-                   ) THEN 1 ELSE 0 END AS bit) AS AfternoonOnly
+                   ) THEN 1 ELSE 0 END AS bit) AS AfternoonOnly,
+                   u.CustomWorkStartTime, u.CustomWorkEndTime
             FROM   Users u
             JOIN   AttendanceRecords a
                    ON a.UserId = u.Id AND CAST(a.RecordDate AS DATE) = @Today
@@ -117,6 +129,65 @@ public sealed class AttendanceReminderReadService(IDbConnection db)
         return rows.ToList();
     }
 
+    public async Task<IReadOnlyList<AttendanceReminderCustomRecipientDto>> GetCustomClockInRecipientsAsync(
+        DateTime today, CancellationToken ct = default)
+    {
+        // 條件同 GetRecipientsAsync（clockIn），差別在請假排除有兩條：
+        //   (1) 請假覆蓋「各人的上班時刻」（今日日期 ＋ CustomWorkStartTime）—— 全天假、跨上班時刻的小時假
+        //   (2) 當日有上午半天假（假最晚於新制上班時刻 09:00 開始、13:00 前結束，
+        //       判準同 AttendanceHandler 的 AfternoonOnly；中段小時假不算，照常收上班提醒）——
+        //       補休的上午時段固定存 09:00–13:00，08:30 上班者在 08:30 時「還沒被假覆蓋」，
+        //       只靠 (1) 會在人還在休假時推一則上班提醒。這些人改收 12:55 交接提醒，比照一般同仁新制。
+        var sql = $"""
+            SELECT u.Id AS UserId, u.LineUserId, u.Name AS UserName,
+                   u.CustomWorkStartTime, u.CustomWorkEndTime
+            FROM   Users u
+            CROSS APPLY (SELECT DATEADD(minute,
+                                DATEDIFF(minute, CAST('00:00' AS time), TRY_CAST(u.CustomWorkStartTime AS time)),
+                                CAST(@Today AS datetime2)) AS StartAt) t
+            WHERE  u.LineUserId IS NOT NULL
+              AND  u.LineUserId <> ''
+              AND  u.IsSuperAdmin = 0
+              AND  u.Status = 'active'
+              AND  {HasCustomHours}
+              {ClockPermissionFilter}
+              AND  (u.ResignDate IS NULL OR CAST(u.ResignDate AS DATE) >= @Today)
+              AND  NOT EXISTS (
+                    SELECT 1 FROM AttendanceRecords a
+                    WHERE  a.UserId = u.Id
+                      AND  CAST(a.RecordDate AS DATE) = @Today
+                      AND  a.ClockInTime IS NOT NULL
+                   )
+              AND  NOT EXISTS (
+                    SELECT 1 FROM LeaveRequests lr
+                    WHERE  lr.EmployeeId = u.Id
+                      AND  lr.ApprovalStatus = 'approved'
+                      AND  (   (lr.StartDate <= t.StartAt AND lr.EndDate >= t.StartAt)
+                            OR (lr.StartDate <= @MorningStart
+                                AND lr.EndDate > @Today AND lr.EndDate <= @Boundary))
+                      AND  NOT EXISTS (
+                            SELECT 1 FROM LeaveRevocationDates rvd
+                            JOIN LeaveRevocations rv ON rv.Id = rvd.LeaveRevocationId
+                            WHERE rv.LeaveRequestId = lr.Id
+                              AND rv.ApprovalStatus = 'approved'
+                              AND rvd.Date = @Today)
+                   )
+            """;
+
+        var cmd = new CommandDefinition(
+            sql,
+            new
+            {
+                Today        = today.Date,
+                MorningStart = today.Date.Add(WorkdayHours.Flexible.Start.ToTimeSpan()),
+                Boundary     = today.Date.Add(WorkdayHours.Flexible.HalfDayPmStart.ToTimeSpan()),
+                ClockPermission = PermissionCodes.AttendancesWrite,
+            },
+            cancellationToken: ct);
+        var rows = await db.QueryAsync<AttendanceReminderCustomRecipientDto>(cmd);
+        return rows.ToList();
+    }
+
     public async Task<IReadOnlyList<Guid>> GetAlreadyPushedUserIdsAsync(
         DateTime today, string reminderType, CancellationToken ct = default)
     {
@@ -124,7 +195,7 @@ public sealed class AttendanceReminderReadService(IDbConnection db)
             SELECT DISTINCT UserId
             FROM   AttendanceReminderLogs
             WHERE  UserId IS NOT NULL
-              AND  Status = 'success'
+              AND  Status IN ('success', 'failure')
               AND  ReminderType = @Type
               -- 刻意不用 CAST(TickedAtTaipei AS DATE) = @Today：CAST 會讓既有索引
               -- IX_AttendanceReminderLogs_TickedAtTaipei_Status_Type 無法 seek。

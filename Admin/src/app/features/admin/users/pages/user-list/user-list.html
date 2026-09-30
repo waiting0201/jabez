@@ -79,6 +79,9 @@
                     @if (user.isShiftWorker) {
                       <span class="badge bg-info-subtle text-info ms-1" title="六日與國定假日視為工作日">排班制</span>
                     }
+                    @if (user.customWorkStartTime && user.customWorkEndTime) {
+                      <span class="badge bg-secondary-subtle text-secondary ms-1" title="自訂上下班時間（四週彈性工時切換後生效）">{{ user.customWorkStartTime }}–{{ user.customWorkEndTime }}</span>
+                    }
                   </div>
                 </td>
                 <td class="text-muted hidden md:table-cell">{{ user.email }}</td>

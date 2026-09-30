@@ -45,6 +45,8 @@ export interface TodayAttendance {
   clockLockReason?: string | null;
   /** 應下班時間 ＝ 實際上班打卡 ＋ 9 小時（請上午半天假者為 ＋4 小時）；尚未打上班卡為 null */
   expectedClockOutTime?: string | null;
+  /** 正常下班帶終點（公司預設應下班 +30 分、自訂上下班時段 +5 分），晚於此即逾時 */
+  normalClockOutUntil?: string | null;
 }
 
 export type ShiftDayTypeValue = 'work' | 'rest_day' | 'statutory_off' | 'public_holiday';

@@ -43,6 +43,12 @@ public class User
     // 使其能正常請六日的假；連帶影響打卡「休假日免下班卡」與週末打卡提醒。
     public bool      IsShiftWorker { get; set; } = false;
 
+    // 自訂上下班時段（賣店等，"HH:mm"；兩者皆 null ＝ 公司預設時段）。
+    // **僅四週彈性工時切換後生效**：決定上下班 LINE 提醒時點、上班打卡開放 / 準時界線、
+    // 應下班時間與正常下班帶，推導規則單一真相為 ClockProfile（Common/ClockRules.cs）。
+    public string?   CustomWorkStartTime { get; set; }
+    public string?   CustomWorkEndTime   { get; set; }
+
     public Guid?     AgentUserId     { get; set; }
     public DateTime? Birthday        { get; set; }
     public bool      IsIndigenous    { get; set; }   // 是否為原住民（影響歲時祭儀假申請）

@@ -13,9 +13,28 @@
 >
 > | 提醒 | 時點 | 去重方式 |
 > |---|---|---|
-> | 上班提醒 | 08:58（固定） | 沿用整批 `batchStart` 閘 |
+> | 上班提醒 | 08:58（固定）；**設有自訂上下班時段者不在此批** | 沿用整批 `batchStart` 閘 |
+> | **自訂時段上班提醒**（2026-09-30） | **個人上班時刻 − 2 分**（例 08:28 / 08:58） | **每人每日每類型一次**（足跡槽 `customClockIn`） |
 > | 半天假交接 | 12:55（固定，上午假／下午假各一則） | 沿用整批閘，**各佔一槽**（槽名寫在 `ReminderType`） |
-> | **下班提醒** | **實際上班打卡 ＋ 9 小時 − 2 分（每人不同）** | **每人每日每類型一次** |
+> | **下班提醒** | **實際上班打卡 ＋ 9 小時 − 2 分（每人不同）**；自訂時段者為**個人下班時刻 − 2 分** | **每人每日每類型一次** |
+>
+> 「每人每日每類型一次」的去重（`GetAlreadyPushedUserIdsAsync`）**成功與失敗皆算**（2026-09-30 修正）：
+> 原本只計成功，未加好友 / 封鎖等失敗者會在 30 分鐘窗內每分鐘被重推一次、寫滿失敗紀錄。
+>
+> ### 📌 自訂上下班時段（賣店等，2026-09-30，**僅新制生效**）
+>
+> 員工資料「員工資訊」勾選**自訂上下班時間**並填上班 S／下班 E（`User.CustomWorkStartTime / CustomWorkEndTime`，"HH:mm"），
+> 推導規則單一真相為 `ClockProfile`（[Api/Common/ClockRules.cs](../../Api/Common/ClockRules.cs)），打卡判定一併套用，見
+> [attendance-clock-rules.md](attendance-clock-rules.md#自訂上下班時段賣店等)。提醒部分：
+>
+> - 上班提醒：S − 2 分（`GetCustomClockInRecipientsAsync`，排除「請假覆蓋 S」**以及當日有上午半天假**者 ——
+>   補休上午固定存 09:00–13:00，08:30 上班者在 08:30 時尚未被假覆蓋，不排除會在人還在休假時推提醒；
+>   上午半天假判準同打卡端 `AfternoonOnly`：假最晚 09:00 開始、13:00 前結束，中段小時假照常提醒）
+> - 下班提醒：E − 2 分（不隨實際上班打卡浮動，上午請假亦同）
+> - **補休等半天假比照一般同仁新制**：上午假收 12:55「上午假將屆」、下午假收 12:55「準備休假」
+> - 時段範圍限制：S ∈ 07:30–09:30、E ∈ 16:30–18:30（`UserHandler` 擋存）—— 提醒只在 cron 的 7–9 / 16–18 時段執行，超出就永遠收不到
+> - **舊制（切換日前）完全不受影響**：自訂時段者照公司時段收提醒
+> - `GET /shift-schedule-reminders/clock-out-preview` 回應另含 `customClockInRows`（自訂者的上班提醒時點）
 >
 > ### ⚠️ 為什麼下班提醒非改架構不可
 >
@@ -48,7 +67,7 @@
 1. Cron `%AttendanceReminderCron%`（UTC）進入 Function；預設 `0 */1 23,0-1,8-10 * * *`，僅在 7-9 Taipei（= UTC 23,0,1）與 16-18 Taipei（= UTC 8,9,10）時段每分鐘觸發
 2. `IsPastDue=true` **不 return**，只記 `LogWarning` 後照常執行（見下方「時間窗 + 冪等」）
 3. 透過 `Clock.Now`（台北時區）取得當前時間
-4. 判斷是否落在**提醒時間窗**內：`[WorkStartTime − 2min, +10min)` → `clockIn`、`[WorkEndTime − 2min, +10min)` → `clockOut`；都未命中直接 return
+4. 判斷是否落在**提醒時間窗**內：`[WorkStartTime − 2min, +30min)` → `clockIn`、`[WorkEndTime − 2min, +30min)` → `clockOut`（2026-09-09 由 10 分放寬為 30 分）；都未命中直接 return
 5. **公司休假日只提醒排班制員工**（`User.IsShiftWorker = true`，賣店 / 營業所照常營業）：
    收件人查詢加 `AND u.IsShiftWorker = 1`；系統中一個排班制員工都沒有時維持整批 return
    （cron 跨午夜時 day-of-week 無法在單一表達式中正確涵蓋週一至週五，故由 Service 端統一過濾）。
@@ -85,7 +104,7 @@
 - `User.LineUserId` 不為 null 且不為空字串
 - `User.IsSuperAdmin = 0`
 - `User.Status = 'active'`
-- 未離職（`ResignDate` 為 null 或 > 今日）
+- 未離職（`ResignDate` 為 null 或 ≥ 今日；離職當日＝最後上班日）
 - **持有 `attendances:write`**（2026-09 新增）：約聘 / 外聘等未開通打卡權限的角色本來就不打卡，**不推上下班提醒**；上班、下班（舊制與新制）、半天假交接通知四支查詢共用 `AttendanceReminderReadService.ClockPermissionFilter`。判準與出缺勤報表的缺勤母體（`ListClockingEmployeesAsync`）、登入自動補卡一致。**申請 / 簽核的 LINE 通知不受影響**，照常推送。要讓某類人員不收提醒，到角色管理取消該角色的 `attendances:write` 即可，不需另設勾選框
 - **非請假中**：今日不落在任何 `LeaveRequest.ApprovalStatus='approved'` 範圍內
 - **未打卡**：上班提醒排除今日 `AttendanceRecord.ClockInTime` 已有值者；下班提醒排除 `ClockOutTime` 已有值者
@@ -123,7 +142,7 @@
 ## 設計決策
 
 - **Cron Timezone**：UTC 觸發 + 內部 `Clock.Now` 比對，不依賴 `WEBSITE_TIME_ZONE` / `TZ` 環境變數，相容 Linux Consumption Plan
-- **限定時段**：cron 只在 7-9 / 16-18 Taipei 時段每分鐘觸發（共 6 小時/日），其他時段不進入 Function；對應預設 `WorkStartTime=09:00` / `WorkEndTime=18:00` 並留 1 小時前後緩衝。若上下班時間調整至此區間外，須同步修改 `AttendanceReminderCron`（Production：Function App → Configuration）。⚠️ 調整時記得**時間窗尾端**（上/下班時刻 + 8 分）也必須落在 cron 涵蓋範圍內
+- **限定時段**：cron 只在 7-9 / 16-18 Taipei 時段每分鐘觸發（共 6 小時/日），其他時段不進入 Function；對應預設 `WorkStartTime=09:00` / `WorkEndTime=18:00` 並留 1 小時前後緩衝。若上下班時間調整至此區間外，須同步修改 `AttendanceReminderCron`（Production：Function App → Configuration）。⚠️ 調整時記得**時間窗尾端**（上/下班時刻 + 28 分）也必須落在 cron 涵蓋範圍內
 - **幂等性**：**不依賴** Azure Functions Timer 的 singleton lock —— 正式站（Flex Consumption）實測會出現同一 occurrence 被兩個實例各跑一次。真正的去重靠 `AttendanceReminderLogs` 的 `batchStart` 查詢（見上方「時間窗 + 冪等」）
 - **可觀測性**：`Program.cs` 需保留 `AddApplicationInsightsTelemetryWorkerService()` + `ConfigureFunctionsApplicationInsights()`，否則 isolated worker 的 `ILogger` 輸出不會進 App Insights，排程異常時只能靠 `AttendanceReminderLogs` 反推（2026-08 之前正式站即為此狀態）
 - **成本**：Consumption Plan 每月約 10,800 次執行（限定時段後），遠低於免費額度（實質成本 0）

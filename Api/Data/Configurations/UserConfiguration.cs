@@ -109,6 +109,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.IsShiftWorker)
                .HasDefaultValue(false);
 
+        // 自訂上下班時段（"HH:mm"，比照 SystemSetting.WorkStartTime）
+        builder.Property(u => u.CustomWorkStartTime).HasMaxLength(5);
+        builder.Property(u => u.CustomWorkEndTime).HasMaxLength(5);
+
         builder.HasOne(u => u.Department)
                .WithMany(d => d.Users)
                .HasForeignKey(u => u.DepartmentId)

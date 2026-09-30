@@ -242,7 +242,8 @@ export class Dashboard implements OnInit, OnDestroy {
   /**
    * 下班打卡一律先跳確認對話框（防誤觸），早退／逾時的必填原因**併入同一個視窗**
    * （規格明訂不另開第二個視窗）。三種情況以應下班時間 T 為界，互斥且涵蓋全部：
-   * `< T` 早退必填原因、`[T, T+30分]` 正常只需確認、`> T+30分` 逾時必填原因。
+   * `< T` 早退必填原因、`[T, T+30分]` 正常只需確認、`> T+30分` 逾時必填原因
+   * （自訂上下班時段者 T 為固定下班時刻、容許帶 5 分，界線皆由後端 `normalClockOutUntil` 帶回）。
    * 出差當日原因欄位仍顯示但改為非必填。
    *
    * 舊制（尚未切換）不跳對話框，行為與原本完全一致。
@@ -262,7 +263,9 @@ export class Dashboard implements OnInit, OnDestroy {
     const expected = r.expectedClockOutTime ? new Date(r.expectedClockOutTime) : null;
     const diffMin = expected ? Math.round((expected.getTime() - now.getTime()) / 60000) : 0;
     const isEarly = !!expected && now < expected;
-    const isOvertime = !!expected && diffMin < -30;
+    // 逾時界線由後端依個人打卡參數算好（公司預設 +30 分、自訂上下班時段 +5 分），不在前端寫死
+    const normalUntil = r.normalClockOutUntil ? new Date(r.normalClockOutUntil) : null;
+    const isOvertime = !!normalUntil && now > normalUntil;
     const businessTrip = this.isBusinessTrip();
 
     const ref = this.modal.open(ConfirmModal, {centered: true});

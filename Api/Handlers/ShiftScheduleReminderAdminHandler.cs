@@ -84,7 +84,8 @@ public sealed class ShiftScheduleReminderAdminHandler(
 
         var rows = candidates.Select(c =>
         {
-            var remindAt = ClockRules.ExpectedClockOut(c.ClockInTime, schedule, c.AfternoonOnly).AddMinutes(-2);
+            var profile  = ClockProfile.For(c.CustomWorkStartTime, c.CustomWorkEndTime);
+            var remindAt = ClockRules.ExpectedClockOut(c.ClockInTime, schedule, c.AfternoonOnly, profile).AddMinutes(-2);
             var alreadyPushed = pushed.Contains(c.UserId);
             var due = !alreadyPushed && now >= remindAt && now < remindAt.AddMinutes(30);
 
@@ -93,10 +94,30 @@ public sealed class ShiftScheduleReminderAdminHandler(
                 c.UserName,
                 ClockIn       = c.ClockInTime.ToString("HH:mm"),
                 c.AfternoonOnly,
+                CustomHours   = profile.IsCustom ? $"{c.CustomWorkStartTime}–{c.CustomWorkEndTime}" : null,
                 ExpectedOut   = remindAt.AddMinutes(2).ToString("HH:mm"),
                 RemindAt      = remindAt.ToString("HH:mm"),
                 AlreadyPushed = alreadyPushed,
                 WouldPushNow  = due,
+            };
+        }).OrderBy(x => x.RemindAt).ToList();
+
+        // 自訂上下班時段者（賣店等）的個人化上班提醒（上班 − 2 分）
+        var customCandidates = await reminderReader.GetCustomClockInRecipientsAsync(now.Date);
+        var pushedIn         = (await reminderReader.GetAlreadyPushedUserIdsAsync(now.Date, "clockIn")).ToHashSet();
+        var clockInRows = customCandidates.Select(c =>
+        {
+            var profile  = ClockProfile.For(c.CustomWorkStartTime, c.CustomWorkEndTime);
+            var remindAt = now.Date.Add((profile.FixedStart ?? ClockRules.ClockInOpenFrom).ToTimeSpan()).AddMinutes(-2);
+            var alreadyPushed = pushedIn.Contains(c.UserId);
+
+            return new
+            {
+                c.UserName,
+                CustomHours   = $"{c.CustomWorkStartTime}–{c.CustomWorkEndTime}",
+                RemindAt      = remindAt.ToString("HH:mm"),
+                AlreadyPushed = alreadyPushed,
+                WouldPushNow  = profile.IsCustom && !alreadyPushed && now >= remindAt && now < remindAt.AddMinutes(30),
             };
         }).OrderBy(x => x.RemindAt).ToList();
 
@@ -107,6 +128,7 @@ public sealed class ShiftScheduleReminderAdminHandler(
             CandidateCount = rows.Count,
             WouldPushCount = rows.Count(r => r.WouldPushNow),
             Rows = rows,
+            CustomClockInRows = clockInRows,
         }));
     }
 

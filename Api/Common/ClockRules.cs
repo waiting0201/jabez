@@ -46,44 +46,113 @@ public static class ClockRules
     public const int LeaveHandoverToleranceMinutes = 5;
 
     /// <summary>
-    /// 出勤起算時間：落在 08:30–09:30 內一律視為當日上班時刻（早到不算加班），
-    /// 超過則取實際打卡時刻。
+    /// 出勤起算時間：落在「開放～準時界線」內一律視為當日上班時刻（早到不算加班），
+    /// 超過則取實際打卡時刻。公司預設為 08:30–09:30 → 09:00；自訂時段者為 S−30 分～S+2 分 → S。
     /// </summary>
-    public static DateTime AttendanceStart(DateTime actualClockIn, WorkdaySchedule schedule)
+    public static DateTime AttendanceStart(DateTime actualClockIn, WorkdaySchedule schedule, ClockProfile? profile = null)
     {
+        profile ??= ClockProfile.Company;
         var t = TimeOnly.FromDateTime(actualClockIn);
-        return t >= ClockInOpenFrom && t <= OnTimeUntil
-            ? actualClockIn.Date.Add(schedule.Start.ToTimeSpan())
+        return t >= profile.OpenFrom && t <= profile.OnTimeUntil
+            ? actualClockIn.Date.Add((profile.FixedStart ?? schedule.Start).ToTimeSpan())
             : actualClockIn;
     }
 
-    /// <summary>是否遲到（超過 09:30 打上班卡）。**出差當日不判定**，由呼叫端決定是否套用。</summary>
-    public static bool IsLate(DateTime actualClockIn) =>
-        TimeOnly.FromDateTime(actualClockIn) > OnTimeUntil;
+    /// <summary>是否遲到（超過準時界線打上班卡）。**出差當日不判定**，由呼叫端決定是否套用。</summary>
+    public static bool IsLate(DateTime actualClockIn, ClockProfile? profile = null) =>
+        TimeOnly.FromDateTime(actualClockIn) > (profile ?? ClockProfile.Company).OnTimeUntil;
 
     /// <summary>
-    /// 應下班時間 ＝ 實際上班打卡時刻 ＋ 9 小時（含午休），**因人而異**。
-    ///
+    /// 應下班時間。公司預設 ＝ 實際上班打卡時刻 ＋ 9 小時（含午休），**因人而異**；
     /// <paramref name="afternoonOnly"/>（當日請了上午半天假、下午才上班）時改為 ＋4 小時 ——
     /// 午休已過，不再扣那 1 小時。與 §5.2 的下班提醒時點同一套算法。
+    ///
+    /// 自訂時段者（賣店）一律為**當日固定下班時刻 E**，不隨打卡時刻浮動、上午請假亦同。
     /// </summary>
-    public static DateTime ExpectedClockOut(DateTime actualClockIn, WorkdaySchedule schedule, bool afternoonOnly) =>
-        actualClockIn.AddHours((double)(afternoonOnly ? schedule.FullDayHours / 2m : schedule.ClockDayHours));
+    public static DateTime ExpectedClockOut(
+        DateTime actualClockIn, WorkdaySchedule schedule, bool afternoonOnly, ClockProfile? profile = null) =>
+        profile?.FixedEnd is { } end
+            ? actualClockIn.Date.Add(end.ToTimeSpan())
+            : actualClockIn.AddHours((double)(afternoonOnly ? schedule.FullDayHours / 2m : schedule.ClockDayHours));
 
     /// <summary>
     /// 下班打卡屬於哪一種情形。三者互斥且涵蓋全部：
-    /// `&lt; T` 早退／`[T, T+30分]` 正常／`&gt; T+30分` 逾時。
+    /// `&lt; T` 早退／`[T, T+容許帶]` 正常／`&gt; T+容許帶` 逾時（公司預設 30 分、自訂時段 5 分）。
     /// </summary>
     public static ClockOutKind ResolveClockOutKind(
-        DateTime actualClockIn, DateTime actualClockOut, WorkdaySchedule schedule, bool afternoonOnly)
+        DateTime actualClockIn, DateTime actualClockOut, WorkdaySchedule schedule, bool afternoonOnly,
+        ClockProfile? profile = null)
     {
-        var expected = ExpectedClockOut(actualClockIn, schedule, afternoonOnly);
+        profile ??= ClockProfile.Company;
+        var expected = ExpectedClockOut(actualClockIn, schedule, afternoonOnly, profile);
 
         if (actualClockOut < expected) return ClockOutKind.Early;
-        return actualClockOut <= expected.AddMinutes(NormalClockOutGraceMinutes)
+        return actualClockOut <= expected.AddMinutes(profile.GraceMinutes)
             ? ClockOutKind.Normal
             : ClockOutKind.Overtime;
     }
+}
+
+/// <summary>
+/// 個人打卡參數（開放時刻 / 準時界線 / 應下班 / 正常下班容許帶）的**單一真相**。
+///
+/// 絕大多數同仁走 <see cref="Company"/>（08:30 開放、09:30 準時、上班＋9h、容許 30 分）。
+/// 賣店等在員工資料勾選「自訂上下班時段」者（<c>User.CustomWorkStartTime / CustomWorkEndTime</c>），
+/// 由上班 S / 下班 E 兩個時刻推導全部參數，對應客戶給的兩組實例：
+/// <code>
+///   09:00–17:00 → 開放 08:30、準時 ≤ 09:02、提醒 08:58 / 16:58、正常下班 17:00–17:05
+///   08:30–17:00 → 開放 08:00、準時 ≤ 08:32、提醒 08:28 / 16:58、正常下班 17:00–17:05
+/// </code>
+/// ⚠ 僅新制切換後生效（呼叫端只在 Flexible 分支使用）。
+/// </summary>
+public sealed record ClockProfile(
+    TimeOnly  OpenFrom,
+    TimeOnly  OnTimeUntil,
+    TimeOnly? FixedStart,
+    TimeOnly? FixedEnd,
+    int       GraceMinutes)
+{
+    /// <summary>自訂時段：上班前幾分鐘開放打卡。</summary>
+    public const int CustomOpenBeforeMinutes = 30;
+    /// <summary>自訂時段：上班後幾分鐘內仍算準時（含）。</summary>
+    public const int CustomOnTimeGraceMinutes = 2;
+    /// <summary>自訂時段：正常下班容許帶（分）。</summary>
+    public const int CustomClockOutGraceMinutes = 5;
+
+    /// <summary>
+    /// 自訂時段的合法範圍。上下班提醒只在 <c>AttendanceReminderCron</c> 的 7–9 / 16–18 時段內執行，
+    /// 超出範圍的時段會永遠收不到提醒，故於員工資料存檔時擋下。
+    /// </summary>
+    public static readonly TimeOnly CustomStartEarliest = new(7, 30);
+    public static readonly TimeOnly CustomStartLatest   = new(9, 30);
+    public static readonly TimeOnly CustomEndEarliest   = new(16, 30);
+    public static readonly TimeOnly CustomEndLatest     = new(18, 30);
+
+    /// <summary>公司預設（現行新制規則）。</summary>
+    public static readonly ClockProfile Company = new(
+        ClockRules.ClockInOpenFrom, ClockRules.OnTimeUntil, null, null, ClockRules.NormalClockOutGraceMinutes);
+
+    /// <summary>是否為自訂時段。</summary>
+    public bool IsCustom => FixedEnd is not null;
+
+    /// <summary>
+    /// 由員工資料的兩個 "HH:mm" 字串建立；任一缺漏或無法解析即退回 <see cref="Company"/>
+    /// （安全側：寧可照公司時段提醒，也不要讓人完全收不到）。
+    /// </summary>
+    public static ClockProfile For(string? start, string? end)
+    {
+        if (!TryParseHHmm(start, out var s) || !TryParseHHmm(end, out var e) || e <= s)
+            return Company;
+
+        return new ClockProfile(
+            s.AddMinutes(-CustomOpenBeforeMinutes),
+            s.AddMinutes(CustomOnTimeGraceMinutes),
+            s, e, CustomClockOutGraceMinutes);
+    }
+
+    /// <summary>嚴格解析 "HH:mm"。</summary>
+    public static bool TryParseHHmm(string? value, out TimeOnly time) =>
+        TimeOnly.TryParseExact(value?.Trim(), "HH:mm", out time);
 }
 
 /// <summary>

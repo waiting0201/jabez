@@ -4,7 +4,7 @@ using Dapper;
 namespace Jabez.Api.Services.Dapper;
 
 /// <summary>
-/// 員工出勤型態查詢 —— 目前只服務「是否為排班制」一個問題。
+/// 員工出勤型態查詢 —— 「是否為排班制」與「自訂上下班時段（打卡參數）」兩個問題。
 ///
 /// 排班制（賣店 / 營業所）員工的六日與國定假日皆為工作日，
 /// 此旗標會傳入 <see cref="Jabez.Api.Common.WorkCalendarHelper"/> /
@@ -17,6 +17,12 @@ public interface IWorkPatternReadService
 {
     /// <summary>該員工是否為排班制（六日與國定假日視為工作日）。查無此人回 false。</summary>
     Task<bool> IsShiftWorkerAsync(Guid userId);
+
+    /// <summary>
+    /// 該員工的打卡參數（自訂上下班時段；未設定或查無此人回 <see cref="Jabez.Api.Common.ClockProfile.Company"/>）。
+    /// ⚠ 僅四週彈性工時切換後的打卡 / 提醒使用。
+    /// </summary>
+    Task<Jabez.Api.Common.ClockProfile> GetClockProfileAsync(Guid userId);
 }
 
 /// <summary>
@@ -26,6 +32,7 @@ public interface IWorkPatternReadService
 public sealed class WorkPatternReadService(IDbConnection db) : IWorkPatternReadService
 {
     private readonly Dictionary<Guid, bool> _memo = [];
+    private readonly Dictionary<Guid, Jabez.Api.Common.ClockProfile> _profileMemo = [];
 
     public async Task<bool> IsShiftWorkerAsync(Guid userId)
     {
@@ -36,5 +43,17 @@ public sealed class WorkPatternReadService(IDbConnection db) : IWorkPatternReadS
 
         _memo[userId] = value;
         return value;
+    }
+
+    public async Task<Jabez.Api.Common.ClockProfile> GetClockProfileAsync(Guid userId)
+    {
+        if (_profileMemo.TryGetValue(userId, out var cached)) return cached;
+
+        const string sql = "SELECT CustomWorkStartTime, CustomWorkEndTime FROM Users WHERE Id = @UserId";
+        var row = await db.QueryFirstOrDefaultAsync<(string? Start, string? End)>(sql, new { UserId = userId });
+
+        var profile = Jabez.Api.Common.ClockProfile.For(row.Start, row.End);
+        _profileMemo[userId] = profile;
+        return profile;
     }
 }

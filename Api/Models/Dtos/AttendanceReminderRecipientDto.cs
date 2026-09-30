@@ -18,4 +18,18 @@ public sealed record AttendanceReminderClockOutCandidateDto(
     string   LineUserId,
     string   UserName,
     DateTime ClockInTime,
-    bool     AfternoonOnly);
+    bool     AfternoonOnly,
+    // 自訂上下班時段（"HH:mm"；null ＝ 公司預設），由呼叫端以 ClockProfile.For 轉成打卡參數
+    string?  CustomWorkStartTime,
+    string?  CustomWorkEndTime);
+
+/// <summary>
+/// 設有自訂上下班時段者（賣店等）的上班提醒收件人：時點每人不同（上班 − 2 分），
+/// 故連同兩個時段一起回傳，由呼叫端判斷「現在該不該推」。僅四週彈性工時切換後使用。
+/// </summary>
+public sealed record AttendanceReminderCustomRecipientDto(
+    Guid    UserId,
+    string  LineUserId,
+    string  UserName,
+    string  CustomWorkStartTime,
+    string  CustomWorkEndTime);

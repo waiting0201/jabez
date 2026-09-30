@@ -24,7 +24,7 @@
 |--------|------|------|
 | GET | `/users?page=1&pageSize=20&search=關鍵字&departmentId=9&status=active&hasLaborPension=true` | 取得使用者列表。`search` 選填，模糊比對**姓名** `Name`；`departmentId` 選填，篩選部門；`status` 選填，在職狀態（白名單 `active` / `inactive`，非法值忽略）；`hasLaborPension` 選填，勞退自提（`true`＝自提率 > 0、`false`＝自提率為 0 或 null，非布林值忽略，**無 `payroll:read` 者送此參數回 403**，因可反推他人自提率）（四者可併用，與分頁參數正交，非數字的 `departmentId` 一律忽略）；**帶 `page` / `pageSize` 回 `PagedResult`，不帶則回平面陣列**（`pageSize` clamp 1~100，預設 20）。**欄位級權限**：無 `payroll:read` 者的 8 個薪資欄（底薪 / 伙食費 / 加班費 / 2 種加給 / 勞健保覆寫 / 勞退自提率）回 `null` |
 | GET | `/users/lookup` | **輕量端點**：免 `users:read`，回 `{id, name, jobTitleId, status, departmentId, jobTitleLevel}`，供指定審核者下拉與「部門最高層級」判定（`jobTitleLevel` 數字越小越高） |
-| POST | `/users` | 新增使用者。**欄位級權限**：無 `payroll:read` 者送的薪資欄一律忽略（存為 null），回應 DTO 亦抹除 |
+| POST | `/users` | 新增使用者。**欄位級權限**：無 `payroll:read` 者送的薪資欄一律忽略（存為 null），回應 DTO 亦抹除。**自訂上下班時段**（2026-09-30，新增 / 更新共用）：`hasCustomWorkHours=true` 時 `customWorkStartTime` / `customWorkEndTime`（HH:mm）必填，上班 07:30–09:30、下班 16:30–18:30 且晚於上班，否則 400；未勾選寫 null |
 | GET | `/users/{id}` | 取得單一使用者。**欄位級權限**：同 `GET /users`，無 `payroll:read` 者薪資欄回 `null` |
 | PUT/PATCH | `/users/{id}` | 更新使用者。**欄位級權限**：無 `payroll:read` 者的薪資欄寫入一律忽略（既有值不變，不回 403），回應 DTO 亦抹除 |
 | DELETE | `/users/{id}` | 刪除使用者 |
@@ -262,7 +262,7 @@
 | POST | `/shift-schedule-reminders/run?kind=…[&send=true]` | Superadmin（Handler 內驗 `is_superadmin`） | 手動觸發排班提醒。`kind` ＝ `schOpen` / `schPending` / `schDeadline` / `schAuto`。**預設乾跑**：只回收件人名單、不發送、不寫紀錄；要真的推播必須明確帶 `send=true` |
 | POST | `/shift-schedule-reminders/auto-schedule?year=&month=[&userId=][&apply=true]` | Superadmin | 補跑自動排班。**預設乾跑**，要真的寫入必須帶 `apply=true`。與 26 號排程的差別：**不發任何通知** —— 排程沒跑到要補救時，通知與排班該分開處理 |
 | GET | `/shift-schedule-reminders/auto-schedule-preview?year=&month=[&userId=]` | Superadmin | **唯讀**預覽自動排班結果：每位逾期者排出來的例假／休假日期，以及**排不出合法班表**者與其原因 |
-| GET | `/shift-schedule-reminders/clock-out-preview?at=HH:mm` | Superadmin | **唯讀**預覽個人化下班提醒：今天誰打了上班卡沒打下班卡、各自的提醒時點、此刻誰會被推、誰因每人每日去重而跳過。`at` 可模擬時刻，不必等到 17:33 才驗得了 |
+| GET | `/shift-schedule-reminders/clock-out-preview?at=HH:mm` | Superadmin | **唯讀**預覽個人化下班提醒：今天誰打了上班卡沒打下班卡、各自的提醒時點、此刻誰會被推、誰因每人每日去重而跳過；另回 `customClockInRows`（自訂上下班時段者的上班提醒時點，2026-09-30）。`at` 可模擬時刻，不必等到 17:33 才驗得了 |
 
 > ⚠️ **手動觸發為何預設乾跑**：這支端點的作用就是對外發 LINE，誤觸會讓真實同仁收到看不懂的通知，
 > 而 **LINE 不支援撤回已送出的推播**。安全的那一邊才該是預設值。
