@@ -71,6 +71,41 @@
             </div>
           </div>
 
+          <!-- 補休時數卡：目前可用＝已扣除送簽中與已核准的補休假（與請假表單同一公式） -->
+          @if (compensatory(); as c) {
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#clock"></use></svg>
+                補休時數
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-12 col-md-4">
+                    <div class="form-label fw-500 text-muted small">目前可用</div>
+                    <div class="fs-4 fw-600 text-primary">{{ c.availableHours | number:'1.0-1' }} <span class="fs-6 fw-normal text-muted">小時</span></div>
+                  </div>
+                  <div class="col-6 col-md-4">
+                    <div class="form-label fw-500 text-muted small">累計取得</div>
+                    <div>{{ (c.openingHours + c.totalOvertimeHours) | number:'1.0-1' }} 小時</div>
+                  </div>
+                  <div class="col-6 col-md-4">
+                    <div class="form-label fw-500 text-muted small">已使用（含送簽中）</div>
+                    <div>{{ c.usedCompensatoryHours | number:'1.0-1' }} 小時</div>
+                  </div>
+                </div>
+                @if (c.openingHours > 0) {
+                  <div class="text-xs text-muted mt-3">
+                    @if (c.openingExpired) {
+                      系統上線前累計的補休 {{ c.openingHours | number:'1.0-1' }} 小時已於 {{ c.openingExpiry | date:'yyyy/MM/dd' }} 到期，未休部分不計入。
+                    } @else {
+                      其中系統上線前累計的補休尚餘 {{ c.openingRemaining | number:'1.0-1' }} 小時，須於 {{ c.openingExpiry | date:'yyyy/MM/dd' }} 前休完。
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
           <!-- 員工資訊卡 -->
           <div class="card border-0 shadow-sm mb-4">
             <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">

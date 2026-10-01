@@ -36,6 +36,7 @@ public sealed class AppRouter(
     InsuranceBracketHandler insuranceBrackets,
     PayrollHandler         payroll,
     OvertimeReportHandler  overtimeReport,
+    CompensatoryReportHandler compensatoryReport,
     PaymentReportHandler   paymentReport,
     ProjectWaterLevelHandler projectWaterLevel,
     InvoiceOcrHandler      invoiceOcr,
@@ -111,6 +112,9 @@ public sealed class AppRouter(
             // quotes / request-attachments 的 blob name 含日期子路徑（yyyy/MM/{guid}{ext}），需以 slice pattern 接多段
             ("GET",    ["files", "quotes", .. var quotePath])             => await files.GetQuoteAsync(string.Join("/", quotePath)),
             ("GET",    ["files", "request-attachments", .. var attPath]) => await files.GetRequestAttachmentAsync(string.Join("/", attPath)),
+            // 明細憑證（發票 / 收據）：前端平常直接用 blob 原始網址，此代理只供預覽 HEIC 時取 bytes 轉檔（避開 Storage CORS）
+            ("GET",    ["files", var itemContainer and ("invoices" or "advance-files" or "write-off-invoices" or "travel-write-off-invoices"), .. var itemPath])
+                => await files.GetItemFileAsync(itemContainer, string.Join("/", itemPath)),
 
             // ── Auth ──────────────────────────────────────────────────────────
             ("POST",   ["auth", "login"])             => await auth.LoginAsync(req),
@@ -371,6 +375,7 @@ public sealed class AppRouter(
 
             // ── Reports ─────────────────────────────────────────────────────────
             ("GET",    ["reports", "overtime"])                    => await overtimeReport.GetAllAsync(req),
+            ("GET",    ["reports", "compensatory"])                => await compensatoryReport.GetAllAsync(req),
             // due / export 兩條三段式必須排在兩段式 ["reports","payment"] 之前
             ("GET",    ["reports", "payment", "due"])              => await paymentReport.GetDueAsync(req),
             ("GET",    ["reports", "payment", "export"])           => await paymentReport.GetExportAsync(req),
@@ -411,6 +416,8 @@ public sealed class AppRouter(
             ("GET",    ["me", "profile"])                                 => await employeeProfile.GetMineAsync(req),
             ("GET",    ["me", "files", var container, var fileName])      => await files.GetMineAsync(req, container, fileName),
             ("GET",    ["me", "payroll"])                                 => await payroll.GetMineAsync(req),
+            // 自己的補休餘額：與 /leave-requests/compensatory-hours 同一支（對象恆為 JWT sub），但只需登入、免 leave-requests:read
+            ("GET",    ["me", "compensatory-hours"])                      => await leaveRequests.GetCompensatoryHoursAsync(req),
 
             // ── LINE 綁定 ─────────────────────────────────────────────────────
             ("GET",    ["line", "bind-url"])         => await line.GetBindUrlAsync(req),
@@ -460,6 +467,8 @@ public sealed class AppRouter(
             // quotes（報價單）/ request-attachments（整單附件）為一般業務檔案（任何登入者皆可讀，與 vendor-passbooks 同層）
             ("GET", ["files", "quotes", ..])            => null,
             ("GET", ["files", "request-attachments", ..]) => null,
+            // 明細憑證四個容器：一般業務檔案（原本即以 blob 原始網址直接顯示），登入即可
+            ("GET", ["files", "invoices" or "advance-files" or "write-off-invoices" or "travel-write-off-invoices", ..]) => null,
 
             // Users（lookup 不需權限，登入即可）
             ("GET",    ["users", "lookup"])               => null,
@@ -668,6 +677,8 @@ public sealed class AppRouter(
 
             // Reports
             ("GET",    ["reports", "overtime"])                    => PermissionCodes.ReportsOvertimeRead,
+            // 加班補休時數總表：沿用加班紀錄的權限碼（金額欄另由 Handler 依 reports-overtime:amount 抹除）
+            ("GET",    ["reports", "compensatory"])                => PermissionCodes.ReportsOvertimeRead,
             ("GET",    ["reports", "payment", "due"])              => PermissionCodes.ReportsPaymentRead,
             ("GET",    ["reports", "payment", "export"])           => PermissionCodes.ReportsPaymentRead,
             ("GET",    ["reports", "payment"])                     => PermissionCodes.ReportsPaymentRead,

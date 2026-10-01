@@ -24,7 +24,8 @@ import {Department} from '../../../departments/models/department.model';
 import {ApprovalFlowStepSummary} from '../../../approvals/models/approval.model';
 import {JobTitleLookup} from '../../../job-titles/models/job-title.model';
 import {UserLookup} from '../../../users/models/user.model';
-import heic2any from 'heic2any';
+import {ToastrService} from 'ngx-toastr';
+import {convertHeicIfNeeded, heicFailedMessage} from '@shared/utils/heic';
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
 import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
@@ -39,6 +40,7 @@ type AmountField = 'total' | 'cash' | 'check';
 })
 export class AdvanceForm implements OnInit {
   private fb             = inject(FormBuilder);
+  private toastr = inject(ToastrService);
   private service        = inject(AdvanceRequestService);
   private projectService = inject(ProjectService);
   private jobTitleSvc    = inject(JobTitleService);
@@ -303,7 +305,9 @@ export class AdvanceForm implements OnInit {
     if (!input.files?.length) return;
     let file = input.files[0];
     input.value = '';
-    file = await this._convertHeicIfNeeded(file);
+    const converted = await this._convertHeicIfNeeded(file);
+    if (!converted) return;
+    file = converted;
 
     const ctrl = this.itemArray.at(rowIndex);
     const id = ctrl.get('id')?.value as string;
@@ -332,16 +336,16 @@ export class AdvanceForm implements OnInit {
   }
   closePreview() { this.previewFile = null; }
 
-  /** HEIC/HEIF → JPEG 轉換 */
-  private async _convertHeicIfNeeded(file: File): Promise<File> {
-    const name = file.name.toLowerCase();
-    if (!name.endsWith('.heic') && !name.endsWith('.heif')) return file;
+  /**
+   * HEIC/HEIF → JPEG（iPhone 預設格式，瀏覽器無法顯示）。共用 shared/utils/heic：
+   * 轉不了就提示並回 null（拒收），不可再把 HEIC 原檔送出 —— 存進去後就無法線上預覽。
+   */
+  private async _convertHeicIfNeeded(file: File): Promise<File | null> {
     try {
-      const blob = await heic2any({blob: file, toType: 'image/jpeg', quality: 0.85}) as Blob;
-      const jpegName = file.name.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg');
-      return new File([blob], jpegName, {type: 'image/jpeg'});
+      return await convertHeicIfNeeded(file);
     } catch {
-      return file;
+      this.toastr.error(heicFailedMessage(file.name), '無法轉換圖片');
+      return null;
     }
   }
 
