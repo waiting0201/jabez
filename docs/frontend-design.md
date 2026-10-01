@@ -2021,6 +2021,9 @@ async onFileSelected(event: Event) {
    > 新款 iPhone 的 HEIC 解不開時**靜默存入 HEIC 原檔**，之後預覽一律「無法預覽」。現行規則：
    > ① 判定看副檔名 / MIME / `ftyp` brand 三者（brand 清單同後端 `FileSignatureValidator`）；② heic-to（較新 libheif）為主、heic2any 為備援，皆 **dynamic import**（約 3 MB + 1.3 MB，只有碰到 HEIC 才下載）；
    > ③ 兩者都失敗才丟例外。**預覽 modal（`file-preview-modal.ts`）遇到 `.heic/.heif` 會先抓 bytes 轉 JPEG object URL 再顯示**（明細憑證走 `/files/{container}/{*path}` 代理取 bytes），救的是已存進去的歷史檔，關閉時 revoke。
+   > ⚠ modal 內觸發轉檔的 `effect` **必須只相依 `file()`**，清除 / 轉檔一律包在 `untracked()` 裡：清除時會讀 `heicUrl()`，
+   > 不包的話轉檔完成寫入 `heicUrl` 就會讓 effect 重跑、把剛轉好的圖清掉再轉 —— 無限循環、畫面永遠停在「轉換中」（2026-10 上線後實際踩到）。
+   > 另有 60 秒逾時保險（`HEIC_PREVIEW_TIMEOUT_MS`），逾時改顯示「下載」。
 2. 每檔先 push **一列 loading placeholder**（`ocrLoadingIds.add(id)` + `fileMap.set(id, file)` + `URL.createObjectURL` 預覽），即時回饋。
 3. `Promise.all` 並行呼叫 `ocrInvoice`，**回傳為陣列**（一張圖可含多張發票/票根）：
    - 第 1 筆 patch 進 placeholder 那列；第 2..N 筆**各 push 一新列**，新列產生新 `id`、`fileMap.set(newId, file)` **指向同一個 File 物件**（→ 存檔時各 append 一份複本，N 列各存一份檔案）。
