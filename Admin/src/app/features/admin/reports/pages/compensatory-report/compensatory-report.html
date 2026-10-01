@@ -1,0 +1,115 @@
+<div class="container-fluid py-3">
+  <!-- Header -->
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
+      <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#clock"></use>
+      </svg>
+      <h4 class="mb-0">加班補休時數總表</h4>
+    </div>
+    <button class="btn btn-outline inline-flex items-center gap-1" [disabled]="filteredRows().length === 0" (click)="exportExcel()">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#download"></use></svg>
+      匯出 Excel
+    </button>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+
+      <!-- Toolbar: 篩選列 -->
+      <div class="px-4 py-3 border-b">
+        <div class="flex flex-wrap items-center gap-2">
+          <select class="form-select w-full sm:w-auto sm:min-w-[160px]"
+                  [ngModel]="selectedDepartmentId()" (ngModelChange)="onDepartmentChange($event)">
+            <option value="">全部部門</option>
+            @for (d of departments(); track d.id) {
+              <option [value]="d.id">{{ d.name }}</option>
+            }
+          </select>
+          <select class="form-select w-full sm:w-auto sm:min-w-[160px]"
+                  [ngModel]="selectedEmployeeId()" (ngModelChange)="selectedEmployeeId.set($event)">
+            <option value="">全部員工</option>
+            @for (e of employees(); track e.employeeId) {
+              <option [value]="e.employeeId">{{ e.employeeName }}</option>
+            }
+          </select>
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <input type="date" class="form-control flex-1 sm:w-auto sm:flex-none sm:min-w-[150px]"
+                   [ngModel]="dateFrom()" (ngModelChange)="dateFrom.set($event)" />
+            <span class="text-muted">~</span>
+            <input type="date" class="form-control flex-1 sm:w-auto sm:flex-none sm:min-w-[150px]"
+                   [ngModel]="dateTo()" (ngModelChange)="dateTo.set($event)" />
+          </div>
+          <button class="btn btn-primary" (click)="search()">篩選</button>
+        </div>
+        <div class="text-xs text-muted mt-2">
+          級距與期間合計只計期間內已核准、補償方式為「補休」的加班（國定假日前 8 小時屬加倍工資、不列入級距）；「待補休」為截至今日的剩餘時數（含期初，已扣除送簽中與已核准的補休假）。
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-responsive">
+        <table class="table table-hover table-sticky-first mb-0 min-w-[960px]">
+          <thead class="table-light">
+            <tr>
+              <th>員工姓名</th>
+              <th>部門</th>
+              <th class="text-end">1~2 小時<div class="text-xs text-muted fw-normal">×1.34</div></th>
+              <th class="text-end">3~8 小時<div class="text-xs text-muted fw-normal">×1.67</div></th>
+              <th class="text-end">9~12 小時<div class="text-xs text-muted fw-normal">×2.67</div></th>
+              <th class="text-end">期間合計</th>
+              <th class="text-end">期間已休</th>
+              <th class="text-end">待補休</th>
+              @if (canSeeAmount) { <th class="text-end">金額</th> }
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of filteredRows(); track row.employeeId) {
+              <tr>
+                <td class="fw-500">{{ row.employeeName }}</td>
+                <td class="text-muted small">{{ row.departmentName ?? '—' }}</td>
+                <td class="text-end">{{ row.tier134Hours | number:'1.0-1' }}</td>
+                <td class="text-end">{{ row.tier167Hours | number:'1.0-1' }}</td>
+                <td class="text-end">{{ row.tier267Hours | number:'1.0-1' }}</td>
+                <td class="text-end fw-500">{{ row.periodEarnedHours | number:'1.0-1' }}</td>
+                <td class="text-end">{{ row.periodUsedHours | number:'1.0-1' }}</td>
+                <td class="text-end fw-500 text-primary">{{ row.availableHours | number:'1.0-1' }}</td>
+                @if (canSeeAmount) {
+                  <td class="text-end">
+                    @if (row.amount !== null) {
+                      {{ row.amount | number:'1.0-0' }}
+                    } @else {
+                      <span class="text-muted" title="未設定底薪，無法換算">—</span>
+                    }
+                  </td>
+                }
+              </tr>
+            } @empty {
+              <tr>
+                <td [attr.colspan]="canSeeAmount ? 9 : 8" class="text-center text-muted py-4">
+                  @if (loading()) { 載入中... } @else { 尚無資料 }
+                </td>
+              </tr>
+            }
+          </tbody>
+          @if (filteredRows().length > 1) {
+            <tfoot class="table-light">
+              <tr class="fw-500">
+                <td>合計</td>
+                <td></td>
+                <td class="text-end">{{ totals().tier134Hours | number:'1.0-1' }}</td>
+                <td class="text-end">{{ totals().tier167Hours | number:'1.0-1' }}</td>
+                <td class="text-end">{{ totals().tier267Hours | number:'1.0-1' }}</td>
+                <td class="text-end">{{ totals().periodEarnedHours | number:'1.0-1' }}</td>
+                <td class="text-end">{{ totals().periodUsedHours | number:'1.0-1' }}</td>
+                <td class="text-end">{{ totals().availableHours | number:'1.0-1' }}</td>
+                @if (canSeeAmount) { <td class="text-end">{{ totals().amount | number:'1.0-0' }}</td> }
+              </tr>
+            </tfoot>
+          }
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>

@@ -303,6 +303,7 @@
 |--------|------|------|
 | GET | `/attendances` | 出缺勤紀錄列表（共用上方出勤打卡端點，篩選參數：`employeeId / dateFrom / dateTo / export`；含請假虛擬列，詳見上方說明）。權限：`reports-attendance:read`；列上的人工修改另需 `reports-attendance:write` |
 | GET | `/reports/overtime` | 加班紀錄報表（已核准的加班申請 + 實際打卡時數，篩選參數：`employeeId / projectId / dateFrom / dateTo`；`projectId` 以 `OvertimeRequestProjects` 的 `EXISTS` 子查詢篩選。每列回 `projects[]` 含各案時數，維持「一張加班單一列」；另回 `compensationType` / `overtimePayAmount`，供 HR 直接分辨哪些加班已轉現金。**欄位級權限**：`overtimePayAmount` 另需 `reports-overtime:amount`，缺該碼者回 `null`，頁面照進、時數與補償方式照看。`?export=true` 時 `pageSize` 上限放寬至 5000（一般為 100），供 Excel 匯出一次取回整段區間） |
+| GET | `/reports/compensatory?dateFrom=&dateTo=` | 加班補休時數總表（2026-10）：一位員工一列、不分頁；期間取得的 ×1.34 / ×1.67 / ×2.67 級距時數與合計、期間已休、截至今日待補休、金額。權限**沿用** `reports-overtime:read`，`amount` 另需 `reports-overtime:amount`（缺者回 `null`）；部門 scope 同加班紀錄；期間缺省為本月、跨度上限 400 天 |
 | GET | `/reports/payment` | 款項統計報表（依類別查詢 6 種付款相關申請）。**必填** `category`（白名單：`all` / `payment` / `advance` / `writeoff` / `travel-payment` / `travel` / `travel-writeoff`，未帶或不合法 → 400）。`all` = 全部，6 種類別主查詢 `UNION ALL` 後依 `CreatedAt DESC` 分頁；明細依各列 `SourceCategory` 分組撈回對應子表。篩選參數：`dateFrom / dateTo / paymentStatus`（**2026-09 由二態擴成四態**：空＝全部／`unpaid` 完全沒撥／`partial` 部分撥款／`paid` 全部撥款。⚠ `unpaid` 的語意已改變 —— 原本是「非全額撥款」含部分撥款）；`{主表}.CreatedAt` 為 DATETIME，`dateTo` 用 `< DATEADD(day, 1, @DateTo)` 半開區間涵蓋當日 23:59:59。沖銷類無 installments，`paymentStatus` 被忽略（`all` 時此忽略行為一致）。權限：`reports-payment:read`，**不**需要各別 `xxx-requests:read`。 |
 | GET | `/reports/payment/due` | **待撥款清單（2026-09 新增）**：依**預計撥款日**查出各期，**一期一列**（同一張單有多期就拆多列），供財務排款。參數：`category`（同上白名單；`travel-writeoff` 無 installments 表，一律回空清單）／`dueFrom` / `dueTo`（比對 `CAST(i.ExpectedDate AS DATE)`）／`installmentStatus`（`unpaid` 預設 / `paid` / `all`，白名單正規化，非法值退回 `unpaid`）／`page` / `pageSize`。**只含 `ApprovalStatus = 'approved'`** —— 撥款明細端點僅開放 approved，列出 pending 的單會讓財務點進去卻填不了實際撥款日。回傳的 `applicationType` 是 **snake_case**（`payment_request` / `advance` / `travel` / `travel_payment` / `write_off`），供前端直接組簽核作業網址 `/admin/approval-tasks/{type}/{id}/review`，**與本報表其他端點的 kebab 命名不同**。部門可視範圍同其餘兩支。權限：`reports-payment:read`。 |
 | GET | `/reports/payment/export` | 款項統計匯出（不分頁、**一列一明細**：主表 LEFT JOIN 對應子表（InvoiceItems / AdvanceRequestItems / WriteOffItems / TravelPaymentRequestItems / TravelRequestItems / TravelWriteOffItems），無明細仍輸出 1 列）；參數同上（含 `all`，6 種 export 查詢 `UNION ALL`）；前端依 `category` 對應右側 4 欄表頭（請款/沖銷/出差類別 → 發票號碼/品名/發票日期/金額；預支 → 類別/品名/數量/金額；`all` → 通用 發票號碼/類別、品名、發票日期/數量、金額，明細第 3 欄 per-row 取值）。所有「不適用欄位」皆以 `CAST(NULL AS …)` 明確轉型（裸 `NULL` 會被 SQL Server 視為 int，Dapper 映射 `string?`/`DateTime?` 會拋型別轉換例外 → 500）。 |
@@ -351,6 +352,7 @@
 | GET | `/me/user` | 員工查看**自己**的帳號資料（回傳與 `/users/{id}` 同型別 `UserDetailDto`，含薪資 / 加給 / 勞健保覆寫 / 各證明檔 URL / 頭像 / 簽名 / 部門 / 職稱）。從 JWT `sub` 取自身 id，**登入即可，不需 `users:read`**。供「個人資訊」唯讀頁用。**刻意不套薪資欄位級權限**：員工看自己的薪資是既有需求 |
 | GET | `/me/profile` | 員工查看**自己**的人事資料卡（回傳與 `/users/{id}/profile` 同型別 `EmployeeProfileDetailDto`，含 9 張子表 + 健保眷屬）。**登入即可，不需 `users:read`**，且**刻意不套薪資欄位級權限**（自己的薪資調整歷史照常回傳） |
 | GET | `/me/payroll?months=12` | 員工查看**自己**近 N 個月的薪資明細（`months` 預設 12、clamp 1~24；回 `MyPayrollHistoryDto`＝`{months:[{year, month, isCurrentMonth, payroll}]}`，`payroll` 與 `/payroll` 同型別 `EmployeePayrollDto`）。**登入即可，不需 `payroll:read`**，端點不接受 employeeId 參數故無法查別人。逐月呼叫 `CalculateMonthlyPayrollAsync(y, m, userId)`，**薪資為即時重算、無月結快照**（底薪 / 加給取自 `Users` 表當下的值），到職日之前的月份不列入。供「個人資訊」→「過往薪資」Tab 用 |
+| GET | `/me/compensatory-hours` | 員工查看**自己**目前的補休時數（2026-10，「個人資訊」補休卡）：與 `/leave-requests/compensatory-hours` 同一支、回傳同型別，**只需登入、免 `leave-requests:read`** |
 | GET | `/me/files/{container}/{fileName}` | 員工自助讀取**自己的** PII 檔案代理。白名單容器：`id-cards` / `education-proofs` / `passbooks` / `indigenous-proofs` / `low-income-proofs` / `disabled-proofs` / `avatars` / `signatures`；非白名單回 404。安全機制：`fileName` 必須以自身 `userId` 開頭（後接 `.` 或 `_`），否則 403，避免員工竄改 fileName 讀他人檔案。**登入即可，不需 `users:read`**（管理端 `/files/<container>` 仍需 `users:read`） |
 
 ## LINE 綁定 / 推播用量
@@ -377,6 +379,7 @@
 | GET | `/files/passbooks/{fileName}` | 員工存摺封面代理（需 `users:read`，HR 敏感 PII） |
 | GET | `/files/quotes/{*path}` | 報價單代理（需 JWT，免特殊權限，與 vendor-passbooks 同層的一般業務檔案；blob name 含日期子路徑 `yyyy/MM/{guid}{ext}`，故 path 為多段） |
 | GET | `/files/request-attachments/{*path}` | 整單批次附件代理（需 JWT，免特殊權限；一般請款 / 預支沖銷 / 預審 共用；blob name 含日期子路徑，path 為多段） |
+| GET | `/files/{invoices\|advance-files\|write-off-invoices\|travel-write-off-invoices}/{*path}` | 明細憑證代理（2026-10，需 JWT、免特殊權限）：前端平常仍直接用 blob 原始網址，此代理只供預覽 HEIC 時取 bytes 轉 JPEG（避開 Storage CORS）；Content-Type 額外容許 `application/octet-stream`（舊資料存的是瀏覽器回報的型別） |
 
 ## 員工人事資料卡（HR Profile）
 

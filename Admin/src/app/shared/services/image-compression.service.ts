@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import heic2any from 'heic2any';
+import { convertHeicToJpeg, isHeicFile } from '../utils/heic';
 
 export interface ImageCompressionOptions {
   maxSize?: number;
@@ -9,7 +9,7 @@ export interface ImageCompressionOptions {
 /**
  * 共用圖檔壓縮服務：
  * - PDF → 直接回傳原檔（不壓縮）
- * - HEIC/HEIF → 先 heic2any 轉 JPEG，再走 Canvas 等比縮放
+ * - HEIC/HEIF → 先轉 JPEG（shared/utils/heic，轉不了會丟例外），再走 Canvas 等比縮放
  * - 其餘圖檔（JPEG/PNG/WEBP）→ Canvas 等比縮放至 maxSize × maxSize 範圍內，輸出 JPEG
  */
 @Injectable({ providedIn: 'root' })
@@ -32,8 +32,8 @@ export class ImageCompressionService {
     let workingBlob: Blob = file;
 
     // HEIC/HEIF → JPEG（iOS 預設拍照格式）
-    if (/\.(heic|heif)$/i.test(file.name) || file.type === 'image/heic' || file.type === 'image/heif') {
-      workingBlob = await heic2any({ blob: file, toType: 'image/jpeg', quality }) as Blob;
+    if (await isHeicFile(file)) {
+      workingBlob = await convertHeicToJpeg(file, quality);
     }
 
     // 讀取 DataURL

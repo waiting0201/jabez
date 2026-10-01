@@ -201,6 +201,7 @@ write_off / travel_write_off）與 `approval-tasks` 詳情共用這一份判準�
 |---|---|---|---|
 | `GET /reports/project-water-level` | `reports-project-water-level:read` | `reports-project-water-level:total` | 缺後者時 `TotalPercentage` / `PreImportUsedAmount` / `RemainingAmount` 回 `null` / `0`；頁面照進、業務執行水位照看 |
 | `GET /reports/overtime` | `reports-overtime:read` | `reports-overtime:amount` | 缺後者時 `OvertimePayAmount` 回 `null`；頁面照進、時數與 `CompensationType` 照看。本端點是唯一能以「全公司逐筆」形式看到他人加班費的地方 |
+| `GET /reports/compensatory` | `reports-overtime:read` | `reports-overtime:amount` | 加班補休時數總表（2026-10）沿用加班紀錄的兩個碼；缺後者時 `Amount` 回 `null`（金額 ÷ 時數可反推底薪，同一顧慮） |
 | `GET /users`、`GET /users/{id}`（含 `POST` / `PATCH` 的回應 DTO） | `users:read` / `users:write` | `payroll:read` | 缺後者時 [`PayrollFieldAccess.Mask`](../Api/Common/PayrollFieldAccess.cs) 把 8 個薪資欄回 `null`（底薪 / 伙食費 / 加班費 / 2 種加給 / 勞健保覆寫 / 勞退自提率）；`SendPaySlip`、`CompensatoryOpeningHours` 不含金額故保留 |
 | `GET /users/{id}/profile` | `users:read` | `payroll:read` | 缺後者時 `SalaryAdjustmentRecords` 回 `[]`；其餘 8 張子表照常 |
 | `PATCH /users/{id}`、`POST /users`、`PUT /users/{id}/profile` | `users:write` | `payroll:read` | 缺後者時薪資欄位的寫入一律忽略（不回 403，其他欄位照常存檔）；見規則 6 |
@@ -1104,6 +1105,7 @@ public sealed class GcisService(HttpClient http, ILogger<GcisService> logger) : 
 | `GET /me/profile` | `GET /users/{id}/profile`（需 `users:read`） | 「個人資訊」唯讀頁：員工查看自己的人事資料卡 + 健保眷屬 |
 | `GET /me/files/{container}/{fileName}` | `GET /files/<PII container>/{fileName}`（需 `users:read`） | 「個人資訊」唯讀頁：員工讀自己的 PII 檔案，見下方 §13.4 |
 | `GET /me/payroll?months=12` | `GET /payroll`（需 `payroll:read`，且一次回全公司） | 「個人資訊」→「過往薪資」Tab：員工查自己近 N 個月薪資明細。共用 `IPayrollReadService.CalculateMonthlyPayrollAsync(year, month, employeeId)` 的同一份公式，只多帶 employeeId 過濾，不另開計算邏輯 |
+| `GET /me/compensatory-hours` | `GET /leave-requests/compensatory-hours`（需 `leave-requests:read`） | 「個人資訊」補休時數卡（2026-10）：直接路由到同一個 `LeaveRequestHandler.GetCompensatoryHoursAsync`（對象本來就取 JWT `sub`），只是換到 `/me` 前綴免權限碼；公式單一真相為 `Common/CompensatoryBalance` |
 
 > HR 敏感 PII（`/files/indigenous-proofs/`、`/files/low-income-proofs/`、`/files/disabled-proofs/`、`/files/id-cards/`、`/files/education-proofs/`、`/files/passbooks/`）的**管理端**代理**不**走輕量模式，仍需 `users:read`；員工要讀**自己的** PII 改走 `/me/files/{container}/{fileName}`（§13.4）。
 

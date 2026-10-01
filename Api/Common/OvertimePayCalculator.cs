@@ -176,6 +176,34 @@ public static class OvertimePayCalculator
     }
 
     /// <summary>
+    /// 補休用的級距切分（加班補休時數總表）：與 <see cref="SplitHourTiers"/> 共用同一份級距表（<see cref="TiersFor"/>），
+    /// 但**不截斷至計酬上限** —— 補休本來就沒有上限（餘額以 EstimatedHours 全額計入），
+    /// 截斷的話各級距加總會對不上補休時數。超出級距表最後一段的時數併入最後一段倍率
+    /// （上班日第 3 小時起一律 ×1.67、休假日 / 例假日第 9 小時起一律 ×2.67）。
+    ///
+    /// <paramref name="dayType"/> 必須是**已經過 <see cref="EffectiveDayType"/> 收斂**的值（走 <see cref="ResolveDayContextAsync"/>）。
+    /// 國定假日沿用 <see cref="ToPayableTierHours"/>：未排活動日者前 8 小時屬「國定假日出勤加倍工資」、不列入級距，
+    /// 第 9 小時起套上班日級距 —— 故國定假日的級距加總會小於申請時數，差額即那 8 小時。
+    /// </summary>
+    public static OvertimeHourTierDto[] SplitCompensatoryTiers(decimal hours, string dayType, bool isActivityAssignee = false)
+    {
+        var tiers = TiersFor(dayType);
+        var total = Math.Max(0m, ToPayableTierHours(hours, dayType, isActivityAssignee));
+
+        decimal prev = 0m;
+        var result = new List<OvertimeHourTierDto>();
+        for (int i = 0; i < tiers.Length; i++)
+        {
+            var (upTo, mult) = tiers[i];
+            var segEnd   = i == tiers.Length - 1 ? total : Math.Min(total, upTo);
+            var segHours = Math.Max(0m, segEnd - prev);
+            if (segHours > 0m) result.Add(new OvertimeHourTierDto(mult, segHours));
+            prev = upTo;
+        }
+        return [.. result];
+    }
+
+    /// <summary>
     /// 純計算版（無 I/O）。表單試算與核准寫快照共用同一支，杜絕兩套公式漂移。
     ///
     /// <paramref name="dayType"/> 必須是**已經過 <see cref="EffectiveDayType"/> 收斂**的值。

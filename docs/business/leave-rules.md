@@ -110,7 +110,7 @@
 - 依系統統計之加班工時扣抵
 - **請假時段**：半天單位，**上午時段為 09:00–13:00**、下午 13:00–17:00；時數仍以半天 4 小時計（見上方「半天時段的代表性時刻」）。
 - **可補休時數來源兩塊**：
-  1. **期初匯入餘額**（`User.CompensatoryOpeningHours`）：系統上線前（115/1~6/30）以紙本累計、由使用者管理頁手動輸入；**須於 116/6/30（含）前休完，逾期未休部分歸零作廢**。到期日為固定常數 `LeaveRequestHandler.CompensatoryOpeningExpiry`（2027-06-30）。
+  1. **期初匯入餘額**（`User.CompensatoryOpeningHours`）：系統上線前（115/1~6/30）以紙本累計、由使用者管理頁手動輸入；**須於 116/6/30（含）前休完，逾期未休部分歸零作廢**。到期日為固定常數 `CompensatoryBalance.OpeningExpiry`（2027-06-30，[Api/Common/CompensatoryBalance.cs](../../Api/Common/CompensatoryBalance.cs)）。
   2. **系統加班補休**：07/01 起系統內已核准加班申請 `EstimatedHours` 合計（該欄本身已是**各關聯專案時數的合計快取**，故此處仍只需 SUM 父表，不必展開 `OvertimeRequestProject` 子表）；**不到期**。
      - ⚠️ **只計入 `CompensationType='compensatory'` 的加班單**（2026-08 新增）。加班申請可整單二擇一選「補休」或「加班費」；
        選加班費的單已依勞基法試算金額、隨加班日**次月**薪資發放現金，再進補休池就是同一段工時領兩次（雙重給付）。
@@ -119,6 +119,22 @@
   - 到期前：`可用 = 期初 + 系統加班 − 已用補休`
   - 到期後：`可用 = 系統加班 − max(0, 已用補休 − 期初)`（期初未用部分作廢）
 - API 端點：`GET /leave-requests/compensatory-hours`（回 `openingHours` / `openingRemaining` / `openingExpiry` / `openingExpired` / `totalOvertimeHours` / `usedCompensatoryHours` / `availableHours`）。
+- **公式單一真相**：[Api/Common/CompensatoryBalance.cs](../../Api/Common/CompensatoryBalance.cs) 的純函式 `Compute(opening, earned, used, now)`（2026-10 從 `LeaveRequestHandler` 抽出），
+  請假表單 / 送簽擋件 / 個人資訊 / 補休總表四處共用，各自只負責取三個原料（取數條件必須一致：取得＝已核准 ∧ 補休型；已用＝補休假 ∧ pending / approved）。
+
+### 補休查詢（2026-10 新增）
+
+- **個人資訊頁「補休時數」卡**（員工基本資料頁籤）：走 `GET /me/compensatory-hours`（與上方端點同一支、對象恆為本人，**只需登入**、免 `leave-requests:read`），
+  顯示「目前可用」（已扣除送簽中與已核准的補休假）/ 累計取得 / 已使用，有期初額度者加註到期日。
+- **統計報表「加班補休時數總表」**（`/admin/reports/compensatory`，`GET /reports/compensatory?dateFrom=&dateTo=`）：一位員工一列、不分頁。
+  - 權限**沿用加班紀錄**：頁面 `reports-overtime:read`、「金額」欄 `reports-overtime:amount`（前端 `canSeeAmount` 同控 th / td / 合計 / Excel，後端 `CompensatoryReportHandler` 抹 null），不另立權限碼。
+  - 部門可見性走 `IProjectAccessResolver`；部門 / 員工下拉由回傳資料去重、前端過濾（`/departments` 需 `departments:read`，不能拿來給一般主管用）。
+  - 欄位：**期間取得**的 1~2h(×1.34) / 3~8h(×1.67) / 9~12h(×2.67) 與合計、期間已休、**截至今日**待補休、金額（＝Σ 級距時數 × 倍率 × 現行時薪 `ROUND(底薪 ÷ 240, 2)`，只在總額捨入一次；未設定底薪者為「—」）。
+  - **級距於報表當下判定**：補休型加班單核准時不寫日別 / 級距快照（`OvertimeCompensationService` 只對加班費單寫），故走與加班費同一支 `OvertimePayCalculator.ResolveDayContextAsync`
+    （個人排班 → 國定假日 → 舊制行事曆；切換日前國定假日收斂回休假日），以 `SplitCompensatoryTiers(hours, dayType, isActivityAssignee)` 切分 ——
+    與加班費共用同一份級距表但**不截斷至計酬上限**（補休本來就沒有上限）：上班日第 3 小時起一律 ×1.67、休假日 / 例假日第 9 小時起一律 ×2.67；
+    **國定假日未排活動日者前 8 小時屬國定假日出勤加倍工資、不列入級距**（第 9 小時起套上班日級距），故該類加班的「期間合計」會大於三級距加總。
+  - **待補休**：四週彈性工時切換後以逐筆 lot 為準（`CompensatoryLotService.GetBalanceAsync`，同請假表單），切換日為 null 時走聚合版 `CompensatoryBalance.Compute`。
 
 ### 逐筆 lot 制（四週彈性工時，2026-09 實作）
 

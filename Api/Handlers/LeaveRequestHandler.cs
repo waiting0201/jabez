@@ -52,12 +52,6 @@ public sealed class LeaveRequestHandler(
     /// <summary>高階主管假每年額度（天）：協理以上每年 24 天，曆年未用完歸零、隔年重新給予</summary>
     private const int SeniorExecutiveAnnualDays = 24;
 
-    /// <summary>
-    /// 期初補休時數（User.CompensatoryOpeningHours）到期日：系統上線前累計的補休須於此日前休完，
-    /// 未休完即歸零作廢；此後系統內加班核准產生的補休不受此限制。全員一致故採固定常數。
-    /// </summary>
-    private static readonly DateTime CompensatoryOpeningExpiry = new(2027, 6, 30, 23, 59, 59);
-
     /// <summary>產假固定天數（法規為一次請完）</summary>
     private const int MaternityDays = 56;
 
@@ -673,27 +667,18 @@ public sealed class LeaveRequestHandler(
         return new OkObjectResult(ApiResponse.Ok($"Leave request '{id}' deleted."));
     }
 
-    /// <summary>補休時數明細（期初匯入 + 系統加班 - 已補休，含期初到期歸零）</summary>
-    private readonly record struct CompensatoryBreakdown(
-        decimal OpeningHours,      // 期初匯入（系統上線前累計）
-        decimal OpeningRemaining,  // 舊補休剩餘（期初未消耗部分；到期後為 0）
-        decimal OvertimeHours,     // 系統核准加班可補休時數
-        decimal UsedHours,         // 已送出（pending/approved）補休
-        decimal AvailableHours,    // 合計可用
-        bool    OpeningExpired);   // 期初是否已到期
-
     /// <summary>
-    /// 計算指定使用者的補休時數明細。
+    /// 計算指定使用者的補休時數明細（原料在此取，公式見 <see cref="CompensatoryBalance"/>）。
     /// FIFO：補休先消耗期初餘額，期初到期後其未用部分作廢，只剩系統加班可補休。
     /// </summary>
-    private async Task<CompensatoryBreakdown> ComputeCompensatoryAsync(Guid userId)
+    private async Task<CompensatoryBalance.Result> ComputeCompensatoryAsync(Guid userId)
     {
         // 四週彈性工時上線後改以逐筆 lot 為準（有到期日、有原始費率、FIFO 可稽核）。
         // 切換日為 null 時仍走下方的聚合版，確保地基上線不改變任何可見行為。
         if (await scheduleProvider.GetSwitchDateAsync() is not null)
         {
             var b = await CompensatoryLotService.GetBalanceAsync(db, userId);
-            return new CompensatoryBreakdown(
+            return new CompensatoryBalance.Result(
                 b.OpeningHours, b.OpeningRemaining, b.OvertimeHours,
                 b.UsedHours, b.AvailableHours, b.OpeningExpired);
         }
@@ -719,18 +704,7 @@ public sealed class LeaveRequestHandler(
                      && (l.ApprovalStatus == "approved" || l.ApprovalStatus == "pending"))
             .SumAsync(l => l.Hours);
 
-        bool expired = Clock.Now > CompensatoryOpeningExpiry;
-
-        // 期初剩餘（未消耗部分）；到期後作廢為 0
-        var openingRemaining = expired ? 0m : Math.Max(0m, opening - Math.Min(used, opening));
-
-        // 合計可用：到期前 = 期初 + 加班 - 已用；到期後 = 加班 - 超出期初的已用部分（期初未用作廢）
-        var available = expired
-            ? earned - Math.Max(0m, used - opening)
-            : opening + earned - used;
-        available = available < 0 ? 0m : available;
-
-        return new CompensatoryBreakdown(opening, openingRemaining, earned, used, available, expired);
+        return CompensatoryBalance.Compute(opening, earned, used, Clock.Now);
     }
 
     /// <summary>查詢當前使用者的可補休時數（期初匯入 + 系統加班 - 已補休；期初 116/6/30 到期歸零）</summary>
@@ -748,7 +722,7 @@ public sealed class LeaveRequestHandler(
         {
             openingHours          = b.OpeningHours,       // 期初匯入
             openingRemaining      = b.OpeningRemaining,   // 舊補休剩餘
-            openingExpiry         = lotExpiry ?? CompensatoryOpeningExpiry,
+            openingExpiry         = lotExpiry ?? CompensatoryBalance.OpeningExpiry,
             openingExpired        = b.OpeningExpired,
             totalOvertimeHours    = b.OvertimeHours,      // 系統加班可補休
             usedCompensatoryHours = b.UsedHours,

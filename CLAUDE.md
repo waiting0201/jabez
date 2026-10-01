@@ -182,6 +182,10 @@ Admin/src/app/
 │                                         #   讀失敗回 null、寫失敗改寫記憶體 fallback（儲存被封鎖者仍能在單次瀏覽期間正常登入操作）。
 │                                         #   **禁止直接呼叫 `localStorage` / `sessionStorage`**，見 [docs/frontend-design.md §15.5](docs/frontend-design.md)
 ├── shared/
+│   ├── utils/
+│   │   └── heic.ts                       # **HEIC/HEIF 轉 JPEG 的單一入口**（2026-10）：副檔名 / MIME / ftyp 三種判定，heic-to 為主、heic2any 備援（皆 dynamic import），
+│   │                                     #   **轉不了丟例外、不得退回原檔**（舊版靜默存入 HEIC 導致 PR-20261001-001 無法預覽）。六支明細表單、ImageCompressionService、預覽 modal 共用；
+│   │                                     #   預覽 modal 遇 .heic 會經 `/files/{invoices|advance-files|write-off-invoices|travel-write-off-invoices}/{*path}` 代理取 bytes 轉檔
 │   └── services/
 │       └── work-mode.service.ts          # **「四週彈性工時切換了沒」的前端唯一入口**（2026-09 新增）：走輕量端點 `GET /work-mode`，
 │                                         #   request-scoped 快取（切換日在一次瀏覽期間不會變）＋ in-flight 去重。
@@ -205,7 +209,7 @@ Admin/src/app/
     │   └── pages/ (login, register, forgot-password, lock-screen, two-factor)
     ├── account/             # 員工自助（change-password / line-bind-callback / my-profile）
     │   ├── services/my-profile.service.ts   # 呼叫 /me/user + /me/profile + /me/files + /me/payroll（自助唯讀）
-    │   └── pages/my-profile/                # 「個人資訊」唯讀頁：avatar 下拉進入，**4 Tab** 全唯讀 —— 員工基本資料 / 人事資料卡 / 健保眷屬（前 3 個比照管理頁，含薪資）＋ **過往薪資**（2026-08 新增，走 `GET /me/payroll?months=12` 列出近 12 個月，一列一月，點「明細」展開共用元件 `<app-payroll-detail-card>`；到職前月份不列、當月標「本月尚未結算」；**薪資即時重算、無月結快照**，調薪後回溯歷史月份會用現行底薪，頁面已加註說明）
+    │   └── pages/my-profile/                # 「個人資訊」唯讀頁：avatar 下拉進入（員工基本資料頁籤另有**補休時數卡**，走 `GET /me/compensatory-hours`，2026-10），**4 Tab** 全唯讀 —— 員工基本資料 / 人事資料卡 / 健保眷屬（前 3 個比照管理頁，含薪資）＋ **過往薪資**（2026-08 新增，走 `GET /me/payroll?months=12` 列出近 12 個月，一列一月，點「明細」展開共用元件 `<app-payroll-detail-card>`；到職前月份不列、當月標「本月尚未結算」；**薪資即時重算、無月結快照**，調薪後回溯歷史月份會用現行底薪，頁面已加註說明）
     ├── admin/
     │   ├── shift-schedules/  # （續）另含 **改班申請表單** `pages/shift-change-form/`（new / edit / view 三模式共用，
     │   │                       比照銷假申請）與 `models/shift-change.model.ts`、`services/shift-change.service.ts`。
@@ -265,7 +269,7 @@ Admin/src/app/
     │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出 + **Excel 總表匯出**：查詢列「匯出總表」鈕，一位員工一列 × **38 欄**（基本 4 / 應發 18 / 扣項 15 / 其他 3；2026-08 新增「加班費(加班申請)」欄，2026-09 於索引 13–17 插入「國定假日出勤天數 / 國定假日加倍工資 / 補休未休完時數 / 補休未休完津貼 / 補休結算期間」5 欄，2026-09-28 曾於索引 15–16 插入「彈性休假日出勤時數 / 加班費」2 欄，**2026-09-29 隨彈性休假日改回比照國定假日而移除**）—— **插欄 / 刪欄會讓 `rawNumberCols` 的硬編索引整體位移，四處都要重算**，現值 11/13/15/22/23/25/27/29/33/35）+ 合計列，資料直接取自已載入的 `payroll()` signal（`GET /payroll` 本身不分頁），無後端變動）
     │   ├── attendance-reminder-logs/ # 打卡提醒推播紀錄（僅 Superadmin）
     │   ├── payment-reminder-logs/ # 撥款提醒推播紀錄 + 手動觸發（僅 Superadmin）
-    │   ├── reports/        # 報表（出缺勤 / 加班 / 款項統計 / 專案水位）；**加班紀錄的「補償方式」/「加班費」兩欄 2026-09 修正**：
+    │   ├── reports/        # 報表（出缺勤 / 加班 / **加班補休時數總表**（2026-10，`/reports/compensatory`，權限沿用 `reports-overtime:read` / `:amount`，級距於報表當下依行事曆判定，見 [docs/business/leave-rules.md §補休查詢](docs/business/leave-rules.md)）/ 款項統計 / 專案水位）；**加班紀錄的「補償方式」/「加班費」兩欄 2026-09 修正**：
     │   │                      `overtime-report.ts` 的 `fetchData()` 把 API 回應逐欄手動 map 成 `OvertimeReportRow`，
     │   │                      新增欄位時漏 map 會**靜默顯示錯值**而非型別錯誤 —— `compensationType` 為 `undefined` 時
     │   │                      badge 一律落到「補休」（選加班費的單看起來像選了補休），`overtimePayAmount` 為 `undefined` 時
@@ -365,6 +369,7 @@ Api/
 │   ├── LeaveRevocationHandler.cs      # 銷假申請 CRUD + Submit（GET /leave-requests/{id}/revocable-dates 逐日可銷清單；POST /leave-requests/{id}/revocations；/leave-revocations/*；ApprovalItem 以 "leave" 解析＝跑原本的請假簽核，簽核紀錄以 "leave_revocation" 隔離）
 │   ├── TravelRequestHandler.cs        # 出差預支申請 CRUD（單號 TR-yyyyMMdd-NNN，假日執行活動為 HTR-yyyyMMdd-NNN，**皆送簽時取號**；預支後沖銷）
 │   ├── TravelPaymentRequestHandler.cs # 出差請款申請 CRUD（單號 TPR-yyyyMMdd-NNN，**送簽時取號**；小額代墊直接請款）
+│   ├── CompensatoryReportHandler.cs   # 加班補休時數總表（2026-10，`GET /reports/compensatory`）：日別判定（`OvertimePayCalculator.ResolveDayContextAsync`，與加班費同源四值日別）/ 級距切分（`SplitCompensatoryTiers`，不截斷，國定假日前 8 小時不列級距）/ 餘額（切換後 `CompensatoryLotService`、切換前 `Common/CompensatoryBalance`）/ 金額遮蔽皆在此，`CompensatoryReportReadService` 只取原料
 │   ├── OvertimeRequestHandler.cs      # 加班申請 CRUD（含補償方式 compensatory / pay；`GET /overtime-requests/estimate?date=&hours=` 加班費即時試算，對象一律取 JWT sub、不接受 employeeId）
 │   ├── AdvanceRequestHandler.cs       # 預支申請 CRUD（單號 ADV-yyyyMMdd-NNN，**送簽時取號**；追加批次沿用父單單號）＋**追加預支批次**（POST/PATCH/DELETE /advance-requests/{id}/supplements[/{roundNo}]；新增即送簽、無草稿階段；有進行中批次時禁止整單編輯/刪除）
 │   ├── WriteOffRequestHandler.cs      # 預支沖銷申請 CRUD（獨立簽核流程）＋**依預支單彙總檢視**（GET /write-off-requests/by-advance/{advanceRequestId}，回傳預支單完整資訊 + 該單全部沖銷單）＋**差額撥款分期**（PATCH /write-off-requests/{id}/installments，SUM 對應 RefundDue 超支增額）＋**支票已支付註記**（PATCH /{id}/check-payments）
@@ -509,6 +514,8 @@ Api/
 │   │                                  #      只跑腳本不改程式的話，`ImportYearAsync` 是「整年 RemoveRange 後重建」，
 │   │                                  #      有人再按一次「匯入 {年} 年」就整批沖回「補假」；只改程式不跑腳本則既有年度不會變。
 │   │                                  #      「調整放假」刻意不動（2026-09-23 業務決議只改「補假」）
+│   │                                  #   16 ADV-20261001-001 申請人移轉給黃敏旻（2026-10-01 正式站交辦）：07 的單張版，邏輯 / 閘門完全沿用 07，
+│   │                                  #      只換對照表與 @ExpectedRows；現任申請人若非代錄帳號，空跑會中止並列出，確認後改 @AllowForeignHolder=1
 │   └── Seed/                          # 一次性匯入工具（共用 RocDateParser 解民國年）
 │       ├── EmployeeImporter + EmployeeImportDtos + employee-import.json  # 員工人事資料（RUN_EMPLOYEE_IMPORT 旗標，IMPORT_UPLOAD_FILES 控制附件上傳）
 │       ├── ProjectImporter + ProjectImportDtos + project-import.json     # 專案資料（RUN_PROJECT_IMPORT 旗標，PROJECT_IMPORT_DRY_RUN 只印不寫；來源 reference/專案資料-115.07.29.xls；以 Code upsert、期別明細全量重建）
@@ -628,6 +635,7 @@ Api/
 │   │                                  #   `ICalendarDayReadService.GetHolidayDatesAsync` 的 `excludeFlexibleHoliday` **預設 false**：
 │   │                                  #   TravelRequestHandler 的 3 處假日津貼取數吃這個預設值，彈性休假日對津貼而言仍是假日。
 │   │                                  #   改名的兩個落點見 [docs/business/leave-rules.md §彈性休假日](docs/business/leave-rules.md)
+│   ├── CompensatoryBalance.cs         # 補休餘額公式單一真相（2026-10 自 LeaveRequestHandler 抽出，純函式）：期初 + 補休型加班 − 送簽中/已核准補休假，期初 2027-06-30 到期；請假 / 個人資訊 / 補休總表共用
 │   ├── RequestNoGenerator.cs          # 申請單號取號單一真相（{prefix}yyyyMMdd-NNN 當日流水號）：
 │   │                                    **2026-09 起於 SubmitAsync 取號、不再於 CreateAsync**，草稿 RequestNo 為 null（欄位 nullable + filtered unique index）；
 │   │                                    **10 種申請類型全部有單號**（2026-09 補上請假 `LV-` / 加班 `OT-` / 銷假 `LVR-`，既有非草稿單以 migration 依送簽日回填）；

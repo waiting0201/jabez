@@ -35,7 +35,7 @@ public class User
     public bool      SendPaySlip     { get; set; }   // 是否寄送薪資表
 
     // 期初補休時數：系統上線前（115/1~6/30）以紙本累計、匯入系統的補休時數；
-    // 設定於 116/6/30 前未休完即歸零（到期日為固定常數，見 LeaveRequestHandler.CompensatoryOpeningExpiry）
+    // 設定於 116/6/30 前未休完即歸零（到期日為固定常數，見 Common/CompensatoryBalance.OpeningExpiry）
     public decimal   CompensatoryOpeningHours { get; set; } = 0m;
 
     // 排班制員工（賣店 / 營業所）：六日與國定假日照常營業，對其而言皆為工作日。

@@ -115,6 +115,12 @@ export const menuItems: MenuItemType[] = [
     requiredPermission: 'reports-shift-schedule:read',
   },
   {
+    icon: '/assets/icons/sprite.svg#clock',
+    label: '加班補休時數總表',
+    url: '/admin/reports/compensatory',
+    requiredPermission: 'reports-overtime:read',
+  },
+  {
     icon: '/assets/icons/sprite.svg#credit-card',
     label: '款項統計',
     url: '/admin/reports/payment',

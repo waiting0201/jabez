@@ -5,7 +5,8 @@ import {DatePipe, DecimalPipe} from '@angular/common';
 import {DomSanitizer} from '@angular/platform-browser';
 import {HttpErrorResponse} from '@angular/common/http';
 import {firstValueFrom} from 'rxjs';
-import heic2any from 'heic2any';
+import {ToastrService} from 'ngx-toastr';
+import {convertHeicIfNeeded, heicFailedMessage} from '@shared/utils/heic';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {AttachmentsUpload} from '../../../../../shared/components/attachments-upload';
@@ -39,6 +40,7 @@ type AmountField = 'total' | 'cash' | 'check';
 })
 export class WriteOffRequestForm implements OnInit {
   private fb             = inject(FormBuilder);
+  private toastr = inject(ToastrService);
   private service        = inject(WriteOffRequestService);
   private paymentService = inject(PaymentRequestService);
   private jobTitleSvc    = inject(JobTitleService);
@@ -305,7 +307,9 @@ export class WriteOffRequestForm implements OnInit {
     const rawFiles = Array.from(input.files);
     input.value = '';
 
-    const files = await Promise.all(rawFiles.map(f => this._convertHeicIfNeeded(f)));
+    const files = (await Promise.all(rawFiles.map(f => this._convertHeicIfNeeded(f))))
+      .filter((f): f is File => f !== null);
+    if (!files.length) return;
 
     const entries = files.map(file => {
       const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -362,15 +366,16 @@ export class WriteOffRequestForm implements OnInit {
     }));
   }
 
-  private async _convertHeicIfNeeded(file: File): Promise<File> {
-    const name = file.name.toLowerCase();
-    if (!name.endsWith('.heic') && !name.endsWith('.heif')) return file;
+  /**
+   * HEIC/HEIF → JPEG（iPhone 預設格式，瀏覽器無法顯示）。共用 shared/utils/heic：
+   * 轉不了就提示並回 null（拒收），不可再把 HEIC 原檔送出 —— 存進去後就無法線上預覽。
+   */
+  private async _convertHeicIfNeeded(file: File): Promise<File | null> {
     try {
-      const blob = await heic2any({blob: file, toType: 'image/jpeg', quality: 0.85}) as Blob;
-      const jpegName = file.name.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg');
-      return new File([blob], jpegName, {type: 'image/jpeg'});
+      return await convertHeicIfNeeded(file);
     } catch {
-      return file;
+      this.toastr.error(heicFailedMessage(file.name), '無法轉換圖片');
+      return null;
     }
   }
 

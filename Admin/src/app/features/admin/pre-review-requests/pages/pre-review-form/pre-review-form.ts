@@ -6,7 +6,8 @@ import {DomSanitizer} from '@angular/platform-browser';
 import {HttpErrorResponse} from '@angular/common/http';
 import {firstValueFrom, Observable, OperatorFunction} from 'rxjs';
 import {debounceTime, distinctUntilChanged, map} from 'rxjs/operators';
-import heic2any from 'heic2any';
+import {ToastrService} from 'ngx-toastr';
+import {convertHeicIfNeeded, heicFailedMessage} from '@shared/utils/heic';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {AttachmentsUpload} from '../../../../../shared/components/attachments-upload';
@@ -43,6 +44,7 @@ import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
 })
 export class PreReviewForm implements OnInit {
   private fb           = inject(FormBuilder);
+  private toastr = inject(ToastrService);
   private service      = inject(PreReviewRequestService);
   private projects$    = inject(ProjectService);
   private jobTitleSvc  = inject(JobTitleService);
@@ -335,7 +337,9 @@ export class PreReviewForm implements OnInit {
     input.value = '';
     this.showItemsError = false;
 
-    const files = await Promise.all(rawFiles.map(f => this._convertHeicIfNeeded(f)));
+    const files = (await Promise.all(rawFiles.map(f => this._convertHeicIfNeeded(f))))
+      .filter((f): f is File => f !== null);
+    if (!files.length) return;
 
     const entries = files.map(file => {
       const id         = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -382,15 +386,16 @@ export class PreReviewForm implements OnInit {
     }));
   }
 
-  private async _convertHeicIfNeeded(file: File): Promise<File> {
-    const name = file.name.toLowerCase();
-    if (!name.endsWith('.heic') && !name.endsWith('.heif')) return file;
+  /**
+   * HEIC/HEIF → JPEG（iPhone 預設格式，瀏覽器無法顯示）。共用 shared/utils/heic：
+   * 轉不了就提示並回 null（拒收），不可再把 HEIC 原檔送出 —— 存進去後就無法線上預覽。
+   */
+  private async _convertHeicIfNeeded(file: File): Promise<File | null> {
     try {
-      const blob = await heic2any({blob: file, toType: 'image/jpeg', quality: 0.85}) as Blob;
-      const jpegName = file.name.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg');
-      return new File([blob], jpegName, {type: 'image/jpeg'});
+      return await convertHeicIfNeeded(file);
     } catch {
-      return file;
+      this.toastr.error(heicFailedMessage(file.name), '無法轉換圖片');
+      return null;
     }
   }
 
