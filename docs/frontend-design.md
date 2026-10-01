@@ -2225,7 +2225,7 @@ FullCalendar v6 的 CSS 由 JS 自動注入，**不需要改 `angular.json`**。
 | input / output | 說明 |
 |---|---|
 | `year` / `month`（required） | 顯示的月份。改值即 `gotoDate()` + `render()` |
-| `days` | 每格附加資訊（`readOnly` / `holidayName` / 活動 / `lockReason` / `leaveLabel`） |
+| `days` | 每格附加資訊（`readOnly` / `holidayName` / 活動 / `lockReason` / `leaveLabel`）。活動讀 `activities[]`（2026-10-01）：同日多筆全列，每筆「名稱」＋小字「部門｜建立者」（各限一行 …），**參與人員放原生 `title`**；舊回應無 `activities` 時退回 `activityTitle` |
 | `dayTypes` | 目前要呈現的日別（父層編輯中的狀態）；未給者取 `days[].dayType` |
 | `changedFrom` | 改班異動格：key → 原日別，虛線框 + 「原：xx」 |
 | `interactive` | false ＝ 唯讀檢視 |
@@ -2236,6 +2236,10 @@ FullCalendar v6 的 CSS 由 JS 自動注入，**不需要改 `angular.json`**。
 不能只靠 FullCalendar 的 `dateClick` —— 鍵盤（Enter / 空白鍵）觸發的 click 不走它的 pointer 事件；
 `dateClick` 端則須反過來忽略落在按鈕上的點擊，否則按請假會順便把日別切掉。
 請假表單接 `?date=` 時，**切換假別清空日期的邏輯要改成回到帶入日期**，否則使用者一選假別日期就不見了。
+
+⚠ **格內 hover 提示一律用原生 `title`，不用 `ngbTooltip`**：格子內容是 `dayCellContent` 回傳的 HTML 字串，
+Angular 指令不會被編譯；自刻 CSS popover 又會被 FullCalendar 格子的 overflow 裁掉。多行內容以 `\n` 分隔（瀏覽器會換行），
+文字一律經 `escapeHtml`。限制：觸控裝置沒有 hover，看不到 title 內容。
 
 ⚠ 傳給 `changedFrom` / `dayTypes` 的物件**必須是穩定參考**（signal / computed / 自行快取）：
 模板若每次變更偵測都回新物件，元件的 effect 會反覆重繪。

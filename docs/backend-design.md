@@ -1308,7 +1308,7 @@ Line__LoginChannelId              ↔ IConfiguration["Line:LoginChannelId"]
 
 | App Setting | 作用 |
 |---|---|
-| `App__ShiftScheduleOpenAllFutureMonths=true` | 個人排班的**所有月份**（過往月份、當月、未來月份）一律開放編輯，不受「過往唯讀」「當月僅能改當天」「10–25 日」「僅次月」任何限制（2026-09-28 由「只開未來月份」擴大，供教育訓練以不同月份示範；鍵名沿用舊名以免重設）。對應 `ShiftScheduleWindow.OpenAllFutureMonths`，於 `Program.cs` 啟動時讀入，**改值後須重啟 Function App** |
+| `App__ShiftScheduleOpenAllFutureMonths=true` | 個人排班的**所有月份**（過往月份、當月、未來月份）一律開放編輯，不受「過往唯讀」「當月僅能改當天」「開放期（前兩個月 10 日 ～ 前一個月 25 日）」任何限制（2026-09-28 由「只開未來月份」擴大，供教育訓練以不同月份示範；鍵名沿用舊名以免重設）。對應 `ShiftScheduleWindow.OpenAllFutureMonths`，於 `Program.cs` 啟動時讀入，**改值後須重啟 Function App** |
 
 ### 16.4 一次性 Seeder 工具（Startup Hook 模式）
 

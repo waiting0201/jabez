@@ -38,6 +38,18 @@ export interface ShiftScheduleDay {
   /** 鎖定為上班日的原因：activity（活動日預定人力）/ leave（已請假）/ change（已在另一張改班單內） */
   lockReason?: ShiftDayLockReason | null;
   leaveLabel?: string | null;    // 該日的假別（例「年假」「事假（簽核中）」）
+  /** 該日全部活動日（全公司，本人被指派者在前）；上面三個 activity 欄位取自其中第一筆 */
+  activities?: ShiftScheduleActivity[] | null;
+}
+
+/** 排班月曆格上的一個活動日：格內顯示「名稱／部門｜建立者」，hover 列出參與人員。 */
+export interface ShiftScheduleActivity {
+  id: number;
+  title: string;
+  departmentName: string | null;
+  createdByName: string | null;
+  isAssignee: boolean;           // 本人是否為預定人力
+  assigneeNames: string[];
 }
 
 export type ShiftDayLockReason = 'activity' | 'leave' | 'change';

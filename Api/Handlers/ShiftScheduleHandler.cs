@@ -165,17 +165,7 @@ public sealed class ShiftScheduleHandler(
         var monthStatus = await db.ShiftScheduleMonths.AsNoTracking()
             .FirstOrDefaultAsync(m => m.UserId == userId && m.Year == year && m.Month == month);
 
-        var activities = await db.ActivityDays.AsNoTracking()
-            .Where(a => a.Date >= monthStart && a.Date <= monthEnd)
-            .Select(a => new
-            {
-                a.Id,
-                a.Date,
-                a.Title,
-                IsAssignee = a.Assignees.Any(x => x.UserId == userId),
-            })
-            .ToListAsync();
-        var activityByDate = activities.ToLookup(a => a.Date.Date);
+        var activityByDate = await ShiftScheduleActivityLoader.LoadAsync(db, userId, monthStart, monthEnd);
 
         var editability = ShiftScheduleWindow.Evaluate(
             year, month, now, await ResolveGraceDeadlineAsync(userId, year, month));
@@ -186,8 +176,9 @@ public sealed class ShiftScheduleHandler(
         for (var d = monthStart; d <= monthEnd; d = d.AddDays(1))
         {
             var isPublicHoliday = publicHolidays.TryGetValue(d, out var holidayName);
-            // 同一天多個活動時，優先取本人被指派的那一筆（否則會把本人的指派蓋掉）
-            var act             = activityByDate[d].OrderByDescending(a => a.IsAssignee).FirstOrDefault();
+            // 同一天多個活動時，本人被指派者排在最前（載入器已排序），否則會把本人的指派蓋掉
+            var acts            = activityByDate[d].ToArray();
+            var act             = acts.FirstOrDefault();
             var dayLock         = locks.GetValueOrDefault(d);
 
             days.Add(new ShiftScheduleDayDto(
@@ -204,7 +195,8 @@ public sealed class ShiftScheduleHandler(
                 ActivityTitle:      act?.Title,
                 IsActivityAssignee: act?.IsAssignee ?? false,
                 LockReason:         dayLock?.Reason,
-                LeaveLabel:         dayLock?.Reason == ShiftScheduleConstraintService.LockLeave ? dayLock.Label : null));
+                LeaveLabel:         dayLock?.Reason == ShiftScheduleConstraintService.LockLeave ? dayLock.Label : null,
+                Activities:         acts));
         }
 
         var adjacent = await ShiftScheduleConstraintService.LoadAdjacentDaysAsync(

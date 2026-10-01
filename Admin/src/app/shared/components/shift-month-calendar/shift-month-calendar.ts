@@ -8,6 +8,7 @@ import zhTwLocale from '@fullcalendar/core/locales/zh-tw';
 import {
   DAY_TYPE_LABELS,
   ShiftDayType,
+  ShiftScheduleActivity,
   ShiftScheduleAdjacentDay,
   ShiftScheduleDay,
   dateKey,
@@ -181,7 +182,10 @@ export class ShiftMonthCalendar implements OnInit {
 
     if (cell?.leaveLabel) parts.push(`<div class="shift-cell__leave">${escapeHtml(cell.leaveLabel)}</div>`);
 
-    if (cell?.isActivityDay) {
+    if (cell?.activities?.length) {
+      for (const act of cell.activities) parts.push(activityHtml(act));
+    } else if (cell?.isActivityDay) {
+      // 舊回應沒有 activities 時退回只顯示名稱
       const title = cell.activityTitle ?? '活動日';
       const mine = cell.isActivityAssignee ? ' shift-cell__activity--mine' : '';
       parts.push(`<div class="shift-cell__activity${mine}">${escapeHtml(title)}</div>`);
@@ -225,6 +229,24 @@ export function lockedCellMessage(cell: ShiftScheduleDay, fallback: string): str
   if (cell.lockReason === 'change')
     return '該日已在另一張進行中的改班申請內。';
   return fallback;
+}
+
+/**
+ * 一個活動日：第一行名稱、第二行「部門｜建立者」，參與人員掛在 title 上（滑鼠移上去看得到）。
+ * 格子內容是 dayCellContent 產生的 HTML 字串，ngbTooltip 之類的 Angular 指令進不去，故用原生 title。
+ */
+function activityHtml(act: ShiftScheduleActivity): string {
+  const mine = act.isAssignee ? ' shift-cell__activity--mine' : '';
+  const meta = [act.departmentName, act.createdByName].filter(Boolean).join('｜');
+  const tip = [
+    act.title,
+    meta,
+    act.assigneeNames.length ? `參與人員：${act.assigneeNames.join('、')}` : '尚未指派參與人員',
+  ].filter(Boolean).join('\n');
+  return `<div class="shift-cell__activity${mine}" title="${escapeHtml(tip)}">`
+    + `<div class="shift-cell__activity-title">${escapeHtml(act.title)}</div>`
+    + (meta ? `<div class="shift-cell__activity-meta">${escapeHtml(meta)}</div>` : '')
+    + '</div>';
 }
 
 /** 以本地時間組 yyyy-MM-dd，避免 toISOString() 的 UTC 位移把日期退一天。 */

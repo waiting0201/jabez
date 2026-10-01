@@ -12,6 +12,10 @@ namespace Jabez.Api.Models.Dtos;
 /// <param name="IsActivityAssignee">本人是否被列為該活動日的預定人力</param>
 /// <param name="LockReason">鎖定為上班日的原因：activity（活動日預定人力）/ leave（已請假）/ null</param>
 /// <param name="LeaveLabel">該日的假別（例「年假」「事假（簽核中）」），無請假為 null</param>
+/// <param name="Activities">
+/// 該日全部活動日（全公司，本人被指派者在前）。<see cref="IsActivityDay"/> / <see cref="ActivityTitle"/> /
+/// <see cref="IsActivityAssignee"/> 取自其中第一筆，保留給鎖定訊息等既有消費點。
+/// </param>
 public sealed record ShiftScheduleDayDto(
     DateTime Date,
     string   DayType,
@@ -21,7 +25,17 @@ public sealed record ShiftScheduleDayDto(
     string?  ActivityTitle,
     bool     IsActivityAssignee,
     string?  LockReason = null,
-    string?  LeaveLabel = null);
+    string?  LeaveLabel = null,
+    ShiftScheduleActivityDto[]? Activities = null);
+
+/// <summary>排班月曆格上的一個活動日（顯示部門／建立者，hover 列出參與人員）。</summary>
+public sealed record ShiftScheduleActivityDto(
+    int      Id,
+    string   Title,
+    string?  DepartmentName,
+    string?  CreatedByName,
+    bool     IsAssignee,
+    string[] AssigneeNames);
 
 /// <summary>排班檢核結果（對應 <c>ShiftScheduleValidationResult</c>）。</summary>
 public sealed record ShiftScheduleValidationDto(

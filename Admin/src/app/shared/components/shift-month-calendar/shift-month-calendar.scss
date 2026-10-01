@@ -172,6 +172,25 @@
     font-weight: 700;
   }
 
+  // 有參與人員 tooltip（原生 title）的活動區塊：游標提示可 hover
+  .fc .shift-cell__activity[title] {
+    cursor: help;
+  }
+
+  // 名稱與「部門｜建立者」各限一行，以 … 收尾；完整內容在 title 裡。不截斷會把列高撐開
+  .fc .shift-cell__activity-title,
+  .fc .shift-cell__activity-meta {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .fc .shift-cell__activity-meta {
+    font-size: 0.62rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+  }
+
   // ⚠ `dayCellContent` 產生的 HTML 就渲染在 `.fc-daygrid-day-top` 裡面，
   // 所以這個容器**不能 display:none**（曾因此整片格子只剩底色、日期與狀態文字全不見）。
   // 這裡只是把它從「右上角的小連結」改成佔滿整格的區塊。

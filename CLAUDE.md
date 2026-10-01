@@ -211,7 +211,7 @@ Admin/src/app/
     │   │                       比照銷假申請）與 `models/shift-change.model.ts`、`services/shift-change.service.ts`。
     │   │                       **2026-09-28 改版**：月曆抽成共用元件 `shared/components/shift-month-calendar/`（個人排班 / 改班申請 /
     │   │                       簽核詳情頁三處共用）；改班表單每點一格走 `POST /shift-changes/preview` 即時試算配額與合規檢核，
-    │   │                       不合規不得送出；個人排班頁另列「我的改班申請」。**2026-09-29**：個人排班月曆的上班日格子（已儲存、今天以後）有「請假」鈕，開 `leave-requests/new?date=` 帶入該日（請假表單切換假別時回到帶入日期而非清空）。**2026-09-29 活動日優先**：個人排班頁頂端有「班表因活動日調整」提示卡（`GET /shift-schedules/adjustments`，「我知道了」呼叫 `/ack` 並刷新鈴鐺），鈴鐺 dropdown 另有「班表異動」一項；活動日／請假鎖定格若仍排著例假／休假（歷史資料），月曆與改班表單放行點選但**只能改成上班日**（`isLockedOffCell`）。**2026-09-29 前後月對照**：個人排班月曆以淡色格顯示前後月班表（`adjacentDays`，未定案月份標「未排定」），資料與跨月檢核同一份；順帶修正跨月檢核原本讀不到前後月上班日（上班日不落地）而形同虛設。⚠ 舊排班頁曾以 `@if (loading())` 拆掉 FullCalendar，
+    │   │                       不合規不得送出；個人排班頁另列「我的改班申請」。**2026-09-29**：個人排班月曆的上班日格子（已儲存、今天以後）有「請假」鈕，開 `leave-requests/new?date=` 帶入該日（請假表單切換假別時回到帶入日期而非清空）。**2026-09-29 活動日優先**：個人排班頁頂端有「班表因活動日調整」提示卡（`GET /shift-schedules/adjustments`，「我知道了」呼叫 `/ack` 並刷新鈴鐺），鈴鐺 dropdown 另有「班表異動」一項；活動日／請假鎖定格若仍排著例假／休假（歷史資料），月曆與改班表單放行點選但**只能改成上班日**（`isLockedOffCell`）。**2026-09-29 前後月對照**：個人排班月曆以淡色格顯示前後月班表（`adjacentDays`，未定案月份標「未排定」），資料與跨月檢核同一份；順帶修正跨月檢核原本讀不到前後月上班日（上班日不落地）而形同虛設。**2026-10-01**：月曆上的活動日列出全公司同日全部活動、加註「部門｜建立者」，滑鼠移上去（原生 `title`）顯示參與人員；個人排班頁預設月份於 26 日起改看下下月（次月已截止）。⚠ 舊排班頁曾以 `@if (loading())` 拆掉 FullCalendar，
     │   │                       重建後吃預設月份的 `initialDate` → 選 12 月卻顯示 10 月格子（「12/25 沒顯示」的真因），共用元件已避開
     │   ├── activity-days/    # **活動日管理（2026-09 新增）**：協理排定活動日 + 勾選預定人力，`activity-days:write` 才顯示選單。
     │   │                       ⚠ 部門下拉的 `ngModelChange` 會清空已選人力（候選名單整組換掉），
@@ -338,7 +338,7 @@ Api/
 │   ├── RouterFunction.cs              # HttpTrigger，catch-all route {*route}
 │   ├── AttendanceReminderFunction.cs  # TimerTrigger：限定 7-9 / 16-18 Taipei 時段每分鐘檢查，落在「上下班前 2 分鐘起算 **30 分鐘**時間窗」內則 LINE 推播（2026-09-09 由 10 分鐘放寬，見 attendance-reminder.md）；cron 由 `AttendanceReminderCron` app setting 控制。**`IsPastDue` 不跳過**（冷啟動延遲會整天不發），改由 Service 端 `batchStart` 冪等閘去重；**公司休假日只推排班制員工**（`IsShiftWorker`，賣店照常營業），一個都沒有時維持整批跳過；**只推持有 `attendances:write` 者**（2026-09：約聘 / 外聘等無打卡權限的角色不收打卡提醒，申請 / 簽核通知照收）；**新制下自訂上下班時段者（賣店等，2026-09-30）改依個人時段 S−2／E−2 分推播**（不在 08:58 整批內，每人每日去重；當日有上午半天假者改收 12:55 交接提醒），見 [docs/business/attendance-reminder.md](docs/business/attendance-reminder.md)；休假日判定走 `WorkCalendarHelper.IsHolidayAsync`（行事曆 `IsHoliday` 優先、含國定假日 / 彈性休假日，未匯入年度退回六日）—— 2026-09 前只看六日，國定假日（中秋、教師節）照推全員
 │   ├── ShiftScheduleReminderFunction.cs # **排班提醒 TimerTrigger（四週彈性工時 §3.5，2026-09 新增）**：
-│   │                                    10 號 09:00 開放／20 號 09:00 未完成／25 號 12:00 截止／26 號 09:00 已自動排班。
+│   │                                    10 號 09:00 開放（**對象為下下月**，2026-10-01）／20 號 09:00 未完成／25 號 12:00 截止／26 號 09:00 已自動排班（後三者對象為次月）。
 │   │                                    cron `ShiftScheduleReminderCron` 現值 `0 0 1,4 * * *`＝**每天** UTC 01:00/04:00（台北 09:00/12:00），
 │   │                                    刻意由 Service 判斷「今天是不是那四個號碼」而非寫進 cron ——
 │   │                                    25 號是 12:00、其餘是 09:00，單一 cron 表達不出這種組合。
@@ -535,6 +535,8 @@ Api/
 │   ├── IEscalationService.cs          # 簽核升級服務介面
 │   ├── EscalationService.cs           # 簽核升級邏輯（上層部門主管遞迴 + 代理人）＋ **上層級關卡無人時往上層部門接手**（2026-09，`FindSuperiorInAncestorDepartmentsAsync`）：`UseDirectSupervisor` 步驟在同部門找不到更高階者時，沿部門 `ParentId` 往上找 `Level <` 申請人的最接近一位並以升級審核指派，找不到才退回原本的「跳過該關」；全部 9 種申請類型適用，修正「部門最高主管送單一路跳到底 → 無人審即自動核准」；**指派前先排除「流程後續固定關卡本來就會簽到的人」**（`laterStepScopes` / `StepReviewerScope`，範圍由 `ApprovalFlowService.BuildLaterFixedStepScopes` 算出，只認固定池關卡：MinDays 擋掉 / 指定審核 / 上層級 / 全不限者皆不算），否則「Step1 升級到總監 + 最後一關固定總監」會變同一人連簽兩關，並撞上總監跨步驟去重的「全池皆已審」限縮而卡死；同職級多人再依 `HireDate` → `Id` 排序確保決定性（送單與推進兩次解析拿到同一人）；「同部門有無上級」三處判定（`ApprovalFlowService.FindNthSuperiorLevelAsync` / `ApprovalTaskHandler.AuthorizeStepAsync` / 待審清單 SQL）一律加上 `Status='active'`，離職者不再撐住一個沒人能審的層級
 │   ├── EscalationResult.cs            # 升級結果 record
+│   ├── ShiftScheduleActivityLoader.cs # **排班月曆的活動日載入（2026-10-01）**：static、唯讀，全公司活動日 + 部門 / 建立者 / 參與人員姓名，
+│   │                                    同日本人被指派者在前；`ShiftScheduleHandler` 與 `ShiftChangeRequestService` 共用（原各寫一份且同日只取一筆）
 │   ├── ActivityScheduleOverrideService.cs # **活動日覆蓋個人排班（2026-09-29）**：static、不呼叫 SaveChanges。
 │   │                                    衝突日改上班日（刪列）＋ 補排一天 ＋ 落 `ShiftScheduleAdjustment`；**不動 `ShiftScheduleMonth.Status`**
 │   │                                    （改 draft 會誤觸 20 號提醒與 26 號整月自動排班）；過去日／今天／國定假日不處理。
@@ -712,7 +714,7 @@ Api/
 │   ├── ShiftScheduleValidator.cs      # 排班「能不能存」單一真相（純函式）：`例假 ≥4 天 ∧ 連續上班 ≤12 天 ∧ 任意 14 天內 ≥2 例假` ⇒ 可存；
 │   │                                    休假未排滿只警示，應排天數 `RequiredRestDaysFor(y, m, 已排例假)` ＝ 合計 8／9 − max(4, 例假)（多排的例假由休假轉入）。滾動 14 天視窗**跨月**（併入前後月已定案班表，次月未排則該側不檢核）。
 │   │                                    ⚠ 空白月曆第一次儲存必然被擋，為預期行為，UI 須一進畫面就提示
-│   ├── ShiftScheduleWindow.cs         # 排班開放期單一真相（純函式）：10–25 日排次月／當月僅當日 08:30 前改當天／歷史唯讀／
+│   ├── ShiftScheduleWindow.cs         # 排班開放期單一真相（純函式）：**每個月份開放期＝前兩個月 10 日 ～ 前一個月 25 日**（2026-10-01 由「10–25 日只排次月」放寬：10–25 日可排次月＋下下月、26 日起只排下下月）／當月僅當日 08:30 前改當天／歷史唯讀／
 │   │                                    當月到職者自 `User.CredentialsSentAt` 起 3 個工作天寬限（以 `CalendarDay` 判定，**刻意不用個人班表**）
 │   └── Constants.cs                   # 含 **`EnvironmentLabel`（非正式環境的訊息標記，LINE 與 Email 共用）**：
 │                                        設定鍵 `App:EnvironmentLabel`。拆成兩個鍵的必然結果是有人只設一邊、

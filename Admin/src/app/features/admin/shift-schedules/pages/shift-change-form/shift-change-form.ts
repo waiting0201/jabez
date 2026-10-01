@@ -16,7 +16,7 @@ import {ShiftMonthCalendar, lockedCellMessage} from '../../../../../shared/compo
 type Mode = 'new' | 'edit' | 'view';
 
 /**
- * 改班申請（四週彈性工時 §3.5.2）—— 開放期（10–25 日）結束、班表定案鎖定後的異動途徑。
+ * 改班申請（四週彈性工時 §3.5.2）—— 開放期（前兩個月 10 日 ～ 前一個月 25 日）結束、班表定案鎖定後的異動途徑。
  *
  * 三模式共用一個元件（new / edit / view），靠 route data 的 `mode` 切換，
  * 比照銷假申請 leave-revocation-form 的做法。

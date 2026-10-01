@@ -74,11 +74,7 @@ public static class ShiftChangeRequestService
 
         var occupied = await OccupiedDatesAsync(db, userId, year, month, excludeRequestId);
 
-        var activities = await db.ActivityDays.AsNoTracking()
-            .Where(a => a.Date >= monthStart && a.Date <= monthEnd)
-            .Select(a => new { a.Date, a.Title, IsAssignee = a.Assignees.Any(x => x.UserId == userId) })
-            .ToListAsync();
-        var activityByDate = activities.ToLookup(a => a.Date.Date);
+        var activityByDate = await ShiftScheduleActivityLoader.LoadAsync(db, userId, monthStart, monthEnd);
 
         var resultMap = new Dictionary<DateTime, string>(baseMap);
         var changeList = new List<ShiftChangeDateDto>();
@@ -96,7 +92,8 @@ public static class ShiftChangeRequestService
         for (var d = monthStart; d <= monthEnd; d = d.AddDays(1))
         {
             var isHoliday = holidays.TryGetValue(d, out var holidayName);
-            var act       = activityByDate[d].OrderByDescending(a => a.IsAssignee).FirstOrDefault();
+            var acts      = activityByDate[d].ToArray();
+            var act       = acts.FirstOrDefault();
             var dayLock   = locks.GetValueOrDefault(d);
             var isPast    = d < today && !ShiftScheduleWindow.OpenAllFutureMonths;
             var lockReason = dayLock?.Reason ?? (occupied.Contains(d) ? LockPendingChange : null);
@@ -114,7 +111,8 @@ public static class ShiftChangeRequestService
                 ActivityTitle:      act?.Title,
                 IsActivityAssignee: act?.IsAssignee ?? false,
                 LockReason:         lockReason,
-                LeaveLabel:         dayLock?.Reason == ShiftScheduleConstraintService.LockLeave ? dayLock.Label : null));
+                LeaveLabel:         dayLock?.Reason == ShiftScheduleConstraintService.LockLeave ? dayLock.Label : null,
+                Activities:         acts));
         }
 
         var result = await ShiftScheduleConstraintService.EvaluateAsync(

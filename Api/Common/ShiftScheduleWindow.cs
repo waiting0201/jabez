@@ -5,7 +5,7 @@ public enum ShiftScheduleEditMode
 {
     /// <summary>不可編輯。</summary>
     Closed,
-    /// <summary>開放期內排次月（每月 10 日 00:00 ～ 25 日 23:59）。</summary>
+    /// <summary>開放期內排未來月份（某月的開放期＝前兩個月 10 日 00:00 ～ 前一個月 25 日 23:59）。</summary>
     Open,
     /// <summary>當月到職者的寬限期（自帳號通知寄出起 3 個工作天，可排當月）。</summary>
     GracePeriod,
@@ -23,7 +23,9 @@ public sealed record ShiftScheduleEditability(bool CanEdit, ShiftScheduleEditMod
 ///
 /// 規則（flexible-work-hours.md §3.5）：
 ///   <list type="bullet">
-///     <item>每月 <b>10 日 00:00 ～ 25 日 23:59</b> 開放排定<b>次月</b>班表，期間內可修改及暫存</item>
+///     <item>每個月份的開放期＝<b>前兩個月 10 日 00:00 ～ 前一個月 25 日 23:59</b>，期間內可修改及暫存
+///           （2026-10-01 由「每月 10–25 日只開次月」放寬）。故每月 10–25 日可排次月＋下下月、
+///           26 日至次月 9 日只可排下下月（屆時已成為次月）</item>
 ///     <item>當月：允許於<b>當日早上 08:30 前</b>調整<b>當天</b>狀態（臨時調休），且仍受擋存判準約束</item>
 ///     <item>已過往之月份與日期<b>不可修改</b>，僅供歷史查詢</item>
 ///     <item>當月到職者另有寬限期（§3.5.3），自帳號通知寄出起 3 個<b>工作天</b></item>
@@ -37,10 +39,10 @@ public sealed record ShiftScheduleEditability(bool CanEdit, ShiftScheduleEditMod
 /// </summary>
 public static class ShiftScheduleWindow
 {
-    /// <summary>開放期起始日（含）。</summary>
+    /// <summary>開放期起始日（含）：目標月份前兩個月的這一天起開放。</summary>
     public const int OpenFromDay = 10;
 
-    /// <summary>開放期結束日（含，當日 23:59:59 截止）。</summary>
+    /// <summary>開放期結束日（含，當日 23:59:59 截止）：目標月份前一個月的這一天截止。</summary>
     public const int OpenToDay = 25;
 
     /// <summary>當日臨時調休的截止時刻。</summary>
@@ -56,7 +58,7 @@ public static class ShiftScheduleWindow
 
     /// <summary>
     /// <b>測試用開關</b>：為 true 時，<b>所有月份</b>（過往月份、當月、未來月份）一律視為開放期，
-    /// 不受「過往唯讀」「當月僅能改當天」「10–25 日」「僅次月」任何限制（供教育訓練以不同月份示範）。
+    /// 不受「過往唯讀」「當月僅能改當天」「開放期」任何限制（供教育訓練以不同月份示範）。
     /// 設定鍵名稱沿用舊名（當初只開未來月份）以免測試站重設 App Setting。
     /// 由 <c>Program.cs</c> 於啟動時寫入；<b>正式站不得設定</b>。
     /// </summary>
@@ -67,7 +69,6 @@ public static class ShiftScheduleWindow
     {
         var target       = new DateTime(year, month, 1);
         var currentMonth = new DateTime(now.Year, now.Month, 1);
-        var nextMonth    = currentMonth.AddMonths(1);
 
         if (OpenAllFutureMonths)
             return new(true, ShiftScheduleEditMode.Open, "【測試模式】所有月份一律開放排班（正式站不適用）。");
@@ -87,19 +88,28 @@ public static class ShiftScheduleWindow
               + "其餘異動請提出〈改班申請〉。");
         }
 
-        if (target == nextMonth)
+        // 未來月份：每個月份的開放期 ＝ 前兩個月 10 日 00:00 ～ 前一個月 25 日 23:59（2026-10-01 由「只開次月」放寬）。
+        // 以「提前幾個月」分流：次月開放至本月 25 日、下下月自本月 10 日起開放、更遠的月份尚未開放。
+        var monthsAhead = (target.Year - currentMonth.Year) * 12 + target.Month - currentMonth.Month;
+        var openFrom    = target.AddMonths(-2).AddDays(OpenFromDay - 1);   // 前兩個月 10 日
+        var closeAt     = target.AddMonths(-1).AddDays(OpenToDay - 1);     // 前一個月 25 日（當日 23:59 截止）
+
+        if (monthsAhead == 1)
         {
-            if (now.Day is >= OpenFromDay and <= OpenToDay)
+            if (now.Day <= OpenToDay)
                 return new(true, ShiftScheduleEditMode.Open,
-                    $"次月排班開放中（每月 {OpenFromDay} 日 00:00 ～ {OpenToDay} 日 23:59）。");
+                    $"{target:yyyy 年 M 月}排班開放中（{openFrom:M/d} 00:00 ～ {closeAt:M/d} 23:59）。");
 
             return new(false, ShiftScheduleEditMode.Closed,
-                now.Day < OpenFromDay
-                    ? $"次月排班尚未開放，將於 {now:yyyy/MM} 月 {OpenFromDay} 日開放。"
-                    : $"次月排班已於 {OpenToDay} 日 23:59 截止，異動請提出〈改班申請〉。");
+                $"{target:yyyy 年 M 月}排班已於 {closeAt:M/d} 23:59 截止，異動請提出〈改班申請〉。");
         }
 
-        return new(false, ShiftScheduleEditMode.Closed, "僅開放排定次月班表。");
+        if (monthsAhead == 2 && now.Day >= OpenFromDay)
+            return new(true, ShiftScheduleEditMode.Open,
+                $"{target:yyyy 年 M 月}排班開放中（{openFrom:M/d} 00:00 ～ {closeAt:M/d} 23:59）。");
+
+        return new(false, ShiftScheduleEditMode.Closed,
+            $"{target:yyyy 年 M 月}排班尚未開放，將於 {openFrom:yyyy/M/d} 開放。");
     }
 
     /// <summary>
