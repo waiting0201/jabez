@@ -7,6 +7,7 @@ import { User } from '../../../admin/users/models/user.model';
 import { EmployeeProfileDetail, SalaryAdjustmentRecord } from '../../../admin/users/models/employee-profile.model';
 import { MyPayrollMonth } from '../../models/my-payroll.model';
 import { PayrollDetailCard } from '@shared/components/payroll-detail-card';
+import { CompensatoryHours } from '../../../admin/leave-requests/models/leave-request.model';
 
 @Component({
   selector: 'app-my-profile',
@@ -35,6 +36,8 @@ export class MyProfile implements OnInit {
   user = signal<User | null>(null);
   profile = signal<EmployeeProfileDetail | null>(null);
   payrollMonths = signal<MyPayrollMonth[]>([]);
+  /** 補休時數（載入失敗維持 null，卡片不顯示，不影響其他資料） */
+  compensatory = signal<CompensatoryHours | null>(null);
 
   /** 目前展開明細的月份 key（yyyy-MM），null＝全部收合 */
   expandedKey = signal<string | null>(null);
@@ -44,6 +47,7 @@ export class MyProfile implements OnInit {
 
   ngOnInit(): void {
     this._loadUser();
+    this._loadCompensatory();
   }
 
   switchTab(tab: 'basic' | 'hr' | 'dependents' | 'payroll'): void {
@@ -151,6 +155,13 @@ export class MyProfile implements OnInit {
         this.payrollLoading.set(false);
       },
       error: () => { this.errorMsg.set('無法載入薪資紀錄，請稍後再試。'); this.payrollLoading.set(false); },
+    });
+  }
+
+  private _loadCompensatory(): void {
+    this.myProfileService.getMyCompensatoryHours().subscribe({
+      next: c => this.compensatory.set(c),
+      error: () => this.compensatory.set(null),
     });
   }
 

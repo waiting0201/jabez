@@ -124,6 +124,19 @@ public sealed class FileHandler(IBlobStorageService blob, ILogger<FileHandler> l
     public Task<IActionResult> GetRequestAttachmentAsync(string path)
         => GetSubPathFileAsync(RequestAttachmentContainer, path, IsImageOrPdf);
 
+    /// <summary>
+    /// 代理讀取申請明細的憑證檔（請款 / 出差 / 預支 / 兩種沖銷的發票、收據）。
+    /// 路由：GET /files/{invoices|advance-files|write-off-invoices|travel-write-off-invoices}/{*path}
+    /// 前端平常直接以 blob 原始網址顯示這些檔案；本代理只在預覽 HEIC 時用來取 bytes 轉成 JPEG
+    /// （瀏覽器無法直接顯示 HEIC，而前端 fetch 原始網址會受 Storage CORS 限制）。
+    /// 需要 JWT、不需特殊權限（與 request-attachments 同層）。
+    /// Content-Type 額外容許 application/octet-stream：舊資料存的是瀏覽器回報的 file.ContentType，
+    /// 部分瀏覽器對 HEIC 回報空值或 octet-stream，若比照 IsImageOrPdf 會讓最需要預覽的那批檔案 500。
+    /// </summary>
+    public Task<IActionResult> GetItemFileAsync(string container, string path)
+        => GetSubPathFileAsync(container, path,
+            ct => IsImageOrPdf(ct) || ct.Equals("application/octet-stream", StringComparison.OrdinalIgnoreCase));
+
     // 員工可自助存取的 Blob 容器白名單（PII 類，但限制為「讀自己的」）
     private static readonly HashSet<string> SelfServiceContainers = new(StringComparer.OrdinalIgnoreCase)
     {

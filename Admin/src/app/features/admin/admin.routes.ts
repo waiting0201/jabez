@@ -31,6 +31,7 @@ import {OvertimeRequestList} from './overtime-requests/pages/overtime-request-li
 import {OvertimeRequestForm} from './overtime-requests/pages/overtime-request-form/overtime-request-form';
 import {AttendanceReport} from './reports/pages/attendance-report/attendance-report';
 import {OvertimeReport} from './reports/pages/overtime-report/overtime-report';
+import {CompensatoryReport} from './reports/pages/compensatory-report/compensatory-report';
 import {PaymentReport} from './reports/pages/payment-report/payment-report';
 import {ProjectWaterLevel} from './reports/pages/project-water-level/project-water-level';
 import {InsuranceBracketList} from './insurance-brackets/pages/insurance-bracket-list/insurance-bracket-list';
@@ -164,6 +165,7 @@ export const ADMIN_ROUTES: Routes = [
   // 統計報表
   {path: 'reports/attendance',   component: AttendanceReport, canActivate: [permissionGuard], data: {title: '出缺勤紀錄', permission: 'reports-attendance:read'}},
   {path: 'reports/overtime',    component: OvertimeReport,   canActivate: [permissionGuard], data: {title: '加班紀錄',   permission: 'reports-overtime:read'}},
+  {path: 'reports/compensatory', component: CompensatoryReport, canActivate: [permissionGuard], data: {title: '加班補休時數總表', permission: 'reports-overtime:read'}},
   {path: 'reports/payment',    component: PaymentReport,    canActivate: [permissionGuard], data: {title: '款項統計',   permission: 'reports-payment:read'}},
   {path: 'reports/project-water-level', component: ProjectWaterLevel, canActivate: [permissionGuard], data: {title: '專案水位表', permission: 'reports-project-water-level:read'}},
 

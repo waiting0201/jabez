@@ -73,6 +73,30 @@ public static class OvertimePayCalculator
         return [.. result];
     }
 
+    /// <summary>
+    /// 補休用的級距切分（加班補休時數總表）：與 <see cref="SplitHourTiers"/> 共用同一份級距表，
+    /// 但**不截斷至計酬上限** —— 補休本來就沒有上限（餘額以 EstimatedHours 全額計入），
+    /// 截斷的話各級距加總會對不上補休時數。超出級距表最後一段的時數併入最後一段倍率
+    /// （平日第 3 小時起一律 ×1.67、假日第 9 小時起一律 ×2.67）。
+    /// </summary>
+    public static OvertimeHourTierDto[] SplitCompensatoryTiers(decimal hours, bool isHoliday)
+    {
+        var tiers = isHoliday ? HolidayTiers : WeekdayTiers;
+        var total = Math.Max(0m, hours);
+
+        decimal prev = 0m;
+        var result = new List<OvertimeHourTierDto>();
+        for (int i = 0; i < tiers.Length; i++)
+        {
+            var (upTo, mult) = tiers[i];
+            var segEnd   = i == tiers.Length - 1 ? total : Math.Min(total, upTo);
+            var segHours = Math.Max(0m, segEnd - prev);
+            if (segHours > 0m) result.Add(new OvertimeHourTierDto(mult, segHours));
+            prev = upTo;
+        }
+        return [.. result];
+    }
+
     /// <summary>純計算版（無 I/O）。表單試算與核准寫快照共用同一支，杜絕兩套公式漂移。</summary>
     public static OvertimePayEstimateDto Calculate(decimal baseSalary, decimal hours, bool isHoliday, DateTime overtimeDate)
     {

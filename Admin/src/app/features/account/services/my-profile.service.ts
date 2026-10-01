@@ -5,6 +5,7 @@ import { environment } from '@/environments/environment';
 import { User } from '../../admin/users/models/user.model';
 import { EmployeeProfileDetail } from '../../admin/users/models/employee-profile.model';
 import { MyPayrollHistory } from '../models/my-payroll.model';
+import { CompensatoryHours } from '../../admin/leave-requests/models/leave-request.model';
 
 @Injectable({ providedIn: 'root' })
 export class MyProfileService {
@@ -23,6 +24,11 @@ export class MyProfileService {
   /** 取得自己近 N 個月的薪資紀錄（即時重算，非月結快照） */
   getMyPayroll(months = 12): Observable<MyPayrollHistory> {
     return this.http.get<MyPayrollHistory>(`${environment.apiUrl}/me/payroll`, { params: { months } });
+  }
+
+  /** 取得自己目前的補休時數（與請假表單同一公式；只需登入，免 leave-requests:read） */
+  getMyCompensatoryHours(): Observable<CompensatoryHours> {
+    return this.http.get<CompensatoryHours>(`${environment.apiUrl}/me/compensatory-hours`);
   }
 
   /** 下載 PII 檔案（需 Bearer token），回傳 Blob 供前端建立 Object URL */
