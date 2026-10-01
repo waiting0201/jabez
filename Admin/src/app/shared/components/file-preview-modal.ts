@@ -1,4 +1,4 @@
-import {Component, input, output, signal, computed, effect, inject, HostListener, OnDestroy} from '@angular/core';
+import {Component, input, output, signal, computed, effect, inject, untracked, HostListener, OnDestroy} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {SafeResourceUrl} from '@angular/platform-browser';
 import {firstValueFrom} from 'rxjs';
@@ -9,6 +9,9 @@ import {convertHeicToJpeg, isHeicName} from '../utils/heic';
  * 明細憑證四個容器的原始 blob 網址 → API 代理網址（帶 JWT，避開 Storage CORS）。
  * 只供 HEIC 預覽取 bytes 用；一般圖片 / PDF 仍直接用原始網址顯示。
  */
+/** HEIC 預覽轉檔逾時（含首次下載約 3 MB 的轉檔元件） */
+const HEIC_PREVIEW_TIMEOUT_MS = 60_000;
+
 const ITEM_FILE_CONTAINER_RE = /\/(invoices|advance-files|write-off-invoices|travel-write-off-invoices)\/(.+)$/;
 
 export interface PreviewFileData {
@@ -140,11 +143,15 @@ export class FilePreviewModal implements OnDestroy {
   displayUrl = computed(() => this.heicUrl() ?? this.file().url);
 
   constructor() {
+    // ⚠ 只能相依 file()：_revokeHeic 會讀 heicUrl()，不包 untracked 的話 effect 會連 heicUrl 一起追蹤 ——
+    //   轉檔完成寫入 heicUrl → effect 重跑 → 清掉剛轉好的圖再轉一次，無限循環、畫面永遠停在「轉換中」（2026-10 實際踩到）
     effect(() => {
       const f = this.file();
-      this._revokeHeic();
-      this.heicFailed.set(false);
-      if (isHeicName(f.name)) void this._convertHeic(f.url);
+      untracked(() => {
+        this._revokeHeic();
+        this.heicFailed.set(false);
+        if (isHeicName(f.name)) void this._convertHeic(f.url);
+      });
     });
   }
 
@@ -153,7 +160,11 @@ export class FilePreviewModal implements OnDestroy {
   private async _convertHeic(url: string) {
     try {
       const blob = await this._fetchBytes(url);
-      const jpeg = await convertHeicToJpeg(blob);
+      // 保險：轉檔元件卡住時不要讓畫面永遠停在「轉換中」，逾時即改顯示下載
+      const jpeg = await Promise.race([
+        convertHeicToJpeg(blob),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('HEIC 轉換逾時')), HEIC_PREVIEW_TIMEOUT_MS)),
+      ]);
       if (this.file().url !== url) return; // 轉換期間已切換到別的檔案
       this.heicUrl.set(URL.createObjectURL(jpeg));
     } catch {
