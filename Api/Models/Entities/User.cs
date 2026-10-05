@@ -69,6 +69,11 @@ public class User
     // 超管旗標：不受角色/權限異動影響，永遠擁有全系統存取權
     public bool IsSuperAdmin { get; set; } = false;
 
+    // 安全戳記：寫進 access token 的 sstamp claim，AppRouter 每個請求比對 DB 現值。
+    // 停用 / 改密碼 / 換角色 / 改部門 / 改職稱時由 RefreshTokenRevoker 換新，使舊 access token 立即失效。
+    // 刻意不給 NewGuid 初始值：HasData 種子資料會因此每次建模都產生不同值（migration 噪音）。
+    public Guid SecurityStamp { get; set; }
+
     // 首次登入須修改密碼
     public bool MustChangePassword { get; set; } = false;
 

@@ -38,12 +38,16 @@ public static class LeaveRevocationService
         // 本張銷假單此刻的 ApprovalStatus="approved" 尚在 ChangeTracker、還沒進 DB，
         // 查詢撈不到，故明確併入自己的日期（同一批次內重複套用仍收斂，因為是取聯集）
         var revokedDates = await GetApprovedRevokedDatesAsync(db, leave.Id);
-        var ownDates = await db.LeaveRevocationDates
-            .AsNoTracking()
+        // 核准當下重驗日期（V23）：送簽時只驗過「今天以後」，簽核期間日期可能已過。
+        // 已過去的日子不予銷假 —— 否則已休完的日子被事後取消，與出勤紀錄及已結算薪資對不起來。
+        // 過去日的明細一併刪除，下游「該日未銷假」判定（GetApprovedRevokedDatesAsync）才不會把它們當成已銷。
+        var today = Clock.Now.Date;
+        var ownEntities = await db.LeaveRevocationDates
             .Where(d => d.LeaveRevocationId == revocation.Id)
-            .Select(d => d.Date)
             .ToListAsync();
-        foreach (var d in ownDates) revokedDates.Add(d.Date);
+        var stale = ownEntities.Where(d => d.Date.Date < today).ToList();
+        if (stale.Count > 0) db.LeaveRevocationDates.RemoveRange(stale);
+        foreach (var d in ownEntities.Except(stale)) revokedDates.Add(d.Date.Date);
 
         var workdays  = await workdaysFactory.ForAsync(leave.EmployeeId ?? Guid.Empty);
         var allDays   = await LeaveDayExpander.ExpandAsync(workdays, leave);

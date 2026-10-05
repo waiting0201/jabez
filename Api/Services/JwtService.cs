@@ -47,7 +47,8 @@ public sealed class JwtService : IJwtService
         decimal?            avatarPositionX = null,
         decimal?            avatarPositionY = null,
         decimal?            avatarScale = null,
-        bool                mustChangePassword = false)
+        bool                mustChangePassword = false,
+        Guid?               securityStamp = null)
     {
         var claims = new List<Claim>
         {
@@ -56,6 +57,10 @@ public sealed class JwtService : IJwtService
             new(JwtRegisteredClaimNames.Email, email),
             new(JwtRegisteredClaimNames.Jti,   Guid.NewGuid().ToString()),
         };
+
+        // 安全戳記 — AppRouter 比對 DB 現值，不符＝帳號已停用 / 改密碼 / 換角色 / 改部門職稱，回 401
+        if (securityStamp.HasValue)
+            claims.Add(new Claim(Jabez.Api.Common.AuthPolicy.SecurityStampClaim, securityStamp.Value.ToString()));
 
         // 超管旗標 — Angular JWT decode reads payload.is_superadmin
         if (isSuperAdmin)

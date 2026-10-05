@@ -26,4 +26,7 @@ public static class AuthPolicy
 
     /// <summary>JWT claim：此 token 的持有者尚未完成強制改密碼，API 僅放行改密碼 / refresh / logout</summary>
     public const string PasswordChangeRequiredClaim = "pwd_change_required";
+
+    /// <summary>access token 內的安全戳記 claim；AppRouter 與 DB 的 Users.SecurityStamp 比對（見 RefreshTokenRevoker）。</summary>
+    public const string SecurityStampClaim = "sstamp";
 }

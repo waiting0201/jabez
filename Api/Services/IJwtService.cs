@@ -21,7 +21,8 @@ public interface IJwtService
         decimal?            avatarPositionX = null,
         decimal?            avatarPositionY = null,
         decimal?            avatarScale = null,
-        bool                mustChangePassword = false);
+        bool                mustChangePassword = false,
+        Guid?               securityStamp = null);
 
     /// <summary>產生 Refresh Token（隨機不透明字串）。</summary>
     string GenerateRefreshToken();

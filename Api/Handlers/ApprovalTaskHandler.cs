@@ -482,6 +482,15 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == rv.EmployeeId.Value)
                     : null;
                 await AuthorizeStepAsync(rv.ApprovalItemId, rv.CurrentStepOrder, reviewer, rvApplicant?.DepartmentId, LeaveRevocationService.AppType, rv.Id, rvApplicant?.JobTitleId);
+                // 核准當下重驗（V23）：所有銷假日都已過去則無可銷之日，擋下請審核者退回 / 拒絕（部分已過者由 ApplyAsync 剔除）
+                if (action == "approved")
+                {
+                    var rvToday = Clock.Now.Date;
+                    var hasFutureDate = await db.LeaveRevocationDates.AsNoTracking()
+                        .AnyAsync(d => d.LeaveRevocationId == rv.Id && d.Date >= rvToday);
+                    if (!hasFutureDate)
+                        throw AppException.BadRequest("銷假日期已全部過去，無法核准；請退回申請人重送或拒絕。");
+                }
                 await ProcessReviewAsync(LeaveRevocationService.AppType, rv.Id, rv.CurrentStepOrder,
                     rv.ApprovalItemId, action, reviewNote, reviewerId, rv.EmployeeId,
                     setStatus:     s  => rv.ApprovalStatus   = s,
@@ -522,8 +531,20 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 // 每一關核准前以「現行班表 + 本單異動」重驗：簽核期間班表若被其他途徑改動而不再合規，
                 // 不可放行（排在 ProcessReviewAsync 之前，才不會留下核准紀錄與通知）
                 if (action == "approved")
+                {
+                    // 核准當下重驗日期（V23）：建立 / 修改時驗過 date >= today，簽核期間可能已過；
+                    // 已過去的日子不可再改班（會與已發生的出勤、薪資對不起來）
+                    if (!ShiftScheduleWindow.OpenAllFutureMonths)
+                    {
+                        var scToday = Clock.Now.Date;
+                        var hasPast = await db.ShiftChangeRequestDates.AsNoTracking()
+                            .AnyAsync(d => d.ShiftChangeRequestId == sc.Id && d.Date < scToday);
+                        if (hasPast)
+                            throw AppException.BadRequest("改班目標日期已過，無法核准；請退回申請人調整日期後重送。");
+                    }
                     await ShiftChangeRequestService.EnsureValidAsync(db, calendarReader, workdaysFactory, sc,
                         "班表已變動，套用本改班申請後不符合排班規範，請退回申請人調整：");
+                }
                 await ProcessReviewAsync(ShiftChangeRequestService.AppType, sc.Id, sc.CurrentStepOrder,
                     sc.ApprovalItemId, action, reviewNote, reviewerId, sc.EmployeeId,
                     setStatus:     s  => sc.ApprovalStatus   = s,

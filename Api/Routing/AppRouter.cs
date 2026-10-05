@@ -3,6 +3,7 @@ using Jabez.Api.Handlers;
 using Jabez.Api.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
@@ -15,6 +16,7 @@ namespace Jabez.Api.Routing;
 public sealed class AppRouter(
     ILogger<AppRouter>     logger,
     IJwtService            jwt,
+    Data.AppDbContext      db,
     HealthHandler          health,
     AuthHandler            auth,
     UserHandler            users,
@@ -81,6 +83,23 @@ public sealed class AppRouter(
         UserRateLimiter.Enforce(key, rules);
     }
 
+    private async Task EnsureSecurityStampAsync(ClaimsPrincipal principal)
+    {
+        var stampClaim = principal.FindFirst(AuthPolicy.SecurityStampClaim)?.Value;
+        if (stampClaim is null) return; // 舊 token（部署前簽發），相容放行
+
+        var sub = principal.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(sub, out var userId) || !Guid.TryParse(stampClaim, out var tokenStamp))
+            throw AppException.Unauthorized("Invalid or missing Bearer token.");
+
+        var current = await db.Users.AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => new { u.SecurityStamp, u.Status })
+            .FirstOrDefaultAsync();
+        if (current is null || current.Status == "inactive" || current.SecurityStamp != tokenStamp)
+            throw AppException.Unauthorized("Session is no longer valid. Please sign in again.");
+    }
+
     public async Task<IActionResult> RouteAsync(HttpRequest req, string route)
     {
         var method   = req.Method.ToUpper();
@@ -99,6 +118,10 @@ public sealed class AppRouter(
             if (principal is null)
                 return new UnauthorizedObjectResult(
                     ApiResponse.Fail("Unauthorized.", "Invalid or missing Bearer token."));
+
+            // 安全戳記 / 帳號狀態驗證：JWT 本身無狀態，停用 / 改密碼 / 換角色 / 改部門職稱後舊 token 仍簽章有效，
+            // 故每個請求以 PK 查一次 DB（只取兩個欄位）。token 無 sstamp claim＝部署前簽發的舊 token，放行至自然過期（≤ 60 分）。
+            await EnsureSecurityStampAsync(principal);
 
             // 首次登入強制改密碼：token 帶 pwd_change_required 時，改密碼以外的受保護端點一律 403。
             // 放在所有權限檢查之前 —— 這道門不分角色（Superadmin 之外的人都適用；Superadmin 不會被標記）。

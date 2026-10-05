@@ -510,6 +510,10 @@ RequestDateGuard.EnsurePastWithin(body.ChildBirthDate, "子女出生日期",
 | 通知信 HTML | `ApprovalNotificationService.H()` / `WebUtility.HtmlEncode` | 凡進 HTML 信件的使用者可控字串（姓名、事由、摘要、地點、單號、href）一律編碼；LINE Flex 為 JSON 序列化，不需 HtmlEncode |
 | 加班開始卡時間 | `AttendanceHandler.ComputeOvertimeNotBefore` | `OvertimeStartAsync` 擋件與 `/attendances/today` 的 `CanStartOvertimeNow` / `OvertimeStartNotBefore` 共用 |
 | 出缺勤修改 | `AttendanceHandler.UpdateAsync` | 不可改自己的紀錄；每次實質修改寫 `AttendanceAuditLogs`；不再清除 `IsClockInAuto / IsClockOutAuto`，改設 `IsManuallyAdjusted` |
+| Access token 即時失效 | `Users.SecurityStamp` + `AppRouter.EnsureSecurityStampAsync` + `RefreshTokenRevoker` | token 帶 `sstamp` claim，AppRouter 每請求以 PK 比對 DB 現值與帳號狀態，不符 401；停用 / 改密碼 / 換角色（`RevokeAllAsync`）、改部門 / 職稱（`BumpSecurityStampAsync`，不撤 refresh）時換新。無 `sstamp` 的舊 token 放行至自然過期 |
+| 出差旗標 | `AttendanceHandler.ResolveBusinessTripAsync` | 勾選出差須有當日涵蓋的已核准出差預支 / 出差請款；當日紀錄已有旗標者不重驗 |
+| 出缺勤修改（續） | `AttendanceHandler.UpdateAsync` | 新時間須在紀錄日當天至隔日 06:00 前；修改者 JobTitle.Level 須嚴格小於被修改者（Superadmin 例外） |
+| 核准時重驗日期 | `ApprovalTaskHandler`（leave_revocation / shift_change） | 銷假核准時剔除已過去的日期（全過去則 400）；改班核准時有已過去日期則 400 |
 
 稽核表若需指向 Users、又掛在 Users 的 Cascade 鏈下（例：`AttendanceAuditLogs` → AttendanceRecords → Users），**該 Users 欄位不設 FK、改存姓名快照**，避免 SQL Server 1785 multiple cascade paths，也不必加進 UserHandler 的刪除清洗清單。
 

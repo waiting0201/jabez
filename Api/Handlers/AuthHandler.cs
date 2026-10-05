@@ -102,7 +102,7 @@ public sealed class AuthHandler(
                 .ToArray();
         }
 
-        var accessToken  = jwt.GenerateAccessToken(user.Id, user.Name, user.Email, roleIds, permissions, user.IsSuperAdmin, user.Department?.Name, user.JobTitle?.Name, user.Department?.Code, user.DepartmentId, user.JobTitle?.Level, user.Avatar, user.AvatarPositionX, user.AvatarPositionY, user.AvatarScale, user.MustChangePassword);
+        var accessToken  = jwt.GenerateAccessToken(user.Id, user.Name, user.Email, roleIds, permissions, user.IsSuperAdmin, user.Department?.Name, user.JobTitle?.Name, user.Department?.Code, user.DepartmentId, user.JobTitle?.Level, user.Avatar, user.AvatarPositionX, user.AvatarPositionY, user.AvatarScale, user.MustChangePassword, user.SecurityStamp);
         var refreshToken = jwt.GenerateRefreshToken();
 
         // 儲存 Refresh Token
@@ -223,7 +223,7 @@ public sealed class AuthHandler(
                 .ToArray();
         }
 
-        var newAccess  = jwt.GenerateAccessToken(user.Id, user.Name, user.Email, roleIds, permissions, user.IsSuperAdmin, user.Department?.Name, user.JobTitle?.Name, user.Department?.Code, user.DepartmentId, user.JobTitle?.Level, user.Avatar, user.AvatarPositionX, user.AvatarPositionY, user.AvatarScale, user.MustChangePassword);
+        var newAccess  = jwt.GenerateAccessToken(user.Id, user.Name, user.Email, roleIds, permissions, user.IsSuperAdmin, user.Department?.Name, user.JobTitle?.Name, user.Department?.Code, user.DepartmentId, user.JobTitle?.Level, user.Avatar, user.AvatarPositionX, user.AvatarPositionY, user.AvatarScale, user.MustChangePassword, user.SecurityStamp);
         var newRefresh = jwt.GenerateRefreshToken();
 
         db.RefreshTokens.Add(new RefreshToken

@@ -481,6 +481,9 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
 
         // 帳號停用 / 管理員設定密碼 / 角色變更：存檔後撤銷該使用者全部 Refresh Token
         var revokeTokens = false;
+        // 部門 / 職稱變更：只換安全戳記（舊 access token 立即 401），不撤 refresh token ——
+        // 對方 refresh 即可無縫換到帶新 department_id / job_title_level 的 token
+        var bumpStamp = false;
 
         if (!string.IsNullOrEmpty(statusVal))
         {
@@ -506,10 +509,15 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
                 return new BadRequestObjectResult(ApiResponse.Fail("請設定部門。"));
             if (!await db.Departments.AnyAsync(d => d.Id == did.Value))
                 return new BadRequestObjectResult(ApiResponse.Fail("指定的部門不存在。"));
+            if (did != user.DepartmentId) bumpStamp = true;
             user.DepartmentId = did;
         }
         if (form.ContainsKey("jobTitleId"))
-            user.JobTitleId = int.TryParse(form["jobTitleId"], out var jtid) && jtid > 0 ? jtid : null;
+        {
+            var newTitleId = int.TryParse(form["jobTitleId"], out var jtid) && jtid > 0 ? jtid : (int?)null;
+            if (newTitleId != user.JobTitleId) bumpStamp = true;
+            user.JobTitleId = newTitleId;
+        }
         if (form.ContainsKey("hireDate"))
             user.HireDate = DateTime.TryParse(form["hireDate"], out var hd) ? hd : null;
         if (form.ContainsKey("resignDate"))
@@ -674,6 +682,8 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
 
         if (revokeTokens)
             await RefreshTokenRevoker.RevokeAllAsync(db, user.Id);
+        else if (bumpStamp)
+            await RefreshTokenRevoker.BumpSecurityStampAsync(db, user.Id);
 
         // 稽核：存檔成功後才落紀錄（失敗的請求不留）。設密碼獨立一筆動作，方便依動作查詢。
         var changes = AuditSnapshot.Diff(auditBefore, AuditSnapshot.Capture(user));
