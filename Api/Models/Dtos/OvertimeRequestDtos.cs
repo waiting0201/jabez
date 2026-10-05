@@ -77,7 +77,6 @@ public sealed record OvertimeRequestDto(
 
 public sealed record CreateOvertimeRequestRequest(
     Guid?    EmployeeId,
-    int?     ApprovalItemId       = null,
     DateTime OvertimeDate         = default,
     OvertimeProjectRequest[]? Projects = null,   // 必填，至少 1 列（Handler 驗證）
     string   Reason               = "",

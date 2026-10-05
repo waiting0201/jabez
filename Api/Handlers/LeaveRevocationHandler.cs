@@ -271,22 +271,21 @@ public sealed class LeaveRevocationHandler(
         revocation.RevokedHours = picked.Sum(d => d.Hours);
 
         // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
-        if (revocation.ApprovalStatus == "returned")
-        {
-            db.ApprovalRecords.RemoveRange(
-                await db.ApprovalRecords.Where(r => r.ApplicationType == AppType && r.ApplicationId == revocation.Id).ToListAsync());
-            db.EscalationOverrides.RemoveRange(
-                await db.EscalationOverrides.Where(o => o.ApplicationType == AppType && o.ApplicationId == revocation.Id).ToListAsync());
+        // 2026-10 安全修正：不論 draft 或 returned 送出一律清空舊簽核足跡（原只清 returned）。
+        // 殘留的舊 approved 紀錄會讓後續關卡誤判「此人已審過」而被自動代簽，未經審核即核准。
+        db.ApprovalRecords.RemoveRange(
+            await db.ApprovalRecords.Where(r => r.ApplicationType == AppType && r.ApplicationId == revocation.Id).ToListAsync());
+        db.EscalationOverrides.RemoveRange(
+            await db.EscalationOverrides.Where(o => o.ApplicationType == AppType && o.ApplicationId == revocation.Id).ToListAsync());
 
-            var rdrsToReset = await db.RequestDesignatedReviewers
-                .Where(r => r.RequestType == AppType && r.RequestId == revocation.Id)
-                .ToListAsync();
-            foreach (var rdr in rdrsToReset)
-            {
-                rdr.Status     = "pending";
-                rdr.ReviewedAt = null;
-                rdr.Comment    = null;
-            }
+        var rdrsToReset = await db.RequestDesignatedReviewers
+            .Where(r => r.RequestType == AppType && r.RequestId == revocation.Id)
+            .ToListAsync();
+        foreach (var rdr in rdrsToReset)
+        {
+            rdr.Status     = "pending";
+            rdr.ReviewedAt = null;
+            rdr.Comment    = null;
         }
 
         // Superadmin 無部門歸屬，直接自動核准

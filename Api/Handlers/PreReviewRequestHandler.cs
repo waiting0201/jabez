@@ -121,6 +121,9 @@ public sealed class PreReviewRequestHandler(
         // 年份合理性（擋民國年誤植）
         RequestDateGuard.EnsureEach(items, i => i.ItemDate, "品項日期");
 
+        // 金額合理性（2026-10 安全稽核）：明細允許負數列（折讓 / 扣款），但合計不可為負
+        AmountGuard.EnsureTotalNotNegative(items.Sum(i => i.Amount), "預審品項");
+
         var today = Clock.Now;
 
         // 上傳檔案至 Blob Storage（quotes 容器）
@@ -312,6 +315,9 @@ public sealed class PreReviewRequestHandler(
             // 年份合理性（擋民國年誤植，比照 CreateAsync）
             RequestDateGuard.EnsureEach(items, i => i.ItemDate, "品項日期");
 
+            // 金額合理性（2026-10 安全稽核）：允許負數列，合計不可為負
+            AmountGuard.EnsureTotalNotNegative(items.Sum(i => i.Amount), "預審品項");
+
             // 收集舊 FileUrl（稍後比對，刪除不再使用的 blob）
             var oldFileUrls = pr.Items
                 .Where(ii => !string.IsNullOrEmpty(ii.FileUrl))
@@ -453,28 +459,27 @@ public sealed class PreReviewRequestHandler(
         pr.SubmittedAt ??= Clock.Now;
 
         // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
-        if (pr.ApprovalStatus == "returned")
+        // 2026-10 安全修正：不論 draft 或 returned 送出一律清空舊簽核足跡（原只清 returned）。
+        // 殘留的舊 approved 紀錄會讓後續關卡誤判「此人已審過」而被自動代簽，未經審核即核准。
+        var oldRecords = await db.ApprovalRecords
+            .Where(r => r.ApplicationType == "pre_review" && r.ApplicationId == pr.Id)
+            .ToListAsync();
+        db.ApprovalRecords.RemoveRange(oldRecords);
+
+        var oldOverrides = await db.EscalationOverrides
+            .Where(o => o.ApplicationType == "pre_review" && o.ApplicationId == pr.Id)
+            .ToListAsync();
+        db.EscalationOverrides.RemoveRange(oldOverrides);
+
+        // 重置指定審核者狀態為 pending
+        var rdrsToReset = await db.RequestDesignatedReviewers
+            .Where(r => r.RequestType == "pre_review" && r.RequestId == pr.Id)
+            .ToListAsync();
+        foreach (var rdr in rdrsToReset)
         {
-            var oldRecords = await db.ApprovalRecords
-                .Where(r => r.ApplicationType == "pre_review" && r.ApplicationId == pr.Id)
-                .ToListAsync();
-            db.ApprovalRecords.RemoveRange(oldRecords);
-
-            var oldOverrides = await db.EscalationOverrides
-                .Where(o => o.ApplicationType == "pre_review" && o.ApplicationId == pr.Id)
-                .ToListAsync();
-            db.EscalationOverrides.RemoveRange(oldOverrides);
-
-            // 重置指定審核者狀態為 pending
-            var rdrsToReset = await db.RequestDesignatedReviewers
-                .Where(r => r.RequestType == "pre_review" && r.RequestId == pr.Id)
-                .ToListAsync();
-            foreach (var rdr in rdrsToReset)
-            {
-                rdr.Status     = "pending";
-                rdr.ReviewedAt = null;
-                rdr.Comment    = null;
-            }
+            rdr.Status     = "pending";
+            rdr.ReviewedAt = null;
+            rdr.Comment    = null;
         }
 
         var submitter = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);

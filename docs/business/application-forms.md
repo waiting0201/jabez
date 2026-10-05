@@ -79,33 +79,37 @@
 
 ## 一般申請表（5 種）
 
-| # | 申請表 | 前端路徑 | API Prefix / RequestType | 自審分組 | 流程特性 |
+> **自審 / 指定審核者規則（2026-10 統一）**：原本分 Group A（全程禁止指定自己）與 Group B（申請人排第 1 位就跳過該關）兩組，
+> Group B 等於讓申請人點名自己繞過整關審核，**已移除**。現全部申請類型一律禁止指定申請人本人為審核者，
+> 並新增在職 / 職級 / 所選部門驗證，另有「審核者不可審自己送出的單」授權防線，詳見 [approval-flow.md §簽核安全稽核補強](approval-flow.md#簽核安全稽核補強2026-10)。
+
+| # | 申請表 | 前端路徑 | API Prefix / RequestType | 指定審核者自審規則 | 流程特性 |
 |---|--------|----------|--------------------------|---------|---------|
-| 1 | 請款申請 | `/admin/payment-requests` | `/payment-requests` / `payment_request` | **Group B 首位跳過** | 一般費用請款（含發票明細）；走簽核 + 撥款。**Type=`vendor` 時必須選擇 `Vendor` 主檔（廠商管理 `/admin/vendors`），找不到時可從表單即時新增**；**Type=`general`（一般請款）/ `other`（其他，2026-09 新增）皆不需選廠商，明細下方可批次上傳整單附件（照片 / PDF）**；**請款原因（`Reason`）必填**（前端 `Validators.required` + 後端 Create / Update 皆擋空白，草稿儲存亦需填寫）；**明細金額允許負數**（2026-09 解除 `min(0)` 限制）：折讓 / 退款 / 扣款以負數列表達，總額為各列加總（前後端皆為加總推得，無須另行處理），**後端未設下限故亦不擋** |
-| 2 | 請假申請 | `/admin/leave-requests` | `/leave-requests` / `leave` | **Group A 全程禁止** | 17 種假別；走簽核（無撥款）。已核准後可提**銷假申請**（子流程 `leave_revocation`，逐日部分銷假、重跑同一份請假簽核，見 [approval-flow.md](approval-flow.md#銷假重跑請假簽核2026-08-新增)） |
-| 3 | 加班申請 | `/admin/overtime-requests` | `/overtime-requests` / `overtime` | **Group A 全程禁止** | 加班預申請；走簽核（無撥款）。**須至少關聯 1 個專案，逐案填預估時數；整單預估總時數 = 各案加總（後端計算）**；同部門專案可複選，支援其他部門專案請獨立申請。**補償方式（補休 / 加班費）整單二擇一**（2026-08）：選補休 → 時數計入補休池；選加班費 → 依勞基法分段累進倍率試算（平日 ×1.34/×1.67 上限 4h；假日 ×1.34/×1.67/×2.67 上限 12h，時薪＝底薪÷240），表單即時試算，金額於核准當下寫快照並隨**加班日次月**薪資發放。**簽核詳情頁只呈現分段計酬級距（`2.0 小時 × 1.34`）、不呈現金額**（2026-09；金額 ÷ 時數可反推底薪，見 [payroll-formula.md](payroll-formula.md)） |
-| 4 | 預支申請 | `/admin/advance-requests` | `/advance-requests` / `advance` | **Group B 首位跳過** | 費用預支；走簽核 + 撥款，**事後須沖銷**；支援**追加預支**（已核准單可再加批次，重跑同一份簽核流程，見 [approval-flow.md](approval-flow.md#追加預支重跑簽核2026-07-新增)）。**費用明細分類下拉共 12 項**（交通費 / 活動費 / 設計費 / 人事費 / 餐費 / 雜支 / 收款人 / 廠商 / 食材進貨 / 備品耗材 / 商品進貨 / 臨時人力；2026-09 新增後 4 項）：**以中文字面值存 DB**（`nvarchar(50)`，無 code↔label 對照、後端無白名單驗證），**與預支沖銷共用同一份清單**（沖銷建單時會複製母預支單的分類，兩邊不一致會顯示空白） |
-| 5 | 出差預支申請 | `/admin/travel-requests` | `/travel-requests` / `travel` | **Group A 全程禁止** | 出差預支款項；走簽核 + 撥款，**事後走沖銷流程** |
+| 1 | 請款申請 | `/admin/payment-requests` | `/payment-requests` / `payment_request` | **禁止指定自己** | 一般費用請款（含發票明細）；走簽核 + 撥款。**Type=`vendor` 時必須選擇 `Vendor` 主檔（廠商管理 `/admin/vendors`），找不到時可從表單即時新增**；**Type=`general`（一般請款）/ `other`（其他，2026-09 新增）皆不需選廠商，明細下方可批次上傳整單附件（照片 / PDF）**；**請款原因（`Reason`）必填**（前端 `Validators.required` + 後端 Create / Update 皆擋空白，草稿儲存亦需填寫）；**明細金額允許負數**（2026-09 解除 `min(0)` 限制）：折讓 / 退款 / 扣款以負數列表達，總額為各列加總（前後端皆為加總推得，無須另行處理），**單列不擋負數，但後端（2026-10）擋「合計為負」**（`AmountGuard.EnsureTotalNotNegative`） |
+| 2 | 請假申請 | `/admin/leave-requests` | `/leave-requests` / `leave` | **禁止指定自己** | 17 種假別；走簽核（無撥款）。已核准後可提**銷假申請**（子流程 `leave_revocation`，逐日部分銷假、重跑同一份請假簽核，見 [approval-flow.md](approval-flow.md#銷假重跑請假簽核2026-08-新增)） |
+| 3 | 加班申請 | `/admin/overtime-requests` | `/overtime-requests` / `overtime` | **禁止指定自己** | 加班預申請；走簽核（無撥款）。**須至少關聯 1 個專案，逐案填預估時數；整單預估總時數 = 各案加總（後端計算）**；同部門專案可複選，支援其他部門專案請獨立申請。**補償方式（補休 / 加班費）整單二擇一**（2026-08）：選補休 → 時數計入補休池；選加班費 → 依勞基法分段累進倍率試算（平日 ×1.34/×1.67 上限 4h；假日 ×1.34/×1.67/×2.67 上限 12h，時薪＝底薪÷240），表單即時試算，金額於核准當下寫快照並隨**加班日次月**薪資發放。**簽核詳情頁只呈現分段計酬級距（`2.0 小時 × 1.34`）、不呈現金額**（2026-09；金額 ÷ 時數可反推底薪，見 [payroll-formula.md](payroll-formula.md)） |
+| 4 | 預支申請 | `/admin/advance-requests` | `/advance-requests` / `advance` | **禁止指定自己** | 費用預支；走簽核 + 撥款，**事後須沖銷**；支援**追加預支**（已核准單可再加批次，重跑同一份簽核流程，見 [approval-flow.md](approval-flow.md#追加預支重跑簽核2026-07-新增)）。**費用明細分類下拉共 12 項**（交通費 / 活動費 / 設計費 / 人事費 / 餐費 / 雜支 / 收款人 / 廠商 / 食材進貨 / 備品耗材 / 商品進貨 / 臨時人力；2026-09 新增後 4 項）：**以中文字面值存 DB**（`nvarchar(50)`，無 code↔label 對照、後端無白名單驗證），**與預支沖銷共用同一份清單**（沖銷建單時會複製母預支單的分類，兩邊不一致會顯示空白） |
+| 5 | 出差預支申請 | `/admin/travel-requests` | `/travel-requests` / `travel` | **禁止指定自己** | 出差預支款項；走簽核 + 撥款，**事後走沖銷流程** |
 
 ## 出差類申請表（2 種）
 
-| # | 申請表 | 前端路徑 | API Prefix / RequestType | 自審分組 | 流程特性 |
+| # | 申請表 | 前端路徑 | API Prefix / RequestType | 指定審核者自審規則 | 流程特性 |
 |---|--------|----------|--------------------------|---------|---------|
-| 6 | 出差請款申請 | `/admin/travel-payment-requests` | `/travel-payment-requests` / `travel_payment` | **Group A 全程禁止** | 員工小額代墊後直接請款（**無沖銷流程**）；走簽核 + 撥款 |
-| 7 | 假日執行活動申請 | `/admin/holiday-travel-requests` | `/holiday-travel-requests` / `holiday_travel` | **Group B 首位跳過** | 假日活動，**計入假日津貼**（無發票明細）；共用 `TravelRequest` entity（`IsHolidayTravel=true`） |
+| 6 | 出差請款申請 | `/admin/travel-payment-requests` | `/travel-payment-requests` / `travel_payment` | **禁止指定自己** | 員工小額代墊後直接請款（**無沖銷流程**）；走簽核 + 撥款 |
+| 7 | 假日執行活動申請 | `/admin/holiday-travel-requests` | `/holiday-travel-requests` / `holiday_travel` | **禁止指定自己** | 假日活動，**計入假日津貼**（無發票明細）；共用 `TravelRequest` entity（`IsHolidayTravel=true`） |
 
 ## 沖銷類申請表（2 種，獨立簽核流程）
 
-| # | 申請表 | 前端路徑 | API Prefix / RequestType | 自審分組 | 流程特性 |
+| # | 申請表 | 前端路徑 | API Prefix / RequestType | 指定審核者自審規則 | 流程特性 |
 |---|--------|----------|--------------------------|---------|---------|
-| 8 | 預支沖銷申請 | `/admin/write-off-requests` | `/write-off-requests` / `write_off` | **Group B 首位跳過** | 沖銷預支申請（含發票上傳）；獨立簽核流程，可能產生退款；**明細下方可批次上傳整單附件（照片 / PDF）**。**費用明細分類下拉共 12 項**（交通費 / 活動費 / 設計費 / 人事費 / 餐費 / 雜支 / 收款人 / 廠商 / 食材進貨 / 備品耗材 / 商品進貨 / 臨時人力；2026-09 新增後 4 項）：**以中文字面值存 DB**（`nvarchar(50)`，無 code↔label 對照、後端無白名單驗證），**與預支申請共用同一份清單**（沖銷建單時會複製母預支單的分類，兩邊不一致會顯示空白） |
-| 9 | 出差預支沖銷申請 | `/admin/travel-write-off-requests` | `/travel-write-off-requests` / `travel_write_off` | **Group B 首位跳過** | 沖銷出差預支申請；獨立簽核流程，可能產生退款 |
+| 8 | 預支沖銷申請 | `/admin/write-off-requests` | `/write-off-requests` / `write_off` | **禁止指定自己** | 沖銷預支申請（含發票上傳）；獨立簽核流程，可能產生退款；**明細下方可批次上傳整單附件（照片 / PDF）**。**費用明細分類下拉共 12 項**（交通費 / 活動費 / 設計費 / 人事費 / 餐費 / 雜支 / 收款人 / 廠商 / 食材進貨 / 備品耗材 / 商品進貨 / 臨時人力；2026-09 新增後 4 項）：**以中文字面值存 DB**（`nvarchar(50)`，無 code↔label 對照、後端無白名單驗證），**與預支申請共用同一份清單**（沖銷建單時會複製母預支單的分類，兩邊不一致會顯示空白） |
+| 9 | 出差預支沖銷申請 | `/admin/travel-write-off-requests` | `/travel-write-off-requests` / `travel_write_off` | **禁止指定自己** | 沖銷出差預支申請；獨立簽核流程，可能產生退款 |
 
 ## 預審類申請表（1 種）
 
-| # | 申請表 | 前端路徑 | API Prefix / RequestType | 自審分組 | 流程特性 |
+| # | 申請表 | 前端路徑 | API Prefix / RequestType | 指定審核者自審規則 | 流程特性 |
 |---|--------|----------|--------------------------|---------|---------|
-| 10 | 預審申請 | `/admin/pre-review-requests` | `/pre-review-requests` / `pre_review` | **Group B 首位跳過** | 事前預審：實際花費前送類似請款的單據（含報價單 / 品項 / 金額）走簽核取得核准。**金額不計入任何統計報表**（刻意不加入款項統計 UNION）、**無撥款流程**（無分期撥款 / 撥款日 / 撥款狀態 / 財務撥款必填）。品項含**品項類別下拉**（活動硬體 / 設計師 / 製作產品 / 採購產品 / 採購庶務 / 其他，「其他」可自訂鍵入）；報價單上傳支援 **OCR 自動辨識**（`POST /quote-ocr`）；PDF 列印**合併所有上傳檔**（報價單圖檔 + 附件）成單一 PDF；**預審說明（`Reason`）必填**（前端 `Validators.required` + 後端 Create / Update 皆擋空白，草稿儲存亦需填寫）；**明細金額允許負數**（2026-09 解除 `min(0)` 限制）：折讓 / 退款 / 扣款以負數列表達，總額為各列加總（前後端皆為加總推得，無須另行處理），**後端未設下限故亦不擋**；**金額為「未稅 + 稅金」兩欄**（2026-09 釐清）：`TotalAmount` ＝ 品項加總 ＝ **未稅小計**，稅金為整單獨立一欄 `TaxAmount`（**手動輸入，無稅別 / 稅率下拉**，走 multipart 欄位；`TotalAmount` 由後端重算）。**畫面上的「預算總額」一律顯示含稅**（`TotalAmount + TaxAmount`）—— 預審列表頁 / 預審詳情頁 / 簽核審核頁三處同一算法，明細表尾則拆成「未稅小計 / 稅金 / 含稅總計」三列。⚠ 與請款的 `TotalAmount`（發票金額合計 ＝ **實付總額**，`PaymentRequest` 無稅額欄）**同名不同義**，照抄請款的顯示寫法就會印出未稅（2026-09 修正的正是這個） |
+| 10 | 預審申請 | `/admin/pre-review-requests` | `/pre-review-requests` / `pre_review` | **禁止指定自己** | 事前預審：實際花費前送類似請款的單據（含報價單 / 品項 / 金額）走簽核取得核准。**金額不計入任何統計報表**（刻意不加入款項統計 UNION）、**無撥款流程**（無分期撥款 / 撥款日 / 撥款狀態 / 財務撥款必填）。品項含**品項類別下拉**（活動硬體 / 設計師 / 製作產品 / 採購產品 / 採購庶務 / 其他，「其他」可自訂鍵入）；報價單上傳支援 **OCR 自動辨識**（`POST /quote-ocr`）；PDF 列印**合併所有上傳檔**（報價單圖檔 + 附件）成單一 PDF；**預審說明（`Reason`）必填**（前端 `Validators.required` + 後端 Create / Update 皆擋空白，草稿儲存亦需填寫）；**明細金額允許負數**（2026-09 解除 `min(0)` 限制）：折讓 / 退款 / 扣款以負數列表達，總額為各列加總（前後端皆為加總推得，無須另行處理），**單列不擋負數，但後端（2026-10）擋「合計為負」**（`AmountGuard.EnsureTotalNotNegative`）；**金額為「未稅 + 稅金」兩欄**（2026-09 釐清）：`TotalAmount` ＝ 品項加總 ＝ **未稅小計**，稅金為整單獨立一欄 `TaxAmount`（**手動輸入，無稅別 / 稅率下拉**，走 multipart 欄位；`TotalAmount` 由後端重算）。**畫面上的「預算總額」一律顯示含稅**（`TotalAmount + TaxAmount`）—— 預審列表頁 / 預審詳情頁 / 簽核審核頁三處同一算法，明細表尾則拆成「未稅小計 / 稅金 / 含稅總計」三列。⚠ 與請款的 `TotalAmount`（發票金額合計 ＝ **實付總額**，`PaymentRequest` 無稅額欄）**同名不同義**，照抄請款的顯示寫法就會印出未稅（2026-09 修正的正是這個） |
 
 > **自審分組說明**：所有 10 種申請表均支援指定審核者（`UseApplicantDesignated`）模式，但對「申請人本身排入指定審核者清單」的處理方式分為兩組。詳見 [approval-flow.md §申請人指定審核模式](approval-flow.md#申請人指定審核模式useapplicantdesignated)。
 

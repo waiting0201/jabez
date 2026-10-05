@@ -108,6 +108,11 @@ public sealed class AdvanceRequestHandler(
         if (itemsMeta is null || itemsMeta.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
 
+        // 金額合理性（2026-10 安全稽核）：不可為負數，且總價 = 現金 + 支票
+        AmountGuard.EnsureItems(itemsMeta,
+            i => new AmountGuard.ItemAmounts(i.UnitPrice, i.TotalPrice, i.CashAmount, i.CheckAmount),
+            "預支費用明細", requireCashPlusCheck: true);
+
         if (!await db.Projects.AnyAsync(p => p.Id == projectId))
             throw AppException.NotFound("Project");
 
@@ -272,6 +277,11 @@ public sealed class AdvanceRequestHandler(
             var itemsMeta = JsonSerializer.Deserialize<ItemMetadata[]>(itemsJson, JsonOpts);
             if (itemsMeta is { Length: > 0 })
             {
+                // 金額合理性（2026-10 安全稽核）：不可為負數，且總價 = 現金 + 支票
+                AmountGuard.EnsureItems(itemsMeta,
+                i => new AmountGuard.ItemAmounts(i.UnitPrice, i.TotalPrice, i.CashAmount, i.CheckAmount),
+                "預支費用明細", requireCashPlusCheck: true);
+
                 // 收集舊的 blob URLs
                 var oldFileUrls = ar.Items
                     .Where(i => !string.IsNullOrEmpty(i.FileUrl))
@@ -428,23 +438,22 @@ public sealed class AdvanceRequestHandler(
         var roundNo = ar.CurrentRoundNo;
 
         // 退回重送 / 追加新輪次：清除「本輪」審核記錄，重置指定審核者狀態
-        if (ar.ApprovalStatus == "returned" || isSupplementRound)
-        {
-            // 追加輪只刪本輪紀錄，第 1 輪（含更早批次）的簽核歷程必須保留
-            var oldRecords = await db.ApprovalRecords
-                .Where(r => r.ApplicationType == "advance" && r.ApplicationId == ar.Id
-                         && (roundNo == 1 || r.RoundNo == roundNo))
-                .ToListAsync();
-            db.ApprovalRecords.RemoveRange(oldRecords);
+        // 2026-10 安全修正：不論 draft 或 returned 送出一律清空舊簽核足跡（原只清 returned）。
+        // 殘留的舊 approved 紀錄會讓後續關卡誤判「此人已審過」而被自動代簽，未經審核即核准。
+        // 追加輪只刪本輪紀錄，第 1 輪（含更早批次）的簽核歷程必須保留
+        var oldRecords = await db.ApprovalRecords
+            .Where(r => r.ApplicationType == "advance" && r.ApplicationId == ar.Id
+                     && (roundNo == 1 || r.RoundNo == roundNo))
+            .ToListAsync();
+        db.ApprovalRecords.RemoveRange(oldRecords);
 
-            var oldOverrides = await db.EscalationOverrides
-                .Where(o => o.ApplicationType == "advance" && o.ApplicationId == ar.Id)
-                .ToListAsync();
-            db.EscalationOverrides.RemoveRange(oldOverrides);
+        var oldOverrides = await db.EscalationOverrides
+            .Where(o => o.ApplicationType == "advance" && o.ApplicationId == ar.Id)
+            .ToListAsync();
+        db.EscalationOverrides.RemoveRange(oldOverrides);
 
-            // 重置指定審核者狀態為 pending
-            await AdvanceSupplementService.ResetDesignatedReviewersAsync(db, ar.Id);
-        }
+        // 重置指定審核者狀態為 pending
+        await AdvanceSupplementService.ResetDesignatedReviewersAsync(db, ar.Id);
 
         var roundSuffix = roundNo > 1 ? $"（第 {roundNo} 次追加）" : "";
         var submitter = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
@@ -629,6 +638,11 @@ public sealed class AdvanceRequestHandler(
         if (itemsMeta is null || itemsMeta.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
 
+        // 金額合理性（2026-10 安全稽核）：不可為負數，且總價 = 現金 + 支票
+        AmountGuard.EnsureItems(itemsMeta,
+            i => new AmountGuard.ItemAmounts(i.UnitPrice, i.TotalPrice, i.CashAmount, i.CheckAmount),
+            "預支費用明細", requireCashPlusCheck: true);
+
         var roundNo = ar.CurrentRoundNo + 1;
 
         // 快照父單目前的核准狀態，供追加被駁回時回滾
@@ -692,6 +706,11 @@ public sealed class AdvanceRequestHandler(
         var itemsMeta = JsonSerializer.Deserialize<ItemMetadata[]>(itemsJson, JsonOpts);
         if (itemsMeta is null || itemsMeta.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
+
+        // 金額合理性（2026-10 安全稽核）：不可為負數，且總價 = 現金 + 支票
+        AmountGuard.EnsureItems(itemsMeta,
+            i => new AmountGuard.ItemAmounts(i.UnitPrice, i.TotalPrice, i.CashAmount, i.CheckAmount),
+            "預支費用明細", requireCashPlusCheck: true);
 
         // 只替換本批次明細；blob 差集僅在本批次內比對，避免誤刪其他批次的檔案
         var roundItems = ar.Items.Where(i => i.RoundNo == roundNo).ToList();

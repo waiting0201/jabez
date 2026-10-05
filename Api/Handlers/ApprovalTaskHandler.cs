@@ -569,6 +569,12 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == htr.EmployeeId.Value)
                     : null;
                 await AuthorizeStepAsync(htr.ApprovalItemId, htr.CurrentStepOrder, reviewer, htrApplicant?.DepartmentId, "holiday_travel", htr.Id, htrApplicant?.JobTitleId);
+
+                // 2026-10 安全稽核：核准時再擋一次參與人員的重複給付（只比對已核准的其他單，
+                // 避免兩張同時 pending 的既有單互相擋死）。退回 / 拒絕不受影響。
+                if (action == "approved")
+                    await HolidayTravelParticipantGuard.EnsureNoConflictsAsync(
+                        db, calendarReader, workdaysFactory, htr.Id, onlyAgainstApproved: true);
                 await ProcessReviewAsync("holiday_travel", htr.Id, htr.CurrentStepOrder,
                     htr.ApprovalItemId, action, reviewNote, reviewerId, htr.EmployeeId,
                     setStatus:     s  => htr.ApprovalStatus   = s,
@@ -661,8 +667,13 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     : null;
                 await AuthorizeStepAsync(wo.ApprovalItemId, wo.CurrentStepOrder, reviewer, woApplicant?.DepartmentId, "write_off", wo.Id, woApplicant?.JobTitleId);
                 // 設定預支申請退款日（審核者可在審核沖銷時填寫）
+                // 2026-10 安全修正：只有財務關卡（DepartmentCodes.FinanceStep）可登記退款日；
+                // 其他關卡帶了就 400，否則任何關卡的審核者都能改寫母單的退款紀錄。
                 if (estimatedRefundDate.HasValue || refundedAt.HasValue)
                 {
+                    if (!await IsFinanceStepAsync(wo.ApprovalItemId, wo.CurrentStepOrder, reviewer))
+                        throw AppException.BadRequest("僅財務管理部的簽核步驟可登記退款日。");
+
                     var adv = await db.AdvanceRequests.FindAsync(wo.AdvanceRequestId);
                     if (adv is not null)
                     {
@@ -731,8 +742,12 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 await AuthorizeStepAsync(two.ApprovalItemId, two.CurrentStepOrder, reviewer, twoApplicant?.DepartmentId, "travel_write_off", two.Id, twoApplicant?.JobTitleId);
 
                 // 設定出差申請退款日（審核者可在審核出差沖銷時填寫）
+                // 2026-10 安全修正：只有財務關卡可登記退款日（同預支沖銷）
                 if (estimatedRefundDate.HasValue || refundedAt.HasValue)
                 {
+                    if (!await IsFinanceStepAsync(two.ApprovalItemId, two.CurrentStepOrder, reviewer))
+                        throw AppException.BadRequest("僅財務管理部的簽核步驟可登記退款日。");
+
                     var travel = await db.TravelRequests.FindAsync(two.TravelRequestId);
                     if (travel is not null)
                     {
@@ -938,10 +953,24 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         int? applicantDepartmentId = null, string? applicationType = null, int? applicationId = null,
         int? applicantJobTitleId = null)
     {
-        if (approvalItemId is null) return;
-
         // Superadmin 可審核任何步驟
         if (reviewer.IsSuperAdmin) return;
+
+        // 2026-10 安全修正：任何人（含擁有全部權限者）都不可審核自己送出的申請。
+        // 正式資料證實發生過：財務協理在財務關卡核准自己的請款單、總監在總監關卡核准自己的預支 / 沖銷單 ——
+        // 因為推進流程時「固定池關卡」不檢查申請人是否就是池中唯一的人，而授權只比對部門 / 職稱。
+        // 單筆審核、批次核准、指定審核者、升級審核者一律適用（本方法是所有審核入口的共同授權點）。
+        if (applicationType is not null && applicationId.HasValue)
+        {
+            var applicantId = await GetApplicantIdAsync(applicationType, applicationId.Value);
+            if (applicantId.HasValue && applicantId.Value == reviewer.Id)
+                throw AppException.Forbidden("不可審核自己送出的申請。");
+        }
+
+        // 2026-10 安全修正：原本「查無簽核流程 / 查無目前關卡」直接放行（任何持 approval-tasks:write 者皆可核准），
+        // 改為一律拒絕，只有 Superadmin（上方已放行）可處理這類異常單據。
+        if (approvalItemId is null)
+            throw AppException.Forbidden("此申請單未綁定簽核流程，僅 Superadmin 可審核。");
 
         // 跨步驟同人去重防呆（限縮版）：僅當 reviewer 為「總監（JobTitle.Level=1）」時，
         // 已審過則不允許再次審核（總監絕不重審，留一道兜底）。非總監放寬以對齊 SkipUnreviewableStepsAsync 的限縮邏輯。
@@ -982,7 +1011,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.ApprovalItemId == approvalItemId && s.StepOrder == currentStepOrder);
 
-        if (step is null) return;
+        if (step is null)
+            throw AppException.Forbidden("查無此申請單目前所在的簽核關卡，僅 Superadmin 可審核。");
 
         // ── 指定審核模式（原生 UseApplicantDesignated 或例外命中）：
         //    查詢「本步驟」的 RequestDesignatedReviewers，找當前 pending 最小 StepOrder 的審核者 ──

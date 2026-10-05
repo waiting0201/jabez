@@ -85,7 +85,6 @@ public sealed record TravelRequestDto(
 
 public sealed record CreateTravelRequestRequest(
     Guid?    EmployeeId,
-    int?     ApprovalItemId       = null,
     string   Destination          = "",
     DateTime StartDate            = default,
     DateTime EndDate              = default,

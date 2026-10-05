@@ -148,6 +148,9 @@ public static class DesignatedReviewerHelper
         // 須在正規化（補齊 ApprovalStepOrder==0）與剔除非法綁定之後才判定。
         await ValidateDesignatedJobTitlesAsync(db, approvalItemId.Value, applicantId, designees);
 
+        // 2026-10 安全修正：指定審核者的資格驗證（本人 / 在職 / 職級 / 所選部門）
+        await ValidateDesigneeEligibilityAsync(db, approvalItemId.Value, applicantId, designees);
+
         // 被抑制的指定步驟（首個指定步驟＝所選部門最高職稱 → 其後指定步驟不需選人）不列入必填檢查。
         // 注意：須在上方正規化（補齊 ApprovalStepOrder==0）之後才判定，否則第一步首位 designee 綁定抓不到。
         var normalized = designees
@@ -162,6 +165,89 @@ public static class DesignatedReviewerHelper
                 continue;
             if (!designees.Any(d => d.ApprovalStepOrder == stepOrder))
                 throw AppException.BadRequest("此簽核流程包含申請人指定審核步驟，請提供指定審核者。");
+        }
+    }
+
+    /// <summary>
+    /// 驗證每位 designee 的資格（2026-10 安全修正，所有申請類型、所有指定關卡一體適用）：
+    ///   1. 不可指定申請人本人（原 Group B「申請人排第 1 位就跳過該關」改為直接 400，否則申請人可藉點名自己繞過整關）。
+    ///   2. 必須在職（Status == active）。
+    ///   3. 職級：被指定者 JobTitle.Level（數字越小越高）必須 ≤ 申請人 Level（同級或更高）；
+    ///      例外：申請人已是目前全公司最高職級（active、非 superadmin、有職稱者中的最小 Level）時不限制。
+    ///      保守處理：申請人或被指定者沒有職稱 → 無從比較 → 一律拒絕（寧可擋下請管理員補職稱，也不放行未知）。
+    ///   4. 「需先選部門再選人」的指定關卡（DesignatedRequiresDepartment）：被指定者須屬於 SelectedDepartmentId
+    ///      （精確比對，不含子部門 —— 與前端 picker 候選名單 `u.departmentId === selectedDepartmentId`、
+    ///      GetSuppressedDesignatedStepOrdersAsync 的 `reviewer.DepartmentId == deptId` 同一語意）；未帶 SelectedDepartmentId 亦拒絕。
+    /// 此時 designees 已完成正規化並剔除非法綁定，故每筆 ApprovalStepOrder 皆對應有效指定步驟。
+    /// </summary>
+    private static async Task ValidateDesigneeEligibilityAsync(
+        AppDbContext db, int approvalItemId, Guid applicantId,
+        IReadOnlyList<RequestDesignatedReviewer> designees)
+    {
+        if (designees.Count == 0) return;
+
+        if (designees.Any(d => d.ReviewerId == applicantId))
+            throw AppException.BadRequest("指定審核者不能是申請人本人。");
+
+        var reviewerIds = designees.Select(d => d.ReviewerId).Distinct().ToList();
+        var reviewers = await db.Users.AsNoTracking()
+            .Where(u => reviewerIds.Contains(u.Id))
+            .Select(u => new
+            {
+                u.Id, u.Name, u.Status, u.DepartmentId, u.IsSuperAdmin,
+                Level = u.JobTitle != null ? (int?)u.JobTitle.Level : null,
+            })
+            .ToDictionaryAsync(u => u.Id);
+
+        foreach (var d in designees)
+        {
+            if (!reviewers.TryGetValue(d.ReviewerId, out var r))
+                throw AppException.BadRequest("一或多位指定審核者不存在。");
+            if (r.Status != "active")
+                throw AppException.BadRequest($"指定審核者「{r.Name}」已非在職狀態，請重新選擇。");
+        }
+
+        // ── 職級 ──
+        var applicantLevel = await db.Users.AsNoTracking()
+            .Where(u => u.Id == applicantId)
+            .Select(u => u.JobTitle != null ? (int?)u.JobTitle.Level : null)
+            .FirstOrDefaultAsync();
+
+        // 全公司目前最高職級＝在職、非 superadmin、有職稱者中的最小 Level（空池得 null → 不豁免）
+        var topLevel = await db.Users.AsNoTracking()
+            .Where(u => u.Status == "active" && !u.IsSuperAdmin && u.JobTitle != null)
+            .Select(u => (int?)u.JobTitle!.Level)
+            .MinAsync();
+
+        bool applicantIsTop = applicantLevel is not null && topLevel is not null && applicantLevel.Value <= topLevel.Value;
+        if (!applicantIsTop)
+        {
+            if (applicantLevel is null)
+                throw AppException.BadRequest("申請人尚未設定職稱，無法驗證指定審核者的職級，請聯絡管理員設定職稱後再送出。");
+
+            foreach (var d in designees)
+            {
+                var r = reviewers[d.ReviewerId];
+                if (r.Level is null)
+                    throw AppException.BadRequest($"指定審核者「{r.Name}」尚未設定職稱，無法指定為審核者。");
+                if (r.Level.Value > applicantLevel.Value)
+                    throw AppException.BadRequest($"指定審核者「{r.Name}」的職級低於申請人，請改選同級或更高職級的審核者。");
+            }
+        }
+
+        // ── 所選部門 ──
+        var requiresDeptSteps = (await db.ApprovalSteps.AsNoTracking()
+                .Where(s => s.ApprovalItemId == approvalItemId && s.DesignatedRequiresDepartment)
+                .Select(s => s.StepOrder)
+                .ToListAsync())
+            .ToHashSet();
+        foreach (var d in designees.Where(d => requiresDeptSteps.Contains(d.ApprovalStepOrder)))
+        {
+            var r = reviewers[d.ReviewerId];
+            if (d.SelectedDepartmentId is null)
+                throw AppException.BadRequest($"步驟 {d.ApprovalStepOrder} 需先選擇部門再指定審核者。");
+            if (r.DepartmentId != d.SelectedDepartmentId)
+                throw AppException.BadRequest($"指定審核者「{r.Name}」不屬於所選部門，請重新選擇。");
         }
     }
 

@@ -127,27 +127,18 @@ public sealed class ApprovalFlowService(
                     .ToList();
                 var firstReviewer = stepReviewers?.FirstOrDefault();
 
-                // 自審規則分兩組：
-                //   Group A 全程禁止自審（任一位置為申請人即報錯）：leave / travel / overtime / travel_payment
-                //   Group B 首位跳過（申請人排第 1 位 → 自動跳過此步驟；2+ 位置不檢查）：payment_request / advance / write_off / travel_write_off / holiday_travel
-                // 此處先處理 Group A：當 applicationType 不在 Group B 名單內 → 套用 Group A 規則
-                if (applicationType is not ("payment_request" or "advance" or "write_off" or "travel_write_off" or "holiday_travel" or "pre_review"))
-                {
-                    bool anyIsSelf = stepReviewers?.Any(r => r.ReviewerId == applicantId) ?? false;
-                    if (anyIsSelf)
-                        throw AppException.BadRequest("指定審核者不能是申請人本人。");
-                }
+                // 2026-10 安全修正：全部申請類型一律禁止指定申請人本人為審核者（任一位置皆是）。
+                // 原本 Group B（請款 / 預支 / 沖銷 / 出差沖銷 / 假日活動 / 預審）「申請人排第 1 位 → 自動跳過該關」，
+                // 等於讓申請人藉由點名自己繞過這一關的審核。主要攔截點在
+                // DesignatedReviewerHelper.ValidateAndNormalizeAsync（送單時 400），此處為 defense-in-depth。
+                bool anyIsSelf = stepReviewers?.Any(r => r.ReviewerId == applicantId) ?? false;
+                if (anyIsSelf)
+                    throw AppException.BadRequest("指定審核者不能是申請人本人。");
 
-                if (firstReviewer is not null && firstReviewer.ReviewerId != applicantId)
+                if (firstReviewer is not null)
                 {
-                    // 有指定審核者且第 1 位不是自己 → 從這步開始
+                    // 有指定審核者（且第 1 位不是自己）→ 從這步開始
                     return (currentStep, false, null);
-                }
-                else if (firstReviewer is not null && firstReviewer.ReviewerId == applicantId)
-                {
-                    // payment_request / advance 自審第 1 位 → 跳過此步驟
-                    currentStep++;
-                    continue;
                 }
                 else
                 {
@@ -286,6 +277,25 @@ public sealed class ApprovalFlowService(
             query = query.Where(u => u.JobTitleId == step.JobTitleId.Value);
 
         return await query.AnyAsync();
+    }
+
+    /// <summary>
+    /// 固定池關卡（綁部門 / 職稱，含 UseApplicantDepartment）是否「只有申請人本人」符合審核條件。
+    /// 條件：申請人符合該關條件，且排除申請人後池中查無 active、非 superadmin 的人。
+    /// 不限部門也不限職稱的關卡（池範圍＝全公司）一律回 false —— 它不是「只有申請人」，
+    /// 且此時無從界定誰算池內的人；申請人本人仍會被 AuthorizeStepAsync 擋下。
+    /// </summary>
+    private async Task<bool> IsApplicantOnlyReviewerOfFixedStepAsync(
+        Models.Entities.ApprovalStep step, Models.Entities.User applicant)
+    {
+        if (!IsApplicantTheReviewer(step, applicant))
+            return false;
+
+        bool isOpenStep = !step.UseApplicantDepartment && step.DepartmentId is null && step.JobTitleId is null;
+        if (isOpenStep)
+            return false;
+
+        return !await HasStepReviewerAsync(step, applicant);
     }
 
     /// <summary>組出「這一關找不到人」的錯誤訊息，帶出部門與職稱讓管理員知道要改哪裡。</summary>
@@ -589,6 +599,27 @@ public sealed class ApprovalFlowService(
             else
             {
                 hasReviewer = true; // 非上層級／非指定模式皆視為有審核者（既有行為）
+
+                // 2026-10 安全修正：固定池關卡的「池中唯一可簽者就是申請人本人」→ 比照送單時首關的自審處理
+                // （請假 / 銷假 / 出差 / 加班 / 改班：嘗試升級審核；其餘類型：乾淨跳過）。
+                // 原本推進流程時固定池關卡一律「視為有審核者」，申請人（例如財務協理送自己的請款單）
+                // 會停在財務關自己核准自己。池中尚有其他人時不動 —— 該關留給其他人簽，
+                // 申請人本人由 AuthorizeStepAsync 的「不可審自己的單」擋下。
+                if (await IsApplicantOnlyReviewerOfFixedStepAsync(step, applicant))
+                {
+                    if (applicationType is "leave" or "leave_revocation" or "travel" or "overtime" or "shift_change")
+                    {
+                        var selfEscalation = await escalationService.TryEscalateAsync(step, applicant, applicationType);
+                        if (selfEscalation is not null)
+                            stepEscalation = selfEscalation;
+                        else
+                            hasReviewer = false;
+                    }
+                    else
+                    {
+                        hasReviewer = false;
+                    }
+                }
             }
 
             if (!hasReviewer)

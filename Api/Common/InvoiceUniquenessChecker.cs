@@ -1,3 +1,5 @@
+using System.Linq.Expressions;
+using System.Reflection;
 using Jabez.Api.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,7 +18,8 @@ namespace Jabez.Api.Common;
 ///   · 已拒絕的單一律不佔號，且**四張表皆然**（2026-09 修正：原本三個 Handler 各寫一份，
 ///     跨表查詢時漏加 <c>!= "rejected"</c>，被拒絕的沖銷單會永久佔住號碼、申請人無從自救）。
 ///   · 更新場景以 <c>self</c> 排除自身明細。
-///   · 含中文 / CJK 的手打文字（「收據」「領據」）一律排除，見 <see cref="InvoiceNoHelper.IsManualText"/>。
+///   · 比對鍵先正規化（去前後空白、去中間空白與連字號、轉大寫）；含中文的手打文字若仍抽得出
+///     <c>[A-Z]{2}\d{8}</c> 發票號碼則以抽出者比對，抽不出（純「收據」「領據」）才排除，見 <see cref="InvoiceNoHelper.ResolveKey"/>。
 ///
 /// 【錯誤訊息點名佔用者】撞號時必須講清楚是**哪張單**佔的（單別／單號／申請人／狀態），
 /// 否則使用者面對「發票號碼已存在」完全無從自救 —— 尤其佔號者是自己或同事一張從未送簽的
@@ -71,15 +74,18 @@ public static class InvoiceUniquenessChecker
         IEnumerable<string?> invoiceNos,
         (InvoiceSource Source, int Id)? self = null)
     {
-        // 手打中文文字（「收據」「領據」）排除於重複檢查之外
+        // 比對鍵（2026-10 安全稽核）：先正規化（去前後空白、去中間空白與連字號、轉大寫）再比對，
+        // 含中文者若仍抽得出 [A-Z]{2}\d{8} 的發票號碼則以抽出者比對（不再整筆跳過），
+        // 抽不出（純「收據」「領據」）才排除。見 InvoiceNoHelper.ResolveKey。
         var nos = invoiceNos
-            .Where(n => !string.IsNullOrWhiteSpace(n) && !InvoiceNoHelper.IsManualText(n))
-            .Select(n => n!)
+            .Select(InvoiceNoHelper.ResolveKey)
+            .Where(k => k is not null)
+            .Select(k => k!)
             .ToList();
 
         if (nos.Count == 0) return;
 
-        // ── 批次內重複檢查 ────────────────────────────────────────────────────
+        // ── 批次內重複檢查（以比對鍵分組：AB-12345678 與 ab12345678 視為同一張）──────
         var duplicatesInBatch = nos
             .GroupBy(n => n)
             .Where(g => g.Count() > 1)
@@ -89,6 +95,9 @@ public static class InvoiceUniquenessChecker
             throw AppException.Conflict($"發票號碼重複：{string.Join("、", duplicatesInBatch)}");
 
         // ── 跨四張明細表唯一性檢查（一律排除已拒絕的單）────────────────────────
+        // 資料庫內既有號碼可能是未正規化的原始輸入（含空白 / 連字號 / 小寫 / 前綴「收據」），
+        // 故 SQL 端先以同一組字元剔除 + UPPER 後做 Contains 粗篩，再於記憶體以 ResolveKey 精確比對
+        // （粗篩會多撈，例如 XAB123456789 也含 AB12345678，精確比對負責剔除這類誤判）。
         var occupancies = new List<Occupancy>();
 
         var excludePaymentId       = self is { Source: InvoiceSource.PaymentRequest } s1 ? s1.Id : (int?)null;
@@ -96,57 +105,68 @@ public static class InvoiceUniquenessChecker
         var excludeTravelWriteOffId = self is { Source: InvoiceSource.TravelWriteOff } s3 ? s3.Id : (int?)null;
         var excludeTravelPaymentId = self is { Source: InvoiceSource.TravelPayment }  s4 ? s4.Id : (int?)null;
 
-        occupancies.AddRange(await db.InvoiceItems
-            .AsNoTracking()
-            .Where(ii => nos.Contains(ii.InvoiceNo)
-                      && ii.PaymentRequest.ApprovalStatus != RejectedStatus
-                      && (excludePaymentId == null || ii.PaymentRequestId != excludePaymentId))
-            .Select(ii => new Occupancy(
-                ii.InvoiceNo,
-                InvoiceSource.PaymentRequest,
-                ii.PaymentRequest.RequestNo,
-                ii.PaymentRequest.SubmittedBy!.Name,
-                ii.PaymentRequest.ApprovalStatus))
-            .ToListAsync());
+        foreach (var key in nos)
+        {
+            var paymentRows = await WhereNormalizedContains(db.InvoiceItems.AsNoTracking(), ii => ii.InvoiceNo, key)
+                .Where(ii => ii.PaymentRequest.ApprovalStatus != RejectedStatus
+                          && (excludePaymentId == null || ii.PaymentRequestId != excludePaymentId))
+                .Select(ii => new
+                {
+                    No = ii.InvoiceNo,
+                    RequestNo = ii.PaymentRequest.RequestNo,
+                    Name = ii.PaymentRequest.SubmittedBy!.Name,
+                    Status = ii.PaymentRequest.ApprovalStatus,
+                })
+                .ToListAsync();
+            occupancies.AddRange(paymentRows
+                .Where(r => InvoiceNoHelper.ResolveKey(r.No) == key)
+                .Select(r => new Occupancy(key, InvoiceSource.PaymentRequest, r.RequestNo, r.Name, r.Status)));
 
-        occupancies.AddRange(await db.WriteOffItems
-            .AsNoTracking()
-            .Where(wi => nos.Contains(wi.InvoiceNo!)
-                      && wi.WriteOffRecord.ApprovalStatus != RejectedStatus
-                      && (excludeWriteOffId == null || wi.WriteOffRecordId != excludeWriteOffId))
-            .Select(wi => new Occupancy(
-                wi.InvoiceNo!,
-                InvoiceSource.WriteOff,
-                wi.WriteOffRecord.RequestNo,
-                wi.WriteOffRecord.SubmittedBy!.Name,
-                wi.WriteOffRecord.ApprovalStatus))
-            .ToListAsync());
+            var writeOffRows = await WhereNormalizedContains(db.WriteOffItems.AsNoTracking(), wi => wi.InvoiceNo, key)
+                .Where(wi => wi.WriteOffRecord.ApprovalStatus != RejectedStatus
+                          && (excludeWriteOffId == null || wi.WriteOffRecordId != excludeWriteOffId))
+                .Select(wi => new
+                {
+                    No = wi.InvoiceNo,
+                    RequestNo = wi.WriteOffRecord.RequestNo,
+                    Name = wi.WriteOffRecord.SubmittedBy!.Name,
+                    Status = wi.WriteOffRecord.ApprovalStatus,
+                })
+                .ToListAsync();
+            occupancies.AddRange(writeOffRows
+                .Where(r => InvoiceNoHelper.ResolveKey(r.No) == key)
+                .Select(r => new Occupancy(key, InvoiceSource.WriteOff, r.RequestNo, r.Name, r.Status)));
 
-        occupancies.AddRange(await db.TravelWriteOffItems
-            .AsNoTracking()
-            .Where(twi => nos.Contains(twi.InvoiceNo!)
-                       && twi.TravelWriteOffRecord.ApprovalStatus != RejectedStatus
-                       && (excludeTravelWriteOffId == null || twi.TravelWriteOffRecordId != excludeTravelWriteOffId))
-            .Select(twi => new Occupancy(
-                twi.InvoiceNo!,
-                InvoiceSource.TravelWriteOff,
-                twi.TravelWriteOffRecord.RequestNo,
-                twi.TravelWriteOffRecord.SubmittedBy!.Name,
-                twi.TravelWriteOffRecord.ApprovalStatus))
-            .ToListAsync());
+            var travelWriteOffRows = await WhereNormalizedContains(db.TravelWriteOffItems.AsNoTracking(), twi => twi.InvoiceNo, key)
+                .Where(twi => twi.TravelWriteOffRecord.ApprovalStatus != RejectedStatus
+                           && (excludeTravelWriteOffId == null || twi.TravelWriteOffRecordId != excludeTravelWriteOffId))
+                .Select(twi => new
+                {
+                    No = twi.InvoiceNo,
+                    RequestNo = twi.TravelWriteOffRecord.RequestNo,
+                    Name = twi.TravelWriteOffRecord.SubmittedBy!.Name,
+                    Status = twi.TravelWriteOffRecord.ApprovalStatus,
+                })
+                .ToListAsync();
+            occupancies.AddRange(travelWriteOffRows
+                .Where(r => InvoiceNoHelper.ResolveKey(r.No) == key)
+                .Select(r => new Occupancy(key, InvoiceSource.TravelWriteOff, r.RequestNo, r.Name, r.Status)));
 
-        occupancies.AddRange(await db.TravelPaymentRequestItems
-            .AsNoTracking()
-            .Where(tpi => nos.Contains(tpi.InvoiceNo!)
-                       && tpi.TravelPaymentRequest.ApprovalStatus != RejectedStatus
-                       && (excludeTravelPaymentId == null || tpi.TravelPaymentRequestId != excludeTravelPaymentId))
-            .Select(tpi => new Occupancy(
-                tpi.InvoiceNo!,
-                InvoiceSource.TravelPayment,
-                tpi.TravelPaymentRequest.RequestNo,
-                tpi.TravelPaymentRequest.Employee!.Name,
-                tpi.TravelPaymentRequest.ApprovalStatus))
-            .ToListAsync());
+            var travelPaymentRows = await WhereNormalizedContains(db.TravelPaymentRequestItems.AsNoTracking(), tpi => tpi.InvoiceNo, key)
+                .Where(tpi => tpi.TravelPaymentRequest.ApprovalStatus != RejectedStatus
+                           && (excludeTravelPaymentId == null || tpi.TravelPaymentRequestId != excludeTravelPaymentId))
+                .Select(tpi => new
+                {
+                    No = tpi.InvoiceNo,
+                    RequestNo = tpi.TravelPaymentRequest.RequestNo,
+                    Name = tpi.TravelPaymentRequest.Employee!.Name,
+                    Status = tpi.TravelPaymentRequest.ApprovalStatus,
+                })
+                .ToListAsync();
+            occupancies.AddRange(travelPaymentRows
+                .Where(r => InvoiceNoHelper.ResolveKey(r.No) == key)
+                .Select(r => new Occupancy(key, InvoiceSource.TravelPayment, r.RequestNo, r.Name, r.Status)));
+        }
 
         if (occupancies.Count == 0) return;
 
@@ -158,6 +178,38 @@ public static class InvoiceUniquenessChecker
             .ToList();
 
         throw AppException.Conflict($"發票號碼已被使用：{string.Join("；", details)}");
+    }
+
+    private static readonly MethodInfo ReplaceMethod =
+        typeof(string).GetMethod(nameof(string.Replace), [typeof(string), typeof(string)])!;
+    private static readonly MethodInfo ToUpperMethod =
+        typeof(string).GetMethod(nameof(string.ToUpper), Type.EmptyTypes)!;
+    private static readonly MethodInfo ContainsMethod =
+        typeof(string).GetMethod(nameof(string.Contains), [typeof(string)])!;
+
+    /// <summary>
+    /// SQL 端粗篩：<c>UPPER(REPLACE(…REPLACE(InvoiceNo, 空白類, ''), 連字號類, ''…)) LIKE '%key%'</c>。
+    /// 剔除的字元集與 <see cref="InvoiceNoHelper.Normalize"/> 完全一致。
+    /// 以運算式樹組裝 REPLACE 鏈（EF 可轉譯），key 走閉包參數而非常數，避免被當成字面量內嵌。
+    /// </summary>
+    private static IQueryable<T> WhereNormalizedContains<T>(
+        IQueryable<T> source, Expression<Func<T, string?>> selector, string key)
+    {
+        Expression body = selector.Body;
+        foreach (var removed in InvoiceNoHelper.RemovedForSql)
+        {
+            var removedArg = removed;
+            Expression<Func<string>> removedExpr = () => removedArg;
+            Expression<Func<string>> emptyExpr   = () => string.Empty;
+            body = Expression.Call(body, ReplaceMethod, removedExpr.Body, emptyExpr.Body);
+        }
+        body = Expression.Call(body, ToUpperMethod);
+
+        var keyArg = key;
+        Expression<Func<string>> keyExpr = () => keyArg;
+        var contains = Expression.Call(body, ContainsMethod, keyExpr.Body);
+
+        return source.Where(Expression.Lambda<Func<T, bool>>(contains, selector.Parameters));
     }
 
     /// <summary>組成「AB12345678（預支沖銷單 WO-20260905-001／王小明／草稿）」。</summary>
