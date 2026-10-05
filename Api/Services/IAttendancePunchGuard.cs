@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace Jabez.Api.Services;
 
-/// <summary>防機器人打卡守門（挑戰碼 + 強制 GPS + 嘗試紀錄），見 <see cref="AttendancePunchGuard"/></summary>
+/// <summary>防機器人打卡守門（挑戰碼 + 嘗試紀錄；GPS 選填），見 <see cref="AttendancePunchGuard"/></summary>
 public interface IAttendancePunchGuard
 {
     /// <summary>簽發一次性打卡挑戰碼（綁定使用者 + 動作）</summary>

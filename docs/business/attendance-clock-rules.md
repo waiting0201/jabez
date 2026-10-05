@@ -12,7 +12,7 @@
 
 ## 四個打卡動作的前置條件
 
-> 四個動作皆須**帶 GPS + 有效挑戰碼**（2026-10 起），見下節〈防機器人打卡〉。
+> 四個動作皆須**帶有效挑戰碼**（2026-10 起；GPS 選填），見下節〈防機器人打卡〉。
 
 | 動作 | 端點 | 前置條件 |
 |---|---|---|
@@ -41,8 +41,8 @@ SQL 端的判定片段收斂於 `LeaveRevocationService.NotRevokedClause`，EF �
 診斷腳本：[Api/Data/Scripts/17-diagnose-automated-clock-punching.sql](../../Api/Data/Scripts/17-diagnose-automated-clock-punching.sql)（唯讀）。
 
 ### 規則（四個本人打卡動作共用，單一真相 `Api/Services/AttendancePunchGuard.cs`）
-1. **強制 GPS**：`latitude` / `longitude` 缺漏、超出範圍或為 (0,0) 一律 400「無法取得定位，請開啟…定位權限」。
-   原本「無法取得定位（打卡仍有效）」的行為**已取消**。
+1. ~~強制 GPS~~：**2026-10-05 正式站取消**（無法取得定位的同仁無從打卡）。GPS 改回選填，有帶就照常記錄於
+   打卡紀錄與 `AttendancePunchLogs`，取不到時前端顯示「無法取得定位（打卡仍有效）」。
 2. **一次性打卡挑戰碼**：送出前須先 `POST /attendances/clock-challenge { action }` 取碼，
    碼以 HMAC（由 `Jwt:Secret` 衍生的專用金鑰）簽章綁定「使用者 + 動作 + 簽發時間 + nonce」：
    - 簽發後**至少 3 秒**（`MinAgeMs`）才能使用 —— 擋掉「取碼後立刻打卡」；
@@ -54,7 +54,7 @@ SQL 端的判定片段收斂於 `LeaveRevocationService.NotRevokedClause`，EF �
    GPS / 精度 / IP / User-Agent / 挑戰碼停留毫秒）。被擋下時先寫紀錄再丟 400；成功時與打卡紀錄同一次 SaveChanges，
    後續業務檢查（例如「今日已打上班卡」）失敗則成功紀錄不落地、挑戰碼也不會被消耗。
 
-擋下原因代碼：`no_gps` / `challenge_missing` / `challenge_invalid` / `too_fast` / `challenge_expired` / `challenge_reused`。
+擋下原因代碼：`challenge_missing` / `challenge_invalid` / `too_fast` / `challenge_expired` / `challenge_reused`。
 
 ### 不受影響
 系統自動補卡（`AttendanceAutoClockService`）與管理者修改（`PUT/PATCH /attendances/{id}`）不經此流程。
