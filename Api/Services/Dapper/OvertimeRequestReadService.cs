@@ -14,7 +14,7 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
                o.ApprovalStatus, o.CreatedAt, o.SubmittedAt, o.ReviewedAt, o.ReviewNote,
                o.ApprovalItemId, o.CurrentStepOrder, o.ReviewedById,
                o.CompensationType, o.OvertimePayAmount, o.HourlyRateSnapshot,
-               o.PayableHours, o.IsHolidayOvertime, o.OvertimeDayType
+               o.PayableHours, o.IsHolidayOvertime, o.OvertimeDayType, o.SettledHours
         FROM OvertimeRequests o
         LEFT JOIN Users u ON o.EmployeeId = u.Id
         """;
@@ -83,7 +83,8 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
             IsHolidayOvertime:  (bool?)row.IsHolidayOvertime,
             OvertimeDayType:    OvertimePayCalculator.SnapshotDayType(
                                     (string?)row.OvertimeDayType, (bool?)row.IsHolidayOvertime),
-            RequestNo:          (string?)row.RequestNo);
+            RequestNo:          (string?)row.RequestNo,
+            SettledHours:       (decimal?)row.SettledHours);
     }
 
     public async Task<IEnumerable<OvertimeRequestDto>> GetAllAsync()

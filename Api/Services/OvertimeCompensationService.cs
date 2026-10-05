@@ -40,9 +40,17 @@ public static class OvertimeCompensationService
         AppDbContext db,
         IShiftScheduleReadService shiftSchedule,
         IWorkdayScheduleProvider scheduleProvider,
-        OvertimeRequest ot)
+        OvertimeRequest ot,
+        bool refreshSettlement = true)
     {
         ot.CompensationType = Normalize(ot.CompensationType);
+
+        // 防灌工時（2026-10）：新單（SettledHours 非 null）於終局核准當下，依 DB 內已有的加班打卡重新結算
+        // （一般為 0 —— 員工須核准後才能打加班卡；僅管理者核准前代補登者有值）。
+        // 打卡 / 管理者修改路徑已自行算好 SettledHours，傳 refreshSettlement:false 避免被 DB 舊值蓋回。
+        // 舊單（null）完全不碰，給付沿用 EstimatedHours。
+        if (refreshSettlement && ot.ApprovalStatus == "approved" && ot.SettledHours is not null)
+            ot.SettledHours = await OvertimeSettlementService.ResolveFromDbAsync(db, ot);
 
         if (ot.CompensationType != Pay || ot.EmployeeId is null)
         {
@@ -55,9 +63,15 @@ public static class OvertimeCompensationService
             .Select(u => u.BaseSalary)
             .FirstOrDefaultAsync();
 
+        // 給付基準：已核准 → SettledHours ?? EstimatedHours（單一真相 OvertimeSettlement）；
+        // 尚未核准（送簽中的級距顯示用快照）→ 申請時數，否則新單 SettledHours = 0 會讓簽核台什麼級距都看不到。
+        var hours = ot.ApprovalStatus == "approved"
+            ? OvertimeSettlement.BillableHours(ot)
+            : ot.EstimatedHours;
+
         var estimate = await OvertimePayCalculator.CalculateAsync(
             shiftSchedule, scheduleProvider,
-            baseSalary ?? 0m, ot.EmployeeId.Value, ot.OvertimeDate, ot.EstimatedHours);
+            baseSalary ?? 0m, ot.EmployeeId.Value, ot.OvertimeDate, hours);
 
         ot.OvertimePayAmount  = estimate.Amount;
         ot.HourlyRateSnapshot = estimate.HourlyRate;

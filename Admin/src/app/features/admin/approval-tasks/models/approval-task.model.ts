@@ -268,6 +268,11 @@ export interface OvertimeTaskDetail {
    * 2026-09 起超出上限已改為擋件，新單恆為 0；有值代表擋件上線前送出的歷史單。
    */
   excessHours?: number | null;
+  /**
+   * 結算時數（給付基準，2026-10 防灌工時）＝ min(核准的申請時數, 實際加班打卡時數)。
+   * null ＝ 舊單（給付沿用申請時數）。審核者看到的 estimatedHours 是「申請時數」，實際給付依打卡結算。
+   */
+  settledHours?: number | null;
 }
 
 export interface AdvanceTaskDetailItem {

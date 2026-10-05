@@ -52,7 +52,13 @@ public sealed record AttendanceRecordDto(
     /// <summary>當日應出勤起（扣掉請假時段後）。null＝當日免出勤（全日請假）</summary>
     DateTime? ExpectedStart = null,
     /// <summary>當日應出勤訖（扣掉請假時段後）。null＝當日免出勤（全日請假）</summary>
-    DateTime? ExpectedEnd = null);
+    DateTime? ExpectedEnd = null,
+    /// <summary>曾被管理者修改過（與 IsClockInAuto / IsClockOutAuto 各自獨立：原本是系統補卡、後來被改過可同時為 true）。虛擬列恆為 false</summary>
+    bool      IsManuallyAdjusted = false,
+    /// <summary>最後修改者姓名（無 FK，由 LastAdjustedById 左連 Users；查無為 null）</summary>
+    string?   AdjustedByName = null,
+    /// <summary>最後修改時間</summary>
+    DateTime? AdjustedAt = null);
 
 /// <summary>出缺勤報表列中的單張請假資訊（當日份）</summary>
 public sealed record AttendanceLeaveDto(

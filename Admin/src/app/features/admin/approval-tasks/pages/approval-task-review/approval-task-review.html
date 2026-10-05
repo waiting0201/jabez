@@ -732,8 +732,14 @@
                       <span class="fw-500">{{ task.submittedBy }}</span>
                     </div>
                     <div class="col-6 col-md-4">
-                      <div class="text-muted small mb-1">預計加班總時數</div>
+                      <div class="text-muted small mb-1">申請加班總時數</div>
                       <span class="fw-600 fs-5">{{ d.estimatedHours }} 小時</span>
+                      @if (d.settledHours != null) {
+                        <!-- 新制：給付時數依實際加班打卡結算（不超過申請時數），核准後才會有打卡 -->
+                        <div class="text-muted small mt-1">
+                          實際給付依加班打卡結算，目前結算 {{ d.settledHours }} 小時
+                        </div>
+                      }
                     </div>
                     <div class="col-6 col-md-4">
                       <div class="text-muted small mb-1">補償方式</div>

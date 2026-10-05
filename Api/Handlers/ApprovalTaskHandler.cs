@@ -584,6 +584,10 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 if (ot.ApprovalStatus != "pending")
                     throw AppException.BadRequest("Only pending overtime requests can be reviewed.");
 
+                // 防灌工時（2026-10）：核准時再檢一次每月上限（只計已核准 + 本單，見 OvertimeRequestGuard）
+                if (action == "approved")
+                    await OvertimeRequestGuard.EnsureMonthlyLimitOnApprovalAsync(db, ot);
+
                 var otApplicant = ot.EmployeeId.HasValue
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == ot.EmployeeId.Value)
                     : null;

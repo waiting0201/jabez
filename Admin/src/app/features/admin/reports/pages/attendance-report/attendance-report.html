@@ -123,6 +123,10 @@
                     <span class="badge bg-warning-subtle text-warning-emphasis ms-1"
                           title="未打上班卡，系統於登入時自動補上（已避開請假時段）">系統補卡</span>
                   }
+                  @if (row.isManuallyAdjusted) {
+                    <span class="badge bg-info-subtle text-info-emphasis ms-1"
+                          [title]="'管理者已修正：' + row.adjustedBy + ' ' + row.adjustedAt">已修正</span>
+                  }
                   @if (row.clockInLatitude != null && row.clockInLongitude != null) {
                     <button class="btn btn-sm btn-ghost-primary inline-flex items-center p-0 ms-1" title="查看打卡位置" (click)="openMap('上班打卡', row.clockInLatitude!, row.clockInLongitude!)">
                       <svg class="sa-icon sa-icon-1x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
@@ -134,6 +138,10 @@
                   @if (row.isClockOutAuto) {
                     <span class="badge bg-warning-subtle text-warning-emphasis ms-1"
                           title="未打下班卡，系統於登入時自動補上">系統補卡</span>
+                  }
+                  @if (row.isMissingClockOut) {
+                    <span class="badge bg-danger-subtle text-danger ms-1"
+                          title="有上班卡但沒有下班卡；上班時間異常（如凌晨）或非工作日時，系統不會自動補下班卡，請管理者確認後補正">未打下班卡</span>
                   }
                   @if (row.isLongWorkday) {
                     <span class="badge bg-danger-subtle text-danger ms-1"
@@ -163,7 +171,7 @@
                 </td>
                 <td class="text-right" style="white-space: nowrap">
                   <div class="flex justify-end gap-1">
-                    @if (row.id) {
+                    @if (canEditRow(row)) {
                       <button *appHasPermission="'reports-attendance:write'"
                               class="btn btn-sm btn-ghost-primary inline-flex items-center" title="編輯" (click)="openEdit(row)">
                         <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>

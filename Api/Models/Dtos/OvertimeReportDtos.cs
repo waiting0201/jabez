@@ -10,4 +10,6 @@ public sealed record OvertimeReportDto(
     string    Reason,
     // 補償方式與加班費快照 —— HR 需從報表直接分辨哪些加班已轉現金
     string    CompensationType  = "compensatory",
-    decimal?  OvertimePayAmount = null);
+    decimal?  OvertimePayAmount = null,
+    // 結算時數（給付基準，2026-10 防灌工時）；null ＝ 舊單（給付沿用 EstimatedHours）
+    decimal?  SettledHours      = null);

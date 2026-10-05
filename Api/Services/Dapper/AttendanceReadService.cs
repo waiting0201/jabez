@@ -23,9 +23,11 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
                a.IsClockInAuto, a.IsClockOutAuto,
                a.OvertimeStartTime, a.OvertimeStartLatitude, a.OvertimeStartLongitude,
                a.OvertimeEndTime, a.OvertimeEndLatitude, a.OvertimeEndLongitude,
-               a.OvertimeRequestId, a.CreatedAt, a.IsBusinessTrip, a.Remark
+               a.OvertimeRequestId, a.CreatedAt, a.IsBusinessTrip, a.Remark,
+               a.IsManuallyAdjusted, a.LastAdjustedAt, adj.Name AS AdjustedByName
         FROM AttendanceRecords a
         INNER JOIN Users u ON a.UserId = u.Id
+        LEFT JOIN Users adj ON a.LastAdjustedById = adj.Id
         """;
 
     /// <summary>
@@ -174,6 +176,23 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
         return row is null ? null : MapTodayRow(row);
     }
 
+    public async Task<TodayAttendanceDto?> GetOpenOvertimeOnAsync(Guid userId, DateTime day)
+    {
+        const string sql = """
+            SELECT Id, RecordDate,
+                   ClockInTime,  ClockInLatitude,  ClockInLongitude,
+                   ClockOutTime, ClockOutLatitude, ClockOutLongitude,
+                   OvertimeStartTime, OvertimeStartLatitude, OvertimeStartLongitude,
+                   OvertimeEndTime,   OvertimeEndLatitude,   OvertimeEndLongitude,
+                   OvertimeRequestId, IsBusinessTrip
+            FROM AttendanceRecords
+            WHERE UserId = @UserId AND RecordDate = @Day
+              AND OvertimeStartTime IS NOT NULL AND OvertimeEndTime IS NULL
+            """;
+        var row = await db.QueryFirstOrDefaultAsync<dynamic>(sql, new { UserId = userId, Day = day.Date });
+        return row is null ? null : MapTodayRow(row);
+    }
+
     public async Task<ActiveLeaveDto?> GetActiveLeaveAtAsync(Guid userId, DateTime when)
     {
         // 該日已核准銷假 → 放行打卡（共用 LeaveRevocationService.NotRevokedClause，避免規則分岔）
@@ -238,7 +257,10 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
             // 具名參數跳過 LeaveHours / Leaves（由 AttendanceLeaveMerger 事後以 with { } 補上）
             IsBusinessTrip: (bool)row.IsBusinessTrip,
             Remark:         (string?)row.Remark,
-            IsClockInAuto:  (bool)row.IsClockInAuto);
+            IsClockInAuto:  (bool)row.IsClockInAuto,
+            IsManuallyAdjusted: (bool)row.IsManuallyAdjusted,
+            AdjustedByName:     (string?)row.AdjustedByName,
+            AdjustedAt:         (DateTime?)row.LastAdjustedAt);
             // RowKind / ExpectedStart / ExpectedEnd 由 AttendanceLeaveMerger 事後以 with { } 補上
 
     private static TodayAttendanceDto MapTodayRow(dynamic row) =>

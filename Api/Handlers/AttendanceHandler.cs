@@ -288,10 +288,23 @@ public sealed class AttendanceHandler(
         var now    = Clock.Now;
         var today  = now.Date;
         var record = await db.AttendanceRecords
-            .FirstOrDefaultAsync(a => a.UserId == userId && a.RecordDate == today)
-            ?? throw AppException.BadRequest("請先打加班開始卡。");
+            .FirstOrDefaultAsync(a => a.UserId == userId && a.RecordDate == today);
 
-        if (!record.OvertimeStartTime.HasValue)
+        // 跨日加班（2026-10）：加班過午夜，結束卡落在隔天，但紀錄的 RecordDate 是加班開始那天。
+        // 取消「自動補加班結束卡」後，這是員工唯一能讓跨日加班被結算的路徑 ——
+        // 隔天 CrossDayEndCutoffHour 點前，今天沒有未結束的加班時，改接前一天未結束的那筆。
+        bool carriedOver = false;
+        if ((record?.OvertimeStartTime is null || record.OvertimeEndTime.HasValue)
+            && now.Hour < OvertimeSettlementService.CrossDayEndCutoffHour)
+        {
+            var yesterday = today.AddDays(-1);
+            var carried = await db.AttendanceRecords.FirstOrDefaultAsync(a =>
+                a.UserId == userId && a.RecordDate == yesterday
+                && a.OvertimeStartTime != null && a.OvertimeEndTime == null);
+            if (carried is not null) { record = carried; carriedOver = true; }
+        }
+
+        if (record is null || !record.OvertimeStartTime.HasValue)
             throw AppException.BadRequest("請先打加班開始卡。");
         if (record.OvertimeEndTime.HasValue)
             throw AppException.BadRequest("今日已打加班結束卡。");
@@ -299,9 +312,23 @@ public sealed class AttendanceHandler(
         record.OvertimeEndTime      = now;
         record.OvertimeEndLatitude   = body.Latitude;
         record.OvertimeEndLongitude  = body.Longitude;
-        record.IsBusinessTrip        = body.IsBusinessTrip;
-        // 加班打卡也能設出差旗標，同樣要重算遲到／早退
-        RefreshExceptionFlags(record, await ResolveClockContextAsync(userId, now), body.IsBusinessTrip);
+        if (!carriedOver)
+        {
+            record.IsBusinessTrip = body.IsBusinessTrip;
+            // 加班打卡也能設出差旗標，同樣要重算遲到／早退
+            RefreshExceptionFlags(record, await ResolveClockContextAsync(userId, now), body.IsBusinessTrip);
+        }
+        // 跨日補打（carriedOver）不動前一天的出差旗標與遲到／早退 —— 那是前一天的整日屬性。
+
+        // 加班給付依實際打卡結算（2026-10 防灌工時）：min(核准時數, 開始～結束)。
+        // 舊單（SettledHours 為 null）與未核准的單不處理，見 OvertimeSettlementService。
+        if (record.OvertimeRequestId is { } otId)
+        {
+            var ot = await db.OvertimeRequests.FirstOrDefaultAsync(o => o.Id == otId);
+            if (ot is not null)
+                await OvertimeSettlementService.SyncFromPunchesAsync(
+                    db, shiftReader, workdaySchedule, ot, record.OvertimeStartTime, record.OvertimeEndTime);
+        }
 
         await db.SaveChangesAsync();
 
@@ -328,6 +355,18 @@ public sealed class AttendanceHandler(
         var record = await db.AttendanceRecords.FindAsync(recordId)
             ?? throw AppException.BadRequest("找不到指定的出缺勤紀錄。");
 
+        // 禁止修改自己的出缺勤（2026-10 防灌工時）：能改別人的卡不等於能改自己的卡 ——
+        // 否則持有 reports-attendance:write 的人可以自己補卡、自己灌工時。Superadmin 無打卡紀錄，不受限。
+        var callerId = await GetUserIdAsync(req);
+        if (record.UserId == callerId && !IsSuperAdmin(req))
+            throw AppException.Forbidden("不可修改自己的出缺勤紀錄，請洽主管或人事處理。");
+
+        // 時間先後的基本完整性（過去完全沒驗證，可存出「下班早於上班」「加班結束早於開始」）
+        if (body.ClockInTime is { } ci && body.ClockOutTime is { } co && co <= ci)
+            throw AppException.BadRequest("下班時間必須晚於上班時間。");
+        if (body.OvertimeStartTime is { } os && body.OvertimeEndTime is { } oe && oe <= os)
+            throw AppException.BadRequest("加班結束時間必須晚於加班開始時間。");
+
         var scope = await access.ResolveAsync(req.HttpContext.User);
         if (!scope.SeeAll)
         {
@@ -342,19 +381,64 @@ public sealed class AttendanceHandler(
                 throw AppException.Forbidden("您沒有權限修改此員工的出缺勤紀錄。");
         }
 
-        // 時間被人工改動 → 清掉該欄的「系統補卡」標記（改為管理者維護的值）
-        if (record.ClockInTime != body.ClockInTime)
-            record.IsClockInAuto = false;
+        var newRemark = string.IsNullOrWhiteSpace(body.Remark) ? null : body.Remark.Trim();
 
-        if (record.ClockOutTime != body.ClockOutTime)
-            record.IsClockOutAuto = false;
+        bool changed = record.ClockInTime       != body.ClockInTime
+                    || record.ClockOutTime      != body.ClockOutTime
+                    || record.OvertimeStartTime != body.OvertimeStartTime
+                    || record.OvertimeEndTime   != body.OvertimeEndTime
+                    || record.Remark            != newRemark;
+        bool overtimeChanged = record.OvertimeStartTime != body.OvertimeStartTime
+                            || record.OvertimeEndTime   != body.OvertimeEndTime;
+
+        if (changed)
+        {
+            // 異動紀錄（2026-10）：修改前後的各欄位值 + 修改人快照，每次實質修改寫一列。
+            // 值沒變的重複儲存不寫（否則稽核紀錄全是噪音）。
+            var modifierName = await db.Users.AsNoTracking()
+                .Where(u => u.Id == callerId).Select(u => u.Name).FirstOrDefaultAsync() ?? "—";
+            var now = Clock.Now;
+            db.AttendanceAuditLogs.Add(new AttendanceAuditLog
+            {
+                AttendanceRecordId  = record.Id,
+                OwnerUserId         = record.UserId,
+                RecordDate          = record.RecordDate,
+                ModifiedById        = callerId,
+                ModifiedByName      = modifierName,
+                ModifiedAt          = now,
+                ClockInBefore       = record.ClockInTime,       ClockInAfter       = body.ClockInTime,
+                ClockOutBefore      = record.ClockOutTime,      ClockOutAfter      = body.ClockOutTime,
+                OvertimeStartBefore = record.OvertimeStartTime, OvertimeStartAfter = body.OvertimeStartTime,
+                OvertimeEndBefore   = record.OvertimeEndTime,   OvertimeEndAfter   = body.OvertimeEndTime,
+                RemarkBefore        = record.Remark,            RemarkAfter        = newRemark,
+            });
+
+            // 「系統補卡」旗標**不再清除**：IsClockInAuto / IsClockOutAuto 記的是「這個值最初怎麼來的」，
+            // 管理者改過另以 IsManuallyAdjusted 標示，報表兩個 badge 可並存（原本是系統補的、後來被誰改過）。
+            record.IsManuallyAdjusted = true;
+            record.LastAdjustedById   = callerId;
+            record.LastAdjustedAt     = now;
+        }
 
         record.ClockInTime        = body.ClockInTime;
         record.ClockOutTime       = body.ClockOutTime;
         record.OvertimeStartTime  = body.OvertimeStartTime;
         record.OvertimeEndTime    = body.OvertimeEndTime;
-        record.Remark             = string.IsNullOrWhiteSpace(body.Remark) ? null : body.Remark.Trim();
+        record.Remark             = newRemark;
         // IsBusinessTrip 刻意不在此異動：出差僅由本人打卡時勾選
+
+        // 加班起訖被改動 → 重算該日加班單的結算時數（同一次 SaveChanges，冪等）。
+        // 這是「補登期限外」或「忘了打加班結束卡」的唯一補正路徑：沒有結算時數就沒有給付。
+        if (overtimeChanged)
+        {
+            var ot = await OvertimeSettlementService.FindForRecordAsync(db, record);
+            if (ot is not null)
+            {
+                record.OvertimeRequestId ??= ot.Id;   // 以日期比對找到的單順手綁定，之後的重算就不必再猜
+                await OvertimeSettlementService.SyncFromPunchesAsync(
+                    db, shiftReader, workdaySchedule, ot, record.OvertimeStartTime, record.OvertimeEndTime);
+            }
+        }
 
         await db.SaveChangesAsync();
 
@@ -362,6 +446,10 @@ public sealed class AttendanceHandler(
     }
 
     // ── Helper ──────────────────────────────────────────────────────────────────
+
+    /// <summary>Superadmin 判定（比照 ApprovalTaskHandler：is_superadmin claim）。principal 由 AppRouter 寫入 HttpContext.User。</summary>
+    private static bool IsSuperAdmin(HttpRequest req) =>
+        string.Equals(req.HttpContext.User.FindFirst("is_superadmin")?.Value, "true", StringComparison.OrdinalIgnoreCase);
 
     private async Task<Guid> GetUserIdAsync(HttpRequest req)
     {
@@ -494,6 +582,15 @@ public sealed class AttendanceHandler(
         var now    = Clock.Now;
         var today  = DateOnly.FromDateTime(now);
         var record = await reader.GetTodayAsync(userId);
+
+        // 跨日加班：隔天凌晨（CrossDayEndCutoffHour 前）今天沒有未結束的加班時，改顯示前一天未結束的那筆，
+        // 打卡頁才會讓「加班結束」按鈕可按（前端只看 overtimeStartTime / overtimeEndTime）。
+        if (record?.OvertimeStartTime is null && now.Hour < OvertimeSettlementService.CrossDayEndCutoffHour)
+        {
+            var carried = await reader.GetOpenOvertimeOnAsync(userId, now.Date.AddDays(-1));
+            if (carried is not null) record = carried;
+        }
+
         var leaves = await reader.GetLeavesOnDateAsync(userId, today);
         var exempt = await CanOvertimeWithoutClockOutAsync(userId, now.Date, leaves);
 

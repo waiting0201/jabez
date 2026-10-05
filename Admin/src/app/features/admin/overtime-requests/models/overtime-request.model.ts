@@ -107,8 +107,13 @@ export interface OvertimeRequest {
   // 後端序列化為 ISO 字串（"2026-03-24T00:00:00"），runtime 實際型別是 string 而非 Date
   overtimeDate: string;
   projects: OvertimeProject[];
-  /** 預估總時數（= projects 各列加總，由後端計算，前端唯讀） */
+  /** 申請時數（= projects 各列加總，由後端計算，前端唯讀）；核准的上限，**不是**給付時數 */
   estimatedHours: number;
+  /**
+   * 結算時數（給付基準，2026-10 防灌工時）＝ min(核准的申請時數, 實際加班打卡時數)，沒打加班卡為 0。
+   * null / undefined ＝ 舊單（給付沿用申請時數），畫面不顯示此欄。
+   */
+  settledHours?: number | null;
   reason: string;
   approvalStatus: ApprovalStatus;
   /** 補償方式（補休 / 加班費，整單二擇一） */

@@ -32,7 +32,7 @@ public sealed class CompensatoryReportReadService(IDbConnection db) : ICompensat
             SELECT u.Id AS EmployeeId, u.Name AS EmployeeName, u.DepartmentId, d.Name AS DepartmentName,
                    u.IsShiftWorker, u.BaseSalary,
                    ISNULL(u.CompensatoryOpeningHours, 0) AS OpeningHours,
-                   ISNULL((SELECT SUM(o.EstimatedHours) FROM OvertimeRequests o
+                   ISNULL((SELECT SUM(ISNULL(o.SettledHours, o.EstimatedHours)) FROM OvertimeRequests o
                            WHERE o.EmployeeId = u.Id AND o.ApprovalStatus = 'approved'
                              AND o.CompensationType = 'compensatory'), 0) AS EarnedHours,
                    ISNULL((SELECT SUM(l.Hours) FROM LeaveRequests l
@@ -60,7 +60,8 @@ public sealed class CompensatoryReportReadService(IDbConnection db) : ICompensat
 
         // o.OvertimeDate 為 DATE 型別，inclusive 兩端皆可（比照 OvertimeReportReadService）
         var sql = $"""
-            SELECT o.EmployeeId, o.OvertimeDate, o.EstimatedHours
+            SELECT o.EmployeeId, o.OvertimeDate,
+                   ISNULL(o.SettledHours, o.EstimatedHours) AS BillableHours   -- 給付基準（2026-10 防灌工時）
             FROM OvertimeRequests o
             INNER JOIN Users u ON o.EmployeeId = u.Id
             WHERE o.ApprovalStatus = 'approved'

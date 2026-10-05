@@ -122,6 +122,9 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 JOIN PublicHolidays h ON h.Date = CAST(o.OvertimeDate AS date)
                 WHERE o.ApprovalStatus = 'approved'
                   AND o.EmployeeId IS NOT NULL
+                  -- 防灌工時（2026-10）：新單依實際加班打卡結算（SettledHours），沒打加班卡＝0 即不算出勤；
+                  -- 舊單 SettledHours 為 NULL → 沿用申請時數，歷史月份薪資不變。
+                  AND ISNULL(o.SettledHours, o.EstimatedHours) > 0
             )
             SELECT EmployeeId, COUNT(*) AS Days
             FROM Worked

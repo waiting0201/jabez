@@ -16,10 +16,15 @@ namespace Jabez.Api.Services;
 /// 系統沒有任何證據可證明當事人有出勤，代打就等於憑空產生一整天的出勤紀錄。
 /// 那類日子交由出缺勤報表的缺勤 / 未打卡虛擬列呈現，由管理者人工判斷後補登。</para>
 ///
-/// 三種缺口：
+/// 兩種缺口（2026-10 防灌工時後；原有的第三種「補加班結束卡」已**取消**）：
 ///   ① 有下班卡或加班卡、沒有上班卡 → 補上班卡（僅工作日，時間為當日應出勤起）
 ///   ② 有上班卡、沒有下班卡         → 補下班卡（上班 + 9 小時，被請假蓋掉時提前）
-///   ③ 有加班開始、沒有加班結束     → 補加班結束卡（加班開始 + 申請單預估時數）
+///      —— 僅在「該日是該員工的工作日」且「上班打卡時間落在應出勤起點的合理範圍內」才補，
+///         見 <see cref="PlausibleClockInEarlyHours"/> / <see cref="PlausibleClockInLateHours"/>。
+///
+/// <b>不補加班結束卡</b>：以前會把結束卡補成「加班開始 + 申請單預估時數」，結果申請 14 小時就憑空補出 14 小時
+/// （正式資料 12 張）。現在加班給付依實際打卡結算（<see cref="OvertimeSettlement"/>），沒打結束卡就留空、結算為 0，
+/// 由管理者於出缺勤報表補正（補正時會自動重算結算時數）。
 ///
 /// 補卡時間一律避開當日已核准請假時段（走 <see cref="ExpectedWorkWindow"/>），
 /// 否則補出來的卡會落在請假區間內，與 AttendanceHandler.EnsureNotOnLeaveAsync 的規則自相矛盾。
@@ -29,6 +34,19 @@ public static class AttendanceAutoClockService
     /// <summary>自動補下班卡的時數＝標準工時 + 午休（一律 +9，不分上下午打卡）</summary>
     private const int AutoClockOutHours =
         WorkdayHours.FullDayHours + (WorkdayHours.LunchEndHour - WorkdayHours.LunchStartHour);
+
+    /// <summary>
+    /// 自動補下班卡的合理性檢查（2026-10 防灌工時）：上班打卡時間須落在「該員工當日應出勤起點」
+    /// 往前 N 小時 ～ 往後 M 小時之內，超出一律不補（留空，由報表呈現「未打下班卡」）。
+    /// 起點取 <see cref="ExpectedWorkWindow"/>（已依切換日選用 08:00 / 09:00，並因上午請假後延到 13:00）。
+    /// 數字的取捨：
+    ///   · 往前 2 小時：公司時段 08:00 起 → 06:00；彈性制 09:00 起 → 07:00。自訂上下班時段者（S 介於 07:30–09:30）
+    ///     與提早到班的人都落在內，凌晨在家打上班卡（正式資料出現過）則落在外。
+    ///   · 往後 3 小時：容許遲到與上午請假後晚到；再晚就不是「忘了打下班卡」而是來歷不明的紀錄。
+    /// 排班制員工的休假日、彈性制的例假 / 休假 / 國定假日，另由「是否為工作日」判定擋下。
+    /// </summary>
+    public const int PlausibleClockInEarlyHours = 2;
+    public const int PlausibleClockInLateHours  = 3;
 
     /// <summary>
     /// 套用自動補卡。呼叫端負責 SaveChangesAsync。
@@ -43,14 +61,12 @@ public static class AttendanceAutoClockService
     {
         var today = Clock.Now.Date;
 
-        // 三種缺口一次撈回（皆限 RecordDate < today：今天還有機會自己打）
+        // 兩種缺口一次撈回（皆限 RecordDate < today：今天還有機會自己打）
         var pending = await db.AttendanceRecords
-            .Include(a => a.OvertimeRequest)
             .Where(a => a.UserId == user.Id
                 && a.RecordDate < today
                 && ((a.ClockInTime == null && (a.ClockOutTime != null || a.OvertimeStartTime != null))
-                 || (a.ClockInTime != null && a.ClockOutTime == null)
-                 || (a.OvertimeStartTime != null && a.OvertimeEndTime == null)))
+                 || (a.ClockInTime != null && a.ClockOutTime == null)))
             .ToListAsync();
 
         if (pending.Count == 0) return AutoClockResult.Empty;
@@ -65,26 +81,32 @@ public static class AttendanceAutoClockService
             ? []
             : await ExpandLeavesAsync(db, workdays, user, needWindow);
 
-        // 補上班卡另需工作日判定（休假日只含加班時間的紀錄不該被補上班卡）
+        // 補上班卡、補下班卡都需工作日判定：休假日只含加班時間的紀錄不該被補上班卡，
+        // 非工作日（例假 / 休假 / 國定假日）上有上班卡卻沒下班卡者，也不補下班卡
+        // （防「假日偷偷打上班卡、靠補卡湊出 9 小時」）。
         HashSet<DateTime>? workingDates = null;
-        var clockInDates = pending.Where(NeedsClockIn).Select(a => a.RecordDate.Date).ToList();
-        if (canClockIn && clockInDates.Count > 0)
+        var workdayCheckDates = pending
+            .Where(a => (NeedsClockIn(a) && canClockIn) || (a.ClockInTime != null && a.ClockOutTime == null))
+            .Select(a => a.RecordDate.Date)
+            .ToList();
+        if (workdayCheckDates.Count > 0)
         {
             // Attendance 語意：彈性休假日仍是休假日，不該被補上班卡
             var (_, _, working) = await workdays.ComputeAsync(
-                clockInDates.Min(), clockInDates.Max(), CalendarScope.Attendance);
+                workdayCheckDates.Min(), workdayCheckDates.Max(), CalendarScope.Attendance);
             workingDates = [.. working];
         }
 
         var filledClockIn  = new List<DateTime>();
         var filledClockOut = new List<DateTime>();
-        var filledOvertime = new List<DateTime>();
 
         foreach (var record in pending)
         {
             var date   = record.RecordDate.Date;
+            // 該日適用的工作時段依「該日日期」與切換日選用（舊制 08:00–17:00 / 新制 09:00–18:00）
             var window = ExpectedWorkWindow.Compute(
-                date, leavesByDay.TryGetValue(date, out var dayLeaves) ? dayLeaves : []);
+                date, leavesByDay.TryGetValue(date, out var dayLeaves) ? dayLeaves : [],
+                workdays.ScheduleFor(date));
 
             // ① 補上班卡：僅工作日、當日並非全日請假
             if (NeedsClockIn(record)
@@ -102,7 +124,9 @@ public static class AttendanceAutoClockService
             //    且固定補到 18:00 會讓早到 / 晚到者的工時失真。
             //    ⚠️ 只有「當日有假把下班時段蓋掉」時才提前（EndAdjustedByLeave 為閘門）：
             //    無請假時 window.End 恆為 17:00，無條件取 min 會把 09:00 上班者從 18:00 壓成 17:00。
-            if (record.ClockInTime is { } clockIn && record.ClockOutTime is null)
+            if (record.ClockInTime is { } clockIn && record.ClockOutTime is null
+                && IsPlausibleClockIn(clockIn, window)
+                && workingDates?.Contains(date) == true)
             {
                 var target = clockIn.AddHours(AutoClockOutHours);
                 if (window.EndAdjustedByLeave && window.End is { } expectedEnd
@@ -114,19 +138,25 @@ public static class AttendanceAutoClockService
                 filledClockOut.Add(date);
             }
 
-            // ③ 補加班結束卡
-            if (record.OvertimeStartTime is { } overtimeStart && record.OvertimeEndTime is null)
-            {
-                var hours = (double)(record.OvertimeRequest?.EstimatedHours ?? 0);
-                record.OvertimeEndTime = overtimeStart.AddHours(hours);
-                filledOvertime.Add(date);
-            }
+            // ③ 補加班結束卡：已取消（2026-10）。加班給付依實際打卡結算，沒打結束卡＝結算 0，
+            //    補成「開始 + 預估時數」等於替人憑空創造加班時數。
         }
 
         return new AutoClockResult(
             filledClockIn.Count  == 0 ? null : new AutoClockInInfo(filledClockIn.Count, ToDateStrings(filledClockIn)),
             filledClockOut.Count == 0 ? null : new AutoClockOutInfo(filledClockOut.Count, ToDateStrings(filledClockOut)),
-            filledOvertime.Count == 0 ? null : new AutoOvertimeEndInfo(filledOvertime.Count, ToDateStrings(filledOvertime)));
+            null);   // AutoOvertimeEnd：不再補加班結束卡，欄位保留（AuthHandler 回應結構不變）
+    }
+
+    /// <summary>
+    /// 上班打卡時間是否落在該日應出勤起點的合理範圍內（見 <see cref="PlausibleClockInEarlyHours"/>）。
+    /// 當日免出勤（全日請假，<c>Start</c> 為 null）無從判斷 → 視為不合理、不補。
+    /// </summary>
+    private static bool IsPlausibleClockIn(DateTime clockIn, WorkWindow window)
+    {
+        if (window.Start is not { } start) return false;
+        return clockIn >= start.AddHours(-PlausibleClockInEarlyHours)
+            && clockIn <= start.AddHours(PlausibleClockInLateHours);
     }
 
     /// <summary>該列有下班卡或加班卡、卻沒有上班卡 —— 人確實來過，只是漏打上班</summary>

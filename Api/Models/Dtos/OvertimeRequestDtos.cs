@@ -73,7 +73,10 @@ public sealed record OvertimeRequestDto(
     decimal?  PayableHours         = null,
     bool?     IsHolidayOvertime    = null,   // 舊快照欄，僅供既有列還原日別（見 OvertimePayCalculator.SnapshotDayType）
     string?   OvertimeDayType      = null,   // 新快照欄（WorkDayTypes 四值）；2026-09 前的列為 null
-    string?   RequestNo            = null);  // OT-yyyyMMdd-NNN；送簽時取號，草稿為 null
+    string?   RequestNo            = null,   // OT-yyyyMMdd-NNN；送簽時取號，草稿為 null
+    // 結算時數（給付基準，2026-10 防灌工時）＝ min(核准申請時數, 實際加班打卡時數)。
+    // null ＝ 舊單（給付沿用 EstimatedHours）。前端以「申請時數」與「結算時數」分開呈現。
+    decimal?  SettledHours         = null);
 
 public sealed record CreateOvertimeRequestRequest(
     Guid?    EmployeeId,

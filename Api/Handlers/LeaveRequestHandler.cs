@@ -183,25 +183,18 @@ public sealed class LeaveRequestHandler(
         => await (await workdaysFactory.ForAsync(ownerId)).ComputeAsync(start, end, CalendarScope.Leave);
 
     /// <summary>
-    /// HalfDay 時數在 body.Hours 未帶時的退路：以 LeaveDayExpander 同一套「起 &lt; 13:00 ＝上午、
-    /// 訖 &gt; 13:00 ＝下午」時段分類推時數，不用 End − Start 時間差 —— 補休的上午時段為 09:00–13:00
-    /// （見前端 halfDayAmStartHour / halfDayAmEndHour），時間差會算成 4 小時但界線若用 12:00
-    /// 會把訖 13:00 判成下午而算出全日 8 小時。
-    /// 跨日半天假一律由 client 帶 Hours（時間差對跨日本來就沒有意義），此處僅處理同日。
+    /// 半天型假別（年假 / 補休 / 高階主管假）的時數：**一律由後端依起訖與上午 / 下午時段逐日計算**，
+    /// 完全忽略前端送來的 Hours（2026-10 防灌工時；原本「信任 client」，改 payload 即可把 4 小時送成 400 小時）。
+    /// 走 <see cref="LeaveDayExpander"/> 的單一真相（與銷假逐日展開、出缺勤請假合併同一份判定）：
+    /// 起 &lt; 13:00 ＝上午、訖 &gt; 13:00 ＝下午；單日 am→am 4 / am→pm 8 / pm→pm 4；
+    /// 多日首日 + 中間 8 + 末日；只算排班 / 行事曆上的工作日。pm→am（單日）等無效組合回 0，呼叫端擋「時數必須大於 0」。
+    /// Create / Update / Submit 三處共用，三者結果一致。
     /// </summary>
-    private static decimal ComputeHalfDaySlotHours(DateTime start, DateTime end)
+    private async Task<decimal> ComputeHalfDayHoursAsync(Guid ownerId, string leaveType, DateTime start, DateTime end)
     {
-        if (start.Date != end.Date) return (decimal)(end - start).TotalHours;
-
-        bool startIsAm = start.Hour < WorkdayHours.LunchEndHour;  // 08:00 / 09:00 → am、13:00 → pm
-        bool endIsPm   = end.Hour   > WorkdayHours.LunchEndHour;  // 17:00 → pm、12:00 / 13:00 → am
-        return (startIsAm, endIsPm) switch
-        {
-            (true,  false) => 4m,   // am → am
-            (true,  true)  => 8m,   // am → pm（全日）
-            (false, true)  => 4m,   // pm → pm
-            _              => 0m,   // pm → am：單日無效
-        };
+        var workdays = await workdaysFactory.ForAsync(ownerId);
+        var days = await LeaveDayExpander.ExpandAsync(workdays, leaveType, start, end);
+        return days.Sum(d => d.Hours);
     }
 
     /// <summary>
@@ -358,7 +351,7 @@ public sealed class LeaveRequestHandler(
                 return new BadRequestObjectResult(ApiResponse.Fail("EndDate 必須為整點（分鐘 00）。"));
         }
 
-        // 時數計算：Hour → 逐日累加只算工作日；HalfDay → 信任 client；Day → 工作日數 × 8。
+        // 時數計算：Hour → 逐日累加只算工作日；HalfDay → 後端依時段逐日計算（不信任 client）；Day → 工作日數 × 8。
         // 工作日型假別（除歲時祭儀假外皆是）扣除國定假日與六日；產假區間仍為起始日 +55 天，只計其中工作日。
         // 草稿階段行事曆若尚無資料 → 退回原始算式（送出時會強制要求行事曆並權威重算）。
         bool isWorkingDayType = WorkingDayLeaveTypes.Contains(body.LeaveType);
@@ -372,12 +365,17 @@ public sealed class LeaveRequestHandler(
             var (_, _, working) = await ComputeWorkingDatesAsync(employeeId, effectiveStart, effectiveEnd);
             hours = working.Count * 8m;
         }
+        else if (isWorkingDayType && unit == LeaveTimeUnit.HalfDay)
+        {
+            // 半天型假別時數一律由後端算，忽略 body.Hours（見 ComputeHalfDayHoursAsync）
+            hours = await ComputeHalfDayHoursAsync(employeeId, body.LeaveType, effectiveStart, effectiveEnd);
+        }
         else
         {
             hours = unit switch
             {
                 LeaveTimeUnit.Hour    => (decimal)(effectiveEnd - effectiveStart).TotalHours,
-                LeaveTimeUnit.HalfDay => body.Hours,
+                LeaveTimeUnit.HalfDay => 0m,   // 半天型假別皆為工作日型，已走上一個分支；此處不再信任 body.Hours
                 LeaveTimeUnit.Day     => ((effectiveEnd.Date - effectiveStart.Date).Days + 1) * 8m,
                 _                     => (decimal)(effectiveEnd - effectiveStart).TotalHours,
             };
@@ -600,12 +598,17 @@ public sealed class LeaveRequestHandler(
                 var (_, _, working) = await ComputeWorkingDatesAsync(item.EmployeeId ?? Guid.Empty, item.StartDate, item.EndDate);
                 recalcHours = working.Count * 8m;
             }
+            else if (isWorkingDayType && unit == LeaveTimeUnit.HalfDay)
+            {
+                // 半天型假別時數一律由後端算，忽略 body.Hours（見 ComputeHalfDayHoursAsync）
+                recalcHours = await ComputeHalfDayHoursAsync(item.EmployeeId ?? Guid.Empty, effectiveLeaveType, item.StartDate, item.EndDate);
+            }
             else
             {
                 recalcHours = unit switch
                 {
                     LeaveTimeUnit.Hour    => (decimal)(item.EndDate - item.StartDate).TotalHours,
-                    LeaveTimeUnit.HalfDay => body.Hours ?? ComputeHalfDaySlotHours(item.StartDate, item.EndDate),
+                    LeaveTimeUnit.HalfDay => 0m,   // 半天型假別皆為工作日型，已走上一個分支
                     LeaveTimeUnit.Day     => ((item.EndDate.Date - item.StartDate.Date).Days + 1) * 8m,
                     _                     => (decimal)(item.EndDate - item.StartDate).TotalHours,
                 };
@@ -695,7 +698,7 @@ public sealed class LeaveRequestHandler(
             .Where(o => o.EmployeeId == userId
                      && o.ApprovalStatus == "approved"
                      && o.CompensationType == OvertimeCompensationService.Compensatory)
-            .SumAsync(o => o.EstimatedHours);
+            .SumAsync(o => o.SettledHours ?? o.EstimatedHours);   // 給付基準＝OvertimeSettlement.BillableHours（舊單 SettledHours 為 null 沿用申請時數）
 
         // 已補休時數：已送出（pending / approved）的補休假 Hours 合計
         var used = await db.LeaveRequests
@@ -1097,11 +1100,11 @@ public sealed class LeaveRequestHandler(
 
         // 工作日型假別（除歲時祭儀假外皆是）：送出時強制要求行事曆已匯入並權威重算 Hours（扣國定假日與六日）。
         // Day → 工作日數 × 8（產假亦走此路徑）；Hour → 逐日累加只算工作日；
-        // HalfDay 沿用既有「信任 client」原則不重算。
+        // HalfDay（年假 / 補休 / 高階主管假）2026-10 起同樣由後端依時段逐日重算，不再信任 client 的 Hours。
         // 確保後續 requestDays（Hours/8）分流與天數上限驗證皆以正確工作日為準。
         var submitUnit = GetTimeUnit(item.LeaveType);
         if (WorkingDayLeaveTypes.Contains(item.LeaveType) &&
-            submitUnit is LeaveTimeUnit.Day or LeaveTimeUnit.Hour)
+            submitUnit is LeaveTimeUnit.Day or LeaveTimeUnit.Hour or LeaveTimeUnit.HalfDay)
         {
             var yearLabel = item.StartDate.Year == item.EndDate.Year
                 ? $"{item.StartDate:yyyy}"
@@ -1116,6 +1119,17 @@ public sealed class LeaveRequestHandler(
                 if (working.Count == 0)
                     return new BadRequestObjectResult(ApiResponse.Fail("此區間全為國定假日或六日，無可請假的工作日。"));
                 item.Hours = working.Count * 8m;
+            }
+            else if (submitUnit == LeaveTimeUnit.HalfDay)
+            {
+                var (hasData, _, _) = await ComputeWorkingDatesAsync(item.EmployeeId ?? Guid.Empty, item.StartDate, item.EndDate);
+                if (!hasData)
+                    return new BadRequestObjectResult(ApiResponse.Fail(
+                        $"尚未匯入 {yearLabel} 年行事曆，無法計算扣除假日後的請假時數，請先於「行事曆設定」匯入。"));
+                var halfDayHours = await ComputeHalfDayHoursAsync(item.EmployeeId ?? Guid.Empty, item.LeaveType, item.StartDate, item.EndDate);
+                if (halfDayHours <= 0)
+                    return new BadRequestObjectResult(ApiResponse.Fail("此區間全為國定假日或六日，或半天時段無效，無可請假的時數。"));
+                item.Hours = halfDayHours;
             }
             else
             {
