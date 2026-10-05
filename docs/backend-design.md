@@ -895,6 +895,13 @@ Jwt__RefreshExpiryDays ↔ IConfiguration["Jwt:RefreshExpiryDays"]
 - 登入驗證 → `BCrypt.Verify(plain, hash)`
 - 預設密碼為使用者出生日期 `yyyyMMdd`（首次登入應強制改密碼，`User.MustChangePassword`）
 
+### 9.5 衍生金鑰簽章（非 JWT 的短效憑證）
+
+需要「伺服器簽發、前端帶回、無狀態驗證」的短效憑證時（現有：打卡挑戰碼 [AttendancePunchGuard.cs](../Api/Services/AttendancePunchGuard.cs)），
+**不要另立設定鍵、也不要直接拿 `Jwt:Secret` 簽**：以 `HMACSHA256(Jwt:Secret, "<用途字串>")` 衍生專用金鑰，
+避免同一把金鑰跨用途簽章；比對簽章一律用 `CryptographicOperations.FixedTimeEquals`；
+需要「限用一次」時由 DB 唯一索引保證（不靠記憶體快取，Functions 會多實例）。
+
 ---
 
 ## 10. ApiResponse 統一回應
@@ -957,6 +964,7 @@ if (record.EffectiveDate <= Clock.Today) { /* 已生效 */ }
 
 - DB 預設值：`HasDefaultValueSql("GETUTCDATE()")` — DB 引擎層
 - JWT 簽發 / 驗證：JWT 標準用 UTC（`DateTime.UtcNow`）
+- 短效憑證的經過時間：打卡挑戰碼的簽發 / 停留時間用 `DateTimeOffset.UtcNow` 毫秒（只算差值、不顯示給使用者）
 - Azure Functions Timer / cron：UTC（[AttendanceReminderFunction.cs](../Api/Functions/AttendanceReminderFunction.cs) 的 cron 設計於 UTC，內部再用 `Clock.Now` 比對）
 
 ---

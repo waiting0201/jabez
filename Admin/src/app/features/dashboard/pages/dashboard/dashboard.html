@@ -190,7 +190,7 @@
         <div class="card-body">
           @switch (gpsStatus()) {
             @case ('idle') {
-              <p class="text-muted small mb-0">打卡時自動取得 GPS 座標。</p>
+              <p class="text-muted small mb-0">打卡時自動取得 GPS 座標（必須開啟定位才能打卡）。</p>
             }
             @case ('locating') {
               <div class="flex items-center gap-2 text-muted">
@@ -210,10 +210,11 @@
               }
             }
             @case ('failed') {
-              <div class="flex items-center gap-2" style="color: var(--yellow)">
+              <div class="flex items-center gap-2 mb-2" style="color: var(--red)">
                 <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
-                <span class="small fw-500">無法取得定位（打卡仍有效）</span>
+                <span class="small fw-500">無法取得定位，未完成打卡</span>
               </div>
+              <p class="text-muted small mb-0">打卡必須開啟定位。請允許瀏覽器使用位置資訊（iPhone：設定 › 隱私權與安全性 › 定位服務），再重新打卡。</p>
             }
           }
         </div>

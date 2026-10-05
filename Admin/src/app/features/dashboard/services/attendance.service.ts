@@ -2,7 +2,7 @@ import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {BehaviorSubject, Observable} from 'rxjs';
 import {tap} from 'rxjs/operators';
-import {TodayAttendance, ClockActionRequest} from '../models/attendance.model';
+import {TodayAttendance, ClockActionRequest, ClockActionType, ClockChallenge} from '../models/attendance.model';
 import {environment} from '@/environments/environment';
 
 @Injectable({providedIn: 'root'})
@@ -14,6 +14,11 @@ export class AttendanceService {
     return this.http.get<TodayAttendance | null>(`${environment.apiUrl}/attendances/today`).pipe(
       tap(record => this.today$.next(record)),
     );
+  }
+
+  /** 取得一次性打卡挑戰碼（防機器人打卡）：四個打卡動作送出前都要先取碼 */
+  getChallenge(action: ClockActionType): Observable<ClockChallenge> {
+    return this.http.post<ClockChallenge>(`${environment.apiUrl}/attendances/clock-challenge`, {action});
   }
 
   clockIn(body: ClockActionRequest): Observable<TodayAttendance> {
