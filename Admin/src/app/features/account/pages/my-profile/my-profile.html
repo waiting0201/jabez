@@ -257,7 +257,7 @@
                   @if (u.signatureUrl) {
                     <div class="flex flex-col gap-2">
                       <div class="border rounded p-3 bg-white inline-block">
-                        <img [src]="signatureDisplayUrl(u.signatureUrl)"
+                        <img [appAuthSrc]="signatureDisplayUrl(u.signatureUrl)"
                              alt="簽名檔" class="max-h-24 object-contain">
                       </div>
                       <button type="button" class="btn btn-sm btn-outline-secondary w-fit" (click)="viewFile(u.signatureUrl)">

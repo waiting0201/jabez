@@ -46,7 +46,8 @@ public sealed class JwtService : IJwtService
         string?             avatar = null,
         decimal?            avatarPositionX = null,
         decimal?            avatarPositionY = null,
-        decimal?            avatarScale = null)
+        decimal?            avatarScale = null,
+        bool                mustChangePassword = false)
     {
         var claims = new List<Claim>
         {
@@ -59,6 +60,11 @@ public sealed class JwtService : IJwtService
         // 超管旗標 — Angular JWT decode reads payload.is_superadmin
         if (isSuperAdmin)
             claims.Add(new Claim("is_superadmin", "true"));
+
+        // 尚未完成強制改密碼 — AppRouter 見此 claim 只放行改密碼 / refresh / logout；
+        // Angular 全域 guard 亦讀 payload.pwd_change_required 導向改密碼頁
+        if (mustChangePassword)
+            claims.Add(new Claim(Jabez.Api.Common.AuthPolicy.PasswordChangeRequiredClaim, "true"));
 
         // 部門名稱 — Angular JWT decode reads payload.department_name
         if (!string.IsNullOrEmpty(departmentName))

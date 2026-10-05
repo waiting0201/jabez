@@ -1,4 +1,6 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 /** 簽名欄資料 */
@@ -258,7 +260,8 @@ export function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 /**
- * 將簽名 URL 轉為可存取的端點：
+ * 將簽名 URL 轉為可存取的端點（2026-10 起 /files/signatures 需登入，
+ * 取圖一律走 PdfCoreService.loadSignatureImages 的 HttpClient 路徑以附上 Bearer token）：
  * - 相對路徑（如 files/signatures/xxx.png）→ 加上 apiUrl 前綴
  * - 完整 blob URL → 萃取檔名，轉為 API 代理路徑
  */
@@ -375,6 +378,7 @@ async function optimizeSignatureImage(buf: ArrayBuffer, mime: string): Promise<s
 @Injectable({ providedIn: 'root' })
 export class PdfCoreService {
 
+  private http = inject(HttpClient);
   private fontCache: Promise<{ regular: string; bold: string }> | null = null;
 
   /** 載入字體（singleton cache，全應用只載入一次） */
@@ -407,9 +411,19 @@ export class PdfCoreService {
     await Promise.all(unique.map(async url => {
       try {
         const fetchUrl = resolveSignatureUrl(url);
-        const resp = await fetch(fetchUrl);
-        const buf = await resp.arrayBuffer();
-        const mime = resp.headers.get('content-type') || 'image/png';
+        let buf: ArrayBuffer;
+        let mime: string;
+        if (fetchUrl.startsWith(environment.apiUrl)) {
+          // 簽名檔端點需登入：走 HttpClient 讓 authInterceptor 附上 Bearer token（原生 fetch 不會）
+          const blob = await firstValueFrom(this.http.get(fetchUrl, { responseType: 'blob' }));
+          buf = await blob.arrayBuffer();
+          mime = blob.type || 'image/png';
+        } else {
+          // 非本站 API 的網址（理論上不會發生）：維持原生 fetch，絕不把 token 送去第三方網域
+          const resp = await fetch(fetchUrl);
+          buf = await resp.arrayBuffer();
+          mime = resp.headers.get('content-type') || 'image/png';
+        }
         const dataUri = await optimizeSignatureImage(buf, mime);
         map.set(url, dataUri);
       } catch { /* 載入失敗則跳過 */ }

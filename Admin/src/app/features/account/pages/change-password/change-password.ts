@@ -16,7 +16,7 @@ export class ChangePassword {
   private route = inject(ActivatedRoute);
   private toastr = inject(ToastrService);
 
-  isForced = this.route.snapshot.queryParamMap.get('forced') === '1';
+  isForced = this.route.snapshot.queryParamMap.get('forced') === '1' || this.auth.mustChangePassword();
   submitting = signal(false);
   showCurrentPassword = signal(false);
   showNewPassword = signal(false);
@@ -24,7 +24,7 @@ export class ChangePassword {
 
   form = this.fb.nonNullable.group({
     currentPassword: ['', [Validators.required]],
-    newPassword: ['', [Validators.required, Validators.minLength(6)]],
+    newPassword: ['', [Validators.required, Validators.minLength(8)]],
     confirmPassword: ['', [Validators.required]],
   });
 
@@ -35,6 +35,10 @@ export class ChangePassword {
 
     if (newPassword !== confirmPassword) {
       this.toastr.error('新密碼與確認密碼不一致。');
+      return;
+    }
+    if (newPassword === currentPassword) {
+      this.toastr.error('新密碼不可與舊密碼相同。');
       return;
     }
 
