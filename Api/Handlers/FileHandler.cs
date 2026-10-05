@@ -29,7 +29,8 @@ public sealed class FileHandler(IBlobStorageService blob, ILogger<FileHandler> l
     /// <summary>
     /// 代理讀取簽名檔圖片。
     /// 路由：GET /files/signatures/{fileName}
-    /// 此端點不需要 JWT（PDF 匯出時需要直接 fetch，無 Authorization header）。
+    /// 此端點需要 JWT，但不需特殊權限（登入即可）。2026-10 起不再公開：檔名＝userId 可推導，
+    /// 公開等於任何人都能蒐集全公司簽名。前端 PDF 產生 / 預覽一律以帶 Bearer token 的 HttpClient 取 blob。
     /// </summary>
     public Task<IActionResult> GetSignatureAsync(string fileName)
         => GetImageAsync(SignatureContainer, fileName);

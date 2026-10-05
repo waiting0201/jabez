@@ -36,11 +36,12 @@ const SALARY_CONTROLS = [
 ] as const;
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+import {AuthImageSrcDirective} from '@shared/directives/auth-image-src.directive';
 
 @Component({
   selector: 'app-user-form',
   templateUrl: './user-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, ScrollIntoViewDirective],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, ScrollIntoViewDirective, AuthImageSrcDirective],
 })
 export class UserForm implements OnInit {
   private fb                   = inject(FormBuilder);
@@ -1086,6 +1087,7 @@ export class UserForm implements OnInit {
   // ═══════════════════════════════════════════════
   // Display getters（既有 pattern 延伸）
   // ═══════════════════════════════════════════════
+  /** 簽名檔顯示網址：本機預覽為 data URL；既有檔為 API 網址（需登入，模板以 `[appAuthSrc]` 取 blob 顯示） */
   get displaySignature(): string | null {
     if (this.removeSignature()) return null;
     const preview = this.signaturePreview();

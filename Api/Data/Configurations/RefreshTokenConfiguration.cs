@@ -23,6 +23,10 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
         builder.Property(rt => rt.CreatedAt)
                .HasDefaultValueSql("DATEADD(hour, 8, GETUTCDATE())");
 
+        // 既有列（migration 當下）以套用時間為原始登入時間 → 舊 token 等於從 migration 起算 30 天
+        builder.Property(rt => rt.SessionStartedAt)
+               .HasDefaultValueSql("DATEADD(hour, 8, GETUTCDATE())");
+
         builder.HasOne(rt => rt.User)
                .WithMany(u => u.RefreshTokens)
                .HasForeignKey(rt => rt.UserId)

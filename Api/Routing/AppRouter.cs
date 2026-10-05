@@ -79,6 +79,12 @@ public sealed class AppRouter(
                 return new UnauthorizedObjectResult(
                     ApiResponse.Fail("Unauthorized.", "Invalid or missing Bearer token."));
 
+            // 首次登入強制改密碼：token 帶 pwd_change_required 時，改密碼以外的受保護端點一律 403。
+            // 放在所有權限檢查之前 —— 這道門不分角色（Superadmin 之外的人都適用；Superadmin 不會被標記）。
+            if (principal.FindFirst(AuthPolicy.PasswordChangeRequiredClaim)?.Value == "true"
+                && !IsAllowedWhilePasswordChangeRequired(method, segments))
+                throw AppException.Forbidden("首次登入必須先修改密碼，完成後才能使用系統其他功能。");
+
             // Superadmin-only 路由檢查
             if (IsSuperAdminRoute(method, segments))
                 RequireSuperAdmin(principal);
@@ -103,7 +109,7 @@ public sealed class AppRouter(
             ("GET",    ["health"])                    => health.Get(),
 
             // ── Files (Blob 代理) ──────────────────────────────────────────────
-            // 簽名檔、頭像為公開路由；原住民證明屬 HR 敏感資料需 JWT + users:read
+            // 頭像為公開路由；簽名檔需 JWT（登入即可，2026-10 起不再公開）；原住民證明屬 HR 敏感資料需 JWT + users:read
             ("GET",    ["files", "signatures", var fileName])        => await files.GetSignatureAsync(fileName),
             ("GET",    ["files", "avatars", var fileName])           => await files.GetAvatarAsync(fileName),
             ("GET",    ["files", "indigenous-proofs", var fileName]) => await files.GetIndigenousProofAsync(fileName),
@@ -124,6 +130,7 @@ public sealed class AppRouter(
             // ── Auth ──────────────────────────────────────────────────────────
             ("POST",   ["auth", "login"])             => await auth.LoginAsync(req),
             ("POST",   ["auth", "refresh"])           => await auth.RefreshAsync(req),
+            ("POST",   ["auth", "logout"])            => await auth.LogoutAsync(req),
             ("POST",   ["auth", "change-password"])   => await auth.ChangePasswordAsync(req),
 
             // ── Users ─────────────────────────────────────────────────────────
@@ -477,17 +484,27 @@ public sealed class AppRouter(
             ("GET",  ["health"]) or
             ("POST", ["auth", "login"]) or
             ("POST", ["auth", "refresh"]) or
-            // 簽名檔代理：PDF 匯出時需要直接 fetch，不帶 Authorization header
-            ("GET",  ["files", "signatures", _]) or
+            // 登出：Access Token 可能已過期，由 Refresh Token 本身證明身分；一律回 200
+            ("POST", ["auth", "logout"]) or
             // 頭像代理：topbar 顯示頭像不帶 Authorization header
             ("GET",  ["files", "avatars", _]);
+
+    /// <summary>
+    /// 帶 <c>pwd_change_required</c> claim 的 token 唯一可用的端點：改密碼本身。
+    /// refresh / logout 是公開路由、根本不會進到這個檢查，故不必列。
+    /// 刻意不放行任何讀取端點 —— 前端全域 guard 會把使用者鎖在改密碼頁，那一頁不需要任何 API 資料。
+    /// </summary>
+    private static bool IsAllowedWhilePasswordChangeRequired(string method, string[] segments) =>
+        (method, segments) is ("POST", ["auth", "change-password"]);
 
     /// <summary>根據 HTTP method + 路由 segments 決定所需的權限代碼</summary>
     private static string? GetRequiredPermission(string method, string[] segments) =>
         (method, segments) switch
         {
             // Files
-            // signatures / avatars 為公開路由（由 IsPublicRoute 攔住），此處 null 僅為保險
+            // avatars 為公開路由（由 IsPublicRoute 攔住），此處 null 僅為保險
+            // signatures（簽名檔）2026-10 起需登入：檔名＝userId 可推導，公開等於任何人可蒐集全公司簽名；
+            // 前端 PDF / 預覽改以帶 Bearer token 的 HttpClient 取 blob。登入即可（簽核者 PDF 要印所有關卡的簽名）
             ("GET", ["files", "signatures", _])         => null,
             ("GET", ["files", "avatars", _])            => null,
             // indigenous-proofs / low-income-proofs / disabled-proofs / id-cards / education-proofs / passbooks 屬 HR 敏感 PII，需 users:read 權限

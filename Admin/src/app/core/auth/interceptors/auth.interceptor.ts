@@ -4,8 +4,8 @@ import {BehaviorSubject, catchError, filter, switchMap, take, throwError} from '
 import {Router} from '@angular/router';
 import {AuthService} from '../services/auth.service';
 
-/** 不需要 token 的路徑（登入、刷新本身） */
-const SKIP_PATHS = ['/auth/login', '/auth/refresh'];
+/** 不需要 token 的路徑（登入、刷新、登出本身；遇 401 也不得再觸發 refresh 以免迴圈） */
+const SKIP_PATHS = ['/auth/login', '/auth/refresh', '/auth/logout'];
 
 let isRefreshing = false;
 const refreshTokenSubject = new BehaviorSubject<string | null>(null);

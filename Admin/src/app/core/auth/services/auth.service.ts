@@ -22,6 +22,8 @@ export interface JwtPayload {
   avatar_x?: string | number;
   avatar_y?: string | number;
   avatar_scale?: string | number;
+  /** 尚未完成強制改密碼（後端 AppRouter 只放行改密碼；見 passwordChangeGuard） */
+  pwd_change_required?: string | boolean;
 }
 
 export interface AutoClockOutInfo {
@@ -117,6 +119,16 @@ export class AuthService {
     const payload = this._decode(this._token());
     if (!payload || payload.exp * 1000 <= Date.now()) return 1;
     return this._parseAvatarNumber(payload.avatar_scale, 1);
+  });
+
+  /**
+   * 是否仍須強制改密碼（signal）：讀 JWT 的 `pwd_change_required` claim，與後端 AppRouter 的閘門同一份真相。
+   * 比 login 回應的 must_change_password 可靠 —— 重新整理頁面 / 直接輸入網址時回應早已不在，claim 卻永遠在 token 裡。
+   */
+  mustChangePassword = computed<boolean>(() => {
+    const payload = this._decode(this._token());
+    return !!payload && payload.exp * 1000 > Date.now()
+      && (payload.pwd_change_required === true || payload.pwd_change_required === 'true');
   });
 
   /** 是否為超管帳號（signal） */
@@ -221,7 +233,15 @@ export class AuthService {
     return this.http.post<void>(`${environment.apiUrl}/auth/change-password`, {currentPassword, newPassword});
   }
 
+  /**
+   * 登出：先通知後端撤銷 Refresh Token（fire-and-forget，失敗不阻擋本機登出），再清本機狀態。
+   * 後端 /auth/logout 是公開路由，不需 Access Token，故即使 token 已過期也能撤銷。
+   */
   logout(): void {
+    const rt = this.refreshTokenValue;
+    if (rt) {
+      this.http.post(`${environment.apiUrl}/auth/logout`, {refreshToken: rt}).subscribe({error: () => {}});
+    }
     safeLocal.removeItem(TOKEN_KEY);
     safeLocal.removeItem(REFRESH_KEY);
     this._token.set(null);

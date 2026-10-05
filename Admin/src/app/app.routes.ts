@@ -4,6 +4,7 @@ import {MainLayout} from '@layout/main-layout/main-layout';
 import {AuthLayout} from '@layout/auth-layout/auth-layout';
 import {authGuard} from '@core/auth/guards/auth.guard';
 import {noAuthGuard} from '@core/auth/guards/no-auth.guard';
+import {passwordChangeGuard} from '@core/auth/guards/password-change.guard';
 import {AuthService} from '@core/auth/services/auth.service';
 import {resolveLandingUrl} from '@core/auth/utils/landing';
 import {Login} from '@features/auth/pages/login/login';
@@ -32,6 +33,8 @@ export const routes: Routes = [
     path: '',
     component: MainLayout,
     canActivate: [authGuard],
+    // canActivate 只在進入父路由時跑一次；強制改密碼要擋的是版面內任何一次子路由導航，故另掛 canActivateChild
+    canActivateChild: [passwordChangeGuard],
     children: [
       {
         path: 'dashboard',

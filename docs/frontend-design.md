@@ -1997,16 +1997,21 @@ async onFileSelected(event: Event) {
 | `/files/id-cards/{fileName}` | id-cards |
 | `/files/education-proofs/{fileName}` | education-proofs |
 
-不敏感者（簽名、頭像）走公開路由：`/files/signatures/{fileName}` / `/files/avatars/{fileName}`。
+只有**頭像**走公開路由：`/files/avatars/{fileName}`（topbar 顯示用，不帶 token）。
+
+**簽名檔 `/files/signatures/{fileName}` 自 2026-10 起需登入**（原為公開）：檔名＝userId 可推導，公開等於任何人只要知道（或猜到）員工 Guid 就能下載全公司的簽名圖。登入即可、免特殊權限（簽核者列印 PDF 要印所有關卡的簽名）。前端兩條取用路徑：
+
+- **`<img>` 顯示**（人員管理表單、個人資訊頁）→ 共用 directive [`AuthImageSrcDirective`](../Admin/src/app/shared/directives/auth-image-src.directive.ts)：`<img [appAuthSrc]="url" alt="...">`（**不要同時綁 `[src]`**）。內部以 HttpClient 取 blob → `createObjectURL`，換網址 / 銷毀時 revoke；`data:` / `blob:`（本機預覽）與非本站 API 網址原樣寫入、**不送 token**（interceptor 對任何 URL 都附 token，不可讓 token 送去第三方網域）。
+- **PDF 簽名欄**（8 種紙本單共用）→ 全部經 [`PdfCoreService.loadSignatureImages`](../Admin/src/app/shared/services/pdf-core.service.ts)，該處改以 HttpClient 取 blob（原本是原生 `fetch`，不帶 Authorization，上線後會 401 → 簽名欄整個空白而**不報錯**）。**新增任何 PDF 時一律走這支，不可自行 `fetch` 簽名檔。**
 
 廠商存摺封面（`/files/vendor-passbooks/{fileName}` → `vendor-passbooks` 容器）為**一般檔，需 JWT 但免特殊權限**：透過 `HttpClient` 走 Blob 代理（auth interceptor 自動附 Bearer），與 PII 同樣以 `URL.createObjectURL` 在新分頁開啟。
 
 報價單（`quotes`）與整單批次附件（`request-attachments`）同為**一般檔，需 JWT 但免特殊權限**，但 blob name 含日期子路徑（`yyyy/MM/{guid}{ext}`），代理路由為 `/files/quotes/{*path}` / `/files/request-attachments/{*path}`（多段）。DB 存的是原始私有 blob URL，前端取用前**一律先過** [`resolveFileProxyUrl()`](../Admin/src/app/shared/services/pdf-core.service.ts)（把原始 blob URL 轉成代理路徑），再經 HttpClient（帶 JWT）下載。
 
 > **鐵則：需 JWT 的檔案不可直接放 `<img [src]>` 或 `<iframe [src]>`。** `<img>` / `<a href>` / `<iframe>` 無法帶 Authorization header，會 401 破圖。
-> - **公開容器**（signatures / avatars）→ 直接 `<img [src]="apiUrl + '/files/...'">`。
-> - **需 token 的容器**（PII、vendor-passbooks、quotes、request-attachments、以及員工自助 `/me/files/...`）→ 一律 `HttpClient` 下載 Blob（interceptor 帶 token）→ `URL.createObjectURL` 設給 `<img>` / `<iframe>` 或 `window.open` 開新分頁。
-> 員工「個人資訊」唯讀頁 [my-profile](../Admin/src/app/features/account/pages/my-profile/) 即依此規則：簽名 / 頭像走公開 `/files/`，身分證 / 學歷 / 三證明走 `/me/files/` blob 下載。
+> - **公開容器**（僅 avatars）→ 直接 `<img [src]="apiUrl + '/files/...'">`。
+> - **需 token 的容器**（signatures、PII、vendor-passbooks、quotes、request-attachments、以及員工自助 `/me/files/...`）→ 一律 `HttpClient` 下載 Blob（interceptor 帶 token）→ `URL.createObjectURL` 設給 `<img>` / `<iframe>` 或 `window.open` 開新分頁。
+> 員工「個人資訊」唯讀頁 [my-profile](../Admin/src/app/features/account/pages/my-profile/) 即依此規則：頭像走公開 `/files/`，簽名檔用 `[appAuthSrc]`，身分證 / 學歷 / 三證明走 `/me/files/` blob 下載。
 >
 > **`FilePreviewModal` 預覽私有檔案**：modal 的 iframe / img 同樣不帶 JWT，故報價單 / 整單附件的「檢視」一律改用共用 [`FilePreviewLoader`](../Admin/src/app/shared/services/file-preview-loader.ts)（`resolveFileProxyUrl` → `HttpClient` 取 blob → `createObjectURL` → 回傳 `PreviewFileData`，關閉時 `revoke`），**不可**把原始 blob URL 直接丟進 modal。**歷史教訓（2026-06）**：預審 PDF 合併上傳檔曾因直接 `fetch()` 私有 blob URL 而 403 / CORS 靜默失敗（檔案沒被合併進去）；詳情頁 / 簽核頁的預覽亦同病，皆改走代理修正。
 
@@ -2353,6 +2358,10 @@ export function resolveLandingUrl(auth: AuthService): string {
 ```
 
 已收斂到 `/` 的呼叫點：`no-auth.guard.ts`、`login.ts`（`returnUrl` 的預設值）、`line-bind-callback.ts`、`error-403.ts`、`error-404.ts`、`app-logo.ts`。**新增任何「首頁」連結時比照辦理**；未來若 `/account/my-profile` 也加上權限，只需改 `resolveLandingUrl` 一處。
+
+### 強制改密碼守衛（`passwordChangeGuard`，2026-10）
+
+JWT 帶 `pwd_change_required` claim（`AuthService.mustChangePassword()` signal）時，主版面內只准進 `/account/change-password`，其餘導航一律改導 `/account/change-password?forced=1`。掛在 `MainLayout` 路由的 **`canActivateChild`**（[password-change.guard.ts](../Admin/src/app/core/auth/guards/password-change.guard.ts)）——`canActivate` 只在進入父路由時跑一次，之後版面內子路由互跳不會重驗，所以不能掛在 `canActivate`。判定讀 token claim 而非登入回應的 `must_change_password`：重新整理或手打網址時回應早已不在。後端 `AppRouter` 才是真正的閘門（其餘端點 403），本守衛只負責讓使用者看到「請先改密碼」而非一堆載入失敗；強制期間 `MainLayout` 也不啟動鈴鐺輪詢（只會每分鐘吃一次 403）。改密碼成功後後端撤銷全部 refresh token，前端登出並回登入頁重登。
 
 ### 受權限控管的選單項目
 
