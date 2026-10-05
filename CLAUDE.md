@@ -539,6 +539,12 @@ Api/
 │   │                                    ⚠ **切換日必須訂在未來月初、不可回溯設定** —— 回溯會讓舊制建立的單被新制時段重新解讀，
 │   │                                    全日假憑空多出 17:00–18:00 的假性應出勤（已於 staging 實測，見 flexible-work-hours.md §10.5）。
 │   │                                    5 個 `const int` 原地保留（值等同 Legacy），故既有 18 處引用零改動
+│   ├── LoginAttemptTracker.cs         # 登入失敗鎖定（2026-10）：以 Email 為鍵、5 次 / 15 分鐘，回 429；每次嘗試寫 `LoginAttempts`（常數在 Common/AuthPolicy.cs）
+│   ├── RefreshTokenRevoker.cs         # 撤銷某人全部 refresh token 的單一入口（改密碼 / 管理員設密碼 / 寄帳號通知 / 停用 / 角色變更 / 重用偵測）；⚠ access token 收不回
+│   ├── OvertimeSettlementService.cs   # 加班依實際打卡結算（2026-10）：`SettledHours` = min(核准時數, 加班打卡)，終局核准 / 打加班結束卡 / 管理者改出缺勤時冪等重算並同步加班費快照與補休 lot；
+│   │                                    給付基準單一真相 `Common/OvertimeSettlement.BillableHours`（`SettledHours ?? EstimatedHours`，舊單 null 不 backfill）；支援跨日加班結束卡（隔天 06:00 前）
+│   ├── OvertimeRequestGuard.cs        # 加班送件檢查（2026-10）：補登最多 7 天、同人同日一張、全天有薪假不可加班、每月上限 `SystemSetting.MonthlyOvertimeLimit`（送簽與核准）
+│   ├── HolidayTravelParticipantGuard.cs # 假日津貼重複給付防線（2026-10）：參與人員須在職；同人同一假日不得跨單、不得同時有已核准加班費單或有薪假
 │   ├── AttendancePunchGuard.cs        # **防機器人打卡（2026-10 hotfix）**：強制 GPS ＋ 一次性打卡挑戰碼（HMAC，由 Jwt:Secret 衍生專用金鑰；
 │   │                                    簽發後 ≥3 秒、5 分鐘內、限用一次）＋ 每次嘗試寫 `AttendancePunchLogs`（含被擋下、IP / UA）。
 │   │                                    起因：正式站有人以排程腳本「登入 → 1 秒內打卡、不送 GPS」。⚠ 只是提高門檻＋留證據，改寫過的腳本仍可模仿
@@ -781,6 +787,13 @@ dotnet ef database update               # 套用 Migration
 > 詳情顯示「（送簽後產生）」），送簽當下與單號同時蓋章、退回重送不改。清單頁欄名一律「申請日期」，
 > 詳情頁 / 簽核頁 / 列印 PDF / 款項統計報表（含**日期區間篩選**）皆改讀 `submittedAt`；
 > `CreatedAt` 保留原義（建立草稿時間），不再用於顯示。
+>
+> **防濫用安全修補（2026-10）**：客戶發現員工以排程腳本打卡、灌加班時數、自己簽自己的單後全面補強 ——
+> 打卡強制 GPS + 一次性挑戰碼（`AttendancePunchGuard`）；**加班費 / 補休改依實際加班打卡結算**（`SettledHours`，舊單不變）、不再自動補加班結束卡、異常時段的上班卡不自動補下班卡；
+> 加班補登 ≤7 天 / 同日一張 / 每月上限；半天制假別時數改由後端計算；**簽核一律禁止自審**、指定審核者不可是本人 / 離職者 / 低階者、流程 ID 只由後端解析；
+> 沖銷退款日限財務關卡；明細金額不可為負、發票號碼正規化比對；後端強制首次改密碼、登入失敗鎖定、refresh token 30 天上限與重用偵測、簽名檔改需登入；
+> 角色管理不可改自己所屬角色、不可授出超出自身的權限；出缺勤不可改自己的、修改留 `AttendanceAuditLogs`。
+> 規範總表見 [docs/backend-design.md §4.7 / §9.6](docs/backend-design.md)，業務規則見 attendance-clock-rules / approval-flow / authentication。
 >
 > **日期欄位年份防呆（2026-09）**：所有使用者填寫的日期欄位（加班日期 / 請假起迄 / 出差起迄 /
 > 預支日期與需求日 / 發票日期 / 品項日期 / 子女出生日期）限制在**今日 ±3 年**，前端以日期 input 的

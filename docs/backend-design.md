@@ -242,7 +242,7 @@ write_off / travel_write_off）與 `approval-tasks` 詳情共用這一份判準�
 | GET | `/health` | 健康檢查 |
 | POST | `/auth/login` | 登入取得 JWT |
 | POST | `/auth/refresh` | 刷新 Token |
-| GET | `/files/signatures/{fileName}` | 簽名檔代理（PDF 匯出用） |
+| POST | `/auth/logout` | 撤銷傳入的 refresh token（access token 可能已過期，故公開；一律回 200） |
 | GET | `/files/avatars/{fileName}` | 頭像代理（topbar 顯示用） |
 
 ---
@@ -482,6 +482,29 @@ RequestDateGuard.EnsurePastWithin(body.ChildBirthDate, "子女出生日期",
 
 前端對應：`Admin/src/app/shared/utils/date-bounds.ts` 以相同數字掛 `min` / `max`
 （見 [frontend-design.md §6](frontend-design.md)）。**兩處數字必須一起改。**
+
+---
+
+### 4.7 防濫用守門（2026-10 安全修補）
+
+員工會刻意鑽漏洞（排程腳本打卡、灌加班時數、自己簽自己的單），以下守門是單一真相，新增同類功能時一律沿用：
+
+| 守門 | 位置 | 規則 |
+|---|---|---|
+| 打卡 | `Services/AttendancePunchGuard` | 強制 GPS + 一次性挑戰碼（見 9.5）+ `AttendancePunchLogs` |
+| 簽核授權 | `ApprovalTaskHandler.AuthorizeStepAsync` | 所有審核入口（單筆 / 批次 / 指定 / 升級）的**共同授權點**：審核者＝申請人一律 403；ApprovalItemId 為 null 或查無目前關卡一律 403（**不得再加「查無就放行」的出口**） |
+| 指定審核者 | `DesignatedReviewerHelper.ValidateAndNormalizeAsync`（送簽時） | 不可指定本人、不可指定非在職者、職級須 ≤ 申請人（申請人為全公司最高職級時豁免）、先選部門的關卡須屬該部門 |
+| 簽核流程 ID | 各申請 Handler | **Create / Update 不得採用前端傳來的 `ApprovalItemId`**，只由 Submit 依申請人部門解析 |
+| 送簽清足跡 | 11 個 Submit 路徑 | 不論 draft 或 returned，送簽一律清掉舊 ApprovalRecords / EscalationOverrides、重置 designee |
+| 撥款端點 | `PATCH /{type}-requests/{id}/installments` | DTO **不得帶單據狀態** |
+| 金額 | `Common/AmountGuard`（與 `RequestDateGuard` 並列） | 明細金額不可為負（請款 / 預審單列可負，見 application-forms.md）；沖銷類「現金 + 支票 = 總價」 |
+| 發票號碼 | `InvoiceNoHelper.ResolveKey` + `InvoiceUniquenessChecker` | 先正規化（去空白 / 連字號、轉大寫，含中文仍抽 `[A-Z]{2}\d{8}`）再比對；SQL 粗篩的剔除字元集必須與 `Normalize` 同源（`RemovedForSql`） |
+| 假日津貼 | `Services/HolidayTravelParticipantGuard` | 參與人員須在職；同人同一假日不得跨單、不得同時有已核准加班費單或有薪假 |
+| 加班送件 | `Services/OvertimeRequestGuard` | 補登最多 7 天、同人同日一張、全天有薪假不可加班、每月上限（`SystemSetting.MonthlyOvertimeLimit`） |
+| 加班給付 | `Common/OvertimeSettlement.BillableHours` | 給付基準時數＝`SettledHours ?? EstimatedHours`；新增給付類消費點一律用它（SQL 用 `ISNULL(SettledHours, EstimatedHours)`）。`SettledHours` = min(核准時數, 實際加班打卡)，於終局核准 / 打加班結束卡 / 管理者修改出缺勤時由 `OvertimeSettlementService.SyncFromPunchesAsync` 冪等重算；**舊單 null 永不 backfill**（薪資即時重算、無月結快照） |
+| 出缺勤修改 | `AttendanceHandler.UpdateAsync` | 不可改自己的紀錄；每次實質修改寫 `AttendanceAuditLogs`；不再清除 `IsClockInAuto / IsClockOutAuto`，改設 `IsManuallyAdjusted` |
+
+稽核表若需指向 Users、又掛在 Users 的 Cascade 鏈下（例：`AttendanceAuditLogs` → AttendanceRecords → Users），**該 Users 欄位不設 FK、改存姓名快照**，避免 SQL Server 1785 multiple cascade paths，也不必加進 UserHandler 的刪除清洗清單。
 
 ---
 
@@ -879,6 +902,7 @@ builder.HasIndex(x => x.RequestNo)
 | `department_name`、`department_code` | 部門 |
 | `job_title_name`、`job_title_level` | 職稱 |
 | `avatar` | 頭像 URL |
+| `pwd_change_required` | 首次登入須改密碼（2026-10）：AppRouter 在權限檢查前攔截，除 `POST /auth/change-password` 外一律 403（`IsAllowedWhilePasswordChangeRequired`） |
 
 ### 9.3 環境變數（雙底線慣例）
 
@@ -897,7 +921,8 @@ Jwt__RefreshExpiryDays ↔ IConfiguration["Jwt:RefreshExpiryDays"]
 - 雜湊用 **BCrypt**（[BCrypt.Net-Next](https://github.com/BcryptNet/bcrypt.net) NuGet）
 - 新增 / 重設密碼 → `BCrypt.HashPassword(plain)`
 - 登入驗證 → `BCrypt.Verify(plain, hash)`
-- 預設密碼為使用者出生日期 `yyyyMMdd`（首次登入應強制改密碼，`User.MustChangePassword`）
+- 預設密碼為使用者出生日期 `yyyyMMdd`；建立使用者、管理員設定他人密碼、寄出帳號通知時一律 `MustChangePassword = true`，**後端以 JWT claim 強制**（見 9.2）
+- 自行改密碼：至少 8 碼、不可等於舊密碼、不可等於生日八碼（`AuthHandler.ChangePasswordAsync`）
 
 ### 9.5 衍生金鑰簽章（非 JWT 的短效憑證）
 
@@ -905,6 +930,16 @@ Jwt__RefreshExpiryDays ↔ IConfiguration["Jwt:RefreshExpiryDays"]
 **不要另立設定鍵、也不要直接拿 `Jwt:Secret` 簽**：以 `HMACSHA256(Jwt:Secret, "<用途字串>")` 衍生專用金鑰，
 避免同一把金鑰跨用途簽章；比對簽章一律用 `CryptographicOperations.FixedTimeEquals`；
 需要「限用一次」時由 DB 唯一索引保證（不靠記憶體快取，Functions 會多實例）。
+
+### 9.6 認證安全政策（2026-10）
+
+常數集中在 [Common/AuthPolicy.cs](../Api/Common/AuthPolicy.cs)：
+
+- **登入失敗鎖定**：同一 Email 自最近一次成功登入後、15 分鐘內累計 5 次失敗 → 鎖 15 分鐘、回 **429**（連密碼都不驗）。鎖定鍵是 **Email 而非 User**（不存在的帳號行為一致，避免從鎖定訊息反推帳號存在）；帳號不存在時仍跑一次假雜湊 BCrypt（防時間差列舉）。每次嘗試寫 `LoginAttempts`（IP / UA / 原因代碼 `bad_password` `unknown_email` `inactive` `locked`），`locked` 不計入失敗數。實作 [Services/LoginAttemptTracker.cs](../Api/Services/LoginAttemptTracker.cs)。
+- **Refresh token**：輪替時帶下原始 `SessionStartedAt`，超過 30 天必須重新登入；已撤銷的 token 被重用（超過 30 秒寬限，容許多分頁同時 refresh）→ 視為盜用、撤銷該使用者全部 token。
+- **撤銷全部 token 的單一入口** [Services/RefreshTokenRevoker.cs](../Api/Services/RefreshTokenRevoker.cs)：改密碼、管理員設密碼、寄帳號通知、停用、角色變更、重用偵測時呼叫。⚠ 只能讓 refresh token 失效；**已簽發的 access token（預設 60 分鐘）收不回**（AppRouter 驗 JWT 無狀態、不查 DB）。
+- **角色 / 權限防提權**：非 Superadmin 不可修改自己的角色（`UserHandler.EnsureCanAssignRolesAsync`），也不可新增 / 修改 / 刪除自己所屬的角色、不可授予超出自身 `permissions` claim 的權限（`RoleHandler.EnsureNotOwnRoleAsync` / `EnsurePermissionsWithinOperator`）。
+- 取用戶端 IP / User-Agent 一律走 [Common/ClientInfo.cs](../Api/Common/ClientInfo.cs)（`X-Forwarded-For` 第一段，僅供稽核、不可作為授權依據）。
 
 ---
 
@@ -1011,7 +1046,7 @@ var allowedSignatures = new Dictionary<string, byte[][]>
 | 容器 | 內容 | 公開 / 授權 |
 |---|---|---|
 | `avatars` | 頭像 | **公開** `/files/avatars/{fileName}` |
-| `signatures` | 簽名檔 | **公開** `/files/signatures/{fileName}` |
+| `signatures` | 簽名檔 | **登入即可** `/files/signatures/{fileName}`（2026-10 由公開改為需登入：檔名＝userId 可推導，公開會讓任何人下載主管簽名偽造紙本；前端 PDF 以帶 token 的 HttpClient 取 blob） |
 | `indigenous-proofs` | 原住民證明 | 授權 `users:read` |
 | `low-income-proofs` | 低收入證明 | 授權 `users:read` |
 | `disabled-proofs` | 身心障礙證明 | 授權 `users:read` |
@@ -1108,7 +1143,7 @@ public sealed class GcisService(HttpClient http, ILogger<GcisService> logger) : 
 | `GET /overtime-requests/estimate?date=&hours=` | `GET /calendar-days`（需 `calendar-days:read`）＋ 薪資欄位（需 `payroll:read`） | 加班表單即時試算加班費；重用 `CalendarDayReadService` + `WorkPatternReadService`，避免把後台行事曆權限強加給申請人。**對象一律取 JWT `sub`，端點刻意不接受 `employeeId`** —— 回傳含時薪（可反推底薪），若開放指定對象等於開一條查別人薪水的側門；員工在 `GET /me/payroll` 本來就看得到自己的底薪，故無新增外洩面。權限沿用 `overtime-requests:read`，不另開權限碼 |
 | `GET /leave-requests/working-days?start=&end=&leaveType=` | `GET /calendar-days`（需 `calendar-days:read`） | 請假表單即時計算扣除國定假日與六日後的請假日清單與天數；重用 `CalendarDayReadService`，工作日型假別（除歲時祭儀假外的 16 種）才扣假日，避免把後台行事曆權限強加給請假員工；**走 `CalendarScope.Leave`，彈性休假日不列入扣除** |
 | `POST /vendors` *(無需權限)* | — | 請款表單 quick-add modal：任何登入者皆可新建廠商，避免後台 CRUD 權限被強加給請款人 |
-| `GET /files/signatures/{fileName}` / `/files/avatars/{fileName}` | — | 簽名檔 / 頭像 Blob 代理（公開路由） |
+| `GET /files/signatures/{fileName}` / `/files/avatars/{fileName}` | — | 簽名檔（登入即可，2026-10 起）/ 頭像（公開）Blob 代理 |
 | `GET /me/user` | `GET /users/{id}`（需 `users:read`） | 「個人資訊」唯讀頁：員工查看自己的帳號資料（從 JWT `sub` 取自身 id） |
 | `GET /me/profile` | `GET /users/{id}/profile`（需 `users:read`） | 「個人資訊」唯讀頁：員工查看自己的人事資料卡 + 健保眷屬 |
 | `GET /me/files/{container}/{fileName}` | `GET /files/<PII container>/{fileName}`（需 `users:read`） | 「個人資訊」唯讀頁：員工讀自己的 PII 檔案，見下方 §13.4 |

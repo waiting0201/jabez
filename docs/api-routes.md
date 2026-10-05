@@ -9,14 +9,15 @@
 | Method | Path | 說明 |
 |--------|------|------|
 | GET | `/health` | 健康檢查 |
-| POST | `/auth/login` | 登入取得 JWT |
-| POST | `/auth/refresh` | 刷新 Token |
+| POST | `/auth/login` | 登入取得 JWT（**2026-10**：同一 Email 連續失敗 5 次鎖 15 分鐘回 **429**；每次嘗試寫 `LoginAttempts`） |
+| POST | `/auth/refresh` | 刷新 Token（2026-10：登入起算超過 30 天須重新登入；已撤銷的 token 被重用 → 撤銷該使用者全部 token） |
+| POST | `/auth/logout` | 撤銷傳入的 refresh token（body `{ refreshToken }`，公開路由，一律回 200） |
 
 ## 認證（需 JWT）
 
 | Method | Path | 說明 |
 |--------|------|------|
-| POST | `/auth/change-password` | 已登入使用者修改密碼（驗證舊密碼後更新，並清除 `MustChangePassword` 旗標） |
+| POST | `/auth/change-password` | 已登入使用者修改密碼（驗證舊密碼後更新，並清除 `MustChangePassword` 旗標）。2026-10：至少 8 碼、不可等於舊密碼或生日八碼；成功後撤銷全部 refresh token。**token 帶 `pwd_change_required` 時，這是唯一放行的受保護端點**（其餘一律 403） |
 
 ## 使用者管理
 
@@ -106,7 +107,7 @@
 | GET/POST | `/payment-requests` | 請款列表 / 新增（預設 draft，multipart 含 `vendorId` — 當 `type=vendor` 時必填且必須是 IsActive=true 的廠商） |
 | GET/PUT/PATCH/DELETE | `/payment-requests/{id}` | 請款 CRUD（DTO 含 `vendorId / vendorName / vendorTaxId`） |
 | PATCH | `/payment-requests/{id}/submit` | 送出請款申請（draft → pending） |
-| PATCH | `/payment-requests/{id}/installments` | upsert 一或多筆撥款明細（**僅 ApprovalStatus == approved**；SUM 嚴格驗證 = TotalAmount；已撥款列鎖定不可改不可刪；每筆 PaidAt null→value 觸發一次「已撥款」通知含 N/M 期；僅財務體系部門：AC/FIN/Jabez HQ/CEO）。validate+diff 持久化核心由 `InstallmentUpsertService.Apply` 共用（與審核時原子寫入同一份邏輯）。 |
+| PATCH | `/payment-requests/{id}/installments` | upsert 一或多筆撥款明細（**2026-10：request 不再接受 `approvalStatus`**；**僅 ApprovalStatus == approved**；SUM 嚴格驗證 = TotalAmount；已撥款列鎖定不可改不可刪；每筆 PaidAt null→value 觸發一次「已撥款」通知含 N/M 期；僅財務體系部門：AC/FIN/Jabez HQ/CEO）。validate+diff 持久化核心由 `InstallmentUpsertService.Apply` 共用（與審核時原子寫入同一份邏輯）。 |
 | GET/POST | `/leave-requests` | 請假列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/leave-requests/{id}` | 請假 CRUD |
 | PATCH | `/leave-requests/{id}/submit` | 送出請假申請（draft → pending） |
@@ -141,7 +142,7 @@
 | PATCH | `/holiday-travel-requests/{id}/submit` | 送出假日執行活動申請（draft → pending） |
 | PATCH | `/holiday-travel-requests/{id}/installments` | upsert 分期撥款（同 PaymentRequest 行為） |
 | GET | `/holiday-travel-requests/count-holidays?startDate=...&endDate=...` | 計算指定區間內的假日天數（用於計算假日津貼）；回傳含 `holidayDates[]`（yyyy-MM-dd 假日清單，供參與日期 chips 標示） |
-| GET/POST | `/overtime-requests` | 加班申請列表 / 新增（預設 draft）。payload 須帶 **`projects[]`（`projectId` + `estimatedHours`），必填至少 1 筆**、`compensationType`（`compensatory` 補休 / `pay` 加班費，未知值一律正規化為 `compensatory`）；驗證：每列時數 > 0、同單不可重複專案、專案須存在。回應 `projects[]` 含 `projectCode` / `projectName` / `estimatedHours`，`estimatedHours` 為各列合計（後端計算，不接受客戶端傳入） |
+| GET/POST | `/overtime-requests` | 加班申請列表 / 新增（預設 draft）。payload 須帶 **`projects[]`（`projectId` + `estimatedHours`），必填至少 1 筆**、`compensationType`（`compensatory` 補休 / `pay` 加班費，未知值一律正規化為 `compensatory`）；驗證：每列時數 > 0、同單不可重複專案、專案須存在。回應 `projects[]` 含 `projectCode` / `projectName` / `estimatedHours`，`estimatedHours` 為各列合計（後端計算，不接受客戶端傳入）。**2026-10**：加班日期最早為今天往前 7 天、同人同日只能一張（非拒絕）、當日全天有薪假不可申請、當月申請時數合計不得超過 `SystemSetting.MonthlyOvertimeLimit`（送簽與核准時再檢）；回應新增 `settledHours`（＝min(申請時數, 實際加班打卡)，舊單為 null 沿用申請時數）；request 的 `approvalItemId` 一律忽略（請假 / 出差 / 出差請款同） |
 | GET/PUT/PATCH/DELETE | `/overtime-requests/{id}` | 加班申請 CRUD。更新時 `projects[]` **整批替換且必填**（不支援省略），一併重算父表合計；`compensationType` 為 `null` 時不變更。**任何更新一律清空加班費快照**（日期 / 時數 / 補償方式可能已變動），重新送簽時再算 |
 | PATCH | `/overtime-requests/{id}/submit` | 送出加班申請（draft → pending）。送出時依 `compensationType` 寫入加班費快照（`pay` 才算；補休型清空） |
 | GET | `/overtime-requests/estimate?date=&hours=` | **加班時數即時試算**（表單用，權限沿用 `overtime-requests:read`；2026-09-28 起**兩種補償方式都查詢**，不再限「加班費」模式）。對象一律取 JWT `sub`，**刻意不接受 `employeeId`**（回傳含時薪可反推底薪）。回傳 `hourlyRate` / `requestedHours` / `payableHours` / `excessHours` / `capHours` / `amount` / `dayType`（`WorkDayTypes` 四值，2026-09 由 `isHoliday` 布林改）/ `segments[]`（分段明細）/ `hasBaseSalary` / `hasHolidayTravelConflict` / **`exceedsCap`**（超出上限，2026-09-28 新增）/ **`blockMessage`**（非 null＝不可送出：超出加班上限，2026-09-28 新增） |
@@ -197,7 +198,7 @@
 | POST | `/attendances/clock-out` | `attendances:write` | 下班打卡（含 GPS；同上規則）。**切換後**另加 `reason` 欄位：以應下班時間 T（＝實際上班打卡 ＋ 9 小時，請上午半天假者 ＋4 小時）為界，`< T` 早退、`[T, T+30分]` 正常、`> T+30分` 逾時；早退／逾時且**非出差**時 `reason` 必填，否則回 400。出差當日欄位仍可填但非必填 —— 改的是必填性、不是可見性 |
 | POST | `/attendances/overtime-start` | `attendances:write` | 加班開始打卡（不受請假時段阻擋）。需帶**屬於自己**且當日已核准的加班申請；一般上班日須先打下班卡，**休假日（行事曆 `IsHoliday` / 該年度無行事曆時的六日）或當日全日已核准請假時免下班卡**，且今日無打卡紀錄時自動建立「只含加班時間」的 AttendanceRecord |
 | POST | `/attendances/overtime-end` | `attendances:write` | 加班結束打卡（不受請假時段阻擋） |
-| PUT/PATCH | `/attendances/{id}` | `reports-attendance:write` | 人工修改出缺勤紀錄（上下班 / 加班起訖）。權限碼控管「誰能改」，Handler 內另套**部門可見性 scope** 控管「能改誰」（與 `GET /attendances` 同範圍，讀得到才改得到，非同範圍回 403）。上 / 下班時間被改動時各自清掉 `IsClockInAuto` / `IsClockOutAuto`（系統補卡）標記 |
+| PUT/PATCH | `/attendances/{id}` | `reports-attendance:write` | 人工修改出缺勤紀錄（上下班 / 加班起訖）。權限碼控管「誰能改」，Handler 內另套**部門可見性 scope** 控管「能改誰」（與 `GET /attendances` 同範圍，讀得到才改得到，非同範圍回 403）。上 / 下班時間被改動時各自清掉 `IsClockInAuto` / `IsClockOutAuto`（系統補卡）標記 |。**2026-10**：不可修改自己的紀錄（403，Superadmin 除外）；下班須晚於上班、加班結束須晚於開始；每次實質修改寫 `AttendanceAuditLogs`，並設 `IsManuallyAdjusted`（不再清除系統補卡標記）；修改加班起訖會重算該日已核准加班單的 `SettledHours`
 
 > **請假時段阻擋規則**：上下班打卡以 `Clock.Now`（Asia/Taipei）比對員工 `LeaveRequests` 中 `ApprovalStatus='approved'` 的紀錄，落在 `StartDate <= now < EndDate` 半開區間內即阻擋並回含請假單編號 / 假別 / 時段的錯誤訊息。半天 / 小時請假時段已編碼於 datetime，時段外仍可打卡（如上午半天請假，下午可打上班卡；09:00–12:00 病假，12:00 整點可打卡）。加班打卡不套用此規則。實作於 [Api/Handlers/AttendanceHandler.cs](../Api/Handlers/AttendanceHandler.cs) `EnsureNotOnLeaveAsync`，Dapper SQL 於 [Api/Services/Dapper/AttendanceReadService.cs](../Api/Services/Dapper/AttendanceReadService.cs) `GetActiveLeaveAtAsync`。
 
@@ -370,7 +371,7 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/files/signatures/{fileName}` | 簽名檔代理（公開，PDF 匯出用） |
+| GET | `/files/signatures/{fileName}` | 簽名檔代理（PDF 匯出用；**2026-10 起需登入**） |
 | GET | `/files/avatars/{fileName}` | 頭像代理（公開，topbar 顯示用） |
 | GET | `/files/indigenous-proofs/{fileName}` | 原住民證明文件代理（需 `users:read`，HR 敏感 PII） |
 | GET | `/files/low-income-proofs/{fileName}` | 低收入證明文件代理（需 `users:read`，HR 敏感 PII） |
