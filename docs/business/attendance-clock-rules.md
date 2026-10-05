@@ -12,6 +12,8 @@
 
 ## 四個打卡動作的前置條件
 
+> 四個動作皆須**帶 GPS + 有效挑戰碼**（2026-10 起），見下節〈防機器人打卡〉。
+
 | 動作 | 端點 | 前置條件 |
 |---|---|---|
 | 上班打卡 | `POST /attendances/clock-in` | 今日尚未打上班卡；**當下不在已核准請假時段內** |
@@ -27,6 +29,40 @@
 見 [leave-rules.md §銷假規則](leave-rules.md#銷假規則2026-08-新增)。同一條件亦套用於休假日免下班卡判定
 （`GetLeavesOnDateAsync`）、出缺勤報表的請假合併（見下節）、以及打卡提醒的請假排除。
 SQL 端的判定片段收斂於 `LeaveRevocationService.NotRevokedClause`，EF 端為 `GetApprovedRevokedDatesAsync`。
+
+---
+
+## 防機器人打卡（2026-10 hotfix）
+
+### 問題
+正式站發現有人以**排程腳本**打卡：每天固定 09:00:03～05、18:01:02～05，取得登入憑證後**不到 1 秒**就完成打卡、
+且完全不送 GPS（連放公假當天 09:00:03 都照樣登入）。打卡時間取自伺服器 `Clock.Now` 無法偽造，
+但打卡 API 只要持有效 JWT 就能呼叫，GPS 又是前端自行回報、可以不送。
+診斷腳本：[Api/Data/Scripts/17-diagnose-automated-clock-punching.sql](../../Api/Data/Scripts/17-diagnose-automated-clock-punching.sql)（唯讀）。
+
+### 規則（四個本人打卡動作共用，單一真相 `Api/Services/AttendancePunchGuard.cs`）
+1. **強制 GPS**：`latitude` / `longitude` 缺漏、超出範圍或為 (0,0) 一律 400「無法取得定位，請開啟…定位權限」。
+   原本「無法取得定位（打卡仍有效）」的行為**已取消**。
+2. **一次性打卡挑戰碼**：送出前須先 `POST /attendances/clock-challenge { action }` 取碼，
+   碼以 HMAC（由 `Jwt:Secret` 衍生的專用金鑰）簽章綁定「使用者 + 動作 + 簽發時間 + nonce」：
+   - 簽發後**至少 3 秒**（`MinAgeMs`）才能使用 —— 擋掉「取碼後立刻打卡」；
+   - **5 分鐘**（`MaxAgeMs`）內有效；
+   - **只能成功使用一次**（`AttendancePunchLogs.ChallengeNonce` 的 filtered unique index + 送出前查重）；
+   - 拿 A 動作的碼打 B 動作、或拿別人的碼 → 一律無效。
+   前端按下打卡時「取 GPS」與「取碼」並行，不足 3 秒自動補等（多留 300ms 緩衝），使用者只會看到約 3 秒的處理中。
+3. **嘗試紀錄** `AttendancePunchLogs`：成功與被擋下的每一次嘗試都留一列（動作 / 時間 / 結果 / 擋下原因 /
+   GPS / 精度 / IP / User-Agent / 挑戰碼停留毫秒）。被擋下時先寫紀錄再丟 400；成功時與打卡紀錄同一次 SaveChanges，
+   後續業務檢查（例如「今日已打上班卡」）失敗則成功紀錄不落地、挑戰碼也不會被消耗。
+
+擋下原因代碼：`no_gps` / `challenge_missing` / `challenge_invalid` / `too_fast` / `challenge_expired` / `challenge_reused`。
+
+### 不受影響
+系統自動補卡（`AttendanceAutoClockService`）與管理者修改（`PUT/PATCH /attendances/{id}`）不經此流程。
+
+### 限制（刻意取捨）
+這是「提高門檻 + 留證據」：**改寫過的腳本仍可模仿取碼、等 3 秒、偽造座標**。真正無法以腳本繞過的只有人機驗證
+（Cloudflare Turnstile）或生物辨識（passkey），日後若 `AttendancePunchLogs` 仍看到可疑樣態再評估。
+IP 取自 `X-Forwarded-For` 第一段，僅供稽核、**不可作為授權依據**（標頭可偽造）。
 
 ---
 

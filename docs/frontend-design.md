@@ -1439,6 +1439,13 @@ overtimeStartHint = computed<string>(() => {
 條件牽涉後端業務規則時，**由後端回一個結論旗標**（如 `canOvertimeWithoutClockOut`），
 前端不重組規則，避免前後端判定漂移。
 
+**打卡送出流程（防機器人打卡，2026-10）**：四鈕共用 `performAction()`，按下後
+`Promise.all([取 GPS, 取挑戰碼])` → **無 GPS 直接以紅字 toast 擋下、不呼叫打卡 API**（右欄定位卡改顯示紅色
+「無法取得定位，未完成打卡」＋開啟定位的指引，不再是黃色「打卡仍有效」）→ 挑戰碼停留不足 `minWaitMs`
+時以「收到回應」起算補等（+300ms 緩衝）→ 送出時帶 `challengeToken` 與 `accuracy`。
+期間 `loading` 一律 true（按鈕 disabled），收尾放在 `finally`。前端先擋 GPS 只為給明確指引，
+真正的防線在後端 `AttendancePunchGuard`，見 [business/attendance-clock-rules.md §防機器人打卡](business/attendance-clock-rules.md#防機器人打卡2026-10-hotfix)。
+
 ### 8.6 列印 PDF 按鈕的顯示條件
 
 **8 種紙本單**（請款 / 預審 / 預支 / 預支沖銷 / 出差預支 / 出差預支沖銷 / 出差請款 / 假日執行活動）
