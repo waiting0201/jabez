@@ -152,7 +152,7 @@ public sealed class AppRouter(
             ("GET",    ["roles", var id])             => await roles.GetByIdAsync(id),
             ("PUT",    ["roles", var id])             => await roles.UpdateAsync(req, id),
             ("PATCH",  ["roles", var id])             => await roles.UpdateAsync(req, id),
-            ("DELETE", ["roles", var id])             => await roles.DeleteAsync(id),
+            ("DELETE", ["roles", var id])             => await roles.DeleteAsync(req, id),
 
             // ── Permissions ────────────────────────────────────────────────────
             ("GET",    ["permissions"])               => await perms.GetAllAsync(),
