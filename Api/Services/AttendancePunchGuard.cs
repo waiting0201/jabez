@@ -13,8 +13,8 @@ namespace Jabez.Api.Services;
 /// <summary>
 /// 防機器人打卡（2026-10 hotfix，起因：正式站有人以排程腳本「登入 → 1 秒內打卡」、且不送 GPS）。
 ///
-/// 三道關卡，四個本人打卡動作（上班 / 下班 / 加班開始 / 加班結束）共用：
-///   1. **強制 GPS**：座標缺漏、超出範圍或為 (0,0) 一律拒絕。
+/// 兩道關卡，四個本人打卡動作（上班 / 下班 / 加班開始 / 加班結束）共用：
+///   1. ~~強制 GPS~~：正式站 2026-10-05 起取消（無法取得定位的同仁無從打卡），GPS 改為選填、照常記錄。
 ///   2. **一次性挑戰碼**：打卡前須先呼叫 POST /attendances/clock-challenge 取碼，
 ///      碼以 HMAC 簽章綁定「使用者 + 動作 + 簽發時間 + nonce」，
 ///      **簽發後至少 <see cref="MinAgeMs"/> 毫秒、至多 <see cref="MaxAgeMs"/> 毫秒內**才能使用，且只能成功使用一次。
@@ -39,6 +39,7 @@ public sealed class AttendancePunchGuard(AppDbContext db, IConfiguration config)
     /// <summary>擋下原因代碼（寫入 AttendancePunchLog.BlockReason）</summary>
     public static class BlockReasons
     {
+        /// <summary>已停用（GPS 改為選填），保留供判讀既有紀錄</summary>
         public const string NoGps            = "no_gps";
         public const string ChallengeMissing = "challenge_missing";
         public const string ChallengeInvalid = "challenge_invalid";
@@ -92,14 +93,9 @@ public sealed class AttendancePunchGuard(AppDbContext db, IConfiguration config)
     private async Task<(string? Reason, string? Message)> EvaluateAsync(
         Guid userId, string action, ClockActionRequest body, AttendancePunchLog log)
     {
-        // 1. 強制 GPS
-        if (body.Latitude is not { } lat || body.Longitude is not { } lng
-            || double.IsNaN(lat) || double.IsNaN(lng)
-            || lat is < -90 or > 90 || lng is < -180 or > 180
-            || (lat == 0 && lng == 0))
-            return (BlockReasons.NoGps, "無法取得定位，請開啟手機／瀏覽器的定位權限後再打卡。");
+        // GPS 為選填（正式站 2026-10-05 取消強制），有帶就照常記錄於 log 與打卡紀錄
 
-        // 2. 挑戰碼
+        // 挑戰碼
         if (string.IsNullOrWhiteSpace(body.ChallengeToken))
             return (BlockReasons.ChallengeMissing, "打卡驗證失敗，請重新整理頁面後再試。");
 

@@ -225,8 +225,7 @@ export class Dashboard implements OnInit, OnDestroy {
 
   /**
    * 打卡：同時「取得 GPS」與「向後端取一次性挑戰碼」→ 不足挑戰碼最短停留時間則補等 → 送出。
-   * 防機器人打卡（後端 AttendancePunchGuard）：沒有 GPS 或挑戰碼不合規一律擋下，
-   * 前端先擋 GPS 是為了給明確指引，不是唯一防線。
+   * 防機器人打卡（後端 AttendancePunchGuard）：挑戰碼不合規一律擋下；GPS 為選填，取不到仍照常打卡。
    */
   async performAction(type: ClockActionType) {
     if (this.loading()) return;
@@ -242,19 +241,15 @@ export class Dashboard implements OnInit, OnDestroy {
 
       this.gpsCoords.set(coords);
       this.gpsStatus.set(coords ? 'success' : 'failed');
-      if (!coords) {
-        this.showToast('無法取得定位，請開啟手機／瀏覽器的定位權限後再打卡。', 'error');
-        return;
-      }
 
       // 挑戰碼簽發後須停留 minWaitMs；以「收到回應」起算並多留緩衝，避免與後端時間差擦邊被擋
       const waitMs = challenge.minWaitMs + 300 - (Date.now() - challengeReceivedAt);
       if (waitMs > 0) await new Promise(resolve => setTimeout(resolve, waitMs));
 
       const body = {
-        latitude: coords.lat,
-        longitude: coords.lng,
-        accuracy: coords.accuracy,
+        latitude: coords?.lat,
+        longitude: coords?.lng,
+        accuracy: coords?.accuracy,
         overtimeRequestId: type === 'overtime-start' ? (this.selectedOvertimeId() ?? undefined) : undefined,
         isBusinessTrip: this.isBusinessTrip(),
         challengeToken: challenge.token,
@@ -274,7 +269,7 @@ export class Dashboard implements OnInit, OnDestroy {
         'clock-in': '上班打卡', 'clock-out': '下班打卡',
         'overtime-start': '加班開始', 'overtime-end': '加班結束',
       };
-      this.showToast(`${labels[type]}成功！`, 'success');
+      this.showToast(`${labels[type]}成功！`, coords ? 'success' : 'warning');
     } catch (err: any) {
       // 後端 ApiResponse.Fail 在 ExceptionMiddleware 包成 { success:false, message, errors } 結構
       const message = err?.error?.message ?? err?.message ?? '打卡失敗，請稍後重試';

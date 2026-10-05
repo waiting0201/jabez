@@ -1440,11 +1440,11 @@ overtimeStartHint = computed<string>(() => {
 前端不重組規則，避免前後端判定漂移。
 
 **打卡送出流程（防機器人打卡，2026-10）**：四鈕共用 `performAction()`，按下後
-`Promise.all([取 GPS, 取挑戰碼])` → **無 GPS 直接以紅字 toast 擋下、不呼叫打卡 API**（右欄定位卡改顯示紅色
-「無法取得定位，未完成打卡」＋開啟定位的指引，不再是黃色「打卡仍有效」）→ 挑戰碼停留不足 `minWaitMs`
+`Promise.all([取 GPS, 取挑戰碼])` → **GPS 為選填**（正式站 2026-10-05 取消強制：取不到定位時右欄定位卡顯示黃色
+「無法取得定位（打卡仍有效）」、成功 toast 改為 warning 色，照常送出）→ 挑戰碼停留不足 `minWaitMs`
 時以「收到回應」起算補等（+300ms 緩衝）→ 送出時帶 `challengeToken` 與 `accuracy`。
-期間 `loading` 一律 true（按鈕 disabled），收尾放在 `finally`。前端先擋 GPS 只為給明確指引，
-真正的防線在後端 `AttendancePunchGuard`，見 [business/attendance-clock-rules.md §防機器人打卡](business/attendance-clock-rules.md#防機器人打卡2026-10-hotfix)。
+期間 `loading` 一律 true（按鈕 disabled），收尾放在 `finally`。
+防線在後端 `AttendancePunchGuard`，見 [business/attendance-clock-rules.md §防機器人打卡](business/attendance-clock-rules.md#防機器人打卡2026-10-hotfix)。
 
 ### 8.6 列印 PDF 按鈕的顯示條件
 
