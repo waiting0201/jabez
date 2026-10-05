@@ -100,6 +100,14 @@ public sealed record TodayAttendanceDto(
     /// 有預設值 → Dapper 的 MapTodayRow 不需異動（此欄位不存在於 DB，由 Handler 以 with { } 補上）。
     /// </summary>
     bool CanOvertimeWithoutClockOut = false,
+    /// <summary>
+    /// 現在是否已可打「加班開始」卡（時間規則）：一般上班日須在應下班時間（避開請假）與實際下班卡之後；
+    /// 休假日 / 全日請假（<see cref="CanOvertimeWithoutClockOut"/>）恆為 true。
+    /// 與 AttendanceHandler.OvertimeStartAsync 共用 ComputeOvertimeNotBefore，false 時前端應停用按鈕、不要按下才 400。
+    /// </summary>
+    bool CanStartOvertimeNow = true,
+    /// <summary>尚不可打加班卡時，最早可打的時間（供按鈕提示「HH:mm 起可打」）；可打時為 null</summary>
+    DateTime? OvertimeStartNotBefore = null,
     /// <summary>該日已被標記為出差，供打卡頁的勾選框帶回既有狀態</summary>
     bool IsBusinessTrip = false,
 

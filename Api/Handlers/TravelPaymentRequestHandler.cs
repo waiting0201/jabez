@@ -85,7 +85,8 @@ public sealed class TravelPaymentRequestHandler(
             return new NotFoundObjectResult(ApiResponse.Fail("Travel payment request not found."));
 
         var principal = await jwtService.ValidateRequestAsync(req);
-        if (!await RequestViewAccess.CanViewAsync(db, principal, userId, "travel_payment", intId, employeeId == userId))
+        if (!await RequestViewAccess.CanViewAsync(db, principal, userId, "travel_payment", intId, employeeId == userId,
+                RequestViewAccess.StepReviewerProbe(db, approvalFlow, "travel_payment", intId, userId)))
             return new NotFoundObjectResult(ApiResponse.Fail("Travel payment request not found."));
 
         var item = await reader.GetByIdAsync(intId);
@@ -222,6 +223,9 @@ public sealed class TravelPaymentRequestHandler(
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel payment requests can be edited.");
+        // 2026-10 安全修正：財務已填撥款日（PaidAt）的單據即使被退回，也不可再修改 / 刪除（已撥款是事實，不可被抹除；Superadmin 亦同）
+        if (await db.TravelPaymentRequestInstallments.AsNoTracking().AnyAsync(i => i.TravelPaymentRequestId == item.Id && i.PaidAt != null))
+            throw AppException.BadRequest("此申請單已有撥款紀錄，不可修改或刪除，請洽財務。");
 
         var form = await req.ReadFormAsync();
 
@@ -310,7 +314,7 @@ public sealed class TravelPaymentRequestHandler(
             for (int idx = 0; idx < itemRequests.Length; idx++)
             {
                 var i = itemRequests[idx];
-                string? fileUrl  = i.FileUrl;
+                string? fileUrl  = AttachmentProcessor.KeepExistingUrl(i.FileUrl, oldFileUrls); // 僅限本單 DB 既有值
                 string? fileName = i.FileName;
                 if (i.FileIndex >= 0 && i.FileIndex < files.Count)
                 {
@@ -379,6 +383,9 @@ public sealed class TravelPaymentRequestHandler(
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel payment requests can be deleted.");
+        // 2026-10 安全修正：財務已填撥款日（PaidAt）的單據即使被退回，也不可再修改 / 刪除（已撥款是事實，不可被抹除；Superadmin 亦同）
+        if (await db.TravelPaymentRequestInstallments.AsNoTracking().AnyAsync(i => i.TravelPaymentRequestId == item.Id && i.PaidAt != null))
+            throw AppException.BadRequest("此申請單已有撥款紀錄，不可修改或刪除，請洽財務。");
 
         // 收集要刪除的 blob
         var blobNames = item.Items
@@ -571,6 +578,10 @@ public sealed class TravelPaymentRequestHandler(
                           .Include(t => t.Installments)
                           .FirstOrDefaultAsync(t => t.Id == intId)
                   ?? throw AppException.NotFound("TravelPaymentRequest");
+
+        // 2026-10 安全修正：申請人不可操作自己單據的撥款明細（Superadmin 例外）
+        if (!user.IsSuperAdmin && tpr.EmployeeId == userId)
+            throw AppException.Forbidden("不可設定自己申請單的撥款明細。");
 
         if (tpr.ApprovalStatus != "approved")
             return new BadRequestObjectResult(ApiResponse.Fail("只有已核准的出差請款申請可以設定撥款明細。"));

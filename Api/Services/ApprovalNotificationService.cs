@@ -12,6 +12,9 @@ public sealed class ApprovalNotificationService(
     ILineService lineService,
     ILogger<ApprovalNotificationService> logger) : IApprovalNotificationService
 {
+    /// <summary>使用者可控字串進入 HTML 信件前一律編碼（V16）：姓名、事由、活動名稱、地點、單號、摘要等都可能含 HTML。</summary>
+    private static string H(string? value) => System.Net.WebUtility.HtmlEncode(value ?? "");
+
     private static readonly Dictionary<string, string> AppTypeLabels = new()
     {
         ["payment_request"] = "請款申請",
@@ -586,11 +589,11 @@ public sealed class ApprovalNotificationService(
 
             var subject = $"[職務代理] 您被指定為 {applicantName} 的職務代理人";
             var body = $"""
-                <p>{agent.Name} 您好，</p>
-                <p>{applicantName} 已提出請假申請，並指定您於下列期間擔任職務代理人：</p>
+                <p>{H(agent.Name)} 您好，</p>
+                <p>{H(applicantName)} 已提出請假申請，並指定您於下列期間擔任職務代理人：</p>
                 <ul>
-                  <li>請假期間：{period}</li>
-                  <li>事由：{System.Net.WebUtility.HtmlEncode(lr.Reason)}</li>
+                  <li>請假期間：{H(period)}</li>
+                  <li>事由：{H(lr.Reason)}</li>
                 </ul>
                 <p>請留意於該期間協助代理相關職務。此通知僅供知會，您不需要於系統中進行任何簽核動作。</p>
                 {BuildButtonHtml($"{siteUrl}/admin/leave-requests", "前往請假管理")}
@@ -633,10 +636,10 @@ public sealed class ApprovalNotificationService(
                 ? $"[職務代理] {applicantName} 已銷假，代理職務解除"
                 : $"[職務代理] {applicantName} 已部分銷假，代理期間調整";
             var body = $"""
-                <p>{agent.Name} 您好，</p>
-                <p>{applicantName} 的請假申請（{lr.StartDate:yyyy/MM/dd} ~ {lr.EndDate:yyyy/MM/dd}）已辦理銷假並完成簽核：</p>
+                <p>{H(agent.Name)} 您好，</p>
+                <p>{H(applicantName)} 的請假申請（{lr.StartDate:yyyy/MM/dd} ~ {lr.EndDate:yyyy/MM/dd}）已辦理銷假並完成簽核：</p>
                 <ul>
-                  <li>取消的請假日：{cancelledDates}</li>
+                  <li>取消的請假日：{H(cancelledDates)}</li>
                   <li>{(isFullyCancelled ? "整張假單已全數取消，您不需再代理相關職務。" : $"其餘期間仍需代理，剩餘請假時數 {lr.Hours} 小時。")}</li>
                 </ul>
                 <p>此通知僅供知會，您不需要於系統中進行任何簽核動作。</p>
@@ -709,9 +712,9 @@ public sealed class ApprovalNotificationService(
         var rows = string.Join("", items.Select((i, idx) => $"""
               <tr style="background:{(idx % 2 == 0 ? "#EDE9E1" : "#F5F2ED")};">
                 <td style="padding:8px 12px;color:#525358;">{i.ExpectedDate:yyyy-MM-dd}</td>
-                <td style="padding:8px 12px;color:#525358;">{i.AppLabel}</td>
+                <td style="padding:8px 12px;color:#525358;">{H(i.AppLabel)}</td>
                 <td style="padding:8px 12px;color:#525358;font-weight:600;">#{i.ApplicationId}</td>
-                <td style="padding:8px 12px;color:#525358;">{i.Applicant}</td>
+                <td style="padding:8px 12px;color:#525358;">{H(i.Applicant)}</td>
                 <td style="padding:8px 12px;color:#B8892A;font-weight:600;text-align:right;">{i.Amount:N0} 元</td>
               </tr>
             """));
@@ -721,7 +724,7 @@ public sealed class ApprovalNotificationService(
             <h2 style="color:#fff;margin:0;font-size:18px;">撥款日將屆提醒</h2>
           </div>
           <div style="background:#F5F2ED;padding:24px;border-radius:0 0 8px 8px;">
-            <p style="color:#525358;margin:0 0 16px;">{financeUserName} 您好，</p>
+            <p style="color:#525358;margin:0 0 16px;">{H(financeUserName)} 您好，</p>
             <p style="color:#525358;margin:0 0 16px;">您負責的撥款作業中，下列 <strong>{items.Count}</strong> 筆預計撥款日即將到期，請及早安排撥款。</p>
             <table style="width:100%;border-collapse:collapse;margin:0 0 16px;font-size:14px;">
               <thead><tr style="background:#4A6B3A;color:#fff;">
@@ -949,10 +952,10 @@ public sealed class ApprovalNotificationService(
     private static string BuildButtonHtml(string url, string text)
         => $"""
             <div style="margin: 16px 0;">
-              <a href="{url}" target="_blank"
+              <a href="{H(url)}" target="_blank"
                  style="display: inline-block; padding: 10px 24px; background: #699F34; color: #fff;
                         text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;">
-                {text}
+                {H(text)}
               </a>
             </div>
             """;
@@ -1019,9 +1022,9 @@ public sealed class ApprovalNotificationService(
             <h2 style="color: #fff; margin: 0; font-size: 18px;">待審核通知</h2>
           </div>
           <div style="background: #F5F2ED; padding: 24px; border-radius: 0 0 8px 8px;">
-            <p style="color: #525358; margin: 0 0 16px;">{reviewerName} 您好，</p>
+            <p style="color: #525358; margin: 0 0 16px;">{H(reviewerName)} 您好，</p>
             <p style="color: #525358; margin: 0 0 16px;">
-              <strong>{applicantName}</strong> 已提交一筆<strong>{label}</strong>，等待您的審核：
+              <strong>{H(applicantName)}</strong> 已提交一筆<strong>{H(label)}</strong>，等待您的審核：
             </p>
             <table style="width: 100%; border-collapse: collapse; margin: 0 0 16px;">
               <tr>
@@ -1030,7 +1033,7 @@ public sealed class ApprovalNotificationService(
               </tr>
               <tr style="background: #EDE9E1;">
                 <td style="padding: 8px 12px; color: #6E6F73;">申請摘要</td>
-                <td style="padding: 8px 12px; color: #525358;">{summary}</td>
+                <td style="padding: 8px 12px; color: #525358;">{H(summary)}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 12px; color: #6E6F73;">目前步驟</td>
@@ -1051,12 +1054,12 @@ public sealed class ApprovalNotificationService(
         return $"""
         <div style="font-family: 'Microsoft JhengHei', 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: #699F34; padding: 16px 24px; border-radius: 8px 8px 0 0;">
-            <h2 style="color: #fff; margin: 0; font-size: 18px;">{label}核准 — 可進行撥款</h2>
+            <h2 style="color: #fff; margin: 0; font-size: 18px;">{H(label)}核准 — 可進行撥款</h2>
           </div>
           <div style="background: #F5F2ED; padding: 24px; border-radius: 0 0 8px 8px;">
-            <p style="color: #525358; margin: 0 0 16px;">{recipientName} 您好，</p>
+            <p style="color: #525358; margin: 0 0 16px;">{H(recipientName)} 您好，</p>
             <p style="color: #525358; margin: 0 0 16px;">
-              <strong>{applicantName}</strong> 的{label}已通過所有簽核步驟，請進行撥款作業：
+              <strong>{H(applicantName)}</strong> 的{H(label)}已通過所有簽核步驟，請進行撥款作業：
             </p>
             <table style="width: 100%; border-collapse: collapse; margin: 0 0 16px;">
               <tr>
@@ -1065,7 +1068,7 @@ public sealed class ApprovalNotificationService(
               </tr>
               <tr style="background: #EDE9E1;">
                 <td style="padding: 8px 12px; color: #6E6F73;">申請摘要</td>
-                <td style="padding: 8px 12px; color: #525358;">{summary}</td>
+                <td style="padding: 8px 12px; color: #525358;">{H(summary)}</td>
               </tr>
             </table>
             {BuildButtonHtml(linkUrl, "前往設定撥款日期")}
@@ -1086,14 +1089,14 @@ public sealed class ApprovalNotificationService(
             <h2 style="color: #fff; margin: 0; font-size: 18px;">預支沖銷超額 — 需匯款差額</h2>
           </div>
           <div style="background: #F5F2ED; padding: 24px; border-radius: 0 0 8px 8px;">
-            <p style="color: #525358; margin: 0 0 16px;">{recipientName} 您好，</p>
+            <p style="color: #525358; margin: 0 0 16px;">{H(recipientName)} 您好，</p>
             <p style="color: #525358; margin: 0 0 16px;">
-              <strong>{applicantName}</strong> 的預支申請已結案，沖銷金額超過預支金額，請進行差額匯款：
+              <strong>{H(applicantName)}</strong> 的預支申請已結案，沖銷金額超過預支金額，請進行差額匯款：
             </p>
             <table style="width: 100%; border-collapse: collapse; margin: 0 0 16px;">
               <tr>
                 <td style="padding: 8px 12px; color: #6E6F73; width: 120px;">預支單號</td>
-                <td style="padding: 8px 12px; color: #525358; font-weight: 600;">{requestNo}</td>
+                <td style="padding: 8px 12px; color: #525358; font-weight: 600;">{H(requestNo)}</td>
               </tr>
               <tr style="background: #EDE9E1;">
                 <td style="padding: 8px 12px; color: #6E6F73;">預支金額</td>
@@ -1122,9 +1125,9 @@ public sealed class ApprovalNotificationService(
             <h2 style="color: #fff; margin: 0; font-size: 18px;">出差沖銷超額 — 需匯款差額</h2>
           </div>
           <div style="background: #F5F2ED; padding: 24px; border-radius: 0 0 8px 8px;">
-            <p style="color: #525358; margin: 0 0 16px;">{recipientName} 您好，</p>
+            <p style="color: #525358; margin: 0 0 16px;">{H(recipientName)} 您好，</p>
             <p style="color: #525358; margin: 0 0 16px;">
-              <strong>{applicantName}</strong> 的出差申請已結案，沖銷金額超過出差金額，請進行差額匯款：
+              <strong>{H(applicantName)}</strong> 的出差申請已結案，沖銷金額超過出差金額，請進行差額匯款：
             </p>
             <table style="width: 100%; border-collapse: collapse; margin: 0 0 16px;">
               <tr>
@@ -1133,7 +1136,7 @@ public sealed class ApprovalNotificationService(
               </tr>
               <tr style="background: #EDE9E1;">
                 <td style="padding: 8px 12px; color: #6E6F73;">出差地點</td>
-                <td style="padding: 8px 12px; color: #525358;">{destination}</td>
+                <td style="padding: 8px 12px; color: #525358;">{H(destination)}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 12px; color: #6E6F73;">出差金額</td>
@@ -1172,12 +1175,12 @@ public sealed class ApprovalNotificationService(
         return $"""
         <div style="font-family: 'Microsoft JhengHei', 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: #4A6B3A; padding: 16px 24px; border-radius: 8px 8px 0 0;">
-            <h2 style="color: #fff; margin: 0; font-size: 18px;">{label}已撥款{titleSuffix}</h2>
+            <h2 style="color: #fff; margin: 0; font-size: 18px;">{H(label)}已撥款{titleSuffix}</h2>
           </div>
           <div style="background: #F5F2ED; padding: 24px; border-radius: 0 0 8px 8px;">
-            <p style="color: #525358; margin: 0 0 16px;">{applicantName} 您好，</p>
+            <p style="color: #525358; margin: 0 0 16px;">{H(applicantName)} 您好，</p>
             <p style="color: #525358; margin: 0 0 16px;">
-              您的<strong>{label} #{applicationId}</strong> 已由財務完成撥款作業，款項已撥付{titleSuffix}。
+              您的<strong>{H(label)} #{applicationId}</strong> 已由財務完成撥款作業，款項已撥付{titleSuffix}。
             </p>
             <table style="width: 100%; border-collapse: collapse; margin: 0 0 16px;">
               <tr>
@@ -1186,7 +1189,7 @@ public sealed class ApprovalNotificationService(
               </tr>
               <tr style="background: #EDE9E1;">
                 <td style="padding: 8px 12px; color: #6E6F73;">申請摘要</td>
-                <td style="padding: 8px 12px; color: #525358;">{summary}</td>
+                <td style="padding: 8px 12px; color: #525358;">{H(summary)}</td>
               </tr>
               {installmentRow}
               <tr>
@@ -1213,12 +1216,12 @@ public sealed class ApprovalNotificationService(
         return $"""
         <div style="font-family: 'Microsoft JhengHei', 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: #4A6B3A; padding: 16px 24px; border-radius: 8px 8px 0 0;">
-            <h2 style="color: #fff; margin: 0; font-size: 18px;">{label}退款完成</h2>
+            <h2 style="color: #fff; margin: 0; font-size: 18px;">{H(label)}退款完成</h2>
           </div>
           <div style="background: #F5F2ED; padding: 24px; border-radius: 0 0 8px 8px;">
-            <p style="color: #525358; margin: 0 0 16px;">{applicantName} 您好，</p>
+            <p style="color: #525358; margin: 0 0 16px;">{H(applicantName)} 您好，</p>
             <p style="color: #525358; margin: 0 0 16px;">
-              您的<strong>{label} #{applicationId}</strong> 退款已由財務完成匯款作業。
+              您的<strong>{H(label)} #{applicationId}</strong> 退款已由財務完成匯款作業。
             </p>
             <table style="width: 100%; border-collapse: collapse; margin: 0 0 16px;">
               <tr>
@@ -1227,7 +1230,7 @@ public sealed class ApprovalNotificationService(
               </tr>
               <tr style="background: #EDE9E1;">
                 <td style="padding: 8px 12px; color: #6E6F73;">申請摘要</td>
-                <td style="padding: 8px 12px; color: #525358;">{summary}</td>
+                <td style="padding: 8px 12px; color: #525358;">{H(summary)}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 12px; color: #6E6F73;">退款金額</td>
@@ -1265,9 +1268,9 @@ public sealed class ApprovalNotificationService(
             <h2 style="color: #fff; margin: 0; font-size: 18px;">審核結果通知</h2>
           </div>
           <div style="background: #F5F2ED; padding: 24px; border-radius: 0 0 8px 8px;">
-            <p style="color: #525358; margin: 0 0 16px;">{applicantName} 您好，</p>
+            <p style="color: #525358; margin: 0 0 16px;">{H(applicantName)} 您好，</p>
             <p style="color: #525358; margin: 0 0 16px;">
-              您的<strong>{label} #{applicationId}</strong> {description}。
+              您的<strong>{H(label)} #{applicationId}</strong> {H(description)}。
             </p>
             <table style="width: 100%; border-collapse: collapse; margin: 0 0 16px;">
               <tr>
@@ -1276,7 +1279,7 @@ public sealed class ApprovalNotificationService(
               </tr>
               <tr style="background: #EDE9E1;">
                 <td style="padding: 8px 12px; color: #6E6F73;">申請摘要</td>
-                <td style="padding: 8px 12px; color: #525358;">{summary}</td>
+                <td style="padding: 8px 12px; color: #525358;">{H(summary)}</td>
               </tr>
               {noteHtml}
             </table>

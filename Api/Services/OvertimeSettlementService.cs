@@ -36,7 +36,8 @@ public static class OvertimeSettlementService
     /// 只在核准前由管理者代為補登加班起訖時才會有值；一般情況下員工須核准後才能打加班卡，故為 0。
     /// 優先取「綁定本單」的紀錄，其次取同人同日、尚未綁定任何加班單的紀錄。
     /// </summary>
-    public static async Task<decimal> ResolveFromDbAsync(AppDbContext db, OvertimeRequest ot)
+    public static async Task<decimal> ResolveFromDbAsync(
+        AppDbContext db, IShiftScheduleReadService shiftSchedule, IWorkdayScheduleProvider scheduleProvider, OvertimeRequest ot)
     {
         if (ot.EmployeeId is null) return 0m;
         var day = ot.OvertimeDate.Date;
@@ -49,9 +50,22 @@ public static class OvertimeSettlementService
             .Select(a => new { a.OvertimeStartTime, a.OvertimeEndTime })
             .FirstOrDefaultAsync();
 
-        return rec is null
-            ? 0m
-            : OvertimeSettlement.ComputeSettled(ot.EstimatedHours, rec.OvertimeStartTime, rec.OvertimeEndTime);
+        if (rec is null) return 0m;
+
+        var window = await ResolveRegularWindowAsync(db, shiftSchedule, scheduleProvider, ot);
+        return OvertimeSettlement.ComputeSettled(
+            ot.EstimatedHours, rec.OvertimeStartTime, rec.OvertimeEndTime, window?.Start, window?.End);
+    }
+
+    /// <summary>該加班日的正常上班時段（結算時要扣掉重疊）；非工作日或無對象回 null。</summary>
+    private static async Task<(DateTime Start, DateTime End)?> ResolveRegularWindowAsync(
+        AppDbContext db, IShiftScheduleReadService shiftSchedule, IWorkdayScheduleProvider scheduleProvider, OvertimeRequest ot)
+    {
+        if (ot.EmployeeId is not { } uid) return null;
+        var day = ot.OvertimeDate.Date;
+        var dayType  = await shiftSchedule.ResolveDayTypeAsync(uid, day);
+        var schedule = await scheduleProvider.ForAsync(day);
+        return OvertimeSettlement.RegularWindowFor(day, dayType, schedule);
     }
 
     /// <summary>
@@ -68,7 +82,9 @@ public static class OvertimeSettlementService
     {
         if (ot.SettledHours is null || ot.ApprovalStatus != "approved") return false;
 
-        ot.SettledHours = OvertimeSettlement.ComputeSettled(ot.EstimatedHours, overtimeStart, overtimeEnd);
+        var window = await ResolveRegularWindowAsync(db, shiftSchedule, scheduleProvider, ot);
+        ot.SettledHours = OvertimeSettlement.ComputeSettled(
+            ot.EstimatedHours, overtimeStart, overtimeEnd, window?.Start, window?.End);
 
         // 快照與 lot 都以剛寫入的 SettledHours 為準（refreshSettlement:false 避免被 DB 舊值蓋回）
         await OvertimeCompensationService.ApplyAsync(db, shiftSchedule, scheduleProvider, ot, refreshSettlement: false);

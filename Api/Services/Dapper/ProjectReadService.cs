@@ -46,15 +46,22 @@ public sealed class ProjectReadService(IDbConnection db) : IProjectReadService
         return rows.Select(r => (ProjectDto)ToDto(r, null));
     }
 
-    public async Task<IEnumerable<ProjectDto>> GetActiveAsync(ProjectAccessScope scope)
+    /// <summary>
+    /// 輕量 lookup：只投影 Id / Code / Name / Status / DepartmentId / DepartmentName。
+    /// 本端點任何登入者都可呼叫（?all=true 還不過濾部門），故**不可**帶任何金額 / 雲端連結欄位。
+    /// </summary>
+    public async Task<IEnumerable<ProjectLookupDto>> GetActiveAsync(ProjectAccessScope scope)
     {
         var (scopeClause, param) = BuildScopeFilter(scope);
         var where = string.IsNullOrEmpty(scopeClause)
             ? " WHERE p.Status = 'active'"
             : " WHERE p.Status = 'active' AND " + scopeClause;
-        var sql = SelectSql + where + " ORDER BY p.CreatedAt DESC";
-        var rows = await db.QueryAsync<dynamic>(sql, param);
-        return rows.Select(r => (ProjectDto)ToDto(r, null));
+        var sql = """
+            SELECT p.Id, p.Code, p.Name, p.Status, p.DepartmentId, d.Name AS DepartmentName
+            FROM Projects p
+            LEFT JOIN Departments d ON p.DepartmentId = d.Id
+            """ + where + " ORDER BY p.CreatedAt DESC";
+        return await db.QueryAsync<ProjectLookupDto>(sql, param);
     }
 
     public async Task<PagedResult<ProjectDto>> GetPagedAsync(ProjectAccessScope scope, int page, int pageSize, string? search = null, int? year = null, string? status = null)

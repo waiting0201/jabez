@@ -3,6 +3,7 @@ import {inject} from '@angular/core';
 import {BehaviorSubject, catchError, filter, switchMap, take, throwError} from 'rxjs';
 import {Router} from '@angular/router';
 import {AuthService} from '../services/auth.service';
+import {isApiUrl} from '@/app/shared/utils/safe-url';
 
 /** 不需要 token 的路徑（登入、刷新、登出本身；遇 401 也不得再觸發 refresh 以免迴圈） */
 const SKIP_PATHS = ['/auth/login', '/auth/refresh', '/auth/logout'];
@@ -15,6 +16,9 @@ export const authInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>, ne
   const router = inject(Router);
 
   // 附加 Bearer token
+  // 只對自家 API（environment.apiUrl 同源）附加 Bearer，外部網域一律不帶，避免 fileUrl 等使用者可控網址外洩 token
+  if (!isApiUrl(req.url)) return next(req);
+
   const token = auth.token;
   const authReq = token
     ? req.clone({setHeaders: {Authorization: `Bearer ${token}`}})

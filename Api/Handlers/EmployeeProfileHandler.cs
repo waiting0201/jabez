@@ -386,6 +386,9 @@ public sealed class EmployeeProfileHandler(
         });
 
         var dto = await reader.GetByUserIdAsync(userId);
+        // 寫入回應也要走同一道遮蔽（同 GET），否則無 payroll:read 者存檔後即可拿到薪資調整歷史
+        if (dto is not null && !PayrollFieldAccess.CanSeeSalary(req.HttpContext.User))
+            dto = PayrollFieldAccess.Mask(dto);
         return new OkObjectResult(ApiResponse.Ok(dto, "人事資料卡已更新。"));
     }
 

@@ -172,7 +172,7 @@ public static class DesignatedReviewerHelper
     /// 驗證每位 designee 的資格（2026-10 安全修正，所有申請類型、所有指定關卡一體適用）：
     ///   1. 不可指定申請人本人（原 Group B「申請人排第 1 位就跳過該關」改為直接 400，否則申請人可藉點名自己繞過整關）。
     ///   2. 必須在職（Status == active）。
-    ///   3. 職級：被指定者 JobTitle.Level（數字越小越高）必須 ≤ 申請人 Level（同級或更高）；
+    ///   3. 職級：被指定者 JobTitle.Level（數字越小越高）必須 < 申請人 Level（嚴格高於；2026-10 起同級不再放行，避免兩人互相指定對方審核）；
     ///      例外：申請人已是目前全公司最高職級（active、非 superadmin、有職稱者中的最小 Level）時不限制。
     ///      保守處理：申請人或被指定者沒有職稱 → 無從比較 → 一律拒絕（寧可擋下請管理員補職稱，也不放行未知）。
     ///   4. 「需先選部門再選人」的指定關卡（DesignatedRequiresDepartment）：被指定者須屬於 SelectedDepartmentId
@@ -230,8 +230,8 @@ public static class DesignatedReviewerHelper
                 var r = reviewers[d.ReviewerId];
                 if (r.Level is null)
                     throw AppException.BadRequest($"指定審核者「{r.Name}」尚未設定職稱，無法指定為審核者。");
-                if (r.Level.Value > applicantLevel.Value)
-                    throw AppException.BadRequest($"指定審核者「{r.Name}」的職級低於申請人，請改選同級或更高職級的審核者。");
+                if (r.Level.Value >= applicantLevel.Value)
+                    throw AppException.BadRequest($"指定審核者「{r.Name}」的職級未高於申請人，請改選職級更高的審核者。");
             }
         }
 

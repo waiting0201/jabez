@@ -135,10 +135,7 @@ public sealed class PreReviewRequestHandler(
             if (item.FileIndex >= 0 && item.FileIndex < files.Count)
             {
                 var file = files[item.FileIndex];
-                var ext = Path.GetExtension(file.FileName);
-                var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
-                using var stream = file.OpenReadStream();
-                fileUrl = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                fileUrl = await AttachmentProcessor.UploadItemFileAsync(file, blob, ContainerName);
             }
 
             reviewItems.Add(new PreReviewItem
@@ -174,7 +171,7 @@ public sealed class PreReviewRequestHandler(
         {
             var attMetas    = JsonSerializer.Deserialize<AttachmentProcessor.AttachmentMetadata[]>(attachmentsJson, JsonOpts) ?? [];
             var attFiles    = form.Files.GetFiles("attachmentFiles");
-            var resolvedAtt = await AttachmentProcessor.ResolveAsync(attMetas, attFiles, blob);
+            var resolvedAtt = await AttachmentProcessor.ResolveAsync(attMetas, attFiles, blob, AttachmentProcessor.NoOwnedUrls);
             pr.Attachments  = resolvedAtt.Select((a, i) => new PreReviewRequestAttachment
             {
                 FileName  = a.FileName,
@@ -293,7 +290,7 @@ public sealed class PreReviewRequestHandler(
             var attMetas    = JsonSerializer.Deserialize<AttachmentProcessor.AttachmentMetadata[]>(form["attachments"].ToString(), JsonOpts) ?? [];
             var attFiles    = form.Files.GetFiles("attachmentFiles");
             var oldAttUrls  = pr.Attachments.Where(a => !string.IsNullOrEmpty(a.FileUrl)).Select(a => a.FileUrl!).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var resolvedAtt = await AttachmentProcessor.ResolveAsync(attMetas, attFiles, blob);
+            var resolvedAtt = await AttachmentProcessor.ResolveAsync(attMetas, attFiles, blob, oldAttUrls);
             var newAttUrls  = resolvedAtt.Where(a => !string.IsNullOrEmpty(a.FileUrl)).Select(a => a.FileUrl!).ToHashSet(StringComparer.OrdinalIgnoreCase);
             db.PreReviewRequestAttachments.RemoveRange(pr.Attachments);
             pr.Attachments = resolvedAtt.Select((a, i) => new PreReviewRequestAttachment
@@ -331,14 +328,11 @@ public sealed class PreReviewRequestHandler(
 
             foreach (var item in items)
             {
-                string? fileUrl = item.FileUrl; // 保留既有 URL
+                string? fileUrl = AttachmentProcessor.KeepExistingUrl(item.FileUrl, oldFileUrls); // 保留既有 URL：僅限本單 DB 既有值
                 if (item.FileIndex >= 0 && item.FileIndex < files.Count)
                 {
                     var file = files[item.FileIndex];
-                    var ext = Path.GetExtension(file.FileName);
-                    var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
-                    using var stream = file.OpenReadStream();
-                    fileUrl = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                    fileUrl = await AttachmentProcessor.UploadItemFileAsync(file, blob, ContainerName);
                 }
                 if (!string.IsNullOrEmpty(fileUrl))
                     newFileUrls.Add(fileUrl);

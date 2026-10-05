@@ -78,10 +78,19 @@ public sealed class VendorReadService(IDbConnection db) : IVendorReadService
         return new PagedResult<VendorDto>(rows.Select(MapVendor), total, page, pageSize, Math.Max(1, totalPages));
     }
 
-    /// <summary>輕量級廠商清單（供下拉選單，不需 vendors:read 權限；僅回 IsActive=1）</summary>
+    /// <summary>
+    /// 輕量級廠商清單（供下拉選單，不需 vendors:read 權限；僅回 IsActive=1）。
+    /// IdNumber 為個人身分證字號（PII），免權限端點只回遮罩值（前 1 後 3，如 A******789）。
+    /// </summary>
     public async Task<IEnumerable<VendorLookupDto>> GetLookupAsync()
     {
-        const string sql = "SELECT Id, Name, TaxId, IdNumber FROM Vendors WHERE IsActive = 1 ORDER BY Name";
+        const string sql = """
+            SELECT Id, Name, TaxId,
+                   CASE WHEN IdNumber IS NULL THEN NULL
+                        WHEN LEN(IdNumber) > 4 THEN LEFT(IdNumber, 1) + REPLICATE('*', LEN(IdNumber) - 4) + RIGHT(IdNumber, 3)
+                        ELSE REPLICATE('*', LEN(IdNumber)) END AS IdNumber
+            FROM Vendors WHERE IsActive = 1 ORDER BY Name
+            """;
         return await db.QueryAsync<VendorLookupDto>(sql);
     }
 

@@ -173,6 +173,40 @@ public static class HolidayTravelParticipantGuard
         }
     }
 
+    /// <summary>
+    /// 反向檢查（加班送簽 / 加班核准用，2026-10）：該員若為同日假日執行活動的參與人員
+    /// （活動單 pending / approved / returned），該日不可再申請加班 —— 不分補償方式，
+    /// 補休（新制到期可換津貼）本身即有價，與假日津貼同日並領等同重複給付。
+    /// 只比「假日」（與津貼計算範圍一致）；未勾選逐日日期＝全程參與（活動期間內每個假日）。
+    /// </summary>
+    public static async Task EnsureNoOvertimeConflictAsync(
+        AppDbContext db, ICalendarDayReadService calendarReader, Guid ownerId, DateTime overtimeDate)
+    {
+        var day = overtimeDate.Date;
+        var statuses = new[] { "pending", "approved", "returned" };
+
+        var candidates = await db.TravelRequests.AsNoTracking()
+            .Include(t => t.Participants).ThenInclude(p => p.Dates)
+            .Where(t => t.IsHolidayTravel
+                     && statuses.Contains(t.ApprovalStatus)
+                     && t.StartDate < day.AddDays(1) && t.EndDate >= day
+                     && t.Participants.Any(p => p.UserId == ownerId))
+            .ToListAsync();
+        if (candidates.Count == 0) return;
+
+        var holidaySet = (await calendarReader.GetHolidayDatesAsync(day, day)).Select(d => d.Date).ToHashSet();
+        if (!holidaySet.Contains(day)) return;
+
+        foreach (var t in candidates)
+        {
+            var p = t.Participants.First(x => x.UserId == ownerId);
+            if (BuildDaySlots(p, t.StartDate.Date, t.EndDate.Date, holidaySet).ContainsKey(day))
+                throw AppException.BadRequest(
+                    $"您於 {day:yyyy/MM/dd} 已列為假日執行活動（{t.RequestNo ?? $"#{t.Id}"}）的參與人員，"
+                  + "同一天不可再申請加班（不論補休或加班費）。");
+        }
+    }
+
     /// <summary>一位參與者在一張單內的「假日 → 時段遮罩」。未勾選日期＝活動期間內每個假日皆全天。</summary>
     private static Dictionary<DateTime, int> BuildDaySlots(
         TravelRequestParticipant p, DateTime start, DateTime end, HashSet<DateTime> holidaySet)

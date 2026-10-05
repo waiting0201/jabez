@@ -1,3 +1,4 @@
+import {isSafePreviewUrl} from '@/app/shared/utils/safe-url';
 import {Component, computed, inject, OnInit, signal, viewChild} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
@@ -147,7 +148,11 @@ export class ApprovalTaskReview implements OnInit {
 
   previewFile: PreviewFileData | null = null;
   openPreview(name: string, url: string) {
-    this.previewFile = {name, url, safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(url)};
+    // 只有白名單內的網址才 bypass；否則不給 safeUrl（modal 亦會再驗一次，退回下載）
+    this.previewFile = {
+      name, url,
+      safeUrl: isSafePreviewUrl(url) ? this.sanitizer.bypassSecurityTrustResourceUrl(url) : undefined,
+    };
   }
   /** 私有容器（quotes 報價單 / request-attachments）需透過 JWT 代理抓 blob，不能直接丟進 iframe */
   async openProxyPreview(name: string, url: string) {

@@ -144,10 +144,7 @@ public sealed class PaymentRequestHandler(
             if (inv.FileIndex >= 0 && inv.FileIndex < files.Count)
             {
                 var file = files[inv.FileIndex];
-                var ext = Path.GetExtension(file.FileName);
-                var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
-                using var stream = file.OpenReadStream();
-                fileUrl = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                fileUrl = await AttachmentProcessor.UploadItemFileAsync(file, blob, ContainerName);
             }
 
             invoiceItems.Add(new InvoiceItem
@@ -181,7 +178,7 @@ public sealed class PaymentRequestHandler(
         {
             var attMetas    = JsonSerializer.Deserialize<AttachmentProcessor.AttachmentMetadata[]>(attachmentsJson, JsonOpts) ?? [];
             var attFiles    = form.Files.GetFiles("attachmentFiles");
-            var resolvedAtt = await AttachmentProcessor.ResolveAsync(attMetas, attFiles, blob);
+            var resolvedAtt = await AttachmentProcessor.ResolveAsync(attMetas, attFiles, blob, AttachmentProcessor.NoOwnedUrls);
             pr.Attachments  = resolvedAtt.Select((a, i) => new PaymentRequestAttachment
             {
                 FileName  = a.FileName,
@@ -219,6 +216,9 @@ public sealed class PaymentRequestHandler(
 
         if (pr.ApprovalStatus != "draft" && pr.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned payment requests can be edited.");
+        // 2026-10 安全修正：財務已填撥款日（PaidAt）的單據即使被退回，也不可再修改 / 刪除（已撥款是事實，不可被抹除；Superadmin 亦同）
+        if (await db.PaymentRequestInstallments.AsNoTracking().AnyAsync(i => i.PaymentRequestId == pr.Id && i.PaidAt != null))
+            throw AppException.BadRequest("此申請單已有撥款紀錄，不可修改或刪除，請洽財務。");
 
         var form = await req.ReadFormAsync();
 
@@ -304,7 +304,7 @@ public sealed class PaymentRequestHandler(
             var attMetas    = JsonSerializer.Deserialize<AttachmentProcessor.AttachmentMetadata[]>(form["attachments"].ToString(), JsonOpts) ?? [];
             var attFiles    = form.Files.GetFiles("attachmentFiles");
             var oldAttUrls  = pr.Attachments.Where(a => !string.IsNullOrEmpty(a.FileUrl)).Select(a => a.FileUrl!).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var resolvedAtt = await AttachmentProcessor.ResolveAsync(attMetas, attFiles, blob);
+            var resolvedAtt = await AttachmentProcessor.ResolveAsync(attMetas, attFiles, blob, oldAttUrls);
             var newAttUrls  = resolvedAtt.Where(a => !string.IsNullOrEmpty(a.FileUrl)).Select(a => a.FileUrl!).ToHashSet(StringComparer.OrdinalIgnoreCase);
             db.PaymentRequestAttachments.RemoveRange(pr.Attachments);
             pr.Attachments = resolvedAtt.Select((a, i) => new PaymentRequestAttachment
@@ -347,14 +347,11 @@ public sealed class PaymentRequestHandler(
 
             foreach (var inv in invoices)
             {
-                string? fileUrl = inv.FileUrl; // 保留既有 URL
+                string? fileUrl = AttachmentProcessor.KeepExistingUrl(inv.FileUrl, oldFileUrls); // 保留既有 URL：僅限本單 DB 既有值
                 if (inv.FileIndex >= 0 && inv.FileIndex < files.Count)
                 {
                     var file = files[inv.FileIndex];
-                    var ext = Path.GetExtension(file.FileName);
-                    var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
-                    using var stream = file.OpenReadStream();
-                    fileUrl = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                    fileUrl = await AttachmentProcessor.UploadItemFileAsync(file, blob, ContainerName);
                 }
                 if (!string.IsNullOrEmpty(fileUrl))
                     newFileUrls.Add(fileUrl);
@@ -417,6 +414,9 @@ public sealed class PaymentRequestHandler(
 
         if (pr.ApprovalStatus != "draft" && pr.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned payment requests can be deleted.");
+        // 2026-10 安全修正：財務已填撥款日（PaidAt）的單據即使被退回，也不可再修改 / 刪除（已撥款是事實，不可被抹除；Superadmin 亦同）
+        if (await db.PaymentRequestInstallments.AsNoTracking().AnyAsync(i => i.PaymentRequestId == pr.Id && i.PaidAt != null))
+            throw AppException.BadRequest("此申請單已有撥款紀錄，不可修改或刪除，請洽財務。");
 
         // 收集要刪除的 blob（發票 + 整單附件）
         var blobNames = pr.InvoiceItems
@@ -615,6 +615,10 @@ public sealed class PaymentRequestHandler(
                          .Include(p => p.Installments)
                          .FirstOrDefaultAsync(p => p.Id == intId)
                  ?? throw AppException.NotFound("PaymentRequest");
+
+        // 2026-10 安全修正：申請人不可操作自己單據的撥款明細（Superadmin 例外）
+        if (!user.IsSuperAdmin && pr.SubmittedById == userId)
+            throw AppException.Forbidden("不可設定自己申請單的撥款明細。");
 
         if (pr.ApprovalStatus != "approved")
             return new BadRequestObjectResult(ApiResponse.Fail("只有已核准的請款申請可以設定撥款明細。"));

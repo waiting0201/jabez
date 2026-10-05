@@ -264,7 +264,7 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
             var csBg = rowIdx % 2 == 1 ? " style=\"background:#FDFAF5\"" : "";
             var csLabel = emp.CompensatorySettlementNote ?? "補休未休完加班津貼";
             earningsRows += $"""
-            <tr{csBg}><td style="padding:8px 12px">{csLabel}（{emp.CompensatorySettlementHours.ToString("0.#")} 小時）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.CompensatorySettlementAmount)}</td></tr>
+            <tr{csBg}><td style="padding:8px 12px">{System.Net.WebUtility.HtmlEncode(csLabel)}（{emp.CompensatorySettlementHours.ToString("0.#")} 小時）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.CompensatorySettlementAmount)}</td></tr>
             """;
             rowIdx++;
         }
@@ -272,7 +272,7 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
         {
             var addBg = rowIdx % 2 == 1 ? " style=\"background:#FDFAF5\"" : "";
             earningsRows += $"""
-            <tr{addBg}><td style="padding:8px 12px">其他加項{(emp.OtherAdditionNote is not null ? $"（{emp.OtherAdditionNote}）" : "")}</td><td style="padding:8px 12px;text-align:right">{fmt(emp.OtherAddition)}</td></tr>
+            <tr{addBg}><td style="padding:8px 12px">其他加項{(emp.OtherAdditionNote is not null ? $"（{System.Net.WebUtility.HtmlEncode(emp.OtherAdditionNote)}）" : "")}</td><td style="padding:8px 12px;text-align:right">{fmt(emp.OtherAddition)}</td></tr>
             """;
         }
 
@@ -303,7 +303,7 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
             """;
         if (emp.OtherDeduction > 0)
             deductionRows += $"""
-            <tr><td style="padding:8px 12px">其他扣項{(emp.OtherDeductionNote is not null ? $"（{emp.OtherDeductionNote}）" : "")}</td><td style="padding:8px 12px;text-align:right">{fmt(emp.OtherDeduction)}</td></tr>
+            <tr><td style="padding:8px 12px">其他扣項{(emp.OtherDeductionNote is not null ? $"（{System.Net.WebUtility.HtmlEncode(emp.OtherDeductionNote)}）" : "")}</td><td style="padding:8px 12px;text-align:right">{fmt(emp.OtherDeduction)}</td></tr>
             """;
         if (emp.LaborPensionSelfDeduction > 0)
             deductionRows += $"""
@@ -312,7 +312,7 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
 
         var noteSection = string.IsNullOrWhiteSpace(emp.Note) ? "" : $"""
             <div style="margin-top:16px;padding:12px 16px;background:#F5F2ED;border-radius:6px;color:#8C7355;font-size:13px">
-                <strong>備註：</strong>{emp.Note}
+                <strong>備註：</strong>{System.Net.WebUtility.HtmlEncode(emp.Note)}
             </div>
             """;
 
@@ -326,11 +326,11 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
                 <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px">
                     <tr style="background:#F5F2ED">
                         <td style="padding:8px 12px;font-weight:bold;width:40%">姓名</td>
-                        <td style="padding:8px 12px">{emp.EmployeeName}</td>
+                        <td style="padding:8px 12px">{System.Net.WebUtility.HtmlEncode(emp.EmployeeName)}</td>
                     </tr>
                     <tr>
                         <td style="padding:8px 12px;font-weight:bold">部門 / 職稱</td>
-                        <td style="padding:8px 12px">{emp.DepartmentName ?? "---"} / {emp.JobTitleName ?? "---"}</td>
+                        <td style="padding:8px 12px">{System.Net.WebUtility.HtmlEncode(emp.DepartmentName ?? "---")} / {System.Net.WebUtility.HtmlEncode(emp.JobTitleName ?? "---")}</td>
                     </tr>
                     <tr style="background:#F5F2ED">
                         <td style="padding:8px 12px;font-weight:bold">到職日</td>

@@ -154,7 +154,8 @@ public sealed class WriteOffRequestHandler(
             return new NotFoundObjectResult(ApiResponse.Fail("Write-off request not found."));
 
         var principal = await jwtService.ValidateRequestAsync(req);
-        if (!await RequestViewAccess.CanViewAsync(db, principal, userId, "write_off", intId, submittedById == userId))
+        if (!await RequestViewAccess.CanViewAsync(db, principal, userId, "write_off", intId, submittedById == userId,
+                RequestViewAccess.StepReviewerProbe(db, approvalFlow, "write_off", intId, userId)))
             return new NotFoundObjectResult(ApiResponse.Fail("Write-off request not found."));
 
         var item = await reader.GetByIdAsync(intId);
@@ -297,7 +298,7 @@ public sealed class WriteOffRequestHandler(
         {
             var attMetas    = JsonSerializer.Deserialize<AttachmentProcessor.AttachmentMetadata[]>(attachmentsJson, JsonOpts) ?? [];
             var attFiles    = form.Files.GetFiles("attachmentFiles");
-            var resolvedAtt = await AttachmentProcessor.ResolveAsync(attMetas, attFiles, blob);
+            var resolvedAtt = await AttachmentProcessor.ResolveAsync(attMetas, attFiles, blob, AttachmentProcessor.NoOwnedUrls);
             wo.Attachments  = resolvedAtt.Select((a, i) => new WriteOffAttachment
             {
                 FileName  = a.FileName,
@@ -338,6 +339,9 @@ public sealed class WriteOffRequestHandler(
 
         if (wo.ApprovalStatus != "draft" && wo.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned write-off requests can be edited.");
+        // 2026-10 安全修正：財務已填撥款日（PaidAt）的單據即使被退回，也不可再修改 / 刪除（已撥款是事實，不可被抹除；Superadmin 亦同）
+        if (await db.WriteOffInstallments.AsNoTracking().AnyAsync(i => i.WriteOffRecordId == wo.Id && i.PaidAt != null))
+            throw AppException.BadRequest("此申請單已有撥款紀錄，不可修改或刪除，請洽財務。");
 
         // 沖銷草稿可能是在預支追加之前建立的，編輯時需重新確認來源預支單仍可沖銷
         await EnsureAdvanceWriteOffableAsync(wo.AdvanceRequestId);
@@ -385,7 +389,7 @@ public sealed class WriteOffRequestHandler(
             var attMetas    = JsonSerializer.Deserialize<AttachmentProcessor.AttachmentMetadata[]>(form["attachments"].ToString(), JsonOpts) ?? [];
             var attFiles    = form.Files.GetFiles("attachmentFiles");
             var oldAttUrls  = wo.Attachments.Where(a => !string.IsNullOrEmpty(a.FileUrl)).Select(a => a.FileUrl!).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var resolvedAtt = await AttachmentProcessor.ResolveAsync(attMetas, attFiles, blob);
+            var resolvedAtt = await AttachmentProcessor.ResolveAsync(attMetas, attFiles, blob, oldAttUrls);
             var newAttUrls  = resolvedAtt.Where(a => !string.IsNullOrEmpty(a.FileUrl)).Select(a => a.FileUrl!).ToHashSet(StringComparer.OrdinalIgnoreCase);
             db.WriteOffAttachments.RemoveRange(wo.Attachments);
             wo.Attachments = resolvedAtt.Select((a, i) => new WriteOffAttachment
@@ -430,14 +434,11 @@ public sealed class WriteOffRequestHandler(
 
             foreach (var (item, idx) in items.Select((v, i) => (v, i)))
             {
-                string? fileUrl = item.FileUrl; // 保留既有 URL
+                string? fileUrl = AttachmentProcessor.KeepExistingUrl(item.FileUrl, oldFileUrls); // 保留既有 URL：僅限本單 DB 既有值
                 if (item.FileIndex >= 0 && item.FileIndex < files.Count)
                 {
                     var file = files[item.FileIndex];
-                    var ext  = Path.GetExtension(file.FileName);
-                    var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
-                    using var stream = file.OpenReadStream();
-                    fileUrl = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                    fileUrl = await AttachmentProcessor.UploadItemFileAsync(file, blob, ContainerName);
                 }
                 if (!string.IsNullOrEmpty(fileUrl))
                     newFileUrls.Add(fileUrl);
@@ -513,6 +514,9 @@ public sealed class WriteOffRequestHandler(
 
         if (wo.ApprovalStatus != "draft" && wo.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned write-off requests can be deleted.");
+        // 2026-10 安全修正：財務已填撥款日（PaidAt）的單據即使被退回，也不可再修改 / 刪除（已撥款是事實，不可被抹除；Superadmin 亦同）
+        if (await db.WriteOffInstallments.AsNoTracking().AnyAsync(i => i.WriteOffRecordId == wo.Id && i.PaidAt != null))
+            throw AppException.BadRequest("此申請單已有撥款紀錄，不可修改或刪除，請洽財務。");
 
         // 收集要刪除的 blob（沖銷明細發票 + 整單附件）
         var blobNames = wo.Items
@@ -714,6 +718,10 @@ public sealed class WriteOffRequestHandler(
                          .FirstOrDefaultAsync(w => w.Id == intId)
                  ?? throw AppException.NotFound("WriteOffRecord");
 
+        // 2026-10 安全修正：申請人不可操作自己單據的撥款明細（Superadmin 例外）
+        if (!user.IsSuperAdmin && wo.SubmittedById == userId)
+            throw AppException.Forbidden("不可設定自己申請單的撥款明細。");
+
         if (wo.ApprovalStatus != "approved")
             return new BadRequestObjectResult(ApiResponse.Fail("只有已核准的沖銷申請可以設定撥款明細。"));
 
@@ -767,6 +775,10 @@ public sealed class WriteOffRequestHandler(
                          .Include(w => w.Items)
                          .FirstOrDefaultAsync(w => w.Id == intId)
                  ?? throw AppException.NotFound("WriteOffRecord");
+
+        // 2026-10 安全修正：申請人不可操作自己單據的支票支付註記（Superadmin 例外）
+        if (!user.IsSuperAdmin && wo.SubmittedById == userId)
+            throw AppException.Forbidden("不可設定自己申請單的支票支付註記。");
 
         if (wo.ApprovalStatus is not ("pending" or "approved"))
             return new BadRequestObjectResult(ApiResponse.Fail("只有待審核或已核准的沖銷申請可以註記支票支付狀態。"));
@@ -862,10 +874,7 @@ public sealed class WriteOffRequestHandler(
             if (item.FileIndex >= 0 && item.FileIndex < files.Count)
             {
                 var file = files[item.FileIndex];
-                var ext  = Path.GetExtension(file.FileName);
-                var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
-                using var stream = file.OpenReadStream();
-                fileUrl = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                fileUrl = await AttachmentProcessor.UploadItemFileAsync(file, blob, ContainerName);
             }
 
             result.Add(new WriteOffItem

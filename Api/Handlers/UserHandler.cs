@@ -329,6 +329,11 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         // 角色指派越權檢查：非 Superadmin 只能指派權限為自身子集合的角色（新建使用者無既有角色）
         await EnsureCanAssignRolesAsync(req.HttpContext.User, userId, [], roleIdsRaw);
 
+        // 部門 / 職稱越權檢查（與 UpdateAsync 同一支）：非 Superadmin 不可建立財務體系部門或高職級帳號。
+        // 新建帳號無既有部門 / 職稱，傳空 User 使「指定值」一律視為變更。
+        if (req.HttpContext.User.FindFirst("is_superadmin")?.Value != "true")
+            await EnsureNoPrivilegeEscalationAsync(req.HttpContext.User, form, new User());
+
         var user = new User
         {
             Id           = userId,
@@ -447,6 +452,29 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         var emailVal    = form["email"].ToString();
         var statusVal   = form["status"].ToString();
         var passwordVal = form["password"].ToString();
+
+        var principal    = req.HttpContext.User;
+        var isSuperAdmin = principal.FindFirst("is_superadmin")?.Value == "true";
+        var isSelf       = IsOperator(req, guid);
+
+        // 提權防線（皆放在任何 Blob 上傳 / 欄位寫入之前，被擋時不留副作用）：
+        // 1. 非 Superadmin 不得修改自己的部門 / 職稱 / 狀態 / 代理人 / 補休期初 / 薪資 / 簽名檔
+        // 2. 調動至財務體系部門、或調高職級，限 Superadmin
+        // 3. 設定他人密碼：目標帳號的權限須為操作者權限的子集合
+        if (!isSuperAdmin)
+        {
+            if (isSelf)
+                EnsureSelfEditAllowed(form, user, PayrollFieldAccess.CanSeeSalary(principal));
+            await EnsureNoPrivilegeEscalationAsync(principal, form, user);
+            // 改他人密碼或 email（email 可經忘記密碼流程接管帳號）：目標權限須為操作者子集合。
+            // 本人改自己的 email 不受限（self-edit 禁改清單不含 email）。
+            var emailChanged = !string.IsNullOrEmpty(emailVal)
+                               && !string.Equals(emailVal, user.Email, StringComparison.OrdinalIgnoreCase);
+            if (!isSelf && (!string.IsNullOrEmpty(passwordVal) || emailChanged))
+                await EnsureTargetIsSubordinateAsync(principal, user);
+        }
+
+        var auditBefore = AuditSnapshot.Capture(user);
 
         if (!string.IsNullOrEmpty(nameVal))     user.Name   = nameVal;
         if (!string.IsNullOrEmpty(emailVal))    user.Email  = emailVal;
@@ -647,6 +675,13 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         if (revokeTokens)
             await RefreshTokenRevoker.RevokeAllAsync(db, user.Id);
 
+        // 稽核：存檔成功後才落紀錄（失敗的請求不留）。設密碼獨立一筆動作，方便依動作查詢。
+        var changes = AuditSnapshot.Diff(auditBefore, AuditSnapshot.Capture(user));
+        if (!string.IsNullOrEmpty(passwordVal))
+            await WriteAuditAsync(req, guid, "set_password", null);
+        if (changes.Length > 0)
+            await WriteAuditAsync(req, guid, "update", changes);
+
         var dto = await reader.GetByIdAsync(user.Id);
         // 更新回應也要抹除：無權者若拿回既有薪資值，等於繞過 GetByIdAsync 的遮蔽
         if (dto is not null && !PayrollFieldAccess.CanSeeSalary(req.HttpContext.User))
@@ -784,6 +819,164 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         return new OkObjectResult(ApiResponse.Ok($"User '{id}' deleted."));
     }
 
+    /// <summary>
+    /// 非 Superadmin 修改「自己」時，下列欄位的**實質變更**一律擋下（值與現況相同＝前端整張表單回送，放行）：
+    /// 部門 / 職稱 / 狀態 / 職務代理人 / 補休期初時數 / 薪資欄 / 簽名檔。
+    /// 否則持 users:write 者可自行調到財務部、調高職級、改自己底薪，或換掉簽名檔冒簽。
+    /// </summary>
+    private static void EnsureSelfEditAllowed(IFormCollection form, User user, bool canSeeSalary)
+    {
+        var blocked = new List<string>();
+
+        if (form.ContainsKey("departmentId"))
+        {
+            var did = int.TryParse(form["departmentId"], out var v) && v > 0 ? v : (int?)null;
+            if (did != user.DepartmentId) blocked.Add("部門");
+        }
+        if (form.ContainsKey("jobTitleId"))
+        {
+            var jt = int.TryParse(form["jobTitleId"], out var v) && v > 0 ? v : (int?)null;
+            if (jt != user.JobTitleId) blocked.Add("職稱");
+        }
+        var status = form["status"].ToString();
+        if (!string.IsNullOrEmpty(status) && status != user.Status) blocked.Add("在職狀態");
+
+        if (form.ContainsKey("agentUserId"))
+        {
+            var ag = Guid.TryParse(form["agentUserId"], out var v) && v != Guid.Empty ? v : (Guid?)null;
+            if (ag != user.AgentUserId) blocked.Add("職務代理人");
+        }
+        if (form.ContainsKey("compensatoryOpeningHours"))
+        {
+            var coh = decimal.TryParse(form["compensatoryOpeningHours"], out var v) ? v : 0m;
+            if (coh != user.CompensatoryOpeningHours) blocked.Add("補休期初時數");
+        }
+
+        if (canSeeSalary)
+        {
+            static bool Changed(IFormCollection f, string key, decimal? current)
+                => f.ContainsKey(key) && (decimal.TryParse(f[key], out var v) ? v : (decimal?)null) != current;
+
+            if (Changed(form, "baseSalary",               user.BaseSalary)
+             || Changed(form, "mealAllowance",            user.MealAllowance)
+             || Changed(form, "overtimePay",              user.OvertimePay)
+             || Changed(form, "healthInsuranceOverride",  user.HealthInsuranceOverride)
+             || Changed(form, "laborInsuranceOverride",   user.LaborInsuranceOverride)
+             || Changed(form, "otherAllowance",           user.OtherAllowance)
+             || Changed(form, "adjustmentDifference",     user.AdjustmentDifference)
+             || (form.ContainsKey("laborPensionSelfContributionRate")
+                 && ParseLaborPensionRate(form["laborPensionSelfContributionRate"]) != user.LaborPensionSelfContributionRate))
+                blocked.Add("薪資");
+        }
+
+        if (form["removeSignature"] == "true" || form.Files.Any(f => f.Name == "signature"))
+            blocked.Add("簽名檔");
+
+        if (blocked.Count > 0)
+            throw AppException.Forbidden($"不可修改自己的{string.Join("、", blocked)}。");
+    }
+
+    /// <summary>
+    /// 調動 / 升遷越權防線（非 Superadmin 操作者才會進來；只檢查「實質變更」的欄位）：
+    /// 新部門屬財務體系（DepartmentCodes.FinancialAndAbove）、或新職稱 Level ≤ 1（總監級）
+    /// 或比操作者自身職級更高（Level 數字更小），一律限 Superadmin。
+    /// 操作者本身沒有職稱時視為最低職級，任何職稱變更都會被擋（寧嚴勿鬆）。
+    /// </summary>
+    private async Task EnsureNoPrivilegeEscalationAsync(System.Security.Claims.ClaimsPrincipal operatorPrincipal, IFormCollection form, User target)
+    {
+        if (form.ContainsKey("departmentId")
+            && int.TryParse(form["departmentId"], out var newDept) && newDept > 0 && newDept != target.DepartmentId)
+        {
+            var code = await db.Departments.AsNoTracking()
+                .Where(d => d.Id == newDept).Select(d => d.Code).FirstOrDefaultAsync();
+            if (code is not null && DepartmentCodes.FinancialAndAbove.Contains(code))
+                throw AppException.Forbidden("調動至財務體系部門限 Superadmin 操作。");
+        }
+
+        if (form.ContainsKey("jobTitleId")
+            && int.TryParse(form["jobTitleId"], out var newTitle) && newTitle > 0 && newTitle != target.JobTitleId)
+        {
+            var newLevel = await db.JobTitles.AsNoTracking()
+                .Where(j => j.Id == newTitle).Select(j => (int?)j.Level).FirstOrDefaultAsync();
+            if (newLevel is int nl)
+            {
+                var operatorLevel = int.MaxValue;
+                if (Guid.TryParse(operatorPrincipal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value, out var opId))
+                    operatorLevel = await db.Users.AsNoTracking()
+                        .Where(u => u.Id == opId && u.JobTitle != null)
+                        .Select(u => (int?)u.JobTitle!.Level).FirstOrDefaultAsync() ?? int.MaxValue;
+
+                if (nl <= 1 || nl < operatorLevel)
+                    throw AppException.Forbidden("調高職級（總監級或高於自身職級）限 Superadmin 操作。");
+            }
+        }
+    }
+
+    /// <summary>
+    /// 目標帳號的有效權限（其所有角色的權限聯集）必須是操作者權限的子集合，否則 Forbidden。
+    /// 防止低權管理員改高權帳號的密碼後以其身分登入（帳號接管＝提權）。Superadmin 操作者由呼叫端略過。
+    /// </summary>
+    private async Task EnsureTargetIsSubordinateAsync(System.Security.Claims.ClaimsPrincipal operatorPrincipal, User target)
+    {
+        var targetPerms = await db.UserRoles.AsNoTracking()
+            .Where(ur => ur.UserId == target.Id)
+            .SelectMany(ur => ur.Role.RolePermissions.Select(rp => rp.Permission.Code))
+            .Distinct()
+            .ToListAsync();
+
+        var operatorPerms = operatorPrincipal.FindAll("permissions").Select(c => c.Value).ToHashSet();
+        var missing = targetPerms.Where(code => !operatorPerms.Contains(code)).ToArray();
+        if (missing.Length > 0)
+            throw AppException.Forbidden("不可對權限高於自己的帳號執行此操作（目標帳號擁有您所沒有的權限）。");
+    }
+
+    /// <summary>寫一筆帳號異動稽核（獨立 SaveChanges；操作者取自 JWT sub）。</summary>
+    private async Task WriteAuditAsync(HttpRequest req, Guid targetUserId, string action, string? changes)
+    {
+        if (!Guid.TryParse(req.HttpContext.User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value, out var operatorId))
+            return;
+        db.UserAuditLogs.Add(new UserAuditLog
+        {
+            Id             = Guid.NewGuid(),
+            TargetUserId   = targetUserId,
+            OperatorUserId = operatorId,
+            Action         = action,
+            Changes        = changes is { Length: > 2000 } ? changes[..2000] : changes,
+            CreatedAt      = Clock.Now,
+        });
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>稽核用的變更前後快照。薪資欄只比對「有無變更」、不落值；簽名檔只記「已變更」。</summary>
+    private sealed record AuditSnapshot(
+        string Name, string Email, string Status, int? DepartmentId, int? JobTitleId, Guid? AgentUserId,
+        decimal CompensatoryOpeningHours, string Salary, string? SignatureUrl, string Roles)
+    {
+        public static AuditSnapshot Capture(User u) => new(
+            u.Name, u.Email, u.Status, u.DepartmentId, u.JobTitleId, u.AgentUserId, u.CompensatoryOpeningHours,
+            string.Join("|", u.BaseSalary, u.MealAllowance, u.OvertimePay, u.HealthInsuranceOverride, u.LaborInsuranceOverride,
+                        u.LaborPensionSelfContributionRate, u.OtherAllowance, u.AdjustmentDifference),
+            u.SignatureUrl,
+            string.Join(",", u.UserRoles.Select(r => r.RoleId).OrderBy(x => x)));
+
+        public static string Diff(AuditSnapshot a, AuditSnapshot b)
+        {
+            var parts = new List<string>();
+            void D<T>(string field, T x, T y) { if (!EqualityComparer<T>.Default.Equals(x, y)) parts.Add($"{field}: {x} → {y}"); }
+            D("name", a.Name, b.Name);
+            D("email", a.Email, b.Email);
+            D("status", a.Status, b.Status);
+            D("departmentId", a.DepartmentId, b.DepartmentId);
+            D("jobTitleId", a.JobTitleId, b.JobTitleId);
+            D("agentUserId", a.AgentUserId, b.AgentUserId);
+            D("compensatoryOpeningHours", a.CompensatoryOpeningHours, b.CompensatoryOpeningHours);
+            if (a.Salary != b.Salary) parts.Add("salary: changed");
+            if (a.SignatureUrl != b.SignatureUrl) parts.Add("signature: changed");
+            D("roleIds", a.Roles, b.Roles);
+            return string.Join("; ", parts);
+        }
+    }
+
     private static bool IsOperator(HttpRequest req, Guid targetUserId)
         => Guid.TryParse(req.HttpContext.User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value, out var me) && me == targetUserId;
 
@@ -851,7 +1044,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
     /// 預設密碼為員工生日八碼（yyyyMMdd），員工首次登入後須立即修改密碼。
     /// 若員工尚未設定生日，則無法寄出通知信。
     /// </summary>
-    public async Task<IActionResult> SendCredentialsAsync(string id)
+    public async Task<IActionResult> SendCredentialsAsync(HttpRequest req, string id)
     {
         if (!Guid.TryParse(id, out var guid))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid user ID format."));
@@ -861,6 +1054,11 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
 
         if (user.IsSuperAdmin)
             throw AppException.Forbidden("Cannot send credentials for the system super admin account.");
+
+        // 重設他人密碼＝帳號接管風險：非 Superadmin 只能對「權限為自己子集合」的帳號操作
+        if (req.HttpContext.User.FindFirst("is_superadmin")?.Value != "true"
+            && !IsOperator(req, user.Id))
+            await EnsureTargetIsSubordinateAsync(req.HttpContext.User, user);
 
         // 必須設定生日才能產生預設密碼
         if (!user.Birthday.HasValue)
@@ -877,6 +1075,8 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         // 密碼被重設回預設值：舊登入 session 一律作廢
         await RefreshTokenRevoker.RevokeAllAsync(db, user.Id);
 
+        await WriteAuditAsync(req, user.Id, "send_credentials", null);
+
         // 取得前端登入網址
         var setting = await db.SystemSettings.AsNoTracking().OrderBy(s => s.Id).FirstOrDefaultAsync();
         var siteUrl = setting?.SiteUrl?.TrimEnd('/') ?? "https://admin.jabez.com";
@@ -888,12 +1088,12 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         var htmlBody = $"""
             <div style="font-family: 'Microsoft JhengHei', sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2 style="color: #699F34;">帳號通知</h2>
-                <p>{user.Name} 您好，</p>
+                <p>{System.Net.WebUtility.HtmlEncode(user.Name)} 您好，</p>
                 <p>您的系統帳號已開通，以下為您的登入資訊：</p>
                 <table style="border-collapse: collapse; margin: 16px 0;">
                     <tr>
                         <td style="padding: 8px 16px; font-weight: bold; background: #F5F2ED;">Email</td>
-                        <td style="padding: 8px 16px; background: #FDFAF5;">{user.Email}</td>
+                        <td style="padding: 8px 16px; background: #FDFAF5;">{System.Net.WebUtility.HtmlEncode(user.Email)}</td>
                     </tr>
                     <tr>
                         <td style="padding: 8px 16px; font-weight: bold; background: #F5F2ED;">預設密碼</td>
@@ -901,7 +1101,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
                     </tr>
                 </table>
                 <div style="text-align: center; margin: 24px 0;">
-                    <a href="{loginUrl}" style="display: inline-block; padding: 12px 32px; background-color: #699F34; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">前往登入系統</a>
+                    <a href="{System.Net.WebUtility.HtmlEncode(loginUrl)}" style="display: inline-block; padding: 12px 32px; background-color: #699F34; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">前往登入系統</a>
                 </div>
                 <p style="color: #A04040; font-weight: bold;">⚠ 基於安全性考量，請於首次登入後立即修改密碼。</p>
                 <p style="color: #6E6F73; font-size: 13px;">若您忘記生日資料或登入有問題，請洽公司 HR 或系統管理員協助。</p>

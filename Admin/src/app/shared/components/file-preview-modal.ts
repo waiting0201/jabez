@@ -1,9 +1,10 @@
 import {Component, input, output, signal, computed, effect, inject, untracked, HostListener, OnDestroy} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
-import {SafeResourceUrl} from '@angular/platform-browser';
+import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {firstValueFrom} from 'rxjs';
 import {environment} from '@/environments/environment';
 import {convertHeicToJpeg, isHeicName} from '../utils/heic';
+import {isSafePreviewUrl} from '../utils/safe-url';
 
 /**
  * 明細憑證四個容器的原始 blob 網址 → API 代理網址（帶 JWT，避開 Storage CORS）。
@@ -98,7 +99,15 @@ export interface PreviewFileData {
                    draggable="false">
             </div>
           } @else if (isPdf()) {
-            <iframe [src]="file().safeUrl" class="file-preview-pdf"></iframe>
+            @if (pdfSrc(); as src) {
+              <iframe [src]="src" class="file-preview-pdf"></iframe>
+            } @else {
+              <div class="file-preview-fallback">
+                <div class="file-preview-fallback-card">
+                  <p class="file-preview-fallback-text">無法預覽此檔案（來源不受信任），請改用下載</p>
+                </div>
+              </div>
+            }
           } @else {
             <div class="file-preview-fallback">
               <div class="file-preview-fallback-card">
@@ -124,6 +133,7 @@ export interface PreviewFileData {
 })
 export class FilePreviewModal implements OnDestroy {
   private http = inject(HttpClient);
+  private sanitizer = inject(DomSanitizer);
 
   file = input.required<PreviewFileData>();
   closed = output<void>();
@@ -174,13 +184,14 @@ export class FilePreviewModal implements OnDestroy {
 
   /** blob: 網址（FilePreviewLoader / 本機剛選的檔）直接 fetch；明細憑證走 API 代理；其餘嘗試直接 fetch */
   private async _fetchBytes(url: string): Promise<Blob> {
+    if (!isSafePreviewUrl(url)) throw new Error('不受信任的檔案來源');
     if (url.startsWith('blob:')) return (await fetch(url)).blob();
     const m = url.match(ITEM_FILE_CONTAINER_RE);
     if (m) {
       const path = m[2].split('?')[0];
       return firstValueFrom(this.http.get(`${environment.apiUrl}/files/${m[1]}/${path}`, {responseType: 'blob'}));
     }
-    const res = await fetch(url);
+    const res = await fetch(url, {credentials: 'omit'});
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.blob();
   }
@@ -191,6 +202,15 @@ export class FilePreviewModal implements OnDestroy {
     this.heicUrl.set(null);
   }
   isPdf = computed(() => /\.pdf$/i.test(this.file().name));
+
+  /**
+   * iframe 來源：一律在此處驗證白名單後才 bypass，忽略呼叫端傳入的 safeUrl
+   * （各頁 openPreview 直接 bypass 原始 fileUrl，是 javascript: / 外部網址的入口）。
+   */
+  pdfSrc = computed<SafeResourceUrl | null>(() => {
+    const url = this.file().url;
+    return isSafePreviewUrl(url) ? this.sanitizer.bypassSecurityTrustResourceUrl(url) : null;
+  });
 
   typeIcon = computed(() => this.isImage() || this.isHeic() ? 'image' : this.isPdf() ? 'file-text' : 'file');
   typeLabel = computed(() => this.isImage() || this.isHeic() ? '圖片' : this.isPdf() ? 'PDF' : '檔案');

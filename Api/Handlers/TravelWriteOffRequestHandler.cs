@@ -109,7 +109,8 @@ public sealed class TravelWriteOffRequestHandler(
             return new NotFoundObjectResult(ApiResponse.Fail("Travel write-off request not found."));
 
         var principal = await jwtService.ValidateRequestAsync(req);
-        if (!await RequestViewAccess.CanViewAsync(db, principal, userId, "travel_write_off", intId, submittedById == userId))
+        if (!await RequestViewAccess.CanViewAsync(db, principal, userId, "travel_write_off", intId, submittedById == userId,
+                RequestViewAccess.StepReviewerProbe(db, approvalFlow, "travel_write_off", intId, userId)))
             return new NotFoundObjectResult(ApiResponse.Fail("Travel write-off request not found."));
 
         var item = await reader.GetByIdAsync(intId);
@@ -306,14 +307,11 @@ public sealed class TravelWriteOffRequestHandler(
 
             foreach (var (item, idx) in items.Select((v, i) => (v, i)))
             {
-                string? fileUrl = item.FileUrl; // 保留既有 URL
+                string? fileUrl = AttachmentProcessor.KeepExistingUrl(item.FileUrl, oldFileUrls); // 保留既有 URL：僅限本單 DB 既有值
                 if (item.FileIndex >= 0 && item.FileIndex < files.Count)
                 {
                     var file = files[item.FileIndex];
-                    var ext  = Path.GetExtension(file.FileName);
-                    var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
-                    using var stream = file.OpenReadStream();
-                    fileUrl = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                    fileUrl = await AttachmentProcessor.UploadItemFileAsync(file, blob, ContainerName);
                 }
                 if (!string.IsNullOrEmpty(fileUrl))
                     newFileUrls.Add(fileUrl);
@@ -587,10 +585,7 @@ public sealed class TravelWriteOffRequestHandler(
             if (item.FileIndex >= 0 && item.FileIndex < files.Count)
             {
                 var file = files[item.FileIndex];
-                var ext  = Path.GetExtension(file.FileName);
-                var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
-                using var stream = file.OpenReadStream();
-                fileUrl = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                fileUrl = await AttachmentProcessor.UploadItemFileAsync(file, blob, ContainerName);
             }
 
             result.Add(new TravelWriteOffItem

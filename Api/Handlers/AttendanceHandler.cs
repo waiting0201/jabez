@@ -242,13 +242,21 @@ public sealed class AttendanceHandler(
                 "本日為您排定的例假日，依法嚴禁出勤與加班，無法打加班卡。");
 
         // 3. 下班卡前置條件：休假日 / 全日請假豁免
-        if (record?.ClockOutTime is null)
+        var todayLeaves = await reader.GetLeavesOnDateAsync(userId, DateOnly.FromDateTime(today));
+        bool exempt = await CanOvertimeWithoutClockOutAsync(userId, today, todayLeaves);
+        if (record?.ClockOutTime is null && !exempt)
+            throw AppException.BadRequest(record?.ClockInTime is null
+                ? "請先完成上下班打卡。"
+                : "請先打下班卡。");
+
+        // 3.5 防灌工時（2026-10）：一般上班日須在「實際下班打卡」與「應下班時間」之後才能打加班開始卡，
+        // 否則可在正常上班時段內（如 00:03）打加班卡把上班時間領成加班費。休假日 / 全日請假（exempt）不套此限。
+        if (!exempt)
         {
-            var todayLeaves = await reader.GetLeavesOnDateAsync(userId, DateOnly.FromDateTime(today));
-            if (!await CanOvertimeWithoutClockOutAsync(userId, today, todayLeaves))
-                throw AppException.BadRequest(record?.ClockInTime is null
-                    ? "請先完成上下班打卡。"
-                    : "請先打下班卡。");
+            var notBefore = ComputeOvertimeNotBefore(today, record?.ClockOutTime, todayLeaves, otCtx);
+            if (now < notBefore)
+                throw AppException.BadRequest(
+                    $"須於下班後（{notBefore:HH:mm} 起）才能打加班開始卡，正常上班時段內不可打加班卡。");
         }
 
         // 4. 休假日無打卡紀錄 → 建立只含加班時間的紀錄（比照 ClockInAsync）
@@ -543,6 +551,24 @@ public sealed class AttendanceHandler(
     }
 
     /// <summary>
+    /// 一般上班日「加班開始卡」最早可打時間 ＝ max(應下班時間〔ExpectedWorkWindow，已避開請假時段〕, 實際下班打卡)。
+    /// OvertimeStartAsync 的擋件與 GET /attendances/today 的 CanOvertimeStartNow 共用此函式，避免兩處規則漂移。
+    /// 休假日 / 全日請假（exempt）不適用，呼叫端自行略過。
+    /// </summary>
+    private static DateTime ComputeOvertimeNotBefore(
+        DateTime today, DateTime? clockOutAt, IReadOnlyList<ActiveLeaveDto> todayLeaves, ClockContext otCtx)
+    {
+        var leaveDays = todayLeaves.Select(l => new LeaveDay(
+            today, 0m, string.Empty,
+            l.StartDate.Date < today ? TimeOnly.MinValue : TimeOnly.FromDateTime(l.StartDate),
+            l.EndDate.Date   > today ? TimeOnly.MaxValue : TimeOnly.FromDateTime(l.EndDate))).ToList();
+        var window    = ExpectedWorkWindow.Compute(today, leaveDays, otCtx.Schedule);
+        var notBefore = window.End ?? today.Add(otCtx.Schedule.End.ToTimeSpan());
+        if (clockOutAt is { } outAt && outAt > notBefore) notBefore = outAt;
+        return notBefore;
+    }
+
+    /// <summary>
     /// 今日是否「免下班卡即可打加班開始」：
     /// (a) 行事曆休假日（該年度無行事曆資料時退回六日判定，比照 WorkCalendarHelper）
     /// (b) 當日全日已核准請假
@@ -606,6 +632,17 @@ public sealed class AttendanceHandler(
         // 正常下班帶的終點（公司預設 T+30 分、自訂時段 E+5 分），前端據此判斷逾時、不再寫死 30 分
         DateTime? normalOutUntil = expectedOut?.AddMinutes(ctx.Profile.GraceMinutes);
 
+        // 加班開始卡的時間規則（與 OvertimeStartAsync 同一函式）：未到最早可打時間 → 前端據此停用按鈕
+        DateTime? overtimeNotBefore = null;
+        bool canStartOvertimeNow    = true;
+        if (!exempt)
+        {
+            var clockOutToday = record is { } r && r.RecordDate.Date == now.Date ? r.ClockOutTime : null;
+            var nb = ComputeOvertimeNotBefore(now.Date, clockOutToday, leaves, ctx);
+            canStartOvertimeNow = now >= nb;
+            overtimeNotBefore   = canStartOvertimeNow ? null : nb;
+        }
+
         var flexFields = (
             FlexibleEnabled:      ctx.Flexible,
             DayType:              ctx.Flexible ? ctx.DayType : null,
@@ -626,6 +663,8 @@ public sealed class AttendanceHandler(
                 OvertimeRequestId: null,
                 TodayLeaves: leaves,
                 CanOvertimeWithoutClockOut: exempt,
+                CanStartOvertimeNow: canStartOvertimeNow,
+                OvertimeStartNotBefore: overtimeNotBefore,
                 IsBusinessTrip: false,
                 FlexibleEnabled:      flexFields.FlexibleEnabled,
                 DayType:              flexFields.DayType,
@@ -638,6 +677,8 @@ public sealed class AttendanceHandler(
             {
                 TodayLeaves = leaves,
                 CanOvertimeWithoutClockOut = exempt,
+                CanStartOvertimeNow  = canStartOvertimeNow,
+                OvertimeStartNotBefore = overtimeNotBefore,
                 FlexibleEnabled      = flexFields.FlexibleEnabled,
                 DayType              = flexFields.DayType,
                 IsActivityAssignee   = flexFields.IsActivityAssignee,

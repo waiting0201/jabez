@@ -35,6 +35,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AttendancePunchLog> AttendancePunchLogs { get; set; }
     public DbSet<LoginAttempt> LoginAttempts { get; set; }
     public DbSet<AttendanceAuditLog> AttendanceAuditLogs { get; set; }
+    public DbSet<UserAuditLog> UserAuditLogs { get; set; }
     public DbSet<SystemSetting>    SystemSettings    { get; set; }
     public DbSet<InsuranceBracket>    InsuranceBrackets    { get; set; }
     public DbSet<EscalationOverride>  EscalationOverrides  { get; set; }

@@ -171,7 +171,10 @@ public sealed class ApprovalFlowService(
                 continue;
             }
 
-            bool isSelfReview = IsApplicantTheReviewer(step, applicant);
+            // 2026-10 安全修正：只有「該關候選池排除申請人後查無他人」才算自審（與推進流程 SkipUnreviewableStepsAsync 同一判準）。
+            // 原本只要申請人符合該關條件就整關跳過，池中明明還有別人（例：財務協理送單、財務部另有協理）也被略過，
+            // 全部跳完即自動核准。現在池中尚有他人時停在該關，申請人本人由 AuthorizeStepAsync 擋下。
+            bool isSelfReview = await IsApplicantOnlyReviewerOfFixedStepAsync(step, applicant);
 
             if (!isSelfReview)
             {

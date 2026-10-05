@@ -70,7 +70,7 @@ public sealed class TravelRequestHandler(
         return new OkObjectResult(ApiResponse.Ok(result));
     }
 
-    public async Task<IActionResult> GetByIdAsync(HttpRequest req, string id)
+    public async Task<IActionResult> GetByIdAsync(HttpRequest req, string id, bool isHolidayTravel = false)
     {
         var userId = await GetUserIdAsync(req);
         if (!int.TryParse(id, out var intId))
@@ -81,12 +81,13 @@ public sealed class TravelRequestHandler(
             .Where(x => x.Id == intId)
             .Select(x => new { x.EmployeeId, x.IsHolidayTravel })
             .FirstOrDefaultAsync();
-        if (owner is null)
+        if (owner is null || owner.IsHolidayTravel != isHolidayTravel)
             return new NotFoundObjectResult(ApiResponse.Fail("Travel request not found."));
 
         var principal = await jwtService.ValidateRequestAsync(req);
         var appType = owner.IsHolidayTravel ? "holiday_travel" : "travel";
-        if (!await RequestViewAccess.CanViewAsync(db, principal, userId, appType, intId, owner.EmployeeId == userId))
+        if (!await RequestViewAccess.CanViewAsync(db, principal, userId, appType, intId, owner.EmployeeId == userId,
+                RequestViewAccess.StepReviewerProbe(db, approvalFlow, appType, intId, userId)))
             return new NotFoundObjectResult(ApiResponse.Fail("Travel request not found."));
 
         var item = await reader.GetByIdAsync(intId);
@@ -311,9 +312,14 @@ public sealed class TravelRequestHandler(
             ? await db.TravelRequests.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId)
             : await db.TravelRequests.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
         if (item is null) throw AppException.NotFound("TravelRequest");
+        // 2026-10 安全修正：路由型別須與資料型別一致（出差 / 假日執行活動共用一張表，不比對會互相冒用退場閘門與重複給付檢查）
+        if (item.IsHolidayTravel != (appType == "holiday_travel")) throw AppException.NotFound("TravelRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel requests can be edited.");
+        // 2026-10 安全修正：財務已填撥款日（PaidAt）的單據即使被退回，也不可再修改 / 刪除（已撥款是事實，不可被抹除；Superadmin 亦同）
+        if (await db.TravelRequestInstallments.AsNoTracking().AnyAsync(i => i.TravelRequestId == item.Id && i.PaidAt != null))
+            throw AppException.BadRequest("此申請單已有撥款紀錄，不可修改或刪除，請洽財務。");
 
         // 指定審核者整組替換（提供 DesignatedReviewers 時才更新）
         if (body.DesignatedReviewers is not null)
@@ -390,9 +396,14 @@ public sealed class TravelRequestHandler(
             ? await db.TravelRequests.Include(x => x.Items).Include(x => x.Participants).ThenInclude(p => p.Dates).FirstOrDefaultAsync(x => x.Id == intId)
             : await db.TravelRequests.Include(x => x.Items).Include(x => x.Participants).ThenInclude(p => p.Dates).FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
         if (item is null) throw AppException.NotFound("TravelRequest");
+        // 2026-10 安全修正：路由型別須與資料型別一致（出差 / 假日執行活動共用一張表，不比對會互相冒用退場閘門與重複給付檢查）
+        if (item.IsHolidayTravel != (appType == "holiday_travel")) throw AppException.NotFound("TravelRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel requests can be edited.");
+        // 2026-10 安全修正：財務已填撥款日（PaidAt）的單據即使被退回，也不可再修改 / 刪除（已撥款是事實，不可被抹除；Superadmin 亦同）
+        if (await db.TravelRequestInstallments.AsNoTracking().AnyAsync(i => i.TravelRequestId == item.Id && i.PaidAt != null))
+            throw AppException.BadRequest("此申請單已有撥款紀錄，不可修改或刪除，請洽財務。");
 
         // 基本欄位更新
         var destination = form["destination"].ToString();
@@ -528,8 +539,9 @@ public sealed class TravelRequestHandler(
         return new OkObjectResult(ApiResponse.Ok(dto, "Travel request updated."));
     }
 
-    public async Task<IActionResult> DeleteAsync(HttpRequest req, string id)
+    public async Task<IActionResult> DeleteAsync(HttpRequest req, string id, bool isHolidayTravel = false)
     {
+        var routeAppType = isHolidayTravel ? "holiday_travel" : "travel";
         var userId = await GetUserIdAsync(req);
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid travel request ID format."));
@@ -539,9 +551,14 @@ public sealed class TravelRequestHandler(
             ? await db.TravelRequests.FirstOrDefaultAsync(x => x.Id == intId)
             : await db.TravelRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
         if (item is null) throw AppException.NotFound("TravelRequest");
+        // 2026-10 安全修正：路由型別須與資料型別一致（出差 / 假日執行活動共用一張表，不比對會互相冒用退場閘門與重複給付檢查）
+        if (item.IsHolidayTravel != (routeAppType == "holiday_travel")) throw AppException.NotFound("TravelRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel requests can be deleted.");
+        // 2026-10 安全修正：財務已填撥款日（PaidAt）的單據即使被退回，也不可再修改 / 刪除（已撥款是事實，不可被抹除；Superadmin 亦同）
+        if (await db.TravelRequestInstallments.AsNoTracking().AnyAsync(i => i.TravelRequestId == item.Id && i.PaidAt != null))
+            throw AppException.BadRequest("此申請單已有撥款紀錄，不可修改或刪除，請洽財務。");
 
         // 一併清除此申請單的審核流程足跡（多型關聯無 FK，須手動刪除，否則殘留列會擋住使用者刪除）
         var appType = item.IsHolidayTravel ? "holiday_travel" : "travel";
@@ -575,6 +592,8 @@ public sealed class TravelRequestHandler(
             ? await db.TravelRequests.FirstOrDefaultAsync(x => x.Id == intId)
             : await db.TravelRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
         if (item is null) throw AppException.NotFound("TravelRequest");
+        // 2026-10 安全修正：路由型別須與資料型別一致（出差 / 假日執行活動共用一張表，不比對會互相冒用退場閘門與重複給付檢查）
+        if (item.IsHolidayTravel != (appType == "holiday_travel")) throw AppException.NotFound("TravelRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel requests can be submitted.");
@@ -766,7 +785,7 @@ public sealed class TravelRequestHandler(
     /// 僅財務體系部門或 Superadmin 可操作。
     /// 每筆新填入 PaidAt 的 installment 觸發一次「已撥款」通知。
     /// </summary>
-    public async Task<IActionResult> UpsertInstallmentsAsync(HttpRequest req, string id)
+    public async Task<IActionResult> UpsertInstallmentsAsync(HttpRequest req, string id, bool isHolidayTravel = false)
     {
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid ID format."));
@@ -789,6 +808,11 @@ public sealed class TravelRequestHandler(
                          .Include(t => t.Installments)
                          .FirstOrDefaultAsync(t => t.Id == intId)
                  ?? throw AppException.NotFound("TravelRequest");
+        if (tr.IsHolidayTravel != isHolidayTravel) throw AppException.NotFound("TravelRequest");
+
+        // 2026-10 安全修正：申請人不可操作自己單據的撥款明細（Superadmin 例外）
+        if (!user.IsSuperAdmin && tr.EmployeeId == userId)
+            throw AppException.Forbidden("不可設定自己申請單的撥款明細。");
 
         if (tr.ApprovalStatus != "approved")
             return new BadRequestObjectResult(ApiResponse.Fail("只有已核准的出差申請可以設定撥款明細。"));

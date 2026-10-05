@@ -94,7 +94,7 @@ public sealed class FileHandler(IBlobStorageService blob, ILogger<FileHandler> l
     /// <summary>
     /// 代理讀取廠商存摺封面（圖片或 PDF）。
     /// 路由：GET /files/vendor-passbooks/{fileName}
-    /// 此端點需要 JWT，但不需特殊權限（一般檔案，與 avatars / signatures 同層）。
+    /// 此端點需要 JWT + vendors:read（存摺封面含匯款帳號，檔名 {vendorId}{ext} 可被列舉；權限於 AppRouter 權限表把關）。
     /// </summary>
     public Task<IActionResult> GetVendorPassbookAsync(string fileName)
         => GetFileAsync(VendorPassbookContainer, fileName, IsImageOrPdf);

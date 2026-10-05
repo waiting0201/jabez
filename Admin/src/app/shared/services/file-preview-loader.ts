@@ -5,6 +5,7 @@ import {ToastrService} from 'ngx-toastr';
 import {firstValueFrom} from 'rxjs';
 import {PreviewFileData} from '../components/file-preview-modal';
 import {resolveFileProxyUrl} from './pdf-core.service';
+import {isSafePreviewUrl} from '../utils/safe-url';
 
 /**
  * 私有容器（quotes 報價單 / request-attachments 整單附件）檔案預覽載入器。
@@ -25,6 +26,7 @@ export class FilePreviewLoader {
     if (!rawUrl) return null;
     try {
       const url = resolveFileProxyUrl(rawUrl);
+      if (!isSafePreviewUrl(url)) throw new Error('不受信任的檔案來源');
       const blob = await firstValueFrom(this.http.get(url, {responseType: 'blob'}));
       const objectUrl = URL.createObjectURL(blob);
       return {name, url: objectUrl, safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl)};

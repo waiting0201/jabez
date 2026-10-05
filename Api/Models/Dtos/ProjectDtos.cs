@@ -17,6 +17,18 @@ public sealed record ProjectDto(
     DateTime CreatedAt,
     IReadOnlyList<ProjectPaymentScheduleDto> PaymentSchedules);
 
+/// <summary>
+/// GET /projects/active 的輕量回應（下拉用）。刻意不含 ContractAmount / BusinessAmount / ReceivedAmount /
+/// RemainingAmount / GoogleDriveUrl —— 該端點免 projects:read，?all=true 更不過濾部門。
+/// </summary>
+public sealed record ProjectLookupDto(
+    int     Id,
+    string  Code,
+    string  Name,
+    string  Status,
+    int     DepartmentId,
+    string? DepartmentName);
+
 public sealed record ProjectPaymentScheduleDto(
     Guid      Id,
     int       PeriodNo,

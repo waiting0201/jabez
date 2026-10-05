@@ -179,7 +179,16 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     var appType = task.ApplicationType;
                     if (!await RequestViewAccess.CanViewAsync(
                             db, principal, callerId, appType, intId,
-                            await IsApplicantAsync(appType, intId, callerId)))
+                            await IsApplicantAsync(appType, intId, callerId),
+                            // 固定池關卡的待審者（尚無簽核足跡）：申請人不在其部門範圍時仍須放行，否則待審清單點得到、詳情 403
+                            isStepReviewer: async () =>
+                            {
+                                if (task.Status != "pending") return false;
+                                var applicantId = await GetApplicantIdAsync(appType, intId);
+                                if (applicantId is null) return false;
+                                var reviewers = await approvalFlow.ResolveStepReviewersAsync(appType, intId, task.Flow?.Id, applicantId.Value);
+                                return reviewers.Any(sr => sr.Reviewers.Any(r => r.Id == callerId));
+                            }))
                         return new ObjectResult(ApiResponse.Fail("您沒有權限查看此申請單。")) { StatusCode = 403 };
                 }
             }
@@ -224,7 +233,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         "leave"                      => await db.LeaveRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
         "leave_revocation"           => await db.LeaveRevocations.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
         "shift_change"           => await db.ShiftChangeRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
-        "travel" or "holiday_travel" => await db.TravelRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
+        "travel" or "holiday_travel" => await db.TravelRequests.AsNoTracking().Where(x => x.Id == id && x.IsHolidayTravel == (applicationType == "holiday_travel")).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
         "overtime"                   => await db.OvertimeRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
         "advance"                    => await db.AdvanceRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.SubmittedById).FirstOrDefaultAsync(),
         "write_off"                  => await db.WriteOffRecords.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.SubmittedById).FirstOrDefaultAsync(),
@@ -245,7 +254,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         "leave"                      => await db.LeaveRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId),
         "leave_revocation"           => await db.LeaveRevocations.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId),
         "shift_change"           => await db.ShiftChangeRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId),
-        "travel" or "holiday_travel" => await db.TravelRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId),
+        "travel" or "holiday_travel" => await db.TravelRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId && x.IsHolidayTravel == (applicationType == "holiday_travel")),
         "overtime"                   => await db.OvertimeRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId),
         "advance"                    => await db.AdvanceRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.SubmittedById == callerId),
         "write_off"                  => await db.WriteOffRecords.AsNoTracking().AnyAsync(x => x.Id == id && x.SubmittedById == callerId),
@@ -534,6 +543,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 var tr = await db.TravelRequests.Include(t => t.Installments)
                     .FirstOrDefaultAsync(t => t.Id == intId)
                     ?? throw AppException.NotFound("TravelRequest");
+                // 2026-10 安全修正：出差 / 假日執行活動共用一張表，型別須與資料一致，否則可冒用另一型的流程與財務撥款判定
+                if (tr.IsHolidayTravel) throw AppException.NotFound("TravelRequest");
                 if (tr.ApprovalStatus != "pending")
                     throw AppException.BadRequest("Only pending travel requests can be reviewed.");
 
@@ -562,6 +573,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             {
                 var htr = await db.TravelRequests.FindAsync(intId)
                     ?? throw AppException.NotFound("TravelRequest");
+                if (!htr.IsHolidayTravel) throw AppException.NotFound("TravelRequest");
                 if (htr.ApprovalStatus != "pending")
                     throw AppException.BadRequest("Only pending travel requests can be reviewed.");
 
@@ -593,6 +605,9 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 // 防灌工時（2026-10）：核准時再檢一次每月上限（只計已核准 + 本單，見 OvertimeRequestGuard）
                 if (action == "approved")
                     await OvertimeRequestGuard.EnsureMonthlyLimitOnApprovalAsync(db, ot);
+                // 反向重複給付：核准時再擋一次同日假日執行活動參與（含補休型）
+                if (action == "approved" && ot.EmployeeId is { } otOwner)
+                    await HolidayTravelParticipantGuard.EnsureNoOvertimeConflictAsync(db, calendarReader, otOwner, ot.OvertimeDate);
 
                 var otApplicant = ot.EmployeeId.HasValue
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == ot.EmployeeId.Value)
@@ -1578,6 +1593,10 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         if (wo is null)
             return new NotFoundObjectResult(ApiResponse.Fail("Write-off record not found."));
 
+        // 2026-10 安全修正：申請人不可替自己的沖銷單結案（Superadmin 例外）
+        if (!user.IsSuperAdmin && wo.SubmittedById == userId)
+            return new ObjectResult(ApiResponse.Fail("不可對自己的申請單執行結案。")) { StatusCode = 403 };
+
         if (wo.ApprovalStatus != "approved")
             return new BadRequestObjectResult(ApiResponse.Fail("僅已核准的沖銷申請可執行結案。"));
 
@@ -1612,6 +1631,10 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         var two = await db.TravelWriteOffRecords.AsNoTracking().FirstOrDefaultAsync(w => w.Id == intId);
         if (two is null)
             return new NotFoundObjectResult(ApiResponse.Fail("Travel write-off record not found."));
+
+        // 2026-10 安全修正：申請人不可替自己的沖銷單結案（Superadmin 例外）
+        if (!user.IsSuperAdmin && two.SubmittedById == userId)
+            return new ObjectResult(ApiResponse.Fail("不可對自己的申請單執行結案。")) { StatusCode = 403 };
 
         if (two.ApprovalStatus != "approved")
             return new BadRequestObjectResult(ApiResponse.Fail("僅已核准的沖銷申請可執行結案。"));

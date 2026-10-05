@@ -50,7 +50,7 @@ public static class OvertimeCompensationService
         // 打卡 / 管理者修改路徑已自行算好 SettledHours，傳 refreshSettlement:false 避免被 DB 舊值蓋回。
         // 舊單（null）完全不碰，給付沿用 EstimatedHours。
         if (refreshSettlement && ot.ApprovalStatus == "approved" && ot.SettledHours is not null)
-            ot.SettledHours = await OvertimeSettlementService.ResolveFromDbAsync(db, ot);
+            ot.SettledHours = await OvertimeSettlementService.ResolveFromDbAsync(db, shiftSchedule, scheduleProvider, ot);
 
         if (ot.CompensationType != Pay || ot.EmployeeId is null)
         {

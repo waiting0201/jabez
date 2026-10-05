@@ -60,6 +60,27 @@ public sealed class AppRouter(
     EmployeeProfileHandler          employeeProfile,
     NotificationHandler             notifications)
 {
+    /// <summary>
+    /// 會燒付費額度 / 外部 API 的端點（權限表皆為 null＝登入即可）的每人速率限制。
+    /// 規則與數值集中在 <see cref="UserRateLimiter.Limits"/>。
+    /// </summary>
+    private static void EnforceRateLimit(string method, string[] segments, System.Security.Claims.ClaimsPrincipal principal)
+    {
+        UserRateLimiter.Rule[]? rules = (method, segments) switch
+        {
+            ("POST", ["invoice-ocr"]) or ("POST", ["quote-ocr"])
+                => [UserRateLimiter.Limits.OcrPerMinute, UserRateLimiter.Limits.OcrPerDay],
+            ("GET", ["vendors", "lookup-by-tax-id"])
+                => [UserRateLimiter.Limits.GcisPerMinute],
+            _ => null,
+        };
+        if (rules is null) return;
+
+        var key = principal.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+        if (string.IsNullOrEmpty(key)) throw AppException.Unauthorized();
+        UserRateLimiter.Enforce(key, rules);
+    }
+
     public async Task<IActionResult> RouteAsync(HttpRequest req, string route)
     {
         var method   = req.Method.ToUpper();
@@ -97,6 +118,9 @@ public sealed class AppRouter(
             var requiredPermission = GetRequiredPermission(method, segments);
             if (requiredPermission is not null)
                 RequirePermission(principal, requiredPermission);
+
+            // 付費 / 外部 API 端點的每人速率限制（OCR → Gemini、統編查詢 → GCIS），以 JWT sub 為鍵，超限回 429
+            EnforceRateLimit(method, segments, principal);
 
             // 把 principal 寫入 HttpContext.User，讓 Handler 透過 IHttpContextAccessor 可取得
             req.HttpContext.User = principal;
@@ -137,7 +161,7 @@ public sealed class AppRouter(
             ("GET",    ["users", "lookup"])           => await users.GetLookupAsync(req),
             ("GET",    ["users"])                     => await users.GetAllAsync(req),
             ("POST",   ["users"])                     => await users.CreateAsync(req),
-            ("POST",   ["users", var id, "send-credentials"]) => await users.SendCredentialsAsync(id),
+            ("POST",   ["users", var id, "send-credentials"]) => await users.SendCredentialsAsync(req, id),
             // 人事資料卡：必須在 ["users", var id] catch-all 之前
             ("GET",    ["users", var id, "profile"])  => await employeeProfile.GetByUserIdAsync(req, id),
             ("PUT",    ["users", var id, "profile"])  => await employeeProfile.UpsertAsync(req, id),
@@ -296,11 +320,11 @@ public sealed class AppRouter(
             ("GET",    ["holiday-travel-requests"])                        => await travelRequests.GetAllAsync(req, isHolidayTravel: true),
             ("POST",   ["holiday-travel-requests"])                        => await travelRequests.CreateAsync(req, isHolidayTravel: true),
             ("PATCH",  ["holiday-travel-requests", var id, "submit"])      => await travelRequests.SubmitAsync(req, id, isHolidayTravel: true),
-            ("PATCH",  ["holiday-travel-requests", var id, "installments"]) => await travelRequests.UpsertInstallmentsAsync(req, id),
-            ("GET",    ["holiday-travel-requests", var id])                => await travelRequests.GetByIdAsync(req, id),
+            ("PATCH",  ["holiday-travel-requests", var id, "installments"]) => await travelRequests.UpsertInstallmentsAsync(req, id, isHolidayTravel: true),
+            ("GET",    ["holiday-travel-requests", var id])                => await travelRequests.GetByIdAsync(req, id, isHolidayTravel: true),
             ("PUT",    ["holiday-travel-requests", var id])                => await travelRequests.UpdateAsync(req, id, isHolidayTravel: true),
             ("PATCH",  ["holiday-travel-requests", var id])                => await travelRequests.UpdateAsync(req, id, isHolidayTravel: true),
-            ("DELETE", ["holiday-travel-requests", var id])                => await travelRequests.DeleteAsync(req, id),
+            ("DELETE", ["holiday-travel-requests", var id])                => await travelRequests.DeleteAsync(req, id, isHolidayTravel: true),
 
             // ── Calendar Days（行事曆管理）─────────────────────────────────────────
             ("GET",    ["calendar-days"])                                  => await calendarDays.GetByYearAsync(req),
@@ -514,8 +538,8 @@ public sealed class AppRouter(
             ("GET", ["files", "id-cards", _])           => PermissionCodes.UsersRead,
             ("GET", ["files", "education-proofs", _])   => PermissionCodes.UsersRead,
             ("GET", ["files", "passbooks", _])          => PermissionCodes.UsersRead,
-            // vendor-passbooks 為一般檔案（任何登入者皆可讀，與 avatars / signatures 同層）
-            ("GET", ["files", "vendor-passbooks", _])   => null,
+            // vendor-passbooks（存摺封面含匯款帳號）需 vendors:read；檔名為 {vendorId}{ext} 可被列舉，不可僅憑登入放行
+            ("GET", ["files", "vendor-passbooks", _])   => PermissionCodes.VendorsRead,
             // vendor-id-cards 屬敏感 PII（個人工作室身分證），需 vendors:read
             ("GET", ["files", "vendor-id-cards", _])    => PermissionCodes.VendorsRead,
             // quotes（報價單）/ request-attachments（整單附件）為一般業務檔案（任何登入者皆可讀，與 vendor-passbooks 同層）

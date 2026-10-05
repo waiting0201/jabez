@@ -31,12 +31,38 @@ public static class OvertimeSettlement
     /// 打卡時數無條件捨去到 <see cref="RoundingStepHours"/>（寧可少給，不可多給）。
     /// 跨日（結束卡在隔天）以 DateTime 直接相減，不受日期邊界影響。
     /// </summary>
-    public static decimal ComputeSettled(decimal approvedHours, DateTime? start, DateTime? end)
+    public static decimal ComputeSettled(
+        decimal approvedHours, DateTime? start, DateTime? end,
+        DateTime? regularStart = null, DateTime? regularEnd = null)
     {
         if (start is null || end is null || end.Value <= start.Value) return 0m;
 
         var minutes = (decimal)(end.Value - start.Value).TotalMinutes;
+
+        // 扣掉與「正常上班時段」重疊的部分（2026-10 防灌工時）：上班時間不是加班，
+        // 否則可在 00:01 打上下班卡、00:03 打加班卡就把整段正常工時領成加班費。
+        // regularStart / regularEnd 只在「該日為員工的工作日」時由呼叫端傳入；休假日不傳＝不扣。
+        if (regularStart is { } ws && regularEnd is { } we && we > ws)
+        {
+            var overlapStart = start.Value > ws ? start.Value : ws;
+            var overlapEnd   = end.Value   < we ? end.Value   : we;
+            if (overlapEnd > overlapStart)
+                minutes -= (decimal)(overlapEnd - overlapStart).TotalMinutes;
+        }
+
         var punched = Math.Floor(minutes / 60m / RoundingStepHours) * RoundingStepHours;
         return Math.Max(0m, Math.Min(approvedHours, punched));
+    }
+
+    /// <summary>
+    /// 該加班日「正常上班時段」（工作日才有；其餘日別回 null）。
+    /// 一律用標準時段全段（不依請假縮減）：寧可少給，不可多給。
+    /// </summary>
+    public static (DateTime Start, DateTime End)? RegularWindowFor(
+        DateTime overtimeDate, string dayType, WorkdaySchedule schedule)
+    {
+        if (dayType != WorkDayTypes.Work) return null;
+        var day = overtimeDate.Date;
+        return (day.Add(schedule.Start.ToTimeSpan()), day.Add(schedule.End.ToTimeSpan()));
     }
 }

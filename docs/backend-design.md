@@ -493,7 +493,7 @@ RequestDateGuard.EnsurePastWithin(body.ChildBirthDate, "子女出生日期",
 |---|---|---|
 | 打卡 | `Services/AttendancePunchGuard` | 強制 GPS + 一次性挑戰碼（見 9.5）+ `AttendancePunchLogs` |
 | 簽核授權 | `ApprovalTaskHandler.AuthorizeStepAsync` | 所有審核入口（單筆 / 批次 / 指定 / 升級）的**共同授權點**：審核者＝申請人一律 403；ApprovalItemId 為 null 或查無目前關卡一律 403（**不得再加「查無就放行」的出口**） |
-| 指定審核者 | `DesignatedReviewerHelper.ValidateAndNormalizeAsync`（送簽時） | 不可指定本人、不可指定非在職者、職級須 ≤ 申請人（申請人為全公司最高職級時豁免）、先選部門的關卡須屬該部門 |
+| 指定審核者 | `DesignatedReviewerHelper.ValidateAndNormalizeAsync`（送簽時） | 不可指定本人、不可指定非在職者、職級須嚴格高於申請人（Level < 申請人，同級不放行；申請人為全公司最高職級時豁免）、先選部門的關卡須屬該部門 |
 | 簽核流程 ID | 各申請 Handler | **Create / Update 不得採用前端傳來的 `ApprovalItemId`**，只由 Submit 依申請人部門解析 |
 | 送簽清足跡 | 11 個 Submit 路徑 | 不論 draft 或 returned，送簽一律清掉舊 ApprovalRecords / EscalationOverrides、重置 designee |
 | 撥款端點 | `PATCH /{type}-requests/{id}/installments` | DTO **不得帶單據狀態** |
@@ -502,6 +502,13 @@ RequestDateGuard.EnsurePastWithin(body.ChildBirthDate, "子女出生日期",
 | 假日津貼 | `Services/HolidayTravelParticipantGuard` | 參與人員須在職；同人同一假日不得跨單、不得同時有已核准加班費單或有薪假 |
 | 加班送件 | `Services/OvertimeRequestGuard` | 補登最多 7 天、同人同日一張、全天有薪假不可加班、每月上限（`SystemSetting.MonthlyOvertimeLimit`） |
 | 加班給付 | `Common/OvertimeSettlement.BillableHours` | 給付基準時數＝`SettledHours ?? EstimatedHours`；新增給付類消費點一律用它（SQL 用 `ISNULL(SettledHours, EstimatedHours)`）。`SettledHours` = min(核准時數, 實際加班打卡)，於終局核准 / 打加班結束卡 / 管理者修改出缺勤時由 `OvertimeSettlementService.SyncFromPunchesAsync` 冪等重算；**舊單 null 永不 backfill**（薪資即時重算、無月結快照） |
+| 加班打卡時段 | `AttendanceHandler.OvertimeStartAsync` + `OvertimeSettlement.ComputeSettled` | 一般上班日加班開始卡須 ≥ max(實際下班卡, 應下班時間〔`ExpectedWorkWindow`〕)，休假日 / 全日請假免；結算時扣掉與正常上班時段重疊（`RegularWindowFor`，僅工作日） |
+| 加班 × 假日活動 | `HolidayTravelParticipantGuard.EnsureNoOvertimeConflictAsync` | 反向檢查：假日活動參與人員（pending / approved / returned）該日不可申請加班，補休型也擋；於加班送簽與核准兩處呼叫 |
+| 假別額度年度 | `LeaveRequestHandler.ValidateLeaveQuotaAsync` | 已用時數一律以假單 `StartDate.Year` 為年度，不用 `Clock.Now.Year` |
+| 速率限制 | `Services/UserRateLimiter`（AppRouter 呼叫） | OCR 每人每分 10 / 每日 200（兩支共用）、GCIS 每分 20，超限 429；記憶體計數、每實例獨立，數值集中在 `Limits` |
+| 明細 / 附件檔案 | `Common/AttachmentProcessor`（`UploadItemFileAsync` / `KeepExistingUrl`） | 上傳一律 10MB 上限 + magic-byte 白名單、副檔名取偵測型別；更新時「保留既有 FileUrl」只接受該單 DB 既有值（新建傳 `NoOwnedUrls`），刪 blob 只對 DB 舊值執行 |
+| 通知信 HTML | `ApprovalNotificationService.H()` / `WebUtility.HtmlEncode` | 凡進 HTML 信件的使用者可控字串（姓名、事由、摘要、地點、單號、href）一律編碼；LINE Flex 為 JSON 序列化，不需 HtmlEncode |
+| 加班開始卡時間 | `AttendanceHandler.ComputeOvertimeNotBefore` | `OvertimeStartAsync` 擋件與 `/attendances/today` 的 `CanStartOvertimeNow` / `OvertimeStartNotBefore` 共用 |
 | 出缺勤修改 | `AttendanceHandler.UpdateAsync` | 不可改自己的紀錄；每次實質修改寫 `AttendanceAuditLogs`；不再清除 `IsClockInAuto / IsClockOutAuto`，改設 `IsManuallyAdjusted` |
 
 稽核表若需指向 Users、又掛在 Users 的 Cascade 鏈下（例：`AttendanceAuditLogs` → AttendanceRecords → Users），**該 Users 欄位不設 FK、改存姓名快照**，避免 SQL Server 1785 multiple cascade paths，也不必加進 UserHandler 的刪除清洗清單。

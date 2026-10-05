@@ -485,6 +485,8 @@ public sealed class OvertimeRequestHandler(
         await OvertimeRequestGuard.EnsureNoDuplicateAsync(db, ownerId, overtimeDate, excludeId);
         await OvertimeRequestGuard.EnsureNotOnPaidFullDayLeaveAsync(db, workdaysFactory, ownerId, overtimeDate);
         await OvertimeRequestGuard.EnsureMonthlyLimitAsync(db, ownerId, overtimeDate, hours, excludeId);
+        // 反向重複給付：同日已列為假日執行活動參與人員者不可申請加班（含補休型）
+        await HolidayTravelParticipantGuard.EnsureNoOvertimeConflictAsync(db, calendarReader, ownerId, overtimeDate);
     }
 
     /// <summary>

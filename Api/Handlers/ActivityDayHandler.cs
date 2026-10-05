@@ -77,7 +77,7 @@ public sealed class ActivityDayHandler(
         var body   = await ReadBodyAsync(req);
 
         await EnsureCanWriteDepartmentAsync(req, body.DepartmentId);
-        await EnsureAssigneesValidAsync(body.AssigneeUserIds);
+        await EnsureAssigneesValidAsync(req, body.AssigneeUserIds);
 
         var now = Clock.Now;
         var entity = new ActivityDay
@@ -123,7 +123,8 @@ public sealed class ActivityDayHandler(
         await EnsureCanWriteDepartmentAsync(req, entity.DepartmentId);      // 原部門
         if (body.DepartmentId != entity.DepartmentId)
             await EnsureCanWriteDepartmentAsync(req, body.DepartmentId);    // 新部門
-        await EnsureAssigneesValidAsync(body.AssigneeUserIds);
+        // 更新時只驗「新增」的人力：既有名單即使是歷史資料（本人 / 範圍外）也不該讓整張活動日改不動
+        await EnsureAssigneesValidAsync(req, body.AssigneeUserIds, entity.Assignees.Select(a => a.UserId).ToHashSet());
 
         var oldDate = entity.Date.Date;
         var newDate = body.Date.Date;
@@ -300,7 +301,14 @@ public sealed class ActivityDayHandler(
         return body with { AssigneeUserIds = body.AssigneeUserIds ?? [] };
     }
 
-    private async Task EnsureAssigneesValidAsync(IReadOnlyCollection<Guid> userIds)
+    /// <summary>
+    /// 預定人力驗證：必須在職、非 Superadmin；非 Superadmin 呼叫者另須：
+    /// 人員所屬部門落在其 ProjectAccessScope 內（不得指派範圍外部門的人），且不得把自己列為預定人力
+    /// （否則可自行把自己的例假 / 休假覆蓋成上班日、或繞過排班規範）。
+    /// <paramref name="existingUserIds"/>：更新時既有的預定人力，不重驗範圍 / 本人條件。
+    /// </summary>
+    private async Task EnsureAssigneesValidAsync(
+        HttpRequest req, IReadOnlyCollection<Guid> userIds, IReadOnlySet<Guid>? existingUserIds = null)
     {
         if (userIds.Count == 0) return;
 
@@ -309,6 +317,27 @@ public sealed class ActivityDayHandler(
 
         if (found != userIds.Distinct().Count())
             throw AppException.BadRequest("預定人力中含無效或已離職的人員。");
+
+        var principal = await jwtService.ValidateRequestAsync(req)
+                        ?? throw AppException.Unauthorized("Invalid token.");
+        if (principal.FindFirst("is_superadmin")?.Value == "true") return;
+
+        var added = userIds.Distinct().Where(u => existingUserIds is null || !existingUserIds.Contains(u)).ToList();
+        if (added.Count == 0) return;
+
+        var callerId = await GetUserIdAsync(req);
+        if (added.Contains(callerId))
+            throw AppException.BadRequest("不可將自己列為預定人力，請由其他有權限的人建立或調整。");
+
+        var scope = await access.ResolveAsync(principal);
+        if (scope.SeeAll) return;
+
+        var deptIds = await db.Users.AsNoTracking()
+            .Where(u => added.Contains(u.Id))
+            .Select(u => u.DepartmentId)
+            .ToListAsync();
+        if (deptIds.Any(d => d is null || !scope.AllowedDepartmentIds.Contains(d.Value)))
+            throw AppException.Forbidden("預定人力中含不在您可見部門範圍內的人員。");
     }
 
     private async Task EnsureCanWriteDepartmentAsync(HttpRequest req, int departmentId)

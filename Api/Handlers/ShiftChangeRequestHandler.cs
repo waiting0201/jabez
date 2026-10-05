@@ -69,7 +69,8 @@ public sealed class ShiftChangeRequestHandler(
         // 不符一律回 404（不透露單據是否存在）。
         var principal = await jwtService.ValidateRequestAsync(req);
         bool canView = await RequestViewAccess.CanViewAsync(
-            db, principal, userId, AppType, intId, isApplicant: dto.EmployeeId == userId);
+            db, principal, userId, AppType, intId, isApplicant: dto.EmployeeId == userId,
+            isStepReviewer: RequestViewAccess.StepReviewerProbe(db, approvalFlow, AppType, intId, userId));
         if (!canView) throw AppException.NotFound("ShiftChangeRequest");
 
         var entity = await db.ShiftChangeRequests.AsNoTracking().FirstAsync(x => x.Id == intId);

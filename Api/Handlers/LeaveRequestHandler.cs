@@ -1371,7 +1371,9 @@ public sealed class LeaveRequestHandler(
             if (totalDays <= 0)
                 return "年資不足，尚無年假額度。";
 
-            var usedHours = await GetUsedHoursAsync(userId, "annual", item.Id, now.Year);
+            // 已用時數依「本張假單的假期年度」（StartDate.Year）計，不是 Clock.Now.Year ——
+            // 否則 12 月連送明年 1 月的年假彼此不互計而超額（2026-10 修正，同高階主管假 / 生理假寫法）
+            var usedHours = await GetUsedHoursAsync(userId, "annual", item.Id, item.StartDate.Year);
             var totalUsedDays = (usedHours + item.Hours) / 8m;
             if (totalUsedDays > totalDays)
                 return $"年假額度不足。上限 {totalDays} 天，已使用 {Math.Round(usedHours / 8m, 1)} 天，本次申請 {Math.Round(item.Hours / 8m, 1)} 天。";
@@ -1398,7 +1400,7 @@ public sealed class LeaveRequestHandler(
                 return "僅原住民身份之員工可申請歲時祭儀假。";
 
             const int totalDays = 3;
-            var usedHours = await GetUsedHoursAsync(userId, "ceremonial_festival", item.Id, now.Year);
+            var usedHours = await GetUsedHoursAsync(userId, "ceremonial_festival", item.Id, item.StartDate.Year);
             var totalUsedDays = (usedHours + item.Hours) / 8m;
             if (totalUsedDays > totalDays)
                 return $"歲時祭儀假額度不足。上限 {totalDays} 天，已使用 {Math.Round(usedHours / 8m, 1)} 天，本次申請 {Math.Round(item.Hours / 8m, 1)} 天。";
@@ -1461,7 +1463,7 @@ public sealed class LeaveRequestHandler(
         {
             // 產假類別不限年度，其他按年度計算
             bool isMaternityType = item.LeaveType is "maternity" or "miscarriage_3m" or "miscarriage_2to3m" or "miscarriage_under2m" or "prenatal_checkup" or "paternity";
-            int? year = isMaternityType ? null : now.Year;
+            int? year = isMaternityType ? null : item.StartDate.Year;
 
             var usedHours = await GetUsedHoursAsync(userId, item.LeaveType, item.Id, year);
             var totalUsedDays = (usedHours + item.Hours) / 8m;
