@@ -70,7 +70,20 @@
 | 一律撤銷全部 | 改密碼、管理員設定 / 重設他人密碼、寄帳號通知信、帳號停用（Status → inactive）、使用者角色變更 |
 
 撤銷的單一入口：[RefreshTokenRevoker.RevokeAllAsync](../Api/Services/RefreshTokenRevoker.cs)（一次 `ExecuteUpdate`，不依賴 `SaveChanges`）。
-⚠️ **只能讓 Refresh Token 立即失效**：已簽發的 Access Token（60 分鐘）無法收回，因為 `AppRouter` 驗 JWT 是無狀態的、不查 DB。
+RevokeAllAsync 同時會換新 `Users.SecurityStamp`，使已簽發的 Access Token 一併失效（見下節〈Access Token 即時失效〉）。
+
+## Access Token 即時失效（SecurityStamp，2026-10）
+
+JWT 本身無狀態，停用帳號或撤銷權限後舊 token 仍簽章有效。為此 `Users.SecurityStamp`（Guid）隨 token 簽入 **`sstamp`** claim（常數 `AuthPolicy.SecurityStampClaim`），[AppRouter.cs](../Api/Routing/AppRouter.cs) 在驗完 JWT 後 `EnsureSecurityStampAsync`：**每個請求以 PK 查一次 DB**（只取 `SecurityStamp` + `Status`），帳號 `inactive` 或戳記不符一律 **401**，前端攔截器接著走 refresh / 導向登入頁。
+
+| 事件 | 換戳記 | 撤 refresh token |
+|---|---|---|
+| 停用帳號、改密碼、管理員設密碼、寄帳號通知、角色變更、refresh 重用偵測 | 是（`RefreshTokenRevoker.RevokeAllAsync`） | 是 |
+| 改部門 / 職稱 | 是（`RefreshTokenRevoker.BumpSecurityStampAsync`） | **否**（對方 refresh 即可無縫換到帶新 `department_id` / `job_title_level` 的 token） |
+
+- **相容**：token 沒有 `sstamp` claim（部署前簽發）→ 放行至自然過期（≤ 60 分鐘），不會一上線就把全公司踢下線。
+- migration `AddUserSecurityStamp` 將既有使用者的戳記一律填 `Guid.Empty`（全 0）；因為新簽發的 token 帶的也是當下 DB 值（Empty），比對一致、不影響登入。真正讓舊 token 失效靠的是後續事件換戳記，而非 migration。
+- 不涵蓋：僅修改**角色的權限內容**（`RolePermission`）不會換任何人的戳記，仍適用下節〈權限異動不會即時生效〉。
 
 ## 簽名檔需登入
 

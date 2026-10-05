@@ -502,18 +502,26 @@ RequestDateGuard.EnsurePastWithin(body.ChildBirthDate, "子女出生日期",
 | 假日津貼 | `Services/HolidayTravelParticipantGuard` | 參與人員須在職；同人同一假日不得跨單、不得同時有已核准加班費單或有薪假 |
 | 加班送件 | `Services/OvertimeRequestGuard` | 補登最多 7 天、同人同日一張、全天有薪假不可加班、每月上限（`SystemSetting.MonthlyOvertimeLimit`） |
 | 加班給付 | `Common/OvertimeSettlement.BillableHours` | 給付基準時數＝`SettledHours ?? EstimatedHours`；新增給付類消費點一律用它（SQL 用 `ISNULL(SettledHours, EstimatedHours)`）。`SettledHours` = min(核准時數, 實際加班打卡)，於終局核准 / 打加班結束卡 / 管理者修改出缺勤時由 `OvertimeSettlementService.SyncFromPunchesAsync` 冪等重算；**舊單 null 永不 backfill**（薪資即時重算、無月結快照） |
-| 加班打卡時段 | `AttendanceHandler.OvertimeStartAsync` + `OvertimeSettlement.ComputeSettled` | 一般上班日加班開始卡須 ≥ max(實際下班卡, 應下班時間〔`ExpectedWorkWindow`〕)，休假日 / 全日請假免；結算時扣掉與正常上班時段重疊（`RegularWindowFor`，僅工作日） |
+| 加班打卡時段 | `AttendanceHandler.OvertimeStartAsync` + `OvertimeSettlement.ComputeSettled` | 一般上班日加班開始卡須 ≥ max(實際下班卡, 應下班時間〔`ExpectedWorkWindow`〕)，休假日 / 全日請假免；結算時扣掉與正常上班時段重疊（`RegularWindowFor`，僅工作日）。擋件門檻由 `AttendanceHandler.ComputeOvertimeNotBefore` 算出，`/attendances/today` 的 `CanStartOvertimeNow` / `OvertimeStartNotBefore` 共用同一支（前端據以停用按鈕） |
 | 加班 × 假日活動 | `HolidayTravelParticipantGuard.EnsureNoOvertimeConflictAsync` | 反向檢查：假日活動參與人員（pending / approved / returned）該日不可申請加班，補休型也擋；於加班送簽與核准兩處呼叫 |
 | 假別額度年度 | `LeaveRequestHandler.ValidateLeaveQuotaAsync` | 已用時數一律以假單 `StartDate.Year` 為年度，不用 `Clock.Now.Year` |
 | 速率限制 | `Services/UserRateLimiter`（AppRouter 呼叫） | OCR 每人每分 10 / 每日 200（兩支共用）、GCIS 每分 20，超限 429；記憶體計數、每實例獨立，數值集中在 `Limits` |
 | 明細 / 附件檔案 | `Common/AttachmentProcessor`（`UploadItemFileAsync` / `KeepExistingUrl`） | 上傳一律 10MB 上限 + magic-byte 白名單、副檔名取偵測型別；更新時「保留既有 FileUrl」只接受該單 DB 既有值（新建傳 `NoOwnedUrls`），刪 blob 只對 DB 舊值執行 |
 | 通知信 HTML | `ApprovalNotificationService.H()` / `WebUtility.HtmlEncode` | 凡進 HTML 信件的使用者可控字串（姓名、事由、摘要、地點、單號、href）一律編碼；LINE Flex 為 JSON 序列化，不需 HtmlEncode |
-| 加班開始卡時間 | `AttendanceHandler.ComputeOvertimeNotBefore` | `OvertimeStartAsync` 擋件與 `/attendances/today` 的 `CanStartOvertimeNow` / `OvertimeStartNotBefore` 共用 |
-| 出缺勤修改 | `AttendanceHandler.UpdateAsync` | 不可改自己的紀錄；每次實質修改寫 `AttendanceAuditLogs`；不再清除 `IsClockInAuto / IsClockOutAuto`，改設 `IsManuallyAdjusted` |
 | Access token 即時失效 | `Users.SecurityStamp` + `AppRouter.EnsureSecurityStampAsync` + `RefreshTokenRevoker` | token 帶 `sstamp` claim，AppRouter 每請求以 PK 比對 DB 現值與帳號狀態，不符 401；停用 / 改密碼 / 換角色（`RevokeAllAsync`）、改部門 / 職稱（`BumpSecurityStampAsync`，不撤 refresh）時換新。無 `sstamp` 的舊 token 放行至自然過期 |
 | 出差旗標 | `AttendanceHandler.ResolveBusinessTripAsync` | 勾選出差須有當日涵蓋的已核准出差預支 / 出差請款；當日紀錄已有旗標者不重驗 |
-| 出缺勤修改（續） | `AttendanceHandler.UpdateAsync` | 新時間須在紀錄日當天至隔日 06:00 前；修改者 JobTitle.Level 須嚴格小於被修改者（Superadmin 例外） |
+| 出缺勤修改 | `AttendanceHandler.UpdateAsync` | 不可改自己的紀錄；新時間須在紀錄日當天至隔日 06:00 前；修改者 JobTitle.Level 須嚴格小於被修改者（Superadmin 例外）；每次實質修改寫 `AttendanceAuditLogs`；不再清除 `IsClockInAuto / IsClockOutAuto`，改設 `IsManuallyAdjusted` |
 | 核准時重驗日期 | `ApprovalTaskHandler`（leave_revocation / shift_change） | 銷假核准時剔除已過去的日期（全過去則 400）；改班核准時有已過去日期則 400 |
+| 使用者管理防提權 | `UserHandler.EnsureSelfEditAllowed` / `EnsureNoPrivilegeEscalationAsync` / `EnsureTargetIsSubordinateAsync`（Create / Update / SendCredentials / SetPassword） | 非 Superadmin：不可實質變更**自己的**部門 / 職稱 / 在職狀態 / 職務代理人 / 補休期初 / 薪資 / 簽名檔（值與現況相同＝整表回送，放行）；調動至財務體系部門、或調高職級（Level ≤ 1 或高於自身）限 Superadmin（新建帳號同防）；改他人密碼 / email、寄帳號通知，目標帳號權限須為操作者權限的子集合。皆放在 Blob 上傳 / 寫入之前。異動寫 `UserAuditLogs`（update / set_password / send_credentials；薪資只記「已變更」、密碼只記「已重設」） |
+| 簽核詳情檢視範圍 | `Common/RequestViewAccess.CanViewAsync` | `approval-tasks:read` 不再等於全公司可讀：須 `ProjectAccessScope` 涵蓋申請人部門，或為該單目前候選審核者（`StepReviewerProbe`，與 `ApprovalTaskHandler.GetByIdAsync` 同判準）；advance / travel / travel_payment / write_off / travel_write_off / shift_change 的單筆詳情（列印 PDF 取原料）共用 |
+| 送簽自審判準 | `ApprovalFlowService`（`IsApplicantOnlyReviewerOfFixedStepAsync`） | 該關固定池「排除申請人後查無他人」才算自審而跳過，與推進流程 `SkipUnreviewableStepsAsync` 同判準；池中尚有他人就停在該關（原寫法會整關略過、全跳完即自動核准） |
+| 出差 / 假日活動型別 | `TravelRequestHandler`（`isHolidayTravel` 參數） | 路由型別須與 `IsHolidayTravel` 一致，不符回 404（兩種共用一張表，不比對會互相冒用退場閘門與重複給付檢查）；AppRouter 的 `holiday-travel-requests` 路由一律傳 `isHolidayTravel: true` |
+| 撥款明細 | `InstallmentValidator` + 5 支 installments / 結案 / check-payments 端點 | 逐列金額須 > 0 且不超過總額（不只驗加總）；申請人不可操作自己單據的撥款明細（Superadmin 例外） |
+| 已撥款鎖定 | 各申請 Handler 的 Update / Delete | 任一期 `PaidAt` 非空的單據即使被退回也不可修改 / 刪除（Superadmin 亦同），請洽財務 |
+| 輕量端點最小揭露 | `ProjectLookupDto`（`/projects/active`）、`VendorReadService`（`/vendors/lookup`）、AppRouter 權限表（`/files/vendor-passbooks`） | `/projects/active` 只回 Id / Code / Name / Status / DepartmentId / DepartmentName，**不含任何金額與 Drive 連結**；`/vendors/lookup` 的個人 `IdNumber` 遮罩（前 1 後 3）；`/files/vendor-passbooks/*` 須 `vendors:read`（檔名 `{vendorId}{ext}` 可列舉） |
+| 寫入回應薪資遮罩 | `EmployeeProfileHandler`（`PUT /users/{id}/profile`） | 寫入回應與 GET 走同一道 `PayrollFieldAccess.Mask`，無 `payroll:read` 者存檔後不可拿到薪資調整歷史 |
+| 活動日預定人力 | `ActivityDayHandler.EnsureAssigneesValidAsync` | 非 Superadmin：人員部門須在 `ProjectAccessScope` 內、不得把自己列為預定人力；更新時只驗「新增」的人力（既有名單不重驗） |
+| 前端 URL / Token 防線 | `Admin/src/app/shared/utils/safe-url.ts`、`auth.interceptor.ts`、`Admin/public/staticwebapp.config.json` | 預覽 iframe 的 URL 只認白名單（`safe-url.ts`）；`Authorization: Bearer` 只附加給自家 API；SWA 設定加 CSP 與 `X-Content-Type-Options: nosniff` |
 
 稽核表若需指向 Users、又掛在 Users 的 Cascade 鏈下（例：`AttendanceAuditLogs` → AttendanceRecords → Users），**該 Users 欄位不設 FK、改存姓名快照**，避免 SQL Server 1785 multiple cascade paths，也不必加進 UserHandler 的刪除清洗清單。
 
@@ -948,7 +956,8 @@ Jwt__RefreshExpiryDays ↔ IConfiguration["Jwt:RefreshExpiryDays"]
 
 - **登入失敗鎖定**：同一 Email 自最近一次成功登入後、15 分鐘內累計 5 次失敗 → 鎖 15 分鐘、回 **429**（連密碼都不驗）。鎖定鍵是 **Email 而非 User**（不存在的帳號行為一致，避免從鎖定訊息反推帳號存在）；帳號不存在時仍跑一次假雜湊 BCrypt（防時間差列舉）。每次嘗試寫 `LoginAttempts`（IP / UA / 原因代碼 `bad_password` `unknown_email` `inactive` `locked`），`locked` 不計入失敗數。實作 [Services/LoginAttemptTracker.cs](../Api/Services/LoginAttemptTracker.cs)。
 - **Refresh token**：輪替時帶下原始 `SessionStartedAt`，超過 30 天必須重新登入；已撤銷的 token 被重用（超過 30 秒寬限，容許多分頁同時 refresh）→ 視為盜用、撤銷該使用者全部 token。
-- **撤銷全部 token 的單一入口** [Services/RefreshTokenRevoker.cs](../Api/Services/RefreshTokenRevoker.cs)：改密碼、管理員設密碼、寄帳號通知、停用、角色變更、重用偵測時呼叫。⚠ 只能讓 refresh token 失效；**已簽發的 access token（預設 60 分鐘）收不回**（AppRouter 驗 JWT 無狀態、不查 DB）。
+- **撤銷全部 token 的單一入口** [Services/RefreshTokenRevoker.cs](../Api/Services/RefreshTokenRevoker.cs)：改密碼、管理員設密碼、寄帳號通知、停用、角色變更、重用偵測時呼叫。⚠ 只能讓 refresh token 失效；access token 的即時失效由 **`Users.SecurityStamp`** 負責（見下一點）。
+- **Access token 即時失效（SecurityStamp，2026-10）**：`Users.SecurityStamp`（Guid）隨 token 簽入 `sstamp` claim（`AuthPolicy.SecurityStampClaim`），[AppRouter](../Api/Routing/AppRouter.cs) 驗完 JWT 後 `EnsureSecurityStampAsync` **每請求以 PK 查一次 DB**（只取 SecurityStamp + Status），帳號停用或戳記不符回 401。換戳記時機：停用 / 改密碼 / 管理員設密碼 / 寄帳號通知 / 角色變更（`RefreshTokenRevoker.RevokeAllAsync`，同時撤 refresh）、改部門 / 職稱（`BumpSecurityStampAsync`，**不**撤 refresh，前端 401 後 refresh 即換到帶新 claim 的 token）。無 `sstamp` 的舊 token（部署前簽發）放行至自然過期（≤ 60 分）。
 - **角色 / 權限防提權**：非 Superadmin 不可修改自己的角色（`UserHandler.EnsureCanAssignRolesAsync`），也不可新增 / 修改 / 刪除自己所屬的角色、不可授予超出自身 `permissions` claim 的權限（`RoleHandler.EnsureNotOwnRoleAsync` / `EnsurePermissionsWithinOperator`）。
 - 取用戶端 IP / User-Agent 一律走 [Common/ClientInfo.cs](../Api/Common/ClientInfo.cs)（`X-Forwarded-For` 第一段，僅供稽核、不可作為授權依據）。
 

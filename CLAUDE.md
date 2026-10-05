@@ -183,9 +183,10 @@ Admin/src/app/
 │                                         #   **禁止直接呼叫 `localStorage` / `sessionStorage`**，見 [docs/frontend-design.md §15.5](docs/frontend-design.md)
 ├── shared/
 │   ├── utils/
-│   │   └── heic.ts                       # **HEIC/HEIF 轉 JPEG 的單一入口**（2026-10）：副檔名 / MIME / ftyp 三種判定，heic-to 為主、heic2any 備援（皆 dynamic import），
+│   │   ├── heic.ts                       # **HEIC/HEIF 轉 JPEG 的單一入口**（2026-10）：副檔名 / MIME / ftyp 三種判定，heic-to 為主、heic2any 備援（皆 dynamic import），
 │   │                                     #   **轉不了丟例外、不得退回原檔**（舊版靜默存入 HEIC 導致 PR-20261001-001 無法預覽）。六支明細表單、ImageCompressionService、預覽 modal 共用；
 │   │                                     #   預覽 modal 遇 .heic 會經 `/files/{invoices|advance-files|write-off-invoices|travel-write-off-invoices}/{*path}` 代理取 bytes 轉檔
+│   │   └── safe-url.ts                   # **預覽 iframe / 連結 URL 白名單**（2026-10 第二輪安全修補）：只認自家 API / Blob 來源，擋 `javascript:` 與外部網址；auth.interceptor 的 Bearer 亦只附加給自家 API，見 [docs/backend-design.md §4.7](docs/backend-design.md)
 │   └── services/
 │       └── work-mode.service.ts          # **「四週彈性工時切換了沒」的前端唯一入口**（2026-09 新增）：走輕量端點 `GET /work-mode`，
 │                                         #   request-scoped 快取（切換日在一次瀏覽期間不會變）＋ in-flight 去重。
@@ -419,7 +420,7 @@ Api/
 ├── Data/
 │   ├── AppDbContext.cs                # EF Core DbContext（含 Migration 自動套用）
 │   ├── AppDbContextFactory.cs         # 用於 CLI Migration
-│   ├── Configurations/                # EF Core 實體對應設定（34 個，新增 EmployeeProfile + 9 張子表 + 健保眷屬 + PreReviewRequest / PreReviewItem / PreReviewRequestAttachment）
+│   ├── Configurations/                # EF Core 實體對應設定（34 個，含 `UserAuditLogConfiguration.cs`（使用者帳號異動稽核）、新增 EmployeeProfile + 9 張子表 + 健保眷屬 + PreReviewRequest / PreReviewItem / PreReviewRequestAttachment）
 │   ├── Migrations/                    # EF Core Migration 檔案
 │   ├── Scripts/                       # 一次性維運 SQL（非程式）：01 診斷「送單後會卡死」的簽核關卡（唯讀，遞迴 CTE 重現流程解析優先序）、
 │   │                                  #   02 修正請假 Step2「申請人部門的協理」→ 上層級審核（@Commit 空跑開關 + MinDays 遺失防呆）、
@@ -528,7 +529,7 @@ Api/
 │                                                                          #   **去重鍵：TaxId → IdNumber → Name**（TaxId / IdNumber 皆有 filtered unique index，只用 Name 會在廠商更名時撞索引；識別碼與名稱各自命中不同廠商則跳過交人工判讀）
 │                                                                          #   直寫 entity 繞過 Handler 的識別碼必填 / 格式驗證 / 存摺封面必填，故匯入的廠商在後台編輯儲存時仍會被擋須先補件
 ├── Models/
-│   ├── Entities/                      # 53 個資料庫實體（新增 **銷假申請 LeaveRevocation + 逐日明細 LeaveRevocationDate**（獨立子單，父單送簽期間不動；LeaveRequest 另加 OriginalHours 與 `cancelled` 終止狀態）/ **簽核步驟例外指定審核名單 ApprovalStepException** + **例外的限定職稱 ApprovalStepDesignatedJobTitle** / **預支沖銷差額分期 WriteOffInstallment**（第 5 種分期撥款子表）/ **WriteOffRecord + TravelWriteOffRecord 新增 `PendingClose`**（財務登記結案，待整張單核准才生效）/ **追加預支批次 AdvanceRequestSupplement**（只存 RoundNo≥2，Round 1 = 父單本身）/ **TravelRequestParticipantDate 參與人員個別參與日期** / EmployeeProfile / EducationRecord / EmploymentHistoryRecord / FamilyMember / ProfessionalTraining / LanguageAbility / JobTransferRecord / RewardPunishmentRecord / SalaryAdjustmentRecord / HealthInsuranceDependent / **5 個分期撥款表 PaymentRequestInstallment / AdvanceRequestInstallment / TravelRequestInstallment / TravelPaymentRequestInstallment / WriteOffInstallment** / **PaymentReminderLog** / **整單批次附件 PaymentRequestAttachment / WriteOffAttachment** / **預審申請 PreReviewRequest / PreReviewItem / PreReviewRequestAttachment**）
+│   ├── Entities/                      # 53 個資料庫實體（2026-10 第二輪新增 `UserAuditLog.cs` 使用者帳號異動稽核、`User.SecurityStamp` 欄位；新增 **銷假申請 LeaveRevocation + 逐日明細 LeaveRevocationDate**（獨立子單，父單送簽期間不動；LeaveRequest 另加 OriginalHours 與 `cancelled` 終止狀態）/ **簽核步驟例外指定審核名單 ApprovalStepException** + **例外的限定職稱 ApprovalStepDesignatedJobTitle** / **預支沖銷差額分期 WriteOffInstallment**（第 5 種分期撥款子表）/ **WriteOffRecord + TravelWriteOffRecord 新增 `PendingClose`**（財務登記結案，待整張單核准才生效）/ **追加預支批次 AdvanceRequestSupplement**（只存 RoundNo≥2，Round 1 = 父單本身）/ **TravelRequestParticipantDate 參與人員個別參與日期** / EmployeeProfile / EducationRecord / EmploymentHistoryRecord / FamilyMember / ProfessionalTraining / LanguageAbility / JobTransferRecord / RewardPunishmentRecord / SalaryAdjustmentRecord / HealthInsuranceDependent / **5 個分期撥款表 PaymentRequestInstallment / AdvanceRequestInstallment / TravelRequestInstallment / TravelPaymentRequestInstallment / WriteOffInstallment** / **PaymentReminderLog** / **整單批次附件 PaymentRequestAttachment / WriteOffAttachment** / **預審申請 PreReviewRequest / PreReviewItem / PreReviewRequestAttachment**）
 │   └── Dtos/                          # 21 個 DTO 檔案（新增 **LeaveRevocationDtos** / EmployeeProfileDtos / **InstallmentDtos** / **PreReviewRequestDtos**）
 ├── Services/
 │   ├── WorkdayScheduleProvider.cs     # **工作時段的版本化取用管道（四週彈性工時，2026-09 新增）**：把 `SystemSetting.FlexibleWorkStartDate`
@@ -540,7 +541,8 @@ Api/
 │   │                                    全日假憑空多出 17:00–18:00 的假性應出勤（已於 staging 實測，見 flexible-work-hours.md §10.5）。
 │   │                                    5 個 `const int` 原地保留（值等同 Legacy），故既有 18 處引用零改動
 │   ├── LoginAttemptTracker.cs         # 登入失敗鎖定（2026-10）：以 Email 為鍵、5 次 / 15 分鐘，回 429；每次嘗試寫 `LoginAttempts`（常數在 Common/AuthPolicy.cs）
-│   ├── RefreshTokenRevoker.cs         # 撤銷某人全部 refresh token 的單一入口（改密碼 / 管理員設密碼 / 寄帳號通知 / 停用 / 角色變更 / 重用偵測）；⚠ access token 收不回
+│   ├── RefreshTokenRevoker.cs         # 撤銷某人全部 refresh token 的單一入口（改密碼 / 管理員設密碼 / 寄帳號通知 / 停用 / 角色變更 / 重用偵測）；同時換新 `Users.SecurityStamp`（2026-10 第二輪）使舊 access token 立即 401；`BumpSecurityStampAsync` 只換戳記不撤 refresh（改部門 / 職稱用），見 [docs/authentication.md](docs/authentication.md)
+│   ├── UserRateLimiter.cs             # 每人速率限制（2026-10 第二輪）：記憶體滑動視窗、以 JWT sub 為鍵，AppRouter 對 OCR（`/invoice-ocr` `/quote-ocr`）與 GCIS 統編查詢套用，超限 429；每實例獨立，數值集中在 `Limits`
 │   ├── OvertimeSettlementService.cs   # 加班依實際打卡結算（2026-10）：`SettledHours` = min(核准時數, 加班打卡)，終局核准 / 打加班結束卡 / 管理者改出缺勤時冪等重算並同步加班費快照與補休 lot；
 │   │                                    給付基準單一真相 `Common/OvertimeSettlement.BillableHours`（`SettledHours ?? EstimatedHours`，舊單 null 不 backfill）；支援跨日加班結束卡（隔天 06:00 前）
 │   ├── OvertimeRequestGuard.cs        # 加班送件檢查（2026-10）：補登最多 7 天、同人同日一張、全天有薪假不可加班、每月上限 `SystemSetting.MonthlyOvertimeLimit`（送簽與核准）
@@ -793,6 +795,11 @@ dotnet ef database update               # 套用 Migration
 > 加班補登 ≤7 天 / 同日一張 / 每月上限；半天制假別時數改由後端計算；**簽核一律禁止自審**、指定審核者不可是本人 / 離職者 / 低階者、流程 ID 只由後端解析；
 > 沖銷退款日限財務關卡；明細金額不可為負、發票號碼正規化比對；後端強制首次改密碼、登入失敗鎖定、refresh token 30 天上限與重用偵測、簽名檔改需登入；
 > 角色管理不可改自己所屬角色、不可授出超出自身的權限；出缺勤不可改自己的、修改留 `AttendanceAuditLogs`。
+> **第二輪（2026-10，21 項，commit `0bda4907` / `a1b3c621`）**：使用者管理防提權（禁改自己部門 / 職稱 / 薪資、調財務部或高職級限 Superadmin、改他人密碼須權限子集，異動留 `UserAuditLogs`）；
+> **`Users.SecurityStamp`**（JWT `sstamp`，AppRouter 每請求比對，停用 / 改密碼 / 換角色 / 改部門職稱即讓舊 token 失效）；簽核詳情檢視加部門 scope、送簽自審判準與推進一致、指定審核者須嚴格高於申請人、
+> 撥款明細逐列驗證且申請人不可動自己的、已撥款單退回後仍鎖定；輕量端點最小揭露（`/projects/active` 不回金額、`/vendors/lookup` 身分證遮罩、存摺封面需 `vendors:read`）；
+> 明細附件 FileUrl 只認 DB 既有值、上傳 magic-byte＋10MB、通知信 HtmlEncode、前端 CSP / URL 白名單；加班開始卡時間下限、加班 × 假日活動互斥、假別額度依假期年度、OCR / GCIS 每人速率限制（`UserRateLimiter`）、
+> 出差打卡須有已核准出差單、出缺勤修改範圍與職級檢查、銷假 / 改班核准時重驗日期。逐項規則見 backend-design.md §4.7。
 > 規範總表見 [docs/backend-design.md §4.7 / §9.6](docs/backend-design.md)，業務規則見 attendance-clock-rules / approval-flow / authentication。
 >
 > **日期欄位年份防呆（2026-09）**：所有使用者填寫的日期欄位（加班日期 / 請假起迄 / 出差起迄 /

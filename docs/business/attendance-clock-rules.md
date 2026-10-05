@@ -114,7 +114,7 @@ IP 取自 `X-Forwarded-For` 第一段，僅供稽核、**不可作為授權依�
 當日有**已核准且屬於自己**的加班申請單、且尚未打過加班開始時：
 
 - **休假日** → 免下班卡即可打「加班開始」；今日無打卡紀錄時直接建立「只含加班時間」的 `AttendanceRecord`
-- **一般上班日** → 維持原規則（須先打下班卡），避免在正常工時內就打加班卡導致時數失真
+- **一般上班日** → 維持原規則（須先打下班卡），避免在正常工時內就打加班卡導致時數失真。**2026-10 第二輪另加時間下限**：加班開始卡須 ≥ max(實際下班卡, 當日應下班時間〔`ExpectedWorkWindow`，避開請假〕)，休假日 / 全日請假免；門檻由 `AttendanceHandler.ComputeOvertimeNotBefore` 算出，`GET /attendances/today` 回 `canStartOvertimeNow` / `overtimeStartNotBefore` 供前端停用按鈕與提示。結算時並扣掉與正常上班時段重疊的部分（僅工作日）
 
 ### 「休假日」定義（兩者任一成立）
 
@@ -350,6 +350,7 @@ Excel 匯出則於時間後加註「（系統補卡）」，以區分本人打�
 - **勾選框初始值來自 `GET /attendances/today`**（`TodayAttendanceDto.IsBusinessTrip`）：
   已標記出差的當日再次打卡不會被誤清；要取消出差就取消勾選後再打下一次卡
 - **編輯表單不提供切換**：`UpdateAsync` 刻意不動 `IsBusinessTrip`，出差只由本人打卡時認列
+- **勾選出差須有當日涵蓋的已核准出差單**（2026-10 第二輪，`AttendanceHandler.ResolveBusinessTripAsync`，四個打卡動作共用）：出差預支（非假日執行活動）或出差請款皆可；否則 400。原因：宣告出差會抹掉當日遲到／早退標記，本人自宣告即生效等於自助免責。當日紀錄已有旗標者不重驗
 - **請假虛擬列恆為 `false`**（無 `AttendanceRecord`）
 
 ---
@@ -420,7 +421,7 @@ Excel 匯出則於時間後加註「（系統補卡）」，以區分本人打�
 
 ### 禁止修改自己的出缺勤 ＋ 異動紀錄（2026-10 防灌工時）
 
-- `PUT/PATCH /attendances/{id}`：`record.UserId == 呼叫者` 一律 **403**「不可修改自己的出缺勤紀錄」（**Superadmin 除外**，其無打卡紀錄）。
+- `PUT/PATCH /attendances/{id}`：`record.UserId == 呼叫者` 一律 **403**「不可修改自己的出缺勤紀錄」（**Superadmin 除外**，其無打卡紀錄）。**2026-10 第二輪另加**：新填的時間須落在紀錄日當天 ～ 隔日 06:00 前；修改者 `JobTitle.Level` 須嚴格小於被修改者（Superadmin 例外）。
   持有 `reports-attendance:write` 者可以改別人的卡，但不能自己補卡灌工時。前端出缺勤報表對自己的列不顯示編輯鈕（縱深防禦）。
 - 另驗證「下班須晚於上班」「加班結束須晚於開始」（過去完全不驗）。前端編輯表單只有時分，訖時間的 HH:mm 不晚於起時間者自動視為**隔天**（跨日加班 / 跨午夜下班）。
 - **出缺勤異動紀錄表 `AttendanceAuditLogs`**：每次**實質**修改（值沒變的重複儲存不寫）留一列 —— 修改人（Id + 姓名快照）、時間、

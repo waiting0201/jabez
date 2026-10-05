@@ -6,11 +6,12 @@
 
 本地開發連線字串於 [Api/local.settings.json](../Api/local.settings.json)；遠端 Azure SQL 連線字串記在 memory `reference_azure_sql.md`（敏感資訊不入版控）。
 
-## 58 個資料表實體
+## 59 個資料表實體
 
 | 實體 | 說明 |
 |------|------|
-| `User` | 使用者（含 DepartmentId、JobTitleId、IsSuperAdmin、LineUserId、IsIndigenous / IsLowIncome / IsDisabled 三個身份旗標、Avatar、SignatureUrl、IndigenousProofUrl / LowIncomeProofUrl / DisabledProofUrl 三個證明檔、HealthInsuranceOverride / LaborInsuranceOverride 兩個健保 / 勞保覆寫值、LaborPensionSelfContributionRate 勞退自提率（%，0~6 整數，null=0%）、CompensatoryOpeningHours 期初補休時數（系統上線前累計，116/6/30 到期歸零）、**IsShiftWorker 排班制員工**（賣店 / 營業所，六日與國定假日視為工作日，見 [leave-rules.md](business/leave-rules.md#排班制員工不扣假日2026-08-新增)）、**CustomWorkStartTime / CustomWorkEndTime 自訂上下班時段**（"HH:mm" nvarchar(5)，null＝公司預設；僅四週彈性工時切換後生效，決定打卡判定與上下班 LINE 提醒，見 [attendance-clock-rules.md](business/attendance-clock-rules.md#自訂上下班時段賣店等)）） |
+| `User` | 使用者（含 DepartmentId、JobTitleId、IsSuperAdmin、LineUserId、IsIndigenous / IsLowIncome / IsDisabled 三個身份旗標、Avatar、SignatureUrl、IndigenousProofUrl / LowIncomeProofUrl / DisabledProofUrl 三個證明檔、HealthInsuranceOverride / LaborInsuranceOverride 兩個健保 / 勞保覆寫值、LaborPensionSelfContributionRate 勞退自提率（%，0~6 整數，null=0%）、CompensatoryOpeningHours 期初補休時數（系統上線前累計，116/6/30 到期歸零）、**IsShiftWorker 排班制員工**（賣店 / 營業所，六日與國定假日視為工作日，見 [leave-rules.md](business/leave-rules.md#排班制員工不扣假日2026-08-新增)）、**CustomWorkStartTime / CustomWorkEndTime 自訂上下班時段**（"HH:mm" nvarchar(5)，null＝公司預設；僅四週彈性工時切換後生效，決定打卡判定與上下班 LINE 提醒，見 [attendance-clock-rules.md](business/attendance-clock-rules.md#自訂上下班時段賣店等)）、**SecurityStamp 安全戳記**（Guid，2026-10；簽入 JWT `sstamp` claim，停用 / 改密碼 / 換角色 / 改部門職稱時換新使舊 access token 立即失效，見 [authentication.md](authentication.md)）） |
+| `UserAuditLog` | 使用者帳號異動稽核（2026-10）：管理者經 `PUT /users/{id}` 改帳號、設定他人密碼、寄帳號通知時留一列 `TargetUserId` / `OperatorUserId`（**皆無 FK**，稽核須比帳號活得久，也不必進 UserHandler 刪除清洗清單）/ `Action`（`update` `set_password` `send_credentials`）/ `Changes`（欄位名與非敏感欄位前後值；薪資只記「已變更」、密碼只記「已重設」）/ `CreatedAt`。只增不改不刪 |
 | `Role` | 角色定義 |
 | `Permission` | 權限代碼 |
 | `UserRole` | 使用者 ↔ 角色（Junction） |

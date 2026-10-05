@@ -60,14 +60,14 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/vendors/lookup` | **輕量端點**：免 `vendors:read` 權限，僅回 `IsActive=true` 的 `{id, name, taxId, idNumber}`，供請款申請下拉清單 |
-| GET | `/vendors/lookup-by-tax-id?taxId=XXXXXXXX` | **輕量端點**：以統編查 GCIS 公司登記資料，回 `{taxId, name, address, contactPerson}`，免 `vendors:read`，僅需登入 |
+| GET | `/vendors/lookup` | **輕量端點**：免 `vendors:read` 權限，僅回 `IsActive=true` 的 `{id, name, taxId, idNumber}`，供請款申請下拉清單。**`idNumber`（個人身分證字號）為遮罩值**（前 1 後 3，如 `A******789`），完整值須走 `vendors:read` 的廠商詳情 |
+| GET | `/vendors/lookup-by-tax-id?taxId=XXXXXXXX` | **輕量端點**：以統編查 GCIS 公司登記資料，回 `{taxId, name, address, contactPerson}`，免 `vendors:read`，僅需登入。**每人每分鐘 20 次速率限制**（`UserRateLimiter`），超限回 429 |
 | GET | `/vendors?page=1&pageSize=20&search=關鍵字` | 廠商列表（含使用筆數，需 `vendors:read`）；`search` 選填，模糊比對 `Name` / `TaxId` / `IdNumber` / `ContactPerson` / `Phone` / `BankAccountName`（匯款戶名常與廠商名稱不同，須可反查）；**帶 `page` / `pageSize` 回 `PagedResult`，不帶則回平面陣列**（`pageSize` clamp 1~100，預設 20） |
 | POST | `/vendors` | 新增廠商（**multipart**：text part `payload` JSON + 檔案 `bankBookImage`（**必填**）/ `idCardFront` / `idCardBack`；統編與身分證字號擇一，填身分證字號時正反面必傳；**任何登入者皆可，無需權限**） |
 | GET | `/vendors/{id}` | 取得廠商（需 `vendors:read`，回應含 `idNumber` / 匯款四欄 `bankAccountName` / `bankName` / `bankCode` / `bankAccount` / `bankBookImageUrl` / `idCardFrontUrl` / `idCardBackUrl`） |
 | PUT/PATCH | `/vendors/{id}` | 更新廠商（**multipart**：text part `payload` + 檔案 `bankBookImage` / `idCardFront` / `idCardBack` 與 remove 旗標 `removeBankBookImage` / `removeIdCardFront` / `removeIdCardBack`；存摺封面為必填、身分證字號廠商須備齊正反面；需 `vendors:write`） |
 | DELETE | `/vendors/{id}` | 刪除廠商（需 `vendors:delete`；若已被請款單引用會回 400，須改用停用；連同存摺封面與身分證影本 blob 一併刪除） |
-| GET | `/files/vendor-passbooks/{fileName}` | 廠商存摺封面代理（需 JWT，免特殊權限，與 avatars/signatures 同層的一般檔案） |
+| GET | `/files/vendor-passbooks/{fileName}` | 廠商存摺封面代理（需 JWT + **`vendors:read`**；存摺封面含匯款帳號，檔名 `{vendorId}{ext}` 可被列舉，不再是登入即可讀的一般檔案） |
 | GET | `/files/vendor-id-cards/{fileName}` | 廠商身分證影本代理（需 JWT + `vendors:read`，屬敏感 PII） |
 
 ## 簽核流程
@@ -97,7 +97,7 @@
 | Method | Path | 說明 |
 |--------|------|------|
 | GET/POST | `/projects` | 專案列表 / 新增 |
-| GET | `/projects/active` | 未結案專案下拉（輕量端點，免 `projects:read`）；預設依部門可見範圍過濾，帶 `?all=true` 不過濾（加班申請跨部門支援用） |
+| GET | `/projects/active` | 未結案專案下拉（輕量端點，免 `projects:read`；回 **`ProjectLookupDto`** `{id, code, name, status, departmentId, departmentName}`，不含合約 / 業務 / 已收 / 剩餘金額與雲端硬碟連結）；預設依部門可見範圍過濾，帶 `?all=true` 不過濾（加班申請跨部門支援用） |
 | GET/PUT/PATCH/DELETE | `/projects/{id}` | 專案 CRUD |
 
 ## 請款 / 請假 / 出差 / 加班 / 預支申請
@@ -183,7 +183,7 @@
 | GET/POST | `/pre-review-requests` | 預審申請列表 / 新增（預設 draft，multipart 含品項與報價單檔上傳，blob container = `quotes`；單號 `PRV-yyyyMMdd-NNN`） |
 | GET/PUT/PATCH/DELETE | `/pre-review-requests/{id}` | 預審申請 CRUD（明細含品項類別 / 品項名稱 / 金額 / 備註 / 日期 / 報價單檔；**無撥款流程、不計入款項統計報表**） |
 | PATCH | `/pre-review-requests/{id}/submit` | 送出預審申請（draft → pending） |
-| POST | `/quote-ocr` | 報價單 OCR 辨識（multipart，後端透過 Google Gemini API），回傳品項列表 `{itemName, amount, note}`，供前端自動展開明細。登入即可用，不需特殊權限 |
+| POST | `/quote-ocr` | 報價單 OCR 辨識（multipart，後端透過 Google Gemini API），回傳品項列表 `{itemName, amount, note}`，供前端自動展開明細。登入即可用，不需特殊權限；**每人速率限制**（與 `/invoice-ocr` 共用計數：每分鐘 10 次、每日 200 次），超限回 429 |
 
 ## 出勤打卡
 
@@ -192,7 +192,7 @@
 | Method | Path | 權限 | 說明 |
 |--------|------|------|------|
 | GET | `/attendances` | `reports-attendance:read` | 出勤紀錄列表（分頁，套用部門可見性 scope；支援 `?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD` 區間篩選，前端依「日 / 週 / 月」模式換算）。**回傳「打卡紀錄 ∪ 當日請假日 ∪ 缺勤日」合併結果**（`AttendanceLeaveMerger`）：以 **`rowKind`（`clock` / `leave` / `absent`）** 標示列的種類 —— `leave`＝當日只有已核准請假無打卡、`absent`＝工作日既沒打卡也沒請假（2026-09 新增），**兩者同樣 `id = null` 且不可編輯，不可再用 `id` 分辨**。另含 `userId` / `leaveHours`（當日時數合計）/ `leaves[]`（當日逐張假單，同日多張合併為一列，每張帶 `daySegment`（`full`/`am`/`pm`/`partial`）+ `dayStart` / `dayEnd` 逐日時段）/ `expectedStart` / `expectedEnd`（當日應出勤時段，扣掉請假後；`null`＝免出勤）/ `isClockInAuto`。缺勤列的員工母體＝非超管 + 在職 + 持有 `attendances:write`，展開上限 `AbsenceMaxCells`（60,000 ＝ 員工數 × 天數）。**區間必須有界**：未指定起訖回退近一年，跨度 > 400 天回 400。`?export=true` 時 `pageSize` 上限放寬至 5000（一般為 100） |
-| GET | `/attendances/today` | `attendances:read` | 今日打卡紀錄（當前使用者；含 `todayLeaves` 陣列：當日所有已核准請假時段，供前端顯示提示與 disable 按鈕；含 `canOvertimeWithoutClockOut` 旗標：今日免下班卡即可打加班開始，與 overtime-start 的放行判定同源；無打卡紀錄時回傳 `Id=0` 空殼仍含請假資訊） |。**切換後另回**：`flexibleEnabled` / `dayType` / `isActivityAssignee` / `canClockInOut` ＋ `clockLockReason`（日別鎖定的結果與說明）/ `expectedClockOutTime`。⚠ 前端**不自行重組日別規則**，只吃這些旗標
+| GET | `/attendances/today` | `attendances:read` | 今日打卡紀錄（當前使用者；含 `todayLeaves` 陣列：當日所有已核准請假時段，供前端顯示提示與 disable 按鈕；含 `canOvertimeWithoutClockOut` 旗標：今日免下班卡即可打加班開始，與 overtime-start 的放行判定同源；**另含 `canStartOvertimeNow` / `overtimeStartNotBefore`**：現在是否已可打加班開始卡（一般上班日須在應下班時間與實際下班卡之後）及最早可打時間，與 overtime-start 擋件共用 `ComputeOvertimeNotBefore`；無打卡紀錄時回傳 `Id=0` 空殼仍含請假資訊） |。**切換後另回**：`flexibleEnabled` / `dayType` / `isActivityAssignee` / `canClockInOut` ＋ `clockLockReason`（日別鎖定的結果與說明）/ `expectedClockOutTime`。⚠ 前端**不自行重組日別規則**，只吃這些旗標
 | POST | `/attendances/clock-challenge` | `attendances:write` | 取得一次性打卡挑戰碼（body `{ action }`，`action` ∈ clock-in / clock-out / overtime-start / overtime-end）；回 `{ token, minWaitMs, expiresInMs }`，簽發後至少 3 秒、5 分鐘內、限用一次（防機器人打卡，2026-10，見 [attendance-clock-rules.md §防機器人打卡](business/attendance-clock-rules.md#防機器人打卡2026-10-hotfix)） |
 | POST | `/attendances/clock-in` | `attendances:write` | 上班打卡（**GPS 必填 + `challengeToken` 必填**（防機器人打卡，四個打卡動作皆同），另可帶 `accuracy`；落在已核准請假 `[StartDate, EndDate)` 區間內會回 BadRequest）。**四週彈性工時切換後**另加：依當日日別鎖定（例假日全鎖／休假日鎖／國定假日僅活動日預定人力解鎖）、08:30 前不開放（請上午半天假者不受此限）、超過 09:30 記 `IsLate`（**出差當日不判定**） |
 | POST | `/attendances/clock-out` | `attendances:write` | 下班打卡（含 GPS；同上規則）。**切換後**另加 `reason` 欄位：以應下班時間 T（＝實際上班打卡 ＋ 9 小時，請上午半天假者 ＋4 小時）為界，`< T` 早退、`[T, T+30分]` 正常、`> T+30分` 逾時；早退／逾時且**非出差**時 `reason` 必填，否則回 400。出差當日欄位仍可填但非必填 —— 改的是必填性、不是可見性 |
@@ -399,7 +399,7 @@
 | GET | `/work-mode` | 四週彈性工時是否已切換（**輕量端點，任何登入者**，免 `settings:read`）。回 `flexibleWorkStartDate` / `isFlexibleActive` |
 | GET | `/settings` | 取得系統設定 |
 | PATCH | `/settings` | 更新系統設定 |
-| POST | `/invoice-ocr` | 發票 / 收據 / 交通票根 OCR 辨識（multipart 欄位 `file`，後端透過 Google Gemini API）。**一張圖可包含多張，回傳 `data` 為陣列**（每張一筆 `{docType, invoiceNo, amount, invoiceDate, buyerName, buyerTaxId, sellerTaxId}`，無辨識結果回 `[]`）。`buyerName`/`buyerTaxId` 為統一發票買方抬頭/統編（票根固定空字串），供前端比對公司白名單顯示警告；`sellerTaxId` 為賣方（發票專用章）統編，供前端交叉比對——與 `buyerTaxId` 相同時代表 OCR 抄到賣方統編，不跳警告。**`invoiceNo` 後處理**：字軌與數字分開印時合併（`ED 22598786` → `ED22598786`）；統一發票抓到 8 碼純數字且等於 `buyerTaxId` / `sellerTaxId` 時視為誤抓統編欄而清空。登入即可用，不需特殊權限 |
+| POST | `/invoice-ocr` | 發票 / 收據 / 交通票根 OCR 辨識（multipart 欄位 `file`，後端透過 Google Gemini API）。**一張圖可包含多張，回傳 `data` 為陣列**（每張一筆 `{docType, invoiceNo, amount, invoiceDate, buyerName, buyerTaxId, sellerTaxId}`，無辨識結果回 `[]`）。`buyerName`/`buyerTaxId` 為統一發票買方抬頭/統編（票根固定空字串），供前端比對公司白名單顯示警告；`sellerTaxId` 為賣方（發票專用章）統編，供前端交叉比對——與 `buyerTaxId` 相同時代表 OCR 抄到賣方統編，不跳警告。**`invoiceNo` 後處理**：字軌與數字分開印時合併（`ED 22598786` → `ED22598786`）；統一發票抓到 8 碼純數字且等於 `buyerTaxId` / `sellerTaxId` 時視為誤抓統編欄而清空。登入即可用，不需特殊權限；**每人速率限制**（與 `/quote-ocr` 共用計數：每分鐘 10 次、每日 200 次），超限回 429 |
 
 ---
 
