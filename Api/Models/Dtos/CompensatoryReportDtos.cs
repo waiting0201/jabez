@@ -31,8 +31,8 @@ public sealed record CompensatoryEmployeeRaw(
     decimal  UsedHours,
     decimal  PeriodUsedHours);
 
-/// <summary>ReadService 原料：期間內已核准、補償方式為補休的加班單。</summary>
+/// <summary>ReadService 原料：期間內已核准、補償方式為補休的加班單。BillableHours＝給付基準（ISNULL(SettledHours, EstimatedHours)）。</summary>
 public sealed record CompensatoryOvertimeRaw(
     Guid     EmployeeId,
     DateTime OvertimeDate,
-    decimal  EstimatedHours);
+    decimal  BillableHours);

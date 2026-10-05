@@ -10,6 +10,10 @@ namespace Jabez.Api.Common;
 ///   LeaveRequestHandler.ComputeCompensatoryAsync   → 請假表單 / 送簽擋件 / GET /me/compensatory-hours
 ///   CompensatoryReportReadService                  → 加班補休時數總表（逐人批次計算）
 /// 兩處各自取 opening / earned / used 三個原料，**公式只在這裡**，避免報表與個人頁對不起來。
+///
+/// <b>earned 的給付基準（2026-10 防灌工時）</b>：原料端一律取 <c>ISNULL(SettledHours, EstimatedHours)</c>
+/// （<see cref="OvertimeSettlement.BillableHours(decimal, decimal?)"/> 的 SQL / LINQ 等價寫法）——
+/// 新單依實際加班打卡結算、舊單（SettledHours 為 null）沿用申請時數。本公式本身只吃已結算好的合計，不必改。
 /// </summary>
 public static class CompensatoryBalance
 {

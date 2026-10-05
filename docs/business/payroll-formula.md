@@ -117,11 +117,22 @@
 
     - **時薪** = `ROUND(BaseSalary ÷ 240, 2)`（月薪 ÷ 30 ÷ 8）。分母直接寫 240 而非除兩次；**刻意不沿用 `dailySalary`**（該值已先 ROUND 到整數元，再除 8 會繼承取整誤差）。
     - **捨入**：各分段保留原始小數，**只在總額捨入一次**（`AwayFromZero`，同假日津貼；逐段捨入再加總會漂移）。
-    - **時數來源為申請單 `EstimatedHours`（預估）**，不是打卡實際時數 —— 與補休的換算基準一致，且送簽當下即可確定金額。
+    - **時數來源（2026-10 防灌工時改版）**：給付基準 ＝ `OvertimeSettlement.BillableHours` ＝ `SettledHours ?? EstimatedHours`。
+      **新單依實際加班打卡結算**（`SettledHours = min(核准的 EstimatedHours, 加班結束 − 開始)`，捨去到 0.1 小時，沒打加班卡＝0），
+      **舊單（`SettledHours` 為 null）沿用申請時數 `EstimatedHours`** —— 薪資即時重算、無月結快照，舊單改規則＝改寫歷史月份薪資，故絕不 backfill。
+      終局核准當下與每次打加班結束卡 / 管理者修改出缺勤時重算快照（`PayableHours` / 金額 / 級距），**送簽中**的快照仍以申請時數算（簽核台級距顯示用）。
+      舊文「與補休的換算基準一致、送簽當下即可確定金額」已不成立 —— 新單金額在核准後、依打卡才確定。詳見 [attendance-clock-rules.md §加班給付依實際打卡結算](attendance-clock-rules.md)。
     - **日別判定**走 `WorkCalendarHelper.IsHolidayAsync`（行事曆有資料看 `IsHoliday`、沒資料退回六日）。
       ⚠️ **排班制員工（`IsShiftWorker`）恆判為平日**（4 小時上限），這是與請假同源的既定語意，刻意不為加班開特例。
       勞基法 §36 / §39 對排班制的例假 / 休息日另有規定，**此點待 HR 確認**；若需區分，正解是給 `CalendarDay` 加排班制專屬日別，不是在計算器裡挖洞。
-    - **超出上限截斷計酬、但不擋送出**：`EstimatedHours` 是預估值，擋件會讓員工無法如實登記加班事實；補休路徑本來就沒有上限，只在加班費側硬擋並不對稱。超出部分以 `ExcessHours` 於表單 / 簽核台 / 快照全鏈路可見。
+    - **超出上限截斷計酬、但不擋送出**（⚠ 此條為歷史說明：2026-09 起已改為**擋件**，不分補休或加班費，見 [flexible-work-hours.md](flexible-work-hours.md)；僅擋件上線前送出的舊單可能仍有 `ExcessHours`）：`EstimatedHours` 是預估值，擋件會讓員工無法如實登記加班事實；補休路徑本來就沒有上限，只在加班費側硬擋並不對稱。超出部分以 `ExcessHours` 於表單 / 簽核台 / 快照全鏈路可見。
+    - **加班申請送件檢查（2026-10 防灌工時，Create / Update / Submit 共用 `OvertimeRequestGuard`，每月上限於核准時再檢一次）**：
+      ① 補登期限：加班日期最早為今天往前 7 天（`MaxBackdateDays`）；
+      ② 同一人同一日只能有一張非「已拒絕」的加班單（草稿 / 簽核中 / 退回修改中 / 已核准皆算，編輯自己那張不算）；
+      ③ 當日已有涵蓋全天的已核准**有薪假**不可申請加班（`LeaveDayExpander` 逐日展開，全天段或上下午兩段皆被蓋住；事假 / 家庭照顧假 / 育嬰留停為無薪假，不擋）；
+      ④ 每月上限 `SystemSetting.MonthlyOvertimeLimit`（預設 46，≤ 0 視為不限制）：該加班日所屬月份「已核准 ＋ 簽核中 ＋ 本單」的**申請時數**合計不得超過；核准時只計「已核准 ＋ 本單」，避免調低上限後互卡；
+      ⑤ 單日時數上限（上班日 4h / 假日 12h）本就**不分補休或加班費**一律擋件（沿用，未改）。
+    - **國定假日出勤加倍工資的加班單來源（`publicHolidayWorkSql`）**：只計 `ISNULL(SettledHours, EstimatedHours) > 0` 的已核准加班單 —— 新單沒打加班卡（結算 0）不算出勤一天。
     - **與補休二擇一**：`CompensationType='pay'` 的加班單**不計入補休池**（`LeaveRequestHandler.ComputeCompensatoryAsync` 已加此條件），避免同一段工時領兩次。詳見 [leave-rules.md §補休](leave-rules.md)。
     - **不折減、不計投保薪資**：與既有手填加班費同處理 —— 育嬰留停不按比例折減（本就是實績金額）、不計入勞健保投保薪資與勞退自提提繳基準（已知簡化）。
     - **育嬰留停出單判斷**：`hasOtherItems` 已納入本項，否則整月留停者上月已賺得的加班費會憑空消失。

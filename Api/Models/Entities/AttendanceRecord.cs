@@ -23,6 +23,16 @@ public class AttendanceRecord
     /// <summary>管理者於出缺勤編輯表單填寫的備註（僅編輯表單可見可填）</summary>
     public string?   Remark                 { get; set; }
 
+    /// <summary>
+    /// 曾被管理者修改過（2026-10 防灌工時）。與 <see cref="IsClockInAuto"/> / <see cref="IsClockOutAuto"/> **各自獨立**：
+    /// 管理者改時間**不再清掉**「系統補卡」旗標，報表因此同時看得出「原本是系統補的、後來被誰改過」。
+    /// 每次修改的前後值見 <see cref="AttendanceAuditLog"/>。
+    /// </summary>
+    public bool      IsManuallyAdjusted     { get; set; }
+    /// <summary>最後一次修改的管理者（刻意不設 FK：避免 Users → AttendanceRecords → 異動紀錄 的多重 cascade 路徑，且不必進 UserHandler 清洗清單）</summary>
+    public Guid?     LastAdjustedById       { get; set; }
+    public DateTime? LastAdjustedAt         { get; set; }
+
     // ── 四週彈性工時（切換日之後才寫入；舊制一律維持 false / null）──────────
     /// <summary>遲到（上班打卡超過 09:30）。**出差當日不判定**。</summary>
     public bool      IsLate                 { get; set; }

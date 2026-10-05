@@ -21,6 +21,8 @@ export interface OvertimeReportRow {
   overtimeDate: string;
   projects: OvertimeReportProject[];
   estimatedHours: string;
+  /** 結算時數（給付基準，2026-10 防灌工時）；null ＝ 舊單（給付沿用申請時數） */
+  settledHours: string | null;
   actualHours: string | null;
   reason: string;
   /** 補償方式（compensatory 補休 / pay 加班費） */
@@ -203,6 +205,7 @@ export class OvertimeReport implements OnInit {
               estimatedHours: Number(p.estimatedHours).toFixed(1),
             })),
             estimatedHours: Number(r.estimatedHours).toFixed(1),
+            settledHours: r.settledHours != null ? Number(r.settledHours).toFixed(1) : null,
             actualHours: r.actualHours != null ? Number(r.actualHours).toFixed(1) : null,
             reason: r.reason ?? '',
             // 這兩欄漏了會靜默顯示錯誤：compensationType 為 undefined 時 badge 一律落到「補休」，
@@ -261,7 +264,9 @@ export class OvertimeReport implements OnInit {
             '員工姓名': r.employeeName ?? '—',
             '加班日期': r.overtimeDate ? new Date(r.overtimeDate).toLocaleDateString('zh-TW') : '',
             '專案': projectText,
-            '預估總時數': r.estimatedHours != null ? Number(r.estimatedHours).toFixed(1) : '',
+            '申請時數': r.estimatedHours != null ? Number(r.estimatedHours).toFixed(1) : '',
+            // 舊單（settledHours 為 null）給付沿用申請時數，欄位留空
+            '結算時數': r.settledHours != null ? Number(r.settledHours).toFixed(1) : '',
             '實際時數': r.actualHours != null ? Number(r.actualHours).toFixed(1) : '',
             '補償方式': r.compensationType === 'pay' ? '加班費' : '補休',
             // ★ 這是本檔第二份獨立欄位表（另一份在 fetchData()）。

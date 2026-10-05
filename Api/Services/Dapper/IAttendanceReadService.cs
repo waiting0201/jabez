@@ -30,6 +30,13 @@ public interface IAttendanceReadService
 
     Task<TodayAttendanceDto?>              GetTodayAsync(Guid userId);
 
+    /// <summary>
+    /// 指定日期「加班已開始、尚未結束」的打卡紀錄；無則回 null。
+    /// 供跨日加班（過午夜）在隔天凌晨補打結束卡：紀錄的 RecordDate 是加班開始那天，
+    /// 打卡頁以今天撈不到，須另外撈前一天。
+    /// </summary>
+    Task<TodayAttendanceDto?>              GetOpenOvertimeOnAsync(Guid userId, DateTime day);
+
     /// <summary>取得指定時刻落在 [StartDate, EndDate) 區間內的最早一筆已核准請假；無則回 null。</summary>
     Task<ActiveLeaveDto?>                  GetActiveLeaveAtAsync(Guid userId, DateTime when);
 

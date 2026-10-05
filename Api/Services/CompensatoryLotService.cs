@@ -10,7 +10,7 @@ namespace Jabez.Api.Services;
 /// 補休「逐筆 lot」帳務（四週彈性工時 §7）—— 取代現行純聚合 SUM 的補休池。
 ///
 /// <b>現況（切換前）</b>補休池是三個聚合相減：期初 <c>User.CompensatoryOpeningHours</c>
-/// ＋ 已核准補休制加班單的 <c>SUM(EstimatedHours)</c> − 補休假的 <c>SUM(Hours)</c>。
+/// ＋ 已核准補休制加班單的 <c>SUM(ISNULL(SettledHours, EstimatedHours))</c> − 補休假的 <c>SUM(Hours)</c>。
 /// FIFO 只是 <c>Math.Min(used, opening)</c> 的算術模擬，**沒有到期日、沒有加班單↔補休單對應**，
 /// 也就無從依「原始加班費率」換算到期津貼。
 ///
@@ -70,8 +70,12 @@ public static class CompensatoryLotService
     /// 只在「**終局核准** ＋ 補償方式為補休 ＋ 加班日已套用新制」三者同時成立時開 lot；
     /// 任一不成立即走 <see cref="RevokeAsync"/> 收掉既有 lot（退回 / 拒絕 / 改成領加班費時）。
     ///
-    /// <b>時數沿用 <c>EstimatedHours</c>（未截斷）</b>，不是加班費那條路徑的 <c>PayableHours</c> ——
+    /// <b>時數取給付基準 <see cref="OvertimeSettlement.BillableHours(OvertimeRequest)"/></b>
+    /// （<c>SettledHours ?? EstimatedHours</c>，未截斷；2026-10 起新單依實際加班打卡結算，舊單 SettledHours 為 null 沿用申請時數），
+    /// 不是加班費那條路徑的 <c>PayableHours</c> ——
     /// 現行補休池本來就沒有計酬上限，轉 lot 時改用截斷值會把既有餘額追溯砍掉。
+    /// 結算時數變動（打加班結束卡 / 管理者修改出缺勤）時重複呼叫即可：既有 lot 走「等比調整剩餘時數」分支，
+    /// 已被請掉的補休不會被還回去。
     /// </summary>
     public static async Task ApplyAsync(
         AppDbContext db,
@@ -85,7 +89,7 @@ public static class CompensatoryLotService
                           && OvertimeCompensationService.Normalize(ot.CompensationType)
                              == OvertimeCompensationService.Compensatory
                           && ot.EmployeeId is not null
-                          && ot.EstimatedHours > 0m
+                          && OvertimeSettlement.BillableHours(ot) > 0m
                           && WorkdayHours.IsFlexible(ot.OvertimeDate, switchDate);
 
         if (!shouldHaveLot)
@@ -100,7 +104,7 @@ public static class CompensatoryLotService
         var lot = await db.CompensatoryLots
             .FirstOrDefaultAsync(l => l.SourceOvertimeRequestId == ot.Id);
 
-        var hours = ot.EstimatedHours;
+        var hours = OvertimeSettlement.BillableHours(ot);
         var rate  = WeightedRate(hours, dayType, isAssignee);
 
         if (lot is null)

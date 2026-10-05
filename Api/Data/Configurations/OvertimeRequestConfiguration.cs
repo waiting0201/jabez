@@ -33,6 +33,11 @@ public class OvertimeRequestConfiguration : IEntityTypeConfiguration<OvertimeReq
         builder.Property(o => o.EstimatedHours)
                .HasColumnType("decimal(5,1)");
 
+        // 結算時數（給付基準）。⚠ 刻意 nullable 且**不設 HasDefaultValue、migration 不可 backfill**：
+        // NULL ＝ 舊單（給付沿用 EstimatedHours），任何預設值都會讓歷史月份薪資被改寫。
+        builder.Property(o => o.SettledHours)
+               .HasColumnType("decimal(5,1)");
+
         // 補償方式（補休 / 加班費，整單二擇一）。預設 compensatory 同時是舊資料的 backfill 值，
         // 讓上線前所有已核准加班單原封不動留在補休池（見 LeaveRequestHandler.ComputeCompensatoryAsync）。
         builder.Property(o => o.CompensationType)

@@ -16,7 +16,7 @@ public sealed class OvertimeReportReadService(IDbConnection db) : IOvertimeRepor
         SELECT o.Id, u.Name AS EmployeeName,
                o.OvertimeDate,
                o.EstimatedHours, o.Reason,
-               o.CompensationType, o.OvertimePayAmount,
+               o.CompensationType, o.OvertimePayAmount, o.SettledHours,
                CASE
                    WHEN a.OvertimeStartTime IS NOT NULL AND a.OvertimeEndTime IS NOT NULL
                    THEN CAST(DATEDIFF(MINUTE, a.OvertimeStartTime, a.OvertimeEndTime) AS DECIMAL(10,2)) / 60.0
@@ -111,6 +111,7 @@ public sealed class OvertimeReportReadService(IDbConnection db) : IOvertimeRepor
             (decimal?)row.ActualHours,
             (string)row.Reason,
             (string?)row.CompensationType ?? "compensatory",
-            (decimal?)row.OvertimePayAmount);
+            (decimal?)row.OvertimePayAmount,
+            (decimal?)row.SettledHours);
     }
 }

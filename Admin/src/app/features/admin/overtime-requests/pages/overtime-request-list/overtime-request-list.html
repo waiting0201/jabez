@@ -21,7 +21,7 @@
               <th>單號</th>
               <th>加班日期</th>
               <th>專案</th>
-              <th class="text-right">預估總時數</th>
+              <th class="text-right">申請時數</th>
               <th>補償方式</th>
               <th class="text-right hidden lg:table-cell">加班費</th>
               <th class="hidden md:table-cell">原因</th>
@@ -50,7 +50,14 @@
                     <span class="text-muted">—</span>
                   }
                 </td>
-                <td class="text-right fw-500">{{ r.estimatedHours | number:'1.1-1' }} h</td>
+                <td class="text-right fw-500">
+                  {{ r.estimatedHours | number:'1.1-1' }} h
+                  @if (r.settledHours != null) {
+                    <div class="text-muted text-xs fw-400" title="依實際加班打卡結算，不超過申請時數；沒打加班卡為 0">
+                      結算 {{ r.settledHours | number:'1.1-1' }} h
+                    </div>
+                  }
+                </td>
                 <td>
                   <span [class]="'badge ' + compensationClass[r.compensationType]">{{ compensationLabel[r.compensationType] }}</span>
                 </td>

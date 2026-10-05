@@ -60,10 +60,10 @@ public sealed class CompensatoryReportHandler(
             decimal t134 = 0m, t167 = 0m, t267 = 0m, weighted = 0m, earned = 0m;
             foreach (var o in byEmployee.GetValueOrDefault(e.EmployeeId, []))
             {
-                earned += o.EstimatedHours;
+                earned += o.BillableHours;   // 給付基準（ISNULL(SettledHours, EstimatedHours)），非申請時數
                 var (dayType, isAssignee) = await OvertimePayCalculator.ResolveDayContextAsync(
                     shiftSchedule, scheduleProvider, e.EmployeeId, o.OvertimeDate);
-                foreach (var tier in OvertimePayCalculator.SplitCompensatoryTiers(o.EstimatedHours, dayType, isAssignee))
+                foreach (var tier in OvertimePayCalculator.SplitCompensatoryTiers(o.BillableHours, dayType, isAssignee))
                 {
                     weighted += tier.Hours * tier.Multiplier;
                     switch (tier.Multiplier)

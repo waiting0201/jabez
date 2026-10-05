@@ -249,7 +249,10 @@ public sealed record OvertimeTaskDetailDto(
     // ⚠ 前端不可用 estimatedHours − payableHours 現場推算：國定假日來源 B 的申請時數含前 8 小時，
     // 是否為活動日預定人力屬「送簽當下」的事實，事後從 dayType 反推不出來，只能讀這個快照欄。
     // 2026-09 起超出上限已改為擋件，新單恆為 0；有值代表擋件上線前送出的歷史單。
-    decimal? ExcessHours      = null);
+    decimal? ExcessHours      = null,
+    // 結算時數（給付基準，2026-10 防灌工時）；null ＝ 舊單。審核者看到的 EstimatedHours 是「申請時數」，
+    // 實際給付以打卡結算為準，兩者需分開呈現。
+    decimal? SettledHours     = null);
 
 /// <summary>出差請款申請審核任務詳情 DTO</summary>
 public sealed record TravelPaymentTaskDetailDto(

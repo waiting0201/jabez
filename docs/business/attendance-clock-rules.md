@@ -54,7 +54,7 @@
 | 上班打卡 | `POST /attendances/clock-in` | 今日尚未打上班卡；**當下不在已核准請假時段內** |
 | 下班打卡 | `POST /attendances/clock-out` | 已打上班卡、尚未打下班卡；**當下不在已核准請假時段內** |
 | 加班開始 | `POST /attendances/overtime-start` | 今日尚未打加班開始卡；須帶**屬於自己**且日期為今日的 `approved` 加班申請單；**一般上班日須先打下班卡，休假日免下班卡**（見下節）。不受請假時段阻擋 |
-| 加班結束 | `POST /attendances/overtime-end` | 已打加班開始卡、尚未打加班結束卡。不受請假時段阻擋 |
+| 加班結束 | `POST /attendances/overtime-end` | 已打加班開始卡、尚未打加班結束卡。不受請假時段阻擋。**跨日加班**：隔天 06:00 前、今天沒有未結束的加班時，改接**前一天**未結束的那筆（見〈加班給付依實際打卡結算〉） |
 
 **請假時段阻擋**：`AttendanceHandler.EnsureNotOnLeaveAsync` 以半開區間 `[StartDate, EndDate)` 判定，
 只套用在上下班打卡；訊息會帶出假別與時段。**加班打卡刻意不套用** —— 請假中仍可能被要求加班。
@@ -171,8 +171,29 @@ IP 取自 `X-Forwarded-For` 第一段，僅供稽核、**不可作為授權依�
 | 情境 | 撈取條件 | 補上的時間 |
 |---|---|---|
 | 漏打上班卡 | `ClockInTime IS NULL AND (ClockOutTime IS NOT NULL OR OvertimeStartTime IS NOT NULL)` | **該日應出勤起**（見下方「避開請假時段」） |
-| 漏打下班卡 | `ClockInTime IS NOT NULL AND ClockOutTime IS NULL` | **該日上班打卡時間 + 9 小時**（見下表） |
-| 漏打加班結束卡 | `OvertimeStartTime IS NOT NULL AND OvertimeEndTime IS NULL` | 加班開始時間 + 該張加班單的 `EstimatedHours` |
+| 漏打下班卡 | `ClockInTime IS NOT NULL AND ClockOutTime IS NULL`，**且通過下方〈下班補卡的合理性檢查〉** | **該日上班打卡時間 + 9 小時**（見下表） |
+| ~~漏打加班結束卡~~ | — | **2026-10 已取消**（見下節）。回應欄位 `auto_overtime_end` 保留但恆為 null |
+
+### 不再自動補加班結束卡（2026-10 防灌工時）
+
+原本會把加班結束卡補成「加班開始 ＋ 申請單 `EstimatedHours`」。正式資料 42 張已核准加班單中 12 張是這樣來的
+（例：申請 14 小時，10:56 開始 → 隔天 00:56「結束」），14 張根本沒有加班打卡 —— 等於只要填申請單就領得到錢。
+現在加班結束卡漏打就**留空**，該單結算時數為 0（見〈加班給付依實際打卡結算〉），由管理者在出缺勤報表補正
+（補正時系統自動重算結算時數）。
+
+### 下班補卡的合理性檢查（2026-10 防灌工時）
+
+過去有人在凌晨在家打上班卡、不打下班卡，靠系統補成「上班 ＋ 9 小時」湊出工時。補下班卡現在須同時滿足：
+
+1. **該日是該員工的工作日**（`EmployeeWorkdays` / `CalendarScope.Attendance`：排班制看行事曆、切換日起看個人排班；例假 / 休假 / 國定假日不補）；
+2. **上班打卡時間落在當日「應出勤起點」的 `[−2 小時, ＋3 小時]` 內**
+   （常數 `AttendanceAutoClockService.PlausibleClockInEarlyHours = 2` / `PlausibleClockInLateHours = 3`；起點取 `ExpectedWorkWindow`，
+   已依切換日選用 08:00 / 09:00，上午請假者後延為 13:00）。公司時段 08:00 起 → 06:00–11:00 可補；彈性制 09:00 起 → 07:00–12:00 可補；
+   自訂上下班時段（S 介於 07:30–09:30）與提早到班者皆落在內，凌晨打卡則落在外。當日全日請假（起點為 null）也不補。
+
+不符者**不補、留空**，出缺勤報表於該日下班欄掛「未打下班卡」badge（有上班卡、無下班卡的過去日期），由管理者確認後補正。
+正常情況的補卡行為（上班 ＋ 9 小時、避開請假時段）完全不變。順帶：補卡的應出勤時段改傳 `WorkdayHours.For(日期, 切換日)`，
+切換日起以 09:00–18:00 判定（過去一律是舊制 08:00–17:00，切換後補上班卡會補到 08:00 屬既有瑕疵）。
 
 ### 只填空欄，絕不建立新列（2026-09 界線）
 
@@ -222,8 +243,10 @@ IP 取自 `X-Forwarded-For` 第一段，僅供稽核、**不可作為授權依�
 **補出來的時間會分別標記 `AttendanceRecord.IsClockInAuto` / `IsClockOutAuto = true`**，
 出缺勤清單於「上班時間」/「下班時間」欄位後各自加掛 badge「系統補卡」（`bg-warning-subtle`），
 Excel 匯出則於時間後加註「（系統補卡）」，以區分本人打卡與系統代打。
-旗標的清除時機：本人打卡（`POST /attendances/clock-in` / `clock-out`）、
-或管理者在出缺勤清單編輯 Modal 改動該欄時間（`PATCH /attendances/{id}`，僅在值真的改變時清除）。
+旗標的清除時機：**只有本人打卡**（`POST /attendances/clock-in` / `clock-out`）。
+**2026-10 起管理者修改出缺勤不再清除這兩個旗標** —— 旗標記的是「這個值最初怎麼來的」，
+管理者改過另以 `AttendanceRecord.IsManuallyAdjusted` 標示（見〈出缺勤異動紀錄〉），報表兩個 badge（系統補卡、已修正）可並存，
+看得出「原本是系統補的、後來被誰改過」。
 
 > 勞檢舉證時，**以 `IsClockInAuto = 0 AND IsClockOutAuto = 0` 的紀錄為準** ——
 > 帶旗標者為系統代填，不等於實際出勤時間。
@@ -395,9 +418,40 @@ Excel 匯出則於時間後加註「（系統補卡）」，以區分本人打�
 - **登入時自動補下班卡**（`AuthHandler`，見上方章節）是伺服器端直寫 DB
 - **LINE 打卡提醒**（`AttendanceReminderFunction`）走 TimerTrigger，會照樣推播給已無打卡權限的人
 
-### 已知缺口（未處理）
+### 禁止修改自己的出缺勤 ＋ 異動紀錄（2026-10 防灌工時）
 
-`UpdateAsync` 沒有稽核軌跡：改了誰的卡、誰改的、原值為何都沒留。另案評估。
+- `PUT/PATCH /attendances/{id}`：`record.UserId == 呼叫者` 一律 **403**「不可修改自己的出缺勤紀錄」（**Superadmin 除外**，其無打卡紀錄）。
+  持有 `reports-attendance:write` 者可以改別人的卡，但不能自己補卡灌工時。前端出缺勤報表對自己的列不顯示編輯鈕（縱深防禦）。
+- 另驗證「下班須晚於上班」「加班結束須晚於開始」（過去完全不驗）。前端編輯表單只有時分，訖時間的 HH:mm 不晚於起時間者自動視為**隔天**（跨日加班 / 跨午夜下班）。
+- **出缺勤異動紀錄表 `AttendanceAuditLogs`**：每次**實質**修改（值沒變的重複儲存不寫）留一列 —— 修改人（Id + 姓名快照）、時間、
+  上班 / 下班 / 加班開始 / 加班結束 / 備註 的修改前後值。只增不改不刪。`ModifiedById` / `OwnerUserId` 刻意**不設 FK**
+  （Users → AttendanceRecords → 本表 的 Cascade 會撞 multiple cascade paths；也不必進 `UserHandler` 的 NO_ACTION 清洗清單）。
+- `AttendanceRecord` 新增 `IsManuallyAdjusted` / `LastAdjustedById` / `LastAdjustedAt`；報表列帶出 `isManuallyAdjusted` / `adjustedByName` / `adjustedAt`，
+  清單掛「已修正」badge（tooltip 顯示修改人與時間），Excel 備註欄註記「管理者已修正（姓名）」。
+- 目前**沒有查詢異動紀錄的 API / 畫面**（需補 `GET /attendances/{id}/audit-logs`，屬 AppRouter 範圍，待後續）；資料已在表內可直接查 DB。
+
+### 加班給付依實際打卡結算（2026-10 防灌工時）
+
+加班費、補休時數**不再信任申請單的預估時數**，改依實際加班打卡結算。核心欄位 `OvertimeRequest.SettledHours`（`decimal?`）：
+
+- **null ＝ 舊單**：給付基準沿用 `EstimatedHours`。本系統薪資即時重算、沒有月結快照，舊單若套新規則＝改寫歷史月份薪資，
+  故既有列**永遠維持 null**（migration 不可 backfill、不設預設值）。
+- **新單於建立時設為 0**；上線前建立、尚未送簽的草稿 / 退回單於「送簽」時併入新制（`SettledHours ??= 0`，它們沒有給付歷史）；
+  已在簽核中（pending）的舊單維持 null。
+- 結算公式（`OvertimeSettlement.ComputeSettled`）：`min(核准的 EstimatedHours, 加班結束 − 加班開始)`，**無條件捨去到 0.1 小時**；
+  缺起或訖、訖 ≤ 起 → 0。以 DateTime 直接相減，跨日不受日期邊界影響。
+- **給付基準時數單一真相** `OvertimeSettlement.BillableHours(ot) = SettledHours ?? EstimatedHours`（SQL 為 `ISNULL(SettledHours, EstimatedHours)`），消費點：
+  加班費快照（`OvertimeCompensationService.ApplyAsync`，**已核准**才用結算時數，送簽中的級距顯示快照仍用申請時數）、
+  補休 lot（`CompensatoryLotService.ApplyAsync`）、切換前補休餘額（`LeaveRequestHandler.ComputeCompensatoryAsync`）、
+  加班補休時數總表（`CompensatoryReportReadService`）、薪資「國定假日出勤加倍工資」的加班單來源（`SettledHours > 0` 才算出勤一天）。
+  通知摘要、清單的申請時數欄、單日 / 每月上限擋件仍用申請時數。
+- **重算時機**（皆冪等，`OvertimeSettlementService`）：① 終局核准（`OvertimeCompensationService.ApplyAsync` 內建，`ApprovalTaskHandler` 呼叫點不變）；
+  ② 打加班結束卡；③ 管理者修改出缺勤的加班起訖（`PUT/PATCH /attendances/{id}`，找不到綁定單時以「同人同日唯一一張已核准新制單」比對並順手綁定）。
+  只在單子已核准時寫入快照 / lot。
+- **跨日加班**：紀錄的 `RecordDate` 是加班開始那天；結束卡過午夜後，隔天 06:00 前（`OvertimeSettlementService.CrossDayEndCutoffHour`）
+  `GET /attendances/today` 會回傳前一天未結束的加班紀錄、`overtime-end` 接到該筆，結算照樣算。過了 06:00 未補打 → 留空、結算 0，管理者補正。
+- ⚠ 營運影響：**員工忘了打加班結束卡 ＝ 該單拿不到加班費 / 補休**，須先公告；補正走出缺勤編輯（受「不可改自己」限制，需主管 / 人事代改）。
+  補登過去日期的加班單（日期 < 今天）無法打卡（加班開始限當日單），只能由管理者補正出缺勤紀錄後結算。
 
 ---
 

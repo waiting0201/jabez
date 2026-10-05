@@ -7,7 +7,17 @@ public class OvertimeRequest
     public Guid?    EmployeeId       { get; set; }
     public int?     ApprovalItemId   { get; set; }
     public DateTime OvertimeDate     { get; set; }
-    public decimal  EstimatedHours   { get; set; }   // 合計快取 = SUM(Projects[].EstimatedHours)，由 Handler 重算
+    public decimal  EstimatedHours   { get; set; }   // 合計快取 = SUM(Projects[].EstimatedHours)，由 Handler 重算（＝「申請時數」，核准的上限）
+
+    /// <summary>
+    /// 結算時數（2026-10 防灌工時）＝ min(核准的 EstimatedHours, 實際加班打卡時數)，**給付基準**。
+    /// <b>null ＝ 舊單，給付沿用 EstimatedHours</b>（歷史月份薪資不可變動 —— 本系統薪資即時重算、沒有月結快照，
+    /// 所以「該列給付基準改變」就等於「歷史月份被改寫」，既有列**絕對不可 backfill**）。
+    /// 新單（本欄上線後建立）於建立時設為 0，之後於 終局核准 / 打加班結束卡 / 管理者修改出缺勤 時重算；
+    /// 沒有加班打卡＝0。<b>所有消費點一律走 <see cref="Jabez.Api.Common.OvertimeSettlement.BillableHours(OvertimeRequest)"/></b>，
+    /// 不得直接讀 EstimatedHours 當給付時數（純顯示 / 擋件用途除外）。
+    /// </summary>
+    public decimal? SettledHours     { get; set; }
 
     /// <summary>
     /// 補償方式（整張單層級，二擇一）：compensatory＝補休 / pay＝加班費。
