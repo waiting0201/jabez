@@ -461,7 +461,7 @@
 | `ResolveStartingStepAsync` / `ApprovalRecord` / `RequestDesignatedReviewer` / 簽核任務 | **`"leave_revocation"`** —— 隔離「此人已審過」查詢，避免與同 Id 的請假單撞號 |
 
 - `requestDays` 帶**原假單天數**（`(OriginalHours ?? Hours) / 8`），讓銷假回到與原假單相同的那組 `MinDays` 關卡（`LeaveRevocationHandler.SubmitAsync` 與 `ApprovalTaskHandler` 推進時同源）。
-- 自審規則沿用請假：Group A 全程禁止自審（否定清單自動涵蓋），自審時嘗試升級審核且停在總監之前。
+- 自審規則沿用請假：全程禁止指定自己為審核者（2026-10 起全部申請類型一致），自審時嘗試升級審核且停在總監之前。
 - 流程若含「申請人指定審核」步驟，銷假表單同樣要挑指定審核者。
 
 ## 請假申請步驟
@@ -518,7 +518,7 @@ label 星號與 placeholder 同步條件顯示。後端 `LeaveRequest.Reason` �
 
 ## 跨業務關聯
 
-- **請假走簽核流程** → [approval-flow.md](approval-flow.md)（請假屬 Group A 全程禁止自審）
+- **請假走簽核流程** → [approval-flow.md](approval-flow.md)（請假全程禁止指定自己為審核者）
 - **事假 / 病假扣薪計算、育嬰留停按比例** → [payroll-formula.md §扣薪規則](payroll-formula.md)
 - **打卡時段阻擋規則**（已核准請假時段內無法打上下班卡；例外：**當日全日請假 + 已核准加班單 → 可直接打「加班開始」**，免下班卡；**已核准銷假的日子不再阻擋**） → [attendance-clock-rules.md](attendance-clock-rules.md)
 - **銷假重跑請假簽核** → [approval-flow.md §銷假重跑請假簽核](approval-flow.md#銷假重跑請假簽核2026-08-新增)

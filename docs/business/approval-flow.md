@@ -94,7 +94,7 @@ draft → pending → approved / returned / rejected
   在此之前，「這段期間有哪些單要撥錢」只存在於排程推播（`PaymentReminderService`），畫面上查不到。
   ⚠ 該清單**只列 approved** —— 正是因為上面這條「僅 approved 可呼叫」的限制，列出 pending 的單
   只會讓財務點進去卻填不了。
-- **DTO**：`UpsertInstallmentsRequest { installments[], approvalStatus? }`，每筆 `{ id?, installmentNo, expectedDate, paidAt?, amount, note? }`
+- **DTO**：`UpsertInstallmentsRequest { installments[] }`（2026-10 移除 `approvalStatus`：撥款端點不得改單據狀態），每筆 `{ id?, installmentNo, expectedDate, paidAt?, amount, note? }`
 - **持久化核心共用**：`InstallmentUpsertService.Apply`（validate + diff，**不 SaveChanges**，交易邊界交呼叫端）— 獨立 endpoint 與 review 原子寫入共用同一份邏輯；5 種子表實作 `IInstallmentEntity` 介面以泛型化
 - **驗證**（`InstallmentValidator.Validate`）：
   - 序號 1-based 連續無斷號
@@ -527,9 +527,9 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 - 依 `StepOrder` 升序逐一審核，前一人核准後才輪到下一人
 - 指定審核者不需擁有全域 `approval-tasks:write` 權限，被指定即可審核（[ApprovalTaskHandler.cs:140-157](../../Api/Handlers/ApprovalTaskHandler.cs#L140-L157)）
 - **批次核准（`POST /approval-tasks/batch-approve`）不支援指定審核者**身份；批次核准要求獨立的 `approval-tasks:batch-approve` 權限。
-- 自審規則（依申請類型分為兩組，規則源於 [ApprovalFlowService.cs:51](../../Api/Services/ApprovalFlowService.cs#L51)）：
-  - **Group A 全程禁止**（任一位置為申請人 → 報錯）：`leave` / `overtime` / `travel` / `travel_payment`
-  - **Group B 首位跳過**（申請人排第 1 位 → 自動跳過此步驟；2+ 位置目前無強制檢查）：`payment_request` / `advance` / `write_off` / `travel_write_off` / `holiday_travel` / `pre_review`
+- 自審規則（**2026-10 起不再分組**）：**全部申請類型一律禁止指定申請人本人為審核者**（任一位置皆是，送單時直接 400「指定審核者不能是申請人本人」）。
+  原本的 **Group B「首位跳過」**（請款 / 預支 / 沖銷 / 出差沖銷 / 假日活動 / 預審：申請人排第 1 位 → 自動跳過該關）已**移除**——
+  那等於讓申請人藉由「點名自己」繞過整關審核。資格驗證見下方〈[指定審核者資格驗證（2026-10）](#指定審核者資格驗證2026-10-安全稽核)〉。
 - 退回時：當前等待審核者狀態設為 `returned`，重送時所有指定審核者重置為 `pending`
 - **刪除申請單時連帶清除審核足跡**：`RequestDesignatedReviewer` / `ApprovalRecord` / `EscalationOverride` 皆以多型 `RequestType(ApplicationType) + RequestId(ApplicationId)` 關聯父表、**無真正 FK**，EF Cascade 不會處理。故 8 個 `*RequestHandler.DeleteAsync`（草稿 / 退回才可刪）在 `Remove(申請單)` 前須以同一 `RequestType` 字串 `RemoveRange` 這三張表的對應列，否則殘留列會以 `OnDelete(NoAction)` 的 `ReviewerId` / `ReviewedById` 外鍵長期掛在 `Users`，導致日後**無法刪除該使用者**
 - 此模式與 `UseDirectSupervisor`、`UseApplicantDepartment` 互斥（每個 ApprovalStep 擇一使用）
@@ -750,7 +750,7 @@ returned ──(DELETE supplements/{n} 主動放棄)──→ 同上回滾
 
 ### 沿用請假的其餘規則
 
-- **自審**：Group A 全程禁止自審（`ApprovalFlowService` 的 Group B 否定清單不含銷假，自動落入 Group A）
+- **自審**：全程禁止指定自己為審核者（2026-10 起全部申請類型一致，見〈指定審核者資格驗證〉）
 - **升級審核**：自審時嘗試升級，且與請假一樣**停在總監之前**（`EscalationService` 的 `stopBeforeDirector`）
 - **指定審核**：流程含「申請人指定審核」步驟時，銷假表單同樣要挑指定審核者（designee 以 `RequestType="leave_revocation"` 儲存）
 - **退回重送**：清本單 `ApprovalRecords` / `EscalationOverrides`、重置 designee 為 pending，與請假 `SubmitAsync` 同一段邏輯
@@ -762,6 +762,105 @@ returned ──(DELETE supplements/{n} 主動放棄)──→ 同上回滾
 > **實作陷阱**：`ApplyAsync` 執行時本張銷假單的 `ApprovalStatus="approved"` 尚在 ChangeTracker、還沒進 DB，只查 DB 會漏掉自己 —— 故明確併入自己的日期（取聯集，重複套用仍收斂）。
 
 ---
+
+## 簽核安全稽核補強（2026-10）
+
+> 起因：客戶發現員工刻意鑽系統漏洞。正式資料證實發生過：**財務協理在財務關卡核准自己的 12 張請款單、總監在總監關卡核准自己的預支 / 沖銷單**。
+> 以下規則為同一輪稽核的修補，全部申請類型共用。
+
+### 1. 禁止審核自己送出的申請
+
+[`ApprovalTaskHandler.AuthorizeStepAsync`](../../Api/Handlers/ApprovalTaskHandler.cs) 是**所有審核入口的共同授權點**（單筆審核、批次核准、指定審核者、升級審核者皆經過它），
+在 Superadmin 放行之後、任何部門 / 職稱比對之前加入：**審核者 ＝ 申請人 → 403「不可審核自己送出的申請」**。Superadmin 例外。
+
+**為什麼過去擋不住：** 固定池關卡（綁部門 / 職稱）的授權只比對「審核者的部門 / 職稱是否符合關卡」，不看他是不是申請人；
+而引擎的「自審跳過 / 升級」只在**送單當下**的起始關卡處理，**推進流程時**（`SkipUnreviewableStepsAsync`）固定池關卡一律「視為有審核者」。
+於是財務協理送單、第 1 關主管核准後，流程推進到財務關，停在他自己身上，他的部門 / 職稱完全符合 → 自己核准。
+
+**引擎同步修正：** `SkipUnreviewableStepsAsync` 推進時，固定池關卡若「**池中唯一可簽者就是申請人**」
+（申請人符合關卡條件、排除申請人後查無 active 且非 superadmin 的人；判定 `IsApplicantOnlyReviewerOfFixedStepAsync`），比照送單時的自審處理：
+
+| 申請類型 | 處理 |
+|---|---|
+| 請假 / 銷假 / 出差 / 加班 / 改班 | 嘗試升級審核（`TryEscalateAsync`，找不到上層主管會丟 400，單子停在上一關，須管理員處理） |
+| 其餘（請款 / 預支 / 沖銷 / 出差請款 / 假日活動 / 預審） | 乾淨跳過該關（不寫代簽），全部跳過則自動核准——與送單時請款類的自審跳過規則一致 |
+
+- **池中尚有其他人時不動**：該關留給其他人簽（例：兩位財務協理，其中一位送單，另一位簽），申請人本人由上述 403 擋下。
+- **不限部門也不限職稱的關卡**（池範圍＝全公司）不套用此判定，申請人同樣由 403 擋下。
+
+### 2. 授權的「直接放行」出口封閉
+
+`AuthorizeStepAsync` 原本在「申請單沒有 `ApprovalItemId`」或「找不到目前關卡」時**直接放行**（任何持 `approval-tasks:write` 者可核准）。
+現改為一律 **403**，只有 Superadmin 能處理這類異常單據。
+
+### 3. 簽核流程 ID 不採用前端值
+
+請假 / 加班 / 出差（含假日活動）/ 出差請款的 `CreateAsync` 過去直接寫入 client 送來的 `ApprovalItemId`，`SubmitAsync` 只在 null 時才解析 ——
+員工可挑一條自己想要的（例如只有一關的）流程。現改為**一律忽略前端值**（Create 的 request DTO 移除該欄位），
+`ApprovalItemId` 只由 `SubmitAsync` 以 `ResolveApprovalItemIdAsync(申請類型, 申請人部門)` 寫入；其餘 7 種類型原本就不採用前端值。
+**退回重送不重挑**的規則不變（`ApprovalItemId` 已有值就沿用）；銷假仍借用 `"leave"` 流程、追加預支沿用父單流程。
+
+### 4. 沖銷單登記退款日限財務關卡
+
+預支沖銷 / 出差沖銷審核時帶的 `refundedAt` / `estimatedRefundDate` 會寫入**母單**（預支 / 出差）的退款紀錄，過去任何關卡都能寫。
+現限**財務關卡**（`IsFinanceStepAsync` → `DepartmentCodes.FinanceStep`，Superadmin 視同）；非財務關卡帶了這兩個欄位 → 400。
+
+### 5. 撥款明細端點不得改單據狀態
+
+`PATCH /payment-requests/{id}/installments` 的 request 原本接受 `approvalStatus` 並直接寫回 `PaymentRequest.ApprovalStatus`
+（財務體系人員可把請款單改成任意狀態，繞過簽核）。**欄位已自 `UpsertInstallmentsRequest` 移除**（5 種申請類型的 installments 端點共用此 DTO，其餘 4 種原本就不處理該欄位）。
+
+### 6. 送簽一律清空舊簽核足跡
+
+`SubmitAsync` 原本只在 `returned` 重送時清舊 `ApprovalRecords` / `EscalationOverrides`、重置 designee；現**不論 draft 或 returned** 都清
+（11 個 Submit 路徑：請款 / 預審 / 預支（含追加批次，追加輪只清本輪）/ 預支沖銷 / 出差沖銷 / 請假 / 銷假 / 加班 / 出差 / 出差請款 / 改班）。
+殘留的舊 approved 紀錄會讓後續關卡的「跨步驟同人去重」誤判「此人已審過」而被自動代簽，單子未經審核就核准。
+
+### 指定審核者資格驗證（2026-10 安全稽核）
+
+[`DesignatedReviewerHelper.ValidateAndNormalizeAsync`](../../Api/Common/DesignatedReviewerHelper.cs)（送簽時，所有申請類型、所有指定關卡）新增 `ValidateDesigneeEligibilityAsync`，違規一律 400：
+
+| # | 規則 | 說明 |
+|---|---|---|
+| 1 | 不可指定申請人本人 | 取代原 Group B「申請人排第 1 位就跳過該關」 |
+| 2 | 必須在職 | `Status == "active"`，離職 / 停用者不可被指定 |
+| 3 | 職級 ≤ 申請人 | 被指定者 `JobTitle.Level`（數字越小越高）須 **≤ 申請人 Level**（同級或更高）。**例外：申請人已是目前全公司最高職級**（在職、非 superadmin、有職稱者中的最小 `Level`）時不限制 |
+| 4 | 先選部門的關卡（`DesignatedRequiresDepartment`） | 被指定者須屬於 `SelectedDepartmentId`（**精確比對、不含子部門**，與前端 picker 候選名單及部門最高層級抑制判定同一語意）；未帶 `SelectedDepartmentId` 亦拒絕 |
+
+- **無職稱的保守處理：** 申請人沒有職稱 → 無從比較職級，一律拒絕（訊息請聯絡管理員補職稱；此時也無最高職級豁免可用）；被指定者沒有職稱同樣拒絕。寧可擋下也不放行未知。
+- 「最高職級」以**在職人員實際持有的職稱**判定（不是 `JobTitles` 表內是否存在更小的 `Level`），避免表內有無人使用的職稱讓真正的最高主管失去豁免。
+- `ApprovalFlowService.ResolveStartingStepAsync` 對全部類型亦拒絕「任一位置為申請人」（defense-in-depth；原只對 Group A 類型生效）。
+- 前端選人下拉**尚未**依此過濾候選人，不符者送簽時以 400 訊息提示重新選擇。
+
+### 假日執行活動參與人員（2026-10）
+
+[`HolidayTravelParticipantGuard`](../../Api/Services/HolidayTravelParticipantGuard.cs)：
+
+- **必須在職**：Create / Update / Submit 皆擋（離職者掛名不得領假日津貼）。
+- **重複給付擋下**（Submit 時；核准時再擋一次）——同一人同一個**假日**不可同時出現在：
+  1. 另一張**非拒絕、非草稿**的假日活動單（送簽時比 pending / approved / returned；**核准時只比 approved**，避免既有兩張 pending 互相擋死）；
+  2. 已核准、**補償方式為加班費**的加班單（補休型不涉及現金給付，不衝突）——原本只「警示」，現直接擋；
+  3. 涵蓋該日的已核准**有薪**假（無薪 / 半薪的 `personal` / `sick` / `menstrual` / `family_care` / `parental_leave*` 不算；逐日展開走 `LeaveDayExpander`，並扣除已核准銷假日）。
+- 只比對**行事曆假日**（津貼只計假日，平日重疊不會重複給付）；同日 `am` 與 `pm` 可分屬兩單，`full` 與任何時段衝突；未勾選參與日期＝活動期間內每個假日皆全天。
+
+### 金額驗證（2026-10）
+
+[`AmountGuard`](../../Api/Common/AmountGuard.cs)（Create / Update 收下明細後、業務驗證之前）：
+
+| 申請類型 | 規則 |
+|---|---|
+| 預支 / 預支沖銷 | 單價 / 總價 / 現金 / 支票皆 **≥ 0**；**總價 = 現金 + 支票**（容忍 0.01）；合計 ≥ 0。追加批次（建立與編輯）同樣套用 |
+| 出差預支 / 出差請款 / 出差沖銷 | 單價 / 總價 **≥ 0**；合計 ≥ 0 |
+| 請款 / 預審 | **明細仍允許負數列**（折讓 / 退款 / 扣款，2026-09 業務決議）；**合計不可為負** |
+
+0 允許（各表單既有 `min` 皆為 0；零元列、全額支票月結的現金列為正常用法）。
+
+### 發票號碼唯一性：比對鍵正規化（2026-10）
+
+[`InvoiceNoHelper.ResolveKey`](../../Api/Common/InvoiceNoHelper.cs)：比對前先**正規化**（去前後空白、去中間空白與連字號、轉大寫）；
+含中文的手打文字若仍抽得出 `[A-Z]{2}\d{8}` 的發票號碼，**以抽出的號碼比對**（原本整筆跳過），抽不出（純「收據」「領據」）才排除。
+`AB-12345678` / `ab 12345678` / `收據AB12345678` 因此與 `AB12345678` 視為同一張。
+資料庫既有號碼可能未正規化，`InvoiceUniquenessChecker` 以「SQL 端 REPLACE 鏈 + UPPER + LIKE 粗篩 → 記憶體 `ResolveKey` 精確比對」兩段式處理（剔除字元集與 `Normalize` 同源，見 `InvoiceNoHelper.RemovedForSql`）。
 
 ## 跨步驟同人去重（相鄰 step 同人 OR 總監）
 
@@ -854,7 +953,7 @@ returned ──(DELETE supplements/{n} 主動放棄)──→ 同上回滾
 
 ## 跨業務關聯
 
-- **9 種申請表的 Group A / B 自審分組** → [application-forms.md](application-forms.md)
+- **各申請表的自審 / 指定審核者規則**（2026-10 起全部類型一致：禁止指定自己） → [application-forms.md](application-forms.md)
 - **加班 / 請假 / 出差升級機制**（找上層部門主管 + 代理人） → [approval-escalation.md](approval-escalation.md)
 - **核決後的 PDF 簽名欄渲染** → [pdf-signatures.md](pdf-signatures.md)
 - **撥款 / 退款日 LINE 通知模板** → [line-integration.md](line-integration.md)
@@ -875,7 +974,7 @@ returned ──(DELETE supplements/{n} 主動放棄)──→ 同上回滾
 | 單號 | `SC-yyyyMMdd-NNN`，**送簽時取號**，草稿為 null |
 | 權限 | **沿用 `shift-schedule:read` / `shift-schedule:write`**，不新增權限碼 |
 | 流程解析 | `ResolveApprovalItemIdAsync("shift_change", 申請人部門)` —— 自身部門 > 最近祖先部門 > 通用預設 |
-| 自審 | Group A（全程禁止指定自己）；自審時走升級審核，`stopBeforeDirector` **含** shift_change（同請假／銷假／加班） |
+| 自審 | 全程禁止指定自己；自審時走升級審核，`stopBeforeDirector` **含** shift_change（同請假／銷假／加班） |
 | 天數門檻 | **無** —— `requestDays` 傳 null，六條路線的 `MinDays` 一律留空 |
 | 核准效果 | 寫入 `ShiftScheduleDay`；`toDayType = work` 時是**刪除**該列（查無紀錄即上班日） |
 | 退回／拒絕 | **不需任何回滾** —— 未核准前班表完全沒動過 |

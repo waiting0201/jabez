@@ -110,7 +110,7 @@ public sealed class OvertimeRequestHandler(
         var item = new OvertimeRequest
         {
             EmployeeId     = employeeId,   // 強制使用 JWT 身分，忽略 body.EmployeeId
-            ApprovalItemId = body.ApprovalItemId,
+            // ApprovalItemId 不採用前端值：一律於 SubmitAsync 依申請人部門解析（防止竄改流程）
             OvertimeDate   = body.OvertimeDate,
             EstimatedHours = projectRows.Sum(r => r.EstimatedHours),
             // 補償方式二擇一；未知值正規化為補休（安全側，寧可少發現金也不可雙重給付）
@@ -272,28 +272,27 @@ public sealed class OvertimeRequestHandler(
         item.SubmittedAt ??= Clock.Now;
 
         // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
-        if (item.ApprovalStatus == "returned")
+        // 2026-10 安全修正：不論 draft 或 returned 送出一律清空舊簽核足跡（原只清 returned）。
+        // 殘留的舊 approved 紀錄會讓後續關卡誤判「此人已審過」而被自動代簽，未經審核即核准。
+        var oldRecords = await db.ApprovalRecords
+            .Where(r => r.ApplicationType == "overtime" && r.ApplicationId == item.Id)
+            .ToListAsync();
+        db.ApprovalRecords.RemoveRange(oldRecords);
+
+        var oldOverrides = await db.EscalationOverrides
+            .Where(o => o.ApplicationType == "overtime" && o.ApplicationId == item.Id)
+            .ToListAsync();
+        db.EscalationOverrides.RemoveRange(oldOverrides);
+
+        // 重置指定審核者狀態為 pending
+        var rdrsToReset = await db.RequestDesignatedReviewers
+            .Where(r => r.RequestType == "overtime" && r.RequestId == item.Id)
+            .ToListAsync();
+        foreach (var rdr in rdrsToReset)
         {
-            var oldRecords = await db.ApprovalRecords
-                .Where(r => r.ApplicationType == "overtime" && r.ApplicationId == item.Id)
-                .ToListAsync();
-            db.ApprovalRecords.RemoveRange(oldRecords);
-
-            var oldOverrides = await db.EscalationOverrides
-                .Where(o => o.ApplicationType == "overtime" && o.ApplicationId == item.Id)
-                .ToListAsync();
-            db.EscalationOverrides.RemoveRange(oldOverrides);
-
-            // 重置指定審核者狀態為 pending
-            var rdrsToReset = await db.RequestDesignatedReviewers
-                .Where(r => r.RequestType == "overtime" && r.RequestId == item.Id)
-                .ToListAsync();
-            foreach (var rdr in rdrsToReset)
-            {
-                rdr.Status     = "pending";
-                rdr.ReviewedAt = null;
-                rdr.Comment    = null;
-            }
+            rdr.Status     = "pending";
+            rdr.ReviewedAt = null;
+            rdr.Comment    = null;
         }
 
         // 加班費快照：在所有核准分支之前算一次，讓「一般送審 / Superadmin 自動核准 / 全自審自動核准」

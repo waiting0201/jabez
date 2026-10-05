@@ -28,7 +28,8 @@ public sealed class TravelRequestHandler(
     IApprovalFlowService approvalFlow,
     ICalendarDayReadService calendarDayReader,
     IBlobStorageService blob,
-    IWorkdayScheduleProvider scheduleProvider)
+    IWorkdayScheduleProvider scheduleProvider,
+    IEmployeeWorkdaysFactory workdaysFactory)
 {
     private const string ContainerName = "invoices";
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
@@ -130,6 +131,11 @@ public sealed class TravelRequestHandler(
         if (body.Items is null || body.Items.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
 
+        // 金額合理性（2026-10 安全稽核）：不可為負數
+        AmountGuard.EnsureItems(body.Items,
+            i => new AmountGuard.ItemAmounts(i.UnitPrice, i.TotalPrice),
+            "出差費用明細");
+
         // 指定審核者存在性驗證
         if (body.DesignatedReviewers is { Length: > 0 })
         {
@@ -157,7 +163,7 @@ public sealed class TravelRequestHandler(
         var travelRequest = new TravelRequest
         {
             EmployeeId      = employeeId,   // 強制使用 JWT 身分，忽略 body.EmployeeId
-            ApprovalItemId  = body.ApprovalItemId,
+            // ApprovalItemId 不採用前端值：一律於 SubmitAsync 依申請人部門解析（防止竄改流程）
             Destination     = body.Destination,
             StartDate       = body.StartDate,
             EndDate         = body.EndDate,
@@ -232,6 +238,9 @@ public sealed class TravelRequestHandler(
             var existCount = await db.Users.AsNoTracking().CountAsync(u => participantIds.Contains(u.Id));
             if (existCount != participantIds.Count)
                 return new BadRequestObjectResult(ApiResponse.Fail("一或多位出差參與者不存在。"));
+
+            // 參與人員必須在職（2026-10 安全稽核）
+            await HolidayTravelParticipantGuard.EnsureParticipantsActiveAsync(db, participantIds);
 
             var dateError = ValidateParticipants(participants, startDate, endDate);
             if (dateError is not null)
@@ -343,6 +352,11 @@ public sealed class TravelRequestHandler(
         // 明細項目整組替換（提供 Items 時才更新）
         if (body.Items is { Length: > 0 })
         {
+            // 金額合理性（2026-10 安全稽核）：不可為負數
+            AmountGuard.EnsureItems(body.Items,
+                i => new AmountGuard.ItemAmounts(i.UnitPrice, i.TotalPrice),
+                "出差費用明細");
+
             db.TravelRequestItems.RemoveRange(item.Items);
             var newItems = body.Items.Select((i, idx) => new TravelRequestItem
             {
@@ -446,6 +460,9 @@ public sealed class TravelRequestHandler(
                 var existCount = await db.Users.AsNoTracking().CountAsync(u => participantIds.Contains(u.Id));
                 if (existCount != participantIds.Count)
                     return new BadRequestObjectResult(ApiResponse.Fail("一或多位出差參與者不存在。"));
+
+                // 參與人員必須在職（2026-10 安全稽核）
+                await HolidayTravelParticipantGuard.EnsureParticipantsActiveAsync(db, participantIds);
 
                 var dateError = ValidateParticipants(participants, item.StartDate, item.EndDate);
                 if (dateError is not null)
@@ -616,29 +633,42 @@ public sealed class TravelRequestHandler(
             }
         }
 
-        // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
-        if (item.ApprovalStatus == "returned")
+        // 假日執行活動（2026-10 安全稽核）：送簽時再驗一次參與人員 ——
+        // 在職，且同一人同一假日不得重複出現在另一張非拒絕非草稿的假日活動單 /
+        // 已核准的加班費型加班單 / 涵蓋該日的已核准有薪假（原本只有加班費型會「警示」，不擋）。
+        if (isHolidayTravel)
         {
-            var oldRecords = await db.ApprovalRecords
-                .Where(r => r.ApplicationType == appType && r.ApplicationId == item.Id)
+            var participantUserIds = await db.TravelRequestParticipants.AsNoTracking()
+                .Where(p => p.TravelRequestId == item.Id)
+                .Select(p => p.UserId)
                 .ToListAsync();
-            db.ApprovalRecords.RemoveRange(oldRecords);
+            await HolidayTravelParticipantGuard.EnsureParticipantsActiveAsync(db, participantUserIds);
+            await HolidayTravelParticipantGuard.EnsureNoConflictsAsync(
+                db, calendarDayReader, workdaysFactory, item.Id, onlyAgainstApproved: false);
+        }
 
-            var oldOverrides = await db.EscalationOverrides
-                .Where(o => o.ApplicationType == appType && o.ApplicationId == item.Id)
-                .ToListAsync();
-            db.EscalationOverrides.RemoveRange(oldOverrides);
+        // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
+        // 2026-10 安全修正：不論 draft 或 returned 送出一律清空舊簽核足跡（原只清 returned）。
+        // 殘留的舊 approved 紀錄會讓後續關卡誤判「此人已審過」而被自動代簽，未經審核即核准。
+        var oldRecords = await db.ApprovalRecords
+            .Where(r => r.ApplicationType == appType && r.ApplicationId == item.Id)
+            .ToListAsync();
+        db.ApprovalRecords.RemoveRange(oldRecords);
 
-            // 重置指定審核者狀態為 pending
-            var rdrsToReset = await db.RequestDesignatedReviewers
-                .Where(r => r.RequestType == appType && r.RequestId == item.Id)
-                .ToListAsync();
-            foreach (var rdr in rdrsToReset)
-            {
-                rdr.Status     = "pending";
-                rdr.ReviewedAt = null;
-                rdr.Comment    = null;
-            }
+        var oldOverrides = await db.EscalationOverrides
+            .Where(o => o.ApplicationType == appType && o.ApplicationId == item.Id)
+            .ToListAsync();
+        db.EscalationOverrides.RemoveRange(oldOverrides);
+
+        // 重置指定審核者狀態為 pending
+        var rdrsToReset = await db.RequestDesignatedReviewers
+            .Where(r => r.RequestType == appType && r.RequestId == item.Id)
+            .ToListAsync();
+        foreach (var rdr in rdrsToReset)
+        {
+            rdr.Status     = "pending";
+            rdr.ReviewedAt = null;
+            rdr.Comment    = null;
         }
 
         // Superadmin 無部門歸屬，直接自動核准

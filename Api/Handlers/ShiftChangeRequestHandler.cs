@@ -283,20 +283,19 @@ public sealed class ShiftChangeRequestHandler(
         entity.SubmittedAt ??= Clock.Now;
 
         // 退回重送：清除舊審核足跡、重置指定審核者
-        if (entity.ApprovalStatus == "returned")
-        {
-            db.ApprovalRecords.RemoveRange(
-                await db.ApprovalRecords.Where(r => r.ApplicationType == AppType && r.ApplicationId == entity.Id).ToListAsync());
-            db.EscalationOverrides.RemoveRange(
-                await db.EscalationOverrides.Where(o => o.ApplicationType == AppType && o.ApplicationId == entity.Id).ToListAsync());
+        // 2026-10 安全修正：不論 draft 或 returned 送出一律清空舊簽核足跡（原只清 returned）。
+        // 殘留的舊 approved 紀錄會讓後續關卡誤判「此人已審過」而被自動代簽，未經審核即核准。
+        db.ApprovalRecords.RemoveRange(
+            await db.ApprovalRecords.Where(r => r.ApplicationType == AppType && r.ApplicationId == entity.Id).ToListAsync());
+        db.EscalationOverrides.RemoveRange(
+            await db.EscalationOverrides.Where(o => o.ApplicationType == AppType && o.ApplicationId == entity.Id).ToListAsync());
 
-            foreach (var rdr in await db.RequestDesignatedReviewers
-                         .Where(r => r.RequestType == AppType && r.RequestId == entity.Id).ToListAsync())
-            {
-                rdr.Status     = "pending";
-                rdr.ReviewedAt = null;
-                rdr.Comment    = null;
-            }
+        foreach (var rdr in await db.RequestDesignatedReviewers
+                     .Where(r => r.RequestType == AppType && r.RequestId == entity.Id).ToListAsync())
+        {
+            rdr.Status     = "pending";
+            rdr.ReviewedAt = null;
+            rdr.Comment    = null;
         }
 
         var submitter = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);

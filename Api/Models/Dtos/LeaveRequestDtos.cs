@@ -28,7 +28,6 @@ public sealed record LeaveRequestDto(
 
 public sealed record CreateLeaveRequestRequest(
     Guid?    EmployeeId,
-    int?     ApprovalItemId       = null,
     string   LeaveType            = "annual",
     DateTime StartDate            = default,
     DateTime EndDate              = default,
