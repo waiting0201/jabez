@@ -14,6 +14,7 @@ namespace Jabez.Api.Handlers;
 /// <summary>
 /// GET  /attendances           → 打卡紀錄列表
 /// GET  /attendances/today     → 取得當前使用者今日打卡紀錄
+/// POST /attendances/clock-challenge → 取得一次性打卡挑戰碼（防機器人打卡）
 /// POST /attendances/clock-in  → 上班打卡
 /// POST /attendances/clock-out → 下班打卡
 /// POST /attendances/overtime-start → 加班開始
@@ -27,7 +28,8 @@ public sealed class AttendanceHandler(
     ICalendarDayReadService calendarReader,
     IWorkPatternReadService workPattern,
     IWorkdayScheduleProvider workdaySchedule,
-    IShiftScheduleReadService shiftReader)
+    IShiftScheduleReadService shiftReader,
+    IAttendancePunchGuard punchGuard)
 {
     /// <summary>備註欄長度上限（與 AttendanceRecordConfiguration 的 HasMaxLength(500) 同步）</summary>
     private const int RemarkMaxLength = 500;
@@ -71,11 +73,25 @@ public sealed class AttendanceHandler(
         return new OkObjectResult(ApiResponse.Ok(dto));
     }
 
+    /// <summary>
+    /// 取得一次性打卡挑戰碼（防機器人打卡）：四個打卡動作送出前須先取碼，
+    /// 簽發後至少等 MinWaitMs 才能使用，規則見 <see cref="AttendancePunchGuard"/>。
+    /// </summary>
+    public async Task<IActionResult> IssueChallengeAsync(HttpRequest req)
+    {
+        var userId = await GetUserIdAsync(req);
+        var body   = await req.ReadFromJsonAsync<ClockChallengeRequest>();
+        var dto    = punchGuard.IssueChallenge(userId, body?.Action ?? string.Empty);
+        return new OkObjectResult(ApiResponse.Ok(dto));
+    }
+
     /// <summary>上班打卡</summary>
     public async Task<IActionResult> ClockInAsync(HttpRequest req)
     {
         var userId = await GetUserIdAsync(req);
         var body   = await req.ReadFromJsonAsync<ClockActionRequest>() ?? new ClockActionRequest(null, null);
+
+        await punchGuard.GuardAsync(req, userId, "clock-in", body);
 
         var now   = Clock.Now;
         var today = now.Date;
@@ -134,6 +150,8 @@ public sealed class AttendanceHandler(
         var userId = await GetUserIdAsync(req);
         var body   = await req.ReadFromJsonAsync<ClockActionRequest>() ?? new ClockActionRequest(null, null);
 
+        await punchGuard.GuardAsync(req, userId, "clock-out", body);
+
         var now    = Clock.Now;
         var today  = now.Date;
         var record = await db.AttendanceRecords
@@ -190,6 +208,8 @@ public sealed class AttendanceHandler(
     {
         var userId = await GetUserIdAsync(req);
         var body   = await req.ReadFromJsonAsync<ClockActionRequest>() ?? new ClockActionRequest(null, null);
+
+        await punchGuard.GuardAsync(req, userId, "overtime-start", body);
 
         var now   = Clock.Now;
         var today = now.Date;
@@ -262,6 +282,8 @@ public sealed class AttendanceHandler(
     {
         var userId = await GetUserIdAsync(req);
         var body   = await req.ReadFromJsonAsync<ClockActionRequest>() ?? new ClockActionRequest(null, null);
+
+        await punchGuard.GuardAsync(req, userId, "overtime-end", body);
 
         var now    = Clock.Now;
         var today  = now.Date;

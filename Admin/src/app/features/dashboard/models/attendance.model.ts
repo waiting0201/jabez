@@ -68,4 +68,15 @@ export interface ClockActionRequest {
   isBusinessTrip?: boolean;
   /** 下班打卡的早退／逾時原因。非出差且早退／逾時時為必填，後端會擋 */
   reason?: string | null;
+  /** 瀏覽器回報的定位精度（公尺），僅供稽核 */
+  accuracy?: number;
+  /** POST /attendances/clock-challenge 取得的一次性挑戰碼（防機器人打卡，後端必填） */
+  challengeToken?: string;
+}
+
+/** 打卡挑戰碼：簽發後須等 minWaitMs 才可使用、expiresInMs 內有效（後端 AttendancePunchGuard） */
+export interface ClockChallenge {
+  token: string;
+  minWaitMs: number;
+  expiresInMs: number;
 }

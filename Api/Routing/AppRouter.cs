@@ -370,6 +370,7 @@ public sealed class AppRouter(
             // ── Attendances ──────────────────────────────────────────────────
             ("GET",    ["attendances"])                    => await attendances.GetAllAsync(req),
             ("GET",    ["attendances", "today"])           => await attendances.GetTodayAsync(req),
+            ("POST",   ["attendances", "clock-challenge"]) => await attendances.IssueChallengeAsync(req),
             ("POST",   ["attendances", "clock-in"])       => await attendances.ClockInAsync(req),
             ("POST",   ["attendances", "clock-out"])      => await attendances.ClockOutAsync(req),
             ("POST",   ["attendances", "overtime-start"]) => await attendances.OvertimeStartAsync(req),
@@ -699,6 +700,7 @@ public sealed class AppRouter(
             // Attendances — 2026-08 起納入權限管理（原本一律 null＝登入即可）。
             // 兩組權限刻意分離：attendances:* 是「員工對自己」、reports-attendance:* 是「管理者對別人」。
             ("GET",    ["attendances", "today"])          => PermissionCodes.AttendancesRead,
+            ("POST",   ["attendances", "clock-challenge"]) => PermissionCodes.AttendancesWrite,
             ("POST",   ["attendances", "clock-in"])       => PermissionCodes.AttendancesWrite,
             ("POST",   ["attendances", "clock-out"])      => PermissionCodes.AttendancesWrite,
             ("POST",   ["attendances", "overtime-start"]) => PermissionCodes.AttendancesWrite,

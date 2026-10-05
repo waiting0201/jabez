@@ -166,7 +166,20 @@ public sealed record ClockActionRequest(
     /// 下班打卡的早退／逾時原因（四週彈性工時）。
     /// 早退或逾時且**非出差**時為必填，否則後端回 400；出差當日可填可不填。
     /// </summary>
-    string? Reason = null);
+    string? Reason = null,
+    /// <summary>瀏覽器回報的定位精度（公尺），僅供稽核</summary>
+    double? Accuracy = null,
+    /// <summary>POST /attendances/clock-challenge 取得的一次性挑戰碼（防機器人打卡，必填）</summary>
+    string? ChallengeToken = null);
+
+/// <summary>取得打卡挑戰碼</summary>
+public sealed record ClockChallengeRequest(string? Action);
+
+/// <summary>打卡挑戰碼：簽發後須等 MinWaitMs 才可使用、ExpiresInMs 內有效（見 AttendancePunchGuard）</summary>
+public sealed record ClockChallengeDto(
+    string Token,
+    int    MinWaitMs,
+    int    ExpiresInMs);
 
 /// <summary>修改出缺勤紀錄（四個時間欄位 + 備註；出差旗標僅由本人打卡時勾選，此處不開放）</summary>
 public sealed record UpdateAttendanceRequest(

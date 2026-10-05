@@ -105,6 +105,9 @@ var host = new HostBuilder()
         // ── 打卡提醒服務（Timer Trigger 排程使用）──────────────────────────
         services.AddScoped<IAttendanceReminderService, AttendanceReminderService>();
 
+        // ── 防機器人打卡（挑戰碼 + 強制 GPS + 嘗試紀錄）─────────────────
+        services.AddScoped<IAttendancePunchGuard, AttendancePunchGuard>();
+
         // ── 簽核流程輔助服務 ────────────────────────────────────────────────
         services.AddScoped<IApprovalFlowService, ApprovalFlowService>();
         services.AddScoped<IEscalationService, EscalationService>();

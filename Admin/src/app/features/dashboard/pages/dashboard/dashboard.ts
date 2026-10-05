@@ -2,6 +2,7 @@ import {Component, computed, inject, signal, OnInit, OnDestroy, ChangeDetectionS
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {ConfirmModal, ConfirmModalResult} from '@/app/shared/components/confirm-modal';
 import {DatePipe, DecimalPipe} from '@angular/common';
+import {firstValueFrom, Observable} from 'rxjs';
 import {AuthService} from '@core/auth/services/auth.service';
 import {AttendanceService} from '../../services/attendance.service';
 import {LineQuotaService} from '../../services/line-quota.service';
@@ -301,25 +302,45 @@ export class Dashboard implements OnInit, OnDestroy {
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   }
 
-  /** Perform a clock action: get GPS → call service → update state */
-  performAction(type: ClockActionType, reason: string | null = null) {
+  /**
+   * 打卡：同時「取得 GPS」與「向後端取一次性挑戰碼」→ 不足挑戰碼最短停留時間則補等 → 送出。
+   * 防機器人打卡（後端 AttendancePunchGuard）：沒有 GPS 或挑戰碼不合規一律擋下，
+   * 前端先擋 GPS 是為了給明確指引，不是唯一防線。
+   */
+  async performAction(type: ClockActionType, reason: string | null = null) {
     if (this.loading()) return;
     this.loading.set(true);
     this.gpsStatus.set('locating');
 
-    this._getGps().then(coords => {
+    try {
+      const [coords, challenge] = await Promise.all([
+        this._getGps(),
+        firstValueFrom(this.attendanceService.getChallenge(type)),
+      ]);
+      const challengeReceivedAt = Date.now();
+
       this.gpsCoords.set(coords);
       this.gpsStatus.set(coords ? 'success' : 'failed');
+      if (!coords) {
+        this.showToast('無法取得定位，請開啟手機／瀏覽器的定位權限後再打卡。', 'error');
+        return;
+      }
+
+      // 挑戰碼簽發後須停留 minWaitMs；以「收到回應」起算並多留緩衝，避免與後端時間差擦邊被擋
+      const waitMs = challenge.minWaitMs + 300 - (Date.now() - challengeReceivedAt);
+      if (waitMs > 0) await new Promise(resolve => setTimeout(resolve, waitMs));
 
       const body = {
-        latitude: coords?.lat,
-        longitude: coords?.lng,
+        latitude: coords.lat,
+        longitude: coords.lng,
+        accuracy: coords.accuracy,
         overtimeRequestId: type === 'overtime-start' ? (this.selectedOvertimeId() ?? undefined) : undefined,
         isBusinessTrip: this.isBusinessTrip(),
         reason: type === 'clock-out' ? reason : undefined,
+        challengeToken: challenge.token,
       };
 
-      let obs$;
+      let obs$: Observable<TodayAttendance>;
       switch (type) {
         case 'clock-in':       obs$ = this.attendanceService.clockIn(body); break;
         case 'clock-out':      obs$ = this.attendanceService.clockOut(body); break;
@@ -327,24 +348,20 @@ export class Dashboard implements OnInit, OnDestroy {
         case 'overtime-end':   obs$ = this.attendanceService.overtimeEnd(body); break;
       }
 
-      obs$.subscribe({
-        next: record => {
-          this.applyTodayRecord(record);
-          this.loading.set(false);
-          const labels: Record<ClockActionType, string> = {
-            'clock-in': '上班打卡', 'clock-out': '下班打卡',
-            'overtime-start': '加班開始', 'overtime-end': '加班結束',
-          };
-          this.showToast(`${labels[type]}成功！`, coords ? 'success' : 'warning');
-        },
-        error: (err) => {
-          this.loading.set(false);
-          // 後端 ApiResponse.Fail 在 ExceptionMiddleware 包成 { success:false, message, errors } 結構
-          const message = err?.error?.message ?? err?.message ?? '打卡失敗，請稍後重試';
-          this.showToast(message, 'error');
-        },
-      });
-    });
+      const record = await firstValueFrom(obs$);
+      this.applyTodayRecord(record);
+      const labels: Record<ClockActionType, string> = {
+        'clock-in': '上班打卡', 'clock-out': '下班打卡',
+        'overtime-start': '加班開始', 'overtime-end': '加班結束',
+      };
+      this.showToast(`${labels[type]}成功！`, 'success');
+    } catch (err: any) {
+      // 後端 ApiResponse.Fail 在 ExceptionMiddleware 包成 { success:false, message, errors } 結構
+      const message = err?.error?.message ?? err?.message ?? '打卡失敗，請稍後重試';
+      this.showToast(message, 'error');
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   /** 套用今日打卡紀錄，並把出差勾選框同步回後端的當日狀態（單一真相為後端紀錄） */
@@ -358,14 +375,14 @@ export class Dashboard implements OnInit, OnDestroy {
     setTimeout(() => this.toast.set(null), 3000);
   }
 
-  private _getGps(): Promise<{lat: number; lng: number} | null> {
+  private _getGps(): Promise<{lat: number; lng: number; accuracy: number} | null> {
     return new Promise(resolve => {
       if (!navigator.geolocation) {
         resolve(null);
         return;
       }
       navigator.geolocation.getCurrentPosition(
-        pos => resolve({lat: pos.coords.latitude, lng: pos.coords.longitude}),
+        pos => resolve({lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy}),
         () => resolve(null),
         {enableHighAccuracy: true, timeout: 8000, maximumAge: 0}
       );

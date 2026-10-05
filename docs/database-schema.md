@@ -63,6 +63,7 @@
 | `ShiftChangeRequestDate` | 改班的逐日明細：`FromDayType`（**送單當下的快照**，讓簽核者看得到原本是什麼）+ `ToDayType`。一張單可同時調多天（支援「A 日改上班、B 日改休假」的對調）；唯一索引 `(ShiftChangeRequestId, Date)` |
 | `CompensatoryLot` | **補休批次**（取代現行純聚合 SUM 的補休池）：`RateSnapshot` 快照當時的原始加班費率（1.34 / 1.67 / 2.67，到期換算津貼用，事後才算會拿到改版後的費率）、`ExpiresAt` 效期（1–6 月產生用至 7/31、7–12 月至隔年 1/31）、`IsOpening` 標記切換日整批轉入的期初 lot。`SourceOvertimeRequestId` 有 filtered unique index，一張加班單只開一個 lot |
 | `CompensatoryUsage` | 補休**扣抵紀錄**（FIFO，一張補休假可跨多個 lot）：「某張補休假吃掉哪幾筆加班」的單一真相 |
+| `AttendancePunchLog` | 打卡嘗試紀錄（防機器人打卡，2026-10）：本人四個打卡動作的**每一次嘗試**（成功與被擋下）一列，含 Action / AttemptedAt / Succeeded / BlockReason / GPS / Accuracy / IpAddress / UserAgent / ChallengeNonce（成功列 filtered unique＝挑戰碼限用一次）/ ChallengeAgeMs；FK Users **Cascade**（不必加進刪使用者清洗清單）。規則見 [attendance-clock-rules.md §防機器人打卡](business/attendance-clock-rules.md#防機器人打卡2026-10-hotfix) |
 | `AttendanceReminderLog` | 打卡提醒推播紀錄（BatchId 串聯同一次 tick；含 batchStart 紀錄、ErrorCategory 失敗分類、HttpStatusCode、DurationMs；Snapshot 欄位保留歷史） |
 | `PaymentReminderLog` | 撥款日將屆提醒推播紀錄（BatchId 串聯同一次 tick；TriggerSource auto/manual；ReminderDateTaipei 用於同日去重；Status: success/failure/batchStart/skipped_already_sent；FinanceUserId 推播對象） |
 | `SystemSetting` | 系統設定（含站台 / 工時 / 通知 / 撥款提醒）。**`FlexibleWorkStartDate`（四週彈性工時切換日，null ＝ 尚未切換、全系統維持舊制 08:00–17:00）**：刻意做成可設定值而非程式常數（需求方決議「驗收沒問題才切」），判定基準為**該筆資料自己的日期**而非今天，單一真相 `WorkdayHours.For`。`ApprovalEmailEnabled` / `ApprovalLineEnabled` 控制全域簽核通知開關（不影響帳號通知 / 薪資明細 / 打卡提醒）。`PaymentReminderDaysBefore` 控制撥款日將屆提醒提前天數（預設 3 天，0-30） |
