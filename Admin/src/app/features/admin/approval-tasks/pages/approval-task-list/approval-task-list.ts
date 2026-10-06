@@ -31,8 +31,11 @@ const DIRECTOR_SCOPE_DEPT_CODES = new Set([
   'AC', 'Accounting Department',
 ]);
 
-/** 簽核作業頁籤；director＝總監室簽核（範圍），其狀態另由 directorStatus 決定 */
-type ApprovalTab = 'pending' | 'approved' | 'rejected' | 'returned' | 'director';
+/**
+ * 簽核作業頁籤；director＝總監室簽核（範圍），其狀態另由 directorStatus 決定；
+ * reviewed＝已簽核（流程中）：協理以上查看「我已核准、整張單仍在簽核中」的單（範圍，狀態固定 pending）
+ */
+type ApprovalTab = 'pending' | 'reviewed' | 'approved' | 'rejected' | 'returned' | 'director';
 
 /** 「總監室簽核」頁籤內的四種狀態 */
 type DirectorStatus = 'pending' | 'approved' | 'returned' | 'rejected';
@@ -44,7 +47,15 @@ type PaymentStatusFilter = '' | 'paid' | 'unpaid' | 'partial' | 'closed';
  * URL 還原用白名單：詳情頁「返回列表」帶回的 query params 一律經此正規化，
  * 非法值退回預設，避免手改網址把 UI 帶進不存在的頁籤 / 篩選狀態。
  */
-const APPROVAL_TABS: ApprovalTab[] = ['pending', 'approved', 'rejected', 'returned', 'director'];
+const APPROVAL_TABS: ApprovalTab[] = ['pending', 'reviewed', 'approved', 'rejected', 'returned', 'director'];
+
+/**
+ * 「已簽核（流程中）」頁籤涵蓋的申請別 ＝ 業務管理選單「預審申請」到「出差預支沖銷申請」。
+ * 須與後端 PaymentRequestReadService.ReviewedScopeAppTypes 同步。
+ */
+const REVIEWED_SCOPE_APP_TYPES: ApplicationType[] = [
+  'pre_review', 'payment_request', 'advance', 'write_off', 'travel_payment', 'travel', 'travel_write_off',
+];
 const DIRECTOR_STATUSES: DirectorStatus[] = ['pending', 'approved', 'returned', 'rejected'];
 const PAYMENT_STATUSES: PaymentStatusFilter[] = ['paid', 'unpaid', 'partial', 'closed'];
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -86,6 +97,12 @@ export class ApprovalTaskList {
     this.auth.isSuperAdmin() || DIRECTOR_SCOPE_DEPT_CODES.has(this.auth.departmentCode() ?? '')
   );
 
+  /**
+   * 「已簽核（流程中）」tab：協理以上（職級 Level ≤ 3，同高階主管假判準）可見。
+   * 與後端 ApprovalTaskHandler.SeniorReviewerMaxLevel 同步；Superadmin 不開放（待審核本就列出全部）。
+   */
+  canSeeReviewedTab = computed(() => !this.auth.isSuperAdmin() && this.auth.isSeniorExecutive());
+
   /** 是否具備全選核准權限（待審核 tab 才啟用 UI） */
   canBatchApprove = computed(() =>
     this.auth.isSuperAdmin() || this.auth.hasPermission('approval-tasks:batch-approve')
@@ -116,10 +133,12 @@ export class ApprovalTaskList {
     return v && allowed.includes(v) ? v : fallback;
   }
 
-  /** 頁籤：無權看「總監室簽核」者即使網址帶 tab=director 也退回待審核 */
+  /** 頁籤：無權看「總監室簽核」/「已簽核（流程中）」者即使網址帶 tab 也退回待審核 */
   private initialTab(): ApprovalTab {
     const tab = this.pick('tab', APPROVAL_TABS, 'pending');
-    return tab === 'director' && !this.canSeeDirectorTab() ? 'pending' : tab;
+    if (tab === 'director' && !this.canSeeDirectorTab()) return 'pending';
+    if (tab === 'reviewed' && !this.canSeeReviewedTab()) return 'pending';
+    return tab;
   }
 
   /** 撥款子篩選：僅「已核准」頁籤且具權限時才還原（與篩選列的顯示條件一致） */
@@ -176,7 +195,12 @@ export class ApprovalTaskList {
   };
 
   /** 類型下拉選項：[ApplicationType, 中文 label][] */
-  appTypeOptions = computed(() => Object.entries(APPLICATION_TYPE_LABELS) as [ApplicationType, string][]);
+  appTypeOptions = computed(() => {
+    const all = Object.entries(APPLICATION_TYPE_LABELS) as [ApplicationType, string][];
+    return this.activeTab() === 'reviewed'
+      ? all.filter(([type]) => REVIEWED_SCOPE_APP_TYPES.includes(type))
+      : all;
+  });
 
   /** 申請人下拉選項：僅財務體系部門載入（其他人不呼叫，後端亦擋 403） */
   applicantOptions = toSignal(
@@ -355,10 +379,11 @@ export class ApprovalTaskList {
       toObservable(this.directorReviewedOnFilter),
       toObservable(this.reloadTrigger),
     ]).pipe(
-      // 總監室簽核頁籤把「範圍」與「狀態」拆成兩個參數送出（scope=director + status 四態）
+      // 總監室簽核頁籤把「範圍」與「狀態」拆成兩個參數送出（scope=director + status 四態）；
+      // 已簽核（流程中）同為範圍頁籤（scope=reviewed），狀態固定 pending
       switchMap(([p, tab, ds, ps, at, sb, from, to, dsign]) => {
-        const scope  = tab === 'director' ? 'director' : undefined;
-        const status = tab === 'director' ? ds : tab;
+        const scope  = tab === 'director' ? 'director' : tab === 'reviewed' ? 'reviewed' : undefined;
+        const status = tab === 'director' ? ds : tab === 'reviewed' ? 'pending' : tab;
         // 總監簽核日只在 director + approved 送出（signal 本已被 switchTab / setDirectorStatus 清空，此處為第二道保險）
         const directorReviewedOn = tab === 'director' && ds === 'approved' ? (dsign || undefined) : undefined;
         return this.service.getPaged(p, this.PAGE_SIZE, status, ps || undefined, at || undefined, sb || undefined, scope,
