@@ -87,6 +87,12 @@ export class ApprovalTaskReview implements OnInit {
    */
   readonly backQueryParams = this.route.snapshot.queryParams;
 
+  /**
+   * 從「已簽核（流程中）」頁籤進入＝唯讀檢視：這些單我已核准、目前多半不在我的關卡，
+   * 不顯示審核區塊，避免按了才被後端 AuthorizeStepAsync 擋 403。
+   */
+  readonly viewOnly = this.backQueryParams['tab'] === 'reviewed';
+
   /** 審核送出後導頁用：沿用同一組篩選，但回第 1 頁（該筆已離開原頁籤，頁數可能縮短） */
   private get reviewedQueryParams(): Record<string, unknown> {
     const {page, ...rest} = this.backQueryParams;
