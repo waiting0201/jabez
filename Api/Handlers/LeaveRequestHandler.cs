@@ -77,7 +77,7 @@ public sealed class LeaveRequestHandler(
     /// <summary>各假別天數上限（不含年假與補休，它們有獨立邏輯）</summary>
     private static readonly Dictionary<string, int> LeaveTypeDaysLimit = new()
     {
-        ["marriage"]            = 8,
+        ["marriage"]            = 14,
         ["maternity"]           = 56,
         ["miscarriage_3m"]      = 28,
         ["miscarriage_2to3m"]   = 7,
@@ -860,11 +860,11 @@ public sealed class LeaveRequestHandler(
         }));
     }
 
-    /// <summary>查詢當前使用者的婚假配額（上限 8 天，不限年度）</summary>
+    /// <summary>查詢當前使用者的婚假配額（上限 14 天，不限年度；上限取自 LeaveTypeDaysLimit）</summary>
     public async Task<IActionResult> GetMarriageQuotaAsync(HttpRequest req)
     {
         var userId = await GetUserIdAsync(req);
-        const int maxDays = 8;
+        var maxDays = LeaveTypeDaysLimit["marriage"];
 
         var usedHours = await db.LeaveRequests
             .Where(l => l.EmployeeId == userId

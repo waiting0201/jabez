@@ -62,7 +62,7 @@ export class LeaveRequestService {
     return this.http.get<MenstrualQuota>(`${environment.apiUrl}/leave-requests/menstrual-quota`);
   }
 
-  /** 查詢當前使用者的婚假配額（上限 8 天） */
+  /** 查詢當前使用者的婚假配額（上限 14 天） */
   getMarriageQuota(): Observable<MarriageQuota> {
     return this.http.get<MarriageQuota>(`${environment.apiUrl}/leave-requests/marriage-quota`);
   }

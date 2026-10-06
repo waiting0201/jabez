@@ -16,7 +16,7 @@
 | 3 | 病假 | `sick` | 小時 | 無上限 | 按天數扣除半薪 |
 | 4 | 補休 | `compensatory` | 半天（扣 4 小時/半天） | 期初匯入 + 依加班時數（**僅限選「補休」的加班單**） | 有薪 |
 | 5 | 公假 | `official` | 天 | 無上限 | 有薪 |
-| 6 | 婚假 | `marriage` | 天 | 8 天（可不連續） | 有薪 |
+| 6 | 婚假 | `marriage` | 天 | 14 天（可不連續；2026-10 依新法由 8 天調整） | 有薪 |
 | 7 | 產假 | `maternity` | 天（**選起始日、自動填 56 天**） | 56 天 | 有薪 |
 | 8 | 流產假(3 個月以上) | `miscarriage_3m` | 天 | 28 天 | 有薪 |
 | 9 | 流產假(2-3 個月) | `miscarriage_2to3m` | 天 | 7 天 | 有薪 |
@@ -299,7 +299,7 @@
 - **適用假別（工作日型，17 種）**：`annual`（年假）/ `personal`（事假）/ `sick`（病假）/ `compensatory`（補休）/ `official`（公假）/ `senior_executive`（高階主管假）/ `marriage`（婚假）/ `maternity`（產假）/ `bereavement`（喪假）/ `miscarriage_3m`・`miscarriage_2to3m`・`miscarriage_under2m`（流產假系列）/ `prenatal_checkup`（產檢假）/ `paternity`（陪產假）/ `menstrual`（生理假）/ `family_care`（家庭照顧假）/ `parental_leave_daily`（育嬰留停單日）。集合同步於後端 `LeaveDayExpander.WorkingDayLeaveTypes`（`LeaveRequestHandler` 轉引同一份，與銷假逐日展開共用）與前端 `WORKING_DAY_LEAVE_TYPES`（[leave-request.model.ts](../../Admin/src/app/features/admin/leave-requests/models/leave-request.model.ts)）。
 - **不適用假別（連續日曆天，不扣假日）**：`ceremonial_festival`（歲時祭儀假）與 `parental_leave`（育嬰留職停薪，理由見 [§育嬰留職停薪規則](#育嬰留職停薪規則2026-08-新增)）。
 - **不適用「人」**：`User.IsShiftWorker = true` 的排班制員工（賣店 / 營業所）不論假別皆不扣假日，見 [§排班制員工不扣假日](#排班制員工不扣假日2026-08-新增)。
-- **天數上限一律改以工作日計**：婚假 8 / 喪假 8・6・3 / 流產假 28・7・5 / 產檢假・陪產假 7 / 生理假每月 1 天・全年 12 天等數字不變，但語意變成「N 個工作日」（`ValidateLeaveQuotaAsync` 比對的 `Hours / 8` 本來就是扣假日後的值，無需額外改動）。
+- **天數上限一律改以工作日計**：婚假 14 / 喪假 8・6・3 / 流產假 28・7・5 / 產檢假・陪產假 7 / 生理假每月 1 天・全年 12 天等數字不變，但語意變成「N 個工作日」（`ValidateLeaveQuotaAsync` 比對的 `Hours / 8` 本來就是扣假日後的值，無需額外改動）。
 - **產假特例**：區間仍固定為「起始日 + 55 天 = 56 個**日曆天**」（法定一次請完、不可拆），但 `Hours` 只計其中工作日（約 40 天 / 320 小時），不再固定 448 小時。
 - **假日來源＝唯一權威 `CalendarDays` 表**：台灣政府行事曆匯入時 `IsHoliday=true` 已同時涵蓋**六日 + 國定假**、補班六為工作日（`IsHoliday=false`）。透過 [CalendarDayReadService](../../Api/Services/Dapper/CalendarDayReadService.cs) 的 `GetHolidayDatesAsync` / `HasDataForRangeAsync` 讀取（與出差假日活動共用）。**例外：彈性休假日（原「補假」）雖為 `IsHoliday=1` 但不從請假日中扣除**，見 [§彈性休假日](#彈性休假日2026-09-新增)。
 - **行事曆完整性逐年檢查**：`HasDataForRangeAsync` 為 EXISTS 語意（區間內任一天有資料即 true），產假 56 天與拉長後的婚假 / 喪假可能跨年，故 `LeaveRequestHandler.HasCalendarForAllYearsAsync` 對區間橫跨的**每個年度**各查一次，全部有資料才算已匯入。
