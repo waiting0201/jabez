@@ -202,7 +202,7 @@ export const LEAVE_TYPE_GROUPS: { label: string; types: LeaveType[] }[] = [
 
 /** 假別天數上限（前端顯示用，實際驗證在後端） */
 export const LEAVE_TYPE_DAYS_LIMIT: Partial<Record<LeaveType, number>> = {
-  marriage:            8,
+  marriage:            14,
   maternity:           56,
   miscarriage_3m:      28,
   miscarriage_2to3m:   7,
@@ -363,7 +363,7 @@ export interface MenstrualQuota {
   message?: string;
 }
 
-/** 婚假配額（上限 8 天，不限年度） */
+/** 婚假配額（上限 14 天，不限年度） */
 export interface MarriageQuota {
   maxDays: number;
   usedDays: number;
