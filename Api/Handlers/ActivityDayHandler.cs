@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Jabez.Api.Handlers;
 
 /// <summary>
-/// 活動日（四週彈性工時 §3.2）—— 各部門協理於活動 2 個月前預先排定日期並勾選預定人力，
+/// 活動日（四週彈性工時 §3.2）—— 各部門協理於活動 3 個月前預先排定日期並勾選預定人力，
 /// 讓同仁排自己的班時看得到。
 ///
 /// GET    /activity-days?year=&amp;month=[&amp;departmentId=]

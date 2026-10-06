@@ -47,6 +47,8 @@ export interface TodayAttendance {
   expectedClockOutTime?: string | null;
   /** 正常下班帶終點（公司預設應下班 +30 分、自訂上下班時段 +5 分），晚於此即逾時 */
   normalClockOutUntil?: string | null;
+  /** 今日遲到界線（公司 09:30、自訂上下班時段 S+2 分、請上午半天假者 13:05），晚於此打上班卡須填遲到原因；未切換為 null */
+  lateAfter?: string | null;
 }
 
 export type ShiftDayTypeValue = 'work' | 'rest_day' | 'statutory_off' | 'public_holiday';
@@ -66,7 +68,7 @@ export interface ClockActionRequest {
   overtimeRequestId?: number;
   /** 本次打卡為出差：後端以此值覆寫當日紀錄的 isBusinessTrip */
   isBusinessTrip?: boolean;
-  /** 下班打卡的早退／逾時原因。非出差且早退／逾時時為必填，後端會擋 */
+  /** 上班打卡的遲到原因／下班打卡的早退・逾時原因。非出差且遲到／早退／逾時時為必填，後端會擋 */
   reason?: string | null;
   /** 瀏覽器回報的定位精度（公尺），僅供稽核 */
   accuracy?: number;

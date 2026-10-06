@@ -24,7 +24,8 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
                a.OvertimeStartTime, a.OvertimeStartLatitude, a.OvertimeStartLongitude,
                a.OvertimeEndTime, a.OvertimeEndLatitude, a.OvertimeEndLongitude,
                a.OvertimeRequestId, a.CreatedAt, a.IsBusinessTrip, a.Remark,
-               a.IsManuallyAdjusted, a.LastAdjustedAt, adj.Name AS AdjustedByName
+               a.IsManuallyAdjusted, a.LastAdjustedAt, adj.Name AS AdjustedByName,
+               a.IsLate, a.IsEarlyLeave, a.LateReason, a.ClockOutReason
         FROM AttendanceRecords a
         INNER JOIN Users u ON a.UserId = u.Id
         LEFT JOIN Users adj ON a.LastAdjustedById = adj.Id
@@ -260,7 +261,11 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
             IsClockInAuto:  (bool)row.IsClockInAuto,
             IsManuallyAdjusted: (bool)row.IsManuallyAdjusted,
             AdjustedByName:     (string?)row.AdjustedByName,
-            AdjustedAt:         (DateTime?)row.LastAdjustedAt);
+            AdjustedAt:         (DateTime?)row.LastAdjustedAt,
+            IsLate:             (bool)row.IsLate,
+            IsEarlyLeave:       (bool)row.IsEarlyLeave,
+            LateReason:         (string?)row.LateReason,
+            ClockOutReason:     (string?)row.ClockOutReason);
             // RowKind / ExpectedStart / ExpectedEnd 由 AttendanceLeaveMerger 事後以 with { } 補上
 
     private static TodayAttendanceDto MapTodayRow(dynamic row) =>

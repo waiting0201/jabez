@@ -133,7 +133,7 @@
               <button class="btn btn-primary w-100 py-3 flex flex-col items-center gap-2"
                       [disabled]="!canClockIn()"
                       [title]="clockLockReason() || (currentLeave() ? '目前在請假時段內，無法打卡' : '')"
-                      (click)="performAction('clock-in')">
+                      (click)="confirmAndClockIn()">
                 <svg class="sa-icon sa-icon-2x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#log-in"></use></svg>
                 <span class="fw-600">上班打卡</span>
               </button>

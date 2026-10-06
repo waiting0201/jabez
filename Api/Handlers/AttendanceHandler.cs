@@ -121,6 +121,14 @@ public sealed class AttendanceHandler(
 
         await EnsureNotOnLeaveAsync(userId, now, ctx.Flexible, forClockOut: false);
 
+        // 遲到：超過準時界線（公司 09:30、自訂時段 S+2 分、上午請假者 13:05）須填遲到原因（2026-10-06）。
+        // 出差當日欄位仍顯示但改為非必填，比照下班打卡的早退／逾時原因。
+        if (ctx.Flexible && !isTrip
+            && ClockRules.IsLate(now, ctx.Schedule, ctx.AfternoonOnly, ctx.Profile)
+            && string.IsNullOrWhiteSpace(body.Reason))
+            throw AppException.BadRequest(
+                $"已超過 {ClockRules.LateThreshold(ctx.Schedule, ctx.AfternoonOnly, ctx.Profile):HH\\:mm}，請填寫遲到原因。");
+
         if (record is null)
         {
             record = new AttendanceRecord
@@ -137,6 +145,7 @@ public sealed class AttendanceHandler(
         record.ClockInLongitude  = body.Longitude;
         record.IsClockInAuto     = false;   // 本人打卡
         record.IsBusinessTrip    = isTrip;
+        record.LateReason        = TrimReason(body.Reason);
         // 出差當日不判定遲到（在外辦公本來就不是九點進辦公室）
         RefreshExceptionFlags(record, ctx, isTrip);
 
@@ -192,9 +201,7 @@ public sealed class AttendanceHandler(
         record.IsClockOutAuto     = false;   // 本人打卡
         record.IsBusinessTrip     = isTrip;
         RefreshExceptionFlags(record, ctx, isTrip, kind);
-        record.ClockOutReason     = string.IsNullOrWhiteSpace(body.Reason)
-            ? null
-            : body.Reason.Trim()[..Math.Min(body.Reason.Trim().Length, RemarkMaxLength)];
+        record.ClockOutReason     = TrimReason(body.Reason);
 
         await db.SaveChangesAsync();
 
@@ -432,6 +439,8 @@ public sealed class AttendanceHandler(
                     || record.Remark            != newRemark;
         bool overtimeChanged = record.OvertimeStartTime != body.OvertimeStartTime
                             || record.OvertimeEndTime   != body.OvertimeEndTime;
+        bool clockChanged    = record.ClockInTime  != body.ClockInTime
+                            || record.ClockOutTime != body.ClockOutTime;
 
         if (changed)
         {
@@ -468,6 +477,21 @@ public sealed class AttendanceHandler(
         record.OvertimeEndTime    = body.OvertimeEndTime;
         record.Remark             = newRemark;
         // IsBusinessTrip 刻意不在此異動：出差僅由本人打卡時勾選
+
+        // 上下班時間被改動 → 依「該筆紀錄自己的日期」重算遲到／早退（2026-10-06），
+        // 否則報表的 badge 仍是改之前的結果。切換日前的紀錄 ctx.Flexible = false，不動旗標。
+        if (clockChanged)
+        {
+            var ctx = await ResolveClockContextAsync(record.UserId, record.RecordDate);
+            if (ctx.Flexible)
+            {
+                ClockOutKind? kind = record.ClockInTime is { } inAt && record.ClockOutTime is { } outAt
+                    ? ClockRules.ResolveClockOutKind(inAt, outAt, ctx.Schedule, ctx.AfternoonOnly, ctx.Profile)
+                    : null;
+                RefreshExceptionFlags(record, ctx, record.IsBusinessTrip, kind);
+                if (kind is null) record.IsEarlyLeave = false;
+            }
+        }
 
         // 加班起訖被改動 → 重算該日加班單的結算時數（同一次 SaveChanges，冪等）。
         // 這是「補登期限外」或「忘了打加班結束卡」的唯一補正路徑：沒有結算時數就沒有給付。
@@ -556,12 +580,20 @@ public sealed class AttendanceHandler(
         record.IsLate = !isBusinessTrip
                      && record.ClockInTime is { } ci
                      && !record.IsClockInAuto            // 系統補卡不是本人遲到
-                     && ClockRules.IsLate(ci, ctx.Profile);
+                     && ClockRules.IsLate(ci, ctx.Schedule, ctx.AfternoonOnly, ctx.Profile);
 
         if (clockOutKind is { } kind)
             record.IsEarlyLeave = !isBusinessTrip && kind == ClockOutKind.Early;
         else if (isBusinessTrip)
             record.IsEarlyLeave = false;
+    }
+
+    /// <summary>打卡原因（遲到／早退／逾時）正規化：空白存 null、上限 500 字。</summary>
+    private static string? TrimReason(string? reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason)) return null;
+        var t = reason.Trim();
+        return t[..Math.Min(t.Length, RemarkMaxLength)];
     }
 
     private async Task<ClockContext> ResolveClockContextAsync(Guid userId, DateTime now)
@@ -691,6 +723,10 @@ public sealed class AttendanceHandler(
             : null;
         // 正常下班帶的終點（公司預設 T+30 分、自訂時段 E+5 分），前端據此判斷逾時、不再寫死 30 分
         DateTime? normalOutUntil = expectedOut?.AddMinutes(ctx.Profile.GraceMinutes);
+        // 遲到界線：前端據此決定上班打卡是否先開原因對話框（與 ClockInAsync 擋件同一函式）
+        DateTime? lateAfter = ctx.Flexible
+            ? now.Date.Add(ClockRules.LateThreshold(ctx.Schedule, ctx.AfternoonOnly, ctx.Profile).ToTimeSpan())
+            : null;
 
         // 加班開始卡的時間規則（與 OvertimeStartAsync 同一函式）：未到最早可打時間 → 前端據此停用按鈕
         DateTime? overtimeNotBefore = null;
@@ -710,7 +746,8 @@ public sealed class AttendanceHandler(
             CanClockInOut:        canClock,
             ClockLockReason:      lockReason,
             ExpectedClockOutTime: expectedOut,
-            NormalClockOutUntil:  normalOutUntil);
+            NormalClockOutUntil:  normalOutUntil,
+            LateAfter:            lateAfter);
 
         return record is null
             ? new TodayAttendanceDto(
@@ -732,7 +769,8 @@ public sealed class AttendanceHandler(
                 CanClockInOut:        flexFields.CanClockInOut,
                 ClockLockReason:      flexFields.ClockLockReason,
                 ExpectedClockOutTime: flexFields.ExpectedClockOutTime,
-                NormalClockOutUntil:  flexFields.NormalClockOutUntil)
+                NormalClockOutUntil:  flexFields.NormalClockOutUntil,
+                LateAfter:            flexFields.LateAfter)
             : record with
             {
                 TodayLeaves = leaves,
@@ -746,6 +784,7 @@ public sealed class AttendanceHandler(
                 ClockLockReason      = flexFields.ClockLockReason,
                 ExpectedClockOutTime = flexFields.ExpectedClockOutTime,
                 NormalClockOutUntil  = flexFields.NormalClockOutUntil,
+                LateAfter            = flexFields.LateAfter,
             };
     }
 }

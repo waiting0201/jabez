@@ -63,6 +63,21 @@ public static class ClockRules
         TimeOnly.FromDateTime(actualClockIn) > (profile ?? ClockProfile.Company).OnTimeUntil;
 
     /// <summary>
+    /// 當日的遲到界線（超過即為遲到）。一般為個人準時界線（公司 09:30、自訂時段 S+2 分）；
+    /// <paramref name="afternoonOnly"/>（請上午半天假、下午才上班）時改為 13:00 ＋ 交接容許帶 5 分 ——
+    /// 否則 13:00 準時進來的人會因「超過 09:30」被記遲到（2026-10-06 修正）。
+    /// 打卡寫旗標、必填遲到原因、首頁提示三處共用。
+    /// </summary>
+    public static TimeOnly LateThreshold(WorkdaySchedule schedule, bool afternoonOnly, ClockProfile? profile = null) =>
+        afternoonOnly
+            ? schedule.HalfDayPmStart.AddMinutes(LeaveHandoverToleranceMinutes)
+            : (profile ?? ClockProfile.Company).OnTimeUntil;
+
+    /// <summary>依當日情境判斷是否遲到（見 <see cref="LateThreshold"/>）。</summary>
+    public static bool IsLate(DateTime actualClockIn, WorkdaySchedule schedule, bool afternoonOnly, ClockProfile? profile = null) =>
+        TimeOnly.FromDateTime(actualClockIn) > LateThreshold(schedule, afternoonOnly, profile);
+
+    /// <summary>
     /// 應下班時間。公司預設 ＝ 實際上班打卡時刻 ＋ 9 小時（含午休），**因人而異**；
     /// <paramref name="afternoonOnly"/>（當日請了上午半天假、下午才上班）時改為 ＋4 小時 ——
     /// 午休已過，不再扣那 1 小時。與 §5.2 的下班提醒時點同一套算法。

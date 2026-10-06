@@ -67,7 +67,7 @@ export class ShiftScheduleCalendar implements OnInit {
   readonly labels = DAY_TYPE_LABELS;
 
   // 預設看「此刻還能排的最近一個月」：次月開放至本月 25 日，26 日起次月已截止、改看下下月
-  //（開放期＝前兩個月 10 日 ～ 前一個月 25 日，後端 ShiftScheduleWindow 為單一真相，這裡只決定預設月份）
+  //（開放期＝前三個月 10 日 ～ 前一個月 25 日，後端 ShiftScheduleWindow 為單一真相，這裡只決定預設月份）
   private static readonly defaultPeriod = (() => {
     const d = new Date();
     const next = new Date(d.getFullYear(), d.getMonth() + (d.getDate() > 25 ? 2 : 1), 1);

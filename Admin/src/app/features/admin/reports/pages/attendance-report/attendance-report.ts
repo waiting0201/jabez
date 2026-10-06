@@ -57,6 +57,14 @@ export interface AttendanceRecordRow {
   isBusinessTrip: boolean;
   /** 管理者填寫的備註（僅編輯表單使用，清單不顯示） */
   remark: string;
+  /** 遲到 / 早退（四週彈性工時切換後由後端於打卡時判定，出差當日恆 false） */
+  isLate: boolean;
+  isEarlyLeave: boolean;
+  /** 員工上班打卡時填寫的遲到原因 */
+  lateReason: string;
+  /** 員工下班打卡時填寫的原因，與其標籤（早退原因 / 逾時原因 / 下班說明） */
+  clockOutReason: string;
+  clockOutReasonLabel: string;
   /** 下班 − 上班的實際跨度（小時，含午休）；缺任一端為 null */
   workHours: number | null;
   /** 上下班跨度超過 LONG_WORKDAY_HOURS 小時 */
@@ -286,6 +294,11 @@ export class AttendanceReport implements OnInit {
               && !!r.recordDate && new Date(r.recordDate) < new Date(new Date().toDateString()),
             isBusinessTrip: !!r.isBusinessTrip,
             remark: r.remark ?? '',
+            isLate: !!r.isLate,
+            isEarlyLeave: !!r.isEarlyLeave,
+            lateReason: r.lateReason ?? '',
+            clockOutReason: r.clockOutReason ?? '',
+            clockOutReasonLabel: this.clockOutReasonLabel(r),
             workHours: this.computeWorkHours(r.clockInTime, r.clockOutTime),
             isLongWorkday: this.isLongWorkday(r.clockInTime, r.clockOutTime),
             overtimeStartTime: r.overtimeStartTime ? new Date(r.overtimeStartTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
@@ -328,6 +341,16 @@ export class AttendanceReport implements OnInit {
   }
 
   /** 顯示用工時（四捨五入至小數一位）。刻意與 isLongWorkday 分離：捨入後比較會讓 9:31 被捨成 9.5 而漏標 */
+  /**
+   * 下班打卡原因的標籤：早退 → 早退原因；出差當日（早退／逾時皆不判定、原因非必填）→ 下班說明；其餘 → 逾時原因。
+   * 後端只存一欄 ClockOutReason，未另存「逾時」旗標，故以 isEarlyLeave / isBusinessTrip 推回當時的情境。
+   */
+  private clockOutReasonLabel(r: any): string {
+    if (r.isEarlyLeave) return '早退原因';
+    if (r.isBusinessTrip) return '下班說明';
+    return '逾時原因';
+  }
+
   private computeWorkHours(rawIn: string | null, rawOut: string | null): number | null {
     const h = this.rawWorkHours(rawIn, rawOut);
     return h == null ? null : Math.round(h * 10) / 10;
@@ -523,6 +546,10 @@ export class AttendanceReport implements OnInit {
             r.rowKind === 'leave' ? '請假（未打卡）' : '',
             (!r.clockInTime && r.expectedStart && r.rowKind === 'clock') ? '未打上班卡' : '',
             r.isBusinessTrip ? '出差' : '',
+            r.isLate ? '遲到' : '',
+            r.lateReason ? `遲到原因：${r.lateReason}` : '',
+            r.isEarlyLeave ? '早退' : '',
+            r.clockOutReason ? `${this.clockOutReasonLabel(r)}：${r.clockOutReason}` : '',
             this.isLongWorkday(r.clockInTime, r.clockOutTime) ? `超過 ${LONG_WORKDAY_HOURS} 小時` : '',
           ].filter(Boolean).join('；'),
         }));

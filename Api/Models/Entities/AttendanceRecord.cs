@@ -46,6 +46,11 @@ public class AttendanceRecord
     /// 讓同仁想填就能填比直接拿掉欄位有用；改的是必填性，不是可見性。
     /// </summary>
     public string?   ClockOutReason         { get; set; }
+    /// <summary>
+    /// 上班打卡的遲到原因（上限 500 字，2026-10-06 新增）。遲到（非出差）時必填，
+    /// 出差當日可選填；與 <see cref="ClockOutReason"/> 同為員工打卡當下自填，與 <see cref="Remark"/> 語意不同。
+    /// </summary>
+    public string?   LateReason             { get; set; }
     public DateTime? OvertimeStartTime      { get; set; }
     public double?   OvertimeStartLatitude  { get; set; }
     public double?   OvertimeStartLongitude { get; set; }

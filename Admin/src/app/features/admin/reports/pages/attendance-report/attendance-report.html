@@ -123,6 +123,10 @@
                     <span class="badge bg-warning-subtle text-warning-emphasis ms-1"
                           title="未打上班卡，系統於登入時自動補上（已避開請假時段）">系統補卡</span>
                   }
+                  @if (row.isLate) {
+                    <span class="badge bg-danger-subtle text-danger ms-1"
+                          title="超過上班準時時間打卡（自訂上下班時段者依個人時段；出差當日不判定）">遲到</span>
+                  }
                   @if (row.isManuallyAdjusted) {
                     <span class="badge bg-info-subtle text-info-emphasis ms-1"
                           [title]="'管理者已修正：' + row.adjustedBy + ' ' + row.adjustedAt">已修正</span>
@@ -131,6 +135,10 @@
                     <button class="btn btn-sm btn-ghost-primary inline-flex items-center p-0 ms-1" title="查看打卡位置" (click)="openMap('上班打卡', row.clockInLatitude!, row.clockInLongitude!)">
                       <svg class="sa-icon sa-icon-1x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
                     </button>
+                  }
+                  @if (row.lateReason) {
+                    <div class="text-muted small text-start max-w-[180px] mx-auto truncate"
+                         [title]="'遲到原因：' + row.lateReason">遲到原因：{{ row.lateReason }}</div>
                   }
                 </td>
                 <td class="text-center" [title]="row.expectedWindow">
@@ -143,6 +151,10 @@
                     <span class="badge bg-danger-subtle text-danger ms-1"
                           title="有上班卡但沒有下班卡；上班時間異常（如凌晨）或非工作日時，系統不會自動補下班卡，請管理者確認後補正">未打下班卡</span>
                   }
+                  @if (row.isEarlyLeave) {
+                    <span class="badge bg-danger-subtle text-danger ms-1"
+                          title="出勤未滿應出勤時數即打下班卡（出差當日不判定）">早退</span>
+                  }
                   @if (row.isLongWorkday) {
                     <span class="badge bg-danger-subtle text-danger ms-1"
                           [title]="'上下班跨度 ' + row.workHours + ' 小時（含午休）'">超過 {{ longWorkdayHours }} 小時</span>
@@ -151,6 +163,10 @@
                     <button class="btn btn-sm btn-ghost-primary inline-flex items-center p-0 ms-1" title="查看打卡位置" (click)="openMap('下班打卡', row.clockOutLatitude!, row.clockOutLongitude!)">
                       <svg class="sa-icon sa-icon-1x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
                     </button>
+                  }
+                  @if (row.clockOutReason) {
+                    <div class="text-muted small text-start max-w-[180px] mx-auto truncate"
+                         [title]="row.clockOutReasonLabel + '：' + row.clockOutReason">{{ row.clockOutReasonLabel }}：{{ row.clockOutReason }}</div>
                   }
                 </td>
                 <td class="text-center">

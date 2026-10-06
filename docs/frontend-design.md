@@ -2224,6 +2224,9 @@ try {
 }
 ```
 
+使用點：下班打卡（早退／逾時原因）、**上班打卡遲到原因**（2026-10-06，`dashboard.ts` 的 `confirmAndClockIn()`，
+未遲到時直接打卡不跳視窗，避免一般情況多一步）。
+
 三個約定：
 - **取消走 `dismiss()`**（reject），確定走 `close(result)`。呼叫端用 try/catch 區分，
   不要用 `result.confirmed` 判斷取消 —— 取消根本不會 resolve。

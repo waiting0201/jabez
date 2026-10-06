@@ -58,7 +58,15 @@ public sealed record AttendanceRecordDto(
     /// <summary>最後修改者姓名（無 FK，由 LastAdjustedById 左連 Users；查無為 null）</summary>
     string?   AdjustedByName = null,
     /// <summary>最後修改時間</summary>
-    DateTime? AdjustedAt = null);
+    DateTime? AdjustedAt = null,
+    /// <summary>遲到（四週彈性工時切換後才判定；出差當日恆 false）。虛擬列恆為 false</summary>
+    bool      IsLate = false,
+    /// <summary>早退（四週彈性工時切換後才判定；出差當日恆 false）。虛擬列恆為 false</summary>
+    bool      IsEarlyLeave = false,
+    /// <summary>員工上班打卡時填寫的遲到原因</summary>
+    string?   LateReason = null,
+    /// <summary>員工下班打卡時填寫的早退／逾時原因（依 IsEarlyLeave 區分標籤）</summary>
+    string?   ClockOutReason = null);
 
 /// <summary>出缺勤報表列中的單張請假資訊（當日份）</summary>
 public sealed record AttendanceLeaveDto(
@@ -130,7 +138,12 @@ public sealed record TodayAttendanceDto(
     /// </summary>
     DateTime? ExpectedClockOutTime = null,
     /// <summary>正常下班帶終點（應下班 ＋ 容許帶：公司預設 30 分、自訂上下班時段 5 分），晚於此即逾時。</summary>
-    DateTime? NormalClockOutUntil  = null);
+    DateTime? NormalClockOutUntil  = null,
+    /// <summary>
+    /// 今日遲到界線（超過即為遲到、上班打卡須填遲到原因）：公司 09:30、自訂時段 S+2 分、
+    /// 請上午半天假者 13:05（見 ClockRules.LateThreshold）。未切換時為 null。
+    /// </summary>
+    DateTime? LateAfter = null);
 
 /// <summary>
 /// 出缺勤報表合併用的原料列：區間內已核准的假單（尚未逐日展開）。

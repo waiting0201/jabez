@@ -241,6 +241,40 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   /**
+   * 上班打卡：超過遲到界線（後端 `lateAfter`：公司 09:30、自訂上下班時段 S+2 分、請上午半天假者 13:05）
+   * 時先跳對話框填遲到原因，出差當日改為非必填；未遲到直接打卡（不增加一般情況的操作步驟）。
+   * 舊制（尚未切換）一律直接打卡。
+   */
+  async confirmAndClockIn(): Promise<void> {
+    const r = this.todayRecord();
+    const lateAfter = r?.flexibleEnabled && r.lateAfter ? new Date(r.lateAfter) : null;
+    const now = new Date();
+    if (!lateAfter || now <= lateAfter) {
+      this.performAction('clock-in');
+      return;
+    }
+
+    const lateMin = Math.max(1, Math.round((now.getTime() - lateAfter.getTime()) / 60000));
+    const ref = this.modal.open(ConfirmModal, {centered: true});
+    const ci = ref.componentInstance as ConfirmModal;
+    ci.title = '確認上班打卡';
+    ci.message = '今日上班打卡已逾時';
+    ci.confirmText = '確定打卡';
+    ci.tone = 'warning';
+    ci.detail = `已超過上班準時時間（${this.timeText(lateAfter)}）${lateMin} 分鐘，將記為遲到。`;
+    ci.reasonLabel = '遲到原因';
+    ci.reasonRequired = !this.isBusinessTrip();
+
+    let result: ConfirmModalResult;
+    try {
+      result = await ref.result;            // 按「取消」會 reject → 不產生任何紀錄
+    } catch {
+      return;
+    }
+    this.performAction('clock-in', result.reason);
+  }
+
+  /**
    * 下班打卡一律先跳確認對話框（防誤觸），早退／逾時的必填原因**併入同一個視窗**
    * （規格明訂不另開第二個視窗）。三種情況以應下班時間 T 為界，互斥且涵蓋全部：
    * `< T` 早退必填原因、`[T, T+30分]` 正常只需確認、`> T+30分` 逾時必填原因
@@ -336,7 +370,7 @@ export class Dashboard implements OnInit, OnDestroy {
         accuracy: coords.accuracy,
         overtimeRequestId: type === 'overtime-start' ? (this.selectedOvertimeId() ?? undefined) : undefined,
         isBusinessTrip: this.isBusinessTrip(),
-        reason: type === 'clock-out' ? reason : undefined,
+        reason: type === 'clock-in' || type === 'clock-out' ? reason : undefined,
         challengeToken: challenge.token,
       };
 

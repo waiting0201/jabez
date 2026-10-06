@@ -12,13 +12,13 @@ namespace Jabez.Api.Services;
 ///
 /// | 時點 | 對象 | 內容 |
 /// |---|---|---|
-/// | 10 號 09:00 | 全員 | **下下月**排班已開放填寫（附註次月 25 日截止） |
+/// | 10 號 09:00 | 全員 | **第 3 個月**排班已開放填寫（附註次月 25 日截止） |
 /// | 20 號 09:00 | **次月尚未完成排班者** | 排班未完成提醒 |
 /// | 25 號 12:00 | 次月尚未完成排班者 | 今日 23:59:59 截止 |
 /// | 26 號 09:00 | **前一日被自動排班者** | 系統已為您自動排班 |
 ///
-/// 10 號的對象是下下月：2026-10-01 起每個月份的開放期為「前兩個月 10 日 ～ 前一個月 25 日」，
-/// 10 號新開放的是下下月（次月早在上個月 10 號就已開放）。其餘三個時點仍針對次月。
+/// 10 號的對象是第 3 個月：2026-10-06 起每個月份的開放期為「前三個月 10 日 ～ 前一個月 25 日」，
+/// 10 號新開放的是第 3 個月（次月與第 2 個月早已開放）。其餘三個時點仍針對次月。
 ///
 /// 同日去重：同一種提醒一天只推一次（沿用 <c>AttendanceReminderLogs</c> 的 batchStart 慣例，
 /// 以 <c>ReminderType</c> 區分槽別）。冷啟動延遲導致同一時點被跑兩次時靠它擋掉。
@@ -58,8 +58,9 @@ public sealed class ShiftScheduleReminderService(
         if (triggerSource == "auto" && await HasPushedTodayAsync(now.Date, kind, ct))
             return new ShiftScheduleReminderRunResult(kind, 0, 0, 1);
 
-        // 目標月份：10 號開放的是**下下月**；20 / 25 號催的、26 號自動排好的是**次月**
-        var target = new DateTime(now.Year, now.Month, 1).AddMonths(kind == "schOpen" ? 2 : 1);
+        // 目標月份：10 號開放的是**第 3 個月**；20 / 25 號催的、26 號自動排好的是**次月**
+        var target = new DateTime(now.Year, now.Month, 1)
+            .AddMonths(kind == "schOpen" ? ShiftScheduleWindow.OpenMonthsAhead : 1);
 
         // 26 號：**先自動排班、再通知**。順序不可顛倒 ——
         // 收件人是「被自動排班者」（ShiftScheduleMonth.Status = auto），排班沒跑就一個人都挑不到。
@@ -156,7 +157,7 @@ public sealed class ShiftScheduleReminderService(
             $"{target:yyyy 年 M 月}班表已開放填寫，請於 {target.AddMonths(-1).Month} 月 {ShiftScheduleWindow.OpenToDay} 日 23:59 前完成排定"
             + $"（例假日至少 {ShiftScheduleValidator.RequiredStatutoryOffDays} 天，"
             + $"例假＋休假合計 {ShiftScheduleValidator.RequiredOffDaysFor(target.Year, target.Month)} 天）。"
-            + $"另提醒：{target.AddMonths(-1).Month} 月班表將於本月 {ShiftScheduleWindow.OpenToDay} 日 23:59 截止。"),
+            + $"另提醒：{target.AddMonths(1 - ShiftScheduleWindow.OpenMonthsAhead).Month} 月班表將於本月 {ShiftScheduleWindow.OpenToDay} 日 23:59 截止。"),
 
         "schPending" => ($"{target.Month} 月排班尚未完成",
             $"您的 {target:yyyy 年 M 月}班表尚未完成排定，請於本月 {ShiftScheduleWindow.OpenToDay} 日 23:59 前完成，"

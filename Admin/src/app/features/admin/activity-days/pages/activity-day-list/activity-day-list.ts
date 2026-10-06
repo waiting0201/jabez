@@ -12,7 +12,7 @@ interface DeptLookup { id: number; name: string; parentId: number | null; }
 interface UserLookupRow { id: string; name: string; departmentId?: number; status: string; }
 
 /**
- * 活動日管理（四週彈性工時 §3.2）—— 各部門協理於活動 2 個月前排定日期並勾選預定人力。
+ * 活動日管理（四週彈性工時 §3.2）—— 各部門協理於活動 3 個月前排定日期並勾選預定人力。
  *
  * 三件事在畫面上要講清楚：
  * 1. **活動日可以排在國定假日上**（預定人力當天直接打上下班卡、不需加班單），列表以 badge 標示

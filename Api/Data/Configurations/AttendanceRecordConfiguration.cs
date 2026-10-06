@@ -37,6 +37,9 @@ public class AttendanceRecordConfiguration : IEntityTypeConfiguration<Attendance
         builder.Property(a => a.ClockOutReason)
                .HasMaxLength(500);
 
+        builder.Property(a => a.LateReason)
+               .HasMaxLength(500);
+
         builder.Property(a => a.CreatedAt)
                .HasDefaultValueSql("GETUTCDATE() AT TIME ZONE 'UTC' AT TIME ZONE 'Taipei Standard Time'");
 
