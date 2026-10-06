@@ -25,6 +25,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
     /// 避免像 2026-08 之前的 returned 一樣靜默落到 StepMatchClause 的 pending fallback、回傳不相干的待審清單。
     /// </summary>
     private static readonly HashSet<string> ValidListStatuses = ["pending", "approved", "returned", "rejected"];
+    /// <summary>「已簽核（流程中）」頁籤的職級門檻：Level ≤ 3＝協理以上（Level 數字越小層級越高）</summary>
+    private const int SeniorReviewerMaxLevel = 3;
     public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "leave_revocation", "travel", "overtime", "advance", "write_off", "travel_write_off", "holiday_travel", "travel_payment", "pre_review", "shift_change"];
 
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
@@ -34,12 +36,14 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         // scope  參數：director（總監室簽核，範圍維度，與 status 四態自由組合；舊值 status=director_pending 相容為兩者組合）
         // dateFrom / dateTo：申請日期（送簽日）區間，各頁籤常駐
         // directorReviewedOn：總監簽核日（單一日期），僅 scope=director + status=approved 生效
+        // scope=reviewed：已簽核（流程中），協理以上專用
         var principal = await jwtService.ValidateRequestAsync(req);
         int?    jobTitleId      = null;
         int?    deptId          = null;
         Guid?   reviewerUserId  = null;
         bool    callerIsSuperAdmin = false;
         string? callerDeptCode  = null;
+        int?    callerJobLevel  = null;
 
         if (principal is not null)
         {
@@ -47,7 +51,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             if (Guid.TryParse(userIdStr, out var userId))
             {
                 reviewerUserId = userId;
-                var user = await db.Users.AsNoTracking().Include(u => u.Department).FirstOrDefaultAsync(u => u.Id == userId);
+                var user = await db.Users.AsNoTracking().Include(u => u.Department).Include(u => u.JobTitle).FirstOrDefaultAsync(u => u.Id == userId);
                 if (user is not null && !user.IsSuperAdmin)
                 {
                     jobTitleId = user.JobTitleId;
@@ -55,6 +59,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 }
                 callerIsSuperAdmin = user?.IsSuperAdmin ?? false;
                 callerDeptCode     = user?.Department?.Code;
+                callerJobLevel     = user?.JobTitle?.Level;
             }
         }
 
@@ -76,6 +81,17 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         string? status = rawStatus is null ? null
                        : ValidListStatuses.Contains(rawStatus) ? rawStatus
                        : "pending";
+
+        // 「已簽核（流程中）」頁籤（scope=reviewed）：協理以上（JobTitle.Level ≤ 3，同高階主管假判準）
+        // 查看「我已核准、但整張單仍在簽核中」的單。狀態固定為 pending，忽略 status 參數。
+        // Superadmin 不開放（待審核頁籤本就列出全部 pending）。
+        bool reviewedScope = scope == "reviewed";
+        if (reviewedScope)
+        {
+            if (callerIsSuperAdmin || callerJobLevel is null || callerJobLevel > SeniorReviewerMaxLevel)
+                return new ObjectResult(ApiResponse.Fail("僅協理以上可查看已簽核（流程中）清單。")) { StatusCode = 403 };
+            status = "pending";
+        }
 
         string? paymentStatus = req.Query["paymentStatus"].ToString() is { Length: > 0 } ps2 ? ps2 : null;
         // 類型篩選：須為 ValidAppTypes 之一，否則忽略
@@ -114,7 +130,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             directorScope && status == "approved"
             && DateOnly.TryParse(req.Query["directorReviewedOn"], out var dro) ? dro : null;
 
-        var allTasks = (await reader.GetApprovalTasksAsync(jobTitleId, deptId, status, reviewerUserId, paymentStatus, applicationType, submittedByUserId, directorStepDeptId, directorScope, dateFrom, dateTo, directorReviewedOn)).ToList();
+        var allTasks = (await reader.GetApprovalTasksAsync(jobTitleId, deptId, status, reviewerUserId, paymentStatus, applicationType, submittedByUserId, directorStepDeptId, directorScope, dateFrom, dateTo, directorReviewedOn, reviewedScope)).ToList();
         int total = allTasks.Count;
         var items = allTasks.Skip((page - 1) * pageSize).Take(pageSize);
         int totalPages = (int)Math.Ceiling((double)total / pageSize);

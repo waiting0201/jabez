@@ -1579,8 +1579,8 @@
           </div>
         }
 
-        <!-- ── 審核區塊 ──────────────────────────────────────────── -->
-        @if (task.status === 'pending') {
+        <!-- ── 審核區塊（從「已簽核（流程中）」頁籤進入時為唯讀檢視，不顯示） ── -->
+        @if (task.status === 'pending' && !viewOnly) {
           <div class="card border-0 shadow-sm mt-6">
             <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
               <svg class="sa-icon text-primary" style="stroke: currentColor">

@@ -121,6 +121,13 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         };
     }
 
+    /// <summary>
+    /// 「已簽核（流程中）」頁籤（scope=reviewed）涵蓋的申請別 ＝ 業務管理選單中「預審申請」到「出差預支沖銷申請」，
+    /// 不含假日執行活動、請假、銷假、加班。
+    /// </summary>
+    private static readonly HashSet<string> ReviewedScopeAppTypes =
+        ["pre_review", "payment_request", "advance", "write_off", "travel_payment", "travel", "travel_write_off"];
+
     // ── ApprovalTask（彙總 PaymentRequest + LeaveRequest + TravelRequest + OvertimeRequest）──
 
     public async Task<IEnumerable<ApprovalTaskDto>> GetApprovalTasksAsync(
@@ -128,14 +135,16 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         string? status = null, Guid? reviewerUserId = null, string? paymentStatus = null,
         string? applicationType = null, Guid? submittedByUserId = null,
         int? directorStepDeptId = null, bool directorScope = false,
-        DateOnly? dateFrom = null, DateOnly? dateTo = null, DateOnly? directorReviewedOn = null)
+        DateOnly? dateFrom = null, DateOnly? dateTo = null, DateOnly? directorReviewedOn = null,
+        bool reviewedScope = false)
     {
         var (payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, overtimeProjects, leaveRevocations, leaveRevocationDates, shiftChanges, shiftChangeDates) =
             await FetchAllAsync(reviewerJobTitleId: reviewerJobTitleId, reviewerDepartmentId: reviewerDepartmentId,
                                 statusFilter: status, reviewerUserId: reviewerUserId, paymentStatus: paymentStatus,
                                 applicationType: applicationType, submittedByUserId: submittedByUserId,
                                 directorStepDeptId: directorStepDeptId, directorScope: directorScope,
-                                dateFrom: dateFrom, dateTo: dateTo, directorReviewedOn: directorReviewedOn);
+                                dateFrom: dateFrom, dateTo: dateTo, directorReviewedOn: directorReviewedOn,
+                                reviewedScope: reviewedScope);
         var instDicts = await LoadInstallmentsAsync(payments, advances, travels, holidayTravels, travelPayments, writeOffs);
         var paymentAttachments   = await LoadPaymentAttachmentsAsync();
         var writeOffAttachments  = await LoadWriteOffAttachmentsAsync();
@@ -236,7 +245,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         string? statusFilter = null, Guid? reviewerUserId = null,
         string? paymentStatus = null, string? applicationType = null,
         Guid? submittedByUserId = null, int? directorStepDeptId = null, bool directorScope = false,
-        DateOnly? dateFrom = null, DateOnly? dateTo = null, DateOnly? directorReviewedOn = null)
+        DateOnly? dateFrom = null, DateOnly? dateTo = null, DateOnly? directorReviewedOn = null,
+        bool reviewedScope = false)
     {
         // ── WHERE clause for specific ID lookup ──────────────────────────────
         string paymentIdWhere        = (filterId.HasValue && filterType == "payment_request")  ? "pr.Id = @Id"  : "";
@@ -341,6 +351,25 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                       )
                   )
                   """ : "") + dirReviewedOnClause;
+            }
+
+            // 「已簽核（流程中）」（scope=reviewed，協理以上專用；權限已在 ApprovalTaskHandler.GetAllAsync 擋過）：
+            // 我已核准、但整張單仍在簽核中的單。範圍限業務管理選單的 7 種申請別，其餘類型一律不列。
+            // 已知邊界：退回後重送、或預支追加新批次時，前一輪的核准紀錄仍會讓單留在此清單；
+            // 若剛好又輪到我，會同時出現在待審核 —— 都屬「我簽過、仍在流程中」，刻意不排除。
+            if (reviewedScope && !filterId.HasValue)
+            {
+                if (!ReviewedScopeAppTypes.Contains(appType)) return "1 = 0";
+                return $"""
+                  {alias}.ApprovalStatus = 'pending'
+                  AND EXISTS (
+                    SELECT 1 FROM ApprovalRecords arRev
+                    WHERE arRev.ApplicationType = '{appType}'
+                      AND arRev.ApplicationId   = {alias}.Id
+                      AND arRev.ReviewedById    = @ReviewerUserId
+                      AND arRev.Action          = 'approved'
+                  )
+                  """;
             }
 
             // Superadmin without status param: show all except draft

@@ -13,6 +13,13 @@
             (click)="switchTab('pending')">
       待審核
     </button>
+    @if (canSeeReviewedTab()) {
+      <button class="btn btn-sm"
+              [class]="activeTab() === 'reviewed' ? 'btn-primary' : 'btn-outline-secondary'"
+              (click)="switchTab('reviewed')">
+        已簽核（流程中）
+      </button>
+    }
     <button class="btn btn-sm"
             [class]="activeTab() === 'approved' ? 'btn-primary' : 'btn-outline-secondary'"
             (click)="switchTab('approved')">
@@ -246,7 +253,7 @@
                 <td class="text-muted small hidden md:table-cell">{{ getSummary(t) }}</td>
                 <td>
                   <div class="flex flex-wrap items-center gap-1">
-                    <span [class]="'badge ' + statusClass[t.status]">{{ statusLabel[t.status] }}</span>
+                    <span [class]="'badge ' + statusClass[t.status]">{{ activeTab() === 'reviewed' ? '簽核中' : statusLabel[t.status] }}</span>
                     @if (getPaymentBadge(t); as pb) {
                       <span [class]="'badge ' + pb.cls">{{ pb.label }}</span>
                     }
@@ -271,6 +278,7 @@
                 <td [attr.colspan]="(activeTab() === 'pending' && canBatchApprove()) ? 8 : 7" class="text-center text-muted py-4">
                   {{ activeTab() === 'director' ? '目前沒有' + DIRECTOR_STATUS_LABELS[directorStatus()] + '的總監室簽核作業。'
                      : activeTab() === 'pending' ? '目前沒有待審核的簽核作業。'
+                     : activeTab() === 'reviewed' ? '目前沒有您已核准、仍在簽核中的申請。'
                      : activeTab() === 'returned' ? '目前沒有退回修改中的簽核作業。'
                      : activeTab() === 'rejected' ? '目前沒有已拒絕的簽核作業。'
                      : submittedByFilter() ? '目前沒有此申請人的已核准簽核作業。'
