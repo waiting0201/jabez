@@ -91,6 +91,9 @@ SQL 端的判定片段收斂於 `LeaveRevocationService.NotRevokedClause`，EF �
 
 擋下原因代碼：`no_gps` / `challenge_missing` / `challenge_invalid` / `too_fast` / `challenge_expired` / `challenge_reused`。
 
+打卡頁「定位資訊」卡片底部常駐隱私說明（2026-10）：「系統僅於您『主動點擊打卡』瞬間記錄位置，不會進行背景追蹤或記錄其他時間的行蹤。」
+與實作一致——前端只在按下打卡時呼叫一次 `getCurrentPosition`，沒有 `watchPosition` 或背景定位。
+
 ### 不受影響
 系統自動補卡（`AttendanceAutoClockService`）與管理者修改（`PUT/PATCH /attendances/{id}`）不經此流程。
 
